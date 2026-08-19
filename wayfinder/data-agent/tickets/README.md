@@ -44,6 +44,8 @@
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, blocked by P7
 - [R4 goals:false 抑制](phase-misc/R4-goals-false.md) — research, low, unblocked
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, low, unblocked
+- [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, low, unblocked
+- [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
 P3 · P4b · P9 · P10 · G2（+ low: R4, R5）
