@@ -2,7 +2,7 @@
 
 **Type**: prototype
 **Phase**: 3
-**Status**: Blocked by P4, P5, P6
+**Status**: Blocked by ~~P4~~, P5, ~~P6~~（P4+P6 resolved 2026-08-19；待 P5）
 
 **Question**: 一份 preset 组装四阶段全部工具/persona/段 + 压缩（保目录稳定）+ phase-gate 插件（`guard` + `turn-stopping` + `post-execute` + `request` waterfall）。
 

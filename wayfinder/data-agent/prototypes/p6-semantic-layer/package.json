@@ -1,0 +1,15 @@
+{
+  "name": "dsh-p6-semantic-layer-prototype-throwaway",
+  "version": "0.0.0-prototype",
+  "private": true,
+  "description": "THROWAWAY prototype for wayfinder ticket P6. Not shipped. Do not promote. See README.md.",
+  "type": "module",
+  "scripts": {
+    "start": "node run.mjs",
+    "demo": "node run.mjs --demo"
+  },
+  "dependencies": {
+    "js-yaml": "^4.2.0",
+    "zod": "3.23.8"
+  }
+}
