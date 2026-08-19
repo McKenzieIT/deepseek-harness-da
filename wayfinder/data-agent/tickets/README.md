@@ -14,7 +14,7 @@
 - [T1 Qoder PAT](phase-1/T1-qoder-pat.md) — task, **resolved** 2026-08-19, was blocking P3
 - [R1 DashScope seam](phase-1/R1-dashscope-seam.md) — research, **resolved**, blocks P2
 - [P2 llm-dashscope](phase-1/P2-llm-dashscope.md) — prototype, **resolved**（2026-08-19）, P0
-- [P3 subagent-qoder](phase-1/P3-subagent-qoder.md) — prototype, **unblocked**（T1 解 2026-08-19）, P0
+- [P3 subagent-qoder](phase-1/P3-subagent-qoder.md) — prototype, **resolved**（2026-08-20）, P0
 - [G3 per-user Qoder PAT](phase-1/G3-per-user-qoder-pat.md) — grilling, **resolved** 2026-08-19, feeds P3/P9/P8/P10 (dep P12)
 
 ## phase-2（capability seams）
@@ -48,4 +48,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P3 · P4b · P9 · P10 · G2（+ low: R4, R5）
+P4b · P9 · P10 · G2（+ low: R4, R5）
