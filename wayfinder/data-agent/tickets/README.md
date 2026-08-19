@@ -13,18 +13,19 @@
 ## phase-1（P0 LLM）
 - [T1 Qoder PAT](phase-1/T1-qoder-pat.md) — task, **resolved** 2026-08-19, was blocking P3
 - [R1 DashScope seam](phase-1/R1-dashscope-seam.md) — research, **resolved**, blocks P2
-- [P2 llm-dashscope](phase-1/P2-llm-dashscope.md) — prototype, **unblocked**（R1 解）, P0
+- [P2 llm-dashscope](phase-1/P2-llm-dashscope.md) — prototype, **resolved**（2026-08-19）, P0
 - [P3 subagent-qoder](phase-1/P3-subagent-qoder.md) — prototype, **unblocked**（T1 解 2026-08-19）, P0
 - [G3 per-user Qoder PAT](phase-1/G3-per-user-qoder-pat.md) — grilling, **resolved** 2026-08-19, feeds P3/P9/P8/P10 (dep P12)
 
 ## phase-2（capability seams）
 - [R2 MaxCompute 凭证缓存](phase-2/R2-maxcompute-cred-cache.md) — research, **resolved**, blocks P4
 - [R6 凭证热更机制](phase-2/R6-cred-hot-reload.md) — research, **resolved** 2026-08-19（推荐 (b) per-call `set_credentials` + P1 da 自持 Client；E 精炼 cred→set_credentials / 非-cred→invalidate_scope / reconnect→崩溃兜底）
-- [G4 query sidecar 控制信道+可靠性](phase-2/G4-query-sidecar-control-reliability.md) — grilling, **unblocked**（R6 解；P1 vs P2 可靠性权衡 + 崩溃恢复形态 HOLE-B）
+- [G4 query sidecar 控制信道+可靠性](phase-2/G4-query-sidecar-control-reliability.md) — grilling, **resolved** 2026-08-20（P1 自持 raw Client+stdio、(ii) lazy re-spawn、HOLE-A 强制 connect/C drop/D no-op polling；解锁 P4b）
 - [P4 query-engine](phase-2/P4-query-engine.md) — prototype, **resolved**（A1-split + C1 + B/D/E/F2/G；prototype `../prototypes/p4-query-engine/`）
+- [P4b query-maxcompute 生产硬化](phase-2/P4b-query-maxcompute-hardening.md) — prototype, **unblocked**（G4 解；P1 接线：da 自持 raw Client+stdio、lazy re-spawn、set_credentials 控制信道、drop/cancel via signal）
 - [P5 检索/向量化](phase-2/P5-retrieval-vectorization.md) — prototype, **in-progress** (claimed 2026-08-19)
 - [P6 语义层](phase-2/P6-semantic-layer.md) — prototype, **resolved** 2026-08-19（substrate + ODPS 解耦 `ctx.schema` seam + write-tiers；NL→SQL 引擎毕业 P13；prototype `../prototypes/p6-semantic-layer/`）
-- [P8 audit](phase-2/P8-audit.md) — prototype, **unblocked**
+- [P8 audit](phase-2/P8-audit.md) — prototype, **in-progress** (claimed 2026-08-20)
 - [P9 admin+访问隔离](phase-2/P9-admin-access-isolation.md) — prototype, **unblocked**
 - [P10 内网穿透安全](phase-2/P10-intranet-tunneling.md) — prototype, **unblocked**
 - [P12 credentials keychain + per-user 寻址](phase-2/P12-credentials-keychain.md) — prototype, **resolved** 2026-08-19
@@ -45,4 +46,4 @@
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P2 · P3 · P8 · P9 · P10 · G2 · G4（+ low: R4, R5）
+P3 · P9 · P10 · G2 · G4（+ low: R4, R5）
