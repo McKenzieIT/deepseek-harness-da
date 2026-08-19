@@ -6,6 +6,8 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import LocalCredentialProvider from '@deepseek-ai/dsh-credentials-local'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import * as invariant from '../src/invariant.ts'
 import { QODER_PERSONAL_ACCESS_TOKEN } from '../src/index.ts'
 import * as subagentQoder from '../src/index.ts'
 import {
@@ -193,6 +195,18 @@ describe('task admission and package contracts', () => {
     expect('default' in subagentQoder).toBe(false)
     expect(subagentQoder.name).toBe('subagent-qoder')
     expect(subagentQoder.inject).toEqual(['subagents', 'credentials'])
+  })
+
+  it('registers the package-owned empty invariant companion', async () => {
+    const dispose = vi.fn()
+    const register = vi.fn((_packageName: string, _installer: InvariantInstaller) => dispose)
+    const ctx = { invariants: { register } } as unknown as Context
+    await expect(invariant.apply(ctx)).resolves.toBe(dispose)
+    expect(register).toHaveBeenCalledWith('@deepseek-ai/dsh-subagent-qoder', expect.any(Function))
+    const install = register.mock.calls[0]![1] as InvariantInstaller
+    await install(new Context(), (message: string) => { throw new Error(message) })
+    expect(invariant.name).toBe('subagent-qoder-invariant')
+    expect(invariant.inject).toEqual(['invariants'])
   })
 })
 
@@ -398,6 +412,24 @@ describe('run publication, cancellation, and settlement', () => {
     await expect(startQoderRun(request(), spec()))
       .rejects.toThrow('query construction failed')
   })
+
+  it('rejects with an AggregateError when startup fails and query cleanup also fails', async () => {
+    const close = vi.fn(() => { throw new Error('close boom') })
+    queryMock.mockImplementationOnce(({ options }) => {
+      options.abortController!.abort(new Error('construction cancelled'))
+      return { close } as unknown as Query
+    })
+    await expect(startQoderRun(request(), spec())).rejects.toBeInstanceOf(AggregateError)
+  })
+
+  it('masks a controller-aborted startup as aborted when query cleanup succeeds', async () => {
+    const close = vi.fn()
+    queryMock.mockImplementationOnce(({ options }) => {
+      options.abortController!.abort(new Error('construction cancelled'))
+      return { close } as unknown as Query
+    })
+    await expect(startQoderRun(request(), spec())).rejects.toThrow('aborted before SDK startup')
+  })
 })
 
 describe('query disposal', () => {
@@ -433,6 +465,21 @@ describe('provider start with credentials-seam PAT', () => {
     })
     expect(resolve).toHaveBeenCalledWith(QODER_PERSONAL_ACCESS_TOKEN)
     expect(accessTokenMock).toHaveBeenCalledWith('resolved-pat')
+    await run.dispose()
+    await ctx.fiber.dispose()
+  })
+
+  it('routes a post-publication error through the provider logger', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalCredentialProvider, CRED_CONFIG)
+    vi.spyOn(ctx.credentials, 'resolve').mockResolvedValue({ value: 'resolved-pat', source: 'file' })
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+    await ctx.plugin(subagentQoder, {})
+    queryMock.mockImplementation(() => queryFrom([failure('error_during_execution', ['boom'])]))
+    const run = await ctx.subagents.start('qoder', request())
+    await expect(run.result).resolves.toMatchObject({ stopReason: 'error' })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('subagent-qoder: child run failed (error):'))
     await run.dispose()
     await ctx.fiber.dispose()
   })

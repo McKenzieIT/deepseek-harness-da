@@ -1,7 +1,5 @@
 # @deepseek-ai/dsh-subagent-qoder
 
-English | [中文](README.zh.md)
-
 This package registers the fixed `qoder` subagent provider. Each accepted run invokes the official Qoder Agent SDK in the delegating Session's workspace, resolves the Qoder PAT through the credentials seam per operation, and returns only the terminal result through the shared [`dsh-subagent`](../subagent/README.md) result contract.
 
 ## Design (terminal-only, claude-code precedent)
@@ -36,7 +34,7 @@ Production `dsh` does not install or mount this optional provider. A Profile tha
 
 ## Transport
 
-The Qoder SDK defaults to `WorkerTransport` (an obfuscated `dist/_worker/qoder-worker-runtime.obf.mjs` downloaded at install, pinning `qoderCliVersion 1.1.25`). Unlike `subagent-claude-code`'s `ProcessTransport` (a host PATH `claude` executable), there is no external CLI to resolve or terminate; `Query.close()` is the whole teardown. Deployments should be aware of the postinstall download, the `QODERCLI_PATH`/`QODER_SKIP_DOWNLOAD` overrides, and the lack of semver guarantees on the obfuscated runtime.
+The Qoder SDK defaults to `WorkerTransport` (an obfuscated `dist/_worker/qoder-worker-runtime.obf.mjs` downloaded at install, pinning `qoderCliVersion 1.1.25`). Unlike `subagent-claude-code`'s `ProcessTransport` (a host PATH `claude` executable), there is no external CLI to resolve or terminate; `Query.close()` is the whole teardown. Deployments should be aware of the postinstall download, the `QODERCLI_PATH`/`QODER_SKIP_DOWNLOAD` overrides, and the lack of semver guarantees on the obfuscated runtime. This workspace's `pnpm-workspace.yaml` sets `allowBuilds: '@qoder-ai/qoder-agent-sdk': false`, so the worker runtime is **not downloaded on install** — a live `query()` fails at worker spawn until the deployment runs `pnpm approve-builds @qoder-ai/qoder-agent-sdk` (or sets `QODERCLI_PATH` to an existing qodercli). Unlike `subagent-claude-code`'s `ProcessTransport` (a scrubbed subprocess that strips credential-bearing env vars), `WorkerTransport` runs the obfuscated worker **in-process** with full access to `process.env`, the filesystem (the parent cwd — business files), and the network — a broader trust boundary. The Qoder PAT itself is kept out of `process.env` (T1, intranet-security-first), but **other** env/filesystem secrets present at runtime are exposed to the obfuscated, non-permissive worker; deployments in restricted environments should treat the worker as a trust boundary.
 
 ## Known Limitations and Deferred Work
 

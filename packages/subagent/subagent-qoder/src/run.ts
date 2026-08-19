@@ -163,6 +163,7 @@ export function qoderQueryOptions(
     auth: accessToken(spec.pat),
     persistSession: false,
     disallowedTools: ['AskUserQuestion'],
+    closeGraceMs: spec.disposeGraceMs,
   }
   if (spec.model !== undefined) {
     options.model = spec.model
