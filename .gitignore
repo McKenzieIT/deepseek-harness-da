@@ -38,3 +38,6 @@ apps/web/dist/
 worktrees/
 .agents/worktrees/
 .typert-*/
+
+# DashScope key-bearing access docs (调用文档-emp-*) — never commit the API key
+wayfinder/**/调用文档*.md
