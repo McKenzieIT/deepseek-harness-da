@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '../src/index.ts'
-import type { CredentialRef } from '../src/index.ts'
+import type { CredentialAddress, CredentialRef } from '../src/index.ts'
 import { MemoryCredentials } from './memory.ts'
 
 const REF = credentialRef('DEEPSEEK_API_KEY')
@@ -67,5 +67,45 @@ describe('the credentials seam through the memory provider', () => {
     expect(ctx.get('credentials')).toBeDefined()
     await fiber.dispose()
     expect(ctx.get('credentials')).toBeUndefined()
+  })
+})
+
+describe('per-user/scope addressing through the memory provider', () => {
+  it('isolates a per-user value from the global slot and from other users', async () => {
+    const ctx = await boot()
+    const events: Array<{ ref: CredentialRef; address?: CredentialAddress }> = []
+    ctx.on('credentials/updated', (ref, address) => events.push({ ref, address }))
+
+    await ctx.credentials.set(REF, 'sk-alice', { userId: 'alice' })
+    // A per-user value is invisible to the global slot and to another user.
+    expect(await ctx.credentials.resolve(REF)).toBeUndefined()
+    expect(await ctx.credentials.resolve(REF, { userId: 'bob' })).toBeUndefined()
+    expect(await ctx.credentials.resolve(REF, { userId: 'alice' })).toEqual({ value: 'sk-alice', source: 'memory' })
+    expect(await ctx.credentials.describe(REF, { userId: 'alice' })).toEqual({ configured: true, source: 'memory', writable: true })
+
+    // A global value coexists with the per-user one on the same reference.
+    await ctx.credentials.set(REF, 'sk-global')
+    expect(await ctx.credentials.resolve(REF)).toEqual({ value: 'sk-global', source: 'memory' })
+    expect(await ctx.credentials.resolve(REF, { userId: 'alice' })).toEqual({ value: 'sk-alice', source: 'memory' })
+
+    // The committed-change event carries the address the change is scoped to.
+    expect(events).toEqual([
+      { ref: REF, address: { userId: 'alice' } },
+      { ref: REF, address: undefined },
+    ])
+
+    // Unset is scoped: removing alice's slot leaves the global value intact.
+    await ctx.credentials.unset(REF, { userId: 'alice' })
+    expect(await ctx.credentials.resolve(REF, { userId: 'alice' })).toBeUndefined()
+    expect(await ctx.credentials.resolve(REF)).toEqual({ value: 'sk-global', source: 'memory' })
+  })
+
+  it('treats scopeId and userId as orthogonal dimensions on the same reference', async () => {
+    const ctx = await boot()
+    await ctx.credentials.set(REF, 'per-scope', { scopeId: 'game-1' })
+    await ctx.credentials.set(REF, 'per-user', { userId: 'alice' })
+    expect(await ctx.credentials.resolve(REF, { scopeId: 'game-1' })).toEqual({ value: 'per-scope', source: 'memory' })
+    expect(await ctx.credentials.resolve(REF, { userId: 'alice' })).toEqual({ value: 'per-user', source: 'memory' })
+    expect(await ctx.credentials.resolve(REF, { scopeId: 'game-1', userId: 'alice' })).toBeUndefined()
   })
 })

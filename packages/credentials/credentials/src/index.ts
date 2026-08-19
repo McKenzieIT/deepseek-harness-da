@@ -9,9 +9,9 @@
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
-import type { CredentialRef } from './types.ts'
+import type { CredentialAddress, CredentialRef } from './types.ts'
 
-export type { CredentialRef } from './types.ts'
+export type { CredentialAddress, CredentialRef } from './types.ts'
 
 const REF_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
 
@@ -68,17 +68,19 @@ export abstract class CredentialProvider extends Service {
    * operations — that per-operation read is what makes a changed credential
    * reach the next operation without a restart.
    * @param ref - the reference to resolve.
+   * @param address - the per-user/scope slot to resolve within, when the provider distinguishes one; absent for a global/shared credential.
    * @returns the value and its source, or `undefined` while unconfigured.
    */
-  abstract resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined>
+  abstract resolve(ref: CredentialRef, address?: CredentialAddress): Promise<ResolvedCredential | undefined>
 
   /**
    * Describe one reference for configuration surfaces without exposing the
    * value.
    * @param ref - the reference to describe.
+   * @param address - the per-user/scope slot to describe, when the provider distinguishes one; absent for a global/shared credential.
    * @returns configured state, supplying source, and writability.
    */
-  abstract describe(ref: CredentialRef): Promise<CredentialInfo>
+  abstract describe(ref: CredentialRef, address?: CredentialAddress): Promise<CredentialInfo>
 
   /**
    * Durably store one value in the provider-managed writable source. Rejects
@@ -87,16 +89,18 @@ export abstract class CredentialProvider extends Service {
    * rejects an empty value (use {@link unset}).
    * @param ref - the reference to store.
    * @param value - the non-empty secret value.
+   * @param address - the per-user/scope slot to store within, when the provider distinguishes one; absent for a global/shared credential.
    */
-  abstract set(ref: CredentialRef, value: string): Promise<void>
+  abstract set(ref: CredentialRef, value: string, address?: CredentialAddress): Promise<void>
 
   /**
    * Remove one reference from the provider-managed writable source; removing
    * an absent reference is a no-op. Rejects while a read-only source shadows
    * the reference, like {@link set}.
    * @param ref - the reference to remove.
+   * @param address - the per-user/scope slot to remove, when the provider distinguishes one; absent for a global/shared credential.
    */
-  abstract unset(ref: CredentialRef): Promise<void>
+  abstract unset(ref: CredentialRef, address?: CredentialAddress): Promise<void>
 
   /* jscpd:ignore-start -- deliberate symmetry with the settings seam's commit
      fan-out: the contained-dispatch shape is the reviewed listener-lifecycle
@@ -111,13 +115,17 @@ export abstract class CredentialProvider extends Service {
    * reload actually committed, so a broken observer can never make a durable
    * change look failed.
    * @param ref - the reference whose stored value changed.
+   * @param address - per-user/scope slot this change is scoped to; absent for a global/shared change.
    */
-  protected notifyUpdated(ref: CredentialRef): void {
+  protected notifyUpdated(ref: CredentialRef, address?: CredentialAddress): void {
     let invariantFailure: unknown
-    const args = ['credentials/updated', ref]
+    // A global change keeps the original two-element payload and one-argument
+    // listener call, so existing one-argument listeners and their exact-arity
+    // assertions are undisturbed; a per-user/scope change extends both.
+    const args = address === undefined ? ['credentials/updated', ref] : ['credentials/updated', ref, address]
     for (const listener of this.ctx.events.dispatch('emit', args) as Array<(...listenerArgs: unknown[]) => unknown>) {
       try {
-        const returned = listener(ref)
+        const returned = address === undefined ? listener(ref) : listener(ref, address)
         if (returned != null && typeof (returned as PromiseLike<unknown>).then === 'function') {
           void Promise.resolve(returned as PromiseLike<unknown>).then(undefined, (error: unknown) => {
             this.warnListenerFailure(ref, error)
