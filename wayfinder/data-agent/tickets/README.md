@@ -19,7 +19,8 @@
 
 ## phase-2（capability seams）
 - [R2 MaxCompute 凭证缓存](phase-2/R2-maxcompute-cred-cache.md) — research, **resolved**, blocks P4
-- [R6 凭证热更机制](phase-2/R6-cred-hot-reload.md) — research, **unblocked**, P4 surface（refine E：spawn-env cred 变更如何不重启生效）
+- [R6 凭证热更机制](phase-2/R6-cred-hot-reload.md) — research, **resolved** 2026-08-19（推荐 (b) per-call `set_credentials` + P1 da 自持 Client；E 精炼 cred→set_credentials / 非-cred→invalidate_scope / reconnect→崩溃兜底）
+- [G4 query sidecar 控制信道+可靠性](phase-2/G4-query-sidecar-control-reliability.md) — grilling, **unblocked**（R6 解；P1 vs P2 可靠性权衡 + 崩溃恢复形态 HOLE-B）
 - [P4 query-engine](phase-2/P4-query-engine.md) — prototype, **resolved**（A1-split + C1 + B/D/E/F2/G；prototype `../prototypes/p4-query-engine/`）
 - [P5 检索/向量化](phase-2/P5-retrieval-vectorization.md) — prototype, **unblocked**
 - [P6 语义层](phase-2/P6-semantic-layer.md) — prototype, **unblocked**
