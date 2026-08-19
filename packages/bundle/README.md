@@ -9,5 +9,6 @@ Profile bundles: npm packages whose manifest declares `"dsh": { "bundle": { "pat
 | [`base/`](base/README.md) | The shared dsh core every profile applies first | — (patch only) |
 | [`web-app/`](web-app/README.md) | Browser surface: web patch layer + runtime glue plugin | mounts rows |
 | [`headless/`](headless/README.md) | Direct one-shot task mode over base, with no Host or Web layer | mounts `headless-runner` |
+| [`data-agent/`](data-agent/README.md) | data-agent patch layer over base: reserves mounts for data capability plugins (P4-P11) and disables the code-agent surface | — (patch only) |
 
 In-box bundles resolve from the dsh installation; out-of-tree bundles install into a profile through `dsh plugin --profile <name> add <package>`.

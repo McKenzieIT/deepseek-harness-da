@@ -1,0 +1,86 @@
+# The dsh-data-agent bundle patch: a patch layer over dsh-base for the
+# data-agent profile. It is additive-only — it disables the code-agent
+# surface (disable, never delete, so an upstream base reorder cannot
+# re-mount it) and reserves an insert block of placeholders for the data
+# capability plugins this profile will mount once their packages ship
+# (P4-P11). It inserts nothing itself yet: a bare specifier to a
+# not-yet-shipped package breaks pnpm install and verify-cordis-config,
+# so each data-plugin row stays commented until its package exists.
+#
+# A patch targets a row by id and replaces its whole `config`; `disabled` is
+# an entry flag, so `- id: <row> disabled: true` deactivates a base row
+# without touching its package, its source, or the base patch. Disabling
+# rather than deleting is deliberate (the base is shared): a row absent
+# from this overlay would silently reappear if base's row order changed,
+# while a `disabled: true` here holds regardless of composition order.
+#
+# The package has no runtime API; the profile composer resolves this patch
+# through the `dsh.bundle.patch` manifest field. Inspect the composed tree:
+#   dsh --profile headless --patch ./packages/bundle/data-agent/cordis.patch.yml --dump-config
+# A standalone data-agent profile is created out-of-tree through
+# `dsh plugin --profile data-agent add @deepseek-ai/dsh-data-agent` once the
+# four-phase preset (P7) and its driver land; this bundle touches no shared
+# boot glue, preserving the upstream upgrade path.
+
+# ── disable the code-agent surface (map Q2: disable-only, not delete) ────────
+# The data agent answers data questions (NL->SQL); it does not edit code or
+# iterate build scripts, so the coding-agent tools stay off. `tool-pwsh` is
+# already gated off on POSIX by base's own platform guard, so this layer does
+# not restate it. `tool-bash` and `code-runtime` are execution backends the
+# data agent itself uses (map Q9); they stay enabled here and are gated from
+# business users at the P10 intranet tool-gate, not in this bundle.
+
+- id: tool-str-replace-editor
+  disabled: true
+
+- id: tool-ralph
+  disabled: true
+
+# No Code Mode: the data agent presents the native tool set only. Over base
+# this matches the default; composed via --patch over headless/web-app it
+# overrides their env-controlled DSH_TOOLS_MODE seam, holding Code Mode off.
+- id: tools
+  config:
+    mode: native
+
+# ── data capability plugins (additive mounts; TODO, filled by P4-P11) ───────
+# Each row below is a placeholder for a data capability plugin this bundle
+# will mount once its package exists. They are commented out because a bare
+# specifier (name: '@deepseek-ai/dsh-<pkg>') to a not-yet-shipped package
+# breaks pnpm install and verify-cordis-config today; uncomment and supply
+# each `name:` only after the package ships. ids and ctx keys follow the map
+# Decisions so far; package names are TBD per the resolving ticket.
+#
+# - insert:
+#     # ── query (P4) ───────────────────────────────────────────────────────
+#     - id: query-engine        # ctx.query seam (QueryEngine protocol + per-engine conventions.yaml; MaxCompute provider)
+#       name: '@deepseek-ai/dsh-query-engine'   # name TBD - P4
+#     # ── retrieval / vectorization (P5) ───────────────────────────────────
+#     - id: embedder            # ctx.embedder seam (default lightweight in-process; heavy embedder as optional external plugin)
+#       name: '@deepseek-ai/dsh-embedder'       # name TBD - P5
+#     - id: retrieval          # ctx.retrieval seam (default sqlite-vec/in-memory; hybrid as retriever-composition plugin)
+#       name: '@deepseek-ai/dsh-retrieval'      # name TBD - P5
+#     # ── semantic layer (P6) - first-class (map: 语义层一等公民) ───────────
+#     - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
+#       name: '@deepseek-ai/dsh-semantic-layer' # name TBD - P6
+#     # ── audit (P8) ───────────────────────────────────────────────────────
+#     - id: audit              # guard/session-event + tool-audit + ctx.storage (SQLite)
+#       name: '@deepseek-ai/dsh-audit'          # name TBD - P8
+#     # ── admin + access isolation (P9) ─────────────────────────────────────
+#     - id: admin              # harness app: per-game scope/credential/access-link + system config
+#       name: '@deepseek-ai/dsh-admin'          # name TBD - P9
+#     # ── LLM (phase-1) ────────────────────────────────────────────────────
+#     - id: llm-dashscope      # DashScope (Bailian, OpenAI-compatible) - the data agent's direct LLM
+#       name: '@deepseek-ai/dsh-llm-dashscope'  # name TBD - P2
+#     - id: subagent-qoder     # Qoder as a harness subagent (query() delegation; PAT auth via credentials seam)
+#       name: '@deepseek-ai/dsh-subagent-qoder' # name TBD - P3
+
+# ── transform execution (TODO, P7 four-phase + report/Excel) ───────────────
+# code-runtime runs pandas transforms (incl. Excel/report generation via
+# pandas) and is mounted here when the four-phase transform stage (P7)
+# lands; base does not insert it, so this is an insert, not a disable. bash
+# stays enabled (base's POSIX platform guard) for the agent's own shell use
+# and is gated from business users at P10.
+#
+# - id: code-runtime
+#   name: '@deepseek-ai/dsh-code-runtime-worker-thread'

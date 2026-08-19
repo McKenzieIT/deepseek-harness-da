@@ -11,6 +11,7 @@ Groups hold `packages/<group>/<pkg>/`; names stay `@deepseek-ai/dsh-<pkg>`. **Gr
 | Group | Role | Release expectation |
 |---|---|---|
 | [`core/`](core/README.md) | Product API spine: sessions, prompts, tools, agent services, and the concrete loop | Product — stable API |
+| [`data/`](data/README.md) | data-agent capability family: query, retrieval/vectorization, semantic layer, audit, admin (built P4-P11) | Product — stable API |
 | [`api/`](api/README.md) | Remote BFF assembly and Typert RPC gateway | Product — stable API |
 | [`typert/`](typert/README.md) | Type graph generation, artifact loading, and runtime registry | Product — stable API |
 | [`goal/`](goal/README.md) | Same-session goal persistence and lifecycle | Product — stable API |
