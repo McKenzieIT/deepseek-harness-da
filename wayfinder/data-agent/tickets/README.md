@@ -46,4 +46,4 @@
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P3 · P9 · P10 · G2 · G4（+ low: R4, R5）
+P3 · P4b · P9 · P10 · G2（+ low: R4, R5）
