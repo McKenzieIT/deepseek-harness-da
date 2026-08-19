@@ -1,0 +1,11 @@
+{
+  "name": "dsh-p4-query-engine-prototype-throwaway",
+  "version": "0.0.0-prototype",
+  "private": true,
+  "description": "THROWAWAY prototype for wayfinder ticket P4. Not shipped. Do not promote. See README.md.",
+  "type": "module",
+  "scripts": {
+    "start": "node run.mjs",
+    "demo": "node run.mjs --demo"
+  }
+}
