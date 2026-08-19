@@ -74,7 +74,7 @@ describe('per-user/scope addressing through the memory provider', () => {
   it('isolates a per-user value from the global slot and from other users', async () => {
     const ctx = await boot()
     const events: Array<{ ref: CredentialRef; address?: CredentialAddress }> = []
-    ctx.on('credentials/updated', (ref, address) => events.push({ ref, address }))
+    ctx.on('credentials/updated', (ref, address) => events.push({ ref, ...(address !== undefined ? { address } : {}) }))
 
     await ctx.credentials.set(REF, 'sk-alice', { userId: 'alice' })
     // A per-user value is invisible to the global slot and to another user.
