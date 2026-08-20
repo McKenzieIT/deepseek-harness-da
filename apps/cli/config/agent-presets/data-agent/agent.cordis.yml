@@ -1,0 +1,96 @@
+# The `data-agent` agent preset: the four-phase NL→SQL data agent.
+#
+# This file is an AGENT-PLANE composition (mirror `standard/agent.cordis.yml`).
+# The roster mounts it ONCE under a standing scope; every session naming it
+# joins by scope parentage, so the tools and prompt sections registered here
+# cover each joined agent while per-session state stays keyed inside the
+# plugins. The host composition (`base.cordis.yml` + the `data-agent` bundle
+# patch) keeps everything a preset must not own: the registries themselves,
+# the sandbox/approval stack, persistence, and the model route.
+#
+# A service row here MUST sit inside a group carrying an `isolate` realm
+# (without one it publishes into the root realm, process-global — a second
+# preset publishing the same name collides, and `dsh-agent-presets` rejects
+# that at mount). `phase-gate` owns per-agent phase state keyed inside the
+# plugin, so an entry-local realm is the correct lifetime.
+#
+# P7b ships the phase-gate plugin (`@deepseek-ai/dsh-phase-gate`): the
+# four-phase pipeline re-expressed on harness event seams (7 hooks: guard +
+# turn-stopping + post-execute + request + assemble + llm/stream + pre-step,
+# + agent/status for question-start). phase-gate ALSO owns the persona
+# (base persona section shadowing the deployment default + dynamic
+# per-phase instructions injected at `system-prompt/assemble` — option C),
+# so this preset mounts NO separate `persona` row. Model routing stays out
+# of the preset (`installAgentLlmTarget` seam); phase-gate layers per-phase
+# `reasoningEffort` via the `agent/request` waterfall.
+#
+# The data-agent's model-facing tools (search_data_sources / query_data /
+# load_table_definition / load_event_definition / critique_sql_tool /
+# evaluate_sql_quality / present_*) are rows BELOW, commented out for the
+# same reason the bundle patch comments its data-plugin block: a bare
+# specifier to a not-yet-shipped package breaks `pnpm install` and
+# `verify-cordis-config`. Uncomment each `name:` only after its package ships
+# (P5 retrieval → search_data_sources; P6 semantic-layer → load_*; P4b
+# tool-query → query_data; P13b → critique_sql_tool/evaluate_sql_quality;
+# INTERPRETATION delivery tools → a later ticket). ids and the phase-gate
+# tool whitelists follow the map Decisions so far; package names are TBD per
+# the resolving ticket. phase-gate's guard is forward-compatible — the
+# whitelists name the stable rbi roster, so an unregistered tool is simply
+# uncallable (no model can reach it), not a broken mount.
+
+# ── phase-gate orchestration (P7b) ───────────────────────────────────────────
+# Per-agent phase state + the 7 event hooks. Entry-local realm: this standing
+# mount's own private instance, apart from every other preset's.
+- id: phase-gating
+  name: cordis:group
+  group: true
+  isolate:
+    phaseGate: true
+  config:
+    - id: phase-gate
+      name: '@deepseek-ai/dsh-phase-gate'
+      config:
+        scopeId: game-1
+        max_fallbacks: 2
+        max_subquestions: 4
+        max_executions_per_turn: 8
+        max_llm_calls_per_turn: 60
+        max_state_turns: 20
+        stall_watchdog_seconds: 300
+
+# ── data-agent model-facing tools (TODO, uncomment as packages ship) ───────
+# Each row below is a placeholder for a data-agent tool this preset will
+# mount once its package exists. They are commented out because a bare
+# specifier (name: '@deepseek-ai/dsh-<pkg>') to a not-yet-shipped package
+# breaks pnpm install and verify-cordis-config today; uncomment and supply
+# each `name:` only after the package ships. The phase-gate guard whitelists
+# (UNDERSTANDING/GENERATION/EXECUTION/INTERPRETATION_TOOLS) already name
+# these tools, so registering one makes it callable in its phase.
+#
+# - id: tool-search-data-sources   # UNDERSTANDING (P5 retrieval → ctx.retrieval)
+#   name: '@deepseek-ai/dsh-tool-search-data-sources'   # name TBD - P5/P13b
+# - id: tool-load-table-definition # UNDERSTANDING/GENERATION (P6 semantic-layer → ctx.schema)
+#   name: '@deepseek-ai/dsh-tool-load-table-definition' # name TBD - P6
+# - id: tool-load-event-definition # UNDERSTANDING/GENERATION (P6 → ctx.schema)
+#   name: '@deepseek-ai/dsh-tool-load-event-definition'  # name TBD - P6
+# - id: tool-query-data            # EXECUTION (P4b tool-query → ctx.query.execute)
+#   name: '@deepseek-ai/dsh-tool-query-data'            # name TBD - P4b/Not-yet-specified
+# - id: tool-critique-sql          # GENERATION (P13b; critic itself folded into phase-gate)
+#   name: '@deepseek-ai/dsh-tool-critique-sql'          # name TBD - P13b
+# - id: tool-evaluate-sql-quality  # GENERATION (P13b)
+#   name: '@deepseek-ai/dsh-tool-evaluate-sql-quality'  # name TBD - P13b
+# - id: tool-present-decomposition # INTERPRETATION (delivery tools → later ticket)
+#   name: '@deepseek-ai/dsh-tool-present-decomposition' # name TBD
+# - id: tool-present-table         # INTERPRETATION
+#   name: '@deepseek-ai/dsh-tool-present-table'         # name TBD
+
+# ── transform execution (Q9; TODO with the four-phase transform/delivery) ──
+# bash + code-runtime (pandas transforms / Excel-report generation) stay
+# enabled by the base bundle for the agent's own use; business users are
+# gated from them at the P10 intranet tool-gate, not here. Mount the
+# model-facing rows when the transform/delivery stage lands.
+#
+# - id: tool-bash
+#   name: '@deepseek-ai/dsh-tool-bash'
+# - id: tool-fs
+#   name: '@deepseek-ai/dsh-tool-fs'

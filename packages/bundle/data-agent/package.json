@@ -39,7 +39,8 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-audit": "workspace:^"
+    "@deepseek-ai/dsh-audit": "workspace:^",
+    "@deepseek-ai/dsh-llm-dashscope": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-invariants": "workspace:^",

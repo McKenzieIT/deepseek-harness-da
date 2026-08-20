@@ -36,7 +36,7 @@
 
 ## phase-3（orchestration）
 - [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, **resolved**（2026-08-20；grilling 8 决策 + prototype 8 场景全绿 + 6 finding→P7b；persona option C / turn-stopping 转换 / guard 硬白名单 / rbi budgets 初始默认）
-- [P7b phase-gate 生产硬化](phase-3/P7b-phase-gate-hardening.md) — prototype, blocked by ~~P13~~ → **unblocked**（P13 resolved：critic 形态方案 1+4 已定，sqlglot stub 可替换）
+- [P7b phase-gate 生产硬化](phase-3/P7b-phase-gate-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/phase-gate/ TS + 真 preset + P13 critic fold + 控制流精炼 serial-void→副作用 + F1-F6；P2 遗留 bundle dep 修）
 - [P13b NL→SQL 引擎生产硬化](phase-3/P13b-nl2sql-engine-prod-hardening.md) — prototype, **unblocked**（P13 resolved；prototype→生产 `packages/nl2sql-engine/` + conventions 提到 query 包 + critic 接线 fold P7b）
 - [P13 NL→SQL 引擎（极简 (B)）](phase-3/P13-nl2sql-engine.md) — prototype, **resolved**（2026-08-20；grilling 6 决策 + prototype 9 scenarios 全绿；critic 方案 1+4 替 sqlglot + eval gate 对齐 P11/G2；`../research/p13-sql-critic-alternatives.md`）
 
