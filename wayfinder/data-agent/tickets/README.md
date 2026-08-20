@@ -31,7 +31,7 @@
 - [P12 credentials keychain + per-user 寻址](phase-2/P12-credentials-keychain.md) — prototype, **resolved** 2026-08-19
 - [P12b credentials keychain 生产硬化](phase-2/P12b-credentials-keychain-hardening.md) — prototype, **resolved**（2026-08-20）（security-CLI-only runtime-exfil ACL DEFER P12c + locked-keychain/auto-lock/teardown-lock + 真实 `packages/credentials/credentials-keychain` 包 + branding in seam `UserId`/`ScopeId` `Branded`；live macOS e2e 21/21 + per-file 100% 覆盖；解锁 G3 stable per-user PAT 必填）
 - [P12c native keychain binding + code-signing](phase-2/P12c-native-keychain-binding-code-signing.md) — prototype, **blocked**（by harness 分发流程建立：Apple Developer Program + notarization + 打包可签名 binary；P12b DEFER 的 runtime-exfil ACL per-item Touch-ID）
-- [T2 AGA-embeddings live-probe](phase-2/T2-aga-embeddings-live-probe.md) — task, **unblocked** (surfaced by P5；定 intranet 重 embedder 走 AGA 还是独立 sidecar)
+- [T2 AGA-embeddings live-probe](phase-2/T2-aga-embeddings-live-probe.md) — task, **resolved**（2026-08-20；AGA-embeddings NO live-probe 实证——4 端点 404 + chat 200 控制；intranet 重 embedder 走独立 sidecar 非 AGA，落 P5 InfinityEmbedder）
 - [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/audit + 真实 ctx.on + ①a verdict-only patch + ②c stats/correctedStats + additive P3 costs-surface；audit 11/11 spec + P3 26/26+117/117 + typecheck-clean）
 
 ## phase-3（orchestration）
@@ -54,4 +54,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P7b · P13b · P11 · T2（+ low: R4, R5）
+P7b · P13b · P11（+ low: R4, R5）
