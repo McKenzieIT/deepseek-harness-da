@@ -12,6 +12,8 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { CredentialAddress, CredentialRef } from './types.ts'
 
 export type { CredentialAddress, CredentialRef } from './types.ts'
+export type { UserId, ScopeId } from './brand.ts'
+export { userId, scopeId } from './brand.ts'
 
 const REF_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
 

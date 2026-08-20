@@ -8,6 +8,7 @@
  */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { UserId, ScopeId } from './brand.ts'
 
 /** Nominal reference to one credential: a POSIX-style environment-variable name. */
 export type CredentialRef = Branded<'CredentialRef'>
@@ -20,16 +21,16 @@ export type CredentialRef = Branded<'CredentialRef'>
  * per-scope (a per-game data credential) along independent dimensions, and a
  * provider that does not distinguish a dimension ignores it.
  *
- * The values are opaque to this seam; their format and provenance belong to
- * the identity and access-isolation layers (the web-login `Tenant` and the
- * per-game `scope_id`). Branding them as cross-boundary ids is deferred to the
- * production hardening of the per-user store.
+ * The slot keys are branded cross-boundary ids ({@link UserId}, {@link ScopeId});
+ * their values stay opaque to this seam, with format and provenance in the
+ * identity and access-isolation layers (the web-login `Tenant` and the
+ * per-game `scope_id`).
  */
 export interface CredentialAddress {
   /** Per-user slot key; absent for a global/shared credential. */
-  readonly userId?: string
+  readonly userId?: UserId
   /** Per-scope slot key, orthogonal to `userId`; absent for a cross-scope credential. */
-  readonly scopeId?: string
+  readonly scopeId?: ScopeId
 }
 
 declare module '@deepseek-ai/cordis' {
