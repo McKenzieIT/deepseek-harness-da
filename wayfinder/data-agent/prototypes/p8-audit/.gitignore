@@ -1,0 +1,4 @@
+node_modules/
+*.PROTOTYPE-wipe-me.db
+*.PROTOTYPE-wipe-me.db-wal
+*.PROTOTYPE-wipe-me.db-shm
