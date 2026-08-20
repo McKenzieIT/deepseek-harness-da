@@ -67,8 +67,8 @@
 # (UNDERSTANDING/GENERATION/EXECUTION/INTERPRETATION_TOOLS) already name
 # these tools, so registering one makes it callable in its phase.
 #
-# - id: tool-search-data-sources   # UNDERSTANDING (P5 retrieval → ctx.retrieval)
-#   name: '@deepseek-ai/dsh-tool-search-data-sources'   # name TBD - P5/P13b
+- id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item; Bm25Linker Q1 thin default, swap -> ctx.retrieval P5b / ctx.schema P6b)
+  name: '@deepseek-ai/dsh-tool-search-data-sources'
 # - id: tool-load-table-definition # UNDERSTANDING/GENERATION (P6 semantic-layer → ctx.schema)
 #   name: '@deepseek-ai/dsh-tool-load-table-definition' # name TBD - P6
 # - id: tool-load-event-definition # UNDERSTANDING/GENERATION (P6 → ctx.schema)
