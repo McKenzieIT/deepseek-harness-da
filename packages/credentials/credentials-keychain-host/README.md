@@ -56,12 +56,10 @@ double-register.
   env — weakens the lock to convenience; documented).
 - `none`: omits the password (pre-created + already-unlocked keychain).
 
-P12c (native Security-framework binding + harness code-signing) is the real
-runtime-exfil fix; this host lands what the security-CLI can do (at-rest +
-locked-keychain + per-user CRUD + branding + writable global fallback).
+Runtime-exfil ACL (P12c: native Security-framework binding + harness code-signing) was evaluated as **over-spec and dropped (2026-08-21)** — it breaks dsh's out-of-the-box constraint (tsx/node scripts have no binary to sign) and the runtime-exfil threat is already covered by at-rest + locked-keychain + auto-lock + P10 tool-gating (business-user agents forbid `bash`; the admin residual unlock-window is trusted-operator self-risk). This host therefore lands the final state under out-of-the-box: at-rest + locked-keychain + per-user CRUD + branding + writable global fallback.
 
 ## Known Limitations and Deferred Work
 
-- **Runtime-exfil ACL** — per-item ACL restricting keychain reads to the harness binary (excluding bash/terminal) requires native Security-framework binding + Developer-ID code-signing. Deferred to P12c; the security-CLI cannot distinguish the spawner from the direct caller.
+- **Runtime-exfil ACL** — per-item ACL restricting keychain reads to the harness binary (excluding bash/terminal) requires native Security-framework binding + Developer-ID code-signing. Evaluated as over-spec and dropped (P12c, 2026-08-21): breaks out-of-the-box, not a hard edge, and the threat is covered by at-rest + locked-keychain + auto-lock + P10 tool-gating. The security-CLI cannot distinguish the spawner from the direct caller (factual limitation, retained).
 - **Multi-host KMS / central backend** — when multiple hosts need synchronized credentials, a central backend (KMS envelope / Vault transit) is required. Deferred pending multi-host deployment topology decisions.
-- **Cross-platform support** — Linux (`libsecret`) and Windows (`CredManager`) credential stores are not implemented. macOS Keychain only. Deferred to P12c alongside native binding work.
+- **Cross-platform support** — Linux (`libsecret`) and Windows (`CredManager`) credential stores are not implemented. macOS Keychain only. A separate effort (not Apple-Developer-dependent; libsecret/CredManager have their own ACL models).

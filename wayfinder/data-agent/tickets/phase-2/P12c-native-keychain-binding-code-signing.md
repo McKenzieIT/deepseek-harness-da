@@ -2,7 +2,7 @@
 
 **Type**: prototype
 **Phase**: 2 / 生产
-**Status**: **blocked**（by harness 分发流程建立：Apple Developer Program + notarization + 打包可签名 binary——非 keychain 包独立可决，亦非本 map 票可解）
+**Status**: **dropped**（2026-08-21）— runtime-exfil ACL 经威胁模型 grill 评估为 **over-spec**：(1) 破坏 dsh 开箱即用硬约束——harness 以 `pnpm exec tsx`/`node` 脚本形态跑，无二进制可签，Apple Developer 需 binary + Developer-ID 签名 + notarization + 打包 .app/.exec；(2) P12b 研究 §7.2/§A3 自证 per-item ACL 是增强、非 intranet-security-first 硬边；(3) runtime-exfil 威胁已由 P12b landed（at-rest + locked-keychain + auto-lock）+ P10 工具门禁覆盖——业务用户 agent 经 identity-scoped allowlist 禁 bash → 触达不了 `security find-generic-password`；admin agent 残余解锁期窗口 = 可信操作者自风险，可接受；per-item Touch-ID 在多用户单 host 拓扑下亦操作不可行（远程业务用户无法在 host 提供生物识别）；(4) native binding 违反 additive-only（P12 选 `security` CLI 正为避开 keytar node-gyp 污染构建链）。**P12b 的 `security`-CLI-only + locked-keychain + auto-lock = 开箱即用下最终态**。票文件保留作决策记录；下方 Question/Scope/Blocks/Unblock 条件为历史草案，不再 active
 **Blocks**: 完整 runtime-exfil ACL（per-item Touch-ID，限 harness 读、排除 bash/terminal）
 **From P12b**（resolved 2026-08-20）：P12b Finding/Design §1+§7 显式 DEFER 至此——`security`-CLI-only runtime-exfil 不可达（accessor=/usr/bin/security，harness 与 bash 不可区分），完整 runtime-exfil 需 native binding + harness 签名。
 

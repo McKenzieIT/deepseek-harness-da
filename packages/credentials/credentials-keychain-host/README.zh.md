@@ -34,10 +34,10 @@ data-agent bundle 禁用 base `credentials`（credentials-local）并挂载本 h
 - `env`：读取 `process.env[unlockPasswordEnv]`（无人值守，但 bash 可读 env——将锁降为便利；已文档化）。
 - `none`：省略密码（预创建且已解锁的 keychain）。
 
-P12c（原生 Security-framework 绑定 + harness 代码签名）是真正的 runtime-exfil 修复；本 host 落地 security-CLI 当前能做的（静态加密 + locked-keychain + 按用户 CRUD + branding + 可写全局 fallback）。
+runtime-exfil ACL（P12c：原生 Security-framework 绑定 + harness 代码签名）经评估为 **over-spec 并 dropped（2026-08-21）**——破坏 dsh 开箱即用（tsx/node 脚本无 binary 可签），且 runtime-exfil 威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖（业务用户 agent 禁 bash；admin 拮余解锁期窗口=可信操作者自风险）。故本 host 落地的是开箱即用下的最终态：静态加密 + locked-keychain + 按用户 CRUD + branding + 可写全局 fallback。
 
 ## Known Limitations and Deferred Work
 
-- **运行时 exfil ACL** — 限制 keychain 读取仅限 harness 二进制文件（排除 bash/terminal）的 per-item ACL 需要原生 Security-framework 绑定 + Developer-ID 代码签名。延期至 P12c；security-CLI 无法区分 spawner 和直接调用者。
+- **运行时 exfil ACL** — 限制 keychain 读取仅限 harness 二进制文件（排除 bash/terminal）的 per-item ACL 需要原生 Security-framework 绑定 + Developer-ID 代码签名。经评估为 over-spec 并 dropped（P12c，2026-08-21）：破坏开箱即用、非硬边、威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖。security-CLI 无法区分 spawner 和直接调用者（事实局限，保留）。
 - **多 host KMS / 中心化后端** — 多 host 需要同步凭证时，需要中心化后端（KMS envelope / Vault transit）。延期至多 host 部署拓扑决策确定后。
-- **跨平台支持** — 未实现 Linux（`libsecret`）和 Windows（`CredManager`）凭证存储。仅支持 macOS Keychain。延期至 P12c 与原生绑定工作一并处理。
+- **跨平台支持** — 未实现 Linux（`libsecret`）和 Windows（`CredManager`）凭证存储。仅支持 macOS Keychain。属单独工程（不依赖 Apple Developer；libsecret/CredManager 有各自 ACL 模型）。

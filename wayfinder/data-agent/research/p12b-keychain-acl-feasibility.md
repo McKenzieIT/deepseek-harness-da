@@ -5,6 +5,15 @@ wayfinder ticket P12b · 中文报告 · 主源：Apple TN3137 / TN3133 / SecAcc
 
 ---
 
+## §0 结论更正（2026-08-21）— runtime-exfil ACL = over-spec，Apple Developer 路径【拒绝】
+
+> **更正**：本笔记原结论（§5.3/§7.3）"runtime-exfil 需 Developer ID → 开 P12c（native binding + harness code-signing）"经威胁模型 grill 判为**方向性错误**：
+> - runtime-exfil ACL（per-item Touch-ID + harness-binary-exclusive-accessor）是**增强**，非 intranet-security-first 硬边——本笔记 §7.2 + §A3 自证（"完整 per-item ACL 是增强，非硬边"）。
+> - runtime-exfil 威胁已由 **P12b landed**（at-rest + locked-keychain + auto-lock）+ **P10 工具门禁**覆盖：业务用户 agent 经 identity-scoped allowlist 禁 bash → 触达不了 `security find-generic-password -w`；admin agent 残余解锁期窗口 = 可信操作者自风险，可接受；per-item Touch-ID 在多用户单 host 拓扑下操作不可行（远程业务用户无法在 host 提供生物识别）。
+> - Apple Developer 路径被**拒绝**：破坏 dsh **开箱即用**硬约束（harness 以 `pnpm exec tsx`/`node` 脚本形态跑，无 binary 可签；Apple Developer 需 binary + Developer-ID 签名 + notarization + 打包 .app/.exec）；native binding 又违反 additive-only（P12 选 `security` CLI 正为避开 keytar node-gyp 污染构建链）。
+>
+> **故 P12c dropped**；P12b 的 `security`-CLI-only + locked-keychain + auto-lock = 开箱即用下最大正确面（最终态，非 deferral）。§5.3 的 Developer-ID 机制事实**保留作技术参考**（ad-hoc/self-signed 可伪造、Developer ID 链 Apple root 不可伪造——仍成立），但不再作"因此需 P12c"的需求结论。可选轻量增强（更短 auto-lock + P8 审计 PAT 读 + 锁屏即锁）= 非阻塞 follow-up，不开 P12c。
+
 ## §1 背景：P12 at-rest 已兑现，P12b runtime-exfil 的核心决策
 
 P12（resolved 2026-08-19）已建 credentials seam `{userId?, scopeId?}` 寻址 + macOS Keychain provider 原型（`security` CLI spawn，非 keytar——避免 native node-gyp 污染构建链），**兑现 at-rest 红线**：PAT 存进 keychain DB，盘上加密，bash `cat`/`grep` 出密文非 PAT（`wayfinder/data-agent/prototypes/p12-credentials-keychain/run.ts` 的 `[6]` 步骤实证 `grep 'sk-alice-demo' in DB` absent）。
