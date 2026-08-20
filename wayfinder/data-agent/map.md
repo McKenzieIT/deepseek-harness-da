@@ -111,6 +111,8 @@
 - 是否需审 Qoder internal tool/reasoning stream（非仅终态 call outcome）——P8 当前只审 `tools/post-execute` 终态 outcome+Credits；若 forensic 合规需全 stream 则开 P3 标的 core-seam 变更票（外部 one-shot not trace-enumerable，见 P3 resolution；P8b resolved 2026-08-20——审 call outcome（终态+Credits）非 stream，stream 仅当 forensic 需才另开 core-seam 票）。
 - harness seam 缺口（P7 surfaced，→P7b 解）：(a) 无 question-start seam——`turn/start` 重置会破 per-kick 预算（rbi per_turn=per 用户问题=per kick 多 turn），须检测首 turn / `current_phase`→UNDERSTANDING 重置 question-scoped 计数器；(b) 无原生 stall/no-events watchdog（rbi `_watch_for_stall` 300s 须插件独立 timer，排除 `ctx.awaiting_input`）；(c) 插件程序化调工具路径（forced_load 须 `ctx.tools.execute` 经 guard——存在性/路由待验）。〔P7b〕
 
+- **P7b re-open deferred polish + lock-in tests**：B10（onRequest 类型 LlmCallConfig vs GenerateOptions——tsc green 示兼容，adapterDefaults nuance 延后）、B11（step_count 增量但无 max_steps enforce，dead-ish）、B13（onLlmStream skip options.purpose auxiliary——需 llm types 核 purpose 字段）；test gap lock-in 未补（#4 llm/stream count+sessionId filter、#5 reasoningEffort、#6 fallback 耗尽→decline、#7 honest_decline no-fallback phase、#8 F2 whitespace 变体、#10 forcedLoad re-entrant 填 candidate_tables、#11 B8）。非阻塞——核心 B1/B2/critic-dedup/B3-B8/B12/B14 已 landed + verified（commit 105fbeaccc，tsc/vitest14/cordis124/oxlint0）。host-wiring gap（nl2sql-engine tsconfig.host ref + phase-gate PromptAssembly）→ host-typecheck-wiring 票（并发 graduated）。〔tickets/phase-3/P7b-phase-gate-hardening.md re-open Finding/Design DEFERRED〕
+
 - ship-default-orchestration 决策（da 出厂默认 A/B/C/D 哪个）——fed by G1b 实验报告（ship 推荐）；G1b 跑完报告后才 specifiable→毕业。〔G1 resolved 2026-08-20〕
 - per-model 路由决策（是否按模型分编排）——fed by G1b per-model 分歧信号（分歧>5pp 才触发毕业路由票，Q2 secondary）；条件毕业。〔G1 resolved 2026-08-20〕
 
