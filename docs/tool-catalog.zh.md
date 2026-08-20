@@ -43,6 +43,7 @@
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
+| `@deepseek-ai/dsh-tool-search-data-sources` | `search_data_sources` | `ctx.tools` | `tool/call`、`tool/result ranked data-source candidates` | - | search_data_sources 是 UNDERSTANDING 阶段 BM25 schema-linking 的入口：agent 调用它了解哪些数据源（DWS 表 / event ODS 表）匹配自然语言问题，然后再写 SQL。Q1 thin default 使用本地 Bm25Linker 对空语料库操作（可调用但未连线，直到 ctx.schema 发布）——空语料库返回无候选。P5b 在注册时切换到 ctx.retrieval，P6b 从 ctx.schema.discover 获取语料库；两种情况下 tool 契约不变。 |
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -2223,3 +2224,34 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 来源：[`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。
+
+<a id="deepseek-aidsh-tool-search-data-sources"></a>
+
+## `@deepseek-ai/dsh-tool-search-data-sources`
+
+### `search_data_sources`
+
+查找与自然语言问题相关的数据源（DWS 表 / event ODS 表），通过语义层上的 BM25 schema-linking。在 UNDERSTANDING 阶段调用此工具，了解哪些表和事件可以回答问题，然后再写 SQL。返回带 id、score 和 description 的排序候选数据源。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "The natural-language data question to link against the data-source corpus."
+    },
+    "top_k": {
+      "type": "number",
+      "description": "Maximum number of candidate data sources to return. Defaults to 5."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/data/tool-search-data-sources/src/index.ts`](../packages/data/tool-search-data-sources/src/index.ts)
+
+search_data_sources 是 UNDERSTANDING 阶段 BM25 schema-linking 的入口：agent 调用它了解哪些数据源（DWS 表 / event ODS 表）匹配自然语言问题，然后再写 SQL。Q1 thin default 使用本地 Bm25Linker 对空语料库操作（可调用但未连线，直到 ctx.schema 发布）——空语料库返回无候选。P5b 在注册时切换到 ctx.retrieval，P6b 从 ctx.schema.discover 获取语料库；两种情况下 tool 契约不变。

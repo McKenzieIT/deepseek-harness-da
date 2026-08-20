@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/embedder/embedder-fakehash/README.md
-README.md: 09f667ea1f5542f219415a2543a3358b055b581f
-README.zh.md: fd259710f70cf452377e8a17d0b00e9f586e8f20
+README.md: b1b52566b041f1c29c5b112143c6c3c0bb2be40b
+README.zh.md: 803aaa59a12c3ace9570ebf4891a44136f4ee0f6

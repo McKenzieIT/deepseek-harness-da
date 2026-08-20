@@ -34,7 +34,11 @@ The host wires the real collaborators and injects them:
 
 ## Model Experience
 
-None — this is a test-harness library; it neither assembles nor sends a provider request. The model runs in the spawned runtime (the agent) or the eval-side judge LLM, both owned by the host's wiring.
+None, as the package is a test harness that injects its responder, executor, and judge collaborators and neither assembles nor sends a model request, prompt, tool, or result.
+
+#### KV Cache effect
+
+No direct effect; the agent runtime and the injected judge LLM own any model-visible request.
 
 ## Known Limitations and Deferred Work
 

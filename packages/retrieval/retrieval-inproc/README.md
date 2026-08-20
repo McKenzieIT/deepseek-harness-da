@@ -8,6 +8,14 @@ In-process hybrid retrieval provider (BM25 + vector + RRF k=60, in-memory cosine
 
 Implements the `ctx.retrieval` contract with a `HybridRetriever` that fuses BM25 (Okapi BM25, k1=1.5, b=0.75) and vector similarity (in-memory cosine over `ctx.embedder` vectors) via Reciprocal Rank Fusion (RRF, k=60, rank 1-indexed). On `InferenceError` from the embedder, degrades gracefully to BM25-only results. Includes `buildCorpus` for document indexing and reranker post-RRF noise-floor filtering (RERANKER_NOISE_FLOOR=0.1). Field weights: `{id:3, description:1, metric:4}`.
 
+## Model Experience
+
+Indirectly, through the `ctx.retrieval` seam and the `search_data_sources` / nl2sql schema-linking pipeline, which feed its fused retrieval hits into the model prompt; the provider exposes no model-facing tool itself.
+
+#### KV Cache effect
+
+No direct effect; the downstream `search_data_sources` consumer owns any request-prefix changes from retrieved hits.
+
 ## Known Limitations and Deferred Work
 
 - **sqlite-vec upgrade** — vector indexing is currently in-memory cosine brute-force; upgrading to sqlite-vec for persistent, indexed ANN search is a planned tier.

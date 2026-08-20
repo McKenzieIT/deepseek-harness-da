@@ -126,7 +126,7 @@ export class MaxComputeQueryEngine extends QueryEngine {
     return this.config as ResolvedConfig
   }
 
-  override async *[Service.init](): AsyncGenerator<() => Promise<void> | void, void, void> {
+  async *[Service.init](): AsyncGenerator<() => Promise<void> | void, void, void> {
     // Register teardown FIRST so a failed connect still cleans up the half-spawned sidecar.
     yield async () => {
       await this.dispose()
@@ -221,7 +221,7 @@ export class MaxComputeQueryEngine extends QueryEngine {
     const result = await client.request(
       { method: 'tools/call', params: { name, arguments: args } },
       RawCallToolResultSchema,
-      { signal, timeout: this.cfg.toolCallTimeoutMs },
+      { ...(signal ? { signal } : {}), timeout: this.cfg.toolCallTimeoutMs },
     )
     return this.decodeResult(result, name)
   }
@@ -312,6 +312,13 @@ export class MaxComputeQueryEngine extends QueryEngine {
    * engine-wrapper calls this to estimate before execute; exposed on the
    * provider, never model-facing. The orchestration (cost gate, retry) is
    * deferred to the engine-wrapper hardening.
+   *
+   * @param scopeId The scope whose ODPS connection/cache to bill the estimate
+   * against (credentials resolved per call via `set_credentials`).
+   * @param sql The MaxCompute SQL statement whose scan volume to estimate.
+   * @returns A promise resolving to `{ inputBytes }` — the estimated input
+   * bytes the statement would scan (0 when the sidecar's text is undecodable,
+   * so the future CostGuard fail-opens).
    */
   async estimateCost(scopeId: ScopeId, sql: string): Promise<{ inputBytes: number }> {
     const raw = await this.callControl(TOOLS.estimateCost, { scope_id: scopeId, sql })
@@ -327,7 +334,12 @@ export class MaxComputeQueryEngine extends QueryEngine {
     return { inputBytes }
   }
 
-  /** Provider-internal diagnostic: surface the sidecar's state for scenarios. */
+  /**
+   * Provider-internal diagnostic: surface the sidecar's state for scenarios.
+   *
+   * @returns A promise resolving to the decoded sidecar `get_state` JSON, or
+   * the raw `CallToolResult` when the sidecar's text is not JSON-parseable.
+   */
   async inspectSidecarState(): Promise<unknown> {
     const raw = await this.callControl(TOOLS.getState, {})
     const text = (raw.content as Array<{ text?: string }> | undefined)?.[0]?.text
@@ -341,12 +353,24 @@ export class MaxComputeQueryEngine extends QueryEngine {
     return raw
   }
 
-  /** Provider-internal diagnostic: raw sidecar call for scenarios (`_test_crash`, `invalidate_scope`, …). */
+  /**
+   * Provider-internal diagnostic: raw sidecar call for scenarios (`_test_crash`, `invalidate_scope`, …).
+   *
+   * @param name The raw sidecar tool name to invoke (e.g. `invalidate_scope`, `_test_crash`).
+   * @param args The arguments object forwarded to the sidecar tool (default `{}`).
+   * @returns A promise resolving to the raw sidecar `tools/call` result object.
+   */
   async callRaw(name: string, args: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     return this.callControl(name, args)
   }
 
-  /** Provider-internal diagnostic: live/dead + re-spawn budget for scenarios. */
+  /**
+   * Provider-internal diagnostic: live/dead + re-spawn budget for scenarios.
+   *
+   * @returns The engine's connection-health snapshot: `dead` (sidecar down,
+   * awaiting lazy re-spawn), `disposed` (provider torn down, calls reject), and
+   * `crashAttempts` (consecutive re-spawn failures toward the crash-loop ceiling).
+   */
   status(): { dead: boolean; disposed: boolean; crashAttempts: number } {
     return { dead: this.dead, disposed: this.disposed, crashAttempts: this.crashAttempts }
   }

@@ -8,6 +8,14 @@ External OpenAI-compatible HTTP embedder provider (InfinityEmbedder) + InfinityR
 
 Provides `InfinityEmbedder` — an embedder provider that calls an external OpenAI-compatible `POST /v1/embeddings` endpoint, and `InfinityReranker` calling `POST /rerank`. Configurable via `url`, `model`, and `timeout`. Designed for user-self-deployed inference services (T2 scenario: AGA-embeddings probe negative). Uses injectable `fetch` for testing without a live endpoint.
 
+## Model Experience
+
+None, as the HTTP provider relays embedding and rerank calls to an external OpenAI-compatible endpoint and registers no prompt, tool, schema, or session event.
+
+#### KV Cache effect
+
+No direct effect; embeddings and rerank scores serve retrieval similarity, not the LLM context.
+
 ## Known Limitations and Deferred Work
 
 - **No authentication** — current implementation assumes no auth token is required (user-self-deployed scenario). Auth-token injection via the credentials seam (`ctx.credentials`) is deferred.

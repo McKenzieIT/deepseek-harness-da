@@ -19,6 +19,14 @@ P9 的 `@deepseek-ai/dsh-admin` 落地真正的按用户登录并填充此接缝
 
 `userId`（Qoder 认证）与 `scopeId`（数据隔离）是独立维度。keychain provider 仅服务 `userId` 维度；按 scope 隔离在 query sidecar 的 `set_credentials`/`scope_id` 与 `OdpsConfig` 区域——当前不经由本接缝的 `scopeId` on `ctx.credentials`。`scopeId` 是前向兼容字段，目前经 `ctx.credentials` 未使用。
 
+## Model Experience
+
+无，因为身份接缝解析请求所代表的调用方，从不进入模型请求；它是用于认证、审计和数据隔离的模型隐藏元数据。
+
+#### KV Cache effect
+
+无影响；身份是 keychain 和审计服务读取的调用方元数据，非任何模型请求。
+
 ## Known Limitations and Deferred Work
 
 - **桩实现（T1 fallback）** — `current()` 当前返回 `undefined`；harness 中不存在按用户登录状态。唯一身份是匿名安装 id，非按用户。

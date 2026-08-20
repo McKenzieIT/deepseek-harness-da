@@ -8,6 +8,14 @@
 
 以 `HybridRetriever` 实现 `ctx.retrieval` 契约，融合 BM25（Okapi BM25，k1=1.5，b=0.75）与向量相似度（基于 `ctx.embedder` 向量的内存余弦）经 Reciprocal Rank Fusion（RRF，k=60，rank 从 1 开始）。嵌入器返回 `InferenceError` 时优雅降级为仅 BM25 结果。包含 `buildCorpus` 用于文档索引，以及重排器 post-RRF 噪声底板过滤（RERANKER_NOISE_FLOOR=0.1）。字段权重：`{id:3, description:1, metric:4}`。
 
+## Model Experience
+
+间接，通过 `ctx.retrieval` 接缝和 `search_data_sources` / nl2sql schema-linking 流水线，将其融合检索命中送入模型 prompt；该 provider 自身不暴露任何面向模型的 tool。
+
+#### KV Cache effect
+
+无直接影响；下游 `search_data_sources` 消费方拥有检索命中带来的任何请求前缀变更。
+
 ## Known Limitations and Deferred Work
 
 - **sqlite-vec 升级** — 向量索引当前为内存余弦暴力搜索；升级到 sqlite-vec 以实现持久化、带索引的 ANN 搜索是计划中的梯度。

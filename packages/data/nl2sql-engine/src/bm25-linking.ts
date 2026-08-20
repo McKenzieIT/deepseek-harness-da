@@ -28,6 +28,10 @@ export interface DataSourceDoc {
   readonly payload?: unknown
 }
 
+/**
+ * A single retrieval hit: the matched data-source id, its BM25 score, the
+ * source payload (when present), and the mode that produced the hit.
+ */
 export interface RetrievalHit {
   readonly id: string
   readonly score: number
@@ -44,7 +48,12 @@ export interface RetrievalLinker {
   retrieve(query: string, opts?: { readonly topK?: number; readonly mode?: string }): readonly RetrievalHit[]
 }
 
-/** Minimal CJK tokenizer (prototype; production: nodejieba / P5 seam tokenizer). */
+/**
+ * Minimal CJK tokenizer (prototype; production: nodejieba / P5 seam tokenizer).
+ *
+ * @param text - The text to tokenize (ASCII words lowercased + CJK unigram/bigram).
+ * @returns The token list (empty when the input is empty).
+ */
 export function tokenize(text: string): string[] {
   if (!text) return []
   const tokens: string[] = []
@@ -117,6 +126,13 @@ export class BM25Okapi {
     return s
   }
 
+  /**
+   * Score every corpus document against the query and return the top-K hits.
+   *
+   * @param query - The natural-language query to score against the corpus.
+   * @param topK - Maximum number of hits to return (default 10).
+   * @returns Scored hits (score > 0), best-first, each carrying its payload.
+   */
   search(query: string, topK = 10): readonly { id: string; score: number; payload: DataSourceDoc }[] {
     const q = tokenize(query)
     const scores = this.docs.map((_, i) => ({ idx: i, score: this.score(q, i) }))
@@ -135,6 +151,12 @@ export class BM25Okapi {
 /** Per-field weights: name x3 / description x1 (prototype; RBI unified_search aligns on P5b swap). */
 const FIELD_WEIGHTS = { name: 3, description: 1 } as const
 
+/**
+ * Build the BM25 corpus from data-source docs (name weighted x3 / description x1 / metrics x1).
+ *
+ * @param dataSources - The data-source documents to index.
+ * @returns Corpus entries ready for `BM25Okapi` construction.
+ */
 export function buildCorpus(dataSources: readonly DataSourceDoc[]): readonly CorpusEntry[] {
   return dataSources.map((d) => {
     const parts: string[] = []
@@ -157,10 +179,18 @@ export class Bm25Linker implements RetrievalLinker {
     this.bm25 = new BM25Okapi(buildCorpus(dataSources))
   }
 
+  /**
+   * Retrieve candidate data-source hits for a natural-language query.
+   *
+   * @param query - The natural-language query to link against the corpus.
+   * @param options - Optional retrieval tuning (`topK` result cap; `mode` tag stamped onto every hit).
+   * @returns Ranked retrieval hits carrying each candidate's payload.
+   */
   retrieve(
     query: string,
-    { topK = 5, mode = 'bm25-only' }: { readonly topK?: number; readonly mode?: string } = {},
+    options: { readonly topK?: number; readonly mode?: string } = {},
   ): readonly RetrievalHit[] {
+    const { topK = 5, mode = 'bm25-only' } = options
     const hits = this.bm25.search(query, topK)
     return hits.map(h => ({ id: h.id, score: h.score, payload: h.payload, mode }))
   }

@@ -25,6 +25,7 @@ export interface EventDefinitionLite {
   readonly [k: string]: unknown
 }
 
+/** Arguments for building the SQL-generation prompt. */
 export interface BuildPromptArgs {
   readonly question: string
   readonly candidates: readonly RetrievalHit[]
@@ -44,7 +45,15 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
 - lookup_terminology(term): 术语查询
 [drop] plan_query（LATENT，不在任何 phase allowlist，research §1.2 证）`
 
-export function buildPrompt({ question, candidates, eventDef, conventions, phase = 'generation' }: BuildPromptArgs): string {
+/**
+ * Build the SQL-generation prompt (the GENERATION phase prompt section content):
+ * staged SOP + tool catalog + conventions dialect grounding + candidates + question.
+ *
+ * @param args - The prompt-building arguments (question, candidates, event def, conventions, phase).
+ * @returns The assembled prompt string.
+ */
+export function buildPrompt(args: BuildPromptArgs): string {
+  const { question, candidates, eventDef, conventions, phase = 'generation' } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines =
     candidates && candidates.length > 0

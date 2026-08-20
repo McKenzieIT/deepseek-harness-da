@@ -105,6 +105,9 @@ export async function infinityEmbed(
 
 /**
  * Re-score (query, text) pairs via a `POST /rerank` endpoint.
+ * @param query - the query string to score the candidate texts against.
+ * @param texts - the candidate texts to relevance-score; the returned scores align to this order.
+ * @param opts - url/model/timeout/fetch for the rerank endpoint.
  * @returns one relevance score per text, aligned to the input order.
  * @throws {InferenceError} `unavailable` / `timeout`.
  */

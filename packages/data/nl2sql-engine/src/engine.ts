@@ -59,8 +59,10 @@ class NearDupGate {
   }
 }
 
+/** A single engine trace entry (step + payload) for eval diagnostics. */
 export type EngineTraceEntry = Readonly<Record<string, unknown>>
 
+/** The engine's injectable dependencies: LLM, ODPS executor, optional data sources, conventions, and retrieval linker. */
 export interface EngineDeps {
   readonly dataSources?: readonly DataSourceDoc[]
   readonly llm: Llm
@@ -70,12 +72,14 @@ export interface EngineDeps {
   readonly retrieval?: RetrievalLinker
 }
 
+/** The input arguments for a single engine run: the question + optional event definition + scope id. */
 export interface EngineRunArgs {
   readonly question: string
   readonly eventDef?: EventDefinitionLite | null
   readonly scopeId?: string
 }
 
+/** The engine run outcome: ok/fail, the SQL, the ODPS outcome, result rows, decline/pending flags, and the trace. */
 export interface EngineRunResult {
   readonly ok: boolean
   readonly sql?: string
@@ -87,6 +91,11 @@ export interface EngineRunResult {
   readonly trace: EngineTraceEntry[]
 }
 
+/**
+ * The NL→SQL engine: BM25 schema-linking → prompt → LLM → critic gate →
+ * execute → feedback self-correction → honest decline. The eval runner is
+ * the primary consumer (production runtime is agent-loop-driven via P7).
+ */
 export class Nl2sqlEngine {
   private readonly retrieval: RetrievalLinker
   private readonly llm: Llm
@@ -100,8 +109,14 @@ export class Nl2sqlEngine {
     this.conventions = deps.conventions ?? loadConventions('maxcompute')
   }
 
-  /** One NL→SQL run with execution-feedback self-correction. */
-  async run({ question, eventDef }: EngineRunArgs): Promise<EngineRunResult> {
+  /**
+   * One NL→SQL run with execution-feedback self-correction.
+   *
+   * @param args - The run arguments (question + optional event definition).
+   * @returns The run result (ok + sql + outcome, or decline + reason, or pending), with a trace.
+   */
+  async run(args: EngineRunArgs): Promise<EngineRunResult> {
+    const { question, eventDef } = args
     const nearDup = new NearDupGate()
     const trace: EngineTraceEntry[] = []
 

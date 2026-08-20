@@ -9,6 +9,20 @@
  *
  * @module @deepseek-ai/dsh-embedder/src/tokenize
  */
+
+/**
+ * Tokenize text into lowercase ASCII words plus CJK unigrams/bigrams.
+ *
+ * Walks the input character-by-character, buffering contiguous ASCII
+ * alphanumeric runs and CJK runs separately. ASCII runs are lowercased and
+ * emitted as single tokens; CJK runs of length one emit a unigram while
+ * longer runs emit each adjacent character pair as a bigram. Non-alphanumeric
+ * non-CJK characters act as separators that flush both buffers. Returns an
+ * empty array for empty/falsy input.
+ *
+ * @param text Raw input string to tokenize; may be empty.
+ * @returns Ordered list of tokens (lowercased ASCII words and CJK bigrams).
+ */
 export function tokenize(text: string): string[] {
   if (!text) return []
   const tokens: string[] = []

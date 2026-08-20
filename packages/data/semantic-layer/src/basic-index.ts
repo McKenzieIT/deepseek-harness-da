@@ -10,10 +10,12 @@
  */
 import { loadEvents, loadTables, loadDomains, registerInvalidationHook } from './io.ts'
 
+/** A raw event YAML dict plus the domain subdir it was scanned from (no validation at build). */
 export interface EventIndexEntry {
   readonly raw: Record<string, unknown>
   readonly domain: string
 }
+/** A raw table YAML dict plus the file path it was scanned from (no validation at build). */
 export interface TableIndexEntry {
   readonly path: string
   readonly raw: Record<string, unknown>
@@ -55,26 +57,49 @@ export class BasicIndex {
     if (this._dirty) this._build()
   }
 
+  /**
+   * Look up a single event by name, returning its raw dict + domain.
+   * @param name - the event `name` key to match.
+   * @returns the matching event entry, or null when the name is not indexed.
+   */
   lookupEvent(name: string): EventIndexEntry | null {
     this._ensure()
     return this._events.get(name) ?? null
   }
 
+  /**
+   * Look up a single table by name, returning its raw dict + path.
+   * @param name - the table `table_name` key to match.
+   * @returns the matching table entry, or null when the name is not indexed.
+   */
   lookupTable(name: string): TableIndexEntry | null {
     this._ensure()
     return this._tables.get(name) ?? null
   }
 
+  /**
+   * Count indexed events (triggers a rebuild when dirty).
+   * @returns the number of events in the layer.
+   */
   eventCount(): number {
     this._ensure()
     return this._events.size
   }
 
+  /**
+   * Count indexed tables (triggers a rebuild when dirty).
+   * @returns the number of tables in the layer.
+   */
   tableCount(): number {
     this._ensure()
     return this._tables.size
   }
 
+  /**
+   * Count indexed tables whose `kind` matches (defaults to `dws` when absent).
+   * @param kind - the kind value to count (`dws` or `dim`).
+   * @returns the number of tables whose kind equals `kind`.
+   */
   tableCountByKind(kind: string): number {
     this._ensure()
     let n = 0
@@ -86,16 +111,28 @@ export class BasicIndex {
     return n
   }
 
+  /**
+   * Enumerate every indexed event with its name merged into the entry.
+   * @returns a fresh array of all event entries (name + raw + domain).
+   */
   events(): Array<{ name: string } & EventIndexEntry> {
     this._ensure()
     return [...this._events.entries()].map(([name, v]) => ({ name, ...v }))
   }
 
+  /**
+   * Enumerate every indexed table entry.
+   * @returns a fresh array of all table entries (path + raw).
+   */
   tableEntries(): TableIndexEntry[] {
     this._ensure()
     return [...this._tables.values()]
   }
 
+  /**
+   * Return the parsed `domains.yaml` catalog (empty object when absent).
+   * @returns the domains catalog map, or `{}` when the file is missing/malformed.
+   */
   domainsCatalog(): Record<string, unknown> {
     this._ensure()
     return this._domains

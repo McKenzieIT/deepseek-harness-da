@@ -19,7 +19,7 @@ Model-facing `search_data_sources` tool：data agent `UNDERSTANDING` 阶段的 *
 
 镜像 [`@deepseek-ai/dsh-tool-bash`](../../shell/tool-bash)（生产级 tool 示例）：
 
-```ts
+```ts ignore-check
 export const name = 'tool-search-data-sources'
 export const inject = ['tools']
 export const Config: z<Config> = z.object({ topK: z.number().default(5) })
@@ -55,6 +55,22 @@ pnpm verify-cordis-config                                      # preset mount re
 ```
 
 Preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`，`tool-search-data-sources`）在本包发布后取消注释；phase-gate guard 的 `UNDERSTANDING` 白名单已命名 `search_data_sources`，注册后即可在该阶段调用。
+
+## Model Experience
+
+### The `search_data_sources` tool call
+
+#### What the model sees
+
+`search_data_sources` tool schema（name、description、`query` 和 `top_k` 参数、以及 `candidates` 输出数组）在 plugin 挂载后自动流入 system-prompt assembly，因此模型将其与 `UNDERSTANDING` 阶段白名单的其余部分一同发现。当模型调用它时，`execute` 返回一个规范 `{ candidates: [...] }` JSON 值，`output.render` 将其投影为面向模型的文本：每个排序数据源一行编号列表（`1. <id> (score <score>) - <description>`），或语料库为空时（P6b 发布前的 Q1 thin default）单行 `No matching data sources found.`。
+
+#### Token effect
+
+tool 结果中渲染的 `candidates` 文本是此 tool 唯一的逐调用 token 计费；`search_data_sources` schema 搭乘 system prompt 而非 turn payload。空 Q1 语料库时结果为一短行，`ctx.schema.discover`（P6b）填充语料库后结果随 `top_k`（默认 5）扩展。
+
+#### KV Cache effect
+
+Tool 结果仅追加：`candidates` 文本跟随可复用请求前缀，不使先前缓存条目失效。tool schema 是跨 turn 稳定 system-prompt 前缀的一部分，故注册或调用此 tool 不添加前缀抖动。
 
 ## Known Limitations and Deferred Work
 

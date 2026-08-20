@@ -38,6 +38,36 @@ Production `dsh` does not install or mount this optional provider. A Profile tha
 
 The Qoder SDK defaults to `WorkerTransport` (an obfuscated `dist/_worker/qoder-worker-runtime.obf.mjs` downloaded at install, pinning `qoderCliVersion 1.1.25`). Unlike `subagent-claude-code`'s `ProcessTransport` (a host PATH `claude` executable), there is no external CLI to resolve or terminate; `Query.close()` is the whole teardown. Deployments should be aware of the postinstall download, the `QODERCLI_PATH`/`QODER_SKIP_DOWNLOAD` overrides, and the lack of semver guarantees on the obfuscated runtime. This workspace's `pnpm-workspace.yaml` sets `allowBuilds: '@qoder-ai/qoder-agent-sdk': false`, so the worker runtime is **not downloaded on install** — a live `query()` fails at worker spawn until the deployment runs `pnpm approve-builds @qoder-ai/qoder-agent-sdk` (or sets `QODERCLI_PATH` to an existing qodercli). Unlike `subagent-claude-code`'s `ProcessTransport` (a scrubbed subprocess that strips credential-bearing env vars), `WorkerTransport` runs the obfuscated worker **in-process** with full access to `process.env`, the filesystem (the parent cwd — business files), and the network — a broader trust boundary. The Qoder PAT itself is kept out of `process.env` (T1, intranet-security-first), but **other** env/filesystem secrets present at runtime are exposed to the obfuscated, non-permissive worker; deployments in restricted environments should treat the worker as a trust boundary.
 
+## Model Experience
+
+### Child request
+
+#### What the model sees
+
+The Qoder child receives the standalone text task assembled by `textTask()` as one fresh SDK `query()`. Its workspace is the parent Session cwd resolved through `resolveChildCwd`; its model is the Qoder platform id forwarded as `options.model` (consuming the PAT holder's Credits), its authentication is the PAT passed explicitly via `accessToken(value)`, and its system instructions, tools, and sandbox come from native Qoder settings and the obfuscated in-process `WorkerTransport`. The provider advertises `inheritsParentContext: false` and `NO_START_CAPABILITIES`, so the child receives no parent conversation, persona, tool filter, depth policy, or structured-output contract; `persistSession: false` and `disallowedTools: ['AskUserQuestion']` pin the run terminal-only.
+
+#### Token effect
+
+The child pays for an independent Qoder context and multi-step agent loop. Child tokens never enter the parent's context.
+
+#### KV Cache effect
+
+Independent of the parent request cache. Reuse depends only on Qoder's own model, native settings, worker runtime, and fresh query.
+
+### Parent tool result, indirectly
+
+#### What the model sees
+
+Through `dsh-tool-subagent`, a foreground call gives the parent the strict final Qoder answer extracted by `successfulResult`, or an error carrying the stop reason and optional safe diagnostic for a non-completed result. `consumeQoderQuery` drains the complete SDK message stream and accepts only one strict-success `result` message; non-`result` messages (assistant reasoning, tool activity, status, `api_retry`, hooks, etc.) are skipped without narrowing their deltas, so Qoder-internal trace stays product-local and is not copied into the parent Session. Cost telemetry captured into `SubagentResult.costs` reaches an audit `tools/post-execute` observer (the G3 Credits driver) execution-locally and is never persisted. This provider adds no parent tool schema by itself; the model-facing tool row is `dsh-tool-subagent` with `provider: qoder`.
+
+#### Token effect
+
+Parent input grows only by the final result or error, which is data-dependent and retained until compaction. This provider adds no parent schema itself.
+
+#### KV Cache effect
+
+Append-only; newly visible content follows the reusable request prefix and does not invalidate existing KV-cache entries.
+
 ## Known Limitations and Deferred Work
 
 - **One fresh query per run** — no continuation, resume, pooling, or product-session persistence.

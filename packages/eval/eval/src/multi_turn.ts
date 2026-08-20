@@ -53,6 +53,10 @@ export const DEFAULT_PASS_K = 3
  * The ONE place that decides what a multi-turn session id looks like (rbi R1):
  * pass_k needs per-attempt sessions; a single drive has no repetition to
  * number.
+ * @param runId - the eval run this session belongs to.
+ * @param caseId - the id of the case being driven.
+ * @param attempt - the pass_k attempt number (1-based), or `null` for a single non-pass_k drive.
+ * @returns the session id — `runId:caseId`, or `runId:caseId:attempt` when an attempt is supplied.
  */
 export function sessionId(runId: string, caseId: string, attempt: number | null = null): string {
   const base = `${runId}:${caseId}`

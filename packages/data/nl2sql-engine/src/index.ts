@@ -42,6 +42,7 @@ export { EVAL_CASES, FIXTURE_DATA_SOURCES, FIXTURE_EVENT_DEF, type EvalCase, typ
 export { scoreMatch } from './eval/scorer.ts'
 
 // ── Service shell (bundle-patch capability-plugin mount + ctx.nl2sql seam) ─
+/** Configuration for the nl2sql-engine service (conventions engine name). */
 export interface Nl2sqlEngineConfig {
   /** Conventions engine name (routes `load_conventions`; default `maxcompute`). */
   readonly conventionsEngine?: string
@@ -73,7 +74,11 @@ export class Nl2sqlEngineService extends Service {
     this.conventions = loadConventions(config.conventionsEngine ?? 'maxcompute')
   }
 
-  /** The loaded per-engine conventions (prompt dialect grounding). */
+  /**
+   * The loaded per-engine conventions (prompt dialect grounding).
+   *
+   * @returns The loaded per-engine conventions.
+   */
   getConventions(): EngineConventions {
     return this.conventions
   }

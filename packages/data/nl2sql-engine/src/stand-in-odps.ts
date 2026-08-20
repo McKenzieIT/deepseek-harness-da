@@ -28,6 +28,7 @@ export interface OdpsExecutor {
  */
 export class StandInOdps implements OdpsExecutor {
   private readonly scripted: Record<string, QueryOutcome>
+  /** Number of times `execute` has been called (eval instrumentation). */
   public execCount = 0
 
   constructor(scripted: Record<string, QueryOutcome> = {}) {

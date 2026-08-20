@@ -79,6 +79,7 @@ export { submit, load as loadPending, listing, discard, isValidId, type PendingS
 // tools, or an independent schema-maxcompute provider) is a follow-up. P6b
 // ships this interface + a stand-in for sync demo/tests. discover/describe/
 // sample on the Service throw "no provider" until one is mounted.
+/** Live-ODPS schema source: discover/describe/sample tables for sync-write (P6b Q3 deferred; production mounts a real provider). */
 export interface SchemaProvider {
   /** List tables in a scope (optionally filtered by kind). Real impl: maxc list + per-table describe. */
   discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>
@@ -89,6 +90,7 @@ export interface SchemaProvider {
 }
 
 // ── ctx.schema Service Definition (Q2: covers live-ODPS + substrate) ───
+/** Configuration for the `ctx.schema` Cordis Service (semantic-layer root + default scope id). */
 export interface SemanticLayerConfig {
   /** Semantic-layer scope root (the dir with config.yaml/events/tables). */
   readonly semanticRoot?: string
@@ -122,29 +124,50 @@ export class SemanticLayerService extends Service {
     this.cfg = config
   }
 
-  /** Mount a live-ODPS schema provider (P6b Q3 deferred; follow-up mounts the real one). */
+  /**
+   * Mount a live-ODPS schema provider (P6b Q3 deferred; follow-up mounts the real one).
+   * @param provider - the provider to delegate discover/describe/sample to, or undefined to clear.
+   */
   setSchemaProvider(provider: SchemaProvider | undefined): void {
     this.provider = provider
   }
 
+  /** The semantic-layer scope root (the dir with config.yaml/events/tables), or empty string when unset. */
   get semanticRoot(): string {
     return this.cfg.semanticRoot ?? ''
   }
 
+  /** The default scope id for Tier-2 audit + schema discovery, or empty string when unset. */
   get scopeId(): string {
     return this.cfg.scopeId ?? ''
   }
 
   // ── substrate definitions (P13b swap target: params_fields / partitions) ──
+  /**
+   * Load a validated event definition by name from the substrate.
+   * @param name - the event `name` key to match.
+   * @returns the parsed `EventDefinition`, or null when no event matches.
+   */
   loadEventDefinition(name: string): EventDefinition | null {
     return loadEventDefinitionFromLayer(this.semanticRoot, name)
   }
 
+  /**
+   * Load a validated table definition by name from the substrate.
+   * @param name - the table `table_name` key to match.
+   * @returns the parsed `TableDefinition`, or null when no table matches.
+   */
   loadTableDefinition(name: string): TableDefinition | null {
     return loadTableDefinitionFromLayer(this.semanticRoot, name)
   }
 
   // ── live-ODPS schema (deferred; throws until a provider is mounted) ──
+  /**
+   * List tables in a scope (optionally filtered by kind) via the mounted provider.
+   * @param scopeId - the scope to discover tables in.
+   * @param kind - optional kind filter forwarded to the provider.
+   * @returns a readonly array of table metas, or throws when no provider is mounted.
+   */
   async discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]> {
     if (this.provider === undefined) {
       throw new Error('ctx.schema.discover: no live-ODPS schema provider mounted (P6b Q3 deferred; mount query-maxcompute schema provider or setSchemaProvider)')
@@ -152,6 +175,11 @@ export class SemanticLayerService extends Service {
     return this.provider.discover(scopeId, kind)
   }
 
+  /**
+   * Describe one table's columns/partitions/comment via the mounted provider.
+   * @param tableName - the table name to describe.
+   * @returns the table's meta, or null when the table is unknown / no provider is mounted.
+   */
   async describe(tableName: string): Promise<TableMeta | null> {
     if (this.provider === undefined) {
       throw new Error('ctx.schema.describe: no live-ODPS schema provider mounted (P6b Q3 deferred)')
@@ -159,6 +187,12 @@ export class SemanticLayerService extends Service {
     return this.provider.describe(tableName)
   }
 
+  /**
+   * Sample N rows of a table as formatted text via the mounted provider.
+   * @param tableName - the table name to sample.
+   * @param n - optional row count to sample (provider default applies when omitted).
+   * @returns the formatted sample text, or throws when no provider is mounted.
+   */
   async sample(tableName: string, n?: number): Promise<string> {
     if (this.provider === undefined) {
       throw new Error('ctx.schema.sample: no live-ODPS schema provider mounted (P6b Q3 deferred)')
@@ -175,6 +209,14 @@ export class SemanticLayerService extends Service {
     return audit
   }
 
+  /**
+   * Tier-2 persistent write: batch-generate/merge table YAML from pre-fetched
+   * schema metas and write them to the substrate, recording each write via
+   * `ctx.audit` (D5 non-disableable). Routes to `syncWriteDefinitions`.
+   * @param tableMetas - the table metas to write (from discover/describe).
+   * @param opts - optional dim-table-name set, existing-table map for merge, and scope id override.
+   * @returns counts of written/skipped tables plus per-table error messages.
+   */
   async syncWrite(
     tableMetas: readonly TableMeta[],
     opts: {
@@ -191,6 +233,14 @@ export class SemanticLayerService extends Service {
     })
   }
 
+  /**
+   * Tier-2 per-scope write: read-merge-validate-write a single table's meta
+   * updates, recording the write via `ctx.audit` (D5 non-disableable).
+   * @param name - the table `table_name` to update.
+   * @param updates - the field overrides merged over the existing table YAML.
+   * @param opts - optional scope id override (default scope id is used when omitted).
+   * @returns `{ ok: true, table_name }` on success, or `{ ok: false, error }` when the table is missing/malformed or validation fails.
+   */
   async updateTableMeta(
     name: string,
     updates: Record<string, unknown>,

@@ -2,21 +2,14 @@
 
 English | [中文](README.zh.md)
 
-macOS Keychain [credentials](../credentials/README.md) provider: per-user PATs in an
-independent (non-login) keychain, addressed by `account=userId`, with an injectable
-global/shared fallback for the G3 staged fallback (a per-user miss falls through to
-the early global T1 PAT).
+macOS Keychain [credentials](../credentials/README.md) provider: per-user PATs in an independent (non-login) keychain, addressed by `account=userId`, with an injectable global/shared fallback for the G3 staged fallback (a per-user miss falls through to the early global T1 PAT).
 
 | Slot | Source id | Writable |
 |---|---|---|
 | per-user keychain item `(service=ref, account=userId)` | `keychain` | yes (`set`/`unset`) |
 | global/shared fallback (e.g. credentials-local/env) | `fallback` | not here |
 
-The keychain database is encrypted at rest, so a process that reads the keychain file
-off disk (`cat`, `grep`) sees ciphertext, not the PAT. An independent keychain with a
-short auto-lock and lock-on-sleep, locked again on the harness's own teardown, narrows
-the runtime-exfiltration window: while the keychain is locked, no process — not the
-harness, not `bash` — can read an item without the unlock password.
+The keychain database is encrypted at rest, so a process that reads the keychain file off disk (`cat`, `grep`) sees ciphertext, not the PAT. An independent keychain with a short auto-lock and lock-on-sleep, locked again on the harness's own teardown, narrows the runtime-exfiltration window: while the keychain is locked, no process — not the harness, not `bash` — can read an item without the unlock password.
 
 ## Config
 
@@ -30,18 +23,11 @@ harness, not `bash` — can read an item without the unlock password.
 | `fallback` | — | Read-only global/shared fallback for per-user misses and global resolves. |
 | `runner` | — | Injectable `security` CLI runner; production passes the exported `securityCli`, unit tests a fake. |
 
-The provider takes its config programmatically (not from `cordis.yml`): `runner` and
-`fallback` are injection seams, and `unlockPassword` is a secret that does not belong
-in a composition file. Defaulting is an explicit `resolveSpec` step, never an inline `??`.
+The provider takes its config programmatically (not from `cordis.yml`): `runner` and `fallback` are injection seams, and `unlockPassword` is a secret that does not belong in a composition file. Defaulting is an explicit `resolveSpec` step, never an inline `??`.
 
 ## The keychain items
 
-A generic-password item per `(service=ref, account=userId)`. `set` writes
-`security add-generic-password -U -a <userId> -s <ref> -w <value>`; `resolve` reads
-`security find-generic-password -a <userId> -s <ref> -w`; `unset` deletes. A per-user
-miss, or a resolve with no `userId`, falls through to the `fallback` (G3 staged: no
-per-user PAT → the global T1). `set`/`unset` without a `userId` are not the keychain's
-to serve — the global slot is the fallback provider.
+A generic-password item per `(service=ref, account=userId)`. `set` writes `security add-generic-password -U -a <userId> -s <ref> -w <value>`; `resolve` reads `security find-generic-password -a <userId> -s <ref> -w`; `unset` deletes. A per-user miss, or a resolve with no `userId`, falls through to the `fallback` (G3 staged: no per-user PAT → the global T1). `set`/`unset` without a `userId` are not the keychain's to serve — the global slot is the fallback provider.
 
 <a id="security-boundary"></a>
 
@@ -54,22 +40,15 @@ Two bars, only the first met here:
 
 Per-item Touch-ID ACL (reads restricted to the harness binary, excluding `bash`/`terminal`) was evaluated as **over-spec and is not a requirement** — ticket P12c is **dropped (2026-08-21)**. The Apple-Developer path (a native Security-framework binding + Developer-ID signing + notarization) breaks dsh's out-of-the-box constraint (the harness runs as `tsx`/`node` scripts with no binary to sign); per-item Touch-ID is an enhancement, not an intranet-security-first hard edge; and the runtime-exfil threat is already covered by this package's at-rest + locked-keychain + auto-lock plus P10 tool-gating (business-user agents forbid `bash` → cannot reach `security`; the admin residual unlock-window is trusted-operator self-risk; per-item biometry is also infeasible in the multi-user single-host topology). The locked keychain is therefore an at-rest and when-locked enhancement, and **the final state under out-of-the-box**, not a placeholder for P12c: it narrows the runtime-exfil window to the unlocked period, it does not close it. See [`research/p12b-keychain-acl-feasibility.md`](../../../wayfinder/data-agent/research/p12b-keychain-acl-feasibility.md) §0 (conclusion correction).
 
-The `unlockPassword` is itself a new secret-to-protect: interactive entry at startup
-is secure; a password stored where `bash` can read it (an env var, a file) weakens the
-lock to convenience, because the same-spawner indistinguishability means anything the
-harness can unlock, `bash` can unlock too.
+The `unlockPassword` is itself a new secret-to-protect: interactive entry at startup is secure; a password stored where `bash` can read it (an env var, a file) weakens the lock to convenience, because the same-spawner indistinguishability means anything the harness can unlock, `bash` can unlock too.
 
 ## Model Experience
 
-Indirectly, through the consuming LLM adapters: stored values authorize their provider
-requests, and the adapter owns every model-visible surface. The harness never loads a
-resolved PAT into `process.env`.
+Indirectly, through the consuming LLM adapters: stored values authorize their provider requests, and the adapter owns every model-visible surface. The harness never loads a resolved PAT into `process.env`.
 
 #### KV Cache effect
 
-No direct invalidation; credentials never enter a request prefix. A `set`/`unset`
-publishes `credentials/updated(ref, address?)` so per-operation re-resolution picks up
-the change without a restart.
+No direct invalidation; credentials never enter a request prefix. A `set`/`unset` publishes `credentials/updated(ref, address?)` so per-operation re-resolution picks up the change without a restart.
 
 ## Known Limitations and Deferred Work
 

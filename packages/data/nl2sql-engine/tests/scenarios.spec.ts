@@ -4,7 +4,7 @@
  * prompt + critic gate + JSON-path + feedback self-correction + near-dup gate
  * + eval-gate L1 pass-rate + honest decline + sql_syntax_gate slot.
  *
- * Run: `pnpm vitest run packages/nl2sql-engine/tests/scenarios.spec.ts`
+ * Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts`
  * (the root `pnpm test` globs all `*.spec.ts`).
  */
 import { test, expect } from 'vitest'

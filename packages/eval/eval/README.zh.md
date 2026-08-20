@@ -36,6 +36,10 @@ Host 连线真实协作者并注入：
 
 无 — 这是测试 harness 库；它既不组装也不发送 provider 请求。模型在 spawned runtime（agent）或 eval 侧 judge LLM 中运行，两者都由 host 连线拥有。
 
+#### KV Cache effect
+
+无直接影响；agent 运行时和注入的 judge LLM 拥有所有模型可见请求。
+
 ## Known Limitations and Deferred Work
 
 - **无 CLI / persistence / pass_at_k 报告** — 本库是核心（编排 + 评分 + case loader）；CLI runner、run-result 持久化和 pass_at_k 报告延期到 **P11c**。`runMultiTurnCase` 返回 per-case `MultiTurnCaseResult`；runner 批量处理 cases 并聚合。

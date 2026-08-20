@@ -8,6 +8,14 @@
 
 提供 `InfinityEmbedder`——调用外部 OpenAI 兼容 `POST /v1/embeddings` 端点的嵌入器提供方，及调用 `POST /rerank` 的 `InfinityReranker`。可通过 `url`、`model`、`timeout` 配置。设计用于用户自部署的推理服务（T2 场景：AGA-embeddings 探测为否定）。使用可注入的 `fetch` 以便在无活跃端点时进行测试。
 
+## Model Experience
+
+无，因为 HTTP 提供方将 embedding 和 rerank 调用转发至外部 OpenAI 兼容端点，不注册任何 prompt、tool、schema 或 session 事件。
+
+#### KV Cache effect
+
+无直接影响；嵌入和重排分数服务于检索相似度，不进入 LLM 上下文。
+
 ## Known Limitations and Deferred Work
 
 - **无认证** — 当前实现假设不需要 auth token（用户自部署场景）。通过凭证接缝（`ctx.credentials`）注入 auth-token 延后。

@@ -15,6 +15,7 @@ import { ReplayLlm, type ScriptedGen } from '../replay-llm.ts'
 import { StandInOdps } from '../stand-in-odps.ts'
 import type { QueryOutcome } from '../types.ts'
 
+/** Per-case eval detail: id, pass/fail, the produced SQL, decline flag, and reason. */
 export interface EvalDetail {
   readonly id: string
   readonly ok: boolean
@@ -23,6 +24,7 @@ export interface EvalDetail {
   readonly reason?: string | undefined
 }
 
+/** The aggregate eval result: pass count, total, pass rate, and per-case details. */
 export interface EvalResult {
   readonly pass: number
   readonly total: number
@@ -30,10 +32,15 @@ export interface EvalResult {
   readonly details: readonly EvalDetail[]
 }
 
-export async function runEval({
-  cases = EVAL_CASES,
-  verbose = false,
-}: { cases?: readonly EvalCase[]; verbose?: boolean } = {}): Promise<EvalResult> {
+/**
+ * Run the eval suite: each case gets its own engine + scripted LLM/ODPS, then
+ * the result is scored against the expected outcome.
+ *
+ * @param options - Optional eval tuning (`cases` to override the default set; `verbose` for per-case logging).
+ * @returns The aggregate eval result (pass count, total, pass rate, details).
+ */
+export async function runEval(options: { cases?: readonly EvalCase[]; verbose?: boolean } = {}): Promise<EvalResult> {
+  const { cases = EVAL_CASES, verbose = false } = options
   let pass = 0
   const details: EvalDetail[] = []
   for (const c of cases) {

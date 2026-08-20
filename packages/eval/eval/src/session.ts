@@ -71,14 +71,42 @@ export class MultiTurnSession {
     }
   }
 
+  /**
+   * The current session lifecycle state (`pending` → `running` → `completed`/`terminated`).
+   * @returns the current SessionState.
+   */
   get state(): SessionState { return this._state }
+  /**
+   * The unique id for this session (typically `runId:caseId:attempt`, from {@link sessionId}).
+   * @returns the session id string.
+   */
   get sessionId(): string { return this._sessionId }
+  /**
+   * The eval run this session belongs to.
+   * @returns the run id string.
+   */
   get runId(): string { return this._runId }
+  /**
+   * The id of the case this session is driving.
+   * @returns the case id string.
+   */
   get caseId(): string { return this._case.case_id }
+  /**
+   * The count of consecutive matched (non-derailed) assistant turns so far.
+   * @returns the current streak.
+   */
   get streak(): number { return this._streak }
+  /**
+   * The terminal/derailment diagnostic, or `null` while the session is still running.
+   * @returns the diagnostic, or `null` until the session ends (terminal or derailment).
+   */
   get diagnostic(): MultiTurnDiagnostic | null { return this._diagnostic }
 
-  /** The next scripted user-turn content; first call transitions `pending → running`. */
+  /**
+   * The next scripted user-turn content; first call transitions `pending → running`.
+   * After all scripted user turns, serves `case.input.question` (the terminal turn).
+   * @returns the next user-turn content (or the terminal question when the script is exhausted).
+   */
   nextInput(): string {
     if (this._state === 'terminated' || this._state === 'completed') {
       throw new Error(`Cannot call nextInput() in state ${this._state} — session has ended`)
@@ -93,7 +121,15 @@ export class MultiTurnSession {
     return turn.content
   }
 
-  /** Submit the agent's reply for the current turn (async — DELIVERY LLM-judge is async). */
+  /**
+   * Submit the agent's reply for the current turn (async — DELIVERY LLM-judge is async).
+   * On a scripted turn: matches against the expected assistant turn (`continue`)
+   * or routes to derailment scoring (`terminated`). On the terminal turn: routes to
+   * `scoreDa` and transitions to `completed`.
+   * @param agentReply - the agent's reply text for the current turn.
+   * @param opts - the generated SQL + execution result + injected judge + DELIVERY tunables.
+   * @returns the turn result (`status`/`nextInput`/`verdict`/`streak`/`diagnostic`/`l1`).
+   */
   async submitResponse(agentReply: string, opts: SubmitResponseOpts): Promise<SubmitResponseResult> {
     if (this._state !== 'running') {
       throw new Error(`Cannot call submitResponse() in state ${this._state} — expected 'running'`)

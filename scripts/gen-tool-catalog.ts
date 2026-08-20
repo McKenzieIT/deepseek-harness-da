@@ -66,6 +66,7 @@ import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
+import * as ToolSearchDataSources from '@deepseek-ai/dsh-tool-search-data-sources'
 import { githubSlug } from './verify-md-links.ts'
 
 /** Attachment seam marker that makes the attachments-conditional `read_image` schema harvestable. */
@@ -605,6 +606,18 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-search-data-sources',
+    dir: 'tool-search-data-sources',
+    source: 'packages/data/tool-search-data-sources/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result ranked data-source candidates'],
+    async mount(ctx) {
+      await ctx.plugin(ToolSearchDataSources)
+    },
+    note:
+      'search_data_sources is the UNDERSTANDING-phase entry to BM25 schema-linking: the agent calls it to learn which data sources (DWS tables / event ODS tables) match a natural-language question before writing SQL. The Q1 thin default uses the local Bm25Linker over an empty corpus (callable but unwired until ctx.schema ships) — an empty corpus returns no candidates. P5b swaps to ctx.retrieval when registered, and P6b sources the corpus from ctx.schema.discover; the tool contract is unchanged across both.',
   },
 ]
 

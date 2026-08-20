@@ -22,6 +22,7 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, unlink
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 
+/** A queued Tier-1 self-modification suggestion (one JSON file in the pending `var/` queue). */
 export interface PendingSuggestion {
   readonly suggestion_id: string
   readonly kind: string
@@ -37,6 +38,11 @@ export interface PendingSuggestion {
 // id-validated (path-traversal gate): ^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}$ — no '.'
 // '/' '\' —封 .. / 绝对路径 / 穿越.
 const ID_RE = /^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}$/
+/**
+ * Validate a suggestion id against the path-traversal-safe format (timestamp + 8-hex short hash).
+ * @param id - the candidate id (null/undefined treated as empty string).
+ * @returns true when the id matches `^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}$`.
+ */
 export function isValidId(id: string | undefined | null): boolean {
   return ID_RE.test(id ?? '')
 }
@@ -52,6 +58,7 @@ function shortHash(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 8)
 }
 
+/** Arguments for submitting a Tier-1 suggestion (kind/subject/content + optional scope/tenant/meta). */
 export interface SubmitArgs {
   readonly kind: string
   readonly subject: string
@@ -61,7 +68,12 @@ export interface SubmitArgs {
   readonly meta?: Record<string, unknown>
 }
 
-/** Submit a Tier-1 suggestion to the pending queue (does NOT touch source-of-truth). */
+/**
+ * Submit a Tier-1 suggestion to the pending queue (does NOT touch source-of-truth).
+ * @param root - the pending-queue directory path (created when missing).
+ * @param args - the suggestion payload (kind/subject/content + optional scope/tenant/meta).
+ * @returns the persisted suggestion (with a generated `suggestion_id` + ISO `submitted_at`).
+ */
 export function submit(root: string, args: SubmitArgs): PendingSuggestion {
   mkdirSync(root, { recursive: true })
   const suggestion_id = `${stamp(new Date())}_${shortHash(args.content)}`
@@ -79,7 +91,12 @@ export function submit(root: string, args: SubmitArgs): PendingSuggestion {
   return rec
 }
 
-/** Load a pending suggestion by id (invalid/missing/corrupt => null). */
+/**
+ * Load a pending suggestion by id (invalid/missing/corrupt => null).
+ * @param root - the pending-queue directory path.
+ * @param suggestion_id - the suggestion id to load (rejected by `isValidId` => null).
+ * @returns the parsed suggestion, or null when the id is invalid, the file is missing, or JSON parse fails.
+ */
 export function load(root: string, suggestion_id: string): PendingSuggestion | null {
   if (!isValidId(suggestion_id)) return null
   const p = join(root, `${suggestion_id}.json`)
@@ -91,7 +108,11 @@ export function load(root: string, suggestion_id: string): PendingSuggestion | n
   }
 }
 
-/** List all pending suggestions, oldest first. */
+/**
+ * List all pending suggestions, oldest first.
+ * @param root - the pending-queue directory path (returns `[]` when the dir is missing).
+ * @returns every readable suggestion sorted by `submitted_at` ascending.
+ */
 export function listing(root: string): PendingSuggestion[] {
   if (!existsSync(root)) return []
   return readdirSync(root)
@@ -100,7 +121,12 @@ export function listing(root: string): PendingSuggestion[] {
     .sort((a, b) => a.submitted_at.localeCompare(b.submitted_at))
 }
 
-/** Discard a pending suggestion from the queue (approve consumes the queue). */
+/**
+ * Discard a pending suggestion from the queue (approve consumes the queue).
+ * @param root - the pending-queue directory path.
+ * @param suggestion_id - the suggestion id to discard (rejected by `isValidId` => false).
+ * @returns true when the file was unlinked, or false when the id is invalid or the file is missing.
+ */
 export function discard(root: string, suggestion_id: string): boolean {
   if (!isValidId(suggestion_id)) return false
   const p = join(root, `${suggestion_id}.json`)

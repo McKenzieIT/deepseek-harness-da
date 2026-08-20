@@ -39,6 +39,7 @@ export interface Tier2Recorder {
   ): string
 }
 
+/** Tier-2 write options: the recorder (ctx.audit) and optional scope id. */
 export interface Tier2Opts {
   /** ctx.audit (or a test double) — required; Tier-2 audit is non-disableable (D5 "不可关"). */
   readonly recorder: Tier2Recorder
@@ -46,6 +47,11 @@ export interface Tier2Opts {
 }
 
 // ── YAML dump (mirrors RBI _LiteralDumper: literal block |, sort_keys=False) ──
+/**
+ * Dump a value to YAML (mirrors RBI `_LiteralDumper`: literal block style, sort_keys=False).
+ * @param obj - the value to serialize.
+ * @returns the YAML text (no refs, double-quote strings, unbounded line width).
+ */
 export function dumpYaml(obj: unknown): string {
   return yaml.dump(obj, { sortKeys: false, lineWidth: -1, noRefs: true, quotingType: '"' })
 }
@@ -62,9 +68,17 @@ async function atomicWrite(path: string, obj: unknown): Promise<void> {
 
 // ── Cache-invalidation hooks (ADR-0011 contract) ─────────────────────────
 const _invalidationHooks: Array<(semanticLayer: string) => void> = []
+/**
+ * Register a cache-invalidation hook fired by `invalidateCaches` (ADR-0011).
+ * @param hook - the callback invoked with the semantic-layer path being invalidated.
+ */
 export function registerInvalidationHook(hook: (semanticLayer: string) => void): void {
   _invalidationHooks.push(hook)
 }
+/**
+ * Fire every registered invalidation hook for `semanticLayer` (best-effort: a broken hook cannot block the write).
+ * @param semanticLayer - the semantic-layer path being invalidated.
+ */
 export function invalidateCaches(semanticLayer: string): void {
   for (const hook of _invalidationHooks) {
     try {
@@ -76,6 +90,13 @@ export function invalidateCaches(semanticLayer: string): void {
 }
 
 // ── Reader (mirrors reader.py: lenient scan, strict validate-on-match) ──
+/**
+ * Resolve the semantic-layer dir from a root: returns the root itself when it
+ * holds `config.yaml`, otherwise the first child subdir that does (falls back
+ * to the root when none matches).
+ * @param semanticRoot - the root path to resolve from (empty string passes through).
+ * @returns the resolved semantic-layer directory path.
+ */
 export function resolveSemanticLayer(semanticRoot: string): string {
   if (!semanticRoot) return semanticRoot
   if (existsSync(join(semanticRoot, 'config.yaml'))) return semanticRoot
@@ -89,9 +110,19 @@ export function resolveSemanticLayer(semanticRoot: string): string {
   }
   return semanticRoot
 }
+/**
+ * Read and parse the layer's `config.yaml` (the caller is responsible for ensuring it exists).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns the parsed config map.
+ */
 export function loadConfig(semanticLayer: string): Record<string, unknown> {
   return readYaml(join(semanticLayer, 'config.yaml')) as Record<string, unknown>
 }
+/**
+ * Read and parse the layer's `domains.yaml` catalog (lenient: missing/malformed => `{}`).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns the parsed domains map, or `{}` when the file is absent or not an object.
+ */
 export function loadDomains(semanticLayer: string): Record<string, unknown> {
   const p = join(semanticLayer, 'domains.yaml')
   if (!existsSync(p)) return {}
@@ -102,16 +133,28 @@ export function loadDomains(semanticLayer: string): Record<string, unknown> {
     return {}
   }
 }
+/**
+ * Read and parse the layer's `terminology.yaml` glossary (null when absent).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns the parsed terminology value, or null when the file is missing.
+ */
 export function loadTerminology(semanticLayer: string): unknown {
   const p = join(semanticLayer, 'terminology.yaml')
   if (!existsSync(p)) return null
   return readYaml(p)
 }
+/** A scanned event: its `name`, raw YAML dict, and the domain subdir it lived in (unvalidated). */
 export interface RawEvent {
   readonly name: string
   readonly raw: Record<string, unknown>
   readonly domain: string
 }
+/**
+ * Scan the layer's `events/` subdirs (lenient: broken/non-object/unnamed YAML
+ * files are skipped) and collect every event with its domain.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns a fresh array of raw events (name + raw + domain), oldest-first within each domain.
+ */
 export function loadEvents(semanticLayer: string): RawEvent[] {
   const eventsDir = join(semanticLayer, 'events')
   const out: RawEvent[] = []
@@ -139,11 +182,18 @@ export function loadEvents(semanticLayer: string): RawEvent[] {
   }
   return out
 }
+/** A scanned table: its file path, `table_name`, and raw YAML dict (unvalidated). */
 export interface RawTable {
   readonly path: string
   readonly table_name: string
   readonly raw: Record<string, unknown>
 }
+/**
+ * Scan the layer's `tables/` dir (lenient: broken/non-object/unnamed YAML
+ * files are skipped; `_`-prefixed files ignored) and collect every table.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns a fresh array of raw tables (path + table_name + raw), name-sorted.
+ */
 export function loadTables(semanticLayer: string): RawTable[] {
   const tdir = join(semanticLayer, 'tables')
   const out: RawTable[] = []
@@ -163,12 +213,24 @@ export function loadTables(semanticLayer: string): RawTable[] {
   }
   return out
 }
+/**
+ * Load a validated event definition by name (strict validate-on-match; lenient scan).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param name - the event `name` key to match.
+ * @returns the parsed `EventDefinition`, or null when no event matches.
+ */
 export function loadEventDefinition(semanticLayer: string, name: string): EventDefinition | null {
   for (const e of loadEvents(semanticLayer)) {
     if (e.name === name) return EventDefinitionSchema.parse(e.raw)
   }
   return null
 }
+/**
+ * Load a validated table definition by name (strict validate-on-match; lenient scan).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param name - the table `table_name` key to match.
+ * @returns the parsed `TableDefinition`, or null when no table matches.
+ */
 export function loadTableDefinition(semanticLayer: string, name: string): TableDefinition | null {
   for (const t of loadTables(semanticLayer)) {
     if (t.table_name === name) return TableDefinitionSchema.parse(t.raw)
@@ -206,7 +268,17 @@ function findEventPath(semanticLayer: string, name: string): string | null {
 }
 
 // ── Writer (mirrors writer.py: validate-before-dump, atomic, invalidate) ──
+/** Error thrown by `writeTable` when `TableDefinitionSchema.safeParse` rejects the payload (unless `skipValidation` is set). */
 export class WriteValidationError extends Error {}
+/**
+ * Validate-then-atomically-write a table YAML (mirrors writer.write_table),
+ * invalidating caches on success.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param name - the table `table_name` (becomes the `<name>.yaml` filename).
+ * @param data - the table payload; validated against `TableDefinitionSchema` unless skipped.
+ * @param opts - `{ skipValidation: true }` skips schema validation (for pre-validated generators).
+ * @returns the absolute path of the written `<name>.yaml` under `tables/`.
+ */
 export async function writeTable(
   semanticLayer: string,
   name: string,
@@ -223,9 +295,24 @@ export async function writeTable(
   invalidateCaches(semanticLayer)
   return target
 }
+/**
+ * Result of writing event YAML: either `{ ok: true, path }` on success or
+ * `{ ok: false, error }` when the YAML is unparseable/not-an-object or its
+ * `name` does not match `name`.
+ */
 export type WriteEventYamlResult = { ok: true; path: string } | { ok: false; error: string }
 // writeEventYaml = raw-edit surface (mirrors writer.write_event_yaml used by approve_event_yaml):
 // no model_validate (the write IS the repair surface; load validates on read). Name-match check.
+/**
+ * Raw-edit surface for event YAML: parse the content, verify its `name` matches,
+ * then atomically write it to the discovered event path (or
+ * `events/_suggested/<name>.yaml` when new). No schema validation — the write
+ * IS the repair surface; `loadEvents` validates on read.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param name - the event `name` the content must declare.
+ * @param content - the raw YAML text to write verbatim.
+ * @returns `{ ok: true, path }` on success, or `{ ok: false, error }` describing the parse/name-mismatch failure.
+ */
 export async function writeEventYaml(
   semanticLayer: string,
   name: string,
@@ -251,7 +338,21 @@ export async function writeEventYaml(
 // Tier-2 per-scope persistent write: read-merge-validate-write + audit (mirrors writer.update_table_meta).
 // D5 contract: "Tier-2 不可关" — audit is NON-OPTIONAL. The `recorder` (ctx.audit)
 // records the Tier-2 audit (hash, not body); omitting it is a fail-loud programmer error.
+/**
+ * Result of a Tier-2 table-meta update: `{ ok: true, table_name }` on success,
+ * or `{ ok: false, error }` when the table is missing/malformed or post-merge
+ * validation fails.
+ */
 export type UpdateTableMetaResult = { ok: true; table_name: string } | { ok: false; error: string }
+/**
+ * Tier-2 per-scope write: read-merge-validate-write a single table's meta
+ * updates and record the write via `opts.recorder` (D5 non-disableable audit).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param name - the table `table_name` to update (must already exist on disk).
+ * @param updates - the field overrides merged over the existing table YAML.
+ * @param opts - the recorder + optional scope id used for the Tier-2 audit record.
+ * @returns `{ ok: true, table_name }` on success, or `{ ok: false, error }` when the table is missing/malformed or validation fails.
+ */
 export async function updateTableMeta(
   semanticLayer: string,
   name: string,
@@ -278,6 +379,11 @@ const MEASURE_TYPES = new Set(['BIGINT', 'INT', 'DOUBLE', 'FLOAT', 'DECIMAL'])
 const MEASURE_SUFFIXES = ['_count', '_cnt', '_sum', '_amt', '_amount', '_avg', '_total', '_num']
 const LABEL_SUFFIXES = ['_name', '_desc', '_label', '_title']
 type MergeColumn = { name: string; type: string; role?: string; comment?: string }
+/**
+ * Infer a column's semantic role (dimension/measure/attribute) from its name + type (mirrors RBI infer_role).
+ * @param col - the column with optional `name`/`type` (defaults apply when absent).
+ * @returns the inferred role: `dimension`, `measure`, or `attribute`.
+ */
 export function inferRole(col: { name?: string; type?: string }): string {
   const t = (col.type ?? '').toUpperCase()
   const n = (col.name ?? '').toLowerCase()
@@ -288,6 +394,11 @@ export function inferRole(col: { name?: string; type?: string }): string {
   if (MEASURE_TYPES.has(t)) return 'measure'
   return 'attribute'
 }
+/**
+ * Generate a DWS (fact) table YAML skeleton from a table meta (mirrors sync.generate_table_yaml).
+ * @param meta - the table meta (name + columns + partitions + comment) to generate from.
+ * @returns a draft `TableDefinition`-shaped dict (confirmation=draft, empty description/granularity).
+ */
 export function generateTableYaml(meta: TableMeta): Record<string, unknown> {
   const columns = meta.columns.map(c => ({ name: c.name, type: c.type, comment: c.comment ?? '', role: inferRole(c) }))
   return {
@@ -302,6 +413,13 @@ export function generateTableYaml(meta: TableMeta): Record<string, unknown> {
     confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
   }
 }
+/**
+ * Generate a DIM (dimension) table YAML skeleton from a table meta, deriving
+ * `primary_key` (first `*_id` column) and `label_columns` (string columns
+ * ending in label suffixes) for `.superRefine` validation (mirrors sync.generate_dim_yaml).
+ * @param meta - the table meta to generate the dimension table from.
+ * @returns a draft DIM `TableDefinition`-shaped dict (kind='dim', confirmation=draft).
+ */
 export function generateDimYaml(meta: TableMeta): Record<string, unknown> {
   const columns = meta.columns.map(c => ({ name: c.name, type: c.type, comment: c.comment ?? '', role: inferRole(c) }))
   const pkCol = meta.columns.find(c => c.name.endsWith('_id'))
@@ -327,6 +445,14 @@ export function generateDimYaml(meta: TableMeta): Record<string, unknown> {
   }
 }
 // merge_columns: preserve analyst role corrections (existing role overrides inferred).
+/**
+ * Merge new table-meta columns over existing columns, preserving analyst role
+ * corrections (an existing `role` overrides the inferred role; a missing
+ * column is inferred fresh). Mirrors sync.merge_columns.
+ * @param existingCols - the existing columns carrying analyst role overrides.
+ * @param newMetaCols - the freshly-fetched columns to merge over.
+ * @returns the merged columns (each with a non-empty `role` and `comment`).
+ */
 export function mergeColumns(
   existingCols: ReadonlyArray<MergeColumn>,
   newMetaCols: ReadonlyArray<{ name: string; type: string; comment?: string | null | undefined }>,
@@ -343,6 +469,13 @@ export function mergeColumns(
   }
   return out
 }
+/**
+ * Merge a freshly-fetched table meta into an existing table YAML: overwrite
+ * `columns` (via `mergeColumns`) when present and always refresh `partitions`.
+ * @param existing - the existing table YAML dict.
+ * @param newMeta - the freshly-fetched table meta to merge in.
+ * @returns a new merged dict (shallow-copy of `existing` with refreshed `columns`/`partitions`).
+ */
 export function mergeChangedYaml(existing: Record<string, unknown>, newMeta: TableMeta): Record<string, unknown> {
   const out: Record<string, unknown> = { ...existing }
   const existingColsRaw = existing.columns
@@ -354,6 +487,17 @@ export function mergeChangedYaml(existing: Record<string, unknown>, newMeta: Tab
 }
 // sync_write_definitions: batch write a list of TableMeta (mirrors rbi_semantic.sync.sync_write_definitions).
 // D5: sync-write = ops/admin Tier-2, "不可关" — audit is NON-OPTIONAL (recorder required).
+/**
+ * Tier-2 batch sync-write: for each table meta, generate (or merge when an
+ * existing entry is supplied) the table YAML and write it via `writeTable`,
+ * recording each write through `opts.recorder` (D5 non-disableable audit).
+ * Tables are independently fail-tolerant: a thrown write becomes an error
+ * string rather than aborting the batch.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param tableMetas - the table metas to write (metas with empty `table_name` are skipped).
+ * @param opts - the recorder, optional dim-table-name set (generates DIM YAML), and optional existing-table map (merges).
+ * @returns counts of `written`/`skipped` plus a per-table `errors` list.
+ */
 export async function syncWriteDefinitions(
   semanticLayer: string,
   tableMetas: readonly TableMeta[],

@@ -19,6 +19,7 @@ export const Phase = Object.freeze({
   EXECUTION: 'execution',
   INTERPRETATION: 'interpretation',
 } as const)
+/** The phase string-literal union type derived from the `Phase` const object values. */
 export type Phase = (typeof Phase)[keyof typeof Phase]
 
 /** Terminal markers (not real phases) recorded on `current_phase`. */
@@ -27,6 +28,7 @@ export const PhaseTerminal = Object.freeze({
   DECLINED: 'DECLINED',
 } as const)
 
+/** The canonical phase-advance order; `advance()` indexes this and `PHASE_CONFIGS` keys it. */
 export const PHASE_ORDER: readonly Phase[] = [
   Phase.UNDERSTANDING,
   Phase.GENERATION,
@@ -40,12 +42,25 @@ export const PHASE_ORDER: readonly Phase[] = [
  * prompt-wording change silently break the gate parse.
  */
 export const DECOMPOSITION_MARKER = '【拆解】'
+/**
+ * Marker the model emits in INTERPRETATION when it cannot answer this turn;
+ * the turn-stopping gate reads it and triggers honest_decline (not clarification).
+ */
 export const INCOMPLETE_MARKER = '【未完成】'
 
 /** Gate verdict aligned with rbi `phases.py:33` `GateResult` dataclass. */
 export class GateResult {
   constructor(readonly passed: boolean, readonly reason: string | null = null) {}
+  /**
+   * Construct a passing gate verdict carrying no failure reason.
+   * @returns A `GateResult` with `passed=true` and `reason=null`.
+   */
   static pass(): GateResult { return new GateResult(true) }
+  /**
+   * Construct a failing gate verdict carrying the failure reason.
+   * @param reason Human-readable explanation of why the gate rejected this phase attempt.
+   * @returns A `GateResult` with `passed=false` and the supplied reason.
+   */
   static fail(reason: string): GateResult { return new GateResult(false, reason) }
 }
 
@@ -77,6 +92,10 @@ export interface PhaseConfig {
   readonly fallback_phase: Phase | null
 }
 
+/**
+ * Per-phase gate config keyed by phase (gate kind, max attempts, timeout, fallback)
+ * — exact rbi `factory.py` `default_phase_configs` values.
+ */
 export const PHASE_CONFIGS: Readonly<Record<Phase, PhaseConfig>> = {
   [Phase.UNDERSTANDING]: { gate: 'always_pass', max_attempts: 5, timeout_seconds: 60, fallback_phase: null },
   [Phase.GENERATION]: { gate: 'sql_syntax_gate', max_attempts: 5, timeout_seconds: 60, fallback_phase: Phase.UNDERSTANDING },
@@ -95,6 +114,7 @@ export const UNIVERSAL_TOOLS = Object.freeze([
   'get_user_preferences',
   'load_accumulated_definition',
 ] as const)
+/** Tool whitelist for the UNDERSTANDING phase (candidate discovery, definition loading, clarification). */
 export const UNDERSTANDING_TOOLS = Object.freeze([
   'search_data_sources',
   'load_table_definition',
@@ -104,12 +124,15 @@ export const UNDERSTANDING_TOOLS = Object.freeze([
   'save_accumulated_definition',
   ...UNIVERSAL_TOOLS,
 ] as const)
+/** Tool whitelist for the GENERATION phase (SQL critique and quality evaluation). */
 export const GENERATION_TOOLS = Object.freeze([
   'critique_sql_tool',
   'evaluate_sql_quality',
   ...UNIVERSAL_TOOLS,
 ] as const)
+/** Tool whitelist for the EXECUTION phase (running the SQL query through the Guard Chain). */
 export const EXECUTION_TOOLS = Object.freeze(['query_data', ...UNIVERSAL_TOOLS] as const)
+/** Tool whitelist for the INTERPRETATION phase (delivery: decomposition, table, compute, followups). */
 export const INTERPRETATION_TOOLS = Object.freeze([
   'present_decomposition',
   'present_table',
@@ -119,6 +142,7 @@ export const INTERPRETATION_TOOLS = Object.freeze([
   ...UNIVERSAL_TOOLS,
 ] as const)
 
+/** Map of phase to its tool whitelist; `ctx.tools.guard` reads the current phase's list to hard-reject disallowed calls (D5). */
 export const PHASE_TOOLS: Readonly<Record<Phase, readonly string[]>> = {
   [Phase.UNDERSTANDING]: UNDERSTANDING_TOOLS,
   [Phase.GENERATION]: GENERATION_TOOLS,
@@ -174,6 +198,11 @@ export interface PhaseGateState {
   step_count: number
 }
 
+/**
+ * Construct a fresh per-agent phase-gate state object rooted in the UNDERSTANDING phase.
+ * @param scopeId The analytics scope identifier (e.g. game id) this state is keyed to.
+ * @returns A new `PhaseGateState` with all counters zeroed and `current_phase=UNDERSTANDING`.
+ */
 export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
   return {
     scope_id: scopeId,

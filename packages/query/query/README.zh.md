@@ -8,6 +8,14 @@
 
 定义抽象 `QueryEngine extends Service` 契约，包含四个抽象方法：`execute`、`attach`、`cancel`、`getProgress`，以及三态 `QueryOutcome` 词汇（Completed / Pending / Failed）。`estimate_cost` 为 CostGuard 内部使用，不出现在接缝公开面上。本包是 query-trio 的 Def 半部分（Def + Provider + Consumer）；Provider 为 `query-maxcompute`，Consumer `tool-query` 延后。
 
+## Model Experience
+
+间接，通过延后的 tool-query Consumer：它将 `ctx.query.execute` 结果作为模型可见的 tool 面暴露，本抽象接缝自身不注册任何 prompt、tool 或 session 事件。
+
+#### KV Cache effect
+
+无直接影响；本接缝不拥有任何前缀，查询结果仅作为消费方 tool 的结果内容进入对话。
+
 ## Known Limitations and Deferred Work
 
 - **tool-query Consumer 未实现** — 将 `ctx.query.execute` 以会话门（G1 采样 / G5 COUNT / 预算 / 近似去重 / 终止 / 缓存 / required_predicates）暴露给模型的工具延后。与 engine-wrapper guard chain 合并，构成 query-trio 剩余生产工作。

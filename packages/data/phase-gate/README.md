@@ -31,6 +31,70 @@ pnpm vitest run packages/data/phase-gate         # 14 specs
 pnpm verify-cordis-config                        # preset mount resolves
 ```
 
+## Model Experience
+
+### System prompt assembly
+
+#### What the model sees
+
+The `system-prompt/assemble` waterfall hook delegates downstream, then additively appends a base persona shadow section plus a dynamic `phase-instruction` section keyed to `current_phase` (and a `sql-conventions` section during GENERATION). Terminal phases (`DECLINED`/`COMPLETE`) clamp to UNDERSTANDING so the instruction set is never empty. The base persona is fixed across the run; the phase instruction swaps on every advance or fallback.
+
+##### Base persona
+
+```markdown
+You are a data agent for a per-game analytics platform. You answer natural-language data questions over a semantic layer (events/tables/terminology) by running a four-phase pipeline: UNDERSTANDING → GENERATION → EXECUTION → INTERPRETATION. Follow the per-phase instructions injected at runtime. If you cannot answer, emit a honest decline (the 【未完成】 marker in INTERPRETATION); never fabricate tables, fields, or results.
+```
+
+#### Token effect
+
+The persona, phase-instruction, and SQL-conventions sections add a bounded, fixed-length block of system-prompt tokens per request; they do not grow with conversation history.
+
+#### KV Cache effect
+
+The base persona is constant across the run and extends the reusable cache prefix; the `phase-instruction` section rewrites on a phase transition, invalidating the cache from that section onward.
+
+### Per-phase tool whitelist
+
+#### What the model sees
+
+The `ctx.tools.guard` hook hard-rejects any tool call whose `name` is not in the current phase's `PHASE_TOOLS` whitelist before execution, returning a reason such as `phase-gate: "query_data" not in understanding whitelist [...]`. The model therefore experiences the active phase as the set of tools whose calls succeed; out-of-phase calls return only the rejection feedback, not a tool result.
+
+#### Token effect
+
+A rejected call charges only the rejection-feedback tokens (the gated tool never executes); an allowed call charges the normal tool-result tokens.
+
+#### KV Cache effect
+
+The rejected-call feedback returns as a tool-result message that extends the context append-only without invalidating the prefix.
+
+### Per-phase reasoning effort
+
+#### What the model sees
+
+The `agent/request` waterfall hook delegates downstream, then overrides `reasoningEffort` to `high` for UNDERSTANDING and GENERATION and `medium` for EXECUTION and INTERPRETATION per the `REASONING_EFFORT` map. The model does not see this as text; it experiences it as the per-call thinking budget for the current phase.
+
+#### Token effect
+
+The effort dial changes the reasoning-token budget per call; it does not alter the visible prompt or result token counts.
+
+#### KV Cache effect
+
+None directly; reasoning effort does not change the request prefix, so the cache prefix is unaffected by the effort dial itself.
+
+### Phase transition and retry injections
+
+#### What the model sees
+
+The `agent/turn-stopping` serial hook drives control by side effect: on a gate pass it `agent.inject`s a `[phase advance → GENERATION]` user message; on a within-budget gate failure it injects a `[phase ... retry]` correction; on a fallback it injects a `[fallback → ...]` steer. The model sees these as ordinary user-role turns that keep the kick alive and direct the next step.
+
+#### Token effect
+
+Each injected message adds a short, fixed user-role turn to the conversation history; the count scales with phase advances, retries, and fallbacks within the per-kick budgets (`max_fallbacks`, `max_state_turns`).
+
+#### KV Cache effect
+
+The injected user messages are append-only; any cache invalidation on a phase advance comes from the coincident `phase-instruction` rewrite, not from the appended message.
+
 ## Known Limitations and Deferred Work
 
 - **F1 forced_load granularity** — `ctx.tools.execute` programmatic dispatch for retrieval tools fires at UNDERSTANDING completion when candidates are empty; finer auto-wire heuristics are deferred.

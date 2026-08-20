@@ -38,6 +38,36 @@ provider 在启动时不声明任何能力，并报告 `inheritsParentContext: f
 
 Qoder SDK 默认使用 `WorkerTransport`（安装时下载的混淆 `dist/_worker/qoder-worker-runtime.obf.mjs`，固定 `qoderCliVersion 1.1.25`）。与 `subagent-claude-code` 的 `ProcessTransport`（宿主 PATH `claude` 可执行文件）不同，无需解析或终止外部 CLI；`Query.close()` 即全部拆除。部署应注意 postinstall 下载、`QODERCLI_PATH`/`QODER_SKIP_DOWNLOAD` 覆盖项、以及混淆运行时无 semver 保证。本工作区的 `pnpm-workspace.yaml` 设置 `allowBuilds: '@qoder-ai/qoder-agent-sdk': false`，因此 worker 运行时**不在安装时下载**——活跃 `query()` 在 worker spawn 时失败，直到部署运行 `pnpm approve-builds @qoder-ai/qoder-agent-sdk`（或将 `QODERCLI_PATH` 指向现有 qodercli）。与 `subagent-claude-code` 的 `ProcessTransport`（清洗子进程，剥离含凭证的环境变量）不同，`WorkerTransport` 在进程内运行混淆 worker，**完全访问** `process.env`、文件系统（父 cwd——业务文件）和网络——更宽的信任边界。Qoder PAT 本身通过 T1 内网安全优先保持在 `process.env` 之外，但运行时存在的**其他** env/文件系统密钥暴露给混淆非许可 worker；受限环境中的部署应将 worker 视为信任边界。
 
+## Model Experience
+
+### Child request
+
+#### What the model sees
+
+Qoder 子级接收由 `textTask()` 组装的独立文本任务，作为一个全新 SDK `query()`。其工作区为经 `resolveChildCwd` 解析的父 Session cwd；其模型为经 `options.model` 转发的 Qoder 平台 id（消费 PAT 持有者的 Credits），其认证为经 `accessToken(value)` 显式传递的 PAT，其系统指令、工具和沙箱来自原生 Qoder 设置和混淆的进程内 `WorkerTransport`。provider 声明 `inheritsParentContext: false` 和 `NO_START_CAPABILITIES`，故子级不接收父对话、persona、工具过滤器、深度策略或结构化输出 contract；`persistSession: false` 和 `disallowedTools: ['AskUserQuestion']` 将运行锁定为 terminal-only。
+
+#### Token effect
+
+子级为独立的 Qoder 上下文和多步 agent 循环付费。子级 token 从不进入父级上下文。
+
+#### KV Cache effect
+
+独立于父级请求缓存。复用仅取决于 Qoder 自身的模型、原生设置、worker 运行时和全新 query。
+
+### Parent tool result, indirectly
+
+#### What the model sees
+
+经 `dsh-tool-subagent`，前台调用给父级 `successfulResult` 提取的严格最终 Qoder 答案，或携带停止原因和可选安全诊断的非完成结果错误。`consumeQoderQuery` 排空完整 SDK 消息流，仅接受一条 strict-success `result` 消息；非 `result` 消息（assistant 推理、工具活动、status、`api_retry`、hooks 等）被跳过而不收窄其 delta，故 Qoder 内部 trace 保留在产品本地，不复制到父 Session。捕获到 `SubagentResult.costs` 的成本遥测执行本地到达审计 `tools/post-execute` 观察者（G3 Credits driver），从不持久化。本 provider 自身不添加父级 tool schema；面向模型的 tool 行为 `dsh-tool-subagent`，`provider: qoder`。
+
+#### Token effect
+
+父级输入仅因最终结果或错误增长，数据依赖并保留至 compaction。本 provider 自身不添加父级 schema。
+
+#### KV Cache effect
+
+仅追加；新可见内容跟随可复用请求前缀，不使既有 KV-cache 条目失效。
+
 ## Known Limitations and Deferred Work
 
 - **每次运行一个全新 query**——无 continuation、resume、池化或产品会话持久化。

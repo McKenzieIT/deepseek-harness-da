@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/llm/llm-dashscope/README.md
-README.md: c89f377e0f2968870e82d0a8f4521946f89acdb5
-README.zh.md: 28609f2ae86be993e2559005c94b3f4d93f22daf
+README.md: 01f86af312be77fc5b74598aff6af008329f6113
+README.zh.md: 7a3a6f9e10cd04869a971c235aa0844e77b54776

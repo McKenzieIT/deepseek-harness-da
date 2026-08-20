@@ -19,7 +19,7 @@ Two additive swaps land later, both leaving this tool's contract unchanged:
 
 Mirrors [`@deepseek-ai/dsh-tool-bash`](../../shell/tool-bash) (the production-grade tool example):
 
-```ts
+```ts ignore-check
 export const name = 'tool-search-data-sources'
 export const inject = ['tools']
 export const Config: z<Config> = z.object({ topK: z.number().default(5) })
@@ -55,6 +55,22 @@ pnpm verify-cordis-config                                      # preset mount re
 ```
 
 The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-search-data-sources`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING` whitelist already names `search_data_sources`, so registering it makes it callable in that phase.
+
+## Model Experience
+
+### The `search_data_sources` tool call
+
+#### What the model sees
+
+The `search_data_sources` tool schema (name, description, the `query` and `top_k` parameters, and the `candidates` output array) flows into system-prompt assembly automatically once the plugin mounts, so the model discovers the tool alongside the rest of the `UNDERSTANDING`-phase whitelist. When the model invokes it, `execute` returns one canonical `{ candidates: [...] }` JSON value that `output.render` projects into model-facing text: a numbered list (`1. <id> (score <score>) - <description>`) per ranked data source, or the single line `No matching data sources found.` when the corpus is empty (the Q1 thin default until P6b ships).
+
+#### Token effect
+
+The rendered `candidates` text in the tool result is the only per-call token charge for this tool; the `search_data_sources` schema rides the system prompt rather than the turn payload. With the empty Q1 corpus the result is one short line, and once `ctx.schema.discover` (P6b) populates the corpus the result scales with `top_k` (default 5).
+
+#### KV Cache effect
+
+Tool results are append-only: the `candidates` text follows the reusable request prefix and does not invalidate prior cache entries. The tool schema is part of that stable system-prompt prefix across turns, so registering or calling the tool adds no prefix churn.
 
 ## Known Limitations and Deferred Work
 

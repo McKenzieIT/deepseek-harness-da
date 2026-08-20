@@ -42,13 +42,21 @@ import {
 } from './types.ts'
 import { extractSqlCandidate, sqlSyntaxGate, type CriticCtx } from '@deepseek-ai/dsh-nl2sql-engine'
 
+/** Configuration overrides for the `PhaseGate` plugin; unset fields fall back to the adopted `PipelineConfig` defaults. */
 export interface PhaseGateConfig {
+  /** Scope identifier the per-agent phase-gate state is rooted in; passed to `freshPhaseGateState`, defaults to `'game-1'` when unset. */
   scopeId?: string
+  /** Maximum number of phase fallbacks (retreats to an earlier phase) permitted per turn before honest decline. */
   max_fallbacks?: number
+  /** Maximum number of atomic sub-questions a compound question may decompose into during UNDERSTANDING. */
   max_subquestions?: number
+  /** Maximum `query_data` executions permitted per turn; reaching it triggers a pre-execute guard reject and honest decline. */
   max_executions_per_turn?: number
+  /** Maximum LLM calls charged per turn (counted at `llm/stream` start); reaching it triggers honest decline. */
   max_llm_calls_per_turn?: number
+  /** Maximum turns a kick may run before honest decline (the per-kick turn budget). */
   max_state_turns?: number
+  /** Seconds with no agent events before the stall watchdog fires an honest decline and cancels the kick. */
   stall_watchdog_seconds?: number
 }
 
@@ -89,6 +97,11 @@ export class PhaseGate {
     }
   }
 
+  /**
+   * Get (lazily creating) the per-agent phase-gate state for the given agent id.
+   * @param agentId The harness agent id (stringified) to look up or initialize state for.
+   * @returns The `PhaseGateState` for this agent, creating a fresh one rooted in the configured scope on first access.
+   */
   state(agentId: string): PhaseGateState {
     let s = this.sessions.get(agentId)
     if (s === undefined) {
@@ -99,6 +112,10 @@ export class PhaseGate {
   }
 
   // ── hook 1: ctx.tools.guard — hard whitelist + exec-budget pre-reject (D5, M1) ──
+  /**
+   * `ctx.tools.guard` hook: hard per-phase tool whitelist plus exec-budget
+   * pre-reject (D5, M1); returns a rejection reason string or `undefined` to allow.
+   */
   guard = (execution: ToolExecution): string | undefined => {
     const agent = execution.agent
     if (agent === undefined) return undefined // no agent (host probe) — allow
@@ -140,6 +157,10 @@ export class PhaseGate {
   }
 
   // ── hook 2: agent/turn-stopping (serial, void) — advance / gate / fallback / decline ──
+  /**
+   * `agent/turn-stopping` serial hook (void): advance / gate / fallback /
+   * honest_decline by side effect, plus stall-watchdog reset and phase-output capture.
+   */
   onTurnStopping = async ({ agent, signal }: { agent: Agent; turn: number; signal: AbortSignal }): Promise<void> => {
     const s = this.state(String(agent.id))
     this.touchStallTimer(agent, s) // F3: an event arrived — reset the watchdog
@@ -226,6 +247,10 @@ export class PhaseGate {
   }
 
   // ── hook 3: tools/post-execute — count + capture critic data + F2 same-source block ──
+  /**
+   * `tools/post-execute` waterfall hook: count executions, capture critic guard
+   * data, and block F2 same-source SQL mismatches before delegating downstream.
+   */
   onPostExecute = async (
     exec: ToolExecution,
     result: Readonly<ToolExecutionResult>,
@@ -277,6 +302,7 @@ export class PhaseGate {
   }
 
   // ── hook 4: agent/request (waterfall) — per-phase reasoning effort (D7) ──
+  /** `agent/request` waterfall hook: override reasoning effort per the current phase (D7) after delegating to downstream. */
   onRequest = async (
     { agent }: { agent: Agent; turn: number; step: number; signal: AbortSignal },
     next: () => Promise<GenerateOptions>,
@@ -288,6 +314,10 @@ export class PhaseGate {
   }
 
   // ── hook 5: system-prompt/assemble — base persona (shadow) + dynamic phase instructions (C) ──
+  /**
+   * `system-prompt/assemble` waterfall hook: delegate downstream then
+   * additively inject the base persona (shadow) and dynamic per-phase instructions (C).
+   */
   onAssemble = async (
     _assembly: PromptAssembly,
     context: AssembleContext,
@@ -314,6 +344,7 @@ export class PhaseGate {
   }
 
   // ── hook 6: llm/stream (stream-wrap waterfall) — F5 billing (stream start) ──
+  /** `llm/stream` stream-wrap waterfall hook: charge one LLM call per agent at stream start (F5) before delegating downstream. */
   onLlmStream = (options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk> => {
     const sid = (options as { sessionId?: unknown }).sessionId
     if (typeof sid === 'string') {
@@ -324,6 +355,7 @@ export class PhaseGate {
   }
 
   // ── hook 7: agent/pre-step (waterfall) — F6 step count + stall reset ──
+  /** `agent/pre-step` waterfall hook: reset the stall watchdog and increment the per-step count (F6) before delegating downstream. */
   onPreStep = async (
     { agent }: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal },
     next: () => Promise<PreStepDecision>,
@@ -335,6 +367,10 @@ export class PhaseGate {
   }
 
   // ── agent/status (emit) — F4 question-start: idle→running resets question-scoped counters ──
+  /**
+   * `agent/status` emit hook: on idle-to-running (a new user question) reset
+   * question-scoped counters and phase (F4); mid-kick steers do not transition through idle.
+   */
   onStatus = ({ agent, status }: { agent: Agent; status: 'idle' | 'running' }): void => {
     const s = this.state(String(agent.id))
     // F4: a kick starts on idle→running (a steer mid-kick does not transition
@@ -377,7 +413,13 @@ export class PhaseGate {
     this.ctx.logger.info(`[phase-gate] honest_decline: ${reason}`)
   }
 
-  /** F1 forced_load: programmatic ctx.tools.execute goes through guard (verified). */
+  /**
+   * F1 forced_load: programmatic `ctx.tools.execute` retrieval goes through guard (verified).
+   * Runs `search_data_sources` for the phase's final text so GENERATION has grounding when UNDERSTANDING ended without candidates.
+   * @param agent The harness agent whose turn is stopping (passed to the tool execution as the caller).
+   * @param signal The turn's abort signal, forwarded to the tool execution for cancellation.
+   * @param query The phase's final assistant text used as the search query for candidate retrieval.
+   */
   async forcedLoad(agent: Agent, signal: AbortSignal, query: string): Promise<void> {
     const execute = this.ctx.tools.execute
     if (execute === undefined) return // host did not mount the tools registry — fail-open
@@ -470,7 +512,10 @@ export class PhaseGate {
     s.partition_cols.clear()
   }
 
-  /** Register base persona (shadow) + 7 listeners + stall-timer teardown. */
+  /**
+   * Register the base persona (shadow) plus 7 harness event listeners and the stall-timer teardown effect.
+   * @param ctx The Cordis context to mount the persona section, tool guard, and event listeners on.
+   */
   register(ctx: Context): void {
     ctx.effect(() => ctx.systemPrompt.section({ name: PERSONA_SECTION, order: PERSONA_ORDER, text: BASE_PERSONA }), 'phase-gate.persona')
     ctx.tools.guard(this.guard)

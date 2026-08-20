@@ -36,6 +36,14 @@ data-agent bundle 禁用 base `credentials`（credentials-local）并挂载本 h
 
 runtime-exfil ACL（P12c：原生 Security-framework 绑定 + harness 代码签名）经评估为 **over-spec 并 dropped（2026-08-21）**——破坏 dsh 开箱即用（tsx/node 脚本无 binary 可签），且 runtime-exfil 威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖（业务用户 agent 禁 bash；admin 拮余解锁期窗口=可信操作者自风险）。故本 host 落地的是开箱即用下的最终态：静态加密 + locked-keychain + 按用户 CRUD + branding + 可写全局 fallback。
 
+## Model Experience
+
+间接，通过消费方 LLM adapter：provider 解析的凭证值对其 provider 请求授权，从不直接进入模型上下文。
+
+#### KV Cache effect
+
+无影响；解析的凭证值对模型不可见，从不进入请求前缀。
+
 ## Known Limitations and Deferred Work
 
 - **运行时 exfil ACL** — 限制 keychain 读取仅限 harness 二进制文件（排除 bash/terminal）的 per-item ACL 需要原生 Security-framework 绑定 + Developer-ID 代码签名。经评估为 over-spec 并 dropped（P12c，2026-08-21）：破坏开箱即用、非硬边、威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖。security-CLI 无法区分 spawner 和直接调用者（事实局限，保留）。

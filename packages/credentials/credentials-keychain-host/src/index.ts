@@ -48,16 +48,26 @@ export const inject: readonly string[] = []
 
 /** Deployment config: keychain location/lock policy, unlock-password source, fallback refs, injectable runner. */
 export interface HostConfig {
+  /** Filesystem path to the keychain store, forwarded to `KeychainCredentialProvider` when set. */
   readonly path?: string
+  /**
+   * DSH home directory used to resolve the keychain store path when `path` is
+   * unset; forwarded to `KeychainCredentialProvider` when set.
+   */
   readonly dshHome?: string
+  /** Seconds of keychain inactivity after which the store auto-locks (re-encrypts); forwarded to `KeychainCredentialProvider` when set. */
   readonly autoLockSeconds?: number
+  /** Whether to lock the keychain on system sleep/suspend; forwarded to `KeychainCredentialProvider` when set. */
   readonly lockOnSleep?: boolean
   /** unlock password source: interactive (default, tty stdin, non-tty→undefined) | env | none. */
   readonly unlockPasswordSource?: 'interactive' | 'env' | 'none'
+  /** Name of the environment variable holding the keychain unlock password (required when `unlockPasswordSource` is `'env'`). */
   readonly unlockPasswordEnv?: string
   /** refs eligible for per-user→global fallback; undefined=early(all), list=stable(gated). */
   readonly perUserFallbackRefs?: readonly string[]
+  /** Filesystem path to the credentials-local fallback file, overriding the default `.credentials.yaml` location. */
   readonly credentialsPath?: string
+  /** DSH home directory used to resolve the credentials-local fallback file path when `credentialsPath` is unset. */
   readonly credentialsDshHome?: string
   /** Injectable `security` runner; default `securityCli`, a fake in tests. */
   readonly runner?: SecurityRunner

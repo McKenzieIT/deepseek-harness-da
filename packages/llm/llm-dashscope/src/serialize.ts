@@ -107,6 +107,9 @@ export function serializeMessages(messages: Message[]): WireMessage[] {
  * as null, so provider defaults apply. No `stream`/`stream_options`/`enable_thinking`/
  * `thinking_budget`/`tool_stream` — the native protocol carries none of these.
  * @param options - the harness request (model, history, system, tools, sampling).
+ * @param _defaults - adapter-level request defaults (from plugin config); the native protocol has
+ * no per-request thinking knob, so this carries nothing today and is kept as a seam for future
+ * adapter-owned defaults.
  * @returns the DashScope native chat-generation request body.
  */
 export function serializeRequest(options: GenerateOptions, _defaults: RequestDefaults = {}): WireRequest {

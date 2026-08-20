@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/nl2sql-engine/README.md
-README.md: 0a7bf114ba7eeca51c595c3839cc43a4c612f699
-README.zh.md: e0f6c0a391830a9c70ce01bb5535a49dbd661bd2
+README.md: eb468e4279bde4192a7e8c0337b41697a09f7649
+README.zh.md: 77287fc24c6a5e4b203c57439030b63765ac8bc8

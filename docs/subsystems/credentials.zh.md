@@ -70,17 +70,19 @@ Abstract credential service. Providers implement the four operations over their 
  * operations — that per-operation read is what makes a changed credential
  * reach the next operation without a restart.
  * @param ref - the reference to resolve.
+ * @param address - the per-user/scope slot to resolve within, when the provider distinguishes one; absent for a global/shared credential.
  * @returns the value and its source, or `undefined` while unconfigured.
  */
-abstract resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined>
+abstract resolve(ref: CredentialRef, address?: CredentialAddress): Promise<ResolvedCredential | undefined>
 
 /**
  * Describe one reference for configuration surfaces without exposing the
  * value.
  * @param ref - the reference to describe.
+ * @param address - the per-user/scope slot to describe, when the provider distinguishes one; absent for a global/shared credential.
  * @returns configured state, supplying source, and writability.
  */
-abstract describe(ref: CredentialRef): Promise<CredentialInfo>
+abstract describe(ref: CredentialRef, address?: CredentialAddress): Promise<CredentialInfo>
 
 /**
  * Durably store one value in the provider-managed writable source. Rejects
@@ -89,19 +91,21 @@ abstract describe(ref: CredentialRef): Promise<CredentialInfo>
  * rejects an empty value (use {@link unset}).
  * @param ref - the reference to store.
  * @param value - the non-empty secret value.
+ * @param address - the per-user/scope slot to store within, when the provider distinguishes one; absent for a global/shared credential.
  */
-abstract set(ref: CredentialRef, value: string): Promise<void>
+abstract set(ref: CredentialRef, value: string, address?: CredentialAddress): Promise<void>
 
 /**
  * Remove one reference from the provider-managed writable source; removing
  * an absent reference is a no-op. Rejects while a read-only source shadows
  * the reference, like {@link set}.
  * @param ref - the reference to remove.
+ * @param address - the per-user/scope slot to remove, when the provider distinguishes one; absent for a global/shared credential.
  */
-abstract unset(ref: CredentialRef): Promise<void>
+abstract unset(ref: CredentialRef, address?: CredentialAddress): Promise<void>
 ```
 
-Source: [`packages/credentials/credentials/src/index.ts:60`](../../packages/credentials/credentials/src/index.ts)
+Source: [`packages/credentials/credentials/src/index.ts:62`](../../packages/credentials/credentials/src/index.ts)
 
 <a id="credentials-events"></a>
 
@@ -124,10 +128,11 @@ Committed change to a provider-managed credential source: a `set`, an `unset`, o
  * that rethrow reaches the emitter only from synchronous listeners, so
  * invariant checks on this event must not be async functions.
  * @param ref - the reference whose stored value changed.
+ * @param address - per-user/scope slot this change is scoped to; absent for a global/shared change.
  * @mode emit
  */
-'credentials/updated'(ref: CredentialRef): void
+'credentials/updated'(ref: CredentialRef, address?: CredentialAddress): void
 ```
 
-Source: [`packages/credentials/credentials/src/types.ts:29`](../../packages/credentials/credentials/src/types.ts)
+Source: [`packages/credentials/credentials/src/types.ts:51`](../../packages/credentials/credentials/src/types.ts)
 <!-- END GENERATED cordis-surface -->

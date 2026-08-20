@@ -55,7 +55,14 @@ export function hashVec(text: string, dim: number): number[] {
   return v
 }
 
-/** Query-token-recall fraction (rbi `FakeReranker` mirror). */
+/**
+ * Query-token-recall fraction (rbi `FakeReranker` mirror): the fraction of
+ * the query's tokens that also appear in the text. 0 when the query has no
+ * tokens; 1 when every query token is present.
+ * @param query - the query whose tokens are checked for recall.
+ * @param text - the text whose token set is checked for query-token hits.
+ * @returns the fraction of query tokens present in the text (0..1).
+ */
 export function fakeRecall(query: string, text: string): number {
   const qt = new Set(tokenize(query))
   if (qt.size === 0) return 0

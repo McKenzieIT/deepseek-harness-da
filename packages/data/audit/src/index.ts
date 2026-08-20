@@ -173,6 +173,9 @@ export class Audit extends Service {
    * deny reason in `result.error.message` (the real API has no `decision`
    * param, so a distinct `guard_deny` tag is not auto-emitted here — record
    * one explicitly via {@link record} from the P10 intranet tool-gate).
+   *
+   * @param exec - the post-execute tool view (name, arguments, calling agent's session id).
+   * @param result - the tool result view (isError, value/content, error); a deny surfaces as `isError` with the reason in `error.message`.
    */
   recordTool(exec: ToolExecView, result: ToolResultView): void {
     const identity = this.resolveIdentity()
@@ -214,7 +217,12 @@ export class Audit extends Service {
     this._store.append(rec)
   }
 
-  /** Record one `session/event` (emit; observe-only). */
+  /**
+   * Record one `session/event` (emit; observe-only).
+   *
+   * @param session - the Cordis session that emitted the event (its `id` threads `session_id`).
+   * @param event - the session event (`type` + `data`), captured into `extra.event_type`/`extra.details`.
+   */
   recordSessionEvent(session: Session, event: SessionEvent): void {
     const identity = this.resolveIdentity()
     const rec = fromPayload({
@@ -235,6 +243,11 @@ export class Audit extends Service {
    * body — answers "who/when/which scope/which version", not the content
    * (intranet-security-first). Fail-silent: a 留痕 failure never breaks the
    * business write. Called by P6 semantic-layer etc.
+   *
+   * @param toolName - the name of the tier-2 tool performing the persistent write.
+   * @param payload - the write body (string or JSON-serializable); hashed, never stored as plaintext.
+   * @param opts - optional identity override (scope/tenant/user/session ids); absent fields fall back to the resolved caller identity.
+   * @returns the appended record's `log_id` (returned even when fail-silent logs the error, so the business write proceeds).
    */
   recordTier2Write(toolName: string, payload: unknown, opts: Tier2WriteOpts = {}): string {
     const identity = this.resolveIdentity()
@@ -262,7 +275,12 @@ export class Audit extends Service {
     }
   }
 
-  /** Direct record (test hook + explicit `guard_deny`/correction tagging). */
+  /**
+   * Direct record (test hook + explicit `guard_deny`/correction tagging).
+   *
+   * @param rec - the audit record payload (or a partial payload normalized via `fromPayload`).
+   * @returns the appended record's `log_id`.
+   */
   record(rec: AuditRecord | Record<string, unknown>): string {
     return this._store.append(rec)
   }

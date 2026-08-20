@@ -8,4 +8,4 @@ Data-agent eval harness group: the `dsh-eval` package mirrors reverse-bi `rbi-ev
 |---|---|---|
 | [`eval/`](eval/README.md) | — (none; pure library) | `MultiTurnSession` + pass_k + DELIVERY/EXECUTION scoring + injected responder/executor/judge |
 
-Rules: [package](../AGENTS.md), [root](../AGENTS.md#conventions).
+Rules: [package](../AGENTS.md), [root](../../AGENTS.md#conventions).

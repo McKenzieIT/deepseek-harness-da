@@ -41,8 +41,17 @@ export const FIELD_WEIGHTS = { id: 3, description: 1, metric: 4 } as const
 
 /** A corpus item the retriever indexes (DataSourceDoc-shaped). */
 export interface RetrievalCorpusItem {
+  /** Unique identifier (name) of the data-source document; repeated by the `id` field weight when building the indexed corpus text. */
   readonly id: string
+  /**
+   * Optional human-readable description of the data source;
+   * repeated by the `description` field weight when building the indexed corpus text.
+   */
   readonly description?: string
+  /**
+   * Optional metric definitions keyed by metric name;
+   * each metric name is repeated by the `metric` field weight when building the indexed corpus text.
+   */
   readonly metrics?: Record<string, unknown>
   /** Opaque extra payload carried through to the hit (e.g. the full doc). */
   readonly payload?: unknown
@@ -59,7 +68,11 @@ interface CorpusEntry {
   readonly payload: RetrievalCorpusItem
 }
 
-/** Build the weighted corpus text per item (field weights via token repetition, mirrors rbi). */
+/**
+ * Build the weighted corpus text per item (field weights via token repetition, mirrors rbi).
+ * @param items - corpus documents to index (DataSourceDoc-shaped).
+ * @returns per-item corpus entries with weighted text and the carried payload.
+ */
 export function buildCorpus(items: readonly RetrievalCorpusItem[]): readonly CorpusEntry[] {
   return items.map((d) => {
     const parts: string[] = []
@@ -70,7 +83,12 @@ export function buildCorpus(items: readonly RetrievalCorpusItem[]): readonly Cor
   })
 }
 
-/** Cosine similarity (zero-dep in-mem, mirrors the P5 prototype). */
+/**
+ * Cosine similarity (zero-dep in-mem, mirrors the P5 prototype).
+ * @param a - first vector.
+ * @param b - second vector.
+ * @returns cosine similarity in roughly [-1, 1]; a zero-norm pair yields 0 via the `|| 1` guard.
+ */
 export function cosine(a: readonly number[], b: readonly number[]): number {
   let dot = 0
   let na = 0
@@ -89,6 +107,7 @@ export function cosine(a: readonly number[], b: readonly number[]): number {
  * Reciprocal Rank Fusion (rbi `rrf_fuse` mirror). Rank is 1-indexed, k=60,
  * tie-break by name ascending. Pure (ranks-only) so it is unit-testable.
  * @param rankings - each ranking is a list of candidate names, best-first.
+ * @param k - RRF damping constant (defaults to `RRF_K` = 60).
  * @returns fused `{ name, score }`, best-first.
  */
 export function rrfFuse(rankings: readonly (readonly string[])[], k = RRF_K): readonly { name: string; score: number }[] {
@@ -133,7 +152,11 @@ export class BM25Okapi {
     }
   }
 
-  /** BM25 scores per doc (clamped >= 0). */
+  /**
+   * BM25 scores per doc (clamped >= 0).
+   * @param queryTokens - pre-tokenized query terms.
+   * @returns BM25 score per corpus doc, aligned to the constructor's corpus order.
+   */
   getScores(queryTokens: readonly string[]): readonly number[] {
     return this.docs.map((doc) => {
       const tf: Record<string, number> = {}

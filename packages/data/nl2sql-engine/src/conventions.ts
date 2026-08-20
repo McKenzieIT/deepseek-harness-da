@@ -15,6 +15,9 @@ import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/co
 /**
  * Render the loaded conventions as a markdown dialect cheatsheet for the
  * SQL-generation prompt. Null/empty → a placeholder (the prompt still runs).
+ *
+ * @param conv - The loaded per-engine conventions (null/undefined → placeholder).
+ * @returns The rendered markdown cheatsheet string.
  */
 export function renderConventionsPrompt(conv: EngineConventions | null | undefined): string {
   if (!conv) return '（无 conventions）'

@@ -15,7 +15,7 @@
  *
  * `GateResult` aligns with P7 `phases.py:33` — the critic hangs on P7's
  * `sql_syntax_gate` slot at `agent/turn-stopping` (P13b grilling Q2: critic
- * logic + `GateResult` live HERE in `packages/nl2sql-engine/`; P7b's phase-gate
+ * logic + `GateResult` live HERE in `packages/data/nl2sql-engine/`; P7b's phase-gate
  * slot delegates to `critiqueSql`).
  *
  * @module @deepseek-ai/dsh-nl2sql-engine/src/types
@@ -23,17 +23,32 @@
 
 // ── config (ported from RBI v2-baseline.md §1 + phases.py + §5) ──────────
 export const MAX_SQL_PER_TURN = 8 // v2-baseline.md:5 exploration budget (phases.py:124 max_executions_per_turn)
+/** Max self-correction retries before honest decline (v2-baseline.md §5). */
 export const MAX_FEEDBACK_RETRIES = 2 // v2-baseline.md §5: self-correct N times then decline
+/** The conventional partition column names the critic treats as ds-required (sql_evaluator.py:18). */
 export const PARTITION_COLUMNS = Object.freeze(['ds', 'dt', 'partition_date', 'p_date']) // sql_evaluator.py:18
 
 // ── GateResult (aligns P7 phases.py:33) ───────────────────────────────────
+/** The phase-gate verdict (aligns P7 phases.py:33): pass/fail + reason. */
 export class GateResult {
   constructor(public readonly passed: boolean, public readonly reason: string | null = null) {}
 
+  /**
+   * Construct a passing gate result.
+   *
+   * @param reason - Optional pass reason (null when none).
+   * @returns A passing GateResult.
+   */
   static pass(reason: string | null = null): GateResult {
     return new GateResult(true, reason)
   }
 
+  /**
+   * Construct a failing gate result.
+   *
+   * @param reason - The failure reason.
+   * @returns A failing GateResult.
+   */
   static fail(reason: string): GateResult {
     return new GateResult(false, reason)
   }
@@ -41,8 +56,10 @@ export class GateResult {
 
 // ── Critic finding (方案 1+4) ─────────────────────────────────────────────
 // severity: error → GateResult.fail; warning → GateResult.pass + reason; fail-open → pass
+/** The severity of a critic finding (error → fail; warning → pass + reason). */
 export type CriticSeverity = 'error' | 'warning'
 
+/** A single critic finding: rule id, severity, and human-readable message. */
 export class CriticFinding {
   constructor(
     public readonly rule: string,
@@ -52,6 +69,7 @@ export class CriticFinding {
 }
 
 // ── QueryOutcome 3-state (aligns P4 packages/query/query/src/types.ts:38-41) ─
+/** The 3-state ODPS query outcome: done+result_id / running+instance_id / failed+error+failureKind. */
 export interface QueryOutcome {
   readonly state: 'done' | 'running' | 'failed'
   readonly result_id?: string
@@ -68,6 +86,7 @@ export interface QueryOutcome {
 //    lower but `TABLE_NOT_FOUND`/`SEMANTIC_MISMATCH` upper; consumers compare
 //    against the constants, so normalizing the values is safe as long as the
 //    stand-in + scenarios use the constants, which they do.) ────────────────
+/** Normalized lower_snake failure-kind constants (code-review-low fix #4). */
 export const FailureKind = Object.freeze({
   PARSE_FAILED: 'parse_failed',
   TABLE_NOT_FOUND: 'table_not_found',
@@ -76,14 +95,17 @@ export const FailureKind = Object.freeze({
   PERMISSION_DENIED: 'permission_denied',
   COST_EXCEEDED: 'cost_exceeded',
 } as const)
+/** The union of all FailureKind constant values. */
 export type FailureKind = (typeof FailureKind)[keyof typeof FailureKind]
 
 // §3 阶段D: recoverable → rewrite + retry (must not repeat same SQL; near-dup gate)
+/** Recoverable failure kinds → rewrite + retry (must not repeat same SQL; near-dup gate). */
 export const RECOVERABLE_FAILURES: readonly FailureKind[] = Object.freeze([
   FailureKind.PARSE_FAILED,
   FailureKind.COST_EXCEEDED,
 ])
 // §3 阶段D: unrecoverable → §5 honest decline (does not consume a retry)
+/** Unrecoverable failure kinds → honest decline (does not consume a retry). */
 export const UNRECOVERABLE_FAILURES: readonly FailureKind[] = Object.freeze([
   FailureKind.TABLE_NOT_FOUND,
   FailureKind.FIELD_NOT_FOUND,
@@ -93,6 +115,7 @@ export const UNRECOVERABLE_FAILURES: readonly FailureKind[] = Object.freeze([
 
 // ── EvalCase da-fresh schema (aligns G2: borrows only result_value + match_mode + turns;
 //    rbi BI-specific fields not reused — G2 review F1) ─────────────────────
+/** The 5 EXECUTION match-mode constants (scalar exact / set exact / set subset / value close / null check). */
 export const MatchMode = Object.freeze({
   SCALAR_EXACT: 'scalar_exact', // result-set row[0] cell[0] numeric strict equal
   SET_EXACT: 'set_exact', // result-set row set fully equal
@@ -100,29 +123,36 @@ export const MatchMode = Object.freeze({
   VALUE_CLOSE: 'value_close', // numeric close (|actual-expected| < eps)
   NULL_CHECK: 'null_check', // decline / NULL (honest-decline scenario)
 } as const)
+/** The union of all MatchMode constant values. */
 export type MatchMode = (typeof MatchMode)[keyof typeof MatchMode]
 
 // ── Critic guard context (from P6 substrate + retrieval results; NOT conventions) ─
 // candidateTables: search_data_sources (BM25 linking) candidate table-name set
 // eventParams: EventDefinition.params_fields field-name set (GET_JSON_OBJECT field ∈ params guard)
 // partitionCols: TableDefinition.partitions column names (ds-required guard; empty = non-partition DIM, no ds)
+/** The critic guard context: candidate tables, event params, and partition cols (from P6 substrate + retrieval). */
 export interface CriticCtx {
   readonly candidateTables: Set<string>
   readonly eventParams: Set<string>
   readonly partitionCols: Set<string>
 }
 
+/** Options for constructing a critic guard context. */
 export interface MakeCriticCtxOptions {
   readonly candidateTables?: readonly string[]
   readonly eventParams?: Record<string, unknown>
   readonly partitionCols?: readonly string[]
 }
 
-export function makeCriticCtx({
-  candidateTables = [],
-  eventParams = {},
-  partitionCols = ['ds'],
-}: MakeCriticCtxOptions = {}): CriticCtx {
+/**
+ * Build a critic guard context from the P6 substrate + retrieval results:
+ * candidate tables, event params, and partition columns (all lowercased).
+ *
+ * @param options - The guard-data options (candidateTables, eventParams, partitionCols; each defaults to empty/`['ds']`).
+ * @returns The constructed critic context.
+ */
+export function makeCriticCtx(options: MakeCriticCtxOptions = {}): CriticCtx {
+  const { candidateTables = [], eventParams = {}, partitionCols = ['ds'] } = options
   return {
     candidateTables: new Set(candidateTables.map(t => t.toLowerCase())),
     eventParams: new Set(Object.keys(eventParams).map(f => f.toLowerCase())),

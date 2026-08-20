@@ -8,6 +8,14 @@ Abstract query-engine seam (`ctx.query`): Service Definition for NL-to-SQL execu
 
 Defines the abstract `QueryEngine extends Service` contract with four abstract methods: `execute`, `attach`, `cancel`, `getProgress`, plus the 3-state `QueryOutcome` vocabulary (Completed / Pending / Failed). `estimate_cost` is CostGuard-internal and does not appear on the seam's public surface. This package is the Def half of the query-trio (Def + Provider + Consumer); the Provider is `query-maxcompute`, the Consumer `tool-query` is deferred.
 
+## Model Experience
+
+Indirectly, through the deferred tool-query Consumer: it exposes `ctx.query.execute` outcomes as the model-visible tool surface, and this abstract seam registers no prompt, tool, or session event of its own.
+
+#### KV Cache effect
+
+No direct effect; this seam owns no prefix, and query outcomes enter the conversation only as the consumer tool's result content.
+
 ## Known Limitations and Deferred Work
 
 - **tool-query Consumer not yet implemented** — the model-facing tool that exposes `ctx.query.execute` with session gates (G1 sampling / G5 COUNT / budget / near-dup / halt / cache / required_predicates) is deferred. Combined with the engine-wrapper guard chain, these form the query-trio remaining production work.

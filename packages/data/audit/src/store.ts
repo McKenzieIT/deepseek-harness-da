@@ -259,12 +259,27 @@ interface CorrectionSourceRow {
   readonly payload: string
 }
 
+/**
+ * Relational audit store backing the {@link Audit} service. Owns its
+ * `node:sqlite` {@link DatabaseSync} directly (a sibling to the `ctx.audit`
+ * seam, NOT routed through `ctx.storage` — KV-only has no relational
+ * tables/indexes). `audit_event` is an immutable append log; `audit_override`
+ * is append-only dotted-path patches (original never mutated — ADR-0003
+ * trust); `audit_tag` is the single source of truth for tags. Reads apply the
+ * latest override per field on materialization; SQL-level aggregates bypass
+ * overrides (see {@link stats} vs {@link correctedStats}). All guarded reads
+ * enforce the ownership guard (NULL-safe IS, IDOR-safe null) unless
+ * `caller.privileged`.
+ */
 export class SQLiteAuditStore {
   constructor(private readonly db: DatabaseSync) {}
 
   /**
    * Insert one audit_event + its tags (one txn). Mirror AuditStore.append.
    * payload EXCLUDES auto_tags (single source of truth = audit_tag table).
+   *
+   * @param record - the audit record payload (or a partial payload normalized via `fromPayload`).
+   * @returns the appended record's `log_id`.
    */
   append(record: AuditRecord | Record<string, unknown>): string {
     const rec = fromPayload(record)
@@ -297,6 +312,10 @@ export class SQLiteAuditStore {
    * Read one record (latest override applied). Ownership guard → null if
    * mismatch (IDOR-safe, indistinguishable from not-found — no existence oracle
    * on the 32-bit log_id space; mirror RBI).
+   *
+   * @param log_id - the 8-char hex audit log id to look up.
+   * @param caller - the caller identity for the ownership guard (privileged bypasses it).
+   * @returns the materialized record (latest overrides applied), or `null` if not found / not owned.
    */
   get(log_id: string, caller: AuditCaller = {}): AuditRecord | null {
     const row = this.db.prepare('SELECT * FROM audit_event WHERE log_id=?').get(log_id) as AuditEventRow | undefined
@@ -305,7 +324,13 @@ export class SQLiteAuditStore {
     return this._materialize(row)
   }
 
-  /** Record + the full override chain (mirror RBI get_with_history). */
+  /**
+   * Record + the full override chain (mirror RBI get_with_history).
+   *
+   * @param log_id - the 8-char hex audit log id to look up.
+   * @param caller - the caller identity for the ownership guard (privileged bypasses it).
+   * @returns the materialized record with its full override chain, or `null` if not found / not owned.
+   */
   get_with_history(log_id: string, caller: AuditCaller = {}): AuditRecordWithHistory | null {
     const row = this.db.prepare('SELECT * FROM audit_event WHERE log_id=?').get(log_id) as AuditEventRow | undefined
     if (!row) return null
@@ -317,7 +342,12 @@ export class SQLiteAuditStore {
     return { ...rec, overrides }
   }
 
-  /** The immutable stored payload (for immutability checks; overrides NOT applied). */
+  /**
+   * The immutable stored payload (for immutability checks; overrides NOT applied).
+   *
+   * @param log_id - the 8-char hex audit log id to look up.
+   * @returns the stored payload object, or `null` if not found.
+   */
   rawPayload(log_id: string): Record<string, unknown> | null {
     const row = this.db.prepare('SELECT payload FROM audit_event WHERE log_id=?').get(log_id) as { payload: string } | undefined
     return row ? (JSON.parse(row.payload) as Record<string, unknown>) : null
@@ -335,6 +365,13 @@ export class SQLiteAuditStore {
    * by {@link appendCorrection} (append a new record + tag), not by patching.
    * Returns false on not-found or ownership mismatch (IDOR-safe silence,
    * indistinguishable from not-found).
+   *
+   * @param log_id - the 8-char hex audit log id of the record to patch.
+   * @param field - the dotted-path field name to override (a non-identity verdict field).
+   * @param value - the override value (JSON-encoded into `audit_override.value`).
+   * @param opts - optional `by` (patcher) and `reason` provenance fields.
+   * @param caller - the caller identity for the ownership guard (privileged bypasses it).
+   * @returns `true` if the override was appended; `false` on not-found / ownership mismatch; throws if `field` is an identity field.
    */
   patch(log_id: string, field: string, value: unknown, opts: { by?: string; reason?: string } = {}, caller: AuditCaller = {}): boolean {
     const firstSegment = field.split('.')[0] as string
@@ -361,6 +398,12 @@ export class SQLiteAuditStore {
    * original's raw content (event data) + the corrected identity; its verdict
    * (override chain) starts fresh. Returns the new log_id, or null if the
    * original is absent or not owned by the caller.
+   *
+   * @param originalLogId - the 8-char hex audit log id of the misattributed record.
+   * @param correctIdentity - the corrected identity fields to stamp on the new record.
+   * @param opts - optional `by` (corrector) and `reason` provenance fields.
+   * @param caller - the caller identity for the ownership guard on the original (privileged bypasses it).
+   * @returns the new correction record's `log_id`, or `null` if the original is absent / not owned.
    */
   appendCorrection(
     originalLogId: string,
@@ -392,6 +435,10 @@ export class SQLiteAuditStore {
   /**
    * Filtered list. tags=ALL (must have every), exclude_tags=ANY (has any →
    * excluded) — mirror RBI. Ownership guard (NULL-safe IS) unless caller.privileged.
+   *
+   * @param f - the query filter (identity, tags, time window, limit).
+   * @param caller - the caller identity for the ownership guard (privileged bypasses it).
+   * @returns the matching records, materialized (latest overrides applied), newest-first.
    */
   query(f: AuditQueryFilter = {}, caller: AuditCaller = {}): AuditRecord[] {
     const { where, params } = this._where(f, caller)
@@ -406,6 +453,10 @@ export class SQLiteAuditStore {
    * SQL-level aggregates — this answers "what was recorded at the time" (the
    * compliance baseline, matches {@link rawPayload}). Use {@link correctedStats}
    * for the override-applied reconciliation view.
+   *
+   * @param f - the query filter scoping the aggregation (identity, tags, time window).
+   * @param caller - the caller identity for the ownership guard (privileged bypasses it).
+   * @returns the aggregated counts + Qoder cost/credits reconciliation over the immutable payloads.
    */
   stats(f: AuditQueryFilter = {}, caller: AuditCaller = {}): AuditStats {
     const { where, params } = this._where(f, caller)
@@ -431,6 +482,10 @@ export class SQLiteAuditStore {
    * so they match {@link stats}; only the cost/credits reflect overrides. No
    * LIMIT: reconciliation aggregates the full filtered set (the accepted O(n)
    * cost for an infrequent compliance query — not a hot path).
+   *
+   * @param f - the query filter scoping the aggregation (identity, tags, time window).
+   * @param caller - the caller identity for the ownership guard (privileged bypasses it).
+   * @returns the override-applied counts + corrected Qoder cost/credits reconciliation.
    */
   correctedStats(f: AuditQueryFilter = {}, caller: AuditCaller = {}): AuditStats {
     const { where, params } = this._where(f, caller)
@@ -469,7 +524,14 @@ export class SQLiteAuditStore {
     return { total: counted, by_tag: byTag, qoder_cost_usd: costUsd, qoder_credits: credits }
   }
 
-  /** Update review_status — the ONE in-place mutable column (mirror RBI). */
+  /**
+   * Update review_status — the ONE in-place mutable column (mirror RBI).
+   *
+   * @param log_id - the 8-char hex audit log id of the record to update.
+   * @param status - the new review status string (e.g. 'pending'/'reviewed'/'flagged').
+   * @param caller - the caller identity for the ownership guard (privileged bypasses it).
+   * @returns `true` if the row was updated; `false` on not-found / ownership mismatch.
+   */
   update_review_status(log_id: string, status: string, caller: AuditCaller = {}): boolean {
     const row = this.db.prepare('SELECT tenant_id, scope_id, user_id FROM audit_event WHERE log_id=?').get(log_id) as RowIdentity | undefined
     if (!row) return false
@@ -478,7 +540,11 @@ export class SQLiteAuditStore {
     return true
   }
 
-  /** Surface full state (the /prototype "surface the state" rule; payload omitted for legibility). */
+  /**
+   * Surface full state (the /prototype "surface the state" rule; payload omitted for legibility).
+   *
+   * @returns the three tables as plain row arrays (`audit_event` rows omit the `payload` column for legibility).
+   */
   dumpAll(): { audit_event: unknown[]; audit_tag: unknown[]; audit_override: unknown[] } {
     return {
       audit_event: this.db.prepare(
@@ -489,11 +555,17 @@ export class SQLiteAuditStore {
     }
   }
 
-  /** Hash a payload body for tier-2 留痕 (hash NOT body — intranet-security-first). */
+  /**
+   * Hash a payload body for tier-2 留痕 (hash NOT body — intranet-security-first).
+   *
+   * @param body - the serialized payload body to hash.
+   * @returns the SHA-256 hex digest of the body.
+   */
   hashBody(body: string): string {
     return sha256(body)
   }
 
+  /** Close the underlying `DatabaseSync` handle (registered as the service unload effect). */
   close(): void {
     this.db.close()
   }

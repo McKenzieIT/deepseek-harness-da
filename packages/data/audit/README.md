@@ -23,6 +23,14 @@ pnpm vitest run packages/data/audit         # 12 specs
 pnpm verify-cordis-config                   # bundle mount resolves
 ```
 
+## Model Experience
+
+None, as the service records tool calls and session events into an immutable SQLite audit store for compliance and never surfaces records into a model's context.
+
+#### KV Cache effect
+
+No effect; audit records persist only in the SQLite store and never enter a model prompt.
+
 ## Known Limitations and Deferred Work
 
 - **userId per-user dimension** — today NULL (T1 fallback); requires P9 `@deepseek-ai/dsh-admin` to land and wire `resolveIdentity()` (small additive change).

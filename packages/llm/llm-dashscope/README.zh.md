@@ -22,6 +22,14 @@ pnpm vitest run packages/llm/llm-dashscope         # 64 unit specs
 DSH_KEYCHAIN_LIVE=1 DASHSCOPE_API_KEY=... pnpm vitest run packages/llm/llm-dashscope/tests/adapter.e2e.ts  # key-gated live e2e
 ```
 
+## Model Experience
+
+无，因为适配器仅将已组装的 harness 对话重新编码为/自 DashScope 原生线路协议，不添加任何模型绑定文本、schema 或消息。
+
+#### KV Cache effect
+
+Pass-through；适配器经原生线路原样转发已组装的请求前缀，故 agent loop 选择的 provider 和路由拥有缓存复用和路由边界。
+
 ## Known Limitations and Deferred Work
 
 - **R3 — 多轮 passback** — tool-call 轮 passback 已确认工作（e2e green）；但完整多轮 plain-turn thinking passback 缺少专用单测（低风险，规则照搬 deepseek 适配器）。

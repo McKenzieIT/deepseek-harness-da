@@ -22,6 +22,14 @@ pnpm vitest run packages/llm/llm-dashscope         # 64 unit specs
 DSH_KEYCHAIN_LIVE=1 DASHSCOPE_API_KEY=... pnpm vitest run packages/llm/llm-dashscope/tests/adapter.e2e.ts  # key-gated live e2e
 ```
 
+## Model Experience
+
+None, as the adapter only re-encodes the already-assembled harness conversation to and from the DashScope native wire protocol, adding no model-bound text, schema, or message.
+
+#### KV Cache effect
+
+Pass-through; the adapter forwards the assembled request prefix unchanged across the native wire, so the provider and route the agent loop selected own cache reuse and routing boundaries.
+
 ## Known Limitations and Deferred Work
 
 - **R3 — Multi-turn passback** — tool-call round-trip passback is confirmed working (e2e green); however, full multi-turn plain-turn thinking passback lacks dedicated unit tests (low risk, rules mirror deepseek adapter).

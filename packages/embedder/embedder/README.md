@@ -8,6 +8,14 @@ Abstract embedder seam (`ctx.embedder`) + Reranker peer protocol + InferenceErro
 
 Defines the `EmbedderService extends Service` contract: `dim`, `modelId`, `embed(texts) → float[][]` async. Also declares the Reranker peer protocol (`modelId`, `rerank` async — injected post-RRF, not a top-level seam) and the `InferenceError` taxonomy (unavailable / timeout / not_ready / dim_mismatch) that triggers BM25-only degradation in retrieval providers.
 
+## Model Experience
+
+None, as the embedder seam produces retrieval-similarity vectors and rerank scores for retrieval providers and registers no prompt, tool, schema, or session event.
+
+#### KV Cache effect
+
+No direct effect; embeddings serve retrieval similarity, not the LLM context.
+
 ## Known Limitations and Deferred Work
 
 - **Real embedder sidecar not yet shipped** — production deployment via Infinity, TEI, or Ollama sidecar is deferred; current providers are FakeHash (stub) and InfinityEmbedder (user-self-deployed HTTP).

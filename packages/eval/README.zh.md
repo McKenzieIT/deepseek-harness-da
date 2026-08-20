@@ -8,4 +8,4 @@ Data-agent eval harness 组：`dsh-eval` 包镜像 reverse-bi `rbi-eval` 编排�
 |---|---|---|
 | [`eval/`](eval/README.md) | —（无；纯库） | `MultiTurnSession` + pass_k + DELIVERY/EXECUTION 评分 + 注入的 responder/executor/judge |
 
-规则：[package](../AGENTS.md)，[root](../AGENTS.md#conventions)。
+规则：[package](../AGENTS.md)，[root](../../AGENTS.md#conventions)。

@@ -13,12 +13,14 @@ export interface LlmFeedback {
   readonly error: string
 }
 
+/** Arguments passed to the LLM generate call (question, attempt, feedback). */
 export interface LlmGenerateArgs {
   readonly question: string
   readonly attempt?: number
   readonly feedback?: LlmFeedback | null
 }
 
+/** The LLM generation result (SQL + optional tool calls). */
 export interface LlmGenerateResult {
   readonly sql: string
   readonly toolCalls?: unknown[]
@@ -29,19 +31,33 @@ export interface Llm {
   generate(args: LlmGenerateArgs): Promise<LlmGenerateResult>
 }
 
+/** A scripted LLM generation: a preset result or a function of attempt/feedback. */
 export type ScriptedGen =
   | LlmGenerateResult
   | ((ctx: { attempt: number; feedback: LlmFeedback | null }) => LlmGenerateResult)
 
+/**
+ * Deterministic replay LLM (eval-only): returns preset SQL by question
+ * substring + attempt; on `attempt > 0` reads feedback and rewrites.
+ */
 export class ReplayLlm implements Llm {
   private readonly scripted: Record<string, ScriptedGen>
+  /** Number of times `generate` has been called (eval instrumentation). */
   public callCount = 0
 
   constructor(scripted: Record<string, ScriptedGen> = {}) {
     this.scripted = scripted
   }
 
-  async generate({ question, attempt = 0, feedback = null }: LlmGenerateArgs): Promise<LlmGenerateResult> {
+  /**
+   * Generate a scripted SQL result for the question (deterministic; on
+   * `attempt > 0` reads feedback and rewrites).
+   *
+   * @param args - The generate arguments (question, attempt, feedback).
+   * @returns The scripted LLM generation result.
+   */
+  async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+    const { question, attempt = 0, feedback = null } = args
     this.callCount += 1
     for (const [sub, gen] of Object.entries(this.scripted)) {
       if (question.includes(sub)) {

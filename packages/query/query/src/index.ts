@@ -42,16 +42,34 @@ export abstract class QueryEngine extends Service {
    * `signal` carries outbound cancel: the engine-wrapper's TimeoutGuard
    * (deferred) threads it to the SDK `request()`, which sends
    * `notifications/cancelled` and rejects (G4 HOLE-D).
+   *
+   * @param request The NL->SQL query request to execute against the provider engine.
+   * @param signal Optional abort signal carrying outbound cancel; threaded to the SDK request to emit `notifications/cancelled` and reject.
+   * @returns A 3-state query outcome (success / pending / failure) resolved when the query finishes or yields control.
    */
   abstract execute(request: QueryRequest, signal?: AbortSignal): Promise<QueryOutcome>
 
-  /** Resume a pending instance — NOT through the guard chain (P4 decision B). */
+  /**
+   * Resume a pending instance — NOT through the guard chain (P4 decision B).
+   *
+   * @param instanceId The opaque id of the pending query instance to resume.
+   * @returns A 3-state query outcome for the resumed instance.
+   */
   abstract attach(instanceId: InstanceId): Promise<QueryOutcome>
 
-  /** Cancel a pending instance — the explicit user cancel tool (A1-split). */
+  /**
+   * Cancel a pending instance — the explicit user cancel tool (A1-split).
+   *
+   * @param instanceId The opaque id of the pending query instance to cancel.
+   */
   abstract cancel(instanceId: InstanceId): Promise<void>
 
-  /** Poll progress of a pending instance (P4 polling; no push notifications — G4 HOLE-D). */
+  /**
+   * Poll progress of a pending instance (P4 polling; no push notifications — G4 HOLE-D).
+   *
+   * @param instanceId The opaque id of the pending query instance to poll.
+   * @returns A 3-state query outcome reflecting the pending instance's current progress.
+   */
   abstract getProgress(instanceId: InstanceId): Promise<QueryOutcome>
 }
 

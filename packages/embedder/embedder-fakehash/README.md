@@ -8,6 +8,14 @@ Zero-dependency FakeHash embedder provider (deterministic sha256 hash vectors) +
 
 Provides `FakeHashEmbedder` — a zero-dependency provider that generates deterministic vectors from sha256 hashes of input text. Paired with `FakeReranker` as the default reranker peer. This is the boot-time default: retrieval works out of the box without an external embedding service, at the cost of semantic quality.
 
+## Model Experience
+
+None, as the deterministic sha256 hash-vector stub and token-recall reranker load no model and register no prompt, tool, schema, or session event, and their vector and score outputs never enter model context.
+
+#### KV Cache effect
+
+No direct effect; hash vectors and recall scores serve retrieval similarity, not the LLM context.
+
 ## Known Limitations and Deferred Work
 
 - **Weak semantic quality** — FakeHash produces deterministic but non-semantic vectors (sha256-derived); ranking quality is low by design. This is intentional for the default tier: it guarantees retrieval functions without an external service, but results lack real semantic similarity.

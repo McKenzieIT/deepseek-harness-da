@@ -32,6 +32,15 @@ function rowSet(rows: readonly unknown[] | undefined): Set<string> {
   return new Set((rows ?? []).map(r => rowKey(r as Record<string, unknown>)))
 }
 
+/**
+ * Compare an engine run result against an eval case's expected outcome using
+ * the 5 match modes (scalar exact / value close / set exact / set subset /
+ * null-check decline).
+ *
+ * @param runResult - The engine run result to judge.
+ * @param expected - The eval case's expected outcome and match mode.
+ * @returns True when the result matches the expected outcome under the match mode.
+ */
 export function scoreMatch(runResult: EngineRunResult, expected: EvalCaseExpected): boolean {
   // null_check / decline case
   if (expected.decline || expected.match_mode === MatchMode.NULL_CHECK) {

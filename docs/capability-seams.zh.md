@@ -88,6 +88,22 @@ flowchart LR
   pkg_tool_skill["tool-skill"]
   pkg_tool_subagent["tool-subagent"]
   pkg_tool_todo["tool-todo"]
+  pkg_audit["audit"]
+  svc_audit["ctx.audit<br/>Append-only audit + tier-2-write store"]
+  pkg_embedder["embedder"]
+  svc_embedder["ctx.embedder<br/>Embedding + rerank seam"]
+  pkg_embedder_fakehash["embedder-fakehash"]
+  pkg_embedder_http["embedder-http"]
+  pkg_retrieval_inproc["retrieval-inproc"]
+  pkg_identity["identity"]
+  svc_identity["ctx.identity<br/>Caller identity seam"]
+  pkg_credentials_keychain["credentials-keychain"]
+  pkg_credentials_keychain_host["credentials-keychain-host"]
+  pkg_nl2sql_engine["nl2sql-engine"]
+  svc_nl2sql["ctx.nl2sql<br/>NL→SQL engine"]
+  pkg_tool_search_data_sources["tool-search-data-sources"]
+  pkg_semantic_layer["semantic-layer"]
+  svc_schema["ctx.schema<br/>Semantic layer: discover/describe/sample"]
   pkg_user_questions["user-questions"]
   svc_userQuestions["ctx.userQuestions<br/>Human question/answer seam"]
   pkg_plan_mode["plan-mode"]
@@ -212,6 +228,7 @@ flowchart LR
   pkg_approval --> svc_approval
   pkg_attachment --> svc_attachments
   pkg_attachment_local --> svc_attachments
+  pkg_audit --> svc_audit
   pkg_bash_local --> svc_shell
   pkg_bash_sandbox --> svc_shell
   pkg_code_runtime --> svc_codeRuntime
@@ -228,6 +245,9 @@ flowchart LR
   pkg_directory_picker_browse --> svc_directoryPicker
   pkg_directory_picker_native --> svc_directoryPicker
   pkg_e2b --> svc_e2b
+  pkg_embedder --> svc_embedder
+  pkg_embedder_fakehash --> svc_embedder
+  pkg_embedder_http --> svc_embedder
   pkg_file_reference --> svc_fileReferences
   pkg_file_reference_local --> svc_fileReferences
   pkg_fs --> svc_fs
@@ -235,6 +255,7 @@ flowchart LR
   pkg_fs_local --> svc_fs
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
+  pkg_identity --> svc_identity
   pkg_invariants --> svc_invariants
   pkg_jobs --> svc_jobs
   pkg_jobs_local --> svc_jobs
@@ -246,12 +267,14 @@ flowchart LR
   pkg_lsp_local --> svc_lsp
   pkg_message_feedback --> svc_messageFeedback
   pkg_modules --> svc_clientModules
+  pkg_nl2sql_engine --> svc_nl2sql
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
   pkg_pwsh_local --> svc_shell
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
+  pkg_semantic_layer --> svc_schema
   pkg_session --> svc_sessions
   pkg_session_persistence --> svc_sessionPersistence
   pkg_session_persistence_jsonl --> svc_sessionPersistence
@@ -328,7 +351,11 @@ flowchart LR
   svc_dynamicCordisRunner --> pkg_tool_cordis
   svc_e2b --> pkg_fs_e2b
   svc_e2b --> pkg_subprocess_e2b
+  svc_embedder --> pkg_retrieval_inproc
   svc_fs --> pkg_tool_fs
+  svc_identity --> pkg_audit
+  svc_identity --> pkg_credentials_keychain
+  svc_identity --> pkg_credentials_keychain_host
   svc_invariants --> pkg_agent
   svc_invariants --> pkg_agent_loop
   svc_invariants --> pkg_scope
@@ -340,11 +367,14 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_nl2sql --> pkg_tool_search_data_sources
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
   svc_sandboxPolicy --> pkg_fs_sandbox
   svc_sandboxPolicy --> pkg_terminal_bash
+  svc_schema --> pkg_nl2sql_engine
+  svc_schema --> pkg_tool_search_data_sources
   svc_sessionPersistence --> pkg_agent_loop
   svc_sessionPersistence --> pkg_hooks_claude_code
   svc_sessionPersistence --> pkg_hooks_codex
@@ -445,6 +475,11 @@ flowchart LR
 | `ctx.sessionTitle` | `seam` | [`session-title`](../packages/session/session-title) | [`session-title-first-prompt-llm`](../packages/session/session-title-first-prompt-llm), [`session-title-all-prompts-llm`](../packages/session/session-title-all-prompts-llm) | - | - | 负责确定性回退、最新标题折叠区，以及唯一的可选异步提供方注册。 |
 | `ctx.systemPrompt` | `core` | [`system-prompt`](../packages/core/system-prompt) | - | [`agent-loop`](../packages/core/agent-loop), [`tools`](../packages/core/tools), [`tool-fs`](../packages/fs/tool-fs), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-web`](../packages/web/tool-web) | - | 为每个步骤收集提示词各部分和面向模型的工具 schema。 |
 | `ctx.tools` | `core` | [`tools`](../packages/core/tools) | - | [`agent-loop`](../packages/core/agent-loop), [`tool-ask-user`](../packages/interaction/tool-ask-user), [`tool-bash`](../packages/shell/tool-bash), [`tool-cordis`](../packages/extensions/tool-cordis), [`tool-fs`](../packages/fs/tool-fs), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-skill`](../packages/skill/tool-skill), [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-todo`](../packages/todo/tool-todo), [`tool-web`](../packages/web/tool-web) | - | 注册能力，负责 Code Mode 传输，并让调用依次经过策略前处理、单调守卫、环绕分派、策略后处理和最终结果观测。 |
+| `ctx.audit` | `core` | [`audit`](../packages/data/audit) | - | - | - | 将 tool 调用、session 事件和 guard 决策记录到不可变 SQLite 存储中以供合规；该服务观察 ctx.on hooks，不被其他服务调用。 |
+| `ctx.embedder` | `seam` | [`embedder`](../packages/embedder/embedder) | [`embedder-fakehash`](../packages/embedder/embedder-fakehash), [`embedder-http`](../packages/embedder/embedder-http) | [`retrieval-inproc`](../packages/retrieval/retrieval-inproc) | - | 该接缝生成检索相似度向量和重排分数；提供方支撑异步检索路径，InferenceError 时降级为仅 BM25。 |
+| `ctx.identity` | `seam` | [`identity`](../packages/identity/identity) | [`identity`](../packages/identity/identity) | [`credentials-keychain`](../packages/credentials/credentials-keychain), [`credentials-keychain-host`](../packages/credentials/credentials-keychain-host), [`audit`](../packages/data/audit) | - | 解析请求所代表的调用方（userId/scopeId）；用于认证、审计和数据隔离的模型隐藏元数据。 |
+| `ctx.nl2sql` | `core` | [`nl2sql-engine`](../packages/data/nl2sql-engine) | - | [`tool-search-data-sources`](../packages/data/tool-search-data-sources) | - | 构建 NL→SQL prompt，调用 LLM，运行 critic gate；search tool 消费 engine 约定。 |
+| `ctx.schema` | `seam` | [`semantic-layer`](../packages/data/semantic-layer) | [`semantic-layer`](../packages/data/semantic-layer) | [`nl2sql-engine`](../packages/data/nl2sql-engine), [`tool-search-data-sources`](../packages/data/tool-search-data-sources) | - | 向 NL→SQL prompt 提供上下文的数据源/表 substrate；在语义层上进行 discover/describe/sample。 |
 | `ctx.userQuestions` | `seam` | [`user-questions`](../packages/interaction/user-questions) | - | [`tool-ask-user`](../packages/interaction/tool-ask-user) | - | UI 前端提供当前生效的人工回答提供方；tool-ask-user 在提供方无关的 ask() promise 上暂停工具调用。 |
 | `ctx.planMode` | `core` | [`plan-mode`](../packages/plan/plan-mode) | - | - | - | 折叠已记录的计划／模式状态，在轮次边界刷新用户选择，渲染由部署方拥有的指导信息，注册 /plan，并在状态转换期间保持计划退出 schema 稳定。 |
 | `ctx.agentPresets` | `core` | [`agent-presets`](../packages/preset/agent-presets) | - | - | - | 在受信任根目录与用户创作根目录上发现 preset 目录，并在创建期把一份 preset cordis.yml 挂载到 agent 作用域之下，拒绝始终未激活或向根服务 realm 发布服务的行。 |

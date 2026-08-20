@@ -59,6 +59,14 @@ export interface SearchHit {
  * opaque `payload`). Exported so the projection + BM25 linking are testable
  * without a Cordis context. `Bm25Linker` is the Q1 thin default; swap to
  * `ctx.retrieval` when P5b ships (contract unchanged).
+ *
+ * @param linker The BM25/retrieval linker whose corpus is searched; the Q1
+ * thin default is `Bm25Linker`, swapped to `ctx.retrieval` when P5b ships.
+ * @param query The natural-language data question to link against the
+ * data-source corpus.
+ * @param topK Maximum number of candidate data sources to return.
+ * @returns Ranked candidate data sources projected to the model-facing
+ * `SearchHit` shape (drops the opaque `payload`).
  */
 export function searchDataSources(
   linker: RetrievalLinker,

@@ -27,6 +27,7 @@ The semantic layer is a **first-class citizen** of the data agent — NL→SQL s
 ## `ctx.schema` seam
 
 ```ts
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayerService } }
 ```
 
@@ -47,6 +48,53 @@ pnpm verify-cordis-config                            # bundle/preset mount resol
 ```
 
 Bundle wiring (the `semantic-layer` row in `packages/bundle/data-agent/cordis.patch.yml`) is a follow-up with the live-ODPS provider + the `load_*` tool packages.
+
+## Model Experience
+
+### Discovered table descriptions
+
+#### What the model sees
+
+`ctx.schema.describe(tableName)` returns a `TableMeta` carrying the table's `table_name`, `columns` (each a `name`, a physical `type`, and an optional `comment` as the connector returns them), `partitions` (`name` / `type`), and an optional table `comment`; `discover(scopeId, kind?)` enumerates the available tables in a scope and `sample(tableName, n?)` returns formatted row samples. The NL→SQL engine renders these discovered data-source descriptions into the model prompt as candidate-table context. Live-ODPS `discover` / `describe` / `sample` throw "no provider" until a MaxCompute provider is mounted (see Known Limitations).
+
+##### Sample discovered table description
+
+```markdown
+table_name: dws_trade_order_di
+comment: trade order detail fact table
+columns:
+  - name: order_id
+    type: string
+    comment: order id
+  - name: pay_amt
+    type: decimal
+    comment: payment amount
+partitions:
+  - name: ds
+    type: string
+```
+
+#### Token effect
+
+The description tokens scale with the column and partition count of each discovered table, and `discover` multiplies this by the table count in the scope; `sample` adds a bounded extra block. The context is included per NL→SQL turn.
+
+#### KV Cache effect
+
+Table descriptions repeat across NL→SQL turns over the same table or scope, so the description block sits in the reusable request prefix and may be cached. A `syncWrite` Tier-2 refresh that overwrites `columns` or `partitions` invalidates the affected table's cached context; unrelated tables stay cacheable.
+
+### Substrate definition params
+
+#### What the model sees
+
+`ctx.schema.loadEventDefinition(name)` and `loadTableDefinition(name)` return validated substrate definitions whose column and parameter `type` values are canonicalized through `canonicalizeType` into a small DB-agnostic vocabulary so the model never sees dialect noise (bigint and int8 both become `int`). The event `params_fields` and table `partitions` are what P13b's `CriticGuardData` swaps into `makeCriticCtx({ candidateTables, eventParams, partitionCols })`, grounding the SQL critique the model performs.
+
+#### Token effect
+
+The parameter and partition tokens scale with the event or table field count and are included per critique turn; `load_*` is a sync read, so only the matched definition contributes.
+
+#### KV Cache effect
+
+Substrate definitions are stable on disk, so their rendered context repeats as a cacheable prefix across critiques of the same definition. A `syncWrite` or `updateTableMeta` Tier-2 write that changes a definition invalidates only that definition's cached context.
 
 ## Known Limitations and Deferred Work
 

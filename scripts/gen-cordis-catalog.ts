@@ -108,6 +108,11 @@ export const SERVICE_PAGE: Record<string, string> = {
   web: 'web.md',
   workflowEngine: 'workflow.md',
   workspaceRegistry: 'workspace.md',
+  audit: 'data-agent.md',
+  embedder: 'data-agent.md',
+  identity: 'data-agent.md',
+  nl2sql: 'data-agent.md',
+  schema: 'data-agent.md',
 }
 
 /**
@@ -156,6 +161,8 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   slots: 'client-side interface-typed browser service — packages/client/runtime/README.md owns the API',
   theme: 'client-side interface-typed browser service — packages/client/ui-theme/README.md owns the API',
   workspaces: 'client-side interface-typed browser service — packages/client/runtime/README.md owns the API',
+  query: 'abstract query-engine seam: source-only, consumed via ./src/* by providers (e.g. query-maxcompute); packages/query/query/README.md owns the seam',
+  retrieval: 'abstract retrieval seam: implemented by providers (e.g. retrieval-inproc); packages/retrieval/retrieval/README.md owns the seam',
 }
 
 /**
@@ -466,6 +473,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   CredentialRef: 'credentials.md',
   CredentialInfo: 'credentials.md',
   ResolvedCredential: 'credentials.md',
+  CredentialAddress: 'credentials.md',
   AskUserQuestionAnswer: 'user-questions.md',
   AskUserQuestionRequest: 'user-questions.md',
   UserQuestionProvider: 'user-questions.md',
@@ -519,11 +527,23 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
   'Record',
   'Readonly',
   'Uint8Array',
+  'Set',
 ])
 
 /** Project types deliberately documented outside the subsystems catalog. */
 export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   z: 'schemastery schema constructor is owned by vendor/schemastery (vendored upstream)',
+  AuditRecord: 'audit record contract is owned by packages/data/audit/src/store.ts',
+  Tier2WriteOpts: 'tier-2 write options contract is owned by packages/data/audit/src/index.ts',
+  EmbedResult: 'embed result contract is owned by packages/embedder/embedder/src/index.ts',
+  CallerIdentity: 'caller identity contract is owned by packages/identity/identity/src/index.ts',
+  EngineConventions: 'per-engine conventions contract is owned by packages/query/query-maxcompute/src/conventions.ts',
+  SchemaProvider: 'schema provider contract is owned by packages/data/semantic-layer/src/index.ts',
+  EventDefinition: 'event definition contract is owned by packages/data/semantic-layer/src/types.ts',
+  TableDefinition: 'table definition contract is owned by packages/data/semantic-layer/src/types.ts',
+  TableMeta: 'table metadata contract is owned by packages/data/semantic-layer/src/types.ts',
+  ToolExecView: 'tool execution view contract is owned by packages/data/audit/src/index.ts',
+  ToolResultView: 'tool result view contract is owned by packages/data/audit/src/index.ts',
   BeginCommandRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   InsertReferenceRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   ConsumeTokenRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',

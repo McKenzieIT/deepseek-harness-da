@@ -458,6 +458,35 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'audit',
+    summary: 'Per-user audit service.',
+    description: 'Per-user audit service. Owns a SQLiteAuditStore (opened synchronously in the constructor) and registers observe-only `tools/post-execute` + `session/event` listeners. The store is a sibling seam (`ctx.audit`), NOT routed through `ctx.storage` (KV-only — no relational tables/indexes).',
+    methods: [
+      {
+        signature: 'recordTool(exec: ToolExecView, result: ToolResultView): void',
+        description: 'Record one tool call from `tools/post-execute` (allowed or denied). A `qoder_call` tag is emitted when the delegating tool surfaced G3 Credits (`result.value.costs`); a denied call is captured as `isError` with the deny reason in `result.error.message` (the real API has no `decision` param, so a distinct `guard_deny` tag is not auto-emitted here — record one explicitly via record from the P10 intranet tool-gate).',
+        parameters: [{ name: 'exec', description: 'the post-execute tool view (name, arguments, calling agent\'s session id).' }, { name: 'result', description: 'the tool result view (isError, value/content, error); a deny surfaces as `isError` with the reason in `error.message`.' }],
+      },
+      {
+        signature: 'recordSessionEvent(session: Session, event: SessionEvent): void',
+        description: 'Record one `session/event` (emit; observe-only).',
+        parameters: [{ name: 'session', description: 'the Cordis session that emitted the event (its `id` threads `session_id`).' }, { name: 'event', description: 'the session event (`type` + `data`), captured into `extra.event_type`/`extra.details`.' }],
+      },
+      {
+        signature: 'recordTier2Write(toolName: string, payload: unknown, opts: Tier2WriteOpts = {}): string',
+        description: 'Tier-2 persistent-write 留痕 (mirror RBI record_tier2_write). Hash, NOT body — answers "who/when/which scope/which version", not the content (intranet-security-first). Fail-silent: a 留痕 failure never breaks the business write. Called by P6 semantic-layer etc.',
+        parameters: [{ name: 'toolName', description: 'the name of the tier-2 tool performing the persistent write.' }, { name: 'payload', description: 'the write body (string or JSON-serializable); hashed, never stored as plaintext.' }, { name: 'opts', description: 'optional identity override (scope/tenant/user/session ids); absent fields fall back to the resolved caller identity.' }],
+        returns: 'the appended record\'s `log_id` (returned even when fail-silent logs the error, so the business write proceeds).',
+      },
+      {
+        signature: 'record(rec: AuditRecord | Record<string, unknown>): string',
+        description: 'Direct record (test hook + explicit `guard_deny`/correction tagging).',
+        parameters: [{ name: 'rec', description: 'the audit record payload (or a partial payload normalized via `fromPayload`).' }],
+        returns: 'the appended record\'s `log_id`.',
+      },
+    ],
+  },
+  {
     key: 'clientModules',
     summary: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index tap.',
     description: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index tap. Construction runs the activation scan synchronously — a malformed declaration or missing bundle among the already-loaded entries aggregates into one loud throw (FAILED fiber; the boot activation audit reports it).',
@@ -581,26 +610,26 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Abstract credential service. Providers implement the four operations over their source layers; one seam-wide rule binds them all: an empty stored value is absent everywhere — `resolve` skips it, `describe` reports it unconfigured — so a blank never masquerades as a configured secret.',
     methods: [
       {
-        signature: 'abstract resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined>',
+        signature: 'abstract resolve(ref: CredentialRef, address?: CredentialAddress): Promise<ResolvedCredential | undefined>',
         description: 'Resolve one reference to its current value. Resolution is per call: consumers re-resolve at each operation and must not cache across operations — that per-operation read is what makes a changed credential reach the next operation without a restart.',
-        parameters: [{ name: 'ref', description: 'the reference to resolve.' }],
+        parameters: [{ name: 'ref', description: 'the reference to resolve.' }, { name: 'address', description: 'the per-user/scope slot to resolve within, when the provider distinguishes one; absent for a global/shared credential.' }],
         returns: 'the value and its source, or `undefined` while unconfigured.',
       },
       {
-        signature: 'abstract describe(ref: CredentialRef): Promise<CredentialInfo>',
+        signature: 'abstract describe(ref: CredentialRef, address?: CredentialAddress): Promise<CredentialInfo>',
         description: 'Describe one reference for configuration surfaces without exposing the value.',
-        parameters: [{ name: 'ref', description: 'the reference to describe.' }],
+        parameters: [{ name: 'ref', description: 'the reference to describe.' }, { name: 'address', description: 'the per-user/scope slot to describe, when the provider distinguishes one; absent for a global/shared credential.' }],
         returns: 'configured state, supplying source, and writability.',
       },
       {
-        signature: 'abstract set(ref: CredentialRef, value: string): Promise<void>',
+        signature: 'abstract set(ref: CredentialRef, value: string, address?: CredentialAddress): Promise<void>',
         description: 'Durably store one value in the provider-managed writable source. Rejects while a read-only source shadows the reference — the write would appear to succeed while resolution keeps returning the shadowing value — and rejects an empty value (use unset).',
-        parameters: [{ name: 'ref', description: 'the reference to store.' }, { name: 'value', description: 'the non-empty secret value.' }],
+        parameters: [{ name: 'ref', description: 'the reference to store.' }, { name: 'value', description: 'the non-empty secret value.' }, { name: 'address', description: 'the per-user/scope slot to store within, when the provider distinguishes one; absent for a global/shared credential.' }],
       },
       {
-        signature: 'abstract unset(ref: CredentialRef): Promise<void>',
+        signature: 'abstract unset(ref: CredentialRef, address?: CredentialAddress): Promise<void>',
         description: 'Remove one reference from the provider-managed writable source; removing an absent reference is a no-op. Rejects while a read-only source shadows the reference, like set.',
-        parameters: [{ name: 'ref', description: 'the reference to remove.' }],
+        parameters: [{ name: 'ref', description: 'the reference to remove.' }, { name: 'address', description: 'the per-user/scope slot to remove, when the provider distinguishes one; absent for a global/shared credential.' }],
       },
     ],
   },
@@ -638,6 +667,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [],
         returns: 'the created sandbox after the configured cwd exists.',
         throws: ['when E2B rejects creation or the service is disposing.'],
+      },
+    ],
+  },
+  {
+    key: 'embedder',
+    summary: 'Abstract embedder service.',
+    description: 'Abstract embedder service. Providers implement `embed` (async — HTTP inference must not block the event loop). `dim` is informational and MAY be `undefined` until the first embed discovers it (HTTP embedder); consumers infer the working dimension from the embedded vectors\' length rather than reading `dim` upfront.',
+    methods: [
+      {
+        signature: 'abstract embed(texts: readonly string[]): Promise<EmbedResult>',
+        description: 'Embed a batch of texts. The result aligns to the input order. A thrown InferenceError signals the retrieval provider to degrade to BM25-only.',
+        parameters: [{ name: 'texts', description: 'the texts to embed.' }],
+        returns: 'one L2-normalized vector per text, aligned to `texts`.',
       },
     ],
   },
@@ -804,6 +846,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Create one Goal through the remote boundary.',
         parameters: [{ name: 'agent', description: 'exact live Agent resolved from the wire identity.' }, { name: 'request', description: 'objective and optional round cap.' }],
         returns: 'the created Goal identity.',
+      },
+    ],
+  },
+  {
+    key: 'identity',
+    summary: 'Per-user caller identity service.',
+    description: 'Per-user caller identity service. The default implementation returns `undefined` (the T1 fallback: no per-user login state yet); P9\'s admin package overrides current to return the logged-in caller\'s identity, after which per-user PAT resolution and audit attribute to that principal.',
+    methods: [
+      {
+        signature: 'current(): CallerIdentity | undefined',
+        description: 'The current caller\'s identity, or `undefined` while no per-user login state is populated (the T1 fallback). P9 populates this from the web-login `Tenant` and the access-link-resolved scope.',
+        parameters: [],
+        returns: 'the caller identity, or `undefined` for an anonymous/global caller.',
       },
     ],
   },
@@ -1005,6 +1060,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'nl2sql',
+    summary: 'The nl2sql-engine Cordis `Service`.',
+    description: 'The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-gate hooks); holds the loaded conventions + exposes them for the preset / phase-gate. The logic functions are standalone exports (above); this service is the mount point + `ctx.nl2sql` seam. The `search_data_sources` model-facing tool registration is deferred (see module doc).',
+    methods: [
+      {
+        signature: 'getConventions(): EngineConventions',
+        description: 'The loaded per-engine conventions (prompt dialect grounding).',
+        parameters: [],
+        returns: 'The loaded per-engine conventions.',
+      },
+    ],
+  },
+  {
     key: 'permissionPresets',
     summary: 'Owns the deployment\'s permission presets and their write path.',
     description: 'Owns the deployment\'s permission presets and their write path. Requires a confining `ctx.shell` executor and `ctx.approval`; unmatched knob values are reported as CUSTOM_PRESET, not an error.',
@@ -1100,6 +1168,60 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read the session override without applying the deployment default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
         returns: 'the last logged mode, or `undefined` without one.',
+      },
+    ],
+  },
+  {
+    key: 'schema',
+    summary: 'The semantic-layer Cordis `Service`.',
+    description: 'The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-ODPS schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.',
+    methods: [
+      {
+        signature: 'setSchemaProvider(provider: SchemaProvider | undefined): void',
+        description: 'Mount a live-ODPS schema provider (P6b Q3 deferred; follow-up mounts the real one).',
+        parameters: [{ name: 'provider', description: 'the provider to delegate discover/describe/sample to, or undefined to clear.' }],
+      },
+      {
+        signature: 'loadEventDefinition(name: string): EventDefinition | null',
+        description: 'Load a validated event definition by name from the substrate.',
+        parameters: [{ name: 'name', description: 'the event `name` key to match.' }],
+        returns: 'the parsed `EventDefinition`, or null when no event matches.',
+      },
+      {
+        signature: 'loadTableDefinition(name: string): TableDefinition | null',
+        description: 'Load a validated table definition by name from the substrate.',
+        parameters: [{ name: 'name', description: 'the table `table_name` key to match.' }],
+        returns: 'the parsed `TableDefinition`, or null when no table matches.',
+      },
+      {
+        signature: 'async discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>',
+        description: 'List tables in a scope (optionally filtered by kind) via the mounted provider.',
+        parameters: [{ name: 'scopeId', description: 'the scope to discover tables in.' }, { name: 'kind', description: 'optional kind filter forwarded to the provider.' }],
+        returns: 'a readonly array of table metas, or throws when no provider is mounted.',
+      },
+      {
+        signature: 'async describe(tableName: string): Promise<TableMeta | null>',
+        description: 'Describe one table\'s columns/partitions/comment via the mounted provider.',
+        parameters: [{ name: 'tableName', description: 'the table name to describe.' }],
+        returns: 'the table\'s meta, or null when the table is unknown / no provider is mounted.',
+      },
+      {
+        signature: 'async sample(tableName: string, n?: number): Promise<string>',
+        description: 'Sample N rows of a table as formatted text via the mounted provider.',
+        parameters: [{ name: 'tableName', description: 'the table name to sample.' }, { name: 'n', description: 'optional row count to sample (provider default applies when omitted).' }],
+        returns: 'the formatted sample text, or throws when no provider is mounted.',
+      },
+      {
+        signature: 'async syncWrite( tableMetas: readonly TableMeta[], opts: { readonly dimTableNames?: Set<string> readonly existingTables?: Map<string, Record<string, unknown>> readonly scopeId?: string } = {}, ): Promise<{ written: number; skipped: number; errors: string[] }>',
+        description: 'Tier-2 persistent write: batch-generate/merge table YAML from pre-fetched schema metas and write them to the substrate, recording each write via `ctx.audit` (D5 non-disableable). Routes to `syncWriteDefinitions`.',
+        parameters: [{ name: 'tableMetas', description: 'the table metas to write (from discover/describe).' }, { name: 'opts', description: 'optional dim-table-name set, existing-table map for merge, and scope id override.' }],
+        returns: 'counts of written/skipped tables plus per-table error messages.',
+      },
+      {
+        signature: 'async updateTableMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }>',
+        description: 'Tier-2 per-scope write: read-merge-validate-write a single table\'s meta updates, recording the write via `ctx.audit` (D5 non-disableable).',
+        parameters: [{ name: 'name', description: 'the table `table_name` to update.' }, { name: 'updates', description: 'the field overrides merged over the existing table YAML.' }, { name: 'opts', description: 'optional scope id override (default scope id is used when omitted).' }],
+        returns: '`{ ok: true, table_name }` on success, or `{ ok: false, error }` when the table is missing/malformed or validation fails.',
       },
     ],
   },
@@ -2447,10 +2569,10 @@ export const EVENT_API: readonly EventApiEntry[] = [
   {
     name: 'credentials/updated',
     mode: 'emit',
-    signature: '\'credentials/updated\'(ref: CredentialRef): void',
+    signature: '\'credentials/updated\'(ref: CredentialRef, address?: CredentialAddress): void',
     summary: 'Committed change to a provider-managed credential source: a `set`, an `unset`, or an external edit observed in storage.',
     description: 'Committed change to a provider-managed credential source: a `set`, an `unset`, or an external edit observed in storage. Ambient process-environment changes are not observable and never emit. Listener failures are contained and logged — a sync throw and an async rejection alike — without changing the committed operation\'s outcome, except `INVARIANT`-coded failures, which rethrow after every listener ran; that rethrow reaches the emitter only from synchronous listeners, so invariant checks on this event must not be async functions.',
-    parameters: [{ name: 'ref', description: 'the reference whose stored value changed.' }],
+    parameters: [{ name: 'ref', description: 'the reference whose stored value changed.' }, { name: 'address', description: 'per-user/scope slot this change is scoped to; absent for a global/shared change.' }],
   },
   {
     name: 'domain/changed',
@@ -2825,6 +2947,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AttachmentId = Branded<\'AttachmentId\'>;',
   },
   {
+    name: 'AuditRecord',
+    declaration: 'export type AuditRecord = z.infer<typeof AuditRecord>;',
+  },
+  {
     name: 'BackendRegistry',
     declaration: 'export class BackendRegistry {\n    register(name: string, backend: StorageBackend): () => void;\n    get(name: string): StorageBackend;\n    names(): string[];\n}',
   },
@@ -2843,6 +2969,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'Branded',
     declaration: 'export type Branded<B extends string> = string & {\n    readonly [BRAND]: B;\n};',
+  },
+  {
+    name: 'CallerIdentity',
+    declaration: 'export interface CallerIdentity {\n    readonly userId?: UserId;\n    readonly scopeId?: ScopeId;\n    readonly tenantId?: string;\n}',
   },
   {
     name: 'CancelOptions',
@@ -3029,6 +3159,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CreateTeamTaskRequest {\n    readonly subject: string;\n    readonly description: string;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly writeScopes?: readonly string[];\n}',
   },
   {
+    name: 'CredentialAddress',
+    declaration: 'export interface CredentialAddress {\n    readonly userId?: UserId;\n    readonly scopeId?: ScopeId;\n}',
+  },
+  {
     name: 'CredentialInfo',
     declaration: 'export interface CredentialInfo {\n    configured: boolean;\n    source?: string;\n    writable: boolean;\n}',
   },
@@ -3141,12 +3275,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EditGoalRequest {\n    readonly objective?: string;\n    readonly maxGoalRounds?: number;\n}',
   },
   {
+    name: 'Embedding',
+    declaration: 'export type Embedding = readonly number[];',
+  },
+  {
+    name: 'EmbedResult',
+    declaration: 'export type EmbedResult = readonly Embedding[];',
+  },
+  {
     name: 'EncodedImageAttachment',
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
   },
   {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
+  },
+  {
+    name: 'EventDefinition',
+    declaration: 'export type EventDefinition = z.infer<typeof EventDefinitionSchema>;',
   },
   {
     name: 'FileDiff',
@@ -3817,8 +3963,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ScheduledToolPreparation = {\n    kind: \'dispatch\';\n    exec: ToolRunContext;\n} | {\n    kind: \'post-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n} | {\n    kind: \'final-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n};',
   },
   {
+    name: 'SchemaProvider',
+    declaration: 'export interface SchemaProvider {\n    discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>;\n    describe(tableName: string): Promise<TableMeta | null>;\n    sample(tableName: string, n?: number): Promise<string>;\n}',
+  },
+  {
     name: 'Scoped',
     declaration: 'export type Scoped<T extends object> = object & {\n    readonly [ScopedBrand]: T;\n};',
+  },
+  {
+    name: 'ScopeId',
+    declaration: 'export type ScopeId = Branded<\'ScopeId\'>;',
   },
   {
     name: 'ScopeKey',
@@ -4245,6 +4399,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SubagentCapabilities {\n    readonly outputSchema: boolean;\n    readonly depthLimit: boolean;\n    readonly toolFilter: boolean;\n    readonly persona: boolean;\n}',
   },
   {
+    name: 'SubagentCosts',
+    declaration: 'export interface SubagentCosts {\n    readonly total_cost_usd: number;\n    readonly total_credits?: number | null;\n    readonly usage?: JsonValue;\n    readonly modelUsage?: JsonValue;\n    readonly [key: string]: JsonValue;\n}',
+  },
+  {
     name: 'SubagentDescendantListEntry',
     declaration: 'export type SubagentDescendantListEntry = SubagentListEntry & {\n    readonly parentId: SessionId;\n    readonly depth: number;\n};',
   },
@@ -4274,7 +4432,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SubagentResult',
-    declaration: 'export interface SubagentResult {\n    readonly output: ContentBlock[];\n    readonly structured?: unknown;\n    readonly diagnostic?: string;\n    readonly stopReason: SubagentStopReason;\n}',
+    declaration: 'export interface SubagentResult {\n    readonly output: ContentBlock[];\n    readonly structured?: unknown;\n    readonly diagnostic?: string;\n    readonly stopReason: SubagentStopReason;\n    readonly costs?: SubagentCosts;\n}',
   },
   {
     name: 'SubagentRun',
@@ -4381,8 +4539,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export class SystemPrompt extends Service {\n    static Config: z<Config>;\n    constructor(ctx: Context, config: Config);\n    section(section: PromptSection): () => void;\n    context(context: PromptContext): () => void;\n    suppressRuntimeContext(): () => void;\n    tools(provider: (context: AssembleContext) => ToolProviderResult): () => void;\n    variable(name: string, provider: (context: AssembleContext) => string | undefined): () => void;\n    async assemble(context: AssembleContext = {}): Promise<PromptAssembly>;\n}',
   },
   {
+    name: 'TableDefinition',
+    declaration: 'export type TableDefinition = z.infer<typeof TableDefinitionSchema>;',
+  },
+  {
     name: 'TableKeyOf',
     declaration: 'export type TableKeyOf<S extends DomainSpec, N extends keyof S[\'tables\']> = S[\'tables\'][N] extends DomainTableSpec<infer K> ? K : never;',
+  },
+  {
+    name: 'TableMeta',
+    declaration: 'export type TableMeta = z.infer<typeof TableMetaSchema>;',
   },
   {
     name: 'TableValueOf',
@@ -4707,6 +4873,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'UpdateTeamTaskRequest',
     declaration: 'export interface UpdateTeamTaskRequest {\n    readonly taskId: TeamTaskId;\n    readonly expectedRevision: number;\n    readonly action: TeamTaskAction;\n    readonly subject?: string;\n    readonly description?: string;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly writeScopes?: readonly string[];\n    readonly owner?: string;\n}',
+  },
+  {
+    name: 'UserId',
+    declaration: 'export type UserId = Branded<\'UserId\'>;',
   },
   {
     name: 'UserMessage',

@@ -342,6 +342,26 @@ export interface Config {
 
 Source: [`packages/attachment/attachment-local/src/index.ts:31`](../packages/attachment/attachment-local/src/index.ts)
 
+<a id="deepseek-aidsh-audit"></a>
+
+## `@deepseek-ai/dsh-audit`
+
+Requires: `identity`
+
+```ts config-catalog
+/** Audit service configuration. */
+export interface AuditConfig {
+  /**
+   * Filesystem path to the audit SQLite database file, or `:memory:` (tests).
+   * Missing directories and the database file are created owner-only (0o700 /
+   * 0o600) — intranet-security-first. Production default `var/audit/audit.db`.
+   */
+  readonly path: string
+}
+```
+
+Source: [`packages/data/audit/src/index.ts:61`](../packages/data/audit/src/index.ts)
+
 <a id="deepseek-aidsh-bash-local"></a>
 
 ## `@deepseek-ai/dsh-bash-local`
@@ -549,6 +569,43 @@ export interface Config {
 
 Source: [`packages/extensions/cordis-host-runner/src/index.ts:88`](../packages/extensions/cordis-host-runner/src/index.ts)
 
+<a id="deepseek-aidsh-credentials-keychain-host"></a>
+
+## `@deepseek-ai/dsh-credentials-keychain-host`
+
+```ts config-catalog
+/** Deployment config: keychain location/lock policy, unlock-password source, fallback refs, injectable runner. */
+export interface HostConfig {
+  /** Filesystem path to the keychain store, forwarded to `KeychainCredentialProvider` when set. */
+  readonly path?: string
+  /**
+   * DSH home directory used to resolve the keychain store path when `path` is
+   * unset; forwarded to `KeychainCredentialProvider` when set.
+   */
+  readonly dshHome?: string
+  /** Seconds of keychain inactivity after which the store auto-locks (re-encrypts); forwarded to `KeychainCredentialProvider` when set. */
+  readonly autoLockSeconds?: number
+  /** Whether to lock the keychain on system sleep/suspend; forwarded to `KeychainCredentialProvider` when set. */
+  readonly lockOnSleep?: boolean
+  /** unlock password source: interactive (default, tty stdin, non-tty→undefined) | env | none. */
+  readonly unlockPasswordSource?: 'interactive' | 'env' | 'none'
+  /** Name of the environment variable holding the keychain unlock password (required when `unlockPasswordSource` is `'env'`). */
+  readonly unlockPasswordEnv?: string
+  /** refs eligible for per-user→global fallback; undefined=early(all), list=stable(gated). */
+  readonly perUserFallbackRefs?: readonly string[]
+  /** Filesystem path to the credentials-local fallback file, overriding the default `.credentials.yaml` location. */
+  readonly credentialsPath?: string
+  /** DSH home directory used to resolve the credentials-local fallback file path when `credentialsPath` is unset. */
+  readonly credentialsDshHome?: string
+  /** Injectable `security` runner; default `securityCli`, a fake in tests. */
+  readonly runner?: SecurityRunner
+}
+```
+
+Depends on: [`SecurityRunner`](../packages/credentials/credentials-keychain/src/index.ts)
+
+Source: [`packages/credentials/credentials-keychain-host/src/index.ts:50`](../packages/credentials/credentials-keychain-host/src/index.ts)
+
 <a id="deepseek-aidsh-credentials-local"></a>
 
 ## `@deepseek-ai/dsh-credentials-local`
@@ -586,6 +643,50 @@ export interface Config {
 ```
 
 Source: [`packages/e2b/e2b/src/index.ts:43`](../packages/e2b/e2b/src/index.ts)
+
+<a id="deepseek-aidsh-embedder-fakehash"></a>
+
+## `@deepseek-ai/dsh-embedder-fakehash`
+
+```ts config-catalog
+/** Configuration for the FakeHash embedder provider. */
+export interface FakeHashConfig {
+  /** Hash-vector dimension (default 256, mirrors rbi + the P5 prototype). */
+  readonly dim?: number
+}
+```
+
+Source: [`packages/embedder/embedder-fakehash/src/index.ts:28`](../packages/embedder/embedder-fakehash/src/index.ts)
+
+<a id="deepseek-aidsh-embedder-http"></a>
+
+## `@deepseek-ai/dsh-embedder-http`
+
+```ts config-catalog
+/** Configuration for the Infinity embedder provider. */
+export interface InfinityEmbedderConfig {
+  /** Base URL of the OpenAI-compatible embedding service (e.g. `http://127.0.0.1:4143`). */
+  readonly url: string
+  /** Model name the serving framework exposes (e.g. `bge-m3`). */
+  readonly model: string
+  /** Per-request timeout in ms (default 2000). */
+  readonly timeout?: number
+  /** Injectable fetch (tests); defaults to the global fetch. */
+  readonly fetch?: FetchLike
+}
+
+/** Minimal fetch shape the helpers depend on (decoupled from the full Response type). */
+export interface FetchLike {
+  (url: string, init?: {
+    readonly method?: string
+    readonly headers?: Record<string, string>
+    readonly body?: string
+    readonly signal?: AbortSignal
+  }): Promise<{ readonly ok: boolean; readonly status: number; json(): Promise<unknown> }>
+}
+```
+
+Source: [`packages/embedder/embedder-http/src/index.ts:149`](../packages/embedder/embedder-http/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-agent-team"></a>
 
@@ -899,6 +1000,65 @@ export interface Config {
 ```
 
 Source: [`packages/jobs/jobs-local/src/index.ts:31`](../packages/jobs/jobs-local/src/index.ts)
+
+<a id="deepseek-aidsh-llm-dashscope"></a>
+
+## `@deepseek-ai/dsh-llm-dashscope`
+
+Requires: `llm`
+
+```ts config-catalog
+/**
+ * Plugin config, validated by the same-named schemastery schema and doubling as the `llm-dashscope`
+ * settings-section shape. Every field is optional in yml: a missing API key resolves through
+ * {@link Config.apiKeyEnv} at each request (a request without any key fails with
+ * `MISSING_CREDENTIAL`, not at plugin load). No `thinking`/`reasoningEffort` — the native protocol
+ * has no per-request thinking knob.
+ */
+export interface Config {
+  /** Credential reference (environment-variable name) resolved per request; defaults to `DASHSCOPE_API_KEY`. */
+  apiKeyEnv?: string
+  /**
+   * Endpoint base (the full generation URL); falls back to $DASHSCOPE_BASE_URL from a trusted
+   * environment layer, then the public AGA gateway.
+   */
+  baseURL?: string
+  /** Default per-request output cap (default 8,192); a model's own cap and explicit request values win. */
+  maxTokens?: number
+  /**
+   * Positive context capacity used when the selected model has no exact value (default
+   * 131,072; provisional — qwen model-specific windows not in `/api/v1/models`).
+   */
+  defaultContextWindow?: number
+  /** Advisory models shown by discovery consumers; defaults to a qwen subset. */
+  models?: DashScopeCatalogModel[]
+  /**
+   * Maximum provider idle time while one stream read is outstanding (default five minutes;
+   * the gateway queues under load, so keep generous).
+   */
+  streamIdleTimeoutMs?: number
+  /** Provider-owned model-request retry policy; omission uses normal defaults. */
+  retryPolicy?: RetryPolicyConfig
+}
+
+/** One optional model entry advertised by the direct-fetch adapter. */
+export interface DashScopeCatalogModel {
+  /** Wire model id accepted by the configured endpoint. */
+  id: string
+  /** Selector label; defaults to {@link id}. */
+  name?: string
+  /** Optional selector detail for deployments with similar model variants. */
+  description?: string
+  /** Known combined request/response context capacity; omitted when deployment metadata is unavailable. */
+  contextWindow?: number
+  /** Per-request output cap for this model; omission falls back to the profile's {@link DashScopeConnectionOptions.maxTokens}. */
+  maxTokens?: number
+}
+```
+
+Depends on: [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts)
+
+Source: [`packages/llm/llm-dashscope/src/index.ts:69`](../packages/llm/llm-dashscope/src/index.ts)
 
 <a id="deepseek-aidsh-llm-deepseek"></a>
 
@@ -1421,6 +1581,20 @@ export interface Config {
 
 Source: [`packages/feedback/message-feedback/src/index.ts:49`](../packages/feedback/message-feedback/src/index.ts)
 
+<a id="deepseek-aidsh-nl2sql-engine"></a>
+
+## `@deepseek-ai/dsh-nl2sql-engine`
+
+```ts config-catalog
+/** Configuration for the nl2sql-engine service (conventions engine name). */
+export interface Nl2sqlEngineConfig {
+  /** Conventions engine name (routes `load_conventions`; default `maxcompute`). */
+  readonly conventionsEngine?: string
+}
+```
+
+Source: [`packages/data/nl2sql-engine/src/index.ts:46`](../packages/data/nl2sql-engine/src/index.ts)
+
 <a id="deepseek-aidsh-permission-presets"></a>
 
 ## `@deepseek-ai/dsh-permission-presets`
@@ -1483,6 +1657,37 @@ export interface Config {
 ```
 
 Source: [`packages/preset/persona/src/index.ts:34`](../packages/preset/persona/src/index.ts)
+
+<a id="deepseek-aidsh-phase-gate"></a>
+
+## `@deepseek-ai/dsh-phase-gate`
+
+Requires: `tools` · `systemPrompt` · `agents`
+
+```ts config-catalog
+/** Runtime config schema (rbi `PipelineConfig` overrides; D6 adopts defaults). */
+export interface Config extends PhaseGateConfig {}
+
+/** Configuration overrides for the `PhaseGate` plugin; unset fields fall back to the adopted `PipelineConfig` defaults. */
+export interface PhaseGateConfig {
+  /** Scope identifier the per-agent phase-gate state is rooted in; passed to `freshPhaseGateState`, defaults to `'game-1'` when unset. */
+  scopeId?: string
+  /** Maximum number of phase fallbacks (retreats to an earlier phase) permitted per turn before honest decline. */
+  max_fallbacks?: number
+  /** Maximum number of atomic sub-questions a compound question may decompose into during UNDERSTANDING. */
+  max_subquestions?: number
+  /** Maximum `query_data` executions permitted per turn; reaching it triggers a pre-execute guard reject and honest decline. */
+  max_executions_per_turn?: number
+  /** Maximum LLM calls charged per turn (counted at `llm/stream` start); reaching it triggers honest decline. */
+  max_llm_calls_per_turn?: number
+  /** Maximum turns a kick may run before honest decline (the per-kick turn budget). */
+  max_state_turns?: number
+  /** Seconds with no agent events before the stall watchdog fires an honest decline and cancels the kick. */
+  stall_watchdog_seconds?: number
+}
+```
+
+Source: [`packages/data/phase-gate/src/index.ts:52`](../packages/data/phase-gate/src/index.ts)
 
 <a id="deepseek-aidsh-plan-mode"></a>
 
@@ -1555,6 +1760,30 @@ Depends on: [`LocalConfig`](#deepseek-aidsh-pwsh-local)
 
 Source: [`packages/shell/pwsh-sandbox/src/index.ts:40`](../packages/shell/pwsh-sandbox/src/index.ts)
 
+<a id="deepseek-aidsh-query-maxcompute"></a>
+
+## `@deepseek-ai/dsh-query-maxcompute`
+
+Requires: `credentials`
+
+```ts config-catalog
+/** Plugin config (all optional except `args` — `static Config` supplies defaults). */
+export interface Config {
+  /** Sidecar executable (default: the node binary; production: `python`). */
+  command?: string
+  /** Sidecar args — the sidecar script path plus its args. Required. */
+  args: string[]
+  /** Sidecar spawn cwd (default: process.cwd()). */
+  cwd?: string
+  /** Per tools/call timeout in ms; the SDK sends notifications/cancelled + rejects. */
+  toolCallTimeoutMs?: number
+  /** Max consecutive re-spawn attempts before the crash-loop gives up (G4 Q1). */
+  crashLoopMaxAttempts?: number
+}
+```
+
+Source: [`packages/query/query-maxcompute/src/index.ts:75`](../packages/query/query-maxcompute/src/index.ts)
+
 <a id="deepseek-aidsh-repeat-tool-reminder"></a>
 
 ## `@deepseek-ai/dsh-repeat-tool-reminder`
@@ -1588,6 +1817,46 @@ export interface Config {
 ```
 
 Source: [`packages/guard/repeat-tool-reminder/src/index.ts:28`](../packages/guard/repeat-tool-reminder/src/index.ts)
+
+<a id="deepseek-aidsh-retrieval-inproc"></a>
+
+## `@deepseek-ai/dsh-retrieval-inproc`
+
+Requires: `embedder`
+
+```ts config-catalog
+/** Configuration for the in-process retrieval provider. */
+export interface InProcRetrievalConfig {
+  /** Corpus to index (DataSourceDoc-shaped); empty until P6b `ctx.schema` ships. */
+  readonly dataSources?: readonly RetrievalCorpusItem[]
+  /** Default top-K when a retrieve call omits `topK` (default 10, mirrors rbi). */
+  readonly topK?: number
+  /** Optional reranker peer (applied after RRF); wired programmatically. */
+  readonly reranker?: Reranker
+}
+
+/** A corpus item the retriever indexes (DataSourceDoc-shaped). */
+export interface RetrievalCorpusItem {
+  /** Unique identifier (name) of the data-source document; repeated by the `id` field weight when building the indexed corpus text. */
+  readonly id: string
+  /**
+   * Optional human-readable description of the data source;
+   * repeated by the `description` field weight when building the indexed corpus text.
+   */
+  readonly description?: string
+  /**
+   * Optional metric definitions keyed by metric name;
+   * each metric name is repeated by the `metric` field weight when building the indexed corpus text.
+   */
+  readonly metrics?: Record<string, unknown>
+  /** Opaque extra payload carried through to the hit (e.g. the full doc). */
+  readonly payload?: unknown
+}
+```
+
+Depends on: `Reranker` (`@deepseek-ai/dsh-embedder/src/index.ts`)
+
+Source: [`packages/retrieval/retrieval-inproc/src/index.ts:34`](../packages/retrieval/retrieval-inproc/src/index.ts)
 
 <a id="deepseek-aidsh-sandbox-local"></a>
 
@@ -1671,6 +1940,22 @@ export interface JsonRpcConfig {
 Depends on: `Readable` (`node:stream`) · `Writable` (`node:stream`)
 
 Source: [`packages/sdk/server/src/index.ts:25`](../packages/sdk/server/src/index.ts)
+
+<a id="deepseek-aidsh-semantic-layer"></a>
+
+## `@deepseek-ai/dsh-semantic-layer`
+
+```ts config-catalog
+/** Configuration for the `ctx.schema` Cordis Service (semantic-layer root + default scope id). */
+export interface SemanticLayerConfig {
+  /** Semantic-layer scope root (the dir with config.yaml/events/tables). */
+  readonly semanticRoot?: string
+  /** Default scope id for Tier-2 audit + schema discovery. */
+  readonly scopeId?: string
+}
+```
+
+Source: [`packages/data/semantic-layer/src/index.ts:94`](../packages/data/semantic-layer/src/index.ts)
 
 <a id="deepseek-aidsh-session-persistence-jsonl"></a>
 
@@ -2317,6 +2602,28 @@ export interface Config {
 
 Source: [`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
 
+<a id="deepseek-aidsh-subagent-qoder"></a>
+
+## `@deepseek-ai/dsh-subagent-qoder`
+
+Requires: `subagents` · `credentials` · `identity`
+
+```ts config-catalog
+/** Deployment-owned model selection and process-release bound. */
+export interface Config {
+  /**
+   * Qoder platform model id forwarded to the SDK as `options.model` (e.g.
+   * `'auto'`, `'performance'`, or a named model). Omit to let Qoder choose.
+   * Consumes the PAT holder's Qoder Credits.
+   */
+  readonly model?: string
+  /** Grace in milliseconds for Qoder query teardown. */
+  readonly disposeGraceMs?: number
+}
+```
+
+Source: [`packages/subagent/subagent-qoder/src/index.ts:70`](../packages/subagent/subagent-qoder/src/index.ts)
+
 <a id="deepseek-aidsh-subagent-spawn-in-process"></a>
 
 ## `@deepseek-ai/dsh-subagent-spawn-in-process`
@@ -2695,6 +3002,22 @@ export interface Config {
 ```
 
 Source: [`packages/workflow/tool-ralph/src/index.ts:23`](../packages/workflow/tool-ralph/src/index.ts)
+
+<a id="deepseek-aidsh-tool-search-data-sources"></a>
+
+## `@deepseek-ai/dsh-tool-search-data-sources`
+
+Requires: `tools`
+
+```ts config-catalog
+/** Configuration for the search_data_sources tool. */
+export interface Config {
+  /** Default candidate count when the call omits `top_k` (P13b engine default 5). */
+  readonly topK?: number
+}
+```
+
+Source: [`packages/data/tool-search-data-sources/src/index.ts:39`](../packages/data/tool-search-data-sources/src/index.ts)
 
 <a id="deepseek-aidsh-tool-session-query"></a>
 
@@ -3238,6 +3561,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-host-directory-picker-auto` — requires `webServer` · `loader` ([`packages/host/directory-picker-auto/src/index.ts`](../packages/host/directory-picker-auto/src/index.ts))
 - `@deepseek-ai/dsh-host-directory-picker-native` ([`packages/host/directory-picker-native/src/index.ts`](../packages/host/directory-picker-native/src/index.ts))
 - `@deepseek-ai/dsh-host-plugin-inventory` — requires `loader` ([`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts))
+- `@deepseek-ai/dsh-identity` ([`packages/identity/identity/src/index.ts`](../packages/identity/identity/src/index.ts))
 - `@deepseek-ai/dsh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
 - `@deepseek-ai/dsh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
 - `@deepseek-ai/dsh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
@@ -3266,10 +3590,13 @@ Abstract service classes — a deployment loads a concrete implementation packag
 - `@deepseek-ai/dsh-code-runtime` — abstract `CodeRuntime` ([`packages/code-runtime/code-runtime/src/index.ts`](../packages/code-runtime/code-runtime/src/index.ts))
 - `@deepseek-ai/dsh-compaction` — abstract `CompactionEngine` ([`packages/compaction/compaction/src/index.ts`](../packages/compaction/compaction/src/index.ts))
 - `@deepseek-ai/dsh-credentials` — abstract `CredentialProvider` ([`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts))
+- `@deepseek-ai/dsh-embedder` — abstract `EmbedderService` ([`packages/embedder/embedder/src/index.ts`](../packages/embedder/embedder/src/index.ts))
 - `@deepseek-ai/dsh-file-reference` — abstract `FileReferenceService` ([`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts))
 - `@deepseek-ai/dsh-fs` — abstract `FileSystem` ([`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts))
 - `@deepseek-ai/dsh-host-directory-picker` — abstract `DirectoryPicker` ([`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts))
 - `@deepseek-ai/dsh-jobs` — abstract `JobRegistry` ([`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts))
+- `@deepseek-ai/dsh-query` — abstract `QueryEngine` ([`packages/query/query/src/index.ts`](../packages/query/query/src/index.ts))
+- `@deepseek-ai/dsh-retrieval` — abstract `RetrievalService` ([`packages/retrieval/retrieval/src/index.ts`](../packages/retrieval/retrieval/src/index.ts))
 - `@deepseek-ai/dsh-sandbox` — abstract `SandboxProvider` ([`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts))
 - `@deepseek-ai/dsh-session-persistence` — abstract `SessionPersistence` ([`packages/session/session-persistence/src/index.ts`](../packages/session/session-persistence/src/index.ts))
 - `@deepseek-ai/dsh-session-query` — abstract `SessionQueryEngine` ([`packages/session-query/session-query/src/index.ts`](../packages/session-query/session-query/src/index.ts))
@@ -3296,6 +3623,9 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-client-web` ([`packages/client/web/src/index.ts`](../packages/client/web/src/index.ts))
 - `@deepseek-ai/dsh-cmdline` ([`packages/boot/cmdline/src/index.ts`](../packages/boot/cmdline/src/index.ts))
 - `@deepseek-ai/dsh-code-runtime-python` ([`packages/code-runtime/code-runtime-python/src/index.ts`](../packages/code-runtime/code-runtime-python/src/index.ts))
+- `@deepseek-ai/dsh-credentials-keychain` ([`packages/credentials/credentials-keychain/src/index.ts`](../packages/credentials/credentials-keychain/src/index.ts))
+- `@deepseek-ai/dsh-data-agent` ([`packages/bundle/data-agent/src/index.ts`](../packages/bundle/data-agent/src/index.ts))
+- `@deepseek-ai/dsh-eval` ([`packages/eval/eval/src/index.ts`](../packages/eval/eval/src/index.ts))
 - `@deepseek-ai/dsh-home-paths` ([`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts))
 - `@deepseek-ai/dsh-hook-protocol` ([`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts))
 - `@deepseek-ai/dsh-launch-environment` ([`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts))

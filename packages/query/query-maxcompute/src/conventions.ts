@@ -21,19 +21,41 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { load as yamlLoad } from 'js-yaml'
 
+/**
+ * A single MaxCompute SQL function exposed for the nl2sql prompt dialect
+ * grounding (mirror RBI `conventions.yaml` function entries). Carries the
+ * function name plus its SQL signature string for prompt injection.
+ */
 export interface ConventionFunction {
   readonly name: string
   readonly signature: string
 }
+/**
+ * A logical-to-physical type cast mapping for the prompt dialect. Pairs a
+ * logical type name and its human-readable meaning with the concrete MaxCompute
+ * `CAST(...)` expression used in generated SQL (mirror RBI `cast_map` entries).
+ */
 export interface ConventionCast {
   readonly logical: string
   readonly meaning: string
   readonly cast: string
 }
+/**
+ * A reusable MaxCompute SQL template referenced by name in generated SQL. The
+ * `name` keys the template in the prompt dialect's `sql_templates` map; `sql`
+ * is the parameterized template body (mirror RBI `conventions.yaml` entries).
+ */
 export interface ConventionTemplate {
   readonly name: string
   readonly sql: string
 }
+/**
+ * The resolved per-engine convention set loaded from `conventions.yaml`. Bundles
+ * the prompt-dialect grounding (engine name, key differences vs. other engines,
+ * function list, cast map, SQL templates) for the nl2sql-engine and future
+ * query-guard consumers. The loader returns this shape (empty arrays for an
+ * unknown engine) as the single cached source of truth.
+ */
 export interface EngineConventions {
   readonly engine: string
   readonly key_differences: readonly string[]
@@ -48,6 +70,9 @@ let cached: EngineConventions | undefined
 /**
  * Load the per-engine conventions (RBI `conventions.py:32` semantics). Returns
  * an empty shape for an unknown engine so callers fail-open rather than throw.
+ *
+ * @param engine The engine name to load conventions for (default `'maxcompute'`); any other name yields an empty convention set.
+ * @returns The cached `EngineConventions` for the requested engine (all arrays empty for unknown engines).
  */
 export function loadConventions(engine = 'maxcompute'): EngineConventions {
   if (engine !== 'maxcompute') {

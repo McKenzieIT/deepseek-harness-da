@@ -20,6 +20,7 @@ import type { AssertionResult } from './types.ts'
 /** The 5 EXECUTION match modes, in declaration order. */
 export type MatchMode = 'scalar_exact' | 'multi_scalar_exact' | 'row_count_range' | 'set_equal' | 'ordered_subset'
 
+/** The 5 EXECUTION match modes as a readonly tuple, in declaration order (mirrors the {@link MatchMode} union members). */
 export const MATCH_MODES: readonly MatchMode[] = [
   'scalar_exact',
   'multi_scalar_exact',

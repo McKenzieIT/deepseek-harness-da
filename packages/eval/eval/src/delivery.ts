@@ -100,7 +100,11 @@ export async function scoreDelivery(
   return { status: ok ? 'pass' : 'fail', detail: `llm_judge score=${verdict.score} (${verdict.rationale})`, mode, judge: verdict }
 }
 
-/** Parse the first `-?\d+(\.\d+)?` out of `text` (the agent's prose answer); `NaN` when none. */
+/**
+ * Parse the first `-?\d+(\.\d+)?` out of `text` (the agent's prose answer); `NaN` when none.
+ * @param text - the agent's prose answer to extract a leading numeric token from.
+ * @returns the first numeric token found (e.g. `-3.14`), or `NaN` when no number is present.
+ */
 export function parseNumber(text: string): number {
   const m = String(text).match(/-?\d+(\.\d+)?/)
   return m === null ? Number.NaN : Number(m[0])

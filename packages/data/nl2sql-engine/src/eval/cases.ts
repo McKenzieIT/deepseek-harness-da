@@ -26,18 +26,21 @@ import { MatchMode, type QueryOutcome } from '../types.ts'
 import type { DataSourceDoc } from '../bm25-linking.ts'
 import type { ScriptedGen } from '../replay-llm.ts'
 
+/** Fixture data-source docs standing in for the P6 substrate (eval reproducible). */
 export const FIXTURE_DATA_SOURCES: readonly DataSourceDoc[] = [
   { id: 'dws_pay_order_di', description: '充值订单 DWS 汇总表 pay_amt amount role_uv', metrics: { pay_amt: {}, role_uv: {} } },
   { id: 'ods_event_view', description: '埋点事件 ods event battle item change pay result', metrics: {} },
   { id: 'dws_battle_di', description: '战斗 DWS 汇总 battle result win rate count', metrics: { win_rate: {}, battle_count: {} } },
 ]
 
+/** Fixture event definition standing in for the P6 substrate (game.pay.order). */
 export const FIXTURE_EVENT_DEF = {
   name: 'game.pay.order',
   params_fields: { amount: {}, role_id: {}, coinType: {}, result: {} },
   partitions: [{ name: 'ds' }],
 } as const
 
+/** The expected outcome of an eval case: result value, match mode, optional decline flag and epsilon. */
 export interface EvalCaseExpected {
   readonly result_value: unknown
   readonly match_mode: MatchMode
@@ -45,6 +48,10 @@ export interface EvalCaseExpected {
   readonly eps?: number
 }
 
+/**
+ * A single eval case: id, question, scripted LLM, optional scripted ODPS,
+ * expected outcome, and turn budget.
+ */
 export interface EvalCase {
   readonly id: string
   readonly question: string
@@ -55,6 +62,7 @@ export interface EvalCase {
   readonly turns: number
 }
 
+/** The da-fresh eval case set (~9 representative scenarios). */
 export const EVAL_CASES: readonly EvalCase[] = [
   {
     id: 'c01',

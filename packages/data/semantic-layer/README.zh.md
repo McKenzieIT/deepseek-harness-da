@@ -27,6 +27,7 @@ Semantic layer 是 data agent 的 **一等公民** — NL→SQL 的成功依赖�
 ## `ctx.schema` seam
 
 ```ts
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayerService } }
 ```
 
@@ -47,6 +48,53 @@ pnpm verify-cordis-config                            # bundle/preset mount resol
 ```
 
 Bundle 连线（`packages/bundle/data-agent/cordis.patch.yml` 中的 `semantic-layer` 行）在 live-ODPS provider + `load_*` tool 包就绪后作为后续工作添加。
+
+## Model Experience
+
+### Discovered table descriptions
+
+#### What the model sees
+
+`ctx.schema.describe(tableName)` 返回一个 `TableMeta`，携带表的 `table_name`、`columns`（每个含 `name`、物理 `type` 和可选 `comment`，由连接器原样返回）、`partitions`（`name` / `type`）及可选的表 `comment`；`discover(scopeId, kind?)` 枚举一个 scope 中可用的表，`sample(tableName, n?)` 返回格式化的行样本。NL→SQL 引擎将这些发现的数据源描述渲染为候选表上下文送入模型 prompt。Live-ODPS `discover` / `describe` / `sample` 在 MaxCompute provider 挂载前抛 "no provider"（见 Known Limitations）。
+
+##### Sample discovered table description
+
+```markdown
+table_name: dws_trade_order_di
+comment: trade order detail fact table
+columns:
+  - name: order_id
+    type: string
+    comment: order id
+  - name: pay_amt
+    type: decimal
+    comment: payment amount
+partitions:
+  - name: ds
+    type: string
+```
+
+#### Token effect
+
+描述 token 随每个发现表的列和分区数扩展，`discover` 将此乘以 scope 中的表数；`sample` 添加一个有界额外块。该上下文在每个 NL→SQL turn 中包含。
+
+#### KV Cache effect
+
+表描述在相同表或 scope 上的 NL→SQL turn 间重复，故描述块位于可复用请求前缀中，可被缓存。`syncWrite` Tier-2 刷新覆盖 `columns` 或 `partitions` 时使受影响表的缓存上下文失效；不相关的表保持可缓存。
+
+### Substrate definition params
+
+#### What the model sees
+
+`ctx.schema.loadEventDefinition(name)` 和 `loadTableDefinition(name)` 返回经验证的 substrate definitions，其列和参数 `type` 值经 `canonicalizeType` 规范化为一个小型 DB 无关词汇，使模型永不见方言噪声（bigint 和 int8 均变为 `int`）。event `params_fields` 和 table `partitions` 是 P13b `CriticGuardData` 切换到 `makeCriticCtx({ candidateTables, eventParams, partitionCols })` 的内容，为模型执行的 SQL critique 提供 grounding。
+
+#### Token effect
+
+参数和分区 token 随 event 或 table 字段数扩展，在每个 critique turn 中包含；`load_*` 为同步读取，故仅匹配的定义贡献 token。
+
+#### KV Cache effect
+
+Substrate definitions 在磁盘上稳定，故其渲染上下文作为可缓存前缀在相同定义的 critique 间重复。`syncWrite` 或 `updateTableMeta` Tier-2 写入更改定义时仅使该定义的缓存上下文失效。
 
 ## Known Limitations and Deferred Work
 

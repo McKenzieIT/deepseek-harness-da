@@ -28,19 +28,26 @@
  */
 import { PARTITION_COLUMNS, GateResult, CriticFinding, type CriticCtx } from './types.ts'
 
+/** The critic verdict: pass/fail + reason + the findings that drove it. */
 export interface CriticResult {
   readonly passed: boolean
   readonly reason: string | null
   readonly findings: readonly CriticFinding[]
 }
 
+/** A GET_JSON_OBJECT literal-path match: the raw path, its leaf segment, and the parsed segments. */
 export interface JsonPathMatch {
   readonly path: string
   readonly leaf: string | null
   readonly segs: readonly string[]
 }
 
-/** Strip the ```sql fence and extract the SQL candidate (mirror RBI gates.py:53 `extract_sql_candidate`). */
+/**
+ * Strip the ```sql fence and extract the SQL candidate (mirror RBI gates.py:53 `extract_sql_candidate`).
+ *
+ * @param phaseOutput - The phase-final text (may contain a ```sql fence, raw SQL, or be empty).
+ * @returns The normalized single-line SQL candidate, or null when no SELECT is present.
+ */
 export function extractSqlCandidate(phaseOutput: string | null | undefined): string | null {
   if (!phaseOutput) return null
   const m = phaseOutput.match(/```sql\s*([\s\S]*?)```/i) ?? phaseOutput.match(/```([\s\S]*?)```/)
@@ -50,7 +57,12 @@ export function extractSqlCandidate(phaseOutput: string | null | undefined): str
   return sql.replace(/\s+/g, ' ').trim()
 }
 
-/** 方案 4: GET_JSON_OBJECT literal path → leaf segment (aligns sql_critic.py:481 last-key). */
+/**
+ * 方案 4: GET_JSON_OBJECT literal path → leaf segment (aligns sql_critic.py:481 last-key).
+ *
+ * @param sql - The SQL candidate to scan for GET_JSON_OBJECT calls.
+ * @returns All literal-path GET_JSON_OBJECT matches found in the SQL.
+ */
 export function extractJsonPaths(sql: string): readonly JsonPathMatch[] {
   const paths: JsonPathMatch[] = []
   const re = /GET_JSON_OBJECT\s*\(\s*[^,]+,\s*'([^']+)'\s*\)/gi
@@ -64,7 +76,12 @@ export function extractJsonPaths(sql: string): readonly JsonPathMatch[] {
   return paths
 }
 
-/** FROM/JOIN table names (strip db. prefix). Residual: CTE/comma-join/literal-FROM — fail-open + exec feedback. */
+/**
+ * FROM/JOIN table names (strip db. prefix). Residual: CTE/comma-join/literal-FROM — fail-open + exec feedback.
+ *
+ * @param sql - The SQL candidate to scan for FROM/JOIN table references.
+ * @returns The set of lowercased table names referenced (db. prefix stripped).
+ */
 export function extractTableNames(sql: string): Set<string> {
   const tables = new Set<string>()
   // [A-Z_] (not [A-Za-z_]) + `i` flag — A-Z/a-z are duplicates under case-insensitive.
@@ -104,6 +121,10 @@ function splitTopLevelCommas(s: string): string[] {
  * Residual: a `;` inside a WHERE string literal splits mid-literal (the fragment
  * lacks WHERE → its `ds` is missed → false missing_partition_filter warning;
  * conservative — a warning, `passed:true`; rare; fail-open + execution-feedback backstop).
+ *
+ * @param sql - The SQL candidate to check for a partition-column filter.
+ * @param partitionCols - The partition column names the SQL must filter on.
+ * @returns True when any statement's WHERE clause references a partition column (or when no partition columns exist).
  */
 export function hasPartitionFilter(sql: string, partitionCols: ReadonlySet<string>): boolean {
   const cols = new Set<string>([...partitionCols, ...PARTITION_COLUMNS].map(c => c.toLowerCase()))
@@ -127,6 +148,9 @@ export function hasPartitionFilter(sql: string, partitionCols: ReadonlySet<strin
  * `SELECT *`/`SELECT DISTINCT *` (immediately after SELECT), missing `t.*`
  * and `SELECT a, *`. Now parses the select list (between SELECT and FROM) and
  * detects `*` or `t.*` among the selected columns.
+ *
+ * @param sql - The SQL candidate to check for a star select.
+ * @returns True when the select list contains a bare `*` or `t.*` column.
  */
 export function hasSelectStar(sql: string): boolean {
   const cleaned = sql.replace(/\w+\s*\(\s*\*\s*\)/gi, '') // strip COUNT(*)/SUM(*) etc.
@@ -146,6 +170,10 @@ export function hasSelectStar(sql: string): boolean {
  * verdicts aligned with RBI `sql_critic`/`sql_evaluator`. The engine's
  * self-correction loop calls this (it has the SQL + needs findings for
  * feedback); P7b's `sql_syntax_gate` slot calls `sqlSyntaxGate`.
+ *
+ * @param sql - The SQL candidate to critique (null/undefined → fail-open pass).
+ * @param ctx - The critic guard context (candidate tables, event params, partition cols).
+ * @returns The critic verdict (pass/fail + reason + findings).
  */
 export function critiqueSql(sql: string | null | undefined, ctx: CriticCtx): CriticResult {
   const findings: CriticFinding[] = []
@@ -188,6 +216,10 @@ export function critiqueSql(sql: string | null | undefined, ctx: CriticCtx): Cri
 /**
  * Adapt to P7's `sql_syntax_gate` slot (aligns phases.py:33 GateResult). P7b's
  * phase-gate calls this at `agent/turn-stopping` with the phase-final text.
+ *
+ * @param phaseOutput - The phase-final text the gate inspects.
+ * @param ctx - The critic guard context.
+ * @returns The GateResult (pass when the critic passes, fail with reason otherwise).
  */
 export function sqlSyntaxGate(phaseOutput: string, ctx: CriticCtx): GateResult {
   const sql = extractSqlCandidate(phaseOutput)

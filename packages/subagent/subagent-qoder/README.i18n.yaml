@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/subagent/subagent-qoder/README.md
-README.md: 9e9e8ec767bc6c8449241c314764643f37ec91bd
-README.zh.md: 8e0e186fec1b0fe645028d389ada3b2c7a230307
+README.md: 246a6a45c4d7435dd5109ac09c17bde16303c6fc
+README.zh.md: 5ebece642480748fb5b257646ab23b2de8ffc460

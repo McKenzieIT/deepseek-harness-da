@@ -23,6 +23,14 @@ pnpm vitest run packages/data/audit         # 12 specs
 pnpm verify-cordis-config                   # bundle mount resolves
 ```
 
+## Model Experience
+
+无，因为该服务将 tool 调用和 session 事件记录到不可变 SQLite 审计存储中以供合规，从不将记录呈现到模型上下文中。
+
+#### KV Cache effect
+
+无影响；审计记录仅持久化在 SQLite 存储中，从不进入模型 prompt。
+
 ## Known Limitations and Deferred Work
 
 - **userId 按用户维度** — 当前为 NULL（T1 fallback）；需要 P9 `@deepseek-ai/dsh-admin` 落地并连线 `resolveIdentity()`（小的 additive 变更）。

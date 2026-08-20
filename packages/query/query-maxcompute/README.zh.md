@@ -8,6 +8,14 @@ MaxCompute 查询引擎提供方（`ctx.query`）：da 自持 raw MCP SDK Client
 
 实现 `MaxComputeQueryEngine extends QueryEngine`——一个自持 `@modelcontextprotocol/sdk` 原始 `Client` + `StdioClientTransport` 连接到 stdio sidecar 子进程的 Provider。所有 sidecar 工具（`execute`、`attach`、`cancel`、`get_progress`、`estimate_cost`、`set_credentials`、`invalidate_scope`）均通过 raw name 程序化调用，无一进入 `ctx.tools`（非模型可调用）。特性包括崩溃时懒重启（crash-loop 有界重试）、per-call 凭证推送经 `set_credentials`（幂等 drop）、出站取消经 `AbortSignal`。
 
+## Model Experience
+
+间接，通过 nl2sql engine 的 `query_data` 和 `check_query` 工具，将执行后的 SQL 结果送入模型 prompt；该 provider 自身不注册任何 tool、prompt 或 schema。
+
+#### KV Cache effect
+
+无直接失效；消费方 engine 拥有查询结果带来的任何请求前缀变更。
+
 ## Known Limitations and Deferred Work
 
 - **真实 pyodps ODPS sidecar** — 当前 sidecar 为 Node.js stand-in（`dev/standin-sidecar.mjs`），行为为 fake ODPS；真实 Python pyodps sidecar 经 stdio MCP 延后。

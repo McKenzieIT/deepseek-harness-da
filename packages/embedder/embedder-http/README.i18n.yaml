@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/embedder/embedder-http/README.md
-README.md: c184e384e2ee3f9e594df6dd858dd48ad2dd3555
-README.zh.md: c41eb7b9523b3b298500d337479a550e0f363c4c
+README.md: d1c9ae09a211a0d912485f520a14ec564252029c
+README.zh.md: 2ec3ee6fd83cc550c869bbe0b0d59a4d6f348c88
