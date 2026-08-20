@@ -36,8 +36,9 @@
 
 ## phase-3（orchestration）
 - [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, **resolved**（2026-08-20；grilling 8 决策 + prototype 8 场景全绿 + 6 finding→P7b；persona option C / turn-stopping 转换 / guard 硬白名单 / rbi budgets 初始默认）
-- [P7b phase-gate 生产硬化](phase-3/P7b-phase-gate-hardening.md) — prototype, blocked by P13（GENERATION critic 接线）
-- [P13 NL→SQL 引擎（极简 (B)）](phase-3/P13-nl2sql-engine.md) — prototype, blocked by ~~P4~~/~~P5~~/~~P6~~ → **unblocked**（从 map Not-yet-specified「Text2DSL 选型」毕业；`../research/p6-nl2sql-feasibility.md`）
+- [P7b phase-gate 生产硬化](phase-3/P7b-phase-gate-hardening.md) — prototype, blocked by ~~P13~~ → **unblocked**（P13 resolved 2026-08-20——GENERATION critic 形态已定：方案 1 薄 regex + 方案 4 轻量 JSON path 解析，node-sql-parser 不引；真 packages/phase-gate/ + critic 生产接线）
+- [P13 NL→SQL 引擎（极简 (B)）](phase-3/P13-nl2sql-engine.md) — prototype, **resolved**（2026-08-20；prototype 9 scenarios 全绿；graduated P13b 生产硬化 + unblocked P7b critic 接线；drop plan_query/sqlglot/answer-RAG/cross-encoder；`../research/p6-nl2sql-feasibility.md, p13-sql-critic-alternatives.md`）
+- [P13b NL→SQL 引擎生产硬化](phase-3/P13b-nl2sql-engine-prod-hardening.md) — prototype, **unblocked**（P13 resolved 2026-08-20；P13 surfaced F1-F6 生产化 findings；conventions 提到 query 包 + critic 生产接线 fold P7b）
 
 ## phase-4（eval）
 - [R3 多轮 eval hook](phase-4/R3-multiturn-eval-hook.md) — research, **resolved**, blocks P11
@@ -53,4 +54,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P13 · P11 · T2（+ low: R4, R5）
+P7b · P13b · P11 · T2（+ low: R4, R5）
