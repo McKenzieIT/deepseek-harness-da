@@ -9,13 +9,13 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent, AgentCancelCause } from '@deepseek-ai/dsh-agent'
-import type { ToolExecution, ToolExecutionResult, PromptAssembly } from '@deepseek-ai/dsh-tools'
+import type { ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhaseGate } from '../src/phase-gate.ts'
-import { Phase, freshPhaseGateState, INCOMPLETE_MARKER, PipelineConfig } from '../src/types.ts'
-import { critiqueSql, extractSqlCandidate, sqlSyntaxGate } from '../src/critic.ts'
+import { Phase, INCOMPLETE_MARKER, PipelineConfig } from '../src/types.ts'
 
 function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancelled: AgentCancelCause[] } {
   const injected: UserMessage[] = []
@@ -24,7 +24,7 @@ function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancell
     id,
     inject: (m: UserMessage) => { injected.push(m) },
     cancel: (c: AgentCancelCause) => { cancelled.push(c) },
-    session: { id },
+    session: { id, events: [] },
   } as unknown as Agent
   return { agent, injected, cancelled }
 }
@@ -38,39 +38,6 @@ function resultOk(value: unknown): ToolExecutionResult {
 function gate(ctx: Context = { logger: { info: () => undefined } } as unknown as Context): PhaseGate {
   return new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
 }
-
-describe('critic (P13 form: regex + JSON path, no sqlglot)', () => {
-  it('extractSqlCandidate: fenced sql / bare select / none', () => {
-    expect(extractSqlCandidate('```sql\nSELECT 1\n```')).toBe('SELECT 1')
-    expect(extractSqlCandidate('SELECT a FROM b')).toBe('SELECT a FROM b')
-    expect(extractSqlCandidate('no sql here')).toBeNull()
-  })
-  it('table ∉ candidates → error → fail', () => {
-    const r = critiqueSql('SELECT a FROM phantom', { candidateTables: new Set(['real']), eventParams: new Set(), partitionCols: new Set() })
-    expect(r.passed).toBe(false)
-    expect(r.findings.some(f => f.rule === 'table_not_in_candidates')).toBe(true)
-  })
-  it('table ∈ candidates + ds partition → pass', () => {
-    const r = critiqueSql("SELECT a FROM dws_pay WHERE ds='20260101'", { candidateTables: new Set(['dws_pay']), eventParams: new Set(), partitionCols: new Set(['ds']) })
-    expect(r.passed).toBe(true)
-  })
-  it('GET_JSON_OBJECT field ∉ params → error → fail', () => {
-    const r = critiqueSql("SELECT GET_JSON_OBJECT(x, '$.user.bad') FROM t WHERE ds='1'", { candidateTables: new Set(['t']), eventParams: new Set(['good']), partitionCols: new Set(['ds']) })
-    expect(r.passed).toBe(false)
-    expect(r.findings.some(f => f.rule === 'json_field_not_in_params')).toBe(true)
-  })
-  it('SELECT * → warning → pass+reason; no-sql → fail-open', () => {
-    const r = critiqueSql("SELECT * FROM t WHERE ds='1'", { candidateTables: new Set(['t']), eventParams: new Set(), partitionCols: new Set(['ds']) })
-    expect(r.passed).toBe(true)
-    expect(r.reason).toContain('select_star')
-    expect(critiqueSql(null, { candidateTables: new Set(), eventParams: new Set(), partitionCols: new Set() }).passed).toBe(true)
-  })
-  it('sqlSyntaxGate sets last_sql for F2 same-source', () => {
-    const s = freshPhaseGateState()
-    sqlSyntaxGate("```sql\nSELECT a FROM t WHERE ds='1'\n```", s)
-    expect(s.last_sql).not.toBeNull()
-  })
-})
 
 describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
   beforeEach(() => vi.useFakeTimers())
@@ -184,8 +151,11 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     const g = gate()
     const s = g.state('s1')
     s.current_phase = Phase.GENERATION
-    const ctx = { scope: { agent: { id: 's1' } } } as unknown as AssembleContext
-    const stubAssembly: PromptAssembly = { sections: [], tools: [], variables: {} }
+    // B2: real AssembleContext shape — assembleContextFor returns {agent, scope:agent}
+    // (scope IS the agent, no .agent). The old stub {scope:{agent:{id}}} fed the buggy
+    // readAgentId (context.scope.agent.id) and masked that real scope has no .agent.
+    const ctx = { agent: { id: 's1' }, scope: { id: 's1' } } as unknown as AssembleContext
+    const stubAssembly: PromptAssembly = { sections: [], contexts: [], tools: [], variables: {} }
     const out = await g.onAssemble(
       stubAssembly,
       ctx,
@@ -194,5 +164,75 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     const names = out.sections.map((x: { name?: string }) => x.name)
     expect(names).toContain('phase-instruction')
     expect(names).toContain('sql-conventions')
+  })
+
+  it('B1: onTurnStopping captures phase_output from agent.session.events latest assistant/message (no manual set)', async () => {
+    const sql = '```sql\nSELECT a FROM dws_pay WHERE ds=20260101\n```'
+    const injected: UserMessage[] = []
+    const agent = {
+      id: 's1',
+      inject: (m: UserMessage) => { injected.push(m) },
+      cancel: () => {},
+      session: { id: 's1', events: [{ type: 'assistant/message', seq: 1, time: 0, data: { turn: 1, step: 1, message: { role: 'assistant', content: [{ type: 'text', text: sql }] } } }] },
+    } as unknown as Agent
+    const g = gate()
+    const s = g.state('s1')
+    s.current_phase = Phase.GENERATION
+    s.candidate_tables.add('dws_pay')
+    s.partition_cols.add('ds')
+    // B1: do NOT manually set s.phase_output — onTurnStopping must capture it
+    // from agent.session.events. last_sql is the stable observable: the critic
+    // sets it only if phase_output was captured (phase_output itself is reset on
+    // retry/advance, so asserting it directly is fragile).
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.last_sql).toBe('SELECT a FROM dws_pay WHERE ds=20260101')
+  })
+
+  it('F3 stall watchdog: stall_watchdog_seconds with no events → honest_decline + cancel', async () => {
+    const { agent, cancelled } = makeAgent('s1')
+    const g = new PhaseGate({ logger: { info: () => undefined } } as unknown as Context, { stall_watchdog_seconds: 300 })
+    const s = g.state('s1')
+    // arm the stall timer (touchStallTimer runs in onPreStep / onTurnStopping)
+    await g.onPreStep(
+      { agent, messages: [], turn: 1, step: 1, signal: new AbortController().signal },
+      () => Promise.resolve({ kind: 'enter', messages: [] }),
+    )
+    expect(s.stall_timer).not.toBeNull()
+    // advance fake timers past the watchdog — fires honest_decline + agent.cancel
+    vi.advanceTimersByTime(300 * 1000 + 1)
+    expect(s.honest_decline_reason).toMatch(/stall/)
+    expect(s.current_phase).toBe('DECLINED')
+    expect(cancelled).toHaveLength(1)
+  })
+
+  it('EXECUTION 3-state: done→advance to INTERPRETATION; running→inject poll, stay EXECUTION (D5)', async () => {
+    const { agent, injected } = makeAgent('s1')
+    const g = gate()
+    const s = g.state('s1')
+    // done → advance to INTERPRETATION
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2 // EXECUTION index in PHASE_ORDER so advance lands on INTERPRETATION
+    s.last_query_outcome = 'done'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.INTERPRETATION)
+    // running → inject a poll reminder, stay EXECUTION
+    s.current_phase = Phase.EXECUTION
+    s.last_query_outcome = 'running'
+    const before = injected.length
+    await g.onTurnStopping({ agent, turn: 2, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.EXECUTION)
+    expect(injected.length).toBe(before + 1)
+  })
+
+  it('B9/F4: DECLINED resets on a new user question (idle→running → resetQuestionScoped)', () => {
+    const { agent } = makeAgent('s1')
+    const g = gate()
+    const s = g.state('s1')
+    s.current_phase = 'DECLINED'
+    s.honest_decline_reason = 'prev decline'
+    s.prior_status = 'idle' // agent went idle after the decline (kick ended)
+    g.onStatus({ agent, status: 'running' }) // new user message wakes the driver
+    expect(s.current_phase).toBe(Phase.UNDERSTANDING)
+    expect(s.honest_decline_reason).toBeNull()
   })
 })

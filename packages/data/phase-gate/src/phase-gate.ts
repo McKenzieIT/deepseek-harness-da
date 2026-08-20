@@ -40,7 +40,7 @@ import {
   type PhaseGateState,
   type Phase as PhaseType,
 } from './types.ts'
-import { sqlSyntaxGate } from './critic.ts'
+import { extractSqlCandidate, sqlSyntaxGate, type CriticCtx } from '@deepseek-ai/dsh-nl2sql-engine'
 
 export interface PhaseGateConfig {
   scopeId?: string
@@ -116,13 +116,41 @@ export class PhaseGate {
     return undefined
   }
 
+  // ── B1: capture the phase's final assistant text from the session event log ──
+  // agent.session.events is the durable source of truth (Session getter; the
+  // response body lives in the session event stream, not the agent event
+  // layer). Reading the latest `assistant/message` at turn-stopping avoids a
+  // re-entrant stream wrap (the onLlmStream text-delta alternative). An
+  // empty-content assistant/message (a max-tokens step hosting only usage)
+  // contributes no text blocks. Only `text` blocks are captured — `tool_use`
+  // and `reasoning` blocks are not the phase deliverable.
+  private capturePhaseOutput(agent: Agent, s: PhaseGateState): void {
+    const events = agent.session.events
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i]
+      if (e !== undefined && e.type === 'assistant/message') {
+        let text = ''
+        for (const b of e.data.message.content) {
+          if (b.type === 'text') text += b.text
+        }
+        s.phase_output = text
+        return
+      }
+    }
+  }
+
   // ── hook 2: agent/turn-stopping (serial, void) — advance / gate / fallback / decline ──
   onTurnStopping = async ({ agent, signal }: { agent: Agent; turn: number; signal: AbortSignal }): Promise<void> => {
     const s = this.state(String(agent.id))
     this.touchStallTimer(agent, s) // F3: an event arrived — reset the watchdog
+    this.capturePhaseOutput(agent, s) // B1: phase-final assistant text → s.phase_output
     if (s.honest_decline_reason !== null || s.cancelled) return
     if (s.turn_count >= this.cfg.max_state_turns) { // F6/D6 budget
       this.honestDecline(s, `budget: turn_count ${s.turn_count} ≥ ${this.cfg.max_state_turns} max_state_turns (D6)`)
+      return
+    }
+    if (s.llm_call_count >= this.cfg.max_llm_calls_per_turn) { // B3: llm budget (charged on llm/stream)
+      this.honestDecline(s, `budget: llm_call_count ${s.llm_call_count} ≥ ${this.cfg.max_llm_calls_per_turn} max_llm_calls_per_turn`)
       return
     }
     s.turn_count += 1
@@ -137,6 +165,8 @@ export class PhaseGate {
       // retrieval through guard (ctx.tools.execute) so GENERATION has grounding.
       if (s.current_phase === Phase.UNDERSTANDING && s.candidate_tables.size === 0) {
         await this.forcedLoad(agent, signal, s.phase_output)
+        // B6: forcedLoad runs ctx.tools.execute through guard — re-check decline/cancel before advancing.
+        if (s.honest_decline_reason !== null || s.cancelled) return
       }
       this.advance(agent, s)
       return
@@ -207,7 +237,11 @@ export class PhaseGate {
       this.captureToolData(s, exec.name, result)
       if (exec.name === 'query_data' && s.last_sql !== null) { // F2: same-source
         const args = exec.arguments as { sql?: string } | undefined
-        if (args?.sql !== undefined && args.sql !== s.last_sql) {
+        // B5: normalize whitespace both sides (last_sql is already normalized by extractSqlCandidate).
+        if (args?.sql !== undefined && normalizeSql(args.sql) !== s.last_sql) {
+          // B8: a same-source violation is a failed execution — record it so executionDecision
+          // treats it as failed (fallback/decline), not the stale 'not run' outcome.
+          s.last_query_outcome = 'failed'
           return { kind: 'block', feedback: [{ type: 'text', text: 'F2 same-source violation: query_data sql ≠ critiqued last_sql' }] }
         }
       }
@@ -229,6 +263,10 @@ export class PhaseGate {
       s.last_quality = (value as { score?: number } | null | undefined)?.score ?? null
     } else if (name === 'present_decomposition' || name === 'present_table') {
       s.delivery_started = true
+    } else if (name === 'present_clarification') {
+      // B4: a clarification HALTs the turn awaiting user input — flag it so the stall
+      // watchdog excludes this agent (rbi `_watch_for_stall` excludes awaiting_input).
+      s.awaiting_clarification = true
     } else if (name === 'search_data_sources') {
       collectTableNames(value, s.candidate_tables)
     } else if (name === 'load_event_definition') {
@@ -258,13 +296,19 @@ export class PhaseGate {
     const merged = await next() // delegate to downstream, then inject additively
     const agentId = readAgentId(context)
     const s = agentId === null ? null : this.sessions.get(agentId) ?? null
-    const phase = (s === null ? Phase.UNDERSTANDING : s.current_phase) as PhaseType
+    // B14: clamp terminal phases (DECLINED/COMPLETE) to UNDERSTANDING — PHASE_INSTRUCTIONS
+    // has no DECLINED/COMPLETE entry, so an unclamped terminal would yield `undefined` text.
+    const rawPhase = s === null ? null : s.current_phase
+    const phase = (rawPhase === null || rawPhase === 'DECLINED' || rawPhase === 'COMPLETE'
+      ? Phase.UNDERSTANDING : rawPhase) as PhaseType
     const sections: AssembledSection[] = [
       ...merged.sections,
-      { name: 'phase-instruction', order: 50, text: PHASE_INSTRUCTIONS[phase] } as AssembledSection,
+      // B12: AssembledSection is { name, text } (no order — ordering happened pre-waterfall in
+      // SystemPrompt.assemble(); the `order` + `as AssembledSection` cast was a type crime).
+      { name: 'phase-instruction', text: PHASE_INSTRUCTIONS[phase] },
     ]
     if (phase === Phase.GENERATION) {
-      sections.push({ name: 'sql-conventions', order: 51, text: SQL_CONVENTIONS } as AssembledSection)
+      sections.push({ name: 'sql-conventions', text: SQL_CONVENTIONS })
     }
     return { ...merged, sections }
   }
@@ -350,8 +394,15 @@ export class PhaseGate {
 
   private generationGate(s: PhaseGateState): GateResult {
     if (s.phase_output === '') return GateResult.fail('no phase output')
-    const gate = sqlSyntaxGate(s.phase_output, s)
-    if (!gate.passed) return gate
+    const criticCtx: CriticCtx = {
+      candidateTables: s.candidate_tables,
+      eventParams: s.event_params,
+      partitionCols: s.partition_cols,
+    }
+    const sql = extractSqlCandidate(s.phase_output)
+    if (sql !== null) s.last_sql = sql // F2: same-source for EXECUTION query_data
+    const gate = sqlSyntaxGate(s.phase_output, criticCtx)
+    if (!gate.passed) return new GateResult(false, gate.reason) // adapt nl2sql-engine -> phase-gate GateResult
     if (s.last_critique === null) return GateResult.fail('critique not run (critique_sql_tool missing)')
     if (s.last_critique < PipelineConfig.critique_confidence_floor) {
       return GateResult.fail(`critique confidence ${s.last_critique} < ${PipelineConfig.critique_confidence_floor}`)
@@ -395,6 +446,7 @@ export class PhaseGate {
 
   /** F4: reset question-scoped counters + phase on a new user question (kick start). */
   private resetQuestionScoped(s: PhaseGateState): void {
+    this.clearStallTimer(s) // B7: a pending stall timer must not fire on the new question.
     s.phase_idx = 0
     s.current_phase = Phase.UNDERSTANDING
     s.phase_attempts = 0
@@ -412,6 +464,7 @@ export class PhaseGate {
     s.honest_decline_reason = null
     s.cancelled = false
     s.cancelled_reason = null
+    s.awaiting_clarification = false // B4: clear on a new question (a prior clarification HALT does not carry over).
     s.candidate_tables.clear()
     s.event_params.clear()
     s.partition_cols.clear()
@@ -435,6 +488,12 @@ export class PhaseGate {
 }
 
 // ── lenient capture helpers (best-effort; adapt to real tool shapes when shipped) ──
+
+/** B5: normalize SQL whitespace (mirrors extractSqlCandidate's `replace(/\s+/g, ' ').trim()`). */
+function normalizeSql(sql: string): string {
+  return sql.replace(/\s+/g, ' ').trim()
+}
+
 function collectTableNames(value: unknown, out: Set<string>): void {
   if (value === null || value === undefined) return
   const v = value as { tables?: unknown; table_names?: unknown; candidates?: unknown }
@@ -462,7 +521,11 @@ function collectFields(value: unknown, out: Set<string>, ...keys: string[]): voi
 }
 
 function readAgentId(context: AssembleContext): string | null {
-  const scope = (context as { scope?: { agent?: { id?: string } } }).scope
-  const id = scope?.agent?.id
-  return typeof id === 'string' ? id : null
+  // B2: assembleContextFor (packages/core/agent/src/dispatch.ts) returns
+  // { agent, scope: agent } — scope IS the agent, so scope.agent.id was always
+  // undefined → onAssemble fell back to UNDERSTANDING (persona C broken). The
+  // agent is on context.agent (AssembleContext.agent, augmented by
+  // @deepseek-ai/dsh-agent; absent only on diagnostics).
+  const id = context.agent?.id
+  return id !== undefined ? String(id) : null
 }

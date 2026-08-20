@@ -37,7 +37,10 @@ export {
   freshPhaseGateState,
   type PhaseGateState,
 } from './types.ts'
-export { extractSqlCandidate, critiqueSql, sqlSyntaxGate } from './critic.ts'
+// critic dedup (P13b Q2 boundary): critic logic + GateResult/CriticCtx live in
+// @deepseek-ai/dsh-nl2sql-engine; phase-gate delegates to sqlSyntaxGate /
+// extractSqlCandidate in src/phase-gate.ts. No re-export (nl2sql-engine owns
+// the critic API; no external consumer imported these from phase-gate).
 
 /** Cordis plugin name. */
 export const name = 'phase-gate'

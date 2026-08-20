@@ -16,6 +16,7 @@
     { "path": "../../core/session" },
     { "path": "../../core/system-prompt" },
     { "path": "../../core/tools" },
+    { "path": "../../data/nl2sql-engine" },
     { "path": "../../runtime-diagnostics/invariants" }
   ]
 }
