@@ -112,6 +112,7 @@ export function freshPhaseGateState(scopeId = 'game-1') {
     fallback_count: 0, // total fallbacks this user-question (≤ max_fallbacks)
     llm_call_count: 0, // charged on llm/stream (P7 finding: NOT agent/request)
     exec_count: 0, // query_data executions this user-question (≤ max_executions_per_turn)
+    turn_count: 0, // turns this user-question (≤ max_state_turns; D6 budget, charged at turn-stopping)
     delivery_started: false, // INTERPRETATION present_* tracking
     phase_output: '', // current phase's final text (sql_syntax_gate reads this)
     awaiting_clarification: false, // UNDERSTANDING present_clarification HALT

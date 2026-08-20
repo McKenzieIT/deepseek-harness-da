@@ -74,6 +74,18 @@ export class PhaseGatePlugin {
     const s = this.state(sessionId);
     if (s.honest_decline_reason || s.cancelled) return { kind: 'ended' };
 
+    // D6 budget: max_state_turns — per-user-question turn counter (mirrors max_llm_calls_per_turn:
+    // check pre-decision, increment after). rbi DEFAULT_MAX_STEPS=20; da has no native turn budget,
+    // so the phase-gate plugin enforces via honest_decline at turn-stopping (M4: budget→decline not cancel).
+    // Was: PipelineConfig.max_state_turns declared but never enforced (not in P7b-deferred list).
+    if (s.turn_count >= PipelineConfig.max_state_turns) {
+      return this.honestDecline(
+        s,
+        `budget: turn_count ${s.turn_count} ≥ ${PipelineConfig.max_state_turns} max_state_turns (D6)`,
+      );
+    }
+    s.turn_count += 1;
+
     // EXECUTION is deterministic (not ReAct) — 3-state drives advance/fallback/wait directly (D5, H1).
     // always_pass gate is never consulted for EXECUTION (phases.py: factory.py comment).
     if (s.current_phase === Phase.EXECUTION) return this.executionDecision(s);
@@ -130,7 +142,12 @@ export class PhaseGatePlugin {
       case 'sql_syntax_gate':
         return generationGate(s); // M2: syntax + critique + quality unified at turn-stopping (all counted)
       default:
-        return GateResult.pass();
+        // Code-review fix: assertNever on the closed union {always_pass, sql_syntax_gate}.
+        // Was: silent `return GateResult.pass()` → a future PHASE_CONFIGS gate-typo (e.g.
+        // 'sql_snytax_gate') would pass silently instead of failing loud.
+        throw new Error(
+          `unknown gate: ${cfg.gate} (phase ${s.current_phase}); expected one of: always_pass | sql_syntax_gate`,
+        );
     }
   }
 
@@ -249,7 +266,12 @@ function generationGate(s) {
   if (s.last_critique < PipelineConfig.critique_confidence_floor) {
     return GateResult.fail(`critique confidence ${s.last_critique} < ${PipelineConfig.critique_confidence_floor}`);
   }
-  if (s.last_quality != null && s.last_quality < PipelineConfig.quality_score_floor) {
+  // Code-review fix: quality is REQUIRED (symmetric with critique) — the GENERATION phase
+  // instruction says the gate checks ALL THREE (SQL + critique_confidence + quality_score).
+  // Was: `last_quality != null && ...` → critique=0.9 + quality never run still ADVANCED,
+  // violating the gate's own contract. Now fail loud when evaluate_sql_quality never ran.
+  if (s.last_quality == null) return GateResult.fail('quality not run / not evaluated (evaluate_sql_quality missing)');
+  if (s.last_quality < PipelineConfig.quality_score_floor) {
     return GateResult.fail(`quality score ${s.last_quality} < ${PipelineConfig.quality_score_floor}`);
   }
   return GateResult.pass();
