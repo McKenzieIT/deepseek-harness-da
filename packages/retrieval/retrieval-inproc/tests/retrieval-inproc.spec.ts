@@ -105,3 +105,17 @@ test('retrieve: reranker InferenceError -> keep RRF order (degradation, mode sta
   expect(hits.every(h => h.mode === 'hybrid')).toBe(true)
   expect(hits[0]?.id).toBe('metric.营收')
 })
+
+test('retrieve: query-embed InferenceError (corpus embed OK) -> BM25-only degradation', async () => {
+  // corpus embed (length > 1) succeeds; query embed (length 1) throws -> degrade
+  const flakyQueryEmbedder: EmbedderLike = {
+    embed: async (texts) => {
+      if (texts.length === 1) throw new InferenceError('timeout', 'query embed down')
+      return texts.map(t => hashVec(t, DIM))
+    },
+  }
+  const hits = await new HybridRetriever(CORPUS, flakyQueryEmbedder).retrieve('营收', { topK: 3 })
+  expect(hits.length).toBeGreaterThan(0)
+  expect(hits.every(h => h.mode === 'bm25-only')).toBe(true)
+  expect(hits[0]?.id).toBe('metric.营收')
+})

@@ -231,23 +231,32 @@ export class HybridRetriever {
       mode = 'bm25-only'
       hits = bm25Top.map(i => ({ idx: i, score: bm25Scores[i] ?? 0, payload: this.corpus[i]?.payload as RetrievalCorpusItem }))
     } else {
-      const qv = (await this.embedder.embed([query]))[0] ?? []
-      const vecTop = vecs
-        .map((v, i) => ({ i, s: cosine(v, qv) }))
-        .sort((a, b) => b.s - a.s)
-        .slice(0, topK)
-        .map(o => o.i)
-      const idToIdx = new Map(this.corpus.map((c, i) => [c.id, i]))
-      const fused = rrfFuse(
-        [bm25Top.map(i => this.corpus[i]?.id ?? ''), vecTop.map(i => this.corpus[i]?.id ?? '')],
-        RRF_K,
-      )
-      mode = 'hybrid'
-      hits = fused
-        .map(f => ({ idx: idToIdx.get(f.name) ?? -1, score: f.score }))
-        .filter(h => h.idx >= 0)
-        .slice(0, topK)
-        .map(h => ({ idx: h.idx, score: h.score, payload: this.corpus[h.idx]?.payload as RetrievalCorpusItem }))
+      try {
+        const qv = (await this.embedder.embed([query]))[0] ?? []
+        const vecTop = vecs
+          .map((v, i) => ({ i, s: cosine(v, qv) }))
+          .sort((a, b) => b.s - a.s)
+          .slice(0, topK)
+          .map(o => o.i)
+        const idToIdx = new Map(this.corpus.map((c, i) => [c.id, i]))
+        const fused = rrfFuse(
+          [bm25Top.map(i => this.corpus[i]?.id ?? ''), vecTop.map(i => this.corpus[i]?.id ?? '')],
+          RRF_K,
+        )
+        mode = 'hybrid'
+        hits = fused
+          .map(f => ({ idx: idToIdx.get(f.name) ?? -1, score: f.score }))
+          .filter(h => h.idx >= 0)
+          .slice(0, topK)
+          .map(h => ({ idx: h.idx, score: h.score, payload: this.corpus[h.idx]?.payload as RetrievalCorpusItem }))
+      } catch (e) {
+        if (!(e instanceof InferenceError)) throw e
+        // query-embed InferenceError -> degrade to BM25-only (mirrors the
+        // corpus-level degradation; the vector plane is down for this query).
+        this.vecDown = true
+        mode = 'bm25-only'
+        hits = bm25Top.map(i => ({ idx: i, score: bm25Scores[i] ?? 0, payload: this.corpus[i]?.payload as RetrievalCorpusItem }))
+      }
     }
 
     // Reranker peer applied AFTER RRF (mirrors rbi unified_search.py); noise floor drops weak candidates.
