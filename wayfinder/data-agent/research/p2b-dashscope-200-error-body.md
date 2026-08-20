@@ -8,7 +8,7 @@
 
 **但探针捞出一条同源真 bug**：AGA 的 4xx 错误体是 **SSE 框架的**（`id:1\nevent:error\n:HTTP_STATUS/<status>\ndata:{code,message,request_id}`），却**标 `content-type: application/json`**（实测 P2/P4）。adapter.ts 的 `!response.ok` 路径调 `response.json()`，在 SSE 框架上抛 SyntaxError，catch 吞掉，message 退化为通用 `DashScope API error (HTTP 400)`、body 的 `code`/`message`/`request_id` **全丢**——操作员失去进网关侧日志的唯一线索（`request_id`）。分类本身**没错**（`httpErrorCode(400, undefined)` 仍返 `INVALID_REQUEST`，按 status），但**错误详情与 request_id 丢失**。现有 `it.each([…,400,…])` 测试用**纯 JSON** fixture，与真实 wire 形不符，故既有测试一直绿但掩盖了真 bug。
 
-**Fix（implemented, 最小, source-faithful）**：adapter.ts 加 `parseErrorBody(text)` helper——先试纯 JSON（404 body 是纯 JSON `{"error":{code,message,type}}`），失败则 `parseSse` drain 取首个非空 `data:` payload 再 JSON.parse（4xx SSE 框架 body）。**不靠 content-type 判别**（AGA 把 SSE 错误体标 `application/json`，content-type 会误导）。复用既有 `parseSse` + `httpErrorCode` + `requestIdOf`，DRY。`!response.ok` 路径改用 `parseErrorBody(await response.text())` 替 `response.json()`。加 7 个测试（2 集成 + 5 单元，mirror rbi `TestMalformedPayload` 防御覆盖）。
+**Fix（implemented, 最小, source-faithful）**：adapter.ts 加 `parseErrorBody(text)` helper——先试纯 JSON（404 body 是纯 JSON `{"error":{code,message,type}}`），失败则 `parseSse` drain 取首个非空 `data:` payload 再 JSON.parse（4xx SSE 框架 body）。**不靠 content-type 判别**（AGA 把 SSE 错误体标 `application/json`，content-type 会误导）。复用既有 `parseSse` + `httpErrorCode` + `requestIdOf`，DRY。`!response.ok` 路径改用 `parseErrorBody(await response.text())` 替 `response.json()`。加 8 个测试（2 集成 + 6 单元，mirror rbi `TestMalformedPayload` 防御覆盖）。
 
 **2xx 路径不动**：200+error-body 既未实证，translate.ts 无需加 `chunk.code` 防御检测（task case 4）。RBI 的防御性 `test_200_with_error_body` 是对一个**未实证形状**的兜底；harness 不跟注（source-faithful 优先于防御 speculative 形状）——若将来 live 实证 200+error-body，再单开 ticket 加 translate.ts 防御。
 
@@ -122,7 +122,7 @@ const text = parsed?.message ?? parsed?.error?.message
 - **集成 2**：
   - `recovers code/message/request_id from an SSE-framed 4xx error body (live AGA wire shape)`：构造 400 SSE 框架 body（mirror 探针 P2 实形），断言 `failure: {code:'INVALID_REQUEST', status:400, message:'Range of max_tokens should be [1, 32768]', requestId:'req-400-sse'}`——**钉 request_id 恢复**（fix 前此值丢失）。
   - `parses a nested-error 404 body (live AGA wire shape: error.{code,message,type}, no request_id)`：构造 404 纯 JSON `{"error":{code,message,type}}`（mirror 探针 P1 实形），断言 `MODEL_NOT_AVAILABLE` + 真实 message + `requestId` undefined（body 无 request_id，非 bug）。
-- **单元 5**（`describe('parseErrorBody (non-2xx error-body recovery)')`）：纯 JSON 404 / 顶层 JSON / SSE 框架 400 / 空 body / HTML 502 无 `data:` / 非 JSON `data:` payload——mirror rbi `TestMalformedPayload` 防御覆盖。
+- **单元 6**（`describe('parseErrorBody (non-2xx error-body recovery)')`）：纯 JSON 404 / 顶层 JSON / SSE 框架 400 / 空 body / HTML 502 无 `data:` / 非 JSON `data:` payload——mirror rbi `TestMalformedPayload` 防御覆盖。
 - **guard 更新 1**：`keeps wire helpers off the package root` 加 `parseErrorBody` 到 helper 列表（与 `httpErrorCode` 同律，不 re-export 自 index.ts）。
 
 ### 3.4 不动 2xx 路径 / translate.ts 的理由
@@ -131,7 +131,7 @@ const text = parsed?.message ?? parsed?.error?.message
 
 ## 4. 验证（本地）
 
-- `pnpm vitest run packages/llm/llm-dashscope`：**4 文件 72 测试全绿**（adapter.spec.ts 27→35，+8；sse 6 / translate 11 / serialize 20 不变）。
+- `pnpm vitest run packages/llm/llm-dashscope`：**4 文件 72 测试全绿**（adapter.spec.ts 27→35，+8；sse 6 / translate 11 / serialize 20 不变；follow-up eb88154e28 +2 → adapter 37 / 包 74）。
 - `npx tsc -b packages/llm/llm-dashscope/tsconfig.json`：**exit 0**（src 类型净）。
 - `pnpm vitest run --typecheck packages/llm/llm-dashscope`：**72 测试全绿 + 类型净**（tests 类型净）。
 - `npx oxlint packages/llm/llm-dashscope/src/adapter.ts packages/llm/llm-dashscope/tests/adapter.spec.ts`：**0 warnings 0 errors**。
