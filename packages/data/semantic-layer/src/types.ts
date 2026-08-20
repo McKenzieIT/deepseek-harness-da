@@ -39,8 +39,8 @@ const CANONICAL_TYPE_MAP: Readonly<Record<string, string>> = {
 
 /** Mirrors canonicalize_type: complex/parametrized types (array<...>, map<...>,
  *  struct<...>, decimal(p,s)) preserved verbatim; unknown scalars pass through. */
-export function canonicalizeType(raw: string | undefined | null): string | undefined | null {
-  if (!raw || typeof raw !== 'string') return raw
+export function canonicalizeType(raw: string): string {
+  if (!raw) return raw
   const t = raw.trim()
   if (t.includes('<') || t.includes('(')) return t
   return CANONICAL_TYPE_MAP[t.toLowerCase()] ?? t
@@ -48,7 +48,9 @@ export function canonicalizeType(raw: string | undefined | null): string | undef
 
 // pydantic field_validator(mode="before") on type => zod .transform
 // (post-parse canonicalize; input "bigint" -> stored "int", round-trips canonicalized).
-const canonType = () => z.string().transform(canonicalizeType)
+// .default('') mirrors RBI ParamField/ColumnDef/PartitionDef `type: str = ""`
+// (RBI accepts an omitted type; without .default zod would reject it).
+const canonType = () => z.string().default('').transform(canonicalizeType)
 
 // ── Sub-models (all _Loose => .passthrough()) ───────────────────────────
 export const ConfirmationSchema = z.object({

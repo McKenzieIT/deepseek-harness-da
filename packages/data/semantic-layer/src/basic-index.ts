@@ -30,8 +30,11 @@ export class BasicIndex {
   constructor(semanticLayer: string) {
     this.semanticLayer = semanticLayer
     // ADR-0011: register this index's invalidation hook so writes trigger a rebuild.
-    registerInvalidationHook(() => {
-      this._dirty = true
+    registerInvalidationHook((sl) => {
+      // ADR-0011: only dirty THIS index's layer (a write to layer A must not
+      // rebuild layer B's index). Hooks accumulate per BasicIndex (prototype-grade;
+      // a per-layer registry/dispose is a follow-up if many indexes share a process).
+      if (sl === this.semanticLayer) this._dirty = true
     })
   }
 
