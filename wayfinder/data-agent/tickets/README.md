@@ -53,4 +53,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P12b · P13 · P11 · T2（+ low: R4, R5）
+P13 · P11 · T2（+ low: R4, R5）
