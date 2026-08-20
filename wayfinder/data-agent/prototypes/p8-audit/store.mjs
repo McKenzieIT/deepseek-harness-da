@@ -103,7 +103,9 @@ export class SQLiteAuditStore {
     const wire = toPayload(rec)                   // flattened: known fields + extra at top level
     const { auto_tags, ...payloadBody } = wire    // payload EXCLUDES auto_tags (single source of truth = audit_tag)
     const payloadJson = JSON.stringify(payloadBody)
-    const ts = rec.timestamp || new Date().toISOString()
+    const now = new Date().toISOString()
+    const ts = rec.timestamp || now                 // event time (backdated rec.timestamp honored)
+    const ingestedAt = now                          // ingestion time — separate from event time (no conflation)
     try {
       this.db.exec('BEGIN')
       const res = this.db.prepare(
@@ -111,7 +113,7 @@ export class SQLiteAuditStore {
            (log_id, ts, session_id, chat_session_id, scope_id, tenant_id, user_id, model, review_status, payload, ingested_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?)`
       ).run(rec.log_id, ts, rec.session_id, rec.chat_session_id, rec.scope_id, rec.tenant_id,
-            rec.user_id, rec.model, rec.review_status, payloadJson, ts)
+            rec.user_id, rec.model, rec.review_status, payloadJson, ingestedAt)
       const eventId = Number(res.lastInsertRowid)
       const insTag = this.db.prepare('INSERT OR IGNORE INTO audit_tag (event_id, tag) VALUES (?, ?)')
       for (const t of rec.auto_tags) insTag.run(eventId, t)
@@ -139,7 +141,7 @@ export class SQLiteAuditStore {
     if (!sameOwner({ tenant_id: row.tenant_id, scope_id: row.scope_id, user_id: row.user_id }, caller)) return null
     const rec = this._materialize(row)
     const overrides = this.db.prepare(
-      'SELECT field, value, patched_by, patched_at, reason FROM audit_override WHERE log_id=? ORDER BY patched_at'
+      'SELECT field, value, patched_by, patched_at, reason FROM audit_override WHERE log_id=? ORDER BY patched_at, id'
     ).all(log_id).map(o => ({ ...o, value: o.value === null ? null : JSON.parse(o.value) }))
     return { ...rec, overrides }
   }
@@ -255,7 +257,7 @@ export class SQLiteAuditStore {
 
   _latestOverrides(log_id) {
     const rows = this.db.prepare(
-      'SELECT field, value, patched_at FROM audit_override WHERE log_id=? ORDER BY patched_at'
+      'SELECT field, value, patched_at FROM audit_override WHERE log_id=? ORDER BY patched_at, id'
     ).all(log_id)
     const out = {}
     for (const r of rows) out[r.field] = (r.value === null ? null : JSON.parse(r.value))  // latest per field wins

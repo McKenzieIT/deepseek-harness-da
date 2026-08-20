@@ -43,10 +43,13 @@ export function installAudit(ctx, store) {
         auto_tags: [TAG.TOOL_WRITE],
         extra: { tier: 'tier-2', tool_name: toolName, payload_hash: sha256(body), payload_bytes: Buffer.byteLength(body) },
       })
-      try { store.append(rec) } catch (e) {
+      // fail-silent (Tier-2 must not block business writes) — but return null on failure so the caller
+      // (P6) does NOT get a phantom log_id for a non-persisted record (undercutting the Tier-2 trail).
+      let logId = null
+      try { store.append(rec); logId = rec.log_id } catch (e) {
         console.warn(`[audit] Tier-2 留痕失败（业务写入不受影响）: tool=${toolName}: ${e.message}`)
       }
-      return rec.log_id
+      return logId
     },
     // direct record (test hook)
     record(rec) { return store.append(fromPayload(rec)) },
