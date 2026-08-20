@@ -81,11 +81,12 @@ export interface Config {
   /** Harness home used when `path` is omitted; defaults to `$DSH_HOME` or `~/.dsh`. */
   dshHome?: string
   /**
-   * Password that creates and unlocks the keychain at startup. Required to
-   * create a new keychain or to auto-unlock an existing locked one; a
-   * pre-created, already-unlocked keychain can omit it. The password is a new
-   * secret-to-protect: interactive entry at startup is secure, while a password
-   * stored where bash can read it weakens the lock to convenience.
+   * Password that creates and unlocks the keychain at startup, and re-unlocks it
+   * after an auto-lock during a long session. Required to create a new keychain or
+   * to auto-unlock an existing locked one; a pre-created, already-unlocked keychain
+   * can omit it. The password is a new secret-to-protect: interactive entry at
+   * startup is secure, while a password stored where bash can read it weakens the
+   * lock to convenience.
    */
   unlockPassword?: string
   /** Auto-lock the keychain after N seconds idle; 0 disables. Defaults to 300. */
@@ -120,15 +121,24 @@ export function resolveSpec(config: Config): ResolvedSpec {
   }
 }
 
-/** Whether a `security` failure means the item is absent, so a find is a miss rather than a fault. */
+/** Whether a `security` failure means the item is absent, so a find is a miss rather than a fault.
+ * Matches the item-not-found phrasing only — a keychain-missing "could not be found" is NOT matched,
+ * so a deleted/corrupt keychain surfaces as a fault (throw) instead of silently degrading to the fallback. */
 function isItemNotFound(stderr: string): boolean {
-  return /could not be found|not be found in the keychain|errSecItemNotFound/i.test(stderr)
+  return /not be found in the keychain|errSecItemNotFound/i.test(stderr)
+}
+
+/** Whether a `security` failure means the keychain is locked (re-unlockable with the password). */
+function isLocked(stderr: string): boolean {
+  return /user interaction is not allowed|errSecInteractionNotAllowed/i.test(stderr)
 }
 
 /**
  * The real `security` CLI spawn. macOS-only (`/usr/bin/security` exists only on
  * darwin), so this is exercised by the live macOS e2e — which self-skips off
  * darwin — and excluded from non-mac CI coverage; unit tests inject a fake runner.
+ * @param args - the `security` CLI arguments.
+ * @returns the run's stdout on success, or stderr + exit code on a non-zero exit; throws on a spawn fault with no stderr.
  */
 /* v8 ignore start -- macOS live e2e covers this; non-mac CI has no /usr/bin/security, and unit tests inject a runner. */
 export async function securityCli(args: string[]): Promise<SecurityResult> {
@@ -136,12 +146,14 @@ export async function securityCli(args: string[]): Promise<SecurityResult> {
     const { stdout } = await exec('/usr/bin/security', args, { maxBuffer: 1 << 20 })
     return { ok: true, stdout }
   } catch (error) {
-    const e = error as { stderr?: string; code?: number }
-    if (typeof e.stderr === 'string') return { ok: false, stderr: e.stderr, exitCode: e.code ?? 1 }
+    const e = error as { stderr?: string; code?: number | string }
+    if (typeof e.stderr === 'string') {
+      return { ok: false, stderr: e.stderr, exitCode: typeof e.code === 'number' ? e.code : 1 }
+    }
     throw error
   }
+  /* v8 ignore stop */
 }
-/* v8 ignore stop */
 
 /** macOS Keychain credentials provider (independent locked keychain, per-user addressing). */
 export class KeychainCredentialProvider extends CredentialProvider {
@@ -172,15 +184,17 @@ export class KeychainCredentialProvider extends CredentialProvider {
    * further consumer to surface it to, so it is only warned.
    */
   private async lockAtRest(): Promise<void> {
+    let result: SecurityResult
     try {
-      const result = await this.runner(['lock-keychain', this.spec.keychain])
-      if (!result.ok) {
-        this.ctx.logger.warn('credentials-keychain: lock-keychain at dispose failed: %s', result.stderr)
-      }
+      result = await this.runner(['lock-keychain', this.spec.keychain])
     } catch (error) {
       // lock-keychain at dispose threw (already locked, keychain removed, or
       // ctx tearing down): not fatal to disposal, no further consumer to warn.
       this.ctx.logger.warn('credentials-keychain: lock-keychain at dispose threw', error)
+      return
+    }
+    if (!result.ok) {
+      this.ctx.logger.warn('credentials-keychain: lock-keychain at dispose failed: %s', result.stderr)
     }
   }
 
@@ -194,16 +208,23 @@ export class KeychainCredentialProvider extends CredentialProvider {
       const created = await this.runner(['create-keychain', '-p', this.unlockPassword, this.spec.keychain])
       if (!created.ok) throw new Error(`credentials-keychain: create-keychain failed: ${created.stderr}`)
     }
-    const settings = ['set-keychain-settings', '-u']
-    if (this.spec.autoLockSeconds > 0) settings.push('-t', String(this.spec.autoLockSeconds))
+    // `-u` (lock after timeout) + `-t` (timeout) only when auto-lock is enabled; omitting both disables it.
+    const settings = ['set-keychain-settings']
+    if (this.spec.autoLockSeconds > 0) settings.push('-u', '-t', String(this.spec.autoLockSeconds))
     if (this.spec.lockOnSleep) settings.push('-l')
     settings.push(this.spec.keychain)
     const applied = await this.runner(settings)
     if (!applied.ok) throw new Error(`credentials-keychain: set-keychain-settings failed: ${applied.stderr}`)
-    if (this.unlockPassword !== undefined) {
-      const unlocked = await this.runner(['unlock-keychain', '-p', this.unlockPassword, this.spec.keychain])
-      if (!unlocked.ok) throw new Error(`credentials-keychain: unlock-keychain failed: ${unlocked.stderr}`)
-    }
+    if (this.unlockPassword !== undefined) await this.unlock(this.unlockPassword)
+  }
+
+  /**
+   * Unlock the keychain with the given password; throws if the unlock faults.
+   * @param password - the keychain password (callers narrow `this.unlockPassword` to a string before calling).
+   */
+  private async unlock(password: string): Promise<void> {
+    const unlocked = await this.runner(['unlock-keychain', '-p', password, this.spec.keychain])
+    if (!unlocked.ok) throw new Error(`credentials-keychain: unlock-keychain failed: ${unlocked.stderr}`)
   }
 
   override async resolve(ref: CredentialRef, address?: CredentialAddress): Promise<ResolvedCredential | undefined> {
@@ -219,7 +240,11 @@ export class KeychainCredentialProvider extends CredentialProvider {
     if (account === undefined) return this.fallback?.describe(ref) ?? { configured: false, writable: true }
     const value = await this.find(ref, account)
     if (value !== undefined) return { configured: true, source: 'keychain', writable: true }
-    return this.fallback?.describe(ref) ?? { configured: false, writable: true }
+    // A per-user miss delegates the configured/source facts to the fallback, but the
+    // per-user slot itself is writable (a `set` would succeed), regardless of the
+    // fallback layer's own writability (e.g. a read-only env value).
+    const fallbackInfo = await this.fallback?.describe(ref)
+    return fallbackInfo === undefined ? { configured: false, writable: true } : { ...fallbackInfo, writable: true }
   }
 
   override async set(ref: CredentialRef, value: string, address?: CredentialAddress): Promise<void> {
@@ -237,14 +262,28 @@ export class KeychainCredentialProvider extends CredentialProvider {
     const before = await this.find(ref, account)
     if (before === undefined) return
     const removed = await this.runner(['delete-generic-password', '-a', account, '-s', ref, this.spec.keychain])
-    if (!removed.ok) throw new Error(`credentials-keychain: delete-generic-password for "${ref}"/${account} failed: ${removed.stderr}`)
+    if (!removed.ok) {
+      // A not-found here is a TOCTOU miss (the item was deleted between the find and the
+      // delete): treat as an idempotent no-op (no event), not a fault.
+      if (isItemNotFound(removed.stderr)) return
+      throw new Error(`credentials-keychain: delete-generic-password for "${ref}"/${account} failed: ${removed.stderr}`)
+    }
     this.notifyUpdated(ref, address)
   }
 
-  /** Read one per-user item: the value on a hit, `undefined` on a not-found miss, throws on a real fault. */
+  /**
+   * Read one per-user item: the value on a hit, `undefined` on a not-found miss,
+   * throws on a real fault. If the keychain auto-locked mid-session and a password
+   * is configured, re-unlock and retry once — narrowing the runtime-exfil window
+   * to when the harness is actively resolving (bash has no password to unlock).
+   */
   private async find(ref: CredentialRef, account: UserId): Promise<string | undefined> {
-    const result = await this.runner(['find-generic-password', '-a', account, '-s', ref, '-w', this.spec.keychain])
-    if (result.ok) return result.stdout.replace(/\n+$/, '')
+    let result = await this.runner(['find-generic-password', '-a', account, '-s', ref, '-w', this.spec.keychain])
+    if (!result.ok && isLocked(result.stderr) && this.unlockPassword !== undefined) {
+      await this.unlock(this.unlockPassword)
+      result = await this.runner(['find-generic-password', '-a', account, '-s', ref, '-w', this.spec.keychain])
+    }
+    if (result.ok) return result.stdout.replace(/\n$/, '')
     if (isItemNotFound(result.stderr)) return undefined
     throw new Error(`credentials-keychain: find-generic-password for "${ref}"/${account} failed: ${result.stderr}`)
   }

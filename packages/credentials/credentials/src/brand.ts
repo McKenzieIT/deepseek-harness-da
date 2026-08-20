@@ -7,9 +7,10 @@
  *
  * The values are opaque to this seam — their format and provenance belong to
  * the identity and access-isolation layers (the web-login `Tenant` for
- * `userId`, the per-game `scope_id` for `scopeId`) — so the factories perform
- * a plain cast with no validation, mirroring the seam's own {@link credentialRef}
- * factory rather than the validating POSIX-identifier factories of other owners.
+ * `userId`, the per-game `scope_id` for `scopeId`) — so the factories perform a
+ * plain cast with no validation. (They share the lowercase naming of the seam's
+ * {@link credentialRef} factory, but `credentialRef` validates a POSIX pattern
+ * whereas a `userId`/`scopeId`'s format is the identity layer's concern.)
  *
  * @module @deepseek-ai/dsh-credentials/brand
  */
