@@ -7,13 +7,12 @@
  * The keychain provider has no Schemastery `Config` (its `runner`/`fallback`
  * are injectable), so it cannot be yml-mounted directly. This host is the
  * mountable face: a function plugin (`apply(ctx, config)`) that takes scalar
- * config (keychain path/lock policy/unlock-password source/per-user fallback
- * refs) + an injectable `runner` (default `securityCli`; tests pass a fake),
+ * config + an injectable `runner` (default `securityCli`; tests pass a fake),
  * resolves the unlock password per its source, builds a plain `KeychainFallback`
  * shim over the credentials-local file+env layers (reusing `parseCredentialsDocument`
- * + `renderDocument` + `writeFileAtomic` + `withFileLock`), and programmaticaly
- * `ctx.plugin`s the `KeychainCredentialProvider`, which auto-registers as
- * `ctx.credentials`.
+ * + `renderDocument` + `writeFileAtomic` + `withFileLock` + `assertOwnerOnly`),
+ * and programmaticaly `ctx.plugin`s the `KeychainCredentialProvider`, which
+ * auto-registers as `ctx.credentials`.
  *
  * The data-agent bundle disables base `credentials` (credentials-local) and
  * mounts this host as `credentials`, so the keychain is the single
@@ -38,65 +37,36 @@ import {
   type SecurityRunner,
 } from '@deepseek-ai/dsh-credentials-keychain'
 import {
+  assertOwnerOnly,
   parseCredentialsDocument,
   renderDocument,
   resolveSpec as resolveLocalSpec,
 } from '@deepseek-ai/dsh-credentials-local'
 
 export const name = 'credentials-keychain-host'
-// Function plugin (no static Config): config passes verbatim so the injectable
-// `runner` (a function, not yml-serializable) reaches `apply`. The keychain
-// provider it mounts owns its own `[Service.init]` lifecycle.
 export const inject: readonly string[] = []
 
 /** Deployment config: keychain location/lock policy, unlock-password source, fallback refs, injectable runner. */
 export interface HostConfig {
-  /** Keychain path; defaults to `credentials.keychain` under the harness home. */
   readonly path?: string
-  /** Harness home for the keychain when `path` is omitted. */
   readonly dshHome?: string
-  /** Auto-lock the keychain after N seconds idle; 0 disables. Defaults to 300. */
   readonly autoLockSeconds?: number
-  /** Lock the keychain on sleep; defaults to true. */
   readonly lockOnSleep?: boolean
-  /**
-   * Source of the keychain unlock password. `'interactive'` (default) prompts
-   * stdin at boot (tty-only, best-effort — the secure option, since a stored
-   * password is bash-readable per P12b's finding); `'env'` reads
-   * `process.env[unlockPasswordEnv]` (unattended, but bash can read env —
-   * weakens the lock, documented); `'none'` omits the password (the keychain
-   * must be pre-created + already unlocked).
-   */
+  /** unlock password source: interactive (default, tty stdin, non-tty→undefined) | env | none. */
   readonly unlockPasswordSource?: 'interactive' | 'env' | 'none'
-  /** Env var name read for `unlockPasswordSource: 'env'`. */
   readonly unlockPasswordEnv?: string
-  /**
-   * Refs eligible for the G3 staged per-user→global fallback (mirrors
-   * `KeychainCredentialProvider.perUserFallbackRefs`). `undefined` (early) =
-   * all refs fall back; a list (stable) gates it so an unlisted ref's per-user
-   * miss resolves to `undefined` (per-user required).
-   */
+  /** refs eligible for per-user→global fallback; undefined=early(all), list=stable(gated). */
   readonly perUserFallbackRefs?: readonly string[]
-  /** `.credentials.yaml` path for the file/env fallback shim; defaults via credentials-local. */
   readonly credentialsPath?: string
-  /** Harness home for the fallback `.credentials.yaml` when `credentialsPath` is omitted. */
   readonly credentialsDshHome?: string
-  /** Injectable `security` runner; default `securityCli` (production), a fake in tests. */
+  /** Injectable `security` runner; default `securityCli`, a fake in tests. */
   readonly runner?: SecurityRunner
 }
 
-/** Whether a filesystem error means absence. */
 function isENOENT(error: unknown): boolean {
   return (error as NodeJS.ErrnoException | null)?.code === 'ENOENT'
 }
 
-/**
- * Best-effort synchronous stdin read for the interactive unlock password. Node
- * has no clean sync readline; this reads a raw line from fd 0 (tty-only; on a
- * non-tty server like launchd it returns `undefined`, so the keychain must be
- * pre-created + unlocked). Echo is NOT disabled — a real deployment that needs
- * hidden input swaps this for a tty-aware boot hook or uses `env`.
- */
 function readInteractivePassword(): string | undefined {
   const stdin = process.stdin as NodeJS.ReadStream & { isTTY?: boolean }
   if (!stdin.isTTY) return undefined
@@ -111,7 +81,6 @@ function readInteractivePassword(): string | undefined {
   }
 }
 
-/** Resolve the unlock password per `unlockPasswordSource`. */
 function resolveUnlockPassword(config: HostConfig): string | undefined {
   const source = config.unlockPasswordSource ?? 'interactive'
   if (source === 'none') return undefined
@@ -120,22 +89,18 @@ function resolveUnlockPassword(config: HostConfig): string | undefined {
     if (v === undefined) {
       throw new Error('credentials-keychain-host: unlockPasswordSource:env requires unlockPasswordEnv (the env var name)')
     }
-    // Acknowledged weak: anything the harness reads, bash can read (P12b §7.3);
-    // interactive is the secure default, env is the unattended fallback.
     return process.env[v]
   }
   return readInteractivePassword()
 }
 
 /**
- * Plain `KeychainFallback` over the credentials-local file+env layers (reusing
- * its parser + comment-preserving renderer + atomic/locked writes). Not a
+ * Plain `KeychainFallback` over the credentials-local file+env layers. Not a
  * Service, so it does not double-register `ctx.credentials`. The read path
- * caches the parsed file; writes invalidate + refresh the cache.
+ * caches the parsed file; writes invalidate + refresh the cache. Mirrors
+ * credentials-local's `assertOwnerOnly` mode guard + env-shadow refusal.
  */
 function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
-  // Conditional spread keeps `exactOptionalPropertyTypes` happy (a `?: string` property
-  // is absent-or-string, not present-with-undefined).
   const filename = resolveLocalSpec({
     watch: false,
     ...(config.credentialsPath !== undefined ? { path: config.credentialsPath } : {}),
@@ -145,6 +110,9 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
 
   async function load(): Promise<Map<string, string>> {
     if (cache !== undefined) return cache
+    // Reject a group/other-readable .credentials.yaml before serving any secret (mirror
+    // credentials-local's mode guard; assertOwnerOnly no-ops on an absent file).
+    await assertOwnerOnly(filename)
     try {
       const text = await readFile(filename, 'utf8')
       cache = parseCredentialsDocument(text, filename)
@@ -162,7 +130,7 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
       const stored = (await load()).get(ref)
       if (stored !== undefined) return { value: stored, source: 'file' }
       const dotenv = launchEnvironmentOf(ctx).getFrom(ref, ['project-env', 'user-env'])
-      if (dotenv !== undefined) return { value: dotenv.value, source: dotenv.source }
+      if (dotenv !== undefined && dotenv.value.length > 0) return { value: dotenv.value, source: dotenv.source }
       return undefined
     },
     async describe(ref: CredentialRef): Promise<CredentialInfo> {
@@ -171,7 +139,7 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
       const stored = (await load()).get(ref)
       if (stored !== undefined) return { configured: true, source: 'file', writable: true }
       const dotenv = launchEnvironmentOf(ctx).getFrom(ref, ['project-env', 'user-env'])
-      if (dotenv !== undefined) return { configured: true, source: dotenv.source, writable: true }
+      if (dotenv !== undefined && dotenv.value.length > 0) return { configured: true, source: dotenv.source, writable: true }
       return { configured: false, writable: true }
     },
     async set(ref: CredentialRef, value: string): Promise<void> {
@@ -187,6 +155,9 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
         )
       }
       await withFileLock(filename, async () => {
+        // Re-check the mode before every write (an external editor or restored backup can
+        // loosen it after boot), mirroring credentials-local.
+        await assertOwnerOnly(filename)
         let text: string | undefined
         try {
           text = await readFile(filename, 'utf8')
@@ -200,8 +171,17 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
         cache = parseCredentialsDocument(nextText, filename)
       })
     },
-    async unset(ref: CredentialRef): Promise<void> {
+    async unset(ref: CredentialRef): Promise<boolean> {
+      // Mirror credentials-local: unsetting a ref the env shadows is an apparent no-op.
+      const env = launchEnvironmentOf(ctx).getFrom(ref, ['process'])
+      if (env !== undefined && env.value.length > 0) {
+        throw new Error(
+          `credentials-keychain-host: "${ref}" is supplied read-only by the launching environment; unset it in the shell before removing`,
+        )
+      }
+      let removed = false
       await withFileLock(filename, async () => {
+        await assertOwnerOnly(filename)
         let text: string | undefined
         try {
           text = await readFile(filename, 'utf8')
@@ -217,7 +197,9 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
         const nextText = renderDocument(text, ref, undefined)
         await writeFileAtomic(filename, nextText, { mode: 0o600, dirMode: 0o700 })
         cache = parseCredentialsDocument(nextText, filename)
+        removed = true
       })
+      return removed
     },
   }
 }
@@ -226,8 +208,6 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
  * Mount `KeychainCredentialProvider` as `ctx.credentials` with a writable
  * file/env fallback (G3c global-writes gap, decision A). The data-agent
  * bundle disables base `credentials` and mounts this host as `credentials`.
- * @param ctx - context to mount in.
- * @param config - keychain + fallback + runner config.
  */
 export async function apply(ctx: Context, config: HostConfig = {}): Promise<void> {
   const unlockPassword = resolveUnlockPassword(config)

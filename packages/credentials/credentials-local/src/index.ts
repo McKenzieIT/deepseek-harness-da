@@ -100,7 +100,7 @@ const GROUP_OTHER_BITS = 0o077
  * @param filename - absolute path of the document.
  * @throws when the path hierarchy is invalid or the file exists with group or other permission bits set.
  */
-async function assertOwnerOnly(filename: string): Promise<void> {
+export async function assertOwnerOnly(filename: string): Promise<void> {
   let mode: number
   try {
     mode = (await stat(filename)).mode

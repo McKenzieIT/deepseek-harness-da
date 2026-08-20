@@ -105,7 +105,7 @@ describe('credentials-keychain-host mount', () => {
 
   it('gates the per-user→global fallback off in stable mode (per-user PAT required)', async () => {
     // Seed the fallback file with a global PAT (T1).
-    await writeFile(credFile, 'QODER_PERSONAL_ACCESS_TOKEN: sk-t1-global\n', 'utf8')
+    await writeFile(credFile, 'QODER_PERSONAL_ACCESS_TOKEN: sk-t1-global\n', { encoding: 'utf8', mode: 0o600 })
     const { ctx, dispose } = await boot({ perUserFallbackRefs: [] }) // stable: empty set = no per-user fallback
     // Per-user miss → undefined (QODER gated off, NOT the global T1).
     expect(await ctx.credentials.resolve(PAT, { userId: userId('alice') })).toBeUndefined()

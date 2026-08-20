@@ -79,8 +79,8 @@ export interface KeychainFallback {
    * layer stays writable. Absent → a global `set` throws (no writable global layer).
    */
   set?(ref: CredentialRef, value: string): Promise<void>
-  /** Optional writable global unset (mirror of {@link set}). */
-  unset?(ref: CredentialRef): Promise<void>
+  /** Optional writable global unset; returns `true` iff a value was removed (mirror of {@link set}). */
+  unset?(ref: CredentialRef): Promise<boolean>
 }
 
 /** Plugin config: keychain location, lock policy, startup unlock, fallback, runner. */
@@ -290,8 +290,13 @@ export class KeychainCredentialProvider extends CredentialProvider {
     if (account === undefined) {
       // G3c global-writes gap (decision A): a global set (no userId) delegates to the
       // writable fallback (the host's file shim over .credentials.yaml) so global creds
-      // stay writable when the keychain is ctx.credentials.
-      if (this.fallback?.set) return this.fallback.set(ref, value)
+      // stay writable when the keychain is ctx.credentials, then fires credentials/updated
+      // (no address = global) so remote clients hot-reload the Models/web-search surfaces.
+      if (this.fallback?.set) {
+        await this.fallback.set(ref, value)
+        this.notifyUpdated(ref)
+        return
+      }
       throw new Error('credentials-keychain: a per-user set requires { userId }; the global slot is the fallback provider (provide a writable fallback for global sets)')
     }
     const added = await this.runner(['add-generic-password', '-U', '-a', account, '-s', ref, '-w', value, this.spec.keychain])
@@ -303,8 +308,12 @@ export class KeychainCredentialProvider extends CredentialProvider {
     const account = address?.userId
     if (account === undefined) {
       // G3c global-writes gap (decision A): a global unset (no userId) delegates to the
-      // writable fallback; absent fallback → idempotent no-op (mirror local's unset-absent).
-      if (this.fallback?.unset) return this.fallback.unset(ref)
+      // writable fallback; notify only when a value was actually removed (mirror local),
+      // so unset-of-absent stays a silent no-op (no spurious event).
+      if (this.fallback?.unset) {
+        if (await this.fallback.unset(ref)) this.notifyUpdated(ref)
+        return
+      }
       return
     }
     const before = await this.find(ref, account)
