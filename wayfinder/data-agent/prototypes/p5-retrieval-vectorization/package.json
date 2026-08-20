@@ -1,0 +1,8 @@
+{
+  "name": "p5-retrieval-vectorization-prototype",
+  "version": "0.0.0-throwaway",
+  "private": true,
+  "type": "module",
+  "scripts": { "demo": "node run.mjs --demo" },
+  "description": "P5 throwaway prototype: ctx.embedder + ctx.retrieval seam, stub-fidelity mirror of rbi-retrieval/semantic. NOT real Cordis wiring (production step, like P4)."
+}
