@@ -23,7 +23,7 @@
 已实现 `packages/llm/llm-dashscope/`（src 8 文件 + tests 7 文件 + package.json/tsconfig），wire 从零 native AGA（见 Design）。验证：
 - `tsc -b packages/llm/llm-dashscope/tsconfig.json` exit 0（src 类型干净，lib/types 出）。
 - `tsc -b tsconfig.host.json` exit 0（含新加的 `./packages/llm/llm-dashscope` reference + 我的 tests，host 聚合类型干净）。
-- vitest 62/62 单元 spec 全过（serialize/sse/translate/adapter，pin native wire 契约）。
+- vitest 64/64 单元 spec 全过（serialize/sse/translate/adapter，pin native wire 契约）。
 - 6 个 live 探针已兑现 wire（见 research/p2-dashscope-wire.md §1）。
 
 **Finding**：

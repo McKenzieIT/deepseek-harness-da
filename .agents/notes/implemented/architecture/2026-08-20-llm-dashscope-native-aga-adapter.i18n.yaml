@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md
+2026-08-20-llm-dashscope-native-aga-adapter.md: 4b7a7a67e9a98707be3d5c4c92105b00d02cb7e2
+2026-08-20-llm-dashscope-native-aga-adapter.zh.md: b59d4f58248f3d5efe2d5c26a0b5e2d32323aac5
