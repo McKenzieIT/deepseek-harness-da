@@ -2,8 +2,8 @@
 
 **Type**: prototype
 **Phase**: 2
-**Assignee**: —（unclaimed）
-**Status**: Unblocked（graduated from P13b Q1 finding 2026-08-20）
+**Assignee**: wayfinder-session 2026-08-20
+**Status**: In progress（claimed 2026-08-20；grilling 5 open decisions → land packages/{embedder,retrieval} + additive swap P13b Bm25Linker）
 **Graduated from**: P13b grilling Q1（P5/P6 生产 gap：P5 仅 prototype resolved，生产包未 ship）
 **Blocked by**: P5（resolved, prototype）、P13b（resolved，local `RetrievalLinker` contract consumer）
 
