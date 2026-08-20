@@ -5,6 +5,8 @@
 # 信任边界单一在 P9 dsh-admin gate（门在其后）；mTLS = transport-only（org/device cert）。
 # ⚠️ 指令语法以 Caddy ≥2.8 官方文档为准（prototype 示意）：
 #    https://caddyserver.com/docs/caddyfile/directives/tls  (client_auth 子指令)
+#    注：Caddy 2.8+ 引入 trust_pool 作更灵活的 trust 管理形式；trusted_ca_cert_file 仍可用，
+#    部署期核对文档确认是否应迁 trust_pool。header_up X-Forwarded-Proto https 冗余（Caddy 默认已设）非错。
 # ─────────────────────────────────────────────────────────────────────────────
 :8443 {
 	# 服务端证书（内网 addr → 内部 CA 自签；若真 hostname 可用公网 CA）

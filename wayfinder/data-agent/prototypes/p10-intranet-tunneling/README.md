@@ -115,6 +115,9 @@ inbound → Caddy(mTLS require_and_verify) → loopback webserver → P9 gate(�
 - 客户端 cert：org/device 粒度（非 per-user），短命（默认 7d），admin 签发，
   out-of-band 分发。
 - 吊销：短命 + rotation = 吊销靠过期（前期）；立即吊销 = CRL / custom verifier（P12b）。
+  - **注**：Caddy native `client_auth require_and_verify` 只验 issuer+expiry，**不查 CRL/OCSP 吊销**（Go crypto/tls 默认）；已吊销证书在过期前仍可过 mTLS，除非部署 CRL/custom verifier（→P12b）。prototype `run.mjs` 的 `revoked` 分支是"假设有 verifier 时"的占位行为。
+- 单一内部 CA = transport 层单点信任；CA 私钥离线保护/air-gap 签发；compromise blast radius 由 gate 第二层（per-user authn + scope authz）兜底，非全盘失守。
+- Caddy 终结 TLS → 转发 webserver loopback 127.0.0.1 **明文段**；信任假设=单 host Mac 受信、无恶意本地进程嗅探 loopback/直连 gate 路由；多 host/跨网时需 mTLS 延伸到 sidecar 或 unix socket。
 - per-user 身份不走 cert——走 gate 登录 / access-link token。per-user PAT 走 P12
   keychain（不变）。
 
