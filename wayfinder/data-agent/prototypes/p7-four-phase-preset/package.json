@@ -1,0 +1,6 @@
+{
+  "name": "p7-four-phase-preset-prototype",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY PROTOTYPE — P7 four-phase preset + phase-gate plugin state model. Not a shipped package. See README.md."
+}

@@ -34,7 +34,8 @@
 - [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, blocked by ~~P9~~ → **unblocked**（P9 resolved 2026-08-20：per-user login-state ctx + 端点→user→scope 绑定 + PAT 自助）
 
 ## phase-3（orchestration）
-- [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, blocked by ~~P4~~/~~P5~~/~~P6~~ → **unblocked**
+- [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, **resolved**（2026-08-20；grilling 8 决策 + prototype 8 场景全绿 + 6 finding→P7b；persona option C / turn-stopping 转换 / guard 硬白名单 / rbi budgets 初始默认）
+- [P7b phase-gate 生产硬化](phase-3/P7b-phase-gate-hardening.md) — prototype, blocked by P13（GENERATION critic 接线）
 - [P13 NL→SQL 引擎（极简 (B)）](phase-3/P13-nl2sql-engine.md) — prototype, blocked by ~~P4~~/~~P5~~/~~P6~~ → **unblocked**（从 map Not-yet-specified「Text2DSL 选型」毕业；`../research/p6-nl2sql-feasibility.md`）
 
 ## phase-4（eval）
@@ -43,11 +44,11 @@
 - [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **unblocked**
 
 ## phase-misc（cross-phase / 低优先）
-- [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, blocked by P7
+- [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **unblocked**（P7 resolved；P7 定四阶段 preset 不挂 planning group + goal/todo/plan 不禁用——G1 做含 planning group 的 preset 实验对比）
 - [R4 goals:false 抑制](phase-misc/R4-goals-false.md) — research, low, unblocked
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, low, unblocked
 - [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, low, unblocked
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P7 · P8b · P12b · P13 · G2 · T2（+ low: R4, R5）
+G1 · P8b · P12b · P13 · G2 · T2（+ low: R4, R5）
