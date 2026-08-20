@@ -95,6 +95,17 @@ export interface Config {
   lockOnSleep?: boolean
   /** Global/shared fallback for per-user misses and global resolves. */
   fallback?: KeychainFallback
+  /**
+   * Refs eligible for the G3 staged per-user→global fallback. `undefined`
+   * (early) means every per-user miss falls through to {@link fallback} (the T1
+   * global PAT); a set (stable) gates it, so an unlisted ref's per-user miss
+   * resolves to `undefined` — per-user required — rather than silently
+   * degrading to a global PAT. The no-`userId` (global credential) resolve path
+   * always consults {@link fallback} regardless of this set. Injected
+   * programmatically by the host (a `Set`, not yml-serializable); the host
+   * converts a yml `string[]`.
+   */
+  perUserFallbackRefs?: Set<CredentialRef>
   /** Injectable `security` runner: the real `/usr/bin/security` spawn (exported as
    * {@link securityCli}) in production and the live macOS e2e, a fake in unit tests. */
   runner: SecurityRunner
@@ -161,6 +172,8 @@ export class KeychainCredentialProvider extends CredentialProvider {
   private readonly runner: SecurityRunner
   private readonly fallback: KeychainFallback | undefined
   private readonly unlockPassword: string | undefined
+  /** G3 staged per-user→global fallback gate; `undefined` = early (all fall back). */
+  private readonly perUserFallbackRefs: Set<CredentialRef> | undefined
 
   constructor(ctx: Context, public config: Config) {
     super(ctx)
@@ -168,6 +181,7 @@ export class KeychainCredentialProvider extends CredentialProvider {
     this.runner = config.runner
     this.fallback = config.fallback
     this.unlockPassword = config.unlockPassword
+    this.perUserFallbackRefs = config.perUserFallbackRefs
   }
 
   async*[Service.init](): AsyncGenerator<() => Promise<void> | void, void, void> {
@@ -229,10 +243,20 @@ export class KeychainCredentialProvider extends CredentialProvider {
 
   override async resolve(ref: CredentialRef, address?: CredentialAddress): Promise<ResolvedCredential | undefined> {
     const account = address?.userId
+    // No userId: a global/shared credential. Always served by the fallback layer
+    // (env > file > .env), regardless of the per-user fallback gate below.
     if (account === undefined) return this.fallback?.resolve(ref)
     const value = await this.find(ref, account)
     if (value !== undefined) return { value, source: 'keychain' }
-    return this.fallback?.resolve(ref)
+    // G3 staged fallback (decision 4): a per-user miss falls through to the
+    // global/shared fallback only when this ref is eligible — `undefined`
+    // (early) means all refs fall back (T1 global PAT); a set (stable) gates
+    // it, so an unlisted ref resolves to `undefined` (per-user required → the
+    // caller rejects) rather than silently degrading to a global PAT.
+    if (this.perUserFallbackRefs === undefined || this.perUserFallbackRefs.has(ref)) {
+      return this.fallback?.resolve(ref)
+    }
+    return undefined
   }
 
   override async describe(ref: CredentialRef, address?: CredentialAddress): Promise<CredentialInfo> {
@@ -240,9 +264,13 @@ export class KeychainCredentialProvider extends CredentialProvider {
     if (account === undefined) return this.fallback?.describe(ref) ?? { configured: false, writable: true }
     const value = await this.find(ref, account)
     if (value !== undefined) return { configured: true, source: 'keychain', writable: true }
-    // A per-user miss delegates the configured/source facts to the fallback, but the
-    // per-user slot itself is writable (a `set` would succeed), regardless of the
-    // fallback layer's own writability (e.g. a read-only env value).
+    // A per-user miss: if this ref is NOT fallback-eligible (stable, gated off),
+    // report unconfigured — the caller must `set` a per-user value; otherwise
+    // delegate configured/source facts to the fallback, but the per-user slot is
+    // writable (a `set` would succeed) regardless of the fallback's writability.
+    if (this.perUserFallbackRefs !== undefined && !this.perUserFallbackRefs.has(ref)) {
+      return { configured: false, writable: true }
+    }
     const fallbackInfo = await this.fallback?.describe(ref)
     return fallbackInfo === undefined ? { configured: false, writable: true } : { ...fallbackInfo, writable: true }
   }

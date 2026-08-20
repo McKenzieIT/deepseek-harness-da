@@ -15,19 +15,10 @@
       "path": "../../../vendor/cordis"
     },
     {
-      "path": "../../../vendor/schemastery"
-    },
-    {
-      "path": "../../core/session"
-    },
-    {
-      "path": "../../core/tools"
+      "path": "../../credentials/credentials"
     },
     {
       "path": "../../runtime-diagnostics/invariants"
-    },
-    {
-      "path": "../../identity/identity"
     }
   ]
 }

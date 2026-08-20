@@ -5,6 +5,8 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import LocalCredentialProvider from '@deepseek-ai/dsh-credentials-local'
+import { IdentityService } from '@deepseek-ai/dsh-identity'
+import { userId } from '@deepseek-ai/dsh-credentials'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 import * as invariant from '../src/invariant.ts'
@@ -164,6 +166,7 @@ describe('task admission and package contracts', () => {
     const ctx = new Context()
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(LocalCredentialProvider, CRED_CONFIG)
+    await ctx.plugin(IdentityService)
     const fiber = await ctx.plugin(subagentQoder, {})
     expect(ctx.subagents.getProvider('qoder')).toMatchObject({
       name: 'qoder',
@@ -194,7 +197,7 @@ describe('task admission and package contracts', () => {
   it('keeps the Loader namespace shape', () => {
     expect('default' in subagentQoder).toBe(false)
     expect(subagentQoder.name).toBe('subagent-qoder')
-    expect(subagentQoder.inject).toEqual(['subagents', 'credentials'])
+    expect(subagentQoder.inject).toEqual(['subagents', 'credentials', 'identity'])
   })
 
   it('registers the package-owned empty invariant companion', async () => {
@@ -482,6 +485,7 @@ describe('provider start with credentials-seam PAT', () => {
     const ctx = new Context()
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(LocalCredentialProvider, CRED_CONFIG)
+    await ctx.plugin(IdentityService)
     const resolve = vi.spyOn(ctx.credentials, 'resolve')
       .mockResolvedValue({ value: 'resolved-pat', source: 'file' })
     await ctx.plugin(subagentQoder, { disposeGraceMs: 29 })
@@ -491,7 +495,7 @@ describe('provider start with credentials-seam PAT', () => {
       output: [{ type: 'text', text: 'live answer' }],
       stopReason: 'completed',
     })
-    expect(resolve).toHaveBeenCalledWith(QODER_PERSONAL_ACCESS_TOKEN)
+    expect(resolve).toHaveBeenCalledWith(QODER_PERSONAL_ACCESS_TOKEN, undefined)
     expect(accessTokenMock).toHaveBeenCalledWith('resolved-pat')
     await run.dispose()
     await ctx.fiber.dispose()
@@ -501,6 +505,7 @@ describe('provider start with credentials-seam PAT', () => {
     const ctx = new Context()
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(LocalCredentialProvider, CRED_CONFIG)
+    await ctx.plugin(IdentityService)
     vi.spyOn(ctx.credentials, 'resolve').mockResolvedValue({ value: 'resolved-pat', source: 'file' })
     const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
     await ctx.plugin(subagentQoder, {})
@@ -516,12 +521,13 @@ describe('provider start with credentials-seam PAT', () => {
     const ctx = new Context()
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(LocalCredentialProvider, CRED_CONFIG)
+    await ctx.plugin(IdentityService)
     const resolve = vi.spyOn(ctx.credentials, 'resolve').mockResolvedValue(undefined)
     await ctx.plugin(subagentQoder, {})
     await expect(ctx.subagents.start('qoder', request()))
       .rejects.toThrow('QODER_PERSONAL_ACCESS_TOKEN is not configured')
     expect(queryMock).not.toHaveBeenCalled()
-    expect(resolve).toHaveBeenCalledWith(QODER_PERSONAL_ACCESS_TOKEN)
+    expect(resolve).toHaveBeenCalledWith(QODER_PERSONAL_ACCESS_TOKEN, undefined)
     await ctx.fiber.dispose()
   })
 
@@ -529,6 +535,7 @@ describe('provider start with credentials-seam PAT', () => {
     const ctx = new Context()
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(LocalCredentialProvider, CRED_CONFIG)
+    await ctx.plugin(IdentityService)
     const resolve = vi.spyOn(ctx.credentials, 'resolve')
     await ctx.plugin(subagentQoder, {})
     await expect(ctx.subagents.start('qoder', {
@@ -541,6 +548,30 @@ describe('provider start with credentials-seam PAT', () => {
     expect(queryMock).not.toHaveBeenCalled()
     expect(resolve).not.toHaveBeenCalled()
     // cwd is checked before the PAT resolve in start()
+    await ctx.fiber.dispose()
+  })
+
+  it('threads the per-user userId from ctx.identity into resolve (G3 stable opportunistic)', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(LocalCredentialProvider, CRED_CONFIG)
+    // A populated identity (what P9b will land) → resolve is called per-user.
+    class FixedIdentity extends IdentityService {
+      override current() { return { userId: userId('alice') } }
+    }
+    await ctx.plugin(FixedIdentity)
+    const resolve = vi.spyOn(ctx.credentials, 'resolve')
+      .mockResolvedValue({ value: 'sk-alice', source: 'keychain' })
+    await ctx.plugin(subagentQoder, { disposeGraceMs: 29 })
+    queryMock.mockImplementation(() => queryFrom([success('alice answer')]))
+    const run = await ctx.subagents.start('qoder', request())
+    await expect(run.result).resolves.toEqual({
+      output: [{ type: 'text', text: 'alice answer' }],
+      stopReason: 'completed',
+    })
+    expect(resolve).toHaveBeenCalledWith(QODER_PERSONAL_ACCESS_TOKEN, { userId: userId('alice') })
+    expect(accessTokenMock).toHaveBeenCalledWith('sk-alice')
+    await run.dispose()
     await ctx.fiber.dispose()
   })
 })

@@ -30,6 +30,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
+// Type-only: loads the `ctx.identity` declaration so `ctx.identity.current()`
+// is typed. Runtime-optional — the data-agent bundle mounts the identity stub;
+// absent (e.g. a test ctx), `ctx.identity` is `undefined` and the optional
+// chaining keeps the T1 global fallback (no behavior change).
+import type {} from '@deepseek-ai/dsh-identity'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import {
   assertPositiveFinite,
@@ -46,7 +51,7 @@ import {
 } from './run.ts'
 
 export const name = 'subagent-qoder'
-export const inject = ['subagents', 'credentials']
+export const inject = ['subagents', 'credentials', 'identity']
 
 /**
  * Qoder Personal Access Token reference, resolved per operation through the
@@ -98,7 +103,17 @@ class QoderProvider implements SubagentProvider {
         'subagent-qoder: no working directory for the child — delegate from a parent session that has one',
       )
     }
-    const credential = await this.ctx.credentials.resolve(QODER_PERSONAL_ACCESS_TOKEN)
+    // G3 stable opportunistic per-user threading (decision 2): resolve this
+    // caller's PAT when the identity seam has a user (P9 login); today
+    // `current()` is `undefined` (T1 fallback), so `address` is `undefined`
+    // and the keychain provider resolves the global PAT via its no-`userId`
+    // path — no behavior change from the MVP. P9b populates `current()` and the
+    // same call resolves the per-user PAT (the keychain's per-user slot).
+    const userId = this.ctx.identity.current()?.userId
+    const credential = await this.ctx.credentials.resolve(
+      QODER_PERSONAL_ACCESS_TOKEN,
+      userId === undefined ? undefined : { userId },
+    )
     if (credential === undefined) {
       throw new Error(
         'subagent-qoder: QODER_PERSONAL_ACCESS_TOKEN is not configured — resolve it via the credentials seam before delegating (the SDK would throw auth_not_configured)',

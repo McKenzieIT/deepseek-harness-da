@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Audit from '../src/index.ts'
 import { fromPayload, TAG, toPayload } from '../src/schema.ts'
 import { openAuditDatabase, SQLiteAuditStore } from '../src/store.ts'
+import { IdentityService } from '@deepseek-ai/dsh-identity'
+import { userId, scopeId } from '@deepseek-ai/dsh-credentials'
 
 const alice = { tenant_id: 'acme', scope_id: 'game-1', user_id: 'alice' }
 const bob = { tenant_id: 'acme', scope_id: 'game-2', user_id: 'bob' }
@@ -155,6 +157,7 @@ describe('Audit service (ctx.audit) wiring', () => {
   let ctx: Context
   beforeEach(async () => {
     ctx = new Context()
+    await ctx.plugin(IdentityService)
     await ctx.plugin(Audit, { path: ':memory:' })
   })
   afterEach(async () => {
@@ -203,5 +206,23 @@ describe('Audit service (ctx.audit) wiring', () => {
     expect((rec!.extra as Record<string, unknown>).tier).toBe('tier-2')
     expect((rec!.extra as Record<string, unknown>).payload_hash).toMatch(/^[0-9a-f]{64}$/)
     expect(JSON.stringify(rec!.extra)).not.toContain('pay_amt') // body NOT in audit
+  })
+
+  it('attributes per-user identity from ctx.identity (G3 stable opportunistic, decision 6)', async () => {
+    const ctx2 = new Context()
+    class FixedIdentity extends IdentityService {
+      override current() { return { userId: userId('alice'), tenantId: 'acme', scopeId: scopeId('game-1') } }
+    }
+    await ctx2.plugin(FixedIdentity)
+    await ctx2.plugin(Audit, { path: ':memory:' })
+    const exec = { name: 'subagent', arguments: { prompt: 'p', model: 'qoder-max' } }
+    const result = { isError: false, value: { kind: 'foreground', runId: 'r', output: [], costs: { total_cost_usd: 0.1 } }, content: [] }
+    await ctx2.waterfall(ctx2 as never, 'tools/post-execute', exec as never, result as never, () => Promise.resolve({ kind: 'accept' as const }))
+    const recs = ctx2.audit.store.query({ tags: ['qoder_call'] }, admin)
+    expect(recs).toHaveLength(1)
+    expect(recs[0]!.user_id).toBe('alice')
+    expect(recs[0]!.scope_id).toBe('game-1')
+    expect(recs[0]!.tenant_id).toBe('acme')
+    await ctx2.fiber.dispose()
   })
 })

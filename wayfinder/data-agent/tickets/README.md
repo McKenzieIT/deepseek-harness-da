@@ -16,6 +16,7 @@
 - [P2 llm-dashscope](phase-1/P2-llm-dashscope.md) — prototype, **resolved**（2026-08-19）, P0
 - [P3 subagent-qoder](phase-1/P3-subagent-qoder.md) — prototype, **resolved**（2026-08-20）, P0
 - [G3 per-user Qoder PAT](phase-1/G3-per-user-qoder-pat.md) — grilling, **resolved** 2026-08-19, feeds P3/P9/P8/P10 (dep P12)
+- [G3b per-user PAT stable 接线](phase-1/G3b-per-user-pat-stable-wiring.md) — prototype, **resolved**（2026-08-20）（META=A 落 Stratum A scaffolding + 开 P9b 延后 B；7 决策：①1a mount=新 host package+plain file-shim fallback+ctx.plugin / 1b autoLock:300+interactive/env/none——**SPEC G3c**（global-writes gap：read-only KeychainFallback ⊥ 全局写）；②P3 resolve(ref,{userId})+identity 硬 inject / ④perUserFallbackRefs 门控 / ⑥P8b resolveIdentity 读 ctx.identity——**LAND green**（27+28+13）；③⑤→P9b；⑦scope 正交 VERIFIED；新包 packages/identity/identity/ ctx.identity seam stub）
 
 ## phase-2（capability seams）
 - [R2 MaxCompute 凭证缓存](phase-2/R2-maxcompute-cred-cache.md) — research, **resolved**, blocks P4
@@ -33,6 +34,8 @@
 - [P12c native keychain binding + code-signing](phase-2/P12c-native-keychain-binding-code-signing.md) — prototype, **blocked**（by harness 分发流程建立：Apple Developer Program + notarization + 打包可签名 binary；P12b DEFER 的 runtime-exfil ACL per-item Touch-ID）
 - [T2 AGA-embeddings live-probe](phase-2/T2-aga-embeddings-live-probe.md) — task, **resolved**（2026-08-20；AGA-embeddings NO live-probe 实证——4 端点 404 + chat 200 控制；intranet 重 embedder 走独立 sidecar 非 AGA，落 P5 InfinityEmbedder）
 - [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/audit + 真实 ctx.on + ①a verdict-only patch + ②c stats/correctedStats + additive P3 costs-surface；audit 11/11 spec + P3 26/26+117/117 + typecheck-clean）
+- [G3c credentials-keychain-host mount](phase-2/G3c-credentials-keychain-host-mount.md) — prototype, **unblocked**（G3b resolved；落 decision 1 crux：keychain-host 包 + bundle disable base credentials + mount host + tsconfig ref；须解 G3b 浮出的 global-writes gap——read-only KeychainFallback ⊥ 全局凭证写 / keychain set(no userId) throw / writable-fallback-or-set-delegation-or-double-provide + interactive unlockPassword prompt）
+- [P9b admin+访问隔离 生产硬化](phase-2/P9b-admin-access-isolation-hardening.md) — prototype, **unblocked**（G3b resolved；per-user 登录生产=Stratum B enabler：填 ctx.identity 真值激活 G3b ②⑥ per-user + decision ③自助 set 接 keychain（软 dep G3c）+ ⑤必填 vs lazy UX + per-user 登录硬化）
 
 ## phase-3（orchestration）
 - [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, **resolved**（2026-08-20；grilling 8 决策 + prototype 8 场景全绿 + 6 finding→P7b；persona option C / turn-stopping 转换 / guard 硬白名单 / rbi budgets 初始默认）
@@ -54,4 +57,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 
 ## 当前可立即取（unblocked frontier）
-P7b · P13b · P11（+ low: R4, R5）
+G3c · P9b · P13b · P11（R4/R5/P7b 已 resolved）

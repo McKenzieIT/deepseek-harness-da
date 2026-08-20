@@ -42,6 +42,7 @@ import type { JsonValue, Session, SessionEvent } from '@deepseek-ai/dsh-session'
 // Type-only: loads the `tools/*` Events augmentation so `ctx.on('tools/post-execute', …)`
 // is typed (signature, PostToolDecision return). The seam stays runtime-optional.
 import type {} from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-identity'
 import { fromPayload, TAG, type AuditRecord } from './schema.ts'
 import { SQLiteAuditStore, openAuditDatabase, type AuditIdentity } from './store.ts'
 
@@ -110,6 +111,8 @@ export class Audit extends Service {
     path: z.string().required(),
   })
 
+  static inject = ['identity']
+
   private readonly _store: SQLiteAuditStore
 
   constructor(ctx: Context, config: AuditConfig) {
@@ -149,7 +152,18 @@ export class Audit extends Service {
    * (from the calling agent's session / the session-event subject), not here.
    */
   protected resolveIdentity(): AuditIdentity {
-    return {}
+    // G3 stable opportunistic per-user threading (decision 6): read the current
+    // caller's identity from the ctx.identity seam (P9 populates it). Today the
+    // stub returns `undefined` (T1 fallback) -> `{}` -> NULL user columns, the
+    // same T1 fallback the audit recorded before. P9b populates `current()` and
+    // the same call attributes per-user (user_id/scope_id/tenant_id).
+    const identity = this.ctx.identity.current()
+    if (identity === undefined) return {}
+    return {
+      ...(identity.userId !== undefined ? { user_id: identity.userId } : {}),
+      ...(identity.tenantId !== undefined ? { tenant_id: identity.tenantId } : {}),
+      ...(identity.scopeId !== undefined ? { scope_id: identity.scopeId } : {}),
+    }
   }
 
   /**
