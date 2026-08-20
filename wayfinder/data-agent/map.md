@@ -113,7 +113,7 @@
 - per-model 路由决策（是否按模型分编排）——fed by G1b per-model 分歧信号（分歧>5pp 才触发毕业路由票，Q2 secondary）；条件毕业。〔G1 resolved 2026-08-20〕
 
 
-- **Follow-up ticket candidate — critic dedup（P13b/P7b 并发产物）**：P7b（concurrent resolved 2026-08-20）built `packages/data/phase-gate/src/critic.ts` self-contained（P13b 未 ship 时不能依赖未发包；guard-data 从 `tools/post-execute`-captured state 拿，自含无 P6 依赖；P7b note「P13b 以后可抽离或共用」）；P13b ships critic in `packages/data/nl2sql-engine/src/critic.ts`（Q2：critic 在 nl2sql-engine，phase-gate delegate，含 code-review-low fix #1/#2）。→ **可开新票讨论**：phase-gate `critic.ts` → delegate to `nl2sql-engine.critiqueSql`/`sqlSyntaxGate`（remove duplicate per Q2 boundary；guard-data P7b 从 session tool results 组装传 `CriticCtx`）。非阻塞（两份都跑通）；去重=技术债。
+- ~~critic dedup（P13b/P7b 并发产物）~~ — graduated to [host-typecheck-wiring](tickets/phase-misc/host-typecheck-wiring.md)（P11b resolved 2026-08-20 surfaced host-typecheck 先验 gap + 未提交 critic-dedup WIP；新 task 票收尾：commit/revert WIP + nl2sql-engine tsconfig.host ref + phase-gate PromptAssembly）。
 
 ## Out of scope
 
