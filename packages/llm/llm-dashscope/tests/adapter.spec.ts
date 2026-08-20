@@ -356,6 +356,16 @@ describe('parseErrorBody (non-2xx error-body recovery)', () => {
     expect(parsed).toMatchObject({ code: 'X', message: 'm', request_id: 'r' })
   })
 
+  it('recovers a JSON value split across multiple data: lines in one SSE event (parseSse joins)', async () => {
+    // parseSse joins multiple 'data:' lines within one event with a newline; a JSON value split
+    // across them (whitespace-tolerant split) re-assembles into valid JSON. Pins that parseErrorBody
+    // returns the joined payload (code review #4 — multi-data: joining scope).
+    const nl = String.fromCharCode(10)
+    const payload = 'data: {"code":' + nl + 'data: "X","message":"m","request_id":"r"}' + nl + nl
+    const parsed = await parseErrorBody(payload)
+    expect(parsed).toMatchObject({ code: 'X', message: 'm', request_id: 'r' })
+  })
+
   it('strips a leading UTF-8 BOM before parsing (code review follow-up #1)', async () => {
     // A BOM-prefixed plain-JSON error body: JSON.parse rejects U+FEFF, so without stripping the
     // body would fall through to the SSE drain (which would also fail) and return undefined.

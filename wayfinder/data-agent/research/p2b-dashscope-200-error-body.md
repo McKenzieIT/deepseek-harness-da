@@ -131,7 +131,7 @@ const text = parsed?.message ?? parsed?.error?.message
 
 ## 4. 验证（本地）
 
-- `pnpm vitest run packages/llm/llm-dashscope`：**4 文件 72 测试全绿**（adapter.spec.ts 27→35，+8；sse 6 / translate 11 / serialize 20 不变；follow-up eb88154e28 +2 → adapter 37 / 包 74）。
+- `pnpm vitest run packages/llm/llm-dashscope`：**4 文件 72 测试全绿**（adapter.spec.ts 27→35，+8；sse 6 / translate 11 / serialize 20 不变；follow-ups +2 (eb88154e28) +1 (joining) → adapter 38 / 包 75）。
 - `npx tsc -b packages/llm/llm-dashscope/tsconfig.json`：**exit 0**（src 类型净）。
 - `pnpm vitest run --typecheck packages/llm/llm-dashscope`：**72 测试全绿 + 类型净**（tests 类型净）。
 - `npx oxlint packages/llm/llm-dashscope/src/adapter.ts packages/llm/llm-dashscope/tests/adapter.spec.ts`：**0 warnings 0 errors**。
