@@ -2,7 +2,7 @@
 
 **Type**: prototype（/prototype landing + 解 global-writes gap；HITL）
 **Phase**: 2（生产）
-**Status**: Unblocked（G3b resolved 2026-08-20，scaffolding 已落）
+**Status**: Resolved (2026-08-20)
 **Assignee**: (unclaimed)
 **Depends on**: G3b（decision 1 spec + identity seam + perUserFallbackRefs landed）· P12b（keychain provider）· P10（mTLS）
 **Blocks**: 真实 per-user PAT 必填闭环（无 keychain 作 ctx.credentials 则 per-user 切片 dormant）
@@ -31,3 +31,32 @@ G3c 须解全局写 gap，三选一（grill 定夺）：
 - global-writes gap 解法影响 keychain provider 设计（A 改 KeychainFallback 接口=P12b 包改；B 改 keychain set；C 依赖 Cordis 多 provider 语义）。
 - interactive prompt in apply（boot 阻塞）——非 tty server 降级处理。
 - surgical 提交（并发活跃）。
+
+## Design / Resolution（2026-08-20 resolved，/prototype landing + grill A/B/C + Cordis 机制核实）
+
+**global-writes gap 解法 = (A) writable fallback shim**（grill 推荐→用户确认；(C) Cordis 证伪出局）。
+
+- **(C) Cordis 证伪**：`vendor/cordis/src/reflect.ts` `provide()` — `if(this.store[key]) throw "service X has been registered at <fiber>"`；同名同 scope 双 provide throw；`set` 只允许原 fiber 覆写 → patch 不能 override base 的 'credentials' → 须 disable base credentials + 单 keychain provider。
+- **KeychainFallback += 可选 `set?/unset?`**（additive，`packages/credentials/credentials-keychain/src/index.ts`）：keychain `set(no userId)` delegate `if(fallback.set) fallback.set(ref,value) else throw`；`unset(no userId)` delegate `if(fallback.unset) fallback.unset(ref) else no-op`。无 userId 路径（全局凭证）总走 fallback；per-user miss 走 perUserFallbackRefs 门控（G3b decision 4，已落）。
+- **credentials-local additive export `renderDocument`**（comment-preserving 渲染器，原内部函数）：host shim 复用它 + `writeFileAtomic`+`withFileLock`+`parseCredentialsDocument`（皆既有 export）做 file 写，无 DRY 重复（reusing building blocks）。
+
+**落地 `packages/credentials/credentials-keychain-host/`（新包，typecheck-clean + 6/6 tests green）**：
+
+- function plugin（无 static Config——config 透传让 injectable `runner` 到 apply）；`apply(ctx,config)` async + `await ctx.plugin(KeychainCredentialProvider,...)` 确保 ensureKeychain 完。
+- **writable file-shim fallback**（`makeFileFallback`，非 Service 避 double-register）：read 缓存 parseCredentialsDocument；set/unset 经 `withFileLock`+`renderDocument`+`writeFileAtomic` 写 `.credentials.yaml`（comment-preserving）+ env-shadow 拒（mirror credentials-local）+ 缓存失效。resolve/describe 读 env>file>dotenv。
+- **unlockPasswordSource**: `interactive`(默认, tty stdin prompt, 非 tty→undefined 须 pre-created+unlocked) | `env`(read process.env[var], bash 可读弱化锁) | `none`。autoLock:300（保 P12b locked-when-idle 收窄）。
+- **perUserFallbackRefs**: host Config 的 `string[]`→Set（early=undefined=all、stable=空 set=per-user 必填）。
+- **mount mechanics**（G3b 已核实）：`ctx.plugin(KeychainCredentialProvider)` 构造 auto-register 成 ctx.credentials（Service 构造 `ctx.reflect.provide`）；shim 是 plain object 非 Service → 不 double-register；bundle 须 disable base credentials（disable-only，additive）+ mount host。
+
+**bundle 接线 = opt-in（文档化，非 active）**：active 行（`- id: credentials disabled:true` + mount host）会使 data-agent profile boot 时强依赖 macOS+keychain+unlockPassword（非 mac CI/dev-without-keychain 崩）→ **不 commit active 行**（同 P12b 先例：落 keychain 包但不在 bundle 挂 active），host README 文档化 opt-in 接线（含 config 示例）。部署 ready for macOS keychain 时 uncomment。
+
+**测试**（6/6 green，`tests/host.spec.ts`）：mounts keychain as ctx.credentials + per-user 隔离 + 全局写经 shim（file comment-preserving round-trip）+ unset + fallback-off stable（per-user miss→undefined、global 仍走 shim）+ env-shadow 拒。
+
+**毕业雾**：map「keychain 作 ctx.credentials 的 global-writes gap」**毕业**（G3c decision A 解）。
+
+## Assets
+
+- `packages/credentials/credentials-keychain-host/`（新包全套：`src/index.ts` host apply+writable shim+unlockPassword 解析、`src/invariant.ts`、`tests/host.spec.ts` 6 green、`package.json`、`tsconfig.json`、`README.md`）。
+- `packages/credentials/credentials-local/src/index.ts`：additive `export renderDocument`。
+- `packages/credentials/credentials-keychain/src/index.ts`：`KeychainFallback` += `set?/unset?`；`set`/`unset` delegate（no userId）。
+- `tsconfig.host.json`：+`credentials-keychain-host` ref。

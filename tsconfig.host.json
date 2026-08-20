@@ -148,6 +148,7 @@
     { "path": "./packages/credentials/credentials" },
     { "path": "./packages/credentials/credentials-local" },
     { "path": "./packages/credentials/credentials-keychain" },
+    { "path": "./packages/credentials/credentials-keychain-host" },
     { "path": "./packages/identity/identity" },
     { "path": "./packages/session-query/tool-session-query" },
     { "path": "./packages/storage/storage" },

@@ -72,6 +72,15 @@ export type SecurityRunner = (args: string[]) => Promise<SecurityResult>
 export interface KeychainFallback {
   resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined>
   describe(ref: CredentialRef): Promise<CredentialInfo>
+  /**
+   * Optional writable global set: when the keychain is mounted as `ctx.credentials`
+   * (replacing credentials-local), global credential writes (no `{ userId }` — e.g. the
+   * Models page storing `DEEPSEEK_API_KEY`) delegate here so the global `.credentials.yaml`
+   * layer stays writable. Absent → a global `set` throws (no writable global layer).
+   */
+  set?(ref: CredentialRef, value: string): Promise<void>
+  /** Optional writable global unset (mirror of {@link set}). */
+  unset?(ref: CredentialRef): Promise<void>
 }
 
 /** Plugin config: keychain location, lock policy, startup unlock, fallback, runner. */
@@ -278,7 +287,13 @@ export class KeychainCredentialProvider extends CredentialProvider {
   override async set(ref: CredentialRef, value: string, address?: CredentialAddress): Promise<void> {
     if (value.length === 0) throw new Error(`credentials-keychain: an empty value cannot be stored for "${ref}"; use unset`)
     const account = address?.userId
-    if (account === undefined) throw new Error('credentials-keychain: a per-user set requires { userId }; the global slot is the fallback provider')
+    if (account === undefined) {
+      // G3c global-writes gap (decision A): a global set (no userId) delegates to the
+      // writable fallback (the host's file shim over .credentials.yaml) so global creds
+      // stay writable when the keychain is ctx.credentials.
+      if (this.fallback?.set) return this.fallback.set(ref, value)
+      throw new Error('credentials-keychain: a per-user set requires { userId }; the global slot is the fallback provider (provide a writable fallback for global sets)')
+    }
     const added = await this.runner(['add-generic-password', '-U', '-a', account, '-s', ref, '-w', value, this.spec.keychain])
     if (!added.ok) throw new Error(`credentials-keychain: add-generic-password for "${ref}"/${account} failed: ${added.stderr}`)
     this.notifyUpdated(ref, address)
@@ -286,7 +301,12 @@ export class KeychainCredentialProvider extends CredentialProvider {
 
   override async unset(ref: CredentialRef, address?: CredentialAddress): Promise<void> {
     const account = address?.userId
-    if (account === undefined) return
+    if (account === undefined) {
+      // G3c global-writes gap (decision A): a global unset (no userId) delegates to the
+      // writable fallback; absent fallback → idempotent no-op (mirror local's unset-absent).
+      if (this.fallback?.unset) return this.fallback.unset(ref)
+      return
+    }
     const before = await this.find(ref, account)
     if (before === undefined) return
     const removed = await this.runner(['delete-generic-password', '-a', account, '-s', ref, this.spec.keychain])

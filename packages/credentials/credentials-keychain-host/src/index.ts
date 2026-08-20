@@ -1,0 +1,250 @@
+/**
+ * Mount face that registers `KeychainCredentialProvider` as `ctx.credentials`,
+ * composing a plain writable file/env fallback so global credentials stay
+ * writable when the keychain replaces credentials-local (G3c global-writes
+ * gap, decision A).
+ *
+ * The keychain provider has no Schemastery `Config` (its `runner`/`fallback`
+ * are injectable), so it cannot be yml-mounted directly. This host is the
+ * mountable face: a function plugin (`apply(ctx, config)`) that takes scalar
+ * config (keychain path/lock policy/unlock-password source/per-user fallback
+ * refs) + an injectable `runner` (default `securityCli`; tests pass a fake),
+ * resolves the unlock password per its source, builds a plain `KeychainFallback`
+ * shim over the credentials-local file+env layers (reusing `parseCredentialsDocument`
+ * + `renderDocument` + `writeFileAtomic` + `withFileLock`), and programmaticaly
+ * `ctx.plugin`s the `KeychainCredentialProvider`, which auto-registers as
+ * `ctx.credentials`.
+ *
+ * The data-agent bundle disables base `credentials` (credentials-local) and
+ * mounts this host as `credentials`, so the keychain is the single
+ * `ctx.credentials` provider; the shim is a plain object (not a Service), so it
+ * does not double-register (`vendor/cordis/src/reflect.ts` `provide` throws on
+ * a same-name second provider in one scope — verified for G3b/G3c).
+ *
+ * @module @deepseek-ai/dsh-credentials-keychain-host
+ */
+
+import type { Context } from '@deepseek-ai/cordis'
+import { readSync } from 'node:fs'
+import { readFile, mkdir } from 'node:fs/promises'
+import { dirname } from 'node:path'
+import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
+import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
+import { credentialRef, type CredentialInfo, type CredentialRef, type ResolvedCredential } from '@deepseek-ai/dsh-credentials'
+import {
+  KeychainCredentialProvider,
+  securityCli,
+  type KeychainFallback,
+  type SecurityRunner,
+} from '@deepseek-ai/dsh-credentials-keychain'
+import {
+  parseCredentialsDocument,
+  renderDocument,
+  resolveSpec as resolveLocalSpec,
+} from '@deepseek-ai/dsh-credentials-local'
+
+export const name = 'credentials-keychain-host'
+// Function plugin (no static Config): config passes verbatim so the injectable
+// `runner` (a function, not yml-serializable) reaches `apply`. The keychain
+// provider it mounts owns its own `[Service.init]` lifecycle.
+export const inject: readonly string[] = []
+
+/** Deployment config: keychain location/lock policy, unlock-password source, fallback refs, injectable runner. */
+export interface HostConfig {
+  /** Keychain path; defaults to `credentials.keychain` under the harness home. */
+  readonly path?: string
+  /** Harness home for the keychain when `path` is omitted. */
+  readonly dshHome?: string
+  /** Auto-lock the keychain after N seconds idle; 0 disables. Defaults to 300. */
+  readonly autoLockSeconds?: number
+  /** Lock the keychain on sleep; defaults to true. */
+  readonly lockOnSleep?: boolean
+  /**
+   * Source of the keychain unlock password. `'interactive'` (default) prompts
+   * stdin at boot (tty-only, best-effort — the secure option, since a stored
+   * password is bash-readable per P12b's finding); `'env'` reads
+   * `process.env[unlockPasswordEnv]` (unattended, but bash can read env —
+   * weakens the lock, documented); `'none'` omits the password (the keychain
+   * must be pre-created + already unlocked).
+   */
+  readonly unlockPasswordSource?: 'interactive' | 'env' | 'none'
+  /** Env var name read for `unlockPasswordSource: 'env'`. */
+  readonly unlockPasswordEnv?: string
+  /**
+   * Refs eligible for the G3 staged per-user→global fallback (mirrors
+   * `KeychainCredentialProvider.perUserFallbackRefs`). `undefined` (early) =
+   * all refs fall back; a list (stable) gates it so an unlisted ref's per-user
+   * miss resolves to `undefined` (per-user required).
+   */
+  readonly perUserFallbackRefs?: readonly string[]
+  /** `.credentials.yaml` path for the file/env fallback shim; defaults via credentials-local. */
+  readonly credentialsPath?: string
+  /** Harness home for the fallback `.credentials.yaml` when `credentialsPath` is omitted. */
+  readonly credentialsDshHome?: string
+  /** Injectable `security` runner; default `securityCli` (production), a fake in tests. */
+  readonly runner?: SecurityRunner
+}
+
+/** Whether a filesystem error means absence. */
+function isENOENT(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException | null)?.code === 'ENOENT'
+}
+
+/**
+ * Best-effort synchronous stdin read for the interactive unlock password. Node
+ * has no clean sync readline; this reads a raw line from fd 0 (tty-only; on a
+ * non-tty server like launchd it returns `undefined`, so the keychain must be
+ * pre-created + unlocked). Echo is NOT disabled — a real deployment that needs
+ * hidden input swaps this for a tty-aware boot hook or uses `env`.
+ */
+function readInteractivePassword(): string | undefined {
+  const stdin = process.stdin as NodeJS.ReadStream & { isTTY?: boolean }
+  if (!stdin.isTTY) return undefined
+  process.stderr.write('credentials-keychain-host: enter keychain unlock password: ')
+  const buf = Buffer.alloc(512)
+  try {
+    const n = readSync(0, buf, 0, buf.length, null)
+    if (n <= 0) return undefined
+    return buf.toString('utf8', 0, n).replace(/\r?\n$/, '')
+  } catch {
+    return undefined
+  }
+}
+
+/** Resolve the unlock password per `unlockPasswordSource`. */
+function resolveUnlockPassword(config: HostConfig): string | undefined {
+  const source = config.unlockPasswordSource ?? 'interactive'
+  if (source === 'none') return undefined
+  if (source === 'env') {
+    const v = config.unlockPasswordEnv
+    if (v === undefined) {
+      throw new Error('credentials-keychain-host: unlockPasswordSource:env requires unlockPasswordEnv (the env var name)')
+    }
+    // Acknowledged weak: anything the harness reads, bash can read (P12b §7.3);
+    // interactive is the secure default, env is the unattended fallback.
+    return process.env[v]
+  }
+  return readInteractivePassword()
+}
+
+/**
+ * Plain `KeychainFallback` over the credentials-local file+env layers (reusing
+ * its parser + comment-preserving renderer + atomic/locked writes). Not a
+ * Service, so it does not double-register `ctx.credentials`. The read path
+ * caches the parsed file; writes invalidate + refresh the cache.
+ */
+function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
+  // Conditional spread keeps `exactOptionalPropertyTypes` happy (a `?: string` property
+  // is absent-or-string, not present-with-undefined).
+  const filename = resolveLocalSpec({
+    watch: false,
+    ...(config.credentialsPath !== undefined ? { path: config.credentialsPath } : {}),
+    ...(config.credentialsDshHome !== undefined ? { dshHome: config.credentialsDshHome } : {}),
+  }).filename
+  let cache: Map<string, string> | undefined
+
+  async function load(): Promise<Map<string, string>> {
+    if (cache !== undefined) return cache
+    try {
+      const text = await readFile(filename, 'utf8')
+      cache = parseCredentialsDocument(text, filename)
+    } catch (error) {
+      if (!isENOENT(error)) throw error
+      cache = new Map()
+    }
+    return cache
+  }
+
+  return {
+    async resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined> {
+      const env = launchEnvironmentOf(ctx).getFrom(ref, ['process'])
+      if (env !== undefined && env.value.length > 0) return { value: env.value, source: 'env' }
+      const stored = (await load()).get(ref)
+      if (stored !== undefined) return { value: stored, source: 'file' }
+      const dotenv = launchEnvironmentOf(ctx).getFrom(ref, ['project-env', 'user-env'])
+      if (dotenv !== undefined) return { value: dotenv.value, source: dotenv.source }
+      return undefined
+    },
+    async describe(ref: CredentialRef): Promise<CredentialInfo> {
+      const env = launchEnvironmentOf(ctx).getFrom(ref, ['process'])
+      if (env !== undefined && env.value.length > 0) return { configured: true, source: 'env', writable: false }
+      const stored = (await load()).get(ref)
+      if (stored !== undefined) return { configured: true, source: 'file', writable: true }
+      const dotenv = launchEnvironmentOf(ctx).getFrom(ref, ['project-env', 'user-env'])
+      if (dotenv !== undefined) return { configured: true, source: dotenv.source, writable: true }
+      return { configured: false, writable: true }
+    },
+    async set(ref: CredentialRef, value: string): Promise<void> {
+      if (value.length === 0) {
+        throw new Error(`credentials-keychain-host: an empty value cannot be stored for "${ref}"; use unset`)
+      }
+      // Mirror credentials-local: a write shadowed by the inherited env would appear
+      // to succeed while resolve keeps returning the env value.
+      const env = launchEnvironmentOf(ctx).getFrom(ref, ['process'])
+      if (env !== undefined && env.value.length > 0) {
+        throw new Error(
+          `credentials-keychain-host: "${ref}" is supplied read-only by the launching environment; unset it in the shell before storing`,
+        )
+      }
+      await withFileLock(filename, async () => {
+        let text: string | undefined
+        try {
+          text = await readFile(filename, 'utf8')
+        } catch (error) {
+          if (!isENOENT(error)) throw error
+          text = undefined
+        }
+        const nextText = renderDocument(text, ref, value)
+        await mkdir(dirname(filename), { recursive: true, mode: 0o700 })
+        await writeFileAtomic(filename, nextText, { mode: 0o600, dirMode: 0o700 })
+        cache = parseCredentialsDocument(nextText, filename)
+      })
+    },
+    async unset(ref: CredentialRef): Promise<void> {
+      await withFileLock(filename, async () => {
+        let text: string | undefined
+        try {
+          text = await readFile(filename, 'utf8')
+        } catch (error) {
+          if (!isENOENT(error)) throw error
+          text = undefined
+        }
+        const current = text === undefined ? new Map<string, string>() : parseCredentialsDocument(text, filename)
+        if (!current.has(ref)) {
+          cache = current
+          return
+        }
+        const nextText = renderDocument(text, ref, undefined)
+        await writeFileAtomic(filename, nextText, { mode: 0o600, dirMode: 0o700 })
+        cache = parseCredentialsDocument(nextText, filename)
+      })
+    },
+  }
+}
+
+/**
+ * Mount `KeychainCredentialProvider` as `ctx.credentials` with a writable
+ * file/env fallback (G3c global-writes gap, decision A). The data-agent
+ * bundle disables base `credentials` and mounts this host as `credentials`.
+ * @param ctx - context to mount in.
+ * @param config - keychain + fallback + runner config.
+ */
+export async function apply(ctx: Context, config: HostConfig = {}): Promise<void> {
+  const unlockPassword = resolveUnlockPassword(config)
+  const fallback = makeFileFallback(ctx, config)
+  const perUserFallbackRefs = config.perUserFallbackRefs === undefined
+    ? undefined
+    : new Set(config.perUserFallbackRefs.map(r => credentialRef(r)))
+  // Await the keychain fiber so its [Service.init] (create/unlock/lock-policy)
+  // completes before dependents use ctx.credentials.
+  await ctx.plugin(KeychainCredentialProvider, {
+    ...(config.path !== undefined ? { path: config.path } : {}),
+    ...(config.dshHome !== undefined ? { dshHome: config.dshHome } : {}),
+    ...(config.autoLockSeconds !== undefined ? { autoLockSeconds: config.autoLockSeconds } : {}),
+    ...(config.lockOnSleep !== undefined ? { lockOnSleep: config.lockOnSleep } : {}),
+    ...(unlockPassword !== undefined ? { unlockPassword } : {}),
+    fallback,
+    ...(perUserFallbackRefs !== undefined ? { perUserFallbackRefs } : {}),
+    runner: config.runner ?? securityCli,
+  })
+}

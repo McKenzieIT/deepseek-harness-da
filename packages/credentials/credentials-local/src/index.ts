@@ -194,7 +194,7 @@ export function parseCredentialsDocument(text: string, filename: string): Map<st
  * @param value - the new value, or `undefined` to delete the key.
  * @returns the text to persist.
  */
-function renderDocument(text: string | undefined, ref: CredentialRef, value: string | undefined): string {
+export function renderDocument(text: string | undefined, ref: CredentialRef, value: string | undefined): string {
   // `text` only ever caches content that parsed successfully, so this re-parse
   // for the mutable comment-preserving tree cannot fail.
   const document = text === undefined ? new Document({}) : parseDocument(text)
