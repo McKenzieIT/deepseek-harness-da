@@ -1,0 +1,7 @@
+{
+  "name": "p13-nl2sql-engine-prototype",
+  "version": "0.0.0-throwaway",
+  "private": true,
+  "type": "module",
+  "scripts": { "demo": "node run.mjs --demo" }
+}
