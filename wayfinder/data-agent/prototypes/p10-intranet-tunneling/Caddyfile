@@ -9,6 +9,10 @@
 #    部署期核对文档确认是否应迁 trust_pool。header_up X-Forwarded-Proto https 冗余（Caddy 默认已设）非错。
 # ─────────────────────────────────────────────────────────────────────────────
 :8443 {
+	# 仅绑定 admin 经 P9 分配的具体内网 addr（非 0.0.0.0/:: 通配——最小暴露面）。
+	# 占位 <intranet-addr>：部署期由 admin 填入 P9 分配的 addr（如 10.0.0.10）；勿留 :8443 通配。
+	bind <intranet-addr>
+
 	# 服务端证书（内网 addr → 内部 CA 自签；若真 hostname 可用公网 CA）
 	tls /etc/dsh/certs/server.crt /etc/dsh/certs/server.key {
 		client_auth {

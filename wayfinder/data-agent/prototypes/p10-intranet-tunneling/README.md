@@ -124,7 +124,7 @@ inbound → Caddy(mTLS require_and_verify) → loopback webserver → P9 gate(�
 ### tool-gating wiring
 
 - P9 gate 验后标 `session.identity.kind ∈ {business-user, admin, service}`。
-- P7 preset 注册工具时按 `identity.kind` 裁：business-user 去
-  `{bash, code-runtime-shell, file-write, str-replace-editor, AskUserQuestion-delegate}`。
+- P7 preset 注册工具时按 `identity.kind` 裁：business-user = 显式 allowlist
+  （`query`/`retrieval`/`semantic-layer`/`audit`，denied-by-default；新工具默认拒，避免 blocklist 漏更静默放行）。
 - gate `tools/pre-execute` hook 兜底：dispatch 前再查 identity 的 allowlist，
   滑落即拒（catches preset misconfig）。

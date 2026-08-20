@@ -111,12 +111,14 @@ function authz({ identityKind, allowedScopeIds, scopeId }) {
 // ── Stub tool-gating (mirrors P7 preset allowlist by identity + gate pre-execute hook) ─
 // PROD: P7 data-agent preset 按 session identity.kind 裁工具集；gate tools/pre-execute hook
 // 兜底二次拒（PROD 中 hook 应是独立策略源，非复用 preset 同一函数——本 stub 复用以简化）。
-const DANGEROUS_TOOLS = ['bash', 'code-runtime-shell', 'file-write', 'str-replace-editor', 'AskUserQuestion-delegate', 'admin'];
 const FULL_TOOLS = ['query', 'retrieval', 'semantic-layer', 'audit', 'bash', 'code-runtime-shell',
   'file-write', 'str-replace-editor', 'AskUserQuestion-delegate', 'admin'];
+// business-user 显式 allowlist（denied-by-default：新工具不入此表即拒——defense-in-depth 优于 blocklist，
+// 避免新工具添入 FULL_TOOLS 后忘更 DANGEROUS_TOOLS 而静默放行）。由原 FULL_TOOLS − DANGEROUS_TOOLS 结果固化。
+const BUSINESS_USER_TOOLS = ['query', 'retrieval', 'semantic-layer', 'audit'];
 function toolsForIdentity(identityKind) {
   if (identityKind === 'admin' || identityKind === 'service') return FULL_TOOLS;
-  return FULL_TOOLS.filter(t => !DANGEROUS_TOOLS.includes(t));   // business-user：去危险工具（含 admin 工具）
+  return BUSINESS_USER_TOOLS;   // business-user：显式 allowlist（非 FULL_TOOLS − blocklist；新工具默认拒）
 }
 function preExecuteHook(identityKind, tool) {                    // gate 兜底（defense-in-depth；PROD 独立策略源）
   if (toolsForIdentity(identityKind).includes(tool)) return { allow: true };
