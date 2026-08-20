@@ -19,6 +19,8 @@
 
 **前置/衔接**：P13（**resolved 2026-08-20**——GENERATION critic 形态已定：方案 1 薄 regex 守卫 + 方案 4 轻量 JSON path 解析，挂 `agent/turn-stopping` 返 `GateResult` 对齐 `phases.py:33`，node-sql-parser 不引留 P14+，见 P13 Finding/Design）= ~~主 blocker~~（已解）；其余 data 插件包（P4 `query-tool` consumer Not-yet-specified / P5 / P9 / P10）随各自 ticket 发包后接入 preset 行。persona 拆 `dsh-data-persona` 包（P7 D2 留口）。G1（Pipeline vs goal/todo）随 P7 已解锁，可平行实验对比。
 
+**P13b critic API available (2026-08-20)**：`packages/data/nl2sql-engine/` ships `critiqueSql(sql, guardCtx)→CriticResult` + `sqlSyntaxGate(phaseOutput, ctx)→GateResult` + `GateResult` type + `CriticCtx` guard-data 契约（`candidateTables`/`eventParams`/`partitionCols`，`makeCriticCtx`）。P7b phase-gate `sql_syntax_gate` slot delegate 到 `sqlSyntaxGate`（or `critiqueSql` 若 P7b 自抽 SQL）；guard-data 从 session tool results 组装（search_data_sources 候选 + load_event_definition params）。Package `@deepseek-ai/dsh-nl2sql-engine`（bundle `cordis.patch.yml` nl2sql-engine row 已接）。search_data_sources model-facing tool 经 ctx.tools 注册=P13b deferred sub-item（需 dsh-tools API grounding；P7b 或 follow-up 接）。
+
 ## Finding / Design (resolved 2026-08-20)
 
 4 决策（grilling 推荐→确认）+ 真 `packages/data/phase-gate/`（mirror P8b/P4b 先例：`Service extends` 形态的函数插件 `apply(ctx,config)` + `@deepseek-ai/schemastery` `Config` + `declare module` Events/Context 增强 + `ctx.effect` teardown）+ 真 preset + P13 critic fold。prototype grill 锁决策，build 期对真实 vendored Cordis（`packages/core/agent/runtime-types.ts` Events 接口 + `agent.ts` call sites + `system-prompt/tools/llm` 源）核验所有 seam 签名。

@@ -34,13 +34,15 @@
 - [P12c native keychain binding + code-signing](phase-2/P12c-native-keychain-binding-code-signing.md) — prototype, **blocked**（by harness 分发流程建立：Apple Developer Program + notarization + 打包可签名 binary；P12b DEFER 的 runtime-exfil ACL per-item Touch-ID）
 - [T2 AGA-embeddings live-probe](phase-2/T2-aga-embeddings-live-probe.md) — task, **resolved**（2026-08-20；AGA-embeddings NO live-probe 实证——4 端点 404 + chat 200 控制；intranet 重 embedder 走独立 sidecar 非 AGA，落 P5 InfinityEmbedder）
 - [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/audit + 真实 ctx.on + ①a verdict-only patch + ②c stats/correctedStats + additive P3 costs-surface；audit 11/11 spec + P3 26/26+117/117 + typecheck-clean）
-- [G3c credentials-keychain-host mount](phase-2/G3c-credentials-keychain-host-mount.md) — prototype, **unblocked**（G3b resolved；落 decision 1 crux：keychain-host 包 + bundle disable base credentials + mount host + tsconfig ref；须解 G3b 浮出的 global-writes gap——read-only KeychainFallback ⊥ 全局凭证写 / keychain set(no userId) throw / writable-fallback-or-set-delegation-or-double-provide + interactive unlockPassword prompt）
+- [G3c credentials-keychain-host mount](phase-2/G3c-credentials-keychain-host-mount.md) — prototype, **resolved**（2026-08-20）（global-writes gap=(A) writable fallback shim；(C) Cordis 证伪 provide 双 throw。新包 packages/credentials/credentials-keychain-host/（host apply+writable shim 复用 renderDocument/writeFileAtomic/withFileLock+unlockPasswordSource+perUserFallbackRefs）6/6 green + typecheck-clean；KeychainFallback += set?/unset?；credentials-local export renderDocument。bundle 接线 opt-in 文档化非 active——active 行使 data-agent boot 强依赖 macOS+keychain（非 mac CI/dev 崩），同 P12b 先例）
 - [P9b admin+访问隔离 生产硬化](phase-2/P9b-admin-access-isolation-hardening.md) — prototype, **unblocked**（G3b resolved；per-user 登录生产=Stratum B enabler：填 ctx.identity 真值激活 G3b ②⑥ per-user + decision ③自助 set 接 keychain（软 dep G3c）+ ⑤必填 vs lazy UX + per-user 登录硬化）
+- [P5b 检索/向量化 生产硬化](phase-2/P5b-retrieval-vectorization-hardening.md) — prototype, **unblocked**（graduated from P13b Q1；P5 proto → 生产 ctx.retrieval seam+真 provider，替换 P13b 本地 RetrievalLinker 薄默认）
+- [P6b 语义层 生产硬化](phase-2/P6b-semantic-layer-hardening.md) — prototype, **unblocked**（graduated from P13b Q1；P6 proto → 生产 ctx.schema seam+substrate，替换 P13b 本地 CriticGuardData 薄默认）
 
 ## phase-3（orchestration）
 - [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, **resolved**（2026-08-20；grilling 8 决策 + prototype 8 场景全绿 + 6 finding→P7b；persona option C / turn-stopping 转换 / guard 硬白名单 / rbi budgets 初始默认）
 - [P7b phase-gate 生产硬化](phase-3/P7b-phase-gate-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/phase-gate/ TS + 真 preset + P13 critic fold + 控制流精炼 serial-void→副作用 + F1-F6；P2 遗留 bundle dep 修）
-- [P13b NL→SQL 引擎生产硬化](phase-3/P13b-nl2sql-engine-prod-hardening.md) — prototype, **unblocked**（P13 resolved；prototype→生产 `packages/nl2sql-engine/` + conventions 提到 query 包 + critic 接线 fold P7b）
+- [P13b NL→SQL 引擎生产硬化](phase-3/P13b-nl2sql-engine-prod-hardening.md) — prototype, **resolved**（2026-08-20；生产 `packages/data/nl2sql-engine/` + conventions 提到 query-maxcompute + bundle row + critic gate-only fold P7b boundary；9/9 spec + tsc clean + cordis-config 124 pass；F3/F4/F5/F6 deferred；search_data_sources ctx.tools 注册=deferred sub-item）
 - [P13 NL→SQL 引擎（极简 (B)）](phase-3/P13-nl2sql-engine.md) — prototype, **resolved**（2026-08-20；grilling 6 决策 + prototype 9 scenarios 全绿；critic 方案 1+4 替 sqlglot + eval gate 对齐 P11/G2；`../research/p13-sql-critic-alternatives.md`）
 
 ## phase-4（eval）
@@ -57,4 +59,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 
 ## 当前可立即取（unblocked frontier）
-G3c · P9b · P13b · P11（R4/R5/P7b 已 resolved）
+G3c · P9b · P11 · P5b · P6b（R4/R5/P7b/P13b 已 resolved）

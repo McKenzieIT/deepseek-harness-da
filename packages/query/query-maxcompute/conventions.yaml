@@ -1,0 +1,62 @@
+# MaxCompute engine conventions — the P4 per-engine `conventions.yaml` seam.
+#
+# Canonical source of truth (multi-consumer): nl2sql-engine prompt dialect
+# grounding (key_differences/functions/cast_map/sql_templates) + the future
+# query guard/cost/dialect consumer (limits/guards — P4b engine-wrapper,
+# Not-yet-specified). Ported from prototypes/p13-nl2sql-engine/conventions.mjs,
+# mirroring reverse-bi libs/rbi-query/src/rbi_query/engines/maxcompute/conventions.yaml.
+#
+# drop (P13 grilling Q3): sqlglot_dialect (P13 drops sqlglot — no TS equivalent,
+# RBI uses `hive` proxy); equivalences (single-engine first); limits (query-side
+# guard/cost matrix — P13 prototype does not consume; P7 D6 PipelineConfig
+# defaults cover the guard equivalent).
+#
+# The loader (load_conventions, mirror RBI conventions.py:32) lives in
+# src/conventions.ts — it reads THIS file once (cached) so callers get the
+# canonical YAML, not a TS mirror that can drift.
+
+engine: maxcompute
+
+key_differences:
+  - "JSON 提取: GET_JSON_OBJECT(col, '$.path')"
+  - "日期分区: ds 字段格式 yyyyMMdd"
+  - "聚合: ARG_MAX(value, cmp) 取最大对应值"
+  - "类型: BIGINT / STRING / DOUBLE"
+  - "标识符: 反引号 `col`"
+
+functions:
+  - name: GET_JSON_OBJECT
+    signature: (json_string, path) → string
+  - name: ARG_MAX
+    signature: (value, cmp) → value_type
+  - name: TO_CHAR
+    signature: (datetime, format) → string
+  - name: GETDATE
+    signature: () → datetime
+  - name: DATEDIFF
+    signature: (date1, date2, unit) → int
+
+cast_map:
+  - { logical: int, meaning: 整数, cast: CAST(x AS BIGINT) }
+  - { logical: decimal, meaning: 小数/定点, cast: CAST(x AS DOUBLE) }
+  - { logical: string, meaning: 文本, cast: 默认，无需 CAST }
+  - { logical: bool, meaning: 布尔, cast: "x = '1' 或 CAST(x AS BOOLEAN)" }
+  - { logical: datetime, meaning: 日期/时间, cast: "TO_DATE(x,'yyyyMMdd') / CAST(x AS DATETIME)" }
+  - { logical: json, meaning: 结构体/对象, cast: "嵌套 GET_JSON_OBJECT(params,'$.a.b')" }
+
+sql_templates:
+  - name: 基础聚合（UV + 次数）
+    sql: |
+      SELECT COUNT(*) AS total_count, COUNT(DISTINCT role_id) AS role_uv
+      FROM <数据视图> WHERE event = '<事件名>' AND ds BETWEEN '20240601' AND '20240607'
+  - name: 多维分组
+    sql: |
+      SELECT server_id, GET_JSON_OBJECT(params, '$.result') AS battle_result, COUNT(*) AS battle_count
+      FROM <数据视图> WHERE event = '<事件名>' AND ds = '20240601'
+      GROUP BY server_id, GET_JSON_OBJECT(params, '$.result')
+  - name: TOP N
+    sql: |
+      SELECT GET_JSON_OBJECT(params, '$.coinType') AS coin_type,
+             SUM(CAST(GET_JSON_OBJECT(params, '$.amount') AS BIGINT)) AS total_amount
+      FROM <数据视图> WHERE event = '<事件名>' AND ds BETWEEN '20240601' AND '20240607'
+      GROUP BY GET_JSON_OBJECT(params, '$.coinType') ORDER BY total_amount DESC LIMIT 10

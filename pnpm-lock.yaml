@@ -1227,9 +1227,15 @@ importers:
       '@deepseek-ai/dsh-audit':
         specifier: workspace:^
         version: link:../../data/audit
+      '@deepseek-ai/dsh-identity':
+        specifier: workspace:^
+        version: link:../../identity/identity
       '@deepseek-ai/dsh-llm-dashscope':
         specifier: workspace:^
         version: link:../../llm/llm-dashscope
+      '@deepseek-ai/dsh-nl2sql-engine':
+        specifier: workspace:^
+        version: link:../../data/nl2sql-engine
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -3687,6 +3693,45 @@ importers:
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
 
+  packages/credentials/credentials-keychain:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-credentials':
+        specifier: workspace:^
+        version: link:../credentials
+      '@deepseek-ai/dsh-home-paths':
+        specifier: workspace:^
+        version: link:../../util/home-paths
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
+  packages/credentials/credentials-keychain-host:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-atomic-write':
+        specifier: workspace:^
+        version: link:../../util/atomic-write
+      '@deepseek-ai/dsh-credentials':
+        specifier: workspace:^
+        version: link:../credentials
+      '@deepseek-ai/dsh-credentials-keychain':
+        specifier: workspace:^
+        version: link:../credentials-keychain
+      '@deepseek-ai/dsh-credentials-local':
+        specifier: workspace:^
+        version: link:../credentials-local
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-launch-environment':
+        specifier: workspace:^
+        version: link:../../util/launch-environment
+
   packages/credentials/credentials-local:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -3742,6 +3787,19 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
+
+  packages/data/nl2sql-engine:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-query-maxcompute':
+        specifier: workspace:^
+        version: link:../../query/query-maxcompute
 
   packages/data/phase-gate:
     dependencies:
@@ -3829,6 +3887,22 @@ importers:
       '@deepseek-ai/dsh-timeout':
         specifier: workspace:^
         version: link:../../util/timeout
+
+  packages/eval/eval:
+    dependencies:
+      js-yaml:
+        specifier: ^4.2.0
+        version: 4.2.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
 
   packages/examples/acp-demo:
     dependencies:
@@ -5032,6 +5106,18 @@ importers:
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
 
+  packages/identity/identity:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-credentials':
+        specifier: workspace:^
+        version: link:../../credentials/credentials
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
   packages/interaction/commands:
     dependencies:
       zod:
@@ -5753,6 +5839,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.0
         version: 1.29.0(zod@4.4.3)
+      js-yaml:
+        specifier: ^4.2.0
+        version: 4.2.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -7450,6 +7539,9 @@ importers:
       '@deepseek-ai/dsh-credentials-local':
         specifier: workspace:^
         version: link:../../credentials/credentials-local
+      '@deepseek-ai/dsh-identity':
+        specifier: workspace:^
+        version: link:../../identity/identity
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants

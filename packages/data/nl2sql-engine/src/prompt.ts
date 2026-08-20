@@ -1,0 +1,105 @@
+/**
+ * P13b NL→SQL engine — SQL-generation prompt (the GENERATION phase prompt
+ * section content). Ported from `prototypes/p13-nl2sql-engine/prompt.mjs`,
+ * which ports RBI `resources/prompts/v2-baseline.md` §3 staged SOP + §6 八规则
+ * + §5 诚实拒答 + tool catalog + MAX_SQL_PER_TURN + P7 four-phase adaptation
+ * + conventions dialect grounding.
+ *
+ * Production runtime is agent-loop-driven (P7): the agent LLM generates SQL
+ * as text in GENERATION; P7b's phase-gate injects this section via
+ * `ctx.systemPrompt.assemble` when phase=generation. This module EXPORTS the
+ * section content; it does not call `ctx.systemPrompt` itself (that wiring is
+ * P7b's — P13b grilling Q2/Q3 boundary).
+ *
+ * @module @deepseek-ai/dsh-nl2sql-engine/src/prompt
+ */
+import { MAX_SQL_PER_TURN, MAX_FEEDBACK_RETRIES } from './types.ts'
+import { renderConventionsPrompt } from './conventions.ts'
+import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
+import type { RetrievalHit } from './bm25-linking.ts'
+
+/** Minimal event-definition shape the prompt renders (full P6 zod schema arrives with P6b). */
+export interface EventDefinitionLite {
+  readonly params_fields?: Record<string, unknown>
+  readonly partitions?: readonly { readonly name: string }[]
+  readonly [k: string]: unknown
+}
+
+export interface BuildPromptArgs {
+  readonly question: string
+  readonly candidates: readonly RetrievalHit[]
+  readonly eventDef: EventDefinitionLite | null | undefined
+  readonly conventions: EngineConventions | null | undefined
+  readonly phase?: string
+}
+
+const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
+- search_data_sources(query): BM25 schema-linking 检索返候选数据源（P13b bm25-linking；production 经 P5 ctx.retrieval seam）
+- load_event_definition(event_name): 加载事件定义（params_fields/metrics/external_refs）；SQL FROM/WHERE event/字段来自此返回不得硬编码（P6 ctx.schema）
+- query_data(sql): 执行 SQL（仅 SELECT，必带 ds 分区）；内置 CostGuard+探索预算（MAX_SQL_PER_TURN=${MAX_SQL_PER_TURN}）；返 3-state（done+result_id / running+instance_id / failed+error+failureKind）（P4 ctx.query.execute）
+- check_query(instance_id): 续取运行中查询（P4 ctx.query.attach）
+- critique_sql_tool(sql, question): pre-exec critic（P13b critic 填 P7 sql_syntax_gate 槽）
+- load_table_dimensions(table_name): DWS 表维表定义+JOIN 安全判定（P6 ctx.schema）
+- save_accumulated_definition(concept, def): 术语沉淀（P6 ctx.schema）
+- lookup_terminology(term): 术语查询
+[drop] plan_query（LATENT，不在任何 phase allowlist，research §1.2 证）`
+
+export function buildPrompt({ question, candidates, eventDef, conventions, phase = 'generation' }: BuildPromptArgs): string {
+  const dialect = renderConventionsPrompt(conventions)
+  const candLines =
+    candidates && candidates.length > 0
+      ? candidates
+        .map(c => `- ${c.id}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
+        .join('\n')
+      : '（无候选）'
+  return `你是游戏埋点数据分析 Agent。宁可少答慢答，不可错答。
+
+${TOOL_CATALOG}
+
+# §3 直答路径（staged SOP）
+## 阶段 A 准备
+- 复合判断门：≥2 不同性质指标 / ≥2 层维度交叉 / "对比"语义 / 模糊结论词 → 复合，拆原子子问题各一条 SQL
+- 字段清单校验：SQL 每个字段名（尤其 params 内）须在 load_event_definition 返回的 params_fields/metrics 有定义，不得硬编码
+
+## 阶段 B 生成
+- 方案先行：query_data 前在思维链形成方案（视图/过滤/指标/维度/预期量级）
+
+## 阶段 C 校验
+- Pre-exec critic：生成 SQL 后执行前调 critique_sql_tool(sql, question)
+- 改过 SQL 必须重新 critique（指纹同源门拒执未经重评的 SQL）
+
+## 阶段 D 执行与防护
+- 返回态处置：
+  - 仍在运行（instance_id 无 result_id）：禁止重发原 SQL，改 check_query(instance_id) 续取，最多 3 次
+  - parse_failed：修 SQL 重 critique 再执行（可修复）
+  - 不可修复→§5 拒绝：TABLE_NOT_FOUND / FIELD_NOT_FOUND / SEMANTIC_MISMATCH / PERMISSION_DENIED
+- 可修复（分区缺失/CAST 遗漏/别名冲突/语法错误）→ 带错误信息重新生成，不得重复相同 SQL（近重复门防重发）
+
+# §5 诚实拒绝
+触发：语义层无定义/params 无字段/自修 ${MAX_FEEDBACK_RETRIES} 次仍失败/发现路径走不通。拒时说明：为什么不能答/缺什么/怎么解决。不做降级，不给"仅供参考"。
+
+# §6 八规则
+1. 分区表必带 ds（yyyyMMdd）；非分区 DIM 不带 ds；_df 后缀日期不明用 MAX_PT
+2. 去重主体由用户意图：角色→role_id，账号→account_id
+3. params 用 GET_JSON_OBJECT(params,'$.字段')，数值前 CAST AS BIGINT/DOUBLE
+4. JOIN 规则：跨日多事件 JOIN 禁；同日同主体交集许可；维表 lookup JOIN 受控
+5. NULLIF(COUNT(*),0) 防除零
+6. 复合问题拆多条原子 SQL
+7. 时效：埋点 ~10min，通用数仓 T+1
+8. 千位以上加千分位
+
+# 方言规范（maxcompute conventions seam 注入）
+${dialect}
+
+# 当前问题
+${question}
+
+# 检索候选（search_data_sources BM25-only）
+${candLines}
+
+# 事件定义（load_event_definition）
+${eventDef ? JSON.stringify(eventDef, null, 2) : '（未加载）'}
+
+# 当前阶段（P7 四阶段适配：phase=${phase}）
+GENERATION 阶段：生成 SQL（\`\`\`sql 围栏），调 critique_sql_tool 校验，过 gate 后 query_data 执行。`
+}
