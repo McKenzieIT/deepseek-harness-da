@@ -1,0 +1,17 @@
+case_id: s1-multiturn-pass
+input:
+  question: 收入最高的游戏是哪个？
+  scope_id: scope-a
+  turns:
+    - role: user
+      content: 我想看最近 7 天各游戏收入
+    - role: assistant
+      content: 好的，我来查询最近 7 天各游戏的收入数据
+expected:
+  result_value:
+    value: gameA
+  match_mode: scalar_exact
+  answer: gameA
+  delivery_match: fuzzy
+dimensions:
+  domain: revenue

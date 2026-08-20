@@ -1,0 +1,5 @@
+{
+  "case_id": "s3-scalar",
+  "input": { "question": "总用户数？" },
+  "expected": { "result_value": { "value": 12345 }, "match_mode": "scalar_exact" }
+}
