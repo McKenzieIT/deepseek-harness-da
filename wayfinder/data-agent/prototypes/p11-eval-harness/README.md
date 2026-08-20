@@ -35,6 +35,8 @@ node run.mjs            # 交互菜单
 - **S7**：stub harness hangUntilRespawn→attempt1 `Promise.race(50ms)` 超时→`onTimeout` close+respawn→attempt2/3 pass（respawnCount=1）→ `Promise.race` wall-clock 超时 + runtime close/respawn（H2 mitigation，无 mid-turn cancel）。
 - **S8**：stub harness 返回 derailing 区间（2 assistant/message）→ `validateRunResult` 断言计数==1→`ProtocolError` → H1 mitigation（研究已实证不咬→验 mitigation 逻辑）。
 
+**Code-review fixes (subagent, 2026-08-20)**：`judge.mjs classifyError` re-mirrored rbi `judge.py _AUTH_PHRASES`/`_AUTH_STATUS`/`_RETRYABLE_*` — was a `\b`-word-boundary regex that (a) wrongly matched `forbidden`/`403` as auth (rbi **deliberately EXCLUDES** those — per-case facts, NOT run-ending; rbi judge.py:190-198 "classifying them as auth would kill a 143-case run because one table lacked a grant") and (b) missed `unauthorized`/`authentication failed` substrings. Now substring `_AUTH_PHRASES` + cued `_AUTH_STATUS` (401 only, status-cued to avoid `LIMIT 500`→retryable) + `_RETRYABLE_TYPES` (Timeout/Connection). No high-severity findings; all 8 scenarios still green (S5 auth/retry path unaffected — stub uses `401`+`unauthorized`/`429`+`rate limit`, both classifiers agree).
+
 ## Surfaced findings（P11b 生产硬化须解，p4/p7/p8 先例）
 
 1. **trigram fuzzy 对短 token 过宽容**：S6 原用 `gameX` vs `gameA`——trigram 重叠 2/3（gam/ame）≥0.35 → 误判 pass。改用无重叠错答才 fail。→ P11b 须：短答案走 `scalar_exact` 或 LLM-judge，或提 threshold / 加 min-token-length 守卫，或 fuzzy 仅作 derailment（非终止）非终止 DELIVERY。proto 用"无重叠错答"绕过；生产 fuzzy 阈值/路由须 grilling。

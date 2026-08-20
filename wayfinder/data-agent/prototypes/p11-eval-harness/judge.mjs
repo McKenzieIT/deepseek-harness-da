@@ -20,13 +20,46 @@ export class AuthenticationAbort extends Error {
   }
 }
 
-// rbi judge.py classify_error: auth | retryable | unclassified.
+// rbi judge.py classify_error: auth | retryable | unclassified. Faithful mirror of rbi's heuristic
+// (code-review fix 2026-08-20: was a \b-word-boundary regex that (a) wrongly matched forbidden/403 as
+// auth and (b) missed "unauthorized"/"authentication failed" substrings — reversing rbi's deliberate
+// design below).
+//
+// 🔴 rbi judge.py:190-198 — "Authorization is not authentication": MaxCompute reports a missing grant
+// as `Authorization Failed [4002]`, an LLM gateway can 403 a model the key isn't entitled to — those
+// are PER-CASE facts (other cases/tables/models still work), NOT run-ending. Only a CREDENTIAL failure
+// (401 / invalid key / bad signature) makes every remaining case futile → only that aborts the run.
+// So `forbidden`/`403`/`permission denied`/`authorization failed` are DELIBERATELY EXCLUDED from auth
+// ("classifying them as auth would kill a 143-case run because one table lacked a grant"). Mirror that.
+const AUTH_PHRASES = [
+  'unauthorized', 'authentication failed', 'authentication error', 'authenticationerror',
+  'invalid api key', 'invalid_api_key', 'incorrect api key', 'missing api key', 'no api key',
+  'api key not', 'invalidaccesskeyid', 'access key id does not exist',
+  'signaturedoesnotmatch', 'signature does not match',
+  'invalid credential', 'credentials expired', 'expired credential',
+]
+const RETRYABLE_PHRASES = [
+  'timeout', 'timed out', 'rate limit', 'too many requests', 'throttl', 'retryable', 'transient',
+  'overload', 'queue is full', 'queue full', 'queue busy', 'temporarily unavailable', 'try again later',
+  'connection reset', 'connection refused', 'connection aborted',
+]
+// rbi _STATUS_CUE: a status code must be cued (http/status[_ ]?code/status/code/error prefix or
+// start-of-message), NOT a bare substring — else "LIMIT 500" would classify as HTTP 500 retryable
+// (rbi judge.py:162 "a bare substring search would be a live bug... engine errors echo the statement").
+const AUTH_STATUS = /(?:^|\bhttp\b|status[_ ]?code|\bstatus\b|\bcode\b|\berror\b)[^0-9]{0,12}401\b/i
+const RETRYABLE_STATUS = /(?:^|\bhttp\b|status[_ ]?code|\bstatus\b|\bcode\b|\berror\b)[^0-9]{0,12}(?:429|500|502|503|504)\b/i
+
 export function classifyError(err) {
-  const msg = String(err?.message ?? err).toLowerCase()
   if (err instanceof AuthenticationAbort) return 'auth'
-  if (/\b(auth|credential|unauthor|forbidden|401|403)\b/.test(msg)) return 'auth'
-  if (/\b(timeout|timed out|rate|429|throttl|retryable|transient|overload|503|502|500)\b/.test(msg))
-    return 'retryable'
+  const text = String(err?.message ?? err).toLowerCase()
+  if (AUTH_PHRASES.some((p) => text.includes(p)) || AUTH_STATUS.test(text)) return 'auth'
+  // rbi _RETRYABLE_TYPES: TimeoutError, ConnectionError (covers DNS/reset/refused; the case an adapter
+  // raises when the gateway is simply not there — a message carrying no keyword at all).
+  if (err instanceof Error) {
+    if (err.name === 'TimeoutError' || err.name === 'ConnectionError') return 'retryable'
+    if (err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') return 'retryable'
+  }
+  if (RETRYABLE_PHRASES.some((p) => text.includes(p)) || RETRYABLE_STATUS.test(text)) return 'retryable'
   return 'unclassified'
 }
 
