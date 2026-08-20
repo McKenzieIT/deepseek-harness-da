@@ -47,16 +47,19 @@
 
 ## phase-4（eval）
 - [R3 多轮 eval hook](phase-4/R3-multiturn-eval-hook.md) — research, **resolved**, blocks P11
-- [P11 eval harness](phase-4/P11-eval-harness.md) — prototype, **unblocked**（G2 resolved 2026-08-20；TS `packages/eval/` per G2 设计指针）
+- [P11 eval harness](phase-4/P11-eval-harness.md) — prototype, **resolved**（2026-08-20；throwaway proto 11 .mjs 8/8 绿 + grilling 6 决策 D1-D6 + 9 surfaced finding → P11b 生产）
+- [P11b eval harness 生产硬化](phase-4/P11b-eval-harness-hardening.md) — prototype, **resolved**（2026-08-20；生产 `packages/eval/eval/` TS 纯库 zero-seam-dep + 7 grilled 决策 + 9 finding 全解 + rbi-faithful 逐条 VERIFIED + typecheck-clean + 201 tests + coverage 100%；毕业雾 D2 (c)→D2c；CLI/persist/pass_at_k→P11c；解锁 G1b）
+- [P11c eval CLI runner + persistence + pass_at_k](phase-4/P11c-eval-cli-runner.md) — prototype, **blocked by P11b**（resolved；CLI runner + run-result 持久化 + pass_at_k 报告聚合，~800 行外围）
 - [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **resolved**（2026-08-20；TS `packages/eval/` 重实现编排 + 判分 (ii) DELIVERY/EXECUTION 不进 sqlglot + python/ 包不修订 Q10；解锁 P11）
 
 ## phase-misc（cross-phase / 低优先）
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **resolved**（2026-08-20；实验设计 11 决策定稿——2×2 变体×2 模型配置 staged、execution-match 三分判分+决策规则；设计(不跑)→毕业 G1b 执行票）
-- [G1b 实验执行](phase-misc/G1b-experiment-execution.md) — prototype, blocked by P7b+P11b（跑 G1 设计的 staged 矩阵+决策规则+报告）
+- [G1b 实验执行](phase-misc/G1b-experiment-execution.md) — prototype, **unblocked**（P7b+P11b resolved；跑 G1 设计的 staged 矩阵+决策规则+报告，消费 `packages/eval/eval/` 库 + P11c runner/report）
+- [D2c retrieve-tool escape-hatch keep/regress](phase-misc/D2c-retrieve-tool-keep-regress.md) — grilling, **unblocked**（graduated from map Not-yet-specified D2 (c)；P11b eval 就绪→可跑召回/歧义数据驱动 keep (b) 还是 regress (a) pipeline-only）
 - [R4 goals:false 抑制](phase-misc/R4-goals-false.md) — research, **resolved**（2026-08-20；goals:false 完全抑制 spine goal mount：agent-spine-demo/src/index.ts:239 守卫 + agent-core.spec.ts:210-214 钉死，README:82 fixed 指 core 非指 goal；shipped base+patch 走 disabled:true 等价零 code 改 → Q8 保留是选择非约束）
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, **resolved**（2026-08-20；删 acp/ 级联 acp-demo+acp-agent ~70 场景/57 配置/18 测试，acp-snapshot 零依赖存活，da 零交集——给 (c) 代价基线）
 - [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, **resolved**（2026-08-20；200+err-body 证伪（4 case 全 4xx）；改 fix 同源 4xx SSE-框架错误体 mis-parse（adapter.parseErrorBody 先 JSON 再 parseSse drain）+7 测试，2xx/translate 不动）
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 
 ## 当前可立即取（unblocked frontier）
-P9b · P11 · P5b · P6b（R4/R5/P7b/P13b/G3c 已 resolved）
+P9b · P5b · P6b · P11c · G1b · D2c（P11/P11b/G3c/R4/R5/P7b/P13b 已 resolved）
