@@ -171,9 +171,9 @@ function bodyAsStream(text: string): ReadableStream<BufferSource> {
  */
 export async function parseErrorBody(text: string): Promise<WireChunk | undefined> {
   if (text.length === 0) return undefined
-  // Strip a leading UTF-8 BOM (U+FEFF): JSON.parse rejects it, and a BOM at the start of an
-  // SSE-framed body would similarly block the plain-JSON path. AGA probes have not shown a BOM,
-  // but strip defensively so a BOM-prefixed plain-JSON error body still recovers code/message/request_id.
+  // Strip a leading UTF-8 BOM (U+FEFF): JSON.parse rejects it, so a BOM-prefixed plain-JSON
+  // error body would otherwise fall through to the SSE drain (no `data:` line to recover) and
+  // lose code/message/request_id. AGA probes have not shown a BOM, but strip defensively.
   const stripped = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text
   try {
     return JSON.parse(stripped) as WireChunk
