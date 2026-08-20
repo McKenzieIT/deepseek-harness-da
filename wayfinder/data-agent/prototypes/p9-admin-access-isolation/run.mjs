@@ -94,7 +94,9 @@ function credResolve(ref, address = {}) {
 // so unvalidated it enabled path traversal (X-RBI-Scope: A/../B). Kept at the single entry point.
 const SCOPE_ID_RE = /^[A-Za-z0-9_-]+$/;
 function validateScopeId(raw) {
-  if (raw && !SCOPE_ID_RE.test(raw)) throw new Error(`InvalidScopeError: ${raw}`);
+  // reject empty / null / non-string outright (scope_id is a required path-component param;
+  // the old `raw &&` falsy short-circuit let validateScopeId('') / (null) skip the regex)
+  if (typeof raw !== 'string' || !SCOPE_ID_RE.test(raw)) throw new Error(`InvalidScopeError: ${raw}`);
   return raw;
 }
 
@@ -119,7 +121,11 @@ function canAccess(identity, scopeId) {
 // difference is only region (scope config.yaml maxcompute.environment) selecting
 // project/endpoint. Addressing (i): global access_id/key ref + per-scope project/endpoint.
 // (Addressing (ii) per-scope 4-ref is a P9/P4b build-time choice; not chosen here.)
-function regionOfScope(scopeId) { return scopes.get(scopeId)?.region ?? 'domestic'; }
+function regionOfScope(scopeId) {
+  const region = scopes.get(scopeId)?.region;
+  if (!region) throw new Error(`UnknownScopeError: ${scopeId}`); // fail-closed: never default to domestic
+  return region;
+}
 function resolveOdpsCredential(scopeId) {
   const cfg = odpsCfg.get('1');                      // singleton id=1
   if (!cfg) throw new Error('OdpsConfig not provisioned');
@@ -177,6 +183,7 @@ function provisionTenant(id, name, username, password, allowedScopeIds, isActive
 }
 function provisionOdpsConfig(cfg) { odpsCfg.set('1', { ...cfg }); } // singleton id=1
 function issueLink(scopeId, ownerTenantId, label, { expiresAt = null } = {}) {
+  validateScopeId(scopeId); // security: path-traversal guard (scopeId is a path component in PROD)
   const linkToken = randomBytes(32).toString('base64url');
   accessLinks.set(linkToken, { linkToken, scopeId, ownerTenantId, label, isActive: true,
     expiresAt, createdAt: new Date().toISOString(), revokedAt: null });
@@ -191,7 +198,7 @@ function revokeLink(linkToken) {
 function registerUser(userId, username, password) { users.set(userId, { userId, username, passwordHash: hashPassword(password) }); }
 function login(username, password) {
   const u = users.list().find(u => u.username === username);
-  if (!u || !verifyPassword(password, u.passwordHash)) return null; // fail-closed (no user vs wrong-pw indistinguishable)
+  if (!u || !verifyPassword(password, u.passwordHash)) return null; // return-value indistinguishable; timing not hardened (deferred to P12b)
   const sessionToken = randomBytes(32).toString('base64url');
   sessions.set(sessionToken, { userId: u.userId, expiry: Date.now() + 3600e3 });
   return sessionToken;
@@ -300,6 +307,22 @@ console.log('\n── S6 TTL/expiry ──');
 const futureLink = issueLink('scopeA', 'tenantOps', 'future', { expiresAt: new Date(Date.now() + 3600e3).toISOString() });
 check('S6a unexpired link works', gateQuery({ linkToken: futureLink }).denied === false);
 check('S6b expired link denied', gateQuery({ linkToken: expLink }).denied === true);
+
+// ════════════════════════════════════════════════════════════════════════════
+// S7 — scope_id validation (fail-closed: path-traversal / empty / un-provisioned)
+// ════════════════════════════════════════════════════════════════════════════
+console.log('\n── S7 scope_id validation (fail-closed) ──');
+// validateScopeId: reject empty / null / non-string / malformed outright (no falsy short-circuit)
+check('S7a validateScopeId rejects empty string', (() => { try { validateScopeId(''); return false; } catch { return true; } })());
+check('S7b validateScopeId rejects null', (() => { try { validateScopeId(null); return false; } catch { return true; } })());
+check('S7c validateScopeId rejects path-traversal (A/../B)', (() => { try { validateScopeId('A/../B'); return false; } catch { return true; } })());
+check('S7d validateScopeId accepts well-formed', validateScopeId('valid_scope-1') === 'valid_scope-1');
+// issueLink: malformed scopeId must be rejected at binding (scopeId is a path component in PROD)
+check('S7e issueLink rejects path-traversal scopeId', (() => { try { issueLink('A/../B', 'tenantOps', 'evil'); return false; } catch { return true; } })());
+check('S7f issueLink rejects empty scopeId', (() => { try { issueLink('', 'tenantOps', 'empty'); return false; } catch { return true; } })());
+// regionOfScope / resolveOdpsCredential: un-provisioned scope must FAIL (no silent domestic default)
+check('S7g regionOfScope fails-closed on un-provisioned scope', (() => { try { regionOfScope('neverProvisioned'); return false; } catch { return true; } })());
+check('S7h resolveOdpsCredential fails-closed on un-provisioned scope', (() => { try { resolveOdpsCredential('neverProvisioned'); return false; } catch { return true; } })());
 
 // ── verdict ───────────────────────────────────────────────────────────────────
 const failed = results.filter(r => !r.pass);
