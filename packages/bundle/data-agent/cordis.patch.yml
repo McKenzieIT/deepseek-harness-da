@@ -43,6 +43,20 @@
   config:
     mode: native
 
+# ── LLM: DashScope as the data-agent's direct LLM (P2 resolved) ───────────
+# llm-dashscope mounts the `dashscope` provider on ctx.llm; other providers
+# (deepseek-official, llm-pi-ai from base) stay mounted + configurable, so a
+# user can switch via the settings UI. agent-default-model sets the profile's
+# default to dashscope/qwen-plus; override per-request or via settings.
+- insert:
+    - id: llm-dashscope
+      name: '@deepseek-ai/dsh-llm-dashscope'
+
+- id: agent-default-model
+  config:
+    provider: dashscope
+    model: qwen-plus
+
 # ── data capability plugins (additive mounts; TODO, filled by P4-P11) ───────
 # Each row below is a placeholder for a data capability plugin this bundle
 # will mount once its package exists. They are commented out because a bare
@@ -70,7 +84,7 @@
 #     - id: admin              # harness app: per-game scope/credential/access-link + system config
 #       name: '@deepseek-ai/dsh-admin'          # name TBD - P9
 #     # ── LLM (phase-1) ────────────────────────────────────────────────────
-#     - id: llm-dashscope      # DashScope (Bailian, OpenAI-compatible) - the data agent's direct LLM
+#     - id: llm-dashscope      # DashScope (AGA AI Gateway, native protocol) - the data agent's direct LLM
 #       name: '@deepseek-ai/dsh-llm-dashscope'  # name TBD - P2
 #     - id: subagent-qoder     # Qoder as a harness subagent (query() delegation; PAT auth via credentials seam)
 #       name: '@deepseek-ai/dsh-subagent-qoder' # name TBD - P3
