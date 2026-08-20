@@ -59,4 +59,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 
 ## 当前可立即取（unblocked frontier）
-G3c · P9b · P11 · P5b · P6b（R4/R5/P7b/P13b 已 resolved）
+P9b · P11 · P5b · P6b（R4/R5/P7b/P13b/G3c 已 resolved）
