@@ -7,7 +7,7 @@
 // HARDENING §1 rationale: polluting source-of-truth >> polluting instructions (connects to intranet-security-first).
 
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, unlinkSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 
 // suggestion_id = timestamp + content short-hash (mirrors pending_writes.submit).
@@ -60,6 +60,9 @@ export function recordTier2Write(auditLog, toolName, payload, { scope_id = null 
     payload_hash: createHash('sha256').update(payload, 'utf8').digest('hex'),
     payload_bytes: Buffer.byteLength(payload, 'utf8'),
   }
+  // D5 "不可关": the audit must land — ensure the parent dir exists. The substrate may be the first
+  // Tier-2 writer in a fresh scratch where var/ hasn't been created by the Tier-1 pending queue yet.
+  mkdirSync(dirname(auditLog), { recursive: true })
   const arr = existsSync(auditLog) ? JSON.parse(readFileSync(auditLog, 'utf8')) : []
   arr.push(rec)
   writeFileSync(auditLog, JSON.stringify(arr, null, 2), 'utf8')

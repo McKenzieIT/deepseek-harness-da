@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, openSync, closeSync
 import { dirname, join, basename } from 'node:path'
 import yaml from 'js-yaml'
 import { EventDefinition, TableDefinition } from './types.mjs'
+import { recordTier2Write } from './pending.mjs' // D5: Tier-2 audit (不可关) — substrate records, not the caller
 
 // ── YAML dump (mirrors RBI _LiteralDumper: multi-line -> literal block |, sort_keys=False, allow_unicode) ──
 // js-yaml uses literal block | for strings with newlines; sortKeys:false preserves insertion order.
@@ -151,7 +152,11 @@ export function writeEventYaml(semanticLayer, name, content) {
   return { ok: true, path: target }
 }
 // Tier-2 per-scope persistent write: read-merge-validate-write + audit (mirrors writer.update_table_meta).
-export function updateTableMeta(semanticLayer, name, updates, { audit } = {}) {
+// D5 contract: "Tier-2 不可关" — audit is NON-OPTIONAL. The substrate records the Tier-2 audit itself
+// (recordTier2Write) so a caller cannot silently skip it. auditLog (path) + scope_id are dependency-injected
+// (the substrate doesn't own the var/ layout); omitting auditLog is a fail-loud programmer error.
+export function updateTableMeta(semanticLayer, name, updates, { auditLog, scope_id = null } = {}) {
+  if (!auditLog) throw new Error('updateTableMeta requires auditLog: Tier-2 audit is non-disableable (D5 "不可关")')
   const tf = join(semanticLayer, 'tables', `${name}.yaml`)
   if (!existsSync(tf)) return { error: `Table not found: ${name}` }
   const data = readYaml(tf)
@@ -161,7 +166,7 @@ export function updateTableMeta(semanticLayer, name, updates, { audit } = {}) {
   if (!r.success) return { error: `Validation failed after update: ${r.error.message}` }
   atomicWrite(tf, data)
   invalidateCaches(semanticLayer)
-  if (audit) audit('update_table_meta', { table_name: name, updates })
+  recordTier2Write(auditLog, 'update_table_meta', JSON.stringify({ table_name: name, updates }), { scope_id })
   return { ok: true, table_name: name }
 }
 
@@ -238,17 +243,25 @@ export function mergeChangedYaml(existing, newMeta) {
   return out
 }
 // sync_write_definitions: batch write a list of TableMeta (mirrors rbi_semantic.sync.sync_write_definitions).
-export function syncWriteDefinitions(semanticLayer, tableMetas, { dimTableNames = new Set(), existingTables = new Map() } = {}) {
+// D5 contract: sync-write = ops/admin Tier-2, "Tier-2 不可关" — audit is NON-OPTIONAL. The substrate records
+// a Tier-2 audit entry per successful write (recordTier2Write); auditLog (path) + scope_id are dependency-injected.
+// Omitting auditLog is a fail-loud programmer error (no silent un-audited sync-write path).
+export function syncWriteDefinitions(semanticLayer, tableMetas, { dimTableNames = new Set(), existingTables = new Map(), auditLog, scope_id = null } = {}) {
+  if (!auditLog) throw new Error('syncWriteDefinitions requires auditLog: sync-write is Tier-2; audit is non-disableable (D5 "不可关")')
   let written = 0, skipped = 0; const errors = []
   for (const meta of tableMetas) {
     const tname = meta.table_name
     if (!tname) { skipped++; continue }
     try {
-      let doc
+      let doc, isDim = false
       if (existingTables.has(tname)) doc = mergeChangedYaml(existingTables.get(tname), meta)
-      else if (dimTableNames.has(tname)) doc = generateDimYaml(meta)
+      else if (dimTableNames.has(tname)) { doc = generateDimYaml(meta); isDim = true }
       else doc = generateTableYaml(meta)
-      writeTable(semanticLayer, tname, doc, { skipValidation: true }) // sync writes pre-validated by generation (mirrors RBI)
+      // DIM path validates against .superRefine (pk + label_columns) — do NOT silently emit primary_key:[] /
+      // label_columns:[] that fails .superRefine on read. DWS/merge keep skipValidation (generation pre-validates;
+      // DWS has no kind constraint; merge preserves a previously-valid doc).
+      writeTable(semanticLayer, tname, doc, { skipValidation: !isDim })
+      recordTier2Write(auditLog, 'sync_write_definitions', JSON.stringify({ table_name: tname }), { scope_id })
       written++
     } catch (e) { errors.push(`${tname}: ${e.message}`) }
   }

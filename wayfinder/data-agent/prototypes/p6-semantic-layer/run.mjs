@@ -22,7 +22,7 @@ import {
   writeTable, writeEventYaml, updateTableMeta, syncWriteDefinitions,
 } from './io.mjs'
 import { BasicIndex } from './index.mjs'
-import { submit, load as pendingLoad, listing, discard, recordTier2Write, isValidId } from './pending.mjs'
+import { submit, load as pendingLoad, listing, discard, isValidId } from './pending.mjs'
 import { ctxSchema } from './schema-stub.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -106,9 +106,9 @@ async function scenario2() {
   const dwsMetas = ctxSchema.discover('10000demo', 'dws')
   note('  ctx.schema.discover(scope, "dim") -> [dim_demo_item_info]')
   const dimMetas = ctxSchema.discover('10000demo', 'dim')
-  const r1 = syncWriteDefinitions(SCRATCH, dwsMetas, { dimTableNames: new Set() })
+  const r1 = syncWriteDefinitions(SCRATCH, dwsMetas, { dimTableNames: new Set(), auditLog: AUDIT_LOG, scope_id: '10000demo' })
   note(`  sync-write DWS (new): written=${r1.written} — infer_role: pay_amt(double+no measure-suffix)=measure? ${'pay_amt' && 'pay_amt'.endsWith('_amt') ? 'YES (measure)' : 'no'}`)
-  const r2 = syncWriteDefinitions(SCRATCH, dimMetas, { dimTableNames: new Set(['dim_demo_item_info']) })
+  const r2 = syncWriteDefinitions(SCRATCH, dimMetas, { dimTableNames: new Set(['dim_demo_item_info']), auditLog: AUDIT_LOG, scope_id: '10000demo' })
   note(`  sync-write DIM (new): written=${r2.written} — generate_dim_yaml: pk=[item_id] (first *_id), label_columns=[item_name] (STRING+_name)`)
   // changed table: merge_changed_yaml preserves analyst role corrections
   note('  ctx.schema.describeChanged("dws_demo_pay_order_di") -> meta with NEW col + type change')
@@ -149,8 +149,8 @@ async function scenario3() {
   note(`  discard from queue=${discarded} (must consume else re-approvable); pending length=${listing(VAR_PENDING).length}`)
   note(`  source-of-truth check: lookupEvent('role.online') now = ${idx.lookupEvent('role.online') ? 'FOUND ✓ (approved write landed)' : 'null ✗'} (index rebuilt via ADR-0011 invalidate)`)
   // Tier-2: per-scope persistent write, audit-logged (NOT disableable)
-  note('  Tier-2: update_table_meta("dws_demo_pay_order_di", {granularity: "日增量"}) -> direct write + audit log')
-  const r = updateTableMeta(SCRATCH, 'dws_demo_pay_order_di', { granularity: '日增量，每行一笔付费订单事件' }, { audit: (tool, p) => recordTier2Write(AUDIT_LOG, tool, JSON.stringify(p), { scope_id: '10000demo' }) })
+  note('  Tier-2: update_table_meta("dws_demo_pay_order_di", {granularity: "日增量"}) -> direct write + audit log (substrate-recorded, 不可关)')
+  const r = updateTableMeta(SCRATCH, 'dws_demo_pay_order_di', { granularity: '日增量，每行一笔付费订单事件' }, { auditLog: AUDIT_LOG, scope_id: '10000demo' })
   note(`  update result: ${JSON.stringify(r)}; audit log entries=${JSON.parse(readFileSync(AUDIT_LOG, 'utf8')).length}`)
 }
 
