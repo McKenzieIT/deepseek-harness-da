@@ -18,16 +18,7 @@
       "path": "../../../vendor/schemastery"
     },
     {
-      "path": "../../llm/llm"
-    },
-    {
-      "path": "../../core/tools"
-    },
-    {
-      "path": "../../data/nl2sql-engine"
-    },
-    {
-      "path": "../../retrieval/retrieval"
+      "path": "../embedder"
     },
     {
       "path": "../../runtime-diagnostics/invariants"

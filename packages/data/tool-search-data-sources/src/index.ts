@@ -30,6 +30,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { Bm25Linker, type RetrievalLinker, type RetrievalHit } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
+import { type RetrievalService } from '@deepseek-ai/dsh-retrieval/src/index.ts'
 
 export const name = 'tool-search-data-sources'
 export const inject = ['tools']
@@ -71,6 +72,22 @@ export function searchDataSources(
     ...(h.payload?.description !== undefined ? { description: h.payload.description } : {}),
     mode: h.mode,
   }))
+}
+
+/**
+ * Project a retrieval hit with an opaque payload (`unknown` at the
+ * `ctx.retrieval` seam) to the model-facing candidate shape. Shared by the
+ * `ctx.retrieval` async path + the sync `searchDataSources` projection so the
+ * two swap paths produce identical candidate shapes.
+ */
+function projectHit(h: { readonly id: string; readonly score: number; readonly payload: unknown; readonly mode: string }): SearchHit {
+  const description = (h.payload as { description?: string } | undefined)?.description
+  return {
+    id: h.id,
+    score: h.score,
+    ...(description !== undefined ? { description } : {}),
+    mode: h.mode,
+  }
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
@@ -130,11 +147,27 @@ export function apply(ctx: Context, config: Config = {}): void {
             .join('\n'),
       }],
     },
-    execute(args, exec) {
+    async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('search_data_sources aborted before linking')
       }
-      return Promise.resolve({ candidates: searchDataSources(linker, args.query, args.top_k ?? defaultTopK) })
+      const topK = args.top_k ?? defaultTopK
+      // P5b soft-fallback swap: when the `ctx.retrieval` seam is registered
+      // (opt-in; the bundle mounts `dsh-retrieval-inproc`), use the real async
+      // hybrid provider; otherwise the sync local `Bm25Linker` (Q1 thin
+      // default). `ctx.get('retrieval')` is the safe probe — it returns
+      // `undefined` when no provider is registered (a direct `ctx.retrieval`
+      // access would throw). `inject` stays `['tools']` (NOT `'retrieval'`) so
+      // the tool loads without a retrieval provider; P13b 9/9 + this tool's
+      // 7/7 stay green (tests register no retrieval -> `get` returns undefined
+      // -> the sync Bm25Linker path). Seam contract + P13b engine logic
+      // unchanged.
+      const retrieval = ctx.get('retrieval') as RetrievalService | undefined
+      if (retrieval !== undefined) {
+        const hits = await retrieval.retrieve(args.query, { topK, mode: 'hybrid' })
+        return { candidates: hits.map(projectHit) }
+      }
+      return { candidates: searchDataSources(linker, args.query, topK) }
     },
   }))
 }

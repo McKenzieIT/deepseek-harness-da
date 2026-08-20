@@ -1,14 +1,14 @@
 {
-  "name": "@deepseek-ai/dsh-tool-search-data-sources",
-  "description": "Model-facing search_data_sources tool: BM25 schema-linking over the semantic layer for the data agent's UNDERSTANDING phase",
-  "version": "0.1.0-rc.7",
+  "name": "@deepseek-ai/dsh-retrieval-inproc",
+  "description": "In-process hybrid retrieval provider (BM25 + vector + RRF k=60, in-mem cosine, ctx.embedder; InferenceError -> BM25-only degradation) for the data agent (P5b default tier)",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
-    "directory": "packages/data/tool-search-data-sources"
+    "directory": "packages/retrieval/retrieval-inproc"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -18,27 +18,32 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
-    "@deepseek-ai/dsh-retrieval": "workspace:^"
+    "@deepseek-ai/dsh-retrieval": "workspace:^",
+    "@deepseek-ai/dsh-embedder": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^"
   },
   "dependencies": {},
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
-    "@deepseek-ai/dsh-retrieval": "workspace:^"
+    "@deepseek-ai/dsh-retrieval": "workspace:^",
+    "@deepseek-ai/dsh-embedder": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^"
   }
 }

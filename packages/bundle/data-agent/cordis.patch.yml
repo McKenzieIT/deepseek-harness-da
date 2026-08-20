@@ -78,10 +78,10 @@
 #     - id: query-engine        # ctx.query seam (QueryEngine protocol + per-engine conventions.yaml; MaxCompute provider)
 #       name: '@deepseek-ai/dsh-query-engine'   # name TBD - P4
 #     # ── retrieval / vectorization (P5) ───────────────────────────────────
-#     - id: embedder            # ctx.embedder seam (default lightweight in-process; heavy embedder as optional external plugin)
-#       name: '@deepseek-ai/dsh-embedder'       # name TBD - P5
-#     - id: retrieval          # ctx.retrieval seam (default sqlite-vec/in-memory; hybrid as retriever-composition plugin)
-#       name: '@deepseek-ai/dsh-retrieval'      # name TBD - P5
+#     - id: embedder            # ctx.embedder seam — OPT-IN (P5b shipped @deepseek-ai/dsh-embedder-fakehash default zero-dep + dsh-embedder-http external OpenAI-compat; T2: AGA-embeddings NO, user self-deploys the heavy embedder). Uncomment + mount a provider to register ctx.embedder. Left commented: activation (hybrid-by-default vs the local Bm25Linker) is D2c's evals-driven keep/regress call; an unmounted seam keeps search_data_sources on its Bm25Linker default (no behavior change, P13b 9/9 unaffected).
+#       name: '@deepseek-ai/dsh-embedder-fakehash'
+#     - id: retrieval          # ctx.retrieval seam — OPT-IN (P5b shipped @deepseek-ai/dsh-retrieval-inproc hybrid BM25+vec+RRF k=60 over ctx.embedder, InferenceError->BM25-only degradation; reranker peer after RRF). Uncomment + mount (alongside an embedder provider) to swap search_data_sources off the local Bm25Linker (additive, RetrievalLinker contract unchanged). Left commented pending D2c keep/regress.
+#       name: '@deepseek-ai/dsh-retrieval-inproc'
 #     # ── semantic layer (P6) - first-class (map: 语义层一等公民) ───────────
 #     - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
 #       name: '@deepseek-ai/dsh-semantic-layer' # name TBD - P6

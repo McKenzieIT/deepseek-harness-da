@@ -36,7 +36,7 @@
 - [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/audit + 真实 ctx.on + ①a verdict-only patch + ②c stats/correctedStats + additive P3 costs-surface；audit 11/11 spec + P3 26/26+117/117 + typecheck-clean）
 - [G3c credentials-keychain-host mount](phase-2/G3c-credentials-keychain-host-mount.md) — prototype, **resolved**（2026-08-20）（global-writes gap=(A) writable fallback shim；(C) Cordis 证伪 provide 双 throw。新包 packages/credentials/credentials-keychain-host/（host apply+writable shim 复用 renderDocument/writeFileAtomic/withFileLock+unlockPasswordSource+perUserFallbackRefs）6/6 green + typecheck-clean；KeychainFallback += set?/unset?；credentials-local export renderDocument。bundle 接线 opt-in 文档化非 active——active 行使 data-agent boot 强依赖 macOS+keychain（非 mac CI/dev 崩），同 P12b 先例）
 - [P9b admin+访问隔离 生产硬化](phase-2/P9b-admin-access-isolation-hardening.md) — prototype, **unblocked**（G3b resolved；per-user 登录生产=Stratum B enabler：填 ctx.identity 真值激活 G3b ②⑥ per-user + decision ③自助 set 接 keychain（软 dep G3c）+ ⑤必填 vs lazy UX + per-user 登录硬化）
-- [P5b 检索/向量化 生产硬化](phase-2/P5b-retrieval-vectorization-hardening.md) — prototype, **unblocked**（graduated from P13b Q1；P5 proto → 生产 ctx.retrieval seam+真 provider，替换 P13b 本地 RetrievalLinker 薄默认）
+- [P5b 检索/向量化 生产硬化](phase-2/P5b-retrieval-vectorization-hardening.md) — prototype, **resolved**（2026-08-20；5 决策 grilled → packages/{embedder,retrieval}/ 5 包 + additive swap search_data_sources 软回退；33/33 spec+per-pkg tsc+cordis132；P13b 不碰；解锁 D2c）
 - [P6b 语义层 生产硬化](phase-2/P6b-semantic-layer-hardening.md) — prototype, **resolved**（2026-08-20, commit 88524504f8；生产 packages/data/semantic-layer/ + ctx.schema seam + substrate，P13b CriticGuardData→ctx.schema substrate swap 可达；5/5 spec + tsc + verify-cordis-config 132 + oxlint 0；load_* tool 包 + live-ODPS provider = follow-up）
 
 ## phase-3（orchestration）
@@ -63,4 +63,4 @@
 - [host-typecheck-wiring](phase-misc/host-typecheck-wiring.md) — task, **unblocked**（critic-dedup 收尾 + nl2sql-engine tsconfig.host ref + phase-gate PromptAssembly；P11b surfaced host typecheck 先验 gap；critic-dedup candidate 毕业）
 
 ## 当前可立即取（unblocked frontier）
-P9b · P5b · P11c · G1b · D2c · host-typecheck-wiring（P11/P11b/G3c/R4/R5/P7b/P13b/P6b 已 resolved）
+P9b · P11c · G1b · D2c · host-typecheck-wiring（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b 已 resolved）

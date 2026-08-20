@@ -19,7 +19,10 @@ interface ToolDef {
   readonly description: string
   readonly output: {
     readonly schema: unknown
-    readonly render: (args: unknown, value: { readonly candidates: SearchHit[] }) => readonly { readonly type: 'text'; readonly text: string }[]
+    readonly render: (
+      args: unknown,
+      value: { readonly candidates: SearchHit[] },
+    ) => readonly { readonly type: 'text'; readonly text: string }[]
   }
   readonly execute: (
     args: { readonly query: string; readonly top_k?: number },
@@ -36,6 +39,9 @@ function registerTool(): ToolDef {
         def = d
       },
     },
+    // P5b: execute probes `ctx.get('retrieval')`; the stub models "no retrieval
+    // provider registered" (returns undefined -> the sync Bm25Linker path).
+    get: () => undefined,
   } as unknown as Context
   apply(ctx, {})
   if (def === undefined) {
@@ -89,4 +95,23 @@ test('S7 render empty candidates -> no-match message', () => {
   const def = registerTool()
   const out = def.output.render({}, { candidates: [] })
   expect(out[0]?.text).toBe('No matching data sources found.')
+})
+
+test('S8 execute uses ctx.retrieval when registered (P5b soft-fallback swap)', async () => {
+  let def: ToolDef | undefined
+  const mockRetrieval = {
+    retrieve: async () => [
+      { id: 'mock.metric', score: 0.42, payload: { description: 'mock desc' }, mode: 'hybrid' },
+    ],
+  }
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: () => mockRetrieval,
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) {
+    throw new Error('apply did not register a tool')
+  }
+  const out = await def.execute({ query: 'q' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([{ id: 'mock.metric', score: 0.42, description: 'mock desc', mode: 'hybrid' }])
 })
