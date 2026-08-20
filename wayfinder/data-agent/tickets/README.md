@@ -48,10 +48,10 @@
 ## phase-misc（cross-phase / 低优先）
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **resolved**（2026-08-20；实验设计 11 决策定稿——2×2 变体×2 模型配置 staged、execution-match 三分判分+决策规则；设计(不跑)→毕业 G1b 执行票）
 - [G1b 实验执行](phase-misc/G1b-experiment-execution.md) — prototype, blocked by P7b+P11b（跑 G1 设计的 staged 矩阵+决策规则+报告）
-- [R4 goals:false 抑制](phase-misc/R4-goals-false.md) — research, low, unblocked
-- [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, low, unblocked
-- [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, low, unblocked
-- [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
+- [R4 goals:false 抑制](phase-misc/R4-goals-false.md) — research, **resolved**（2026-08-20；goals:false 完全抑制 spine goal mount：agent-spine-demo/src/index.ts:239 守卫 + agent-core.spec.ts:210-214 钉死，README:82 fixed 指 core 非指 goal；shipped base+patch 走 disabled:true 等价零 code 改 → Q8 保留是选择非约束）
+- [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, **resolved**（2026-08-20；删 acp/ 级联 acp-demo+acp-agent ~70 场景/57 配置/18 测试，acp-snapshot 零依赖存活，da 零交集——给 (c) 代价基线）
+- [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, **resolved**（2026-08-20；200+err-body 证伪（4 case 全 4xx）；改 fix 同源 4xx SSE-框架错误体 mis-parse（adapter.parseErrorBody 先 JSON 再 parseSse drain）+7 测试，2xx/translate 不动）
+- [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 
 ## 当前可立即取（unblocked frontier）
 P7b · P13b · P11（+ low: R4, R5）

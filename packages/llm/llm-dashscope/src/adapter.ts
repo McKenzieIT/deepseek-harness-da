@@ -144,6 +144,46 @@ export function httpErrorCode(status: number, error?: WireChunk): string {
   return `HTTP_${status}`
 }
 
+/** Wrap a decoded error-body string as a single-chunk UTF-8 stream for {@link parseSse}. */
+function bodyAsStream(text: string): ReadableStream<BufferSource> {
+  const encoded = new TextEncoder().encode(text)
+  return new ReadableStream({
+    start(controller) { controller.enqueue(encoded); controller.close() },
+  })
+}
+
+/**
+ * Parse a non-2xx error body into a {@link WireChunk}. AGA frames 4xx errors as SSE
+ * (`id:1\nevent:error\n:HTTP_STATUS/<status>\ndata:{code,message,request_id}`) but labels them
+ * `application/json` (live-confirmed 2026-08-20: probe P2/P4 returned HTTP 400 with
+ * `content-type: application/json` yet an SSE-framed body). Content-type is therefore NOT a
+ * reliable discriminator. Try plain JSON first (404 bodies ARE plain JSON `{"error":{code,
+ * message,type}}`); if that fails, drain via {@link parseSse} and JSON-parse the first non-empty
+ * `data:` payload. Returns `undefined` when no payload is recoverable — the HTTP status still
+ * classifies the failure via {@link httpErrorCode}, but `code`/`message`/`request_id` are lost.
+ *
+ * Before this helper, the `!response.ok` path called `response.json()`, which throws on the SSE
+ * framing; the catch swallowed it, the message stayed generic (`DashScope API error (HTTP 400)`),
+ * and the body's `code`/`message`/`request_id` were dropped — the operator lost the only thread
+ * (`request_id`) into the gateway-side log. This restores them.
+ * @param text - the raw non-2xx response body.
+ * @returns the parsed error body, or `undefined` when neither plain JSON nor SSE `data:` JSON was recoverable.
+ */
+export async function parseErrorBody(text: string): Promise<WireChunk | undefined> {
+  if (text.length === 0) return undefined
+  try {
+    return JSON.parse(text) as WireChunk
+  } catch {
+    // Not plain JSON — likely AGA's SSE-framed 4xx error wire shape. Drain to the first
+    // non-empty `data:` payload and JSON-parse that. Content-type is intentionally NOT consulted:
+    // AGA labels SSE-framed errors `application/json` (live-confirmed), so it would mislead.
+  }
+  for await (const data of parseSse(bodyAsStream(text))) {
+    try { return JSON.parse(data) as WireChunk } catch { continue }
+  }
+  return undefined
+}
+
 /**
  * The DashScope direct-fetch adapter. One instance serves every model name it was registered
  * under (the harness model name IS the wire model name).
@@ -292,8 +332,8 @@ export class DashScopeAdapter extends LlmAdapter {
       let message = `DashScope API error (HTTP ${response.status})`
       let parsed: WireChunk | undefined
       try {
-        parsed = await response.json() as WireChunk
-        const text = parsed.message ?? parsed.error?.message
+        parsed = await parseErrorBody(await response.text())
+        const text = parsed?.message ?? parsed?.error?.message
         if (text) message = text
       } catch {
         // Only swallow error-body parsing: the HTTP status still identifies the failure.

@@ -13,7 +13,7 @@ import { getOrCreateAnonymousUserId, type AnonymousUserId } from '@deepseek-ai/d
 import { SessionId } from '@deepseek-ai/dsh-session'
 import * as LlmDashScope from '@deepseek-ai/dsh-llm-dashscope'
 import { DashScopeAdapter, resolveAdapterOptions } from '@deepseek-ai/dsh-llm-dashscope'
-import { httpErrorCode } from '../src/adapter.ts'
+import { httpErrorCode, parseErrorBody } from '../src/adapter.ts'
 import { assemble } from './assemble.ts'
 import { closeMockServers, mockServer, textEvents } from './mock-server.ts'
 import type { Behavior } from './mock-server.ts'
@@ -187,6 +187,63 @@ describe('DashScopeAdapter against a mock server', () => {
     })
   })
 
+  it('recovers code/message/request_id from an SSE-framed 4xx error body (live AGA wire shape)', async () => {
+    // Live probe 2026-08-20: AGA frames 4xx errors as SSE (`id:1\nevent:error\n:HTTP_STATUS/400
+    // \ndata:{code,message,request_id}`) but labels them `application/json`. `response.json()`
+    // throws on the SSE framing; before parseErrorBody the adapter swallowed that, kept a generic
+    // "DashScope API error (HTTP 400)" message, and lost the request_id — the only thread into
+    // the gateway-side log. parseErrorBody drains via parseSse and recovers the real fields.
+    const sseFramed400 = 'id:1\nevent:error\n:HTTP_STATUS/400\ndata:{"code":"InvalidParameter","message":"Range of max_tokens should be [1, 32768]","request_id":"req-400-sse"}\n\n'
+    const server = await mockServer([{
+      kind: 'http-error',
+      status: 400,
+      body: sseFramed400,
+      contentType: 'application/json',
+    }])
+    const ctx = await harness(server.url)
+    const result = await assemble(ctx, { model: 'qwen-flash', messages: [] })
+    expect(result.finish).toMatchObject({
+      kind: 'error',
+      failure: {
+        code: 'INVALID_REQUEST',
+        status: 400,
+        message: 'Range of max_tokens should be [1, 32768]',
+        requestId: ProviderRequestId('req-400-sse'),
+      },
+    })
+  })
+
+  it('parses a nested-error 404 body (live AGA wire shape: error.{code,message,type}, no request_id)', async () => {
+    // Live probe 2026-08-20: AGA's 404 body is plain JSON `{"error":{code,message,type}}` with NO
+    // request_id. The adapter extracts error.message and classifies 404 → MODEL_NOT_AVAILABLE;
+    // requestId is undefined because the gateway didn't send one (the 404 wire shape, not a bug).
+    const server = await mockServer([{
+      kind: 'http-error',
+      status: 404,
+      body: JSON.stringify({
+        error: {
+          code: 'model_not_found',
+          message: "model 'bad-model' not found or no enabled endpoints",
+          type: 'invalid_request_error',
+        },
+      }),
+      contentType: 'application/json',
+    }])
+    const ctx = await harness(server.url)
+    const result = await assemble(ctx, { model: 'bad-model', messages: [] })
+    expect(result.finish).toMatchObject({
+      kind: 'error',
+      failure: {
+        code: 'MODEL_NOT_AVAILABLE',
+        status: 404,
+        message: "model 'bad-model' not found or no enabled endpoints",
+      },
+    })
+    if (result.finish.kind !== 'error') throw new Error('expected an error finish')
+    expect(result.finish.failure.requestId).toBeUndefined()
+  })
+
+
   it('reports a transport failure with the endpoint in the message', async () => {
     const ctx = await harness('http://127.0.0.1:1')
     const result = await assemble(ctx, { model: 'qwen-flash', messages: [] })
@@ -246,9 +303,54 @@ describe('DashScopeAdapter against a mock server', () => {
   })
 })
 
+describe('parseErrorBody (non-2xx error-body recovery)', () => {
+  // Pins the two live-confirmed AGA error-body shapes (probe 2026-08-20):
+  //  - 404: plain JSON `{"error":{code,message,type}}` (no request_id).
+  //  - 400: SSE-framed `id:1\nevent:error\n:HTTP_STATUS/400\ndata:{code,message,request_id}` despite
+  //    a `content-type: application/json` label. Content-type is NOT a reliable discriminator.
+  it('parses a plain-JSON 404 body (error nested under `error`)', async () => {
+    const parsed = await parseErrorBody(
+      JSON.stringify({ error: { code: 'model_not_found', message: 'no such model', type: 'invalid_request_error' } }),
+    )
+    expect(parsed?.error?.code).toBe('model_not_found')
+    expect(parsed?.error?.message).toBe('no such model')
+    expect(parsed?.request_id).toBeUndefined()
+  })
+
+  it('parses a top-level JSON error body (code/message/request_id at root)', async () => {
+    const parsed = await parseErrorBody(
+      JSON.stringify({ code: 'Throttling', message: 'slow down', request_id: 'body-req-429' }),
+    )
+    expect(parsed?.code).toBe('Throttling')
+    expect(parsed?.message).toBe('slow down')
+    expect(parsed?.request_id).toBe('body-req-429')
+  })
+
+  it('parses an SSE-framed 400 error body (data payload is the error JSON)', async () => {
+    const sseFramed = 'id:1\nevent:error\n:HTTP_STATUS/400\ndata:{"code":"InvalidParameter","message":"Range of max_tokens should be [1, 32768]","request_id":"req-400-sse"}\n\n'
+    const parsed = await parseErrorBody(sseFramed)
+    expect(parsed?.code).toBe('InvalidParameter')
+    expect(parsed?.message).toBe('Range of max_tokens should be [1, 32768]')
+    expect(parsed?.request_id).toBe('req-400-sse')
+  })
+
+  it('returns undefined for an empty body', async () => {
+    expect(await parseErrorBody('')).toBeUndefined()
+  })
+
+  it('returns undefined when no JSON is recoverable (HTML 502 page, no data: line)', async () => {
+    expect(await parseErrorBody('<html>502 from an upstream proxy</html>')).toBeUndefined()
+  })
+
+  it('skips a non-JSON SSE data payload and returns undefined', async () => {
+    // A data: line whose payload is not JSON does not abort the drain; no recoverable JSON → undefined.
+    expect(await parseErrorBody('data: not-json\n\n')).toBeUndefined()
+  })
+})
+
 describe('plugin registration and config', () => {
   it('keeps wire helpers off the package root', () => {
-    for (const helper of ['httpErrorCode', 'serializeMessages', 'serializeRequest', 'parseSse', 'mapFinishReason', 'mapUsage', 'translate']) {
+    for (const helper of ['httpErrorCode', 'parseErrorBody', 'serializeMessages', 'serializeRequest', 'parseSse', 'mapFinishReason', 'mapUsage', 'translate']) {
       expect(LlmDashScope).not.toHaveProperty(helper)
     }
   })
