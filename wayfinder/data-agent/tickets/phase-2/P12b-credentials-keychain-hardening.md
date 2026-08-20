@@ -2,7 +2,8 @@
 
 **Type**: prototype
 **Phase**: 2 / 生产
-**Status**: **unblocked**（P10 resolved 2026-08-20：前期 single-host 拓扑定，多 host central backend = 本票生产 scope，拓扑依赖解除）
+**Status**: **in progress**（claimed 2026-08-20 by wayfinder-session；unblocked by P10 resolved 2026-08-20：前期 single-host 拓扑定，多 host central backend = 本票生产 scope，拓扑依赖解除）
+**Assignee**: wayfinder-session 2026-08-20
 **Blocks**: 生产期 per-user PAT 必填阶段（G3 stable：fallback off、per-user PAT 必填）
 **From P10（内网穿透 resolved 2026-08-20）**：P10 定前期 single-host 拓扑（Mac 内网直接可达、Caddy 反代+mTLS、无隧道）→ 前期 macOS Keychain 够（P12 已落地）；多 host central backend（KMS envelope / Vault transit）= 本票生产 scope，非 P10 前置（P10 拓扑依赖解除，本票 unblocked）。ACL/runtime-exfil 部分本身 P10 无关，作生产期 bundle 一并取。
 
