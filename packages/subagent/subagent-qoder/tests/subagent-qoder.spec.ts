@@ -271,6 +271,34 @@ describe('query options and result mapping', () => {
       queryFrom([systemInit(), statusMessage()]),
     )).rejects.toThrow('ended without a result')
   })
+
+  it('captures Qoder cost telemetry from a strict success for audit (G3 driver)', async () => {
+    const withCosts = {
+      type: 'result',
+      subtype: 'success',
+      is_error: false,
+      result: 'answer',
+      total_cost_usd: 0.1042,
+      total_credits: 42,
+      usage: { input: 1200, output: 800 },
+      modelUsage: { 'qoder-max': { input: 1200, output: 800 } },
+    } as unknown as SDKResultMessage
+    await expect(consumeQoderQuery(queryFrom([systemInit(), withCosts]))).resolves.toEqual({
+      output: [{ type: 'text', text: 'answer' }],
+      stopReason: 'completed',
+      costs: {
+        total_cost_usd: 0.1042,
+        total_credits: 42,
+        usage: { input: 1200, output: 800 },
+        modelUsage: { 'qoder-max': { input: 1200, output: 800 } },
+      },
+    })
+    // A success without cost telemetry leaves SubagentResult unchanged.
+    await expect(consumeQoderQuery(queryFrom([success('plain')]))).resolves.toEqual({
+      output: [{ type: 'text', text: 'plain' }],
+      stopReason: 'completed',
+    })
+  })
 })
 
 describe('run publication, cancellation, and settlement', () => {

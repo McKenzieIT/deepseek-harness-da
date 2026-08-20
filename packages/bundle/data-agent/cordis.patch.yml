@@ -65,7 +65,7 @@
 # each `name:` only after the package ships. ids and ctx keys follow the map
 # Decisions so far; package names are TBD per the resolving ticket.
 #
-# - insert:
+- insert:
 #     # ── query (P4) ───────────────────────────────────────────────────────
 #     - id: query-engine        # ctx.query seam (QueryEngine protocol + per-engine conventions.yaml; MaxCompute provider)
 #       name: '@deepseek-ai/dsh-query-engine'   # name TBD - P4
@@ -78,8 +78,8 @@
 #     - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
 #       name: '@deepseek-ai/dsh-semantic-layer' # name TBD - P6
 #     # ── audit (P8) ───────────────────────────────────────────────────────
-#     - id: audit              # guard/session-event + tool-audit + ctx.storage (SQLite)
-#       name: '@deepseek-ai/dsh-audit'          # name TBD - P8
+    - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
+      name: '@deepseek-ai/dsh-audit'
 #     # ── admin + access isolation (P9) ─────────────────────────────────────
 #     - id: admin              # harness app: per-game scope/credential/access-link + system config
 #       name: '@deepseek-ai/dsh-admin'          # name TBD - P9

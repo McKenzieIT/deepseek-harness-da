@@ -23,10 +23,11 @@ import {
   type SDKResultMessage,
 } from '@qoder-ai/qoder-agent-sdk'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId, type JsonValue } from '@deepseek-ai/dsh-session'
 import {
   settleRunResult,
   subprocessRunHandle,
+  type SubagentCosts,
   type SubagentResult,
   type SubagentRun,
   type SubagentStartRequest,
@@ -102,13 +103,56 @@ export function successfulResult(message: SDKResultMessage): string {
 }
 
 /**
+ * Capture Qoder cost telemetry from a strict-success SDK result for audit (the
+ * G3 per-user Credits driver). Reads the `SDKResultSuccess` cost fields
+ * (`total_cost_usd` / `total_credits?` / `usage` / `modelUsage`, per
+ * `wayfinder/data-agent/research/qoder-sdk-dts.md`) before the SDK result is
+ * otherwise consumed; the values are execution-local (the agent loop persists
+ * only `content`/`error`/`meta`), so they reach an audit `tools/post-execute`
+ * observer through the delegating tool's canonical `result.value.costs`
+ * without ever entering the durable session log. Returns `undefined` for a
+ * non-success message or when the success carries no cost telemetry (a fixture
+ * or an SDK shape without costs), so existing consumers see the unchanged
+ * `{ output, stopReason }` shape; the caller never reaches the error path
+ * because {@link successfulResult} throws first.
+ * @param message - an official discriminated result union.
+ * @returns the captured cost telemetry, or `undefined` when absent.
+ */
+function qoderCosts(message: SDKResultMessage): SubagentCosts | undefined {
+  if (message.subtype !== 'success') return undefined
+  // The success branch carries the cost fields (research/qoder-sdk-dts.md);
+  // read through a narrow local view so a loosely-typed SDK cannot break
+  // compilation, while runtime correctness rests on the documented shape.
+  const success = message as unknown as {
+    total_cost_usd?: number
+    total_credits?: number
+    usage?: JsonValue
+    modelUsage?: JsonValue
+  }
+  // `total_cost_usd` is required on a real SDKResultSuccess, but a fixture or
+  // an SDK shape without cost telemetry leaves it absent; omit costs then so
+  // the SubagentResult keeps its { output, stopReason } shape for existing
+  // consumers.
+  if (success.total_cost_usd === undefined) return undefined
+  return {
+    total_cost_usd: success.total_cost_usd,
+    ...(success.total_credits !== undefined ? { total_credits: success.total_credits } : {}),
+    ...(success.usage !== undefined ? { usage: success.usage } : {}),
+    ...(success.modelUsage !== undefined ? { modelUsage: success.modelUsage } : {}),
+  }
+}
+
+/**
  * Consume the complete SDK stream and require one strict success plus normal
  * iterator completion. Non-`result` messages (assistant reasoning, tool
  * activity, status, api_retry, model_queue_status, hooks, tasks,
  * permission_denied, cloud_agent_event, etc.) are noise for a terminal-only
  * run and are skipped without narrowing their loosely-typed deltas — so
  * `includePartialMessages` stays false and the loose `stream_event` deltas
- * are never emitted, avoiding runtime-narrowing cost entirely.
+ * are never emitted, avoiding runtime-narrowing cost entirely. The strict
+ * success's cost telemetry is captured into {@link SubagentResult.costs} for
+ * an audit `tools/post-execute` observer (G3 driver); it is execution-local
+ * and never persisted.
  * @param query - published official Qoder SDK query.
  * @returns the completed shared result.
  */
@@ -116,9 +160,11 @@ export async function consumeQoderQuery(
   query: AsyncIterable<SDKMessage>,
 ): Promise<SubagentResult> {
   let answer: string | undefined
+  let costs: SubagentCosts | undefined
   for await (const message of query) {
     if (message.type !== 'result') continue
     answer = successfulResult(message)
+    costs = qoderCosts(message)
   }
   if (answer === undefined) {
     throw new Error('subagent-qoder: Qoder ended without a result')
@@ -126,6 +172,7 @@ export async function consumeQoderQuery(
   return {
     output: [{ type: 'text', text: answer }],
     stopReason: 'completed',
+    ...(costs !== undefined ? { costs } : {}),
   }
 }
 

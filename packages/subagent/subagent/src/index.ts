@@ -76,6 +76,7 @@ export type {
   ContinuableCreateSpec,
   ResolvedSubagentStartRequest,
   SubagentCapabilities,
+  SubagentCosts,
   SubagentProvider,
   SubagentResult,
   SubagentRun,

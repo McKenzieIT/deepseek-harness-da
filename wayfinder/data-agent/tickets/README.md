@@ -31,7 +31,7 @@
 - [P12 credentials keychain + per-user 寻址](phase-2/P12-credentials-keychain.md) — prototype, **resolved** 2026-08-19
 - [P12b credentials keychain 生产硬化](phase-2/P12b-credentials-keychain-hardening.md) — prototype, blocked by ~~P10~~ → **unblocked**（P10 resolved 2026-08-20：前期 single-host 拓扑定，多 host=P12b 生产 scope）
 - [T2 AGA-embeddings live-probe](phase-2/T2-aga-embeddings-live-probe.md) — task, **unblocked** (surfaced by P5；定 intranet 重 embedder 走 AGA 还是独立 sidecar)
-- [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, blocked by ~~P9~~ → **unblocked**（P9 resolved 2026-08-20：per-user login-state ctx + 端点→user→scope 绑定 + PAT 自助）
+- [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/audit + 真实 ctx.on + ①a verdict-only patch + ②c stats/correctedStats + additive P3 costs-surface；audit 11/11 spec + P3 26/26+117/117 + typecheck-clean）
 
 ## phase-3（orchestration）
 - [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, **resolved**（2026-08-20；grilling 8 决策 + prototype 8 场景全绿 + 6 finding→P7b；persona option C / turn-stopping 转换 / guard 硬白名单 / rbi budgets 初始默认）
@@ -51,4 +51,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-G1 · P8b · P12b · P13 · P11 · T2（+ low: R4, R5）
+G1 · P12b · P13 · P11 · T2（+ low: R4, R5）

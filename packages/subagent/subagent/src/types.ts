@@ -12,7 +12,7 @@
 import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import type { JsonValue, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type { ObjectJsonSchema, ToolRestriction } from '@deepseek-ai/dsh-tools'
 import type { SubagentDescriptorData } from './descriptor.ts'
 
@@ -214,6 +214,36 @@ export interface SubagentStopReasonMap {
 export type SubagentStopReason = SubagentStopReasonMap[keyof SubagentStopReasonMap]
 
 /**
+ * Provider-reported run cost telemetry, surfaced for audit (e.g. per-user
+ * Qoder Credits reconciliation — the G3 driver). Optional: a provider that
+ * does not report costs omits the field, and every existing consumer ignores
+ * it. A provider captures these from its terminal result before it disposes
+ * the run, so the values survive into the delegating tool's canonical result
+ * for an audit `tools/post-execute` observer. The values are execution-local:
+ * they never reach the durable session log (the loop persists only `content`,
+ * `error`, and `meta`), matching intranet-security-first (costs are an
+ * audit-only, not session-durable, fact).
+ */
+export interface SubagentCosts {
+  /** Required cost in USD (Qoder `SDKResultSuccess.total_cost_usd`). */
+  readonly total_cost_usd: number
+  /** Optional credit charge (Qoder `SDKResultSuccess.total_credits?`). */
+  readonly total_credits?: number | null
+  /** Optional raw usage breakdown (Qoder `SDKResultSuccess.usage`). */
+  readonly usage?: JsonValue
+  /** Optional per-model usage breakdown (Qoder `SDKResultSuccess.modelUsage`). */
+  readonly modelUsage?: JsonValue
+  /**
+   * Forward-compatible index signature: the SDK may surface additional cost
+   * fields, captured as-is for audit. It also makes this object assignable to
+   * {@link JsonValue} so it can ride the delegating tool's canonical
+   * `result.value` (an `output.schema` `{ type: 'json' }` property) for an
+   * audit `tools/post-execute` observer.
+   */
+  readonly [key: string]: JsonValue
+}
+
+/**
  * The terminal outcome of a subagent run, resolved by {@link SubagentRun.result}.
  */
 export interface SubagentResult {
@@ -235,6 +265,14 @@ export interface SubagentResult {
   readonly structured?: unknown
   /** Why the run ended. A non-`completed` reason means `output` may be partial. */
   readonly stopReason: SubagentStopReason
+  /**
+   * Optional provider-reported cost telemetry for audit (per-user Qoder Credits
+   * reconciliation — the G3 driver). A provider that does not report costs
+   * omits the field; existing consumers ignore it. Captured before run disposal
+   * so it survives into the delegating tool's canonical result; see
+   * {@link SubagentCosts}.
+   */
+  readonly costs?: SubagentCosts
 }
 
 /**

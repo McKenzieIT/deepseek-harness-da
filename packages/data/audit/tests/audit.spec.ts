@@ -1,0 +1,185 @@
+import { Context } from '@deepseek-ai/cordis'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import Audit from '../src/index.ts'
+import { fromPayload, TAG, toPayload } from '../src/schema.ts'
+import { openAuditDatabase, SQLiteAuditStore } from '../src/store.ts'
+
+const alice = { tenant_id: 'acme', scope_id: 'game-1', user_id: 'alice' }
+const bob = { tenant_id: 'acme', scope_id: 'game-2', user_id: 'bob' }
+const admin = { privileged: true }
+
+describe('AuditRecord schema (zod mirror of RBI pydantic)', () => {
+  it('round-trips known fields and captures unknowns into extra (no data lost)', () => {
+    const rec = fromPayload({
+      log_id: 'abc12345',
+      timestamp: '2026-08-20T00:00:00Z',
+      user_id: 'alice',
+      auto_tags: ['qoder_call'],
+      review_status: 'pending',
+      tool_name: 'subagent-qoder',
+      args_hash: 'h',
+      credits: { total_cost_usd: 0.1 },
+    })
+    expect(rec.log_id).toBe('abc12345')
+    expect(rec.user_id).toBe('alice')
+    expect(rec.auto_tags).toEqual(['qoder_call'])
+    expect((rec.extra as Record<string, unknown>).tool_name).toBe('subagent-qoder')
+    const wire = toPayload(rec)
+    expect(wire.tool_name).toBe('subagent-qoder') // extra flattened back to top level
+    expect(wire.user_id).toBe('alice')
+  })
+})
+
+describe('SQLiteAuditStore', () => {
+  let s: SQLiteAuditStore
+  beforeEach(async () => {
+    s = new SQLiteAuditStore(await openAuditDatabase(':memory:'))
+  })
+  afterEach(() => s.close())
+
+  it('appends and retrieves with the override applied on read', () => {
+    const logId = s.append(fromPayload({
+      log_id: 'r1',
+      timestamp: '2026-08-20T00:00:00Z',
+      scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice',
+      auto_tags: ['qoder_call'],
+      extra: { credits: { total_cost_usd: 0.1042, total_credits: 42 } },
+    }))
+    expect(logId).toBe('r1')
+    const rec = s.get('r1', alice)
+    expect(rec?.extra.credits).toMatchObject({ total_cost_usd: 0.1042, total_credits: 42 })
+  })
+
+  it('ownership guard: bob ⊥ alice record = null = not-found (IDOR-safe, no existence oracle)', () => {
+    s.append(fromPayload({
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'],
+    }))
+    expect(s.get('r1', alice)).toBeDefined()
+    expect(s.get('r1', bob)).toBeNull()
+    expect(s.get('nonexistent', alice)).toBeNull() // same null as bob's deny
+  })
+
+  it('cross-scope per-user query via the user_id index (single DB, no per-scope federation)', () => {
+    s.append(fromPayload({ log_id: 'a1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1 } } }))
+    s.append(fromPayload({ log_id: 'a2', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.07 } } }))
+    const aliceQoder = s.query({ tags: ['qoder_call'], user_id: 'alice' }, admin)
+    expect(aliceQoder).toHaveLength(2)
+    expect(aliceQoder.map(r => r.scope_id).sort()).toEqual(['game-1', 'game-2'])
+  })
+
+  it('P8b①a: patch is verdict-only — identity fields throw, verdict fields append an override (original immutable)', () => {
+    s.append(fromPayload({
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+      extra: { credits: { total_cost_usd: 0.1042 } },
+    }))
+    // Identity fields refuse (contract violation — fail loud)
+    expect(() => s.patch('r1', 'user_id', 'mallory', {}, admin)).toThrow(/identity/)
+    expect(() => s.patch('r1', 'scope_id', 'game-x', {}, admin)).toThrow(/identity/)
+    expect(() => s.patch('r1', 'tenant_id', 'other', {}, admin)).toThrow(/identity/)
+    // Verdict field patches (original NEVER mutated; read view corrected)
+    expect(s.patch('r1', 'credits.total_cost_usd', 0.05, { by: 'compliance', reason: 'reconciliation' }, admin)).toBe(true)
+    const raw = s.rawPayload('r1') as Record<string, unknown>
+    expect((raw.credits as { total_cost_usd: number }).total_cost_usd).toBe(0.1042) // immutable
+    const rec = s.get('r1', admin)
+    expect((rec?.extra.credits as { total_cost_usd: number }).total_cost_usd).toBe(0.05) // read view corrected
+    const hist = s.get_with_history('r1', admin)
+    expect(hist?.overrides).toHaveLength(1)
+    expect(hist?.overrides[0]?.field).toBe('credits.total_cost_usd')
+  })
+
+  it('P8b①a: appendCorrection corrects misattribution by appending a new record (original immutable, index-consistent)', () => {
+    s.append(fromPayload({
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+      extra: { credits: { total_cost_usd: 0.1042 } },
+    }))
+    const newId = s.appendCorrection('r1', { user_id: 'carol' }, { by: 'compliance', reason: 'misattribution' }, admin)
+    expect(newId).not.toBeNull()
+    expect(newId).not.toBe('r1')
+    // Corrected record is a real new row queryable by the corrected user_id
+    const corrected = s.query({ user_id: 'carol' }, admin).find(r => r.log_id === newId)
+    expect(corrected).toBeDefined()
+    expect(corrected?.user_id).toBe('carol')
+    expect(corrected?.auto_tags).toContain(TAG.ATTRIBUTION_CORRECTION)
+    expect((corrected?.extra as Record<string, unknown>).corrects).toBe('r1')
+    // Original is immutable
+    expect(s.get('r1', admin)?.user_id).toBe('alice')
+    // appendCorrection refuses a non-owned original
+    expect(s.appendCorrection('r1', { user_id: 'x' }, {}, bob)).toBeNull()
+  })
+
+  it('P8b②c: stats = immutable original; correctedStats = override-applied (corrected totals)', () => {
+    s.append(fromPayload({ log_id: 'a', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1042, total_credits: 42 } } }))
+    s.append(fromPayload({ log_id: 'b', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.07, total_credits: 25 } } }))
+    s.patch('a', 'credits.total_cost_usd', 0.05, { by: 'c', reason: 'recon' }, admin)
+    const immutable = s.stats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
+    expect(immutable.total).toBe(2)
+    expect(immutable.qoder_cost_usd).toBeCloseTo(0.1742, 4) // 0.1042 + 0.07 (immutable original)
+    expect(immutable.qoder_credits).toBe(67) // 42 + 25
+    const corrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
+    expect(corrected.total).toBe(2)
+    expect(corrected.qoder_cost_usd).toBeCloseTo(0.12, 4) // 0.05 + 0.07 (override applied)
+    expect(corrected.qoder_credits).toBe(67) // credits not overridden → same
+  })
+
+  it('tier-2 hashBody: hash not body (intranet-security-first)', () => {
+    const body = JSON.stringify({ table: 'pay_order_di', columns: [{ name: 'pay_amt' }] })
+    const hash = s.hashBody(body)
+    expect(hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(hash).not.toContain('pay_amt')
+  })
+})
+
+describe('Audit service (ctx.audit) wiring', () => {
+  let ctx: Context
+  beforeEach(async () => {
+    ctx = new Context()
+    await ctx.plugin(Audit, { path: ':memory:' })
+  })
+  afterEach(async () => {
+    await ctx.fiber.dispose()
+  })
+
+  it('tools/post-execute captures a qoder_call + Credits from result.value.costs (observe-only, calls next())', async () => {
+    const exec = { name: 'subagent', arguments: { prompt: 'top 10 payers', model: 'qoder-max' } }
+    const result = {
+      isError: false,
+      value: { kind: 'foreground', runId: 'r', output: [], costs: { total_cost_usd: 0.1042, total_credits: 42, usage: { input: 1200 }, modelUsage: { 'qoder-max': { input: 1200 } } } },
+      content: [],
+    }
+    const decision = await ctx.waterfall(ctx as never, 'tools/post-execute', exec as never, result as never, () => Promise.resolve({ kind: 'accept' as const }))
+    expect(decision.kind).toBe('accept') // observe-only: delegated to next()
+    const recs = ctx.audit.store.query({ tags: ['qoder_call'] }, admin)
+    expect(recs).toHaveLength(1)
+    expect(recs[0]!.auto_tags).toContain(TAG.QODER_CALL)
+    expect((recs[0]!.extra as Record<string, unknown>).credits).toMatchObject({ total_cost_usd: 0.1042, total_credits: 42 })
+    expect((recs[0]!.extra as Record<string, unknown>).tool_name).toBe('subagent')
+    expect((recs[0]!.extra as Record<string, unknown>).is_error).toBe(false)
+    expect(recs[0]!.model).toBe('qoder-max')
+  })
+
+  it('tools/post-execute captures a denied call as isError with the deny reason (no decision param; distinct guard_deny via explicit record)', async () => {
+    const exec = { name: 'tool-bash', arguments: { command: 'rm -rf /' } }
+    const result = { isError: true, error: { message: 'business-user ⊥ bash (intranet tool-gate)' }, content: [] }
+    await ctx.waterfall(ctx as never, 'tools/post-execute', exec as never, result as never, () => Promise.resolve({ kind: 'accept' as const }))
+    const recs = ctx.audit.store.query({ tags: ['tool_call'] }, admin)
+    expect(recs).toHaveLength(1)
+    expect((recs[0]!.extra as Record<string, unknown>).is_error).toBe(true)
+    expect((recs[0]!.extra as Record<string, unknown>).error).toBe('business-user ⊥ bash (intranet tool-gate)')
+    // The intranet tool-gate (P10) records an explicit guard_deny when it denies:
+    ctx.audit.record({
+      log_id: 'g1', timestamp: '2026-08-20T00:00:00Z', scope_id: 'game-1', tenant_id: 'acme', user_id: 'bob',
+      auto_tags: ['guard_deny'], extra: { tool_name: 'tool-bash', deny_reason: 'business-user ⊥ bash' },
+    })
+    expect(ctx.audit.store.query({ tags: ['guard_deny'] }, admin)).toHaveLength(1)
+  })
+
+  it('recordTier2Write stores hash not body (fail-silent to the business write)', () => {
+    const logId = ctx.audit.recordTier2Write('update_table_meta', { table: 'pay_order_di', columns: [{ name: 'pay_amt' }] }, { scope_id: 'game-1', user_id: 'alice' })
+    expect(typeof logId).toBe('string')
+    const rec = ctx.audit.store.query({ tags: ['tool_write'] }, admin)[0]
+    expect(rec).toBeDefined()
+    expect((rec!.extra as Record<string, unknown>).tier).toBe('tier-2')
+    expect((rec!.extra as Record<string, unknown>).payload_hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(JSON.stringify(rec!.extra)).not.toContain('pay_amt') // body NOT in audit
+  })
+})
