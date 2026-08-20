@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-tool-search-data-sources`
 
+English | [中文](README.zh.md)
+
 Model-facing `search_data_sources` tool: **BM25 schema-linking over the semantic layer** for the data agent's `UNDERSTANDING` phase. The agent calls it to find which data sources (DWS tables / event ODS tables) match a natural-language question before it writes SQL.
 
 This is the **P13b deferred sub-item** — the FIRST model-facing tool registration in the data-agent effort — so it also grounds the [`@deepseek-ai/dsh-tools`](../../core/tools) tool-registration API (`defineTool` + `ctx.tools.register`) for every later data-agent tool (`load_table_definition` / `load_event_definition` / `query_data` / `critique_sql` / `evaluate_sql_quality` / `present_*`).
@@ -53,3 +55,10 @@ pnpm verify-cordis-config                                      # preset mount re
 ```
 
 The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-search-data-sources`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING` whitelist already names `search_data_sources`, so registering it makes it callable in that phase.
+
+## Known Limitations and Deferred Work
+
+- **Empty corpus (Q1 thin default)** — the data-source corpus is empty until P6b `ctx.schema` substrate ships and `ctx.schema.discover` is wired as the corpus source. An empty corpus returns no candidates (honest "callable but unwired" state).
+- **P5b vector swap** — the local `Bm25Linker` may be replaced by `ctx.retrieval` (real embedder + vector store) when P5b ships; this tool's contract remains unchanged.
+- **P6b schema swap** — corpus sourcing swaps from the empty default to `ctx.schema.discover` when P6b is wired; additive, no contract change.
+- **No `ctx.nl2sql` retrieval method** — `ctx.nl2sql` exposes only `getConventions`, so this tool calls `Bm25Linker` directly rather than through the seam.

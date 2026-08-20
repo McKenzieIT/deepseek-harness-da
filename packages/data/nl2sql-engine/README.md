@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-nl2sql-engine
 
+English | [中文](README.zh.md)
+
 > P13b — the NL→SQL engine for the data agent (production graduation of the
 > throwaway `wayfinder/data-agent/prototypes/p13-nl2sql-engine/`). Resolves
 > wayfinder ticket `phase-3/P13b-nl2sql-engine-prod-hardening.md`.
@@ -37,16 +39,13 @@ single-period infeasible — RBI's own L1 ~9%).
   JSON-path + execution-feedback; fail-open + documented residual risks; NOT
   sqlglot) / F6 (real runner → P11).
 
-## Deferred sub-item (honest)
+## Known Limitations and Deferred Work
 
-The **`search_data_sources` model-facing tool registration via `ctx.tools`**
-is the one piece NOT wired this ticket: it needs the
-`@deepseek-ai/dsh-tools` tool-registration API grounded from the 88KB
-`dsh-tools/src/index.ts`. The BM25 logic ships as the `Bm25Linker` export +
-`ctx.nl2sql`; the preset's `tool-search-data-sources` row stays commented
-meanwhile (forward-compatible per the preset's own note — an unregistered
-whitelisted tool is simply uncallable, not a broken mount). A follow-up (or
-P7b) grounds the API + wires the row.
+- **F3 — Vector swap** — BM25-only retrieval; the seam is unchanged but the real vector provider (`ctx.retrieval` via P5b) is not yet wired. Schema-linking accuracy is bounded by BM25 recall until then.
+- **F4 — Session-level near-duplicate gate** — the engine-internal thin `NearDupGate` is retained, but cross-turn session-level dedup is deferred to the Not-yet-specified query-trio.
+- **F5 — Residual risk (execution feedback)** — regex + JSON-path + execution-feedback critic is retained (fail-open); sqlglot has no TS equivalent and no MaxCompute dialect. Documented residual risk: the critic may pass syntactically invalid SQL that only fails at execution time.
+- **F6 — Eval runner** — eval-gate-minimal ships now; the real `MultiTurnSession` eval runner is deferred to P11.
+- **`search_data_sources` tool registration** — the model-facing tool registration via `ctx.tools` was initially deferred (needed `@deepseek-ai/dsh-tools` API grounding); now shipped as `packages/data/tool-search-data-sources/`. Corpus is empty until P6b `ctx.schema` substrate is wired.
 
 ## Seams consumed
 

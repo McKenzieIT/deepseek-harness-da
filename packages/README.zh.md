@@ -11,6 +11,8 @@ npm scope 为 `@deepseek-ai/dsh-*`；Cordis `Service` 子类和函数插件通�
 | 组 | 职责 | 发布预期 |
 |---|---|---|
 | [`core/`](core/README.md) | 产品 API 主干：会话、提示词、工具、agent（智能体）服务与具体循环 | 产品：稳定 API |
+| [`data/`](data/README.md) | data-agent 能力系列：查询、检索／向量化、语义层、审计、管理（构建 P4-P11） | 产品：稳定 API |
+| [`eval/`](eval/README.md) | data-agent 评估工具：da-fresh 镜像 reverse-bi `rbi-eval` 编排（`MultiTurnSession` + pass_k + DELIVERY/EXECUTION 评分），基于注入的 responder/executor/judge —— 纯库，不在 Cordis 上下文中注册任何内容 | 产品：稳定 API |
 | [`api/`](api/README.md) | Remote BFF 装配与 Typert RPC 网关 | 产品：稳定 API |
 | [`typert/`](typert/README.md) | 类型图生成、产物加载与运行时注册表 | 产品：稳定 API |
 | [`goal/`](goal/README.md) | 同会话 goal 的持久化与生命周期 | 产品：稳定 API |

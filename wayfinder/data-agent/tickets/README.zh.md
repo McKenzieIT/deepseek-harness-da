@@ -1,6 +1,6 @@
 # tickets frontier — deepseek-harness-data-agent
 
-English | [中文](README.zh.md)
+[English](README.md) | 中文
 
 > 按 phase/依赖层组织。每 ticket 一个文件（多 session 并行 claim 不冲突）。状态全 open（R1/R2/R3 已 resolved research）。blocking 在每文件内。已 resolved 的决策见 `../map.md` 的 Decisions so far；研究笔记在 `../research/`。
 

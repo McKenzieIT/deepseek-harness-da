@@ -42,3 +42,13 @@ worktrees/
 
 # DashScope key-bearing access docs (调用文档-emp-*) — never commit the API key
 wayfinder/**/调用文档*.md
+
+# tsc build artifacts emitted to src/ (misconfigured outDir; should be lib/)
+packages/credentials/credentials/src/*.js
+packages/credentials/credentials/src/*.js.map
+packages/credentials/credentials/src/*.d.ts
+packages/credentials/credentials/src/*.d.ts.map
+packages/identity/identity/src/*.js
+packages/identity/identity/src/*.js.map
+packages/identity/identity/src/*.d.ts
+packages/identity/identity/src/*.d.ts.map

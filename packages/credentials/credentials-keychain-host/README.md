@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-credentials-keychain-host
 
+English | [中文](README.zh.md)
+
 Mount face that registers `KeychainCredentialProvider` as `ctx.credentials`,
 composing a plain writable file/env fallback (G3c global-writes gap, decision A).
 
@@ -57,3 +59,9 @@ double-register.
 P12c (native Security-framework binding + harness code-signing) is the real
 runtime-exfil fix; this host lands what the security-CLI can do (at-rest +
 locked-keychain + per-user CRUD + branding + writable global fallback).
+
+## Known Limitations and Deferred Work
+
+- **Runtime-exfil ACL** — per-item ACL restricting keychain reads to the harness binary (excluding bash/terminal) requires native Security-framework binding + Developer-ID code-signing. Deferred to P12c; the security-CLI cannot distinguish the spawner from the direct caller.
+- **Multi-host KMS / central backend** — when multiple hosts need synchronized credentials, a central backend (KMS envelope / Vault transit) is required. Deferred pending multi-host deployment topology decisions.
+- **Cross-platform support** — Linux (`libsecret`) and Windows (`CredManager`) credential stores are not implemented. macOS Keychain only. Deferred to P12c alongside native binding work.

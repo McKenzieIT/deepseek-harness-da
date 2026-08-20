@@ -11,5 +11,6 @@ Bundle 身份由 manifest 声明决定，而不是由本目录决定。领域包
 | [`base/`](base/README.md) | 每个 profile 最先应用的共享 dsh 核心 | —（仅 patch） |
 | [`web-app/`](web-app/README.md) | 浏览器表层：web patch 层 + 运行时粘合插件 | 挂载多条配置行 |
 | [`headless/`](headless/README.md) | 直接运行在 base 之上的一次性任务模式，不含 Host 或 Web 层 | 挂载 `headless-runner` |
+| [`data-agent/`](data-agent/README.md) | data-agent patch 层（基于 base）：为数据能力插件（P4-P11）保留挂载点并禁用 code-agent 表层 | —（仅 patch） |
 
 内置组合包从 dsh 安装目录解析；树外（out-of-tree）组合包通过 `dsh plugin --profile <name> add <package>` 安装进 profile。

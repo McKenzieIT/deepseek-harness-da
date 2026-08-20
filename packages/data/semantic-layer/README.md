@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-semantic-layer`
 
+English | [中文](README.zh.md)
+
 Semantic-layer **substrate** for the data agent: zod-mirrored RBI pydantic `EventDefinition` / `TableDefinition` + reader/writer + `BasicIndex` + write-tiers + the `ctx.schema` seam. P6b production hardening (ports the throwaway `prototypes/p6-semantic-layer/`).
 
 The semantic layer is a **first-class citizen** of the data agent — NL→SQL success rides on it (MDL / metric layer / Text2DSL). The substrate stays cross-compatible with RBI's 531 curated tables/events/terminology (zod mirrors pydantic `extra=allow` / `model_validator` / `canonicalize_type` / round-trip).
@@ -45,3 +47,12 @@ pnpm verify-cordis-config                            # bundle/preset mount resol
 ```
 
 Bundle wiring (the `semantic-layer` row in `packages/bundle/data-agent/cordis.patch.yml`) is a follow-up with the live-ODPS provider + the `load_*` tool packages.
+
+## Known Limitations and Deferred Work
+
+- **Live-ODPS provider** — `discover` / `describe` / `sample` throw "no provider" until a real MaxCompute provider (query-maxcompute sidecar or independent `schema-maxcompute`) is mounted. Deferred to a follow-up ticket.
+- **`load_*` model-facing tool packages** — `load_table_definition` / `load_event_definition` are deferred as separate tool packages (named in the preset as `dsh-tool-load-table-definition` / `dsh-tool-load-event-definition`).
+- **Canonicalize-on-write** — `writeTable` / `updateTableMeta` write raw data; on-disk faithfulness to canonical form is deferred (loaded data is already canonical so P13b swap is unaffected).
+- **Definition name path-traversal guard** — rejecting `/` `\` `..` in definition names is deferred (intranet-security-first defense-in-depth; currently no model-facing tool calls these directly).
+- **`updateTableMeta` concurrency lock** — read-merge-write should wrap `withFileLock` (`@deepseek-ai/dsh-atomic-write`) for concurrency safety. Deferred from prototype.
+- **Bundle wiring** — the `semantic-layer` row in `cordis.patch.yml` is pending the live-ODPS provider + tool packages.
