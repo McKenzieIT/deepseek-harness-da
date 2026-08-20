@@ -40,8 +40,8 @@
 
 ## phase-4（eval）
 - [R3 多轮 eval hook](phase-4/R3-multiturn-eval-hook.md) — research, **resolved**, blocks P11
-- [P11 eval harness](phase-4/P11-eval-harness.md) — prototype, blocked by G2（R3 解）
-- [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **unblocked**
+- [P11 eval harness](phase-4/P11-eval-harness.md) — prototype, **unblocked**（G2 resolved 2026-08-20；TS `packages/eval/` per G2 设计指针）
+- [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **resolved**（2026-08-20；TS `packages/eval/` 重实现编排 + 判分 (ii) DELIVERY/EXECUTION 不进 sqlglot + python/ 包不修订 Q10；解锁 P11）
 
 ## phase-misc（cross-phase / 低优先）
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **unblocked**（P7 resolved；P7 定四阶段 preset 不挂 planning group + goal/todo/plan 不禁用——G1 做含 planning group 的 preset 实验对比）
@@ -51,4 +51,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-G1 · P8b · P12b · P13 · G2 · T2（+ low: R4, R5）
+G1 · P8b · P12b · P13 · P11 · T2（+ low: R4, R5）
