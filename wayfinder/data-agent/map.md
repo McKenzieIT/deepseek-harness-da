@@ -71,6 +71,8 @@
 
 - **eval 迁 TS (G2 grilling, resolved 2026-08-20)**：TS `packages/eval/` 重实现 rbi-eval 编排设计（非代码），包 TS SDK `DeepSeekHarness.run()`（`dsh-sdk-client`，"owns the client contract"）作 `AgentResponder`；判分 (ii) DELIVERY+EXECUTION（答案比对+取数结果集比对经 ODPS）不用 sqlglot/SQL-form（数据等价优先）——**更正 R3**：R3 偏 Python 基于不完整 TS 画像，`packages/sdk/client` 是规范客户端、`run()`→`RunResult{finalResponse,events}` events 带 tool/call+tool/result 全轨迹 → agentic+DELIVERY 判分 TS 完全可行；python/ 包不修订 Q10（= 可选客户端孪生非 pandas 驱动；pandas/numpy/ML 永久性属 Python 语言 runtime=Q9 域，code-runtime 当前 TS-only、Python backend 未发布=Q9 gap）；P11 用 da-fresh EvalCase（非 P6 zod-mirror，BI 专属）；无 mid-turn cancel→Promise.race 超时；丢 SQL 卫生断言=已知 trade-off。对抗审查 9 claim 无一驳至迫使改动（A/B/G VERIFIED、C/D/E/F/H PARTIAL、I REFUTED 反向强化）。解锁 P11。〔research/g2-eval-ts-review.md, r3-multiturn-eval-hook.md, tickets/phase-4/G2-eval-ts-vs-python.md〕
 
+- **Pipeline vs goal/todo/plan 实验 (G1 grilling, resolved 2026-08-20)**：2×2 变体(Gating×Planning: A=gate开plan关 / B=关开 / C=开开 / D=关关) × 2 模型配置(思考轴+能力轴) staged 实验；主指标=端到端答案正确率(execution-match strict、correct/declined/wrong 三分、declined≠wrong)；决策规则 ship 最高 / 实际等效≤3pp→更简 / per-model 分歧>5pp 触发路由；Planning 因子={goal,todo}(plan-mode 作 B-内部 Level-2)；eval case=RBI 161 单轮分层；设计(不跑,跑须 P11+P7b)→毕业 G1b 执行票。〔tickets/phase-misc/G1-pipeline-vs-goal-todo.md〕
+
 ## Not yet specified
 
 <!-- 雾：in-scope 但还太糊无法 ticket；随 frontier 推进毕业 -->
@@ -84,6 +86,9 @@
 - D2 (c) keep/regress 可逆：保留 (b) retrieve-tool escape-hatch 还是回归 (a) pipeline-only = evals 驱动（确定性预取召回 ≥85-90% + 歧义 <15% → 回归 (a)）；待 P11 eval harness 就绪。〔P5 resolved 2026-08-20〕
 - 是否需审 Qoder internal tool/reasoning stream（非仅终态 call outcome）——P8 当前只审 `tools/post-execute` 终态 outcome+Credits；若 forensic 合规需全 stream 则开 P3 标的 core-seam 变更票（外部 one-shot not trace-enumerable，见 P3 resolution；P8b resolved 2026-08-20——审 call outcome（终态+Credits）非 stream，stream 仅当 forensic 需才另开 core-seam 票）。
 - harness seam 缺口（P7 surfaced，→P7b 解）：(a) 无 question-start seam——`turn/start` 重置会破 per-kick 预算（rbi per_turn=per 用户问题=per kick 多 turn），须检测首 turn / `current_phase`→UNDERSTANDING 重置 question-scoped 计数器；(b) 无原生 stall/no-events watchdog（rbi `_watch_for_stall` 300s 须插件独立 timer，排除 `ctx.awaiting_input`）；(c) 插件程序化调工具路径（forced_load 须 `ctx.tools.execute` 经 guard——存在性/路由待验）。〔P7b〕
+
+- ship-default-orchestration 决策（da 出厂默认 A/B/C/D 哪个）——fed by G1b 实验报告（ship 推荐）；G1b 跑完报告后才 specifiable→毕业。〔G1 resolved 2026-08-20〕
+- per-model 路由决策（是否按模型分编排）——fed by G1b per-model 分歧信号（分歧>5pp 才触发毕业路由票，Q2 secondary）；条件毕业。〔G1 resolved 2026-08-20〕
 
 ## Out of scope
 

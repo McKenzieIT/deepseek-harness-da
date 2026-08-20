@@ -44,11 +44,12 @@
 - [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **resolved**（2026-08-20；TS `packages/eval/` 重实现编排 + 判分 (ii) DELIVERY/EXECUTION 不进 sqlglot + python/ 包不修订 Q10；解锁 P11）
 
 ## phase-misc（cross-phase / 低优先）
-- [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **unblocked**（P7 resolved；P7 定四阶段 preset 不挂 planning group + goal/todo/plan 不禁用——G1 做含 planning group 的 preset 实验对比）
+- [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **resolved**（2026-08-20；实验设计 11 决策定稿——2×2 变体×2 模型配置 staged、execution-match 三分判分+决策规则；设计(不跑)→毕业 G1b 执行票）
+- [G1b 实验执行](phase-misc/G1b-experiment-execution.md) — prototype, blocked by P7b+P11b（跑 G1 设计的 staged 矩阵+决策规则+报告）
 - [R4 goals:false 抑制](phase-misc/R4-goals-false.md) — research, low, unblocked
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, low, unblocked
 - [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, low, unblocked
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-G1 · P12b · P13 · P11 · T2（+ low: R4, R5）
+P12b · P13 · P11 · T2（+ low: R4, R5）
