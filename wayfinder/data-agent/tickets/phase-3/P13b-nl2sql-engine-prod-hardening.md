@@ -25,6 +25,8 @@ P13b 生产毕业 P13 throwaway prototype → 生产 `packages/data/nl2sql-engin
 
 **grilling 5 决策**：
 - **Q1 P5/P6 生产 gap**（inspection surfaced：P5/P6 仅 prototype resolved，生产包未 ship，无 P5b/P6b 票——P13 prototype 假设了 `packages/semantic-layer/` + P5 provider 存在）：本地 `RetrievalLinker`/`CriticGuardData` 接口 + 薄 in-process 默认（`Bm25Linker` BM25 from P13 proto + YAML substrate reader），不声明 `ctx.retrieval`/`ctx.schema` seam（归 P5/P6）。毕业 P5b/P6b 生产票（真 seam + full provider）；P13b 后续 additive swap。
+
+〔2026-08-20 update：P6b ship `packages/data/semantic-layer/`（commit 88524504f8）→ CriticGuardData→`ctx.schema.load_*` substrate additive swap 可达（P6b S5 makeCriticCtx 从 `EventDefinition.params_fields` + `TableDefinition.partitions` 跑通；P13b 引擎逻辑 + CriticCtx 契约不变）；P5b 待 ship→RetrievalLinker→`ctx.retrieval` swap。〕
 - **Q2 critic 归属**：critic 逻辑 + `critiqueSql(sql, guardCtx)→CriticResult` + `sqlSyntaxGate(phaseOutput, ctx)→GateResult` + `GateResult` 类型全在 nl2sql-engine；P7b phase-gate `sql_syntax_gate` slot delegate 到它（phase-gate→nl2sql-engine 单向无环）；引擎自修 loop 同包直调 critic。P13b 拥 critic+API+GateResult+CriticCtx guard-data 契约；P7b 拥 hook+slot+其余 5 hook+phase 转换（guard-data P7b 从 session tool results 组装）。
 - **Q3 package shape + eval 时机**：ship 全形（9 logic modules + P7b 组件 exports [GENERATION prompt-section content, critiqueSql/sqlSyntaxGate, Bm25Linker] + eval-only `generate()` + eval-gate-minimal + 本地接口/薄默认 + conventions + bundle row）；production agent-loop-driven（P7，agent LLM 生 SQL 文本，phase-gate turn-stopping 跑 critic）；generate() eval-only；F6 真 MultiTurnSession runner → P11。
 - **Q4 critic 暴露**：gate-only（仅 sql_syntax_gate；search_data_sources 唯一 model-facing tool；evaluate_sql_quality drop；preset critique/evaluate 行留 commented）。
