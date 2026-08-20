@@ -346,6 +346,22 @@ describe('parseErrorBody (non-2xx error-body recovery)', () => {
     // A data: line whose payload is not JSON does not abort the drain; no recoverable JSON → undefined.
     expect(await parseErrorBody('data: not-json\n\n')).toBeUndefined()
   })
+
+  it('skips a non-JSON data payload and recovers from a later JSON one (resilient drain)', async () => {
+    // The first 'data:' payload is not JSON, so catch-continue skips it; the second 'data:'
+    // payload IS JSON and is returned. Pins the resilient-drain semantics (code review follow-up #5).
+    const nl = String.fromCharCode(10)
+    const payload = 'data: not-json' + nl + nl + 'data: ' + JSON.stringify({ code: 'X', message: 'm', request_id: 'r' }) + nl + nl
+    const parsed = await parseErrorBody(payload)
+    expect(parsed).toMatchObject({ code: 'X', message: 'm', request_id: 'r' })
+  })
+
+  it('strips a leading UTF-8 BOM before parsing (code review follow-up #1)', async () => {
+    // A BOM-prefixed plain-JSON error body: JSON.parse rejects U+FEFF, so without stripping the
+    // body would fall through to the SSE drain (which would also fail) and return undefined.
+    const parsed = await parseErrorBody(String.fromCharCode(0xFEFF) + JSON.stringify({ code: 'X', message: 'm', request_id: 'r' }))
+    expect(parsed).toMatchObject({ code: 'X', message: 'm', request_id: 'r' })
+  })
 })
 
 describe('plugin registration and config', () => {

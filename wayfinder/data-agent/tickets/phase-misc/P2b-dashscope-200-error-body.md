@@ -27,12 +27,12 @@
 
 - `wayfinder/data-agent/research/p2b-dashscope-200-error-body.md`（cited note：TL;DR + 探针实证 5 请求 status/content-type/体形 + fix design + implemented diff + 来源）。
 - `packages/llm/llm-dashscope/src/adapter.ts`（+`parseErrorBody`/`bodyAsStream` helper；`!response.ok` 路径 `response.json()`→`parseErrorBody(await response.text())`）。
-- `packages/llm/llm-dashscope/tests/adapter.spec.ts`（+7 测试：2 集成 [SSE 框架 400 恢复 code/message/request_id + 嵌套 404 形] + 5 单元 `parseErrorBody`；guard 列表加 `parseErrorBody`）。
+- `packages/llm/llm-dashscope/tests/adapter.spec.ts`（+8 测试：2 集成 [SSE 框架 400 恢复 code/message/request_id + 嵌套 404 形] + 6 单元 `parseErrorBody`；guard 列表加 `parseErrorBody`）。
 - 探针 `/tmp/probe-p2b.mjs`（throwaway，不入库/不进 git）。
 
 ## Unblocks
 
-- P2b 闭环：200+error-body 假设证伪 + 同源 4xx SSE 框架错误体 mis-parse 真 bug 修复 + 7 测试 pin 真实 wire 形。
+- P2b 闭环：200+error-body 假设证伪 + 同源 4xx SSE 框架错误体 mis-parse 真 bug 修复 + 8 测试 pin 真实 wire 形。
 - 既有 `it.each` HTTP 状态映射测试现在有真实 wire 形 fixture 配对（SSE 框架 400 + 嵌套 404），不再只覆盖纯 JSON 假设形。
 - 无新 ticket 毕业（fix 非平凡但落地了；2xx/translate.ts 防御**不**毕业——200+error-body 未实证，source-faithful 优先于防御 speculative 形状，若将来 live 实证再单开）。
 

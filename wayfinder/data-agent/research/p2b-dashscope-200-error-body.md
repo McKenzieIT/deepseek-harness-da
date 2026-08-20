@@ -118,7 +118,7 @@ const text = parsed?.message ?? parsed?.error?.message
 - `parsed?.message ?? parsed?.error?.message`：`parsed` 现在可能 `undefined`（`parseErrorBody` 返 `WireChunk | undefined`），加可选链。
 - `requestIdOf(parsed)` 与 `httpErrorCode(response.status, parsed)`：`parsed` 是 `undefined` 时 ternary 跳过 / 传 undefined（`httpErrorCode` 的 `error?: WireChunk` 可选参）。行为：404 纯 JSON→`requestIdOf` 取 `parsed.error?.request_id`（无，返 undefined）；400 SSE→`requestIdOf` 取 `parsed.request_id`（有，恢复）。
 
-### 3.3 测试（adapter.spec.ts，+7）
+### 3.3 测试（adapter.spec.ts，+8）
 - **集成 2**：
   - `recovers code/message/request_id from an SSE-framed 4xx error body (live AGA wire shape)`：构造 400 SSE 框架 body（mirror 探针 P2 实形），断言 `failure: {code:'INVALID_REQUEST', status:400, message:'Range of max_tokens should be [1, 32768]', requestId:'req-400-sse'}`——**钉 request_id 恢复**（fix 前此值丢失）。
   - `parses a nested-error 404 body (live AGA wire shape: error.{code,message,type}, no request_id)`：构造 404 纯 JSON `{"error":{code,message,type}}`（mirror 探针 P1 实形），断言 `MODEL_NOT_AVAILABLE` + 真实 message + `requestId` undefined（body 无 request_id，非 bug）。
@@ -131,7 +131,7 @@ const text = parsed?.message ?? parsed?.error?.message
 
 ## 4. 验证（本地）
 
-- `pnpm vitest run packages/llm/llm-dashscope`：**4 文件 72 测试全绿**（adapter.spec.ts 28→35，+7；sse 6 / translate 11 / serialize 20 不变）。
+- `pnpm vitest run packages/llm/llm-dashscope`：**4 文件 72 测试全绿**（adapter.spec.ts 27→35，+8；sse 6 / translate 11 / serialize 20 不变）。
 - `npx tsc -b packages/llm/llm-dashscope/tsconfig.json`：**exit 0**（src 类型净）。
 - `pnpm vitest run --typecheck packages/llm/llm-dashscope`：**72 测试全绿 + 类型净**（tests 类型净）。
 - `npx oxlint packages/llm/llm-dashscope/src/adapter.ts packages/llm/llm-dashscope/tests/adapter.spec.ts`：**0 warnings 0 errors**。
