@@ -1,0 +1,10 @@
+{
+  "name": "p11-eval-harness-prototype",
+  "version": "0.0.0-prototype",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY PROTOTYPE — P11 eval harness (wayfinder ticket P11). Not shipped. See README.md.",
+  "scripts": {
+    "demo": "node run.mjs --demo"
+  }
+}
