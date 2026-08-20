@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PROTOTYPE — P10 transport (THROWAWAY)
+# 前期单 host：Mac 直接 bind admin 经 P9 分配的内网 addr:port。
+# Caddy 终结 TLS + mTLS → 转发 harness webserver loopback 127.0.0.1:<port>。
+# 信任边界单一在 P9 dsh-admin gate（门在其后）；mTLS = transport-only（org/device cert）。
+# ⚠️ 指令语法以 Caddy ≥2.8 官方文档为准（prototype 示意）：
+#    https://caddyserver.com/docs/caddyfile/directives/tls  (client_auth 子指令)
+# ─────────────────────────────────────────────────────────────────────────────
+:8443 {
+	# 服务端证书（内网 addr → 内部 CA 自签；若真 hostname 可用公网 CA）
+	tls /etc/dsh/certs/server.crt /etc/dsh/certs/server.key {
+		client_auth {
+			mode require_and_verify
+			trusted_ca_cert_file /etc/dsh/certs/internal-ca.crt
+		}
+	}
+
+	# 转发到 harness webserver loopback——P9 gate 在其后做 per-user authn + scope authz。
+	# 不转发客户端 cert PEM：gate 身份独立于 transport（mTLS 只证"受信设备"，per-user 身份在 gate）。
+	# （可选：转发 client-cert subject 给 P8 审计记 transport principal，非用于 authz。）
+	reverse_proxy 127.0.0.1:3000 {
+		header_up X-Forwarded-Proto https
+	}
+}

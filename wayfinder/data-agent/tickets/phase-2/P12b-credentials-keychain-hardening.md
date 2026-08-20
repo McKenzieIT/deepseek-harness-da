@@ -2,8 +2,9 @@
 
 **Type**: prototype
 **Phase**: 2 / 生产
-**Status**: Blocked by [P10](P10-intranet-tunneling.md)（多 host backend 选型等拓扑）
+**Status**: **unblocked**（P10 resolved 2026-08-20：前期 single-host 拓扑定，多 host central backend = 本票生产 scope，拓扑依赖解除）
 **Blocks**: 生产期 per-user PAT 必填阶段（G3 stable：fallback off、per-user PAT 必填）
+**From P10（内网穿透 resolved 2026-08-20）**：P10 定前期 single-host 拓扑（Mac 内网直接可达、Caddy 反代+mTLS、无隧道）→ 前期 macOS Keychain 够（P12 已落地）；多 host central backend（KMS envelope / Vault transit）= 本票生产 scope，非 P10 前置（P10 拓扑依赖解除，本票 unblocked）。ACL/runtime-exfil 部分本身 P10 无关，作生产期 bundle 一并取。
 
 **Question**: 把 P12 prototype 的简版 keychain provider 升级到生产：runtime-exfil 硬化（per-item ACL 限 harness 二进制读、排除 bash/terminal，需 harness code-signing）+ 独立 locked keychain + 交互/Touch-ID unlock；多 host 部署的 central backend（KMS/Vault）；跨平台（libsecret/CredManager）；落地真实 `@deepseek-ai/dsh-credentials-keychain` 包（per-file 100% 覆盖门）；userId/scopeId branding。
 
