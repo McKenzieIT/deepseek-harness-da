@@ -41,4 +41,4 @@ const server = http.createServer((req,res)=>{
     } else { res.statusCode=404; res.end('404'); }
   });
 });
-server.listen(port, ()=>{ console.error(`[sidecar] embedding+rerank HTTP on :${port} (OpenAI-compatible /v1/embeddings + /rerank, fake-over-HTTP)`); });
+server.listen(port, ()=>{ console.error(`[sidecar] embedding+rerank HTTP on :${port} (OpenAI-compatible /v1/embeddings + /rerank, fake-over-HTTP)`); console.error('READY'); });

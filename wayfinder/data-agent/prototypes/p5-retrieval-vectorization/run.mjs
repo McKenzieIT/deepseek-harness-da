@@ -17,7 +17,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── constants (mirror rbi constants.py) ───────────────────────────────
 const RRF_K = 60;                 // Cormack et al. 2009
 const RERANKER_NOISE_FLOOR = 0.1;  // per-candidate noise bar (matching.py)
-const RERANKER_REJECT_FLOOR = 0.2; // aggregate reject bar (unified_search.py)
 const DEFAULT_TOP_K = 10;
 
 // ── tokenize (mirror rbi embedder.tokenize fallback: CJK bigram + ASCII word) ──
@@ -107,6 +106,7 @@ function loadEmbedder({embedder='fake', url, model, dim, timeout}={}){
 function loadReranker({embedder='fake', url, model, timeout}={}){
   return (embedder==='fake'||!url) ? new FakeReranker() : new InfinityReranker({url, model:model||'fake-recall', timeout});
 }
+function peekCachedEmbedder({embedder='fake', url, model, dim, timeout}={}){ return _embCache.get(JSON.stringify({embedder,url,model,dim,timeout})) ?? null; } // D3: no-construct cache inspection
 
 // ── rrf_fuse (mirror rbi retrieval.rrf_fuse — pure, ranks-only, k=60) ──
 function rrfFuse(rankings, k=RRF_K){
@@ -158,7 +158,7 @@ async function main(){
   ];
   const fmt=hits=>hits.map(x=>`${x.name}(${(x.score??0).toFixed(3)})`).join(', ');
   console.log('═══ P5 prototype — ctx.embedder + ctx.retrieval seam (stub-fidelity mirror of rbi) ═══');
-  console.log(`RRF_K=${RRF_K}  NOISE_FLOOR=${RERANKER_NOISE_FLOOR}  REJECT_FLOOR=${RERANKER_REJECT_FLOOR}\n`);
+  console.log(`RRF_K=${RRF_K}  NOISE_FLOOR=${RERANKER_NOISE_FLOOR}\n`);
 
   // Scenario 1: index→search (pipeline-internal consumer, FakeHashEmbedder default)
   console.log('▶ Scenario 1: index→search (pipeline-internal consumer, FakeHashEmbedder default)');
@@ -173,11 +173,15 @@ async function main(){
   // Scenario 3: embedder plugin swap (FakeHash → InfinityEmbedder HTTP sidecar)
   console.log('▶ Scenario 3: embedder plugin swap (FakeHash → InfinityEmbedder HTTP sidecar)');
   const sidecar=spawn('node',[join(__dirname,'sidecar.mjs'),'--port=4143'],{stdio:['ignore','pipe','pipe']});
-  await new Promise(res=>{ sidecar.stderr.on('data',d=>{ if(String(d).includes('embedding+rerank')) res(); }); setTimeout(res,1200); });
+  // resolve on the sidecar's stderr READY marker; hard-fail (not false-green) if it never comes up
+  await new Promise((res,rej)=>{ const to=setTimeout(()=>rej(new Error('sidecar did not signal READY within 5000ms')),5000); sidecar.stderr.on('data',d=>{ if(String(d).includes('READY')){ clearTimeout(to); res(); } }); sidecar.on('exit',code=>rej(new Error(`sidecar exited early (code=${code})`))); });
   const emb3=loadEmbedder({embedder:'infinity', url:'http://127.0.0.1:4143', model:'fake-hash-256'});
+  // probe embedder directly w/ retry so _ensureVecs never latches _vecDown on a still-warming sidecar
+  for(let attempt=0;;attempt++){ try{ await emb3.embed(['warmup']); break; }catch(e){ if(e instanceof InferenceError && attempt<2){ await new Promise(r=>setTimeout(r,300)); continue; } throw e; } }
   const r3=new HybridRetriever(corpus, emb3);
-  await r3.search('warmup',{topK:1}); // trigger embed → discover dim
+  await r3.search('warmup',{topK:1}); // pre-cache doc vectors (dim already discovered by the probe above)
   console.log(`  modelId: ${emb1.modelId} → ${emb3.modelId}  (dim ${emb3.dim})`);
+  if(emb3.dim !== 256) throw new Error(`SCENARIO 3 INVALID — vector plane did not come up (dim=${emb3.dim}, expected 256); sidecar likely racy`);
   console.log(`  search via external embedder → ${fmt(await r3.search('各区服的营收',{topK:3}))}\n`);
 
   // Scenario 4: reranker injection (peer-protocol refinement after RRF)
@@ -187,6 +191,7 @@ async function main(){
   const h4rk=await r3.search('营收 服务器',{topK:5, reranker:rk4});
   console.log(`  no rerank: ${h4no.map(x=>`${x.name}(${x.rrf.toFixed(3)})`).join(', ')}`);
   console.log(`  w/ rerank: ${fmt(h4rk)}`);
+  if(h4rk.some(h=>h.degraded)) throw new Error('SCENARIO 4 INVALID — reranker degraded; vector plane did not come up (sidecar racy)');
   console.log(`  (reranker re-orders by cross-encoder score, drops < noise floor)\n`);
 
   // Scenario 5: degradation (sidecar killed → InferenceError → BM25-only)
