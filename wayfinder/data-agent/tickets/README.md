@@ -60,7 +60,7 @@
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, **resolved**（2026-08-20；删 acp/ 级联 acp-demo+acp-agent ~70 场景/57 配置/18 测试，acp-snapshot 零依赖存活，da 零交集——给 (c) 代价基线）
 - [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, **resolved**（2026-08-20；200+err-body 证伪（4 case 全 4xx）；改 fix 同源 4xx SSE-框架错误体 mis-parse（adapter.parseErrorBody 先 JSON 再 parseSse drain）+7 测试，2xx/translate 不动）
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
-- [host-typecheck-wiring](phase-misc/host-typecheck-wiring.md) — task, **unblocked**（critic-dedup 收尾 + nl2sql-engine tsconfig.host ref + phase-gate PromptAssembly；P11b surfaced host typecheck 先验 gap；critic-dedup candidate 毕业）
+- [host-typecheck-wiring](phase-misc/host-typecheck-wiring.md) — task, **resolved**（2026-08-20；tsconfig.host +3 data refs 修 TS6307 + critic-dedup WIP 验 M1✓/M2 defer/M3✓ + PromptAssembly 已由 WIP B12 解；scoped vitest 238/238；ticket Resolved 经 shared-index sweep 落 commit 2e116bafb0）
 
 ## 当前可立即取（unblocked frontier）
-P9b · P11c · G1b · D2c · host-typecheck-wiring（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b 已 resolved）
+P9b · P11c · G1b · D2c（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b/host-typecheck-wiring 已 resolved）
