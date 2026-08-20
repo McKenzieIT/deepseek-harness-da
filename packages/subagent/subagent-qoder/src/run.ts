@@ -133,7 +133,7 @@ function qoderCosts(message: SDKResultMessage): SubagentCosts | undefined {
   // an SDK shape without cost telemetry leaves it absent; omit costs then so
   // the SubagentResult keeps its { output, stopReason } shape for existing
   // consumers.
-  if (success.total_cost_usd === undefined) return undefined
+  if (success.total_cost_usd === undefined || typeof success.total_cost_usd !== 'number') return undefined
   return {
     total_cost_usd: success.total_cost_usd,
     ...(success.total_credits !== undefined ? { total_credits: success.total_credits } : {}),

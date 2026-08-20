@@ -53,6 +53,7 @@
 - **Qoder internal tool/reasoning stream**：P8 审 call outcome（终态+Credits）非 stream；forensic 需 stream 才另开 core seam 票（map Not-yet-specified 保留）。
 - **verify-cordis-config llm-dashscope**：pre-existing（committed P2 insert 无 bundle dep），非 P8b；web-app/data-agent bundle 须声明 `@deepseek-ai/dsh-llm-dashscope` dep（P2/T2 或后续票修）。
 - **audit runtime path config**：bundle insert 仅 id+name（无 config）；deployment cordis.yml 须供 `path`（audit `Config.path` required，mirror storage-sqlite）。openAuditDatabase sync（`mkdirSync` 0o700 + `openSync` 0o600 + PRAGMA WAL/foreign_keys/busy_timeout=5000 + STRICT tables + user_version stamp）。
+- **code review follow-up (post-commit, 2026-08-20)**：subagent code review found M1 (MEDIUM: `correctedStats` not correction-aware — after `appendCorrection`, original + correction both carry `qoder_call` + same cost → reconciliation view double-counts/mis-attributes) + 6 LOWs, no critical/high。**Fixed**：M1 (`correctedStats` cross-filter dedup via `extra.corrects` — skips superseded originals, sums the correction which carries corrected identity + same cost; +12th spec) + L1 (`ORDER BY patched_at, id` deterministic tiebreaker) + L4 (`ingested_at`=`nowIso()` independent of event ts) + L5 (`qoderCosts` `typeof==='number'` guard)。**Deferred (LOW, edge-case)**：L2 (identity `''` vs NULL inconsistency between `sameOwner` + `_where`)、L3 (`dumpAll` no ownership guard — not in production paths)、L6 (`patch` throws before ownership check — intentional fail-loud)。
 
 ## Assets
 

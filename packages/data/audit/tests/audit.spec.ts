@@ -121,6 +121,28 @@ describe('SQLiteAuditStore', () => {
     expect(corrected.qoder_credits).toBe(67) // credits not overridden → same
   })
 
+  it('P8b①a+②c interaction: correctedStats dedups a superseded original after appendCorrection (M1)', () => {
+    s.append(fromPayload({ log_id: 'a', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1042, total_credits: 42 } } }))
+    s.append(fromPayload({ log_id: 'b', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.07, total_credits: 25 } } }))
+    s.appendCorrection('a', { user_id: 'carol' }, { by: 'compliance', reason: 'misattribution' }, admin)
+    // correctedStats(alice): a superseded (correction is carol's, outside the alice filter) → skip a, count b.
+    const aliceCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
+    expect(aliceCorrected.total).toBe(1)
+    expect(aliceCorrected.qoder_cost_usd).toBeCloseTo(0.07, 4)
+    // correctedStats(carol): the correction record (0.1042) — the call's cost attributed to carol.
+    const carolCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'carol' }, admin)
+    expect(carolCorrected.total).toBe(1)
+    expect(carolCorrected.qoder_cost_usd).toBeCloseTo(0.1042, 4)
+    // correctedStats(admin, no user filter): a superseded → skip; correction (0.1042) + b (0.07) = 0.1742, no double-count.
+    const allCorrected = s.correctedStats({ tags: ['qoder_call'] }, admin)
+    expect(allCorrected.total).toBe(2)
+    expect(allCorrected.qoder_cost_usd).toBeCloseTo(0.1742, 4)
+    // stats (immutable original) counts all 3 recorded rows — the "recorded at the time" baseline.
+    const immutable = s.stats({ tags: ['qoder_call'] }, admin)
+    expect(immutable.total).toBe(3)
+    expect(immutable.qoder_cost_usd).toBeCloseTo(0.1042 + 0.1042 + 0.07, 4)
+  })
+
   it('tier-2 hashBody: hash not body (intranet-security-first)', () => {
     const body = JSON.stringify({ table: 'pay_order_di', columns: [{ name: 'pay_amt' }] })
     const hash = s.hashBody(body)

@@ -273,6 +273,7 @@ export class SQLiteAuditStore {
     for (const [k, v] of Object.entries(wire)) if (k !== 'auto_tags') payloadBody[k] = v
     const payloadJson = JSON.stringify(payloadBody)
     const ts = rec.timestamp || nowIso()
+    const ingestedAt = nowIso()
     try {
       this.db.exec('BEGIN')
       const res = this.db.prepare(
@@ -280,7 +281,7 @@ export class SQLiteAuditStore {
            (log_id, ts, session_id, chat_session_id, scope_id, tenant_id, user_id, model, review_status, payload, ingested_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       ).run(rec.log_id, ts, rec.session_id, rec.chat_session_id, rec.scope_id, rec.tenant_id,
-        rec.user_id, rec.model, rec.review_status, payloadJson, ts)
+        rec.user_id, rec.model, rec.review_status, payloadJson, ingestedAt)
       const eventId = Number(res.lastInsertRowid)
       const insTag = this.db.prepare('INSERT OR IGNORE INTO audit_tag (event_id, tag) VALUES (?, ?)')
       for (const t of rec.auto_tags) insTag.run(eventId, t)
@@ -311,7 +312,7 @@ export class SQLiteAuditStore {
     if (!sameOwner({ tenant_id: row.tenant_id, scope_id: row.scope_id, user_id: row.user_id }, caller)) return null
     const rec = this._materialize(row)
     const overrides = (this.db.prepare(
-      'SELECT field, value, patched_by, patched_at, reason FROM audit_override WHERE log_id=? ORDER BY patched_at',
+      'SELECT field, value, patched_by, patched_at, reason FROM audit_override WHERE log_id=? ORDER BY patched_at, id',
     ).all(log_id) as unknown as OverrideRow[]).map(o => ({ ...o, value: o.value === null ? null : JSON.parse(o.value) }))
     return { ...rec, overrides }
   }
@@ -434,11 +435,27 @@ export class SQLiteAuditStore {
   correctedStats(f: AuditQueryFilter = {}, caller: AuditCaller = {}): AuditStats {
     const { where, params } = this._where(f, caller)
     const rows = this.db.prepare(`SELECT * FROM audit_event WHERE ${where} ORDER BY ts DESC`).all(...params) as unknown as AuditEventRow[]
+    const recs = rows.map(r => this._materialize(r))
+    const matchedIds = new Set(recs.map(r => r.log_id))
+    // P8b①a + ②c interaction: an appendCorrection supersedes its original, so the
+    // corrected view dedups — it skips superseded originals (the correction record
+    // carries the corrected identity + the same cost, counted once in its own
+    // right). Corrections may sit OUTSIDE this filter (a different user_id), so
+    // look across the whole table for `extra.corrects` links at a matched original.
+    const superseded = new Set<string>()
+    const corrections = this.db.prepare(
+      'SELECT json_extract(payload, \'$.corrects\') AS original FROM audit_event WHERE json_extract(payload, \'$.corrects\') IS NOT NULL',
+    ).all() as Array<{ original: string | null }>
+    for (const c of corrections) {
+      if (c.original !== null && matchedIds.has(c.original)) superseded.add(c.original)
+    }
     let costUsd = 0
     let credits = 0
+    let counted = 0
     const byTag: Record<string, number> = {}
-    for (const row of rows) {
-      const rec = this._materialize(row)
+    for (const rec of recs) {
+      if (superseded.has(rec.log_id)) continue
+      counted += 1
       if (rec.auto_tags.includes(TAG.QODER_CALL)) {
         const c = rec.extra.credits
         if (c !== null && c !== undefined && typeof c === 'object') {
@@ -449,7 +466,7 @@ export class SQLiteAuditStore {
       }
       for (const t of rec.auto_tags) byTag[t] = (byTag[t] ?? 0) + 1
     }
-    return { total: rows.length, by_tag: byTag, qoder_cost_usd: costUsd, qoder_credits: credits }
+    return { total: counted, by_tag: byTag, qoder_cost_usd: costUsd, qoder_credits: credits }
   }
 
   /** Update review_status — the ONE in-place mutable column (mirror RBI). */
@@ -529,7 +546,7 @@ export class SQLiteAuditStore {
 
   private _latestOverrides(log_id: string): Record<string, unknown> {
     const rows = this.db.prepare(
-      'SELECT field, value, patched_at FROM audit_override WHERE log_id=? ORDER BY patched_at',
+      'SELECT field, value, patched_at FROM audit_override WHERE log_id=? ORDER BY patched_at, id',
     ).all(log_id) as Array<{ field: string; value: string | null; patched_at: string }>
     const out: Record<string, unknown> = {}
     for (const r of rows) out[r.field] = r.value === null ? null : JSON.parse(r.value) // latest per field wins
