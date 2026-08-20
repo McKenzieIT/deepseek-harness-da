@@ -29,7 +29,8 @@
 - [P9 admin+访问隔离](phase-2/P9-admin-access-isolation.md) — prototype, **resolved**（2026-08-20）（单一 additive 插件 `@deepseek-ai/dsh-admin` + 服务端解析 scope 非客户端可供给 + 忠实 RBI + net-new AccessLink + fail-closed；prototype `../prototypes/p9-admin-access-isolation/` 25/25 全绿；解锁 P10 门形态 + P4b 凭证寻址）
 - [P10 内网穿透安全](phase-2/P10-intranet-tunneling.md) — prototype, **resolved**（2026-08-20）（Caddy 反代+mTLS 无隧道 + mTLS transport-only + 工具门禁 defense-in-depth；prototype `../prototypes/p10-intranet-tunneling/` 26/26 全绿；解锁 P12b）
 - [P12 credentials keychain + per-user 寻址](phase-2/P12-credentials-keychain.md) — prototype, **resolved** 2026-08-19
-- [P12b credentials keychain 生产硬化](phase-2/P12b-credentials-keychain-hardening.md) — prototype, blocked by ~~P10~~ → **unblocked**（P10 resolved 2026-08-20：前期 single-host 拓扑定，多 host=P12b 生产 scope）
+- [P12b credentials keychain 生产硬化](phase-2/P12b-credentials-keychain-hardening.md) — prototype, **resolved**（2026-08-20）（security-CLI-only runtime-exfil ACL DEFER P12c + locked-keychain/auto-lock/teardown-lock + 真实 `packages/credentials/credentials-keychain` 包 + branding in seam `UserId`/`ScopeId` `Branded`；live macOS e2e 21/21 + per-file 100% 覆盖；解锁 G3 stable per-user PAT 必填）
+- [P12c native keychain binding + code-signing](phase-2/P12c-native-keychain-binding-code-signing.md) — prototype, **blocked**（by harness 分发流程建立：Apple Developer Program + notarization + 打包可签名 binary；P12b DEFER 的 runtime-exfil ACL per-item Touch-ID）
 - [T2 AGA-embeddings live-probe](phase-2/T2-aga-embeddings-live-probe.md) — task, **unblocked** (surfaced by P5；定 intranet 重 embedder 走 AGA 还是独立 sidecar)
 - [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, **resolved**（2026-08-20）（真 packages/data/audit + 真实 ctx.on + ①a verdict-only patch + ②c stats/correctedStats + additive P3 costs-surface；audit 11/11 spec + P3 26/26+117/117 + typecheck-clean）
 
