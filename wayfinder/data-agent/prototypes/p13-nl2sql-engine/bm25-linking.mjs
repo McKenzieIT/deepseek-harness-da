@@ -25,7 +25,8 @@ export function tokenize(text) {
   return tokens;
 }
 
-// BM25Okapi（直译 rank_bm25.BM25Okapi；k1=1.5, b=0.75 默认）。
+// BM25Okapi 变体（k1=1.5, b=0.75；idf 用 Lucene log(1+x) 恒非负，rank_bm25 用裸 log + epsilon=0.25
+// floor 兜底负 idf 未实现——prototype 简化，避免负 idf 免 epsilon 参数）。
 export class BM25Okapi {
   constructor(corpus, { k1 = 1.5, b = 0.75 } = {}) {
     this.k1 = k1;
@@ -70,17 +71,17 @@ export class BM25Okapi {
   }
 }
 
-// 构建语料（per data source：name + description + fields 拼接作 doc text）。
-// per-field 权重（复刻 unified_search._FIELD_WEIGHTS 简化：name×3/metric×4/description×1）。
-const FIELD_WEIGHTS = { name: 3, description: 1, metric_name: 4, event_name: 3, table_name: 3 };
+// 构建语料（per data source：name + description + metrics 拼接作 doc text）。
+// per-field 权重（prototype 简化：name×3 / description×1 / metric×1；RBI unified_search._FIELD_WEIGHTS
+// 用 _weighted() 循环 repeat 落地 name×3/metric_name×4/event_name×3 等，P13b 生产对齐）。
+const FIELD_WEIGHTS = { name: 3, description: 1 };
 
 export function buildCorpus(dataSources) {
   return dataSources.map((d) => {
     const parts = [];
-    // name ×3
-    for (let i = 0; i < (FIELD_WEIGHTS.name || 1); i++) parts.push(d.id);
-    if (d.description) for (let i = 0; i < (FIELD_WEIGHTS.description || 1); i++) parts.push(d.description);
-    if (d.metrics) for (const m of Object.keys(d.metrics)) parts.push(m); // metric ×4 简化为 push 一次（prototype）
+    for (let i = 0; i < FIELD_WEIGHTS.name; i++) parts.push(d.id); // name ×3
+    if (d.description) parts.push(d.description); // description ×1
+    if (d.metrics) for (const m of Object.keys(d.metrics)) parts.push(m); // metric ×1（prototype 简化）
     return { id: d.id, text: parts.join(' '), payload: d };
   });
 }

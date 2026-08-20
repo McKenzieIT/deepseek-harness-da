@@ -37,6 +37,9 @@ export function extractJsonPaths(sql) {
 }
 
 // 从 FROM/JOIN 提表名（去 db. 前缀；不匹配子查询括号——( 非 [A-Za-z_]）。
+// 残余风险（执行反馈兜底，P13b 生产换 sqlglot AST _check_table_names sql_critic.py:113-141）：
+// CTE 表名（WITH cte AS(...) ... FROM cte → cte 误拦）/ 逗号 join（FROM t1, t2 漏 t2）/
+// 字符串字面量内 FROM（event='x FROM y' 误匹配 y）。
 export function extractTableNames(sql) {
   const tables = new Set();
   const re = /(?:\bFROM\b|\bJOIN\b)\s+([A-Za-z_][\w.]*)/gi;
@@ -106,5 +109,5 @@ export function sqlSyntaxGate(phaseOutput, ctx) {
   const sql = extractSqlCandidate(phaseOutput);
   if (!sql) return GateResult.fail('phase 最终文本无 SQL 候选');
   const r = critiqueSql(sql, ctx);
-  return r.passed ? GateResult.pass() : GateResult.fail(r.reason);
+  return r.passed ? new GateResult(true, r.reason) : GateResult.fail(r.reason);
 }

@@ -65,6 +65,14 @@ export class Nl2sqlEngine {
       const sql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') || gen.sql;
       trace.push({ step: 'llm_generate', attempt, sql });
 
+      // LLM 未产出 SQL（null/undefined/''）→ RBI critique_sql 对空 SQL 返 error；不 fail-open
+      // （防 nearDup.allow(null) 崩溃 + 空 SQL 经 StandInOdps 默认 done 假成功）。
+      if (!sql) {
+        lastFeedback = { failureKind: 'critic_fail', error: 'LLM 未产出 SQL（空/无效）' };
+        attempt += 1;
+        continue;
+      }
+
       // 4. critic gate（pre-exec，挂 sql_syntax_gate 槽）
       const critic = critiqueSql(sql, ctx);
       trace.push({
