@@ -57,6 +57,14 @@
     provider: dashscope
     model: qwen-plus
 
+# ── identity seam (G3b: per-user caller identity; audit + subagent-qoder inject it;
+# P9b populates login; stub `current()` returns `undefined` → T1 fallback today) ──
+# Without this mount, `audit`'s `static inject=['identity']` leaves its fiber PENDING
+# (no provider) → audit hooks never register → no audit records.
+- insert:
+    - id: identity
+      name: '@deepseek-ai/dsh-identity'
+
 # ── data capability plugins (additive mounts; TODO, filled by P4-P11) ───────
 # Each row below is a placeholder for a data capability plugin this bundle
 # will mount once its package exists. They are commented out because a bare

@@ -31,9 +31,11 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 // Type-only: loads the `ctx.identity` declaration so `ctx.identity.current()`
-// is typed. Runtime-optional — the data-agent bundle mounts the identity stub;
-// absent (e.g. a test ctx), `ctx.identity` is `undefined` and the optional
-// chaining keeps the T1 global fallback (no behavior change).
+// is typed. Identity is a HARD inject (see `inject` below) — the data-agent
+// bundle mounts the identity stub, whose `current()` returns `undefined`, so
+// `userId` is `undefined` and `resolve(ref, undefined)` takes the keychain's
+// no-`userId`/fallback path — the T1 global PAT, no behavior change from the
+// MVP. P9b populates `current()` and the same call resolves the per-user PAT.
 import type {} from '@deepseek-ai/dsh-identity'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import {
