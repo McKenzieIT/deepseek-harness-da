@@ -118,6 +118,8 @@ export function freshPhaseGateState(scopeId = 'game-1') {
     subquestions: [], // decomposition (≤ max_subquestions)
     last_sql: null, // SQL same-source across GENERATION gate / EXECUTION (P7 finding)
     last_query_outcome: null, // ctx.query 3-state: done | running | failed
+    last_critique: null, // critique_sql_tool confidence (checked at turn-stopping, M2)
+    last_quality: null, // evaluate_sql_quality score (checked at turn-stopping, M2)
     honest_decline_reason: null,
     cancelled: false,
     cancelled_reason: null,

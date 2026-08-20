@@ -26,16 +26,22 @@ node run.mjs            # 交互菜单
 ```
 无依赖（纯 node .mjs，无 build，无 node_modules）。
 
-## Validated（状态模型成立，8 场景全绿）
+## Validated（状态模型成立，12 场景全绿，code-review-fixed 2026-08-20）
 
-- **四阶段经 turn-stopping 推进**（S1）：UNDERSTANDING→GENERATION→EXECUTION→INTERPRETATION→COMPLETE，每 phase model 自然停→turn-stopping→gate(always_pass/sql_syntax_gate)→advance。
-- **guard 硬白名单**（S2）：越界工具（UNDERSTANDING 调 query_data）被 `ctx.tools.guard()` 单调拒（下游不可翻案），工具目录跨 phase 稳定（cache 友好）。
-- **ctx.query 3-state 驱动 EXECUTION fallback**（S3）：query_data(outcome=failed)→post-execute block + fallback→GENERATION（max_attempts=1，turn-stopping gate never consulted）。
-- **budget 在 turn-stopping 取消**（S4）：exec_count≥max_executions_per_turn(8)→`agent.cancel`。
-- **GENERATION sql_syntax_gate 查 phase 最终文本**（S5）：无 SQL→gate fail→retry（attempts<max）；证 gate 在 turn-stopping 非 post-execute。
-- **persona option C**（S6）：_PHASE_INSTRUCTIONS 每 phase 注入 + SQL conventions 仅 GENERATION + 无 complete:true（其他段保留）。
-- **honest_decline**（S7）：GENERATION gate fail + max_attempts + fallbacks 耗尽→honest_decline。
-- **forced_load in-phase 过 guard**（S8）：程序化调 UNDERSTANDING 白名单内工具→guard 放行。
+- **四阶段经 turn-stopping 推进 + F2 同源**（S1）：UNDERSTANDING→GENERATION→EXECUTION→INTERPRETATION→COMPLETE；GENERATION gate 查 SQL+critique+quality；EXECUTION 3-state done；critiqued SQL == executed SQL（`extract_sql_candidate` 同源）。
+- **guard 硬白名单**（S2）：越界工具（UNDERSTANDING 调 query_data）被 `ctx.tools.guard()` 单调拒，工具目录跨 phase 稳定（cache 友好）。
+- **EXECUTION 3-state 驱动 fallback**（S3）：query_data(failed)→turn-stopping 3-state→fallback→GENERATION（deterministic, max_attempts=1, gate never consulted）。
+- **EXECUTION failed+fallback 耗尽→honest_decline**（S4, H1 fix）：不再误推进到 INTERPRETATION 基于失败查询交付。
+- **exec budget pre-call 拒绝**（S5, M1 fix）：exec_count 达上限→guard pre-execute 拒第 limit+1 次→honest_decline（exec_count 留在上限，非 post-hoc cancel）。
+- **llm budget pre-call 拒绝**（S6, M1+M4 fix）：llm_call_count 达上限→`llm/stream`-start 拒第 limit+1 次→honest_decline（非 cancel，保审计可区分性）。
+- **GENERATION no-SQL→sql_syntax_gate fail→retry**（S7）：gate 在 turn-stopping 查 phase 最终文本。
+- **GENERATION critique-low→retry 计 attempt**（S8, M2 fix）：critique confidence<floor→gate fail（与 sql_syntax 串联在 turn-stopping）→retry 计入 max_attempts（非 post-execute 逃逸）+ `last_sql` 提取（F2）。
+- **GENERATION 耗尽→honest_decline**（S9）：gate fail + max_attempts + fallbacks 耗尽。
+- **persona option C**（S10）：`_PHASE_INSTRUCTIONS` 每 phase 注入 + SQL conventions 仅 GENERATION + 无 `complete:true`。
+- **INTERPRETATION【未完成】→honest_decline**（S11, M3 fix）：SPEC §2.6 通道——「答不了」与成功分析在审计可区分（terminal，非 retry）。
+- **forced_load in-phase 过 guard**（S12, F1）：程序化调 UNDERSTANDING 白名单内工具→guard 放行（真 harness 须验 `ctx.tools.execute` 程序化路径+路由）。
+
+**Code-review fixes (subagent aa22fc29bb91390ec, 2026-08-20)**：H1（EXECUTION failed+exhausted→honest_decline，was 误推进 INTERPRETATION）、M1（budget pre-call 拒绝 + 边界 `==limit completes`，was post-hoc cancel at turn-stopping）、M2（critique/evaluator 移到 turn-stopping 与 `sql_syntax_gate` 串联、计入 max_attempts，was post-execute block 逃逸）、M3（INTERPRETATION `【未完成】`→honest_decline，was 缺失 SPEC §2.6 通道）、M4（budget 耗尽→honest_decline 非 cancel，rbi `TurnBudgetExceeded`→`_emit_honest_decline`，保审计可区分性）、L3/F2（`extract_sql_candidate` 同源演示 GENERATION gate↔EXECUTION query_data）。**Deferred to P7b**（真 gate 对齐，非原型逻辑）：L1（F3 stall-watchdog cite→`turn_context.py _awaiting_input` 一手 + rbi-purpose-arch §5.10 阈值）、L2（`sqlSyntaxGate` 比 rbi `_looks_like_sql_attempt` 严——后者容错「无法生成 SQL」prose→pass，P7b 真 sqlglot gate 时对齐）、L4（`onTurnStart`≠question-start seam——P7b 加 question-start hook 重置 per-question 计数器）。
 
 ## Surfaced findings（P7b 生产硬化须解，p4 先例）
 

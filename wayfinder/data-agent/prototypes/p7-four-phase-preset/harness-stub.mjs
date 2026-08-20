@@ -3,7 +3,7 @@
 // Mirrors p8-audit/harness-stub.mjs. Seams simulated:
 //   tools/pre-execute → ctx.tools.guard() → tools/execute → tools/post-execute → tools/result
 //   agent/turn-stopping (serial, no next())   agent/request (waterfall)   system-prompt/assemble (waterfall)
-//   llm/stream (counter)   turn/start
+//   llm/stream (counter + pre-call budget reject)   turn/start
 import { STUB_TOOLS } from './tools.mjs';
 
 export class FakeHarness {
@@ -17,8 +17,7 @@ export class FakeHarness {
   // pre-execute → guard() → execute → post-execute → result. guard() is monotone (un-flippable).
   async callTool(sessionId, name, args = {}) {
     const exec = { sessionId, name, arguments: args };
-    // tools/pre-execute (waterfall — stubbed to allow; real has ask/deny)
-    // ctx.tools.guard() — the phase-gate hard whitelist (monotone, downstream can't flip)
+    // ctx.tools.guard() — phase-gate hard whitelist + pre-execute exec-budget reject (monotone)
     const deny = this.plugin.guard(exec);
     if (deny) {
       this.log.push(`guard DENY ${name}: ${deny}`);
@@ -30,8 +29,8 @@ export class FakeHarness {
       return { isError: true, error: { message: `no handler ${name}` } };
     }
     const result = handler(args);
-    // tools/post-execute — phase-gate: fallback feedback / delivery / exec count
-    const post = this.plugin.onPostExecute({ sessionId, name, result });
+    // tools/post-execute — phase-gate: count + store + same-source check (decisions live at turn-stopping)
+    const post = this.plugin.onPostExecute({ sessionId, name, result, args });
     if (post.kind === 'block') {
       this.log.push(`post-execute BLOCK ${name}: ${post.reason}`);
       return { isError: true, error: { message: post.reason }, content: `block: ${post.reason}` };
@@ -41,10 +40,15 @@ export class FakeHarness {
   }
 
   // llm/stream — a "model response" = canned tool calls the scenario scripts per phase.
-  // Charges llm_call_count on stream START (F5 finding: NOT agent/request — waterfall retries
-  // may not produce a real LLM call). Then runs each tool call through the pipeline.
+  // M1: onLlmStream returns undefined=allow, or an honest_decline decision if the llm budget is
+  // exhausted pre-call (rbi rejects the (limit+1)th llm call pre-call). If declined, abort the stream
+  // (no tool calls run — the budget is enforced BEFORE the cost is incurred).
   async llmStream(sessionId, modelToolCalls) {
-    this.plugin.onLlmStream({ sessionId });
+    const decline = this.plugin.onLlmStream({ sessionId });
+    if (decline) {
+      this.log.push(`llm/stream REJECT (pre-call budget): ${decline.reason}`);
+      return [['<llm-stream>', { isError: true, decision: decline }]];
+    }
     const results = [];
     for (const [name, args] of modelToolCalls) {
       results.push([name, await this.callTool(sessionId, name, args)]);
