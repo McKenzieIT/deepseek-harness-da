@@ -46,6 +46,8 @@ credentials,identity,session,api,mcp,fs,host,guard}` 全部 README。
 
 ### 1.2 三级凭据解析（两条链，会漂）
 
+> ⚠️ **ERRATUM（2026-08-20，P9 ground-check）**：本节下文称 `odps_configs`「**per-scope** 因为 DB 行有 `domestic_*`/`overseas_*` 字段」是**事实错误**。`OdpsConfig` 是**单例行（id=1）**，`access_id`/`access_key` **全 scope 共享**；per-scope 差异**只在 region**（scope `config.yaml` `maxcompute.environment`）选 `domestic_*`/`overseas_*` 的 project/endpoint 字段，**非 per-scope 行**。证据：`apps/rbi-web/src/rbi_web/services/odps_config_service.py` docstring「singleton row (id=1)」、`get_config` filter `id==1`、`resolve_for_region` 返共享 access_id/key + 按 region 选 endpoint/project。不影响 Option 1 结论（scope_id 流 + per-scope 凭据解析 + token→scope 绑定均成立）。P9 prototype `prototypes/p9-admin-access-isolation/` S5 验单例 + region addressing。
+
 **链 A —— rbi-mcp 侧 `credentials.py`**（`libs/rbi-mcp/src/rbi_mcp/credentials.py`）：
 - `resolve_for_scope(scope_id)`（`credentials.py:166`）= 注册给 rbi-query 的 tier-0 resolver。
 - 内部 `_resolve_uncached`（`credentials.py:155`）优先级：`_from_db` → `_from_config_file` → `_from_env`，

@@ -26,12 +26,12 @@
 - [P5 检索/向量化](phase-2/P5-retrieval-vectorization.md) — prototype, **resolved** (2026-08-20; mirror rbi-retrieval/semantic, 6 决策 + prototype 验证)
 - [P6 语义层](phase-2/P6-semantic-layer.md) — prototype, **resolved** 2026-08-19（substrate + ODPS 解耦 `ctx.schema` seam + write-tiers；NL→SQL 引擎毕业 P13；prototype `../prototypes/p6-semantic-layer/`）
 - [P8 audit](phase-2/P8-audit.md) — prototype, **resolved** 2026-08-20
-- [P9 admin+访问隔离](phase-2/P9-admin-access-isolation.md) — prototype, **in-progress** (claimed 2026-08-20)
+- [P9 admin+访问隔离](phase-2/P9-admin-access-isolation.md) — prototype, **resolved**（2026-08-20）（单一 additive 插件 `@deepseek-ai/dsh-admin` + 服务端解析 scope 非客户端可供给 + 忠实 RBI + net-new AccessLink + fail-closed；prototype `../prototypes/p9-admin-access-isolation/` 25/25 全绿；解锁 P10 门形态 + P4b 凭证寻址）
 - [P10 内网穿透安全](phase-2/P10-intranet-tunneling.md) — prototype, **unblocked**
 - [P12 credentials keychain + per-user 寻址](phase-2/P12-credentials-keychain.md) — prototype, **resolved** 2026-08-19
 - [P12b credentials keychain 生产硬化](phase-2/P12b-credentials-keychain-hardening.md) — prototype, blocked by P10
 - [T2 AGA-embeddings live-probe](phase-2/T2-aga-embeddings-live-probe.md) — task, **unblocked** (surfaced by P5；定 intranet 重 embedder 走 AGA 还是独立 sidecar)
-- [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, blocked by P9
+- [P8b audit 生产包硬化](phase-2/P8b-audit-prod-hardening.md) — prototype, blocked by ~~P9~~ → **unblocked**（P9 resolved 2026-08-20：per-user login-state ctx + 端点→user→scope 绑定 + PAT 自助）
 
 ## phase-3（orchestration）
 - [P7 四阶段 preset+phase-gate](phase-3/P7-four-phase-preset.md) — prototype, blocked by ~~P4~~/~~P5~~/~~P6~~ → **unblocked**
@@ -50,4 +50,4 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, low, unblocked
 
 ## 当前可立即取（unblocked frontier）
-P7 · P9 · P10 · P13 · G2 · T2（+ low: R4, R5）
+P7 · P8b · P10 · P13 · G2 · T2（+ low: R4, R5）
