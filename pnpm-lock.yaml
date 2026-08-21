@@ -1253,6 +1253,9 @@ importers:
       '@deepseek-ai/dsh-query-maxcompute':
         specifier: workspace:^
         version: link:../../query/query-maxcompute
+      '@deepseek-ai/dsh-semantic-layer':
+        specifier: workspace:^
+        version: link:../../data/semantic-layer
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^

@@ -102,8 +102,8 @@
 #     - id: retrieval          # ctx.retrieval seam — OPT-IN (P5b shipped @deepseek-ai/dsh-retrieval-inproc hybrid BM25+vec+RRF k=60 over ctx.embedder, InferenceError->BM25-only degradation; reranker peer after RRF). Uncomment + mount (alongside an embedder provider) to swap search_data_sources off the local Bm25Linker (additive, RetrievalLinker contract unchanged). Left commented pending D2c keep/regress.
 #       name: '@deepseek-ai/dsh-retrieval-inproc'
 #     # ── semantic layer (P6) - first-class (map: 语义层一等公民) ───────────
-#     - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
-#       name: '@deepseek-ai/dsh-semantic-layer' # name TBD - P6
+    - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
+      name: '@deepseek-ai/dsh-semantic-layer'
 #     # ── audit (P8) ───────────────────────────────────────────────────────
     - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
       name: '@deepseek-ai/dsh-audit'

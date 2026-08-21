@@ -6,11 +6,11 @@
 
 这是 **P6b deferred follow-up**（"load_* 接入"）—— [`ctx.schema`](../semantic-layer) `loadEventDefinition` substrate（P6b ship，commit 88524504f8）的面向模型封装。它镜像 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)（P13b commit 0e1a0fdf25）与 [`@deepseek-ai/dsh-tool-load-table-definition`](../tool-load-table-definition) 的 [`@deepseek-ai/dsh-tools`](../../core/tools) 注册形态（`defineTool` + `ctx.tools.register`）。
 
-## 状态：已注册 + 可调；ctx.schema mount 待接
+## 状态：已注册 + 可调；ctx.schema 已接通
 
 本工具由 data-agent preset（`tool-load-event-definition` 行，已解注释）注册，并列入 phase-gate `UNDERSTANDING`/`GENERATION` 白名单，故模型可在对应阶段调用。探 `ctx.get('schema')`：`@deepseek-ai/dsh-semantic-layer` service 挂载时命中即返回投影定义；未挂载 provider 时（无该 service 的 profile，或单测）返回诚实的 `found: false` "not mounted" 结果——callable but unwired，非 broken mount（与 `tool-search-data-sources` 在 retrieval provider 挂载前的薄默认态相同）。
 
-`ctx.schema` bundle service 行（`packages/bundle/data-agent/cordis.patch.yml` 的 `semantic-layer`）为 **deferred follow-up**：因并发会话正改 bundle patch + lockfile（避撞车），本 ship 暂缓。解注释该行 + 加 `dsh-semantic-layer` bundle dep（需 `pnpm install` 保 lockfile 同步）即挂载 `ctx.schema`、接通本工具到真 substrate；在此之前返回 "not mounted"。默认空 `semanticRoot` 下，已挂载 substrate 不扫任何 `events/` 目录，返回 `null`（not-found，不崩）；真实 substrate 目录在 profile/运行时层配置。
+`ctx.schema` bundle service 行（`packages/bundle/data-agent/cordis.patch.yml` 的 `semantic-layer`）现已 **解注释 + 接通**：已加 `dsh-semantic-layer` bundle dep 并经 `pnpm install` 同步 lockfile，故挂载 data-agent bundle 即注册 `ctx.schema`、接通本工具到真 substrate——命中即返回投影定义，而非 "not mounted" 默认。（已验证：`verify-cordis-config` + `dsh --dump-config` 显示 `semantic-layer` service；真 `semanticRoot` smoke 返 `found:true` 带投影 `params_fields`。）默认空 `semanticRoot` 下，已挂载 substrate 不扫任何 `events/` 目录，返回 `null`（not-found，不崩）；真实 substrate 目录在 profile/运行时层配置。
 
 `event_name` 参数为模型输入（不可信）。P6b code-review #5 将 definition-name 路径穿越守卫 deferred 到 "load_* 接入"；本工具在边界校验 name（拒 `/`、`\`、`..`、NUL），落实 intranet-security-first 纵深防御。
 
@@ -71,7 +71,7 @@ pnpm verify-cordis-config
 
 ## 已知限制与待办
 
-- **ctx.schema bundle mount deferred** —— bundle 的 `semantic-layer` service 行保持注释，待协调会话解注释 + 加 `dsh-semantic-layer` dep（避撞车：并发会话正改 bundle patch + lockfile）；在此之前本工具返回诚实 "not mounted" 结果（callable but unwired，镜像 `tool-search-data-sources`）。preset 行 + phase-gate 白名单已就位，注册该 service 即接通。
+- **ctx.schema bundle mount wired（已解）** —— bundle 的 `semantic-layer` service 行已解注释 + 加 `dsh-semantic-layer` dep（lockfile 经 `pnpm install` 同步）；`ctx.schema` 已挂载，故本工具已接通真 substrate（不再 "callable but unwired" 默认）。preset 行 + phase-gate 白名单本已就位。已验证：`verify-cordis-config` + `dsh --dump-config`（service 在）+ 真 `semanticRoot` smoke（`found:true` 投影 `params_fields`）。
 - **空 substrate（默认 `semanticRoot`）** —— 默认空根下 substrate 不扫任何 `events/` 目录，`loadEventDefinition` 返回 `null`（not-found，不崩）。真实 substrate 目录在 profile/运行时层配置；本工具契约不变。
 - **live-ODPS provider deferred（P6b Q3）** —— `ctx.schema.discover`/`describe`/`sample`（live-ODPS schema）在真实 MaxCompute provider 挂载前抛 "no provider"（P6b follow-up）。`load_event_definition` 仅读 substrate 定义，故不阻塞。
 - **路径穿越守卫仅边界生效** —— name 守卫在本工具（不可信模型输入边界）。substrate 的 `io.ts` 读路径按事件 `name` 字段匹配（非按文件名），故 `load_*` 不可达穿越；守卫是对未来 substrate 变更的纵深防御。`io.ts` 写入器（`writeEventYaml`/`writeTable`）会路径化 `name`，目前仅对可信内部调用方守卫（P6b #5/#6 follow-up）。
