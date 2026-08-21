@@ -13,6 +13,7 @@ import type { ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
+import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhaseGate } from '../src/phase-gate.ts'
 import { Phase, INCOMPLETE_MARKER, PipelineConfig } from '../src/types.ts'
@@ -48,6 +49,20 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     const g = gate()
     expect(g.guard(execView('search_data_sources', agent))).toBeUndefined() // ∈ UNDERSTANDING
     expect(g.guard(execView('query_data', agent))).toMatch(/not in understanding whitelist/) // ∉ UNDERSTANDING
+  })
+
+  it('guard: load_* allowed in GENERATION (schema grounding before SQL)', () => {
+    const { agent } = makeAgent('s2')
+    const g = gate()
+    const s = g.state('s2')
+    s.current_phase = Phase.GENERATION
+    // MAJOR-1: load_table/load_event are schema-grounding reads; GENERATION
+    // writes SQL from semantic-layer-grounded fields, so the definitions are
+    // whitelisted there too (not UNDERSTANDING-only). search_data_sources stays
+    // UNDERSTANDING-only (candidate discovery is an UNDERSTANDING concern).
+    expect(g.guard(execView('load_table_definition', agent))).toBeUndefined()
+    expect(g.guard(execView('load_event_definition', agent))).toBeUndefined()
+    expect(g.guard(execView('search_data_sources', agent))).toMatch(/not in generation whitelist/)
   })
 
   it('turn-stopping advances UNDERSTANDING→GENERATION + injects continuation', async () => {
@@ -234,5 +249,67 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     g.onStatus({ agent, status: 'running' }) // new user message wakes the driver
     expect(s.current_phase).toBe(Phase.UNDERSTANDING)
     expect(s.honest_decline_reason).toBeNull()
+  })
+})
+
+describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () => {
+  // A Context whose ctx.llm.resolveModelInfo reports a model with the given
+  // reasoning metadata: 'efforts' = effort-capable; 'none' = no per-request
+  // thinking knob (e.g., aga — native AGA, thinking is model-bound).
+  function gateWithLlm(reasoning: 'efforts' | 'none'): PhaseGate {
+    const resolveModelInfo = async (provider: string, model: string) => ({
+      provider,
+      id: model,
+      name: model,
+      inputModalities: ['text' as const],
+      ...(reasoning === 'efforts'
+        ? { reasoning: { efforts: [{ id: 'high' }, { id: 'medium' }], defaultEffort: 'medium' } }
+        : {}),
+    })
+    const ctx = {
+      logger: { info: () => undefined, warn: () => undefined, error: () => undefined },
+      llm: { resolveModelInfo },
+    } as unknown as Context
+    return new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+  }
+
+  it('sets per-phase reasoningEffort for a model that exposes efforts (UNDERSTANDING -> high)', async () => {
+    const { agent } = makeAgent('e1')
+    const g = gateWithLlm('efforts')
+    const result = await g.onRequest(
+      { agent, turn: 1, step: 1, signal: new AbortController().signal },
+      async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] }) as Promise<GenerateOptions>,
+    )
+    expect(result.reasoningEffort).toBe('high')
+  })
+
+  it('skips reasoningEffort for a model that exposes NO efforts (aga — model-bound thinking; registry would reject)', async () => {
+    const { agent } = makeAgent('e2')
+    const g = gateWithLlm('none')
+    const result = await g.onRequest(
+      { agent, turn: 1, step: 1, signal: new AbortController().signal },
+      async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] }) as Promise<GenerateOptions>,
+    )
+    expect(result.reasoningEffort).toBeUndefined()
+  })
+
+  it('caches the reasoning-support lookup (one resolveModelInfo call per provider:model)', async () => {
+    const { agent } = makeAgent('e3')
+    let calls = 0
+    const ctx = {
+      logger: { info: () => undefined, warn: () => undefined, error: () => undefined },
+      llm: {
+        resolveModelInfo: async (provider: string, model: string) => {
+          calls++
+          return { provider, id: model, name: model, inputModalities: ['text' as const] }
+        },
+      },
+    } as unknown as Context
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    const signal = new AbortController().signal
+    const next = async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] }) as Promise<GenerateOptions>
+    await g.onRequest({ agent, turn: 1, step: 1, signal }, next)
+    await g.onRequest({ agent, turn: 2, step: 1, signal }, next)
+    expect(calls).toBe(1)
   })
 })

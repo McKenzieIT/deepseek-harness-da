@@ -302,15 +302,57 @@ export class PhaseGate {
   }
 
   // ── hook 4: agent/request (waterfall) — per-phase reasoning effort (D7) ──
-  /** `agent/request` waterfall hook: override reasoning effort per the current phase (D7) after delegating to downstream. */
+  /**
+   * `agent/request` waterfall hook: override reasoning effort per the current
+   * phase (D7) after delegating to downstream — but ONLY for models that expose
+   * selectable reasoning efforts. A model without a per-request thinking knob
+   * (e.g., `aga` — native AGA, thinking is model-bound, no effort levels)
+   * exposes none; setting `reasoningEffort` for it is rejected by the registry
+   * (`UNSUPPORTED_REASONING_EFFORT`), so the phase-gate skips the per-phase
+   * effort for such models and lets thinking be controlled by model selection
+   * (P2's design). The phase-gate's other per-phase controls (budgets/gates/
+   * persona/whitelists) are unaffected.
+   */
   onRequest = async (
-    { agent }: { agent: Agent; turn: number; step: number; signal: AbortSignal },
+    { agent, signal }: { agent: Agent; turn: number; step: number; signal: AbortSignal },
     next: () => Promise<GenerateOptions>,
   ): Promise<GenerateOptions> => {
     const s = this.state(String(agent.id))
     const base = await next()
+    if (base.provider === undefined || base.model === undefined) return base
+    if (!(await this.modelExposesReasoningEffort(base.provider, base.model, signal))) return base
     const effort = REASONING_EFFORT[s.current_phase] ?? 'medium'
     return { ...base, reasoningEffort: ReasoningEffortId(effort) }
+  }
+
+  /**
+   * provider:model → exposes selectable reasoning efforts? (invariant for
+   * the loaded adapters; cached to keep the request hot path cheap.)
+   */
+  private readonly reasoningEffortSupport = new Map<string, boolean>()
+
+  /**
+   * Whether the proposed model exposes selectable reasoning efforts, per the
+   * LLM registry's resolved model info. `reasoning === undefined` (e.g., `aga` —
+   * native AGA, thinking is model-bound) means no per-request effort knob, so
+   * the phase-gate must not set a `reasoningEffort` the registry would reject.
+   * Cached: a model's reasoning support is invariant for the loaded adapters.
+   */
+  private async modelExposesReasoningEffort(provider: string, model: string, signal: AbortSignal): Promise<boolean> {
+    const key = `${provider} ${model}`
+    const cached = this.reasoningEffortSupport.get(key)
+    if (cached !== undefined) return cached
+    let supports = false
+    try {
+      const info = await this.ctx.llm.resolveModelInfo(provider, model, signal)
+      supports = info.reasoning !== undefined
+    } catch {
+      // Unregistered route, registry miss, or no llm service: be safe and don't
+      // set a reasoningEffort the registry would reject anyway.
+      supports = false
+    }
+    this.reasoningEffortSupport.set(key, supports)
+    return supports
   }
 
   // ── hook 5: system-prompt/assemble — base persona (shadow) + dynamic phase instructions (C) ──
