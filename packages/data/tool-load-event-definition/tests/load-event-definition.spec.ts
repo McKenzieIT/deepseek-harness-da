@@ -43,9 +43,12 @@ const FIXTURE_EVENT: EventDefinition = EventDefinitionSchema.parse({
 })
 
 /** A stub SemanticLayerService that serves one fixture event by name. */
-function stubSchema(known: Record<string, EventDefinition>): { loadEventDefinition: (n: string) => EventDefinition | null } {
+function stubSchema(
+  known: Record<string, EventDefinition>,
+): { loadEventDefinition: (n: string) => EventDefinition | null; semanticRoot: string } {
   return {
     loadEventDefinition: (n: string) => known[n] ?? null,
+    semanticRoot: '',
   }
 }
 

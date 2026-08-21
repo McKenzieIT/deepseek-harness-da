@@ -37,6 +37,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { EventDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import { loadConfig } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
 
 export const name = 'tool-load-event-definition'
 export const inject = ['tools']
@@ -96,6 +97,19 @@ export type EventDimensionRef = {
   readonly dim_table: string
   readonly join_keys: { readonly dws_column: string; readonly dim_column: string }[]
   readonly derivation?: string
+}
+/**
+ * G-DA4 fix (a): the event_view info surfaced from config.yaml — the FROM table,
+ * params extraction SQL template, and base columns. The model needs this to write
+ * `FROM <full_name> WHERE event='...'` and `GET_JSON_OBJECT(params, '$.<field>')`.
+ */
+export type EventViewInfo = {
+  /** The fully-qualified FROM table (e.g. `ieu_ods.ods_10000251_all_view`). */
+  readonly full_name: string
+  /** The params extraction SQL template (e.g. `GET_JSON_OBJECT(params, '$.{field_name}')`). */
+  readonly params_extract_template: string
+  /** Flat list of base column names available in the view. */
+  readonly base_columns: string[]
 }
 /**
  * The model-facing event projection: the SQL-grounding fields the agent reads,
@@ -160,6 +174,8 @@ export interface LoadEventResult {
   readonly found: boolean
   /** The projected event definition when `found`, else omitted. */
   readonly event?: EventModel
+  /** G-DA4: the event_view SQL-grounding info (FROM table + params template) when available. */
+  readonly event_view?: EventViewInfo
   /** A short reason when `!found` (invalid name / not mounted / not found). */
   readonly message?: string
 }
@@ -181,6 +197,42 @@ function sanitizeSubstrateError(e: unknown): string {
     .replace(/\s+/g, ' ')
     .trim()
   return clean.length > 200 ? `${clean.slice(0, 200)}...` : clean
+}
+
+/**
+ * G-DA4 fix (a): extract event_view info from config.yaml. Returns undefined
+ * when config is missing/malformed or has no event_view section. Never throws.
+ * @param semanticRoot - the semantic-layer directory path.
+ * @returns the projected EventViewInfo, or undefined when unavailable.
+ */
+export function extractEventView(semanticRoot: string): EventViewInfo | undefined {
+  if (!semanticRoot) return undefined
+  try {
+    const config = loadConfig(semanticRoot)
+    const ev = config['event_view']
+    if (typeof ev !== 'object' || ev === null) return undefined
+    const evObj = ev as Record<string, unknown>
+    const fullName = typeof evObj['full_name'] === 'string' ? evObj['full_name'] : undefined
+    const template = typeof evObj['params_extract_template'] === 'string' ? evObj['params_extract_template'] : undefined
+    if (!fullName || !template) return undefined
+    // Flatten base_columns from categorized groups to a flat name list.
+    const baseCols: string[] = []
+    const rawCols = evObj['base_columns']
+    if (typeof rawCols === 'object' && rawCols !== null) {
+      for (const group of Object.values(rawCols as Record<string, unknown>)) {
+        if (Array.isArray(group)) {
+          for (const col of group) {
+            if (typeof col === 'object' && col !== null && 'name' in col && typeof (col as Record<string, unknown>)['name'] === 'string') {
+              baseCols.push((col as Record<string, unknown>)['name'] as string)
+            }
+          }
+        }
+      }
+    }
+    return { full_name: fullName, params_extract_template: template, base_columns: baseCols }
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -213,10 +265,33 @@ export function loadEventDefinitionResult(
     if (event === null) {
       return { found: false, message: `event not found: ${JSON.stringify(name)}` }
     }
-    return { found: true, event: projectEvent(event) }
+    // G-DA4 fix (a): surface event_view (FROM table + params template) so
+    // GENERATION can write `FROM <table> WHERE event='...'`.
+    const eventView = extractEventView(schema.semanticRoot)
+    return {
+      found: true,
+      event: projectEvent(event),
+      ...(eventView !== undefined ? { event_view: eventView } : {}),
+    }
   } catch (e) {
     return { found: false, message: `substrate error: ${sanitizeSubstrateError(e)}` }
   }
+}
+
+/**
+ * Format event_view info as readable text for the model (G-DA4).
+ * @param view - the event_view info to format.
+ * @returns a multi-line text block.
+ */
+export function formatEventView(view: EventViewInfo): string {
+  const lines: string[] = []
+  lines.push('event_view:')
+  lines.push(`  from_table: ${view.full_name}`)
+  lines.push(`  params_extract: ${view.params_extract_template}`)
+  if (view.base_columns.length > 0) {
+    lines.push(`  base_columns: ${view.base_columns.join(', ')}`)
+  }
+  return lines.join('\n')
 }
 
 /**
@@ -224,9 +299,10 @@ export function loadEventDefinitionResult(
  * the array projections (no map index access), so it is safe under
  * `noUncheckedIndexedAccess`.
  * @param event - the projected event definition to format.
+ * @param eventView - optional event_view info to append (G-DA4).
  * @returns a multi-line text block the model reads in the tool result.
  */
-export function formatEventDefinition(event: EventModel): string {
+export function formatEventDefinition(event: EventModel, eventView?: EventViewInfo): string {
   const lines: string[] = []
   if (event.name !== undefined) lines.push(`event: ${event.name}`)
   if (event.description !== undefined && event.description !== '') lines.push(`description: ${event.description}`)
@@ -245,13 +321,17 @@ export function formatEventDefinition(event: EventModel): string {
   if (event.metrics !== undefined && event.metrics.length > 0) {
     lines.push('metrics:')
     for (const m of event.metrics) {
-      lines.push(`  - ${m.name}${m.expression !== undefined && m.expression !== '' ? ` = ${m.expression}` : ''}${m.description !== undefined && m.description !== '' ? ` // ${m.description}` : ''}`)
+      const expr = m.expression !== undefined && m.expression !== '' ? ` = ${m.expression}` : ''
+      const desc = m.description !== undefined && m.description !== '' ? ` // ${m.description}` : ''
+      lines.push(`  - ${m.name}${expr}${desc}`)
     }
   }
   if (event.disambiguation !== undefined && event.disambiguation.length > 0) {
     lines.push('disambiguation:')
     for (const d of event.disambiguation) {
-      lines.push(`  - ${d.event}${d.trigger !== undefined && d.trigger !== '' ? ` (${d.trigger})` : ''}${d.distinction !== undefined && d.distinction !== '' ? `: ${d.distinction}` : ''}`)
+      const trig = d.trigger !== undefined && d.trigger !== '' ? ` (${d.trigger})` : ''
+      const dist = d.distinction !== undefined && d.distinction !== '' ? `: ${d.distinction}` : ''
+      lines.push(`  - ${d.event}${trig}${dist}`)
     }
   }
   if (event.external_refs !== undefined && event.external_refs.length > 0) {
@@ -260,6 +340,9 @@ export function formatEventDefinition(event: EventModel): string {
       const keys = d.join_keys.map(k => `${k.dws_column}=${k.dim_column}`).join(', ')
       lines.push(`  - ${d.dim_table} [${keys}]${d.derivation !== undefined && d.derivation !== '' ? ` // ${d.derivation}` : ''}`)
     }
+  }
+  if (eventView !== undefined) {
+    lines.push(formatEventView(eventView))
   }
   return lines.join('\n')
 }
@@ -362,12 +445,21 @@ export function apply(ctx: Context, _config: Config = {}): void {
               },
             },
           },
+          event_view: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              full_name: { type: 'string', required: true },
+              params_extract_template: { type: 'string', required: true },
+              base_columns: { type: 'array', required: true, items: { type: 'string' } },
+            },
+          },
         },
       },
       render: (_args, value) => [{
         type: 'text',
         text: value.found && value.event !== undefined
-          ? formatEventDefinition(value.event)
+          ? formatEventDefinition(value.event, value.event_view)
           : (value.message ?? 'No event definition to display.'),
       }],
     },
