@@ -25,6 +25,7 @@ const FIXTURE_TABLE: TableDefinition = TableDefinitionSchema.parse({
   table_name: 'dws_pay_order_di',
   table_comment: '充值订单汇总表',
   description: 'Per-day pay-order aggregates',
+  domains: ['payment', 'game'],
   kind: 'dws',
   granularity: 'day',
   freshness: 'T+1',
@@ -108,7 +109,7 @@ test('S2 loadTableDefinitionResult - not mounted (schema undefined)', () => {
 test('S3 loadTableDefinitionResult - table not found (substrate returns null)', () => {
   const r = loadTableDefinitionResult(stubSchema({}), 'nope')
   expect(r.found).toBe(false)
-  expect(r.message).toContain('not found')
+  expect(r.message).toBe('table not found: "nope"')
 })
 
 test('S4 loadTableDefinitionResult - hit returns the projected table', () => {
@@ -167,6 +168,8 @@ test('S10 render formats a not-found result as the message', () => {
 test('S11 formatTableDefinition emits columns + partitions + metrics + dimension_refs', () => {
   const text = formatTableDefinition(projectTable(FIXTURE_TABLE))
   expect(text).toContain('table: dws_pay_order_di')
+  expect(text).toContain('domains: payment, game')
+  expect(text).toContain('engine: maxcompute')
   expect(text).toContain('primary_key: dt, game_id')
   expect(text).toContain('  - pay_amount decimal (measure) // 充值金额')
   expect(text).toContain('  - dt string')
@@ -186,4 +189,53 @@ test('S12 projectTable drops workflow-state fields + maps the metrics map to an 
   // columns + partitions preserved
   expect(proj.columns?.length).toBe(3)
   expect(proj.partitions?.length).toBe(1)
+})
+
+test('S13 loadTableDefinitionResult - malformed fixture (name matches, schema fails) -> found:false, no throw', () => {
+  // MAJOR-2: the substrate loadTableDefinition is strict Schema.parse-on-match
+  // (table_name matched but the YAML failed schema validation -> ZodError) and
+  // readdirSync/readFileSync can throw I/O errors. The wrapper must catch and
+  // return a structured found:false with a sanitized message, never crash.
+  const throwing = {
+    loadTableDefinition: (n: string) => {
+      if (n !== 'malformed_table') return null
+      // real ZodError via the substrate schema (name matched, payload invalid)
+      return TableDefinitionSchema.parse({ table_name: 'malformed_table', columns: 'not-an-array' })
+    },
+  } as unknown as Parameters<typeof loadTableDefinitionResult>[0]
+  const r = loadTableDefinitionResult(throwing, 'malformed_table')
+  expect(r.found).toBe(false)
+  expect(r.message).toMatch(/^substrate error:/)
+  expect(r.message).not.toContain('\n') // single line — no raw multi-line ZodError dump
+})
+
+test('S14 validateDefinitionName rejects names over 200 chars (length cap)', () => {
+  expect(validateDefinitionName('a'.repeat(200))).toBe('a'.repeat(200))
+  expect(validateDefinitionName('a'.repeat(201))).toBeNull()
+})
+
+test('S15 projectTable filters empty-string metric keys', () => {
+  const def = TableDefinitionSchema.parse({
+    table_name: 't',
+    metrics: { '': { expression: 'x' }, real: { expression: 'y' } },
+  })
+  const proj = projectTable(def)
+  expect(proj.metrics?.map(m => m.name)).toEqual(['real'])
+})
+
+test('S16 formatTableDefinition renders an empty-type column without trailing space', () => {
+  const def = TableDefinitionSchema.parse({
+    table_name: 't',
+    columns: [{ name: 'c', type: '' }, { name: 'd', type: 'int' }],
+  })
+  const text = formatTableDefinition(projectTable(def))
+  expect(text).toMatch(/  - c\n/)
+  expect(text).not.toMatch(/  - c \n/)
+  expect(text).toMatch(/  - d int/)
+})
+
+test('S17 render - found:false with no message uses the neutral fallback', () => {
+  const def = registerTool()
+  const out = def.output.render({}, { found: false })
+  expect(out[0]?.text).toBe('No table definition to display.')
 })

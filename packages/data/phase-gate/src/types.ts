@@ -124,10 +124,18 @@ export const UNDERSTANDING_TOOLS = Object.freeze([
   'save_accumulated_definition',
   ...UNIVERSAL_TOOLS,
 ] as const)
-/** Tool whitelist for the GENERATION phase (SQL critique and quality evaluation). */
+/** Tool whitelist for the GENERATION phase (SQL critique/quality + schema grounding). */
 export const GENERATION_TOOLS = Object.freeze([
   'critique_sql_tool',
   'evaluate_sql_quality',
+  // MAJOR-1 (review fix): load_* are schema-grounding reads. GENERATION writes
+  // SQL from semantic-layer-grounded fields + the critic harvests
+  // partition_cols / event_params from these calls, so the definitions are
+  // whitelisted here too — not UNDERSTANDING-only (the prior omission made the
+  // tool/README/package descriptions' "UNDERSTANDING/GENERATION" claim an
+  // overclaim). Additive: no phase-gate logic touched, only whitelist entries.
+  'load_table_definition',
+  'load_event_definition',
   ...UNIVERSAL_TOOLS,
 ] as const)
 /** Tool whitelist for the EXECUTION phase (running the SQL query through the Guard Chain). */

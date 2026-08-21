@@ -24,19 +24,17 @@
 # of the preset (`installAgentLlmTarget` seam); phase-gate layers per-phase
 # `reasoningEffort` via the `agent/request` waterfall.
 #
-# The data-agent's model-facing tools (search_data_sources / query_data /
-# load_table_definition / load_event_definition / critique_sql_tool /
-# evaluate_sql_quality / present_*) are rows BELOW, commented out for the
-# same reason the bundle patch comments its data-plugin block: a bare
-# specifier to a not-yet-shipped package breaks `pnpm install` and
-# `verify-cordis-config`. Uncomment each `name:` only after its package ships
-# (P5 retrieval → search_data_sources; P6 semantic-layer → load_*; P4b
-# tool-query → query_data; P13b → critique_sql_tool/evaluate_sql_quality;
-# INTERPRETATION delivery tools → a later ticket). ids and the phase-gate
-# tool whitelists follow the map Decisions so far; package names are TBD per
-# the resolving ticket. phase-gate's guard is forward-compatible — the
-# whitelists name the stable rbi roster, so an unregistered tool is simply
-# uncallable (no model can reach it), not a broken mount.
+# The data-agent's model-facing tools are rows BELOW. Four are shipped +
+# uncommented (search_data_sources / query_data / load_table_definition /
+# load_event_definition); the rest (critique_sql_tool / evaluate_sql_quality
+# / present_*) stay commented placeholders — uncomment each only after its
+# package ships, since a bare specifier to a not-yet-shipped package breaks
+# `pnpm install` and `verify-cordis-config` (P13b → critique_sql_tool /
+# evaluate_sql_quality; INTERPRETATION delivery tools → a later ticket). ids
+# and the phase-gate tool whitelists follow the map Decisions so far.
+# phase-gate's guard is forward-compatible — the whitelists name the stable
+# rbi roster, so an unregistered tool is simply uncallable (no model can
+# reach it), not a broken mount.
 
 # ── phase-gate orchestration (P7b) ───────────────────────────────────────────
 # Per-agent phase state + the 7 event hooks. Entry-local realm: this standing
@@ -58,14 +56,16 @@
         max_state_turns: 20
         stall_watchdog_seconds: 300
 
-# ── data-agent model-facing tools (TODO, uncomment as packages ship) ───────
-# Each row below is a placeholder for a data-agent tool this preset will
-# mount once its package exists. They are commented out because a bare
-# specifier (name: '@deepseek-ai/dsh-<pkg>') to a not-yet-shipped package
-# breaks pnpm install and verify-cordis-config today; uncomment and supply
-# each `name:` only after the package ships. The phase-gate guard whitelists
-# (UNDERSTANDING/GENERATION/EXECUTION/INTERPRETATION_TOOLS) already name
-# these tools, so registering one makes it callable in its phase.
+# ── data-agent model-facing tools (4 shipped + uncommented; placeholders commented) ───────
+# Four tools below are shipped + uncommented (search_data_sources /
+# query_data / load_table_definition / load_event_definition). The remaining
+# rows (critique_sql_tool / evaluate_sql_quality / present_*) are commented
+# placeholders: a bare specifier (name: '@deepseek-ai/dsh-<pkg>') to a
+# not-yet-shipped package breaks pnpm install and verify-cordis-config today;
+# uncomment and supply each `name:` only after the package ships. The
+# phase-gate guard whitelists (UNDERSTANDING/GENERATION/EXECUTION/
+# INTERPRETATION_TOOLS) already name these tools, so registering one makes
+# it callable in its phase.
 #
 - id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item; Bm25Linker Q1 thin default, swap -> ctx.retrieval P5b / ctx.schema P6b)
   name: '@deepseek-ai/dsh-tool-search-data-sources'

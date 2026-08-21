@@ -61,6 +61,8 @@ export function validateDefinitionName(raw: string): string | null {
   // Reject path separators, parent-dir markers, and NUL. A single `.` (current
   // dir) is also rejected; interior dots like `foo.bar` are allowed.
   if (/[/\\\x00]|\.\./.test(trimmed) || trimmed === '.') return null
+  // NIT: bound name length (defense-in-depth against pathological input).
+  if (trimmed.length > 200) return null
   return trimmed
 }
 
@@ -103,6 +105,7 @@ export type TableModel = {
   readonly table_name?: string
   readonly table_comment?: string
   readonly description?: string
+  readonly domains?: string[]
   readonly kind?: string
   readonly granularity?: string
   readonly engine?: string
@@ -127,6 +130,7 @@ export function projectTable(def: TableDefinition): TableModel {
     table_name: def.table_name,
     table_comment: def.table_comment,
     description: def.description,
+    domains: def.domains,
     kind: def.kind,
     granularity: def.granularity,
     engine: def.engine,
@@ -140,11 +144,13 @@ export function projectTable(def: TableDefinition): TableModel {
       ...(c.role !== '' ? { role: c.role } : {}),
     })),
     partitions: def.partitions.map(p => ({ name: p.name, type: p.type })),
-    metrics: Object.entries(def.metrics).map(([name, v]) => ({
-      name,
-      ...(v.expression !== '' ? { expression: v.expression } : {}),
-      ...(v.description !== '' ? { description: v.description } : {}),
-    })),
+    metrics: Object.entries(def.metrics)
+      .filter(([k]) => k !== '')
+      .map(([name, v]) => ({
+        name,
+        ...(v.expression !== '' ? { expression: v.expression } : {}),
+        ...(v.description !== '' ? { description: v.description } : {}),
+      })),
     dimension_refs: def.dimension_refs.map(d => ({
       dim_table: d.dim_table,
       join_keys: d.join_keys.map(k => ({ dws_column: k.dws_column, dim_column: k.dim_column })),
@@ -172,6 +178,23 @@ export interface LoadTableResult {
  * @param tableName - the model-supplied table name to load.
  * @returns `{ found: true, table }` on a hit, or `{ found: false, message }` otherwise.
  */
+/**
+ * Sanitize a substrate error for the model message (MAJOR-2): collapse to a
+ * single line, strip control chars, redact file paths, and bound length. Never
+ * leak the raw stack or a multi-line ZodError dump.
+ * @param e - the thrown substrate error (ZodError on schema-matched-but-invalid, or an I/O error).
+ * @returns a bounded single-line sanitized message.
+ */
+function sanitizeSubstrateError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e)
+  const clean = raw
+    .replace(/[\x00-\x1f\x7f]/g, ' ')
+    .replace(/(?:\/[\w.\-]+)+/g, '<path>')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return clean.length > 200 ? `${clean.slice(0, 200)}...` : clean
+}
+
 export function loadTableDefinitionResult(
   schema: SemanticLayerService | undefined,
   tableName: string,
@@ -183,11 +206,20 @@ export function loadTableDefinitionResult(
   if (schema === undefined) {
     return { found: false, message: 'semantic-layer substrate not mounted (ctx.schema unavailable)' }
   }
-  const table = schema.loadTableDefinition(name)
-  if (table === null) {
-    return { found: false, message: `table not found: ${name}` }
+  // MAJOR-2: the substrate loadTableDefinition is strict Schema.parse-on-match
+  // (table_name matched but the YAML failed schema validation -> ZodError) and
+  // its readdirSync/readFileSync can throw I/O errors. Catch and return a
+  // structured found:false with a sanitized message — never crash the tool
+  // (the "no crash / structured found:false" contract).
+  try {
+    const table = schema.loadTableDefinition(name)
+    if (table === null) {
+      return { found: false, message: `table not found: ${JSON.stringify(name)}` }
+    }
+    return { found: true, table: projectTable(table) }
+  } catch (e) {
+    return { found: false, message: `substrate error: ${sanitizeSubstrateError(e)}` }
   }
-  return { found: true, table: projectTable(table) }
 }
 
 /**
@@ -204,20 +236,28 @@ export function formatTableDefinition(table: TableModel): string {
   }
   if (table.table_comment !== undefined && table.table_comment !== '') lines.push(`comment: ${table.table_comment}`)
   if (table.description !== undefined && table.description !== '') lines.push(`description: ${table.description}`)
+  if (table.domains !== undefined && table.domains.length > 0) lines.push(`domains: ${table.domains.join(', ')}`)
   if (table.granularity !== undefined && table.granularity !== '') lines.push(`granularity: ${table.granularity}`)
   if (table.freshness !== undefined && table.freshness !== '') lines.push(`freshness: ${table.freshness}`)
+  if (table.engine !== undefined && table.engine !== '') lines.push(`engine: ${table.engine}`)
   if (table.primary_key !== undefined && table.primary_key.length > 0) lines.push(`primary_key: ${table.primary_key.join(', ')}`)
   if (table.label_columns !== undefined && table.label_columns.length > 0) lines.push(`label_columns: ${table.label_columns.join(', ')}`)
   if (table.columns !== undefined && table.columns.length > 0) {
     lines.push('columns:')
     for (const c of table.columns) {
-      lines.push(`  - ${c.name} ${c.type}${c.role !== undefined ? ` (${c.role})` : ''}${c.comment !== undefined && c.comment !== '' ? ` // ${c.comment}` : ''}`)
+      // NIT: build type/role/comment conditionally so an empty type yields
+      // `  - name` (no trailing/double space), not `  - name `.
+      const typePart = c.type !== '' ? ` ${c.type}` : ''
+      const rolePart = c.role !== undefined && c.role !== '' ? ` (${c.role})` : ''
+      const commentPart = c.comment !== undefined && c.comment !== '' ? ` // ${c.comment}` : ''
+      lines.push(`  - ${c.name}${typePart}${rolePart}${commentPart}`)
     }
   }
   if (table.partitions !== undefined && table.partitions.length > 0) {
     lines.push('partitions:')
     for (const p of table.partitions) {
-      lines.push(`  - ${p.name} ${p.type}`)
+      const typePart = p.type !== '' ? ` ${p.type}` : ''
+      lines.push(`  - ${p.name}${typePart}`)
     }
   }
   if (table.metrics !== undefined && table.metrics.length > 0) {
@@ -253,31 +293,106 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
     },
     output: {
+      // MINOR-3: declare the full nested `table` shape (mirrors
+      // tool-search-data-sources' closed candidate schema) so the render value
+      // is the precise projection type — the prior `additionalProperties: true`
+      // open object forced an `as unknown as TableModel` cast. The closed
+      // schema also enforces the projection shape at output-validation.
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
           found: { type: 'boolean', required: true },
           message: { type: 'string' },
-          // The `table` value is the typed `TableModel` projection (see
-          // projectTable); the schema declares it as an open object so the
-          // substrate's zod `.loose()` index + required workflow fields never
-          // cross the DSL-typed boundary. The render casts back to `TableModel`.
-          table: { type: 'object', additionalProperties: true },
+          table: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              table_name: { type: 'string' },
+              table_comment: { type: 'string' },
+              description: { type: 'string' },
+              domains: { type: 'array', items: { type: 'string' } },
+              kind: { type: 'string' },
+              granularity: { type: 'string' },
+              engine: { type: 'string' },
+              freshness: { type: 'string' },
+              primary_key: { type: 'array', items: { type: 'string' } },
+              label_columns: { type: 'array', items: { type: 'string' } },
+              columns: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: 'string', required: true },
+                    type: { type: 'string', required: true },
+                    comment: { type: 'string' },
+                    role: { type: 'string' },
+                  },
+                },
+              },
+              partitions: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: 'string', required: true },
+                    type: { type: 'string', required: true },
+                  },
+                },
+              },
+              metrics: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: 'string', required: true },
+                    expression: { type: 'string' },
+                    description: { type: 'string' },
+                  },
+                },
+              },
+              dimension_refs: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    dim_table: { type: 'string', required: true },
+                    join_keys: {
+                      type: 'array',
+                      required: true,
+                      items: {
+                        type: 'object',
+                        additionalProperties: false,
+                        properties: {
+                          dws_column: { type: 'string', required: true },
+                          dim_column: { type: 'string', required: true },
+                        },
+                      },
+                    },
+                    derivation: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       render: (_args, value) => [{
         type: 'text',
         text: value.found && value.table !== undefined
-          ? formatTableDefinition(value.table as unknown as TableModel)
-          : (value.message ?? 'Table not found.'),
+          ? formatTableDefinition(value.table)
+          : (value.message ?? 'No table definition to display.'),
       }],
     },
     async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('load_table_definition aborted before loading')
       }
-      const schema = ctx.get('schema') as SemanticLayerService | undefined
+      const schema = ctx.get('schema')
       return loadTableDefinitionResult(schema, args.table_name)
     },
   }))

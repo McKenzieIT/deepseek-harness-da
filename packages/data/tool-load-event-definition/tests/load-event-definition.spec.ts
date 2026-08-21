@@ -106,7 +106,7 @@ test('S2 loadEventDefinitionResult - not mounted (schema undefined)', () => {
 test('S3 loadEventDefinitionResult - event not found (substrate returns null)', () => {
   const r = loadEventDefinitionResult(stubSchema({}), 'nope')
   expect(r.found).toBe(false)
-  expect(r.message).toContain('not found')
+  expect(r.message).toBe('event not found: "nope"')
 })
 
 test('S4 loadEventDefinitionResult - hit returns the projected event', () => {
@@ -186,4 +186,53 @@ test('S12 projectEvent drops workflow-state fields + maps params_fields/metrics 
   // disambiguation + external_refs preserved as arrays
   expect(proj.disambiguation?.length).toBe(1)
   expect(proj.external_refs?.length).toBe(1)
+})
+
+test('S13 loadEventDefinitionResult - malformed fixture (name matches, schema fails) -> found:false, no throw', () => {
+  // MAJOR-2: the substrate loadEventDefinition is strict Schema.parse-on-match
+  // (name matched but the YAML failed schema validation -> ZodError) and its
+  // readdirSync/readFileSync can throw I/O errors. The wrapper must catch and
+  // return a structured found:false with a sanitized message, never crash.
+  const throwing = {
+    loadEventDefinition: (n: string) => {
+      if (n !== 'malformed_event') return null
+      // real ZodError via the substrate schema (name matched, payload invalid)
+      return EventDefinitionSchema.parse({ name: 'malformed_event', params_fields: 'not-an-object' })
+    },
+  } as unknown as Parameters<typeof loadEventDefinitionResult>[0]
+  const r = loadEventDefinitionResult(throwing, 'malformed_event')
+  expect(r.found).toBe(false)
+  expect(r.message).toMatch(/^substrate error:/)
+  expect(r.message).not.toContain('\n')
+})
+
+test('S14 validateDefinitionName rejects names over 200 chars (length cap)', () => {
+  expect(validateDefinitionName('a'.repeat(200))).toBe('a'.repeat(200))
+  expect(validateDefinitionName('a'.repeat(201))).toBeNull()
+})
+
+test('S15 projectEvent filters empty-string params_fields keys', () => {
+  const def = EventDefinitionSchema.parse({
+    name: 'e',
+    params_fields: { '': { type: 'string' }, real: { type: 'int' } },
+  })
+  const proj = projectEvent(def)
+  expect(proj.params_fields?.map(f => f.name)).toEqual(['real'])
+})
+
+test('S16 formatEventDefinition renders an empty-type param field without trailing space', () => {
+  const def = EventDefinitionSchema.parse({
+    name: 'e',
+    params_fields: { c: { type: '' }, d: { type: 'int' } },
+  })
+  const text = formatEventDefinition(projectEvent(def))
+  expect(text).toMatch(/  - c\n/)
+  expect(text).not.toMatch(/  - c \n/)
+  expect(text).toMatch(/  - d int/)
+})
+
+test('S17 render - found:false with no message uses the neutral fallback', () => {
+  const def = registerTool()
+  const out = def.output.render({}, { found: false })
+  expect(out[0]?.text).toBe('No event definition to display.')
 })

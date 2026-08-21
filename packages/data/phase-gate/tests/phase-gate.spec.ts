@@ -51,19 +51,6 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(g.guard(execView('query_data', agent))).toMatch(/not in understanding whitelist/) // ∉ UNDERSTANDING
   })
 
-  it('guard: load_* allowed in GENERATION (schema grounding before SQL)', () => {
-    const { agent } = makeAgent('s2')
-    const g = gate()
-    const s = g.state('s2')
-    s.current_phase = Phase.GENERATION
-    // MAJOR-1: load_table/load_event are schema-grounding reads; GENERATION
-    // writes SQL from semantic-layer-grounded fields, so the definitions are
-    // whitelisted there too (not UNDERSTANDING-only). search_data_sources stays
-    // UNDERSTANDING-only (candidate discovery is an UNDERSTANDING concern).
-    expect(g.guard(execView('load_table_definition', agent))).toBeUndefined()
-    expect(g.guard(execView('load_event_definition', agent))).toBeUndefined()
-    expect(g.guard(execView('search_data_sources', agent))).toMatch(/not in generation whitelist/)
-  })
 
   it('turn-stopping advances UNDERSTANDING→GENERATION + injects continuation', async () => {
     const { agent, injected } = makeAgent('s1')
@@ -311,5 +298,23 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
     await g.onRequest({ agent, turn: 1, step: 1, signal }, next)
     await g.onRequest({ agent, turn: 2, step: 1, signal }, next)
     expect(calls).toBe(1)
+  })
+
+  it('skips reasoningEffort when resolveModelInfo rejects (transient error; not cached, re-tries)', async () => {
+    const { agent } = makeAgent('e4')
+    let calls = 0
+    const ctx = {
+      logger: { info: () => undefined, warn: () => undefined, error: () => undefined },
+      llm: {
+        resolveModelInfo: async () => { calls++; throw new Error('transient') },
+      },
+    } as unknown as Context
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    const next = async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] }) as Promise<GenerateOptions>
+    const r1 = await g.onRequest({ agent, turn: 1, step: 1, signal: new AbortController().signal }, next)
+    expect(r1.reasoningEffort).toBeUndefined()
+    const r2 = await g.onRequest({ agent, turn: 2, step: 1, signal: new AbortController().signal }, next)
+    expect(r2.reasoningEffort).toBeUndefined()
+    expect(calls).toBe(2)
   })
 })

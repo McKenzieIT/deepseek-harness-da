@@ -62,6 +62,8 @@ export function validateDefinitionName(raw: string): string | null {
   // Reject path separators, parent-dir markers, and NUL. A single `.` (current
   // dir) is also rejected; interior dots like `foo.bar` are allowed.
   if (/[/\\\x00]|\.\./.test(trimmed) || trimmed === '.') return null
+  // NIT: bound name length (defense-in-depth against pathological input).
+  if (trimmed.length > 200) return null
   return trimmed
 }
 
@@ -125,16 +127,20 @@ export function projectEvent(def: EventDefinition): EventModel {
     event_filter: def.event_filter,
     description: def.description,
     domains: def.domains,
-    params_fields: Object.entries(def.params_fields).map(([name, f]) => ({
-      name,
-      type: f.type,
-      ...(f.description !== '' ? { description: f.description } : {}),
-    })),
-    metrics: Object.entries(def.metrics).map(([name, v]) => ({
-      name,
-      ...(v.expression !== '' ? { expression: v.expression } : {}),
-      ...(v.description !== '' ? { description: v.description } : {}),
-    })),
+    params_fields: Object.entries(def.params_fields)
+      .filter(([k]) => k !== '')
+      .map(([name, f]) => ({
+        name,
+        type: f.type,
+        ...(f.description !== '' ? { description: f.description } : {}),
+      })),
+    metrics: Object.entries(def.metrics)
+      .filter(([k]) => k !== '')
+      .map(([name, v]) => ({
+        name,
+        ...(v.expression !== '' ? { expression: v.expression } : {}),
+        ...(v.description !== '' ? { description: v.description } : {}),
+      })),
     disambiguation: def.disambiguation.map(d => ({
       event: d.event,
       ...(d.trigger !== '' ? { trigger: d.trigger } : {}),
@@ -167,6 +173,23 @@ export interface LoadEventResult {
  * @param eventName - the model-supplied event name to load.
  * @returns `{ found: true, event }` on a hit, or `{ found: false, message }` otherwise.
  */
+/**
+ * Sanitize a substrate error for the model message (MAJOR-2): collapse to a
+ * single line, strip control chars, redact file paths, and bound length. Never
+ * leak the raw stack or a multi-line ZodError dump.
+ * @param e - the thrown substrate error (ZodError on schema-matched-but-invalid, or an I/O error).
+ * @returns a bounded single-line sanitized message.
+ */
+function sanitizeSubstrateError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e)
+  const clean = raw
+    .replace(/[\x00-\x1f\x7f]/g, ' ')
+    .replace(/(?:\/[\w.\-]+)+/g, '<path>')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return clean.length > 200 ? `${clean.slice(0, 200)}...` : clean
+}
+
 export function loadEventDefinitionResult(
   schema: SemanticLayerService | undefined,
   eventName: string,
@@ -178,11 +201,20 @@ export function loadEventDefinitionResult(
   if (schema === undefined) {
     return { found: false, message: 'semantic-layer substrate not mounted (ctx.schema unavailable)' }
   }
-  const event = schema.loadEventDefinition(name)
-  if (event === null) {
-    return { found: false, message: `event not found: ${name}` }
+  // MAJOR-2: the substrate loadEventDefinition is strict Schema.parse-on-match
+  // (name matched but the YAML failed schema validation -> ZodError) and its
+  // readdirSync/readFileSync can throw I/O errors. Catch and return a
+  // structured found:false with a sanitized message — never crash the tool
+  // (the "no crash / structured found:false" contract).
+  try {
+    const event = schema.loadEventDefinition(name)
+    if (event === null) {
+      return { found: false, message: `event not found: ${JSON.stringify(name)}` }
+    }
+    return { found: true, event: projectEvent(event) }
+  } catch (e) {
+    return { found: false, message: `substrate error: ${sanitizeSubstrateError(e)}` }
   }
-  return { found: true, event: projectEvent(event) }
 }
 
 /**
@@ -201,7 +233,11 @@ export function formatEventDefinition(event: EventModel): string {
   if (event.params_fields !== undefined && event.params_fields.length > 0) {
     lines.push('params_fields:')
     for (const f of event.params_fields) {
-      lines.push(`  - ${f.name} ${f.type}${f.description !== undefined && f.description !== '' ? ` // ${f.description}` : ''}`)
+      // NIT: build type/description conditionally so an empty type yields
+      // `  - name` (no trailing/double space), not `  - name `.
+      const typePart = f.type !== '' ? ` ${f.type}` : ''
+      const descPart = f.description !== undefined && f.description !== '' ? ` // ${f.description}` : ''
+      lines.push(`  - ${f.name}${typePart}${descPart}`)
     }
   }
   if (event.metrics !== undefined && event.metrics.length > 0) {
@@ -244,31 +280,100 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
     },
     output: {
+      // MINOR-3: declare the full nested `event` shape (mirrors
+      // tool-search-data-sources' closed candidate schema) so the render value
+      // is the precise projection type — the prior `additionalProperties: true`
+      // open object forced an `as unknown as EventModel` cast. The closed
+      // schema also enforces the projection shape at output-validation.
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
           found: { type: 'boolean', required: true },
           message: { type: 'string' },
-          // The `event` value is the typed `EventModel` projection (see
-          // projectEvent); the schema declares it as an open object so the
-          // substrate's zod `.loose()` index + required workflow fields never
-          // cross the DSL-typed boundary. The render casts back to `EventModel`.
-          event: { type: 'object', additionalProperties: true },
+          event: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              name: { type: 'string' },
+              event_filter: { type: 'string' },
+              description: { type: 'string' },
+              domains: { type: 'array', items: { type: 'string' } },
+              params_fields: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: 'string', required: true },
+                    type: { type: 'string', required: true },
+                    description: { type: 'string' },
+                  },
+                },
+              },
+              metrics: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: 'string', required: true },
+                    expression: { type: 'string' },
+                    description: { type: 'string' },
+                  },
+                },
+              },
+              disambiguation: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    event: { type: 'string', required: true },
+                    trigger: { type: 'string' },
+                    distinction: { type: 'string' },
+                  },
+                },
+              },
+              external_refs: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    dim_table: { type: 'string', required: true },
+                    join_keys: {
+                      type: 'array',
+                      required: true,
+                      items: {
+                        type: 'object',
+                        additionalProperties: false,
+                        properties: {
+                          dws_column: { type: 'string', required: true },
+                          dim_column: { type: 'string', required: true },
+                        },
+                      },
+                    },
+                    derivation: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       render: (_args, value) => [{
         type: 'text',
         text: value.found && value.event !== undefined
-          ? formatEventDefinition(value.event as unknown as EventModel)
-          : (value.message ?? 'Event not found.'),
+          ? formatEventDefinition(value.event)
+          : (value.message ?? 'No event definition to display.'),
       }],
     },
     async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('load_event_definition aborted before loading')
       }
-      const schema = ctx.get('schema') as SemanticLayerService | undefined
+      const schema = ctx.get('schema')
       return loadEventDefinitionResult(schema, args.event_name)
     },
   }))

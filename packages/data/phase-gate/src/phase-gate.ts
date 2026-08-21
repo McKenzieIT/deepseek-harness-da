@@ -342,17 +342,18 @@ export class PhaseGate {
     const key = `${provider} ${model}`
     const cached = this.reasoningEffortSupport.get(key)
     if (cached !== undefined) return cached
-    let supports = false
     try {
       const info = await this.ctx.llm.resolveModelInfo(provider, model, signal)
-      supports = info.reasoning !== undefined
+      const supports = info.reasoning !== undefined
+      this.reasoningEffortSupport.set(key, supports)
+      return supports
     } catch {
-      // Unregistered route, registry miss, or no llm service: be safe and don't
-      // set a reasoningEffort the registry would reject anyway.
-      supports = false
+      // Transient failure (signal abort, adapter miss, no llm service): don't
+      // cache -- the next call re-tries. Safe-skip: the registry's prepareCall
+      // re-runs resolveModelInfoFor + surfaces the real error if the model is
+      // genuinely unserviceable, so skipping here never masks a hard failure.
+      return false
     }
-    this.reasoningEffortSupport.set(key, supports)
-    return supports
   }
 
   // ── hook 5: system-prompt/assemble — base persona (shadow) + dynamic phase instructions (C) ──
