@@ -125,6 +125,8 @@
 #     # ── audit (P8) ───────────────────────────────────────────────────────
     - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
       name: '@deepseek-ai/dsh-audit'
+      config:
+        path: !!js dshHomePath('storages/audit/audit.db')
     - id: nl2sql-engine      # ctx.nl2sql seam (NL→SQL engine: BM25 linking + prompt + critic + eval-gate; P13b)
       name: '@deepseek-ai/dsh-nl2sql-engine'
 #     # ── admin + access isolation (P9) ─────────────────────────────────────
