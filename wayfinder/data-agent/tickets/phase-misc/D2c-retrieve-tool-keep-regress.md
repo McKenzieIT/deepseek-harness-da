@@ -28,6 +28,8 @@
 
 **基线（实证佐证 keep，不驱动决策）**：[research/d2c-keep-regress-baseline.md](../../research/d2c-keep-regress-baseline.md) + [prototypes/d2c-retrieve-baseline/](../../prototypes/d2c-retrieve-baseline/)。25 case / 30 corpus，BM25-only strict 84% / loose 96% / ambiguity 32%（stress set）。关键发现：F1 FakeHash hybrid 劣于 BM25-only（68%<84%，默认弱）；F2 FakeReranker 有害（64%，不默认挂）；F3 synonym/implicit miss（人气/消费零 lexical overlap，全配置 MISS——escape-hatch 用武之地）；F5 零分 floor stable-sort 噪声（不可作生产召回估计）；F6 歧义 case 召回系统性低（50-62.5% vs clear 70.6-94.1%）。偏重 stress set 亦未达 regress 门槛（84%<85-90% strict、32%>15% ambiguity）。
 
+**real-RBI 确认（2026-08-21，post-commit）**：reverse-bi（~/workspace/reverse-bi，只读源）可达后重跑真 RBI scope 10000147（1966-event corpus，37 case，31 有 gold）——DEFAULT HYBRID strict **32.3%** / BM25-only 41.9% / ambiguity 21.6%。**default recall 32.3% <<85-90% bar + ambiguity 21.6% >15% → 双判据远未达 → keep (b) decisively confirmed（非 borderline，无 flip）**。主因 F4：events 语义内容在 params_fields，shipped FIELD_WEIGHTS 不索引 → Chinese 问题匹配不上 English event id + 短 description。real 数据强化 keep（非"安全默认"而是"default 32% 严重不足→escape-hatch+real-embedder+params 索引皆必需"）。见 [research §7](../../research/d2c-keep-regress-baseline.md)。
+
 **Follow-ups**：
 - [D2c-impl](D2c-impl-retrieve-tool-shipping.md)（prototype/task）：ship retrieve-tool escape-hatch（additive，`defineTool`+`ctx.tools.register` grounded by P13b `search_data_sources`，persona 教"何时调 retrieve vs 信任预取"，bundle opt-in，**不默认挂 FakeReranker** per F2）。unblocked。
 - [D2c-revisit](D2c-revisit-regress-reeval.md)（grilling）：regress 重访——真 eval 数据复测，达 ≥85-90% strict + <15% ambiguity → regress (a)（若 D2c-impl 已 ship 则 unship）；否则 keep。blocked by G1b。方法论复用见 baseline §6。

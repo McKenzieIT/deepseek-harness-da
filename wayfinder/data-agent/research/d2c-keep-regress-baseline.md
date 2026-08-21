@@ -70,6 +70,29 @@
 - **ambiguity**：问题级 tag（独立于召回）；报 clear/ambig 召回 split。
 - **决策**：真数据测得 strict≥85-90% + ambiguity<15% → regress (a)；否则 keep (b)。负担须由真数据满足。
 
+## 7. real-RBI 确认（2026-08-21，post-commit）
+
+reverse-bi（`~/workspace/reverse-bi`，只读源）可达后，重跑基线于**真 RBI** scope 10000147（1966-event corpus，37 case，31 有 gold）——`prototypes/d2c-retrieve-baseline/run_real_rbi.py`（python port of hybrid.mjs + 解析 reverse-bi eval-cases/rbi-semantic）。**real 数据 decisively 确认 keep (b)**：
+
+| 配置 | strict | loose | ambiguity |
+|---|---|---|---|
+| DEFAULT HYBRID (BM25+FakeHash+RRF) | 10/31=**32.3%** | 32.3% | 8/37=21.6% |
+| BM25-ONLY (降级) | 13/31=41.9% | 41.9% | 21.6% |
+| DEFAULT+FakeReranker | 8/31=25.8% | 25.8% | 21.6% |
+
+**default prefetch recall 32.3% << 85-90% regress bar；ambiguity 21.6% > 15% bar → 双判据远未达 → keep (b) decisively confirmed（非 borderline，无 flip）**。比 synthetic（84%）远低——synthetic 的受控小语料 + 手造 gold/ambiguity 偏松；real RBI 的 1966-event 英文 id 语料 + Chinese 问题 + params 未索引 暴露真缺口。
+
+**findings（real 数据强化 §3）**：
+- **F4 是主因**：events 的语义内容（角色id/战力/充值元宝/付费…）在 `params_fields`，shipped `FIELD_WEIGHTS{id,desc,metric}` **不索引** → Chinese 问题（"角色"/"付费"/"充值"）匹配不上 English event id（role.online/recharge）+ 短 description（"玩家上线"）。例："昨天日活跃角色数"→gold role.online→top5=[summerholiday.bath,summerholiday.repeattower]（"活跃"误匹 "summerholiday"）；"昨天付费的角色"→gold recharge→top5=[anniversary23pay.gacha,...]。**hit 发生的条件**：问题含 English event 名（gr003 "tower.challenge" 直匹）或 description 关键词重叠（"商店购买"→shop.buy 名/描述含 shop+buy）。
+- F1（FakeHash 劣于 BM25-only）：32.3%<41.9%，real 数据复证。
+- F2（FakeReranker 有害）：25.8%<32.3%，复证。
+- F3（synonym/implicit miss）：massive——角色/付费/充值/留存 等 Chinese 业务词与 English event id 零 lexical overlap。
+- F6（歧义 recall 低）：ambiguous-with-gold 50% vs clear 22.2%（注：real RBI 歧义 case 多为 clarify 无 gold，with-gold 歧义仅 4 个，小样本）。
+
+**决策影响**：real 数据**强化** keep (b)——不是"安全默认 keep"，而是"default prefetch 在真 RBI 上 32% 严重不足 → escape-hatch (b) + real-embedder 升级 + params 索引（P6b ctx.schema richer fields）皆必需"。regress 门槛远未达 → committed 决策不动（无 amend-flip）。
+
+**对 D2c-revisit**：source 改 reverse-bi（eval-cases/ + rbi-semantic），不再依赖 G1b 建 case 集。D2c-revisit 测**升级后**的 default——real embedder（InfinityEmbedder sidecar）+ params_fields 索引（修 F4）+ 可选 synonyms/terminology bridging——看 recall 能否升到 ≥85-90%（regress 的真实门槛测试）。本 32.3% 是 shipped-logic 无升级 baseline。
+
 ## 核验透明度
 
 - **算法**：verbatim 复刻 shipped `packages/{embedder,retrieval}/`（`tokenize`/`hashVec`/`InferenceError`/`BM25Okapi`/`rrfFuse`/`cosine`/`buildCorpus`/`HybridRetriever`/`FakeHash`/`FakeReranker`），shipped 33/33 spec 验逻辑；harness 仅重跑同算法 over synthetic corpus。

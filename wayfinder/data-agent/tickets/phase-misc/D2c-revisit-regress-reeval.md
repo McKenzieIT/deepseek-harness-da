@@ -1,20 +1,22 @@
-# D2c-revisit — regress-to-(a) 重访（真 eval 数据）
+# D2c-revisit — regress-to-(a) 重访（真 eval 数据，升级后 retrieval）
 
 **Type**: grilling
 **Phase**: misc
-**Status**: Blocked by G1b（真 RBI case 集——载体属后续 build；G1b 状态随并发会话演变）+ 可选真 embedder（用户自部署 sidecar，map Not-yet-specified「intranet 重 embedder 部署形态」）
-**Graduated from**: [D2c](D2c-retrieve-tool-keep-regress.md)（resolved 2026-08-21，决策=keep (b)、regress 延后到真数据）——regress re-eval 的 deferred 条件毕业成票。
+**Status**: Blocked by real embedder 部署（用户自部署 sidecar，map 雾「intranet 重 embedder 部署形态」）+ params_fields 索引升级（P6b ctx.schema richer field weights / retrieval follow-up——修 F4）。**reverse-bi 可达**（~/workspace/reverse-bi：eval-cases/ + libs/rbi-semantic）→ case 集/corpus 数据不再阻塞（已用于 shipped-logic baseline，见下）。
+**Graduated from**: [D2c](D2c-retrieve-tool-keep-regress.md)（resolved 2026-08-21，决策=keep (b)、regress 延后到真 eval 数据）——regress re-eval 的 deferred 条件毕业成票。
 
-**Question**: 用真 eval 数据（G1b 真 RBI 161 case 集 + 可选真 embedder sidecar）重测确定性预取召回 + 歧义，达 ≥85-90% strict + <15% ambiguity → regress (a) pipeline-only（砍 retrieve-tool——若 [D2c-impl](D2c-impl-retrieve-tool-shipping.md) 已 ship 则 unship）；否则 keep (b)（不可逆锁定或再延）。
+**Question**: 用升级后 retrieval（real embedder + params 索引 + 可选 synonyms/terminology）在真 RBI 上重测确定性预取召回 + 歧义，达 ≥85-90% strict + <15% ambiguity → regress (a) pipeline-only（砍 retrieve-tool——若 [D2c-impl](D2c-impl-retrieve-tool-shipping.md) 已 ship 则 unship）；否则 keep (b)。
 
-**Design（方法论复用 [research/d2c-keep-regress-baseline.md](../../research/d2c-keep-regress-baseline.md) §6）**：
-- **corpus**：真 RBI 语义层 531 entries（经 P6b `ctx.schema`，**含 params_fields**——修 baseline F4 事件字段未索引）。
-- **cases**：RBI 161 真 case，gold 表从 RBI 原 SQL 派生（da-fresh `EvalCase` 砍了 `sql`/`sql_steps`，须回 reverse-bi 源取）；按 G1 七意图 + 线性/迭代分层 ~30 子集（与 G1b case 集对齐/复用）；ambiguity 逐 case 标注（问题级，独立于召回）。
-- **embedder**：① BM25-only（默认 baseline）② 真 embedder（用户自部署 `InfinityEmbedder` sidecar 跑 bge-m3/Qwen3-Embedding）③ 真 reranker（TEI/infinity）——测真 hybrid 升级潜力（baseline F1 证 FakeHash 默认弱、真 embedder 才是 hybrid 价值）。
-- **recall**：strict(all-gold-in-topK) / loose(any) / coverage 三报；**处理零分 floor**（baseline F5：非零分才计 hit 或 score 阈值，免 stable-sort 侥幸）。
-- **ambiguity**：问题级 tag（独立于召回）；报 clear/ambig 召回 split（baseline F6 证歧义召回系统性低）。
-- **决策**：真数据测得 strict≥85-90% + ambiguity<15% → regress (a)；否则 keep (b)。负担须由真数据满足（per D2c 非对称论证——regress 删能力需强证据）。
+**已跑 shipped-logic baseline（2026-08-21，[research §7](../../research/d2c-keep-regress-baseline.md)）**：reverse-bi scope 10000147（1966-event corpus，37 case，31 有 gold），DEFAULT HYBRID strict **32.3%** / BM25-only 41.9% / ambiguity 21.6%——**双判据远未达 regress 门槛（32.3%<<85-90%、21.6%>15%）→ keep (b) decisively confirmed**。主因 F4：events 语义内容在 params_fields，shipped FIELD_WEIGHTS{id,desc,metric} 不索引 → Chinese 问题匹配不上 English event id + 短 description。本 32.3% 是 shipped-logic 无升级 baseline；D2c-revisit 测**升级后**能否达门槛。
 
-**Blocked by**: G1b（真 RBI case 集——载体属后续 build；G1b 状态随并发会话演变）+ 可选真 embedder（用户自部署 sidecar，map 雾「intranet 重 embedder 部署形态」；BM25-only 真数据重访不强依赖真 embedder，真 embedder 为 hybrid 升级信号）。
+**Design（方法论复用 [research §6](../../research/d2c-keep-regress-baseline.md) + §7）**：
+- **corpus**：reverse-bi `resources/semantic-layer/<scope>/events/**/*.yaml`（~1966/scope）经 P6b `ctx.schema`，**含 params_fields**（修 F4——events 语义内容角色/付费/充值在 params，须索引）+ domains + 可选 synonyms/terminology bridging。
+- **cases**：reverse-bi `eval-cases/<scope>/eval_*.yaml`（37-49/scope，5 scope）；gold 从 `expected.sql` 的 `event='X'` 派生（da-fresh EvalCase 砍了 sql，但 reverse-bi 原 EvalCase v3 有 sql）；ambiguity = `dimensions.ambiguity_type`（schema-tagged，objective）；stratify by `query_intent`(7) + `sql_complexity`(L1-L4)。
+- **embedder**：① BM25-only（默认 baseline——已测 32.3%）② 真 embedder（用户自部署 `InfinityEmbedder` sidecar 跑 bge-m3/Qwen3-Embedding）③ 真 reranker（TEI/infinity）——测真 hybrid 升级（baseline F1 证 FakeHash 默认弱）。
+- **recall**：strict/loose/coverage 三报；**处理零分 floor**（§5 F5：非零分才计 hit，免 stable-sort 侥幸）。
+- **ambiguity**：`dimensions.ambiguity_type != 'none'`（schema-tagged，objective，已用）。
+- **决策**：升级后真数据测得 strict≥85-90% + ambiguity<15% → regress (a)；否则 keep (b)。负担须由真数据满足（per D2c 非对称论证）。
 
-**关联**: [D2c](D2c-retrieve-tool-keep-regress.md) resolved（keep (b)，regress 延后至此）；[D2c-impl](D2c-impl-retrieve-tool-shipping.md)（若已 ship retrieve-tool，regress 须 unship）；G1b（真 case 集载体，unclaimed）；P6b（`ctx.schema` 真 corpus）；T2（AGA 无 embeddings → 真 embedder 须用户自部署 sidecar）。
+**Blocked by**: real embedder 部署（用户 ops，map 雾「intranet 重 embedder 部署形态」）+ params_fields 索引升级（P6b ctx.schema richer fields / retrieval follow-up 修 F4）。reverse-bi 数据可达（不阻）。
+
+**关联**: [D2c](D2c-retrieve-tool-keep-regress.md) resolved（keep (b) decisively confirmed by real data §7，regress 延后至此）；[D2c-impl](D2c-impl-retrieve-tool-shipping.md)（若已 ship retrieve-tool，regress 须 unship）；reverse-bi（~/workspace/reverse-bi，只读源：eval-cases/ + libs/rbi-semantic）；P6b（ctx.schema richer fields 修 F4）；T2（AGA 无 embeddings → 真 embedder 须用户自部署 sidecar）。
