@@ -138,3 +138,120 @@
   shipped code.
 - **Probe**: `prototypes/d2c-retrieve-baseline/probe_hypotheses.py` (commit
   f4addb12c9); run `cd ~/workspace/reverse-bi && uv run python <path>`.
+
+## 2026-08-21 — D2g larger-case-set re-test (term-only / topK robustness)
+
+- **Setup**: reverse-bi ALL 5 scopes (10000147 + 10000251 + 10000312 + 10000329 +
+  10000334) = 4217-event corpus (1966 + 446 + 1468 + 314 + 23), 205 eval cases
+  (37 + 49 + 47 + 48 + 24), **113 with-derivable-gold** (31 + 18 + 25 + 18 + 21;
+  gold derived from `expected.sql` `event='X'` + `event IN (...)` — same method
+  as D2e/D2c). Probe extension =
+  `prototypes/d2c-retrieve-baseline/d2g_larger_caseset.py`
+  — copies the faithful `Bm25Linker` port from `probe_hypotheses.py`
+  `main_linker_fidelity` (CJK unigram+bigram tokenizer, BM25Okapi k1=1.5/b=0.75,
+  Lucene idf `log(1+(n-d+0.5)/(d+0.5))`, `score>0` filter, FIELD_WEIGHTS
+  `{name:3,description:1}`, metric×1) + the variant builders (pack-into-description
+  ×1) + gold derivation, generalized to a per-scope `scope` arg + aggregate.
+  Variants: base / +params_fields / +terminology (term-only) / params+term (pack
+  ×1, the shipped D2e form) + topK sweep (5/10/20/30) on base/term/params+term —
+  all BM25-only on the REAL Bm25Linker default (NOT the §7 HybridRetriever port).
+  Goal: settle whether D2e's term-only 64.5%-vs-48.4% cross-tokenizer flip was
+  31-case noise or a robust signal, and whether topK tuning changes it.
+
+- **Results** (Bm25Linker / BM25-only; per-scope topK=5):
+
+  | variant | scope | strict | loose | coverage |
+  |---|---|---|---|---|
+  | base | 10000147 | 13/31=41.9% | 41.9% | 41.9 |
+  | params | 10000147 | 16/31=51.6% | 51.6% | 51.6 |
+  | term | 10000147 | 20/31=64.5% | 64.5% | 64.5 |
+  | params+term | 10000147 | 17/31=54.8% | 58.1% | 56.5 |
+  | base | 10000251 | 13/18=72.2% | 72.2% | 72.2 |
+  | params | 10000251 | 72.2% | 72.2% | 72.2 |
+  | term | 10000251 | 15/18=83.3% | 88.9% | 86.1 |
+  | params+term | 10000251 | 83.3% | 83.3% | 83.3 |
+  | base | 10000312 | 17/25=68.0% | 68.0% | 68.0 |
+  | params | 10000312 | 68.0% | 68.0% | 68.0 |
+  | term | 10000312 | 19/25=76.0% | 76.0% | 76.0 |
+  | params+term | 10000312 | 68.0% | 68.0% | 68.0 |
+  | base | 10000329 | 15/18=83.3% | 88.9% | 86.1 |
+  | params | 10000329 | 13/18=72.2% | 72.2% | 72.2 |
+  | term | 10000329 | 17/18=94.4% | 94.4% | 94.4 |
+  | params+term | 10000329 | 83.3% | 88.9% | 86.1 |
+  | base | 10000334 | 13/21=61.9% | 71.4% | 67.9 |
+  | params | 10000334 | 61.9% | 71.4% | 67.9 |
+  | term | 10000334 | 16/21=76.2% | 85.7% | 82.2 |
+  | params+term | 10000334 | 61.9% | 71.4% | 67.9 |
+
+  Aggregate (all 5 scopes, topK=5, 113 gold — D2e had 31):
+
+  | variant | strict | loose | coverage |
+  |---|---|---|---|
+  | base | 71/113=62.8% | 74/113=65.5% | 64.4 |
+  | +params_fields | 72/113=63.7% | 65.5% | 64.8 |
+  | +terminology (term-only) | **87/113=77.0%** | **90/113=79.6%** | 78.6 |
+  | params+term (pack ×1, shipped) | 77/113=68.1% | 81/113=71.7% | 70.1 |
+
+  topK sweep (aggregate):
+
+  | variant | topK | strict | loose |
+  |---|---|---|---|
+  | base | 5 | 62.8% | 65.5% |
+  | base | 10 | 70.8% | 75.2% |
+  | base | 20 | 77.9% | 81.4% |
+  | base | 30 | 78.8% | 84.1% |
+  | term | 5 | 77.0% | 79.6% |
+  | term | 10 | 82.3% | 85.8% |
+  | term | 20 | **85.0%** | **87.6%** |
+  | term | 30 | 85.8% | 89.4% |
+  | params+term | 5 | 68.1% | 71.7% |
+  | params+term | 10 | 78.8% | 83.2% |
+  | params+term | 20 | 81.4% | 85.8% |
+  | params+term | 30 | 81.4% | 86.7% |
+
+  Per-case strict flips (term vs params+term, topK=5): term-only gained 13,
+  params+term-only gained 3 (net term +10). term-only's gains are CJK-synonym
+  bridges (道具产出→item.add, 道具消耗→item.use, 商城购买→shop.buy, 道具变动
+  →game.item.change, 创角→game.role.create, 死亡→game.role.die) that
+  params+term's extra param-field text dilutes via BM25 tf-saturation + length
+  normalization. params+term's 3 gains are where the param field name itself
+  disambiguates (user.login, recharge, dungeon.enter).
+
+- **Verdict**: **(A) term-only ROBUST — the D2e flip was NOT 31-case noise.**
+  On 113 gold cases (3.6x), term-only beats params+term by +8.9pp strict /
+  +7.9pp loose at topK=5; term-only wins or ties strict in all 5 scopes; the gap
+  persists at every topK (narrows from +8.9pp@5 to +3.6pp@20 but never reverses);
+  net per-case flips +10. term-only is the higher-recall enrichment form on the
+  shipped Bm25Linker (unigram+bigram) path. topK=20 still helps all variants
+  (base +15.1pp; term +8.0pp; params+term +13.3pp) — term@topK=20 = 85.0/87.6 is
+  the best overall. **D2e's shipped decision (params+term) is NOT reversed** —
+  params+term stays shipped for its cross-tokenizer floor robustness (term-only
+  was NOT re-measured on the §7 bigram-only port at scale, per the ticket's
+  "real-default-only" scope; the 48.4% §7 flip remains untested at 113 cases).
+  But a future build ticket is warranted: make term-only a selectable enrichment
+  form and/or raise default topK toward 20, since on the actual shipped tokenizer
+  term-only is robustly higher-recall. Mechanism = same as D2e's ×3-weighting-
+  hurts-loose finding: param-field text dilutes the terminology-slang CJK-synonym
+  bridge via BM25 tf-saturation + length normalization.
+
+- **Fidelity**: faithful Bm25Linker port (CJK unigram+bigram, `log(1+x)` idf,
+  `score>0`, `{name:3,desc:1,metric×1}`); the 10000147 per-scope row reproduces
+  the D2e-audited numbers EXACTLY (base 41.9 / params 51.6 / term 64.5 /
+  params+term 54.8-strict-58.1-loose), confirming port fidelity. Probe =
+  `prototypes/d2c-retrieve-baseline/d2g_larger_caseset.py` (copies the port +
+  variant builders + gold derivation verbatim from `probe_hypotheses.py`
+  `main_linker_fidelity`, generalized to a per-scope `scope` arg + aggregate; BM25
+  index built once per (scope,variant) and reused across the topK sweep —
+  bit-identical to rebuilding since `search()` takes topK as a param). Multi-scope
+  caveat: terminology.yaml coverage differs per scope (events-with-slang: 15/6/
+  26/6/3 for scopes 10000147/10000251/10000312/10000329/10000334; 0.8%-13% of each
+  scope's event corpus) — term-only's benefit scales with coverage but is positive
+  in all 5 scopes. Slang injection is per-scope only (no cross-scope bleed),
+  mirroring how the shipped Bm25Linker consumes a per-scope corpus feed. NOT
+  re-measured: the §7 HybridRetriever bigram-only port (the 48.4% flip number) —
+  all variants here are BM25-only on the REAL default, per the ticket.
+
+- **Pointer**: [D2g](../tickets/phase-misc/D2g-corpus-recall-larger-caseset-retest.md)
+  (resolve); probe = `prototypes/d2c-retrieve-baseline/d2g_larger_caseset.py`;
+  run `cd ~/workspace/reverse-bi && uv run python <path>`. Supersedes the D2e
+  term-only/topK open question; D2e's params+term decision stands.
