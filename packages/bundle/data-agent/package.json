@@ -39,6 +39,7 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-llm-dashscope": "workspace:^",

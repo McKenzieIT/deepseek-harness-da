@@ -84,6 +84,13 @@
     - id: identity
       name: '@deepseek-ai/dsh-identity'
 
+# ── agent presets (data-agent profile doesn't mount agent-presets by default; the bundle mounts it + selects data-agent so --profile headless --patch this bundle auto-loads the data-agent preset + tools + persona)
+- insert:
+    - id: agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: data-agent
+
 # ── data capability plugins (additive mounts; TODO, filled by P4-P11) ───────
 # Each row below is a placeholder for a data capability plugin this bundle
 # will mount once its package exists. They are commented out because a bare
