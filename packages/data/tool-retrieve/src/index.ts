@@ -52,13 +52,15 @@ export const inject = ['tools']
 
 /** Configuration for the retrieve tool. */
 export interface Config {
-  /** Default candidate count when the call omits `top_k` (parity with search_data_sources). */
+  /** Default candidate count when the call omits `top_k` (D2h: raised 5→20,
+   * parity with search_data_sources — topK=20 helps all corpus variants per
+   * the D2g 113-gold sweep). */
   readonly topK?: number
 }
 
 /** Runtime configuration schema for the retrieve tool. */
 export const Config: z<Config> = z.object({
-  topK: z.number().default(5),
+  topK: z.number().default(20),
 })
 
 /** A ranked candidate returned to the model (mirrors search_data_sources' SearchHit). */
@@ -146,7 +148,7 @@ function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
-  const defaultTopK = config.topK ?? 5
+  const defaultTopK = config.topK ?? 20
   // Q1-thin default: empty corpus until `ctx.schema` mounts. With no corpus,
   // BM25 returns no candidates — callable but unwired, not a broken mount
   // (mirrors search_data_sources).
@@ -169,7 +171,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       },
       top_k: {
         type: 'number',
-        description: 'Maximum number of candidate data sources to return. Defaults to 5.',
+        description: 'Maximum number of candidate data sources to return. Defaults to 20.',
       },
     },
     output: {

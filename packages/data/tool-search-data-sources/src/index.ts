@@ -37,13 +37,15 @@ export const inject = ['tools']
 
 /** Configuration for the search_data_sources tool. */
 export interface Config {
-  /** Default candidate count when the call omits `top_k` (P13b engine default 5). */
+  /** Default candidate count when the call omits `top_k` (D2h: raised 5→20 —
+   * topK=20 helps all corpus variants per the D2g 113-gold sweep: base
+   * 62.8→77.9, term-only 77.0→85.0, params+term 68.1→81.4 strict). */
   readonly topK?: number
 }
 
 /** Runtime configuration schema for the search_data_sources plugin. */
 export const Config: z<Config> = z.object({
-  topK: z.number().default(5),
+  topK: z.number().default(20),
 })
 
 /** A ranked candidate data source returned to the model. */
@@ -145,7 +147,7 @@ function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
-  const defaultTopK = config.topK ?? 5
+  const defaultTopK = config.topK ?? 20
   // Q1 thin default: empty corpus until P6b `ctx.schema` ships. With no
   // corpus, BM25 returns no candidates - callable but unwired, not a broken
   // mount. Swap to ctx.schema.discover when P6b ships.
@@ -167,7 +169,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       },
       top_k: {
         type: 'number',
-        description: 'Maximum number of candidate data sources to return. Defaults to 5.',
+        description: 'Maximum number of candidate data sources to return. Defaults to 20.',
       },
     },
     output: {

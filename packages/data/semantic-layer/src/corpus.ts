@@ -122,25 +122,48 @@ function paramsText(paramsFields: Readonly<Record<string, { readonly description
   return out.join(' ')
 }
 
+/** D2h (2026-08-21): the enrichment variant — which slices of each event pack
+ * into the indexed `description`. `params+term` (default, the D2e-shipped form)
+ * packs the event description + params_fields (field name + desc) + terminology
+ * slang; `term-only` packs the event description + terminology slang ONLY
+ * (drops params_fields — the D2g verdict (A) higher-recall form on the shipped
+ * Bm25Linker: 77.0% strict vs params+term 68.1% on 113 gold; best
+ * term@topK=20 = 85.0%). `params-only` is NOT shipped (D2g measured it 63.7%
+ * strict, strictly worse than params+term 68.1% + degenerate with
+ * params+term-on-no-slang); a future ticket can add it as a non-breaking enum
+ * extension. The variant is a mount-time SemanticLayerConfig choice (not
+ * mid-session); switching it remounts the Service (new WeakMap key -> fresh
+ * enriched linker), so it is NOT part of the D2f corpusVersion cache key. */
+export type CorpusVariant = 'params+term' | 'term-only'
+
 /**
  * Build an enriched retrieval corpus from semantic-layer events + terminology.
- * Each item's `description` packs the event description + params_fields (field
- * name + field description) + terminology slang (pack-into-description, ×1 —
- * the probe's measured-best form). `domain` is NOT indexed. The original event
- * is carried as `payload` (so a hit can surface the short description + fields).
+ * Each item's `description` packs the event description + terminology slang;
+ * `params+term` (default, the D2e-shipped measured-best form) ALSO packs
+ * params_fields (field name + field description). `term-only` drops
+ * params_fields (the D2g verdict (A) higher-recall form — param-field text
+ * dilutes the CJK-synonym slang bridge via BM25 tf-saturation + length norm).
+ * `domain` is NOT indexed (probe refuted it). The original event is carried as
+ * `payload` (so a hit can surface the short description + fields).
  * @param events - the events to project (RawEvent.raw / EventDefinition subset).
  * @param terminology - event -> slang aliases (from `parseTerminology`).
+ * @param variant - which slices to pack: 'params+term' (default, shipped) or 'term-only'.
  * @returns corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
  */
 export function buildRetrievalCorpus(
   events: readonly EventCorpusInput[],
   terminology: EventTerminology,
+  variant: CorpusVariant = 'params+term',
 ): readonly EventCorpusItem[] {
   return events.map((ev) => {
     const parts: string[] = []
     if (ev.description) parts.push(ev.description)
-    const pt = paramsText(ev.params_fields)
-    if (pt) parts.push(pt)
+    // D2h: term-only drops the params_fields slice (the D2g higher-recall form);
+    // params+term (default) packs it (the D2e-shipped form).
+    if (variant !== 'term-only') {
+      const pt = paramsText(ev.params_fields)
+      if (pt) parts.push(pt)
+    }
     const slangs = terminology[ev.name]
     if (slangs) for (const s of slangs) parts.push(s)
     return {

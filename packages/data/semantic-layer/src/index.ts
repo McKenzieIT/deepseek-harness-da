@@ -43,7 +43,7 @@ import {
   type Tier2Recorder,
 } from './io.ts'
 import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
-import type { EventCorpusItem } from './corpus.ts'
+import type { CorpusVariant, EventCorpusItem } from './corpus.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
@@ -80,6 +80,7 @@ export { submit, load as loadPending, listing, discard, isValidId, type PendingS
 export {
   buildRetrievalCorpus,
   parseTerminology,
+  type CorpusVariant,
   type EventCorpusItem,
   type EventCorpusInput,
   type EventTerminology,
@@ -107,6 +108,11 @@ export interface SemanticLayerConfig {
   readonly semanticRoot?: string
   /** Default scope id for Tier-2 audit + schema discovery. */
   readonly scopeId?: string
+  /** D2h: enrichment variant — 'params+term' (default, D2e-shipped) or
+   * 'term-only' (D2g verdict (A) higher-recall). Mount-time config; switching
+   * it remounts the Service (new WeakMap key -> fresh enriched linker), so it
+   * is NOT part of the D2f corpusVersion cache key. */
+  readonly corpusVariant?: CorpusVariant
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -125,6 +131,7 @@ export class SemanticLayerService extends Service {
   static Config: z<SemanticLayerConfig> = z.object({
     semanticRoot: z.string().default(''),
     scopeId: z.string().default(''),
+    corpusVariant: z.union(['params+term', 'term-only'] as const).default('params+term'),
   })
 
   private readonly cfg: SemanticLayerConfig
@@ -153,6 +160,11 @@ export class SemanticLayerService extends Service {
     return this.cfg.scopeId ?? ''
   }
 
+  /** D2h: the enrichment variant (mount-time config); 'params+term' (D2e-shipped) by default. */
+  get corpusVariant(): CorpusVariant {
+    return this.cfg.corpusVariant ?? 'params+term'
+  }
+
   // ── substrate definitions (P13b swap target: params_fields / partitions) ──
   /**
    * Load a validated event definition by name from the substrate.
@@ -176,7 +188,10 @@ export class SemanticLayerService extends Service {
    * D2e (2026-08-21): build an enriched retrieval corpus from the substrate —
    * each event's `params_fields` (field name + description) + `terminology`
    * slang packed into the indexed `description`; `domain` is NOT indexed
-   * (probe refuted it). This is the corpus feed the real-default prefetch path
+   * (probe refuted it). D2h: the `corpusVariant` mount-time config selects the
+   * slices — 'params+term' (default, shipped) packs params_fields + slang;
+   * 'term-only' (D2g verdict (A) higher-recall) packs slang only, dropping
+   * params_fields. This is the corpus feed the real-default prefetch path
    * (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when
    * `ctx.schema` is unmounted (bundle opt-in), the tool's corpus stays empty
    * (current behavior) — enrichment activates on mount. Empty `semanticRoot`
@@ -184,7 +199,7 @@ export class SemanticLayerService extends Service {
    * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
    */
   loadRetrievalCorpus(): readonly EventCorpusItem[] {
-    return loadRetrievalCorpusFromLayer(this.semanticRoot)
+    return loadRetrievalCorpusFromLayer(this.semanticRoot, this.corpusVariant)
   }
 
   /**

@@ -184,3 +184,23 @@ test('S10 execute rebuilds the enriched linker after a schema corpus-version bum
   const out2 = await def.execute({ query: '购买' }, exec)
   expect(out2.candidates.find(c => c.id === 'shop.buy')).toBeDefined()
 })
+
+test('S11 execute applies the default topK=20 when top_k omitted (D2h 5→20 raise)', async () => {
+  // 25 candidates all match 充值; the D2h default topK=20 must cap the count
+  // at 20 (not 5 — the pre-D2h default — and not unbounded). Proves the 5→20
+  // default change took effect on the shipped execute path.
+  const mockSchema = {
+    loadRetrievalCorpus: () => Array.from({ length: 25 }, (_, i) => ({
+      id: `evt.${i}`, description: `充值 ${i}`, metrics: {},
+    })),
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? mockSchema : undefined),
+  } as unknown as Context
+  apply(ctx, {}) // no config.topK -> default 20
+  if (def === undefined) throw new Error('apply did not register a tool')
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect(out.candidates.length).toBe(20)
+})

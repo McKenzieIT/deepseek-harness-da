@@ -27,6 +27,7 @@ import {
 import {
   buildRetrievalCorpus,
   parseTerminology,
+  type CorpusVariant,
   type EventCorpusInput,
   type EventCorpusItem,
 } from './corpus.ts'
@@ -300,9 +301,15 @@ function eventCorpusInput(e: RawEvent): EventCorpusInput {
  * `ctx.schema` is unmounted (bundle opt-in), the tool's corpus stays empty
  * (current behavior) — enrichment activates on mount.
  * @param semanticLayer - the semantic-layer directory path (with `events/` + `terminology.yaml`).
+ * @param variant - which slices to pack: 'params+term' (default, the D2e-shipped
+ *   form) or 'term-only' (the D2g verdict (A) higher-recall form — drops
+ *   params_fields). Mount-time config (see CorpusVariant).
  * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
  */
-export function loadRetrievalCorpus(semanticLayer: string): readonly EventCorpusItem[] {
+export function loadRetrievalCorpus(
+  semanticLayer: string,
+  variant: CorpusVariant = 'params+term',
+): readonly EventCorpusItem[] {
   // Lenient: an unreadable `events/` scan or a corrupt `terminology.yaml`
   // degrades INDEPENDENTLY (empty events / empty glossary) — neither loses the
   // other, and the tool stays callable-but-unwired (mirrors the lenient
@@ -319,7 +326,9 @@ export function loadRetrievalCorpus(semanticLayer: string): readonly EventCorpus
   } catch {
     // corrupt terminology.yaml -> empty glossary (events still indexed)
   }
-  return buildRetrievalCorpus(events, terminology)
+  // D2h: pass the variant through to buildRetrievalCorpus (term-only drops the
+  // params_fields slice; default params+term is the D2e-shipped form).
+  return buildRetrievalCorpus(events, terminology, variant)
 }
 function findEventPath(semanticLayer: string, name: string): string | null {
   const eventsDir = join(semanticLayer, 'events')

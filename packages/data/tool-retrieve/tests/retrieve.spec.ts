@@ -150,3 +150,17 @@ test('R11 execute applies the config topK default when top_k omitted', async () 
   expect(out.candidates.length).toBeGreaterThanOrEqual(1)
   expect(out.candidates.length).toBeLessThanOrEqual(3)
 })
+
+test('R12 execute applies the default topK=20 when top_k omitted (D2h 5→20 raise, parity with search_data_sources)', async () => {
+  // 25 candidates all match 充值; the D2h default topK=20 caps at 20 (not 5 —
+  // the pre-D2h default). Proves the 5→20 default change took effect on the
+  // shipped retrieve escape-hatch execute path (parity with search_data_sources).
+  const mockSchema = {
+    loadRetrievalCorpus: () => Array.from({ length: 25 }, (_, i) => ({
+      id: `evt.${i}`, description: `充值 ${i}`, metrics: {},
+    })),
+  }
+  const def = registerTool(key => (key === 'schema' ? mockSchema : undefined))
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect(out.candidates.length).toBe(20)
+})

@@ -251,3 +251,105 @@ test('SemanticLayerService.corpusVersion() reflects invalidateCaches(semanticRoo
   invalidateCaches(layer)
   expect(svc.corpusVersion()).toBe(before + 1)
 })
+
+// D2h corpus variant (selectable enrichment form): buildRetrievalCorpus takes a
+// variant — 'params+term' (default, D2e-shipped: desc + params_fields + slang)
+// or 'term-only' (D2g verdict (A) higher-recall on the shipped Bm25Linker: desc
+// + terminology slang ONLY, dropping params_fields whose text dilutes the
+// CJK-synonym slang bridge via BM25 tf-saturation + length norm). 'params-only'
+// is NOT shipped (D2g measured it 63.7% strict, strictly worse than params+term
+// 68.1% + degenerate with params+term-on-no-slang); a future ticket can add it
+// as a non-breaking enum extension.
+test('buildRetrievalCorpus variant="term-only" packs desc + terminology slang but NOT params_fields (D2h higher-recall form)', () => {
+  const events: EventCorpusInput[] = [{
+    name: 'item.add',
+    description: '添加道具',
+    params_fields: { itemId: { description: '道具id' }, count: { description: '数量' } },
+  }]
+  const term = { 'item.add': ['道具产出', '道具增加'] }
+  const [item] = buildRetrievalCorpus(events, term, 'term-only')
+  // desc + slang packed
+  expect(item.description).toBe('添加道具 道具产出 道具增加')
+  // params_fields NOT packed (the term-only drop)
+  expect(item.description).not.toContain('道具id')
+  expect(item.description).not.toContain('数量')
+  expect(item.description).not.toContain('itemId')
+  expect(item.description).not.toContain('count')
+})
+
+test('buildRetrievalCorpus variant="params+term" (default) packs desc + params_fields + slang (D2e shipped behavior preserved)', () => {
+  const events: EventCorpusInput[] = [{
+    name: 'item.add',
+    description: '添加道具',
+    params_fields: { itemId: { description: '道具id' } },
+  }]
+  const term = { 'item.add': ['道具产出'] }
+  // default variant (omitted) = params+term = shipped behavior
+  const def = buildRetrievalCorpus(events, term)
+  expect(def[0]!.description).toBe('添加道具 itemId 道具id 道具产出')
+  // explicit 'params+term' matches the default
+  const explicit = buildRetrievalCorpus(events, term, 'params+term')
+  expect(explicit[0]!.description).toBe(def[0]!.description)
+})
+
+test('loadRetrievalCorpus(layer, "term-only") packs slang but NOT params_fields (D2h io passthrough)', () => {
+  // reuses the role_online fixture (role_id/角色id + amount/充值金额 params +
+  // 日活/DAU slang) from the D2e io test; term-only must drop the params slice.
+  const scratch = mkdtempSync(join(tmpdir(), 'd2h-io-term-'))
+  const layer = join(scratch, '10000demo')
+  mkdirSync(join(layer, 'events', 'role_public'), { recursive: true })
+  copyFileSync(join(FIXTURES, 'role_online.yaml'), join(layer, 'events', 'role_public', 'role.online.yaml'))
+  writeFileSync(join(layer, 'config.yaml'), 'project:\n  name: demo\n  scope_id: 10000demo\n')
+  writeFileSync(join(layer, 'terminology.yaml'), yaml.dump({
+    scope_id: '10000demo',
+    terminology: [{ slang: '日活 / DAU', maps_to: { events: ['role.online'] }, definition: 'dau' }],
+  }))
+  try {
+    // term-only: slang packed, params_fields NOT packed (the variant drop)
+    const termOnly = loadRetrievalCorpus(layer, 'term-only')
+    expect(termOnly).toHaveLength(1)
+    expect(termOnly[0]!.description).toContain('日活')
+    expect(termOnly[0]!.description).toContain('DAU')
+    expect(termOnly[0]!.description).not.toContain('角色id')
+    expect(termOnly[0]!.description).not.toContain('充值金额')
+    expect(termOnly[0]!.description).not.toContain('role_id')
+    expect(termOnly[0]!.description).not.toContain('amount')
+    // default (params+term, omitted): params still packed (shipped behavior)
+    const def = loadRetrievalCorpus(layer)
+    expect(def[0]!.description).toContain('角色id')
+    expect(def[0]!.description).toContain('充值金额')
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
+})
+
+test('SemanticLayerService.loadRetrievalCorpus() honors corpusVariant config (D2h config→Service→io)', () => {
+  // a real layer with one event (role.online: role_id/角色id + amount/充值金额
+  // params + 日活/DAU slang) — the Service's mount-time corpusVariant config
+  // threads through loadRetrievalCorpus -> io -> buildRetrievalCorpus.
+  const scratch = mkdtempSync(join(tmpdir(), 'd2h-svc-variant-'))
+  const layer = join(scratch, '10000demo')
+  mkdirSync(join(layer, 'events', 'role_public'), { recursive: true })
+  copyFileSync(join(FIXTURES, 'role_online.yaml'), join(layer, 'events', 'role_public', 'role.online.yaml'))
+  writeFileSync(join(layer, 'config.yaml'), 'project:\n  name: demo\n  scope_id: 10000demo\n')
+  writeFileSync(join(layer, 'terminology.yaml'), yaml.dump({
+    scope_id: '10000demo',
+    terminology: [{ slang: '日活 / DAU', maps_to: { events: ['role.online'] }, definition: 'dau' }],
+  }))
+  try {
+    const ctx = { reflect: { provide: () => {} } } as unknown as Context
+    // term-only Service: slang packed, params NOT (the variant config threads)
+    const termSvc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '', corpusVariant: 'term-only' })
+    const termCorpus = termSvc.loadRetrievalCorpus()
+    expect(termCorpus[0]!.description).toContain('日活')
+    expect(termCorpus[0]!.description).not.toContain('角色id')
+    expect(termSvc.corpusVariant).toBe('term-only')
+    // default (params+term, omitted) Service: params packed (shipped preserved)
+    const defSvc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '' })
+    const defCorpus = defSvc.loadRetrievalCorpus()
+    expect(defCorpus[0]!.description).toContain('角色id')
+    expect(defSvc.corpusVariant).toBe('params+term')
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
+})

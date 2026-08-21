@@ -315,3 +315,64 @@
   exercised here — the Service.corpusVersion() method is TDD-verified directly
   (Test B) instead.
 - **Probe**: `prototypes/d2c-retrieve-baseline/d2f_live_activation_probe.ts`.
+
+## 2026-08-21 — D2h live variant + topK wiring (shipped corpus.ts over real RBI)
+
+- **Setup**: SHIPPED semantic-layer (`corpus.ts` `buildRetrievalCorpus` variant
+  branching + `io.loadRetrievalCorpus` passthrough + `SemanticLayerService`
+  `corpusVariant` config) + SHIPPED `tool-search-data-sources` execute
+  (`getEnrichedLinker`, `defaultTopK` raised 5->20) + shipped `Bm25Linker`, over
+  REAL RBI scope 10000147 (1966 events + terminology.yaml). A real
+  `SemanticLayerService` (NOT a shell) carries the mount-time `corpusVariant`
+  config -> `loadRetrievalCorpus` -> io -> `corpus.ts`; tool-search's
+  `ctx.get('schema')` returns the Service. `ctx.reflect.provide` is the only mock
+  (Service ctor; mirrors `corpus.spec` Test B). Probe =
+  `prototypes/d2c-retrieve-baseline/d2h_variant_topk_probe.ts` (tsx; run
+  `cd <repo> && pnpm exec tsx <path>`).
+- **Results** (verbatim from the probe):
+  - [1] default (params+term) Service — role.online: base description `玩家上线`;
+    enriched packs params (角色id etc. ~40 fields incl serverId/roleId/coinList.*)
+    + slang (日活/DAU/留存). params "角色id" packed? true | slang "日活" packed?
+    true. corpusVariant config: params+term.
+  - [2] term-only Service — role.online: enriched description = `玩家上线 日活
+    DAU 留存` (desc + slang ONLY, NO params). params "角色id" packed? false |
+    slang "日活" packed? true. corpusVariant config: term-only. variant switched
+    the corpus? true.
+  - [3] default topK (no top_k) — 充值 query: params+term 20 candidates /
+    term-only 20 candidates (cap <=20; pre-D2h default was 5 -> would be <=5).
+    params+term top-1: recharge (score 19.899) | term-only top-1: recharge
+    (score 19.445).
+  - [4] D2g bridge signals (top-1 params+term vs term-only):
+    "道具产出" (D2g maps to item.add): params+term top-1=hallow.onekey |
+    term-only top-1=slgc.drawmineresource.
+    "商城购买" (D2g maps to shop.buy): params+term top-1=leagueguild.rndshopbuy
+    | term-only top-1=shop.buy.
+    "创角" (D2g maps to game.role.create): params+term top-1=guild.create |
+    term-only top-1=guild.create.
+  - [verdict] D2h wiring CONFIRMED: default packs params+slang (true) +
+    term-only drops params keeps slang (true) + variant switches corpus (true).
+- **Verdict**: the D2h build is LIVE on the shipped code over real RBI — the
+  mount-time `corpusVariant` config threads config -> Service -> io -> `corpus.ts`
+  (term-only drops the `params_fields` slice, keeps desc + slang; default
+  params+term preserves the D2e-shipped form), and the default prefetch topK is
+  raised 5->20 (a 充值 query returns 20 candidates, not 5). The
+  `商城购买`->shop.buy bridge is a LIVE confirmation of the D2g verdict (A)
+  mechanism: term-only's slang bridge ranks the expected event higher while
+  params+term's extra param-field text dilutes it via BM25 length-norm
+  (params+term retrieves leagueguild.rndshopbuy instead). Informs
+  [D2h](../tickets/phase-misc/D2h-corpus-term-only-selectable-topk.md).
+- **Fidelity caveat**: this is a SMOKE build-wiring confirm (variant switches
+  packed slices + topK=20 cap + 1 live bridge signal), NOT a 113-case recall
+  re-measurement. The recall numbers (term-only 77.0% strict / term@topK=20
+  85.0% / params+term 68.1% / 81.4%) are D2g-audited via
+  `d2g_larger_caseset.py` (a faithful python port of `corpus.ts` = `corpus.ts`
+  logic) -> hold by construction; this probe exercises the shipped TS
+  `corpus.ts` variant branching directly over real RBI. The
+  `道具产出`/`创角` bridges do NOT resolve on scope 10000147 (item.add /
+  game.role.create likely absent or slang-missing in this scope; D2g bridges
+  span 5 scopes, 10000147 has 15 events-with-slang). The real bundle boot
+  (`SemanticLayerService` via `cordis.patch.yml` mount) is not exercised here —
+  the corpusVariant config -> Service -> io path is TDD-verified directly
+  (`corpus.spec` Service-config test). The single live bridge (shop.buy) is
+  corroboration, not a measured recall floor.
+- **Probe**: `prototypes/d2c-retrieve-baseline/d2h_variant_topk_probe.ts`.
