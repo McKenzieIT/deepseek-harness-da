@@ -83,6 +83,15 @@ export interface Config {
   toolCallTimeoutMs?: number
   /** Max consecutive re-spawn attempts before the crash-loop gives up (G4 Q1). */
   crashLoopMaxAttempts?: number
+  /**
+   * Credential flow for the sidecar (P4d). `'push'` (default): the da resolves
+   * the 4 ODPS refs per call and pushes them via `set_credentials`
+   * (PAT-not-in-env). `'sidecar-self'`: the maxc-backed sidecar self-auths
+   * from its own config (P4c: `set_credentials` → no-op, da pushes no ODPS
+   * creds) — `pushCredentials` is a no-op and `execute` proceeds straight to
+   * the sidecar. `static inject = ['credentials']` is unchanged.
+   */
+  credMode?: 'push' | 'sidecar-self'
 }
 
 /** Resolved config shape: schemastery has applied every default. */
@@ -94,6 +103,7 @@ export const Config: z<Config> = z.object({
   cwd: z.string().default(process.cwd()),
   toolCallTimeoutMs: z.number().min(0).default(60_000),
   crashLoopMaxAttempts: z.number().min(0).default(5),
+  credMode: z.union(['push', 'sidecar-self'] as const).default('push'),
 })
 
 /**
@@ -261,6 +271,11 @@ export class MaxComputeQueryEngine extends QueryEngine {
   // ── per-call cred resolve + idempotent set_credentials (D3, G4 HOLE-C drop) ─
 
   private async pushCredentials(scopeId: ScopeId): Promise<void> {
+    // P4d: a maxc-backed sidecar self-auths from its own config (P4c:
+    // set_credentials → no-op; da pushes no ODPS creds). Skip the per-call
+    // resolve+push entirely — no ctx.credentials.resolve, no throw, no
+    // set_credentials call — so execute proceeds straight to the sidecar.
+    if (this.cfg.credMode === 'sidecar-self') return
     const creds: Record<string, string> = {}
     for (const ref of ODPS_REFS) {
       const resolved = await this.ctx.credentials.resolve(ref)
