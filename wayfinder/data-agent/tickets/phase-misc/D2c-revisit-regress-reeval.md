@@ -19,6 +19,6 @@
 - **ambiguity**：`dimensions.ambiguity_type != 'none'`（schema-tagged，objective，已用）。
 - **决策**：升级后真数据测得 strict≥85-90% + ambiguity<15% → regress (a)；否则 keep (b)。负担须由真数据满足（per D2c 非对称论证）。
 
-**Blocked by**: real embedder 部署（用户 ops，map 雾「intranet 重 embedder 部署形态」）+ [D2e-corpus-enrichment](D2e-corpus-enrichment.md)（params_fields + terminology 索引，不 domain——修 F4 + 第二 bridge；D2d re-frame 毕业）。reverse-bi 数据可达（不阻）。
+**Blocked by**: real embedder 部署（用户 ops，map 雾「intranet 重 embedder 部署形态」）+ [D2e-corpus-enrichment](D2e-corpus-enrichment.md)（**resolved 2026-08-21——corpus prerequisite met**：enriched corpus shipped[params_fields+terminology 进 description，不 domain；real-default floor 54.8% strict / 58.1% loose measured on Bm25Linker；dormant until bundle uncomment `semantic-layer`]；D2d re-frame 毕业）。reverse-bi 数据可达（不阻）。
 
 **关联**: [D2c](D2c-retrieve-tool-keep-regress.md) resolved（keep (b) decisively confirmed by real data §7，regress 延后至此）；[D2c-impl](D2c-impl-retrieve-tool-shipping.md)（若已 ship retrieve-tool，regress 须 unship）；reverse-bi（~/workspace/reverse-bi，只读源：eval-cases/ + libs/rbi-semantic）；P6b（ctx.schema richer fields 修 F4）；T2（AGA 无 embeddings → 真 embedder 须用户自部署 sidecar）。

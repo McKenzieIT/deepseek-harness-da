@@ -379,5 +379,202 @@ def main():
                 print(f"   base top5={b['top']}")
                 print(f"     all top5={a['top']}")
 
+# ============================================================================
+# D2e extension (2026-08-21): Bm25Linker tokenizer fidelity + weighting variant
+#
+# D2d caveat: the §7 baseline + the variants above port `HybridRetriever` whose
+# `tokenize` is the embedder bigram-only tokenizer. The REAL default prefetch
+# path is `Bm25Linker` (packages/data/nl2sql-engine/src/bm25-linking.ts) — a
+# DIFFERENT tokenizer (CJK unigram AND bigram), a different idf (Lucene
+# log(1+x), always >0), a score>0 filter (no zero-score floor noise), and
+# different corpus weights ({name:3,desc:1}, metric×1). This section mirrors
+# the shipped Bm25Linker faithfully and re-measures the enrichment variants on
+# the ACTUAL default path. It also adds a weighting variant (params/term
+# repeated 3× = BM25 field weight via token repetition) so the D2e mapping-form
+# decision (pack-into-description ×1 vs weighted ×3) is evidence-backed.
+# ============================================================================
+import re as _re
+_LINKER_CJK = _re.compile(r'[一-鿿]+')
+_LINKER_ASCII = _re.compile(r'[A-Za-z_][A-Za-z0-9_]*')
+
+
+def tokenize_linker(text):
+    """Port of packages/data/nl2sql-engine/src/bm25-linking.ts `tokenize`:
+    ASCII identifiers [A-Za-z_][A-Za-z0-9_]* lowercased + CJK [一-鿿]+ as
+    unigram AND bigram. The REAL default prefetch tokenizer, distinct from the
+    embedder bigram-only tokenizer ported above."""
+    if not text:
+        return []
+    tokens = [s.lower() for s in _LINKER_ASCII.findall(text)]
+    for seg in _LINKER_CJK.findall(text):
+        for ch in seg:
+            tokens.append(ch)  # unigram
+        if len(seg) > 1:
+            for i in range(len(seg) - 1):
+                tokens.append(seg[i:i + 2])  # bigram
+    return tokens
+
+
+class BM25LinkerOkapi:
+    """Faithful port of nl2sql-engine `BM25Okapi`: k1=1.5/b=0.75, Lucene idf
+    `log(1+(n-d+0.5)/(d+0.5))` (always >0), `score>0` filter (no floor noise).
+    Corpus field weights are applied as token repetition in build_corpus_linker
+    (mirrors bm25-linking.ts FIELD_WEIGHTS{name:3,description:1} + metric×1)."""
+
+    def __init__(self, corpus):
+        self.k1, self.b = 1.5, 0.75
+        self.corpus = corpus
+        self.docs = [tokenize_linker(d['text']) for d in corpus]
+        n = len(self.docs)
+        self.avgdl = (sum(len(d) for d in self.docs) / n) if n else 1
+        df = {}
+        for doc in self.docs:
+            for t in set(doc):
+                df[t] = df.get(t, 0) + 1
+        self.idf = {t: math.log(1 + (n - d + 0.5) / (d + 0.5)) for t, d in df.items()}
+
+    def search(self, query, topK=5):
+        q = tokenize_linker(query)
+        scored = []
+        for idx, doc in enumerate(self.docs):
+            tf = {}
+            for t in doc:
+                tf[t] = tf.get(t, 0) + 1
+            dl = len(doc)
+            s = 0.0
+            for t in q:
+                idf = self.idf.get(t)
+                tfT = tf.get(t)
+                if idf is None or tfT is None:
+                    continue
+                denom = tfT + self.k1 * (1 - self.b + self.b * (dl / (self.avgdl or 1)))
+                s += (idf * (tfT * (self.k1 + 1))) / denom
+            if s > 0:  # score>0 filter — no zero-score floor noise (F5 honest)
+                scored.append((idx, s))
+        scored.sort(key=lambda x: -x[1])
+        return scored[:topK]
+
+
+# Bm25Linker corpus weights: name×3 / description×1 / metric-name×1 (mirrors
+# bm25-linking.ts FIELD_WEIGHTS{name:3,description:1} + metric×1 inline).
+LINKER_FIELD_WEIGHTS = {'name': 3, 'description': 1}
+
+
+def build_corpus_linker(items):
+    """Mirrors bm25-linking.ts buildCorpus: name×3 + description×1 + metric×1."""
+    out = []
+    for d in items:
+        parts = []
+        for _ in range(LINKER_FIELD_WEIGHTS['name']):
+            parts.append(d['id'])
+        if d.get('description'):
+            for _ in range(LINKER_FIELD_WEIGHTS['description']):
+                parts.append(d['description'])
+        m = d.get('metrics') or {}
+        for mk in m.keys():
+            parts.append(mk)  # metric ×1
+        out.append({'id': d['id'], 'text': ' '.join(parts), 'payload': d})
+    return out
+
+
+def build_variant_weighted(events, e2s, variant, weights):
+    """Like build_variant but repeats params/term content `weights['params']`/
+    `weights['term']` times — simulating FIELD_WEIGHTS weighting (a BM25 field
+    weight IS token repetition). weights={params:1,term:1} == pack-into-desc."""
+    out = []
+    for ev in events:
+        desc_parts = [ev['description']] if ev['description'] else []
+        if variant in ('params', 'all', 'params+term'):
+            pt = params_text(ev)
+            for _ in range(weights.get('params', 1)):
+                if pt:
+                    desc_parts.append(pt)
+        if variant in ('term', 'all', 'params+term'):
+            for _ in range(weights.get('term', 1)):
+                for s in e2s.get(ev['id'], []):
+                    desc_parts.append(s)
+        out.append({'id': ev['id'], 'description': ' '.join(desc_parts),
+                    'metrics': ev['metrics'], 'payload': ev})
+    return out
+
+
+def measure_linker(corpus_items, label, topK=TOPK):
+    """Measure recall on the REAL default path (Bm25Linker, BM25-only)."""
+    bm = BM25LinkerOkapi(build_corpus_linker(corpus_items))
+    per = []
+    for c in CASES:
+        hits = bm.search(c['question'], topK)
+        top_ids = [corpus_items[i]['id'] for i, _ in hits]
+        gold = c['gold']
+        norm_top = [norm(t) for t in top_ids]
+        gold_hit = [g for g in gold if norm(g) in norm_top]
+        strict = len(gold) > 0 and len(gold_hit) == len(gold)
+        loose = len(gold_hit) > 0
+        cov = len(gold_hit) / len(gold) if gold else 0
+        per.append({**c, 'top': top_ids, 'gold_hit': gold_hit, 'strict': strict,
+                    'loose': loose, 'coverage': cov, 'has_gold': len(gold) > 0})
+    wg = [p for p in per if p['has_gold']]
+    ng = len(wg)
+    strict = sum(1 for p in wg if p['strict'])
+    loose = sum(1 for p in wg if p['loose'])
+    cov = sum(p['coverage'] for p in wg) / ng if ng else 0
+    return {'label': label, 'ng': ng, 'strict': strict, 'loose': loose, 'coverage': cov, 'per': per}
+
+
+def main_linker_fidelity():
+    """D2e: re-measure enrichment variants on the ACTUAL Bm25Linker default
+    path (not the §7 HybridRetriever port) + a weighting variant, to (a) settle
+    the D2d tokenizer-fidelity caveat and (b) evidence-back the mapping-form
+    decision (pack-into-description ×1 vs weighted ×3)."""
+    events = load_events()
+    e2s = load_event_to_slangs()
+    print("\n" + "=" * 78)
+    print("D2e — Bm25Linker fidelity (REAL default prefetch path)")
+    print("tokenizer: ASCII id + CJK unigram+bigram | idf log(1+x) | score>0 | {name×3,desc×1,metric×1}")
+    print("=" * 78)
+    rows = []
+    for v in ['base', 'params', 'term', 'params+term']:
+        corpus = build_variant(events, e2s, v)
+        rows.append(measure_linker(corpus, f"{v}/linker/bm25-only"))
+    # weighting variant: params+term repeated 3× (simulates FIELD_WEIGHTS.params=3,
+    # term=3 as separate weighted fields) vs pack-into-description (×1).
+    corpus_w3 = build_variant_weighted(events, e2s, 'params+term', {'params': 3, 'term': 3})
+    rows.append(measure_linker(corpus_w3, 'params+term×3/linker/bm25-only'))
+    # topK sweep on base under the linker tokenizer
+    base_corpus = build_variant(events, e2s, 'base')
+    for tk in (10, 20):
+        rows.append(measure_linker(base_corpus, f"base/linker/topK={tk}", topK=tk))
+
+    print(f"{'variant':<34}{'strict':<14}{'loose':<14}{'coverage':<10}")
+    for m in rows:
+        print(f"{m['label']:<34}{pct(m['strict'], m['ng']):<14}{pct(m['loose'], m['ng']):<14}"
+              f"{m['coverage'] * 100:<10.1f}")
+
+    pack = next(r for r in rows if r['label'] == 'params+term/linker/bm25-only')
+    w3 = next(r for r in rows if r['label'] == 'params+term×3/linker/bm25-only')
+    print("\n=== per-case: pack-into-desc(×1) vs weighted(×3) strict flips ===")
+    for b, a in zip(pack['per'], w3['per']):
+        if b['strict'] != a['strict']:
+            print(f"  {'GAINED' if a['strict'] else 'LOST  '} {b['case_id']} \"{b['question']}\"")
+            print(f"        gold={b['gold']}")
+            print(f"   pack top5={b['top']}")
+            print(f"  weight top5={a['top']}")
+
+    # cross-tokenizer reconciliation: HybridRetriever port (bigram-only) vs
+    # Bm25Linker (unigram+bigram) for params+term — settles the D2d caveat.
+    hy = measure(build_variant(events, e2s, 'params+term'), BrokenEmbedder(),
+                 'params+term/hybrid-port/bm25-only')
+    print("\n=== tokenizer reconciliation (params+term, BM25-only) ===")
+    print(f"  HybridRetriever port (bigram-only, §7):    {pct(hy['strict'], hy['ng'])} strict / {pct(hy['loose'], hy['ng'])} loose")
+    print(f"  Bm25Linker (unigram+bigram, real default):  {pct(pack['strict'], pack['ng'])} strict / {pct(pack['loose'], pack['ng'])} loose")
+    print(f"  weighted params+term×3 (real default):      {pct(w3['strict'], w3['ng'])} strict / {pct(w3['loose'], w3['ng'])} loose")
+    print("  (note: the §7-port↔Bm25Linker gap conflates 4 diffs — tokenizer (bigram-only vs")
+    print("   unigram+bigram), idf (max(0,log) vs log(1+x)), score>0 floor filter, field weights")
+    print("   {id:3,desc:1,metric:4} vs {name:3,desc:1,metric×1}; the latter 3 are negligible for")
+    print("   this 1966-event corpus (1 event has metrics; idf differs only for >50%-df tokens).")
+    print("   The D2e decision is measured on the faithful Bm25Linker port, independent of this gap.)")
+
+
 if __name__ == '__main__':
     main()
+    main_linker_fidelity()

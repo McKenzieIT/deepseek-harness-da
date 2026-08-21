@@ -24,6 +24,12 @@ import {
   type TableDefinition,
   type TableMeta,
 } from './types.ts'
+import {
+  buildRetrievalCorpus,
+  parseTerminology,
+  type EventCorpusInput,
+  type EventCorpusItem,
+} from './corpus.ts'
 
 /** Tier-2 recorder contract — `ctx.audit` satisfies this (P6b grilling Q4). */
 export interface Tier2Recorder {
@@ -236,6 +242,62 @@ export function loadTableDefinition(semanticLayer: string, name: string): TableD
     if (t.table_name === name) return TableDefinitionSchema.parse(t.raw)
   }
   return null
+}
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+/**
+ * Project a scanned `RawEvent` to the corpus-input shape (name + description +
+ * params_fields + metrics; `domain` dropped — not indexed). Lenient: malformed
+ * fields are omitted rather than thrown so a broken event never poisons the
+ * corpus (mirrors the lenient `loadEvents` scan).
+ * @param e - the scanned raw event (name + raw dict + domain subdir).
+ * @returns the event projected to the fields the retrieval corpus indexes.
+ */
+function eventCorpusInput(e: RawEvent): EventCorpusInput {
+  const raw = e.raw
+  const pf = raw.params_fields
+  const metrics = raw.metrics
+  return {
+    name: e.name,
+    ...(typeof raw.description === 'string' ? { description: raw.description } : {}),
+    ...(isPlainObject(pf) ? { params_fields: pf as Record<string, { description?: string }> } : {}),
+    ...(isPlainObject(metrics) ? { metrics: metrics as Record<string, unknown> } : {}),
+  }
+}
+/**
+ * D2e (2026-08-21): build an enriched retrieval corpus from the substrate.
+ * Reads every event + the terminology glossary, projects each event to
+ * `{ id, description (enriched with params_fields name+desc + terminology
+ * slang), metrics, payload }`, and returns the corpus. `domain` is NOT indexed
+ * (probe refuted it). Lenient: a broken `events/` scan or a corrupt
+ * `terminology.yaml` degrades to an empty corpus rather than throwing (mirrors
+ * the lenient `loadEvents` scan + `parseTerminology` guards; the tool must stay
+ * callable-but-unwired). This is the corpus feed the real-default prefetch path
+ * (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when
+ * `ctx.schema` is unmounted (bundle opt-in), the tool's corpus stays empty
+ * (current behavior) — enrichment activates on mount.
+ * @param semanticLayer - the semantic-layer directory path (with `events/` + `terminology.yaml`).
+ * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
+ */
+export function loadRetrievalCorpus(semanticLayer: string): readonly EventCorpusItem[] {
+  // Lenient: an unreadable `events/` scan or a corrupt `terminology.yaml`
+  // degrades INDEPENDENTLY (empty events / empty glossary) — neither loses the
+  // other, and the tool stays callable-but-unwired (mirrors the lenient
+  // loadEvents per-file scan + parseTerminology guards).
+  let events: readonly EventCorpusInput[] = []
+  try {
+    events = loadEvents(semanticLayer).map(eventCorpusInput)
+  } catch {
+    // unreadable events/ scan -> no events indexed this boot
+  }
+  let terminology: ReturnType<typeof parseTerminology> = {}
+  try {
+    terminology = parseTerminology(loadTerminology(semanticLayer))
+  } catch {
+    // corrupt terminology.yaml -> empty glossary (events still indexed)
+  }
+  return buildRetrievalCorpus(events, terminology)
 }
 function findEventPath(semanticLayer: string, name: string): string | null {
   const eventsDir = join(semanticLayer, 'events')

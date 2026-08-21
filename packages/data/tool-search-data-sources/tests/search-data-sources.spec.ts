@@ -115,3 +115,29 @@ test('S8 execute uses ctx.retrieval when registered (P5b soft-fallback swap)', a
   const out = await def.execute({ query: 'q' }, { signal: new AbortController().signal })
   expect(out.candidates).toEqual([{ id: 'mock.metric', score: 0.42, description: 'mock desc', mode: 'hybrid' }])
 })
+
+test('S9 execute uses ctx.schema enriched corpus when registered (D2e schema soft-fallback)', async () => {
+  let def: ToolDef | undefined
+  // A mock ctx.schema whose loadRetrievalCorpus returns an enriched corpus
+  // (params_fields packed into description, as ctx.schema would).
+  const mockSchema = {
+    loadRetrievalCorpus: () => [
+      { id: 'recharge', description: '充值 roleId 角色id money 充值金额', metrics: {} },
+      { id: 'shop.buy', description: '商城购买', metrics: {} },
+    ],
+  }
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    // retrieval absent -> schema branch; schema present -> enriched Bm25Linker.
+    get: (key: string) => (key === 'schema' ? mockSchema : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) {
+    throw new Error('apply did not register a tool')
+  }
+  // "角色" matches only via the packed params field (角色id), proving the
+  // schema-sourced enriched corpus — not the empty Q1 thin default — is used.
+  const out = await def.execute({ query: '角色' }, { signal: new AbortController().signal })
+  expect(out.candidates.length).toBeGreaterThan(0)
+  expect(out.candidates[0]?.id).toBe('recharge')
+})

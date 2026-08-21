@@ -38,9 +38,11 @@ import {
   updateTableMeta as updateTableMetaFromLayer,
   loadEventDefinition as loadEventDefinitionFromLayer,
   loadTableDefinition as loadTableDefinitionFromLayer,
+  loadRetrievalCorpus as loadRetrievalCorpusFromLayer,
   type Tier2Recorder,
 } from './io.ts'
 import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
+import type { EventCorpusItem } from './corpus.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
@@ -54,6 +56,7 @@ export {
   loadTables,
   loadEventDefinition,
   loadTableDefinition,
+  loadRetrievalCorpus,
   writeTable,
   writeEventYaml,
   updateTableMeta,
@@ -73,6 +76,13 @@ export {
 } from './io.ts'
 export { BasicIndex, type EventIndexEntry, type TableIndexEntry } from './basic-index.ts'
 export { submit, load as loadPending, listing, discard, isValidId, type PendingSuggestion, type SubmitArgs } from './pending.ts'
+export {
+  buildRetrievalCorpus,
+  parseTerminology,
+  type EventCorpusItem,
+  type EventCorpusInput,
+  type EventTerminology,
+} from './corpus.ts'
 
 // ── SchemaProvider: live-ODPS schema source (P6b Q3 deferred) ───────────
 // The real provider (query-maxcompute sidecar adding list/describe/sample
@@ -159,6 +169,21 @@ export class SemanticLayerService extends Service {
    */
   loadTableDefinition(name: string): TableDefinition | null {
     return loadTableDefinitionFromLayer(this.semanticRoot, name)
+  }
+
+  /**
+   * D2e (2026-08-21): build an enriched retrieval corpus from the substrate —
+   * each event's `params_fields` (field name + description) + `terminology`
+   * slang packed into the indexed `description`; `domain` is NOT indexed
+   * (probe refuted it). This is the corpus feed the real-default prefetch path
+   * (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when
+   * `ctx.schema` is unmounted (bundle opt-in), the tool's corpus stays empty
+   * (current behavior) — enrichment activates on mount. Empty `semanticRoot`
+   * yields an empty corpus.
+   * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
+   */
+  loadRetrievalCorpus(): readonly EventCorpusItem[] {
+    return loadRetrievalCorpusFromLayer(this.semanticRoot)
   }
 
   // ── live-ODPS schema (deferred; throws until a provider is mounted) ──

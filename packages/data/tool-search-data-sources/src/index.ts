@@ -29,7 +29,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { Bm25Linker, type RetrievalLinker, type RetrievalHit } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
+import { Bm25Linker, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
 import { type RetrievalService } from '@deepseek-ai/dsh-retrieval/src/index.ts'
 
 export const name = 'tool-search-data-sources'
@@ -96,6 +96,40 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
     ...(description !== undefined ? { description } : {}),
     mode: h.mode,
   }
+}
+
+/**
+ * Minimal structural shape tool-search probes for the D2e enriched corpus
+ * (`ctx.schema` when the semantic-layer provider is mounted). Avoids a static
+ * dep on `@deepseek-ai/dsh-semantic-layer`: `ctx.get('schema')` returns the
+ * `SemanticLayerService` when mounted, `undefined` when not (bundle opt-in).
+ * The returned corpus items are `DataSourceDoc`-shaped (params_fields +
+ * terminology slang packed into `description`; NOT domain — see D2e).
+ */
+interface SchemaCorpusSource {
+  loadRetrievalCorpus(): readonly DataSourceDoc[]
+}
+
+/**
+ * D2e: cache of enriched `Bm25Linker`s keyed by schema instance — built once
+ * per `ctx.schema` (lazy on first execute) so the 1966-event corpus is tokenized
+ * once, not per query. `WeakMap` so a replaced/unmounted schema is GC'd
+ * (mirrors the lazy-build intent without holding a stale provider).
+ */
+const enrichedLinkers = new WeakMap<SchemaCorpusSource, Bm25Linker>()
+
+/**
+ * Get (or build+cache) the enriched `Bm25Linker` for a schema instance.
+ * @param schema - the `ctx.schema` source whose `loadRetrievalCorpus()` feeds the corpus.
+ * @returns a cached `Bm25Linker` over the schema's enriched corpus.
+ */
+function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
+  let linker = enrichedLinkers.get(schema)
+  if (linker === undefined) {
+    linker = new Bm25Linker(schema.loadRetrievalCorpus())
+    enrichedLinkers.set(schema, linker)
+  }
+  return linker
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
@@ -174,6 +208,20 @@ export function apply(ctx: Context, config: Config = {}): void {
       if (retrieval !== undefined) {
         const hits = await retrieval.retrieve(args.query, { topK, mode: 'hybrid' })
         return { candidates: hits.map(projectHit) }
+      }
+      // D2e: schema-sourced enriched corpus (dormant until ctx.schema mounts).
+      // When the semantic-layer provider is mounted, build/cache an enriched
+      // Bm25Linker (events' params_fields + terminology slang packed into the
+      // indexed description; NOT domain — probe refuted domain) and use it;
+      // otherwise the empty Q1 thin default (callable but unwired). Like the
+      // retrieval soft-fallback, `inject` stays `['tools']` (NOT `'schema'`)
+      // so the tool loads without a schema provider; `ctx.get` returns
+      // `undefined` when none is registered. The defensive `typeof` probe
+      // guards a non-schema object resolving to the 'schema' name.
+      const schemaProbe = ctx.get('schema') as { loadRetrievalCorpus?: unknown } | undefined
+      if (schemaProbe !== undefined && typeof schemaProbe.loadRetrievalCorpus === 'function') {
+        const schema = schemaProbe as SchemaCorpusSource
+        return { candidates: searchDataSources(getEnrichedLinker(schema), args.query, topK) }
       }
       return { candidates: searchDataSources(linker, args.query, topK) }
     },
