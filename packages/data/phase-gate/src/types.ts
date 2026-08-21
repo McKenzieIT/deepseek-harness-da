@@ -48,6 +48,40 @@ export const DECOMPOSITION_MARKER = '【拆解】'
  */
 export const INCOMPLETE_MARKER = '【未完成】'
 
+/**
+ * Route token the model emits at the end of an UNDERSTANDING turn (after
+ * search + load) to signal its route decision. Single source for BOTH the
+ * prompt-side (persona teaches the token) and the parse-side (the route_gate
+ * regex) — splitting these would let a prompt-wording change silently break
+ * the gate parse (mirrors `INCOMPLETE_MARKER`/`interpretGate`). The model
+ * emits exactly one of:
+ * - `【route:proceed】` — grounding established (search returned candidates +
+ *   definitions loaded), no real ambiguity → advance to GENERATION.
+ * - `【route:clarify】` — a real ambiguity remains (also call
+ *   present_clarification with one specific question) → gate HALTs awaiting
+ *   the user.
+ * - `【route:decline】` — no grounding / unanswerable → honest_decline.
+ * No token → the gate defaults to proceed + runs a grounding backstop (if
+ * search+retrieve found nothing it declines honestly rather than bare-run
+ * GENERATION on no corpus).
+ */
+export const ROUTE_MARKER_REGEX = /【route:(proceed|clarify|decline)】/
+
+/**
+ * Extract the route decision from UNDERSTANDING phase output. Mirrors
+ * `interpretGate`'s `INCOMPLETE_MARKER` parse (single source =
+ * `ROUTE_MARKER_REGEX`). The first match wins (the model emits one token).
+ * @param phaseOutput The UNDERSTANDING turn's final assistant text.
+ * @returns The captured route (`proceed` | `clarify` | `decline`), or `null`
+ * when no route token was emitted (the gate defaults to proceed + backstop).
+ */
+export function extractRoute(phaseOutput: string): 'proceed' | 'clarify' | 'decline' | null {
+  const m = ROUTE_MARKER_REGEX.exec(phaseOutput)
+  const route = m?.[1]
+  if (route === 'proceed' || route === 'clarify' || route === 'decline') return route
+  return null
+}
+
 /** Gate verdict aligned with rbi `phases.py:33` `GateResult` dataclass. */
 export class GateResult {
   constructor(readonly passed: boolean, readonly reason: string | null = null) {}
@@ -86,7 +120,7 @@ export const PipelineConfig = Object.freeze({
 
 /** rbi `PhaseConfig` + `factory.py` `default_phase_configs` — exact values. */
 export interface PhaseConfig {
-  readonly gate: 'always_pass' | 'sql_syntax_gate'
+  readonly gate: 'always_pass' | 'sql_syntax_gate' | 'route_gate'
   readonly max_attempts: number
   readonly timeout_seconds: number
   readonly fallback_phase: Phase | null
@@ -97,7 +131,13 @@ export interface PhaseConfig {
  * — exact rbi `factory.py` `default_phase_configs` values.
  */
 export const PHASE_CONFIGS: Readonly<Record<Phase, PhaseConfig>> = {
-  [Phase.UNDERSTANDING]: { gate: 'always_pass', max_attempts: 5, timeout_seconds: 60, fallback_phase: null },
+  // P-DA1: UNDERSTANDING gate is `route_gate` (was `always_pass`). The model
+  // emits a 【route:proceed|clarify|decline】 token after search+load; the gate
+  // parses it (mirrors INCOMPLETE_MARKER/interpretGate). proceed/no-token →
+  // advance (with a grounding backstop: search+retrieve empty → honest_decline,
+  // don't bare-run GENERATION on no corpus); clarify → awaiting_clarification +
+  // HALT; decline → honest_decline.
+  [Phase.UNDERSTANDING]: { gate: 'route_gate', max_attempts: 5, timeout_seconds: 60, fallback_phase: null },
   [Phase.GENERATION]: { gate: 'sql_syntax_gate', max_attempts: 5, timeout_seconds: 60, fallback_phase: Phase.UNDERSTANDING },
   [Phase.EXECUTION]: { gate: 'always_pass', max_attempts: 1, timeout_seconds: 120, fallback_phase: Phase.GENERATION },
   [Phase.INTERPRETATION]: { gate: 'always_pass', max_attempts: 5, timeout_seconds: 60, fallback_phase: null },
@@ -204,6 +244,14 @@ export interface PhaseGateState {
   event_params: Set<string>
   /** Partition columns from `load_table_definition` (ds/dt partition-filter check). */
   partition_cols: Set<string>
+  // ── P-DA1 route-gate grounding backstop (aggregate search+retrieve; avoids the
+  // candidate_tables projection mismatch — search candidates are objects, not
+  // strings, so collectTableNames only harvests them via the .id leaf). True =
+  // the tool was not called OR returned an empty candidates array. Until the
+  // retrieve-tool is activated the backstop relies on search alone (this stays
+  // true → search carries the grounding signal). ──
+  last_search_empty: boolean
+  last_retrieve_empty: boolean
   // ── F4 question-start detection: prior `agent/status` for idle→running ──
   prior_status: 'idle' | 'running' | null
   // ── F3 stall watchdog (independent timer; cleared when events arrive) ──
@@ -241,6 +289,8 @@ export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
     candidate_tables: new Set(),
     event_params: new Set(),
     partition_cols: new Set(),
+    last_search_empty: true,
+    last_retrieve_empty: true,
     prior_status: null,
     stall_timer: null,
     step_count: 0,

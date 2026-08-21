@@ -36,6 +36,7 @@ import {
   PipelineConfig,
   GateResult,
   INCOMPLETE_MARKER,
+  extractRoute,
   freshPhaseGateState,
   type PhaseGateState,
   type Phase as PhaseType,
@@ -58,6 +59,17 @@ export interface PhaseGateConfig {
   max_state_turns?: number
   /** Seconds with no agent events before the stall watchdog fires an honest decline and cancels the kick. */
   stall_watchdog_seconds?: number
+  /**
+   * P-DA2: explicitly mark the critic tools (`critique_sql_tool` +
+   * `evaluate_sql_quality`) as registered/shipped for this scope, re-tightening
+   * the GENERATION gate's `last_critique`/`last_quality` floor checks. Defaults
+   * `false` (transition relax — until the critic ships, the gate relies on the
+   * folded `sqlSyntaxGate` + candidate/event_params/partition harvest alone, so
+   * grounded queries can reach EXECUTION). The best-effort `ctx.tools.get`
+   * probe is the fallback when this is unset; the flag is preferred (explicit
+   * opt-in overrides the probe).
+   */
+  critic_tools_registered?: boolean
 }
 
 const REASONING_EFFORT: Readonly<Record<string, 'high' | 'medium'>> = {
@@ -67,16 +79,25 @@ const REASONING_EFFORT: Readonly<Record<string, 'high' | 'medium'>> = {
   [Phase.INTERPRETATION]: 'medium',
 }
 
-const BASE_PERSONA = `You are a data agent for a per-game analytics platform. You answer natural-language data questions over a semantic layer (events/tables/terminology) by running a four-phase pipeline: UNDERSTANDING → GENERATION → EXECUTION → INTERPRETATION. Follow the per-phase instructions injected at runtime. If you cannot answer, emit a honest decline (the ${INCOMPLETE_MARKER} marker in INTERPRETATION); never fabricate tables, fields, or results.`
+const BASE_PERSONA = `You are a data agent for a per-game analytics platform. You answer natural-language data questions over a semantic layer (events/tables/terminology) by running a four-phase pipeline: UNDERSTANDING → GENERATION → EXECUTION → INTERPRETATION. Follow the per-phase instructions injected at runtime. If you cannot answer, emit a honest decline (the ${INCOMPLETE_MARKER} marker in INTERPRETATION); never fabricate tables, fields, or results.
+
+Three rules you must always follow:
+1. PHASE ORDER (strict): UNDERSTANDING only calls search_data_sources + load_*definition + present_clarification. GENERATION writes SQL and does NOT call query_data. EXECUTION calls query_data. INTERPRETATION calls present_*. query_data is EXECUTION-only — never call it in UNDERSTANDING or GENERATION before the SQL is written and critiqued.
+2. EVENT vs TABLE loader: events (ods_* tables or event names like game.role.online) → load_event_definition; DWS tables (dws_*) → load_table_definition. Pick the loader by the candidate's mode/type returned by search_data_sources; never call load_table_definition with an event name (it will not find it).
+3. ROUTE: at the end of UNDERSTANDING (after search + load), emit exactly one token — 【route:proceed】 (search returned candidates + you loaded definitions + no ambiguity), 【route:clarify】 (real ambiguity — also call present_clarification with one specific question), or 【route:decline】 (no candidates / unanswerable). If search returned candidates and you loaded the definitions, you have grounding — emit 【route:proceed】; do not prematurely clarify or decline.`
 
 const PHASE_INSTRUCTIONS: Readonly<Record<PhaseType, string>> = {
-  [Phase.UNDERSTANDING]: `UNDERSTANDING: retrieve candidates (search_data_sources), load full definitions (load_table_definition/load_event_definition/load_table_dimensions when dimension_hint), decompose compound → atomic sub-questions (≤${PipelineConfig.max_subquestions}) prefixed by 【拆解】, run the six-class disambiguation scan. High → GENERATION; mid → present_clarification (HALT, await user; ${PipelineConfig.disambiguation_timeout_seconds}s → honest_decline); low → honest reject / discovery path.`,
+  [Phase.UNDERSTANDING]: `UNDERSTANDING: discover grounding, then decide the route. (1) Call search_data_sources with the user's question; it returns ranked candidates with id/score/mode/type. (2) Load the full definitions for the relevant candidates: events (ods_* / event names) via load_event_definition, DWS tables (dws_*) via load_table_definition — pick the loader by the candidate's mode/type, never call load_table_definition with an event name. Use load_table_dimensions when you need a dimension hint. (3) Decompose compound questions into atomic sub-questions (≤${PipelineConfig.max_subquestions}) prefixed by 【拆解】; run the six-class disambiguation scan. (4) Decide the route and emit exactly one token at the end of this turn:
+- 【route:proceed】 — search returned candidates AND you loaded the relevant definitions (grounding established) AND no real ambiguity remains → advance to GENERATION (which writes the SQL; do NOT call query_data here).
+- 【route:clarify】 — a real ambiguity remains (multiple competing candidates, unclear metric caliber). Also call present_clarification with ONE specific clarifying question, then HALT (await user; ${PipelineConfig.disambiguation_timeout_seconds}s → honest_decline). The gate HALTs on this token.
+- 【route:decline】 — no candidates returned or the question is unanswerable with the available data. Emit an honest decline: state WHY (what is missing), WHAT would be needed, HOW the user could rephrase. The gate honest-declines.
+If you emit no route token, the gate defaults to proceed but runs a grounding backstop (if search+retrieve found nothing, it declines honestly rather than run GENERATION on no corpus). Do not prematurely clarify or decline: if search returned candidates and you loaded definitions, you have grounding — emit 【route:proceed】.`,
   [Phase.GENERATION]: 'GENERATION: generate SQL from semantic-layer-grounded fields (never hardcode schema); critique_sql_tool + evaluate_sql_quality. The turn-stopping gate checks the SQL candidate (extract_sql_candidate) — the critic (regex + JSON path, no sqlglot) rejects tables ∉ candidates, GET_JSON_OBJECT fields ∉ event_params; warns on SELECT * / missing ds partition. Wrap SQL in ```sql fences. Fallback → UNDERSTANDING.',
   [Phase.EXECUTION]: 'EXECUTION (deterministic, not ReAct): query_data(sql) runs the Guard Chain. The SQL passed MUST equal the critiqued SQL (same-source — post-execute blocks a mismatch). Three outcomes drive the turn-stopping decision: done → advance; running → wait + poll; failed → fallback→GENERATION (carry error) or honest_decline. Never re-send the original SQL.',
   [Phase.INTERPRETATION]: `INTERPRETATION: deliver via tools only, strict order: present_decomposition (forced first) → present_table (pass result_id + intent) → compute → 【发现】(once) → 【注意】(once, list assumptions) → suggest_followups. Output purity: no **, no process narration, no SQL display, thousands separator. If you CANNOT answer, emit ${INCOMPLETE_MARKER} (NOT clarification — no HALT in delivery); the turn-stopping gate reads it → honest_decline. No fallback phase.`,
 }
 
-const SQL_CONVENTIONS = 'SQL conventions (MaxCompute/hive dialect): partition predicate ds=\'yyyyMMdd\' required for partitioned tables; SELECT-only; prefer explicit columns over SELECT *; GET_JSON_OBJECT field paths must reference event_params loaded in UNDERSTANDING.'
+const SQL_CONVENTIONS = 'SQL conventions (MaxCompute/hive dialect): partition predicate ds=\'yyyyMMdd\' required for partitioned tables; SELECT-only; prefer explicit columns over SELECT *; GET_JSON_OBJECT field paths must reference event_params loaded in UNDERSTANDING. Event queries: FROM ieu_ods.ods_10000251_all_view WHERE event=\'<event_name>\' AND ds>=\'<start>\' AND ds<=\'<end>\'; extract event params via GET_JSON_OBJECT(params, \'$.<field_name>\').'
 
 /** The phase-gate plugin. Per-agent state keyed by agent id. Mounted agent-plane (isolate realm). */
 export class PhaseGate {
@@ -94,6 +115,7 @@ export class PhaseGate {
       max_llm_calls_per_turn: config.max_llm_calls_per_turn ?? PipelineConfig.max_llm_calls_per_turn,
       max_state_turns: config.max_state_turns ?? PipelineConfig.max_state_turns,
       stall_watchdog_seconds: config.stall_watchdog_seconds ?? PipelineConfig.stall_watchdog_seconds,
+      critic_tools_registered: config.critic_tools_registered ?? false,
     }
   }
 
@@ -189,8 +211,30 @@ export class PhaseGate {
         // B6: forcedLoad runs ctx.tools.execute through guard — re-check decline/cancel before advancing.
         if (s.honest_decline_reason !== null || s.cancelled) return
       }
+      // P-DA1 backstop: route proceed/no-token but no grounding (search+retrieve
+      // both empty) → honest_decline — don't bare-run GENERATION on no corpus.
+      // Runs AFTER forcedLoad so the programmatic rescue gets a chance to surface
+      // candidates first (forcedLoad's post-execute capture updates last_search_empty).
+      if (s.current_phase === Phase.UNDERSTANDING && s.last_search_empty && s.last_retrieve_empty) {
+        this.honestDecline(s, 'route:proceed but no grounding (search+retrieve empty) → honest_decline')
+        return
+      }
       this.advance(agent, s)
       return
+    }
+    // P-DA1: UNDERSTANDING route_gate clarify/decline are terminal control-flow,
+    // NOT retries. clarify → HALT (await user clarification); decline →
+    // honest_decline (model self-declared no grounding / unanswerable). Handle
+    // before the retry/fallback path so neither burns a phase_attempt.
+    if (s.current_phase === Phase.UNDERSTANDING) {
+      if (gate.reason === 'route:clarify') {
+        s.awaiting_clarification = true
+        return // HALT — no advance, no inject, no retry (await user)
+      }
+      if (gate.reason === 'route:decline') {
+        this.honestDecline(s, 'route:decline — model self-declared no grounding / unanswerable')
+        return
+      }
     }
     if (s.current_phase === Phase.INTERPRETATION) { // M3: INCOMPLETE declaration is terminal
       this.honestDecline(s, `INTERPRETATION ${gate.reason}`)
@@ -243,7 +287,27 @@ export class PhaseGate {
       return GateResult.pass()
     }
     if (cfg.gate === 'sql_syntax_gate') return this.generationGate(s)
+    if (cfg.gate === 'route_gate') return this.routeGate(s) // P-DA1: UNDERSTANDING 3-state route
     throw new Error(`unknown gate: ${cfg.gate} (phase ${s.current_phase})`)
+  }
+
+  /**
+   * P-DA1: UNDERSTANDING route-gate. The model emits a `【route:proceed|
+   * clarify|decline】` token after search+load (mirrors `INCOMPLETE_MARKER`/
+   * `interpretGate` — single source = `ROUTE_MARKER_REGEX`/`extractRoute`).
+   * Returns a `GateResult` whose pass/fail + reason drives `onTurnStopping`:
+   * - proceed / no token → `pass()` — the pass-path runs the grounding backstop
+   *   (search+retrieve empty → honest_decline) then advances to GENERATION.
+   * - clarify → `fail('route:clarify')` — the fail-path sets
+   *   `awaiting_clarification` and HALTs (await user; NOT a retry).
+   * - decline → `fail('route:decline')` — the fail-path honest-declines (model
+   *   self-declared no grounding / unanswerable; NOT a retry).
+   */
+  private routeGate(s: PhaseGateState): GateResult {
+    const route = extractRoute(s.phase_output)
+    if (route === 'decline') return GateResult.fail('route:decline')
+    if (route === 'clarify') return GateResult.fail('route:clarify')
+    return GateResult.pass() // proceed or no token (backstop guards the no-grounding case)
   }
 
   // ── hook 3: tools/post-execute — count + capture critic data + F2 same-source block ──
@@ -294,6 +358,18 @@ export class PhaseGate {
       s.awaiting_clarification = true
     } else if (name === 'search_data_sources') {
       collectTableNames(value, s.candidate_tables)
+      // P-DA1: aggregate grounding signal for the route-gate backstop. Probing
+      // candidates.length (not candidate_tables.size) sidesteps the projection
+      // mismatch — search candidates are objects ({id,score,...}), and even with
+      // the collectTableNames .id fix the backstop's source of truth is the
+      // aggregate empty flag (the spec: avoid candidate_tables projection bug).
+      s.last_search_empty = isCandidatesEmpty(value)
+    } else if (name === 'retrieve') {
+      // P-DA1 forward-compat: the retrieve escape-hatch (tool-retrieve, D2c-impl
+      // shipped DORMANT) returns the same {candidates:[...]} shape as search.
+      // Until it is activated last_retrieve_empty stays true (default) and the
+      // backstop relies on search alone — additive, no behavior change dormant.
+      s.last_retrieve_empty = isCandidatesEmpty(value)
     } else if (name === 'load_event_definition') {
       // load_* returns { found, event|table: { … } } NESTED (the model-facing
       // projection) — probe the nested definition, not top-level value (else
@@ -468,7 +544,11 @@ export class PhaseGate {
    * @param query The phase's final assistant text used as the search query for candidate retrieval.
    */
   async forcedLoad(agent: Agent, signal: AbortSignal, query: string): Promise<void> {
-    const execute = this.ctx.tools.execute
+    // P-DA1: optional chaining — when the host did not mount the tools registry
+    // (ctx.tools undefined), fail-open (the comment's intent) instead of throwing.
+    // The route-gate backstop relies on forcedLoad being best-effort in tests/hosts
+    // where the tools registry is absent.
+    const execute = this.ctx.tools?.execute
     if (execute === undefined) return // host did not mount the tools registry — fail-open
     try {
       await execute({ callId: CallId('phase-gate:forced_load'), name: 'search_data_sources', arguments: { query }, signal, agent })
@@ -492,6 +572,14 @@ export class PhaseGate {
     if (sql !== null) s.last_sql = sql // F2: same-source for EXECUTION query_data
     const gate = sqlSyntaxGate(s.phase_output, criticCtx)
     if (!gate.passed) return new GateResult(false, gate.reason) // adapt nl2sql-engine -> phase-gate GateResult
+    // P-DA2: transition relax — when the critic tools (critique_sql_tool +
+    // evaluate_sql_quality) are unregistered (the default — not yet shipped),
+    // skip the last_critique/last_quality floor checks (they are always null
+    // without those tools, so the gate would hard-fail and GENERATION could
+    // never pass — grounded queries would die before EXECUTION). Rely on the
+    // folded sqlSyntaxGate (+ candidate/event_params/partition harvest) alone.
+    // When the critic ships (flag/probe), re-tighten — the floor checks return.
+    if (!this.criticToolsRegistered()) return GateResult.pass()
     if (s.last_critique === null) return GateResult.fail('critique not run (critique_sql_tool missing)')
     if (s.last_critique < PipelineConfig.critique_confidence_floor) {
       return GateResult.fail(`critique confidence ${s.last_critique} < ${PipelineConfig.critique_confidence_floor}`)
@@ -501,6 +589,30 @@ export class PhaseGate {
       return GateResult.fail(`quality score ${s.last_quality} < ${PipelineConfig.quality_score_floor}`)
     }
     return GateResult.pass()
+  }
+
+  /**
+   * P-DA2: probe whether the critic tools (`critique_sql_tool` +
+   * `evaluate_sql_quality`) are registered for this scope. Transition relax:
+   * when unregistered (default — critic not shipped), the GENERATION gate
+   * skips the `last_critique`/`last_quality` floor checks and relies on the
+   * folded `sqlSyntaxGate`; when registered (critic shipped), re-tighten.
+   * Dual-probe: an explicit config flag (preferred) OR best-effort
+   * `ctx.tools.get` (the agent-scope tools view). Flag preferred = explicit
+   * opt-in overrides the probe; default `false` = assume unregistered unless
+   * the flag or probe says otherwise.
+   */
+  private criticToolsRegistered(): boolean {
+    if (this.cfg.critic_tools_registered === true) return true // flag preferred
+    try {
+      const tools = this.ctx.tools
+      if (tools === undefined || typeof tools.get !== 'function') return false
+      return tools.get('critique_sql_tool') !== undefined
+        && tools.get('evaluate_sql_quality') !== undefined
+    } catch {
+      // best-effort: probe miss (no tools service / scope miss) → relax (rely on sqlSyntaxGate).
+      return false
+    }
   }
 
   private interpretGate(phaseOutput: string): GateResult {
@@ -557,6 +669,8 @@ export class PhaseGate {
     s.candidate_tables.clear()
     s.event_params.clear()
     s.partition_cols.clear()
+    s.last_search_empty = true // P-DA1: reset grounding backstop flags (not called yet → empty).
+    s.last_retrieve_empty = true
   }
 
   /**
@@ -592,9 +706,37 @@ function collectTableNames(value: unknown, out: Set<string>): void {
   const names = v.tables ?? v.table_names ?? v.candidates
   if (Array.isArray(names)) {
     for (const t of names) {
-      if (typeof t === 'string') out.add(t.toLowerCase())
+      if (typeof t === 'string') {
+        out.add(t.toLowerCase())
+      } else if (t !== null && typeof t === 'object') {
+        // P-DA1: search_data_sources candidates are objects ({ id, score,
+        // description?, mode }), not strings — the prior string-only harvest
+        // missed them entirely (the projection mismatch the route-gate backstop
+        // was designed around). Extract the `.id` leaf so GENERATION grounding
+        // (candidate_tables) is populated. The backstop uses last_search_empty
+        // (not candidate_tables) as its source of truth, so this fix and the
+        // backstop defend each other; both stay.
+        const id = (t as { id?: unknown }).id
+        if (typeof id === 'string') out.add(id.toLowerCase())
+      }
     }
   }
+}
+
+/**
+ * P-DA1: probe whether a search/retrieve result's candidates array is empty (the
+ * route-gate grounding backstop's source of truth). True = the tool was not
+ * called OR returned no candidates (`candidates`/`tables`/`table_names` missing
+ * or a zero-length array). Probing the array length (not `candidate_tables.size`)
+ * sidesteps the projection mismatch — candidates are objects, and even with the
+ * collectTableNames `.id` fix the backstop's aggregate empty flag is the spec'd
+ * signal (avoids candidate_tables projection bug).
+ */
+function isCandidatesEmpty(value: unknown): boolean {
+  if (value === null || value === undefined) return true
+  const v = value as { candidates?: unknown; tables?: unknown; table_names?: unknown }
+  const arr = v.candidates ?? v.tables ?? v.table_names
+  return !Array.isArray(arr) || arr.length === 0
 }
 
 function collectFields(value: unknown, out: Set<string>, ...keys: string[]): void {

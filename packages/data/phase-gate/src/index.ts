@@ -34,6 +34,8 @@ export {
   CriticFinding,
   DECOMPOSITION_MARKER,
   INCOMPLETE_MARKER,
+  ROUTE_MARKER_REGEX,
+  extractRoute,
   freshPhaseGateState,
   type PhaseGateState,
 } from './types.ts'
@@ -58,6 +60,7 @@ export const Config: z<Config> = z.object({
   max_llm_calls_per_turn: z.number().default(PipelineConfig.max_llm_calls_per_turn),
   max_state_turns: z.number().default(PipelineConfig.max_state_turns),
   stall_watchdog_seconds: z.number().default(PipelineConfig.stall_watchdog_seconds),
+  critic_tools_registered: z.boolean().default(false),
 })
 
 /**

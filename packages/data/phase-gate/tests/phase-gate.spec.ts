@@ -71,6 +71,9 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     const g = gate()
     const s = g.state('s1')
     s.candidate_tables.add('x') // skip forced_load
+    // P-DA1: the route-gate backstop reads last_search_empty (not candidate_tables)
+    // as the grounding signal — search must have surfaced candidates to advance.
+    s.last_search_empty = false
     s.phase_output = 'I understand the question'
     await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
     expect(s.current_phase).toBe(Phase.GENERATION)
@@ -81,7 +84,10 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
   it('F1 forced_load: UNDERSTANDING with no candidates calls ctx.tools.execute through guard', async () => {
     const { agent } = makeAgent('s1')
     const execute = vi.fn().mockResolvedValue(resultOk({ tables: ['dws_pay_order_di'] }))
-    const g = gate({ tools: { execute } } as unknown as Context)
+    // P-DA1: include a logger — the route-gate backstop may honest_decline when the
+    // mock execute doesn't fire captureToolData (last_search_empty stays true), and
+    // honestDecline calls ctx.logger.info.
+    const g = gate({ logger: { info: () => undefined }, tools: { execute } } as unknown as Context)
     g.state('s1').phase_output = 'understanding'
     await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
     expect(execute).toHaveBeenCalledTimes(1)
@@ -372,5 +378,328 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
     const r2 = await g.onRequest({ agent, turn: 2, step: 1, signal: new AbortController().signal }, next)
     expect(r2.reasoningEffort).toBeUndefined()
     expect(calls).toBe(2)
+  })
+})
+
+// ── P-DA1: route-gate (UNDERSTANDING 3-state + grounding backstop) ──
+// P-DA2: generation-relax (criticToolsRegistered probe) ──
+// P-DA3: persona thickening (no chitchat filter — dropped) ──
+import { extractRoute, ROUTE_MARKER_REGEX } from '../src/types.ts'
+
+describe('P-DA1 route-gate (UNDERSTANDING 3-state + grounding backstop)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('extractRoute + ROUTE_MARKER_REGEX: parses proceed/clarify/decline, null when absent', () => {
+    expect(extractRoute('found grounding 【route:proceed】')).toBe('proceed')
+    expect(extractRoute('ambiguous 【route:clarify】')).toBe('clarify')
+    expect(extractRoute('no answer 【route:decline】')).toBe('decline')
+    expect(extractRoute('no token here')).toBeNull()
+    expect(ROUTE_MARKER_REGEX.test('【route:proceed】')).toBe(true)
+  })
+
+  it('route proceed + grounding → advance to GENERATION', async () => {
+    const { agent, injected } = makeAgent('r1')
+    const g = gate()
+    const s = g.state('r1')
+    s.candidate_tables.add('dws_pay_order_di')
+    s.last_search_empty = false
+    s.phase_output = 'I found the relevant table.\n【route:proceed】'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION)
+    expect(injected).toHaveLength(1)
+  })
+
+  it('route proceed + no grounding (search empty) → honest_decline (backstop, not bare GENERATION)', async () => {
+    const { agent, injected } = makeAgent('r2')
+    const g = gate() // no ctx.tools.execute → forcedLoad no-ops, last_search_empty stays true
+    const s = g.state('r2')
+    s.last_search_empty = true
+    s.phase_output = 'I could not find candidates.\n【route:proceed】'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe('DECLINED')
+    expect(s.honest_decline_reason).toMatch(/no grounding/)
+    expect(injected).toHaveLength(0) // decline — no continuation
+  })
+
+  it('route clarify → HALT (awaiting_clarification, no advance, no inject, no retry)', async () => {
+    const { agent, injected } = makeAgent('r3')
+    const g = gate()
+    const s = g.state('r3')
+    s.candidate_tables.add('x')
+    s.last_search_empty = false
+    s.phase_output = 'Ambiguous — two candidates match.\n【route:clarify】'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.UNDERSTANDING) // stayed — HALT
+    expect(s.awaiting_clarification).toBe(true)
+    expect(injected).toHaveLength(0) // no retry inject, no advance
+    expect(s.phase_attempts).toBe(0) // NOT a retry
+  })
+
+  it('route decline → honest_decline (model self-declared)', async () => {
+    const { agent, injected } = makeAgent('r4')
+    const g = gate()
+    const s = g.state('r4')
+    s.phase_output = 'No data source answers this.\n【route:decline】'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe('DECLINED')
+    expect(s.honest_decline_reason).toMatch(/route:decline/)
+    expect(injected).toHaveLength(0)
+  })
+
+  it('no route token + grounding → default proceed → advance (backstop passes)', async () => {
+    const { agent, injected } = makeAgent('r5')
+    const g = gate()
+    const s = g.state('r5')
+    s.candidate_tables.add('dws_x')
+    s.last_search_empty = false
+    s.phase_output = 'I understand the question, proceeding.' // no token
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION)
+    expect(injected).toHaveLength(1)
+  })
+
+  it('no route token + no grounding → default proceed → backstop honest_decline', async () => {
+    const { agent } = makeAgent('r6')
+    const g = gate() // no ctx.tools.execute → forcedLoad no-ops
+    const s = g.state('r6')
+    s.last_search_empty = true
+    s.phase_output = 'searching...' // no token, no grounding
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe('DECLINED')
+    expect(s.honest_decline_reason).toMatch(/no grounding/)
+  })
+
+  it('collectTableNames .id: search candidates (objects) populate candidate_tables + last_search_empty=false', async () => {
+    const { agent } = makeAgent('r7')
+    const g = gate()
+    const s = g.state('r7')
+    // search_data_sources candidates are objects ({id,score,mode}), not strings.
+    // The prior string-only harvest missed them (projection mismatch); the .id
+    // fix extracts the leaf so GENERATION grounding (candidate_tables) is populated.
+    await g.onPostExecute(
+      execView('search_data_sources', agent, { query: 'DAU' }),
+      resultOk({ candidates: [{ id: 'dws_pay_order_di', score: 0.9, mode: 'table' }, { id: 'game.role.online', score: 0.7, mode: 'event' }] }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.candidate_tables.has('dws_pay_order_di')).toBe(true)
+    expect(s.candidate_tables.has('game.role.online')).toBe(true)
+    expect(s.last_search_empty).toBe(false)
+  })
+
+  it('collectTableNames: empty search candidates → last_search_empty=true, candidate_tables empty', async () => {
+    const { agent } = makeAgent('r8')
+    const g = gate()
+    const s = g.state('r8')
+    await g.onPostExecute(
+      execView('search_data_sources', agent, { query: 'nothing' }),
+      resultOk({ candidates: [] }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_search_empty).toBe(true)
+    expect(s.candidate_tables.size).toBe(0)
+  })
+
+  it('retrieve aggregation: retrieve result sets last_retrieve_empty (false with candidates, true when empty)', async () => {
+    const { agent } = makeAgent('r9')
+    const g = gate()
+    const s = g.state('r9')
+    await g.onPostExecute(
+      execView('retrieve', agent, { query: 'pay' }),
+      resultOk({ candidates: [{ id: 'dws_pay', score: 0.8, mode: 'table' }] }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_retrieve_empty).toBe(false)
+    // empty retrieve re-arms the empty flag (forward-compat for the dormant escape-hatch)
+    await g.onPostExecute(
+      execView('retrieve', agent, { query: 'miss' }),
+      resultOk({ candidates: [] }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_retrieve_empty).toBe(true)
+  })
+
+  it('backstop aggregates search+retrieve (union): proceed + search empty BUT retrieve found → advance', async () => {
+    const { agent, injected } = makeAgent('r10')
+    const g = gate()
+    const s = g.state('r10')
+    s.last_search_empty = true // search missed
+    s.last_retrieve_empty = false // retrieve escape-hatch found candidates
+    s.phase_output = 'retrieve bridged the gap.\n【route:proceed】'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION) // retrieve grounding → advance (union)
+    expect(injected).toHaveLength(1)
+  })
+
+  it('forcedLoad rescue: proceed + no candidates → forcedLoad finds grounding → advance (backstop re-checks after)', async () => {
+    const { agent } = makeAgent('r11')
+    // forcedLoad mock executes search_data_sources; simulate the post-execute
+    // capture the real tools registry would fire (the mock doesn't fire hooks)
+    // by setting last_search_empty=false inside execute — this tests that the
+    // backstop runs AFTER forcedLoad and re-checks (forced load found → no decline).
+    const execute = vi.fn().mockImplementation(async () => {
+      const st = g.state('r11')
+      st.last_search_empty = false
+      st.candidate_tables.add('dws_forced')
+      return resultOk({ candidates: [{ id: 'dws_forced', score: 1, mode: 'table' }] })
+    })
+    const g = gate({ tools: { execute } } as unknown as Context)
+    const s = g.state('r11')
+    s.last_search_empty = true
+    s.phase_output = 'proceeding.\n【route:proceed】'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(s.current_phase).toBe(Phase.GENERATION) // forced load rescued → advance
+  })
+})
+
+describe('P-DA3 — no chitchat pre-filter (dropped: 3 layers = route_gate + backstop + persona)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('onPreStep does NOT short-circuit a chitchat first-message (no canned reply, delegates to next)', async () => {
+    const { agent, injected } = makeAgent('cc1')
+    const g = gate()
+    const decision = await g.onPreStep(
+      { agent, messages: [{ role: 'user', content: '你好' } as unknown as UserMessage] as unknown as UserMessage[], turn: 1, step: 1, signal: new AbortController().signal },
+      () => Promise.resolve({ kind: 'enter', messages: [] }),
+    )
+    expect(decision.kind).toBe('enter') // no short-circuit — pipeline runs
+    expect(injected).toHaveLength(0) // no canned chitchat reply injected
+  })
+
+  it('a chitchat UNDERSTANDING turn with no grounding hits the backstop (goes through the pipeline, not canned)', async () => {
+    const { agent } = makeAgent('cc2')
+    const g = gate()
+    const s = g.state('cc2')
+    s.last_search_empty = true
+    s.phase_output = '你好' // chitchat, no route token, no grounding
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe('DECLINED') // backstop, not a canned reply
+    expect(s.honest_decline_reason).toMatch(/no grounding/)
+  })
+
+  it('persona thickening: BASE_PERSONA + UNDERSTANDING instruction mention phase order / event-vs-table / route tokens', async () => {
+    const g = gate()
+    const s = g.state('cc3')
+    s.current_phase = Phase.UNDERSTANDING
+    const ctx = { agent: { id: 'cc3' }, scope: { id: 'cc3' } } as unknown as AssembleContext
+    const stubAssembly: PromptAssembly = { sections: [], contexts: [], tools: [], variables: {} }
+    const out = await g.onAssemble(stubAssembly, ctx, () => Promise.resolve(stubAssembly))
+    const phaseInstruction = out.sections.find((x: { name?: string }) => x.name === 'phase-instruction')
+    expect(phaseInstruction).toBeDefined()
+    const text = phaseInstruction!.text
+    // P-DA3 three explicit instructions + P-DA1 route token mechanism (the
+    // phase-instruction section; BASE_PERSONA is registered separately in register()).
+    expect(text).toContain('【route:proceed】')
+    expect(text).toContain('【route:clarify】')
+    expect(text).toContain('【route:decline】')
+    expect(text).toContain('load_event_definition')
+    expect(text).toContain('load_table_definition')
+    expect(text).toMatch(/do NOT call query_data/) // P-DA3 phase-order rule
+    expect(text).toMatch(/event names/) // P-DA3 event-vs-table tool choice
+  })
+})
+
+describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('critic UNREGISTERED (default): sqlSyntaxGate-passing SQL → gate passes (skips last_critique/last_quality) → EXECUTION', async () => {
+    const { agent } = makeAgent('g1')
+    const g = gate() // no ctx.tools.get → criticToolsRegistered() false
+    const s = g.state('g1')
+    s.current_phase = Phase.GENERATION
+    s.phase_idx = 1 // GENERATION index in PHASE_ORDER so advance lands on EXECUTION
+    s.candidate_tables.add('dws_pay')
+    s.partition_cols.add('ds')
+    // valid SQL (table ∈ candidates, ds partition present); last_critique/last_quality stay null (critic not shipped)
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.EXECUTION) // relaxed gate passed → advance
+  })
+
+  it('critic UNREGISTERED: bad SQL (table ∉ candidates) still fails on sqlSyntaxGate (relax only skips the floor)', async () => {
+    const { agent, injected } = makeAgent('g2')
+    const g = gate()
+    const s = g.state('g2')
+    s.current_phase = Phase.GENERATION
+    s.candidate_tables.add('real')
+    s.phase_output = "```sql\nSELECT a FROM phantom WHERE ds='1'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION) // retry
+    expect(s.phase_attempts).toBe(1)
+    expect(injected).toHaveLength(1)
+  })
+
+  it('critic REGISTERED (config flag): re-tightens — last_critique null → gate fails → retry', async () => {
+    const { agent, injected } = makeAgent('g3')
+    const g = new PhaseGate(
+      { logger: { info: () => undefined } } as unknown as Context,
+      { stall_watchdog_seconds: 9999, critic_tools_registered: true },
+    )
+    const s = g.state('g3')
+    s.current_phase = Phase.GENERATION
+    s.candidate_tables.add('dws_pay')
+    s.partition_cols.add('ds')
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION) // retry — critique not run
+    expect(s.phase_attempts).toBe(1)
+    expect(injected).toHaveLength(1)
+  })
+
+  it('critic REGISTERED via ctx.tools.get probe: re-tightens (last_critique null → fail → retry)', async () => {
+    const { agent } = makeAgent('g4')
+    // ctx.tools.get returns a defined ToolDefinition for the two critic tools → registered
+    const ctx = {
+      logger: { info: () => undefined },
+      tools: { get: (name: string) => (name === 'critique_sql_tool' || name === 'evaluate_sql_quality' ? { name } : undefined) },
+    } as unknown as Context
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    const s = g.state('g4')
+    s.current_phase = Phase.GENERATION
+    s.candidate_tables.add('dws_pay')
+    s.partition_cols.add('ds')
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION) // retry — critic registered, floor re-tightened
+    expect(s.phase_attempts).toBe(1)
+  })
+
+  it('critic REGISTERED + critic data present + above floor → passes (re-tighten faithful, rbi)', async () => {
+    const { agent } = makeAgent('g5')
+    const g = new PhaseGate(
+      { logger: { info: () => undefined } } as unknown as Context,
+      { stall_watchdog_seconds: 9999, critic_tools_registered: true },
+    )
+    const s = g.state('g5')
+    s.current_phase = Phase.GENERATION
+    s.phase_idx = 1 // GENERATION index → advance lands on EXECUTION
+    s.candidate_tables.add('dws_pay')
+    s.partition_cols.add('ds')
+    s.last_critique = 0.8 // ≥ critique_confidence_floor (0.6)
+    s.last_quality = 80 // ≥ quality_score_floor (60)
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.EXECUTION) // critic registered + data good → pass
+  })
+
+  it('critic REGISTERED + critic data below floor → fails (re-tighten enforces the floor)', async () => {
+    const { agent } = makeAgent('g6')
+    const g = new PhaseGate(
+      { logger: { info: () => undefined } } as unknown as Context,
+      { stall_watchdog_seconds: 9999, critic_tools_registered: true },
+    )
+    const s = g.state('g6')
+    s.current_phase = Phase.GENERATION
+    s.candidate_tables.add('dws_pay')
+    s.partition_cols.add('ds')
+    s.last_critique = 0.3 // < critique_confidence_floor (0.6)
+    s.last_quality = 80
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION) // retry — below floor
+    expect(s.phase_attempts).toBe(1)
   })
 })
