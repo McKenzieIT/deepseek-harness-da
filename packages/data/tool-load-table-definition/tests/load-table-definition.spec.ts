@@ -255,3 +255,18 @@ test('S18 loadTableDefinitionResult - I/O error redacts the path + stays single-
   expect(r.message).not.toContain('/secret')
   expect(r.message).not.toContain('\n')
 })
+
+
+test('S19 loadTableDefinitionResult - >200-char error is capped with ... (single line)', () => {
+  // A-N2: the S13 ZodError message is ~152 chars, so the 200-cap + '...' truncation
+  // is unexercised. Inject a >200-char error to lock the cap + marker + single-line.
+  const throwing = {
+    loadTableDefinition: () => { throw new Error('x'.repeat(300)) },
+  } as unknown as Parameters<typeof loadTableDefinitionResult>[0]
+  const r = loadTableDefinitionResult(throwing, 'whatever')
+  expect(r.found).toBe(false)
+  expect(r.message).toMatch(/^substrate error:/)
+  expect(r.message).toContain('...')
+  expect(r.message.length).toBeLessThanOrEqual(220)
+  expect(r.message).not.toContain('\n')
+})

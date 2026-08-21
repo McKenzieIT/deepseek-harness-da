@@ -245,3 +245,17 @@ test('S18 projectEvent filters empty-string metric keys', () => {
   const proj = projectEvent(def)
   expect(proj.metrics?.map(m => m.name)).toEqual(['real'])
 })
+
+
+test('S19 loadEventDefinitionResult - >200-char error is capped with ... (single line)', () => {
+  // A-N2: lock the 200-cap + '...' truncation (the S13 ZodError is ~152 chars).
+  const throwing = {
+    loadEventDefinition: () => { throw new Error('x'.repeat(300)) },
+  } as unknown as Parameters<typeof loadEventDefinitionResult>[0]
+  const r = loadEventDefinitionResult(throwing, 'whatever')
+  expect(r.found).toBe(false)
+  expect(r.message).toMatch(/^substrate error:/)
+  expect(r.message).toContain('...')
+  expect(r.message.length).toBeLessThanOrEqual(220)
+  expect(r.message).not.toContain('\n')
+})
