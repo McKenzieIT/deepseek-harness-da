@@ -21,7 +21,7 @@ G1b 原框定「依赖已解锁（P7b/P13b/P11b/G1 全 resolved）→ 可跑」*
 
 **Key 可得（用户门已过）**：`~/.dsh/.credentials.yaml` 存在（0600、273B），含 `DASHSCOPE_API_KEY`+`QODER_PERSONAL_ACCESS_TOKEN`；P2/P2b/P2c/T2 live 探针（2026-08-19/20）成功打到 AGA→key 有效、AGA 从本机可达。**但 key 不足**——缺真 ODPS 凭证（cred file 无 ODPS_ACCESS_ID/KEY/PROJECT/ENDPOINT），execution-match 的数据底座未建。
 
-**毕业**（不伪造 ship 信号——无真执行数据，ship-default + per-model-routing 雾无法毕业，伪造会污染下游决策）：3 prereq 票——**P4c**（真 ODPS 路径，硬门，phase-2，`../phase-2/P4c-real-odps-execution-path.md`）+ **P11c**（eval runner，phase-4，已存在 unblocked，`../phase-4/P11c-eval-cli-runner.md`）+ **G1c**（变体 preset+roster+honesty，phase-misc，`./G1c-variant-presets-tool-roster.md`）。G1b re-block on 三者；ship-default + per-model-routing 雾（map Not-yet-specified）持留，WHY 更新为「real-ODPS 执行路径未建」。
+**毕业**（不伪造 ship 信号——无真执行数据，ship-default + per-model-routing 雾无法毕业，伪造会污染下游决策）：3 prereq 票——**P4c**（真 ODPS 路径，硬门，phase-2，`../phase-2/P4c-real-odps-execution-path.md`）+ **P11c**（eval runner，phase-4，已存在 unblocked，`../phase-4/P11c-eval-cli-runner.md`）+ **G1c**（变体 preset+roster+honesty，phase-misc，`./G1c-variant-presets-tool-roster.md`）。G1b re-block on 三者；ship-default + per-model-routing 雾（map Not-yet-specified）持留，WHY 更新为「real-ODPS 执行路径未建」。**〔2026-08-21 maxc de-risk〕**：真 ODPS 硬门的「cred provisioning + intranet reachability」sub-blocker 已解——本机 maxc（`~/.maxc/config_ieu_cdm.yaml.bak` valid）可达 ieu_cdm、case 037 expected SQL 重跑返 4336（数据 preserved）。P4c 改 maxc-backed sidecar（替 stand-in，Provider 不变；ieu_cdm 单 config 覆盖全 5 scope——scope 在表名 `dws_<scope>_` 内非独立 project），buildable、不再外部 cred-blocked。G1b 仍 re-block on P4c（建）+ P11c + G1c——硬门从「外部 cred 不可得」降为「内部 build 待做」。
 
 **执行范围 prereq 映射**：step 1（建变体 preset）→ G1c；step 3（execution-match + honesty）依赖 P4c（真 ODPS）+ G1c（honesty tagging）；step 4（staged 跑）via P11c runner（P11b 库 + P11c runner，待建；P11 proto throwaway 仅验编排逻辑非真执行）。step 2（模型探针）是唯一可独立先跑的一步（key 可得），可在 P4c/P11c/G1c 闭合前作 de-risk 子任务。
 
@@ -42,7 +42,7 @@ G1b 原框定「依赖已解锁（P7b/P13b/P11b/G1 全 resolved）→ 可跑」*
 
 ## Blocked by（re-blocked 2026-08-21）
 
-- **P4c**（真 ODPS 执行路径：real pyodps sidecar + engine-wrapper guard chain + tool-query Consumer/query_data——**硬门**，execution-match 需真 ODPS rows；stand-in 恒返 canned `[['game-x',1234]]` 不可测）。P4c 自身 blocked on 真 MaxCompute 凭证 provisioning。
+- **P4c**（真 ODPS 执行路径：maxc-backed sidecar + guard chain + tool-query Consumer/query_data——**硬门**，execution-match 需真 ODPS rows；stand-in 恒返 canned `[['game-x',1234]]` 不可测）。**P4c 不再外部 cred-blocked**（2026-08-21 maxc de-risk：本机 `~/.maxc/config_ieu_cdm.yaml.bak` valid + ieu_cdm 可达 + case 037 expected SQL 重跑返 4336=expected.result_value，数据 preserved）；P4c buildable。
 - **P11c**（eval CLI runner + 持久化 + pass_at_k 报告——P11b 是纯库无 runner；P11c 现已 unblocked 因 P11b resolved，可建）。
 - **G1c**（变体 preset B/C/D + 共享 data-tool roster 补完 + honesty tagging——A 自身仅 `search_data_sources` 注册，query_data/load_*/present_* 全注释 TBD；B/C/D 不存在）。
 - ~~P7b/P11b/P13b/G1~~（全 resolved 2026-08-20，但**不足**：P7b 接 phase-gate 编排但 gate 的数据工具多为未注册 stub；P11b 是库无 runner；P13b 是 NL→SQL+critic 但 agent 没法执行 SQL）。
