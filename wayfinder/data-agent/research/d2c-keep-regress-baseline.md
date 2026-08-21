@@ -100,3 +100,14 @@ reverse-bi（`~/workspace/reverse-bi`，只读源）可达后，重跑基线于*
 - **cases**：25，手造（gold/ambiguity tag 人工标注——主观，D2c-revisit 须用 RBI 真 SQL 派生 gold）。
 - **运行**：`node run.mjs` EXIT=0（无网络，纯计算）。
 - **局限**：见 §4。
+
+## 8. re-frame 纠正（D2d，2026-08-21）
+
+[D2d grilling 票](../tickets/phase-misc/D2d-retrieval-quality-reframe.md) 独立调查后纠正 §7 的 framing（§7 原文保留作历史 baseline）：
+
+1. **"32.3% = production default" 非当前态**：data-agent bundle `packages/bundle/data-agent/cordis.patch.yml` 的 `embedder`(FakeHash)+`retrieval`(inproc) 两行 **commented**（"an unmounted seam keeps search_data_sources on its Bm25Linker default (no behavior change)"）→ 真 default boot = BM25-only（`Bm25Linker`）≈41.9%，非 32.3%。32.3% 是 opt-in FakeHash-hybrid 态；**挂 FakeHash 会 regress prefetch 41.9%→32.3%**（self-inflicted）。
+2. **"F4 主因" 是 one-of-several 非 main cause**：[probe_hypotheses.py](../prototypes/d2c-retrieve-baseline/probe_hypotheses.py) on real RBI（BM25-only）实测——base 41.9% / +params_fields 54.8%(+12.9pp，F4 确证) / +terminology 48.4% strict·51.6% loose(+6.5pp，第二 bridge §7 未隔离——`terminology.yaml` 现成 slang→events 桥未用：日活→role.online、充值/付费→recharge…) / params+term 58.1% strict·61.3% loose(best) / +domain **HURTS**(54.8%<58.1%——粗 Chinese domain 名 inflate false-pos，丢 item.add/shop.buy) / topK=20 51.6% / FakeHash-hybrid 全 6 variant 严格劣于 BM25-only。**问题是 3 层 gap 栈**：(i) FakeHash self-harm [config] (ii) 薄 corpus-feed [data，via P6b ctx.schema→retrieval corpus mapping] (iii) CJK synonym 语义 gap [needs real embedder——人气≈活跃/消费≈付费 lexical 不可桥]。
+3. **measurement-fidelity caveat**：§7 port 了 `HybridRetriever`(embedder `tokenize.ts`=bigram-only)，非实际 default prefetch 的 `Bm25Linker`(unigram+bigram)——两 BM25 路径 tokenizer 不同（mount retrieval-inproc 换 prefetch tokenizer，hidden inconsistency）；exact % 或微差，qualitative 栈结论稳。D2e/D2c-revisit 须测 actual `Bm25Linker` default 或 reconcile tokenizer。
+4. **D2c keep (b) corrected basis 重确认（不改决策）**：58.1% cheap-fix ceiling 仍 <85-90% regress bar → keep (b) 不动；D2c"皆必需"拆序——cheap unblocked（params+term+不挂FakeHash）→58% floor；real-embedder（D2c-revisit）→semantic gap；escape-hatch 仍必需。
+
+毕业：[D2e-corpus-enrichment](../tickets/phase-misc/D2e-corpus-enrichment.md) build（params+term 不 domain）+ FakeHash-not-default 约束落 [D2c-impl](../tickets/phase-misc/D2c-impl-retrieve-tool-shipping.md) + [D2c-revisit](../tickets/phase-misc/D2c-revisit-regress-reeval.md) premise 修。§7 原文保留作历史 baseline；本 §8 纠正其 framing。

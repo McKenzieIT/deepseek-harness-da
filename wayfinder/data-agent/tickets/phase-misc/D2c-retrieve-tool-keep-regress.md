@@ -30,6 +30,8 @@
 
 **real-RBI 确认（2026-08-21，post-commit）**：reverse-bi（~/workspace/reverse-bi，只读源）可达后重跑真 RBI scope 10000147（1966-event corpus，37 case，31 有 gold）——DEFAULT HYBRID strict **32.3%** / BM25-only 41.9% / ambiguity 21.6%。**default recall 32.3% <<85-90% bar + ambiguity 21.6% >15% → 双判据远未达 → keep (b) decisively confirmed（非 borderline，无 flip）**。主因 F4：events 语义内容在 params_fields，shipped FIELD_WEIGHTS 不索引 → Chinese 问题匹配不上 English event id + 短 description。real 数据强化 keep（非"安全默认"而是"default 32% 严重不足→escape-hatch+real-embedder+params 索引皆必需"）。见 [research §7](../../research/d2c-keep-regress-baseline.md)。
 
+**〔D2d re-frame correction 2026-08-21〕**：见 [D2d](D2d-retrieval-quality-reframe.md) + [research §8](../../research/d2c-keep-regress-baseline.md)——上述 32.3% 是 **opt-in FakeHash-hybrid** 非 真默认（真默认=BM25-only ~41.9%，bundle `cordis.patch.yml` embedder+retrieval commented → `search_data_sources` 软回退 `Bm25Linker`）；"主因 F4"是 **one-of-several 非 main cause**（terminology 第二 bridge §7 未隔离；problem=3 层 gap 栈：FakeHash self-harm + 薄 corpus-feed + synonym 语义 gap）；cheap-fix ceiling（params+term，BM25-only）=58.1% strict 仍 <85-90%。**keep (b) 决策在 corrected basis 重确认（不改）**——"皆必需"拆序：cheap unblocked（params+term+不挂FakeHash）→58% floor；real-embedder（D2c-revisit）→semantic gap；escape-hatch 仍必需。
+
 **Follow-ups**：
 - [D2c-impl](D2c-impl-retrieve-tool-shipping.md)（prototype/task）：ship retrieve-tool escape-hatch（additive，`defineTool`+`ctx.tools.register` grounded by P13b `search_data_sources`，persona 教"何时调 retrieve vs 信任预取"，bundle opt-in，**不默认挂 FakeReranker** per F2）。unblocked。
 - [D2c-revisit](D2c-revisit-regress-reeval.md)（grilling）：regress 重访——真 eval 数据复测，达 ≥85-90% strict + <15% ambiguity → regress (a)（若 D2c-impl 已 ship 则 unship）；否则 keep。blocked by G1b。方法论复用见 baseline §6。
