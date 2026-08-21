@@ -69,10 +69,10 @@
 #
 - id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item; Bm25Linker Q1 thin default, swap -> ctx.retrieval P5b / ctx.schema P6b)
   name: '@deepseek-ai/dsh-tool-search-data-sources'
-# - id: tool-load-table-definition # UNDERSTANDING/GENERATION (P6 semantic-layer → ctx.schema)
-#   name: '@deepseek-ai/dsh-tool-load-table-definition' # name TBD - P6
-# - id: tool-load-event-definition # UNDERSTANDING/GENERATION (P6 → ctx.schema)
-#   name: '@deepseek-ai/dsh-tool-load-event-definition'  # name TBD - P6
+- id: tool-load-table-definition # UNDERSTANDING/GENERATION (P6 semantic-layer → ctx.schema.loadTableDefinition)
+  name: '@deepseek-ai/dsh-tool-load-table-definition'
+- id: tool-load-event-definition # UNDERSTANDING/GENERATION (P6 → ctx.schema.loadEventDefinition)
+  name: '@deepseek-ai/dsh-tool-load-event-definition'
 - id: tool-query-data            # EXECUTION (P4c: ctx.query.execute → MaxCompute via maxc-sidecar; agent runs its own SQL)
   name: '@deepseek-ai/dsh-query-tool'
 # - id: tool-critique-sql          # GENERATION (P13b; critic itself folded into phase-gate)

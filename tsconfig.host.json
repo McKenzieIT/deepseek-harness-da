@@ -166,6 +166,8 @@
     { "path": "./packages/data/nl2sql-engine" },
     { "path": "./packages/data/semantic-layer" },
     { "path": "./packages/data/tool-search-data-sources" },
+    { "path": "./packages/data/tool-load-table-definition" },
+    { "path": "./packages/data/tool-load-event-definition" },
     { "path": "./packages/embedder/embedder" },
     { "path": "./packages/embedder/embedder-fakehash" },
     { "path": "./packages/embedder/embedder-http" },
