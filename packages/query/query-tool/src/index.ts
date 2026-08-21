@@ -126,6 +126,7 @@ export function projectOutcome(outcome: QueryOutcome): QueryDataResult {
       return {
         ...base,
         ...(outcome.columns !== undefined ? { columns: outcome.columns } : {}),
+        // cast safe: provider JSON-decodes sidecar cells (rows: unknown[][] -> JsonValue[][])
         ...(outcome.rows !== undefined ? { rows: outcome.rows as JsonValue[][] } : {}),
         ...(outcome.rowCount !== undefined ? { rowCount: outcome.rowCount } : {}),
         ...(outcome.truncated !== undefined ? { truncated: outcome.truncated } : {}),
@@ -214,7 +215,9 @@ export async function executeQuery(
 function formatCell(value: unknown): string {
   if (value === null) return 'NULL'
   if (value === undefined) return ''
-  return String(value)
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return JSON.stringify(value)
 }
 
 /** Render a completed result as a TSV table, display-capped to maxDisplayRows. */
@@ -302,7 +305,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       render: (_args, value) => [{ type: 'text', text: formatResult(value as QueryDataResult, cfg) }],
     },
     async execute(args, exec) {
-      const query = ctx.get('query') as QueryEngine | undefined
+      const query = ctx.get('query')
       if (query === undefined) {
         throw new Error(
           'query_data: no query engine registered; mount a provider such as '
