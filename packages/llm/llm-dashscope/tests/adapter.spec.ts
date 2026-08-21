@@ -381,7 +381,7 @@ describe('plugin registration and config', () => {
     }
   })
 
-  it('registers the dashscope provider with the AGA default baseURL and catalog', async () => {
+  it('registers the aga provider (DashScope) with the AGA default baseURL and catalog', async () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDashScope, {})
