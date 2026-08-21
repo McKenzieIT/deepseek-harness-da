@@ -1,0 +1,37 @@
+# Agent Note: rescope-fork codemod — split the fork's own packages out of @deepseek-ai
+
+Status: implemented
+
+## Problem
+
+The fork's own packages carry the `@deepseek-ai` scope (`@deepseek-ai/dsh-eval`, `@deepseek-ai/dsh-semantic-layer`, …). That premise does not survive an independent product split: `@deepseek-ai` is deepseek-ai's npm org, and the fork is not deepseek-ai. The wayfinder decision [product-split-package-rescope](../../../../../wayfinder/data-agent/tickets/phase-misc/product-split-package-rescope.md) (2026-08-21) resolved the split shape — D2 = c-ii (npm-consume), D3 = c (consume `@deepseek-ai/cordis` from npm), D1 = structure confirmed + name deferred — but left the codemod that performs the rename as the hand-off step. Writing it now (additive, trigger-independent) means the split is a one-shot `--apply` when deepseek-ai first publishes.
+
+## Decision
+
+[`scripts/rescope-fork.ts`](../../../../scripts/rescope-fork.ts) owns the rename. It mirrors [`rescope-vendor.ts`](../../../../scripts/rescope-vendor.ts) but moves the fork's OWN packages out of `@deepseek-ai` into a target scope, where rescope-vendor moves the vendored framework INTO `@deepseek-ai`. Four shape choices follow from the c-ii/c decision:
+
+**Dynamic discovery, not a fixed table.** The fork's own package set grows and the upstream `dsh-*` core is still local in the additive-only fork, so a hardcoded `RENAMES` table (rescope-vendor's shape) would rot. `discover()` runs `git ls-files` over `package.json` / `packages/**/package.json` / `apps/*/package.json` / `native/**/package.json`, reads each `name`, and keeps the `@deepseek-ai/*` ones. The mapping is keyed on LOCAL package names — references to NON-local `@deepseek-ai/dsh-*` (upstream core like `@deepseek-ai/dsh-core`, `@deepseek-ai/dsh-tools`) are not in the mapping and fall through untouched, resolving from npm. This is the same "RENAMES key set = processed set" discipline rescope-vendor uses; under c-ii the local set in the product repo IS the da-addition set.
+
+**`--target` is parameterized; the name is deferred.** `--apply` requires `--target <scope>`; `--check` reads the post-state; `--reverse` returns to `@deepseek-ai/` (re-apply after an upstream sync, preserving the additive-only upgrade path). D1's target name is a trigger-time input — the codemod never needs it to exist, only to apply. `@deepseek-ai/cordis` (the framework peer) is non-local under D3=c (consumed from npm), so it is NOT in the mapping and is never rescoped; `rescope-vendor` is therefore irrelevant to the product repo and its hardcoded `@deepseek-ai` target does NOT need parameterizing (a D3=a concern, ruled out under c-ii).
+
+**Exact edits reuse rescope-vendor's classifier.** The generic token rule (quoted / backticked specifiers with optional `/subpath`, plus a YAML `name:` scalar) cannot safely express `startsWith` gates, regex literals, JSON `ignoreDependencies` entries, and AGENTS.md convention prose that names packages by a `<placeholder>` rather than a concrete name. `exactEdits(target)` returns these in the APPLY direction (`find` = pre-state `@deepseek-ai` form, `replace` = post-state `@<target>` form); `main` orients for `--reverse` by swapping find/replace uniformly — the same flip rescope-vendor uses — so the one non-target-interpolated edit (the `verify-dsh-package-licenses` regex, made scope-agnostic `/^@[^/]+\/dsh/`) reverses correctly too. The state classifier (`pending` / `applied` / `invalid`) is imported from rescope-vendor rather than duplicated.
+
+**A `vendor/` guard refuses `--apply` on the additive-only fork.** In the fork, `discover()` finds the upstream `dsh-*` core as local too (~252 packages), and rescoping it would be wrong under c-ii (those are consumed from npm in the product repo). The product repo (c-ii, post migration-step-2 drop) has no `vendor/`; the fork does. So `--apply` aborts if `vendor/` exists and points at migration step 2. `--check` and the dry run still report the discovered set, so the codemod is exercisable now without a target.
+
+## Consequences
+
+- The codemod is writable and unit-tested now (14/14, `scripts/rescope-fork.spec.ts`), independent of deepseek-ai publishing. The script is the additive-only-fork-period deliverable; `--apply` + the 7-step migration are trigger-time work at deepseek-ai's first npm publish (first-tag boundary, AGENTS.md Pre-release sanction).
+- `--check` in the current fork reports ~252 discovered packages and a large residue — expected, not a defect: the fork's local set includes the upstream core the product repo will drop. A hygiene `rescope-fork:check` gate (mirroring `rescope-vendor:check`) is registered in `package.json` for the product repo to run post-apply; in the additive-only fork it is informational.
+- POSTCONDITIONS are scoped to the LOCAL set, not blanket "no `@deepseek-ai/` residue": under c-ii, upstream core dep references (`@deepseek-ai/dsh-core`, …) MUST remain `@deepseek-ai/` (npm consume), so asserting their absence would be wrong. Each local package's manifest name is asserted to start with the target scope; the verify-regex literal is asserted scope-agnostic.
+- `repository.url` and README brand prose are NOT rewritten by the codemod: the token rule touches package-name tokens, the target repo URL is a D1 trigger-time input (still TBD), and brand prose ("developed by DeepSeek AI") is a manual migration step 5. Repointing `repository.url`, rebranding README, and removing the AGENTS.md Pre-release stance section happen at apply time alongside the codemod.
+- Returning to the upstream scope is `--apply --reverse` — replay it after an upstream sync rather than resolving a multi-thousand-file conflict, exactly as rescope-vendor does for the vendored framework.
+
+## Alternatives considered
+
+**Hardcode a `RENAMES` table (rescope-vendor's shape).** Rejected because the fork's own set grows (new da packages land under `@deepseek-ai/dsh-*` during additive-only internal-dev), and a table would miss new packages. Dynamic discovery stays correct as the set grows, and the codemod handles whatever `discover()` finds.
+
+**Parameterize `rescope-vendor.ts` instead of a new script.** Rejected because rescope-vendor moves the vendored framework INTO `@deepseek-ai` (a fixed, one-time rename with a fixed table); rescope-fork moves the fork's own packages OUT, dynamically discovered and target-parameterized. They are different shapes, and the ticket scopes rescope-fork as additive ("does not touch rescope-vendor"). `rescope-vendor` exports `exactEditState`, which rescope-fork reuses — the shared logic is the state classifier, not the mapping.
+
+**Pin the target name now (avoid the `--target` parameter).** Rejected because the product name is still TBD ([map](../../../../../wayfinder/data-agent/map.md) Destination) and additive-only internal-dev requires new da packages to keep `@deepseek-ai/dsh-*` to match upstream naming and preserve the upgrade path — pinning `@<target>/` now would break additive-only. The debt is handled by the codemod at split, not by pinning now.
+
+**Assert blanket "no `@deepseek-ai/` residue" as the post-condition.** Rejected under c-ii: upstream core dep references (`@deepseek-ai/dsh-core`, `@deepseek-ai/cordis`) MUST remain `@deepseek-ai/` because they are consumed from npm. A blanket assertion would flag expected npm-dep references as failures. The post-condition is scoped to the local package set instead.
