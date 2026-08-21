@@ -29,3 +29,9 @@ What is the form of the data-agent's INTERPRETATION-phase delivery tools (`prese
 ## 关联
 
 [data-agent-tool-packages-shipping](data-agent-tool-packages-shipping.md) (parent aggregate) + [G1c](G1c-variant-presets-tool-roster.md) (INTERPRETATION delivery deferred) + P7b (phase-gate INTERPRETATION) + reverse-bi delivery tools (read-only source).
+
+---
+
+**Note (2026-08-21, ticket C assessment — NOT resolved)** — assessed during the load_*/data-agent-tool session (tickets A + B landed: `c45845b215` harvest fix, `433a9440d3` ctx.schema bundle mount). This ticket is **HITL grilling** (Type: grilling) — the delivery-form decision requires a human `/grilling` + `/domain-modeling` session; the agent must not stand in for the human's side of it (wayfinder HITL rule), and no interactive human is present in an autonomous session to grill. So the form is **not decided** here and `present_*` is **not shipped** (the ticket scopes itself: "decides… before any package ships"). Still unclaimed + open.
+
+**Suggested next step** (for a HITL session): (1) optionally fire a `/research` subagent to survey reverse-bi's delivery tools (report / Excel / text — what RBI ships, their shapes, how they surface to the model) to surface the facts the grilling waits on; (2) a `/grilling` + `/domain-modeling` session decides the form (delivery modes, one-parameterized-tool vs per-mode tools, `code-runtime` reuse vs a `ctx.delivery` seam, write-file vs return-text); (3) only then ship `present_*` packages (mirror `tool-search-data-sources` / `tool-load-*` three-piece shape). G1b DELIVERY scoring stays blocked on this until then.
