@@ -4041,6 +4041,25 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
+  packages/data/tool-retrieve:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-nl2sql-engine':
+        specifier: workspace:^
+        version: link:../nl2sql-engine
+      '@deepseek-ai/dsh-retrieval':
+        specifier: workspace:^
+        version: link:../../retrieval/retrieval
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
   packages/data/tool-search-data-sources:
     dependencies:
       '@deepseek-ai/schemastery':

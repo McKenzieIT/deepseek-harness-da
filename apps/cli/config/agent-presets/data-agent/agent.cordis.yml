@@ -75,6 +75,8 @@
   name: '@deepseek-ai/dsh-tool-load-event-definition'
 - id: tool-query-data            # EXECUTION (P4c: ctx.query.execute → MaxCompute via maxc-sidecar; agent runs its own SQL)
   name: '@deepseek-ai/dsh-query-tool'
+# - id: tool-retrieve            # ESCAPE-HATCH (D2c-impl): on-demand retrieval over the same BM25 corpus as search_data_sources; additive escape-hatch for when the UNDERSTANDING prefetch missed. SHIPPED but DORMANT (opt-in, mirrors D2e/P5b dormant-until-mount) — default boot does NOT mount it = pipeline-only current state, no regression. Activation = uncomment this row + add `retrieve` to the phase-gate whitelist + land the persona (P7b) teaching "prefer prefetched context; call retrieve only when the gap is obvious" (avoid double-retrieval redundancy). Soft-fallback == search_data_sources (ctx.retrieval -> ctx.schema enriched Bm25Linker -> empty Bm25Linker; NO FakeHash/FakeReranker default per D2d). Additive/reversible — unship if D2c-revisit regresses.
+#   name: '@deepseek-ai/dsh-tool-retrieve'
 # - id: tool-critique-sql          # GENERATION (P13b; critic itself folded into phase-gate)
 #   name: '@deepseek-ai/dsh-tool-critique-sql'          # name TBD - P13b
 # - id: tool-evaluate-sql-quality  # GENERATION (P13b)
