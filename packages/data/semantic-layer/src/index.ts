@@ -39,6 +39,7 @@ import {
   loadEventDefinition as loadEventDefinitionFromLayer,
   loadTableDefinition as loadTableDefinitionFromLayer,
   loadRetrievalCorpus as loadRetrievalCorpusFromLayer,
+  getCorpusVersion as getCorpusVersionFromLayer,
   type Tier2Recorder,
 } from './io.ts'
 import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
@@ -184,6 +185,20 @@ export class SemanticLayerService extends Service {
    */
   loadRetrievalCorpus(): readonly EventCorpusItem[] {
     return loadRetrievalCorpusFromLayer(this.semanticRoot)
+  }
+
+  /**
+   * D2f (2026-08-21): the corpus-version counter for this layer - a monotonic
+   * signal bumped by every writer via `invalidateCaches` (writeEventYaml /
+   * writeTable / updateTableMeta / syncWriteDefinitions). Probed structurally
+   * by `tool-search-data-sources` (no static dep) so its cached enriched
+   * Bm25Linker rebuilds after a mid-session event edit instead of staying stale
+   * until reboot (D2e-deferred cache-invalidation). Reads the per-path counter
+   * for `this.semanticRoot` (0 until the first write).
+   * @returns the current corpus-version counter.
+   */
+  corpusVersion(): number {
+    return getCorpusVersionFromLayer(this.semanticRoot)
   }
 
   // ── live-ODPS schema (deferred; throws until a provider is mounted) ──

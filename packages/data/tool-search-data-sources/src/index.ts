@@ -105,31 +105,43 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
  * `SemanticLayerService` when mounted, `undefined` when not (bundle opt-in).
  * The returned corpus items are `DataSourceDoc`-shaped (params_fields +
  * terminology slang packed into `description`; NOT domain — see D2e).
+ *
+ * D2f: `corpusVersion()` is the cache-invalidation signal — a monotonic counter
+ * the SemanticLayerService exposes (bumped by `invalidateCaches` on every write:
+ * writeEventYaml / writeTable / updateTableMeta / syncWriteDefinitions). Probed
+ * structurally (no static dep) so the cached enriched `Bm25Linker` rebuilds
+ * after a mid-session event edit instead of staying stale until reboot.
+ * Optional: a schema without it degrades to build-once (D2e behavior).
  */
 interface SchemaCorpusSource {
   loadRetrievalCorpus(): readonly DataSourceDoc[]
+  corpusVersion?(): number
 }
 
 /**
- * D2e: cache of enriched `Bm25Linker`s keyed by schema instance — built once
- * per `ctx.schema` (lazy on first execute) so the 1966-event corpus is tokenized
- * once, not per query. `WeakMap` so a replaced/unmounted schema is GC'd
- * (mirrors the lazy-build intent without holding a stale provider).
+ * D2e + D2f: cache of enriched `Bm25Linker`s keyed by schema instance — built
+ * once per `ctx.schema` (lazy on first execute) so the 1966-event corpus is
+ * tokenized once, not per query. `WeakMap` so a replaced/unmounted schema is
+ * GC'd. D2f pairs each linker with the `corpusVersion()` it was built at; a
+ * mismatch (a write bumped the counter) drops the entry and rebuilds from the
+ * fresh corpus — one rebuild per write burst, not per write.
  */
-const enrichedLinkers = new WeakMap<SchemaCorpusSource, Bm25Linker>()
+const enrichedLinkers = new WeakMap<SchemaCorpusSource, { linker: Bm25Linker; version: number }>()
 
 /**
- * Get (or build+cache) the enriched `Bm25Linker` for a schema instance.
+ * Get (or build+cache) the enriched `Bm25Linker` for a schema instance, rebuilding
+ * when the schema's corpus-version signal advances (D2f cache-invalidation).
  * @param schema - the `ctx.schema` source whose `loadRetrievalCorpus()` feeds the corpus.
- * @returns a cached `Bm25Linker` over the schema's enriched corpus.
+ * @returns a `Bm25Linker` over the schema's enriched corpus, rebuilt when stale.
  */
 function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
-  let linker = enrichedLinkers.get(schema)
-  if (linker === undefined) {
-    linker = new Bm25Linker(schema.loadRetrievalCorpus())
-    enrichedLinkers.set(schema, linker)
+  const version = schema.corpusVersion?.() ?? 0
+  let entry = enrichedLinkers.get(schema)
+  if (entry === undefined || entry.version !== version) {
+    entry = { linker: new Bm25Linker(schema.loadRetrievalCorpus()), version }
+    enrichedLinkers.set(schema, entry)
   }
-  return linker
+  return entry.linker
 }
 
 export function apply(ctx: Context, config: Config = {}): void {

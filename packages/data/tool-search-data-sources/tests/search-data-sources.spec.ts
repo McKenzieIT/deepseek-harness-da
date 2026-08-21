@@ -141,3 +141,46 @@ test('S9 execute uses ctx.schema enriched corpus when registered (D2e schema sof
   expect(out.candidates.length).toBeGreaterThan(0)
   expect(out.candidates[0]?.id).toBe('recharge')
 })
+
+test('S10 execute rebuilds the enriched linker after a schema corpus-version bump (D2f cache-invalidation)', async () => {
+  // A mock ctx.schema whose corpus + version are mutable: the version is the
+  // D2f corpus-version counter the real SemanticLayerService exposes (bumped
+  // by invalidateCaches on every write). Proves the cached enriched Bm25Linker
+  // is dropped on a version mismatch so a mid-session event edit is seen — the
+  // D2e-deferred cache-invalidation (without it, the second call returns the
+  // stale v1 linker and misses the new shop.buy event).
+  let version = 1
+  let corpus: { id: string; description: string; metrics: Record<string, unknown> }[] = [
+    { id: 'recharge', description: '充值 角色id 充值金额', metrics: {} },
+  ]
+  const mockSchema = {
+    loadRetrievalCorpus: () => corpus,
+    corpusVersion: () => version,
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? mockSchema : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) {
+    throw new Error('apply did not register a tool')
+  }
+  const exec = { signal: new AbortController().signal }
+  // first call builds + caches the enriched linker from the v1 corpus
+  const out1 = await def.execute({ query: '充值' }, exec)
+  expect(out1.candidates.length).toBeGreaterThan(0)
+  expect(out1.candidates[0]?.id).toBe('recharge')
+  // shop.buy is not yet in the corpus
+  const preBuy = await def.execute({ query: '购买' }, exec)
+  expect(preBuy.candidates.find(c => c.id === 'shop.buy')).toBeUndefined()
+  // simulate a mid-session event write: corpus changes + version bumps
+  corpus = [
+    { id: 'recharge', description: '充值 角色id 充值金额', metrics: {} },
+    { id: 'shop.buy', description: '购买', metrics: {} },
+  ]
+  version = 2
+  // the version bump must invalidate the cached linker -> rebuild from v2
+  const out2 = await def.execute({ query: '购买' }, exec)
+  expect(out2.candidates.find(c => c.id === 'shop.buy')).toBeDefined()
+})

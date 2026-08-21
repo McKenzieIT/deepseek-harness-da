@@ -255,3 +255,63 @@
   (resolve); probe = `prototypes/d2c-retrieve-baseline/d2g_larger_caseset.py`;
   run `cd ~/workspace/reverse-bi && uv run python <path>`. Supersedes the D2e
   term-only/topK open question; D2e's params+term decision stands.
+
+## 2026-08-21 — D2f live-activation smoke (shipped corpus.ts over real RBI)
+
+- **Setup**: SHIPPED tool-search execute path (getEnrichedLinker + D2f
+  corpusVersion version-check) + shipped semantic-layer io
+  (loadRetrievalCorpus / getCorpusVersion / loadEvents) + shipped Bm25Linker,
+  over REAL RBI scope 10000147 (1966 events + terminology.yaml). ctx.schema =
+  a shell delegating loadRetrievalCorpus/corpusVersion to the real io over RBI
+  (the only mock; mirrors the tool-search spec S9 pattern). Base corpus for
+  A/B = id + base-description only (no packed params_fields/slang). Probe =
+  `prototypes/d2c-retrieve-baseline/d2f_live_activation_probe.ts` (tsx; run
+  `cd <repo> && pnpm exec tsx <path>`).
+- **Results** (verbatim from the probe):
+  - [1] enriched corpus size: 1966. role.online base description = `玩家上线`;
+    enriched description packs params_fields (roleId 角色id, fforce 战力,
+    coinList.gold 充值元宝, ...) + terminology slang (日活, DAU, 留存 — the
+    role.online-mapped slangs). slang "日活" packed? true | params "角色id"
+    packed? true.
+  - [2] A/B "充值": enriched top-1 = recharge (score 19.899); base recharge?
+    yes (recharge base desc contains 充值 — the hit is enriched-BOOSTED, not
+    enriched-only; enrichment packs 充值 ~4×: slang 充值 + params_field
+    充值金额 + coinList.gold 充值元宝 + coinList.sendgold 充值赠送元宝 →
+    higher tf → higher score). enriched top 10: recharge 19.899, rechargeerror
+    16.429, recharge.material 15.349, recharge.takereturn 15.082, role.online
+    13.795, gm.decgold 13.351, refund.process 12.626, rechargeact.getreward
+    12.051, recharge.rcv 11.922, gmrecharge 11.039.
+  - [3] params_field "角色" (hits via packed 角色id field): slgc.createuser
+    0.932, te.quit 0.929, te.presettle 0.924, cha.autosu 0.922,
+    ladder.chgscore 0.922.
+  - [4] single-slang "日活" hits: user.login, sh.updatespeed,
+    leaguegactive.add, fest.hummer, summerholiday.bath. role.online in these?
+    false — the packed role.online doc is very long (~40 params_fields + slang)
+    so BM25 length-norm dilutes its score and "活" matches activity events
+    (fest/summerholiday) instead; role.online is NOT a clean single-slang hit.
+    Consistent with D2e's length-norm finding.
+  - [verdict] activation CONFIRMED: enriched non-empty (1966) + slang+params
+    packed (true) + 充值->recharge top-1 enriched (true).
+- **Verdict**: the D2e shipped enriched corpus is LIVE at runtime — the
+  shipped corpus.ts packs params_fields (field name + description) +
+  terminology slang into the indexed description (visible in role.online: base
+  `玩家上线` -> enriched with 角色id/战力/日活/DAU/留存 that the base lacks),
+  and the SHIPPED tool-search execute path (getEnrichedLinker + D2f
+  corpusVersion version-check) builds + caches the enriched Bm25Linker over the
+  real 1966-event corpus. The cache-invalidation wiring (D2e-deferred) is
+  TDD-verified (corpus.spec Test A io counter + Test B Service.corpusVersion;
+  search-data-sources.spec S10 version-check rebuild). Informs
+  [D2f](../tickets/phase-misc/D2f-activate-corpus-enrichment.md).
+- **Fidelity caveat**: this is a SMOKE activation confirm (non-empty + packing
+  visible + 充值->recharge top-1), NOT a full 31-case recall re-measurement. The
+  floor (54.8% strict / 58.1% loose) is D2e-audited via probe_hypotheses.py
+  (RBI-YAML-simulated, faithful python port of corpus.ts). This probe uses the
+  SHIPPED TS corpus.ts over real RBI directly — same corpus.ts logic as the D2e
+  simulation -> floor holds by construction; D2f did not re-run the 31-case
+  measurement on live. The single-slang "日活"->role.online is NOT a clean hit
+  (BM25 length-norm on the long packed doc); the full measurement accounts for
+  this. The ctx.schema shell is the only mock (delegates to real io); a full
+  bundle boot (real SemanticLayerService via cordis.patch.yml mount) is not
+  exercised here — the Service.corpusVersion() method is TDD-verified directly
+  (Test B) instead.
+- **Probe**: `prototypes/d2c-retrieve-baseline/d2f_live_activation_probe.ts`.

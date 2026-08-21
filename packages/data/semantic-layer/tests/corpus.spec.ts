@@ -23,7 +23,9 @@ import {
   parseTerminology,
   type EventCorpusInput,
 } from '../src/corpus.ts'
-import { loadRetrievalCorpus } from '../src/io.ts'
+import { loadRetrievalCorpus, invalidateCaches, getCorpusVersion } from '../src/io.ts'
+import { SemanticLayerService } from '../src/index.ts'
+import type { Context } from '@deepseek-ai/cordis'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURES = join(HERE, 'fixtures')
@@ -209,4 +211,43 @@ test('buildRetrievalCorpus skips params_fields whose value is not a plain object
   const [item] = buildRetrievalCorpus(events, {})
   // only the well-formed field 'good' is indexed; 'bad' + 'arr' skipped
   expect(item.description).toBe('good x')
+})
+
+// ── D2f corpus-version counter (cache-invalidation signal) ─────────────────
+// invalidateCaches is the chokepoint every writer (writeEventYaml / writeTable /
+// updateTableMeta / syncWriteDefinitions) calls after a successful write. D2f
+// bumps a per-path corpus-version counter here so a cached enriched Bm25Linker
+// (tool-search-data-sources, keyed by ctx.schema) can detect a stale corpus and
+// rebuild — the D2e-deferred cache-invalidation wiring (mid-session event edits
+// no longer leave the enriched linker stale until reboot). The counter is
+// path-scoped (a write to layer A must not invalidate layer B's cache).
+test('getCorpusVersion bumps after invalidateCaches(semanticLayer); independent per path', () => {
+  const pa = '/d2f-counter-test-A'
+  const pb = '/d2f-counter-test-B'
+  const a0 = getCorpusVersion(pa)
+  const b0 = getCorpusVersion(pb)
+  invalidateCaches(pa)
+  expect(getCorpusVersion(pa)).toBe(a0 + 1)
+  expect(getCorpusVersion(pb)).toBe(b0) // pa's bump does not touch pb
+  invalidateCaches(pa)
+  invalidateCaches(pb)
+  expect(getCorpusVersion(pa)).toBe(a0 + 2)
+  expect(getCorpusVersion(pb)).toBe(b0 + 1)
+})
+
+// ── D2f Service corpusVersion() (the ctx.schema signal tool-search probes) ──
+// SemanticLayerService.corpusVersion() is the structural surface tool-search
+// reads (no static dep) to detect a stale enriched linker. It delegates to the
+// per-path counter, so a writeEventYaml -> invalidateCaches bumps the Service's
+// corpusVersion -> tool-search rebuilds. The ctx shell only needs reflect.provide
+// (Cordis Service registration); corpusVersion reads this.semanticRoot + the
+// counter, no ctx — mirroring how D2e's loadRetrievalCorpus is a delegate the
+// Service exposes for tool-search's structural cast.
+test('SemanticLayerService.corpusVersion() reflects invalidateCaches(semanticRoot)', () => {
+  const layer = '/d2f-svc-version-test'
+  const ctx = { reflect: { provide: () => {} } } as unknown as Context
+  const svc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '' })
+  const before = svc.corpusVersion()
+  invalidateCaches(layer)
+  expect(svc.corpusVersion()).toBe(before + 1)
 })

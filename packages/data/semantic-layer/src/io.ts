@@ -81,11 +81,33 @@ const _invalidationHooks: Array<(semanticLayer: string) => void> = []
 export function registerInvalidationHook(hook: (semanticLayer: string) => void): void {
   _invalidationHooks.push(hook)
 }
+
+// D2f: per-path corpus-version counter bumped on every invalidateCaches call.
+// A cached enriched Bm25Linker (tool-search-data-sources, keyed by ctx.schema)
+// probes SemanticLayerService.corpusVersion() and rebuilds on a mismatch, so a
+// mid-session event edit (writeEventYaml -> invalidateCaches) no longer leaves
+// the enriched linker stale until reboot (D2e-deferred cache-invalidation).
+// Path-scoped: a write to layer A bumps only A's counter. Table writes
+// (writeTable/updateTableMeta/syncWriteDefinitions) also bump it — the corpus
+// (events + terminology) is unaffected, so this over-invalidates (one rebuild
+// after a write burst); correct and rare vs distinguishing event vs table writes
+// at the chokepoint. No static dep: tool-search reads this structurally.
+const _corpusVersion = new Map<string, number>()
+/**
+ * The corpus-version counter for a semantic-layer path (monotonic; 0 until the
+ * first invalidateCaches). Probed structurally by tool-search-data-sources.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns the current corpus-version counter (0 when no write has invalidated).
+ */
+export function getCorpusVersion(semanticLayer: string): number {
+  return _corpusVersion.get(semanticLayer) ?? 0
+}
 /**
  * Fire every registered invalidation hook for `semanticLayer` (best-effort: a broken hook cannot block the write).
  * @param semanticLayer - the semantic-layer path being invalidated.
  */
 export function invalidateCaches(semanticLayer: string): void {
+  _corpusVersion.set(semanticLayer, (_corpusVersion.get(semanticLayer) ?? 0) + 1)
   for (const hook of _invalidationHooks) {
     try {
       hook(semanticLayer)
