@@ -18,4 +18,4 @@
 
 **Blocked by**: 无（P7b phase-gate/preset resolved、P5b retrieval seam resolved、P13b `search_data_sources` 注册先例 + dsh-tools API grounded）。
 
-**关联**: [D2c](D2c-retrieve-tool-keep-regress.md) resolved（keep (b)）；P5b（retrieval seam + 软回退）；P13b（`search_data_sources` 注册先例 + dsh-tools API）；P7b（persona/preset）；[D2c-revisit](D2c-revisit-regress-reeval.md)（regress 重访，若 regress 须 unship 此 tool）。
+**关联**: [D2c](D2c-retrieve-tool-keep-regress.md) resolved（keep (b)）；P5b（retrieval seam + 软回退）；P13b（`search_data_sources` 注册先例 + dsh-tools API）；P7b（persona/preset）；[D2c-revisit](D2c-revisit-regress-reeval.md)（regress 重访，若 regress 须 unship 此 tool）；[D2e](D2e-corpus-enrichment.md) resolved（enriched corpus shipped dormant——cheap floor 第 (ii) 块；本票 escape-hatch = 第 (iii) 块软回退；两者合 = BM25-only prefetch + enriched corpus + escape-hatch，无 real embedder 的 cheap floor）；[D2f](D2f-activate-corpus-enrichment.md)（激活 enrichment runtime——建议本票之后）；[D2g](D2g-corpus-recall-larger-caseset-retest.md)（更大 case 集重测 term-only/topK——research follow-up，可并行 /research subagent）。
