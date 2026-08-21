@@ -2,8 +2,8 @@
 
 **Type**: prototype
 **Phase**: misc
-**Status**: Blocked by P4c（真 `query_data` Consumer——变体 EXECUTION 相可跑真 SQL；stand-in 不够）+ load_*/present_* tool 包（P6 ctx.schema model-facing load_* / INTERPRETATION delivery present_*——现 deferred，待各自票）
-**Blocked by**: P4c（`query_data` 注册）+ P6b（resolved——ctx.schema substrate 就位，model-facing load_* tool 包 deferred）+ P13b（resolved——critic+search_data_sources 就位）+ P7b（resolved——phase-gate 编排 + persona option C）
+**Status**: Resolved (2026-08-21) — P4c(c) `query_data` tool landed (commit 1e637bc568), unblocking the variant EXECUTION phase; B/C/D presets built + A roster evaluated + honesty tagging recorded. Sub-blockers: C_prior phase-gate whitelist (goal/todo in U+I) + load_*/present_* tool packages (deferred).
+**Blocked by**: ~~P4c（`query_data` 注册）~~ RESOLVED 2026-08-21（P4c(c) commit 1e637bc568）+ P6b（resolved——ctx.schema substrate 就位，model-facing load_* tool 包 deferred）+ P13b（resolved——critic+search_data_sources 就位）+ P7b（resolved——phase-gate 编排 + persona option C）
 **From**: G1b 执行范围 step 1（「建变体 preset：A=P7b 已有，须建 B/C/D」）+ G1b 可行性 finding（A 自身 data-tool roster 是 stub：仅 `tool-search-data-sources` 注册，`query_data`/`load_*`/`critique_sql`/`evaluate_sql_quality`/`present_*` 全注释 TBD）
 
 **Question**: 把 G1 设计的 4 变体建成**可跑 RBI case 的真 preset**——A 补完 data-tool roster + 新建 B/C/D——让 G1b 矩阵能在 P11c runner 上跑。变体仅差**编排**（base persona + 全数据工具 + 模型 + case 跨变体恒定，G1 Q9 混淆控制）：
@@ -12,6 +12,21 @@
 - **B**（gate OFF, planning ON）= 自由 ReAct + planning group（goal/todo，**不含 plan-mode**=B_core；plan-mode 作 B-内部 Level-2 条件跑）：persona + 全数据工具 + planning group、**无** phase-gate 插件。
 - **C**（gate ON, planning ON）= 混合：四阶段 + planning group（goal/todo 进 UNDERSTANDING+INTERPRETATION guard 白名单=C_prior；C_all/C_none 作 Level-2）。依赖 P7b 真 phase-gate + P13b 真 critic。**构造性禁 plan-mode**（零硬冲突，G1 Q1）。
 - **D**（gate OFF, planning OFF）= 裸 ReAct 地板：persona + 全数据工具，无 planning、无 phase-gate。
+
+## Resolution (2026-08-21)
+
+P4c(c) `query_data` tool landed (commit 1e637bc568) → 变体 EXECUTION 相可跑真 SQL，G1c unblocked。B/C/D preset 建成 + A roster 评估 + honesty tagging 记录：
+
+- **B/C/D preset**：新文件 `apps/cli/config/agent-presets/data-agent/{b-free-react-planning,c-hybrid,d-bare-react}.cordis.yml`（Mode 6），复用 A data-tool roster（search_data_sources + query_data）+ CORE data-agent persona（per-game analytics / semantic layer / four-phase U→G→E→I / honest decline / no fabrication，G1 混淆 control base persona 跨变体恒定）；toggle：phase-gate group（A/C 有 `cordis:group`+`isolate:phaseGate`；B/D 无）+ planning group（B/C 挂 tool-goal+tool-todo agent-plane；A/D 不挂）。persona：A/C 由 phase-gate option C 拥有（无独立 persona 行）；B/D 独立 `persona` 行（无 phase-gate）——B/D persona 复用 CORE identity，orchestration 差异（B: goal/todo 自结构四阶段；D: bare ReAct）+ honest-decline 为 prose（无 phase-gate 【未完成】 marker）。C 构造性禁 plan-mode（G1 Q1 零硬冲突）。
+- **planning group 接线**：goal/todo 是 session-keyed host-registry tools（standard preset 形态——plain rows，非 cordis:group；research §1.2 `planning` group 仅包 plan-mode，C 禁 + B_core 无故不挂）。data-agent bundle **host-disable** tool-goal+tool-todo+plan-mode（A/D clean planning-OFF：A 经 phase-gate guard 拒非白名单 goal/todo、D 无 guard 故 host disable 为机制；B/C agent-plane re-mount goal/todo = planning ON；C constructive plan-mode disable；B+plan-mode Level-2 可 re-mount override）。镜像 web-app 对 standard preset 的 host-disable+agent-mount 模式。
+- **A roster 补完**：search_data_sources + query_data（P4c(c)）已解注释 ship；`load_table_definition`/`load_event_definition`（ctx.schema P6b model-facing load_* tool 包 deferred）+ `present_*`（INTERPRETATION delivery deferred）+ `critique_sql`/`evaluate_sql_quality`（P13b critic 已 fold 进 phase-gate GENERATION gate，无需独立 tool 行）仍注释。→ **A 仍非全 runnable end-to-end**（NL→SQL→query 链路可跑；delivery + load_* 缺，需 load_*+present_* tool 包 ship——sub-blocker）。
+- **honesty tagging**：declined 从 agent 终态可推（G1 Q5）。A/C 经 phase-gate `honest_decline` state（model emit `【未完成】` INCOMPLETE_MARKER in INTERPRETATION / budget 耗尽 max_executions_per_turn|max_llm_calls_per_turn|max_state_turns / stall_watchdog / EXECUTION query failed fallbacks exhausted）→ finalResponse/events；B/D 无 phase-gate → prose decline（finalResponse "I cannot answer"）→ P11c 判 declined≠wrong（三分）。
+- **verify**：`verify-cordis-config`✅（135 files，B/C/D 扫描 + bundle disable rows 绿）+ B/C/D toggle 正确（phase-gating 有/无、goal/todo 有/无、persona 有/无、plan-mode 无）。
+
+**Sub-blockers（诚实记，不伪造 ship）**：
+- **C_prior（G1 Q11）**：C 的 goal/todo 在 U+I 可调须 phase-gate guard per-phase whitelist 含 goal/todo——whitelist built-in `packages/data/phase-gate/src`（并发域，不改），未含则 C goal/todo guard-rejected（callable-but-unwired）至 whitelist 更新（phase-gate/src follow-up 或 G1b 实跑前）。mount forward-compatible（verify-cordis-config 绿），runtime callability 为 sub-blocker。
+- **load_*+present_* tool 包 deferred**（A 全 runnable end-to-end 须其 ship）。
+- **G1b 仍 re-block** on P11c（runner）+ G1c（本票 resolved）+ C_prior whitelist；P4c(c) done 解 P4c 硬门。
 
 ## Scope
 

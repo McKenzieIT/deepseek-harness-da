@@ -36,6 +36,22 @@
 - id: tool-ralph
   disabled: true
 
+# ── planning-OFF host disable (G1c variant toggle) ─────────────────────────
+# goal/todo + plan-mode are host-mounted by base; the data-agent bundle
+# host-disables them so A/D are clean planning-OFF controls (A is also
+# planning-OFF via the phase-gate guard rejecting non-whitelisted goal/todo;
+# D has no guard, so this host disable is D's mechanism). B/C re-mount
+# goal/todo agent-plane (planning ON); C constructively disables plan-mode
+# (G1 Q1); B_core has no plan-mode. B+plan-mode (G1 Q11 Level-2) would
+# re-mount plan-mode agent-plane, overriding this host disable — the same way
+# B/C re-mount goal/todo.
+- id: tool-goal
+  disabled: true
+- id: tool-todo
+  disabled: true
+- id: plan-mode
+  disabled: true
+
 # No Code Mode: the data agent presents the native tool set only. Over base
 # this matches the default; composed via --patch over headless/web-app it
 # overrides their env-controlled DSH_TOOLS_MODE seam, holding Code Mode off.

@@ -1,0 +1,58 @@
+# The `data-agent` C variant preset: hybrid (gate ON, planning ON; plan-mode disabled).
+#
+# G1c variant (G1 Q1/Q3/Q4: C = gate ON, planning ON). Reuses A's phase-gate
+# orchestration (the phase-gate group + persona option C) + A's data-tool
+# roster; ADDS tool-goal + tool-todo (planning ON, G1 Planning factor). C
+# constructively disables plan-mode (G1 Q1: zero hard conflict with the gate —
+# the four-phase IS the structure; plan-mode is a separate soft phase C does
+# not use); plan-mode is host-disabled by the data-agent bundle.
+#
+# ⚠ C_prior sub-blocker (G1 Q11): C's normative prior is goal/todo ALLOWED in
+# UNDERSTANDING+INTERPRETATION, DISALLOWED in GENERATION+EXECUTION. That
+# requires the phase-gate guard's per-phase whitelist to name goal/todo in
+# U+I. The whitelist is built into packages/data/phase-gate/src (a concurrent
+# session's territory); if it does not yet name goal/todo, C's goal/todo are
+# guard-rejected (callable-but-unwired) until the whitelist is updated (a
+# phase-gate/src change, deferred to G1b's actual run / a phase-gate
+# follow-up). Mounting is forward-compatible (verify-cordis-config green);
+# runtime callability in U+I is the sub-blocker.
+#
+# Toggle vs A: KEEP phase-gate group (gate ON); + tool-goal + tool-todo.
+
+# ── phase-gate orchestration (P7b) — same as A ──────────────────────────────
+# Per-agent phase state + the 7 event hooks. Entry-local realm (this standing
+# mount's own private instance). phase-gate owns the persona (option C), so C
+# mounts NO separate persona row — identical to A.
+- id: phase-gating
+  name: cordis:group
+  group: true
+  isolate:
+    phaseGate: true
+  config:
+    - id: phase-gate
+      name: '@deepseek-ai/dsh-phase-gate'
+      config:
+        scopeId: game-1
+        max_fallbacks: 2
+        max_subquestions: 4
+        max_executions_per_turn: 8
+        max_llm_calls_per_turn: 60
+        max_state_turns: 20
+        stall_watchdog_seconds: 300
+
+# ── data-agent model-facing tools (reuse A's roster) ────────────────────────
+- id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item)
+  name: '@deepseek-ai/dsh-tool-search-data-sources'
+- id: tool-query-data            # EXECUTION (P4c: ctx.query.execute → MaxCompute via maxc-sidecar)
+  name: '@deepseek-ai/dsh-query-tool'
+
+# ── planning group (C: goal/todo; G1 Planning factor ON, plan-mode disabled) ─
+# Same agent-plane mount as B. goal/todo callability in C is gated by the
+# phase-gate per-phase whitelist (C_prior sub-blocker above); plan-mode stays
+# OFF (constructive disable, G1 Q1).
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
