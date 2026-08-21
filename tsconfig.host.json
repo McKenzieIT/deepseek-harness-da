@@ -168,6 +168,7 @@
     { "path": "./packages/data/tool-search-data-sources" },
     { "path": "./packages/data/tool-load-table-definition" },
     { "path": "./packages/data/tool-load-event-definition" },
+    { "path": "./packages/data/preset-autojoin" },
     { "path": "./packages/embedder/embedder" },
     { "path": "./packages/embedder/embedder-fakehash" },
     { "path": "./packages/embedder/embedder-http" },

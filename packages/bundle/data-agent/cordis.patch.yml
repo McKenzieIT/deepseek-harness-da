@@ -90,6 +90,13 @@
       name: '@deepseek-ai/dsh-agent-presets'
       config:
         default: data-agent
+    # ── preset-autojoin (§4.2 da wrapper): hooks agent/created → joins the
+    # default preset (data-agent) to ANY published agent, so the headless
+    # entry — whose setup calls installModelSelection but NOT presets.mount —
+    # still gets the data-agent persona + 4 data tools. inject: ['agentPresets']
+    # makes Cordis start this row after the roster above, regardless of order.
+    - id: preset-autojoin
+      name: '@deepseek-ai/dsh-preset-autojoin'
 
 # ── data capability plugins (additive mounts; TODO, filled by P4-P11) ───────
 # Each row below is a placeholder for a data capability plugin this bundle

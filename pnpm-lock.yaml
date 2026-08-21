@@ -1253,6 +1253,9 @@ importers:
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../../data/nl2sql-engine
+      '@deepseek-ai/dsh-preset-autojoin':
+        specifier: workspace:^
+        version: link:../../data/preset-autojoin
       '@deepseek-ai/dsh-query-maxcompute':
         specifier: workspace:^
         version: link:../../query/query-maxcompute
@@ -3983,6 +3986,21 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
+
+  packages/data/preset-autojoin:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:^
+        version: link:../../core/agent
+      '@deepseek-ai/dsh-agent-presets':
+        specifier: workspace:^
+        version: link:../../preset/agent-presets
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
 
   packages/data/scope-registry:
     dependencies:

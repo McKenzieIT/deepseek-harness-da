@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- preset-autojoin da wrapper (§4.2): hooks `agent/created` → joins the default preset to any published agent, closing the headless-doesn't-join-default-preset gap without modifying dsh src — preset-autojoin
 - route-gate 意图路由（乙′方案：文本令牌 + 检索回退 + 闲聊过滤）— P-DA1
 - GENERATION 闸门 critic 放宽机制 — P-DA2
 - preset.yml 展示元数据（取数模式 / order:5）— DA1
