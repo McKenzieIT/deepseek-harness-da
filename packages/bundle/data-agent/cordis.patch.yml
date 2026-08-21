@@ -96,6 +96,18 @@
 #     # ── query (P4) ───────────────────────────────────────────────────────
     - id: query-engine        # ctx.query seam — mount ONLY the MaxCompute provider: it extends QueryEngine and registers ctx.query on instantiation; the abstract seam (dsh-query) is pulled transitively as the provider's peerDep, mounting it would instantiate a broken abstract service. Mirrors llm-dashscope mounting only the provider, not the dsh-llm seam.
       name: '@deepseek-ai/dsh-query-maxcompute'
+      config:
+        # P4c/P4d: the maxc sidecar self-manages ODPS auth in its config file
+        # (--maxc-config), so the da does NOT push ODPS creds. credMode:
+        # sidecar-self tells the Provider to skip the ctx.credentials
+        # pushCredentials pre-check (P4d (b); maxc's config is the single
+        # source of auth). Absolute path because maxc-sidecar.mjs does not
+        # expand `~` (spawn passes it literally to the maxc binary).
+        args:
+          - ./packages/query/query-maxcompute/dev/maxc-sidecar.mjs
+          - --maxc-config
+          - /Users/mckenzie/.maxc/config_ieu_cdm.yaml.bak
+        credMode: sidecar-self
 #     # ── retrieval / vectorization (P5) ───────────────────────────────────
 #     - id: embedder            # ctx.embedder seam — OPT-IN (P5b shipped @deepseek-ai/dsh-embedder-fakehash default zero-dep + dsh-embedder-http external OpenAI-compat; T2: AGA-embeddings NO, user self-deploys the heavy embedder). Uncomment + mount a provider to register ctx.embedder. Left commented: activation (hybrid-by-default vs the local Bm25Linker) is D2c's evals-driven keep/regress call; an unmounted seam keeps search_data_sources on its Bm25Linker default (no behavior change, P13b 9/9 unaffected).
 #       name: '@deepseek-ai/dsh-embedder-fakehash'
@@ -104,6 +116,12 @@
 #     # ── semantic layer (P6) - first-class (map: 语义层一等公民) ───────────
     - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
       name: '@deepseek-ai/dsh-semantic-layer'
+      config:
+        # K11 dev default: the semantic-layer root carrying the K11 event_view
+        # corpus (config.yaml/events/tables/terminology.yaml). Per-scope roots
+        # will come from ctx.scopes (scope-registry) once that package ships;
+        # until then semantic-layer reads this mount-time config directly.
+        semanticRoot: ./examples/k11-semantic-layer
 #     # ── audit (P8) ───────────────────────────────────────────────────────
     - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
       name: '@deepseek-ai/dsh-audit'
