@@ -73,8 +73,8 @@
 #   name: '@deepseek-ai/dsh-tool-load-table-definition' # name TBD - P6
 # - id: tool-load-event-definition # UNDERSTANDING/GENERATION (P6 → ctx.schema)
 #   name: '@deepseek-ai/dsh-tool-load-event-definition'  # name TBD - P6
-# - id: tool-query-data            # EXECUTION (P4b tool-query → ctx.query.execute)
-#   name: '@deepseek-ai/dsh-tool-query-data'            # name TBD - P4b/Not-yet-specified
+- id: tool-query-data            # EXECUTION (P4c: ctx.query.execute → MaxCompute via maxc-sidecar; agent runs its own SQL)
+  name: '@deepseek-ai/dsh-query-tool'
 # - id: tool-critique-sql          # GENERATION (P13b; critic itself folded into phase-gate)
 #   name: '@deepseek-ai/dsh-tool-critique-sql'          # name TBD - P13b
 # - id: tool-evaluate-sql-quality  # GENERATION (P13b)

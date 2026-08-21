@@ -42,7 +42,8 @@
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-llm-dashscope": "workspace:^",
-    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^"
+    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@deepseek-ai/dsh-query-maxcompute": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-invariants": "workspace:^",

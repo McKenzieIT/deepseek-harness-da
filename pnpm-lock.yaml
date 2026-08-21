@@ -1250,6 +1250,9 @@ importers:
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../../data/nl2sql-engine
+      '@deepseek-ai/dsh-query-maxcompute':
+        specifier: workspace:^
+        version: link:../../query/query-maxcompute
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -6202,6 +6205,22 @@ importers:
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:^
         version: link:../../subprocess/subprocess
+
+  packages/query/query-tool:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-query':
+        specifier: workspace:^
+        version: link:../query
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
 
   packages/retrieval/retrieval:
     devDependencies:

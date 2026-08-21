@@ -240,6 +240,7 @@
       "@deepseek-ai/dsh-experimental-agent-team": ["./packages/experimental/agent-team/src"],
       "@deepseek-ai/dsh-experimental-tool-agent-team": ["./packages/experimental/tool-agent-team/src"],
       "@deepseek-ai/dsh-*": [
+        "./packages/query/*/src",
         "./packages/core/*/src",
         "./packages/data/*/src",
         "./packages/prompt/*/src",
