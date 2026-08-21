@@ -1,5 +1,9 @@
 # DashScope 作为默认 profile 的 LLM —— 插件化方式（无 --profile / 无 settings 外科手术）
 
+**Status**: Resolved（2026-08-21，wayfinder grilling+task session）
+**Type**: grilling + task
+**Phase**: misc
+
 > 背景：2026-08-21 验证 sweep。dsh 主旨 = 一切接插件——DashScope 应经插件机制让默认 profile 开箱用，不靠 `--profile` 或 settings 改动。
 
 ## 背景
@@ -27,4 +31,24 @@
 
 ## Resolution
 
-未解——本 ticket 立 design 问题 + 4 选项（推荐 a）。in-env 解（删 settings `llm-pi-ai.providers.dashscope` + headless 挂 `llm-dashscope`）作过渡 working state 保留（durable，备份 `~/.dsh/{settings.yaml,profiles/headless/cordis.patch.yml}.bak-llmfix`）。〔相关：`data-agent-conversation-readiness.md`（剩余 wiring + 工具包）、`2026-08-21-verification-audit.md`〕
+**Resolved 2026-08-21 — option (a)：重命名 llm-dashscope 路由 `dashscope`→`aga`。** 给 llm-dashscope 一个不冲突的路由名 → 插件自包含（挂上即得 working DashScope provider，无与 llm-pi-ai broken `dashscope` 的路由冲突）→ 默认 profile 经插件 + `agent-default-model: aga/...` 即 da-native，不加 `--profile`、不 settings 外科手术、不碰 dsh 源码。
+
+**4 grilled 决策**（grilling + domain-modeling，HITL）：
+1. **路由名 = `aga`**（候选 aga / dashscope-native / dashscope-aga / qwen-aga → 取 aga：最短、路由名基本内部、UI 标签 displayName 'DashScope' 不变、无 pi-ai catalog 冲突）。
+2. **坏 llm-pi-ai `dashscope` fate = 维持已删**（不回填 `.bak-llmfix`）：坏 dashscope 是 misconfiguration（openai-completions 打非 OpenAI 网关→404），回填=重新引入 footgun；改名（aga）后删除已非依赖（路由名不冲突→默认照常 work），UI 仅 1 个干净 'DashScope' 条目。
+3. **默认模型 = `qwen3.7-max`**（settings + bundle agent-default-model）。
+4. **harness 对 refused 路由静默不告警** = 真 robustness 漏洞，但超本 map additive-only（修复需改 dsh-llm registry core）→ 记 map **Out of scope**（非 route 票；改名后非阻塞）。
+
+**实现**（additive，仅 da 包 + `~/.dsh`，不碰 dsh 源码）：
+- `packages/llm/llm-dashscope/src/index.ts`：`PROVIDER='dashscope'`→`'aga'`（+ `:2` doc；displayName 'DashScope' 不变；`name`/`NS`/`@module`/`x-dashscope-harness-*` headers/`llm-dashscope:` 错误前缀/rbi `dashscope.py` 引用皆非路由，不动）。
+- `packages/llm/llm-dashscope/tests/{serialize.spec,adapter.spec,adapter.e2e,assemble}.ts`：~15 处 quoted `'dashscope'`→`'aga'`（`name:'DashScope'` 断言不动）。
+- `packages/bundle/data-agent/cordis.patch.yml`：`agent-default-model` → `aga`/`qwen3.7-max`（+ 注释）。
+- `~/.dsh/settings.yaml`：`agent-default-model` → `aga`/`qwen3.7-max`（drop `reasoningEffort`——native AGA 无 per-request thinking knob；保留 llm-pi-ai 仅 `zai-coding-cn` 删除态；备份 `settings.yaml.bak-agafix`）。
+- dsh-web-app bundle 按包名挂 llm-dashscope（L454，对改名透明）；Models UI 动态读 directory（无 UI 代码改动）。
+
+**verify**：scoped `tsc -b` ✅ + `vitest` 75/75 ✅ + `tsdown --env.DSH_BUILD_FACE host` 绿（`lib/index.js` 重建 `PROVIDER="aga"`）+ `dsh web`（默认 profile）boot HTTP 200 + headless `Reply with exactly one word: PONG`→`PONG`（exit 0，via `aga`/qwen3.7-max，native AGA，key 经 credentials seam）+ AGA `GET /api/v1/models` 200 + 10 模型（含 qwen3.7-max、无 embeddings——印证 T2）。
+- **注（诚实）**：全 `pnpm run build`（含 `.dsh-build` record）当前 RED，但**仅因并发会话 WIP**（`tool-load-table-definition`+`tool-load-event-definition` untracked/未完成 tsconfig.host 接线 + `rescope-fork.spec` TS2532），**非本改动**（build log llm-dashscope 0 错；scoped tsc + vitest 绿）；tsdown 打包半段绿→`aga` lib 已部署、dsh web/headless 验证通过。全 build 绿待并发会话收尾后自验（非本票 scope）。
+
+**取代 in-env 过渡解**：本改名使 `*.bak-llmfix` 外科手术（删 llm-pi-ai `dashscope`）不再必需——改名后无路由冲突，默认 profile 纯插件化用 DashScope。`~/.dsh/{settings.yaml,profiles/{headless,web}/cordis.patch.yml}.bak-llmfix` 备份保留作历史。
+
+〔map Decisions + Out-of-scope ② 已更新；相关：`data-agent-conversation-readiness.md`（LLM-wiring follow-up → 本票 resolved）、`2026-08-21-verification-audit.md`〕

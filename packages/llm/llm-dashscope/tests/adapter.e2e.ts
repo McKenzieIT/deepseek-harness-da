@@ -86,7 +86,7 @@ describe.skipIf(!process.env.DASHSCOPE_API_KEY)('llm-dashscope e2e (real AGA gat
     const ctx = await harness()
     const kinds: string[] = []
     for await (const chunk of ctx.llm.stream({
-      provider: 'dashscope',
+      provider: 'aga',
       model: FLASH,
       messages: ask('Count from 1 to 5, digits only.'),
       maxTokens: 50,

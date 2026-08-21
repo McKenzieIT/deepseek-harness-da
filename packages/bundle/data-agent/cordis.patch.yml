@@ -60,18 +60,21 @@
     mode: native
 
 # ── LLM: DashScope as the data-agent's direct LLM (P2 resolved) ───────────
-# llm-dashscope mounts the `dashscope` provider on ctx.llm; other providers
-# (deepseek-official, llm-pi-ai from base) stay mounted + configurable, so a
-# user can switch via the settings UI. agent-default-model sets the profile's
-# default to dashscope/qwen-plus; override per-request or via settings.
+# llm-dashscope mounts the `aga` provider on ctx.llm — route renamed from
+# `dashscope` so it does not collide with llm-pi-ai's broken openai-completions
+# `dashscope` route (harness lets the first-registrant keep a duplicate route);
+# this makes the plugin self-contained (mount = working DashScope, no conflict).
+# Other providers (deepseek-official, llm-pi-ai from base) stay mounted +
+# configurable via the settings UI. agent-default-model sets the profile's
+# default to aga/qwen3.7-max; override per-request or via settings.
 - insert:
     - id: llm-dashscope
       name: '@deepseek-ai/dsh-llm-dashscope'
 
 - id: agent-default-model
   config:
-    provider: dashscope
-    model: qwen-plus
+    provider: aga
+    model: qwen3.7-max
 
 # ── identity seam (G3b: per-user caller identity; audit + subagent-qoder inject it;
 # P9b populates login; stub `current()` returns `undefined` → T1 fallback today) ──

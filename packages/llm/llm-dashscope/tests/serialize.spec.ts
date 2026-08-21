@@ -5,7 +5,7 @@ import type { ContentBlock, GenerateOptions, Message } from '@deepseek-ai/dsh-ll
 import { serializeMessages, serializeRequest } from '../src/serialize.ts'
 
 function request(overrides: Partial<GenerateOptions> = {}): GenerateOptions {
-  return { provider: 'dashscope', model: 'qwen-flash', messages: [], ...overrides }
+  return { provider: 'aga', model: 'qwen-flash', messages: [], ...overrides }
 }
 
 describe('serializeMessages', () => {

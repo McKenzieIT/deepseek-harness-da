@@ -1,5 +1,5 @@
 /**
- * Register a {@link DashScopeAdapter} for the `dashscope` provider route on `ctx.llm`, against
+ * Register a {@link DashScopeAdapter} for the `aga` provider route on `ctx.llm`, against
  * the AGA AI Gateway's DashScope native text-generation endpoint. Connection facts resolve per
  * request instead of frozen at load: the plugin layers its `cordis.yml` entry config under the
  * optional `llm-dashscope` user-settings section (`ctx.settings`) and resolves the API key through
@@ -50,7 +50,7 @@ export const inject = ['llm']
 const NS = settingsNamespace('llm-dashscope')
 const DEFAULT_API_KEY_ENV = 'DASHSCOPE_API_KEY'
 /** The single provider route this plugin owns. */
-const PROVIDER = 'dashscope'
+const PROVIDER = 'aga'
 
 const DEFAULT_MODELS: DashScopeCatalogModel[] = [
   { id: 'qwen-flash', name: 'Qwen-Flash' },

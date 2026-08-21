@@ -91,7 +91,7 @@ describe('DashScopeAdapter against a mock server', () => {
     const ctx = await harness(server.url)
     const kinds: string[] = []
     for await (const chunk of ctx.llm.stream({
-      provider: 'dashscope',
+      provider: 'aga',
       model: 'qwen-flash',
       messages: [createUserMessage({
         content: [{ type: 'text', text: 'hi' }],
@@ -283,7 +283,7 @@ describe('DashScopeAdapter against a mock server', () => {
     const adapter = adapterOf({ baseURL: 'https://example.invalid' })
     try {
       const drain = async (): Promise<void> => {
-        for await (const _chunk of adapter.stream({ provider: 'dashscope', model: 'qwen-flash', messages: [] })) { /* drain */ }
+        for await (const _chunk of adapter.stream({ provider: 'aga', model: 'qwen-flash', messages: [] })) { /* drain */ }
       }
       await expect(drain()).rejects.toMatchObject({ code: 'TRANSPORT', cause })
     } finally {
@@ -385,20 +385,20 @@ describe('plugin registration and config', () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDashScope, {})
-    expect(ctx.llm.listProviders()).toEqual([{ id: 'dashscope', name: 'DashScope' }])
+    expect(ctx.llm.listProviders()).toEqual([{ id: 'aga', name: 'DashScope' }])
     expect(ctx.llm.listConfigurableProviders()).toEqual([{
-      provider: 'dashscope',
+      provider: 'aga',
       displayName: 'DashScope',
       settingsNs: 'llm-dashscope',
       settingsPath: [],
     }])
-    await expect(ctx.llm.listModels('dashscope')).resolves.toEqual([
-      { provider: 'dashscope', id: 'qwen-flash', name: 'Qwen-Flash', inputModalities: ['text'] },
-      { provider: 'dashscope', id: 'qwen-plus', name: 'Qwen-Plus', inputModalities: ['text'] },
-      { provider: 'dashscope', id: 'qwen3.7-max', name: 'Qwen3.7-Max', inputModalities: ['text'] },
-      { provider: 'dashscope', id: 'qwen3.6-plus', name: 'Qwen3.6-Plus', inputModalities: ['text'] },
+    await expect(ctx.llm.listModels('aga')).resolves.toEqual([
+      { provider: 'aga', id: 'qwen-flash', name: 'Qwen-Flash', inputModalities: ['text'] },
+      { provider: 'aga', id: 'qwen-plus', name: 'Qwen-Plus', inputModalities: ['text'] },
+      { provider: 'aga', id: 'qwen3.7-max', name: 'Qwen3.7-Max', inputModalities: ['text'] },
+      { provider: 'aga', id: 'qwen3.6-plus', name: 'Qwen3.6-Plus', inputModalities: ['text'] },
     ])
-    await expect(ctx.llm.resolveModelInfo('dashscope', 'qwen-flash'))
+    await expect(ctx.llm.resolveModelInfo('aga', 'qwen-flash'))
       .resolves.toMatchObject({
         context: { contextWindow: 131_072 },
         defaultMaxTokens: 8_192,
@@ -409,7 +409,7 @@ describe('plugin registration and config', () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDashScope, { baseURL: 'http://127.0.0.1:1' })
-    const info = await ctx.llm.resolveModelInfo('dashscope', 'qwen-flash')
+    const info = await ctx.llm.resolveModelInfo('aga', 'qwen-flash')
     expect(info.reasoning).toBeUndefined()
   })
 
@@ -419,7 +419,7 @@ describe('plugin registration and config', () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDashScope, {})
-    expect(ctx.llm.listProviders()).toEqual([{ id: 'dashscope', name: 'DashScope' }])
+    expect(ctx.llm.listProviders()).toEqual([{ id: 'aga', name: 'DashScope' }])
   })
 
   it('defaults to the AGA public base URL without config or env', async () => {
@@ -428,7 +428,7 @@ describe('plugin registration and config', () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDashScope, {})
-    expect(ctx.llm.listProviders()).toEqual([{ id: 'dashscope', name: 'DashScope' }])
+    expect(ctx.llm.listProviders()).toEqual([{ id: 'aga', name: 'DashScope' }])
     expect(resolveAdapterOptions({}).baseURL)
       .toBe('https://pre-aga-ai-gateway.alibaba-inc.com/api/v1/services/aigc/text-generation/generation')
   })
