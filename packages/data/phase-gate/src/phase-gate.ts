@@ -300,6 +300,7 @@ export class PhaseGate {
       // partition_cols / event_params stay empty after a successful load).
       collectFields((value as { event?: unknown } | undefined)?.event, s.event_params, 'params_fields', 'params')
     } else if (name === 'load_table_definition') {
+      // (same nested-projection shape — see load_event above)
       collectFields((value as { table?: unknown } | undefined)?.table, s.partition_cols, 'partition_cols', 'partitions')
     }
   }

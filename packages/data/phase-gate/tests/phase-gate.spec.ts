@@ -174,6 +174,21 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     )
     expect(s.event_params.has('order_id')).toBe(true)
     expect(s.event_params.has('amount')).toBe(true)
+    // no-op coverage: found:false + isError:true results must not grow the sets.
+    const beforeP = s.partition_cols.size
+    const beforeE = s.event_params.size
+    await g.onPostExecute(
+      execView('load_table_definition', agent, { table_name: 'missing' }),
+      resultOk({ found: false, message: 'not found' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    await g.onPostExecute(
+      execView('load_table_definition', agent, { table_name: 'x' }),
+      { isError: true, content: [] } as unknown as ToolExecutionResult,
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.partition_cols.size).toBe(beforeP)
+    expect(s.event_params.size).toBe(beforeE)
   })
 
   it('F4 question-start: agent/status idle→running resets question-scoped counters', () => {
