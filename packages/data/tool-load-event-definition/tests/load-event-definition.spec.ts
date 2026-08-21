@@ -236,3 +236,12 @@ test('S17 render - found:false with no message uses the neutral fallback', () =>
   const out = def.output.render({}, { found: false })
   expect(out[0]?.text).toBe('No event definition to display.')
 })
+
+test('S18 projectEvent filters empty-string metric keys', () => {
+  const def = EventDefinitionSchema.parse({
+    name: 'e',
+    metrics: { '': { expression: 'x' }, real: { expression: 'y' } },
+  })
+  const proj = projectEvent(def)
+  expect(proj.metrics?.map(m => m.name)).toEqual(['real'])
+})

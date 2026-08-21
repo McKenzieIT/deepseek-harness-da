@@ -239,3 +239,19 @@ test('S17 render - found:false with no message uses the neutral fallback', () =>
   const out = def.output.render({}, { found: false })
   expect(out[0]?.text).toBe('No table definition to display.')
 })
+
+test('S18 loadTableDefinitionResult - I/O error redacts the path + stays single-line', () => {
+  // MAJOR-2: an I/O throw (e.g. ENOENT carrying a server path) must be caught
+  // and the path redacted — never leak the raw path or a multi-line message.
+  const throwing = {
+    loadTableDefinition: () => {
+      throw new Error("ENOENT: no such file or directory, open '/secret/semantic/tables/x.yaml'")
+    },
+  } as unknown as Parameters<typeof loadTableDefinitionResult>[0]
+  const r = loadTableDefinitionResult(throwing, 'whatever')
+  expect(r.found).toBe(false)
+  expect(r.message).toMatch(/^substrate error:/)
+  expect(r.message).toContain('<path>')
+  expect(r.message).not.toContain('/secret')
+  expect(r.message).not.toContain('\n')
+})

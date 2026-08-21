@@ -170,15 +170,6 @@ export interface LoadTableResult {
 }
 
 /**
- * The pure load core — probe the schema seam, load + validate + project the
- * table definition. Exported so the probe + guard + load are testable without
- * a Cordis context. `schema` is `undefined` when no `ctx.schema` provider is
- * mounted (the "callable but unwired" honest state).
- * @param schema - the semantic-layer service (`ctx.get('schema')`), or undefined when unmounted.
- * @param tableName - the model-supplied table name to load.
- * @returns `{ found: true, table }` on a hit, or `{ found: false, message }` otherwise.
- */
-/**
  * Sanitize a substrate error for the model message (MAJOR-2): collapse to a
  * single line, strip control chars, redact file paths, and bound length. Never
  * leak the raw stack or a multi-line ZodError dump.
@@ -187,14 +178,25 @@ export interface LoadTableResult {
  */
 function sanitizeSubstrateError(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e)
+  // Redact file paths (absolute OR relative — 2+ slash-joined segments) before
+  // collapsing, so neither server paths nor a multi-line ZodError dump leaks.
   const clean = raw
     .replace(/[\x00-\x1f\x7f]/g, ' ')
-    .replace(/(?:\/[\w.\-]+)+/g, '<path>')
+    .replace(/\/?[\w.\-]+\/[\w.\-]+(?:\/[\w.\-]+)*/g, '<path>')
     .replace(/\s+/g, ' ')
     .trim()
   return clean.length > 200 ? `${clean.slice(0, 200)}...` : clean
 }
 
+/**
+ * The pure load core — probe the schema seam, load + validate + project the
+ * table definition. Exported so the probe + guard + load are testable without
+ * a Cordis context. `schema` is `undefined` when no `ctx.schema` provider is
+ * mounted (the "callable but unwired" honest state).
+ * @param schema - the semantic-layer service (`ctx.get('schema')`), or undefined when unmounted.
+ * @param tableName - the model-supplied table name to load.
+ * @returns `{ found: true, table }` on a hit, or `{ found: false, message }` otherwise.
+ */
 export function loadTableDefinitionResult(
   schema: SemanticLayerService | undefined,
   tableName: string,

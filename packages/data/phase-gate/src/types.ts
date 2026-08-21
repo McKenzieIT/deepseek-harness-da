@@ -129,11 +129,17 @@ export const GENERATION_TOOLS = Object.freeze([
   'critique_sql_tool',
   'evaluate_sql_quality',
   // MAJOR-1 (review fix): load_* are schema-grounding reads. GENERATION writes
-  // SQL from semantic-layer-grounded fields + the critic harvests
-  // partition_cols / event_params from these calls, so the definitions are
-  // whitelisted here too — not UNDERSTANDING-only (the prior omission made the
-  // tool/README/package descriptions' "UNDERSTANDING/GENERATION" claim an
-  // overclaim). Additive: no phase-gate logic touched, only whitelist entries.
+  // SQL from semantic-layer-grounded fields, so the model loads a real
+  // definition here to ground SQL before/while writing it — the definitions are
+  // whitelisted in GENERATION too, not UNDERSTANDING-only (the prior omission
+  // made the tool/README/package descriptions' "UNDERSTANDING/GENERATION"
+  // claim an overclaim). Additive: no phase-gate logic touched, only whitelist
+  // entries. (Subagent-review caveat: the critic's captureToolData harvest of
+  // partition_cols / event_params from load_* is currently non-functional — it
+  // probes the top-level result, but load_* returns { found, table|event:{…} }
+  // nested; a pre-existing integration gap to fix in phase-gate, out of scope
+  // here. The whitelist stands regardless: the model reads the loaded
+  // definition directly.)
   'load_table_definition',
   'load_event_definition',
   ...UNIVERSAL_TOOLS,
