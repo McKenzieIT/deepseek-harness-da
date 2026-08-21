@@ -52,6 +52,20 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
   })
 
 
+  it('guard: load_* allowed in GENERATION (schema grounding before SQL)', () => {
+    const { agent } = makeAgent('s2')
+    const g = gate()
+    const s = g.state('s2')
+    s.current_phase = Phase.GENERATION
+    // MAJOR-1: load_table/load_event are schema-grounding reads; GENERATION
+    // writes SQL from semantic-layer-grounded fields, so the definitions are
+    // whitelisted there too (not UNDERSTANDING-only). search_data_sources stays
+    // UNDERSTANDING-only (candidate discovery is an UNDERSTANDING concern).
+    expect(g.guard(execView('load_table_definition', agent))).toBeUndefined()
+    expect(g.guard(execView('load_event_definition', agent))).toBeUndefined()
+    expect(g.guard(execView('search_data_sources', agent))).toMatch(/not in generation whitelist/)
+  })
+
   it('turn-stopping advances UNDERSTANDING→GENERATION + injects continuation', async () => {
     const { agent, injected } = makeAgent('s1')
     const g = gate()
@@ -133,6 +147,33 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     )
     expect(decision.kind).toBe('block')
     expect(s.exec_count).toBe(1) // count on post-execute
+  })
+
+  it('harvest: load_* nested result fills partition_cols / event_params for the GENERATION critic', async () => {
+    const { agent } = makeAgent('h1')
+    const g = gate()
+    const s = g.state('h1')
+    // load_* returns { found, table|event: { partitions|params_fields, ... } }
+    // NESTED (the model-facing projection). captureToolData must probe
+    // value.table / value.event (not top-level value) and extract each
+    // projected element's `name` leaf (substrate maps project to [{name, ...}]),
+    // else the GENERATION critic's partition_cols / event_params stay empty
+    // even after a successful load — weakening the ds/dt partition-filter +
+    // GET_JSON_OBJECT field-path checks (non-breaking: regex/json-path still run).
+    await g.onPostExecute(
+      execView('load_table_definition', agent, { table_name: 'dws_pay_order_di' }),
+      resultOk({ found: true, table: { table_name: 'dws_pay_order_di', partitions: [{ name: 'ds', type: 'string' }, { name: 'dt', type: 'string' }] } }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.partition_cols.has('ds')).toBe(true)
+    expect(s.partition_cols.has('dt')).toBe(true)
+    await g.onPostExecute(
+      execView('load_event_definition', agent, { event_name: 'pay_order' }),
+      resultOk({ found: true, event: { name: 'pay_order', params_fields: [{ name: 'order_id', type: 'string' }, { name: 'amount', type: 'double' }] } }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.event_params.has('order_id')).toBe(true)
+    expect(s.event_params.has('amount')).toBe(true)
   })
 
   it('F4 question-start: agent/status idle→running resets question-scoped counters', () => {

@@ -3,7 +3,7 @@
 **Type**: task
 **Phase**: misc (surfaced 2026-08-21, load_* review-fix-2 subagent re-review A M-1)
 **Assignee**: (next session / phase-gate owner)
-**Status**: open
+**Status**: closed (resolved 2026-08-21, ticket A — Resolution (a) applied; see Resolved note below)
 **Graduated from**: [data-agent-tool-packages-shipping](data-agent-tool-packages-shipping.md) aggregate (load_* review-fix-2 subagent re-review) + [P6b](../phase-2/P6b-semantic-layer-hardening.md) "load_* 接入" follow-up
 **Blocked by**: — (unblocked; **coordinate w/ concurrent** — `phase-gate.ts` 是并发活跃域，`cd2b741409` reasoningEffort Option B landed，aga-per-phase-thinking-control grilling in progress；recheck git status before editing)
 
@@ -37,6 +37,19 @@
 （即把 `value.table`/`value.event`（嵌套投影）传给 `collectFields`，而非 top-level `value`。）+ phase-gate 测试：一个带 partitions/params_fields 的 load_* 结果 → `s.partition_cols`/`s.event_params` 被填充。
 
 验证：`pnpm tsc -b packages/data/phase-gate/tsconfig.json` + `pnpm vitest run packages/data/phase-gate` + `pnpm exec tsx scripts/run-oxlint.ts --config .oxlintrc.staged.json packages/data/phase-gate/src`（gate oxlint）。
+
+---
+
+**Resolved (2026-08-21, ticket A)** — Resolution (a) applied in `packages/data/phase-gate/src/phase-gate.ts` (+ test `tests/phase-gate.spec.ts`); TDD RED→GREEN. The concurrent phase-gate storm flagged at open (`cd2b741409` reasoningEffort + aga-per-phase-thinking-control grilling) has **subsided** (`aga-per-phase-thinking-control` resolved, `667ea89405`); `phase-gate.ts` source was clean when edited (rechecked `git status` before each shared-file edit).
+
+**Two parts — the ticket's proposed snippet alone was insufficient.** TDD surfaced that `collectFields` could only harvest string-arrays / object-map keys, but load_* returns **projected arrays of `{name, type}` objects** (`TableModel.partitions` / `EventModel.params_fields`; the substrate maps project to `[{name, …}]`). The nesting-only fix left the test RED (array elements are objects, not strings → nothing extracted).
+
+1. `captureToolData` probes nested `value.table` / `value.event` (not top-level `value`) — the ticket's proposed (a) snippet, verbatim.
+2. `collectFields` gains an array-of-objects branch harvesting each element's `name` leaf (the substrate map key). Additive: the prior string-array + object-map branches are unchanged. The harvest crosses the model-facing projection boundary → it extracts `name` leaves, not substrate map keys.
+
+**Verification (all green)**: `tsc -b` exit 0 · `vitest` 20/20 · gate oxlint `0 warnings 0 errors` · `verify-cordis-config` 135 passed.
+
+**Commit note**: the commit also lands the orphaned uncommitted GENERATION-guard test (the MAJOR-1 whitelist test — its whitelist landed in `a127875845` but the test was never committed on master; same load_* thread; the `types.ts` MAJOR-1 comment cross-references this exact harvest gap).
 
 ## Map pointer
 

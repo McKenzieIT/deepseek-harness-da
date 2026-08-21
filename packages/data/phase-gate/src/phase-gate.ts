@@ -295,9 +295,12 @@ export class PhaseGate {
     } else if (name === 'search_data_sources') {
       collectTableNames(value, s.candidate_tables)
     } else if (name === 'load_event_definition') {
-      collectFields(value, s.event_params, 'params_fields', 'params')
+      // load_* returns { found, event|table: { … } } NESTED (the model-facing
+      // projection) — probe the nested definition, not top-level value (else
+      // partition_cols / event_params stay empty after a successful load).
+      collectFields((value as { event?: unknown } | undefined)?.event, s.event_params, 'params_fields', 'params')
     } else if (name === 'load_table_definition') {
-      collectFields(value, s.partition_cols, 'partition_cols', 'partitions')
+      collectFields((value as { table?: unknown } | undefined)?.table, s.partition_cols, 'partition_cols', 'partitions')
     }
   }
 
@@ -600,9 +603,20 @@ function collectFields(value: unknown, out: Set<string>, ...keys: string[]): voi
     const v = obj[k]
     if (Array.isArray(v)) {
       for (const f of v) {
-        if (typeof f === 'string') out.add(f.toLowerCase())
+        if (typeof f === 'string') {
+          out.add(f.toLowerCase())
+        } else if (f !== null && typeof f === 'object') {
+          // load_* projects substrate maps to arrays of `{ name, … }`
+          // (TableModel.partitions / EventModel.params_fields) — harvest the
+          // `name` leaf (the substrate map key) from each projected element.
+          const name = (f as { name?: unknown }).name
+          if (typeof name === 'string') out.add(name.toLowerCase())
+        }
       }
     } else if (v !== null && typeof v === 'object') {
+      // Substrate map shape (Record<string, FieldDef>): the map keys ARE the
+      // field names. (load_* exposes the projected array form post-projection;
+      // the helper stays shape-agnostic for direct-substrate callers.)
       for (const f of Object.keys(v as Record<string, unknown>)) out.add(f.toLowerCase())
     }
   }
