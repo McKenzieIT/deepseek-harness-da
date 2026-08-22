@@ -15,6 +15,7 @@ import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { critiqueSql } from '@deepseek-ai/dsh-nl2sql-engine'
 import { PhaseGate } from '../src/phase-gate.ts'
 import { Phase, INCOMPLETE_MARKER, PipelineConfig } from '../src/types.ts'
 
@@ -887,5 +888,165 @@ describe('(b) CriticCtxService — per-agent criticCtx for the critique tools', 
     )
     // after search: the criticCtx reflects the harvested candidate table
     expect(svc.forAgent('c3')?.candidateTables.has('dws_pay_order_di')).toBe(true)
+  })
+})
+
+// ── G-DA4: critic candidate_tables includes the event_view FROM table ──────
+// Root cause: captureToolData populated candidate_tables from search_data_sources
+// (event NAMES like game.recharge) but NOT the event_view.full_name FROM table
+// (ieu_ods.ods_10000251_all_view) returned by load_event_definition. The critic's
+// extractTableNames strips the db. prefix + lowercases (→ ods_10000251_all_view),
+// so the CORRECT SQL failed `table_not_in_candidates` (error → confidence 0.50 <
+// 0.6 floor) → generationGate blocked → the model gamed the critic with an
+// event-name-as-table → TABLE_NOT_FOUND → F2 deadlock → no rows. The fix adds
+// event_view.full_name to candidate_tables so the correct SQL passes the critic.
+describe('G-DA4 — critic candidate_tables includes event_view table from load_event_definition', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  // The canonical K11 event ODS shape: load_event_definition returns
+  // event_view.full_name = the FROM table + params_extract_template.
+  const eventViewResult = {
+    found: true,
+    event: { name: 'game.recharge', params_fields: [{ name: 'money', type: 'bigint' }] },
+    event_view: {
+      full_name: 'ieu_ods.ods_10000251_all_view',
+      params_extract_template: "GET_JSON_OBJECT(params, '$.{field_name}')",
+      base_columns: ['event', 'params', 'ds'],
+    },
+  }
+  // The CORRECT SQL the model writes from the load result: FROM the event_view
+  // table (not a gamed event-name-as-table), event filter + ds partition + JSON param.
+  const correctRawSql = 'SELECT event, GET_JSON_OBJECT(params, \'$.money\') AS money FROM ieu_ods.ods_10000251_all_view WHERE event IN (\'game.role.online\',\'game.recharge\') AND ds>=\'20260101\' AND ds<=\'20260122\''
+
+  it('(i) captureToolData for load_event_definition adds event_view.full_name to candidate_tables (db-stripped + full)', async () => {
+    const { agent } = makeAgent('d1')
+    const g = gate()
+    const s = g.state('d1')
+    await g.onPostExecute(
+      execView('load_event_definition', agent, { event_name: 'game.recharge' }),
+      resultOk(eventViewResult),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    // GROUNDING GATE (c): definition_loaded set on a non-error load.
+    expect(s.definition_loaded).toBe(true)
+    // event_params harvested from the nested event (JSON-path field check).
+    expect(s.event_params.has('money')).toBe(true)
+    // G-DA4: the event_view FROM table is now a candidate — the db-stripped
+    // form (what the critic checks after extractTableNames strips the prefix)
+    // AND the full lowercased form (robustness against a prefix-preserving critic).
+    expect(s.candidate_tables.has('ods_10000251_all_view')).toBe(true)
+    expect(s.candidate_tables.has('ieu_ods.ods_10000251_all_view')).toBe(true)
+  })
+
+  it('(i-cont) a found:false / no-event_view load does not grow candidate_tables', async () => {
+    const { agent } = makeAgent('d2')
+    const g = gate()
+    const s = g.state('d2')
+    const before = s.candidate_tables.size
+    await g.onPostExecute(
+      execView('load_event_definition', agent, { event_name: 'missing' }),
+      resultOk({ found: false, message: 'event not found' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    // No event_view in a found:false result → no FROM table added (the gap fix
+    // is scoped to a successful load that surfaces event_view.full_name).
+    expect(s.candidate_tables.size).toBe(before)
+  })
+
+  it('(ii) the critic accepts FROM <event_view_table> after captureToolData (confidence ≥ floor, no table_not_in_candidates)', async () => {
+    const { agent } = makeAgent('d3')
+    const g = gate()
+    const s = g.state('d3')
+    // Simulate UNDERSTANDING: search surfaces event NAMES, load surfaces the FROM table.
+    await g.onPostExecute(
+      execView('search_data_sources', agent, { query: 'K11 DAU' }),
+      resultOk({
+        candidates: [
+          { id: 'game.role.online', score: 0.9, mode: 'event' },
+          { id: 'game.recharge', score: 0.8, mode: 'event' },
+        ],
+      }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    await g.onPostExecute(
+      execView('load_event_definition', agent, { event_name: 'game.recharge' }),
+      resultOk(eventViewResult),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    // The critic guard context the critique_sql_tool reads (CriticCtxService.forAgent).
+    const criticCtx = {
+      candidateTables: s.candidate_tables,
+      eventParams: s.event_params,
+      partitionCols: s.partition_cols,
+    }
+    // The CORRECT SQL: FROM ieu_ods.ods_10000251_all_view (the event_view table).
+    const result = critiqueSql(correctRawSql, criticCtx)
+    // No table_not_in_candidates — the event_view table IS a candidate now.
+    const tableFindings = result.findings.filter(f => f.rule === 'table_not_in_candidates')
+    expect(tableFindings).toHaveLength(0)
+    // No errors → confidence = 1 − 0.15·warnings ≥ 0.85 ≥ 0.6 floor (passes gate).
+    const errors = result.findings.filter(f => f.severity === 'error').length
+    const warnings = result.findings.filter(f => f.severity === 'warning').length
+    const confidence = Math.max(0, 1 - 0.5 * errors - 0.15 * warnings)
+    expect(confidence).toBeGreaterThanOrEqual(PipelineConfig.critique_confidence_floor)
+    // BEFORE the fix: candidate_tables held only event names → the correct SQL
+    // hit table_not_in_candidates (error → confidence 0.50 < 0.6) → generationGate
+    // blocked → the gamed-SQL trap. Reproduce the pre-fix state to prove the gap:
+    const preFixTables = new Set(['game.role.online', 'game.recharge'])
+    const preFixResult = critiqueSql(correctRawSql, {
+      candidateTables: preFixTables,
+      eventParams: s.event_params,
+      partitionCols: s.partition_cols,
+    })
+    const preFixTableFindings = preFixResult.findings.filter(f => f.rule === 'table_not_in_candidates')
+    expect(preFixTableFindings.length).toBeGreaterThan(0) // the gap the fix closes
+  })
+
+  it('(ii-integration) generationGate passes the correct SQL → advance to EXECUTION (no table_not_in_candidates block)', async () => {
+    const { agent } = makeAgent('d4')
+    const g = gate()
+    const s = g.state('d4')
+    s.current_phase = Phase.GENERATION
+    s.phase_idx = 1 // GENERATION index → advance lands on EXECUTION
+    // UNDERSTANDING populated candidate_tables + definition_loaded via load_event_definition:
+    await g.onPostExecute(
+      execView('load_event_definition', agent, { event_name: 'game.recharge' }),
+      resultOk(eventViewResult),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.definition_loaded).toBe(true) // GROUNDING GATE (c) passes
+    expect(s.candidate_tables.has('ods_10000251_all_view')).toBe(true) // the fix
+    // The model writes the CORRECT SQL (FROM the event_view table):
+    s.phase_output = '```sql\n' + correctRawSql + '\n```'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    // The critic found no table_not_in_candidates → sqlSyntaxGate passed →
+    // generationGate passed → advance to EXECUTION (the fix breaks the deadlock).
+    expect(s.current_phase).toBe(Phase.EXECUTION)
+    // last_sql is the REAL table, not a gamed event-name-as-table.
+    expect(s.last_sql).toContain('ods_10000251_all_view')
+  })
+
+  it('(iii) GENERATION persona: TABLE_NOT_FOUND / FIELD_NOT_FOUND / SEMANTIC_MISMATCH → 【route:decline】 (no re-critique)', async () => {
+    const g = gate()
+    const s = g.state('d5')
+    s.current_phase = Phase.GENERATION
+    const ctx = { agent: { id: 'd5' }, scope: { id: 'd5' } } as unknown as AssembleContext
+    const stubAssembly: PromptAssembly = { sections: [], contexts: [], tools: [], variables: {} }
+    const out = await g.onAssemble(stubAssembly, ctx, () => Promise.resolve(stubAssembly))
+    const phaseInstruction = out.sections.find((x: { name?: string }) => x.name === 'phase-instruction')
+    expect(phaseInstruction).toBeDefined()
+    const text = phaseInstruction!.text
+    // rbi §3 阶段D: schema-mismatch execution errors are UNRECOVERABLE →
+    // honest reject (【route:decline】), NOT re-critique/re-execute.
+    expect(text).toContain('TABLE_NOT_FOUND')
+    expect(text).toContain('FIELD_NOT_FOUND')
+    expect(text).toContain('SEMANTIC_MISMATCH')
+    expect(text).toContain('UNRECOVERABLE')
+    expect(text).toContain('【route:decline】')
+    expect(text).toMatch(/do not re-critique/i)
+    // The F2-trap-enabling sentence ("correct the SQL and RE-call critique_sql_tool")
+    // is gone — replaced by the rbi-faithful honest-reject instruction.
+    expect(text).not.toMatch(/correct the SQL and RE-call critique_sql_tool/)
   })
 })

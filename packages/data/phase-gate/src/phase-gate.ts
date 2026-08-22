@@ -103,10 +103,15 @@ If you emit no route token, the gate defaults to proceed but runs a grounding ba
     + 'requires both (confidence ≥ 0.6, score ≥ 60) to advance to EXECUTION. The '
     + 'critic (regex + JSON path, no sqlglot) rejects tables ∉ candidates, '
     + 'GET_JSON_OBJECT fields ∉ event_params; warns on SELECT * / missing ds partition. '
-    + 'Wrap SQL in ```sql fences. After a TABLE_NOT_FOUND or execution error, correct the '
-    + 'SQL and RE-call critique_sql_tool (re-critique the corrected SQL) before re-calling '
-    + 'query_data — F2 same-source requires the query_data SQL to match the critiqued '
-    + 'SQL (last_sql). Fallback → UNDERSTANDING.',
+    + 'Wrap SQL in ```sql fences. TABLE_NOT_FOUND / FIELD_NOT_FOUND / '
+    + 'SEMANTIC_MISMATCH are UNRECOVERABLE execution errors (per rbi §3 阶段D) — '
+    + 'they signal the SQL referenced a table/field absent from ODPS. Do NOT '
+    + 're-critique or re-execute with a corrected SQL: critique_sql_tool is '
+    + 'GENERATION-only (the EXECUTION guard whitelist blocks it) and F2 same-source '
+    + 'blocks a divergent query_data SQL, so re-critiquing in EXECUTION deadlocks. '
+    + 'Instead emit 【route:decline】 (honest reject): state WHY (which table/field '
+    + 'was not found), WHAT the correct schema needs, HOW the user could rephrase. '
+    + 'The gate honest-declines; do not game the critic with an event-name-as-table.',
   [Phase.EXECUTION]: 'EXECUTION (deterministic, not ReAct): query_data(sql) runs the Guard Chain. The SQL passed MUST equal the critiqued SQL (same-source — post-execute blocks a mismatch). Three outcomes drive the turn-stopping decision: done → advance; running → wait + poll; failed → fallback→GENERATION (carry error) or honest_decline. Never re-send the original SQL.',
   [Phase.INTERPRETATION]: `INTERPRETATION: deliver via tools only, strict order: present_decomposition (forced first) → present_table (pass result_id + intent) → compute → 【发现】(once) → 【注意】(once, list assumptions) → suggest_followups. Output purity: no **, no process narration, no SQL display, thousands separator. If you CANNOT answer, emit ${INCOMPLETE_MARKER} (NOT clarification — no HALT in delivery); the turn-stopping gate reads it → honest_decline. No fallback phase.`,
 }
@@ -415,6 +420,25 @@ export class PhaseGate {
       // projection) — probe the nested definition, not top-level value (else
       // partition_cols / event_params stay empty after a successful load).
       collectFields((value as { event?: unknown } | undefined)?.event, s.event_params, 'params_fields', 'params')
+      // G-DA4 critic candidate_tables: load_event_definition also returns
+      // event_view.full_name — the FROM table (e.g. ieu_ods.ods_10000251_all_view)
+      // the model writes `FROM <full_name> WHERE event='...'` over. The critic's
+      // extractTableNames strips the db. prefix + lowercases, so the candidate
+      // set must carry the db-stripped form for `table_not_in_candidates` to pass
+      // (else the correct SQL fails the critic → generationGate blocks → the
+      // model games the critic with an event-name-as-table → TABLE_NOT_FOUND →
+      // F2 deadlock). search_data_sources surfaces event NAMES (game.recharge),
+      // NOT the event_view table — that gap is closed here. Add both the full
+      // + db-stripped lowercased forms (the stripped form is what the critic
+      // checks today; the full form is robustness against a prefix-preserving
+      // critic). Mirrors collectTableNames' lowercase + extractTableNames' strip.
+      const evView = (value as { event_view?: { full_name?: unknown } } | undefined)?.event_view
+      const evFullName = evView?.full_name
+      if (typeof evFullName === 'string' && evFullName !== '') {
+        const lower = evFullName.toLowerCase()
+        s.candidate_tables.add(lower)
+        s.candidate_tables.add(lower.replace(/^.*\./, ''))
+      }
     } else if (name === 'load_table_definition') {
       // GROUNDING GATE (c): same — a non-error table load establishes grounding.
       s.definition_loaded = true
