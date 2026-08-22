@@ -16,18 +16,6 @@
     },
     {
       "path": "../../../vendor/schemastery"
-    },
-    {
-      "path": "../../llm/llm"
-    },
-    {
-      "path": "../../core/tools"
-    },
-    {
-      "path": "../../query/query"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

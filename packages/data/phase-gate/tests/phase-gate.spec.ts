@@ -327,7 +327,7 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
     const g = gateWithLlm('efforts')
     const result = await g.onRequest(
       { agent, turn: 1, step: 1, signal: new AbortController().signal },
-      async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] }) as Promise<GenerateOptions>,
+      async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] } as unknown as GenerateOptions),
     )
     expect(result.reasoningEffort).toBe('high')
   })
@@ -337,7 +337,7 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
     const g = gateWithLlm('none')
     const result = await g.onRequest(
       { agent, turn: 1, step: 1, signal: new AbortController().signal },
-      async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] }) as Promise<GenerateOptions>,
+      async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] } as unknown as GenerateOptions),
     )
     expect(result.reasoningEffort).toBeUndefined()
   })
@@ -356,7 +356,7 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
     } as unknown as Context
     const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
     const signal = new AbortController().signal
-    const next = async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] }) as Promise<GenerateOptions>
+    const next = async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] } as unknown as GenerateOptions)
     await g.onRequest({ agent, turn: 1, step: 1, signal }, next)
     await g.onRequest({ agent, turn: 2, step: 1, signal }, next)
     expect(calls).toBe(1)
@@ -372,7 +372,7 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
       },
     } as unknown as Context
     const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
-    const next = async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] }) as Promise<GenerateOptions>
+    const next = async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] } as unknown as GenerateOptions)
     const r1 = await g.onRequest({ agent, turn: 1, step: 1, signal: new AbortController().signal }, next)
     expect(r1.reasoningEffort).toBeUndefined()
     const r2 = await g.onRequest({ agent, turn: 2, step: 1, signal: new AbortController().signal }, next)
