@@ -14,6 +14,7 @@ import { StandInOdps, outcome } from '../src/stand-in-odps.ts'
 import { FailureKind } from '../src/types.ts'
 import type { DataSourceDoc } from '../src/bm25-linking.ts'
 import { ReplayLlm } from '../src/replay-llm.ts'
+import { buildPrompt } from '../src/prompt.ts'
 import type { RelationGraphLike, RelationGraphEdge } from '../src/ontology.ts'
 
 const DAU: MetricDefinitionLite = {
@@ -125,4 +126,30 @@ test('D2-e2e — pure-metric query stays Level 2.5 even with a graph (derived_fr
   expect(r.ok).toBe(true)
   expect(r.trace.some(t => t.step === 'metric_level25')).toBe(true)
   expect(llm.callCount).toBe(0)
+})
+
+test('D3-e2e — mixed query (metric + table) routes to Level 2 + augments candidates so the source table is accepted', async () => {
+  const ds: DataSourceDoc[] = [
+    { id: 'dau', description: '日活 DAU', payload: { kind: 'metric', name: 'dau', computation: { sql: 'COUNT(DISTINCT user_id)', metadata: { source: 'ods_login' } } } },
+    { id: 'dws_pay_order_di', description: '付费订单 DWS pay_amt role_id', payload: { kind: 'dws' } },
+  ]
+  // scripted LLM joins the metric's source ods_login (NOT a candidate pre-augmentation)
+  const llm = new ReplayLlm({ 付费用户: { sql: "SELECT COUNT(DISTINCT p.user_id) AS cnt FROM dws_pay_order_di p JOIN ods_login o ON p.user_id=o.user_id WHERE p.ds='20260819' AND p.pay_amt>0" } })
+  const odps = new StandInOdps({ 'COUNT(DISTINCT p.user_id)': outcome.done([{ cnt: 3 }], 'rid-mix') })
+  const eng = new Nl2sqlEngine({ dataSources: ds, llm, odps, partitionResolver: () => ['ds'] })
+  const r = await eng.run({ question: '付费用户中等级>50的DAU', today: '20260820' })
+  expect(r.ok).toBe(true)
+  expect(r.trace.some(t => t.step === 'metric_level25')).toBe(false) // NOT Level 2.5 (mixed)
+  expect(r.trace.some(t => t.step === 'llm_generate')).toBe(true)   // went through the LLM loop
+})
+
+test('D3 — buildPrompt renders the metric-context section when metricContext is provided', () => {
+  const p = buildPrompt({
+    question: '付费用户中等级>50的DAU',
+    candidates: [{ id: 'dau', score: 1, payload: { id: 'dau' }, mode: 'bm25-only' }],
+    eventDef: null, conventions: null, phase: 'generation',
+    metricContext: "- dau = SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds = '20260819'（日活）",
+  })
+  expect(p).toContain('已知指标定义（请基于此规则构建查询）')
+  expect(p).toContain('COUNT(DISTINCT user_id)')
 })

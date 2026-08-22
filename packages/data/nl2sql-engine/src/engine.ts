@@ -31,7 +31,7 @@ import {
   type QueryOutcome,
 } from './types.ts'
 import { critiqueSql, extractSqlCandidate } from './critic.ts'
-import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildExecutableSQL } from './metric-engine.ts'
+import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildExecutableSQL, buildMetricContext } from './metric-engine.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
@@ -160,7 +160,7 @@ export class Nl2sqlEngine {
 
     // critic ctx: candidate tables + event params + partition cols (from P6 substrate; not from conventions)
     const partitionCols = eventDef?.partitions?.map(p => p.name) ?? ['ds']
-    const ctx = makeCriticCtx({
+    let ctx = makeCriticCtx({
       candidateTables: candidateIds,
       eventParams: eventDef?.params_fields ?? {},
       partitionCols,
@@ -212,11 +212,30 @@ export class Nl2sqlEngine {
       }
     }
 
+    let metricContext: string | undefined
+    if (route === 'level-2') {
+      const metricHit = candidates.find(isMetricHit)
+      const metricDef = metricHit !== undefined ? metricFromHit(metricHit) : null
+      if (metricHit !== undefined && metricDef !== null) {
+        // The metric context introduces the source table as a legitimate reference —
+        // augment the critic's candidate tables so the LLM's SQL referencing the source
+        // (JOIN ods_login ...) is not falsely rejected by table_not_in_candidates.
+        const sourceTables = [metricDef.computation.metadata.source]
+        ctx = makeCriticCtx({
+          candidateTables: [...new Set([...candidateIds, ...sourceTables])],
+          eventParams: eventDef?.params_fields ?? {},
+          partitionCols,
+          ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
+        })
+        metricContext = buildMetricContext(metricDef, extractTimeParams(question, args.today ?? ''))
+      }
+    }
+
     let attempt = 0
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
       // 2. prompt + 3. LLM generate
-      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', ...(joinConstraints !== undefined ? { joinConstraints } : {}) })
+      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback })
       const sql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql
