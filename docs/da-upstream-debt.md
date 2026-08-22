@@ -111,7 +111,7 @@
 
 | ID | Cluster | Rule | Severity | Resolution | Status |
 |---|---|---|---|---|---|
-| — | web-app bundle `llm-dashscope` insert | 4.3 | HIGH | **reverted in-fork** (data-agent bundle already inserts `llm-dashscope`; use profile overlay for `dsh web`) | **FIXED** |
+| — | web-app bundle `llm-dashscope` insert | 4.3 | — | **not a current violation** — master tip (494839a98c) verified clean: insert added at `4104471fb1`, removed before tip; the scan finding was an agent-checked-out worktree artifact, not a committed violation | N/A (false positive — see Audit-accuracy note) |
 | D1 | credentials addressing | 4.1 + 4.4 + §3.2 | HIGH | upstream PR (or §4.2 `credentials-addressed` wrapper) | DEBT — not reverted |
 | D2 | subagent continuable + costs | 4.1 + 4.4 | HIGH | upstream PR (or §4.2 `subagent-continuable` wrapper) | DEBT — not reverted |
 | D3 | ProviderEditor dashscope UI | 4.1 + §1.5 / §3.1 | HIGH / MED | upstream PR (registry-driven UI) | DEBT — not reverted |
@@ -120,3 +120,13 @@
 **Coupled catalog entries (downstream of D1/D2):** `packages/extensions/tool-cordis/src/api-catalog.ts` additive `SERVICE_API` / `TYPE_API` rows document da's new seams (audit / embedder / identity / nl2sql / schema + their types) and the D1/D2 changed signatures. The da-seam-documentation rows are additive registration (allowed). The signature-documenting rows update in lockstep when D1/D2 land upstream or move to §4.2 wrappers — not independent debt.
 
 **Clean / no-action:** `bundle/headless`, `bundle/base` (zero changes); `bundle/data-agent` (sanctioned disable+insert+config-override); all `scripts/gen-*` + manifests (additive registration); agent presets (§4.5 da-owned location); `packages/query/query-tool` `setTimeout` (transient self-resolving timer, not a leak — optional abort-awareness hardening only); `packages/data/phase-gate/src/phase-gate.ts` + `packages/data/tool-load-event-definition/src/index.ts` working-tree edits (da-owned; `tool-load-event-definition` adds a tool output field + helper types, **not** a new `SessionEventMap` member → no §3.2 breach).
+
+---
+
+## Audit-accuracy note
+
+The phase-1 dimension-3 scan reported a rule-4.3 violation: `packages/bundle/web-app/cordis.patch.yml` appending an `llm-dashscope` insert. **Verification against the committed master tip (494839a98c) shows this was a false positive.** The insert was added by commit `4104471fb1` (`feat(web-app): mount llm-dashscope provider`) and removed before the tip — the master-tip `cordis.patch.yml` ends at `default: standard` with no insert block, `git show 494839a98c:packages/bundle/web-app/cordis.patch.yml` is clean, and `git diff upstream/master...HEAD -- packages/bundle/web-app/cordis.patch.yml` (committed net) is empty. The scan's `git diff` showed the insert because an inspecting agent checked out `4104471fb1`'s historical version into the working tree, tainting the worktree; the committed state was already clean. No revert was needed (none was applied — the fix branch's PR diff is this doc only).
+
+Lesson for phase 3: reviewers must verify findings against the **committed** state (`git show <tip>:<path>`, `git diff upstream/master...HEAD -- <path>`), not the working tree, since scan agents can taint the worktree by checking out historical commits during inspection.
+
+D1, D2, D3, D4 above were all re-verified against the committed master tip (content counts + net diff) and are **real** committed violations / anti-patterns.

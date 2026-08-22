@@ -12,6 +12,7 @@
 import { test, expect } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { EventDefinitionSchema, type EventDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
 import {
   apply,
   validateDefinitionName,
@@ -107,19 +108,19 @@ test('S2 loadEventDefinitionResult - not mounted (schema undefined)', () => {
 })
 
 test('S3 loadEventDefinitionResult - event not found (substrate returns null)', () => {
-  const r = loadEventDefinitionResult(stubSchema({}), 'nope')
+  const r = loadEventDefinitionResult(stubSchema({}) as unknown as SemanticLayerService, 'nope')
   expect(r.found).toBe(false)
   expect(r.message).toBe('event not found: "nope"')
 })
 
 test('S4 loadEventDefinitionResult - hit returns the projected event', () => {
-  const r = loadEventDefinitionResult(stubSchema({ pay_event: FIXTURE_EVENT }), 'pay_event')
+  const r = loadEventDefinitionResult(stubSchema({ pay_event: FIXTURE_EVENT }) as unknown as SemanticLayerService, 'pay_event')
   expect(r.found).toBe(true)
   expect(r.event).toEqual(projectEvent(FIXTURE_EVENT))
 })
 
 test('S5 loadEventDefinitionResult - invalid name rejected before substrate touch', () => {
-  const r = loadEventDefinitionResult(stubSchema({ pay_event: FIXTURE_EVENT }), '../etc/passwd')
+  const r = loadEventDefinitionResult(stubSchema({ pay_event: FIXTURE_EVENT }) as unknown as SemanticLayerService, '../etc/passwd')
   expect(r.found).toBe(false)
   expect(r.message).toContain('invalid')
 })
@@ -259,6 +260,7 @@ test('S19 loadEventDefinitionResult - >200-char error is capped with ... (single
   expect(r.found).toBe(false)
   expect(r.message).toMatch(/^substrate error:/)
   expect(r.message).toContain('...')
-  expect(r.message.length).toBeLessThanOrEqual(220)
+  expect(r.message).toBeDefined()
+  expect(r.message!.length).toBeLessThanOrEqual(220)
   expect(r.message).not.toContain('\n')
 })

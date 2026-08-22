@@ -11,6 +11,7 @@
 import { test, expect } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { TableDefinitionSchema, type TableDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
 import {
   apply,
   validateDefinitionName,
@@ -107,19 +108,19 @@ test('S2 loadTableDefinitionResult - not mounted (schema undefined)', () => {
 })
 
 test('S3 loadTableDefinitionResult - table not found (substrate returns null)', () => {
-  const r = loadTableDefinitionResult(stubSchema({}), 'nope')
+  const r = loadTableDefinitionResult(stubSchema({}) as unknown as SemanticLayerService, 'nope')
   expect(r.found).toBe(false)
   expect(r.message).toBe('table not found: "nope"')
 })
 
 test('S4 loadTableDefinitionResult - hit returns the projected table', () => {
-  const r = loadTableDefinitionResult(stubSchema({ dws_pay_order_di: FIXTURE_TABLE }), 'dws_pay_order_di')
+  const r = loadTableDefinitionResult(stubSchema({ dws_pay_order_di: FIXTURE_TABLE }) as unknown as SemanticLayerService, 'dws_pay_order_di')
   expect(r.found).toBe(true)
   expect(r.table).toEqual(projectTable(FIXTURE_TABLE))
 })
 
 test('S5 loadTableDefinitionResult - invalid name rejected before substrate touch', () => {
-  const r = loadTableDefinitionResult(stubSchema({ dws_pay_order_di: FIXTURE_TABLE }), '../etc/passwd')
+  const r = loadTableDefinitionResult(stubSchema({ dws_pay_order_di: FIXTURE_TABLE }) as unknown as SemanticLayerService, '../etc/passwd')
   expect(r.found).toBe(false)
   expect(r.message).toContain('invalid')
 })
@@ -267,6 +268,7 @@ test('S19 loadTableDefinitionResult - >200-char error is capped with ... (single
   expect(r.found).toBe(false)
   expect(r.message).toMatch(/^substrate error:/)
   expect(r.message).toContain('...')
-  expect(r.message.length).toBeLessThanOrEqual(220)
+  expect(r.message).toBeDefined()
+  expect(r.message!.length).toBeLessThanOrEqual(220)
   expect(r.message).not.toContain('\n')
 })

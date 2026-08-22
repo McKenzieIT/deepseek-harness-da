@@ -4,9 +4,7 @@
     "rootDir": "src",
     "outDir": "lib/types"
   },
-  "include": [
-    "src"
-  ],
+  "include": ["src"],
   "references": [
     {
       "path": "../../../vendor/cosmokit"
@@ -18,16 +16,7 @@
       "path": "../../../vendor/schemastery"
     },
     {
-      "path": "../../llm/llm"
-    },
-    {
-      "path": "../../core/tools"
-    },
-    {
-      "path": "../../query/query"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
+      "path": "../../util/atomic-write"
     }
   ]
 }

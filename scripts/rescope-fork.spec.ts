@@ -37,9 +37,10 @@ describe('rescope-fork', () => {
         '@deepseek-ai/dsh-root',
       ])
       // longest-first so a prefixed name never shadows
-      expect(renames[0].from).toBe('@deepseek-ai/dsh-eval-extra')
+      expect(renames[0]).toBeDefined()
+      expect(renames[0]!.from).toBe('@deepseek-ai/dsh-eval-extra')
       // `to` carries a placeholder until --target substitutes it
-      expect(renames[0].to).toBe('@__TARGET__/dsh-eval-extra')
+      expect(renames[0]!.to).toBe('@__TARGET__/dsh-eval-extra')
     })
 
     it('skips manifests without a string name (not a package)', () => {
