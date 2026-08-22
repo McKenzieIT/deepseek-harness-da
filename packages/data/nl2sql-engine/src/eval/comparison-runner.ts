@@ -10,7 +10,7 @@ import { Nl2sqlEngine, type EngineDeps } from '../engine.ts'
 import { ReplayLlm, type ScriptedGen } from '../replay-llm.ts'
 import { StandInOdps } from '../stand-in-odps.ts'
 import { scoreMatch } from './scorer.ts'
-import { type EvalResult } from './runner.ts'
+import { type EvalResult, type EvalDetail } from './runner.ts'
 import type { RelationGraphLike } from '../ontology.ts'
 import type { DataSourceDoc } from '../bm25-linking.ts'
 import type { QueryOutcome } from '../types.ts'
@@ -41,7 +41,7 @@ export async function runComparisonEval(options: {
   const { cases = EVAL_CASES, dataSources, graph } = options
   const runSet = async (graphDep?: RelationGraphLike): Promise<{ result: EvalResult; injected: boolean }> => {
     let pass = 0
-    const details: Array<{ id: string; ok: boolean; sql?: string; decline?: boolean; reason?: string }> = []
+    const details: EvalDetail[] = []
     let injected = false
     for (const c of cases) {
       const llm = new ReplayLlm({ [c.question]: c.llm } as Record<string, ScriptedGen>)

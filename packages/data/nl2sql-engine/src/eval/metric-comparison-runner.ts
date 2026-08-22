@@ -56,7 +56,11 @@ export async function runMetricComparisonEval(options: {
         ...(resolver !== undefined ? { partitionResolver: resolver } : {}),
       }
       const engine = new Nl2sqlEngine(deps)
-      const r = await engine.run({ question: c.question, eventDef: FIXTURE_EVENT_DEF, today: c.today })
+      const r = await engine.run({
+        question: c.question,
+        eventDef: FIXTURE_EVENT_DEF,
+        ...(c.today !== undefined ? { today: c.today } : {}),
+      })
       if (scoreMatch(r, c.expected)) pass += 1
       llmCalls += llm.callCount
     }
