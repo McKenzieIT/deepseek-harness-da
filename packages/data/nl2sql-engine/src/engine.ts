@@ -32,6 +32,7 @@ import {
 } from './types.ts'
 import { critiqueSql, extractSqlCandidate } from './critic.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
+import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import { loadConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import { Bm25Linker, type RetrievalLinker, type DataSourceDoc } from './bm25-linking.ts'
@@ -70,6 +71,8 @@ export interface EngineDeps {
   readonly conventions?: EngineConventions | null
   /** Injectable retrieval (Q1: default is the in-process `Bm25Linker`; swap to P5 `ctx.retrieval` when P5b ships). */
   readonly retrieval?: RetrievalLinker
+  /** P3: live relation graph (absent => no join injection / recall / undeclared-JOIN rule). */
+  readonly graph?: RelationGraphLike
 }
 
 /** The input arguments for a single engine run: the question + optional event definition + scope id. */
@@ -101,12 +104,14 @@ export class Nl2sqlEngine {
   private readonly llm: Llm
   private readonly odps: OdpsExecutor
   private readonly conventions: EngineConventions | null
+  private readonly graph: RelationGraphLike | undefined
 
   constructor(deps: EngineDeps) {
     this.retrieval = deps.retrieval ?? new Bm25Linker(deps.dataSources ?? [])
     this.llm = deps.llm
     this.odps = deps.odps
     this.conventions = deps.conventions ?? loadConventions('maxcompute')
+    this.graph = deps.graph
   }
 
   /**
@@ -121,25 +126,41 @@ export class Nl2sqlEngine {
     const trace: EngineTraceEntry[] = []
 
     // 1. BM25 schema-linking (local RetrievalLinker; P5 ctx.retrieval seam when P5b ships)
-    const candidates = this.retrieval.retrieve(question, { topK: 5, mode: 'bm25-only' })
+    let candidates = this.retrieval.retrieve(question, { topK: 5, mode: 'bm25-only' })
+    // P3 C3: graph-enhanced recall (1-hop joins + derived) when a graph is wired
+    if (this.graph !== undefined) {
+      // cap > retrieve topK (5) so graph neighbors are actually ADDED, not
+      // dropped by the originals-first slice (a full 5-hit BM25 result would
+      // otherwise make expansion a silent no-op in production-sized corpora).
+      candidates = expandCandidates(candidates, this.graph, 8)
+    }
     trace.push({
       step: 'bm25_linking',
       candidates: candidates.map(c => ({ id: c.id, score: Number(c.score).toFixed(3) })),
     })
 
+    // P3 C1/C2: graph-derived join constraints + declared-join pairs (no-op when no graph)
+    const candidateIds = candidates.map(c => c.id)
+    const declaredJoinPairs = this.graph !== undefined ? buildDeclaredJoinPairs(candidateIds, this.graph) : undefined
+    const joinConstraints = this.graph !== undefined ? buildJoinConstraints(candidateIds, this.graph) : undefined
+    if (joinConstraints !== undefined && joinConstraints.length > 0) {
+      trace.push({ step: 'join_constraints', count: joinConstraints.length })
+    }
+
     // critic ctx: candidate tables + event params + partition cols (from P6 substrate; not from conventions)
     const partitionCols = eventDef?.partitions?.map(p => p.name) ?? ['ds']
     const ctx = makeCriticCtx({
-      candidateTables: candidates.map(c => c.id),
+      candidateTables: candidateIds,
       eventParams: eventDef?.params_fields ?? {},
       partitionCols,
+      ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
     })
 
     let attempt = 0
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
       // 2. prompt + 3. LLM generate
-      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation' })
+      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', ...(joinConstraints !== undefined ? { joinConstraints } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback })
       const sql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql

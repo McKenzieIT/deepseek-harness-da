@@ -2,7 +2,8 @@ import { test, expect } from 'vitest'
 import { buildJoinConstraints, type RelationGraphLike, type RelationGraphEdge } from '../src/ontology.ts'
 import { makeCriticCtx } from '../src/types.ts'
 import { critiqueSql } from '../src/critic.ts'
-import { buildDeclaredJoinPairs } from '../src/ontology.ts'
+import { buildDeclaredJoinPairs, expandCandidates } from '../src/ontology.ts'
+import type { RetrievalHit } from '../src/bm25-linking.ts'
 
 // Hand-rolled fake graph (bidirectional, mirrors RelationGraph.build semantics).
 // NO import from semantic-layer — nl2sql-engine stays decoupled.
@@ -91,4 +92,29 @@ test('C2 — critic warns on an undeclared JOIN when declaredJoinPairs is set (n
     makeCriticCtx({ candidateTables: ['dws_pay', 'dim_role'], partitionCols: ['ds'] }),
   )
   expect(noGraph.findings.some(f => f.rule === 'undeclared_join')).toBe(false)
+})
+
+test('C3 — expandCandidates adds 1-hop joins + derived targets not already hit', () => {
+  const g = fakeGraph([{ a: 'dws_pay', b: 'dim_server' }, { a: 'dws_pay', b: 'metric_pay', type: 'derived_from' }])
+  const hits: RetrievalHit[] = [{ id: 'dws_pay', score: 2, payload: { id: 'dws_pay' }, mode: 'bm25-only' }]
+  const expanded = expandCandidates(hits, g, 10)
+  const ids = expanded.map(h => h.id)
+  expect(ids).toContain('dim_server')
+  expect(ids).toContain('metric_pay')
+  expect(expanded.find(h => h.id === 'dim_server')!.mode).toBe('graph-expand')
+})
+
+test('C3 — expandCandidates caps at topK, keeps originals first, dedupes', () => {
+  const g = fakeGraph([{ a: 'dws_pay', b: 'dim_server' }, { a: 'dws_pay', b: 'dim_role' }])
+  const hits: RetrievalHit[] = [
+    { id: 'dws_pay', score: 2, payload: { id: 'dws_pay' }, mode: 'bm25-only' },
+    { id: 'dim_server', score: 1, payload: { id: 'dim_server' }, mode: 'bm25-only' }, // also a graph neighbor of dws_pay -> dedupe
+  ]
+  // cap=1 -> only the original survives (originals kept first)
+  const capped = expandCandidates(hits, g, 1)
+  expect(capped.length).toBe(1)
+  expect(capped[0]!.id).toBe('dws_pay')
+  // cap=3 -> originals first, then the NEW neighbor dim_role (dim_server deduped, already present)
+  const expanded = expandCandidates(hits, g, 3)
+  expect(expanded.map(h => h.id)).toEqual(['dws_pay', 'dim_server', 'dim_role'])
 })

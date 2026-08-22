@@ -7,6 +7,8 @@
  * @module @deepseek-ai/dsh-nl2sql-engine/src/ontology
  */
 
+import type { RetrievalHit } from './bm25-linking.ts'
+
 /** Structural edge (matches semantic-layer RelationEdge). */
 export interface RelationGraphEdge {
   readonly targetId: string
@@ -80,4 +82,33 @@ export function buildDeclaredJoinPairs(candidateIds: readonly string[], graph: R
     }
   }
   return pairs
+}
+
+/**
+ * Graph-enhanced recall (C3): for each BM25 hit, add 1-hop `joins` neighbors
+ * (DIM tables) and `derived_from` targets (a metric's source table, or vice
+ * versa) not already in the hit set. Expanded hits carry no payload (the
+ * prompt renders the id when `payload?.description` is absent); depth = 1 hop
+ * to avoid noise. Capped at `topK`.
+ * @param hits - the BM25 retrieval hits.
+ * @param graph - the live relation graph.
+ * @param topK - max candidates to return.
+ * @returns the expanded candidate list (original hits first, then graph neighbors).
+ */
+export function expandCandidates(hits: readonly RetrievalHit[], graph: RelationGraphLike, topK: number): readonly RetrievalHit[] {
+  const seen = new Set(hits.map(h => h.id))
+  const out: RetrievalHit[] = [...hits]
+  for (const h of hits) {
+    for (const e of graph.getRelated(h.id, 'joins')) {
+      if (seen.has(e.targetId)) continue
+      seen.add(e.targetId)
+      out.push({ id: e.targetId, score: h.score * 0.5, payload: undefined, mode: 'graph-expand' })
+    }
+    for (const e of graph.getDerived(h.id)) {
+      if (seen.has(e.targetId)) continue
+      seen.add(e.targetId)
+      out.push({ id: e.targetId, score: h.score * 0.5, payload: undefined, mode: 'graph-expand' })
+    }
+  }
+  return out.slice(0, topK)
 }
