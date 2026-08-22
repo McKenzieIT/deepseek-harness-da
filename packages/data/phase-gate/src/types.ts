@@ -157,6 +157,7 @@ export const UNIVERSAL_TOOLS = Object.freeze([
 /** Tool whitelist for the UNDERSTANDING phase (candidate discovery, definition loading, clarification). */
 export const UNDERSTANDING_TOOLS = Object.freeze([
   'search_data_sources',
+  'execute_metric',
   'load_table_definition',
   'load_event_definition',
   'load_table_dimensions',

@@ -61,7 +61,7 @@ import {
 import { DataSourceRegistry, type CorpusItem } from './registry.ts'
 import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
-import { metricKindPlugin } from './kinds/metric-kind.ts'
+import { metricKindPlugin, type MetricDefinition } from './kinds/metric-kind.ts'
 import { RelationGraph } from './relation-graph.ts'
 import { loadMetricDefinitions } from './metrics.ts'
 import { loadEvents, loadTables, loadTerminology } from './io.ts'
@@ -399,6 +399,11 @@ export class SemanticLayerService extends Service {
    */
   loadTableDefinition(name: string): TableDefinition | null {
     return loadTableDefinitionFromLayer(this.semanticRoot, name)
+  }
+
+  loadMetricDefinition(name: string): MetricDefinition | null {
+    const all = loadMetricDefinitions(this.semanticRoot)
+    return all.find(m => m.name === name) ?? null
   }
 
   /**

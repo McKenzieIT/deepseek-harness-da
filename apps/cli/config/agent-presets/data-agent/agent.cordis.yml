@@ -101,6 +101,8 @@
 #
 - id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item; Bm25Linker Q1 thin default, swap -> ctx.retrieval P5b / ctx.schema P6b)
   name: '@deepseek-ai/dsh-tool-search-data-sources'
+- id: tool-execute-metric        # UNDERSTANDING (P4: deterministic Level 2.5 metric query; called after search_data_sources returns metric hit)
+  name: '@deepseek-ai/dsh-tool-execute-metric'
 - id: tool-load-table-definition # UNDERSTANDING/GENERATION (P6 semantic-layer → ctx.schema.loadTableDefinition)
   name: '@deepseek-ai/dsh-tool-load-table-definition'
 - id: tool-load-event-definition # UNDERSTANDING/GENERATION (P6 → ctx.schema.loadEventDefinition)
