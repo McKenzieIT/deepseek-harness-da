@@ -55,6 +55,7 @@ import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
 import { parseTerminology, type CorpusVariant, type EventCorpusItem, type EventTerminology } from './corpus.ts'
 import {
   enrichAllDwsTables as enrichAllDwsTablesFromLayer,
+  enrichAllEvents as enrichAllEventsFromLayer,
   type LlmCall,
 } from './enrichment.ts'
 import { DataSourceRegistry, type CorpusItem } from './registry.ts'
@@ -321,6 +322,27 @@ export class SemanticLayerService extends Service {
     opts: { readonly tables?: readonly string[] } = {},
   ): Promise<{ enriched: number; written: number; errors: string[] }> {
     return enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, opts.tables)
+  }
+
+  /**
+   * Discover event→DIM relations (parallel to `discoverRelations` for DWS
+   * tables) and write them into each event's `external_refs`. Delegates to the
+   * substrate `enrichAllEvents` (two-round; deterministic always runs, LLM
+   * round runs only when a `llmCall` is injected via `setLlmCall`). No Tier-2
+   * audit — explicit enrichment entry.
+   *
+   * NOTE: an on-write hook for events (parallel to `enrichOnWrite` for tables)
+   * is deferred: there is no Service-level event-write path today (events are
+   * written via the substrate `writeEventYaml` raw-edit surface, not a Service
+   * method). The hook lands with a future `syncWriteEvents`/`updateEventMeta`
+   * Service method.
+   * @param opts - optional `events` filter (event names to limit enrichment to).
+   * @returns `enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.
+   */
+  async discoverEventRelations(
+    opts: { readonly events?: readonly string[] } = {},
+  ): Promise<{ enriched: number; written: number; errors: string[] }> {
+    return enrichAllEventsFromLayer(this.semanticRoot, this.llmCall, opts.events)
   }
 
   /**
