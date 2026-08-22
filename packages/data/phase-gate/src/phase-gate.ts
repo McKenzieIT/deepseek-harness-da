@@ -832,22 +832,41 @@ function readAgentId(context: AssembleContext): string | null {
 
 // ── (b) criticCtx service: exposes the per-agent critic guard context ──────
 // The critique_sql_tool + evaluate_sql_quality Consumer tools (da-owned,
-// packages/data/tool-critique-sql + tool-evaluate-sql-quality) inject this
-// service to read the per-agent candidateTables / eventParams / partitionCols
+// packages/data/tool-critique-sql + tool-evaluate-sql-quality) read this
+// service to get the per-agent candidateTables / eventParams / partitionCols
 // the phase-gate harvested from search_data_sources / load_* (captureToolData).
 // §2.3: the tool defines a structural CriticCtxProvider interface + probes
 // ctx.get('criticCtx') (soft — undefined when the phase-gate is not mounted);
-// this Service is the Provider. The Service[symbols.filter] check passes for
-// non-isolated names (both ctxs resolve undefined for 'criticCtx'), so the
-// parent-realm tools see this service registered in the phase-gate's isolate
-// realm. The service closes over the PhaseGate instance (peekState is
-// non-creating so a critique on an unknown agent degrades to empty sets).
+// this Service is the Provider. The service closes over the PhaseGate instance
+// (peekState is non-creating so a critique on an unknown agent degrades to
+// empty sets).
+//
+// ISOLATION (b regression #2 fix): criticCtx MUST register in the
+// phase-gating group's isolate realm (NOT root). The composition isolates it
+// (`isolate: { criticCtx: true }` on the `phase-gating` group in
+// agent.cordis.yml), so ctx[symbols.isolate]['criticCtx'] resolves to a
+// realm-private symbol below the group and `provide()` stores the impl under
+// that symbol — not the root symbol cordis mints via
+// `root[symbols.isolate][name] ??= Symbol(name)`. dsh-agent-presets' mount
+// guard (leakedServices) rejects any service whose store key equals the root
+// isolate symbol for its name; without the isolate entry criticCtx lands in
+// root (`PresetMountError: ... published process-global service(s) [criticCtx]`)
+// and the preset NEVER joins. The critique tools sit INSIDE the same group, so
+// their ctx.get('criticCtx') resolves the same realm-private symbol and finds
+// the service (a consumer left outside the group resolves the host root realm,
+// which this preset does not populate). The prior "non-isolated name →
+// visible to parent-realm tools via undefined===undefined" reasoning was
+// WRONG: provide() mints a root symbol for every name it is called with, so a
+// non-isolated criticCtx stores under that root symbol and leaks — the
+// undefined===undefined filter pass is exactly the mount-rejected state.
 /**
  * Cordis `Service` exposing the per-agent critic guard context as
  * `ctx.criticCtx`. The critique_sql_tool + evaluate_sql_quality tools probe
  * `ctx.get('criticCtx')` and call `forAgent(agentId)` to get the
  * `CriticCtx` ({candidateTables, eventParams, partitionCols}) for the
- * current agent's phase-gate state.
+ * current agent's phase-gate state. The service registers in whatever isolate
+ * realm the composing context carries — the `phase-gating` group isolates
+ * `criticCtx` so it lands in that entry-local realm, not root.
  */
 export class CriticCtxService extends Service {
   private readonly gate: PhaseGate

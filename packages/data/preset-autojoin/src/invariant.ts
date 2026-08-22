@@ -22,10 +22,11 @@ export const inject = ['invariants']
 
 /**
  * No runtime invariant: the wrapper's contract (idempotent guarded join on
- * `agent/created`) is enforced in `src/index.ts`, and the `agent/created`
- * dispatch already reports a rejected listener promise; a companion check
- * would only duplicate that. Reserved so the package owns its invariant slot
- * for a future composition contract.
+ * `agent/created`) is enforced in `src/index.ts`, which also logs + re-throws
+ * a mount failure so it surfaces at ERROR (the fire-and-forget dispatch's WARN
+ * report is filtered at the default INFO threshold); a companion check would
+ * only duplicate that. Reserved so the package owns its invariant slot for a
+ * future composition contract.
  */
 const install: InvariantInstaller = () => {}
 
