@@ -117,6 +117,8 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
  */
 interface SchemaCorpusSource {
   loadRetrievalCorpus(): readonly DataSourceDoc[]
+  /** P3/P4: full corpus (events+tables+metrics); preferred over events-only when present. */
+  loadRetrievalCorpusAll?(): readonly DataSourceDoc[]
   corpusVersion?(): number
 }
 
@@ -140,7 +142,8 @@ function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
   const version = schema.corpusVersion?.() ?? 0
   let entry = enrichedLinkers.get(schema)
   if (entry === undefined || entry.version !== version) {
-    entry = { linker: new Bm25Linker(schema.loadRetrievalCorpus()), version }
+    const corpus = schema.loadRetrievalCorpusAll?.() ?? schema.loadRetrievalCorpus()
+    entry = { linker: new Bm25Linker(corpus), version }
     enrichedLinkers.set(schema, entry)
   }
   return entry.linker

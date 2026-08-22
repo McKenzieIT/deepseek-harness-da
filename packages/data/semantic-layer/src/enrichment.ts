@@ -17,10 +17,12 @@
 import {
   TableDefinitionSchema,
   DimensionRefSchema,
+  EventDefinitionSchema,
   type TableDefinition,
+  type EventDefinition,
   type DimensionRef,
 } from './types.ts'
-import { loadTables, writeTable } from './io.ts'
+import { loadTables, writeTable, loadEvents, writeEventYaml, dumpYaml } from './io.ts'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -246,6 +248,18 @@ function existingRefs(raw: Record<string, unknown>): DimensionRef[] {
   return out
 }
 
+/** Read + validate the existing `external_refs` on a raw event dict (best-effort, mirrors existingRefs). */
+function existingEventRefs(raw: Record<string, unknown>): DimensionRef[] {
+  const arr = raw.external_refs
+  const out: DimensionRef[] = []
+  if (!Array.isArray(arr)) return out
+  for (const x of arr) {
+    const v = DimensionRefSchema.safeParse(x)
+    if (v.success) out.push(v.data)
+  }
+  return out
+}
+
 /**
  * Enrich every DWS table (kind !== 'dim') in a semantic layer: discover its
  * DIM relations and write them back into the table YAML's `dimension_refs`.
@@ -297,6 +311,140 @@ export async function enrichAllDwsTables(
       if (refs.length > 0) enriched += 1
     } catch (e) {
       errors.push(`${t.table_name}: ${(e as Error).message}`)
+    }
+  }
+  return { enriched, written, errors }
+}
+
+// ── B1: event enrichment (mirror of enrichAllDwsTables) ────────────────
+
+/**
+ * Deterministic round for events: for each DIM with a non-empty `primary_key`,
+ * emit a DimensionRef for every DIM PK column whose name exactly matches an
+ * event `params_fields` key (the event param field is the foreign key).
+ * @param eventDef - the event definition to find DIM joins for.
+ * @param dimInventory - the DIM tables to match against.
+ * @returns one DimensionRef per DIM whose PK shares at least one param-field name.
+ */
+export function discoverEventRelationsDeterministic(
+  eventDef: EventDefinition,
+  dimInventory: readonly DimInventoryEntry[],
+): DimensionRef[] {
+  const fieldNames = new Set(Object.keys(eventDef.params_fields ?? {}))
+  const refs: DimensionRef[] = []
+  for (const dim of dimInventory) {
+    const pks = (dim.primary_key ?? []).filter(pk => fieldNames.has(pk))
+    if (pks.length === 0) continue
+    refs.push({
+      dim_table: dim.table_name,
+      join_keys: pks.map(pk => ({ dws_column: pk, dim_column: pk })),
+      derivation: `确定性：事件字段 ${pks.join(', ')} 与 ${dim.table_name} 主键精确同名`,
+    })
+  }
+  return refs
+}
+
+/**
+ * Build the LLM prompt for one event: its params_fields (name + description) +
+ * description, plus the DIM inventory. The model returns a JSON array of
+ * DimensionRef (same schema as the DWS round).
+ * @param eventDef - the event definition.
+ * @param dimInventory - the DIM tables to consider.
+ * @returns the assembled prompt text.
+ */
+export function buildEventLlmPrompt(eventDef: EventDefinition, dimInventory: readonly DimInventoryEntry[]): string {
+  const fields = Object.entries(eventDef.params_fields ?? {})
+    .map(([k, v]) => `- ${k} (${v?.type || 'string'}): ${v?.description || ''}`)
+    .join('\n')
+  const dims = dimInventory
+    .map(d => `- ${d.table_name} | PK: [${(d.primary_key ?? []).join(', ')}] | ${d.description || ''}`)
+    .join('\n')
+  return [
+    `Discover dimension (DIM) join relations for the event \`${eventDef.name}\`.`,
+    '',
+    `Event: ${eventDef.name}`,
+    `Description: ${eventDef.description || ''}`,
+    'Params fields:',
+    fields || '（无）',
+    '',
+    'DIM inventory (find joins where an event param field is a foreign key to a DIM primary_key — exact name OR semantic equivalence):',
+    dims,
+    '',
+    'Return ONLY a JSON array of objects: [{"dim_table":"<DIM table_name>","join_keys":[{"dws_column":"<event field>","dim_column":"<DIM pk col>"}],"derivation":"<one sentence justification>"}].',
+    'Rules: join_keys non-empty; only high-confidence foreign-key joins; if none, return [].',
+  ].join('\n')
+}
+
+/**
+ * Discover dimension relations for one event (two-round: deterministic + LLM).
+ * @param eventDef - the event definition.
+ * @param dimInventory - the DIM tables to match against.
+ * @param llmCall - optional one-shot LLM call for the semantic round.
+ * @returns the merged DimensionRefs for the event.
+ */
+export async function discoverEventRelationsFor(
+  eventDef: EventDefinition,
+  dimInventory: readonly DimInventoryEntry[],
+  llmCall?: LlmCall,
+): Promise<DimensionRef[]> {
+  const det = discoverEventRelationsDeterministic(eventDef, dimInventory)
+  if (!llmCall) return det
+  let llm: DimensionRef[] = []
+  try {
+    const text = await llmCall(buildEventLlmPrompt(eventDef, dimInventory))
+    llm = parseLlmRefs(text)
+  } catch {
+    // best-effort: LLM round failure leaves the deterministic seed intact
+  }
+  return mergeRefs(det, llm)
+}
+
+/**
+ * Enrich every event in a semantic layer: discover its DIM relations and write
+ * them back into the event YAML's `external_refs`. Mirrors `enrichAllDwsTables`
+ * (two-round; deterministic round always runs, LLM round runs only when a
+ * `llmCall` is provided). Writes via `writeEventYaml` (raw-edit surface: read
+ * the existing raw, inject `external_refs`, re-dump to YAML text, name-match
+ * check; no schema validation — `loadEvents` validates on read).
+ * `mergeExisting`: when true, discovered refs merge WITH the event's existing
+ * `external_refs` (preserve curated); default false (replace).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param llmCall - optional one-shot LLM call for the semantic round.
+ * @param events - optional event-name filter; omit/empty to enrich all events.
+ * @param mergeExisting - when true, merge discovered with existing; default false.
+ * @returns `enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.
+ */
+export async function enrichAllEvents(
+  semanticLayer: string,
+  llmCall?: LlmCall,
+  events?: readonly string[],
+  mergeExisting = false,
+): Promise<{ enriched: number; written: number; errors: string[] }> {
+  const dimInventory = buildDimInventory(semanticLayer)
+  const filter = events !== undefined && events.length > 0 ? new Set(events) : undefined
+  let enriched = 0
+  let written = 0
+  const errors: string[] = []
+  for (const e of loadEvents(semanticLayer)) {
+    if (filter !== undefined && !filter.has(e.name)) continue
+    const r = EventDefinitionSchema.safeParse(e.raw)
+    if (!r.success) {
+      errors.push(`${e.name}: schema parse failed`)
+      continue
+    }
+    try {
+      const discovered = await discoverEventRelationsFor(r.data, dimInventory, llmCall)
+      const refs = mergeExisting ? mergeRefs(existingEventRefs(e.raw), discovered) : discovered
+      const content = dumpYaml({ ...e.raw, external_refs: refs })
+      const res = await writeEventYaml(semanticLayer, e.name, content)
+      if (res.ok) {
+        written += 1
+        if (refs.length > 0) enriched += 1
+      } else {
+        errors.push(`${e.name}: ${res.error}`)
+      }
+    } catch (err) {
+      errors.push(`${e.name}: ${(err as Error).message}`)
     }
   }
   return { enriched, written, errors }

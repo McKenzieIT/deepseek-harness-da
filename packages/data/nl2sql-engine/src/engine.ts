@@ -31,7 +31,9 @@ import {
   type QueryOutcome,
 } from './types.ts'
 import { critiqueSql, extractSqlCandidate } from './critic.ts'
+import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildExecutableSQL, buildMetricContext } from './metric-engine.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
+import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import { loadConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import { Bm25Linker, type RetrievalLinker, type DataSourceDoc } from './bm25-linking.ts'
@@ -70,6 +72,10 @@ export interface EngineDeps {
   readonly conventions?: EngineConventions | null
   /** Injectable retrieval (Q1: default is the in-process `Bm25Linker`; swap to P5 `ctx.retrieval` when P5b ships). */
   readonly retrieval?: RetrievalLinker
+  /** P3: live relation graph (absent => no join injection / recall / undeclared-JOIN rule). */
+  readonly graph?: RelationGraphLike
+  /** P4 D2: resolve a table's partition columns (absent => Level 2.5 assumes ds). */
+  readonly partitionResolver?: (tableName: string) => readonly string[] | null
 }
 
 /** The input arguments for a single engine run: the question + optional event definition + scope id. */
@@ -77,6 +83,8 @@ export interface EngineRunArgs {
   readonly question: string
   readonly eventDef?: EventDefinitionLite | null
   readonly scopeId?: string
+  /** P4 D2: reference date YYYYMMDD for time-param extraction (eval reproducibility). */
+  readonly today?: string
 }
 
 /** The engine run outcome: ok/fail, the SQL, the ODPS outcome, result rows, decline/pending flags, and the trace. */
@@ -101,12 +109,16 @@ export class Nl2sqlEngine {
   private readonly llm: Llm
   private readonly odps: OdpsExecutor
   private readonly conventions: EngineConventions | null
+  private readonly graph: RelationGraphLike | undefined
+  private readonly partitionResolver: ((tableName: string) => readonly string[] | null) | undefined
 
   constructor(deps: EngineDeps) {
     this.retrieval = deps.retrieval ?? new Bm25Linker(deps.dataSources ?? [])
     this.llm = deps.llm
     this.odps = deps.odps
     this.conventions = deps.conventions ?? loadConventions('maxcompute')
+    this.graph = deps.graph
+    this.partitionResolver = deps.partitionResolver
   }
 
   /**
@@ -121,25 +133,109 @@ export class Nl2sqlEngine {
     const trace: EngineTraceEntry[] = []
 
     // 1. BM25 schema-linking (local RetrievalLinker; P5 ctx.retrieval seam when P5b ships)
-    const candidates = this.retrieval.retrieve(question, { topK: 5, mode: 'bm25-only' })
+    let candidates = this.retrieval.retrieve(question, { topK: 5, mode: 'bm25-only' })
+    // P4 D2: route from PRE-expansion candidates so a graph's derived_from expansion
+    // (which adds a metric's source table) does not flip a pure-metric query from
+    // level-2.5 to level-2 (subverting the deterministic path when a graph is mounted).
+    const route = routeMetric(candidates)
+    // P3 C3: graph-enhanced recall (1-hop joins + derived) when a graph is wired
+    if (this.graph !== undefined) {
+      // cap > retrieve topK (5) so graph neighbors are actually ADDED, not
+      // dropped by the originals-first slice (a full 5-hit BM25 result would
+      // otherwise make expansion a silent no-op in production-sized corpora).
+      candidates = expandCandidates(candidates, this.graph, 8)
+    }
     trace.push({
       step: 'bm25_linking',
       candidates: candidates.map(c => ({ id: c.id, score: Number(c.score).toFixed(3) })),
     })
 
+    // P3 C1/C2: graph-derived join constraints + declared-join pairs (no-op when no graph)
+    const candidateIds = candidates.map(c => c.id)
+    const declaredJoinPairs = this.graph !== undefined ? buildDeclaredJoinPairs(candidateIds, this.graph) : undefined
+    const joinConstraints = this.graph !== undefined ? buildJoinConstraints(candidateIds, this.graph) : undefined
+    if (joinConstraints !== undefined && joinConstraints.length > 0) {
+      trace.push({ step: 'join_constraints', count: joinConstraints.length })
+    }
+
     // critic ctx: candidate tables + event params + partition cols (from P6 substrate; not from conventions)
     const partitionCols = eventDef?.partitions?.map(p => p.name) ?? ['ds']
-    const ctx = makeCriticCtx({
-      candidateTables: candidates.map(c => c.id),
+    let ctx = makeCriticCtx({
+      candidateTables: candidateIds,
       eventParams: eventDef?.params_fields ?? {},
       partitionCols,
+      ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
     })
+
+    // P4 D2: metric routing — pure-metric => Level 2.5 deterministic execution (this
+    // branch returns before the LLM loop; `route` was computed pre-expansion above so
+    // graph-derived candidates don't flip the route). Mixed (metric + table) => Level 2
+    // context injection is a later task; no metric => null (normal LLM path, unchanged).
+    if (route === 'level-2.5') {
+      const metricHit = candidates.find(isMetricHit)
+      const metricDef = metricHit !== undefined ? metricFromHit(metricHit) : null
+      if (metricHit !== undefined && metricDef !== null) {
+        const params = extractTimeParams(question, args.today ?? '')
+        const source = metricDef.computation.metadata.source
+        const metricPartitionCols = this.partitionResolver ? (this.partitionResolver(source) ?? ['ds']) : ['ds']
+        const sql = buildExecutableSQL(metricDef, params, metricPartitionCols)
+        // guard: a deterministic path must not run an unpartitioned full-table scan —
+        // the missing_partition_filter critic is only a warning, so decline when a ds
+        // partition is required but no time param could be extracted from the question.
+        const hasDs = metricPartitionCols.map(p => p.toLowerCase()).includes('ds')
+        if (hasDs && !params.date && !(params.start_date && params.end_date)) {
+          return { ok: false, decline: true, reason: 'Level 2.5: 无法从问题中提取时间参数，拒绝执行未分区扫描', sql, trace }
+        }
+        trace.push({ step: 'metric_level25', sql, source })
+        // light critic: the source is the only candidate table + partition check
+        const metricCtx = makeCriticCtx({ candidateTables: [source], partitionCols: metricPartitionCols })
+        const critic = critiqueSql(sql, metricCtx)
+        trace.push({ step: 'critic', passed: critic.passed, reason: critic.reason, findings: critic.findings.map(f => ({ rule: f.rule, sev: f.severity })) })
+        if (!critic.passed) {
+          return { ok: false, decline: true, reason: critic.reason ?? 'metric critic fail', sql, trace }
+        }
+        let out = await this.odps.execute(sql)
+        trace.push({ step: 'execute', state: out.state, failureKind: out.failureKind })
+        if (out.state === 'running') {
+          let polls = 0
+          while (out.state === 'running' && polls < MAX_RUNNING_POLLS) {
+            polls += 1
+            out = await this.odps.attach(out.instance_id ?? '')
+            trace.push({ step: 'attach', poll: polls, state: out.state })
+          }
+          if (out.state === 'running') return { ok: false, pending: true, sql, outcome: out, trace }
+        }
+        if (out.state === 'done') return { ok: true, sql, outcome: out, result: out.rows, trace }
+        return { ok: false, decline: true, reason: `指标执行失败 ${out.failureKind ?? ''}: ${out.error ?? ''}`, sql, trace }
+      } else {
+        trace.push({ step: 'metric_level25_skip', reason: 'metric hit unresolved' })
+      }
+    }
+
+    let metricContext: string | undefined
+    if (route === 'level-2') {
+      const metricHit = candidates.find(isMetricHit)
+      const metricDef = metricHit !== undefined ? metricFromHit(metricHit) : null
+      if (metricHit !== undefined && metricDef !== null) {
+        // The metric context introduces the source table as a legitimate reference —
+        // augment the critic's candidate tables so the LLM's SQL referencing the source
+        // (JOIN ods_login ...) is not falsely rejected by table_not_in_candidates.
+        const sourceTables = [metricDef.computation.metadata.source]
+        ctx = makeCriticCtx({
+          candidateTables: [...new Set([...candidateIds, ...sourceTables])],
+          eventParams: eventDef?.params_fields ?? {},
+          partitionCols,
+          ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
+        })
+        metricContext = buildMetricContext(metricDef, extractTimeParams(question, args.today ?? ''))
+      }
+    }
 
     let attempt = 0
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
       // 2. prompt + 3. LLM generate
-      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation' })
+      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback })
       const sql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql

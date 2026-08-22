@@ -135,6 +135,8 @@ export interface CriticCtx {
   readonly candidateTables: Set<string>
   readonly eventParams: Set<string>
   readonly partitionCols: Set<string>
+  /** P3 C2: normalized `a|b` pairs the graph declares; undefined => rule skipped (no-op). */
+  readonly declaredJoinPairs?: Set<string>
 }
 
 /** Options for constructing a critic guard context. */
@@ -142,6 +144,8 @@ export interface MakeCriticCtxOptions {
   readonly candidateTables?: readonly string[]
   readonly eventParams?: Record<string, unknown>
   readonly partitionCols?: readonly string[]
+  /** P3 C2: declared-join pair set (absent => undeclared-JOIN rule skipped). */
+  readonly declaredJoinPairs?: Set<string>
 }
 
 /**
@@ -152,10 +156,11 @@ export interface MakeCriticCtxOptions {
  * @returns The constructed critic context.
  */
 export function makeCriticCtx(options: MakeCriticCtxOptions = {}): CriticCtx {
-  const { candidateTables = [], eventParams = {}, partitionCols = ['ds'] } = options
+  const { candidateTables = [], eventParams = {}, partitionCols = ['ds'], declaredJoinPairs } = options
   return {
     candidateTables: new Set(candidateTables.map(t => t.toLowerCase())),
     eventParams: new Set(Object.keys(eventParams).map(f => f.toLowerCase())),
     partitionCols: new Set(partitionCols.map(p => p.toLowerCase())),
+    ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
   }
 }

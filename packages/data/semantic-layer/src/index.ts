@@ -52,11 +52,20 @@ import {
   type Tier2Recorder,
 } from './io.ts'
 import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
-import type { CorpusVariant, EventCorpusItem } from './corpus.ts'
+import { parseTerminology, type CorpusVariant, type EventCorpusItem, type EventTerminology } from './corpus.ts'
 import {
   enrichAllDwsTables as enrichAllDwsTablesFromLayer,
+  enrichAllEvents as enrichAllEventsFromLayer,
   type LlmCall,
 } from './enrichment.ts'
+import { DataSourceRegistry, type CorpusItem } from './registry.ts'
+import { eventKindPlugin } from './kinds/event-kind.ts'
+import { tableKindPlugin } from './kinds/table-kind.ts'
+import { metricKindPlugin } from './kinds/metric-kind.ts'
+import { RelationGraph } from './relation-graph.ts'
+import { loadMetricDefinitions } from './metrics.ts'
+import { loadEvents, loadTables, loadTerminology } from './io.ts'
+import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
@@ -107,6 +116,10 @@ export {
   discoverRelationsFor,
   buildDimInventory,
   enrichAllDwsTables,
+  discoverEventRelationsDeterministic,
+  buildEventLlmPrompt,
+  discoverEventRelationsFor,
+  enrichAllEvents,
   type DimInventoryEntry,
   type LlmCall,
 } from './enrichment.ts'
@@ -181,9 +194,97 @@ export class SemanticLayerService extends Service {
   /** G3: injected one-shot LLM call for the semantic relation round (undefined => deterministic round only). */
   private llmCall: LlmCall | undefined
 
+  private readonly registry = new DataSourceRegistry()
+
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
     this.cfg = config
+    for (const p of [eventKindPlugin, tableKindPlugin, metricKindPlugin]) this.registry.register(p)
+  }
+
+  /** The live data-source-kind registry (events/tables/metrics plugins registered at construction). */
+  getRegistry(): DataSourceRegistry {
+    return this.registry
+  }
+
+  private graphCache: RelationGraph | undefined
+  private graphVersion = -1
+
+  /**
+   * The live relation graph: bidirectional adjacency over every table's
+   * `dimension_refs` (joins), every event's `external_refs` (joins), and every
+   * metric's `relations` (derived_from). Cached; rebuilt when the layer's
+   * corpus-version counter advances (a write bumps it via `invalidateCaches`).
+   * Events only enter the graph once `enrichAllEvents` has written their
+   * `external_refs` (Part B).
+   * @returns the cached `RelationGraph`, rebuilt when stale.
+   */
+  getRelationGraph(): RelationGraph {
+    if (this.graphCache !== undefined && this.graphVersion === this.corpusVersion()) {
+      return this.graphCache
+    }
+    const g = new RelationGraph()
+    const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
+    for (const t of loadTables(this.semanticRoot)) {
+      const r = TableDefinitionSchema.safeParse(t.raw)
+      if (!r.success) continue
+      entries.push({ sourceId: r.data.table_name, relations: tableKindPlugin.relations(r.data) })
+    }
+    for (const e of loadEvents(this.semanticRoot)) {
+      const r = EventDefinitionSchema.safeParse(e.raw)
+      if (!r.success) continue
+      entries.push({ sourceId: r.data.name, relations: eventKindPlugin.relations(r.data) })
+    }
+    for (const m of loadMetricDefinitions(this.semanticRoot)) {
+      entries.push({ sourceId: m.name, relations: metricKindPlugin.relations(m) })
+    }
+    g.build(entries)
+    this.graphCache = g
+    this.graphVersion = this.corpusVersion()
+    return g
+  }
+
+  /**
+   * Registry-driven full retrieval corpus: every registered kind's definitions
+   * projected via its `toCorpusItem` (events + tables + metrics). Supersedes
+   * the events-only `loadRetrievalCorpus()` for P3/P4 — tables + metrics MUST
+   * be indexable so BM25 can hit a DIM table (join recall) or a metric
+   * (Level 2.5 routing). `loadRetrievalCorpus()` is unchanged (preserves the
+   * D2e events-only measured behavior + its 445-item K11 test).
+   * @returns the full corpus (events + tables + metrics) ready for Bm25Linker.
+   */
+  loadRetrievalCorpusAll(): CorpusItem[] {
+    const out: CorpusItem[] = []
+    const term: EventTerminology = parseTerminology(loadTerminology(this.semanticRoot))
+    for (const plugin of this.registry.allPlugins()) {
+      for (const def of this.loadByStorageDir(plugin.storageDir)) {
+        const item = plugin.toCorpusItem(def, term)
+        if (item) out.push(item)
+      }
+    }
+    return out
+  }
+
+  /** Dispatch a storage-dir name to its loader + schema-parse projection. */
+  private loadByStorageDir(dir: string): readonly unknown[] {
+    if (dir === 'events') {
+      const out: unknown[] = []
+      for (const e of loadEvents(this.semanticRoot)) {
+        const r = EventDefinitionSchema.safeParse(e.raw)
+        if (r.success) out.push(r.data)
+      }
+      return out
+    }
+    if (dir === 'tables') {
+      const out: unknown[] = []
+      for (const t of loadTables(this.semanticRoot)) {
+        const r = TableDefinitionSchema.safeParse(t.raw)
+        if (r.success) out.push(r.data)
+      }
+      return out
+    }
+    if (dir === 'metrics') return loadMetricDefinitions(this.semanticRoot)
+    return []
   }
 
   /**
@@ -221,6 +322,27 @@ export class SemanticLayerService extends Service {
     opts: { readonly tables?: readonly string[] } = {},
   ): Promise<{ enriched: number; written: number; errors: string[] }> {
     return enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, opts.tables)
+  }
+
+  /**
+   * Discover event→DIM relations (parallel to `discoverRelations` for DWS
+   * tables) and write them into each event's `external_refs`. Delegates to the
+   * substrate `enrichAllEvents` (two-round; deterministic always runs, LLM
+   * round runs only when a `llmCall` is injected via `setLlmCall`). No Tier-2
+   * audit — explicit enrichment entry.
+   *
+   * NOTE: an on-write hook for events (parallel to `enrichOnWrite` for tables)
+   * is deferred: there is no Service-level event-write path today (events are
+   * written via the substrate `writeEventYaml` raw-edit surface, not a Service
+   * method). The hook lands with a future `syncWriteEvents`/`updateEventMeta`
+   * Service method.
+   * @param opts - optional `events` filter (event names to limit enrichment to).
+   * @returns `enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.
+   */
+  async discoverEventRelations(
+    opts: { readonly events?: readonly string[] } = {},
+  ): Promise<{ enriched: number; written: number; errors: string[] }> {
+    return enrichAllEventsFromLayer(this.semanticRoot, this.llmCall, opts.events)
   }
 
   /**
@@ -442,6 +564,30 @@ export class StandInSchemaProvider implements SchemaProvider {
   sample(tableName: string, n = 5): Promise<string> {
     return Promise.resolve(`(stand-in sample of ${tableName}, ${n} rows)`)
   }
+}
+
+/**
+ * A text-only LLM seam: `text(prompt) -> string`. Production `ctx.llm`
+ * (BlockAssembler-assembled text) satisfies this once mounted. Declared here
+ * so the substrate + the wiring adapter stay free of the LLM dependency.
+ */
+export interface TextLlm {
+  text(prompt: string): Promise<string>
+}
+
+/**
+ * Wire a text-LLM into a schema service's enrichment `llmCall` seam. After
+ * this, `discoverRelations` / `discoverEventRelations` / the on-write hook
+ * run the LLM semantic round (absent => deterministic round only).
+ *
+ * Production (once the bundle mounts `ctx.schema` + `ctx.llm`):
+ *   `wireEnrichmentLlm(ctx.schema, ctx.llm)`
+ * The adapter wraps `llm.text` as the substrate's `LlmCall = (prompt) => Promise<string>`.
+ * @param schema - the `SemanticLayerService` (or a structural `{ setLlmCall }` test double).
+ * @param llm - the text-LLM to adapt.
+ */
+export function wireEnrichmentLlm(schema: { setLlmCall(fn?: (prompt: string) => Promise<string>): void }, llm: TextLlm): void {
+  schema.setLlmCall(prompt => llm.text(prompt))
 }
 
 export default SemanticLayerService

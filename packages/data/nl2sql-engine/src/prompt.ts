@@ -32,6 +32,10 @@ export interface BuildPromptArgs {
   readonly eventDef: EventDefinitionLite | null | undefined
   readonly conventions: EngineConventions | null | undefined
   readonly phase?: string
+  /** P3 C1: declared JOIN constraints (graph-derived) injected as hard constraints. */
+  readonly joinConstraints?: readonly string[]
+  /** P4 D3: known metric definitions injected as context for mixed queries. */
+  readonly metricContext?: string
 }
 
 const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
@@ -53,7 +57,7 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
  * @returns The assembled prompt string.
  */
 export function buildPrompt(args: BuildPromptArgs): string {
-  const { question, candidates, eventDef, conventions, phase = 'generation' } = args
+  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines =
     candidates && candidates.length > 0
@@ -61,6 +65,12 @@ export function buildPrompt(args: BuildPromptArgs): string {
         .map(c => `- ${c.id}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
         .join('\n')
       : '（无候选）'
+  const joinSection = joinConstraints && joinConstraints.length > 0
+    ? `\n# 已知 JOIN 关系（必须使用，勿自行推断 JOIN key）\n${joinConstraints.map(c => `- ${c}`).join('\n')}\n`
+    : ''
+  const metricSection = metricContext
+    ? `\n# 已知指标定义（请基于此规则构建查询）\n${metricContext}\n`
+    : ''
   return `你是游戏埋点数据分析 Agent。宁可少答慢答，不可错答。
 
 ${TOOL_CATALOG}
@@ -100,6 +110,7 @@ ${TOOL_CATALOG}
 # 方言规范（maxcompute conventions seam 注入）
 ${dialect}
 
+${joinSection}${metricSection}
 # 当前问题
 ${question}
 
