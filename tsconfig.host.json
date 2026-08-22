@@ -169,6 +169,8 @@
     { "path": "./packages/data/tool-search-data-sources" },
     { "path": "./packages/data/tool-load-table-definition" },
     { "path": "./packages/data/tool-load-event-definition" },
+    { "path": "./packages/data/tool-critique-sql" },
+    { "path": "./packages/data/tool-evaluate-sql-quality" },
     { "path": "./packages/data/tool-discover-relations" },
     { "path": "./packages/data/tool-retrieve" },
     { "path": "./packages/data/preset-autojoin" },

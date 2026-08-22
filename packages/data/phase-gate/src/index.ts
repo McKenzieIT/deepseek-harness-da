@@ -20,10 +20,21 @@ import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
-import { PhaseGate, type PhaseGateConfig } from './phase-gate.ts'
+import { PhaseGate, CriticCtxService, type PhaseGateConfig } from './phase-gate.ts'
 import { PipelineConfig } from './types.ts'
 
-export { PhaseGate, type PhaseGateConfig } from './phase-gate.ts'
+export { PhaseGate, CriticCtxService, type PhaseGateConfig } from './phase-gate.ts'
+
+// (b) criticCtx service: the phase-gate exposes the per-agent critic guard
+// context (candidateTables / eventParams / partitionCols) as ctx.criticCtx so
+// the critique_sql_tool + evaluate_sql_quality Consumer tools can read it
+// (they probe ctx.get('criticCtx')). The service is constructed in apply()
+// below, closing over the PhaseGate instance.
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    criticCtx: CriticCtxService
+  }
+}
 export {
   Phase,
   PHASE_ORDER,
@@ -75,4 +86,11 @@ export const Config: z<Config> = z.object({
 export function apply(ctx: Context, config: Config): void {
   const gate = new PhaseGate(ctx, config)
   gate.register(ctx)
+  // (b) register the criticCtx service so the critique_sql_tool +
+  // evaluate_sql_quality Consumer tools can read the per-agent critic guard
+  // context (candidateTables / eventParams / partitionCols). Constructing a
+  // Service registers it on ctx.reflect and ties it to the phase-gate fiber
+  // (auto-removed on unload). Non-isolated name → visible to parent-realm
+  // tools via ctx.get('criticCtx').
+  new CriticCtxService(ctx, gate)
 }

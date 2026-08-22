@@ -156,6 +156,57 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(s.exec_count).toBe(1) // count on post-execute
   })
 
+  it('(b) critique_sql_tool capture: last_critique from confidence + last_sql from sql', async () => {
+    const { agent } = makeAgent('b1')
+    const g = gate()
+    const s = g.state('b1')
+    // critique_sql_tool returns { confidence, findings, sql } — captureToolData
+    // sets last_critique from confidence AND last_sql from the critiqued sql
+    // (the (b) root-cause fix: re-critique a corrected SQL → last_sql updates →
+    // F2 passes the corrected SQL).
+    await g.onPostExecute(
+      execView('critique_sql_tool', agent, { sql: 'SELECT a FROM t' }),
+      resultOk({ confidence: 0.8, findings: [], sql: 'SELECT a FROM t' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_critique).toBe(0.8)
+    expect(s.last_sql).toBe('SELECT a FROM t')
+  })
+
+  it('(b) critique_sql_tool re-critique: last_sql UPDATES on a corrected SQL', async () => {
+    const { agent } = makeAgent('b2')
+    const g = gate()
+    const s = g.state('b2')
+    // first critique sets last_sql to the original SQL
+    await g.onPostExecute(
+      execView('critique_sql_tool', agent, { sql: 'SELECT a FROM bad_table' }),
+      resultOk({ confidence: 0.2, findings: [{ rule: 'x', severity: 'error', message: 'm' }], sql: 'SELECT a FROM bad_table' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_sql).toBe('SELECT a FROM bad_table')
+    // after a TABLE_NOT_FOUND, the model corrects the SQL + RE-critiques →
+    // last_sql updates to the corrected SQL → F2 passes
+    await g.onPostExecute(
+      execView('critique_sql_tool', agent, { sql: 'SELECT a FROM good_table' }),
+      resultOk({ confidence: 0.9, findings: [], sql: 'SELECT a FROM good_table' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_critique).toBe(0.9)
+    expect(s.last_sql).toBe('SELECT a FROM good_table') // updated → F2 passes the corrected SQL
+  })
+
+  it('(b) evaluate_sql_quality capture: last_quality from score', async () => {
+    const { agent } = makeAgent('b3')
+    const g = gate()
+    const s = g.state('b3')
+    await g.onPostExecute(
+      execView('evaluate_sql_quality', agent, { sql: 'SELECT a FROM t' }),
+      resultOk({ score: 85 }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_quality).toBe(85)
+  })
+
   it('harvest: load_* nested result fills partition_cols / event_params for the GENERATION critic', async () => {
     const { agent } = makeAgent('h1')
     const g = gate()
@@ -780,5 +831,61 @@ describe('GROUNDING GATE (c root-cause) — GENERATION requires definition_loade
     expect(s.current_phase).toBe(Phase.UNDERSTANDING) // fell back, not advanced
     expect(s.fallback_count).toBe(1)
     expect(injected).toHaveLength(1) // fallback continuation
+  })
+})
+
+// ── (b) CriticCtxService: exposes per-agent critic guard context ──────────
+import { CriticCtxService } from '../src/phase-gate.ts'
+
+describe('(b) CriticCtxService — per-agent criticCtx for the critique tools', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  // Minimal ctx stub for Service construction (reflect.provide is the only
+  // Service-constructor call; the CriticCtxService logic only uses this.gate).
+  function svcCtx(): Context {
+    return {
+      reflect: { provide: () => undefined },
+    } as unknown as Context
+  }
+
+  it('forAgent returns the per-agent CriticCtx (candidateTables/eventParams/partitionCols)', () => {
+    const g = gate()
+    const s = g.state('c1')
+    s.candidate_tables.add('dws_pay')
+    s.event_params.add('order_id')
+    s.partition_cols.add('ds')
+    const svc = new CriticCtxService(svcCtx(), g)
+    const ctx = svc.forAgent('c1')
+    expect(ctx).toBeDefined()
+    expect(ctx?.candidateTables.has('dws_pay')).toBe(true)
+    expect(ctx?.eventParams.has('order_id')).toBe(true)
+    expect(ctx?.partitionCols.has('ds')).toBe(true)
+  })
+
+  it('forAgent returns undefined for an unknown agent (peekState is non-creating)', () => {
+    const g = gate()
+    const svc = new CriticCtxService(svcCtx(), g)
+    // agent 'c2' has no state → peekState returns undefined → forAgent undefined
+    expect(svc.forAgent('c2')).toBeUndefined()
+    // peekState does NOT create a throwaway entry (sessions stays empty)
+    expect(g.peekState('c2')).toBeUndefined()
+  })
+
+  it('forAgent reflects state updates after a search_data_sources harvest', async () => {
+    const { agent } = makeAgent('c3')
+    const g = gate()
+    g.state('c3') // create the state so peekState finds it
+    const svc = new CriticCtxService(svcCtx(), g)
+    // before search: empty candidateTables
+    expect(svc.forAgent('c3')?.candidateTables.size).toBe(0)
+    // search_data_sources harvests a candidate table
+    await g.onPostExecute(
+      execView('search_data_sources', agent, { query: '充值' }),
+      resultOk({ candidates: [{ id: 'dws_pay_order_di', score: 1.0, mode: 'bm25-only' }] }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    // after search: the criticCtx reflects the harvested candidate table
+    expect(svc.forAgent('c3')?.candidateTables.has('dws_pay_order_di')).toBe(true)
   })
 })

@@ -22,6 +22,7 @@
  * @module @deepseek-ai/dsh-phase-gate/phase-gate
  */
 
+import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent, AgentCancelCause, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { CallId, ReasoningEffortId, createUserMessage, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
@@ -92,7 +93,20 @@ const PHASE_INSTRUCTIONS: Readonly<Record<PhaseType, string>> = {
 - 【route:clarify】 — a real ambiguity remains (multiple competing candidates, unclear metric caliber). Also call present_clarification with ONE specific clarifying question, then HALT (await user; ${PipelineConfig.disambiguation_timeout_seconds}s → honest_decline). The gate HALTs on this token.
 - 【route:decline】 — no candidates returned or the question is unanswerable with the available data. Emit an honest decline: state WHY (what is missing), WHAT would be needed, HOW the user could rephrase. The gate honest-declines.
 If you emit no route token, the gate defaults to proceed but runs a grounding backstop (if search+retrieve found nothing, it declines honestly rather than run GENERATION on no corpus). Do not prematurely clarify or decline: if search returned candidates and you loaded definitions, you have grounding — emit 【route:proceed】.`,
-  [Phase.GENERATION]: 'GENERATION: generate SQL from semantic-layer-grounded fields (never hardcode schema). GROUNDING GATE: a definition MUST be loaded first (load_event_definition for events → event_view.full_name is the FROM table + params_extract_template; load_table_definition for DWS tables → columns/partitions) — the turn-stopping gate blocks SQL generation until one is loaded; use the FROM/fields from the load result, never hardcode table or field names. critique_sql_tool + evaluate_sql_quality. The turn-stopping gate checks the SQL candidate (extract_sql_candidate) — the critic (regex + JSON path, no sqlglot) rejects tables ∉ candidates, GET_JSON_OBJECT fields ∉ event_params; warns on SELECT * / missing ds partition. Wrap SQL in ```sql fences. Fallback → UNDERSTANDING.',
+  [Phase.GENERATION]: 'GENERATION: generate SQL from semantic-layer-grounded fields (never hardcode schema). '
+    + 'GROUNDING GATE: a definition MUST be loaded first (load_event_definition for events '
+    + '→ event_view.full_name is the FROM table + params_extract_template; '
+    + 'load_table_definition for DWS tables → columns/partitions) — the turn-stopping '
+    + 'gate blocks SQL generation until one is loaded; use the FROM/fields from the load '
+    + 'result, never hardcode table or field names. Call critique_sql_tool + '
+    + 'evaluate_sql_quality on your SQL before query_data — the turn-stopping gate '
+    + 'requires both (confidence ≥ 0.6, score ≥ 60) to advance to EXECUTION. The '
+    + 'critic (regex + JSON path, no sqlglot) rejects tables ∉ candidates, '
+    + 'GET_JSON_OBJECT fields ∉ event_params; warns on SELECT * / missing ds partition. '
+    + 'Wrap SQL in ```sql fences. After a TABLE_NOT_FOUND or execution error, correct the '
+    + 'SQL and RE-call critique_sql_tool (re-critique the corrected SQL) before re-calling '
+    + 'query_data — F2 same-source requires the query_data SQL to match the critiqued '
+    + 'SQL (last_sql). Fallback → UNDERSTANDING.',
   [Phase.EXECUTION]: 'EXECUTION (deterministic, not ReAct): query_data(sql) runs the Guard Chain. The SQL passed MUST equal the critiqued SQL (same-source — post-execute blocks a mismatch). Three outcomes drive the turn-stopping decision: done → advance; running → wait + poll; failed → fallback→GENERATION (carry error) or honest_decline. Never re-send the original SQL.',
   [Phase.INTERPRETATION]: `INTERPRETATION: deliver via tools only, strict order: present_decomposition (forced first) → present_table (pass result_id + intent) → compute → 【发现】(once) → 【注意】(once, list assumptions) → suggest_followups. Output purity: no **, no process narration, no SQL display, thousands separator. If you CANNOT answer, emit ${INCOMPLETE_MARKER} (NOT clarification — no HALT in delivery); the turn-stopping gate reads it → honest_decline. No fallback phase.`,
 }
@@ -131,6 +145,17 @@ export class PhaseGate {
       this.sessions.set(agentId, s)
     }
     return s
+  }
+
+  /**
+   * Peek the per-agent state WITHOUT creating one (the `criticCtx` service
+   * (b) uses this so a critique_sql_tool call on an unknown agent degrades to
+   * empty sets rather than polluting `sessions` with a throwaway entry).
+   * @param agentId The harness agent id (stringified) to look up.
+   * @returns The existing `PhaseGateState`, or `undefined` when none exists.
+   */
+  peekState(agentId: string): PhaseGateState | undefined {
+    return this.sessions.get(agentId)
   }
 
   // ── hook 1: ctx.tools.guard — hard whitelist + exec-budget pre-reject (D5, M1) ──
@@ -348,6 +373,14 @@ export class PhaseGate {
       s.last_query_outcome = outcome === 'done' || outcome === 'running' || outcome === 'failed' ? outcome : 'done'
     } else if (name === 'critique_sql_tool') {
       s.last_critique = (value as { confidence?: number } | null | undefined)?.confidence ?? null
+      // (b) F2 same-source: the critiqued SQL (returned by critique_sql_tool
+      // as `sql`) updates last_sql so the model can re-critique a corrected
+      // SQL after a TABLE_NOT_FOUND and query_data passes the F2 same-source
+      // check (query_data sql == last_sql). Without this, last_sql is only set
+      // by generationGate's extractSqlCandidate on phase_output — which does
+      // not update on a within-turn re-critique after an execution error.
+      const critiquedSql = (value as { sql?: string | null } | null | undefined)?.sql
+      if (typeof critiquedSql === 'string') s.last_sql = critiquedSql
     } else if (name === 'evaluate_sql_quality') {
       s.last_quality = (value as { score?: number } | null | undefined)?.score ?? null
     } else if (name === 'present_decomposition' || name === 'present_table') {
@@ -795,4 +828,54 @@ function readAgentId(context: AssembleContext): string | null {
   // @deepseek-ai/dsh-agent; absent only on diagnostics).
   const id = context.agent?.id
   return id !== undefined ? String(id) : null
+}
+
+// ── (b) criticCtx service: exposes the per-agent critic guard context ──────
+// The critique_sql_tool + evaluate_sql_quality Consumer tools (da-owned,
+// packages/data/tool-critique-sql + tool-evaluate-sql-quality) inject this
+// service to read the per-agent candidateTables / eventParams / partitionCols
+// the phase-gate harvested from search_data_sources / load_* (captureToolData).
+// §2.3: the tool defines a structural CriticCtxProvider interface + probes
+// ctx.get('criticCtx') (soft — undefined when the phase-gate is not mounted);
+// this Service is the Provider. The Service[symbols.filter] check passes for
+// non-isolated names (both ctxs resolve undefined for 'criticCtx'), so the
+// parent-realm tools see this service registered in the phase-gate's isolate
+// realm. The service closes over the PhaseGate instance (peekState is
+// non-creating so a critique on an unknown agent degrades to empty sets).
+/**
+ * Cordis `Service` exposing the per-agent critic guard context as
+ * `ctx.criticCtx`. The critique_sql_tool + evaluate_sql_quality tools probe
+ * `ctx.get('criticCtx')` and call `forAgent(agentId)` to get the
+ * `CriticCtx` ({candidateTables, eventParams, partitionCols}) for the
+ * current agent's phase-gate state.
+ */
+export class CriticCtxService extends Service {
+  private readonly gate: PhaseGate
+
+  /**
+   * @param ctx - the context to register the service on (tied to the phase-gate fiber).
+   * @param gate - the PhaseGate instance whose per-agent state is exposed.
+   */
+  constructor(ctx: Context, gate: PhaseGate) {
+    super(ctx, 'criticCtx')
+    this.gate = gate
+  }
+
+  /**
+   * Get the per-agent critic guard context (candidate tables, event params,
+   * partition cols) for the given agent. Returns `undefined` when the agent
+   * has no phase-gate state (the tool degrades to empty sets + a low
+   * confidence — the honest "cannot verify table grounding" state).
+   * @param agentId - the harness agent id (stringified) to look up.
+   * @returns the `CriticCtx` for this agent, or `undefined` when none exists.
+   */
+  forAgent(agentId: string): CriticCtx | undefined {
+    const s = this.gate.peekState(agentId)
+    if (s === undefined) return undefined
+    return {
+      candidateTables: s.candidate_tables,
+      eventParams: s.event_params,
+      partitionCols: s.partition_cols,
+    }
+  }
 }

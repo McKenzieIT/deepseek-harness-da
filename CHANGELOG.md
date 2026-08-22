@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- (b) critique_sql_tool + evaluate_sql_quality da-owned Consumer tools (Phase 1) — ship the folded-regex SQL critic as model-facing Cordis Consumer tools so F2 (same-source gate) is satisfiable: the model can re-critique a corrected SQL (after TABLE_NOT_FOUND) → `last_sql` updates → F2 passes → execution → rows. The tools probe `ctx.get('criticCtx')` (a `CriticCtxService` the phase-gate registers) for the per-agent candidateTables/eventParams/partitionCols. `critic_tools_registered: true` re-tightens the GENERATION gate (requires last_critique ≥ 0.6 + last_quality ≥ 60). Phase 2 (full 3-layer sqlglot critic) deferred — tool-critique-sql + tool-evaluate-sql-quality + phase-gate captureToolData (last_sql from critique_sql_tool's `sql`)
 - preset-autojoin da wrapper (§4.2): hooks `agent/created` → joins the default preset to any published agent, closing the headless-doesn't-join-default-preset gap without modifying dsh src — preset-autojoin
 - route-gate 意图路由（乙′方案：文本令牌 + 检索回退 + 闲聊过滤）— P-DA1
 - GENERATION 闸门 critic 放宽机制 — P-DA2

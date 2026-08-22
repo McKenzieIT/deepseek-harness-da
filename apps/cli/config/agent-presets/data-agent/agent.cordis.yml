@@ -55,6 +55,7 @@
         max_llm_calls_per_turn: 60
         max_state_turns: 20
         stall_watchdog_seconds: 300
+        critic_tools_registered: true   # (b) critic tools shipped -> re-tighten the GENERATION gate (requires last_critique/last_quality) + F2 active
 
 # ── data-agent model-facing tools (4 shipped + uncommented; placeholders commented) ───────
 # Four tools below are shipped + uncommented (search_data_sources /
@@ -77,10 +78,10 @@
   name: '@deepseek-ai/dsh-query-tool'
 # - id: tool-retrieve            # ESCAPE-HATCH (D2c-impl): on-demand retrieval over the same BM25 corpus as search_data_sources; additive escape-hatch for when the UNDERSTANDING prefetch missed. SHIPPED but DORMANT (opt-in, mirrors D2e/P5b dormant-until-mount) — default boot does NOT mount it = pipeline-only current state, no regression. Activation = uncomment this row + add `retrieve` to the phase-gate whitelist + land the persona (P7b) teaching "prefer prefetched context; call retrieve only when the gap is obvious" (avoid double-retrieval redundancy). Soft-fallback == search_data_sources (ctx.retrieval -> ctx.schema enriched Bm25Linker -> empty Bm25Linker; NO FakeHash/FakeReranker default per D2d). Additive/reversible — unship if D2c-revisit regresses.
 #   name: '@deepseek-ai/dsh-tool-retrieve'
-# - id: tool-critique-sql          # GENERATION (P13b; critic itself folded into phase-gate)
-#   name: '@deepseek-ai/dsh-tool-critique-sql'          # name TBD - P13b
-# - id: tool-evaluate-sql-quality  # GENERATION (P13b)
-#   name: '@deepseek-ai/dsh-tool-evaluate-sql-quality'  # name TBD - P13b
+- id: tool-critique-sql          # GENERATION ((b) folded-regex critic via critique_sql_tool; ctx.criticCtx service from phase-gate)
+  name: '@deepseek-ai/dsh-tool-critique-sql'
+- id: tool-evaluate-sql-quality  # GENERATION ((b) 0-100 quality score; paired with critique_sql_tool)
+  name: '@deepseek-ai/dsh-tool-evaluate-sql-quality'
 # - id: tool-present-decomposition # INTERPRETATION (delivery tools → later ticket)
 #   name: '@deepseek-ai/dsh-tool-present-decomposition' # name TBD
 # - id: tool-present-table         # INTERPRETATION
