@@ -9,6 +9,12 @@ import {
   type MetricDefinitionLite,
 } from '../src/metric-engine.ts'
 import type { RetrievalHit } from '../src/bm25-linking.ts'
+import { Nl2sqlEngine } from '../src/engine.ts'
+import { StandInOdps, outcome } from '../src/stand-in-odps.ts'
+import { FailureKind } from '../src/types.ts'
+import type { DataSourceDoc } from '../src/bm25-linking.ts'
+import { ReplayLlm } from '../src/replay-llm.ts'
+import type { RelationGraphLike, RelationGraphEdge } from '../src/ontology.ts'
 
 const DAU: MetricDefinitionLite = {
   name: 'dau',
@@ -77,4 +83,46 @@ test('D1 — buildMetricContext renders a context line', () => {
   expect(ctx).toContain('dau')
   expect(ctx).toContain('COUNT(DISTINCT user_id)')
   expect(ctx).toContain('ods_login')
+})
+
+const DAU_DS: DataSourceDoc[] = [
+  { id: 'dau', description: '日活 DAU', payload: { kind: 'metric', name: 'dau', computation: { sql: 'COUNT(DISTINCT user_id)', metadata: { source: 'ods_login' } } } },
+]
+
+test('D2-e2e — pure-metric query executes via Level 2.5 without an LLM call', async () => {
+  const llm = new ReplayLlm({}) // default generate returns a SQL; must NEVER be called on the L2.5 path
+  const odps = new StandInOdps({ "FROM ods_login WHERE ds = '20260819'": outcome.done([{ cnt: 7 }], 'rid-dau') })
+  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'] })
+  const r = await eng.run({ question: '昨天DAU是多少', today: '20260820' })
+  expect(r.ok).toBe(true)
+  expect(r.sql).toBe("SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds = '20260819'")
+  expect(llm.callCount).toBe(0) // Level 2.5 bypasses the LLM entirely
+  expect(r.trace.some(t => t.step === 'metric_level25')).toBe(true)
+})
+
+test('D2-e2e — metric execution failure => honest decline (no LLM self-correction)', async () => {
+  const llm = new ReplayLlm({})
+  const odps = new StandInOdps({ 'FROM ods_login': outcome.failed(FailureKind.SEMANTIC_MISMATCH, 'no such table') })
+  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'] })
+  const r = await eng.run({ question: '昨天DAU是多少', today: '20260820' })
+  expect(r.decline).toBe(true)
+})
+
+test('D2-e2e — pure-metric query stays Level 2.5 even with a graph (derived_from expansion does not flip routing)', async () => {
+  // A graph whose derived_from edge (dau -> ods_login) would, pre-fix, add ods_login
+  // as a candidate and flip routeMetric to 'level-2'. Routing is computed from the
+  // pre-expansion BM25 hits, so this stays 'level-2.5' (deterministic, 0 LLM calls).
+  const graph: RelationGraphLike = {
+    findJoinPath: () => null,
+    getJoinCondition: () => null,
+    getRelated: () => [],
+    getDerived: (id: string): readonly RelationGraphEdge[] => id === 'dau' ? [{ targetId: 'ods_login', type: 'derived_from' }] : [],
+  }
+  const llm = new ReplayLlm({})
+  const odps = new StandInOdps({ "FROM ods_login WHERE ds = '20260819'": outcome.done([{ cnt: 7 }], 'rid-dau2') })
+  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'], graph })
+  const r = await eng.run({ question: '昨天DAU是多少', today: '20260820' })
+  expect(r.ok).toBe(true)
+  expect(r.trace.some(t => t.step === 'metric_level25')).toBe(true)
+  expect(llm.callCount).toBe(0)
 })
