@@ -61,6 +61,10 @@ import { DataSourceRegistry } from './registry.ts'
 import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
 import { metricKindPlugin } from './kinds/metric-kind.ts'
+import { RelationGraph } from './relation-graph.ts'
+import { loadMetricDefinitions } from './metrics.ts'
+import { loadEvents, loadTables } from './io.ts'
+import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
@@ -196,6 +200,43 @@ export class SemanticLayerService extends Service {
   /** The live data-source-kind registry (events/tables/metrics plugins registered at construction). */
   getRegistry(): DataSourceRegistry {
     return this.registry
+  }
+
+  private graphCache: RelationGraph | undefined
+  private graphVersion = -1
+
+  /**
+   * The live relation graph: bidirectional adjacency over every table's
+   * `dimension_refs` (joins), every event's `external_refs` (joins), and every
+   * metric's `relations` (derived_from). Cached; rebuilt when the layer's
+   * corpus-version counter advances (a write bumps it via `invalidateCaches`).
+   * Events only enter the graph once `enrichAllEvents` has written their
+   * `external_refs` (Part B).
+   * @returns the cached `RelationGraph`, rebuilt when stale.
+   */
+  getRelationGraph(): RelationGraph {
+    if (this.graphCache !== undefined && this.graphVersion === this.corpusVersion()) {
+      return this.graphCache
+    }
+    const g = new RelationGraph()
+    const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
+    for (const t of loadTables(this.semanticRoot)) {
+      const r = TableDefinitionSchema.safeParse(t.raw)
+      if (!r.success) continue
+      entries.push({ sourceId: r.data.table_name, relations: tableKindPlugin.relations(r.data) })
+    }
+    for (const e of loadEvents(this.semanticRoot)) {
+      const r = EventDefinitionSchema.safeParse(e.raw)
+      if (!r.success) continue
+      entries.push({ sourceId: r.data.name, relations: eventKindPlugin.relations(r.data) })
+    }
+    for (const m of loadMetricDefinitions(this.semanticRoot)) {
+      entries.push({ sourceId: m.name, relations: metricKindPlugin.relations(m) })
+    }
+    g.build(entries)
+    this.graphCache = g
+    this.graphVersion = this.corpusVersion()
+    return g
   }
 
   /**
