@@ -252,6 +252,12 @@ export interface PhaseGateState {
   // true → search carries the grounding signal). ──
   last_search_empty: boolean
   last_retrieve_empty: boolean
+  // ── GROUNDING GATE (c root-cause): true once a definition was loaded
+  // (load_event_definition OR load_table_definition returned a non-error
+  // result). The GENERATION gate requires this before allowing SQL generation
+  // — else it fails → retry/fallback to UNDERSTANDING so the model loads the
+  // event_view FROM / table columns first, not event-name-as-table guesses. ──
+  definition_loaded: boolean
   // ── F4 question-start detection: prior `agent/status` for idle→running ──
   prior_status: 'idle' | 'running' | null
   // ── F3 stall watchdog (independent timer; cleared when events arrive) ──
@@ -291,6 +297,7 @@ export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
     partition_cols: new Set(),
     last_search_empty: true,
     last_retrieve_empty: true,
+    definition_loaded: false, // GROUNDING GATE (c): no definition loaded yet.
     prior_status: null,
     stall_timer: null,
     step_count: 0,
