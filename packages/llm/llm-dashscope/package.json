@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-llm-dashscope",
-  "description": "DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam",
+  "description": "[data-agent] DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam",
   "version": "0.1.0-rc.7",
   "publishConfig": {
     "access": "public"
