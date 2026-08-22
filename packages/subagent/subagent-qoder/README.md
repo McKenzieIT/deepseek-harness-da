@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-This package registers the fixed `qoder` subagent provider. Each accepted run invokes the official Qoder Agent SDK in the delegating Session's workspace, resolves the Qoder PAT through the credentials seam per operation, and returns only the terminal result through the shared [`dsh-subagent`](../subagent/README.md) result contract.
+[data-agent] This package registers the fixed `qoder` subagent provider. Each accepted run invokes the official Qoder Agent SDK in the delegating Session's workspace, resolves the Qoder PAT through the credentials seam per operation, and returns only the terminal result through the shared [`dsh-subagent`](../subagent/README.md) result contract.
 
 ## Design (terminal-only, claude-code precedent)
 

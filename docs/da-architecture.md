@@ -46,17 +46,19 @@ flowchart LR
         audit["ctx.audit<br/>AuditService"]
         nl2sql["ctx.nl2sql<br/>NL2SQLEngine"]
         identity["ctx.identity<br/>Identity"]
+        scopes["ctx.scopes<br/>ScopeRegistry"]
     end
 
     subgraph providers["da providers"]
         qmc["query-maxcompute<br/>(stdio sidecar)"]
-        sl["semantic-layer<br/>(YAML substrate)"]
+        sl["semantic-layer<br/>(YAML substrate + G3 AI-native enrichment)"]
         efh["embedder-fakehash<br/>(dev stub)"]
         eh["embedder-http<br/>(OpenAI-compat)"]
         ri["retrieval-inproc<br/>(BM25+vec RRF)"]
         audit_sqlite["audit<br/>(SQLite store)"]
         nle["nl2sql-engine<br/>(BM25 linking)"]
         id_stub["identity<br/>(stub → P9b)"]
+        sr["scope-registry<br/>(YAML namespace registry)"]
     end
 
     subgraph dsh["dsh provided seams (consumed by da)"]
@@ -75,12 +77,14 @@ flowchart LR
     audit --- audit_sqlite
     nl2sql --- nle
     identity --- id_stub
+    scopes --- sr
 
     subgraph orchestration["Orchestration (phase-gate)"]
         pg["phase-gate plugin<br/>7 event hooks"]
     end
 
-    pg -->|"tools/pre-execute<br/>(guard whitelist)"| tools
+    pg -->|"tools/post-execute<br/>(observe tool results)"| tools
+    pg -.->|"ctx.tools.guard (API: hard whitelist, not an event hook)"| tools
     pg -->|"agent/request<br/>(reasoningEffort)"| llm
     pg -->|"system-prompt/assemble<br/>(persona + phase instructions)"| sp
     pg -->|"agent/turn-stopping<br/>(phase transition)"| tools
@@ -122,7 +126,7 @@ packages/
 │   ├── credentials-local/ ← dsh (不动)
 │   ├── credentials-keychain/ ← DA [data-agent]
 │   └── credentials-keychain-host/ ← DA [data-agent]
-├── data/           ← DA (全部 da-owned)
+├── data/           ← DA (全部 da-owned: phase-gate, semantic-layer, audit, nl2sql-engine, scope-registry, tool-discover-relations, preset-autojoin, tool-*)
 ├── query/          ← DA (全部 da-owned)
 ├── embedder/       ← DA (全部 da-owned)
 ├── retrieval/      ← DA (全部 da-owned)

@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-macOS Keychain [credentials](../credentials/README.md) provider: per-user PATs in an independent (non-login) keychain, addressed by `account=userId`, with an injectable global/shared fallback for the G3 staged fallback (a per-user miss falls through to the early global T1 PAT).
+[data-agent] macOS Keychain [credentials](../credentials/README.md) provider: per-user PATs in an independent (non-login) keychain, addressed by `account=userId`, with an injectable global/shared fallback for the G3 staged fallback (a per-user miss falls through to the early global T1 PAT).
 
 | Slot | Source id | Writable |
 |---|---|---|

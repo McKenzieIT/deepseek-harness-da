@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-subagent-qoder",
-  "description": "One-shot Qoder subagent provider over the Qoder Agent SDK",
+  "description": "[data-agent] One-shot Qoder subagent provider over the Qoder Agent SDK",
   "version": "0.1.0-rc.7",
   "publishConfig": {
     "access": "public"

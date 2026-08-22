@@ -47,7 +47,7 @@
 
 **What was modified:**
 
-- `packages/subagent/subagent/src/index.ts` — dsh `SubagentRuntime` gained ~9 new public methods (`startContinuable`, `followup`, `interrupt`, `reportFrom`, `registerContinuableSetup`, `drainContinuableDescendants`, `drainContinuableChildren`, `listChildren`, `listDescendants`) + constructor wiring of `SubagentContinuationManager` / `SubagentActivationSetupRegistry` + session-projection registration.
+- `packages/subagent/subagent/src/index.ts` — committed diff is **1 line** (a `SubagentCosts` re-export). The ~9 continuable-children methods on `SubagentRuntime` (`startContinuable`, `followup`, `interrupt`, `reportFrom`, `registerContinuableSetup`, `drainContinuable*`, `listChildren`, `listDescendants`) are **upstream's** — present at `merge-base`, absent from da's diff — NOT da's modification. (Phase-3 review correction: this lowers D2's real conflict surface to the cost-telemetry subset.)
 - `packages/subagent/subagent/src/types.ts` — added `SubagentCosts` + optional `costs?` on `SubagentResult` (**modifies the dsh `SubagentResult` vocabulary type**), `ContinuableCreateRequest` / `ContinuableCreateSpec` / `ResolvedSubagentStartRequest` types, optional `prepareContinuable?` on `SubagentProvider`.
 - `packages/subagent/tool-subagent/src/index.ts` — dsh Consumer `tool-subagent` (the **named** forbidden example in rule 4.4) modified: `backgroundMode: 'one-shot' | 'continuable'` config, per-child `persona` / `toolFilter`, `ForegroundToolResult.costs?`, output-schema `costs` field.
 

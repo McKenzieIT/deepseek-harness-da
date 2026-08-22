@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Mount face that registers `KeychainCredentialProvider` as `ctx.credentials`, composing a plain writable file/env fallback (G3c global-writes gap, decision A).
+[data-agent] Mount face that registers `KeychainCredentialProvider` as `ctx.credentials`, composing a plain writable file/env fallback (G3c global-writes gap, decision A).
 
 ## Why
 

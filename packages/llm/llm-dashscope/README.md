@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam (`ctx.llm`). Implements the DashScope native wire protocol (NOT OpenAI-compatible) over the Alibaba internal AGA gateway.
+[data-agent] DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam (`ctx.llm`). Implements the DashScope native wire protocol (NOT OpenAI-compatible) over the Alibaba internal AGA gateway.
 
 ## Overview
 
