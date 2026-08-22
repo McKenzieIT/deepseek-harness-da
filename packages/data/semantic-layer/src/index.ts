@@ -566,4 +566,28 @@ export class StandInSchemaProvider implements SchemaProvider {
   }
 }
 
+/**
+ * A text-only LLM seam: `text(prompt) -> string`. Production `ctx.llm`
+ * (BlockAssembler-assembled text) satisfies this once mounted. Declared here
+ * so the substrate + the wiring adapter stay free of the LLM dependency.
+ */
+export interface TextLlm {
+  text(prompt: string): Promise<string>
+}
+
+/**
+ * Wire a text-LLM into a schema service's enrichment `llmCall` seam. After
+ * this, `discoverRelations` / `discoverEventRelations` / the on-write hook
+ * run the LLM semantic round (absent => deterministic round only).
+ *
+ * Production (once the bundle mounts `ctx.schema` + `ctx.llm`):
+ *   `wireEnrichmentLlm(ctx.schema, ctx.llm)`
+ * The adapter wraps `llm.text` as the substrate's `LlmCall = (prompt) => Promise<string>`.
+ * @param schema - the `SemanticLayerService` (or a structural `{ setLlmCall }` test double).
+ * @param llm - the text-LLM to adapt.
+ */
+export function wireEnrichmentLlm(schema: { setLlmCall(fn?: (prompt: string) => Promise<string>): void }, llm: TextLlm): void {
+  schema.setLlmCall(prompt => llm.text(prompt))
+}
+
 export default SemanticLayerService
