@@ -151,7 +151,7 @@ function extractJsonArray(text: string): unknown[] {
   // tolerate ```json fences and leading/trailing prose
   let t = text.trim()
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  if (fence) t = fence[1].trim()
+  t = fence?.[1]?.trim() ?? t
   const start = t.indexOf('[')
   const end = t.lastIndexOf(']')
   if (start === -1 || end === -1 || end < start) return []
