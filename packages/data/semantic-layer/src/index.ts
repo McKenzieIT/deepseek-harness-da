@@ -52,18 +52,18 @@ import {
   type Tier2Recorder,
 } from './io.ts'
 import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
-import type { CorpusVariant, EventCorpusItem } from './corpus.ts'
+import { parseTerminology, type CorpusVariant, type EventCorpusItem, type EventTerminology } from './corpus.ts'
 import {
   enrichAllDwsTables as enrichAllDwsTablesFromLayer,
   type LlmCall,
 } from './enrichment.ts'
-import { DataSourceRegistry } from './registry.ts'
+import { DataSourceRegistry, type CorpusItem } from './registry.ts'
 import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
 import { metricKindPlugin } from './kinds/metric-kind.ts'
 import { RelationGraph } from './relation-graph.ts'
 import { loadMetricDefinitions } from './metrics.ts'
-import { loadEvents, loadTables } from './io.ts'
+import { loadEvents, loadTables, loadTerminology } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
@@ -237,6 +237,49 @@ export class SemanticLayerService extends Service {
     this.graphCache = g
     this.graphVersion = this.corpusVersion()
     return g
+  }
+
+  /**
+   * Registry-driven full retrieval corpus: every registered kind's definitions
+   * projected via its `toCorpusItem` (events + tables + metrics). Supersedes
+   * the events-only `loadRetrievalCorpus()` for P3/P4 — tables + metrics MUST
+   * be indexable so BM25 can hit a DIM table (join recall) or a metric
+   * (Level 2.5 routing). `loadRetrievalCorpus()` is unchanged (preserves the
+   * D2e events-only measured behavior + its 445-item K11 test).
+   * @returns the full corpus (events + tables + metrics) ready for Bm25Linker.
+   */
+  loadRetrievalCorpusAll(): CorpusItem[] {
+    const out: CorpusItem[] = []
+    const term: EventTerminology = parseTerminology(loadTerminology(this.semanticRoot))
+    for (const plugin of this.registry.allPlugins()) {
+      for (const def of this.loadByStorageDir(plugin.storageDir)) {
+        const item = plugin.toCorpusItem(def, term)
+        if (item) out.push(item)
+      }
+    }
+    return out
+  }
+
+  /** Dispatch a storage-dir name to its loader + schema-parse projection. */
+  private loadByStorageDir(dir: string): readonly unknown[] {
+    if (dir === 'events') {
+      const out: unknown[] = []
+      for (const e of loadEvents(this.semanticRoot)) {
+        const r = EventDefinitionSchema.safeParse(e.raw)
+        if (r.success) out.push(r.data)
+      }
+      return out
+    }
+    if (dir === 'tables') {
+      const out: unknown[] = []
+      for (const t of loadTables(this.semanticRoot)) {
+        const r = TableDefinitionSchema.safeParse(t.raw)
+        if (r.success) out.push(r.data)
+      }
+      return out
+    }
+    if (dir === 'metrics') return loadMetricDefinitions(this.semanticRoot)
+    return []
   }
 
   /**

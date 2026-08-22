@@ -24,7 +24,6 @@ function loadFixture<T>(name: string, schema: { parse: (v: unknown) => T }): T {
 
 const EVENT_DEF = loadFixture('role_online.yaml', EventDefinitionSchema)
 const DWS_DEF = loadFixture('dws_pay_order_di.yaml', TableDefinitionSchema)
-const DIM_DEF = loadFixture('dim_charm_info.yaml', TableDefinitionSchema)
 
 // ── DataSourceRegistry ──────────────────────────────────────────────────
 
@@ -130,9 +129,11 @@ test('tableKindPlugin — getId from raw Record', () => {
   expect(tableKindPlugin.getId({})).toBeUndefined()
 })
 
-test('tableKindPlugin — toCorpusItem returns null (tables not indexed)', () => {
-  expect(tableKindPlugin.toCorpusItem(DWS_DEF)).toBeNull()
-  expect(tableKindPlugin.toCorpusItem(DIM_DEF)).toBeNull()
+test('tableKindPlugin — toCorpusItem indexes name + comment + columns (A3)', () => {
+  const item = tableKindPlugin.toCorpusItem(DWS_DEF)
+  expect(item).not.toBeNull()
+  expect(item!.id).toBe('dws_pay_order_di')
+  expect(item!.description).toContain('dws_pay_order_di')
 })
 
 test('tableKindPlugin — toPromptContext formats columns table', () => {

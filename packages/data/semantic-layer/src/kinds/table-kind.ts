@@ -18,8 +18,20 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
     return typeof raw.table_name === 'string' ? raw.table_name : undefined
   },
 
-  toCorpusItem(_def, _terminology?: EventTerminology): CorpusItem | null {
-    return null
+  toCorpusItem(def, _terminology?: EventTerminology): CorpusItem | null {
+    const parts: string[] = []
+    parts.push(def.table_name)
+    if (def.description) parts.push(def.description)
+    if (def.table_comment) parts.push(def.table_comment)
+    for (const col of def.columns) {
+      parts.push(col.name)
+      if (col.comment) parts.push(col.comment)
+    }
+    return {
+      id: def.table_name,
+      ...(parts.length > 0 ? { description: parts.join(' ') } : {}),
+      payload: def,
+    }
   },
 
   toPromptContext(def): string {
