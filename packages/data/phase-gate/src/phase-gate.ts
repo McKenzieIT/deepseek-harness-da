@@ -87,12 +87,12 @@ Three rules you must always follow:
 3. ROUTE: at the end of UNDERSTANDING (after search + load), emit exactly one token — 【route:proceed】 (search returned candidates + you loaded definitions + no ambiguity), 【route:clarify】 (real ambiguity — also call present_clarification with one specific question), or 【route:decline】 (no candidates / unanswerable). If search returned candidates and you loaded the definitions, you have grounding — emit 【route:proceed】; do not prematurely clarify or decline.`
 
 const PHASE_INSTRUCTIONS: Readonly<Record<PhaseType, string>> = {
-  [Phase.UNDERSTANDING]: `UNDERSTANDING: discover grounding, then decide the route. (1) Call search_data_sources with the user's question; it returns ranked candidates with id/score/mode/type. (2) Load the full definitions for the relevant candidates: events (ods_* / event names) via load_event_definition, DWS tables (dws_*) via load_table_definition — pick the loader by the candidate's mode/type, never call load_table_definition with an event name. Use load_table_dimensions when you need a dimension hint. (3) Decompose compound questions into atomic sub-questions (≤${PipelineConfig.max_subquestions}) prefixed by 【拆解】; run the six-class disambiguation scan. (4) Decide the route and emit exactly one token at the end of this turn:
+  [Phase.UNDERSTANDING]: `UNDERSTANDING: discover grounding, then decide the route. (1) Call search_data_sources with the user's question; it returns ranked candidates with id/score/mode/type. (2) Load the full definitions for the relevant candidates: events (ods_* / event names) via load_event_definition, DWS tables (dws_*) via load_table_definition — pick the loader by the candidate's mode/type, never call load_table_definition with an event name. Use load_table_dimensions when you need a dimension hint. The load result IS your GENERATION grounding: load_event_definition returns event_view.full_name (the FROM table) + params_extract_template; load_table_definition returns columns/partitions — use these in SQL, never hardcode table or field names. (3) Decompose compound questions into atomic sub-questions (≤${PipelineConfig.max_subquestions}) prefixed by 【拆解】; run the six-class disambiguation scan. (4) Decide the route and emit exactly one token at the end of this turn:
 - 【route:proceed】 — search returned candidates AND you loaded the relevant definitions (grounding established) AND no real ambiguity remains → advance to GENERATION (which writes the SQL; do NOT call query_data here).
 - 【route:clarify】 — a real ambiguity remains (multiple competing candidates, unclear metric caliber). Also call present_clarification with ONE specific clarifying question, then HALT (await user; ${PipelineConfig.disambiguation_timeout_seconds}s → honest_decline). The gate HALTs on this token.
 - 【route:decline】 — no candidates returned or the question is unanswerable with the available data. Emit an honest decline: state WHY (what is missing), WHAT would be needed, HOW the user could rephrase. The gate honest-declines.
 If you emit no route token, the gate defaults to proceed but runs a grounding backstop (if search+retrieve found nothing, it declines honestly rather than run GENERATION on no corpus). Do not prematurely clarify or decline: if search returned candidates and you loaded definitions, you have grounding — emit 【route:proceed】.`,
-  [Phase.GENERATION]: 'GENERATION: generate SQL from semantic-layer-grounded fields (never hardcode schema); critique_sql_tool + evaluate_sql_quality. The turn-stopping gate checks the SQL candidate (extract_sql_candidate) — the critic (regex + JSON path, no sqlglot) rejects tables ∉ candidates, GET_JSON_OBJECT fields ∉ event_params; warns on SELECT * / missing ds partition. Wrap SQL in ```sql fences. Fallback → UNDERSTANDING.',
+  [Phase.GENERATION]: 'GENERATION: generate SQL from semantic-layer-grounded fields (never hardcode schema). GROUNDING GATE: a definition MUST be loaded first (load_event_definition for events → event_view.full_name is the FROM table + params_extract_template; load_table_definition for DWS tables → columns/partitions) — the turn-stopping gate blocks SQL generation until one is loaded; use the FROM/fields from the load result, never hardcode table or field names. critique_sql_tool + evaluate_sql_quality. The turn-stopping gate checks the SQL candidate (extract_sql_candidate) — the critic (regex + JSON path, no sqlglot) rejects tables ∉ candidates, GET_JSON_OBJECT fields ∉ event_params; warns on SELECT * / missing ds partition. Wrap SQL in ```sql fences. Fallback → UNDERSTANDING.',
   [Phase.EXECUTION]: 'EXECUTION (deterministic, not ReAct): query_data(sql) runs the Guard Chain. The SQL passed MUST equal the critiqued SQL (same-source — post-execute blocks a mismatch). Three outcomes drive the turn-stopping decision: done → advance; running → wait + poll; failed → fallback→GENERATION (carry error) or honest_decline. Never re-send the original SQL.',
   [Phase.INTERPRETATION]: `INTERPRETATION: deliver via tools only, strict order: present_decomposition (forced first) → present_table (pass result_id + intent) → compute → 【发现】(once) → 【注意】(once, list assumptions) → suggest_followups. Output purity: no **, no process narration, no SQL display, thousands separator. If you CANNOT answer, emit ${INCOMPLETE_MARKER} (NOT clarification — no HALT in delivery); the turn-stopping gate reads it → honest_decline. No fallback phase.`,
 }
@@ -371,11 +371,20 @@ export class PhaseGate {
       // backstop relies on search alone — additive, no behavior change dormant.
       s.last_retrieve_empty = isCandidatesEmpty(value)
     } else if (name === 'load_event_definition') {
+      // GROUNDING GATE (c root-cause): a non-error load_event_definition result
+      // means the model loaded an event definition → it has the event_view FROM
+      // + params grounding. captureToolData runs only on non-error results (the
+      // isError early-return above), so an errored load does not set the flag.
+      // The GENERATION gate requires this flag before allowing SQL generation
+      // (deterministic grounding — not a persona instruction).
+      s.definition_loaded = true
       // load_* returns { found, event|table: { … } } NESTED (the model-facing
       // projection) — probe the nested definition, not top-level value (else
       // partition_cols / event_params stay empty after a successful load).
       collectFields((value as { event?: unknown } | undefined)?.event, s.event_params, 'params_fields', 'params')
     } else if (name === 'load_table_definition') {
+      // GROUNDING GATE (c): same — a non-error table load establishes grounding.
+      s.definition_loaded = true
       // (same nested-projection shape — see load_event above)
       collectFields((value as { table?: unknown } | undefined)?.table, s.partition_cols, 'partition_cols', 'partitions')
     }
@@ -562,6 +571,18 @@ export class PhaseGate {
   }
 
   private generationGate(s: PhaseGateState): GateResult {
+    // GROUNDING GATE (c root-cause): GENERATION requires a definition was
+    // loaded (load_event_definition OR load_table_definition) before allowing
+    // SQL generation — else the model writes SQL from event-name-as-table
+    // guesses instead of the event_view FROM the load returned. Runs BEFORE
+    // extractSqlCandidate/sqlSyntaxGate; failing here → the existing
+    // retry/fallback path (within max_attempts, then fallback to UNDERSTANDING)
+    // forces the model to load a definition first. captureToolData sets the
+    // flag on a non-error load_* result; an errored or absent load leaves it
+    // false. (Deterministic grounding — not a persona instruction.)
+    if (!s.definition_loaded) {
+      return GateResult.fail('no definition loaded — call load_event_definition (events) or load_table_definition (tables) before writing SQL')
+    }
     if (s.phase_output === '') return GateResult.fail('no phase output')
     const criticCtx: CriticCtx = {
       candidateTables: s.candidate_tables,
@@ -671,6 +692,7 @@ export class PhaseGate {
     s.partition_cols.clear()
     s.last_search_empty = true // P-DA1: reset grounding backstop flags (not called yet → empty).
     s.last_retrieve_empty = true
+    s.definition_loaded = false // GROUNDING GATE (c): no definition loaded yet this question.
   }
 
   /**

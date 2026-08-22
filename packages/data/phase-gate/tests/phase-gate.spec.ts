@@ -100,6 +100,7 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     const s = g.state('s1')
     s.current_phase = Phase.GENERATION
     s.candidate_tables.add('real')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established → sqlSyntaxGate fails (table ∉ candidates)
     s.phase_output = "```sql\nSELECT a FROM phantom WHERE ds='1'\n```" // table ∉ candidates → critic fail
     await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
     expect(s.current_phase).toBe(Phase.GENERATION) // still GENERATION (retry)
@@ -244,6 +245,7 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     s.current_phase = Phase.GENERATION
     s.candidate_tables.add('dws_pay')
     s.partition_cols.add('ds')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established so extractSqlCandidate runs (last_sql is the observable)
     // B1: do NOT manually set s.phase_output — onTurnStopping must capture it
     // from agent.session.events. last_sql is the stable observable: the critic
     // sets it only if phase_output was captured (phase_output itself is reset on
@@ -609,6 +611,7 @@ describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
     const { agent } = makeAgent('g1')
     const g = gate() // no ctx.tools.get → criticToolsRegistered() false
     const s = g.state('g1')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established — exercises sqlSyntaxGate (not the grounding check)
     s.current_phase = Phase.GENERATION
     s.phase_idx = 1 // GENERATION index in PHASE_ORDER so advance lands on EXECUTION
     s.candidate_tables.add('dws_pay')
@@ -623,6 +626,7 @@ describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
     const { agent, injected } = makeAgent('g2')
     const g = gate()
     const s = g.state('g2')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established → sqlSyntaxGate fails (table ∉ candidates)
     s.current_phase = Phase.GENERATION
     s.candidate_tables.add('real')
     s.phase_output = "```sql\nSELECT a FROM phantom WHERE ds='1'\n```"
@@ -639,6 +643,7 @@ describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
       { stall_watchdog_seconds: 9999, critic_tools_registered: true },
     )
     const s = g.state('g3')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established — exercises the critic floor (not the grounding check)
     s.current_phase = Phase.GENERATION
     s.candidate_tables.add('dws_pay')
     s.partition_cols.add('ds')
@@ -658,6 +663,7 @@ describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
     } as unknown as Context
     const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
     const s = g.state('g4')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established — exercises the critic floor (not the grounding check)
     s.current_phase = Phase.GENERATION
     s.candidate_tables.add('dws_pay')
     s.partition_cols.add('ds')
@@ -674,6 +680,7 @@ describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
       { stall_watchdog_seconds: 9999, critic_tools_registered: true },
     )
     const s = g.state('g5')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established — exercises the critic floor (not the grounding check)
     s.current_phase = Phase.GENERATION
     s.phase_idx = 1 // GENERATION index → advance lands on EXECUTION
     s.candidate_tables.add('dws_pay')
@@ -692,6 +699,7 @@ describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
       { stall_watchdog_seconds: 9999, critic_tools_registered: true },
     )
     const s = g.state('g6')
+    s.definition_loaded = true // GROUNDING GATE (c): grounding established — exercises the critic floor (not the grounding check)
     s.current_phase = Phase.GENERATION
     s.candidate_tables.add('dws_pay')
     s.partition_cols.add('ds')
@@ -701,5 +709,76 @@ describe('P-DA2 generation-relax (criticToolsRegistered probe)', () => {
     await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
     expect(s.current_phase).toBe(Phase.GENERATION) // retry — below floor
     expect(s.phase_attempts).toBe(1)
+  })
+})
+
+// ── GROUNDING GATE (c root-cause): GENERATION requires a definition loaded ──
+// The gate is deterministic (definition_loaded flag), not a persona instruction:
+// captureToolData sets the flag on a non-error load_* result; generationGate
+// requires it before extractSqlCandidate/sqlSyntaxGate run. Failing → the
+// existing retry/fallback path (within max_attempts, then fallback to
+// UNDERSTANDING) forces the model to load a definition (event_view FROM /
+// table columns) before it can write SQL — fixing "writes SQL without
+// grounding (event-name-as-table instead of the event_view FROM)".
+
+describe('GROUNDING GATE (c root-cause) — GENERATION requires definition_loaded', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('(i) definition_loaded=false → gate fails BEFORE sqlSyntaxGate (retry; last_sql stays null)', async () => {
+    const { agent, injected } = makeAgent('c1')
+    const g = gate()
+    const s = g.state('c1')
+    s.current_phase = Phase.GENERATION
+    s.candidate_tables.add('dws_pay') // valid table ∈ candidates
+    s.partition_cols.add('ds') // valid partition present
+    // definition_loaded stays false (default) — no load_* called this question.
+    // The SQL is otherwise valid (table ∈ candidates, ds partition present), so
+    // the ONLY reason the gate fails is the grounding check. last_sql stays null
+    // because the grounding gate returns BEFORE extractSqlCandidate runs.
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION) // retry — not advanced
+    expect(s.phase_attempts).toBe(1)
+    expect(injected).toHaveLength(1) // correction inject
+    expect(s.last_sql).toBeNull() // grounding short-circuited before extractSqlCandidate
+  })
+
+  it('(ii) definition_loaded=true (set via captureToolData load) → grounding passes → sqlSyntaxGate passes → advance to EXECUTION', async () => {
+    const { agent } = makeAgent('c2')
+    const g = gate()
+    const s = g.state('c2')
+    s.current_phase = Phase.GENERATION
+    s.phase_idx = 1 // GENERATION index → advance lands on EXECUTION
+    s.candidate_tables.add('dws_pay')
+    s.partition_cols.add('ds')
+    // captureToolData sets definition_loaded on a non-error load_* result —
+    // simulate the model having loaded an event definition this turn (the real
+    // tool also returns event_view.full_name = the FROM table; captureToolData
+    // only needs found+event here).
+    await g.onPostExecute(
+      execView('load_event_definition', agent, { event_name: 'pay_order' }),
+      resultOk({ found: true, event: { name: 'pay_order', params_fields: [{ name: 'order_id', type: 'string' }] } }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.definition_loaded).toBe(true) // capture set the grounding flag
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.EXECUTION) // grounding + sqlSyntaxGate passed → advance
+  })
+
+  it('(iii) grounding fail exhausts max_attempts → fallback to UNDERSTANDING', async () => {
+    const { agent, injected } = makeAgent('c3')
+    const g = gate()
+    const s = g.state('c3')
+    s.current_phase = Phase.GENERATION
+    s.phase_attempts = 4 // one more fail → 5 = max_attempts → fallback path
+    s.fallback_count = 0
+    // definition_loaded stays false (no load) → grounding gate fails each attempt.
+    s.phase_output = "```sql\nSELECT a FROM dws_pay WHERE ds='20260101'\n```"
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.UNDERSTANDING) // fell back, not advanced
+    expect(s.fallback_count).toBe(1)
+    expect(injected).toHaveLength(1) // fallback continuation
   })
 })
