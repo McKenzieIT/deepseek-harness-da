@@ -198,7 +198,7 @@ describe('enrichAllDwsTables', () => {
   test('mergeExisting=true preserves curated refs the deterministic round does not rediscover', async () => {
     const dimServer = { table_name: 'dim_server', kind: 'dim' as const, primary_key: ['server_id'], label_columns: ['s_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
     writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml(dimServer))
-    const curated = { ...dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', comment: '区服ID' }] }), dimension_refs: [{ dim_table: 'dim_other', join_keys: [{ dws_column: 'other_id', dim_column: 'other_id' }], derivation: 'curated by analyst' }] }
+    const curated = { ...dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '区服ID', role: 'dimension' }] }), dimension_refs: [{ dim_table: 'dim_other', join_keys: [{ dws_column: 'other_id', dim_column: 'other_id' }], derivation: 'curated by analyst' }] }
     writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(curated))
     const res = await enrichAllDwsTables(dir, undefined, ['dws_pay'], true)
     expect(res.written).toBe(1)
