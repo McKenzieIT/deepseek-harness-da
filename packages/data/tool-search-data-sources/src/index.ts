@@ -123,6 +123,32 @@ interface SchemaCorpusSource {
 }
 
 /**
+ * Structural edge shape (matches semantic-layer RelationEdge). Avoids a static
+ * dep on `@deepseek-ai/dsh-semantic-layer` — same structural-typing discipline
+ * as `SchemaCorpusSource`.
+ */
+interface RelationGraphEdge {
+  readonly targetId: string
+  readonly type: string
+  readonly on?: string
+  readonly description?: string
+}
+
+/**
+ * Structural shape for the ontology relation graph. Probed via
+ * `ctx.get('schema')?.getRelationGraph?.()` — avoids a static dep on
+ * `@deepseek-ai/dsh-semantic-layer` (same pattern as `SchemaCorpusSource`).
+ * The `SemanticLayerService.getRelationGraph()` method returns a `RelationGraph`
+ * instance satisfying this interface.
+ */
+interface RelationGraphSource {
+  findJoinPath(sourceId: string, targetId: string): string[] | null
+  getJoinCondition(sourceId: string, targetId: string): string | null
+  getRelated(sourceId: string, type?: string): readonly RelationGraphEdge[]
+  getDerived(sourceId: string): readonly RelationGraphEdge[]
+}
+
+/**
  * D2e + D2f: cache of enriched `Bm25Linker`s keyed by schema instance — built
  * once per `ctx.schema` (lazy on first execute) so the 1966-event corpus is
  * tokenized once, not per query. `WeakMap` so a replaced/unmounted schema is
@@ -147,6 +173,93 @@ function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
     enrichedLinkers.set(schema, entry)
   }
   return entry.linker
+}
+
+/**
+ * Probe `ctx.get('schema')` for a `getRelationGraph` method and return the
+ * graph if available. Structural probe — no static dep on semantic-layer.
+ * Returns `undefined` when the schema is unmounted or doesn't expose a graph.
+ */
+function probeRelationGraph(ctx: Context): RelationGraphSource | undefined {
+  const schemaProbe = ctx.get('schema') as { getRelationGraph?: unknown } | undefined
+  if (schemaProbe === undefined || typeof schemaProbe.getRelationGraph !== 'function') {
+    return undefined
+  }
+  return (schemaProbe as { getRelationGraph(): RelationGraphSource }).getRelationGraph()
+}
+
+/**
+ * Graph-expanded recall + join constraint extraction. After BM25 hits, expands
+ * via 1-hop `joins` + `derived_from` neighbors (same logic as
+ * `expandCandidates` in ontology.ts), then builds join constraint strings for
+ * every candidate pair the graph connects.
+ *
+ * When the relation graph is unavailable (schema unmounted / no
+ * `getRelationGraph`), returns the original candidates unchanged with no join
+ * constraints (soft fallback).
+ *
+ * @param ctx - the Cordis context (probed for `ctx.schema.getRelationGraph()`).
+ * @param candidates - the BM25 search hits.
+ * @param topK - max candidates to return after expansion.
+ * @returns expanded candidates + join constraint strings.
+ */
+function applyGraphExpansionAndJoins(
+  ctx: Context,
+  candidates: SearchHit[],
+  topK: number,
+): { candidates: SearchHit[]; join_constraints: string[] } {
+  const graph = probeRelationGraph(ctx)
+  if (graph === undefined) {
+    return { candidates, join_constraints: [] }
+  }
+
+  // Graph-expanded recall: for each BM25 hit, add 1-hop `joins` + `derived_from`
+  // neighbors not already in hits, with score = original hit's score * 0.5,
+  // mode = 'graph-expand'. Cap total at topK.
+  const seen = new Set(candidates.map(c => c.id))
+  const expanded: SearchHit[] = [...candidates]
+  for (const hit of candidates) {
+    if (expanded.length >= topK) break
+    for (const edge of graph.getRelated(hit.id, 'joins')) {
+      if (seen.has(edge.targetId)) continue
+      if (expanded.length >= topK) break
+      seen.add(edge.targetId)
+      expanded.push({ id: edge.targetId, score: hit.score * 0.5, mode: 'graph-expand' })
+    }
+    for (const edge of graph.getDerived(hit.id)) {
+      if (seen.has(edge.targetId)) continue
+      if (expanded.length >= topK) break
+      seen.add(edge.targetId)
+      expanded.push({ id: edge.targetId, score: hit.score * 0.5, mode: 'graph-expand' })
+    }
+  }
+  const finalCandidates = expanded.slice(0, topK)
+
+  // Build join constraints: for each pair of final candidates where the graph
+  // has a join path, extract the join condition string chain.
+  const joinConstraints: string[] = []
+  const ids = finalCandidates.map(c => c.id)
+  for (let i = 0; i < ids.length; i++) {
+    const a = ids[i]
+    if (a === undefined) continue
+    for (let j = i + 1; j < ids.length; j++) {
+      const b = ids[j]
+      if (b === undefined) continue
+      const path = graph.findJoinPath(a, b)
+      if (path === null || path.length < 2) continue
+      const segs: string[] = []
+      for (let k = 0; k < path.length - 1; k++) {
+        const src = path[k]
+        const dst = path[k + 1]
+        if (src === undefined || dst === undefined) continue
+        const on = graph.getJoinCondition(src, dst)
+        if (on) segs.push(`${src} JOIN ${dst} ON ${on}`)
+      }
+      if (segs.length > 0) joinConstraints.push(segs.join(' ⟶ '))
+    }
+  }
+
+  return { candidates: finalCandidates, join_constraints: joinConstraints }
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
@@ -194,17 +307,33 @@ export function apply(ctx: Context, config: Config = {}): void {
               },
             },
           },
+          join_constraints: {
+            type: 'array',
+            items: { type: 'string' },
+          },
         },
       },
-      render: (_args, value) => [{
-        type: 'text',
-        text: value.candidates.length === 0
-          ? 'No matching data sources found.'
-          : value.candidates
-            .map((c, i) => `${i + 1}. ${c.id} (score ${c.score.toFixed(3)})`
-              + (c.description !== undefined ? ` - ${c.description}` : ''))
-            .join('\n'),
-      }],
+      render: (_args, value) => {
+        const lines: string[] = []
+        if (value.candidates.length === 0) {
+          lines.push('No matching data sources found.')
+        } else {
+          lines.push(
+            ...value.candidates.map((c, i) =>
+              `${i + 1}. ${c.id} (score ${c.score.toFixed(3)})`
+              + (c.description !== undefined ? ` - ${c.description}` : '')
+              + (c.mode === 'graph-expand' ? ' [graph-expand]' : '')),
+          )
+        }
+        if (value.join_constraints !== undefined && value.join_constraints.length > 0) {
+          lines.push('')
+          lines.push('Join constraints:')
+          for (const jc of value.join_constraints) {
+            lines.push(`  • ${jc}`)
+          }
+        }
+        return [{ type: 'text', text: lines.join('\n') }]
+      },
     },
     async execute(args, exec) {
       if (exec.signal.aborted) {
@@ -224,7 +353,9 @@ export function apply(ctx: Context, config: Config = {}): void {
       const retrieval = ctx.get('retrieval') as RetrievalService | undefined
       if (retrieval !== undefined) {
         const hits = await retrieval.retrieve(args.query, { topK, mode: 'hybrid' })
-        return { candidates: hits.map(projectHit) }
+        const candidates = hits.map(projectHit)
+        const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
+        return { candidates: expanded, ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
       // D2e: schema-sourced enriched corpus (dormant until ctx.schema mounts).
       // When the semantic-layer provider is mounted, build/cache an enriched
@@ -238,9 +369,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       const schemaProbe = ctx.get('schema') as { loadRetrievalCorpus?: unknown } | undefined
       if (schemaProbe !== undefined && typeof schemaProbe.loadRetrievalCorpus === 'function') {
         const schema = schemaProbe as SchemaCorpusSource
-        return { candidates: searchDataSources(getEnrichedLinker(schema), args.query, topK) }
+        const candidates = searchDataSources(getEnrichedLinker(schema), args.query, topK)
+        const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
+        return { candidates: expanded, ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
-      return { candidates: searchDataSources(linker, args.query, topK) }
+      const candidates = searchDataSources(linker, args.query, topK)
+      const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
+      return { candidates: expanded, ...(join_constraints.length > 0 ? { join_constraints } : {}) }
     },
   }))
 }

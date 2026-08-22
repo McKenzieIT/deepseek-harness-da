@@ -33,8 +33,10 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import {
   extractSqlCandidate,
   critiqueSql,
+  buildDeclaredJoinPairs,
   type CriticCtx,
   type CriticResult,
+  type RelationGraphLike,
 } from '@deepseek-ai/dsh-nl2sql-engine'
 
 export const name = 'tool-critique-sql'
@@ -61,6 +63,15 @@ export interface CriticCtxProvider {
    * @returns the `CriticCtx`, or `undefined` when the agent has no state.
    */
   forAgent(agentId: string): CriticCtx | undefined
+}
+
+/**
+ * Structural interface for the semantic-layer schema service probed via
+ * `ctx.get('schema')`. Only the `getRelationGraph` method is needed here —
+ * avoids a hard dependency on `@deepseek-ai/dsh-semantic-layer`.
+ */
+interface SchemaServiceLike {
+  getRelationGraph?(): RelationGraphLike
 }
 
 /** A critic finding projected to the model-facing shape (rule, severity, message). */
@@ -216,9 +227,21 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // CriticCtxProvider interface avoids importing the phase-gate Provider.
       const provider = ctx.get('criticCtx') as CriticCtxProvider | undefined
       const agentId = exec.agent !== undefined ? String(exec.agent.id) : undefined
-      const criticCtx = provider !== undefined && agentId !== undefined
+      let criticCtx: CriticCtx = provider !== undefined && agentId !== undefined
         ? (provider.forAgent(agentId) ?? EMPTY_CRITIC_CTX)
         : EMPTY_CRITIC_CTX
+
+      // P3 C2: probe the semantic-layer schema service for a relation graph
+      // and build the declared-join pair set (structural — no static dep on
+      // @deepseek-ai/dsh-semantic-layer). When unavailable, the undeclared_join
+      // rule is simply skipped (declaredJoinPairs stays undefined).
+      const schema = ctx.get('schema') as SchemaServiceLike | undefined
+      const graph = schema?.getRelationGraph?.()
+      if (graph && criticCtx.candidateTables.size > 0) {
+        const declaredJoinPairs = buildDeclaredJoinPairs([...criticCtx.candidateTables], graph)
+        criticCtx = { ...criticCtx, declaredJoinPairs }
+      }
+
       return critiqueSqlResult(sql, criticCtx)
     },
   }))
