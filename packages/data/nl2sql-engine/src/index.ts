@@ -43,6 +43,8 @@ export { EVAL_CASES, FIXTURE_DATA_SOURCES, FIXTURE_EVENT_DEF, type EvalCase, typ
 export { scoreMatch } from './eval/scorer.ts'
 export { JOIN_EVAL_CASES, JOIN_FIXTURE_DS, buildJoinFixtureGraph } from './eval/join-cases.ts'
 export { runComparisonEval, type ComparisonResult } from './eval/comparison-runner.ts'
+export { METRIC_EVAL_CASES, METRIC_FIXTURE_DS } from './eval/metric-cases.ts'
+export { runMetricComparisonEval, type MetricComparisonResult, type MetricEvalResult } from './eval/metric-comparison-runner.ts'
 
 // ── Service shell (bundle-patch capability-plugin mount + ctx.nl2sql seam) ─
 /** Configuration for the nl2sql-engine service (conventions engine name). */

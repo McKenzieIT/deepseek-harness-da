@@ -60,6 +60,8 @@ export interface EvalCase {
   readonly odps?: { readonly sub: string; readonly out: QueryOutcome }
   readonly expected: EvalCaseExpected
   readonly turns: number
+  /** P4 D4: reference date YYYYMMDD passed to the engine's time-param extraction. */
+  readonly today?: string
 }
 
 /** The da-fresh eval case set (~9 representative scenarios). */
