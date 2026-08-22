@@ -57,6 +57,10 @@ import {
   enrichAllDwsTables as enrichAllDwsTablesFromLayer,
   type LlmCall,
 } from './enrichment.ts'
+import { DataSourceRegistry } from './registry.ts'
+import { eventKindPlugin } from './kinds/event-kind.ts'
+import { tableKindPlugin } from './kinds/table-kind.ts'
+import { metricKindPlugin } from './kinds/metric-kind.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
@@ -181,9 +185,17 @@ export class SemanticLayerService extends Service {
   /** G3: injected one-shot LLM call for the semantic relation round (undefined => deterministic round only). */
   private llmCall: LlmCall | undefined
 
+  private readonly registry = new DataSourceRegistry()
+
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
     this.cfg = config
+    for (const p of [eventKindPlugin, tableKindPlugin, metricKindPlugin]) this.registry.register(p)
+  }
+
+  /** The live data-source-kind registry (events/tables/metrics plugins registered at construction). */
+  getRegistry(): DataSourceRegistry {
+    return this.registry
   }
 
   /**
