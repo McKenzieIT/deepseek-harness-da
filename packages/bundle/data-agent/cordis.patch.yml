@@ -122,6 +122,13 @@
           - --maxc-config
           - /Users/mckenzie/.maxc/config_ieu_cdm.yaml.bak
         credMode: sidecar-self
+        # rbi §3 阶段D true-timeout: the DAU query (full event_view
+        # partition scan over 7 days + GET_JSON_OBJECT) takes >60s on real
+        # ODPS, so the Provider Config default 60_000 times out the MCP
+        # tools/call → -32001 → no rows. 300_000 (300s) lets the heavy scan
+        # finish; this is the only timeout knob in the prototype (the
+        # engine-wrapper TimeoutGuard/abort-signal is deferred A1-split).
+        toolCallTimeoutMs: 300000
 #     # ── retrieval / vectorization (P5) ───────────────────────────────────
 #     - id: embedder            # ctx.embedder seam — OPT-IN (P5b shipped @deepseek-ai/dsh-embedder-fakehash default zero-dep + dsh-embedder-http external OpenAI-compat; T2: AGA-embeddings NO, user self-deploys the heavy embedder). Uncomment + mount a provider to register ctx.embedder. Left commented: activation (hybrid-by-default vs the local Bm25Linker) is D2c's evals-driven keep/regress call; an unmounted seam keeps search_data_sources on its Bm25Linker default (no behavior change, P13b 9/9 unaffected).
 #       name: '@deepseek-ai/dsh-embedder-fakehash'
