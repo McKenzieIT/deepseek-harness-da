@@ -1,0 +1,103 @@
+name: game.autoSkill.delete
+event_filter: event = 'game.autoSkill.delete'
+description: '自动战斗删除武将方案选项事件：玩家在自动战斗功能中删除已保存的武将出战方案配置，记录被删除的方案id及角色上下文（角色等级、vip、战力等）。主体粒度为 role_id（单角色），20260729 实测 458 次删除涉及 50 个角色、49 个账号、40 个游戏服。'
+domains:
+- 自定义
+domain: activity
+params_fields:
+  serverId:
+    type: int
+    description: 游戏服id
+  serverName:
+    type: string
+    description: 游戏服名字
+  accountId:
+    type: string
+    description: 账号id
+  roleId:
+    type: int
+    description: 角色id
+  roleName:
+    type: string
+    description: 角色名
+  sex:
+    type: int
+    description: 性别
+  createTime:
+    type: int
+    description: 创角时间
+  onlineTime:
+    type: int
+    description: 上线时间
+  roleLevel:
+    type: int
+    description: 角色等级
+  vipLevel:
+    type: int
+    description: vip等级
+  roleForce:
+    type: int
+    description: 角色战力
+  exp:
+    type: int
+    description: 经验
+  image:
+    type: int
+    description: 看板娘
+  coinList:
+    type: array
+    description: 关键货币列表
+  coinList.gold:
+    type: int
+    description: 充值钻石
+  coinList.sendgold:
+    type: int
+    description: 充值赠送钻石
+  coinList.freegold:
+    type: int
+    description: 免费钻石
+  coinList.diamond:
+    type: int
+    description: 紫金
+  coinList.expCoin:
+    type: int
+    description: 经验卷轴
+  coinList.energy:
+    type: int
+    description: 体力
+  sessionId:
+    type: string
+    description: 会话id
+  logUUID:
+    type: string
+    description: logUUID（日志唯一id）
+  id:
+    type: int
+    description: 方案id
+metrics:
+  game_autoSkill_delete_cnt:
+    expression: COUNT(*)
+    description: 自动战斗删除武将方案选项事件总次数（含重复删除）
+  game_autoSkill_delete_role_uv:
+    expression: COUNT(DISTINCT role_id)
+    description: 触发删除武将方案的去重角色数
+  game_autoSkill_delete_account_uv:
+    expression: COUNT(DISTINCT account_id)
+    description: 触发删除武将方案的去重账号数
+  game_autoSkill_delete_scheme_uv:
+    expression: COUNT(DISTINCT GET_JSON_OBJECT(params,'$.id'))
+    description: 被删除的去重武将方案id数（params.id）
+coverage:
+  scenarios:
+  - 评估自动战斗武将方案删除的整体活跃度与参与广度（次数/角色uv/账号uv）
+  - 通过被删除方案数观察玩家方案配置迭代频率与废弃率
+  limitations:
+  - 仅 ds=20260729 单日 scout 实测，未做全量复核
+  - 默认主体为 role_id；account_id 仅供账号粒度参考
+  - scheme_uv 依赖 params.id 字段完整上报，若日志缺字段则低估
+confirmation:
+  status: analyst_confirmed
+  confirmed_by: scout-verification-2026-07-31
+  confirmed_at: '2026-07-31'
+  note: ds=20260729 实测 cnt=458 role_uv=50 acc_uv=49 server_uv=40，量级合理
+  coverage_status: analyst_confirmed

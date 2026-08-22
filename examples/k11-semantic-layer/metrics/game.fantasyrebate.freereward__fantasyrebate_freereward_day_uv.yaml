@@ -1,0 +1,16 @@
+kind: metric
+name: game.fantasyrebate.freereward__fantasyrebate_freereward_day_uv
+description: 涉及的返利天数数(去重 day；day 标识领取的是第几天奖励)
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.day'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.day')
+    source: game.fantasyrebate.freereward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.fantasyrebate.freereward
+    description: 机械提取自 game.fantasyrebate.freereward 的 metrics 块（key=fantasyrebate_freereward_day_uv）

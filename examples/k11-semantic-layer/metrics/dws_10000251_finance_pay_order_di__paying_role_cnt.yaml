@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_finance_pay_order_di__paying_role_cnt
+description: 付费角色数(成功订单口径,按 role_id 去重)
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: COUNT(DISTINCT CASE WHEN status=1 THEN role_id END)
+  metadata:
+    aggregation: count_distinct
+    field: CASE WHEN status=1 THEN role_id END
+    source: dws_10000251_finance_pay_order_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_finance_pay_order_di
+    description: 机械提取自 dws_10000251_finance_pay_order_di 的 metrics 块（key=paying_role_cnt）

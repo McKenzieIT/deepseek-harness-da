@@ -1,0 +1,16 @@
+kind: metric
+name: game.battlepass.vipLevelup__game_battlepass_vip_levelup_cnt
+description: 战令VIP升级事件总次数
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.battlepass.vipLevelup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.battlepass.vipLevelup
+    description: 机械提取自 game.battlepass.vipLevelup 的 metrics 块（key=game_battlepass_vip_levelup_cnt）

@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_com_pay_order_df__pay_order_cnt
+description: 付费订单总笔数,含所有 pay_type
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(order_id)
+  metadata:
+    aggregation: count
+    field: order_id
+    source: dws_10000251_com_pay_order_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_com_pay_order_df
+    description: 机械提取自 dws_10000251_com_pay_order_df 的 metrics 块（key=pay_order_cnt）

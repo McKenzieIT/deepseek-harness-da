@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_univ_user_fellow_tag_df__first_hit_today_user_cnt
+description: 当天为首次命中的用户数;将 tm 转为 yyyymmdd 与 ds 比对,精确对齐"首次命中发生在快照当天"口径(多层级表,跨层级去重同 tagged_user_cnt 注意)
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT CASE WHEN TO_CHAR(tm,'yyyymmdd')=ds THEN user_id END)
+  metadata:
+    aggregation: count_distinct
+    field: CASE WHEN TO_CHAR(tm,'yyyymmdd')=ds THEN user_id END
+    source: dws_10000251_univ_user_fellow_tag_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_user_fellow_tag_df
+    description: 机械提取自 dws_10000251_univ_user_fellow_tag_df 的 metrics 块（key=first_hit_today_user_cnt）

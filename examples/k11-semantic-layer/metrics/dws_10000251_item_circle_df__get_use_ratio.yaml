@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_item_circle_df__get_use_ratio
+description: 当日获得/使用数量比，反映资源产出与消耗的平衡(>1 净流入)
+domains:
+  - 资源产销
+  - 装备道具
+computation:
+  sql: SUM(get_amt) / NULLIF(SUM(use_amt), 0)
+  metadata:
+    aggregation: sum
+    field: get_amt) / NULLIF(SUM(use_amt), 0
+    source: dws_10000251_item_circle_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_item_circle_df
+    description: 机械提取自 dws_10000251_item_circle_df 的 metrics 块（key=get_use_ratio）

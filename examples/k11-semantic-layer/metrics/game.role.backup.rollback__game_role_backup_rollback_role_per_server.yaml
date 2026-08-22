@@ -1,0 +1,16 @@
+kind: metric
+name: game.role.backup.rollback__game_role_backup_rollback_role_per_server
+description: 单服平均回退角色数（NULLIF 防 0 除）
+domains:
+  - 用户生命周期
+computation:
+  sql: ROUND(CAST(COUNT(DISTINCT role_id) AS DOUBLE) / NULLIF(COUNT(DISTINCT server_id), 0), 2)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: game.role.backup.rollback
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.role.backup.rollback
+    description: 机械提取自 game.role.backup.rollback 的 metrics 块（key=game_role_backup_rollback_role_per_server）

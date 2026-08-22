@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmactivity.skipallbattle__game_charmactivity_skipallbattle_cnt
+description: 跳过所有战斗的日志条数（每次跳过通关行为一条）
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.charmactivity.skipallbattle
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmactivity.skipallbattle
+    description: 机械提取自 game.charmactivity.skipallbattle 的 metrics 块（key=game_charmactivity_skipallbattle_cnt）

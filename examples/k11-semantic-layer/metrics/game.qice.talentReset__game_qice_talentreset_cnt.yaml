@@ -1,0 +1,16 @@
+kind: metric
+name: game.qice.talentReset__game_qice_talentreset_cnt
+description: 奇策潜能重置事件触发次数（按行计，含同一角色多次重置）
+domains:
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.qice.talentReset
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.qice.talentReset
+    description: 机械提取自 game.qice.talentReset 的 metrics 块（key=game_qice_talentreset_cnt）

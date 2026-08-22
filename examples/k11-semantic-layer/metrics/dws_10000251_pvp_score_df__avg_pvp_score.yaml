@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_pvp_score_df__avg_pvp_score
+description: 人均PVP积分(总积分/参与角色数)，刻画PVP玩法的人均参与深度
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(pvp_score) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: sum
+    field: pvp_score) / NULLIF(COUNT(DISTINCT role_id), 0
+    source: dws_10000251_pvp_score_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pvp_score_df
+    description: 机械提取自 dws_10000251_pvp_score_df 的 metrics 块（key=avg_pvp_score）

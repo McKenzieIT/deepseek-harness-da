@@ -1,0 +1,16 @@
+kind: metric
+name: game.qice.missionOnekeyReward__game_qice_missiononekeyreward_cnt
+description: 奇策任务一键领取事件总上报次数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.qice.missionOnekeyReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.qice.missionOnekeyReward
+    description: 机械提取自 game.qice.missionOnekeyReward 的 metrics 块（key=game_qice_missiononekeyreward_cnt）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.artifact.attuned__artifact_attuned_cnt_per_role
+description: 人均兵符鉴定次数（事件次数 / 去重角色数）
+domains:
+  - 角色成长
+computation:
+  sql: ROUND(COUNT(*) * 1.0 / NULLIF(COUNT(DISTINCT role_id), 0), 3)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: game.artifact.attuned
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.artifact.attuned
+    description: 机械提取自 game.artifact.attuned 的 metrics 块（key=artifact_attuned_cnt_per_role）

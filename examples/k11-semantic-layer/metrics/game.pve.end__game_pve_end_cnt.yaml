@@ -1,0 +1,16 @@
+kind: metric
+name: game.pve.end__game_pve_end_cnt
+description: 副本战斗结束事件总次数
+domains:
+  - 战斗关卡
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.pve.end
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.pve.end
+    description: 机械提取自 game.pve.end 的 metrics 块（key=game_pve_end_cnt）

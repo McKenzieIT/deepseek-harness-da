@@ -1,0 +1,16 @@
+kind: metric
+name: game.fantasyknightgift.starreward__game_fantasyknightgift_starreward_server_uv
+description: 触发该事件的去重游戏服数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.fantasyknightgift.starreward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.fantasyknightgift.starreward
+    description: 机械提取自 game.fantasyknightgift.starreward 的 metrics 块（key=game_fantasyknightgift_starreward_server_uv）

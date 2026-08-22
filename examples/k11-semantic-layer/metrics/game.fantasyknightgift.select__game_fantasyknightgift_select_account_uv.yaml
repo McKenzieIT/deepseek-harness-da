@@ -1,0 +1,16 @@
+kind: metric
+name: game.fantasyknightgift.select__game_fantasyknightgift_select_account_uv
+description: 选择武将礼包的去重账号数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.fantasyknightgift.select
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.fantasyknightgift.select
+    description: 机械提取自 game.fantasyknightgift.select 的 metrics 块（key=game_fantasyknightgift_select_account_uv）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.role.online__game_role_online_account_uv
+description: 当日登录游戏服的去重账号数（account_id 粒度，用于账号维度的活跃统计）
+domains:
+  - 用户生命周期
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.role.online
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.role.online
+    description: 机械提取自 game.role.online 的 metrics 块（key=game_role_online_account_uv）

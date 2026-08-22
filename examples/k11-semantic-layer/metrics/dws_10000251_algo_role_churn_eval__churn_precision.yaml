@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_algo_role_churn_eval__churn_precision
+description: 流失预测精确率=TP(预测且实际流失)/预测流失数
+domains:
+  - 用户生命周期
+  - 系统监控
+computation:
+  sql: SUM(CASE WHEN tag=1 AND label=1 THEN 1 ELSE 0 END) / NULLIF(SUM(tag), 0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN tag=1 AND label=1 THEN 1 ELSE 0 END) / NULLIF(SUM(tag), 0
+    source: dws_10000251_algo_role_churn_eval
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_algo_role_churn_eval
+    description: 机械提取自 dws_10000251_algo_role_churn_eval 的 metrics 块（key=churn_precision）

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_progression_charm_df__charm_star_avg
+description: 平均灵器星级（每条培养记录的平均星级，NULLIF 防零除）
+domains:
+  - 角色成长
+  - 装备道具
+computation:
+  sql: SUM(charm_star) / NULLIF(COUNT(*), 0)
+  metadata:
+    aggregation: sum
+    field: charm_star) / NULLIF(COUNT(*), 0
+    source: dws_10000251_progression_charm_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_progression_charm_df
+    description: 机械提取自 dws_10000251_progression_charm_df 的 metrics 块（key=charm_star_avg）

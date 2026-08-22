@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_role_churn_pred_output__actual_churn_rate
+description: 实际流失率（log_str 第5段 y=1 占比，用于回看模型精度/召回）
+domains:
+  - 用户生命周期
+computation:
+  sql: SUM(CAST(SPLIT_PART(log_str, ';', 5) AS DOUBLE)) / NULLIF(COUNT(*), 0)
+  metadata:
+    aggregation: sum
+    field: CAST(SPLIT_PART(log_str, ';', 5) AS DOUBLE)) / NULLIF(COUNT(*), 0
+    source: dws_10000251_role_churn_pred_output
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_churn_pred_output
+    description: 机械提取自 dws_10000251_role_churn_pred_output 的 metrics 块（key=actual_churn_rate）

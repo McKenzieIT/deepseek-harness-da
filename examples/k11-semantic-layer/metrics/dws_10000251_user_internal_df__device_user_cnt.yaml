@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_user_internal_df__device_user_cnt
+description: 设备型(user_type=1)内部用户数(日快照)
+domains:
+  - 系统监控
+  - 用户生命周期
+computation:
+  sql: SUM(IF(user_type=1,1,0))
+  metadata:
+    aggregation: sum
+    field: IF(user_type=1,1,0)
+    source: dws_10000251_user_internal_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_user_internal_df
+    description: 机械提取自 dws_10000251_user_internal_df 的 metrics 块（key=device_user_cnt）

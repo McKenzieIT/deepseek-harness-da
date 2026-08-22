@@ -1,0 +1,16 @@
+kind: metric
+name: game.qice.missionReward__qice_missionReward_server_uv
+description: 领取奇策任务奖励的去重服务器数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.qice.missionReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.qice.missionReward
+    description: 机械提取自 game.qice.missionReward 的 metrics 块（key=qice_missionReward_server_uv）

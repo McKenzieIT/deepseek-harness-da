@@ -1,0 +1,16 @@
+kind: metric
+name: game.rechargeseries.free__game_rechargeseries_free_server_uv
+description: 领取免费奖励的去重游戏服数
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.rechargeseries.free
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.rechargeseries.free
+    description: 机械提取自 game.rechargeseries.free 的 metrics 块（key=game_rechargeseries_free_server_uv）

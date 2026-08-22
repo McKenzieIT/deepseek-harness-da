@@ -1,0 +1,16 @@
+kind: metric
+name: game.knight.awaken__knight_awaken_distinct_node
+description: 觉醒涉及的节点去重数(按nodeId)
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.nodeId'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.nodeId')
+    source: game.knight.awaken
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.knight.awaken
+    description: 机械提取自 game.knight.awaken 的 metrics 块（key=knight_awaken_distinct_node）

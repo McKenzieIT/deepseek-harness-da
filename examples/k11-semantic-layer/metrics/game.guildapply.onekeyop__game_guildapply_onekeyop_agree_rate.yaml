@@ -1,0 +1,16 @@
+kind: metric
+name: game.guildapply.onekeyop__game_guildapply_onekeyop_agree_rate
+description: 同意率，同意操作次数占总审批操作次数的比例
+domains:
+  - 社交公会
+computation:
+  sql: SUM(CASE WHEN GET_JSON_OBJECT(params, '$.op') = '1' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN GET_JSON_OBJECT(params, '$.op') = '1' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0
+    source: game.guildapply.onekeyop
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guildapply.onekeyop
+    description: 机械提取自 game.guildapply.onekeyop 的 metrics 块（key=game_guildapply_onekeyop_agree_rate）

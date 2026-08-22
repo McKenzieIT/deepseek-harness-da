@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_card_pve_act_di__total_part_cnt
+description: 卡牌参与总次数（part_pv汇总）
+domains:
+  - 战斗关卡
+  - 装备道具
+computation:
+  sql: SUM(part_pv)
+  metadata:
+    aggregation: sum
+    field: part_pv
+    source: dws_10000251_card_pve_act_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_card_pve_act_di
+    description: 机械提取自 dws_10000251_card_pve_act_di 的 metrics 块（key=total_part_cnt）

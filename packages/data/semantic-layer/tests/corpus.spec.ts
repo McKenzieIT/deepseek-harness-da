@@ -100,7 +100,7 @@ test('buildRetrievalCorpus does NOT index domain — domain never enters the cor
   // EventCorpusInput deliberately omits `domain`; even an event whose source YAML
   // carried a domain must not see it in the indexed description.
   const events: EventCorpusInput[] = [{ name: 'item.add', description: '道具产出' }]
-  const [item] = buildRetrievalCorpus(events, {})
+  const item = buildRetrievalCorpus(events, {})[0]!
   expect(item.description).toBe('道具产出')
   expect(item.description).not.toContain('付费经济')
 })
@@ -111,14 +111,14 @@ test('buildRetrievalCorpus omits empty param descriptions (field name only) and 
     description: '商城购买',
     params_fields: { count: { description: '' }, gold: {} },
   }]
-  const [item] = buildRetrievalCorpus(events, {})
+  const item = buildRetrievalCorpus(events, {})[0]!
   // field name always indexed; empty/missing descriptions skipped
   expect(item.description).toBe('商城购买 count gold')
 })
 
 test('buildRetrievalCorpus handles events with no description/params/terminology (empty description, not undefined)', () => {
   const events: EventCorpusInput[] = [{ name: 'bare.event' }]
-  const [item] = buildRetrievalCorpus(events, {})
+  const item = buildRetrievalCorpus(events, {})[0]!
   expect(item.id).toBe('bare.event')
   expect(item.description).toBe('')
   expect(item.metrics).toBeUndefined()
@@ -208,7 +208,7 @@ test('buildRetrievalCorpus skips params_fields whose value is not a plain object
     name: 'e',
     params_fields: { good: { description: 'x' }, bad: 'not-an-object', arr: [1, 2] },
   } as unknown as EventCorpusInput]
-  const [item] = buildRetrievalCorpus(events, {})
+  const item = buildRetrievalCorpus(events, {})[0]!
   // only the well-formed field 'good' is indexed; 'bad' + 'arr' skipped
   expect(item.description).toBe('good x')
 })
@@ -267,7 +267,7 @@ test('buildRetrievalCorpus variant="term-only" packs desc + terminology slang bu
     params_fields: { itemId: { description: '道具id' }, count: { description: '数量' } },
   }]
   const term = { 'item.add': ['道具产出', '道具增加'] }
-  const [item] = buildRetrievalCorpus(events, term, 'term-only')
+  const item = buildRetrievalCorpus(events, term, 'term-only')[0]!
   // desc + slang packed
   expect(item.description).toBe('添加道具 道具产出 道具增加')
   // params_fields NOT packed (the term-only drop)

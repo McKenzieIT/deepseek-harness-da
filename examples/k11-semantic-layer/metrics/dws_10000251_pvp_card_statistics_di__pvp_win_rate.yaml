@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_pvp_card_statistics_di__pvp_win_rate
+description: 当日PVP卡牌胜率(胜利/出战)
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(win_times)/NULLIF(SUM(battle_times),0)
+  metadata:
+    aggregation: sum
+    field: win_times)/NULLIF(SUM(battle_times),0
+    source: dws_10000251_pvp_card_statistics_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pvp_card_statistics_di
+    description: 机械提取自 dws_10000251_pvp_card_statistics_di 的 metrics 块（key=pvp_win_rate）

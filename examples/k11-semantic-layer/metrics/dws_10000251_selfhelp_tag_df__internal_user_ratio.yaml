@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_selfhelp_tag_df__internal_user_ratio
+description: 内部用户占比(内部用户数/总UV)
+domains:
+  - 用户生命周期
+  - 系统监控
+computation:
+  sql: SUM(CASE WHEN GET_JSON_OBJECT(udd,'$.internal_user')='是' THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT user_id),0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN GET_JSON_OBJECT(udd,'$.internal_user')='是' THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT user_id),0
+    source: dws_10000251_selfhelp_tag_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_selfhelp_tag_df
+    description: 机械提取自 dws_10000251_selfhelp_tag_df 的 metrics 块（key=internal_user_ratio）

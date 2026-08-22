@@ -1,0 +1,16 @@
+kind: metric
+name: game.equip.lock__game_equip_lock_cnt
+description: 装备锁定/解锁事件总次数
+domains:
+  - 装备道具
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.equip.lock
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.equip.lock
+    description: 机械提取自 game.equip.lock 的 metrics 块（key=game_equip_lock_cnt）

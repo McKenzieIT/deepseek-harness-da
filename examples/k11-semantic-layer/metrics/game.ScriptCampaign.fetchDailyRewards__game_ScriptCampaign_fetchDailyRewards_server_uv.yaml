@@ -1,0 +1,16 @@
+kind: metric
+name: game.ScriptCampaign.fetchDailyRewards__game_ScriptCampaign_fetchDailyRewards_server_uv
+description: 领取每日奖励的去重游戏服数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.ScriptCampaign.fetchDailyRewards
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.ScriptCampaign.fetchDailyRewards
+    description: 机械提取自 game.ScriptCampaign.fetchDailyRewards 的 metrics 块（key=game_ScriptCampaign_fetchDailyRewards_server_uv）

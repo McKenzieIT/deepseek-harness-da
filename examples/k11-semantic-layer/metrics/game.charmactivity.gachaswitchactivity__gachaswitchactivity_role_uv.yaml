@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmactivity.gachaswitchactivity__gachaswitchactivity_role_uv
+description: 切换卡池的独立角色数(去重 role_id；主体粒度为角色)
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.charmactivity.gachaswitchactivity
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmactivity.gachaswitchactivity
+    description: 机械提取自 game.charmactivity.gachaswitchactivity 的 metrics 块（key=gachaswitchactivity_role_uv）

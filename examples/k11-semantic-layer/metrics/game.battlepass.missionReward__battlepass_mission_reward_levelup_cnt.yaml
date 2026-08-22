@@ -1,0 +1,16 @@
+kind: metric
+name: game.battlepass.missionReward__battlepass_mission_reward_levelup_cnt
+description: 领奖直接触发战令等级提升的记录数(newLevel>oldLevel)
+domains:
+  - 角色成长
+computation:
+  sql: SUM(CASE WHEN CAST(GET_JSON_OBJECT(params, '$.newLevel') AS BIGINT) > CAST(GET_JSON_OBJECT(params, '$.oldLevel') AS BIGINT) THEN 1 ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN CAST(GET_JSON_OBJECT(params, '$.newLevel') AS BIGINT) > CAST(GET_JSON_OBJECT(params, '$.oldLevel') AS BIGINT) THEN 1 ELSE 0 END
+    source: game.battlepass.missionReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.battlepass.missionReward
+    description: 机械提取自 game.battlepass.missionReward 的 metrics 块（key=battlepass_mission_reward_levelup_cnt）

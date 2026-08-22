@@ -1,0 +1,16 @@
+kind: metric
+name: game.pve.rank__pve_rank_progress_reward_role_uv
+description: 领取进度奖励的独立角色数(去重 role_id 且 progressOrder 非空)
+domains:
+  - 战斗关卡
+computation:
+  sql: COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params, '$.progressOrder') IS NOT NULL THEN role_id END)
+  metadata:
+    aggregation: count_distinct
+    field: CASE WHEN GET_JSON_OBJECT(params, '$.progressOrder') IS NOT NULL THEN role_id END
+    source: game.pve.rank
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.pve.rank
+    description: 机械提取自 game.pve.rank 的 metrics 块（key=pve_rank_progress_reward_role_uv）

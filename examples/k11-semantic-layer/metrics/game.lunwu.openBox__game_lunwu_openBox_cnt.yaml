@@ -1,0 +1,16 @@
+kind: metric
+name: game.lunwu.openBox__game_lunwu_openBox_cnt
+description: 论武玩法中开启箱子的总次数（日志条数）
+domains:
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.lunwu.openBox
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.lunwu.openBox
+    description: 机械提取自 game.lunwu.openBox 的 metrics 块（key=game_lunwu_openBox_cnt）

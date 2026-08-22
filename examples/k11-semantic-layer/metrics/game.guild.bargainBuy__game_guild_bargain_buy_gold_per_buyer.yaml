@@ -1,0 +1,16 @@
+kind: metric
+name: game.guild.bargainBuy__game_guild_bargain_buy_gold_per_buyer
+description: 砍价购买者人均持有充值钻石(gold)，购买时经济画像（货币快照非收入）
+domains:
+  - 社交公会
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.coinList.gold') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.coinList.gold') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0
+    source: game.guild.bargainBuy
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guild.bargainBuy
+    description: 机械提取自 game.guild.bargainBuy 的 metrics 块（key=game_guild_bargain_buy_gold_per_buyer）

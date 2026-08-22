@@ -1,0 +1,16 @@
+kind: metric
+name: game.role.backup.rollbackAll__rollbackAll_account_uv
+description: 触发全量回退的去重账号数
+domains:
+  - 用户生命周期
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.role.backup.rollbackAll
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.role.backup.rollbackAll
+    description: 机械提取自 game.role.backup.rollbackAll 的 metrics 块（key=rollbackAll_account_uv）

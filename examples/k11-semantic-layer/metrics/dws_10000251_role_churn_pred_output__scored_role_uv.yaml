@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_role_churn_pred_output__scored_role_uv
+description: 单快照评分角色数（每行一 role_id，反映模型覆盖规模；与 scoring 表同源同值）
+domains:
+  - 用户生命周期
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: dws_10000251_role_churn_pred_output
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_churn_pred_output
+    description: 机械提取自 dws_10000251_role_churn_pred_output 的 metrics 块（key=scored_role_uv）

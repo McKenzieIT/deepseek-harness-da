@@ -1,0 +1,16 @@
+kind: metric
+name: game.qice.talentReset__game_qice_talentreset_role_uv
+description: 触发奇策潜能重置的去重角色数（分析主体为 role_id，角色级粒度）
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.qice.talentReset
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.qice.talentReset
+    description: 机械提取自 game.qice.talentReset 的 metrics 块（key=game_qice_talentreset_role_uv）

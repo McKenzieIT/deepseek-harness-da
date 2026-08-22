@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_analysis_card_progression_di__avg_progression_per_role
+description: 人均卡牌养成进度增量（总进度/参与角色数，分母为0返回NULL）
+domains:
+  - 角色成长
+  - 探索收集
+computation:
+  sql: SUM(progre_value) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: sum
+    field: progre_value) / NULLIF(COUNT(DISTINCT role_id), 0
+    source: dws_10000251_analysis_card_progression_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_analysis_card_progression_di
+    description: 机械提取自 dws_10000251_analysis_card_progression_di 的 metrics 块（key=avg_progression_per_role）

@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_role_churn_pred_output__pred_churn_uv
+description: 预测流失角色数（log_str 第4段 tag=1，基于阈值圈选的高风险角色）
+domains:
+  - 用户生命周期
+computation:
+  sql: COUNT_IF(CAST(SPLIT_PART(log_str, ';', 4) AS DOUBLE) = 1.0)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: dws_10000251_role_churn_pred_output
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_churn_pred_output
+    description: 机械提取自 dws_10000251_role_churn_pred_output 的 metrics 块（key=pred_churn_uv）

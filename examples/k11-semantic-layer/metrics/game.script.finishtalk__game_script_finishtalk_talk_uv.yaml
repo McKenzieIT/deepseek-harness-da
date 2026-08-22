@@ -1,0 +1,16 @@
+kind: metric
+name: game.script.finishtalk__game_script_finishtalk_talk_uv
+description: 完成对话涉及的去重对话段数(talkId)
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.talkId'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.talkId')
+    source: game.script.finishtalk
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.script.finishtalk
+    description: 机械提取自 game.script.finishtalk 的 metrics 块（key=game_script_finishtalk_talk_uv）

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_role_prop_df__snapshot_rows
+description: 当日快照总行数；与role_uv相等表示每角色一行，验证_df粒度。
+domains:
+  - 角色成长
+  - 装备道具
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: dws_10000251_role_prop_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_prop_df
+    description: 机械提取自 dws_10000251_role_prop_df 的 metrics 块（key=snapshot_rows）

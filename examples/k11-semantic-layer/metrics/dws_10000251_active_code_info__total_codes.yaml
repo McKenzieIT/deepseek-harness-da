@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_active_code_info__total_codes
+description: 激活码总数（全表聚合，激活码维度）
+domains:
+  - 资源产销
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: dws_10000251_active_code_info
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_active_code_info
+    description: 机械提取自 dws_10000251_active_code_info 的 metrics 块（key=total_codes）

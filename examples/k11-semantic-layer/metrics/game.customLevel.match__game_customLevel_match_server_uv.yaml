@@ -1,0 +1,16 @@
+kind: metric
+name: game.customLevel.match__game_customLevel_match_server_uv
+description: 触发匹配事件的去重游戏服数(server_id)
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.customLevel.match
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.customLevel.match
+    description: 机械提取自 game.customLevel.match 的 metrics 块（key=game_customLevel_match_server_uv）

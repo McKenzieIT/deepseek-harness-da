@@ -1,0 +1,16 @@
+kind: metric
+name: game.achievement.reward__achievement_reward_freegold_sum
+description: 免费钻石奖励发放累计（主奖励货币）
+domains:
+  - 角色成长
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params,'$.coinList.freegold') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params,'$.coinList.freegold') AS BIGINT)
+    source: game.achievement.reward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.achievement.reward
+    description: 机械提取自 game.achievement.reward 的 metrics 块（key=achievement_reward_freegold_sum）

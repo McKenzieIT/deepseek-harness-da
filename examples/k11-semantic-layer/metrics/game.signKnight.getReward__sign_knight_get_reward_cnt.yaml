@@ -1,0 +1,16 @@
+kind: metric
+name: game.signKnight.getReward__sign_knight_get_reward_cnt
+description: 全武将活动领取奖励总次数（全量事件计数）
+domains:
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.signKnight.getReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.signKnight.getReward
+    description: 机械提取自 game.signKnight.getReward 的 metrics 块（key=sign_knight_get_reward_cnt）

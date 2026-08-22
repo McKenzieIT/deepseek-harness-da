@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_pvp_battle_detail_cbt2_di__pvp_atk_uv
+description: 当日参与PVP的攻击方角色数（atk_role_id 去重）
+domains:
+  - 战斗关卡
+computation:
+  sql: COUNT(DISTINCT atk_role_id)
+  metadata:
+    aggregation: count_distinct
+    field: atk_role_id
+    source: dws_10000251_pvp_battle_detail_cbt2_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pvp_battle_detail_cbt2_di
+    description: 机械提取自 dws_10000251_pvp_battle_detail_cbt2_di 的 metrics 块（key=pvp_atk_uv）

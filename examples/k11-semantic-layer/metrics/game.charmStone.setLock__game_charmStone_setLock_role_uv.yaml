@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmStone.setLock__game_charmStone_setLock_role_uv
+description: 触发灵石上锁/解锁的去重角色数（分析主体 role_id）
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.charmStone.setLock
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmStone.setLock
+    description: 机械提取自 game.charmStone.setLock 的 metrics 块（key=game_charmStone_setLock_role_uv）

@@ -1,0 +1,106 @@
+name: game.role.battlepassSign.oneKeyGetReward
+event_filter: event = 'game.role.battlepassSign.oneKeyGetReward'
+description: '角色通过战令(battlepass)签到面板一键领取累积三日奖励时上报的事件，记录领取行为及角色货币/奖励订单快照；主体粒度为 role_id，ds=20260729 单日实测 252 次 / 177 角色 / 174 账号 / 9 服。'
+domains:
+- 用户生命周期
+domain: account
+params_fields:
+  serverId:
+    type: int
+    description: 游戏服id
+  serverName:
+    type: string
+    description: 游戏服名字
+  accountId:
+    type: string
+    description: 账号id
+  roleId:
+    type: int
+    description: 角色id
+  roleName:
+    type: string
+    description: 角色名
+  sex:
+    type: int
+    description: 性别
+  createTime:
+    type: int
+    description: 创角时间
+  onlineTime:
+    type: int
+    description: 上线时间
+  roleLevel:
+    type: int
+    description: 角色等级
+  vipLevel:
+    type: int
+    description: vip等级
+  roleForce:
+    type: int
+    description: 角色战力
+  exp:
+    type: int
+    description: 经验
+  image:
+    type: int
+    description: 看板娘
+  coinList:
+    type: array
+    description: 关键货币列表
+  coinList.gold:
+    type: int
+    description: 充值钻石
+  coinList.sendgold:
+    type: int
+    description: 充值赠送钻石
+  coinList.freegold:
+    type: int
+    description: 免费钻石
+  coinList.diamond:
+    type: int
+    description: 紫金
+  coinList.expCoin:
+    type: int
+    description: 经验卷轴
+  coinList.energy:
+    type: int
+    description: 体力
+  sessionId:
+    type: string
+    description: 会话id
+  logUUID:
+    type: string
+    description: logUUID（日志唯一id）
+  id:
+    type: int
+    description: id
+  getOrders:
+    type: array
+    description: 付费奖励 orders
+metrics:
+  game_role_battlepassSign_oneKeyGetReward_cnt:
+    expression: COUNT(*)
+    description: 一键领取三日奖励事件总次数
+  game_role_battlepassSign_oneKeyGetReward_role_uv:
+    expression: COUNT(DISTINCT role_id)
+    description: 触发一键领取的去重角色数
+  game_role_battlepassSign_oneKeyGetReward_account_uv:
+    expression: COUNT(DISTINCT account_id)
+    description: 触发一键领取的去重账号数
+  game_role_battlepassSign_oneKeyGetReward_server_uv:
+    expression: COUNT(DISTINCT server_id)
+    description: 触发一键领取的去重游戏服数
+coverage:
+  scenarios:
+    - 事件次数、角色/账号/服务器 UV 回答战令签到一键领取功能的活跃度与渗透面
+    - 支撑战令玩法运营与留存评估
+  limitations:
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id
+    - coinList/getOrders 为数组结构未拆解聚合
+confirmation:
+  status: analyst_confirmed
+  confirmed_by: scout-verification-2026-07-31
+  confirmed_at: '2026-07-31'
+  note: 'ds=20260729 scout 实测 cnt=252 / role_uv=177 / acc_uv=174 / server_uv=9，数据合理。'
+  coverage_status: analyst_confirmed

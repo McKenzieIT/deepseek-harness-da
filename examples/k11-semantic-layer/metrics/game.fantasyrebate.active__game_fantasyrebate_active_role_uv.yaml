@@ -1,0 +1,16 @@
+kind: metric
+name: game.fantasyrebate.active__game_fantasyrebate_active_role_uv
+description: 触发激活的去重角色数
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.fantasyrebate.active
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.fantasyrebate.active
+    description: 机械提取自 game.fantasyrebate.active 的 metrics 块（key=game_fantasyrebate_active_role_uv）

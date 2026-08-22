@@ -1,0 +1,16 @@
+kind: metric
+name: game.guild.setMemberJob__guild_set_member_job_server_uv
+description: 覆盖去重服务器数
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.guild.setMemberJob
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guild.setMemberJob
+    description: 机械提取自 game.guild.setMemberJob 的 metrics 块（key=guild_set_member_job_server_uv）

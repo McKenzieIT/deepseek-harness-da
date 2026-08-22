@@ -1,0 +1,16 @@
+kind: metric
+name: game.battlepassDungeon.onekeyReward__battlepass_dungeon_onekey_reward_server_uv
+description: 一键领奖覆盖的游戏服数(去重 server_id)
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.battlepassDungeon.onekeyReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.battlepassDungeon.onekeyReward
+    description: 机械提取自 game.battlepassDungeon.onekeyReward 的 metrics 块（key=battlepass_dungeon_onekey_reward_server_uv）

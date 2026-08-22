@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmStone.changeShape__charm_stone_change_shape_distinct_shape_cnt
+description: 当日被变形至的去重 shape 种类数（对应 charm_stone_shape_info 配置）
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.charmStone.shape'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.charmStone.shape')
+    source: game.charmStone.changeShape
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmStone.changeShape
+    description: 机械提取自 game.charmStone.changeShape 的 metrics 块（key=charm_stone_change_shape_distinct_shape_cnt）

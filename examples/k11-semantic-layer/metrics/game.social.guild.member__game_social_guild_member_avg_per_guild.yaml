@@ -1,0 +1,16 @@
+kind: metric
+name: game.social.guild.member__game_social_guild_member_avg_per_guild
+description: 平均每公会上报成员数（NULLIF 防 0 除）
+domains:
+  - 社交公会
+computation:
+  sql: ROUND(CAST(SUM(REGEXP_COUNT(params,'"uid":')) AS DOUBLE) / NULLIF(COUNT(*), 0), 2)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: game.social.guild.member
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.social.guild.member
+    description: 机械提取自 game.social.guild.member 的 metrics 块（key=game_social_guild_member_avg_per_guild）

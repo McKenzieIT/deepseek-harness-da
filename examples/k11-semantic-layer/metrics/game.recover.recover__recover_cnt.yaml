@@ -1,0 +1,16 @@
+kind: metric
+name: game.recover.recover__recover_cnt
+description: 恢复事件总次数（所有恢复性资源恢复上报条数）
+domains:
+  - 资源产销
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.recover.recover
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.recover.recover
+    description: 机械提取自 game.recover.recover 的 metrics 块（key=recover_cnt）

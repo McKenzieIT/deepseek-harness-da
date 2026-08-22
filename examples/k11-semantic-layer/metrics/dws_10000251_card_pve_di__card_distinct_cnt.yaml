@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_card_pve_di__card_distinct_cnt
+description: 被使用的卡牌种类数
+domains:
+  - 战斗关卡
+  - 装备道具
+computation:
+  sql: COUNT(DISTINCT card_id)
+  metadata:
+    aggregation: count_distinct
+    field: card_id
+    source: dws_10000251_card_pve_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_card_pve_di
+    description: 机械提取自 dws_10000251_card_pve_di 的 metrics 块（key=card_distinct_cnt）

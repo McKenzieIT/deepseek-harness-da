@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_pvp_score_di__daily_total_add_score
+description: 当日全服PVP新增积分总量(正向流动)，衡量竞技活跃强度
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(add_score)
+  metadata:
+    aggregation: sum
+    field: add_score
+    source: dws_10000251_pvp_score_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pvp_score_di
+    description: 机械提取自 dws_10000251_pvp_score_di 的 metrics 块（key=daily_total_add_score）

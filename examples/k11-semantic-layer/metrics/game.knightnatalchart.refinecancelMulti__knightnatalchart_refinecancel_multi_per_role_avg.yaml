@@ -1,0 +1,16 @@
+kind: metric
+name: game.knightnatalchart.refinecancelMulti__knightnatalchart_refinecancel_multi_per_role_avg
+description: 平均每个参与角色触发精炼取消的次数
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(*) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: count
+    field: "*) / NULLIF(COUNT(DISTINCT role_id), 0"
+    source: game.knightnatalchart.refinecancelMulti
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.knightnatalchart.refinecancelMulti
+    description: 机械提取自 game.knightnatalchart.refinecancelMulti 的 metrics 块（key=knightnatalchart_refinecancel_multi_per_role_avg）

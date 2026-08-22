@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_univ_user_fellow_tag_df__distinct_rule_cnt
+description: 当日命中的不同规则数;rule_id 为逗号串时本指标为近似口径(按整串去重),精确统计需 SPLIT_TO_ROW 拆分后再 COUNT DISTINCT
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT rule_id)
+  metadata:
+    aggregation: count_distinct
+    field: rule_id
+    source: dws_10000251_univ_user_fellow_tag_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_user_fellow_tag_df
+    description: 机械提取自 dws_10000251_univ_user_fellow_tag_df 的 metrics 块（key=distinct_rule_cnt）

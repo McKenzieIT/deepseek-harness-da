@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_lineup_pve_di__participate_uv
+description: 参与PVE阵容玩法的角色数(UV)
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: dws_10000251_lineup_pve_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_lineup_pve_di
+    description: 机械提取自 dws_10000251_lineup_pve_di 的 metrics 块（key=participate_uv）

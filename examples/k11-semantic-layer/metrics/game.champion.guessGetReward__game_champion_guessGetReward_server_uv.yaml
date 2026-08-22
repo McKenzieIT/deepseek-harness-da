@@ -1,0 +1,16 @@
+kind: metric
+name: game.champion.guessGetReward__game_champion_guessGetReward_server_uv
+description: 去重涉及游戏服数
+domains:
+  - 战斗关卡
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.champion.guessGetReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.champion.guessGetReward
+    description: 机械提取自 game.champion.guessGetReward 的 metrics 块（key=game_champion_guessGetReward_server_uv）

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_public_sentiment_df__total_reply
+description: 总回复人数，快照内所有内容回复量之和
+domains:
+  - 系统监控
+  - 社交公会
+computation:
+  sql: SUM(reply_cnt)
+  metadata:
+    aggregation: sum
+    field: reply_cnt
+    source: dws_10000251_public_sentiment_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_public_sentiment_df
+    description: 机械提取自 dws_10000251_public_sentiment_df 的 metrics 块（key=total_reply）

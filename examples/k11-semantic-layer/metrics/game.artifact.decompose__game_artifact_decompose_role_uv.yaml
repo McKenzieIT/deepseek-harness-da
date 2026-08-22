@@ -1,0 +1,16 @@
+kind: metric
+name: game.artifact.decompose__game_artifact_decompose_role_uv
+description: 触发兵符分解的去重角色数
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.artifact.decompose
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.artifact.decompose
+    description: 机械提取自 game.artifact.decompose 的 metrics 块（key=game_artifact_decompose_role_uv）

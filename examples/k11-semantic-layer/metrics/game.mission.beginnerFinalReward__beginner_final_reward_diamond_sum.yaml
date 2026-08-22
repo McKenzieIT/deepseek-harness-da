@@ -1,0 +1,16 @@
+kind: metric
+name: game.mission.beginnerFinalReward__beginner_final_reward_diamond_sum
+description: 养成任务组最终奖励涉及紫金总量
+domains:
+  - 角色成长
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.coinList.diamond') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.coinList.diamond') AS BIGINT)
+    source: game.mission.beginnerFinalReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.mission.beginnerFinalReward
+    description: 机械提取自 game.mission.beginnerFinalReward 的 metrics 块（key=beginner_final_reward_diamond_sum）

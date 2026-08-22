@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_role_act_mi__role_pay_amt_total
+description: 角色月累计付费金额（元），pay_amt 求和
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: SUM(pay_amt)
+  metadata:
+    aggregation: sum
+    field: pay_amt
+    source: dws_10000251_univ_role_act_mi
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_role_act_mi
+    description: 机械提取自 dws_10000251_univ_role_act_mi 的 metrics 块（key=role_pay_amt_total）

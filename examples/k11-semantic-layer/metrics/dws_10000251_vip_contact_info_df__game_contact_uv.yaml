@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_vip_contact_info_df__game_contact_uv
+description: 游戏内已建联VIP账号数
+domains:
+  - 用户生命周期
+computation:
+  sql: COUNT(DISTINCT CASE WHEN is_game_contact=1 THEN account_id END)
+  metadata:
+    aggregation: count_distinct
+    field: CASE WHEN is_game_contact=1 THEN account_id END
+    source: dws_10000251_vip_contact_info_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_vip_contact_info_df
+    description: 机械提取自 dws_10000251_vip_contact_info_df 的 metrics 块（key=game_contact_uv）

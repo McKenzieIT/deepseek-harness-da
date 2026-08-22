@@ -1,0 +1,16 @@
+kind: metric
+name: game.fish.activeCollectTotalLevel__game_fish_activeCollectTotalLevel_role_uv
+description: 参与一键领取图鉴总等级奖励的去重角色数(主体粒度)
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.fish.activeCollectTotalLevel
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.fish.activeCollectTotalLevel
+    description: 机械提取自 game.fish.activeCollectTotalLevel 的 metrics 块（key=game_fish_activeCollectTotalLevel_role_uv）

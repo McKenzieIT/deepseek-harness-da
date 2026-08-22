@@ -1,0 +1,137 @@
+scope_id: '10000251'
+version: '1.0'
+terminology:
+- slang: 日活 / DAU
+  standard_concept: 日活跃用户 active_users(daily)
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_act_di
+    - dws_10000251_univ_acc_act_di
+    fields:
+    - act
+  definition: 统计日内有活跃标记(act=1)的独立主体数。需先确认角色/账号/设备口径。
+- slang: 氪金 / 充值 / 付费
+  standard_concept: 充值 recharge
+  maps_to:
+    events:
+    - game.recharge
+    tables:
+    - dws_10000251_univ_role_act_di
+    - dws_10000251_com_pay_order_di
+    fields:
+    - pay_amt
+    - money
+    - moneyType
+    - pay_type
+  definition: 玩家真实付费行为。**真实营收只计现金**(事件 game.recharge 的 moneyType=1、DWS 表 com_pay_order_di/finance_pay_order_di 的 pay_type=1)，用户2026-07-22直接确认：现金券类档位(moneyType=2「现金券」、pay_type=2「付费代金券」/3「免费代金券」)均不计入营收——付费代金券的现金收入已在购买代金券时计入别处，免费代金券本就非付费。com_pay_order_di.pay_amt
+    单位为分需/100转元；univ_role_act_di.pay_amt 单位为元。同族游戏10000329实测另有 pay_type=4(限时代金券)，10000251截至2026-07-22抽样日未观测到，不排除后续出现。
+- slang: 留存
+  standard_concept: 留存 retention
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_act_di
+    fields:
+    - act
+    - act_fst
+  definition: 次日留存=新增日次日仍活跃的用户比例。需 act_fst=1 标记新增用户。
+- slang: 新增 / 新增用户 / 新注册
+  standard_concept: 新增用户
+  maps_to:
+    events:
+    - game.role.create
+    tables:
+    - dws_10000251_univ_role_act_di
+    fields:
+    - act_fst
+  definition: 事件为单次创角明细(game.role.create，已确认存在)；DWS 表按角色粒度提供当日新增数聚合(SUM(act_fst))。同族游戏10000329同源。
+- slang: 货币变动
+  standard_concept: 货币产出与消耗
+  maps_to:
+    events:
+    - game.coin.change
+    tables: []
+  definition: 事件为单笔明细(game.coin.change，已确认存在于 resource 域)。暂未确认对应 DWS 聚合表。
+- slang: ARPU / ARPPU
+  standard_concept: 人均收入 / 付费人均收入
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_tag_df
+    fields:
+    - pay_amt_std
+  definition: univ_role_tag_df.pay_amt_std(累计付费金额)列已确认存在，但 ARPU/ARPPU 表达式尚未写入 metrics 字段(session18 已核对列存在性，未逐条验证聚合口径)。
+- slang: 流失
+  standard_concept: 流失用户
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_tag_df
+    fields:
+    - act_ymd_diff
+  definition: univ_role_tag_df.act_ymd_diff(最近两次活跃间隔)列已确认存在，可用于识别流失(如 act_ymd_diff>=60天)，具体阈值需业务确认。
+- slang: LTV
+  standard_concept: 用户生命周期价值
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_tag_df
+    fields:
+    - pay_amt_f1d
+    - pay_amt_f7d
+    - pay_amt_f30d
+  definition: univ_role_tag_df 的 pay_amt_fXd 系列字段(以新增日为基准的累计首X日付费)已确认存在，字段名与参考游戏(10000312)逐一相同。
+- slang: 回流 / 回归
+  standard_concept: 回归用户
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_tag_df
+    fields:
+    - act_ymd_diff
+  definition: 10000251 无 react 回流标记列(比参考游戏 10000312 同名表少 react/act_dur2/web_pay_amt 三列，见 univ_role_act_di 注意事项)，改用 univ_role_tag_df.act_ymd_diff(距上次活跃天数，实测=DATEDIFF语义)识别回流。"回流"阈值(流失几天后重新活跃)因业务而异，需先向用户确认、不可硬编码(见 golden_047 disambiguation 口径)。
+- slang: 白嫖 / 免费玩家 / 零氪
+  standard_concept: 非付费用户 non-paying user
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_act_di
+    fields:
+    - pay
+  definition: 统计周期内无任何真实充值(pay=0)的角色；与"付费用户"(pay=1)互补，字段已确认存在。
+- slang: MAU / 月活
+  standard_concept: 月活跃用户(自然月)
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_act_di
+  definition: 严格自然月 MAU = COUNT(DISTINCT user_id) FROM univ_role_act_di WHERE ds 落在目标日历月 AND act=1；需扫该月全部 ds 分区去重，不能用 SUM(dau)
+    按日累加。表结构已确认与参考游戏(10000312)一致，具体聚合口径未逐条验证。
+- slang: 首充 / 首次充值
+  standard_concept: 首次充值 first recharge
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_act_di
+    - dws_10000251_univ_role_tag_df
+    fields:
+    - pay_fst
+    - pay_tm_fst
+    - pay_amt_f1d
+  definition: 首充=玩家第一次真实付费行为。act_di.pay_fst(首次付费标记) 识别首充日；tag_df.pay_tm_fst(首次付费时间) + pay_amt_f1d(首日付费金额) 用于分析。
+- slang: 道具变动
+  standard_concept: 道具产出与消耗
+  maps_to:
+    events:
+    - game.item.change
+    tables: []
+  definition: 事件为单笔明细(game.item.change，已确认存在)。暂未确认对应 DWS 聚合表。
+- slang: 付费率
+  standard_concept: 付费转化率
+  maps_to:
+    tables:
+    - dws_10000251_univ_role_act_di
+    fields:
+    - pay
+    - act
+  definition: 付费率=付费角色数/活跃角色数。SUM(pay)/SUM(act)，字段已确认存在且 metrics 已移植。
+- slang: 副本 / 地下城
+  standard_concept: 副本挑战
+  maps_to:
+    events:
+    - game.DungeonOnkeyPass.begin
+    - game.DungeonOnkeyPass.end
+    tables: []
+  definition: 副本挑战开始/结束事件(已确认存在于 activity 域)。暂无对应 DWS 聚合表。

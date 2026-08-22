@@ -1,0 +1,16 @@
+kind: metric
+name: game.champion.guess__game_champion_guess_atk_side_cnt
+description: 攻方(side=0)事件条数
+domains:
+  - 战斗关卡
+computation:
+  sql: SUM(CASE WHEN GET_JSON_OBJECT(params, '$.side') = '0' THEN 1 ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN GET_JSON_OBJECT(params, '$.side') = '0' THEN 1 ELSE 0 END
+    source: game.champion.guess
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.champion.guess
+    description: 机械提取自 game.champion.guess 的 metrics 块（key=game_champion_guess_atk_side_cnt）

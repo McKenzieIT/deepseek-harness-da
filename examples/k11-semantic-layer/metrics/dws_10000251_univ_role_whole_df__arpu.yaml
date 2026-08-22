@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_role_whole_df__arpu
+description: 活跃角色 ARPU(累计付费总额/活跃角色数,单位:元/角色)
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: SUM(pay_amt_std) * 1.0 / NULLIF(COUNT(DISTINCT user_id), 0)
+  metadata:
+    aggregation: sum
+    field: pay_amt_std) * 1.0 / NULLIF(COUNT(DISTINCT user_id), 0
+    source: dws_10000251_univ_role_whole_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_role_whole_df
+    description: 机械提取自 dws_10000251_univ_role_whole_df 的 metrics 块（key=arpu）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.artifact.reinforce__game_artifact_reinforce_avg_cnt_per_role
+description: 参与角色的平均强化次数（强化次数总和 / 去重角色数，分母为0返回NULL）
+domains:
+  - 角色成长
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.count') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.count') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0
+    source: game.artifact.reinforce
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.artifact.reinforce
+    description: 机械提取自 game.artifact.reinforce 的 metrics 块（key=game_artifact_reinforce_avg_cnt_per_role）

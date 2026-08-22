@@ -1,0 +1,116 @@
+name: game.autoSkill.setItem
+event_filter: event = 'game.autoSkill.setItem'
+description: '自动战斗方案设置事件：玩家在自动战斗功能中配置武将技能释放方案（含方案id、技能group、触发条件、目标）。主体粒度为 role_id（角色级日志，附带 account_id/server_id）。ds=20260729 单日 scout 实测 1016911 条事件、4270 角色、4031 账号、467 服。'
+domains:
+- 自定义
+domain: activity
+params_fields:
+  serverId:
+    type: int
+    description: 游戏服id
+  serverName:
+    type: string
+    description: 游戏服名字
+  accountId:
+    type: string
+    description: 账号id
+  roleId:
+    type: int
+    description: 角色id
+  roleName:
+    type: string
+    description: 角色名
+  sex:
+    type: int
+    description: 性别
+  createTime:
+    type: int
+    description: 创角时间
+  onlineTime:
+    type: int
+    description: 上线时间
+  roleLevel:
+    type: int
+    description: 角色等级
+  vipLevel:
+    type: int
+    description: vip等级
+  roleForce:
+    type: int
+    description: 角色战力
+  exp:
+    type: int
+    description: 经验
+  image:
+    type: int
+    description: 看板娘
+  coinList:
+    type: array
+    description: 关键货币列表
+  coinList.gold:
+    type: int
+    description: 充值钻石
+  coinList.sendgold:
+    type: int
+    description: 充值赠送钻石
+  coinList.freegold:
+    type: int
+    description: 免费钻石
+  coinList.diamond:
+    type: int
+    description: 紫金
+  coinList.expCoin:
+    type: int
+    description: 经验卷轴
+  coinList.energy:
+    type: int
+    description: 体力
+  sessionId:
+    type: string
+    description: 会话id
+  logUUID:
+    type: string
+    description: logUUID（日志唯一id）
+  id:
+    type: int
+    description: 方案id
+  items:
+    type: array
+    description: 选项列表
+  items.skillGroup:
+    type: int
+    description: 技能group
+  items.condition:
+    type: array
+    description: 条件
+  items.target:
+    type: int
+    description: 目标
+metrics:
+  game_autoSkill_setItem_cnt:
+    expression: COUNT(*)
+    description: 自动战斗方案设置事件总次数（含同一角色多次设置/切换方案）
+  game_autoSkill_setItem_role_uv:
+    expression: COUNT(DISTINCT role_id)
+    description: 触发自动战斗方案设置的去重角色数（主体粒度 role_id）
+  game_autoSkill_setItem_account_uv:
+    expression: COUNT(DISTINCT account_id)
+    description: 触发自动战斗方案设置的去重账号数
+  game_autoSkill_setItem_scheme_uv:
+    expression: COUNT(DISTINCT GET_JSON_OBJECT(params,'$.id'))
+    description: 被设置的去重方案id数（方案id 即 params.id）
+coverage:
+  scenarios:
+    - 评估自动战斗功能的使用广度（role_uv/account_uv）与使用深度（cnt/人均次数）
+    - 监测玩家采纳的方案id分布，识别热门自动战斗方案
+    - 分服维度（server_id）观察自动战斗方案配置活跃度
+  limitations:
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id；同一角色多次切换方案会使 cnt 膨胀，分析活跃度时建议结合 role_uv
+    - params.items 为数组（技能group/condition/target），未展开为明细行，方案内选项级度量需另行解析
+confirmation:
+  status: analyst_confirmed
+  confirmed_by: scout-verification-2026-07-31
+  confirmed_at: "2026-07-31"
+  note: 'ds=20260729 scout: cnt=1016911, role_uv=4270, acc_uv=4031, server_uv=467。数值合理（角色级高频操作事件），予以 analyst_confirmed。'
+  coverage_status: analyst_confirmed

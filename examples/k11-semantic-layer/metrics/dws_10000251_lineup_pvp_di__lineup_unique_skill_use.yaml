@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_lineup_pvp_di__lineup_unique_skill_use
+description: 当日携带超绝使用总次数，日增量口径。
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(unique_skill_pv)
+  metadata:
+    aggregation: sum
+    field: unique_skill_pv
+    source: dws_10000251_lineup_pvp_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_lineup_pvp_di
+    description: 机械提取自 dws_10000251_lineup_pvp_di 的 metrics 块（key=lineup_unique_skill_use）

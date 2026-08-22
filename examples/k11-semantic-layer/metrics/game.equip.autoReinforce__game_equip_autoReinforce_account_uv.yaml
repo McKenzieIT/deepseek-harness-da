@@ -1,0 +1,16 @@
+kind: metric
+name: game.equip.autoReinforce__game_equip_autoReinforce_account_uv
+description: 触发自动强化的账号去重数
+domains:
+  - 装备道具
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.equip.autoReinforce
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.equip.autoReinforce
+    description: 机械提取自 game.equip.autoReinforce 的 metrics 块（key=game_equip_autoReinforce_account_uv）

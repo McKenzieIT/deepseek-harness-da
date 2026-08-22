@@ -1,0 +1,16 @@
+kind: metric
+name: game.pve.end__game_pve_end_win_rate
+description: 副本胜率（胜利次数/总场次）
+domains:
+  - 战斗关卡
+computation:
+  sql: SUM(CASE WHEN GET_JSON_OBJECT(params,'$.battleRes') = '1' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN GET_JSON_OBJECT(params,'$.battleRes') = '1' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0
+    source: game.pve.end
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.pve.end
+    description: 机械提取自 game.pve.end 的 metrics 块（key=game_pve_end_win_rate）

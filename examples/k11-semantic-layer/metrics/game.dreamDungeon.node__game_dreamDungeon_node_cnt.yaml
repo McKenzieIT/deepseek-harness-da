@@ -1,0 +1,16 @@
+kind: metric
+name: game.dreamDungeon.node__game_dreamDungeon_node_cnt
+description: 梦境副本节点事件总触发次数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.dreamDungeon.node
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.dreamDungeon.node
+    description: 机械提取自 game.dreamDungeon.node 的 metrics 块（key=game_dreamDungeon_node_cnt）

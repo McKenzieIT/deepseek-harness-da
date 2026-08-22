@@ -1,0 +1,16 @@
+kind: metric
+name: game.equip.onekeyUnwear__equip_onekey_unwear_per_role_cnt
+description: 人均触发次数 = 总次数 / 去重角色数（分母为 0 时返回 NULL）
+domains:
+  - 装备道具
+computation:
+  sql: CASE WHEN COUNT(DISTINCT role_id) = 0 THEN NULL ELSE COUNT(*) * 1.0 / NULLIF(COUNT(DISTINCT role_id), 0) END
+  metadata:
+    aggregation: ""
+    field: ""
+    source: game.equip.onekeyUnwear
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.equip.onekeyUnwear
+    description: 机械提取自 game.equip.onekeyUnwear 的 metrics 块（key=equip_onekey_unwear_per_role_cnt）

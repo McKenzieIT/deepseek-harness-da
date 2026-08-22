@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_risk_role_identification_df__risk_role_ratio
+description: 风险角色占比（risk_level>=2 角色数 / 总角色数，NULLIF 防除零）
+domains:
+  - 系统监控
+computation:
+  sql: ROUND(COUNT(DISTINCT CASE WHEN risk_level >= 2 THEN user_id END) * 1.0 / NULLIF(COUNT(DISTINCT user_id), 0), 4)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: dws_10000251_risk_role_identification_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_risk_role_identification_df
+    description: 机械提取自 dws_10000251_risk_role_identification_df 的 metrics 块（key=risk_role_ratio）

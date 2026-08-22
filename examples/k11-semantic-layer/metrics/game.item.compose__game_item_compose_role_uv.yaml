@@ -1,0 +1,16 @@
+kind: metric
+name: game.item.compose__game_item_compose_role_uv
+description: 参与道具合成的去重角色数
+domains:
+  - 装备道具
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.item.compose
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.item.compose
+    description: 机械提取自 game.item.compose 的 metrics 块（key=game_item_compose_role_uv）

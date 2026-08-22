@@ -1,0 +1,16 @@
+kind: metric
+name: game.battlepass.monthlevelup__battlepass_monthlevelup_buyupgrade_cnt
+description: 通过购买升级行为(action=2)的等级提升次数
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(CASE WHEN CAST(GET_JSON_OBJECT(params,'$.action') AS INT) = 2 THEN 1 END)
+  metadata:
+    aggregation: count
+    field: CASE WHEN CAST(GET_JSON_OBJECT(params,'$.action') AS INT) = 2 THEN 1 END
+    source: game.battlepass.monthlevelup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.battlepass.monthlevelup
+    description: 机械提取自 game.battlepass.monthlevelup 的 metrics 块（key=battlepass_monthlevelup_buyupgrade_cnt）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.group.battle__group_battle_play_type_uv
+description: 当日参与组队战斗的玩法类型数（playType 去重）
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.playType'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.playType')
+    source: game.group.battle
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.group.battle
+    description: 机械提取自 game.group.battle 的 metrics 块（key=group_battle_play_type_uv）

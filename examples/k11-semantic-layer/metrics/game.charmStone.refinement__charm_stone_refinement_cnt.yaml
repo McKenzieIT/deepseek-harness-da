@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmStone.refinement__charm_stone_refinement_cnt
+description: 灵石洗练操作总记录数
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.charmStone.refinement
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmStone.refinement
+    description: 机械提取自 game.charmStone.refinement 的 metrics 块（key=charm_stone_refinement_cnt）

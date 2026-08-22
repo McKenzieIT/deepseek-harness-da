@@ -1,0 +1,16 @@
+kind: metric
+name: game.battlepass.levelup__battlepass_levelup_role_uv
+description: 触发战令升级的去重角色数（分析主体粒度）
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.battlepass.levelup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.battlepass.levelup
+    description: 机械提取自 game.battlepass.levelup 的 metrics 块（key=battlepass_levelup_role_uv）

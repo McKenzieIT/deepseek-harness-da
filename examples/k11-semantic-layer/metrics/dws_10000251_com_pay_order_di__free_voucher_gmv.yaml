@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_com_pay_order_di__free_voucher_gmv
+description: 免费代金券(pay_type=3)订单金额合计,单位元(系统赠送,不计入营收)
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: SUM(CASE WHEN pay_type=3 THEN pay_amt ELSE 0 END)/100.0
+  metadata:
+    aggregation: ""
+    field: ""
+    source: dws_10000251_com_pay_order_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_com_pay_order_di
+    description: 机械提取自 dws_10000251_com_pay_order_di 的 metrics 块（key=free_voucher_gmv）
