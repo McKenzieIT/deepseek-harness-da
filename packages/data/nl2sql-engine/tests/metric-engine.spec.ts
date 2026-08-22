@@ -153,3 +153,14 @@ test('D3 — buildPrompt renders the metric-context section when metricContext i
   expect(p).toContain('已知指标定义（请基于此规则构建查询）')
   expect(p).toContain('COUNT(DISTINCT user_id)')
 })
+
+test('D2-e2e — Level 2.5 declines (no unpartitioned scan) when time params cannot be extracted', async () => {
+  const llm = new ReplayLlm({})
+  const odps = new StandInOdps({}) // should never be reached
+  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'] })
+  // 'DAU是多少' has no time word + no today => extractTimeParams returns {} =>
+  // the ds-required guard declines instead of running a full-table scan.
+  const r = await eng.run({ question: 'DAU是多少' })
+  expect(r.decline).toBe(true)
+  expect(r.reason ?? '').toContain('未分区扫描')
+})
