@@ -1,0 +1,16 @@
+kind: metric
+name: game.homelandGoodPlace.reward__game_homelandGoodPlace_reward_account_uv
+description: 家园宝地领奖触达账号数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.homelandGoodPlace.reward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.homelandGoodPlace.reward
+    description: 机械提取自 game.homelandGoodPlace.reward 的 metrics 块（key=game_homelandGoodPlace_reward_account_uv）

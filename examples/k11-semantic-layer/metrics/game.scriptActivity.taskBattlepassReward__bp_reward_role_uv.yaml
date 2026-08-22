@@ -1,0 +1,16 @@
+kind: metric
+name: game.scriptActivity.taskBattlepassReward__bp_reward_role_uv
+description: 领取战令奖励的去重角色数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.scriptActivity.taskBattlepassReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.scriptActivity.taskBattlepassReward
+    description: 机械提取自 game.scriptActivity.taskBattlepassReward 的 metrics 块（key=bp_reward_role_uv）

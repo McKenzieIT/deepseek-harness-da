@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmactivity.skipallbattle__game_charmactivity_skipallbattle_role_uv
+description: 触发跳过战斗的角色去重数（分析主体粒度 role_id）
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.charmactivity.skipallbattle
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmactivity.skipallbattle
+    description: 机械提取自 game.charmactivity.skipallbattle 的 metrics 块（key=game_charmactivity_skipallbattle_role_uv）

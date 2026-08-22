@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_role_pvp_feature_di__arena_total_battles
+description: 同步PVP当日总场次
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(arena_battle_times)
+  metadata:
+    aggregation: sum
+    field: arena_battle_times
+    source: dws_10000251_role_pvp_feature_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_pvp_feature_di
+    description: 机械提取自 dws_10000251_role_pvp_feature_di 的 metrics 块（key=arena_total_battles）

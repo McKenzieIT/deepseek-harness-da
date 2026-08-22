@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_acc_act_di__avg_act_dur
+description: 人均活跃时长(秒),按活跃账号平均的活跃时长
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: AVG(act_dur)
+  metadata:
+    aggregation: avg
+    field: act_dur
+    source: dws_10000251_univ_acc_act_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_acc_act_di
+    description: 机械提取自 dws_10000251_univ_acc_act_di 的 metrics 块（key=avg_act_dur）

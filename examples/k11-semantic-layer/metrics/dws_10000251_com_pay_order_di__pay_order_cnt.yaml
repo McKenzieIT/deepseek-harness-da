@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_com_pay_order_di__pay_order_cnt
+description: 当日付费成功订单总数
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: COUNT(order_id)
+  metadata:
+    aggregation: count
+    field: order_id
+    source: dws_10000251_com_pay_order_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_com_pay_order_di
+    description: 机械提取自 dws_10000251_com_pay_order_di 的 metrics 块（key=pay_order_cnt）

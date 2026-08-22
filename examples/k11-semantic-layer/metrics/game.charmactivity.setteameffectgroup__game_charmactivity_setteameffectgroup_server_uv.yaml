@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmactivity.setteameffectgroup__game_charmactivity_setteameffectgroup_server_uv
+description: 触发该事件的不重复游戏服数
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.charmactivity.setteameffectgroup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmactivity.setteameffectgroup
+    description: 机械提取自 game.charmactivity.setteameffectgroup 的 metrics 块（key=game_charmactivity_setteameffectgroup_server_uv）

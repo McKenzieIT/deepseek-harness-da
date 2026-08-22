@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_com_activity_df__activity_pay_acc_uv
+description: 活动付费账号 UV（去重账号数，_df 快照当日）
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: dws_10000251_com_activity_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_com_activity_df
+    description: 机械提取自 dws_10000251_com_activity_df 的 metrics 块（key=activity_pay_acc_uv）

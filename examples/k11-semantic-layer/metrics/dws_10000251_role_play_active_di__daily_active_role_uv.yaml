@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_role_play_active_di__daily_active_role_uv
+description: 日活角色数（按 role_id 去重），衡量当日参与上手/循环玩法的活跃角色规模
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: dws_10000251_role_play_active_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_play_active_di
+    description: 机械提取自 dws_10000251_role_play_active_di 的 metrics 块（key=daily_active_role_uv）

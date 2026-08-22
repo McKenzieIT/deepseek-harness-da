@@ -1,0 +1,16 @@
+kind: metric
+name: game.charge.purchase__charge_purchase_role_uv
+description: 充值购买独立角色数(去重 role_id，分析主体)
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.charge.purchase
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charge.purchase
+    description: 机械提取自 game.charge.purchase 的 metrics 块（key=charge_purchase_role_uv）

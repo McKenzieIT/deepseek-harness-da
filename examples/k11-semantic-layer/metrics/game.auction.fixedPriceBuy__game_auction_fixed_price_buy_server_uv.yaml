@@ -1,0 +1,16 @@
+kind: metric
+name: game.auction.fixedPriceBuy__game_auction_fixed_price_buy_server_uv
+description: 触发一口价购买的去重游戏服数
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.auction.fixedPriceBuy
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.auction.fixedPriceBuy
+    description: 机械提取自 game.auction.fixedPriceBuy 的 metrics 块（key=game_auction_fixed_price_buy_server_uv）

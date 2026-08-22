@@ -1,0 +1,16 @@
+kind: metric
+name: game.guild.scienceskilllevelup__guild_scienceskilllevelup_server_uv
+description: 触发公会科技升级的去重游戏服数
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.guild.scienceskilllevelup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guild.scienceskilllevelup
+    description: 机械提取自 game.guild.scienceskilllevelup 的 metrics 块（key=guild_scienceskilllevelup_server_uv）

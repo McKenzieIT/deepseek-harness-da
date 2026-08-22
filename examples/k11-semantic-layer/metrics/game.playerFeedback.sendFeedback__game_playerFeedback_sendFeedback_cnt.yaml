@@ -1,0 +1,16 @@
+kind: metric
+name: game.playerFeedback.sendFeedback__game_playerFeedback_sendFeedback_cnt
+description: 玩家反馈事件总上报次数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.playerFeedback.sendFeedback
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.playerFeedback.sendFeedback
+    description: 机械提取自 game.playerFeedback.sendFeedback 的 metrics 块（key=game_playerFeedback_sendFeedback_cnt）

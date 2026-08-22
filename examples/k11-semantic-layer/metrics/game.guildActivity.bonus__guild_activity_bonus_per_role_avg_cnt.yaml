@@ -1,0 +1,16 @@
+kind: metric
+name: game.guildActivity.bonus__guild_activity_bonus_per_role_avg_cnt
+description: 人均领取分红次数(总次数/独立角色数；实测 ≈1.0，每角色当日单次领取)
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(*) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: count
+    field: "*) / NULLIF(COUNT(DISTINCT role_id), 0"
+    source: game.guildActivity.bonus
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guildActivity.bonus
+    description: 机械提取自 game.guildActivity.bonus 的 metrics 块（key=guild_activity_bonus_per_role_avg_cnt）

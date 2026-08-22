@@ -1,0 +1,16 @@
+kind: metric
+name: game.toy.starup__game_toy_starup_star_max
+description: 当日遗物升星后达到的最高星数
+domains:
+  - 探索收集
+computation:
+  sql: MAX(CAST(GET_JSON_OBJECT(params, '$.toy.star') AS BIGINT))
+  metadata:
+    aggregation: max
+    field: CAST(GET_JSON_OBJECT(params, '$.toy.star') AS BIGINT)
+    source: game.toy.starup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.toy.starup
+    description: 机械提取自 game.toy.starup 的 metrics 块（key=game_toy_starup_star_max）

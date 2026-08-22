@@ -1,0 +1,16 @@
+kind: metric
+name: game.scriptActivity.scriptMissionScoreReward__script_mission_score_reward_max_tier_id
+description: 当日已领取的最高积分档位ID（scoreRewardedMaxId 取 MAX，反映已解锁的最高档）
+domains:
+  - 自定义
+computation:
+  sql: MAX(CAST(GET_JSON_OBJECT(params, '$.scoreRewardedMaxId') AS BIGINT))
+  metadata:
+    aggregation: max
+    field: CAST(GET_JSON_OBJECT(params, '$.scoreRewardedMaxId') AS BIGINT)
+    source: game.scriptActivity.scriptMissionScoreReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.scriptActivity.scriptMissionScoreReward
+    description: 机械提取自 game.scriptActivity.scriptMissionScoreReward 的 metrics 块（key=script_mission_score_reward_max_tier_id）

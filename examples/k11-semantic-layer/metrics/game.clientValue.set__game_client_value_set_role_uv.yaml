@@ -1,0 +1,16 @@
+kind: metric
+name: game.clientValue.set__game_client_value_set_role_uv
+description: 触发客户端值设置的去重角色数
+domains:
+  - 系统监控
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.clientValue.set
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.clientValue.set
+    description: 机械提取自 game.clientValue.set 的 metrics 块（key=game_client_value_set_role_uv）

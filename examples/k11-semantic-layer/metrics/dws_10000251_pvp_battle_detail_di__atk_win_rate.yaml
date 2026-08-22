@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_pvp_battle_detail_di__atk_win_rate
+description: 当日攻击方胜率（result=1 占比；防守方胜率同理用 result=2）
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(CASE WHEN result = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN result = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0
+    source: dws_10000251_pvp_battle_detail_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pvp_battle_detail_di
+    description: 机械提取自 dws_10000251_pvp_battle_detail_di 的 metrics 块（key=atk_win_rate）

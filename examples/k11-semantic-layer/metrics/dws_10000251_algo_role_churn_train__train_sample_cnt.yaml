@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_algo_role_churn_train__train_sample_cnt
+description: 训练样本条数(每角色跨多预测窗口)
+domains:
+  - 用户生命周期
+  - 角色成长
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: dws_10000251_algo_role_churn_train
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_algo_role_churn_train
+    description: 机械提取自 dws_10000251_algo_role_churn_train 的 metrics 块（key=train_sample_cnt）

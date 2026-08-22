@@ -1,0 +1,16 @@
+kind: metric
+name: game.social.boost__game_social_boost_post_uv
+description: 发布悬赏的去重发布方角色数（postRoleId）
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.postRoleId'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.postRoleId')
+    source: game.social.boost
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.social.boost
+    description: 机械提取自 game.social.boost 的 metrics 块（key=game_social_boost_post_uv）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.rechargebundlepackage.fetch__rechargebundlepackage_fetch_cnt
+description: 136礼包领取事件总次数(每条日志=一次136元礼包领取)
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.rechargebundlepackage.fetch
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.rechargebundlepackage.fetch
+    description: 机械提取自 game.rechargebundlepackage.fetch 的 metrics 块（key=rechargebundlepackage_fetch_cnt）

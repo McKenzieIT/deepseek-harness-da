@@ -1,0 +1,16 @@
+kind: metric
+name: game.war.getMissionReward__game_war_get_mission_reward_task_uv
+description: 被领取奖励的去重任务id数（任务覆盖广度）
+domains:
+  - 战斗关卡
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.id'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.id')
+    source: game.war.getMissionReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.war.getMissionReward
+    description: 机械提取自 game.war.getMissionReward 的 metrics 块（key=game_war_get_mission_reward_task_uv）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.tactic.train__tactic_train_per_role_avg
+description: 每个特训角色的平均特训次数（>1 表示同角色当日多次特训）
+domains:
+  - 角色成长
+computation:
+  sql: CAST(COUNT(*) AS DOUBLE) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: game.tactic.train
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.tactic.train
+    description: 机械提取自 game.tactic.train 的 metrics 块（key=tactic_train_per_role_avg）

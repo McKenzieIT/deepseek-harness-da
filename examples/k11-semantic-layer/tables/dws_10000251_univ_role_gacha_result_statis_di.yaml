@@ -1,0 +1,98 @@
+table_name: dws_10000251_univ_role_gacha_result_statis_di
+engine: maxcompute
+table_comment: 抽卡通用数仓-角色抽卡结果统计
+description: |-
+  抽卡通用数仓-角色抽卡结果统计。
+  粒度：日增量(_di)。分析主体=角色（user_type=3）。
+  主要字段：role_id, server_id, card_pool_type, card_pool_id, result_item_type, result_item_value, result_item_amount, ds。
+domains:
+  - 探索收集
+granularity: 日增量(_di)
+columns:
+  - name: role_id
+    type: string
+    comment: 角色ID
+    role: dimension
+  - name: server_id
+    type: string
+    comment: 服务器ID
+    role: dimension
+  - name: card_pool_type
+    type: bigint
+    comment: 卡池类型
+    role: dimension
+  - name: card_pool_id
+    type: bigint
+    comment: 卡池id
+    role: dimension
+  - name: result_item_type
+    type: bigint
+    comment: 结果道具类型
+    role: dimension
+  - name: result_item_value
+    type: bigint
+    comment: 结果道具值
+    role: dimension
+  - name: result_item_amount
+    type: bigint
+    comment: 结果道具数量
+    role: measure
+  - name: ds
+    type: string
+    comment: 分区
+    role: partition
+metrics:
+  daily_active_role_uv:
+    expression: COUNT(DISTINCT role_id)
+    description: 当日参与抽卡的去重角色数（角色粒度UV，_di日增量）
+  total_pull_amount:
+    expression: SUM(result_item_amount)
+    description: 当日抽卡产出的道具总数（按result_item_amount求和，_di日增量）
+  active_card_pool_cnt:
+    expression: COUNT(DISTINCT card_pool_id)
+    description: 当日有抽卡记录的去重卡池数（_di日增量）
+  active_server_cnt:
+    expression: COUNT(DISTINCT server_id)
+    description: 当日有抽卡记录的去重服务器数（_di日增量）
+  avg_pull_per_role:
+    expression: SUM(result_item_amount) / NULLIF(COUNT(DISTINCT role_id), 0)
+    description: 当日人均抽卡产出道具数（总量/去重角色数，NULLIF防除零）
+coverage:
+  scenarios:
+    - 通过daily_active_role_uv监测抽卡活跃角色规模与趋势
+    - 通过total_pull_amount与avg_pull_per_role评估抽卡产出总量及人均产出强度
+    - 通过active_card_pool_cnt与active_server_cnt分析抽卡玩法的池子/服务器覆盖面
+  limitations:
+    - 仅 scout 抽样验证，未做全量 maxc 实测复核；20260730 抽样 uv=4198、total_amount=2127043、pools=53、avg=506.68
+    - _di 为日增量，跨日累计需按 ds 求和；非全量快照(_df)
+    - 缺少 user_type 列，分析主体=角色(user_type=3) 系按表名 role 推断，未经列验证
+    - result_item_value 含义为道具值/标识，按维度处理；如需道具维度聚合需结合 result_item_type 联合分析
+    - 不区分付费/免费抽卡来源，无成本侧字段，仅产出侧统计
+confirmation:
+  status: analyst_confirmed
+  confirmed_by: enrichment-agent-2026-07-31
+  confirmed_at: "2026-07-31"
+  note: 已对 latest ds=20260730 spot-verify 4 项核心指标值合理；metrics 仅基于 meta describe 验证的真实列；_di 语义已标注
+dimension_refs:
+  - dim_table: dim_10000251_server_info
+    join_keys:
+      - dws_column: server_id
+        dim_column: server_id
+    derivation: DWS server_id (comment 服务器ID) exactly matches dim_10000251_server_info PK server_id; the dim is the 服务器(区服)维度配置表 for joining fact tables by server_id.
+  - dim_table: dim_10000251_card_pool_info
+    join_keys:
+      - dws_column: card_pool_id
+        dim_column: card_pool_id
+    derivation: DWS card_pool_id (comment 卡池id) exactly matches dim_10000251_card_pool_info PK card_pool_id; the dim is the general 卡池配置维度表 for card-pool attribute lookup.
+  - dim_table: dim_10000251_card_pool_type_info
+    join_keys:
+      - dws_column: card_pool_type
+        dim_column: type_id
+    derivation: DWS card_pool_type (comment 卡池类型) is semantically the card-pool type ID, matching dim_10000251_card_pool_type_info PK type_id (卡池类型ID); the dim is built to translate a fact table's 卡池类型ID into a readable name.
+  - dim_table: dim_10000251_resource_name_info
+    join_keys:
+      - dws_column: result_item_type
+        dim_column: item_type
+      - dws_column: result_item_value
+        dim_column: item_value
+    derivation: DWS result_item_type/result_item_value (comment 结果道具类型/值) composite-match dim_10000251_resource_name_info composite PK (item_type, item_value); the dim resolves item codes to human-readable names.

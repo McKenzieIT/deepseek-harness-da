@@ -1,0 +1,112 @@
+name: game.equipmentPresets.set
+event_filter: event = 'game.equipmentPresets.set'
+description: '装备预设配置事件：角色设置/保存装备预设方案（预设id、部位part、装备唯一uid列表）。记录角色在游戏服上的装备预设配置变更操作。主体粒度 role_id；ds=20260729 scout 实测 77 条 / 25 角色 / 25 账号 / 18 服。'
+domains:
+- 自定义
+domain: activity
+params_fields:
+  serverId:
+    type: int
+    description: 游戏服id
+  serverName:
+    type: string
+    description: 游戏服名字
+  accountId:
+    type: string
+    description: 账号id
+  roleId:
+    type: int
+    description: 角色id
+  roleName:
+    type: string
+    description: 角色名
+  sex:
+    type: int
+    description: 性别
+  createTime:
+    type: int
+    description: 创角时间
+  onlineTime:
+    type: int
+    description: 上线时间
+  roleLevel:
+    type: int
+    description: 角色等级
+  vipLevel:
+    type: int
+    description: vip等级
+  roleForce:
+    type: int
+    description: 角色战力
+  exp:
+    type: int
+    description: 经验
+  image:
+    type: int
+    description: 看板娘
+  coinList:
+    type: array
+    description: 关键货币列表
+  coinList.gold:
+    type: int
+    description: 充值钻石
+  coinList.sendgold:
+    type: int
+    description: 充值赠送钻石
+  coinList.freegold:
+    type: int
+    description: 免费钻石
+  coinList.diamond:
+    type: int
+    description: 紫金
+  coinList.expCoin:
+    type: int
+    description: 经验卷轴
+  coinList.energy:
+    type: int
+    description: 体力
+  sessionId:
+    type: string
+    description: 会话id
+  logUUID:
+    type: string
+    description: logUUID（日志唯一id）
+  id:
+    type: int
+    description: 预设id
+  presets:
+    type: array
+    description: 预设列表
+  presets.part:
+    type: int
+    description: 部位
+  presets.uid:
+    type: int
+    description: 唯一id
+metrics:
+  game_equipmentPresets_set_cnt:
+    expression: COUNT(*)
+    description: 装备预设配置事件总次数
+  game_equipmentPresets_set_role_uv:
+    expression: COUNT(DISTINCT role_id)
+    description: 触发装备预设配置的去重角色数
+  game_equipmentPresets_set_account_uv:
+    expression: COUNT(DISTINCT account_id)
+    description: 触发装备预设配置的去重账号数
+  game_equipmentPresets_set_preset_uv:
+    expression: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.id'))
+    description: 配置的去重装备预设id数（按预设id去重）
+coverage:
+  scenarios:
+  - 装备预设配置频率与参与角色规模（次数/角色UV/账号UV）
+  - 装备预设方案覆盖度（去重预设id数）
+  limitations:
+  - 仅 ds=20260729 单日 scout 实测，未做全量复核
+  - 主体粒度默认 role_id（角色级事件）
+  - preset_uv 依赖 GET_JSON_OBJECT(params,'$.id') 解析，空值/异常值不计入
+confirmation:
+  status: analyst_confirmed
+  confirmed_by: scout-verification-2026-07-31
+  confirmed_at: '2026-07-31'
+  note: ds=20260729 scout 实测 cnt=77 / role_uv=25 / acc_uv=25 / server_uv=18，数量合理
+  coverage_status: analyst_confirmed

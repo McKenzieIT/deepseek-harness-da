@@ -1,0 +1,16 @@
+kind: metric
+name: game.showCamp.onShow__showCamp_onShow_server_uv
+description: 营地展示覆盖游戏服数（去重）
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.showCamp.onShow
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.showCamp.onShow
+    description: 机械提取自 game.showCamp.onShow 的 metrics 块（key=showCamp_onShow_server_uv）

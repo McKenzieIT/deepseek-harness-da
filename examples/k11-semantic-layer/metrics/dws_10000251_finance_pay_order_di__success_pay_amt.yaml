@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_finance_pay_order_di__success_pay_amt
+description: 成功订单付费金额(status=1),单位元
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: SUM(CASE WHEN status=1 THEN pay_amt ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN status=1 THEN pay_amt ELSE 0 END
+    source: dws_10000251_finance_pay_order_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_finance_pay_order_di
+    description: 机械提取自 dws_10000251_finance_pay_order_di 的 metrics 块（key=success_pay_amt）

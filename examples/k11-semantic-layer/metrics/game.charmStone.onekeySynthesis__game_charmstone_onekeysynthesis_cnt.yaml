@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmStone.onekeySynthesis__game_charmstone_onekeysynthesis_cnt
+description: 灵石一键合成日志条数（每次一键合成行为一条）
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.charmStone.onekeySynthesis
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmStone.onekeySynthesis
+    description: 机械提取自 game.charmStone.onekeySynthesis 的 metrics 块（key=game_charmstone_onekeysynthesis_cnt）

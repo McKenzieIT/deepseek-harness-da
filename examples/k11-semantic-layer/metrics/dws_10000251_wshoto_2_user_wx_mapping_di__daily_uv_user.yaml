@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_wshoto_2_user_wx_mapping_di__daily_uv_user
+description: 当日新增/同步的微盛用户数(UV)，映射主体数。
+domains:
+  - 社交公会
+  - 系统监控
+computation:
+  sql: COUNT(DISTINCT user_id)
+  metadata:
+    aggregation: count_distinct
+    field: user_id
+    source: dws_10000251_wshoto_2_user_wx_mapping_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_wshoto_2_user_wx_mapping_di
+    description: 机械提取自 dws_10000251_wshoto_2_user_wx_mapping_di 的 metrics 块（key=daily_uv_user）

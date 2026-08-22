@@ -1,0 +1,16 @@
+kind: metric
+name: game.fantasyrecharge.finalreward__fantasyrecharge_finalreward_avg_freegold_per_role
+description: 人均领取免费钻石量（按角色粒度，分母用 NULLIF 防除零）
+domains:
+  - 付费经济
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.coinList.freegold') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.coinList.freegold') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0
+    source: game.fantasyrecharge.finalreward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.fantasyrecharge.finalreward
+    description: 机械提取自 game.fantasyrecharge.finalreward 的 metrics 块（key=fantasyrecharge_finalreward_avg_freegold_per_role）

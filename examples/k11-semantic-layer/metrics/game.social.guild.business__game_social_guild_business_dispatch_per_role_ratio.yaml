@@ -1,0 +1,16 @@
+kind: metric
+name: game.social.guild.business__game_social_guild_business_dispatch_per_role_ratio
+description: 派遣参与率=派遣角色UV/经营角色总UV，衡量成员派遣经营参与度
+domains:
+  - 社交公会
+computation:
+  sql: SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN role_id END), 0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN role_id END), 0
+    source: game.social.guild.business
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.social.guild.business
+    description: 机械提取自 game.social.guild.business 的 metrics 块（key=game_social_guild_business_dispatch_per_role_ratio）

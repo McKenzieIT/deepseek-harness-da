@@ -1,0 +1,16 @@
+kind: metric
+name: game.social.guild.business__game_social_guild_business_guild_score_sum
+description: 派遣完工后增加的公会经营值(guildScore)总和
+domains:
+  - 社交公会
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params,'$.guildScore') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params,'$.guildScore') AS BIGINT)
+    source: game.social.guild.business
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.social.guild.business
+    description: 机械提取自 game.social.guild.business 的 metrics 块（key=game_social_guild_business_guild_score_sum）

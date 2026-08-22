@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_7_0_role_churn_pred_scoring__actual_churn_rate
+description: 实际流失率（y=1 占比，用于回看模型精度/召回）
+domains:
+  - 用户生命周期
+computation:
+  sql: SUM(y) / NULLIF(COUNT(*), 0)
+  metadata:
+    aggregation: sum
+    field: y) / NULLIF(COUNT(*), 0
+    source: dws_10000251_7_0_role_churn_pred_scoring
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_7_0_role_churn_pred_scoring
+    description: 机械提取自 dws_10000251_7_0_role_churn_pred_scoring 的 metrics 块（key=actual_churn_rate）

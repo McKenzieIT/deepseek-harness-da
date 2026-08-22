@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmactivity.skipallbattle__game_charmactivity_skipallbattle_image_uv
+description: 涉及的看板娘去重数（image）
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params,'$.image'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params,'$.image')
+    source: game.charmactivity.skipallbattle
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmactivity.skipallbattle
+    description: 机械提取自 game.charmactivity.skipallbattle 的 metrics 块（key=game_charmactivity_skipallbattle_image_uv）

@@ -1,0 +1,18 @@
+kind: metric
+name: dws_10000251_role_common_feature_di__avg_rolelevel
+description: 平均角色等级,rolelevel 为 string 需 CAST 后求均值
+domains:
+  - 角色成长
+  - 社交公会
+  - 付费经济
+computation:
+  sql: AVG(CAST(rolelevel AS DOUBLE))
+  metadata:
+    aggregation: avg
+    field: CAST(rolelevel AS DOUBLE)
+    source: dws_10000251_role_common_feature_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_common_feature_di
+    description: 机械提取自 dws_10000251_role_common_feature_di 的 metrics 块（key=avg_rolelevel）

@@ -1,0 +1,164 @@
+name: game.charmStone.synthesis
+event_filter: event = 'game.charmStone.synthesis'
+description: '灵石合成事件：玩家消耗多颗灵石(uids)按模板(modelId)合成为新灵石(charmStone)，产出含 shape/attrs/stagedAttrs 属性，含 remakeCoes 保底信息。分析粒度为 role_id。ds=20260729 单日 scout 实测 cnt=4220 / role_uv=1022 / acc_uv=997 / server_uv=262。'
+domains:
+- 探索收集
+domain: resource
+params_fields:
+  serverId:
+    type: int
+    description: 游戏服id
+  serverName:
+    type: string
+    description: 游戏服名字
+  accountId:
+    type: string
+    description: 账号id
+  roleId:
+    type: int
+    description: 角色id
+  roleName:
+    type: string
+    description: 角色名
+  sex:
+    type: int
+    description: 性别
+  createTime:
+    type: int
+    description: 创角时间
+  onlineTime:
+    type: int
+    description: 上线时间
+  roleLevel:
+    type: int
+    description: 角色等级
+  vipLevel:
+    type: int
+    description: vip等级
+  roleForce:
+    type: int
+    description: 角色战力
+  exp:
+    type: int
+    description: 经验
+  image:
+    type: int
+    description: 看板娘
+  coinList:
+    type: array
+    description: 关键货币列表
+  coinList.gold:
+    type: int
+    description: 充值钻石
+  coinList.sendgold:
+    type: int
+    description: 充值赠送钻石
+  coinList.freegold:
+    type: int
+    description: 免费钻石
+  coinList.diamond:
+    type: int
+    description: 紫金
+  coinList.expCoin:
+    type: int
+    description: 经验卷轴
+  coinList.energy:
+    type: int
+    description: 体力
+  sessionId:
+    type: string
+    description: 会话id
+  logUUID:
+    type: string
+    description: logUUID（日志唯一id）
+  modelId:
+    type: int
+    description: 使用模板
+  uids:
+    type: array
+    description: 选择消耗的石头
+  id:
+    type: int
+    description: 目标石头id(重塑才有)
+  charmStone:
+    type: json
+    description: 实际石头信息
+  charmStone.uid:
+    type: int
+    description: charmStone.uid
+  charmStone.id:
+    type: int
+    description: charmStone.id
+  charmStone.shape:
+    type: int
+    description: 对应charm_stone_shape_info
+  charmStone.isLock:
+    type: bool
+    description: 是否被上锁
+  charmStone.attrs:
+    type: array
+    description: 灵石实际属性
+  charmStone.attrs.id:
+    type: int
+    description: 第几个槽
+  charmStone.attrs.attrId:
+    type: int
+    description: 属性id
+  charmStone.attrs.attrValue:
+    type: int
+    description: 属性值
+  charmStone.stagedAttrs:
+    type: array
+    description: 洗练待替换属性（空表or nil为没有）
+  charmStone.stagedAttrs.id:
+    type: int
+    description: 第几个槽
+  charmStone.stagedAttrs.attrId:
+    type: int
+    description: 属性id
+  charmStone.stagedAttrs.attrValue:
+    type: int
+    description: 属性值
+  remakeCoes:
+    type: array
+    description: 保底信息
+  remakeCoes.key:
+    type: int
+    description: remakeCoes.key
+  remakeCoes.value:
+    type: int
+    description: remakeCoes.value
+metrics:
+  charm_stone_synthesis_cnt:
+    expression: COUNT(*)
+    description: 灵石合成总次数
+  charm_stone_synthesis_role_uv:
+    expression: COUNT(DISTINCT role_id)
+    description: 合成灵石的活跃角色数
+  charm_stone_synthesis_account_uv:
+    expression: COUNT(DISTINCT account_id)
+    description: 合成灵石的活跃账号数
+  charm_stone_synthesis_server_uv:
+    expression: COUNT(DISTINCT server_id)
+    description: 发生灵石合成的游戏服数
+  charm_stone_synthesis_template_uv:
+    expression: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.modelId'))
+    description: 使用的合成模板去重数
+  charm_stone_synthesis_per_role:
+    expression: ROUND(CAST(COUNT(*) AS DOUBLE) / NULLIF(COUNT(DISTINCT role_id), 0), 2)
+    description: 人均合成次数（总次数/参与角色数）
+coverage:
+  scenarios:
+    - 灵石合成参与度（角色/账号/服务器覆盖）
+    - 合成模板使用多样性
+    - 人均合成频次
+  limitations:
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析粒度默认 role_id（角色级事件）
+    - uids 为消耗石头数组，未在指标层展开逐条统计
+coverage_status: analyst_confirmed
+confirmation:
+  status: analyst_confirmed
+  confirmed_by: scout-verification-2026-07-30
+  confirmed_at: "2026-07-30"
+  note: ds=20260729 scout 实测 cnt=4220, role_uv=1022, acc_uv=997, server_uv=262

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_pve_battle_detail_di__boost_rate
+description: 代打率（is_boost=1 占比，反映托管/代练比例）
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(IF(is_boost = 1, 1, 0)) / NULLIF(COUNT(*), 0)
+  metadata:
+    aggregation: sum
+    field: IF(is_boost = 1, 1, 0)) / NULLIF(COUNT(*), 0
+    source: dws_10000251_pve_battle_detail_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pve_battle_detail_di
+    description: 机械提取自 dws_10000251_pve_battle_detail_di 的 metrics 块（key=boost_rate）

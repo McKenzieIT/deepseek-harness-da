@@ -1,0 +1,16 @@
+kind: metric
+name: game.customLevel.fetchHistoryRankReward__game_customLevel_fetchHistoryRankReward_cnt
+description: 演武场领取历史最高排名奖励事件总次数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.customLevel.fetchHistoryRankReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.customLevel.fetchHistoryRankReward
+    description: 机械提取自 game.customLevel.fetchHistoryRankReward 的 metrics 块（key=game_customLevel_fetchHistoryRankReward_cnt）

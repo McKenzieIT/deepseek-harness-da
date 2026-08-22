@@ -1,0 +1,16 @@
+kind: metric
+name: game.guild.getMissionBox__guild_get_mission_box_box_uv
+description: 涉及的去重宝箱id数
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.boxId'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.boxId')
+    source: game.guild.getMissionBox
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guild.getMissionBox
+    description: 机械提取自 game.guild.getMissionBox 的 metrics 块（key=guild_get_mission_box_box_uv）

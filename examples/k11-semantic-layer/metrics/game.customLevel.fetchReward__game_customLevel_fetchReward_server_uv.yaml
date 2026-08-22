@@ -1,0 +1,16 @@
+kind: metric
+name: game.customLevel.fetchReward__game_customLevel_fetchReward_server_uv
+description: 领取演武场奖励涉及的去重游戏服数(server_id)
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.customLevel.fetchReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.customLevel.fetchReward
+    description: 机械提取自 game.customLevel.fetchReward 的 metrics 块（key=game_customLevel_fetchReward_server_uv）

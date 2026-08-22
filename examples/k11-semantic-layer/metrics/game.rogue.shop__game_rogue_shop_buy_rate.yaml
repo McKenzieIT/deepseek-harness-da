@@ -1,0 +1,16 @@
+kind: metric
+name: game.rogue.shop__game_rogue_shop_buy_rate
+description: 购买行为占比（购买次数/总操作次数）
+domains:
+  - 战斗关卡
+computation:
+  sql: SUM(CASE WHEN CAST(GET_JSON_OBJECT(params,'$.action') AS BIGINT)=1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN CAST(GET_JSON_OBJECT(params,'$.action') AS BIGINT)=1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0
+    source: game.rogue.shop
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.rogue.shop
+    description: 机械提取自 game.rogue.shop 的 metrics 块（key=game_rogue_shop_buy_rate）

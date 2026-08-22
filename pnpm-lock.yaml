@@ -4052,6 +4052,22 @@ importers:
         specifier: ^4.0.9
         version: 4.0.9
 
+  packages/data/tool-discover-relations:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-semantic-layer':
+        specifier: workspace:^
+        version: link:../semantic-layer
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
   packages/data/tool-load-event-definition:
     dependencies:
       '@deepseek-ai/schemastery':

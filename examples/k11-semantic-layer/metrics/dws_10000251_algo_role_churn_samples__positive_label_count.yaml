@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_algo_role_churn_samples__positive_label_count
+description: 流失正样本数（label=1）；正样本率 = positive_label_count / sample_total_count，建议 NULLIF(sample_total_count,0) 防除零
+domains:
+  - 用户生命周期
+  - 系统监控
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(sample_info, '$.label') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(sample_info, '$.label') AS BIGINT)
+    source: dws_10000251_algo_role_churn_samples
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_algo_role_churn_samples
+    description: 机械提取自 dws_10000251_algo_role_churn_samples 的 metrics 块（key=positive_label_count）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.chargeShop.buy__game_chargeShop_buy_account_uv
+description: 触发购买的去重账号数
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.chargeShop.buy
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.chargeShop.buy
+    description: 机械提取自 game.chargeShop.buy 的 metrics 块（key=game_chargeShop_buy_account_uv）

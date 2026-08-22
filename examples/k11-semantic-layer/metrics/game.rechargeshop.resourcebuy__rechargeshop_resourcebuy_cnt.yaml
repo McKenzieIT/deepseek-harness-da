@@ -1,0 +1,16 @@
+kind: metric
+name: game.rechargeshop.resourcebuy__rechargeshop_resourcebuy_cnt
+description: 充值商店资源购买事件总次数（所有日志行数）
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.rechargeshop.resourcebuy
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.rechargeshop.resourcebuy
+    description: 机械提取自 game.rechargeshop.resourcebuy 的 metrics 块（key=rechargeshop_resourcebuy_cnt）

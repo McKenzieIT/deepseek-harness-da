@@ -1,0 +1,16 @@
+kind: metric
+name: game.gve2.missionreward__gve2_missionreward_gold_sum
+description: GvE2 任务奖励发放的充值钻石（gold）总量
+domains:
+  - 战斗关卡
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.coinList.gold') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.coinList.gold') AS BIGINT)
+    source: game.gve2.missionreward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.gve2.missionreward
+    description: 机械提取自 game.gve2.missionreward 的 metrics 块（key=gve2_missionreward_gold_sum）

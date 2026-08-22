@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_role_server_act_di__arpu
+description: 活跃用户人均付费金额(ARPU),付费总金额/活跃角色数,单位:元;用 NULLIF 防除零
+domains:
+  - 角色成长
+  - 付费经济
+computation:
+  sql: SUM(pay_amt)/NULLIF(SUM(act),0)
+  metadata:
+    aggregation: sum
+    field: pay_amt)/NULLIF(SUM(act),0
+    source: dws_10000251_univ_role_server_act_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_role_server_act_di
+    description: 机械提取自 dws_10000251_univ_role_server_act_di 的 metrics 块（key=arpu）

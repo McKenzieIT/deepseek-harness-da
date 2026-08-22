@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmactivity.gachaswitchspecial__game_charmactivity_gachaswitchspecial_activity_uv
+description: 涉及的灵器活动 id 去重数
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params,'$.activityId'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params,'$.activityId')
+    source: game.charmactivity.gachaswitchspecial
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmactivity.gachaswitchspecial
+    description: 机械提取自 game.charmactivity.gachaswitchspecial 的 metrics 块（key=game_charmactivity_gachaswitchspecial_activity_uv）

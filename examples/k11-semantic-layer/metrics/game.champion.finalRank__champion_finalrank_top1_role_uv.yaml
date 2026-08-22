@@ -1,0 +1,16 @@
+kind: metric
+name: game.champion.finalRank__champion_finalrank_top1_role_uv
+description: 最终排名第一(冠军)的去重角色数
+domains:
+  - 战斗关卡
+computation:
+  sql: COUNT(DISTINCT CASE WHEN CAST(GET_JSON_OBJECT(params,'$.rankValue') AS BIGINT)=1 THEN role_id END)
+  metadata:
+    aggregation: count_distinct
+    field: CASE WHEN CAST(GET_JSON_OBJECT(params,'$.rankValue') AS BIGINT)=1 THEN role_id END
+    source: game.champion.finalRank
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.champion.finalRank
+    description: 机械提取自 game.champion.finalRank 的 metrics 块（key=champion_finalrank_top1_role_uv）

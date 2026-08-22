@@ -1,0 +1,18 @@
+kind: metric
+name: dws_10000251_univ_dev_tag_df__pay_amt_std_p50
+description: 设备累计付费金额中位数(单位:元)
+domains:
+  - 用户生命周期
+  - 付费经济
+  - 角色成长
+computation:
+  sql: PERCENTILE_APPROX(pay_amt_std, 0.5)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: dws_10000251_univ_dev_tag_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_dev_tag_df
+    description: 机械提取自 dws_10000251_univ_dev_tag_df 的 metrics 块（key=pay_amt_std_p50）

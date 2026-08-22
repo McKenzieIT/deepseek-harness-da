@@ -1,0 +1,102 @@
+schema_version: 0
+fields:
+  size:
+    status: all_null
+    sampled_ds: '20250516'
+    sampled_at: '2026-07-30T17:44:13'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(res, '$.size') AS size, GET_JSON_OBJECT(params,
+        '$.logUUID') AS logUUID, GET_JSON_OBJECT(res, '$.type') AS type, GET_JSON_OBJECT(params,
+        '$.resources') AS resources FROM ieu_ods.ods_10000251_all_view LATERAL VIEW
+        EXPLODE(SPLIT(REGEXP_REPLACE(REGEXP_REPLACE(GET_JSON_OBJECT(params, '$.resources'),
+        '^\\[|\\]$', ''), '\\},\\{', '}|||{'), '\\|\\|\\|')) t AS res WHERE ds >=
+        '20250516' AND event = 'game.recycle' AND CAST(GET_JSON_OBJECT(res, '$.type')
+        AS INT) = 8 LIMIT 5
+      sample_rows: 0
+  logUUID:
+    status: all_null
+    sampled_ds: '20250516'
+    sampled_at: '2026-07-30T17:44:13'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(res, '$.size') AS size, GET_JSON_OBJECT(params,
+        '$.logUUID') AS logUUID, GET_JSON_OBJECT(res, '$.type') AS type, GET_JSON_OBJECT(params,
+        '$.resources') AS resources FROM ieu_ods.ods_10000251_all_view LATERAL VIEW
+        EXPLODE(SPLIT(REGEXP_REPLACE(REGEXP_REPLACE(GET_JSON_OBJECT(params, '$.resources'),
+        '^\\[|\\]$', ''), '\\},\\{', '}|||{'), '\\|\\|\\|')) t AS res WHERE ds >=
+        '20250516' AND event = 'game.recycle' AND CAST(GET_JSON_OBJECT(res, '$.type')
+        AS INT) = 8 LIMIT 5
+      sample_rows: 0
+  type:
+    status: all_null
+    sampled_ds: '20250516'
+    sampled_at: '2026-07-30T17:44:13'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(res, '$.size') AS size, GET_JSON_OBJECT(params,
+        '$.logUUID') AS logUUID, GET_JSON_OBJECT(res, '$.type') AS type, GET_JSON_OBJECT(params,
+        '$.resources') AS resources FROM ieu_ods.ods_10000251_all_view LATERAL VIEW
+        EXPLODE(SPLIT(REGEXP_REPLACE(REGEXP_REPLACE(GET_JSON_OBJECT(params, '$.resources'),
+        '^\\[|\\]$', ''), '\\},\\{', '}|||{'), '\\|\\|\\|')) t AS res WHERE ds >=
+        '20250516' AND event = 'game.recycle' AND CAST(GET_JSON_OBJECT(res, '$.type')
+        AS INT) = 8 LIMIT 5
+      sample_rows: 0
+  resources:
+    status: all_null
+    sampled_ds: '20250516'
+    sampled_at: '2026-07-30T17:44:13'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(res, '$.size') AS size, GET_JSON_OBJECT(params,
+        '$.logUUID') AS logUUID, GET_JSON_OBJECT(res, '$.type') AS type, GET_JSON_OBJECT(params,
+        '$.resources') AS resources FROM ieu_ods.ods_10000251_all_view LATERAL VIEW
+        EXPLODE(SPLIT(REGEXP_REPLACE(REGEXP_REPLACE(GET_JSON_OBJECT(params, '$.resources'),
+        '^\\[|\\]$', ''), '\\},\\{', '}|||{'), '\\|\\|\\|')) t AS res WHERE ds >=
+        '20250516' AND event = 'game.recycle' AND CAST(GET_JSON_OBJECT(res, '$.type')
+        AS INT) = 8 LIMIT 5
+      sample_rows: 0
+  id:
+    status: all_null
+    sampled_ds: '20260701'
+    sampled_at: '2026-07-30T17:50:57'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(equip, '$.id') AS id, GET_JSON_OBJECT(params,
+        '$.equips') AS equips FROM ieu_ods.ods_10000251_all_view LATERAL VIEW EXPLODE(SPLIT(REGEXP_REPLACE(REGEXP_REPLACE(GET_JSON_OBJECT(params,
+        '$.equips'), '^\\[|\\]$', ''), '\\},\\{', '}|||{'), '\\|\\|\\|')) t AS equip
+        WHERE ds = '20260701' AND event = 'game.recycle' LIMIT 5
+      sample_rows: 5
+  equips:
+    status: verified_nonnull
+    sampled_ds: '20260701'
+    sampled_at: '2026-07-30T17:50:57'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(equip, '$.id') AS id, GET_JSON_OBJECT(params,
+        '$.equips') AS equips FROM ieu_ods.ods_10000251_all_view LATERAL VIEW EXPLODE(SPLIT(REGEXP_REPLACE(REGEXP_REPLACE(GET_JSON_OBJECT(params,
+        '$.equips'), '^\\[|\\]$', ''), '\\},\\{', '}|||{'), '\\|\\|\\|')) t AS equip
+        WHERE ds = '20260701' AND event = 'game.recycle' LIMIT 5
+      sample_rows: 5
+  gachaTimes:
+    status: all_null
+    sampled_ds: '20260807'
+    sampled_at: '2026-08-08T18:12:22'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(params, '$.gachaTimes') AS gachaTimes, GET_JSON_OBJECT(params,
+        '$.free') AS free FROM ieu_ods.ods_10000251_all_view WHERE ds = '20260807'
+        AND event = 'game.card.gacha' AND COALESCE(GET_JSON_OBJECT(params, '$.free'),
+        '0') <> '1' LIMIT 5
+      sample_rows: 0
+  free:
+    status: all_null
+    sampled_ds: '20260807'
+    sampled_at: '2026-08-08T18:12:22'
+    source: gate_auto
+    evidence:
+      sample_sql: SELECT GET_JSON_OBJECT(params, '$.gachaTimes') AS gachaTimes, GET_JSON_OBJECT(params,
+        '$.free') AS free FROM ieu_ods.ods_10000251_all_view WHERE ds = '20260807'
+        AND event = 'game.card.gacha' AND COALESCE(GET_JSON_OBJECT(params, '$.free'),
+        '0') <> '1' LIMIT 5
+      sample_rows: 0

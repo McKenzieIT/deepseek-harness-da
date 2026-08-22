@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_com_pay_order_di__arpp
+description: 每付费账号平均订单数(人均订单笔数);用 NULLIF 防除零
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: COUNT(order_id)*1.0/NULLIF(COUNT(DISTINCT account_id),0)
+  metadata:
+    aggregation: count
+    field: order_id)*1.0/NULLIF(COUNT(DISTINCT account_id),0
+    source: dws_10000251_com_pay_order_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_com_pay_order_di
+    description: 机械提取自 dws_10000251_com_pay_order_di 的 metrics 块（key=arpp）

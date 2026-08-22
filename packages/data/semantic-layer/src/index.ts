@@ -26,6 +26,15 @@
  *  - grounded: zod (mirrors pydantic; schemastery has no .passthrough) + js-yaml
  *    substrate deps; reuse `@deepseek-ai/dsh-atomic-write` for atomic writes.
  *
+ * G3 (AI-Native Enrichment, resolved 2026-08-22) implementation:
+ *  - `discoverRelations(opts)` Service method: delegates to the substrate
+ *    `enrichAllDwsTables` (two-round DWS→DIM discovery; `llmCall` injected via
+ *    `setLlmCall`, optional — absent => deterministic round only).
+ *  - on-write hook: after `syncWrite`/`updateTableMeta` write a DWS, re-run
+ *    discovery + persist `dimension_refs` (best-effort, unaudited — auto-derived;
+ *    gated by `autoEnrich`, default true). Substrate `writeTable` is used to
+ *    persist, so the hook does NOT re-enter the Service write path (no recursion).
+ *
  * @module @deepseek-ai/dsh-semantic-layer
  */
 import { Context, Service } from '@deepseek-ai/cordis'
@@ -44,6 +53,10 @@ import {
 } from './io.ts'
 import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
 import type { CorpusVariant, EventCorpusItem } from './corpus.ts'
+import {
+  enrichAllDwsTables as enrichAllDwsTablesFromLayer,
+  type LlmCall,
+} from './enrichment.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
@@ -85,6 +98,30 @@ export {
   type EventCorpusInput,
   type EventTerminology,
 } from './corpus.ts'
+// G3: AI-Native enrichment substrate (B1/B2) + mechanical metrics extraction (B5).
+export {
+  discoverRelationsDeterministic,
+  mergeRefs,
+  buildLlmPrompt,
+  parseLlmRefs,
+  discoverRelationsFor,
+  buildDimInventory,
+  enrichAllDwsTables,
+  type DimInventoryEntry,
+  type LlmCall,
+} from './enrichment.ts'
+export {
+  extractMetricsFromTable,
+  extractMetricsFromEvent,
+  extractMetricsFromTables,
+  toMetricDefinition,
+  metricName,
+  inferAggregation,
+  writeMetricDefinitions,
+  seedMetrics,
+  listMetrics,
+  loadMetricDefinitions,
+} from './metrics.ts'
 
 // ── SchemaProvider: live-ODPS schema source (P6b Q3 deferred) ───────────
 // The real provider (query-maxcompute sidecar adding list/describe/sample
@@ -113,6 +150,10 @@ export interface SemanticLayerConfig {
    * it remounts the Service (new WeakMap key -> fresh enriched linker), so it
    * is NOT part of the D2f corpusVersion cache key. */
   readonly corpusVariant?: CorpusVariant
+  /** G3: auto-run DWS→DIM relation discovery after a Service write
+   * (syncWrite/updateTableMeta). Default true (G3: core capability, not an
+   * optional hook). Set false to suppress (e.g. during bulk sync). */
+  readonly autoEnrich?: boolean
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -132,10 +173,13 @@ export class SemanticLayerService extends Service {
     semanticRoot: z.string().default(''),
     scopeId: z.string().default(''),
     corpusVariant: z.union(['params+term', 'term-only'] as const).default('params+term'),
+    autoEnrich: z.boolean().default(true),
   })
 
   private readonly cfg: SemanticLayerConfig
   private provider: SchemaProvider | undefined
+  /** G3: injected one-shot LLM call for the semantic relation round (undefined => deterministic round only). */
+  private llmCall: LlmCall | undefined
 
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
@@ -148,6 +192,57 @@ export class SemanticLayerService extends Service {
    */
   setSchemaProvider(provider: SchemaProvider | undefined): void {
     this.provider = provider
+  }
+
+  /**
+   * G3: inject (or clear) the one-shot LLM call used by the semantic relation
+   * round. When undefined, `discoverRelations` + the on-write hook run the
+   * deterministic PK-name round only. Production wires this to `ctx.llm`
+   * (BlockAssembler-assembled text); the substrate itself stays free of the
+   * LLM dependency.
+   * @param fn - the llmCall to use, or undefined to run deterministic-only.
+   */
+  setLlmCall(fn?: LlmCall): void {
+    this.llmCall = fn
+  }
+
+  /**
+   * G3: discover DWS→DIM dimension relations for the layer (or a subset when
+   * `tables` is given) and write them back into each DWS table's
+   * `dimension_refs`. Delegates to the substrate `enrichAllDwsTables` (two-round
+   * strategy; deterministic round always runs, LLM round runs only when a
+   * `llmCall` is injected via `setLlmCall`). No Tier-2 audit — this is the
+   * explicit enrichment entry (used by the `discover_relations` agent tool +
+   * batch seeding); the on-write hook is the auto path.
+   * @param opts - optional `tables` filter (table_names to limit enrichment to).
+   * @returns `enriched` (DWS gaining >=1 ref) + `written` (DWS updated) + per-table `errors`.
+   */
+  async discoverRelations(
+    opts: { readonly tables?: readonly string[] } = {},
+  ): Promise<{ enriched: number; written: number; errors: string[] }> {
+    return enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, opts.tables)
+  }
+
+  /**
+   * G3 on-write hook: after a Service write, re-run DWS→DIM discovery for the
+   * just-written tables and persist `dimension_refs` (best-effort: a failure
+   * is logged, never propagated — it must not fail the originating write).
+   * Uses the substrate `enrichAllDwsTables` (which writes via substrate
+   * `writeTable`), so the hook does NOT re-enter the Service write path. DIM
+   * tables are skipped by `enrichAllDwsTables`. Gated by `autoEnrich`.
+   * @param names - the table_names just written via syncWrite/updateTableMeta.
+   */
+  private async enrichOnWrite(names: readonly string[]): Promise<void> {
+    if (!(this.cfg.autoEnrich ?? true) || names.length === 0) return
+    try {
+      // mergeExisting=true: the auto on-write hook MERGES discovered refs with
+      // any existing dimension_refs (curated joins preserved) rather than
+      // replacing — so auto-trigger can never wipe human-curated joins the
+      // deterministic round does not rediscover (code-review B2).
+      await enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, names, true)
+    } catch (e) {
+      this.ctx.logger.warn(`ctx.schema on-write enrichment failed: ${(e as Error).message}`)
+    }
   }
 
   /** The semantic-layer scope root (the dir with config.yaml/events/tables), or empty string when unset. */
@@ -267,7 +362,9 @@ export class SemanticLayerService extends Service {
   /**
    * Tier-2 persistent write: batch-generate/merge table YAML from pre-fetched
    * schema metas and write them to the substrate, recording each write via
-   * `ctx.audit` (D5 non-disableable). Routes to `syncWriteDefinitions`.
+   * `ctx.audit` (D5 non-disableable). Routes to `syncWriteDefinitions`. G3:
+   * after the batch, the on-write hook re-runs DWS→DIM discovery for the
+   * written tables (gated by `autoEnrich`).
    * @param tableMetas - the table metas to write (from discover/describe).
    * @param opts - optional dim-table-name set, existing-table map for merge, and scope id override.
    * @returns counts of written/skipped tables plus per-table error messages.
@@ -280,17 +377,24 @@ export class SemanticLayerService extends Service {
       readonly scopeId?: string
     } = {},
   ): Promise<{ written: number; skipped: number; errors: string[] }> {
-    return syncWriteDefinitionsFromLayer(this.semanticRoot, tableMetas, {
+    const res = await syncWriteDefinitionsFromLayer(this.semanticRoot, tableMetas, {
       recorder: this.recorder(),
       scope_id: opts.scopeId ?? this.scopeId,
       ...opts.dimTableNames !== undefined ? { dimTableNames: opts.dimTableNames } : {},
       ...opts.existingTables !== undefined ? { existingTables: opts.existingTables } : {},
     })
+    if ((this.cfg.autoEnrich ?? true)) {
+      const written = tableMetas.filter(m => m.table_name).map(m => m.table_name)
+      await this.enrichOnWrite(written)
+    }
+    return res
   }
 
   /**
    * Tier-2 per-scope write: read-merge-validate-write a single table's meta
-   * updates, recording the write via `ctx.audit` (D5 non-disableable).
+   * updates, recording the write via `ctx.audit` (D5 non-disableable). G3:
+   * after the write, the on-write hook re-runs DWS→DIM discovery for the table
+   * (gated by `autoEnrich`).
    * @param name - the table `table_name` to update.
    * @param updates - the field overrides merged over the existing table YAML.
    * @param opts - optional scope id override (default scope id is used when omitted).
@@ -301,10 +405,14 @@ export class SemanticLayerService extends Service {
     updates: Record<string, unknown>,
     opts: { readonly scopeId?: string } = {},
   ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }> {
-    return updateTableMetaFromLayer(this.semanticRoot, name, updates, {
+    const res = await updateTableMetaFromLayer(this.semanticRoot, name, updates, {
       recorder: this.recorder(),
       scope_id: opts.scopeId ?? this.scopeId,
     })
+    if (res.ok && (this.cfg.autoEnrich ?? true)) {
+      await this.enrichOnWrite([name])
+    }
+    return res
   }
 }
 

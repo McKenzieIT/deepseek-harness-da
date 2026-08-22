@@ -1,0 +1,16 @@
+kind: metric
+name: game.recharge__arpu_fen
+description: ARPU(分/账号,真实营收/全部真实充值账号去重数;D18已过滤money<=0的零金额打点噪声,否则分母虚高导致ARPU虚低;单位分,除以100转元)
+domains:
+  - 付费经济
+computation:
+  sql: SUM(CASE WHEN CAST(GET_JSON_OBJECT(params, '$.moneyType') AS BIGINT) = 1 THEN CAST(GET_JSON_OBJECT(params, '$.money') AS BIGINT) ELSE 0 END) / NULLIF(COUNT(DISTINCT CASE WHEN CAST(GET_JSON_OBJECT(params, '$.money') AS BIGINT) > 0 THEN account_id END), 0)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN CAST(GET_JSON_OBJECT(params, '$.moneyType') AS BIGINT) = 1 THEN CAST(GET_JSON_OBJECT(params, '$.money') AS BIGINT) ELSE 0 END) / NULLIF(COUNT(DISTINCT CASE WHEN CAST(GET_JSON_OBJECT(params, '$.money') AS BIGINT) > 0 THEN account_id END), 0
+    source: game.recharge
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.recharge
+    description: 机械提取自 game.recharge 的 metrics 块（key=arpu_fen）

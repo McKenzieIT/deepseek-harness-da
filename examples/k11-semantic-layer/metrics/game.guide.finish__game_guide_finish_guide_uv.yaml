@@ -1,0 +1,16 @@
+kind: metric
+name: game.guide.finish__game_guide_finish_guide_uv
+description: 被完成的去重引导步骤数（guideId），用于衡量引导覆盖广度
+domains:
+  - 系统监控
+computation:
+  sql: COUNT(DISTINCT CAST(GET_JSON_OBJECT(params, '$.guideId') AS BIGINT))
+  metadata:
+    aggregation: count_distinct
+    field: CAST(GET_JSON_OBJECT(params, '$.guideId') AS BIGINT)
+    source: game.guide.finish
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guide.finish
+    description: 机械提取自 game.guide.finish 的 metrics 块（key=game_guide_finish_guide_uv）

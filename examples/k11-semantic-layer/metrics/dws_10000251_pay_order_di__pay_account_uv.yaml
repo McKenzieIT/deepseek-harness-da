@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_pay_order_di__pay_account_uv
+description: 付费账号数（去重 account_id）
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: dws_10000251_pay_order_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pay_order_di
+    description: 机械提取自 dws_10000251_pay_order_di 的 metrics 块（key=pay_account_uv）

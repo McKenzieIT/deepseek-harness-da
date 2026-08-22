@@ -1,0 +1,16 @@
+kind: metric
+name: game.function.unlock__game_function_unlock_account_uv
+description: 解锁功能的去重账号数
+domains:
+  - 系统监控
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.function.unlock
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.function.unlock
+    description: 机械提取自 game.function.unlock 的 metrics 块（key=game_function_unlock_account_uv）

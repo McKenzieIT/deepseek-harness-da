@@ -1,0 +1,16 @@
+kind: metric
+name: game.func.getReward__game_func_get_reward_account_uv
+description: 领取功能奖励的去重账号数
+domains:
+  - 系统监控
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.func.getReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.func.getReward
+    description: 机械提取自 game.func.getReward 的 metrics 块（key=game_func_get_reward_account_uv）

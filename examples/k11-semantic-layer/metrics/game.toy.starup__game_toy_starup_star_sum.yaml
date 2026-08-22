@@ -1,0 +1,16 @@
+kind: metric
+name: game.toy.starup__game_toy_starup_star_sum
+description: 升星后星数总和（衡量升星总量）
+domains:
+  - 探索收集
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.toy.star') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.toy.star') AS BIGINT)
+    source: game.toy.starup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.toy.starup
+    description: 机械提取自 game.toy.starup 的 metrics 块（key=game_toy_starup_star_sum）

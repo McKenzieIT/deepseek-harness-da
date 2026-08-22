@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_role_server_act_di__pay_amt_avg
+description: 笔均付费金额,当日所有角色(含未付费)平均付费金额,单位:元;与 ARPPU(仅付费)区分
+domains:
+  - 角色成长
+  - 付费经济
+computation:
+  sql: AVG(pay_amt)
+  metadata:
+    aggregation: avg
+    field: pay_amt
+    source: dws_10000251_univ_role_server_act_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_role_server_act_di
+    description: 机械提取自 dws_10000251_univ_role_server_act_di 的 metrics 块（key=pay_amt_avg）

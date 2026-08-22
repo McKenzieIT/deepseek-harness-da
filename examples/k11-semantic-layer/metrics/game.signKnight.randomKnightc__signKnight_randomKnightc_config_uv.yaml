@@ -1,0 +1,16 @@
+kind: metric
+name: game.signKnight.randomKnightc__signKnight_randomKnightc_config_uv
+description: 随机刷新涉及的去重武将配置id数
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.id'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.id')
+    source: game.signKnight.randomKnightc
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.signKnight.randomKnightc
+    description: 机械提取自 game.signKnight.randomKnightc 的 metrics 块（key=signKnight_randomKnightc_config_uv）

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_pve_progress_di__first_pass_count
+description: 当日首通次数（first_pass=1 的记录数，反映新关卡推进节奏）
+domains:
+  - 战斗关卡
+  - 角色成长
+computation:
+  sql: SUM(CASE WHEN first_pass = 1 THEN 1 ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN first_pass = 1 THEN 1 ELSE 0 END
+    source: dws_10000251_pve_progress_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_pve_progress_di
+    description: 机械提取自 dws_10000251_pve_progress_di 的 metrics 块（key=first_pass_count）

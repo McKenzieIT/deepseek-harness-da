@@ -1,0 +1,16 @@
+kind: metric
+name: game.guild.operatePlayerInvite__game_guild_operate_player_invite_op3_cnt
+description: op=3 邀请操作次数；scout 日 ds=20260729 观测到 3 次
+domains:
+  - 社交公会
+computation:
+  sql: SUM(CASE WHEN GET_JSON_OBJECT(params, '$.op') = '3' THEN 1 ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN GET_JSON_OBJECT(params, '$.op') = '3' THEN 1 ELSE 0 END
+    source: game.guild.operatePlayerInvite
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guild.operatePlayerInvite
+    description: 机械提取自 game.guild.operatePlayerInvite 的 metrics 块（key=game_guild_operate_player_invite_op3_cnt）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmStone.unwear__charmStone_unwear_account_uv
+description: 卸下灵石的去重账号数
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.charmStone.unwear
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmStone.unwear
+    description: 机械提取自 game.charmStone.unwear 的 metrics 块（key=charmStone_unwear_account_uv）

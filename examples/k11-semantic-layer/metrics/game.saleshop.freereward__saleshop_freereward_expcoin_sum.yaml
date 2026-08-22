@@ -1,0 +1,16 @@
+kind: metric
+name: game.saleshop.freereward__saleshop_freereward_expcoin_sum
+description: 经验卷轴奖励发放总量
+domains:
+  - 付费经济
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.coinList.expCoin') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.coinList.expCoin') AS BIGINT)
+    source: game.saleshop.freereward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.saleshop.freereward
+    description: 机械提取自 game.saleshop.freereward 的 metrics 块（key=saleshop_freereward_expcoin_sum）

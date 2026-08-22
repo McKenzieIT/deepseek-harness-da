@@ -1,0 +1,16 @@
+kind: metric
+name: game.social.setassist__social_setassist_avg_role_level
+description: 设置助战角色的平均角色等级（状态快照）
+domains:
+  - 社交公会
+computation:
+  sql: AVG(CAST(GET_JSON_OBJECT(params,'$.roleLevel') AS BIGINT))
+  metadata:
+    aggregation: avg
+    field: CAST(GET_JSON_OBJECT(params,'$.roleLevel') AS BIGINT)
+    source: game.social.setassist
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.social.setassist
+    description: 机械提取自 game.social.setassist 的 metrics 块（key=social_setassist_avg_role_level）

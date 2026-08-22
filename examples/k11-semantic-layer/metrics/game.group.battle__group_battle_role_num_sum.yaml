@@ -1,0 +1,16 @@
+kind: metric
+name: game.group.battle__group_battle_role_num_sum
+description: 各战斗声明队伍人数之和（roleNum 累加，反映声明口径总人次）
+domains:
+  - 社交公会
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.roleNum') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.roleNum') AS BIGINT)
+    source: game.group.battle
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.group.battle
+    description: 机械提取自 game.group.battle 的 metrics 块（key=group_battle_role_num_sum）

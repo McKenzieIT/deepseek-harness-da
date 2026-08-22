@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_acc_server_act_di__new_acc_d1
+description: 当日新增账号数;act_fst=1 表示新增(首次活跃)
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: SUM(act_fst)
+  metadata:
+    aggregation: sum
+    field: act_fst
+    source: dws_10000251_univ_acc_server_act_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_acc_server_act_di
+    description: 机械提取自 dws_10000251_univ_acc_server_act_di 的 metrics 块（key=new_acc_d1）

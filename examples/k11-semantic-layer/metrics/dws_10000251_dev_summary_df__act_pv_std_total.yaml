@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_dev_summary_df__act_pv_std_total
+description: 累计活跃次数合计
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: SUM(act_pv_std)
+  metadata:
+    aggregation: sum
+    field: act_pv_std
+    source: dws_10000251_dev_summary_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_dev_summary_df
+    description: 机械提取自 dws_10000251_dev_summary_df 的 metrics 块（key=act_pv_std_total）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.gve2.onekeyachievereward__gve2_onekeyachievereward_account_uv
+description: gve2 一键成就奖励领取的账号去重数
+domains:
+  - 战斗关卡
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.gve2.onekeyachievereward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.gve2.onekeyachievereward
+    description: 机械提取自 game.gve2.onekeyachievereward 的 metrics 块（key=gve2_onekeyachievereward_account_uv）

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_algo_role_churn_train__churn_label_cnt
+description: 实际流失正样本数(label=1)
+domains:
+  - 用户生命周期
+  - 角色成长
+computation:
+  sql: SUM(label)
+  metadata:
+    aggregation: sum
+    field: label
+    source: dws_10000251_algo_role_churn_train
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_algo_role_churn_train
+    description: 机械提取自 dws_10000251_algo_role_churn_train 的 metrics 块（key=churn_label_cnt）

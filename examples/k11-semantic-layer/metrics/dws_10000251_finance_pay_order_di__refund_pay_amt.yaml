@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_finance_pay_order_di__refund_pay_amt
+description: 退款订单金额(status=3),单位元;2026-07-22 抽样当日为 0(未观测到退款记录,不代表本口径不存在退款)
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: SUM(CASE WHEN status=3 THEN pay_amt ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN status=3 THEN pay_amt ELSE 0 END
+    source: dws_10000251_finance_pay_order_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_finance_pay_order_di
+    description: 机械提取自 dws_10000251_finance_pay_order_di 的 metrics 块（key=refund_pay_amt）

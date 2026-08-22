@@ -1,0 +1,16 @@
+kind: metric
+name: game.champion.guessOneKeyGetReward__champion_guessOneKeyGetReward_reward_size_sum
+description: 顶层 rewardSize 竞猜奖励数额总和
+domains:
+  - 战斗关卡
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.rewardSize') AS BIGINT))
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.rewardSize') AS BIGINT)
+    source: game.champion.guessOneKeyGetReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.champion.guessOneKeyGetReward
+    description: 机械提取自 game.champion.guessOneKeyGetReward 的 metrics 块（key=champion_guessOneKeyGetReward_reward_size_sum）

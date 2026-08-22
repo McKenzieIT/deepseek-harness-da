@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_acc_server_act_di__new_pay_rate
+description: 新增账号当日付费率(近似)=付费账号数/新增账号数;分子 pay 含非新增当日付费账号,故为近似值,精确新增付费率需"新增+付费"联合标记(本表无此列)
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: SUM(pay)*1.0/NULLIF(SUM(act_fst),0)
+  metadata:
+    aggregation: sum
+    field: pay)*1.0/NULLIF(SUM(act_fst),0
+    source: dws_10000251_univ_acc_server_act_di
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_acc_server_act_di
+    description: 机械提取自 dws_10000251_univ_acc_server_act_di 的 metrics 块（key=new_pay_rate）

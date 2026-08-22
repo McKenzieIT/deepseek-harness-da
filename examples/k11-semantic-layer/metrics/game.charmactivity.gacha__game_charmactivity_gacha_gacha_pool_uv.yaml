@@ -1,0 +1,16 @@
+kind: metric
+name: game.charmactivity.gacha__game_charmactivity_gacha_gacha_pool_uv
+description: 命中的卡池去重数（gachaId）
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params,'$.gachaId'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params,'$.gachaId')
+    source: game.charmactivity.gacha
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.charmactivity.gacha
+    description: 机械提取自 game.charmactivity.gacha 的 metrics 块（key=game_charmactivity_gacha_gacha_pool_uv）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.battlepass.levelup__battlepass_levelup_cnt
+description: 战令升级事件总次数（事件行数）
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.battlepass.levelup
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.battlepass.levelup
+    description: 机械提取自 game.battlepass.levelup 的 metrics 块（key=battlepass_levelup_cnt）

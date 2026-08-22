@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_play_unlock_df__avg_unlock_events_per_role
+description: 当日人均解锁事件数(解锁活跃度，越大代表单角色解锁功能越多)
+domains:
+  - 探索收集
+  - 角色成长
+computation:
+  sql: CAST(COUNT(*) AS DOUBLE) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: dws_10000251_play_unlock_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_play_unlock_df
+    description: 机械提取自 dws_10000251_play_unlock_df 的 metrics 块（key=avg_unlock_events_per_role）

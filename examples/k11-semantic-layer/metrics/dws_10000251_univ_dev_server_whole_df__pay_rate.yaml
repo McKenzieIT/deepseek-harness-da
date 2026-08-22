@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_dev_server_whole_df__pay_rate
+description: 付费渗透率=付费设备数/快照设备总数。按 server_id 分组计算，分母为该分组快照内全部设备(含付费无活跃异常设备)；付费判定用 pay_amt_std>0；如需严格"付费/活跃"口径请用 pay_to_active_ratio。
+domains:
+  - 付费经济
+  - 用户生命周期
+computation:
+  sql: AVG(CASE WHEN pay_amt_std > 0 THEN 1 ELSE 0 END)
+  metadata:
+    aggregation: avg
+    field: CASE WHEN pay_amt_std > 0 THEN 1 ELSE 0 END
+    source: dws_10000251_univ_dev_server_whole_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_dev_server_whole_df
+    description: 机械提取自 dws_10000251_univ_dev_server_whole_df 的 metrics 块（key=pay_rate）

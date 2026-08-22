@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_dev_act_mi__new_dev
+description: 月新增设备数（act_fst=1，首次活跃设备计数）
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: SUM(CASE WHEN act_fst=1 THEN 1 ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN act_fst=1 THEN 1 ELSE 0 END
+    source: dws_10000251_univ_dev_act_mi
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_dev_act_mi
+    description: 机械提取自 dws_10000251_univ_dev_act_mi 的 metrics 块（key=new_dev）

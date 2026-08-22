@@ -1,0 +1,16 @@
+kind: metric
+name: game.experienceMission.bonusReward__game_experience_mission_bonus_reward_role_uv
+description: 领取最终大奖的去重角色数（分析主体 role_id 的 UV）
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.experienceMission.bonusReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.experienceMission.bonusReward
+    description: 机械提取自 game.experienceMission.bonusReward 的 metrics 块（key=game_experience_mission_bonus_reward_role_uv）

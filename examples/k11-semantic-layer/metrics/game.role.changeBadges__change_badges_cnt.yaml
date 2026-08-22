@@ -1,0 +1,16 @@
+kind: metric
+name: game.role.changeBadges__change_badges_cnt
+description: 徽章变更事件总次数(COUNT(*))
+domains:
+  - 用户生命周期
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.role.changeBadges
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.role.changeBadges
+    description: 机械提取自 game.role.changeBadges 的 metrics 块（key=change_badges_cnt）

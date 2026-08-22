@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_univ_user_fellow_tag_df__tagged_user_cnt
+description: 当日命中任意规则的去重用户数(多层级表,user_id 跨层级 ID 空间可能重叠,精确按主体去重建议改用 COUNT(DISTINCT CONCAT(CAST(user_type AS STRING),'_',user_id)))
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT user_id)
+  metadata:
+    aggregation: count_distinct
+    field: user_id
+    source: dws_10000251_univ_user_fellow_tag_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_user_fellow_tag_df
+    description: 机械提取自 dws_10000251_univ_user_fellow_tag_df 的 metrics 块（key=tagged_user_cnt）

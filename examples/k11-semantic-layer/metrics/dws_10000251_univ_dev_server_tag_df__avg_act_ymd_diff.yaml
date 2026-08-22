@@ -1,0 +1,19 @@
+kind: metric
+name: dws_10000251_univ_dev_server_tag_df__avg_act_ymd_diff
+description: 平均活跃间隔,最近两次活跃日期间隔天数的均值,反映留存节奏,单位:天;仅一次活跃的设备该值为 NULL/0 会被 AVG 忽略
+domains:
+  - 用户生命周期
+  - 付费经济
+  - 角色成长
+  - 系统监控
+computation:
+  sql: AVG(act_ymd_diff)
+  metadata:
+    aggregation: avg
+    field: act_ymd_diff
+    source: dws_10000251_univ_dev_server_tag_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_dev_server_tag_df
+    description: 机械提取自 dws_10000251_univ_dev_server_tag_df 的 metrics 块（key=avg_act_ymd_diff）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.knightnatalchart.refineconfirmMulti__game_knightnatalchart_refineconfirmMulti_scheme_uv
+description: 被确认的不重复方案(scheme)数（基于 params.scheme）
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.scheme'))
+  metadata:
+    aggregation: count_distinct
+    field: GET_JSON_OBJECT(params, '$.scheme')
+    source: game.knightnatalchart.refineconfirmMulti
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.knightnatalchart.refineconfirmMulti
+    description: 机械提取自 game.knightnatalchart.refineconfirmMulti 的 metrics 块（key=game_knightnatalchart_refineconfirmMulti_scheme_uv）

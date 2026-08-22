@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_role_play_active_di_v3__total_wujinta_active
+description: 当日无尽塔积极度总分
+domains:
+  - 角色成长
+  - 战斗关卡
+computation:
+  sql: SUM(wujinta_active)
+  metadata:
+    aggregation: sum
+    field: wujinta_active
+    source: dws_10000251_role_play_active_di_v3
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_role_play_active_di_v3
+    description: 机械提取自 dws_10000251_role_play_active_di_v3 的 metrics 块（key=total_wujinta_active）

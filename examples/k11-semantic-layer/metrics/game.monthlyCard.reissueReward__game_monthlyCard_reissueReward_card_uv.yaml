@@ -1,0 +1,16 @@
+kind: metric
+name: game.monthlyCard.reissueReward__game_monthlyCard_reissueReward_card_uv
+description: 月卡补发涉及的去重月卡id数（月卡类型维度）
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT CAST(GET_JSON_OBJECT(params,'$.id') AS BIGINT))
+  metadata:
+    aggregation: count_distinct
+    field: CAST(GET_JSON_OBJECT(params,'$.id') AS BIGINT)
+    source: game.monthlyCard.reissueReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.monthlyCard.reissueReward
+    description: 机械提取自 game.monthlyCard.reissueReward 的 metrics 块（key=game_monthlyCard_reissueReward_card_uv）

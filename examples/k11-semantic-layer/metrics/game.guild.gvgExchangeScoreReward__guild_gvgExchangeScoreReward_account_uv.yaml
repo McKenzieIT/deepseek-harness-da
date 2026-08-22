@@ -1,0 +1,16 @@
+kind: metric
+name: game.guild.gvgExchangeScoreReward__guild_gvgExchangeScoreReward_account_uv
+description: 触发兑换积分奖励的去重账号数
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(DISTINCT account_id)
+  metadata:
+    aggregation: count_distinct
+    field: account_id
+    source: game.guild.gvgExchangeScoreReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guild.gvgExchangeScoreReward
+    description: 机械提取自 game.guild.gvgExchangeScoreReward 的 metrics 块（key=guild_gvgExchangeScoreReward_account_uv）

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_selfhelp_new_df__new_user_uv_account
+description: 当日新增账号UV（user_type=2，去重 user_id）
+domains:
+  - 用户生命周期
+  - 付费经济
+computation:
+  sql: COUNT(DISTINCT CASE WHEN user_type = 2 THEN user_id END)
+  metadata:
+    aggregation: count_distinct
+    field: CASE WHEN user_type = 2 THEN user_id END
+    source: dws_10000251_selfhelp_new_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_selfhelp_new_df
+    description: 机械提取自 dws_10000251_selfhelp_new_df 的 metrics 块（key=new_user_uv_account）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.script.hangupaccelerate__script_hangupaccelerate_addexp_per_role
+description: 人均加速获得经验（加经验总和/去重角色数）
+domains:
+  - 自定义
+computation:
+  sql: SUM(CAST(GET_JSON_OBJECT(params, '$.addExp') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0)
+  metadata:
+    aggregation: sum
+    field: CAST(GET_JSON_OBJECT(params, '$.addExp') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0
+    source: game.script.hangupaccelerate
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.script.hangupaccelerate
+    description: 机械提取自 game.script.hangupaccelerate 的 metrics 块（key=script_hangupaccelerate_addexp_per_role）

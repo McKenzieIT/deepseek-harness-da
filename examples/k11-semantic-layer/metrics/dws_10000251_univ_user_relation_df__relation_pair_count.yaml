@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_univ_user_relation_df__relation_pair_count
+description: 关系对总数,即当前快照下 source_id+target_id+relation_type 组合的记录行数,衡量整体关系规模
+domains:
+  - 社交公会
+  - 自定义
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: dws_10000251_univ_user_relation_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_univ_user_relation_df
+    description: 机械提取自 dws_10000251_univ_user_relation_df 的 metrics 块（key=relation_pair_count）

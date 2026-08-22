@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_progression_toy_df__toy_records
+description: 玩具/卡牌快照总记录数(role_id+toy_id行数，日全量)
+domains:
+  - 角色成长
+  - 探索收集
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: dws_10000251_progression_toy_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_progression_toy_df
+    description: 机械提取自 dws_10000251_progression_toy_df 的 metrics 块（key=toy_records）

@@ -1,0 +1,17 @@
+kind: metric
+name: dws_10000251_play_explore_df__explore_total_pv
+description: 当日探索总次数（全城池合计）
+domains:
+  - 探索收集
+  - 角色成长
+computation:
+  sql: SUM(explore_pv)
+  metadata:
+    aggregation: sum
+    field: explore_pv
+    source: dws_10000251_play_explore_df
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_play_explore_df
+    description: 机械提取自 dws_10000251_play_explore_df 的 metrics 块（key=explore_total_pv）

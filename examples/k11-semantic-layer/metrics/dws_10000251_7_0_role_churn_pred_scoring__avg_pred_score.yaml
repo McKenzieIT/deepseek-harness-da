@@ -1,0 +1,16 @@
+kind: metric
+name: dws_10000251_7_0_role_churn_pred_scoring__avg_pred_score
+description: 平均预测流失得分（score 均值，整体流失风险水平）
+domains:
+  - 用户生命周期
+computation:
+  sql: AVG(score)
+  metadata:
+    aggregation: avg
+    field: score
+    source: dws_10000251_7_0_role_churn_pred_scoring
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: dws_10000251_7_0_role_churn_pred_scoring
+    description: 机械提取自 dws_10000251_7_0_role_churn_pred_scoring 的 metrics 块（key=avg_pred_score）

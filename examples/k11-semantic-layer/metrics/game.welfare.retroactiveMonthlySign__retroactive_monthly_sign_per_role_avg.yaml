@@ -1,0 +1,16 @@
+kind: metric
+name: game.welfare.retroactiveMonthlySign__retroactive_monthly_sign_per_role_avg
+description: 人均补签次数（总次数/去重角色数）
+domains:
+  - 自定义
+computation:
+  sql: ROUND(COUNT(*) / NULLIF(COUNT(DISTINCT role_id), 0), 2)
+  metadata:
+    aggregation: ""
+    field: ""
+    source: game.welfare.retroactiveMonthlySign
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.welfare.retroactiveMonthlySign
+    description: 机械提取自 game.welfare.retroactiveMonthlySign 的 metrics 块（key=retroactive_monthly_sign_per_role_avg）

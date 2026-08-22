@@ -1,0 +1,16 @@
+kind: metric
+name: game.gacha.chooseReturnActivity__game_gacha_choose_return_activity_server_uv
+description: 涉及返场卡池选择的游戏服去重数
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.gacha.chooseReturnActivity
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.gacha.chooseReturnActivity
+    description: 机械提取自 game.gacha.chooseReturnActivity 的 metrics 块（key=game_gacha_choose_return_activity_server_uv）

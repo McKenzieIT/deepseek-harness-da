@@ -1,0 +1,16 @@
+kind: metric
+name: game.social.friendact__friendact_downgrade_cnt
+description: 好友关系降级（action=1）动作次数
+domains:
+  - 社交公会
+computation:
+  sql: SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END)
+  metadata:
+    aggregation: sum
+    field: CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END
+    source: game.social.friendact
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.social.friendact
+    description: 机械提取自 game.social.friendact 的 metrics 块（key=friendact_downgrade_cnt）

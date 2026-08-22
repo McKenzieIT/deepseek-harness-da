@@ -1,0 +1,16 @@
+kind: metric
+name: game.knight.chooseSeniorJob__game_knight_chooseSeniorJob_cnt
+description: 武将切换进阶职业事件总次数
+domains:
+  - 角色成长
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.knight.chooseSeniorJob
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.knight.chooseSeniorJob
+    description: 机械提取自 game.knight.chooseSeniorJob 的 metrics 块（key=game_knight_chooseSeniorJob_cnt）

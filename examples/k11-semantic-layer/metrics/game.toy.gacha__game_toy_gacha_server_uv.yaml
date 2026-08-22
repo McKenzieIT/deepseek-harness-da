@@ -1,0 +1,16 @@
+kind: metric
+name: game.toy.gacha__game_toy_gacha_server_uv
+description: 涉及抽卡的游戏服去重数
+domains:
+  - 探索收集
+computation:
+  sql: COUNT(DISTINCT server_id)
+  metadata:
+    aggregation: count_distinct
+    field: server_id
+    source: game.toy.gacha
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.toy.gacha
+    description: 机械提取自 game.toy.gacha 的 metrics 块（key=game_toy_gacha_server_uv）

@@ -1,0 +1,16 @@
+kind: metric
+name: game.guild.operateJoinApply__game_guild_operate_join_apply_cnt
+description: 加入申请处理操作总次数（通过/拒绝等所有 op 合计）
+domains:
+  - 社交公会
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.guild.operateJoinApply
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.guild.operateJoinApply
+    description: 机械提取自 game.guild.operateJoinApply 的 metrics 块（key=game_guild_operate_join_apply_cnt）

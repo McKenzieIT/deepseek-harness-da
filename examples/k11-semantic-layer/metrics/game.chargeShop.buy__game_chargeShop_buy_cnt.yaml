@@ -1,0 +1,16 @@
+kind: metric
+name: game.chargeShop.buy__game_chargeShop_buy_cnt
+description: 充值商店购买事件总次数（所有日志行数）
+domains:
+  - 付费经济
+computation:
+  sql: COUNT(*)
+  metadata:
+    aggregation: count
+    field: "*"
+    source: game.chargeShop.buy
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.chargeShop.buy
+    description: 机械提取自 game.chargeShop.buy 的 metrics 块（key=game_chargeShop_buy_cnt）

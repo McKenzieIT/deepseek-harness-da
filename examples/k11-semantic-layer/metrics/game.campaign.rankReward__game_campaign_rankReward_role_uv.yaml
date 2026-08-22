@@ -1,0 +1,16 @@
+kind: metric
+name: game.campaign.rankReward__game_campaign_rankReward_role_uv
+description: 领奖角色数（去重 role_id，业务主体）
+domains:
+  - 自定义
+computation:
+  sql: COUNT(DISTINCT role_id)
+  metadata:
+    aggregation: count_distinct
+    field: role_id
+    source: game.campaign.rankReward
+    time_grain: ""
+relations:
+  - type: derived_from
+    target: game.campaign.rankReward
+    description: 机械提取自 game.campaign.rankReward 的 metrics 块（key=game_campaign_rankReward_role_uv）
