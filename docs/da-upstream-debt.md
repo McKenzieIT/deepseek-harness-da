@@ -26,7 +26,7 @@
 - `packages/credentials/credentials/src/brand.ts` — **NEW file** added to dsh `credentials/src/` with `UserId` / `ScopeId` brand types + factories.
 - `packages/credentials/credentials-local/src/index.ts` — `assertOwnerOnly` / `renderDocument` gained `export` (private→public).
 
-**Why (da capability needed):** da's per-user / multi-scope data-agent requires credentials to be resolved, described, and mutated *per user/scope* (a `CredentialAddress`), not just globally. The da-owned keychain provider (`credentials-keychain-host`) replaces `credentials-local` as `ctx.credentials` and must stay byte-compatible with `.credentials.yaml`, hence the re-used file-format helpers.
+**Why (da capability needed):** da's per-user / multi-scope data-agent requires credentials to be resolved, described, and mutated *per user/scope* (a `CredentialAddress`), not just globally. The da-owned keychain provider (`credentials-keychain-host`) replaces `credentials-local` as `ctx.credentials` and must stay byte-compatible with `.credentials.yaml`, hence the re-used file-format helpers (`assertOwnerOnly`, `renderDocument`, `parseCredentialsDocument`, `resolveSpec`).
 
 **Rules violated:** 4.1 (modify dsh src); 4.4 (modify dsh Service Definition interface signature + vocabulary / typed-event types); §3.2 (modify an existing `SessionEventMap` member).
 
@@ -34,7 +34,7 @@
 
 1. Add optional `address?: CredentialAddress` to the `CredentialProvider` abstract methods (additive, non-breaking) — general value for any multi-tenant / multi-scope deployment.
 2. Move `UserId` / `ScopeId` brand primitives into `@deepseek-ai/dsh-brand` (or the `credentials` Service Definition) rather than a new dsh src file.
-3. Export `assertOwnerOnly` / `renderDocument` from `credentials-local` (generally useful file-format helpers) OR extract them into the abstract `credentials` Service Definition so consumers depend on the seam, not the concrete provider.
+3. Export `assertOwnerOnly` / `renderDocument` / `parseCredentialsDocument` / `resolveSpec` from `credentials-local` (generally useful file-format helpers; `parseCredentialsDocument` / `resolveSpec` are already public upstream, `assertOwnerOnly` / `renderDocument` are the da-exported additions) OR extract them into the abstract `credentials` Service Definition so consumers depend on the seam, not the concrete provider.
 4. The `credentials/updated` event signature change (§3.2) is the hardest — propose as a **separate architectural PR** (an event-member signature change is not a 24h-SLA mechanical merge).
 
 **Interim workaround (avoid merge conflicts):** Keep the current additive modifications. An upstream `git merge upstream/master` will conflict **only** on the modified method signatures and the `credentials/updated` member — mechanical resolve: keep da's optional param and incorporate any upstream body changes. The new `brand.ts` file will not conflict (additive file). Minimize further edits to these files until the PR lands. If upstream renames / changes these methods before the PR lands, rebase da's optional param onto the new signature.
@@ -93,7 +93,7 @@
 
 ### D4 — nl2sql-engine Service Definition does provider I/O (§6:io-in-definition)
 
-**What (da-owned):** `packages/data/nl2sql-engine/src/index.ts` — `Nl2sqlEngineService` (the `ctx.nl2sql` seam owner / Service Definition) imports `loadConventions` from the concrete `@deepseek-ai/dsh-query-maxcompute/src/conventions.ts` Provider and calls it in its constructor (`this.conventions = loadConventions(config.conventionsEngine ?? 'maxcompute')`). `loadConventions` does provider-specific file I/O (`readFileSync` of maxcompute's `conventions.yaml`), so the seam-owning Definition is coupled to a concrete Provider and leaks I/O into the abstract layer.
+**What (da-owned):** `packages/data/nl2sql-engine/src/index.ts` — `Nl2sqlEngineService` (the `ctx.nl2sql` seam owner / Service Definition) imports `loadConventions` from the concrete `@deepseek-ai/dsh-query-maxcompute/src/conventions.ts` Provider and calls it in its constructor (`this.conventions = loadConventions(config.conventionsEngine ?? 'maxcompute')`). `loadConventions` does provider-specific file I/O (`readFileSync` of maxcompute's `conventions.yaml`), so the seam-owning Definition is coupled to a concrete Provider and leaks I/O into the abstract layer. (The same `loadConventions` import recurs across 5 `nl2sql-engine` files — `index.ts`, `engine.ts`, `prompt.ts`, `conventions.ts`, `tests/scenarios.spec.ts` — all under the same §6:io-in-definition anti-pattern; `index.ts` above is the representative site.)
 
 **Why:** Single-engine (MaxCompute) today; the conventions loader lives in the maxcompute Provider and is shared by nl2sql + a future query-guard consumer.
 
