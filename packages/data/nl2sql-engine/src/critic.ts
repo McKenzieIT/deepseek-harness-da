@@ -198,6 +198,23 @@ export function critiqueSql(sql: string | null | undefined, ctx: CriticCtx): Cri
   if (hasSelectStar(sql)) {
     findings.push(new CriticFinding('select_star', 'warning', 'SELECT * 不鼓励，显式列枚举'))
   }
+  // P3 C2: undeclared JOIN warning (only when a declared-join set is provided)
+  if (ctx.declaredJoinPairs !== undefined && ctx.declaredJoinPairs.size > 0) {
+    const tables = [...extractTableNames(sql)]
+    if (tables.length >= 2) {
+      for (let i = 0; i < tables.length; i++) {
+        for (let j = i + 1; j < tables.length; j++) {
+          const a = tables[i]
+          const b = tables[j]
+          if (a === undefined || b === undefined) continue
+          const pair = [a, b].sort().join('|')
+          if (!ctx.declaredJoinPairs.has(pair)) {
+            findings.push(new CriticFinding('undeclared_join', 'warning', `⚠️ 未声明的 JOIN: ${a} ⟷ ${b}，可能 hallucination`))
+          }
+        }
+      }
+    }
+  }
   // 方案 4: GET_JSON_OBJECT leaf ∈ event_params
   for (const p of extractJsonPaths(sql)) {
     if (p.leaf && ctx.eventParams.size > 0 && !ctx.eventParams.has(p.leaf.toLowerCase())) {

@@ -54,3 +54,30 @@ export function buildJoinConstraints(candidateIds: readonly string[], graph: Rel
   }
   return out
 }
+
+/**
+ * Build the set of declared JOIN pairs (C2 critic guard). A pair is "declared"
+ * when the graph has a direct joins edge OR a join path between the two ids.
+ * Pairs are normalized `a|b` (lowercased, sorted). The critic warns on any SQL
+ * JOIN pair absent from this set (possible hallucination) — a warning, not an
+ * error (does not block execution).
+ * @param candidateIds - the BM25 candidate data-source ids.
+ * @param graph - the live relation graph.
+ * @returns the normalized declared-join pair set.
+ */
+export function buildDeclaredJoinPairs(candidateIds: readonly string[], graph: RelationGraphLike): Set<string> {
+  const pairs = new Set<string>()
+  const norm = (a: string, b: string) => [a.toLowerCase(), b.toLowerCase()].sort().join('|')
+  for (const c of candidateIds) {
+    for (const e of graph.getRelated(c, 'joins')) pairs.add(norm(c, e.targetId))
+  }
+  for (let i = 0; i < candidateIds.length; i++) {
+    for (let j = i + 1; j < candidateIds.length; j++) {
+      const a = candidateIds[i]
+      const b = candidateIds[j]
+      if (a === undefined || b === undefined) continue
+      if (graph.findJoinPath(a, b) !== null) pairs.add(norm(a, b))
+    }
+  }
+  return pairs
+}

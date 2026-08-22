@@ -1,5 +1,8 @@
 import { test, expect } from 'vitest'
 import { buildJoinConstraints, type RelationGraphLike, type RelationGraphEdge } from '../src/ontology.ts'
+import { makeCriticCtx } from '../src/types.ts'
+import { critiqueSql } from '../src/critic.ts'
+import { buildDeclaredJoinPairs } from '../src/ontology.ts'
 
 // Hand-rolled fake graph (bidirectional, mirrors RelationGraph.build semantics).
 // NO import from semantic-layer — nl2sql-engine stays decoupled.
@@ -58,4 +61,34 @@ test('C1 — buildJoinConstraints emits the declared join condition for a candid
 test('C1 — buildJoinConstraints returns [] when no path exists', () => {
   const g = fakeGraph([{ a: 'dws_pay', b: 'dim_server', on: 'server_id = server_id' }])
   expect(buildJoinConstraints(['dws_pay', 'unrelated'], g)).toEqual([])
+})
+
+test('C2 — buildDeclaredJoinPairs includes a declared candidate pair', () => {
+  const g = fakeGraph([{ a: 'dws_pay', b: 'dim_server', on: 'server_id = server_id' }])
+  const pairs = buildDeclaredJoinPairs(['dws_pay', 'dim_server'], g)
+  expect(pairs.has(['dws_pay', 'dim_server'].sort().join('|'))).toBe(true)
+})
+
+test('C2 — critic warns on an undeclared JOIN when declaredJoinPairs is set (no-op when absent)', () => {
+  const g = fakeGraph([{ a: 'dws_pay', b: 'dim_server', on: 'server_id = server_id' }])
+  const declared = buildDeclaredJoinPairs(['dws_pay', 'dim_server'], g)
+  // declared pair -> no undeclared_join finding
+  const ok = critiqueSql(
+    "SELECT a FROM dws_pay JOIN dim_server ON dws_pay.server_id = dim_server.server_id WHERE ds='20260819'",
+    makeCriticCtx({ candidateTables: ['dws_pay', 'dim_server'], partitionCols: ['ds'], declaredJoinPairs: declared }),
+  )
+  expect(ok.findings.some(f => f.rule === 'undeclared_join')).toBe(false)
+  // undeclared pair -> warning (passed:true, reason carries the warning)
+  const warn = critiqueSql(
+    "SELECT a FROM dws_pay JOIN dim_role ON dws_pay.role_id = dim_role.role_id WHERE ds='20260819'",
+    makeCriticCtx({ candidateTables: ['dws_pay', 'dim_role'], partitionCols: ['ds'], declaredJoinPairs: declared }),
+  )
+  expect(warn.findings.some(f => f.rule === 'undeclared_join')).toBe(true)
+  expect(warn.passed).toBe(true)
+  // no declaredJoinPairs -> rule skipped (existing behavior preserved)
+  const noGraph = critiqueSql(
+    "SELECT a FROM dws_pay JOIN dim_role ON x=y WHERE ds='20260819'",
+    makeCriticCtx({ candidateTables: ['dws_pay', 'dim_role'], partitionCols: ['ds'] }),
+  )
+  expect(noGraph.findings.some(f => f.rule === 'undeclared_join')).toBe(false)
 })
