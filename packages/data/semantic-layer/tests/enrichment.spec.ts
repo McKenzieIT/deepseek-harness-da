@@ -14,10 +14,13 @@ import {
   discoverRelationsFor,
   enrichAllDwsTables,
   buildLlmPrompt,
+  discoverEventRelationsDeterministic,
+  buildEventLlmPrompt,
+  enrichAllEvents,
   type DimInventoryEntry,
 } from '../src/enrichment.ts'
 import { dumpYaml } from '../src/io.ts'
-import { type TableDefinition, DimensionRefSchema } from '../src/types.ts'
+import { type TableDefinition, type EventDefinition, DimensionRefSchema, EventDefinitionSchema } from '../src/types.ts'
 
 function dws(over: Partial<TableDefinition> = {}): TableDefinition {
   return {
@@ -205,5 +208,94 @@ describe('enrichAllDwsTables', () => {
     const out = yaml.load(readFileSync(join(dir, 'tables', 'dws_pay.yaml'), 'utf-8')) as Record<string, unknown>
     const dimTables = (out.dimension_refs as Array<{ dim_table: string }>).map(r => r.dim_table).sort()
     expect(dimTables).toEqual(['dim_other', 'dim_server']) // curated dim_other preserved + dim_server rediscovered
+  })
+})
+
+function event(over: Partial<EventDefinition> = {}): EventDefinition {
+  return EventDefinitionSchema.parse({
+    name: 'game.pay.order',
+    description: '玩家充值下单',
+    domains: ['付费经济'],
+    params_fields: {
+      role_id: { type: 'string', description: '角色ID' },
+      server_id: { type: 'string', description: '区服ID' },
+      amount: { type: 'int', description: '金额' },
+    },
+    metrics: {}, external_refs: [], disambiguation: [],
+    confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, coverage: null,
+    ...over,
+  })
+}
+
+function dimServerYaml(): string {
+  return dumpYaml({
+    table_name: 'dim_server', kind: 'dim', primary_key: ['server_id'], label_columns: ['s_name'],
+    columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }],
+    metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
+    domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute',
+    coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null,
+    duplicate_sample: [], freshness: '', dimension_refs: [],
+  } as TableDefinition)
+}
+
+describe('enrichAllEvents', () => {
+  let dir: string
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'k11-evt-'))
+    writeFileSync(join(dir, 'config.yaml'), 'project:\n  name: t\n  scope_id: t\n')
+    mkdirSync(join(dir, 'tables'), { recursive: true })
+    mkdirSync(join(dir, 'events', 'pay'), { recursive: true })
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dimServerYaml())
+    writeFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), dumpYaml(event()))
+  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  test('writes external_refs into events, preserves other fields', async () => {
+    const res = await enrichAllEvents(dir)
+    expect(res.errors).toEqual([])
+    expect(res.enriched).toBe(1)
+    const written = yaml.load(readFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), 'utf-8')) as Record<string, unknown>
+    expect(Array.isArray(written.external_refs)).toBe(true)
+    expect((written.external_refs as unknown[]).length).toBe(1)
+    expect(written.description).toBe('玩家充值下单')
+  })
+
+  test('with mock llmCall -> merges LLM refs with deterministic', async () => {
+    const llmCall = async () => JSON.stringify([
+      { dim_table: 'dim_server', join_keys: [{ dws_column: 'srv_id', dim_column: 'server_id' }], derivation: 'llm semantic' },
+    ])
+    const res = await enrichAllEvents(dir, llmCall)
+    expect(res.enriched).toBe(1)
+    const written = yaml.load(readFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), 'utf-8')) as Record<string, unknown>
+    const s = (written.external_refs as Array<{ dim_table: string; join_keys: unknown[] }>).find(r => r.dim_table === 'dim_server')!
+    expect(s.join_keys).toHaveLength(2)
+  })
+
+  test('events? filter enriches only named events', async () => {
+    const res = await enrichAllEvents(dir, undefined, ['nonexistent.event'])
+    expect(res.written).toBe(0)
+  })
+})
+
+describe('discoverEventRelationsDeterministic', () => {
+  test('matches event param fields to DIM primary_key by exact name', () => {
+    const refs = discoverEventRelationsDeterministic(event(), [DIM_SERVER, DIM_ROLE])
+    expect(refs).toHaveLength(2)
+    const byDim = Object.fromEntries(refs.map(r => [r.dim_table, r]))
+    expect(byDim.dim_10000251_server_info!.join_keys).toEqual([{ dws_column: 'server_id', dim_column: 'server_id' }])
+  })
+
+  test('derivation marks the match as deterministic', () => {
+    const [r] = discoverEventRelationsDeterministic(event(), [DIM_SERVER])
+    expect(r!.derivation).toContain('确定性')
+  })
+})
+
+describe('buildEventLlmPrompt', () => {
+  test('includes event name + params + dim inventory', () => {
+    const p = buildEventLlmPrompt(event(), [DIM_SERVER])
+    expect(p).toContain('game.pay.order')
+    expect(p).toContain('server_id')
+    expect(p).toContain('dim_10000251_server_info')
   })
 })

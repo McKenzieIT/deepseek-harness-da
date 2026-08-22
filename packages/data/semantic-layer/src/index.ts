@@ -115,6 +115,10 @@ export {
   discoverRelationsFor,
   buildDimInventory,
   enrichAllDwsTables,
+  discoverEventRelationsDeterministic,
+  buildEventLlmPrompt,
+  discoverEventRelationsFor,
+  enrichAllEvents,
   type DimInventoryEntry,
   type LlmCall,
 } from './enrichment.ts'
