@@ -12,7 +12,13 @@
 # (without one it publishes into the root realm, process-global — a second
 # preset publishing the same name collides, and `dsh-agent-presets` rejects
 # that at mount). `phase-gate` owns per-agent phase state keyed inside the
-# plugin, so an entry-local realm is the correct lifetime.
+# plugin, so an entry-local realm is the correct lifetime. The phase-gate
+# ALSO publishes `ctx.criticCtx` (the CriticCtxService the critique tools
+# read), so the `phase-gating` group isolates BOTH `phaseGate` and
+# `criticCtx`, and the critique tools sit INSIDE the group as consumers of
+# that realm-private service (the SKILL: wrap provider + consumers in one
+# isolate realm; a consumer left outside resolves the host root realm this
+# preset did not populate).
 #
 # P7b ships the phase-gate plugin (`@deepseek-ai/dsh-phase-gate`): the
 # four-phase pipeline re-expressed on harness event seams (7 hooks: guard +
@@ -44,6 +50,21 @@
   group: true
   isolate:
     phaseGate: true
+    # (b) regression #2: isolate criticCtx in the phase-gating realm (NOT root).
+    # The phase-gate registers a CriticCtxService that publishes ctx.criticCtx
+    # for the critique_sql_tool + evaluate_sql_quality consumers. Without this
+    # isolate entry the service lands in the ROOT realm (process-global):
+    # ctx[symbols.isolate]['criticCtx'] resolves up the prototype chain to the
+    # root symbol cordis mints in provide(), so dsh-agent-presets' mount guard
+    # (leakedServices) flags it — `row(s) published process-global service(s)
+    # [criticCtx]` — and the preset NEVER joins (the (c)+(b) chain never runs).
+    # `true` = an entry-local realm private to each mounting session (the
+    # SKILL "wrap provider + consumers in one isolate realm"; mirror the
+    # `standard` delegation + `compaction` groups). The two critique tools
+    # below are the consumers that reach ctx.criticCtx via ctx.get, so they sit
+    # INSIDE this same group — a consumer left outside resolves the host root
+    # realm this preset did not populate.
+    criticCtx: true
   config:
     - id: phase-gate
       name: '@deepseek-ai/dsh-phase-gate'
@@ -56,17 +77,27 @@
         max_state_turns: 20
         stall_watchdog_seconds: 300
         critic_tools_registered: true   # (b) critic tools shipped -> re-tighten the GENERATION gate (requires last_critique/last_quality) + F2 active
+    # (b) critique tools — consumers of the isolated ctx.criticCtx service
+    # (via ctx.get, soft). Moved INTO the phase-gating group so they share its
+    # isolate realm and resolve the realm-private criticCtx the phase-gate
+    # registers; left loose they resolve the host root realm, which this
+    # preset does not populate, so ctx.get('criticCtx') would return undefined
+    # (empty guard sets — the honest "cannot verify table grounding" state)
+    # and the mount guard would reject the preset for the leaked criticCtx.
+    - id: tool-critique-sql          # GENERATION ((b) folded-regex critic via critique_sql_tool; ctx.criticCtx service from phase-gate)
+      name: '@deepseek-ai/dsh-tool-critique-sql'
+    - id: tool-evaluate-sql-quality  # GENERATION ((b) 0-100 quality score; paired with critique_sql_tool)
+      name: '@deepseek-ai/dsh-tool-evaluate-sql-quality'
 
-# ── data-agent model-facing tools (4 shipped + uncommented; placeholders commented) ───────
-# Four tools below are shipped + uncommented (search_data_sources /
-# query_data / load_table_definition / load_event_definition). The remaining
-# rows (critique_sql_tool / evaluate_sql_quality / present_*) are commented
-# placeholders: a bare specifier (name: '@deepseek-ai/dsh-<pkg>') to a
-# not-yet-shipped package breaks pnpm install and verify-cordis-config today;
-# uncomment and supply each `name:` only after the package ships. The
-# phase-gate guard whitelists (UNDERSTANDING/GENERATION/EXECUTION/
-# INTERPRETATION_TOOLS) already name these tools, so registering one makes
-# it callable in its phase.
+# ── data-agent model-facing tools (publish no service → loose rows) ────────
+# The four tools below publish NO service (they register model-facing tools
+# into the host `tools` registry via ctx.tools.register), so they need no
+# isolate realm — a realm around a pure consumer would hide the host
+# `tools`/`schema`/`query` instances they resolve. The critique tools above
+# are different: they consume the preset-owned ctx.criticCtx service, so they
+# sit inside the phase-gating group with its provider. The phase-gate guard
+# whitelists (UNDERSTANDING/GENERATION/EXECUTION/INTERPRETATION_TOOLS) name
+# these tools, so registering one makes it callable in its phase.
 #
 - id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item; Bm25Linker Q1 thin default, swap -> ctx.retrieval P5b / ctx.schema P6b)
   name: '@deepseek-ai/dsh-tool-search-data-sources'
@@ -78,10 +109,6 @@
   name: '@deepseek-ai/dsh-query-tool'
 # - id: tool-retrieve            # ESCAPE-HATCH (D2c-impl): on-demand retrieval over the same BM25 corpus as search_data_sources; additive escape-hatch for when the UNDERSTANDING prefetch missed. SHIPPED but DORMANT (opt-in, mirrors D2e/P5b dormant-until-mount) — default boot does NOT mount it = pipeline-only current state, no regression. Activation = uncomment this row + add `retrieve` to the phase-gate whitelist + land the persona (P7b) teaching "prefer prefetched context; call retrieve only when the gap is obvious" (avoid double-retrieval redundancy). Soft-fallback == search_data_sources (ctx.retrieval -> ctx.schema enriched Bm25Linker -> empty Bm25Linker; NO FakeHash/FakeReranker default per D2d). Additive/reversible — unship if D2c-revisit regresses.
 #   name: '@deepseek-ai/dsh-tool-retrieve'
-- id: tool-critique-sql          # GENERATION ((b) folded-regex critic via critique_sql_tool; ctx.criticCtx service from phase-gate)
-  name: '@deepseek-ai/dsh-tool-critique-sql'
-- id: tool-evaluate-sql-quality  # GENERATION ((b) 0-100 quality score; paired with critique_sql_tool)
-  name: '@deepseek-ai/dsh-tool-evaluate-sql-quality'
 # - id: tool-present-decomposition # INTERPRETATION (delivery tools → later ticket)
 #   name: '@deepseek-ai/dsh-tool-present-decomposition' # name TBD
 # - id: tool-present-table         # INTERPRETATION

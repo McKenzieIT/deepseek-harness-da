@@ -29,7 +29,10 @@ export { PhaseGate, CriticCtxService, type PhaseGateConfig } from './phase-gate.
 // context (candidateTables / eventParams / partitionCols) as ctx.criticCtx so
 // the critique_sql_tool + evaluate_sql_quality Consumer tools can read it
 // (they probe ctx.get('criticCtx')). The service is constructed in apply()
-// below, closing over the PhaseGate instance.
+// below, closing over the PhaseGate instance. The composition isolates
+// `criticCtx` in the `phase-gating` group (agent.cordis.yml), so the service
+// registers in that entry-local realm — NOT root — and the agent-presets
+// mount guard accepts the preset (b regression #2).
 declare module '@deepseek-ai/cordis' {
   interface Context {
     criticCtx: CriticCtxService
@@ -90,7 +93,14 @@ export function apply(ctx: Context, config: Config): void {
   // evaluate_sql_quality Consumer tools can read the per-agent critic guard
   // context (candidateTables / eventParams / partitionCols). Constructing a
   // Service registers it on ctx.reflect and ties it to the phase-gate fiber
-  // (auto-removed on unload). Non-isolated name → visible to parent-realm
-  // tools via ctx.get('criticCtx').
+  // (auto-removed on unload). The service registers in whatever isolate realm
+  // the composing context carries — the `phase-gating` group isolates
+  // `criticCtx` (agent.cordis.yml), so this plugin's context (a child of the
+  // group) resolves ctx[symbols.isolate]['criticCtx'] to the realm-private
+  // symbol and provide() stores the impl there — NOT in the root realm. The
+  // critique tools sit INSIDE the same group, so their ctx.get('criticCtx')
+  // resolves the same realm-private symbol and finds this service. (b
+  // regression #2: a non-isolated criticCtx leaks to root and the
+  // agent-presets mount guard rejects it → the preset never joins.)
   new CriticCtxService(ctx, gate)
 }

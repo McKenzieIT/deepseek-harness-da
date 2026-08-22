@@ -84,7 +84,11 @@ export const inject = ['agentPresets'] as const
  * Build the `agent/created` listener that joins the default preset.
  *
  * Exported so unit tests can drive the resolve→mount→skip logic with a plain
- * mock service, independent of the Cordis event/scope machinery.
+ * mock service, independent of the Cordis event/scope machinery. On a mount
+ * failure the listener logs the error at ERROR (visible at the default INFO
+ * threshold — the `agent/created` dispatch is fire-and-forget and its WARN
+ * report is filtered) and then re-throws so the agent runs bare, exactly as
+ * it does without this wrapper.
  * @param presets - the preset roster service (or a structural mock).
  * @returns an `agent/created` listener.
  */
@@ -106,10 +110,24 @@ export function createAutojoinListener(presets: AutojoinPresetService) {
       return
     }
     // A mount failure (broken composition, leaked service) propagates: the
-    // `agent/created` dispatch reports the rejected promise, and the agent
-    // runs bare — exactly as it does without this wrapper — rather than the
-    // join silently swallowing a composition the operator needs to fix.
-    await presets.mount(agent.ctx, preset.id)
+    // agent runs bare — exactly as it does without this wrapper — rather than
+    // the join silently swallowing a composition the operator needs to fix.
+    // The `agent/created` dispatch is fire-and-forget: it reports the rejected
+    // listener promise, but the cordis logger filters WARN at the default INFO
+    // threshold, so a PresetMountError (e.g. a service leaking to the root
+    // realm) would be silently swallowed. Log it here at ERROR (visible at the
+    // INFO threshold) so future mount failures surface, then re-throw so the
+    // dispatch still reports the rejection and the agent runs bare.
+    try {
+      await presets.mount(agent.ctx, preset.id)
+    } catch (error) {
+      try {
+        agent.ctx.logger.error(error)
+      } catch {
+        // best-effort: a logging failure must not mask the original mount error.
+      }
+      throw error
+    }
   }
 }
 
