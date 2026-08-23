@@ -59,22 +59,14 @@
   config:
     mode: native
 
-# ── LLM: DashScope as the data-agent's direct LLM (P2 resolved) ───────────
-# llm-dashscope mounts the `aga` provider on ctx.llm — route renamed from
-# `dashscope` so it does not collide with llm-pi-ai's broken openai-completions
-# `dashscope` route (harness lets the first-registrant keep a duplicate route);
-# this makes the plugin self-contained (mount = working DashScope, no conflict).
-# Other providers (deepseek-official, llm-pi-ai from base) stay mounted +
-# configurable via the settings UI. agent-default-model sets the profile's
-# default to aga/qwen3.7-max; override per-request or via settings.
-- insert:
-    - id: llm-dashscope
-      name: '@deepseek-ai/dsh-llm-dashscope'
-
-- id: agent-default-model
-  config:
-    provider: aga
-    model: qwen3.7-max
+# ── LLM: deployment choice (not bundled) ──────────────────────────────────
+# The data-agent is LLM-agnostic: it consumes ctx.llm (provided by dsh-base)
+# without mandating a specific provider. The LLM provider (e.g. llm-dashscope
+# for AGA, or deepseek-official from base) and agent-default-model are
+# DEPLOYMENT decisions — configure them via:
+#   dsh plugin --profile <name> add @deepseek-ai/dsh-llm-dashscope
+#   ~/.dsh/settings.yaml  agent-default-model: { provider: aga, model: qwen3.7-max }
+# See scripts/setup-da-profile.sh for the reproducible setup.
 
 # ── identity seam (G3b: per-user caller identity; audit + subagent-qoder inject it;
 # P9b populates login; stub `current()` returns `undefined` → T1 fallback today) ──
@@ -143,6 +135,8 @@
         # will come from ctx.scopes (scope-registry) once that package ships;
         # until then semantic-layer reads this mount-time config directly.
         semanticRoot: ./examples/k11-semantic-layer
+    - id: enrichment-llm-wiring  # wire ctx.llm into ctx.schema enrichment (F1: production two-round discovery)
+      name: '@deepseek-ai/dsh-semantic-layer/src/llm-wiring-plugin.ts'
 #     # ── audit (P8) ───────────────────────────────────────────────────────
     - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
       name: '@deepseek-ai/dsh-audit'
@@ -153,9 +147,10 @@
 #     # ── admin + access isolation (P9) ─────────────────────────────────────
 #     - id: admin              # harness app: per-game scope/credential/access-link + system config
 #       name: '@deepseek-ai/dsh-admin'          # name TBD - P9
-#     # ── LLM (phase-1) ────────────────────────────────────────────────────
-#     - id: llm-dashscope      # DashScope (AGA AI Gateway, native protocol) - the data agent's direct LLM
-#       name: '@deepseek-ai/dsh-llm-dashscope'  # name TBD - P2
+#     # ── LLM (phase-1) — MOVED to deployment layer ─────────────────────────
+#     # llm-dashscope and subagent-qoder are deployment choices, not product
+#     # capabilities. Mount them via `dsh plugin --profile <name> add <pkg>`.
+#     # See scripts/setup-da-profile.sh.
 #     - id: subagent-qoder     # Qoder as a harness subagent (query() delegation; PAT auth via credentials seam)
 #       name: '@deepseek-ai/dsh-subagent-qoder' # name TBD - P3
 
