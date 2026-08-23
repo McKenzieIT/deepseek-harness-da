@@ -76,17 +76,19 @@
     - id: identity
       name: '@deepseek-ai/dsh-identity'
 
-# ── agent presets (data-agent profile doesn't mount agent-presets by default; the bundle mounts it + selects data-agent so --profile headless --patch this bundle auto-loads the data-agent preset + tools + persona)
+# ── agent presets: config override (select data-agent as default preset).
+# web-app and base may already mount agent-presets; this override only sets
+# the default without re-inserting the row (avoids duplicate id on composition).
+- id: agent-presets
+  config:
+    default: data-agent
+
+# ── preset-autojoin (§4.2 da wrapper): hooks agent/created → joins the
+# default preset (data-agent) to ANY published agent, so the headless
+# entry — whose setup calls installModelSelection but NOT presets.mount —
+# still gets the data-agent persona + 4 data tools. inject: ['agentPresets']
+# makes Cordis start this row after the roster above, regardless of order.
 - insert:
-    - id: agent-presets
-      name: '@deepseek-ai/dsh-agent-presets'
-      config:
-        default: data-agent
-    # ── preset-autojoin (§4.2 da wrapper): hooks agent/created → joins the
-    # default preset (data-agent) to ANY published agent, so the headless
-    # entry — whose setup calls installModelSelection but NOT presets.mount —
-    # still gets the data-agent persona + 4 data tools. inject: ['agentPresets']
-    # makes Cordis start this row after the roster above, regardless of order.
     - id: preset-autojoin
       name: '@deepseek-ai/dsh-preset-autojoin'
 

@@ -177,6 +177,9 @@ importers:
       '@deepseek-ai/dsh-cordis-client-runner':
         specifier: workspace:^
         version: link:../../packages/extensions/cordis-client-runner
+      '@deepseek-ai/dsh-data-agent':
+        specifier: workspace:^
+        version: link:../../packages/bundle/data-agent
       '@deepseek-ai/dsh-fs-local':
         specifier: workspace:^
         version: link:../../packages/fs/fs-local
@@ -198,6 +201,9 @@ importers:
       '@deepseek-ai/dsh-launch-environment':
         specifier: workspace:^
         version: link:../../packages/util/launch-environment
+      '@deepseek-ai/dsh-llm-dashscope':
+        specifier: workspace:^
+        version: link:../../packages/llm/llm-dashscope
       '@deepseek-ai/dsh-mcp-client':
         specifier: workspace:^
         version: link:../../packages/mcp/mcp-client
@@ -1247,9 +1253,6 @@ importers:
       '@deepseek-ai/dsh-identity':
         specifier: workspace:^
         version: link:../../identity/identity
-      '@deepseek-ai/dsh-llm-dashscope':
-        specifier: workspace:^
-        version: link:../../llm/llm-dashscope
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../../data/nl2sql-engine
@@ -4045,6 +4048,9 @@ importers:
       '@deepseek-ai/dsh-audit':
         specifier: workspace:^
         version: link:../audit
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
