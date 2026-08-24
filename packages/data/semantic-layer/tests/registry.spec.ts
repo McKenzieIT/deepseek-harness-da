@@ -8,11 +8,11 @@ import yaml from 'js-yaml'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { EventDefinitionSchema, TableDefinitionSchema } from '../src/types.ts'
+import { EventDefinitionSchema, TableDefinitionSchema, MetricDefinitionSchema } from '../src/types.ts'
 import { DataSourceRegistry } from '../src/registry.ts'
 import { eventKindPlugin } from '../src/kinds/event-kind.ts'
 import { tableKindPlugin } from '../src/kinds/table-kind.ts'
-import { metricKindPlugin, MetricDefinitionSchema } from '../src/kinds/metric-kind.ts'
+import { projectMetricCorpusItem, deriveMetricRelations } from '../src/metrics.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURES = join(HERE, 'fixtures')
@@ -31,12 +31,10 @@ test('registry — register + getKind + allKinds', () => {
   const reg = new DataSourceRegistry()
   reg.register(eventKindPlugin)
   reg.register(tableKindPlugin)
-  reg.register(metricKindPlugin)
   expect(reg.getKind('event')).toBe(eventKindPlugin)
   expect(reg.getKind('table')).toBe(tableKindPlugin)
-  expect(reg.getKind('metric')).toBe(metricKindPlugin)
   expect(reg.getKind('unknown')).toBeUndefined()
-  expect(reg.allKinds().sort()).toEqual(['event', 'metric', 'table'])
+  expect(reg.allKinds().sort()).toEqual(['event', 'table'])
 })
 
 test('registry — duplicate kind throws', () => {
@@ -168,7 +166,7 @@ test('tableKindPlugin — relations maps dimension_refs with G2 type', () => {
   expect(rels[0]!.on).toBe('charm_id = charm_id')
 })
 
-// ── metricKindPlugin — G2 aligned ───────────────────────────────────────
+// ── metric projection (M1: virtual kind:metric) ────────────────────────
 
 const METRIC_DEF = MetricDefinitionSchema.parse({
   name: 'DAU',
@@ -183,44 +181,23 @@ const METRIC_DEF = MetricDefinitionSchema.parse({
   ],
 })
 
-test('metricKindPlugin — schema parses metric definition', () => {
+test('MetricDefinitionSchema — parses metric definition', () => {
   expect(METRIC_DEF.name).toBe('DAU')
   expect(METRIC_DEF.computation.sql).toContain('COUNT(DISTINCT')
 })
 
-test('metricKindPlugin — getId from raw Record', () => {
-  expect(metricKindPlugin.getId({ name: 'DAU' })).toBe('DAU')
-  expect(metricKindPlugin.getId({})).toBeUndefined()
-})
-
-test('metricKindPlugin — toCorpusItem produces retrievable item', () => {
-  const item = metricKindPlugin.toCorpusItem(METRIC_DEF)
+test('projectMetricCorpusItem — produces retrievable item', () => {
+  const item = projectMetricCorpusItem(METRIC_DEF)
   expect(item).not.toBeNull()
-  expect(item!.id).toBe('DAU')
-  expect(item!.description).toContain('日活跃用户数')
-  expect(item!.description).toContain('count_distinct')
+  expect(item.id).toBe('DAU')
+  expect(item.description).toContain('日活跃用户数')
+  expect(item.description).toContain('count_distinct')
 })
 
-test('metricKindPlugin — toPromptContext formats computation info', () => {
-  const ctx = metricKindPlugin.toPromptContext(METRIC_DEF)
-  expect(ctx).toContain('Metric: DAU')
-  expect(ctx).toContain('COUNT(DISTINCT')
-  expect(ctx).toContain('Aggregation: count_distinct')
-})
-
-test('metricKindPlugin — relations returns derived_from (G2 type)', () => {
-  const rels = metricKindPlugin.relations(METRIC_DEF)
+test('deriveMetricRelations — returns derived_from (G2 type)', () => {
+  const rels = deriveMetricRelations(METRIC_DEF)
   expect(rels).toHaveLength(1)
   expect(rels[0]).toBeDefined()
   expect(rels[0]!.type).toBe('derived_from')
   expect(rels[0]!.target).toBe('ods_login')
-})
-
-test('metricKindPlugin — toExecutableRule returns SQL template (G2 Level 2.5)', () => {
-  expect(metricKindPlugin.toExecutableRule!(METRIC_DEF)).toContain('COUNT(DISTINCT')
-})
-
-test('metricKindPlugin — toExecutableRule returns null for empty sql', () => {
-  const noSql = MetricDefinitionSchema.parse({ name: 'empty', computation: {} })
-  expect(metricKindPlugin.toExecutableRule!(noSql)).toBeNull()
 })

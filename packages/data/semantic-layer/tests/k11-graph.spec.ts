@@ -11,10 +11,9 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { RelationGraph } from '../src/relation-graph.ts'
 import { tableKindPlugin } from '../src/kinds/table-kind.ts'
-import { metricKindPlugin } from '../src/kinds/metric-kind.ts'
 import { TableDefinitionSchema, type TableDefinition } from '../src/types.ts'
 import { loadTables } from '../src/io.ts'
-import { loadMetricDefinitions } from '../src/metrics.ts'
+import { loadMetricDefinitions, deriveMetricRelations } from '../src/metrics.ts'
 import type { RelationDef } from '../src/registry.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -30,7 +29,7 @@ function tableEntries(): Entry[] {
 }
 
 function metricEntries(): Entry[] {
-  return loadMetricDefinitions(SEED).map(m => ({ sourceId: m.name, relations: metricKindPlugin.relations(m) }))
+  return loadMetricDefinitions(SEED).map(m => ({ sourceId: m.name, relations: deriveMetricRelations(m) }))
 }
 
 test('K11 graph carries joins edges from DWS dimension_refs', () => {

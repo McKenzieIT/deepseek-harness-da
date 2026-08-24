@@ -16,7 +16,7 @@ import {
   metricName,
   inferAggregation,
 } from '../src/metrics.ts'
-import { MetricDefinitionSchema } from '../src/kinds/metric-kind.ts'
+import { MetricDefinitionSchema } from '../src/types.ts'
 import { dumpYaml } from '../src/io.ts'
 import type { TableDefinition, MetricDef } from '../src/types.ts'
 
