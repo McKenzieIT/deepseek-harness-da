@@ -35,6 +35,13 @@ export interface CallerIdentity {
   readonly scopeId?: ScopeId
   /** Tenant id (the web-login `Tenant`); absent for a global/anonymous caller. */
   readonly tenantId?: string
+  /**
+   * Role for RBAC; populated by P9's admin login. `undefined` → no role
+   * (safe-by-default: admin-only tools like `update_table_config` refuse
+   * when `role !== 'admin'`; an unmounted identity / undefined caller all
+   * refuse). Orthogonal to `userId`/`scopeId`/`tenantId` (authz, not authn).
+   */
+  readonly role?: string
 }
 
 declare module '@deepseek-ai/cordis' {

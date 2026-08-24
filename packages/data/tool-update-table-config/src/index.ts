@@ -13,12 +13,10 @@
  * `tool-load-table-definition`) and the first model-facing WRITE. It mirrors
  * `tool-load-table-definition`'s `defineTool` + `ctx.tools.register` shape,
  * adding two things a read tool does not carry:
- *  - RBAC stub: only an admin caller may mutate table config. `CallerIdentity`
- *    has no `role` field until Task 7 lands it properly; this tool casts
- *    `current()` to `{ role?: string }` and refuses when `role !== 'admin'`
- *    (safe-by-default: an unmounted identity / undefined caller / role-less
- *    caller all refuse). Task 7 adds `role?` to `CallerIdentity` and simplifies
- *    the cast.
+ *  - RBAC stub: only an admin caller may mutate table config. The role is read
+ *    from `CallerIdentity.role` (populated by P9's admin login) and refuses
+ *    when `role !== 'admin'` (safe-by-default: an unmounted identity / undefined
+ *    caller / role-less caller all refuse).
  *  - Tier-2 audit: the write routes through the substrate `updateTableMeta`
  *    (`@deepseek-ai/dsh-semantic-layer/src/io.ts`), which shallow-merges +
  *    validates + atomicWrites + invalidateCaches + records the write via
@@ -47,6 +45,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { updateTableMeta } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
 import type { Tier2Recorder } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
+import type { CallerIdentity } from '@deepseek-ai/dsh-identity'
 
 export const name = 'tool-update-table-config'
 export const inject = ['tools', 'schema', 'audit', 'identity']
@@ -105,16 +104,19 @@ export interface UpdateTableConfigResult {
 }
 
 /**
- * RBAC stub: an admin caller is required to mutate table config. Until Task 7
- * adds `role?` to `CallerIdentity`, the role is read via a structural cast on
- * `identity.current()`. Safe-by-default: an unmounted identity, an undefined
- * caller, or a role-less caller all refuse (only `role === 'admin'` allows).
+ * RBAC stub: an admin caller is required to mutate table config. The role is
+ * read from `CallerIdentity.role` (populated by P9's admin login).
+ * Safe-by-default: an unmounted identity, an undefined caller, or a role-less
+ * caller all refuse (only `role === 'admin'` allows). The structural cast on
+ * `identity` is the minimal assertion for calling `current()` on the
+ * `unknown`-typed seam (the pure core takes `unknown` so test stubs are plain
+ * objects); the `role` field is the real `CallerIdentity.role`, not a fabrication.
  * @param identity - the `ctx.identity` service (or undefined when unmounted).
  * @returns `true` when the caller is an admin, `false` otherwise.
  */
 function isAdminCaller(identity: unknown): boolean {
-  const current = (identity as { current?: () => unknown } | undefined)?.current?.()
-  return (current as { role?: string } | undefined)?.role === 'admin'
+  const current = (identity as { current?: () => CallerIdentity | undefined } | undefined)?.current?.()
+  return current?.role === 'admin'
 }
 
 /**

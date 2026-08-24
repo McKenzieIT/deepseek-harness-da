@@ -7,8 +7,9 @@
  * hands a `project` override → `updateTableMeta` shallow-merges it into the
  * table YAML (validate + atomicWrite + invalidateCaches) and `ctx.audit`
  * records the Tier-2 write → the tool returns `{ ok, qualified_name }` so the
- * agent can retry `qualifyTable` with the override. Non-admin callers (the
- * CallerIdentity stub has no `role` until Task 7) are refused safe-by-default.
+ * agent can retry `qualifyTable` with the override. Non-admin callers are
+ * refused safe-by-default (only `role === 'admin'` allows; `current()`
+ * undefined → refuse).
  *
  * Run: `pnpm vitest run packages/data/tool-update-table-config`
  * (the root `pnpm test` globs all `*.spec.ts` files).
@@ -19,6 +20,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import yaml from 'js-yaml'
 import type { Context } from '@deepseek-ai/cordis'
+import type { CallerIdentity } from '@deepseek-ai/dsh-identity'
 import { TableDefinitionSchema } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
 import type { Tier2Recorder } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
 import {
@@ -74,8 +76,8 @@ function stubAudit(): Tier2Recorder & { calls: AuditCall[] } {
   }
 }
 
-/** A ctx.identity stub whose current() returns the given role (or undefined). */
-function stubIdentity(role: string | undefined): { current: () => { role: string } | undefined } {
+/** A ctx.identity stub whose current() returns a CallerIdentity with the given role (or undefined). */
+function stubIdentity(role: string | undefined): { current: () => CallerIdentity | undefined } {
   return {
     current: () => (role !== undefined ? { role } : undefined),
   }
@@ -123,7 +125,7 @@ interface ToolDef {
 function registerTool(seams?: {
   readonly schema?: SchemaStub
   readonly audit?: Tier2Recorder
-  readonly identity?: { current: () => unknown }
+  readonly identity?: { current: () => CallerIdentity | undefined }
 }): ToolDef {
   let def: ToolDef | undefined
   const ctx = {
@@ -164,7 +166,7 @@ test('S1 validateTableName accepts plain names, rejects path-traversal + empty',
   expect(validateTableName('a'.repeat(201))).toBeNull()
 })
 
-// ── RBAC: admin role required (safe-by-default; Task 7 adds role? properly) ─
+// ── RBAC: admin role required (safe-by-default; current() undefined → refuse) ─
 
 test('S2 updateTableConfigResult - identity undefined (not mounted) → admin only', async () => {
   const layer = makeLayer()
@@ -221,15 +223,14 @@ test('S4 updateTableConfigResult - role !== admin → admin only', async () => {
 })
 
 test('S5 updateTableConfigResult - role missing on caller object → admin only', async () => {
-  // Task 7 adds `role?` to CallerIdentity. Until then the cast treats a
-  // role-less caller as non-admin (safe-by-default).
+  // A caller with userId but no role is non-admin (safe-by-default refuse).
   const layer = makeLayer()
   try {
     writeTable(layer, 'dws_pay_order_di', FIXTURE_TABLE)
     const r = await updateTableConfigResult(
       { semanticRoot: layer, scopeId: 'scope1' },
       stubAudit(),
-      { current: () => ({ userId: 'u1' }) } as unknown as { current: () => unknown },
+      { current: () => ({ userId: 'u1' }) },
       'dws_pay_order_di',
       'ieu_cdm',
     )
