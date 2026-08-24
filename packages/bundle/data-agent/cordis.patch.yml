@@ -116,6 +116,13 @@
           - --maxc-config
           - /Users/mckenzie/.maxc/config_ieu_cdm.yaml.bak
         credMode: sidecar-self
+        # C: the ODPS project where the K11 DWS/event tables actually live
+        # (ieu_cdm). Supersedes the misread config.yaml project.name
+        # (game_10000251 — a game scope id, NOT an ODPS project) that
+        # qualified DAU's table as game_10000251.dws_... which ODPS could
+        # not find. qualifyTable on the query provider reads this; the
+        # semantic layer no longer qualifies.
+        defaultProject: ieu_cdm
         # rbi §3 阶段D true-timeout: the DAU query (full event_view
         # partition scan over 7 days + GET_JSON_OBJECT) takes >60s on real
         # ODPS, so the Provider Config default 60_000 times out the MCP
@@ -139,6 +146,12 @@
         semanticRoot: ./examples/k11-semantic-layer
     - id: enrichment-llm-wiring  # wire ctx.llm into ctx.schema enrichment (F1: production two-round discovery)
       name: '@deepseek-ai/dsh-semantic-layer/src/llm-wiring-plugin.ts'
+    - id: schema-gateway      # W1: read-only Remote projection of ctx.schema for client UI consumption
+      name: '@deepseek-ai/dsh-schema-gateway'
+    - id: evidence-query      # W4: unified evidence-query layer (coverage/gap/eval-result)
+      name: '@deepseek-ai/dsh-evidence-query'
+    - id: ui-semantic-layer   # W5: semantic layer management UI (client plugin)
+      name: '@deepseek-ai/dsh-client-ui-semantic-layer'
 #     # ── audit (P8) ───────────────────────────────────────────────────────
     - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
       name: '@deepseek-ai/dsh-audit'

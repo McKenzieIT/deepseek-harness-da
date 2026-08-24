@@ -63,7 +63,7 @@ import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
 import { RelationGraph } from './relation-graph.ts'
 import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
-import { loadConfig, loadEvents, loadTables, loadTerminology } from './io.ts'
+import { loadEvents, loadTables, loadTerminology } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
@@ -400,49 +400,6 @@ export class SemanticLayerService extends Service {
   /** D2h: the enrichment variant (mount-time config); 'params+term' (D2e-shipped) by default. */
   get corpusVariant(): CorpusVariant {
     return this.cfg.corpusVariant ?? 'params+term'
-  }
-
-  // ── table qualification (project prefix for engine-specific SQL) ──────────
-
-  private defaultProjectCache: string | undefined
-  private defaultProjectVersion = -1
-
-  private getDefaultProject(): string | undefined {
-    const v = this.corpusVersion()
-    if (this.defaultProjectVersion === v) return this.defaultProjectCache
-    this.defaultProjectVersion = v
-    if (!this.semanticRoot) { this.defaultProjectCache = undefined; return undefined }
-    const config = loadConfig(this.semanticRoot)
-    const project = config['project']
-    this.defaultProjectCache = typeof project === 'object' && project !== null
-      ? (project as { name?: unknown }).name as string | undefined
-      : undefined
-    return this.defaultProjectCache
-  }
-
-  private findTable(tableName: string): { found: true; project?: string } | { found: false } {
-    if (!this.semanticRoot) return { found: false }
-    for (const t of loadTables(this.semanticRoot)) {
-      if (t.table_name === tableName) {
-        const p = t.raw['project']
-        const project = typeof p === 'string' && p.length > 0 ? p : undefined
-        return project === undefined ? { found: true } : { found: true, project }
-      }
-    }
-    return { found: false }
-  }
-
-  /**
-   * Qualify a bare table name with its project prefix.
-   * Only qualifies names that exist as actual tables in the layer (metrics,
-   * events, and unknown names are returned unchanged).
-   * Resolution: per-table `project` override → config.yaml `project.name` → bare name.
-   */
-  qualifyTableName(tableName: string): string {
-    const t = this.findTable(tableName)
-    if (!t.found) return tableName
-    const project = t.project ?? this.getDefaultProject()
-    return project ? `${project}.${tableName}` : tableName
   }
 
   // ── substrate definitions (P13b swap target: params_fields / partitions) ──

@@ -103,7 +103,6 @@ export type TableDimensionRef = {
  */
 export type TableModel = {
   readonly table_name?: string
-  readonly qualified_name?: string
   readonly table_comment?: string
   readonly description?: string
   readonly domains?: string[]
@@ -219,9 +218,10 @@ export function loadTableDefinitionResult(
     if (table === null) {
       return { found: false, message: `table not found: ${JSON.stringify(name)}` }
     }
-    const qn = schema.qualifyTableName?.(name)
-    const projected = projectTable(table)
-    return { found: true, table: qn && qn !== name ? { ...projected, qualified_name: qn } : projected }
+    // C: the table is returned bare (no project-qualified name) — qualification
+    // moved to the query provider (ctx.query.qualifyTable, engine-agnostic);
+    // the semantic layer no longer qualifies table names.
+    return { found: true, table: projectTable(table) }
   } catch (e) {
     return { found: false, message: `substrate error: ${sanitizeSubstrateError(e)}` }
   }
@@ -314,7 +314,6 @@ export function apply(ctx: Context, _config: Config = {}): void {
             additionalProperties: false,
             properties: {
               table_name: { type: 'string' },
-              qualified_name: { type: 'string' },
               table_comment: { type: 'string' },
               description: { type: 'string' },
               domains: { type: 'array', items: { type: 'string' } },

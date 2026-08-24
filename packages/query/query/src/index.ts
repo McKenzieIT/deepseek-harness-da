@@ -71,6 +71,29 @@ export abstract class QueryEngine extends Service {
    * @returns A 3-state query outcome reflecting the pending instance's current progress.
    */
   abstract getProgress(instanceId: InstanceId): Promise<QueryOutcome>
+
+  /**
+   * Qualify a bare table name with its project prefix (C: engine-agnostic).
+   *
+   * Moved off `SemanticLayerService.qualifyTableName` (which misread
+   * `config.yaml project.name` — a game scope id, NOT an ODPS project) to the
+   * query provider, whose `Config.defaultProject` (cordis.patch.yml fills
+   * `ieu_cdm`) is the single source of truth for the engine's project. A
+   * per-table `override` (Task 3: `SearchHit.project` / `update_table_config`)
+   * takes precedence over the configured default. When both are absent (empty
+   * default + no override), the bare table name is returned unchanged —
+   * graceful degradation so a misconfigured engine still surfaces the bare
+   * name rather than `undefined.table`.
+   *
+   * Optional: a provider that does not need project qualification (e.g. a
+   * single-project engine) may omit this; callers probe with `?.`.
+   *
+   * @param tableName The bare table name to qualify.
+   * @param override Optional per-table project override (wins over defaultProject).
+   * @returns The qualified `<project>.<tableName>`, or the bare `tableName`
+   * when no project resolves.
+   */
+  qualifyTable?(tableName: string, override?: string): string
 }
 
 export default QueryEngine

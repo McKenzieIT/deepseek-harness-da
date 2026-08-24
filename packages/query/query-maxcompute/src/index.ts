@@ -92,6 +92,14 @@ export interface Config {
    * the sidecar. `static inject = ['credentials']` is unchanged.
    */
   credMode?: 'push' | 'sidecar-self'
+  /**
+   * Default ODPS project for table-name qualification (C: engine-agnostic).
+   * The single source of truth for the project prefix — supersedes the
+   * misread `config.yaml project.name` (a game scope id, NOT an ODPS
+   * project). cordis.patch.yml fills `ieu_cdm`. When empty, `qualifyTable`
+   * returns the bare table name (graceful degradation).
+   */
+  defaultProject?: string
 }
 
 /** Resolved config shape: schemastery has applied every default. */
@@ -104,6 +112,9 @@ export const Config: z<Config> = z.object({
   toolCallTimeoutMs: z.number().min(0).default(60_000),
   crashLoopMaxAttempts: z.number().min(0).default(5),
   credMode: z.union(['push', 'sidecar-self'] as const).default('push'),
+  // C: default '' so a config that omits defaultProject degrades to bare
+  // table names in qualifyTable (no `undefined.` prefix) — engine-agnostic.
+  defaultProject: z.string().default(''),
 })
 
 /**
@@ -320,6 +331,24 @@ export class MaxComputeQueryEngine extends QueryEngine {
 
   override async getProgress(instanceId: InstanceId): Promise<QueryOutcome> {
     return this.callTool(TOOLS.getProgress, { instance_id: instanceId })
+  }
+
+  /**
+   * Qualify a bare table name with its project prefix (C: engine-agnostic).
+   *
+   * Resolution: `override` (per-table, Task 3) → `Config.defaultProject`
+   * (cordis.patch.yml fills `ieu_cdm`) → bare table name. Supersedes the
+   * SemanticLayerService.qualifyTableName path (which misread `config.yaml
+   * project.name` — a game scope id). Pure: never touches the sidecar.
+   *
+   * @param tableName The bare table name to qualify.
+   * @param override Optional per-table project override (wins over defaultProject).
+   * @returns The qualified `<project>.<tableName>`, or the bare `tableName`
+   * when no project resolves (empty default + no override).
+   */
+  override qualifyTable(tableName: string, override?: string): string {
+    const project = override ?? this.cfg.defaultProject
+    return project ? `${project}.${tableName}` : tableName
   }
 
   /**
