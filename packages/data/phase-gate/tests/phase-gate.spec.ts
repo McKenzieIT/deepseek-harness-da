@@ -376,6 +376,70 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(s.last_query_outcome).toBe('failed')
   })
 
+  it('#2b: present_clarification call in EXECUTION → onTurnStopping HALTs (any-phase, not just UNDERSTANDING route:clarify)', async () => {
+    const { agent, injected } = makeAgent('se1')
+    const g = gate()
+    const s = g.state('se1')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2 // EXECUTION index in PHASE_ORDER
+    // Simulate present_clarification post-execute — captureToolData sets
+    // awaiting_clarification (the hook fires regardless of phase). Previously
+    // only UNDERSTANDING route:clarify HALTed; the new any-phase HALT check
+    // must catch a present_clarification called in EXECUTION too.
+    await g.onPostExecute(
+      execView('present_clarification', agent, { question: 'which ODPS project does dws_dau live in?' }),
+      resultOk({ presented: true, question: 'which ODPS project does dws_dau live in?' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.awaiting_clarification).toBe(true)
+    // Fire turn-stopping — the any-phase HALT check returns early: no advance,
+    // no fallback, no inject, no retry (the kick ends awaiting user input).
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.EXECUTION) // stayed — HALT (no advance to INTERPRETATION)
+    expect(s.fallback_count).toBe(0) // no fallback (present_clarification is terminal this turn)
+    expect(injected).toHaveLength(0) // no inject — kick ends awaiting user
+    expect(s.phase_attempts).toBe(0) // NOT a retry
+  })
+
+  it('#2b: EXECUTION failed + failureKind=not_found → fallback GENERATION + inject self-evolution guidance', async () => {
+    const { agent, injected } = makeAgent('se2')
+    const g = gate()
+    const s = g.state('se2')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    // Simulate query_data returning failed + not_found — captureToolData
+    // harvests failureKind + error (Task 2 classifyMaxcError surfaces these).
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT dau FROM dws_dau WHERE ds=1', scope_id: 'game-1' }),
+      resultOk({ state: 'failed', sql: 'SELECT dau FROM dws_dau WHERE ds=1', error: 'ODPS-0130131:Table not found - dws_dau', failureKind: 'not_found' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_query_outcome).toBe('failed')
+    expect(s.last_failure_kind).toBe('not_found')
+    expect(s.last_query_error).toContain('Table not found')
+    // Fire turn-stopping — executionDecision not_found branch: fallback GENERATION
+    // + inject guidance steering the model through the self-evolution loop
+    // (ask user project via present_clarification → update_table_config → retry).
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION)
+    expect(s.fallback_count).toBe(1)
+    const guidance = injected.map(m => m.content.map(b => b.type === 'text' ? b.text : '').join('')).join('\n')
+    expect(guidance).toContain('present_clarification')
+    expect(guidance).toContain('update_table_config')
+    expect(guidance).toContain('project')
+    expect(guidance).toMatch(/not_found|TABLE_NOT_FOUND|Table not found/i)
+  })
+
+  it('#2b: guard allows present_clarification in GENERATION (UNIVERSAL spread, self-evolution)', () => {
+    const { agent } = makeAgent('se3')
+    const g = gate()
+    const s = g.state('se3')
+    s.current_phase = Phase.GENERATION
+    // present_clarification is now UNIVERSAL (spreads into all 4 phase whitelists),
+    // so the GENERATION guard must allow it — previously it was rejected.
+    expect(g.guard(execView('present_clarification', agent, { question: 'which project?' }))).toBeUndefined()
+  })
+
   it('B9/F4: DECLINED resets on a new user question (idle→running → resetQuestionScoped)', () => {
     const { agent } = makeAgent('s1')
     const g = gate()

@@ -218,6 +218,15 @@ export class PhaseGate {
     this.touchStallTimer(agent, s) // F3: an event arrived — reset the watchdog
     this.capturePhaseOutput(agent, s) // B1: phase-final assistant text → s.phase_output
     if (s.honest_decline_reason !== null || s.cancelled) return
+    // #2b: a present_clarification call (ANY phase) HALTs the turn awaiting user
+    // input. captureToolData sets awaiting_clarification on the call (the post-
+    // execute hook fires regardless of phase); without this check the gate would
+    // advance/retry/fallback past it. UNDERSTANDING route:clarify already HALTs
+    // via the route_gate path below; this catch-all covers GENERATION/EXECUTION/
+    // INTERPRETATION (and UNDERSTANDING calls that did not go through route_gate).
+    // The HALT ends the kick (no inject); the user reply starts a new kick →
+    // resetQuestionScoped (F4 idle→running) clears the flag so the model proceeds.
+    if (s.awaiting_clarification) return // HALT — present_clarification was called; await user
     if (s.turn_count >= this.cfg.max_state_turns) { // F6/D6 budget
       this.honestDecline(s, `budget: turn_count ${s.turn_count} ≥ ${this.cfg.max_state_turns} max_state_turns (D6)`)
       return
@@ -303,6 +312,24 @@ export class PhaseGate {
       return
     }
     const cfg = PHASE_CONFIGS[Phase.EXECUTION]
+    // #2b self-evolution: TABLE_NOT_FOUND → likely a wrong/missing ODPS project.
+    // Fall back to GENERATION and inject guidance so the model asks the user
+    // which project the table lives in (present_clarification), persists the
+    // override (update_table_config), then regenerates the SQL with the
+    // qualified name and retries. Mirrors the generic failed→fallback below but
+    // carries self-evolution steering instead of a bare continuation inject.
+    if (s.last_failure_kind === 'not_found' && cfg.fallback_phase !== null && s.fallback_count < this.cfg.max_fallbacks) {
+      this.fallback(agent, s, cfg.fallback_phase)
+      this.inject(
+        agent,
+        `[self-evolution] ${s.last_query_error ?? 'TABLE_NOT_FOUND'}. `
+          + 'The table may be in a different ODPS project than the default. '
+          + 'Ask the user which project the table lives in (call present_clarification with a specific question), '
+          + 'then call update_table_config(table_name, project) to persist the override, '
+          + 'then regenerate the SQL with the qualified name and retry.',
+      )
+      return
+    }
     if (cfg.fallback_phase !== null && s.fallback_count < this.cfg.max_fallbacks) {
       this.fallback(agent, s, cfg.fallback_phase)
       return
@@ -374,8 +401,17 @@ export class PhaseGate {
     const value = (result as { value?: unknown }).value
     if (name === 'query_data') {
       s.exec_count += 1
-      const state = (value as { state?: string } | null | undefined)?.state
+      const v = value as { state?: string; failureKind?: string; error?: string } | null | undefined
+      const state = v?.state
       s.last_query_outcome = state === 'completed' || state === 'pending' || state === 'failed' ? state : 'failed'
+      // #1/#2b self-evolution: harvest failureKind + verbatim error from the
+      // failed path (classifyMaxcError surfaces failureKind; query-maxcompute
+      // surfaces the ODPS error text). The EXECUTION not_found branch reads
+      // last_failure_kind to trigger the ask-user-for-project flow; last_query_error
+      // is surfaced to the model in the inject. Auto-clear on non-failed results
+      // (a completed/pending query carries no failureKind/error → null).
+      s.last_failure_kind = v?.failureKind ?? null
+      s.last_query_error = v?.error ?? null
     } else if (name === 'critique_sql_tool') {
       s.last_critique = (value as { confidence?: number } | null | undefined)?.confidence ?? null
       // (b) F2 same-source: the critiqued SQL (returned by critique_sql_tool
@@ -738,6 +774,8 @@ export class PhaseGate {
     s.phase_output = ''
     s.last_sql = null
     s.last_query_outcome = null
+    s.last_failure_kind = null // #1/#2b: clear query failure classification on a new question.
+    s.last_query_error = null // #1/#2b: clear the verbatim query error on a new question.
     s.last_critique = null
     s.last_quality = null
     s.honest_decline_reason = null

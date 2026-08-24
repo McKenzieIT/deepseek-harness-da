@@ -153,6 +153,12 @@ export const UNIVERSAL_TOOLS = Object.freeze([
   'lookup_terminology',
   'get_user_preferences',
   'load_accumulated_definition',
+  // #2b self-evolution: present_clarification is callable in ANY phase. The
+  // model asks the user a clarifying question (e.g. which ODPS project a table
+  // lives in after a TABLE_NOT_FOUND) wherever the ambiguity surfaces — not
+  // just UNDERSTANDING route:clarify. captureToolData flags awaiting_clarification
+  // on the call (any phase) and onTurnStopping HALTs awaiting the user reply.
+  'present_clarification',
 ] as const)
 /** Tool whitelist for the UNDERSTANDING phase (candidate discovery, definition loading, clarification). */
 export const UNDERSTANDING_TOOLS = Object.freeze([
@@ -160,7 +166,8 @@ export const UNDERSTANDING_TOOLS = Object.freeze([
   'load_table_definition',
   'load_event_definition',
   'load_table_dimensions',
-  'present_clarification',
+  // present_clarification is UNIVERSAL (#2b) — spreads in below; the explicit
+  // entry was removed to avoid a duplicate now that it is in UNIVERSAL_TOOLS.
   'save_accumulated_definition',
   ...UNIVERSAL_TOOLS,
 ] as const)
@@ -182,6 +189,12 @@ export const GENERATION_TOOLS = Object.freeze([
   // definition directly.)
   'load_table_definition',
   'load_event_definition',
+  // #2b self-evolution: update_table_config persists a per-table ODPS project
+  // override after the user answers a present_clarification. GENERATION-scoped:
+  // the model learns the project in GENERATION (post-fallback from EXECUTION
+  // not_found) and persists it before regenerating the qualified SQL. RBAC
+  // (Task 7) gates this to admin — safe-by-default (non-admin → reject).
+  'update_table_config',
   ...UNIVERSAL_TOOLS,
 ] as const)
 /** Tool whitelist for the EXECUTION phase (running the SQL query through the Guard Chain). */
@@ -232,6 +245,22 @@ export interface PhaseGateState {
   last_sql: string | null
   /** ctx.query 3-state outcome: completed | pending | failed (canonical QueryOutcome vocabulary). */
   last_query_outcome: 'completed' | 'pending' | 'failed' | null
+  /**
+   * #1/#2b self-evolution: fine-grained query failure kind
+   * (`not_found` | `permission` | `syntax` | `timeout` | `transport` | `remote`
+   * | …) harvested from query_data's `failureKind` (classifyMaxcError surfaces
+   * it on the failed path). Drives the EXECUTION not_found self-evolution branch
+   * (ask user project → update_table_config → retry). `null` when no failure or
+   * not surfaced; cleared on a new question by `resetQuestionScoped`.
+   */
+  last_failure_kind: string | null
+  /**
+   * #1/#2b self-evolution: verbatim query error text (ODPS error message)
+   * harvested from query_data's `error`. Surfaced to the model in the
+   * not_found fallback inject so it can act on the specific ODPS code. `null`
+   * when no failure or not surfaced; cleared on a new question.
+   */
+  last_query_error: string | null
   last_critique: number | null
   last_quality: number | null
   honest_decline_reason: string | null
@@ -287,6 +316,8 @@ export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
     subquestions: [],
     last_sql: null,
     last_query_outcome: null,
+    last_failure_kind: null, // #1/#2b: no query failure harvested yet.
+    last_query_error: null, // #1/#2b: no query error harvested yet.
     last_critique: null,
     last_quality: null,
     honest_decline_reason: null,
