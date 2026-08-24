@@ -150,7 +150,7 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     s.last_sql = 'SELECT good FROM t'
     const decision = await g.onPostExecute(
       execView('query_data', agent, { sql: 'SELECT bad FROM t' }),
-      resultOk({ outcome: 'done' }),
+      resultOk({ state: 'completed' }),
       () => Promise.resolve({ kind: 'accept' }),
     )
     expect(decision.kind).toBe('block')
@@ -323,23 +323,57 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(cancelled).toHaveLength(1)
   })
 
-  it('EXECUTION 3-state: done→advance to INTERPRETATION; running→inject poll, stay EXECUTION (D5)', async () => {
+  it('EXECUTION 3-state: completed→advance to INTERPRETATION; pending→inject poll, stay EXECUTION (D5)', async () => {
     const { agent, injected } = makeAgent('s1')
     const g = gate()
     const s = g.state('s1')
-    // done → advance to INTERPRETATION
+    // completed → advance to INTERPRETATION
     s.current_phase = Phase.EXECUTION
     s.phase_idx = 2 // EXECUTION index in PHASE_ORDER so advance lands on INTERPRETATION
-    s.last_query_outcome = 'done'
+    s.last_query_outcome = 'completed'
     await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
     expect(s.current_phase).toBe(Phase.INTERPRETATION)
-    // running → inject a poll reminder, stay EXECUTION
+    // pending → inject a poll reminder, stay EXECUTION
     s.current_phase = Phase.EXECUTION
-    s.last_query_outcome = 'running'
+    s.last_query_outcome = 'pending'
     const before = injected.length
     await g.onTurnStopping({ agent, turn: 2, signal: new AbortController().signal })
     expect(s.current_phase).toBe(Phase.EXECUTION)
     expect(injected.length).toBe(before + 1)
+  })
+
+  it('EXECUTION state:failed from query_data → fallback to GENERATION, NOT advance to INTERPRETATION (CORR-1)', async () => {
+    const { agent, injected } = makeAgent('s1')
+    const g = gate()
+    const s = g.state('s1')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    // Simulate query_data returning { state: 'failed' } — captureToolData harvests it
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT x FROM t', scope_id: 'game-1' }),
+      resultOk({ state: 'failed', sql: 'SELECT x FROM t', error: 'syntax error', failureKind: 'semantic' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_query_outcome).toBe('failed')
+    // Now fire turn-stopping — should fallback to GENERATION, not advance to INTERPRETATION
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.current_phase).toBe(Phase.GENERATION)
+    expect(s.fallback_count).toBe(1)
+    expect(injected.length).toBeGreaterThan(0) // fallback continuation injected
+  })
+
+  it('EXECUTION captureToolData: unknown state defaults to failed (fail-safe, CORR-1)', async () => {
+    const { agent } = makeAgent('s1')
+    const g = gate()
+    const s = g.state('s1')
+    s.current_phase = Phase.EXECUTION
+    // Simulate query_data returning an unexpected/missing state field
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT x FROM t', scope_id: 'game-1' }),
+      resultOk({ state: 'something_unexpected', sql: 'SELECT x FROM t' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_query_outcome).toBe('failed')
   })
 
   it('B9/F4: DECLINED resets on a new user question (idle→running → resetQuestionScoped)', () => {

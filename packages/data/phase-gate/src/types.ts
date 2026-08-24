@@ -231,8 +231,8 @@ export interface PhaseGateState {
   subquestions: string[]
   /** SQL same-source across GENERATION gate / EXECUTION (F2). */
   last_sql: string | null
-  /** ctx.query 3-state outcome: done | running | failed. */
-  last_query_outcome: 'done' | 'running' | 'failed' | null
+  /** ctx.query 3-state outcome: completed | pending | failed (canonical QueryOutcome vocabulary). */
+  last_query_outcome: 'completed' | 'pending' | 'failed' | null
   last_critique: number | null
   last_quality: number | null
   honest_decline_reason: string | null

@@ -112,7 +112,7 @@ If you emit no route token, the gate defaults to proceed but runs a grounding ba
     + 'Instead emit 【route:decline】 (honest reject): state WHY (which table/field '
     + 'was not found), WHAT the correct schema needs, HOW the user could rephrase. '
     + 'The gate honest-declines; do not game the critic with an event-name-as-table.',
-  [Phase.EXECUTION]: 'EXECUTION (deterministic, not ReAct): query_data(sql) runs the Guard Chain. The SQL passed MUST equal the critiqued SQL (same-source — post-execute blocks a mismatch). Three outcomes drive the turn-stopping decision: done → advance; running → wait + poll; failed → fallback→GENERATION (carry error) or honest_decline. Never re-send the original SQL.',
+  [Phase.EXECUTION]: 'EXECUTION (deterministic, not ReAct): query_data(sql) runs the Guard Chain. The SQL passed MUST equal the critiqued SQL (same-source — post-execute blocks a mismatch). Three outcomes drive the turn-stopping decision: completed → advance; pending → wait + poll; failed → fallback→GENERATION (carry error) or honest_decline. Never re-send the original SQL.',
   [Phase.INTERPRETATION]: `INTERPRETATION: deliver via tools only, strict order: present_decomposition (forced first) → present_table (pass result_id + intent) → compute → 【发现】(once) → 【注意】(once, list assumptions) → suggest_followups. Output purity: no **, no process narration, no SQL display, thousands separator. If you CANNOT answer, emit ${INCOMPLETE_MARKER} (NOT clarification — no HALT in delivery); the turn-stopping gate reads it → honest_decline. No fallback phase.`,
 }
 
@@ -294,11 +294,11 @@ export class PhaseGate {
 
   // EXECUTION 3-state decision (D5: ctx.query QueryOutcome drives; H1: failed+exhausted→decline).
   private executionDecision(agent: Agent, s: PhaseGateState): void {
-    if (s.last_query_outcome === 'done') {
+    if (s.last_query_outcome === 'completed') {
       this.advance(agent, s)
       return
     }
-    if (s.last_query_outcome === 'running') {
+    if (s.last_query_outcome === 'pending') {
       this.inject(agent, '[EXECUTION] query still running; poll check_query.')
       return
     }
@@ -374,8 +374,8 @@ export class PhaseGate {
     const value = (result as { value?: unknown }).value
     if (name === 'query_data') {
       s.exec_count += 1
-      const outcome = (value as { outcome?: string } | null | undefined)?.outcome
-      s.last_query_outcome = outcome === 'done' || outcome === 'running' || outcome === 'failed' ? outcome : 'done'
+      const state = (value as { state?: string } | null | undefined)?.state
+      s.last_query_outcome = state === 'completed' || state === 'pending' || state === 'failed' ? state : 'failed'
     } else if (name === 'critique_sql_tool') {
       s.last_critique = (value as { confidence?: number } | null | undefined)?.confidence ?? null
       // (b) F2 same-source: the critiqued SQL (returned by critique_sql_tool
