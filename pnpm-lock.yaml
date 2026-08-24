@@ -273,6 +273,9 @@ importers:
       '@deepseek-ai/dsh-tool-jobs':
         specifier: workspace:^
         version: link:../../packages/jobs/tool-jobs
+      '@deepseek-ai/dsh-tool-present-clarification':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-present-clarification
       '@deepseek-ai/dsh-tool-pwsh':
         specifier: workspace:^
         version: link:../../packages/shell/tool-pwsh
@@ -4274,6 +4277,19 @@ importers:
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../semantic-layer
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
+  packages/data/tool-present-clarification:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
