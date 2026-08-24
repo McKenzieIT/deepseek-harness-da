@@ -8,19 +8,18 @@
  *
  * @module @deepseek-ai/dsh-semantic-layer/src/metrics
  */
-import { readdirSync, existsSync, readFileSync } from 'node:fs'
+import { readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import yaml from 'js-yaml'
 import {
   TableDefinitionSchema,
   EventDefinitionSchema,
   type TableDefinition,
   type EventDefinition,
   type MetricDef,
+  type MetricDefinition,
 } from './types.ts'
 import { loadTables, loadEvents, dumpYaml, invalidateCaches } from './io.ts'
 import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
-import { MetricDefinitionSchema, type MetricDefinition } from './kinds/metric-kind.ts'
 
 // ── helpers (best-effort, deterministic) ───────────────────────────────
 
@@ -68,13 +67,14 @@ export function metricName(source: string, key: string): string {
  * `source` → `computation.metadata.source`, and a `derived_from` relation to
  * the source is auto-established (B5 "自动建立 derived_from 关系").
  *
- * Note: the inline `caliber_variants` field has no home on the standalone
- * MetricDefinition schema (metric-kind), so it is not carried over.
+ * Carries the host block's `caliber_variants` onto the derived metric so the
+ * planner retains its Type B disambiguation signal (M1c: restores signal lost
+ * when metrics were flattened to standalone YAMLs).
  * @param source - the table/event name the metric was extracted from.
  * @param key - the metric key in the source's `metrics:` record.
- * @param def - the inline metric definition (expression + description).
+ * @param def - the inline metric definition (expression + description + caliber_variants).
  * @param domains - the source's domains, copied onto the metric.
- * @returns a MetricDefinition (kind=metric) ready to write to `metrics/`.
+ * @returns a MetricDefinition (kind=metric) ready for virtual projection.
  */
 export function toMetricDefinition(
   source: string,
@@ -88,6 +88,7 @@ export function toMetricDefinition(
     name: metricName(source, key),
     description: def.description,
     domains: [...domains],
+    caliber_variants: [...(def.caliber_variants ?? [])],
     computation: {
       sql: def.expression,
       metadata: {
@@ -101,10 +102,33 @@ export function toMetricDefinition(
       {
         type: 'derived_from',
         target: source,
+        on: '',
         description: `机械提取自 ${source} 的 metrics 块（key=${key}）`,
       },
     ],
   }
+}
+
+/** Project a derived MetricDefinition to a kind:metric CorpusItem for BM25 indexing. */
+export function projectMetricCorpusItem(def: MetricDefinition): { id: string; description?: string; payload: MetricDefinition } {
+  const parts: string[] = []
+  if (def.description) parts.push(def.description)
+  if (def.computation.metadata.aggregation) parts.push(def.computation.metadata.aggregation)
+  if (def.computation.metadata.field) parts.push(def.computation.metadata.field)
+  return {
+    id: def.name,
+    ...(parts.length > 0 ? { description: parts.join(' ') } : {}),
+    payload: def,
+  }
+}
+
+/** Derive relation edges for a metric (derived_from → source; plus any explicit). */
+export function deriveMetricRelations(def: MetricDefinition): { type: string; target: string; on?: string; description?: string }[] {
+  return def.relations.map(r => ({
+    type: r.type, target: r.target,
+    ...(r.on ? { on: r.on } : {}),
+    ...(r.description ? { description: r.description } : {}),
+  }))
 }
 
 /**
@@ -216,26 +240,14 @@ export function listMetrics(semanticLayer: string): string[] {
 }
 
 /**
- * Load + validate every metric definition written to the layer's `metrics/` dir.
- * Lenient: non-`.yaml`/`_`-prefixed files are skipped, and a file that fails
- * `MetricDefinitionSchema` is dropped rather than poisoning the batch (mirrors
- * the lenient `loadTables` scan).
+ * Derive every metric definition at retrieval time from the semantic layer's
+ * table + event `metrics:` blocks (M1 virtual projection — no standalone
+ * `metrics/*.yaml` files are read). Each inline `metrics:` entry becomes one
+ * MetricDefinition via {@link extractMetricsFromTables}. Pure derivation
+ * (mechanical, deterministic) replaces the prior read-from-disk scan.
  * @param semanticLayer - the semantic-layer directory path.
- * @returns the validated MetricDefinitions (empty when `metrics/` is absent).
+ * @returns the derived MetricDefinitions (empty when no table/event has metrics).
  */
 export function loadMetricDefinitions(semanticLayer: string): MetricDefinition[] {
-  const dir = join(semanticLayer, 'metrics')
-  if (!existsSync(dir)) return []
-  const out: MetricDefinition[] = []
-  for (const f of readdirSync(dir).sort()) {
-    if (!f.endsWith('.yaml') || f.startsWith('_')) continue
-    try {
-      const raw = yaml.load(readFileSync(join(dir, f), 'utf-8'))
-      const r = MetricDefinitionSchema.safeParse(raw)
-      if (r.success) out.push(r.data)
-    } catch {
-      // lenient: a broken metric file is skipped, not fatal
-    }
-  }
-  return out
+  return extractMetricsFromTables(semanticLayer)
 }
