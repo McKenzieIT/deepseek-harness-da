@@ -2,7 +2,30 @@
 
 **Type**: task
 **Status**: Open
-**Blocked by**: W1（SchemaGateway）+ W4（evidence backend）
+**Blocked by**: W5-lite 仅 W1；W5-full 额外依赖 W4
+
+## Delivery Milestones
+
+### W5-lite（仅依赖 W1）— 可独立交付
+
+资产工作区完整可用，证据侧栏降级为占位态（"eval 未就绪，coverage 本地聚合"）。
+
+**包含**：
+- 资产工作区全部功能（domain-first nav + kind 二级 + filter + 搜索 + 详情）
+- inline edit（即写 + Tier-2 audit）
+- 手动 enrichment 触发（经 W1）
+- coverage KPI 卡 + badge（**本地聚合 `confirmation.status`，不依赖 eval**）
+- 证据侧栏 = skeleton placeholder + "eval 基建就绪后自动亮起"提示
+
+**不含**：eval 轨迹、before/after delta、按需 eval 触发、goal dock
+
+**价值**：4682 个资产从"只能改 YAML"升级为可浏览/可搜索/可编辑。即使 W3/W4 延期，团队已获得 Web 管理能力。
+
+### W5-full（额外依赖 W4）— W5-lite 之上叠加
+
+证据侧栏完整亮起：eval 轨迹 + delta + 按需 eval 触发 + goal dock。
+
+**触发条件**：W4 就绪 → feature-flag `evidence.enabled` 翻转 → 侧栏从占位切换为完整视图。
 
 ## Question
 
@@ -34,9 +57,17 @@
 
 ## 验收
 
-- [ ] B 布局可跑：资产工作区（domain-first nav + kind 二级 + filter + 搜索）+ 证据侧栏 + inline edit + enrichment/eval 触发
-- [ ] 4 演进约束满足
-- [ ] coverage KPI + badge + eval 轨迹呈现
+### W5-lite 验收（可独立 ship）
+- [ ] 资产工作区可跑：domain-first nav + kind 二级 + filter + 搜索 + 详情
+- [ ] inline edit 即写 + Tier-2 audit
+- [ ] coverage KPI 卡 + badge（本地聚合 `confirmation.status`）
+- [ ] 证据侧栏 = graceful placeholder（feature-flag `evidence.enabled=false`）
+- [ ] 4 演进约束满足（约束 #1 证据面已是独立模块，只是内容为 placeholder）
+
+### W5-full 验收（W5-lite + W4 就绪后）
+- [ ] 证据侧栏完整：eval 轨迹 + per-batch delta + 按需 eval 触发
+- [ ] goal dock（GoalBar pattern）
+- [ ] feature-flag 翻转无需代码变更
 
 ## 参考
 

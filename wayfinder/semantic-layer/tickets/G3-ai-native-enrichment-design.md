@@ -23,11 +23,24 @@ RBI 源仓库的 322 tables + 453 events 均没有 `dimension_refs`/`external_re
 - **自动触发**：语义层定义变更后自动触发关系发现。这是 dsh-data-agent 的**核心能力**，不是可选 hook。
 - 实现为 Service 层 write-path 后置 hook：任何通过 `ctx.schema` 写入的定义，写完自动跑 `discoverRelationsFor(def, allDims)`。
 
-### 3. 审批流程：直接写入
+### 3. 审批流程：直接写入 + Eval-Based Confidence Gate
 
-- LLM 推断结果直接写入 YAML `dimension_refs`/`external_refs`，无 pending 队列。
+- LLM 推断结果直接写入 YAML `dimension_refs`/`external_refs`，无人工审批队列。
 - 理由：当前无用户、无兼容负担；错误 join 在 NL2SQL eval 中会被暴露，然后修正。
-- 等项目有用户后再加审批门控。
+
+**分级 guardrails（对抗分析修复 2026-08-24）**：
+
+行业信号（Gartner 2026：40% agentic AI 项目因 inadequate risk controls 被取消；Marmot Data："A catalog that hands an agent everything is a liability"）要求即使无人工审批也需自动化守卫。
+
+| 风险层 | 操作类型 | 守卫机制 |
+|--------|----------|----------|
+| 低风险 | tag 补全、description 丰富化、`unreviewed` 标记 | 直接写入，无额外检查 |
+| 中风险 | dimension_refs / external_refs 发现 | 直接写入 + 标 `unreviewed` + **结构性证据即时计算**（RelationGraph BFS：新 join path 是否产生不合理扇出 >10） |
+| 高风险 | metric 定义修改、跨域 join 关系 | 直接写入 + 标 `unreviewed` + **eval confidence gate**：下一 batch eval 若 pass_rate drop > 5pp → 自动 revert 该变更 + flag `auto-reverted` + 通知管理 agent |
+
+- **Eval confidence gate 实现**：W3 的 before/after delta 产出后，`evidence-engine` 检查 delta.pass_rate_change。若 < -5pp 且 since_last_enrichment 有 `unreviewed` 写入，revert 这些写入并标记 `auto-reverted`。
+- **不引入人工审批队列**：guardrail 全部自动化，保留 AI-native 速度优势。
+- 等项目有用户后可将 `auto-reverted` 升级为需人工确认。
 
 ### 4. 实现载体：Service 方法 + Agent Tool
 
