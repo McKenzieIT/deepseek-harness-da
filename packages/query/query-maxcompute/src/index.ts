@@ -118,6 +118,41 @@ export const Config: z<Config> = z.object({
 })
 
 /**
+ * Classify a MaxCompute (ODPS) error text into a fine-grained `failureKind`.
+ *
+ * Self-evolution #1: phase-gate (#2b, Task 6) needs to identify
+ * TABLE_NOT_FOUND to trigger the ask-user-for-project flow. Both the MCP
+ * `isError` path and the sidecar's `toOutcome` (dev/maxc-sidecar.mjs) surface
+ * the verbatim ODPS error text in `error`; this pure function parses it for
+ * ODPS codes/keywords. Returns `'unknown'` when no known code is detected —
+ * callers then keep their existing coarse failureKind ('remote' on the MCP
+ * isError path; the sidecar's 'transport'/'retryable'/'unknown' on the JSON
+ * path), so an absence of detection never clobbers a recoverable signal.
+ *
+ * Pattern order matters: `not_found` (ODPS-0130131) is checked before `syntax`
+ * (ODPS-0130[^1]) since both share the `0130` prefix — `0130131` is
+ * table-not-found, bare `0130` (followed by anything but `1`) is a syntax
+ * error. `permission` is checked before `timeout` since `ODPS-0121` covers
+ * both denied and timeout variants. Case-insensitive throughout.
+ *
+ * Layering: the provider owns ODPS error-code knowledge; phase-gate only reads
+ * `failureKind`. The query-tool seam already passes `failureKind` through
+ * verbatim (query-tool/src/index.ts:145), so it needs no change here.
+ *
+ * @param text The verbatim ODPS error text (maxc `error.message` / MCP isError text).
+ * @returns `'not_found'` | `'permission'` | `'syntax'` | `'timeout'` | `'unknown'`.
+ */
+export function classifyMaxcError(
+  text: string,
+): 'not_found' | 'permission' | 'syntax' | 'timeout' | 'unknown' {
+  if (/Table not found|NoSuchTable|ODPS-0130131/i.test(text)) return 'not_found'
+  if (/AccessDenied|permission|ODPS-0121.*denied|ODPS-0420/i.test(text)) return 'permission'
+  if (/syntax error|ODPS-0130[^1]|parse error/i.test(text)) return 'syntax'
+  if (/timeout|timed out|ODPS-0121.*timeout|exceeded/i.test(text)) return 'timeout'
+  return 'unknown'
+}
+
+/**
  * MaxCompute query engine over a stdio MCP sidecar. Owns the raw SDK Client
  * lifecycle: eager connect on mount (HOLE-A fail-fast), lazy re-spawn on
  * death, dispose closes + kills. No `ctx.tools` registration — A1-split.
@@ -262,16 +297,35 @@ export class MaxComputeQueryEngine extends QueryEngine {
    * Decode it back to a QueryOutcome. A real pyodps sidecar (deferred) returns
    * the same envelope; when it sets `isError` (a semantic failure), surface the
    * text verbatim as a `failed` outcome rather than mislabeling it transport.
+   *
+   * Self-evolution #1: after decoding, a `failed` outcome is run through
+   * `classifyMaxcError` so phase-gate can branch on `not_found` (→ ask user
+   * for project). A detected ODPS code wins on both the MCP `isError` path
+   * (coarse 'remote' → 'not_found') and the JSON path (sidecar's coarse
+   * 'transport'/'retryable'/'unknown' → 'not_found'); an absence of detection
+   * keeps the existing coarse label (so a recoverable 'retryable' is not
+   * clobbered). The undecodable path stays 'transport' (a protocol failure,
+   * not an ODPS error — nothing to classify).
    */
   private decodeResult(result: Record<string, unknown>, tool: string): QueryOutcome {
     const content = result.content
     const text = Array.isArray(content) ? (content[0] as { text?: string } | undefined)?.text : undefined
     if (result.isError === true) {
-      return { state: 'failed', error: typeof text === 'string' ? text : `${tool} returned isError`, failureKind: 'remote', sql: '' }
+      const errorText = typeof text === 'string' ? text : `${tool} returned isError`
+      const kind = classifyMaxcError(errorText)
+      return { state: 'failed', error: errorText, failureKind: kind === 'unknown' ? 'remote' : kind, sql: '' }
     }
     if (typeof text === 'string') {
       try {
-        return JSON.parse(text) as QueryOutcome
+        const parsed = JSON.parse(text) as QueryOutcome
+        // Only classify failures — completed/pending pass through untouched.
+        // classify → 'unknown' keeps the sidecar's label (don't clobber a
+        // recoverable 'retryable' or a 'transport' spawn/parse signal).
+        if (parsed.state === 'failed') {
+          const classified = classifyMaxcError(parsed.error ?? '')
+          if (classified !== 'unknown') return { ...parsed, failureKind: classified }
+        }
+        return parsed
       } catch {
         // fall through to failure
       }
