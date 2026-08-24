@@ -51,7 +51,7 @@ import {
   getCorpusVersion as getCorpusVersionFromLayer,
   type Tier2Recorder,
 } from './io.ts'
-import type { TableMeta, EventDefinition, TableDefinition } from './types.ts'
+import type { TableMeta, EventDefinition, TableDefinition, MetricDefinition } from './types.ts'
 import { parseTerminology, type CorpusVariant, type EventCorpusItem, type EventTerminology } from './corpus.ts'
 import {
   enrichAllDwsTables as enrichAllDwsTablesFromLayer,
@@ -61,9 +61,8 @@ import {
 import { DataSourceRegistry, type CorpusItem } from './registry.ts'
 import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
-import { metricKindPlugin, type MetricDefinition } from './kinds/metric-kind.ts'
 import { RelationGraph } from './relation-graph.ts'
-import { loadMetricDefinitions } from './metrics.ts'
+import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
 import { loadConfig, loadEvents, loadTables, loadTerminology } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
 
@@ -199,7 +198,7 @@ export class SemanticLayerService extends Service {
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
     this.cfg = config
-    for (const p of [eventKindPlugin, tableKindPlugin, metricKindPlugin]) this.registry.register(p)
+    for (const p of [eventKindPlugin, tableKindPlugin]) this.registry.register(p)
   }
 
   /** The live data-source-kind registry (events/tables/metrics plugins registered at construction). */
@@ -225,18 +224,25 @@ export class SemanticLayerService extends Service {
     }
     const g = new RelationGraph()
     const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
+    // M1: each host table/event parsed ONCE — registered-kind relations +
+    // derived metric relations pushed in the same iteration (loadTables/
+    // loadEvents are uncached readdirSync+readYaml+safeParse, so the prior
+    // double scan was redundant work).
     for (const t of loadTables(this.semanticRoot)) {
       const r = TableDefinitionSchema.safeParse(t.raw)
       if (!r.success) continue
       entries.push({ sourceId: r.data.table_name, relations: tableKindPlugin.relations(r.data) })
+      for (const m of extractMetricsFromTable(r.data)) {
+        entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
+      }
     }
     for (const e of loadEvents(this.semanticRoot)) {
       const r = EventDefinitionSchema.safeParse(e.raw)
       if (!r.success) continue
       entries.push({ sourceId: r.data.name, relations: eventKindPlugin.relations(r.data) })
-    }
-    for (const m of loadMetricDefinitions(this.semanticRoot)) {
-      entries.push({ sourceId: m.name, relations: metricKindPlugin.relations(m) })
+      for (const m of extractMetricsFromEvent(r.data)) {
+        entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
+      }
     }
     g.build(entries)
     this.graphCache = g
@@ -256,10 +262,25 @@ export class SemanticLayerService extends Service {
   loadRetrievalCorpusAll(): CorpusItem[] {
     const out: CorpusItem[] = []
     const term: EventTerminology = parseTerminology(loadTerminology(this.semanticRoot))
+    // M1 virtual projection: derive kind:metric CorpusItems from each host
+    // table/event `metrics:` block (metrics are no longer a registered kind
+    // with a storage dir — they are projected here for BM25 indexing). Each
+    // host def is parsed ONCE via loadByStorageDir (uncached readdirSync+
+    // readYaml+safeParse), so the host corpus item + the derived metric
+    // items are pushed in the same iteration.
     for (const plugin of this.registry.allPlugins()) {
       for (const def of this.loadByStorageDir(plugin.storageDir)) {
         const item = plugin.toCorpusItem(def, term)
         if (item) out.push(item)
+        const metrics = plugin.kind === 'table'
+          ? extractMetricsFromTable(def as TableDefinition)
+          : plugin.kind === 'event'
+            ? extractMetricsFromEvent(def as EventDefinition)
+            : []
+        for (const m of metrics) {
+          const metricItem = projectMetricCorpusItem(m)
+          if (metricItem) out.push(metricItem)
+        }
       }
     }
     return out
@@ -283,7 +304,9 @@ export class SemanticLayerService extends Service {
       }
       return out
     }
-    if (dir === 'metrics') return loadMetricDefinitions(this.semanticRoot)
+    // M1: 'metrics' is no longer a storage dir — metrics are derived virtually
+    // from host table/event `metrics:` blocks (see loadRetrievalCorpusAll +
+    // getRelationGraph derivation passes). Unknown dirs yield an empty list.
     return []
   }
 
@@ -405,7 +428,8 @@ export class SemanticLayerService extends Service {
     for (const t of loadTables(this.semanticRoot)) {
       if (t.table_name === tableName) {
         const p = t.raw['project']
-        return { found: true, project: typeof p === 'string' && p.length > 0 ? p : undefined }
+        const project = typeof p === 'string' && p.length > 0 ? p : undefined
+        return project === undefined ? { found: true } : { found: true, project }
       }
     }
     return { found: false }
@@ -444,8 +468,26 @@ export class SemanticLayerService extends Service {
   }
 
   loadMetricDefinition(name: string): MetricDefinition | null {
-    const all = loadMetricDefinitions(this.semanticRoot)
-    return all.find(m => m.name === name) ?? null
+    // M1 virtual projection: derive a metric on demand from its host table or
+    // event `metrics:` block. The metric name is `<host>__<key>` (see
+    // `metricName`); split on the last `__` to recover the host + key, then
+    // look the key up in the host's inline metrics block. No standalone
+    // `metrics/*.yaml` files are read.
+    const sep = name.lastIndexOf('__')
+    if (sep <= 0) return null
+    const host = name.slice(0, sep)
+    const key = name.slice(sep + 2)
+    const table = loadTableDefinitionFromLayer(this.semanticRoot, host)
+    if (table !== null) {
+      const m = table.metrics[key]
+      if (m !== undefined) return toMetricDefinition(host, key, m, table.domains)
+    }
+    const event = loadEventDefinitionFromLayer(this.semanticRoot, host)
+    if (event !== null) {
+      const m = event.metrics[key]
+      if (m !== undefined) return toMetricDefinition(host, key, m, event.domains)
+    }
+    return null
   }
 
   /**

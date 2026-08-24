@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest'
+import { test, expect, describe, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SemanticLayerService } from '../src/index.ts'
 import { wireEnrichmentLlm, type TextLlm } from '../src/index.ts'
@@ -6,8 +6,9 @@ import { RelationGraph } from '../src/relation-graph.ts'
 import { tableKindPlugin } from '../src/kinds/table-kind.ts'
 import { TableDefinitionSchema, type TableDefinition } from '../src/types.ts'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 import yaml from 'js-yaml'
 
 function makeService(): SemanticLayerService {
@@ -15,10 +16,10 @@ function makeService(): SemanticLayerService {
   return new SemanticLayerService(ctx, { semanticRoot: '' })
 }
 
-test('A1 — service registers all 3 kind plugins', () => {
+test('A1 — service registers table + event kind plugins (metrics derived virtually, M1)', () => {
   const svc = makeService()
   const reg = svc.getRegistry()
-  expect(reg.allKinds().sort()).toEqual(['event', 'metric', 'table'])
+  expect(reg.allKinds().sort()).toEqual(['event', 'table'])
 })
 
 test('A2 — getRelationGraph builds from tables/events/metrics + caches until corpusVersion bump', () => {
@@ -102,4 +103,30 @@ test('B3 — wireEnrichmentLlm adapts a text-LLM into the Service llmCall seam',
   const out = await injected!('discover refs for X')
   expect(seen).toEqual(['discover refs for X'])
   expect(out).toBe('[]')
+})
+
+// ── M1 virtual metric projection (Task 3) ──────────────────────────────
+// Metrics are no longer a registered kind with a storage dir; they are derived
+// at retrieval time from the host table/event `metrics:` blocks. The Service
+// derives a MetricDefinition on demand (loadMetricDefinition) and emits virtual
+// kind:metric CorpusItems in loadRetrievalCorpusAll (no metricKindPlugin).
+const K11_SEED_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../../examples/k11-semantic-layer')
+
+describe('M1 virtual metric projection', () => {
+  it('loadMetricDefinition(name) derives from host table metrics block', () => {
+    const ctx = new Context()
+    const service = new SemanticLayerService(ctx, { semanticRoot: K11_SEED_DIR })
+    const md = service.loadMetricDefinition('dws_10000251_acc_summary_di__daily_active_account_uv')
+    expect(md).not.toBeNull()
+    expect(md!.computation.metadata.source).toBe('dws_10000251_acc_summary_di')
+    expect(md!.computation.sql).toContain('COUNT(DISTINCT account_id)')
+  })
+
+  it('loadRetrievalCorpusAll emits virtual metric CorpusItems with kind:metric', () => {
+    const ctx = new Context()
+    const service = new SemanticLayerService(ctx, { semanticRoot: K11_SEED_DIR })
+    const corpus = service.loadRetrievalCorpusAll()
+    const metricItems = corpus.filter(c => (c.payload as { kind?: string } | undefined)?.kind === 'metric')
+    expect(metricItems.length).toBeGreaterThan(0)
+  })
 })

@@ -123,7 +123,7 @@ export function projectMetricCorpusItem(def: MetricDefinition): { id: string; de
 }
 
 /** Derive relation edges for a metric (derived_from → source; plus any explicit). */
-export function deriveMetricRelations(def: MetricDefinition): { type: string; target: string; on?: string; description?: string }[] {
+export function deriveMetricRelations(def: MetricDefinition): { type: 'joins' | 'derived_from' | 'related_to'; target: string; on?: string; description?: string }[] {
   return def.relations.map(r => ({
     type: r.type, target: r.target,
     ...(r.on ? { on: r.on } : {}),
