@@ -1,9 +1,10 @@
 /**
- * P4 metric computation engine — pure functions for Level 2.5 deterministic
- * execution + Level 2 context injection. Free of the semantic-layer runtime
- * dependency (mirrors EventDefinitionLite/SchemaCorpusSource decoupling); the
- * engine passes a `partitionResolver` (backed by `ctx.schema.loadTableDefinition`
- * in production) so this module never imports substrate I/O.
+ * P4 metric computation engine — pure functions for Level 2 metric context
+ * injection (the Level 2.5 deterministic SQL builder was removed in M1b:
+ * deterministically wrong on SUM-on-_df snapshot metrics — over-counting;
+ * ~0% real-case trigger rate). Free of the semantic-layer runtime dependency
+ * (mirrors EventDefinitionLite/SchemaCorpusSource decoupling) so this module
+ * never imports substrate I/O.
  *
  * @module @deepseek-ai/dsh-nl2sql-engine/src/metric-engine
  */
@@ -44,15 +45,14 @@ export function metricFromHit(hit: RetrievalHit): MetricDefinitionLite | null {
 }
 
 /**
- * Route a query by its candidates (D1): 1 metric + 0 other candidates => the
- * pure-metric deterministic Level 2.5 path; metric + other => Level 2 (metric
- * rule as context); no metric => null (normal LLM path).
+ * Route a query by its candidates (D1): metric present => Level 2 (metric rule
+ * injected as context for the LLM); no metric => null (normal LLM path). The
+ * Level 2.5 deterministic arm was removed in M1b (deterministically wrong on
+ * SUM-on-_df snapshot metrics — over-counting; ~0% real-case trigger rate).
  */
-export function routeMetric(candidates: readonly RetrievalHit[]): 'level-2.5' | 'level-2' | null {
+export function routeMetric(candidates: readonly RetrievalHit[]): 'level-2' | null {
   const metricHits = candidates.filter(isMetricHit)
   if (metricHits.length === 0) return null
-  const otherHits = candidates.filter(c => !isMetricHit(c))
-  if (metricHits.length === 1 && otherHits.length === 0) return 'level-2.5'
   return 'level-2'
 }
 
@@ -102,32 +102,6 @@ export function extractTimeParams(question: string, today: string): TimeParams {
     if (v !== undefined) return { date: v }
   }
   return {}
-}
-
-/**
- * Build the executable SQL for a metric (Level 2.5, D2). Two conventions:
- *  - template form (`computation.sql` contains `{{date}}`/`{{start_date}}`/`{{end_date}}`):
- *    substitute placeholders, return as-is (already a full SELECT).
- *  - bare-expr form (e.g. `SUM(pay_amt)`): wrap `SELECT <expr> FROM <source>` +
- *    a ds partition filter when the source has a `ds` partition.
- * @param metric - the metric definition.
- * @param params - extracted time params.
- * @param partitionCols - the source table's partition column names (for ds detection).
- */
-export function buildExecutableSQL(metric: MetricDefinitionLite, params: TimeParams, partitionCols: readonly string[]): string {
-  const source = metric.computation.metadata.source
-  const sqlExpr = metric.computation.sql
-  if (sqlExpr.includes('{{')) {
-    return sqlExpr
-      .replaceAll('{{date}}', params.date ?? '')
-      .replaceAll('{{start_date}}', params.start_date ?? '')
-      .replaceAll('{{end_date}}', params.end_date ?? '')
-  }
-  const hasDs = partitionCols.map(p => p.toLowerCase()).includes('ds')
-  let where = ''
-  if (hasDs && params.date) where = ` WHERE ds = '${params.date}'`
-  else if (hasDs && params.start_date && params.end_date) where = ` WHERE ds BETWEEN '${params.start_date}' AND '${params.end_date}'`
-  return `SELECT ${sqlExpr} FROM ${source}${where}`
 }
 
 /** Render the metric context line for a Level 2 (mixed) prompt (D3). */

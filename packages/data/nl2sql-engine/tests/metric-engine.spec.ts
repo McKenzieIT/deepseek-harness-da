@@ -3,7 +3,6 @@ import {
   isMetricHit,
   routeMetric,
   extractTimeParams,
-  buildExecutableSQL,
   buildMetricContext,
   metricFromHit,
   type MetricDefinitionLite,
@@ -11,21 +10,14 @@ import {
 import type { RetrievalHit } from '../src/bm25-linking.ts'
 import { Nl2sqlEngine } from '../src/engine.ts'
 import { StandInOdps, outcome } from '../src/stand-in-odps.ts'
-import { FailureKind } from '../src/types.ts'
 import type { DataSourceDoc } from '../src/bm25-linking.ts'
 import { ReplayLlm } from '../src/replay-llm.ts'
 import { buildPrompt } from '../src/prompt.ts'
-import type { RelationGraphLike, RelationGraphEdge } from '../src/ontology.ts'
 
 const DAU: MetricDefinitionLite = {
   name: 'dau',
   description: '日活',
   computation: { sql: 'COUNT(DISTINCT user_id)', metadata: { source: 'ods_login', aggregation: 'count_distinct', field: 'user_id', time_grain: 'daily' } },
-}
-const DAU_TMPL: MetricDefinitionLite = {
-  name: 'dau_t',
-  description: '日活',
-  computation: { sql: "SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds = '{{date}}'", metadata: { source: 'ods_login' } },
 }
 function metricHit(m: MetricDefinitionLite): RetrievalHit {
   return { id: m.name, score: 1, payload: { id: m.name, payload: { ...m, kind: 'metric' } }, mode: 'bm25-only' }
@@ -44,25 +36,10 @@ test('D1 — metricFromHit returns the metric def for a metric hit (null otherwi
   expect(metricFromHit(tableHit('dws_pay'))).toBeNull()
 })
 
-test('D1 — routeMetric: 1 metric + 0 other -> level-2.5; metric + table -> level-2; none -> null', () => {
-  expect(routeMetric([metricHit(DAU)])).toBe('level-2.5')
+test('D1 — routeMetric: metric present => level-2; none => null (M1b: Level 2.5 arm removed)', () => {
+  expect(routeMetric([metricHit(DAU)])).toBe('level-2')
   expect(routeMetric([metricHit(DAU), tableHit('dws_pay')])).toBe('level-2')
   expect(routeMetric([tableHit('dws_pay')])).toBeNull()
-})
-
-test('D1 — buildExecutableSQL wraps a bare expr with FROM + ds filter', () => {
-  const sql = buildExecutableSQL(DAU, extractTimeParams('昨天DAU', '20260820'), ['ds'])
-  expect(sql).toBe("SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds = '20260819'")
-})
-
-test('D1 — buildExecutableSQL substitutes {{date}} in a template sql', () => {
-  const sql = buildExecutableSQL(DAU_TMPL, { date: '20260819' }, ['ds'])
-  expect(sql).toBe("SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds = '20260819'")
-})
-
-test('D1 — buildExecutableSQL omits WHERE when source has no ds partition', () => {
-  const sql = buildExecutableSQL(DAU, { date: '20260819' }, [])
-  expect(sql).toBe('SELECT COUNT(DISTINCT user_id) FROM ods_login')
 })
 
 test('D1 — extractTimeParams: 昨天/今天/前天/上周/本月/指定日期/none', () => {
@@ -86,48 +63,6 @@ test('D1 — buildMetricContext renders a context line', () => {
   expect(ctx).toContain('ods_login')
 })
 
-const DAU_DS: DataSourceDoc[] = [
-  { id: 'dau', description: '日活 DAU', payload: { kind: 'metric', name: 'dau', computation: { sql: 'COUNT(DISTINCT user_id)', metadata: { source: 'ods_login' } } } },
-]
-
-test('D2-e2e — pure-metric query executes via Level 2.5 without an LLM call', async () => {
-  const llm = new ReplayLlm({}) // default generate returns a SQL; must NEVER be called on the L2.5 path
-  const odps = new StandInOdps({ "FROM ods_login WHERE ds = '20260819'": outcome.done([{ cnt: 7 }], 'rid-dau') })
-  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'] })
-  const r = await eng.run({ question: '昨天DAU是多少', today: '20260820' })
-  expect(r.ok).toBe(true)
-  expect(r.sql).toBe("SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds = '20260819'")
-  expect(llm.callCount).toBe(0) // Level 2.5 bypasses the LLM entirely
-  expect(r.trace.some(t => t.step === 'metric_level25')).toBe(true)
-})
-
-test('D2-e2e — metric execution failure => honest decline (no LLM self-correction)', async () => {
-  const llm = new ReplayLlm({})
-  const odps = new StandInOdps({ 'FROM ods_login': outcome.failed(FailureKind.SEMANTIC_MISMATCH, 'no such table') })
-  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'] })
-  const r = await eng.run({ question: '昨天DAU是多少', today: '20260820' })
-  expect(r.decline).toBe(true)
-})
-
-test('D2-e2e — pure-metric query stays Level 2.5 even with a graph (derived_from expansion does not flip routing)', async () => {
-  // A graph whose derived_from edge (dau -> ods_login) would, pre-fix, add ods_login
-  // as a candidate and flip routeMetric to 'level-2'. Routing is computed from the
-  // pre-expansion BM25 hits, so this stays 'level-2.5' (deterministic, 0 LLM calls).
-  const graph: RelationGraphLike = {
-    findJoinPath: () => null,
-    getJoinCondition: () => null,
-    getRelated: () => [],
-    getDerived: (id: string): readonly RelationGraphEdge[] => id === 'dau' ? [{ targetId: 'ods_login', type: 'derived_from' }] : [],
-  }
-  const llm = new ReplayLlm({})
-  const odps = new StandInOdps({ "FROM ods_login WHERE ds = '20260819'": outcome.done([{ cnt: 7 }], 'rid-dau2') })
-  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'], graph })
-  const r = await eng.run({ question: '昨天DAU是多少', today: '20260820' })
-  expect(r.ok).toBe(true)
-  expect(r.trace.some(t => t.step === 'metric_level25')).toBe(true)
-  expect(llm.callCount).toBe(0)
-})
-
 test('D3-e2e — mixed query (metric + table) routes to Level 2 + augments candidates so the source table is accepted', async () => {
   const ds: DataSourceDoc[] = [
     { id: 'dau', description: '日活 DAU', payload: { kind: 'metric', name: 'dau', computation: { sql: 'COUNT(DISTINCT user_id)', metadata: { source: 'ods_login' } } } },
@@ -139,8 +74,22 @@ test('D3-e2e — mixed query (metric + table) routes to Level 2 + augments candi
   const eng = new Nl2sqlEngine({ dataSources: ds, llm, odps, partitionResolver: () => ['ds'] })
   const r = await eng.run({ question: '付费用户中等级>50的DAU', today: '20260820' })
   expect(r.ok).toBe(true)
-  expect(r.trace.some(t => t.step === 'metric_level25')).toBe(false) // NOT Level 2.5 (mixed)
-  expect(r.trace.some(t => t.step === 'llm_generate')).toBe(true)   // went through the LLM loop
+  expect(r.trace.some(t => t.step === 'llm_generate')).toBe(true) // went through the LLM loop (Level 2)
+})
+
+test('D3-e2e — pure-metric query now routes to Level 2 + calls the LLM (M1b: Level 2.5 deterministic path removed)', async () => {
+  const ds: DataSourceDoc[] = [
+    { id: 'dau', description: '日活 DAU', payload: { kind: 'metric', name: 'dau', computation: { sql: 'COUNT(DISTINCT user_id)', metadata: { source: 'ods_login' } } } },
+  ]
+  // Post-M1b a pure-metric query is no longer short-circuited; it goes through
+  // Level 2 (metric context injected) + the LLM loop. The LLM MUST be called.
+  const llm = new ReplayLlm({ DAU: { sql: "SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds='20260819'" } })
+  const odps = new StandInOdps({ 'FROM ods_login WHERE ds': outcome.done([{ cnt: 7 }], 'rid-dau-l2') })
+  const eng = new Nl2sqlEngine({ dataSources: ds, llm, odps, partitionResolver: () => ['ds'] })
+  const r = await eng.run({ question: '昨天DAU是多少', today: '20260820' })
+  expect(r.ok).toBe(true)
+  expect(llm.callCount).toBeGreaterThan(0) // Level 2 always calls the LLM (no deterministic bypass)
+  expect(r.trace.some(t => t.step === 'llm_generate')).toBe(true)
 })
 
 test('D3 — buildPrompt renders the metric-context section when metricContext is provided', () => {
@@ -152,15 +101,4 @@ test('D3 — buildPrompt renders the metric-context section when metricContext i
   })
   expect(p).toContain('已知指标定义（请基于此规则构建查询）')
   expect(p).toContain('COUNT(DISTINCT user_id)')
-})
-
-test('D2-e2e — Level 2.5 declines (no unpartitioned scan) when time params cannot be extracted', async () => {
-  const llm = new ReplayLlm({})
-  const odps = new StandInOdps({}) // should never be reached
-  const eng = new Nl2sqlEngine({ dataSources: DAU_DS, llm, odps, partitionResolver: () => ['ds'] })
-  // 'DAU是多少' has no time word + no today => extractTimeParams returns {} =>
-  // the ds-required guard declines instead of running a full-table scan.
-  const r = await eng.run({ question: 'DAU是多少' })
-  expect(r.decline).toBe(true)
-  expect(r.reason ?? '').toContain('未分区扫描')
 })

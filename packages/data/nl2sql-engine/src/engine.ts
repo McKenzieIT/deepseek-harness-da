@@ -31,7 +31,7 @@ import {
   type QueryOutcome,
 } from './types.ts'
 import { critiqueSql, extractSqlCandidate } from './critic.ts'
-import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildExecutableSQL, buildMetricContext } from './metric-engine.ts'
+import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetricContext } from './metric-engine.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
@@ -74,7 +74,7 @@ export interface EngineDeps {
   readonly retrieval?: RetrievalLinker
   /** P3: live relation graph (absent => no join injection / recall / undeclared-JOIN rule). */
   readonly graph?: RelationGraphLike
-  /** P4 D2: resolve a table's partition columns (absent => Level 2.5 assumes ds). */
+  /** P4 D2: resolve a table's partition columns (retained interface field; post-M1b the Level 2 path does not read it). */
   readonly partitionResolver?: (tableName: string) => readonly string[] | null
 }
 
@@ -110,7 +110,6 @@ export class Nl2sqlEngine {
   private readonly odps: OdpsExecutor
   private readonly conventions: EngineConventions | null
   private readonly graph: RelationGraphLike | undefined
-  private readonly partitionResolver: ((tableName: string) => readonly string[] | null) | undefined
 
   constructor(deps: EngineDeps) {
     this.retrieval = deps.retrieval ?? new Bm25Linker(deps.dataSources ?? [])
@@ -118,7 +117,9 @@ export class Nl2sqlEngine {
     this.odps = deps.odps
     this.conventions = deps.conventions ?? loadConventions('maxcompute')
     this.graph = deps.graph
-    this.partitionResolver = deps.partitionResolver
+    // partitionResolver is intentionally not stored: post-M1b the Level 2 path
+    // does not read it (the Level 2.5 deterministic arm that consumed it was
+    // removed). The EngineDeps field is retained for backward-compatible callers.
   }
 
   /**
@@ -134,9 +135,10 @@ export class Nl2sqlEngine {
 
     // 1. BM25 schema-linking (local RetrievalLinker; P5 ctx.retrieval seam when P5b ships)
     let candidates = this.retrieval.retrieve(question, { topK: 5, mode: 'bm25-only' })
-    // P4 D2: route from PRE-expansion candidates so a graph's derived_from expansion
-    // (which adds a metric's source table) does not flip a pure-metric query from
-    // level-2.5 to level-2 (subverting the deterministic path when a graph is mounted).
+    // P4 D2 (M1b): route from PRE-expansion candidates. Post-M1b both metric
+    // routes collapse to 'level-2' (the Level 2.5 deterministic arm was removed —
+    // wrong on SUM-on-_df snapshot metrics), so graph expansion can no longer flip
+    // the route; pre-expansion routing is retained for parity + trace ordering.
     const route = routeMetric(candidates)
     // P3 C3: graph-enhanced recall (1-hop joins + derived) when a graph is wired
     if (this.graph !== undefined) {
@@ -167,51 +169,10 @@ export class Nl2sqlEngine {
       ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
     })
 
-    // P4 D2: metric routing — pure-metric => Level 2.5 deterministic execution (this
-    // branch returns before the LLM loop; `route` was computed pre-expansion above so
-    // graph-derived candidates don't flip the route). Mixed (metric + table) => Level 2
-    // context injection is a later task; no metric => null (normal LLM path, unchanged).
-    if (route === 'level-2.5') {
-      const metricHit = candidates.find(isMetricHit)
-      const metricDef = metricHit !== undefined ? metricFromHit(metricHit) : null
-      if (metricHit !== undefined && metricDef !== null) {
-        const params = extractTimeParams(question, args.today ?? '')
-        const source = metricDef.computation.metadata.source
-        const metricPartitionCols = this.partitionResolver ? (this.partitionResolver(source) ?? ['ds']) : ['ds']
-        const sql = buildExecutableSQL(metricDef, params, metricPartitionCols)
-        // guard: a deterministic path must not run an unpartitioned full-table scan —
-        // the missing_partition_filter critic is only a warning, so decline when a ds
-        // partition is required but no time param could be extracted from the question.
-        const hasDs = metricPartitionCols.map(p => p.toLowerCase()).includes('ds')
-        if (hasDs && !params.date && !(params.start_date && params.end_date)) {
-          return { ok: false, decline: true, reason: 'Level 2.5: 无法从问题中提取时间参数，拒绝执行未分区扫描', sql, trace }
-        }
-        trace.push({ step: 'metric_level25', sql, source })
-        // light critic: the source is the only candidate table + partition check
-        const metricCtx = makeCriticCtx({ candidateTables: [source], partitionCols: metricPartitionCols })
-        const critic = critiqueSql(sql, metricCtx)
-        trace.push({ step: 'critic', passed: critic.passed, reason: critic.reason, findings: critic.findings.map(f => ({ rule: f.rule, sev: f.severity })) })
-        if (!critic.passed) {
-          return { ok: false, decline: true, reason: critic.reason ?? 'metric critic fail', sql, trace }
-        }
-        let out = await this.odps.execute(sql)
-        trace.push({ step: 'execute', state: out.state, failureKind: out.failureKind })
-        if (out.state === 'running') {
-          let polls = 0
-          while (out.state === 'running' && polls < MAX_RUNNING_POLLS) {
-            polls += 1
-            out = await this.odps.attach(out.instance_id ?? '')
-            trace.push({ step: 'attach', poll: polls, state: out.state })
-          }
-          if (out.state === 'running') return { ok: false, pending: true, sql, outcome: out, trace }
-        }
-        if (out.state === 'done') return { ok: true, sql, outcome: out, result: out.rows, trace }
-        return { ok: false, decline: true, reason: `指标执行失败 ${out.failureKind ?? ''}: ${out.error ?? ''}`, sql, trace }
-      } else {
-        trace.push({ step: 'metric_level25_skip', reason: 'metric hit unresolved' })
-      }
-    }
-
+    // P4 D2 (M1b): metric routing — metric present => Level 2 context injection
+    // (the Level 2.5 deterministic arm was removed: deterministically wrong on
+    // SUM-on-_df snapshot metrics — over-counting; ~0% real-case trigger rate).
+    // No metric => null (normal LLM path, unchanged).
     let metricContext: string | undefined
     if (route === 'level-2') {
       const metricHit = candidates.find(isMetricHit)
