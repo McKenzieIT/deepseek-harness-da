@@ -168,7 +168,8 @@ test('S1 validateTableName accepts plain names, rejects path-traversal + empty',
 
 // ── RBAC: admin role required (safe-by-default; current() undefined → refuse) ─
 
-test('S2 updateTableConfigResult - identity undefined (not mounted) → admin only', async () => {
+test('S2 updateTableConfigResult - identity unmounted → pre-P9 all-admin allow', async () => {
+  // M1 decision: pre-P9 current() undefined (T1 stub) → all-admin allow.
   const layer = makeLayer()
   try {
     writeTable(layer, 'dws_pay_order_di', FIXTURE_TABLE)
@@ -179,14 +180,14 @@ test('S2 updateTableConfigResult - identity undefined (not mounted) → admin on
       'dws_pay_order_di',
       'ieu_cdm',
     )
-    expect(r.ok).toBe(false)
-    expect(r.error).toContain('admin only')
+    expect(r.ok).toBe(true)
+    expect(r.qualified_name).toBe('ieu_cdm.dws_pay_order_di')
   } finally {
     rmSync(layer, { recursive: true, force: true })
   }
 })
 
-test('S3 updateTableConfigResult - current() undefined (no caller) → admin only', async () => {
+test('S3 updateTableConfigResult - current() undefined (T1 stub) → pre-P9 all-admin allow', async () => {
   const layer = makeLayer()
   try {
     writeTable(layer, 'dws_pay_order_di', FIXTURE_TABLE)
@@ -197,8 +198,8 @@ test('S3 updateTableConfigResult - current() undefined (no caller) → admin onl
       'dws_pay_order_di',
       'ieu_cdm',
     )
-    expect(r.ok).toBe(false)
-    expect(r.error).toContain('admin only')
+    expect(r.ok).toBe(true)
+    expect(r.qualified_name).toBe('ieu_cdm.dws_pay_order_di')
   } finally {
     rmSync(layer, { recursive: true, force: true })
   }
@@ -443,7 +444,7 @@ test('S16 execute - admin valid update returns qualified_name via ctx.get seams'
   }
 })
 
-test('S17 execute - non-admin refused via ctx.get(identity)', async () => {
+test('S17 execute - identity undefined (T1 stub) → pre-P9 all-admin allow', async () => {
   const layer = makeLayer()
   try {
     writeTable(layer, 'dws_pay_order_di', FIXTURE_TABLE)
@@ -456,8 +457,8 @@ test('S17 execute - non-admin refused via ctx.get(identity)', async () => {
       { table_name: 'dws_pay_order_di', project: 'ieu_cdm' },
       { signal: new AbortController().signal },
     )
-    expect(out.ok).toBe(false)
-    expect(out.error).toContain('admin only')
+    expect(out.ok).toBe(true)
+    expect(out.qualified_name).toBe('ieu_cdm.dws_pay_order_di')
   } finally {
     rmSync(layer, { recursive: true, force: true })
   }

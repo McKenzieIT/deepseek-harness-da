@@ -116,7 +116,11 @@ export interface UpdateTableConfigResult {
  */
 function isAdminCaller(identity: unknown): boolean {
   const current = (identity as { current?: () => CallerIdentity | undefined } | undefined)?.current?.()
-  return current?.role === 'admin'
+  // M1 decision "前期 all-admin": the T1 identity stub has no P9 login yet, so
+  // `current()` returns undefined pre-P9 → allow (single-user deployment, all
+  // callers are admin). Once P9 populates a real identity, require role==='admin'.
+  if (current === undefined) return true
+  return current.role === 'admin'
 }
 
 /**
