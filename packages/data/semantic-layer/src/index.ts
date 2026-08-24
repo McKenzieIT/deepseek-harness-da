@@ -400,23 +400,27 @@ export class SemanticLayerService extends Service {
     return this.defaultProjectCache
   }
 
-  private getTableProject(tableName: string): string | undefined {
-    if (!this.semanticRoot) return undefined
+  private findTable(tableName: string): { found: true; project?: string } | { found: false } {
+    if (!this.semanticRoot) return { found: false }
     for (const t of loadTables(this.semanticRoot)) {
       if (t.table_name === tableName) {
         const p = t.raw['project']
-        return typeof p === 'string' && p.length > 0 ? p : undefined
+        return { found: true, project: typeof p === 'string' && p.length > 0 ? p : undefined }
       }
     }
-    return undefined
+    return { found: false }
   }
 
   /**
    * Qualify a bare table name with its project prefix.
+   * Only qualifies names that exist as actual tables in the layer (metrics,
+   * events, and unknown names are returned unchanged).
    * Resolution: per-table `project` override → config.yaml `project.name` → bare name.
    */
   qualifyTableName(tableName: string): string {
-    const project = this.getTableProject(tableName) ?? this.getDefaultProject()
+    const t = this.findTable(tableName)
+    if (!t.found) return tableName
+    const project = t.project ?? this.getDefaultProject()
     return project ? `${project}.${tableName}` : tableName
   }
 
