@@ -117,6 +117,44 @@ export const MetricDefSchema = z.object({
 /** Inferred type of {@link MetricDefSchema} (expression + description + caliber_variants). */
 export type MetricDef = z.infer<typeof MetricDefSchema>
 
+/** Metric computation metadata (derived from the embedded metric's expression). */
+const MetricComputationSchema = z.object({
+  sql: z.string().default(''),
+  metadata: z.object({
+    aggregation: z.string().default(''),
+    field: z.string().default(''),
+    source: z.string().default(''),
+    time_grain: z.string().default(''),
+  }).loose().default({ aggregation: '', field: '', source: '', time_grain: '' }),
+}).loose()
+
+/** Zod schema for a metric relation (type + target + join-on + description). */
+const MetricRelationSchema = z.object({
+  type: z.enum(['joins', 'derived_from', 'related_to']),
+  target: z.string(),
+  on: z.string().default(''),
+  description: z.string().default(''),
+}).loose()
+
+/**
+ * The derived MetricDefinition — produced at retrieval time from a table/event
+ * embedded `metrics:` block (NOT loaded from a standalone YAML file). Carries
+ * `caliber_variants` (M1c: planner Type B disambiguation signal).
+ */
+export const MetricDefinitionSchema = z.object({
+  kind: z.literal('metric').default('metric'),
+  name: z.string(),
+  description: z.string().default(''),
+  domains: z.array(z.string()).default([]),
+  computation: MetricComputationSchema.default({ sql: '', metadata: { aggregation: '', field: '', source: '', time_grain: '' } }),
+  relations: z.array(MetricRelationSchema).default([]),
+  // at-most-one-default invariant enforced upstream by MetricDefSchema (derived artifact trusts host validation)
+  caliber_variants: z.array(CaliberVariantSchema).default([]),
+}).loose()
+
+/** Inferred type of {@link MetricDefinitionSchema} — the derived metric produced at retrieval time. */
+export type MetricDefinition = z.infer<typeof MetricDefinitionSchema>
+
 /** Zod schema for an event disambiguation rule (event + trigger + distinction); mirrors RBI Disambiguation. */
 export const DisambiguationSchema = z.object({
   event: z.string(),
