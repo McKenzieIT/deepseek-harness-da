@@ -54,6 +54,21 @@ export interface SearchHit {
   readonly score: number
   readonly description?: string
   readonly mode: string
+  /** Data-source kind: 'metric' | 'table' | 'event' | 'source'. Lets the model
+   *  distinguish a metric candidate (id = `<table>__<key>`, NOT a loadable table)
+   *  from a table/event — so it routes metrics to GENERATION context, not
+   *  load_table_definition (which returns not-found on a metric name). */
+  readonly type?: string
+}
+
+/** Infer the data-source kind from a corpus item's payload. */
+function typeOf(payload: unknown): string {
+  const k = (payload as { kind?: string } | undefined)?.kind
+  if (k === 'metric') return 'metric'
+  if (k === 'dws' || k === 'dim') return 'table'
+  const e = payload as { params_fields?: unknown; external_refs?: unknown; event_filter?: unknown } | undefined
+  if (e?.params_fields !== undefined || e?.external_refs !== undefined || e?.event_filter !== undefined) return 'event'
+  return 'source'
 }
 
 /**
@@ -97,13 +112,18 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
     score: h.score,
     ...(description !== undefined ? { description } : {}),
     mode: h.mode,
+    type: typeOf(h.payload),
   }
 }
 
 function qualifyCandidates(candidates: SearchHit[], schema: SchemaCorpusSource | undefined): SearchHit[] {
   const qualify = schema?.qualifyTableName?.bind(schema)
   if (!qualify) return candidates
-  return candidates.map(c => c.mode === 'event' ? c : { ...c, id: qualify(c.id) })
+  // Qualify only table-kind candidates (metric/event ids are not ODPS tables;
+  // `mode` is the retrieval mode, not the data-source kind, so the prior
+  // `c.mode === 'event'` check never matched — every candidate was qualified,
+  // and qualifyTableName silently no-op'd non-tables).
+  return candidates.map(c => c.type === 'table' ? { ...c, id: qualify(c.id) } : c)
 }
 
 /**
@@ -311,6 +331,7 @@ export function apply(ctx: Context, config: Config = {}): void {
                 score: { type: 'number', required: true },
                 description: { type: 'string' },
                 mode: { type: 'string', required: true },
+                type: { type: 'string' },
               },
             },
           },
@@ -328,6 +349,7 @@ export function apply(ctx: Context, config: Config = {}): void {
           lines.push(
             ...value.candidates.map((c, i) =>
               `${i + 1}. ${c.id} (score ${c.score.toFixed(3)})`
+              + (c.type !== undefined ? ` [${c.type}]` : '')
               + (c.description !== undefined ? ` - ${c.description}` : '')
               + (c.mode === 'graph-expand' ? ' [graph-expand]' : '')),
           )

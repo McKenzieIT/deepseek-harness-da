@@ -101,7 +101,7 @@ test('S8 execute uses ctx.retrieval when registered (P5b soft-fallback swap)', a
   let def: ToolDef | undefined
   const mockRetrieval = {
     retrieve: async () => [
-      { id: 'mock.metric', score: 0.42, payload: { description: 'mock desc' }, mode: 'hybrid' },
+      { id: 'mock.metric', score: 0.42, payload: { kind: 'metric', description: 'mock desc' }, mode: 'hybrid' },
     ],
   }
   const ctx = {
@@ -113,7 +113,7 @@ test('S8 execute uses ctx.retrieval when registered (P5b soft-fallback swap)', a
     throw new Error('apply did not register a tool')
   }
   const out = await def.execute({ query: 'q' }, { signal: new AbortController().signal })
-  expect(out.candidates).toEqual([{ id: 'mock.metric', score: 0.42, description: 'mock desc', mode: 'hybrid' }])
+  expect(out.candidates).toEqual([{ id: 'mock.metric', score: 0.42, description: 'mock desc', mode: 'hybrid', type: 'metric' }])
 })
 
 test('S9 execute uses ctx.schema enriched corpus when registered (D2e schema soft-fallback)', async () => {
