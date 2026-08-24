@@ -108,7 +108,12 @@ export function extractTimeParams(question: string, today: string): TimeParams {
 export function buildMetricContext(metric: MetricDefinitionLite, params: TimeParams): string {
   const source = metric.computation.metadata.source
   const expr = metric.computation.sql
-  const where = params.date ? ` WHERE ds = '${params.date}'` : ''
+  // Hint-quality WHERE: surfaces the time filter so the LLM reproduces it in
+  // generated SQL (the critic + executed-SQL path still validate). Single day →
+  // ds = date; range (本月/上周) → ds BETWEEN start AND end; no time param → none.
+  let where = ''
+  if (params.date) where = ` WHERE ds = '${params.date}'`
+  else if (params.start_date && params.end_date) where = ` WHERE ds BETWEEN '${params.start_date}' AND '${params.end_date}'`
   const body = expr.includes('{{') ? expr : `SELECT ${expr} FROM ${source}${where}`
   return `- ${metric.name} = ${body}（${metric.description ?? ''}）`
 }

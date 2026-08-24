@@ -63,6 +63,12 @@ test('D1 — buildMetricContext renders a context line', () => {
   expect(ctx).toContain('ods_login')
 })
 
+test('D1 — buildMetricContext range query surfaces BETWEEN filter', () => {
+  const ctx = buildMetricContext(DAU, { start_date: '20260801', end_date: '20260807' })
+  expect(ctx).toContain("ds BETWEEN '20260801' AND '20260807'")
+  expect(ctx).toContain('ods_login')
+})
+
 test('D3-e2e — mixed query (metric + table) routes to Level 2 + augments candidates so the source table is accepted', async () => {
   const ds: DataSourceDoc[] = [
     { id: 'dau', description: '日活 DAU', payload: { kind: 'metric', name: 'dau', computation: { sql: 'COUNT(DISTINCT user_id)', metadata: { source: 'ods_login' } } } },
