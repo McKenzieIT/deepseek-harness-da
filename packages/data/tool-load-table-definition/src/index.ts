@@ -103,6 +103,7 @@ export type TableDimensionRef = {
  */
 export type TableModel = {
   readonly table_name?: string
+  readonly qualified_name?: string
   readonly table_comment?: string
   readonly description?: string
   readonly domains?: string[]
@@ -218,7 +219,9 @@ export function loadTableDefinitionResult(
     if (table === null) {
       return { found: false, message: `table not found: ${JSON.stringify(name)}` }
     }
-    return { found: true, table: projectTable(table) }
+    const qn = schema.qualifyTableName?.(name)
+    const projected = projectTable(table)
+    return { found: true, table: qn && qn !== name ? { ...projected, qualified_name: qn } : projected }
   } catch (e) {
     return { found: false, message: `substrate error: ${sanitizeSubstrateError(e)}` }
   }

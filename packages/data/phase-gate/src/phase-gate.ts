@@ -787,6 +787,7 @@ function collectTableNames(value: unknown, out: Set<string>): void {
     for (const t of names) {
       if (typeof t === 'string') {
         out.add(t.toLowerCase())
+        out.add(t.toLowerCase().replace(/^.*\./, ''))
       } else if (t !== null && typeof t === 'object') {
         // P-DA1: search_data_sources candidates are objects ({ id, score,
         // description?, mode }), not strings — the prior string-only harvest
@@ -796,7 +797,10 @@ function collectTableNames(value: unknown, out: Set<string>): void {
         // (not candidate_tables) as its source of truth, so this fix and the
         // backstop defend each other; both stay.
         const id = (t as { id?: unknown }).id
-        if (typeof id === 'string') out.add(id.toLowerCase())
+        if (typeof id === 'string') {
+          out.add(id.toLowerCase())
+          out.add(id.toLowerCase().replace(/^.*\./, ''))
+        }
       }
     }
   }

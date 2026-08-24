@@ -100,6 +100,12 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
   }
 }
 
+function qualifyCandidates(candidates: SearchHit[], schema: SchemaCorpusSource | undefined): SearchHit[] {
+  const qualify = schema?.qualifyTableName?.bind(schema)
+  if (!qualify) return candidates
+  return candidates.map(c => c.mode === 'event' ? c : { ...c, id: qualify(c.id) })
+}
+
 /**
  * Minimal structural shape tool-search probes for the D2e enriched corpus
  * (`ctx.schema` when the semantic-layer provider is mounted). Avoids a static
@@ -120,6 +126,7 @@ interface SchemaCorpusSource {
   /** P3/P4: full corpus (events+tables+metrics); preferred over events-only when present. */
   loadRetrievalCorpusAll?(): readonly DataSourceDoc[]
   corpusVersion?(): number
+  qualifyTableName?(tableName: string): string
 }
 
 /**
@@ -350,12 +357,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       // 7/7 stay green (tests register no retrieval -> `get` returns undefined
       // -> the sync Bm25Linker path). Seam contract + P13b engine logic
       // unchanged.
+      const schemaForQualify = ctx.get('schema') as SchemaCorpusSource | undefined
       const retrieval = ctx.get('retrieval') as RetrievalService | undefined
       if (retrieval !== undefined) {
         const hits = await retrieval.retrieve(args.query, { topK, mode: 'hybrid' })
         const candidates = hits.map(projectHit)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
-        return { candidates: expanded, ...(join_constraints.length > 0 ? { join_constraints } : {}) }
+        return { candidates: qualifyCandidates(expanded, schemaForQualify), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
       // D2e: schema-sourced enriched corpus (dormant until ctx.schema mounts).
       // When the semantic-layer provider is mounted, build/cache an enriched
@@ -366,16 +374,15 @@ export function apply(ctx: Context, config: Config = {}): void {
       // so the tool loads without a schema provider; `ctx.get` returns
       // `undefined` when none is registered. The defensive `typeof` probe
       // guards a non-schema object resolving to the 'schema' name.
-      const schemaProbe = ctx.get('schema') as { loadRetrievalCorpus?: unknown } | undefined
-      if (schemaProbe !== undefined && typeof schemaProbe.loadRetrievalCorpus === 'function') {
-        const schema = schemaProbe as SchemaCorpusSource
+      if (schemaForQualify !== undefined && typeof schemaForQualify.loadRetrievalCorpus === 'function') {
+        const schema = schemaForQualify
         const candidates = searchDataSources(getEnrichedLinker(schema), args.query, topK)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
-        return { candidates: expanded, ...(join_constraints.length > 0 ? { join_constraints } : {}) }
+        return { candidates: qualifyCandidates(expanded, schema), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
       const candidates = searchDataSources(linker, args.query, topK)
       const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
-      return { candidates: expanded, ...(join_constraints.length > 0 ? { join_constraints } : {}) }
+      return { candidates: qualifyCandidates(expanded, schemaForQualify), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
     },
   }))
 }
