@@ -314,6 +314,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
             additionalProperties: false,
             properties: {
               table_name: { type: 'string' },
+              qualified_name: { type: 'string' },
               table_comment: { type: 'string' },
               description: { type: 'string' },
               domains: { type: 'array', items: { type: 'string' } },
