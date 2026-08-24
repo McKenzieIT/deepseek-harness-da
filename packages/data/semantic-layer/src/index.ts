@@ -129,9 +129,6 @@ export {
   toMetricDefinition,
   metricName,
   inferAggregation,
-  writeMetricDefinitions,
-  seedMetrics,
-  listMetrics,
   loadMetricDefinitions,
 } from './metrics.ts'
 

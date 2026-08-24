@@ -1,15 +1,15 @@
 /**
- * Metrics extraction (B5) — mechanical, deterministic conversion of inline
- * `metrics:` blocks (Record<string, MetricDef>) on table/event definitions into
- * standalone MetricDefinition YAMLs (kind=metric) under `metrics/`.
+ * Metrics extraction (B5) — mechanical, deterministic projection of inline
+ * `metrics:` blocks (Record<string, MetricDef>) on table/event definitions
+ * into derived MetricDefinitions (kind=metric). M1 virtual projection: no
+ * standalone `metrics/*.yaml` files are written or read — every metric is
+ * derived at retrieval time from its host table/event's `metrics:` block.
  *
- * G3 §6: Phase 1 = mechanical extraction (no LLM). Each entry → one metric
- * file; a `derived_from` relation to the source table is auto-established.
+ * G3 §6: Phase 1 = mechanical extraction (no LLM). Each entry → one derived
+ * metric; a `derived_from` relation to the source table is auto-established.
  *
  * @module @deepseek-ai/dsh-semantic-layer/src/metrics
  */
-import { readdirSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
 import {
   TableDefinitionSchema,
   EventDefinitionSchema,
@@ -18,8 +18,7 @@ import {
   type MetricDef,
   type MetricDefinition,
 } from './types.ts'
-import { loadTables, loadEvents, dumpYaml, invalidateCaches } from './io.ts'
-import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
+import { loadTables, loadEvents } from './io.ts'
 
 // ── helpers (best-effort, deterministic) ───────────────────────────────
 
@@ -180,63 +179,6 @@ export function extractMetricsFromTables(semanticLayer: string): MetricDefinitio
     out.push(...extractMetricsFromEvent(r.data))
   }
   return out
-}
-
-// ── Writer ──────────────────────────────────────────────────────────────
-
-const METRIC_MODE = 0o644
-
-/**
- * Write MetricDefinitions to the layer's `metrics/` subdirectory (one
- * `<name>.yaml` per metric). Files are written atomically; the layer's caches
- * are invalidated once after the batch so retrieval/graph rebuild. Fail-tolerant
- * per file: a thrown write becomes an error string rather than aborting the batch.
- * @param semanticLayer - the semantic-layer directory path.
- * @param metrics - the metric definitions to write.
- * @returns counts of `written` plus a per-file `errors` list.
- */
-export async function writeMetricDefinitions(
-  semanticLayer: string,
-  metrics: readonly MetricDefinition[],
-): Promise<{ written: number; errors: string[] }> {
-  const metricsDir = join(semanticLayer, 'metrics')
-  let written = 0
-  const errors: string[] = []
-  for (const m of metrics) {
-    try {
-      const target = join(metricsDir, `${m.name}.yaml`)
-      await writeFileAtomic(target, dumpYaml(m), { mode: METRIC_MODE })
-      written += 1
-    } catch (e) {
-      errors.push(`${m.name}: ${(e as Error).message}`)
-    }
-  }
-  invalidateCaches(semanticLayer)
-  return { written, errors }
-}
-
-/**
- * Convenience: extract all metrics from a layer and write them to `metrics/`.
- * @param semanticLayer - the semantic-layer directory path.
- * @returns counts of `written` plus a per-file `errors` list.
- */
-export async function seedMetrics(semanticLayer: string): Promise<{ written: number; errors: string[] }> {
-  return writeMetricDefinitions(semanticLayer, extractMetricsFromTables(semanticLayer))
-}
-
-/**
- * List metric definition names currently written to the layer's `metrics/` dir.
- * Lenient: non-`.yaml`/`_`-prefixed files are skipped (mirrors loadTables).
- * @param semanticLayer - the semantic-layer directory path.
- * @returns the metric names (from `<name>.yaml` filenames), sorted.
- */
-export function listMetrics(semanticLayer: string): string[] {
-  const dir = join(semanticLayer, 'metrics')
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter(f => f.endsWith('.yaml') && !f.startsWith('_'))
-    .map(f => f.replace(/\.yaml$/, ''))
-    .sort()
 }
 
 /**

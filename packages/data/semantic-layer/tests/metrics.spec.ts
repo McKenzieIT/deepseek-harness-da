@@ -1,18 +1,15 @@
 /**
- * Metrics extraction (B5) tests — mechanical conversion of inline `metrics:`
- * blocks into standalone MetricDefinition YAMLs. G3 §6 Phase 1 = deterministic.
+ * Metrics extraction (B5) tests — mechanical derivation of inline `metrics:`
+ * blocks into MetricDefinitions (M1 virtual projection, no standalone YAMLs).
+ * G3 §6 Phase 1 = deterministic.
  */
 import { test, expect, describe, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import yaml from 'js-yaml'
 import {
   extractMetricsFromTable,
   extractMetricsFromTables,
-  writeMetricDefinitions,
-  seedMetrics,
-  listMetrics,
   metricName,
   inferAggregation,
 } from '../src/metrics.ts'
@@ -125,7 +122,7 @@ describe('extractMetricsFromTable', () => {
   })
 })
 
-// ── I/O: extractMetricsFromTables + writeMetricDefinitions ──────────────
+// ── I/O: extractMetricsFromTables ───────────────────────────────────────
 
 describe('metrics I/O', () => {
   let dir: string
@@ -142,23 +139,5 @@ describe('metrics I/O', () => {
     const metrics = extractMetricsFromTables(dir)
     expect(metrics).toHaveLength(1)
     expect(metrics[0]!.name).toBe('dws_pay_order_di__pay_amt_sum')
-  })
-
-  test('writeMetricDefinitions writes one YAML per metric under metrics/ + listMetrics reads back', async () => {
-    const metrics = extractMetricsFromTable(table({ metrics: { a: mdef('SUM(x)'), b: mdef('COUNT(*)') } }))
-    const res = await writeMetricDefinitions(dir, metrics)
-    expect(res.written).toBe(2)
-    expect(res.errors).toEqual([])
-    expect(listMetrics(dir).sort()).toEqual(['dws_pay_order_di__a', 'dws_pay_order_di__b'])
-    // written file parses back as a MetricDefinition
-    const parsed = yaml.load(readFileSync(join(dir, 'metrics', 'dws_pay_order_di__a.yaml'), 'utf-8'))
-    expect(MetricDefinitionSchema.safeParse(parsed).success).toBe(true)
-  })
-
-  test('seedMetrics = extract + write end-to-end', async () => {
-    writeFileSync(join(dir, 'tables', 't.yaml'), dumpYaml(table({ metrics: { z: mdef('SUM(q)') } })))
-    const res = await seedMetrics(dir)
-    expect(res.written).toBe(1)
-    expect(listMetrics(dir)).toEqual(['dws_pay_order_di__z'])
   })
 })
