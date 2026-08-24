@@ -204,3 +204,67 @@ test('S11 execute applies the default topK=20 when top_k omitted (D2h 5→20 rai
   const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
   expect(out.candidates.length).toBe(20)
 })
+
+test('S12 qualifyCandidates passes payload.project as override to qualifyTable (per-table override #3a)', async () => {
+  // Self-evolution #3a: a table candidate whose payload carries a per-table
+  // `project` override must hand that project to `ctx.query.qualifyTable` as
+  // the 2nd arg so the override wins over Config.defaultProject. The override
+  // originates on the table definition (TableDefinitionSchema.project) and is
+  // carried through projectHit → SearchHit.project → qualifyCandidates.
+  const qualifyCalls: Array<[string, string | undefined]> = []
+  const mockQuery = {
+    qualifyTable: (tableName: string, override?: string) => {
+      qualifyCalls.push([tableName, override])
+      return `qualified.${tableName}`
+    },
+  }
+  const mockRetrieval = {
+    retrieve: async () => [
+      { id: 'dws_pay_order_di', score: 0.9, payload: { kind: 'dws', project: 'ieu_ods', description: '充值订单汇总表' }, mode: 'hybrid' },
+    ],
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'query' ? mockQuery : key === 'retrieval' ? mockRetrieval : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) throw new Error('apply did not register a tool')
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  // qualifyTable received the per-table override 'ieu_ods' as the 2nd arg
+  expect(qualifyCalls).toEqual([['dws_pay_order_di', 'ieu_ods']])
+  // the qualified id uses the override project, and the candidate carries project
+  expect(out.candidates[0]?.id).toBe('qualified.dws_pay_order_di')
+  expect(out.candidates[0]?.project).toBe('ieu_ods')
+})
+
+test('S13 qualifyCandidates passes undefined override when payload has no project (default project #3a)', async () => {
+  // When the table definition declares no per-table project, qualifyCandidates
+  // must pass `undefined` as the override so qualifyTable falls back to
+  // Config.defaultProject (ieu_cdm) — not a stale or empty string override.
+  const qualifyCalls: Array<[string, string | undefined]> = []
+  const mockQuery = {
+    qualifyTable: (tableName: string, override?: string) => {
+      qualifyCalls.push([tableName, override])
+      return `qualified.${tableName}`
+    },
+  }
+  const mockRetrieval = {
+    retrieve: async () => [
+      { id: 'dws_pay_order_di', score: 0.9, payload: { kind: 'dws', description: '充值订单汇总表' }, mode: 'hybrid' },
+    ],
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'query' ? mockQuery : key === 'retrieval' ? mockRetrieval : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) throw new Error('apply did not register a tool')
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  // qualifyTable received undefined override → falls back to defaultProject
+  expect(qualifyCalls).toEqual([['dws_pay_order_di', undefined]])
+  expect(out.candidates[0]?.id).toBe('qualified.dws_pay_order_di')
+  // no project key on the candidate (payload had none)
+  expect(out.candidates[0]?.project).toBeUndefined()
+})

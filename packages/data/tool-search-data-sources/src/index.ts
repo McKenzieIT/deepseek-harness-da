@@ -59,6 +59,12 @@ export interface SearchHit {
    *  from a table/event — so it routes metrics to GENERATION context, not
    *  load_table_definition (which returns not-found on a metric name). */
   readonly type?: string
+  /** Per-table ODPS project override (self-evolution #3a). Carried from
+   *  `TableDefinitionSchema.project` on the hit payload through `projectHit` so
+   *  `qualifyCandidates` can hand it to `ctx.query.qualifyTable(id, project)` —
+   *  the override wins over `Config.defaultProject`. Absent on non-table kinds
+   *  and when the table definition declares no project (falls back to default). */
+  readonly project?: string
 }
 
 /** Infer the data-source kind from a corpus item's payload. */
@@ -107,12 +113,19 @@ export function searchDataSources(
  */
 function projectHit(h: { readonly id: string; readonly score: number; readonly payload: unknown; readonly mode: string }): SearchHit {
   const description = (h.payload as { description?: string } | undefined)?.description
+  // #3a: extract the per-table project override from the payload
+  // (TableDefinitionSchema.project). Guarded typeof check so a missing or
+  // non-string project yields `undefined` → no `project` key on the SearchHit
+  // (toEqual stays exact for payloads without project, e.g. S8/S9).
+  const projectRaw = (h.payload as { project?: unknown } | undefined)?.project
+  const project = typeof projectRaw === 'string' && projectRaw.length > 0 ? projectRaw : undefined
   return {
     id: h.id,
     score: h.score,
     ...(description !== undefined ? { description } : {}),
     mode: h.mode,
     type: typeOf(h.payload),
+    ...(project !== undefined ? { project } : {}),
   }
 }
 
@@ -130,9 +143,12 @@ function qualifyCandidates(ctx: Context, candidates: SearchHit[]): SearchHit[] {
   // `mode` is the retrieval mode, not the data-source kind, so the prior
   // `c.mode === 'event'` check never matched — every candidate was qualified,
   // and qualifyTableName silently no-op'd non-tables).
-  // Task 1: pass undefined as override — SearchHit.project lands in Task 3;
-  // qualifyTable falls back to Config.defaultProject (ieu_cdm).
-  return candidates.map(c => c.type === 'table' ? { ...c, id: qualify(c.id) } : c)
+  // #3a: pass the per-table project override (SearchHit.project, extracted by
+  // projectHit from TableDefinitionSchema.project) as the 2nd arg so it wins
+  // over Config.defaultProject (ieu_cdm). `undefined` when the table declares
+  // no project → qualifyTable falls back to defaultProject; non-table kinds
+  // are not qualified at all (skipped by the type guard above).
+  return candidates.map(c => c.type === 'table' ? { ...c, id: qualify(c.id, c.project) } : c)
 }
 
 /**
@@ -340,6 +356,7 @@ export function apply(ctx: Context, config: Config = {}): void {
                 description: { type: 'string' },
                 mode: { type: 'string', required: true },
                 type: { type: 'string' },
+                project: { type: 'string' },
               },
             },
           },

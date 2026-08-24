@@ -243,6 +243,19 @@ export type PartitionDef = z.infer<typeof PartitionDefSchema>
  */
 export const TableDefinitionSchema = z.object({
   table_name: z.string(),
+  /**
+   * Per-table ODPS project override for table-name qualification (self-evolution #3a).
+   *
+   * When present, `ctx.query.qualifyTable(tableName, project)` lets this table's
+   * qualified name resolve to `<project>.<table>` — winning over the query
+   * provider's `Config.defaultProject` (cordis.patch.yml fills `ieu_cdm`).
+   * This is how the self-evolution loop applies a user-supplied project after a
+   * TABLE_NOT_FOUND: `update_table_config` writes `project` here, the search
+   * corpus reloads, and the next query qualifies against the override.
+   * `.loose()` already passthrough'd this key; declaring it typed lets
+   * `findTable`/consumers read `t.project` as a parsed string (not unknown).
+   */
+  project: z.string().optional(),
   table_comment: z.string().default(''),
   description: z.string().default(''),
   domains: z.array(z.string()).default([]),
