@@ -1,0 +1,12 @@
+domain: account
+events:
+- name: game.role.create
+  description: 角色创建：成功创建角色时记录
+- name: game.role.cu
+  description: 角色同时在线：每个区服每2分钟上报1次
+- name: game.role.offline
+  description: 角色登出：角色登出时记录
+- name: game.role.online
+  description: 角色上线：角色登录服务器时记录
+- name: game.role.snapshot
+  description: 角色快照：每日23:50刷一批当前在线角色信息

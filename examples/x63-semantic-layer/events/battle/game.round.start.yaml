@@ -1,0 +1,53 @@
+name: game.round.start
+event_filter: event = 'game.round.start'
+description: '行动开始：对局开始/行动开始时记录（服务器主体）
+
+  触发主体为服务器（role_id 可能为空），UV 建议按 server_id 统计。
+
+  参数：区服id、玩法id、副本的场景、副本的场景唯一id、副本的事件id、行为类型、局内的队伍总数量、局内的玩家总数量、各队伍的成员list'
+domains:
+- 战斗关卡
+params_fields:
+  serverId:
+    type: string
+    description: 区服id
+  playId:
+    type: string
+    description: 玩法地图id，取TreasureHunting中的key
+  levelId:
+    type: int
+    description: 场景id
+  levelUid:
+    type: int
+    description: 场景唯一id（用于记录副本），如不是副本则填0
+  eventId:
+    type: string
+    description: 此局触发的事件id（TreasureHuntingEvent的key）
+  action:
+    type: int
+    description: 1-对局开始；2-行动开始
+  teamNum:
+    type: int
+    description: 局内的队伍总数量
+  playerNum:
+    type: int
+    description: 局内的玩家总数量
+  teamMemberList:
+    type: int
+    description: 各队伍下的玩家id清单（如有多个队伍时按队伍id+清单的方式记录）
+daily_count: 29.8
+total_count: 149
+active_days: 5
+tech_domain: role_private
+confirmation:
+  status: draft
+  confirmed_by: onboarding-10000334-event-bootstrap
+  confirmed_at: '2026-07-27'
+coverage:
+  scenarios:
+  - 行动开始 事件次数与独立区服数趋势（按 ds/hh）
+  limitations:
+  - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6
+    个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
+  - 主体粒度默认按 server_id 统计 UV，未逐事件 maxc 实测复核
+  coverage_status: draft

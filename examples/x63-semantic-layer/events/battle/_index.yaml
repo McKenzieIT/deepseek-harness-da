@@ -1,0 +1,18 @@
+domain: battle
+events:
+- name: game.battle.pve.end
+  description: PVE战斗结束：怪物死亡时，且角色有对怪物造成过伤害/对友方造成过治疗（有主动仇恨）
+- name: game.battle.pve.start
+  description: 进入PVE战斗：角色触发怪物的主动仇恨时记录
+- name: game.match.act
+  description: 匹配行为：角色有匹配行为，详见行为类型表（触发主体为服务器）
+- name: game.role.die
+  description: 角色死亡：角色死亡时
+- name: game.role.revive
+  description: 角色复活：角色复活时
+- name: game.round.act
+  description: 角色行动行为：角色在行动中有相应行为时记录
+- name: game.round.end
+  description: 行动结束：整场对局结束时记录（服务器主体）
+- name: game.round.start
+  description: 行动开始：对局开始/行动开始时记录（服务器主体）

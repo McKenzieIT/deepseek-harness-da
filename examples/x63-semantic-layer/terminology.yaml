@@ -1,0 +1,39 @@
+scope_id: '10000334'
+version: '1.0'
+terminology:
+- slang: 日活 / DAU
+  standard_concept: 日活跃用户 active_users(daily)
+  maps_to:
+    events:
+    - game.role.online
+    tables: []
+    fields:
+    - role_id
+    - account_id
+  definition: 统计日内有上线的独立主体数。角色级用 game.role.online 去重 role_id；账号级去重 account_id。10000334 为 events-only 游戏，无 DWS 表。
+- slang: 同时在线 / CCU / PCU
+  standard_concept: 同时在线人数 concurrent_users
+  maps_to:
+    events:
+    - game.role.cu
+    tables: []
+    fields:
+    - server_id
+  definition: game.role.cu 每区服每2分钟上报一次 params.cu；PCU=日内 MAX(cu)，按区服聚合。
+- slang: 撤离 / 带出
+  standard_concept: 成功撤离 extraction
+  maps_to:
+    events:
+    - game.round.act
+    tables: []
+    fields:
+    - role_id
+  definition: game.round.act 中 params.action=3 表示成功撤离（4=失败退出）；带出价值/物品见 extractItemValue/extractItemList。
+
+# T14①：本 scope 自己的运营阶段说法。此前 planner._TIME_PATTERNS_V2 硬编码
+# `OB首月|公测首月`（某一个 scope 的说法），别的 scope 一个都匹配不上。
+# 未策展的 scope 留空即可 —— 宁可不认业务期，也不要套用别人的词。
+# 实测该 scope 说「司测」（司测期间/司测第一天/司测这两天/司测阶段/司测窗口），
+# 该说法此前完全不在词表里，导致该 scope 时间抽取漏检 90.5%。
+business_periods:
+- 司测

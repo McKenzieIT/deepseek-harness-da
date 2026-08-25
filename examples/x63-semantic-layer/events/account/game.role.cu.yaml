@@ -1,0 +1,34 @@
+name: game.role.cu
+event_filter: event = 'game.role.cu'
+description: '角色同时在线：每个区服每2分钟上报1次
+
+  说明：触发主体为服务器
+
+  触发主体为服务器（role_id 可能为空），UV 建议按 server_id 统计。
+
+  参数：区服id、同时在线人数'
+domains:
+- 用户生命周期
+params_fields:
+  serverId:
+    type: string
+    description: 区服id
+  cu:
+    type: int
+    description: 同时在线人数
+daily_count: 714.2
+total_count: 4285
+active_days: 6
+tech_domain: role_private
+confirmation:
+  status: draft
+  confirmed_by: onboarding-10000334-event-bootstrap
+  confirmed_at: '2026-07-27'
+coverage:
+  scenarios:
+  - 角色同时在线 事件次数与独立区服数趋势（按 ds/hh）
+  limitations:
+  - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6
+    个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
+  - 主体粒度默认按 server_id 统计 UV，未逐事件 maxc 实测复核
+  coverage_status: draft

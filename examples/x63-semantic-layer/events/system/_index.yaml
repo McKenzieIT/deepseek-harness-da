@@ -1,0 +1,6 @@
+domain: system
+events:
+- name: game.rankTier.act
+  description: 赛季段位行为：角色有赛季段位变动时记录
+- name: game.task.act
+  description: 任务行为：角色有任务行为，任务包含主线任务、日常任务，以及具体游戏认为属于任务的各种玩法

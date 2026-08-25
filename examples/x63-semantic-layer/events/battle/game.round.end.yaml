@@ -1,0 +1,110 @@
+name: game.round.end
+event_filter: event = 'game.round.end'
+description: '行动结束：整场对局结束时记录（服务器主体）
+
+  触发主体为服务器（role_id 可能为空），UV 建议按 server_id 统计。
+
+  参数：区服id、玩法id、副本的场景、副本的场景唯一id、副本的事件id、副本玩法参与-龙珠、局内的队伍总数量、局内的玩家总数量、局内总时长、队伍1行动结果、队伍1评分、队伍1带出总价值 等16个'
+domains:
+- 战斗关卡
+params_fields:
+  serverId:
+    type: string
+    description: 区服id
+  playId:
+    type: string
+    description: 玩法地图id，取TreasureHunting中的key
+  levelId:
+    type: int
+    description: 场景id
+  levelUid:
+    type: int
+    description: 场景唯一id（用于记录副本），如不是副本则填0
+  eventId:
+    type: string
+    description: 此局触发的事件id（TreasureHuntingEvent的key）
+  coreSeize:
+    type: bool
+    description: 局内是否夺取了龙珠
+  teamNum:
+    type: int
+    description: 局内的队伍总数量
+  playerNum:
+    type: int
+    description: 局内的玩家总数量
+  roundDuration:
+    type: int
+    description: 局内总时长，单位：秒
+  team1Result:
+    type: string
+    description: '撤退成功：evac_success
+
+      撤退失败全灭：evac_fail_death
+
+      撤退失败退出：evac_fail_quit
+
+      撤退失败超时：evac_fail_timeout'
+  team1Rating:
+    type: string
+    description: 对局结束时的队伍评分，SS/A/B等（含撤离成功和撤退失败）
+  team1ExtractItemValue:
+    type: int
+    description: 队伍1所有成员成功带出的物品总价值
+  team1SubmitItemNum:
+    type: int
+    description: 队伍1放入个人柜/公共柜的回收物总个数
+  team1SubmitValue:
+    type: int
+    description: 队伍1放入个人柜/公共柜的回收物总价值
+  team1MemberList:
+    type: array
+    description: '格式如：
+
+      [
+
+      {
+
+      roleId：队伍成员1roldId，
+
+      roundResult：行动结果（evac_success / evac_fail）
+
+      quitReason：行动失败原因（参考个人行动日志内容）
+
+      roleStatus：角色状态
+
+      survivalTime：角色存活时间
+
+      killMonsterNum：角色击杀怪物个数
+
+      moveDistance：角色移动距离
+
+      personalRating：角色个人评分
+
+      extractItemList：{}角色带出物品清单
+
+      extractItemValue：角色带出物品价值
+
+      },
+
+      ……（队伍成员2信息）
+
+      ]'
+  team2Result:
+    type: string
+    description: 队伍2的行动结果（因为多队还没做，可以先跳过）
+daily_count: 29.6
+total_count: 148
+active_days: 5
+tech_domain: role_private
+confirmation:
+  status: draft
+  confirmed_by: onboarding-10000334-event-bootstrap
+  confirmed_at: '2026-07-27'
+coverage:
+  scenarios:
+  - 行动结束 事件次数与独立区服数趋势（按 ds/hh）
+  limitations:
+  - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6
+    个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
+  - 主体粒度默认按 server_id 统计 UV，未逐事件 maxc 实测复核
+  coverage_status: draft

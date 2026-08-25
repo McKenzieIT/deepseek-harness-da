@@ -1,0 +1,16 @@
+domain: resource
+events:
+- name: game.coin.change
+  description: 货币变更：货币发生变更时记录（含局内、局外）
+- name: game.item.change
+  description: 携带物品变更：携带物品发生变更时记录（局外+局内）
+- name: game.item.dieDrop
+  description: 角色死亡掉落：产生物品掉落时记录（特指角色身上掉落到地面的情况）
+- name: game.item.durChange
+  description: 携带物品耐久变更：携带物品发生耐久减少时记录（局内）
+- name: game.item.repair
+  description: 物品修理：物品修理时记录（局内/局外）
+- name: game.reward.play
+  description: reward奖励生成：通过reward生成奖励时，生成回收物后转换为npcloot，也需记录
+- name: game.storageItem.change
+  description: 仓库物品变更：仓库物品发生变更时（局外，局内无仓库）

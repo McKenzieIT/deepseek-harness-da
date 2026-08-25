@@ -1,0 +1,85 @@
+name: game.reward.play
+event_filter: event = 'game.reward.play'
+description: 'reward奖励生成：通过reward生成奖励时，生成回收物后转换为npcloot，也需记录
+
+  说明：触发主体为服务器
+
+  触发主体为服务器（role_id 可能为空），UV 建议按 server_id 统计。
+
+  参数：区服id、rewardid、发放物品结果、发放货币结果、生成NPC结果、原因、触发/发放目标角色guid'
+domains:
+- 资源产销
+params_fields:
+  serverId:
+    type: string
+    description: 区服id
+  rewardId:
+    type: int
+    description: 对应Reward配置表中的ID
+  itemResult:
+    type: array
+    description: '发放物品详情，格式如：
+
+      [
+
+      {item_id , n},    //物品id，数量
+
+      ……
+
+      ]'
+  coinResult:
+    type: array
+    description: '发放货币详情，格式如：
+
+      [
+
+      {coin_id , n},    //货币类型，数量
+
+      ……
+
+      ]'
+  npcResult:
+    type: array
+    description: '生成的npc详情，格式如：
+
+      [
+
+      {item_id, npc_id, n},    //物品id，npcid，数量
+
+      ……
+
+      ]'
+  reason:
+    type: string
+    description: 待补充枚举说明
+  targetList:
+    type: array
+    description: '发放的角色列表，格式如：
+
+      [
+
+      roleId1,    //角色guid
+
+      roleId2，
+
+      ……
+
+      ]
+
+      如果是系统触发，则填system'
+daily_count: 555.4
+total_count: 2777
+active_days: 5
+tech_domain: role_private
+confirmation:
+  status: draft
+  confirmed_by: onboarding-10000334-event-bootstrap
+  confirmed_at: '2026-07-27'
+coverage:
+  scenarios:
+  - reward奖励生成 事件次数与独立区服数趋势（按 ds/hh）
+  limitations:
+  - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6
+    个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
+  - 主体粒度默认按 server_id 统计 UV，未逐事件 maxc 实测复核
+  coverage_status: draft

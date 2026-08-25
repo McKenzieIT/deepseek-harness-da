@@ -1,0 +1,4 @@
+domain: payment
+events:
+- name: game.shop.act
+  description: 商店行为：角色在NPC商店购买/出售时记录

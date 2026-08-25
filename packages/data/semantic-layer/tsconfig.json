@@ -27,9 +27,6 @@
       "path": "../../data/audit"
     },
     {
-      "path": "../../data/scope-registry"
-    },
-    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

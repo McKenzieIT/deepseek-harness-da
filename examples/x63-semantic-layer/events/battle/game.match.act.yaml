@@ -1,0 +1,62 @@
+name: game.match.act
+event_filter: event = 'game.match.act'
+description: '匹配行为：角色有匹配行为，详见行为类型表（触发主体为服务器）
+
+  触发主体为服务器（role_id 可能为空），UV 建议按 server_id 统计。
+
+  参数：区服id、玩法id、匹配类型、触发者角色id、触发者所在房间uid、触发者所在房间的玩家数量、触发者所在房间的玩家列表、行为类型、关联角色id列表、关联原因信息、关联时间信息、关联匹配结果'
+domains:
+- 战斗关卡
+params_fields:
+  serverId:
+    type: string
+    description: 区服id
+  playId:
+    type: string
+    description: 匹配的玩法地图id，取TreasureHunting中的key
+  matchType:
+    type: int
+    description: 1-补全队友；2-不补全队友
+  roleId:
+    type: string
+    description: 详见行为类型表
+  roomUid:
+    type: string
+    description: 详见行为类型表
+  roomMemberNum:
+    type: int
+    description: 触发者所在房间的玩家数量
+  roomMemberList:
+    type: table
+    description: 触发者所在房间的玩家列表
+  action:
+    type: int
+    description: 详见行为类型表
+  relRoleIdList:
+    type: string
+    description: 详见行为类型表
+  reason:
+    type: string
+    description: 详见行为类型表
+  matchDuration:
+    type: int
+    description: 关联时间信息，单位：秒
+  matchLevelUid:
+    type: string
+    description: 关联匹配结果
+daily_count: 63.6
+total_count: 318
+active_days: 5
+tech_domain: role_private
+confirmation:
+  status: draft
+  confirmed_by: onboarding-10000334-event-bootstrap
+  confirmed_at: '2026-07-27'
+coverage:
+  scenarios:
+  - 匹配行为 事件次数与独立区服数趋势（按 ds/hh）
+  limitations:
+  - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6
+    个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
+  - 主体粒度默认按 server_id 统计 UV，未逐事件 maxc 实测复核
+  coverage_status: draft

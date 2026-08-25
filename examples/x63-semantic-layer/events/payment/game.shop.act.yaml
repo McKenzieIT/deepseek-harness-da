@@ -1,0 +1,53 @@
+name: game.shop.act
+event_filter: event = 'game.shop.act'
+description: '商店行为：角色在NPC商店购买/出售时记录
+
+  参数：角色行为、商店id、购买的商品id、购买的商品数量、商品价格'
+domains:
+- 付费经济
+params_fields:
+  action:
+    type: int
+    description: 1-购买；2-出售
+  shopId:
+    type: string
+    description: 商店id，对应Shop_Define配置表中的id
+  goodsId:
+    type: int
+    description: 商品id，对应各商店配置表中的商品id
+  goodsAmount:
+    type: int
+    description: 购买的商品数量
+  priceContent:
+    type: array
+    description: '商品单价，格式如：
+
+      [
+
+      {
+
+      coinId：货币id，
+
+      coinAmount：物品数量,
+
+      },
+
+      ……
+
+      ]'
+daily_count: 35.0
+total_count: 175
+active_days: 5
+tech_domain: role_private
+confirmation:
+  status: draft
+  confirmed_by: onboarding-10000334-event-bootstrap
+  confirmed_at: '2026-07-27'
+coverage:
+  scenarios:
+  - 商店行为 事件次数与独立角色数趋势（按 ds/hh）
+  limitations:
+  - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6
+    个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
+  - 主体粒度默认按 role_id 统计 UV，未逐事件 maxc 实测复核
+  coverage_status: draft
