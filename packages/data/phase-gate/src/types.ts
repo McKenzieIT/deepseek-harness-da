@@ -159,6 +159,11 @@ export const UNIVERSAL_TOOLS = Object.freeze([
   // just UNDERSTANDING route:clarify. captureToolData flags awaiting_clarification
   // on the call (any phase) and onTurnStopping HALTs awaiting the user reply.
   'present_clarification',
+  // C_prior (G1b): goal/todo are planning tools with no side effects on SQL
+  // generation/execution — safe in any phase. Variant C needs them in U+I;
+  // UNIVERSAL avoids guard-rejected noise if the model references them elsewhere.
+  'goal',
+  'todo',
 ] as const)
 /** Tool whitelist for the UNDERSTANDING phase (candidate discovery, definition loading, clarification). */
 export const UNDERSTANDING_TOOLS = Object.freeze([
