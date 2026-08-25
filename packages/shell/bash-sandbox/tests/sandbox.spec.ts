@@ -5,7 +5,7 @@
  * the Unix denial signature used by the classifier without requiring a real sandbox runner.
  */
 
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -638,12 +638,21 @@ describe('background sandbox facts', () => {
     expect(quick.sandbox).toEqual({ mode: 'read-only', denied: false, enforcement: 'full' })
   })
 
-  it('a signal-killed task is never a denial (null exit code)', async () => {
+  it('a signal-killed task is never a denial (null exit code)', { timeout: 15_000 }, async () => {
     const { bash } = await setup()
-    const task = bash.start(bash.resolve({ command: 'echo "Permission denied" >&2; sleep 30' }))
-    // Let the stderr land before the kill so the classifier sees the
-    // signature and must still refuse it on the null exit code alone.
-    await vi.waitFor(() => { expect(task.readOutput().delta).toContain('Permission denied') })
+    // A readiness marker guarantees the inner TERM trap is installed before the
+    // kill. Without it the leader can reap its SIGTERM'd foreground `sleep`
+    // child and exit naturally with 128+15 (143) — a nonzero exit the denial
+    // classifier matches against the "Permission denied" stderr. The trapped
+    // inner child survives the group SIGTERM, so the leader's `wait` cannot
+    // return and the leader itself dies from SIGTERM (null exit code), the
+    // path pinned here: matchesSignature refuses on the null exit alone. See
+    // subprocess-local/tests/spawn.spec.ts for the same trap+marker device.
+    const marker = join(spillDir, `signal-ready-${Date.now()}.marker`)
+    const task = bash.start(bash.resolve({
+      command: `echo "Permission denied" >&2; bash -c 'trap "" TERM; echo ready > "${marker}"; sleep 30' >/dev/null 2>&1 & wait`,
+    }))
+    await vi.waitFor(() => { expect(existsSync(marker)).toBe(true) }, { timeout: 5_000 })
     task.kill()
     await task.done
     expect(task.sandbox).toEqual({ mode: 'read-only', denied: false, enforcement: 'full' })
