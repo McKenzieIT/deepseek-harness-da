@@ -227,7 +227,17 @@ export class SemanticLayerService extends Service {
     for (const p of [eventKindPlugin, tableKindPlugin]) this.registry.register(p)
   }
 
-  /** P1: the optional scope-registry, probed by name (undefined when unmounted). */
+  /**
+   * P1: the optional scope-registry, probed by name (undefined when unmounted).
+   *
+   * Fail-loud: a corrupt `scopes.yaml` makes the registry's `load()` throw a
+   * YAMLException, which propagates through `corpusVersion()` rather than
+   * silently falling back to static config — a silent fallback could serve the
+   * wrong scope's corpus (the exact leak this change prevents). The registry
+   * writes atomically, so self-corruption is impossible; only external
+   * tampering/disk failure trips this, and failing visibly is the
+   * intranet-security-first choice. Locked by the corrupt-yaml test below.
+   */
   private scopes(): ScopeRegistryLike | undefined {
     return this.ctx.get('scopes') as ScopeRegistryLike | undefined
   }
