@@ -1,7 +1,7 @@
 # W6c — GoalDock in EvidenceSidebar
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: —（并行根）
 
 ## Question

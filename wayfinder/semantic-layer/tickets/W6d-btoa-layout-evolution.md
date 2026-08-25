@@ -1,7 +1,7 @@
 # W6d — B→A 布局演进（路由 + 自动翻转）
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: W6c
 
 ## Question

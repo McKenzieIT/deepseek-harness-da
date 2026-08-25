@@ -86,13 +86,16 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [W3 Eval evidence engine](tickets/W3-eval-evidence-engine.md) — batch runner（`runBatch` + infra-retry）+ JSONL 持久化 + `computeDelta` before/after flip + health-gate 前置检查 + adapter 放宽（count≥1，last query_data tool/call）；240 eval tests 全绿；live e2e with-key deferred
 - [W4 Evidence-query backend](tickets/W4-evidence-query-backend.md) — `FileBackedEvalResultStore`（读 W3 JSONL）+ `beforeAfterDelta(runIdA, runIdB)` 真实持久化接入 + `EvalCaseFlip`/`EvalDeltaReport` 类型；33 evidence-query tests 全绿；W5-full 解除阻塞
 - [W6 ③ 自驱循环 + B→A 演进](tickets/W6-autonomous-goal-loop-and-btoa-evolution.md) — Layered 双层（model 自判主路径 + policy plugin backstop K=3/N=3）；Context plugin 注入 `<eval_evidence>` block；GoalDock = sidebar 内联卡片（与 dock GoalBar 共存）；B→A = feature flag + auto-flip（3+ eval runs）；毕业 W6a-W6e 实现票
+- [W6a goal-eval-policy plugin](tickets/W6a-goal-eval-policy-plugin.md) — `@deepseek-ai/dsh-goal-eval-policy`：session/event 计轮 → 每 K=3 轮触发 eval → delta improved===0 计无改进 → N=3 后 force-block；typed AgentHandle/GoalServiceSeam seams；10 tests
+- [W6b goal-eval-context plugin](tickets/W6b-goal-eval-context-plugin.md) — `@deepseek-ai/dsh-goal-eval-context`：system prompt section 'eval-evidence'（order 50）；goal/changed 跟踪活跃状态；`<eval_evidence>` XML block 含 pass_rate + delta + direction hint；hintEscalationThreshold 可配；20 tests
+- [W6c GoalDock in EvidenceSidebar](tickets/W6c-goal-dock-evidence-sidebar.md) — GoalDock 组件：objective + phase badge + round counter + SVG sparkline；只读，与 dock GoalBar 共存；host composition 提供数据；8 tests
+- [W6d B→A layout evolution](tickets/W6d-btoa-layout-evolution.md) — DashboardView（证据 hero）+ computeEffectiveMode auto-flip（evalRunCount>=3 → A）+ SemanticLayerShell 路由；B 布局字节级保留；host 传入 evalRunCount；13 tests
+- [W6e Management agent persona ③](tickets/W6e-management-agent-persona-evolution.md) — persona 增加 eval evidence 解读 + 自驱行为规范 + tool 指南；`@deepseek-ai/dsh-tool-edit-definition`（patch + audit + unreviewed + smart-merge columns/dimension_refs/domains）；preset 中激活；27 tests
 ## Not yet specified
 
 - **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化
 - **Terminology 挂载点**：全局注入（`ctx.terminology`）vs per-kind 构造参数。当前 `eventKindPlugin.toCorpusItem` 已接受 `terminology?` 参数，需统一为一种模式
 - **定义版本管理**：数据源定义（TableDefinition/EventDefinition/MetricDefinition）的变更历史追踪方案。最小方案 = Tier-2 audit 已有 who/when/what；完整方案 = git-backed 或 append-only changelog
-- **③ 自驱循环实现细节**：W6 已决策（Layered/K=3/N=3/context-plugin/auto-flip），实现票 W6a-W6e 已立。剩余细节：edit_definition 包是否已实现（W6e 前置）、EvalRunnerService seam 的真实 wiring（W6a 前置）、auto-flip 阈值的初始校准
-- **P11c runner/持久化的跨 map 归属**：已由 W3 建设，归本 map 拥有（`packages/eval/eval/src/runner.ts` + `persistence.ts`）。data-agent map G1b 复用接口
 
 ## Out of scope
 

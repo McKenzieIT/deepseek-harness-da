@@ -1,7 +1,7 @@
 # W6e — Management agent persona ③ 演进
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: W6b
 
 ## Question

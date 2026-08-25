@@ -1,7 +1,7 @@
 # W6b — goal-eval-context plugin（eval delta → round context）
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: —（并行根）
 
 ## Question

@@ -1,7 +1,7 @@
 # W6a — goal-eval-policy plugin（no-progress backstop）
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: —（并行根）
 
 ## Question
