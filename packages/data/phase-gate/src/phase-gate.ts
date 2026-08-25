@@ -767,6 +767,32 @@ export class PhaseGate {
   /** F4: reset question-scoped counters + phase on a new user question (kick start). */
   private resetQuestionScoped(s: PhaseGateState): void {
     this.clearStallTimer(s) // B7: a pending stall timer must not fire on the new question.
+    // M3 #3 B: a present_clarification (or route:clarify) reply is a NEW user
+    // message, but the agent is mid-self-evolution (asked the user which
+    // project → got the answer → must write override + retry in GENERATION/
+    // EXECUTION). Resetting phase to UNDERSTANDING here would discard that
+    // context and force re-grounding; the LLM then calls update_table_config /
+    // critique / query_data from UNDERSTANDING → guard rejects (not in
+    // UNDERSTANDING whitelist) → the loop can't close. So: keep the current
+    // phase + grounding (candidate_tables) + SQL state (last_sql/outcome/
+    // failure_kind/error/critique/quality) so the agent continues the
+    // self-evolution flow; reset only the per-turn budget counters + the HALT
+    // flag + phase_output. route:clarify (UNDERSTANDING) replies keep
+    // UNDERSTANDING — no-op on phase, harmless.
+    if (s.awaiting_clarification) {
+      s.awaiting_clarification = false
+      s.phase_attempts = 0
+      s.fallback_count = 0
+      s.llm_call_count = 0
+      s.exec_count = 0
+      s.turn_count = 0
+      s.step_count = 0
+      s.phase_output = ''
+      s.honest_decline_reason = null
+      s.cancelled = false
+      s.cancelled_reason = null
+      return // keep current_phase + candidate_tables + last_sql + query outcome/critique/quality
+    }
     s.phase_idx = 0
     s.current_phase = Phase.UNDERSTANDING
     s.phase_attempts = 0
