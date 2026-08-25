@@ -1,8 +1,9 @@
 # W4 — Evidence-query backend（表现无关查询层）
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: W1（SchemaGateway，coverage/gap/reachability 读 `ctx.schema`）
+**Resolved**: 2026-08-25
 
 ## Question
 
@@ -15,9 +16,22 @@
 
 ## 验收
 
-- [ ] 侧栏与 dashboard 读同一查询层（不重复取数逻辑）
-- [ ] coverage / gap-reachability / eval-trajectory 可查
-- [ ] 满足演进约束 #3（promote 到 dashboard 不需重 plumbing）
+- [x] 侧栏与 dashboard 读同一查询层（不重复取数逻辑）
+- [x] coverage / gap-reachability / eval-trajectory 可查
+- [x] 满足演进约束 #3（promote 到 dashboard 不需重 plumbing）
+
+## Resolution
+
+全 3 项验收通过。实现产出：
+
+1. **EvidenceQueryService**（Cordis Service，`ctx.evidenceQuery`）：coverageQuery + gapAnalysis + reachabilityDelta + evalResultQuery + assetHealth + **beforeAfterDelta** — 侧栏与 dashboard 共用同一 Service 实例。
+2. **FileBackedEvalResultStore**：读取 W3 JSONL 持久化文件，支持 `caseAssetResolver` 映射 caseId→assetId，`refresh()` 重新读取。
+3. **beforeAfterDelta(runIdA, runIdB)**：比较两次 run 的 per-case 状态翻转（improved/regressed/unchanged）。
+4. **类型对齐**：`EvalCaseFlip` + `EvalDeltaReport` 新增至 types.ts；`mapOutcomeToStatus` 将 W3 outcome（correct/wrong/declined/unjudged）映射为 evidence-query status（pass/fail/error/pending）。
+
+测试：19 原有 + 14 新增 = 33 evidence-query tests 全绿。
+
+W5-full 解除阻塞（←W4 完成）。
 
 ## 参考
 
