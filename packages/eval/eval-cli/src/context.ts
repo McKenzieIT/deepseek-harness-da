@@ -1,0 +1,271 @@
+/**
+ * Programmatic Cordis context for the eval CLI.
+ *
+ * Boots a mini context with ctx.llm (LlmRuntime + llm-dashscope) and
+ * ctx.schema (SemanticLayerService), then builds eval-runner Collaborators
+ * by forking the adapter classes from eval-runner-service (D1: "复用/fork").
+ *
+ * When --with-query is set, also mounts ctx.credentials (EnvCredentialProvider)
+ * and ctx.query (MaxComputeQueryEngine) for real SQL execution.
+ */
+import { Context } from '@deepseek-ai/cordis'
+import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
+import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
+import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+import { Nl2sqlEngine, Bm25Linker, StandInOdps } from '@deepseek-ai/dsh-nl2sql-engine'
+import type {
+  Llm,
+  LlmGenerateArgs,
+  LlmGenerateResult,
+  OdpsExecutor,
+  QueryOutcome as EngineQueryOutcome,
+  RelationGraphLike,
+} from '@deepseek-ai/dsh-nl2sql-engine'
+import type {
+  AgentResponder,
+  AgentRespondOpts,
+  AgentResponse,
+  QueryExecutor,
+  QueryResult,
+  JudgeExecutor,
+  JudgeResult,
+  Collaborators,
+} from '@deepseek-ai/dsh-eval-runner'
+
+export interface BootOptions {
+  readonly schemaDir: string
+  readonly provider: string
+  readonly model: string
+  readonly today: string
+  readonly withQuery: boolean
+  readonly sidecarPath?: string
+}
+
+export interface BootResult {
+  readonly ctx: Context
+  readonly collaborators: Collaborators
+}
+
+// ── ctx.llm → engine Llm (forked from eval-runner-service) ──────────────
+
+class CtxLlmAdapter implements Llm {
+  constructor(
+    private readonly ctx: Context,
+    private readonly provider: string,
+    private readonly model: string,
+  ) {}
+
+  async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+    const prompt = args.prompt
+    if (prompt === undefined || prompt.length === 0) {
+      throw new Error('CtxLlmAdapter: engine did not pass a prompt')
+    }
+    const text = await this.complete(prompt)
+    return { sql: text }
+  }
+
+  async complete(prompt: string): Promise<string> {
+    const assembler = new BlockAssembler()
+    const options = {
+      provider: this.provider,
+      model: this.model,
+      messages: [
+        createUserMessage({
+          content: [{ type: 'text' as const, text: prompt }],
+          source: { kind: 'plugin' as const, plugin: 'eval-cli' },
+        }),
+      ],
+    }
+    for await (const chunk of this.ctx.llm.stream(options)) assembler.push(chunk)
+    const text = assembler.blocks()
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+    if (text.length === 0) throw new Error('eval-cli: LLM returned no text blocks')
+    return text
+  }
+}
+
+// ── ctx.query → engine OdpsExecutor (forked from eval-runner-service) ────
+
+class CtxOdpsAdapter implements OdpsExecutor {
+  constructor(private readonly ctx: Context) {}
+
+  private engine(): { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined {
+    return this.ctx.get('query') as { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined
+  }
+
+  async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
+    const q = this.engine()
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql } as unknown as EngineQueryOutcome
+    const out = await q.execute({ sql, scopeId: 'k11', mode: 'fast' }, opts?.signal)
+    return out as unknown as EngineQueryOutcome
+  }
+
+  async attach(instanceId: string): Promise<EngineQueryOutcome> {
+    const q = this.engine()
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' } as unknown as EngineQueryOutcome
+    const out = await q.attach(instanceId)
+    return out as unknown as EngineQueryOutcome
+  }
+}
+
+// ── ctx.query → eval-runner QueryExecutor (forked from eval-runner-service) ──
+
+class CtxQueryExecutor implements QueryExecutor {
+  constructor(private readonly ctx: Context) {}
+
+  async execute(sql: string): Promise<QueryResult> {
+    const q = this.ctx.get('query') as { execute(req: unknown): Promise<unknown> } | undefined
+    if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
+    let out: Record<string, unknown>
+    try {
+      out = await q.execute({ sql, scopeId: 'k11', mode: 'fast' }) as Record<string, unknown>
+    } catch (err) {
+      return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
+    }
+    if (out.state === 'done') {
+      const rows = (out.rows ?? []) as Record<string, unknown>[]
+      return { success: true, rows, row_count: rows.length, error: null }
+    }
+    return { success: false, rows: [], row_count: 0, error: (out.error as string) ?? 'query failed' }
+  }
+}
+
+// ── ctx.llm → eval-runner JudgeExecutor ─────────────────────────────────
+
+class LlmJudgeExecutor implements JudgeExecutor {
+  constructor(private readonly llm: CtxLlmAdapter) {}
+
+  async judge(expected: unknown, actual: string, question: string): Promise<JudgeResult> {
+    const prompt = [
+      'You are an eval judge. Score whether the agent\'s answer correctly answers the user question, given the expected answer.',
+      `Question: ${question}`,
+      `Expected answer: ${JSON.stringify(expected)}`,
+      `Agent answer: ${actual}`,
+      'Reply with ONLY a single number between 0 and 1 (1 = fully correct, 0 = wrong).',
+    ].join('\n')
+    try {
+      const raw = await this.llm.complete(prompt)
+      const score = Number.parseFloat(raw.replace(/[^0-9.]/g, ''))
+      return { score: Number.isFinite(score) ? Math.max(0, Math.min(1, score)) : 0, rationale: raw.slice(0, 200) }
+    } catch (err) {
+      return { score: 0, rationale: '', error: err instanceof Error ? err.message : String(err) }
+    }
+  }
+}
+
+// ── Nl2sqlEngine-backed AgentResponder ───────────────────────────────────
+
+class Nl2sqlAgentResponder implements AgentResponder {
+  private readonly llm: CtxLlmAdapter
+  private readonly odps: OdpsExecutor
+
+  constructor(
+    private readonly ctx: Context,
+    private readonly today: string,
+    provider: string,
+    model: string,
+    withQuery: boolean,
+  ) {
+    this.llm = new CtxLlmAdapter(ctx, provider, model)
+    this.odps = withQuery ? new CtxOdpsAdapter(ctx) : new StandInOdps()
+  }
+
+  async respond(question: string, _opts?: AgentRespondOpts): Promise<AgentResponse> {
+    const schema = this.ctx.get('schema') as
+      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(): RelationGraphLike }
+      | undefined
+    const corpus = (schema?.loadRetrievalCorpusAll?.() ?? []) as readonly { id: string; description?: string; payload?: unknown }[]
+    const retrieval = new Bm25Linker(corpus)
+    const graph = schema?.getRelationGraph?.()
+
+    const engine = new Nl2sqlEngine({
+      llm: this.llm,
+      odps: this.odps,
+      conventions: null,
+      retrieval,
+      ...(graph !== undefined ? { graph } : {}),
+    })
+
+    const result = await engine.run({ question, today: this.today })
+    const sql = result.sql ?? null
+    let reply: string
+    if (result.ok && result.result !== undefined) {
+      reply = await this.answer(question, result.result)
+    } else if (result.decline) {
+      reply = `Declined: ${result.reason ?? 'unable to answer'}`
+    } else if (result.pending) {
+      reply = 'The query is still running; no answer yet.'
+    } else {
+      reply = result.reason ?? 'No answer.'
+    }
+    return { reply, generated_sql: sql, transcript: result.trace }
+  }
+
+  private async answer(question: string, rows: unknown): Promise<string> {
+    const prompt = [
+      'Answer the user question using ONLY the query result rows below. Be concise.',
+      `Question: ${question}`,
+      `Rows: ${JSON.stringify(rows).slice(0, 4000)}`,
+    ].join('\n')
+    try {
+      return await this.llm.complete(prompt)
+    } catch {
+      return JSON.stringify(rows).slice(0, 1000)
+    }
+  }
+}
+
+// ── Boot ────────────────────────────────────────────────────────────────
+
+export async function boot(opts: BootOptions): Promise<BootResult> {
+  const ctx = new Context()
+
+  // 1. Mount LlmRuntime → provides ctx.llm
+  await ctx.plugin(LlmRuntime)
+
+  // 2. Mount llm-dashscope → registers the 'aga' provider route on ctx.llm
+  await ctx.plugin(llmDashscope)
+
+  // 3. Mount SemanticLayerService → provides ctx.schema
+  await ctx.plugin(SemanticLayerService, { semanticRoot: opts.schemaDir, scopeId: 'k11' })
+
+  // 4. Optionally mount query-maxcompute → provides ctx.query
+  if (opts.withQuery) {
+    const { CredentialProvider } = await import('@deepseek-ai/dsh-credentials')
+    const { MaxComputeQueryEngine } = await import('@deepseek-ai/dsh-query-maxcompute')
+
+    // Env-based credential provider: reads ODPS_* from process.env
+    class EnvCredentialProvider extends CredentialProvider {
+      resolve(ref: unknown): Promise<{ value: string; source: string } | undefined> {
+        const name = String(ref)
+        const value = process.env[name]
+        return Promise.resolve(value ? { value, source: 'env' } : undefined)
+      }
+      describe(ref: unknown): Promise<{ configured: boolean; writable: boolean }> {
+        return Promise.resolve({ configured: !!process.env[String(ref)], writable: false })
+      }
+      set(): Promise<void> { return Promise.reject(new Error('env credentials are read-only')) }
+      unset(): Promise<void> { return Promise.reject(new Error('env credentials are read-only')) }
+    }
+
+    await ctx.plugin(EnvCredentialProvider)
+
+    const sidecarPath = opts.sidecarPath ?? new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url).pathname
+    const fiber = ctx.plugin(MaxComputeQueryEngine, { args: [sidecarPath], credMode: 'push' })
+    await fiber
+    // Wait for the sidecar to be ready
+    const qe = ctx.query as { start?(): Promise<void> }
+    if (qe?.start) await qe.start()
+
+    console.log('  Query engine mounted (sidecar ready)')
+  }
+
+  // 5. Build Collaborators
+  const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery)
+  const judge = new LlmJudgeExecutor(new CtxLlmAdapter(ctx, opts.provider, opts.model))
+  const executor = opts.withQuery ? new CtxQueryExecutor(ctx) : null
+
+  return { ctx, collaborators: { agent, judge, executor } }
+}

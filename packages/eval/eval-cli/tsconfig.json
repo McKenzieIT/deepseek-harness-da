@@ -1,0 +1,24 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "lib/types",
+    "noEmit": true
+  },
+  "include": [
+    "src",
+    "bin"
+  ],
+  "references": [
+    { "path": "../eval" },
+    { "path": "../eval-runner" },
+    { "path": "../../llm/llm" },
+    { "path": "../../llm/llm-dashscope" },
+    { "path": "../../data/nl2sql-engine" },
+    { "path": "../../data/semantic-layer" },
+    { "path": "../../credentials/credentials" },
+    { "path": "../../query/query-maxcompute" },
+    { "path": "../../query/query" },
+    { "path": "../../subprocess/subprocess" }
+  ]
+}

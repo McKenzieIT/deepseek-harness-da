@@ -1,0 +1,30 @@
+{
+  "name": "@deepseek-ai/dsh-eval-cli",
+  "version": "0.0.0",
+  "description": "Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.",
+  "type": "module",
+  "bin": {
+    "dsh-eval": "./bin/eval.ts"
+  },
+  "exports": {
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "eval": "node --import tsx/esm bin/eval.ts"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-eval": "workspace:^",
+    "@deepseek-ai/dsh-eval-runner": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-llm-dashscope": "workspace:^",
+    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@deepseek-ai/dsh-semantic-layer": "workspace:^",
+    "@deepseek-ai/dsh-credentials": "workspace:^",
+    "@deepseek-ai/dsh-query-maxcompute": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0"
+  }
+}

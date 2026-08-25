@@ -48,6 +48,7 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
   const maxInfraRetries = options?.max_infra_retries ?? DEFAULT_MAX_INFRA_RETRIES
   const skipHealthGate = options?.skip_health_gate ?? false
   const outputPath = options?.output_path ?? null
+  const concurrency = options?.concurrency ?? 1
   const onProgress = options?.on_progress ?? null
 
   // Health gate pre-flight
@@ -66,16 +67,21 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
   // Load cases
   const cases = loadCases(casePaths)
 
-  // Drive each case
-  const verdicts: CaseVerdict[] = []
-  for (let i = 0; i < cases.length; i++) {
-    const evalCase = cases[i]
-    if (!evalCase) continue
-    const caseVerdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries)
-    verdicts.push(caseVerdict)
-    if (onProgress) {
-      onProgress(i + 1, cases.length, evalCase.case_id)
+  // Drive each case (serial when concurrency=1, parallel otherwise)
+  let verdicts: CaseVerdict[]
+  if (concurrency <= 1) {
+    verdicts = []
+    for (let i = 0; i < cases.length; i++) {
+      const evalCase = cases[i]
+      if (!evalCase) continue
+      const caseVerdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries)
+      verdicts.push(caseVerdict)
+      if (onProgress) {
+        onProgress(i + 1, cases.length, evalCase.case_id)
+      }
     }
+  } else {
+    verdicts = await runConcurrent(cases, collaborators, passK, maxInfraRetries, concurrency, onProgress)
   }
 
   // Compute summary
@@ -102,6 +108,41 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
  * Best-of-k: any single passing attempt means the case is 'correct'.
  * If ALL attempts are infra failures, verdict is 'infra_failure'.
  */
+/**
+ * Run cases concurrently with a bounded semaphore.
+ */
+async function runConcurrent(
+  cases: EvalCase[],
+  collaborators: Collaborators,
+  passK: number,
+  maxInfraRetries: number,
+  concurrency: number,
+  onProgress: ((completed: number, total: number, case_id: string) => void) | null,
+): Promise<CaseVerdict[]> {
+  const results: CaseVerdict[] = new Array(cases.length)
+  let completed = 0
+  let nextIdx = 0
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const idx = nextIdx++
+      if (idx >= cases.length) return
+      const evalCase = cases[idx]
+      if (!evalCase) continue
+      const verdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries)
+      results[idx] = verdict
+      completed++
+      if (onProgress) {
+        onProgress(completed, cases.length, evalCase.case_id)
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, cases.length) }, () => worker())
+  await Promise.all(workers)
+  return results.filter((v): v is CaseVerdict => v !== undefined)
+}
+
 async function runSingleCase(
   evalCase: EvalCase,
   collaborators: Collaborators,

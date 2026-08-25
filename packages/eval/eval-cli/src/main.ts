@@ -1,0 +1,197 @@
+/**
+ * CLI entry point for the eval runner.
+ *
+ * Usage:
+ *   dsh-eval --cases <dir> [--schema <dir>] [--output <dir>] [--pass-k <n>]
+ *            [--case <id>] [--skip-health-gate] [--provider <name>]
+ *            [--model <name>] [--today <YYYYMMDD>] [--run-id <id>]
+ *
+ * D6: --schema defaults to examples/k11-semantic-layer/
+ */
+import { parseArgs } from 'node:util'
+import { resolve, join } from 'node:path'
+import { readdirSync } from 'node:fs'
+import { loadCases } from '@deepseek-ai/dsh-eval'
+import { runBatch, writeRunResult, defaultOutputPath } from '@deepseek-ai/dsh-eval-runner'
+import { boot } from './context.ts'
+import { formatReport } from './report.ts'
+
+interface CliArgs {
+  cases: string
+  schema: string
+  output: string
+  passK: number
+  caseFilter: string | null
+  skipHealthGate: boolean
+  provider: string
+  model: string
+  today: string
+  runId: string | null
+  concurrency: number
+  withQuery: boolean
+  sidecarPath: string | null
+}
+
+function str(v: string | boolean | undefined, fallback: string): string {
+  return typeof v === 'string' ? v : fallback
+}
+
+function parseCliArgs(): CliArgs {
+  const { values } = parseArgs({
+    options: {
+      cases: { type: 'string' },
+      schema: { type: 'string', default: 'examples/k11-semantic-layer/' },
+      output: { type: 'string', default: 'eval-results/' },
+      'pass-k': { type: 'string', default: '3' },
+      case: { type: 'string' },
+      'skip-health-gate': { type: 'boolean', default: false },
+      provider: { type: 'string', default: 'aga' },
+      model: { type: 'string', default: 'qwen3.7-max' },
+      today: { type: 'string' },
+      'run-id': { type: 'string' },
+      concurrency: { type: 'string', default: '1' },
+      'with-query': { type: 'boolean', default: false },
+      sidecar: { type: 'string' },
+      help: { type: 'boolean', default: false },
+    },
+    strict: false,
+  })
+
+  if (values.help === true) {
+    printUsage()
+    process.exit(0)
+  }
+
+  const casesVal = values.cases
+  if (typeof casesVal !== 'string') {
+    console.error('Error: --cases <dir> is required\n')
+    printUsage()
+    process.exit(1)
+  }
+
+  const caseVal = values.case
+  const runIdVal = values['run-id']
+
+  return {
+    cases: resolve(casesVal),
+    schema: resolve(str(values.schema, 'examples/k11-semantic-layer/')),
+    output: resolve(str(values.output, 'eval-results/')),
+    passK: Number.parseInt(str(values['pass-k'], '3'), 10),
+    caseFilter: typeof caseVal === 'string' ? caseVal : null,
+    skipHealthGate: values['skip-health-gate'] === true,
+    provider: str(values.provider, 'aga'),
+    model: str(values.model, 'qwen3.7-max'),
+    today: str(values.today, formatToday()),
+    runId: typeof runIdVal === 'string' ? runIdVal : null,
+    concurrency: Number.parseInt(str(values.concurrency, '1'), 10),
+    withQuery: values['with-query'] === true,
+    sidecarPath: typeof values.sidecar === 'string' ? values.sidecar : null,
+  }
+}
+
+function formatToday(): string {
+  const d = new Date()
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+}
+
+function printUsage(): void {
+  console.log(`
+  dsh-eval — standalone eval CLI runner
+
+  Usage:
+    dsh-eval --cases <dir> [options]
+
+  Options:
+    --cases <dir>          Case directory (required)
+    --schema <dir>         Schema directory [default: examples/k11-semantic-layer/]
+    --output <dir>         Output directory for results [default: eval-results/]
+    --pass-k <n>           Pass@K attempts per case [default: 3]
+    --case <id>            Run only a single case by case_id
+    --skip-health-gate     Skip the health gate pre-flight
+    --provider <name>      LLM provider [default: aga]
+    --model <name>         LLM model [default: qwen3.7-max]
+    --today <YYYYMMDD>     Reference date for time-param extraction
+    --run-id <id>          Explicit run ID (default: auto-generated UUID)
+    --concurrency <n>      Parallel case execution [default: 1]
+    --with-query           Mount query-maxcompute for real SQL execution
+    --sidecar <path>       Path to MaxCompute sidecar script
+    --help                 Show this help
+
+  Environment:
+    DASHSCOPE_API_KEY      API key for the DashScope LLM provider (required)
+    ODPS_ACCESS_ID         MaxCompute access ID (when --with-query)
+    ODPS_ACCESS_KEY        MaxCompute access key (when --with-query)
+    ODPS_PROJECT           MaxCompute project name (when --with-query)
+    ODPS_ENDPOINT          MaxCompute endpoint (when --with-query)
+`)
+}
+
+function globCasePaths(caseDir: string, caseFilter: string | null): string[] {
+  const files = readdirSync(caseDir)
+    .filter(f => /\.(yaml|yml|json)$/.test(f))
+    .sort()
+
+  if (caseFilter !== null) {
+    const matched = files.filter(f => f.includes(caseFilter))
+    if (matched.length === 0) {
+      console.error(`Error: no case file matching "${caseFilter}" in ${caseDir}`)
+      process.exit(1)
+    }
+    return matched.map(f => join(caseDir, f))
+  }
+
+  return files.map(f => join(caseDir, f))
+}
+
+export async function main(): Promise<void> {
+  const args = parseCliArgs()
+
+  if (!process.env.DASHSCOPE_API_KEY) {
+    console.error('Error: DASHSCOPE_API_KEY environment variable is not set')
+    process.exit(1)
+  }
+
+  // Glob and load cases
+  const casePaths = globCasePaths(args.cases, args.caseFilter)
+  const cases = loadCases(casePaths)
+  console.log(`  Loading ${casePaths.length} case(s) from ${args.cases}`)
+  console.log(`  Schema: ${args.schema}`)
+  console.log(`  Model: ${args.provider}/${args.model}`)
+  console.log(`  Pass@K: ${args.passK}  Concurrency: ${args.concurrency}`)
+  console.log('')
+
+  // Boot the mini Cordis context + build Collaborators
+  const { collaborators } = await boot({
+    schemaDir: args.schema,
+    provider: args.provider,
+    model: args.model,
+    today: args.today,
+    withQuery: args.withQuery,
+    ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
+  })
+
+  // Run the batch via eval-runner's runBatch (explicit case paths)
+  const started = Date.now()
+  console.log('  Running eval batch...')
+
+  const result = await runBatch(casePaths, collaborators, {
+    pass_k: args.passK,
+    skip_health_gate: args.skipHealthGate,
+    ...(args.runId !== null ? { run_id: args.runId } : {}),
+    concurrency: args.concurrency,
+    on_progress: (completed, total, caseId) => {
+      process.stdout.write(`\r  Progress: ${completed}/${total} (${caseId})`)
+    },
+  })
+
+  const elapsed = ((Date.now() - started) / 1000).toFixed(1)
+  console.log(`\n  Completed in ${elapsed}s`)
+
+  // Persist result
+  const outputPath = defaultOutputPath(result.run_id, args.output)
+  writeRunResult(result, outputPath)
+  console.log(`  Results written to: ${outputPath}`)
+
+  // Print report
+  console.log(formatReport(result, cases))
+}
