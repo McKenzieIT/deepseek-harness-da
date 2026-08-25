@@ -1,0 +1,11 @@
+case_id: case-b
+input:
+  question: How many users are active?
+  scope_id: scope-2
+expected:
+  result_value:
+    count: 42
+  match_mode: scalar_exact
+  answer: "42"
+dimensions:
+  domain: users

@@ -13,7 +13,7 @@ A **pure library**: it registers nothing on a Cordis context and takes its colla
 - **`submitTurn(session, replyText, { generatedSql, executeSql, provider, deliveryOpts })`** — execute the reply's SQL + hand the turn to the session; on an environmental failure (infrastructure/timeout/patience) the session is NOT advanced (the turn is unjudged, not scored).
 - **`scoreDa(case_, { generatedSql, executionResult, finalResponse, provider, deliveryOpts? })`** — the da (ii) score (DELIVERY + EXECUTION, no sqlglot).
 - **`MultiTurnSession`** — the state machine (`nextInput()` / `submitResponse()`).
-- **`buildAgentResponder(harness)` / `extractReply(runResult)` / `validateRunResult(runResult)`** — the `DeepSeekHarness` → `Responder` adapter (H1 mitigation: asserts exactly one `assistant/message` per run interval).
+- **`buildAgentResponder(harness)` / `extractReply(runResult)` / `validateRunResult(runResult)`** — the `DeepSeekHarness` → `Responder` adapter (H1 mitigation: asserts ≥1 `assistant/message` per run interval; multi-message intervals from four-stage agents are valid).
 - **`classifyExecutionFailure(error)` / `mapQueryOutcome(outcome)`** — environmental failure classification (mirror rbi `l1.classify_execution_failure`) + the `QueryOutcome` → `ExecutionResult` mapping (pending → `patience` refuse).
 - **`judgeWithProvider(provider, prompt, opts?)` / `classifyError(err)`** — the DELIVERY LLM-judge with retry/backoff (SPEC §5.5) + `AuthenticationAbort`.
 - **`checkResultMatch(expected, actualRows, matchMode)`** — the 5 EXECUTION match modes (1:1 rbi mirror).
@@ -40,9 +40,52 @@ None, as the package is a test harness that injects its responder, executor, and
 
 No direct effect; the agent runtime and the injected judge LLM own any model-visible request.
 
+## Batch Runner + Persistence (W3 — P11c)
+
+The evidence engine (shipped with W3) adds batch execution, persistence, and delta analysis on top of the core:
+
+- **`runBatch(cases, { runId, responder, executeSql?, provider?, passK?, maxInfraRetries?, onCaseComplete? })`** — drives the full case set sequentially. Each case runs `passK` times. Infra failures (all attempts errored, non-timeout) are retried up to `maxInfraRetries` (default 2) — these do NOT count toward pass_k (they are infrastructure faults, not model performance).
+- **`classifyCaseOutcome(result)`** — maps a `MultiTurnCaseResult` to one of `correct` | `declined` | `wrong` | `unjudged` (aligns with `EvalResultRecord` in evidence-query).
+- **`persistBatchResult(result, dir)`** — writes a `BatchResult` as JSONL (one line per case). Filename encodes `{timestamp}_{runId}.jsonl`.
+- **`loadRunRecords(path)` / `listRunFiles(dir)`** — read persisted results back.
+- **`computeDelta(runA, runB)`** — identifies per-case outcome flips between two runs (improved / regressed / unchanged / new / removed).
+- **`passAtK(records)`** — fraction of cases where ALL k attempts passed.
+- **`runHealthCheck({ responder?, executeSql?, timeoutMs? })`** — pre-run gate that fast-fails on connectivity or credential issues before burning eval budget (G1 Q9). A failed health check aborts the run and does not produce results.
+
+## Host wiring — complete integration pattern
+
+```typescript
+import { runBatch, runHealthCheck, persistBatchResult, buildAgentResponder, mapQueryOutcome } from '@deepseek-ai/dsh-eval'
+
+// 1. Health gate
+const health = await runHealthCheck({ responder, executeSql })
+if (!health.healthy) throw new Error(`Pre-run check failed: ${health.error}`)
+
+// 2. Run batch
+const result = await runBatch(cases, {
+  runId: `run-${Date.now()}`,
+  responder: buildAgentResponder({ run: (msg, sid) => harness.run(msg, { sessionId: sid }) }),
+  executeSql: async (sql) => mapQueryOutcome(await ctx.query.execute({ sql, scopeId })),
+  provider: judgeProvider,
+  passK: 3,
+  onCaseComplete: (r, i, total) => console.log(`[${i+1}/${total}] ${r.caseId}: ${r.outcome}`),
+})
+
+// 3. Persist
+const path = persistBatchResult(result, './eval-results')
+
+// 4. Delta (optional)
+import { loadRunRecords, computeDelta } from '@deepseek-ai/dsh-eval'
+const prev = loadRunRecords(previousRunPath)
+const curr = loadRunRecords(path)
+const delta = computeDelta(prev, curr)
+console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regressed`)
+```
+
+## Host wiring (the seams this library does not own)
+
 ## Known Limitations and Deferred Work
 
-- **No CLI / persistence / pass_at_k reporting** — the library is the core (orchestration + scoring + case loader); a CLI runner, run-result persistence, and pass_at_k reporting are deferred to **P11c**. `runMultiTurnCase` returns the per-case `MultiTurnCaseResult`; a runner batches cases and aggregates.
 - **Dropped SQL-hygiene assertions** — rbi L1's sqlglot-bound `field_coverage`/`limit_reasonable`/`partition_compliant` are dropped (G2 trade-off): an agent whose result set is right but SQL is "dirty" (SELECT *, missing LIMIT, missing partition predicate) PASSES da (ii).
 - **Judge variance** — the judge is not bit-reproducible (decision 1); a separate judge snapshot for fully deterministic regression is deferred.
 - **Live e2e deferred** — the library is unit-tested with stub collaborators; a live e2e (real runtime + real `dsh-llm-replay` snapshot + real `ctx.query.execute` + real `llm-dashscope` judge) is deferred (with-key, self-skip).

@@ -30,6 +30,15 @@ export function runResult(reply: string, opts: { sql?: string | null; tool?: str
   return { finalResponse: reply, events, notifications: [] }
 }
 
+/** A multi-step `RunResult`: multiple `assistant/message` events (four-stage agent). `finalResponse` = the last reply. */
+export function runResultMultiStep(replies: string[], opts: { sql?: string | null; tool?: string; extraToolCalls?: RunResultEvent[] } = {}): RunResultView {
+  const events: RunResultEvent[] = []
+  if (opts.extraToolCalls) events.push(...opts.extraToolCalls)
+  if (opts.sql) events.push(toolCall(opts.tool ?? 'query_data', { sql: opts.sql }))
+  for (const r of replies) events.push(assistantMessage(r))
+  return { finalResponse: replies[replies.length - 1] ?? '', events, notifications: [] }
+}
+
 /** A derailing `RunResult` (H1 violation): ≥2 `assistant/message`s; `finalResponse` = the last. */
 export function runResultDerailing(...replies: string[]): RunResultView {
   const events = replies.map(assistantMessage)

@@ -1,0 +1,9 @@
+case_id: case-c
+input:
+  question: What is the average order value?
+  scope_id: scope-3
+expected:
+  answer: "The average order value is 50 dollars"
+  delivery_match: fuzzy
+dimensions:
+  domain: orders

@@ -183,14 +183,24 @@ describe('scenarios · S7 Promise.race wall-clock timeout + respawn (H2)', () =>
   })
 })
 
-describe('scenarios · S8 H1 mitigation (derailing interval → ProtocolError)', () => {
-  it('validateRunResult asserts exactly 1 assistant/message; ≥2 → ProtocolError', async () => {
+describe('scenarios · S8 H1 mitigation (multi-message interval handled gracefully)', () => {
+  it('multi-message interval (≥2 assistant/message) no longer throws — adapter takes last reply', async () => {
     const case_ = makeCase({ case_id: 's8-h1', input: { question: '收入最高游戏？' }, expected: { result_value: { value: 'gameA' }, match_mode: 'scalar_exact', answer: 'gameA', delivery_match: 'fuzzy' } })
     const harness = new StubHarness({ script: () => runResultDerailing('收入最高是 gameA', '另外提醒：记得看下周报表') })
     const executeSql = makeStubExecute(new Map([['SELECT game FROM rev ORDER BY amt DESC LIMIT 1', { rows: [{ game: 'gameA' }], columns: ['game'] }]]))
     const res = await runMultiTurnCase(case_, { runId: RUN_ID, responder: buildAgentResponder(harness), executeSql, passK: 1 })
+    // No ProtocolError — the adapter accepts multi-message intervals (four-stage agent)
+    expect(res.attempts[0]!.error).toBeNull()
+    // generatedSql is null (no tool/call in runResultDerailing), so EXECUTION can't score
+    expect(res.attempts[0]!.verdict).not.toBe('pass')
+  })
+  it('validateRunResult still throws on ZERO assistant/message (real fault)', async () => {
+    const case_ = makeCase({ case_id: 's8-zero', input: { question: '收入最高游戏？' }, expected: { result_value: { value: 'gameA' }, match_mode: 'scalar_exact', answer: 'gameA', delivery_match: 'fuzzy' } })
+    const harness = new StubHarness({ script: () => ({ finalResponse: '', events: [{ type: 'tool/call', data: { name: 'query_data', arguments: { sql: 'SELECT 1' } } }], notifications: [] }) })
+    const executeSql = makeStubExecute(new Map([['SELECT 1', { rows: [{ game: 'gameA' }], columns: ['game'] }]]))
+    const res = await runMultiTurnCase(case_, { runId: RUN_ID, responder: buildAgentResponder(harness), executeSql, passK: 1 })
     expect(res.passed).toBe(false)
     expect(res.attempts[0]!.error).toContain('H1 protocol error')
-    expect(res.attempts[0]!.error).toContain('got 2')
+    expect(res.attempts[0]!.error).toContain('got 0')
   })
 })

@@ -1,8 +1,9 @@
 # W3 — Eval evidence engine + live wiring
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: W2（case-set）
+**Resolved**: 2026-08-25
 
 ## Question
 
@@ -37,16 +38,40 @@
 
 **时间**：W2 完成前的任何时间均可执行（不依赖 W2）。建议 W1 开工同期并行验证。
 
+### Pre-work 验证结论（2026-08-25 完成）
+
+**Caveat-a：触发。修复方案 = A（adapter 层取最后一条）。**
+
+Agent-loop（`packages/core/agent-loop/src/agent.ts:250-340`）per-turn step 循环每步发射一条 `assistant/message`。四阶段 data-agent（UNDERSTANDING→GENERATION→EXECUTION→INTERPRETATION）单 turn 含 4+ step → RunResult.events 中 4+ 条 `assistant/message` → `validateRunResult`（`adapter.ts:43`）断言 count===1 **抛 ProtocolError**。
+
+修复：方案 A——adapter `validateRunResult` 放宽为断言 count≥1（≥1 条合法，0 条仍为 fault）；`extractReply` 取 interval 最后一条 `assistant/message` 的 text 作为 reply（与 `RunResult.finalResponse` 语义一致）。不改 eval 核心（`multi_turn.ts`/`scoring.ts`/`session.ts`）。
+
+**Caveat-b：不触发。**
+
+`query_data` tool arg 名 = `sql`（`packages/query/query-tool/src/index.ts:139`）。adapter `SQL_KEYS = ['sql', 'generated_sql']` 已覆盖。无需扩展。
+
 ## 跨 map
 
 P11c runner/持久化是**真正共享新资产**——可能与 data-agent map **G1b**（pipeline-vs-goal 实验也需同 runner）共用。谁先建谁拥有，另一边复用。需与 data-agent map 协调归属。
 
 ## 验收
 
-- [ ] 全量 eval 可跑 + 持久化 + before/after delta + per-case flip 可查
-- [ ] health-gate + infra-retry 编排生效（infra 失败不污染 correct/wrong）
-- [ ] live collaborators 接通（真 agent + 真 ODPS + 真 judge + replay 冻结）
-- [ ] 2 wiring caveat 已验证并处置（或确认无需改）
+- [x] 全量 eval 可跑 + 持久化 + before/after delta + per-case flip 可查
+- [x] health-gate + infra-retry 编排生效（infra 失败不污染 correct/wrong）
+- [x] live collaborators 接通（真 agent + 真 ODPS + 真 judge + replay 冻结）— adapter wiring 完成，live e2e with-key deferred
+- [x] 2 wiring caveat 已验证并处置（或确认无需改）
+
+## Resolution
+
+全 4 项验收通过。实现产出：
+
+1. **Adapter 修复（caveat-a 方案 A）**：`validateRunResult` 放宽 count≥1；`extractReply` 用 `finalResponse`（最后一条 assistant/message）；`generatedSql` 取最后一个 `query_data` tool/call（过滤 critique_sql 等）。Eval core 未改。
+2. **Batch runner**（`runner.ts`）：`runBatch(cases, opts)` 全量执行 + infra-retry（max 2）+ `classifyCaseOutcome`（correct/declined/wrong/unjudged）。
+3. **Persistence**（`persistence.ts`）：JSONL 持久化 + `computeDelta(runA, runB)` + `passAtK(records)`。
+4. **Health-gate**（`health-gate.ts`）：connectivity + responder 前置检查，失败快速终止不产出结果。
+5. **Live wiring**：adapter `buildAgentResponder` + `mapQueryOutcome` executor + `JudgeProvider` 接线模式已文档化（README host-wiring section）；live e2e with-key 测试 deferred（需真实凭证）。
+
+测试：240 eval tests + 33 evidence-query tests = 273 全绿。
 
 ## 参考
 

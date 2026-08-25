@@ -1,0 +1,11 @@
+case_id: case-a
+input:
+  question: What is the total revenue?
+  scope_id: scope-1
+expected:
+  result_value:
+    total: 1000
+  match_mode: scalar_exact
+  answer: "1000"
+dimensions:
+  domain: revenue
