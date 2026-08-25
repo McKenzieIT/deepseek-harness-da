@@ -143,6 +143,32 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(s.honest_decline_reason).toMatch(/INCOMPLETE/)
   })
 
+  it('M3 #2 A: F2 relaxes ORDER BY/LIMIT (presentation, not logic) — query_data adds ORDER BY → no block', async () => {
+    const { agent } = makeAgent('s1m3')
+    const g = gate()
+    const s = g.state('s1m3')
+    s.last_sql = 'SELECT a FROM t GROUP BY ds'
+    const decision = await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT a FROM t GROUP BY ds ORDER BY ds' }),
+      resultOk({ state: 'completed' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(decision.kind).toBe('accept') // ORDER BY is presentation — not a same-source violation
+  })
+
+  it('M3 #2 A: F2 still blocks FROM/WHERE logic change', async () => {
+    const { agent } = makeAgent('s1m3b')
+    const g = gate()
+    const s = g.state('s1m3b')
+    s.last_sql = 'SELECT a FROM t1'
+    const decision = await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT a FROM t2' }), // FROM change = logic
+      resultOk({ state: 'completed' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(decision.kind).toBe('block')
+  })
+
   it('F2 same-source: query_data sql ≠ critiqued last_sql → post-execute block', async () => {
     const { agent } = makeAgent('s1')
     const g = gate()

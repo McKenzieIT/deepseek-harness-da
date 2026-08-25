@@ -814,7 +814,16 @@ export class PhaseGate {
 
 /** B5: normalize SQL whitespace (mirrors extractSqlCandidate's `replace(/\s+/g, ' ').trim()`). */
 function normalizeSql(sql: string): string {
-  return sql.replace(/\s+/g, ' ').trim()
+  // M3 #2 A: relax same-source comparison to presentation clauses (ORDER BY /
+  // LIMIT) + trailing semicolon + whitespace. These don't change the result
+  // set's logical content, so the LLM adding `ORDER BY ds` after critique
+  // must not trip F2. FROM/WHERE/GROUP BY/HAVING changes (logic) still trip it.
+  return sql
+    .replace(/;\s*$/, '')
+    .replace(/\bORDER\s+BY\b[^();]*/gi, '')
+    .replace(/\bLIMIT\b[^();]*/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function collectTableNames(value: unknown, out: Set<string>): void {
