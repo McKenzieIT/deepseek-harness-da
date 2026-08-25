@@ -1,10 +1,10 @@
 name: game.lunwu.openBox
 event_filter: event = 'game.lunwu.openBox'
-description: '论武：开启箱子
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等46个'
+description: |-
+  论武：开启箱子
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等46个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -160,14 +160,15 @@ metrics:
     description: 论武开启箱子去重游戏服数
 coverage:
   scenarios:
-  - 论武玩法箱子开启的总体活跃度与参与广度（次数、角色、账号、服务器覆盖）
-  - 评估论武箱子玩法的渗透范围与服务器分布
+    - 论武玩法箱子开启的总体活跃度与参与广度（次数、角色、账号、服务器覆盖）
+    - 评估论武箱子玩法的渗透范围与服务器分布
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 统计粒度默认 role_id（单角色维度），账号粒度供交叉参考
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 统计粒度默认 role_id（单角色维度），账号粒度供交叉参考
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
   note: ds=20260729 实测 cnt=2537, role_uv=1759, acc_uv=1707, server_uv=359
 coverage_status: analyst_confirmed
+external_refs: []

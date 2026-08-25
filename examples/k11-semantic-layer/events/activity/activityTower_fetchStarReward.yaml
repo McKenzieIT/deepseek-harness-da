@@ -1,9 +1,8 @@
 name: game.activityTower.fetchStarReward
 event_filter: event = 'game.activityTower.fetchStarReward'
-description: >-
-  活动塔星级奖励领取事件：玩家在活动塔玩法中领取星级奖励时触发，记录领奖前后奖励ID（oldRewardId/newRewardId）、themeId及领奖时的角色状态与货币快照（钻石/紫金/体力等）。主体粒度为 role_id（角色），可按 account_id 聚合到账号。单日 scout 实测 ds=20260729/20260728 均零命中，疑似活动未开放或已下线。
+description: 活动塔星级奖励领取事件：玩家在活动塔玩法中领取星级奖励时触发，记录领奖前后奖励ID（oldRewardId/newRewardId）、themeId及领奖时的角色状态与货币快照（钻石/紫金/体力等）。主体粒度为 role_id（角色），可按 account_id 聚合到账号。单日 scout 实测 ds=20260729/20260728 均零命中，疑似活动未开放或已下线。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -96,14 +95,15 @@ metrics:
     description: 领取星级奖励覆盖的去重区服数
 coverage:
   scenarios:
-  - 活动塔星级奖励领取次数、参与角色/账号数、覆盖区服数，用于活动参与度与奖励发放效果评估
+    - 活动塔星级奖励领取次数、参与角色/账号数、覆盖区服数，用于活动参与度与奖励发放效果评估
   limitations:
-  - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似活动未开放或已下线
-  - 仅 ds=20260729 单日 scout 实测(并回退 ds=20260728)，未做全量复核
-  - 默认主体粒度 role_id
+    - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似活动未开放或已下线
+    - 仅 ds=20260729 单日 scout 实测(并回退 ds=20260728)，未做全量复核
+    - 默认主体粒度 role_id
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
   note: ds=20260729 cnt=0 role_uv=0 acc_uv=0 server_uv=0；回退 ds=20260728 cnt=0 role_uv=0 acc_uv=0 server_uv=0。零命中，维持 draft。
   coverage_status: draft
+external_refs: []

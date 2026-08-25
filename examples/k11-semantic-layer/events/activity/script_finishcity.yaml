@@ -1,8 +1,8 @@
 name: game.script.finishcity
 event_filter: event = 'game.script.finishcity'
-description: '剧本（残章）系统-完成城池事件：玩家在剧本推进中完成（激活残章）一座城池时上报，记录完成行为本身、完成方角色画像（等级/VIP/战力）、所完成剧本 id（scriptId）与城池 id（cityId）及完成时货币快照（coinList）。事件名 game.script.finishcity，分析主体粒度为 role_id（完成城池的角色）。scout 实测 ds=20260729：单日 cnt=4746 / role_uv=737 / acc_uv=728 / server_uv=182。'
+description: 剧本（残章）系统-完成城池事件：玩家在剧本推进中完成（激活残章）一座城池时上报，记录完成行为本身、完成方角色画像（等级/VIP/战力）、所完成剧本 id（scriptId）与城池 id（cityId）及完成时货币快照（coinList）。事件名 game.script.finishcity，分析主体粒度为 role_id（完成城池的角色）。scout 实测 ds=20260729：单日 cnt=4746 / role_uv=737 / acc_uv=728 / server_uv=182。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -114,18 +114,19 @@ metrics:
 coverage:
   granularity: 单次完成城池事件（role_id 为完成方默认主体粒度，scriptId/cityId 为被完成客体粒度）
   scenarios:
-  - 剧本残章系统单日推进规模（完成次数 / 完成方 role_uv / acc_uv / 覆盖游戏服数）
-  - 剧本与城池覆盖广度（去重 scriptId / cityId 数）
-  - 单角色重复完成（finishes_per_role>1）识别推进活跃角色
-  - 不同 VIP / 等级 / 战力玩家完成城池的画像分布
+    - 剧本残章系统单日推进规模（完成次数 / 完成方 role_uv / acc_uv / 覆盖游戏服数）
+    - 剧本与城池覆盖广度（去重 scriptId / cityId 数）
+    - 单角色重复完成（finishes_per_role>1）识别推进活跃角色
+    - 不同 VIP / 等级 / 战力玩家完成城池的画像分布
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id（完成方），未逐事件实测 role_id 是否为最细主体
-  - coinList 为完成时货币快照（余额态），非完成城池产出的资源量，未做 SUM 收入统计
-  - scriptId/cityId 已去重计数，但未下钻到单剧本/单城池的完成分布
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id（完成方），未逐事件实测 role_id 是否为最细主体
+    - coinList 为完成时货币快照（余额态），非完成城池产出的资源量，未做 SUM 收入统计
+    - scriptId/cityId 已去重计数，但未下钻到单剧本/单城池的完成分布
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=4746 / role_uv=737 / acc_uv=728 / server_uv=182；人均完成约 6.44 次（4746/737），覆盖 182 个游戏服，数值合理，事件在线正常触发'
+  note: scout 实测 ds=20260729：cnt=4746 / role_uv=737 / acc_uv=728 / server_uv=182；人均完成约 6.44 次（4746/737），覆盖 182 个游戏服，数值合理，事件在线正常触发
 coverage_status: analyst_confirmed
+external_refs: []

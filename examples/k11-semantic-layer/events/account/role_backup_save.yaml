@@ -1,8 +1,8 @@
 name: game.role.backup.save
 event_filter: event = 'game.role.backup.save'
-description: '玩家数据备份事件：游戏定期上报玩家数据快照时触发（备份/回退校验依据），记录备份时点的角色完整画像（等级/VIP/战力/经验/性别/创角时间/上线时间）及货币快照（coinList：充值钻石 gold、赠送钻石 sendgold、免费钻石 freegold、紫金 diamond、经验卷轴 expCoin、体力 energy），并携带 sessionId/logUUID/uuid 用于回退时校验一致性。分析主体粒度为 role_id（角色级备份）。scout 实测 ds=20260729 单日 cnt=15913 / role_uv=4744 / acc_uv=4415 / server_uv=484。'
+description: 玩家数据备份事件：游戏定期上报玩家数据快照时触发（备份/回退校验依据），记录备份时点的角色完整画像（等级/VIP/战力/经验/性别/创角时间/上线时间）及货币快照（coinList：充值钻石 gold、赠送钻石 sendgold、免费钻石 freegold、紫金 diamond、经验卷轴 expCoin、体力 energy），并携带 sessionId/logUUID/uuid 用于回退时校验一致性。分析主体粒度为 role_id（角色级备份）。scout 实测 ds=20260729 单日 cnt=15913 / role_uv=4744 / acc_uv=4415 / server_uv=484。
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -111,17 +111,18 @@ metrics:
 coverage:
   granularity: 单次备份事件（role_id 为默认主体粒度）
   scenarios:
-  - 玩家数据备份事件的触发规模（次数/角色UV/账号UV/服务器数）
-  - 备份时点玩家画像分布（角色等级/VIP/战力均值），观察活跃玩家构成
-  - 单日同角色多次备份识别（backups_per_role > 1 提示重复备份）
-  - 备份时点货币快照累计（gold 充值钻石总和，反映备份时刻存量）
+    - 玩家数据备份事件的触发规模（次数/角色UV/账号UV/服务器数）
+    - 备份时点玩家画像分布（角色等级/VIP/战力均值），观察活跃玩家构成
+    - 单日同角色多次备份识别（backups_per_role > 1 提示重复备份）
+    - 备份时点货币快照累计（gold 充值钻石总和，反映备份时刻存量）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id，未逐事件实测 role_id 是否为最细主体
-  - coinList.gold 的 sum 仅反映 ds=20260729 备份时点的角色级货币快照存量，非全周期支付额
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id，未逐事件实测 role_id 是否为最细主体
+    - coinList.gold 的 sum 仅反映 ds=20260729 备份时点的角色级货币快照存量，非全周期支付额
   coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=15913 / role_uv=4744 / acc_uv=4415 / server_uv=484'
+  note: scout 实测 ds=20260729：cnt=15913 / role_uv=4744 / acc_uv=4415 / server_uv=484
+external_refs: []

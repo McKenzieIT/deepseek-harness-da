@@ -1,8 +1,8 @@
 name: game.digong.getReward
 event_filter: event = 'game.digong.getReward'
-description: '地宫（digong）玩法领奖事件：角色在地宫玩法中领取通关/层数奖励时上报，携带地宫id（digongId）与最高领取位置（maxOrder）及角色货币快照。主体粒度 role_id（单角色领奖行为），ds=20260729 实测单日 243 次领奖、176 角色、174 账号、48 服。'
+description: 地宫（digong）玩法领奖事件：角色在地宫玩法中领取通关/层数奖励时上报，携带地宫id（digongId）与最高领取位置（maxOrder）及角色货币快照。主体粒度 role_id（单角色领奖行为），ds=20260729 实测单日 243 次领奖、176 角色、174 账号、48 服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -102,5 +102,6 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 scout 实测：cnt=243, role_uv=176, acc_uv=174, server_uv=48，数据合理，确认 analyst_confirmed'
+  note: ds=20260729 scout 实测：cnt=243, role_uv=176, acc_uv=174, server_uv=48，数据合理，确认 analyst_confirmed
   coverage_status: analyst_confirmed
+external_refs: []

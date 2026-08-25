@@ -1,8 +1,8 @@
 name: game.rogue.choosesoul
 event_filter: event = 'game.rogue.choosesoul'
-description: '古战场（rogue）副本中触发将魂（soul）选择时上报的事件，记录玩家在某个章节/难度/阶段的将魂候选项及最终选择。分析主体为 role_id（角色粒度），account_id 用于账号去重。参数含游戏服、账号/角色、等级战力、coinList 货币、choice 选项列表（含 id/name/quality/suit/choose 是否被选）、buff 祝福、soul 将魂列表（id/suitId/suitNum）、treasure 奇珍、rogueStage 阶段、chapter/difficulty/step 等。ds=20260729 单日 scout 实测：cnt=1100，role_uv=119，acc_uv=118，server_uv=47。'
+description: 古战场（rogue）副本中触发将魂（soul）选择时上报的事件，记录玩家在某个章节/难度/阶段的将魂候选项及最终选择。分析主体为 role_id（角色粒度），account_id 用于账号去重。参数含游戏服、账号/角色、等级战力、coinList 货币、choice 选项列表（含 id/name/quality/suit/choose 是否被选）、buff 祝福、soul 将魂列表（id/suitId/suitNum）、treasure 奇珍、rogueStage 阶段、chapter/difficulty/step 等。ds=20260729 单日 scout 实测：cnt=1100，role_uv=119，acc_uv=118，server_uv=47。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -149,8 +149,8 @@ params_fields:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'ds=20260729 scout 实测 cnt=1100, role_uv=119, acc_uv=118, server_uv=47；数字合理（多服多角色，单角色平均约 9.2 次将魂选择）。'
+  confirmed_at: "2026-07-30"
+  note: ds=20260729 scout 实测 cnt=1100, role_uv=119, acc_uv=118, server_uv=47；数字合理（多服多角色，单角色平均约 9.2 次将魂选择）。
 metrics:
   game_rogue_choosesoul_cnt:
     expression: COUNT(*)
@@ -183,3 +183,14 @@ coverage:
     - 分析主体默认 role_id（角色粒度），账号粒度仅用于去重辅助
     - choice/soul/treasure 为数组类型，本事件 metrics 暂未展开数组元素级聚合（如各品质将魂被选次数），如需可后续补充 LATERAL VIEW 数组展开
 coverage_status: analyst_confirmed
+external_refs:
+  - dim_table: dim_10000251_trans_rogue_df
+    join_keys:
+      - dws_column: difficulty
+        dim_column: difficulty
+    derivation: 确定性：事件字段 difficulty 与 dim_10000251_trans_rogue_df 主键精确同名
+  - dim_table: dim_10000251_trans_rogue_df_arch
+    join_keys:
+      - dws_column: difficulty
+        dim_column: difficulty
+    derivation: 确定性：事件字段 difficulty 与 dim_10000251_trans_rogue_df_arch 主键精确同名

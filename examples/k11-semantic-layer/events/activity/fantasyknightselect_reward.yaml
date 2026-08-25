@@ -1,10 +1,10 @@
 name: game.fantasyknightselect.reward
 event_filter: event = 'game.fantasyknightselect.reward'
-description: '幻想服武将自选-领取（幻想服武将自选活动领取奖励事件）。记录玩家在幻想服武将自选活动中领取所选武将奖励的行为，主体粒度为角色(role_id)。ds=20260729 实测单日 cnt=381/role_uv=381/acc_uv=377/server_uv=5。原始参数：
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个'
+description: |-
+  幻想服武将自选-领取（幻想服武将自选活动领取奖励事件）。记录玩家在幻想服武将自选活动中领取所选武将奖励的行为，主体粒度为角色(role_id)。ds=20260729 实测单日 cnt=381/role_uv=381/acc_uv=377/server_uv=5。原始参数：
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -91,14 +91,15 @@ metrics:
     description: 领取武将自选奖励覆盖的去重游戏服数
 coverage:
   scenarios:
-  - 武将自选活动领取次数与参与角色/账号规模
-  - 覆盖游戏服范围
+    - 武将自选活动领取次数与参与角色/账号规模
+    - 覆盖游戏服范围
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id
   coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 实测 cnt=381/role_uv=381/acc_uv=377/server_uv=5，数量合理，确认 analyst_confirmed'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 实测 cnt=381/role_uv=381/acc_uv=377/server_uv=5，数量合理，确认 analyst_confirmed
+external_refs: []

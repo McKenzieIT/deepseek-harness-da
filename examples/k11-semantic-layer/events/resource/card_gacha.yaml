@@ -1,8 +1,8 @@
 name: game.card.gacha
 event_filter: event = 'game.card.gacha'
-description: '抽卡事件：角色在卡池（武将/藏品/战法）进行抽卡时上报，记录每次抽卡的卡池类型、抽卡数量、消耗资源、抽卡结果卡列表、SSR数量、大保底触发与心愿达成。分析主体粒度为 role_id（角色），单次抽卡行为计为一条日志。ds=20260729 实测：cnt=64754，role_uv=4293，acc_uv=4030，server_uv=467；当日累计抽卡次数(gachaTimes合计) 359951，抽出SSR卡合计 10246。'
+description: 抽卡事件：角色在卡池（武将/藏品/战法）进行抽卡时上报，记录每次抽卡的卡池类型、抽卡数量、消耗资源、抽卡结果卡列表、SSR数量、大保底触发与心愿达成。分析主体粒度为 role_id（角色），单次抽卡行为计为一条日志。ds=20260729 实测：cnt=64754，role_uv=4293，acc_uv=4030，server_uv=467；当日累计抽卡次数(gachaTimes合计) 359951，抽出SSR卡合计 10246。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -170,20 +170,54 @@ metrics:
     description: SSR 出货率 = SSR 累计数 / 累计抽卡次数（NULLIF 防零除）
 coverage:
   scenarios:
-  - 通过 role_uv/account_uv 评估抽卡玩法的角色/账号渗透规模
-  - 通过 pulls_sum、ssr_sum、ssr_rate 衡量抽卡产出与 SSR 出货率，辅助卡池概率调优
-  - 通过 guarantee_cnt、cometrue_sum 监控大保底触发与心愿达成次数，评估保底/心愿机制投入产出
-  - 通过 server_uv 与按服维度聚合，定位高活跃抽卡服
+    - 通过 role_uv/account_uv 评估抽卡玩法的角色/账号渗透规模
+    - 通过 pulls_sum、ssr_sum、ssr_rate 衡量抽卡产出与 SSR 出货率，辅助卡池概率调优
+    - 通过 guarantee_cnt、cometrue_sum 监控大保底触发与心愿达成次数，评估保底/心愿机制投入产出
+    - 通过 server_uv 与按服维度聚合，定位高活跃抽卡服
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
-  - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复抽做去重校验
-  - cost（消耗资源）与 cardList（抽卡结果卡列表）、wishList 为数组参数，未在本事件 metrics 内展开逐元素求和，如需按消耗资源类型聚合需单独建模
-  - ssr_rate 分母为 gachaTimes 求和（抽卡次数），与 cardList 抽出卡总数口径可能不同，仅作 SSR/抽次比参考
+    - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
+    - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复抽做去重校验
+    - cost（消耗资源）与 cardList（抽卡结果卡列表）、wishList 为数组参数，未在本事件 metrics 内展开逐元素求和，如需按消耗资源类型聚合需单独建模
+    - ssr_rate 分母为 gachaTimes 求和（抽卡次数），与 cardList 抽出卡总数口径可能不同，仅作 SSR/抽次比参考
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=64754, role_uv=4293, acc_uv=4030, server_uv=467;
-    gachaTimes合计=359951, ssrCnt合计=10246, totalCnt合计=14507499, free=1次数=64754,
-    guarantee=1次数=759, cometrue合计=6693。数值合理，event+ds 双过滤命中，确认在线可查。'
+  note: scout 实测 ds=20260729：cnt=64754, role_uv=4293, acc_uv=4030, server_uv=467; gachaTimes合计=359951, ssrCnt合计=10246, totalCnt合计=14507499, free=1次数=64754, guarantee=1次数=759, cometrue合计=6693。数值合理，event+ds 双过滤命中，确认在线可查。
 coverage_status: analyst_confirmed
+external_refs:
+  - dim_table: dim_10000251_trans_gacha_mission_group_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_gacha_mission_group_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df_arch 主键精确同名

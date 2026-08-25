@@ -1,8 +1,8 @@
 name: game.pve.end
 event_filter: event = 'game.pve.end'
-description: '副本（PVE）战斗结束事件：记录玩家在副本/关卡中一场战斗结束时的结果与明细，含战斗结果(胜/负/平/退出)、首次通关、战斗评分、回合数、时长、双方阵容与战力、武将/装备/灵器等快照。分析主体为 role_id（角色粒度），同一角色多次战斗会产生多条事件。scout 实测 ds=20260729 单日 cnt=127237、role_uv=4291、acc_uv=4049、server_uv=466。'
+description: 副本（PVE）战斗结束事件：记录玩家在副本/关卡中一场战斗结束时的结果与明细，含战斗结果(胜/负/平/退出)、首次通关、战斗评分、回合数、时长、双方阵容与战力、武将/装备/灵器等快照。分析主体为 role_id（角色粒度），同一角色多次战斗会产生多条事件。scout 实测 ds=20260729 单日 cnt=127237、role_uv=4291、acc_uv=4049、server_uv=466。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -354,5 +354,6 @@ coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729：cnt=127237、role_uv=4291、acc_uv=4049、server_uv=466，数据合理且高频，确认为真实在线事件。'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729：cnt=127237、role_uv=4291、acc_uv=4049、server_uv=466，数据合理且高频，确认为真实在线事件。
+external_refs: []

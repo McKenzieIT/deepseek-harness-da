@@ -1,8 +1,8 @@
 name: game.running.getRunningRankReward
 event_filter: event = 'game.running.getRunningRankReward'
-description: '领取赛马排行榜奖励事件：角色在赛马玩法中领取排行榜名次奖励时上报，含奖励物品类型/值/数量及关键货币快照。分析主体为 role_id（角色粒度），可通过 role_id/account_id/server_id 统计领取人数与去重角色覆盖。scout 实测 ds=20260729/20260728 均零命中（cnt=0），疑似该赛马排行奖励活动未在窗口期触发或已下线。'
+description: 领取赛马排行榜奖励事件：角色在赛马玩法中领取排行榜名次奖励时上报，含奖励物品类型/值/数量及关键货币快照。分析主体为 role_id（角色粒度），可通过 role_id/account_id/server_id 统计领取人数与去重角色覆盖。scout 实测 ds=20260729/20260728 均零命中（cnt=0），疑似该赛马排行奖励活动未在窗口期触发或已下线。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -110,16 +110,17 @@ metrics:
     description: 领取奖励时角色的平均VIP等级
 coverage:
   scenarios:
-  - 赛马排行榜奖励领取次数与去重领取角色/账号/服务器覆盖
-  - 领取奖励角色的人口学特征（战力/等级/VIP）分布
+    - 赛马排行榜奖励领取次数与去重领取角色/账号/服务器覆盖
+    - 领取奖励角色的人口学特征（战力/等级/VIP）分布
   limitations:
-  - 日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似赛马排行榜奖励活动未在窗口期触发或已下线
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id（角色粒度），因零命中未做实测复核
-  - rewards/coinList 为 JSON 数组字段，奖励物品数量求和需 lateral view 数组展开，本指标集未实现
+    - 日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似赛马排行榜奖励活动未在窗口期触发或已下线
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id（角色粒度），因零命中未做实测复核
+    - rewards/coinList 为 JSON 数组字段，奖励物品数量求和需 lateral view 数组展开，本指标集未实现
 coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729 cnt=0、role_uv=0、acc_uv=0、server_uv=0；ds=20260728 cnt=0、role_uv=0、acc_uv=0、server_uv=0。双日均零命中，事件疑似未触发/已下线，维持 draft 状态待后续活动期复核。'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729 cnt=0、role_uv=0、acc_uv=0、server_uv=0；ds=20260728 cnt=0、role_uv=0、acc_uv=0、server_uv=0。双日均零命中，事件疑似未触发/已下线，维持 draft 状态待后续活动期复核。
+external_refs: []

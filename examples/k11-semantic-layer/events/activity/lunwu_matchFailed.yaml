@@ -1,8 +1,8 @@
 name: game.lunwu.matchFailed
 event_filter: event = 'game.lunwu.matchFailed'
-description: '论武匹配失败事件：玩家在论武玩法匹配对手失败时上报，记录错误码 code、会话 sessionId、角色与货币快照等23个参数。主体粒度为 role_id（角色）。实测 ds=20260729/20260728 单日 cnt=0（零命中，疑似下线/未触发）。'
+description: 论武匹配失败事件：玩家在论武玩法匹配对手失败时上报，记录错误码 code、会话 sessionId、角色与货币快照等23个参数。主体粒度为 role_id（角色）。实测 ds=20260729/20260728 单日 cnt=0（零命中，疑似下线/未触发）。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -89,15 +89,16 @@ metrics:
     description: 论武匹配失败的去重游戏服数
 coverage:
   scenarios:
-  - 论武匹配失败频次与受影响角色/账号/游戏服规模
-  - 论武匹配异常/匹配池容量问题的监控与归因
+    - 论武匹配失败频次与受影响角色/账号/游戏服规模
+    - 论武匹配异常/匹配池容量问题的监控与归因
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似事件下线/未触发，指标实测值均为 0
-  - 主体粒度默认 role_id（角色），账号级口径需用 account_uv 单独核算
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似事件下线/未触发，指标实测值均为 0
+    - 主体粒度默认 role_id（角色），账号级口径需用 account_uv 单独核算
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 实测 cnt=0, role_uv=0, acc_uv=0, server_uv=0；ds=20260728 复测仍为 0（零命中）'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 实测 cnt=0, role_uv=0, acc_uv=0, server_uv=0；ds=20260728 复测仍为 0（零命中）
   coverage_status: draft
+external_refs: []

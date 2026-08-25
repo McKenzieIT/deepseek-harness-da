@@ -1,8 +1,8 @@
 name: game.home.levelup
 event_filter: event = 'game.home.levelup'
-description: '家园系统等级升级事件，记录角色在家园玩法中达成等级提升的行为，携带角色等级、VIP等级、战力、经验、货币列表等23个参数。主体粒度 role_id（角色级）。ds=20260729 单日实测 2339 次事件、1406 角色、1362 账号、97 服务器。'
+description: 家园系统等级升级事件，记录角色在家园玩法中达成等级提升的行为，携带角色等级、VIP等级、战力、经验、货币列表等23个参数。主体粒度 role_id（角色级）。ds=20260729 单日实测 2339 次事件、1406 角色、1362 账号、97 服务器。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -96,6 +96,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   note: ds=20260729 scout cnt=2339 role_uv=1406 acc_uv=1362 server_uv=97
   coverage_status: analyst_confirmed
+external_refs: []

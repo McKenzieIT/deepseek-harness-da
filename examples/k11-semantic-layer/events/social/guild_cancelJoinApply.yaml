@@ -1,8 +1,8 @@
 name: game.guild.cancelJoinApply
 event_filter: event = 'game.guild.cancelJoinApply'
-description: '玩家取消已提交的公会加入申请时触发的行为埋点。记录申请方角色信息与目标公会id(targetGuidId)，分析主体为 role_id。ds=20260729 实测：cnt=3, role_uv=2, acc_uv=2, server_uv=1。'
+description: 玩家取消已提交的公会加入申请时触发的行为埋点。记录申请方角色信息与目标公会id(targetGuidId)，分析主体为 role_id。ds=20260729 实测：cnt=3, role_uv=2, acc_uv=2, server_uv=1。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -92,16 +92,17 @@ metrics:
     expression: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.targetGuidId'))
 coverage:
   scenarios:
-  - 公会加入申请取消的日级频次与去重角色/账号规模
-  - 跨服/跨公会的取消申请分布
-  - 公会招募漏斗中"取消申请"环节的流失量化
+    - 公会加入申请取消的日级频次与去重角色/账号规模
+    - 跨服/跨公会的取消申请分布
+    - 公会招募漏斗中"取消申请"环节的流失量化
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（事件为角色级行为埋点）
-  - 样本量较小(cnt=3, role_uv=2)，单日数据可能不代表常态
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（事件为角色级行为埋点）
+    - 样本量较小(cnt=3, role_uv=2)，单日数据可能不代表常态
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'ds=20260729 实测命中：cnt=3, role_uv=2, acc_uv=2, server_uv=1。数据量较小但结构合理，事件在线可触发。'
+  note: ds=20260729 实测命中：cnt=3, role_uv=2, acc_uv=2, server_uv=1。数据量较小但结构合理，事件在线可触发。
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.fish.gacha
 event_filter: event = 'game.fish.gacha'
-description: '钓鱼抽卡事件（game.fish.gacha）：记录角色在钓鱼玩法中完成抽卡/钓获鱼的行为日志，携带角色身份、等级战力、货币、钓到的鱼名称列表及次数等参数。主体粒度为 role_id（角色级事件）。ds=20260729 单日 scout 实测：cnt=14926 条日志、role_uv=3694 个角色、acc_uv=3521 个账号、server_uv=451 个游戏服。'
+description: 钓鱼抽卡事件（game.fish.gacha）：记录角色在钓鱼玩法中完成抽卡/钓获鱼的行为日志，携带角色身份、等级战力、货币、钓到的鱼名称列表及次数等参数。主体粒度为 role_id（角色级事件）。ds=20260729 单日 scout 实测：cnt=14926 条日志、role_uv=3694 个角色、acc_uv=3521 个账号、server_uv=451 个游戏服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,16 +92,17 @@ metrics:
     description: 钓鱼抽卡累计次数总和（params.times 字段）
 coverage:
   scenarios:
-  - 评估钓鱼玩法活跃规模（日志条数、参与角色/账号数）
-  - 衡量钓鱼抽卡累计触发次数以反映玩法消耗强度
-  - 按游戏服/角色维度下钻分析钓鱼行为分布
+    - 评估钓鱼玩法活跃规模（日志条数、参与角色/账号数）
+    - 衡量钓鱼抽卡累计触发次数以反映玩法消耗强度
+    - 按游戏服/角色维度下钻分析钓鱼行为分布
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id；账号级 UV 仅供参考（一个账号可多角色）
-  - times 字段依赖 params 解析，若日志缺字段则计为 NULL
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id；账号级 UV 仅供参考（一个账号可多角色）
+    - times 字段依赖 params 解析，若日志缺字段则计为 NULL
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 实测：cnt=14926, role_uv=3694, acc_uv=3521, server_uv=451；数据合理，置 analyst_confirmed。'
+  note: ds=20260729 实测：cnt=14926, role_uv=3694, acc_uv=3521, server_uv=451；数据合理，置 analyst_confirmed。
   coverage_status: analyst_confirmed
+external_refs: []

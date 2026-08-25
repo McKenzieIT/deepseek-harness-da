@@ -1,8 +1,8 @@
 name: game.DungeonOnkeyPass.changlle
 event_filter: event = 'game.DungeonOnkeyPass.changlle'
-description: '副本一键扫荡/挑战成功事件（game.DungeonOnkeyPass.changlle）：仅当角色成功完成副本一键扫荡挑战时记录。包含副本类型/ID、当前层、星级任务与成就达成列表等副本进度信息。主体粒度为 role_id（角色级事件）。ds=20260729 实测单日 165181 次事件、1598 角色、1531 账号、143 服。'
+description: 副本一键扫荡/挑战成功事件（game.DungeonOnkeyPass.changlle）：仅当角色成功完成副本一键扫荡挑战时记录。包含副本类型/ID、当前层、星级任务与成就达成列表等副本进度信息。主体粒度为 role_id（角色级事件）。ds=20260729 实测单日 165181 次事件、1598 角色、1531 账号、143 服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -125,17 +125,18 @@ metrics:
     description: 一键扫荡累计通过的副本楼层总数（floor 之和）
 coverage:
   scenarios:
-  - 副本一键扫荡玩法参与度与成功次数
-  - 角色级副本挑战活跃（主体 role_id）
-  - 扫荡覆盖的账号与服务器分布
-  - 累计扫荡楼层数衡量副本推进量
+    - 副本一键扫荡玩法参与度与成功次数
+    - 角色级副本挑战活跃（主体 role_id）
+    - 扫荡覆盖的账号与服务器分布
+    - 累计扫荡楼层数衡量副本推进量
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id（角色级事件）
-  - floor 为当前层快照，floor_sum 为各事件楼层累加，非去重通关进度
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id（角色级事件）
+    - floor 为当前层快照，floor_sum 为各事件楼层累加，非去重通关进度
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
   note: ds=20260729 scout cnt=165181 role_uv=1598 acc_uv=1531 server_uv=143
   coverage_status: analyst_confirmed
+external_refs: []

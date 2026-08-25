@@ -1,8 +1,8 @@
 name: game.scriptActivity.levelBattlepassOnekeyReward
 event_filter: event = 'game.scriptActivity.levelBattlepassOnekeyReward'
-description: '等级战令一键领取战令奖励：玩家在 scriptActivity 等级战令活动中触发一键领取，按当前战令等级批量领取已解锁的普通档与 VIP 档奖励（rewardedNormal/rewardedVip），并在 rewards 数组记录每条奖励的类型/值/数量/uid。分析主体为角色（role_id），同账号多角色分别计角色 UV；通过 serverId/accountId/roleId 可还原领奖来源与归属。ds=20260729 单日 scout 实测：触发 434 次，涉及 387 个角色、383 个账号、89 个游戏服，事件在线正常触发。'
+description: 等级战令一键领取战令奖励：玩家在 scriptActivity 等级战令活动中触发一键领取，按当前战令等级批量领取已解锁的普通档与 VIP 档奖励（rewardedNormal/rewardedVip），并在 rewards 数组记录每条奖励的类型/值/数量/uid。分析主体为角色（role_id），同账号多角色分别计角色 UV；通过 serverId/accountId/roleId 可还原领奖来源与归属。ds=20260729 单日 scout 实测：触发 434 次，涉及 387 个角色、383 个账号、89 个游戏服，事件在线正常触发。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -133,5 +133,6 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=434, role_uv=387, acc_uv=383, server_uv=89；数字合理，事件在线正常触发'
+  note: scout 实测 ds=20260729：cnt=434, role_uv=387, acc_uv=383, server_uv=89；数字合理，事件在线正常触发
 coverage_status: analyst_confirmed
+external_refs: []

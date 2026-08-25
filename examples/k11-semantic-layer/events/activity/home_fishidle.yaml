@@ -1,8 +1,8 @@
 name: game.home.fishidle
 event_filter: event = 'game.home.fishidle'
-description: '家园系统"枭窝窝"放置鱼事件：记录玩家在家园玩法中对鱼进行放置/选择/收取等交互行为（params.action: 1-放置自己的鱼，2-选择别人的鱼，3-收取自己的鱼奖励，4-收取别人的鱼奖励），并附带fishId、quality品质、idleReward挂机奖励配置字符串等参数。subject 粒度为 role_id（角色级事件）。实测 ds=20260729 单日触发 cnt=10620，覆盖 role_uv=3653、acc_uv=3482、server_uv=450。'
+description: "家园系统\"枭窝窝\"放置鱼事件：记录玩家在家园玩法中对鱼进行放置/选择/收取等交互行为（params.action: 1-放置自己的鱼，2-选择别人的鱼，3-收取自己的鱼奖励，4-收取别人的鱼奖励），并附带fishId、quality品质、idleReward挂机奖励配置字符串等参数。subject 粒度为 role_id（角色级事件）。实测 ds=20260729 单日触发 cnt=10620，覆盖 role_uv=3653、acc_uv=3482、server_uv=450。"
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -110,3 +110,4 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: ds=20260729 实测 cnt=10620, role_uv=3653, acc_uv=3482, server_uv=450
   coverage_status: analyst_confirmed
+external_refs: []

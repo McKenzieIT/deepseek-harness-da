@@ -1,8 +1,8 @@
 name: game.resort.share
 event_filter: event = 'game.resort.share'
-description: '代打-分享卡片事件：玩家在求助(resort)玩法中触发分享卡片行为，记录分享渠道(公会/世界/好友)及求助类型resortType。分析主体为 role_id(角色)，单日实测 ds=20260729 cnt=118 / role_uv=82 / acc_uv=81 / server_uv=14。'
+description: 代打-分享卡片事件：玩家在求助(resort)玩法中触发分享卡片行为，记录分享渠道(公会/世界/好友)及求助类型resortType。分析主体为 role_id(角色)，单日实测 ds=20260729 cnt=118 / role_uv=82 / acc_uv=81 / server_uv=14。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -121,5 +121,6 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout实测 ds=20260729: cnt=118 / role_uv=82 / acc_uv=81 / server_uv=14，数据合理'
+  note: "scout实测 ds=20260729: cnt=118 / role_uv=82 / acc_uv=81 / server_uv=14，数据合理"
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.dreamDungeon.node
 event_filter: event = 'game.dreamDungeon.node'
-description: '梦境副本节点事件 game.dreamDungeon.node：玩家在梦境副本到达/触发某个节点(stepId关卡id、stepType节点类型)时上报，记录角色当前状态(等级/vip/战力/经验)及各类货币余额(coinList)。主体粒度为 role_id 角色级。ds=20260729 实测 cnt=6482、role_uv=458、acc_uv=451、server_uv=44。'
+description: 梦境副本节点事件 game.dreamDungeon.node：玩家在梦境副本到达/触发某个节点(stepId关卡id、stepType节点类型)时上报，记录角色当前状态(等级/vip/战力/经验)及各类货币余额(coinList)。主体粒度为 role_id 角色级。ds=20260729 实测 cnt=6482、role_uv=458、acc_uv=451、server_uv=44。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,15 +92,16 @@ metrics:
     description: 触发梦境副本节点的去重游戏服数
 coverage:
   scenarios:
-  - 梦境副本节点的触发量级与参与角色/账号/服务器覆盖度
-  - 各节点(stepId)的触发分布与角色进度评估
+    - 梦境副本节点的触发量级与参与角色/账号/服务器覆盖度
+    - 各节点(stepId)的触发分布与角色进度评估
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体为 role_id 角色级；账号级去重以 account_id 为准
-  - 货币余额(coinList)字段未纳入 metrics，需单独分析时另行统计
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体为 role_id 角色级；账号级去重以 account_id 为准
+    - 货币余额(coinList)字段未纳入 metrics，需单独分析时另行统计
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 scout: cnt=6482, role_uv=458, acc_uv=451, server_uv=44'
+  note: "ds=20260729 scout: cnt=6482, role_uv=458, acc_uv=451, server_uv=44"
   coverage_status: analyst_confirmed
+external_refs: []

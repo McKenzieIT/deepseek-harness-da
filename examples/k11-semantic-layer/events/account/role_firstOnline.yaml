@@ -1,8 +1,8 @@
 name: game.role.firstOnline
 event_filter: event = 'game.role.firstOnline'
-description: '角色每日首次上线事件：记录每个角色当天首次登录游戏时的快照信息（含游戏服、角色基础属性、货币余额等23个参数）。主体粒度为 role_id（角色级），ds=20260729 单日实测 cnt=4734 / role_uv=4734 / acc_uv=4396 / server_uv=484。'
+description: 角色每日首次上线事件：记录每个角色当天首次登录游戏时的快照信息（含游戏服、角色基础属性、货币余额等23个参数）。主体粒度为 role_id（角色级），ds=20260729 单日实测 cnt=4734 / role_uv=4734 / acc_uv=4396 / server_uv=484。
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -89,16 +89,17 @@ metrics:
     description: 当日首次上线事件覆盖的去重游戏服数（ds=20260729 单日 484）
 coverage:
   scenarios:
-  - 监控每日活跃角色/账号/服务器规模，识别首登留存与回流趋势
-  - 评估日活（DAU）基线，作为用户生命周期与付费经济指标的分母
-  - 结合 server_uv 判断上线分布是否集中或分散
+    - 监控每日活跃角色/账号/服务器规模，识别首登留存与回流趋势
+    - 评估日活（DAU）基线，作为用户生命周期与付费经济指标的分母
+    - 结合 server_uv 判断上线分布是否集中或分散
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id（角色级）；同账号多角色会重复计入角色级指标
-  - 首次上线为日级口径，与历史首登（创角首次上线）不同
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id（角色级）；同账号多角色会重复计入角色级指标
+    - 首次上线为日级口径，与历史首登（创角首次上线）不同
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 scout 实测 cnt=4734 / role_uv=4734 / acc_uv=4396 / server_uv=484，数据合理，确认通过'
+  note: ds=20260729 scout 实测 cnt=4734 / role_uv=4734 / acc_uv=4396 / server_uv=484，数据合理，确认通过
   coverage_status: analyst_confirmed
+external_refs: []

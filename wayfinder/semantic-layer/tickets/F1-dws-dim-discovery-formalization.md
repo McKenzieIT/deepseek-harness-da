@@ -1,7 +1,7 @@
 # F1 — DWS→DIM 关系发现功能模块正式化
 
 **Type**: task
-**Status**: Open（frontier）
+**Status**: Closed
 **Blocked by**: —
 
 ## Question
@@ -31,3 +31,34 @@
 
 - Phase 1 的 subagent seed 已为 K11 写入 225 个 dimension_refs；本 ticket 是将其**生产化**，不是重跑种子。
 - 环境需配置 LLM API key（Phase 1 因无 key 才用 subagent 充当 llmCall）。
+
+## Resolution
+
+Resolved 2026-08-22. All scope items implemented and verified:
+
+### 1. LLM Wiring Plugin (`enrichment-llm-wiring`)
+- New file: `packages/data/semantic-layer/src/llm-wiring-plugin.ts`
+- Cordis plugin (`inject: ['schema', 'llm']`) that creates a `TextLlm` adapter from `ctx.llm.stream()` + `BlockAssembler` and calls `wireEnrichmentLlm(ctx.schema, textLlm)`
+- Configurable `provider`/`model` (defaults: `aga`/`qwen3.7-max`)
+- Added to bundle patch as `id: enrichment-llm-wiring`
+- Added `@deepseek-ai/dsh-llm` as optional peerDependency
+- Added tsconfig.base.json path mapping for subpath resolution
+
+### 2. Alternative FK Refinement
+- Modified `table-kind.ts` `relations()`: when multiple `dws_column` values map to the same `dim_column`, generates separate `RelationDef` per alternative (independent join paths)
+- Composite keys (distinct `dim_column` per `join_key`) still produce one AND-connected edge
+- K11 验证: `acc_summary_df` now produces 4 independent `server_id` join edges (was 1 over-constrained AND)
+
+### 3. Events `external_refs` (deterministic round)
+- Ran `enrichAllEvents` on K11 scope: 92/445 events gained deterministic `external_refs` (PK-name match)
+- LLM round will discover additional semantic matches once API key is configured
+- Seed script: `scripts/seed-event-external-refs.ts`
+
+### 4. Verification
+- 188 tests green (semantic-layer 143 + nl2sql-engine 34 + tool-discover-relations 11)
+- New integration test file: `tests/llm-wiring-integration.spec.ts` (4 tests covering two-round discovery, event discovery, merge semantics, and alternative FK behavior)
+- Cordis config verification passes
+
+### Remaining (deferred per scope)
+- **LLM round for events**: requires live `DASHSCOPE_API_KEY`; the wiring is in place and will activate automatically
+- **置信度/审批门控**: deferred per G3 §3 (no users yet)

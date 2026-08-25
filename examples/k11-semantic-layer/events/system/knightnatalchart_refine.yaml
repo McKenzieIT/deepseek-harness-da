@@ -1,8 +1,8 @@
 name: game.knightnatalchart.refine
 event_filter: event = 'game.knightnatalchart.refine'
-description: '武将命盘-改命事件：玩家对武将命盘执行改命（refine）操作时上报，记录被改命的武将id、改命方案(scheme)、随机点(nodes)、未触发三橙次数(threeOrangeCoe)及角色基础属性。分析主体为 role_id（角色粒度），单次改命上报一条日志，用于统计改命次数、参与角色数、改命武将数及未触发三橙累计次数。实测 ds=20260729：cnt=4071，role_uv=185，acc_uv=185，server_uv=51。'
+description: 武将命盘-改命事件：玩家对武将命盘执行改命（refine）操作时上报，记录被改命的武将id、改命方案(scheme)、随机点(nodes)、未触发三橙次数(threeOrangeCoe)及角色基础属性。分析主体为 role_id（角色粒度），单次改命上报一条日志，用于统计改命次数、参与角色数、改命武将数及未触发三橙累计次数。实测 ds=20260729：cnt=4071，role_uv=185，acc_uv=185，server_uv=51。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -107,18 +107,19 @@ metrics:
     description: 人均改命次数（总次数 / 参与角色数，分母 NULLIF 防零除）
 coverage:
   scenarios:
-  - 武将命盘改命玩法的参与热度（次数/角色数/账号数/服务器数）
-  - 哪些武将被改命最频繁（knight_uv 及下钻 knightId）
-  - 改命稀有度命中难度的体感（threeOrangeCoe 累计次数越高，三橙越难触发）
-  - 人均改命次数反映改命玩法的复玩深度
+    - 武将命盘改命玩法的参与热度（次数/角色数/账号数/服务器数）
+    - 哪些武将被改命最频繁（knight_uv 及下钻 knightId）
+    - 改命稀有度命中难度的体感（threeOrangeCoe 累计次数越高，三橙越难触发）
+    - 人均改命次数反映改命玩法的复玩深度
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核（多日趋势/周累计未验证）
-  - 分析主体默认 role_id（角色粒度），改命操作粒度为单次上报一条日志
-  - threeOrangeCoe 为累计计数，跨多次改命递增，单日 SUM 受起始基数影响，不代表当日净增
-  - 未抽样校验 scheme/nodes 子字段的具体取值分布
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核（多日趋势/周累计未验证）
+    - 分析主体默认 role_id（角色粒度），改命操作粒度为单次上报一条日志
+    - threeOrangeCoe 为累计计数，跨多次改命递增，单日 SUM 受起始基数影响，不代表当日净增
+    - 未抽样校验 scheme/nodes 子字段的具体取值分布
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729（event+ds 双过滤加速视图）：cnt=4071, role_uv=185, acc_uv=185, server_uv=51；数据量与 UV 合理，事件在线且正常触发。参数抽样校验 knightId/scheme/threeOrangeCoe 可经 GET_JSON_OBJECT 正常解析。'
+  note: scout 实测 ds=20260729（event+ds 双过滤加速视图）：cnt=4071, role_uv=185, acc_uv=185, server_uv=51；数据量与 UV 合理，事件在线且正常触发。参数抽样校验 knightId/scheme/threeOrangeCoe 可经 GET_JSON_OBJECT 正常解析。
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.champion.guessGetReward
 event_filter: event = 'game.champion.guessGetReward'
-description: '争霸赛(Champion)竞猜奖励领取事件：玩家在争霸赛赛季竞猜(matchId)中押注(0攻击/1防守)并领取竞猜奖励(getCount)时上报，guessOk 标记竞猜是否正确。分析粒度为角色(role_id)，每个角色每次领奖产生一条日志。真实实测 ds=20260729/20260728：事件零命中(cnt=0)，疑似事件下线/未触发或仅在赛季竞猜开启窗口期上报。'
+description: 争霸赛(Champion)竞猜奖励领取事件：玩家在争霸赛赛季竞猜(matchId)中押注(0攻击/1防守)并领取竞猜奖励(getCount)时上报，guessOk 标记竞猜是否正确。分析粒度为角色(role_id)，每个角色每次领奖产生一条日志。真实实测 ds=20260729/20260728：事件零命中(cnt=0)，疑似事件下线/未触发或仅在赛季竞猜开启窗口期上报。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -128,16 +128,17 @@ metrics:
     description: 领奖后经验总量
 coverage:
   scenarios:
-  - 争霸赛竞猜奖励领取量、参与角色数与游戏服覆盖度(竞猜活跃度与渗透)
-  - 竞猜正确率(guessOk=true 占比)与人均领奖收益
-  - 领奖后货币(充值钻石/体力/经验)余额分布与人均收益
+    - 争霸赛竞猜奖励领取量、参与角色数与游戏服覆盖度(竞猜活跃度与渗透)
+    - 竞猜正确率(guessOk=true 占比)与人均领奖收益
+    - 领奖后货币(充值钻石/体力/经验)余额分布与人均收益
   limitations:
-  - 日志中零命中(ds=20260729 与 ds=20260728 cnt=0)，疑似事件下线/未触发或仅在赛季竞猜开启窗口期上报
-  - 因零命中未实测 role_id/account_id 去重语义，分析粒度默认 role_id
-  - metrics 指标定义为声明性，未经实测数据复核
+    - 日志中零命中(ds=20260729 与 ds=20260728 cnt=0)，疑似事件下线/未触发或仅在赛季竞猜开启窗口期上报
+    - 因零命中未实测 role_id/account_id 去重语义，分析粒度默认 role_id
+    - metrics 指标定义为声明性，未经实测数据复核
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729 与 ds=20260728: cnt=0/role_uv=0/acc_uv=0/server_uv=0(零命中)，事件疑似下线/未触发，保持 draft'
+  note: "scout 实测 ds=20260729 与 ds=20260728: cnt=0/role_uv=0/acc_uv=0/server_uv=0(零命中)，事件疑似下线/未触发，保持 draft"
 coverage_status: draft
+external_refs: []

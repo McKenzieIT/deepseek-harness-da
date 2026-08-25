@@ -1,8 +1,8 @@
 name: game.knightnatalchart.refineconfirm
 event_filter: event = 'game.knightnatalchart.refineconfirm'
-description: '武将命盘-确认事件：玩家对武将命盘方案（scheme）执行确认操作时上报，记录被精炼的武将（knightId）、所选方案及随机到的节点（nodes），同时携带角色基础属性与货币快照。分析主体为角色（role_id），账号（account_id）与角色1:1。实测 ds=20260729：cnt=744，role_uv=130，acc_uv=130，server_uv=30。'
+description: 武将命盘-确认事件：玩家对武将命盘方案（scheme）执行确认操作时上报，记录被精炼的武将（knightId）、所选方案及随机到的节点（nodes），同时携带角色基础属性与货币快照。分析主体为角色（role_id），账号（account_id）与角色1:1。实测 ds=20260729：cnt=744，role_uv=130，acc_uv=130，server_uv=30。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -104,17 +104,18 @@ metrics:
     description: 人均命盘确认操作次数
 coverage:
   scenarios:
-  - 命盘确认玩法的日/周活跃度与渗透率（cnt、role_uv、account_uv）
-  - 命盘确认在游戏服间的分布（server_uv）
-  - 被精炼武将（knightId）与方案（scheme）的覆盖广度
-  - 人均命盘确认操作频次（ops_per_role）反映玩法粘性
+    - 命盘确认玩法的日/周活跃度与渗透率（cnt、role_uv、account_uv）
+    - 命盘确认在游戏服间的分布（server_uv）
+    - 被精炼武将（knightId）与方案（scheme）的覆盖广度
+    - 人均命盘确认操作频次（ops_per_role）反映玩法粘性
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认为角色（role_id），account_id 与 role_id 1:1（实测 acc_uv=role_uv=130）
-  - nodes（随机节点）为 array 字段，未展开统计节点分布；如需节点级分析需单独展开
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认为角色（role_id），account_id 与 role_id 1:1（实测 acc_uv=role_uv=130）
+    - nodes（随机节点）为 array 字段，未展开统计节点分布；如需节点级分析需单独展开
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: '实测 ds=20260729：cnt=744, role_uv=130, acc_uv=130, server_uv=30；数据合理，命盘确认玩法有真实触发'
+  note: 实测 ds=20260729：cnt=744, role_uv=130, acc_uv=130, server_uv=30；数据合理，命盘确认玩法有真实触发
 coverage_status: analyst_confirmed
+external_refs: []

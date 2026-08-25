@@ -1,8 +1,8 @@
 name: game.springfestival.commonMissionReward
 event_filter: event = 'game.springfestival.commonMissionReward'
-description: '春节(预热)活动-通用任务奖励领取事件：角色完成春节预热活动通用任务并领取奖励时上报，携带 activityId/missionIds/dailyMissionIds 及角色基础属性与多币种货币快照(coinList)。分析主体为 role_id(角色粒度)。scout 实测 ds=20260729 与 ds=20260728 均零命中，事件疑似下线或当日未触发。'
+description: 春节(预热)活动-通用任务奖励领取事件：角色完成春节预热活动通用任务并领取奖励时上报，携带 activityId/missionIds/dailyMissionIds 及角色基础属性与多币种货币快照(coinList)。分析主体为 role_id(角色粒度)。scout 实测 ds=20260729 与 ds=20260728 均零命中，事件疑似下线或当日未触发。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -105,5 +105,6 @@ coverage:
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729: cnt=0/role_uv=0/acc_uv=0/server_uv=0；重试 ds=20260728: cnt=0；事件零命中，疑似下线/未触发，保持 draft'
+  confirmed_at: "2026-07-30"
+  note: "scout 实测 ds=20260729: cnt=0/role_uv=0/acc_uv=0/server_uv=0；重试 ds=20260728: cnt=0；事件零命中，疑似下线/未触发，保持 draft"
+external_refs: []

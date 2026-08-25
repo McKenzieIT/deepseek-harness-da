@@ -1,8 +1,8 @@
 name: game.rogue.summon
 event_filter: event = 'game.rogue.summon'
-description: '古战场(Rogue)模式-招募武将事件：玩家在古战场玩法中进行招募(抽将)操作时上报，记录招募发生时的角色快照(等级/vip/战力/经验)及当前关键货币余额、本次招募获得的武将id列表(knightList)。分析主体为 role_id(角色级事件，同一角色可多次招募)。真实实测 ds=20260729：cnt=181 / role_uv=73 / acc_uv=72 / server_uv=36。'
+description: 古战场(Rogue)模式-招募武将事件：玩家在古战场玩法中进行招募(抽将)操作时上报，记录招募发生时的角色快照(等级/vip/战力/经验)及当前关键货币余额、本次招募获得的武将id列表(knightList)。分析主体为 role_id(角色级事件，同一角色可多次招募)。真实实测 ds=20260729：cnt=181 / role_uv=73 / acc_uv=72 / server_uv=36。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -105,3 +105,4 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
+external_refs: []

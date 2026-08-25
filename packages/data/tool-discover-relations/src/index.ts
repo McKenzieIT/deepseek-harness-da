@@ -16,7 +16,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import { loadTables, TableDefinitionSchema } from '@deepseek-ai/dsh-semantic-layer'
 
 export const name = 'tool-discover-relations'
 export const inject = ['tools']
@@ -42,6 +44,12 @@ export function validateTableName(raw: string): string | null {
   return trimmed
 }
 
+/** One relation snapshot entry: table + its dimension refs. */
+interface RelationSnapshot {
+  table: string
+  refs: Array<{ dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation: string }>
+}
+
 /** The canonical value returned by `discover_relations`'s `execute`. */
 export interface DiscoverRelationsResult {
   /** Whether enrichment ran (false when not mounted / invalid input / substrate error). */
@@ -54,6 +62,10 @@ export interface DiscoverRelationsResult {
   readonly errors?: string[]
   /** A short reason when `!ok` (not mounted / invalid name / substrate error). */
   readonly message?: string
+  /** Before snapshot of relations (for presentationMeta). */
+  readonly _before?: RelationSnapshot[]
+  /** After snapshot of relations (for presentationMeta). */
+  readonly _after?: RelationSnapshot[]
 }
 
 /**
@@ -70,6 +82,29 @@ function sanitizeError(e: unknown): string {
     .replace(/\s+/g, ' ')
     .trim()
   return clean.length > 200 ? `${clean.slice(0, 200)}...` : clean
+}
+
+/** Capture current dimension_refs snapshot for tables in scope. */
+function captureRelationSnapshot(schema: SemanticLayerService, tables?: readonly string[]): RelationSnapshot[] {
+  const snapshot: RelationSnapshot[] = []
+  const root = schema.semanticRoot
+  if (!root) return snapshot
+  for (const t of loadTables(root)) {
+    const r = TableDefinitionSchema.safeParse(t.raw)
+    if (!r.success) continue
+    const name = r.data.table_name
+    if (tables !== undefined && tables.length > 0 && !tables.includes(name)) continue
+    const refs = (r.data as unknown as { dimension_refs?: Array<{ dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation?: string }> }).dimension_refs ?? []
+    snapshot.push({
+      table: name,
+      refs: refs.map(ref => ({
+        dim_table: ref.dim_table,
+        join_keys: ref.join_keys.map(k => ({ dws_column: k.dws_column, dim_column: k.dim_column })),
+        derivation: ref.derivation ?? '',
+      })),
+    })
+  }
+  return snapshot
 }
 
 /**
@@ -96,9 +131,13 @@ export async function discoverRelationsResult(
     }
     validated.push(n)
   }
+
+  const before = captureRelationSnapshot(schema, validated.length > 0 ? validated : undefined)
+
   try {
     const res = await schema.discoverRelations(validated.length > 0 ? { tables: validated } : {})
-    return { ok: true, enriched: res.enriched, written: res.written, errors: res.errors }
+    const after = captureRelationSnapshot(schema, validated.length > 0 ? validated : undefined)
+    return { ok: true, enriched: res.enriched, written: res.written, errors: res.errors, _before: before, _after: after }
   } catch (e) {
     return { ok: false, message: `substrate error: ${sanitizeError(e)}` }
   }
@@ -124,6 +163,30 @@ export function formatDiscoverRelations(value: DiscoverRelationsResult): string 
   return lines.join('\n')
 }
 
+/** Compute added relations by diffing before and after snapshots. */
+function computeAddedRelations(
+  before: RelationSnapshot[],
+  after: RelationSnapshot[],
+): Array<{ table: string; dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation: string }> {
+  const added: Array<{ table: string; dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation: string }> = []
+  const beforeMap = new Map<string, Set<string>>()
+  for (const snap of before) {
+    const keys = new Set<string>()
+    for (const ref of snap.refs) keys.add(`${ref.dim_table}::${JSON.stringify(ref.join_keys)}`)
+    beforeMap.set(snap.table, keys)
+  }
+  for (const snap of after) {
+    const priorKeys = beforeMap.get(snap.table) ?? new Set()
+    for (const ref of snap.refs) {
+      const key = `${ref.dim_table}::${JSON.stringify(ref.join_keys)}`
+      if (!priorKeys.has(key)) {
+        added.push({ table: snap.table, dim_table: ref.dim_table, join_keys: ref.join_keys, derivation: ref.derivation })
+      }
+    }
+  }
+  return added
+}
+
 export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'discover_relations',
@@ -144,7 +207,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     output: {
       schema: {
         type: 'object',
-        additionalProperties: false,
+        additionalProperties: true,
         properties: {
           ok: { type: 'boolean', required: true },
           enriched: { type: 'number' },
@@ -157,13 +220,49 @@ export function apply(ctx: Context, _config: Config = {}): void {
         type: 'text',
         text: formatDiscoverRelations(value),
       }],
+      presentationMeta: (_args, value): any => {
+        const v = value as DiscoverRelationsResult
+        if (!v.ok || !v._before || !v._after) return { ok: false }
+        const added = computeAddedRelations(v._before, v._after)
+        return {
+          ok: true,
+          enriched: v.enriched ?? 0,
+          written: v.written ?? 0,
+          before: v._before,
+          after: v._after,
+          added,
+        }
+      },
     },
     async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('discover_relations aborted before enriching')
       }
       const schema = ctx.get('schema')
-      return discoverRelationsResult(schema, args.tables)
+      return discoverRelationsResult(schema, args.tables) as any
+    },
+    presentCall(args): GenericCallView {
+      const tables = args.tables as string[] | undefined
+      const scope = tables !== undefined && tables.length > 0
+        ? `${tables.length} table${tables.length > 1 ? 's' : ''}`
+        : 'all tables'
+      return {
+        card: 'generic',
+        title: `Discover Relations (${scope})`,
+        kind: 'search',
+      }
+    },
+    presentResult(_args, result: ToolResult): GenericResultView | undefined {
+      if (result.isError) return undefined
+      const meta = result.meta as { ok?: boolean; enriched?: number; added?: unknown[] } | undefined
+      if (!meta?.ok) return { card: 'generic', title: 'Relations discovery failed' }
+      const addedCount = meta.added?.length ?? 0
+      return {
+        card: 'generic',
+        title: addedCount > 0
+          ? `+${addedCount} relation${addedCount > 1 ? 's' : ''} discovered`
+          : `${meta.enriched ?? 0} table${(meta.enriched ?? 0) !== 1 ? 's' : ''} enriched (no new relations)`,
+      }
     },
   }))
 }

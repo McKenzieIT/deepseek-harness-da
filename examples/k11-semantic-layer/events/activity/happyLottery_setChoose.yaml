@@ -1,8 +1,8 @@
 name: game.happyLottery.setChoose
 event_filter: event = 'game.happyLottery.setChoose'
-description: '刮刮乐(happyLottery)活动中玩家设置刮奖选择项的事件，记录玩家在某个活动(lotteryId)下对奖励(rewardId)所选择的 index1/index2 两个选择项。用于分析刮刮乐玩法的选择偏好、参与热度与服务器分布。主体粒度为 role_id(角色级)，单次实测 ds=20260729 命中 cnt=533、role_uv=166、account_uv=166、server_uv=100。'
+description: 刮刮乐(happyLottery)活动中玩家设置刮奖选择项的事件，记录玩家在某个活动(lotteryId)下对奖励(rewardId)所选择的 index1/index2 两个选择项。用于分析刮刮乐玩法的选择偏好、参与热度与服务器分布。主体粒度为 role_id(角色级)，单次实测 ds=20260729 命中 cnt=533、role_uv=166、account_uv=166、server_uv=100。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -98,16 +98,17 @@ metrics:
     description: 触发设置选择事件的去重游戏服数
 coverage:
   scenarios:
-  - 刮刮乐活动设置选择的参与热度(总次数/角色数/账号数)
-  - 跨游戏服的选择行为覆盖面
-  - 单服/单角色选择频次分布(结合 index1/index2/lotteryId/rewardId)
+    - 刮刮乐活动设置选择的参与热度(总次数/角色数/账号数)
+    - 跨游戏服的选择行为覆盖面
+    - 单服/单角色选择频次分布(结合 index1/index2/lotteryId/rewardId)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id(角色级)，account_id 仅作账号级补充
-  - 未对 index1/index2 取值分布做细粒度验证
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id(角色级)，account_id 仅作账号级补充
+    - 未对 index1/index2 取值分布做细粒度验证
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 scout 实测：cnt=533, role_uv=166, acc_uv=166, server_uv=100，数值合理，命中非零。'
+  note: ds=20260729 scout 实测：cnt=533, role_uv=166, acc_uv=166, server_uv=100，数值合理，命中非零。
 coverage_status: analyst_confirmed
+external_refs: []

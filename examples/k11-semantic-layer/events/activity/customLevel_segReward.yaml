@@ -1,8 +1,8 @@
 name: game.customLevel.segReward
 event_filter: event = 'game.customLevel.segReward'
-description: '演武场-领取段位奖励：玩家在演武场领取段位奖励时触发的埋点事件。记录领奖时的角色、服务器、段位(seg)及领奖前后各类货币(金币/钻石/紫金/经验卷轴/体力)变动。主体粒度为 role_id（角色级事件）。scout 实测 ds=20260729 与 ds=20260728 单日命中均为 0。参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个'
+description: 演武场-领取段位奖励：玩家在演武场领取段位奖励时触发的埋点事件。记录领奖时的角色、服务器、段位(seg)及领奖前后各类货币(金币/钻石/紫金/经验卷轴/体力)变动。主体粒度为 role_id（角色级事件）。scout 实测 ds=20260729 与 ds=20260728 单日命中均为 0。参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -89,15 +89,16 @@ metrics:
     description: 领取段位奖励的去重游戏服数
 coverage:
   scenarios:
-  - 演武场段位奖励领取频次与覆盖规模
-  - 各服务器/账号/角色的领奖渗透
+    - 演武场段位奖励领取频次与覆盖规模
+    - 各服务器/账号/角色的领奖渗透
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 日志中零命中(ds=20260729 cnt=0 与 ds=20260728 cnt=0)，疑似下线/未触发
-  - 主体粒度默认为 role_id
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729 cnt=0 与 ds=20260728 cnt=0)，疑似下线/未触发
+    - 主体粒度默认为 role_id
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 cnt=0/role_uv=0/acc_uv=0；零命中，保留 draft'
+  note: ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 cnt=0/role_uv=0/acc_uv=0；零命中，保留 draft
   coverage_status: draft
+external_refs: []

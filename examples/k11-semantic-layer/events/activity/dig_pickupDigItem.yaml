@@ -1,8 +1,8 @@
 name: game.dig.pickupDigItem
 event_filter: event = 'game.dig.pickupDigItem'
-description: '挖宝拾取道具：玩家在挖宝玩法中拾取到掉落道具时上报的单次拾取事件，参数含角色/账号/游戏服上下文、货币列表(coinList)、位置pos、层级digLevel等。主题粒度为 role_id（单角色单次拾取）。实测 ds=20260729 单日零命中（cnt=0），ds=20260728 亦为零命中，日志中未见该事件触发，疑似下线或未上线。'
+description: 挖宝拾取道具：玩家在挖宝玩法中拾取到掉落道具时上报的单次拾取事件，参数含角色/账号/游戏服上下文、货币列表(coinList)、位置pos、层级digLevel等。主题粒度为 role_id（单角色单次拾取）。实测 ds=20260729 单日零命中（cnt=0），ds=20260728 亦为零命中，日志中未见该事件触发，疑似下线或未上线。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,15 +92,16 @@ metrics:
     description: 触发挖宝拾取的去重游戏服数
 coverage:
   scenarios:
-  - 监控挖宝玩法道具产出体量与参与角色/账号/游戏服覆盖
-  - 评估挖宝拾取活跃度趋势（按角色或游戏服维度下钻）
+    - 监控挖宝玩法道具产出体量与参与角色/账号/游戏服覆盖
+    - 评估挖宝拾取活跃度趋势（按角色或游戏服维度下钻）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
-  - 主题粒度默认 role_id，账号级统计另见 account_uv 指标
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
+    - 主题粒度默认 role_id，账号级统计另见 account_uv 指标
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 cnt=0 role_uv=0 acc_uv=0；ds=20260728 cnt=0 role_uv=0 acc_uv=0。日志中零命中，疑似下线/未触发，保持 draft。'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 cnt=0 role_uv=0 acc_uv=0；ds=20260728 cnt=0 role_uv=0 acc_uv=0。日志中零命中，疑似下线/未触发，保持 draft。
   coverage_status: draft
+external_refs: []

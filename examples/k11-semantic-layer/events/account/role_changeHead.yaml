@@ -1,8 +1,8 @@
 name: game.role.changeHead
 event_filter: event = 'game.role.changeHead'
-description: '玩家修改头像或头像框时上报的事件（game.role.changeHead），记录角色更换头像/头像框的行为，含 headId 指明切换到的目标头像id。主体粒度为 role_id（角色），可聚合到 account_id 与 server_id。ds=20260729 单日实测：事件 368 条、角色 303、账号 301、服务器 68。'
+description: 玩家修改头像或头像框时上报的事件（game.role.changeHead），记录角色更换头像/头像框的行为，含 headId 指明切换到的目标头像id。主体粒度为 role_id（角色），可聚合到 account_id 与 server_id。ds=20260729 单日实测：事件 368 条、角色 303、账号 301、服务器 68。
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -99,6 +99,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 单日 scout 实测：cnt=368, role_uv=303, acc_uv=301, server_uv=68，数据量合理'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 单日 scout 实测：cnt=368, role_uv=303, acc_uv=301, server_uv=68，数据量合理
   coverage_status: analyst_confirmed
+external_refs: []

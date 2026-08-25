@@ -1,8 +1,8 @@
 name: game.autoSkill.setDefaultItems
 event_filter: event = 'game.autoSkill.setDefaultItems'
-description: '玩家在自动战斗系统中为武将设置默认技能方案选项时上报的事件，记录武将id、技能group、目标、条件等方案配置。角色级事件，主体粒度为 role_id。单日实测(ds=20260729)上报 768802 条，覆盖 4267 角色 / 4028 账号 / 467 服务器。参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等27个'
+description: 玩家在自动战斗系统中为武将设置默认技能方案选项时上报的事件，记录武将id、技能group、目标、条件等方案配置。角色级事件，主体粒度为 role_id。单日实测(ds=20260729)上报 768802 条，覆盖 4267 角色 / 4028 账号 / 467 服务器。参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等27个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -90,7 +90,7 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 实测 cnt=768802 role_uv=4267 acc_uv=4028 server_uv=467，数据量合理且分布正常'
+  note: ds=20260729 实测 cnt=768802 role_uv=4267 acc_uv=4028 server_uv=467，数据量合理且分布正常
 metrics:
   game_autoSkill_setDefaultItems_cnt:
     expression: COUNT(*)
@@ -109,7 +109,8 @@ coverage:
     - 自动战斗武将默认方案配置活跃度监控（总次数 / 角色数 / 账号数 / 服务器数）
     - 评估自动战斗功能使用广度与渗透率，定位高频配置武将方案的用户群体
   limitations:
-    - '仅 ds=20260729 单日 scout 实测，未做全量复核'
-    - '主体粒度为 role_id（角色级事件，account_id 为账号维度辅助）'
-    - '未细化到 skillGroup / knightId 级别分布，仅做事件总体量级核对'
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度为 role_id（角色级事件，account_id 为账号维度辅助）
+    - 未细化到 skillGroup / knightId 级别分布，仅做事件总体量级核对
   coverage_status: analyst_confirmed
+external_refs: []

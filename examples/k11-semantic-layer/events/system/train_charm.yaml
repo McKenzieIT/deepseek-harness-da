@@ -1,16 +1,13 @@
 name: game.train.charm
 event_filter: event = 'game.train.charm'
-description: '灵器养成
-
+description: |-
+  灵器养成
   参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等32个。
-
   事件语义：灵器（charm）养成埋点，覆盖 action=1 升星、action=2 解锁图鉴、action=3 护佑 三类操作；params 内 charm（灵器信息，升星/解锁图鉴时上报）、charmGround（命盘信息，护佑时上报）为嵌套 json/array 结构。
-
   分析主体：role_id（角色级养成事件），account_id 作账号级补充，server_id 作游戏服分布维度。
-
-  2026-07-30 scout 实测 ds=20260729：cnt=1471 / role_uv=616 / acc_uv=609 / server_uv=85；动作分布 action=1(升星) 345次/304角色、action=2(解锁图鉴) 522次/477角色、action=3(护佑) 604次/494角色。'
+  2026-07-30 scout 实测 ds=20260729：cnt=1471 / role_uv=616 / acc_uv=609 / server_uv=85；动作分布 action=1(升星) 345次/304角色、action=2(解锁图鉴) 522次/477角色、action=3(护佑) 604次/494角色。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -139,16 +136,17 @@ metrics:
     description: 灵器升星事件在总养成中的占比（衡量升星渗透率）
 coverage:
   scenarios:
-  - 灵器养成三类动作（升星/解锁图鉴/护佑）的参与规模与分布
-  - 灵器养成活跃角色数、账号数、覆盖游戏服数
-  - 升星动作在总养成中的占比（升星渗透率）
+    - 灵器养成三类动作（升星/解锁图鉴/护佑）的参与规模与分布
+    - 灵器养成活跃角色数、账号数、覆盖游戏服数
+    - 升星动作在总养成中的占比（升星渗透率）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（角色级养成事件），account_id 作账号级补充
-  - params 内 charm（灵器信息）、charmGround（命盘信息）为嵌套 json/array，本指标层未展开 charmId/star 等子粒度聚合
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（角色级养成事件），account_id 作账号级补充
+    - params 内 charm（灵器信息）、charmGround（命盘信息）为嵌套 json/array，本指标层未展开 charmId/star 等子粒度聚合
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
   note: "scout 实测 ds=20260729: cnt=1471 / role_uv=616 / acc_uv=609 / server_uv=85；动作分布 action=1(升星) 345次/304角色, action=2(解锁图鉴) 522次/477角色, action=3(护佑) 604次/494角色。三类动作均有命中，数字合理。"
 coverage_status: analyst_confirmed
+external_refs: []

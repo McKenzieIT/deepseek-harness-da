@@ -1,8 +1,8 @@
 name: game.knightMap.stageUp
 event_filter: event = 'game.knightMap.stageUp'
-description: '武将云图升阶段事件：记录玩家在武将云图（武将图鉴）系统中提升阶段等级的行为，携带 serverId/roleId/roleName/roleLevel/vipLevel/roleForce/exp 等角色属性及 group/stage 阶段参数。subject 粒度为 role_id（角色级事件），ds=20260729 单日实测 673 次触发、132 角色、130 账号、92 游戏服。'
+description: 武将云图升阶段事件：记录玩家在武将云图（武将图鉴）系统中提升阶段等级的行为，携带 serverId/roleId/roleName/roleLevel/vipLevel/roleForce/exp 等角色属性及 group/stage 阶段参数。subject 粒度为 role_id（角色级事件），ds=20260729 单日实测 673 次触发、132 角色、130 账号、92 游戏服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,15 +92,16 @@ metrics:
     description: 武将云图升阶段累计提升的 stage 值总和
 coverage:
   scenarios:
-  - 评估武将云图升阶段系统的参与度（触发次数、角色/账号覆盖）与阶段推进总量，作为角色成长与系统监控的活跃指标
+    - 评估武将云图升阶段系统的参与度（触发次数、角色/账号覆盖）与阶段推进总量，作为角色成长与系统监控的活跃指标
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - subject 默认为 role_id（角色级）
-  - stage_sum 为累计求和口径，可能多次升阶累加，非去重阶段数
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - subject 默认为 role_id（角色级）
+    - stage_sum 为累计求和口径，可能多次升阶累加，非去重阶段数
   data_scope: ds=20260729
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 实测 cnt=673, role_uv=132, acc_uv=130, server_uv=92'
+  note: ds=20260729 实测 cnt=673, role_uv=132, acc_uv=130, server_uv=92
   coverage_status: analyst_confirmed
+external_refs: []

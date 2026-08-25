@@ -69,11 +69,17 @@ export interface SearchHit {
 
 /** Infer the data-source kind from a corpus item's payload. */
 function typeOf(payload: unknown): string {
-  const k = (payload as { kind?: string } | undefined)?.kind
+  // RetrievalHit.payload is a CorpusItem ({id, description?, payload?}) — the
+  // data-source definition (MetricDefinition/TableDefinition/EventDefinition)
+  // is the NESTED `payload.payload`, not `payload` itself (isMetricHit reads
+  // `hit.payload?.payload?.kind`). Read the inner kind; fall back to event
+  // fields; else 'source'.
+  const outer = payload as { kind?: string; payload?: { kind?: string; params_fields?: unknown; external_refs?: unknown; event_filter?: unknown } } | undefined
+  const inner = outer?.payload
+  const k = outer?.kind ?? inner?.kind
   if (k === 'metric') return 'metric'
   if (k === 'dws' || k === 'dim') return 'table'
-  const e = payload as { params_fields?: unknown; external_refs?: unknown; event_filter?: unknown } | undefined
-  if (e?.params_fields !== undefined || e?.external_refs !== undefined || e?.event_filter !== undefined) return 'event'
+  if (inner?.params_fields !== undefined || inner?.external_refs !== undefined || inner?.event_filter !== undefined) return 'event'
   return 'source'
 }
 
@@ -117,7 +123,11 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
   // (TableDefinitionSchema.project). Guarded typeof check so a missing or
   // non-string project yields `undefined` → no `project` key on the SearchHit
   // (toEqual stays exact for payloads without project, e.g. S8/S9).
-  const projectRaw = (h.payload as { project?: unknown } | undefined)?.project
+  // project may be on the CorpusItem wrapper (test mocks) or the nested
+  // TableDefinition (real RetrievalHit.payload = {payload: TableDefinition});
+  // read both layers.
+  const outer = h.payload as { project?: unknown; payload?: { project?: unknown } } | undefined
+  const projectRaw = outer?.project ?? outer?.payload?.project
   const project = typeof projectRaw === 'string' && projectRaw.length > 0 ? projectRaw : undefined
   return {
     id: h.id,

@@ -1,8 +1,8 @@
 name: game.homelandGoodPlace.reward
 event_filter: event = 'game.homelandGoodPlace.reward'
-description: '家园-宝地领奖事件：角色在家园宝地玩法中领取奖励时上报，携带角色基础信息（账号/角色/性别/等级/VIP/战力/经验）与领奖类型(types)及关键货币快照(coinList)。主体粒度为 role_id（角色），单角色可多次领奖。ds=20260729/20260728 单日 scout 实测零命中(cnt=0)。'
+description: 家园-宝地领奖事件：角色在家园宝地玩法中领取奖励时上报，携带角色基础信息（账号/角色/性别/等级/VIP/战力/经验）与领奖类型(types)及关键货币快照(coinList)。主体粒度为 role_id（角色），单角色可多次领奖。ds=20260729/20260728 单日 scout 实测零命中(cnt=0)。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 metrics:
   game_homelandGoodPlace_reward_cnt:
@@ -21,9 +21,9 @@ coverage:
   scenarios:
     - 监控家园宝地领奖的触发频次与角色/账号/服务器触达广度
   limitations:
-    - '日志中零命中(ds=20260729/20260728)，疑似下线/未触发'
-    - '仅 ds=20260729 单日 scout 实测，未做全量复核'
-    - '默认主体粒度 role_id；当前无可信体量，未做金额/数量类聚合'
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度 role_id；当前无可信体量，未做金额/数量类聚合
   default_subject: role_id
 params_fields:
   serverId:
@@ -98,6 +98,7 @@ params_fields:
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 重试 cnt=0；零命中，保留 draft'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 重试 cnt=0；零命中，保留 draft
   coverage_status: draft
+external_refs: []

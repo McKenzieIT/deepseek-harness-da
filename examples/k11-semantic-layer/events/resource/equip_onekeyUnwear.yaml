@@ -1,10 +1,8 @@
 name: game.equip.onekeyUnwear
 event_filter: event = 'game.equip.onekeyUnwear'
-description: '装备-一键脱下：玩家通过一键操作卸下角色（含武将 knightId）身上的装备，触发 game.equip.onekeyUnwear
-  事件，params.uids 记录本次卸下的装备 uid 列表。分析主体为 role_id（角色），可按 account_id、server_id
-  维度拆分。实测 ds=20260729 单日：cnt=3128、role_uv=635、acc_uv=621、server_uv=119。'
+description: 装备-一键脱下：玩家通过一键操作卸下角色（含武将 knightId）身上的装备，触发 game.equip.onekeyUnwear 事件，params.uids 记录本次卸下的装备 uid 列表。分析主体为 role_id（角色），可按 account_id、server_id 维度拆分。实测 ds=20260729 单日：cnt=3128、role_uv=635、acc_uv=621、server_uv=119。
 domains:
-- 装备道具
+  - 装备道具
 domain: resource
 params_fields:
   serverId:
@@ -97,16 +95,17 @@ metrics:
     description: 人均触发次数 = 总次数 / 去重角色数（分母为 0 时返回 NULL）
 coverage:
   scenarios:
-  - 单日/累计一键脱下使用量与去重角色数（衡量一键卸装功能的渗透与活跃）
-  - 按游戏服、账号、角色拆分的卸装行为分布
-  - 人均触发次数用于识别批量卸装操作倾向
+    - 单日/累计一键脱下使用量与去重角色数（衡量一键卸装功能的渗透与活跃）
+    - 按游戏服、账号、角色拆分的卸装行为分布
+    - 人均触发次数用于识别批量卸装操作倾向
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核（无 7 日/30 日趋势）
-  - 分析主体粒度默认 role_id（角色），未对武将 knightId 维度单独核对
-  - params.uids（卸下装备列表）为 JSON 数组，未在指标中聚合其元素个数（避免对数组长度函数的方言依赖）
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核（无 7 日/30 日趋势）
+    - 分析主体粒度默认 role_id（角色），未对武将 knightId 维度单独核对
+    - params.uids（卸下装备列表）为 JSON 数组，未在指标中聚合其元素个数（避免对数组长度函数的方言依赖）
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729：cnt=3128、role_uv=635、acc_uv=621、server_uv=119，数据合理，事件在线触发正常'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729：cnt=3128、role_uv=635、acc_uv=621、server_uv=119，数据合理，事件在线触发正常
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,10 +1,10 @@
 name: game.shop.buy
 event_filter: event = 'game.shop.buy'
-description: '商店购买事件：玩家在游戏商店（shopId/shopName）使用货币或资源购买货物（goodsId）时上报，单次事件记录购买数量（buyCnt）、消耗资源（cost 数组）、获得资源（gain 数组）以及购买后货币快照（coinList 含充值钻石 gold/赠送钻石 sendgold/免费钻石 freegold/紫金 diamond/经验卷轴 expCoin/体力 energy）。
-
-  分析主体粒度：role_id（角色级）；同一账号多角色聚合用 account_id。实测 ds=20260729：事件 19026 次、角色 3344、账号 3162、服务器 419、货物 289 种、商店 17 个、购买数量合计 229899、充值钻石金额合计 138322。'
+description: |-
+  商店购买事件：玩家在游戏商店（shopId/shopName）使用货币或资源购买货物（goodsId）时上报，单次事件记录购买数量（buyCnt）、消耗资源（cost 数组）、获得资源（gain 数组）以及购买后货币快照（coinList 含充值钻石 gold/赠送钻石 sendgold/免费钻石 freegold/紫金 diamond/经验卷轴 expCoin/体力 energy）。
+  分析主体粒度：role_id（角色级）；同一账号多角色聚合用 account_id。实测 ds=20260729：事件 19026 次、角色 3344、账号 3162、服务器 419、货物 289 种、商店 17 个、购买数量合计 229899、充值钻石金额合计 138322。
 domains:
-- 付费经济
+  - 付费经济
 domain: payment
 params_fields:
   serverId:
@@ -148,19 +148,20 @@ metrics:
     description: 人均购买数量（购买数量合计 / 购买角色去重数）
 coverage:
   scenarios:
-  - 评估商店购买整体规模（事件次数、角色/账号/服务器覆盖）
-  - 监测热门货物（goods_uv）与活跃商店（shop_uv）分布
-  - 衡量购买数量级（buycnt_sum）与人均购买次数（buycnt_per_role）
-  - 观察购买事件关联的充值钻石金额量级（gold_sum，非真实流水）
+    - 评估商店购买整体规模（事件次数、角色/账号/服务器覆盖）
+    - 监测热门货物（goods_uv）与活跃商店（shop_uv）分布
+    - 衡量购买数量级（buycnt_sum）与人均购买次数（buycnt_per_role）
+    - 观察购买事件关联的充值钻石金额量级（gold_sum，非真实流水）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - gold_sum 为 coinList.gold 购买后快照余额求和，非真实付费流水；真实消耗请参考 cost 数组（需 explode）
-  - gain/cost 为数组结构，未在 metrics 中展开汇总；如需资源级口径需单独建表
-  - 分析主体默认 role_id（角色级），跨角色聚合需切换至 account_id
-  - 事件 schema 含 37 个参数，部分低频字段未纳入 metrics
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - gold_sum 为 coinList.gold 购买后快照余额求和，非真实付费流水；真实消耗请参考 cost 数组（需 explode）
+    - gain/cost 为数组结构，未在 metrics 中展开汇总；如需资源级口径需单独建表
+    - 分析主体默认 role_id（角色级），跨角色聚合需切换至 account_id
+    - 事件 schema 含 37 个参数，部分低频字段未纳入 metrics
 coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729：cnt=19026 / role_uv=3344 / acc_uv=3162 / server_uv=419 / buycnt_sum=229899 / gold_sum=138322 / goods_uv=289 / shop_uv=17，数值合理。'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729：cnt=19026 / role_uv=3344 / acc_uv=3162 / server_uv=419 / buycnt_sum=229899 / gold_sum=138322 / goods_uv=289 / shop_uv=17，数值合理。
+external_refs: []

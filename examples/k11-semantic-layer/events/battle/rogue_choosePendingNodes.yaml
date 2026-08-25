@@ -1,11 +1,8 @@
 name: game.rogue.choosePendingNodes
 event_filter: event = 'game.rogue.choosePendingNodes'
-description: >-
-  古战场-选择替换节点：玩家在古战场(rogue)副本中选择替换"待处理节点"时触发的战斗关卡事件，上报被替换节点id(nodeId)、原节点类型(oldType)与替换后节点类型(newType)。
-  参数含游戏服id、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表(充值/赠送/免费钻石、紫金、经验卷轴、体力)、会话id、logUUID、nodeId/oldType/newType 等25个字段。
-  分析主体粒度为 role_id（角色）。实测 ds=20260729 单日：cnt=101、role_uv=51、acc_uv=50、server_uv=26，涉及 node_uv=21、old_type_uv=2、new_type_uv=2。
+description: 古战场-选择替换节点：玩家在古战场(rogue)副本中选择替换"待处理节点"时触发的战斗关卡事件，上报被替换节点id(nodeId)、原节点类型(oldType)与替换后节点类型(newType)。 参数含游戏服id、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表(充值/赠送/免费钻石、紫金、经验卷轴、体力)、会话id、logUUID、nodeId/oldType/newType 等25个字段。 分析主体粒度为 role_id（角色）。实测 ds=20260729 单日：cnt=101、role_uv=51、acc_uv=50、server_uv=26，涉及 node_uv=21、old_type_uv=2、new_type_uv=2。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -122,5 +119,5 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: >-
-    实测 ds=20260729：cnt=101、role_uv=51、acc_uv=50、server_uv=26；事件可访问且数据合理（node_uv=21、old_type_uv=2、new_type_uv=2、nodeId 零空值、roleLevel 50-100）。
+  note: 实测 ds=20260729：cnt=101、role_uv=51、acc_uv=50、server_uv=26；事件可访问且数据合理（node_uv=21、old_type_uv=2、new_type_uv=2、nodeId 零空值、roleLevel 50-100）。
+external_refs: []

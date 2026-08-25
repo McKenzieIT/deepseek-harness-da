@@ -1,8 +1,8 @@
 name: game.maze.enter
 event_filter: event = 'game.maze.enter'
-description: '玩家进入迷宫副本时上报的事件，记录角色进入特定迷宫(dungeonId)的时机与角色快照(等级/战力/vip/货币)。分析主体为 role_id(角色)；单日 ds=20260729 scout 实测 cnt=308、role_uv=110、acc_uv=110、server_uv=17。用于迷宫关卡参与度、角色构成与副本活跃度分析。'
+description: 玩家进入迷宫副本时上报的事件，记录角色进入特定迷宫(dungeonId)的时机与角色快照(等级/战力/vip/货币)。分析主体为 role_id(角色)；单日 ds=20260729 scout 实测 cnt=308、role_uv=110、acc_uv=110、server_uv=17。用于迷宫关卡参与度、角色构成与副本活跃度分析。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -77,8 +77,8 @@ params_fields:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729: cnt=308, role_uv=110, acc_uv=110, server_uv=17; 数量合理(迷宫进入为高频副本事件)'
+  confirmed_at: "2026-07-30"
+  note: "scout 实测 ds=20260729: cnt=308, role_uv=110, acc_uv=110, server_uv=17; 数量合理(迷宫进入为高频副本事件)"
 coverage_status: analyst_confirmed
 metrics:
   game_maze_enter_cnt:
@@ -101,10 +101,11 @@ metrics:
     description: 人均迷宫进入次数(总次数/去重角色数)
 coverage:
   scenarios:
-  - 迷宫副本参与度与活跃角色规模(role_uv/account_uv)
-  - 不同迷宫(dungeonId)的覆盖广度与热门副本分布(dungeon_uv)
-  - 跨服参与情况(server_uv)与人均进入频次(avg_per_role)
+    - 迷宫副本参与度与活跃角色规模(role_uv/account_uv)
+    - 不同迷宫(dungeonId)的覆盖广度与热门副本分布(dungeon_uv)
+    - 跨服参与情况(server_uv)与人均进入频次(avg_per_role)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认为 role_id(角色)；account_id 与 role_id 实测一一对应(均=110)，无多角色并号情形
-  - 仅验证事件命中与量级，未对 params 内货币(coinList)字段做金额聚合复核
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认为 role_id(角色)；account_id 与 role_id 实测一一对应(均=110)，无多角色并号情形
+    - 仅验证事件命中与量级，未对 params 内货币(coinList)字段做金额聚合复核
+external_refs: []

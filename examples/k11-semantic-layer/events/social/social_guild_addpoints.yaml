@@ -1,8 +1,8 @@
 name: game.social.guild.addpoints
 event_filter: event = 'game.social.guild.addpoints'
-description: '公会活跃值增加事件。每次角色在公会内通过日常行为(任务/活动)产生公会活跃贡献时触发，记录本次新增活跃点数(guildActiveAddPoints)及当前公会累计活跃值(guildActivePoints)。分析粒度默认 role_id(角色)，每次活跃贡献按角色归集，可统计公会活跃度分布、活跃贡献榜、人均活跃产出等。ds=20260729 scout 实测：cnt=9582，role_uv=3761，acc_uv=3581，server_uv=461，新增活跃点数合计 431310，累计活跃值合计 68036710。'
+description: 公会活跃值增加事件。每次角色在公会内通过日常行为(任务/活动)产生公会活跃贡献时触发，记录本次新增活跃点数(guildActiveAddPoints)及当前公会累计活跃值(guildActivePoints)。分析粒度默认 role_id(角色)，每次活跃贡献按角色归集，可统计公会活跃度分布、活跃贡献榜、人均活跃产出等。ds=20260729 scout 实测：cnt=9582，role_uv=3761，acc_uv=3581，server_uv=461，新增活跃点数合计 431310，累计活跃值合计 68036710。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -101,17 +101,18 @@ metrics:
     expression: SUM(CAST(GET_JSON_OBJECT(params,'$.guildActiveAddPoints') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id),0)
 coverage:
   scenarios:
-  - 公会日活跃度分布与活跃度趋势(单服/全服)
-  - 公会成员活跃贡献榜(Top-N 角色新增活跃点数)
-  - 人均活跃产出与人均事件次数(角色粒度)
-  - 跨服活跃度对比(参与服数与点数)
+    - 公会日活跃度分布与活跃度趋势(单服/全服)
+    - 公会成员活跃贡献榜(Top-N 角色新增活跃点数)
+    - 人均活跃产出与人均事件次数(角色粒度)
+    - 跨服活跃度对比(参与服数与点数)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析粒度默认 role_id(角色)，同一账号下多角色需自行聚合
-  - guildActiveAddPoints 为本次增量，guildActivePoints 为累计值快照，使用时注意区分
-  - 同一角色当日多次触发按多次计入，未做会话内去重
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析粒度默认 role_id(角色)，同一账号下多角色需自行聚合
+    - guildActiveAddPoints 为本次增量，guildActivePoints 为累计值快照，使用时注意区分
+    - 同一角色当日多次触发按多次计入，未做会话内去重
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
 coverage_status: analyst_confirmed
+external_refs: []

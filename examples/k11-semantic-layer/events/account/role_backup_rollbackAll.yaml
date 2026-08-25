@@ -1,8 +1,8 @@
 name: game.role.backup.rollbackAll
 event_filter: event = 'game.role.backup.rollbackAll'
-description: '玩家数据全部回退(rollbackAll)事件，记录玩家执行整档回退到指定 tag 存档点的行为，区别于按模块回退的 rollback 事件。每次全量回退记一条日志，参数含游戏服id、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、关键货币列表(coinList)、回退时间、回退tagId/tagUuid 等25个字段。分析粒度以 role_id 为主（account 域 role_* 事件）。scout 实测 ds=20260729/20260728 均零命中，事件疑似下线或近期未触发。'
+description: 玩家数据全部回退(rollbackAll)事件，记录玩家执行整档回退到指定 tag 存档点的行为，区别于按模块回退的 rollback 事件。每次全量回退记一条日志，参数含游戏服id、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、关键货币列表(coinList)、回退时间、回退tagId/tagUuid 等25个字段。分析粒度以 role_id 为主（account 域 role_* 事件）。scout 实测 ds=20260729/20260728 均零命中，事件疑似下线或近期未触发。
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -101,16 +101,17 @@ metrics:
     description: 人均全量回退次数（总次数/去重角色数）
 coverage:
   scenarios:
-  - 玩家全量数据回退操作频次（总次数、去重角色数、去重账号数）
-  - 回退 tag 存档点选择分布（去重 tagId 数）
-  - 全量回退在服务器/平台维度的覆盖广度
+    - 玩家全量数据回退操作频次（总次数、去重角色数、去重账号数）
+    - 回退 tag 存档点选择分布（去重 tagId 数）
+    - 全量回退在服务器/平台维度的覆盖广度
   limitations:
-  - 日志中零命中(ds=20260729 与 ds=20260728 cnt=0)，事件疑似下线/未触发，metrics 为结构性定义待事件恢复后实测
-  - subject 粒度默认 role_id（account 域 role_* 事件），未逐事件实测角色级聚合准确性
-  - tagId/tagUuid 字段仅统计去重数，未做 tag 分布直方图
+    - 日志中零命中(ds=20260729 与 ds=20260728 cnt=0)，事件疑似下线/未触发，metrics 为结构性定义待事件恢复后实测
+    - subject 粒度默认 role_id（account 域 role_* 事件），未逐事件实测角色级聚合准确性
+    - tagId/tagUuid 字段仅统计去重数，未做 tag 分布直方图
 coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
   note: scout 单日实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0)，事件疑似下线或近期未触发，保持 draft
+external_refs: []

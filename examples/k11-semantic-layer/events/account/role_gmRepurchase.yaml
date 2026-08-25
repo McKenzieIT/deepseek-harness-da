@@ -1,6 +1,6 @@
 name: game.role.gmRepurchase
 event_filter: event = 'game.role.gmRepurchase'
-description: 'GM重新发货(gmRepurchase)事件：通过GM工具对已存在订单(orderId)重新发货/补单，记录补发时的角色快照(等级/战力/货币余额)与订单信息。主体粒度为role_id，单日scout实测ds=20260729/20260728零命中。'
+description: GM重新发货(gmRepurchase)事件：通过GM工具对已存在订单(orderId)重新发货/补单，记录补发时的角色快照(等级/战力/货币余额)与订单信息。主体粒度为role_id，单日scout实测ds=20260729/20260728零命中。
 metrics:
   game_role_gmRepurchase_cnt:
     expression: COUNT(*)
@@ -15,7 +15,7 @@ metrics:
     expression: COUNT(DISTINCT server_id)
     description: 触发GM重新发货的去重游戏服数
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -89,15 +89,16 @@ params_fields:
     description: 订单id
 coverage:
   scenarios:
-  - GM补单/重新发货频次与角色、账号、游戏服覆盖
-  - 评估GM工具补发量级与异常补单监控
+    - GM补单/重新发货频次与角色、账号、游戏服覆盖
+    - 评估GM工具补发量级与异常补单监控
   limitations:
-  - 日志中零命中(ds=20260729 cnt=0/role_uv=0/acc_uv=0，ds=20260728 同样零命中)，疑似事件已下线或近期未触发
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度 role_id
+    - 日志中零命中(ds=20260729 cnt=0/role_uv=0/acc_uv=0，ds=20260728 同样零命中)，疑似事件已下线或近期未触发
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度 role_id
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: draft
-  note: 'ds=20260729 scout: cnt=0 role_uv=0 acc_uv=0 server_uv=0；ds=20260728 retry: 同样全零。事件疑似下线/未触发，保持 draft。'
+  note: "ds=20260729 scout: cnt=0 role_uv=0 acc_uv=0 server_uv=0；ds=20260728 retry: 同样全零。事件疑似下线/未触发，保持 draft。"
+external_refs: []

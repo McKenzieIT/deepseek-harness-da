@@ -1,8 +1,8 @@
 name: game.teamConquest.quit
 event_filter: event = 'game.teamConquest.quit'
-description: '退出组队讨伐（teamConquest）玩法事件，记录玩家退出/离开组队讨伐的瞬间快照。分析主体为角色（role_id），同时携带账号、游戏服、角色等级、vip等级、角色战力及多种货币余额等23个参数。scout实测 ds=20260729：cnt=7，role_uv=7，acc_uv=7，server_uv=5。'
+description: 退出组队讨伐（teamConquest）玩法事件，记录玩家退出/离开组队讨伐的瞬间快照。分析主体为角色（role_id），同时携带账号、游戏服、角色等级、vip等级、角色战力及多种货币余额等23个参数。scout实测 ds=20260729：cnt=7，role_uv=7，acc_uv=7，server_uv=5。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -88,7 +88,7 @@ metrics:
     expression: COUNT(DISTINCT server_id)
     description: 退出组队讨伐涉及的去重游戏服数
   team_conquest_quit_cnt_per_role:
-    expression: 'CAST(COUNT(*) AS DOUBLE) / NULLIF(COUNT(DISTINCT role_id), 0)'
+    expression: CAST(COUNT(*) AS DOUBLE) / NULLIF(COUNT(DISTINCT role_id), 0)
     description: 人均退出组队讨伐次数（总次数/去重角色数）
 coverage:
   scenarios:
@@ -104,4 +104,5 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout实测 ds=20260729: cnt=7, role_uv=7, acc_uv=7, server_uv=5'
+  note: "scout实测 ds=20260729: cnt=7, role_uv=7, acc_uv=7, server_uv=5"
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.social.friendact
 event_filter: event = 'game.social.friendact'
-description: 'social.friendact 好友关系变更事件：玩家与目标角色(relRoleId)之间好友关系升级(action=2)或降级(action=1)动作，记录密友等级(relationLevel)。分析主体粒度为 role_id（发起方角色），每次动作产生一条日志。scout 实测 ds=20260729/20260728 均零命中(cnt=0)，疑似事件下线/未触发。'
+description: social.friendact 好友关系变更事件：玩家与目标角色(relRoleId)之间好友关系升级(action=2)或降级(action=1)动作，记录密友等级(relationLevel)。分析主体粒度为 role_id（发起方角色），每次动作产生一条日志。scout 实测 ds=20260729/20260728 均零命中(cnt=0)，疑似事件下线/未触发。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -84,7 +84,7 @@ confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: "scout 实测 ds=20260729 cnt=0，retry ds=20260728 cnt=0；零命中，疑似事件下线/未触发；指标表达式按事件 schema 预置待复核"
+  note: scout 实测 ds=20260729 cnt=0，retry ds=20260728 cnt=0；零命中，疑似事件下线/未触发；指标表达式按事件 schema 预置待复核
 metrics:
   friendact_cnt:
     expression: COUNT(*)
@@ -109,11 +109,12 @@ metrics:
     description: 好友关系升级动作占变更总次数的比例（NULLIF 防零除）
 coverage:
   scenarios:
-  - 好友关系变更总体规模（次数/UV）与社交活跃度
-  - 升级 vs 降级动作分布与占比
-  - 目标角色去重覆盖（社交触达广度）
+    - 好友关系变更总体规模（次数/UV）与社交活跃度
+    - 升级 vs 降级动作分布与占比
+    - 目标角色去重覆盖（社交触达广度）
   limitations:
-  - "日志中零命中(ds=20260729 与 ds=20260728 cnt=0)，疑似事件下线/未触发，指标表达式按事件 schema 预置待复核"
-  - "仅 ds=20260729/20260728 两天 scout 实测，未做全量复核"
-  - "分析主体粒度默认 role_id（发起方），未在日志命中态下验证 subject 粒度"
+    - 日志中零命中(ds=20260729 与 ds=20260728 cnt=0)，疑似事件下线/未触发，指标表达式按事件 schema 预置待复核
+    - 仅 ds=20260729/20260728 两天 scout 实测，未做全量复核
+    - 分析主体粒度默认 role_id（发起方），未在日志命中态下验证 subject 粒度
 coverage_status: draft
+external_refs: []

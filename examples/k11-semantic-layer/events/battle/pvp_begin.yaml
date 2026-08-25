@@ -1,8 +1,8 @@
 name: game.pvp.begin
 event_filter: event = 'game.pvp.begin'
-description: 'PVP战斗开始事件（game.pvp.begin）：玩家进入PVP对战（竞技场正常模式/竞技场休闲模式/演武场等）时上报的对战初始快照，含双方阵容、武将装备潜能、灵器、PVP玩法、赛季、双方积分与战力、唯一战斗标识等。分析主体为角色（role_id），亦可按账号（account_id）/区服（server_id）聚合。ds=20260729 单日 scout 实测：日志量 42327 条、参与角色 2926、账号 2794、区服 414；去重战斗局数（battleId）40639、playType 去重 3 种、己方积分累计和 18984649、己方阵容战力累计和 665682835874、对手战力累计和 559856542751。参数共 136 个字段。'
+description: PVP战斗开始事件（game.pvp.begin）：玩家进入PVP对战（竞技场正常模式/竞技场休闲模式/演武场等）时上报的对战初始快照，含双方阵容、武将装备潜能、灵器、PVP玩法、赛季、双方积分与战力、唯一战斗标识等。分析主体为角色（role_id），亦可按账号（account_id）/区服（server_id）聚合。ds=20260729 单日 scout 实测：日志量 42327 条、参与角色 2926、账号 2794、区服 414；去重战斗局数（battleId）40639、playType 去重 3 种、己方积分累计和 18984649、己方阵容战力累计和 665682835874、对手战力累计和 559856542751。参数共 136 个字段。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -446,19 +446,20 @@ metrics:
     description: 平均单场己方阵容战力
 coverage:
   scenarios:
-  - PVP玩法参与规模：日活角色/账号/区服数、战斗局数
-  - PVP玩法热度分布：按 playType/playName/mode 拆分战斗次数
-  - PVP战力/积分基线：己方阵容战力、对手战力、平均单场积分
-  - 玩法渗透率：参与PVP角色数 / 全服活跃角色数（需关联角色维度表）
+    - PVP玩法参与规模：日活角色/账号/区服数、战斗局数
+    - PVP玩法热度分布：按 playType/playName/mode 拆分战斗次数
+    - PVP战力/积分基线：己方阵容战力、对手战力、平均单场积分
+    - 玩法渗透率：参与PVP角色数 / 全服活跃角色数（需关联角色维度表）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（roleId），账号级聚合请使用 account_id
-  - begin 事件仅记录对战初始快照，胜负结果需关联 pvp_end/pvp_result 事件
-  - 战斗局数（battle_uv=40639）小于事件次数（cnt=42327），存在重复上报或 battleId 缺失，分析时建议去重
-  - mode=4（演武场）当日零命中，该模式当日未触发或未上报
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（roleId），账号级聚合请使用 account_id
+    - begin 事件仅记录对战初始快照，胜负结果需关联 pvp_end/pvp_result 事件
+    - 战斗局数（battle_uv=40639）小于事件次数（cnt=42327），存在重复上报或 battleId 缺失，分析时建议去重
+    - mode=4（演武场）当日零命中，该模式当日未触发或未上报
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=42327、role_uv=2926、acc_uv=2794、server_uv=414；battle_uv=40639、play_type_uv=3、score_sum=18984649、lineuppower_sum=665682835874、relfforce_sum=559856542751；量级合理，事件正常上报'
+  note: scout 实测 ds=20260729：cnt=42327、role_uv=2926、acc_uv=2794、server_uv=414；battle_uv=40639、play_type_uv=3、score_sum=18984649、lineuppower_sum=665682835874、relfforce_sum=559856542751；量级合理，事件正常上报
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,6 +1,6 @@
 name: game.lunwu.matchSuccess
 event_filter: event = 'game.lunwu.matchSuccess'
-description: '论武(PVP竞技场)匹配成功事件：玩家在论武玩法中发起匹配并成功匹配到对手时触发，记录玩家匹配分(point)、当前挑战次数(battleCount)、对手信息(oppos.uid/oppoType/point)及角色等级/战力/vip等31个参数。主体粒度为 role_id(角色)，account_id 为账号粒度。ds=20260729 实测：cnt=7787 / role_uv=2064 / acc_uv=2005 / server_uv=380。'
+description: 论武(PVP竞技场)匹配成功事件：玩家在论武玩法中发起匹配并成功匹配到对手时触发，记录玩家匹配分(point)、当前挑战次数(battleCount)、对手信息(oppos.uid/oppoType/point)及角色等级/战力/vip等31个参数。主体粒度为 role_id(角色)，account_id 为账号粒度。ds=20260729 实测：cnt=7787 / role_uv=2064 / acc_uv=2005 / server_uv=380。
 metrics:
   game_lunwu_matchSuccess_cnt:
     expression: COUNT(*)
@@ -15,7 +15,7 @@ metrics:
     expression: COUNT(DISTINCT server_id)
     description: 论武匹配成功覆盖的去重游戏服数
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -123,6 +123,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 实测 cnt=7787 / role_uv=2064 / acc_uv=2005 / server_uv=380，数据合理，已 analyst_confirmed'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 实测 cnt=7787 / role_uv=2064 / acc_uv=2005 / server_uv=380，数据合理，已 analyst_confirmed
   coverage_status: analyst_confirmed
+external_refs: []

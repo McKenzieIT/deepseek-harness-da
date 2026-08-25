@@ -1,12 +1,11 @@
 name: game.autoSkill.setTeamKnightScheme
 event_filter: event = 'game.autoSkill.setTeamKnightScheme'
-description: '玩家在自动技能系统中设置阵容武将选择方案时触发的埋点事件，记录角色配置队伍武将方案的操作行为。
-
+description: |-
+  玩家在自动技能系统中设置阵容武将选择方案时触发的埋点事件，记录角色配置队伍武将方案的操作行为。
   主体粒度为 role_id（角色），单日实测 ds=20260729 命中 1234209 条事件，覆盖 4289 个角色、4038 个账号、467 个游戏服。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等26个'
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等26个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -102,14 +101,15 @@ metrics:
     description: 触发设置阵容武将方案的去重游戏服数
 coverage:
   scenarios:
-  - 监控自动技能系统中阵容武将方案设置的活跃度，按角色/账号/服维度衡量使用规模
-  - 评估自动技能配置功能的渗透率与日均触发强度
+    - 监控自动技能系统中阵容武将方案设置的活跃度，按角色/账号/服维度衡量使用规模
+    - 评估自动技能配置功能的渗透率与日均触发强度
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认为 role_id（角色），账号维度 account_id 用于跨角色去重
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认为 role_id（角色），账号维度 account_id 用于跨角色去重
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   note: ds=20260729 单日 scout 实测 cnt=1234209 / role_uv=4289 / acc_uv=4038 / server_uv=467，数据合理
   coverage_status: analyst_confirmed
+external_refs: []

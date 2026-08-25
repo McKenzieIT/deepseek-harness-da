@@ -1,8 +1,8 @@
 name: game.yanwu.reward
 event_filter: event = 'game.yanwu.reward'
-description: '演武场(竞技场)奖励领取事件：角色在演武场对战中领取奖励时上报，携带赛季(season)、对手索引(oppoIdx)、角色战力(roleForce)、经验(exp)及各货币余额(coinList)等参数。分析主体为 role_id（角色级事件）。scout 实测 ds=20260729/20260728 均零命中(cnt=0)，事件疑似下线或尚未触发，未测得真实量。'
+description: 演武场(竞技场)奖励领取事件：角色在演武场对战中领取奖励时上报，携带赛季(season)、对手索引(oppoIdx)、角色战力(roleForce)、经验(exp)及各货币余额(coinList)等参数。分析主体为 role_id（角色级事件）。scout 实测 ds=20260729/20260728 均零命中(cnt=0)，事件疑似下线或尚未触发，未测得真实量。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -92,15 +92,16 @@ metrics:
     description: 领取奖励涉及的去重游戏服数
 coverage:
   scenarios:
-  - 演武场奖励领取的活跃度与参与规模（次数/角色UV/账号UV/游戏服数）
-  - 结合 season/oppoIdx 分析赛季内各对手位的奖励领取分布
+    - 演武场奖励领取的活跃度与参与规模（次数/角色UV/账号UV/游戏服数）
+    - 结合 season/oppoIdx 分析赛季内各对手位的奖励领取分布
   limitations:
-  - 日志中零命中(ds=20260729/20260728，cnt=0/role_uv=0/acc_uv=0/server_uv=0)，疑似下线/未触发，无法实测真实量
-  - 仅 scout 单日探测，未做全量复核；事件确认触发后需补充多日实测
-  - 默认分析主体为 role_id（角色级事件），尚未通过实测验证
+    - 日志中零命中(ds=20260729/20260728，cnt=0/role_uv=0/acc_uv=0/server_uv=0)，疑似下线/未触发，无法实测真实量
+    - 仅 scout 单日探测，未做全量复核；事件确认触发后需补充多日实测
+    - 默认分析主体为 role_id（角色级事件），尚未通过实测验证
 coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线或未触发，保持 draft'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线或未触发，保持 draft
+external_refs: []

@@ -1,6 +1,6 @@
 name: game.role.offline
 event_filter: event = 'game.role.offline'
-description: '角色下线事件：玩家登出游戏时触发的日志，记录本次会话在线时长 duration、下线时间 logoutTime、角色等级、VIP 等级、战力及武将/装备/货币等完整快照。主体粒度为 role_id（角色级），覆盖 account_id 账号。实测 ds=20260729 单日 14059 条、4730 角色、4392 账号、484 服。'
+description: 角色下线事件：玩家登出游戏时触发的日志，记录本次会话在线时长 duration、下线时间 logoutTime、角色等级、VIP 等级、战力及武将/装备/货币等完整快照。主体粒度为 role_id（角色级），覆盖 account_id 账号。实测 ds=20260729 单日 14059 条、4730 角色、4392 账号、484 服。
 metrics:
   game_role_offline_cnt:
     expression: COUNT(*)
@@ -16,12 +16,12 @@ metrics:
     description: 下线事件累计在线时长（秒），来自 params.duration
 coverage:
   scenarios:
-  - 用于分析玩家活跃度、下线频次、在线时长分布及账号/角色/服务器维度的登出规模，支撑用户生命周期留存与流失研究
+    - 用于分析玩家活跃度、下线频次、在线时长分布及账号/角色/服务器维度的登出规模，支撑用户生命周期留存与流失研究
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认为 role_id；duration 为会话级单次在线时长，非累计总在线时长
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认为 role_id；duration 为会话级单次在线时长，非累计总在线时长
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -264,3 +264,4 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: ds=20260729 scout 实测 cnt=14059 / role_uv=4730 / acc_uv=4392 / server_uv=484，数值合理
   coverage_status: analyst_confirmed
+external_refs: []

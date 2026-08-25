@@ -1,8 +1,8 @@
 name: game.welfare.sign
 event_filter: event = 'game.welfare.sign'
-description: '福利-签到事件：玩家在福利系统中完成每日签到时上报，记录签到当天的角色快照（角色等级/vip等级/战力/经验）与签到天数（day）。分析主体为 role_id（角色），可统计签到参与角色数、签到天数累计及活跃趋势。scout 实测 ds=20260729 与 ds=20260728 在事件视图 ieu_ods.ods_10000251_all_view 中均零命中（cnt=0），疑似该事件未上报或已下线。'
+description: 福利-签到事件：玩家在福利系统中完成每日签到时上报，记录签到当天的角色快照（角色等级/vip等级/战力/经验）与签到天数（day）。分析主体为 role_id（角色），可统计签到参与角色数、签到天数累计及活跃趋势。scout 实测 ds=20260729 与 ds=20260728 在事件视图 ieu_ods.ods_10000251_all_view 中均零命中（cnt=0），疑似该事件未上报或已下线。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -104,4 +104,5 @@ confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729 cnt=0/role_uv=0/acc_uv=0/server_uv=0；retry ds=20260728 同样 cnt=0；事件疑似下线/未触发，保持 draft'
+  note: scout 实测 ds=20260729 cnt=0/role_uv=0/acc_uv=0/server_uv=0；retry ds=20260728 同样 cnt=0；事件疑似下线/未触发，保持 draft
+external_refs: []

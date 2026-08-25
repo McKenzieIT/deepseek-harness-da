@@ -1,10 +1,10 @@
 name: game.role.snapshot
 event_filter: event = 'game.role.snapshot'
-description: '在线玩家角色快照事件：周期性记录在线玩家的完整角色状态（角色等级、vip等级、角色战力、货币余额、武将阵容、日常/周常任务进度、天命方案等72个参数），用于重建玩家画像、战力分布与活跃度快照。主体粒度 role_id（account 域 role_* 事件，每条记录=1在线角色的全量快照）。实测 ds=20260729 单日命中 302 条/302 角色/301 账号/94 服务器。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等72个'
+description: |-
+  在线玩家角色快照事件：周期性记录在线玩家的完整角色状态（角色等级、vip等级、角色战力、货币余额、武将阵容、日常/周常任务进度、天命方案等72个参数），用于重建玩家画像、战力分布与活跃度快照。主体粒度 role_id（account 域 role_* 事件，每条记录=1在线角色的全量快照）。实测 ds=20260729 单日命中 302 条/302 角色/301 账号/94 服务器。
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等72个
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -238,15 +238,16 @@ metrics:
     description: 在线角色战力总和（全服在线战力快照）
 coverage:
   scenarios:
-  - 在线角色规模与活跃度快照（总记录数、去重角色数、去重账号数）
-  - 全服在线战力总览（在线角色战力总和，支撑战力分布与大盘监控）
-  - 快照在服务器/平台维度的覆盖广度（去重服务器数）
+    - 在线角色规模与活跃度快照（总记录数、去重角色数、去重账号数）
+    - 全服在线战力总览（在线角色战力总和，支撑战力分布与大盘监控）
+    - 快照在服务器/平台维度的覆盖广度（去重服务器数）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测(cnt=302, role_uv=302, acc_uv=301, server_uv=94)，未做全量复核
-  - subject 粒度默认 role_id（account 域 role_* 事件），单角色多次快照以 role_id 去重
-  - roleForce 为角色战力状态值，SUM 仅为在线战力大盘参考，未做分服/分等级分布
+    - 仅 ds=20260729 单日 scout 实测(cnt=302, role_uv=302, acc_uv=301, server_uv=94)，未做全量复核
+    - subject 粒度默认 role_id（account 域 role_* 事件），单角色多次快照以 role_id 去重
+    - roleForce 为角色战力状态值，SUM 仅为在线战力大盘参考，未做分服/分等级分布
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
   note: scout 单日实测 ds=20260729 命中 302 条/302 角色/301 账号/94 服务器，roleForce/roleLevel/vipLevel 等字段经 GET_JSON_OBJECT 可读
+external_refs: []

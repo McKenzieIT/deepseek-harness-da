@@ -1,12 +1,11 @@
 name: game.social.guild.business
 event_filter: event = 'game.social.guild.business'
-description: '公会封地经营：公会成员在公会封地进行经营操作（派遣武将到建筑物、领取事件奖励、领取经营奖励）的事件日志，分析主体为角色(role_id)。
-
+description: |-
+  公会封地经营：公会成员在公会封地进行经营操作（派遣武将到建筑物、领取事件奖励、领取经营奖励）的事件日志，分析主体为角色(role_id)。
   实测 ds=20260729 单日：事件 cnt=10243，角色 UV=3321，账号 UV=3169，覆盖游戏服 433 个；按经营操作 action 分布：派遣(action=1) 3281 条/3227 角色，领取事件奖励(action=2) 3916 条/1432 角色，领取经营奖励(action=3) 3046 条/2504 角色。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等32个'
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等32个
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -120,34 +119,34 @@ metrics:
     expression: COUNT(DISTINCT server_id)
   game_social_guild_business_dispatch_cnt:
     description: 派遣操作事件数（action=1，派遣武将到经营建筑物）
-    expression: "SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END)"
+    expression: SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END)
   game_social_guild_business_dispatch_role_uv:
     description: 执行派遣操作的字符去重数（action=1）
-    expression: "COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN role_id END)"
+    expression: COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN role_id END)
   game_social_guild_business_claim_event_cnt:
     description: 领取事件奖励操作事件数（action=2）
-    expression: "SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='2' THEN 1 ELSE 0 END)"
+    expression: SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='2' THEN 1 ELSE 0 END)
   game_social_guild_business_claim_event_role_uv:
     description: 领取事件奖励的角色去重数（action=2）
-    expression: "COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='2' THEN role_id END)"
+    expression: COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='2' THEN role_id END)
   game_social_guild_business_claim_reward_cnt:
     description: 领取经营奖励操作事件数（action=3）
-    expression: "SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='3' THEN 1 ELSE 0 END)"
+    expression: SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='3' THEN 1 ELSE 0 END)
   game_social_guild_business_claim_reward_role_uv:
     description: 领取经营奖励的角色去重数（action=3）
-    expression: "COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='3' THEN role_id END)"
+    expression: COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='3' THEN role_id END)
   game_social_guild_business_exp_score_sum:
     description: 派遣带来的经营值(expScore)总和
-    expression: "SUM(CAST(GET_JSON_OBJECT(params,'$.expScore') AS BIGINT))"
+    expression: SUM(CAST(GET_JSON_OBJECT(params,'$.expScore') AS BIGINT))
   game_social_guild_business_guild_score_sum:
     description: 派遣完工后增加的公会经营值(guildScore)总和
-    expression: "SUM(CAST(GET_JSON_OBJECT(params,'$.guildScore') AS BIGINT))"
+    expression: SUM(CAST(GET_JSON_OBJECT(params,'$.guildScore') AS BIGINT))
   game_social_guild_business_build_uv:
     description: 涉及的经营建筑物去重数（去重 buildId）
-    expression: "COUNT(DISTINCT GET_JSON_OBJECT(params,'$.buildId'))"
+    expression: COUNT(DISTINCT GET_JSON_OBJECT(params,'$.buildId'))
   game_social_guild_business_dispatch_per_role_ratio:
     description: 派遣参与率=派遣角色UV/经营角色总UV，衡量成员派遣经营参与度
-    expression: "SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN role_id END), 0)"
+    expression: SUM(CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT CASE WHEN GET_JSON_OBJECT(params,'$.action')='1' THEN role_id END), 0)
 coverage:
   scenarios:
     - 公会封地经营整体活跃度：事件总数、角色/账号/游戏服 UV 反映公会封地经营玩法的覆盖面。
@@ -164,6 +163,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729：event=game.social.guild.business 命中 cnt=10243，role_uv=3321，acc_uv=3169，server_uv=433；action 分布 1/2/3 = 3281/3916/3046 条；expScore 总和 5359800、guildScore 总和 91916615（仅 action=1 产生）。数字合理，确认为真实事件。'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729：event=game.social.guild.business 命中 cnt=10243，role_uv=3321，acc_uv=3169，server_uv=433；action 分布 1/2/3 = 3281/3916/3046 条；expScore 总和 5359800、guildScore 总和 91916615（仅 action=1 产生）。数字合理，确认为真实事件。
 coverage_status: analyst_confirmed
+external_refs: []

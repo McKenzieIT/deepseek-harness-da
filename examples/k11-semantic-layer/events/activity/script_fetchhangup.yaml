@@ -1,8 +1,8 @@
 name: game.script.fetchhangup
 event_filter: event = 'game.script.fetchhangup'
-description: '玩家在剧本玩法中领取挂机奖励时触发的埋点。记录玩家挂机剧本(scriptId)结束后领取的资源收益，包含等级变化(oldLevel→newLevel)、获得资源(expDelta)及关键货币(coinList: gold/sendgold/freegold/diamond/expCoin/energy)。分析主体为角色(role_id)，单条日志代表一次角色级别的领取行为。真实实测 ds=20260729：日领取4110次，覆盖1262名角色、1238个账号、286个游戏服，当日 expDelta 合计约3.38亿。'
+description: "玩家在剧本玩法中领取挂机奖励时触发的埋点。记录玩家挂机剧本(scriptId)结束后领取的资源收益，包含等级变化(oldLevel→newLevel)、获得资源(expDelta)及关键货币(coinList: gold/sendgold/freegold/diamond/expCoin/energy)。分析主体为角色(role_id)，单条日志代表一次角色级别的领取行为。真实实测 ds=20260729：日领取4110次，覆盖1262名角色、1238个账号、286个游戏服，当日 expDelta 合计约3.38亿。"
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -107,17 +107,18 @@ metrics:
     description: 单次领取挂机奖励的平均获得资源量（事件级加权平均）
 coverage:
   scenarios:
-  - 评估剧本挂机奖励的总体领取规模与角色覆盖度
-  - 跨剧本(scriptId)、跨服(server_id)的挂机参与热度对比
-  - 通过 expDelta 分布了解挂机收益与角色活跃/留存
+    - 评估剧本挂机奖励的总体领取规模与角色覆盖度
+    - 跨剧本(scriptId)、跨服(server_id)的挂机参与热度对比
+    - 通过 expDelta 分布了解挂机收益与角色活跃/留存
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体为角色(role_id)粒度，账号(account_id)仅作去重辅助
-  - coinList 货币明细字段(gold/sendgold/freegold/diamond/expCoin/energy)为 JSON 嵌套结构，本事件未逐项展开统计
-  - oldLevel/newLevel 用于级别变化分析，本事件未单独聚合
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体为角色(role_id)粒度，账号(account_id)仅作去重辅助
+    - coinList 货币明细字段(gold/sendgold/freegold/diamond/expCoin/energy)为 JSON 嵌套结构，本事件未逐项展开统计
+    - oldLevel/newLevel 用于级别变化分析，本事件未单独聚合
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: '实测 ds=20260729: cnt=4110, role_uv=1262, acc_uv=1238, server_uv=286；expDelta 累计 337686706(约3.38亿)；scriptId/oldLevel/newLevel/expDelta 字段可经 GET_JSON_OBJECT 正常提取'
+  confirmed_at: "2026-07-30"
+  note: "实测 ds=20260729: cnt=4110, role_uv=1262, acc_uv=1238, server_uv=286；expDelta 累计 337686706(约3.38亿)；scriptId/oldLevel/newLevel/expDelta 字段可经 GET_JSON_OBJECT 正常提取"
 coverage_status: analyst_confirmed
+external_refs: []

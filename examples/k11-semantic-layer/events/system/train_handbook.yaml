@@ -1,8 +1,8 @@
 name: game.train.handbook
 event_filter: event = 'game.train.handbook'
-description: '角色图鉴养成（train handbook）事件：记录角色在图鉴养成玩法中的触发行为，含角色等级、vip等级、角色战力、经验、当前总星数及各关键货币余额等23个参数。分析主体为 role_id（角色级事件）。scout 实测 ds=20260729 单日 cnt=12834，role_uv=2962，acc_uv=2800，server_uv=334。'
+description: 角色图鉴养成（train handbook）事件：记录角色在图鉴养成玩法中的触发行为，含角色等级、vip等级、角色战力、经验、当前总星数及各关键货币余额等23个参数。分析主体为 role_id（角色级事件）。scout 实测 ds=20260729 单日 cnt=12834，role_uv=2962，acc_uv=2800，server_uv=334。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -98,16 +98,27 @@ metrics:
     description: 触发时 vip 等级平均值
 coverage:
   scenarios:
-  - 图鉴养成玩法的日活/周活参与度（role_uv/account_uv）
-  - 图鉴养成事件在全服的渗透（server_uv）
-  - 触发图鉴养成时角色的等级/星数/vip 分布（avg 系列指标）
+    - 图鉴养成玩法的日活/周活参与度（role_uv/account_uv）
+    - 图鉴养成事件在全服的渗透（server_uv）
+    - 触发图鉴养成时角色的等级/星数/vip 分布（avg 系列指标）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（角色级事件，未做账号级二次核对）
-  - avg 指标基于 params 内 star/roleLevel/vipLevel 字段，缺失值为 NULL 被 AVG 忽略
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（角色级事件，未做账号级二次核对）
+    - avg 指标基于 params 内 star/roleLevel/vipLevel 字段，缺失值为 NULL 被 AVG 忽略
 coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=12834, role_uv=2962, acc_uv=2800, server_uv=334，数据合理，事件活跃在线'
+  note: scout 实测 ds=20260729：cnt=12834, role_uv=2962, acc_uv=2800, server_uv=334，数据合理，事件活跃在线
+external_refs:
+  - dim_table: dim_10000251_knight_starup_info
+    join_keys:
+      - dws_column: star
+        dim_column: star
+    derivation: 确定性：事件字段 star 与 dim_10000251_knight_starup_info 主键精确同名
+  - dim_table: dim_10000251_knight_starup_info_arch
+    join_keys:
+      - dws_column: star
+        dim_column: star
+    derivation: 确定性：事件字段 star 与 dim_10000251_knight_starup_info_arch 主键精确同名

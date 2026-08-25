@@ -1,8 +1,8 @@
 name: game.artifact.startup
 event_filter: event = 'game.artifact.startup'
-description: '神器（兵符）升星启动事件：角色对 artifact 兵符执行升星/启动操作时上报，携带 artifact.uid、cfgId、star、addAttrs、randAttrs 等升星结果与新增/随机属性，同时上报角色等级、vip等级、角色战力、经验及关键货币快照。分析粒度为 role_id（角色级），用于度量神器升星参与规模、角色/账号/服务器覆盖及升星战力投入。scout 实测 ds=20260729：触发 826 次、460 角色、455 账号、66 服务器。'
+description: 神器（兵符）升星启动事件：角色对 artifact 兵符执行升星/启动操作时上报，携带 artifact.uid、cfgId、star、addAttrs、randAttrs 等升星结果与新增/随机属性，同时上报角色等级、vip等级、角色战力、经验及关键货币快照。分析粒度为 role_id（角色级），用于度量神器升星参与规模、角色/账号/服务器覆盖及升星战力投入。scout 实测 ds=20260729：触发 826 次、460 角色、455 账号、66 服务器。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -131,14 +131,15 @@ metrics:
     description: 触发升星角色的战力总和（角色战力快照累加）
 coverage:
   scenarios:
-  - 神器（兵符）升星启动事件的触发规模与角色/账号/服务器覆盖
-  - 参与升星操作的角色战力投入总规模
+    - 神器（兵符）升星启动事件的触发规模与角色/账号/服务器覆盖
+    - 参与升星操作的角色战力投入总规模
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析粒度默认 role_id（角色级事件）
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析粒度默认 role_id（角色级事件）
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=826, role_uv=460, acc_uv=455, server_uv=66（角色级事件，role_id 为分析主体）'
+  note: scout 实测 ds=20260729：cnt=826, role_uv=460, acc_uv=455, server_uv=66（角色级事件，role_id 为分析主体）
 coverage_status: analyst_confirmed
+external_refs: []

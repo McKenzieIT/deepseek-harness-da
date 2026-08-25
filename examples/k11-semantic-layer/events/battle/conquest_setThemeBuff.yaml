@@ -1,8 +1,8 @@
 name: game.conquest.setThemeBuff
 event_filter: event = 'game.conquest.setThemeBuff'
-description: '讨伐(Conquest)设置主题加成buff阵营事件：玩家在讨伐玩法中选择某个主题(themeId)下的加成buff阵营(buffGroup)时上报。分析粒度为角色(role_id)，每个角色每次设置选择产生一条日志，params.themeId 为主题配置id、params.buffGroup 为所选加成buff阵营id。scout 实测 ds=20260729/20260728 均零命中，事件疑似下线或未触发。'
+description: 讨伐(Conquest)设置主题加成buff阵营事件：玩家在讨伐玩法中选择某个主题(themeId)下的加成buff阵营(buffGroup)时上报。分析粒度为角色(role_id)，每个角色每次设置选择产生一条日志，params.themeId 为主题配置id、params.buffGroup 为所选加成buff阵营id。scout 实测 ds=20260729/20260728 均零命中，事件疑似下线或未触发。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -98,17 +98,18 @@ metrics:
     description: 去重被选择加成buff阵营(buffGroup)数量
 coverage:
   scenarios:
-  - 讨伐主题加成buff阵营设置行为量、参与角色数与游戏服覆盖度（玩法活跃度与渗透）
-  - 主题(themeId)与加成buff阵营(buffGroup)的选择分布与热度（运营/配置调优依据）
-  - 角色级粒度(role_id)的阵营偏好与人均设置频次分布
+    - 讨伐主题加成buff阵营设置行为量、参与角色数与游戏服覆盖度（玩法活跃度与渗透）
+    - 主题(themeId)与加成buff阵营(buffGroup)的选择分布与热度（运营/配置调优依据）
+    - 角色级粒度(role_id)的阵营偏好与人均设置频次分布
   limitations:
-  - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
-  - 仅 ds=20260729/20260728 单日 scout 实测，未做全量复核
-  - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
-  - 因零命中，themeId/buffGroup 去重指标本日未验证非零产出
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
+    - 仅 ds=20260729/20260728 单日 scout 实测，未做全量复核
+    - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
+    - 因零命中，themeId/buffGroup 去重指标本日未验证非零产出
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729 与 ds=20260728: cnt=0, role_uv=0, acc_uv=0, server_uv=0；事件零命中，疑似下线/未触发，维持 draft'
+  note: "scout 实测 ds=20260729 与 ds=20260728: cnt=0, role_uv=0, acc_uv=0, server_uv=0；事件零命中，疑似下线/未触发，维持 draft"
 coverage_status: draft
+external_refs: []

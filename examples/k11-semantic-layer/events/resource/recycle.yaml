@@ -1,9 +1,9 @@
 name: game.recycle
 event_filter: event = 'game.recycle'
-description: '资源回收事件：玩家通过回收/分解功能消耗装备与资源时上报，记录回收行为发生的服务器、角色及当时持有的货币与装备快照。分析主体为 role_id（角色级），事件按行为流水逐条记录。单日 ds=20260729 scout 实测 cnt=5180、role_uv=2057、acc_uv=1968、server_uv=273。params 共 28 个字段，含 resources（回收资源数组 type/value/size/uid）与 equips（装备 uid 数组）。'
+description: 资源回收事件：玩家通过回收/分解功能消耗装备与资源时上报，记录回收行为发生的服务器、角色及当时持有的货币与装备快照。分析主体为 role_id（角色级），事件按行为流水逐条记录。单日 ds=20260729 scout 实测 cnt=5180、role_uv=2057、acc_uv=1968、server_uv=273。params 共 28 个字段，含 resources（回收资源数组 type/value/size/uid）与 equips（装备 uid 数组）。
 domains:
-- 资源产销
-- 装备道具
+  - 资源产销
+  - 装备道具
 domain: resource
 metrics:
   game_recycle_cnt:
@@ -20,12 +20,12 @@ metrics:
     description: 涉及资源回收的去重游戏服数
 coverage:
   scenarios:
-  - 通过 cnt/role_uv/account_uv 监控资源回收行为的日活跃规模与参与度
-  - 通过 server_uv 与按服聚合定位高活跃回收服，支撑资源产销与装备道具域的消耗侧分析
+    - 通过 cnt/role_uv/account_uv 监控资源回收行为的日活跃规模与参与度
+    - 通过 server_uv 与按服聚合定位高活跃回收服，支撑资源产销与装备道具域的消耗侧分析
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
-  - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色重复回收做去重校验
-  - resources（回收资源数组）与 equips（装备 uid 数组）为 JSON 数组，单行抽样显示部分为空对象 {} 或 null，未对其 size/数量逐元素求和，如需按资源类型聚合需单独建模（避免脏数据放大）
+    - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
+    - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色重复回收做去重校验
+    - resources（回收资源数组）与 equips（装备 uid 数组）为 JSON 数组，单行抽样显示部分为空对象 {} 或 null，未对其 size/数量逐元素求和，如需按资源类型聚合需单独建模（避免脏数据放大）
 params_fields:
   serverId:
     type: int
@@ -115,6 +115,6 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=5180, role_uv=2057, acc_uv=1968, server_uv=273；event+ds
-    双过滤命中，数字量级合理，事件真实在线可查。resources 数组抽样部分为空，故未对回收数量求和。'
+  note: scout 实测 ds=20260729：cnt=5180, role_uv=2057, acc_uv=1968, server_uv=273；event+ds 双过滤命中，数字量级合理，事件真实在线可查。resources 数组抽样部分为空，故未对回收数量求和。
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.journey.reward
 event_filter: event = 'game.journey.reward'
-description: '限时逐鹿玩法领取奖励事件：玩家在限时逐鹿活动中领取奖励时上报，含游戏服/账号/角色/货币列表/最大奖励order等23个参数。主体粒度为 role_id（角色），可按 account_id 汇总账号维度。ds=20260729/20260728 scout 实测零命中，事件疑似下线或未触发。'
+description: 限时逐鹿玩法领取奖励事件：玩家在限时逐鹿活动中领取奖励时上报，含游戏服/账号/角色/货币列表/最大奖励order等23个参数。主体粒度为 role_id（角色），可按 account_id 汇总账号维度。ds=20260729/20260728 scout 实测零命中，事件疑似下线或未触发。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -89,15 +89,16 @@ metrics:
     description: 领取逐鹿奖励的去重游戏服数
 coverage:
   scenarios:
-  - 限时逐鹿玩法奖励领取活跃度与参与角色规模
-  - 各游戏服逐鹿奖励领取覆盖情况
+    - 限时逐鹿玩法奖励领取活跃度与参与角色规模
+    - 各游戏服逐鹿奖励领取覆盖情况
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
-  - 默认主体为 role_id（角色粒度）
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
+    - 默认主体为 role_id（角色粒度）
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 同样零命中，事件疑似下线或未触发'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 同样零命中，事件疑似下线或未触发
   coverage_status: draft
+external_refs: []

@@ -1,11 +1,10 @@
 name: game.fish.apply
 event_filter: event = 'game.fish.apply'
-description: '钓鱼玩法：玩家发起钓鱼申请。记录申请钓鱼的角色（roleId）、所在游戏服（serverId）、
-  钓取的鱼类（fishId/fishName）等26个上下文字段，用于钓鱼行为统计与活跃度分析。主体粒度为 role_id。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、fishId、fishName 等26个'
+description: |-
+  钓鱼玩法：玩家发起钓鱼申请。记录申请钓鱼的角色（roleId）、所在游戏服（serverId）、 钓取的鱼类（fishId/fishName）等26个上下文字段，用于钓鱼行为统计与活跃度分析。主体粒度为 role_id。
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、fishId、fishName 等26个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 metrics:
   game_fish_apply_cnt:
@@ -22,12 +21,12 @@ metrics:
     description: 发生钓鱼申请的去重游戏服数
 coverage:
   scenarios:
-  - 通过申请总次数与去重角色/账号数衡量钓鱼玩法的参与广度与频次
-  - 通过去重游戏服数评估钓鱼玩法在不同区服的覆盖范围
+    - 通过申请总次数与去重角色/账号数衡量钓鱼玩法的参与广度与频次
+    - 通过去重游戏服数评估钓鱼玩法在不同区服的覆盖范围
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认为 role_id，账号级聚合另用 account_id 指标
-  - fishId/fishName 等钓鱼详情字段未纳入指标，如需按鱼种分布需另行扩展
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认为 role_id，账号级聚合另用 account_id 指标
+    - fishId/fishName 等钓鱼详情字段未纳入指标，如需按鱼种分布需另行扩展
 params_fields:
   serverId:
     type: int
@@ -111,5 +110,6 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'scout (ds=20260729): cnt=505, role_uv=153, acc_uv=151, server_uv=93 - 数量合理，事件在线触发正常'
+  note: "scout (ds=20260729): cnt=505, role_uv=153, acc_uv=151, server_uv=93 - 数量合理，事件在线触发正常"
   coverage_status: analyst_confirmed
+external_refs: []

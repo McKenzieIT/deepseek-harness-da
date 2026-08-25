@@ -1,8 +1,8 @@
 name: game.customLevel.tacticalChallengeReward
 event_filter: event = 'game.customLevel.tacticalChallengeReward'
-description: '演武场-智谋挑战奖励领取事件：角色完成智谋挑战后领取获胜奖励(getWin)或参与奖励(getChallenge)，参数含游戏服id/name、账号id、角色id/名、性别、创角时间、上线时间、角色等级、vip等级、战力、经验及多种货币(coinList)等24个字段。事件主体粒度为 role_id（角色级）。实测 ds=20260729 单日日志零命中(cnt=0，role_uv/acc_uv/server_uv 均为0)，ds=20260728 同样零命中，事件疑似下线或未触发。'
+description: 演武场-智谋挑战奖励领取事件：角色完成智谋挑战后领取获胜奖励(getWin)或参与奖励(getChallenge)，参数含游戏服id/name、账号id、角色id/名、性别、创角时间、上线时间、角色等级、vip等级、战力、经验及多种货币(coinList)等24个字段。事件主体粒度为 role_id（角色级）。实测 ds=20260729 单日日志零命中(cnt=0，role_uv/acc_uv/server_uv 均为0)，ds=20260728 同样零命中，事件疑似下线或未触发。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,14 +92,15 @@ metrics:
     description: 领取智谋挑战奖励的去重游戏服数
 coverage:
   scenarios:
-  - 演武场智谋挑战奖励领取的总体量、角色覆盖、账号覆盖与游戏服覆盖
+    - 演武场智谋挑战奖励领取的总体量、角色覆盖、账号覆盖与游戏服覆盖
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
-  - 默认主体粒度为 role_id（角色级）
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
+    - 默认主体粒度为 role_id（角色级）
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: draft
-  note: 'ds=20260729 单日实测 cnt=0/role_uv=0/acc_uv=0，ds=20260728 同样零命中，事件疑似下线或未触发'
+  note: ds=20260729 单日实测 cnt=0/role_uv=0/acc_uv=0，ds=20260728 同样零命中，事件疑似下线或未触发
+external_refs: []

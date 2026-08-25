@@ -1,8 +1,8 @@
 name: game.charmStone.onekeySynthesis
 event_filter: event = 'game.charmStone.onekeySynthesis'
-description: '灵石一键合成事件：角色使用一键合成功能批量消耗多个灵石并产出新灵石时上报，记录每次合成消耗的石头列表(uids)、产出的灵石信息(charmStoneList)、合成组数(num)与合成前后货币(coinList)。分析主体粒度为 role_id（角色），单次一键合成行为计为一条日志。ds=20260729 实测：cnt=1514，role_uv=744，acc_uv=739，server_uv=208；当日累计合成组数(num合计) 17485，单次平均合成组数 11.55，单次最大组数 188，全部事件 num>1（一键合成均为批量）。'
+description: 灵石一键合成事件：角色使用一键合成功能批量消耗多个灵石并产出新灵石时上报，记录每次合成消耗的石头列表(uids)、产出的灵石信息(charmStoneList)、合成组数(num)与合成前后货币(coinList)。分析主体粒度为 role_id（角色），单次一键合成行为计为一条日志。ds=20260729 实测：cnt=1514，role_uv=744，acc_uv=739，server_uv=208；当日累计合成组数(num合计) 17485，单次平均合成组数 11.55，单次最大组数 188，全部事件 num>1（一键合成均为批量）。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -143,19 +143,18 @@ metrics:
     description: 人均合成组数 = 累计组数 / 角色去重数（NULLIF 防零除）
 coverage:
   scenarios:
-  - 通过 role_uv/account_uv/server_uv 评估灵石一键合成玩法的角色/账号/游戏服渗透规模
-  - 通过 group_sum、avg_group_per_event 衡量一键合成产出体量与单次批量规模，辅助合成消耗节奏分析
-  - 通过 group_per_role 评估人均合成强度，定位重度合成玩家
+    - 通过 role_uv/account_uv/server_uv 评估灵石一键合成玩法的角色/账号/游戏服渗透规模
+    - 通过 group_sum、avg_group_per_event 衡量一键合成产出体量与单次批量规模，辅助合成消耗节奏分析
+    - 通过 group_per_role 评估人均合成强度，定位重度合成玩家
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
-  - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复合成做去重校验
-  - uids（消耗石头列表）与 charmStoneList（产出灵石信息）为数组参数，未在本事件 metrics 内展开逐元素求和/计数，如需按石头 id 或属性维度聚合需单独建模
-  - 当日全部事件 num>1（multi_group_cnt=cnt=1514），一键合成均为批量行为，无单组样本
+    - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
+    - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复合成做去重校验
+    - uids（消耗石头列表）与 charmStoneList（产出灵石信息）为数组参数，未在本事件 metrics 内展开逐元素求和/计数，如需按石头 id 或属性维度聚合需单独建模
+    - 当日全部事件 num>1（multi_group_cnt=cnt=1514），一键合成均为批量行为，无单组样本
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=1514, role_uv=744, acc_uv=739, server_uv=208;
-    num合计=17485, num均值=11.5489, num最大=188, multi_group_cnt(>1)=1514(全部批量),
-    param_role_uv=744。数值合理，event+ds 双过滤命中，确认在线可查。'
+  note: scout 实测 ds=20260729：cnt=1514, role_uv=744, acc_uv=739, server_uv=208; num合计=17485, num均值=11.5489, num最大=188, multi_group_cnt(>1)=1514(全部批量), param_role_uv=744。数值合理，event+ds 双过滤命中，确认在线可查。
 coverage_status: analyst_confirmed
+external_refs: []

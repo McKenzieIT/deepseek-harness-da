@@ -1,8 +1,8 @@
 name: game.playerSetting.set
 event_filter: event = 'game.playerSetting.set'
-description: '玩家游戏内系统设置变更事件：角色在客户端修改某项系统开关（switch.id）的状态（switch.setStatus 为当前状态、switch.oldStatus 为旧状态），同时上报角色、账号、游戏服、角色等级/vip/战力、关键货币（coinList）等基础上下文。主体粒度为 role_id（每条日志对应一次角色级别的开关切换操作），用于度量玩家个性化设置使用度。ds=20260729 单日实测 4 次事件、4 个角色、4 个账号、4 个游戏服。'
+description: 玩家游戏内系统设置变更事件：角色在客户端修改某项系统开关（switch.id）的状态（switch.setStatus 为当前状态、switch.oldStatus 为旧状态），同时上报角色、账号、游戏服、角色等级/vip/战力、关键货币（coinList）等基础上下文。主体粒度为 role_id（每条日志对应一次角色级别的开关切换操作），用于度量玩家个性化设置使用度。ds=20260729 单日实测 4 次事件、4 个角色、4 个账号、4 个游戏服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -98,16 +98,17 @@ metrics:
     expression: COUNT(DISTINCT server_id)
 coverage:
   scenarios:
-  - 度量玩家在游戏内修改系统开关/个性化设置的使用频次与覆盖角色、账号、游戏服规模
-  - 作为「自定义」域中玩家个性化配置行为的活跃度指标，辅助判断玩家对设置项的参与度
+    - 度量玩家在游戏内修改系统开关/个性化设置的使用频次与覆盖角色、账号、游戏服规模
+    - 作为「自定义」域中玩家个性化配置行为的活跃度指标，辅助判断玩家对设置项的参与度
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认为 role_id，account_id 用于账号级去重补充
-  - 未区分具体 switch.id 的切换分布，仅汇总总次数
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认为 role_id，account_id 用于账号级去重补充
+    - 未区分具体 switch.id 的切换分布，仅汇总总次数
   default_subject: role_id
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 实测 cnt=4, role_uv=4, acc_uv=4, server_uv=4（单日低频事件，数据真实）'
+  note: ds=20260729 实测 cnt=4, role_uv=4, acc_uv=4, server_uv=4（单日低频事件，数据真实）
   coverage_status: analyst_confirmed
+external_refs: []

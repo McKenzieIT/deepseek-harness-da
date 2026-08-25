@@ -1,8 +1,8 @@
 name: game.intervalShop.getFreeReward
 event_filter: event = 'game.intervalShop.getFreeReward'
-description: '持续回报商店（intervalShop）：玩家领取免费奖励事件。记录角色在持续回报商店中领取免费奖励的行为，粒度为单次领取事件，主体为 role_id。单日实测 ds=20260729 触发 408 次，覆盖 408 个角色、407 个账号、7 个游戏服。参数含角色基础信息（roleId/accountId/roleName/roleLevel/vipLevel/roleForce/exp）、游戏服信息（serverId/serverName）、会话信息（sessionId/logUUID）及关键货币快照（coinList.gold/sendgold/freegold/diamond/expCoin/energy）。'
+description: 持续回报商店（intervalShop）：玩家领取免费奖励事件。记录角色在持续回报商店中领取免费奖励的行为，粒度为单次领取事件，主体为 role_id。单日实测 ds=20260729 触发 408 次，覆盖 408 个角色、407 个账号、7 个游戏服。参数含角色基础信息（roleId/accountId/roleName/roleLevel/vipLevel/roleForce/exp）、游戏服信息（serverId/serverName）、会话信息（sessionId/logUUID）及关键货币快照（coinList.gold/sendgold/freegold/diamond/expCoin/energy）。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 metrics:
   game_intervalShop_getFreeReward_cnt:
@@ -19,11 +19,11 @@ metrics:
     description: 领取免费奖励涉及的去重游戏服数
 coverage:
   scenarios:
-  - 评估持续回报商店免费奖励功能活跃度（总领取次数、角色/账号/游戏服覆盖广度）
+    - 评估持续回报商店免费奖励功能活跃度（总领取次数、角色/账号/游戏服覆盖广度）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体为 role_id；事件本身未记录领取的具体奖励物品/数量，仅记录领取行为
-  - 货币字段为领取时刻的快照余额，非本次领取变动量
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体为 role_id；事件本身未记录领取的具体奖励物品/数量，仅记录领取行为
+    - 货币字段为领取时刻的快照余额，非本次领取变动量
 params_fields:
   serverId:
     type: int
@@ -94,6 +94,7 @@ params_fields:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: analyst_confirmed
   note: ds=20260729 scout 实测 cnt=408 role_uv=408 acc_uv=407 server_uv=7，命中合理
+external_refs: []

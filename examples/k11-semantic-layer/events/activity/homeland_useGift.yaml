@@ -1,8 +1,8 @@
 name: game.homeland.useGift
 event_filter: event = 'game.homeland.useGift'
-description: '家园玩法-使用礼品(giftId/giftNum)：角色在家园玩法中消耗/使用礼品道具，上报礼品id与数量。主体粒度 role_id；ds=20260729 scout 实测 cnt=69405, role_uv=1578, acc_uv=1519, server_uv=324。'
+description: 家园玩法-使用礼品(giftId/giftNum)：角色在家园玩法中消耗/使用礼品道具，上报礼品id与数量。主体粒度 role_id；ds=20260729 scout 实测 cnt=69405, role_uv=1578, acc_uv=1519, server_uv=324。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -91,17 +91,18 @@ metrics:
     expression: COUNT(DISTINCT account_id)
     description: 使用礼品的去重账号数
   game_homeland_usegift_gift_sum:
-    expression: "SUM(CAST(GET_JSON_OBJECT(params, '$.giftNum') AS BIGINT))"
+    expression: SUM(CAST(GET_JSON_OBJECT(params, '$.giftNum') AS BIGINT))
     description: 礼品消耗总数量(giftNum 求和)
 coverage:
   scenarios:
-  - 礼品消耗总次数/总数量及消耗角色、账号 UV、服务器覆盖
+    - 礼品消耗总次数/总数量及消耗角色、账号 UV、服务器覆盖
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体 role_id；giftNum 为客户端上报，可能存在异常值
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体 role_id；giftNum 为客户端上报，可能存在异常值
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 scout: cnt=69405, role_uv=1578, acc_uv=1519, server_uv=324'
+  confirmed_at: "2026-07-31"
+  note: "ds=20260729 scout: cnt=69405, role_uv=1578, acc_uv=1519, server_uv=324"
   coverage_status: analyst_confirmed
+external_refs: []

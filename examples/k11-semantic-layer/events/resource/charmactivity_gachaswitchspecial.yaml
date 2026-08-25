@@ -1,8 +1,8 @@
 name: game.charmactivity.gachaswitchspecial
 event_filter: event = 'game.charmactivity.gachaswitchspecial'
-description: '灵器活动-切换新手集市卡池：角色在灵器活动内切换至新手集市卡池时上报，记录卡池切换行为及当前关键货币持有。分析主体粒度为 role_id（角色），每次切换新手集市卡池计为一条日志。ds=20260729 实测：cnt=177，role_uv=177，acc_uv=177，server_uv=7；切换覆盖 7 个游戏服、177 个角色，当日人均仅切换 1 次（cnt=role_uv）。'
+description: 灵器活动-切换新手集市卡池：角色在灵器活动内切换至新手集市卡池时上报，记录卡池切换行为及当前关键货币持有。分析主体粒度为 role_id（角色），每次切换新手集市卡池计为一条日志。ds=20260729 实测：cnt=177，role_uv=177，acc_uv=177，server_uv=7；切换覆盖 7 个游戏服、177 个角色，当日人均仅切换 1 次（cnt=role_uv）。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -95,18 +95,18 @@ metrics:
     description: 涉及的灵器活动 id 去重数
 coverage:
   scenarios:
-  - 通过 role_uv/account_uv 评估新手集市卡池切换玩法的角色/账号渗透规模
-  - 通过 server_uv 与按服维度聚合，定位新手集市卡池切换的活跃服
-  - 通过 activity_uv 识别哪些灵器活动开放了新手集市卡池切换入口
+    - 通过 role_uv/account_uv 评估新手集市卡池切换玩法的角色/账号渗透规模
+    - 通过 server_uv 与按服维度聚合，定位新手集市卡池切换的活跃服
+    - 通过 activity_uv 识别哪些灵器活动开放了新手集市卡池切换入口
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
-  - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复切做去重校验
-  - gachaIds（卡池id列表）为数组参数，未在本事件 metrics 内展开逐元素求和，如需按卡池维度聚合需单独建模
-  - 当日 cnt=role_uv（177=177），说明样本角色当日均仅切换 1 次，人均切换频次指标在该样本下退化为 1，跨日复核后才有统计意义
+    - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
+    - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复切做去重校验
+    - gachaIds（卡池id列表）为数组参数，未在本事件 metrics 内展开逐元素求和，如需按卡池维度聚合需单独建模
+    - 当日 cnt=role_uv（177=177），说明样本角色当日均仅切换 1 次，人均切换频次指标在该样本下退化为 1，跨日复核后才有统计意义
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=177, role_uv=177, acc_uv=177, server_uv=7；event+ds
-    双过滤命中，数值合理（177 角色覆盖 7 服，人均切换 1 次），确认在线可查。'
+  note: scout 实测 ds=20260729：cnt=177, role_uv=177, acc_uv=177, server_uv=7；event+ds 双过滤命中，数值合理（177 角色覆盖 7 服，人均切换 1 次），确认在线可查。
 coverage_status: analyst_confirmed
+external_refs: []

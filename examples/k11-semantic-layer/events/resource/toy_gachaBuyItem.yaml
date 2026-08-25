@@ -1,8 +1,8 @@
 name: game.toy.gachaBuyItem
 event_filter: event = 'game.toy.gachaBuyItem'
-description: 'toy 玩具抽卡购买事件：角色在玩具系统卡池（gachaId）购买抽卡道具时上报，记录每次购买的卡池id(gachaId)、购买数量(count)及角色基础信息与货币快照(coinList)。分析主体粒度为 role_id（角色），单次购买行为计为一条日志。ds=20260729 实测：cnt=26，role_uv=23，acc_uv=23，server_uv=14；当日购买次数(count合计) 2373，涉及卡池去重 9。'
+description: toy 玩具抽卡购买事件：角色在玩具系统卡池（gachaId）购买抽卡道具时上报，记录每次购买的卡池id(gachaId)、购买数量(count)及角色基础信息与货币快照(coinList)。分析主体粒度为 role_id（角色），单次购买行为计为一条日志。ds=20260729 实测：cnt=26，role_uv=23，acc_uv=23，server_uv=14；当日购买次数(count合计) 2373，涉及卡池去重 9。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -101,18 +101,19 @@ metrics:
     description: 人均购买次数 = 购买次数合计 / 角色去重数（NULLIF 防零除）
 coverage:
   scenarios:
-  - 通过 role_uv/account_uv 评估玩具抽卡的角色/账号渗透规模
-  - 通过 buy_count_sum、pull_per_role 衡量抽卡产出强度与人均购买力度，辅助卡池热度与商业化调优
-  - 通过 gacha_pool_uv 监控卡池覆盖与热度分布
-  - 通过 server_uv 与按服维度聚合，定位高活跃抽卡服
+    - 通过 role_uv/account_uv 评估玩具抽卡的角色/账号渗透规模
+    - 通过 buy_count_sum、pull_per_role 衡量抽卡产出强度与人均购买力度，辅助卡池热度与商业化调优
+    - 通过 gacha_pool_uv 监控卡池覆盖与热度分布
+    - 通过 server_uv 与按服维度聚合，定位高活跃抽卡服
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
-  - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复购做去重校验
-  - coinList（货币快照）为购买时刻的余额截面，非本次抽卡消耗，未在本事件 metrics 内展开逐元素求和，如需按货币类型聚合需单独建模
-  - count 为单次购买数量，与日志条数(cnt)口径不同，pull_per_role 分母为 role_uv 去重角色数，仅作人均强度参考
+    - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
+    - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复购做去重校验
+    - coinList（货币快照）为购买时刻的余额截面，非本次抽卡消耗，未在本事件 metrics 内展开逐元素求和，如需按货币类型聚合需单独建模
+    - count 为单次购买数量，与日志条数(cnt)口径不同，pull_per_role 分母为 role_uv 去重角色数，仅作人均强度参考
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=26, role_uv=23, acc_uv=23, server_uv=14; count合计=2373, gachaId去重=9, count非空率=26/26。数值合理，event+ds 双过滤命中，确认在线可查。'
+  note: scout 实测 ds=20260729：cnt=26, role_uv=23, acc_uv=23, server_uv=14; count合计=2373, gachaId去重=9, count非空率=26/26。数值合理，event+ds 双过滤命中，确认在线可查。
 coverage_status: analyst_confirmed
+external_refs: []

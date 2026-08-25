@@ -1,10 +1,10 @@
 name: game.equip.autoBreak
 event_filter: event = 'game.equip.autoBreak'
-description: '装备-自动突破：玩家使用自动突破功能对武将(knightId)的装备进行批量突破(uidList)时触发。每次自动突破记一条日志，携带目标武将id与被突破装备uid列表及角色/账号/区服上下文(roleLevel/vipLevel/roleForce等)，用于衡量装备养成活跃度、武将装备突破覆盖广度与突破玩家画像。主体粒度为角色(role_id)。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等24个'
+description: |-
+  装备-自动突破：玩家使用自动突破功能对武将(knightId)的装备进行批量突破(uidList)时触发。每次自动突破记一条日志，携带目标武将id与被突破装备uid列表及角色/账号/区服上下文(roleLevel/vipLevel/roleForce等)，用于衡量装备养成活跃度、武将装备突破覆盖广度与突破玩家画像。主体粒度为角色(role_id)。
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等24个
 domains:
-- 装备道具
+  - 装备道具
 domain: resource
 params_fields:
   serverId:
@@ -96,21 +96,21 @@ metrics:
     expression: COUNT(DISTINCT CAST(GET_JSON_OBJECT(params, '$.knightId') AS BIGINT))
     description: 被突破装备涉及的独立武将数(去重 knightId；事件特有维度，scout 实测 60 个)
   equip_autoBreak_role_per_server_ratio:
-    expression: ROUND(CAST(COUNT(DISTINCT role_id) AS DOUBLE) / NULLIF(COUNT(DISTINCT
-      server_id), 0), 2)
+    expression: ROUND(CAST(COUNT(DISTINCT role_id) AS DOUBLE) / NULLIF(COUNT(DISTINCT server_id), 0), 2)
     description: 平均每区服突破角色数(角色UV/区服UV；衡量区服集中度)
 coverage:
   scenarios:
-  - 装备自动突破参与规模(equip_autoBreak_cnt / equip_autoBreak_role_uv / equip_autoBreak_account_uv)
-  - 突破活动覆盖面(equip_autoBreak_server_uv 区服数、equip_autoBreak_knight_uv 武将数)
-  - 区服集中度(equip_autoBreak_role_per_server_ratio)
+    - 装备自动突破参与规模(equip_autoBreak_cnt / equip_autoBreak_role_uv / equip_autoBreak_account_uv)
+    - 突破活动覆盖面(equip_autoBreak_server_uv 区服数、equip_autoBreak_knight_uv 武将数)
+    - 区服集中度(equip_autoBreak_role_per_server_ratio)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测(cnt=7903/role_uv=1421/acc_uv=1374)，未做全量多日复核
-  - 主体粒度默认 role_id 未逐事件实测角色归属正确性，按 base view 同时含 account_id+role_id 推断为角色级(user_type=3)
-  - knightId 仅做 COUNT(DISTINCT) 实测(knight_uv=60)，未枚举各武将业务含义(需配置表/产品确认)
-  - uidList(突破装备列表)为数组，GET_JSON_OBJECT 返回 STRING 无法直接 SIZE，未构建单次突破件数指标
+    - 仅 ds=20260729 单日 scout 实测(cnt=7903/role_uv=1421/acc_uv=1374)，未做全量多日复核
+    - 主体粒度默认 role_id 未逐事件实测角色归属正确性，按 base view 同时含 account_id+role_id 推断为角色级(user_type=3)
+    - knightId 仅做 COUNT(DISTINCT) 实测(knight_uv=60)，未枚举各武将业务含义(需配置表/产品确认)
+    - uidList(突破装备列表)为数组，GET_JSON_OBJECT 返回 STRING 无法直接 SIZE，未构建单次突破件数指标
   coverage_status: analyst_reviewed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
+  confirmed_at: "2026-07-30"
+external_refs: []

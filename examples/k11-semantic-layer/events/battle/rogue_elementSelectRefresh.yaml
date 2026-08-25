@@ -1,8 +1,8 @@
 name: game.rogue.elementSelectRefresh
 event_filter: event = 'game.rogue.elementSelectRefresh'
-description: '古战场(rogue)模式元素选择刷新事件：记录玩家在古战场元素选择环节执行刷新操作(刷新可选元素列表)的行为日志，携带角色等级/vip/战力/经验/关键货币等上下文。分析主体为 role_id(角色级事件)。实测 ds=20260729: cnt=87, role_uv=17, acc_uv=17, server_uv=14。'
+description: "古战场(rogue)模式元素选择刷新事件：记录玩家在古战场元素选择环节执行刷新操作(刷新可选元素列表)的行为日志，携带角色等级/vip/战力/经验/关键货币等上下文。分析主体为 role_id(角色级事件)。实测 ds=20260729: cnt=87, role_uv=17, acc_uv=17, server_uv=14。"
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -102,4 +102,5 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: '实测 ds=20260729: cnt=87, role_uv=17, acc_uv=17, server_uv=14(数据合理，事件真实在线)'
+  note: "实测 ds=20260729: cnt=87, role_uv=17, acc_uv=17, server_uv=14(数据合理，事件真实在线)"
+external_refs: []

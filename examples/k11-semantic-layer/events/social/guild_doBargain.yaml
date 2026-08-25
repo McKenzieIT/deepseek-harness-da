@@ -1,8 +1,8 @@
 name: game.guild.doBargain
 event_filter: event = 'game.guild.doBargain'
-description: '公会砍价-砍价：玩家在公会砍价玩法中触发砍价动作（向商品出价/议价）的事件，每次事件对应当日 1 次砍价(dailyBargainCnt=1)。记录砍价时货币快照(充值钻石 gold、免费钻石 freegold、紫金 diamond 等)与角色经济画像。分析主体粒度为 role_id。参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个。scout 实测 ds=20260729 单日 cnt=2752、role_uv=2752、acc_uv=2622、server_uv=340。'
+description: 公会砍价-砍价：玩家在公会砍价玩法中触发砍价动作（向商品出价/议价）的事件，每次事件对应当日 1 次砍价(dailyBargainCnt=1)。记录砍价时货币快照(充值钻石 gold、免费钻石 freegold、紫金 diamond 等)与角色经济画像。分析主体粒度为 role_id。参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个。scout 实测 ds=20260729 单日 cnt=2752、role_uv=2752、acc_uv=2622、server_uv=340。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -101,19 +101,18 @@ metrics:
     description: 砍价参与者人均持有充值钻石(gold)，砍价时经济画像（货币快照非收入）
 coverage:
   scenarios:
-  - 公会砍价玩法的日参与规模与渗透：砍价次数(cnt/daily_cnt_sum)、参与角色/账号/服数
-  - 砍价参与者经济画像：砍价时持有充值钻石/免费钻石水平（gold/freegold 快照）
-  - 跨服参与分布与活跃游戏服识别（server_uv）
+    - 公会砍价玩法的日参与规模与渗透：砍价次数(cnt/daily_cnt_sum)、参与角色/账号/服数
+    - 砍价参与者经济画像：砍价时持有充值钻石/免费钻石水平（gold/freegold 快照）
+    - 跨服参与分布与活跃游戏服识别（server_uv）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id；ds=20260729 当日每角色恰好触发 1 次（dailyBargainCnt_max=1），多日累计行为未复核
-  - coinList.* 为砍价时货币快照（余额），非花费或收入，仅作经济画像用途；diamond(紫金) 该日上报为 null
-  - dailyBargainCnt 为玩家上报的当日累计值，跨天重置与跨日累加行为未复核
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id；ds=20260729 当日每角色恰好触发 1 次（dailyBargainCnt_max=1），多日累计行为未复核
+    - coinList.* 为砍价时货币快照（余额），非花费或收入，仅作经济画像用途；diamond(紫金) 该日上报为 null
+    - dailyBargainCnt 为玩家上报的当日累计值，跨天重置与跨日累加行为未复核
   coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729: cnt=2752, role_uv=2752, acc_uv=2622, server_uv=340;
-    dailyBargainCnt_sum=2752(每人1次,max=1); gold快照sum=37186, sendgold快照sum=7731,
-    freegold快照sum=47338152, diamond快照sum=null'
+  confirmed_at: "2026-07-30"
+  note: "scout 实测 ds=20260729: cnt=2752, role_uv=2752, acc_uv=2622, server_uv=340; dailyBargainCnt_sum=2752(每人1次,max=1); gold快照sum=37186, sendgold快照sum=7731, freegold快照sum=47338152, diamond快照sum=null"
+external_refs: []

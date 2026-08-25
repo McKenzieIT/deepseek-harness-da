@@ -1,8 +1,8 @@
 name: game.tactic.composite
 event_filter: event = 'game.tactic.composite'
-description: '角色成长域-战法合成事件。玩家在游戏内合成/打造战法时触发，记录目标战法 tacticId 与玩家快照（角色等级/vip/战力/经验/各类货币）。分析主体粒度为 role_id（角色）。ds=20260729 实测：259 次合成，覆盖 251 角色、250 账号、87 服。'
+description: 角色成长域-战法合成事件。玩家在游戏内合成/打造战法时触发，记录目标战法 tacticId 与玩家快照（角色等级/vip/战力/经验/各类货币）。分析主体粒度为 role_id（角色）。ds=20260729 实测：259 次合成，覆盖 251 角色、250 账号、87 服。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -95,17 +95,18 @@ metrics:
     description: 人均合成次数（总次数/去重角色数）
 coverage:
   scenarios:
-  - 战法合成整体规模与参与度（总次数/角色数/账号数/服数）
-  - 不同战法 tacticId 的合成覆盖广度
-  - 人均合成次数反映战法产出密度
+    - 战法合成整体规模与参与度（总次数/角色数/账号数/服数）
+    - 不同战法 tacticId 的合成覆盖广度
+    - 人均合成次数反映战法产出密度
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体粒度默认 role_id（角色），账号级聚合须改用 account_uv 指标
-  - coinList 各货币字段为合成时刻的持有快照，非本次合成消耗量，未单列消耗指标
-  - tacticId 经 params 解析，依赖客户端上报完整性
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体粒度默认 role_id（角色），账号级聚合须改用 account_uv 指标
+    - coinList 各货币字段为合成时刻的持有快照，非本次合成消耗量，未单列消耗指标
+    - tacticId 经 params 解析，依赖客户端上报完整性
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'ds=20260729 实测：cnt=259, role_uv=251, acc_uv=250, server_uv=87。单日数据合理（人均约1.03次），确认事件在线。'
+  note: ds=20260729 实测：cnt=259, role_uv=251, acc_uv=250, server_uv=87。单日数据合理（人均约1.03次），确认事件在线。
 coverage_status: analyst_confirmed
+external_refs: []

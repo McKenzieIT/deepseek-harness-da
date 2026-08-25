@@ -1,8 +1,8 @@
 name: game.champion.finalRank
 event_filter: event = 'game.champion.finalRank'
-description: '争霸赛最终排名上报事件：赛季结算时记录参赛角色的最终排名快照(seasonId/rankType/rankOldValue/rankValue)。分析主体为角色(role_id)，附带账号id、游戏服、角色名、等级、VIP、战力等画像字段。ds=20260729 单日实测 39 条记录、24 个角色、22 个账号、9 个游戏服，rankValue 范围 1-32、rankType 3 种、seasonId 4 种。'
+description: 争霸赛最终排名上报事件：赛季结算时记录参赛角色的最终排名快照(seasonId/rankType/rankOldValue/rankValue)。分析主体为角色(role_id)，附带账号id、游戏服、角色名、等级、VIP、战力等画像字段。ds=20260729 单日实测 39 条记录、24 个角色、22 个账号、9 个游戏服，rankValue 范围 1-32、rankType 3 种、seasonId 4 种。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 metrics:
   champion_finalrank_cnt:
@@ -28,12 +28,12 @@ metrics:
     description: 最终排名第一(冠军)的去重角色数
 coverage:
   scenarios:
-  - 各赛季最终排名快照：按 seasonId/rankType 切分统计参赛角色数、Top-N 分布、冠亚军分布
-  - 跨游戏服/赛季的角色最终排名对比与战力画像分析
+    - 各赛季最终排名快照：按 seasonId/rankType 切分统计参赛角色数、Top-N 分布、冠亚军分布
+    - 跨游戏服/赛季的角色最终排名对比与战力画像分析
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id(角色)，account_id 为账号粒度参考
-  - rankValue 单日实测范围 1-32、rankType 3 种、seasonId 4 种(非全量样本)
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id(角色)，account_id 为账号粒度参考
+    - rankValue 单日实测范围 1-32、rankType 3 种、seasonId 4 种(非全量样本)
 coverage_status: analyst_confirmed
 params_fields:
   serverId:
@@ -126,5 +126,6 @@ params_fields:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'ds=20260729 scout 实测：cnt=39, role_uv=24, acc_uv=22, server_uv=9; rankValue 1-32, rankType 3 种, seasonId 4 种'
+  confirmed_at: "2026-07-30"
+  note: ds=20260729 scout 实测：cnt=39, role_uv=24, acc_uv=22, server_uv=9; rankValue 1-32, rankType 3 种, seasonId 4 种
+external_refs: []

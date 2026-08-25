@@ -1,8 +1,8 @@
 name: game.social.guild.member
 event_filter: event = 'game.social.guild.member'
-description: '公会成员花名册快照事件：每条记录代表一个公会的完整成员名册（params.members 数组，含 uid/job/joinTs/wactive/wactiveTs/lastWactive/name 字段），按日上报。事件粒度为公会（guildId 为分析主体），基表 role_id/account_id 为空串，server_id 与 guildId 已填充。scout 实测 ds=20260729：cnt=13106 公会快照、guild_uv=13106、server_uv=235、成员记录合计 260600、平均每公会 19.88 人、零空公会。'
+description: 公会成员花名册快照事件：每条记录代表一个公会的完整成员名册（params.members 数组，含 uid/job/joinTs/wactive/wactiveTs/lastWactive/name 字段），按日上报。事件粒度为公会（guildId 为分析主体），基表 role_id/account_id 为空串，server_id 与 guildId 已填充。scout 实测 ds=20260729：cnt=13106 公会快照、guild_uv=13106、server_uv=235、成员记录合计 260600、平均每公会 19.88 人、零空公会。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 metrics:
   game_social_guild_member_cnt:
@@ -28,14 +28,14 @@ metrics:
     description: 平均每公会上报成员数（NULLIF 防 0 除）
 coverage:
   scenarios:
-  - 量化每日上报公会花名册的规模与覆盖区服/公会范围（社交公会域）
-  - 评估公会平均成员数与总成员记录规模，刻画公会活跃度分布
-  - 按 server_id 下钻识别公会覆盖密集服，辅助公会运营与跨服生态分析
+    - 量化每日上报公会花名册的规模与覆盖区服/公会范围（社交公会域）
+    - 评估公会平均成员数与总成员记录规模，刻画公会活跃度分布
+    - 按 server_id 下钻识别公会覆盖密集服，辅助公会运营与跨服生态分析
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 本事件为公会粒度：基表 role_id/account_id 为空串，COUNT(DISTINCT role_id) 与 COUNT(DISTINCT account_id) 退化为常数1，不作为分析主体；分析主体为 GET_JSON_OBJECT(params,'$.guildId')
-  - 成员记录数通过 REGEXP_COUNT(params,'"uid":') 近似统计 members 数组长度，仅限事件级聚合，未 EXPLODE 展开到成员行级
-  - params_fields 中声明的 roleId/roleName/sex/createTime/roleLevel/vipLevel/roleForce/exp/image/coinList/sessionId/logUUID 在 ds=20260729 抽样 params 顶层未观察到（仅 members/serverId/guildId/_muid 顶层字段存在），疑似成员级字段误归顶层或不同触发路径差异，未深究
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 本事件为公会粒度：基表 role_id/account_id 为空串，COUNT(DISTINCT role_id) 与 COUNT(DISTINCT account_id) 退化为常数1，不作为分析主体；分析主体为 GET_JSON_OBJECT(params,'$.guildId')
+    - 成员记录数通过 REGEXP_COUNT(params,'"uid":') 近似统计 members 数组长度，仅限事件级聚合，未 EXPLODE 展开到成员行级
+    - params_fields 中声明的 roleId/roleName/sex/createTime/roleLevel/vipLevel/roleForce/exp/image/coinList/sessionId/logUUID 在 ds=20260729 抽样 params 顶层未观察到（仅 members/serverId/guildId/_muid 顶层字段存在），疑似成员级字段误归顶层或不同触发路径差异，未深究
 coverage_status: analyst_confirmed
 params_fields:
   serverId:
@@ -135,4 +135,5 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=13106 公会快照，guild_uv=13106，server_uv=235，成员记录合计 260600，平均每公会 19.88 人，零空公会；role_id/account_id 为空串（公会粒度事件，主体为 guildId）'
+  note: scout 实测 ds=20260729：cnt=13106 公会快照，guild_uv=13106，server_uv=235，成员记录合计 260600，平均每公会 19.88 人，零空公会；role_id/account_id 为空串（公会粒度事件，主体为 guildId）
+external_refs: []

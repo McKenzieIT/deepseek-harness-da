@@ -1,8 +1,8 @@
 name: game.guild.gvgExchangeScoreReward
 event_filter: event = 'game.guild.gvgExchangeScoreReward'
-description: '公会据点全部摧毁后，公会成员通过该事件领取/兑换积分奖励。事件记录会员当次兑换的扣除次数(count)、新增积分(addScore)与所获奖励列表(rewards.type/value/size/uid)，并附带角色静态画像(roleId/roleName/roleLevel/vipLevel/roleForce/exp)与货币快照(coinList.*)。分析主体粒度为 role_id（会员级），按 server_id 可细分到公会据点服。scout 实测 ds=20260729 与 ds=20260728 均零命中（cnt=0/role_uv=0/acc_uv=0/server_uv=0），事件疑似已下线或当期未触发，metrics 定义按设计补齐但暂无真实量级可校验。'
+description: 公会据点全部摧毁后，公会成员通过该事件领取/兑换积分奖励。事件记录会员当次兑换的扣除次数(count)、新增积分(addScore)与所获奖励列表(rewards.type/value/size/uid)，并附带角色静态画像(roleId/roleName/roleLevel/vipLevel/roleForce/exp)与货币快照(coinList.*)。分析主体粒度为 role_id（会员级），按 server_id 可细分到公会据点服。scout 实测 ds=20260729 与 ds=20260728 均零命中（cnt=0/role_uv=0/acc_uv=0/server_uv=0），事件疑似已下线或当期未触发，metrics 定义按设计补齐但暂无真实量级可校验。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -119,17 +119,18 @@ metrics:
     description: 人均兑换次数（事件次数 / 去重角色数，NULLIF 防除零）
 coverage:
   scenarios:
-  - 公会据点战（GvG）结束后会员兑换积分奖励的参与度与频次分析
-  - 各服/各会员新增积分(addScore)与扣除次数(count)的总量与人均水平
-  - 公会据点兑换奖励的活跃会员画像（roleLevel/vipLevel/roleForce 分布）
+    - 公会据点战（GvG）结束后会员兑换积分奖励的参与度与频次分析
+    - 各服/各会员新增积分(addScore)与扣除次数(count)的总量与人均水平
+    - 公会据点兑换奖励的活跃会员画像（roleLevel/vipLevel/roleForce 分布）
   limitations:
-  - '日志中零命中(ds=20260729/20260728: cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/当期未触发'
-  - '仅 ds=20260729 单日 scout 实测，并在 ds=20260728 复测仍为零，未做全量复核'
-  - '分析主体粒度默认 role_id（会员级）；事件含 rewards/coinList 为数组结构，未在 metrics 中展开聚合'
-  - 'metrics 表达式基于 params 字段 GET_JSON_OBJECT 提取，零命中下未做值域校验'
+    - "日志中零命中(ds=20260729/20260728: cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/当期未触发"
+    - 仅 ds=20260729 单日 scout 实测，并在 ds=20260728 复测仍为零，未做全量复核
+    - 分析主体粒度默认 role_id（会员级）；事件含 rewards/coinList 为数组结构，未在 metrics 中展开聚合
+    - metrics 表达式基于 params 字段 GET_JSON_OBJECT 提取，零命中下未做值域校验
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/当期未触发，保持 draft；metrics 按 params_fields 设计补齐但暂无真实量级可校验'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/当期未触发，保持 draft；metrics 按 params_fields 设计补齐但暂无真实量级可校验
 coverage_status: draft
+external_refs: []

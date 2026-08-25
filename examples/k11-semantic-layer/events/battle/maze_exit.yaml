@@ -1,8 +1,8 @@
 name: game.maze.exit
 event_filter: event = 'game.maze.exit'
-description: '角色迷宫退出事件：记录玩家退出迷宫关卡时的角色快照（角色等级、VIP等级、角色战力、经验、货币列表等22个参数）。分析主体粒度为 role_id（角色），辅以 account_id 账号维度。ds=20260729 单日 scout 实测 cnt=10, role_uv=10, acc_uv=10, server_uv=6。'
+description: 角色迷宫退出事件：记录玩家退出迷宫关卡时的角色快照（角色等级、VIP等级、角色战力、经验、货币列表等22个参数）。分析主体粒度为 role_id（角色），辅以 account_id 账号维度。ds=20260729 单日 scout 实测 cnt=10, role_uv=10, acc_uv=10, server_uv=6。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -100,14 +100,15 @@ coverage:
     - 评估单服参与广度（role_per_server），识别活跃/疲劳服务器
   subject_granularity: role_id（角色，默认主体）；辅以 account_id 账号维度
   limitations:
-    - '仅 ds=20260729 单日 scout 实测，未做全量复核；多日趋势需扩展 ds 范围'
-    - 'coinList 等数组型货币字段未在 metrics 中聚合（结构复杂，需展开子字段单独建模）'
-    - 'roleLevel/vipLevel 取自 params，依赖客户端上报完整性'
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核；多日趋势需扩展 ds 范围
+    - coinList 等数组型货币字段未在 metrics 中聚合（结构复杂，需展开子字段单独建模）
+    - roleLevel/vipLevel 取自 params，依赖客户端上报完整性
   data_quality:
-    - 'ds=20260729 实测 cnt=10, role_uv=10, acc_uv=10, server_uv=6；事件命中正常'
+    - ds=20260729 实测 cnt=10, role_uv=10, acc_uv=10, server_uv=6；事件命中正常
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729: cnt=10, role_uv=10, acc_uv=10, server_uv=6；事件真实命中，数字合理'
+  note: "scout 实测 ds=20260729: cnt=10, role_uv=10, acc_uv=10, server_uv=6；事件真实命中，数字合理"
 coverage_status: analyst_confirmed
+external_refs: []

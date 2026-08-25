@@ -1,8 +1,8 @@
 name: game.clientValue.set
 event_filter: event = 'game.clientValue.set'
-description: '客户端键值设置事件：客户端通过 key/value/oldValue 三元组上报某项客户端状态的变更（单日实测 key 恒为 2，value 为单调递增整数、oldValue=value-1，疑似某项进度计数器的逐步推进）。分析主体为 role_id（角色粒度），account_id 为账号粒度补充。ds=20260729 单日 scout 实测：cnt=1827、role_uv=734、acc_uv=721、server_uv=54，当日仅观测到 key=2 一种。'
+description: 客户端键值设置事件：客户端通过 key/value/oldValue 三元组上报某项客户端状态的变更（单日实测 key 恒为 2，value 为单调递增整数、oldValue=value-1，疑似某项进度计数器的逐步推进）。分析主体为 role_id（角色粒度），account_id 为账号粒度补充。ds=20260729 单日 scout 实测：cnt=1827、role_uv=734、acc_uv=721、server_uv=54，当日仅观测到 key=2 一种。
 domains:
-- 系统监控
+  - 系统监控
 domain: system
 params_fields:
   serverId:
@@ -108,7 +108,7 @@ coverage:
     - 当日被设置的客户端 key 维度分布（key_uv）
     - 进度计数器推进量与达到的最高进度（value_sum / value_max）
   limitations:
-    - "仅 ds=20260729 单日 scout 实测，未做全量复核"
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
     - 分析主体默认 role_id（角色粒度）；account_id 可作账号粒度补充
     - 当日 key 恒为 2，其他 key 维度的覆盖未验证
     - value 语义需业务方确认（疑似进度计数器，未与策划配置对齐）
@@ -118,5 +118,16 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: "实测 ds=20260729：cnt=1827, role_uv=734, acc_uv=721, server_uv=54；key 恒为 2，value 单调递增、oldValue=value-1，数据形态合理。"
+  note: 实测 ds=20260729：cnt=1827, role_uv=734, acc_uv=721, server_uv=54；key 恒为 2，value 单调递增、oldValue=value-1，数据形态合理。
 coverage_status: analyst_confirmed
+external_refs:
+  - dim_table: dim_10000251_trans_item_df
+    join_keys:
+      - dws_column: value
+        dim_column: value
+    derivation: 确定性：事件字段 value 与 dim_10000251_trans_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_item_df_arch
+    join_keys:
+      - dws_column: value
+        dim_column: value
+    derivation: 确定性：事件字段 value 与 dim_10000251_trans_item_df_arch 主键精确同名

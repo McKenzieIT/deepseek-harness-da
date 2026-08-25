@@ -1,8 +1,8 @@
 name: game.toy.techonekeyactive
 event_filter: event = 'game.toy.techonekeyactive'
-description: '玩家一次性激活多个科技（一键科技）的埋点事件。每次玩家在科技面板点击「一键激活」时触发，params.techIds 携带本次批量激活的科技id列表，同时上报角色当前等级/战力/vip/经验及关键货币（钻石、紫金、体力等）快照。分析主体为 role_id（角色粒度，account_id 作为账号维度补充）。实测 ds=20260729 单日：cnt=732 次一键激活，role_uv=636 角色，acc_uv=623 账号，server_uv=281 服务器。'
+description: 玩家一次性激活多个科技（一键科技）的埋点事件。每次玩家在科技面板点击「一键激活」时触发，params.techIds 携带本次批量激活的科技id列表，同时上报角色当前等级/战力/vip/经验及关键货币（钻石、紫金、体力等）快照。分析主体为 role_id（角色粒度，account_id 作为账号维度补充）。实测 ds=20260729 单日：cnt=732 次一键激活，role_uv=636 角色，acc_uv=623 账号，server_uv=281 服务器。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 metrics:
   techonekeyactive_cnt:
@@ -25,14 +25,14 @@ metrics:
     expression: ROUND(COUNT(*) * 1.0 / NULLIF(COUNT(DISTINCT role_id), 0), 2)
 coverage:
   scenarios:
-  - 一键科技功能渗透：通过 role_uv / account_uv 评估每日使用一键激活功能的角色和账号规模
-  - 单服参与度：role_per_server_uv 反映功能在不同服务器的覆盖广度
-  - 重复使用强度：avg_activations_per_role 判断玩家是否在一天内多次使用一键激活
-  - 服务器活跃分布：server_uv 用于横向比较各服科技功能活跃情况
+    - 一键科技功能渗透：通过 role_uv / account_uv 评估每日使用一键激活功能的角色和账号规模
+    - 单服参与度：role_per_server_uv 反映功能在不同服务器的覆盖广度
+    - 重复使用强度：avg_activations_per_role 判断玩家是否在一天内多次使用一键激活
+    - 服务器活跃分布：server_uv 用于横向比较各服科技功能活跃情况
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核；多日趋势需补全 ds 范围后重新评估
-  - 分析主体默认 role_id（角色粒度），account_id 仅作账号维度补充；未对 techIds 数组长度做 SUM（Hive 数组聚合复杂），故未提供「激活科技总条数」指标，需后续如需可基于 json_size 补齐
-  - 未对 roleLevel/vipLevel/roleForce 等快照字段做分桶聚合，如需画像分析可后续扩展
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核；多日趋势需补全 ds 范围后重新评估
+    - 分析主体默认 role_id（角色粒度），account_id 仅作账号维度补充；未对 techIds 数组长度做 SUM（Hive 数组聚合复杂），故未提供「激活科技总条数」指标，需后续如需可基于 json_size 补齐
+    - 未对 roleLevel/vipLevel/roleForce 等快照字段做分桶聚合，如需画像分析可后续扩展
 params_fields:
   serverId:
     type: int
@@ -107,5 +107,6 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=732 次一键科技激活，role_uv=636，acc_uv=623，server_uv=281，数值合理（单服单日平均 ~2.6 角色、~1.15 次/角色），事件在线且数据质量正常'
+  note: scout 实测 ds=20260729：cnt=732 次一键科技激活，role_uv=636，acc_uv=623，server_uv=281，数值合理（单服单日平均 ~2.6 角色、~1.15 次/角色），事件在线且数据质量正常
 coverage_status: analyst_confirmed
+external_refs: []

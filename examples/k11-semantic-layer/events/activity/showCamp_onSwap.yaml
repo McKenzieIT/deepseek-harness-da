@@ -1,14 +1,12 @@
 name: game.showCamp.onSwap
 event_filter: event = 'game.showCamp.onSwap'
-description: '折扣服玩法：营地 交换展示。当玩家在折扣服的营地（showCamp）界面执行"交换"操作时触发，记录交换前后两个槽位的道具ID变化（slot1/slot2，oldId1→newId1，oldId2→newId2）及当前货币、角色战力等状态。
-
+description: |-
+  折扣服玩法：营地 交换展示。当玩家在折扣服的营地（showCamp）界面执行"交换"操作时触发，记录交换前后两个槽位的道具ID变化（slot1/slot2，oldId1→newId1，oldId2→newId2）及当前货币、角色战力等状态。
   分析主体粒度：角色级（role_id 为分析主体，accountId 关联到账号）。
-
   单日 scout 实测（ds=20260729）：事件 28 次，覆盖 21 个角色 / 21 个账号 / 16 个游戏服，属低频交互事件。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等29个'
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等29个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -116,17 +114,53 @@ metrics:
     expression: COUNT(*) / NULLIF(COUNT(DISTINCT role_id), 0)
 coverage:
   scenarios:
-  - 折扣服营地交换玩法的日/周参与度与活跃角色规模
-  - 单角色人均交换频次（人均交换次数），辅助判断玩法粘性与潜在刷量
-  - 交换事件在不同游戏服的分布（server_uv）以识别折扣服活跃区间
+    - 折扣服营地交换玩法的日/周参与度与活跃角色规模
+    - 单角色人均交换频次（人均交换次数），辅助判断玩法粘性与潜在刷量
+    - 交换事件在不同游戏服的分布（server_uv）以识别折扣服活跃区间
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体粒度默认 role_id（折扣服营地交换以角色为单位触发；accountId 与 role_id 在本次实测中一一对应，可作交叉校验）
-  - 交换前后槽位道具ID（slot1/slot2、oldId1/newId1、oldId2/newId2）仅作字段留存，未在本次 scout 中验证其取值分布
-  - 货币类字段（coinList.*）未在本次 scout 中验证，避免与付费经济口径混淆
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体粒度默认 role_id（折扣服营地交换以角色为单位触发；accountId 与 role_id 在本次实测中一一对应，可作交叉校验）
+    - 交换前后槽位道具ID（slot1/slot2、oldId1/newId1、oldId2/newId2）仅作字段留存，未在本次 scout 中验证其取值分布
+    - 货币类字段（coinList.*）未在本次 scout 中验证，避免与付费经济口径混淆
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'ds=20260729 单日 scout 实测：cnt=28, role_uv=21, acc_uv=21, server_uv=16，数据量低但分布合理（多角色多服参与），判定为真实在线事件。'
+  confirmed_at: "2026-07-30"
+  note: ds=20260729 单日 scout 实测：cnt=28, role_uv=21, acc_uv=21, server_uv=16，数据量低但分布合理（多角色多服参与），判定为真实在线事件。
 coverage_status: analyst_confirmed
+external_refs:
+  - dim_table: dim_10000251_trans_gacha_mission_group_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_gacha_mission_group_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df_arch 主键精确同名

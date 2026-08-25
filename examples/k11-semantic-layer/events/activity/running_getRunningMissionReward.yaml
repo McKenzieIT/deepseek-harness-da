@@ -1,8 +1,8 @@
 name: game.running.getRunningMissionReward
 event_filter: event = 'game.running.getRunningMissionReward'
-description: '领取赛马任务奖励事件：角色在赛马(running)玩法中完成并领取任务奖励时上报，携带 missionIds(任务id数组)、rewards(奖励明细数组 type/value/size/uid)、coinList(关键货币 gold/sendgold/freegold/diamond/expCoin/energy) 等参数。分析主体为 role_id（角色粒度），account_id 用于账号级去重。ds=20260729 单日 scout 实测 0 命中（ds=20260728 同样 0 命中），事件疑似下线/未触发。'
+description: 领取赛马任务奖励事件：角色在赛马(running)玩法中完成并领取任务奖励时上报，携带 missionIds(任务id数组)、rewards(奖励明细数组 type/value/size/uid)、coinList(关键货币 gold/sendgold/freegold/diamond/expCoin/energy) 等参数。分析主体为 role_id（角色粒度），account_id 用于账号级去重。ds=20260729 单日 scout 实测 0 命中（ds=20260728 同样 0 命中），事件疑似下线/未触发。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -101,16 +101,17 @@ metrics:
     description: 领取赛马任务奖励的去重账号数
 coverage:
   scenarios:
-  - 事件级量纲：领取赛马任务奖励的发生次数、参与角色/账号 UV
-  - 按 server_id/roleLevel/vipLevel 维度拆分领取参与度
-  - rewards/coinList 货币与奖励发放总量核对
+    - 事件级量纲：领取赛马任务奖励的发生次数、参与角色/账号 UV
+    - 按 server_id/roleLevel/vipLevel 维度拆分领取参与度
+    - rewards/coinList 货币与奖励发放总量核对
   limitations:
-  - '日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似事件下线/未触发'
-  - 仅 ds=20260729/ds=20260728 双日 scout 实测，未做全量复核
-  - subject 粒度默认 role_id（角色），未实测到非零值
+    - 日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似事件下线/未触发
+    - 仅 ds=20260729/ds=20260728 双日 scout 实测，未做全量复核
+    - subject 粒度默认 role_id（角色），未实测到非零值
 coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729: cnt=0/role_uv=0/acc_uv=0；ds=20260728: cnt=0/role_uv=0/acc_uv=0。零命中，保持 draft。'
+  confirmed_at: "2026-07-30"
+  note: "scout 实测 ds=20260729: cnt=0/role_uv=0/acc_uv=0；ds=20260728: cnt=0/role_uv=0/acc_uv=0。零命中，保持 draft。"
+external_refs: []

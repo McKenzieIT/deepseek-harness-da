@@ -1,8 +1,8 @@
 name: game.group.battle
 event_filter: event = 'game.group.battle'
-description: '组队战斗事件：记录角色参与组队（多人协作）挑战的每次战斗参与。每个日志行代表一个角色在一场组队战斗中的参与记录（battleId 唯一标识一次战斗，role_id 为分析主体粒度）。包含队伍信息（groupId/groupType/roleNum/roleList）、玩法与关卡（playType/playName/floor/stageId/stageType）等参数，共 34 个字段。真实数据验证（ds=20260729）：当日 2692 次参与记录，覆盖 637 个角色 / 631 个账号 / 170 个游戏服 / 1167 个队伍 / 2692 场独立战斗，最大队伍人数 4 人。'
+description: 组队战斗事件：记录角色参与组队（多人协作）挑战的每次战斗参与。每个日志行代表一个角色在一场组队战斗中的参与记录（battleId 唯一标识一次战斗，role_id 为分析主体粒度）。包含队伍信息（groupId/groupType/roleNum/roleList）、玩法与关卡（playType/playName/floor/stageId/stageType）等参数，共 34 个字段。真实数据验证（ds=20260729）：当日 2692 次参与记录，覆盖 637 个角色 / 631 个账号 / 170 个游戏服 / 1167 个队伍 / 2692 场独立战斗，最大队伍人数 4 人。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -151,6 +151,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'MAXC scout 实测 ds=20260729：cnt=2692, role_uv=637, acc_uv=631, server_uv=170；battle_uv=2692(每行一场战斗), group_uv=1167, role_num_sum=6638, role_num_max=4；数据合理，事件在线'
+  confirmed_at: "2026-07-30"
+  note: MAXC scout 实测 ds=20260729：cnt=2692, role_uv=637, acc_uv=631, server_uv=170；battle_uv=2692(每行一场战斗), group_uv=1167, role_num_sum=6638, role_num_max=4；数据合理，事件在线
 coverage_status: analyst_confirmed
+external_refs: []

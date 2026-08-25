@@ -1,8 +1,8 @@
 name: game.guild.donate
 event_filter: event = 'game.guild.donate'
-description: '公会捐献事件（game.guild.donate）：玩家在游戏内对所属公会进行捐献时上报的行为埋点。参数携带捐献角色、目标公会 guild、捐献次数 count，以及捐后角色货币快照 coinList（gold/freegold/diamond/expCoin/energy 等）。分析主体粒度为 role_id（每次捐献按角色记录），可通过 COUNT(DISTINCT server_id)/COUNT(DISTINCT GET_JSON_OBJECT(params,$.guild)) 评估公会捐献的覆盖面与活跃度。scout 实测 ds=20260729 单日：事件 4788 条、捐献角色 3240、账号 3093、游戏服 436、公会 567、count 累计 7596。'
+description: 公会捐献事件（game.guild.donate）：玩家在游戏内对所属公会进行捐献时上报的行为埋点。参数携带捐献角色、目标公会 guild、捐献次数 count，以及捐后角色货币快照 coinList（gold/freegold/diamond/expCoin/energy 等）。分析主体粒度为 role_id（每次捐献按角色记录），可通过 COUNT(DISTINCT server_id)/COUNT(DISTINCT GET_JSON_OBJECT(params,$.guild)) 评估公会捐献的覆盖面与活跃度。scout 实测 ds=20260729 单日：事件 4788 条、捐献角色 3240、账号 3093、游戏服 436、公会 567、count 累计 7596。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -84,7 +84,7 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729 单日：cnt=4788、role_uv=3240、acc_uv=3093、server_uv=436、guild_uv=567、count_sum=7596；数据合理（单日活跃公会捐献），分析主体粒度 role_id'
+  note: scout 实测 ds=20260729 单日：cnt=4788、role_uv=3240、acc_uv=3093、server_uv=436、guild_uv=567、count_sum=7596；数据合理（单日活跃公会捐献），分析主体粒度 role_id
 metrics:
   game_guild_donate_cnt:
     expression: COUNT(*)
@@ -109,12 +109,13 @@ metrics:
     description: 人均捐献次数（count_sum / role_uv，NULLIF 防零除）
 coverage:
   scenarios:
-  - 公会捐献参与率（捐献角色 / 公会活跃角色）
-  - 公会捐献覆盖面（覆盖公会数、覆盖游戏服数）
-  - 单角色捐献强度（人均捐献次数 avg_count_per_role）
-  - 公会捐献总量趋势（count_sum 按日/服务器/公会聚合）
+    - 公会捐献参与率（捐献角色 / 公会活跃角色）
+    - 公会捐献覆盖面（覆盖公会数、覆盖游戏服数）
+    - 单角色捐献强度（人均捐献次数 avg_count_per_role）
+    - 公会捐献总量趋势（count_sum 按日/服务器/公会聚合）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体粒度默认 role_id，未独立核对 account_id 维度的去重差异
-  - count 字段语义为"捐献次数"（来自埋点描述），未与游戏内公会贡献值二次对账
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体粒度默认 role_id，未独立核对 account_id 维度的去重差异
+    - count 字段语义为"捐献次数"（来自埋点描述），未与游戏内公会贡献值二次对账
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.social.guild.battle
 event_filter: event = 'game.social.guild.battle'
-description: "公会战挑战事件：记录角色参与公会战的战斗数据（含两场战斗id battleId1/battleId2、进攻积分 attackScore、战斗结果 battleId1Res/battleId2Res 等27个参数）。分析主体粒度为 role_id（角色）。scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0)，事件疑似下线/未触发。"
+description: 公会战挑战事件：记录角色参与公会战的战斗数据（含两场战斗id battleId1/battleId2、进攻积分 attackScore、战斗结果 battleId1Res/battleId2Res 等27个参数）。分析主体粒度为 role_id（角色）。scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0)，事件疑似下线/未触发。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -107,16 +107,17 @@ metrics:
     description: 参与角色的平均进攻积分（NULLIF 防零除）
 coverage:
   scenarios:
-  - 公会战参与规模（角色数/账号数/服务器数）
-  - 公会战进攻积分产出总量与人均产出
-  - 单角色进攻积分贡献对比
+    - 公会战参与规模（角色数/账号数/服务器数）
+    - 公会战进攻积分产出总量与人均产出
+    - 单角色进攻积分贡献对比
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/未触发，保持 draft
-  - 分析主体粒度默认 role_id（角色），因零命中未能验证实际数据分布与 battleId1Res/battleId2Res 的结果码语义
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/未触发，保持 draft
+    - 分析主体粒度默认 role_id（角色），因零命中未能验证实际数据分布与 battleId1Res/battleId2Res 的结果码语义
   coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: "scout 实测 ds=20260729 cnt=0/role_uv=0/acc_uv=0/server_uv=0；ds=20260728 cnt=0；零命中，事件疑似下线/未触发，保持 draft"
+  note: scout 实测 ds=20260729 cnt=0/role_uv=0/acc_uv=0/server_uv=0；ds=20260728 cnt=0；零命中，事件疑似下线/未触发，保持 draft
+external_refs: []

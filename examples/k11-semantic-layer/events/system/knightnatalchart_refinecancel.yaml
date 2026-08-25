@@ -1,8 +1,8 @@
 name: game.knightnatalchart.refinecancel
 event_filter: event = 'game.knightnatalchart.refinecancel'
-description: '武将命盘-取消（game.knightnatalchart.refinecancel）：玩家在武将命盘洗炼流程中主动取消洗炼操作时触发的行为埋点。记录取消洗炼的目标武将(knightId)、所用方案(scheme)以及本次随机到的命盘节点(nodes)，用于刻画玩家在命盘洗炼环节的放弃行为与方案偏好。分析主体为 role_id（角色级事件），可下钻至武将与方案粒度。scout 实测 ds=20260729 单日命中 cnt=3308，涉及 role_uv=142 / acc_uv=142 / server_uv=42，knight_uv=46、scheme_uv=2、roleLevel 分布 33 档。'
+description: 武将命盘-取消（game.knightnatalchart.refinecancel）：玩家在武将命盘洗炼流程中主动取消洗炼操作时触发的行为埋点。记录取消洗炼的目标武将(knightId)、所用方案(scheme)以及本次随机到的命盘节点(nodes)，用于刻画玩家在命盘洗炼环节的放弃行为与方案偏好。分析主体为 role_id（角色级事件），可下钻至武将与方案粒度。scout 实测 ds=20260729 单日命中 cnt=3308，涉及 role_uv=142 / acc_uv=142 / server_uv=42，knight_uv=46、scheme_uv=2、roleLevel 分布 33 档。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -104,16 +104,17 @@ metrics:
     description: 人均取消洗炼次数（总次数/去重角色数）
 coverage:
   scenarios:
-  - 命盘洗炼取消的日活角色规模与服务器分布
-  - 哪些武将/方案更频繁被玩家放弃洗炼（knight_uv/scheme_uv 下钻）
-  - 人均取消次数，衡量洗炼体验的放弃率与体验摩擦
+    - 命盘洗炼取消的日活角色规模与服务器分布
+    - 哪些武将/方案更频繁被玩家放弃洗炼（knight_uv/scheme_uv 下钻）
+    - 人均取消次数，衡量洗炼体验的放弃率与体验摩擦
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（角色级事件），account_id 与 role_id 去重数相等（142==142），无多角色同账号场景样本
-  - nodes 字段为随机命盘节点数组，未做结构化展开，暂不作为度量
-  - coinList 关键货币在取消事件中多为玩家当前持有快照而非退款流水，未直接汇总为收入度量
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（角色级事件），account_id 与 role_id 去重数相等（142==142），无多角色同账号场景样本
+    - nodes 字段为随机命盘节点数组，未做结构化展开，暂不作为度量
+    - coinList 关键货币在取消事件中多为玩家当前持有快照而非退款流水，未直接汇总为收入度量
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
+  confirmed_at: "2026-07-30"
 coverage_status: analyst_confirmed
+external_refs: []

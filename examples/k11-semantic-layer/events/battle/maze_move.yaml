@@ -1,11 +1,8 @@
 name: game.maze.move
 event_filter: event = 'game.maze.move'
-description: >-
-  迷宫-移动：玩家在迷宫地图中移动到下一节点时触发的战斗关卡事件，上报迷宫id(dungeonId)与下一节点id(nextId)。
-  参数含游戏服id、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表(充值/赠送/免费钻石、紫金、经验卷轴、体力)、会话id、logUUID等24个字段。
-  分析主体粒度为 role_id（角色）。实测 ds=20260729 单日：cnt=4405、role_uv=109、acc_uv=109、server_uv=16，涉及 dungeon_uv=1、next_node_uv=38。
+description: 迷宫-移动：玩家在迷宫地图中移动到下一节点时触发的战斗关卡事件，上报迷宫id(dungeonId)与下一节点id(nextId)。 参数含游戏服id、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表(充值/赠送/免费钻石、紫金、经验卷轴、体力)、会话id、logUUID等24个字段。 分析主体粒度为 role_id（角色）。实测 ds=20260729 单日：cnt=4405、role_uv=109、acc_uv=109、server_uv=16，涉及 dungeon_uv=1、next_node_uv=38。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -116,5 +113,5 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: >-
-    实测 ds=20260729：cnt=4405、role_uv=109、acc_uv=109、server_uv=16；事件可访问且数据合理（dungeon_uv=1、next_node_uv=38、roleLevel 31-80、max_roleForce=5791356）。
+  note: 实测 ds=20260729：cnt=4405、role_uv=109、acc_uv=109、server_uv=16；事件可访问且数据合理（dungeon_uv=1、next_node_uv=38、roleLevel 31-80、max_roleForce=5791356）。
+external_refs: []

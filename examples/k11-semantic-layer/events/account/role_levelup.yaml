@@ -1,8 +1,8 @@
 name: game.role.levelup
 event_filter: event = 'game.role.levelup'
-description: '玩家角色升级事件：记录角色在游戏服内完成等级提升的时刻，参数包含角色等级(roleLevel)、经验(exp)、角色战力(roleForce)、vip等级(vipLevel)、看板娘(image)及多种货币(coinList下的gold/sendgold/freegold/diamond/expCoin/energy)等22个字段。主体粒度为 role_id(角色)，单条记录对应一次角色升级行为，可统计升级次数与覆盖的角色/账号/服务器规模。'
+description: 玩家角色升级事件：记录角色在游戏服内完成等级提升的时刻，参数包含角色等级(roleLevel)、经验(exp)、角色战力(roleForce)、vip等级(vipLevel)、看板娘(image)及多种货币(coinList下的gold/sendgold/freegold/diamond/expCoin/energy)等22个字段。主体粒度为 role_id(角色)，单条记录对应一次角色升级行为，可统计升级次数与覆盖的角色/账号/服务器规模。
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -75,7 +75,7 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: "ds=20260729 实测 cnt=13152 role_uv=2687 acc_uv=2520 server_uv=179，单日 scout 数据合理"
+  note: ds=20260729 实测 cnt=13152 role_uv=2687 acc_uv=2520 server_uv=179，单日 scout 数据合理
   coverage_status: analyst_confirmed
 metrics:
   game_role_levelup_cnt:
@@ -96,6 +96,7 @@ coverage:
     - 通过角色UV/账号UV/服务器UV衡量升级行为覆盖广度
     - 主体粒度为 role_id，可下钻按服务器/账号分析升级分布
   limitations:
-    - "仅 ds=20260729 单日 scout 实测，未做全量复核"
-    - "默认主体为 role_id，跨角色聚合时需注意去重"
-    - "未对 roleLevel/exp 等参数字段做值域校验"
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体为 role_id，跨角色聚合时需注意去重
+    - 未对 roleLevel/exp 等参数字段做值域校验
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.knight.onekeyawaken
 event_filter: event = 'game.knight.onekeyawaken'
-description: '武将一键觉醒事件。记录玩家对武将(knightId)执行一键觉醒操作，触发后武将按 orders 觉醒点位顺序批量提升节点等级/节点id；事件携带角色基础属性(roleLevel/vipLevel/roleForce/exp)与关键货币(coinList.gold/diamond/energy 等)。分析主体为 role_id(角色)，20260729 单日 scout 实测 cnt=224/role_uv=49/acc_uv=48/server_uv=14。'
+description: 武将一键觉醒事件。记录玩家对武将(knightId)执行一键觉醒操作，触发后武将按 orders 觉醒点位顺序批量提升节点等级/节点id；事件携带角色基础属性(roleLevel/vipLevel/roleForce/exp)与关键货币(coinList.gold/diamond/energy 等)。分析主体为 role_id(角色)，20260729 单日 scout 实测 cnt=224/role_uv=49/acc_uv=48/server_uv=14。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -107,19 +107,20 @@ metrics:
     expression: CAST(SUM(CASE WHEN GET_JSON_OBJECT(params, '$.knightId') IS NOT NULL THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
 coverage:
   scenarios:
-  - 角色成长：武将觉醒参与度与渗透(操作角色数/总活跃角色)
-  - 角色成长：人均觉醒频次，识别高频/批量觉醒玩家
-  - 角色成长：被觉醒武将(knightId)覆盖广度，评估不同武将觉醒热度
-  - 资源产销：觉醒对 coinList.gold/diamond/energy 等关键货币的消耗(配合货币余额事件)
+    - 角色成长：武将觉醒参与度与渗透(操作角色数/总活跃角色)
+    - 角色成长：人均觉醒频次，识别高频/批量觉醒玩家
+    - 角色成长：被觉醒武将(knightId)覆盖广度，评估不同武将觉醒热度
+    - 资源产销：觉醒对 coinList.gold/diamond/energy 等关键货币的消耗(配合货币余额事件)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id(角色)；account_id 仅作账号去重补充
-  - orders(觉醒点位数组)未展开为节点级明细指标，仅以操作事件行计数
-  - coinList 字段非本事件直接 SUM 计量(应配合资源产销域货币流水事件)，本事件指标不含货币 SUM
-  - server_uv 等指标受当日开服分布影响，非稳态
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id(角色)；account_id 仅作账号去重补充
+    - orders(觉醒点位数组)未展开为节点级明细指标，仅以操作事件行计数
+    - coinList 字段非本事件直接 SUM 计量(应配合资源产销域货币流水事件)，本事件指标不含货币 SUM
+    - server_uv 等指标受当日开服分布影响，非稳态
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout MAXC 实测 ds=20260729：cnt=224 / role_uv=49 / acc_uv=48 / server_uv=14，数值合理(多服多角色一键觉醒)。仅单日 scout，未做全量复核。'
+  confirmed_at: "2026-07-30"
+  note: scout MAXC 实测 ds=20260729：cnt=224 / role_uv=49 / acc_uv=48 / server_uv=14，数值合理(多服多角色一键觉醒)。仅单日 scout，未做全量复核。
 coverage_status: analyst_confirmed
+external_refs: []

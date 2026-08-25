@@ -1,10 +1,10 @@
 name: game.happyLottery.fetchPointReward
 event_filter: event = 'game.happyLottery.fetchPointReward'
-description: '刮刮乐：领取积分奖励（活动参与事件）。记录玩家在刮刮乐活动中领取积分奖励的行为，含奖励id列表(ids)、领取类型(type:1普通/2层奖励)、活动id(lotteryId)等。主体粒度 role_id。ds=20260729 实测 日志量 5580 条，覆盖 2886 角色 / 2784 账号 / 424 服务器。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等27个'
+description: |-
+  刮刮乐：领取积分奖励（活动参与事件）。记录玩家在刮刮乐活动中领取积分奖励的行为，含奖励id列表(ids)、领取类型(type:1普通/2层奖励)、活动id(lotteryId)等。主体粒度 role_id。ds=20260729 实测 日志量 5580 条，覆盖 2886 角色 / 2784 账号 / 424 服务器。
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等27个
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -103,15 +103,51 @@ metrics:
     description: 触发领取积分奖励的去重游戏服数
 coverage:
   scenarios:
-  - 用于回答"刮刮乐活动的日参与规模、活跃角色/账号数、覆盖服务器广度"等业务问题
-  - 支撑活动参与度与渗透率分析（事件计数 / 角色 UV / 账号 UV / 服务器 UV）
+    - 用于回答"刮刮乐活动的日参与规模、活跃角色/账号数、覆盖服务器广度"等业务问题
+    - 支撑活动参与度与渗透率分析（事件计数 / 角色 UV / 账号 UV / 服务器 UV）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id；账号/服务器粒度为辅助观察
-  - 未对奖励id列表(ids)、领取类型(type)做分维度交叉验证
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id；账号/服务器粒度为辅助观察
+    - 未对奖励id列表(ids)、领取类型(type)做分维度交叉验证
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: analyst_confirmed
-  note: 'ds=20260729 scout: cnt=5580, role_uv=2886, acc_uv=2784, server_uv=424'
+  note: "ds=20260729 scout: cnt=5580, role_uv=2886, acc_uv=2784, server_uv=424"
+external_refs:
+  - dim_table: dim_10000251_trans_gacha_mission_group_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_gacha_mission_group_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df_arch 主键精确同名

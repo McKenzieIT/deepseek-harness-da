@@ -1,8 +1,8 @@
 name: game.happyLottery.fetchIllustrateReward
 event_filter: event = 'game.happyLottery.fetchIllustrateReward'
-description: '刮刮乐活动：玩家领取图鉴（illustrate）奖励时触发的埋点事件。参数覆盖角色基础信息（roleLevel/vipLevel/roleForce/exp）、活动id（lotteryId）、本次领取的等级列表（levels）及货币快照（coinList）等24个字段。主体粒度为 role_id（角色级事件）。ds=20260729 单日实测 793 条，覆盖 752 个角色 / 744 个账号 / 222 个游戏服。'
+description: 刮刮乐活动：玩家领取图鉴（illustrate）奖励时触发的埋点事件。参数覆盖角色基础信息（roleLevel/vipLevel/roleForce/exp）、活动id（lotteryId）、本次领取的等级列表（levels）及货币快照（coinList）等24个字段。主体粒度为 role_id（角色级事件）。ds=20260729 单日实测 793 条，覆盖 752 个角色 / 744 个账号 / 222 个游戏服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -101,6 +101,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 scout: cnt=793, role_uv=752, acc_uv=744, server_uv=222'
+  confirmed_at: "2026-07-31"
+  note: "ds=20260729 scout: cnt=793, role_uv=752, acc_uv=744, server_uv=222"
   coverage_status: analyst_confirmed
+external_refs: []

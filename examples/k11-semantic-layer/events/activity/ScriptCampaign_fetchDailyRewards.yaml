@@ -1,8 +1,8 @@
 name: game.ScriptCampaign.fetchDailyRewards
 event_filter: event = 'game.ScriptCampaign.fetchDailyRewards'
-description: '剧本活动领取每日奖励事件：角色在剧本活动（ScriptCampaign）中领取每日奖励时上报，携带角色基础信息、货币快照（coinList 含充值/赠送/免费钻石、紫金、经验卷轴、体力）、剧本进度（lastRecord.level/hpStage/groundId）及 isNumUp/isQualityUp 升级标记。主体粒度为 role_id（角色级），单日 ds=20260729 实测 1534 条事件、1507 角色、1477 账号、376 服。'
+description: 剧本活动领取每日奖励事件：角色在剧本活动（ScriptCampaign）中领取每日奖励时上报，携带角色基础信息、货币快照（coinList 含充值/赠送/免费钻石、紫金、经验卷轴、体力）、剧本进度（lastRecord.level/hpStage/groundId）及 isNumUp/isQualityUp 升级标记。主体粒度为 role_id（角色级），单日 ds=20260729 实测 1534 条事件、1507 角色、1477 账号、376 服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -96,7 +96,7 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'scout ds=20260729 实测：cnt=1534, role_uv=1507, acc_uv=1477, server_uv=376；主体粒度 role_id，量级合理，确认上线。'
+  note: scout ds=20260729 实测：cnt=1534, role_uv=1507, acc_uv=1477, server_uv=376；主体粒度 role_id，量级合理，确认上线。
 metrics:
   game_ScriptCampaign_fetchDailyRewards_cnt:
     expression: COUNT(*)
@@ -112,9 +112,10 @@ metrics:
     description: 领取每日奖励的去重游戏服数
 coverage:
   scenarios:
-  - 评估剧本活动每日奖励的发放规模与角色/账号触达面
-  - 监控剧本活动活跃度与服务器覆盖范围
+    - 评估剧本活动每日奖励的发放规模与角色/账号触达面
+    - 监控剧本活动活跃度与服务器覆盖范围
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id（角色级），未细化到奖励档位/数量
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id（角色级），未细化到奖励档位/数量
 coverage_status: analyst_confirmed
+external_refs: []

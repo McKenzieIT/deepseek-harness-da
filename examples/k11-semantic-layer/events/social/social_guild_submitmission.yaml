@@ -1,8 +1,8 @@
 name: game.social.guild.submitmission
 event_filter: event = 'game.social.guild.submitmission'
-description: '公会成员提交公会任务（领取任务奖励）事件。玩家在公会玩法中完成/提交公会任务后上报，参数包含任务id(taskId)、任务名(tastName)、增加活跃度(activeAdd)及角色基础信息与货币快照(coinList)。分析主体粒度为 role_id（角色级），亦可用 account_id 聚合到账号级。scout 实测 ds=20260729 单日：事件 cnt=8059，role_uv=3200，account_uv=3059，server_uv=431，distinct taskId=3。'
+description: 公会成员提交公会任务（领取任务奖励）事件。玩家在公会玩法中完成/提交公会任务后上报，参数包含任务id(taskId)、任务名(tastName)、增加活跃度(activeAdd)及角色基础信息与货币快照(coinList)。分析主体粒度为 role_id（角色级），亦可用 account_id 聚合到账号级。scout 实测 ds=20260729 单日：事件 cnt=8059，role_uv=3200，account_uv=3059，server_uv=431，distinct taskId=3。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -105,13 +105,14 @@ coverage:
     - 公会任务覆盖广度：_server_uv 反映玩法覆盖的服务器范围，_task_uv 反映当日被提交的去重任务数量。
     - 公会活跃度贡献：_active_add_sum 用于估算公会任务对玩家/公会活跃度的拉动（需字段实际填充后生效）。
   limitations:
-    - '仅 ds=20260729 单日 scout 实测，未做全量复核（多日趋势/周末波动未验证）。'
-    - '分析主体粒度默认为 role_id；如需账号级聚合请改用 _account_uv。'
-    - 'params.activeAdd 在 scout 日返回 NULL，疑似该字段未实际埋点/未上报；_active_add_sum 指标当前不可用，待字段恢复填充后再核算。'
-    - 'params.taskId distinct=3，公会任务种类较少，需结合业务确认任务定义是否覆盖完整。'
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核（多日趋势/周末波动未验证）。
+    - 分析主体粒度默认为 role_id；如需账号级聚合请改用 _account_uv。
+    - params.activeAdd 在 scout 日返回 NULL，疑似该字段未实际埋点/未上报；_active_add_sum 指标当前不可用，待字段恢复填充后再核算。
+    - params.taskId distinct=3，公会任务种类较少，需结合业务确认任务定义是否覆盖完整。
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=8059, role_uv=3200, account_uv=3059, server_uv=431, task_uv=3, active_add_sum=NULL（字段未填充）。数据量合理，事件在线正常触发。'
+  note: scout 实测 ds=20260729：cnt=8059, role_uv=3200, account_uv=3059, server_uv=431, task_uv=3, active_add_sum=NULL（字段未填充）。数据量合理，事件在线正常触发。
 coverage_status: analyst_confirmed
+external_refs: []

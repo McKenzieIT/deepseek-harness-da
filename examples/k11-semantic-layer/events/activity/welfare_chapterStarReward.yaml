@@ -1,10 +1,10 @@
 name: game.welfare.chapterStarReward
 event_filter: event = 'game.welfare.chapterStarReward'
-description: '福利-主线宝箱：玩家在主线章节达成星级条件后领取宝箱奖励时上报的事件。分析主体为 role_id（角色维度），用于观测主线宝箱的领取频次、覆盖角色/账号/游戏服规模、各章节被领取的覆盖度，以及奖励货币的发放量。参数含游戏服id/名字、账号id、角色id/名字、性别、创角/上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表(coinList: gold/sendgold/freegold/diamond/expCoin/energy)、会话id、logUUID、chapterId(章节)、newIndex(新索引)等24个字段。实测 ds=20260729：cnt=11847，role_uv=1830，acc_uv=1768，server_uv=96。'
+description: "福利-主线宝箱：玩家在主线章节达成星级条件后领取宝箱奖励时上报的事件。分析主体为 role_id（角色维度），用于观测主线宝箱的领取频次、覆盖角色/账号/游戏服规模、各章节被领取的覆盖度，以及奖励货币的发放量。参数含游戏服id/名字、账号id、角色id/名字、性别、创角/上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表(coinList: gold/sendgold/freegold/diamond/expCoin/energy)、会话id、logUUID、chapterId(章节)、newIndex(新索引)等24个字段。实测 ds=20260729：cnt=11847，role_uv=1830，acc_uv=1768，server_uv=96。"
 domains:
-- 自定义
-- 用户生命周期
-- 资源产销
+  - 自定义
+  - 用户生命周期
+  - 资源产销
 domain: activity
 metrics:
   chapterStarReward_cnt:
@@ -39,20 +39,20 @@ metrics:
     description: 人均领取次数（总次数/去重角色数），NULLIF 防止除零。
 coverage:
   scenarios:
-  - 主线宝箱奖励的日常/单日领取规模与去重角色、账号、游戏服覆盖度。
-  - 各主线章节被领取宝箱的覆盖广度（chapter_uv）。
-  - 主线宝箱对关键货币（充值钻石/免费钻石/紫金/体力）的发放总量测算。
-  - 人均领取次数（领取活跃度强度）。
+    - 主线宝箱奖励的日常/单日领取规模与去重角色、账号、游戏服覆盖度。
+    - 各主线章节被领取宝箱的覆盖广度（chapter_uv）。
+    - 主线宝箱对关键货币（充值钻石/免费钻石/紫金/体力）的发放总量测算。
+    - 人均领取次数（领取活跃度强度）。
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核。
-  - 分析主体粒度默认 role_id（角色），未对 account_id 主语场景单独核验。
-  - coinList 为数组结构，单条事件取数组首元素（或标量）的聚合口径，未对数组内多元素求和细节核验。
-  - 未对 roleLevel/vipLevel/roleForce 等切片维度的分布做复核。
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核。
+    - 分析主体粒度默认 role_id（角色），未对 account_id 主语场景单独核验。
+    - coinList 为数组结构，单条事件取数组首元素（或标量）的聚合口径，未对数组内多元素求和细节核验。
+    - 未对 roleLevel/vipLevel/roleForce 等切片维度的分布做复核。
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729：cnt=11847，role_uv=1830，acc_uv=1768，server_uv=96，数据合理可确认。仅单日 scout，未做全量复核。'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729：cnt=11847，role_uv=1830，acc_uv=1768，server_uv=96，数据合理可确认。仅单日 scout，未做全量复核。
 coverage_status: analyst_confirmed
 params_fields:
   serverId:
@@ -127,3 +127,4 @@ params_fields:
   newIndex:
     type: int
     description: 新的索引
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.script.turntable
 event_filter: event = 'game.script.turntable'
-description: '剧本(script)转盘抽奖事件：记录角色在剧本玩法中触发某转盘(turntableId)并产出奖励(rewardId)的一次抽奖动作，覆盖剧本id、转盘id、奖励id及角色基础画像/货币余额。分析主体粒度为 role_id（角色）。scout 实测 ds=20260729：cnt=2970 / role_uv=627 / acc_uv=619 / server_uv=160，命中 3 个剧本、22 个转盘、390 种奖励。'
+description: 剧本(script)转盘抽奖事件：记录角色在剧本玩法中触发某转盘(turntableId)并产出奖励(rewardId)的一次抽奖动作，覆盖剧本id、转盘id、奖励id及角色基础画像/货币余额。分析主体粒度为 role_id（角色）。scout 实测 ds=20260729：cnt=2970 / role_uv=627 / acc_uv=619 / server_uv=160，命中 3 个剧本、22 个转盘、390 种奖励。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -118,6 +118,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729（event=game.script.turntable）：cnt=2970 / role_uv=627 / acc_uv=619 / server_uv=160 / script_uv=3 / turntable_uv=22 / reward_uv=390，数据合理，已确认。'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729（event=game.script.turntable）：cnt=2970 / role_uv=627 / acc_uv=619 / server_uv=160 / script_uv=3 / turntable_uv=22 / reward_uv=390，数据合理，已确认。
 coverage_status: analyst_confirmed
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.rogue.dropElement
 event_filter: event = 'game.rogue.dropElement'
-description: '古战场(Rogue)丢弃元素事件：玩家在古战场玩法中丢弃/卸下已装备的元素时上报，携带丢弃元素类型(elementType)与元素id(elementId)。分析粒度为角色(role_id)，每个角色每次丢弃产生一条日志。真实实测 ds=20260729：事件118条，去重角色60个，去重账号59个，覆盖25个游戏服；元素类型2种、元素id 66种。'
+description: 古战场(Rogue)丢弃元素事件：玩家在古战场玩法中丢弃/卸下已装备的元素时上报，携带丢弃元素类型(elementType)与元素id(elementId)。分析粒度为角色(role_id)，每个角色每次丢弃产生一条日志。真实实测 ds=20260729：事件118条，去重角色60个，去重账号59个，覆盖25个游戏服；元素类型2种、元素id 66种。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -110,20 +110,19 @@ metrics:
     description: 人均丢弃元素次数
 coverage:
   scenarios:
-  - 古战场元素丢弃活跃度：丢弃事件量、参与角色数与游戏服覆盖度
-  - 元素品类分布：丢弃元素类型数与元素id数（识别热门/冷门元素）
-  - 角色级粒度(roleId)的丢弃频次分布与人均丢弃次数
-  - 丢弃时点角色货币/经验快照（gold/energy/exp，非发放量，仅时点余额参考）
+    - 古战场元素丢弃活跃度：丢弃事件量、参与角色数与游戏服覆盖度
+    - 元素品类分布：丢弃元素类型数与元素id数（识别热门/冷门元素）
+    - 角色级粒度(roleId)的丢弃频次分布与人均丢弃次数
+    - 丢弃时点角色货币/经验快照（gold/energy/exp，非发放量，仅时点余额参考）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
-  - coinList.gold/energy/exp 为丢弃时点快照余额(非产出)，diamond 实测 ds=20260729 SUM 为 NULL，本日该字段无值
-  - coinList.sendgold/freegold/expCoin 本日未纳入指标(快照字段语义不确定)
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
+    - coinList.gold/energy/exp 为丢弃时点快照余额(非产出)，diamond 实测 ds=20260729 SUM 为 NULL，本日该字段无值
+    - coinList.sendgold/freegold/expCoin 本日未纳入指标(快照字段语义不确定)
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729: cnt=118, role_uv=60, acc_uv=59, server_uv=25;
-    element_type_cnt=2, element_id_cnt=66; gold_snapshot=165, energy_snapshot=14030,
-    exp_snapshot=390600, diamond NULL'
+  note: "scout 实测 ds=20260729: cnt=118, role_uv=60, acc_uv=59, server_uv=25; element_type_cnt=2, element_id_cnt=66; gold_snapshot=165, energy_snapshot=14030, exp_snapshot=390600, diamond NULL"
 coverage_status: analyst_confirmed
+external_refs: []

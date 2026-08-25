@@ -1,8 +1,8 @@
 name: game.task.act
 event_filter: event = 'game.task.act'
-description: '任务行为事件：记录角色在游戏中执行任务相关行为(由 action 标识,实测仅1种取值),含任务类型/任务id/所属主任务/活动id等。分析主体粒度为 role_id(角色级)。实测 ds=20260729 单日 cnt=78539, role_uv=2865, acc_uv=2689, server_uv=230。'
+description: 任务行为事件：记录角色在游戏中执行任务相关行为(由 action 标识,实测仅1种取值),含任务类型/任务id/所属主任务/活动id等。分析主体粒度为 role_id(角色级)。实测 ds=20260729 单日 cnt=78539, role_uv=2865, acc_uv=2689, server_uv=230。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -116,19 +116,20 @@ metrics:
     description: 平均每账号角色数(独立角色/独立账号；衡量多角色账号占比)
 coverage:
   scenarios:
-  - 任务系统参与度(game_task_act_role_uv / game_task_act_account_uv 衡量参与任务的角色与账号规模)
-  - 任务行为量级(game_task_act_cnt 任务行为总触发次数)
-  - 任务覆盖广度(game_task_act_task_type_uv 任务类型数、game_task_act_task_uv 任务id数、game_task_act_activity_uv 活动id数)
-  - 主任务子任务结构(game_task_act_main_task_uv 主任务数，反映子任务归属结构)
-  - 多角色账号占比(game_task_act_role_per_account 平均每账号角色数)
+    - 任务系统参与度(game_task_act_role_uv / game_task_act_account_uv 衡量参与任务的角色与账号规模)
+    - 任务行为量级(game_task_act_cnt 任务行为总触发次数)
+    - 任务覆盖广度(game_task_act_task_type_uv 任务类型数、game_task_act_task_uv 任务id数、game_task_act_activity_uv 活动id数)
+    - 主任务子任务结构(game_task_act_main_task_uv 主任务数，反映子任务归属结构)
+    - 多角色账号占比(game_task_act_role_per_account 平均每账号角色数)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测(cnt=78539/role_uv=2865/acc_uv=2689/server_uv=230)，未做全量多日复核，建议接入生产流量前抽查
-  - 主体粒度默认 role_id(角色级)，base view 同时含 account_id+role_id，按角色级推断
-  - action 实测仅1种取值(ds=20260729)，任务行为细分(接取/完成/放弃等)需结合多日数据与 LOG_TASK_ACTION 常量确认
-  - mainTaskId 约26%非空(仅属于主任务的子任务记录)，非子任务记录该字段为空
-  - 本游戏无 MaxCompute 事件分布查询，无 daily_count/total_count/active_days
+    - 仅 ds=20260729 单日 scout 实测(cnt=78539/role_uv=2865/acc_uv=2689/server_uv=230)，未做全量多日复核，建议接入生产流量前抽查
+    - 主体粒度默认 role_id(角色级)，base view 同时含 account_id+role_id，按角色级推断
+    - action 实测仅1种取值(ds=20260729)，任务行为细分(接取/完成/放弃等)需结合多日数据与 LOG_TASK_ACTION 常量确认
+    - mainTaskId 约26%非空(仅属于主任务的子任务记录)，非子任务记录该字段为空
+    - 本游戏无 MaxCompute 事件分布查询，无 daily_count/total_count/active_days
   coverage_status: analyst_reviewed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
+  confirmed_at: "2026-07-30"
+external_refs: []

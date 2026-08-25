@@ -1,12 +1,11 @@
 name: game.guild.battle.result
 event_filter: event = 'game.guild.battle.result'
-description: '公会战单场结算事件：每次公会战（同盟战）一场战斗结束时上报，记录本方公会与对手公会的段位分、公会战积分、公会战力，以及参战成员明细（成员进攻/防守次数与胜负、进攻分数、防御积分）。
-
+description: |-
+  公会战单场结算事件：每次公会战（同盟战）一场战斗结束时上报，记录本方公会与对手公会的段位分、公会战积分、公会战力，以及参战成员明细（成员进攻/防守次数与胜负、进攻分数、防御积分）。
   分析主体（subject 粒度）为 role_id（单场结算中的发起/参战角色），可按 guildId/server_id 维度聚合到公会或游戏服粒度。
-
-  Scout 实测（2026-07-30）：event=game.guild.battle.result 在加速视图 ds=20260729 与 ds=20260728 均零命中（cnt=0, role_uv=0, acc_uv=0），疑似该活动当日未开启或事件已下线/未触发。'
+  Scout 实测（2026-07-30）：event=game.guild.battle.result 在加速视图 ds=20260729 与 ds=20260728 均零命中（cnt=0, role_uv=0, acc_uv=0），疑似该活动当日未开启或事件已下线/未触发。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -184,5 +183,6 @@ confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'Scout 实测 ds=20260729: cnt=0, role_uv=0, acc_uv=0, server_uv=0；补测 ds=20260728 同样全零。事件疑似下线/未触发，维持 draft，待活动复现后重新验证。'
+  note: "Scout 实测 ds=20260729: cnt=0, role_uv=0, acc_uv=0, server_uv=0；补测 ds=20260728 同样全零。事件疑似下线/未触发，维持 draft，待活动复现后重新验证。"
 coverage_status: draft
+external_refs: []

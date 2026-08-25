@@ -1,10 +1,9 @@
 name: game.growthMission.rewrad
 event_filter: event = 'game.growthMission.rewrad'
-description: '成长助力-任务奖励事件：玩家完成成长助力任务并领取奖励时上报，记录角色维度的奖励领取行为。主体粒度为 role_id（角色），单条日志代表一次任务奖励领取。参数包含游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等24个，可用于统计成长助力任务奖励的领取次数、领取角色/账号 UV 及各服务器分布。'
+description: 成长助力-任务奖励事件：玩家完成成长助力任务并领取奖励时上报，记录角色维度的奖励领取行为。主体粒度为 role_id（角色），单条日志代表一次任务奖励领取。参数包含游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等24个，可用于统计成长助力任务奖励的领取次数、领取角色/账号 UV 及各服务器分布。
 domains:
-- 自定义
+  - 自定义
 domain: activity
-
 metrics:
   game_growthMission_rewrad_cnt:
     expression: COUNT(*)
@@ -20,12 +19,12 @@ metrics:
     description: 领取成长助力任务奖励的去重游戏服数
 coverage:
   scenarios:
-  - 成长助力任务奖励领取热度（次数、角色/账号 UV）
-  - 各服务器奖励领取分布
+    - 成长助力任务奖励领取热度（次数、角色/账号 UV）
+    - 各服务器奖励领取分布
   limitations:
-  - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id
 params_fields:
   serverId:
     type: int
@@ -102,6 +101,7 @@ params_fields:
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: draft
-  note: 'ds=20260729 实测 cnt=0/role_uv=0/acc_uv=0；ds=20260728 复测仍为 0；零命中，保持 draft'
+  note: ds=20260729 实测 cnt=0/role_uv=0/acc_uv=0；ds=20260728 复测仍为 0；零命中，保持 draft
+external_refs: []

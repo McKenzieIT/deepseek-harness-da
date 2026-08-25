@@ -1,9 +1,8 @@
 name: game.guild.getMissionBox
 event_filter: event = 'game.guild.getMissionBox'
-description: >-
-  公会成员领取公会积分宝箱的行为事件。记录领取宝箱的角色（role_id 为分析主体）、所属服务器、宝箱id boxId 及领取后的关键货币变化 coinList（充值钻石/紫金/经验卷轴/体力等），用于分析公会积分宝箱的领取频次、领取人群与产出。scout 实测 ds=20260729 与 ds=20260728 均零命中（cnt=0），事件疑似下线或未触发，数据待复核。
+description: 公会成员领取公会积分宝箱的行为事件。记录领取宝箱的角色（role_id 为分析主体）、所属服务器、宝箱id boxId 及领取后的关键货币变化 coinList（充值钻石/紫金/经验卷轴/体力等），用于分析公会积分宝箱的领取频次、领取人群与产出。scout 实测 ds=20260729 与 ds=20260728 均零命中（cnt=0），事件疑似下线或未触发，数据待复核。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -118,5 +117,5 @@ confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: >-
-    scout 实测 ds=20260729：cnt=0、role_uv=0、acc_uv=0、server_uv=0；retry ds=20260728 同样 cnt=0。事件疑似下线或未触发，保持 draft，待数据回流后复核。
+  note: scout 实测 ds=20260729：cnt=0、role_uv=0、acc_uv=0、server_uv=0；retry ds=20260728 同样 cnt=0。事件疑似下线或未触发，保持 draft，待数据回流后复核。
+external_refs: []

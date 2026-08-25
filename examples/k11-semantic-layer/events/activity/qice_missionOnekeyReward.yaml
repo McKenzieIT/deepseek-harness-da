@@ -1,9 +1,8 @@
 name: game.qice.missionOnekeyReward
 event_filter: event = 'game.qice.missionOnekeyReward'
-description: |-
-  奇策系统任务奖励一键领取事件：玩家在奇策玩法中点击一键领取多个任务奖励时上报。主体粒度为 role_id（角色级）。参数含 serverId/roleId/roleName/roleLevel/vipLevel/roleForce/exp/stageId（任务主题id）/missionIds（任务id列表）/coinList 等。2026-07-29 与 2026-07-28 单日 scout 实测均零命中（cnt=0），疑似事件已下线或当前未触发。
+description: 奇策系统任务奖励一键领取事件：玩家在奇策玩法中点击一键领取多个任务奖励时上报。主体粒度为 role_id（角色级）。参数含 serverId/roleId/roleName/roleLevel/vipLevel/roleForce/exp/stageId（任务主题id）/missionIds（任务id列表）/coinList 等。2026-07-29 与 2026-07-28 单日 scout 实测均零命中（cnt=0），疑似事件已下线或当前未触发。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -105,3 +104,4 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: ds=20260729 cnt=0 role_uv=0 acc_uv=0 server_uv=0；ds=20260728 同样零命中。疑似事件下线或当前未触发，保持 draft。
   coverage_status: draft
+external_refs: []

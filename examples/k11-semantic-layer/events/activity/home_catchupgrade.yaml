@@ -1,8 +1,8 @@
 name: game.home.catchupgrade
 event_filter: event = 'game.home.catchupgrade'
-description: '家园系统捕捞等级突破事件，记录玩家在家园玩法中完成捕捞等级突破升级的行为。主体粒度 role_id（角色），单日实测(ds=20260729)共 2591 次突破，涉及 1182 角色、1146 账号、88 游戏服。'
+description: 家园系统捕捞等级突破事件，记录玩家在家园玩法中完成捕捞等级突破升级的行为。主体粒度 role_id（角色），单日实测(ds=20260729)共 2591 次突破，涉及 1182 角色、1146 账号、88 游戏服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -98,6 +98,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: analyst_confirmed
-  note: 'scout (ds=20260729): cnt=2591, role_uv=1182, acc_uv=1146, server_uv=88'
+  note: "scout (ds=20260729): cnt=2591, role_uv=1182, acc_uv=1146, server_uv=88"
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.fish.compose
 event_filter: event = 'game.fish.compose'
-description: '钓鱼玩法合成事件：玩家在钓鱼系统中通过合成操作产出/合成鱼类或道具。记录触发合成的角色、所属账号、所在游戏服、合成产物品质(quality)与数量(count)等参数。主体粒度为 role_id（角色级），单日(ds=20260729)实测触发 799 次，覆盖 565 个角色、536 个账号、200 个游戏服。'
+description: 钓鱼玩法合成事件：玩家在钓鱼系统中通过合成操作产出/合成鱼类或道具。记录触发合成的角色、所属账号、所在游戏服、合成产物品质(quality)与数量(count)等参数。主体粒度为 role_id（角色级），单日(ds=20260729)实测触发 799 次，覆盖 565 个角色、536 个账号、200 个游戏服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,16 +92,17 @@ metrics:
     description: 钓鱼合成产出数量总和(按 params.count 字段聚合)
 coverage:
   scenarios:
-  - 监控钓鱼合成玩法的日活参与度(角色/账号UV)与触发频次(cnt)
-  - 评估钓鱼合成产出规模(count_sum)用于资源产销分析
-  - 结合 server_uv 衡量钓鱼玩法在不同游戏服的渗透情况
+    - 监控钓鱼合成玩法的日活参与度(角色/账号UV)与触发频次(cnt)
+    - 评估钓鱼合成产出规模(count_sum)用于资源产销分析
+    - 结合 server_uv 衡量钓鱼玩法在不同游戏服的渗透情况
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id；若需账号级汇总请使用 account_uv 指标
-  - count_sum 依赖 params.count 字段，若个别日志缺字段会被 CAST 忽略
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id；若需账号级汇总请使用 account_uv 指标
+    - count_sum 依赖 params.count 字段，若个别日志缺字段会被 CAST 忽略
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 实测: cnt=799, role_uv=565, acc_uv=536, server_uv=200; 数据合理, 确认为 analyst_confirmed'
+  note: "ds=20260729 实测: cnt=799, role_uv=565, acc_uv=536, server_uv=200; 数据合理, 确认为 analyst_confirmed"
   coverage_status: analyst_confirmed
+external_refs: []

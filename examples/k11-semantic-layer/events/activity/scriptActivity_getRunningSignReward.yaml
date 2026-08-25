@@ -1,8 +1,8 @@
 name: game.scriptActivity.getRunningSignReward
 event_filter: event = 'game.scriptActivity.getRunningSignReward'
-description: '玩家领取活动进行期签到奖励事件。分析主体为角色(role_id)，每次领取记录活动ID(themeId)、领取位置(signRewardMaxDay)、奖励列表(rewards)及货币变动。实测 ds=20260729: cnt=587, role_uv=580, acc_uv=570, server_uv=52'
+description: "玩家领取活动进行期签到奖励事件。分析主体为角色(role_id)，每次领取记录活动ID(themeId)、领取位置(signRewardMaxDay)、奖励列表(rewards)及货币变动。实测 ds=20260729: cnt=587, role_uv=580, acc_uv=570, server_uv=52"
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -116,16 +116,17 @@ metrics:
     description: 平均签到领取位置（事件级加权平均）
 coverage:
   scenarios:
-  - 评估进行期签到奖励的总体领取规模与角色覆盖度
-  - 跨活动(themeId)、跨服(server_id)的签到参与热度对比
-  - 通过领取位置(signRewardMaxDay)分布了解签到进度与留存
+    - 评估进行期签到奖励的总体领取规模与角色覆盖度
+    - 跨活动(themeId)、跨服(server_id)的签到参与热度对比
+    - 通过领取位置(signRewardMaxDay)分布了解签到进度与留存
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体为角色(role_id)粒度，账号(account_id)仅作去重辅助
-  - rewards 为数组奖励明细，本事件未逐项展开统计（受限于参数数组结构）
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体为角色(role_id)粒度，账号(account_id)仅作去重辅助
+    - rewards 为数组奖励明细，本事件未逐项展开统计（受限于参数数组结构）
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: '实测 ds=20260729: cnt=587, role_uv=580, acc_uv=570, server_uv=52；themeId/signRewardMaxDay 字段可经 GET_JSON_OBJECT 正常提取'
+  confirmed_at: "2026-07-30"
+  note: "实测 ds=20260729: cnt=587, role_uv=580, acc_uv=570, server_uv=52；themeId/signRewardMaxDay 字段可经 GET_JSON_OBJECT 正常提取"
 coverage_status: analyst_confirmed
+external_refs: []

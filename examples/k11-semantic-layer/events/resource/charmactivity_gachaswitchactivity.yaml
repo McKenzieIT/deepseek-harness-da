@@ -1,10 +1,10 @@
 name: game.charmactivity.gachaswitchactivity
 event_filter: event = 'game.charmactivity.gachaswitchactivity'
-description: '灵器活动-切换活动卡池(gacha switch)：角色在灵器/抽卡活动中切换当前参与的活动卡池(gachaIds列表)并标记是否本期卡池(isCurrent)。主体粒度为角色(role_id)，记录每次卡池切换行为(activityId/gachaIds/isCurrent)。scout 实测 ds=20260729/20260728 均零命中，疑似活动未上线或仅在特定档期触发
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等25个'
+description: |-
+  灵器活动-切换活动卡池(gacha switch)：角色在灵器/抽卡活动中切换当前参与的活动卡池(gachaIds列表)并标记是否本期卡池(isCurrent)。主体粒度为角色(role_id)，记录每次卡池切换行为(activityId/gachaIds/isCurrent)。scout 实测 ds=20260729/20260728 均零命中，疑似活动未上线或仅在特定档期触发
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等25个
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -107,17 +107,18 @@ metrics:
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
+  confirmed_at: "2026-07-30"
 coverage:
   scenarios:
-  - 灵器活动卡池切换规模(gachaswitchactivity_cnt / gachaswitchactivity_role_uv / gachaswitchactivity_account_uv)
-  - 活动覆盖面(gachaswitchactivity_server_uv 区服数、gachaswitchactivity_activity_uv 活动数)
-  - 本期卡池切换占比(gachaswitchactivity_current_pool_role_uv)
-  - 反复切换强度(gachaswitchactivity_per_role_switch_cnt)
+    - 灵器活动卡池切换规模(gachaswitchactivity_cnt / gachaswitchactivity_role_uv / gachaswitchactivity_account_uv)
+    - 活动覆盖面(gachaswitchactivity_server_uv 区服数、gachaswitchactivity_activity_uv 活动数)
+    - 本期卡池切换占比(gachaswitchactivity_current_pool_role_uv)
+    - 反复切换强度(gachaswitchactivity_per_role_switch_cnt)
   limitations:
-  - 日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似活动下线/未触发/仅特定档期触发，所有指标值预计为0
-  - 仅 ds=20260729/20260728 双日 scout 实测，未做全量多日复核，建议活动上线后复查
-  - 主体粒度默认 role_id 未逐事件实测角色归属正确性，按 base view 同时含 account_id+role_id 推断为角色级
-  - isCurrent 为 bool，GET_JSON_OBJECT 取回字符串 'true'/'false'，零命中无法抽样验证字段填充率
-  - 本游戏无 MaxCompute 事件分布查询，无 daily_count/total_count/active_days
+    - 日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似活动下线/未触发/仅特定档期触发，所有指标值预计为0
+    - 仅 ds=20260729/20260728 双日 scout 实测，未做全量多日复核，建议活动上线后复查
+    - 主体粒度默认 role_id 未逐事件实测角色归属正确性，按 base view 同时含 account_id+role_id 推断为角色级
+    - isCurrent 为 bool，GET_JSON_OBJECT 取回字符串 'true'/'false'，零命中无法抽样验证字段填充率
+    - 本游戏无 MaxCompute 事件分布查询，无 daily_count/total_count/active_days
   coverage_status: draft
+external_refs: []

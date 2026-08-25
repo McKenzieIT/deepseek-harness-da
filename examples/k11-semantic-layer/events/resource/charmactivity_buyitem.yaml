@@ -1,9 +1,8 @@
 name: game.charmactivity.buyitem
 event_filter: event = 'game.charmactivity.buyitem'
-description: '灵器活动-购买道具事件：角色在灵器活动卡池购买道具的行为日志，记录每次购买的数量与所属活动/卡池。
-  分析主体粒度为 role_id（角色），账号主体 account_id。真实实测 ds=20260729：464 条事件，165 角色 UV，5 个游戏服。'
+description: 灵器活动-购买道具事件：角色在灵器活动卡池购买道具的行为日志，记录每次购买的数量与所属活动/卡池。 分析主体粒度为 role_id（角色），账号主体 account_id。真实实测 ds=20260729：464 条事件，165 角色 UV，5 个游戏服。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -107,7 +106,7 @@ metrics:
     expression: COUNT(DISTINCT GET_JSON_OBJECT(params, '$.gachaId'))
     description: 涉及的卡池数量（gachaId 去重）
   game_charmactivity_buyitem_per_role_qty:
-    expression: "SUM(CAST(GET_JSON_OBJECT(params, '$.count') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0)"
+    expression: SUM(CAST(GET_JSON_OBJECT(params, '$.count') AS BIGINT)) / NULLIF(COUNT(DISTINCT role_id), 0)
     description: 人均购买道具数量（count 求和/角色 UV，NULLIF 防除零）
 coverage:
   scenarios:
@@ -115,7 +114,7 @@ coverage:
     - 灵器活动道具产出量与人均购买量（count_sum / per_role_qty）
     - 灵器活动/卡池覆盖广度（activity_uv / gacha_uv）
   limitations:
-    - "仅 ds=20260729 单日 scout 实测，未做全量复核"
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
     - 分析主体默认 role_id（角色粒度）；account_id 可作账号粒度补充
     - count（数量）单次购买数量取值范围未抽样核对原始分布
     - type（1 活动/2 新手集市）取值依据 params_fields 描述，未抽样核对枚举
@@ -124,5 +123,41 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: "实测 ds=20260729：cnt=464 / role_uv=165 / acc_uv=165 / server_uv=5；count 求和=2588，activityId 去重=1，gachaId 去重=5，数值合理"
+  note: 实测 ds=20260729：cnt=464 / role_uv=165 / acc_uv=165 / server_uv=5；count 求和=2588，activityId 去重=1，gachaId 去重=5，数值合理
 coverage_status: analyst_confirmed
+external_refs:
+  - dim_table: dim_10000251_trans_gacha_mission_group_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_gacha_mission_group_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df_arch
+    join_keys:
+      - dws_column: type
+        dim_column: type
+    derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df_arch 主键精确同名

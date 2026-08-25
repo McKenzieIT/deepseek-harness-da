@@ -1,8 +1,8 @@
 name: game.conquest.onekeyGetTaskReward
 event_filter: event = 'game.conquest.onekeyGetTaskReward'
-description: '讨伐(Conquest)任务一键领奖事件：玩家在讨伐系统中一键领取已完成的多个任务/塔层奖励时上报(奖励含充值钻石/紫金/经验卷轴/体力/经验等，携带讨伐塔ID towerId 与本次领取的奖励 id 列表 addIds)。分析粒度为角色(role_id)，每个角色每次一键领奖产生一条日志。真实实测 ds=20260729 与 ds=20260728 均为零命中(疑似事件下线/未触发或未接入上报)。'
+description: 讨伐(Conquest)任务一键领奖事件：玩家在讨伐系统中一键领取已完成的多个任务/塔层奖励时上报(奖励含充值钻石/紫金/经验卷轴/体力/经验等，携带讨伐塔ID towerId 与本次领取的奖励 id 列表 addIds)。分析粒度为角色(role_id)，每个角色每次一键领奖产生一条日志。真实实测 ds=20260729 与 ds=20260728 均为零命中(疑似事件下线/未触发或未接入上报)。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -107,18 +107,18 @@ metrics:
     description: 人均发放充值钻石量
 coverage:
   scenarios:
-  - 讨伐任务一键领奖的参与角色数、账号数与游戏服覆盖度（活跃度与渗透）
-  - 讨伐塔(towerId)覆盖广度与一键领取频次（玩法参与度）
-  - 奖励货币/经验/体力总产出与人均产出（经济产出与单角色价值）
+    - 讨伐任务一键领奖的参与角色数、账号数与游戏服覆盖度（活跃度与渗透）
+    - 讨伐塔(towerId)覆盖广度与一键领取频次（玩法参与度）
+    - 奖励货币/经验/体力总产出与人均产出（经济产出与单角色价值）
   limitations:
-  - 日志中零命中(ds=20260729/ds=20260728 cnt=0)，疑似事件下线/未触发或未接入上报；指标表达式为预期口径，待事件恢复后复测
-  - 仅 ds=20260729/ds=20260728 单日 scout 实测（均零命中），未做全量复核
-  - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
-  - coinList.diamond(紫金)/sendgold/freegold/expCoin 在事件恢复后可能为零或NULL，仅 gold/energy/exp 列入产出指标
+    - 日志中零命中(ds=20260729/ds=20260728 cnt=0)，疑似事件下线/未触发或未接入上报；指标表达式为预期口径，待事件恢复后复测
+    - 仅 ds=20260729/ds=20260728 单日 scout 实测（均零命中），未做全量复核
+    - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
+    - coinList.diamond(紫金)/sendgold/freegold/expCoin 在事件恢复后可能为零或NULL，仅 gold/energy/exp 列入产出指标
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729 cnt=0, role_uv=0, acc_uv=0, server_uv=0; 回退 ds=20260728
-    仍 cnt=0; 事件疑似下线/未触发，保持 draft'
+  note: scout 实测 ds=20260729 cnt=0, role_uv=0, acc_uv=0, server_uv=0; 回退 ds=20260728 仍 cnt=0; 事件疑似下线/未触发，保持 draft
 coverage_status: draft
+external_refs: []

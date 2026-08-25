@@ -1,8 +1,8 @@
 name: game.dreamDungeon.talkEffect
 event_filter: event = 'game.dreamDungeon.talkEffect'
-description: '梦境迷宫对话效果事件 (game.dreamDungeon.talkEffect)：玩家在梦境迷宫中触发对话/选项交互时上报，记录迷宫id(dungeonId)、talk选项id(talkId)、isPre战前/战后标志，以及角色基础属性(等级/战力/vip/货币等)。主体粒度为 role_id（角色级事件）。ds=20260729 单日 scout 实测：594 条事件、325 角色、320 账号、33 服务器。'
+description: 梦境迷宫对话效果事件 (game.dreamDungeon.talkEffect)：玩家在梦境迷宫中触发对话/选项交互时上报，记录迷宫id(dungeonId)、talk选项id(talkId)、isPre战前/战后标志，以及角色基础属性(等级/战力/vip/货币等)。主体粒度为 role_id（角色级事件）。ds=20260729 单日 scout 实测：594 条事件、325 角色、320 账号、33 服务器。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -104,6 +104,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   note: ds=20260729 实测 cnt=594 role_uv=325 acc_uv=320 server_uv=33，数据合理；查询命中加速分区。
   coverage_status: analyst_confirmed
+external_refs: []

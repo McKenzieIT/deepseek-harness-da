@@ -70,13 +70,41 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
 
   relations(def): RelationDef[] {
     if (!def.dimension_refs || def.dimension_refs.length === 0) return []
-    return def.dimension_refs.map(ref => ({
-      type: 'joins' as const,
-      target: ref.dim_table,
-      on: ref.join_keys
-        .map(k => `${k.dws_column} = ${k.dim_column}`)
-        .join(' AND '),
-      ...(ref.derivation ? { description: ref.derivation } : {}),
-    }))
+    const out: RelationDef[] = []
+    for (const ref of def.dimension_refs) {
+      const byDimCol = new Map<string, { dws_column: string; dim_column: string }[]>()
+      for (const k of ref.join_keys) {
+        const group = byDimCol.get(k.dim_column) ?? []
+        group.push(k)
+        byDimCol.set(k.dim_column, group)
+      }
+      const hasAlternatives = [...byDimCol.values()].some(g => g.length > 1)
+      if (!hasAlternatives) {
+        out.push({
+          type: 'joins' as const,
+          target: ref.dim_table,
+          on: ref.join_keys.map(k => `${k.dws_column} = ${k.dim_column}`).join(' AND '),
+          ...(ref.derivation ? { description: ref.derivation } : {}),
+        })
+      } else {
+        // Alternative FKs: each dws_column that maps to the same dim_column is
+        // an independent join path. Group by composite key (all non-alternative
+        // dim_columns) + one alternative at a time.
+        const compositeKeys = [...byDimCol.entries()].filter(([, g]) => g.length === 1).map(([, g]) => g[0]!)
+        const alternativeGroups = [...byDimCol.entries()].filter(([, g]) => g.length > 1)
+        for (const [, alternatives] of alternativeGroups) {
+          for (const alt of alternatives) {
+            const keys = [...compositeKeys, alt]
+            out.push({
+              type: 'joins' as const,
+              target: ref.dim_table,
+              on: keys.map(k => `${k.dws_column} = ${k.dim_column}`).join(' AND '),
+              ...(ref.derivation ? { description: ref.derivation } : {}),
+            })
+          }
+        }
+      }
+    }
+    return out
   },
 }

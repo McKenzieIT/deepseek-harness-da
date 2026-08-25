@@ -1,8 +1,8 @@
 name: game.base.imagetransform
 event_filter: event = 'game.base.imagetransform'
-description: '看板娘形象变换事件 game.base.imagetransform：记录角色切换/变换看板娘形象及 transform 缩放坐标。主体粒度 role_id，含账号、服务器、角色等级、VIP、战力、多种货币、看板娘类型及变换坐标等29个参数。ds=20260729 单日实测 147 条事件、87 角色、41 服务器。'
+description: 看板娘形象变换事件 game.base.imagetransform：记录角色切换/变换看板娘形象及 transform 缩放坐标。主体粒度 role_id，含账号、服务器、角色等级、VIP、战力、多种货币、看板娘类型及变换坐标等29个参数。ds=20260729 单日实测 147 条事件、87 角色、41 服务器。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -116,6 +116,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 单日实测 cnt=147, role_uv=87, acc_uv=87, server_uv=41'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 单日实测 cnt=147, role_uv=87, acc_uv=87, server_uv=41
   coverage_status: analyst_confirmed
+external_refs: []

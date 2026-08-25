@@ -1,8 +1,8 @@
 name: game.role.viewPlayerShow
 event_filter: event = 'game.role.viewPlayerShow'
-description: '玩家查看其他玩家展示信息的埋点事件，记录被查看角色的基本信息（角色名、等级、VIP、战力、性别、创角/上线时间）、关键货币（钻石/紫金/经验卷轴/体力）及展示类型/展示id。主体粒度为 role_id（被查看角色），每条日志代表一次玩家查看展示行为。scout 实测 ds=20260729 命中 0 条（ds=20260728 同为 0），事件疑似下线或未触发。'
+description: 玩家查看其他玩家展示信息的埋点事件，记录被查看角色的基本信息（角色名、等级、VIP、战力、性别、创角/上线时间）、关键货币（钻石/紫金/经验卷轴/体力）及展示类型/展示id。主体粒度为 role_id（被查看角色），每条日志代表一次玩家查看展示行为。scout 实测 ds=20260729 命中 0 条（ds=20260728 同为 0），事件疑似下线或未触发。
 domains:
-- 用户生命周期
+  - 用户生命周期
 domain: account
 params_fields:
   serverId:
@@ -95,12 +95,13 @@ coverage:
     - 衡量玩家查看其他玩家展示信息的频次与覆盖角色/账号/服务器范围
     - 评估展示系统的使用情况与玩家互动活跃度
   limitations:
-    - '仅 ds=20260729 单日 scout 实测，未做全量复核'
-    - '日志中零命中(ds=20260729/20260728 cnt=0)，事件疑似下线/未触发，指标在当前数据周期不可用'
-    - '默认主体粒度为 role_id（被查看角色）'
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729/20260728 cnt=0)，事件疑似下线/未触发，指标在当前数据周期不可用
+    - 默认主体粒度为 role_id（被查看角色）
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'scout ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 重试 cnt=0，零命中'
+  confirmed_at: "2026-07-31"
+  note: scout ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 重试 cnt=0，零命中
   coverage_status: draft
+external_refs: []

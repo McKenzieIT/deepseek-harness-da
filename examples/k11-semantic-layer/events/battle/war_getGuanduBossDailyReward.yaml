@@ -1,8 +1,8 @@
 name: game.war.getGuanduBossDailyReward
 event_filter: event = 'game.war.getGuanduBossDailyReward'
-description: '官渡之战BOSS日常奖励领取事件。玩家角色在官渡副本中击败BOSS后领取每日奖励时触发，记录角色、服务器、奖励(rewards)及货币(coinList)等27个参数。分析主体为 role_id（角色）。scout 实测 ds=20260729 与 ds=20260728 零命中，疑似下线/未触发。'
+description: 官渡之战BOSS日常奖励领取事件。玩家角色在官渡副本中击败BOSS后领取每日奖励时触发，记录角色、服务器、奖励(rewards)及货币(coinList)等27个参数。分析主体为 role_id（角色）。scout 实测 ds=20260729 与 ds=20260728 零命中，疑似下线/未触发。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -101,15 +101,16 @@ metrics:
     description: 领取奖励的去重服务器数
 coverage:
   scenarios:
-  - 分析官渡BOSS日常奖励的领取频次与参与角色规模
-  - 监控官渡副本每日BOSS奖励发放的活跃度
+    - 分析官渡BOSS日常奖励的领取频次与参与角色规模
+    - 监控官渡副本每日BOSS奖励发放的活跃度
   limitations:
-  - '日志中零命中(ds=20260729/20260728)，疑似下线/未触发'
-  - 仅 ds=20260729 与 ds=20260728 单日 scout 实测，未做全量复核
-  - 分析主体粒度默认 role_id（角色），未做实测复核
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
+    - 仅 ds=20260729 与 ds=20260728 单日 scout 实测，未做全量复核
+    - 分析主体粒度默认 role_id（角色），未做实测复核
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/未触发，保留 draft'
+  confirmed_at: "2026-07-30"
+  note: scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0/role_uv=0/acc_uv=0/server_uv=0)，事件疑似下线/未触发，保留 draft
 coverage_status: draft
+external_refs: []

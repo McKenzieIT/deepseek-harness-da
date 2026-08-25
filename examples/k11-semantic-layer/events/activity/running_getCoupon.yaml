@@ -1,8 +1,8 @@
 name: game.running.getCoupon
 event_filter: event = 'game.running.getCoupon'
-description: '赛马（running）玩法每日奖券领取事件：玩家在赛马玩法中领取每日奖券时上报，记录领取行为本身、领取角色画像（等级/VIP/战力/经验）及领取后货币快照(coinList)与奖励列表(rewards: type/value/size/uid)。事件名 game.running.getCoupon，分析主体粒度为 role_id（领取奖券的角色）。scout 实测 ds=20260729/20260728 均零命中(cnt=0)，事件疑似下线或当前未触发，无可用数据。'
+description: "赛马（running）玩法每日奖券领取事件：玩家在赛马玩法中领取每日奖券时上报，记录领取行为本身、领取角色画像（等级/VIP/战力/经验）及领取后货币快照(coinList)与奖励列表(rewards: type/value/size/uid)。事件名 game.running.getCoupon，分析主体粒度为 role_id（领取奖券的角色）。scout 实测 ds=20260729/20260728 均零命中(cnt=0)，事件疑似下线或当前未触发，无可用数据。"
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -114,16 +114,17 @@ metrics:
 coverage:
   granularity: 单次奖券领取事件（role_id 为默认主体粒度）
   scenarios:
-  - 赛马每日奖券领取的参与规模（次数/角色UV/账号UV/服务器UV）
-  - 不同 VIP/等级/战力玩家领取奖券的画像分布
-  - 单日重复领取行为识别（claims_per_role > 1 提示同角色当日多次领取）
+    - 赛马每日奖券领取的参与规模（次数/角色UV/账号UV/服务器UV）
+    - 不同 VIP/等级/战力玩家领取奖券的画像分布
+    - 单日重复领取行为识别（claims_per_role > 1 提示同角色当日多次领取）
   limitations:
-  - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似下线/未触发
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id，未逐事件实测 role_id 是否为最细主体
-  - rewards 为数组(type/value/size/uid)，SUM 需 explode(UDDTF)，未纳入单值指标
+    - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似下线/未触发
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id，未逐事件实测 role_id 是否为最细主体
+    - rewards 为数组(type/value/size/uid)，SUM 需 explode(UDDTF)，未纳入单值指标
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729 cnt=0 / role_uv=0 / acc_uv=0；ds=20260728 重试 cnt=0；事件零命中，疑似下线/未触发，保持 draft'
+  note: scout 实测 ds=20260729 cnt=0 / role_uv=0 / acc_uv=0；ds=20260728 重试 cnt=0；事件零命中，疑似下线/未触发，保持 draft
+external_refs: []

@@ -1,8 +1,8 @@
 name: game.intervalShop.getReward
 event_filter: event = 'game.intervalShop.getReward'
-description: '持续回报商店（intervalShop）领取奖励事件：玩家从持续回报商店领取奖励时触发，记录领取行为及领取时刻的角色快照（角色、账号、服务器、VIP、战力、经验、看板娘、领取商品goodId等维度）。粒度为角色（role_id）级，单次领取记1条日志，用于度量奖励领取总量与领取角色/账号/服务器覆盖面。'
+description: 持续回报商店（intervalShop）领取奖励事件：玩家从持续回报商店领取奖励时触发，记录领取行为及领取时刻的角色快照（角色、账号、服务器、VIP、战力、经验、看板娘、领取商品goodId等维度）。粒度为角色（role_id）级，单次领取记1条日志，用于度量奖励领取总量与领取角色/账号/服务器覆盖面。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,15 +92,16 @@ metrics:
     description: 领取奖励覆盖的去重游戏服数
 coverage:
   scenarios:
-  - 持续回报商店奖励领取总量与活跃度监控
-  - 领取角色/账号/服务器覆盖面分析
+    - 持续回报商店奖励领取总量与活跃度监控
+    - 领取角色/账号/服务器覆盖面分析
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id（角色级）
-  - 单日命中量较小（cnt=6），需多日观察确认稳定性
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id（角色级）
+    - 单日命中量较小（cnt=6），需多日观察确认稳定性
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 scout: cnt=6, role_uv=6, acc_uv=6, server_uv=3；数量级合理，事件正常触发'
+  confirmed_at: "2026-07-31"
+  note: "ds=20260729 scout: cnt=6, role_uv=6, acc_uv=6, server_uv=3；数量级合理，事件正常触发"
   coverage_status: analyst_confirmed
+external_refs: []

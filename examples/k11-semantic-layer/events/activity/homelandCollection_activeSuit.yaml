@@ -1,8 +1,8 @@
 name: game.homelandCollection.activeSuit
 event_filter: event = 'game.homelandCollection.activeSuit'
-description: "家园藏品-套装激活：玩家在家园藏品系统中激活一个套装(suitId)时触发的行为日志，记录激活主体角色与被激活套装标识。分析主体为 role_id（角色粒度），account_id 为账号粒度补充。ds=20260729 实测：cnt=864, role_uv=727, acc_uv=715, server_uv=76。"
+description: 家园藏品-套装激活：玩家在家园藏品系统中激活一个套装(suitId)时触发的行为日志，记录激活主体角色与被激活套装标识。分析主体为 role_id（角色粒度），account_id 为账号粒度补充。ds=20260729 实测：cnt=864, role_uv=727, acc_uv=715, server_uv=76。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,7 +92,7 @@ coverage:
     - 家园藏品套装激活参与度与活跃度（cnt / role_uv / account_uv / server_uv）
     - 套装激活跨服分布与活跃服数（server_uv）
   limitations:
-    - "仅 ds=20260729 单日 scout 实测，未做全量复核"
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
     - 分析主体默认 role_id（角色粒度）；account_id 可作账号粒度补充
     - suitId 套装标识枚举未抽样核对，仅统计事件总量与去重主体
   granularity: role_id
@@ -100,5 +100,6 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: "实测 ds=20260729：cnt=864, role_uv=727, acc_uv=715, server_uv=76。事件+ds 过滤命中且数值合理。"
+  note: 实测 ds=20260729：cnt=864, role_uv=727, acc_uv=715, server_uv=76。事件+ds 过滤命中且数值合理。
 coverage_status: analyst_confirmed
+external_refs: []

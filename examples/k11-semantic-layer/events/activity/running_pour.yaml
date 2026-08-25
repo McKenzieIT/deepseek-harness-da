@@ -1,8 +1,8 @@
 name: game.running.pour
 event_filter: event = 'game.running.pour'
-description: '赛马玩法下注事件：玩家在赛马小游戏中选择马匹(horseId)并下注(count)时上报，记录下注行为本身、是否启用倍投(useDouble)与保护(useProtect)，以及下注角色画像(等级/VIP/战力)与下注后货币快照(coinList)。分析主体粒度为 role_id。scout 实测 ds=20260729/20260728 均零命中，事件疑似下线或未触发。'
+description: 赛马玩法下注事件：玩家在赛马小游戏中选择马匹(horseId)并下注(count)时上报，记录下注行为本身、是否启用倍投(useDouble)与保护(useProtect)，以及下注角色画像(等级/VIP/战力)与下注后货币快照(coinList)。分析主体粒度为 role_id。scout 实测 ds=20260729/20260728 均零命中，事件疑似下线或未触发。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -111,18 +111,19 @@ metrics:
 coverage:
   granularity: 单次下注事件（role_id 为默认主体粒度）
   scenarios:
-  - 赛马下注参与规模（次数/角色UV/账号UV）
-  - 人均下注次数与下注量分布（bets_per_role、count_sum）
-  - 倍投(useDouble)/保护(useProtect)策略使用角色占比
-  - 投注马匹集中度（horse_uv）
+    - 赛马下注参与规模（次数/角色UV/账号UV）
+    - 人均下注次数与下注量分布（bets_per_role、count_sum）
+    - 倍投(useDouble)/保护(useProtect)策略使用角色占比
+    - 投注马匹集中度（horse_uv）
   limitations:
-  - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似下线/未触发，指标定义为待实测验证
-  - 仅 ds=20260729 单日 scout 实测（含 20260728 复测均为 0），未做全量复核
-  - 默认主体粒度为 role_id，因零命中未逐事件实测确认
-  - count/horseId/useDouble/useProtect 字段值域未实测，表达式按参数类型推断
+    - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似下线/未触发，指标定义为待实测验证
+    - 仅 ds=20260729 单日 scout 实测（含 20260728 复测均为 0），未做全量复核
+    - 默认主体粒度为 role_id，因零命中未逐事件实测确认
+    - count/horseId/useDouble/useProtect 字段值域未实测，表达式按参数类型推断
   coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=0 / role_uv=0 / acc_uv=0；ds=20260728 复测 cnt=0；事件疑似下线/未触发，保持 draft'
+  note: scout 实测 ds=20260729：cnt=0 / role_uv=0 / acc_uv=0；ds=20260728 复测 cnt=0；事件疑似下线/未触发，保持 draft
+external_refs: []

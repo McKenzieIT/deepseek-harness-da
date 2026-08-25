@@ -1,8 +1,8 @@
 name: game.gmActivity.dayBattlePassBuy
 event_filter: event = 'game.gmActivity.dayBattlePassBuy'
-description: '玩家购买每日战令（dayBattlePassBuy）行为事件，记录角色每日购买战令的购买动作及关联角色/账号/服务器上下文（含 vip 等级、战力、货币快照、是否使用代金券 useVoucher）。主体粒度为 role_id（角色级）。实测 ds=20260729 单日 cnt=21，覆盖 21 个角色 / 21 个账号 / 9 个服务器。'
+description: 玩家购买每日战令（dayBattlePassBuy）行为事件，记录角色每日购买战令的购买动作及关联角色/账号/服务器上下文（含 vip 等级、战力、货币快照、是否使用代金券 useVoucher）。主体粒度为 role_id（角色级）。实测 ds=20260729 单日 cnt=21，覆盖 21 个角色 / 21 个账号 / 9 个服务器。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -92,15 +92,16 @@ metrics:
     description: 使用代金券（useVoucher=true）完成每日战令购买的次数
 coverage:
   scenarios:
-  - 每日战令购买规模与去重角色/账号/服务器覆盖度
-  - 代金券（useVoucher）使用占比，评估促销券对每日战令购买的拉动
+    - 每日战令购买规模与去重角色/账号/服务器覆盖度
+    - 代金券（useVoucher）使用占比，评估促销券对每日战令购买的拉动
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id；账号级去重以 account_id 为准
-  - useVoucher 为布尔字段，GET_JSON_OBJECT 返回字符串 'true'/'false' 进行匹配
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id；账号级去重以 account_id 为准
+    - useVoucher 为布尔字段，GET_JSON_OBJECT 返回字符串 'true'/'false' 进行匹配
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 scout: cnt=21, role_uv=21, acc_uv=21, server_uv=9'
+  note: "ds=20260729 scout: cnt=21, role_uv=21, acc_uv=21, server_uv=9"
   coverage_status: analyst_confirmed
+external_refs: []

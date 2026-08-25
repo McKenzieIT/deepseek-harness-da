@@ -5,7 +5,7 @@ description: |-
   记录穿戴/被消耗兵符的星级、属性（addAttrs/randAttrs）及槽位变化。
   分析主体为 role_id。ds=20260729 单日实测 1925 条/722 角色/706 账号/144 服务器。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -190,17 +190,18 @@ coverage:
   subject: role_id
   subject_note: 兵符精炼以 role_id 为分析主体（穿戴兵符属角色装备）
   scenarios:
-  - 各游戏服兵符精炼活跃度与渗透角色数（refinement_cnt / refinement_role_uv / refinement_server_uv）
-  - 人均精炼强度（refinement_per_role）定位重度精炼用户
-  - 被精炼兵符规模与穿戴兵符星级分布（refined_artifact_uv / avg_wear_artifact_star）
+    - 各游戏服兵符精炼活跃度与渗透角色数（refinement_cnt / refinement_role_uv / refinement_server_uv）
+    - 人均精炼强度（refinement_per_role）定位重度精炼用户
+    - 被精炼兵符规模与穿戴兵符星级分布（refined_artifact_uv / avg_wear_artifact_star）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - usedArtifact.uid / wearArtifact.uid 在 ds=20260729 解析为 0 distinct（疑似字段缺失或嵌套结构差异），改用顶层 uid 作为被精炼兵符标识
-  - GET_JSON_OBJECT 依赖运行时 params JSON 结构，跨日结构可能漂移
-  - 实测 GET_JSON_OBJECT(params,'$.roleId')=722 与 base role_uv=722 一致，role_id 主体校验通过
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - usedArtifact.uid / wearArtifact.uid 在 ds=20260729 解析为 0 distinct（疑似字段缺失或嵌套结构差异），改用顶层 uid 作为被精炼兵符标识
+    - GET_JSON_OBJECT 依赖运行时 params JSON 结构，跨日结构可能漂移
+    - 实测 GET_JSON_OBJECT(params,'$.roleId')=722 与 base role_uv=722 一致，role_id 主体校验通过
 coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'scout 实测 ds=20260729: cnt=1925, role_uv=722, acc_uv=706, server_uv=144; refined_artifact_uv(uid)=568, avg_wear_star=2.81, avg_used_star=1.0（消耗1星材料精炼穿戴兵符）'
+  confirmed_at: "2026-07-30"
+  note: "scout 实测 ds=20260729: cnt=1925, role_uv=722, acc_uv=706, server_uv=144; refined_artifact_uv(uid)=568, avg_wear_star=2.81, avg_used_star=1.0（消耗1星材料精炼穿戴兵符）"
+external_refs: []

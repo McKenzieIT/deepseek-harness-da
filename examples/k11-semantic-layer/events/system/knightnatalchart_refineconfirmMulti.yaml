@@ -1,8 +1,8 @@
 name: game.knightnatalchart.refineconfirmMulti
 event_filter: event = 'game.knightnatalchart.refineconfirmMulti'
-description: '武将命盘-确认方案(refine confirm Multi)事件。玩家在武将命格图(knightNatalChart)对武将(knightId)从候选方案(nodes)中选定并确认某一方案序号(index)/方案(scheme)时触发，上报武将id、方案、节点列表(nodeList.staged/nodeList.used)、货币列表(coinList)、角色等级、战力等29个参数，每次确认产出一条日志。分析主体为角色(role_id)，account_id 用于账号级去重；该事件承接 refineMulti(批量精炼)之后的确认环节。scout实测 ds=20260729：事件次数3915、去重角色834、去重账号816、去重游戏服191。'
+description: 武将命盘-确认方案(refine confirm Multi)事件。玩家在武将命格图(knightNatalChart)对武将(knightId)从候选方案(nodes)中选定并确认某一方案序号(index)/方案(scheme)时触发，上报武将id、方案、节点列表(nodeList.staged/nodeList.used)、货币列表(coinList)、角色等级、战力等29个参数，每次确认产出一条日志。分析主体为角色(role_id)，account_id 用于账号级去重；该事件承接 refineMulti(批量精炼)之后的确认环节。scout实测 ds=20260729：事件次数3915、去重角色834、去重账号816、去重游戏服191。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -96,7 +96,7 @@ confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729: cnt=3915, role_uv=834, acc_uv=816, server_uv=191；数据合理，事件正常触发(确认环节承接 refineMulti 批量精炼之后，量级约 refineMulti 的 14%，符合确认漏斗)'
+  note: "scout 实测 ds=20260729: cnt=3915, role_uv=834, acc_uv=816, server_uv=191；数据合理，事件正常触发(确认环节承接 refineMulti 批量精炼之后，量级约 refineMulti 的 14%，符合确认漏斗)"
 metrics:
   game_knightnatalchart_refineconfirmMulti_cnt:
     expression: COUNT(*)
@@ -121,13 +121,14 @@ metrics:
     description: 每个触发角色平均确认方案次数（NULLIF 防除零）
 coverage:
   scenarios:
-  - 命盘确认参与度：通过 role_uv/account_uv 衡量角色与账号级参与度
-  - 命盘确认热度：通过 cnt 与 avg_per_role 衡量确认总次数与人均次数
-  - 多服分布：通过 server_uv 观察事件覆盖的游戏服范围
-  - 武将/方案广度：通过 knight_uv/scheme_uv 观察被确认的武将种类与方案分布
+    - 命盘确认参与度：通过 role_uv/account_uv 衡量角色与账号级参与度
+    - 命盘确认热度：通过 cnt 与 avg_per_role 衡量确认总次数与人均次数
+    - 多服分布：通过 server_uv 观察事件覆盖的游戏服范围
+    - 武将/方案广度：通过 knight_uv/scheme_uv 观察被确认的武将种类与方案分布
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id，account_id 为账号去重维度
-  - coinList/nodeList(nodes/index/nodeList.staged/nodeList.used) 为数组/嵌套结构，本批次未展开做逐元素聚合(如 SUM 消耗钻石、节点 staged 统计)，用数侧可按需扩展
-  - refineconfirmMulti 为确认环节，其上游 refineMulti(批量精炼)漏斗关系需结合对应事件联合分析
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id，account_id 为账号去重维度
+    - coinList/nodeList(nodes/index/nodeList.staged/nodeList.used) 为数组/嵌套结构，本批次未展开做逐元素聚合(如 SUM 消耗钻石、节点 staged 统计)，用数侧可按需扩展
+    - refineconfirmMulti 为确认环节，其上游 refineMulti(批量精炼)漏斗关系需结合对应事件联合分析
 coverage_status: analyst_confirmed
+external_refs: []

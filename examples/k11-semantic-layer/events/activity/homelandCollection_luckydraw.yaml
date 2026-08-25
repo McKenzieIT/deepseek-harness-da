@@ -1,8 +1,8 @@
 name: game.homelandCollection.luckydraw
 event_filter: event = 'game.homelandCollection.luckydraw'
-description: '家园藏品福袋抽奖事件：玩家在家园藏品玩法中开启福袋(luckyId)获取藏品奖励，记录每次抽奖行为。主体粒度为 role_id（角色）。'
+description: 家园藏品福袋抽奖事件：玩家在家园藏品玩法中开启福袋(luckyId)获取藏品奖励，记录每次抽奖行为。主体粒度为 role_id（角色）。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -89,15 +89,16 @@ metrics:
     description: 参与福袋抽奖的游戏服去重数
 coverage:
   scenarios:
-  - 福袋抽奖次数
-  - 参与角色/账号/游戏服分布
+    - 福袋抽奖次数
+    - 参与角色/账号/游戏服分布
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 日志中零命中(ds=20260729 cnt=0, ds=20260728 cnt=0)，疑似下线/未触发
-  - 默认主体 role_id
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729 cnt=0, ds=20260728 cnt=0)，疑似下线/未触发
+    - 默认主体 role_id
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: "ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 cnt=0 -> 零命中"
+  note: ds=20260729 cnt=0/role_uv=0/acc_uv=0；ds=20260728 cnt=0 -> 零命中
   coverage_status: draft
+external_refs: []

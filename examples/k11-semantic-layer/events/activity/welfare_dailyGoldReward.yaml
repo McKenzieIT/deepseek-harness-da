@@ -1,8 +1,8 @@
 name: game.welfare.dailyGoldReward
 event_filter: event = 'game.welfare.dailyGoldReward'
-description: '福利系统每日金/三山璧奖励领取事件：玩家通过福利玩法领取每日金奖励时上报，记录领取行为本身、领取角色画像（等级/VIP/战力）及领取后货币快照（coinList）。奖励明细字段 rewards/rewarded 在实测中未上报，奖励金额为固定每日值，由事件次数反映参与规模。'
+description: 福利系统每日金/三山璧奖励领取事件：玩家通过福利玩法领取每日金奖励时上报，记录领取行为本身、领取角色画像（等级/VIP/战力）及领取后货币快照（coinList）。奖励明细字段 rewards/rewarded 在实测中未上报，奖励金额为固定每日值，由事件次数反映参与规模。
 domains:
-- 资源产销
+  - 资源产销
 domain: activity
 params_fields:
   serverId:
@@ -114,15 +114,16 @@ metrics:
 coverage:
   granularity: 单次领取事件（role_id 为默认主体粒度）
   scenarios:
-  - 每日福利金奖励领取的参与规模（次数/角色UV/账号UV）
-  - 不同VIP/战力/等级玩家领取每日金奖励的活跃度分布
-  - 单日重复领取行为识别（claims_per_role > 1 提示同角色当日多次领取）
+    - 每日福利金奖励领取的参与规模（次数/角色UV/账号UV）
+    - 不同VIP/战力/等级玩家领取每日金奖励的活跃度分布
+    - 单日重复领取行为识别（claims_per_role > 1 提示同角色当日多次领取）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - rewards/rewarded 数组在 ds=20260729 实测中全 2158 行均为 NULL，奖励明细未上报，无法统计单次奖励金额
-  - 默认主体粒度为 role_id，未逐事件实测 role_id 是否为最细主体
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - rewards/rewarded 数组在 ds=20260729 实测中全 2158 行均为 NULL，奖励明细未上报，无法统计单次奖励金额
+    - 默认主体粒度为 role_id，未逐事件实测 role_id 是否为最细主体
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=2158 / role_uv=2089 / acc_uv=2046；roleId/vipLevel/roleLevel/roleForce/coinList 全非空，rewards/rewarded 数组全 NULL'
+  note: scout 实测 ds=20260729：cnt=2158 / role_uv=2089 / acc_uv=2046；roleId/vipLevel/roleLevel/roleForce/coinList 全非空，rewards/rewarded 数组全 NULL
+external_refs: []

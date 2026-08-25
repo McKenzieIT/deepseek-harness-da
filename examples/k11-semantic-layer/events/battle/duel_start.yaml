@@ -1,8 +1,8 @@
 name: game.duel.start
 event_filter: event = 'game.duel.start'
-description: '切磋(竞技对决)开始事件：记录角色发起/进入一场切磋对决的瞬间，携带攻击方与防守方玩家id及 duel 状态(@ShareConst.DUAL_STATUS)、双方角色等级/vip等级/角色战力/经验，以及关键货币(钻石/紫金/经验卷轴/体力)等28个参数。分析主体粒度为 role_id(角色)；2026-07-29 单日 scout 实测 cnt=32、role_uv=20、acc_uv=20、server_uv=12。'
+description: 切磋(竞技对决)开始事件：记录角色发起/进入一场切磋对决的瞬间，携带攻击方与防守方玩家id及 duel 状态(@ShareConst.DUAL_STATUS)、双方角色等级/vip等级/角色战力/经验，以及关键货币(钻石/紫金/经验卷轴/体力)等28个参数。分析主体粒度为 role_id(角色)；2026-07-29 单日 scout 实测 cnt=32、role_uv=20、acc_uv=20、server_uv=12。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -108,7 +108,7 @@ metrics:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
+  confirmed_at: "2026-07-30"
 coverage:
   scenarios:
     - 切磋玩法每日发起量与参与角色规模(角色UV/账号UV/服务器分布)
@@ -119,3 +119,4 @@ coverage:
     - 分析主体粒度默认 role_id(角色)，未逐行核对 attack.uid/defence.uid 与 role_id 的对应关系
     - attack.status/defence.status 状态码语义(@ShareConst.DUAL_STATUS)未在样本中确认，胜率类指标暂未落库
   coverage_status: analyst_confirmed
+external_refs: []

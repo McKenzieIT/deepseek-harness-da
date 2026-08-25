@@ -1,8 +1,8 @@
 name: game.guild.transferPresident
 event_filter: event = 'game.guild.transferPresident'
-description: "公会会长转让事件：当现任会长(role_id 为分析主体，即转让方/出让会长者)将会长职位转交给目标角色(targetUid，受让方/新会长)时触发。记录转让发生时双方的角色等级/vip/战力及货币快照。ds=20260729 单日 scout 实测 cnt=20、role_uv=20(转让方)、server_uv=14。"
+description: 公会会长转让事件：当现任会长(role_id 为分析主体，即转让方/出让会长者)将会长职位转交给目标角色(targetUid，受让方/新会长)时触发。记录转让发生时双方的角色等级/vip/战力及货币快照。ds=20260729 单日 scout 实测 cnt=20、role_uv=20(转让方)、server_uv=14。
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -108,3 +108,4 @@ confirmation:
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
   note: ds=20260729 scout 实测 cnt=20、role_uv=20、acc_uv=20、server_uv=14、target_uv=20，数值合理
+external_refs: []

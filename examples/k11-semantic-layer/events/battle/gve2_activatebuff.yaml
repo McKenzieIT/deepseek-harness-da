@@ -1,12 +1,8 @@
 name: game.gve2.activatebuff
 event_filter: event = 'game.gve2.activatebuff'
-description: >-
-  GVE2（公会VS环境 v2）激活增益（buff）事件。记录玩家在 GVE2 玩法中激活 buff 的行为，
-  携带角色等级、vip 等级、角色战力、经验及关键货币余额快照（coinList）。分析主体为
-  role_id（角色粒度），account_id 供账号维度交叉参考。真实测得 ds=20260729 单日：
-  cnt=179，role_uv=179，acc_uv=176，覆盖 155 个游戏服。
+description: GVE2（公会VS环境 v2）激活增益（buff）事件。记录玩家在 GVE2 玩法中激活 buff 的行为， 携带角色等级、vip 等级、角色战力、经验及关键货币余额快照（coinList）。分析主体为 role_id（角色粒度），account_id 供账号维度交叉参考。真实测得 ds=20260729 单日： cnt=179，role_uv=179，acc_uv=176，覆盖 155 个游戏服。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -106,6 +102,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'maxc scout 实测 ds=20260729：cnt=179, role_uv=179, acc_uv=176, server_uv=155；数据合理，标记 analyst_confirmed'
+  confirmed_at: "2026-07-30"
+  note: maxc scout 实测 ds=20260729：cnt=179, role_uv=179, acc_uv=176, server_uv=155；数据合理，标记 analyst_confirmed
 coverage_status: analyst_confirmed
+external_refs: []

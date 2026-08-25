@@ -1,8 +1,8 @@
 name: game.autoPvp.setTeam
 event_filter: event = 'game.autoPvp.setTeam'
-description: '自动PVP玩法中玩家设置防守/进攻阵容的事件，记录玩家在自动PVP系统中调整出战武将编队（knightList）、武将自动技能方案（knightAutoSkill）、灵器（mainCharm/assistCharm）、sp队长、阵营光环等阵容配置。主体粒度为 role_id（角色），附带 accountId 账号维。ds=20260729 单日实测 4381 条记录、1391 角色、1341 账号、192 服务器。'
+description: 自动PVP玩法中玩家设置防守/进攻阵容的事件，记录玩家在自动PVP系统中调整出战武将编队（knightList）、武将自动技能方案（knightAutoSkill）、灵器（mainCharm/assistCharm）、sp队长、阵营光环等阵容配置。主体粒度为 role_id（角色），附带 accountId 账号维。ds=20260729 单日实测 4381 条记录、1391 角色、1341 账号、192 服务器。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -110,14 +110,15 @@ metrics:
     description: 触发自动PVP设置阵容事件的去重服务器数
 coverage:
   scenarios:
-  - 评估自动PVP玩法的阵容配置活跃度（设置次数、参与角色/账号/服务器覆盖），用于衡量该玩法渗透率与玩家参与意愿。
+    - 评估自动PVP玩法的阵容配置活跃度（设置次数、参与角色/账号/服务器覆盖），用于衡量该玩法渗透率与玩家参与意愿。
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体默认 role_id（角色）
-  - server_uv 因跨服PVP可能含合并/镜像服，去重口径以原始 server_id 为准
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体默认 role_id（角色）
+    - server_uv 因跨服PVP可能含合并/镜像服，去重口径以原始 server_id 为准
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
   note: ds=20260729 单日 scout 实测 cnt=4381 / role_uv=1391 / acc_uv=1341 / server_uv=192，数据合理。
   coverage_status: analyst_confirmed
+external_refs: []

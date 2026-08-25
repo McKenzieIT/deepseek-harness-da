@@ -1,8 +1,8 @@
 name: game.tactic.levelup
 event_filter: event = 'game.tactic.levelup'
-description: '战法升级事件：角色升星/升级战法时上报，记录战法id、战法等级、战法星级与角色状态（角色等级、vip等级、战力、经验、关键货币等25个参数）。分析主体为 role_id（角色），按 role_id 维度度量战法养成进度与分布。scout 实测 ds=20260729/20260728 日志零命中（cnt=0），疑似事件下线或未触发上报。'
+description: 战法升级事件：角色升星/升级战法时上报，记录战法id、战法等级、战法星级与角色状态（角色等级、vip等级、战力、经验、关键货币等25个参数）。分析主体为 role_id（角色），按 role_id 维度度量战法养成进度与分布。scout 实测 ds=20260729/20260728 日志零命中（cnt=0），疑似事件下线或未触发上报。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -98,16 +98,17 @@ metrics:
     description: 被升级的去重战法id数
 coverage:
   scenarios:
-  - 角色战法养成进度与分布（按战法等级/星级）
-  - 战法升级参与角色/账号/游戏服覆盖面
-  - 不同战法id的养成热度排行
+    - 角色战法养成进度与分布（按战法等级/星级）
+    - 战法升级参与角色/账号/游戏服覆盖面
+    - 不同战法id的养成热度排行
   limitations:
-  - 仅 ds=20260729/20260728 scout 实测，未做全量复核
-  - 日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似下线/未触发上报
-  - 默认分析主体为 role_id（角色粒度），尚未由业务方确认
+    - 仅 ds=20260729/20260728 scout 实测，未做全量复核
+    - 日志中零命中(ds=20260729 cnt=0；ds=20260728 cnt=0)，疑似下线/未触发上报
+    - 默认分析主体为 role_id（角色粒度），尚未由业务方确认
 coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729: cnt=0/role_uv=0/acc_uv=0/server_uv=0；ds=20260728: cnt=0。零命中，疑似事件下线/未触发上报，保持 draft。'
+  note: "scout 实测 ds=20260729: cnt=0/role_uv=0/acc_uv=0/server_uv=0；ds=20260728: cnt=0。零命中，疑似事件下线/未触发上报，保持 draft。"
+external_refs: []

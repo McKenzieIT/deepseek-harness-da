@@ -1,10 +1,8 @@
 name: game.gacha.switchSpecial
 event_filter: event = 'game.gacha.switchSpecial'
-description: '招募-切换新手集市卡池：角色在招募玩法内切换至新手集市卡池时上报，记录卡池切换行为、当前关键货币持有与累计切换次数。分析主体粒度为
-  role_id（角色），每次切换新手集市卡池计为一条日志。ds=20260729 实测：cnt=400，role_uv=400，acc_uv=400，server_uv=7；切换覆盖
-  7 个游戏服、400 个角色，当日人均仅切换 1 次（cnt=role_uv），当日仅 1 个 specialId 命中。'
+description: 招募-切换新手集市卡池：角色在招募玩法内切换至新手集市卡池时上报，记录卡池切换行为、当前关键货币持有与累计切换次数。分析主体粒度为 role_id（角色），每次切换新手集市卡池计为一条日志。ds=20260729 实测：cnt=400，role_uv=400，acc_uv=400，server_uv=7；切换覆盖 7 个游戏服、400 个角色，当日人均仅切换 1 次（cnt=role_uv），当日仅 1 个 specialId 命中。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -103,21 +101,19 @@ metrics:
     description: 切换后累计切换次数（switchCount）求和，用于衡量卡池切换强度
 coverage:
   scenarios:
-  - 通过 role_uv/account_uv 评估新手集市卡池切换玩法的角色/账号渗透规模
-  - 通过 server_uv 与按服维度聚合，定位新手集市卡池切换的活跃服
-  - 通过 special_uv 识别当日开放的新手集市 id 数量
-  - 通过 switch_count_sum 结合 cnt 评估人均切换频次（switch_count_sum/cnt）
+    - 通过 role_uv/account_uv 评估新手集市卡池切换玩法的角色/账号渗透规模
+    - 通过 server_uv 与按服维度聚合，定位新手集市卡池切换的活跃服
+    - 通过 special_uv 识别当日开放的新手集市 id 数量
+    - 通过 switch_count_sum 结合 cnt 评估人均切换频次（switch_count_sum/cnt）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
-  - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复切做去重校验
-  - gachaIds（切换后选中的卡池id列表）为数组参数，当日 GET_JSON_OBJECT 直取计数为
-    0（疑似空值或需展开逐元素），未在本事件 metrics 内展开，如需按卡池维度聚合需单独建模
-  - 当日 cnt=role_uv=switch_count_sum（400=400=400），switchCount 全样本恒为
-    1，人均切换频次指标在该样本下退化为 1，跨日复核后才有统计意义
+    - 仅 ds=20260729 单日 scout 实测，未做全量多日复核；多日趋势需另行批量校验
+    - 分析主体粒度默认 role_id（角色），未对 account_id 跨角色复切做去重校验
+    - gachaIds（切换后选中的卡池id列表）为数组参数，当日 GET_JSON_OBJECT 直取计数为 0（疑似空值或需展开逐元素），未在本事件 metrics 内展开，如需按卡池维度聚合需单独建模
+    - 当日 cnt=role_uv=switch_count_sum（400=400=400），switchCount 全样本恒为 1，人均切换频次指标在该样本下退化为 1，跨日复核后才有统计意义
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729：cnt=400, role_uv=400, acc_uv=400, server_uv=7；event+ds
-    双过滤命中，数值合理（400 角色覆盖 7 服，人均切换 1 次，specialId 当日仅 1 个），确认在线可查。'
+  note: scout 实测 ds=20260729：cnt=400, role_uv=400, acc_uv=400, server_uv=7；event+ds 双过滤命中，数值合理（400 角色覆盖 7 服，人均切换 1 次，specialId 当日仅 1 个），确认在线可查。
 coverage_status: analyst_confirmed
+external_refs: []

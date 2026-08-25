@@ -1,8 +1,8 @@
 name: game.happyLottery.gacha
 event_filter: event = 'game.happyLottery.gacha'
-description: '刮刮乐活动抽卡事件：玩家在刮刮乐活动中进行抽卡操作，记录抽卡获得的图鉴id列表、保底计数及积分变动。主体粒度为 role_id（角色）。ds=20260729 实测 cnt=20724 / role_uv=3326 / acc_uv=3193 / server_uv=447。'
+description: 刮刮乐活动抽卡事件：玩家在刮刮乐活动中进行抽卡操作，记录抽卡获得的图鉴id列表、保底计数及积分变动。主体粒度为 role_id（角色）。ds=20260729 实测 cnt=20724 / role_uv=3326 / acc_uv=3193 / server_uv=447。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -116,15 +116,16 @@ metrics:
     description: 刮刮乐抽卡累计增加的积分总和
 coverage:
   scenarios:
-  - 监控刮刮乐活动的抽卡活跃度与参与规模
-  - 量化活动积分产出与角色/账号覆盖度
+    - 监控刮刮乐活动的抽卡活跃度与参与规模
+    - 量化活动积分产出与角色/账号覆盖度
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 主体粒度默认 role_id（角色）
-  - point_sum 依赖 addPoint 字段解析，缺值按 NULL 求和
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 主体粒度默认 role_id（角色）
+    - point_sum 依赖 addPoint 字段解析，缺值按 NULL 求和
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: analyst_confirmed
   note: ds=20260729 实测 cnt=20724 / role_uv=3326 / acc_uv=3193 / server_uv=447 / point_sum=287054
+external_refs: []

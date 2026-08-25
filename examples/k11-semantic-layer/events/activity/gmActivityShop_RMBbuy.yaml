@@ -1,8 +1,8 @@
 name: game.gmActivityShop.RMBbuy
 event_filter: event = 'game.gmActivityShop.RMBbuy'
-description: 'GM活动商店人民币购买：玩家通过人民币购买GM活动商店商品，记录订单、商品、购买数量及代金券使用。主题粒度为角色(role_id)，ds=20260729单日实测14条事件/14角色/14账号/7服。'
+description: GM活动商店人民币购买：玩家通过人民币购买GM活动商店商品，记录订单、商品、购买数量及代金券使用。主题粒度为角色(role_id)，ds=20260729单日实测14条事件/14角色/14账号/7服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -123,6 +123,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 scout: cnt=14, role_uv=14, acc_uv=14, server_uv=7, buy_count_sum=14；数值合理（单人单次购买为主），确认上线。'
+  confirmed_at: "2026-07-31"
+  note: "ds=20260729 scout: cnt=14, role_uv=14, acc_uv=14, server_uv=7, buy_count_sum=14；数值合理（单人单次购买为主），确认上线。"
   coverage_status: analyst_confirmed
+external_refs: []

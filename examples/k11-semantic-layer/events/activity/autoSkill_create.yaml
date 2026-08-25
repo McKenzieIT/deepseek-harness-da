@@ -1,8 +1,8 @@
 name: game.autoSkill.create
 event_filter: event = 'game.autoSkill.create'
-description: '玩家在自动战斗功能中创建武将出战方案，记录武将id(knightId)与方案id(schemeId)。主体粒度为 role_id（角色级事件），account_id 为账号归并维度。实测 ds=20260729 单日 cnt=78 / role_uv=40 / acc_uv=37 / server_uv=25。参数含游戏服、角色、货币、武将方案等 24 个字段。'
+description: 玩家在自动战斗功能中创建武将出战方案，记录武将id(knightId)与方案id(schemeId)。主体粒度为 role_id（角色级事件），account_id 为账号归并维度。实测 ds=20260729 单日 cnt=78 / role_uv=40 / acc_uv=37 / server_uv=25。参数含游戏服、角色、货币、武将方案等 24 个字段。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -95,11 +95,12 @@ coverage:
     - 通过方案创建次数与角色/账号 UV 评估自动战斗功能使用活跃度
     - 通过 server_uv 观察功能在不同游戏服的渗透范围
   limitations:
-    - '仅 ds=20260729 单日 scout 实测，未做全量复核'
-    - '默认主体粒度为 role_id；account_id 用于账号级去重归并'
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id；account_id 用于账号级去重归并
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
   confirmed_at: "2026-07-31"
-  note: 'ds=20260729 scout 实测 cnt=78 / role_uv=40 / acc_uv=37 / server_uv=25，量级合理'
+  note: ds=20260729 scout 实测 cnt=78 / role_uv=40 / acc_uv=37 / server_uv=25，量级合理
   coverage_status: analyst_confirmed
+external_refs: []

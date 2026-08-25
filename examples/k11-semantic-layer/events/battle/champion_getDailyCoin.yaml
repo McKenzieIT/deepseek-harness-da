@@ -1,8 +1,8 @@
 name: game.champion.getDailyCoin
 event_filter: event = 'game.champion.getDailyCoin'
-description: '争霸赛(Champion)每日竞猜币领取事件：玩家在争霸赛赛季中每日领取竞猜币(经验卷轴等关键货币)上报。分析粒度为角色(role_id)，每个角色每次领取产生一条日志。真实实测 ds=20260729：事件48条，去重角色48个，去重账号46个，覆盖5个游戏服；expCoin(经验卷轴)当日合计约29.4亿，gold(充值钻石)合计1。'
+description: 争霸赛(Champion)每日竞猜币领取事件：玩家在争霸赛赛季中每日领取竞猜币(经验卷轴等关键货币)上报。分析粒度为角色(role_id)，每个角色每次领取产生一条日志。真实实测 ds=20260729：事件48条，去重角色48个，去重账号46个，覆盖5个游戏服；expCoin(经验卷轴)当日合计约29.4亿，gold(充值钻石)合计1。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -101,18 +101,19 @@ metrics:
     description: 人均经验卷轴领取量
 coverage:
   scenarios:
-  - 争霸赛每日竞猜币领取参与角色数与游戏服覆盖度（活跃度与渗透）
-  - 经验卷轴(expCoin)当日发放总量与人均领取量（经济产出与单角色价值）
-  - 角色级粒度(roleId)的每日竞猜币领取频次与货币收益分布
+    - 争霸赛每日竞猜币领取参与角色数与游戏服覆盖度（活跃度与渗透）
+    - 经验卷轴(expCoin)当日发放总量与人均领取量（经济产出与单角色价值）
+    - 角色级粒度(roleId)的每日竞猜币领取频次与货币收益分布
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
-  - coinList.diamond(紫金) 实测 ds=20260729 SUM 为 NULL，本日未发放紫金，未列入指标
-  - coinList.gold(充值钻石) 本日 SUM=1，接近零值边界，作为稀疏字段保留
-  - coinList 在 params 中按 $.coinList.<field> 平铺取值，数组多元素场景未验证
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析粒度默认 role_id（事件 params.roleId 为角色id，未独立校验去重语义）
+    - coinList.diamond(紫金) 实测 ds=20260729 SUM 为 NULL，本日未发放紫金，未列入指标
+    - coinList.gold(充值钻石) 本日 SUM=1，接近零值边界，作为稀疏字段保留
+    - coinList 在 params 中按 $.coinList.<field> 平铺取值，数组多元素场景未验证
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729: cnt=48, role_uv=48, acc_uv=46, server_uv=5; expCoin_sum=2944443970, gold_sum=1, diamond NULL'
+  note: "scout 实测 ds=20260729: cnt=48, role_uv=48, acc_uv=46, server_uv=5; expCoin_sum=2944443970, gold_sum=1, diamond NULL"
 coverage_status: analyst_confirmed
+external_refs: []

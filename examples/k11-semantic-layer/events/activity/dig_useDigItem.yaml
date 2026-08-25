@@ -1,8 +1,8 @@
 name: game.dig.useDigItem
 event_filter: event = 'game.dig.useDigItem'
-description: '挖宝玩法中使用挖掘道具的行为事件。记录玩家在挖宝系统中使用道具进行挖掘操作，包含道具ID(digItemId)、当前层级(digLevel)、累计挖掘次数(digCount)及格子变化与奖励产出(changeItems/rewards)。主体粒度为 role_id（角色），真实度量体积为挖掘道具使用事件次数。'
+description: 挖宝玩法中使用挖掘道具的行为事件。记录玩家在挖宝系统中使用道具进行挖掘操作，包含道具ID(digItemId)、当前层级(digLevel)、累计挖掘次数(digCount)及格子变化与奖励产出(changeItems/rewards)。主体粒度为 role_id（角色），真实度量体积为挖掘道具使用事件次数。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -146,12 +146,13 @@ coverage:
     - 衡量挖宝玩法中挖掘道具的使用规模与活跃度（事件次数、角色/账号 UV）
     - 统计玩家累计挖掘次数总量，评估挖宝系统产出消耗节奏
   limitations:
-    - '日志中零命中(ds=20260729/20260728)，疑似下线/未触发'
+    - 日志中零命中(ds=20260729/20260728)，疑似下线/未触发
     - 仅 ds=20260729 单日 scout 实测，未做全量复核
     - 主体粒度默认为 role_id，账户粒度作为补充口径
   coverage_status: draft
 confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 scout 实测 cnt=0,role_uv=0,acc_uv=0;ds=20260728 复测仍为 0;判定为零命中,疑似事件下线或当日未触发,保留 draft 待业务确认'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 scout 实测 cnt=0,role_uv=0,acc_uv=0;ds=20260728 复测仍为 0;判定为零命中,疑似事件下线或当日未触发,保留 draft 待业务确认
+external_refs: []

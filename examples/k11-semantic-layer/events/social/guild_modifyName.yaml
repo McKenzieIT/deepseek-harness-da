@@ -1,8 +1,8 @@
 name: game.guild.modifyName
 event_filter: event = 'game.guild.modifyName'
-description: '公会改名事件：玩家修改所在公会名称时上报。分析主体为 role_id（角色），上报字段含游戏服id/名字、账号id、角色id/名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表、新公会名(name) 等23个参数。单日实测 ds=20260728: cnt=1, role_uv=1, acc_uv=1, server_uv=1（低频行为，量级合理）。'
+description: "公会改名事件：玩家修改所在公会名称时上报。分析主体为 role_id（角色），上报字段含游戏服id/名字、账号id、角色id/名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验、看板娘、关键货币列表、新公会名(name) 等23个参数。单日实测 ds=20260728: cnt=1, role_uv=1, acc_uv=1, server_uv=1（低频行为，量级合理）。"
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -102,6 +102,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: '实测 ds=20260728: cnt=1, role_uv=1, acc_uv=1, server_uv=1；ds=20260729 cnt=0（零命中）。事件真实触发，量级符合低频改名行为。'
+  confirmed_at: "2026-07-30"
+  note: "实测 ds=20260728: cnt=1, role_uv=1, acc_uv=1, server_uv=1；ds=20260729 cnt=0（零命中）。事件真实触发，量级符合低频改名行为。"
 coverage_status: analyst_confirmed
+external_refs: []

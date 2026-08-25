@@ -1,8 +1,8 @@
 name: game.knightMap.onekeyLevelup
 event_filter: event = 'game.knightMap.onekeyLevelup'
-description: '武将云图一键升级事件：玩家在武将云图系统中使用一键升级功能批量提升武将等级，记录本次修改的武将及到达等级(knight2lvl 数组)。主体粒度为 role_id（角色），同时携带 account_id/server_id/os_id 等维度。ds=20260729 单日实测 cnt=905、role_uv=476、acc_uv=473、server_uv=234。'
+description: 武将云图一键升级事件：玩家在武将云图系统中使用一键升级功能批量提升武将等级，记录本次修改的武将及到达等级(knight2lvl 数组)。主体粒度为 role_id（角色），同时携带 account_id/server_id/os_id 等维度。ds=20260729 单日实测 cnt=905、role_uv=476、acc_uv=473、server_uv=234。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -104,6 +104,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 实测 cnt=905 role_uv=476 acc_uv=473 server_uv=234，数值合理'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 实测 cnt=905 role_uv=476 acc_uv=473 server_uv=234，数值合理
   coverage_status: analyst_confirmed
+external_refs: []

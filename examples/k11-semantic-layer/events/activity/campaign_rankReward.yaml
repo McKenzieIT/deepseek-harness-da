@@ -1,8 +1,8 @@
 name: game.campaign.rankReward
 event_filter: event = 'game.campaign.rankReward'
-description: '历战排行榜奖励：角色在历战排行榜赛季结算时按排名档位领取奖励的事件。记录领奖角色（role_id 为业务主体，account_id 为账号主体）、所在游戏服、角色等级/vip/战力、奖励道具列表（reward 数组含 type/value/size/uid）及当前排名 rank 与榜单总人数 total。2026-07-31 scout 实测 ds=20260729 单日 cnt=2668、role_uv=2620、acc_uv=2528、server_uv=418。'
+description: 历战排行榜奖励：角色在历战排行榜赛季结算时按排名档位领取奖励的事件。记录领奖角色（role_id 为业务主体，account_id 为账号主体）、所在游戏服、角色等级/vip/战力、奖励道具列表（reward 数组含 type/value/size/uid）及当前排名 rank 与榜单总人数 total。2026-07-31 scout 实测 ds=20260729 单日 cnt=2668、role_uv=2620、acc_uv=2528、server_uv=418。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 params_fields:
   serverId:
@@ -118,6 +118,7 @@ coverage:
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
-  note: 'ds=20260729 scout 实测 cnt=2668 / role_uv=2620 / acc_uv=2528 / server_uv=418，量级合理，确认 analyst_confirmed'
+  confirmed_at: "2026-07-31"
+  note: ds=20260729 scout 实测 cnt=2668 / role_uv=2620 / acc_uv=2528 / server_uv=418，量级合理，确认 analyst_confirmed
   coverage_status: analyst_confirmed
+external_refs: []

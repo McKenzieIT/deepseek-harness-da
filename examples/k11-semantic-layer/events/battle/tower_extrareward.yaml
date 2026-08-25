@@ -1,10 +1,8 @@
 name: game.tower.extrareward
 event_filter: event = 'game.tower.extrareward'
-description: '烽火台（爬塔）关卡领取额外奖励事件：玩家在烽火台玩法中触发额外奖励发放时上报，参数含角色/账号/服务器/等级/战力/货币快照
-  coinList 与奖励id列表 idlist。分析主体 role_id（角色粒度，账号粒度辅助）。ds=20260729 单日 scout 实测 cnt=4202, role_uv=1461,
-  acc_uv=1405, server_uv=133。'
+description: 烽火台（爬塔）关卡领取额外奖励事件：玩家在烽火台玩法中触发额外奖励发放时上报，参数含角色/账号/服务器/等级/战力/货币快照 coinList 与奖励id列表 idlist。分析主体 role_id（角色粒度，账号粒度辅助）。ds=20260729 单日 scout 实测 cnt=4202, role_uv=1461, acc_uv=1405, server_uv=133。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -97,18 +95,19 @@ metrics:
     description: 角色人均额外奖励领取次数（总次数 / 去重角色数，NULLIF 防零除）
 coverage:
   scenarios:
-  - 烽火台额外奖励玩法的日活角色/账号参与规模
-  - 不同游戏服额外奖励触发的覆盖广度
-  - 角色人均额外奖励领取次数（活跃度分布）
-  - 额外奖励批次（sessionId）量级监控
+    - 烽火台额外奖励玩法的日活角色/账号参与规模
+    - 不同游戏服额外奖励触发的覆盖广度
+    - 角色人均额外奖励领取次数（活跃度分布）
+    - 额外奖励批次（sessionId）量级监控
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（角色粒度），未在日志侧确认 account 维度是否同账号下多角色
-  - idlist/coinList 为数组/对象字段，仅以 sessionId 粗粒度统计批次，未解析明细 id
-  - 量级合理但样本单日，日间波动/季节性未评估
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（角色粒度），未在日志侧确认 account 维度是否同账号下多角色
+    - idlist/coinList 为数组/对象字段，仅以 sessionId 粗粒度统计批次，未解析明细 id
+    - 量级合理但样本单日，日间波动/季节性未评估
   coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'maxc scout ds=20260729 实测 cnt=4202 / role_uv=1461 / acc_uv=1405 / server_uv=133，量级合理且去重比例正常，事件持续在线触发'
+  note: maxc scout ds=20260729 实测 cnt=4202 / role_uv=1461 / acc_uv=1405 / server_uv=133，量级合理且去重比例正常，事件持续在线触发
+external_refs: []

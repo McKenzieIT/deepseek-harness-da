@@ -1,10 +1,10 @@
 name: game.battlepass.monthlevelup
 event_filter: event = 'game.battlepass.monthlevelup'
-description: '战令（玉简）月卡等级提升事件。角色完成战令等级提升时触发，区分普通升级(action=1)与购买升级(action=2)，并记录战令激活状态(普通/高级/珍藏版)。
-
-  分析主体为 role_id（角色维度），账号维度作辅助。ds=20260729 实测 cnt=7507，role_uv=3773，acc_uv=3579，server_uv=452。'
+description: |-
+  战令（玉简）月卡等级提升事件。角色完成战令等级提升时触发，区分普通升级(action=1)与购买升级(action=2)，并记录战令激活状态(普通/高级/珍藏版)。
+  分析主体为 role_id（角色维度），账号维度作辅助。ds=20260729 实测 cnt=7507，role_uv=3773，acc_uv=3579，server_uv=452。
 domains:
-- 角色成长
+  - 角色成长
 domain: system
 params_fields:
   serverId:
@@ -109,18 +109,34 @@ metrics:
     description: 平均每角色等级提升次数（参与深度）
 coverage:
   scenarios:
-  - 战令月卡等级提升整体规模与参与角色/账号/游戏服数
-  - 付费版战令(高级/珍藏) 与 普通版参与度对比
-  - 普通升级(action=1) 与 购买升级(action=2) 行为占比
-  - 平均每角色等级提升次数（参与深度）
+    - 战令月卡等级提升整体规模与参与角色/账号/游戏服数
+    - 付费版战令(高级/珍藏) 与 普通版参与度对比
+    - 普通升级(action=1) 与 购买升级(action=2) 行为占比
+    - 平均每角色等级提升次数（参与深度）
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（角色维度），账号维度作辅助
-  - coinList 货币明细字段未纳入指标，如需货币产销需结合资源产销事件
-  - level(战令等级)字段未做分布统计，仅做整体规模与参与度
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（角色维度），账号维度作辅助
+    - coinList 货币明细字段未纳入指标，如需货币产销需结合资源产销事件
+    - level(战令等级)字段未做分布统计，仅做整体规模与参与度
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout 实测 ds=20260729: cnt=7507, role_uv=3773, acc_uv=3579, server_uv=452'
+  note: "scout 实测 ds=20260729: cnt=7507, role_uv=3773, acc_uv=3579, server_uv=452"
 coverage_status: analyst_confirmed
+external_refs:
+  - dim_table: dim_10000251_knight_awaken_info_arch
+    join_keys:
+      - dws_column: level
+        dim_column: level
+    derivation: 确定性：事件字段 level 与 dim_10000251_knight_awaken_info_arch 主键精确同名
+  - dim_table: dim_10000251_knight_level_info
+    join_keys:
+      - dws_column: level
+        dim_column: level
+    derivation: 确定性：事件字段 level 与 dim_10000251_knight_level_info 主键精确同名
+  - dim_table: dim_10000251_knight_level_info_arch
+    join_keys:
+      - dws_column: level
+        dim_column: level
+    derivation: 确定性：事件字段 level 与 dim_10000251_knight_level_info_arch 主键精确同名

@@ -1,8 +1,8 @@
 name: game.fantasyknightgift.starreward
 event_filter: event = 'game.fantasyknightgift.starreward'
-description: '幻想服武将礼包领取星级奖励事件：玩家在幻想服武将礼包玩法中领取某武将（knightId）的指定星级奖励（rewardId）时上报，携带角色等级/vip/战力及货币快照等24个参数。主体粒度为 role_id（单角色领取行为），实测 ds=20260729 命中 729 条、594 个角色、582 个账号、6 个游戏服。'
+description: 幻想服武将礼包领取星级奖励事件：玩家在幻想服武将礼包玩法中领取某武将（knightId）的指定星级奖励（rewardId）时上报，携带角色等级/vip/战力及货币快照等24个参数。主体粒度为 role_id（单角色领取行为），实测 ds=20260729 命中 729 条、594 个角色、582 个账号、6 个游戏服。
 domains:
-- 自定义
+  - 自定义
 domain: activity
 metrics:
   game_fantasyknightgift_starreward_cnt:
@@ -19,18 +19,18 @@ metrics:
     description: 触发该事件的去重游戏服数
 coverage:
   scenarios:
-  - 监控幻想服武将礼包星级奖励的整体领取热度与渗透（次数/角色/账号/游戏服）
-  - 评估活动在多服参与度与单服集中度
+    - 监控幻想服武将礼包星级奖励的整体领取热度与渗透（次数/角色/账号/游戏服）
+    - 评估活动在多服参与度与单服集中度
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 默认主体粒度为 role_id；账号粒度按 account_id 去重，未做账号-角色映射
-  - 未覆盖奖励档位/武将维度的分布与领取价值复核
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 默认主体粒度为 role_id；账号粒度按 account_id 去重，未做账号-角色映射
+    - 未覆盖奖励档位/武将维度的分布与领取价值复核
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-31
-  confirmed_at: '2026-07-31'
+  confirmed_at: "2026-07-31"
   coverage_status: analyst_confirmed
-  note: 'ds=20260729 scout 实测：cnt=729, role_uv=594, acc_uv=582, server_uv=6；命中合理（活动礼包领取类事件，量级正常），判定上线且当日有效触发。'
+  note: ds=20260729 scout 实测：cnt=729, role_uv=594, acc_uv=582, server_uv=6；命中合理（活动礼包领取类事件，量级正常），判定上线且当日有效触发。
 params_fields:
   serverId:
     type: int
@@ -104,3 +104,4 @@ params_fields:
   rewardId:
     type: int
     description: 奖励id
+external_refs: []

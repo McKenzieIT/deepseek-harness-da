@@ -1,8 +1,8 @@
 name: game.champion.guessOneKeyGetReward
 event_filter: event = 'game.champion.guessOneKeyGetReward'
-description: '争霸赛：玩家一键领取竞猜奖励事件。记录领取竞猜结算奖励的次数、领取的奖励数额(rewardSize)，分析对象为 role_id（角色粒度，account_id 为账号粒度补充）。实测 ds=20260729 单日：cnt=27, role_uv=24, acc_uv=24, server_uv=6, rewardSize_sum=362542。'
+description: 争霸赛：玩家一键领取竞猜奖励事件。记录领取竞猜结算奖励的次数、领取的奖励数额(rewardSize)，分析对象为 role_id（角色粒度，account_id 为账号粒度补充）。实测 ds=20260729 单日：cnt=27, role_uv=24, acc_uv=24, server_uv=6, rewardSize_sum=362542。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -122,17 +122,17 @@ metrics:
     description: 人均领取竞猜奖励数额（rewardSize 总和 / 去重角色数）
 coverage:
   scenarios:
-  - 评估争霸赛竞猜奖励一键领取的参与角色/账号规模与覆盖游戏服范围
-  - 监控领取次数与奖励数额(rewardSize)总览及人均领取水平
+    - 评估争霸赛竞猜奖励一键领取的参与角色/账号规模与覆盖游戏服范围
+    - 监控领取次数与奖励数额(rewardSize)总览及人均领取水平
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析对象默认 role_id（角色粒度），未独立验证 account 粒度
-  - result 子字段（result.matchId/result.rewardSize/result.guessOk）实测 result.rewardSize 与 result.guessOk 均无聚合值（疑似 result 数组在该事件未填充或结构不同），暂仅统计顶层 rewardSize
-  - coinList 为数组结构，顶层 GET_JSON_OBJECT 无法稳定聚合，未计入指标
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析对象默认 role_id（角色粒度），未独立验证 account 粒度
+    - result 子字段（result.matchId/result.rewardSize/result.guessOk）实测 result.rewardSize 与 result.guessOk 均无聚合值（疑似 result 数组在该事件未填充或结构不同），暂仅统计顶层 rewardSize
+    - coinList 为数组结构，顶层 GET_JSON_OBJECT 无法稳定聚合，未计入指标
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
-  note: 'measured ds=20260729: cnt=27, role_uv=24, acc_uv=24, server_uv=6, rewardSize_sum=362542;
-    result 子字段无聚合值故未写入 result 相关指标'
+  confirmed_at: "2026-07-30"
+  note: "measured ds=20260729: cnt=27, role_uv=24, acc_uv=24, server_uv=6, rewardSize_sum=362542; result 子字段无聚合值故未写入 result 相关指标"
 coverage_status: analyst_confirmed
+external_refs: []

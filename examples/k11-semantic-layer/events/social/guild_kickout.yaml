@@ -1,10 +1,10 @@
 name: game.guild.kickout
 event_filter: event = 'game.guild.kickout'
-description: '公会踢出事件：公会管理者将成员踢出公会(game.guild.kickout)。主体粒度为角色(role_id 视为操作者/执行踢出者，targetUid 为被踢目标)；记录每次踢出动作及当时角色快照(角色等级/vip/战力/货币)。ds=20260729 单日 scout 实测 cnt=228/role_uv=45/acc_uv=45/server_uv=21。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个'
+description: |-
+  公会踢出事件：公会管理者将成员踢出公会(game.guild.kickout)。主体粒度为角色(role_id 视为操作者/执行踢出者，targetUid 为被踢目标)；记录每次踢出动作及当时角色快照(角色等级/vip/战力/货币)。ds=20260729 单日 scout 实测 cnt=228/role_uv=45/acc_uv=45/server_uv=21。
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等23个
 domains:
-- 社交公会
+  - 社交公会
 domain: social
 params_fields:
   serverId:
@@ -97,16 +97,17 @@ metrics:
     description: 平均每个操作者踢出的去重目标数(被踢目标/操作者；NULLIF 防零除)
 coverage:
   scenarios:
-  - 公会踢出规模与频率(guild_kickout_cnt / guild_kickout_role_uv / guild_kickout_account_uv)
-  - 踢出动作覆盖面(guild_kickout_server_uv 区服数、guild_kickout_target_uv 被踢目标数)
-  - 操作者强度(guild_kickout_target_per_actor 人均踢出目标数)
+    - 公会踢出规模与频率(guild_kickout_cnt / guild_kickout_role_uv / guild_kickout_account_uv)
+    - 踢出动作覆盖面(guild_kickout_server_uv 区服数、guild_kickout_target_uv 被踢目标数)
+    - 操作者强度(guild_kickout_target_per_actor 人均踢出目标数)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测(cnt=228/role_uv=45/acc_uv=45/server_uv=21)，未做全量多日复核
-  - 主体粒度默认 role_id 视为操作者(执行踢出)、targetUid 视为被踢目标；未逐事件实测 actor/target 归属正确性
-  - targetUid 仅做 COUNT(DISTINCT) 实测，未枚举目标业务含义(需配置表/产品确认)
-  - 本游戏无 MaxCompute 事件分布查询，无 daily_count/total_count/active_days
+    - 仅 ds=20260729 单日 scout 实测(cnt=228/role_uv=45/acc_uv=45/server_uv=21)，未做全量多日复核
+    - 主体粒度默认 role_id 视为操作者(执行踢出)、targetUid 视为被踢目标；未逐事件实测 actor/target 归属正确性
+    - targetUid 仅做 COUNT(DISTINCT) 实测，未枚举目标业务含义(需配置表/产品确认)
+    - 本游戏无 MaxCompute 事件分布查询，无 daily_count/total_count/active_days
   coverage_status: analyst_reviewed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
+  confirmed_at: "2026-07-30"
+external_refs: []

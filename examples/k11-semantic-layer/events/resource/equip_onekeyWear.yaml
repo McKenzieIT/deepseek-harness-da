@@ -1,10 +1,10 @@
 name: game.equip.onekeyWear
 event_filter: event = 'game.equip.onekeyWear'
-description: '装备-一键穿戴：玩家使用一键穿戴功能将批量装备(uids)穿戴到武将(knightId)上时触发。每次一键穿戴记一条日志，携带目标武将id与被穿戴装备uid列表及角色/账号/区服上下文(roleLevel/vipLevel/roleForce等)，用于衡量装备穿戴活跃度、武将装备覆盖广度与穿戴玩家画像。主体粒度为角色(role_id)。scout 实测 ds=20260729 触发 16792 次、独立角色 1786、独立账号 1708、区服 214、武将 60。
-
-  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等24个'
+description: |-
+  装备-一键穿戴：玩家使用一键穿戴功能将批量装备(uids)穿戴到武将(knightId)上时触发。每次一键穿戴记一条日志，携带目标武将id与被穿戴装备uid列表及角色/账号/区服上下文(roleLevel/vipLevel/roleForce等)，用于衡量装备穿戴活跃度、武将装备覆盖广度与穿戴玩家画像。主体粒度为角色(role_id)。scout 实测 ds=20260729 触发 16792 次、独立角色 1786、独立账号 1708、区服 214、武将 60。
+  参数：游戏服id、游戏服名字、账号id、角色id、角色名、性别、创角时间、上线时间、角色等级、vip等级、角色战力、经验 等24个
 domains:
-- 装备道具
+  - 装备道具
 domain: resource
 params_fields:
   serverId:
@@ -96,21 +96,21 @@ metrics:
     expression: COUNT(DISTINCT CAST(GET_JSON_OBJECT(params, '$.knightId') AS BIGINT))
     description: 被穿戴装备涉及的独立武将数(去重 knightId；事件特有维度，scout 实测 60 个)
   equip_onekeyWear_role_per_server_ratio:
-    expression: ROUND(CAST(COUNT(DISTINCT role_id) AS DOUBLE) / NULLIF(COUNT(DISTINCT
-      server_id), 0), 2)
+    expression: ROUND(CAST(COUNT(DISTINCT role_id) AS DOUBLE) / NULLIF(COUNT(DISTINCT server_id), 0), 2)
     description: 平均每区服一键穿戴角色数(角色UV/区服UV；衡量区服集中度)
 coverage:
   scenarios:
-  - 一键穿戴参与规模(equip_onekeyWear_cnt / equip_onekeyWear_role_uv / equip_onekeyWear_account_uv)
-  - 穿戴功能覆盖面(equip_onekeyWear_server_uv 区服数、equip_onekeyWear_knight_uv 武将数)
-  - 区服集中度(equip_onekeyWear_role_per_server_ratio)
+    - 一键穿戴参与规模(equip_onekeyWear_cnt / equip_onekeyWear_role_uv / equip_onekeyWear_account_uv)
+    - 穿戴功能覆盖面(equip_onekeyWear_server_uv 区服数、equip_onekeyWear_knight_uv 武将数)
+    - 区服集中度(equip_onekeyWear_role_per_server_ratio)
   limitations:
-  - 仅 ds=20260729 单日 scout 实测(cnt=16792/role_uv=1786/acc_uv=1708)，未做全量多日复核
-  - 主体粒度默认 role_id 未逐事件实测角色归属正确性，按 base view 同时含 account_id+role_id 推断为角色级(user_type=3)
-  - knightId 仅做 COUNT(DISTINCT) 实测(knight_uv=60)，未枚举各武将业务含义(需配置表/产品确认)
-  - uids(穿戴装备列表)为数组，GET_JSON_OBJECT 返回 STRING 无法直接 SIZE，未构建单次穿戴件数指标
+    - 仅 ds=20260729 单日 scout 实测(cnt=16792/role_uv=1786/acc_uv=1708)，未做全量多日复核
+    - 主体粒度默认 role_id 未逐事件实测角色归属正确性，按 base view 同时含 account_id+role_id 推断为角色级(user_type=3)
+    - knightId 仅做 COUNT(DISTINCT) 实测(knight_uv=60)，未枚举各武将业务含义(需配置表/产品确认)
+    - uids(穿戴装备列表)为数组，GET_JSON_OBJECT 返回 STRING 无法直接 SIZE，未构建单次穿戴件数指标
   coverage_status: analyst_confirmed
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
-  confirmed_at: '2026-07-30'
+  confirmed_at: "2026-07-30"
+external_refs: []

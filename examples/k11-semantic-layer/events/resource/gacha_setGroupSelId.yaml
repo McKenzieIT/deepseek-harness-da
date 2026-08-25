@@ -1,8 +1,8 @@
 name: game.gacha.setGroupSelId
 event_filter: event = 'game.gacha.setGroupSelId'
-description: '抽卡系统选择卡池组ID事件。玩家在抽卡界面选择/设置卡池组(groupId)与卡池(gachaId)时触发，记录所选卡池组、卡池ID及新手集市标识(specialId，0为普通卡池)。分析主体为 role_id(角色级事件)，携带角色等级/vip/战力等角色画像字段与关键货币快照。scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0)，疑似该事件下线或未触发。'
+description: 抽卡系统选择卡池组ID事件。玩家在抽卡界面选择/设置卡池组(groupId)与卡池(gachaId)时触发，记录所选卡池组、卡池ID及新手集市标识(specialId，0为普通卡池)。分析主体为 role_id(角色级事件)，携带角色等级/vip/战力等角色画像字段与关键货币快照。scout 实测 ds=20260729 与 ds=20260728 均零命中(cnt=0)，疑似该事件下线或未触发。
 domains:
-- 探索收集
+  - 探索收集
 domain: resource
 params_fields:
   serverId:
@@ -84,7 +84,7 @@ confirmation:
   status: draft
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: "scout 实测 ds=20260729 cnt=0/role_uv=0/acc_uv=0/server_uv=0；ds=20260728 同样零命中。事件疑似下线或未触发，保持 draft，指标定义保留待事件恢复后启用。"
+  note: scout 实测 ds=20260729 cnt=0/role_uv=0/acc_uv=0/server_uv=0；ds=20260728 同样零命中。事件疑似下线或未触发，保持 draft，指标定义保留待事件恢复后启用。
 metrics:
   game_gacha_set_group_sel_id_cnt:
     expression: COUNT(*)
@@ -106,8 +106,9 @@ metrics:
     description: 每个被选卡池的平均选择角色数（role_id / gachaId 去重比）
 coverage:
   scenarios:
-  - 衡量抽卡卡池组选择行为，分析卡池热度分布、新手集市 vs 普通卡池选择占比、各卡池触达角色数；为运营卡池配置与新手引导效果评估提供数据支撑。
+    - 衡量抽卡卡池组选择行为，分析卡池热度分布、新手集市 vs 普通卡池选择占比、各卡池触达角色数；为运营卡池配置与新手引导效果评估提供数据支撑。
   limitations:
-  - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似该事件下线或未触发，未做全量复核；指标定义保留待事件恢复后启用。
+    - 日志中零命中(ds=20260729/20260728 cnt=0)，疑似该事件下线或未触发，未做全量复核；指标定义保留待事件恢复后启用。
   subject_granularity: role_id
 coverage_status: draft
+external_refs: []

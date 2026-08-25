@@ -1,8 +1,8 @@
 name: game.gve2.challenge
 event_filter: event = 'game.gve2.challenge'
-description: 'GVE2公会boss挑战事件：角色发起/参与GVE2公会副本挑战的行为日志，记录boss层数、总伤害、集结buff开启等战斗属性。分析主体为角色(role_id)，账号级聚合另用 account_uv 指标。ds=20260729 scout实测：3639条记录、2571角色、2471账号、411个服。'
+description: GVE2公会boss挑战事件：角色发起/参与GVE2公会副本挑战的行为日志，记录boss层数、总伤害、集结buff开启等战斗属性。分析主体为角色(role_id)，账号级聚合另用 account_uv 指标。ds=20260729 scout实测：3639条记录、2571角色、2471账号、411个服。
 domains:
-- 战斗关卡
+  - 战斗关卡
 domain: battle
 params_fields:
   serverId:
@@ -107,18 +107,18 @@ metrics:
     description: GVE2挑战中开启集结(buff)的次数
 coverage:
   scenarios:
-  - GVE2公会boss挑战参与度与活跃度（挑战次数、参与角色/账号/服数）
-  - GVE2挑战伤害产出与boss层数推进情况
-  - 集结(buff)机制使用率分析
+    - GVE2公会boss挑战参与度与活跃度（挑战次数、参与角色/账号/服数）
+    - GVE2挑战伤害产出与boss层数推进情况
+    - 集结(buff)机制使用率分析
   limitations:
-  - 仅 ds=20260729 单日 scout 实测，未做全量复核
-  - 分析主体默认 role_id（角色粒度）；账号级聚合另用 account_uv 指标
-  - boss_level_cnt 为 params 字符串值去重，未做数值区间划分
-  - totalDamage 为单日累计值，跨日趋势需多日查询
+    - 仅 ds=20260729 单日 scout 实测，未做全量复核
+    - 分析主体默认 role_id（角色粒度）；账号级聚合另用 account_uv 指标
+    - boss_level_cnt 为 params 字符串值去重，未做数值区间划分
+    - totalDamage 为单日累计值，跨日趋势需多日查询
 confirmation:
   status: analyst_confirmed
   confirmed_by: scout-verification-2026-07-30
   confirmed_at: "2026-07-30"
-  note: 'scout实测 ds=20260729: cnt=3639, role_uv=2571, acc_uv=2471, server_uv=411;
-    totalDamage SUM=471778102641, bossLevel distinct=40(max=40), isBuffEffect=true 计494次'
+  note: "scout实测 ds=20260729: cnt=3639, role_uv=2571, acc_uv=2471, server_uv=411; totalDamage SUM=471778102641, bossLevel distinct=40(max=40), isBuffEffect=true 计494次"
 coverage_status: analyst_confirmed
+external_refs: []
