@@ -67,6 +67,20 @@ import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
 import * as ToolSearchDataSources from '@deepseek-ai/dsh-tool-search-data-sources'
+import * as ToolCritiqueSql from '@deepseek-ai/dsh-tool-critique-sql'
+import * as ToolDiscoverRelations from '@deepseek-ai/dsh-tool-discover-relations'
+import * as ToolEditDefinition from '@deepseek-ai/dsh-tool-edit-definition'
+import * as ToolEvaluateSqlQuality from '@deepseek-ai/dsh-tool-evaluate-sql-quality'
+import * as ToolGetCoverage from '@deepseek-ai/dsh-tool-get-coverage'
+import * as ToolGetDefinition from '@deepseek-ai/dsh-tool-get-definition'
+import * as ToolListDomains from '@deepseek-ai/dsh-tool-list-domains'
+import * as ToolLoadEventDefinition from '@deepseek-ai/dsh-tool-load-event-definition'
+import * as ToolLoadTableDefinition from '@deepseek-ai/dsh-tool-load-table-definition'
+import * as ToolPresentClarification from '@deepseek-ai/dsh-tool-present-clarification'
+import * as ToolRetrieve from '@deepseek-ai/dsh-tool-retrieve'
+import * as ToolSearchSchema from '@deepseek-ai/dsh-tool-search-schema'
+import * as ToolTriggerEval from '@deepseek-ai/dsh-tool-trigger-eval'
+import * as ToolUpdateTableConfig from '@deepseek-ai/dsh-tool-update-table-config'
 import { githubSlug } from './verify-md-links.ts'
 
 /** Attachment seam marker that makes the attachments-conditional `read_image` schema harvestable. */
@@ -618,6 +632,193 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'search_data_sources is the UNDERSTANDING-phase entry to BM25 schema-linking: the agent calls it to learn which data sources (DWS tables / event ODS tables) match a natural-language question before writing SQL. The Q1 thin default uses the local Bm25Linker over an empty corpus (callable but unwired until ctx.schema ships) — an empty corpus returns no candidates. P5b swaps to ctx.retrieval when registered, and P6b sources the corpus from ctx.schema.discover; the tool contract is unchanged across both.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-critique-sql',
+    dir: 'tool-critique-sql',
+    source: 'packages/data/tool-critique-sql/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolCritiqueSql)
+    },
+    note:
+      'critique_sql_tool is the GENERATION-phase SQL critic (folded-regex: table grounding, ds partition, SELECT *, JSON-path fields). It probes ctx.criticCtx and ctx.schema lazily via ctx.get (no provider mount needed for the schema harvest); an empty critic context fail-opens so the tool registers its schema without the phase-gate or semantic layer mounted.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-discover-relations',
+    dir: 'tool-discover-relations',
+    source: 'packages/data/tool-discover-relations/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'DWS table dimension_refs enrichment', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolDiscoverRelations)
+    },
+    note:
+      'discover_relations is the ENRICHMENT-phase AI-native DWS->DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-edit-definition',
+    dir: 'tool-edit-definition',
+    source: 'packages/data/tool-edit-definition/src/index.ts',
+    requires: ['ctx.tools', 'ctx.schema', 'ctx.audit'],
+    writes: ['tool/call', 'semantic-layer definition patch (Tier-2 audited)', 'tool/result'],
+    async mount(ctx) {
+      // A Tier-2 write must NOT register as callable-but-unwired: the audit
+      // contract is non-disableable (D5), so the plugin injects ctx.schema +
+      // ctx.audit and waits for both before registering. Mount INERT providers
+      // for the two seams so the plugin resolves and registers its schema
+      // without a real substrate or audit backend (the tool reads both
+      // lazily in execute, never at registration).
+      ctx.provide('schema', {})
+      ctx.provide('audit', {})
+      await ctx.plugin(ToolEditDefinition)
+    },
+    note:
+      'edit_definition applies a partial patch to a table or event definition (shallow-merge; columns merged by name) and records a Tier-2 audit write, marking the asset unreviewed. Metrics are virtual and cannot be edited directly. The schema harvest mounts inert ctx.schema + ctx.audit providers so the Tier-2 inject resolves.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-evaluate-sql-quality',
+    dir: 'tool-evaluate-sql-quality',
+    source: 'packages/data/tool-evaluate-sql-quality/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolEvaluateSqlQuality)
+    },
+    note:
+      'evaluate_sql_quality scores a SQL candidate 0-100 from the folded-regex critic findings. It probes ctx.criticCtx lazily; no provider mount needed for the schema harvest (empty critic context fail-opens).',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-get-coverage',
+    dir: 'tool-get-coverage',
+    source: 'packages/data/tool-get-coverage/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolGetCoverage)
+    },
+    note:
+      'get_coverage reports semantic-layer coverage statistics (assets by kind, confirmation status, per-domain counts). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-get-definition',
+    dir: 'tool-get-definition',
+    source: 'packages/data/tool-get-definition/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolGetDefinition)
+    },
+    note:
+      'get_definition loads a unified data asset definition (table, event, or metric) by name. It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-list-domains',
+    dir: 'tool-list-domains',
+    source: 'packages/data/tool-list-domains/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolListDomains)
+    },
+    note:
+      'list_domains enumerates semantic-layer domains with per-kind asset counts (tables, events, metrics). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-load-event-definition',
+    dir: 'tool-load-event-definition',
+    source: 'packages/data/tool-load-event-definition/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolLoadEventDefinition)
+    },
+    note:
+      'load_event_definition loads a validated event definition (params_fields, metrics, disambiguation, external dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash).',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-load-table-definition',
+    dir: 'tool-load-table-definition',
+    source: 'packages/data/tool-load-table-definition/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolLoadTableDefinition)
+    },
+    note:
+      'load_table_definition loads a validated table definition (columns, partitions, primary key, metrics, dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash).',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-present-clarification',
+    dir: 'tool-present-clarification',
+    source: 'packages/data/tool-present-clarification/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'awaiting_clarification (phase-gate HALT)', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolPresentClarification)
+    },
+    note:
+      'present_clarification is a pure presentation tool that records one clarifying question for the UI and relies on the phase-gate to HALT the turn. It has no service dependency beyond ctx.tools; the actual HALT is the phase-gate job (not the tool).',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-retrieve',
+    dir: 'tool-retrieve',
+    source: 'packages/data/tool-retrieve/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result ranked data-source candidates'],
+    async mount(ctx) {
+      await ctx.plugin(ToolRetrieve)
+    },
+    note:
+      'retrieve is the on-demand retrieval escape-hatch for when the prefetched UNDERSTANDING context has a visible gap. It probes ctx.retrieval and ctx.schema lazily; the Q1 thin default is an empty-corpus Bm25Linker (callable but unwired). Ships additive + dormant; a preset must mount it.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-search-schema',
+    dir: 'tool-search-schema',
+    source: 'packages/data/tool-search-schema/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result ranked asset matches'],
+    async mount(ctx) {
+      await ctx.plugin(ToolSearchSchema)
+    },
+    note:
+      'search_schema is BM25 search over the semantic layer for the management agent (returns asset matches with kind and domain metadata). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-trigger-eval',
+    dir: 'tool-trigger-eval',
+    source: 'packages/data/tool-trigger-eval/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'eval run + persisted results', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolTriggerEval)
+    },
+    note:
+      'trigger_eval triggers a semantic-layer eval run and reports a before/after delta. It probes ctx.evalRunner and ctx.evidenceQuery lazily; without a mounted runner it reports not_configured (the host composition must wire the collaborators).',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-update-table-config',
+    dir: 'tool-update-table-config',
+    source: 'packages/data/tool-update-table-config/src/index.ts',
+    requires: ['ctx.tools', 'ctx.schema', 'ctx.audit', 'ctx.identity'],
+    writes: ['tool/call', 'table YAML project override (Tier-2 audited)', 'tool/result'],
+    async mount(ctx) {
+      // A Tier-2 write + RBAC stub must NOT register as callable-but-unwired:
+      // the audit contract is non-disableable (D5) and the identity RBAC stub
+      // is safe-by-default, so the plugin injects ctx.schema + ctx.audit +
+      // ctx.identity and waits for all three before registering. Mount INERT
+      // providers for the three seams so the plugin resolves and registers
+      // its schema without a real substrate, audit backend, or identity
+      // service (the tool reads all three lazily in execute, never at
+      // registration).
+      ctx.provide('schema', {})
+      ctx.provide('audit', {})
+      ctx.provide('identity', {})
+      await ctx.plugin(ToolUpdateTableConfig)
+    },
+    note:
+      'update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves <project>.<table>. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves.',
   },
 ]
 
