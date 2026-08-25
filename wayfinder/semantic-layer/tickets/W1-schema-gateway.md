@@ -1,7 +1,7 @@
 # W1 — SchemaGateway（ctx.schema Remote 投影）
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: —
 
 ## Question
@@ -24,3 +24,24 @@
 
 - R6（可行性前提）、G4（Q3 nav domain-first 依赖 domains 投影 / Q4 搜索复用 Bm25Linker）
 - 范本：`packages/host/plugin-inventory/src/index.ts`、`packages/client/ui-settings/src/client/index.ts`（client 侧调用范本）
+
+## Resolution
+
+新包 `@deepseek-ai/dsh-schema-gateway`（`packages/data/schema-gateway/`）已实现：
+
+**实现**：`SchemaGateway extends TypertRemoteService`，namespace = `schemaGateway`，`inject = ['schema']`。
+
+**Remote 方法**（9 个）：
+- `listTables()` → `TableSummary[]`（table_name, kind, domains, description, column_count, metric_count）
+- `listEvents()` → `EventSummary[]`（name, domains, description, param_count, metric_count）
+- `listMetrics()` → `MetricSummary[]`（name, domains, description, source, aggregation）
+- `getTableDefinition(name)` / `getEventDefinition(name)` / `getMetricDefinition(name)` → full definition | null
+- `search(query, topK?)` → `SchemaSearchHit[]` — cached `Bm25Linker` over `loadRetrievalCorpusAll()`，D2f cache-invalidation（corpusVersion mismatch → rebuild）
+- `listDomains()` → `DomainEntry[]`（domain-first nav 前置；聚合 table/event/metric counts per domain）
+- `getCoverageStats()` → `CoverageStats`（W4 evidence-query 依赖：total counts + domain_counts breakdown）
+
+**验收**：
+- ✅ `ctx.schema` 只读方法 + search 经 `SchemaGateway` Remote 可从 client 调用
+- ✅ per-asset `domains` 字段经投影暴露（listTables/listEvents/listMetrics + listDomains）
+- ✅ 遵循 `PluginInventoryGateway` pattern，无架构创新
+- ✅ 11 tests 全绿

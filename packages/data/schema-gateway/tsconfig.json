@@ -1,0 +1,24 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../data/semantic-layer"
+    },
+    {
+      "path": "../../data/nl2sql-engine"
+    },
+    {
+      "path": "../../typert/protocol"
+    }
+  ]
+}
