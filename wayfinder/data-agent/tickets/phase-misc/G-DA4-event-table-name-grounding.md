@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Phase**: misc
-**Status**: open
+**Status**: resolved (2026-08-25)
 **Graduated from**: 2026-08-22 P-DA3 e2e——persona 加厚后 model-following 通（UNDERSTANDING search + load_event_definition + route:proceed 正确），但 GENERATION 卡：event 定义不暴露底层 ODS 表名，模型不知 `SELECT FROM` 什么。
 
 ## Question
@@ -39,3 +39,21 @@
 - present_* ship（→ `present-delivery-tools.md` deferred）。
 - route-token 简化（P-DA3 加厚已够，deferred）。
 - 更强模型（qwen3.7-max 是 DashScope 最强，不可换）。
+
+## Resolution (2026-08-25)
+
+**Approach**: config-level `event_view` surface — hybrid of options (a)/(c), scope-level not per-event.
+
+**Decision rationale**:
+- All events in a scope share one ODS view (`ods_{game_id}_all_view`) — table is **scope-level**, not event-level → per-event YAML `table` field (option a pure) would be redundant across 1966+ events.
+- Workspace prefix varies per scope (`ieu_ods` for K11, `hdyl_data_sg` for X63) → hardcoded pattern in persona (option c pure) would break multi-scope.
+- `EventDefinitionSchema` correctly models what's in the YAML (no table). Adding `table` to the schema (option b) would be incorrect domain modeling — the table isn't an event property.
+- `config.yaml` already had the `event_view` section (`full_name`, `params_extract_template`, `base_columns`) — the info existed, just wasn't surfaced to the model.
+
+**Implementation** (commit `0548fe4f8a`, 2026-08-22):
+1. `tool-load-event-definition`: `extractEventView(semanticRoot)` reads `config.yaml`'s `event_view` section → returns `EventViewInfo` (`full_name` + `params_extract_template` + `base_columns`) alongside the event definition in `LoadEventResult.event_view`.
+2. `phase-gate.ts` UNDERSTANDING prompt: explicitly instructs model "load_event_definition returns event_view.full_name (the FROM table) + params_extract_template".
+3. `phase-gate.ts` `captureToolData`: extracts `event_view.full_name` from load_event_definition results → adds to `candidate_tables` so the SQL critic accepts it.
+4. Tests: `phase-gate.spec.ts` "G-DA4 — critic candidate_tables includes event_view table from load_event_definition" suite.
+
+**Acceptance**: GENERATION phase model receives `event_view.full_name = ieu_ods.ods_10000251_all_view` + `params_extract_template = GET_JSON_OBJECT(params, '$.{field_name}')` → can write `FROM ieu_ods.ods_10000251_all_view WHERE event='game.role.online' AND ds='...'` with `GET_JSON_OBJECT(params, '$.roleId')` for param access. Critic accepts the table. Phase-gate tests verify end-to-end.
