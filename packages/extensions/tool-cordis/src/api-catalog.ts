@@ -634,6 +634,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'criticCtx',
+    summary: 'Cordis `Service` exposing the per-agent critic guard context as `ctx.criticCtx`.',
+    description: 'Cordis `Service` exposing the per-agent critic guard context as `ctx.criticCtx`. The critique_sql_tool + evaluate_sql_quality tools probe `ctx.get(\'criticCtx\')` and call `forAgent(agentId)` to get the `CriticCtx` ({candidateTables, eventParams, partitionCols}) for the current agent\'s phase-gate state. The service registers in whatever isolate realm the composing context carries — the `phase-gating` group isolates `criticCtx` so it lands in that entry-local realm, not root.',
+    methods: [
+      {
+        signature: 'forAgent(agentId: string): CriticCtx | undefined',
+        description: 'Get the per-agent critic guard context (candidate tables, event params, partition cols) for the given agent. Returns `undefined` when the agent has no phase-gate state (the tool degrades to empty sets + a low confidence — the honest "cannot verify table grounding" state).',
+        parameters: [{ name: 'agentId', description: 'the harness agent id (stringified) to look up.' }],
+        returns: 'the `CriticCtx` for this agent, or `undefined` when none exists.',
+      },
+    ],
+  },
+  {
     key: 'directoryPicker',
     summary: 'Abstract directory-picking service.',
     description: 'Abstract directory-picking service. Subclass, implement `capability()`, and load the subclass as a plugin — it registers as `ctx.directoryPicker` (one implementation per context; loading a second throws, cordis\' standard duplicate-service behavior). The capability object must be stable for the service lifetime: consumers may capture it across calls.',
@@ -680,6 +693,55 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Embed a batch of texts. The result aligns to the input order. A thrown InferenceError signals the retrieval provider to degrade to BM25-only.',
         parameters: [{ name: 'texts', description: 'the texts to embed.' }],
         returns: 'one L2-normalized vector per text, aligned to `texts`.',
+      },
+    ],
+  },
+  {
+    key: 'evidenceQuery',
+    summary: 'The evidence-query Cordis Service.',
+    description: 'The evidence-query Cordis Service. Owns the `ctx.evidenceQuery` seam. Requires `ctx.schema` (SemanticLayerService) to be mounted.',
+    methods: [
+      {
+        signature: 'getEvalStore(): EvalResultStore',
+        description: 'Expose the eval store for W3 wiring and testing.',
+        parameters: [],
+        returns: 'the service\'s eval result store.',
+      },
+      {
+        signature: 'coverageQuery(): EnrichedCoverageStats',
+        description: 'Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats() but enriches with confirmation.status breakdown across all assets.',
+        parameters: [],
+        returns: 'aggregated table/event/metric counts plus per-domain and confirmation-status tallies.',
+      },
+      {
+        signature: 'gapAnalysis(assetId: string): GapAnalysisResult',
+        description: 'Gap analysis: given an asset, compute which other assets are reachable via RelationGraph joins but have no eval case coverage.',
+        parameters: [{ name: 'assetId', description: 'the source asset to compute reachable-but-uncovered gaps from.' }],
+        returns: 'the source asset plus the list of reachable assets lacking eval coverage (with join paths).',
+      },
+      {
+        signature: 'reachabilityDelta(newRelation: ProposedRelation): ReachabilityDeltaResult',
+        description: 'Reachability delta: "if we add this relation, which asset pairs become newly reachable via joins?" Clones the current graph, adds the proposed relation, and compares BFS reachability before/after.',
+        parameters: [{ name: 'newRelation', description: 'the proposed relation to add before recomputing reachability.' }],
+        returns: 'the proposed relation plus the asset pairs newly reachable via joins after adding it.',
+      },
+      {
+        signature: 'evalResultQuery(filters: EvalResultFilters): EvalResultQueryResult',
+        description: 'Eval result query: query persisted eval run results.',
+        parameters: [{ name: 'filters', description: 'the asset/status/domain/limit filters to apply.' }],
+        returns: 'the matching eval result records plus the total count before limiting.',
+      },
+      {
+        signature: 'beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport',
+        description: 'Before/after delta: compare two runs and return which cases flipped. "Improved" = moved from fail/error → pass; "regressed" = moved from pass → fail/error.',
+        parameters: [{ name: 'runIdA', description: 'the baseline (before) run id.' }, { name: 'runIdB', description: 'the comparison (after) run id.' }],
+        returns: 'the run ids, the flipped cases, and improved/regressed/unchanged counts.',
+      },
+      {
+        signature: 'assetHealth(assetId: string): AssetHealthReport | null',
+        description: 'Asset health: aggregate report for a single asset — confirmation status, has_eval_coverage, relation_count, last_modified.',
+        parameters: [{ name: 'assetId', description: 'the table, event, or metric asset to report on.' }],
+        returns: 'the aggregate health report, or null when no table/event/metric matches assetId.',
       },
     ],
   },
@@ -1130,6 +1192,42 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'query',
+    summary: 'Abstract query engine.',
+    description: 'Abstract query engine. Providers implement the four seam operations — P4 decision B: `execute` / `attach` / `cancel` / `getProgress`. `estimate_cost` is CostGuard-internal and deliberately NOT on this seam; a provider exposes it as its own internal method the future engine-wrapper calls, never as a model-facing operation.',
+    methods: [
+      {
+        signature: 'abstract execute(request: QueryRequest, signal?: AbortSignal): Promise<QueryOutcome>',
+        description: 'Execute one query; resolves with a 3-state outcome. The optional `signal` carries outbound cancel: the engine-wrapper\'s TimeoutGuard (deferred) threads it to the SDK `request()`, which sends `notifications/cancelled` and rejects (G4 HOLE-D).',
+        parameters: [{ name: 'request', description: 'The NL->SQL query request to execute against the provider engine.' }, { name: 'signal', description: 'Optional abort signal carrying outbound cancel; threaded to the SDK request to emit `notifications/cancelled` and reject.' }],
+        returns: 'A 3-state query outcome (success / pending / failure) resolved when the query finishes or yields control.',
+      },
+      {
+        signature: 'abstract attach(instanceId: InstanceId): Promise<QueryOutcome>',
+        description: 'Resume a pending instance — NOT through the guard chain (P4 decision B).',
+        parameters: [{ name: 'instanceId', description: 'The opaque id of the pending query instance to resume.' }],
+        returns: 'A 3-state query outcome for the resumed instance.',
+      },
+      {
+        signature: 'abstract cancel(instanceId: InstanceId): Promise<void>',
+        description: 'Cancel a pending instance — the explicit user cancel tool (A1-split).',
+        parameters: [{ name: 'instanceId', description: 'The opaque id of the pending query instance to cancel.' }],
+      },
+      {
+        signature: 'abstract getProgress(instanceId: InstanceId): Promise<QueryOutcome>',
+        description: 'Poll progress of a pending instance (P4 polling; no push notifications — G4 HOLE-D).',
+        parameters: [{ name: 'instanceId', description: 'The opaque id of the pending query instance to poll.' }],
+        returns: 'A 3-state query outcome reflecting the pending instance\'s current progress.',
+      },
+      {
+        signature: 'qualifyTable?(tableName: string, override?: string): string',
+        description: 'Qualify a bare table name with its project prefix (C: engine-agnostic).\n\nMoved off `SemanticLayerService.qualifyTableName` (which misread `config.yaml project.name` — a game scope id, NOT an ODPS project) to the query provider, whose `Config.defaultProject` (cordis.patch.yml fills `ieu_cdm`) is the single source of truth for the engine\'s project. A per-table `override` (Task 3: `SearchHit.project` / `update_table_config`) takes precedence over the configured default. When both are absent (empty default + no override), the bare table name is returned unchanged — graceful degradation so a misconfigured engine still surfaces the bare name rather than `undefined.table`.\n\nOptional: a provider that does not need project qualification (e.g. a single-project engine) may omit this; callers probe with `?.`.',
+        parameters: [{ name: 'tableName', description: 'The bare table name to qualify.' }, { name: 'override', description: 'Optional per-table project override (wins over defaultProject).' }],
+        returns: 'The qualified `<project>.<tableName>`, or the bare `tableName` when no project resolves.',
+      },
+    ],
+  },
+  {
     key: 'sandbox',
     summary: 'Abstract process-sandbox service.',
     description: 'Abstract process-sandbox service. confine must return enforcing argv or fail closed at wrap or runner-execution time; silent unconfined passthrough is forbidden. Functional probes arbitrate multi-runner chains and may be skipped for a sole candidate, whose own refusal remains the fail-closed end.',
@@ -1177,9 +1275,44 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-ODPS schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.',
     methods: [
       {
+        signature: 'getRegistry(): DataSourceRegistry',
+        description: 'The live data-source-kind registry (events/tables/metrics plugins registered at construction).',
+        parameters: [],
+        returns: 'the live data-source-kind registry.',
+      },
+      {
+        signature: 'getRelationGraph(): RelationGraph',
+        description: 'The live relation graph: bidirectional adjacency over every table\'s `dimension_refs` (joins), every event\'s `external_refs` (joins), and every metric\'s `relations` (derived_from). Cached; rebuilt when the layer\'s corpus-version counter advances (a write bumps it via `invalidateCaches`). Events only enter the graph once `enrichAllEvents` has written their `external_refs` (Part B).',
+        parameters: [],
+        returns: 'the cached `RelationGraph`, rebuilt when stale.',
+      },
+      {
+        signature: 'loadRetrievalCorpusAll(): CorpusItem[]',
+        description: 'Registry-driven full retrieval corpus: every registered kind\'s definitions projected via its `toCorpusItem` (events + tables + metrics). Supersedes the events-only `loadRetrievalCorpus()` for P3/P4 — tables + metrics MUST be indexable so BM25 can hit a DIM table (join recall) or a metric (Level 2.5 routing). `loadRetrievalCorpus()` is unchanged (preserves the D2e events-only measured behavior + its 445-item K11 test).',
+        parameters: [],
+        returns: 'the full corpus (events + tables + metrics) ready for Bm25Linker.',
+      },
+      {
         signature: 'setSchemaProvider(provider: SchemaProvider | undefined): void',
         description: 'Mount a live-ODPS schema provider (P6b Q3 deferred; follow-up mounts the real one).',
         parameters: [{ name: 'provider', description: 'the provider to delegate discover/describe/sample to, or undefined to clear.' }],
+      },
+      {
+        signature: 'setLlmCall(fn?: LlmCall): void',
+        description: 'G3: inject (or clear) the one-shot LLM call used by the semantic relation round. When undefined, `discoverRelations` + the on-write hook run the deterministic PK-name round only. Production wires this to `ctx.llm` (BlockAssembler-assembled text); the substrate itself stays free of the LLM dependency.',
+        parameters: [{ name: 'fn', description: 'the llmCall to use, or undefined to run deterministic-only.' }],
+      },
+      {
+        signature: 'async discoverRelations( opts: { readonly tables?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>',
+        description: 'G3: discover DWS→DIM dimension relations for the layer (or a subset when `tables` is given) and write them back into each DWS table\'s `dimension_refs`. Delegates to the substrate `enrichAllDwsTables` (two-round strategy; deterministic round always runs, LLM round runs only when a `llmCall` is injected via `setLlmCall`). No Tier-2 audit — this is the explicit enrichment entry (used by the `discover_relations` agent tool + batch seeding); the on-write hook is the auto path.',
+        parameters: [{ name: 'opts', description: 'optional `tables` filter (table_names to limit enrichment to).' }],
+        returns: '`enriched` (DWS gaining >=1 ref) + `written` (DWS updated) + per-table `errors`.',
+      },
+      {
+        signature: 'async discoverEventRelations( opts: { readonly events?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>',
+        description: 'Discover event→DIM relations (parallel to `discoverRelations` for DWS tables) and write them into each event\'s `external_refs`. Delegates to the substrate `enrichAllEvents` (two-round; deterministic always runs, LLM round runs only when a `llmCall` is injected via `setLlmCall`). No Tier-2 audit — explicit enrichment entry.\n\nNOTE: an on-write hook for events (parallel to `enrichOnWrite` for tables) is deferred: there is no Service-level event-write path today (events are written via the substrate `writeEventYaml` raw-edit surface, not a Service method). The hook lands with a future `syncWriteEvents`/`updateEventMeta` Service method.',
+        parameters: [{ name: 'opts', description: 'optional `events` filter (event names to limit enrichment to).' }],
+        returns: '`enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.',
       },
       {
         signature: 'loadEventDefinition(name: string): EventDefinition | null',
@@ -1192,6 +1325,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Load a validated table definition by name from the substrate.',
         parameters: [{ name: 'name', description: 'the table `table_name` key to match.' }],
         returns: 'the parsed `TableDefinition`, or null when no table matches.',
+      },
+      {
+        signature: 'loadMetricDefinition(name: string): MetricDefinition | null',
+        description: 'Load a validated metric definition by name from the substrate.',
+        parameters: [{ name: 'name', description: 'the metric `name` key to match (`<host>__<key>`).' }],
+        returns: 'the parsed `MetricDefinition`, or null when no host table/event defines a metric with this name.',
+      },
+      {
+        signature: 'loadRetrievalCorpus(): readonly EventCorpusItem[]',
+        description: 'D2e (2026-08-21): build an enriched retrieval corpus from the substrate — each event\'s `params_fields` (field name + description) + `terminology` slang packed into the indexed `description`; `domain` is NOT indexed (probe refuted it). D2h: the `corpusVariant` mount-time config selects the slices — \'params+term\' (default, shipped) packs params_fields + slang; \'term-only\' (D2g verdict (A) higher-recall) packs slang only, dropping params_fields. This is the corpus feed the real-default prefetch path (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when `ctx.schema` is unmounted (bundle opt-in), the tool\'s corpus stays empty (current behavior) — enrichment activates on mount. Empty `semanticRoot` yields an empty corpus.',
+        parameters: [],
+        returns: 'enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.',
+      },
+      {
+        signature: 'corpusVersion(): number',
+        description: 'D2f (2026-08-21): the corpus-version counter for this layer - a monotonic signal bumped by every writer via `invalidateCaches` (writeEventYaml / writeTable / updateTableMeta / syncWriteDefinitions). Probed structurally by `tool-search-data-sources` (no static dep) so its cached enriched Bm25Linker rebuilds after a mid-session event edit instead of staying stale until reboot (D2e-deferred cache-invalidation). Reads the per-path counter for `this.semanticRoot` (0 until the first write).',
+        parameters: [],
+        returns: 'the current corpus-version counter.',
       },
       {
         signature: 'async discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>',
@@ -1213,15 +1364,66 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'async syncWrite( tableMetas: readonly TableMeta[], opts: { readonly dimTableNames?: Set<string> readonly existingTables?: Map<string, Record<string, unknown>> readonly scopeId?: string } = {}, ): Promise<{ written: number; skipped: number; errors: string[] }>',
-        description: 'Tier-2 persistent write: batch-generate/merge table YAML from pre-fetched schema metas and write them to the substrate, recording each write via `ctx.audit` (D5 non-disableable). Routes to `syncWriteDefinitions`.',
+        description: 'Tier-2 persistent write: batch-generate/merge table YAML from pre-fetched schema metas and write them to the substrate, recording each write via `ctx.audit` (D5 non-disableable). Routes to `syncWriteDefinitions`. G3: after the batch, the on-write hook re-runs DWS→DIM discovery for the written tables (gated by `autoEnrich`).',
         parameters: [{ name: 'tableMetas', description: 'the table metas to write (from discover/describe).' }, { name: 'opts', description: 'optional dim-table-name set, existing-table map for merge, and scope id override.' }],
         returns: 'counts of written/skipped tables plus per-table error messages.',
       },
       {
         signature: 'async updateTableMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }>',
-        description: 'Tier-2 per-scope write: read-merge-validate-write a single table\'s meta updates, recording the write via `ctx.audit` (D5 non-disableable).',
+        description: 'Tier-2 per-scope write: read-merge-validate-write a single table\'s meta updates, recording the write via `ctx.audit` (D5 non-disableable). G3: after the write, the on-write hook re-runs DWS→DIM discovery for the table (gated by `autoEnrich`).',
         parameters: [{ name: 'name', description: 'the table `table_name` to update.' }, { name: 'updates', description: 'the field overrides merged over the existing table YAML.' }, { name: 'opts', description: 'optional scope id override (default scope id is used when omitted).' }],
         returns: '`{ ok: true, table_name }` on success, or `{ ok: false, error }` when the table is missing/malformed or validation fails.',
+      },
+    ],
+  },
+  {
+    key: 'scopes',
+    summary: 'Scope registry Cordis service.',
+    description: 'Scope registry Cordis service. Reads and writes a YAML file at `registryPath` containing scope definitions and the active scope id. All mutations are atomic (cross-process safe via file lock + atomic write).',
+    methods: [
+      {
+        signature: 'list(): readonly ScopeDefinition[]',
+        description: 'All registered scopes. Returns empty array when registryPath is unset or file missing.',
+        parameters: [],
+        returns: 'all registered scope definitions (empty when the registry is unset or missing).',
+      },
+      {
+        signature: 'get(id: string): ScopeDefinition | undefined',
+        description: 'Get a scope by id. Returns undefined when not found.',
+        parameters: [{ name: 'id', description: 'the scope identifier to look up.' }],
+        returns: 'the matching scope definition, or undefined when no scope has this id.',
+      },
+      {
+        signature: 'active(): ScopeDefinition | undefined',
+        description: 'The currently active scope definition, or undefined if none is active.',
+        parameters: [],
+        returns: 'the active scope definition, or undefined when no scope is active.',
+      },
+      {
+        signature: 'activeId(): string | undefined',
+        description: 'The currently active scope id, or undefined if none is active.',
+        parameters: [],
+        returns: 'the active scope id, or undefined when no scope is active.',
+      },
+      {
+        signature: 'async setActive(id: string): Promise<void>',
+        description: 'Set the active scope by id. Throws if the scope does not exist in the registry.',
+        parameters: [{ name: 'id', description: 'the scope id to make active (must already be registered).' }],
+      },
+      {
+        signature: 'async clearActive(): Promise<void>',
+        description: 'Clear the active scope (no scope is active).',
+        parameters: [],
+      },
+      {
+        signature: 'async register(scope: ScopeDefinition): Promise<void>',
+        description: 'Register (or update) a scope definition. If this is the first scope, it becomes active.',
+        parameters: [{ name: 'scope', description: 'the scope definition to register or update.' }],
+      },
+      {
+        signature: 'async remove(id: string): Promise<void>',
+        description: 'Remove a scope from the registry. If it was active, active becomes undefined.',
+        parameters: [{ name: 'id', description: 'the scope id to remove.' }],
       },
     ],
   },
@@ -2631,6 +2833,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'options', description: 'the full request. A LOOP-built request carries the process-local {@link markAgentLoopRequest} identity and arrives deep-frozen (mutation throws): its content is a pure function of the session log (the reconstructability Agent Note), so listeners read it, never rewrite it. Hand-built calls do not carry that marker; their messages already obey the immutable creation contract.' }],
   },
   {
+    name: 'scopes/active-changed',
+    mode: 'emit',
+    signature: '\'scopes/active-changed\': (scopeId: string | undefined) => void',
+    summary: 'Emitted after the active scope id changes — via setActive(), clearActive(), register() making the first scope active, or remove() deactivating the previously active scope.',
+    description: 'Emitted after the active scope id changes — via setActive(), clearActive(), register() making the first scope active, or remove() deactivating the previously active scope. Listeners may re-read ctx.scopes.active() to react to the new selection.',
+    parameters: [{ name: 'scopeId', description: 'the new active scope id, or undefined when no scope is now active.' }],
+  },
+  {
+    name: 'scopes/changed',
+    mode: 'emit',
+    signature: '\'scopes/changed\': () => void',
+    summary: 'Emitted after the set of registered scopes changes — a scope was added or updated via register(), or removed via remove().',
+    description: 'Emitted after the set of registered scopes changes — a scope was added or updated via register(), or removed via remove(). A pure active-scope switch (setActive/clearActive) does not fire this event. Listeners may re-read ctx.scopes.list() to refresh any cached view of the registry.',
+    parameters: [],
+  },
+  {
     name: 'session-telemetry/record',
     mode: 'waterfall',
     signature: '\'session-telemetry/record\'(record: SessionTelemetryRecord, next: () => SessionTelemetryRecord): SessionTelemetryRecord',
@@ -2935,6 +3153,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AssembledSection {\n    name: string;\n    text: string;\n}',
   },
   {
+    name: 'AssetHealthReport',
+    declaration: 'export interface AssetHealthReport {\n    readonly assetId: string;\n    readonly confirmationStatus: string;\n    readonly hasEvalCoverage: boolean;\n    readonly relationCount: number;\n    readonly lastModified: string;\n}',
+  },
+  {
     name: 'AssistantMessage',
     declaration: 'export interface AssistantMessage extends Message {\n    readonly role: \'assistant\';\n    readonly source: ModelMessageSource;\n}',
   },
@@ -2972,7 +3194,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CallerIdentity',
-    declaration: 'export interface CallerIdentity {\n    readonly userId?: UserId;\n    readonly scopeId?: ScopeId;\n    readonly tenantId?: string;\n}',
+    declaration: 'export interface CallerIdentity {\n    readonly userId?: UserId;\n    readonly scopeId?: ScopeId;\n    readonly tenantId?: string;\n    readonly role?: string;\n}',
   },
   {
     name: 'CancelOptions',
@@ -3071,6 +3293,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ConfinedSandboxMode = Exclude<SandboxMode, \'danger-full-access\'>;',
   },
   {
+    name: 'ConfirmationBreakdown',
+    declaration: 'export interface ConfirmationBreakdown {\n    readonly draft: number;\n    readonly confirmed: number;\n    readonly rejected: number;\n}',
+  },
+  {
     name: 'ContentBlockMap',
     declaration: 'export interface ContentBlockMap {\n    \'text\': TextBlock;\n    \'reasoning\': ReasoningBlock;\n    \'image\': ImageBlock;\n    \'tool-call\': ToolCallBlock;\n    \'tool-result\': ToolResultBlock;\n}',
   },
@@ -3111,6 +3337,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ContinuableSubagentDescriptorData extends SubagentDescriptorBase {\n    readonly mode: \'continuable\';\n    readonly label: string;\n    readonly agentProvider?: string;\n    readonly agentModel?: string;\n    readonly persona?: string;\n    readonly toolFilter?: ToolRestriction;\n}',
   },
   {
+    name: 'ConventionCast',
+    declaration: 'export interface ConventionCast {\n    readonly logical: string;\n    readonly meaning: string;\n    readonly cast: string;\n}',
+  },
+  {
+    name: 'ConventionFunction',
+    declaration: 'export interface ConventionFunction {\n    readonly name: string;\n    readonly signature: string;\n}',
+  },
+  {
+    name: 'ConventionTemplate',
+    declaration: 'export interface ConventionTemplate {\n    readonly name: string;\n    readonly sql: string;\n}',
+  },
+  {
     name: 'CordisDynamicPackageId',
     declaration: 'export type CordisDynamicPackageId = Branded<\'CordisDynamicPackageId\'>;',
   },
@@ -3137,6 +3375,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CordisInspectRequestId',
     declaration: 'export type CordisInspectRequestId = Branded<\'CordisInspectRequestId\'>;',
+  },
+  {
+    name: 'CorpusItem',
+    declaration: 'export interface CorpusItem {\n    readonly id: string;\n    readonly description?: string;\n    readonly metrics?: Readonly<Record<string, unknown>>;\n    readonly payload?: unknown;\n}',
   },
   {
     name: 'CreateAgentOptions',
@@ -3169,6 +3411,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CredentialRef',
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
+  },
+  {
+    name: 'CriticCtx',
+    declaration: 'export interface CriticCtx {\n    readonly candidateTables: Set<string>;\n    readonly eventParams: Set<string>;\n    readonly partitionCols: Set<string>;\n    readonly declaredJoinPairs?: Set<string>;\n}',
+  },
+  {
+    name: 'CriticFields',
+    declaration: 'export interface CriticFields {\n    readonly eventParams?: Readonly<Record<string, unknown>>;\n    readonly partitionCols?: readonly string[];\n}',
+  },
+  {
+    name: 'DataSourceKindPlugin',
+    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T, terminology?: EventTerminology): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toExecutableRule?(def: T): string | null;\n}',
+  },
+  {
+    name: 'DataSourceRegistry',
+    declaration: 'export class DataSourceRegistry {\n    register(plugin: DataSourceKindPlugin): void;\n    getKind(kind: string): DataSourceKindPlugin | undefined;\n    allKinds(): string[];\n    allPlugins(): DataSourceKindPlugin[];\n}',
   },
   {
     name: 'DiffCallView',
@@ -3287,12 +3545,52 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
   },
   {
+    name: 'EngineConventions',
+    declaration: 'export interface EngineConventions {\n    readonly engine: string;\n    readonly key_differences: readonly string[];\n    readonly functions: readonly ConventionFunction[];\n    readonly cast_map: readonly ConventionCast[];\n    readonly sql_templates: readonly ConventionTemplate[];\n}',
+  },
+  {
+    name: 'EnrichedCoverageStats',
+    declaration: 'export interface EnrichedCoverageStats {\n    readonly table_count: number;\n    readonly event_count: number;\n    readonly metric_count: number;\n    readonly domain_counts: Readonly<Record<string, number>>;\n    readonly confirmation: ConfirmationBreakdown;\n}',
+  },
+  {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
   },
   {
+    name: 'EvalCaseFlip',
+    declaration: 'export interface EvalCaseFlip {\n    readonly caseId: string;\n    readonly before: EvalResultRecord[\'status\'];\n    readonly after: EvalResultRecord[\'status\'];\n}',
+  },
+  {
+    name: 'EvalDeltaReport',
+    declaration: 'export interface EvalDeltaReport {\n    readonly runIdA: string;\n    readonly runIdB: string;\n    readonly flipped: readonly EvalCaseFlip[];\n    readonly summary: {\n        readonly improved: number;\n        readonly regressed: number;\n        readonly unchanged: number;\n    };\n}',
+  },
+  {
+    name: 'EvalResultFilters',
+    declaration: 'export interface EvalResultFilters {\n    readonly assetId?: string;\n    readonly status?: \'pass\' | \'fail\' | \'error\' | \'pending\';\n    readonly domain?: string;\n    readonly limit?: number;\n}',
+  },
+  {
+    name: 'EvalResultQueryResult',
+    declaration: 'export interface EvalResultQueryResult {\n    readonly results: readonly EvalResultRecord[];\n    readonly total: number;\n}',
+  },
+  {
+    name: 'EvalResultRecord',
+    declaration: 'export interface EvalResultRecord {\n    readonly id: string;\n    readonly assetId: string;\n    readonly caseId: string;\n    readonly status: \'pass\' | \'fail\' | \'error\' | \'pending\';\n    readonly score?: number;\n    readonly timestamp: string;\n    readonly metadata?: Readonly<Record<string, unknown>>;\n}',
+  },
+  {
+    name: 'EvalResultStore',
+    declaration: 'export class EvalResultStore {\n    add(record: EvalResultRecord): void;\n    query(filters: EvalResultFilters): EvalResultQueryResult;\n    hasResultsFor(assetId: string): boolean;\n    getByRunId(runId: string): EvalResultRecord[];\n    getRunIds(): string[];\n    loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void;\n    clear(): void;\n}',
+  },
+  {
+    name: 'EventCorpusItem',
+    declaration: 'export interface EventCorpusItem {\n    readonly id: string;\n    readonly description?: string;\n    readonly metrics?: Readonly<Record<string, unknown>>;\n    readonly payload?: unknown;\n}',
+  },
+  {
     name: 'EventDefinition',
     declaration: 'export type EventDefinition = z.infer<typeof EventDefinitionSchema>;',
+  },
+  {
+    name: 'EventTerminology',
+    declaration: 'export type EventTerminology = Readonly<Record<string, readonly string[]>>;',
   },
   {
     name: 'FileDiff',
@@ -3357,6 +3655,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsWriteOutcome',
     declaration: 'export interface FsWriteOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n    before: string | null;\n    after: string;\n}',
+  },
+  {
+    name: 'GapAnalysisResult',
+    declaration: 'export interface GapAnalysisResult {\n    readonly sourceAssetId: string;\n    readonly gaps: readonly GapEntry[];\n}',
+  },
+  {
+    name: 'GapEntry',
+    declaration: 'export interface GapEntry {\n    readonly assetId: string;\n    readonly joinPath: readonly string[];\n}',
   },
   {
     name: 'GenerateOptions',
@@ -3425,6 +3731,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'InboxTarget',
     declaration: 'export type InboxTarget = \'next-turn\' | \'next-step\';',
+  },
+  {
+    name: 'InstanceId',
+    declaration: 'export type InstanceId = string;',
   },
   {
     name: 'InvariantFailure',
@@ -3533,6 +3843,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'LlmAdapter',
     declaration: 'export abstract class LlmAdapter {\n    providerInfo(provider: string): LlmProviderInfo;\n    providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;\n    listModels(_provider: string): Promise<readonly LlmModelInfo[]>;\n    resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    abstract stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
+  },
+  {
+    name: 'LlmCall',
+    declaration: 'export type LlmCall = (prompt: string) => Promise<string>;',
   },
   {
     name: 'LlmCallConfig',
@@ -3723,6 +4037,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface MessageSourceMap {\n    user: {\n        kind: \'user\';\n    };\n    plugin: {\n        kind: \'plugin\';\n        plugin: string;\n    } & ContextFormed;\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n}',
   },
   {
+    name: 'MetricDefinition',
+    declaration: 'export type MetricDefinition = z.infer<typeof MetricDefinitionSchema>;',
+  },
+  {
     name: 'ModelMessageSource',
     declaration: 'export interface ModelMessageSource extends AssistantProvenance {\n    kind: \'model\';\n}',
   },
@@ -3815,6 +4133,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PromptSection {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n    readonly complete?: boolean;\n}',
   },
   {
+    name: 'ProposedRelation',
+    declaration: 'export interface ProposedRelation {\n    readonly sourceId: string;\n    readonly targetId: string;\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly on?: string;\n}',
+  },
+  {
     name: 'ProviderRequestId',
     declaration: 'export type ProviderRequestId = Branded<\'ProviderRequestId\'>;',
   },
@@ -3825,6 +4147,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PruneResult',
     declaration: 'export interface PruneResult {\n    readonly pruned: readonly PrunedEntry[];\n    readonly charsRemoved: number;\n}',
+  },
+  {
+    name: 'QueryRequest',
+    declaration: 'export interface QueryRequest {\n    readonly sql: string;\n    readonly scopeId: ScopeId;\n    readonly mode?: \'fast\' | \'slow\' | \'blocking\' | \'fail\';\n}',
+  },
+  {
+    name: 'ReachabilityDeltaResult',
+    declaration: 'export interface ReachabilityDeltaResult {\n    readonly proposedRelation: ProposedRelation;\n    readonly newlyReachable: readonly ReachablePair[];\n}',
+  },
+  {
+    name: 'ReachablePair',
+    declaration: 'export interface ReachablePair {\n    readonly from: string;\n    readonly to: string;\n}',
   },
   {
     name: 'ReadFileLine',
@@ -3845,6 +4179,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'RedactedSecret',
     declaration: 'export interface RedactedSecret {\n    path: string[];\n    set: boolean;\n}',
+  },
+  {
+    name: 'RelationDef',
+    declaration: 'export interface RelationDef {\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly target: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
+  },
+  {
+    name: 'RelationEdge',
+    declaration: 'export interface RelationEdge {\n    readonly targetId: string;\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly on?: string;\n    readonly description?: string;\n}',
+  },
+  {
+    name: 'RelationGraph',
+    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: \'joins\' | \'derived_from\' | \'related_to\'): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n}',
   },
   {
     name: 'ReplayEnvelope',
@@ -3963,6 +4309,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ScheduledToolPreparation = {\n    kind: \'dispatch\';\n    exec: ToolRunContext;\n} | {\n    kind: \'post-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n} | {\n    kind: \'final-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n};',
   },
   {
+    name: 'SchemaLike',
+    declaration: 'export interface SchemaLike<T> {\n    parse(raw: unknown): T;\n    safeParse(raw: unknown): {\n        success: boolean;\n        data?: T;\n        error?: unknown;\n    };\n}',
+  },
+  {
     name: 'SchemaProvider',
     declaration: 'export interface SchemaProvider {\n    discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>;\n    describe(tableName: string): Promise<TableMeta | null>;\n    sample(tableName: string, n?: number): Promise<string>;\n}',
   },
@@ -3971,8 +4321,8 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type Scoped<T extends object> = object & {\n    readonly [ScopedBrand]: T;\n};',
   },
   {
-    name: 'ScopeId',
-    declaration: 'export type ScopeId = Branded<\'ScopeId\'>;',
+    name: 'ScopeDefinition',
+    declaration: 'export interface ScopeDefinition {\n    readonly id: string;\n    readonly semanticRoot: string;\n    readonly metadata?: Readonly<Record<string, unknown>>;\n}',
   },
   {
     name: 'ScopeKey',

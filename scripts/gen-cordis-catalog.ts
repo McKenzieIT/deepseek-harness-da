@@ -113,6 +113,10 @@ export const SERVICE_PAGE: Record<string, string> = {
   identity: 'data-agent.md',
   nl2sql: 'data-agent.md',
   schema: 'data-agent.md',
+  scopes: 'data-agent.md',
+  evidenceQuery: 'data-agent.md',
+  criticCtx: 'data-agent.md',
+  query: 'data-agent.md',
 }
 
 /**
@@ -161,8 +165,8 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   slots: 'client-side interface-typed browser service — packages/client/runtime/README.md owns the API',
   theme: 'client-side interface-typed browser service — packages/client/ui-theme/README.md owns the API',
   workspaces: 'client-side interface-typed browser service — packages/client/runtime/README.md owns the API',
-  query: 'abstract query-engine seam: source-only, consumed via ./src/* by providers (e.g. query-maxcompute); packages/query/query/README.md owns the seam',
   retrieval: 'abstract retrieval seam: implemented by providers (e.g. retrieval-inproc); packages/retrieval/retrieval/README.md owns the seam',
+  evalRunner: 'optional eval-runner seam (EvalRunnerService | undefined) the host composition mounts at boot — packages/data/tool-trigger-eval/src/index.ts owns the seam contract',
 }
 
 /**
@@ -192,6 +196,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'session-telemetry': 'session-telemetry.md',
   'tools': 'tools.md',
   'workflow': 'workflow.md',
+  'scopes': 'data-agent.md',
 }
 
 /**
