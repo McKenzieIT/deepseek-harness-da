@@ -878,6 +878,13 @@ function collectTableNames(value: unknown, out: Set<string>): void {
         if (typeof id === 'string') {
           out.add(id.toLowerCase())
           out.add(id.toLowerCase().replace(/^.*\./, ''))
+          // M3 #4: a metric candidate id is `<host_table>__<metric_key>`; the LLM
+          // extracts the host (table name) for SQL FROM. Collect the host so
+          // critic table_not_in_candidates passes when the LLM grounds SQL on a
+          // metric candidate (search returned metrics, not tables). Table ids have
+          // no `__` so lastIndexOf <= 0 → no-op for them.
+          const sep = id.lastIndexOf('__')
+          if (sep > 0) out.add(id.slice(0, sep).toLowerCase())
         }
       }
     }
