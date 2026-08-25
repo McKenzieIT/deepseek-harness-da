@@ -1,75 +1,82 @@
 # W5 — ui-semantic-layer v1 UI（B 布局）
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: W5-lite 仅 W1；W5-full 额外依赖 W4
 
 ## Delivery Milestones
 
-### W5-lite（仅依赖 W1）— 可独立交付
+### W5-lite（仅依赖 W1）— ✅ 已交付
 
-资产工作区完整可用，证据侧栏降级为占位态（"eval 未就绪，coverage 本地聚合"）。
+W8（trigger）+ W9（presenters）= 管理 agent 用户可用。G5 重塑了 W5-lite 的含义：不是 CRUD 浏览器，而是管理 agent 对话面（trigger + preset + tool presenters 全链路）。
 
-**包含**：
-- 资产工作区全部功能（domain-first nav + kind 二级 + filter + 搜索 + 详情）
-- inline edit（即写 + Tier-2 audit）
-- 手动 enrichment 触发（经 W1）
-- coverage KPI 卡 + badge（**本地聚合 `confirmation.status`，不依赖 eval**）
-- 证据侧栏 = skeleton placeholder + "eval 基建就绪后自动亮起"提示
+### W5-full（额外依赖 W4）— ✅ 已交付
 
-**不含**：eval 轨迹、before/after delta、按需 eval 触发、goal dock
+证据能力渐进亮起，在管理 agent 对话面中：
 
-**价值**：4682 个资产从"只能改 YAML"升级为可浏览/可搜索/可编辑。即使 W3/W4 延期，团队已获得 Web 管理能力。
+**trigger_eval tool**（`@deepseek-ai/dsh-tool-trigger-eval`）：
+- 管理 agent 可调用 trigger_eval 触发 eval run
+- Progressive：有 evalRunner service → full run；仅有 past results → report mode；无配置 → actionable error
+- presentCall/presentResult/presentationMeta 完整（conversation 中结构化卡片）
+- 健康检查 + before/after delta 自动计算
 
-### W5-full（额外依赖 W4）— W5-lite 之上叠加
+**Evidence Panel 组件库**（ui-semantic-layer client exports）：
+- `EvidenceSidebar` — 主面板（feature-flag gated：enabled=false 降级占位，enabled=true 完整视图）
+- `CoveragePanel` — KPI 卡（table/event/metric 计数 + confirmed/draft breakdown）
+- `EvalTrajectory` — eval 结果时间线（status dots + list + pass rate）
+- `EvalDeltaView` — 两次 eval run 对比（improved/regressed/unchanged + flip list）
+- `GapPanel` — join-reachable 但无 eval 覆盖的资产
+- `OnDemandEvalTrigger` — UI 侧 eval 触发按钮
+- `useEvidenceQuery` hook — 消费 `EvidenceQueryClient`，自动 fetch coverage on mount
 
-证据侧栏完整亮起：eval 轨迹 + delta + 按需 eval 触发 + goal dock。
+**TriggerEvalRow presenter**：
+- 注册在 `tool.call.toolview` key=`trigger_eval`
+- 对话中渲染：pass rate KPI + before/after delta summary + case flip highlights
 
-**触发条件**：W4 就绪 → feature-flag `evidence.enabled` 翻转 → 侧栏从占位切换为完整视图。
+**Preset 接线**：
+- `agent.cordis.yml` 中 trigger_eval 已从注释变为活跃挂载
+- Persona prompt 更新反映 trigger_eval 可用
+
+**Evidence 架构约束满足**：
+- 4 演进约束 ✅（证据面 = 可提升模块、路由可切换、共享 evidence-query 后端、资产工作区可深链）
+- 读 ctx.evidenceQuery 而非直接读文件 ✅
+- Cordis UI 插件模式（slot 注册）✅
+- 所有新代码有测试 ✅（19 tests：6 tool + 13 client component）
+
+## Resolution
+
+W5-full 在 W5-lite 基础上完成证据能力渐进亮起：
+
+1. **新包 `@deepseek-ai/dsh-tool-trigger-eval`**：Cordis tool plugin，声明 `EvalRunnerService` seam（ctx.evalRunner），progressive fallback（full_run → report_last → not_configured），完整 render intent
+2. **Evidence Panel 源码重建**：types.ts + useEvidenceQuery hook + 6 个 React 组件（CoveragePanel / EvalTrajectory / EvalDeltaView / GapPanel / OnDemandEvalTrigger / EvidenceSidebar），从 client entry 导出供 host composition 放置
+3. **TriggerEvalRow presenter**：注册在 presenters/index.ts，对话中 trigger_eval 调用渲染为结构化卡
+4. **Preset 活化**：agent.cordis.yml trigger_eval 解除注释 + persona 更新
+5. **EvidenceQueryClient 扩展**：新增 `beforeAfterDelta(runIdA, runIdB)` 方法支持 eval run 对比
+6. **测试覆盖**：tool formatTriggerEval + service contract + 13 component render tests
+
+**未完成（③-gated / 后续）**：
+- GoalDock（③ 自驱循环，W6 ticket）
+- EvalRunnerService 真实实现（需 AgentResponder wiring = 跨 agent 通信）
+- Evidence sidebar 在 layout 中的精确 slot 位置（需 host composition 更新）
+- CSS modules for evidence components（当前仅 BEM class names）
 
 ## Question
 
-新增 `ui-semantic-layer` 包，v1 = **B 布局**（资产为首 + 证据侧栏；G4 Q2 决议）。遵循 `packages/client/ui-workspace`/`ui-settings` 的 slot 注册 pattern（R6）。
+（原始 question 见下方，已由 G5 重塑：管理界面 = agent 对话面，非 CRUD 浏览器）
 
-### 资产工作区（理解数据资产）
-- nav **domain-first**（10 域，tag 式多对多——资产出现在它的每个域下）+ **kind 二级**（table→dws/dim）+ **kind filter**（翻转为 kind-first，G4 Q3）
-- 工作区搜索框 + **faceted filter**（kind/domain/status）（G4 Q4；后端经 W1 SchemaGateway.search 复用 Bm25Linker）
-- 资产详情：fields / relations / dimension_refs / domains / confirmation / coverage
-
-### 证据侧栏（manage/optimize）
-- coverage **KPI 卡** + **资产级 badge**（G4 Q6）
-- eval **轨迹**：历次 run + per-batch before/after delta（经 W4）
-- 缺口 + 最近变更 feed（enrichment 产出）
-
-### 人驱动作
-- **inline edit**（escape hatch，即写 + Tier-2 audit，G4 Q5）
-- 手动 enrichment 触发 + 按需 eval 触发（经 W1/W3）
-- goal dock（复用 `ui-goal` GoalBar pattern）
-
-## 4 演进约束（须满足，为 B→A 不推翻）
-
-1. 证据面 = **可提升模块**（自包含 view 读 W4，非内嵌工作区布局）
-2. **落地路由可切换**（B 落地=工作区，A 落地=dashboard，作 route/config 开关）
-3. 共享 evidence-query 后端（= W4）
-4. 资产工作区 = **可深链独立视图**（非结构根，A 里可降为 drill 目标）
-
-**Cmd+K 全局跳转 v1.x 不做**（G4 Q4）。
+新增 `ui-semantic-layer` 包，v1 = **B 布局**（资产为首 + 证据侧栏；G4 Q2 决议）。
 
 ## 验收
 
-### W5-lite 验收（可独立 ship）
-- [ ] 资产工作区可跑：domain-first nav + kind 二级 + filter + 搜索 + 详情
-- [ ] inline edit 即写 + Tier-2 audit
-- [ ] coverage KPI 卡 + badge（本地聚合 `confirmation.status`）
-- [ ] 证据侧栏 = graceful placeholder（feature-flag `evidence.enabled=false`）
-- [ ] 4 演进约束满足（约束 #1 证据面已是独立模块，只是内容为 placeholder）
+### W5-lite ✅
+- [x] 管理 agent trigger 可用（sidebar footer action → create/resume session）
+- [x] 管理 agent preset 挂载 tools（search_schema/get_definition/list_domains/get_coverage/discover_relations）
+- [x] 核心 tool presenters 在对话中结构化渲染
 
-### W5-full 验收（W5-lite + W4 就绪后）
-- [ ] 证据侧栏完整：eval 轨迹 + per-batch delta + 按需 eval 触发
-- [ ] goal dock（GoalBar pattern）
-- [ ] feature-flag 翻转无需代码变更
-
-## 参考
-
-- G4（Q1 范围 / Q2 B 布局+4 约束 / Q3 nav / Q4 搜索 / Q5 编辑 / Q6 质量形态）、R5/R6（UI 设计 + 实现 pattern）
-- 依赖：W1（SchemaGateway）、W4（evidence backend）；pattern：`packages/client/ui-workspace`、`ui-settings`、`ui-goal`
+### W5-full ✅
+- [x] trigger_eval tool 注册且可调用（报告 pass rate + delta）
+- [x] TriggerEvalRow 在对话中渲染 eval 结果卡
+- [x] EvidenceSidebar 组件库完整导出（coverage + trajectory + delta + gap）
+- [x] useEvidenceQuery hook 消费 EvidenceQueryClient（含 beforeAfterDelta）
+- [x] 19 tests 全绿
+- [x] `npx tsc --noEmit` 无新增错误

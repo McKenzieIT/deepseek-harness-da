@@ -1,0 +1,213 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-content-primary);
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.row:hover {
+  background: var(--dsw-alias-surface-hover);
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--dsw-alias-content-secondary);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.summary {
+  flex-shrink: 0;
+  color: var(--dsw-alias-content-tertiary);
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--dsw-alias-surface-secondary);
+  color: var(--dsw-alias-content-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.badgeTable {
+  background: var(--dsw-alias-state-info-surface);
+  color: var(--dsw-alias-state-info-primary);
+}
+
+.badgeEvent {
+  background: var(--dsw-alias-state-warning-surface);
+  color: var(--dsw-alias-state-warning-primary);
+}
+
+.badgeMetric {
+  background: var(--dsw-alias-state-success-surface);
+  color: var(--dsw-alias-state-success-primary);
+}
+
+/* Search schema: asset card list */
+.hitList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 4px 26px;
+}
+
+.hitItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.hitName {
+  font-weight: 500;
+  color: var(--dsw-alias-content-primary);
+}
+
+.hitDomain {
+  color: var(--dsw-alias-content-tertiary);
+  font-size: 11px;
+}
+
+.hitDescription {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--dsw-alias-content-secondary);
+}
+
+/* Coverage: KPI card row */
+.kpiRow {
+  display: flex;
+  gap: 12px;
+  padding: 6px 8px 6px 26px;
+  flex-wrap: wrap;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--dsw-alias-surface-secondary);
+  min-width: 60px;
+}
+
+.kpiValue {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--dsw-alias-content-primary);
+}
+
+.kpiLabel {
+  font-size: 11px;
+  color: var(--dsw-alias-content-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Definition: field table */
+.defSection {
+  padding: 4px 8px 4px 26px;
+}
+
+.defMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.defField {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--dsw-alias-content-secondary);
+}
+
+.defFieldValue {
+  font-weight: 500;
+  color: var(--dsw-alias-content-primary);
+}
+
+/* Discover relations: diff view */
+.diffSection {
+  padding: 4px 8px 4px 26px;
+}
+
+.diffItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.diffAdded {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.diffAddedMarker {
+  font-weight: 700;
+}
+
+.relationBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.relationJoins {
+  background: var(--dsw-alias-state-info-surface);
+  color: var(--dsw-alias-state-info-primary);
+}
+
+.relationDerived {
+  background: var(--dsw-alias-state-warning-surface);
+  color: var(--dsw-alias-state-warning-primary);
+}
+
+.relationRelated {
+  background: var(--dsw-alias-surface-secondary);
+  color: var(--dsw-alias-content-secondary);
+}
+
+/* Running state */
+.running {
+  color: var(--dsw-alias-content-tertiary);
+  font-style: italic;
+}

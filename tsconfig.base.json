@@ -105,6 +105,7 @@
       "@deepseek-ai/dsh-experimental-tool-agent-team/invariant": ["./packages/experimental/tool-agent-team/src/invariant.ts"],
       "@deepseek-ai/dsh-embedder/src/*": ["./packages/embedder/embedder/src/*"],
       "@deepseek-ai/dsh-retrieval/src/*": ["./packages/retrieval/retrieval/src/*"],
+      "@deepseek-ai/dsh-semantic-layer/src/*": ["./packages/data/semantic-layer/src/*"],
       "@deepseek-ai/dsh-*/invariant": [
         "./packages/core/*/src/invariant.ts",
         "./packages/data/*/src/invariant.ts",
@@ -230,6 +231,7 @@
       "@deepseek-ai/dsh-client-ui-settings-general": ["./packages/client/ui-settings-general/src"],
       "@deepseek-ai/dsh-client-ui-settings-models": ["./packages/client/ui-settings-models/src"],
       "@deepseek-ai/dsh-client-ui-settings-plugin-inventory": ["./packages/client/ui-settings-plugin-inventory/src"],
+      "@deepseek-ai/dsh-client-ui-semantic-layer": ["./packages/client/ui-semantic-layer/src"],
       "@deepseek-ai/dsh-client-locale": ["./packages/client/locale/src"],
       "@deepseek-ai/dsh-client-web": ["./packages/client/web/src"],
       // sdk/ folders are role-named without their npm-side sdk/jsonrpc prefixes,

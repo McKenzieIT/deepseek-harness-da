@@ -41,10 +41,13 @@
   "dependencies": {
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-semantic-layer": "workspace:^",
+    "@deepseek-ai/dsh-evidence-query": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^",
+    "@deepseek-ai/dsh-schema-gateway": "workspace:^",
     "@deepseek-ai/dsh-semantic-layer": "workspace:^"
   },
   "peerDependencies": {

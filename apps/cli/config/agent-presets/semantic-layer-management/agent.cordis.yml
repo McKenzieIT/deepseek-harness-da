@@ -1,0 +1,87 @@
+# The `semantic-layer-management` agent preset: the management agent for the
+# semantic layer — browse, search, enrich, and assess data asset quality through
+# conversation.
+#
+# This file is an AGENT-PLANE composition (mirror `standard/agent.cordis.yml`).
+# The roster mounts it ONCE under a standing scope; every session naming it
+# joins by scope parentage, so the tools and prompt sections registered here
+# cover each joined agent while per-session state stays keyed inside the
+# plugins. The host composition keeps everything a preset must not own:
+# registries, sandbox/approval stack, persistence, model route.
+#
+# G5 Resolution: the semantic layer management UI = management agent conversation
+# face. v1/终态 UI container identical — difference is only agent behavior layer
+# (v1 human-driven, ③ autonomous). This preset carries the v1 tool set + persona.
+#
+# Tools: 6 active (4 new read-only + discover_relations + goal); 3 commented out
+# (execute_metric needs ctx.query, edit_definition needs Tier-2 UX, trigger_eval
+# needs W3). All tools publish NO service (pure ctx.tools.register consumers),
+# so they need no isolate realm.
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are a semantic layer management agent powered by {{model}}.
+      Your goal is to improve the semantic layer's quality: coverage, accuracy,
+      and completeness of data asset definitions.
+
+      You work with eval evidence: use get_coverage to assess current state,
+      search_schema and get_definition to explore assets, discover_relations to
+      enrich the relation graph, and trigger_eval to measure progress via
+      before/after delta comparison.
+
+      You manage definitions and structure. The data agent serves user queries
+      using the semantic layer you maintain. Your edits should be deliberate
+      and evidence-driven.
+
+      Guidelines:
+      - Start sessions with get_coverage to understand current state
+      - Use search_schema to find assets relevant to the user's question
+      - Use get_definition to inspect asset details before suggesting changes
+      - Use discover_relations to find and strengthen cross-asset relationships
+      - Explain your reasoning when proposing changes
+      - Prefer incremental improvements over large rewrites
+
+# ── read-only management tools (no service → loose rows) ───────────────────
+
+- id: tool-search-schema
+  name: '@deepseek-ai/dsh-tool-search-schema'
+
+- id: tool-get-definition
+  name: '@deepseek-ai/dsh-tool-get-definition'
+
+- id: tool-list-domains
+  name: '@deepseek-ai/dsh-tool-list-domains'
+
+- id: tool-get-coverage
+  name: '@deepseek-ai/dsh-tool-get-coverage'
+
+# ── enrichment tool (existing package) ─────────────────────────────────────
+
+- id: tool-discover-relations
+  name: '@deepseek-ai/dsh-tool-discover-relations'
+
+# ── goal management (existing package) ─────────────────────────────────────
+
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+
+# ── eval tool (W3 shipped — evidence engine available) ─────────────────────
+
+- id: tool-trigger-eval
+  name: '@deepseek-ai/dsh-tool-trigger-eval'
+
+# ── infrastructure-dependent tools (unshipped — uncomment when ready) ──────
+#
+# execute_metric: deterministic metric calculation — needs ctx.query.execute
+# (the query engine) to run SQL. Separate ticket post-W7.
+# - id: tool-execute-metric
+#   name: '@deepseek-ai/dsh-tool-execute-metric'
+#
+# edit_definition: write changes to asset YAML with Tier-2 audit trail.
+# Needs UX flow for agent-driven edits (confirm/reject). Separate ticket.
+# - id: tool-edit-definition
+#   name: '@deepseek-ai/dsh-tool-edit-definition'
