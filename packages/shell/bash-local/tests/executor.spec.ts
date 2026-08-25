@@ -259,15 +259,19 @@ describe('LocalBashExecutor.start (background process handles)', () => {
   it('kill escalation uses the configured graceMs (a TERM-trapping process dies by SIGKILL)', async () => {
     const { bash } = await setup() // setup pins graceMs: 200 via config
     // The child echoes AFTER arming the trap, so waiting for the marker
-    // guarantees SIGTERM is already ignored when the kill lands (a fixed sleep
-    // is load-flaky: a slow spawn would take the SIGTERM before the trap).
-    const proc = bash.start(bash.resolve({ command: 'trap \'\' TERM; echo armed; sleep 60' }))
+    // guarantees SIGTERM is already ignored when the kill lands. The blocker
+    // is `read < /dev/zero` (a bash builtin blocking on an infinite stream):
+    // it keeps bash alive as the SOLE group member — no foreground/background
+    // sleep child that the group SIGTERM would kill (making bash exit naturally
+    // with 128+15, signal=null, before the SIGKILL escalation fires). SIGKILL
+    // then reaches bash directly. Mirrors the spawn.spec.ts analog.
+    const proc = bash.start(bash.resolve({ command: 'trap \'\' TERM; echo armed; read < /dev/zero' }))
     await readUntil(proc, 'armed')
     proc.kill()
     await proc.done
     expect(proc.status).toBe('killed')
     expect(proc.signal).toBe('SIGKILL')
-  })
+  }, 15_000)
 
   it('a spec.signal abort settles the handle as killed, not completed', async () => {
     const { bash } = await setup()
@@ -307,8 +311,14 @@ describe('process lifecycle ownership (the subprocess service, not the executor)
     const bash = ctx.shell as LocalBashExecutor
 
     // The child prints its own pid ($$ = the detached bash group leader) so
-    // the test can probe liveness through the public read API alone.
-    const proc = bash.start(bash.resolve({ command: 'echo $$; sleep 60' }))
+    // the test can probe liveness through the public read API alone. The
+    // blocker is `read < /dev/zero` (a bash builtin blocking on an infinite
+    // stream) with NO foreground child: a foreground `sleep 60` races the
+    // group SIGTERM — the sleep child dies first, bash's waitpid returns
+    // 128+15=143, and bash exits naturally (signal=null, status=completed)
+    // before its own SIGTERM handler runs. With `read`, bash is the sole
+    // group member and dies by SIGTERM directly.
+    const proc = bash.start(bash.resolve({ command: 'echo $$; read < /dev/zero' }))
     const pid = Number((await readUntil(proc, '\n')).trim())
     expect(Number.isInteger(pid) && pid > 0).toBe(true)
 
@@ -324,7 +334,7 @@ describe('process lifecycle ownership (the subprocess service, not the executor)
     expect(() => process.kill(pid, 0)).toThrow()
     await proc.done
     expect(proc.status).toBe('killed')
-  })
+  }, 15_000)
 
   it('service disposal escalates to SIGKILL for TERM-trapping children and settles handles', async () => {
     const ctx = new Context()
@@ -336,7 +346,12 @@ describe('process lifecycle ownership (the subprocess service, not the executor)
     const finished = bash.start(bash.resolve({ command: 'echo done' }))
     await finished.done
     expect(finished.status).toBe('completed')
-    const trapping = bash.start(bash.resolve({ command: 'trap \'\' TERM; echo armed; sleep 60' }))
+    // The trapping child blocks on `read < /dev/zero` (an infinite stream) so
+    // bash stays alive as the SOLE group member until SIGKILL lands; a
+    // foreground/background sleep would die from the group SIGTERM while bash
+    // traps it, making bash exit naturally (128+15, signal=null) before
+    // escalation, or spin a re-spawn loop under load.
+    const trapping = bash.start(bash.resolve({ command: 'trap \'\' TERM; echo armed; read < /dev/zero' }))
     await readUntil(trapping, 'armed')
 
     await managerFiber.dispose()
@@ -345,5 +360,5 @@ describe('process lifecycle ownership (the subprocess service, not the executor)
     await trapping.done
     expect(trapping.status).toBe('killed')
     expect(trapping.signal).toBe('SIGKILL')
-  })
+  }, 15_000)
 })
