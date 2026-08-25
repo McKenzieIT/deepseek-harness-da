@@ -97,12 +97,12 @@ export function searchDataSources(
   topK: number,
 ): SearchHit[] {
   const hits: readonly RetrievalHit[] = linker.retrieve(query, { topK, mode: 'bm25-only' })
-  return hits.map(h => ({
-    id: h.id,
-    score: h.score,
-    ...(h.payload?.description !== undefined ? { description: h.payload.description } : {}),
-    mode: h.mode,
-  }))
+  // Use projectHit (not a hand-rolled {id,score,description,mode}) so the
+  // schema/thin-default paths also extract `type` (metric/table/event) and
+  // `project` (per-table override) — otherwise qualifyCandidates skips
+  // qualification (c.type === 'table' guard fails) and the model sees bare
+  // un-typed ids, breaking C's qualify + #1's type labeling on these paths.
+  return hits.map(projectHit)
 }
 
 /**
