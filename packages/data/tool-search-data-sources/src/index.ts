@@ -70,11 +70,11 @@ export interface SearchHit {
 /** Infer the data-source kind from a corpus item's payload. */
 function typeOf(payload: unknown): string {
   // RetrievalHit.payload is a CorpusItem ({id, description?, payload?}) — the
-  // data-source definition (MetricDefinition/TableDefinition/EventDefinition)
-  // is the NESTED `payload.payload`, not `payload` itself (isMetricHit reads
-  // `hit.payload?.payload?.kind`). Read the inner kind; fall back to event
+  // data-source definition is the NESTED payload.payload (isMetricHit reads
+  // hit.payload?.payload?.kind). Read the inner kind; fall back to event
   // fields; else 'source'.
-  const outer = payload as { kind?: string; payload?: { kind?: string; params_fields?: unknown; external_refs?: unknown; event_filter?: unknown } } | undefined
+  type Inner = { kind?: string; params_fields?: unknown; external_refs?: unknown; event_filter?: unknown }
+  const outer = payload as { kind?: string; payload?: Inner } | undefined
   const inner = outer?.payload
   const k = outer?.kind ?? inner?.kind
   if (k === 'metric') return 'metric'
@@ -147,7 +147,9 @@ function qualifyCandidates(ctx: Context, candidates: SearchHit[]): SearchHit[] {
   // ctx.get('schema'): returns undefined when no query provider is
   // registered, so candidates stay bare (callable but unwired, no crash).
   const q = ctx.get('query') as { qualifyTable?: (tableName: string, override?: string) => string } | undefined
-  const qualify = q?.qualifyTable
+  // Bind to q: qualifyTable reads `this.cfg.defaultProject`, so an unbound
+  // method reference loses `this` → `this.cfg` undefined → 'reading cfg' crash.
+  const qualify = q?.qualifyTable?.bind(q)
   if (qualify === undefined) return candidates
   // Qualify only table-kind candidates (metric/event ids are not ODPS tables;
   // `mode` is the retrieval mode, not the data-source kind, so the prior
