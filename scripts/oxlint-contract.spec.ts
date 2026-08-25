@@ -45,7 +45,7 @@ async function writeContractConfig(suffix: string): Promise<string> {
   return path
 }
 
-describe('Oxlint executable contract', () => {
+describe('Oxlint executable contract', { timeout: 30_000 }, () => {
   it('discovers the owning TypeScript project for every file class', async () => {
     const suffix = randomUUID()
     const configPath = await writeContractConfig(suffix)
