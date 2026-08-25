@@ -20,10 +20,13 @@ const HEALTH_CHECK_TIMEOUT_MS = 5000
  */
 async function runCheck(name: string, fn: () => Promise<void>, timeoutMs: number = HEALTH_CHECK_TIMEOUT_MS): Promise<HealthCheckResult> {
   const started = Date.now()
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
     await Promise.race([
       fn(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`health check timed out after ${timeoutMs}ms`)), timeoutMs)),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`health check timed out after ${timeoutMs}ms`)), timeoutMs)
+      }),
     ])
     return {
       name,
@@ -38,6 +41,8 @@ async function runCheck(name: string, fn: () => Promise<void>, timeoutMs: number
       message: err instanceof Error ? err.message : String(err),
       latency_ms: Date.now() - started,
     }
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
   }
 }
 

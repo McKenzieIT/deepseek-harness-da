@@ -34,6 +34,20 @@
 - `ctx.evidenceQuery`（beforeAfterDelta）
 - `ctx.evalRunner`（EvalRunnerService seam — 触发 eval run）
 
+### ⚠️ Spec 缺口（code review 发现 — 实现前必读）
+
+现有 `packages/data/semantic-layer-goal/src/no-progress-detector.ts` proto **消费 `RunSummary`**（`pass_rate`/`correct_count`/`regression_count`），但 W6 决议的"连续无改进"是针对 eval **delta** 定义的（`improved === 0`，见 W6 ticket D2）。
+
+**实现 W6a 时必须修正**：
+- detector 的输入应是 **`DeltaReport`**（来自 `eval-runner/compareDelta` 或 `evidenceQuery.beforeAfterDelta`），不是单次 `RunSummary`
+- "无改进"判定 = `delta.summary.improved === 0`（本轮无任何 case flip 向 correct）
+- 连续 N 次 `improved === 0` → block（N=3）
+- proto 的 `extractMetric`/`lastProgressValue` 逻辑（基于 pass_rate 数值比较）应替换为 delta-based 的 `improved === 0` 判定，或保留 pass_rate 作为辅助信号但主信号是 delta
+
+**为什么 delta 而非 pass_rate**：pass_rate 可能因 case 集变化而漂移（新增 case 拉低 rate 但实际无退化）；delta 只看 flip，准确反映"本轮改动有无变好"。这正是 G4/W6 的"eval 填 goal 留的完成证据缺口"语义。
+
+proto 中可保留的：`NoProgressState` 状态机骨架、`resetDetector(preserveBaseline)`、`blockReason` 输出 `code: 'no-progress'`。
+
 ### 行为细节
 - 监听 `goal/changed` 事件：goal 创建/resume 时重置计数器
 - 监听 admitted goal rounds（count increments）：达到 K 的倍数时触发 eval

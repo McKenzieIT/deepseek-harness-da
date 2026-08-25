@@ -112,12 +112,40 @@ describe('runBatch', () => {
     expect(result.cases[0]!.pass_k_results[0]!.infra_error).toBeDefined()
   })
 
+  it('labels wrong (not infra_failure) when all attempts throw a non-infra error', async () => {
+    // A non-infra error: no connectivity/timeout/rate-limit/transient keywords,
+    // so classifyInfraFailure returns null and withInfraRetry rethrows it.
+    // The runner must route this to 'wrong' (the error is recorded on the
+    // attempt via `error`, NOT `infra_error`), never 'infra_failure'.
+    const agent = new FailingAgentResponder(new Error('TypeError: cannot read property of undefined'))
+    const executor = new StubQueryExecutor()
+    const judge = new StubJudgeExecutor()
+
+    const collaborators = buildCollaborators(agent, executor, judge)
+
+    const result = await runBatch([caseA], collaborators, {
+      pass_k: 2,
+      max_infra_retries: 1,
+      skip_health_gate: true,
+    })
+
+    const c = result.cases[0]!
+    expect(c.verdict).toBe('wrong')
+    // Every attempt recorded a non-infra error message, and none set infra_error
+    for (const a of c.pass_k_results) {
+      expect(a.infra_error).toBeUndefined()
+      expect(a.error).toBeDefined()
+      expect(a.execution_match).toBe(false)
+    }
+    // The run-level summary must NOT count this as infra_failure
+    expect(result.summary.infra_failure).toBe(0)
+    expect(result.summary.wrong).toBe(1)
+  })
+
   it('runs multiple cases and computes summary', async () => {
     const { agent, executor, judge } = makeStubs()
-    let questionCount = 0
 
     agent.respond = async (question, _opts) => {
-      questionCount++
       if (question.includes('total revenue')) {
         return { reply: '1000', generated_sql: 'SELECT 1000 AS total' }
       }

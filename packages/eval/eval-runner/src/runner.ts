@@ -69,7 +69,8 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
   // Drive each case
   const verdicts: CaseVerdict[] = []
   for (let i = 0; i < cases.length; i++) {
-    const evalCase = cases[i]!
+    const evalCase = cases[i]
+    if (!evalCase) continue
     const caseVerdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries)
     verdicts.push(caseVerdict)
     if (onProgress) {
@@ -140,8 +141,6 @@ async function runOneAttempt(
     const { result } = await withInfraRetry(
       () => executeAttempt(evalCase, collaborators),
       maxInfraRetries,
-      // Zero-wait sleep for testability — real usage gets the module default
-      undefined,
     )
     return {
       attempt_k: attemptK,
@@ -155,12 +154,14 @@ async function runOneAttempt(
         infra_error: err.message,
       }
     }
-    // Non-infra error — treat as a failed attempt (not infra)
+    // Non-infra error — a model/logic failure that threw. Treat as a failed
+    // attempt (not infra): record the message in `error`, leave `infra_error`
+    // unset so bestOfKVerdict routes this to 'wrong' rather than 'infra_failure'.
     return {
       attempt_k: attemptK,
       execution_match: false,
       delivery_match: false,
-      infra_error: err instanceof Error ? err.message : String(err),
+      error: err instanceof Error ? err.message : String(err),
     }
   }
 }
@@ -226,7 +227,8 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
 function checkResultMatch(actualRows: Record<string, unknown>[], expected: Record<string, unknown>): boolean {
   if (actualRows.length === 0) return false
   // For simple scalar match: check if the first row contains the expected values
-  const firstRow = actualRows[0]!
+  const firstRow = actualRows[0]
+  if (!firstRow) return false
   for (const [key, val] of Object.entries(expected)) {
     if (firstRow[key] !== val) return false
   }

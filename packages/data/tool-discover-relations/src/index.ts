@@ -44,10 +44,38 @@ export function validateTableName(raw: string): string | null {
   return trimmed
 }
 
+/** A join key column pair (dws column ↔ dimension column). */
+interface JoinKey {
+  dws_column: string
+  dim_column: string
+}
+
+/** A dimension_ref as stored on a TableDefinition (raw shape; derivation optional). */
+interface RawDimRef {
+  dim_table: string
+  join_keys: JoinKey[]
+  derivation?: string
+}
+
+/** A normalized dimension ref (derivation resolved to a string). */
+interface DimRef {
+  dim_table: string
+  join_keys: JoinKey[]
+  derivation: string
+}
+
 /** One relation snapshot entry: table + its dimension refs. */
 interface RelationSnapshot {
   table: string
-  refs: Array<{ dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation: string }>
+  refs: DimRef[]
+}
+
+/** A diffed relation added between before/after snapshots. */
+interface AddedRelation {
+  table: string
+  dim_table: string
+  join_keys: JoinKey[]
+  derivation: string
 }
 
 /** The canonical value returned by `discover_relations`'s `execute`. */
@@ -94,7 +122,7 @@ function captureRelationSnapshot(schema: SemanticLayerService, tables?: readonly
     if (!r.success) continue
     const name = r.data.table_name
     if (tables !== undefined && tables.length > 0 && !tables.includes(name)) continue
-    const refs = (r.data as unknown as { dimension_refs?: Array<{ dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation?: string }> }).dimension_refs ?? []
+    const refs = (r.data as unknown as { dimension_refs?: RawDimRef[] }).dimension_refs ?? []
     snapshot.push({
       table: name,
       refs: refs.map(ref => ({
@@ -167,8 +195,8 @@ export function formatDiscoverRelations(value: DiscoverRelationsResult): string 
 function computeAddedRelations(
   before: RelationSnapshot[],
   after: RelationSnapshot[],
-): Array<{ table: string; dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation: string }> {
-  const added: Array<{ table: string; dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; derivation: string }> = []
+): AddedRelation[] {
+  const added: AddedRelation[] = []
   const beforeMap = new Map<string, Set<string>>()
   for (const snap of before) {
     const keys = new Set<string>()
@@ -220,7 +248,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         type: 'text',
         text: formatDiscoverRelations(value),
       }],
-      presentationMeta: (_args, value): any => {
+      presentationMeta: (_args, value): Record<string, unknown> => {
         const v = value as DiscoverRelationsResult
         if (!v.ok || !v._before || !v._after) return { ok: false }
         const added = computeAddedRelations(v._before, v._after)
@@ -239,7 +267,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         throw new Error('discover_relations aborted before enriching')
       }
       const schema = ctx.get('schema')
-      return discoverRelationsResult(schema, args.tables) as any
+      return discoverRelationsResult(schema, args.tables)
     },
     presentCall(args): GenericCallView {
       const tables = args.tables as string[] | undefined

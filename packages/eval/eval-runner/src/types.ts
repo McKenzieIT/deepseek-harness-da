@@ -36,6 +36,8 @@ export interface AttemptResult {
   readonly delivery_match?: boolean
   /** If this attempt hit an infra error, the description. */
   readonly infra_error?: string
+  /** If this attempt hit a non-infra error (model/logic failure that threw), the description. */
+  readonly error?: string
 }
 
 // ─── Case Verdict ──────────────────────────────────────────────────────────────

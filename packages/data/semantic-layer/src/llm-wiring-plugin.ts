@@ -46,11 +46,14 @@ export function apply(ctx: Context, config: Config = {}): void {
         ],
       }
       for await (const chunk of ctx.llm.stream(options)) assembler.push(chunk)
-      const blocks = assembler.blocks()
-      return blocks
+      const text = assembler.blocks()
         .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
         .map(b => b.text)
         .join('')
+      if (text.length === 0) {
+        throw new Error('enrichment-llm-wiring: LLM returned no text blocks')
+      }
+      return text
     },
   }
 

@@ -6,6 +6,8 @@
 import { test, expect } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SemanticLayerService, wireEnrichmentLlm, type TextLlm } from '../src/index.ts'
+import { tableKindPlugin } from '../src/kinds/table-kind.ts'
+import { TableDefinitionSchema } from '../src/types.ts'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -162,8 +164,6 @@ test('F1 — on-write hook path: enrichOnWrite merges with existing refs', async
 })
 
 test('F1 — alternative FK produces multiple independent join edges', () => {
-  const { tableKindPlugin } = require('../src/kinds/table-kind.ts')
-  const { TableDefinitionSchema } = require('../src/types.ts')
   const def = TableDefinitionSchema.parse({
     table_name: 'dws_acc_summary', kind: 'dws', primary_key: [], label_columns: [],
     columns: [

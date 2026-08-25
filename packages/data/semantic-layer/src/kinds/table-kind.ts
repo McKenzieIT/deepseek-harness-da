@@ -90,7 +90,13 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
         // Alternative FKs: each dws_column that maps to the same dim_column is
         // an independent join path. Group by composite key (all non-alternative
         // dim_columns) + one alternative at a time.
-        const compositeKeys = [...byDimCol.entries()].filter(([, g]) => g.length === 1).map(([, g]) => g[0]!)
+        const compositeKeys = [...byDimCol.entries()]
+          .filter(([, g]) => g.length === 1)
+          .map(([, g]) => {
+            const k = g[0]
+            return k ?? null
+          })
+          .filter((k): k is { dws_column: string; dim_column: string } => k !== null)
         const alternativeGroups = [...byDimCol.entries()].filter(([, g]) => g.length > 1)
         for (const [, alternatives] of alternativeGroups) {
           for (const alt of alternatives) {

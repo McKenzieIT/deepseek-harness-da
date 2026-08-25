@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
+import type { GenericCallView, GenericResultView, ToolResult, JsonValue } from '@deepseek-ai/dsh-tools'
 import type { RunResult, RunSummary, DeltaReport } from '@deepseek-ai/dsh-eval-runner'
 
 export const name = 'tool-trigger-eval'
@@ -93,6 +93,50 @@ export function formatTriggerEval(value: TriggerEvalResult): string {
   return lines.join('\n')
 }
 
+/** Project TriggerEvalResult into a JsonValue-compatible record for persistence. */
+export function projectMeta(v: TriggerEvalResult): { [key: string]: JsonValue } {
+  const meta: { [key: string]: JsonValue } = {
+    ok: v.ok,
+    mode: v.mode,
+    runId: v.runId,
+    caseCount: v.caseCount,
+    message: v.message,
+    previousRunId: v.previousRunId,
+  }
+  if (v.summary) {
+    meta.summary = {
+      total: v.summary.total,
+      correct: v.summary.correct,
+      wrong: v.summary.wrong,
+      declined: v.summary.declined,
+      unjudged: v.summary.unjudged,
+      infra_failure: v.summary.infra_failure,
+      pass_rate: v.summary.pass_rate,
+    }
+  } else {
+    meta.summary = null
+  }
+  if (v.delta) {
+    meta.delta = {
+      run_a_id: v.delta.run_a_id,
+      run_b_id: v.delta.run_b_id,
+      flips: v.delta.flips.map(f => ({
+        case_id: f.case_id,
+        old_verdict: f.old_verdict,
+        new_verdict: f.new_verdict,
+      })),
+      summary: {
+        improved: v.delta.summary.improved,
+        regressed: v.delta.summary.regressed,
+        unchanged: v.delta.summary.unchanged,
+      },
+    }
+  } else {
+    meta.delta = null
+  }
+  return meta
+}
+
 export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'trigger_eval',
@@ -120,7 +164,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       render: (_args, value) => [{ type: 'text', text: formatTriggerEval(value as unknown as TriggerEvalResult) }],
       presentationMeta: (_args, value) => {
         const v = value as unknown as TriggerEvalResult
-        return v as unknown as { [key: string]: import('@deepseek-ai/dsh-session').JsonValue }
+        return projectMeta(v)
       },
     },
     async execute(args, exec) {
@@ -152,7 +196,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           caseCount: result.cases.length,
           message: null,
           previousRunId: previousRun?.run_id ?? null,
-        } as any
+        } as unknown as TriggerEvalResult
       }
 
       // Report-last mode: no runner but past results exist via evidenceQuery
@@ -170,7 +214,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
             caseCount: 0,
             message: `Eval runner not wired (collaborators not configured). ${runIds.length} past run(s) available via evidence-query. Configure the eval runner service to trigger new runs.`,
             previousRunId: null,
-          } as any
+          } as unknown as TriggerEvalResult
         }
       }
 
@@ -184,7 +228,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         caseCount: 0,
         message: 'Eval runner service (ctx.evalRunner) is not mounted. The host composition must wire AgentResponder + QueryExecutor + JudgeExecutor collaborators to enable eval runs.',
         previousRunId: null,
-      } as any
+      } as unknown as TriggerEvalResult
     },
     presentCall(): GenericCallView {
       return {

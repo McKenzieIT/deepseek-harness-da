@@ -1,6 +1,11 @@
 /**
  * Hook consuming the EvidenceQueryClient. Fetches coverage on mount;
  * exposes lazy methods for gap analysis, eval results, delta, and health.
+ *
+ * `loading` is derived from an in-flight `pendingCount` counter (not a single
+ * boolean) so concurrent fetches (coverage on mount + gap/eval on asset
+ * selection) do not prematurely flip loading to false while one is still
+ * pending.
  */
 import { useState, useCallback, useEffect } from 'react'
 import type {
@@ -31,9 +36,11 @@ export interface EvidenceQueryState {
   gapAnalysis: GapAnalysisResult | null
   evalResults: EvalResultQueryResult | null
   assetHealth: AssetHealthReport | null
-  delta: ReachabilityDeltaResult | null
+  reachabilityDelta: ReachabilityDeltaResult | null
   evalDelta: EvalDeltaReport | null
   loading: boolean
+  /** Number of in-flight fetches; `loading` is `pendingCount > 0`. */
+  pendingCount: number
   error: string | null
 }
 
@@ -42,10 +49,29 @@ const INITIAL_STATE: EvidenceQueryState = {
   gapAnalysis: null,
   evalResults: null,
   assetHealth: null,
-  delta: null,
+  reachabilityDelta: null,
   evalDelta: null,
   loading: false,
+  pendingCount: 0,
   error: null,
+}
+
+/** Begin a fetch: bump the in-flight counter; loading follows it. */
+function beginFetch(s: EvidenceQueryState): EvidenceQueryState {
+  const pendingCount = s.pendingCount + 1
+  return { ...s, pendingCount, loading: true, error: null }
+}
+
+/** Finish a fetch on success: apply the data patch and decrement the counter. */
+function finishFetch(s: EvidenceQueryState, patch: Partial<EvidenceQueryState>): EvidenceQueryState {
+  const pendingCount = Math.max(0, s.pendingCount - 1)
+  return { ...s, ...patch, pendingCount, loading: pendingCount > 0 }
+}
+
+/** Finish a fetch on failure: decrement the counter and surface the error. */
+function failFetch(s: EvidenceQueryState, err: unknown): EvidenceQueryState {
+  const pendingCount = Math.max(0, s.pendingCount - 1)
+  return { ...s, pendingCount, loading: pendingCount > 0, error: describeError(err) }
 }
 
 export function useEvidenceQuery(client: EvidenceQueryClient | null) {
@@ -53,67 +79,67 @@ export function useEvidenceQuery(client: EvidenceQueryClient | null) {
 
   const fetchCoverage = useCallback(async () => {
     if (!client) return
-    setState(s => ({ ...s, loading: true, error: null }))
+    setState(beginFetch)
     try {
       const coverage = await client.coverageQuery()
-      setState(s => ({ ...s, coverage, loading: false }))
+      setState(s => finishFetch(s, { coverage }))
     } catch (err) {
-      setState(s => ({ ...s, loading: false, error: describeError(err) }))
+      setState(s => failFetch(s, err))
     }
   }, [client])
 
   const fetchGapAnalysis = useCallback(async (assetId: string) => {
     if (!client) return
-    setState(s => ({ ...s, loading: true, error: null }))
+    setState(beginFetch)
     try {
       const gapAnalysis = await client.gapAnalysis(assetId)
-      setState(s => ({ ...s, gapAnalysis, loading: false }))
+      setState(s => finishFetch(s, { gapAnalysis }))
     } catch (err) {
-      setState(s => ({ ...s, loading: false, error: describeError(err) }))
+      setState(s => failFetch(s, err))
     }
   }, [client])
 
   const fetchEvalResults = useCallback(async (filters: EvalResultFilters) => {
     if (!client) return
-    setState(s => ({ ...s, loading: true, error: null }))
+    setState(beginFetch)
     try {
       const evalResults = await client.evalResultQuery(filters)
-      setState(s => ({ ...s, evalResults, loading: false }))
+      setState(s => finishFetch(s, { evalResults }))
     } catch (err) {
-      setState(s => ({ ...s, loading: false, error: describeError(err) }))
+      setState(s => failFetch(s, err))
     }
   }, [client])
 
   const fetchAssetHealth = useCallback(async (assetId: string) => {
     if (!client) return
-    setState(s => ({ ...s, loading: true, error: null }))
+    setState(beginFetch)
     try {
       const assetHealth = await client.assetHealth(assetId)
-      setState(s => ({ ...s, assetHealth, loading: false }))
+      setState(s => finishFetch(s, { assetHealth }))
     } catch (err) {
-      setState(s => ({ ...s, loading: false, error: describeError(err) }))
+      setState(s => failFetch(s, err))
     }
   }, [client])
 
-  const fetchDelta = useCallback(async (relation: ProposedRelation) => {
+  const fetchReachabilityDelta = useCallback(async (relation: ProposedRelation) => {
     if (!client) return
-    setState(s => ({ ...s, loading: true, error: null }))
+    setState(beginFetch)
     try {
-      const delta = await client.reachabilityDelta(relation)
-      setState(s => ({ ...s, delta, loading: false }))
+      const reachabilityDelta = await client.reachabilityDelta(relation)
+      setState(s => finishFetch(s, { reachabilityDelta }))
     } catch (err) {
-      setState(s => ({ ...s, loading: false, error: describeError(err) }))
+      setState(s => failFetch(s, err))
     }
   }, [client])
 
   const fetchEvalDelta = useCallback(async (runIdA: string, runIdB: string) => {
     if (!client) return
-    setState(s => ({ ...s, loading: true, error: null }))
+    setState(beginFetch)
     try {
       const evalDelta = await client.beforeAfterDelta(runIdA, runIdB)
-      setState(s => ({ ...s, evalDelta, loading: false }))
+      setState(s => finishFetch(s, { evalDelta }))
     } catch (err) {
-      setState(s => ({ ...s, loading: false, error: describeError(err) }))
+      setState(s => failFetch(s, err))
     }
   }, [client])
 
@@ -136,7 +162,7 @@ export function useEvidenceQuery(client: EvidenceQueryClient | null) {
     fetchGapAnalysis,
     fetchEvalResults,
     fetchAssetHealth,
-    fetchDelta,
+    fetchReachabilityDelta,
     fetchEvalDelta,
     triggerEval,
   }
