@@ -80,3 +80,23 @@
 
 ### 结论
 M4 逻辑充分验证（70/70 + 真实 not_found 分支）。完整 reply+auto-persist 真实闭环的剩余验证走 web server 多轮交互（game_xxx_wrong patch + 修好 args 已就绪）：发"查 DAU"→答"ieu_cdm"→看 tool calls 面板有无 `update_table_config(table_name=dws_10000251_univ_acc_summary_di, project=ieu_cdm)`。
+
+## Verification 盲点（2026-08-25 session-ccfb2ae1，真实 web 多轮）
+
+**场景**：web（game_xxx_wrong patch + 修好 args）→ 查 DAU → not_found → present_clarification → 用户答 ieu_cdm → LLM **主动**调 update_table_config ×3 → query ieu_cdm 成功 → advance interpretation。
+
+**override 持久化成功** ✓：`examples/k11-semantic-layer/tables/dws_10000251_univ_acc_summary_di.yaml` 第 73 行写入 `project: ieu_cdm`（mtime 19:08）。下次同表 qualifyTable 用 ieu_cdm，不再 not_found/问 project——自进化目标达成。
+
+**但 3 次 update_table_config 是 LLM 主动调的，非 M4 autoPersistOverride**：
+- [4910] update_table_config 在 query [4993] **之前** → 不可能是 autoPersistOverride（它在 EXECUTION completed 后触发）
+- LLM 这次没跳过（按 inject 指引主动调了 3 次）→ M4 原问题（LLM 跳过）这次没复现 → autoPersistOverride 的 fallback 价值没体现
+
+**M4 autoPersistOverride 是否在 [5588] query success 后触发——盲点（无法从 session 日志确认）**：
+- `autoPersistOverride` 走 `this.ctx.tools?.execute(...)` fire-and-forget，**不产生 session tool/call event**（与 LLM tool 调用的记录路径不同）
+- session tool/call 的 callId 都是空 ''，无法用 callId=`phase-gate:auto_persist` 区分
+- 所以无法从 session 日志判断 autoPersistOverride 在 [5588] completed 时是否真触发
+
+**修复建议（下次 session）**：
+- `autoPersistOverride` 加 `this.ctx.logger.info(\`[M4] auto-persist: \${table} → \${project}\`)`（honestDecline 已用 logger.info 模式）
+- 或让 autoPersistOverride 的 ctx.tools.execute 调用记 session tool/call（callId=phase-gate:auto_persist 区分），便于日志确认触发
+- 验证方法：用 game_xxx_wrong patch + 一张**override 未写**的新表，强制 LLM 跳过 update_table_config（改 persona/inject 去掉"call update_table_config"指引），看 autoPersistOverride 是否在 query success 后自动兜底触发 + 写 override
