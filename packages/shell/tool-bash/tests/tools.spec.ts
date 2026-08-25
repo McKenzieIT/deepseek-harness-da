@@ -1,4 +1,5 @@
 import { mkdtempSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -98,6 +99,21 @@ async function callUntilText(
     await new Promise(resolve => setTimeout(resolve, 20))
   }
   throw new Error(`${name} output did not include ${JSON.stringify(expected)}; last text was ${JSON.stringify(last !== undefined ? text(last) : '')}`)
+}
+
+/** Wait until a fixture marker file exists, bounded so a stalled command cannot hang the test. */
+async function waitForFile(path: string, timeoutMs = 5_000): Promise<void> {
+  const started = Date.now()
+  for (;;) {
+    try {
+      await readFile(path)
+      return
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    if (Date.now() - started > timeoutMs) throw new Error(`waitForFile timed out: ${path}`)
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
 }
 
 class RecordingSandboxExecutor extends ShellExecutor {
@@ -271,10 +287,20 @@ describe('bash tool', () => {
     // after our timer fired must NOT look like a clean success. (bash may
     // print "Terminated" to stderr for the killed sleep — environment
     // dependent — so assert the marker, not the exact body.)
+    //
+    // The trap must be armed BEFORE the timeout signal lands: if it loses
+    // that race bash exits 143 (propagating the killed sleep's signal) and
+    // the exit-code marker wrongly appears. The marker file is touched only
+    // after the trap is installed, so awaiting it before the timer can fire
+    // guarantees the trap wins; a generous timeout keeps the marker ahead of
+    // the timer under load (trap-installation vs signal-delivery).
     const ctx = await setup()
-    const result = await call(ctx, 'bash', { command: 'trap "exit 0" TERM; sleep 60', description: 'test command', timeoutMs: 100 })
+    const marker = join(spillDir, `trap-ready-${Date.now()}.marker`)
+    const pending = call(ctx, 'bash', { command: `trap "exit 0" TERM; touch ${marker}; sleep 60`, description: 'test command', timeoutMs: 1000 })
+    await waitForFile(marker) // the trap is armed before the timer fires
+    const result = await pending
     expect(result.isError).toBe(false)
-    expect(text(result)).toContain('[timed out after 100ms]')
+    expect(text(result)).toContain('[timed out after 1000ms]')
     expect(text(result)).not.toContain('[exit code:')
   })
 
