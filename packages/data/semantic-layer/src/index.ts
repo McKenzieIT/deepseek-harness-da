@@ -147,6 +147,19 @@ export interface SchemaProvider {
   sample(tableName: string, n?: number): Promise<string>
 }
 
+// ── ScopeRegistry: optional per-scope registry (P1) ───────────────────
+// Structural — no static dep on @deepseek-ai/dsh-scope-registry, the same probe
+// pattern as SchemaProvider above and tool-search-data-sources' SchemaCorpusSource.
+// When the scope-registry plugin is mounted, semanticRoot/scopeId delegate to
+// the active scope; otherwise the Service falls back to its static mount config.
+/** Optional per-scope registry probed via `ctx.get('scopes')` (undefined when unmounted). */
+interface ScopeRegistryLike {
+  /** The active scope definition, or undefined when no scope is active. */
+  active(): { readonly id: string; readonly semanticRoot: string } | undefined
+  /** The active scope id, or undefined when no scope is active. */
+  activeId(): string | undefined
+}
+
 // ── ctx.schema Service Definition (Q2: covers live-ODPS + substrate) ───
 /** Configuration for the `ctx.schema` Cordis Service (semantic-layer root + default scope id). */
 export interface SemanticLayerConfig {
@@ -192,10 +205,31 @@ export class SemanticLayerService extends Service {
 
   private readonly registry = new DataSourceRegistry()
 
+  /** P1: strictly-monotonic counter bumped when the active scope id changes
+   * (detected lazily in corpusVersion() — no event listener, so the constructor
+   * has no ctx side-effect and test stand-ins without ctx.on still construct).
+   * Combined into corpusVersion() so the value changes on every scope switch —
+   * including switch-BACK, where the new scope's per-path counter can otherwise
+   * collide with the cached version and serve the wrong scope's corpus (the
+   * silent semantic-layer leak tool-search-data-sources would otherwise hit). */
+  private scopeEpoch = 0
+  /** P1: the active scope id seen at the last corpusVersion() call. Drives lazy
+   * switch-detection (undefined until the first call). */
+  private lastScopeId: string | undefined
+  /** P1: false until the first corpusVersion() call, so the first call records
+   * the id without bumping (an unmounted scope-registry thus keeps epoch=0 =
+   * unchanged pre-P1 behavior). */
+  private hasObservedScope = false
+
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
     this.cfg = config
     for (const p of [eventKindPlugin, tableKindPlugin]) this.registry.register(p)
+  }
+
+  /** P1: the optional scope-registry, probed by name (undefined when unmounted). */
+  private scopes(): ScopeRegistryLike | undefined {
+    return this.ctx.get('scopes') as ScopeRegistryLike | undefined
   }
 
   /**
@@ -390,13 +424,21 @@ export class SemanticLayerService extends Service {
     }
   }
 
-  /** The semantic-layer scope root (the dir with config.yaml/events/tables), or empty string when unset. */
+  /** The semantic-layer scope root (the dir with config.yaml/events/tables), or
+   * empty string when unset. P1: delegates to `ctx.scopes.active().semanticRoot`
+   * when the scope-registry is mounted; otherwise falls back to static config. */
   get semanticRoot(): string {
+    const active = this.scopes()?.active()
+    if (active !== undefined) return active.semanticRoot
     return this.cfg.semanticRoot ?? ''
   }
 
-  /** The default scope id for Tier-2 audit + schema discovery, or empty string when unset. */
+  /** The default scope id for Tier-2 audit + schema discovery, or empty string
+   * when unset. P1: delegates to `ctx.scopes.activeId()` when the scope-registry
+   * is mounted; otherwise falls back to static config. */
   get scopeId(): string {
+    const id = this.scopes()?.activeId()
+    if (id !== undefined) return id
     return this.cfg.scopeId ?? ''
   }
 
@@ -481,7 +523,30 @@ export class SemanticLayerService extends Service {
    * @returns the current corpus-version counter.
    */
   corpusVersion(): number {
-    return getCorpusVersionFromLayer(this.semanticRoot)
+    // P1: lazily detect an active-scope change (no event listener — keeps the
+    // constructor free of ctx side-effects, so test stand-ins without ctx.on
+    // still construct the Service). When the active scope id differs from the
+    // last call, bump the epoch; the first call only records the id (no bump, so
+    // an unmounted scope-registry keeps epoch=0 = unchanged pre-P1 behavior).
+    //
+    // Combine the epoch with the substrate's per-path content counter: the
+    // consumer (tool-search-data-sources) caches its BM25 linker in a
+    // WeakMap<instance, {version}> keyed by THIS instance + the number returned;
+    // the instance is the same singleton across scope switches, so the number
+    // alone must change on every switch — including switch-BACK, where the new
+    // scope's per-path counter can otherwise collide with the cached value and
+    // serve the wrong scope's corpus. 1e6 offsets the small per-path counter out
+    // of the epoch's bits (per-path counters stay << 1e6; if a single path ever
+    // reached 1e6 writes/session its value would collide with the next epoch's
+    // zero-counter — reopening the stale-linker bug — so do not raise this
+    // constant lightly; Number.MAX_SAFE_INTEGER allows ~9e9 switches).
+    const currentId = this.scopes()?.activeId()
+    if (this.hasObservedScope && currentId !== this.lastScopeId) {
+      this.scopeEpoch++
+    }
+    this.lastScopeId = currentId
+    this.hasObservedScope = true
+    return this.scopeEpoch * 1_000_000 + getCorpusVersionFromLayer(this.semanticRoot)
   }
 
   // ── live-ODPS schema (deferred; throws until a provider is mounted) ──

@@ -1289,6 +1289,9 @@ importers:
       '@deepseek-ai/dsh-schema-gateway':
         specifier: workspace:^
         version: link:../../data/schema-gateway
+      '@deepseek-ai/dsh-scope-registry':
+        specifier: workspace:^
+        version: link:../../data/scope-registry
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../../data/semantic-layer
@@ -4146,6 +4149,9 @@ importers:
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
+      '@deepseek-ai/dsh-scope-registry':
+        specifier: workspace:^
+        version: link:../scope-registry
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9

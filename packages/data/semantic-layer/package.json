@@ -49,6 +49,7 @@
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@deepseek-ai/dsh-scope-registry": "workspace:^",
     "@types/js-yaml": "^4.0.9"
   }
 }

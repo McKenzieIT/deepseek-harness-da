@@ -51,6 +51,7 @@
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^",
     "@deepseek-ai/dsh-schema-gateway": "workspace:^",
+    "@deepseek-ai/dsh-scope-registry": "workspace:^",
     "@deepseek-ai/dsh-semantic-layer": "workspace:^"
   },
   "peerDependencies": {

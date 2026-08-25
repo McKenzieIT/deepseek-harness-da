@@ -86,7 +86,7 @@ Cordis `Service` exposing the per-agent critic guard context as `ctx.criticCtx`.
 forAgent(agentId: string): CriticCtx | undefined
 ```
 
-Source: [`packages/data/phase-gate/src/phase-gate.ts:951`](../../packages/data/phase-gate/src/phase-gate.ts)
+Source: [`packages/data/phase-gate/src/phase-gate.ts:984`](../../packages/data/phase-gate/src/phase-gate.ts)
 
 <a id="ctxembedder--embedderservice-abstract-seam"></a>
 
@@ -452,7 +452,7 @@ async syncWrite( tableMetas: readonly TableMeta[], opts: { readonly dimTableName
 async updateTableMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }>
 ```
 
-Source: [`packages/data/semantic-layer/src/index.ts:180`](../../packages/data/semantic-layer/src/index.ts)
+Source: [`packages/data/semantic-layer/src/index.ts:193`](../../packages/data/semantic-layer/src/index.ts)
 
 <a id="ctxscopes--scoperegistryservice"></a>
 

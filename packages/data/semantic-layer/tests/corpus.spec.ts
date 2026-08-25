@@ -245,7 +245,7 @@ test('getCorpusVersion bumps after invalidateCaches(semanticLayer); independent 
 // Service exposes for tool-search's structural cast.
 test('SemanticLayerService.corpusVersion() reflects invalidateCaches(semanticRoot)', () => {
   const layer = '/d2f-svc-version-test'
-  const ctx = { reflect: { provide: () => {} } } as unknown as Context
+  const ctx = { reflect: { provide: () => {} }, get: () => undefined } as unknown as Context
   const svc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '' })
   const before = svc.corpusVersion()
   invalidateCaches(layer)
@@ -337,7 +337,7 @@ test('SemanticLayerService.loadRetrievalCorpus() honors corpusVariant config (D2
     terminology: [{ slang: '日活 / DAU', maps_to: { events: ['role.online'] }, definition: 'dau' }],
   }))
   try {
-    const ctx = { reflect: { provide: () => {} } } as unknown as Context
+    const ctx = { reflect: { provide: () => {} }, get: () => undefined } as unknown as Context
     // term-only Service: slang packed, params NOT (the variant config threads)
     const termSvc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '', corpusVariant: 'term-only' })
     const termCorpus = termSvc.loadRetrievalCorpus()

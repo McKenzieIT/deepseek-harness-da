@@ -122,7 +122,7 @@
         # qualified DAU's table as game_10000251.dws_... which ODPS could
         # not find. qualifyTable on the query provider reads this; the
         # semantic layer no longer qualifies.
-        defaultProject: game_xxx_wrong
+        defaultProject: ieu_cdm
         # rbi §3 阶段D true-timeout: the DAU query (full event_view
         # partition scan over 7 days + GET_JSON_OBJECT) takes >60s on real
         # ODPS, so the Provider Config default 60_000 times out the MCP
@@ -135,14 +135,30 @@
 #       name: '@deepseek-ai/dsh-embedder-fakehash'
 #     - id: retrieval          # ctx.retrieval seam — OPT-IN (P5b shipped @deepseek-ai/dsh-retrieval-inproc hybrid BM25+vec+RRF k=60 over ctx.embedder, InferenceError->BM25-only degradation; reranker peer after RRF). Uncomment + mount (alongside an embedder provider) to swap search_data_sources off the local Bm25Linker (additive, RetrievalLinker contract unchanged). Left commented pending D2c keep/regress.
 #       name: '@deepseek-ai/dsh-retrieval-inproc'
+#     # ── scope registry (P1) ──────────────────────────────────────────
+#     # Per-scope namespace registry (ctx.scopes). semantic-layer delegates its
+#     # semanticRoot/scopeId to the active scope here, so each scope's semantic
+#     # layer loads in isolation; the active scope is runtime-mutable via the
+#     # registry file below (CLI/API/Web UI). Unmounted or no active scope =>
+#     # semantic-layer falls back to its static semanticRoot (no behavior change).
+#     # P1 wiring. The token→scope binding + access gate (P9, mid-term) is NOT
+#     # yet wired, so per-query/per-tenant scope selection is a process-global
+#     # active-scope switch today — not automatic per question.
+    - id: scope-registry
+      name: '@deepseek-ai/dsh-scope-registry'
+      config:
+        # quoted: '~' is YAML's null indicator, so the path must be a quoted
+        # string for scope-registry to receive it verbatim and expand '~/'.
+        registryPath: '~/.dsh/data/scopes.yaml'
 #     # ── semantic layer (P6) - first-class (map: 语义层一等公民) ───────────
     - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
       name: '@deepseek-ai/dsh-semantic-layer'
       config:
-        # K11 dev default: the semantic-layer root carrying the K11 event_view
-        # corpus (config.yaml/events/tables/terminology.yaml). Per-scope roots
-        # will come from ctx.scopes (scope-registry) once that package ships;
-        # until then semantic-layer reads this mount-time config directly.
+        # K11 dev default + per-scope fallback: the semantic-layer root carrying
+        # the K11 event_view corpus. Now that scope-registry (above) is mounted,
+        # semanticRoot delegates to the active scope's root when a scope is
+        # active; this static value is the fallback when no scope is active (so
+        # the unscoped K11 default keeps working unchanged).
         semanticRoot: ./examples/k11-semantic-layer
     - id: enrichment-llm-wiring  # wire ctx.llm into ctx.schema enrichment (F1: production two-round discovery)
       name: '@deepseek-ai/dsh-semantic-layer/src/llm-wiring-plugin.ts'
