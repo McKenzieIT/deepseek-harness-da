@@ -53,3 +53,30 @@
   - 新 private method `autoPersistOverride`
   - `resetQuestionScoped`：awaiting_clarification 保留、full-reset 清 null
 - 7 个新测试全 pass（69/69）
+
+## Verification（2026-08-25）
+
+### 单元 + E2E 测试（70/70 全绿）
+- 7 单元测试 + 1 完整 E2E（not_found → record self_evolution_table → reply → query success → autoPersistOverride → update_table_config(table, project) 正确参数 → advance INTERPRETATION）
+- E2E 断言 `update_table_config` 被调且参数 = `{table_name: 'dws_10000251_univ_acc_summary_di', project: 'ieu_cdm'}`
+
+### 真实 LLM 验证（headless 单轮，真 data-agent）✓
+- patch: `~/.dsh/cordis.patch.yml` override `query-engine` defaultProject=game_xxx_wrong
+- 验证 not_found → present_clarification 闭环触发
+- finalResponse: "等待您确认该表的 ODPS 项目，以便修正表路径后重新执行查询。"
+- 证明：patch 生效（game_xxx_wrong → not_found）+ M3 闭环（present_clarification HALT 问 project）+ M4 not_found 记录分支走通（executionDecision not_found → extractTableNames → set self_evolution_table → fallback + inject）
+
+### 完整 reply+auto-persist 闭环（真实 runtime）—— 受限
+- **phase-gate state（self_evolution_table）进程内 in-memory，不跨进程持久** → 完整闭环必须单进程多轮
+- headless 一次性进程，单轮，无法 reply
+- **SDK bin（dsh-jsonrpc-agent）boot 成功，但 sdk-jsonrpc-server 的 agent create 不组合 preset**（server.ts:219 注释明确 "No preset composition: this server's compositions keep the model-facing..."）→ agent 跑成 code-agent（bash/glob/read），不是 data-agent。SDK 设计：preset 组合是 host 责任，server 只管 wire。
+- web API 是 apiproxy RPC over HTTP+WebSocket，curl 自测不现实
+- **唯一已就绪的真 data-agent 多轮路径 = web server**（长驻 host，agent create 组合了 data-agent preset）
+
+### 环境发现（有价值，下次 self-evolution 真实测试会踩同样坑）
+1. **Cordis patch config 是 replace 非 deep-merge**：home patch 覆盖 query-engine config 时，整个 config 被替换（不是 merge defaultProject 进 bundle 的 config）。若只写 `defaultProject`，会丢 `args`（sidecar 脚本路径）→ Provider spawn node 无脚本 → stdin-eval JSON-RPC → MCP -32001 60s 超时。正确做法：home patch 重写 query-engine 的**完整 config**（args + credMode + defaultProject + toolCallTimeoutMs）。
+2. **sdk-jsonrpc-server 不组合 preset**（设计如此）—— SDK bin 路径无法跑 data-agent，只能 web/headless host。
+3. maxc sidecar 握手 60s 超时（-32001）的根因常常是上述 #1 的 args 丢失，而非 maxc 本身故障（手动跑 sidecar 正常）。
+
+### 结论
+M4 逻辑充分验证（70/70 + 真实 not_found 分支）。完整 reply+auto-persist 真实闭环的剩余验证走 web server 多轮交互（game_xxx_wrong patch + 修好 args 已就绪）：发"查 DAU"→答"ieu_cdm"→看 tool calls 面板有无 `update_table_config(table_name=dws_10000251_univ_acc_summary_di, project=ieu_cdm)`。
