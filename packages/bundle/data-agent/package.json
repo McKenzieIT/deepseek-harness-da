@@ -48,11 +48,20 @@
     "@deepseek-ai/dsh-goal-eval-policy": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@deepseek-ai/dsh-phase-gate": "workspace:^",
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^",
+    "@deepseek-ai/dsh-query-tool": "workspace:^",
     "@deepseek-ai/dsh-schema-gateway": "workspace:^",
     "@deepseek-ai/dsh-scope-registry": "workspace:^",
-    "@deepseek-ai/dsh-semantic-layer": "workspace:^"
+    "@deepseek-ai/dsh-semantic-layer": "workspace:^",
+    "@deepseek-ai/dsh-tool-critique-sql": "workspace:^",
+    "@deepseek-ai/dsh-tool-evaluate-sql-quality": "workspace:^",
+    "@deepseek-ai/dsh-tool-load-event-definition": "workspace:^",
+    "@deepseek-ai/dsh-tool-load-table-definition": "workspace:^",
+    "@deepseek-ai/dsh-tool-present-clarification": "workspace:^",
+    "@deepseek-ai/dsh-tool-search-data-sources": "workspace:^",
+    "@deepseek-ai/dsh-tool-update-table-config": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-invariants": "workspace:^",
