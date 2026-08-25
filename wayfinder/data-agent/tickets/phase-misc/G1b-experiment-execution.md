@@ -2,7 +2,7 @@
 
 **Type**: prototype
 **Phase**: misc
-**Status**: Re-blocked (2026-08-21) — 原依赖 P7b/P11b/P13b/G1 全 resolved 但**不足**：真 ODPS 执行路径未建（query-maxcompute stand-in、real pyodps + tool-query-data deferred/未注册）→ execution-match 不可测；另无 eval runner（P11c deferred）+ B/C/D preset 不存在（A 自身 data-tool roster 是 stub）。Re-block on **P4c（真 ODPS 路径，硬门）+ P11c（eval runner）+ G1c（变体 preset + data-tool roster + honesty）**。详见下「可行性 finding」。
+**Status**: Partially resolved (2026-08-25) — C_prior resolved; model probe complete; eval pipeline validated end-to-end (LLM→SQL→MaxCompute→judge); full variant comparison (A/B/C/D) requires HarnessAgentResponder (eval CLI tests Nl2sqlEngine directly, not the agent loop with presets). Full matrix (~5h) is an async batch job. See `../../research/g1b-experiment-report.md`.
 **Assignee**: (unclaimed)
 
 **Question**: 跑 G1 设计的 staged 实验（2×2 变体 × 2 模型配置）+ 应用决策规则 + 出报告，答「ship 默认编排 + per-model 路由」。
