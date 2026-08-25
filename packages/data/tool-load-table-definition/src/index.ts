@@ -103,6 +103,7 @@ export type TableDimensionRef = {
  */
 export type TableModel = {
   readonly table_name?: string
+  readonly qualified_name?: string
   readonly table_comment?: string
   readonly description?: string
   readonly domains?: string[]
@@ -200,6 +201,7 @@ function sanitizeSubstrateError(e: unknown): string {
 export function loadTableDefinitionResult(
   schema: SemanticLayerService | undefined,
   tableName: string,
+  qualify?: (tableName: string, override?: string) => string,
 ): LoadTableResult {
   const name = validateDefinitionName(tableName)
   if (name === null) {
@@ -218,10 +220,15 @@ export function loadTableDefinitionResult(
     if (table === null) {
       return { found: false, message: `table not found: ${JSON.stringify(name)}` }
     }
-    // C: the table is returned bare (no project-qualified name) — qualification
-    // moved to the query provider (ctx.query.qualifyTable, engine-agnostic);
-    // the semantic layer no longer qualifies table names.
-    return { found: true, table: projectTable(table) }
+    // M3 #1 A: load returns qualified_name (ctx.query.qualifyTable) so the LLM
+    // — which copies load's structured table_name into SQL FROM — uses the
+    // project-qualified name, not the bare one. Without this, search qualifies
+    // the candidate id but load returns bare, and the LLM uses load's bare
+    // table_name (the authority) → SQL bare → sidecar default fallback hides
+    // TABLE_NOT_FOUND → self-evolution never triggers.
+    const projected = projectTable(table)
+    const qn = qualify?.(name, table.project)
+    return { found: true, table: qn !== undefined && qn !== name ? { ...projected, qualified_name: qn } : projected }
   } catch (e) {
     return { found: false, message: `substrate error: ${sanitizeSubstrateError(e)}` }
   }
@@ -236,7 +243,9 @@ export function loadTableDefinitionResult(
  */
 export function formatTableDefinition(table: TableModel): string {
   const lines: string[] = []
-  if (table.table_name !== undefined) {
+  if (table.qualified_name !== undefined) {
+    lines.push(`table: ${table.qualified_name}${table.kind === 'dim' ? ' (dim)' : ''}`)
+  } else if (table.table_name !== undefined) {
     lines.push(`table: ${table.table_name}${table.kind === 'dim' ? ' (dim)' : ''}`)
   }
   if (table.table_comment !== undefined && table.table_comment !== '') lines.push(`comment: ${table.table_comment}`)
@@ -314,6 +323,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
             additionalProperties: false,
             properties: {
               table_name: { type: 'string' },
+              qualified_name: { type: 'string' },
               table_comment: { type: 'string' },
               description: { type: 'string' },
               domains: { type: 'array', items: { type: 'string' } },
@@ -398,7 +408,9 @@ export function apply(ctx: Context, _config: Config = {}): void {
         throw new Error('load_table_definition aborted before loading')
       }
       const schema = ctx.get('schema')
-      return loadTableDefinitionResult(schema, args.table_name)
+      const q = ctx.get('query') as { qualifyTable?: (n: string, o?: string) => string } | undefined
+      const qualify = q?.qualifyTable?.bind(q)
+      return loadTableDefinitionResult(schema, args.table_name, qualify)
     },
   }))
 }
