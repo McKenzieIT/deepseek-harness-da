@@ -29,6 +29,10 @@ export const Config: z<Config> = z.object({
 })
 
 export function apply(ctx: Context, config: Config = {}): void {
+  // Deployment-default provider/model. 'aga' is the in-house LLM gateway
+  // provider name; 'qwen3.7-max' is the enrichment default. Both are
+  // overridable via plugin config (provider/model) and should be pinned to the
+  // deployment's actual gateway in bundle config rather than relying on these.
   const provider = config.provider || 'aga'
   const model = config.model || 'qwen3.7-max'
 
