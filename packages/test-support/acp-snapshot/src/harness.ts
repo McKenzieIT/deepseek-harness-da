@@ -21,7 +21,6 @@ import { existsSync, realpathSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, delimiter } from 'node:path'
-import { vi } from 'vitest'
 import {
   ClientSideConnection,
   PROTOCOL_VERSION,
@@ -559,14 +558,14 @@ async function waitForPersistedTurnStart(
   minimumTurn?: number,
 ): Promise<void> {
   let invalidRecord: { error: unknown } | undefined
-  await vi.waitFor(async () => {
+  await waitForCondition(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     let openTurn: number | undefined
     try {
       openTurn = log === undefined ? undefined : latestOpenTurn(log.content)
     } catch (error) {
       // A malformed persisted record is a scenario bug, not a not-yet state:
-      // vi.waitFor retries every callback throw, so capture the validation
+      // waitForCondition retries every callback throw, so capture the validation
       // failure, resolve the wait, and rethrow immediately below.
       invalidRecord = { error }
       return
@@ -590,7 +589,7 @@ async function waitForPersistedTurnEnd(
   sessionId: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await vi.waitFor(async () => {
+  await waitForCondition(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     if (log === undefined || !latestTurnIsClosed(log.content)) {
       throw new Error(`snapshot-harness: session "${sessionId}" did not persist turn/end within ${timeoutMs}ms`)
@@ -612,7 +611,7 @@ async function waitForPersistedChildTurnEnd(
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
   minimumTurn = 1,
 ): Promise<void> {
-  await vi.waitFor(async () => {
+  await waitForCondition(async () => {
     const log = (await harvestSessionLogs(root))[child]
     if (log === undefined || !latestTurnIsClosed(log.content)
       || !hasRequestHeaderAfterDescriptor(log.content)
@@ -639,7 +638,7 @@ async function waitForPersistedGoalPhase(
   phase: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await vi.waitFor(async () => {
+  await waitForCondition(async () => {
     const content = (await harvestSessionLogs(root)).find(log => log.id === sessionId)?.content
     const matched = content?.split('\n').filter(Boolean).some((line) => {
       const event = JSON.parse(line) as { type?: unknown; data?: { goal?: { phase?: unknown } } }
@@ -658,7 +657,7 @@ async function waitForPersistedInboxMessage(
   text: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await vi.waitFor(async () => {
+  await waitForCondition(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     const matched = log?.content.split('\n').some((line) => {
       if (line.length === 0) return false
@@ -693,7 +692,7 @@ async function waitForPersistedTitleAfterTurnEnd(
   sessionId: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await vi.waitFor(async () => {
+  await waitForCondition(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     if (log === undefined || !latestTitleFollowsTurnEnd(log.content)) {
       throw new Error(`snapshot-harness: session "${sessionId}" did not persist session/title after turn/end within ${timeoutMs}ms`)
@@ -708,7 +707,7 @@ async function waitForPersistedEventAfterTurnEnd(
   type: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await vi.waitFor(async () => {
+  await waitForCondition(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     if (log === undefined || !latestEventFollowsTurnEnd(log.content, type)) {
       throw new Error(`snapshot-harness: session "${sessionId}" did not persist ${type} after turn/end within ${timeoutMs}ms`)
@@ -723,7 +722,7 @@ async function waitForWorkspaceFile(
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
   const target = join(cwd, path)
-  await vi.waitFor(() => {
+  await waitForCondition(() => {
     if (!existsSync(target)) {
       throw new Error(`snapshot-harness: workspace file "${path}" did not appear within ${timeoutMs}ms`)
     }
