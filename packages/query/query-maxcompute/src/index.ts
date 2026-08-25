@@ -30,21 +30,37 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { z as zod } from 'zod'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 import { QueryEngine } from '@deepseek-ai/dsh-query/src/index.ts'
-import { credentialRef } from '@deepseek-ai/dsh-credentials'
+import { credentialRef, scopeId as brandScopeId } from '@deepseek-ai/dsh-credentials'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import type { InstanceId, QueryOutcome, QueryRequest, QuerySpec, ScopeId } from '@deepseek-ai/dsh-query/src/index.ts'
 
 /**
- * ODPS credential references resolved per call. PAT-not-in-process.env: the
- * sidecar is spawned scrubbed and creds are pushed per call via the
- * `set_credentials` control tool — never the spawn env (R6 (b) + G4 HOLE-C).
+ * ODPS credential references — the 4-key creds map pushed to the sidecar via
+ * `set_credentials` (contract unchanged; stand-in/maxc sidecars read these
+ * keys). P4e: only ACCESS_ID/ACCESS_KEY are SECRETS resolved per-scope via the
+ * credentials seam `{scopeId}` (P12); PROJECT/ENDPOINT are non-secret per-scope
+ * config from the scope-registry `metadata.maxcompute`. PAT-not-in-env: the
+ * sidecar is spawned scrubbed and creds are pushed per call — never the spawn
+ * env (R6 (b) + G4 HOLE-C).
  */
-const ODPS_REFS: readonly CredentialRef[] = [
-  credentialRef('ODPS_ACCESS_ID'),
-  credentialRef('ODPS_ACCESS_KEY'),
-  credentialRef('ODPS_PROJECT'),
-  credentialRef('ODPS_ENDPOINT'),
-]
+const ODPS_ACCESS_ID = credentialRef('ODPS_ACCESS_ID')
+const ODPS_ACCESS_KEY = credentialRef('ODPS_ACCESS_KEY')
+const ODPS_PROJECT = credentialRef('ODPS_PROJECT')
+const ODPS_ENDPOINT = credentialRef('ODPS_ENDPOINT')
+
+/**
+ * Optional per-scope registry probed via `ctx.get('scopes')` (undefined when
+ * unmounted) — the same structural, no-static-dep pattern semantic-layer's P1
+ * uses. The Provider resolves the per-call scope's non-secret ODPS
+ * endpoint/project from `metadata.maxcompute`; when unmounted, qualifyTable
+ * falls back to static `defaultProject`.
+ */
+interface ScopeRegistryLike {
+  /** A scope by id, or undefined when not registered. */
+  get(id: string): { readonly id: string; readonly metadata?: Readonly<Record<string, unknown>> } | undefined
+  /** The active scope, or undefined when none is active. */
+  active(): { readonly id: string; readonly metadata?: Readonly<Record<string, unknown>> } | undefined
+}
 
 /**
  * Raw sidecar tool names. da programs ALL of these by raw name; none enter
@@ -84,20 +100,24 @@ export interface Config {
   /** Max consecutive re-spawn attempts before the crash-loop gives up (G4 Q1). */
   crashLoopMaxAttempts?: number
   /**
-   * Credential flow for the sidecar (P4d). `'push'` (default): the da resolves
-   * the 4 ODPS refs per call and pushes them via `set_credentials`
-   * (PAT-not-in-env). `'sidecar-self'`: the maxc-backed sidecar self-auths
-   * from its own config (P4c: `set_credentials` → no-op, da pushes no ODPS
-   * creds) — `pushCredentials` is a no-op and `execute` proceeds straight to
-   * the sidecar. `static inject = ['credentials']` is unchanged.
+   * Credential flow for the sidecar (P4d; P4e per-scope). `'push'` (default):
+   * the da resolves the per-call scope's data-source per call — endpoint/project
+   * from the scope-registry `metadata.maxcompute`, access_id/key from the
+   * credentials seam via `{scopeId}` (P12) — and pushes the 4-key creds map via
+   * `set_credentials` (PAT-not-in-env). `'sidecar-self'`: the maxc-backed
+   * sidecar self-auths from its own config (P4c: `set_credentials` → no-op, da
+   * pushes no ODPS creds) — `pushCredentials` is a no-op and `execute` proceeds
+   * straight to the sidecar. `static inject = ['credentials']` is unchanged.
    */
   credMode?: 'push' | 'sidecar-self'
   /**
-   * Default ODPS project for table-name qualification (C: engine-agnostic).
-   * The single source of truth for the project prefix — supersedes the
-   * misread `config.yaml project.name` (a game scope id, NOT an ODPS
-   * project). cordis.patch.yml fills `ieu_cdm`. When empty, `qualifyTable`
-   * returns the bare table name (graceful degradation).
+   * Fallback ODPS project for table-name qualification (C: engine-agnostic).
+   * P4e: the per-scope project (`metadata.maxcompute.project` of the active
+   * scope) is primary; this static value is the fallback when the scope-registry
+   * is unmounted or the active scope has no project (cordis.patch.yml fills
+   * `ieu_cdm`). Supersedes the misread `config.yaml project.name` (a game scope
+   * id, NOT an ODPS project). When empty too, `qualifyTable` returns the bare
+   * table name (graceful degradation).
    */
   defaultProject?: string
 }
@@ -333,30 +353,102 @@ export class MaxComputeQueryEngine extends QueryEngine {
     return { state: 'failed', error: `undecodable ${tool} result`, failureKind: 'transport', sql: '' }
   }
 
-  // ── per-call cred resolve + idempotent set_credentials (D3, G4 HOLE-C drop) ─
+  // ── P4e: per-scope data-source resolution + idempotent set_credentials ──
 
-  private async pushCredentials(scopeId: ScopeId): Promise<void> {
-    // P4d: a maxc-backed sidecar self-auths from its own config (P4c:
-    // set_credentials → no-op; da pushes no ODPS creds). Skip the per-call
-    // resolve+push entirely — no ctx.credentials.resolve, no throw, no
-    // set_credentials call — so execute proceeds straight to the sidecar.
-    if (this.cfg.credMode === 'sidecar-self') return
-    const creds: Record<string, string> = {}
-    for (const ref of ODPS_REFS) {
-      const resolved = await this.ctx.credentials.resolve(ref)
-      if (resolved === undefined) {
-        // A missing ODPS cred is a misconfiguration — PAT-not-in-env means it
-        // must come via the credentials seam. Fail fast rather than silently
-        // shrinking the sidecar's stored set and dropping the connection cache.
-        throw new Error(`query-maxcompute: missing ODPS credential "${ref}" for scope "${scopeId}"; provision it via the credentials seam`)
-      }
-      creds[ref] = resolved.value
+  /** P4e: the optional scope-registry, probed by name (undefined when unmounted). */
+  private scopes(): ScopeRegistryLike | undefined {
+    return this.ctx.get('scopes') as ScopeRegistryLike | undefined
+  }
+
+  /**
+   * P4e: the per-call scope's ODPS data-source — endpoint/project (non-secret)
+   * from the scope-registry `metadata.maxcompute`, access_id/key (secrets) from
+   * `ctx.credentials` lazily per call via `{scopeId}` (P12 per-scope). This is
+   * the cross-scope leak-closure point: the prior `resolve(ref)` (no address)
+   * resolved the GLOBAL value — dormant under `sidecar-self`, a live leak under
+   * push mode (a query for scope A used scope B's shared creds/project).
+   * Fail-closed: an unknown scope, a scope missing endpoint/project, or a
+   * missing secret ref throws — never a silent fallback to a global default
+   * that could serve the wrong scope's data.
+   *
+   * @param scopeId the per-call scope (QueryRequest.scopeId; server-resolved,
+   * client-can't-supply per P9).
+   * @returns the resolved data-source {endpoint, project, accessId, accessKey}.
+   */
+  protected async resolveDataSource(scopeId: ScopeId): Promise<{
+    endpoint: string
+    project: string
+    accessId: string
+    accessKey: string
+  }> {
+    const { endpoint, project } = this.resolveScopeDataSourceConfig(scopeId)
+    const accessId = await this.resolveCredOrThrow(ODPS_ACCESS_ID, scopeId)
+    const accessKey = await this.resolveCredOrThrow(ODPS_ACCESS_KEY, scopeId)
+    return { endpoint, project, accessId, accessKey }
+  }
+
+  /**
+   * P4e: the non-secret per-scope endpoint/project from the scope-registry's
+   * `metadata.maxcompute`. Fail-closed on an unknown scope or a scope missing
+   * either field — no global fallback (would serve the wrong scope's data).
+   */
+  private resolveScopeDataSourceConfig(scopeId: ScopeId): { endpoint: string; project: string } {
+    const scope = this.scopes()?.get(scopeId)
+    if (scope === undefined) {
+      throw new Error(`query-maxcompute: scope "${scopeId}" not registered — provision it in scopes.yaml (P4e fail-closed; no cross-scope fallback)`)
     }
-    // Idempotent on the sidecar: unchanged → no-op (preserve the per-scope
-    // connection cache + reuse); changed → store new + drop that scope's
-    // connection cache (mirror reverse-bi invalidate_credential). In-flight
-    // queries hold their old ScopeConnection to completion (G4 HOLE-C drop).
+    const mc = scope.metadata?.maxcompute as { endpoint?: string; project?: string } | undefined
+    if (typeof mc?.endpoint !== 'string' || mc.endpoint === '' || typeof mc?.project !== 'string' || mc.project === '') {
+      throw new Error(`query-maxcompute: scope "${scopeId}" missing metadata.maxcompute.{endpoint,project} in scopes.yaml (P4e fail-closed)`)
+    }
+    return { endpoint: mc.endpoint, project: mc.project }
+  }
+
+  /**
+   * P4e: resolve one secret credential ref per-scope via `ctx.credentials`
+   * (P12 `{scopeId}`), lazily per call. Fail-closed when unprovisioned —
+   * PAT-not-in-env means it must come via the seam.
+   */
+  private async resolveCredOrThrow(ref: CredentialRef, scopeId: ScopeId): Promise<string> {
+    const resolved = await this.ctx.credentials.resolve(ref, { scopeId: brandScopeId(scopeId) })
+    if (resolved === undefined) {
+      throw new Error(`query-maxcompute: missing ODPS credential "${ref}" for scope "${scopeId}"; provision it via the credentials seam (P4e fail-closed)`)
+    }
+    return resolved.value
+  }
+
+  /**
+   * P4e: the sidecar `set_credentials` call — a protected seam so the per-scope
+   * push is observable without spawning the sidecar (a recorder overrides this
+   * in tests). Idempotent on the sidecar: unchanged → no-op (preserve the
+   * per-scope connection cache); changed → store new + drop that scope's cache.
+   * In-flight queries hold their old connection to completion (G4 HOLE-C drop).
+   */
+  protected async sendCredentials(scopeId: ScopeId, creds: Record<string, string>): Promise<void> {
     await this.callControl(TOOLS.setCredentials, { scope_id: scopeId, creds })
+  }
+
+  /**
+   * P4e: per-call cred resolve + idempotent set_credentials (D3, G4 HOLE-C
+   * drop). Resolves the per-call scope's data-source (endpoint/project from
+   * scope-registry metadata; access_id/key from the credentials seam via
+   * `{scopeId}`) and pushes the 4-key creds map per call. Fail-closed: an
+   * unknown / unprovisioned scope throws rather than silently shrinking the
+   * sidecar's stored set or falling back to a global default.
+   *
+   * P4d: `credMode: 'sidecar-self'` skips the push entirely (a maxc-backed
+   * sidecar self-auths from its own config; the da pushes no ODPS creds).
+   */
+  async pushCredentials(scopeId: ScopeId): Promise<void> {
+    if (this.cfg.credMode === 'sidecar-self') return
+    const { endpoint, project, accessId, accessKey } = await this.resolveDataSource(scopeId)
+    const creds: Record<string, string> = {
+      [ODPS_ACCESS_ID]: accessId,
+      [ODPS_ACCESS_KEY]: accessKey,
+      [ODPS_PROJECT]: project,
+      [ODPS_ENDPOINT]: endpoint,
+    }
+    await this.sendCredentials(scopeId, creds)
   }
 
   // ── the ctx.query seam (P4 B: execute / attach / cancel / getProgress) ────
@@ -390,19 +482,30 @@ export class MaxComputeQueryEngine extends QueryEngine {
   /**
    * Qualify a bare table name with its project prefix (C: engine-agnostic).
    *
-   * Resolution: `override` (per-table, Task 3) → `Config.defaultProject`
-   * (cordis.patch.yml fills `ieu_cdm`) → bare table name. Supersedes the
-   * SemanticLayerService.qualifyTableName path (which misread `config.yaml
-   * project.name` — a game scope id). Pure: never touches the sidecar.
+   * P4e: the project is per-scope — resolved from the ACTIVE scope's
+   * `metadata.maxcompute.project` (the prior single `defaultProject` was the
+   * P4c "one config covers all scopes" assumption the P9 revision overturned).
+   * A per-table `override` still wins; when the registry is unmounted or the
+   * active scope has no project, the static `defaultProject` is the fallback
+   * (graceful degradation so a misconfigured engine still surfaces a prefix).
+   * SQL-gen callers pass no per-call scopeId, so this resolves via the active
+   * scope — the same scope the semantic-layer singles out (P1: active scope
+   * == the query's scope). Pure: never touches the sidecar.
    *
    * @param tableName The bare table name to qualify.
-   * @param override Optional per-table project override (wins over defaultProject).
-   * @returns The qualified `<project>.<tableName>`, or the bare `tableName`
-   * when no project resolves (empty default + no override).
+   * @param override Optional per-table project override (wins over the active scope + defaultProject).
+   * @returns The qualified `<project>.<tableName>`, or the bare `tableName` when no project resolves.
    */
   override qualifyTable(tableName: string, override?: string): string {
-    const project = override ?? this.cfg.defaultProject
+    const project = override ?? this.activeScopeProject() ?? this.cfg.defaultProject
     return project ? `${project}.${tableName}` : tableName
+  }
+
+  /** P4e: the active scope's ODPS project (from `metadata.maxcompute.project`), or undefined when unmounted/absent. */
+  private activeScopeProject(): string | undefined {
+    const scope = this.scopes()?.active()
+    const mc = scope?.metadata?.maxcompute as { project?: string } | undefined
+    return typeof mc?.project === 'string' && mc.project !== '' ? mc.project : undefined
   }
 
   /**

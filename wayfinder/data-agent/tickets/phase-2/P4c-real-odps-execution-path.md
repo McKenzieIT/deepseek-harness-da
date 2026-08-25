@@ -3,7 +3,7 @@
 **Type**: prototype
 **Phase**: 2
 **Status**: Unblocked (2026-08-21 maxc de-risk) — real MaxCompute 凭证 + intranet reachability blocker **RESOLVED** via 本机 maxc（`~/.maxc/config_ieu_cdm.yaml.bak` valid creds、ieu_cdm 可达、case 037 expected SQL 重跑返 4336=expected.result_value，数据 preserved）。P4c buildable（maxc-backed sidecar 替 P4b stand-in，Provider 不变）。
-**Blocked by**: ~~real MaxCompute 凭证 provisioning（Task analog T1）~~ RESOLVED 2026-08-21（maxc）+ ~~intranet reachability~~ RESOLVED 2026-08-21（maxc `select 1` + case SQL 成功）+ P4b（resolved——stand-in Provider 骨架）+ P9（resolved——per-scope 凭证寻址；RBI eval 全 5 scope 同在 ieu_cdm project，scope 在表名 `dws_<scope>_` 内非独立 project，单 config 覆盖）+ P10（resolved——intranet）
+**Blocked by**: ~~real MaxCompute 凭证 provisioning（Task analog T1）~~ RESOLVED 2026-08-21（maxc）+ ~~intranet reachability~~ RESOLVED 2026-08-21（maxc `select 1` + case SQL 成功）+ P4b（resolved——stand-in Provider 骨架）+ P9（resolved——per-scope 凭证寻址；RBI eval 全 5 scope 同在 ieu_cdm project，scope 在表名 `dws_<scope>_` 内非独立 project，单 config 覆盖）〔⚠️ **2026-08-25 P9 revision supersedes**: 「单 config 覆盖」假设不成立——scope 可在不同 region/project（X63/10000334 overseas `hdyl_data_sg` 非 `ieu_cdm`）；per-scope data-source resolution → [P4e](P4e-per-scope-odps-data-source-resolution.md)〕+ P10（resolved——intranet）
 
 **From**: P4b Deferred（`../phase-2/P4b-query-maxcompute-hardening.md`「query-trio 剩余生产 + 真实 sidecar deferred」）+ map Not-yet-specified「query-trio 剩余生产」雾（graduated 2026-08-21）+ G1b 可行性 finding（real-ODPS = execution-match 硬门）+ **2026-08-21 maxc de-risk**（case 037 expected SQL → 4336 reproduced）
 

@@ -15,6 +15,19 @@
 
 ---
 
+## Revision (2026-08-25) — re-scope the "忠实重实现 RBI" boundary
+
+The original Resolution (below) drew the "faithfully re-implement RBI" boundary **too wide**: it re-implemented RBI's `OdpsConfig` **business customization** (singleton row + shared access_id/key + `domestic{...}`/`overseas{...}` two-region fields + scope picks region). That is RBI's *business* (its deployment has exactly two regions + one shared ODPS account), **not 取数核心**. dsh-data-agent re-implements RBI's **取数核心 + 如何更好取数** (NL→SQL pipeline, semantic layer, retrieval, query execution, guards, eval, self-evolution, ontology/critic) — NOT RBI's business customizations (deployment regions, specific game scope ids, shared-account assumption, specific ODPS projects like `ieu_cdm`/`hdyl_data_sg`).
+
+**Supersedes** these parts of the original Resolution (kept below as historical record):
+
+- **`OdpsConfig`** → generalized to **per-scope data-source**: each scope declares its ODPS endpoint/project/creds (arbitrary — no hardcoded `domestic`/`overseas` region names, no singleton, no shared-cred assumption). The query engine resolves the active scope's data-source + passes it to the sidecar per call (`set_credentials` per scope). **Adding a new project/region = register a scope (config), not a source-code change** (open-closed). The RBI singleton + two-region + shared-cred model is RBI business — not re-implemented.
+- **per-scope credential addressing**: recommend **option (ii)** (per-scope 4-ref creds — `ODPS_ACCESS_ID/KEY/PROJECT/ENDPOINT` per scope, admin pre-resolves into P12 keychain by `{scopeId}`) — the *general* design. The original recommendation of **(i)** (global access_id/key + per-scope project/endpoint by region) was RBI-business-bound (shared account + two regions); superseded by (ii).
+
+**Preserved** (取数核心-adjacent, not business — these ARE re-implemented): the `scope_id` per-scope data-source selection mechanism, `AccessLink` token→scope binding (server-resolved, client can't supply scope), fail-closed authz (`scope_allowed_for_tenant`/`can_access`), per-user login, the `Tenant`/`ScopeRecord`/`AccessLink`/`SystemConfig` models.
+
+**Surfaced — P4c's single-config assumption is wrong under this revision**: P4c's "Blocked by P9——per-scope 凭证寻址…RBI eval 全 5 scope 同在 `ieu_cdm` project…单 config 覆盖" assumed all scopes share one ODPS project (the 5 RBI *eval* scopes happen to be in `ieu_cdm`). That does **not** hold generally — a scope's `config.yaml` may declare a different region/project (X63/10000334 declares `environment: overseas-prod` + `workspace: hdyl_data_sg`, not `ieu_cdm`). P4c's single-config resolution is therefore incomplete. → Graduates [P4e per-scope ODPS data-source resolution](P4e-per-scope-odps-data-source-resolution.md): implement the general per-scope data-source resolution in the query engine per this revised design.
+
 ## Resolution / Design（2026-08-20 resolved，/prototype + 2 subagent cited 调研 + grill）
 
 **架构 = 单一 additive 插件 `@deepseek-ai/dsh-admin`**，承载 (a) 入站 access gate + (b) admin 管理面 + (c) per-user 登录，共享 `ctx.storageDomain` store + `Service`/`ctx.effect` 生命周期。**100% additive，不碰 core**——所需钩子全在：`ctx.webServer.register`（HTTP 路由，成熟 additive 模式——`client-connection`/`frontend-static`/`client/modules` 同款）、`ctx.storageDomain.open(defineDomain(spec))`（sqlite `u_<unit>_<table>`，自动建表无 DDL）、`ctx.effect`/`Service` 子类（生命周期 HMR 自动 unwind）、data-agent bundle `insert`（**已预留 `- id: admin` 占位**，`packages/bundle/data-agent/cordis.patch.yml`，P9 uncomment + 填 name）。storage 家族（`dsh-storage`/`sqlite`/`domain`）不在 base，须同 `insert` 三行。**不拆双 app**：共享 domain handle（重复 open 同名 domain 被拒）、共享登录态、webserver 路由表 composition 契约（重复 path 抛错）、合 map ⑤e + 占位。
