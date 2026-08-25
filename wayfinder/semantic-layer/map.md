@@ -71,15 +71,28 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [P4 指标计算引擎](tickets/P4-ontology-metric-engine.md) — eval 验收（5 cases Level 2.5 vs Level 2）+ 生产 tool `execute_metric`（UNDERSTANDING 阶段确定性执行，0 LLM 开销）；phase-gate 白名单 + agent prompt METRIC SHORTCUT；14 tool tests + 55 phase-gate tests + 139 semantic-layer tests 全绿
 - [F1 DWS→DIM 发现正式化](tickets/F1-dws-dim-discovery-formalization.md) — enrichment-llm-wiring Cordis 插件接入 ctx.llm→ctx.schema；alternative FK 精化（多替代外键→独立 joins 边）；events deterministic external_refs 已填充（92/445）；188 tests 全绿
 - [R6 Web UI 实现方案调研](research/r6-web-ui-implementation.md) — UI 插件 pattern 直接套用；需新增 `SchemaGateway`（TypertRemoteService）投影 ctx.schema（当前无 Remote 接口）；Bm25Linker 复用经 Remote 暴露；React Flow 推荐（无现成依赖，血缘图划出 v1）；R5 全部可行无架构阻塞；增量交付 v1-a 浏览→v1-b 编辑→v2 质量监控
+- [W1 SchemaGateway](tickets/W1-schema-gateway.md) — `@deepseek-ai/dsh-schema-gateway` 新包已实现；9 Remote 方法（list{Tables,Events,Metrics} + get{Table,Event,Metric}Definition + search + listDomains + getCoverageStats）；cached Bm25Linker + D2f invalidation；11 tests 全绿
 - [G4 Web UI 范围与交互决策](tickets/G4-web-ui-scope-and-interaction.md) — Web UI=独立完整管理界面（非 CLI 补充）；语义层管理=一个 agent=**goal ⊕ eval/evidence 层**（eval 填 goal 留的完成证据缺口，桥接管理 agent(goal)/数据 agent(pipeline)）；v1=**B 布局**（资产为首+证据侧栏）+ domain-first nav + **tiered evidence**（per-mutation 结构性+per-batch 全量 eval）+ 直接写+Tier-2 audit；③ 自驱循环 deferred（同 map，W6，③-gated）；复用 `packages/eval/eval` 核心**不重构**，建 P11c runner/delta/case-port(C)/live-wiring；eval 跑全量；v1=①证据基建+②人驱管理面；毕业 W1-W6 实现票；**增量交付修订**：W5 拆为 W5-lite（仅←W1，资产能力完整交付）/ W5-full（←W1+W4，证据能力渐进亮起）；blocking 边：W1、W2 无前置（并行根）；W3←W2；W4←W1；**W5-lite←W1（可独立 ship）**；W5-full←W4；W6←W3+W4+W5-full+goal
-
+- [W5b UI 规范对齐 — SUPERSEDED](tickets/W5b-ui-convention-alignment.md) — "modal vs inline panel"是错误的范式；语义层管理界面 = 管理 agent 对话面（非 CRUD 浏览器/modal）。前提推翻，由 G5 取代。
+- [G5 管理 agent 交互范式设计](tickets/G5-management-agent-interaction.md) — 范式=管理 agent 对话面；v1/终态 UI 无区别；trigger=sidebar footer→resume/create session；tools=9 个（search_schema/get_definition/list_domains/discover_relations/execute_metric/edit_definition/get_coverage/trigger_eval/goal）；detail panel=被动模式；SemanticLayerShell 重写、View/EvidenceSidebar/GoalDock 废弃、AssetDetail/CoveragePanel 复用。毕业实现票 W7-W10。**W5-lite "用户可用"阻塞更新**：原阻塞者 W5b 已 superseded → 新阻塞者为 W8（trigger）+ W9（presenters）
+- [W7 管理 agent preset](tickets/W7-management-agent-preset.md) — `semantic-layer-management` preset 已创建（agent.cordis.yml）：挂载 4 个管理 tool（search_schema/get_definition/list_domains/get_coverage）+ persona prompt
+- [W8 Sidebar trigger 重写](tickets/W8-sidebar-trigger-rewrite.md) — SemanticLayerShell 重写为 session trigger：点击 sidebar footer action 创建/恢复管理 agent 对话；CSS module + alias token 暗色模式；locale dict 清理
+- [W9 核心 tool presenters](tickets/W9-core-tool-presenters.md) — search_schema/get_definition/get_coverage 三个 tool 实现 render intent（presentCall + presentResult + presentationMeta）+ 对话中结构化卡片渲染（keyed toolview 注册）；generic card 类型
+- [W10 discover_relations presenter](tickets/W10-discover-relations-presenter.md) — discover_relations tool 实现 before/after diff 渲染：execute 中捕获 before 快照 → enrichment → after 快照 → presentationMeta 投射 added relations；对话中 diff 卡（+标记 + relation type badge）
+- **W5-lite "用户可用" 达成**：W1 ✅ + W8 ✅ + W9 ✅ → 语义层管理 agent 已用户可用（trigger + preset + tool presenters 全链路 ship）；W5-full 仍等 W4（evidence-query-backend）
+- [W5-full 证据能力渐进亮起](tickets/W5-ui-semantic-layer-v1.md) — trigger_eval tool（`@deepseek-ai/dsh-tool-trigger-eval` + EvalRunnerService seam）+ Evidence Panel 组件库（EvidenceSidebar/CoveragePanel/EvalTrajectory/EvalDeltaView/GapPanel）+ TriggerEvalRow presenter + useEvidenceQuery hook（含 beforeAfterDelta）+ preset 活化；19 tests 全绿
+- [W2 Case-set port](tickets/W2-case-set-port.md) — 161 K11 cases port 为 da EvalCase YAML，schema 全绿；分层标注（L1-L4 × 7 intent × linear/iterative）+ 覆盖矩阵（161/162 DWS，28/159 DIM 仅结构性证据）完成
+- **W3 Pre-work caveat 验证** — caveat-a 触发（四阶段 agent 产生 4+ assistant/message per interval → ProtocolError）；修复=方案 A（adapter 取最后一条，不改 eval core）；caveat-b 不触发（query_data arg=`sql` 已在 SQL_KEYS）
+- [W3 Eval evidence engine](tickets/W3-eval-evidence-engine.md) — batch runner（`runBatch` + infra-retry）+ JSONL 持久化 + `computeDelta` before/after flip + health-gate 前置检查 + adapter 放宽（count≥1，last query_data tool/call）；240 eval tests 全绿；live e2e with-key deferred
+- [W4 Evidence-query backend](tickets/W4-evidence-query-backend.md) — `FileBackedEvalResultStore`（读 W3 JSONL）+ `beforeAfterDelta(runIdA, runIdB)` 真实持久化接入 + `EvalCaseFlip`/`EvalDeltaReport` 类型；33 evidence-query tests 全绿；W5-full 解除阻塞
+- [W6 ③ 自驱循环 + B→A 演进](tickets/W6-autonomous-goal-loop-and-btoa-evolution.md) — Layered 双层（model 自判主路径 + policy plugin backstop K=3/N=3）；Context plugin 注入 `<eval_evidence>` block；GoalDock = sidebar 内联卡片（与 dock GoalBar 共存）；B→A = feature flag + auto-flip（3+ eval runs）；毕业 W6a-W6e 实现票
 ## Not yet specified
 
 - **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化
 - **Terminology 挂载点**：全局注入（`ctx.terminology`）vs per-kind 构造参数。当前 `eventKindPlugin.toCorpusItem` 已接受 `terminology?` 参数，需统一为一种模式
 - **定义版本管理**：数据源定义（TableDefinition/EventDefinition/MetricDefinition）的变更历史追踪方案。最小方案 = Tier-2 audit 已有 who/when/what；完整方案 = git-backed 或 append-only changelog
-- **③ 自驱循环细节**（W6 ticket 框架已立，③-gated）：管理 agent preset 设计、no-progress block 阈值（连续 N 轮无改进的 N 取值）、eval→goal 反馈接线细节——v1 ①② 栈完成后填充
-- **P11c runner/持久化的跨 map 归属**：`P11c` = eval batch runner + 结果持久化 + pass_at_k 报告的共享资产（原定义于 data-agent map P11 系列下，但 W3 同样需要）。data-agent map G1b（pipeline-vs-goal 实验）与本 map W3（证据引擎）共用同一 runner。归属策略 = 谁先建谁拥有，另一边复用接口
+- **③ 自驱循环实现细节**：W6 已决策（Layered/K=3/N=3/context-plugin/auto-flip），实现票 W6a-W6e 已立。剩余细节：edit_definition 包是否已实现（W6e 前置）、EvalRunnerService seam 的真实 wiring（W6a 前置）、auto-flip 阈值的初始校准
+- **P11c runner/持久化的跨 map 归属**：已由 W3 建设，归本 map 拥有（`packages/eval/eval/src/runner.ts` + `persistence.ts`）。data-agent map G1b 复用接口
 
 ## Out of scope
 

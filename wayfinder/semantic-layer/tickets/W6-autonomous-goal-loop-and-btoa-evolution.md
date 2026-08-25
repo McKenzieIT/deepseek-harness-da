@@ -1,32 +1,86 @@
-# W6 — ③ 自驱循环 + B→A 演进（③-gated，deferred）
+# W6 — ③ 自驱循环 + B→A 演进
 
 **Type**: task（③ 阶段）
-**Status**: Open（③-gated，deferred — v1 栈完成后展开）
-**Blocked by**: W3 + W4 + W5（v1 ①② 栈完成）+ goal（已有，data-agent map）
+**Status**: Closed
+**Blocked by**: W3 ✅ + W4 ✅ + W5-full ✅ + goal ✅
 
 ## Question
 
-G4 决议 ③ = 自主 goal 循环，v1 之后展开（同 map，不迁 data-agent map）。本 ticket 立框架，**细节 ③ sharp 后填**（管理 agent preset 形状、no-progress 阈值调参是本 ticket 的工作，非现在 spec）。
+G4 决议 ③ = 自主 goal 循环，v1 之后展开。本 ticket 决策 ③ 的具体设计：no-progress 检测机制、eval→goal 反馈接线、GoalDock 形态、B→A 演进触发方式。
 
-### ③ 自驱循环
-1. **管理 agent preset**（goal-orchestrated，区别数据 agent 的 pipeline）：工具集 = 诊断 / 生成 / 验证 / 解释 / 批量 + eval feedback
-2. **eval→goal 集成策略**：W3 的 before/after delta → 管理 agent 下一 round context + **block-on-no-progress**（连续 N 轮无改进 → goal block `no-progress`，N 待调）
-3. **goal-round-driver 组合 eval**：round/batch 边界跑全量 eval（W3），delta 喂回 goal
+## Resolution
 
-### B→A 演进（dashboard-hero）
-4. 证据模块（W5 约束 #1 可提升）**提升为落地** + **翻转默认路由**（#2）+ 资产工作区**降为 drill 目标**（#4）。eval 历史积累足够支撑 trajectory 视图时触发。
+W6 经 grilling 逐项决策。管理 agent 的自驱循环 = **Layered 双层互补**架构（model 自判为主 + policy backstop）+ **Context plugin 注入 eval evidence** + **GoalDock 在 sidebar 内联** + **B→A 自动翻转**。
 
-## 自治边界
+### 架构决议
 
-goal = **同会话、人类门控、模型自判完成**（非后台守护；"打开会话不开工"是有意安全设计）。always-on 巡检/定期**不在此 ticket**（需 scheduler，超出 goal 设计，G4 已 rule out of scope）。
+#### D1: no-progress 检测 = Layered（model + policy）
 
-## 验收（③ 阶段展开时细化）
+两层互补：
+- **主路径**（model 层）：eval delta 通过 context plugin 注入每轮 round context → 模型看到证据后自行决定是否 block（用现有 tool-goal `blockedAfterConsecutiveRounds` 机制，阈值 3）
+- **Backstop**（policy 层）：新 Cordis 插件 `goal-eval-policy`，每 K rounds 自动触发 eval，追踪连续无改进次数，达到 N 时程序化调 `ctx.goals.block({ code: 'no-progress', message })`
 
-- [ ] 自驱循环可朝 goal 推进 + eval 证据自校准 + block-on-no-progress 生效
-- [ ] B→A 演进落地（证据模块提升为落地页 + 路由翻转 + 工作区降为 drill）
+**设计原理**：
+- 填 goal README 的 known limitation "no independent evaluator"
+- Model 得 eval 数据能做更好的方向调整（不止 block 决策）
+- Policy 作安全网——即使模型失灵也能收敛
+- 符合 goal "model self-judges" 哲学（policy 是补充非替代）
+
+#### D2: K/N 阈值 = K=3, N=3（configurable）
+
+- K = 每 3 个 goal rounds 自动触发一次全量 eval（`goalEvalIntervalRounds`）
+- N = 连续 3 次 eval 无改进后 force-block（`noProgressThreshold`）
+- 效果：最迟 9 rounds 无进展后 block（model 层可能在 3 rounds 就自 block）
+- 两参数均为 Cordis config，部署时可调无需改代码
+
+**调参指标**：
+- 误 block 率（block 后人类 resume 成功 → N 应提高）
+- 浪费 rounds（model 自 block 先于 policy → K/N 可放宽）
+- goal 完成率（过低 → 可能 N 太小）
+- delta 轨迹形态（oscillating 不应计为"无改进"——`improved > 0` = 有改进）
+
+#### D3: eval delta 注入 = Context plugin
+
+新 Cordis context plugin `goal-eval-context`：
+- 当 goal 活跃 + eval 结果存在时，在 agent pre-step 注入 `<eval_evidence>` block
+- 内容：最近一次 eval pass_rate + delta summary (improved/regressed/unchanged) + consecutive_no_improvement_count + 建议（无进展时提示换方向）
+- 与 goal-round-driver 完全解耦（可独立启用/禁用）
+- 读取 `ctx.evidenceQuery` 而非直接读文件
+
+#### D4: GoalDock = Sidebar 内联卡片
+
+EvidenceSidebar 顶部新增 GoalDock 区域：
+- 显示：objective（截断）+ phase badge + round/maxGoalRounds + 最近 eval pass_rate 迷你 sparkline
+- 与会话 dock 的 GoalBar **共存**（不是迁移）
+- 复用 `ui-goal` 的 GoalBar pattern（projection 读取、verb face）
+- 新增 evidence 融合部分（sparkline 从 ctx.evidenceQuery 读取）
+
+#### D5: B→A 演进 = Feature flag + 自动翻转
+
+- 双路由并存：`/workspace`（B 资产工作区）+ `/dashboard`（A 证据 dashboard）
+- 默认 landing 由 feature flag 控制（`layoutMode: 'B' | 'A' | 'auto'`）
+- `auto` 模式：当 eval 历史超过阈值（如 3+ eval runs with delta data）→ 自动翻转为 A 落地
+- B 的所有组件不推翻——A = 证据模块提升为 hero + workspace 降为 drill 目标
+- 满足 W5 四条演进约束（证据=可提升模块 / 路由可切换 / 共享 evidence-query / 资产可深链）
+
+### 自治边界（重申）
+
+goal = 同会话、人类门控、模型自判完成。"打开会话不开工"是有意安全设计。always-on 巡检/定期**不在此 ticket**（需 scheduler，超出 goal 设计）。
+
+### 毕业实现 ticket
+
+- **W6a** — goal-eval-policy plugin（no-progress backstop）
+- **W6b** — goal-eval-context plugin（eval delta → round context 注入）
+- **W6c** — GoalDock in EvidenceSidebar（UI）
+- **W6d** — B→A layout evolution（路由 + 自动翻转）
+- **W6e** — Management agent persona ③ 演进（prompt + tool activation）
+
+Blocking：W6a、W6b、W6c 并行无前置；W6d←W6c；W6e←W6b。
 
 ## 参考
 
-- G4（③ 决议 / goal⊕eval 架构 / 4 演进约束 / 自治边界 / goal 不是 daemon）
-- 依赖：W3（eval engine+delta）、W4（evidence backend）、W5（UI+4 约束）、goal 机制（data-agent map `packages/goal`）
-- 跨 map：eval 核心 + case 集 + goal 均为复用平台依赖
+- G4（③ 决议 / goal⊕eval / 4 演进约束 / 自治边界）
+- W3（eval engine + delta）、W4（evidence-query backend）、W5-full（UI + 4 约束）
+- goal 机制（packages/goal — GoalService / goal-round-driver / tool-goal）
+- tool-goal `blockedAfterConsecutiveRounds: 3`（model 自 block 门槛）
+- evidence-query `beforeAfterDelta()`（policy 读取 delta 的接口）
