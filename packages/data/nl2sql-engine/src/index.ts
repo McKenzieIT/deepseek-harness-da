@@ -26,7 +26,7 @@
  */
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { loadConventions, type EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
+import { loadConventions, type EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.js'
 
 // ── logic exports (P7b preset / phase-gate / eval consume) ───────────────
 export * from './types.ts'
@@ -34,9 +34,9 @@ export * from './types.ts'
 // re-exported so a consumer building Nl2sqlEngine collaborators (e.g. the
 // eval-runner-service ctx adapter) imports it from the engine package root
 // rather than a cross-package deep .ts path.
-export type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
+export type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.js'
 export { critiqueSql, sqlSyntaxGate, extractSqlCandidate, extractJsonPaths, extractTableNames, hasPartitionFilter, hasSelectStar, type CriticResult } from './critic.ts'
-export { buildPrompt, type EventDefinitionLite, type BuildPromptArgs } from './prompt.ts'
+export { buildPrompt, buildEvalPrompt, type EventDefinitionLite, type BuildPromptArgs, type BuildEvalPromptArgs } from './prompt.ts'
 export { renderConventionsPrompt } from './conventions.ts'
 export { Bm25Linker, BM25Okapi, buildCorpus, tokenize, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from './bm25-linking.ts'
 export { Nl2sqlEngine, type EngineDeps, type EngineRunArgs, type EngineRunResult, type EngineTraceEntry } from './engine.ts'

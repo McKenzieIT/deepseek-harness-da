@@ -45,7 +45,7 @@ import type {
   RelationGraphLike,
   EngineConventions,
 } from '@deepseek-ai/dsh-nl2sql-engine'
-import type { QueryEngine, QueryRequest, ScopeId, InstanceId, QueryOutcome } from '@deepseek-ai/dsh-query/src/index.ts'
+import type { QueryEngine, QueryRequest, ScopeId, InstanceId, QueryOutcome } from '@deepseek-ai/dsh-query'
 import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
