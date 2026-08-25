@@ -670,6 +670,7 @@ export class PhaseGate {
     const project = m[1]
     const execute = this.ctx.tools?.execute
     if (!execute) return
+    this.ctx.logger.info(`[M4] auto-persist: ${table} → ${project}`)
     const ac = new AbortController()
     execute({
       callId: CallId('phase-gate:auto_persist'),
@@ -726,7 +727,8 @@ export class PhaseGate {
     }
     const sql = extractSqlCandidate(s.phase_output)
     if (sql !== null) s.last_sql = sql // F2: same-source for EXECUTION query_data
-    const gate = sqlSyntaxGate(s.phase_output, criticCtx)
+    const gateInput = sql !== null || !s.last_sql ? s.phase_output : `\`\`\`sql\n${s.last_sql}\n\`\`\``
+    const gate = sqlSyntaxGate(gateInput, criticCtx)
     if (!gate.passed) return new GateResult(false, gate.reason) // adapt nl2sql-engine -> phase-gate GateResult
     // P-DA2: transition relax — when the critic tools (critique_sql_tool +
     // evaluate_sql_quality) are unregistered (the default — not yet shipped),

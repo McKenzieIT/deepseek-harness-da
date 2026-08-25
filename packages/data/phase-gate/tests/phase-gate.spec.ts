@@ -1363,3 +1363,48 @@ describe('G-DA4 — critic candidate_tables includes event_view table from load_
     expect(text).not.toMatch(/correct the SQL and RE-call critique_sql_tool/)
   })
 })
+
+describe('M5: generationGate fallback — critique_sql_tool s.last_sql used when phase_output has no SQL', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('M5: phase_output without SQL + s.last_sql from critique → generationGate passes (no retry)', async () => {
+    const { agent, injected } = makeAgent('m5a')
+    const g = gate()
+    const s = g.state('m5a')
+    s.current_phase = Phase.GENERATION
+    s.phase_idx = 1
+    s.definition_loaded = true
+    s.candidate_tables = new Set(['dws_10000251_univ_acc_summary_di'])
+    // critique_sql_tool was called → captureToolData set last_sql
+    s.last_sql = 'SELECT ds, SUM(CASE WHEN act = 1 THEN 1 ELSE 0 END) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds = 20240101 GROUP BY ds'
+    // LLM wrote explanation text but did NOT repeat the SQL in phase_output
+    s.phase_output = '我已通过 critique_sql_tool 验证了 SQL，确认语法和表名正确。'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    // M5 fix: generationGate should use s.last_sql fallback → pass → advance to EXECUTION
+    expect(s.current_phase).toBe(Phase.EXECUTION)
+    // Inject is the advance message, NOT a retry
+    expect(injected.length).toBe(1)
+    const text = ((injected[0] as unknown as { content?: { text?: string }[] })?.content?.[0]?.text) ?? ''
+    expect(text).toContain('phase advance')
+    expect(text).not.toContain('retry')
+  })
+
+  it('M5: phase_output without SQL + s.last_sql null → generationGate fails (retry as before)', async () => {
+    const { agent, injected } = makeAgent('m5b')
+    const g = gate()
+    const s = g.state('m5b')
+    s.current_phase = Phase.GENERATION
+    s.phase_idx = 1
+    s.definition_loaded = true
+    s.candidate_tables = new Set(['some_table'])
+    s.last_sql = null // no critique ran
+    s.phase_output = '我正在思考如何写这个查询。'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    // No fallback → gate fails → retry inject
+    expect(s.current_phase).toBe(Phase.GENERATION) // stayed in GENERATION
+    expect(injected.length).toBe(1)
+    const text = ((injected[0] as unknown as { content?: { text?: string }[] })?.content?.[0]?.text) ?? ''
+    expect(text).toContain('phase generation retry')
+  })
+})

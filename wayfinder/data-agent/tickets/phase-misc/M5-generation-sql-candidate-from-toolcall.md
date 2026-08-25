@@ -2,8 +2,8 @@
 
 **Type**: grilling（planning；extractSqlCandidate 数据源决策待 grilled）
 **Phase**: misc（GENERATION gate 效率）
-**Assignee**: 未认领（新 session 修复）
-**Status**: Open
+**Assignee**: wayfinder-session 2026-08-25
+**Status**: Resolved 2026-08-25
 **Surfaced by**: M4 验证 session-f7c5795d（2026-08-25 web，game_xxx_wrong patch）—— GENERATION 阶段 critique_sql_tool ×5 + generation retry ×4 才 advance 到 EXECUTION。
 **Scope**: GENERATION gate 的 SQL 候选提取——只看 phase_output 文本，不看 critique_sql_tool 的 arguments/sql 产出。
 **Question**: extractSqlCandidate 应否也接受 critique_sql_tool 产出的 SQL（s.last_sql）作为 GENERATION 通过候选，避免 LLM 必须在 phase_output 文本重复 SQL？
@@ -39,3 +39,24 @@ GENERATION 阶段（[371] advance → generation 后）：
 - [M3-self-evolution-blockers](M3-self-evolution-blockers.md)（#2 critique_sql_tool 产出 sql 存 s.last_sql——M5 可复用此数据源）
 - [M4-update-table-config-persistence](M4-update-table-config-persistence.md)（验证时 surfac 此问题）
 - [map](../../map.md) Not yet specified
+
+## Resolution（2026-08-25）
+
+**决策**：选项 1（generationGate fallback 读 s.last_sql）。
+
+**Grilling 结论**：
+- 选项 2（persona 教）直接否——M4 教训已证明 inject/persona 教 LLM = 不可靠（LLM 已跑 SQL 成功何必重复到文本）
+- 选项 4（升级看 tool/call events）否——`extractSqlCandidate` 签名 `(phaseOutput: string) → string|null` 是纯函数，被 nl2sql-engine + phase-gate 两处用；让它接受 events 破坏单一职责 + 跨层依赖不正当
+- 选项 3（注入 s.last_sql 作 phase_output）否——`phase_output` 是 LLM 产出文本忠实记录，其他地方（日志/调试/F2 same-source 注释）依赖此语义；篡改不干净
+- 选项 1 最优——100% 确定性（critique 已跑 → s.last_sql 已有值）、最小改动（generationGate 内 1 行）、不破坏现有语义
+
+**实现**：
+- `phase-gate.ts` generationGate：`extractSqlCandidate(s.phase_output)` 若 null 且 `s.last_sql` 有值，构造 gateInput = `` `\`\`\`sql\n${s.last_sql}\n\`\`\`` `` 传给 `sqlSyntaxGate`（而非原 `s.phase_output`）
+- 72/72 tests（含 2 新 M5 场景：fallback pass + null 保持 retry）
+
+**关键逻辑**：
+- `s.last_sql` 由 `captureToolData`（line ~440）在 `critique_sql_tool` 返回时设置——无需额外数据源
+- `sqlSyntaxGate` 内部调 `extractSqlCandidate` + `critiqueSql`——包装 sql 为 ```sql 块使其正常提取
+- F2 same-source 不受影响（EXECUTION 用 `s.last_sql` 做 query_data，与此改动的数据源完全一致）
+
+**Status**: Resolved 2026-08-25
