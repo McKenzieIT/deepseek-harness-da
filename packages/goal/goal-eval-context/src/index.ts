@@ -16,10 +16,23 @@ import type { EvalResultStore, EvalDeltaReport } from '@deepseek-ai/dsh-evidence
 import type {} from '@deepseek-ai/dsh-system-prompt'
 
 export const name = 'goal-eval-context'
-export const inject = ['goals', 'evidenceQuery', 'systemPrompt']
+// NIT: 'goals' is not injected — the plugin only listens to the global
+// `goal/changed` event (dispatched on ctx without a service handle) and reads
+// `ctx.evidenceQuery` / `ctx.systemPrompt`. Cordis events are available on
+// any context, so the goals service handle is not required here.
+export const inject = ['evidenceQuery', 'systemPrompt']
 
-export interface Config {}
-export const Config: z<Config> = z.object({})
+export interface Config {
+  /**
+   * Number of consecutive no-improvement evaluations after which the direction
+   * hint escalates to "change approach". Default 2 — the hint escalates one
+   * step before the goal policy blocks the goal (policy blocks at N=3).
+   */
+  hintEscalationThreshold: number
+}
+export const Config: z<Config> = z.object({
+  hintEscalationThreshold: z.number().default(2),
+})
 
 // ── Rendering types ─────────────────────────────────────────────────────
 
@@ -33,7 +46,7 @@ export interface EvalEvidenceParams {
   total?: number
   /** Number of passing cases in the latest run. */
   correct?: number
-  /** Pass rate as a percentage (0–100). */
+  /** Pass rate as a percentage integer (0–100). */
   passRate?: number
   /** Delta report between the two most recent runs (when 2+ runs exist). */
   delta?: {
@@ -44,6 +57,11 @@ export interface EvalEvidenceParams {
   }
   /** Number of consecutive evaluations without improvement. */
   consecutiveNoImprovement?: number
+  /**
+   * Threshold at which the direction hint escalates to "change approach".
+   * Defaults to 2 when omitted. Sourced from the plugin {@link Config}.
+   */
+  hintEscalationThreshold?: number
 }
 
 // ── Pure rendering logic ────────────────────────────────────────────────
@@ -51,15 +69,23 @@ export interface EvalEvidenceParams {
 /**
  * Compute a rule-based direction hint from the delta data.
  * No LLM calls — pure function.
+ *
+ * @param hintEscalationThreshold — number of consecutive no-improvement
+ *   evaluations after which the hint escalates. Defaults to 2 (the hint
+ *   escalates before the goal policy blocks at N=3).
  */
-export function computeDirectionHint(delta: EvalEvidenceParams['delta'], consecutiveNoImprovement: number): string {
+export function computeDirectionHint(
+  delta: EvalEvidenceParams['delta'],
+  consecutiveNoImprovement: number,
+  hintEscalationThreshold: number = 2,
+): string {
   if (delta === undefined) {
     return 'Continue working — first delta will appear after next evaluation.'
   }
   if (delta.improved > 0) {
     return 'Progress detected — continue current approach.'
   }
-  if (consecutiveNoImprovement >= 2) {
+  if (consecutiveNoImprovement >= hintEscalationThreshold) {
     return `No improvement detected for ${consecutiveNoImprovement} consecutive evaluations. Consider changing approach or investigating regressed cases before continuing.`
   }
   return 'No improvement in last evaluation. Consider investigating regressed or failed cases.'
@@ -76,11 +102,11 @@ export function renderEvalEvidence(params: EvalEvidenceParams): string | null {
     return '<eval_evidence>\nNo evaluation data yet. Consider triggering an evaluation to measure current quality.\n</eval_evidence>'
   }
 
-  const { total, correct, passRate, delta, consecutiveNoImprovement } = params
+  const { total, correct, passRate, delta, consecutiveNoImprovement, hintEscalationThreshold } = params
 
   if (delta !== undefined) {
     // Multiple runs — show delta
-    const direction = computeDirectionHint(delta, consecutiveNoImprovement ?? 0)
+    const direction = computeDirectionHint(delta, consecutiveNoImprovement ?? 0, hintEscalationThreshold)
     return '<eval_evidence>\n'
       + `Pass rate: ${correct}/${total} (${passRate}%)\n`
       + `Last delta: +${delta.improved} improved, -${delta.regressed} regressed, ${delta.unchanged} unchanged (vs run ${delta.prevRunId})\n`
@@ -102,6 +128,15 @@ export function renderEvalEvidence(params: EvalEvidenceParams): string | null {
 /**
  * Count consecutive evaluations without improvement by walking back
  * through run pairs from the latest.
+ *
+ * WARN 13 (intentional divergence): this context plugin walks the GLOBAL
+ * historical run sequence (every run pair in the eval store), whereas the
+ * goal-blocking policy tracks only its own triggers. The two counts can
+ * differ — that is by design: the context surface shows the model the full
+ * historical view so it can self-adjust, while the policy enforces a
+ * per-goal, per-trigger counter that gates round advancement. Keeping the
+ * two counters separate avoids the context accidentally shadowing policy
+ * state.
  */
 export function computeConsecutiveNoImprovement(
   runIds: string[],
@@ -172,8 +207,9 @@ export function buildEvalEvidenceParams(
  * in the text function). When loaded in a scoped agent context (via preset),
  * the section participates only in that agent's prompt assembly.
  */
-export function apply(ctx: Context, _config: Config): void {
+export function apply(ctx: Context, config: Config): void {
   let goalActive = false
+  const hintEscalationThreshold = config.hintEscalationThreshold
 
   ctx.on('goal/changed', ({ change }) => {
     if (change.operation === 'clear') {
@@ -195,7 +231,7 @@ export function apply(ctx: Context, _config: Config): void {
         store,
         (a, b) => ctx.evidenceQuery.beforeAfterDelta(a, b),
       )
-      return renderEvalEvidence(params) ?? ''
+      return renderEvalEvidence({ ...params, hintEscalationThreshold }) ?? ''
     },
   })
 }

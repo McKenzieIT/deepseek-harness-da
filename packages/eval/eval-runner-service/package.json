@@ -1,0 +1,32 @@
+{
+  "name": "@deepseek-ai/dsh-eval-runner-service",
+  "version": "0.0.0",
+  "description": "Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run.",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-eval": "workspace:^",
+    "@deepseek-ai/dsh-eval-runner": "workspace:^",
+    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@deepseek-ai/dsh-query": "workspace:^"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-eval-runner": "workspace:^",
+    "@deepseek-ai/dsh-evidence-query": "workspace:^"
+  }
+}

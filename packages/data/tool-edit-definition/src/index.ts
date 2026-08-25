@@ -14,7 +14,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
-import type {} from '@deepseek-ai/dsh-audit'
+import type { Audit } from '@deepseek-ai/dsh-audit'
 
 export const name = 'tool-edit-definition'
 export const inject = ['tools', 'schema', 'audit']
@@ -45,10 +45,45 @@ export interface EditDefinitionResult {
 // ── Core logic (extracted for testability) ──────────────────────────────────
 
 /**
- * Merge a patch into a definition object. For top-level scalars, replaces them.
- * For arrays like `columns`, merges by the `name` field (existing columns keep
- * their values unless the patch provides an override for that column name; new
- * columns in the patch are appended).
+ * Merge two arrays of object records by a shared identity field (e.g. `name`
+ * for columns, `dim_table` for dimension_refs). Existing entries keep their
+ * values unless the patch provides an override for that identity; new entries
+ * in the patch are appended. Patch entries lacking the identity field are
+ * skipped (defensive — a nameless column/dim-ref is not mergeable).
+ */
+function mergeByName(
+  existing: readonly unknown[],
+  patch: readonly unknown[],
+  idField: string,
+): Record<string, unknown>[] {
+  const merged: Record<string, unknown>[] = []
+  for (const entry of existing) {
+    if (typeof entry === 'object' && entry !== null) {
+      merged.push(entry as Record<string, unknown>)
+    }
+  }
+  for (const patchEntry of patch) {
+    if (typeof patchEntry !== 'object' || patchEntry === null) continue
+    const pe = patchEntry as Record<string, unknown>
+    const id = pe[idField]
+    if (!id) continue
+    const idx = merged.findIndex(c => c[idField] === id)
+    if (idx >= 0) {
+      merged[idx] = { ...merged[idx], ...pe }
+    } else {
+      merged.push(pe)
+    }
+  }
+  return merged
+}
+
+/**
+ * Merge a patch into a definition object. Smart-merge vs replace depends on
+ * the array field:
+ *  - `columns` — by-name merge (identity field: `name`).
+ *  - `dimension_refs` — by-name merge (identity field: `dim_table`).
+ *  - `domains` — string array, union with dedup (preserving existing order).
+ *  - All other arrays and scalars — top-level replace.
  */
 export function applyPatch(
   existing: Record<string, unknown>,
@@ -57,22 +92,21 @@ export function applyPatch(
   const result = { ...existing }
   for (const [key, value] of Object.entries(patch)) {
     if (key === 'columns' && Array.isArray(value) && Array.isArray(existing.columns)) {
-      // Merge columns by name
-      const existingCols = existing.columns as Array<Record<string, unknown>>
-      const patchCols = value as Array<Record<string, unknown>>
-      const merged = [...existingCols]
-      for (const patchCol of patchCols) {
-        if (typeof patchCol !== 'object' || patchCol === null || !patchCol.name) {
-          continue
-        }
-        const idx = merged.findIndex(c => c.name === patchCol.name)
-        if (idx >= 0) {
-          merged[idx] = { ...merged[idx], ...patchCol }
-        } else {
-          merged.push(patchCol)
+      result.columns = mergeByName(existing.columns, value, 'name')
+    } else if (key === 'dimension_refs' && Array.isArray(value) && Array.isArray(existing.dimension_refs)) {
+      result.dimension_refs = mergeByName(existing.dimension_refs, value, 'dim_table')
+    } else if (key === 'domains' && Array.isArray(value) && Array.isArray(existing.domains)) {
+      // string array: union with dedup, preserving existing order
+      const existingDomains = existing.domains as readonly unknown[]
+      const seen = new Set<unknown>(existingDomains)
+      const merged = [...existingDomains]
+      for (const d of value as readonly unknown[]) {
+        if (!seen.has(d)) {
+          seen.add(d)
+          merged.push(d)
         }
       }
-      result.columns = merged
+      result.domains = merged
     } else {
       result[key] = value
     }
@@ -132,8 +166,11 @@ export function computeEdit(
   if (table !== null) {
     const existing = table as unknown as Record<string, unknown>
     const merged = applyPatch(existing, patch)
-    // G4 Q5: agent writes marked 'unreviewed'
-    merged.confirmation = { status: 'unreviewed' }
+    // G4 Q5: agent writes marked 'unreviewed'. WARN 6: preserve existing
+    // confirmation metadata (confirmed_by, reviewed_at, …) — only flip the
+    // status, don't clobber sibling fields.
+    const existingConfirmation = merged.confirmation as Record<string, unknown> | undefined
+    merged.confirmation = { ...(existingConfirmation ?? {}), status: 'unreviewed' }
     return {
       result: {
         applied: true,
@@ -151,8 +188,11 @@ export function computeEdit(
   if (event !== null) {
     const existing = event as unknown as Record<string, unknown>
     const merged = applyPatch(existing, patch)
-    // G4 Q5: agent writes marked 'unreviewed'
-    merged.confirmation = { status: 'unreviewed' }
+    // G4 Q5: agent writes marked 'unreviewed'. WARN 6: preserve existing
+    // confirmation metadata (confirmed_by, reviewed_at, …) — only flip the
+    // status, don't clobber sibling fields.
+    const existingConfirmation = merged.confirmation as Record<string, unknown> | undefined
+    merged.confirmation = { ...(existingConfirmation ?? {}), status: 'unreviewed' }
     return {
       result: {
         applied: true,
@@ -204,9 +244,11 @@ export function apply(ctx: Context, _config: Config = {}): void {
     name: 'edit_definition',
     description:
       'Edit a data asset definition (table or event) by applying a partial '
-      + 'patch. The patch is shallow-merged at top level; for `columns`, merges '
-      + 'by column name. All edits are marked "unreviewed" and audited. Metrics '
-      + 'are virtual and cannot be edited directly — edit the host asset instead.',
+      + 'patch. The patch is shallow-merged at top level; for `columns` and '
+      + '`dimension_refs`, merges by identity field (name / dim_table). '
+      + '`domains` is unioned with dedup. All edits are marked "unreviewed" '
+      + 'and audited. Metrics are virtual and cannot be edited directly — '
+      + 'edit the host asset instead.',
     parameters: {
       asset_name: {
         type: 'string',
@@ -219,38 +261,44 @@ export function apply(ctx: Context, _config: Config = {}): void {
         required: true,
         description:
           'Partial definition fields to merge. Supports: description, columns '
-          + '(array merged by name), domains, dimension_refs, granularity, metrics, etc.',
+          + '(array merged by name), dimension_refs (array merged by '
+          + 'dim_table), domains (unioned with dedup), granularity, metrics, etc.',
       },
     },
     output: {
       schema: {
         type: 'object',
-        additionalProperties: true,
+        additionalProperties: false,
         properties: {
           applied: { type: 'boolean', required: true },
           asset_name: { type: 'string', required: true },
           kind: { type: 'string', required: true },
-          patched_fields: { type: 'array' },
+          patched_fields: { type: 'array', items: { type: 'string' } },
           message: { type: 'string' },
         },
       },
       render: (_args, value) => [{
         type: 'text',
-        text: formatEditDefinition(value as unknown as EditDefinitionResult),
+        text: formatEditDefinition(value as EditDefinitionResult),
       }],
       presentationMeta: (_args, value) => value,
     },
-    async execute(args, exec) {
+    async execute(args, exec): Promise<EditDefinitionResult> {
       if (exec.signal.aborted) throw new Error('edit_definition aborted')
 
-      const schema = ctx.get('schema') as SemanticLayerService | undefined
-      const audit = ctx.get('audit') as { recordTier2Write(tool: string, payload: unknown): string } | undefined
+      // WARN 1: inject = ['tools', 'schema', 'audit'] guarantees these are
+      // mounted when execute runs — use ctx.schema / ctx.audit directly (no
+      // ctx.get + `| undefined` fallback). The `as unknown as` on schema
+      // bridges the project-reference type identity between the augmentation
+      // and the explicit import.
+      const schema = ctx.schema as unknown as SemanticLayerService
+      const audit: Audit = ctx.audit
       const patch = (args.patch ?? {}) as Record<string, unknown>
 
       const { result, merged, kind } = computeEdit(schema, args.asset_name, patch)
 
-      if (!result.applied || merged === undefined || schema === undefined) {
-        return result as unknown
+      if (!result.applied || merged === undefined) {
+        return result
       }
 
       // Persist the edit
@@ -266,12 +314,15 @@ export function apply(ctx: Context, _config: Config = {}): void {
               kind: 'table',
               patched_fields: [],
               message: `write failed: ${res.error}`,
-            } as unknown
+            }
           }
         } else if (kind === 'event') {
-          // Events use writeEventYaml (raw-edit surface). Import dumpYaml to
-          // serialize back; the event write path does not have a Service-level
-          // method with Tier-2 audit, so we record audit separately.
+          // Events use writeEventYaml (raw-edit surface). The event write path
+          // does not have a Service-level method with Tier-2 audit, so we
+          // record audit separately below.
+          // NIT: deep cross-package import via the ./src/* export map. This
+          // should be promoted to a root export on @deepseek-ai/dsh-semantic-layer
+          // so consumers don't reach into src/ paths.
           const { writeEventYaml, dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
           const yamlContent = dumpYaml(merged)
           const res = await writeEventYaml(schema.semanticRoot, result.asset_name, yamlContent)
@@ -282,7 +333,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
               kind: 'event',
               patched_fields: [],
               message: `write failed: ${res.error}`,
-            } as unknown
+            }
           }
         }
       } catch (e) {
@@ -292,19 +343,26 @@ export function apply(ctx: Context, _config: Config = {}): void {
           kind: kind ?? 'unknown',
           patched_fields: [],
           message: `write error: ${(e as Error).message}`,
-        } as unknown
-      }
-
-      // Record Tier-2 audit (for events; tables are already audited via updateTableMeta)
-      if (kind === 'event' && audit !== undefined) {
-        try {
-          audit.recordTier2Write('edit_definition', { asset_name: result.asset_name, patch })
-        } catch {
-          // fail-silent: audit failure must not break the business write
         }
       }
 
-      return result as unknown
+      // Record Tier-2 audit (for events; tables are already audited via
+      // updateTableMeta). WARN 5: inject guarantees audit is mounted, but
+      // defense-in-depth — if Cordis somehow returns undefined, log a warning
+      // rather than silently skipping the audit trail.
+      if (kind === 'event') {
+        if (!audit) {
+          ctx.logger.warn('tool-edit-definition: audit service unavailable — write persisted without audit trail')
+        } else {
+          try {
+            audit.recordTier2Write('edit_definition', { asset_name: result.asset_name, patch })
+          } catch {
+            // fail-silent: audit failure must not break the business write
+          }
+        }
+      }
+
+      return result
     },
     presentCall(args): GenericCallView {
       return {

@@ -17,7 +17,7 @@ import type {} from '@deepseek-ai/dsh-session'
 
 export const name = 'goal-eval-policy'
 export const inject = ['goals', 'evidenceQuery']
-export const optional = ['evalRunner']
+export const optional = ['evalRunner', 'agents']
 
 /** Plugin configuration. */
 export interface Config {
@@ -38,6 +38,26 @@ export const Config: z<Config> = z.object({
  */
 interface EvalRunnerSeam {
   runBatch(options?: { runId?: string; skipHealthGate?: boolean }): Promise<{ run_id: string }>
+}
+
+/** Opaque agent handle resolved from the (optional) agents service. */
+interface AgentHandle {
+  id: string
+}
+
+/** Subset of the agents service (`ctx.get('agents')`) used by this plugin. */
+interface AgentsService {
+  get(id: unknown): AgentHandle | undefined
+}
+
+/**
+ * Typed seam over `ctx.goals` — the live goal service takes a real `Agent`
+ * (from @deepseek-ai/dsh-agent, not a peer of this plugin), so we narrow to a
+ * local shape that only exposes what this policy needs.
+ */
+interface GoalServiceSeam {
+  get(agent: AgentHandle): { id: string; phase: string; revision: number } | undefined
+  block(agent: AgentHandle, ref: GoalRef, reason: { code: string; message: string }): void
 }
 
 /** Per-goal state tracking. */
@@ -83,12 +103,10 @@ export function apply(ctx: Context, config: Config): void {
   // with goal source, not on goal/changed — see fold.ts)
   ctx.on('session/event', async (session, event) => {
     if (event.type !== 'user/message') return
-    const data = event.data as { source?: { kind?: string; goalId?: string; round?: number; revision?: number } }
-    const source = data.source
-    if (source?.kind !== 'goal' || typeof source.round !== 'number' || source.round <= 0) return
+    const source = event.data.source
+    if (source.kind !== 'goal' || source.round <= 0) return
 
     const goalId = source.goalId
-    if (goalId === undefined) return
 
     let state = states.get(goalId)
     if (state === undefined) {
@@ -109,14 +127,14 @@ export function apply(ctx: Context, config: Config): void {
     state.evalInFlight = true
 
     // Resolve the agent for this session to call goals.block() if needed
-    // oxlint-disable-next-line typescript/no-explicit-any -- framework boundary: agents.get expects SessionId
-    const agent = ctx.get('agents')?.get(session.id as any) as any
+    const agents = ctx.get('agents') as AgentsService | undefined
+    const agent = agents?.get(session.id)
     if (!agent) {
       state.evalInFlight = false
       return
     }
 
-    const ref = { id: goalId, revision: source.revision ?? 0 } as GoalRef
+    const ref = { id: goalId, revision: source.revision } as GoalRef
 
     try {
       await runEvalCheck(ctx, agent, ref, state, N)
@@ -131,7 +149,7 @@ export function apply(ctx: Context, config: Config): void {
  */
 async function runEvalCheck(
   ctx: Context,
-  agent: unknown,
+  agent: AgentHandle,
   ref: GoalRef,
   state: GoalEvalState,
   threshold: number,
@@ -160,6 +178,8 @@ async function runEvalCheck(
   }
 
   if (currentRunId === null) return
+  // No new run to compare — skip delta computation
+  if (state.lastEvalRunId !== null && currentRunId === state.lastEvalRunId) return
 
   // Compute delta if we have a previous run
   if (state.lastEvalRunId !== null) {
@@ -182,11 +202,10 @@ async function runEvalCheck(
     // Check threshold
     if (state.consecutiveNoImprovement >= threshold) {
       // Verify the goal is still active before blocking
-      // oxlint-disable-next-line typescript/no-explicit-any -- GoalService.get/block expect Agent
-      const currentGoal = ctx.goals.get(agent as any)
+      const goals = ctx.goals as unknown as GoalServiceSeam
+      const currentGoal = goals.get(agent)
       if (currentGoal && currentGoal.id === ref.id && currentGoal.phase === 'active') {
-        // oxlint-disable-next-line typescript/no-explicit-any -- GoalService.block expects Agent
-        ctx.goals.block(agent as any, { id: ref.id, revision: currentGoal.revision }, {
+        goals.block(agent, { id: ref.id, revision: currentGoal.revision }, {
           code: 'no-progress',
           message: `Goal blocked: ${state.consecutiveNoImprovement} consecutive eval runs showed no improvement (0 cases flipped to correct).`,
         })

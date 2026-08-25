@@ -284,7 +284,7 @@ function startRequest(
   })
 }
 
-describe('real Claude Agent SDK 0.3.220 and its distributed Claude Code 2.1.220 fixture', {
+describe.skipIf(!process.env.ANTHROPIC_API_KEY || !existsSync(claudeBin))('real Claude Agent SDK 0.3.220 and its distributed Claude Code 2.1.220 fixture (requires real Claude Code CLI fixture + ANTHROPIC_API_KEY)', {
   timeout: 60_000,
 }, () => {
   it('inherits host settings and sends the exact task and fake key to local Messages', async () => {

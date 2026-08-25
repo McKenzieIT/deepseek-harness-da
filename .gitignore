@@ -54,3 +54,4 @@ packages/identity/identity/src/*.js
 packages/identity/identity/src/*.js.map
 packages/identity/identity/src/*.d.ts
 packages/identity/identity/src/*.d.ts.map
+.tmp/

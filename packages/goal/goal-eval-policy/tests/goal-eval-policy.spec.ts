@@ -280,13 +280,18 @@ describe('goal-eval-policy', () => {
 
       await emitGoalChanged(makeChange('create', makeGoalView({ roundsStarted: 0 })))
 
-      // First eval cycle: picks stored-run-1 as currentRunId, no delta (no lastEvalRunId)
+      // First eval cycle: picks stored-run-1 as currentRunId. No previous run
+      // recorded, so no delta is computed. Sets lastEvalRunId = stored-run-1.
       for (let i = 1; i <= 3; i++) await emitRound('goal-1', i)
 
-      // Second eval cycle: delta from stored-run-1 to stored-run-1 (same latest)
+      expect(evidenceQuery.beforeAfterDelta).not.toHaveBeenCalled()
+
+      // Second eval cycle: the latest stored run is still stored-run-1 — the
+      // same value now held in lastEvalRunId. No new run was produced, so the
+      // self-comparison is skipped (no delta, no spurious no-improvement bump).
       for (let i = 4; i <= 6; i++) await emitRound('goal-1', i)
 
-      expect(evidenceQuery.beforeAfterDelta).toHaveBeenCalledWith('stored-run-1', 'stored-run-1')
+      expect(evidenceQuery.beforeAfterDelta).not.toHaveBeenCalled()
     })
 
     it('does nothing when no evalRunner and no stored runs', async () => {

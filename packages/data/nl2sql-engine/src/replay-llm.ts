@@ -13,11 +13,15 @@ export interface LlmFeedback {
   readonly error: string
 }
 
-/** Arguments passed to the LLM generate call (question, attempt, feedback). */
+/** Arguments passed to the LLM generate call (question, attempt, feedback, and the built prompt the engine assembled). */
 export interface LlmGenerateArgs {
   readonly question: string
   readonly attempt?: number
   readonly feedback?: LlmFeedback | null
+  /** The fully-built NL2SQL generation prompt the engine assembled from
+   *  candidates/conventions/eventDef. Scripted LLMs ignore it; a production
+   *  ctx.llm-backed LLM streams it. */
+  readonly prompt?: string
 }
 
 /** The LLM generation result (SQL + optional tool calls). */

@@ -10,6 +10,13 @@
  *
  * Receives the `SidebarFooterActionOwnerProps` owner share (`{ wide }`) and
  * the inject factory's action callback.
+ *
+ * W6c/W6d: goalData, evalPassRates, and evalRunCount are provided by the
+ * host composition via useProjection('goal') and
+ * ctx.evidenceQuery.getEvalStore().getRunIds(). See:
+ * apps/cli/config/agent-presets/semantic-layer-management/ for the
+ * production wiring. This package only ships the framework components; the
+ * host loader is responsible for threading live data into these props.
  */
 import clsx from 'clsx'
 import {

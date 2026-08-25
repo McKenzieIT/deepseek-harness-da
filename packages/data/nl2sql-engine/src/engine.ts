@@ -198,7 +198,7 @@ export class Nl2sqlEngine {
       // 2. prompt + 3. LLM generate
       const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
-      const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback })
+      const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback, prompt })
       const sql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql
       trace.push({ step: 'llm_generate', attempt, sql })
 

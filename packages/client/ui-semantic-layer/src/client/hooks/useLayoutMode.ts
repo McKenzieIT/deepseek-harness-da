@@ -7,9 +7,11 @@
  *
  * The `auto` mode resolves to B or A based on eval run count against a threshold.
  * The `computeEffectiveMode` function is pure and independently testable.
+ *
+ * NIT: the host already resolves `evalRunCount` (via
+ * `ctx.evidenceQuery.getEvalStore().getRunIds().length`) and passes it as a
+ * prop, so this hook is a pure computation — no async fetch, no state/effect.
  */
-import { useState, useEffect } from 'react'
-
 export type LayoutMode = 'B' | 'A' | 'auto'
 
 export interface UseLayoutModeOptions {
@@ -47,14 +49,8 @@ export function computeEffectiveMode(
 
 export function useLayoutMode(options: UseLayoutModeOptions): UseLayoutModeResult {
   const { mode, evalRunCount = 0, autoFlipThreshold = 3 } = options
-
-  const [effectiveMode, setEffectiveMode] = useState<'B' | 'A'>(() =>
-    computeEffectiveMode(mode, evalRunCount, autoFlipThreshold),
-  )
-
-  useEffect(() => {
-    setEffectiveMode(computeEffectiveMode(mode, evalRunCount, autoFlipThreshold))
-  }, [mode, evalRunCount, autoFlipThreshold])
-
-  return { effectiveMode, configMode: mode }
+  return {
+    effectiveMode: computeEffectiveMode(mode, evalRunCount, autoFlipThreshold),
+    configMode: mode,
+  }
 }

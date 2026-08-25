@@ -21,9 +21,12 @@ export interface GoalDockGoalData {
 
 // Eval sparkline data: array of pass_rates from recent eval runs
 export interface GoalDockProps {
-  goalData: GoalDockGoalData | null  // null = no active goal
-  evalPassRates: number[]  // recent eval pass_rates for sparkline (max 5)
-  t: (key: string) => string  // i18n
+  /** Active goal projection data; null when no goal is active. */
+  goalData: GoalDockGoalData | null
+  /** Recent eval pass_rates for sparkline. Values are fractions in [0, 1]. */
+  evalPassRates: number[]
+  /** i18n translate. */
+  t: (key: string) => string
 }
 
 export const GoalDock: FC<GoalDockProps> = ({ goalData, evalPassRates, t }) => {
@@ -67,7 +70,8 @@ export const GoalDock: FC<GoalDockProps> = ({ goalData, evalPassRates, t }) => {
 
 /** Mini SVG sparkline for eval pass rates. */
 interface SparklineProps {
-  passRates: number[]  // values between 0 and 1
+  /** Pass-rate samples. Values are fractions in [0, 1]. */
+  passRates: number[]
 }
 
 const EvalSparkline: FC<SparklineProps> = ({ passRates }) => {
@@ -85,11 +89,15 @@ const EvalSparkline: FC<SparklineProps> = ({ passRates }) => {
 
   const min = Math.min(...passRates)
   const max = Math.max(...passRates)
-  const range = max - min || 0.1  // avoid division by zero
+  const range = max - min
+  // When all values are equal, center the line vertically
+  const normalizeY = (rate: number): number => range === 0
+    ? padding + innerHeight / 2
+    : padding + innerHeight - ((rate - min) / range) * innerHeight
 
   const points = passRates.map((rate, i) => {
     const x = padding + (i / (passRates.length - 1)) * innerWidth
-    const y = padding + innerHeight - ((rate - min) / range) * innerHeight
+    const y = normalizeY(rate)
     return `${x},${y}`
   }).join(' ')
 

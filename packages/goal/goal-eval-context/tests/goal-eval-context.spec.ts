@@ -94,6 +94,22 @@ describe('renderEvalEvidence', () => {
     expect(result).toContain('Direction: No improvement detected for 3 consecutive evaluations. Consider changing approach or investigating regressed cases before continuing.')
     expect(result).toContain('Consecutive evaluations without improvement: 3')
   })
+
+  it('honours hintEscalationThreshold passed via params', () => {
+    // count 2 with the default threshold 2 would escalate; raising the
+    // threshold to 3 keeps the hint mild until count reaches 3.
+    const result = renderEvalEvidence({
+      goalActive: true,
+      hasRuns: true,
+      total: 10,
+      correct: 7,
+      passRate: 70,
+      delta: { improved: 0, regressed: 0, unchanged: 10, prevRunId: 'run-3' },
+      consecutiveNoImprovement: 2,
+      hintEscalationThreshold: 3,
+    })
+    expect(result).toContain('Direction: No improvement in last evaluation. Consider investigating regressed or failed cases.')
+  })
 })
 
 // ── computeDirectionHint ────────────────────────────────────────────────
@@ -122,6 +138,24 @@ describe('computeDirectionHint', () => {
   it('returns escalated warning with exact count when consecutiveNoImprovement is 5', () => {
     expect(computeDirectionHint({ improved: 0, regressed: 2, unchanged: 8, prevRunId: 'x' }, 5))
       .toContain('for 5 consecutive evaluations')
+  })
+
+  it('honours a custom hintEscalationThreshold (escalates only at the configured count)', () => {
+    // Threshold 5: count 4 stays a mild warning...
+    expect(computeDirectionHint({ improved: 0, regressed: 0, unchanged: 10, prevRunId: 'x' }, 4, 5))
+      .toBe('No improvement in last evaluation. Consider investigating regressed or failed cases.')
+    // ...and meeting the threshold escalates.
+    expect(computeDirectionHint({ improved: 0, regressed: 0, unchanged: 10, prevRunId: 'x' }, 5, 5))
+      .toBe('No improvement detected for 5 consecutive evaluations. Consider changing approach or investigating regressed cases before continuing.')
+  })
+
+  it('uses default threshold 2 when hintEscalationThreshold is omitted', () => {
+    // count 1 → mild (below default threshold 2)
+    expect(computeDirectionHint({ improved: 0, regressed: 1, unchanged: 9, prevRunId: 'x' }, 1))
+      .toBe('No improvement in last evaluation. Consider investigating regressed or failed cases.')
+    // count 2 → escalated (meets default threshold 2)
+    expect(computeDirectionHint({ improved: 0, regressed: 0, unchanged: 10, prevRunId: 'x' }, 2))
+      .toBe('No improvement detected for 2 consecutive evaluations. Consider changing approach or investigating regressed cases before continuing.')
   })
 })
 

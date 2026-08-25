@@ -105,6 +105,66 @@ describe('tool-edit-definition', () => {
       const cols = result.columns as Array<Record<string, unknown>>
       expect(cols).toHaveLength(1) // not appended
     })
+
+    // WARN 7: dimension_refs smart-merge by dim_table
+    it('merges dimension_refs by dim_table (existing updated)', () => {
+      const existing = {
+        table_name: 'dws_user_daily',
+        dimension_refs: [
+          { dim_table: 'dim_user', join_keys: ['user_id'], derivation: 'pk' },
+        ],
+      }
+      const patch = {
+        dimension_refs: [
+          { dim_table: 'dim_user', join_keys: ['uid'] }, // override join_keys
+        ],
+      }
+      const result = applyPatch(existing, patch)
+      const refs = result.dimension_refs as Array<Record<string, unknown>>
+      expect(refs).toHaveLength(1)
+      expect(refs[0].dim_table).toBe('dim_user')
+      expect(refs[0].join_keys).toEqual(['uid'])
+      // derivation preserved from existing (not in patch)
+      expect(refs[0].derivation).toBe('pk')
+    })
+
+    it('merges dimension_refs by dim_table (new ref appended)', () => {
+      const existing = {
+        dimension_refs: [{ dim_table: 'dim_user', join_keys: ['user_id'] }],
+      }
+      const patch = {
+        dimension_refs: [{ dim_table: 'dim_date', join_keys: ['dt'] }],
+      }
+      const result = applyPatch(existing, patch)
+      const refs = result.dimension_refs as Array<Record<string, unknown>>
+      expect(refs).toHaveLength(2)
+      expect(refs[1].dim_table).toBe('dim_date')
+    })
+
+    it('skips dimension_refs without a dim_table field', () => {
+      const existing = {
+        dimension_refs: [{ dim_table: 'dim_user', join_keys: ['user_id'] }],
+      }
+      const patch = { dimension_refs: [{ join_keys: ['x'] }] } // no dim_table
+      const result = applyPatch(existing, patch)
+      const refs = result.dimension_refs as Array<Record<string, unknown>>
+      expect(refs).toHaveLength(1) // not appended
+    })
+
+    // WARN 7: domains union with dedup
+    it('unions domains with dedup (preserving existing order)', () => {
+      const existing = { table_name: 'tbl', domains: ['gaming', 'auth'] }
+      const patch = { domains: ['auth', 'analytics', 'gaming'] }
+      const result = applyPatch(existing, patch)
+      expect(result.domains).toEqual(['gaming', 'auth', 'analytics'])
+    })
+
+    it('handles domains union when patch adds only new entries', () => {
+      const existing = { domains: ['a', 'b'] }
+      const patch = { domains: ['c', 'd'] }
+      const result = applyPatch(existing, patch)
+      expect(result.domains).toEqual(['a', 'b', 'c', 'd'])
+    })
   })
 
   describe('computeEdit', () => {
@@ -211,13 +271,64 @@ describe('tool-edit-definition', () => {
         },
       }) as unknown
 
-      // Even if the patch tries to set confirmation to something else
+      // Even if the patch tries to set confirmation to something else. Note:
+      // the patch's `confirmation` replaces the existing one in applyPatch
+      // (confirmation is not smart-merged), so `confirmed_by` is lost here.
+      // The WARN 6 fix only preserves fields that survive applyPatch — see
+      // the next test for the preservation case.
       const { merged } = computeEdit(schema, 'tbl', {
         confirmation: { status: 'confirmed' },
       })
 
-      // The tool always overrides to unreviewed (G4 Q5)
+      // The tool always overrides status to unreviewed (G4 Q5)
       expect(merged!.confirmation).toEqual({ status: 'unreviewed' })
+    })
+
+    // WARN 6: confirmation clobber fix — preserve existing confirmation
+    // metadata (confirmed_by, reviewed_at, …) when the patch does NOT touch
+    // the confirmation field. Only the status is flipped.
+    it('preserves existing confirmation metadata when patch omits confirmation', () => {
+      const schema = createMockSchema({
+        tables: {
+          tbl: {
+            table_name: 'tbl',
+            description: '',
+            confirmation: {
+              status: 'confirmed',
+              confirmed_by: 'analyst@example.com',
+              reviewed_at: '2026-08-20T10:00:00Z',
+            },
+          },
+        },
+      }) as unknown
+
+      const { merged } = computeEdit(schema, 'tbl', { description: 'updated desc' })
+
+      // Only status is flipped; confirmed_by + reviewed_at survive
+      expect(merged!.confirmation).toEqual({
+        status: 'unreviewed',
+        confirmed_by: 'analyst@example.com',
+        reviewed_at: '2026-08-20T10:00:00Z',
+      })
+    })
+
+    it('preserves existing confirmation metadata for events too', () => {
+      const schema = createMockSchema({
+        events: {
+          user_login: {
+            name: 'user_login',
+            description: 'old',
+            confirmation: { status: 'confirmed', confirmed_by: 'human' },
+          },
+        },
+      }) as unknown
+
+      const { merged } = computeEdit(schema, 'user_login', { description: 'new' })
+
+      expect(merged!.confirmation).toEqual({
+        status: 'unreviewed',
+        confirmed_by: 'human',
+      })
     })
 
     it('rejects non-object patch', () => {

@@ -62,6 +62,32 @@ describe('GoalDock', () => {
     expect(sparklineDiv!.textContent).toContain('90%')
   })
 
+  it('centers the sparkline horizontally when all pass rates are equal', () => {
+    const goalData = makeGoalData()
+    // All-equal values: range is 0 — the line must render centered, not at the bottom
+    const passRates = [0.8, 0.8, 0.8]
+    const { container } = render(<GoalDock goalData={goalData} evalPassRates={passRates} t={t} />)
+
+    const polyline = container.querySelector('.sl-goal-dock__sparkline polyline')!
+    const pointsAttr = polyline.getAttribute('points')!
+    const pointPairs = pointsAttr.trim().split(' ')
+    expect(pointPairs).toHaveLength(3)
+
+    // Every y-coordinate (after the comma) must be identical → a horizontal, centered line
+    const yCoords = pointPairs.map(pair => Number(pair.split(',')[1]))
+    expect(yCoords.every(y => y === yCoords[0])).toBe(true)
+
+    // The centered y must sit in the vertical middle (padding + innerHeight/2 = 2 + 10 = 12)
+    expect(yCoords[0]).toBe(12)
+
+    // Sanity: x-coordinates still differ (the line spans the width)
+    const xCoords = pointPairs.map(pair => Number(pair.split(',')[0]))
+    expect(xCoords.every(x => x === xCoords[0])).toBe(false)
+
+    // Last value still shown as percentage
+    expect(container.querySelector('.sl-goal-dock__sparkline')!.textContent).toContain('80%')
+  })
+
   it('renders single percentage when evalPassRates has exactly 1 entry', () => {
     const goalData = makeGoalData()
     const { container } = render(<GoalDock goalData={goalData} evalPassRates={[0.73]} t={t} />)

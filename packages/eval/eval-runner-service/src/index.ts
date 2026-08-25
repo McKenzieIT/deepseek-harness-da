@@ -1,0 +1,399 @@
+/**
+ * EvalRunnerService — the Cordis Service that wires the `ctx.evalRunner` seam
+ * (declared by `@deepseek-ai/dsh-tool-trigger-eval` and consumed by
+ * `dsh-goal-eval-policy`'s no-progress backstop). It drives the REAL NL2SQL
+ * engine + ctx.query + ctx.llm collaborators against the case set, persists
+ * JSONL in the format `FileBackedEvalResultStore` reads, and tracks
+ * last / last-two runs for delta.
+ *
+ * Activating this Service makes:
+ *  - `trigger_eval` full_run reachable (was: not_configured — the seam was
+ *    declared but unmounted; W6a wired the policy against an absent seam).
+ *  - the ③ autonomous goal loop's no-progress backstop live (goal-eval-policy
+ *    reads ctx.evalRunner.runBatch + delta).
+ *
+ * The agent under test is the `Nl2sqlEngine` (the engine's own doc names
+ * `run()` "the EVAL-RUNNER entry point"). It reuses the same logic modules as
+ * production (the agent-loop path is a separate runtime); adapters bridge the
+ * engine's `Llm`/`OdpsExecutor` contracts to `ctx.llm`/`ctx.query`.
+ *
+ * @module @deepseek-ai/dsh-eval-runner-service
+ */
+import { Service } from '@deepseek-ai/cordis'
+import type { Context } from '@deepseek-ai/cordis'
+import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { loadCases } from '@deepseek-ai/dsh-eval'
+import { runBatch, compareDelta } from '@deepseek-ai/dsh-eval-runner'
+import type {
+  AgentResponder,
+  AgentRespondOpts,
+  AgentResponse,
+  QueryExecutor,
+  QueryResult,
+  JudgeExecutor,
+  JudgeResult,
+  RunResult,
+  DeltaReport,
+  RunnerVerdict,
+} from '@deepseek-ai/dsh-eval-runner'
+import { Nl2sqlEngine } from '@deepseek-ai/dsh-nl2sql-engine/src/engine.ts'
+import type { Llm, LlmGenerateArgs, LlmGenerateResult } from '@deepseek-ai/dsh-nl2sql-engine/src/replay-llm.ts'
+import type { OdpsExecutor } from '@deepseek-ai/dsh-nl2sql-engine/src/stand-in-odps.ts'
+import type { QueryOutcome as EngineQueryOutcome } from '@deepseek-ai/dsh-nl2sql-engine/src/types.ts'
+import { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
+import type { RelationGraphLike } from '@deepseek-ai/dsh-nl2sql-engine/src/ontology.ts'
+import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
+import type { QueryEngine, QueryRequest, ScopeId, InstanceId, QueryOutcome } from '@deepseek-ai/dsh-query/src/index.ts'
+import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+
+export const name = 'eval-runner-service'
+export const inject = ['llm']
+export const optional = ['query', 'nl2sql', 'schema']
+
+export interface Config {
+  /** Directory holding the eval case YAMLs (default: the K11 case set). */
+  readonly caseDir?: string
+  /** Directory where JSONL run results are persisted (evidence-query reads it). */
+  readonly resultsDir?: string
+  /** pass_k attempts per case (default 3). */
+  readonly passK?: number
+  /** LLM provider/model for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
+  readonly provider?: string
+  readonly model?: string
+  /** Reference date YYYYMMDD for time-param extraction (eval reproducibility). */
+  readonly today?: string
+}
+
+// ── ctx.llm → engine Llm ────────────────────────────────────────────────────
+
+/**
+ * Bridges the engine's `Llm` contract to `ctx.llm.stream`. The engine builds
+ * the NL2SQL generation prompt and passes it via `args.prompt` (a clean
+ * improvement: the engine assembles it, the LLM consumes it — no re-derivation).
+ */
+class CtxLlmAdapter implements Llm {
+  constructor(
+    private readonly ctx: Context,
+    private readonly provider: string,
+    private readonly model: string,
+  ) {}
+
+  async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+    const prompt = args.prompt
+    if (prompt === undefined || prompt.length === 0) {
+      throw new Error('CtxLlmAdapter: engine did not pass a prompt; the Llm contract requires args.prompt')
+    }
+    const text = await this.complete(prompt)
+    return { sql: text }
+  }
+
+  /** One-shot text completion via ctx.llm.stream. Exposed for the judge + answer steps. */
+  async complete(prompt: string): Promise<string> {
+    const assembler = new BlockAssembler()
+    const options = {
+      provider: this.provider,
+      model: this.model,
+      messages: [
+        createUserMessage({
+          content: [{ type: 'text' as const, text: prompt }],
+          source: { kind: 'plugin' as const, plugin: 'eval-runner-service' },
+        }),
+      ],
+    }
+    for await (const chunk of this.ctx.llm.stream(options)) assembler.push(chunk)
+    const text = assembler.blocks()
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+    if (text.length === 0) throw new Error('eval-runner-service: LLM returned no text blocks')
+    return text
+  }
+}
+
+// ── ctx.query → engine OdpsExecutor + eval-runner QueryExecutor ─────────────
+
+/** Bridges the engine's `OdpsExecutor` (used in the NL2SQL self-correction loop) to `ctx.query`. */
+class CtxOdpsAdapter implements OdpsExecutor {
+  constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
+
+  private engine(): QueryEngine | undefined {
+    return this.ctx.get('query') as QueryEngine | undefined
+  }
+
+  async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
+    const q = this.engine()
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql } as unknown as EngineQueryOutcome
+    const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' } as QueryRequest, opts?.signal)
+    return out as unknown as EngineQueryOutcome
+  }
+
+  async attach(instanceId: string): Promise<EngineQueryOutcome> {
+    const q = this.engine()
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' } as unknown as EngineQueryOutcome
+    const out = await q.attach(instanceId as unknown as InstanceId)
+    return out as unknown as EngineQueryOutcome
+  }
+}
+
+/** Bridges the eval-runner's result-match `QueryExecutor` to `ctx.query` (maps QueryOutcome → QueryResult). */
+class CtxQueryExecutor implements QueryExecutor {
+  constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
+
+  async execute(sql: string): Promise<QueryResult> {
+    const q = this.ctx.get('query') as QueryEngine | undefined
+    if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
+    let out: QueryOutcome
+    try {
+      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' } as QueryRequest)
+    } catch (err) {
+      return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
+    }
+    return this.mapOutcome(out)
+  }
+
+  private mapOutcome(out: QueryOutcome): QueryResult {
+    if (out.state === 'done') {
+      const rows = (out.rows ?? []) as Record<string, unknown>[]
+      return { success: true, rows, row_count: rows.length, error: null }
+    }
+    if (out.state === 'running') {
+      return { success: false, rows: [], row_count: 0, error: 'query still running' }
+    }
+    return { success: false, rows: [], row_count: 0, error: out.error ?? 'query failed' }
+  }
+}
+
+// ── ctx.llm → eval-runner JudgeExecutor ─────────────────────────────────────
+
+/** LLM-backed judge: scores whether the actual reply correctly answers the question (0–1). */
+class LlmJudgeExecutor implements JudgeExecutor {
+  constructor(private readonly llm: CtxLlmAdapter) {}
+
+  async judge(expected: unknown, actual: string, question: string): Promise<JudgeResult> {
+    const prompt = [
+      'You are an eval judge. Score whether the agent\'s answer correctly answers the user question, given the expected answer.',
+      `Question: ${question}`,
+      `Expected answer: ${JSON.stringify(expected)}`,
+      `Agent answer: ${actual}`,
+      'Reply with ONLY a single number between 0 and 1 (1 = fully correct, 0 = wrong).',
+    ].join('\n')
+    try {
+      const raw = await this.llm.complete(prompt)
+      const score = Number.parseFloat(raw.replace(/[^0-9.]/g, ''))
+      return { score: Number.isFinite(score) ? Math.max(0, Math.min(1, score)) : 0, rationale: raw.slice(0, 200) }
+    } catch (err) {
+      return { score: 0, rationale: '', error: err instanceof Error ? err.message : String(err) }
+    }
+  }
+}
+
+// ── Nl2sqlEngine-backed AgentResponder ───────────────────────────────────────
+
+/**
+ * The agent under test: wraps `Nl2sqlEngine` (link → prompt → ctx.llm SQL →
+ * ctx.query execute → critic/self-correct → honest decline), then generates a
+ * natural-language answer over the result rows. Returns the model-facing
+ * `{reply, generated_sql, transcript}` the eval runner compares.
+ */
+class Nl2sqlAgentResponder implements AgentResponder {
+  private readonly llm: CtxLlmAdapter
+  constructor(
+    private readonly ctx: Context,
+    private readonly conventions: EngineConventions | null,
+    private readonly scopeId: ScopeId,
+    private readonly today: string,
+    private readonly provider: string,
+    private readonly model: string,
+  ) {
+    this.llm = new CtxLlmAdapter(ctx, provider, model)
+  }
+
+  async respond(question: string, opts?: AgentRespondOpts): Promise<AgentResponse> {
+    const scopeId = (opts?.scope_id ?? this.scopeId) as unknown as ScopeId
+    const odps = new CtxOdpsAdapter(this.ctx, scopeId)
+    const schema = this.ctx.get('schema') as
+      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(): RelationGraphLike }
+      | undefined
+    const corpus = (schema?.loadRetrievalCorpusAll?.() ?? []) as readonly { id: string; description?: string; payload?: unknown }[]
+    const retrieval = new Bm25Linker(corpus)
+    const graph = schema?.getRelationGraph?.()
+    const engine = new Nl2sqlEngine({
+      llm: this.llm,
+      odps,
+      conventions: this.conventions,
+      retrieval,
+      ...(graph !== undefined ? { graph } : {}),
+    })
+    const result = await engine.run({ question, scopeId, today: this.today })
+    const sql = result.sql ?? null
+    let reply: string
+    if (result.ok && result.result !== undefined) {
+      reply = await this.answer(question, result.result)
+    } else if (result.decline) {
+      reply = `Declined: ${result.reason ?? 'unable to answer'}`
+    } else if (result.pending) {
+      reply = 'The query is still running; no answer yet.'
+    } else {
+      reply = result.reason ?? 'No answer.'
+    }
+    return { reply, generated_sql: sql, transcript: result.trace }
+  }
+
+  /** Generate a natural-language answer over the executed rows. */
+  private async answer(question: string, rows: unknown): Promise<string> {
+    const prompt = [
+      'Answer the user question using ONLY the query result rows below. Be concise.',
+      `Question: ${question}`,
+      `Rows: ${JSON.stringify(rows).slice(0, 4000)}`,
+    ].join('\n')
+    try {
+      return await this.llm.complete(prompt)
+    } catch {
+      return JSON.stringify(rows).slice(0, 1000)
+    }
+  }
+}
+
+// ── JSONL persistence bridge (RunResult → evidence-query record format) ─────
+
+/** One persisted JSONL line — the shape `FileBackedEvalResultStore` parses. */
+interface PersistedCaseRecord {
+  readonly runId: string
+  readonly timestamp: string
+  readonly caseId: string
+  readonly outcome: string
+  readonly verdict: string
+  readonly passed: boolean
+  readonly passK: number
+  readonly latencyMs: number
+  readonly attemptsCount: number
+  readonly errorsCount: number
+}
+
+/** Map a runner verdict to an eval-core outcome string (infra_failure → unjudged). */
+function verdictToOutcome(v: RunnerVerdict): string {
+  if (v === 'infra_failure') return 'unjudged'
+  return v
+}
+
+/**
+ * Persist a RunResult as JSONL in the format evidence-query's
+ * `FileBackedEvalResultStore` reads. This IS the W3→W4 format bridge (the
+ * eval-runner RunResult and the evidence-query record differ in shape).
+ */
+function persistRunResultJsonl(result: RunResult, dir: string, passK: number): string {
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  const safeTimestamp = result.timestamp.replace(/[:.]/g, '-')
+  const path = join(dir, `${safeTimestamp}_${result.run_id}.jsonl`)
+  const lines = result.cases.map((c): PersistedCaseRecord => ({
+    runId: result.run_id,
+    timestamp: result.timestamp,
+    caseId: c.case_id,
+    outcome: verdictToOutcome(c.verdict),
+    verdict: c.verdict,
+    passed: c.verdict === 'correct',
+    passK,
+    latencyMs: c.latency_ms,
+    attemptsCount: c.pass_k_results.length,
+    errorsCount: c.pass_k_results.filter(a => a.infra_error !== undefined || a.error !== undefined).length,
+  }))
+  writeFileSync(path, lines.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf8')
+  return path
+}
+
+// ── EvalRunnerService ───────────────────────────────────────────────────────
+
+/**
+ * The Cordis Service owning `ctx.evalRunner`. Wires the real NL2SQL engine +
+ * ctx.query + ctx.llm collaborators, persists JSONL, and tracks last/last-two
+ * runs. Structurally satisfies the `EvalRunnerService` seam declared by
+ * `dsh-tool-trigger-eval` (duck-typed via `ctx.get('evalRunner')`).
+ */
+export class EvalRunnerService extends Service {
+  private readonly caseDir: string
+  private readonly resultsDir: string
+  private readonly passK: number
+  private readonly provider: string
+  private readonly model: string
+  private readonly today: string
+  private lastRun: RunResult | null = null
+  private lastTwoRuns: [RunResult, RunResult] | null = null
+
+  constructor(ctx: Context, config: Config = {}) {
+    super(ctx, 'evalRunner')
+    this.caseDir = config.caseDir ?? 'packages/eval/eval/cases/k11'
+    this.resultsDir = config.resultsDir ?? '.tmp/eval-results'
+    this.passK = config.passK ?? 3
+    this.provider = config.provider ?? 'aga'
+    this.model = config.model ?? 'qwen3.7-max'
+    this.today = config.today ?? '20260825'
+  }
+
+  /** Case file paths (sorted) under the configured case dir. */
+  private casePaths(): string[] {
+    if (!existsSync(this.caseDir)) return []
+    return readdirSync(this.caseDir)
+      .filter(f => /^k11_\d+\.yaml$/.test(f))
+      .sort()
+      .map(f => resolve(this.caseDir, f))
+  }
+
+  getCaseCount(): number {
+    return this.casePaths().length
+  }
+
+  getResultsDir(): string {
+    return this.resultsDir
+  }
+
+  /** Build the collaborators from the live ctx seams. */
+  private buildCollaborators(scopeId: ScopeId): { agent: AgentResponder; executor: QueryExecutor | null; judge: JudgeExecutor | null } {
+    const conventions = (this.ctx.get('nl2sql') as { getConventions?(): EngineConventions } | undefined)?.getConventions?.() ?? null
+    const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model)
+    const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId) : null
+    const judge = new LlmJudgeExecutor(new CtxLlmAdapter(this.ctx, this.provider, this.model))
+    return { agent, executor, judge }
+  }
+
+  async runBatch(options?: { runId?: string; skipHealthGate?: boolean }): Promise<RunResult> {
+    const paths = this.casePaths()
+    if (paths.length === 0) {
+      throw new Error(`eval-runner-service: no cases found in ${this.caseDir}`)
+    }
+    const scopeId = 'k11' as unknown as ScopeId
+    const { agent, executor, judge } = this.buildCollaborators(scopeId)
+    const result = await runBatch(paths, { agent, executor, judge }, {
+      pass_k: this.passK,
+      skip_health_gate: options?.skipHealthGate ?? false,
+      ...(options?.runId !== undefined ? { run_id: options.runId } : {}),
+    })
+    // Persist JSONL (the W3→W4 bridge) so evidence-query + goal-eval-policy read it.
+    persistRunResultJsonl(result, this.resultsDir, this.passK)
+    // Track last / last-two for delta + trigger_eval report_last.
+    if (this.lastRun !== null) {
+      this.lastTwoRuns = [this.lastRun, result]
+    }
+    this.lastRun = result
+    return result
+  }
+
+  getLastRun(): RunResult | null {
+    return this.lastRun
+  }
+
+  getLastTwoRuns(): [RunResult, RunResult] | null {
+    return this.lastTwoRuns
+  }
+
+  computeDelta(runA: RunResult, runB: RunResult): DeltaReport {
+    return compareDelta(runA, runB)
+  }
+}
+
+export default EvalRunnerService
+
+/** Plugin apply: mount the Service onto ctx.evalRunner. */
+export function apply(ctx: Context, config: Config = {}): void {
+  new EvalRunnerService(ctx, config)
+}

@@ -1,5 +1,7 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { computeEffectiveMode } from '../src/client/hooks/useLayoutMode.ts'
+import { renderHook } from '@testing-library/react'
+import { computeEffectiveMode, useLayoutMode } from '../src/client/hooks/useLayoutMode.ts'
 
 describe('computeEffectiveMode', () => {
   it('mode="B" → always returns "B" regardless of run count', () => {
@@ -41,5 +43,41 @@ describe('computeEffectiveMode', () => {
   it('uses default threshold of 3 when not explicitly provided', () => {
     expect(computeEffectiveMode('auto', 2)).toBe('B')
     expect(computeEffectiveMode('auto', 3)).toBe('A')
+  })
+})
+
+describe('useLayoutMode', () => {
+  it('returns the effective mode and config mode (pure computation, no async fetch)', () => {
+    const { result } = renderHook(() => useLayoutMode({ mode: 'auto', evalRunCount: 5 }))
+    expect(result.current.effectiveMode).toBe('A')
+    expect(result.current.configMode).toBe('auto')
+  })
+
+  it('resolves "auto" to "B" below the flip threshold', () => {
+    const { result } = renderHook(() => useLayoutMode({ mode: 'auto', evalRunCount: 1 }))
+    expect(result.current.effectiveMode).toBe('B')
+  })
+
+  it('passes the custom autoFlipThreshold through', () => {
+    const { result } = renderHook(() =>
+      useLayoutMode({ mode: 'auto', evalRunCount: 2, autoFlipThreshold: 2 }),
+    )
+    expect(result.current.effectiveMode).toBe('A')
+  })
+
+  it('defaults evalRunCount to 0 when omitted', () => {
+    const { result } = renderHook(() => useLayoutMode({ mode: 'auto' }))
+    expect(result.current.effectiveMode).toBe('B')
+    expect(result.current.configMode).toBe('auto')
+  })
+
+  it('reflects a new effective mode when props change across re-renders', () => {
+    const { result, rerender } = renderHook(
+      ({ mode, evalRunCount }) => useLayoutMode({ mode, evalRunCount }),
+      { initialProps: { mode: 'auto' as const, evalRunCount: 0 } },
+    )
+    expect(result.current.effectiveMode).toBe('B')
+    rerender({ mode: 'auto' as const, evalRunCount: 3 })
+    expect(result.current.effectiveMode).toBe('A')
   })
 })
