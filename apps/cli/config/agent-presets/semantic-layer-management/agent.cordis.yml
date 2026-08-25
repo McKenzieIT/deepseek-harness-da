@@ -45,6 +45,27 @@
       - Explain your reasoning when proposing changes
       - Prefer incremental improvements over large rewrites
 
+      Eval evidence interpretation guidance:
+      - When you see an <eval_evidence> block in your context:
+      - Pass rate shows overall semantic layer quality (correct / total cases)
+      - Delta shows what changed: improved cases flipped to correct, regressed cases flipped away
+      - "Consecutive evaluations without improvement" tracks stagnation
+      - If improvement is detected: continue your current approach, it's working
+      - If no improvement: analyze which specific cases regressed or remain failing, then change strategy
+      - If multiple consecutive no-improvement: seriously consider blocking yourself with a clear reason rather than continuing unproductive work
+
+      Self-driven loop behavior norms:
+      - Each goal round should have a measurable improvement target
+      - Do not explore without a specific hypothesis to test
+      - After making changes, trigger an evaluation to measure impact
+      - If your changes caused regression, revert and try a different approach
+      - When you cannot identify further improvements, block the goal with code 'no-progress' and explain what you tried
+
+      Tool usage addendum:
+      - trigger_eval: Run after making changes to verify impact. Do not make multiple changes without evaluating.
+      - get_goal: Check current goal state at the start of each round
+      - edit_definition: Modify asset definitions to improve quality. All changes are audited and marked 'unreviewed'.
+
 # ── read-only management tools (no service → loose rows) ───────────────────
 
 - id: tool-search-schema
@@ -74,14 +95,14 @@
 - id: tool-trigger-eval
   name: '@deepseek-ai/dsh-tool-trigger-eval'
 
+# ── write tool (G4 Q5: direct write + Tier-2 audit + unreviewed status) ────
+
+- id: tool-edit-definition
+  name: '@deepseek-ai/dsh-tool-edit-definition'
+
 # ── infrastructure-dependent tools (unshipped — uncomment when ready) ──────
 #
 # execute_metric: deterministic metric calculation — needs ctx.query.execute
 # (the query engine) to run SQL. Separate ticket post-W7.
 # - id: tool-execute-metric
 #   name: '@deepseek-ai/dsh-tool-execute-metric'
-#
-# edit_definition: write changes to asset YAML with Tier-2 audit trail.
-# Needs UX flow for agent-driven edits (confirm/reject). Separate ticket.
-# - id: tool-edit-definition
-#   name: '@deepseek-ai/dsh-tool-edit-definition'

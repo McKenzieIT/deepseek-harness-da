@@ -1,0 +1,37 @@
+{
+  "name": "@deepseek-ai/dsh-goal-eval-context",
+  "description": "Context plugin: inject eval evidence into goal round context for model self-adjustment",
+  "version": "0.1.0-rc.1",
+  "publishConfig": { "access": "public" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/goal/goal-eval-context"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/index.js", "lib/types/**/*.d.ts"],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/dsh-goal": "workspace:^",
+    "@deepseek-ai/dsh-evidence-query": "workspace:^",
+    "@deepseek-ai/dsh-system-prompt": "workspace:^"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/dsh-goal": "workspace:^",
+    "@deepseek-ai/dsh-evidence-query": "workspace:^",
+    "@deepseek-ai/dsh-system-prompt": "workspace:^",
+    "vitest": "^3.2.1"
+  }
+}

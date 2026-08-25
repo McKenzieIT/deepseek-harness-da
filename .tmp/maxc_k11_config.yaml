@@ -1,0 +1,9 @@
+auth:
+  provider: external
+  project: ieu_ods
+  endpoint: http://service-corp.odps.aliyun-inc.com/api
+  external:
+    process_command: /Users/mckenzie/.qoderwork/bin/ncs create credential odpsuser --employee-id 414028 -o template -t odpscmd
+    process_timeout: 60
+default_project: ieu_ods
+cache_dir: /Users/mckenzie/workspace/deepseek-harness-da/.tmp/maxc-cache

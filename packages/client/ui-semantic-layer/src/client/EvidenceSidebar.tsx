@@ -15,12 +15,15 @@ import { GapPanel } from './GapPanel.tsx'
 import { EvalTrajectory } from './EvalTrajectory.tsx'
 import { EvalDeltaView } from './EvalDeltaView.tsx'
 import { OnDemandEvalTrigger } from './OnDemandEvalTrigger.tsx'
+import { GoalDock, type GoalDockGoalData } from './GoalDock.tsx'
 
 export interface EvidenceSidebarProps {
   enabled: boolean
   t: (key: string) => string
   evidenceClient?: EvidenceQueryClient | null | undefined
   selectedAssetId?: string | undefined
+  goalData?: GoalDockGoalData | null  // W6c: active goal projection data
+  evalPassRates?: number[]  // W6c: recent eval pass rates for sparkline
 }
 
 export const EvidenceSidebar: FC<EvidenceSidebarProps> = ({
@@ -28,6 +31,8 @@ export const EvidenceSidebar: FC<EvidenceSidebarProps> = ({
   t,
   evidenceClient,
   selectedAssetId,
+  goalData,
+  evalPassRates,
 }) => {
   if (!enabled) {
     return (
@@ -46,6 +51,8 @@ export const EvidenceSidebar: FC<EvidenceSidebarProps> = ({
         evidenceClient={evidenceClient ?? null}
         selectedAssetId={selectedAssetId}
         t={t}
+        goalData={goalData ?? null}
+        evalPassRates={evalPassRates ?? []}
       />
     </aside>
   )
@@ -55,12 +62,16 @@ interface ContentProps {
   evidenceClient: EvidenceQueryClient | null
   selectedAssetId?: string | undefined
   t: (key: string) => string
+  goalData: GoalDockGoalData | null
+  evalPassRates: number[]
 }
 
 const EvidenceSidebarContent: FC<ContentProps> = ({
   evidenceClient,
   selectedAssetId,
   t,
+  goalData,
+  evalPassRates,
 }) => {
   const {
     state,
@@ -77,6 +88,7 @@ const EvidenceSidebarContent: FC<ContentProps> = ({
 
   return (
     <div className="sl-evidence-sidebar__content">
+      <GoalDock goalData={goalData} evalPassRates={evalPassRates} t={t} />
       <CoveragePanel coverage={state.coverage} loading={state.loading} t={t} />
       <OnDemandEvalTrigger assetId={selectedAssetId} onTrigger={triggerEval} t={t} />
       <GapPanel gapAnalysis={state.gapAnalysis} loading={state.loading} t={t} />

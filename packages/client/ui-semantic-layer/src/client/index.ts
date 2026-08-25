@@ -18,6 +18,7 @@ import { semanticLayerPresenters } from './presenters/index.ts'
 
 // W5-full exports: evidence panel components for host composition
 export { EvidenceSidebar, type EvidenceSidebarProps } from './EvidenceSidebar.tsx'
+export { GoalDock, type GoalDockProps, type GoalDockGoalData } from './GoalDock.tsx'
 export { CoveragePanel, type CoveragePanelProps } from './CoveragePanel.tsx'
 export { EvalTrajectory, type EvalTrajectoryProps } from './EvalTrajectory.tsx'
 export { EvalDeltaView, type EvalDeltaViewProps } from './EvalDeltaView.tsx'
@@ -26,6 +27,11 @@ export { OnDemandEvalTrigger, type OnDemandEvalTriggerProps } from './OnDemandEv
 export { useEvidenceQuery, type EvidenceQueryClient, type EvidenceQueryState } from './hooks/useEvidenceQuery.ts'
 export type { SemanticLayerShellProps } from './SemanticLayerShell.tsx'
 export type * from './types.ts'
+
+// W6d exports: dashboard view and layout mode
+export { DashboardView, type DashboardViewProps } from './DashboardView.tsx'
+export { computeEffectiveMode, useLayoutMode, type LayoutMode } from './hooks/useLayoutMode.ts'
+export type { UseLayoutModeOptions, UseLayoutModeResult } from './hooks/useLayoutMode.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -59,7 +65,7 @@ export function apply(ctx: ClientContext): void {
       if (summary.agentPreset === staged) { staged = undefined; return }
       const presetId = staged
       staged = undefined
-      void api.agentPresets.select({ sessionId: current, agentPreset: presetId }).then(response => {
+      void api.agentPresets.select({ sessionId: current, agentPreset: presetId }).then((response) => {
         if (response.result.ok) {
           sessions.noteAgentPreset(current, response.result.value.agentPreset)
         }
