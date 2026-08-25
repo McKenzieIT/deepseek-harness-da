@@ -286,10 +286,18 @@ describe('spawnSubprocess', () => {
   })
 
   it.skipIf(process.platform === 'win32')('terminates the whole process group (grandchildren die too)', async () => {
-    // The subshell writes the sleep's pid then waits on it; terminating the
-    // group must take the sleep down with bash.
+    // The grandchild traps SIGTERM, writes its own pid, then blocks on a long
+    // sleep. The pid file is the readiness marker: it is written only AFTER
+    // the trap is installed, so waiting for it guarantees the grandchild
+    // survives the group SIGTERM. That keeps the parent's `wait` from
+    // returning on the grandchild's signal death first, so the parent is
+    // guaranteed to die from SIGTERM rather than exit naturally with `wait`'s
+    // 128+signal status. The SIGKILL escalation then reaps the grandchild.
     const pidFile = join(spillDir, `grandchild-${Date.now()}.pid`)
-    const running = spawnSubprocess(spec(`sleep 60 & echo $! > ${pidFile}; wait`))
+    const running = spawnSubprocess(spec(
+      `bash -c 'trap "" TERM; echo $$ > ${pidFile}; sleep 60' & wait`,
+      { graceMs: 500 },
+    ))
     const grandchild = await waitForPidFile(pidFile)
     expect(grandchild).toBeGreaterThan(0)
 
@@ -297,7 +305,7 @@ describe('spawnSubprocess', () => {
     const result = await running.done
     expect(result.signal).toBe('SIGTERM')
     await waitGone(grandchild)
-  })
+  }, 15_000)
 
   it('aborts via AbortSignal mid-run', async () => {
     const controller = new AbortController()
