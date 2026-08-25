@@ -261,6 +261,13 @@ export interface PhaseGateState {
    * when no failure or not surfaced; cleared on a new question.
    */
   last_query_error: string | null
+  /**
+   * M4 self-evolution auto-persist: the bare table name that triggered a
+   * not_found fallback. Set in executionDecision not_found branch; consumed
+   * (and cleared) when the retry succeeds — phase-gate auto-calls
+   * update_table_config(table, project) extracted from the successful SQL.
+   */
+  self_evolution_table: string | null
   last_critique: number | null
   last_quality: number | null
   honest_decline_reason: string | null
@@ -318,6 +325,7 @@ export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
     last_query_outcome: null,
     last_failure_kind: null, // #1/#2b: no query failure harvested yet.
     last_query_error: null, // #1/#2b: no query error harvested yet.
+    self_evolution_table: null,
     last_critique: null,
     last_quality: null,
     honest_decline_reason: null,

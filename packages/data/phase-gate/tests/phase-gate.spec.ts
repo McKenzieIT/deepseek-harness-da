@@ -466,6 +466,113 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(g.guard(execView('present_clarification', agent, { question: 'which project?' }))).toBeUndefined()
   })
 
+  it('M4: not_found records self_evolution_table from last_sql', async () => {
+    const { agent } = makeAgent('m4a')
+    const g = gate({ logger: { info: () => undefined } } as unknown as Context)
+    const s = g.state('m4a')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    s.candidate_tables.add('dws_dau')
+    s.last_sql = 'SELECT dau FROM dws_dau WHERE ds=1'
+    s.last_query_outcome = 'failed'
+    s.last_failure_kind = 'not_found'
+    s.last_query_error = 'Table not found - dws_dau'
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.self_evolution_table).toBe('dws_dau')
+    expect(s.current_phase).toBe(Phase.GENERATION)
+  })
+
+  it('M4: EXECUTION completed + self_evolution_table → auto-calls update_table_config', async () => {
+    const { agent } = makeAgent('m4b')
+    const execute = vi.fn().mockResolvedValue(resultOk({ ok: true, table_name: 'dws_dau', qualified_name: 'ieu_cdm.dws_dau' }))
+    const g = gate({ logger: { info: () => undefined }, tools: { execute } } as unknown as Context)
+    const s = g.state('m4b')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    s.self_evolution_table = 'dws_dau'
+    s.last_sql = 'SELECT dau FROM ieu_cdm.dws_dau WHERE ds=1'
+    s.last_query_outcome = 'completed'
+    s.candidate_tables.add('dws_dau')
+    s.definition_loaded = true
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(execute.mock.calls[0]![0]).toMatchObject({
+      name: 'update_table_config',
+      arguments: { table_name: 'dws_dau', project: 'ieu_cdm' },
+    })
+    expect(s.self_evolution_table).toBeNull()
+  })
+
+  it('M4: EXECUTION completed without self_evolution_table → no auto-call', async () => {
+    const { agent } = makeAgent('m4c')
+    const execute = vi.fn().mockResolvedValue(resultOk({}))
+    const g = gate({ logger: { info: () => undefined }, tools: { execute } } as unknown as Context)
+    const s = g.state('m4c')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    s.last_sql = 'SELECT dau FROM ieu_cdm.dws_dau WHERE ds=1'
+    s.last_query_outcome = 'completed'
+    s.candidate_tables.add('dws_dau')
+    s.definition_loaded = true
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('M4: auto-persist skips silently when project not extractable from SQL', async () => {
+    const { agent } = makeAgent('m4d')
+    const execute = vi.fn().mockResolvedValue(resultOk({}))
+    const g = gate({ logger: { info: () => undefined }, tools: { execute } } as unknown as Context)
+    const s = g.state('m4d')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    s.self_evolution_table = 'dws_dau'
+    s.last_sql = 'SELECT dau FROM dws_dau WHERE ds=1' // bare name, no project prefix
+    s.last_query_outcome = 'completed'
+    s.candidate_tables.add('dws_dau')
+    s.definition_loaded = true
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(execute).not.toHaveBeenCalled()
+    expect(s.self_evolution_table).toBeNull()
+  })
+
+  it('M4: auto-persist fire-and-forget — tool error does not block advance', async () => {
+    const { agent } = makeAgent('m4e')
+    const execute = vi.fn().mockRejectedValue(new Error('RBAC reject'))
+    const g = gate({ logger: { info: () => undefined }, tools: { execute } } as unknown as Context)
+    const s = g.state('m4e')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    s.self_evolution_table = 'dws_dau'
+    s.last_sql = 'SELECT dau FROM ieu_cdm.dws_dau WHERE ds=1'
+    s.last_query_outcome = 'completed'
+    s.candidate_tables.add('dws_dau')
+    s.definition_loaded = true
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    // advance still happens despite the error
+    expect(s.current_phase).toBe(Phase.INTERPRETATION)
+  })
+
+  it('M4: resetQuestionScoped full-reset clears self_evolution_table', () => {
+    const { agent } = makeAgent('m4f')
+    const g = gate()
+    const s = g.state('m4f')
+    s.self_evolution_table = 'dws_dau'
+    s.prior_status = 'idle'
+    g.onStatus({ agent, status: 'running' })
+    expect(s.self_evolution_table).toBeNull()
+  })
+
+  it('M4: resetQuestionScoped awaiting_clarification preserves self_evolution_table', () => {
+    const { agent } = makeAgent('m4g')
+    const g = gate()
+    const s = g.state('m4g')
+    s.self_evolution_table = 'dws_dau'
+    s.awaiting_clarification = true
+    s.prior_status = 'idle'
+    g.onStatus({ agent, status: 'running' })
+    expect(s.self_evolution_table).toBe('dws_dau')
+  })
+
   it('B9/F4: DECLINED resets on a new user question (idle→running → resetQuestionScoped)', () => {
     const { agent } = makeAgent('s1')
     const g = gate()

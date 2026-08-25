@@ -42,7 +42,7 @@ import {
   type PhaseGateState,
   type Phase as PhaseType,
 } from './types.ts'
-import { extractSqlCandidate, sqlSyntaxGate, type CriticCtx } from '@deepseek-ai/dsh-nl2sql-engine'
+import { extractSqlCandidate, extractTableNames, sqlSyntaxGate, type CriticCtx } from '@deepseek-ai/dsh-nl2sql-engine'
 
 /** Configuration overrides for the `PhaseGate` plugin; unset fields fall back to the adopted `PipelineConfig` defaults. */
 export interface PhaseGateConfig {
@@ -304,6 +304,8 @@ export class PhaseGate {
   // EXECUTION 3-state decision (D5: ctx.query QueryOutcome drives; H1: failed+exhausted→decline).
   private executionDecision(agent: Agent, s: PhaseGateState): void {
     if (s.last_query_outcome === 'completed') {
+      // M4: auto-persist the project override when a self-evolution retry succeeds.
+      this.autoPersistOverride(s)
       this.advance(agent, s)
       return
     }
@@ -319,6 +321,15 @@ export class PhaseGate {
     // qualified name and retries. Mirrors the generic failed→fallback below but
     // carries self-evolution steering instead of a bare continuation inject.
     if (s.last_failure_kind === 'not_found' && cfg.fallback_phase !== null && s.fallback_count < this.cfg.max_fallbacks) {
+      // M4: record the bare table that triggered not_found so we can auto-persist
+      // the project override when the retry succeeds (EXECUTION completed).
+      if (s.last_sql) {
+        const tables = extractTableNames(s.last_sql)
+        for (const t of tables) {
+          if (s.candidate_tables.has(t)) { s.self_evolution_table = t; break }
+        }
+        if (!s.self_evolution_table && tables.size > 0) s.self_evolution_table = [...tables][0] ?? null
+      }
       this.fallback(agent, s, cfg.fallback_phase)
       this.inject(
         agent,
@@ -644,6 +655,32 @@ export class PhaseGate {
   }
 
   /**
+   * M4: auto-persist the ODPS project override after a self-evolution retry
+   * succeeds. Extracts the project from the qualified table reference in the
+   * successful SQL, then fire-and-forget calls update_table_config. Best-effort:
+   * extraction failure or tool error → skip silently (query already succeeded).
+   */
+  private autoPersistOverride(s: PhaseGateState): void {
+    const table = s.self_evolution_table
+    s.self_evolution_table = null
+    if (!table || !s.last_sql) return
+    const re = new RegExp(`(\\w+)\\.${table}\\b`, 'i')
+    const m = re.exec(s.last_sql)
+    if (!m?.[1]) return
+    const project = m[1]
+    const execute = this.ctx.tools?.execute
+    if (!execute) return
+    const ac = new AbortController()
+    execute({
+      callId: CallId('phase-gate:auto_persist'),
+      name: 'update_table_config',
+      arguments: { table_name: table, project },
+      signal: ac.signal,
+    }).catch(() => { /* best-effort — RBAC reject or substrate error is fine */ })
+  }
+
+
+  /**
    * F1 forced_load: programmatic `ctx.tools.execute` retrieval goes through guard (verified).
    * Runs `search_data_sources` for the phase's final text so GENERATION has grounding when UNDERSTANDING ended without candidates.
    * @param agent The harness agent whose turn is stopping (passed to the tool execution as the caller).
@@ -791,7 +828,7 @@ export class PhaseGate {
       s.honest_decline_reason = null
       s.cancelled = false
       s.cancelled_reason = null
-      return // keep current_phase + candidate_tables + last_sql + query outcome/critique/quality
+      return // keep current_phase + candidate_tables + last_sql + query outcome/critique/quality + self_evolution_table
     }
     s.phase_idx = 0
     s.current_phase = Phase.UNDERSTANDING
@@ -807,6 +844,7 @@ export class PhaseGate {
     s.last_query_outcome = null
     s.last_failure_kind = null // #1/#2b: clear query failure classification on a new question.
     s.last_query_error = null // #1/#2b: clear the verbatim query error on a new question.
+    s.self_evolution_table = null
     s.last_critique = null
     s.last_quality = null
     s.honest_decline_reason = null
