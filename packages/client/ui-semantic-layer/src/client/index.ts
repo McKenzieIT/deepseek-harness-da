@@ -24,14 +24,18 @@
  *    useEvidenceQuery consume) is likewise un-wired: there is no client-side
  *    construction of it today. It is left absent until that bridge exists.
  *  - `goalData` and `evalPassRates` feed GoalDock, which lives inside
- *    EvidenceSidebar. EvidenceSidebar is exported (below) for host
- *    composition in a SESSION-scoped details column — NOT rendered by this
- *    plugin. Because `sidebar.footer.action` is root-scoped, `useProjection`
- *    (a SessionStandardProps seat) is unavailable here. The GoalDock wiring
- *    therefore belongs in the session-scoped slot that mounts
- *    EvidenceSidebar: `goalData` from `useProjection('goal')` (same source
- *    as ui-goal's GoalBar) and `evalPassRates` from the evidence-query
- *    client once it exists. This file cannot thread those props.
+ *    EvidenceSidebar. As of W6c/W6d both are wired through session-scoped
+ *    slot adapters in `./wiring.tsx` (so `useProjection` — a
+ *    SessionStandardProps seat — is available, which the root-scoped
+ *    `sidebar.footer.action` is not): `SemanticLayerGoalDock` mounts into
+ *    `conversation.input.dock` (a second entry after ui-goal's, management
+ *    sessions only); `SemanticLayerEvidence` mounts EvidenceSidebar into the
+ *    `details.aux` list slot declared by ui-layout (coexisting with
+ *    DetailsPanel in the right column, management sessions only). `goalData`
+ *    comes from `useProjection('goal')` (same source as ui-goal's GoalBar);
+ *    `evalPassRates`, `evalRunCount`, and `evidenceClient` remain placeholders
+ *    (see the TODOs in wiring.tsx) pending the evidence-query client RPC
+ *    bridge.
  */
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
@@ -40,6 +44,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { SemanticLayerShell, type SemanticLayerShellProps } from './SemanticLayerShell.tsx'
 import { en, zh } from './locales.ts'
 import { semanticLayerPresenters } from './presenters/index.ts'
+import { SemanticLayerGoalDock, SemanticLayerEvidence, PRESET_ID } from './wiring.tsx'
 
 // W5-full exports: evidence panel components for host composition
 export { EvidenceSidebar, type EvidenceSidebarProps } from './EvidenceSidebar.tsx'
@@ -65,7 +70,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 const NS = 'semanticLayer'
-const PRESET_ID = 'semantic-layer-management'
 
 export const inject = ['slots', 'locale']
 
@@ -129,6 +133,33 @@ export function apply(ctx: ClientContext): void {
       locale: NS,
       inject: injected,
     }, SemanticLayerShell))
+
+    // W6c/W6d session-scoped slot adapters (./wiring.tsx). The management-session
+    // gate is read REACTIVELY inside each adapter via useSessions (not the inject
+    // factory, whose result the framework memoizes per SessionProvideInfo identity
+    // and would go stale when noteAgentPreset lands after a freshly-created session's
+    // scope is materialized); non-management sessions render nothing, so ui-goal's
+    // dock entry and ui-conversation's DetailsPanel stay untouched there.
+
+    // E8: a second conversation.input.dock entry (after ui-goal's, order 10)
+    // rendering the semantic-layer GoalDock (objective + phase + round + the
+    // eval sparkline, currently a placeholder).
+    scope.slots.inject('conversation.input.dock', () => scope.slots.register({
+      name: 'conversation.input.dock',
+      id: 'semantic-layer-evidence',
+      order: 20,
+      locale: NS,
+    }, SemanticLayerGoalDock))
+
+    // E9/E10: EvidenceSidebar in the right details column — the details.aux
+    // list slot declared by ui-layout, coexisting with DetailsPanel. auto-flip
+    // resolves to the B (compact) layout while evalRunCount stays a placeholder.
+    scope.slots.inject('details.aux', () => scope.slots.register({
+      name: 'details.aux',
+      id: 'semantic-layer-evidence',
+      order: 0,
+      locale: NS,
+    }, SemanticLayerEvidence))
 
     return stopListSub
   })

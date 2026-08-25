@@ -28,6 +28,15 @@
     },
     {
       "path": "../ui-sidebar"
+    },
+    {
+      "path": "../ui-conversation"
+    },
+    {
+      "path": "../ui-layout"
+    },
+    {
+      "path": "../../goal/goal"
     }
   ]
 }

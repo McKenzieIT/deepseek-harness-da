@@ -71,6 +71,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'details': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
     /**
+     * A coexisting occupant of the right details column — a session-scoped
+     * list seat rendered beside `details`/DetailsPanel, so a feature panel
+     * (the semantic layer's EvidenceSidebar) shares the column without
+     * replacing the tool-call details viewer. An empty list renders nothing,
+     * leaving DetailsPanel intact.
+     */
+    'details.aux': { kind: 'list'; scope: 'session' }
+    /**
      * Frame-wide floating layer, above every column and outside their scroll
      * containers. Deliberately generic and unowned by any feature: a badge, a
      * toast stack or a status pill all belong here, and entries order among
@@ -123,6 +131,7 @@ export function apply(ctx: ClientContext): void {
         'sidebar': { kind: 'single', scope: 'root' },
         'conversation': { kind: 'single', scope: 'session-maybe' },
         'details': { kind: 'single', scope: 'session' },
+        'details.aux': { kind: 'list', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
       // Exclusive store: the factory itself — the framework instantiates per

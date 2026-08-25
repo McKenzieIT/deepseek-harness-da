@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { EvidenceSidebar } from '../src/client/EvidenceSidebar.tsx'
 import { CoveragePanel } from '../src/client/CoveragePanel.tsx'
 import { EvalTrajectory } from '../src/client/EvalTrajectory.tsx'
@@ -134,5 +134,41 @@ describe('OnDemandEvalTrigger', () => {
     const { container } = render(<OnDemandEvalTrigger onTrigger={onTrigger} t={t} />)
     expect(container.textContent).toContain('evidence.eval.trigger')
     expect(container.querySelector('button')).not.toBeNull()
+  })
+})
+
+describe('EvidenceSidebar layout mode (W6d auto-flip)', () => {
+  it('renders the B (compact) layout when auto resolves below the threshold', () => {
+    const { container } = render(
+      <EvidenceSidebar enabled={true} t={t} evidenceClient={null} layoutMode="auto" evalRunCount={0} />,
+    )
+    expect(container.querySelector('.sl-evidence-sidebar--mode-b')).not.toBeNull()
+    expect(container.querySelector('.sl-evidence-sidebar--mode-a')).toBeNull()
+    // B layout: no hero block; CoveragePanel leads the body.
+    expect(container.querySelector('.sl-evidence-sidebar__hero')).toBeNull()
+    expect(container.querySelector('.sl-coverage-panel')).not.toBeNull()
+  })
+
+  it('renders the A (hero/dashboard) layout when auto flips at the threshold', () => {
+    const { container } = render(
+      <EvidenceSidebar enabled={true} t={t} evidenceClient={null} layoutMode="auto" evalRunCount={3} />,
+    )
+    expect(container.querySelector('.sl-evidence-sidebar--mode-a')).not.toBeNull()
+    expect(container.querySelector('.sl-evidence-sidebar--mode-b')).toBeNull()
+    // A layout: EvalTrajectory promoted into a hero block (DashboardView core fused in).
+    expect(container.querySelector('.sl-evidence-sidebar__hero')).not.toBeNull()
+  })
+
+  it('defaults to the B layout when layout mode and run count are omitted', () => {
+    const { container } = render(<EvidenceSidebar enabled={true} t={t} evidenceClient={null} />)
+    expect(container.querySelector('.sl-evidence-sidebar--mode-b')).not.toBeNull()
+  })
+
+  it('honours an explicit B layout regardless of run count', () => {
+    const { container } = render(
+      <EvidenceSidebar enabled={true} t={t} evidenceClient={null} layoutMode="B" evalRunCount={50} />,
+    )
+    expect(container.querySelector('.sl-evidence-sidebar--mode-b')).not.toBeNull()
+    expect(container.querySelector('.sl-evidence-sidebar--mode-a')).toBeNull()
   })
 })
