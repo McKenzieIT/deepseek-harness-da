@@ -1,0 +1,16 @@
+case_id: "k11_092"
+input:
+  question: "role lt tag的分布情况"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":3,"max_rows":20}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "distribution"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_role_lt_tag_df"

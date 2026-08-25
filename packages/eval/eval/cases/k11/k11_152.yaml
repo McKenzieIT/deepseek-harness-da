@@ -1,0 +1,17 @@
+case_id: "k11_152"
+input:
+  question: "trans task群体的univ user pr表现"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":3,"max_rows":30}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "cohort"
+  mode: "iterative"
+  covered_assets:
+    - "dws_10000251_univ_user_predown_tag_df"
+    - "dim_10000251_trans_task_df"

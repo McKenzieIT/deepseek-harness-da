@@ -1,0 +1,16 @@
+case_id: "k11_067"
+input:
+  question: "哪个维度的progression 最高"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"top_dimension":"server_001"}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "ranking"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_progression_toy_di"

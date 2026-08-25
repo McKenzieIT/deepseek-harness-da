@@ -1,0 +1,16 @@
+case_id: "k11_129"
+input:
+  question: "univ dev act同比对比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"this_period":9800,"last_period":7600}
+  match_mode: "multi_scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "comparison"
+  mode: "iterative"
+  covered_assets:
+    - "dws_10000251_univ_dev_act_di"

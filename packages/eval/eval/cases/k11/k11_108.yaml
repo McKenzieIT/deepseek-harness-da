@@ -1,0 +1,16 @@
+case_id: "k11_108"
+input:
+  question: "role tag占总体比例"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"ratio":0.35}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "proportion"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_role_tag_df"

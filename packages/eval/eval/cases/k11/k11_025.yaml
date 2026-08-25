@@ -1,0 +1,16 @@
+case_id: "k11_025"
+input:
+  question: "查询com activity的总量"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"total":12345}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_activity_df"

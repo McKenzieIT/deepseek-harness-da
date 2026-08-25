@@ -1,0 +1,21 @@
+# K11 Eval Case Coverage Matrix
+total_cases: 161
+covered_dws_tables: 161
+total_dws_tables: 162
+covered_dim_tables: 28
+total_dim_tables: 159
+uncovered_dws_tables:
+  - dws_10000251_7_0_role_churn_pred_scoring
+intent_distribution:
+  metric_lookup: 40
+  trend: 25
+  ranking: 20
+  distribution: 20
+  proportion: 20
+  comparison: 20
+  cohort: 16
+complexity_distribution:
+  L1: 27
+  L2: 66
+  L3: 42
+  L4: 26

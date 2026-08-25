@@ -1,0 +1,17 @@
+case_id: "k11_109"
+input:
+  question: "trans play各类型在role tag pbt中的占比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":2,"max_rows":10}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "proportion"
+  mode: "iterative"
+  covered_assets:
+    - "dws_10000251_role_tag_pbt2_df"
+    - "dim_10000251_trans_play_df"

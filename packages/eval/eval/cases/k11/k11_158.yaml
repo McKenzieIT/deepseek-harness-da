@@ -1,0 +1,17 @@
+case_id: "k11_158"
+input:
+  question: "user tag bef群体的vip contact 表现"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":3,"max_rows":30}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "cohort"
+  mode: "iterative"
+  covered_assets:
+    - "dws_10000251_vip_contact_info_df"
+    - "dim_10000251_user_tag_before_ob_info"

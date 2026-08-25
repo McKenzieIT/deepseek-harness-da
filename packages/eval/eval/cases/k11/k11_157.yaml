@@ -1,0 +1,16 @@
+case_id: "k11_157"
+input:
+  question: "新老用户vip acc tag对比分析"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"new_users":2300,"old_users":8700}
+  match_mode: "multi_scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "cohort"
+  mode: "iterative"
+  covered_assets:
+    - "dws_10000251_vip_acc_tag_df"

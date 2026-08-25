@@ -1,0 +1,17 @@
+case_id: "k11_111"
+input:
+  question: "trans props各类型在selfhelp new中的占比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":2,"max_rows":10}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "proportion"
+  mode: "iterative"
+  covered_assets:
+    - "dws_10000251_selfhelp_new_df"
+    - "dim_10000251_trans_props_df"

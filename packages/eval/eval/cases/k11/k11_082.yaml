@@ -1,0 +1,16 @@
+case_id: "k11_082"
+input:
+  question: "recharge sho排名前10"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"top_items":["item_1","item_2","item_3"]}
+  match_mode: "ordered_subset"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "ranking"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_recharge_shop_buy_di"

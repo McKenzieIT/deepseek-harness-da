@@ -1,0 +1,17 @@
+case_id: "k11_121"
+input:
+  question: "trans recove各类型在univ acc chu中的占比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":2,"max_rows":10}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "proportion"
+  mode: "iterative"
+  covered_assets:
+    - "dws_10000251_univ_acc_churn_di"
+    - "dim_10000251_trans_recover_df"

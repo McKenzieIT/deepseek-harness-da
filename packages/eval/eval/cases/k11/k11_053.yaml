@@ -1,0 +1,16 @@
+case_id: "k11_053"
+input:
+  question: "play stage a近30天趋势"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":25,"max_rows":30}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_play_stage_act_df"

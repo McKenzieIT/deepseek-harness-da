@@ -1,0 +1,16 @@
+case_id: "k11_103"
+input:
+  question: "各区间role server 数量"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"buckets":["0-100","100-500","500+"]}
+  match_mode: "set_equal"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "distribution"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_role_server_base_di"

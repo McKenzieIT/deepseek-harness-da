@@ -1,0 +1,16 @@
+case_id: "k11_048"
+input:
+  question: "play lineup环比变化"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"current":5000,"previous":4200,"change_pct":19}
+  match_mode: "multi_scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_play_lineup_df"
