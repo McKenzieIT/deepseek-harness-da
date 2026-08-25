@@ -236,7 +236,10 @@ export class EvidenceQueryService extends Service {
     this.evalStore = evalStore ?? new EvalResultStore()
   }
 
-  /** Expose the eval store for W3 wiring and testing. */
+  /**
+   * Expose the eval store for W3 wiring and testing.
+   * @returns the service's eval result store.
+   */
   getEvalStore(): EvalResultStore {
     return this.evalStore
   }
@@ -244,6 +247,7 @@ export class EvidenceQueryService extends Service {
   /**
    * Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats()
    * but enriches with confirmation.status breakdown across all assets.
+   * @returns aggregated table/event/metric counts plus per-domain and confirmation-status tallies.
    */
   coverageQuery(): EnrichedCoverageStats {
     const root = this.ctx.schema.semanticRoot
@@ -303,6 +307,8 @@ export class EvidenceQueryService extends Service {
   /**
    * Gap analysis: given an asset, compute which other assets are reachable via
    * RelationGraph joins but have no eval case coverage.
+   * @param assetId - the source asset to compute reachable-but-uncovered gaps from.
+   * @returns the source asset plus the list of reachable assets lacking eval coverage (with join paths).
    */
   gapAnalysis(assetId: string): GapAnalysisResult {
     const graph = this.ctx.schema.getRelationGraph()
@@ -347,6 +353,8 @@ export class EvidenceQueryService extends Service {
    * Reachability delta: "if we add this relation, which asset pairs become
    * newly reachable via joins?" Clones the current graph, adds the proposed
    * relation, and compares BFS reachability before/after.
+   * @param newRelation - the proposed relation to add before recomputing reachability.
+   * @returns the proposed relation plus the asset pairs newly reachable via joins after adding it.
    */
   reachabilityDelta(newRelation: ProposedRelation): ReachabilityDeltaResult {
     const graph = this.ctx.schema.getRelationGraph()
@@ -450,6 +458,8 @@ export class EvidenceQueryService extends Service {
 
   /**
    * Eval result query: query persisted eval run results.
+   * @param filters - the asset/status/domain/limit filters to apply.
+   * @returns the matching eval result records plus the total count before limiting.
    */
   evalResultQuery(filters: EvalResultFilters): EvalResultQueryResult {
     return this.evalStore.query(filters)
@@ -458,6 +468,9 @@ export class EvidenceQueryService extends Service {
   /**
    * Before/after delta: compare two runs and return which cases flipped.
    * "Improved" = moved from fail/error → pass; "regressed" = moved from pass → fail/error.
+   * @param runIdA - the baseline (before) run id.
+   * @param runIdB - the comparison (after) run id.
+   * @returns the run ids, the flipped cases, and improved/regressed/unchanged counts.
    */
   beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport {
     const recordsA = this.evalStore.getByRunId(runIdA)
@@ -493,6 +506,8 @@ export class EvidenceQueryService extends Service {
   /**
    * Asset health: aggregate report for a single asset — confirmation status,
    * has_eval_coverage, relation_count, last_modified.
+   * @param assetId - the table, event, or metric asset to report on.
+   * @returns the aggregate health report, or null when no table/event/metric matches assetId.
    */
   assetHealth(assetId: string): AssetHealthReport | null {
     const root = this.ctx.schema.semanticRoot

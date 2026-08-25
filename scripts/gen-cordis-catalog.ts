@@ -616,6 +616,27 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   WorkflowAgentEndInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowAgentInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowResultInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
+  // da data-agent services — contract types exported by packages/data/* and packages/query/query
+  EvalResultStore: 'eval result store contract is owned by packages/data/evidence-query/src/index.ts',
+  EnrichedCoverageStats: 'enriched coverage stats contract is owned by packages/data/evidence-query/src/types.ts',
+  GapAnalysisResult: 'gap analysis result contract is owned by packages/data/evidence-query/src/types.ts',
+  ProposedRelation: 'proposed relation contract is owned by packages/data/evidence-query/src/types.ts',
+  ReachabilityDeltaResult: 'reachability delta result contract is owned by packages/data/evidence-query/src/types.ts',
+  EvalResultFilters: 'eval result filters contract is owned by packages/data/evidence-query/src/types.ts',
+  EvalResultQueryResult: 'eval result query result contract is owned by packages/data/evidence-query/src/types.ts',
+  EvalDeltaReport: 'eval delta report contract is owned by packages/data/evidence-query/src/types.ts',
+  AssetHealthReport: 'asset health report contract is owned by packages/data/evidence-query/src/types.ts',
+  ScopeDefinition: 'scope definition contract is owned by packages/data/scope-registry/src/index.ts',
+  DataSourceRegistry: 'data source registry contract is owned by packages/data/semantic-layer/src/registry.ts',
+  RelationGraph: 'relation graph contract is owned by packages/data/semantic-layer/src/relation-graph.ts',
+  CorpusItem: 'retrieval corpus item contract is owned by packages/data/semantic-layer/src/registry.ts',
+  LlmCall: 'enrichment llm call contract is owned by packages/data/semantic-layer/src/enrichment.ts',
+  MetricDefinition: 'metric definition contract is owned by packages/data/semantic-layer/src/types.ts',
+  EventCorpusItem: 'event corpus item contract is owned by packages/data/semantic-layer/src/corpus.ts',
+  QueryOutcome: 'query outcome contract is owned by packages/query/query/src/types.ts',
+  QueryRequest: 'query request contract is owned by packages/query/query/src/types.ts',
+  InstanceId: 'query instance id contract is owned by packages/query/query/src/types.ts',
+  CriticCtx: 'critic context contract is owned by packages/data/nl2sql-engine/src/types.ts',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

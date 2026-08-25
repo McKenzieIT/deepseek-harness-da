@@ -55,7 +55,22 @@ declare module '@deepseek-ai/cordis' {
     scopes: ScopeRegistryService
   }
   interface Events {
+    /**
+     * Emitted after the set of registered scopes changes — a scope was added or
+     * updated via register(), or removed via remove(). A pure active-scope
+     * switch (setActive/clearActive) does not fire this event. Listeners may
+     * re-read ctx.scopes.list() to refresh any cached view of the registry.
+     * @mode emit
+     */
     'scopes/changed': () => void
+    /**
+     * Emitted after the active scope id changes — via setActive(),
+     * clearActive(), register() making the first scope active, or remove()
+     * deactivating the previously active scope. Listeners may re-read
+     * ctx.scopes.active() to react to the new selection.
+     * @param scopeId - the new active scope id, or undefined when no scope is now active.
+     * @mode emit
+     */
     'scopes/active-changed': (scopeId: string | undefined) => void
   }
 }
@@ -83,31 +98,47 @@ export class ScopeRegistryService extends Service {
 
   // ── Read API ────────────────────────────────────────────────────────────
 
-  /** All registered scopes. Returns empty array when registryPath is unset or file missing. */
+  /**
+   * All registered scopes. Returns empty array when registryPath is unset or file missing.
+   * @returns all registered scope definitions (empty when the registry is unset or missing).
+   */
   list(): readonly ScopeDefinition[] {
     return [...this.load().scopes.values()]
   }
 
-  /** Get a scope by id. Returns undefined when not found. */
+  /**
+   * Get a scope by id. Returns undefined when not found.
+   * @param id - the scope identifier to look up.
+   * @returns the matching scope definition, or undefined when no scope has this id.
+   */
   get(id: string): ScopeDefinition | undefined {
     return this.load().scopes.get(id)
   }
 
-  /** The currently active scope definition, or undefined if none is active. */
+  /**
+   * The currently active scope definition, or undefined if none is active.
+   * @returns the active scope definition, or undefined when no scope is active.
+   */
   active(): ScopeDefinition | undefined {
     const { scopes, activeId } = this.load()
     if (activeId === undefined) return undefined
     return scopes.get(activeId)
   }
 
-  /** The currently active scope id, or undefined if none is active. */
+  /**
+   * The currently active scope id, or undefined if none is active.
+   * @returns the active scope id, or undefined when no scope is active.
+   */
   activeId(): string | undefined {
     return this.load().activeId
   }
 
   // ── Write API ───────────────────────────────────────────────────────────
 
-  /** Set the active scope by id. Throws if the scope does not exist in the registry. */
+  /**
+   * Set the active scope by id. Throws if the scope does not exist in the registry.
+   * @param id - the scope id to make active (must already be registered).
+   */
   async setActive(id: string): Promise<void> {
     this.ensureConfigured()
     await this.mutate((reg) => {
@@ -126,7 +157,10 @@ export class ScopeRegistryService extends Service {
     this.ctx.emit('scopes/active-changed', undefined)
   }
 
-  /** Register (or update) a scope definition. If this is the first scope, it becomes active. */
+  /**
+   * Register (or update) a scope definition. If this is the first scope, it becomes active.
+   * @param scope - the scope definition to register or update.
+   */
   async register(scope: ScopeDefinition): Promise<void> {
     this.ensureConfigured()
     let becameActive = false
@@ -141,7 +175,10 @@ export class ScopeRegistryService extends Service {
     if (becameActive) this.ctx.emit('scopes/active-changed', scope.id)
   }
 
-  /** Remove a scope from the registry. If it was active, active becomes undefined. */
+  /**
+   * Remove a scope from the registry. If it was active, active becomes undefined.
+   * @param id - the scope id to remove.
+   */
   async remove(id: string): Promise<void> {
     this.ensureConfigured()
     let deactivated = false

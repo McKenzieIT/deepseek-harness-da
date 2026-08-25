@@ -198,7 +198,10 @@ export class SemanticLayerService extends Service {
     for (const p of [eventKindPlugin, tableKindPlugin]) this.registry.register(p)
   }
 
-  /** The live data-source-kind registry (events/tables/metrics plugins registered at construction). */
+  /**
+   * The live data-source-kind registry (events/tables/metrics plugins registered at construction).
+   * @returns the live data-source-kind registry.
+   */
   getRegistry(): DataSourceRegistry {
     return this.registry
   }
@@ -421,6 +424,11 @@ export class SemanticLayerService extends Service {
     return loadTableDefinitionFromLayer(this.semanticRoot, name)
   }
 
+  /**
+   * Load a validated metric definition by name from the substrate.
+   * @param name - the metric `name` key to match (`<host>__<key>`).
+   * @returns the parsed `MetricDefinition`, or null when no host table/event defines a metric with this name.
+   */
   loadMetricDefinition(name: string): MetricDefinition | null {
     // M1 virtual projection: derive a metric on demand from its host table or
     // event `metrics:` block. The metric name is `<host>__<key>` (see
