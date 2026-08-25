@@ -383,8 +383,13 @@ export class PhaseGate {
       this.captureToolData(s, exec.name, result)
       if (exec.name === 'query_data' && s.last_sql !== null) { // F2: same-source
         const args = exec.arguments as { sql?: string } | undefined
-        // B5: normalize whitespace both sides (last_sql is already normalized by extractSqlCandidate).
-        if (args?.sql !== undefined && normalizeSql(args.sql) !== s.last_sql) {
+        // M3 #2 fix: normalize BOTH sides. last_sql is set by captureToolData
+        // (critique_sql_tool's returned sql, raw) AND by generationGate's
+        // extractSqlCandidate — the two paths disagree on normalization, so
+        // normalizing only args.sql (the prior B5 assumption that last_sql was
+        // already normalized) trips false violations when critique_sql_tool
+        // overwrites last_sql with a raw (ORDER BY/;-bearing) string.
+        if (args?.sql !== undefined && normalizeSql(args.sql) !== normalizeSql(s.last_sql)) {
           // B8: a same-source violation is a failed execution — record it so executionDecision
           // treats it as failed (fallback/decline), not the stale 'not run' outcome.
           s.last_query_outcome = 'failed'
