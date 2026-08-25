@@ -17,7 +17,7 @@ W5b grilling 发现"modal panel vs inline panel"是错误的问题框架。语�
 ### 1. 管理 agent preset
 
 配置项：
-- **Tools**（v1）：search_schema, get_definition, list_domains, discover_relations, execute_metric, edit_definition, get_coverage, trigger_eval (W3), goal
+- **Tools**（v1）：search_schema, get_definition, list_domains, discover_relations, edit_definition, get_coverage, trigger_eval (W3), goal
 - **Persona/Prompt**：管理 agent 角色定义（目标=提升语义层质量；工作方式=eval evidence 驱动；与数据 agent 的区别）
 - **Goal 配置**：defaultMaxGoalRounds、round prompt 模板
 
@@ -37,7 +37,6 @@ W5b grilling 发现"modal panel vs inline panel"是错误的问题框架。语�
 | `get_definition` | 结构化字段表 + 关系 badge + domain tags | 复用 `AssetDetail`（改为 JsonTree） |
 | `get_coverage` | KPI 卡片行（total / confirmed / draft / by-domain breakdown） | 复用 `CoveragePanel` |
 | `discover_relations` | Before/after diff 卡 + 新增关系高亮 | 新建 |
-| `execute_metric` | 指标结果卡（数值 + SQL + source 链路） | 新建 |
 | `edit_definition` | Diff 视图（字段变更前后） | 新建 |
 | `trigger_eval` | Eval 进度 → 完成后 Delta 卡 | 复用 `DeltaView` / `EvalTrajectory` |
 
@@ -84,7 +83,6 @@ v1 管理 agent 挂载以下 tools：
 - `get_definition` — 资产详情
 - `list_domains` — 域列表
 - `discover_relations` — 关系发现/enrichment
-- `execute_metric` — 指标计算执行
 - `edit_definition` — 定义编辑
 - `get_coverage` — 覆盖率统计
 - `trigger_eval` — eval 触发（W3）

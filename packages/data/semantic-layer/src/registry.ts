@@ -92,7 +92,7 @@ export interface DataSourceKindPlugin<T = unknown> {
   relations(def: T): RelationDef[]
 
   /**
-   * Return an executable rule/SQL template (G2 Level 2.5, MetricPlugin only).
+   * Return an executable rule/SQL template (G2, MetricPlugin only — removed in M1b; retained as optional interface for backward-compat).
    * Optional — only metric-type plugins implement this.
    */
   toExecutableRule?(def: T): string | null

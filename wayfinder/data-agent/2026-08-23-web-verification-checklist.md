@@ -37,7 +37,7 @@
 | B3 | 消歧/追问 | 发送模糊问题如 "看看数据" | Agent 应请求澄清（clarify），而非强行生成 SQL | | |
 | B4 | 诚实拒绝 | 发送完全无关问题如 "帮我写一首诗" | Agent 应 honest_decline（拒绝并说明只能处理数据问题） | | |
 | B5 | load_table_definition | 在 B1 之后观察 | Agent 是否调用了 `load_table_definition` 或 `load_event_definition` 加载具体定义 | | |
-| B6 | 工具白名单 | 观察 UNDERSTANDING 阶段可调用的工具 | 仅 `search_data_sources` / `load_table_definition` / `load_event_definition` / `execute_metric`（不应出现 `query_data`） | | |
+| B6 | 工具白名单 | 观察 UNDERSTANDING 阶段可调用的工具 | 仅 `search_data_sources` / `load_table_definition` / `load_event_definition`（不应出现 `query_data`；execute_metric 已删除——M1b） | | |
 
 ---
 
@@ -93,7 +93,7 @@
 |---|---|---|---|---|---|
 | G1 | 中文 slang 桥接 | 发送 "充值" | search_data_sources 应返回 `recharge` 相关事件（D2g 验证的 CJK bridge） | | |
 | G2 | 商城购买 bridge | 发送 "商城购买" | 应匹配 `shop.buy`（term-only 高于 params+term 的 D2g 信号） | | |
-| G3 | 指标查询 | 发送 "DAU" 或 "付费率" | 若命中指标定义，应触发 `execute_metric`（Level 2.5 确定性查询） | | |
+| G3 | 指标查询 | 发送 "DAU" 或 "付费率" | 若命中指标定义，应通过 Level 2 路径注入 metric context 生成 SQL（M1b: execute_metric 已删除） | | |
 | G4 | 多事件关联 | 发送 "道具产出和消耗的比较" | 应检索到 `item.add` + `item.use` 两个事件 | | |
 
 ---

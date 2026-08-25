@@ -1288,7 +1288,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'loadRetrievalCorpusAll(): CorpusItem[]',
-        description: 'Registry-driven full retrieval corpus: every registered kind\'s definitions projected via its `toCorpusItem` (events + tables + metrics). Supersedes the events-only `loadRetrievalCorpus()` for P3/P4 — tables + metrics MUST be indexable so BM25 can hit a DIM table (join recall) or a metric (Level 2.5 routing). `loadRetrievalCorpus()` is unchanged (preserves the D2e events-only measured behavior + its 445-item K11 test).',
+        description: 'Registry-driven full retrieval corpus: every registered kind\'s definitions projected via its `toCorpusItem` (events + tables + metrics). Supersedes the events-only `loadRetrievalCorpus()` for P3/P4 — tables + metrics MUST be indexable so BM25 can hit a DIM table (join recall) or a metric (Level 2 context injection). `loadRetrievalCorpus()` is unchanged (preserves the D2e events-only measured behavior + its 445-item K11 test).',
         parameters: [],
         returns: 'the full corpus (events + tables + metrics) ready for Bm25Linker.',
       },
