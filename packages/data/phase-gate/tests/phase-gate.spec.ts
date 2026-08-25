@@ -573,6 +573,88 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(s.self_evolution_table).toBe('dws_dau')
   })
 
+  it('M4 E2E: full self-evolution flow — not_found → clarification → reply → query success → auto-persist', async () => {
+    // Simulates the full B scenario:
+    // 1. EXECUTION: query_data fails with not_found
+    // 2. executionDecision: fallback to GENERATION + inject + record self_evolution_table
+    // 3. LLM calls present_clarification → HALT (awaiting_clarification)
+    // 4. User reply ("ieu_cdm") → resetQuestionScoped preserves self_evolution_table
+    // 5. LLM generates qualified SQL → critique → query_data succeeds
+    // 6. executionDecision: completed → autoPersistOverride fires update_table_config
+    const { agent, injected } = makeAgent('m4e2e')
+    const execute = vi.fn().mockResolvedValue(resultOk({ ok: true, table_name: 'dws_10000251_univ_acc_summary_di', qualified_name: 'ieu_cdm.dws_10000251_univ_acc_summary_di' }))
+    const g = gate({ logger: { info: () => undefined }, tools: { execute } } as unknown as Context)
+    const s = g.state('m4e2e')
+
+    // --- Step 1: EXECUTION phase, query fails with not_found ---
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    s.candidate_tables.add('dws_10000251_univ_acc_summary_di')
+    s.definition_loaded = true
+    s.last_sql = 'SELECT ds, dau FROM dws_10000251_univ_acc_summary_di WHERE ds >= 20260801'
+    // Simulate query_data returning failed + not_found (captureToolData)
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: s.last_sql }),
+      resultOk({ state: 'failed', sql: s.last_sql, error: 'ODPS-0130131:Table not found - dws_10000251_univ_acc_summary_di', failureKind: 'not_found' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_failure_kind).toBe('not_found')
+
+    // --- Step 2: onTurnStopping → executionDecision not_found → record table + fallback ---
+    await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
+    expect(s.self_evolution_table).toBe('dws_10000251_univ_acc_summary_di')
+    expect(s.current_phase).toBe(Phase.GENERATION)
+    expect(s.fallback_count).toBe(1)
+    const guidance = injected.map(m => m.content.map(b => b.type === 'text' ? b.text : '').join('')).join('\n')
+    expect(guidance).toContain('update_table_config')
+
+    // --- Step 3: LLM calls present_clarification → HALT ---
+    await g.onPostExecute(
+      execView('present_clarification', agent, { question: 'Which ODPS project does dws_10000251_univ_acc_summary_di live in?' }),
+      resultOk({ asked: true }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.awaiting_clarification).toBe(true)
+
+    // --- Step 4: User reply "ieu_cdm" → resetQuestionScoped (idle→running) ---
+    s.prior_status = 'idle'
+    g.onStatus({ agent, status: 'running' })
+    expect(s.awaiting_clarification).toBe(false)
+    expect(s.self_evolution_table).toBe('dws_10000251_univ_acc_summary_di') // preserved!
+    expect(s.current_phase).toBe(Phase.GENERATION) // kept
+
+    // --- Step 5: LLM generates qualified SQL, critique passes, query succeeds ---
+    const qualifiedSql = 'SELECT ds, dau FROM ieu_cdm.dws_10000251_univ_acc_summary_di WHERE ds >= 20260801'
+    // critique_sql_tool updates last_sql
+    await g.onPostExecute(
+      execView('critique_sql_tool', agent, { sql: qualifiedSql }),
+      resultOk({ confidence: 0.9, sql: qualifiedSql }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_sql).toBe(qualifiedSql)
+    // Advance to EXECUTION (simulate gate pass in GENERATION)
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    // query_data succeeds
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: qualifiedSql }),
+      resultOk({ state: 'completed', sql: qualifiedSql, rows: [] }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.last_query_outcome).toBe('completed')
+
+    // --- Step 6: onTurnStopping → executionDecision completed → autoPersistOverride ---
+    await g.onTurnStopping({ agent, turn: 2, signal: new AbortController().signal })
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(execute.mock.calls[0]![0]).toMatchObject({
+      name: 'update_table_config',
+      arguments: { table_name: 'dws_10000251_univ_acc_summary_di', project: 'ieu_cdm' },
+    })
+    expect(s.self_evolution_table).toBeNull()
+    // Phase advanced to INTERPRETATION (query succeeded + override persisted)
+    expect(s.current_phase).toBe(Phase.INTERPRETATION)
+  })
+
   it('B9/F4: DECLINED resets on a new user question (idle→running → resetQuestionScoped)', () => {
     const { agent } = makeAgent('s1')
     const g = gate()
