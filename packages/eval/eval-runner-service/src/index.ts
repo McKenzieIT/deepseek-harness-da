@@ -22,7 +22,6 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { loadCases } from '@deepseek-ai/dsh-eval'
 import { runBatch, compareDelta } from '@deepseek-ai/dsh-eval-runner'
 import type {
   AgentResponder,
@@ -36,13 +35,16 @@ import type {
   DeltaReport,
   RunnerVerdict,
 } from '@deepseek-ai/dsh-eval-runner'
-import { Nl2sqlEngine } from '@deepseek-ai/dsh-nl2sql-engine/src/engine.ts'
-import type { Llm, LlmGenerateArgs, LlmGenerateResult } from '@deepseek-ai/dsh-nl2sql-engine/src/replay-llm.ts'
-import type { OdpsExecutor } from '@deepseek-ai/dsh-nl2sql-engine/src/stand-in-odps.ts'
-import type { QueryOutcome as EngineQueryOutcome } from '@deepseek-ai/dsh-nl2sql-engine/src/types.ts'
-import { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
-import type { RelationGraphLike } from '@deepseek-ai/dsh-nl2sql-engine/src/ontology.ts'
-import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
+import { Nl2sqlEngine, Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
+import type {
+  Llm,
+  LlmGenerateArgs,
+  LlmGenerateResult,
+  OdpsExecutor,
+  QueryOutcome as EngineQueryOutcome,
+  RelationGraphLike,
+  EngineConventions,
+} from '@deepseek-ai/dsh-nl2sql-engine'
 import type { QueryEngine, QueryRequest, ScopeId, InstanceId, QueryOutcome } from '@deepseek-ai/dsh-query/src/index.ts'
 import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'

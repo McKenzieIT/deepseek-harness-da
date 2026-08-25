@@ -43,6 +43,7 @@
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-client-ui-semantic-layer": "workspace:^",
     "@deepseek-ai/dsh-evidence-query": "workspace:^",
+    "@deepseek-ai/dsh-eval-runner-service": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",

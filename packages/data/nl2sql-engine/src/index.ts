@@ -30,6 +30,11 @@ import { loadConventions, type EngineConventions } from '@deepseek-ai/dsh-query-
 
 // ── logic exports (P7b preset / phase-gate / eval consume) ───────────────
 export * from './types.ts'
+// EngineConventions is the engine's per-dialect grounding (consumed by EngineDeps);
+// re-exported so a consumer building Nl2sqlEngine collaborators (e.g. the
+// eval-runner-service ctx adapter) imports it from the engine package root
+// rather than a cross-package deep .ts path.
+export type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 export { critiqueSql, sqlSyntaxGate, extractSqlCandidate, extractJsonPaths, extractTableNames, hasPartitionFilter, hasSelectStar, type CriticResult } from './critic.ts'
 export { buildPrompt, type EventDefinitionLite, type BuildPromptArgs } from './prompt.ts'
 export { renderConventionsPrompt } from './conventions.ts'

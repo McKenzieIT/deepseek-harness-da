@@ -2,9 +2,18 @@
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib",
-    "declaration": true,
-    "declarationDir": "lib/types"
+    "outDir": "lib/types"
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../eval" },
+    { "path": "../eval-runner" },
+    { "path": "../../llm/llm" },
+    { "path": "../../data/nl2sql-engine" },
+    { "path": "../../data/evidence-query" },
+    { "path": "../../query/query" },
+    { "path": "../../query/query-maxcompute" }
+  ]
 }

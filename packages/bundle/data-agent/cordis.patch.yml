@@ -152,6 +152,12 @@
       name: '@deepseek-ai/dsh-evidence-query'
     - id: ui-semantic-layer   # W5: semantic layer management UI (client plugin)
       name: '@deepseek-ai/dsh-client-ui-semantic-layer'
+    - id: eval-runner-service # W6a-gap: wire the ctx.evalRunner seam — activates trigger_eval full_run + the ③ goal-eval-policy no-progress backstop. Drives the real Nl2sqlEngine (ctx.llm + ctx.query) over the K11 case set, persists JSONL for evidence-query, tracks last/last-two runs for delta. inject ['llm'] + optional ['query','nl2sql','schema'] — degrades to all-fail verdicts when a seam is unmounted, never crashes the bundle.
+      name: '@deepseek-ai/dsh-eval-runner-service'
+      config:
+        caseDir: ./packages/eval/eval/cases/k11
+        resultsDir: .tmp/eval-results
+        passK: 3
 #     # ── audit (P8) ───────────────────────────────────────────────────────
     - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
       name: '@deepseek-ai/dsh-audit'
