@@ -1262,6 +1262,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-semantic-layer':
         specifier: workspace:^
         version: link:../../client/ui-semantic-layer
+      '@deepseek-ai/dsh-eval-runner-service':
+        specifier: workspace:^
+        version: link:../../eval/eval-runner-service
       '@deepseek-ai/dsh-evidence-query':
         specifier: workspace:^
         version: link:../../data/evidence-query
@@ -4533,6 +4536,30 @@ importers:
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.0
+
+  packages/eval/eval-runner-service:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-eval':
+        specifier: workspace:^
+        version: link:../eval
+      '@deepseek-ai/dsh-eval-runner':
+        specifier: workspace:^
+        version: link:../eval-runner
+      '@deepseek-ai/dsh-evidence-query':
+        specifier: workspace:^
+        version: link:../../data/evidence-query
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-nl2sql-engine':
+        specifier: workspace:^
+        version: link:../../data/nl2sql-engine
+      '@deepseek-ai/dsh-query':
+        specifier: workspace:^
+        version: link:../../query/query
 
   packages/examples/acp-demo:
     dependencies:
