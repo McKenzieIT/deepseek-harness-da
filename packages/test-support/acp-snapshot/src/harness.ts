@@ -523,6 +523,34 @@ async function runStep(
   }
 }
 
+/**
+ * Deterministic condition poll: invoke `check` every `interval`; resolve when it
+ * returns without throwing, or rethrow the check's own error once `timeout`
+ * elapses.
+ *
+ * Unlike vi.waitFor, this always awaits a check to completion before testing
+ * the deadline, so a single slow check (a session-log harvest stretched by
+ * concurrent load) can never replace the check's domain-specific error with
+ * vi.waitFor's generic "Timed out in waitFor!" — the negative-path tests assert
+ * that domain message, and a 20ms ceiling must stay robust under load. The first
+ * check runs immediately (no leading sleep), matching vi.waitFor's cadence.
+ */
+async function waitForCondition<T>(
+  check: () => T | Promise<T>,
+  { interval, timeout }: { interval: number; timeout: number },
+): Promise<void> {
+  const deadline = Date.now() + timeout
+  for (;;) {
+    try {
+      await check()
+      return
+    } catch (error) {
+      if (Date.now() >= deadline) throw error
+    }
+    await new Promise(resolve => setTimeout(resolve, interval))
+  }
+}
+
 /** Wait until persistence exposes an open turn for the selected session. */
 async function waitForPersistedTurnStart(
   root: string,

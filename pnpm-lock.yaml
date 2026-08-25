@@ -1268,6 +1268,12 @@ importers:
       '@deepseek-ai/dsh-evidence-query':
         specifier: workspace:^
         version: link:../../data/evidence-query
+      '@deepseek-ai/dsh-goal-eval-context':
+        specifier: workspace:^
+        version: link:../../goal/goal-eval-context
+      '@deepseek-ai/dsh-goal-eval-policy':
+        specifier: workspace:^
+        version: link:../../goal/goal-eval-policy
       '@deepseek-ai/dsh-identity':
         specifier: workspace:^
         version: link:../../identity/identity

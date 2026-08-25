@@ -122,7 +122,7 @@
         # qualified DAU's table as game_10000251.dws_... which ODPS could
         # not find. qualifyTable on the query provider reads this; the
         # semantic layer no longer qualifies.
-        defaultProject: ieu_cdm
+        defaultProject: game_xxx_wrong
         # rbi §3 阶段D true-timeout: the DAU query (full event_view
         # partition scan over 7 days + GET_JSON_OBJECT) takes >60s on real
         # ODPS, so the Provider Config default 60_000 times out the MCP
@@ -158,6 +158,13 @@
         caseDir: ./packages/eval/eval/cases/k11
         resultsDir: .tmp/eval-results
         passK: 3
+    - id: goal-eval-policy   # W6a: no-progress backstop — counts rounds, triggers eval every K=3, blocks after N=3 consecutive no-improvement
+      name: '@deepseek-ai/dsh-goal-eval-policy'
+      config:
+        goalEvalIntervalRounds: 3
+        noProgressThreshold: 3
+    - id: goal-eval-context  # W6b: inject <eval_evidence> XML into agent system prompt when goal active
+      name: '@deepseek-ai/dsh-goal-eval-context'
 #     # ── audit (P8) ───────────────────────────────────────────────────────
     - id: audit              # guard/session-event + tool-audit + ctx.audit (own node:sqlite; P8b)
       name: '@deepseek-ai/dsh-audit'

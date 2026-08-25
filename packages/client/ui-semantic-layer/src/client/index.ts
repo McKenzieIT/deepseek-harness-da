@@ -7,6 +7,31 @@
  * W5-full: Evidence capability progressive illumination — sidebar renders
  * coverage stats, eval trajectory, gap analysis, and before/after eval delta
  * from ctx.evidenceQuery data.
+ *
+ * W6c/W6d data-wiring status (this host composition):
+ *  - SemanticLayerShell (registered below into `sidebar.footer.action`, a
+ *    root-scope slot) receives `layoutMode: 'auto'` and an `evalRunCount`
+ *    placeholder through the `injected()` factory. The shell routes to
+ *    DashboardView (the "A" layout) only when `effectiveMode === 'A' &&
+ *    evidenceClient`; otherwise it renders the trigger button ("B" layout).
+ *  - `evalRunCount` real source is server-side —
+ *    `ctx.evidenceQuery.getEvalStore().getRunIds().length`
+ *    (EvidenceQueryService, packages/data/evidence-query). No client RPC
+ *    bridge exists yet, so the factory passes `0` (auto resolves to B below
+ *    the threshold of 3). When a client evidence-query RPC lands, read the
+ *    run count here and pass it down.
+ *  - `evidenceClient` (the EvidenceQueryClient face that DashboardView and
+ *    useEvidenceQuery consume) is likewise un-wired: there is no client-side
+ *    construction of it today. It is left absent until that bridge exists.
+ *  - `goalData` and `evalPassRates` feed GoalDock, which lives inside
+ *    EvidenceSidebar. EvidenceSidebar is exported (below) for host
+ *    composition in a SESSION-scoped details column — NOT rendered by this
+ *    plugin. Because `sidebar.footer.action` is root-scoped, `useProjection`
+ *    (a SessionStandardProps seat) is unavailable here. The GoalDock wiring
+ *    therefore belongs in the session-scoped slot that mounts
+ *    EvidenceSidebar: `goalData` from `useProjection('goal')` (same source
+ *    as ui-goal's GoalBar) and `evalPassRates` from the evidence-query
+ *    client once it exists. This file cannot thread those props.
  */
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
@@ -86,6 +111,15 @@ export function apply(ctx: ClientContext): void {
 
     const injected = (): Omit<SemanticLayerShellProps, 'wide' | 't'> => ({
       openOrCreateSession,
+      // W6d: auto-flip enabled — computeEffectiveMode resolves 'B' (trigger)
+      // vs 'A' (DashboardView) from evalRunCount against the threshold.
+      layoutMode: 'auto',
+      // W6d: eval run count for the auto-flip decision. Real source is
+      // server-side (`ctx.evidenceQuery.getEvalStore().getRunIds().length`)
+      // which has no client RPC bridge yet — see the file header. Passing 0
+      // keeps the shell in the 'B' trigger layout until a host threads live
+      // data through; this is the wiring point for that future data.
+      evalRunCount: 0,
     })
 
     scope.slots.inject('sidebar.footer.action', () => scope.slots.register({

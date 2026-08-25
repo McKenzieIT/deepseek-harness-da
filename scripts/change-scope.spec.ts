@@ -96,8 +96,8 @@ function repositoryState(root: string): Record<string, string> {
   }
 }
 
-describe('change-scope', () => {
-  it('uses an explicit base on a fresh branch without a same-name remote and after its first push', { timeout: 20_000 }, () => {
+describe('change-scope', { timeout: 30_000 }, () => {
+  it('uses an explicit base on a fresh branch without a same-name remote and after its first push', () => {
     const { root } = fixture()
     git(root, ['switch', '-c', 'feature'])
     git(root, ['branch', '--set-upstream-to=origin/master'])

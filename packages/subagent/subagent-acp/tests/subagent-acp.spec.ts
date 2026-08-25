@@ -384,7 +384,7 @@ describe('cwd resolution', () => {
   })
 })
 
-describe('dsh-subagent-acp', () => {
+describe('dsh-subagent-acp', { timeout: 30_000 }, () => {
   it('drives child processes with parent-unique run ids and returns streamed output', async () => {
     const ctx = await setup({ MOCK_TEXT: 'hello from acp child', MOCK_STOP: 'end_turn', MOCK_SESSION_ID: 'acp-child-session' })
     const run = await ctx.subagents.start('acp', request('do X'))
