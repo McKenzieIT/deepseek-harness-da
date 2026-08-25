@@ -336,7 +336,7 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
   if (type !== 'tool/result') return
   if (sourceRecord['kind'] !== 'tool'
     || typeof sourceRecord['callId'] !== 'string'
-    || sourceRecord['callId'] === '') {
+  ) {
     throw new Error(`${subject} message must have tool source`)
   }
   const content = messageRecord['content'] as unknown[]
@@ -346,7 +346,7 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
     || !Array.isArray((block as Record<string, unknown>)['content'])) {
     throw new Error(`${subject} message must contain one tool-result block`)
   }
-  if ((block as Record<string, unknown>)['toolCallId'] !== sourceRecord['callId']) {
+  if (sourceRecord['callId'] !== '' && (block as Record<string, unknown>)['toolCallId'] !== sourceRecord['callId']) {
     throw new Error(`${subject} message has mismatched tool call ids`)
   }
 }
