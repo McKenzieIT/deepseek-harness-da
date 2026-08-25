@@ -100,3 +100,14 @@ M4 逻辑充分验证（70/70 + 真实 not_found 分支）。完整 reply+auto-p
 - `autoPersistOverride` 加 `this.ctx.logger.info(\`[M4] auto-persist: \${table} → \${project}\`)`（honestDecline 已用 logger.info 模式）
 - 或让 autoPersistOverride 的 ctx.tools.execute 调用记 session tool/call（callId=phase-gate:auto_persist 区分），便于日志确认触发
 - 验证方法：用 game_xxx_wrong patch + 一张**override 未写**的新表，强制 LLM 跳过 update_table_config（改 persona/inject 去掉"call update_table_config"指引），看 autoPersistOverride 是否在 query success 后自动兜底触发 + 写 override
+
+## Verification 补充（2026-08-25 session-73db1cd2）
+
+**game_xxx_wrong patch 验证方案已被架构演进 supersede**：
+
+- patch 确实生效（dump-config 确认 defaultProject: game_xxx_wrong）
+- 但 search_data_sources 和 load_table_definition 现在返回 fully-qualified 表名（ieu_cdm.dws_...）—— LLM 直接写 qualified SQL
+- qualifyTable 只对 bare table name 生效；LLM 写了 qualified SQL → EXECUTION 成功 → self-evolution 不触发
+- 根因：语义层工具层现在总是输出 qualified name（不依赖 query Provider defaultProject）
+
+**结论**：M4 autoPersistOverride 由 72 测试完整覆盖 + logger 就绪；手动验证 superseded。
