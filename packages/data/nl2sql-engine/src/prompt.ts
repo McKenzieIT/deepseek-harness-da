@@ -33,9 +33,9 @@ export interface BuildPromptArgs {
   readonly conventions: EngineConventions | null | undefined
   readonly phase?: string
   /** P3 C1: declared JOIN constraints (graph-derived) injected as hard constraints. */
-  readonly joinConstraints?: readonly string[]
+  readonly joinConstraints?: readonly string[] | undefined
   /** P4 D3: known metric definitions injected as context for mixed queries. */
-  readonly metricContext?: string
+  readonly metricContext?: string | undefined
 }
 
 const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
@@ -122,4 +122,61 @@ ${eventDef ? JSON.stringify(eventDef, null, 2) : '（未加载）'}
 
 # 当前阶段（P7 四阶段适配：phase=${phase}）
 GENERATION 阶段：生成 SQL（\`\`\`sql 围栏），调 critique_sql_tool 校验，过 gate 后 query_data 执行。`
+}
+
+/** Arguments for building the eval-mode SQL-generation prompt. */
+export interface BuildEvalPromptArgs {
+  readonly question: string
+  readonly candidates: readonly RetrievalHit[]
+  readonly conventions: EngineConventions | null | undefined
+  readonly joinConstraints?: readonly string[] | undefined
+  readonly metricContext?: string | undefined
+}
+
+/**
+ * Build a simplified eval-mode prompt focused on SQL generation quality.
+ * No agent persona, no tool catalog, no multi-turn SOP — just the core
+ * SQL generation task with schema context. The thinking model's reasoning
+ * about these definitions provides diagnostic signal for semantic layer
+ * optimization.
+ */
+export function buildEvalPrompt(args: BuildEvalPromptArgs): string {
+  const { question, candidates, conventions, joinConstraints, metricContext } = args
+  const dialect = renderConventionsPrompt(conventions)
+  const candLines =
+    candidates && candidates.length > 0
+      ? candidates
+        .map(c => `- ${c.id}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
+        .join('\n')
+      : '（无候选）'
+  const joinSection = joinConstraints && joinConstraints.length > 0
+    ? `\n# 已知 JOIN 关系（必须使用，勿自行推断 JOIN key）\n${joinConstraints.map(c => `- ${c}`).join('\n')}\n`
+    : ''
+  const metricSection = metricContext
+    ? `\n# 已知指标定义（请基于此规则构建查询）\n${metricContext}\n`
+    : ''
+  return `你是 SQL 生成引擎。根据下方检索到的候选表定义和用户问题，生成一条 MaxCompute SQL。
+
+# 输出要求
+- 用 \`\`\`sql 围栏包裹最终 SQL
+- 如果候选表定义不足以回答问题，说明缺少什么信息
+
+# 方言规范
+${dialect}
+${joinSection}${metricSection}
+# 候选表定义（BM25 检索结果）
+${candLines}
+
+# 核心规则
+1. 分区表必带 ds（yyyyMMdd）；非分区 DIM 不带 ds；_df 后缀日期不明用 MAX_PT
+2. 去重主体由用户意图：角色→role_id，账号→account_id
+3. params 用 GET_JSON_OBJECT(params,'$.字段')，数值前 CAST AS BIGINT/DOUBLE
+4. JOIN 规则：跨日多事件 JOIN 禁；同日同主体交集许可；维表 lookup JOIN 受控
+5. NULLIF(COUNT(*),0) 防除零
+6. 复合问题拆多条原子 SQL
+7. 时效：埋点 ~10min，通用数仓 T+1
+8. 千位以上加千分位
+
+# 用户问题
+${question}`
 }

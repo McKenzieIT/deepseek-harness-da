@@ -60,11 +60,16 @@ class CtxLlmAdapter implements Llm {
     if (prompt === undefined || prompt.length === 0) {
       throw new Error('CtxLlmAdapter: engine did not pass a prompt')
     }
-    const text = await this.complete(prompt)
-    return { sql: text }
+    const { text, reasoning } = await this.completeWithReasoning(prompt)
+    return { sql: text, reasoning }
   }
 
-  async complete(prompt: string): Promise<string> {
+  async completeText(prompt: string): Promise<string> {
+    const { text } = await this.completeWithReasoning(prompt)
+    return text
+  }
+
+  async completeWithReasoning(prompt: string): Promise<{ text: string; reasoning: string | null }> {
     const assembler = new BlockAssembler()
     const options = {
       provider: this.provider,
@@ -77,12 +82,26 @@ class CtxLlmAdapter implements Llm {
       ],
     }
     for await (const chunk of this.ctx.llm.stream(options)) assembler.push(chunk)
-    const text = assembler.blocks()
+    const blocks = assembler.blocks()
+    const textContent = blocks
       .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
       .map(b => b.text)
       .join('')
-    if (text.length === 0) throw new Error('eval-cli: LLM returned no text blocks')
-    return text
+    const reasoning = blocks
+      .filter((b): b is { type: 'reasoning'; text: string } => b.type === 'reasoning')
+      .map(b => b.text)
+      .join('') || null
+
+    if (textContent.length > 0) return { text: textContent, reasoning }
+
+    // Thinking model fallback: extract SQL from reasoning content
+    if (reasoning) {
+      const fenced = reasoning.match(/```sql\n([\s\S]*?)```/)
+      if (fenced && fenced[1] !== undefined) return { text: fenced[1], reasoning }
+      return { text: reasoning, reasoning }
+    }
+
+    throw new Error('eval-cli: LLM returned no content (no text blocks, no reasoning)')
   }
 }
 
@@ -146,7 +165,7 @@ class LlmJudgeExecutor implements JudgeExecutor {
       'Reply with ONLY a single number between 0 and 1 (1 = fully correct, 0 = wrong).',
     ].join('\n')
     try {
-      const raw = await this.llm.complete(prompt)
+      const raw = await this.llm.completeText(prompt)
       const score = Number.parseFloat(raw.replace(/[^0-9.]/g, ''))
       return { score: Number.isFinite(score) ? Math.max(0, Math.min(1, score)) : 0, rationale: raw.slice(0, 200) }
     } catch (err) {
@@ -188,11 +207,15 @@ class Nl2sqlAgentResponder implements AgentResponder {
       ...(graph !== undefined ? { graph } : {}),
     })
 
-    const result = await engine.run({ question, today: this.today })
+    const result = await engine.run({ question, today: this.today, evalMode: true })
     const sql = result.sql ?? null
     let reply: string
     if (result.ok && result.result !== undefined) {
-      reply = await this.answer(question, result.result)
+      reply = await this.llm.completeText([
+        'Answer the user question using ONLY the query result rows below. Be concise.',
+        `Question: ${question}`,
+        `Rows: ${JSON.stringify(result.result).slice(0, 4000)}`,
+      ].join('\n'))
     } else if (result.decline) {
       reply = `Declined: ${result.reason ?? 'unable to answer'}`
     } else if (result.pending) {
@@ -201,19 +224,6 @@ class Nl2sqlAgentResponder implements AgentResponder {
       reply = result.reason ?? 'No answer.'
     }
     return { reply, generated_sql: sql, transcript: result.trace }
-  }
-
-  private async answer(question: string, rows: unknown): Promise<string> {
-    const prompt = [
-      'Answer the user question using ONLY the query result rows below. Be concise.',
-      `Question: ${question}`,
-      `Rows: ${JSON.stringify(rows).slice(0, 4000)}`,
-    ].join('\n')
-    try {
-      return await this.llm.complete(prompt)
-    } catch {
-      return JSON.stringify(rows).slice(0, 1000)
-    }
   }
 }
 
@@ -253,7 +263,7 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     await ctx.plugin(EnvCredentialProvider)
 
     const sidecarPath = opts.sidecarPath ?? new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url).pathname
-    const fiber = ctx.plugin(MaxComputeQueryEngine, { args: [sidecarPath], credMode: 'push' })
+    const fiber = ctx.plugin(MaxComputeQueryEngine, { args: [sidecarPath], credMode: 'sidecar-self' })
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }
