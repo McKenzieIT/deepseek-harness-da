@@ -86,7 +86,7 @@ Cordis `Service` exposing the per-agent critic guard context as `ctx.criticCtx`.
 forAgent(agentId: string): CriticCtx | undefined
 ```
 
-Source: [`packages/data/phase-gate/src/phase-gate.ts:946`](../../packages/data/phase-gate/src/phase-gate.ts)
+Source: [`packages/data/phase-gate/src/phase-gate.ts:951`](../../packages/data/phase-gate/src/phase-gate.ts)
 
 <a id="ctxembedder--embedderservice-abstract-seam"></a>
 
