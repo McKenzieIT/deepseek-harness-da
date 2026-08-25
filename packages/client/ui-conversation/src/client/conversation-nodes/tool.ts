@@ -237,8 +237,13 @@ export const toolDefinition: ConversationNodeDefinition<ToolState> = {
   kind: 'tool-call',
   target: 'chat',
   match: (event) => {
-    if (event.type === 'tool/call') return { id: String(event.data.callId), role: 'start' }
+    if (event.type === 'tool/call') {
+      const callId = String(event.data.callId)
+      return { id: callId || `__seq_${event.seq}`, role: 'start' }
+    }
     if (event.type === 'tool/result' && isAppendSurfaceEvent(event)) {
+      const callId = String(event.data.message.source.callId)
+      if (!callId) return null
       return { id: String(event.data.message.source.callId), role: 'update' }
     }
     if (event.type === 'tool/code-dispatch-start' || event.type === 'tool/code-dispatch') {
