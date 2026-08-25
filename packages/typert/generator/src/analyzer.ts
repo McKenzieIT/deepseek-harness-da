@@ -2450,8 +2450,7 @@ class FaceAnalyzer {
   ): string | undefined {
     const registration = this.allRegistrations.find(candidate =>
       candidate.face === face && candidate.name === module.package) as PackageRegistration
-    const target = packageExportTargets(registration.manifest)
-      .find(([subpath]) => subpath === module.subpath)?.[1]
+    const target = resolveExportTarget(packageExportTargets(registration.manifest), module.subpath)
     if (target === undefined) return undefined
     const sourceFile = this.sourceFiles.get(realPath(sourcePathForExport(registration.root, target))) as ts.SourceFile
     const moduleSymbol = this.checker.getSymbolAtLocation(sourceFile) as ts.Symbol
@@ -2689,6 +2688,31 @@ function exportTarget(value: unknown): string | undefined {
   for (const candidate of Object.values(conditions)) {
     const target = exportTarget(candidate)
     if (target !== undefined) return target
+  }
+  return undefined
+}
+
+/**
+ * Resolve a requested subpath against `package.json` `exports` entries, supporting
+ * Node.js subpath patterns (one `*` wildcard). Exact entries win; a pattern's `*`
+ * substitutes into the target. Returns the matched target or `undefined`.
+ */
+function resolveExportTarget(
+  targets: readonly [string, string][],
+  request: string,
+): string | undefined {
+  for (const [subpath, target] of targets) {
+    if (subpath === request) return target
+  }
+  for (const [subpath, target] of targets) {
+    const star = subpath.indexOf('*')
+    if (star < 0) continue
+    const prefix = subpath.slice(0, star)
+    const suffix = subpath.slice(star + 1)
+    if (request.length < prefix.length + suffix.length) continue
+    if (!request.startsWith(prefix) || !request.endsWith(suffix)) continue
+    const matched = request.slice(prefix.length, request.length - suffix.length)
+    return target.replace('*', matched)
   }
   return undefined
 }
