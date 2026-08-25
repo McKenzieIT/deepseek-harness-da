@@ -3,7 +3,7 @@
 **Type**: research（AFK；M1 grilling 决策 0(c) 并行实验）
 **Phase**: misc
 **Assignee**: wayfinder-session 2026-08-24
-**Status**: Open（research subagent fired）
+**Status**: Closed (2026-08-26) — M1 已 implemented+merged (2026-08-24)；YAML 结构缺口已在 M2 self-evolution (qualifyTable per-scope) + P4e per-scope resolution 中解决；独立 research 结论吸收入 M1 主决策
 **Surfaced by**: M1 grilling 前置问题——"语义层 YAML 结构不一定最优，理由充分可重构实验"。决策 1（虚拟投影去独立 yaml）与 A/B（派生方式）正交，故 (c) YAML 结构支撑度并行 research，不阻塞 A/B grilling。
 **Scope**: 当前语义层 YAML 结构（metrics 内嵌 table/event 的 metrics 块 + config.yaml project.name + table/field schema）对后续功能的支撑缺口调研。
 **Question**: 当前 YAML 结构在 (1) 多引擎/多 project 查询 (2) 自进化（运行时写 YAML 修 metric project override）(3) 检索质量（description 打包策略）三方面有什么缺口？是否需要结构优化（理由充分时可重构）？
