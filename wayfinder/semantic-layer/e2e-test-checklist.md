@@ -185,3 +185,37 @@
 - [ ] 现有 semantic-layer 142 tests 仍通过
 - [ ] 现有 tool-search-data-sources 11 tests 仍通过
 - [ ] 现有 eval core tests 通过（207 tests）
+
+---
+
+## 8. W6 UI 接线（E8-E11，2026-08-25 session）
+
+> 状态：vitest 自动化通过（ui-semantic-layer 50 + ui-layout 58 = 108 tests，commit `4fc80b0cb6`）。代码审查（subagent）1 个 blocking——inject-factory 门控对 `agentPreset` 变化失效（会缓存 stale `active:false`）——已修复为组件内响应式 `useSessions` 读取并 amend。占位项标注 `TODO(evidence-query-rpc)`，待 client evidence-query RPC bridge。
+
+### 8.1 E8 — GoalDock 接入 input dock
+- [x] `SemanticLayerGoalDock` 注册为 `conversation.input.dock` 第 2 个条目（id `semantic-layer-evidence`，order 20，list slot 与 ui-goal 共存）
+- [x] 仅管理 agent 会话渲染（响应式 `useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)` 门控；非管理会话 → null，ui-goal dock 不受影响）
+- [x] `goalData` 由 `useProjection('goal')` 经 `toGoalDockGoalData` 适配（null/undefined → null）
+- [ ] **TODO(evidence-query-rpc)**：`evalPassRates=[]` 占位 → sparkline 不渲染
+
+### 8.2 E9 — EvidenceSidebar 接入 details 列
+- [x] `details.aux` list slot 在 ui-layout 声明 + AppFrame DetailsColumn 与 `details`/DetailsPanel 并排渲染（共存，非替换——`details` 是 single-occupant）
+- [x] `SemanticLayerEvidence` 挂入 `details.aux`，仅管理会话
+- [x] 活跃侧栏带 `--mode-b` class；GoalDock + CoveragePanel 渲染
+- [ ] **TODO(evidence-query-rpc)**：`evidenceClient=null` + `evalRunCount=0` 占位
+- [ ] **手工 E2E**：`details` + `details.aux` 在 `.detailsCol` 叠放布局需视觉验收（审查者标注）
+
+### 8.3 E10 — DashboardView 融入 A 模式 + auto-flip
+- [x] `EvidenceSidebar` 新增 `layoutMode`（默认 'B'）+ `evalRunCount`（默认 0）；`computeEffectiveMode` 驱动 B/A
+- [x] A 模式：EvalTrajectory hero + KPI CoveragePanel（DashboardView 核心融入，非独立路由）；B 模式：CoveragePanel 领先紧凑布局
+- [x] `layoutMode='auto'` + `evalRunCount≥3` → A；`<3` → B（4 测试通过）
+- [ ] **TODO**：`evalRunCount=0` 占位下 auto 停在 B，待 RPC bridge 接入真实 run count
+
+### 8.4 E11 — EvalSparkline 占位
+- [x] GoalDock sparkline 收 `[]` → 不渲染（不崩溃）；单点/2+点/等值分支已由 `GoalDock.spec.tsx` 覆盖
+- [ ] **TODO(evidence-query-rpc)**：接入真实 eval pass rates
+
+### 8.5 后续 ticket（占位项的统一来源）
+- [ ] client evidence-query RPC bridge：接入 `evidenceClient`、`evalRunCount`（`ctx.evidenceQuery.getEvalStore().getRunIds().length`）、`evalPassRates`，替换 `packages/client/ui-semantic-layer/src/client/wiring.tsx` 中所有 `TODO(evidence-query-rpc)` 处
+- [ ] ui-semantic-layer 既有类型债（presenters 的 `tool.call.toolview` 缺 ui-tool SlotMap 引用 + 行组件 `string|undefined`；包级 `t: (key:string)=>string` vs `TranslateNS`）——非本次引入，超出 W6 范围，另开票
+- [ ] ui-semantic-layer 加入 `tsconfig.client.json` test aggregate 的 `references`（当前未引用 → 其 src 不被 CI client typecheck 覆盖；既有缺口，非本次引入）
