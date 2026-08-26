@@ -1,6 +1,6 @@
 # P14 — 引擎消费 Ontology 元数据做表选择优化（粒度感知 + 关系图扩展）
 
-**Type**: prototype
+**Type**: grilling
 **Phase**: misc（nl2sql-engine 增强；跨 P6/P13 lineage）
 **Status**: open
 **Blocked by**: 无（P6b ctx.schema 已 ship + dimension_refs 已建模 + granularity 字段已填充）
@@ -33,7 +33,39 @@
 - 引擎无粒度感知：不区分 trend 问题该用 `_di` 还是 `_df`
 - 引擎无关系扩展：BM25 返回 1 张表就只用 1 张表，不沿 dimension_refs 扩展
 
-## 设计方向（待 grill）
+## 待 Grill 的决策点
+
+### D1. 放在哪一层？
+
+- **(a) engine 内部 pipeline step**：`Nl2sqlEngine.run()` 在 BM25 linking 之后、prompt build 之前加 post-retrieval enrichment。优点：engine 自包含、eval 直接受益。缺点：engine 需要拿到 granularity/dimension_refs 数据（当前 BM25 corpus item 的 payload 已有）。
+- **(b) phase-gate persona 注入**：在 GENERATION prompt 里教模型"遇到趋势问题优先用 _di 表"。优点：零代码改动、灵活。缺点：依赖模型 instruction following 质量、不确定性高、eval（直接调 engine）不受益。
+- **(c) 检索层面（Bm25Linker 内部）**：在 BM25 scoring 时用 granularity 做 boost/demote。优点：最早介入。缺点：BM25 不知道问题意图，无法做意图驱动的重排。
+
+### D2. 粒度检测方法？
+
+- **(a) 确定性正则**：keywords like "趋势/变化/每天/每周/环比/同比" → 增量优先；"当前/累计/总量/快照" → 全量优先。优点：零延迟、可控。缺点：覆盖有限、false positive（"每天"有时指快照查某一天）。
+- **(b) LLM 意图分类**：额外一次小模型调用判断 {trend, snapshot, ambiguous}。优点：高准确率。缺点：+1-3s 延迟。
+- **(c) 候选表共存时 prefer**：不过滤，只在 _df 和 _di 同时出现在候选列表时 prefer 合适的那个。优点：安全（不丢候选）。缺点：BM25 可能只返回一个。
+
+### D3. 关系图扩展触发条件？
+
+- 什么信号表明"这个问题需要多表"？("各服务器" → 需要 server_info 维度表？"付费率=付费人数/活跃人数" → 需要两张 DWS 表？)
+- 过度扩展的风险：context 变长 → SQL 生成质量下降
+- 扩展深度：仅 1-hop（主表→直接关联的维度表）还是允许 DWS↔DWS 跨表？
+
+### D4. rbi 对照？
+
+- reverse-bi 如何处理 _df vs _di 选表？有没有粒度感知逻辑？
+- rbi 的 `load_event_definition` + `load_table_definition` 给模型的信息包含粒度吗？
+- rbi 有没有 relation-graph-based 的候选扩展？
+
+### D5. 回归风险控制？
+
+- 如果错误过滤掉了正确的 _df 表怎么办？（如："昨天快照中的累计付费额" 确实该查 _df WHERE ds='昨天'）
+- 是否需要 fallback：prefer 但不 filter（soft boost vs hard filter）
+- eval regression gate：P11e 现有 67.5% pass rate 作为 baseline，任何改动不应降低
+
+## 设计方向（grilling 后锁定）
 
 ### A. 粒度感知候选过滤/重排
 

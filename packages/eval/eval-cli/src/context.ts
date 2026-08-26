@@ -251,7 +251,9 @@ class Nl2sqlAgentResponder implements AgentResponder {
       if (payload?.columns && Array.isArray(payload.columns)) {
         // Table corpus item: extract structured column info
         type TablePayload = {
-          table_comment?: string; description?: string; granularity?: string
+          table_comment?: string
+          description?: string
+          granularity?: string
           columns: Array<{ name: string; type?: string; comment?: string; role?: string }>
         }
         const tableDef = payload as TablePayload

@@ -176,7 +176,7 @@ export async function main(): Promise<void> {
   console.log(`  Model: ${args.provider}/${args.model}`)
   console.log(`  Pass@K: ${args.passK}  Concurrency: ${args.concurrency}`)
   if (!args.noSqlJudge && !args.withQuery) {
-    console.log(`  SQL Semantic Judge: enabled (use --no-sql-judge to disable)`)
+    console.log('  SQL Semantic Judge: enabled (use --no-sql-judge to disable)')
   }
   console.log('')
 
