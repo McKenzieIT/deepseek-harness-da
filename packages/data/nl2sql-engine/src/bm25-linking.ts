@@ -51,6 +51,9 @@ export interface RetrievalLinker {
 /**
  * Minimal CJK tokenizer (prototype; production: nodejieba / P5 seam tokenizer).
  *
+ * Splits underscore-joined identifiers into sub-tokens so that queries like
+ * "acc summary" match table names like `dws_10000251_acc_summary_df`.
+ *
  * @param text - The text to tokenize (ASCII words lowercased + CJK unigram/bigram).
  * @returns The token list (empty when the input is empty).
  */
@@ -58,7 +61,14 @@ export function tokenize(text: string): string[] {
   if (!text) return []
   const tokens: string[] = []
   const ascii = text.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []
-  tokens.push(...ascii.map(s => s.toLowerCase()))
+  for (const raw of ascii) {
+    const lower = raw.toLowerCase()
+    tokens.push(lower)
+    if (lower.includes('_')) {
+      const parts = lower.split('_').filter(p => p.length > 0)
+      if (parts.length > 1) tokens.push(...parts)
+    }
+  }
   const cjk = text.match(/[一-鿿]+/g) ?? []
   for (const seg of cjk) {
     for (const ch of seg) tokens.push(ch) // unigram
@@ -168,14 +178,43 @@ export function buildCorpus(dataSources: readonly DataSourceDoc[]): readonly Cor
 }
 
 /**
+ * Compute a name-match bonus: what fraction of the query's ASCII tokens appear
+ * as sub-tokens of the table id? Prefix matches (≥3 chars) also count.
+ * Returns a score in [0, 1] representing coverage.
+ */
+function nameMatchCoverage(queryAsciiTokens: readonly string[], tableId: string): number {
+  if (queryAsciiTokens.length === 0) return 0
+  const nameParts = tableId.toLowerCase().split('_').filter(p => p.length > 0)
+  let matched = 0
+  for (const qt of queryAsciiTokens) {
+    if (nameParts.includes(qt)) {
+      matched++
+    } else if (qt.length >= 2) {
+      // prefix match: query token is a prefix of a name part (≥2 chars)
+      if (nameParts.some(p => p.startsWith(qt))) matched++
+    }
+  }
+  return matched / queryAsciiTokens.length
+}
+
+/** Bonus multiplier for name-match coverage (applied on top of BM25 score). */
+const NAME_MATCH_BONUS = 15
+
+/**
  * Thin in-process BM25 linker (P13b Q1 default). Uses the hit's payload
  * directly (code-review-low #6). Swap for the P5 `ctx.retrieval` provider when
  * P5b ships — the `RetrievalLinker` contract is unchanged.
+ *
+ * Hybrid mode: BM25 base score + name-match bonus so that queries containing
+ * table-name fragments (e.g. "biz role tag") reliably surface the target table
+ * even when CJK description tokens create noise.
  */
 export class Bm25Linker implements RetrievalLinker {
   private readonly bm25: BM25Okapi
+  private readonly dataSources: readonly DataSourceDoc[]
 
   constructor(dataSources: readonly DataSourceDoc[]) {
+    this.dataSources = dataSources
     this.bm25 = new BM25Okapi(buildCorpus(dataSources))
   }
 
@@ -191,7 +230,16 @@ export class Bm25Linker implements RetrievalLinker {
     options: { readonly topK?: number; readonly mode?: string } = {},
   ): readonly RetrievalHit[] {
     const { topK = 5, mode = 'bm25-only' } = options
-    const hits = this.bm25.search(query, topK)
-    return hits.map(h => ({ id: h.id, score: h.score, payload: h.payload, mode }))
+    // Extract ASCII tokens from query for name-match bonus
+    const queryAscii = (query.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []).map(s => s.toLowerCase())
+    // Fetch a generous candidate pool from BM25 to allow re-ranking
+    const bm25Hits = this.bm25.search(query, Math.max(topK * 10, 50))
+    // Re-rank with name-match bonus
+    const reranked = bm25Hits.map((h) => {
+      const coverage = nameMatchCoverage(queryAscii, h.id)
+      return { ...h, score: h.score + coverage * NAME_MATCH_BONUS }
+    })
+    reranked.sort((a, b) => b.score - a.score)
+    return reranked.slice(0, topK).map(h => ({ id: h.id, score: h.score, payload: h.payload, mode }))
   }
 }

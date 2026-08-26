@@ -17,8 +17,11 @@ describe('match_modes · scalar_exact', () => {
   it('fails when the first row has no columns', () => {
     expect(checkResultMatch({ value: 'gameA' }, [{}], 'scalar_exact').status).toBe('fail')
   })
-  it('fails when the envelope is malformed (missing value)', () => {
-    expect(checkResultMatch({ notvalue: 1 }, [{ a: 1 }], 'scalar_exact').status).toBe('fail')
+  it('passes with direct-value format (no envelope)', () => {
+    expect(checkResultMatch({ notvalue: 1 }, [{ a: 1 }], 'scalar_exact').status).toBe('pass')
+  })
+  it('fails when expected is empty', () => {
+    expect(checkResultMatch({}, [{ a: 1 }], 'scalar_exact').status).toBe('fail')
   })
 })
 

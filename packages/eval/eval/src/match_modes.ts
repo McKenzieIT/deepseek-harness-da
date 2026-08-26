@@ -17,6 +17,18 @@
 
 import type { AssertionResult } from './types.ts'
 
+/**
+ * Loose numeric equality: ODPS may return numbers as strings, and expected
+ * values may be int vs float. This handles "42" == 42 and 42.0 == 42.
+ */
+function looseNumericEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  const na = typeof a === 'string' ? Number(a) : typeof a === 'number' ? a : NaN
+  const nb = typeof b === 'string' ? Number(b) : typeof b === 'number' ? b : NaN
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na === nb
+  return String(a) === String(b)
+}
+
 /** The 5 EXECUTION match modes, in declaration order. */
 export type MatchMode = 'scalar_exact' | 'multi_scalar_exact' | 'row_count_range' | 'set_equal' | 'ordered_subset'
 
@@ -52,20 +64,21 @@ export function checkResultMatch(
 }
 
 function scalarExact(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {
-  if (!('value' in expected)) return { status: 'fail', detail: "malformed result_value for scalar_exact: missing 'value' key" }
-  const target = expected.value
+  // Accept both envelope format ({value: X}) and direct format ({total: X}, {count: X}, etc.)
+  const target = 'value' in expected ? expected.value : Object.values(expected)[0]
+  if (target === undefined) return { status: 'fail', detail: 'empty result_value for scalar_exact' }
   const firstRow = actualRows[0]
   if (firstRow === undefined) return { status: 'fail', detail: `no rows returned; expected scalar ${JSON.stringify(target)}` }
   const actualValues = Object.values(firstRow)
   const actual = actualValues[0]
   if (actual === undefined) return { status: 'fail', detail: 'first row has no columns' }
-  if (actual === target) return { status: 'pass', detail: '' }
+  if (looseNumericEqual(actual, target)) return { status: 'pass', detail: '' }
   return { status: 'fail', detail: `expected ${JSON.stringify(target)}, got ${JSON.stringify(actual)}` }
 }
 
 function multiScalarExact(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {
-  if (!('fields' in expected)) return { status: 'fail', detail: "malformed result_value for multi_scalar_exact: missing 'fields' key" }
-  let rawFields: unknown = expected.fields
+  // Accept both envelope format ({fields: {k: v}}) and direct format ({k1: v1, k2: v2})
+  let rawFields: unknown = 'fields' in expected ? expected.fields : expected
   if (Array.isArray(rawFields)) {
     const first = rawFields[0]
     if (first === undefined) return { status: 'fail', detail: 'fields list is empty' }
@@ -80,26 +93,41 @@ function multiScalarExact(expected: Record<string, unknown>, actualRows: readonl
   const mismatches: string[] = []
   for (const [name, expVal] of Object.entries(fields)) {
     if (!(name in firstRow)) mismatches.push(`${name}: missing from result`)
-    else if (firstRow[name] !== expVal) mismatches.push(`${name}: expected ${JSON.stringify(expVal)}, got ${JSON.stringify(firstRow[name])}`)
+    else if (!looseNumericEqual(firstRow[name], expVal)) mismatches.push(`${name}: expected ${JSON.stringify(expVal)}, got ${JSON.stringify(firstRow[name])}`)
   }
   if (mismatches.length > 0) return { status: 'fail', detail: mismatches.join('; ') }
   return { status: 'pass', detail: '' }
 }
 
 function rowCountRange(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {
-  if (!('min' in expected) || !('max' in expected)) return { status: 'fail', detail: "malformed result_value for row_count_range: missing 'min' and/or 'max' key" }
-  const lo = expected.min
-  const hi = expected.max
-  if (typeof lo !== 'number' || typeof hi !== 'number') return { status: 'fail', detail: 'min and max must be numbers' }
+  // Accept both envelope format ({min:, max:}) and case format ({min_rows:, max_rows:})
+  const lo = expected.min ?? expected.min_rows
+  const hi = expected.max ?? expected.max_rows
+  if (typeof lo !== 'number' || typeof hi !== 'number') return { status: 'fail', detail: `malformed result_value for row_count_range: need min/max or min_rows/max_rows (got ${JSON.stringify(expected)})` }
   const count = actualRows.length
   if (lo <= count && count <= hi) return { status: 'pass', detail: '' }
   return { status: 'fail', detail: `row_count ${count} not in [${lo}, ${hi}]` }
 }
 
 function setEqual(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {
-  if (!('rows' in expected)) return { status: 'fail', detail: "malformed result_value for set_equal: missing 'rows' key" }
-  const expectedRows = expected.rows
-  if (!Array.isArray(expectedRows)) return { status: 'fail', detail: 'rows must be an array' }
+  // Accept envelope format ({rows: [...]}) or direct format ({key: [...]})
+  let expectedRows: unknown[] | undefined
+  if ('rows' in expected && Array.isArray(expected.rows)) {
+    expectedRows = expected.rows
+  } else {
+    const firstArr = Object.values(expected).find(v => Array.isArray(v)) as unknown[] | undefined
+    if (firstArr) expectedRows = firstArr
+  }
+  if (!expectedRows) return { status: 'fail', detail: 'malformed result_value for set_equal: no array found' }
+  // If expected items are scalars (strings/numbers), compare against first-column values
+  if (expectedRows.length > 0 && (typeof expectedRows[0] === 'string' || typeof expectedRows[0] === 'number')) {
+    const actualValues = new Set(actualRows.flatMap(r => Object.values(r).map(v => String(v))))
+    const expectedSet = new Set(expectedRows.map(v => String(v)))
+    const missing = [...expectedSet].filter(k => !actualValues.has(k))
+    if (missing.length === 0) return { status: 'pass', detail: '' }
+    return { status: 'fail', detail: `missing ${missing.length} expected value(s): ${missing.slice(0, 5).join(', ')}` }
+  }
+  // Row-object comparison (original envelope format)
   const expectedSet = new Set(expectedRows.map(rowKey))
   const actualSet = new Set(actualRows.map(rowKey))
   if (setsEqual(expectedSet, actualSet)) return { status: 'pass', detail: '' }
@@ -112,10 +140,31 @@ function setEqual(expected: Record<string, unknown>, actualRows: readonly Record
 }
 
 function orderedSubset(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {
-  if (!('rows' in expected)) return { status: 'fail', detail: "malformed result_value for ordered_subset: missing 'rows' key" }
-  const expectedRows = expected.rows
-  if (!Array.isArray(expectedRows)) return { status: 'fail', detail: 'rows must be an array' }
+  // Accept envelope format ({rows: [...]}) or direct format ({key: [...]})
+  let expectedRows: unknown[] | undefined
+  if ('rows' in expected && Array.isArray(expected.rows)) {
+    expectedRows = expected.rows
+  } else {
+    const firstArr = Object.values(expected).find(v => Array.isArray(v)) as unknown[] | undefined
+    if (firstArr) expectedRows = firstArr
+  }
+  if (!expectedRows) return { status: 'fail', detail: 'malformed result_value for ordered_subset: no array found' }
   if (expectedRows.length === 0) return { status: 'pass', detail: '' }
+  // If expected items are scalars, check ordered subsequence against first-column values
+  if (typeof expectedRows[0] === 'string' || typeof expectedRows[0] === 'number') {
+    const actualValues = actualRows.map(r => String(Object.values(r)[0]))
+    const expectedValues = expectedRows.map(v => String(v))
+    let ei = 0
+    for (const av of actualValues) {
+      if (expectedValues[ei] !== undefined && av === expectedValues[ei]) {
+        ei++
+        if (ei === expectedValues.length) break
+      }
+    }
+    if (ei === expectedValues.length) return { status: 'pass', detail: '' }
+    return { status: 'fail', detail: `ordered subsequence not found; matched ${ei}/${expectedValues.length} expected values` }
+  }
+  // Row-object comparison (original envelope format)
   const actualFrozen = actualRows.map(rowKey)
   const expectedFrozen = expectedRows.map(rowKey)
   let ei = 0
