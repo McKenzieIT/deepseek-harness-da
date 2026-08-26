@@ -25,7 +25,7 @@ P4c(c) `query_data` tool landed (commit 1e637bc568) → 变体 EXECUTION 相可�
 
 **Sub-blockers（诚实记，不伪造 ship）**：
 - **C_prior（G1 Q11）**：C 的 goal/todo 在 U+I 可调须 phase-gate guard per-phase whitelist 含 goal/todo——whitelist built-in `packages/data/phase-gate/src`（并发域，不改），未含则 C goal/todo guard-rejected（callable-but-unwired）至 whitelist 更新（phase-gate/src follow-up 或 G1b 实跑前）。mount forward-compatible（verify-cordis-config 绿），runtime callability 为 sub-blocker。
-- **load_*+present_* tool 包 deferred**（A 全 runnable end-to-end 须其 ship）。
+- ~~**load_*+present_* tool 包 deferred**（A 全 runnable end-to-end 须其 ship）~~ — **✅ resolved 2026-08-26**：load_*（2026-08-21 P6b session ship）+ present_*（2026-08-26 commit `6f2217f730` ship：decomposition/table/suggest_followups preset 解注释 + compute 此前已 ship）。A roster 全 runnable end-to-end。
 - **G1b 仍 re-block** on P11c（runner）+ G1c（本票 resolved）+ C_prior whitelist；P4c(c) done 解 P4c 硬门。
 
 ## Scope

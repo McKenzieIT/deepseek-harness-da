@@ -69,3 +69,17 @@ What is the form of the data-agent's INTERPRETATION-phase delivery tools (`prese
 
 - [`data-agent-safe-compute-environment`](data-agent-safe-compute-environment.md) — research：data-agent 安全计算环境设计（blocks `compute` ship）
 - [`compute-tool`](compute-tool.md) — task AFK：`@deepseek-ai/dsh-tool-compute` 落地（**resolved 2026-08-26**，安全计算环境全链解封后 ship）
+
+---
+
+## Shipped (2026-08-26)
+
+Decision #7 ship 计划完成执行（commit `6f2217f730`）：
+
+- `present_decomposition` / `present_table` / `suggest_followups`：preset `agent.cordis.yml` 行解注释 + bundle `package.json` 3 workspace deps wired
+- `compute`：此前已 ship（commit compute-tool ticket，preset 行已解注释）
+- **INTERPRETATION 阶段四工具全部可调用**：present_decomposition / present_table / compute / suggest_followups
+- 验证：48/48 tool tests + 129/129 preset mount tests + verify-cordis-config(data-agent zero errors) + tsc clean
+- G1b execution-match DELIVERY 评分的工具链前提满足
+
+**本 ticket 全部 resolved + shipped。**

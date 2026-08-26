@@ -44,7 +44,7 @@ G1b 原框定「依赖已解锁（P7b/P13b/P11b/G1 全 resolved）→ 可跑」*
 
 - **P4c**（真 ODPS 执行路径：maxc-backed sidecar + guard chain + tool-query Consumer/query_data——**硬门**，execution-match 需真 ODPS rows；stand-in 恒返 canned `[['game-x',1234]]` 不可测）。**P4c 不再外部 cred-blocked**（2026-08-21 maxc de-risk：本机 `~/.maxc/config_ieu_cdm.yaml.bak` valid + ieu_cdm 可达 + case 037 expected SQL 重跑返 4336=expected.result_value，数据 preserved）；P4c buildable。
 - **P11c**（eval CLI runner + 持久化 + pass_at_k 报告——P11b 是纯库无 runner；P11c 现已 unblocked 因 P11b resolved，可建）。
-- **G1c**（变体 preset B/C/D + 共享 data-tool roster 补完 + honesty tagging——A 自身仅 `search_data_sources` 注册，query_data/load_*/present_* 全注释 TBD；B/C/D 不存在）。
+- ~~**G1c**（变体 preset B/C/D + 共享 data-tool roster 补完 + honesty tagging——A 自身仅 `search_data_sources` 注册，query_data/load_*/present_* 全注释 TBD；B/C/D 不存在）~~ — **✅ resolved**（G1c 2026-08-21 ship B/C/D + roster；load_* 2026-08-21 ship；present_* 2026-08-26 ship commit `6f2217f730`；A roster 全 runnable）。
 - ~~P7b/P11b/P13b/G1~~（全 resolved 2026-08-20，但**不足**：P7b 接 phase-gate 编排但 gate 的数据工具多为未注册 stub；P11b 是库无 runner；P13b 是 NL→SQL+critic 但 agent 没法执行 SQL）。
 
 ## 前置
