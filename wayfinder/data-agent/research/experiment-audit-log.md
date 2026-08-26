@@ -376,3 +376,54 @@
   (`corpus.spec` Service-config test). The single live bridge (shop.buy) is
   corroboration, not a measured recall floor.
 - **Probe**: `prototypes/d2c-retrieve-baseline/d2h_variant_topk_probe.ts`.
+
+---
+
+## E-DA4 — delegate_query Nl2sqlEngine feasibility probe
+
+**Date**: 2026-08-26
+**Ticket**: [E-DA4](../tickets/phase-misc/E-DA4-delegate-query-engine-probe.md)
+**Probe**: `packages/data/tool-scope-routing/dev/delegate-probe.ts`
+
+### Setup
+
+Standalone probe script verifying P-DA4's decision to use direct `Nl2sqlEngine`
+instantiation for `delegate_query` (rather than subagent/independent Cordis root).
+Five experiments exercised against the X63 (overseas-prod, `hdyl_data_sg`) and K11
+(domestic-prod, `ieu_ods`) semantic layers using scripted LLM + StandInOdps.
+
+### Data (verbatim output)
+
+```
+Experiment 1: corpus size=23, top hit: game.role.online(21.10) — correct
+Experiment 2: critic REJECTS without event_view injection; PASSES with augmented corpus
+Experiment 3: X63=overseas-prod/hdyl_data_sg, K11=domestic-prod/ieu_ods — distinct
+Experiment 4: conventions load, buildPrompt length=4292 chars, all config assertions pass
+Experiment 5: Promise.all parallel run — both ok, no cross-contamination
+Result: 24/24 assertions passed
+```
+
+### Verdict
+
+**P-DA4 approach confirmed viable.** Direct `Nl2sqlEngine` instantiation per-scope
+works end-to-end with independent corpus/linker/deps. Key implementation requirement
+surfaced:
+
+1. **Critic candidateTables injection**: The engine's `table_not_in_candidates` critic
+   rule rejects SQL referencing the event view (`ods_10000334_all_view`) because event
+   corpus items use event names (`game.role.online`) as IDs. Fix: `delegate_query` must
+   inject the scope's `event_view.view_name` as a synthetic corpus item before building
+   the `Bm25Linker`. This is a one-line augmentation, not an architectural change.
+
+2. **ODPS cross-workspace**: workspace-qualified SQL (`hdyl_data_sg.ods_10000334_all_view`)
+   is the routing signal. If overseas-prod and domestic-prod use different ODPS endpoints,
+   a per-scope `OdpsExecutor` config adapter is needed — complexity uplift but not a blocker.
+
+### Fidelity caveat
+
+- Uses `ReplayLlm` (scripted SQL) + `StandInOdps` — proves pipeline wiring, not
+  real LLM generation quality or real ODPS execution.
+- X63 corpus is events-only (23 items, no DWS tables); K11 corpus has 445 items
+  including tables. The probe confirms isolation, not recall parity.
+- Real ODPS cross-workspace execution (experiment 3) requires live MaxCompute
+  credentials for both environments — deferred to integration testing.

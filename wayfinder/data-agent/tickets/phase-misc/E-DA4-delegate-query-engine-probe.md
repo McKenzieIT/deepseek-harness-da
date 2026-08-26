@@ -2,8 +2,8 @@
 
 **Type**: task (AFK)
 **Phase**: misc
-**Status**: open
-**Assignee**: (unclaimed)
+**Status**: resolved
+**Assignee**: claimed
 **Blocked by**: 无
 **Related**: [P-DA4](P-DA4-scope-routing-tools.md)（resolved，设计方向）
 
@@ -56,3 +56,40 @@ P-DA4 决定 delegate_query 通过直接实例化 `Nl2sqlEngine`（packages/data
 ```
 packages/data/tool-scope-routing/dev/delegate-probe.ts
 ```
+
+## Resolution
+
+**2026-08-26 — All 5 experiments pass (24/24 assertions). P-DA4 方案确认可行。**
+
+Probe: `packages/data/tool-scope-routing/dev/delegate-probe.ts`
+Audit log: `wayfinder/data-agent/research/experiment-audit-log.md`
+
+### 结果
+
+| # | 实验 | 结果 | 备注 |
+|---|------|------|------|
+| 1 | X63 corpus BM25 | ✅ | 23 items, `game.role.online` rank 1 (score 21.10) |
+| 2 | Cross-scope SQL gen | ✅* | Critic 需 event_view 注入 candidateTables（见下） |
+| 3 | ODPS cross-workspace | ✅ | Config 路由验证通过；real execution deferred |
+| 4 | Conventions loading | ✅ | `loadConventions` + per-scope config 均可加载 |
+| 5 | 并行实例化 | ✅ | `Promise.all` 无竞态、workspace 无交叉污染 |
+
+### 关键发现：critic candidateTables 注入
+
+Engine 的 `table_not_in_candidates` critic 规则会拒绝引用 event view 的 SQL，因为 BM25 corpus 的 item ID 是事件名（`game.role.online`），不是视图名（`ods_10000334_all_view`）。
+
+**修复路径**（已在 probe 中验证通过）：`delegate_query` 构建 `Bm25Linker` 前，将 scope 的 `event_view.view_name` 作为合成 corpus item 注入：
+
+```ts
+const augmented = [...corpus, { id: config.event_view.view_name, description: '主事件视图' }]
+const linker = new Bm25Linker(augmented)
+```
+
+一行代码，不改 engine 架构。
+
+### 实现 checklist（进入 delegate_query 实装）
+
+1. 新建 `packages/data/tool-scope-routing/` 包骨架（package.json 已创建）
+2. `delegate_query` tool：从 scope-registry 读 config → 加载 corpus + inject event_view → 创建 engine → run
+3. Per-scope `OdpsExecutor` adapter（if overseas-prod endpoint differs from domestic-prod）
+4. 集成测试：real LLM + real ODPS（需双环境 credentials）

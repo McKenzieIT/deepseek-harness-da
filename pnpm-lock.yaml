@@ -4071,10 +4071,6 @@ importers:
         version: link:../../core/tools
 
   packages/data/evidence-query:
-    dependencies:
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -4082,9 +4078,6 @@ importers:
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../semantic-layer
-      '@deepseek-ai/dsh-typert-protocol':
-        specifier: workspace:^
-        version: link:../../typert/protocol
 
   packages/data/nl2sql-engine:
     dependencies:
@@ -4144,6 +4137,30 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+
+  packages/data/result-cache:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
+  packages/data/result-cache-memory:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-result-cache':
+        specifier: workspace:^
+        version: link:../result-cache
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
 
   packages/data/schema-gateway:
     dependencies:
@@ -4383,6 +4400,32 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
+  packages/data/tool-present-decomposition:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
+  packages/data/tool-present-table:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
   packages/data/tool-retrieve:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -4401,6 +4444,18 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
+
+  packages/data/tool-scope-routing:
+    devDependencies:
+      '@deepseek-ai/dsh-nl2sql-engine':
+        specifier: workspace:^
+        version: link:../nl2sql-engine
+      '@deepseek-ai/dsh-query-maxcompute':
+        specifier: workspace:^
+        version: link:../../query/query-maxcompute
+      '@deepseek-ai/dsh-semantic-layer':
+        specifier: workspace:^
+        version: link:../semantic-layer
 
   packages/data/tool-search-data-sources:
     dependencies:
@@ -4436,6 +4491,19 @@ importers:
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../semantic-layer
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
+  packages/data/tool-suggest-followups:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
@@ -4596,6 +4664,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-credentials':
+        specifier: workspace:^
+        version: link:../../credentials/credentials
       '@deepseek-ai/dsh-eval':
         specifier: workspace:^
         version: link:../eval
@@ -4611,6 +4682,9 @@ importers:
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../../data/nl2sql-engine
+      '@deepseek-ai/dsh-query-maxcompute':
+        specifier: workspace:^
+        version: link:../../query/query-maxcompute
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../../data/semantic-layer
