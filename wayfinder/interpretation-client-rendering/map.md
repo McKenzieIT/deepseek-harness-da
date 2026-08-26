@@ -25,15 +25,14 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [R3: DSH client rendering patterns](tickets/R3-dsh-client-rendering-patterns.md) — toolview 注册走 `tool.call.toolview` keyed slot；argsRaw 从 block.call 解析；数据行从同 turn query_data TSV 扫描；submit 通过 inject face → conversation.send；block.call===null 时 fallback generic card
 - [G1: INTERPRETATION client rendering design decisions](tickets/G1-design-decisions.md) — LLM/UI 数据路径分离；horizontal scroll；数据不可用时显示提示+retry；旧 chips 完全隐藏；折叠 card 展示 title+KPI；decomposition 默认展开 <0.7 黄色提示；retry=重拉 result store；虚拟滚动 day-1 + 10000 行 cap + CSV 导出；result data 在 object layer LRU cache 管理
 - [T1: Implement ui-present-decomposition package](tickets/T1-ui-present-decomposition.md) — packages/client/ui-present-decomposition/ 完成，toolview 注册 key='present_decomposition'，三态渲染（skeleton/fallback/rich card），15 tests green
+- [T2: Implement ui-present-table package](tickets/T2-ui-present-table.md) — packages/client/ui-present-table/ 完成，toolview 注册 key='present_table'，TSV 解析 + KPI 聚合 + 虚拟滚动 + Chart.js lazy load + 折叠/展开 + CSV 导出，52 tests green，100% 覆盖率
 - [T3: Implement ui-suggest-followups package](tickets/T3-ui-suggest-followups.md) — packages/client/ui-suggest-followups/ 完成，toolview 注册 key='suggest_followups'，inject face 提供 submit callback，chip 点击立即提交，旧 turn chips 从 DOM 移除，22 tests green，100% 覆盖率
 
 ## Not yet specified
 
-- `present_table` 的 chart 渲染精度（line/bar 两种 minimal，后续是否加 area/pie/scatter）
+- `present_table` 的 chart 渲染精度扩展（v1 仅 line/bar，后续是否加 area/pie/scatter）
 - Object layer result cache 的具体实现位置（runtime 内 vs 独立 service 包）及 LRU eviction 策略（TTL / maxEntries）
-- Result store server-side 设计（RPC 协议、存储后端、GC 策略）——client cache 的上游依赖
-- 虚拟滚动库选型（@tanstack/virtual vs 自研 vs 其他）
-- CSV 导出的触发 UI 和生成路径（client-side 生成 vs server-side 生成下载链接）
+- Result store server-side 设计（RPC 协议、存储后端、GC 策略）——client cache 的上游依赖，当前 v1 通过同 turn TSV 扫描 bypass
 
 ## Out of scope
 
