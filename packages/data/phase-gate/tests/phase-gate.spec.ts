@@ -17,7 +17,7 @@ import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { critiqueSql } from '@deepseek-ai/dsh-nl2sql-engine'
 import { PhaseGate } from '../src/phase-gate.ts'
-import { Phase, INCOMPLETE_MARKER, PipelineConfig } from '../src/types.ts'
+import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNIVERSAL_TOOLS, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS } from '../src/types.ts'
 
 function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancelled: AgentCancelCause[] } {
   const injected: UserMessage[] = []
@@ -1406,5 +1406,136 @@ describe('M5: generationGate fallback — critique_sql_tool s.last_sql used when
     expect(injected.length).toBe(1)
     const text = ((injected[0] as unknown as { content?: { text?: string }[] })?.content?.[0]?.text) ?? ''
     expect(text).toContain('phase generation retry')
+  })
+})
+
+// ── D5b: proactive tool visibility (phase-scoped tool filtering in onAssemble) ──
+describe('D5b: proactive tool visibility — onAssemble filters tools per phase', () => {
+  function makeTool(name: string) {
+    return { name, description: `stub ${name}`, parameters: {} }
+  }
+
+  const ALL_TOOL_NAMES = [
+    'search_data_sources', 'load_table_definition', 'load_event_definition',
+    'load_table_dimensions', 'save_accumulated_definition',
+    'critique_sql_tool', 'evaluate_sql_quality', 'update_table_config',
+    'query_data',
+    'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
+    'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
+    'present_clarification', 'goal', 'todo',
+  ]
+  const ALL_TOOLS = ALL_TOOL_NAMES.map(makeTool)
+
+  function assembleCtx(agentId: string): AssembleContext {
+    return { agent: { id: agentId }, scope: { id: agentId } } as unknown as AssembleContext
+  }
+
+  it('UNDERSTANDING phase: only UNDERSTANDING_TOOLS visible', async () => {
+    const g = gate()
+    g.state('u1') // creates state in UNDERSTANDING (default)
+    const ctx = assembleCtx('u1')
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    const names = out.tools.map(t => t.name)
+    expect(names.sort()).toEqual([...UNDERSTANDING_TOOLS].sort())
+    expect(names).not.toContain('query_data')
+    expect(names).not.toContain('present_decomposition')
+    expect(names).not.toContain('critique_sql_tool')
+  })
+
+  it('GENERATION phase: only GENERATION_TOOLS visible', async () => {
+    const g = gate()
+    const s = g.state('g1')
+    s.current_phase = Phase.GENERATION
+    const ctx = assembleCtx('g1')
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    const names = out.tools.map(t => t.name)
+    expect(names.sort()).toEqual([...GENERATION_TOOLS].sort())
+    expect(names).not.toContain('query_data')
+    expect(names).not.toContain('present_decomposition')
+    expect(names).not.toContain('search_data_sources')
+  })
+
+  it('EXECUTION phase: only EXECUTION_TOOLS visible', async () => {
+    const g = gate()
+    const s = g.state('e1')
+    s.current_phase = Phase.EXECUTION
+    const ctx = assembleCtx('e1')
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    const names = out.tools.map(t => t.name)
+    expect(names.sort()).toEqual([...EXECUTION_TOOLS].sort())
+    expect(names).not.toContain('present_decomposition')
+    expect(names).not.toContain('critique_sql_tool')
+  })
+
+  it('INTERPRETATION phase: only INTERPRETATION_TOOLS visible', async () => {
+    const g = gate()
+    const s = g.state('i1')
+    s.current_phase = Phase.INTERPRETATION
+    const ctx = assembleCtx('i1')
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    const names = out.tools.map(t => t.name)
+    expect(names.sort()).toEqual([...INTERPRETATION_TOOLS].sort())
+    expect(names).not.toContain('query_data')
+    expect(names).not.toContain('search_data_sources')
+    expect(names).not.toContain('critique_sql_tool')
+  })
+
+  it('COMPLETE terminal: only UNIVERSAL_TOOLS visible', async () => {
+    const g = gate()
+    const s = g.state('c1')
+    s.current_phase = 'COMPLETE'
+    const ctx = assembleCtx('c1')
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    const names = out.tools.map(t => t.name)
+    expect(names.sort()).toEqual([...UNIVERSAL_TOOLS].sort())
+  })
+
+  it('DECLINED terminal: only UNIVERSAL_TOOLS visible', async () => {
+    const g = gate()
+    const s = g.state('d1')
+    s.current_phase = 'DECLINED'
+    const ctx = assembleCtx('d1')
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    const names = out.tools.map(t => t.name)
+    expect(names.sort()).toEqual([...UNIVERSAL_TOOLS].sort())
+  })
+
+  it('non-phase-gate agent (unknown session): tools pass through unchanged', async () => {
+    const g = gate()
+    // Do NOT call g.state() — agent 'unknown1' has no phase-gate session
+    const ctx = assembleCtx('unknown1')
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(out.tools).toEqual(ALL_TOOLS) // no filtering
+  })
+
+  it('reactive guard (defense-in-depth) still rejects out-of-phase calls', () => {
+    const { agent } = makeAgent('rd1')
+    const g = gate()
+    // Agent is in UNDERSTANDING by default
+    expect(g.guard(execView('present_decomposition', agent))).toMatch(/not in understanding whitelist/)
+    expect(g.guard(execView('query_data', agent))).toMatch(/not in understanding whitelist/)
+    // But in-phase calls pass
+    expect(g.guard(execView('search_data_sources', agent))).toBeUndefined()
+  })
+})
+
+describe('D5b: deny-by-default — unlisted tools are hidden', () => {
+  it('tool not in any phase whitelist is filtered out (deny-by-default)', async () => {
+    const g = gate()
+    g.state('deny1') // UNDERSTANDING phase
+    const ctx = { agent: { id: 'deny1' }, scope: { id: 'deny1' } } as unknown as AssembleContext
+    const unknownTool = { name: 'some_unknown_tool', description: 'not in any whitelist', parameters: {} }
+    const knownTool = { name: 'search_data_sources', description: 'in UNDERSTANDING', parameters: {} }
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: [unknownTool, knownTool], variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(out.tools.map(t => t.name)).not.toContain('some_unknown_tool')
+    expect(out.tools.map(t => t.name)).toContain('search_data_sources')
   })
 })

@@ -34,6 +34,7 @@ import {
   PHASE_ORDER,
   PHASE_CONFIGS,
   PHASE_TOOLS,
+  UNIVERSAL_TOOLS,
   PipelineConfig,
   GateResult,
   INCOMPLETE_MARKER,
@@ -428,6 +429,11 @@ export class PhaseGate {
       // (a completed/pending query carries no failureKind/error → null).
       s.last_failure_kind = v?.failureKind ?? null
       s.last_query_error = v?.error ?? null
+      // UX-leakage fix: when query_data completes, flag for immediate advance in
+      // onPreStep so the model does NOT get a response step (INTERPRETATION owns
+      // all user-facing delivery). Only for 'completed' — pending/failed need the
+      // model to react (poll / fallback).
+      if (s.last_query_outcome === 'completed') s.execution_auto_advance = true
     } else if (name === 'critique_sql_tool') {
       s.last_critique = (value as { confidence?: number } | null | undefined)?.confidence ?? null
       // (b) F2 same-source: the critiqued SQL (returned by critique_sql_tool
@@ -581,7 +587,18 @@ export class PhaseGate {
     if (phase === Phase.GENERATION) {
       sections.push({ name: 'sql-conventions', text: SQL_CONVENTIONS })
     }
-    return { ...merged, sections }
+    // D5b proactive tool visibility: filter assembly.tools to the current phase's
+    // whitelist so the LLM never sees tools it cannot use. Non-phase-gate agents
+    // (s === null) pass through unchanged; terminal states get UNIVERSAL_TOOLS only.
+    const phaseTools: readonly string[] = s === null
+      ? [] // non-phase-gate: unused — pass-through handled in the tools ternary below
+      : (rawPhase === 'DECLINED' || rawPhase === 'COMPLETE')
+        ? UNIVERSAL_TOOLS
+        : PHASE_TOOLS[phase]
+    const tools = s === null
+      ? merged.tools
+      : merged.tools.filter(t => phaseTools.includes(t.name))
+    return { ...merged, sections, tools }
   }
 
   // ── hook 6: llm/stream (stream-wrap waterfall) — F5 billing (stream start) ──
@@ -604,6 +621,16 @@ export class PhaseGate {
     const s = this.state(String(agent.id))
     this.touchStallTimer(agent, s) // F3: reset on each step
     s.step_count += 1 // F6: per-step count (mirrors rbi max_steps)
+    // UX-leakage fix: when query_data completed in EXECUTION, skip the model's
+    // post-tool response step entirely — advance to INTERPRETATION immediately
+    // so the model never emits user-visible text like "EXECUTION 完成...".
+    // The 'reject' decision closes the turn without a model call; advance()
+    // injects the phase-continuation message that starts INTERPRETATION.
+    if (s.execution_auto_advance && s.current_phase === Phase.EXECUTION) {
+      s.execution_auto_advance = false
+      this.advance(agent, s)
+      return { kind: 'reject' }
+    }
     return next()
   }
 
@@ -627,6 +654,7 @@ export class PhaseGate {
     s.phase_output = ''
     s.last_critique = null
     s.last_quality = null
+    s.execution_auto_advance = false // UX-leakage: clear stale flag on any advance
     if (s.phase_idx >= PHASE_ORDER.length) {
       s.current_phase = 'COMPLETE'
       return // kick ends — no continuation inject
@@ -830,6 +858,7 @@ export class PhaseGate {
       s.honest_decline_reason = null
       s.cancelled = false
       s.cancelled_reason = null
+      s.execution_auto_advance = false // UX-leakage: clear stale flag on question reset
       return // keep current_phase + candidate_tables + last_sql + query outcome/critique/quality + self_evolution_table
     }
     s.phase_idx = 0
@@ -852,6 +881,7 @@ export class PhaseGate {
     s.honest_decline_reason = null
     s.cancelled = false
     s.cancelled_reason = null
+    s.execution_auto_advance = false // UX-leakage: clear stale flag on question reset
     s.awaiting_clarification = false // B4: clear on a new question (a prior clarification HALT does not carry over).
     s.candidate_tables.clear()
     s.event_params.clear()
