@@ -184,6 +184,9 @@ async function runOneAttempt(
       attempt_k: attemptK,
       execution_match: result.executionMatch,
       delivery_match: result.deliveryMatch,
+      generated_sql: result.generatedSql,
+      query_result: result.queryResult,
+      expected_result: result.expectedResult,
     }
   } catch (err) {
     if (isInfraError(err)) {
@@ -205,6 +208,9 @@ async function runOneAttempt(
 interface AttemptExecution {
   executionMatch: boolean
   deliveryMatch: boolean
+  generatedSql: string | null
+  queryResult: unknown[] | null
+  expectedResult: unknown
 }
 
 /**
@@ -218,18 +224,24 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
     scope_id: evalCase.input.scope_id,
   })
 
+  // Collect diagnostics
+  const generatedSql = agentResponse.generated_sql ?? null
+  let queryResult: unknown[] | null = null
+  const expectedResult = evalCase.expected.result_value ?? null
+
   // Determine execution match
   let executionMatch = true
   if (evalCase.expected.result_value !== null && evalCase.expected.match_mode !== null) {
     if (agentResponse.generated_sql && collaborators.executor) {
-      const queryResult = await collaborators.executor.execute(agentResponse.generated_sql)
-      if (!queryResult.success) {
+      const execResult = await collaborators.executor.execute(agentResponse.generated_sql)
+      if (!execResult.success) {
         executionMatch = false
+        queryResult = [{ _error: execResult.error ?? 'execution failed' }] as unknown as unknown[]
       } else {
-        executionMatch = checkResultMatch(queryResult.rows, evalCase.expected.result_value)
+        queryResult = execResult.rows?.slice(0, 5) ?? null
+        executionMatch = checkResultMatch(execResult.rows, evalCase.expected.result_value)
       }
     } else if (agentResponse.generated_sql && !collaborators.executor) {
-      // No executor available: use SQL semantic judge if provided
       if (collaborators.sqlJudge) {
         const schemaContext = agentResponse.schema_context ?? extractSchemaContext(agentResponse.transcript)
         const judgeResult = await collaborators.sqlJudge.judgeSql({
@@ -239,7 +251,6 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
         })
         executionMatch = judgeResult.score >= SQL_JUDGE_PASS_THRESHOLD
       } else {
-        // No judge, no executor — legacy behavior: auto-pass
         executionMatch = true
       }
     } else {
@@ -262,7 +273,7 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
     }
   }
 
-  return { executionMatch, deliveryMatch }
+  return { executionMatch, deliveryMatch, generatedSql, queryResult, expectedResult }
 }
 
 /**
