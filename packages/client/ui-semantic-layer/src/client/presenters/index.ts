@@ -5,6 +5,7 @@
  * instead of generic text in the conversation.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import { SearchSchemaRow } from './SearchSchemaRow.tsx'
 import { GetDefinitionRow } from './GetDefinitionRow.tsx'
 import { GetCoverageRow } from './GetCoverageRow.tsx'

@@ -26,7 +26,7 @@ export interface GoalDockProps {
   /** Recent eval pass_rates for sparkline. Values are fractions in [0, 1]. */
   evalPassRates: number[]
   /** i18n translate. */
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, unknown>) => string
 }
 
 export const GoalDock: FC<GoalDockProps> = ({ goalData, evalPassRates, t }) => {

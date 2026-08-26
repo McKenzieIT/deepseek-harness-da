@@ -4,6 +4,7 @@
  * summary, and case flip highlights.
  */
 import type { FC } from 'react'
+import type { ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 
 export interface TriggerEvalMeta {
   ok: boolean
@@ -27,20 +28,20 @@ export interface TriggerEvalMeta {
   previousRunId?: string
 }
 
-interface TriggerEvalRowProps {
-  meta: TriggerEvalMeta | undefined
-  t: (key: string) => string
+export interface TriggerEvalRowProps {
+  block: ToolCallBlock
 }
 
-export const TriggerEvalRow: FC<TriggerEvalRowProps> = ({ meta, t }) => {
+export const TriggerEvalRow: FC<TriggerEvalRowProps> = ({ block }) => {
+  const meta = ('kind' in block ? block.meta : undefined) as TriggerEvalMeta | undefined
   if (!meta || !meta.ok) {
     return (
       <div className="sl-trigger-eval-row sl-trigger-eval-row--error">
         <span className="sl-trigger-eval-row__icon">⚠️</span>
         <span className="sl-trigger-eval-row__text">
           {meta?.mode === 'not_configured'
-            ? t('evidence.eval.notConfigured')
-            : t('evidence.eval.failed')}
+            ? 'Eval 未配置'
+            : 'Eval 失败'}
         </span>
       </div>
     )
@@ -51,7 +52,7 @@ export const TriggerEvalRow: FC<TriggerEvalRowProps> = ({ meta, t }) => {
       <div className="sl-trigger-eval-row sl-trigger-eval-row--report">
         <span className="sl-trigger-eval-row__icon">📊</span>
         <span className="sl-trigger-eval-row__text">
-          {t('evidence.eval.reportMode')} ({meta.runId?.slice(0, 8)})
+          {'仅报告模式'} ({meta.runId?.slice(0, 8)})
         </span>
       </div>
     )
@@ -65,14 +66,14 @@ export const TriggerEvalRow: FC<TriggerEvalRowProps> = ({ meta, t }) => {
       <div className="sl-trigger-eval-row__header">
         <span className="sl-trigger-eval-row__icon">✅</span>
         <span className="sl-trigger-eval-row__title">
-          {t('evidence.eval.complete')} — {meta.runId?.slice(0, 8)}
+          {'Eval 完成'} — {meta.runId?.slice(0, 8)}
         </span>
       </div>
       <div className="sl-trigger-eval-row__stats">
         <span className="sl-trigger-eval-row__pass-rate">{passPct}%</span>
         <span className="sl-trigger-eval-row__detail">
-          {s.correct}/{s.total} {t('evidence.eval.pass')}
-          {s.wrong > 0 && ` · ${s.wrong} ${t('evidence.eval.fail')}`}
+          {s.correct}/{s.total} {'通过'}
+          {s.wrong > 0 && ` · ${s.wrong} ${'失败'}`}
           {s.infra_failure > 0 && ` · ${s.infra_failure} infra`}
         </span>
       </div>

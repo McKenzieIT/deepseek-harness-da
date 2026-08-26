@@ -61,7 +61,7 @@ export function SemanticLayerShell({
     return (
       <DashboardView
         evidenceClient={evidenceClient}
-        t={t}
+        t={t as unknown as (k: string, p?: Record<string, unknown>) => string}
         onNavigateToWorkspace={onNavigateToWorkspace}
       />
     )

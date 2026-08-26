@@ -16,8 +16,8 @@ import { useEvidenceQuery, type EvidenceQueryClient } from './hooks/useEvidenceQ
 
 export interface DashboardViewProps {
   evidenceClient?: EvidenceQueryClient | null
-  t: (key: string) => string
-  onNavigateToWorkspace?: () => void
+  t: (key: string, params?: Record<string, unknown>) => string
+  onNavigateToWorkspace?: (() => void) | undefined
 }
 
 export const DashboardView: FC<DashboardViewProps> = ({

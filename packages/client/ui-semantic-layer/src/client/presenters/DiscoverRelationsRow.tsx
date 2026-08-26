@@ -16,10 +16,10 @@ interface RelationsMeta {
   added?: AddedRelation[]
 }
 
-function relationTypeClass(derivation: string): string {
-  if (derivation === 'joins' || derivation === '' || derivation.includes('pk')) return css.relationJoins
-  if (derivation.includes('derived')) return css.relationDerived
-  return css.relationRelated
+function relationTypeClass(derivation: string) {
+  if (derivation === 'joins' || derivation === '' || derivation.includes('pk')) return css.relationJoins ?? ''
+  if (derivation.includes('derived')) return css.relationDerived ?? ''
+  return css.relationRelated ?? ''
 }
 
 function relationTypeLabel(derivation: string): string {

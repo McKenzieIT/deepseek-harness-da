@@ -8,11 +8,11 @@ interface SearchSchemaMeta {
   message?: string
 }
 
-function kindBadgeClass(kind: string | undefined): string {
-  if (kind === 'table') return css.badgeTable
-  if (kind === 'event') return css.badgeEvent
-  if (kind === 'metric') return css.badgeMetric
-  return css.badge
+function kindBadgeClass(kind: string | undefined) {
+  if (kind === 'table') return css.badgeTable ?? ''
+  if (kind === 'event') return css.badgeEvent ?? ''
+  if (kind === 'metric') return css.badgeMetric ?? ''
+  return css.badge ?? ''
 }
 
 export interface SearchSchemaRowProps {

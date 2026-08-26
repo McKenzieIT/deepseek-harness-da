@@ -76,7 +76,8 @@ export const SemanticLayerGoalDock: FC<SemanticLayerGoalDockProps> = ({ useProje
   if (!active) return null
   // TODO(evidence-query-rpc): replace [] with real eval pass rates from the
   // evidence-query client once the client RPC bridge exists.
-  return <GoalDock goalData={toGoalDockGoalData(projection)} evalPassRates={[]} t={t} />
+  const tAny = t as unknown as (key: string, params?: Record<string, unknown>) => string
+  return <GoalDock goalData={toGoalDockGoalData(projection)} evalPassRates={[]} t={tAny} />
 }
 
 /** Full details.aux-adapter props: framework runtime kit + locale seat (no inject face). */
@@ -97,10 +98,11 @@ export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProje
   const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
   const projection = useProjection('goal')
   if (!active) return null
+  const tAny2 = t as unknown as (key: string, params?: Record<string, unknown>) => string
   return (
     <EvidenceSidebar
       enabled={true}
-      t={t}
+      t={tAny2}
       evidenceClient={null}
       goalData={toGoalDockGoalData(projection)}
       // TODO(evidence-query-rpc): real eval pass rates once the bridge exists.

@@ -28,6 +28,8 @@ export interface EvidenceQueryClient {
   assetHealth(assetId: string): Promise<AssetHealthReport | null>
   beforeAfterDelta(runIdA: string, runIdB: string): Promise<EvalDeltaReport>
   triggerEvalRun?(assetId?: string): Promise<string>
+  getEvalRunCount?(): Promise<number>
+  getRecentPassRates?(n?: number): Promise<number[]>
 }
 
 /** State shape for the evidence query hook. */

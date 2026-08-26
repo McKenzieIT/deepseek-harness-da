@@ -30,7 +30,7 @@ type EffectiveMode = 'B' | 'A'
 
 export interface EvidenceSidebarProps {
   enabled: boolean
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, unknown>) => string
   evidenceClient?: EvidenceQueryClient | null | undefined
   selectedAssetId?: string | undefined
   goalData?: GoalDockGoalData | null  // W6c: active goal projection data
