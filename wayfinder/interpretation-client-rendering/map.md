@@ -20,14 +20,18 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 
 ## Decisions so far
 
-（none yet）
+- [R1: LLM agent UI rendering patterns](tickets/R1-llm-ui-rendering-patterns.md) — 数据 agent 全部 inline；follow-up chips 点击=立即提交；宽表格 horizontal scroll；旧 chips 变灰/隐藏
+- [R2: Frontend table + chart libraries](tickets/R2-frontend-table-chart-libraries.md) — v1 表格用原生 `<table>`（虚拟滚动时升级 TanStack）；Chart.js 4 tree-shaken ~43KB 仅 chart intent 时加载
+- [R3: DSH client rendering patterns](tickets/R3-dsh-client-rendering-patterns.md) — toolview 注册走 `tool.call.toolview` keyed slot；argsRaw 从 block.call 解析；数据行从同 turn query_data TSV 扫描；submit 通过 inject face → conversation.send；block.call===null 时 fallback generic card
+- [G1: INTERPRETATION client rendering design decisions](tickets/G1-design-decisions.md) — LLM/UI 数据路径分离；horizontal scroll；数据不可用时显示提示+retry；旧 chips 完全隐藏；折叠 card 展示 title+KPI；decomposition 默认展开 <0.7 黄色提示；retry=重拉 result store；虚拟滚动 day-1 + 10000 行 cap + CSV 导出；result data 在 object layer LRU cache 管理
 
 ## Not yet specified
 
 - `present_table` 的 chart 渲染精度（line/bar 两种 minimal，后续是否加 area/pie/scatter）
-- 大数据量虚拟滚动策略是否需要独立 infra 包还是包内 inline
-- 多 session 恢复时 result_id 指向的缓存数据 TTL / 过期 fallback
-- suggest_followups 点击后是否复用 InputHub shell（keyboard.submit）还是直接调 conversation.send
+- Object layer result cache 的具体实现位置（runtime 内 vs 独立 service 包）及 LRU eviction 策略（TTL / maxEntries）
+- Result store server-side 设计（RPC 协议、存储后端、GC 策略）——client cache 的上游依赖
+- 虚拟滚动库选型（@tanstack/virtual vs 自研 vs 其他）
+- CSV 导出的触发 UI 和生成路径（client-side 生成 vs server-side 生成下载链接）
 
 ## Out of scope
 

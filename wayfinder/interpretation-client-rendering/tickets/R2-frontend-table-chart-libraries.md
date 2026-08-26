@@ -1,8 +1,10 @@
 # R2: Frontend table + chart libraries 2026 comparison
 
 **Type**: research (AFK)
+**Status**: ✅ resolved
 **Blocked by**: none
 **Blocks**: [G1-design-decisions](G1-design-decisions.md)
+**Output**: [../research/R2-frontend-table-chart-libraries.md](../research/R2-frontend-table-chart-libraries.md)
 
 ## Question
 

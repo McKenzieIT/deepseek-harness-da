@@ -1,8 +1,10 @@
 # R3: DSH client plugin rendering patterns + event stream value access
 
 **Type**: research (AFK)
+**Status**: ✅ resolved
 **Blocked by**: none
 **Blocks**: [G1-design-decisions](G1-design-decisions.md)
+**Output**: [../research/R3-dsh-client-rendering-patterns.md](../research/R3-dsh-client-rendering-patterns.md)
 
 ## Question
 

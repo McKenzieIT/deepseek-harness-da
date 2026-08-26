@@ -1,8 +1,10 @@
 # R1: 2026 LLM agent UI tool-result rendering patterns
 
 **Type**: research (AFK)
+**Status**: ✅ resolved
 **Blocked by**: none
 **Blocks**: [G1-design-decisions](G1-design-decisions.md)
+**Output**: [../research/R1-llm-ui-rendering-patterns.md](../research/R1-llm-ui-rendering-patterns.md)
 
 ## Question
 
