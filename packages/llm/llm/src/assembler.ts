@@ -68,7 +68,7 @@ export class BlockAssembler {
       case 'tool-call-delta': {
         const partial = this.ensure(chunk.index, 'tool-call')
         if (partial.block) return // closed by block-end; ignore stragglers
-        partial.toolCallId = chunk.id
+        if (chunk.id) partial.toolCallId = chunk.id
         if (chunk.name) partial.toolCallName = chunk.name
         partial.toolCallArguments += chunk.argumentsDelta
         return
@@ -78,7 +78,11 @@ export class BlockAssembler {
         // First close wins; ignoring re-close stragglers keeps streamed output
         // and the final assembled block in agreement.
         if (partial.block) return
-        partial.block = chunk.block
+        if (chunk.block.type === 'tool-call' && !chunk.block.id && partial.toolCallId) {
+          partial.block = { ...chunk.block, id: partial.toolCallId }
+        } else {
+          partial.block = chunk.block
+        }
         return
       }
       case 'usage': {
