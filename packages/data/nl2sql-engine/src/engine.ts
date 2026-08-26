@@ -34,6 +34,7 @@ import { critiqueSql, extractSqlCandidate } from './critic.ts'
 import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetricContext } from './metric-engine.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
+import { detectTrendIntent, rerankByGranularity } from './granularity.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import { loadConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import { Bm25Linker, type RetrievalLinker, type DataSourceDoc } from './bm25-linking.ts'
@@ -76,6 +77,8 @@ export interface EngineDeps {
   readonly graph?: RelationGraphLike
   /** P4 D2: resolve a table's partition columns (retained interface field; post-M1b the Level 2 path does not read it). */
   readonly partitionResolver?: (tableName: string) => readonly string[] | null
+  /** P14b: payload lookup for graph-expanded neighbors (injected, does not change RetrievalLinker interface). */
+  readonly lookupDoc?: (id: string) => DataSourceDoc | undefined
 }
 
 /** The input arguments for a single engine run: the question + optional event definition + scope id. */
@@ -110,6 +113,7 @@ export class Nl2sqlEngine {
   private readonly odps: OdpsExecutor
   private readonly conventions: EngineConventions | null
   private readonly graph: RelationGraphLike | undefined
+  private readonly lookupDoc: ((id: string) => DataSourceDoc | undefined) | undefined
 
   constructor(deps: EngineDeps) {
     this.retrieval = deps.retrieval ?? new Bm25Linker(deps.dataSources ?? [])
@@ -117,6 +121,7 @@ export class Nl2sqlEngine {
     this.odps = deps.odps
     this.conventions = deps.conventions ?? loadConventions('maxcompute')
     this.graph = deps.graph
+    this.lookupDoc = deps.lookupDoc
     // partitionResolver is intentionally not stored: post-M1b the Level 2 path
     // does not read it (the Level 2.5 deterministic arm that consumed it was
     // removed). The EngineDeps field is retained for backward-compatible callers.
@@ -145,8 +150,11 @@ export class Nl2sqlEngine {
       // cap > retrieve topK (5) so graph neighbors are actually ADDED, not
       // dropped by the originals-first slice (a full 5-hit BM25 result would
       // otherwise make expansion a silent no-op in production-sized corpora).
-      candidates = expandCandidates(candidates, this.graph, 8)
+      candidates = expandCandidates(candidates, this.graph, 8, this.lookupDoc)
     }
+    // P14b: soft rerank — boost _di candidates for trend intent
+    const isTrend = detectTrendIntent(question)
+    candidates = rerankByGranularity(candidates, isTrend)
     trace.push({
       step: 'bm25_linking',
       candidates: candidates.map(c => ({ id: c.id, score: Number(c.score).toFixed(3) })),
@@ -196,7 +204,7 @@ export class Nl2sqlEngine {
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
       // 2. prompt + 3. LLM generate
-      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
+      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback, prompt })
       const sql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql
@@ -248,7 +256,7 @@ export class Nl2sqlEngine {
         }
       }
 
-      if (out.state === 'done') {
+      if (out.state === 'done' || out.state === 'completed') {
         return { ok: true, sql, outcome: out, result: out.rows, trace }
       }
 

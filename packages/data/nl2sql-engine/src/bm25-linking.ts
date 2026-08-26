@@ -184,17 +184,42 @@ export function buildCorpus(dataSources: readonly DataSourceDoc[]): readonly Cor
  */
 function nameMatchCoverage(queryAsciiTokens: readonly string[], tableId: string): number {
   if (queryAsciiTokens.length === 0) return 0
-  const nameParts = tableId.toLowerCase().split('_').filter(p => p.length > 0)
+  const nameParts = tableId.toLowerCase().split(/[_.]/).filter(p => p.length > 0)
   let matched = 0
   for (const qt of queryAsciiTokens) {
     if (nameParts.includes(qt)) {
       matched++
     } else if (qt.length >= 2) {
-      // prefix match: query token is a prefix of a name part (≥2 chars)
       if (nameParts.some(p => p.startsWith(qt))) matched++
     }
   }
   return matched / queryAsciiTokens.length
+}
+
+/**
+ * Bonus for consecutive query tokens appearing as adjacent name parts.
+ * "role account" in `role_account_inner` → consecutive (positions 2,3).
+ * "role account" in `game_role_backup_account_uv` → scattered (positions 1,4).
+ */
+function consecutiveMatchBonus(queryAsciiTokens: readonly string[], tableId: string): number {
+  if (queryAsciiTokens.length < 2) return 0
+  const nameParts = tableId.toLowerCase().split(/[_.]/).filter(p => p.length > 0)
+  let maxConsec = 0
+  for (let start = 0; start <= nameParts.length - queryAsciiTokens.length; start++) {
+    let run = 0
+    for (let qi = 0; qi < queryAsciiTokens.length; qi++) {
+      const part = nameParts[start + qi]
+      const qt = queryAsciiTokens[qi]
+      if (qt === undefined) break
+      if (part === qt || (qt.length >= 2 && part !== undefined && part.startsWith(qt))) {
+        run++
+      } else {
+        break
+      }
+    }
+    if (run > maxConsec) maxConsec = run
+  }
+  return maxConsec / queryAsciiTokens.length
 }
 
 /** Bonus multiplier for name-match coverage (applied on top of BM25 score). */
@@ -230,16 +255,45 @@ export class Bm25Linker implements RetrievalLinker {
     options: { readonly topK?: number; readonly mode?: string } = {},
   ): readonly RetrievalHit[] {
     const { topK = 5, mode = 'bm25-only' } = options
-    // Extract ASCII tokens from query for name-match bonus
     const queryAscii = (query.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []).map(s => s.toLowerCase())
-    // Fetch a generous candidate pool from BM25 to allow re-ranking
+    // BM25 pass: fetch generous pool
     const bm25Hits = this.bm25.search(query, Math.max(topK * 10, 50))
-    // Re-rank with name-match bonus
-    const reranked = bm25Hits.map((h) => {
-      const coverage = nameMatchCoverage(queryAscii, h.id)
-      return { ...h, score: h.score + coverage * NAME_MATCH_BONUS }
-    })
-    reranked.sort((a, b) => b.score - a.score)
-    return reranked.slice(0, topK).map(h => ({ id: h.id, score: h.score, payload: h.payload, mode }))
+    const bm25Ids = new Set(bm25Hits.map(h => h.id))
+
+    // Name-match pass: scan full corpus for high-coverage items missed by BM25.
+    // Consecutive match (query tokens form adjacent name parts) gets a large bonus
+    // to distinguish e.g. `role_account_inner` from `game_role_..._account_uv`.
+    const maxBm25 = bm25Hits[0]?.score ?? 0
+    const nameHits: { id: string; score: number; payload: DataSourceDoc }[] = []
+    if (queryAscii.length >= 2) {
+      for (const ds of this.dataSources) {
+        if (bm25Ids.has(ds.id)) continue
+        const cov = nameMatchCoverage(queryAscii, ds.id)
+        const consec = consecutiveMatchBonus(queryAscii, ds.id)
+        if (cov >= 0.8 && consec >= 0.5) {
+          nameHits.push({ id: ds.id, score: maxBm25 + (cov + consec) * NAME_MATCH_BONUS, payload: ds })
+        }
+      }
+    }
+
+    // Merge and re-rank (BM25 items also get coverage + consecutive bonus)
+    const merged = [
+      ...bm25Hits.map((h) => {
+        const cov = nameMatchCoverage(queryAscii, h.id)
+        const consec = consecutiveMatchBonus(queryAscii, h.id)
+        return { ...h, score: h.score + (cov + consec) * NAME_MATCH_BONUS }
+      }),
+      ...nameHits,
+    ]
+    merged.sort((a, b) => b.score - a.score)
+    const seen = new Set<string>()
+    const out: RetrievalHit[] = []
+    for (const h of merged) {
+      if (seen.has(h.id)) continue
+      seen.add(h.id)
+      out.push({ id: h.id, score: h.score, payload: h.payload, mode })
+      if (out.length >= topK) break
+    }
+    return out
   }
 }
