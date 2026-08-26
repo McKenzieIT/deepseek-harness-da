@@ -1,9 +1,8 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import ChartView from './ChartView.tsx'
 import css from './TableCard.module.css'
-
-const LazyChart = lazy(() => import('./ChartView.tsx'))
 
 export interface KpiColumn {
   column: number
@@ -324,9 +323,7 @@ function TableCardInner({ block, blockSeq, args, useSession, collapsed, setColla
             ? <VirtualTable headers={data.headers} rows={data.rows} />
             : <PlainTable headers={data.headers} rows={data.rows} />}
           {args.chart && (
-            <Suspense fallback={<div className={css.chartLoading}>加载图表...</div>}>
-              <LazyChart chart={args.chart} headers={data.headers} rows={data.rows} />
-            </Suspense>
+            <ChartView chart={args.chart} headers={data.headers} rows={data.rows} />
           )}
           {rawTsv !== null && data.rows.length >= MAX_DISPLAY_ROWS && (
             <CsvDownload headers={data.headers} rows={data.rows} title={args.title} />

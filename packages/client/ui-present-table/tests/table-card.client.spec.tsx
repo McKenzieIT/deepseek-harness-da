@@ -1,6 +1,29 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, fireEvent } from '@testing-library/react'
+
+vi.mock('react-chartjs-2', () => ({
+  Line: ({ data }: { data: unknown }) => (
+    <div data-testid="line-chart" data-labels={JSON.stringify((data as { labels: string[] }).labels)} />
+  ),
+  Bar: ({ data }: { data: unknown }) => (
+    <div data-testid="bar-chart" data-labels={JSON.stringify((data as { labels: string[] }).labels)} />
+  ),
+}))
+
+vi.mock('chart.js', () => ({
+  Chart: { register: vi.fn() },
+  CategoryScale: 'CategoryScale',
+  LinearScale: 'LinearScale',
+  PointElement: 'PointElement',
+  LineElement: 'LineElement',
+  BarElement: 'BarElement',
+  BarController: 'BarController',
+  LineController: 'LineController',
+  Tooltip: 'Tooltip',
+  Legend: 'Legend',
+}))
+
 import { TableCard, parseTsv } from '../src/client/TableCard.tsx'
 import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 
@@ -341,21 +364,21 @@ describe('TableCard', () => {
     expect(getByText('总年龄')).toBeDefined()
   })
 
-  it('renders chart loading state for chart intent', () => {
+  it('renders chart when chart intent is present', () => {
     const block = makeSettledBlock(ARGS_WITH_CHART)
-    const { getByText } = render(
+    const { container } = render(
       <TableCard block={block} useSession={makeUseSession(TSV_CONTENT)} />,
     )
-    expect(getByText('加载图表...')).toBeDefined()
+    expect(container.querySelector('[data-testid="line-chart"]')).not.toBeNull()
   })
 
-  it('does not show chart loading when collapsed', () => {
+  it('does not show chart when collapsed', () => {
     const block = makeSettledBlock(ARGS_WITH_CHART)
-    const { getByRole, queryByText } = render(
+    const { getByRole, container } = render(
       <TableCard block={block} useSession={makeUseSession(TSV_CONTENT)} />,
     )
     fireEvent.click(getByRole('button', { expanded: true }))
-    expect(queryByText('加载图表...')).toBeNull()
+    expect(container.querySelector('[data-testid="line-chart"]')).toBeNull()
   })
 
   it('ignores query_data results with seq >= block seq', () => {
