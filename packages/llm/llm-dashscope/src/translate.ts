@@ -128,8 +128,11 @@ export async function* translate(payloads: AsyncIterable<string>): AsyncGenerato
       if (message === undefined) continue
 
       // Reasoning first: thinking mode interleaves it before text.
-      const reasoning = message.reasoning_content
-      if (typeof reasoning === 'string' && reasoning.length > 0) {
+      const reasoningRaw = message.reasoning_content
+      const reasoning = typeof reasoningRaw === 'string' ? reasoningRaw
+        : Array.isArray(reasoningRaw) ? (reasoningRaw as Array<{ text?: string }>).map(part => part?.text ?? '').join('')
+          : ''
+      if (reasoning.length > 0) {
         if (!reasoningBlock) {
           reasoningBlock = open('reasoning')
           yield { type: 'block-start', index: reasoningBlock.index, blockType: 'reasoning' }

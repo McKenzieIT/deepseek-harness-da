@@ -13,6 +13,7 @@ import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Nl2sqlEngine, Bm25Linker, StandInOdps } from '@deepseek-ai/dsh-nl2sql-engine'
+
 import type {
   Llm,
   LlmGenerateArgs,
@@ -42,6 +43,7 @@ export interface BootOptions {
   readonly withQuery: boolean
   readonly sidecarPath?: string
   readonly noSqlJudge?: boolean
+  readonly queryExpansion?: boolean
 }
 
 export interface BootResult {
@@ -50,6 +52,11 @@ export interface BootResult {
 }
 
 // ── ctx.llm → engine Llm (forked from eval-runner-service) ──────────────
+
+function looksLikeSql(text: string): boolean {
+  const upper = text.trim().toUpperCase()
+  return /^\s*(SELECT|WITH|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/.test(upper)
+}
 
 class CtxLlmAdapter implements Llm {
   constructor(
@@ -95,9 +102,20 @@ class CtxLlmAdapter implements Llm {
       .map(b => b.text)
       .join('') || null
 
-    if (textContent.length > 0) return { text: textContent, reasoning }
+    // Thinking models often put SQL in reasoning and conversational text in content.
+    // Prefer SQL from reasoning when text doesn't look like SQL.
+    if (textContent.length > 0) {
+      if (looksLikeSql(textContent)) return { text: textContent, reasoning }
+      // Text is conversational — check if reasoning has SQL
+      if (reasoning) {
+        const fenced = reasoning.match(/```sql\n([\s\S]*?)```/)
+        if (fenced && fenced[1] !== undefined) return { text: fenced[1], reasoning }
+        if (looksLikeSql(reasoning)) return { text: reasoning, reasoning }
+      }
+      return { text: textContent, reasoning }
+    }
 
-    // Thinking model fallback: extract SQL from reasoning content
+    // No text content — extract SQL from reasoning
     if (reasoning) {
       const fenced = reasoning.match(/```sql\n([\s\S]*?)```/)
       if (fenced && fenced[1] !== undefined) return { text: fenced[1], reasoning }
@@ -180,11 +198,54 @@ class LlmJudgeExecutor implements JudgeExecutor {
   }
 }
 
+// ── P15a: LLM query expansion ────────────────────────────────────────────
+
+const EXPANSION_SYSTEM_PROMPT =
+  '你是一个游戏数据分析领域的搜索查询扩展器。'
+  + '将用户问题改写为适合BM25检索的扩展query。'
+  + '保留原词+补充缩写全称+中文同义词+字段命名风格（下划线英文）。'
+  + '只输出一行扩展文本，不要解释。'
+
+async function expandQuery(ctx: Context, question: string): Promise<string> {
+  const llm = ctx.get('llm') as { stream?(options: unknown): AsyncIterable<unknown> } | undefined
+  if (llm === undefined || typeof llm.stream !== 'function') return question
+  try {
+    const assembler = new BlockAssembler()
+    const options = {
+      provider: 'aga',
+      model: 'qwen-flash',
+      system: EXPANSION_SYSTEM_PROMPT,
+      temperature: 0.1,
+      maxTokens: 200,
+      messages: [
+        createUserMessage({
+          content: [{ type: 'text' as const, text: question }],
+          source: { kind: 'plugin' as const, plugin: 'eval-cli' },
+        }),
+      ],
+    }
+    for await (const chunk of llm.stream(options) as AsyncIterable<import('@deepseek-ai/dsh-llm').StreamChunk>) {
+      assembler.push(chunk)
+    }
+    const blocks = assembler.blocks()
+    const text = blocks
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim()
+      .replace(/\n/g, ' ')
+    return text.length > 0 ? text : question
+  } catch {
+    return question
+  }
+}
+
 // ── Nl2sqlEngine-backed AgentResponder ───────────────────────────────────
 
 class Nl2sqlAgentResponder implements AgentResponder {
   private readonly llm: CtxLlmAdapter
   private readonly odps: OdpsExecutor
+  private readonly queryExpansionEnabled: boolean
 
   constructor(
     private readonly ctx: Context,
@@ -192,9 +253,11 @@ class Nl2sqlAgentResponder implements AgentResponder {
     provider: string,
     model: string,
     withQuery: boolean,
+    queryExpansion: boolean = true,
   ) {
     this.llm = new CtxLlmAdapter(ctx, provider, model)
     this.odps = withQuery ? new CtxOdpsAdapter(ctx) : new StandInOdps()
+    this.queryExpansionEnabled = queryExpansion
   }
 
   async respond(question: string, _opts?: AgentRespondOpts): Promise<AgentResponse> {
@@ -202,14 +265,26 @@ class Nl2sqlAgentResponder implements AgentResponder {
       | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(): RelationGraphLike }
       | undefined
     const corpus = (schema?.loadRetrievalCorpusAll?.() ?? []) as readonly { id: string; description?: string; payload?: unknown }[]
-    const retrieval = new Bm25Linker(corpus)
+    const baseLinker = new Bm25Linker(corpus)
     const graph = schema?.getRelationGraph?.()
 
+    // P15a: expand query for BM25 retrieval (engine uses question for both
+    // prompting and retrieval; wrap the linker so only retrieval sees the
+    // expanded form).
+    const expandedQuestion = this.queryExpansionEnabled
+      ? await expandQuery(this.ctx, question)
+      : question
+    const retrieval: typeof baseLinker = expandedQuestion !== question
+      ? { retrieve: (_q, opts) => baseLinker.retrieve(expandedQuestion, opts) } as typeof baseLinker
+      : baseLinker
+
+    const lookupDoc = (id: string) => corpus.find(d => d.id === id) as import('@deepseek-ai/dsh-nl2sql-engine').DataSourceDoc | undefined
     const engine = new Nl2sqlEngine({
       llm: this.llm,
       odps: this.odps,
       conventions: null,
       retrieval,
+      lookupDoc,
       ...(graph !== undefined ? { graph } : {}),
     })
 
@@ -326,7 +401,7 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
 
   // 5. Build Collaborators
   const llmAdapter = new CtxLlmAdapter(ctx, opts.provider, opts.model)
-  const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery)
+  const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery, opts.queryExpansion !== false)
   const judge = new LlmJudgeExecutor(llmAdapter)
   const executor = opts.withQuery ? new CtxQueryExecutor(ctx) : null
 

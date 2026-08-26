@@ -9,6 +9,7 @@
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
+import type { ResultEntry } from './types.ts'
 
 export type { ResultEntry } from './types.ts'
 

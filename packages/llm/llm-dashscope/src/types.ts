@@ -121,8 +121,9 @@ export interface WireDelta {
    * Thinking chain. Delta fragments in streaming (ASSUMPTION: `incremental_output:true` makes
    * reasoning_content delta, consistent with content — confirmed for content, not separately probed
    * for reasoning; verify via the key-gated e2e). Absent on non-thinking models.
+   * May arrive as a string or as an array of `{text}` parts (same shape as content on some models).
    */
-  reasoning_content?: string | null
+  reasoning_content?: string | WireContentPart[] | null
   tool_calls?: WireToolCallDelta[]
 }
 
