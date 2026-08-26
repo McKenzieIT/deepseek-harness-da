@@ -47,6 +47,29 @@ G1b 原框定「依赖已解锁（P7b/P13b/P11b/G1 全 resolved）→ 可跑」*
 - ~~**G1c**（变体 preset B/C/D + 共享 data-tool roster 补完 + honesty tagging——A 自身仅 `search_data_sources` 注册，query_data/load_*/present_* 全注释 TBD；B/C/D 不存在）~~ — **✅ resolved**（G1c 2026-08-21 ship B/C/D + roster；load_* 2026-08-21 ship；present_* 2026-08-26 ship commit `6f2217f730`；A roster 全 runnable）。
 - ~~P7b/P11b/P13b/G1~~（全 resolved 2026-08-20，但**不足**：P7b 接 phase-gate 编排但 gate 的数据工具多为未注册 stub；P11b 是库无 runner；P13b 是 NL→SQL+critic 但 agent 没法执行 SQL）。
 
+## Progress (2026-08-27)
+
+**所有 blocker 已解**，进入实质执行。已完成的子步骤：
+
+1. **G1b-infra-bugs-resolved** (2026-08-26)：5 个 eval infra bug 修复（checkResultMatch value-only / reasoning_content array / SQL 提取 / 进程退出 / 缺失 dep）。
+2. **G1b-retrieval-quality** (2026-08-26)：BM25 tokenizer 修复（underscore split + hybrid name-match bonus），recall@5 0%→86.7%。
+3. **P15a query expansion** (2026-08-26)：LLM query expansion via qwen-flash 6/6 hit@5，生产+eval 路径。
+4. **query-maxcompute SQL normalization** (2026-08-27)：确定性方言修正（query-provider 层），防止 LLM 方言错误。
+5. **eval-runner diagnostics** (2026-08-27)：AttemptResult 新增 generated_sql/query_result/expected_result，eval 结果自诊断。
+
+**当前瓶颈（2026-08-27 诊断）**：
+
+execution_match=0% 根因定位——**不是方言/检索/代码问题，是 eval 数据环境**：
+- LLM 生成 SQL 方言正确（`MAX_PT()` = 正确 MaxCompute 函数），选对表
+- ODPS 返回 `ODPS-0130071: table "ieu_cdm.dws_10000251_acc_summary_df" has no partitions or none of the partitions have any data`
+- 即：eval case 引用的表分区为空或不存在
+
+**下一步**（解锁 execution_match > 0%）：
+1. 确认分区数据：`maxc -e "SHOW PARTITIONS dws_10000251_acc_summary_df"` 看有无数据
+2. 若 `_df` 表是全量快照（非分区表）：LLM 不该用 `MAX_PT()`——需 prompt/convention 告知
+3. 若有分区但数据被清理：恢复数据或调整 eval case 的 ds/expected
+4. 修复后重跑 30-case 矩阵（diagnostics 会直接显示改善）
+
 ## 前置
 
 - **G1**（resolved 2026-08-20，实验设计 11 决策，`../phase-misc/G1-pipeline-vs-goal-todo.md`）。

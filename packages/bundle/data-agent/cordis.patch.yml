@@ -199,12 +199,9 @@
 
 # ── transform execution (TODO, P7 four-phase + report/Excel) ───────────────
 # code-runtime runs pandas transforms (incl. Excel/report generation via
-# pandas). The web-app base inserts code-runtime as worker-thread; this
-# override replaces it with the data-python variant for the data-agent.
+# pandas) and is mounted here as the data-python variant.
 #
     - id: result-cache          # ctx.resultCache seam — in-memory session-scoped Provider; tools/post-execute hook captures query_data results with qr_ prefix; compute tool stores derived results with cr_ prefix
       name: '@deepseek-ai/dsh-result-cache-memory'
-
-# Override web-app's code-runtime (worker-thread) with data-python variant.
-- id: code-runtime
-  name: '@deepseek-ai/dsh-code-runtime-data-python'
+    - id: code-runtime
+      name: '@deepseek-ai/dsh-code-runtime-data-python'
