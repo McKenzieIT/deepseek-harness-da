@@ -201,10 +201,20 @@ class LlmJudgeExecutor implements JudgeExecutor {
 // ── P15a: LLM query expansion ────────────────────────────────────────────
 
 const EXPANSION_SYSTEM_PROMPT =
-  '你是一个游戏数据分析领域的搜索查询扩展器。'
-  + '将用户问题改写为适合BM25检索的扩展query。'
-  + '保留原词+补充缩写全称+中文同义词+字段命名风格（下划线英文）。'
-  + '只输出一行扩展文本，不要解释。'
+  '你是一个游戏数据分析数据仓库的搜索查询扩展器。'
+  + '将用户问题改写为适合BM25检索的扩展query，用于匹配DWS宽表名和字段名。'
+  + '规则：保留原词 + 补充缩写全称 + 中文同义词 + 数仓表名/字段名片段（snake_case英文）。'
+  + '重点：生成可能出现在表名或字段名中的英文短语片段。'
+  + '只输出一行空格分隔的关键词，不要解释。\n'
+  + '示例：\n'
+  + '用户：ARPPU是多少\n'
+  + '输出：ARPPU ARPU 人均付费 付费人均收入 累计付费账号 pay_amt acc_summary 付费金额 账号汇总 paying\n'
+  + '用户：昨天有多少场PVP对战\n'
+  + '输出：PVP 对战 pvp_score 对战场次 竞技 积分变化 每日 角色 score 玩法 段位\n'
+  + '用户：钻石的总产出量\n'
+  + '输出：钻石 产出量 物品流水 资源产销 item_circle 道具 产出 get_amt 物品产出 物品类型\n'
+  + '用户：大R用户有多少\n'
+  + '输出：大R 大R玩家 大R付费账号 高付费 重度付费 big_r pay_order 付费订单 累计付费 高消费'
 
 async function expandQuery(ctx: Context, question: string): Promise<string> {
   const llm = ctx.get('llm') as { stream?(options: unknown): AsyncIterable<unknown> } | undefined

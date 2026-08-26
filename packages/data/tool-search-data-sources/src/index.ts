@@ -31,6 +31,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { Bm25Linker, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
 import { type RetrievalService } from '@deepseek-ai/dsh-retrieval/src/index.ts'
+import { expandQuery } from './expand-query.ts'
 
 export const name = 'tool-search-data-sources'
 export const inject = ['tools']
@@ -41,11 +42,14 @@ export interface Config {
    * topK=20 helps all corpus variants per the D2g 113-gold sweep: base
    * 62.8→77.9, term-only 77.0→85.0, params+term 68.1→81.4 strict). */
   readonly topK?: number
+  /** Enable LLM query expansion before BM25 retrieval (P15a). */
+  readonly queryExpansion?: boolean
 }
 
 /** Runtime configuration schema for the search_data_sources plugin. */
 export const Config: z<Config> = z.object({
   topK: z.number().default(20),
+  queryExpansion: z.boolean().default(true),
 })
 
 /** A ranked candidate data source returned to the model. */
@@ -327,6 +331,7 @@ function applyGraphExpansionAndJoins(
 
 export function apply(ctx: Context, config: Config = {}): void {
   const defaultTopK = config.topK ?? 20
+  const expansionEnabled = config.queryExpansion !== false
   // Q1 thin default: empty corpus until P6b `ctx.schema` ships. With no
   // corpus, BM25 returns no candidates - callable but unwired, not a broken
   // mount. Swap to ctx.schema.discover when P6b ships.
@@ -406,6 +411,12 @@ export function apply(ctx: Context, config: Config = {}): void {
         throw new Error('search_data_sources aborted before linking')
       }
       const topK = args.top_k ?? defaultTopK
+      // P15a: LLM query expansion — rewrite the query for better BM25 recall.
+      // Soft-probe ctx.llm (same discipline as schema/retrieval): skip when no
+      // LLM provider is mounted or when expansion is disabled via config.
+      const query = expansionEnabled
+        ? await expandQuery(ctx, args.query)
+        : args.query
       // P5b soft-fallback swap: when the `ctx.retrieval` seam is registered
       // (opt-in; the bundle mounts `dsh-retrieval-inproc`), use the real async
       // hybrid provider; otherwise the sync local `Bm25Linker` (Q1 thin
@@ -422,7 +433,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       const schema = ctx.get('schema') as SchemaCorpusSource | undefined
       const retrieval = ctx.get('retrieval') as RetrievalService | undefined
       if (retrieval !== undefined) {
-        const hits = await retrieval.retrieve(args.query, { topK, mode: 'hybrid' })
+        const hits = await retrieval.retrieve(query, { topK, mode: 'hybrid' })
         const candidates = hits.map(projectHit)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
@@ -437,11 +448,11 @@ export function apply(ctx: Context, config: Config = {}): void {
       // `undefined` when none is registered. The defensive `typeof` probe
       // guards a non-schema object resolving to the 'schema' name.
       if (schema !== undefined && typeof schema.loadRetrievalCorpus === 'function') {
-        const candidates = searchDataSources(getEnrichedLinker(schema), args.query, topK)
+        const candidates = searchDataSources(getEnrichedLinker(schema), query, topK)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
-      const candidates = searchDataSources(linker, args.query, topK)
+      const candidates = searchDataSources(linker, query, topK)
       const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
       return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
     },

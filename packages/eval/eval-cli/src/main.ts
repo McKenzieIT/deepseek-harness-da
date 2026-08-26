@@ -43,6 +43,7 @@ interface CliArgs {
   withQuery: boolean
   sidecarPath: string | null
   noSqlJudge: boolean
+  queryExpansion: boolean
 }
 
 function str(v: string | boolean | undefined, fallback: string): string {
@@ -66,6 +67,7 @@ function parseCliArgs(): CliArgs {
       'with-query': { type: 'boolean', default: false },
       sidecar: { type: 'string' },
       'no-sql-judge': { type: 'boolean', default: false },
+      'no-query-expansion': { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
     },
     strict: false,
@@ -101,6 +103,7 @@ function parseCliArgs(): CliArgs {
     withQuery: values['with-query'] === true,
     sidecarPath: typeof values.sidecar === 'string' ? values.sidecar : null,
     noSqlJudge: values['no-sql-judge'] === true,
+    queryExpansion: values['no-query-expansion'] !== true,
   }
 }
 
@@ -131,6 +134,7 @@ function printUsage(): void {
     --with-query           Mount query-maxcompute for real SQL execution
     --sidecar <path>       Path to MaxCompute sidecar script
     --no-sql-judge         Disable SQL semantic judge (auto-pass when no executor)
+    --no-query-expansion   Disable LLM query expansion before BM25 retrieval
     --help                 Show this help
 
   Environment:
@@ -188,6 +192,7 @@ export async function main(): Promise<void> {
     today: args.today,
     withQuery: args.withQuery,
     noSqlJudge: args.noSqlJudge,
+    queryExpansion: args.queryExpansion,
     ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
   })
 

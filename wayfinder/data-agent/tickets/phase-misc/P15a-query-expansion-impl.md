@@ -2,7 +2,7 @@
 
 **Type**: task（实现；P15 grilling 毕业）
 **Phase**: misc（retrieval 增强；D2 lineage）
-**Status**: open
+**Status**: resolved (2026-08-26)
 **Graduated from**: [P15](P15-query-rewriting.md)（resolved 2026-08-26，方案 B validated 6/6 hit@5）
 
 ## Question
@@ -98,3 +98,22 @@ Config 开关（默认开启）：
 
 - P15 原型：`packages/eval/eval-cli/src/p15-probe.ts`（simulated expansion 2/6→6/6 hit@5）
 - P15 resolution：`wayfinder/data-agent/tickets/phase-misc/P15-query-rewriting.md`
+
+## Resolution (2026-08-26)
+
+实现完成，验证 6/6 hit@5（真实 LLM，AGA 网关 qwen-flash）。
+
+**改动文件：**
+
+1. `packages/data/tool-search-data-sources/src/expand-query.ts`（新）— `expandQuery(ctx, question)` 函数，ctx.llm streaming + BlockAssembler，graceful degradation
+2. `packages/data/tool-search-data-sources/src/index.ts` — Config 加 `queryExpansion?: boolean`（default true），execute() 内所有检索路径前调 `await expandQuery(ctx, args.query)`
+3. `packages/eval/eval-cli/src/context.ts` — 本地 `expandQuery` + wrapper linker（仅 BM25 用扩展后 query，engine prompt 用原始 question），`BootOptions.queryExpansion` flag
+4. `packages/eval/eval-cli/src/main.ts` — `--no-query-expansion` CLI flag
+
+**Prompt 调优：** 初版 prompt 只生成泛化英文（`arppu_average_revenue_per_paying_user`），BM25 只命中 1/6。加 4 个 few-shot 示例（含 `acc_summary`/`big_r`/`item_circle` 等实际表名片段）后达到 6/6。
+
+**验证结果：**
+- tool-search-data-sources: 13/13 tests ✅，tsc 无错误 ✅
+- eval-cli tsc: 仅 pre-existing `lookupDoc` 错误 ✅
+- 真实 LLM expansion (AGA/qwen-flash): 6/6 hit@5 ✅
+- expansion latency: ~620ms
