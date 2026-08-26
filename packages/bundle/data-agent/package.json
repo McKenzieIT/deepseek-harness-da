@@ -63,6 +63,9 @@
     "@deepseek-ai/dsh-tool-load-table-definition": "workspace:^",
     "@deepseek-ai/dsh-tool-present-clarification": "workspace:^",
     "@deepseek-ai/dsh-tool-compute": "workspace:^",
+    "@deepseek-ai/dsh-tool-present-decomposition": "workspace:^",
+    "@deepseek-ai/dsh-tool-present-table": "workspace:^",
+    "@deepseek-ai/dsh-tool-suggest-followups": "workspace:^",
     "@deepseek-ai/dsh-tool-search-data-sources": "workspace:^",
     "@deepseek-ai/dsh-tool-update-table-config": "workspace:^"
   },

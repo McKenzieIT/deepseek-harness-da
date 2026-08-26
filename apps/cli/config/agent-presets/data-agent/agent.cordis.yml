@@ -30,14 +30,13 @@
 # of the preset (`installAgentLlmTarget` seam); phase-gate layers per-phase
 # `reasoningEffort` via the `agent/request` waterfall.
 #
-# The data-agent's model-facing tools are rows BELOW. Four are shipped +
-# uncommented (search_data_sources / query_data / load_table_definition /
-# load_event_definition); the rest (critique_sql_tool / evaluate_sql_quality
-# / present_*) stay commented placeholders — uncomment each only after its
-# package ships, since a bare specifier to a not-yet-shipped package breaks
-# `pnpm install` and `verify-cordis-config` (P13b → critique_sql_tool /
-# evaluate_sql_quality; INTERPRETATION delivery tools → a later ticket). ids
-# and the phase-gate tool whitelists follow the map Decisions so far.
+# The data-agent's model-facing tools are rows BELOW. All four phases have
+# shipped tools: UNDERSTANDING (search_data_sources / load_table_definition /
+# load_event_definition), GENERATION (update_table_config / critique_sql_tool
+# / evaluate_sql_quality), EXECUTION (query_data), INTERPRETATION
+# (present_decomposition / present_table / compute / suggest_followups).
+# tool-retrieve is DORMANT (shipped but opt-in — uncomment to activate).
+# ids and the phase-gate tool whitelists follow the map Decisions so far.
 # phase-gate's guard is forward-compatible — the whitelists name the stable
 # rbi roster, so an unregistered tool is simply uncallable (no model can
 # reach it), not a broken mount.
@@ -113,10 +112,12 @@
   name: '@deepseek-ai/dsh-query-tool'
 # - id: tool-retrieve            # ESCAPE-HATCH (D2c-impl): on-demand retrieval over the same BM25 corpus as search_data_sources; additive escape-hatch for when the UNDERSTANDING prefetch missed. SHIPPED but DORMANT (opt-in, mirrors D2e/P5b dormant-until-mount) — default boot does NOT mount it = pipeline-only current state, no regression. Activation = uncomment this row + add `retrieve` to the phase-gate whitelist + land the persona (P7b) teaching "prefer prefetched context; call retrieve only when the gap is obvious" (avoid double-retrieval redundancy). Soft-fallback == search_data_sources (ctx.retrieval -> ctx.schema enriched Bm25Linker -> empty Bm25Linker; NO FakeHash/FakeReranker default per D2d). Additive/reversible — unship if D2c-revisit regresses.
 #   name: '@deepseek-ai/dsh-tool-retrieve'
-# - id: tool-present-decomposition # INTERPRETATION (delivery tools → later ticket)
-#   name: '@deepseek-ai/dsh-tool-present-decomposition' # name TBD
-# - id: tool-present-table         # INTERPRETATION
-#   name: '@deepseek-ai/dsh-tool-present-table'         # name TBD
+- id: tool-present-decomposition # INTERPRETATION (delivery: structured decomposition of the answer)
+  name: '@deepseek-ai/dsh-tool-present-decomposition'
+- id: tool-present-table         # INTERPRETATION (delivery: tabular result presentation)
+  name: '@deepseek-ai/dsh-tool-present-table'
+- id: tool-suggest-followups     # INTERPRETATION (delivery: suggest follow-up questions)
+  name: '@deepseek-ai/dsh-tool-suggest-followups'
 - id: tool-compute               # INTERPRETATION (LLM-generated pandas code against cached query results; ctx.codeRuntime + ctx.resultCache)
   name: '@deepseek-ai/dsh-tool-compute'
 
