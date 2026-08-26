@@ -2389,6 +2389,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const resolved = await turnAgentFor<{ accepted: true }>(request, sessionId)
         if ('refused' in resolved) return resolved.refused
         const agent = resolved.agent
+        // Await any in-flight preset switch so the composition is fully
+        // settled before the first turn starts. Without this, a prompt that
+        // races a recompose can wake the driver under the old composition,
+        // and a mid-flight rebind destabilizes the agent's scope observers.
+        const pendingSwitch = presetSwitches.get(sessionId)
+        if (pendingSwitch !== undefined) await pendingSwitch
         // Request identity and optional browser zone ride the exact durable user message.
         const source: MessageSource = {
           kind: 'user',
