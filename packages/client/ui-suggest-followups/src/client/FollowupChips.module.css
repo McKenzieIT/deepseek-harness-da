@@ -1,0 +1,62 @@
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--dsw-border-secondary);
+  background: var(--dsw-bg-secondary);
+  color: var(--dsw-text-primary);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.chip:hover {
+  background: var(--dsw-bg-tertiary);
+  border-color: var(--dsw-border-primary);
+}
+
+.chip:active {
+  background: var(--dsw-bg-active);
+}
+
+.skeleton {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.skeletonChip {
+  height: 32px;
+  border-radius: 16px;
+  background: var(--dsw-bg-tertiary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.fallback {
+  padding: 8px 0;
+}
+
+.fallbackText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsw-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}

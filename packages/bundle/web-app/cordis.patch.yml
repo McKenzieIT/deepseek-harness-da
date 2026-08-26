@@ -298,6 +298,14 @@
     - id: ui-present-decomposition
       name: '@deepseek-ai/dsh-client-ui-present-decomposition'
 
+    # INTERPRETATION toolview: data table with KPI cards, virtual scroll, chart.
+    - id: ui-present-table
+      name: '@deepseek-ai/dsh-client-ui-present-table'
+
+    # INTERPRETATION toolview: follow-up suggestion chips.
+    - id: ui-suggest-followups
+      name: '@deepseek-ai/dsh-client-ui-suggest-followups'
+
 # ── the agent plane moves behind agent presets ─────────────────────────────
 #
 # Every row below composes what ONE agent contributes to the host registries:

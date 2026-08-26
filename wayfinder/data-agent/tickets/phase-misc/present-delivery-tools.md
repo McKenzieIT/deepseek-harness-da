@@ -68,3 +68,4 @@ What is the form of the data-agent's INTERPRETATION-phase delivery tools (`prese
 ### Spawned tickets
 
 - [`data-agent-safe-compute-environment`](data-agent-safe-compute-environment.md) — research：data-agent 安全计算环境设计（blocks `compute` ship）
+- [`compute-tool`](compute-tool.md) — task AFK：`@deepseek-ai/dsh-tool-compute` 落地（**resolved 2026-08-26**，安全计算环境全链解封后 ship）

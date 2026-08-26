@@ -25,6 +25,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [R3: DSH client rendering patterns](tickets/R3-dsh-client-rendering-patterns.md) — toolview 注册走 `tool.call.toolview` keyed slot；argsRaw 从 block.call 解析；数据行从同 turn query_data TSV 扫描；submit 通过 inject face → conversation.send；block.call===null 时 fallback generic card
 - [G1: INTERPRETATION client rendering design decisions](tickets/G1-design-decisions.md) — LLM/UI 数据路径分离；horizontal scroll；数据不可用时显示提示+retry；旧 chips 完全隐藏；折叠 card 展示 title+KPI；decomposition 默认展开 <0.7 黄色提示；retry=重拉 result store；虚拟滚动 day-1 + 10000 行 cap + CSV 导出；result data 在 object layer LRU cache 管理
 - [T1: Implement ui-present-decomposition package](tickets/T1-ui-present-decomposition.md) — packages/client/ui-present-decomposition/ 完成，toolview 注册 key='present_decomposition'，三态渲染（skeleton/fallback/rich card），15 tests green
+- [T3: Implement ui-suggest-followups package](tickets/T3-ui-suggest-followups.md) — packages/client/ui-suggest-followups/ 完成，toolview 注册 key='suggest_followups'，inject face 提供 submit callback，chip 点击立即提交，旧 turn chips 从 DOM 移除，22 tests green，100% 覆盖率
 
 ## Not yet specified
 

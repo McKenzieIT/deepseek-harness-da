@@ -205,5 +205,7 @@
 # stays enabled (base's POSIX platform guard) for the agent's own shell use
 # and is gated from business users at P10.
 #
+    - id: result-cache          # ctx.resultCache seam — in-memory session-scoped Provider; tools/post-execute hook captures query_data results with qr_ prefix; compute tool stores derived results with cr_ prefix
+      name: '@deepseek-ai/dsh-result-cache-memory'
     - id: code-runtime
       name: '@deepseek-ai/dsh-code-runtime-data-python'

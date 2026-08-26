@@ -177,6 +177,7 @@
     { "path": "./packages/data/tool-critique-sql" },
     { "path": "./packages/data/tool-evaluate-sql-quality" },
     { "path": "./packages/data/tool-discover-relations" },
+    { "path": "./packages/data/tool-compute" },
     { "path": "./packages/data/tool-retrieve" },
     { "path": "./packages/data/preset-autojoin" },
     { "path": "./packages/query/query" },

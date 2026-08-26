@@ -42,6 +42,7 @@
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-client-ui-semantic-layer": "workspace:^",
+    "@deepseek-ai/dsh-code-runtime-data-python": "workspace:^",
     "@deepseek-ai/dsh-evidence-query": "workspace:^",
     "@deepseek-ai/dsh-eval-runner-service": "workspace:^",
     "@deepseek-ai/dsh-goal-eval-context": "workspace:^",
@@ -51,6 +52,7 @@
     "@deepseek-ai/dsh-phase-gate": "workspace:^",
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^",
+    "@deepseek-ai/dsh-result-cache-memory": "workspace:^",
     "@deepseek-ai/dsh-query-tool": "workspace:^",
     "@deepseek-ai/dsh-schema-gateway": "workspace:^",
     "@deepseek-ai/dsh-scope-registry": "workspace:^",
@@ -60,6 +62,7 @@
     "@deepseek-ai/dsh-tool-load-event-definition": "workspace:^",
     "@deepseek-ai/dsh-tool-load-table-definition": "workspace:^",
     "@deepseek-ai/dsh-tool-present-clarification": "workspace:^",
+    "@deepseek-ai/dsh-tool-compute": "workspace:^",
     "@deepseek-ai/dsh-tool-search-data-sources": "workspace:^",
     "@deepseek-ai/dsh-tool-update-table-config": "workspace:^"
   },

@@ -117,6 +117,8 @@
 #   name: '@deepseek-ai/dsh-tool-present-decomposition' # name TBD
 # - id: tool-present-table         # INTERPRETATION
 #   name: '@deepseek-ai/dsh-tool-present-table'         # name TBD
+- id: tool-compute               # INTERPRETATION (LLM-generated pandas code against cached query results; ctx.codeRuntime + ctx.resultCache)
+  name: '@deepseek-ai/dsh-tool-compute'
 
 # ── transform execution (Q9; TODO with the four-phase transform/delivery) ──
 # bash + code-runtime (pandas transforms / Excel-report generation) stay
