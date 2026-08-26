@@ -244,7 +244,7 @@ export const toolDefinition: ConversationNodeDefinition<ToolState> = {
     if (event.type === 'tool/result' && isAppendSurfaceEvent(event)) {
       const callId = String(event.data.message.source.callId)
       if (!callId) return null
-      return { id: String(event.data.message.source.callId), role: 'update' }
+      return { id: callId, role: 'update' }
     }
     if (event.type === 'tool/code-dispatch-start' || event.type === 'tool/code-dispatch') {
       const rootCallId: unknown = event.data.rootCallId

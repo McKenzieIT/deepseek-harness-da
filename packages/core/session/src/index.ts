@@ -335,8 +335,7 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
   }
   if (type !== 'tool/result') return
   if (sourceRecord['kind'] !== 'tool'
-    || typeof sourceRecord['callId'] !== 'string'
-  ) {
+    || typeof sourceRecord['callId'] !== 'string') {
     throw new Error(`${subject} message must have tool source`)
   }
   const content = messageRecord['content'] as unknown[]
@@ -1153,5 +1152,3 @@ export class SessionStore extends Service {
   }
 
 }
-
-export default SessionStore
