@@ -2,8 +2,8 @@
 
 **Type**: grilling（需先讨论必要性和优先级——如果 real embedder 落地则可能不需要）
 **Phase**: misc（retrieval 增强；D2 lineage）
-**Status**: open
-**Blocked by**: 无（可独立实现；但建议等 D2c-revisit real embedder 评估后再决定优先级）
+**Status**: Resolved（2026-08-26，P15 grilling session——query rewriting 可行性验证 + 方案选定）
+**Blocked by**: 无
 
 ## Question
 
@@ -81,3 +81,49 @@ D2c-revisit 明确说：BM25-only 的 cheap-fix ceiling 是 ~58%（enriched corp
 - Real embedder 部署（→ D2c-revisit）
 - Ontology 消费 / 粒度感知（→ P14）
 - Clarification（→ G-DA2/P-DA1 已 resolved）
+
+## Resolution（resolved 2026-08-26，P15 grilling session）
+
+### 决策：方案 B（LLM query expansion via qwen-flash）validated，实现见 P15a
+
+**必要性确认**：
+- Real embedder **无限期 blocked**（用户需自部署 InfinityEmbedder sidecar，零进展）
+- D2h term-only@topK=20 的 85.0% 是 events-only corpus 测量；k11-v2 eval 的 metric_lookup 失败 case 走的是 tables+metrics corpus path（`loadRetrievalCorpusAll()`），D2e/D2f/D2h enrichment 不覆盖
+- Query rewriting 独立于 real embedder 有持续价值（hybrid retrieval 中 BM25 分支召回越高，hybrid floor 越高）
+
+**根因分析**（6 个 P11e 失败 case）：
+- 2-3 个是 tokenizer 结构问题（`_` 不分词，ASCII 复合 id 变单 token）
+- 2-3 个是真正的语义同义词 gap（"玩家"≠"账号"、"钻石"→"物品流水"）
+- 但**不修 tokenizer**（全局改动有回归风险：IDF 稀释、假阳性增加、D2h 成果可能 regress）
+
+**方案选定 = B（LLM query expansion）**：
+- 在 BM25 检索前，用小模型（`qwen-flash`，AGA 网关最小可用模型）将用户问题扩展为包含更多 corpus 可匹配 token 的形式
+- 增量性（只改 query，不碰 corpus/index）：对已有行为零回归
+- 延迟 +500ms-1.5s（相对 pipeline 总 5-15s 约 10%，可接受）
+
+**原型验证（simulated expansion，同 session 跑）**：
+```
+BEFORE: 2/6 hit@5
+AFTER:  6/6 hit@5 (全部修复)
+```
+- k11v2_008 "ARPPU" → rank>20 → rank 3 ✅
+- k11v2_011 "PVP对战" → rank>20 → rank 1 ✅
+- k11v2_014 "大R玩家" → rank>20 → rank 1 ✅
+- k11v2_015 "商店购买" → rank 5 → rank 1 ✅
+- k11v2_017 "满级卡牌" → rank 1 → rank 1 ✅（无害）
+- k11v2_020 "钻石产出" → rank 19 → rank 1 ✅
+
+**集成架构**：
+- 生产 path：`tool-search-data-sources` 的 `execute()`（已 async）内、`searchDataSources()` 调用前加 `await expandQuery(ctx, args.query)`
+- Eval path：`eval-cli` 的 `Nl2sqlAgentResponder.respond()` 内加同样的 expansion
+- 走已有 `ctx.llm`（LlmRuntime + llm-dashscope/aga provider），model 指定 `qwen-flash`
+- 不改 `RetrievalLinker` 接口（同步接口不变，expansion 在调用层）
+
+**排除的方案**：
+- A（terminology 规则改写）：覆盖太窄（15 条 terminology 仅映射 events 不映射 tables），不扩展
+- C（同义词字典）：维护成本高，LLM expansion 已覆盖
+- 修 tokenizer：全局回归风险（IDF 稀释、D2h regress）
+
+**证据**：`prototypes/p15-query-rewriting/probe.ts`（原始原型）+ `packages/eval/eval-cli/src/p15-probe.ts`（validated probe，4682 corpus items，simulated expansion 6/6 hit@5）。
+
+**毕业**：→ [P15a](P15a-query-expansion-impl.md)（task 票：实现 query expansion 集成）
