@@ -220,9 +220,13 @@ const trajectoryToolDefinition: ConversationNodeDefinition<ToolState> = {
   kind: 'trajectory-tool-call',
   target: 'trajectory',
   match: (event) => {
-    if (event.type === 'tool/call') return { id: String(event.data.callId), role: 'start' }
+    if (event.type === 'tool/call') {
+      const callId = String(event.data.callId)
+      return { id: callId || `__seq_${event.seq}`, role: 'start' }
+    }
     if (event.type === 'tool/result') {
-      return { id: String(event.data.message.source.callId), role: 'update' }
+      const callId = String(event.data.message.source.callId)
+      return callId ? { id: callId, role: 'update' } : null
     }
     if (event.type === 'tool/code-dispatch-start' || event.type === 'tool/code-dispatch') {
       const rootCallId: unknown = event.data.rootCallId
