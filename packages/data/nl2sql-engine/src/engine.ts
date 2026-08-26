@@ -45,6 +45,42 @@ const MAX_RUNNING_POLLS = 3
 const RECOVERABLE = RECOVERABLE_FAILURES as readonly string[]
 const UNRECOVERABLE = UNRECOVERABLE_FAILURES as readonly string[]
 
+/**
+ * Post-process LLM-generated SQL: replace runtime date functions (GETDATE,
+ * CURRENT_TIMESTAMP, DATEADD) with literal dates based on the `today` param.
+ * Also strips inline comments that may contain reasoning leakage.
+ */
+function postProcessSql(sql: string, today?: string): string {
+  if (!today || !/^\d{8}$/.test(today)) return sql
+  let out = sql
+  // Strip single-line comments (reasoning leakage like "-- Wait, DATEDIFF returns...")
+  out = out.replace(/--[^\n]*/g, '')
+  // Replace GETDATE() / CURRENT_TIMESTAMP with today literal
+  out = out.replace(/\bGETDATE\s*\(\s*\)/gi, `'${today}'`)
+  out = out.replace(/\bCURRENT_TIMESTAMP\b/gi, `'${today}'`)
+  // Replace TO_CHAR(DATEADD('today', -N, 'dd'), 'yyyyMMdd') patterns with computed date
+  out = out.replace(/TO_CHAR\s*\(\s*DATEADD\s*\(\s*'(\d{8})'\s*,\s*(-?\d+)\s*,\s*'dd'\s*\)\s*,\s*'yyyyMMdd'\s*\)/gi, (_m, base, offset) => {
+    return `'${computeDate(base, Number(offset))}'`
+  })
+  // Replace DATEADD(GETDATE()|'today', -N, 'dd') → computed literal
+  const dateAddRe = /(?:TO_CHAR\s*\(\s*)?DATEADD\s*\(\s*(?:GETDATE\s*\(\s*\)|'[^']*')\s*,\s*(-?\d+)\s*,\s*'dd'\s*\)(?:\s*,\s*'yyyyMMdd'\s*\))?/gi
+  out = out.replace(dateAddRe, (_m, offset) => {
+    return `'${computeDate(today, Number(offset))}'`
+  })
+  return out.trim()
+}
+
+function computeDate(base: string, offsetDays: number): string {
+  const y = Number(base.slice(0, 4))
+  const m = Number(base.slice(4, 6)) - 1
+  const d = Number(base.slice(6, 8))
+  const dt = new Date(y, m, d + offsetDays)
+  const yy = dt.getFullYear()
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  return `${yy}${mm}${dd}`
+}
+
 /** Near-dup gate (engine-internal thin version; F4's session-level tool-query near-dup is deferred — Not-yet-specified query-trio). */
 class NearDupGate {
   private readonly seen = new Set<string>()
@@ -204,10 +240,11 @@ export class Nl2sqlEngine {
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
       // 2. prompt + 3. LLM generate
-      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
+      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback, prompt })
-      const sql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql
+      const rawSql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql
+      const sql = rawSql ? postProcessSql(rawSql, args.today) : rawSql
       trace.push({ step: 'llm_generate', attempt, sql })
 
       // LLM produced no SQL (null/empty) → critic-fail feedback (avoids nearDup.allow('') + stand-in default-done false success)

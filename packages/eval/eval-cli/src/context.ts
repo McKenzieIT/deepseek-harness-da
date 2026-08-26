@@ -167,7 +167,7 @@ class CtxQueryExecutor implements QueryExecutor {
     } catch (err) {
       return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
     }
-    if (out.state === 'done') {
+    if (out.state === 'done' || out.state === 'completed') {
       const rows = (out.rows ?? []) as Record<string, unknown>[]
       return { success: true, rows, row_count: rows.length, error: null }
     }
@@ -300,6 +300,8 @@ class Nl2sqlAgentResponder implements AgentResponder {
 
     const result = await engine.run({ question, today: this.today, evalMode: true })
     const sql = result.sql ?? null
+    console.error(`[DIAG] SQL: ${sql?.slice(0, 400) ?? '(none)'}`)
+    console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)
     let reply: string
     if (result.ok && result.result !== undefined) {
       reply = await this.llm.completeText([

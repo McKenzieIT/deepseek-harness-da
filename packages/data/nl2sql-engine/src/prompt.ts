@@ -18,6 +18,12 @@ import { renderConventionsPrompt } from './conventions.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import type { RetrievalHit } from './bm25-linking.ts'
 
+function granularityTag(id: string): string {
+  if (/_di$/.test(id)) return ' [日粒度]'
+  if (/_df$/.test(id)) return ' [快照]'
+  return ''
+}
+
 /** Minimal event-definition shape the prompt renders (full P6 zod schema arrives with P6b). */
 export interface EventDefinitionLite {
   readonly params_fields?: Record<string, unknown>
@@ -36,6 +42,10 @@ export interface BuildPromptArgs {
   readonly joinConstraints?: readonly string[] | undefined
   /** P4 D3: known metric definitions injected as context for mixed queries. */
   readonly metricContext?: string | undefined
+  /** P14b: trend intent detected — enables rule 9 (granularity preference). */
+  readonly isTrend?: boolean
+  /** Reference date (yyyyMMdd) for relative date computation (yesterday, last 7 days). */
+  readonly today?: string
 }
 
 const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
@@ -57,12 +67,12 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
  * @returns The assembled prompt string.
  */
 export function buildPrompt(args: BuildPromptArgs): string {
-  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext } = args
+  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines =
     candidates && candidates.length > 0
       ? candidates
-        .map(c => `- ${c.id}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
+        .map(c => `- ${c.id}${granularityTag(c.id)}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
         .join('\n')
       : '（无候选）'
   const joinSection = joinConstraints && joinConstraints.length > 0
@@ -105,12 +115,15 @@ ${TOOL_CATALOG}
 5. NULLIF(COUNT(*),0) 防除零
 6. 复合问题拆多条原子 SQL
 7. 时效：埋点 ~10min，通用数仓 T+1
-8. 千位以上加千分位
+8. 千位以上加千分位${isTrend ? '\n9. 趋势/时序类问题优先使用 _di（日粒度增量）表；_df（快照）表仅在无 _di 候选时使用' : ''}
 
 # 方言规范（maxcompute conventions seam 注入）
 ${dialect}
 
 ${joinSection}${metricSection}
+# 当前日期
+今天是 ${args.today ?? '未知'}（yyyyMMdd 格式）。"昨天"= 今天-1 天，"过去7天"= 从今天往回7天。ds 分区格式同为 yyyyMMdd。计算相对日期时用字面值，不要用 GETDATE() 或运行时函数。
+
 # 当前问题
 ${question}
 
@@ -131,6 +144,8 @@ export interface BuildEvalPromptArgs {
   readonly conventions: EngineConventions | null | undefined
   readonly joinConstraints?: readonly string[] | undefined
   readonly metricContext?: string | undefined
+  /** P14b: trend intent detected — enables rule 9 (granularity preference). */
+  readonly isTrend?: boolean
 }
 
 /**
@@ -141,12 +156,12 @@ export interface BuildEvalPromptArgs {
  * optimization.
  */
 export function buildEvalPrompt(args: BuildEvalPromptArgs): string {
-  const { question, candidates, conventions, joinConstraints, metricContext } = args
+  const { question, candidates, conventions, joinConstraints, metricContext, isTrend } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines =
     candidates && candidates.length > 0
       ? candidates
-        .map(c => `- ${c.id}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
+        .map(c => `- ${c.id}${granularityTag(c.id)}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
         .join('\n')
       : '（无候选）'
   const joinSection = joinConstraints && joinConstraints.length > 0
@@ -175,7 +190,7 @@ ${candLines}
 5. NULLIF(COUNT(*),0) 防除零
 6. 复合问题拆多条原子 SQL
 7. 时效：埋点 ~10min，通用数仓 T+1
-8. 千位以上加千分位
+8. 千位以上加千分位${isTrend ? '\n9. 趋势/时序类问题优先使用 _di（日粒度增量）表；_df（快照）表仅在无 _di 候选时使用' : ''}
 
 # 用户问题
 ${question}`

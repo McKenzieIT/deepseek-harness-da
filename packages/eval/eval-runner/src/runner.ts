@@ -9,7 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { loadCases } from '@deepseek-ai/dsh-eval'
+import { loadCases, checkResultMatch as coreCheckResultMatch } from '@deepseek-ai/dsh-eval'
 import type { EvalCase } from '@deepseek-ai/dsh-eval'
 import type { Collaborators } from './collaborators.ts'
 import type {
@@ -239,7 +239,9 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
         queryResult = [{ _error: execResult.error ?? 'execution failed' }] as unknown as unknown[]
       } else {
         queryResult = execResult.rows?.slice(0, 5) ?? null
-        executionMatch = checkResultMatch(execResult.rows, evalCase.expected.result_value)
+        const matchMode = evalCase.expected.match_mode ?? undefined
+        const expectedRv = evalCase.expected.result_value as Record<string, unknown>
+        executionMatch = checkResultMatch(execResult.rows ?? [], expectedRv, matchMode)
       }
     } else if (agentResponse.generated_sql && !collaborators.executor) {
       if (collaborators.sqlJudge) {
@@ -301,29 +303,18 @@ function extractSchemaContext(transcript: unknown[] | undefined): string {
  * values, ignoring column names (aliases vary between models/SQL dialects). Uses 1:1
  * consumption to prevent the same actual value from satisfying multiple expected values.
  */
-function checkResultMatch(actualRows: Record<string, unknown>[], expected: Record<string, unknown>): boolean {
-  if (actualRows.length === 0) return false
-  const firstRow = actualRows[0]
-  if (!firstRow) return false
-  const expectedValues = Object.values(expected)
-  if (expectedValues.length === 0) return false
-  const remaining = Object.values(firstRow)
-  for (const expectedVal of expectedValues) {
-    const idx = remaining.findIndex(actualVal => valuesMatch(actualVal, expectedVal))
-    if (idx === -1) return false
-    remaining.splice(idx, 1)
-  }
-  return true
-}
-
-function valuesMatch(actual: unknown, expected: unknown): boolean {
-  if (actual === expected) return true
-  if (actual == null || expected == null) return actual == expected
-  if (actual === '' || expected === '') return actual === expected
-  const actualNum = Number(actual)
-  const expectedNum = Number(expected)
-  if (Number.isFinite(actualNum) && Number.isFinite(expectedNum)) return actualNum === expectedNum
-  return String(actual).trim() === String(expected).trim()
+function checkResultMatch(actualRows: unknown[], expected: Record<string, unknown>, matchMode?: string): boolean {
+  if (!matchMode) return actualRows.length > 0
+  const normalizedRows = actualRows.map((r) => {
+    if (Array.isArray(r)) {
+      const obj: Record<string, unknown> = {}
+      for (let i = 0; i < r.length; i++) obj[`col${i}`] = r[i]
+      return obj
+    }
+    return r as Record<string, unknown>
+  })
+  const result = coreCheckResultMatch(expected, normalizedRows, matchMode)
+  return result.status === 'pass'
 }
 
 /**
