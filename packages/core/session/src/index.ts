@@ -1152,3 +1152,5 @@ export class SessionStore extends Service {
   }
 
 }
+
+export default SessionStore
