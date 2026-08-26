@@ -5,7 +5,7 @@
 **Type**: task (AFK)
 **Phase**: misc
 **Assignee**: (unclaimed)
-**Blocked by**: none
+**Blocked by**: [safe-compute-architecture-decisions](safe-compute-architecture-decisions.md) (grilling)
 **Blocks**: [code-runtime-data-python](code-runtime-data-python.md), `compute` tool ship
 
 ## Question

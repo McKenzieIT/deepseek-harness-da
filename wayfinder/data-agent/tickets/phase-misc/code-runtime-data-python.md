@@ -5,7 +5,7 @@
 **Type**: task (AFK)
 **Phase**: misc
 **Assignee**: (unclaimed)
-**Blocked by**: [result-cache-service](result-cache-service.md)
+**Blocked by**: [safe-compute-architecture-decisions](safe-compute-architecture-decisions.md) (grilling), [result-cache-service](result-cache-service.md)
 **Blocks**: `compute` tool ship
 
 ## Question
