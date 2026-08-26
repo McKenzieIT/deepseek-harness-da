@@ -24,6 +24,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [R2: Frontend table + chart libraries](tickets/R2-frontend-table-chart-libraries.md) — v1 表格用原生 `<table>`（虚拟滚动时升级 TanStack）；Chart.js 4 tree-shaken ~43KB 仅 chart intent 时加载
 - [R3: DSH client rendering patterns](tickets/R3-dsh-client-rendering-patterns.md) — toolview 注册走 `tool.call.toolview` keyed slot；argsRaw 从 block.call 解析；数据行从同 turn query_data TSV 扫描；submit 通过 inject face → conversation.send；block.call===null 时 fallback generic card
 - [G1: INTERPRETATION client rendering design decisions](tickets/G1-design-decisions.md) — LLM/UI 数据路径分离；horizontal scroll；数据不可用时显示提示+retry；旧 chips 完全隐藏；折叠 card 展示 title+KPI；decomposition 默认展开 <0.7 黄色提示；retry=重拉 result store；虚拟滚动 day-1 + 10000 行 cap + CSV 导出；result data 在 object layer LRU cache 管理
+- [T1: Implement ui-present-decomposition package](tickets/T1-ui-present-decomposition.md) — packages/client/ui-present-decomposition/ 完成，toolview 注册 key='present_decomposition'，三态渲染（skeleton/fallback/rich card），15 tests green
 
 ## Not yet specified
 

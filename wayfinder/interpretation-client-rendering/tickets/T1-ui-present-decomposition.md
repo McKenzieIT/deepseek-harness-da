@@ -1,6 +1,7 @@
 # T1: Implement ui-present-decomposition package
 
 **Type**: task (AFK)
+**Status**: ✅ resolved
 **Blocked by**: [G1-design-decisions](G1-design-decisions.md)
 **Blocks**: none
 
@@ -27,3 +28,31 @@ Render a card with:
 - Header: summary text + confidence badge (if present)
 - Body: metric pills, dimension tags, time range, source, filters
 - Collapsed by default in non-latest turns (per G1 decision)
+
+## Resolution
+
+Implemented as `packages/client/ui-present-decomposition/` — all deliverables complete:
+
+**Package structure:**
+- `package.json` — `@deepseek-ai/dsh-client-ui-present-decomposition`, peers on cordis + runtime + invariants, deps clsx
+- `tsconfig.json` — extends `tsconfig.base.client.json`, references cordis/ui-slots/ui-primitives/runtime/invariants
+- `tsdown.config.ts` — standard `clientBundle()` with invariant companion
+- `src/index.ts` — empty host-half apply
+- `src/invariant.ts` — empty invariant installer
+- `src/client/index.ts` — `inject: ['slots']`, registers via `ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ key: 'present_decomposition' }, DecompositionCard))`
+- `src/client/DecompositionCard.tsx` — three states: skeleton (RunningToolCall), fallback (block.call===null or invalid JSON), rich card (valid argsRaw)
+- `src/client/DecompositionCard.module.css` — semantic tokens, confidence warning (yellow border), skeleton pulse animation
+
+**Design decisions applied:**
+- Default expanded (per G1 §5)
+- confidence < 0.7 → yellow/orange border + 「理解可能不准确，请确认」warning
+- block.call===null → generic text fallback from block.content
+- RunningToolCall → skeleton loading
+- Chinese product copy, English code
+
+**Registration surfaces:**
+- `tsconfig.client.json` references entry
+- `cordis.patch.yml` row `ui-present-decomposition`
+- `web-app/package.json` dependency
+
+**Tests:** 3 files, 15 tests, all branches covered. `pnpm run test:gui` green (292 files, 4034 tests). `verify-client-packages` clean (0 violations for this package).
