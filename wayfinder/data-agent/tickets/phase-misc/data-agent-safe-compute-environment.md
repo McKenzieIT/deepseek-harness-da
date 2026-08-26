@@ -66,3 +66,24 @@ Research completed 2026-08-26. Full findings at [`wayfinder/data-agent/research/
 3. Unified `result_id` namespace: `qr_` (query engine) + `cr_` (compute derivations), session-scoped
 4. No new security boundaries needed — code-runtime binding-only I/O + kernel RLIMIT already satisfies intranet-security-first
 5. Dependency chain: resultCache SD → resultCache Provider → data-python Provider → compute tool plugin → bundle integration
+
+---
+
+## Resolution (2026-08-26, research AFK)
+
+Research completed. Full findings at [`wayfinder/data-agent/research/safe-compute-environment.md`](../../research/safe-compute-environment.md).
+
+### Key decisions
+
+1. **新建 Python Provider** — `@deepseek-ai/dsh-code-runtime-data-python`（CPython subprocess + fd-3 protocol + RLIMIT + seccomp + namespace + Landlock）
+2. **混合数据注入（Option C）** — `resultCache` Service Definition 作一等公民 seam；compute 的 `load_result(rid)` binding 是其薄 facade
+3. **统一 result_id namespace** — `qr_`（query engine）+ `cr_`（compute 衍生），session-scoped
+4. **RLIMIT 不够，需叠加 seccomp+namespace+Landlock** — 行业 2026 共识：RLIMIT 仅资源限制，非安全边界；asteval ctypes 逃逸 + GPT-5.6 逃逸事件佐证
+5. **binding-only I/O 设计正确** — 被多起 2026 年逃逸事件验证
+
+### Spawned implementation tickets
+
+- [`result-cache-service`](result-cache-service.md) — resultCache SD + Provider（compute + present_table 的共享前置）
+- [`code-runtime-data-python`](code-runtime-data-python.md) — Python Provider（含 seccomp/namespace/Landlock 安全加固）
+
+### Status: **Resolved**
