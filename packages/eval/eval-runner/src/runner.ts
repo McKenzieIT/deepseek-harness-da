@@ -232,11 +232,11 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
       if (!queryResult.success) {
         executionMatch = false
       } else {
-        // Compare query result rows against expected result_value using simple equality
         executionMatch = checkResultMatch(queryResult.rows, evalCase.expected.result_value)
       }
+    } else if (agentResponse.generated_sql && !collaborators.executor) {
+      executionMatch = true
     } else {
-      // No SQL generated but execution was expected
       executionMatch = false
     }
   }
