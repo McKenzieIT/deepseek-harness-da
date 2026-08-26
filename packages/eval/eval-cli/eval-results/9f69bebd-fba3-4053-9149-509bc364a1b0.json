@@ -1,0 +1,123 @@
+{
+  "run_id": "9f69bebd-fba3-4053-9149-509bc364a1b0",
+  "timestamp": "2026-08-26T06:20:53.020Z",
+  "cases": [
+    {
+      "case_id": "k11_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 29459
+    },
+    {
+      "case_id": "k11_002",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 25455
+    },
+    {
+      "case_id": "k11_003",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 67525
+    },
+    {
+      "case_id": "k11_004",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 33880
+    },
+    {
+      "case_id": "k11_005",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 26332
+    },
+    {
+      "case_id": "k11_006",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 48937
+    },
+    {
+      "case_id": "k11_007",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 31368
+    },
+    {
+      "case_id": "k11_008",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 38718
+    },
+    {
+      "case_id": "k11_009",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 30864
+    }
+  ],
+  "summary": {
+    "total": 9,
+    "correct": 2,
+    "wrong": 7,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0.2222222222222222
+  }
+}

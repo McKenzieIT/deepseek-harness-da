@@ -1,0 +1,16 @@
+case_id: "k11v2_048"
+input:
+  question: "昨天各时段的付费订单笔数分布"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":10,"max_rows":24}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "distribution"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"

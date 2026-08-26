@@ -1,0 +1,16 @@
+case_id: "k11v2_040"
+input:
+  question: "最近一周每天的PVP对战场次变化"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":5,"max_rows":7}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_pvp_battle_detail_di"

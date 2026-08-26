@@ -1,0 +1,17 @@
+case_id: "k11v2_078"
+input:
+  question: "最近有什么异常数据"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":1,"max_rows":20}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "anomaly"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"
+    - "dws_10000251_univ_acc_act_di"

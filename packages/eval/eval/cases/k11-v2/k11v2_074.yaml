@@ -1,0 +1,17 @@
+case_id: "k11v2_074"
+input:
+  question: "用户质量如何"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":3,"max_rows":20}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_acc_summary_df"
+    - "dws_10000251_role_tag_basic_df"

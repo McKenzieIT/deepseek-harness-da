@@ -1,0 +1,27 @@
+{
+  "run_id": "5bd9ff60-e92a-4504-8000-5cfa222bb321",
+  "timestamp": "2026-08-26T06:11:14.841Z",
+  "cases": [
+    {
+      "case_id": "k11_010",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 90823
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "correct": 0,
+    "wrong": 1,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0
+  }
+}

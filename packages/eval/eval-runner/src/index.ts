@@ -55,5 +55,9 @@ export type { InfraError } from './infra_retry.ts'
 // Verdict mapper
 export { mapVerdict, mapAttempts } from './verdict_mapper.ts'
 
+// SQL Semantic Judge
+export type { SqlJudgeInput, SqlJudgeDimensions, SqlJudgeResult, SqlSemanticJudge } from './sql_semantic_judge.ts'
+export { LlmSqlSemanticJudge } from './sql_semantic_judge.ts'
+
 // Stubs (test helpers)
 export { StubAgentResponder, StubQueryExecutor, StubJudgeExecutor, FailingAgentResponder, FailingQueryExecutor } from './stubs.ts'

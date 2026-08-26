@@ -1,0 +1,17 @@
+case_id: "k11v2_062"
+input:
+  question: "付费前后用户在线时长的变化对比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":2,"max_rows":5}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_acc_summary_df"
+    - "dws_10000251_role_server_base_df"

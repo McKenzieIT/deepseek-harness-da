@@ -52,6 +52,8 @@ English | [中文](README.zh.md)
 - [P11 eval harness](phase-4/P11-eval-harness.md) — prototype, **resolved**（2026-08-20；throwaway proto 11 .mjs 8/8 绿 + grilling 6 决策 D1-D6 + 9 surfaced finding → P11b 生产）
 - [P11b eval harness 生产硬化](phase-4/P11b-eval-harness-hardening.md) — prototype, **resolved**（2026-08-20；生产 `packages/eval/eval/` TS 纯库 zero-seam-dep + 7 grilled 决策 + 9 finding 全解 + rbi-faithful 逐条 VERIFIED + typecheck-clean + 201 tests + coverage 100%；毕业雾 D2 (c)→D2c；CLI/persist/pass_at_k→P11c；解锁 G1b）
 - [P11c eval CLI runner + persistence + pass_at_k](phase-4/P11c-eval-cli-runner.md) — prototype, **blocked by P11b**（resolved；CLI runner + run-result 持久化 + pass_at_k 报告聚合，~800 行外围）
+- [P11d eval LLM Judge SQL 语义验证](phase-4/P11d-eval-llm-judge-sql-semantics.md) — prototype, **resolved**（2026-08-26；5 维度 0/1 评分 judge + schema context 注入 + 非 SQL 快速拒绝；修复 buildSchemaContext 表类型 columns 提取）
+- [P11e eval case set v2 基于真实场景](phase-4/P11e-eval-case-set-v2-realistic.md) — task, **resolved**（2026-08-26；80 case 自然语言 NL2SQL 评测，30 张核心表，9 种 intent；pass rate 67.5%；暴露粒度混淆/BM25 gap/多表关联 → P14/P15）
 - [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **resolved**（2026-08-20；TS `packages/eval/` 重实现编排 + 判分 (ii) DELIVERY/EXECUTION 不进 sqlglot + python/ 包不修订 Q10；解锁 P11）
 
 ## phase-misc（cross-phase / 低优先）
@@ -64,6 +66,8 @@ English | [中文](README.zh.md)
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 - [host-typecheck-wiring](phase-misc/host-typecheck-wiring.md) — task, **resolved**（2026-08-20；tsconfig.host +3 data refs 修 TS6307 + critic-dedup WIP 验 M1✓/M2 defer/M3✓ + PromptAssembly 已由 WIP B12 解；scoped vitest 238/238；ticket Resolved 经 shared-index sweep 落 commit 2e116bafb0）
 - [aga per-phase thinking control — B vs B'](phase-misc/aga-per-phase-thinking-control.md) — grilling, **resolved**（2026-08-21; **B 够** — Option B〔phase-gate 对 aga 跳过 reasoningEffort; cd2b741409 引入 + a127875845 亦触 phase-gate.ts〕= qwen3.7-max 跨四 phase 永远思考; B'〔per-phase 选模型〕deferred — rbi 无 per-phase thinking〔qwen-plus non-thinking 全 phase〕、D7 在 aga 从未生效〔pre-B 硬报错非 no-op〕、B' 成本未达实测痛点）
+- [P14 Ontology-aware 表选择（粒度感知 + 关系图扩展）](phase-misc/P14-ontology-aware-table-selection.md) — prototype, **open**（P11e eval 暴露：_df/_di 粒度混淆 + 多表关联弱；ontology 数据已有，引擎未消费）
+- [P15 Query Rewriting（查询侧语义扩展）](phase-misc/P15-query-rewriting.md) — grilling, **open**（P11e eval 暴露 BM25 词汇 gap；条件性——real embedder 落地后优先级降低）
 
 ## 当前可立即取（unblocked frontier）
-P9b · P11c · G1b · D2c（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b/host-typecheck-wiring 已 resolved）
+P9b · P11c · G1b · D2c · P14 · P15（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b/host-typecheck-wiring 已 resolved）

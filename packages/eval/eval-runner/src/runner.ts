@@ -30,6 +30,9 @@ const DEFAULT_PASS_K = 3
 /** Default max infra retries per attempt. */
 const DEFAULT_MAX_INFRA_RETRIES = 2
 
+/** Threshold for SQL semantic judge to pass (3/5 dimensions = 0.6). */
+const SQL_JUDGE_PASS_THRESHOLD = 0.6
+
 /**
  * Run a batch of eval cases.
  *
@@ -102,12 +105,6 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
   return result
 }
 
-/**
- * Run a single case with pass_k and infra retry.
- *
- * Best-of-k: any single passing attempt means the case is 'correct'.
- * If ALL attempts are infra failures, verdict is 'infra_failure'.
- */
 /**
  * Run cases concurrently with a bounded semaphore.
  */
@@ -195,9 +192,6 @@ async function runOneAttempt(
         infra_error: err.message,
       }
     }
-    // Non-infra error — a model/logic failure that threw. Treat as a failed
-    // attempt (not infra): record the message in `error`, leave `infra_error`
-    // unset so bestOfKVerdict routes this to 'wrong' rather than 'infra_failure'.
     return {
       attempt_k: attemptK,
       execution_match: false,
@@ -235,7 +229,19 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
         executionMatch = checkResultMatch(queryResult.rows, evalCase.expected.result_value)
       }
     } else if (agentResponse.generated_sql && !collaborators.executor) {
-      executionMatch = true
+      // No executor available: use SQL semantic judge if provided
+      if (collaborators.sqlJudge) {
+        const schemaContext = agentResponse.schema_context ?? extractSchemaContext(agentResponse.transcript)
+        const judgeResult = await collaborators.sqlJudge.judgeSql({
+          question,
+          generated_sql: agentResponse.generated_sql,
+          schema_context: schemaContext,
+        })
+        executionMatch = judgeResult.score >= SQL_JUDGE_PASS_THRESHOLD
+      } else {
+        // No judge, no executor — legacy behavior: auto-pass
+        executionMatch = true
+      }
     } else {
       executionMatch = false
     }
@@ -252,7 +258,6 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
       )
       deliveryMatch = judgeResult.score >= 0.6
     } else {
-      // No judge — simple string comparison
       deliveryMatch = String(evalCase.expected.answer) === agentResponse.reply
     }
   }
@@ -261,19 +266,53 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
 }
 
 /**
- * Simple result match check: compare actual rows to expected result_value.
- * This is a simplified version — the full match_modes logic lives in the
- * eval core's match_modes.ts.
+ * Extract schema context from the agent response transcript (trace).
+ * The trace includes a 'retrieve' step with candidate table descriptions.
+ */
+function extractSchemaContext(transcript: unknown[] | undefined): string {
+  if (!transcript || !Array.isArray(transcript)) return '(no schema context available)'
+
+  const retrieveStep = transcript.find(
+    (entry): entry is Record<string, unknown> =>
+      typeof entry === 'object' && entry !== null && (entry as Record<string, unknown>).step === 'bm25_linking',
+  )
+
+  if (!retrieveStep) return '(no schema context available)'
+
+  const candidates = retrieveStep.candidates as Array<{ id: string; score?: string }> | undefined
+  if (!candidates || candidates.length === 0) return '(no candidates retrieved)'
+
+  return candidates.map(c => `- ${c.id} (relevance: ${c.score ?? '?'})`).join('\n')
+}
+
+/**
+ * Value-only result match: compare scalar values from the first actual row against expected
+ * values, ignoring column names (aliases vary between models/SQL dialects). Uses 1:1
+ * consumption to prevent the same actual value from satisfying multiple expected values.
  */
 function checkResultMatch(actualRows: Record<string, unknown>[], expected: Record<string, unknown>): boolean {
   if (actualRows.length === 0) return false
-  // For simple scalar match: check if the first row contains the expected values
   const firstRow = actualRows[0]
   if (!firstRow) return false
-  for (const [key, val] of Object.entries(expected)) {
-    if (firstRow[key] !== val) return false
+  const expectedValues = Object.values(expected)
+  if (expectedValues.length === 0) return false
+  const remaining = Object.values(firstRow)
+  for (const expectedVal of expectedValues) {
+    const idx = remaining.findIndex(actualVal => valuesMatch(actualVal, expectedVal))
+    if (idx === -1) return false
+    remaining.splice(idx, 1)
   }
   return true
+}
+
+function valuesMatch(actual: unknown, expected: unknown): boolean {
+  if (actual === expected) return true
+  if (actual == null || expected == null) return actual == expected
+  if (actual === '' || expected === '') return actual === expected
+  const actualNum = Number(actual)
+  const expectedNum = Number(expected)
+  if (Number.isFinite(actualNum) && Number.isFinite(expectedNum)) return actualNum === expectedNum
+  return String(actual).trim() === String(expected).trim()
 }
 
 /**
@@ -282,21 +321,17 @@ function checkResultMatch(actualRows: Record<string, unknown>[], expected: Recor
  * Otherwise derive from attempt results.
  */
 function bestOfKVerdict(attempts: AttemptResult[]): RunnerVerdict {
-  // Any attempt with both execution and delivery passing → correct
   const anyCorrect = attempts.some(a =>
     a.infra_error === undefined && a.execution_match !== false && a.delivery_match !== false,
   )
   if (anyCorrect) return 'correct'
 
-  // All infra failures → infra_failure
   const allInfra = attempts.every(a => a.infra_error !== undefined)
   if (allInfra) return 'infra_failure'
 
-  // Check if any attempt had explicit execution or delivery failure
   const hasWrong = attempts.some(a => a.execution_match === false || a.delivery_match === false)
   if (hasWrong) return 'wrong'
 
-  // Fallback
   return 'unjudged'
 }
 

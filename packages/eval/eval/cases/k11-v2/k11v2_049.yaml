@@ -1,0 +1,16 @@
+case_id: "k11v2_049"
+input:
+  question: "负面舆情最近30天的趋势变化"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":20,"max_rows":30}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_public_sentiment_df"

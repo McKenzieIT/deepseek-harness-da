@@ -1,0 +1,16 @@
+case_id: "k11v2_039"
+input:
+  question: "付费金额大于1000元的账号列表"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":1,"max_rows":50}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "filter"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_acc_summary_df"

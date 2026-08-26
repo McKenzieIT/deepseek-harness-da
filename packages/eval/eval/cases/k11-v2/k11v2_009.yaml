@@ -1,0 +1,16 @@
+case_id: "k11v2_009"
+input:
+  question: "目前被预测为流失的角色有多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"churn_predicted":8500}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_algo_role_churn_pred"

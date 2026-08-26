@@ -1,0 +1,17 @@
+case_id: "k11v2_059"
+input:
+  question: "流失预测为高风险的角色中，付费金额TOP10"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":5,"max_rows":10}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "ranking"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_algo_role_churn_pred"
+    - "dws_10000251_role_server_base_df"

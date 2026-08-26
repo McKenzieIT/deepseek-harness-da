@@ -1,0 +1,16 @@
+case_id: "k11v2_024"
+input:
+  question: "昨天的现金收入是多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"cash_revenue":1200000}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_finance_pay_order_di"

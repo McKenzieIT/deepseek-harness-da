@@ -1,0 +1,51 @@
+{
+  "run_id": "da442c63-946f-4dbc-8918-e1603078030b",
+  "timestamp": "2026-08-26T07:27:40.698Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 33178
+    },
+    {
+      "case_id": "k11v2_033",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 70582
+    },
+    {
+      "case_id": "k11v2_057",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 47701
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "correct": 2,
+    "wrong": 1,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0.6666666666666666
+  }
+}

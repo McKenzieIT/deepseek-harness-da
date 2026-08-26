@@ -143,6 +143,7 @@ export interface AgentResponse {
   readonly reply: string
   readonly generated_sql: string | null
   readonly transcript?: unknown[]
+  readonly schema_context?: string
 }
 
 /**

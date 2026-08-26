@@ -5,12 +5,24 @@
  *   dsh-eval --cases <dir> [--schema <dir>] [--output <dir>] [--pass-k <n>]
  *            [--case <id>] [--skip-health-gate] [--provider <name>]
  *            [--model <name>] [--today <YYYYMMDD>] [--run-id <id>]
- *
- * D6: --schema defaults to examples/k11-semantic-layer/
+ *            [--no-sql-judge]
  */
 import { parseArgs } from 'node:util'
-import { resolve, join } from 'node:path'
-import { readdirSync } from 'node:fs'
+import { resolve, join, dirname } from 'node:path'
+import { readdirSync, existsSync } from 'node:fs'
+
+function findRepoRoot(): string {
+  let dir = resolve('.')
+  for (let i = 0; i < 10; i++) {
+    if (existsSync(join(dir, 'packages')) && existsSync(join(dir, 'examples'))) return dir
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return resolve('.')
+}
+
+const REPO_ROOT = findRepoRoot()
 import { loadCases } from '@deepseek-ai/dsh-eval'
 import { runBatch, writeRunResult, defaultOutputPath } from '@deepseek-ai/dsh-eval-runner'
 import { boot } from './context.ts'
@@ -30,6 +42,7 @@ interface CliArgs {
   concurrency: number
   withQuery: boolean
   sidecarPath: string | null
+  noSqlJudge: boolean
 }
 
 function str(v: string | boolean | undefined, fallback: string): string {
@@ -40,7 +53,7 @@ function parseCliArgs(): CliArgs {
   const { values } = parseArgs({
     options: {
       cases: { type: 'string' },
-      schema: { type: 'string', default: 'examples/k11-semantic-layer/' },
+      schema: { type: 'string' },
       output: { type: 'string', default: 'eval-results/' },
       'pass-k': { type: 'string', default: '3' },
       case: { type: 'string' },
@@ -52,6 +65,7 @@ function parseCliArgs(): CliArgs {
       concurrency: { type: 'string', default: '1' },
       'with-query': { type: 'boolean', default: false },
       sidecar: { type: 'string' },
+      'no-sql-judge': { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
     },
     strict: false,
@@ -74,7 +88,7 @@ function parseCliArgs(): CliArgs {
 
   return {
     cases: resolve(casesVal),
-    schema: resolve(str(values.schema, 'examples/k11-semantic-layer/')),
+    schema: typeof values.schema === 'string' ? resolve(values.schema) : join(REPO_ROOT, 'examples/k11-semantic-layer'),
     output: resolve(str(values.output, 'eval-results/')),
     passK: Number.parseInt(str(values['pass-k'], '3'), 10),
     caseFilter: typeof caseVal === 'string' ? caseVal : null,
@@ -86,6 +100,7 @@ function parseCliArgs(): CliArgs {
     concurrency: Number.parseInt(str(values.concurrency, '1'), 10),
     withQuery: values['with-query'] === true,
     sidecarPath: typeof values.sidecar === 'string' ? values.sidecar : null,
+    noSqlJudge: values['no-sql-judge'] === true,
   }
 }
 
@@ -103,7 +118,7 @@ function printUsage(): void {
 
   Options:
     --cases <dir>          Case directory (required)
-    --schema <dir>         Schema directory [default: examples/k11-semantic-layer/]
+    --schema <dir>         Schema directory [default: <repo>/examples/k11-semantic-layer/]
     --output <dir>         Output directory for results [default: eval-results/]
     --pass-k <n>           Pass@K attempts per case [default: 3]
     --case <id>            Run only a single case by case_id
@@ -115,6 +130,7 @@ function printUsage(): void {
     --concurrency <n>      Parallel case execution [default: 1]
     --with-query           Mount query-maxcompute for real SQL execution
     --sidecar <path>       Path to MaxCompute sidecar script
+    --no-sql-judge         Disable SQL semantic judge (auto-pass when no executor)
     --help                 Show this help
 
   Environment:
@@ -159,6 +175,9 @@ export async function main(): Promise<void> {
   console.log(`  Schema: ${args.schema}`)
   console.log(`  Model: ${args.provider}/${args.model}`)
   console.log(`  Pass@K: ${args.passK}  Concurrency: ${args.concurrency}`)
+  if (!args.noSqlJudge && !args.withQuery) {
+    console.log(`  SQL Semantic Judge: enabled (use --no-sql-judge to disable)`)
+  }
   console.log('')
 
   // Boot the mini Cordis context + build Collaborators
@@ -168,6 +187,7 @@ export async function main(): Promise<void> {
     model: args.model,
     today: args.today,
     withQuery: args.withQuery,
+    noSqlJudge: args.noSqlJudge,
     ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
   })
 

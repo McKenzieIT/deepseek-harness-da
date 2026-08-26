@@ -1,0 +1,16 @@
+case_id: "k11v2_013"
+input:
+  question: "昨天的平均客单价是多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"avg_order_amt":4578}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"

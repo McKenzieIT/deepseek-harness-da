@@ -1,0 +1,17 @@
+case_id: "k11v2_070"
+input:
+  question: "拥有5张以上满级卡牌的角色的PVP胜率"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"win_rate":0.65}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_progression_card_df"
+    - "dws_10000251_play_pvp_df"

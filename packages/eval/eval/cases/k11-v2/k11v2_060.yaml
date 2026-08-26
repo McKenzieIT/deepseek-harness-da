@@ -1,0 +1,17 @@
+case_id: "k11v2_060"
+input:
+  question: "新用户首日付费转化率（注册当天有付费行为的比例）"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"first_day_pay_rate":0.08}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_selfhelp_new_df"
+    - "dws_10000251_com_pay_order_df"

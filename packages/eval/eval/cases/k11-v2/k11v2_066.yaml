@@ -1,0 +1,17 @@
+case_id: "k11v2_066"
+input:
+  question: "最近一周新注册用户中，有多少进入了PVP"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"new_pvp_users":3200}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_selfhelp_new_df"
+    - "dws_10000251_play_pvp_df"

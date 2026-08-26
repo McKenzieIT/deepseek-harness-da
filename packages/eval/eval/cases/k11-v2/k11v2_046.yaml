@@ -1,0 +1,16 @@
+case_id: "k11v2_046"
+input:
+  question: "超过7天未登录的账号有多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"inactive_7d":42000}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "filter"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_acc_summary_df"

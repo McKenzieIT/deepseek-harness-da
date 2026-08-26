@@ -1,0 +1,16 @@
+case_id: "k11v2_056"
+input:
+  question: "昨天首充用户有多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"first_pay":850}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "filter"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"

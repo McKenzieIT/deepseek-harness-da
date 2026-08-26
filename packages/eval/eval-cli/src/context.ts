@@ -30,7 +30,9 @@ import type {
   JudgeExecutor,
   JudgeResult,
   Collaborators,
+  SqlSemanticJudge,
 } from '@deepseek-ai/dsh-eval-runner'
+import { LlmSqlSemanticJudge } from '@deepseek-ai/dsh-eval-runner'
 
 export interface BootOptions {
   readonly schemaDir: string
@@ -39,6 +41,7 @@ export interface BootOptions {
   readonly today: string
   readonly withQuery: boolean
   readonly sidecarPath?: string
+  readonly noSqlJudge?: boolean
 }
 
 export interface BootResult {
@@ -101,7 +104,10 @@ class CtxLlmAdapter implements Llm {
       return { text: reasoning, reasoning }
     }
 
-    throw new Error('eval-cli: LLM returned no content (no text blocks, no reasoning)')
+    // Empty response: degrade gracefully — the eval runner will naturally score
+    // this as execution_match=false / delivery_match=false.
+    console.warn('eval-cli: LLM returned no content (no text blocks, no reasoning)')
+    return { text: '', reasoning: null }
   }
 }
 
@@ -223,7 +229,51 @@ class Nl2sqlAgentResponder implements AgentResponder {
     } else {
       reply = result.reason ?? 'No answer.'
     }
-    return { reply, generated_sql: sql, transcript: result.trace }
+    // Build schema context from retrieved candidates for SQL semantic judge
+    const schemaContext = this.buildSchemaContext(result.trace, corpus)
+    return { reply, generated_sql: sql, transcript: result.trace, schema_context: schemaContext }
+  }
+
+  private buildSchemaContext(
+    trace: readonly Record<string, unknown>[],
+    corpus: readonly { id: string; description?: string; payload?: unknown }[],
+  ): string {
+    const linkingStep = trace.find(e => e.step === 'bm25_linking') as { candidates?: Array<{ id: string }> } | undefined
+    if (!linkingStep?.candidates?.length) return '(no candidates)'
+    const candidateIds = linkingStep.candidates.map(c => c.id)
+    const lines: string[] = []
+    for (const cid of candidateIds) {
+      const item = corpus.find(c => c.id === cid)
+      if (!item) { lines.push(`- ${cid}: (not found in corpus)`); continue }
+      const payload = item.payload as Record<string, unknown> | undefined
+      let detail = ''
+
+      if (payload?.columns && Array.isArray(payload.columns)) {
+        // Table corpus item: extract structured column info
+        type TablePayload = {
+          table_comment?: string; description?: string; granularity?: string
+          columns: Array<{ name: string; type?: string; comment?: string; role?: string }>
+        }
+        const tableDef = payload as TablePayload
+        detail = tableDef.table_comment ?? tableDef.description ?? cid
+        if (tableDef.granularity) detail += ` [粒度: ${tableDef.granularity}]`
+        const cols = tableDef.columns
+          .map(c => `${c.name}(${c.type ?? '?'}${c.comment ? ', ' + c.comment : ''})`)
+          .join('; ')
+        detail += `\n  columns: ${cols}`
+      } else if (payload?.params_fields && typeof payload.params_fields === 'object') {
+        // Event corpus item: extract params_fields
+        detail = item.description ?? cid
+        const fields = Object.entries(payload.params_fields as Record<string, { description?: string }>)
+          .map(([name, def]) => `${name}${def.description ? ' (' + def.description + ')' : ''}`)
+          .join(', ')
+        detail += ` | fields: ${fields}`
+      } else {
+        detail = item.description ?? cid
+      }
+      lines.push(`- ${cid}: ${detail}`)
+    }
+    return lines.join('\n')
   }
 }
 
@@ -273,9 +323,16 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   }
 
   // 5. Build Collaborators
+  const llmAdapter = new CtxLlmAdapter(ctx, opts.provider, opts.model)
   const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery)
-  const judge = new LlmJudgeExecutor(new CtxLlmAdapter(ctx, opts.provider, opts.model))
+  const judge = new LlmJudgeExecutor(llmAdapter)
   const executor = opts.withQuery ? new CtxQueryExecutor(ctx) : null
 
-  return { ctx, collaborators: { agent, judge, executor } }
+  // 6. SQL Semantic Judge (enabled by default when no executor)
+  let sqlJudge: SqlSemanticJudge | null = null
+  if (!opts.noSqlJudge) {
+    sqlJudge = new LlmSqlSemanticJudge(prompt => llmAdapter.completeText(prompt))
+  }
+
+  return { ctx, collaborators: { agent, judge, executor, sqlJudge } }
 }

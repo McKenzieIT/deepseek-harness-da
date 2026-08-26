@@ -1,0 +1,16 @@
+case_id: "k11v2_019"
+input:
+  question: "昨天的负面舆情条数有多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"negative_count":42}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_public_sentiment_df"

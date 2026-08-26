@@ -1,0 +1,17 @@
+case_id: "k11v2_077"
+input:
+  question: "玩家留存有什么问题吗"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":5,"max_rows":30}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_selfhelp_new_df"
+    - "dws_10000251_univ_acc_act_di"

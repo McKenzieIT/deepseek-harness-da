@@ -1,0 +1,16 @@
+case_id: "k11v2_047"
+input:
+  question: "各服务器的角色数量排名"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":5,"max_rows":50}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "ranking"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_role_server_base_df"

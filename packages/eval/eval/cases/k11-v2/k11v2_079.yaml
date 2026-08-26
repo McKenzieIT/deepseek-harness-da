@@ -1,0 +1,17 @@
+case_id: "k11v2_079"
+input:
+  question: "卡牌平衡性怎么样"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":5,"max_rows":50}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_card_pvp_di"
+    - "dws_10000251_progression_card_df"

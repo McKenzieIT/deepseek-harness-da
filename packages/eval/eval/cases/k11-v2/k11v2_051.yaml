@@ -1,0 +1,16 @@
+case_id: "k11v2_051"
+input:
+  question: "古战场各关卡的通关率排名"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows":5,"max_rows":20}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "ranking"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_play_rogue_df"

@@ -1,0 +1,87 @@
+{
+  "run_id": "db2bf8c6-df82-4521-a085-2e9bbd1480f0",
+  "timestamp": "2026-08-26T07:35:09.350Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 35326
+    },
+    {
+      "case_id": "k11v2_011",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 54477
+    },
+    {
+      "case_id": "k11v2_020",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 152157
+    },
+    {
+      "case_id": "k11v2_036",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 67134
+    },
+    {
+      "case_id": "k11v2_057",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 59105
+    },
+    {
+      "case_id": "k11v2_073",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 70134
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "correct": 5,
+    "wrong": 1,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0.8333333333333334
+  }
+}
