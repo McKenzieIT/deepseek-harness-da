@@ -2,8 +2,8 @@
 
 **Type**: prototype（/prototype landing；HITL）
 **Phase**: 2（生产）
-**Status**: Decisions locked (2026-08-20 grill); package landing = follow-up (admin prod package + login baseline too large for one session)
-**Assignee**: (unclaimed)
+**Status**: Resolved (2026-08-26) — `@deepseek-ai/dsh-admin` production package landed
+**Assignee**: (resolved)
 **Depends on**: P9（admin+访问隔离 prototype resolved）· G3b（ctx.identity seam + P3/P8b opportunistic 线程）· P10（mTLS 门禁）· G3c（keychain 作 ctx.credentials，per-user PAT 真存 keychain——G3c 落地后 P9b 自助 set 接 keychain）
 **Blocks**: 真实 per-user PAT provisioning 闭环（identity 真值 + 自助 set + 必填 UX）
 

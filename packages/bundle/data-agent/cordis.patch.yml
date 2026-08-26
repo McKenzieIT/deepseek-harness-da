@@ -68,13 +68,12 @@
 #   ~/.dsh/settings.yaml  agent-default-model: { provider: aga, model: qwen3.7-max }
 # See scripts/setup-da-profile.sh for the reproducible setup.
 
-# ── identity seam (G3b: per-user caller identity; audit + subagent-qoder inject it;
-# P9b populates login; stub `current()` returns `undefined` → T1 fallback today) ──
-# Without this mount, `audit`'s `static inject=['identity']` leaves its fiber PENDING
-# (no provider) → audit hooks never register → no audit records.
-- insert:
-    - id: identity
-      name: '@deepseek-ai/dsh-identity'
+# ── identity seam (G3b → P9b: real per-user identity via dsh-admin) ──────────
+# P9b's dsh-admin provides the real IdentityService (overrides the stub's
+# `current()` → reads login session). The stub is disabled here; admin
+# provides identity itself when it mounts.
+- id: identity
+  disabled: true
 
 # ── agent presets: config override (select data-agent as default preset).
 # web-app and base may already mount agent-presets; this override only sets
@@ -188,9 +187,9 @@
         path: !!js dshHomePath('storages/audit/audit.db')
     - id: nl2sql-engine      # ctx.nl2sql seam (NL→SQL engine: BM25 linking + prompt + critic + eval-gate; P13b)
       name: '@deepseek-ai/dsh-nl2sql-engine'
-#     # ── admin + access isolation (P9) ─────────────────────────────────────
-#     - id: admin              # harness app: per-game scope/credential/access-link + system config
-#       name: '@deepseek-ai/dsh-admin'          # name TBD - P9
+    # ── admin + access isolation (P9b) ────────────────────────────────────
+    - id: admin              # per-user login + identity + PAT self-service + authz gate
+      name: '@deepseek-ai/dsh-admin'
 #     # ── LLM (phase-1) — MOVED to deployment layer ─────────────────────────
 #     # llm-dashscope and subagent-qoder are deployment choices, not product
 #     # capabilities. Mount them via `dsh plugin --profile <name> add <pkg>`.

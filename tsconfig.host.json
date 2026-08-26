@@ -164,6 +164,7 @@
     { "path": "./packages/data/audit" },
     { "path": "./packages/data/phase-gate" },
     { "path": "./packages/data/nl2sql-engine" },
+    { "path": "./packages/data/admin" },
     { "path": "./packages/data/scope-registry" },
     { "path": "./packages/data/semantic-layer" },
     { "path": "./packages/data/schema-gateway" },
