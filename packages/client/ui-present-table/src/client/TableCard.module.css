@@ -143,11 +143,6 @@
 }
 
 /* Chart */
-.chartContainer {
-  height: 240px;
-  position: relative;
-}
-
 .chartLoading {
   display: flex;
   align-items: center;

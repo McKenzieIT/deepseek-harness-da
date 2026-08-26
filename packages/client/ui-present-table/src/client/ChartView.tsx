@@ -13,7 +13,6 @@ import {
 } from 'chart.js'
 import { Bar, Line } from 'react-chartjs-2'
 import type { ChartConfig } from './TableCard.tsx'
-import css from './TableCard.module.css'
 
 ChartJS.register(
   CategoryScale,
@@ -67,7 +66,7 @@ export default function ChartView({ chart, headers, rows }: ChartViewProps) {
   }), [chart.y_columns.length])
 
   return (
-    <div className={css.chartContainer}>
+    <div style={{ height: 240, position: 'relative' }}>
       {chart.type === 'line'
         ? <Line data={chartData} options={options} />
         : <Bar data={chartData} options={options} />}

@@ -74,7 +74,7 @@ describe('ChartView', () => {
         rows={[['1', '10', '20', '30']]}
       />,
     )
-    expect(container.querySelector('[class*="chartContainer"]')).not.toBeNull()
+    expect(container.querySelector('[style*="height"]')).not.toBeNull()
   })
 
   it('uses fallback series label when y_column index exceeds headers', async () => {
