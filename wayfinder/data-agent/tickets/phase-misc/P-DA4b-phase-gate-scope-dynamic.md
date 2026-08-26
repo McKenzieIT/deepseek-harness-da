@@ -2,8 +2,8 @@
 
 **Type**: prototype
 **Phase**: misc
-**Status**: open
-**Assignee**: (unclaimed)
+**Status**: resolved
+**Assignee**: claimed
 **Blocking**: 无硬阻塞
 **Blocked by**: [P-DA4](P-DA4-scope-routing-tools.md)（工具 + 兜底机制确定后本票才有明确接线点）
 **Related**: [G-DA5](G-DA5-per-question-scope-routing.md)（resolved，设计决策），[P13b](../phase-3/P13b-nl2sql-engine-prod-hardening.md)（conventions loader）
