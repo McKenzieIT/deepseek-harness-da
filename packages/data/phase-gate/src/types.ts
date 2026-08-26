@@ -305,6 +305,13 @@ export interface PhaseGateState {
   stall_timer: ReturnType<typeof setTimeout> | null
   /** `agent/pre-step` count for F6 step budget (mirrors rbi max_steps). */
   step_count: number
+  /**
+   * UX-leakage fix: set to true by captureToolData when query_data returns
+   * state:'completed' in EXECUTION. The next onPreStep fires advance() immediately
+   * and returns 'reject' — preventing the model from emitting a user-visible
+   * response before INTERPRETATION takes over delivery.
+   */
+  execution_auto_advance: boolean
 }
 
 /**
@@ -345,5 +352,6 @@ export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
     prior_status: null,
     stall_timer: null,
     step_count: 0,
+    execution_auto_advance: false,
   }
 }
