@@ -199,12 +199,12 @@
 
 # ── transform execution (TODO, P7 four-phase + report/Excel) ───────────────
 # code-runtime runs pandas transforms (incl. Excel/report generation via
-# pandas) and is mounted here when the four-phase transform stage (P7)
-# lands; base does not insert it, so this is an insert, not a disable. bash
-# stays enabled (base's POSIX platform guard) for the agent's own shell use
-# and is gated from business users at P10.
+# pandas). The web-app base inserts code-runtime as worker-thread; this
+# override replaces it with the data-python variant for the data-agent.
 #
     - id: result-cache          # ctx.resultCache seam — in-memory session-scoped Provider; tools/post-execute hook captures query_data results with qr_ prefix; compute tool stores derived results with cr_ prefix
       name: '@deepseek-ai/dsh-result-cache-memory'
-    - id: code-runtime
-      name: '@deepseek-ai/dsh-code-runtime-data-python'
+
+# Override web-app's code-runtime (worker-thread) with data-python variant.
+- id: code-runtime
+  name: '@deepseek-ai/dsh-code-runtime-data-python'
