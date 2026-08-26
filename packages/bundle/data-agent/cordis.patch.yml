@@ -205,5 +205,5 @@
 # stays enabled (base's POSIX platform guard) for the agent's own shell use
 # and is gated from business users at P10.
 #
-# - id: code-runtime
-#   name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+    - id: code-runtime
+      name: '@deepseek-ai/dsh-code-runtime-data-python'

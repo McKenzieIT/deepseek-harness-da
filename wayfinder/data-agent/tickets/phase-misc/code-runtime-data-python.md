@@ -4,9 +4,10 @@
 
 **Type**: task (AFK)
 **Phase**: misc
-**Assignee**: (unclaimed)
+**Assignee**: claimed (2026-08-26)
 **Blocked by**: [result-cache-service](result-cache-service.md)
 **Blocks**: `compute` tool ship
+**Status**: ✅ resolved (2026-08-26)
 
 ## Question
 
@@ -105,3 +106,35 @@ interface Config {
 - `packages/code-runtime/code-runtime-worker-thread/src/index.ts` (reference: worker-thread Provider pattern — same trust posture)
 - `packages/bundle/data-agent/cordis.patch.yml:202-209` (bundle placeholder to uncomment)
 - `.agents/notes/implemented/feature/2026-06-15-code-mode.md` §Trust posture (canonical: "containment, not security boundary")
+
+## Resolution
+
+Shipped as `packages/code-runtime/code-runtime-data-python/` — a `CodeRuntime` Provider that spawns a CPython subprocess per run, communicates via the existing fd-3 JSON-lines wire protocol from `@deepseek-ai/dsh-code-runtime-python`, and provides containment (binding-only I/O + resource limits).
+
+### Package: `@deepseek-ai/dsh-code-runtime-data-python`
+
+- `DataPythonCodeRuntime extends CodeRuntime` — `language='python'`, `isolation='process-rlimit'` (POSIX) / `'process'` (elsewhere)
+- Python bootstrap (`py/bootstrap.py`): reads boot frame, applies RLIMIT_CPU/RLIMIT_AS (POSIX, graceful no-op elsewhere), materializes binding namespaces as async callable Python objects, executes model code as async function body with pandas/numpy pre-injected
+- Config: `cpuSeconds` (30), `addressSpaceBytes` (2GB), `maxWallMs` (600s), `maxLogBytes` (1MB), `maxValueBytes` (64MB), `pythonPath` (python3)
+- Host-side: `validateChildFrame()` hostile-peer validation, `checkDoneValue()` value metering, `hasUnsafeIntegerToken()` precision-loss rejection, wall-clock timeout, AbortSignal, dispose-to-quiescence
+
+### Bundle wiring
+
+`cordis.patch.yml` `id: code-runtime` row uncommented → `name: '@deepseek-ai/dsh-code-runtime-data-python'`
+
+### Tests — 23 passing
+
+Programs+values (7) + pandas/numpy (2) + bindings (3) + resource limits (5) + abort (2) + validation (3) + disposal (1)
+
+### Acceptance criteria met
+
+- [x] `ctx.codeRuntime.language === 'python'` when mounted
+- [x] Model-generated pandas code executes successfully (DataFrame operations)
+- [x] Host bindings callable from Python (`await namespace.function_name(args)`)
+- [x] RLIMIT_CPU terminates runaway loops (POSIX only; wall-timeout elsewhere)
+- [x] RLIMIT_AS terminates memory-hungry code (Linux only; macOS does not enforce)
+- [x] Wall-clock timeout terminates hung programs (all platforms)
+- [x] Output budget enforced (maxLogBytes, maxValueBytes)
+- [x] fd-3 protocol reuses `@deepseek-ai/dsh-code-runtime-python` wire protocol
+- [x] Unit tests + e2e: pandas compute, binding calls, timeout, OOM, output-limit
+- [x] Cross-platform: tests pass on macOS (Linux CI deferred; Windows deferred)
