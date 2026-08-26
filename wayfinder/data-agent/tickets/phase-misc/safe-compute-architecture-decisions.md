@@ -5,6 +5,7 @@
 **Type**: grilling (HITL)
 **Phase**: misc
 **Assignee**: claude (claimed 2026-08-26)
+**Status**: resolved (2026-08-26)
 **Blocked by**: none (research complete)
 **Blocks**: [result-cache-service](result-cache-service.md), [code-runtime-data-python](code-runtime-data-python.md)
 
@@ -91,9 +92,39 @@ Research 推荐 session-scoped（计算廉价、无持久化产品需求）。
 - RBI 参考：`libs/rbi-mcp/src/rbi_mcp/tools/presentation.py`（hardcoded ops + AST eval）
 - 外部事件：asteval ctypes 逃逸、GPT-5.6 Sol Pro 沙箱逃逸、NVIDIA OpenShell CVEs
 
+## Resolution (2026-08-26)
+
+### D1: 数据注入方案 → 方案 C（混合）
+
+resultCache 作为独立 Service Definition 存在（`ctx.resultCache`），compute 工具的 `load_result` host binding 是其薄 facade。理由：present_table 已是第二个消费者（多 consumer 非假设），失败显式化（Provider 未挂载即报错），测试可隔离。
+
+### D2: 存储介质 → 内存（in-process Map）
+
+session-scoped 无持久性需求。典型负载（10 结果 × 10k 行 × 50B/cell ≈ 50MB）完全可承受。零延迟直接利好 sandbox 等待 binding 回调的场景。
+
+### D3: 产出生命周期 → session-scoped
+
+进程退出即 GC。跨 session 续接是 agent 层能力（conversation replay），不是 cache 持久化该解决的问题。
+
+### D4: result_id 命名空间 → 带前缀
+
+`qr_`（SQL 查询产出）、`cr_`（compute 衍生产出）。cache 接口对前缀无感，统一返回 `{columns, rows}`。调试/审计一眼可辨来源。
+
+### D5: 安全隔离层级 → Containment, not security boundary（跨平台）
+
+与 worker-thread 保持相同信任姿态：binding-only I/O 为主防线（跨平台），RLIMIT 为资源保护（POSIX 条件性，不可用时退化为 wall-timeout）。无 OS-specific 硬依赖（seccomp/namespace/Landlock 不属于 Provider 范畴）。硬安全边界是部署层关注点（未来 `isolation: 'container'` 后端）。
+
+关键依据：Code Mode Agent Note 明确 "code-runtime provides containment, not a security boundary — trust posture is bash-equivalent"。安全来自工具门禁层（phase-gate），不来自执行沙箱。
+
+### D6: Python venv 依赖 → 最小集（pandas + numpy）
+
+覆盖 90%+ 数据分析场景（聚合/透视/筛选/统计描述/merge/窗口函数）。图表走 present_table 前端渲染，无需 matplotlib。可迭代：观察生产 LLM 代码模式后按需扩展。
+
+---
+
 ## 关联
 
 - [data-agent-safe-compute-environment](data-agent-safe-compute-environment.md) (parent research, resolved)
-- [result-cache-service](result-cache-service.md) (blocked by this grilling)
-- [code-runtime-data-python](code-runtime-data-python.md) (blocked by this grilling)
+- [result-cache-service](result-cache-service.md) (blocked by this grilling → **unblocked**)
+- [code-runtime-data-python](code-runtime-data-python.md) (blocked by this grilling → **unblocked**)
 - [present-delivery-tools](present-delivery-tools.md) (compute blocked on above)

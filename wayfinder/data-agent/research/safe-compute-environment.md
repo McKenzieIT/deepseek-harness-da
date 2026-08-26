@@ -1,5 +1,8 @@
 # Safe Compute Environment — Research Note
 
+> **⚠️ ERRATUM (2026-08-26, grilling ticket [safe-compute-architecture-decisions](../tickets/phase-misc/safe-compute-architecture-decisions.md)):**
+> 本研究§8 推荐的 seccomp/namespace/Landlock "短期增强"已被 grilling 推翻。DSH 的 code-runtime 信任姿态是 **containment, not security boundary**（Code Mode Agent Note §Trust posture），与 worker-thread 相同——bash-equivalent trust，跨平台，无 OS-specific 硬依赖。安全来自工具门禁层（phase-gate），不来自执行沙箱。§8 的 OS 级隔离推荐降级为"部署加固参考"（不纳入 Provider 实现）。§1-§7 的事实发现仍有效。
+
 > **Executive Summary:** Build a new `@deepseek-ai/dsh-code-runtime-data-python` Provider atop the existing Python fd-3 protocol, inject data via a `resultCache` Service Definition (hybrid option C), and assign computed outputs `cr_`-prefixed result_ids into the same session-scoped cache — this unlocks `compute` without new security boundaries because the code-runtime binding-only model + kernel RLIMIT isolation already satisfies data-agent's intranet-security-first requirements.
 
 ---
