@@ -33,6 +33,7 @@ import { QueryEngine } from '@deepseek-ai/dsh-query/src/index.ts'
 import { credentialRef, scopeId as brandScopeId } from '@deepseek-ai/dsh-credentials'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import type { InstanceId, QueryOutcome, QueryRequest, QuerySpec, ScopeId } from '@deepseek-ai/dsh-query/src/index.ts'
+import { normalizeForMaxCompute } from './normalize.ts'
 
 /**
  * ODPS credential references — the 4-key creds map pushed to the sidecar via
@@ -455,7 +456,7 @@ export class MaxComputeQueryEngine extends QueryEngine {
 
   override async execute(request: QueryRequest, signal?: AbortSignal): Promise<QueryOutcome> {
     const spec: QuerySpec = {
-      sql: request.sql,
+      sql: normalizeForMaxCompute(request.sql),
       scopeId: request.scopeId,
       mode: request.mode ?? 'fast',
     }
