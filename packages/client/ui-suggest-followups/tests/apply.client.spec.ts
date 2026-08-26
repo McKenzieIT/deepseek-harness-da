@@ -30,7 +30,7 @@ async function bench(sessions?: unknown) {
 }
 
 function getEntry(slots: SlotRegistry): StoredEntry {
-  const entries = slots.entries('tool.call.toolview') as StoredEntry[]
+  const entries = slots.entries('tool.call.toolview') as unknown as StoredEntry[]
   return entries.find(e => e.options.key === 'suggest_followups')!
 }
 
@@ -53,7 +53,7 @@ describe('ui-suggest-followups apply', () => {
     await new Promise((r) => { setTimeout(r, 0) })
     expect(getEntry(slots)).toBeDefined()
     await fiber.dispose()
-    const entries = slots.entries('tool.call.toolview') as StoredEntry[]
+    const entries = slots.entries('tool.call.toolview') as unknown as StoredEntry[]
     expect(entries.find(e => e.options.key === 'suggest_followups')).toBeUndefined()
   })
 
@@ -62,7 +62,7 @@ describe('ui-suggest-followups apply', () => {
     await ctx.plugin({ inject: [...inject], apply }).await()
     await new Promise((r) => { setTimeout(r, 0) })
     const entry = getEntry(slots)
-    const face = entry.inject!('session-1' as never) as FollowupChipsInjected
+    const face = entry.inject!('session-1' as never) as unknown as FollowupChipsInjected
     expect(() => face.submit('hello')).not.toThrow()
   })
 
@@ -71,7 +71,7 @@ describe('ui-suggest-followups apply', () => {
     await ctx.plugin({ inject: [...inject], apply }).await()
     await new Promise((r) => { setTimeout(r, 0) })
     const entry = getEntry(slots)
-    const face = entry.inject!('session-1' as never) as FollowupChipsInjected
+    const face = entry.inject!('session-1' as never) as unknown as FollowupChipsInjected
     expect(() => face.submit('hello')).not.toThrow()
   })
 
@@ -81,7 +81,7 @@ describe('ui-suggest-followups apply', () => {
     await ctx.plugin({ inject: [...inject], apply }).await()
     await new Promise((r) => { setTimeout(r, 0) })
     const entry = getEntry(slots)
-    const face = entry.inject!('session-1' as never) as FollowupChipsInjected
+    const face = entry.inject!('session-1' as never) as unknown as FollowupChipsInjected
     face.submit('按地区细分')
     expect(send).toHaveBeenCalledWith('按地区细分')
   })

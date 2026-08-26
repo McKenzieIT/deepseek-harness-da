@@ -50,7 +50,7 @@ function RunningState() {
 }
 
 function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }) {
-  const text = block.content.map(c => ('text' in c ? c.text : '')).join('\n')
+  const text = (block as unknown as { content: readonly { text?: string }[] }).content.map(c => c.text ?? '').join('\n')
   return (
     <div className={css.card}>
       <div className={css.fallback}>

@@ -311,8 +311,8 @@ describe('TableCard', () => {
       <TableCard block={block} useSession={makeUseSession(tsv)} />,
     )
     const kpiValues = container.querySelectorAll('[class*="kpiValue"]')
-    expect(kpiValues.length).toBe(1)
-    expect(kpiValues[0].textContent).toContain('10')
+    expect(kpiValues).toHaveLength(1)
+    expect(kpiValues[0]?.textContent).toContain('10')
   })
 
   it('KPI handles min/count aggregations', () => {

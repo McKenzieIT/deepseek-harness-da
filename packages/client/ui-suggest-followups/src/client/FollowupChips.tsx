@@ -32,7 +32,7 @@ function isLatestTurn(block: ToolCallBlock, snapshot: ConversationSnapshot): boo
   if (!('kind' in block)) return true
   const turnOrder = snapshot.chat.timeline.turnOrder
   if (turnOrder.length === 0) return true
-  const latestTurn = turnOrder[turnOrder.length - 1]
+  const latestTurn = turnOrder[turnOrder.length - 1] as number
   const timing = snapshot.turnTimings.get(latestTurn)
   if (!timing) return true
   return block.time >= timing.startTime
@@ -49,7 +49,7 @@ function SkeletonState() {
 }
 
 function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }) {
-  const text = block.content.map(c => ('text' in c ? c.text : '')).join('\n')
+  const text = (block as unknown as { content: readonly { text?: string }[] }).content.map(c => c.text ?? '').join('\n')
   return (
     <div className={css.fallback}>
       <pre className={css.fallbackText}>{text}</pre>
