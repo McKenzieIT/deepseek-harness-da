@@ -419,6 +419,7 @@ export class PhaseGate {
       // autoPersistOverride (M4) runs first (reads self_evolution_table + last_sql).
       if (s.execution_auto_advance && s.current_phase === Phase.EXECUTION) {
         s.execution_auto_advance = false
+        s.prior_turn_tables = new Set(s.candidate_tables) // G-DA6: snapshot for next-turn inheritance
         this.autoPersistOverride(s)
         this.advance(agent, s)
       }
@@ -526,8 +527,13 @@ export class PhaseGate {
         : tbl?.table_name
       if (typeof tblName === 'string' && tblName !== '') {
         const lower = tblName.toLowerCase()
+        const stripped = lower.replace(/^.*\./, '')
+        // G-DA6 observability: log when a table loaded this turn was NOT inherited from the prior turn.
+        if (s.prior_turn_tables.size > 0 && !s.prior_turn_tables.has(lower) && !s.prior_turn_tables.has(stripped)) {
+          this.ctx.logger.debug('[G-DA6] inheritance miss: table=%s', tblName)
+        }
         s.candidate_tables.add(lower)
-        s.candidate_tables.add(lower.replace(/^.*\./, ''))
+        s.candidate_tables.add(stripped)
       }
     }
   }
@@ -907,12 +913,14 @@ export class PhaseGate {
     s.cancelled_reason = null
     s.execution_auto_advance = false // UX-leakage: clear stale flag on question reset
     s.awaiting_clarification = false // B4: clear on a new question (a prior clarification HALT does not carry over).
-    s.candidate_tables.clear()
+    // G-DA6: seed candidate_tables from prior-turn snapshot (inheritance); definition_loaded
+    // inherits too so the GENERATION gate doesn't block on already-loaded tables.
+    s.candidate_tables = new Set(s.prior_turn_tables)
+    s.definition_loaded = s.prior_turn_tables.size > 0
     s.event_params.clear()
     s.partition_cols.clear()
     s.last_search_empty = true // P-DA1: reset grounding backstop flags (not called yet → empty).
     s.last_retrieve_empty = true
-    s.definition_loaded = false // GROUNDING GATE (c): no definition loaded yet this question.
   }
 
   /**
@@ -929,6 +937,11 @@ export class PhaseGate {
     ctx.on('llm/stream', this.onLlmStream)
     ctx.on('agent/pre-step', this.onPreStep)
     ctx.on('agent/status', this.onStatus)
+    // G-DA6 + P-DA4b: scope switch clears prior-turn inheritance (cross-scope tables are semantically wrong).
+    // Event type registered by P-DA4b (forward-compat); cast until the Events interface ships.
+    ;(ctx as unknown as { on(event: string, cb: () => void): void }).on('scopes/active-changed', () => {
+      for (const s of this.sessions.values()) s.prior_turn_tables.clear()
+    })
     ctx.effect(() => () => {
       for (const s of this.sessions.values()) this.clearStallTimer(s)
     }, 'phase-gate.teardown')

@@ -1779,3 +1779,124 @@ describe('D5b: GENERATION explicitly includes load_* (cross-phase schema groundi
     expect(names).not.toContain('search_data_sources')
   })
 })
+
+// ── G-DA6: multi-turn candidate_tables inheritance ──────────────────────────
+describe('G-DA6: prior_turn_tables inheritance', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('follow-up turn seeds candidate_tables from prior snapshot', async () => {
+    const { agent } = makeAgent('da6-1')
+    const g = gate()
+    const s = g.state('da6-1')
+
+    // Simulate a completed execution with candidate_tables populated
+    s.current_phase = Phase.EXECUTION
+    s.candidate_tables.add('pay_order_di')
+    s.candidate_tables.add('proj.pay_order_di')
+    s.last_sql = 'SELECT * FROM pay_order_di'
+    // Fire onPostExecute with a completed query_data result (triggers snapshot + auto-advance)
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT * FROM pay_order_di' }),
+      resultOk({ state: 'completed' }),
+      () => Promise.resolve({ kind: 'continue' as const }),
+    )
+    expect(s.prior_turn_tables).toEqual(new Set(['pay_order_di', 'proj.pay_order_di']))
+
+    // Simulate follow-up turn: idle→running triggers resetQuestionScoped
+    g.onStatus({ agent, status: 'idle' })
+    g.onStatus({ agent, status: 'running' })
+
+    // candidate_tables should be seeded from prior_turn_tables, not empty
+    expect(s.candidate_tables).toEqual(new Set(['pay_order_di', 'proj.pay_order_di']))
+  })
+
+  it('definition_loaded inherits true when prior_turn_tables is non-empty', async () => {
+    const { agent } = makeAgent('da6-2')
+    const g = gate()
+    const s = g.state('da6-2')
+
+    // Set up a prior snapshot
+    s.current_phase = Phase.EXECUTION
+    s.candidate_tables.add('dws_user_active')
+    s.last_sql = 'SELECT * FROM dws_user_active'
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT * FROM dws_user_active' }),
+      resultOk({ state: 'completed' }),
+      () => Promise.resolve({ kind: 'continue' as const }),
+    )
+
+    // Follow-up turn
+    g.onStatus({ agent, status: 'idle' })
+    g.onStatus({ agent, status: 'running' })
+
+    expect(s.definition_loaded).toBe(true)
+  })
+
+  it('scope switch clears prior_turn_tables', async () => {
+    makeAgent('da6-3')
+    const listeners: Record<string, ((...args: unknown[]) => void)[]> = {}
+    const ctx = {
+      logger: { info: () => undefined, debug: () => undefined },
+      on: (event: string, fn: (...args: unknown[]) => void) => { (listeners[event] ??= []).push(fn) },
+      effect: () => () => undefined,
+      tools: { guard: () => undefined },
+      systemPrompt: { section: () => undefined },
+    } as unknown as Context
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    g.register(ctx)
+    const s = g.state('da6-3')
+    s.prior_turn_tables.add('pay_order_di')
+
+    // Fire the scopes/active-changed listener
+    const scopeHandlers = listeners['scopes/active-changed'] ?? []
+    expect(scopeHandlers.length).toBeGreaterThan(0)
+    for (const handler of scopeHandlers) handler('new-scope')
+
+    expect(s.prior_turn_tables.size).toBe(0)
+  })
+
+  it('awaiting_clarification path does not reset prior_turn_tables or candidate_tables', async () => {
+    const { agent } = makeAgent('da6-4')
+    const g = gate()
+    const s = g.state('da6-4')
+
+    // Set up prior snapshot + awaiting_clarification state
+    s.prior_turn_tables.add('pay_order_di')
+    s.candidate_tables.add('pay_order_di')
+    s.candidate_tables.add('extra_table')
+    s.awaiting_clarification = true
+    s.current_phase = Phase.GENERATION
+
+    // Follow-up (clarification reply): idle→running with awaiting_clarification=true
+    g.onStatus({ agent, status: 'idle' })
+    g.onStatus({ agent, status: 'running' })
+
+    // awaiting_clarification early-return: candidate_tables + prior_turn_tables unchanged
+    expect(s.candidate_tables).toEqual(new Set(['pay_order_di', 'extra_table']))
+    expect(s.prior_turn_tables).toEqual(new Set(['pay_order_di']))
+    expect(s.current_phase).toBe(Phase.GENERATION) // phase preserved
+  })
+
+  it('EXECUTION not completed does not snapshot (prior_turn_tables keeps old value)', async () => {
+    const { agent } = makeAgent('da6-5')
+    const g = gate()
+    const s = g.state('da6-5')
+
+    // Pre-existing snapshot from an earlier turn
+    s.prior_turn_tables.add('old_table')
+    s.current_phase = Phase.EXECUTION
+    s.candidate_tables.add('new_table')
+    s.last_sql = 'SELECT * FROM new_table'
+
+    // Fire onPostExecute with a FAILED query_data result
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT * FROM new_table' }),
+      resultOk({ state: 'failed', failureKind: 'syntax', error: 'SQL syntax error' }),
+      () => Promise.resolve({ kind: 'continue' as const }),
+    )
+
+    // prior_turn_tables unchanged (no snapshot on failure)
+    expect(s.prior_turn_tables).toEqual(new Set(['old_table']))
+  })
+})

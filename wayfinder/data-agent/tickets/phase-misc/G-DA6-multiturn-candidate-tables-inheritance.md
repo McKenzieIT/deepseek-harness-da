@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Phase**: misc (cross-phase)
-**Status**: resolved (2026-08-27)
+**Status**: implemented (2026-08-27)
 **Graduated from**: 2026-08-27 session `e078a87b` 诊断——G-DA4 symmetric fix（`load_table_definition` 加 `candidate_tables`）解决了死循环，但 follow-up 轮次仍需额外 retry（模型须主动调 `load_table_definition` 重新通过 gate）。
 
 ## Question

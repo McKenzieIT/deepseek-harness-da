@@ -285,6 +285,9 @@ export interface PhaseGateState {
   event_params: Set<string>
   /** Partition columns from `load_table_definition` (ds/dt partition-filter check). */
   partition_cols: Set<string>
+  // ── G-DA6: prior-turn tables snapshot (inherited on follow-up reset) ──
+  /** Tables from the prior completed turn; seeded into candidate_tables on resetQuestionScoped. */
+  prior_turn_tables: Set<string>
   // ── P-DA1 route-gate grounding backstop (aggregate search+retrieve; avoids the
   // candidate_tables projection mismatch — search candidates are objects, not
   // strings, so collectTableNames only harvests them via the .id leaf). True =
@@ -344,6 +347,7 @@ export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
     cancelled: false,
     cancelled_reason: null,
     candidate_tables: new Set(),
+    prior_turn_tables: new Set(),
     event_params: new Set(),
     partition_cols: new Set(),
     last_search_empty: true,
