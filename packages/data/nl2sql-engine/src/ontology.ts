@@ -87,27 +87,34 @@ export function buildDeclaredJoinPairs(candidateIds: readonly string[], graph: R
 /**
  * Graph-enhanced recall (C3): for each BM25 hit, add 1-hop `joins` neighbors
  * (DIM tables) and `derived_from` targets (a metric's source table, or vice
- * versa) not already in the hit set. Expanded hits carry no payload (the
- * prompt renders the id when `payload?.description` is absent); depth = 1 hop
- * to avoid noise. Capped at `topK`.
+ * versa) not already in the hit set. When `lookupDoc` is provided, expanded
+ * hits carry the looked-up payload; otherwise payload is undefined (the prompt
+ * renders the id when `payload?.description` is absent). Depth = 1 hop to
+ * avoid noise. Capped at `topK`.
  * @param hits - the BM25 retrieval hits.
  * @param graph - the live relation graph.
  * @param topK - max candidates to return.
+ * @param lookupDoc - optional payload lookup for graph-expanded neighbors.
  * @returns the expanded candidate list (original hits first, then graph neighbors).
  */
-export function expandCandidates(hits: readonly RetrievalHit[], graph: RelationGraphLike, topK: number): readonly RetrievalHit[] {
+export function expandCandidates(
+  hits: readonly RetrievalHit[],
+  graph: RelationGraphLike,
+  topK: number,
+  lookupDoc?: (id: string) => import('./bm25-linking.ts').DataSourceDoc | undefined,
+): readonly RetrievalHit[] {
   const seen = new Set(hits.map(h => h.id))
   const out: RetrievalHit[] = [...hits]
   for (const h of hits) {
     for (const e of graph.getRelated(h.id, 'joins')) {
       if (seen.has(e.targetId)) continue
       seen.add(e.targetId)
-      out.push({ id: e.targetId, score: h.score * 0.5, payload: undefined, mode: 'graph-expand' })
+      out.push({ id: e.targetId, score: h.score * 0.5, payload: lookupDoc?.(e.targetId), mode: 'graph-expand' })
     }
     for (const e of graph.getDerived(h.id)) {
       if (seen.has(e.targetId)) continue
       seen.add(e.targetId)
-      out.push({ id: e.targetId, score: h.score * 0.5, payload: undefined, mode: 'graph-expand' })
+      out.push({ id: e.targetId, score: h.score * 0.5, payload: lookupDoc?.(e.targetId), mode: 'graph-expand' })
     }
   }
   return out.slice(0, topK)
