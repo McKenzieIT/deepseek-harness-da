@@ -38,6 +38,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { GoalDock, type GoalDockGoalData } from './GoalDock.tsx'
 import { EvidenceSidebar } from './EvidenceSidebar.tsx'
+import { SchemaExplorer } from './SchemaExplorer.tsx'
+import type { SchemaGatewayClient } from './schemaGatewayBridge.ts'
 
 /** The semantic-layer management agent preset id (shared with index.ts's session-opening logic). */
 export const PRESET_ID = 'semantic-layer-management'
@@ -111,6 +113,30 @@ export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProje
       // TODO(evidence-query-rpc): real run count
       // (`ctx.evidenceQuery.getEvalStore().getRunIds().length`) once the bridge exists.
       evalRunCount={0}
+    />
+  )
+}
+
+/** Full details.aux-adapter props for the Schema Browser panel. */
+export type SemanticLayerSchemaExplorerProps =
+  PropsRuntime<'details.aux'>
+  & PropsLocale<'semanticLayer'>
+  & { schemaClient?: SchemaGatewayClient | null }
+
+/**
+ * Details-column adapter (W9): mounts SchemaExplorer into the session-scoped
+ * `details.aux` list slot, only in management agent sessions. The schema
+ * gateway client is passed through inject; `onNavigateToGraph` is a noop
+ * placeholder for W10.
+ */
+export const SemanticLayerSchemaExplorer: FC<SemanticLayerSchemaExplorerProps> = ({ useSessions, sessionId, t, schemaClient }) => {
+  const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
+  if (!active) return null
+  const tAny = t as unknown as (key: string, params?: Record<string, unknown>) => string
+  return (
+    <SchemaExplorer
+      client={schemaClient ?? null}
+      t={tAny}
     />
   )
 }

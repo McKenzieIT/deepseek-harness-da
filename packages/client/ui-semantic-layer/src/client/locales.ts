@@ -54,6 +54,31 @@ export type SemanticLayerKey =
   | 'evidence.gap.noGaps'
   | 'evidence.gap.from'
   | 'evidence.gap.more'
+  | 'schema.domains'
+  | 'schema.search.placeholder'
+  | 'schema.tab.tables'
+  | 'schema.tab.events'
+  | 'schema.tab.metrics'
+  | 'schema.detail.empty'
+  | 'schema.detail.columns'
+  | 'schema.detail.col.name'
+  | 'schema.detail.col.type'
+  | 'schema.detail.col.comment'
+  | 'schema.detail.col.role'
+  | 'schema.detail.col.description'
+  | 'schema.detail.metrics'
+  | 'schema.detail.dimensionRefs'
+  | 'schema.detail.partitions'
+  | 'schema.detail.params'
+  | 'schema.detail.externalRefs'
+  | 'schema.detail.eventFilter'
+  | 'schema.detail.computation'
+  | 'schema.detail.aggregation'
+  | 'schema.detail.caliberVariants'
+  | 'schema.detail.host'
+  | 'schema.detail.hostTable'
+  | 'schema.detail.hostEvent'
+  | 'schema.detail.viewInGraph'
 
 export const zh: Record<SemanticLayerKey, string> = {
   'title': '语义层',
@@ -109,6 +134,31 @@ export const zh: Record<SemanticLayerKey, string> = {
   'evidence.gap.noGaps': '无覆盖缺口',
   'evidence.gap.from': '从',
   'evidence.gap.more': '条更多',
+  'schema.domains': '所有域',
+  'schema.search.placeholder': '搜索资产…',
+  'schema.tab.tables': '表',
+  'schema.tab.events': '事件',
+  'schema.tab.metrics': '指标',
+  'schema.detail.empty': '未找到定义',
+  'schema.detail.columns': '字段',
+  'schema.detail.col.name': '名称',
+  'schema.detail.col.type': '类型',
+  'schema.detail.col.comment': '注释',
+  'schema.detail.col.role': '角色',
+  'schema.detail.col.description': '描述',
+  'schema.detail.metrics': '指标',
+  'schema.detail.dimensionRefs': '维度引用',
+  'schema.detail.partitions': '分区',
+  'schema.detail.params': '参数字段',
+  'schema.detail.externalRefs': '外部引用',
+  'schema.detail.eventFilter': '事件过滤',
+  'schema.detail.computation': '计算逻辑',
+  'schema.detail.aggregation': '聚合方式',
+  'schema.detail.caliberVariants': '口径变体',
+  'schema.detail.host': '宿主',
+  'schema.detail.hostTable': '宿主表',
+  'schema.detail.hostEvent': '宿主事件',
+  'schema.detail.viewInGraph': '在知识图谱中查看',
 }
 
 export const en: Record<SemanticLayerKey, string> = {
@@ -165,4 +215,29 @@ export const en: Record<SemanticLayerKey, string> = {
   'evidence.gap.noGaps': 'No coverage gaps',
   'evidence.gap.from': 'From',
   'evidence.gap.more': 'more',
+  'schema.domains': 'All Domains',
+  'schema.search.placeholder': 'Search assets…',
+  'schema.tab.tables': 'Tables',
+  'schema.tab.events': 'Events',
+  'schema.tab.metrics': 'Metrics',
+  'schema.detail.empty': 'Definition not found',
+  'schema.detail.columns': 'Columns',
+  'schema.detail.col.name': 'Name',
+  'schema.detail.col.type': 'Type',
+  'schema.detail.col.comment': 'Comment',
+  'schema.detail.col.role': 'Role',
+  'schema.detail.col.description': 'Description',
+  'schema.detail.metrics': 'Metrics',
+  'schema.detail.dimensionRefs': 'Dimension Refs',
+  'schema.detail.partitions': 'Partitions',
+  'schema.detail.params': 'Parameters',
+  'schema.detail.externalRefs': 'External Refs',
+  'schema.detail.eventFilter': 'Event Filter',
+  'schema.detail.computation': 'Computation',
+  'schema.detail.aggregation': 'Aggregation',
+  'schema.detail.caliberVariants': 'Caliber Variants',
+  'schema.detail.host': 'Host',
+  'schema.detail.hostTable': 'Host Table',
+  'schema.detail.hostEvent': 'Host Event',
+  'schema.detail.viewInGraph': 'View in Knowledge Graph',
 }

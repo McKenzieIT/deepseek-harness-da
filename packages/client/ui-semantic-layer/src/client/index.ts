@@ -44,7 +44,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { SemanticLayerShell, type SemanticLayerShellProps } from './SemanticLayerShell.tsx'
 import { en, zh } from './locales.ts'
 import { semanticLayerPresenters } from './presenters/index.ts'
-import { SemanticLayerGoalDock, SemanticLayerEvidence, PRESET_ID } from './wiring.tsx'
+import { SemanticLayerGoalDock, SemanticLayerEvidence, SemanticLayerSchemaExplorer, PRESET_ID } from './wiring.tsx'
+import { buildSchemaGatewayClient } from './schemaGatewayBridge.ts'
 
 // W5-full exports: evidence panel components for host composition
 export { EvidenceSidebar, type EvidenceSidebarProps } from './EvidenceSidebar.tsx'
@@ -63,6 +64,12 @@ export { DashboardView, type DashboardViewProps } from './DashboardView.tsx'
 export { computeEffectiveMode, useLayoutMode, type LayoutMode } from './hooks/useLayoutMode.ts'
 export type { UseLayoutModeOptions, UseLayoutModeResult } from './hooks/useLayoutMode.ts'
 
+// W9 exports: schema browser
+export { SchemaExplorer, type SchemaExplorerProps } from './SchemaExplorer.tsx'
+export { AssetDetail, type AssetDetailProps } from './AssetDetail.tsx'
+export { useSchemaGateway, type SchemaGatewayClient } from './hooks/useSchemaGateway.ts'
+export { buildSchemaGatewayClient } from './schemaGatewayBridge.ts'
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     'semanticLayer': import('./locales.ts').SemanticLayerKey
@@ -77,7 +84,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-semantic-layer: dictionaries')
   ctx.plugin(semanticLayerPresenters)
 
-  ctx.inject(['sessions', 'workspaces', 'connection'], (scope: ClientContext) => {
+  ctx.inject(['sessions', 'workspaces', 'connection', 'remote'], (scope: ClientContext) => {
     const sessions = scope.sessions
     const workspaces = scope.workspaces
     const { api } = scope.get('connection') as ConnectionHandle
@@ -160,6 +167,21 @@ export function apply(ctx: ClientContext): void {
       order: 0,
       locale: NS,
     }, SemanticLayerEvidence))
+
+    // W9: SchemaExplorer in the right details column (order 10, after evidence).
+    // Accesses the TypeRT schemaGateway remote namespace (contributed by
+    // dsh-api-remotes) to build a typed client bridge.
+    const remoteNs = (scope as unknown as { remote?: { schemaGateway?: unknown } }).remote
+    const schemaClient = remoteNs?.schemaGateway
+      ? buildSchemaGatewayClient(remoteNs.schemaGateway as never)
+      : null
+    scope.slots.inject('details.aux', () => scope.slots.register({
+      name: 'details.aux',
+      id: 'semantic-layer-schema-explorer',
+      order: 10,
+      locale: NS,
+      inject: () => ({ schemaClient }),
+    }, SemanticLayerSchemaExplorer))
 
     return stopListSub
   })
