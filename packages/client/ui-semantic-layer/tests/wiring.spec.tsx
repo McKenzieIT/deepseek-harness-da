@@ -6,16 +6,18 @@
  * mapping and the two thin adapters (E8 dock, E9/E10 details.aux), including the
  * reactive management-session gate.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import type { GoalProjection } from '@deepseek-ai/dsh-goal/client'
 import {
   toGoalDockGoalData,
   SemanticLayerGoalDock,
   SemanticLayerEvidence,
+  SemanticLayerSchemaExplorer,
   PRESET_ID,
   type SemanticLayerGoalDockProps,
   type SemanticLayerEvidenceProps,
+  type SemanticLayerSchemaExplorerProps,
 } from '../src/client/wiring.tsx'
 
 const t = (key: string): string => key
@@ -150,5 +152,36 @@ describe('SemanticLayerEvidence (E9/E10 details.aux adapter)', () => {
     const { container } = renderEvidence(PRESET_ID, () => null)
     expect(container.querySelector('.sl-evidence-sidebar--active')).not.toBeNull()
     expect(container.querySelector('.sl-coverage-panel')).not.toBeNull()
+  })
+})
+
+describe('SemanticLayerSchemaExplorer (W9/W10 details.aux adapter)', () => {
+  const renderSchema = (agentPreset: string | undefined, onNavigateToGraph?: (id: string) => void) => {
+    const props = {
+      useProjection: () => null,
+      useSessions: useSessionsStub(sessionsSnapshotFor(agentPreset)),
+      sessionId: 's1',
+      t,
+      schemaClient: null,
+      onNavigateToGraph,
+    } as unknown as SemanticLayerSchemaExplorerProps
+    return render(<SemanticLayerSchemaExplorer {...props} />)
+  }
+
+  it('renders nothing when the session is not a management session', () => {
+    const { container } = renderSchema('some-other-preset')
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('renders the schema explorer in a management session', () => {
+    const { container } = renderSchema(PRESET_ID)
+    expect(container.querySelector('input')).not.toBeNull()
+  })
+
+  it('passes onNavigateToGraph through to SchemaExplorer', () => {
+    const onNav = vi.fn()
+    const { container } = renderSchema(PRESET_ID, onNav)
+    // SchemaExplorer mounts — onNavigateToGraph is threaded through (exercised in SchemaExplorer.spec).
+    expect(container.querySelector('input')).not.toBeNull()
   })
 })

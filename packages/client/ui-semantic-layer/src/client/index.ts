@@ -175,12 +175,17 @@ export function apply(ctx: ClientContext): void {
     const schemaClient = remoteNs?.schemaGateway
       ? buildSchemaGatewayClient(remoteNs.schemaGateway as never)
       : null
+    // W10: onNavigateToGraph opens the fullscreen context layer overlay.
+    const contextLayer = (scope as unknown as { contextLayer?: { open(node?: string): void } }).contextLayer
+    const onNavigateToGraph = contextLayer
+      ? (assetId: string) => contextLayer.open(assetId)
+      : undefined
     scope.slots.inject('details.aux', () => scope.slots.register({
       name: 'details.aux',
       id: 'semantic-layer-schema-explorer',
       order: 10,
       locale: NS,
-      inject: () => ({ schemaClient }),
+      inject: () => ({ schemaClient, onNavigateToGraph }),
     }, SemanticLayerSchemaExplorer))
 
     return stopListSub

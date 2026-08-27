@@ -1,13 +1,13 @@
 /**
  * Context layer graph plugin, browser half. Registers:
  *  - ContextLayerGraph: G6 v5 interactive relation graph with semantic zoom
- *
- * W10 base: foundational graph component skeleton. Later iterations add:
- *  - Conversation panel integration
- *  - Animation layer
- *  - Evidence overlay toggle
+ *  - ctx.contextLayer service (open/close/focusNode)
+ *  - shell.overlay fullscreen entry (ContextLayerOverlay)
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import { ContextLayerService, type IContextLayer } from './service.ts'
+import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
 
 export {
   ContextLayerGraph,
@@ -95,15 +95,39 @@ export {
   type ContextLayerViewProps,
 } from './ContextLayerView.tsx'
 
+export {
+  ContextLayerOverlay,
+  type ContextLayerOverlayProps,
+} from './ContextLayerOverlay.tsx'
+
+export {
+  ContextLayerService,
+  type IContextLayer,
+} from './service.ts'
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    contextLayer: IContextLayer
+  }
+}
+
 export const name = 'ui-context-layer'
-export const inject = ['slots', 'locale']
+export const inject = ['slots']
 
 export function apply(ctx: ClientContext): void {
-  // W10 integration path (research resolved 2026-08-27):
-  //   1. Provide ctx.contextLayer service (open/close/focusNode)
-  //   2. Register shell.overlay entry (id: 'context-layer-fullscreen')
-  //      with ContextLayerOverlay (position: fixed fullscreen, returns null when closed)
-  //   3. ui-semantic-layer consumes ctx.contextLayer for onNavigateToGraph
-  // Implementation deferred to the integration task.
-  void ctx
+  const service = new ContextLayerService()
+
+  ctx.effect(() => {
+    const disposeService = ctx.reflect.provide('contextLayer', service)
+    const disposeOverlay = ctx.slots.register({
+      name: 'shell.overlay',
+      id: 'context-layer-fullscreen',
+      order: 1000,
+      inject: () => ({ service }),
+    }, ContextLayerOverlay)
+    return () => {
+      disposeOverlay()
+      void disposeService()
+    }
+  }, 'ui-context-layer: service + overlay registration')
 }

@@ -121,15 +121,17 @@ export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProje
 export type SemanticLayerSchemaExplorerProps =
   PropsRuntime<'details.aux'>
   & PropsLocale<'semanticLayer'>
-  & { schemaClient?: SchemaGatewayClient | null }
+  & { schemaClient?: SchemaGatewayClient | null; onNavigateToGraph?: ((assetId: string) => void) | undefined }
 
 /**
  * Details-column adapter (W9): mounts SchemaExplorer into the session-scoped
  * `details.aux` list slot, only in management agent sessions. The schema
- * gateway client is passed through inject; `onNavigateToGraph` is a noop
- * placeholder for W10.
+ * gateway client is passed through inject; onNavigateToGraph opens the
+ * fullscreen context layer overlay (W10).
  */
-export const SemanticLayerSchemaExplorer: FC<SemanticLayerSchemaExplorerProps> = ({ useSessions, sessionId, t, schemaClient }) => {
+export const SemanticLayerSchemaExplorer: FC<SemanticLayerSchemaExplorerProps> = ({
+  useSessions, sessionId, t, schemaClient, onNavigateToGraph,
+}) => {
   const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
   if (!active) return null
   const tAny = t as unknown as (key: string, params?: Record<string, unknown>) => string
@@ -137,6 +139,7 @@ export const SemanticLayerSchemaExplorer: FC<SemanticLayerSchemaExplorerProps> =
     <SchemaExplorer
       client={schemaClient ?? null}
       t={tAny}
+      onNavigateToGraph={onNavigateToGraph}
     />
   )
 }
