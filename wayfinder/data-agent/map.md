@@ -173,6 +173,8 @@
 
 - **M1d 时间过滤 hint 引擎无关化 (grilling, resolved 2026-08-27)**：`buildTimeFilterHint` 多引擎方案——Ontology/Operational 分层。(1) Ontology 层：`TableDefinition.temporalPolicy` 新增枚举（`latest-partition | range-partition | static | none`），引擎无关的纯语义事实；(2) Operational 层：`semantic-layer/src/temporal-hints/templates/<engine>.yaml` 存 hint 文案，按引擎分文件，独立于表定义；(3) enrichment 阶段 `resolveTimeHint(policy, engine)` 一次性 resolve 为 string，下游（nl2sql-engine / guard / eval）消费 plain string；(4) `buildTimeFilterHint` 退化为读 `resolvedTimeHint` 字段。固定枚举优于灵活组合结构（LLM 侧 hint 可预测、harness 侧 dispatch 简单）。hints 不是 Ontology——它是给 LLM 的操作指南，变更频率和负责人与表定义不同。向后兼容：`classifyGranularity()` 映射现有中文 granularity 文本。触发条件：引入第二引擎时实施。〔tickets/phase-misc/M1d-time-filter-hint-multi-engine.md〕
 
+- **W11 Context Layer 对话式管理与 Enrichment 闭环 (grilling, resolved 2026-08-27)**：12 项决策锁定图谱对话式管理闭环。核心：图谱=观察工具，一切编辑走 LLM tool。(D1) discover_relations 仅对话触发 + narration gate（叙述后才渲染新边）；(D2) edit 仅对话 + 侧面板 💬 上下文捷径；(D3) reachabilityDelta 对话触发 + 会话级持久虚线预览；(D4) v1 Tier-2 直写（trusted admin + unreviewed + eval safety net）；(D5) 退化反馈=红色脉冲+自动聚焦；(D6) 独立管理 session + 只读引用主 session 上下文；(D7) 自主巡检开关（每轮≤3 edit + 60s confirm timeout + scope 限定 + btw 并发机制）；(C1) 共享身份 + MVCC query snapshot；(C2) patrol 下 preview 轮次结束后批量渲染；(C3) patrol 按轮自动 eval / 手动显式触发；(S1) 新增 `revert_edit` 工具（audit before-snapshot 版本回滚）；(S3) btw 旁路机制（用户插入即处理，自动恢复 patrol）。〔tickets/phase-misc/W11-graph-edit-enrichment.md〕
+
 ## Next wave: 语义层/Ontology 管理 + 知识图谱可视化（2026-08-27 规划）
 
 <!-- 新方向：P11d 收尾 + M1 follow-up + 管理 UI infra + 知识图谱可视化 -->
@@ -187,7 +189,7 @@
 - **W10 Context Layer 关系视图可视化 (grilling, resolved 2026-08-27)**：采用 Context Layer 统一框架（语义层+知识图谱=Context Layer）。全屏管理界面（独立插件入口 Mode 3）+ 可收缩 LLM 对话面板 + @antv/g6 v5 语义缩放三级 LOD（远景 domain combo / 中景节点无 label / 近景完整细节）。v1 交互 = LLM 无法替代的视觉操作（zoom/pan/LOD/点选详情/聚焦/domain filter/minimap/搜索/evidence overlay）；一切编辑通过对话 + tool。Evidence overlay = 边框+badge 常驻 + 可切换填色诊断模式。Canvas 2D 够用。Ontology 边类型可扩展，参考 Palantir 四层模型。〔tickets/phase-misc/W10-knowledge-graph-visualization.md〕
 
 **W10 完成后**：
-- **W11 Context Layer 对话式管理与 Enrichment 闭环 (grilling→task, open)**：discover_relations / edit_definition / reachabilityDelta 均通过 LLM 对话触发（非 UI 直编）→ graph 被动反映变化 + 动画反馈。blocked by W10（resolved）。〔tickets/phase-misc/W11-graph-edit-enrichment.md〕
+- ~~W11 Context Layer 对话式管理与 Enrichment 闭环~~ → resolved 2026-08-27，见 Decisions so far
 
 ## Not yet specified
 
