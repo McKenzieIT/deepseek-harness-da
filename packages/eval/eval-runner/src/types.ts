@@ -25,6 +25,15 @@ export type RunnerVerdict = 'correct' | 'declined' | 'wrong' | 'unjudged' | 'inf
 // ─── Attempt Result ────────────────────────────────────────────────────────────
 
 /**
+ * LLM SQL semantic judge verdict with per-dimension breakdown.
+ */
+export interface SqlJudgeVerdict {
+  readonly score: number
+  readonly rationale: string
+  readonly dimensions: Record<string, 0 | 1>
+}
+
+/**
  * Result of a single pass_k attempt within a case run.
  */
 export interface AttemptResult {
@@ -34,6 +43,8 @@ export interface AttemptResult {
   readonly execution_match?: boolean
   /** Whether the delivery assertion passed. */
   readonly delivery_match?: boolean
+  /** LLM SQL semantic judge verdict (present when sqlJudge was invoked). */
+  readonly sql_judge?: SqlJudgeVerdict | undefined
   /** If this attempt hit an infra error, the description. */
   readonly infra_error?: string
   /** If this attempt hit a non-infra error (model/logic failure that threw), the description. */

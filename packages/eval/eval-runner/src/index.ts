@@ -10,6 +10,7 @@
 // Core types
 export type {
   RunnerVerdict,
+  SqlJudgeVerdict,
   AttemptResult,
   CaseVerdict,
   RunResult,

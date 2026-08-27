@@ -19,6 +19,7 @@ import type {
   CaseVerdict,
   RunnerVerdict,
   AttemptResult,
+  SqlJudgeVerdict,
 } from './types.ts'
 import { runHealthGate } from './health_gate.ts'
 import { withInfraRetry, isInfraError } from './infra_retry.ts'
@@ -184,6 +185,7 @@ async function runOneAttempt(
       attempt_k: attemptK,
       execution_match: result.executionMatch,
       delivery_match: result.deliveryMatch,
+      sql_judge: result.sqlJudge,
       generated_sql: result.generatedSql,
       query_result: result.queryResult,
       expected_result: result.expectedResult,
@@ -211,10 +213,15 @@ interface AttemptExecution {
   generatedSql: string | null
   queryResult: unknown[] | null
   expectedResult: unknown
+  sqlJudge?: { score: number; rationale: string; dimensions: Record<string, 0 | 1> } | undefined
 }
 
 /**
  * Execute a single attempt: ask the agent, optionally run the SQL, judge.
+ *
+ * Dual-score policy: when both executor and sqlJudge are available, run both
+ * independently. execution_match reflects real query result comparison;
+ * sql_judge records the LLM semantic verdict. Neither overrides the other.
  */
 async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators): Promise<AttemptExecution> {
   const question = evalCase.input.question
@@ -228,11 +235,13 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
   const generatedSql = agentResponse.generated_sql ?? null
   let queryResult: unknown[] | null = null
   const expectedResult = evalCase.expected.result_value ?? null
+  let sqlJudge: AttemptExecution['sqlJudge'] = undefined
 
   // Determine execution match
   let executionMatch = true
   if (evalCase.expected.result_value !== null && evalCase.expected.match_mode !== null) {
     if (agentResponse.generated_sql && collaborators.executor) {
+      // Execute the SQL against the real warehouse
       const execResult = await collaborators.executor.execute(agentResponse.generated_sql)
       if (!execResult.success) {
         executionMatch = false
@@ -243,7 +252,23 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
         const expectedRv = evalCase.expected.result_value as Record<string, unknown>
         executionMatch = checkResultMatch(execResult.rows ?? [], expectedRv, matchMode)
       }
+
+      // Dual-score: also run sql_judge if available (independent of execution_match)
+      if (collaborators.sqlJudge) {
+        const schemaContext = agentResponse.schema_context ?? extractSchemaContext(agentResponse.transcript)
+        const judgeResult = await collaborators.sqlJudge.judgeSql({
+          question,
+          generated_sql: agentResponse.generated_sql,
+          schema_context: schemaContext,
+        })
+        sqlJudge = toSqlJudgeVerdict(
+          judgeResult.score,
+          judgeResult.rationale || judgeResult.error || '',
+          judgeResult.dimensions ?? {},
+        )
+      }
     } else if (agentResponse.generated_sql && !collaborators.executor) {
+      // SQL-only mode: use sql_judge as the sole signal for execution_match
       if (collaborators.sqlJudge) {
         const schemaContext = agentResponse.schema_context ?? extractSchemaContext(agentResponse.transcript)
         const judgeResult = await collaborators.sqlJudge.judgeSql({
@@ -252,6 +277,11 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
           schema_context: schemaContext,
         })
         executionMatch = judgeResult.score >= SQL_JUDGE_PASS_THRESHOLD
+        sqlJudge = toSqlJudgeVerdict(
+          judgeResult.score,
+          judgeResult.rationale || judgeResult.error || '',
+          judgeResult.dimensions ?? {},
+        )
       } else {
         executionMatch = true
       }
@@ -275,13 +305,21 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
     }
   }
 
-  return { executionMatch, deliveryMatch, generatedSql, queryResult, expectedResult }
+  return { executionMatch, deliveryMatch, generatedSql, queryResult, expectedResult, sqlJudge }
 }
 
 /**
  * Extract schema context from the agent response transcript (trace).
  * The trace includes a 'retrieve' step with candidate table descriptions.
  */
+function toSqlJudgeVerdict(score: number, rationale: string, dims: object): SqlJudgeVerdict {
+  const dimensions: Record<string, 0 | 1> = {}
+  for (const [k, v] of Object.entries(dims)) {
+    dimensions[k] = (typeof v === 'number' && v >= 0.5 ? 1 : 0) as 0 | 1
+  }
+  return { score, rationale, dimensions }
+}
+
 function extractSchemaContext(transcript: unknown[] | undefined): string {
   if (!transcript || !Array.isArray(transcript)) return '(no schema context available)'
 
