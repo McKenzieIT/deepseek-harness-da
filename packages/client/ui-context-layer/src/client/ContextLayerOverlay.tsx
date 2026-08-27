@@ -1,28 +1,42 @@
-import { useSyncExternalStore, useState, useCallback, type FC } from 'react'
+import { useSyncExternalStore, useState, useCallback, useEffect, type FC } from 'react'
 import type { ContextLayerService } from './service.ts'
+import type { GraphDataClient } from './graphDataBridge.ts'
 import { ContextLayerView } from './ContextLayerView.tsx'
 import type { GraphData } from './types.ts'
 import type { ChatMessage } from './ManagementChatPanel.tsx'
 
 export interface ContextLayerOverlayProps {
   service: ContextLayerService
+  graphClient?: GraphDataClient | null
 }
 
-export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service }) => {
+export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, graphClient }) => {
   const snapshot = useSyncExternalStore(service.subscribe, service.getSnapshot)
+  const [data, setData] = useState<GraphData | null>(null)
+  const [loading, setLoading] = useState(false)
   const [messages] = useState<ChatMessage[]>([])
 
   const handleSendMessage = useCallback((_text: string) => {
-    // Management session message bridge — wired when ctx.managementSession lands.
+    // TODO: wire to management session when ctx.managementSession is available on the client
   }, [])
 
   const handleClose = useCallback(() => { service.close() }, [service])
 
-  if (!snapshot.isOpen) return null
+  useEffect(() => {
+    if (!snapshot.isOpen || !graphClient) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    graphClient.fetchGraphData(snapshot.focusNode ? { focus: snapshot.focusNode } : undefined).then(
+      (result) => { if (!cancelled) { setData(result); setLoading(false) } },
+      () => { if (!cancelled) { setData(null); setLoading(false) } },
+    )
+    return () => { cancelled = true }
+  }, [snapshot.isOpen, snapshot.focusNode, graphClient])
 
-  // Graph data placeholder — wired when the graph data fetch (getGraphData)
-  // integrates with the managementSession pipeline.
-  const data: GraphData | null = null
+  if (!snapshot.isOpen) return null
 
   return (
     <div
@@ -37,6 +51,7 @@ export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service }) =
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 12px', borderBottom: '1px solid var(--border-subtle, rgba(0,0,0,0.08))' }}>
+        {loading && <span style={{ marginRight: 'auto', opacity: 0.6, fontSize: 13 }}>Loading graph…</span>}
         <button
           type="button"
           onClick={handleClose}

@@ -8,6 +8,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { ContextLayerService, type IContextLayer } from './service.ts'
 import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
+import { buildGraphDataClient } from './graphDataBridge.ts'
 
 export {
   ContextLayerGraph,
@@ -105,6 +106,11 @@ export {
   type IContextLayer,
 } from './service.ts'
 
+export {
+  buildGraphDataClient,
+  type GraphDataClient,
+} from './graphDataBridge.ts'
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     contextLayer: IContextLayer
@@ -117,17 +123,21 @@ export const inject = ['slots']
 export function apply(ctx: ClientContext): void {
   const service = new ContextLayerService()
 
-  ctx.effect(() => {
-    const disposeService = ctx.reflect.provide('contextLayer', service)
-    const disposeOverlay = ctx.slots.register({
+  ctx.effect(() => ctx.reflect.provide('contextLayer', service), 'ui-context-layer: service')
+
+  ctx.inject(['remote'], (scope: ClientContext) => {
+    const remoteNs = (scope as unknown as { remote?: { schemaGateway?: unknown } }).remote
+    const graphClient = remoteNs?.schemaGateway
+      ? buildGraphDataClient(remoteNs.schemaGateway as never)
+      : null
+
+    const disposeOverlay = scope.slots.register({
       name: 'shell.overlay',
       id: 'context-layer-fullscreen',
       order: 1000,
-      inject: () => ({ service }),
+      inject: () => ({ service, graphClient }),
     }, ContextLayerOverlay)
-    return () => {
-      disposeOverlay()
-      void disposeService()
-    }
-  }, 'ui-context-layer: service + overlay registration')
+
+    return disposeOverlay
+  })
 }
