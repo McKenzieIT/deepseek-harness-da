@@ -6,10 +6,16 @@ import type { FollowupChipsInjected } from '@deepseek-ai/dsh-client-ui-suggest-f
 
 interface StoredEntry {
   options: { key?: string }
+  locale?: string
   inject?: (...args: never[]) => Record<string, unknown>
 }
 
-async function bench(sessions?: unknown) {
+interface LocaleRegistration {
+  ns: string
+  dict: { zh: Record<string, string>; en: Record<string, string> }
+}
+
+async function bench(sessions?: unknown, locale?: unknown) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const slots = ctx.get('slots') as SlotRegistry
@@ -26,7 +32,14 @@ async function bench(sessions?: unknown) {
     () => null,
   )
   ctx.provide('sessions', (sessions ?? { scope: () => undefined }) as never)
-  return { ctx, slots }
+  const registered: LocaleRegistration[] = []
+  ctx.provide('locale', (locale ?? {
+    register: (ns: string, dict: LocaleRegistration['dict']) => {
+      registered.push({ ns, dict })
+      return () => {}
+    },
+  }) as never)
+  return { ctx, slots, registered }
 }
 
 function getEntry(slots: SlotRegistry): StoredEntry {
@@ -35,15 +48,27 @@ function getEntry(slots: SlotRegistry): StoredEntry {
 }
 
 describe('ui-suggest-followups apply', () => {
-  it('declares slots and sessions services', () => {
-    expect(inject).toEqual(['slots', 'sessions'])
+  it('declares slots, sessions, and locale services', () => {
+    expect(inject).toEqual(['slots', 'sessions', 'locale'])
   })
 
-  it('registers the suggest_followups keyed toolview', async () => {
+  it('registers the suggest_followups keyed toolview with its locale namespace', async () => {
     const { ctx, slots } = await bench()
     await ctx.plugin({ inject: [...inject], apply }).await()
     await new Promise((r) => { setTimeout(r, 0) })
-    expect(getEntry(slots)).toBeDefined()
+    const entry = getEntry(slots)
+    expect(entry).toBeDefined()
+    expect(entry.locale).toBe('suggest.followups')
+  })
+
+  it('registers the suggest.followups dictionaries with matching key sets', async () => {
+    const { ctx, registered } = await bench()
+    await ctx.plugin({ inject: [...inject], apply }).await()
+    await new Promise((r) => { setTimeout(r, 0) })
+    expect(registered).toHaveLength(1)
+    expect(registered[0]!.ns).toBe('suggest.followups')
+    expect(Object.keys(registered[0]!.dict.zh).sort()).toEqual(Object.keys(registered[0]!.dict.en).sort())
+    expect(registered[0]!.dict.zh['caption']).toBe('继续追问')
   })
 
   it('removes the entry on teardown', async () => {

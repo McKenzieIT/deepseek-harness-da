@@ -1,46 +1,156 @@
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 0;
+/* Follow-up list (prototype variant B): one bordered row per suggestion,
+   label primary + full query value tertiary; hover reveals a send hint.
+   Alias tokens only — the previous chip styles referenced six --dsw-bg-* /
+   --dsw-text-* / --dsw-border-* names that do not exist in the theme, so
+   backgrounds and borders silently resolved to nothing. */
+
+.caption {
+  padding: 2px 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-tertiary);
 }
 
-.chip {
-  display: inline-flex;
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.itemWrap {
+  margin: 0;
+}
+
+.itemWrap + .itemWrap {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+.item {
+  display: flex;
   align-items: center;
-  padding: 6px 14px;
-  border-radius: 16px;
-  border: 1px solid var(--dsw-border-secondary);
-  background: var(--dsw-bg-secondary);
-  color: var(--dsw-text-primary);
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.item:active {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+}
+
+.item:disabled {
+  cursor: not-allowed;
+}
+
+.item:disabled:hover {
+  background: transparent;
+}
+
+.itemMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.label {
   font-size: 13px;
   line-height: 1.4;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  user-select: none;
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.chip:hover {
-  background: var(--dsw-bg-tertiary);
-  border-color: var(--dsw-border-primary);
+.value {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.chip:active {
-  background: var(--dsw-bg-active);
+.send {
+  flex: none;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-caption);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.item:hover .send,
+.item:focus-visible .send {
+  opacity: 1;
+}
+
+.item:disabled .label {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.item:disabled .value {
+  color: var(--dsw-alias-label-caption);
 }
 
 .skeleton {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
-.skeletonChip {
-  height: 32px;
-  border-radius: 16px;
-  background: var(--dsw-bg-tertiary);
+.skeletonRow {
+  height: 36px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-skeleton);
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+.error {
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 6%, transparent);
+}
+
+.errorTitle {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-primary);
+}
+
+.errorDetail {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.errorHint {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-caption);
 }
 
 .fallback {
@@ -51,7 +161,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--dsw-text-secondary);
+  color: var(--dsw-alias-label-secondary);
   white-space: pre-wrap;
   word-break: break-word;
 }

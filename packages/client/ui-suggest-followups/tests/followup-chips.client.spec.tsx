@@ -8,6 +8,20 @@ afterEach(cleanup)
 
 const NOW = 1700000000000
 
+/** Locale stub carrying the real zh templates the component interpolates. */
+const t = (key: string): string => {
+  const dict: Record<string, string> = {
+    'caption': '继续追问',
+    'listAria': '后续建议列表',
+    'send': '发送',
+    'sendAria': '发送后续查询:{label}',
+    'expired': '该建议来自上一轮,已过期',
+    'error': '后续建议生成失败',
+    'errorHint': '可直接在下方输入框继续提问',
+  }
+  return dict[key] ?? key
+}
+
 function makeSnapshot(opts: { latestTurnStart?: number } = {}): ConversationSnapshot {
   const turnStart = opts.latestTurnStart ?? NOW - 5000
   return {
@@ -46,7 +60,7 @@ function makeRunningBlock(): ToolCallBlock {
   }
 }
 
-function makeSettledBlock(argsRaw: string, content = ''): ToolCallBlock {
+function makeSettledBlock(argsRaw: string, content = '', isError = false): ToolCallBlock {
   return {
     kind: 'tool-result',
     seq: 1,
@@ -55,7 +69,7 @@ function makeSettledBlock(argsRaw: string, content = ''): ToolCallBlock {
     call: { name: 'suggest_followups', argsRaw },
     callTime: NOW - 1000,
     content: [{ type: 'text', text: content }],
-    isError: false,
+    isError,
     callView: null,
     resultView: null,
     subCalls: [],
@@ -86,21 +100,23 @@ const VALID_ARGS = JSON.stringify({
   ],
 })
 
+function renderList(block: ToolCallBlock, snapshot: ConversationSnapshot, submit = () => {}) {
+  return render(
+    <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={submit} t={t} />,
+  )
+}
+
 describe('FollowupChips', () => {
   it('renders skeleton when block is a RunningToolCall', () => {
     const snapshot = makeSnapshot()
-    const { container } = render(
-      <FollowupChips block={makeRunningBlock()} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
-    expect(container.querySelectorAll('[class*="skeletonChip"]')).toHaveLength(3)
+    const { container } = renderList(makeRunningBlock(), snapshot)
+    expect(container.querySelectorAll('[class*="skeletonRow"]')).toHaveLength(3)
   })
 
   it('renders fallback text when block.call is null', () => {
     const snapshot = makeSnapshot()
     const block = makeNullCallBlock('Follow-up suggestions:\n  - 按地区: query')
-    const { container } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
+    const { container } = renderList(block, snapshot)
     const pre = container.querySelector('pre')
     expect(pre).not.toBeNull()
     expect(pre!.textContent).toContain('按地区')
@@ -108,10 +124,7 @@ describe('FollowupChips', () => {
 
   it('renders fallback when argsRaw is invalid JSON', () => {
     const snapshot = makeSnapshot()
-    const block = makeSettledBlock('not json', 'raw output')
-    const { container } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
+    const { container } = renderList(makeSettledBlock('not json', 'raw output'), snapshot)
     const pre = container.querySelector('pre')
     expect(pre).not.toBeNull()
     expect(pre!.textContent).toBe('raw output')
@@ -119,85 +132,112 @@ describe('FollowupChips', () => {
 
   it('renders fallback when suggestions array is missing', () => {
     const snapshot = makeSnapshot()
-    const block = makeSettledBlock(JSON.stringify({ wrong: true }), 'fallback text')
-    const { container } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
-    const pre = container.querySelector('pre')
-    expect(pre).not.toBeNull()
+    const { container } = renderList(makeSettledBlock(JSON.stringify({ wrong: true }), 'fallback text'), snapshot)
+    expect(container.querySelector('pre')).not.toBeNull()
   })
 
   it('renders fallback when suggestions array is empty', () => {
     const snapshot = makeSnapshot()
-    const block = makeSettledBlock(JSON.stringify({ suggestions: [] }), 'empty')
-    const { container } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
-    const pre = container.querySelector('pre')
-    expect(pre).not.toBeNull()
+    const { container } = renderList(makeSettledBlock(JSON.stringify({ suggestions: [] }), 'empty'), snapshot)
+    expect(container.querySelector('pre')).not.toBeNull()
   })
 
   it('renders fallback when suggestion items have invalid shape', () => {
     const snapshot = makeSnapshot()
-    const block = makeSettledBlock(JSON.stringify({ suggestions: [{ label: 123 }] }), 'bad shape')
-    const { container } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
-    const pre = container.querySelector('pre')
-    expect(pre).not.toBeNull()
+    const { container } = renderList(makeSettledBlock(JSON.stringify({ suggestions: [{ label: 123 }] }), 'bad shape'), snapshot)
+    expect(container.querySelector('pre')).not.toBeNull()
   })
 
-  it('renders chips with valid suggestions', () => {
+  it('renders rows with label and the full value visible', () => {
     const snapshot = makeSnapshot()
-    const block = makeSettledBlock(VALID_ARGS)
-    const { getByText } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
+    const { getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
     expect(getByText('按地区细分')).toBeDefined()
-    expect(getByText('环比对比')).toBeDefined()
-    expect(getByText('查看趋势')).toBeDefined()
+    expect(getByText('请按地区维度进一步细分订单金额')).toBeDefined()
+    expect(getByText('与上月同期数据对比')).toBeDefined()
   })
 
-  it('calls submit with the suggestion value on chip click', () => {
+  it('exposes a send aria-label naming the suggestion', () => {
     const snapshot = makeSnapshot()
-    const block = makeSettledBlock(VALID_ARGS)
+    const { container } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
+    const first = container.querySelector<HTMLButtonElement>('button[data-followup-item]')!
+    expect(first.getAttribute('aria-label')).toBe('发送后续查询:按地区细分')
+  })
+
+  it('calls submit with the suggestion value on row click', () => {
+    const snapshot = makeSnapshot()
     const submit = vi.fn()
-    const { getByText } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={submit} />,
-    )
+    const { getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot, submit)
     fireEvent.click(getByText('按地区细分'))
     expect(submit).toHaveBeenCalledWith('请按地区维度进一步细分订单金额')
   })
 
-  it('calls submit with correct value for each chip', () => {
+  it('renders rows with duplicate values without key collisions', () => {
     const snapshot = makeSnapshot()
-    const block = makeSettledBlock(VALID_ARGS)
-    const submit = vi.fn()
-    const { getByText } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={submit} />,
-    )
-    fireEvent.click(getByText('环比对比'))
-    expect(submit).toHaveBeenCalledWith('与上月同期数据对比')
+    const args = JSON.stringify({
+      suggestions: [
+        { label: '同名建议一', value: '完全相同的查询' },
+        { label: '同名建议二', value: '完全相同的查询' },
+      ],
+    })
+    const { getByText } = renderList(makeSettledBlock(args), snapshot)
+    expect(getByText('同名建议一')).toBeDefined()
+    expect(getByText('同名建议二')).toBeDefined()
   })
 
-  it('returns null when block is from an older turn', () => {
+  it('renders disabled rows for an older turn instead of removing them', () => {
     const snapshot = makeSnapshot({ latestTurnStart: NOW + 5000 })
-    const block = makeSettledBlock(VALID_ARGS)
-    const { container } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
-    expect(container.innerHTML).toBe('')
+    const { container, getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
+    expect(getByText('按地区细分')).toBeDefined()
+    const buttons = container.querySelectorAll('button[data-followup-item]')
+    expect(buttons).toHaveLength(3)
+    buttons.forEach(b => expect(b.disabled).toBe(true))
+    expect(buttons[0]!.getAttribute('title')).toBe('该建议来自上一轮,已过期')
+  })
+
+  it('does not submit when clicking an expired row', () => {
+    const snapshot = makeSnapshot({ latestTurnStart: NOW + 5000 })
+    const submit = vi.fn()
+    const { getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot, submit)
+    fireEvent.click(getByText('按地区细分'))
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('renders an error box when the tool call failed', () => {
+    const snapshot = makeSnapshot()
+    const block = makeSettledBlock(VALID_ARGS, 'suggest_followups 允许最多 5 条建议', true)
+    const { container, getByText } = renderList(block, snapshot)
+    const alert = container.querySelector('[role="alert"]')
+    expect(alert).not.toBeNull()
+    expect(getByText('后续建议生成失败')).toBeDefined()
+    expect(getByText('suggest_followups 允许最多 5 条建议')).toBeDefined()
+    // No chips may render from a failed call's argsRaw.
+    expect(container.querySelector('button[data-followup-item]')).toBeNull()
+  })
+
+  it('moves focus between rows with arrow keys (roving)', () => {
+    const snapshot = makeSnapshot()
+    const { container } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
+    const list = container.querySelector('ul')!
+    const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('button[data-followup-item]'))
+    buttons[0]!.focus()
+    expect(document.activeElement).toBe(buttons[0])
+    fireEvent.keyDown(list, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(buttons[1])
+    fireEvent.keyDown(list, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(buttons[0])
+    fireEvent.keyDown(list, { key: 'End' })
+    expect(document.activeElement).toBe(buttons[2])
+    fireEvent.keyDown(list, { key: 'Home' })
+    expect(document.activeElement).toBe(buttons[0])
   })
 
   it('shows running block even when turn detection is ambiguous', () => {
     const snapshot = makeSnapshot({ latestTurnStart: NOW + 5000 })
-    const { container } = render(
-      <FollowupChips block={makeRunningBlock()} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
-    expect(container.querySelectorAll('[class*="skeletonChip"]')).toHaveLength(3)
+    const { container } = renderList(makeRunningBlock(), snapshot)
+    expect(container.querySelectorAll('[class*="skeletonRow"]')).toHaveLength(3)
   })
 
-  it('shows chips when turnOrder is empty', () => {
+  it('shows rows when turnOrder is empty', () => {
     const snapshot = {
       ...makeSnapshot(),
       chat: {
@@ -205,20 +245,14 @@ describe('FollowupChips', () => {
         timeline: { turnOrder: [], turns: new Map() },
       },
     } as unknown as ConversationSnapshot
-    const block = makeSettledBlock(VALID_ARGS)
-    const { getByText } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
+    const { getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
     expect(getByText('按地区细分')).toBeDefined()
   })
 
-  it('shows chips when turnTimings has no entry for latest turn', () => {
+  it('shows rows when turnTimings has no entry for latest turn', () => {
     const snapshot = makeSnapshot()
     ;(snapshot.turnTimings as Map<number, unknown>).clear()
-    const block = makeSettledBlock(VALID_ARGS)
-    const { getByText } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
+    const { getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
     expect(getByText('按地区细分')).toBeDefined()
   })
 
@@ -237,9 +271,7 @@ describe('FollowupChips', () => {
       resultView: null,
       subCalls: [],
     } as unknown as ToolCallBlock
-    const { container } = render(
-      <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={() => {}} />,
-    )
+    const { container } = renderList(block, snapshot)
     const pre = container.querySelector('pre')
     expect(pre).not.toBeNull()
     expect(pre!.textContent).toBe('')
