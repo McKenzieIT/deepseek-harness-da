@@ -175,7 +175,7 @@
 **并行启动（无依赖，立即可做）**：
 - **P11d LLM Judge 收尾 (task, open)**：persist judge verdicts（AttemptResult 加 sql_judge 字段）+ few-shot calibration + dual-score policy（executor 在时同时记录 judge verdict）+ calibration run + human agreement >85%。〔tickets/phase-4/P11d-eval-llm-judge-sql-semantics.md〕
 - **M1-range-where-hint (task, resolved 2026-08-27)**：buildMetricContext 追加时间范围 WHERE hint（基于宿主 table granularity + partitions 推断 ds 过滤建议）。〔tickets/phase-misc/M1-range-where-hint.md〕
-- **W8 Evidence RPC Gateway (task, open)**：evidence-query → TypertRemoteService + store 热加载 + ui-semantic-layer wiring 接通（解锁 DashboardView/EvidenceSidebar/GoalDock sparkline）。〔tickets/phase-misc/W8-evidence-rpc-gateway.md〕
+- **W8 Evidence RPC Gateway (task, resolved 2026-08-27)**：evidence-query → TypertRemoteService gateway（8 个 @Remote 方法匹配 evidenceQueryBridge 契约）+ FileBackedEvalResultStore 运行时注入（resultsDir config）+ eval-run-completed 事件热加载 + bundle patch 注册。Gateway namespace='evidenceQuery'，客户端 bridge 可直连。〔tickets/phase-misc/W8-evidence-rpc-gateway.md〕
 
 **W8 完成后（并行）**：
 - **W9 Schema Browser UI (task, open)**：消费 SchemaGateway W1 API 的 client 组件——domain 列表 → asset 列表 → 详情卡 → 搜索。〔tickets/phase-misc/W9-schema-browser-ui.md〕

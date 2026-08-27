@@ -32,7 +32,6 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
   EnrichedCoverageStats,
-  ConfirmationBreakdown,
   GapAnalysisResult,
   GapEntry,
   ProposedRelation,
@@ -50,9 +49,16 @@ export type * from './types.ts'
 
 const STATUS_RANK: Record<EvalResultRecord['status'], number> = { pass: 3, fail: 1, error: 0, pending: 0 }
 
+export interface EvidenceQueryConfig {
+  readonly resultsDir?: string
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     evidenceQuery: EvidenceQueryService
+  }
+  interface Events {
+    'evidence/eval-run-completed'(): void
   }
 }
 
@@ -231,9 +237,21 @@ export class EvidenceQueryService extends Service {
 
   private readonly evalStore: EvalResultStore
 
-  constructor(ctx: Context, evalStore?: EvalResultStore) {
+  constructor(ctx: Context, configOrStore?: EvidenceQueryConfig | EvalResultStore) {
     super(ctx, 'evidenceQuery')
-    this.evalStore = evalStore ?? new EvalResultStore()
+    if (configOrStore instanceof EvalResultStore) {
+      this.evalStore = configOrStore
+    } else {
+      const resultsDir = configOrStore?.resultsDir
+      this.evalStore = resultsDir
+        ? new FileBackedEvalResultStore(resultsDir)
+        : new EvalResultStore()
+    }
+    ctx.on('evidence/eval-run-completed', () => {
+      if (this.evalStore instanceof FileBackedEvalResultStore) {
+        this.evalStore.refresh()
+      }
+    })
   }
 
   /**
@@ -335,8 +353,8 @@ export class EvidenceQueryService extends Service {
     const queue: string[] = [sourceId]
 
     while (queue.length > 0) {
-      const current = queue.shift()!
-      const currentPath = visited.get(current)!
+      const current = queue.shift() as string
+      const currentPath = visited.get(current) as string[]
       const edges = graph.getRelated(current, 'joins')
       for (const edge of edges) {
         if (visited.has(edge.targetId)) continue
@@ -566,3 +584,9 @@ export class EvidenceQueryService extends Service {
 }
 
 export default EvidenceQueryService
+
+export function apply(ctx: Context, config: EvidenceQueryConfig = {}): void {
+  new EvidenceQueryService(ctx, config)
+}
+
+export { EvidenceQueryGateway } from './gateway.ts'

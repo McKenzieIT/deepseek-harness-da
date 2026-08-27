@@ -21,6 +21,12 @@
  */
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
+
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    'evidence/eval-run-completed'(): void
+  }
+}
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { runBatch, compareDelta } from '@deepseek-ai/dsh-eval-runner'
 import type {
@@ -372,6 +378,7 @@ export class EvalRunnerService extends Service {
     })
     // Persist JSONL (the W3→W4 bridge) so evidence-query + goal-eval-policy read it.
     persistRunResultJsonl(result, this.resultsDir, this.passK)
+    this.ctx.emit('evidence/eval-run-completed')
     // Track last / last-two for delta + trigger_eval report_last.
     if (this.lastRun !== null) {
       this.lastTwoRuns = [this.lastRun, result]

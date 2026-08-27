@@ -165,6 +165,10 @@
       name: '@deepseek-ai/dsh-schema-gateway'
     - id: evidence-query      # W4: unified evidence-query layer (coverage/gap/eval-result)
       name: '@deepseek-ai/dsh-evidence-query'
+      config:
+        resultsDir: .tmp/eval-results
+    - id: evidence-query-gateway  # W8: RPC gateway for evidence-query (TypertRemoteService)
+      name: '@deepseek-ai/dsh-evidence-query/src/gateway.ts'
     - id: ui-semantic-layer   # W5: semantic layer management UI (client plugin)
       name: '@deepseek-ai/dsh-client-ui-semantic-layer'
     - id: eval-runner-service # W6a-gap: wire the ctx.evalRunner seam — activates trigger_eval full_run + the ③ goal-eval-policy no-progress backstop. Drives the real Nl2sqlEngine (ctx.llm + ctx.query) over the K11 case set, persists JSONL for evidence-query, tracks last/last-two runs for delta. inject ['llm'] + optional ['query','nl2sql','schema'] — degrades to all-fail verdicts when a seam is unmounted, never crashes the bundle.
