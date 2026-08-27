@@ -34,7 +34,6 @@ import {
   PHASE_ORDER,
   PHASE_CONFIGS,
   PHASE_TOOLS,
-  UNIVERSAL_TOOLS,
   PipelineConfig,
   GateResult,
   INCOMPLETE_MARKER,
@@ -174,7 +173,11 @@ export class PhaseGate {
     if (agent === undefined) return undefined // no agent (host probe) — allow
     const s = this.state(String(agent.id))
     if (s.honest_decline_reason !== null || s.cancelled) return 'turn ended'
-    const phase = s.current_phase as PhaseType
+    // D5b hardening: explicit terminal check before PHASE_TOOLS lookup — prevents
+    // undefined.includes crash if the early-return above is ever bypassed.
+    const raw = s.current_phase
+    if (raw === 'COMPLETE' || raw === 'DECLINED') return 'turn ended'
+    const phase = raw as PhaseType
     const allowed = PHASE_TOOLS[phase]
     if (!allowed.includes(execution.name)) {
       return `phase-gate: "${execution.name}" not in ${phase} whitelist [${allowed.join('|')}]`
@@ -613,15 +616,20 @@ export class PhaseGate {
     }
     // D5b proactive tool visibility: filter assembly.tools to the current phase's
     // whitelist so the LLM never sees tools it cannot use. Non-phase-gate agents
-    // (s === null) pass through unchanged; terminal states get UNIVERSAL_TOOLS only.
-    const phaseTools: readonly string[] = s === null
-      ? [] // non-phase-gate: unused — pass-through handled in the tools ternary below
+    // (s === null) pass through unchanged; terminal states get empty list (aligned
+    // with guard's "turn ended" rejection — no contradictory signals to the model).
+    const phaseToolSet: ReadonlySet<string> | null = s === null
+      ? null // non-phase-gate: pass-through (no filtering)
       : (rawPhase === 'DECLINED' || rawPhase === 'COMPLETE')
-        ? UNIVERSAL_TOOLS
-        : PHASE_TOOLS[phase]
-    const tools = s === null
+        ? new Set<string>() // terminal: no tools (turn ending, guard rejects all)
+        : new Set(PHASE_TOOLS[phase])
+    const tools = phaseToolSet === null
       ? merged.tools
-      : merged.tools.filter(t => phaseTools.includes(t.name))
+      : merged.tools.filter(t => phaseToolSet.has(t.name))
+    if (phaseToolSet !== null && tools.length < merged.tools.length) {
+      const filtered = merged.tools.filter(t => !phaseToolSet.has(t.name)).map(t => t.name)
+      this.ctx.logger.debug(`[D5b] ${rawPhase}: filtered ${filtered.length} tools: ${filtered.join(', ')}`)
+    }
     return { ...merged, sections, tools }
   }
 

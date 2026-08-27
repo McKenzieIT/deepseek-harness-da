@@ -268,7 +268,7 @@ describe('prompt granularity annotation', () => {
       conventions: null,
       isTrend: true,
     })
-    expect(prompt).toMatch(/9\.\s*.*[趋势|日粒度|_di]/)
+    expect(prompt).toMatch(/9\.\s*.*(趋势|日粒度|_di)/)
   })
 
   test('buildEvalPrompt includes rule 9 when isTrend=true', () => {
@@ -279,7 +279,7 @@ describe('prompt granularity annotation', () => {
       conventions: null,
       isTrend: true,
     })
-    expect(prompt).toMatch(/9\.\s*.*[趋势|日粒度|_di]/)
+    expect(prompt).toMatch(/9\.\s*.*(趋势|日粒度|_di)/)
   })
 
   test('_df candidates annotated with [快照] when isTrend=true', () => {

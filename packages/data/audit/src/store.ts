@@ -659,8 +659,12 @@ export class SQLiteAuditStore {
   /**
    * Record a before-snapshot for an asset edit. Auto-increments the per-asset
    * version number. Returns the assigned version.
+   *
+   * Safe under SQLite WAL single-writer serialization: concurrent writers wait
+   * on busy_timeout, so MAX(version) is always consistent within the txn.
    */
   recordSnapshot(assetName: string, kind: 'table' | 'event', content: string, logId?: string): number {
+    if (!content) throw new Error('recordSnapshot: content must be non-empty')
     try {
       this.db.exec('BEGIN')
       const row = this.db.prepare(

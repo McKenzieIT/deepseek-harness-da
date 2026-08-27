@@ -25,7 +25,9 @@
     "@deepseek-ai/dsh-semantic-layer": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^"
   },
-  "dependencies": {},
+  "dependencies": {
+    "js-yaml": "^4.2.0"
+  },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",

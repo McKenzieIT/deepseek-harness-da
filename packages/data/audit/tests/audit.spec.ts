@@ -274,43 +274,52 @@ describe('definition_snapshot (W11 S1)', () => {
     expect(list[0]!.log_id).toBeNull()
   })
 
-  it('migration from v1 creates snapshot table', () => {
-    // Simulate a v1 database by creating one without the snapshot table
-    const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite')
-    const db = new DatabaseSync(':memory:')
-    db.exec('PRAGMA foreign_keys = ON')
-    db.exec('PRAGMA journal_mode = WAL')
-    // Create only the v1 tables
-    db.exec(`
-      CREATE TABLE audit_event (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        log_id TEXT UNIQUE NOT NULL,
-        ts TEXT NOT NULL,
-        session_id TEXT, chat_session_id INTEGER,
-        scope_id TEXT, tenant_id TEXT, user_id TEXT, model TEXT,
-        review_status TEXT NOT NULL DEFAULT 'pending',
-        payload TEXT NOT NULL, ingested_at TEXT NOT NULL
-      ) STRICT;
-      CREATE TABLE audit_override (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        log_id TEXT NOT NULL, field TEXT NOT NULL, value TEXT,
-        patched_by TEXT, patched_at TEXT NOT NULL, reason TEXT
-      ) STRICT;
-      CREATE TABLE audit_tag (
-        event_id INTEGER NOT NULL, tag TEXT NOT NULL,
-        PRIMARY KEY (event_id, tag),
-        FOREIGN KEY (event_id) REFERENCES audit_event(id) ON DELETE CASCADE
-      ) STRICT;
-    `)
-    db.exec('PRAGMA user_version = 1')
-    db.close()
+  it('migration from v1 creates snapshot table', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { DatabaseSync } = await import('node:sqlite')
+    const os = await import('node:os')
+    const tmpDir = mkdtempSync(join(os.tmpdir(), 'audit-migration-'))
+    const dbPath = join(tmpDir, 'audit.db')
+    try {
+      // Create a v1 database (without the snapshot table)
+      const db = new DatabaseSync(dbPath)
+      db.exec('PRAGMA foreign_keys = ON')
+      db.exec('PRAGMA journal_mode = WAL')
+      db.exec(`
+        CREATE TABLE audit_event (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          log_id TEXT UNIQUE NOT NULL,
+          ts TEXT NOT NULL,
+          session_id TEXT, chat_session_id INTEGER,
+          scope_id TEXT, tenant_id TEXT, user_id TEXT, model TEXT,
+          review_status TEXT NOT NULL DEFAULT 'pending',
+          payload TEXT NOT NULL, ingested_at TEXT NOT NULL
+        ) STRICT;
+        CREATE TABLE audit_override (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          log_id TEXT NOT NULL, field TEXT NOT NULL, value TEXT,
+          patched_by TEXT, patched_at TEXT NOT NULL, reason TEXT
+        ) STRICT;
+        CREATE TABLE audit_tag (
+          event_id INTEGER NOT NULL, tag TEXT NOT NULL,
+          PRIMARY KEY (event_id, tag),
+          FOREIGN KEY (event_id) REFERENCES audit_event(id) ON DELETE CASCADE
+        ) STRICT;
+      `)
+      db.exec('PRAGMA user_version = 1')
+      db.close()
 
-    // Re-open via openAuditDatabase (triggers migration)
-    const db2 = openAuditDatabase(':memory:')
-    const store2 = new SQLiteAuditStore(db2)
-    // Should be able to use snapshot methods
-    const v = store2.recordSnapshot('test_asset', 'table', 'content')
-    expect(v).toBe(1)
-    db2.close()
+      // Re-open via openAuditDatabase — should trigger v1→v2 migration
+      const db2 = openAuditDatabase(dbPath)
+      const store2 = new SQLiteAuditStore(db2)
+      const v = store2.recordSnapshot('test_asset', 'table', 'content')
+      expect(v).toBe(1)
+      const ver = db2.prepare('PRAGMA user_version').get() as { user_version: number }
+      expect(ver.user_version).toBe(2)
+      db2.close()
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
   })
 })

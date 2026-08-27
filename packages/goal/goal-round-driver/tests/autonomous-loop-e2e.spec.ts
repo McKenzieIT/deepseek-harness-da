@@ -174,7 +174,7 @@ async function e2eHarness(
   // set trap accepts property writes, making them accessible to plugins that
   // read ctx.evidenceQuery inside their apply() functions.
   const deltaFn = realBeforeAfterDelta(evalStore)
-  ;(ctx as any).evidenceQuery = {
+  ;(ctx as unknown as Record<string, unknown>).evidenceQuery = {
     getEvalStore: () => evalStore,
     beforeAfterDelta: (a: string, b: string) => deltaFn(a, b),
   }
@@ -185,7 +185,7 @@ async function e2eHarness(
   ctx.provide('evalRunner', { runBatch: runBatchSpy })
 
   // Mount goal-eval-policy via direct apply (bypasses inject checks)
-  applyEvalPolicy(ctx as any, {
+  applyEvalPolicy(ctx as unknown as Record<string, unknown>, {
     goalEvalIntervalRounds: K,
     noProgressThreshold: N,
   })
@@ -197,7 +197,7 @@ async function e2eHarness(
   // plugin is mounted in the agent's preset scope. In this test, the
   // listener is registered at the root — agent-scoped events may not bubble
   // to it. Scenario 2 verifies the render pipeline independently.
-  applyEvalContext(ctx as any, { hintEscalationThreshold: 2 })
+  applyEvalContext(ctx as unknown as Record<string, unknown>, { hintEscalationThreshold: 2 })
 
   await ctx.plugin(AgentLoop, { agents: [] })
 

@@ -70,7 +70,7 @@ function formatDecomposition(value: PresentDecompositionResult): string {
   let text = `Query decomposition: ${value.summary}\n`
   text += `Time range: ${value.time_range}\n`
   text += `Dimensions: ${value.dimensions.join(', ')}\n`
-  text += `Metrics:\n`
+  text += 'Metrics:\n'
   for (const m of value.metrics) {
     text += `  - ${m.name}: ${m.value}${m.unit ? ` (${m.unit})` : ''}\n`
   }

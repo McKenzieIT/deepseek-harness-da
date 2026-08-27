@@ -186,5 +186,5 @@ test('presentTableResult rejects empty title', () => {
 })
 
 test('presentTableResult rejects invalid chart.type', () => {
-  expect(() => presentTableResult('qr-1', 'T', undefined, undefined, undefined, undefined, { type: 'pie' as any, x_column: 0, y_columns: [1] })).toThrow(/chart\.type/i)
+  expect(() => presentTableResult('qr-1', 'T', undefined, undefined, undefined, undefined, { type: 'pie' as unknown as 'bar', x_column: 0, y_columns: [1] })).toThrow(/chart\.type/i)
 })

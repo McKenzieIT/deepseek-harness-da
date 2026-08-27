@@ -3,18 +3,7 @@ import { openAuditDatabase, SQLiteAuditStore } from '../../audit/src/store.ts'
 
 // ── Mock SemanticLayerService ───────────────────────────────────────────────
 
-function createMockSchema(assets: {
-  tables?: Record<string, Record<string, unknown>>
-  events?: Record<string, Record<string, unknown>>
-} = {}) {
-  return {
-    semanticRoot: '/tmp/test-semantic-layer',
-    loadTableDefinition: vi.fn((name: string) => assets.tables?.[name] ?? null),
-    loadEventDefinition: vi.fn((name: string) => assets.events?.[name] ?? null),
-    loadMetricDefinition: vi.fn(() => null),
-    updateTableMeta: vi.fn().mockResolvedValue({ ok: true }),
-  }
-}
+
 
 function createMockAudit() {
   const db = openAuditDatabase(':memory:')
@@ -68,7 +57,7 @@ describe('tool-revert-edit', () => {
     // Import the module to test the tool's execute logic
     it('rejects invalid names via the tool execute path', async () => {
       // We test the validation indirectly through the tool's logic
-      const { apply } = await import('../src/index.ts')
+      const { apply: _apply } = await import('../src/index.ts')
 
       // Basic validation coverage - the tool reuses the same pattern as edit_definition
       const invalid = ['', '   ', '../etc', 'foo/bar', '.', 'a'.repeat(201)]

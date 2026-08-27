@@ -29,7 +29,7 @@ const DI_SUFFIX = /_di$/
  */
 export function rerankByGranularity(candidates: readonly RetrievalHit[], isTrend: boolean): readonly RetrievalHit[] {
   if (!isTrend) return candidates
-  const boosted = candidates.map(c => {
+  const boosted = candidates.map((c) => {
     if (DI_SUFFIX.test(c.id)) {
       return { ...c, score: c.score * 1.5 }
     }

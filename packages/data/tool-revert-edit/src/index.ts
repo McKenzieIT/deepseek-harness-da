@@ -68,7 +68,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
       to_version: {
         type: 'integer',
-        required: true,
+        required: false,
+        minimum: 1,
         description:
           'The snapshot version to restore. Use list mode (omit to_version and '
           + 'set list_versions=true) to see available versions, or specify a '
@@ -167,13 +168,15 @@ export function apply(ctx: Context, _config: Config = {}): void {
         }
       } catch { /* fail-silent: pre-revert snapshot failure must not block the revert */ }
 
-      // Write the snapshot content back to the semantic layer
+      // Write the snapshot content back to the semantic layer.
+      // Intentionally uses raw writeTable (not schema.updateTableMeta) because a
+      // revert restores the exact prior state — re-enrichment (enrichOnWrite) would
+      // mutate the restored definition, defeating the purpose of an undo.
       try {
         const { writeTable, writeEventYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
         if (kind === 'table') {
           const { load: yamlLoad } = await import('js-yaml')
           const obj = yamlLoad(snapshot.content) as Record<string, unknown>
-          // writeTable throws WriteValidationError on failure, returns path on success
           await writeTable(schema.semanticRoot, validated, obj)
         } else if (kind === 'event') {
           const res = await writeEventYaml(schema.semanticRoot, validated, snapshot.content)

@@ -64,7 +64,7 @@ console.log(missing.length === 0
 
 // 2. Simulate TypertGateway's collectSrcClaims() discovery
 console.log('\n── 2. TypertGateway Discovery (simulated) ──')
-const binding = (gw as any).typertRemote
+const binding = (gw as unknown as Record<string, unknown>).typertRemote as { namespace: string }
 const namespace = binding.namespace
 const endpoints = methods.map(m => `${namespace}/${m.exportName ?? m.method}`)
 console.log('  Endpoints the gateway would claim:')

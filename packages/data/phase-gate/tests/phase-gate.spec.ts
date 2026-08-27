@@ -37,7 +37,7 @@ function execView(name: string, agent: Agent, args?: unknown): ToolExecution {
 function resultOk(value: unknown): ToolExecutionResult {
   return { isError: false, value, content: [] } as unknown as ToolExecutionResult
 }
-function gate(ctx: Context = { logger: { info: () => undefined } } as unknown as Context): PhaseGate {
+function gate(ctx: Context = { logger: { info: () => undefined, debug: () => undefined } } as unknown as Context): PhaseGate {
   return new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
 }
 
