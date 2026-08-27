@@ -289,12 +289,18 @@ class Nl2sqlAgentResponder implements AgentResponder {
       : baseLinker
 
     const lookupDoc = (id: string) => corpus.find(d => d.id === id) as import('@deepseek-ai/dsh-nl2sql-engine').DataSourceDoc | undefined
+    const partitionResolver = (tableName: string): readonly string[] | null => {
+      const svc = this.ctx.get('schema') as { loadTableDefinition?(name: string): { partitions: Array<{ name: string }> } | null } | undefined
+      const def = svc?.loadTableDefinition?.(tableName)
+      return def?.partitions?.map(p => p.name) ?? null
+    }
     const engine = new Nl2sqlEngine({
       llm: this.llm,
       odps: this.odps,
       conventions: null,
       retrieval,
       lookupDoc,
+      partitionResolver,
       ...(graph !== undefined ? { graph } : {}),
     })
 
@@ -420,7 +426,31 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   // 6. SQL Semantic Judge (enabled by default when no executor)
   let sqlJudge: SqlSemanticJudge | null = null
   if (!opts.noSqlJudge) {
-    sqlJudge = new LlmSqlSemanticJudge(prompt => llmAdapter.completeText(prompt))
+    sqlJudge = new LlmSqlSemanticJudge(async (prompt) => {
+      const assembler = new BlockAssembler()
+      const options = {
+        provider: opts.provider,
+        model: opts.model,
+        messages: [
+          createUserMessage({
+            content: [{ type: 'text' as const, text: prompt }],
+            source: { kind: 'plugin' as const, plugin: 'eval-cli-judge' },
+          }),
+        ],
+      }
+      for await (const chunk of ctx.llm.stream(options)) assembler.push(chunk)
+      const blocks = assembler.blocks()
+      const text = blocks
+        .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+        .map(b => b.text)
+        .join('')
+      if (text.length > 0) return text
+      const reasoning = blocks
+        .filter((b): b is { type: 'reasoning'; text: string } => b.type === 'reasoning')
+        .map(b => b.text)
+        .join('')
+      return reasoning || ''
+    })
   }
 
   return { ctx, collaborators: { agent, judge, executor, sqlJudge } }
