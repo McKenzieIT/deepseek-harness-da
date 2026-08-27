@@ -629,7 +629,6 @@ export class PhaseGate {
     if (s.execution_auto_advance && s.current_phase === Phase.EXECUTION) {
       s.execution_auto_advance = false
       this.advance(agent, s)
-      return { kind: 'reject' }
     }
     return next()
   }
@@ -733,6 +732,8 @@ export class PhaseGate {
   private inject(agent: Agent, text: string): void {
     agent.inject(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
   }
+
+
 
   private generationGate(s: PhaseGateState): GateResult {
     // GROUNDING GATE (c root-cause): GENERATION requires a definition was
