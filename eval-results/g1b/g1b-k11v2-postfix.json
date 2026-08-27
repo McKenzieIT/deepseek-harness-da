@@ -1,0 +1,1852 @@
+{
+  "run_id": "g1b-k11v2-postfix",
+  "timestamp": "2026-08-26T17:50:50.455Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_amt) AS total_pay_amt FROM dws_10000251_univ_acc_act_di WHERE ds = '20260728'",
+          "query_result": [
+            [
+              59398
+            ]
+          ],
+          "expected_result": {
+            "total_pay_amt": 1500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 25972
+    },
+    {
+      "case_id": "k11v2_002",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT account_id) AS paying_account_cnt FROM dws_10000251_univ_acc_act_di WHERE ds = '20260728' AND pay_amt > 0;",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,23] Semantic analysis exception - column account_id cannot be resolved"
+            }
+          ],
+          "expected_result": {
+            "pay_users": 2800
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 36959
+    },
+    {
+      "case_id": "k11v2_003",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN pay_amt_std > 0 THEN account_id END) AS pay_acc_uv FROM dws_10000251_acc_summary_df WHERE ds = MAX_PT('dws_10000251_acc_summary_df');",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,128] Semantic analysis exception - encounter runtime exception while evaluating function max_pt, detailed message: table \"ieu_cdm.dws_10000251_acc_summary_df\" has no partitions or none of the partitions have any data"
+            }
+          ],
+          "expected_result": {
+            "total": 281119
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 26933
+    },
+    {
+      "case_id": "k11v2_004",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS total_role_count FROM dws_10000251_role_common_feature_df WHERE ds = '20260728';",
+          "query_result": [
+            [
+              1590952
+            ]
+          ],
+          "expected_result": {
+            "total": 500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 52452
+    },
+    {
+      "case_id": "k11v2_005",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(CASE WHEN act = 1 THEN 1 ELSE 0 END) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds = '20260729';",
+          "query_result": [
+            [
+              4520
+            ]
+          ],
+          "expected_result": {
+            "dau": 120000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 29453
+    },
+    {
+      "case_id": "k11v2_006",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:load_event_definition{\"event_name\": \"game.role.create\"}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2278FDD813C66EE2D5E0 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call:load_event_definition{\"event_name\": \"game.role.create\"}\nODPS-0130161:[1,6] Parse exception - invalid token 'load_event_definition', expect '':''"
+            }
+          ],
+          "expected_result": {
+            "new_users": 5200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 14258
+    },
+    {
+      "case_id": "k11v2_007",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT '设备' AS subject, AVG(CASE WHEN pay_amt_std > 0 THEN 1.0 ELSE 0.0 END) AS pay_conversion_rate FROM dws_10000251_univ_dev_tag_df WHERE ds = '20260728'",
+          "query_result": [
+            [
+              "设备",
+              0.14498834267572797
+            ]
+          ],
+          "expected_result": {
+            "pay_rate": 0.15
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 63220
+    },
+    {
+      "case_id": "k11v2_008",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_amt) * 1.0 / NULLIF(SUM(pay), 0) AS arppu FROM dws_10000251_univ_role_act_di WHERE ds = '20260728';",
+          "query_result": [
+            [
+              127.19057815845824
+            ]
+          ],
+          "expected_result": {
+            "arppu": 479
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 38023
+    },
+    {
+      "case_id": "k11v2_009",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS predicted_churn_role_cnt FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds = '20260728' AND tag = 1;",
+          "query_result": [
+            [
+              0
+            ]
+          ],
+          "expected_result": {
+            "churn_predicted": 8500
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 38405
+    },
+    {
+      "case_id": "k11v2_010",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT fteam_id) AS fteam_cnt FROM dws_10000251_social_fteam_summary_df WHERE ds = MAX_PT('dws_10000251_social_fteam_summary_df')",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,99] Semantic analysis exception - encounter runtime exception while evaluating function max_pt, detailed message: table \"ieu_cdm.dws_10000251_social_fteam_summary_df\" has no partitions or none of the partitions have any data"
+            }
+          ],
+          "expected_result": {
+            "total_teams": 35000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 31631
+    },
+    {
+      "case_id": "k11v2_011",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "battle_count": 85000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 58573
+    },
+    {
+      "case_id": "k11v2_012",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.rogue.end\"}}</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F22D216C903A7108D29CB Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.rogue.end\"}}</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "players": 22000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 24710
+    },
+    {
+      "case_id": "k11v2_013",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT AVG(pay_amt) AS avg_order_amt FROM dws_10000251_com_pay_order_df WHERE ds = '20260728';",
+          "query_result": [
+            [
+              4578.870631488963
+            ]
+          ],
+          "expected_result": {
+            "avg_order_amt": 4578
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 45592
+    },
+    {
+      "case_id": "k11v2_014",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN pay_amt >= 100000 THEN account_id END) AS big_r_user_cnt FROM dws_10000251_com_pay_order_df WHERE ds = MAX_PT('dws_10000251_com_pay_order_df')",
+          "query_result": [
+            [
+              1067
+            ]
+          ],
+          "expected_result": {
+            "big_r_count": 1200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 42635
+    },
+    {
+      "case_id": "k11v2_015",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(*) AS shop_buy_cnt FROM dws_10000251_recharge_shop_buy_di WHERE ds = '20260728';",
+          "query_result": [
+            [
+              113
+            ]
+          ],
+          "expected_result": {
+            "total_purchases": 95000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 83753
+    },
+    {
+      "case_id": "k11v2_016",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_amt) AS total_pay_amt FROM dws_10000251_com_gm_activity_order_df WHERE ds = '20260728';",
+          "query_result": [
+            [
+              null
+            ]
+          ],
+          "expected_result": {
+            "gm_revenue": 320000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 37376
+    },
+    {
+      "case_id": "k11v2_017",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:default_api:load_table_dimensions{table_name: \"dws_10000251_card_coll_df\"}\ncall:default_api:load_table_dimensions{table_name: \"dim_10000251_trans_card_df\"}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F230DDE60D67133DAFD17 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call:default_api:load_table_dimensions{table_name: \"dws_10000251_card_coll_df\"}\ncall:default_api:load_table_dimensions{table_name: \"dim_10000251_trans_card_df\"}\nODPS-0130161:[1,6] Parse exception - invalid token 'default_api', expect '':''\nODPS-0130161:[1,39] Parse exception - invalid token '{', expect 'LPAREN'\nODPS-0130161:[2,6] Parse exception - invalid token 'default_api', expect '':''\nODPS-0130161:[2,39] Parse exception - invalid token '{', expect 'LPAREN'"
+            }
+          ],
+          "expected_result": {
+            "max_card_owners": 15000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 16194
+    },
+    {
+      "case_id": "k11v2_018",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "为了准确回答“通关最终关卡的角色有多少”，我需要先明确“最终关卡”的具体定义（例如具体的关卡ID、章节ID，或是维表中是否有“最终关卡”的标识字段），以及它所属的玩法（如主线关卡、古战场等）。\n\n让我先查询关卡维表的结构以及相关的术语定义：\n\n```json\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dim_10000251_trans_stage_df\"}}\n```\n```json\n{\"name\": \"lookup_terminology\", \"arguments\": {\"term\": \"最终关卡\"}}\n```",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2325E144F9F596BBB1C5 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 为了准确回答“通关最终关卡的角色有多少”，我需要先明确“最终关卡”的具体定义（例如具体的关卡ID、章节ID，或是维表中是否有“最终关卡”的标识字段），以及它所属的玩法（如主线关卡、古战场等）。\n\n让我先查询关卡维表的结构以及相关的术语定义：\n\n```json\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dim_10000251_trans_stage_df\"}}\n\n```json\n{\"name\": \"lookup_terminology\", \"arguments\": {\"term\": \"最终关卡\"}}\nODPS-0130161:[1,1] Parse exception - invalid token '为了准确回答'"
+            }
+          ],
+          "expected_result": {
+            "cleared": 3200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 23629
+    },
+    {
+      "case_id": "k11v2_019",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。\n\n**原因说明**：\n当前可用的舆情监控数据表（`dws_10000251_public_sentiment_df`）中，仅包含内容基础属性（来源、类型、文本等）和互动度量指标（点赞、阅读、回复等），**缺少标识舆情情感倾向（如“正面/负面/中性”分类或情感得分）的字段**，因此无法在数据层面过滤和统计“负面”舆情。\n\n**缺失内容**：\n缺少类似 `sentiment_type`（情感类型）、`emotion_score`（情感得分）或 `is_negative`（是否负面）等用于区分舆情正负向的字段。\n\n**解决建议**：\n1. **上游补充字段**：在舆情数据采集或数仓加工链路中，接入 NLP 情感分析模型，将情感分类结果作为新字段（如 `sentiment`）沉淀到 `dws_10000251_public_sentiment_df` 表中。\n2. **关联结果表**：如果情感分析结果存储在独立的模型结果表或维表中，请提供该表名及关联键（如 `cid`），我可以通过 JOIN 查询为您计算负面舆情条数。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2329EA800B324C980E30 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法回答该问题。\n\n**原因说明**：\n当前可用的舆情监控数据表（`dws_10000251_public_sentiment_df`）中，仅包含内容基础属性（来源、类型、文本等）和互动度量指标（点赞、阅读、回复等），**缺少标识舆情情感倾向（如“正面/负面/中性”分类或情感得分）的字段**，因此无法在数据层面过滤和统计“负面”舆情。\n\n**缺失内容**：\n缺少类似 `sentiment_type`（情感类型）、`emotion_score`（情感得分）或 `is_negative`（是否负面）等用于区分舆情正负向的字段。\n\n**解决建议**：\n1. **上游补充字段**：在舆情数据采集或数仓加工链路中，接入 NLP 情感分析模型，将情感分类结果作为新字段（如 `sentiment`）沉淀到 `dws_10000251_public_sentiment_df` 表中。\n2. **关联结果表**：如果情感分析结果存储在独立的模型结果表或维表中，请提供该表名及关联键（如 `cid`），我可以通过 JOIN 查询为您计算负面舆情条数。\nODPS-0130161:[1,1] Parse exception - invalid token '无法回答该问题'"
+            }
+          ],
+          "expected_result": {
+            "negative_count": 42
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 16934
+    },
+    {
+      "case_id": "k11v2_020",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "**拒绝回答**\n\n**为什么不能答**：\n当前检索到的数据源中仅包含局部途径的钻石产出事件（如 `game.rechargebundlepackage.fetch` 对应136礼包产出，`game.mission.reward` 对应任务领奖产出），缺少全局的货币/钻石变更事件。如果仅使用现有事件计算，会遗漏活动奖励、成就奖励、系统补偿等其他大量产出途径，导致结果严重偏小，无法代表真实的“钻石总产出量”。\n\n**缺什么**：\n缺少涵盖所有途径的全局钻石/货币增加事件（如 `currency_change`、`item_add`、`coin_gain` 等）或对应的统一“钻石总产出”指标定义。\n\n**怎么解决**：\n1. 请确认并提供全局的钻石产出/货币增加事件名称，我将基于该全局事件为您计算准确的总产出量。\n2. 如果您实际想问的是特定途径的产出，请明确具体途径（例如：“昨天136礼包产出的充值钻石总量是多少”或“昨天任务奖励产出的钻石总量是多少”），我将为您精确查询。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F23584E42979577775B82 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: **拒绝回答**\n\n**为什么不能答**：\n当前检索到的数据源中仅包含局部途径的钻石产出事件（如 `game.rechargebundlepackage.fetch` 对应136礼包产出，`game.mission.reward` 对应任务领奖产出），缺少全局的货币/钻石变更事件。如果仅使用现有事件计算，会遗漏活动奖励、成就奖励、系统补偿等其他大量产出途径，导致结果严重偏小，无法代表真实的“钻石总产出量”。\n\n**缺什么**：\n缺少涵盖所有途径的全局钻石/货币增加事件（如 `currency_change`、`item_add`、`coin_gain` 等）或对应的统一“钻石总产出”指标定义。\n\n**怎么解决**：\n1. 请确认并提供全局的钻石产出/货币增加事件名称，我将基于该全局事件为您计算准确的总产出量。\n2. 如果您实际想问的是特定途径的产出，请明确具体途径（例如：“昨天136礼包产出的充值钻石总量是多少”或“昨天任务奖励产出的钻石总量是多少”），我将为您精确查询。\nODPS-0130161:[1,1] Parse exception - invalid token '*'"
+            }
+          ],
+          "expected_result": {
+            "diamond_output": 8500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 51078
+    },
+    {
+      "case_id": "k11v2_021",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN CAST(viplevel AS BIGINT) > 0 THEN role_id END) AS vip_role_count FROM dws_10000251_role_common_feature_df WHERE ds = '20260728'",
+          "query_result": [
+            [
+              0
+            ]
+          ],
+          "expected_result": {
+            "vip_count": 12000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 43403
+    },
+    {
+      "case_id": "k11v2_022",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS role_dau FROM dws_10000251_algo_role_act_pay_df WHERE ds = '20260728' AND act_ds = '20260728';",
+          "query_result": [
+            [
+              705
+            ]
+          ],
+          "expected_result": {
+            "role_dau": 350000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 38218
+    },
+    {
+      "case_id": "k11v2_023",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT AVG(act_dur) AS avg_act_dur FROM dws_10000251_univ_role_server_act_di WHERE ds BETWEEN '20260722' AND '20260728'",
+          "query_result": [
+            [
+              4360.896079386339
+            ]
+          ],
+          "expected_result": {
+            "avg_dur": 3600
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 50133
+    },
+    {
+      "case_id": "k11v2_024",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(CASE WHEN pay_type = 1 THEN pay_amt ELSE 0 END) AS cash_pay_amt_fen, SUM(CASE WHEN pay_type = 1 THEN pay_amt ELSE 0 END) / 100.0 AS cash_pay_amt_yuan FROM dws_10000251_com_pay_order_df WHERE ds = '20260728';",
+          "query_result": [
+            [
+              10727453832,
+              107274538.32
+            ]
+          ],
+          "expected_result": {
+            "cash_revenue": 1200000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 41018
+    },
+    {
+      "case_id": "k11v2_025",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(CASE WHEN result = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS pvp_win_rate FROM dws_10000251_pvp_battle_detail_di WHERE ds = '20260728'",
+          "query_result": [
+            [
+              0.7028882948052629
+            ]
+          ],
+          "expected_result": {
+            "avg_win_rate": 0.5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 65489
+    },
+    {
+      "case_id": "k11v2_026",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT stage_id, AVG(pass_rate) AS avg_pass_rate FROM dws_10000251_battle_stage_part_df WHERE ds = '20260728' GROUP BY stage_id ORDER BY avg_pass_rate ASC LIMIT 1",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 3
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 47289
+    },
+    {
+      "case_id": "k11v2_027",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dim_10000251_resource_name_info\"}}\n</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F23984E429795777CEFD8 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dim_10000251_resource_name_info\"}}\n</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "gold_consume": 12000000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 17729
+    },
+    {
+      "case_id": "k11v2_028",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(act_fst) AS new_device_cnt FROM dws_10000251_univ_dev_act_di WHERE ds = '20260728'",
+          "query_result": [
+            [
+              467
+            ]
+          ],
+          "expected_result": {
+            "new_devices": 6800
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 34643
+    },
+    {
+      "case_id": "k11v2_029",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "avg_level": 45
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 80594
+    },
+    {
+      "case_id": "k11v2_030",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT b.id AS card_id, b.name AS card_name,",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F23D1BA0291F543F8C7EF Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: SELECT b.id AS card_id, b.name AS card_name,\nODPS-0130161:[1,44] Parse exception - invalid token ','"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 3
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 33248
+    },
+    {
+      "case_id": "k11v2_031",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:load_table_dimensions(table_name=\"dws_10000251_lt_role_tag_df\")",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F23CADE60D67133EBE082 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call:load_table_dimensions(table_name=\"dws_10000251_lt_role_tag_df\")\nODPS-0130161:[1,6] Parse exception - invalid token 'load_table_dimensions', expect '':''"
+            }
+          ],
+          "expected_result": {
+            "high_pay_roles": 18000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 15434
+    },
+    {
+      "case_id": "k11v2_032",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(CAST(tag AS BIGINT)) AS tagged_churn_role_count FROM dws_10000251_algo_role_churn_pred WHERE ds = MAX_PT('dws_10000251_algo_role_churn_pred')",
+          "query_result": [
+            [
+              7697
+            ]
+          ],
+          "expected_result": {
+            "churn_count": 9200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 120724
+    },
+    {
+      "case_id": "k11v2_033",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, SUM(pay_amt) AS total_pay_amt FROM dws_10000251_univ_acc_act_di WHERE ds BETWEEN '20260722' AND '20260728' GROUP BY ds ORDER BY ds;",
+          "query_result": [
+            [
+              "20260722",
+              10884
+            ],
+            [
+              "20260723",
+              14041
+            ],
+            [
+              "20260724",
+              10634
+            ],
+            [
+              "20260725",
+              173840
+            ],
+            [
+              "20260726",
+              72919
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 53961
+    },
+    {
+      "case_id": "k11v2_034",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call\n{\"name\": \"search_data_sources\", \"arguments\": {\"query\": \"login 登录 日活 DAU 活跃\"}}\ncall\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_univ_role_tag_df\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2411704C01E486C8283E Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call\n{\"name\": \"search_data_sources\", \"arguments\": {\"query\": \"login 登录 日活 DAU 活跃\"}}\ncall\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_univ_role_tag_df\"}}\nODPS-0130161:[2,1] Parse exception - invalid token '{'\nODPS-0130161:[4,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 25,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 19818
+    },
+    {
+      "case_id": "k11v2_035",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(DISTINCT role_id) AS new_role_count FROM dws_10000251_role_summary_base_df WHERE ds = '20260728'",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,8] Semantic analysis exception - column reference dws_10000251_role_summary_base_df.ds should appear in GROUP BY key"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 67723
+    },
+    {
+      "case_id": "k11v2_036",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT server_id, SUM(pay_amt_std) AS total_pay_amt FROM dws_10000251_role_tag_basic_df WHERE ds = '20260728' GROUP BY server_id ORDER BY total_pay_amt DESC LIMIT 10;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 10
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 48775
+    },
+    {
+      "case_id": "k11v2_037",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT os_id, COUNT(DISTINCT account_id) AS pay_user_cnt FROM dws_10000251_biz_pay_buy_df WHERE ds = '20260728' GROUP BY os_id;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 43964
+    },
+    {
+      "case_id": "k11v2_038",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ch_id, COUNT(DISTINCT user_id) AS new_user_uv FROM dws_10000251_selfhelp_new_remain_df_extend_temp WHERE ds = '20260728' AND act_ymd_fst = '20260728' AND user_type = '2' GROUP BY ch_id ORDER BY new_user_uv DESC LIMIT 100;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 49625
+    },
+    {
+      "case_id": "k11v2_039",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool_calls>\n<invoke name=\"load_table_dimensions\">\n<parameter name=\"table_name\">dws_10000251_acc_summary_di</parameter >\n</invoke>\n<invoke name=\"load_table_dimensions\">\n<parameter name=\"table_name\">dws_10000251_univ_role_whole_df</parameter >\n</invoke>\n</tool_calls>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F246EEEE4951AC787609B Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool_calls>\n<invoke name=\"load_table_dimensions\">\n<parameter name=\"table_name\">dws_10000251_acc_summary_di</parameter >\n</invoke>\n<invoke name=\"load_table_dimensions\">\n<parameter name=\"table_name\">dws_10000251_univ_role_whole_df</parameter >\n</invoke>\n</tool_calls>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 35361
+    },
+    {
+      "case_id": "k11v2_040",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(battle_id) AS pvp_battle_cnt FROM dws_10000251_pvp_battle_detail_cbt2_di WHERE ds BETWEEN '20260723' AND '20260729' GROUP BY ds ORDER BY ds",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 35947
+    },
+    {
+      "case_id": "k11v2_041",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, SUM(add_amount) - LAG(SUM(add_amount), 1) OVER(ORDER BY ds) AS daily_add, SUM(use_amount) - LAG(SUM(use_amount), 1) OVER(ORDER BY ds) AS daily_use ...",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F24C6ACDC405B90C35097 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: SELECT ds, SUM(add_amount) - LAG(SUM(add_amount), 1) OVER(ORDER BY ds) AS daily_add, SUM(use_amount) - LAG(SUM(use_amount), 1) OVER(ORDER BY ds) AS daily_use ...\nODPS-0130161:[1,159] Parse exception - invalid token '.'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 87763
+    },
+    {
+      "case_id": "k11v2_042",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "generated_sql": "SELECT CASE WHEN CAST(rolelevel AS BIGINT) BETWEEN 1 AND 10 THEN '1-10' WHEN CAST(rolelevel AS BIGINT) BETWEEN 11 AND 20 THEN '11-20' WHEN CAST(rolelevel AS BIGINT) BETWEEN 21 AND 30 THEN '21-30' WHEN CAST(rolelevel AS BIGINT) BETWEEN 31 AND 40 THEN '31-40' WHEN CAST(rolelevel AS BIGINT) BETWEEN 41 AND 50 THEN '41-50' WHEN CAST(rolelevel AS BIGINT) BETWEEN 51 AND 60 THEN '51-60' WHEN CAST(rolelevel AS BIGINT) BETWEEN 61 AND 70 THEN '61-70' WHEN CAST(rolelevel AS BIGINT) BETWEEN 71 AND 80 THEN '71-80' WHEN CAST(rolelevel AS BIGINT) BETWEEN 81 AND 90 THEN '81-90' WHEN CAST(rolelevel AS BIGINT) BETWEEN 91 AND 100 THEN '91-100' WHEN CAST(rolelevel AS BIGINT) > 100 THEN '100+' ELSE '0或未知' END AS level_segment, COUNT(DISTINCT role_id) AS role_count FROM dws_10000251_role_common_feature_df WHERE ds = '20260728' GROUP BY CASE WHEN CAST(rolelevel AS BIGINT) BETWEEN 1 AND 10 THEN '1-10' WHEN CAST(rolelevel AS BIGINT) BETWEEN 11 AND 20 THEN '11-20' WHEN CAST(rolelevel AS BIGINT) BETWEEN 21 AND 30 THEN '21-30' WHEN CAST(rolelevel AS BIGINT) BETWEEN 31 AND 40 THEN '31-40' WHEN CAST(rolelevel AS BIGINT) BETWEEN 41 AND 50 THEN '41-50' WHEN CAST(rolelevel AS BIGINT) BETWEEN 51 AND 60 THEN '51-60' WHEN CAST(rolelevel AS BIGINT) BETWEEN 61 AND 70 THEN '61-70' WHEN CAST(rolelevel AS BIGINT) BETWEEN 71 AND 80 THEN '71-80' WHEN CAST(rolelevel AS BIGINT) BETWEEN 81 AND 90 THEN '81-90' WHEN CAST(rolelevel AS BIGINT) BETWEEN 91 AND 100 THEN '91-100' WHEN CAST(rolelevel AS BIGINT) > 100 THEN '100+' ELSE '0或未知' END ORDER BY role_count DESC;",
+          "query_result": [
+            [
+              "1-10",
+              719157
+            ],
+            [
+              "11-20",
+              317589
+            ],
+            [
+              "21-30",
+              175332
+            ],
+            [
+              "31-40",
+              89321
+            ],
+            [
+              "41-50",
+              59567
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 118254
+    },
+    {
+      "case_id": "k11v2_043",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT account_id) AS active_but_unpaid_acc_cnt FROM dws_10000251_acc_summary_df WHERE ds = '20260729' AND act_days_1w > 0 AND pay_amt_std = 0;",
+          "query_result": [
+            [
+              0
+            ]
+          ],
+          "expected_result": {
+            "active_non_pay": 85000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 35048
+    },
+    {
+      "case_id": "k11v2_044",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT b.name AS recharge_name, b.price AS recharge_price, COUNT(a.order_id) AS order_cnt FROM dws_10000251_com_pay_order_df a JOIN dim_10000251_k11_levelshop b ON a.recharge_id = b.recharge_id WHERE a.ds = '20260728' AND a.ymd = '20260728' GROUP BY b.name, b.price ORDER BY order_cnt DESC;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 58452
+    },
+    {
+      "case_id": "k11v2_045",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(DISTINCT role_id) AS pred_churn_uv FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds BETWEEN '20260723' AND '20260729' AND tag = 1 GROUP BY ds ORDER BY ds",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 68989
+    },
+    {
+      "case_id": "k11v2_046",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS unlogin_acc_cnt FROM dws_10000251_univ_acc_whole_df WHERE ds = '20260728' AND ( act_tm_lst IS NULL OR DATEDIFF(TO_DATE(ds, 'yyyyMMdd'), act_tm_lst, 'dd') > 7 )",
+          "query_result": [
+            [
+              1196171
+            ]
+          ],
+          "expected_result": {
+            "inactive_7d": 42000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 54963
+    },
+    {
+      "case_id": "k11v2_047",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT server_id, COUNT(role_id) AS role_count FROM dws_10000251_role_rank_df WHERE ds = '20260728' GROUP BY server_id ORDER BY role_count DESC",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 38413
+    },
+    {
+      "case_id": "k11v2_048",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "generated_sql": "SELECT HOUR(CAST(tm AS DATETIME)) AS hour_of_day, COUNT(order_id) AS order_count FROM dws_10000251_com_pay_order_di WHERE ds = '20260728' GROUP BY HOUR(CAST(tm AS DATETIME)) ORDER BY hour_of_day ASC;",
+          "query_result": [
+            [
+              0,
+              40
+            ],
+            [
+              1,
+              32
+            ],
+            [
+              2,
+              12
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              6
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 10,
+            "max_rows": 24
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 80376
+    },
+    {
+      "case_id": "k11v2_049",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_public_sentiment_df\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2524EA800B324CC3BDE7 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_public_sentiment_df\"}}\nODPS-0130161:[2,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 20,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 14663
+    },
+    {
+      "case_id": "k11v2_050",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "generated_sql": "SELECT pay_type, SUM(pay_amt) AS total_amt, SUM(pay_amt) * 1.0 / NULLIF(SUM(SUM(pay_amt)) OVER(), 0) AS amt_ratio FROM dws_10000251_com_pay_order_di WHERE ds = '20260728' GROUP BY pay_type;",
+          "query_result": [
+            [
+              1,
+              5939800,
+              0.5551837589262347
+            ],
+            [
+              2,
+              3809500,
+              0.35606797023965303
+            ],
+            [
+              3,
+              949500,
+              0.08874827083411224
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 3
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 77274
+    },
+    {
+      "case_id": "k11v2_051",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:load_table_dimensions{\"table_name\": \"dim_10000251_trans_stage_df\"}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F25360761A31F4BABE586 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call:load_table_dimensions{\"table_name\": \"dim_10000251_trans_stage_df\"}\nODPS-0130161:[1,6] Parse exception - invalid token 'load_table_dimensions', expect '':''"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 17769
+    },
+    {
+      "case_id": "k11v2_052",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>{\"name\": \"load_table_dimensions\", \"args\": {\"table_name\": \"dws_10000251_pay_order_di\"}}</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F25615D9BB923D3AD11E7 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>{\"name\": \"load_table_dimensions\", \"args\": {\"table_name\": \"dws_10000251_pay_order_di\"}}</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 42885
+    },
+    {
+      "case_id": "k11v2_053",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT stage_id, AVG(CAST(battle_duration AS DOUBLE)) AS avg_pass_duration FROM dws_10000251_pve_progress_di WHERE ds BETWEEN '20260722' AND '20260728' AND result = '1' GROUP BY stage_id ORDER BY avg_pass_duration DESC LIMIT 100;",
+          "query_result": [
+            [
+              913031,
+              880
+            ],
+            [
+              911254,
+              808
+            ],
+            [
+              912984,
+              716
+            ],
+            [
+              913049,
+              655
+            ],
+            [
+              913070,
+              628
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 82855
+    },
+    {
+      "case_id": "k11v2_054",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(DISTINCT role_id) AS pvp_role_uv FROM dws_10000251_lineup_pvp_act_di WHERE ds BETWEEN '20260630' AND '20260729' GROUP BY ds ORDER BY ds ASC",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 20,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 44188
+    },
+    {
+      "case_id": "k11v2_055",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT fteam_role_num, COUNT(fteam_id) AS fteam_count FROM dws_10000251_social_fteam_summary_df WHERE ds = '20260728' AND fteam_role_num > 0 GROUP BY fteam_role_num ORDER BY fteam_role_num ASC;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 10
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 40543
+    },
+    {
+      "case_id": "k11v2_056",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_fst) AS first_pay_user_cnt FROM dws_10000251_univ_dev_server_act_di WHERE ds = '20260728'",
+          "query_result": [
+            [
+              126
+            ]
+          ],
+          "expected_result": {
+            "first_pay": 850
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 35940
+    },
+    {
+      "case_id": "k11v2_057",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT b.server_name, SUM(a.pay) AS pay_cnt, SUM(a.act) AS act_cnt, SUM(a.pay) * 1.0 / NULLIF(SUM(a.act), 0) AS pay_rate FROM dws_10000251_univ_role_server_act_di a JOIN dim_10000251_server_info b ON a.server_id = b.server_id WHERE a.ds = '20260728' GROUP BY b.server_name ORDER BY pay_rate DESC",
+          "query_result": [
+            [
+              "郑国渠",
+              1,
+              1,
+              1
+            ],
+            [
+              "​​洛神卷​​",
+              2,
+              2,
+              1
+            ],
+            [
+              "望烽燧",
+              1,
+              1,
+              1
+            ],
+            [
+              "望江亭",
+              1,
+              1,
+              1
+            ],
+            [
+              "浪淘沙",
+              1,
+              1,
+              1
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 103768
+    },
+    {
+      "case_id": "k11v2_058",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "根据 §5 诚实拒绝规则，当前问题无法直接回答。\n\n### 为什么不能答\n问题中提到的 **“高付费用户”** 和 **“普通用户”** 属于模糊业务概念，当前语义层和数据表中没有预定义的付费层级字段（如 `pay_level`），仅有具体的付费金额（`pay_amt`）。在缺乏明确划分标准的情况下，无法准确构建过滤条件，强行假设阈值会导致数据结果失真。\n\n### 缺什么\n1. **用户划分标准**：需要明确“高付费”与“普通”的具体界定规则。例如：是基于累计/当日付费金额阈值（如 `pay_amt >= 1000`）、付费排名分位数（如 Top 10%），还是基于 `udd`（用户标签 JSON）中的某个特定标签键值？\n2. **分析主体粒度**：需要明确是以“账号（`user_type=2`）”还是“角色（`user_type=3`）”作为去重和计算平均在线时长的主体。\n3. **时间范围**：需要明确对比的时间周期（如“昨天”、“过去7天”或“特定月份”）。\n\n### 怎么解决\n请补充具体的业务定义，例如：\n> *“帮我对比**昨天**，**角色粒度**下，**当日付费金额≥500元**的高付费角色与**付费金额<500元（含0）** 的普通角色的平均在线时长。”*\n\n收到您的明确规则后，我将为您拆分原子查询并生成准确的 SQL。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F25D3806B039A1CD8BD7A Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 根据 §5 诚实拒绝规则，当前问题无法直接回答。\n\n### 为什么不能答\n问题中提到的 **“高付费用户”** 和 **“普通用户”** 属于模糊业务概念，当前语义层和数据表中没有预定义的付费层级字段（如 `pay_level`），仅有具体的付费金额（`pay_amt`）。在缺乏明确划分标准的情况下，无法准确构建过滤条件，强行假设阈值会导致数据结果失真。\n\n### 缺什么\n1. **用户划分标准**：需要明确“高付费”与“普通”的具体界定规则。例如：是基于累计/当日付费金额阈值（如 `pay_amt >= 1000`）、付费排名分位数（如 Top 10%），还是基于 `udd`（用户标签 JSON）中的某个特定标签键值？\n2. **分析主体粒度**：需要明确是以“账号（`user_type=2`）”还是“角色（`user_type=3`）”作为去重和计算平均在线时长的主体。\n3. **时间范围**：需要明确对比的时间周期（如“昨天”、“过去7天”或“特定月份”）。\n\n### 怎么解决\n请补充具体的业务定义，例如：\n> *“帮我对比**昨天**，**角色粒度**下，**当日付费金额≥500元**的高付费角色与**付费金额<500元（含0）** 的普通角色的平均在线时长。”*\n\n收到您的明确规则后，我将为您拆分原子查询并生成准确的 SQL。\nODPS-0130161:[1,1] Parse exception - invalid token '根据'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 36361
+    },
+    {
+      "case_id": "k11v2_059",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>search_data_sources({\"query\": \"付费 充值 金额 pay\"})</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F25C0D8175A1A591304DB Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>search_data_sources({\"query\": \"付费 充值 金额 pay\"})</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 10
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 14404
+    },
+    {
+      "case_id": "k11v2_060",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT AVG(CASE WHEN pay_amt_f1d > 0 THEN 1.0 ELSE 0.0 END) AS new_pay_rate_f1d FROM dws_10000251_univ_role_tag_df WHERE ds = MAX_PT('dws_10000251_univ_role_tag_df');",
+          "query_result": [
+            [
+              0.14982748598379397
+            ]
+          ],
+          "expected_result": {
+            "first_day_pay_rate": 0.08
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 40866
+    },
+    {
+      "case_id": "k11v2_061",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT card_id, SUM(win_pv) * 1.0 / NULLIF(SUM(part_pv), 0) AS win_rate, SUM(part_pv) * 1.0 / SUM(SUM(part_pv)) OVER() AS usage_rate FROM dws_10000251_card_pvp_di WHERE ds = '20260728' GROUP BY card_id ORDER BY win_rate DESC LIMIT 5;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 76463
+    },
+    {
+      "case_id": "k11v2_062",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "WITH user_first_pay AS ( SELECT user_id, MIN(act_ymd) as first_pay_ymd FROM dws_10000251_selfhelp_new_df WHERE ds = '20260728'",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2646ACDC405B90E0E270 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: WITH user_first_pay AS ( SELECT user_id, MIN(act_ymd) as first_pay_ymd FROM dws_10000251_selfhelp_new_df WHERE ds = '20260728'\nODPS-0130161:[1,127] Parse exception - invalid token ';'\nODPS-0130161:[1,127] Parse exception - invalid token ';'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 93859
+    },
+    {
+      "case_id": "k11v2_063",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ch_id, COUNT(DISTINCT CASE WHEN lt = 7 AND user_type = 2 THEN user_id END) / NULLIF(COUNT(DISTINCT CASE WHEN lt = 1 AND user_type = 2 THEN user_id END), 0) AS d7_retention_rate FROM dws_10000251_selfhelp_new_remain_df WHERE ds = '20260728' AND user_type = 2 AND act_ymd_fst <= '20260721'",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,8] Semantic analysis exception - column reference dws_10000251_selfhelp_new_remain_df.ch_id should appear in GROUP BY key"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 64553
+    },
+    {
+      "case_id": "k11v2_064",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "{\"tool\": \"search_data_sources\", \"args\": {\"query\": \"付费 充值 订单 金额 角色\"}}\n{\"tool\": \"load_table_dimensions\", \"args\": {\"table_name\": \"dws_10000251_battle_stage_df\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2639C8D3B6BCF6196805 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: {\"tool\": \"search_data_sources\", \"args\": {\"query\": \"付费 充值 订单 金额 角色\"}}\n{\"tool\": \"load_table_dimensions\", \"args\": {\"table_name\": \"dws_10000251_battle_stage_df\"}}\nODPS-0130161:[1,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 26159
+    },
+    {
+      "case_id": "k11v2_065",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT server_id, SUM(CASE WHEN ds = '20260728' THEN pay_amt_std ELSE 0 END) - SUM(CASE WHEN ds = '20260727' THEN pay_amt_std ELSE 0 END) AS pay_amt_today",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,8] Semantic analysis exception - column server_id cannot be resolved\nODPS-0130071:[1,33] Semantic analysis exception - column ds cannot be resolved\nODPS-0130071:[1,54] Semantic analysis exception - column pay_amt_std cannot be resolved\nODPS-0130141:[1,54] Illegal implicit type cast - cannot cast from ErrorType to BIGINT\nODPS-0130071:[1,94] Semantic analysis exception - column ds cannot be resolved\nODPS-0130071:[1,115] Semantic analysis exception - column pay_amt_std cannot be resolved\nODPS-0130141:[1,115] Illegal implicit type cast - cannot cast from ErrorType to BIGINT\nODPS-0130071:[1,8] Semantic analysis exception - column reference server_id should appear in GROUP BY key"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 155068
+    },
+    {
+      "case_id": "k11v2_066",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<call:search_data_sources>{\"query\": \"pvp 匹配 战斗 事件\"}</call>\n<call:search_data_sources>{\"query\": \"注册 创角 新增 事件\"}</call>\n```",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F26804F7043FB3B7A041C Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <call:search_data_sources>{\"query\": \"pvp 匹配 战斗 事件\"}</call>\n<call:search_data_sources>{\"query\": \"注册 创角 新增 事件\"}</call>\nODPS-0130161:[1,1] Parse exception - invalid token '<'\nODPS-0130161:[1,7] Parse exception - invalid token 'search_data_sources', expect '':''\nODPS-0130161:[1,58] Parse exception - invalid token '>'\nODPS-0130161:[2,7] Parse exception - invalid token 'search_data_sources', expect '':''\nODPS-0130161:[2,57] Parse exception - invalid token '>'"
+            }
+          ],
+          "expected_result": {
+            "new_pvp_users": 3200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 63726
+    },
+    {
+      "case_id": "k11v2_067",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:search_data_sources{\"query\": \"古战场\"}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2657EEE4951AC7B021F8 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call:search_data_sources{\"query\": \"古战场\"}\nODPS-0130161:[1,6] Parse exception - invalid token 'search_data_sources', expect '':''"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 16590
+    },
+    {
+      "case_id": "k11v2_068",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dim_10000251_gmactivity_info\"}}\n</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2667806B039A1CE446A0 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dim_10000251_gmactivity_info\"}}\n</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 15870
+    },
+    {
+      "case_id": "k11v2_069",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT t1.ds FROM dws_10000251_resource_item_df t1 JOIN dim_10000251_resource_name_info t2 ON t1.item_type = t2.item_type AND t1.item_value = t2.item_value WHERE t1.ds >= '20260722' AND t1.ds <= '20260728'",
+          "query_result": [
+            [
+              "20260723"
+            ],
+            [
+              "20260723"
+            ],
+            [
+              "20260723"
+            ],
+            [
+              "20260723"
+            ],
+            [
+              "20260723"
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 117020
+    },
+    {
+      "case_id": "k11v2_070",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>load_table_dimensions(table_name=\"dws_10000251_progression_card_df\")</tool>\n<tool>load_table_dimensions(table_name=\"dim_10000251_trans_card_df\")</tool>\n<tool>lookup_terminology(term=\"满级\")</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F26984E42979577BD45E1 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>load_table_dimensions(table_name=\"dws_10000251_progression_card_df\")</tool>\n<tool>load_table_dimensions(table_name=\"dim_10000251_trans_card_df\")</tool>\n<tool>lookup_terminology(term=\"满级\")</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "win_rate": 0.65
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 24428
+    },
+    {
+      "case_id": "k11v2_071",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "【拒绝回答】\n\n- **为什么不能答**：当前检索到的候选数据源和事件定义中，未找到与“小队”（Team/Party）相关的埋点事件或标签字段。候选结果中的 `game.guildapply.onekeyop` 属于“公会”（Guild）系统，在游戏业务逻辑中，公会与小队通常是两个独立的系统，直接将其等同于“小队”会导致严重的语义不匹配（SEMANTIC_MISMATCH）。\n- **缺什么**：缺少记录用户“加入小队”行为的具体埋点事件定义（例如 `game.team.join` 或类似事件），或者缺少能够标识用户是否处于小队状态的用户标签字段。\n- **怎么解决**：\n  1. 如果您所指的“小队”在业务上实际是指“公会”，请明确告知，我将使用公会相关事件（如 `game.guildapply.onekeyop` 中 `op='1'` 的同意加入操作）来对比公会用户与非公会用户的留存率。\n  2. 如果确为“小队”系统，请提供准确的“加入小队”埋点事件名称，或指明哪张数据表/字段记录了用户的小队状态，以便我重新加载事件定义并构建准确的对比查询。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F26BD0761A31F4BC7F19F Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 【拒绝回答】\n\n- **为什么不能答**：当前检索到的候选数据源和事件定义中，未找到与“小队”（Team/Party）相关的埋点事件或标签字段。候选结果中的 `game.guildapply.onekeyop` 属于“公会”（Guild）系统，在游戏业务逻辑中，公会与小队通常是两个独立的系统，直接将其等同于“小队”会导致严重的语义不匹配（SEMANTIC_MISMATCH）。\n- **缺什么**：缺少记录用户“加入小队”行为的具体埋点事件定义（例如 `game.team.join` 或类似事件），或者缺少能够标识用户是否处于小队状态的用户标签字段。\n- **怎么解决**：\n  1. 如果您所指的“小队”在业务上实际是指“公会”，请明确告知，我将使用公会相关事件（如 `game.guildapply.onekeyop` 中 `op='1'` 的同意加入操作）来对比公会用户与非公会用户的留存率。\n  2. 如果确为“小队”系统，请提供准确的“加入小队”埋点事件名称，或指明哪张数据表/字段记录了用户的小队状态，以便我重新加载事件定义并构建准确的对比查询。\nODPS-0130161:[1,1] Parse exception - invalid token '拒绝回答'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 37045
+    },
+    {
+      "case_id": "k11v2_072",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS churn_role_cnt FROM dws_10000251_univ_role_churn_di WHERE ds BETWEEN '20260727' AND '20260729' AND user_type = 3 AND pay_amt_l7d > 0",
+          "query_result": [
+            [
+              472
+            ]
+          ],
+          "expected_result": {
+            "pay_then_churn": 420
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 86581
+    },
+    {
+      "case_id": "k11v2_073",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, SUM(CASE WHEN pay_type = 1 THEN pay_amt ELSE 0 END) / 100.0 AS revenue_gmv, COUNT(DISTINCT CASE WHEN pay_type = 1 THEN role_id ELSE NULL END) AS pay_uv FROM dws_10000251_com_pay_order_di WHERE ds BETWEEN '20260715' AND '20260728' GROUP BY ds ORDER BY ds;",
+          "query_result": [
+            [
+              "20260715",
+              17345,
+              317
+            ],
+            [
+              "20260716",
+              22862,
+              314
+            ],
+            [
+              "20260717",
+              19637,
+              286
+            ],
+            [
+              "20260718",
+              16204,
+              261
+            ],
+            [
+              "20260719",
+              16066,
+              240
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 70056
+    },
+    {
+      "case_id": "k11v2_074",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法直接回答“用户质量如何”。\n\n**为什么不能答：**\n“用户质量”是一个高度复合且模糊的业务概念，在游戏数据分析中，通常需要结合**留存率**（如次留、7留）、**付费能力**（如付费率、ARPU、ARPPU）以及**活跃深度**（如在线时长、核心玩法参与度）等多维度指标来综合衡量。\n\n**缺什么：**\n当前检索到的数据源仅包含**用户标签表与维度表**（如自助归因标签、OB前测试批次标签、大事件标签、企微映射表等），**完全缺乏用于计算用户质量的核心行为事实表**（例如：登录事件、付费事件、在线时长事件等）。没有行为数据，无法计算留存、付费等衡量质量的关键指标。\n\n**怎么解决：**\n1. **明确具体指标与补充数据源**：请明确您具体关注的“用户质量”维度（例如：“各媒体渠道的次日留存率”、“不同测试批次用户的付费转化率”），并确认相关的行为事件表（如登录、付费事件表）是否已接入。\n2. **转换问题为“用户结构/来源分析”**：如果您实际想了解的是**用户来源分布**或**用户结构**（例如：“各媒体渠道的新增用户占比”、“内部用户与外部用户的比例”、“参与过CBT测试的用户占比”），请明确提问，我可以使用现有的归因标签表（`dws_10000251_selfhelp_tag_df` 等）为您解答。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F26F4806B039A1CEF06E6 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法直接回答“用户质量如何”。\n\n**为什么不能答：**\n“用户质量”是一个高度复合且模糊的业务概念，在游戏数据分析中，通常需要结合**留存率**（如次留、7留）、**付费能力**（如付费率、ARPU、ARPPU）以及**活跃深度**（如在线时长、核心玩法参与度）等多维度指标来综合衡量。\n\n**缺什么：**\n当前检索到的数据源仅包含**用户标签表与维度表**（如自助归因标签、OB前测试批次标签、大事件标签、企微映射表等），**完全缺乏用于计算用户质量的核心行为事实表**（例如：登录事件、付费事件、在线时长事件等）。没有行为数据，无法计算留存、付费等衡量质量的关键指标。\n\n**怎么解决：**\n1. **明确具体指标与补充数据源**：请明确您具体关注的“用户质量”维度（例如：“各媒体渠道的次日留存率”、“不同测试批次用户的付费转化率”），并确认相关的行为事件表（如登录、付费事件表）是否已接入。\n2. **转换问题为“用户结构/来源分析”**：如果您实际想了解的是**用户来源分布**或**用户结构**（例如：“各媒体渠道的新增用户占比”、“内部用户与外部用户的比例”、“参与过CBT测试的用户占比”），请明确提问，我可以使用现有的归因标签表（`dws_10000251_selfhelp_tag_df` 等）为您解答。\nODPS-0130161:[1,1] Parse exception - invalid token '无法直接回答'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 24659
+    },
+    {
+      "case_id": "k11v2_075",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法直接回答“哪些玩法需要优化”。\n\n**为什么不能答：**\n“需要优化”是一个主观且模糊的业务结论，在当前数据语义层中没有明确的指标定义和判断标准。不同的业务场景下，“需要优化”的衡量维度完全不同，系统无法自行假设您的评判标准。\n\n**缺什么：**\n1. **具体的衡量指标**：您希望通过什么数据表现来判断玩法需要优化？（例如：参与人数/UV过低、通关率/首通率过低、玩家卡关严重、或是参与后流失率高？）\n2. **判断阈值**：达到什么数值范围算作“需要优化”？（例如：通关率低于 20%，或参与 UV 低于 1000？）\n3. **分析时间范围**：需要分析哪个时间段的数据？（例如：昨天、过去 7 天？）\n4. **分析粒度**：是按“主玩法（play）”、“子玩法（sub_play）”还是具体“关卡（stage）”粒度来看？\n\n**怎么解决：**\n请将模糊的结论词转化为具体的数据查询需求。例如，您可以这样提问：\n- *“帮我查询过去 7 天内，各子玩法的参与 UV 和通关率（首通次数/参与次数），并按通关率从低到高排序。”*\n- *“查询昨天各主玩法的参与次数和参与角色数，找出参与人数最少的 5 个玩法。”* \n\n明确指标和范围后，我将立即为您生成准确的 SQL 并提取数据。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2711704C01E48603AEFB Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法直接回答“哪些玩法需要优化”。\n\n**为什么不能答：**\n“需要优化”是一个主观且模糊的业务结论，在当前数据语义层中没有明确的指标定义和判断标准。不同的业务场景下，“需要优化”的衡量维度完全不同，系统无法自行假设您的评判标准。\n\n**缺什么：**\n1. **具体的衡量指标**：您希望通过什么数据表现来判断玩法需要优化？（例如：参与人数/UV过低、通关率/首通率过低、玩家卡关严重、或是参与后流失率高？）\n2. **判断阈值**：达到什么数值范围算作“需要优化”？（例如：通关率低于 20%，或参与 UV 低于 1000？）\n3. **分析时间范围**：需要分析哪个时间段的数据？（例如：昨天、过去 7 天？）\n4. **分析粒度**：是按“主玩法（play）”、“子玩法（sub_play）”还是具体“关卡（stage）”粒度来看？\n\n**怎么解决：**\n请将模糊的结论词转化为具体的数据查询需求。例如，您可以这样提问：\n- *“帮我查询过去 7 天内，各子玩法的参与 UV 和通关率（首通次数/参与次数），并按通关率从低到高排序。”*\n- *“查询昨天各主玩法的参与次数和参与角色数，找出参与人数最少的 5 个玩法。”* \n\n明确指标和范围后，我将立即为您生成准确的 SQL 并提取数据。\nODPS-0130161:[1,1] Parse exception - invalid token '无法直接回答'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 28681
+    },
+    {
+      "case_id": "k11v2_076",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.role.online\"}}\ncall\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"dws_10000251_univ_role_gacha_statis_di\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F2727C8D3B6BCF62D0F0B Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.role.online\"}}\ncall\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"dws_10000251_univ_role_gacha_statis_di\"}}\nODPS-0130161:[2,1] Parse exception - invalid token '{'\nODPS-0130161:[4,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 22179
+    },
+    {
+      "case_id": "k11v2_077",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(DISTINCT CASE WHEN lt=2 AND user_type=2 THEN user_id END) AS d1_retained_users, COUNT(DISTINCT CASE WHEN lt=1 AND user_type=2 THEN user_id END) AS new_users, CAST(COUNT(DISTINCT CASE WHEN lt=2 AND user_type=2 THEN user_id END) AS DOUBLE) / NULLIF(COUNT(DISTINCT CASE WHEN lt=1 AND user_type=2 THEN user_id END), 0) AS d1_retention_rate FROM dws_10000251_selfhelp_new_remain_df WHERE ds BETWEEN '20260722' AND '20260728' GROUP BY ds ORDER BY ds;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 75478
+    },
+    {
+      "case_id": "k11v2_078",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "很抱歉，我无法直接回答“最近有什么异常数据”。\n\n**为什么不能答：**\n“异常数据”是一个极其宽泛且模糊的概念，缺乏具体的业务场景、分析指标以及判断异常的标准。在没有明确分析目标的情况下，系统无法自动遍历所有业务线和指标来盲目寻找“异常”。\n\n**缺什么：**\n1. **具体的业务模块或事件**：例如商城、战斗、登录、付费、特定活动等。\n2. **关注的核心指标**：例如活跃人数、付费金额、特定道具（如金币/钻石）的发放或消耗量等。\n3. **异常判断标准**：例如环比/同比波动超过特定百分比、绝对值超过/低于某个阈值，或者某项预期为 0 的数据出现了大于 0 的情况。\n4. **明确的时间范围**：例如“昨天”、“过去7天”等。\n\n**怎么解决：**\n请将问题具体化，明确您想排查的业务点。例如，您可以这样提问：\n- “昨天 `game.saleshop.freereward` 事件中免费奖励发放的金币总量是多少？（注：该指标预期近0，若大于0则视为异常）”\n- “过去7天各渠道的新增设备数环比是否有明显下降？”\n- “昨天各服务器的付费金额和付费人数对比前天是否有异常波动？”\n\n请提供更具体的分析需求，我将为您生成准确的查询并进行数据分析。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F275CEEE4951AC7C56922 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 很抱歉，我无法直接回答“最近有什么异常数据”。\n\n**为什么不能答：**\n“异常数据”是一个极其宽泛且模糊的概念，缺乏具体的业务场景、分析指标以及判断异常的标准。在没有明确分析目标的情况下，系统无法自动遍历所有业务线和指标来盲目寻找“异常”。\n\n**缺什么：**\n1. **具体的业务模块或事件**：例如商城、战斗、登录、付费、特定活动等。\n2. **关注的核心指标**：例如活跃人数、付费金额、特定道具（如金币/钻石）的发放或消耗量等。\n3. **异常判断标准**：例如环比/同比波动超过特定百分比、绝对值超过/低于某个阈值，或者某项预期为 0 的数据出现了大于 0 的情况。\n4. **明确的时间范围**：例如“昨天”、“过去7天”等。\n\n**怎么解决：**\n请将问题具体化，明确您想排查的业务点。例如，您可以这样提问：\n- “昨天 `game.saleshop.freereward` 事件中免费奖励发放的金币总量是多少？（注：该指标预期近0，若大于0则视为异常）”\n- “过去7天各渠道的新增设备数环比是否有明显下降？”\n- “昨天各服务器的付费金额和付费人数对比前天是否有异常波动？”\n\n请提供更具体的分析需求，我将为您生成准确的查询并进行数据分析。\nODPS-0130161:[1,1] Parse exception - invalid token '很抱歉'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 65080
+    },
+    {
+      "case_id": "k11v2_079",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "generated_sql": "SELECT card_id, SUM(win_times) AS total_wins, SUM(battle_times) AS total_battles, CAST(SUM(win_times) AS DOUBLE) / NULLIF(SUM(battle_times), 0) AS win_rate FROM dws_10000251_pvp_card_statistics_di WHERE ds BETWEEN '20260722' AND '20260728' GROUP BY card_id ORDER BY win_rate DESC LIMIT 20;",
+          "query_result": [
+            [
+              92001,
+              54474,
+              93602,
+              0.581974744129399
+            ],
+            [
+              3016,
+              76043,
+              134230,
+              0.5665127020785219
+            ],
+            [
+              3008,
+              525,
+              931,
+              0.5639097744360902
+            ],
+            [
+              4001,
+              44481,
+              79718,
+              0.5579793773050001
+            ],
+            [
+              93001,
+              117303,
+              210319,
+              0.5577384829711058
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 82779
+    },
+    {
+      "case_id": "k11v2_080",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法直接回答“经济系统健康吗”这一宽泛问题。\n\n**为什么不能答：**\n“经济系统健康”是一个高度复合且模糊的分析概念，在游戏数据分析中，通常需要综合评估货币（如充值钻石、免费钻石、金币）的产出与消耗比、玩家货币存量变化（通货膨胀率）、核心道具/代金券的流通与核销率、以及商城交易和充值转化等多个维度的核心指标。\n\n**缺什么：**\n当前检索到的数据源仅包含：\n1. 代金券领取数量（`game.fantasyrebate.freereward`）\n2. 公会砍价玩法中的玩家钻石存量快照（`game.guild.doBargain`）\n3. 系统设置变更（`game.playerSetting.set`）\n\n这些数据源**严重缺乏**支撑经济系统全局健康度评估的核心事件，例如：全局货币产出/消耗事件、商城购买流水、充值订单事件、交易行/拍卖行流水等。仅凭现有的局部玩法快照和代金券领取数据，无法推导出整体经济系统的健康结论。\n\n**怎么解决：**\n建议您将问题拆解为具体的、可量化的经济子模块问题，例如：\n- “过去7天充值钻石和免费钻石的总产出与总消耗分别是多少？”\n- “过去7天参与公会砍价的玩家，其平均钻石存量（gold/freegold）变化趋势如何？”\n- “过去7天发放的代金券总数是多少？（如果有核销事件，可进一步问核销率）”\n\n如果您能提供更具体的分析切入点或对应的核心经济事件表名，我将为您生成准确的数据查询。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A8F27704E42979577CE9DD8 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法直接回答“经济系统健康吗”这一宽泛问题。\n\n**为什么不能答：**\n“经济系统健康”是一个高度复合且模糊的分析概念，在游戏数据分析中，通常需要综合评估货币（如充值钻石、免费钻石、金币）的产出与消耗比、玩家货币存量变化（通货膨胀率）、核心道具/代金券的流通与核销率、以及商城交易和充值转化等多个维度的核心指标。\n\n**缺什么：**\n当前检索到的数据源仅包含：\n1. 代金券领取数量（`game.fantasyrebate.freereward`）\n2. 公会砍价玩法中的玩家钻石存量快照（`game.guild.doBargain`）\n3. 系统设置变更（`game.playerSetting.set`）\n\n这些数据源**严重缺乏**支撑经济系统全局健康度评估的核心事件，例如：全局货币产出/消耗事件、商城购买流水、充值订单事件、交易行/拍卖行流水等。仅凭现有的局部玩法快照和代金券领取数据，无法推导出整体经济系统的健康结论。\n\n**怎么解决：**\n建议您将问题拆解为具体的、可量化的经济子模块问题，例如：\n- “过去7天充值钻石和免费钻石的总产出与总消耗分别是多少？”\n- “过去7天参与公会砍价的玩家，其平均钻石存量（gold/freegold）变化趋势如何？”\n- “过去7天发放的代金券总数是多少？（如果有核销事件，可进一步问核销率）”\n\n如果您能提供更具体的分析切入点或对应的核心经济事件表名，我将为您生成准确的数据查询。\nODPS-0130161:[1,1] Parse exception - invalid token '无法直接回答'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 19831
+    }
+  ],
+  "summary": {
+    "total": 80,
+    "correct": 6,
+    "wrong": 74,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0.075
+  }
+}
