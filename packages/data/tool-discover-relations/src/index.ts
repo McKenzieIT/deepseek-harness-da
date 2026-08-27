@@ -45,33 +45,33 @@ export function validateTableName(raw: string): string | null {
 }
 
 /** A join key column pair (dws column ↔ dimension column). */
-interface JoinKey {
+type JoinKey = {
   dws_column: string
   dim_column: string
 }
 
 /** A dimension_ref as stored on a TableDefinition (raw shape; derivation optional). */
-interface RawDimRef {
+type RawDimRef = {
   dim_table: string
   join_keys: JoinKey[]
   derivation?: string
 }
 
 /** A normalized dimension ref (derivation resolved to a string). */
-interface DimRef {
+type DimRef = {
   dim_table: string
   join_keys: JoinKey[]
   derivation: string
 }
 
 /** One relation snapshot entry: table + its dimension refs. */
-interface RelationSnapshot {
+type RelationSnapshot = {
   table: string
   refs: DimRef[]
 }
 
 /** A diffed relation added between before/after snapshots. */
-interface AddedRelation {
+type AddedRelation = {
   table: string
   dim_table: string
   join_keys: JoinKey[]
@@ -79,7 +79,7 @@ interface AddedRelation {
 }
 
 /** The canonical value returned by `discover_relations`'s `execute`. */
-export interface DiscoverRelationsResult {
+export type DiscoverRelationsResult = {
   /** Whether enrichment ran (false when not mounted / invalid input / substrate error). */
   readonly ok: boolean
   /** DWS tables that gained >=1 dimension_ref (when ok). */
@@ -248,7 +248,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         type: 'text',
         text: formatDiscoverRelations(value),
       }],
-      presentationMeta: (_args, value): Record<string, unknown> => {
+      presentationMeta: (_args, value) => {
         const v = value as DiscoverRelationsResult
         if (!v.ok || !v._before || !v._after) return { ok: false }
         const added = computeAddedRelations(v._before, v._after)

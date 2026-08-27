@@ -100,6 +100,8 @@ export async function runBatch(cases: readonly EvalCase[], opts: RunBatchOptions
 
   for (let i = 0; i < cases.length; i++) {
     const case_ = cases[i]
+    /* v8 ignore next 1 -- dense parsed-JSON array: index i < length always defined */
+    if (case_ === undefined) continue
     let result: MultiTurnCaseResult | null = null
     let infraRetries = 0
 
@@ -122,12 +124,16 @@ export async function runBatch(cases: readonly EvalCase[], opts: RunBatchOptions
       break
     }
 
-    const outcome = classifyCaseOutcome(result!)
+    /* v8 ignore next 3 -- the retry loop always assigns result before exiting */
+    if (result === null) {
+      throw new Error('runner: retry loop exited without a case result')
+    }
+    const outcome = classifyCaseOutcome(result)
     const classified: ClassifiedCaseResult = {
       caseId: case_.case_id,
       outcome,
-      verdict: result!.verdict,
-      result: result!,
+      verdict: result.verdict,
+      result,
     }
     perCase.push(classified)
     opts.onCaseComplete?.(classified, i, cases.length)

@@ -45,7 +45,7 @@ export interface BuildPromptArgs {
   /** P14b: trend intent detected — enables rule 9 (granularity preference). */
   readonly isTrend?: boolean
   /** Reference date (yyyyMMdd) for relative date computation (yesterday, last 7 days). */
-  readonly today?: string
+  readonly today?: string | undefined
 }
 
 const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）

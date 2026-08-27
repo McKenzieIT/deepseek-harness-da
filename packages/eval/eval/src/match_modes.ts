@@ -128,7 +128,7 @@ function setEqual(expected: Record<string, unknown>, actualRows: readonly Record
     return { status: 'fail', detail: `missing ${missing.length} expected value(s): ${missing.slice(0, 5).join(', ')}` }
   }
   // Row-object comparison (original envelope format)
-  const expectedSet = new Set(expectedRows.map(rowKey))
+  const expectedSet = new Set((expectedRows as readonly Record<string, unknown>[]).map(rowKey))
   const actualSet = new Set(actualRows.map(rowKey))
   if (setsEqual(expectedSet, actualSet)) return { status: 'pass', detail: '' }
   const missing = [...expectedSet].filter(k => !actualSet.has(k))
@@ -166,7 +166,7 @@ function orderedSubset(expected: Record<string, unknown>, actualRows: readonly R
   }
   // Row-object comparison (original envelope format)
   const actualFrozen = actualRows.map(rowKey)
-  const expectedFrozen = expectedRows.map(rowKey)
+  const expectedFrozen = (expectedRows as readonly Record<string, unknown>[]).map(rowKey)
   let ei = 0
   for (const ar of actualFrozen) {
     const want = expectedFrozen[ei]

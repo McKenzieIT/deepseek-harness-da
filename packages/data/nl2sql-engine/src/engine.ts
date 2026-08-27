@@ -303,7 +303,7 @@ export class Nl2sqlEngine {
         }
       }
 
-      if (out.state === 'done' || out.state === 'completed') {
+      if (out.state === 'done') {
         return { ok: true, sql, outcome: out, result: out.rows, trace }
       }
 
