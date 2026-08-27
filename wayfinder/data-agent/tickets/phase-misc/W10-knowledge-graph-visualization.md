@@ -2,7 +2,7 @@
 
 **Type**: grilling → prototype → task
 **Phase**: misc（管理 UI 核心）
-**Status**: implemented 2026-08-27（设计 resolved + 基础代码落地 + 全屏管理 UI 组装完成）
+**Status**: implemented 2026-08-27（设计 resolved + 基础代码落地 + 全屏管理 UI 组装完成 + 全屏集成方案 research resolved）
 **Blocked by**: 无（W8 resolved 2026-08-27，evidence RPC 已接通）
 
 ## Question
@@ -143,10 +143,91 @@ interface GraphEdge {
 - `packages/client/ui-context-layer/src/client/graph-styles.ts` — 节点/边样式 + evidence overlay
 - `packages/data/schema-gateway/src/index.ts` — 新增 `getGraphData`
 
+## 全屏集成方案（Research resolved 2026-08-27）
+
+### 问题
+
+W10 设计要求"独立入口打开全屏管理界面"，但 harness slot 系统只覆盖 panel/sidebar（`sidebar` / `conversation` / `details` / `details.aux` / `shell.overlay`），没有全屏视图先例。W9 SchemaExplorer 的 `onNavigateToGraph` noop callback 需路由到本组件全屏视图，但无跨插件视图切换模式可参考。
+
+### Research 发现
+
+1. **Harness 无原生全屏视图机制**：`root` slot 被 `AppFrame`（三列 grid）独占且文档明确禁止注册；`ctx.layout` 只提供 `toggleSidebar/openDetails/closeDetails`——无 view-mode 切换。
+
+2. **`shell.overlay` 是正确的扩展点**：
+   - `kind: 'list'`, `scope: 'root'` — additive，不替换任何已有 UI
+   - 当前**零占用者**（`replaceRisk: 'none'`）
+   - CSS: `position: absolute; inset: 0; z-index: 20`; `pointer-events: none`（click-through，条目自行 opt-in）
+   - 官方文档："This is the additive seat for a frame-wide surface of your own"
+
+3. **跨插件通信 = cordis 标准 service provision**：`ctx.layout`（ui-layout）、`ctx.managementSession`（management-session）均为先例——`ctx.reflect.provide(name, instance)` + `declare module '@deepseek-ai/cordis'` 在 Context 上声明服务 face。
+
+### 方案：`shell.overlay` + `ctx.contextLayer` service（100% additive，零 core 改动）
+
+**Step 1**: `ui-context-layer` 提供 `ctx.contextLayer` 服务
+
+```ts
+// declare module '@deepseek-ai/cordis'
+interface Context {
+  contextLayer: IContextLayer
+}
+
+interface IContextLayer {
+  open(focusNode?: string): void
+  close(): void
+  readonly isOpen: boolean
+  readonly focusNode: string | undefined
+}
+```
+
+**Step 2**: `ui-context-layer` 注册 `shell.overlay` entry
+
+```ts
+ctx.slots.inject('shell.overlay', () => ctx.slots.register(
+  { name: 'shell.overlay', id: 'context-layer-fullscreen', order: 1000 },
+  ContextLayerOverlay,  // position: fixed; inset: 0; pointer-events: all; z-index: 30
+))
+```
+
+- `ContextLayerOverlay`: 读 `ctx.contextLayer.isOpen`，为 `false` 时返回 `null`（零开销）
+- 为 `true` 时渲染 viewport 大小容器 + `ContextLayerView`（已有组件，flex: 1 填满）
+- 打开时创建 management session (`ctx.managementSession.create()`)
+- 关闭时销毁 management session
+
+**Step 3**: `ui-semantic-layer` 消费 `ctx.contextLayer` 实现跨插件导航
+
+```ts
+// wiring.tsx — SemanticLayerSchemaExplorer 注入
+const contextLayer = ctx.get('contextLayer') as IContextLayer | undefined
+// 传递 onNavigateToGraph:
+<SchemaExplorer
+  client={schemaClient}
+  t={tAny}
+  onNavigateToGraph={contextLayer ? (assetId) => contextLayer.open(assetId) : undefined}
+/>
+```
+
+### 为什么选 shell.overlay 而非新 slot type
+
+| 选项 | 改动范围 | additive-only? |
+|------|---------|----------------|
+| (A) `shell.overlay` fullscreen entry | ui-context-layer only | ✅ 完全 additive |
+| (B) 新 `shell.page` slot + AppFrame 条件渲染 | 修改 ui-layout | ❌ 改 core |
+| (C) `ctx.layout.setMode('page')` | 修改 ui-layout service | ❌ 改 core |
+
+A 是唯一符合 additive-only 原则的方案。`shell.overlay` 的 z-index: 20 已在所有列之上；fullscreen entry 使用 `position: fixed`（脱离 overlay layer 的 absolute 定位，直接挂 viewport）+ `z-index: 30` 确保覆盖。
+
+### reachabilityDelta tool 状态（附带 grilling 项 resolved）
+
+W11 D6 决策列出 `reachabilityDelta` 为管理工具。经验证：
+- `packages/data/tool-reachability-delta/` 已完整实现（model-facing tool，8+ tests）
+- `apps/cli/config/agent-presets/semantic-layer-management/agent.cordis.yml` 已注册（`- id: tool-reachability-delta`）
+- 它是 **agent tool**（非纯 client RPC）——接受 ProposedRelation，返回 ReachabilityDeltaResult，供 agent 在提议添加关系前评估影响
+- 无需额外操作，preset 已就位
+
 ## 关联
 
 - [W8 Evidence RPC](W8-evidence-rpc-gateway.md) — evidence overlay 数据源
-- [W9 Schema Browser](W9-schema-browser-ui.md) — Context Layer 结构视角（互补）
+- [W9 Schema Browser](W9-schema-browser-ui.md) — Context Layer 结构视角（互补）+ onNavigateToGraph 消费方
 - [W11 Graph Edit](W11-graph-edit-enrichment.md) — 对话式修正能力（blocked by W10）
 - [schema-gateway](../../packages/data/schema-gateway/) — 服务端 API 所在
 - [nl2sql-engine/ontology.ts](../../packages/data/nl2sql-engine/src/ontology.ts) — 引擎侧 graph 消费参照

@@ -99,9 +99,11 @@ export const name = 'ui-context-layer'
 export const inject = ['slots', 'locale']
 
 export function apply(ctx: ClientContext): void {
-  // W10 base: no slot registrations yet — the ContextLayerGraph component
-  // is exported for composition by host-level wiring (the parent layout
-  // decides where the graph mounts). Slot registrations come in a follow-up
-  // when the layout integration point is defined.
+  // W10 integration path (research resolved 2026-08-27):
+  //   1. Provide ctx.contextLayer service (open/close/focusNode)
+  //   2. Register shell.overlay entry (id: 'context-layer-fullscreen')
+  //      with ContextLayerOverlay (position: fixed fullscreen, returns null when closed)
+  //   3. ui-semantic-layer consumes ctx.contextLayer for onNavigateToGraph
+  // Implementation deferred to the integration task.
   void ctx
 }
