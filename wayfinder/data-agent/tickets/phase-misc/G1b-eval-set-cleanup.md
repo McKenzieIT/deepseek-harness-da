@@ -2,8 +2,8 @@
 
 **Type**: task
 **Phase**: misc
-**Status**: open
-**Assignee**: (unclaimed)
+**Status**: closed
+**Assignee**: claude
 
 ## Question
 
@@ -36,3 +36,21 @@ k11 v1 的核心缺陷：
 - k11-v2 是唯一的 active eval case set
 - 旧 case set 归档但不删除（保留 git 历史可追溯）
 - eval CLI 默认指向 k11-v2
+
+## Resolution (2026-08-27)
+
+All steps executed:
+
+1. `packages/eval/eval/cases/k11/` → `packages/eval/eval/cases/_archived/k11-v1/` (archived, 161 cases preserved)
+2. `eval-results/g1b-30cases/` deleted (30-case subset of k11 v1)
+3. `eval-results/g1b-cases/` deleted (5-case diagnostic subset)
+4. Updated 6 scripts/tools to point to `packages/eval/eval/cases/k11-v2`:
+   - `eval-results/g1b/diag-single.sh`
+   - `eval-results/g1b/rerun-configC.sh`
+   - `eval-results/g1b-run.sh`
+   - `eval-results/g1b/diag-bm25-recall.ts`
+   - `eval-results/g1b/diag-engine-trace.ts`
+   - `eval-results/g1b/diag-engine-direct.ts`
+5. Verified: k11-v2 contains 80 properly-structured YAML cases, eval CLI `--cases` accepts the path.
+
+**Result**: k11-v2 (80 cases) is now the sole active eval case set for G1b.
