@@ -1,0 +1,675 @@
+{
+  "run_id": "g1b-configC-qwen3.6-plus",
+  "timestamp": "2026-08-26T11:35:55.054Z",
+  "cases": [
+    {
+      "case_id": "k11_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 138075
+    },
+    {
+      "case_id": "k11_005",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 330113
+    },
+    {
+      "case_id": "k11_013",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 430898
+    },
+    {
+      "case_id": "k11_018",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 274825
+    },
+    {
+      "case_id": "k11_021",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 289251
+    },
+    {
+      "case_id": "k11_031",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 238644
+    },
+    {
+      "case_id": "k11_035",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 118808
+    },
+    {
+      "case_id": "k11_042",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 886681
+    },
+    {
+      "case_id": "k11_049",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 207855
+    },
+    {
+      "case_id": "k11_056",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 438764
+    },
+    {
+      "case_id": "k11_067",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 251677
+    },
+    {
+      "case_id": "k11_068",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 258736
+    },
+    {
+      "case_id": "k11_071",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 211052
+    },
+    {
+      "case_id": "k11_074",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 245025
+    },
+    {
+      "case_id": "k11_077",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 117086
+    },
+    {
+      "case_id": "k11_083",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 128818
+    },
+    {
+      "case_id": "k11_088",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 463391
+    },
+    {
+      "case_id": "k11_095",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 235733
+    },
+    {
+      "case_id": "k11_101",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 376916
+    },
+    {
+      "case_id": "k11_107",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 494451
+    },
+    {
+      "case_id": "k11_108",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 141664
+    },
+    {
+      "case_id": "k11_109",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 617124
+    },
+    {
+      "case_id": "k11_111",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 535849
+    },
+    {
+      "case_id": "k11_118",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 315675
+    },
+    {
+      "case_id": "k11_119",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 338035
+    },
+    {
+      "case_id": "k11_139",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 452090
+    },
+    {
+      "case_id": "k11_149",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 220144
+    },
+    {
+      "case_id": "k11_153",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 246820
+    },
+    {
+      "case_id": "k11_156",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 378216
+    },
+    {
+      "case_id": "k11_158",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 112429
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "correct": 0,
+    "wrong": 30,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0
+  }
+}

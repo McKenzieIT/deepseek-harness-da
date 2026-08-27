@@ -1,0 +1,1451 @@
+{
+  "run_id": "p11d-calibration-fewshot",
+  "timestamp": "2026-08-27T06:07:17.993Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_amt) AS total_pay_amt FROM dws_10000251_pay_order_di WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "total_pay_amt": 1500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 34141
+    },
+    {
+      "case_id": "k11v2_002",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT account_id) AS pay_account_count FROM dws_10000251_pay_order_di WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "pay_users": 2800
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 37377
+    },
+    {
+      "case_id": "k11v2_003",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN pay_amt_std > 0 THEN account_id END) AS pay_acc_uv FROM dws_10000251_acc_summary_df WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "total": 281119
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 37782
+    },
+    {
+      "case_id": "k11v2_004",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS total_role_count FROM dws_10000251_role_rank2_df WHERE ds = MAX_PT('dws_10000251_role_rank2_df');",
+          "query_result": null,
+          "expected_result": {
+            "total": 500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 42669
+    },
+    {
+      "case_id": "k11v2_005",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(CASE WHEN act = 1 THEN 1 ELSE 0 END) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds = '20260827';",
+          "query_result": null,
+          "expected_result": {
+            "dau": 120000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 68579
+    },
+    {
+      "case_id": "k11v2_006",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(user_id) AS new_account_count FROM dws_10000251_univ_acc_summary_di WHERE ds = '20260826' AND act_fst = 1;",
+          "query_result": null,
+          "expected_result": {
+            "new_users": 5200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 62841
+    },
+    {
+      "case_id": "k11v2_007",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay) * 1.0 / NULLIF(SUM(act), 0) AS daily_pay_rate FROM dws_10000251_univ_role_server_act_di WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "pay_rate": 0.15
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 69523
+    },
+    {
+      "case_id": "k11v2_008",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_amt_std) / NULLIF(COUNT(DISTINCT CASE WHEN pay_amt_std > 0 THEN account_id END), 0) AS arppu_std FROM dws_10000251_acc_summary_df WHERE ds = MAX_PT('dws_10000251_acc_summary_df')",
+          "query_result": null,
+          "expected_result": {
+            "arppu": 479
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 44510
+    },
+    {
+      "case_id": "k11v2_009",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS predicted_churn_role_cnt FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds = '20260826' AND CAST(tag AS BIGINT) = 1;",
+          "query_result": null,
+          "expected_result": {
+            "churn_predicted": 8500
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 43396
+    },
+    {
+      "case_id": "k11v2_010",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(fteam_id) AS fteam_count FROM dws_10000251_social_fteam_summary_df WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "total_teams": 35000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 50177
+    },
+    {
+      "case_id": "k11v2_011",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "**无法回答该问题。**\n\n**为什么不能答：**\n当前检索到的数据源（如 `dws_10000251_pvp_score_di` 积分每日变化表和 `dws_10000251_pvp_score_df` 积分状态总表）仅记录了角色的 PVP 积分增减（如 `add_score`, `sub_score`）与段位快照（如 `pvp_score`, `pvp_rank`）。这些表中没有记录“对战场次”、“对局数”或“胜负次数”的字段，且积分变化值无法直接等价或反推对战场次。\n\n**缺什么：**\n缺少记录 PVP 对战行为明细或对战结果统计的数据表（例如包含 `battle_count`、`match_count`、`win_count`、`lose_count` 等字段的 PVP 对局结果表或行为事件表）。\n\n**怎么解决：**\n需要在数据仓库中补充并接入 PVP 对战场次相关的 DWS 汇总表或 DWD 行为明细表，并在语义层（Schema）中完成相应的表与字段映射后，再重新进行查询。",
+          "query_result": null,
+          "expected_result": {
+            "battle_count": 85000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 31958
+    },
+    {
+      "case_id": "k11v2_012",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS role_uv FROM dws_10000251_play_rogue_df WHERE ds = '20260826'",
+          "query_result": null,
+          "expected_result": {
+            "players": 22000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 36843
+    },
+    {
+      "case_id": "k11v2_013",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT AVG(pay_amt) AS avg_order_amt FROM dws_10000251_com_pay_order_df WHERE ds = '20260826'",
+          "query_result": null,
+          "expected_result": {
+            "avg_order_amt": 4578
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 62353
+    },
+    {
+      "case_id": "k11v2_014",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN pay_amt >= 100000 THEN account_id END) AS big_r_user_cnt FROM dws_10000251_com_pay_order_df WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "big_r_count": 1200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 36797
+    },
+    {
+      "case_id": "k11v2_015",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(*) AS total_buy_count FROM dws_10000251_recharge_shop_buy_di WHERE ds = '20260826'",
+          "query_result": null,
+          "expected_result": {
+            "total_purchases": 95000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 39857
+    },
+    {
+      "case_id": "k11v2_016",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(COALESCE(t1.pay_amt, 0) - COALESCE(t2.pay_amt, 0)) / 100.0 AS pay_amt_yuan FROM ( SELECT activity_id, account_id, role_id, server_id, recharge_id, pay_amt FROM dws_10000251_com_gm_activity_order_df WHERE ds = '20260826' ) t1 LEFT JOIN ( SELECT activity_id, account_id, role_id, server_id, recharge_id, pay_amt FROM dws_10000251_com_gm_activity_order_df WHERE ds = '20260825' ) t2 ON t1.activity_id = t2.activity_id AND t1.account_id = t2.account_id AND t1.role_id = t2.role_id AND t1.server_id = t2.server_id AND t1.recharge_id = t2.recharge_id;",
+          "query_result": null,
+          "expected_result": {
+            "gm_revenue": 320000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 257139
+    },
+    {
+      "case_id": "k11v2_017",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_card_coll_df\"}}\ncall\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dim_10000251_trans_card_df\"}}",
+          "query_result": null,
+          "expected_result": {
+            "max_card_owners": 15000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 23273
+    },
+    {
+      "case_id": "k11v2_018",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:default_api:load_table_dimensions{\"table_name\": \"dim_10000251_trans_stage_df\"}\ncall:default_api:lookup_terminology{\"term\": \"最终关卡\"}",
+          "query_result": null,
+          "expected_result": {
+            "cleared": 3200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 16637
+    },
+    {
+      "case_id": "k11v2_019",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。\n\n**为什么不能答**：\n当前可用的舆情监控表（`dws_10000251_public_sentiment_df`）中仅包含内容的基础属性（如来源、类型、标题、内容详情等）和互动度量指标（如点赞、阅读、回复等），不包含用于区分舆情正负面情感倾向的字段，因此无法直接筛选和统计“负面”舆情。\n\n**缺什么**：\n缺少标识舆情情感倾向的字段（例如 `sentiment`、`is_negative`、`emotion_type` 等）。\n\n**怎么解决**：\n需要在舆情数据的 ETL 加工链路中引入 NLP 情感分析模型或规则，对 `content` 或 `title` 进行情感判定，并将分析结果作为新字段（如 `sentiment`）补充至 `dws_10000251_public_sentiment_df` 表中，或构建包含该字段的衍生数据视图。字段补齐后即可进行准确查询。",
+          "query_result": null,
+          "expected_result": {
+            "negative_count": 42
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 19458
+    },
+    {
+      "case_id": "k11v2_020",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT type, id, name FROM dim_10000251_trans_resource_item_df WHERE name LIKE '%钻石%' OR name = '钻石' LIMIT 10;",
+          "query_result": null,
+          "expected_result": {
+            "diamond_output": 8500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 45445
+    },
+    {
+      "case_id": "k11v2_021",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS vip_user_cnt FROM dws_10000251_vip_acc_tag_df WHERE ds = '20260826' AND user_type = '2'",
+          "query_result": null,
+          "expected_result": {
+            "vip_count": 12000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 58849
+    },
+    {
+      "case_id": "k11v2_022",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS active_role_uv FROM dws_10000251_univ_role_summary_di WHERE ds = '20260826' AND act = 1;",
+          "query_result": null,
+          "expected_result": {
+            "role_dau": 350000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 33923
+    },
+    {
+      "case_id": "k11v2_023",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT AVG(act_dur) AS avg_online_duration FROM dws_10000251_univ_role_server_act_di WHERE ds BETWEEN '20260821' AND '20260827'",
+          "query_result": null,
+          "expected_result": {
+            "avg_dur": 3600
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 38386
+    },
+    {
+      "case_id": "k11v2_024",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(CASE WHEN pay_type = 1 THEN pay_amt ELSE 0 END) / 100.0 AS cash_pay_amt_yuan FROM dws_10000251_com_pay_order_df WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "cash_revenue": 1200000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 57553
+    },
+    {
+      "case_id": "k11v2_025",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.pvp.end\"}}",
+          "query_result": null,
+          "expected_result": {
+            "avg_win_rate": 0.5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 53325
+    },
+    {
+      "case_id": "k11v2_026",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT stage_id, SUM(pass_pv_std) / NULLIF(SUM(part_pv_std), 0) AS pass_rate FROM dws_10000251_battle_stage_df WHERE ds = '20260826' GROUP BY stage_id ORDER BY pass_rate ASC LIMIT 1;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 3
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 54220
+    },
+    {
+      "case_id": "k11v2_027",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。\n\n**为什么不能答 / 缺什么：**\n当前语义层和数据源中缺少用于统计“金币总消耗量”的**金币流水/变动事实表**（如 `dwd_xxx_coin_change_di` 或类似明细表）。\n- 检索到的 `dim_10000251_trans__action_game_coin_change_df` 仅为金币变动行为类型的**配置维度表**，只包含行为 ID 和名称，不包含具体的变动金额和流水记录。\n- 其他候选数据源（如 `dws_10000251_role_common_feature_df` 系列）属于角色金币余额的特征统计指标（如平均余额、正余额角色数），无法用于计算消耗量。\n- 已知的事件表（如战令购买、团购）仅代表特定场景的消耗，无法代表全局的“金币总消耗量”。\n\n**怎么解决：**\n需要在数据源中补充**金币变动明细事实表**（包含角色 ID、变动金额、变动行为类型 ID、时间等字段）。补充后，可通过该事实表关联 `dim_10000251_trans__action_game_coin_change_df` 维度表，筛选出属于“消耗”类型的行为 ID，并对变动金额（需取绝对值或负值）进行 `SUM` 聚合来计算总消耗量。",
+          "query_result": null,
+          "expected_result": {
+            "gold_consume": 12000000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 26467
+    },
+    {
+      "case_id": "k11v2_028",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN act_days_std = 1 THEN user_id END) AS new_device_cnt FROM dws_10000251_univ_dev_server_tag_df WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "new_devices": 6800
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 30477
+    },
+    {
+      "case_id": "k11v2_029",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "avg_level": 45
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 99063
+    },
+    {
+      "case_id": "k11v2_030",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT a.card_id, SUM(a.battle_times) AS total_battle_times, COUNT(DISTINCT a.role_id) AS role_uv FROM dws_10000251_pvp_card_statistics_di a WHERE a.ds = '20260826' GROUP BY a.card_id ORDER BY total_battle_times DESC LIMIT 10;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 3
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 62625
+    },
+    {
+      "case_id": "k11v2_031",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS high_pay_role_cnt FROM dws_10000251_role_tag_df WHERE ds = MAX_PT('dws_10000251_role_tag_df') AND pay_level = 3;",
+          "query_result": null,
+          "expected_result": {
+            "high_pay_roles": 18000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 40883
+    },
+    {
+      "case_id": "k11v2_032",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(user_id) AS lost_role_count FROM dws_10000251_univ_role_feature_df WHERE ds = '20260826' AND active_flag = '4';",
+          "query_result": null,
+          "expected_result": {
+            "churn_count": 9200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 48090
+    },
+    {
+      "case_id": "k11v2_033",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, SUM(pay_amt) AS total_pay_amt FROM dws_10000251_univ_role_server_act_di WHERE ds BETWEEN '20260820' AND '20260826' GROUP BY ds ORDER BY ds ASC",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 34698
+    },
+    {
+      "case_id": "k11v2_034",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(DISTINCT user_id) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds BETWEEN '20260728' AND '20260826' AND act = 1 GROUP BY ds ORDER BY ds;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 25,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 48133
+    },
+    {
+      "case_id": "k11v2_035",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(user_id) AS new_reg_count FROM dws_10000251_univ_acc_summary_di WHERE ds BETWEEN '20260821' AND '20260827' AND act_fst = '1' GROUP BY ds ORDER BY ds;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 65762
+    },
+    {
+      "case_id": "k11v2_036",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT a.server_id, b.server_name, SUM(a.pay_amt) AS total_pay_amt FROM dws_10000251_pay_order_di a LEFT JOIN dim_10000251_server_info b ON a.server_id = b.server_id WHERE a.ds = '20260826' GROUP BY a.server_id, b.server_name ORDER BY total_pay_amt DESC LIMIT 10;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 10
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 59625
+    },
+    {
+      "case_id": "k11v2_037",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "",
+            "dimensions": {
+              "table_selection": 0,
+              "field_selection": 0,
+              "filter_conditions": 0,
+              "aggregation_logic": 0,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "{\"tool\": \"load_table_dimensions\", \"args\": {\"table_name\": \"dws_10000251_com_pay_order_df\"}}` 这样的格式，或者系统会自动解析。 但这里没有明确的工具调用格式说明，除了“# 工具集”里列出了工具名。 如果我不能调用工具，我只能基于已有信息。 已有信息中，`dws_10000251_selfhelp_new_pay_df` 有 `os_id` (平台id)。 `dws_10000251_com_pay_order_df` 在“已知指标定义”中提到：`dws_10000251_com_pay_order_df__pay_user_cnt_acc = SELECT COUNT(DISTINCT account_id) FROM dws_10000251_com_pay_order_df`。 通常，订单表会有 `os_id` 或者 `platform_id`。如果我用 `os_id`，在阿里/网易等游戏数仓中，`os_id` 常用来表示平台（如 1:iOS, 2:Android）。 或者，我可以用 `dws_10000251_selfhelp_new_pay_df` 查“新增付费人数”，但用户问的是“付费人数”。 为了严谨，我可以写一个基于 `dws_10000251_com_pay_order_df` 的 SQL，假设平台字段为 `os_id`。如果字段不对，critique 或执行时会报错，然后再修。 或者，我可以使用 `dws_10000251_selfhelp_new_pay_df`，并在回答中明确说明这是“新增付费用户”的对比，因为全量付费表字段未知？ 不，“宁可少答慢答，不可错答”。如果我不知道 `dws_10000251_com_pay_order_df` 的平台字段，我可以先拒绝，或者尝试用 `os_id`。 其实，`dws_10000251_selfhelp_new_pay_df` 中有 `os_id`，且是付费相关。 让我看看 `dws_10000251_com_pay_order_df` 的常见字段：`account_id`, `os_id`, `pay_amt`, `ds` 等。 我假设字段是 `os_id`。 “iOS和安卓平台的付费人数对比” 时间范围：用户没说，默认“昨天”（20260826）或“过去7天”。通常对比看昨天或近7天。我选昨天（20260826）。 SQL 方案：",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 81542
+    },
+    {
+      "case_id": "k11v2_038",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ch_id, COUNT(DISTINCT user_id) AS new_user_count FROM dws_10000251_selfhelp_new_df WHERE ds = '20260826' AND act_ymd_fst = '20260826' AND user_type = '2' GROUP BY ch_id ORDER BY new_user_count DESC LIMIT 100;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 56731
+    },
+    {
+      "case_id": "k11v2_039",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT account_id, pay_amt_std FROM dws_10000251_acc_summary_df WHERE ds = '20260826' AND pay_amt_std > 1000",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 40277
+    },
+    {
+      "case_id": "k11v2_040",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.yanwu.match\"}}",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 76310
+    },
+    {
+      "case_id": "k11v2_041",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_item_circle_act_di\"}}\n</tool>",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 20648
+    },
+    {
+      "case_id": "k11v2_042",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT CASE WHEN CAST(rolelevel AS BIGINT) BETWEEN 1 AND 30 THEN '1-30' WHEN CAST(rolelevel AS BIGINT) BETWEEN 31 AND 60 THEN '31-60' WHEN CAST(rolelevel AS BIGINT) BETWEEN 61 AND 90 THEN '61-90' WHEN CAST(rolelevel AS BIGINT) > 90 THEN '90+' ELSE '其他' END AS level_tier, COUNT(DISTINCT role_id) AS role_cnt FROM dws_10000251_role_common_feature_df WHERE ds = MAX_PT('dws_10000251_role_common_feature_df') GROUP BY CASE WHEN CAST(rolelevel AS BIGINT) BETWEEN 1 AND 30 THEN '1-30' WHEN CAST(rolelevel AS BIGINT) BETWEEN 31 AND 60 THEN '31-60' WHEN CAST(rolelevel AS BIGINT) BETWEEN 61 AND 90 THEN '61-90' WHEN CAST(rolelevel AS BIGINT) > 90 THEN '90+' ELSE '其他' END ORDER BY MIN(CAST(rolelevel AS BIGINT)) ASC;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 77330
+    },
+    {
+      "case_id": "k11v2_043",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。\n\n**为什么不能答 / 缺什么：**\n计算“近7天活跃但从未付费的账号”需要精确到日粒度的账号活跃数据以及累计付费数据。当前检索到的候选数据源中：\n1. `dws_10000251_univ_acc_churn_di` 是流失账号快照表，仅记录当日判定流失的账号，无法覆盖近7天活跃但尚未流失的正常账号。\n2. `dws_10000251_univ_acc_act_mi` 是月粒度汇总表，时间粒度太粗，无法精确切分“近7天”的滚动窗口。\n3. 缺少账号日粒度活跃表（如 `dws_10000251_univ_acc_act_di`），且当前未加载“角色登录”等活跃事件的埋点定义，无法通过底层事件日志进行计算。\n\n**怎么解决：**\n1. 补充**账号日粒度活跃表**（如包含每日活跃记录的 `_di` 表），结合 `dws_10000251_pay_order_act_di` 或表内的累计付费字段进行计算。\n2. 或者提供**活跃事件（如“角色登录”）的埋点定义**，以便直接查询底层事件日志表来统计近7天活跃且无付费记录的账号。",
+          "query_result": null,
+          "expected_result": {
+            "active_non_pay": 85000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 39076
+    },
+    {
+      "case_id": "k11v2_044",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT pay_amt AS recharge_tier, COUNT(order_id) AS order_count FROM dws_10000251_pay_order_di WHERE ds = '20260826' GROUP BY pay_amt ORDER BY pay_amt ASC;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 57498
+    },
+    {
+      "case_id": "k11v2_045",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT_IF(CAST(SPLIT_PART(log_str, ';', 4) AS BIGINT) = 1) AS pred_churn_uv FROM dws_10000251_role_churn_pred_output WHERE ds BETWEEN '20260820' AND '20260826' GROUP BY ds ORDER BY ds",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 127086
+    },
+    {
+      "case_id": "k11v2_046",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_role_common_feature_df\"}}\n{\"name\": \"load_table_dimensions\", \"arguments\": {\"table_name\": \"dws_10000251_role_summary_base_df\"}}",
+          "query_result": null,
+          "expected_result": {
+            "inactive_7d": 42000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 20768
+    },
+    {
+      "case_id": "k11v2_047",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT t1.server_id, t2.server_name,",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 41858
+    },
+    {
+      "case_id": "k11v2_048",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT HOUR(CAST(tm AS DATETIME)) AS hour_of_day, COUNT(order_id) AS order_count FROM dws_10000251_com_pay_order_di WHERE ds = '20260826' GROUP BY HOUR(CAST(tm AS DATETIME)) ORDER BY hour_of_day ASC;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 10,
+            "max_rows": 24
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 48192
+    },
+    {
+      "case_id": "k11v2_049",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。\n\n**为什么不能答**：\n当前可用的舆情监控表（`dws_10000251_public_sentiment_df`）仅记录了舆情的基础属性（来源、类型、文本内容）和互动指标（点赞、阅读、回复等），**缺少标识舆情情感倾向（如“正面/负面/中性”或情感得分）的字段**，因此无法在数据层过滤并统计出“负面舆情”。\n\n**缺什么**：\n缺少情感分类或情感得分字段（例如 `sentiment_label`、`is_negative` 或 `sentiment_score`）。\n\n**怎么解决**：\n需要在舆情数仓加工链路中引入 NLP 情感分析能力，对采集到的舆情文本（`title` / `content`）进行情感分类或打分，并将分析结果作为新字段（如 `sentiment_label = 'negative'`）沉淀到舆情事实表中。待该字段上线后，即可通过 `WHERE sentiment_label = 'negative'` 来查询负面舆情的趋势变化。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 20,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 29036
+    },
+    {
+      "case_id": "k11v2_050",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT CASE WHEN pay_type = '1' THEN '现金付费' WHEN pay_type = '2' THEN '代金券付费' ELSE '其他' END AS pay_category, SUM(pay_amt) AS total_amt, ROUND(SUM(pay_amt) * 100.0 / NULLIF(SUM(SUM(pay_amt)) OVER(), 0), 2) AS pct FROM dws_10000251_pay_order_act_di WHERE ds = '20260826' GROUP BY CASE WHEN pay_type = '1' THEN '现金付费' WHEN pay_type = '2' THEN '代金券付费' ELSE '其他' END;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 3
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 80452
+    },
+    {
+      "case_id": "k11v2_051",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT t2.id AS stage_id,",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 68339
+    },
+    {
+      "case_id": "k11v2_052",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:search_data_sources{\"query\": \"商店 shop 购买 销售\"}",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 21756
+    },
+    {
+      "case_id": "k11v2_053",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT stage_id, AVG(CAST(battle_duration AS DOUBLE)) AS avg_pass_duration FROM dws_10000251_pve_progress_di WHERE ds = '20260826' AND result = '1' GROUP BY stage_id ORDER BY avg_pass_duration ASC LIMIT 50;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 72287
+    },
+    {
+      "case_id": "k11v2_054",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, COUNT(DISTINCT role_id) AS daily_active_pvp_roles FROM dws_10000251_pvp_score_di WHERE ds BETWEEN '20260729' AND '20260827' GROUP BY ds ORDER BY ds",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 20,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 31620
+    },
+    {
+      "case_id": "k11v2_055",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT fteam_role_num AS member_count, COUNT(*) AS fteam_count FROM dws_10000251_social_fteam_summary_df WHERE ds = MAX_PT('dws_10000251_social_fteam_summary_df') GROUP BY fteam_role_num ORDER BY fteam_role_num ASC;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 10
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 42915
+    },
+    {
+      "case_id": "k11v2_056",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_fst) AS first_pay_user_cnt FROM dws_10000251_univ_acc_server_act_di WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "first_pay": 850
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 30716
+    },
+    {
+      "case_id": "k11v2_057",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT server_id, SUM(pay) AS pay_cnt, SUM(act) AS act_cnt, SUM(pay) * 1.0 / NULLIF(SUM(act), 0) AS pay_rate FROM dws_10000251_univ_dev_server_act_di WHERE ds = '20260826' GROUP BY server_id ORDER BY pay_rate DESC LIMIT 100;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 50792
+    },
+    {
+      "case_id": "k11v2_058",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。\n\n**原因**：问题中的“高付费用户”和“普通用户”在语义层缺乏明确的业务定义和划分标准，无法直接转化为 SQL 过滤或分组条件。\n\n**缺失信息**：需要明确“高付费”与“普通”的具体判定规则。例如：是基于单日付费金额、累计付费金额，还是特定的用户标签？具体的金额阈值是多少？\n\n**解决建议**：\n1. 请补充具体的付费金额阈值（例如：“单日付费金额 > 1000元”为高付费，其余为普通）。\n2. 或者明确您的意图是否为对比 **“付费用户”**（`pay_amt > 0`）与 **“免费/未付费用户”**（`pay_amt = 0`）的平均在线时长。 \n\n提供明确标准后，我将为您生成准确的对比查询 SQL。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 31088
+    },
+    {
+      "case_id": "k11v2_059",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:load_table_dimensions{\"table_name\": \"dim_10000251_user_tag_before_ob_info\"}\ncall:lookup_terminology{\"term\": \"流失预测\"}\ncall:lookup_terminology{\"term\": \"高风险\"}",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 10
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 25873
+    },
+    {
+      "case_id": "k11v2_060",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT AVG(CASE WHEN pay_amt_f1d > 0 THEN 1.0 ELSE 0.0 END) AS new_pay_rate_f1d FROM dws_10000251_univ_role_tag_df WHERE ds = MAX_PT('dws_10000251_univ_role_tag_df')",
+          "query_result": null,
+          "expected_result": {
+            "first_day_pay_rate": 0.08
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 68270
+    },
+    {
+      "case_id": "k11v2_061",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:default_api:load_event_definition{event_name: \"dws_10000251_pvp_card_statistics_di\"}\ncall:default_api:load_event_definition{event_name: \"dws_10000251_card_pvp_di\"}",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 20211
+    },
+    {
+      "case_id": "k11v2_062",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call\n{\"name\": \"search_data_sources\", \"arguments\": {\"query\": \"付费 支付 充值 订单 pay payment recharge order\"}}",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 17617
+    },
+    {
+      "case_id": "k11v2_063",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ch_id, COUNT(DISTINCT CASE WHEN lt = 7 AND user_type = 2 THEN user_id END) AS d7_retained_users, COUNT(DISTINCT CASE WHEN lt = 1 AND user_type = 2 THEN user_id END) AS d1_new_users, COUNT(DISTINCT CASE WHEN lt = 7 AND user_type = 2 THEN user_id END) / NULLIF(COUNT(DISTINCT CASE WHEN lt = 1 AND user_type = 2 THEN user_id END), 0) AS d7_retention_rate FROM dws_10000251_selfhelp_new_remain_df WHERE ds >= '20260801' AND ds <= '20260820'",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 74027
+    },
+    {
+      "case_id": "k11v2_064",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.2,
+            "rationale": "SQL使用了Schema中不存在的表名（缺失__pay_amt_avg后缀），且直接LEFT JOIN包含stage_id的关卡表会导致角色数据发散，使得SUM(pay_amt)聚合结果严重错误。",
+            "dimensions": {
+              "table_selection": 0,
+              "field_selection": 0,
+              "filter_conditions": 1,
+              "aggregation_logic": 0,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT CASE WHEN b.pass_pv_std > 0 THEN '通关第10章' ELSE '未通关第10章' END AS pass_status, COUNT(DISTINCT a.role_id) AS role_cnt, SUM(a.pay_amt) AS total_pay_amt, SUM(a.pay_amt) / NULLIF(COUNT(DISTINCT a.role_id), 0) AS arpu FROM dws_10000251_univ_role_server_act_di a LEFT JOIN dws_10000251_battle_stage_df b ON a.role_id = b.role_id AND a.server_id = b.server_id AND a.ds = b.ds AND b.chapter_id = '10' WHERE a.ds = '20260826' AND b.ds = '20260826' GROUP BY CASE WHEN b.pass_pv_std > 0 THEN '通关第10章' ELSE '未通关第10章' END",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 188921
+    },
+    {
+      "case_id": "k11v2_065",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT server_id, SUM(CASE WHEN ds = '20260826' THEN pay_amt ELSE 0 END) AS amt_current, SUM(CASE WHEN ds = '20260825' THEN pay_amt ELSE 0 END) AS amt_previous, (SUM(CASE WHEN ds = '20260826' THEN pay_amt ELSE 0 END) - SUM(CASE WHEN ds = '20260825' THEN pay_amt ELSE 0 END)) / NULLIF(SUM(CASE WHEN ds = '20260825' THEN pay_amt ELSE 0 END), 0) AS growth_rate FROM dws_10000251_pay_order_di WHERE ds IN ('20260826', '20260825') GROUP BY server_id ORDER BY growth_rate DESC LIMIT 5;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 68020
+    },
+    {
+      "case_id": "k11v2_066",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) FROM dws_10000251_pvp_score_di WHERE ds BETWEEN '20260820' AND '20260826' AND role_id IN ( SELECT role_id FROM dws_10000251_role_play_active_di_v2 WHERE ds BETWEEN '20260820' AND '20260826' AND reg_day BETWEEN '20260820' AND '20260826' )",
+          "query_result": null,
+          "expected_result": {
+            "new_pvp_users": 3200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 92771
+    },
+    {
+      "case_id": "k11v2_067",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。\n\n**为什么不能答 / 缺什么：**\n当前可用的数据源（如古战场快照表 `dws_10000251_play_rogue_df`）及其允许的 JOIN 关系中，仅包含角色、区服、关卡及参与/通关状态等字段，**缺少用于区分“VIP用户”和“非VIP用户”的维度字段**（如 `vip_level`、`is_vip` 等）。同时，已知 JOIN 路径中也没有包含角色 VIP 信息的角色维表（如 `dim_role_info`）。\n\n**怎么解决：**\n1. **提供角色维表**：请提供包含角色 VIP 等级信息的维表名称，并补充其与 `dws_10000251_play_rogue_df` 的 JOIN 关系（通常通过 `role_id` 关联）。\n2. **确认扩展字段**：如果 VIP 信息存储在 `ext_info` 扩展字段中，请提供提取该信息的具体 JSON 路径（如 `$.vip_level`）以及判断 VIP 的逻辑阈值。 \n\n提供上述信息后，我将为您生成准确的对比分析 SQL。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 35047
+    },
+    {
+      "case_id": "k11v2_068",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT a.activity_id, COUNT(DISTINCT a.role_id) AS participant_count, SUM(a.pay_amt) / NULLIF(COUNT(DISTINCT a.role_id), 0) AS arppu_fen FROM dws_10000251_com_gm_activity_order_df a WHERE a.ds = '20260826' GROUP BY a.activity_id ORDER BY participant_count DESC",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 84151
+    },
+    {
+      "case_id": "k11v2_069",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "call:load_table_dimensions{\"table_name\": \"dws_10000251_resource_item_df\"}\ncall:load_table_dimensions{\"table_name\": \"dim_10000251_resource_name_info\"}\ncall:lookup_terminology{\"term\": \"钻石\"}",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 30726
+    },
+    {
+      "case_id": "k11v2_070",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "<tool>\n{\"api_name\": \"load_event_definition\", \"api_args\": {\"event_name\": \"dws_10000251_pvp_card_statistics_di\"}}\n</tool>\n<tool>\n{\"api_name\": \"load_table_dimensions\", \"api_args\": {\"table_name\": \"dim_10000251_trans_card_df\"}}\n</tool>",
+          "query_result": null,
+          "expected_result": {
+            "win_rate": 0.65
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 23594
+    },
+    {
+      "case_id": "k11v2_071",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法回答该问题。当前数据源和模型定义无法支持“加入小队与未加入小队用户的留存率对比”计算，具体原因及缺失条件如下：\n\n### 为什么不能答（路径走不通的原因）\n1. **缺少全量用户基准表**：当前提供的小队表（`dws_10000251_social_fteam_rolebx_di`）仅记录产生过小队相关行为的角色。要准确圈选“未加入小队的用户”，必须有一个全量的用户/角色基础表（如全量注册表或登录表）作为基准进行 `LEFT JOIN`，当前候选数据源中缺失此表。\n2. **主体标识不一致且缺乏映射**：小队行为表的主体是 `role_id`（角色粒度），而检索到的留存指标（如 `dws_10000251_selfhelp_new_remain_df`）中使用的主体是 `user_id`（账号/用户粒度）。当前缺少 `role_id` 与 `user_id` 的映射维表，导致两张表无法直接关联。\n3. **违反跨日 JOIN 规则**：留存计算本质涉及跨日行为（如观察首日与留存日）。若要通过底层行为表判断用户“在新增/观察首日是否加入了小队”，需要将留存表与首日的小队行为表进行跨日 JOIN，这违反了“跨日多事件 JOIN 禁”的数仓安全规则。\n\n### 缺什么 & 怎么解决\n为了完成该分析，需要补充以下数据资产或调整分析路径：\n1. **补充全量基准表与映射表**：提供全量角色/账号基础表（用于识别“未加入”群体），以及 `role_id` 到 `user_id` 的映射维表，以统一关联主体。\n2. **使用预聚合的留存宽表**：如果数仓中已经存在按“是否加入小队（或是否有小队行为）”作为维度预先计算好的留存结果表（DWS/ADS 层），请提供该表名及其字段定义，我将直接基于该宽表为您生成对比查询 SQL。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 46359
+    },
+    {
+      "case_id": "k11v2_072",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS churn_role_uv FROM dws_10000251_univ_role_churn_di WHERE ds BETWEEN '20260824' AND '20260826' AND user_type = '3' AND REPLACE(SUBSTR(CAST(pay_tm_lst AS STRING), 1, 10), '-', '') BETWEEN '20260817' AND '20260823';",
+          "query_result": null,
+          "expected_result": {
+            "pay_then_churn": 420
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 101138
+    },
+    {
+      "case_id": "k11v2_073",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT ds, SUM(CASE WHEN pay_type = 1 THEN pay_amt ELSE 0 END) / 100.0 AS revenue_gmv FROM dws_10000251_com_pay_order_di WHERE ds BETWEEN '20260820' AND '20260826' GROUP BY ds ORDER BY ds ASC;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 37908
+    },
+    {
+      "case_id": "k11v2_074",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT COUNT(IF(lt = 2, user_id, NULL)) AS day2_retain_uv, COUNT(IF(lt = 1, user_id, NULL)) AS day1_new_uv, COUNT(IF(lt = 2, user_id, NULL)) * 1.0 / NULLIF(COUNT(IF(lt = 1, user_id, NULL)), 0) AS day2_retain_rate FROM dws_10000251_selfhelp_new_remain_df WHERE ds = '20260826' AND user_type = 2 AND act_ymd_fst = '20260825';",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 78602
+    },
+    {
+      "case_id": "k11v2_075",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法直接回答“哪些玩法需要优化”，原因如下：\n\n**为什么不能答**：\n“需要优化”是一个主观且模糊的业务结论，在数据层面没有直接对应的单一指标或固定的判断标准。不同的业务视角对“需要优化”的定义完全不同。\n\n**缺什么**：\n缺少衡量“玩法表现不佳”的具体数据指标定义以及对比基准。例如：\n- 是指**参与热度下降**（如参与 UV/PV 环比下跌）？\n- 是指**数值/平衡性问题**（如胜率过低/过高、平均通关耗时异常）？\n- 是指**玩家体验问题**（如该玩法参与后的次日留存率低、流失率高）？\n同时，也缺少对比的时间范围（如：对比昨天、对比上周同期）。\n\n**怎么解决**：\n请您明确希望评估“玩法优化”的**具体指标**和**时间范围**。您可以将问题修改为类似以下形式，我将为您查询数据：\n1. “过去7天内，各玩法的参与人数（UV）和参与次数，以及环比上周的变化率是多少？”\n2. “昨天各子玩法的平均胜率和平均通关耗时是多少？”\n3. “过去7天参与过某玩法的玩家，其整体留存率表现如何？” \n\n请补充具体的分析指标，我将立即为您提取准确的数据。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 26506
+    },
+    {
+      "case_id": "k11v2_076",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "**【拒绝回答】**\n\n**【原因】**\n1. **语义模糊（模糊结论词）**：“不平衡”是一个宽泛的模糊结论词，未指定具体的衡量维度（如：活跃人数、付费收入、新增角色、在线时长等）。根据分析规范，此类问题需拆解为具体的原子指标，但当前缺乏明确的业务指向。\n2. **字段定义缺失**：当前语义层未加载用于衡量服务器状态的核心DWS汇总表（如 `dws_10000251_acc_summary_df` 账号汇总表 或 `dws_10000251_algo_role_act_pay_df` 角色活跃付费表）的具体度量字段结构。在缺乏明确字段定义的情况下，无法硬编码生成合法的统计 SQL。\n\n**【怎么解决】**\n1. **明确衡量指标**：请补充您想对比的具体业务指标。例如：\n   - “对比各服务器昨日的**活跃人数**和**付费总额**分布”\n   - “分析各服务器过去7天的**新增角色数**差异”\n2. **量化分析方式**：明确指标后，我将加载对应数据表的字段定义，通过计算各服务器该指标的**极差、标准差、变异系数或分位数分布**，来科学量化并评估服务器间是否存在显著的不平衡情况。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 68396
+    },
+    {
+      "case_id": "k11v2_077",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "计算留存率时按 ds(业务日期) 分组会导致分子(lt=2，昨日新增)和分母(lt=1，今日新增)对应的新增批次(cohort)不一致，正确的分组维度应为新增日期 act_ymd_fst。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 0,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT ds, COUNT(DISTINCT CASE WHEN lt=1 AND user_type=2 THEN user_id END) AS new_users, COUNT(DISTINCT CASE WHEN lt=2 AND user_type=2 THEN user_id END) AS d1_retained_users, COUNT(DISTINCT CASE WHEN lt=2 AND user_type=2 THEN user_id END) * 1.0 / NULLIF(COUNT(DISTINCT CASE WHEN lt=1 AND user_type=2 THEN user_id END), 0) AS d1_retention_rate FROM dws_10000251_selfhelp_new_remain_df WHERE ds BETWEEN '20260819' AND '20260825' GROUP BY ds ORDER BY ds;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 80536
+    },
+    {
+      "case_id": "k11v2_078",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法直接回答“最近有什么异常数据”。\n\n**为什么不能答：**\n“异常数据”是一个模糊的业务概念，当前数据仓库中没有全局统一的“异常”指标。判断数据是否异常需要明确具体的**业务模块**（如PVP、公会、商城）以及**判断阈值或标准**（如代打占比超过5%、退会次数大于3次等）。\n\n**缺什么：**\n缺少具体的业务场景指向、明确的指标定义以及您期望的时间范围。\n\n**怎么解决：**\n当前数据源中包含以下与“异常检测/监控”相关的候选指标，请您选择具体想了解的模块并明确查询需求：\n\n1. **PVP代打占比**（用于异常账户/代练检测）：统计 `game.pvp.end` 事件中 `isBoost=1` 的比例。\n   *示例提问：“帮我查询最近7天每天的PVP代打占比趋势。”*\n2. **单角色平均退出公会次数**（用于识别多次退会的异常角色）：基于 `game.guild.exit` 事件统计。\n   *示例提问：“查询昨天各服务器的单角色平均退会次数。”*\n3. **商城免费奖励金币发放总量**（免费奖励预期近0，发放量高则为异常）：基于 `game.saleshop.freereward` 事件统计。\n   *示例提问：“查询过去7天商城免费奖励的金币发放总量。”*\n\n请补充您具体关注的业务模块或指标，我将为您生成准确的数据查询。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 37766
+    },
+    {
+      "case_id": "k11v2_079",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "SELECT card_id, SUM(battle_times) AS total_battles, SUM(win_times) AS total_wins, CAST(SUM(win_times) AS DOUBLE) / NULLIF(CAST(SUM(battle_times) AS DOUBLE), 0) AS win_rate FROM dws_10000251_pvp_card_statistics_di WHERE ds BETWEEN '20260820' AND '20260826' GROUP BY card_id ORDER BY total_battles DESC LIMIT 20;",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 60400
+    },
+    {
+      "case_id": "k11v2_080",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": "无法直接回答“经济系统健康吗”这一宏观问题。\n\n**为什么不能答：**\n“经济系统健康”是一个复杂的综合性概念，通常需要通过货币产出与消耗比、核心资源存量变化、通货膨胀率、交易行物价波动等多维度指标来进行综合评估。当前提供的数据源无法支撑这一宏观结论。\n\n**缺什么：**\n当前检索到的数据源仅包含部分购买行为的事件（如交易所购买 `game.exchange.buy`、战令购买、团购购买）以及商品配置维度表。缺乏评估经济系统健康度所必需的核心数据，例如：\n1. 各类货币和核心资源的总产出与总消耗流水。\n2. 玩家群体的资产存量快照（用于评估蓄水池和通胀）。\n3. 交易行的商品均价、上架/成交量等市场流动性指标。\n\n**怎么解决：**\n1. **补充数据源**：需要接入游戏内的“资源/货币产出消耗流水表”、“玩家资产存量快照表”以及“交易行流水表”，并定义相关的宏观经济指标。\n2. **缩小分析范围**：如果您想评估某个具体子系统的表现，可以提出更具体的问题。例如：\n   - “过去7天交易所的购买活跃度和参与人数是多少？”\n   - “昨天战令购买的渗透率如何？”\n   - “团购活动中各商品的购买次数分布是怎样的？” \n\n请明确您具体想了解的子系统或指标，我将为您进行准确的数据查询。",
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 23722
+    }
+  ],
+  "summary": {
+    "total": 80,
+    "correct": 1,
+    "wrong": 79,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0.0125
+  }
+}

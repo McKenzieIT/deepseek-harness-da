@@ -1,0 +1,27 @@
+{
+  "run_id": "g1b-35f-018",
+  "timestamp": "2026-08-25T17:57:29.405Z",
+  "cases": [
+    {
+      "case_id": "k11_018",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 13407
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "correct": 0,
+    "wrong": 1,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0
+  }
+}

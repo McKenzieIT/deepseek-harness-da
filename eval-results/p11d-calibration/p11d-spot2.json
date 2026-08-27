@@ -1,0 +1,43 @@
+{
+  "run_id": "p11d-spot2",
+  "timestamp": "2026-08-27T06:16:31.196Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了设备区服日增量明细表，对pay_amt求和以计算总付费金额，并通过ds字段过滤了昨天的日期，聚合逻辑与过滤条件均准确匹配用户问题语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_amt) AS total_pay_amt FROM dws_10000251_univ_dev_server_act_di WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "total_pay_amt": 1500000
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 62883
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "correct": 1,
+    "wrong": 0,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 1
+  }
+}

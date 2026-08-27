@@ -1,0 +1,37 @@
+{
+  "run_id": "p11d-spot-check",
+  "timestamp": "2026-08-27T06:14:21.656Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Failed to parse judge response: SELECT SUM(pay_amt) AS total_pay_amt FROM dws_10000251_pay_order_di WHERE ds = '20260826';\n",
+            "dimensions": {}
+          },
+          "generated_sql": "SELECT SUM(pay_amt) AS total_pay_amt FROM dws_10000251_pay_order_di WHERE ds = '20260826';",
+          "query_result": null,
+          "expected_result": {
+            "total_pay_amt": 1500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 34616
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "correct": 0,
+    "wrong": 1,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0
+  }
+}

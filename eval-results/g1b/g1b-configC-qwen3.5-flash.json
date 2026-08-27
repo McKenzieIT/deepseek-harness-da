@@ -1,0 +1,692 @@
+{
+  "run_id": "g1b-configC-qwen3.5-flash",
+  "timestamp": "2026-08-26T03:41:08.085Z",
+  "cases": [
+    {
+      "case_id": "k11_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 207168
+    },
+    {
+      "case_id": "k11_005",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 2172255
+    },
+    {
+      "case_id": "k11_013",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 779676
+    },
+    {
+      "case_id": "k11_018",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 1145
+    },
+    {
+      "case_id": "k11_021",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 822
+    },
+    {
+      "case_id": "k11_031",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 858
+    },
+    {
+      "case_id": "k11_035",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 787
+    },
+    {
+      "case_id": "k11_042",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": false,
+          "error": "eval-cli: LLM returned no content (no text blocks, no reasoning)"
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 820
+    },
+    {
+      "case_id": "k11_049",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 261045
+    },
+    {
+      "case_id": "k11_056",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 315687
+    },
+    {
+      "case_id": "k11_067",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 254196
+    },
+    {
+      "case_id": "k11_068",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 194263
+    },
+    {
+      "case_id": "k11_071",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 104005
+    },
+    {
+      "case_id": "k11_074",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 249920
+    },
+    {
+      "case_id": "k11_077",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 126553
+    },
+    {
+      "case_id": "k11_083",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 70476
+    },
+    {
+      "case_id": "k11_088",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 184763
+    },
+    {
+      "case_id": "k11_095",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 184770
+    },
+    {
+      "case_id": "k11_101",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 133113
+    },
+    {
+      "case_id": "k11_107",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 525263
+    },
+    {
+      "case_id": "k11_108",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 145045
+    },
+    {
+      "case_id": "k11_109",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 241490
+    },
+    {
+      "case_id": "k11_111",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 603487
+    },
+    {
+      "case_id": "k11_118",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 155738
+    },
+    {
+      "case_id": "k11_119",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 189562
+    },
+    {
+      "case_id": "k11_139",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 281186
+    },
+    {
+      "case_id": "k11_149",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 170527
+    },
+    {
+      "case_id": "k11_153",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 116870
+    },
+    {
+      "case_id": "k11_156",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 355406
+    },
+    {
+      "case_id": "k11_158",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 220146
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "correct": 0,
+    "wrong": 30,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0
+  }
+}

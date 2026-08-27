@@ -1,0 +1,75 @@
+{
+  "run_id": "g1b-flash-noq",
+  "timestamp": "2026-08-25T17:55:16.119Z",
+  "cases": [
+    {
+      "case_id": "k11_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 2656
+    },
+    {
+      "case_id": "k11_018",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 2234
+    },
+    {
+      "case_id": "k11_042",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 2857
+    },
+    {
+      "case_id": "k11_083",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 2676
+    },
+    {
+      "case_id": "k11_139",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 2672
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "correct": 0,
+    "wrong": 5,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0
+  }
+}

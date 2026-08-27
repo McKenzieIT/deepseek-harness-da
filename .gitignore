@@ -55,3 +55,9 @@ packages/identity/identity/src/*.js.map
 packages/identity/identity/src/*.d.ts
 packages/identity/identity/src/*.d.ts.map
 .tmp/
+.claude/plans/
+
+# Eval run outputs (ephemeral UUID results + logs)
+eval-results/*.json
+eval-results/**/*.log
+packages/eval/eval-cli/eval-results/
