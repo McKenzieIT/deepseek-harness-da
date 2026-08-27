@@ -4,8 +4,10 @@ import {
   routeMetric,
   extractTimeParams,
   buildMetricContext,
+  buildTimeFilterHint,
   metricFromHit,
   type MetricDefinitionLite,
+  type HostTableInfo,
 } from '../src/metric-engine.ts'
 import type { RetrievalHit } from '../src/bm25-linking.ts'
 import { Nl2sqlEngine } from '../src/engine.ts'
@@ -107,4 +109,51 @@ test('D3 — buildPrompt renders the metric-context section when metricContext i
   })
   expect(p).toContain('已知指标定义（请基于此规则构建查询）')
   expect(p).toContain('COUNT(DISTINCT user_id)')
+})
+
+// ── M1 time-filter hint tests ─────────────────────────────────────────────
+
+test('M1 — buildTimeFilterHint: _df snapshot table → snapshot hint', () => {
+  const table: HostTableInfo = { partitions: [{ name: 'ds' }], granularity: '日全量快照_df' }
+  const hint = buildTimeFilterHint(table)
+  expect(hint).toContain('日全量快照表')
+  expect(hint).toContain('MAX_PT()')
+  expect(hint).toContain('勿跨天 SUM/COUNT')
+})
+
+test('M1 — buildTimeFilterHint: _di daily table → daily partition hint', () => {
+  const table: HostTableInfo = { partitions: [{ name: 'ds' }], granularity: '日增量' }
+  const hint = buildTimeFilterHint(table)
+  expect(hint).toContain('ds 分区过滤')
+  expect(hint).toContain("WHERE ds = '...'")
+})
+
+test('M1 — buildTimeFilterHint: no ds partition → empty hint', () => {
+  const table: HostTableInfo = { partitions: [{ name: 'dt' }], granularity: '日增量' }
+  expect(buildTimeFilterHint(table)).toBe('')
+})
+
+test('M1 — buildTimeFilterHint: undefined partitions → empty hint', () => {
+  const table: HostTableInfo = { granularity: '日全量快照' }
+  expect(buildTimeFilterHint(table)).toBe('')
+})
+
+test('M1 — buildTimeFilterHint: string partition format → works', () => {
+  const hint = buildTimeFilterHint(
+    { partitions: ['ds'] as unknown as readonly ({ name: string } | string)[], granularity: '全量' },
+  )
+  expect(hint).toContain('日全量快照表')
+})
+
+test('M1 — buildMetricContext with hostTable appends time-filter hint', () => {
+  const hostTable: HostTableInfo = { partitions: [{ name: 'ds' }], granularity: '日全量快照' }
+  const ctx = buildMetricContext(DAU, { date: '20260819' }, hostTable)
+  expect(ctx).toContain('dau')
+  expect(ctx).toContain('COUNT(DISTINCT user_id)')
+  expect(ctx).toContain('时间过滤：该指标基于日全量快照表')
+})
+
+test('M1 — buildMetricContext without hostTable has no hint (backward compat)', () => {
+  const ctx = buildMetricContext(DAU, { date: '20260819' })
+  expect(ctx).not.toContain('时间过滤')
 })

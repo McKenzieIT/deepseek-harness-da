@@ -10,6 +10,12 @@
  */
 import type { RetrievalHit } from './bm25-linking.ts'
 
+/** Minimal host-table info for time-filter hint generation (structurally compatible with the semantic-layer TableModel). */
+export interface HostTableInfo {
+  readonly partitions?: readonly ({ readonly name: string } | string)[]
+  readonly granularity?: string
+}
+
 /** Local metric shape (the semantic-layer MetricDefinition structurally satisfies it). */
 export interface MetricDefinitionLite {
   readonly name: string
@@ -104,8 +110,26 @@ export function extractTimeParams(question: string, today: string): TimeParams {
   return {}
 }
 
+/**
+ * Generate a time-filter hint based on the host table's partition and granularity info.
+ * Snapshot tables (_df / 快照 / 全量) get a MAX_PT() hint; daily-partitioned tables
+ * get a ds WHERE hint; tables without ds partition get no hint.
+ */
+export function buildTimeFilterHint(hostTable: HostTableInfo): string {
+  const hasDs = hostTable.partitions?.some(p =>
+    (typeof p === 'string' ? p : p.name) === 'ds',
+  )
+  if (!hasDs) return ''
+
+  const gran = hostTable.granularity || ''
+  if (/快照|_df|全量/.test(gran)) {
+    return '\n时间过滤：该指标基于日全量快照表，ds 取最近可用分区（如 MAX_PT()），勿跨天 SUM/COUNT 避免重复计数。'
+  }
+  return '\n时间过滤：该指标按 ds 分区过滤（日粒度），使用 WHERE ds = \'...\' 或 ds BETWEEN 限制时间范围。'
+}
+
 /** Render the metric context line for a Level 2 (mixed) prompt (D3). */
-export function buildMetricContext(metric: MetricDefinitionLite, params: TimeParams): string {
+export function buildMetricContext(metric: MetricDefinitionLite, params: TimeParams, hostTable?: HostTableInfo): string {
   const source = metric.computation.metadata.source
   const expr = metric.computation.sql
   // Hint-quality WHERE: surfaces the time filter so the LLM reproduces it in
@@ -115,5 +139,6 @@ export function buildMetricContext(metric: MetricDefinitionLite, params: TimePar
   if (params.date) where = ` WHERE ds = '${params.date}'`
   else if (params.start_date && params.end_date) where = ` WHERE ds BETWEEN '${params.start_date}' AND '${params.end_date}'`
   const body = expr.includes('{{') ? expr : `SELECT ${expr} FROM ${source}${where}`
-  return `- ${metric.name} = ${body}（${metric.description ?? ''}）`
+  const base = `- ${metric.name} = ${body}（${metric.description ?? ''}）`
+  return hostTable !== undefined ? base + buildTimeFilterHint(hostTable) : base
 }

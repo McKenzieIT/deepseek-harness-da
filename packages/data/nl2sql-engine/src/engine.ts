@@ -31,7 +31,7 @@ import {
   type QueryOutcome,
 } from './types.ts'
 import { critiqueSql, extractSqlCandidate } from './critic.ts'
-import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetricContext } from './metric-engine.ts'
+import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetricContext, type HostTableInfo } from './metric-engine.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
 import { detectTrendIntent, rerankByGranularity } from './granularity.ts'
@@ -63,6 +63,7 @@ function postProcessSql(sql: string, today?: string): string {
     return `'${computeDate(base, Number(offset))}'`
   })
   // Replace DATEADD(GETDATE()|'today', -N, 'dd') → computed literal
+  // eslint-disable-next-line @stylistic/max-len
   const dateAddRe = /(?:TO_CHAR\s*\(\s*)?DATEADD\s*\(\s*(?:GETDATE\s*\(\s*\)|'[^']*')\s*,\s*(-?\d+)\s*,\s*'dd'\s*\)(?:\s*,\s*'yyyyMMdd'\s*\))?/gi
   out = out.replace(dateAddRe, (_m, offset) => {
     return `'${computeDate(today, Number(offset))}'`
@@ -150,6 +151,7 @@ export class Nl2sqlEngine {
   private readonly conventions: EngineConventions | null
   private readonly graph: RelationGraphLike | undefined
   private readonly lookupDoc: ((id: string) => DataSourceDoc | undefined) | undefined
+  private readonly partitionResolver: ((tableName: string) => readonly string[] | null) | undefined
 
   constructor(deps: EngineDeps) {
     this.retrieval = deps.retrieval ?? new Bm25Linker(deps.dataSources ?? [])
@@ -158,9 +160,16 @@ export class Nl2sqlEngine {
     this.conventions = deps.conventions ?? loadConventions('maxcompute')
     this.graph = deps.graph
     this.lookupDoc = deps.lookupDoc
-    // partitionResolver is intentionally not stored: post-M1b the Level 2 path
-    // does not read it (the Level 2.5 deterministic arm that consumed it was
-    // removed). The EngineDeps field is retained for backward-compatible callers.
+    this.partitionResolver = deps.partitionResolver
+  }
+
+  private resolveHostTableInfo(sourceTable: string): HostTableInfo | undefined {
+    const partitions = this.partitionResolver?.(sourceTable)
+    if (partitions === null || partitions === undefined) return undefined
+    const doc = this.lookupDoc?.(sourceTable)
+    const payload = doc?.payload as { granularity?: string } | undefined
+    const granularity = payload?.granularity || (/_df$/.test(sourceTable) ? '_df' : '')
+    return { partitions: partitions.map(name => ({ name })), granularity }
   }
 
   /**
@@ -232,7 +241,8 @@ export class Nl2sqlEngine {
           partitionCols,
           ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
         })
-        metricContext = buildMetricContext(metricDef, extractTimeParams(question, args.today ?? ''))
+        const hostTableInfo = this.resolveHostTableInfo(metricDef.computation.metadata.source)
+        metricContext = buildMetricContext(metricDef, extractTimeParams(question, args.today ?? ''), hostTableInfo)
       }
     }
 
