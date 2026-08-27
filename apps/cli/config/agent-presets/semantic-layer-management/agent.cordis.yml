@@ -95,6 +95,11 @@
 - id: tool-trigger-eval
   name: '@deepseek-ai/dsh-tool-trigger-eval'
 
+# ── reachability delta tool (W11: assess relation impact) ──────────────────
+
+- id: tool-reachability-delta
+  name: '@deepseek-ai/dsh-tool-reachability-delta'
+
 # ── write tool (G4 Q5: direct write + Tier-2 audit + unreviewed status) ────
 
 - id: tool-edit-definition

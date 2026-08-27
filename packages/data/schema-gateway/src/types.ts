@@ -56,3 +56,49 @@ export interface DomainEntry {
  * enough to carry every definition field the UI detail panel renders.
  */
 export type Json = string | number | boolean | null | readonly Json[] | { readonly [key: string]: Json }
+
+// ── W10: Context Layer Graph types ──────────────────────────────────────
+
+/** Options for the getGraphData RPC. */
+export interface GraphDataOpts {
+  /** Filter to nodes in a specific domain. */
+  readonly domain?: string
+  /** Center the graph on a specific node id (BFS root). */
+  readonly focus?: string
+  /** BFS depth from focus node (default: unlimited). */
+  readonly depth?: number
+  /** Include metric nodes in the graph (default: false). */
+  readonly includeMetrics?: boolean
+}
+
+/** A node in the context-layer graph. */
+export interface GraphNode {
+  /** Unique identifier (table_name, event name, or metric name). */
+  readonly id: string
+  /** Kind of data source. */
+  readonly kind: 'dws' | 'dim' | 'event' | 'metric'
+  /** Display label. */
+  readonly label: string
+  /** Domain(s) the node belongs to. */
+  readonly domains: readonly string[]
+  /** Eval pass rate (0–1), undefined if no eval data available. */
+  readonly evalPassRate?: number
+}
+
+/** An edge in the context-layer graph. */
+export interface GraphEdge {
+  /** Source node id. */
+  readonly source: string
+  /** Target node id. */
+  readonly target: string
+  /** Relation type (joins | derived_from | related_to). */
+  readonly type: string
+  /** Join condition expression (for 'joins' type). */
+  readonly on?: string
+}
+
+/** Response from getGraphData: full node+edge set for the context layer. */
+export interface GraphData {
+  readonly nodes: readonly GraphNode[]
+  readonly edges: readonly GraphEdge[]
+}

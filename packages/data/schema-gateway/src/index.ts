@@ -28,6 +28,10 @@ import type {
   CoverageStats,
   DomainEntry,
   Json,
+  GraphDataOpts,
+  GraphData,
+  GraphNode,
+  GraphEdge,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -135,7 +139,7 @@ export class SchemaGateway extends TypertRemoteService {
     const counts = new Map<string, { tables: number; events: number; metrics: number }>()
     const ensure = (d: string) => {
       if (!counts.has(d)) counts.set(d, { tables: 0, events: 0, metrics: 0 })
-      return counts.get(d)!
+      return counts.get(d) as { tables: number; events: number; metrics: number }
     }
 
     for (const t of this.listTables()) {
@@ -173,6 +177,125 @@ export class SchemaGateway extends TypertRemoteService {
       metric_count: metrics.length,
       domain_counts: domainCounts,
     }
+  }
+
+  /**
+   * W10: Get graph data for the context-layer interactive relation graph.
+   * Returns nodes (tables, events, metrics) and edges (relations) from the
+   * SemanticLayerService's RelationGraph. Supports domain filtering, focus
+   * node with BFS depth, and optional metric inclusion.
+   *
+   * evalPassRate is left undefined in this base implementation — it will be
+   * wired from the evidence-query service in a follow-up.
+   */
+  @Remote('getGraphData')
+  getGraphData(opts?: GraphDataOpts): GraphData {
+    const domain = opts?.domain
+    const focus = opts?.focus
+    const depth = opts?.depth
+    const includeMetrics = opts?.includeMetrics ?? false
+
+    // Collect all nodes from tables, events, and optionally metrics
+    const allNodes: GraphNode[] = []
+    const nodeIdSet = new Set<string>()
+
+    for (const t of loadTables(this.ctx.schema.semanticRoot)) {
+      const r = TableDefinitionSchema.safeParse(t.raw)
+      if (!r.success) continue
+      const def = r.data
+      if (domain && !def.domains.includes(domain)) continue
+      const node: GraphNode = {
+        id: def.table_name,
+        kind: def.kind as 'dws' | 'dim',
+        label: def.table_name,
+        domains: [...def.domains],
+      }
+      allNodes.push(node)
+      nodeIdSet.add(node.id)
+    }
+
+    for (const e of loadEvents(this.ctx.schema.semanticRoot)) {
+      const r = EventDefinitionSchema.safeParse(e.raw)
+      if (!r.success) continue
+      const def = r.data
+      if (domain && !def.domains.includes(domain)) continue
+      const node: GraphNode = {
+        id: def.name,
+        kind: 'event',
+        label: def.name,
+        domains: [...def.domains],
+      }
+      allNodes.push(node)
+      nodeIdSet.add(node.id)
+    }
+
+    if (includeMetrics) {
+      for (const m of loadMetricDefinitions(this.ctx.schema.semanticRoot)) {
+        if (domain && !m.domains.includes(domain)) continue
+        const node: GraphNode = {
+          id: m.name,
+          kind: 'metric',
+          label: m.name,
+          domains: [...m.domains],
+        }
+        allNodes.push(node)
+        nodeIdSet.add(node.id)
+      }
+    }
+
+    // Collect edges from the relation graph
+    const relationGraph = this.ctx.schema.getRelationGraph()
+    const allEdges: GraphEdge[] = []
+    const edgeSet = new Set<string>() // dedupe "A->B" pairs
+
+    for (const node of allNodes) {
+      const related = relationGraph.getRelated(node.id)
+      for (const edge of related) {
+        if (!nodeIdSet.has(edge.targetId)) continue
+        const edgeKey = `${node.id}->${edge.targetId}:${edge.type}`
+        if (edgeSet.has(edgeKey)) continue
+        edgeSet.add(edgeKey)
+        allEdges.push({
+          source: node.id,
+          target: edge.targetId,
+          type: edge.type,
+          ...(edge.on ? { on: edge.on } : {}),
+        })
+      }
+    }
+
+    // If focus is specified, BFS from focus node to limit depth
+    if (focus && depth !== undefined && depth > 0) {
+      // Guard: if the focus node is not in the filtered node set, skip BFS
+      // filtering entirely and return all nodes/edges as-is.
+      if (!nodeIdSet.has(focus)) {
+        return { nodes: allNodes, edges: allEdges }
+      }
+      const reachable = new Set<string>([focus])
+      let frontier = [focus]
+      for (let d = 0; d < depth && frontier.length > 0; d++) {
+        const nextFrontier: string[] = []
+        for (const nid of frontier) {
+          const related = relationGraph.getRelated(nid)
+          for (const edge of related) {
+            if (!nodeIdSet.has(edge.targetId)) continue
+            if (!reachable.has(edge.targetId)) {
+              reachable.add(edge.targetId)
+              nextFrontier.push(edge.targetId)
+            }
+          }
+        }
+        frontier = nextFrontier
+      }
+
+      const filteredNodes = allNodes.filter(n => reachable.has(n.id))
+      const filteredEdges = allEdges.filter(
+        e => reachable.has(e.source) && reachable.has(e.target),
+      )
+      return { nodes: filteredNodes, edges: filteredEdges }
+    }
+
+    return { nodes: allNodes, edges: allEdges }
   }
 }
 

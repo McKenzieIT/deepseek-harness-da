@@ -1,8 +1,8 @@
 # W10 — Context Layer 关系视图可视化（全屏管理界面 + @antv/g6 语义缩放）
 
-**Type**: grilling → prototype
+**Type**: grilling → prototype → task
 **Phase**: misc（管理 UI 核心）
-**Status**: resolved 2026-08-27
+**Status**: implemented 2026-08-27（设计 resolved + 基础代码落地 + 全屏管理 UI 组装完成）
 **Blocked by**: 无（W8 resolved 2026-08-27，evidence RPC 已接通）
 
 ## Question

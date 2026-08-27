@@ -2,8 +2,8 @@
 
 **Type**: grilling → task
 **Phase**: misc（管理 UI 闭环）
-**Status**: resolved 2026-08-27（grilling 完成，12 项决策锁定）
-**Blocked by**: W10（Context Layer 关系视图可视化，resolved 2026-08-27）
+**Status**: implemented 2026-08-27（grilling 完成 + 全部 6 项实现交付）
+**Blocked by**: W10（Context Layer 关系视图可视化，implemented 2026-08-27）
 
 ## Question
 
@@ -89,14 +89,74 @@ W10 建成只读图谱后，需在其上加对话式管理能力，形成"看→
 - Patrol 上下文保持不丢。
 - 只有显式"停止巡检"/"关闭 patrol"才终止循环。
 
-## 实现要求（grilling → task 过渡）
+## 实现交付（2026-08-27）
 
-1. **Narration Gate**（新基础设施）：management session 事件流 → pending buffer → message complete 释放 → 动画。
-2. **`revert_edit` 工具**：audit trail before-snapshot 持久化 + 新 tool 包。
-3. **Patrol Mode**：巡检循环 + 约束 + btw 机制。
-4. **独立 Management Session**：session 创建/销毁 + tool 门禁 + 跨 session 上下文摘要引用。
-5. **图谱动画层**：fade-in（新边）/ 虚线高亮（preview）/ 脉冲+聚焦（退化）/ 闪烁（eval running）。
-6. **MVCC query snapshot**：query 执行期间 definition 锁定。
+### 服务端（Phase 1）
+
+| # | 模块 | 包/文件 | 测试 |
+|---|------|---------|------|
+| 1 | Narration Gate (D1) | `packages/client/ui-context-layer/src/client/narration-gate.ts` | — (client) |
+| 2 | `revert_edit` 工具 (S1) | `packages/data/tool-revert-edit/` + audit snapshot table | 57 tests ✅ |
+| 3 | Patrol Mode (D7+S3) | `packages/data/patrol-mode/` | 26 tests ✅ |
+| 4 | 独立 Management Session (D6) | `packages/data/management-session/` | 17 tests ✅ |
+| 5 | 图谱动画层 (D5) | `packages/client/ui-context-layer/src/client/graph-animations.ts` | — (client) |
+| 6 | MVCC query snapshot (C1) | `packages/data/semantic-layer/src/snapshot.ts` | 9 tests ✅ |
+
+**服务端总计**: 109 server-side tests 全部通过。
+
+### 客户端 UI 组件（Phase 2）
+
+| # | 组件 | 文件 | 说明 |
+|---|------|------|------|
+| 7 | Domain filter toolbar | `ui-context-layer/src/client/DomainFilterToolbar.tsx` | Toggle chips 按 domain 过滤图谱 |
+| 8 | Search/定位节点 | `ui-context-layer/src/client/SearchBar.tsx` | 模糊匹配 + focusWithZoom |
+| 9 | Evidence overlay toggle | `ui-context-layer/src/client/OverlayToggle.tsx` | 三态按钮（off/coverage/heatmap） |
+| 10 | 节点详情侧面板 | `ui-context-layer/src/client/NodeDetailPanel.tsx` | 点击节点展示 kind/domains/pass rate + 💬 按钮 |
+| 11 | 对话面板壳 | `ui-context-layer/src/client/ManagementChatPanel.tsx` | 可收缩 LLM 对话面板 + Narration Gate 活接线 |
+| 12 | reachabilityDelta tool | `packages/data/tool-reachability-delta/` | Cordis tool 包装 evidence-query RPC | 8 tests ✅ |
+| 13 | ContextLayerView 组装 | `ui-context-layer/src/client/ContextLayerView.tsx` | 全屏视图组合所有子组件 |
+
+**客户端说明**: 无独立 UI 测试基础设施，保证 TypeScript 类型正确 + export 注册。
+
+### `tool-reachability-delta` 详细
+
+- 新增 Cordis tool plugin: `packages/data/tool-reachability-delta/`
+- 包装 `evidenceQuery.reachabilityDelta()` 为 agent-callable tool
+- 已加入 `semantic-layer-management` agent preset
+- 8/8 vitest tests 通过
+
+**全量 server 测试**: `npx vitest run packages/data/` → **736/736 passed**（含修复 pre-existing schema-gateway test）
+
+### 二次 Code Review 修复（Phase 2 后）
+
+| 严重性 | 问题 | 修复 |
+|--------|------|------|
+| HIGH | SearchBar 的 `graph` 始终为 null，focusWithZoom 无法工作 | ContextLayerGraph 新增 `onGraphReady` callback，ContextLayerView 捕获实例传给 SearchBar |
+| MEDIUM | overlayMode toggle 无实际效果 | ContextLayerView 使用 `useOverlayMode(graphInstance)` 直连图实例 |
+| MEDIUM | 多 domain 过滤（2+ domains）静默失效为 show all | 改为 client-side `filteredData` 预过滤，不依赖 ContextLayerGraph 单 domain 限制 |
+| MEDIUM | ManagementChatPanel 的 onNarrationRelease 未传给组装层 | 添加 `handleNarrationRelease` → `setReleasedUpdates` → `useGraphAnimations` 活接线 |
+| MEDIUM | onNarrationRelease 在 deps 中导致多余 effect 执行 | 改为 ref pattern 避免回调 identity 变化触发 |
+| LOW | SearchBar dropdown 不响应外部点击关闭 | 添加 `onBlur` + 150ms delay |
+| LOW | OverlayToggle 最后一个按钮多余 borderRight | 条件移除 |
+| LOW | ManagementChatPanel 未使用的 messagesContainerRef | 删除 |
+| PRE-EXISTING | schema-gateway test 未包含 getGraphData | 添加到期望列表 |
+
+### 附属变更
+
+- **audit store**: schema v1→v2 迁移，新增 `definition_snapshot` 表
+- **tool-edit-definition**: `computeEdit` 返回 before-state，execute 中 fail-silent 写入快照
+- **schema-gateway**: 新增 `getGraphData` RPC（W10 落地）
+- **agent preset**: `semantic-layer-management/agent.cordis.yml` 新增 `tool-revert-edit`
+
+### W10 基础组件（同步落地）
+
+| 文件 | 说明 |
+|------|------|
+| `packages/client/ui-context-layer/` | 新 Mode 3 Repository Package |
+| `src/client/ContextLayerGraph.tsx` | g6 v5 主组件（语义缩放三级 LOD） |
+| `src/client/graph-layout.ts` | combo-force 布局 + zoom 阈值 |
+| `src/client/graph-styles.ts` | 节点/边样式 by kind + eval overlay |
+| `schema-gateway getGraphData` | 服务端图数据 API（domain/focus/depth 过滤）|
 
 ## 关联
 

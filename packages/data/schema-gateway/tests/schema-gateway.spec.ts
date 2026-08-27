@@ -77,17 +77,17 @@ function seedLayer(): string {
   return dir
 }
 
-function makeGateway(): SchemaGateway {
+async function makeGateway(): Promise<SchemaGateway> {
   const dir = seedLayer()
-  const { Context } = require('@deepseek-ai/cordis') as typeof import('@deepseek-ai/cordis')
+  const { Context } = await import('@deepseek-ai/cordis')
   const ctx = new Context()
   new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
   return new SchemaGateway(ctx)
 }
 
 describe('SchemaGateway', () => {
-  it('publishes Remote methods under the schemaGateway namespace', () => {
-    const gw = makeGateway()
+  it('publishes Remote methods under the schemaGateway namespace', async () => {
+    const gw = await makeGateway()
     expect(gw.typertRemote).toMatchObject({
       serviceKey: 'schemaGateway',
       namespace: 'schemaGateway',
@@ -96,6 +96,7 @@ describe('SchemaGateway', () => {
     expect(methods).toEqual([
       'getCoverageStats',
       'getEventDefinition',
+      'getGraphData',
       'getMetricDefinition',
       'getTableDefinition',
       'listDomains',
@@ -106,8 +107,8 @@ describe('SchemaGateway', () => {
     ])
   })
 
-  it('listTables returns slim summaries with domains exposed', () => {
-    const gw = makeGateway()
+  it('listTables returns slim summaries with domains exposed', async () => {
+    const gw = await makeGateway()
     const tables = gw.listTables()
     expect(tables).toHaveLength(2)
     const dws = tables.find(t => t.table_name === 'dws_order_di')
@@ -124,8 +125,8 @@ describe('SchemaGateway', () => {
     expect(dim?.domains).toEqual(['基础数据'])
   })
 
-  it('listEvents returns slim summaries with domains exposed', () => {
-    const gw = makeGateway()
+  it('listEvents returns slim summaries with domains exposed', async () => {
+    const gw = await makeGateway()
     const events = gw.listEvents()
     expect(events).toHaveLength(1)
     expect(events[0]).toEqual({
@@ -137,8 +138,8 @@ describe('SchemaGateway', () => {
     })
   })
 
-  it('listMetrics returns slim summaries with source and aggregation', () => {
-    const gw = makeGateway()
+  it('listMetrics returns slim summaries with source and aggregation', async () => {
+    const gw = await makeGateway()
     const metrics = gw.listMetrics()
     expect(metrics).toHaveLength(1)
     expect(metrics[0]).toEqual({
@@ -150,39 +151,39 @@ describe('SchemaGateway', () => {
     })
   })
 
-  it('getTableDefinition returns the full definition', () => {
-    const gw = makeGateway()
+  it('getTableDefinition returns the full definition', async () => {
+    const gw = await makeGateway()
     const def = gw.getTableDefinition('dws_order_di') as Record<string, unknown>
     expect(def).not.toBeNull()
     expect(def.table_name).toBe('dws_order_di')
     expect((def.columns as unknown[]).length).toBe(2)
   })
 
-  it('getEventDefinition returns the full definition', () => {
-    const gw = makeGateway()
+  it('getEventDefinition returns the full definition', async () => {
+    const gw = await makeGateway()
     const def = gw.getEventDefinition('game.pay.order') as Record<string, unknown>
     expect(def).not.toBeNull()
     expect(def.name).toBe('game.pay.order')
     expect(Object.keys(def.params_fields as object)).toEqual(['server_id', 'amount'])
   })
 
-  it('getMetricDefinition returns the full definition', () => {
-    const gw = makeGateway()
+  it('getMetricDefinition returns the full definition', async () => {
+    const gw = await makeGateway()
     const def = gw.getMetricDefinition('dws_order_di__total_amount') as Record<string, unknown>
     expect(def).not.toBeNull()
     expect(def.name).toBe('dws_order_di__total_amount')
   })
 
-  it('search returns ranked hits from BM25 over the full corpus', () => {
-    const gw = makeGateway()
+  it('search returns ranked hits from BM25 over the full corpus', async () => {
+    const gw = await makeGateway()
     const hits = gw.search('订单 金额')
     expect(hits.length).toBeGreaterThan(0)
     expect(hits[0]).toHaveProperty('id')
     expect(hits[0]).toHaveProperty('score')
   })
 
-  it('listDomains aggregates asset counts by domain', () => {
-    const gw = makeGateway()
+  it('listDomains aggregates asset counts by domain', async () => {
+    const gw = await makeGateway()
     const domains = gw.listDomains()
     const pay = domains.find(d => d.name === '付费经济')
     expect(pay).toBeDefined()
@@ -194,8 +195,8 @@ describe('SchemaGateway', () => {
     expect(base!.table_count).toBe(1)
   })
 
-  it('getCoverageStats returns counts and domain breakdown', () => {
-    const gw = makeGateway()
+  it('getCoverageStats returns counts and domain breakdown', async () => {
+    const gw = await makeGateway()
     const stats = gw.getCoverageStats()
     expect(stats.table_count).toBe(2)
     expect(stats.event_count).toBe(1)
@@ -204,8 +205,8 @@ describe('SchemaGateway', () => {
     expect(stats.domain_counts['基础数据']).toBe(1)
   })
 
-  it('returns null for nonexistent definitions', () => {
-    const gw = makeGateway()
+  it('returns null for nonexistent definitions', async () => {
+    const gw = await makeGateway()
     expect(gw.getTableDefinition('nonexistent')).toBeNull()
     expect(gw.getEventDefinition('nonexistent')).toBeNull()
     expect(gw.getMetricDefinition('nonexistent')).toBeNull()

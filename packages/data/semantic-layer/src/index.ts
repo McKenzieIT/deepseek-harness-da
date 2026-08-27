@@ -65,9 +65,12 @@ import { RelationGraph } from './relation-graph.ts'
 import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
 import { loadEvents, loadTables, loadTerminology } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
+import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
+// W11 C1: MVCC query snapshot — consistent point-in-time view during query execution.
+export { DefinitionSnapshot, captureSnapshot, clearSnapshotCache } from './snapshot.ts'
 export {
   dumpYaml,
   resolveSemanticLayer,
@@ -520,6 +523,55 @@ export class SemanticLayerService extends Service {
    */
   loadRetrievalCorpus(): readonly EventCorpusItem[] {
     return loadRetrievalCorpusFromLayer(this.semanticRoot, this.corpusVariant)
+  }
+
+  // ── W11 C1: MVCC query snapshot ──────────────────────────────────────────
+
+  /**
+   * W11 C1: Capture a point-in-time snapshot of the semantic layer definitions.
+   * The returned `DefinitionSnapshot` provides the same read API
+   * (`loadTableDefinition`, `loadEventDefinition`, `loadMetricDefinition`,
+   * `loadRetrievalCorpus`) but the data is pinned at the version when captured.
+   * Subsequent `invalidateCaches()` calls (from management-session writes) do
+   * NOT affect the returned snapshot. The next call to `acquireSnapshot` after
+   * a write sees the new data.
+   *
+   * Cheap: if the corpus version has not changed since the last call, the
+   * cached data arrays are reused (no disk re-scan).
+   *
+   * @returns a frozen `DefinitionSnapshot` pinned at the current corpus version.
+   */
+  acquireSnapshot(): DefinitionSnapshot {
+    return captureSnapshot(this.semanticRoot, this.corpusVersion(), this.corpusVariant)
+  }
+
+  /**
+   * W11 C1: Execute `fn` with a consistent snapshot — definitions do not
+   * reload mid-execution even if `invalidateCaches` fires concurrently (e.g.
+   * from a management-session write). The snapshot is acquired before `fn` and
+   * released after (release is a no-op in v1; reserved for future GC).
+   *
+   * Usage (in the NL2SQL query engine):
+   * ```ts
+   * const sql = await ctx.schema.withSnapshot(async (snap) => {
+   *   const table = snap.loadTableDefinition('dws_pay_order_di')
+   *   const event = snap.loadEventDefinition('game.pay.order')
+   *   // ... generate SQL using pinned definitions ...
+   *   return generatedSql
+   * })
+   * ```
+   *
+   * @param fn - the async function to execute with a pinned snapshot.
+   * @returns the value returned by `fn`.
+   */
+  async withSnapshot<T>(fn: (snap: DefinitionSnapshot) => Promise<T>): Promise<T> {
+    const snap = this.acquireSnapshot()
+    try {
+      return await fn(snap)
+    } finally {
+      // v1: release is a no-op. Reserved for future reference-counted GC
+      // (e.g. evicting old snapshot data when no in-flight queries hold it).
+    }
   }
 
   /**
