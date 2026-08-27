@@ -3,7 +3,7 @@
 **Type**: enhancement（agent-loop / tools 框架级改动）
 **Phase**: misc
 **Status**: Closed
-**Resolved**: 2026-08-27 — already implemented (Approach A: filter in `onAssemble`)
+**Resolved**: 2026-08-27 — implemented (Approach A: filter in `onAssemble`) + hardening pass
 **Graduated from**: present-delivery-tools ship session（2026-08-26）——模型在 UNDERSTANDING 阶段误调用 INTERPRETATION 工具 `present_decomposition`，被 reactive guard 拦截但浪费 1 个 LLM step。
 
 **Question**: 将当前 reactive-only 的 phase-gate tool guard（事后拦截）升级为 proactive guard（事前隐藏）——只向 LLM 发送当前 phase 白名单内的工具定义，使模型无法"看到"非当前阶段的工具。
@@ -78,12 +78,23 @@
 - Constraint 5 (`restrict()` API): Not used — `restrict()` validates against registered names and is scoped-layer-based, making per-step dynamic use awkward. Direct filtering in the waterfall is simpler and framework-local.
 - Constraint 6 (streaming): Filter runs once at assembly time (before `buildRequest` freezes the request), not mid-stream.
 
-**Tests** (9 cases in `phase-gate.spec.ts:1488-1650`):
+**Hardening pass (2026-08-27 session)**:
+1. Guard 增加显式终态判断（`raw === 'COMPLETE' || raw === 'DECLINED'` → `'turn ended'`），防止 `PHASE_TOOLS[undefined].includes` crash
+2. 终态 onAssemble 从 `UNIVERSAL_TOOLS` 改为空 `[]`——与 guard "turn ended" 拒绝对齐，不向模型发送矛盾信号
+3. `Array.includes` → `Set.has`（`ReadonlySet<string>`）——语义更清晰，O(1) 查询
+4. 新增 `ctx.logger.debug` 日志：被 filter 的工具名输出（仅在实际 filter 发生时，有长度守卫）
+
+**Tests** (17 cases in `phase-gate.spec.ts`):
 - Per-phase visibility for all 4 phases
-- Terminal state (COMPLETE, DECLINED) → UNIVERSAL_TOOLS only
+- Terminal state (COMPLETE, DECLINED) → empty tools (aligned with guard)
 - Non-phase-gate agent pass-through
 - Reactive guard defense-in-depth still active
 - Deny-by-default for tools not in any whitelist
+- Phase transition then re-assemble (UNDERSTANDING→GENERATION, EXECUTION→INTERPRETATION)
+- Downstream waterfall tools also filtered
+- Empty tool list input (active phase + terminal)
+- Guard + onAssemble alignment（visible tools ⊆ guard-allowed）
+- GENERATION explicitly includes load_* (cross-phase schema grounding)
 
 ## Acceptance criteria
 

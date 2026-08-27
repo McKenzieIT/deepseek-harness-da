@@ -17,7 +17,7 @@ import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { critiqueSql } from '@deepseek-ai/dsh-nl2sql-engine'
 import { PhaseGate } from '../src/phase-gate.ts'
-import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNIVERSAL_TOOLS, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS } from '../src/types.ts'
+import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS } from '../src/types.ts'
 
 function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancelled: AgentCancelCause[] } {
   const injected: UserMessage[] = []
@@ -1560,26 +1560,24 @@ describe('D5b: proactive tool visibility — onAssemble filters tools per phase'
     expect(names).not.toContain('critique_sql_tool')
   })
 
-  it('COMPLETE terminal: only UNIVERSAL_TOOLS visible', async () => {
+  it('COMPLETE terminal: no tools visible (aligned with guard "turn ended")', async () => {
     const g = gate()
     const s = g.state('c1')
     s.current_phase = 'COMPLETE'
     const ctx = assembleCtx('c1')
     const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
     const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
-    const names = out.tools.map(t => t.name)
-    expect(names.sort()).toEqual([...UNIVERSAL_TOOLS].sort())
+    expect(out.tools).toEqual([])
   })
 
-  it('DECLINED terminal: only UNIVERSAL_TOOLS visible', async () => {
+  it('DECLINED terminal: no tools visible (aligned with guard "turn ended")', async () => {
     const g = gate()
     const s = g.state('d1')
     s.current_phase = 'DECLINED'
     const ctx = assembleCtx('d1')
     const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
     const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
-    const names = out.tools.map(t => t.name)
-    expect(names.sort()).toEqual([...UNIVERSAL_TOOLS].sort())
+    expect(out.tools).toEqual([])
   })
 
   it('non-phase-gate agent (unknown session): tools pass through unchanged', async () => {
@@ -1613,5 +1611,171 @@ describe('D5b: deny-by-default — unlisted tools are hidden', () => {
     const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
     expect(out.tools.map(t => t.name)).not.toContain('some_unknown_tool')
     expect(out.tools.map(t => t.name)).toContain('search_data_sources')
+  })
+})
+
+describe('D5b: phase transition updates tool visibility on next assemble', () => {
+  function makeTool(name: string) {
+    return { name, description: `stub ${name}`, parameters: {} }
+  }
+  const ALL_TOOLS = [
+    'search_data_sources', 'load_table_definition', 'load_event_definition',
+    'load_table_dimensions', 'save_accumulated_definition',
+    'critique_sql_tool', 'evaluate_sql_quality', 'update_table_config',
+    'query_data',
+    'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
+    'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
+    'present_clarification', 'goal', 'todo',
+  ].map(makeTool)
+
+  it('after advance UNDERSTANDING→GENERATION, next onAssemble returns GENERATION_TOOLS', async () => {
+    const g = gate()
+    const s = g.state('trans1')
+    const ctx = { agent: { id: 'trans1' }, scope: { id: 'trans1' } } as unknown as AssembleContext
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+
+    // Before advance: UNDERSTANDING tools
+    const before = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(before.tools.map(t => t.name).sort()).toEqual([...UNDERSTANDING_TOOLS].sort())
+
+    // Simulate phase advance
+    s.current_phase = Phase.GENERATION
+
+    // After advance: GENERATION tools
+    const after = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(after.tools.map(t => t.name).sort()).toEqual([...GENERATION_TOOLS].sort())
+    expect(after.tools.map(t => t.name)).not.toContain('search_data_sources')
+    expect(after.tools.map(t => t.name)).toContain('critique_sql_tool')
+  })
+
+  it('after advance EXECUTION→INTERPRETATION, tools switch accordingly', async () => {
+    const g = gate()
+    const s = g.state('trans2')
+    s.current_phase = Phase.EXECUTION
+    const ctx = { agent: { id: 'trans2' }, scope: { id: 'trans2' } } as unknown as AssembleContext
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+
+    const before = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(before.tools.map(t => t.name).sort()).toEqual([...EXECUTION_TOOLS].sort())
+
+    s.current_phase = Phase.INTERPRETATION
+    const after = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(after.tools.map(t => t.name).sort()).toEqual([...INTERPRETATION_TOOLS].sort())
+    expect(after.tools.map(t => t.name)).toContain('present_decomposition')
+    expect(after.tools.map(t => t.name)).not.toContain('query_data')
+  })
+})
+
+describe('D5b: downstream waterfall tools are also filtered', () => {
+  it('tools added by next() are filtered by phase whitelist', async () => {
+    const g = gate()
+    g.state('wf1') // UNDERSTANDING phase
+    const ctx = { agent: { id: 'wf1' }, scope: { id: 'wf1' } } as unknown as AssembleContext
+    const initial: PromptAssembly = { sections: [], contexts: [], tools: [], variables: {} }
+    // Simulate downstream waterfall adding tools (e.g. another plugin registers tools)
+    const downstream: PromptAssembly = {
+      sections: [], contexts: [], variables: {},
+      tools: [
+        { name: 'search_data_sources', description: 'in U', parameters: {} },
+        { name: 'query_data', description: 'in E only', parameters: {} },
+        { name: 'present_decomposition', description: 'in I only', parameters: {} },
+        { name: 'lookup_terminology', description: 'universal', parameters: {} },
+      ],
+    }
+    const out = await g.onAssemble(initial, ctx, () => Promise.resolve(downstream))
+    const names = out.tools.map(t => t.name)
+    expect(names).toContain('search_data_sources')
+    expect(names).toContain('lookup_terminology')
+    expect(names).not.toContain('query_data')
+    expect(names).not.toContain('present_decomposition')
+  })
+})
+
+describe('D5b: empty tool list input', () => {
+  it('empty assembly.tools returns empty for phase-gate agent', async () => {
+    const g = gate()
+    g.state('empty1') // UNDERSTANDING
+    const ctx = { agent: { id: 'empty1' }, scope: { id: 'empty1' } } as unknown as AssembleContext
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: [], variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(out.tools).toEqual([])
+  })
+
+  it('empty assembly.tools returns empty for terminal state', async () => {
+    const g = gate()
+    const s = g.state('empty2')
+    s.current_phase = 'COMPLETE'
+    const ctx = { agent: { id: 'empty2' }, scope: { id: 'empty2' } } as unknown as AssembleContext
+    const stub: PromptAssembly = { sections: [], contexts: [], tools: [], variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(out.tools).toEqual([])
+  })
+})
+
+describe('D5b: guard and onAssemble alignment', () => {
+  it('every tool visible in onAssemble is also allowed by guard (active phases)', async () => {
+    const g = gate()
+    const phases = [Phase.UNDERSTANDING, Phase.GENERATION, Phase.EXECUTION, Phase.INTERPRETATION] as const
+    const ALL_TOOLS = [
+      'search_data_sources', 'load_table_definition', 'load_event_definition',
+      'load_table_dimensions', 'save_accumulated_definition',
+      'critique_sql_tool', 'evaluate_sql_quality', 'update_table_config',
+      'query_data',
+      'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
+      'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
+      'present_clarification', 'goal', 'todo',
+    ].map(n => ({ name: n, description: `stub ${n}`, parameters: {} }))
+
+    for (const phase of phases) {
+      const { agent } = makeAgent(`align-${phase}`)
+      const s = g.state(`align-${phase}`)
+      s.current_phase = phase
+      const ctx = { agent: { id: `align-${phase}` }, scope: { id: `align-${phase}` } } as unknown as AssembleContext
+      const stub: PromptAssembly = { sections: [], contexts: [], tools: ALL_TOOLS, variables: {} }
+      const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+
+      // Every tool in the assembly output must be allowed by the guard
+      for (const tool of out.tools) {
+        const guardResult = g.guard(execView(tool.name, agent))
+        expect(guardResult).toBeUndefined() // undefined = allowed
+      }
+    }
+  })
+
+  it('guard rejects all tools in terminal state (aligned with empty assembly)', async () => {
+    const { agent } = makeAgent('term-guard1')
+    const g = gate()
+    const s = g.state('term-guard1')
+    s.current_phase = 'COMPLETE'
+    const ctx = { agent: { id: 'term-guard1' }, scope: { id: 'term-guard1' } } as unknown as AssembleContext
+    const stub: PromptAssembly = {
+      sections: [], contexts: [], variables: {},
+      tools: [{ name: 'lookup_terminology', description: 'universal', parameters: {} }],
+    }
+    // Assembly returns empty for terminal
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    expect(out.tools).toEqual([])
+    // Guard also rejects
+    expect(g.guard(execView('lookup_terminology', agent))).toBe('turn ended')
+  })
+})
+
+describe('D5b: GENERATION explicitly includes load_* (cross-phase schema grounding)', () => {
+  it('load_table_definition and load_event_definition visible in GENERATION', async () => {
+    const g = gate()
+    const s = g.state('gen-load1')
+    s.current_phase = Phase.GENERATION
+    const ctx = { agent: { id: 'gen-load1' }, scope: { id: 'gen-load1' } } as unknown as AssembleContext
+    const tools = [
+      { name: 'load_table_definition', description: 'def', parameters: {} },
+      { name: 'load_event_definition', description: 'def', parameters: {} },
+      { name: 'search_data_sources', description: 'U only', parameters: {} },
+    ]
+    const stub: PromptAssembly = { sections: [], contexts: [], tools, variables: {} }
+    const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
+    const names = out.tools.map(t => t.name)
+    expect(names).toContain('load_table_definition')
+    expect(names).toContain('load_event_definition')
+    expect(names).not.toContain('search_data_sources')
   })
 })
