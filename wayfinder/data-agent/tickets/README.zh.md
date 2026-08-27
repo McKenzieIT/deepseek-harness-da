@@ -64,5 +64,7 @@
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 - [host-typecheck-wiring](phase-misc/host-typecheck-wiring.md) — task, **resolved**（2026-08-20；tsconfig.host +3 data refs 修 TS6307 + critic-dedup WIP 验 M1✓/M2 defer/M3✓ + PromptAssembly 已由 WIP B12 解；scoped vitest 238/238；ticket Resolved 经 shared-index sweep 落 commit 2e116bafb0）
 
+- [G-DA6 多轮 candidate_tables 继承](phase-misc/G-DA6-multiturn-candidate-tables-inheritance.md) — grilling, **unblocked**（G-DA4 symmetric fix resolved 2026-08-27；follow-up 复用前轮表时 search miss → 额外 retry，继承策略待 grill）
+
 ## 当前可立即取（unblocked frontier）
-P9b · P11c · G1b · D2c（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b/host-typecheck-wiring 已 resolved）
+P9b · P11c · G1b · D2c · G-DA6（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b/host-typecheck-wiring 已 resolved）

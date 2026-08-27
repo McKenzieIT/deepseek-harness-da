@@ -177,6 +177,8 @@
 
 - **W11 Context Layer 对话式管理与 Enrichment 闭环 (grilling, resolved 2026-08-27)**：12 项决策锁定图谱对话式管理闭环。核心：图谱=观察工具，一切编辑走 LLM tool。(D1) discover_relations 仅对话触发 + narration gate（叙述后才渲染新边）；(D2) edit 仅对话 + 侧面板 💬 上下文捷径；(D3) reachabilityDelta 对话触发 + 会话级持久虚线预览；(D4) v1 Tier-2 直写（trusted admin + unreviewed + eval safety net）；(D5) 退化反馈=红色脉冲+自动聚焦；(D6) 独立管理 session + 只读引用主 session 上下文；(D7) 自主巡检开关（每轮≤3 edit + 60s confirm timeout + scope 限定 + btw 并发机制）；(C1) 共享身份 + MVCC query snapshot；(C2) patrol 下 preview 轮次结束后批量渲染；(C3) patrol 按轮自动 eval / 手动显式触发；(S1) 新增 `revert_edit` 工具（audit before-snapshot 版本回滚）；(S3) btw 旁路机制（用户插入即处理，自动恢复 patrol）。〔tickets/phase-misc/W11-graph-edit-enrichment.md〕
 
+- **D5b phase-scoped tool visibility (enhancement, resolved 2026-08-27)**：proactive guard 升级——`onAssemble` waterfall 中按 `PHASE_TOOLS[phase]` 过滤 `assembly.tools`，模型只看到当前阶段白名单工具（Approach A）。reactive guard 保留作 defense-in-depth。非 phase-gate agent 不受影响。9 tests。〔tickets/phase-misc/D5b-phase-scoped-tool-visibility.md〕
+
 ## Next wave: 语义层/Ontology 管理 + 知识图谱可视化（2026-08-27 规划）
 
 <!-- 新方向：P11d 收尾 + M1 follow-up + 管理 UI infra + 知识图谱可视化 -->

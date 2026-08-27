@@ -1380,6 +1380,66 @@ describe('G-DA4 — critic candidate_tables includes event_view table from load_
   })
 })
 
+describe('G-DA4 symmetric — load_table_definition adds table name to candidate_tables', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('captureToolData for load_table_definition adds qualified_name to candidate_tables (db-stripped + full)', async () => {
+    const { agent } = makeAgent('tbl1')
+    const g = gate()
+    const s = g.state('tbl1')
+    await g.onPostExecute(
+      execView('load_table_definition', agent, { table_name: 'dws_10000251_pay_order_di' }),
+      resultOk({
+        found: true,
+        table: {
+          table_name: 'dws_10000251_pay_order_di',
+          qualified_name: 'ieu_cdm.dws_10000251_pay_order_di',
+          partition_cols: ['ds'],
+        },
+      }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.definition_loaded).toBe(true)
+    expect(s.partition_cols.has('ds')).toBe(true)
+    // G-DA4 symmetric: the loaded table's qualified_name is now a candidate —
+    // both the full form and the db-stripped form (what the critic checks).
+    expect(s.candidate_tables.has('ieu_cdm.dws_10000251_pay_order_di')).toBe(true)
+    expect(s.candidate_tables.has('dws_10000251_pay_order_di')).toBe(true)
+  })
+
+  it('falls back to table_name when qualified_name is absent', async () => {
+    const { agent } = makeAgent('tbl2')
+    const g = gate()
+    const s = g.state('tbl2')
+    await g.onPostExecute(
+      execView('load_table_definition', agent, { table_name: 'dws_pay_order_di' }),
+      resultOk({
+        found: true,
+        table: {
+          table_name: 'dws_pay_order_di',
+          partition_cols: ['ds'],
+        },
+      }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.candidate_tables.has('dws_pay_order_di')).toBe(true)
+  })
+
+  it('found:false does not grow candidate_tables', async () => {
+    const { agent } = makeAgent('tbl3')
+    const g = gate()
+    const s = g.state('tbl3')
+    const before = s.candidate_tables.size
+    await g.onPostExecute(
+      execView('load_table_definition', agent, { table_name: 'nonexistent' }),
+      resultOk({ found: false, message: 'table not found' }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.candidate_tables.size).toBe(before)
+  })
+})
+
 describe('M5: generationGate fallback — critique_sql_tool s.last_sql used when phase_output has no SQL', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())

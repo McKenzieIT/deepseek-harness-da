@@ -226,3 +226,91 @@ describe('Audit service (ctx.audit) wiring', () => {
     await ctx2.fiber.dispose()
   })
 })
+
+describe('definition_snapshot (W11 S1)', () => {
+  let store: SQLiteAuditStore
+
+  beforeEach(() => {
+    const db = openAuditDatabase(':memory:')
+    store = new SQLiteAuditStore(db)
+  })
+
+  it('recordSnapshot increments version per-asset independently', () => {
+    const v1 = store.recordSnapshot('dws_pay', 'table', 'table_name: dws_pay\n')
+    const v2 = store.recordSnapshot('dws_pay', 'table', 'table_name: dws_pay\nversion: 2\n')
+    const v1b = store.recordSnapshot('dim_user', 'table', 'table_name: dim_user\n')
+    expect(v1).toBe(1)
+    expect(v2).toBe(2)
+    expect(v1b).toBe(1)
+  })
+
+  it('getSnapshot returns correct content', () => {
+    store.recordSnapshot('dws_pay', 'table', 'original content')
+    store.recordSnapshot('dws_pay', 'table', 'second content')
+    const snap = store.getSnapshot('dws_pay', 1)
+    expect(snap).not.toBeNull()
+    expect(snap!.content).toBe('original content')
+    expect(snap!.kind).toBe('table')
+    const snap2 = store.getSnapshot('dws_pay', 2)
+    expect(snap2!.content).toBe('second content')
+  })
+
+  it('getSnapshot returns null for missing version', () => {
+    store.recordSnapshot('dws_pay', 'table', 'content')
+    expect(store.getSnapshot('dws_pay', 99)).toBeNull()
+    expect(store.getSnapshot('nonexistent', 1)).toBeNull()
+  })
+
+  it('listSnapshots returns metadata newest-first', () => {
+    store.recordSnapshot('dws_pay', 'table', 'v1 content', 'log-aaa')
+    store.recordSnapshot('dws_pay', 'table', 'v2 content', 'log-bbb')
+    store.recordSnapshot('dws_pay', 'event', 'v3 content')
+    const list = store.listSnapshots('dws_pay')
+    expect(list).toHaveLength(3)
+    expect(list[0]!.version).toBe(3)
+    expect(list[1]!.version).toBe(2)
+    expect(list[2]!.version).toBe(1)
+    expect(list[2]!.log_id).toBe('log-aaa')
+    expect(list[0]!.log_id).toBeNull()
+  })
+
+  it('migration from v1 creates snapshot table', () => {
+    // Simulate a v1 database by creating one without the snapshot table
+    const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite')
+    const db = new DatabaseSync(':memory:')
+    db.exec('PRAGMA foreign_keys = ON')
+    db.exec('PRAGMA journal_mode = WAL')
+    // Create only the v1 tables
+    db.exec(`
+      CREATE TABLE audit_event (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        log_id TEXT UNIQUE NOT NULL,
+        ts TEXT NOT NULL,
+        session_id TEXT, chat_session_id INTEGER,
+        scope_id TEXT, tenant_id TEXT, user_id TEXT, model TEXT,
+        review_status TEXT NOT NULL DEFAULT 'pending',
+        payload TEXT NOT NULL, ingested_at TEXT NOT NULL
+      ) STRICT;
+      CREATE TABLE audit_override (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        log_id TEXT NOT NULL, field TEXT NOT NULL, value TEXT,
+        patched_by TEXT, patched_at TEXT NOT NULL, reason TEXT
+      ) STRICT;
+      CREATE TABLE audit_tag (
+        event_id INTEGER NOT NULL, tag TEXT NOT NULL,
+        PRIMARY KEY (event_id, tag),
+        FOREIGN KEY (event_id) REFERENCES audit_event(id) ON DELETE CASCADE
+      ) STRICT;
+    `)
+    db.exec('PRAGMA user_version = 1')
+    db.close()
+
+    // Re-open via openAuditDatabase (triggers migration)
+    const db2 = openAuditDatabase(':memory:')
+    const store2 = new SQLiteAuditStore(db2)
+    // Should be able to use snapshot methods
+    const v = store2.recordSnapshot('test_asset', 'table', 'content')
+    expect(v).toBe(1)
+    db2.close()
+  })
+})

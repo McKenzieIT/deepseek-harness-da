@@ -1,0 +1,39 @@
+/**
+ * P14b post-retrieval ontology enrichment — granularity detection and soft rerank.
+ *
+ * Trend intent detection via regex keyword matching + soft rerank that boosts
+ * `_di` (daily increment) candidates ×1.5 for trend queries without removing
+ * any candidates.
+ *
+ * @module @deepseek-ai/dsh-nl2sql-engine/src/granularity
+ */
+
+import type { RetrievalHit } from './bm25-linking.ts'
+
+const TREND_PATTERN = /趋势|变化|逐日|每天|近\d+天|日均|环比|同比|每周|每月|增长|下降|走势/
+
+/**
+ * Detect whether a question expresses trend intent (time-series / temporal
+ * comparison). Uses a regex keyword list from P14 grilling resolution.
+ */
+export function detectTrendIntent(question: string): boolean {
+  return TREND_PATTERN.test(question)
+}
+
+const DI_SUFFIX = /_di$/
+
+/**
+ * Soft rerank: when `isTrend` is true, boost `_di` candidates' scores by ×1.5
+ * and re-sort descending. No candidates are removed (soft prefer only).
+ * When `isTrend` is false, returns candidates unchanged.
+ */
+export function rerankByGranularity(candidates: readonly RetrievalHit[], isTrend: boolean): readonly RetrievalHit[] {
+  if (!isTrend) return candidates
+  const boosted = candidates.map(c => {
+    if (DI_SUFFIX.test(c.id)) {
+      return { ...c, score: c.score * 1.5 }
+    }
+    return c
+  })
+  return boosted.slice().sort((a, b) => b.score - a.score)
+}

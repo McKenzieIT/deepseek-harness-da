@@ -512,6 +512,20 @@ export class PhaseGate {
       s.definition_loaded = true
       // (same nested-projection shape — see load_event above)
       collectFields((value as { table?: unknown } | undefined)?.table, s.partition_cols, 'partition_cols', 'partitions')
+      // G-DA4 symmetric: add the loaded table's name to candidate_tables so the
+      // critic's table_not_in_candidates check passes when the LLM grounds SQL
+      // on a table loaded via load_table_definition (mirrors load_event_definition's
+      // event_view.full_name handling above). Use qualified_name (project-qualified,
+      // M3 #1 A) when present, falling back to table_name.
+      const tbl = (value as { table?: { qualified_name?: unknown; table_name?: unknown } } | undefined)?.table
+      const tblName = (typeof tbl?.qualified_name === 'string' && tbl.qualified_name !== '')
+        ? tbl.qualified_name
+        : tbl?.table_name
+      if (typeof tblName === 'string' && tblName !== '') {
+        const lower = tblName.toLowerCase()
+        s.candidate_tables.add(lower)
+        s.candidate_tables.add(lower.replace(/^.*\./, ''))
+      }
     }
   }
 

@@ -28,7 +28,7 @@ import {
 } from './schema.ts'
 
 /** On-disk schema version (PRAGMA user_version); bump only on a breaking table-layout change. */
-const AUDIT_SCHEMA_VERSION = 1
+const AUDIT_SCHEMA_VERSION = 2
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS audit_event (
@@ -70,6 +70,32 @@ CREATE TABLE IF NOT EXISTS audit_tag (
   FOREIGN KEY (event_id) REFERENCES audit_event(id) ON DELETE CASCADE
 ) STRICT;
 CREATE INDEX IF NOT EXISTS ix_audit_tag ON audit_tag(tag);
+
+CREATE TABLE IF NOT EXISTS definition_snapshot (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  asset_name  TEXT NOT NULL,
+  version     INTEGER NOT NULL,
+  kind        TEXT NOT NULL,
+  content     TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  log_id      TEXT,
+  UNIQUE(asset_name, version)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_snapshot_asset ON definition_snapshot(asset_name, version);
+`
+
+const MIGRATION_V1_TO_V2 = `
+CREATE TABLE IF NOT EXISTS definition_snapshot (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  asset_name  TEXT NOT NULL,
+  version     INTEGER NOT NULL,
+  kind        TEXT NOT NULL,
+  content     TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  log_id      TEXT,
+  UNIQUE(asset_name, version)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_snapshot_asset ON definition_snapshot(asset_name, version);
 `
 
 /** Exclusively create a missing database file with owner-only permissions. */
@@ -105,7 +131,10 @@ export function openAuditDatabase(path: string): DatabaseSync {
     db.exec('PRAGMA journal_mode = WAL')
     db.exec('PRAGMA busy_timeout = 5000')
     const onDisk = db.prepare('PRAGMA user_version').get() as { user_version: number }
-    if (onDisk.user_version !== 0 && onDisk.user_version !== AUDIT_SCHEMA_VERSION) {
+    if (onDisk.user_version === 1) {
+      db.exec(MIGRATION_V1_TO_V2)
+      db.exec(`PRAGMA user_version = ${AUDIT_SCHEMA_VERSION}`)
+    } else if (onDisk.user_version !== 0 && onDisk.user_version !== AUDIT_SCHEMA_VERSION) {
       throw new Error(
         `audit database at "${actual}" has schema version ${onDisk.user_version}, incompatible with this build (${AUDIT_SCHEMA_VERSION})`,
       )
@@ -623,5 +652,50 @@ export class SQLiteAuditStore {
     const out: Record<string, unknown> = {}
     for (const r of rows) out[r.field] = r.value === null ? null : JSON.parse(r.value) // latest per field wins
     return out
+  }
+
+  // ── Definition snapshot (W11 S1: undo substrate) ────────────────────────
+
+  /**
+   * Record a before-snapshot for an asset edit. Auto-increments the per-asset
+   * version number. Returns the assigned version.
+   */
+  recordSnapshot(assetName: string, kind: 'table' | 'event', content: string, logId?: string): number {
+    try {
+      this.db.exec('BEGIN')
+      const row = this.db.prepare(
+        'SELECT MAX(version) AS max_v FROM definition_snapshot WHERE asset_name = ?',
+      ).get(assetName) as { max_v: number | null } | undefined
+      const nextVersion = ((row?.max_v) ?? 0) + 1
+      this.db.prepare(
+        'INSERT INTO definition_snapshot (asset_name, version, kind, content, created_at, log_id) VALUES (?,?,?,?,?,?)',
+      ).run(assetName, nextVersion, kind, content, nowIso(), logId ?? null)
+      this.db.exec('COMMIT')
+      return nextVersion
+    } catch (error) {
+      try { this.db.exec('ROLLBACK') } catch { /* ignore rollback failure */ }
+      throw error
+    }
+  }
+
+  /**
+   * Get a snapshot's content by asset name + version.
+   * Returns null when not found.
+   */
+  getSnapshot(assetName: string, version: number): { content: string; kind: string; created_at: string } | null {
+    const row = this.db.prepare(
+      'SELECT content, kind, created_at FROM definition_snapshot WHERE asset_name = ? AND version = ?',
+    ).get(assetName, version) as { content: string; kind: string; created_at: string } | undefined
+    return row ?? null
+  }
+
+  /**
+   * List all snapshot versions for an asset (metadata only, no content).
+   * Returns newest-first.
+   */
+  listSnapshots(assetName: string): Array<{ version: number; kind: string; created_at: string; log_id: string | null }> {
+    return this.db.prepare(
+      'SELECT version, kind, created_at, log_id FROM definition_snapshot WHERE asset_name = ? ORDER BY version DESC',
+    ).all(assetName) as Array<{ version: number; kind: string; created_at: string; log_id: string | null }>
   }
 }

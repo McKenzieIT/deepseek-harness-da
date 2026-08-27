@@ -100,6 +100,11 @@
 - id: tool-edit-definition
   name: '@deepseek-ai/dsh-tool-edit-definition'
 
+# ── undo tool (W11 S1: revert to prior definition snapshot) ────────────────
+
+- id: tool-revert-edit
+  name: '@deepseek-ai/dsh-tool-revert-edit'
+
 # ── infrastructure-dependent tools (unshipped — uncomment when ready) ──────
 #
 # execute_metric: deterministic metric calculation — needs ctx.query.execute

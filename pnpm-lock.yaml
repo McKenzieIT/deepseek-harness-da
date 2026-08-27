@@ -3157,6 +3157,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:^
+        version: link:../locale
       '@deepseek-ai/dsh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
@@ -3169,6 +3172,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:^
         version: link:../ui-slots
+      '@deepseek-ai/dsh-client-ui-tool':
+        specifier: workspace:^
+        version: link:../ui-tool
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
@@ -4247,6 +4253,9 @@ importers:
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../semantic-layer
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:^
+        version: link:../../typert/protocol
 
   packages/data/nl2sql-engine:
     dependencies:
@@ -4633,6 +4642,31 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
+  packages/data/tool-revert-edit:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-audit':
+        specifier: workspace:^
+        version: link:../audit
+      '@deepseek-ai/dsh-semantic-layer':
+        specifier: workspace:^
+        version: link:../semantic-layer
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+      js-yaml:
+        specifier: ^4.2.0
+        version: 4.2.0
+      vitest:
+        specifier: ^3.2.1
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(jiti@2.7.0)(jsdom@29.1.1)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+
   packages/data/tool-scope-routing:
     devDependencies:
       '@deepseek-ai/dsh-nl2sql-engine':
@@ -4876,9 +4910,6 @@ importers:
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../../data/semantic-layer
-      '@deepseek-ai/dsh-tool-search-data-sources':
-        specifier: workspace:^
-        version: link:../../data/tool-search-data-sources
     devDependencies:
       '@types/node':
         specifier: ^22.20.0

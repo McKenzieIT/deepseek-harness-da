@@ -123,7 +123,7 @@ export function computeEdit(
   schema: SemanticLayerService | undefined,
   assetName: string,
   patch: Record<string, unknown>,
-): { result: EditDefinitionResult; merged?: Record<string, unknown>; kind?: string } {
+): { result: EditDefinitionResult; merged?: Record<string, unknown>; before?: Record<string, unknown>; kind?: string } {
   if (schema === undefined) {
     return {
       result: {
@@ -179,6 +179,7 @@ export function computeEdit(
         patched_fields: Object.keys(patch),
       },
       merged,
+      before: existing,
       kind: 'table',
     }
   }
@@ -201,6 +202,7 @@ export function computeEdit(
         patched_fields: Object.keys(patch),
       },
       merged,
+      before: existing,
       kind: 'event',
     }
   }
@@ -295,10 +297,20 @@ export function apply(ctx: Context, _config: Config = {}): void {
       const audit: Audit = ctx.audit
       const patch = (args.patch ?? {}) as Record<string, unknown>
 
-      const { result, merged, kind } = computeEdit(schema, args.asset_name, patch)
+      const { result, merged, before, kind } = computeEdit(schema, args.asset_name, patch)
 
       if (!result.applied || merged === undefined) {
         return result
+      }
+
+      // W11 S1: persist before-snapshot (undo substrate). Fail-silent: snapshot
+      // failure must not break the business write.
+      if (before !== undefined) {
+        try {
+          const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
+          const beforeYaml = dumpYaml(before)
+          audit.store.recordSnapshot(result.asset_name, kind as 'table' | 'event', beforeYaml)
+        } catch { /* fail-silent */ }
       }
 
       // Persist the edit
