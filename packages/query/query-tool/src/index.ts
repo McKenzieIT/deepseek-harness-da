@@ -77,6 +77,8 @@ export interface QueryDataResult {
   readonly rows?: JsonValue[][]
   readonly rowCount?: number
   readonly truncated?: boolean
+  /** Deterministic cache key injected by result-cache-memory post-execute hook. */
+  readonly result_id?: string
   /** pending: */
   readonly instanceId?: InstanceId
   readonly stage?: string
@@ -226,6 +228,7 @@ function renderCompleted(value: QueryDataResult, cfg: ResolvedConfig): string {
   const rows = value.rows ?? []
   const shown = rows.slice(0, cfg.maxDisplayRows)
   const lines: string[] = []
+  if (value.result_id !== undefined) lines.push(`result_id: ${value.result_id}`)
   if (columns.length > 0) lines.push(columns.join('\t'))
   for (const row of shown) lines.push(row.map(formatCell).join('\t'))
   const total = value.rowCount ?? rows.length
@@ -295,6 +298,7 @@ export function apply(ctx: Context, config: Config = {}): void {
           rows: { type: 'array', items: { type: 'array', items: { type: 'json' } } },
           rowCount: { type: 'number' },
           truncated: { type: 'boolean' },
+          result_id: { type: 'string' },
           instanceId: { type: 'string' },
           stage: { type: 'string' },
           elapsedMs: { type: 'number' },

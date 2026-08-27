@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
 import type { ResultEntry } from '@deepseek-ai/dsh-result-cache'
 import { apply, generateQueryResultId, MemoryResultCache } from '@deepseek-ai/dsh-result-cache-memory'
 
@@ -227,5 +227,66 @@ describe('tools/post-execute hook', () => {
 
     expect(ctx.resultCache.get('cr_compute123')).toEqual(entry)
     expect(ctx.resultCache.has('cr_compute123')).toBe(true)
+  })
+})
+
+describe('query_data → resultCache → compute integration', () => {
+  it('compute can retrieve data stored by query_data post-execute hook', async () => {
+    const ctx = await setup()
+
+    const completedRows: JsonValue[][] = [['2024-01-01', 100], ['2024-01-02', 200]]
+    const completedColumns = ['date', 'dau']
+    const sql = 'SELECT date, dau FROM t_dau WHERE ds >= 20240101'
+
+    ctx.tools.register(queryDataTool({
+      state: 'completed',
+      sql,
+      columns: completedColumns,
+      rows: completedRows,
+      rowCount: 2,
+    }))
+
+    const queryResult = await ctx.tools.execute({
+      signal: testSignal,
+      callId: CallId('int-1'),
+      name: 'query_data',
+      arguments: { sql, scope_id: 'game-1' },
+    })
+
+    expect(queryResult.isError).toBe(false)
+    const queryValue = queryResult.value as Record<string, unknown>
+    const resultId = queryValue.result_id as string
+    expect(resultId).toBeDefined()
+    expect(resultId).toMatch(/^qr_[0-9a-f]{12}$/)
+
+    // Simulate what compute tool does: ctx.resultCache.has + ctx.resultCache.get
+    expect(ctx.resultCache.has(resultId)).toBe(true)
+    const cached = ctx.resultCache.get(resultId)!
+    expect(cached.columns).toEqual(completedColumns)
+    expect(cached.rows).toEqual(completedRows)
+    expect(cached.metadata?.sql).toBe(sql)
+  })
+
+  it('deterministic result_id: same SQL produces same cache key', async () => {
+    const ctx = await setup()
+    const sql = 'SELECT x FROM t'
+
+    ctx.tools.register(queryDataTool({
+      state: 'completed',
+      sql,
+      columns: ['x'],
+      rows: [[1]],
+      rowCount: 1,
+    }))
+
+    const r1 = await ctx.tools.execute({
+      signal: testSignal,
+      callId: CallId('det-1'),
+      name: 'query_data',
+      arguments: { sql, scope_id: 'game-1' },
+    })
+
+    const id1 = (r1.value as Record<string, unknown>).result_id as string
+    expect(id1).toBe(generateQueryResultId(sql))
   })
 })

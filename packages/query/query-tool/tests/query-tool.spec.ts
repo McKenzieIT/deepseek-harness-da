@@ -200,6 +200,17 @@ test('S9 render completed -> TSV table with columns + rows + count', () => {
   expect(out[0]?.text).toContain('2 rows')
 })
 
+test('S9b render completed with result_id -> includes result_id line', () => {
+  const def = registerTool()
+  const out = def.output.render(
+    { sql: 'SELECT 1', scope_id: 's' },
+    { state: 'completed', sql: 'SELECT 1', columns: ['dau'], rows: [[4336]], rowCount: 1, result_id: 'qr_abc123def456' },
+  )
+  expect(out[0]?.text).toContain('result_id: qr_abc123def456')
+  expect(out[0]?.text).toContain('dau')
+  expect(out[0]?.text).toContain('4336')
+})
+
 test('S10 render completed display-caps rows (maxDisplayRows)', () => {
   let def: ToolDef | undefined
   const ctx = {

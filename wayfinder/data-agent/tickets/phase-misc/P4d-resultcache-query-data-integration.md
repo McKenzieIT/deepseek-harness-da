@@ -2,7 +2,7 @@
 
 **Type**: task (AFK)
 **Phase**: misc
-**Status**: open
+**Status**: resolved (2026-08-27)
 **Blocked by**: none (result-cache-service ✅, result-cache-memory ✅ already shipped)
 **Blocks**: `compute` tool functional correctness
 
