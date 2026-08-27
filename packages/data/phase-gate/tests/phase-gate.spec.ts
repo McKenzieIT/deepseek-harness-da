@@ -635,24 +635,40 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     // Advance to EXECUTION (simulate gate pass in GENERATION)
     s.current_phase = Phase.EXECUTION
     s.phase_idx = 2
-    // query_data succeeds
+    // query_data succeeds — F7: autoPersistOverride + advance now fire in
+    // onPostExecute (not onTurnStopping) so the advance message reaches the
+    // next preStep claim with no free-response gap.
     await g.onPostExecute(
       execView('query_data', agent, { sql: qualifiedSql }),
       resultOk({ state: 'completed', sql: qualifiedSql, rows: [] }),
       () => Promise.resolve({ kind: 'accept' }),
     )
     expect(s.last_query_outcome).toBe('completed')
-
-    // --- Step 6: onTurnStopping → executionDecision completed → autoPersistOverride ---
-    await g.onTurnStopping({ agent, turn: 2, signal: new AbortController().signal })
     expect(execute).toHaveBeenCalledTimes(1)
     expect(execute.mock.calls[0]![0]).toMatchObject({
       name: 'update_table_config',
       arguments: { table_name: 'dws_10000251_univ_acc_summary_di', project: 'ieu_cdm' },
     })
     expect(s.self_evolution_table).toBeNull()
-    // Phase advanced to INTERPRETATION (query succeeded + override persisted)
     expect(s.current_phase).toBe(Phase.INTERPRETATION)
+  })
+
+  it('F7: query_data completed → onPostExecute advances to INTERPRETATION immediately (no onTurnStopping needed)', async () => {
+    const { agent, injected } = makeAgent('f7a')
+    const g = gate()
+    const s = g.state('f7a')
+    s.current_phase = Phase.EXECUTION
+    s.phase_idx = 2
+    s.last_sql = 'SELECT a FROM t'
+    await g.onPostExecute(
+      execView('query_data', agent, { sql: 'SELECT a FROM t' }),
+      resultOk({ state: 'completed', rows: [] }),
+      () => Promise.resolve({ kind: 'accept' }),
+    )
+    expect(s.current_phase).toBe(Phase.INTERPRETATION)
+    expect(s.execution_auto_advance).toBe(false)
+    expect(injected).toHaveLength(1)
+    expect(injected[0]!.content[0]!).toMatchObject({ type: 'text', text: expect.stringContaining('phase advance') })
   })
 
   it('B9/F4: DECLINED resets on a new user question (idle→running → resetQuestionScoped)', () => {

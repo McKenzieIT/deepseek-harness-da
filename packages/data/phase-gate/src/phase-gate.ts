@@ -305,7 +305,8 @@ export class PhaseGate {
   // EXECUTION 3-state decision (D5: ctx.query QueryOutcome drives; H1: failed+exhausted→decline).
   private executionDecision(agent: Agent, s: PhaseGateState): void {
     if (s.last_query_outcome === 'completed') {
-      // M4: auto-persist the project override when a self-evolution retry succeeds.
+      // F7: normally unreachable — onPostExecute already advanced on completed.
+      // Defensive fallback if turn-stopping fires with stale EXECUTION phase.
       this.autoPersistOverride(s)
       this.advance(agent, s)
       return
@@ -405,8 +406,18 @@ export class PhaseGate {
           // B8: a same-source violation is a failed execution — record it so executionDecision
           // treats it as failed (fallback/decline), not the stale 'not run' outcome.
           s.last_query_outcome = 'failed'
+          s.execution_auto_advance = false
           return { kind: 'block', feedback: [{ type: 'text', text: 'F2 same-source violation: query_data sql ≠ critiqued last_sql' }] }
         }
+      }
+      // F7: advance to INTERPRETATION immediately after successful query_data.
+      // Injecting here (post-execute) ensures the advance message is in the inbox
+      // BEFORE the next preStep claims — no free-response gap, no UX leakage.
+      // autoPersistOverride (M4) runs first (reads self_evolution_table + last_sql).
+      if (s.execution_auto_advance && s.current_phase === Phase.EXECUTION) {
+        s.execution_auto_advance = false
+        this.autoPersistOverride(s)
+        this.advance(agent, s)
       }
     }
     return next()
@@ -429,10 +440,9 @@ export class PhaseGate {
       // (a completed/pending query carries no failureKind/error → null).
       s.last_failure_kind = v?.failureKind ?? null
       s.last_query_error = v?.error ?? null
-      // UX-leakage fix: when query_data completes, flag for immediate advance in
-      // onPreStep so the model does NOT get a response step (INTERPRETATION owns
-      // all user-facing delivery). Only for 'completed' — pending/failed need the
-      // model to react (poll / fallback).
+      // F7: flag for immediate advance in onPostExecute so the model does NOT
+      // get a free-response step (INTERPRETATION owns all user-facing delivery).
+      // Only for 'completed' — pending/failed need the model to react (poll / fallback).
       if (s.last_query_outcome === 'completed') s.execution_auto_advance = true
     } else if (name === 'critique_sql_tool') {
       s.last_critique = (value as { confidence?: number } | null | undefined)?.confidence ?? null
@@ -621,15 +631,6 @@ export class PhaseGate {
     const s = this.state(String(agent.id))
     this.touchStallTimer(agent, s) // F3: reset on each step
     s.step_count += 1 // F6: per-step count (mirrors rbi max_steps)
-    // UX-leakage fix: when query_data completed in EXECUTION, skip the model's
-    // post-tool response step entirely — advance to INTERPRETATION immediately
-    // so the model never emits user-visible text like "EXECUTION 完成...".
-    // The 'reject' decision closes the turn without a model call; advance()
-    // injects the phase-continuation message that starts INTERPRETATION.
-    if (s.execution_auto_advance && s.current_phase === Phase.EXECUTION) {
-      s.execution_auto_advance = false
-      this.advance(agent, s)
-    }
     return next()
   }
 

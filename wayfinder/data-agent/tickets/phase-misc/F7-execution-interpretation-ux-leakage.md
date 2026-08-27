@@ -2,7 +2,7 @@
 
 **Type**: task (AFK)
 **Phase**: misc
-**Status**: open
+**Status**: resolved
 **Blocked by**: none
 **Blocks**: UX polish (cosmetic, not functional)
 
@@ -27,7 +27,7 @@ The `agent/turn-stopping` hook fires AFTER the assistant message is emitted but 
 1. Suppress the assistant text block (or don't — it's already emitted at this point)
 2. Actually the text is already emitted by the time turn-stopping runs, so this doesn't help
 
-### B: Inject advance message in post-execute instead of pre-step
+### B: Inject advance message in post-execute instead of pre-step ✅ IMPLEMENTED
 After `query_data` completes in `tools/post-execute`, immediately inject the phase advance message into `next-step`. The next step then has the advance message as its claimed input, so the model sees it IMMEDIATELY (no free-response gap). This avoids the pre-step timing issue entirely.
 
 The problem with the old approach was: advance was called in `onPreStep` with a `reject` that canceled the message. If we move the inject to `onPostExecute` (which runs before the next pre-step), the message will be claimed by the NEXT step and the model's first response in that step will be the INTERPRETATION tools.
@@ -35,8 +35,14 @@ The problem with the old approach was: advance was called in `onPreStep` with a 
 ### C: Response filter
 Add a `model/response-filter` that strips text blocks when `execution_auto_advance` is set. Heavy-handed.
 
-## Recommendation
+## Resolution
 
-**Approach B**: In `onPostExecute`, when `query_data` completes with `state === 'completed'`, call `this.advance(agent, s)` immediately AND set a flag that causes the turn-stopping decision to emit `continue` (not the default). This way the model's next step is the INTERPRETATION phase with no gap.
+**Approach B implemented.** Changes:
 
-Actually simpler: just inject the advance message in `onPostExecute` and remove the `execution_auto_advance` flag + onPreStep special case entirely. The advance message arrives as the next step's input (since `agent.inject` targets `next-step`, and `onPostExecute` runs BEFORE the current step ends and the next pre-step fires).
+1. **`onPostExecute`**: After `captureToolData` + F2 same-source check, when `execution_auto_advance && current_phase === EXECUTION`: calls `autoPersistOverride(s)` then `advance(agent, s)`. The inject lands in the inbox before the next `preStep` claims — no free-response gap.
+2. **`onPreStep`**: Removed the `execution_auto_advance` special case (claim-before-waterfall ordering made it inject one step too late).
+3. **F2 block path**: Clears `execution_auto_advance = false` defensively.
+4. **`executionDecision` completed branch**: Now a defensive fallback (unreachable in normal flow since phase is already INTERPRETATION by the time `onTurnStopping` fires).
+5. **Test**: New explicit F7 happy-path test + M4 E2E updated to assert in `onPostExecute`.
+
+All 82 tests pass.
