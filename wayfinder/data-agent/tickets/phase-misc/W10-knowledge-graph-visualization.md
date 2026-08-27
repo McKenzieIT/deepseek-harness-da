@@ -2,7 +2,7 @@
 
 **Type**: grilling → prototype → task
 **Phase**: misc（管理 UI 核心）
-**Status**: implemented 2026-08-27（设计 resolved + 基础代码落地 + 全屏管理 UI 组装完成 + 全屏集成方案 research resolved + 全屏集成实现完成 commit 7858252b30）
+**Status**: implemented 2026-08-27（设计 resolved + 基础代码落地 + 全屏管理 UI 组装完成 + 全屏集成方案 research resolved + 全屏集成实现完成 commit 7858252b30 + **数据管道接线完成** commit 616e52fe55：graphDataBridge RPC 桥接 + ContextLayerOverlay 消费 graphClient fetch-on-open + apply() inject remote 构建 typed client + 管理会话暂无客户端桥接保持 TODO）
 **Blocked by**: 无（W8 resolved 2026-08-27，evidence RPC 已接通）
 
 ## Question
