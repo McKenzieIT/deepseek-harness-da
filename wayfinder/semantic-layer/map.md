@@ -238,10 +238,9 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
 ### Context Layer 对齐（CL 系列）
-- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — **全部三 Phase 完成**（P1: `d36c5d7f9a`；P2: `91794aec4f`；P3: 2026-08-29）：schema+接口+数据迁移+图反向索引+resolve_term+hybrid 检索+AI enrichment（on-write hook + discover_alt_labels tool + eval 验证）。Code review fixes: score cap / CJK bigram / maxRelations。
-- [CL-2: Domain/Concept 图节点](tickets/CL2-concept-kind-plugin.md) — grilling：ConceptKindPlugin 设计（blocked by CL-1）
-- [CL-3: 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — grilling：A/B/C 策略对比实验 + alias 质量验证机制（blocked by CL-1 Phase 2）
-- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（blocked by CL-1 + CL-2，low priority）
+- [CL-2: Domain/Concept 图节点](tickets/CL2-concept-kind-plugin.md) — grilling：ConceptKindPlugin 设计（**frontier — CL-1 已完成，无阻塞**）
+- [CL-3: 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — grilling：A/B/C 策略对比实验 + alias 质量验证机制（**frontier — CL-1 P2 已完成，无阻塞**）
+- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（blocked by CL-2，low priority）
 
 ## Out of scope
 
