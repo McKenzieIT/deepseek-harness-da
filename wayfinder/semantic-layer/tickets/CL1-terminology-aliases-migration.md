@@ -122,7 +122,7 @@ toCorpusItem(def: T): CorpusItem | null
 
 ## 验收
 
-- [ ] Phase 1：`toCorpusItem(def)` 无 terminology 参数；`def.alt_labels` 从 definition 读取；现有 tests 通过；terminology.yaml 已删除
+- [x] Phase 1：`toCorpusItem(def)` 无 terminology 参数；`def.alt_labels` 从 definition 读取；现有 tests 通过；terminology.yaml 已删除 — **commit `d36c5d7f9a`（2026-08-29）**。tsc clean + 212 tests green。
 - [ ] Phase 2：`graph.resolveAlias('dau')` → 命中 `role.online` + `dws_...act_di`；`resolve_term` tool 可用；`search_data_sources` 集成 hybrid 检索
 - [ ] Phase 3：新 definition 写入后自动获得 AI 建议的 alt_labels；eval 无 regression
 
