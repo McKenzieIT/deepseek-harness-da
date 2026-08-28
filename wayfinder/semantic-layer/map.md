@@ -99,6 +99,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [T2 确认管理面板 web 端可见](tickets/T2-verify-management-panel-web-visibility.md) — Headless Playwright 自动化验证全部通过：sidebar 按钮渲染 + 点击进入 session + GoalDock/EvidenceSidebar 可见 + 零 console error。前置条件=web profile 含 data-agent bundle。
 - [R7 Terminology ontology 角色](research/r7-terminology-ontology-role.md) — **修订（前沿对齐）**：2026 context layer 共识= terminology IS ontology 一等组件；推荐方案 D（definition schema 加 `aliases` 节点属性 + RelationGraph 反向索引）；不新增 relation type（属性非边）；渐进三阶段实现
 - [R9 Context Layer 前沿审计](research/r9-context-layer-frontier-audit.md) — 现有决策与 2026 Forrester/Gartner/OpenMetadata/Atlan/Jedify 共识对照；大部分对齐（P3/G3/G4/G5/W6）；R7 已修订；G2 relation scope 偏窄（记为 fog）；缺 context layer 整体演进认知
+- [CL-1 Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — SKOS 对齐双字段（`pref_label` + `alt_labels: string[]`）；全 definition type 加；`toCorpusItem(def)` 移除 terminology 参数（原子迁移）；检索策略 = Strategy B（always-fused graph-anchored hybrid）；`lookup_terminology` → `resolve_term`（agent 消歧工具）；enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）
 
 ## Not yet specified
 
@@ -131,18 +132,21 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 
 ### 解决路径（分阶段）
 
-#### Phase CL-1：Terminology 统一（R7 方案 D）
+#### Phase CL-1：Terminology 统一（R7 方案 D — SKOS 对齐）✅ 决策已锁定
 
 **解决**：glossary 独立于 ontology 的偏差
 
-1. Definition schema 加 `aliases?: string[]` 字段
-2. `toCorpusItem(def)` 从 `def.aliases` 读取（消除外部 terminology 参数）
-3. RelationGraph 增加反向索引 `resolveAlias(term) → nodeId`
-4. NL2SQL 引擎查询前先 graph-resolve 术语 → 定位子图
-5. 迁移 `terminology.yaml` 数据到各 definition 的 aliases 字段
+**决策（2026-08-28 grilling 锁定）**：
+- D1：SKOS 对齐双字段 `pref_label?: string` + `alt_labels?: string[]`（snake_case 适配）
+- D2：全 definition type 加（event + table + metric）；列级排除
+- D3：`toCorpusItem(def)` 直接移除 terminology 参数，原子迁移
+- D4：检索 = Strategy B（always-fused hybrid）；tool = `resolve_term`（替代 `lookup_terminology`）
+- D5：enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）
 
-**成本**：低-中（Phase 1 仅加字段，Phase 2 图索引，Phase 3 数据迁移）
-**收益**：对齐 Jedify 模式（图编码术语→子图投射），消除 toCorpusItem 参数不一致
+实现三阶段：Phase 1 schema + 接口 + 数据迁移（原子）→ Phase 2 图反向索引 + resolve_term tool + hybrid 检索 → Phase 3 AI enrichment hook + tool
+
+**成本**：低-中（Phase 1 仅加字段+迁移，Phase 2 图索引+tool，Phase 3 enrichment）
+**收益**：SKOS 标准对齐 + Jedify 模式（图编码术语→子图投射）+ 消除 toCorpusItem 参数不一致
 
 #### Phase CL-2：Domain/Concept 作为图节点
 
@@ -234,8 +238,9 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
 ### Context Layer 对齐（CL 系列）
-- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — grilling→task：先锁定 5 个设计决策（字段结构/scope/接口变更/BM25关系/enrichment机制），再分阶段实现。**Frontier 首要对齐项**
+- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — **已锁定，毕业为 task**（5 决策全部 resolved 2026-08-28）。待实现 Phase 1-3。
 - [CL-2: Domain/Concept 图节点](tickets/CL2-concept-kind-plugin.md) — grilling：ConceptKindPlugin 设计（blocked by CL-1）
+- [CL-3: 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — grilling：A/B/C 策略对比实验 + alias 质量验证机制（blocked by CL-1 Phase 2）
 - [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（blocked by CL-1 + CL-2，low priority）
 
 ## Out of scope
