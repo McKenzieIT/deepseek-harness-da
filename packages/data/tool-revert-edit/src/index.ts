@@ -68,9 +68,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
       to_version: {
         type: 'integer',
-        minimum: 1,
         description:
-          'The snapshot version to restore. Use list mode (omit to_version and '
+          'The snapshot version to restore (must be >= 1). Use list mode (omit to_version and '
           + 'set list_versions=true) to see available versions, or specify a '
           + 'version number to revert to that snapshot.',
       },

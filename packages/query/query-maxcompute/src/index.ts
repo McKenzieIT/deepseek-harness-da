@@ -23,6 +23,7 @@
  * @module @deepseek-ai/dsh-query-maxcompute
  */
 
+import { homedir } from 'node:os'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -211,6 +212,9 @@ export class MaxComputeQueryEngine extends QueryEngine {
 
   constructor(ctx: Context, public config: Config) {
     super(ctx)
+    if (config.maxcConfigPath?.startsWith('~/')) {
+      config.maxcConfigPath = homedir() + config.maxcConfigPath.slice(1)
+    }
   }
 
   /** Schemastery-normalized config (defaults applied). */
@@ -224,6 +228,13 @@ export class MaxComputeQueryEngine extends QueryEngine {
       await this.dispose()
     }
     // Eager connect on mount (G4: Service start → await client.connect; HOLE-A fail-fast).
+    // S1 graceful: missing maxcConfigPath in sidecar-self mode logs a warning and defers
+    // the error to execution time — prevents crashing the entire app boot when the query
+    // engine is mounted but not yet configured for a specific deployment.
+    if (this.cfg.credMode === 'sidecar-self' && !this.cfg.maxcConfigPath) {
+      this.ctx.logger?.warn?.('query-maxcompute: maxcConfigPath not configured; query execution will fail until deployment provides it')
+      return
+    }
     await this.ensureConnected()
   }
 

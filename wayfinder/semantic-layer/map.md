@@ -93,12 +93,14 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [W6e Management agent persona ③](tickets/W6e-management-agent-persona-evolution.md) — persona 增加 eval evidence 解读 + 自驱行为规范 + tool 指南；`@deepseek-ai/dsh-tool-edit-definition`（patch + audit + unreviewed + smart-merge columns/dimension_refs/domains）；preset 中激活；27 tests
 - [W11 Evidence-query client RPC bridge](tickets/W11-evidence-query-client-rpc-bridge.md) — EvidenceQueryService 转 TypertRemoteService（8 @Remote 方法）；typert generate 正式产物；client assembly 注册；buildEvidenceQueryClient 桥接适配器 + useEvidenceMetrics hook；wiring.tsx 三处 TODO 替换为真实数据；98 tests 全绿
 - [W12 删除过时 semantic-layer-goal 包](tickets/W12-remove-semantic-layer-goal-package.md) — 全部职责已被 dsh-goal-round-driver / dsh-goal-eval-policy / dsh-goal-eval-context / dsh-eval-runner / semantic-layer-management preset 覆盖；零消费者；14 文件删除，tsc clean
-- [W13 ③ 自驱循环端到端集成验证](tickets/W13-autonomous-loop-e2e-integration.md) — building blocks 全部就绪（goal-round-driver + eval-runner-service + goal-eval-policy + goal-eval-context + management preset）；端到端闭环验证通过## Not yet specified
+- [W13 ③ 自驱循环端到端集成验证](tickets/W13-autonomous-loop-e2e-integration.md) — building blocks 全部就绪（goal-round-driver + eval-runner-service + goal-eval-policy + goal-eval-context + management preset）；端到端闭环验证通过- **W14 Web UI 运行时修复**（2026-08-28）— commit `c198421627` 引入的 `'layout'` 硬依赖 + Cordis Proxy inject guard 阻止了管理 UI sidebar 按钮注册；5 个级联问题修复：query-maxcompute graceful degrade / scope.get() 绕过 Proxy / 6 个 preset 包缺 lib/index.js / tool-revert-edit minimum keyword / preset-autojoin 竞争。修复后：sidebar 按钮可见 + session 正确选中 semantic-layer-management preset。package.json 合规修复（peer deps / dsh.client.inject / README）同批。
 
-- **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化
-- **Terminology 挂载点**：全局注入（`ctx.terminology`）vs per-kind 构造参数。当前 `eventKindPlugin.toCorpusItem` 已接受 `terminology?` 参数，需统一为一种模式
+## Not yet specified
+
+- **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化。Session prompt: `prompts/remaining-1-schema-provider-conflict.md`
+- **Terminology 挂载点**：全局注入（`ctx.terminology`）vs per-kind 构造参数。当前 `eventKindPlugin.toCorpusItem` 已接受 `terminology?` 参数，需统一为一种模式。Session prompt: `prompts/remaining-2-terminology-mount-point.md`
 - **定义版本管理**：数据源定义（TableDefinition/EventDefinition/MetricDefinition）的变更历史追踪方案。最小方案 = Tier-2 audit 已有 who/when/what；完整方案 = git-backed 或 append-only changelog
-- **Shell auto-flip 接入真实 evalRunCount**：`sidebar.footer.action` 的 SemanticLayerShell inject factory 仍传 `evalRunCount: 0`（root-scope slot inject 是 memoize 的）。需改为 Shell 组件内部通过 useEvidenceMetrics 消费真实 run count，使 DashboardView 路由在 ≥3 次 eval 后自动激活
+- ~~**Shell auto-flip 接入真实 evalRunCount**~~ — **已通过 W11 evidence-query RPC bridge 解决**：`evidenceClient` 传入 SemanticLayerShell，`useEvidenceMetrics` 读取真实 evalRunCount。验证 session prompt: `prompts/remaining-3-shell-autoflip-verification.md`
 - **Evidence-query push 订阅**：当前 v1 是 mount-time 拉取 + refresh() 手动刷新。后续需通过 Typert 事件转发（`$on`）实现 host eval-store 变更后主动 push 到 client，使 EvidenceSidebar/GoalDock sparkline 实时响应新 eval run 完成
 
 ## Out of scope

@@ -66,12 +66,11 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-semantic-layer: dictionaries')
   ctx.plugin(semanticLayerPresenters)
 
-  ctx.inject(['sessions', 'workspaces', 'connection', 'remote', 'layout'], (scope: ClientContext) => {
+  ctx.inject(['sessions', 'workspaces', 'connection', 'remote'], (scope: ClientContext) => {
     const sessions = scope.sessions
     const workspaces = scope.workspaces
     const { api } = scope.get('connection') as ConnectionHandle
-    const layout = (scope as unknown as { layout: { openDetails(): void } }).layout
-
+    const layout = scope.get('layout') as { openDetails(): void } | undefined
     let staged: string | undefined
 
     const stopListSub = sessions.list.subscribe(() => {
@@ -81,7 +80,6 @@ export function apply(ctx: ClientContext): void {
       if (!current) return
       const summary = state.byId[current]
       if (summary === undefined) return
-      if (!summary.blank) return
       if (summary.agentPreset === staged) { staged = undefined; return }
       const presetId = staged
       staged = undefined
@@ -93,14 +91,16 @@ export function apply(ctx: ClientContext): void {
     })
 
     // W9/W11: Build typed RPC clients from TypeRT remote namespaces.
-    const remoteNs = (scope as unknown as { remote?: { schemaGateway?: unknown; evidenceQuery?: unknown } }).remote
-    const schemaClient = remoteNs?.schemaGateway
-      ? buildSchemaGatewayClient(remoteNs.schemaGateway as never)
+    // Use scope.get() for optional nested services to bypass Cordis Proxy inject guards.
+    const rawSchemaGateway = scope.get('remote.schemaGateway') as unknown
+    const rawEvidenceQuery = scope.get('remote.evidenceQuery') as unknown
+    const schemaClient = rawSchemaGateway
+      ? buildSchemaGatewayClient(rawSchemaGateway as never)
       : null
-    const evidenceClient = remoteNs?.evidenceQuery
-      ? buildEvidenceQueryClient(remoteNs.evidenceQuery as never)
+    const evidenceClient = rawEvidenceQuery
+      ? buildEvidenceQueryClient(rawEvidenceQuery as never)
       : null
-    const contextLayer = (scope as unknown as { contextLayer?: { open(node?: string): void } }).contextLayer
+    const contextLayer = scope.get('contextLayer') as { open(node?: string): void } | undefined
     const onNavigateToGraph = contextLayer
       ? (assetId: string) => contextLayer.open(assetId)
       : undefined
@@ -110,13 +110,13 @@ export function apply(ctx: ClientContext): void {
       for (const id of state.ids) {
         if (state.byId[id]?.agentPreset === PRESET_ID) {
           sessions.open(id)
-          layout.openDetails()
+          layout?.openDetails()
           return
         }
       }
       staged = PRESET_ID
       workspaces.startSession()
-      layout.openDetails()
+      layout?.openDetails()
     }
 
     const injected = (): Omit<SemanticLayerShellProps, 'wide' | 't'> => ({
