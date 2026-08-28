@@ -121,3 +121,8 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id（服务器ID）与 dim_10000251_server_info 主键 server_id 精确匹配，JOIN 回填区服名称与开服时间。
+pref_label: 商业化-付费订单日表
+alt_labels:
+  - 氪金
+  - 充值
+  - 付费

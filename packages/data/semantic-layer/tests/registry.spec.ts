@@ -1,7 +1,7 @@
 /**
  * P2-impl registry unit tests — DataSourceRegistry + kind plugins.
- * G1/G2 aligned: schema field, terminology-aware toCorpusItem, raw-based getId,
- * CriticFields with Record, three relation types, MetricPlugin.
+ * G1/G2 aligned: schema field, toCorpusItem (reads alt_labels from def),
+ * raw-based getId, CriticFields with Record, three relation types, MetricPlugin.
  */
 import { test, expect } from 'vitest'
 import yaml from 'js-yaml'
@@ -55,9 +55,9 @@ test('eventKindPlugin — getId from raw Record', () => {
   expect(eventKindPlugin.getId({})).toBeUndefined()
 })
 
-test('eventKindPlugin — toCorpusItem enriches with params + terminology', () => {
-  const terminology = { 'role.online': ['上线', '登录'] }
-  const item = eventKindPlugin.toCorpusItem(EVENT_DEF, terminology)
+test('eventKindPlugin — toCorpusItem enriches with params + alt_labels from definition', () => {
+  const defWithAliases = { ...EVENT_DEF, alt_labels: ['上线', '登录'] }
+  const item = eventKindPlugin.toCorpusItem(defWithAliases)
   expect(item).not.toBeNull()
   expect(item!.id).toBe('role.online')
   expect(item!.description).toContain('玩家上线')
@@ -67,11 +67,10 @@ test('eventKindPlugin — toCorpusItem enriches with params + terminology', () =
   expect(item!.description).toContain('登录')
 })
 
-test('eventKindPlugin — toCorpusItem works without terminology (no slang injected)', () => {
+test('eventKindPlugin — toCorpusItem works without alt_labels (no aliases injected)', () => {
   const item = eventKindPlugin.toCorpusItem(EVENT_DEF)
   expect(item!.id).toBe('role.online')
   expect(item!.description).toContain('role_id')
-  // Without terminology, slang aliases like '登录' are NOT injected
   expect(item!.description).not.toContain('登录')
 })
 

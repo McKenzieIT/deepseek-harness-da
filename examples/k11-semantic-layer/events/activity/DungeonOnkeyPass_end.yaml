@@ -114,3 +114,6 @@ confirmation:
   note: ds=20260729 scout 实测：cnt=52973, role_uv=1868, acc_uv=1773, server_uv=181，数值合理，标记 analyst_confirmed
   coverage_status: analyst_confirmed
 external_refs: []
+alt_labels:
+  - 副本
+  - 地下城

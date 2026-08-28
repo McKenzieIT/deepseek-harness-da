@@ -26,7 +26,6 @@ import {
 } from './types.ts'
 import {
   buildRetrievalCorpus,
-  parseTerminology,
   type CorpusVariant,
   type EventCorpusInput,
   type EventCorpusItem,
@@ -166,16 +165,7 @@ export function loadDomains(semanticLayer: string): Record<string, unknown> {
     return {}
   }
 }
-/**
- * Read and parse the layer's `terminology.yaml` glossary (null when absent).
- * @param semanticLayer - the semantic-layer directory path.
- * @returns the parsed terminology value, or null when the file is missing.
- */
-export function loadTerminology(semanticLayer: string): unknown {
-  const p = join(semanticLayer, 'terminology.yaml')
-  if (!existsSync(p)) return null
-  return readYaml(p)
-}
+
 /** A scanned event: its `name`, raw YAML dict, and the domain subdir it lived in (unvalidated). */
 export interface RawEvent {
   readonly name: string
@@ -285,54 +275,35 @@ function eventCorpusInput(e: RawEvent): EventCorpusInput {
   const raw = e.raw
   const pf = raw.params_fields
   const metrics = raw.metrics
+  const al = raw.alt_labels
   return {
     name: e.name,
     ...(typeof raw.description === 'string' ? { description: raw.description } : {}),
     ...(isPlainObject(pf) ? { params_fields: pf as Record<string, { description?: string }> } : {}),
+    ...(Array.isArray(al) ? { alt_labels: al as string[] } : {}),
     ...(isPlainObject(metrics) ? { metrics: metrics as Record<string, unknown> } : {}),
   }
 }
 /**
- * D2e (2026-08-21): build an enriched retrieval corpus from the substrate.
- * Reads every event + the terminology glossary, projects each event to
- * `{ id, description (enriched with params_fields name+desc + terminology
- * slang), metrics, payload }`, and returns the corpus. `domain` is NOT indexed
- * (probe refuted it). Lenient: a broken `events/` scan or a corrupt
- * `terminology.yaml` degrades to an empty corpus rather than throwing (mirrors
- * the lenient `loadEvents` scan + `parseTerminology` guards; the tool must stay
- * callable-but-unwired). This is the corpus feed the real-default prefetch path
- * (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when
- * `ctx.schema` is unmounted (bundle opt-in), the tool's corpus stays empty
- * (current behavior) — enrichment activates on mount.
- * @param semanticLayer - the semantic-layer directory path (with `events/` + `terminology.yaml`).
- * @param variant - which slices to pack: 'params+term' (default, the D2e-shipped
- *   form) or 'term-only' (the D2g verdict (A) higher-recall form — drops
- *   params_fields). Mount-time config (see CorpusVariant).
+ * Build an enriched retrieval corpus from the substrate. Each event's
+ * `alt_labels` (SKOS aliases) + params_fields are packed into the indexed
+ * description. Lenient: an unreadable events/ scan degrades to an empty
+ * corpus rather than throwing.
+ * @param semanticLayer - the semantic-layer directory path (with `events/`).
+ * @param variant - which slices to pack: 'params+term' (default) or 'term-only'.
  * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
  */
 export function loadRetrievalCorpus(
   semanticLayer: string,
   variant: CorpusVariant = 'params+term',
 ): readonly EventCorpusItem[] {
-  // Lenient: an unreadable `events/` scan or a corrupt `terminology.yaml`
-  // degrades INDEPENDENTLY (empty events / empty glossary) — neither loses the
-  // other, and the tool stays callable-but-unwired (mirrors the lenient
-  // loadEvents per-file scan + parseTerminology guards).
   let events: readonly EventCorpusInput[] = []
   try {
     events = loadEvents(semanticLayer).map(eventCorpusInput)
   } catch {
     // unreadable events/ scan -> no events indexed this boot
   }
-  let terminology: ReturnType<typeof parseTerminology> = {}
-  try {
-    terminology = parseTerminology(loadTerminology(semanticLayer))
-  } catch {
-    // corrupt terminology.yaml -> empty glossary (events still indexed)
-  }
-  // D2h: pass the variant through to buildRetrievalCorpus (term-only drops the
-  // params_fields slice; default params+term is the D2e-shipped form).
-  return buildRetrievalCorpus(events, terminology, variant)
+  return buildRetrievalCorpus(events, variant)
 }
 function findEventPath(semanticLayer: string, name: string): string | null {
   const eventsDir = join(semanticLayer, 'events')

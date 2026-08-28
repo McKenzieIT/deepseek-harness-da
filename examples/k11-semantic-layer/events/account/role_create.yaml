@@ -100,3 +100,7 @@ confirmation:
   coverage_status: analyst_confirmed
   note: ds=20260729 scout 实测 cnt=625 / role_uv=625 / acc_uv=620 / server_uv=2，数字合理，事件命中正常。
 external_refs: []
+alt_labels:
+  - 新增
+  - 新增用户
+  - 新注册

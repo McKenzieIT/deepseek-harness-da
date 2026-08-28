@@ -3422,7 +3422,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DataSourceKindPlugin',
-    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T, terminology?: EventTerminology): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toExecutableRule?(def: T): string | null;\n}',
+    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toExecutableRule?(def: T): string | null;\n}',
   },
   {
     name: 'DataSourceRegistry',
@@ -3588,10 +3588,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     name: 'EventDefinition',
     declaration: 'export type EventDefinition = z.infer<typeof EventDefinitionSchema>;',
   },
-  {
-    name: 'EventTerminology',
-    declaration: 'export type EventTerminology = Readonly<Record<string, readonly string[]>>;',
-  },
+
   {
     name: 'FileDiff',
     declaration: 'export interface FileDiff {\n    path: string;\n    oldText: string | null;\n    newText: string;\n}',

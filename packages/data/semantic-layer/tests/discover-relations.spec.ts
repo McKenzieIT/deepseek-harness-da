@@ -15,7 +15,7 @@ import { dumpYaml } from '../src/io.ts'
 import type { TableDefinition, TableMeta } from '../src/types.ts'
 
 const dimDoc = (name: string, pk: string): TableDefinition => ({
-  table_name: name, table_comment: '', description: `${name} 维度表`, domains: [],
+  table_name: name, table_comment: '', description: `${name} 维度表`, alt_labels: [], domains: [],
   granularity: '', engine: 'maxcompute',
   columns: [{ name: pk, type: 'string', comment: 'pk', role: 'dimension' }, { name: `${pk}_name`, type: 'string', comment: 'name', role: 'dimension' }],
   metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
@@ -24,7 +24,7 @@ const dimDoc = (name: string, pk: string): TableDefinition => ({
 } as TableDefinition)
 
 const dwsDoc = (name: string, cols: Array<{ name: string; comment?: string }>): TableDefinition => ({
-  table_name: name, table_comment: '', description: `${name} dws`, domains: [],
+  table_name: name, table_comment: '', description: `${name} dws`, alt_labels: [], domains: [],
   granularity: '', engine: 'maxcompute',
   columns: cols.map(c => ({ name: c.name, type: 'string', comment: c.comment ?? '', role: 'dimension' })),
   metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },

@@ -145,3 +145,22 @@ coverage:
   coverage_status: draft
 supersedes: []
 dimension_refs: []
+pref_label: 角色活跃日增量明细表（univ_role_act_di）
+alt_labels:
+  - 日活
+  - DAU
+  - 氪金
+  - 充值
+  - 付费
+  - 留存
+  - 新增
+  - 新增用户
+  - 新注册
+  - 白嫖
+  - 免费玩家
+  - 零氪
+  - MAU
+  - 月活
+  - 首充
+  - 首次充值
+  - 付费率

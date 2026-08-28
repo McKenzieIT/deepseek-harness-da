@@ -86,6 +86,7 @@ export function toMetricDefinition(
     kind: 'metric',
     name: metricName(source, key),
     description: def.description,
+    alt_labels: [...(def.alt_labels ?? [])],
     domains: [...domains],
     caliber_variants: [...(def.caliber_variants ?? [])],
     computation: {

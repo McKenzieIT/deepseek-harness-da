@@ -52,7 +52,7 @@ import {
   type Tier2Recorder,
 } from './io.ts'
 import type { TableMeta, EventDefinition, TableDefinition, MetricDefinition } from './types.ts'
-import { parseTerminology, type CorpusVariant, type EventCorpusItem, type EventTerminology } from './corpus.ts'
+import { type CorpusVariant, type EventCorpusItem } from './corpus.ts'
 import {
   enrichAllDwsTables as enrichAllDwsTablesFromLayer,
   enrichAllEvents as enrichAllEventsFromLayer,
@@ -63,7 +63,7 @@ import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
 import { RelationGraph } from './relation-graph.ts'
 import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
-import { loadEvents, loadTables, loadTerminology } from './io.ts'
+import { loadEvents, loadTables } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
 import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
 
@@ -76,7 +76,6 @@ export {
   resolveSemanticLayer,
   loadConfig,
   loadDomains,
-  loadTerminology,
   loadEvents,
   loadTables,
   loadEventDefinition,
@@ -103,11 +102,9 @@ export { BasicIndex, type EventIndexEntry, type TableIndexEntry } from './basic-
 export { submit, load as loadPending, listing, discard, isValidId, type PendingSuggestion, type SubmitArgs } from './pending.ts'
 export {
   buildRetrievalCorpus,
-  parseTerminology,
   type CorpusVariant,
   type EventCorpusItem,
   type EventCorpusInput,
-  type EventTerminology,
 } from './corpus.ts'
 // G3: AI-Native enrichment substrate (B1/B2) + mechanical metrics extraction (B5).
 export {
@@ -308,16 +305,9 @@ export class SemanticLayerService extends Service {
    */
   loadRetrievalCorpusAll(): CorpusItem[] {
     const out: CorpusItem[] = []
-    const term: EventTerminology = parseTerminology(loadTerminology(this.semanticRoot))
-    // M1 virtual projection: derive kind:metric CorpusItems from each host
-    // table/event `metrics:` block (metrics are no longer a registered kind
-    // with a storage dir — they are projected here for BM25 indexing). Each
-    // host def is parsed ONCE via loadByStorageDir (uncached readdirSync+
-    // readYaml+safeParse), so the host corpus item + the derived metric
-    // items are pushed in the same iteration.
     for (const plugin of this.registry.allPlugins()) {
       for (const def of this.loadByStorageDir(plugin.storageDir)) {
-        const item = plugin.toCorpusItem(def, term)
+        const item = plugin.toCorpusItem(def)
         if (item) out.push(item)
         const metrics = plugin.kind === 'table'
           ? extractMetricsFromTable(def as TableDefinition)
@@ -511,17 +501,10 @@ export class SemanticLayerService extends Service {
   }
 
   /**
-   * D2e (2026-08-21): build an enriched retrieval corpus from the substrate —
-   * each event's `params_fields` (field name + description) + `terminology`
-   * slang packed into the indexed `description`; `domain` is NOT indexed
-   * (probe refuted it). D2h: the `corpusVariant` mount-time config selects the
-   * slices — 'params+term' (default, shipped) packs params_fields + slang;
-   * 'term-only' (D2g verdict (A) higher-recall) packs slang only, dropping
-   * params_fields. This is the corpus feed the real-default prefetch path
-   * (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when
-   * `ctx.schema` is unmounted (bundle opt-in), the tool's corpus stays empty
-   * (current behavior) — enrichment activates on mount. Empty `semanticRoot`
-   * yields an empty corpus.
+   * Build an enriched retrieval corpus from the substrate — each event's
+   * `alt_labels` (SKOS aliases) + `params_fields` packed into the indexed
+   * `description`. The `corpusVariant` config selects slices: 'params+term'
+   * (default) packs both; 'term-only' packs aliases only.
    * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
    */
   loadRetrievalCorpus(): readonly EventCorpusItem[] {

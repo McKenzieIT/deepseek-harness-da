@@ -46,6 +46,7 @@ function table(over: Partial<TableDefinition> = {}): TableDefinition {
 const mdef = (e: string, d = '', cv: MetricDef['caliber_variants'] = []): MetricDef => ({
   expression: e,
   description: d,
+  alt_labels: [],
   caliber_variants: cv,
 })
 

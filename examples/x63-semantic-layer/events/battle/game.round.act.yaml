@@ -1,12 +1,11 @@
 name: game.round.act
 event_filter: event = 'game.round.act'
-description: '角色行动行为：角色在行动中有相应行为时记录
-
+description: |-
+  角色行动行为：角色在行动中有相应行为时记录
   参数：行为类型、装备的员工id、携带的物品id
-
-  （含腰包和扩展背包中的物品）、携带的道具价值、背包价值、角色状态、生存时长、击败怪物个数、移动距离、个人柜的物品列表、公共柜的物品列表、个人评分 等15个'
+  （含腰包和扩展背包中的物品）、携带的道具价值、背包价值、角色状态、生存时长、击败怪物个数、移动距离、个人柜的物品列表、公共柜的物品列表、个人评分 等15个
 domains:
-- 战斗关卡
+  - 战斗关卡
 params_fields:
   action:
     type: int
@@ -16,27 +15,18 @@ params_fields:
     description: 装备的员工id
   equipItemList:
     type: array
-    description: '格式如：
-
+    description: |-
+      格式如：
       [
-
       {
-
       equipItemSlot：装备槽位id（如果放腰包中，则是物品Uid）
-
       equipItemSubSlot：子背包槽位id，
-
       equipItemId：装备物品id，
-
       equipItemUid：装备物品唯一id，
-
       equipItemDur：装备物品耐久，
-
       },
-
       ……
-
-      ]'
+      ]
   equipValue:
     type: int
     description: 携带的道具总价值（局外购买价格，方便统计带入成本）
@@ -72,9 +62,9 @@ params_fields:
     description: 个人退出时带出的物品总价值
   quitReason:
     type: string
-    description: 'action为4时有效，表示玩家失败退出的原因
-
-      取settlement_death_reason中的死亡原因'
+    description: |-
+      action为4时有效，表示玩家失败退出的原因
+      取settlement_death_reason中的死亡原因
 daily_count: 193.6
 total_count: 968
 active_days: 5
@@ -82,12 +72,14 @@ tech_domain: role_private
 confirmation:
   status: draft
   confirmed_by: onboarding-10000334-event-bootstrap
-  confirmed_at: '2026-07-27'
+  confirmed_at: "2026-07-27"
 coverage:
   scenarios:
-  - 角色行动行为 事件次数与独立角色数趋势（按 ds/hh）
+    - 角色行动行为 事件次数与独立角色数趋势（按 ds/hh）
   limitations:
-  - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6
-    个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
-  - 主体粒度默认按 role_id 统计 UV，未逐事件 maxc 实测复核
+    - 事件定义来自 10000334司测埋点.xlsx（参数枚举标注『待补充』的以实际日志为准）；daily_count/total_count 来自 MaxCompute ds=20260628..20260726 司测前联调日志（约 6 个活跃日），量级不代表司测/上线后水平；正式司测窗口为 20260727-20260728，司测结束后应重跑分布刷新量级
+    - 主体粒度默认按 role_id 统计 UV，未逐事件 maxc 实测复核
   coverage_status: draft
+alt_labels:
+  - 撤离
+  - 带出

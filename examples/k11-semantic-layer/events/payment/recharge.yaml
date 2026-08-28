@@ -177,3 +177,7 @@ external_refs:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df_arch 主键精确同名
+alt_labels:
+  - 氪金
+  - 充值
+  - 付费

@@ -7,8 +7,6 @@
  */
 import { TableDefinitionSchema, type TableDefinition } from '../types.ts'
 import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem } from '../registry.ts'
-import type { EventTerminology } from '../corpus.ts'
-
 export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
   kind: 'table',
   schema: TableDefinitionSchema,
@@ -18,7 +16,7 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
     return typeof raw.table_name === 'string' ? raw.table_name : undefined
   },
 
-  toCorpusItem(def, _terminology?: EventTerminology): CorpusItem | null {
+  toCorpusItem(def): CorpusItem | null {
     const parts: string[] = []
     parts.push(def.table_name)
     if (def.description) parts.push(def.description)
@@ -26,6 +24,9 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
     for (const col of def.columns) {
       parts.push(col.name)
       if (col.comment) parts.push(col.comment)
+    }
+    if (def.alt_labels) {
+      for (const s of def.alt_labels) parts.push(s)
     }
     return {
       id: def.table_name,

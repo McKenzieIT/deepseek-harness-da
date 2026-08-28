@@ -7,8 +7,6 @@
  *
  * @module @deepseek-ai/dsh-semantic-layer/src/registry
  */
-import type { EventTerminology } from './corpus.ts'
-
 // ── Shared types (G1 §D2) ──────────────────────────────────────────────
 
 /** A unified corpus item for retrieval indexing (G1: type-agnostic). */
@@ -74,10 +72,9 @@ export interface DataSourceKindPlugin<T = unknown> {
 
   /**
    * Project a definition to a corpus item for retrieval indexing (G1 §D2).
-   * Terminology is injected as a global resource for enrichment.
    * Returns null to skip indexing for this definition.
    */
-  toCorpusItem(def: T, terminology?: EventTerminology): CorpusItem | null
+  toCorpusItem(def: T): CorpusItem | null
 
   /** Format a definition into prompt context (for model-facing tools). */
   toPromptContext(def: T): string

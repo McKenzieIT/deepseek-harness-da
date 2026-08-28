@@ -123,8 +123,7 @@ describe('SemanticLayerService ctx.scopes delegation (P1 wiring)', () => {
   test('a corrupt scopes.yaml makes corpusVersion() throw (fail-loud — never silently fall back to a possibly-wrong scope)', () => {
     const reg = mkdtempSync(join(tmpdir(), 'scope-reg-corrupt-')); tmps.push(reg)
     const registryPath = join(reg, 'scopes.yaml')
-    // unterminated YAML flow sequence → yaml.load throws (same shape as
-    // corpus.spec's corrupt-terminology fixture)
+    // unterminated YAML flow sequence → yaml.load throws
     writeFileSync(registryPath, 'a: [1, 2\n', 'utf8')
     const ctx = new Context()
     new ScopeRegistryService(ctx, { registryPath }) // mounts under the 'scopes' name

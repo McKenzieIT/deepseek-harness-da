@@ -131,3 +131,6 @@ confirmation:
   note: ds=20260729 实测 cnt=52970, role_uv=1867, acc_uv=1772, server_uv=181
   coverage_status: analyst_confirmed
 external_refs: []
+alt_labels:
+  - 副本
+  - 地下城

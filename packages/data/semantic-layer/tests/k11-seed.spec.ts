@@ -16,7 +16,6 @@ import {
   loadTableDefinition,
   loadConfig,
   loadDomains,
-  loadTerminology,
   resolveSemanticLayer,
 } from '../src/io.ts'
 
@@ -74,8 +73,5 @@ describe('K11 semantic-layer seed smoke', () => {
     expect(Object.keys(domains).length).toBeGreaterThan(0)
   })
 
-  test('loadTerminology is not null', () => {
-    const terminology = loadTerminology(SEED_PATH)
-    expect(terminology).not.toBeNull()
-  })
+
 })

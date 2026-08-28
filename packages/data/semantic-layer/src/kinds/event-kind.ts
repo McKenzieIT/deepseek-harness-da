@@ -1,6 +1,6 @@
 /**
  * Event kind plugin — wraps EventDefinition into the DataSourceKindPlugin interface.
- * G1 §D2/D3 aligned: schema field, terminology-aware toCorpusItem, raw-based getId,
+ * G1 §D2/D3 aligned: schema field, toCorpusItem (reads alt_labels from def), raw-based getId,
  * CriticFields with full Record, relations with G2 types.
  *
  * @module @deepseek-ai/dsh-semantic-layer/src/kinds/event-kind
@@ -18,10 +18,9 @@ export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
     return typeof raw.name === 'string' ? raw.name : undefined
   },
 
-  toCorpusItem(def, terminology): CorpusItem {
+  toCorpusItem(def): CorpusItem {
     const parts: string[] = []
     if (def.description) parts.push(def.description)
-    // Pack params_fields (field name + field description) — aligns with D2e params+term
     if (def.params_fields) {
       for (const [fname, fdef] of Object.entries(def.params_fields)) {
         if (!isPlainObject(fdef)) continue
@@ -30,10 +29,8 @@ export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
         if (typeof d === 'string' && d) parts.push(d)
       }
     }
-    // Pack terminology slang aliases
-    if (terminology) {
-      const slangs = terminology[def.name]
-      if (slangs) for (const s of slangs) parts.push(s)
+    if (def.alt_labels) {
+      for (const s of def.alt_labels) parts.push(s)
     }
     return {
       id: def.name,

@@ -47,6 +47,7 @@ function dws(over: Partial<TableDefinition> = {}): TableDefinition {
     duplicate_sample: [],
     label_columns: [],
     freshness: '',
+    alt_labels: [],
     dimension_refs: [],
     ...over,
   } as TableDefinition
@@ -165,7 +166,7 @@ describe('enrichAllDwsTables', () => {
     const raw = dumpYaml(dws({ columns: [{ name: 'server_id', type: 'BIGINT', comment: '区服ID', role: 'dimension' }, { name: 'role_id', type: 'string', comment: '', role: 'dimension' }] }))
     writeFileSync(join(dir, 'tables', 'dws_pay_order_di.yaml'), raw)
     // a DIM to match
-    const dim = { table_name: 'dim_server', kind: 'dim', primary_key: ['server_id'], label_columns: ['server_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
+    const dim = { table_name: 'dim_server', kind: 'dim', primary_key: ['server_id'], label_columns: ['server_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
     writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml(dim))
 
     const res = await enrichAllDwsTables(dir)
@@ -180,13 +181,13 @@ describe('enrichAllDwsTables', () => {
   })
 
   test('skips DIM tables (only enriches DWS)', async () => {
-    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml({ table_name: 'dim_server', kind: 'dim', primary_key: ['server_id'], label_columns: ['server_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition))
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml({ table_name: 'dim_server', kind: 'dim', primary_key: ['server_id'], label_columns: ['server_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition))
     const res = await enrichAllDwsTables(dir)
     expect(res.enriched).toBe(0)
   })
 
   test('tables? filter enriches only the named DWS tables', async () => {
-    const dimDoc = { table_name: 'dim_s', kind: 'dim' as const, primary_key: ['server_id'], label_columns: ['s_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
+    const dimDoc = { table_name: 'dim_s', kind: 'dim' as const, primary_key: ['server_id'], label_columns: ['s_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
     writeFileSync(join(dir, 'tables', 'dim_s.yaml'), dumpYaml(dimDoc))
     writeFileSync(join(dir, 'tables', 'dws_a.yaml'), dumpYaml(dws({ table_name: 'dws_a', columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }] })))
     writeFileSync(join(dir, 'tables', 'dws_b.yaml'), dumpYaml(dws({ table_name: 'dws_b', columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }] })))
@@ -199,7 +200,7 @@ describe('enrichAllDwsTables', () => {
   })
 
   test('mergeExisting=true preserves curated refs the deterministic round does not rediscover', async () => {
-    const dimServer = { table_name: 'dim_server', kind: 'dim' as const, primary_key: ['server_id'], label_columns: ['s_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
+    const dimServer = { table_name: 'dim_server', kind: 'dim' as const, primary_key: ['server_id'], label_columns: ['s_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
     writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml(dimServer))
     const curated = { ...dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '区服ID', role: 'dimension' }] }), dimension_refs: [{ dim_table: 'dim_other', join_keys: [{ dws_column: 'other_id', dim_column: 'other_id' }], derivation: 'curated by analyst' }] }
     writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(curated))
@@ -234,7 +235,7 @@ function dimServerYaml(): string {
     metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
     domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute',
     coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null,
-    duplicate_sample: [], freshness: '', dimension_refs: [],
+    alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [],
   } as TableDefinition)
 }
 

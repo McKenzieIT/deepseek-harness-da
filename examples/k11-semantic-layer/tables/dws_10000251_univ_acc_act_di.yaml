@@ -141,3 +141,7 @@ coverage:
   coverage_status: draft
 supersedes: []
 dimension_refs: []
+pref_label: 账号活跃与付费日增量汇总表(universal account active daily incremental)
+alt_labels:
+  - 日活
+  - DAU

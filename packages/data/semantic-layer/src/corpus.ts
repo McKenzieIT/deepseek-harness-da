@@ -1,17 +1,8 @@
 /**
- * D2e corpus enrichment (2026-08-21) — pure projection from semantic-layer
- * events + terminology to a retrieval corpus.
- *
- * Packs `params_fields` (field name + field description) + `terminology` slang
- * into the indexed `description`; does NOT index `domain` (probe refuted it:
- * coarse Chinese domain names inflate false-positives, losing item.add /
- * shop.buy). This is the production form of the probe_hypotheses.py
- * `params+term` variant (pack-into-description ×1) that measured 54.8% strict
- * / 58.1% loose recall on the REAL default prefetch path (Bm25Linker). The
- * weighting variant (×3) was refuted by the same probe (equal-strict,
- * worse-loose), and term-only (64.5%) was judged 31-case small-sample noise
- * (it flips to 48.4% on the §7 bigram-only port) — see the D2e ticket
- * Resolution + probe_hypotheses.py `main_linker_fidelity`.
+ * Corpus enrichment — pure projection from semantic-layer events to a retrieval
+ * corpus. Packs `params_fields` (field name + field description) + `alt_labels`
+ * (SKOS aliases from definition) into the indexed `description`; does NOT index
+ * `domain` (probe refuted it).
  *
  * The output shape (`EventCorpusItem`) is structurally identical to the
  * retrieval sinks — `DataSourceDoc` (nl2sql-engine `Bm25Linker`) and
@@ -35,14 +26,14 @@ export interface EventCorpusInput {
   /** Per-field `{ type, description }`; the field name + description are packed
    * into the indexed text — this is where the rich semantic content lives. */
   readonly params_fields?: Readonly<Record<string, { readonly description?: string }>>
+  /** SKOS altLabel aliases from the definition's `alt_labels` field. */
+  readonly alt_labels?: readonly string[]
   /** Metric definitions keyed by name; the metric names are carried through for
    * the sink to index (×1 / ×4 per the sink's metric field weight). */
   readonly metrics?: Readonly<Record<string, unknown>>
 }
 
-/** Terminology bridge: event name -> slang aliases (inverted from
- * terminology.yaml's `slang -> maps_to.events`). */
-export type EventTerminology = Readonly<Record<string, readonly string[]>>
+
 
 /** A corpus item the retriever indexes (DataSourceDoc / RetrievalCorpusItem-shaped). */
 export interface EventCorpusItem {
@@ -57,42 +48,7 @@ export interface EventCorpusItem {
   readonly payload?: unknown
 }
 
-/** Slang-alias separators: ASCII slash/comma + fullwidth comma + enumeration comma. */
-const SLANG_SPLIT = /[/,，、]/
 
-/**
- * Parse terminology.yaml's `slang -> maps_to.events` into an `event -> [slangs]`
- * map, splitting multi-alias slang on `/ , ， 、` and deduping preserving order.
- * Lenient: missing/empty/malformed terminology or individual entries yield an
- * empty map (no throw) so a broken glossary never poisons the corpus.
- * @param raw - the parsed terminology.yaml value (may be null / non-object).
- * @returns event name -> ordered, deduped slang aliases.
- */
-export function parseTerminology(raw: unknown): EventTerminology {
-  if (typeof raw !== 'object' || raw === null) return {}
-  const terms = (raw as { terminology?: unknown }).terminology
-  if (!Array.isArray(terms)) return {}
-  const e2s: Record<string, string[]> = {}
-  for (const t of terms) {
-    if (typeof t !== 'object' || t === null) continue
-    const slang = (t as { slang?: unknown }).slang
-    if (typeof slang !== 'string') continue
-    const mapsTo = (t as { maps_to?: unknown }).maps_to
-    if (typeof mapsTo !== 'object' || mapsTo === null) continue
-    const events = (mapsTo as { events?: unknown }).events
-    if (!Array.isArray(events)) continue
-    for (const alias of slang.split(SLANG_SPLIT)) {
-      const s = alias.trim()
-      if (!s) continue
-      for (const e of events) {
-        if (typeof e !== 'string') continue
-        const list = e2s[e] ?? (e2s[e] = [])
-        if (!list.includes(s)) list.push(s)
-      }
-    }
-  }
-  return e2s
-}
 
 /**
  * Is `v` a plain (non-array, non-null) object? Used to guard unvalidated raw
@@ -137,35 +93,27 @@ function paramsText(paramsFields: Readonly<Record<string, { readonly description
 export type CorpusVariant = 'params+term' | 'term-only'
 
 /**
- * Build an enriched retrieval corpus from semantic-layer events + terminology.
- * Each item's `description` packs the event description + terminology slang;
- * `params+term` (default, the D2e-shipped measured-best form) ALSO packs
- * params_fields (field name + field description). `term-only` drops
- * params_fields (the D2g verdict (A) higher-recall form — param-field text
- * dilutes the CJK-synonym slang bridge via BM25 tf-saturation + length norm).
- * `domain` is NOT indexed (probe refuted it). The original event is carried as
- * `payload` (so a hit can surface the short description + fields).
+ * Build an enriched retrieval corpus from semantic-layer events. Each item's
+ * `description` packs the event description + alt_labels (SKOS aliases from
+ * the definition); `params+term` (default) ALSO packs params_fields (field
+ * name + field description). `term-only` drops params_fields. `domain` is NOT
+ * indexed (probe refuted it). The original event is carried as `payload`.
  * @param events - the events to project (RawEvent.raw / EventDefinition subset).
- * @param terminology - event -> slang aliases (from `parseTerminology`).
  * @param variant - which slices to pack: 'params+term' (default, shipped) or 'term-only'.
  * @returns corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
  */
 export function buildRetrievalCorpus(
   events: readonly EventCorpusInput[],
-  terminology: EventTerminology,
   variant: CorpusVariant = 'params+term',
 ): readonly EventCorpusItem[] {
   return events.map((ev) => {
     const parts: string[] = []
     if (ev.description) parts.push(ev.description)
-    // D2h: term-only drops the params_fields slice (the D2g higher-recall form);
-    // params+term (default) packs it (the D2e-shipped form).
     if (variant !== 'term-only') {
       const pt = paramsText(ev.params_fields)
       if (pt) parts.push(pt)
     }
-    const slangs = terminology[ev.name]
-    if (slangs) for (const s of slangs) parts.push(s)
+    if (ev.alt_labels) for (const s of ev.alt_labels) parts.push(s)
     return {
       id: ev.name,
       description: parts.join(' '),
