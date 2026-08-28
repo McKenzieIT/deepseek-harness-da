@@ -234,7 +234,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
 ### Context Layer 对齐（CL 系列）
-- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — task (三阶段)：aliases 入 definition schema + RelationGraph 反向索引 + 数据迁移。**Frontier 首要对齐项**
+- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — grilling→task：先锁定 5 个设计决策（字段结构/scope/接口变更/BM25关系/enrichment机制），再分阶段实现。**Frontier 首要对齐项**
 - [CL-2: Domain/Concept 图节点](tickets/CL2-concept-kind-plugin.md) — grilling：ConceptKindPlugin 设计（blocked by CL-1）
 - [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（blocked by CL-1 + CL-2，low priority）
 

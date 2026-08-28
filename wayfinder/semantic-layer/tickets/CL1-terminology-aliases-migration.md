@@ -1,6 +1,6 @@
 # CL-1 — Terminology 统一到 Definition Schema（R7 方案 D 实现）
 
-**Type**: task (AFK, 三阶段)
+**Type**: grilling (HITL) → 锁定后毕业为 task
 **Phase**: context-layer-alignment
 **Status**: open
 **Assignee**: unclaimed
@@ -12,7 +12,15 @@
 
 将 terminology 从独立扁平文件（`terminology.yaml`）统一到 definition schema 中，作为 ontology 的一等组件。对齐 2026 context layer 共识（Forrester/Jedify/OpenMetadata 2.0）。
 
-## 三阶段实现
+### 待锁定的设计决策
+
+1. **aliases 字段结构**：`aliases?: string[]`（纯字符串）还是 `aliases?: Array<{term: string, locale?: string, source?: 'manual'|'ai'}>`（带元数据）？
+2. **scope**：所有 definition type 都加 aliases（event + table + metric），还是仅 event（当前唯一消费者）？table 的 column-level aliases？
+3. **toCorpusItem 接口变更**：直接移除 `terminology?` 参数（breaking），还是 deprecation path（保留参数但优先读 def.aliases）？
+4. **Phase 2 resolveAlias 与 BM25Linker 的关系**：替代 BM25 的 terminology 注入？还是补充（图解析 + BM25 并行）？`lookup_terminology` tool（phase-gate 白名单中已有，无实现）如何统一？
+5. **AI enrichment 填充 aliases**：复用现有 on-write hook（discoverRelations 先例）？独立 tool（`tool-discover-aliases`）？还是管理 agent persona 指导手动填充？
+
+## 实现草案（待 grilling 锁定后正式化）
 
 ### Phase 1：Definition schema 加 aliases 字段
 

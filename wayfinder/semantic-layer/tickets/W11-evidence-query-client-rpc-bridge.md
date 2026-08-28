@@ -1,7 +1,7 @@
 # W11 — Evidence-query client RPC bridge
 
 **Type**: task
-**Status**: Open
+**Status**: Closed
 **Blocked by**: W4（evidence-query host service，已 Closed）——已解阻；依赖 W6 UI 接线占位（commit `4fc80b0cb6`，已落地）
 **Resolved**: —
 
