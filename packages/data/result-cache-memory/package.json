@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-result-cache-memory",
   "description": "In-memory session-scoped implementation of the DeepSeek Harness result-cache seam (auto-captures query_data results)",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },

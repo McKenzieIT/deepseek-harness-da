@@ -24,6 +24,7 @@ import type { Context } from '@deepseek-ai/cordis'
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
+    /** Emitted after an eval batch is persisted to JSONL. @mode parallel */
     'evidence/eval-run-completed'(): void
   }
 }
@@ -57,7 +58,6 @@ import { join, resolve } from 'node:path'
 
 export const name = 'eval-runner-service'
 export const inject = ['llm']
-export const optional = ['query', 'nl2sql', 'schema']
 
 export interface Config {
   /** Directory holding the eval case YAMLs (default: the K11 case set). */
@@ -131,16 +131,49 @@ class CtxOdpsAdapter implements OdpsExecutor {
 
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
-    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql } as unknown as EngineQueryOutcome
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql }
     const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' } as QueryRequest, opts?.signal)
-    return out as unknown as EngineQueryOutcome
+    return this.toEngineOutcome(out)
   }
 
   async attach(instanceId: string): Promise<EngineQueryOutcome> {
     const q = this.engine()
-    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' } as unknown as EngineQueryOutcome
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
     const out = await q.attach(instanceId as unknown as InstanceId)
-    return out as unknown as EngineQueryOutcome
+    return this.toEngineOutcome(out)
+  }
+
+  /** Map a dsh-query QueryOutcome ('completed'|'pending'|'failed', rows
+   *  unknown[][], instanceId) to the engine's QueryOutcome vocabulary
+   *  ('done'|'running'|'failed', rows unknown[], instance_id). The two types
+   *  diverged in state names + field casing; a bare `as unknown as` cast is a
+   *  no-op at runtime, so a real ctx.query provider returning state:'completed'
+   *  passed through unchanged and never matched the engine's 'done'/'running'
+   *  checks (every completed query fell to the failed/decline path). */
+  private toEngineOutcome(out: QueryOutcome): EngineQueryOutcome {
+    switch (out.state) {
+      case 'completed':
+        return {
+          state: 'done',
+          ...(out.executionMeta?.instanceId !== undefined ? { result_id: out.executionMeta.instanceId } : {}),
+          ...(out.rows !== undefined ? { rows: out.rows } : {}),
+          sql: out.sql,
+        }
+      case 'pending':
+        return {
+          state: 'running',
+          ...(out.instanceId !== undefined ? { instance_id: out.instanceId } : {}),
+          ...(out.stage !== undefined ? { stage: out.stage } : {}),
+          sql: out.sql,
+        }
+      case 'failed':
+        return {
+          state: 'failed',
+          ...(out.failureKind !== undefined ? { failureKind: out.failureKind } : {}),
+          ...(out.error !== undefined ? { error: out.error } : {}),
+          sql: out.sql,
+        }
+    }
   }
 }
 
@@ -161,11 +194,17 @@ class CtxQueryExecutor implements QueryExecutor {
   }
 
   private mapOutcome(out: QueryOutcome): QueryResult {
-    if (out.state === 'done') {
-      const rows = (out.rows ?? []) as Record<string, unknown>[]
-      return { success: true, rows, row_count: rows.length, error: null }
+    if (out.state === 'completed') {
+      const cols = out.columns ?? []
+      const rows = (out.rows ?? []).map((row): Record<string, unknown> => {
+        if (Array.isArray(row)) {
+          return Object.fromEntries(row.map((cell, i) => [cols[i] ?? `col_${i}`, cell]))
+        }
+        return row
+      })
+      return { success: true, rows, row_count: out.rowCount ?? rows.length, error: null }
     }
-    if (out.state === 'running') {
+    if (out.state === 'pending') {
       return { success: false, rows: [], row_count: 0, error: 'query still running' }
     }
     return { success: false, rows: [], row_count: 0, error: out.error ?? 'query failed' }
@@ -211,8 +250,8 @@ class Nl2sqlAgentResponder implements AgentResponder {
     private readonly conventions: EngineConventions | null,
     private readonly scopeId: ScopeId,
     private readonly today: string,
-    private readonly provider: string,
-    private readonly model: string,
+    provider: string,
+    model: string,
   ) {
     this.llm = new CtxLlmAdapter(ctx, provider, model)
   }
@@ -326,7 +365,6 @@ export class EvalRunnerService extends Service {
   private readonly model: string
   private readonly today: string
   private lastRun: RunResult | null = null
-  private lastTwoRuns: [RunResult, RunResult] | null = null
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'evalRunner')
@@ -379,10 +417,6 @@ export class EvalRunnerService extends Service {
     // Persist JSONL (the W3→W4 bridge) so evidence-query + goal-eval-policy read it.
     persistRunResultJsonl(result, this.resultsDir, this.passK)
     this.ctx.emit('evidence/eval-run-completed')
-    // Track last / last-two for delta + trigger_eval report_last.
-    if (this.lastRun !== null) {
-      this.lastTwoRuns = [this.lastRun, result]
-    }
     this.lastRun = result
     return result
   }
@@ -391,16 +425,10 @@ export class EvalRunnerService extends Service {
     return this.lastRun
   }
 
-  getLastTwoRuns(): [RunResult, RunResult] | null {
-    return this.lastTwoRuns
-  }
-
   computeDelta(runA: RunResult, runB: RunResult): DeltaReport {
     return compareDelta(runA, runB)
   }
 }
-
-export default EvalRunnerService
 
 /** Plugin apply: mount the Service onto ctx.evalRunner. */
 export function apply(ctx: Context, config: Config = {}): void {

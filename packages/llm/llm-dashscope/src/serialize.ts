@@ -13,13 +13,6 @@ import { contentHasImage, LlmError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, Message } from '@deepseek-ai/dsh-llm'
 import type { WireMessage, WireRequest, WireToolCall, WireTool } from './types.ts'
 
-/**
- * Adapter-level request defaults (from plugin config). The native protocol has no per-request
- * thinking knob (thinking is model-bound, controlled by model selection), so this carries nothing
- * today; kept as a seam for future adapter-owned defaults.
- */
-export interface RequestDefaults {}
-
 /** Join the text blocks of a message (used for user/tool-result content). */
 function flattenText(blocks: ContentBlock[]): string {
   return blocks
@@ -107,12 +100,9 @@ export function serializeMessages(messages: Message[]): WireMessage[] {
  * as null, so provider defaults apply. No `stream`/`stream_options`/`enable_thinking`/
  * `thinking_budget`/`tool_stream` — the native protocol carries none of these.
  * @param options - the harness request (model, history, system, tools, sampling).
- * @param _defaults - adapter-level request defaults (from plugin config); the native protocol has
- * no per-request thinking knob, so this carries nothing today and is kept as a seam for future
- * adapter-owned defaults.
  * @returns the DashScope native chat-generation request body.
  */
-export function serializeRequest(options: GenerateOptions, _defaults: RequestDefaults = {}): WireRequest {
+export function serializeRequest(options: GenerateOptions): WireRequest {
   const messages: WireMessage[] = []
   if (options.system !== undefined) {
     messages.push({ role: 'system', content: options.system })

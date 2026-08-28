@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-phase-gate",
   "description": "Four-phase phase-gate orchestration plugin (ctx.on guard + turn-stopping + post-execute + assemble + llm-stream + pre-step) for the DeepSeek Harness data agent: reverse-bi DataAgentPipeline re-expressed on harness event seams, additive-only",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -28,7 +28,6 @@
   "files": [
     "lib/index.js",
     "lib/invariant.js",
-    "lib/types/**/*.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

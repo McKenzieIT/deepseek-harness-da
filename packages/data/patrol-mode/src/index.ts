@@ -88,21 +88,67 @@ declare module '@deepseek-ai/cordis' {
   }
 
   interface Events {
-    /** Patrol loop has started. */
+    /**
+     * Patrol loop has started.
+     *
+     * @mode parallel
+     * @param config - the active patrol configuration.
+     */
     'patrol/started'(config: PatrolConfig): void
-    /** Patrol loop has stopped. */
+    /**
+     * Patrol loop has stopped.
+     *
+     * @mode parallel
+     */
     'patrol/stopped'(): void
-    /** A new patrol round is beginning. */
+    /**
+     * A new patrol round is beginning.
+     *
+     * @mode parallel
+     * @param roundNumber - the 1-indexed round number.
+     */
     'patrol/round-start'(roundNumber: number): void
-    /** A patrol round has completed (triggers C2 batch rendering). */
+    /**
+     * A patrol round has completed (triggers C2 batch rendering).
+     *
+     * @mode parallel
+     * @param summary - the round's asset/edit tally.
+     */
     'patrol/round-complete'(summary: PatrolRoundSummary): void
-    /** Patrol is requesting user confirmation for a proposed edit. */
+    /**
+     * Patrol is requesting user confirmation for a proposed edit.
+     *
+     * @mode parallel
+     * @param edit - the proposed edit awaiting a confirm/reject decision.
+     */
     'patrol/confirm-request'(edit: PatrolProposedEdit): void
-    /** User did not respond within the confirmation timeout. */
+    /**
+     * A confirmed patrol edit was executed (audit).
+     *
+     * @mode parallel
+     * @param edit - the edit that was confirmed and audited.
+     */
+    'patrol/edit-executed'(edit: PatrolProposedEdit): void
+    /**
+     * User did not respond within the confirmation timeout.
+     *
+     * @mode parallel
+     * @param edit - the edit whose confirmation timed out.
+     */
     'patrol/confirm-timeout'(edit: PatrolProposedEdit): void
-    /** User sent a "btw" message during patrol. */
+    /**
+     * User sent a "btw" message during patrol.
+     *
+     * @mode parallel
+     * @param message - the btw message routed as a one-off request.
+     */
     'patrol/btw-received'(message: string): void
-    /** Patrol has been paused (max edits reached or timeout). */
+    /**
+     * Patrol has been paused (max edits reached or timeout).
+     *
+     * @mode parallel
+     * @param reason - why the patrol paused.
+     */
     'patrol/paused'(reason: string): void
   }
 }
@@ -138,9 +184,17 @@ export class PatrolService extends Service {
   private pendingConfirm: PendingConfirm | null = null
   private btwQueue: string[] = []
   private loopPromise: Promise<void> | null = null
+  // True while a runLoop is in flight. Guards start() against spawning a
+  // second concurrent loop before a prior stop() has quiesced the old one.
+  private running = false
 
   constructor(ctx: Context) {
     super(ctx, 'patrol')
+    // Stop the loop (and clear pending-confirm/sleep timers) when the owning
+    // context is disposed, so a patrol left running does not leak timers.
+    ctx.effect(() => () => {
+      void this.stop()
+    })
   }
 
   // ── Public API ──────────────────────────────────────────────────────
@@ -152,7 +206,7 @@ export class PatrolService extends Service {
    * @throws if patrol is already running.
    */
   start(opts?: PatrolConfig): void {
-    if (this.state !== 'idle') {
+    if (this.state !== 'idle' || this.running) {
       throw new Error(`Cannot start patrol: current state is "${this.state}"`)
     }
 
@@ -164,6 +218,7 @@ export class PatrolService extends Service {
     this.roundNumber = 0
     this.abortController = new AbortController()
     this.state = 'running'
+    this.running = true
 
     this.ctx.emit('patrol/started', this.config)
     this.loopPromise = this.runLoop(this.abortController.signal)
@@ -171,10 +226,15 @@ export class PatrolService extends Service {
 
   /**
    * Stop the patrol loop. Cleans up pending confirms and resets state.
+   *
+   * Awaits the still-running runLoop so a rapid start() cannot spawn a second
+   * concurrent loop whose in-flight continuations would mutate state after it
+   * has been reset here. runLoop never rejects.
    */
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.state === 'idle') return
 
+    const loop = this.loopPromise
     this.abortController?.abort()
     this.abortController = null
     this.clearPendingConfirm('rejected')
@@ -182,8 +242,19 @@ export class PatrolService extends Service {
     this.roundNumber = 0
     this.btwQueue = []
     this.loopPromise = null
+    this.running = false
 
     this.ctx.emit('patrol/stopped')
+
+    // Quiesce: drain the in-flight runLoop so its continuations settle before a
+    // subsequent start() can spawn a new loop.
+    if (loop !== null) {
+      try {
+        await loop
+      } catch {
+        /* runLoop never rejects */
+      }
+    }
   }
 
   /**
@@ -219,7 +290,7 @@ export class PatrolService extends Service {
 
     // Check for explicit stop commands
     if (this.isStopCommand(message)) {
-      this.stop()
+      await this.stop()
       return
     }
 
@@ -274,6 +345,8 @@ export class PatrolService extends Service {
       // Brief pause between rounds to allow interruptions
       await this.sleep(1000, signal)
     }
+    // Mark the loop as settled so start() knows no loop is in flight.
+    this.loopPromise = null
   }
 
   private async executeRound(signal: AbortSignal): Promise<PatrolRoundSummary> {
@@ -321,8 +394,8 @@ export class PatrolService extends Service {
 
       if (decision === 'confirmed') {
         // d. Execute edit
-        await this.executeEdit(edit)
-        editsExecuted++
+        const executed = await this.executeEdit(edit)
+        if (executed) editsExecuted++
       } else {
         editsRejected++
         if (decision === 'timeout') {
@@ -431,16 +504,20 @@ export class PatrolService extends Service {
 
   /**
    * Execute a confirmed edit via the management session.
+   *
+   * TODO(W11): delegate the actual edit to the management session's edit API.
+   * For now this audits the confirmed edit only. Emits `patrol/edit-executed`
+   * — NOT `patrol/round-start`, which marks a new round beginning.
+   *
+   * @returns true when the edit was applied, false when no active session.
    */
-  private async executeEdit(_edit: PatrolProposedEdit): Promise<void> {
-    // The actual edit execution is delegated to the management session's
-    // tool infrastructure. This is a placeholder for the wiring — the
-    // management session service handles tool invocations.
+  private async executeEdit(edit: PatrolProposedEdit): Promise<boolean> {
     const mgmt = this.ctx.managementSession.getActive()
-    if (!mgmt) return
+    if (!mgmt) return false
 
-    // Audit the edit
-    this.ctx.emit('patrol/round-start', this.roundNumber)
+    // Audit the confirmed edit.
+    this.ctx.emit('patrol/edit-executed', edit)
+    return true
   }
 
   // ── Private: Confirmation ───────────────────────────────────────────
@@ -579,5 +656,3 @@ export const inject = ['managementSession', 'audit'] as const
 export function apply(ctx: Context): void {
   ctx.plugin(PatrolService)
 }
-
-export default PatrolService

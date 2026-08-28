@@ -8,7 +8,7 @@ It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sou
 
 ## Status: registered + callable
 
-The tool is registered by the data-agent preset (`tool-critique-sql` row, uncommented) and named in the phase-gate `GENERATION` whitelist. It probes `ctx.get('criticCtx')`: when the phase-gate is mounted it returns the per-agent `CriticCtx` (candidate tables, event params, partition cols harvested from `search_data_sources` / `load_*`); when no phase-gate is mounted (unit tests, a profile without the service) it degrades to empty sets — the honest "cannot verify table grounding" state (every table is flagged as not-in-candidates → low confidence).
+The tool is registered by the data-agent preset (`tool-critique-sql` row, uncommented) and named in the phase-gate `GENERATION` whitelist. It probes `ctx.get('criticCtx')`: when the phase-gate is mounted it returns the per-agent `CriticCtx` (candidate tables, event params, partition cols harvested from `search_data_sources` / `load_*`); when no phase-gate is mounted (unit tests, a profile without the service) it falls back to empty sets — with no candidate tables the critic flags every referenced table as `table_not_in_candidates`, so the confidence falls below the 0.6 floor and the critique BLOCKS `GENERATION` (fail-closed, not fail-open; the intended fail-open pass-through is deferred — see Known Limitations).
 
 Phase 1: the tool calls the EXISTING nl2sql-engine `critiqueSql` (the folded regex critic) + `extractSqlCandidate` and returns a confidence derived from the findings (errors: -0.5 each, warnings: -0.15 each; the gate floor is 0.6). The full 3-layer critic (sqlglot AST + JSON-path + registry) is a later Phase 2 refinement.
 
@@ -52,3 +52,24 @@ tsc -b packages/data/tool-critique-sql/tsconfig.json
 pnpm vitest run packages/data/tool-critique-sql
 pnpm verify-cordis-config
 ```
+
+## Model Experience
+
+### The `critique_sql_tool` tool call
+
+#### What the model sees
+
+The `critique_sql_tool` tool schema (name, description, the `sql` and `question` parameters, and the `{ confidence, sql?, findings }` output object) flows into system-prompt assembly automatically once the plugin mounts, so the model discovers the tool alongside the rest of the `GENERATION`-phase whitelist. When the model invokes it, `execute` returns one canonical `{ confidence, sql?, findings }` JSON value that `output.render` projects into model-facing text via `formatCritique`: a `confidence: <0.00-1.00>` line, the `sql: <normalized>` line (omitted when no SELECT was extracted), and a `findings:` block listing each `[severity] rule: message` (or `findings: none (SQL passed all critic checks)` when the SQL is clean).
+
+#### Token effect
+
+The rendered critique text in the tool result is the only per-call token charge for this tool; the `critique_sql_tool` schema rides the system prompt rather than the turn payload. The result is a small fixed-size block (one confidence line, one optional sql line, one line per finding), so it does not scale with SQL length.
+
+#### KV Cache effect
+
+Tool results are append-only: the critique text follows the reusable request prefix and does not invalidate prior cache entries. The tool schema is part of that stable system-prompt prefix across turns, so registering or calling the tool adds no prefix churn.
+
+## Known Limitations and Deferred Work
+
+- **No-grounding path blocks (fail-closed), not fail-open** — when the phase-gate is not mounted or the agent has no harvested critic state, the tool falls back to empty candidate tables; the table rule then flags every referenced table as `table_not_in_candidates`, driving confidence below the 0.6 floor and BLOCKING `GENERATION`. The intended fail-open pass-through (skip the table/partition/json rules on empty guard data and return a passing verdict) is deferred to a later phase. Mounting the tool inside the phase-gating isolate group (so `ctx.get('criticCtx')` resolves the per-agent state) is the supported configuration; no real-entry-path test yet covers that isolate resolution.
+- **Phase 1 folded-regex critic only** — the tool calls the existing nl2sql-engine `critiqueSql` (folded-regex `sqlSyntaxGate`); the full 3-layer critic (sqlglot AST + JSON-path + registry) is a later Phase 2 refinement.

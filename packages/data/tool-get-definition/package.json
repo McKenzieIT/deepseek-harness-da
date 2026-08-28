@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-get-definition",
   "description": "Model-facing get_definition tool: load a unified data asset definition (table, event, or metric) by name from the semantic layer",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

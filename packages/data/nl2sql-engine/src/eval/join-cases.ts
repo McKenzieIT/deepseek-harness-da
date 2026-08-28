@@ -21,6 +21,7 @@ export const JOIN_FIXTURE_DS: readonly DataSourceDoc[] = [
 /**
  * Build the fixture relation graph: dws_pay_order_di ⟷ dim_server_info on
  * server_id; dws_battle_di ⟷ dim_server_info on server_id.
+ * @returns the hand-rolled fixture relation graph (no semantic-layer dep).
  */
 export function buildJoinFixtureGraph(): RelationGraphLike {
   const edges: Record<string, RelationGraphEdge[]> = {

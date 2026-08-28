@@ -70,5 +70,18 @@ English | [中文](README.zh.md)
 - [P14b Post-Retrieval Ontology Enrichment 实现](phase-misc/P14b-ontology-enrichment-implementation.md) — prototype, **resolved**（2026-08-26；granularity.ts detectTrendIntent + rerankByGranularity + ontology expandCandidates lookupDoc + prompt Rule 9；28/28 + 56/56 green）
 - [P15 Query Rewriting（查询侧语义扩展）](phase-misc/P15-query-rewriting.md) — grilling, **resolved**（2026-08-26；方案 B validated：LLM query expansion via qwen-flash 6/6 hit@5。P15a 实现 commit `e0ef1b0711` ship）
 
+## phase-misc — simplification candidates (S-series, OPEN, pending new-session 2nd verification)
+> 来源：dsh-data-agent 全量审计（WF1-WF5 + dsh-find-simplifications skill）的 strong 候选。每张票 `status=open`、`blocked-by: 新 session 二次验证`——不在审计 originating session 直接执行；新 session 重新核证调用点/证据后再 claim 执行。
+
+- [S1 Decouple MaxCompute config from bundle](phase-misc/S1-decouple-maxcompute-from-bundle.md) — task, **resolved 2026-08-28**（Config `args`→`sidecarPath`+`maxcConfigPath`；spawn 构造；patch 去机器路径；部署覆盖）
+- [S2 Delete tool-scope-routing probe](phase-misc/S2-delete-tool-scope-routing-probe.md) — task, **open**（E-DA4 陈旧探针，非真包；删清 12 条 constraints）
+- [S3 Delete FakeReranker+fakeRecall](phase-misc/S3-delete-fakereranker-fakeRecall.md) — task, **open**（D2d 实测有害、无生产消费者；InfinityReranker 覆盖）
+- [S4 Delete RequestDefaults seam](phase-misc/S4-delete-requestdefaults-seam.md) — task, **open**（空 speculative 接口，从不被读）
+- [S5 Delete EmbedderService.dim getter](phase-misc/S5-delete-embedderservice-dim-getter.md) — task, **open**（死公开面；私有 _dim 留）
+- [S6 Delete getLastTwoRuns+lastTwoRuns](phase-misc/S6-delete-evalrunner-getlasttworuns.md) — task, **open**（test-only 冗余；trigger_eval 用内联 pair）
+- [S7 Refactor data-python log metering](phase-misc/S7-refactor-data-python-log-metering.md) — task, **open**（复用 protocol.ts 的 jsonStringBytesUpTo，删手搓分配式 meter）
+
+> 保留（暂时没人用/计划后续/在用，不开删除票）：patrol-mode（W11 在建）、SQL-critic 工具路径（phase-gate re-tighten 计划）、scopes/changed 事件（文档化扩展点）、management-session 事件（W11 为 UI 预留）、QueryEngine.attach（有生产调用者：eval-runner-service + nl2sql-engine）。
+
 ## 当前可立即取（unblocked frontier）
 P9b · G1b（in-progress，瓶颈=LLM SQL quality）（P11c/D2c/P14b/P15/P14/G1c 已 resolved 2026-08-21~26）

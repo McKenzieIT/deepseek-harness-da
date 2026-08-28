@@ -33,7 +33,9 @@ export class MemoryResultCache extends ResultCache {
 
   put(resultId: string, entry: ResultEntry): void {
     const existing = this.store.get(resultId)
-    if (existing !== undefined) {
+    if (existing !== undefined && resultId.startsWith('cr_')) {
+      // cr_ (compute-derived) ids are immutable-once-written: a different entry
+      // under an existing cr_ id is a deterministic-compute contract violation.
       if (!entriesEqual(existing, entry)) {
         throw new Error(
           `resultCache: cannot overwrite result_id "${resultId}" with a different entry (immutable)`,
@@ -41,6 +43,11 @@ export class MemoryResultCache extends ResultCache {
       }
       return
     }
+    // qr_ (query) ids are SQL-derived; rows can change between executions
+    // (time-windowed/real-time queries), so overwrite with the latest entry
+    // (idempotent when unchanged). Never throws — the post-execute hook runs
+    // inside execute's outer try/catch, and a throw would turn a successful
+    // query into isError and serve stale rows under the returned result_id.
     this.store.set(resultId, entry)
   }
 
@@ -69,6 +76,7 @@ function entriesEqual(a: ResultEntry, b: ResultEntry): boolean {
 
 /**
  * Generate a deterministic result_id from the SQL string.
+ * @param sql - the SQL string to hash.
  * @returns `qr_<12-char hex hash>`
  */
 export function generateQueryResultId(sql: string): string {
@@ -113,5 +121,3 @@ export function apply(ctx: Context): void {
     return { kind: 'accept', value: augmentedValue }
   })
 }
-
-export default MemoryResultCache

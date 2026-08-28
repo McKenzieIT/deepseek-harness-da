@@ -215,10 +215,15 @@ export class ScopeRegistryService extends Service {
       return { scopes: new Map(), activeId: undefined }
     }
     const scopes = new Map<string, ScopeDefinition>()
-    if (parsed.scopes) {
-      for (const [id, def] of Object.entries(parsed.scopes)) {
+    const rawScopes = parsed.scopes as Record<string, { semanticRoot?: unknown; metadata?: unknown } | null | undefined> | undefined
+    if (rawScopes) {
+      for (const [id, def] of Object.entries(rawScopes)) {
         if (def && typeof def.semanticRoot === 'string') {
-          scopes.set(id, { id, semanticRoot: def.semanticRoot, ...(def.metadata ? { metadata: def.metadata } : {}) })
+          scopes.set(id, {
+            id,
+            semanticRoot: def.semanticRoot,
+            ...(def.metadata ? { metadata: def.metadata as Record<string, unknown> } : {}),
+          })
         }
       }
     }

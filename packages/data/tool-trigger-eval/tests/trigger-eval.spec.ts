@@ -20,7 +20,7 @@ describe('trigger_eval tool', () => {
         },
         delta: null,
         caseCount: 161,
-        message: null,
+        message: undefined,
         previousRunId: null,
       }
 
@@ -55,7 +55,7 @@ describe('trigger_eval tool', () => {
           summary: { improved: 7, regressed: 2, unchanged: 152 },
         },
         caseCount: 161,
-        message: null,
+        message: undefined,
         previousRunId: 'run-123',
       }
 
@@ -127,7 +127,7 @@ describe('trigger_eval tool', () => {
           summary: { improved: 15, regressed: 0, unchanged: 85 },
         },
         caseCount: 100,
-        message: null,
+        message: undefined,
         previousRunId: 'run-prev',
       }
 
@@ -146,7 +146,6 @@ describe('trigger_eval tool', () => {
           summary: { total: 0, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 0 },
         } satisfies RunResult),
         getLastRun: vi.fn().mockReturnValue(null),
-        getLastTwoRuns: vi.fn().mockReturnValue(null),
         computeDelta: vi.fn().mockReturnValue({
           run_a_id: 'a',
           run_b_id: 'b',

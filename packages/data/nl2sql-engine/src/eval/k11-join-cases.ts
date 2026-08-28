@@ -30,6 +30,7 @@ export interface K11JoinCase {
   readonly expectedSelectColumn?: string
 }
 
+/** K11 live join eval case set (real K11 semantic-layer table names + join relationships). */
 export const K11_JOIN_CASES: readonly K11JoinCase[] = [
   {
     id: 'k11-j01',

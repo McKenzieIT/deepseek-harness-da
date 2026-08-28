@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -109,7 +110,6 @@ function seedLayer(): string {
 
 function makeService(evalStore?: EvalResultStore): EvidenceQueryService {
   const dir = seedLayer()
-  const { Context } = require('@deepseek-ai/cordis') as typeof import('@deepseek-ai/cordis')
   const ctx = new Context()
   new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
   return new EvidenceQueryService(ctx, evalStore)
@@ -251,7 +251,7 @@ describe('EvidenceQueryService.evalResultQuery', () => {
     const result = svc.evalResultQuery({ assetId: 'dws_order_di' })
 
     expect(result.total).toBe(1)
-    expect(result.results[0].assetId).toBe('dws_order_di')
+    expect(result.results[0]!.assetId).toBe('dws_order_di')
   })
 
   it('filters by status', () => {
@@ -262,7 +262,7 @@ describe('EvidenceQueryService.evalResultQuery', () => {
     const result = svc.evalResultQuery({ status: 'fail' })
 
     expect(result.total).toBe(1)
-    expect(result.results[0].status).toBe('fail')
+    expect(result.results[0]!.status).toBe('fail')
   })
 
   it('respects limit', () => {
@@ -285,7 +285,7 @@ describe('EvidenceQueryService.evalResultQuery', () => {
     const result = svc.evalResultQuery({ domain: '付费经济' })
 
     expect(result.total).toBe(1)
-    expect(result.results[0].id).toBe('e1')
+    expect(result.results[0]!.id).toBe('e1')
   })
 })
 

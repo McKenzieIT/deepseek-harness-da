@@ -316,8 +316,16 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // Persist the edit
       try {
         if (kind === 'table') {
-          // Use the Service's updateTableMeta for tables (Tier-2 audited path)
-          const updates = { ...merged }
+          // D3-3 (TOCTOU): pass a PARTIAL override (patch + confirmation
+          // flip) to updateTableMeta, not the full `merged` dict. The
+          // substrate re-reads the current on-disk definition and shallow-
+          // merges `updates` on top, so stale `existing`-sourced fields in
+          // `merged` would silently revert a concurrent edit to any non-
+          // patched field. `merged` stays the before/after snapshot source.
+          const updates: Record<string, unknown> = {
+            ...patch,
+            confirmation: merged.confirmation,
+          }
           const res = await schema.updateTableMeta(result.asset_name, updates)
           if (!res.ok) {
             return {

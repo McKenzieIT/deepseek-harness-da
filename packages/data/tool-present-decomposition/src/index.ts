@@ -168,14 +168,14 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
       render: (_args, value) => [{
         type: 'text',
-        text: formatDecomposition(value as PresentDecompositionResult),
+        text: formatDecomposition(value),
       }],
     },
-    async execute(args, exec) {
+    execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('present_decomposition aborted')
       }
-      return presentDecompositionResult(
+      return Promise.resolve(presentDecompositionResult(
         args.summary,
         args.metrics as Metric[],
         args.dimensions,
@@ -183,7 +183,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         args.source,
         args.filters,
         args.confidence,
-      ) as typeof args & { presented: boolean }
+      ))
     },
   }))
 }

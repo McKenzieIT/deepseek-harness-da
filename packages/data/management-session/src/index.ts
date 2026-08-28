@@ -182,8 +182,10 @@ export class ManagementSessionService extends Service {
    *
    * @param opts - creation options.
    * @returns the management session descriptor.
-   * @throws if a management session is already active, or the parent session
-   *   does not exist.
+   * Multiple management sessions may be active concurrently; this method does
+   * not reject when one is already active (use {@link getActive} for the most
+   * recent). When `parentSessionId` is provided but no such session exists in
+   * the store, creation proceeds without a parent context summary (no throw).
    */
   create(opts?: CreateManagementSessionOptions): ManagementSessionDescriptor {
     const parentSessionId = opts?.parentSessionId
@@ -287,5 +289,3 @@ export const inject = ['sessions'] as const
 export function apply(ctx: Context): void {
   ctx.plugin(ManagementSessionService)
 }
-
-export default ManagementSessionService

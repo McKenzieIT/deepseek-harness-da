@@ -229,11 +229,11 @@ describe('W11 C1 — MVCC snapshot isolation', () => {
     expect(Array.isArray(corpus)).toBe(true)
     // The fixture has one event (game.pay)
     expect(corpus.length).toBe(1)
-    expect(corpus[0].id).toBe('game.pay')
+    expect(corpus[0]!.id).toBe('game.pay')
   })
 
   test('withSnapshot propagates exceptions from fn', async () => {
-    const svcLocal = makeService(layerDir)
+    const svcLocal = makeService(layerDir!)
     await expect(
       svcLocal.withSnapshot(async () => { throw new Error('boom') }),
     ).rejects.toThrow('boom')

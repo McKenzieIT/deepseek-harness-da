@@ -22,6 +22,9 @@
     },
     {
       "path": "../../eval/eval-runner"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

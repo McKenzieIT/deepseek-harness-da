@@ -101,7 +101,7 @@ ${TOOL_CATALOG}
 - 返回态处置：
   - 仍在运行（instance_id 无 result_id）：禁止重发原 SQL，改 check_query(instance_id) 续取，最多 3 次
   - parse_failed：修 SQL 重 critique 再执行（可修复）
-  - 不可修复→§5 拒绝：TABLE_NOT_FOUND / FIELD_NOT_FOUND / SEMANTIC_MISMATCH / PERMISSION_DENIED
+  - 不可修复→§5 拒绝：table_not_found / field_not_found / semantic_mismatch / permission_denied
 - 可修复（分区缺失/CAST 遗漏/别名冲突/语法错误）→ 带错误信息重新生成，不得重复相同 SQL（近重复门防重发）
 
 # §5 诚实拒绝
@@ -154,6 +154,8 @@ export interface BuildEvalPromptArgs {
  * SQL generation task with schema context. The thinking model's reasoning
  * about these definitions provides diagnostic signal for semantic layer
  * optimization.
+ * @param args - the eval prompt arguments (question, candidates, conventions, join/metric context, trend flag).
+ * @returns the assembled eval-mode prompt string.
  */
 export function buildEvalPrompt(args: BuildEvalPromptArgs): string {
   const { question, candidates, conventions, joinConstraints, metricContext, isTrend } = args

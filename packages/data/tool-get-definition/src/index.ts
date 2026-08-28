@@ -11,7 +11,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
+import type { GenericCallView, GenericResultView, ToolResult, JsonValue } from '@deepseek-ai/dsh-tools'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
 
 export const name = 'tool-get-definition'
@@ -31,8 +31,9 @@ export function validateAssetName(raw: string): string | null {
 export interface GetDefinitionResult {
   readonly found: boolean
   readonly kind?: string
-  readonly definition?: unknown
+  readonly definition?: Record<string, JsonValue>
   readonly message?: string
+  readonly [key: string]: JsonValue
 }
 
 export function getDefinitionResult(
@@ -47,11 +48,11 @@ export function getDefinitionResult(
     return { found: false, message: `invalid asset name: ${JSON.stringify(name)}` }
   }
   const table = schema.loadTableDefinition(validated)
-  if (table !== null) return { found: true, kind: 'table', definition: table }
+  if (table !== null) return { found: true, kind: 'table', definition: table as unknown as Record<string, JsonValue> }
   const event = schema.loadEventDefinition(validated)
-  if (event !== null) return { found: true, kind: 'event', definition: event }
+  if (event !== null) return { found: true, kind: 'event', definition: event as unknown as Record<string, JsonValue> }
   const metric = schema.loadMetricDefinition(validated)
-  if (metric !== null) return { found: true, kind: 'metric', definition: metric }
+  if (metric !== null) return { found: true, kind: 'metric', definition: metric as unknown as Record<string, JsonValue> }
   return { found: false, message: `no table, event, or metric named "${validated}" found` }
 }
 
@@ -61,20 +62,14 @@ export function formatGetDefinition(value: GetDefinitionResult): string {
 }
 
 /** Project the definition into a replay-safe meta shape for the presenter. */
-function projectDefinitionMeta(value: GetDefinitionResult): unknown {
-  if (!value.found) return { found: false, message: value.message }
-  const def = value.definition as Record<string, unknown> | undefined
+function projectDefinitionMeta(value: GetDefinitionResult): JsonValue {
+  if (!value.found) {
+    return { found: false, ...(value.message !== undefined ? { message: value.message } : {}) }
+  }
   return {
     found: true,
-    kind: value.kind,
-    name: def?.table_name ?? def?.event_name ?? def?.metric_name ?? def?.name,
-    domains: def?.domains,
-    description: def?.description,
-    columns: Array.isArray(def?.columns) ? (def.columns as unknown[]).length : undefined,
-    metrics: def?.metrics !== undefined ? Object.keys(def.metrics as object).length : undefined,
-    relations: def?.dimension_refs ?? def?.relations,
-    confirmation: (def?.confirmation as Record<string, unknown> | undefined)?.status,
-    definition: value.definition,
+    ...(value.kind !== undefined ? { kind: value.kind } : {}),
+    ...(value.definition !== undefined ? { definition: value.definition } : {}),
   }
 }
 
@@ -106,10 +101,10 @@ export function apply(ctx: Context, _config: Config = {}): void {
       render: (_args, value) => [{ type: 'text', text: formatGetDefinition(value as unknown as GetDefinitionResult) }],
       presentationMeta: (_args, value) => projectDefinitionMeta(value as unknown as GetDefinitionResult),
     },
-    async execute(args, exec) {
+    execute(args, exec) {
       if (exec.signal.aborted) throw new Error('get_definition aborted')
-      const schema = ctx.get('schema') as SemanticLayerService | undefined
-      return getDefinitionResult(schema, args.name) as any
+      const schema = ctx.get('schema')
+      return Promise.resolve(getDefinitionResult(schema, args.name))
     },
     presentCall(args): GenericCallView {
       return {

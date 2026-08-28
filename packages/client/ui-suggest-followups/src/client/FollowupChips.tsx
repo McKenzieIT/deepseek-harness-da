@@ -18,7 +18,7 @@ export interface FollowupChipsProps {
 
 function parseSuggestions(argsRaw: string): Suggestion[] | null {
   try {
-    const parsed = JSON.parse(argsRaw) as { suggestions?: unknown }
+    const parsed = JSON.parse(argsRaw) as { suggestions?: unknown } | null
     if (!parsed || !Array.isArray(parsed.suggestions)) return null
     const suggestions = parsed.suggestions as Suggestion[]
     if (suggestions.length === 0) return null

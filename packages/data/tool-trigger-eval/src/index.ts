@@ -24,9 +24,8 @@ export const Config: z<Config> = z.object({})
 
 /** The Cordis service seam for eval execution. */
 export interface EvalRunnerService {
-  runBatch(options?: { runId?: string; skipHealthGate?: boolean }): Promise<RunResult>
+  runBatch(options?: { runId?: string; skipHealthGate?: boolean; signal?: AbortSignal }): Promise<RunResult>
   getLastRun(): RunResult | null
-  getLastTwoRuns(): [RunResult, RunResult] | null
   computeDelta(runA: RunResult, runB: RunResult): DeltaReport
   getCaseCount(): number
   getResultsDir(): string
@@ -45,9 +44,18 @@ export interface TriggerEvalResult {
   readonly summary: RunSummary | null
   readonly delta: DeltaReport | null
   readonly caseCount: number
-  readonly message: string | null
+  readonly message: string | undefined
   readonly previousRunId: string | null
 }
+
+/**
+ * Schema-inferred `trigger_eval` output value. The output schema declares
+ * `additionalProperties: true`, so the inferred type is the declared property
+ * set intersected with an index signature — values are cast to this shape at
+ * the `execute` return boundary (the richer `TriggerEvalResult` interface is a
+ * named type and therefore not assignable to an indexed `Record<string, JsonValue>`).
+ */
+type TriggerEvalToolValue = { ok: boolean; mode: string; message?: string } & Record<string, JsonValue>
 
 export function formatTriggerEval(value: TriggerEvalResult): string {
   if (!value.ok) return value.message ?? 'trigger_eval failed'
@@ -100,7 +108,7 @@ export function projectMeta(v: TriggerEvalResult): { [key: string]: JsonValue } 
     mode: v.mode,
     runId: v.runId,
     caseCount: v.caseCount,
-    message: v.message,
+    message: v.message ?? null,
     previousRunId: v.previousRunId,
   }
   if (v.summary) {
@@ -180,6 +188,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         const result = await evalRunner.runBatch({
           runId,
           skipHealthGate: args.skip_health_gate ?? false,
+          signal: exec.signal,
         })
 
         let delta: DeltaReport | null = null
@@ -194,9 +203,9 @@ export function apply(ctx: Context, _config: Config = {}): void {
           summary: result.summary,
           delta,
           caseCount: result.cases.length,
-          message: null,
+          message: undefined,
           previousRunId: previousRun?.run_id ?? null,
-        } as unknown as TriggerEvalResult
+        } as unknown as TriggerEvalToolValue
       }
 
       // Report-last mode: no runner but past results exist via evidenceQuery
@@ -214,7 +223,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
             caseCount: 0,
             message: `Eval runner not wired (collaborators not configured). ${runIds.length} past run(s) available via evidence-query. Configure the eval runner service to trigger new runs.`,
             previousRunId: null,
-          } as unknown as TriggerEvalResult
+          } as unknown as TriggerEvalToolValue
         }
       }
 
@@ -228,7 +237,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         caseCount: 0,
         message: 'Eval runner service (ctx.evalRunner) is not mounted. The host composition must wire AgentResponder + QueryExecutor + JudgeExecutor collaborators to enable eval runs.',
         previousRunId: null,
-      } as unknown as TriggerEvalResult
+      } as unknown as TriggerEvalToolValue
     },
     presentCall(): GenericCallView {
       return {

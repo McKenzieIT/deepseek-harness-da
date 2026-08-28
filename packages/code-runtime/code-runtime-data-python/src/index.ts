@@ -9,14 +9,13 @@
 
 import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
-import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { CodeRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@deepseek-ai/dsh-code-runtime'
 import type { CodeBindingNamespace, CodeJsonValue, CodeRunFailure, CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
-import { checkDoneValue, encodeJsonPlain, hasNonLosslessNumber, hasUnsafeIntegerToken, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-code-runtime-python'
+import { checkDoneValue, encodeJsonPlain, hasNonLosslessNumber, hasUnsafeIntegerToken, jsonStringBytesUpTo, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-code-runtime-python'
 import type { BootMessage, ReplyMessage } from '@deepseek-ai/dsh-code-runtime-python'
 import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
 
@@ -24,12 +23,27 @@ const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
 
 const BOOTSTRAP_PATH = fileURLToPath(new URL('../py/bootstrap.py', import.meta.url))
 
+/**
+ * Runtime caps for {@link DataPythonCodeRuntime}; every field has a
+ * schemastery default, so all are optional on input. Units are mixed and
+ * called out per field.
+ */
 export interface Config {
+  /** RLIMIT_CPU seconds applied to the CPython bootstrap before model code runs. Default 30. */
   cpuSeconds?: number
+  /** RLIMIT_AS bytes capping the child's address space (Linux-enforced; macOS ignores it). Default 2_147_483_648 (2 GiB). */
   addressSpaceBytes?: number
+  /**
+   * Wall-clock ceiling in milliseconds; the host SIGKILLs the child on
+   * expiry. At most MAX_TIMER_DELAY_MS (Node's setTimeout clamp). Default
+   * 600_000.
+   */
   maxWallMs?: number
+  /** Shared byte budget for captured log text (host + child ledgers). Default 1_048_576 (1 MiB). */
   maxLogBytes?: number
+  /** Byte cap for the serialized completion value. Default 67_108_864 (64 MiB). */
   maxValueBytes?: number
+  /** CPython interpreter invoked for the bootstrap (e.g. `python3`). Default `python3`. */
   pythonPath?: string
 }
 
@@ -45,6 +59,49 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/**
+ * Read newline-delimited frames from `input`, calling `onLine` only for lines
+ * whose UTF-8 byte length does not exceed `maxBytes`. A line that exceeds the
+ * cap is forged junk and is dropped wholesale — never buffered in full nor
+ * passed to the caller (which runs an O(n) integer scan and `JSON.parse` on the
+ * value). This is the host-side cap on inbound fd-3 frame size owned by the
+ * runtime that reads the channel (protocol.ts `checkDoneValue` JSDoc).
+ */
+function createCappedLineReader(
+  input: NodeJS.ReadableStream,
+  maxBytes: number,
+  onLine: (line: string) => void,
+): void {
+  let buffer = Buffer.alloc(0)
+  input.on('data', (chunk: Buffer) => {
+    buffer = Buffer.concat([buffer, chunk])
+    let newlineIndex: number
+    while ((newlineIndex = buffer.indexOf(0x0a)) >= 0) {
+      const lineBytes = buffer.subarray(0, newlineIndex)
+      buffer = buffer.subarray(newlineIndex + 1)
+      // Drop forged frames that exceed the byte cap before JSON.parse runs.
+      if (lineBytes.length > maxBytes) continue
+      onLine(lineBytes.toString('utf8'))
+    }
+    // If the unterminated tail already exceeds the cap, drop it so a single
+    // oversized write cannot grow host memory without bound.
+    if (buffer.length > maxBytes) {
+      buffer = Buffer.alloc(0)
+    }
+  })
+  input.on('end', () => {
+    if (buffer.length > 0 && buffer.length <= maxBytes) {
+      onLine(buffer.toString('utf8'))
+    }
+  })
+}
+
+/**
+ * CPython subprocess {@link CodeRuntime} for the data-agent. Each run spawns a
+ * fresh CPython process with pandas/numpy available, talks the fd-3 JSON-lines
+ * wire protocol, and is contained by binding-only I/O plus rlimits — the same
+ * trust posture as the worker-thread backend.
+ */
 export class DataPythonCodeRuntime extends CodeRuntime {
   static Config: z<Config> = z.object({
     cpuSeconds: z.number().default(30),
@@ -177,6 +234,17 @@ export class DataPythonCodeRuntime extends CodeRuntime {
       let logBytesUsed = 2
       let logTruncated = false
 
+      // Substrate-death signal: resolves once the child has exited AND its
+      // stdio pipes have closed ('close' follows 'exit' and the pipe drain),
+      // or on a spawn 'error'. Registered synchronously at child setup so a
+      // death that already queued cannot be missed (defensive-patterns.md:
+      // dispose must reach quiescence, not just request the kill).
+      const childClosed = new Promise<void>((closeResolve) => {
+        const onTerminal = (): void => { closeResolve() }
+        child.once('close', onTerminal)
+        child.once('error', onTerminal)
+      })
+
       const finish = (result: CodeRunResult): void => {
         if (settled) return
         settled = true
@@ -184,8 +252,13 @@ export class DataPythonCodeRuntime extends CodeRuntime {
         request.signal?.removeEventListener('abort', onAbort)
         this.live.delete(live)
         child.kill('SIGKILL')
-        finishResolve()
-        resolve(result)
+        // Await the child's actual death before resolving so teardown's
+        // `await run.finished` reaches quiescence; the run promise no longer
+        // settles while the substrate may still be dying.
+        void childClosed.then(() => {
+          finishResolve()
+          resolve(result)
+        })
       }
 
       let finishResolve!: () => void
@@ -197,11 +270,14 @@ export class DataPythonCodeRuntime extends CodeRuntime {
         fd3Write.write(line)
       }
 
-      // Read fd-3 frames from the child
-      const rl = createInterface({ input: fd3Read })
+      // Read fd-3 frames from the child, with an inbound frame-size cap before
+      // JSON.parse runs (protocol.ts checkDoneValue JSDoc: the runtime that
+      // reads the channel owns this cap). A line over maxFrameBytes is forged
+      // junk and is dropped, never buffered whole or parsed.
+      const maxFrameBytes = this.config.maxValueBytes + this.config.maxLogBytes + 4096
       let bootAcked = false
 
-      rl.on('line', (line: string) => {
+      createCappedLineReader(fd3Read, maxFrameBytes, (line: string) => {
         if (settled) return
 
         // Reject lines with beyond-safe-range integer tokens
@@ -233,11 +309,10 @@ export class DataPythonCodeRuntime extends CodeRuntime {
             logs.push(logTruncationMarker(this.config.maxLogBytes))
             return
           }
-          // Host-side log metering
-          const textJson = JSON.stringify(frame.text)
-          const textBytes = Buffer.byteLength(textJson, 'utf8')
+          // Host-side log metering (non-allocating via sibling helper)
           const separatorBytes = logs.length > 0 ? 1 : 0
-          if (logBytesUsed + textBytes + separatorBytes > this.config.maxLogBytes) {
+          const textBytes = jsonStringBytesUpTo(frame.text, this.config.maxLogBytes - logBytesUsed - separatorBytes)
+          if (textBytes === undefined) {
             logTruncated = true
             logs.push(logTruncationMarker(this.config.maxLogBytes))
             return

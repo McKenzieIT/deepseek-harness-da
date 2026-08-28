@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-retrieve",
   "description": "Model-facing retrieve tool: on-demand retrieval escape-hatch over the data-source corpus for the data agent (BM25-only soft-fallback; additive, dormant until mounted)",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

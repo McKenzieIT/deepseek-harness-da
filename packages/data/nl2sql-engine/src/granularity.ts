@@ -15,6 +15,8 @@ const TREND_PATTERN = /趋势|变化|逐日|每天|近\d+天|日均|环比|同�
 /**
  * Detect whether a question expresses trend intent (time-series / temporal
  * comparison). Uses a regex keyword list from P14 grilling resolution.
+ * @param question - the natural-language question to classify.
+ * @returns true when the question expresses trend/time-series intent.
  */
 export function detectTrendIntent(question: string): boolean {
   return TREND_PATTERN.test(question)
@@ -26,6 +28,9 @@ const DI_SUFFIX = /_di$/
  * Soft rerank: when `isTrend` is true, boost `_di` candidates' scores by ×1.5
  * and re-sort descending. No candidates are removed (soft prefer only).
  * When `isTrend` is false, returns candidates unchanged.
+ * @param candidates - the BM25 retrieval hits to rerank.
+ * @param isTrend - whether trend intent was detected (enables _di boosting).
+ * @returns the (possibly boosted + re-sorted) candidate list, or the input unchanged when not a trend query.
  */
 export function rerankByGranularity(candidates: readonly RetrievalHit[], isTrend: boolean): readonly RetrievalHit[] {
   if (!isTrend) return candidates

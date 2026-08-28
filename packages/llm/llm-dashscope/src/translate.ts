@@ -60,9 +60,21 @@ export function mapFinishReason(reason: string): FinishReason {
  * @param usage - wire usage from any event (cumulative — the latest is kept upstream).
  * @returns disjoint harness counts; cache/reasoning fields present only when the wire reported them.
  */
-export function mapUsage(usage: WireUsage): TokenUsage {
-  const cacheRead = usage.prompt_tokens_details?.cached_tokens
-  const reasoning = usage.output_tokens_details?.reasoning_tokens
+export function mapUsage(usage: WireUsage): TokenUsage | undefined {
+  // The wire type declares input_tokens/output_tokens as required numbers, but the parse
+  // boundary (`JSON.parse(payload) as WireChunk`) is an unchecked cast: a streaming event may
+  // carry a partial/oddly-typed usage object (e.g. a usage-only event with just total_tokens,
+  // or stringified counts). `undefined - 0` is NaN and would propagate into the harness
+  // TokenUsage, so guard the arithmetic: treat a usage object whose core counts are not finite
+  // numbers as unrecoverable and skip it (the last good usage is kept upstream), matching the
+  // defensive optional-chaining style used for choices/message above.
+  if (!Number.isFinite(usage.input_tokens) || !Number.isFinite(usage.output_tokens)) {
+    return undefined
+  }
+  const cacheReadRaw = usage.prompt_tokens_details?.cached_tokens
+  const reasoningRaw = usage.output_tokens_details?.reasoning_tokens
+  const cacheRead = Number.isFinite(cacheReadRaw) ? (cacheReadRaw as number) : undefined
+  const reasoning = Number.isFinite(reasoningRaw) ? (reasoningRaw as number) : undefined
   return {
     inputTokens: usage.input_tokens - (cacheRead ?? 0),
     outputTokens: usage.output_tokens,
@@ -174,8 +186,12 @@ export async function* translate(payloads: AsyncIterable<string>): AsyncGenerato
 
     }
 
-    // Usage may arrive on every event (cumulative) — keep the latest.
-    if (chunk.usage) pendingUsage = mapUsage(chunk.usage)
+    // Usage may arrive on every event (cumulative) -- keep the latest. mapUsage returns
+    // undefined for a malformed/partial usage object, so skip it and keep the last good one.
+    if (chunk.usage) {
+      const mapped = mapUsage(chunk.usage)
+      if (mapped !== undefined) pendingUsage = mapped
+    }
 
     if (pendingFinish !== undefined) {
       // Terminal event: close blocks, emit usage, then finish (nothing after).

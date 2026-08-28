@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-semantic-layer",
   "description": "Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening.",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

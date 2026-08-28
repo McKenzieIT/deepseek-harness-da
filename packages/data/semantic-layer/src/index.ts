@@ -431,7 +431,10 @@ export class SemanticLayerService extends Service {
       // any existing dimension_refs (curated joins preserved) rather than
       // replacing — so auto-trigger can never wipe human-curated joins the
       // deterministic round does not rediscover (code-review B2).
-      await enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, names, true)
+      const res = await enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, names, true)
+      if (res.errors.length > 0) {
+        this.ctx.logger.warn(`ctx.schema on-write enrichment partial failures: ${res.errors.join('; ')}`)
+      }
     } catch (e) {
       this.ctx.logger.warn(`ctx.schema on-write enrichment failed: ${(e as Error).message}`)
     }

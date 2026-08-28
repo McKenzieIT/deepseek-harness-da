@@ -11,14 +11,14 @@
  * defaultId)` to join the deployment's default preset to ANY published agent
  * — headless included.
  *
- * `agent/created` fires AFTER `setup` completes and BEFORE the first prompt
- * assembly (see `@deepseek-ai/dsh-agent` runtime-types), so a preset joined
- * here registers its tools, prompt sections, and listeners ahead of the
- * agent's first model request — the join point the headless `setup` skips.
- * The host path (`api-proxy.composeAgent`) joins in `setup`, where a failure
- * rolls creation back; this wrapper joins at the announcement instead, so a
- * join failure is reported (the agent runs bare, exactly as it does today)
- * rather than vetoing publication.
+ * `agent/created` is a fire-and-forget dispatch: the framework does NOT await
+ * async listeners (core/agent announce() voids the returned promise), so an
+ * async presets.mount() here races the agent-loop's first prompt assembly and
+ * is NOT guaranteed to join the preset's tools/persona before the first model
+ * request. For guaranteed ordering, join in an awaited setup path (the headless
+ * entry must call AgentPresets.mount in its setup, like the api-proxy host path).
+ * This wrapper remains a best-effort safety net for agents published without a
+ * setup-time join.
  *
  * The join is idempotent and guarded: an agent whose `setup` already joined a
  * preset is skipped via `composedPreset(agent.ctx)`, and an agent published

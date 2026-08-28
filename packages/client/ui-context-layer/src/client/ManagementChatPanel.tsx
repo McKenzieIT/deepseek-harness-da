@@ -17,8 +17,10 @@ export interface ManagementChatPanelProps {
   onToggleCollapse: () => void
   /** Messages to display (simplified format for the shell). */
   messages: ChatMessage[]
-  /** Send a new message. */
-  onSendMessage: (text: string) => void
+  /** Send a new message. When undefined, the management session is not wired
+   *  on the client yet — the input is disabled and labelled rather than
+   *  silently dropping user input. */
+  onSendMessage?: (text: string) => void
   /** Whether the agent is currently responding. */
   isStreaming?: boolean
   /** Session event source for narration gate integration. */
@@ -59,7 +61,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
 
   const handleSend = useCallback(() => {
     const trimmed = inputValue.trim()
-    if (!trimmed || isStreaming) return
+    if (!onSendMessage || !trimmed || isStreaming) return
     onSendMessage(trimmed)
     setInputValue('')
   }, [inputValue, isStreaming, onSendMessage])
@@ -242,8 +244,8 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
           value={inputValue}
           onChange={e => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
-          disabled={isStreaming}
+          placeholder={onSendMessage ? 'Type a message...' : 'Management session not available'}
+          disabled={isStreaming || !onSendMessage}
           style={{
             flex: 1,
             padding: '8px 12px',
@@ -251,12 +253,12 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
             borderRadius: 8,
             fontSize: 13,
             outline: 'none',
-            background: isStreaming ? '#f9f9f9' : '#fff',
+            background: isStreaming || !onSendMessage ? '#f9f9f9' : '#fff',
           }}
         />
         <button
           onClick={handleSend}
-          disabled={!inputValue.trim() || isStreaming}
+          disabled={!inputValue.trim() || isStreaming || !onSendMessage}
           style={{
             padding: '8px 14px',
             border: 'none',

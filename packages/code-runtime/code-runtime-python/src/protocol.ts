@@ -352,7 +352,7 @@ function scalarJson(current: unknown): string {
  * @param maxBytes - largest serialized size the caller can still admit.
  * @returns the exact serialized byte length, or `undefined` once it exceeds `maxBytes`.
  */
-function jsonStringBytesUpTo(text: string, maxBytes: number): number | undefined {
+export function jsonStringBytesUpTo(text: string, maxBytes: number): number | undefined {
   let bytes = 2 // the two quotes
   if (bytes > maxBytes) return undefined
   for (let index = 0; index < text.length; index++) {

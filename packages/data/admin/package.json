@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-admin",
   "description": "Admin + access isolation: per-user login, identity, scope resolution, PAT self-service, fail-closed authz",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

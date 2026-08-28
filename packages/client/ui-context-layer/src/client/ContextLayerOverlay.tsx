@@ -3,7 +3,6 @@ import type { ContextLayerService } from './service.ts'
 import type { GraphDataClient } from './graphDataBridge.ts'
 import { ContextLayerView } from './ContextLayerView.tsx'
 import type { GraphData } from './types.ts'
-import type { ChatMessage } from './ManagementChatPanel.tsx'
 
 export interface ContextLayerOverlayProps {
   service: ContextLayerService
@@ -14,11 +13,11 @@ export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, gra
   const snapshot = useSyncExternalStore(service.subscribe, service.getSnapshot)
   const [data, setData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
-  const [messages] = useState<ChatMessage[]>([])
 
-  const handleSendMessage = useCallback((_text: string) => {
-    // TODO: wire to management session when ctx.managementSession is available on the client
-  }, [])
+  // The management chat is not wired on the client yet: ctx.managementSession
+  // is not exposed, so onSendMessage is intentionally omitted —
+  // ManagementChatPanel disables + labels its input rather than silently
+  // dropping user input. Wire when ctx.managementSession lands.
 
   const handleClose = useCallback(() => { service.close() }, [service])
 
@@ -64,8 +63,7 @@ export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, gra
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <ContextLayerView
           data={data}
-          messages={messages}
-          onSendMessage={handleSendMessage}
+          messages={[]}
         />
       </div>
     </div>

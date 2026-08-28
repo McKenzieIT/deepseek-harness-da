@@ -119,3 +119,28 @@ test('retrieve: query-embed InferenceError (corpus embed OK) -> BM25-only degrad
   expect(hits.every(h => h.mode === 'bm25-only')).toBe(true)
   expect(hits[0]?.id).toBe('metric.营收')
 })
+
+test('retrieve: transient query-embed InferenceError recovers (2nd call -> hybrid, not permanent BM25-only)', async () => {
+  // A single transient query-embed timeout must NOT permanently force BM25-only
+  // for later queries: the corpus embed succeeds, so the vector plane is fine
+  // and a recovered embedder should yield `hybrid` on the next call. Pins D5-1
+  // (the existing always-failing test cannot distinguish per-query degradation
+  // from the permanent-vecDown bug).
+  let queryCalls = 0
+  const transientEmbedder: EmbedderLike = {
+    embed: async (texts) => {
+      if (texts.length === 1) {
+        queryCalls += 1
+        if (queryCalls === 1) throw new InferenceError('timeout', 'query embed down once')
+      }
+      return texts.map(t => hashVec(t, DIM))
+    },
+  }
+  const retriever = new HybridRetriever(CORPUS, transientEmbedder)
+  const first = await retriever.retrieve('营收', { topK: 3 })
+  expect(first.length).toBeGreaterThan(0)
+  expect(first.every(h => h.mode === 'bm25-only')).toBe(true) // degraded for THIS query
+  const second = await retriever.retrieve('营收', { topK: 3 })
+  expect(second.length).toBeGreaterThan(0)
+  expect(second.every(h => h.mode === 'hybrid')).toBe(true) // recovered: vector plane re-attempted
+})

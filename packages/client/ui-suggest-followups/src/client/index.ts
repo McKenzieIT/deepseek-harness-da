@@ -4,6 +4,10 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ISessions } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
+// Type-only: anchors the LocaleNamespaceMap augmentation below to the slots
+// package's base types (so the merge resolves) and satisfies knip that the
+// devDependency is used.
+import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { FollowupChips } from './FollowupChips.tsx'
 import { en, zh, type FollowupKey } from './locales.ts'
 

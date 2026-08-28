@@ -238,6 +238,44 @@
         "debug"
       ]
     },
+    "packages/bundle/data-agent": {
+      "entry": [],
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-agent-presets",
+        "@deepseek-ai/dsh-audit",
+        "@deepseek-ai/dsh-client-ui-semantic-layer",
+        "@deepseek-ai/dsh-code-runtime-data-python",
+        "@deepseek-ai/dsh-evidence-query",
+        "@deepseek-ai/dsh-eval-runner-service",
+        "@deepseek-ai/dsh-goal-eval-context",
+        "@deepseek-ai/dsh-goal-eval-policy",
+        "@deepseek-ai/dsh-admin",
+        "@deepseek-ai/dsh-identity",
+        "@deepseek-ai/dsh-nl2sql-engine",
+        "@deepseek-ai/dsh-phase-gate",
+        "@deepseek-ai/dsh-preset-autojoin",
+        "@deepseek-ai/dsh-query-maxcompute",
+        "@deepseek-ai/dsh-result-cache-memory",
+        "@deepseek-ai/dsh-query-tool",
+        "@deepseek-ai/dsh-schema-gateway",
+        "@deepseek-ai/dsh-scope-registry",
+        "@deepseek-ai/dsh-semantic-layer",
+        "@deepseek-ai/dsh-tool-critique-sql",
+        "@deepseek-ai/dsh-tool-evaluate-sql-quality",
+        "@deepseek-ai/dsh-tool-load-event-definition",
+        "@deepseek-ai/dsh-tool-load-table-definition",
+        "@deepseek-ai/dsh-tool-present-clarification",
+        "@deepseek-ai/dsh-tool-compute",
+        "@deepseek-ai/dsh-tool-present-decomposition",
+        "@deepseek-ai/dsh-tool-present-table",
+        "@deepseek-ai/dsh-tool-suggest-followups",
+        "@deepseek-ai/dsh-tool-search-data-sources",
+        "@deepseek-ai/dsh-tool-update-table-config"
+      ]
+    },
     "packages/*/*": {
       "entry": [
         "tests/**/*.spec.ts"

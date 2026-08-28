@@ -31,7 +31,7 @@ describe('AdminDomain spec', () => {
   })
 
   test('has no global slot (per-table KV only)', () => {
-    expect(AdminDomain.global).toBeUndefined()
+    expect((AdminDomain as { global?: unknown }).global).toBeUndefined()
   })
 })
 
@@ -82,13 +82,13 @@ describe('notifyPatMiss', () => {
 
 describe('domain schema validation', () => {
   test('users table schema rejects missing passwordHash', () => {
-    const schema = AdminDomain.tables.users!.valueSchema
+    const schema = AdminDomain.tables.users.valueSchema
     const result = schema.safeParse({ role: 'admin', tenantId: 't1', createdAt: '2026-01-01' })
     expect(result.success).toBe(false)
   })
 
   test('users table schema accepts valid user record', () => {
-    const schema = AdminDomain.tables.users!.valueSchema
+    const schema = AdminDomain.tables.users.valueSchema
     const result = schema.safeParse({
       passwordHash: 'abc123:def456',
       role: 'admin',
@@ -99,7 +99,7 @@ describe('domain schema validation', () => {
   })
 
   test('sessions table schema accepts valid session', () => {
-    const schema = AdminDomain.tables.sessions!.valueSchema
+    const schema = AdminDomain.tables.sessions.valueSchema
     const result = schema.safeParse({
       userId: 'user1',
       tenantId: 'tenant-1',
@@ -110,7 +110,7 @@ describe('domain schema validation', () => {
   })
 
   test('sessions table schema accepts session with scopeId', () => {
-    const schema = AdminDomain.tables.sessions!.valueSchema
+    const schema = AdminDomain.tables.sessions.valueSchema
     const result = schema.safeParse({
       userId: 'user1',
       tenantId: 'tenant-1',
@@ -122,13 +122,13 @@ describe('domain schema validation', () => {
   })
 
   test('access_links table schema rejects missing scopeId', () => {
-    const schema = AdminDomain.tables.access_links!.valueSchema
+    const schema = AdminDomain.tables.access_links.valueSchema
     const result = schema.safeParse({ tenantId: 't1', createdAt: '2026-01-01' })
     expect(result.success).toBe(false)
   })
 
   test('access_links table schema accepts valid link', () => {
-    const schema = AdminDomain.tables.access_links!.valueSchema
+    const schema = AdminDomain.tables.access_links.valueSchema
     const result = schema.safeParse({
       scopeId: 'game-10001',
       tenantId: 'tenant-1',

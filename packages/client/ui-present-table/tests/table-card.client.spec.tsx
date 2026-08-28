@@ -521,7 +521,7 @@ describe('TableCard', () => {
       if (tag === 'a') {
         return { href: '', download: '', click: clicked } as unknown as HTMLElement
       }
-      return document.createElementNS('http://www.w3.org/1999/xhtml', tag) as HTMLElement
+      return document.createElementNS('http://www.w3.org/1999/xhtml', tag)
     })
     const { getByText } = render(
       <TableCard block={block} useSession={makeUseSession(tsv)} />,

@@ -181,10 +181,6 @@ export class InfinityEmbedder extends EmbedderService {
     this._fetch = config.fetch ?? globalThis.fetch as unknown as FetchLike
   }
 
-  get dim(): number | undefined {
-    return this._dim
-  }
-
   get modelId(): string {
     return `infinity:${this.config.model}`
   }

@@ -32,28 +32,28 @@ function newEngine(config: Config): MaxComputeQueryEngine {
 
 describe('MaxComputeQueryEngine.qualifyTable', () => {
   it('qualifies a bare table with the configured defaultProject', () => {
-    const engine = newEngine({ args: [], defaultProject: 'ieu_cdm' })
+    const engine = newEngine({ sidecarPath: 'unused', defaultProject: 'ieu_cdm' })
     expect(engine.qualifyTable('dws_pay_order_di')).toBe('ieu_cdm.dws_pay_order_di')
   })
 
   it('lets the per-table override take precedence over defaultProject', () => {
-    const engine = newEngine({ args: [], defaultProject: 'ieu_cdm' })
+    const engine = newEngine({ sidecarPath: 'unused', defaultProject: 'ieu_cdm' })
     expect(engine.qualifyTable('dws_pay_order_di', 'other_project')).toBe('other_project.dws_pay_order_di')
   })
 
   it('returns the bare table name when defaultProject is empty (no default)', () => {
-    const engine = newEngine({ args: [], defaultProject: '' })
+    const engine = newEngine({ sidecarPath: 'unused', defaultProject: '' })
     expect(engine.qualifyTable('dws_pay_order_di')).toBe('dws_pay_order_di')
   })
 
   it('returns the bare table name when defaultProject is empty and an override is absent', () => {
     // graceful degradation: empty default + no override → bare (no `undefined.` prefix)
-    const engine = newEngine({ args: [], defaultProject: '' })
+    const engine = newEngine({ sidecarPath: 'unused', defaultProject: '' })
     expect(engine.qualifyTable('dws_pay_order_di')).toBe('dws_pay_order_di')
   })
 
   it('still honors the override when defaultProject is empty', () => {
-    const engine = newEngine({ args: [], defaultProject: '' })
+    const engine = newEngine({ sidecarPath: 'unused', defaultProject: '' })
     expect(engine.qualifyTable('dws_pay_order_di', 'ieu_cdm')).toBe('ieu_cdm.dws_pay_order_di')
   })
 })

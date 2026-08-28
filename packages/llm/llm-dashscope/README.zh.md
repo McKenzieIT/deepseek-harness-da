@@ -10,7 +10,7 @@ DashScope（AGA AI Gateway）原生协议 chat-completions 适配器，用于 De
 
 - 请求体：`{model, input:{messages}, parameters:{result_format:"message", incremental_output:true, max_tokens?, temperature?, tools?}}`
 - 流式：`X-DashScope-SSE:enable` 头 + SSE `data:` 原生 JSON（每事件累积 `usage`，`finish_reason !== "null"` 终止——无 `[DONE]` 哨兵）
-- 身份：env `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL`，provider 名称 `dashscope`
+- 身份：env `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL`，provider 路由 `aga`（显示名称 `DashScope`）
 - 目录：qwen-flash、qwen-plus、qwen3.7-max、qwen3.6-plus
 - 推理：无逐请求思考开关；推理通过模型选择（qwen3.6-plus 等）
 

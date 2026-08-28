@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-preset-autojoin",
   "description": "[data-agent] da wrapper (§4.2) that joins the configured default agent preset to every published agent on agent/created, closing the headless-doesn't-join-default-preset gap without modifying dsh src",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -11,12 +11,24 @@
     "directory": "packages/data/preset-autojoin"
   },
   "type": "module",
-  "main": "src/index.ts",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./invariant": "./src/invariant.ts",
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts"
+  ],
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",

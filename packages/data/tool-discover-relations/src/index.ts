@@ -270,7 +270,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       return discoverRelationsResult(schema, args.tables)
     },
     presentCall(args): GenericCallView {
-      const tables = args.tables as string[] | undefined
+      const tables = args.tables
       const scope = tables !== undefined && tables.length > 0
         ? `${tables.length} table${tables.length > 1 ? 's' : ''}`
         : 'all tables'

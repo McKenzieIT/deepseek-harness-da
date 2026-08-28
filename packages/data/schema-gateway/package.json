@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-schema-gateway",
   "description": "Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI consumption",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -35,6 +35,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
     "lib/typert.host.js",

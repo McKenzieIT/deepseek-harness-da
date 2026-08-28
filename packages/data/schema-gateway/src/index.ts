@@ -264,34 +264,28 @@ export class SchemaGateway extends TypertRemoteService {
       }
     }
 
-    // If focus is specified, BFS from focus node to limit depth
-    if (focus && depth !== undefined && depth > 0) {
-      // Guard: if the focus node is not in the filtered node set, skip BFS
-      // filtering entirely and return all nodes/edges as-is.
-      if (!nodeIdSet.has(focus)) {
-        return { nodes: allNodes, edges: allEdges }
-      }
+    // If focus is specified, restrict to the focus-reachable subgraph.
+    if (focus) {
+      if (!nodeIdSet.has(focus)) return { nodes: allNodes, edges: allEdges } // focus not in filtered set
       const reachable = new Set<string>([focus])
-      let frontier = [focus]
-      for (let d = 0; d < depth && frontier.length > 0; d++) {
-        const nextFrontier: string[] = []
-        for (const nid of frontier) {
-          const related = relationGraph.getRelated(nid)
-          for (const edge of related) {
-            if (!nodeIdSet.has(edge.targetId)) continue
-            if (!reachable.has(edge.targetId)) {
-              reachable.add(edge.targetId)
-              nextFrontier.push(edge.targetId)
+      if (depth === undefined || depth > 0) {
+        // unlimited (or capped) BFS from focus
+        let frontier = [focus]
+        const cap = depth ?? Number.POSITIVE_INFINITY
+        for (let d = 0; d < cap && frontier.length > 0; d++) {
+          const nextFrontier: string[] = []
+          for (const nid of frontier) {
+            for (const edge of relationGraph.getRelated(nid)) {
+              if (!nodeIdSet.has(edge.targetId)) continue
+              if (!reachable.has(edge.targetId)) { reachable.add(edge.targetId); nextFrontier.push(edge.targetId) }
             }
           }
+          frontier = nextFrontier
         }
-        frontier = nextFrontier
       }
-
+      // depth === 0: reachable stays {focus}
       const filteredNodes = allNodes.filter(n => reachable.has(n.id))
-      const filteredEdges = allEdges.filter(
-        e => reachable.has(e.source) && reachable.has(e.target),
-      )
+      const filteredEdges = allEdges.filter(e => reachable.has(e.source) && reachable.has(e.target))
       return { nodes: filteredNodes, edges: filteredEdges }
     }
 

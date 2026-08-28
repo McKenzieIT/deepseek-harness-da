@@ -99,7 +99,12 @@ export interface ExecLike {
   readonly signal: AbortSignal
 }
 
-/** Apply config defaults (idempotent with the schemastery schema for name-mount). */
+/**
+ * Apply config defaults (idempotent with the schemastery schema for name-mount).
+ *
+ * @param config The caller-supplied config; omitted/undefined fields receive defaults.
+ * @returns The resolved config with maxPolls, pollIntervalMs, and maxDisplayRows filled in.
+ */
 export function resolveConfig(config: Config = {}): ResolvedConfig {
   return {
     maxPolls: config.maxPolls ?? 60,
@@ -146,6 +151,11 @@ export function projectOutcome(outcome: QueryOutcome): QueryDataResult {
         ...(outcome.error !== undefined ? { error: outcome.error } : {}),
         ...(outcome.failureKind !== undefined ? { failureKind: outcome.failureKind } : {}),
       }
+    default:
+      // Defense-in-depth: decodeResult normalizes unknown sidecar states to
+      // 'failed', so this is unreachable in production; a stray caller that
+      // bypasses the boundary still gets a failed result, not undefined.
+      return { ...base, error: `unknown outcome state ${JSON.stringify(outcome.state)}`, failureKind: 'transport' }
   }
 }
 
@@ -209,7 +219,21 @@ export async function executeQuery(
   if (exec.signal.aborted) throw new Error('query_data: aborted before execute')
   let outcome = await query.execute({ sql: args.sql, scopeId: args.scope_id }, exec.signal)
   if (outcome.state === 'pending' && outcome.instanceId !== undefined) {
-    outcome = await pollToSettlement(query, outcome.instanceId, exec, cfg)
+    const instanceId = outcome.instanceId
+    try {
+      outcome = await pollToSettlement(query, instanceId, exec, cfg)
+    } catch (error) {
+      // Abort or poll failure: best-effort cancel the pending ODPS instance so it
+      // does not keep running/billing as an orphan. OrphanReaper (deferred) is
+      // the backstop for instances that escape this path (e.g. cancel itself
+      // failed). A failed cancel must not mask the original error.
+      try {
+        await query.cancel(instanceId)
+      } catch {
+        // best-effort: surface the original error, not the cancel failure
+      }
+      throw error
+    }
   }
   return projectOutcome(outcome)
 }
@@ -260,6 +284,8 @@ function formatResult(value: QueryDataResult, cfg: ResolvedConfig): string {
       const error = value.error ?? '(no error detail)'
       return `Query failed (${kind}): ${error}`
     }
+    default:
+      return `Query failed (unknown): unrecognized outcome state ${JSON.stringify(value.state)}`
   }
 }
 

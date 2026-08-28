@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-load-event-definition",
   "description": "Model-facing load_event_definition tool: load a validated event (埋点) definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

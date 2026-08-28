@@ -18,6 +18,7 @@
  */
 
 import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { Context } from '@deepseek-ai/cordis'
 import { IdentityService, type CallerIdentity } from '@deepseek-ai/dsh-identity'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
@@ -76,7 +77,7 @@ async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(SCRYPT_SALT_LEN).toString('hex')
   return new Promise((resolve, reject) => {
     scrypt(password, salt, SCRYPT_KEYLEN, (err, key) => {
-      if (err) return reject(err)
+      if (err) { reject(err); return }
       resolve(`${salt}:${key.toString('hex')}`)
     })
   })
@@ -88,7 +89,7 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   if (!salt || !hash) return false
   return new Promise((resolve, reject) => {
     scrypt(password, salt, SCRYPT_KEYLEN, (err, key) => {
-      if (err) return reject(err)
+      if (err) { reject(err); return }
       const expected = Buffer.from(hash, 'hex')
       resolve(timingSafeEqual(key, expected))
     })
@@ -111,7 +112,7 @@ function readBody(req: IncomingMessage): Promise<string> {
       if (size > MAX) { req.destroy(); reject(new Error('body too large')) }
       chunks.push(chunk)
     })
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
+    req.on('end', () => { resolve(Buffer.concat(chunks).toString('utf-8')) })
     req.on('error', reject)
   })
 }
@@ -168,7 +169,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
     return () => {
       disposeRoutes()
-      domain?.close()
+      void domain?.close()
       domain = undefined
     }
   }, 'admin: domain + identity + routes')
@@ -177,30 +178,26 @@ export function apply(ctx: Context, config: Config = {}): void {
 // ── Real IdentityService ────────────────────────────────────────────────────
 
 class AdminIdentityService extends IdentityService {
-  private currentSession: SessionRecord | undefined
+  private readonly als = new AsyncLocalStorage<SessionRecord>()
 
   constructor(ctx: Context, private readonly domain: AdminDomainHandle) {
     super(ctx)
   }
 
   override current(): CallerIdentity | undefined {
-    if (!this.currentSession) return undefined
+    const session = this.als.getStore()
+    if (!session) return undefined
     return {
-      userId: toUserId(this.currentSession.userId),
-      tenantId: this.currentSession.tenantId,
-      role: this.currentSession.role,
-      ...(this.currentSession.scopeId !== undefined ? { scopeId: toScopeId(this.currentSession.scopeId) } : {}),
+      userId: toUserId(session.userId),
+      tenantId: session.tenantId,
+      role: session.role,
+      ...(session.scopeId !== undefined ? { scopeId: toScopeId(session.scopeId) } : {}),
     }
   }
 
-  /** Set the active session (called on login / session restore). */
-  activate(session: SessionRecord): void {
-    this.currentSession = session
-  }
-
-  /** Clear the active session (called on logout). */
-  deactivate(): void {
-    this.currentSession = undefined
+  /** Run `fn` with `session` as the active caller identity (request-scoped). */
+  run<T>(session: SessionRecord, fn: () => Promise<T>): Promise<T> {
+    return this.als.run(session, fn)
   }
 
   /** Resolve a session token to its record (for request-scoped identity). */
@@ -225,7 +222,7 @@ function registerRoutes(
 
       // ── Public routes (no auth required) ──
       if (pathname === '/admin/api/login' && req.method === 'POST') {
-        return handleLogin(domain, identity, req, res)
+        return handleLogin(domain, req, res)
       }
       if (pathname === '/admin/api/resolve-scope' && req.method === 'POST') {
         return handleResolveScope(domain, req, res)
@@ -233,56 +230,60 @@ function registerRoutes(
 
       // ── Authenticated routes (session required) ──
       const token = extractBearerToken(req)
-      if (!token) return json(res, 401, { error: 'authentication required' })
+      if (!token) { json(res, 401, { error: 'authentication required' }); return }
 
       const session = identity.resolveSession(token)
-      if (!session) return json(res, 401, { error: 'invalid or expired session' })
+      if (!session) { json(res, 401, { error: 'invalid or expired session' }); return }
 
-      // Activate identity for the duration of this request.
-      identity.activate(session)
+      // Run the authenticated dispatch under a request-scoped identity
+      // (AsyncLocalStorage) so concurrent requests don't clobber each other.
+      return identity.run(session, async () => {
+        // ── /admin/api/me/pat — PAT self-service ──
+        if (pathname === '/admin/api/me/pat' && req.method === 'POST') {
+          return handlePatSet(ctx, session, req, res)
+        }
+        if (pathname === '/admin/api/me/pat' && req.method === 'GET') {
+          return handlePatDescribe(ctx, session, res)
+        }
 
-      // ── /admin/api/me/pat — PAT self-service ──
-      if (pathname === '/admin/api/me/pat' && req.method === 'POST') {
-        return handlePatSet(ctx, session, req, res)
-      }
-      if (pathname === '/admin/api/me/pat' && req.method === 'GET') {
-        return handlePatDescribe(ctx, session, res)
-      }
+        // ── /admin/api/me — current user info ──
+        if (pathname === '/admin/api/me' && req.method === 'GET') {
+          json(res, 200, {
+            userId: session.userId,
+            tenantId: session.tenantId,
+            role: session.role,
+            scopeId: session.scopeId ?? null,
+          })
+          return
+        }
 
-      // ── /admin/api/me — current user info ──
-      if (pathname === '/admin/api/me' && req.method === 'GET') {
-        return json(res, 200, {
-          userId: session.userId,
-          tenantId: session.tenantId,
-          role: session.role,
-          scopeId: session.scopeId ?? null,
-        })
-      }
+        // ── /admin/api/logout ──
+        if (pathname === '/admin/api/logout' && req.method === 'POST') {
+          return handleLogout(domain, token, res)
+        }
 
-      // ── /admin/api/logout ──
-      if (pathname === '/admin/api/logout' && req.method === 'POST') {
-        return handleLogout(domain, identity, token, res)
-      }
+        // ── Admin-only routes (fail-closed gate: role=admin required) ──
+        if (session.role !== 'admin') {
+          json(res, 403, { error: 'admin role required' })
+          return
+        }
 
-      // ── Admin-only routes (fail-closed gate: role=admin required) ──
-      if (session.role !== 'admin') {
-        return json(res, 403, { error: 'admin role required' })
-      }
+        // ── /admin/api/users — user management ──
+        if (pathname === '/admin/api/users' && req.method === 'GET') {
+          handleListUsers(domain, res)
+          return
+        }
+        if (pathname === '/admin/api/users' && req.method === 'POST') {
+          return handleCreateUser(domain, req, res)
+        }
 
-      // ── /admin/api/users — user management ──
-      if (pathname === '/admin/api/users' && req.method === 'GET') {
-        return handleListUsers(domain, res)
-      }
-      if (pathname === '/admin/api/users' && req.method === 'POST') {
-        return handleCreateUser(domain, req, res)
-      }
+        // ── /admin/api/access-links — access link management ──
+        if (pathname === '/admin/api/access-links' && req.method === 'POST') {
+          return handleCreateAccessLink(domain, req, res)
+        }
 
-      // ── /admin/api/access-links — access link management ──
-      if (pathname === '/admin/api/access-links' && req.method === 'POST') {
-        return handleCreateAccessLink(domain, req, res)
-      }
-
-      json(res, 404, { error: 'not found' })
+        json(res, 404, { error: 'not found' })
+      })
     },
   })
 
@@ -293,26 +294,27 @@ function registerRoutes(
 
 async function handleLogin(
   domain: AdminDomainHandle,
-  identity: AdminIdentityService,
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
   let body: { userId?: string; password?: string; linkToken?: string }
   try {
-    body = JSON.parse(await readBody(req))
+    body = JSON.parse(await readBody(req)) as typeof body
   } catch {
-    return json(res, 400, { error: 'invalid JSON body' })
+    json(res, 400, { error: 'invalid JSON body' })
+    return
   }
 
   if (!body.userId || !body.password) {
-    return json(res, 400, { error: 'userId and password are required' })
+    json(res, 400, { error: 'userId and password are required' })
+    return
   }
 
   const user = domain.table('users').get(body.userId)
-  if (!user) return json(res, 401, { error: 'invalid credentials' })
+  if (!user) { json(res, 401, { error: 'invalid credentials' }); return }
 
   const valid = await verifyPassword(body.password, user.passwordHash)
-  if (!valid) return json(res, 401, { error: 'invalid credentials' })
+  if (!valid) { json(res, 401, { error: 'invalid credentials' }); return }
 
   // Resolve scope from access link if provided.
   let scopeId: string | undefined
@@ -331,9 +333,6 @@ async function handleLogin(
   }
   await domain.table('sessions').put(token, session)
 
-  // Activate identity for the new session.
-  identity.activate(session)
-
   json(res, 200, { token, userId: body.userId, role: user.role, tenantId: user.tenantId, scopeId: scopeId ?? null })
 }
 
@@ -344,17 +343,19 @@ async function handleResolveScope(
 ): Promise<void> {
   let body: { linkToken?: string }
   try {
-    body = JSON.parse(await readBody(req))
+    body = JSON.parse(await readBody(req)) as typeof body
   } catch {
-    return json(res, 400, { error: 'invalid JSON body' })
+    json(res, 400, { error: 'invalid JSON body' })
+    return
   }
 
   if (!body.linkToken) {
-    return json(res, 400, { error: 'linkToken is required' })
+    json(res, 400, { error: 'linkToken is required' })
+    return
   }
 
   const link = domain.table('access_links').get(body.linkToken)
-  if (!link) return json(res, 404, { error: 'access link not found' })
+  if (!link) { json(res, 404, { error: 'access link not found' }); return }
 
   json(res, 200, { scopeId: link.scopeId, tenantId: link.tenantId })
 }
@@ -367,13 +368,15 @@ async function handlePatSet(
 ): Promise<void> {
   let body: { ref?: string; value?: string }
   try {
-    body = JSON.parse(await readBody(req))
+    body = JSON.parse(await readBody(req)) as typeof body
   } catch {
-    return json(res, 400, { error: 'invalid JSON body' })
+    json(res, 400, { error: 'invalid JSON body' })
+    return
   }
 
   if (!body.ref || !body.value) {
-    return json(res, 400, { error: 'ref and value are required' })
+    json(res, 400, { error: 'ref and value are required' })
+    return
   }
 
   try {
@@ -384,7 +387,8 @@ async function handlePatSet(
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'credential set failed'
-    return json(res, 500, { error: message })
+    json(res, 500, { error: message })
+    return
   }
 
   json(res, 200, { ok: true, ref: body.ref, userId: session.userId })
@@ -408,12 +412,10 @@ async function handlePatDescribe(
 
 async function handleLogout(
   domain: AdminDomainHandle,
-  identity: AdminIdentityService,
   token: string,
   res: ServerResponse,
 ): Promise<void> {
   await domain.table('sessions').delete(token)
-  identity.deactivate()
   json(res, 200, { ok: true })
 }
 
@@ -437,17 +439,20 @@ async function handleCreateUser(
 ): Promise<void> {
   let body: { userId?: string; password?: string; role?: string; tenantId?: string; displayName?: string }
   try {
-    body = JSON.parse(await readBody(req))
+    body = JSON.parse(await readBody(req)) as typeof body
   } catch {
-    return json(res, 400, { error: 'invalid JSON body' })
+    json(res, 400, { error: 'invalid JSON body' })
+    return
   }
 
   if (!body.userId || !body.password) {
-    return json(res, 400, { error: 'userId and password are required' })
+    json(res, 400, { error: 'userId and password are required' })
+    return
   }
 
   if (domain.table('users').get(body.userId)) {
-    return json(res, 409, { error: 'user already exists' })
+    json(res, 409, { error: 'user already exists' })
+    return
   }
 
   const hash = await hashPassword(body.password)
@@ -469,13 +474,15 @@ async function handleCreateAccessLink(
 ): Promise<void> {
   let body: { scopeId?: string; tenantId?: string }
   try {
-    body = JSON.parse(await readBody(req))
+    body = JSON.parse(await readBody(req)) as typeof body
   } catch {
-    return json(res, 400, { error: 'invalid JSON body' })
+    json(res, 400, { error: 'invalid JSON body' })
+    return
   }
 
   if (!body.scopeId) {
-    return json(res, 400, { error: 'scopeId is required' })
+    json(res, 400, { error: 'scopeId is required' })
+    return
   }
 
   const linkToken = randomBytes(24).toString('hex')

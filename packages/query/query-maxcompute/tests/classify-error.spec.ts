@@ -28,7 +28,7 @@ import type { QueryOutcome } from '@deepseek-ai/dsh-query/src/index.ts'
  * result and never touches the sidecar, so bracket-accessing the private pure
  * decoder is a safe isolated probe (no spawn, no test-only method added).
  */
-function newEngine(config: Config = { args: [] }): MaxComputeQueryEngine {
+function newEngine(config: Config = { sidecarPath: 'unused' }): MaxComputeQueryEngine {
   return new MaxComputeQueryEngine(new Context(), config)
 }
 

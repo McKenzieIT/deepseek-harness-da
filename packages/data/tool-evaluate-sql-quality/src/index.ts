@@ -65,7 +65,15 @@ export interface EvaluateSqlQualityResult {
   readonly score: number
 }
 
-/** Empty critic context (fail-open when the phase-gate is not mounted). */
+/**
+ * Empty critic context — the fallback used when `ctx.get('criticCtx')` is
+ * undefined (the phase-gate is not mounted) or `forAgent` returns undefined
+ * (the agent has no harvested state). Its empty guard sets (no candidate
+ * tables) mean the critic's table rule emits an error for every FROM-table,
+ * so a normal SQL scores 0 and the path blocks rather than failing open.
+ * See README "Known Limitations" for the open fail-open vs. fail-closed
+ * contract decision.
+ */
 const EMPTY_CRITIC_CTX: CriticCtx = {
   candidateTables: new Set(),
   eventParams: new Set(),
@@ -146,21 +154,17 @@ export function apply(ctx: Context, _config: Config = {}): void {
         text: formatQuality(value as EvaluateSqlQualityResult),
       }],
     },
-    async execute(args, exec) {
+    execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('evaluate_sql_quality aborted before scoring')
       }
       const sql = (args as { sql?: string }).sql ?? ''
-      // Probe the phase-gate's criticCtx service (soft — see critique_sql_tool
-      // for the injection design rationale). The structural CriticCtxProvider
-      // interface is imported from tool-critique-sql (the sibling Consumer that
-      // owns it) to avoid duplicating the interface.
       const provider = ctx.get('criticCtx') as CriticCtxProvider | undefined
       const agentId = exec.agent !== undefined ? String(exec.agent.id) : undefined
       const criticCtx = provider !== undefined && agentId !== undefined
         ? (provider.forAgent(agentId) ?? EMPTY_CRITIC_CTX)
         : EMPTY_CRITIC_CTX
-      return evaluateSqlQuality(sql, criticCtx)
+      return Promise.resolve(evaluateSqlQuality(sql, criticCtx))
     },
   }))
 }

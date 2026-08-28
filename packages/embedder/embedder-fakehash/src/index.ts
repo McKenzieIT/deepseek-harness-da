@@ -10,16 +10,12 @@
  * degradation is exercised by the retrieval provider, not here (FakeHash is
  * always available).
  *
- * Also exports `FakeReranker` (rbi peer) — a query-token-recall fraction
- * scorer, used as the reranker peer-protocol stub in retrieval tests +
- * as a no-egress default reranker.
- *
  * @module @deepseek-ai/dsh-embedder-fakehash
  */
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { createHash } from 'node:crypto'
-import { EmbedderService, type Reranker, type EmbedResult } from '@deepseek-ai/dsh-embedder/src/index.ts'
+import { EmbedderService, type EmbedResult } from '@deepseek-ai/dsh-embedder/src/index.ts'
 import { tokenize } from '@deepseek-ai/dsh-embedder/src/tokenize.ts'
 
 export { tokenize } from '@deepseek-ai/dsh-embedder/src/tokenize.ts'
@@ -55,22 +51,7 @@ export function hashVec(text: string, dim: number): number[] {
   return v
 }
 
-/**
- * Query-token-recall fraction (rbi `FakeReranker` mirror): the fraction of
- * the query's tokens that also appear in the text. 0 when the query has no
- * tokens; 1 when every query token is present.
- * @param query - the query whose tokens are checked for recall.
- * @param text - the text whose token set is checked for query-token hits.
- * @returns the fraction of query tokens present in the text (0..1).
- */
-export function fakeRecall(query: string, text: string): number {
-  const qt = new Set(tokenize(query))
-  if (qt.size === 0) return 0
-  const tt = new Set(tokenize(text))
-  let hit = 0
-  for (const t of qt) if (tt.has(t)) hit += 1
-  return hit / qt.size
-}
+
 
 /**
  * Zero-dependency FakeHash embedder (`ctx.embedder` provider). Always
@@ -87,31 +68,12 @@ export class FakeHashEmbedder extends EmbedderService {
     this._dim = config.dim ?? 256
   }
 
-  get dim(): number {
-    return this._dim
-  }
-
   get modelId(): string {
     return `fake-hash-${this._dim}`
   }
 
   async embed(texts: readonly string[]): Promise<EmbedResult> {
     return Promise.resolve(texts.map(t => hashVec(t, this._dim)))
-  }
-}
-
-/**
- * FakeReranker peer (rbi mirror) — query-token-recall fraction scorer. A
- * plain `Reranker` (not a Service): wire it into the retrieval provider's
- * config as the reranker peer-protocol refinement layer.
- */
-export class FakeReranker implements Reranker {
-  get modelId(): string {
-    return 'fake-recall'
-  }
-
-  async rerank(query: string, texts: readonly string[]): Promise<readonly number[]> {
-    return Promise.resolve(texts.map(t => fakeRecall(query, t)))
   }
 }
 

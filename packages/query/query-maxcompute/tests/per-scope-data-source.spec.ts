@@ -117,7 +117,7 @@ function setup(): { ctx: Context; registry: FakeScopeRegistry; creds: PerScopeMe
 }
 
 function newRecordingEngine(ctx: Context, config: Partial<Config> = {}): RecordingEngine {
-  return new RecordingEngine(ctx, { args: [], credMode: 'push', ...config })
+  return new RecordingEngine(ctx, { sidecarPath: 'unused', credMode: 'push', ...config })
 }
 
 describe('MaxComputeQueryEngine per-scope data-source resolution (P4e)', () => {

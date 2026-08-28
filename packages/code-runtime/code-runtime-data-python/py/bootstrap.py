@@ -23,6 +23,7 @@ import json
 import os
 import platform
 import sys
+import tokenize
 import traceback
 from typing import Any
 
@@ -228,6 +229,40 @@ def _check_value_bytes(value: Any, max_bytes: int) -> bool:
         return False
 
 
+def _indent_body(program: str) -> str:
+    """Indent the program body by 2 spaces for inclusion under
+    ``async def __dsh_main__``, without altering whitespace inside multi-line
+    string literals (their interior lines are data, not code)."""
+    lines = program.split("\n")
+    # Lines that fall strictly inside a multi-line string literal must not be
+    # re-indented — their leading whitespace is part of the string value.
+    skip: set[int] = set()
+    string_types: set[int] = {tokenize.STRING}
+    fstring_middle = getattr(tokenize, "FSTRING_MIDDLE", None)
+    if fstring_middle is not None:
+        string_types.add(fstring_middle)
+    try:
+        reader = io.StringIO(program).readline
+        for tok in tokenize.generate_tokens(reader):
+            if tok.type in string_types and tok.end[0] > tok.start[0]:
+                start_row = tok.start[0]  # 1-indexed
+                end_row = tok.end[0]      # 1-indexed
+                for row in range(start_row + 1, end_row + 1):
+                    skip.add(row - 1)  # convert to 0-indexed
+    except tokenize.TokenError:
+        # Unterminated string or other tokenization error: fall back to the
+        # naive per-line indent (the program will fail at compile() anyway).
+        pass
+
+    result: list[str] = []
+    for i, line in enumerate(lines):
+        if i in skip or not line.strip():
+            result.append(line)
+        else:
+            result.append("  " + line)
+    return "\n".join(result)
+
+
 # --- Main execution ---
 
 
@@ -271,9 +306,9 @@ async def _run_program(
     # Compile the program as an async function body
     func_params = ", ".join(param_names) if param_names else ""
     func_source = f"async def __dsh_main__({func_params}):\n"
-    # Indent the program body
-    indented = "\n".join("  " + line if line.strip() else line for line in program.split("\n"))
-    func_source += indented
+    # Indent the program body without altering whitespace inside multi-line
+    # string literals (their interior lines are data, not code).
+    func_source += _indent_body(program)
 
     local_ns: dict[str, Any] = {}
     try:
@@ -305,9 +340,12 @@ async def _run_program(
         _send({"type": "done", "error": {"kind": "invalid-output", "message": "program completion must be lossless JSON"}})
         return
 
-    remaining = logs.remaining_bytes
-    budget = min(max_value_bytes, remaining)
-    if not _check_value_bytes(result, budget):
+    # The completion value is capped against the VALUE budget alone, matching
+    # the host's `checkDoneValue(frame.value, maxValueBytes)` and the separate
+    # log/value budgets documented in Config. Do NOT couple it to the log
+    # budget (`logs.remaining_bytes`): that would cap a 64 MiB value at the
+    # 1 MiB log budget, 64x tighter than the documented maxValueBytes.
+    if not _check_value_bytes(result, max_value_bytes):
         _send({"type": "done", "error": {"kind": "output-limit", "message": f"outer output exceeded {max_value_bytes} bytes"}})
         return
 
@@ -344,7 +382,7 @@ async def _main() -> None:
     logs = LogBuffer(max_log_bytes)
 
     # 6. Set up binding call mechanism
-    pending_calls: dict[int, asyncio.Future[Any]] = {}
+    pending_calls: dict[int, tuple[asyncio.Future[Any], str, type | None]] = {}
     next_id = [1]
 
     async def call_binding(ns_global: str, name: str, args: Any, error_class: type | None) -> Any:
@@ -358,7 +396,7 @@ async def _main() -> None:
         next_id[0] += 1
 
         future: asyncio.Future[Any] = asyncio.get_event_loop().create_future()
-        pending_calls[call_id] = future
+        pending_calls[call_id] = (future, name, error_class)
 
         frame: dict[str, Any] = {"type": "call", "id": call_id, "global": ns_global, "name": name, "args": args}
         _send(frame)
@@ -368,13 +406,20 @@ async def _main() -> None:
 
     def handle_reply(reply: dict[str, Any]) -> None:
         call_id = reply["id"]
-        future = pending_calls.pop(call_id, None)
-        if future is None or future.done():
+        entry = pending_calls.pop(call_id, None)
+        if entry is None:
+            return
+        future, name, error_class = entry
+        if future.done():
             return
         if reply["ok"]:
             future.set_result(reply["value"])
         else:
-            future.set_exception(RuntimeError(reply["message"]))
+            message = reply["message"]
+            if error_class:
+                future.set_exception(error_class(name, message))
+            else:
+                future.set_exception(RuntimeError(message))
 
     # 7. Materialize binding namespaces
     namespaces_dict, error_classes = _make_binding_namespaces(namespaces_decl, call_binding)

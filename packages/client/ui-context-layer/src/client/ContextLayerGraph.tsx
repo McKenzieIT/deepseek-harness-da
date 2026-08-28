@@ -15,7 +15,7 @@
  * or any W11 features.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Graph } from '@antv/g6'
+import { Graph, type IElementEvent } from '@antv/g6'
 import {
   getLayoutConfig,
   getZoomLevel,
@@ -223,13 +223,15 @@ export function ContextLayerGraph({
     })
 
     // Node click handler (G6 v5: node ID is on evt.itemId)
-    graph.on('node:click', (evt: { itemId: string }) => {
-      onNodeClick?.(evt.itemId)
+    graph.on<IElementEvent & { itemId?: string }>('node:click', (evt) => {
+      const itemId = evt.itemId
+      if (itemId) onNodeClick?.(itemId)
     })
 
     // Node double-click handler
-    graph.on('node:dblclick', (evt: { itemId: string }) => {
-      onNodeDoubleClick?.(evt.itemId)
+    graph.on<IElementEvent & { itemId?: string }>('node:dblclick', (evt) => {
+      const itemId = evt.itemId
+      if (itemId) onNodeDoubleClick?.(itemId)
     })
 
     return () => {

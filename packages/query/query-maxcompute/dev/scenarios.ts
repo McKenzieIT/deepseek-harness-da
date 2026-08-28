@@ -49,7 +49,7 @@ interface Booted {
 async function boot(): Promise<Booted> {
   const ctx = new Context()
   ctx.plugin(FakeCredsProvider)
-  const fiber = ctx.plugin(MaxComputeQueryEngine, { args: [SIDECAR] })
+  const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath: SIDECAR })
   // cordis: `await fiber` registers the fiber but does NOT await [Service.init]'s
   // eager connect (runs via _reload/inertia, async); empirically dead=true here
   // without start(). start() guarantees the sidecar is connected before first use.

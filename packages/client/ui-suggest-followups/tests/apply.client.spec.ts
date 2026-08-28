@@ -88,7 +88,7 @@ describe('ui-suggest-followups apply', () => {
     await new Promise((r) => { setTimeout(r, 0) })
     const entry = getEntry(slots)
     const face = entry.inject!('session-1' as never) as unknown as FollowupChipsInjected
-    expect(() => face.submit('hello')).not.toThrow()
+    expect(() => { face.submit('hello') }).not.toThrow()
   })
 
   it('inject face submit is a no-op when conversation is undefined', async () => {
@@ -97,7 +97,7 @@ describe('ui-suggest-followups apply', () => {
     await new Promise((r) => { setTimeout(r, 0) })
     const entry = getEntry(slots)
     const face = entry.inject!('session-1' as never) as unknown as FollowupChipsInjected
-    expect(() => face.submit('hello')).not.toThrow()
+    expect(() => { face.submit('hello') }).not.toThrow()
   })
 
   it('inject face submit calls conversation.send', async () => {

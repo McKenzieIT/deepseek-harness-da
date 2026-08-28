@@ -21,7 +21,7 @@ import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import { PhaseGate, CriticCtxService, type PhaseGateConfig } from './phase-gate.ts'
-import { PipelineConfig } from './types.ts'
+import { PipelineConfig } from './domain.ts'
 
 export { PhaseGate, CriticCtxService, type PhaseGateConfig } from './phase-gate.ts'
 
@@ -51,8 +51,8 @@ export {
   ROUTE_MARKER_REGEX,
   extractRoute,
   freshPhaseGateState,
-  type PhaseGateState,
-} from './types.ts'
+} from './domain.ts'
+export { type PhaseGateState } from './types.ts'
 // critic dedup (P13b Q2 boundary): critic logic + GateResult/CriticCtx live in
 // @deepseek-ai/dsh-nl2sql-engine; phase-gate delegates to sqlSyntaxGate /
 // extractSqlCandidate in src/phase-gate.ts. No re-export (nl2sql-engine owns

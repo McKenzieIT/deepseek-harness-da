@@ -22,6 +22,14 @@
  */
 
 // ── config (ported from RBI v2-baseline.md §1 + phases.py + §5) ──────────
+// LOCKSTEP NOTE: MAX_SQL_PER_TURN + MAX_FEEDBACK_RETRIES are rendered into the
+// GENERATION prompt as literals (src/prompt.ts). Production enforcement of the
+// same budgets lives in the phase-gate's PipelineConfig (max_executions_per_turn
+// / max_llm_calls_per_turn). These constants MUST be kept in lockstep with
+// PipelineConfig — if the gate's enforced budgets change, update these prompt-
+// displayed literals to match, else the model sees stale guidance that diverges
+// from the enforced gate. (Adherence: No-hardcoded-tunables — conservative note
+// path; sourcing them from a shared Config field is deferred to avoid new wiring.)
 export const MAX_SQL_PER_TURN = 8 // v2-baseline.md:5 exploration budget (phases.py:124 max_executions_per_turn)
 /** Max self-correction retries before honest decline (v2-baseline.md §5). */
 export const MAX_FEEDBACK_RETRIES = 2 // v2-baseline.md §5: self-correct N times then decline

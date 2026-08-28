@@ -162,15 +162,6 @@ describe('computeDirectionHint', () => {
 // ── computeConsecutiveNoImprovement ─────────────────────────────────────
 
 describe('computeConsecutiveNoImprovement', () => {
-  function makeStore(runData: Record<string, EvalResultRecord[]>): EvalResultStore {
-    const store = new EvalResultStore()
-    for (const [, records] of Object.entries(runData)) {
-      for (const r of records) store.add(r)
-    }
-    return store
-  }
-
-
   it('returns 0 when less than 2 runs', () => {
     const result = computeConsecutiveNoImprovement(['run-1'], () => {
       throw new Error('should not be called')

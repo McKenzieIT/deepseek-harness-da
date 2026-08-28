@@ -46,15 +46,15 @@ export interface DomainEntry {
 export type Json = string | number | boolean | null | readonly Json[] | { readonly [key: string]: Json }
 
 export interface SchemaGatewayClient {
-  listDomains(): Promise<DomainEntry[]>
-  listTables(): Promise<TableSummary[]>
-  listEvents(): Promise<EventSummary[]>
-  listMetrics(): Promise<MetricSummary[]>
-  getTableDefinition(name: string): Promise<Json | null>
-  getEventDefinition(name: string): Promise<Json | null>
-  getMetricDefinition(name: string): Promise<Json | null>
-  search(query: string, topK?: number): Promise<SchemaSearchHit[]>
-  getCoverageStats(): Promise<CoverageStats>
+  listDomains: () => Promise<DomainEntry[]>
+  listTables: () => Promise<TableSummary[]>
+  listEvents: () => Promise<EventSummary[]>
+  listMetrics: () => Promise<MetricSummary[]>
+  getTableDefinition: (name: string) => Promise<Json | null>
+  getEventDefinition: (name: string) => Promise<Json | null>
+  getMetricDefinition: (name: string) => Promise<Json | null>
+  search: (query: string, topK?: number) => Promise<SchemaSearchHit[]>
+  getCoverageStats: () => Promise<CoverageStats>
 }
 
 interface RemoteResult<T> {
@@ -76,8 +76,17 @@ interface SchemaGatewayRemoteNamespace {
 }
 
 function unwrap<T>(result: RemoteResult<T>): T {
-  if (!result.ok) throw new Error(`schema-gateway RPC failed: ${String(result.error ?? 'unknown')}`)
-  return result.value as T
+  if (!result.ok) {
+    let detail = 'unknown'
+    if (result.error instanceof Error) detail = result.error.message
+    else if (typeof result.error === 'string') detail = result.error
+    throw new Error(`schema-gateway RPC failed: ${detail}`)
+  }
+  // RemoteResult.value is optional: a host { ok: true } with no value would
+  // otherwise surface as undefined typed as T. Treat its absence as a
+  // contract violation rather than returning a phantom value.
+  if (result.value === undefined) throw new Error('schema-gateway RPC failed: ok response missing value')
+  return result.value
 }
 
 export function buildSchemaGatewayClient(remote: SchemaGatewayRemoteNamespace): SchemaGatewayClient {

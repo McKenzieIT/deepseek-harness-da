@@ -1,11 +1,12 @@
 # The dsh-data-agent bundle patch: a patch layer over dsh-base for the
 # data-agent profile. It is additive-only — it disables the code-agent
 # surface (disable, never delete, so an upstream base reorder cannot
-# re-mount it) and reserves an insert block of placeholders for the data
-# capability plugins this profile will mount once their packages ship
-# (P4-P11). It inserts nothing itself yet: a bare specifier to a
-# not-yet-shipped package breaks pnpm install and verify-cordis-config,
-# so each data-plugin row stays commented until its package exists.
+# re-mount it) and mounts the data capability plugins this profile ships
+# (P4-P11). The placeholder-only era is over: the packages below have
+# shipped, so their insert rows are LIVE. Only opt-in / deployment-choice
+# rows (embedder, retrieval, subagent-qoder) stay commented — uncomment
+# + mount a provider to activate those seams; a bare specifier to a
+# not-yet-shipped package still breaks pnpm install and verify-cordis-config.
 #
 # A patch targets a row by id and replaces its whole `config`; `disabled` is
 # an entry flag, so `- id: <row> disabled: true` deactivates a base row
@@ -108,12 +109,11 @@
         # (--maxc-config), so the da does NOT push ODPS creds. credMode:
         # sidecar-self tells the Provider to skip the ctx.credentials
         # pushCredentials pre-check (P4d (b); maxc's config is the single
-        # source of auth). Absolute path because maxc-sidecar.mjs does not
-        # expand `~` (spawn passes it literally to the maxc binary).
-        args:
-          - ./packages/query/query-maxcompute/dev/maxc-sidecar.mjs
-          - --maxc-config
-          - /Users/mckenzie/.maxc/config_ieu_cdm.yaml.bak
+        # source of auth).
+        # S1 decouple: sidecarPath is the dev sidecar; maxcConfigPath is
+        # intentionally absent — deployment supplies it via cordis.yml override
+        # (no machine-specific paths in the bundle).
+        sidecarPath: ./packages/query/query-maxcompute/dev/maxc-sidecar.mjs
         credMode: sidecar-self
         # C: the ODPS project where the K11 DWS/event tables actually live
         # (ieu_cdm). Supersedes the misread config.yaml project.name

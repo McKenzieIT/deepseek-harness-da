@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-eval-runner-service",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.8",
   "description": "Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run.",
   "type": "module",
   "main": "lib/index.js",
@@ -10,8 +10,25 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/eval/eval-runner-service"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",
@@ -19,14 +36,20 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-eval": "workspace:^",
     "@deepseek-ai/dsh-eval-runner": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
     "@deepseek-ai/dsh-query": "workspace:^"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-eval": "workspace:^",
     "@deepseek-ai/dsh-eval-runner": "workspace:^",
-    "@deepseek-ai/dsh-evidence-query": "workspace:^"
+    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@deepseek-ai/dsh-query": "workspace:^"
   }
 }

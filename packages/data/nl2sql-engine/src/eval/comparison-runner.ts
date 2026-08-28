@@ -15,6 +15,7 @@ import type { RelationGraphLike } from '../ontology.ts'
 import type { DataSourceDoc } from '../bm25-linking.ts'
 import type { QueryOutcome } from '../types.ts'
 
+/** The comparison eval result: graph-on vs graph-off eval results + whether join constraints were injected. */
 export interface ComparisonResult {
   readonly withGraph: EvalResult
   readonly withoutGraph: EvalResult
@@ -32,6 +33,8 @@ export interface ComparisonResult {
  * injected into the prompt when the graph is on (`joinConstraintsInjected`),
  * and the undeclared-JOIN critic fires on bad joins. A real accuracy delta
  * requires live-LLM eval (P11); this runner surfaces the mechanism.
+ * @param options - the eval case set, data sources, and live relation graph to compare.
+ * @returns the graph-on vs graph-off comparison result (pass-rates + whether join constraints were injected).
  */
 export async function runComparisonEval(options: {
   cases?: readonly EvalCase[]

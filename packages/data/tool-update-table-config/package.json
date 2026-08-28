@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-update-table-config",
   "description": "Model-facing update_table_config tool: write a per-table ODPS project override to the semantic-layer substrate for the data agent's self-evolution loop (admin-only; Tier-2 audited)",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

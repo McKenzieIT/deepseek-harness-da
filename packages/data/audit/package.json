@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-audit",
   "description": "Per-user audit store (ctx.audit) for the DeepSeek Harness: relational node:sqlite for tool/session/guard audit + G3 per-user Qoder Credits reconciliation",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -28,7 +28,6 @@
   "files": [
     "lib/index.js",
     "lib/invariant.js",
-    "lib/types/**/*.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

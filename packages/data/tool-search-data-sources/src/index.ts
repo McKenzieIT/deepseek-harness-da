@@ -44,12 +44,18 @@ export interface Config {
   readonly topK?: number
   /** Enable LLM query expansion before BM25 retrieval (P15a). */
   readonly queryExpansion?: boolean
+  /** LLM provider route for query expansion (defaults to `aga`; P15a). */
+  readonly expansionProvider?: string
+  /** LLM model id for query expansion (defaults to `qwen-flash`; P15a). */
+  readonly expansionModel?: string
 }
 
 /** Runtime configuration schema for the search_data_sources plugin. */
 export const Config: z<Config> = z.object({
   topK: z.number().default(20),
   queryExpansion: z.boolean().default(true),
+  expansionProvider: z.string().default('aga'),
+  expansionModel: z.string().default('qwen-flash'),
 })
 
 /** A ranked candidate data source returned to the model. */
@@ -332,6 +338,8 @@ function applyGraphExpansionAndJoins(
 export function apply(ctx: Context, config: Config = {}): void {
   const defaultTopK = config.topK ?? 20
   const expansionEnabled = config.queryExpansion !== false
+  const expansionProvider = config.expansionProvider
+  const expansionModel = config.expansionModel
   // Q1 thin default: empty corpus until P6b `ctx.schema` ships. With no
   // corpus, BM25 returns no candidates - callable but unwired, not a broken
   // mount. Swap to ctx.schema.discover when P6b ships.
@@ -415,7 +423,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       // Soft-probe ctx.llm (same discipline as schema/retrieval): skip when no
       // LLM provider is mounted or when expansion is disabled via config.
       const query = expansionEnabled
-        ? await expandQuery(ctx, args.query)
+        ? await expandQuery(ctx, args.query, { provider: expansionProvider, model: expansionModel, signal: exec.signal })
         : args.query
       // P5b soft-fallback swap: when the `ctx.retrieval` seam is registered
       // (opt-in; the bundle mounts `dsh-retrieval-inproc`), use the real async

@@ -1,7 +1,7 @@
 import type { GraphData, GraphDataOpts } from './types.ts'
 
 export interface GraphDataClient {
-  fetchGraphData(opts?: GraphDataOpts): Promise<GraphData>
+  fetchGraphData: (opts?: GraphDataOpts) => Promise<GraphData>
 }
 
 interface RemoteResult<T> {
@@ -15,8 +15,17 @@ interface GraphDataRemoteNamespace {
 }
 
 function unwrap<T>(result: RemoteResult<T>): T {
-  if (!result.ok) throw new Error(`getGraphData RPC failed: ${String(result.error ?? 'unknown')}`)
-  return result.value as T
+  if (!result.ok) {
+    let detail = 'unknown'
+    if (result.error instanceof Error) detail = result.error.message
+    else if (typeof result.error === 'string') detail = result.error
+    throw new Error(`getGraphData RPC failed: ${detail}`)
+  }
+  // RemoteResult.value is optional: a host { ok: true } with no value would
+  // otherwise surface as undefined typed as T. Treat its absence as a
+  // contract violation rather than returning a phantom value.
+  if (result.value === undefined) throw new Error('getGraphData RPC failed: ok response missing value')
+  return result.value
 }
 
 export function buildGraphDataClient(remote: GraphDataRemoteNamespace): GraphDataClient {

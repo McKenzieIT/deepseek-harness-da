@@ -6,6 +6,7 @@ import {
   formatEditDefinition,
   type EditDefinitionResult,
 } from '../src/index.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
 
 // ── Mock SemanticLayerService ───────────────────────────────────────────────
 
@@ -80,9 +81,9 @@ describe('tool-edit-definition', () => {
       const result = applyPatch(existing, patch)
       const cols = result.columns as Array<Record<string, unknown>>
       expect(cols).toHaveLength(2)
-      expect(cols[0].comment).toBe('updated comment')
-      expect(cols[0].type).toBe('STRING')
-      expect(cols[1].comment).toBe('keep')
+      expect(cols[0]!.comment).toBe('updated comment')
+      expect(cols[0]!.type).toBe('STRING')
+      expect(cols[1]!.comment).toBe('keep')
     })
 
     it('merges columns by name (new column appended)', () => {
@@ -95,7 +96,7 @@ describe('tool-edit-definition', () => {
       const result = applyPatch(existing, patch)
       const cols = result.columns as Array<Record<string, unknown>>
       expect(cols).toHaveLength(2)
-      expect(cols[1].name).toBe('col_new')
+      expect(cols[1]!.name).toBe('col_new')
     })
 
     it('skips columns without a name field', () => {
@@ -122,10 +123,10 @@ describe('tool-edit-definition', () => {
       const result = applyPatch(existing, patch)
       const refs = result.dimension_refs as Array<Record<string, unknown>>
       expect(refs).toHaveLength(1)
-      expect(refs[0].dim_table).toBe('dim_user')
-      expect(refs[0].join_keys).toEqual(['uid'])
+      expect(refs[0]!.dim_table).toBe('dim_user')
+      expect(refs[0]!.join_keys).toEqual(['uid'])
       // derivation preserved from existing (not in patch)
-      expect(refs[0].derivation).toBe('pk')
+      expect(refs[0]!.derivation).toBe('pk')
     })
 
     it('merges dimension_refs by dim_table (new ref appended)', () => {
@@ -138,7 +139,7 @@ describe('tool-edit-definition', () => {
       const result = applyPatch(existing, patch)
       const refs = result.dimension_refs as Array<Record<string, unknown>>
       expect(refs).toHaveLength(2)
-      expect(refs[1].dim_table).toBe('dim_date')
+      expect(refs[1]!.dim_table).toBe('dim_date')
     })
 
     it('skips dimension_refs without a dim_table field', () => {
@@ -175,14 +176,14 @@ describe('tool-edit-definition', () => {
     })
 
     it('returns error for invalid asset name', () => {
-      const schema = createMockSchema() as unknown
+      const schema = createMockSchema() as unknown as SemanticLayerService
       const { result } = computeEdit(schema, '../bad', { description: 'x' })
       expect(result.applied).toBe(false)
       expect(result.message).toContain('invalid asset name')
     })
 
     it('returns error when asset not found', () => {
-      const schema = createMockSchema() as unknown
+      const schema = createMockSchema() as unknown as SemanticLayerService
       const { result } = computeEdit(schema, 'nonexistent', { description: 'x' })
       expect(result.applied).toBe(false)
       expect(result.message).toContain('no table, event, or metric')
@@ -199,7 +200,7 @@ describe('tool-edit-definition', () => {
             confirmation: { status: 'confirmed' },
           },
         },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
       const { result, merged, kind } = computeEdit(schema, 'dws_user_daily', {
         description: 'Daily user metrics',
@@ -227,7 +228,7 @@ describe('tool-edit-definition', () => {
             confirmation: { status: 'confirmed' },
           },
         },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
       const { result, merged, kind } = computeEdit(schema, 'user_login', {
         description: 'User login event',
@@ -249,7 +250,7 @@ describe('tool-edit-definition', () => {
             aggregation: 'count_distinct',
           },
         },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
       const { result } = computeEdit(schema, 'dws_user_daily__dau', {
         description: 'attempt',
@@ -269,7 +270,7 @@ describe('tool-edit-definition', () => {
             confirmation: { status: 'confirmed', confirmed_by: 'human' },
           },
         },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
       // Even if the patch tries to set confirmation to something else. Note:
       // the patch's `confirmation` replaces the existing one in applyPatch
@@ -300,7 +301,7 @@ describe('tool-edit-definition', () => {
             },
           },
         },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
       const { merged } = computeEdit(schema, 'tbl', { description: 'updated desc' })
 
@@ -321,7 +322,7 @@ describe('tool-edit-definition', () => {
             confirmation: { status: 'confirmed', confirmed_by: 'human' },
           },
         },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
       const { merged } = computeEdit(schema, 'user_login', { description: 'new' })
 
@@ -334,9 +335,9 @@ describe('tool-edit-definition', () => {
     it('rejects non-object patch', () => {
       const schema = createMockSchema({
         tables: { tbl: { table_name: 'tbl' } },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
-      const { result } = computeEdit(schema, 'tbl', 'not an object' as unknown)
+      const { result } = computeEdit(schema, 'tbl', 'not an object' as unknown as Record<string, unknown>)
       expect(result.applied).toBe(false)
       expect(result.message).toContain('patch must be a non-null object')
     })
@@ -381,7 +382,7 @@ describe('tool-edit-definition', () => {
             columns: [],
           },
         },
-      }) as unknown
+      }) as unknown as SemanticLayerService
 
       const { result, merged } = computeEdit(schema, 'tbl', { description: 'after' })
       expect(result.applied).toBe(true)

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-management-session",
-  "description": "Dedicated management agent session for the full-screen graph management UI \u2014 creates a scoped session under the semantic-layer-management preset with read-only parent context reference",
-  "version": "0.1.0-rc.1",
+  "description": "Dedicated management agent session for the full-screen graph management UI — creates a scoped session under the semantic-layer-management preset with read-only parent context reference",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

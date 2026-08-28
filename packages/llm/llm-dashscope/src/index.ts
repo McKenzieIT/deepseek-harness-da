@@ -41,7 +41,6 @@ export {
   DashScopeAdapter,
 } from './adapter.ts'
 export type { DashScopeAdapterOptions, DashScopeCatalogModel, DashScopeConnectionOptions } from './adapter.ts'
-export type { RequestDefaults } from './serialize.ts'
 export type * from './types.ts'
 
 export const name = 'llm-dashscope'
@@ -178,7 +177,6 @@ export function resolveAdapterOptions(config: Config, environment?: LaunchEnviro
     baseURL: config.baseURL
       ?? environment?.get(BASE_URL_ENV)?.value
       ?? PUBLIC_BASE_URL,
-    defaults: {},
     maxTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
     defaultContextWindow: config.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
     models: resolveModels(config.models),
@@ -196,7 +194,12 @@ async function discoverModels(request: LlmModelDiscoveryRequest): Promise<LlmDis
   if ((request.baseURL ?? '').length === 0) {
     throw new LlmError('DashScope model discovery needs a baseURL', 'INVALID_DISCOVERY')
   }
-  const origin = new URL(request.baseURL as string).origin
+  let origin: string
+  try {
+    origin = new URL(request.baseURL as string).origin
+  } catch (error: unknown) {
+    throw new LlmError('DashScope model discovery baseURL is not a valid URL', 'INVALID_DISCOVERY', { cause: error })
+  }
   let response: Response
   try {
     response = await fetch(`${origin}/api/v1/models`, {
@@ -209,7 +212,12 @@ async function discoverModels(request: LlmModelDiscoveryRequest): Promise<LlmDis
   if (!response.ok) {
     throw new LlmError(`DashScope /models HTTP ${response.status}`, httpErrorCode(response.status))
   }
-  const data = await response.json() as { models?: string[] }
+  let data: { models?: string[] }
+  try {
+    data = await response.json() as { models?: string[] }
+  } catch (error: unknown) {
+    throw new LlmError(`DashScope /models response from ${origin} was not valid JSON`, 'TRANSPORT', { cause: error })
+  }
   const seen = new Set<string>()
   const models: LlmDiscoveredModel[] = []
   for (const id of data.models ?? []) {

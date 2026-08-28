@@ -24,25 +24,48 @@ const EXPANSION_SYSTEM_PROMPT =
   + '用户：大R用户有多少\n'
   + '输出：大R 大R玩家 大R付费账号 高付费 重度付费 big_r pay_order 付费订单 累计付费 高消费'
 
-const EXPANSION_MODEL = 'qwen-flash'
-const EXPANSION_PROVIDER = 'aga'
+const DEFAULT_EXPANSION_MODEL = 'qwen-flash'
+const DEFAULT_EXPANSION_PROVIDER = 'aga'
+
+/** Options for {@link expandQuery}. */
+export interface ExpandQueryOptions {
+  /** LLM provider route for the expansion call (defaults to `aga`). */
+  readonly provider?: string | undefined
+  /** LLM model id for the expansion call (defaults to `qwen-flash`). */
+  readonly model?: string | undefined
+  /** Caller cancellation forwarded to the LLM stream so an abort halts the
+   * auxiliary expansion round-trip, not just the boundary check in `execute`. */
+  readonly signal?: AbortSignal
+}
 
 /**
  * Expand a natural-language question into a BM25-friendly query using ctx.llm.
- * Returns the original question when ctx.llm is unavailable or on any error.
+ *
+ * @param ctx - Cordis context soft-probed for `ctx.llm` (returns the original
+ * `question` when no LLM provider is mounted).
+ * @param question - the natural-language data question to expand for BM25 recall.
+ * @param opts - deployment-varying LLM route (`provider`/`model`) and the caller
+ * abort `signal` forwarded into the LLM stream.
+ * @returns the expanded BM25-friendly query, or the original `question` when
+ * `ctx.llm` is unavailable or on any error (graceful degradation).
  */
-export async function expandQuery(ctx: Context, question: string): Promise<string> {
+export async function expandQuery(
+  ctx: Context,
+  question: string,
+  opts: ExpandQueryOptions = {},
+): Promise<string> {
   const llm = ctx.get('llm') as { stream?(options: unknown): AsyncIterable<unknown> } | undefined
   if (llm === undefined || typeof llm.stream !== 'function') return question
 
   try {
     const assembler = new BlockAssembler()
     const options = {
-      provider: EXPANSION_PROVIDER,
-      model: EXPANSION_MODEL,
+      provider: opts.provider ?? DEFAULT_EXPANSION_PROVIDER,
+      model: opts.model ?? DEFAULT_EXPANSION_MODEL,
       system: EXPANSION_SYSTEM_PROMPT,
       temperature: 0.1,
       maxTokens: 200,
+      signal: opts.signal,
       messages: [
         createUserMessage({
           content: [{ type: 'text' as const, text: question }],

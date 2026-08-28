@@ -9,7 +9,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
+import type { GenericCallView, GenericResultView, JsonValue, ToolResult } from '@deepseek-ai/dsh-tools'
 import {
   loadTables,
   loadEvents,
@@ -31,12 +31,14 @@ export interface CoverageStats {
   readonly confirmed_count: number
   readonly draft_count: number
   readonly domain_counts: Record<string, number>
+  readonly [key: string]: JsonValue
 }
 
 export interface GetCoverageResult {
   readonly ok: boolean
   readonly stats?: CoverageStats
   readonly message?: string
+  readonly [key: string]: JsonValue
 }
 
 export function getCoverageResult(schema: SemanticLayerService | undefined): GetCoverageResult {
@@ -78,7 +80,14 @@ export function getCoverageResult(schema: SemanticLayerService | undefined): Get
 
   return {
     ok: true,
-    stats: { table_count: tableCount, event_count: eventCount, metric_count: metricCount, confirmed_count: confirmed, draft_count: draft, domain_counts: domainCounts },
+    stats: {
+      table_count: tableCount,
+      event_count: eventCount,
+      metric_count: metricCount,
+      confirmed_count: confirmed,
+      draft_count: draft,
+      domain_counts: domainCounts,
+    },
   }
 }
 
@@ -117,16 +126,16 @@ export function apply(ctx: Context, _config: Config = {}): void {
         },
       },
       render: (_args, value) => [{ type: 'text', text: formatGetCoverage(value as unknown as GetCoverageResult) }],
-      presentationMeta: (_args, value) => {
+      presentationMeta: (_args, value): JsonValue => {
         const v = value as unknown as GetCoverageResult
-        if (!v.ok) return { ok: false, message: v.message }
-        return { ok: true, stats: v.stats }
+        if (!v.ok) return { ok: false, ...(v.message !== undefined ? { message: v.message } : {}) }
+        return { ok: true, ...(v.stats !== undefined ? { stats: v.stats } : {}) }
       },
     },
     async execute(_args, exec) {
       if (exec.signal.aborted) throw new Error('get_coverage aborted')
-      const schema = ctx.get('schema') as SemanticLayerService | undefined
-      return getCoverageResult(schema) as any
+      const schema = ctx.get('schema')
+      return Promise.resolve(getCoverageResult(schema))
     },
     presentCall(): GenericCallView {
       return {

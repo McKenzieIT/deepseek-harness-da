@@ -37,13 +37,19 @@ export interface TimeParams {
  * Is a retrieval hit a metric corpus item? (the corpus item's `payload` is the
  * MetricDefinition; its `kind` === 'metric' distinguishes it from table defs,
  * whose `kind` is 'dws'/'dim', and events, which have no `kind`.)
+ * @param hit - the retrieval hit to test.
+ * @returns true when the hit's payload kind is 'metric'.
  */
 export function isMetricHit(hit: RetrievalHit): boolean {
   const inner = hit.payload?.payload as { kind?: string } | undefined
   return inner?.kind === 'metric'
 }
 
-/** Extract the MetricDefinitionLite payload from a metric retrieval hit. */
+/**
+ * Extract the MetricDefinitionLite payload from a metric retrieval hit.
+ * @param hit - the retrieval hit to unwrap.
+ * @returns the metric definition, or null when the hit is not a metric hit.
+ */
 export function metricFromHit(hit: RetrievalHit): MetricDefinitionLite | null {
   if (!isMetricHit(hit)) return null
   const outer = hit.payload
@@ -55,6 +61,8 @@ export function metricFromHit(hit: RetrievalHit): MetricDefinitionLite | null {
  * injected as context for the LLM); no metric => null (normal LLM path). The
  * Level 2.5 deterministic arm was removed in M1b (deterministically wrong on
  * SUM-on-_df snapshot metrics — over-counting; ~0% real-case trigger rate).
+ * @param candidates - the BM25 retrieval hits to route on.
+ * @returns 'level-2' when a metric hit is present, or null for the normal LLM path.
  */
 export function routeMetric(candidates: readonly RetrievalHit[]): 'level-2' | null {
   const metricHits = candidates.filter(isMetricHit)
@@ -71,6 +79,9 @@ function fmt(dt: Date): string {
  * Extract time parameters from a question relative to a reference `today`
  * (YYYYMMDD; deterministic — no `Date.now`). Supports 昨天/今天/前天/上周/本月
  * + explicit YYYY-MM-DD / YYYYMMDD. Returns {} when nothing recognized.
+ * @param question - the natural-language question to extract time params from.
+ * @param today - the reference date (YYYYMMDD).
+ * @returns the extracted time parameters, or {} when nothing is recognized / today is invalid.
  */
 export function extractTimeParams(question: string, today: string): TimeParams {
   if (!today || !/^\d{8}$/.test(today)) return {}
@@ -114,6 +125,8 @@ export function extractTimeParams(question: string, today: string): TimeParams {
  * Generate a time-filter hint based on the host table's partition and granularity info.
  * Snapshot tables (_df / 快照 / 全量) get a MAX_PT() hint; daily-partitioned tables
  * get a ds WHERE hint; tables without ds partition get no hint.
+ * @param hostTable - the host table's partition + granularity info.
+ * @returns the time-filter hint string, or '' when the table has no ds partition.
  */
 export function buildTimeFilterHint(hostTable: HostTableInfo): string {
   const hasDs = hostTable.partitions?.some(p =>
@@ -128,7 +141,13 @@ export function buildTimeFilterHint(hostTable: HostTableInfo): string {
   return '\n时间过滤：该指标按 ds 分区过滤（日粒度），使用 WHERE ds = \'...\' 或 ds BETWEEN 限制时间范围。'
 }
 
-/** Render the metric context line for a Level 2 (mixed) prompt (D3). */
+/**
+ * Render the metric context line for a Level 2 (mixed) prompt (D3).
+ * @param metric - the metric definition to render.
+ * @param params - the extracted time parameters for the WHERE hint.
+ * @param hostTable - optional host-table info for the time-filter hint.
+ * @returns the metric context line (definition + optional time-filter hint).
+ */
 export function buildMetricContext(metric: MetricDefinitionLite, params: TimeParams, hostTable?: HostTableInfo): string {
   const source = metric.computation.metadata.source
   const expr = metric.computation.sql

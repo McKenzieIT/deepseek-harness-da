@@ -15,7 +15,7 @@ import type { SessionEventSource, GraphUpdate } from './narration-gate.ts'
 export interface ContextLayerViewProps {
   data: GraphData | null
   messages: ChatMessage[]
-  onSendMessage: (text: string) => void
+  onSendMessage?: (text: string) => void
   isStreaming?: boolean
   eventSource?: SessionEventSource | null
   onInsertReference?: (assetName: string) => void
@@ -102,7 +102,7 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
               <NodeDetailPanel
                 node={selectedNode}
                 onClose={handleCloseDetail}
-                onInsertReference={onInsertReference}
+                {...(onInsertReference ? { onInsertReference } : {})}
               />
             </div>
           )}
@@ -137,7 +137,7 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
         collapsed={chatCollapsed}
         onToggleCollapse={handleToggleChat}
         messages={messages}
-        onSendMessage={onSendMessage}
+        {...(onSendMessage ? { onSendMessage } : {})}
         isStreaming={isStreaming}
         eventSource={eventSource}
         onNarrationRelease={handleNarrationRelease}

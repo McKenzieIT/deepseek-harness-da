@@ -16,7 +16,7 @@ async function setup() {
   return ctx
 }
 
-function queryDataTool(result: Record<string, unknown>) {
+function queryDataTool(result: Record<string, JsonValue>) {
   return defineTool({
     name: 'query_data',
     description: 'execute SQL',
@@ -124,6 +124,25 @@ describe('tools/post-execute hook', () => {
     expect(cached!.columns).toEqual(['x'])
     expect(cached!.rows).toEqual([[42]])
     expect(cached!.metadata?.sql).toBe('SELECT x FROM t WHERE ds=1')
+  })
+
+  it('overwrites (no isError) when the same SQL re-runs with changed rows', async () => {
+    const ctx = await setup()
+    const sql = 'SELECT x FROM t WHERE ds=1'
+    // first run: row [42]
+    ctx.tools.register(queryDataTool({ state: 'completed', sql, columns: ['x'], rows: [[42]], rowCount: 1 }))
+    const r1 = await ctx.tools.execute({ signal: testSignal, callId: CallId('re-1'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
+    expect(r1.isError).toBe(false)
+    const id1 = (r1.value as Record<string, unknown>).result_id as string
+    expect(ctx.resultCache.get(id1)?.rows).toEqual([[42]])
+
+    // second run, SAME sql, DIFFERENT rows (data changed)
+    ctx.tools.register(queryDataTool({ state: 'completed', sql, columns: ['x'], rows: [[99]], rowCount: 1 }))
+    const r2 = await ctx.tools.execute({ signal: testSignal, callId: CallId('re-2'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
+    expect(r2.isError).toBe(false)               // D8-2: must NOT error
+    const id2 = (r2.value as Record<string, unknown>).result_id as string
+    expect(id2).toBe(id1)                          // same SQL -> same qr_ id
+    expect(ctx.resultCache.get(id2)?.rows).toEqual([[99]])  // fresh, not stale
   })
 
   it('does not capture failed query_data results', async () => {

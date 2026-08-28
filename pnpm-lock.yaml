@@ -2006,6 +2006,9 @@ importers:
       '@antv/g6':
         specifier: ^5.0.0
         version: 5.1.1
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:^
+        version: link:../locale
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -2013,18 +2016,15 @@ importers:
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:^
         version: link:../connection
-      '@deepseek-ai/dsh-client-locale':
-        specifier: workspace:^
-        version: link:../locale
       '@deepseek-ai/dsh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
       '@deepseek-ai/dsh-client-ui-layout':
         specifier: workspace:^
         version: link:../ui-layout
-      '@deepseek-ai/dsh-client-ui-slots':
+      '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
-        version: link:../ui-slots
+        version: link:../../runtime-diagnostics/invariants
       '@testing-library/react':
         specifier: ^16.0.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -2594,12 +2594,6 @@ importers:
       '@deepseek-ai/dsh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: workspace:^
-        version: link:../ui-primitives
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: workspace:^
-        version: link:../ui-slots
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
@@ -2628,12 +2622,6 @@ importers:
       '@deepseek-ai/dsh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: workspace:^
-        version: link:../ui-primitives
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: workspace:^
-        version: link:../ui-slots
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
@@ -2823,6 +2811,9 @@ importers:
       '@deepseek-ai/dsh-goal':
         specifier: workspace:^
         version: link:../../goal/goal
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -3183,10 +3174,6 @@ importers:
         version: 18.3.1
 
   packages/client/ui-suggest-followups:
-    dependencies:
-      clsx:
-        specifier: ^2.0.0
-        version: 2.1.1
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -3200,9 +3187,6 @@ importers:
       '@deepseek-ai/dsh-client-ui-conversation':
         specifier: workspace:^
         version: link:../ui-conversation
-      '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: workspace:^
-        version: link:../ui-primitives
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:^
         version: link:../ui-slots
@@ -4315,6 +4299,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-query-maxcompute':
         specifier: workspace:^
         version: link:../../query/query-maxcompute
@@ -4327,9 +4314,15 @@ importers:
       '@deepseek-ai/dsh-audit':
         specifier: workspace:^
         version: link:../audit
+      '@deepseek-ai/dsh-eval-runner-service':
+        specifier: workspace:^
+        version: link:../../eval/eval-runner-service
       '@deepseek-ai/dsh-evidence-query':
         specifier: workspace:^
         version: link:../evidence-query
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-management-session':
         specifier: workspace:^
         version: link:../management-session
@@ -4510,6 +4503,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
@@ -4564,6 +4560,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
@@ -4692,16 +4691,19 @@ importers:
 
   packages/data/tool-reachability-delta:
     dependencies:
-      '@deepseek-ai/cordis':
-        specifier: workspace:*
-        version: link:../../../vendor/cordis
-      '@deepseek-ai/dsh-tools':
-        specifier: workspace:*
-        version: link:../../core/tools
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-evidence-query':
+        specifier: workspace:^
+        version: link:../evidence-query
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
       vitest:
         specifier: ^3.0.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(jiti@2.7.0)(jsdom@29.1.1)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -4750,18 +4752,6 @@ importers:
         specifier: ^3.2.1
         version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(jiti@2.7.0)(jsdom@29.1.1)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
 
-  packages/data/tool-scope-routing:
-    devDependencies:
-      '@deepseek-ai/dsh-nl2sql-engine':
-        specifier: workspace:^
-        version: link:../nl2sql-engine
-      '@deepseek-ai/dsh-query-maxcompute':
-        specifier: workspace:^
-        version: link:../../query/query-maxcompute
-      '@deepseek-ai/dsh-semantic-layer':
-        specifier: workspace:^
-        version: link:../semantic-layer
-
   packages/data/tool-search-data-sources:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -4771,6 +4761,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
@@ -4825,6 +4818,9 @@ importers:
       '@deepseek-ai/dsh-eval-runner':
         specifier: workspace:^
         version: link:../../eval/eval-runner
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
@@ -4915,6 +4911,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
 
   packages/embedder/embedder-fakehash:
     dependencies:
@@ -5009,7 +5008,7 @@ importers:
         version: 22.20.0
 
   packages/eval/eval-runner-service:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
@@ -5019,9 +5018,9 @@ importers:
       '@deepseek-ai/dsh-eval-runner':
         specifier: workspace:^
         version: link:../eval-runner
-      '@deepseek-ai/dsh-evidence-query':
+      '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
-        version: link:../../data/evidence-query
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
@@ -5857,6 +5856,9 @@ importers:
       '@deepseek-ai/dsh-goal':
         specifier: workspace:^
         version: link:../goal
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-system-prompt':
         specifier: workspace:^
         version: link:../../core/system-prompt
@@ -5882,6 +5884,9 @@ importers:
       '@deepseek-ai/dsh-goal':
         specifier: workspace:^
         version: link:../goal
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session
@@ -7165,6 +7170,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
 
   packages/retrieval/retrieval-inproc:
     dependencies:

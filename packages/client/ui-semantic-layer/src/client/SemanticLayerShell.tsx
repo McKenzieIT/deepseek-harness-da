@@ -27,6 +27,7 @@ import css from './SemanticLayerShell.module.css'
 import { DashboardView } from './DashboardView.tsx'
 import { computeEffectiveMode, type LayoutMode } from './hooks/useLayoutMode.ts'
 import type { EvidenceQueryClient } from './hooks/useEvidenceQuery.ts'
+import { useEvidenceMetrics } from './hooks/useEvidenceMetrics.ts'
 
 export interface SemanticLayerShellProps {
   /** Whether the sidebar renders wide content (false = 56px rail). */
@@ -50,10 +51,12 @@ export function SemanticLayerShell({
   t,
   openOrCreateSession,
   layoutMode = 'auto',
-  evalRunCount = 0,
+  evalRunCount: evalRunCountProp = 0,
   evidenceClient,
   onNavigateToWorkspace,
 }: SemanticLayerShellProps) {
+  const metrics = useEvidenceMetrics(evidenceClient ?? null)
+  const evalRunCount = evidenceClient ? metrics.evalRunCount : evalRunCountProp
   const effectiveMode = computeEffectiveMode(layoutMode, evalRunCount)
 
   // When effective mode is 'A', render the dashboard view as the default

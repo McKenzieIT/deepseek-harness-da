@@ -79,6 +79,9 @@ const TOOLS = {
   getState: 'get_state',
 } as const
 
+/** The three valid QueryOutcome states, for boundary validation of untrusted sidecar JSON. */
+const QUERY_STATES: ReadonlySet<string> = new Set(['completed', 'pending', 'failed'])
+
 /**
  * Permissive tools/call result schema (mirror mcp-client `tools.ts`): the
  * sidecar returns a string-keyed object; this bridge owns JSON-value
@@ -88,12 +91,19 @@ const TOOLS = {
  */
 const RawCallToolResultSchema = zod.record(zod.string(), zod.unknown())
 
-/** Plugin config (all optional except `args` — `static Config` supplies defaults). */
+/** Plugin config — `sidecarPath` is required; `static Config` supplies defaults for the rest. */
 export interface Config {
   /** Sidecar executable (default: the node binary; production: `python`). */
   command?: string
-  /** Sidecar args — the sidecar script path plus its args. Required. */
-  args: string[]
+  /** Path to the sidecar script (the first spawn arg). Required. */
+  sidecarPath: string
+  /**
+   * ODPS config path passed to the sidecar via `--maxc-config`. Deployment-
+   * overridable — the bundle does NOT hardcode a machine-specific path; supply
+   * via cordis.yml override or env (S1 decouple). Empty string = not configured;
+   * spawn fails loud to surface misconfiguration early.
+   */
+  maxcConfigPath?: string
   /** Sidecar spawn cwd (default: process.cwd()). */
   cwd?: string
   /** Per tools/call timeout in ms; the SDK sends notifications/cancelled + rejects. */
@@ -128,7 +138,8 @@ type ResolvedConfig = Required<Config>
 
 export const Config: z<Config> = z.object({
   command: z.string().default(process.execPath),
-  args: z.array(z.string()),
+  sidecarPath: z.string(),
+  maxcConfigPath: z.string().default(''),
   cwd: z.string().default(process.cwd()),
   toolCallTimeoutMs: z.number().min(0).default(60_000),
   crashLoopMaxAttempts: z.number().min(0).default(5),
@@ -193,6 +204,10 @@ export class MaxComputeQueryEngine extends QueryEngine {
   /** Bounded re-spawn counter (G4 Q1 crash-loop). */
   private crashAttempts = 0
   private disposed = false
+  /** True during an intentional stopSidecar so onclose does not count a crash (G4 Q1 operational bound). */
+  private stopping = false
+  /** Post-connect (operational) crash count, gated before re-spawn (G4 Q1 bound). */
+  private operationalCrashes = 0
 
   constructor(ctx: Context, public config: Config) {
     super(ctx)
@@ -224,6 +239,18 @@ export class MaxComputeQueryEngine extends QueryEngine {
   private async ensureConnected(): Promise<Client> {
     if (!this.disposed && this.client !== undefined && !this.dead) return this.client
     if (this.disposed) throw new Error('query-maxcompute is disposed')
+    // G4 Q1 operational crash-loop bound: a flapping sidecar (starts cleanly,
+    // crashes mid-operation, respawns on the next call) is rate-limited and
+    // eventually abandoned, mirroring the spawn-failure ceiling. Linear backoff
+    // prevents a respawn storm; the ceiling reuses crashLoopMaxAttempts.
+    if (this.operationalCrashes > this.cfg.crashLoopMaxAttempts) {
+      throw new Error(
+        `query-maxcompute: sidecar crash-loop exceeded ${this.cfg.crashLoopMaxAttempts} operational crashes; aborting re-spawn`,
+      )
+    }
+    if (this.operationalCrashes > 0) {
+      await new Promise<void>((resolve) => { setTimeout(resolve, Math.min(this.operationalCrashes * 1000, 30_000)) })
+    }
     if (this.connectingPromise !== undefined) return this.connectingPromise // concurrent callers await one re-spawn
     this.connectingPromise = this.spawnAndConnect()
     try {
@@ -236,10 +263,20 @@ export class MaxComputeQueryEngine extends QueryEngine {
   private async spawnAndConnect(): Promise<Client> {
     // Stop any old sidecar first (reuse stdio close() terminal state — G4 NEW边界(5)).
     await this.stopSidecar()
+    // S1 fail-loud: sidecar-self credMode requires maxcConfigPath for self-auth.
+    if (this.cfg.credMode === 'sidecar-self' && !this.cfg.maxcConfigPath) {
+      throw new Error(
+        'query-maxcompute: Config.maxcConfigPath is required when credMode is "sidecar-self" — supply the ODPS config path via deployment cordis.yml override',
+      )
+    }
+    const sidecarArgs: string[] = [this.cfg.sidecarPath]
+    if (this.cfg.maxcConfigPath) {
+      sidecarArgs.push('--maxc-config', this.cfg.maxcConfigPath)
+    }
     // Spawn scrubbed: NO creds in spawn env (PAT not in process.env; intranet-security-first).
     this.transport = new StdioClientTransport({
       command: this.cfg.command,
-      args: this.cfg.args,
+      args: sidecarArgs,
       env: scrubbedParentEnv(),
       cwd: this.cfg.cwd,
     })
@@ -251,7 +288,17 @@ export class MaxComputeQueryEngine extends QueryEngine {
     // G4 NEW边界(6): onclose clears state (in-flight already rejected by SDK _onclose);
     // onerror is callback-only (no state clear, no reject — EPIPE's micro-window closes via onclose).
     this.client.onclose = () => {
+      // Capture connected state before clearing: a connect-phase close (dead was
+      // never set false) is a spawn failure counted by `crashAttempts` in the
+      // catch below — do NOT double-count it into `operationalCrashes`.
+      const wasConnected = !this.dead
       this.dead = true
+      // Count operational (post-connect) crashes toward the re-spawn bound. The
+      // spawn-failure `crashAttempts` counter only bounds sidecar-won't-start;
+      // an operational flap (start → crash → next call re-spawns → repeat) would
+      // otherwise respawn indefinitely. `stopping` excludes intentional closes;
+      // `wasConnected` excludes connect-phase closes (counted by `crashAttempts`).
+      if (!this.stopping && wasConnected) this.operationalCrashes += 1
     }
     this.client.onerror = (error: unknown) => {
       this.ctx.logger.warn('query-maxcompute: sidecar transport error')
@@ -264,7 +311,12 @@ export class MaxComputeQueryEngine extends QueryEngine {
       await this.client.connect(this.transport)
       this.dead = false
       this.crashAttempts = 0
-      return this.client
+      // Reset the operational crash bound on a successful connect: a sidecar
+      // that crashes then recovers is not permanently abandoned. Without this
+      // reset, `operationalCrashes` is a lifetime monotonic counter and the
+      // engine is irrecoverably bricked after `crashLoopMaxAttempts` lifetime
+      // crashes (G4 Q1 lifecycle fix — was the stale README bullet's gap).
+      this.operationalCrashes = 0
     } catch (error) {
       this.dead = true
       this.crashAttempts += 1
@@ -275,12 +327,24 @@ export class MaxComputeQueryEngine extends QueryEngine {
       }
       throw error // surface to caller; the next call lazy re-spawns
     }
+    // Post-spawn disposed re-check (outside the catch so a dispose is NOT
+    // miscounted as a spawn failure): a dispose that interleaved during connect
+    // must not leak the freshly-spawned sidecar nor let callers use a torn-down
+    // engine. stopSidecar closes the new child; the shared promise rejects so
+    // every awaiter (ensureConnected's direct-return concurrent callers too)
+    // sees the disposed error instead of proceeding to callTool.
+    if (this.disposed) {
+      await this.stopSidecar()
+      throw new Error('query-maxcompute is disposed')
+    }
+    return this.client
   }
 
   private async stopSidecar(): Promise<void> {
     const client = this.client
     this.client = undefined
     this.transport = undefined
+    this.stopping = true // suppress onclose crash-counting for the intentional close
     if (client !== undefined) {
       try {
         // stdio close(): stdin.end → 2s → SIGTERM → 2s → SIGKILL (G4 NEW边界(5)).
@@ -289,6 +353,7 @@ export class MaxComputeQueryEngine extends QueryEngine {
         // best-effort: the sidecar may already be dead
       }
     }
+    this.stopping = false
   }
 
   // ── raw-name programmatic call (A1-split: no ctx.tools registration) ─────
@@ -339,6 +404,14 @@ export class MaxComputeQueryEngine extends QueryEngine {
     if (typeof text === 'string') {
       try {
         const parsed = JSON.parse(text) as QueryOutcome
+        // Boundary validation: sidecar JSON is untrusted. A bare `as` cast would
+        // let an out-of-enum/missing `state` through and trip the defaultless
+        // switches downstream into undefined/TypeError. Normalize an unknown
+        // state to a transport failure so the contract holds on BOTH sides.
+        const rawState: unknown = (parsed as unknown as { state?: unknown }).state
+        if (typeof rawState !== 'string' || !QUERY_STATES.has(rawState)) {
+          return { state: 'failed', error: `undecodable ${tool} result: unknown state ${JSON.stringify(rawState)}`, failureKind: 'transport', sql: '' }
+        }
         // Only classify failures — completed/pending pass through untouched.
         // classify → 'unknown' keeps the sidecar's label (don't clobber a
         // recoverable 'retryable' or a 'transport' spawn/parse signal).
@@ -399,7 +472,7 @@ export class MaxComputeQueryEngine extends QueryEngine {
       throw new Error(`query-maxcompute: scope "${scopeId}" not registered — provision it in scopes.yaml (P4e fail-closed; no cross-scope fallback)`)
     }
     const mc = scope.metadata?.maxcompute as { endpoint?: string; project?: string } | undefined
-    if (typeof mc?.endpoint !== 'string' || mc.endpoint === '' || typeof mc?.project !== 'string' || mc.project === '') {
+    if (mc === undefined || typeof mc.endpoint !== 'string' || mc.endpoint === '' || typeof mc.project !== 'string' || mc.project === '') {
       throw new Error(`query-maxcompute: scope "${scopeId}" missing metadata.maxcompute.{endpoint,project} in scopes.yaml (P4e fail-closed)`)
     }
     return { endpoint: mc.endpoint, project: mc.project }
@@ -439,6 +512,9 @@ export class MaxComputeQueryEngine extends QueryEngine {
    *
    * P4d: `credMode: 'sidecar-self'` skips the push entirely (a maxc-backed
    * sidecar self-auths from its own config; the da pushes no ODPS creds).
+   *
+   * @param scopeId The per-call scope whose ODPS data-source (endpoint/project +
+   * access_id/key) to resolve and push to the sidecar via set_credentials.
    */
   async pushCredentials(scopeId: ScopeId): Promise<void> {
     if (this.cfg.credMode === 'sidecar-self') return
@@ -528,7 +604,7 @@ export class MaxComputeQueryEngine extends QueryEngine {
     let inputBytes = 0
     if (typeof text === 'string') {
       try {
-        inputBytes = Number((JSON.parse(text) as { input_bytes?: number }).input_bytes ?? 0)
+        inputBytes = (JSON.parse(text) as { input_bytes?: number }).input_bytes ?? 0
       } catch {
         // deferred CostGuard surfaces its own diagnostics
       }

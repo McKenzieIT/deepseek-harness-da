@@ -128,7 +128,7 @@ export function clearDashedHighlight(graph: Graph, edgeIds: string[]): void {
   const updates = edgeIds.map(id => ({
     id,
     style: {
-      lineDash: undefined,
+      lineDash: 0,
       stroke: 'rgba(0,0,0,0.45)',
       lineWidth: 1,
       opacity: 1,

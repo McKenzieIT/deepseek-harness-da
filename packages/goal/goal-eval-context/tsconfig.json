@@ -8,6 +8,7 @@
     { "path": "../../../vendor/schemastery" },
     { "path": "../goal" },
     { "path": "../../data/evidence-query" },
-    { "path": "../../core/system-prompt" }
+    { "path": "../../core/system-prompt" },
+    { "path": "../../runtime-diagnostics/invariants" }
   ]
 }

@@ -16,6 +16,27 @@ Phase 1: the score is derived from the folded-regex critic findings (`critiqueSq
 
 No knobs. The critic guard context is owned by the phase-gate's per-agent state (`criticCtx` service), not this tool.
 
+## Model Experience
+
+### `evaluate_sql_quality` tool result
+
+#### What the model sees
+
+`execute` (in `src/index.ts`) returns an `EvaluateSqlQualityResult` whose `score` is rendered by `formatQuality` as a one-line text block `score: N` (0–100). The model reads this score in the tool-result slot; the phase-gate's `captureToolData` also captures it as `last_quality` for the GENERATION gate floor (`PipelineConfig.quality_score_floor` 60).
+
+#### Token effect
+
+A single short line (`score: N`) per call — fixed-size, independent of the SQL length or the finding count. The per-finding detail is the sibling `critique_sql_tool`'s concern; this tool surfaces only the aggregate score.
+
+#### KV Cache effect
+
+Per-call tool result; not durably cached across turns. Each `evaluate_sql_quality` invocation produces one transient result line the model consumes immediately.
+
+## Known Limitations and Deferred Work
+
+- **Phase-1 score from folded-regex findings only** — the score derives from the folded-regex critic (`critiqueSql`) + basic heuristics (a SELECT must be present). The full rbi 100-score rule-deduction table is a later Phase 2 refinement; Phase 1 unblocks the gate floor.
+- **Fail-closed when ungrounded (open contract decision)** — the `EMPTY_CRITIC_CTX` fallback (empty candidate tables) is used when `ctx.get('criticCtx')` is undefined (the phase-gate is not mounted) or `forAgent` returns undefined (the agent has no harvested state yet). With empty candidate tables the critic's table rule emits an error for every FROM-table, so a normal SQL scores 0 and the path blocks — the opposite of the originally documented "fail-open" behavior. The intended contract (fail-open pass-through vs. fail-closed enforcement) is unresolved; a true fail-open fix (a pass-through verdict that skips the table/partition/json rules when no guard data is present) is deferred. Conservative Phase-1 ships the behavior as-is and documents it here. This mirrors the same open decision in `@deepseek-ai/dsh-tool-critique-sql`.
+
 ## Verification
 
 ```sh

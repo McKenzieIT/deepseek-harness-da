@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-compute",
   "description": "Model-facing compute tool: execute LLM-generated pandas code against query results in the INTERPRETATION phase",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

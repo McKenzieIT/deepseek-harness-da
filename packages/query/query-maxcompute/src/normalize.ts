@@ -99,6 +99,10 @@ function rewriteTopN(sql: string): string {
 /**
  * Normalize SQL for MaxCompute execution. Deterministic, no external deps.
  * Returns the cleaned SQL string. Never throws — worst case returns input unchanged.
+ *
+ * @param sql The raw SQL string emitted by the LLM to normalize for ODPS execution.
+ * @returns The cleaned SQL string (reasoning comments stripped, dialect functions rewritten,
+ * TOP N → LIMIT N). Never throws; on no rewrite the input is returned unchanged.
  */
 export function normalizeForMaxCompute(sql: string): string {
   if (!sql || typeof sql !== 'string') return sql

@@ -188,9 +188,9 @@ describe('FollowupChips', () => {
     const snapshot = makeSnapshot({ latestTurnStart: NOW + 5000 })
     const { container, getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
     expect(getByText('按地区细分')).toBeDefined()
-    const buttons = container.querySelectorAll('button[data-followup-item]')
+    const buttons = container.querySelectorAll<HTMLButtonElement>('button[data-followup-item]')
     expect(buttons).toHaveLength(3)
-    buttons.forEach(b => expect(b.disabled).toBe(true))
+    buttons.forEach((b) => { expect(b.disabled).toBe(true) })
     expect(buttons[0]!.getAttribute('title')).toBe('该建议来自上一轮,已过期')
   })
 

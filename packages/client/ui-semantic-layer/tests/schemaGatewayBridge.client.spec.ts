@@ -52,21 +52,21 @@ describe('buildSchemaGatewayClient', () => {
     const remote = makeRemoteStub()
     const client = buildSchemaGatewayClient(remote)
     const result = await client.listTables()
-    expect(result[0].table_name).toBe('dws_acc_summary_df')
+    expect(result[0]?.table_name).toBe('dws_acc_summary_df')
   })
 
   it('wraps listEvents', async () => {
     const remote = makeRemoteStub()
     const client = buildSchemaGatewayClient(remote)
     const result = await client.listEvents()
-    expect(result[0].name).toBe('recharge_event')
+    expect(result[0]?.name).toBe('recharge_event')
   })
 
   it('wraps listMetrics', async () => {
     const remote = makeRemoteStub()
     const client = buildSchemaGatewayClient(remote)
     const result = await client.listMetrics()
-    expect(result[0].name).toBe('daily_revenue')
+    expect(result[0]?.name).toBe('daily_revenue')
   })
 
   it('wraps getTableDefinition with name parameter', async () => {

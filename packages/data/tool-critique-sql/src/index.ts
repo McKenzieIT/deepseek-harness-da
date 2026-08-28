@@ -16,8 +16,11 @@
  * / `load_*` (captureToolData). This tool reads it via `ctx.get('criticCtx')`
  * — the `CriticCtxService` the phase-gate registers. §2.3: the Consumer
  * defines a structural `CriticCtxProvider` interface + probes `ctx.get`
- * (soft — undefined when the phase-gate is not mounted → empty sets, the
- * honest "cannot verify table grounding" state), never importing the
+ * (soft — undefined when the phase-gate is not mounted → empty sets;
+ * with no candidate tables the critic flags every referenced table as
+ * not-in-candidates, dropping confidence below the 0.6 floor and
+ * BLOCKING GENERATION (fail-closed, not fail-open; the intended
+ * pass-through is deferred), never importing the
  * Provider (the phase-gate package).
  *
  * Phase 1: the tool calls the EXISTING nl2sql-engine `critiqueSql` (the
@@ -91,7 +94,13 @@ export interface CritiqueSqlResult {
   readonly sql?: string
 }
 
-/** Empty critic context (fail-open when the phase-gate is not mounted). */
+/**
+ * Empty critic context — the fallback when the phase-gate is not mounted or
+ * the agent has no harvested state. With no candidate tables the critic flags
+ * every referenced table as `table_not_in_candidates`, yielding a confidence
+ * below the 0.6 floor that BLOCKS `GENERATION` (fail-closed, not fail-open;
+ * the intended pass-through is deferred — see README Known Limitations).
+ */
 const EMPTY_CRITIC_CTX: CriticCtx = {
   candidateTables: new Set(),
   eventParams: new Set(),
@@ -159,7 +168,7 @@ export function formatCritique(value: CritiqueSqlResult): string {
     for (const f of value.findings) {
       lines.push(`  [${f.severity}] ${f.rule}: ${f.message}`)
     }
-  } else if (value.sql !== null) {
+  } else if (value.sql !== undefined) {
     lines.push('findings: none (SQL passed all critic checks)')
   }
   return lines.join('\n')
@@ -215,34 +224,23 @@ export function apply(ctx: Context, _config: Config = {}): void {
         text: formatCritique(value as CritiqueSqlResult),
       }],
     },
-    async execute(args, exec) {
+    execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('critique_sql_tool aborted before critique')
       }
       const sql = (args as { sql?: string }).sql ?? ''
-      // Probe the phase-gate's criticCtx service (soft — undefined when the
-      // phase-gate is not mounted, e.g. unit tests). §2.3: the Consumer
-      // injects the Service Definition key; ctx.get is the safe probe
-      // (returns undefined when no provider is registered). The structural
-      // CriticCtxProvider interface avoids importing the phase-gate Provider.
       const provider = ctx.get('criticCtx') as CriticCtxProvider | undefined
       const agentId = exec.agent !== undefined ? String(exec.agent.id) : undefined
       let criticCtx: CriticCtx = provider !== undefined && agentId !== undefined
         ? (provider.forAgent(agentId) ?? EMPTY_CRITIC_CTX)
         : EMPTY_CRITIC_CTX
-
-      // P3 C2: probe the semantic-layer schema service for a relation graph
-      // and build the declared-join pair set (structural — no static dep on
-      // @deepseek-ai/dsh-semantic-layer). When unavailable, the undeclared_join
-      // rule is simply skipped (declaredJoinPairs stays undefined).
       const schema = ctx.get('schema') as SchemaServiceLike | undefined
       const graph = schema?.getRelationGraph?.()
       if (graph && criticCtx.candidateTables.size > 0) {
         const declaredJoinPairs = buildDeclaredJoinPairs([...criticCtx.candidateTables], graph)
         criticCtx = { ...criticCtx, declaredJoinPairs }
       }
-
-      return critiqueSqlResult(sql, criticCtx)
+      return Promise.resolve(critiqueSqlResult(sql, criticCtx))
     },
   }))
 }

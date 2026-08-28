@@ -14,6 +14,7 @@ export {
   encodeJsonPlain,
   hasNonLosslessNumber,
   hasUnsafeIntegerToken,
+  jsonStringBytesUpTo,
   logTruncationMarker,
   validateChildFrame,
 } from './protocol.ts'

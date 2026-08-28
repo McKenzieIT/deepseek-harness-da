@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { GoalRef, GoalView } from '@deepseek-ai/dsh-goal'
-import type { GoalChanged, GoalOperation } from '@deepseek-ai/dsh-goal'
+import { type GoalRef, type GoalView, type GoalChanged, type GoalOperation, GoalId } from '@deepseek-ai/dsh-goal'
+import type { Context } from '@deepseek-ai/cordis'
 import { apply, freshState } from '../src/index.ts'
 
 // ──────────────────── Mocks ────────────────────
 
 function makeGoalView(overrides: Partial<GoalView> = {}): GoalView {
   return {
-    id: 'goal-1' as unknown,
+    id: GoalId('goal-1'),
     revision: 1,
     objective: 'Test objective',
     phase: 'active',
@@ -24,7 +24,7 @@ function makeChange(operation: GoalOperation, goal?: GoalView): GoalChanged {
   return {
     operation,
     ref: { id: goal?.id ?? 'goal-1', revision: goal?.revision ?? 1 } as GoalRef,
-    goal,
+    ...(goal !== undefined ? { goal } : {}),
   }
 }
 
@@ -80,7 +80,7 @@ function createMockCtx(options: {
   const session = { id: 'session-1' }
 
   return {
-    ctx: ctx as unknown,
+    ctx: ctx as unknown as Context,
     goals,
     evidenceQuery,
     agents,
@@ -171,7 +171,7 @@ describe('goal-eval-policy', () => {
       }
       const goals = {
         block: vi.fn(),
-        get: vi.fn(() => makeGoalView({ id: 'goal-1' as unknown, revision: 1, phase: 'active' })),
+        get: vi.fn(() => makeGoalView({ id: GoalId('goal-1'), revision: 1, phase: 'active' })),
       }
       const { ctx, emitGoalChanged, emitRound } = createMockCtx({ evalRunner, evidenceQuery, goals })
       apply(ctx, { goalEvalIntervalRounds: 3, noProgressThreshold: 3 })

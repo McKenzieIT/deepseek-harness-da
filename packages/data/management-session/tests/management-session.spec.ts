@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { Message } from '@deepseek-ai/dsh-session'
 import {
   DEFAULT_SUMMARY_MESSAGE_COUNT,
   MANAGEMENT_PRESET_ID,
   summarizeMessages,
+  type SummarizableMessage,
 } from '../src/index.ts'
 
 // ── summarizeMessages unit tests ────────────────────────────────────────────
@@ -14,7 +14,7 @@ describe('summarizeMessages', () => {
   })
 
   it('summarizes user and assistant messages', () => {
-    const messages: Message[] = [
+    const messages: SummarizableMessage[] = [
       { role: 'user', content: 'What tables are available?' },
       { role: 'assistant', content: 'There are 5 tables in the payment domain.' },
     ]
@@ -25,7 +25,7 @@ describe('summarizeMessages', () => {
   })
 
   it('respects the maxMessages limit', () => {
-    const messages: Message[] = [
+    const messages: SummarizableMessage[] = [
       { role: 'user', content: 'Message 1' },
       { role: 'assistant', content: 'Response 1' },
       { role: 'user', content: 'Message 2' },
@@ -42,7 +42,7 @@ describe('summarizeMessages', () => {
 
   it('truncates long messages', () => {
     const longContent = 'x'.repeat(500)
-    const messages: Message[] = [
+    const messages: SummarizableMessage[] = [
       { role: 'user', content: longContent },
     ]
     const result = summarizeMessages(messages, 10)!
@@ -52,14 +52,14 @@ describe('summarizeMessages', () => {
   })
 
   it('handles structured content blocks', () => {
-    const messages: Message[] = [
+    const messages: SummarizableMessage[] = [
       {
         role: 'user',
         content: [
           { type: 'text', text: 'Hello' },
           { type: 'text', text: 'World' },
         ],
-      } as unknown as Message,
+      },
     ]
     const result = summarizeMessages(messages, 10)
     expect(result).toContain('User: Hello World')
@@ -75,7 +75,7 @@ describe('ManagementSessionService (mock-driven)', () => {
    */
   function mockSessionsStore() {
     let counter = 0
-    const store = new Map<string, { id: string; header: Record<string, unknown>; deriveMessages: () => Message[] }>()
+    const store = new Map<string, { id: string; header: Record<string, unknown>; deriveMessages: () => SummarizableMessage[] }>()
 
     return {
       create(_id: unknown, options?: { meta?: Record<string, unknown> }) {
@@ -83,8 +83,8 @@ describe('ManagementSessionService (mock-driven)', () => {
         const id = `mgmt-session-${counter}`
         const session = {
           id,
-          header: { id, version: 0, createdAt: Date.now(), ...options?.meta },
-          deriveMessages: () => [],
+          header: { id, version: 0, createdAt: Date.now(), ...options?.meta } as Record<string, unknown>,
+          deriveMessages: () => [] as SummarizableMessage[],
         }
         store.set(id, session)
         return session
@@ -92,7 +92,7 @@ describe('ManagementSessionService (mock-driven)', () => {
       get(id: string) {
         return store.get(id)
       },
-      addFakeSession(id: string, messages: Message[]) {
+      addFakeSession(id: string, messages: SummarizableMessage[]) {
         store.set(id, {
           id,
           header: { id, version: 0, createdAt: Date.now() },
@@ -163,11 +163,11 @@ describe('ManagementSessionService (mock-driven)', () => {
         active.delete(sessionId)
         service.ctx.emit('management-session/destroyed', sessionId)
       },
-      getActive() {
+      getActive(): { sessionId: string; createdAt: number } | undefined {
         if (active.size === 0) return undefined
-        let latest: { createdAt: number } | undefined
+        let latest: { sessionId: string; createdAt: number } | undefined
         for (const desc of active.values()) {
-          const d = desc as { createdAt: number }
+          const d = desc as { sessionId: string; createdAt: number }
           if (latest === undefined || d.createdAt > latest.createdAt) latest = d
         }
         return latest
@@ -202,7 +202,7 @@ describe('ManagementSessionService (mock-driven)', () => {
 
   it('creates with parent session context reference', () => {
     const { service, sessions } = createServiceInstance()
-    const parentMessages: Message[] = [
+    const parentMessages: SummarizableMessage[] = [
       { role: 'user', content: 'Show me payment tables' },
       { role: 'assistant', content: 'Here are the payment domain tables: dws_pay_order, dws_pay_refund.' },
     ]

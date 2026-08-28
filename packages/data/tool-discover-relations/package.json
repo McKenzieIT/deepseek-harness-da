@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-discover-relations",
   "description": "Model-facing discover_relations tool: AI-native DWS→DIM relation discovery over the semantic layer (G3 enrichment), for the data agent's enrichment phase",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -23,6 +23,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

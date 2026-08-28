@@ -79,8 +79,12 @@ const _invalidationHooks: Array<(semanticLayer: string) => void> = []
  * Register a cache-invalidation hook fired by `invalidateCaches` (ADR-0011).
  * @param hook - the callback invoked with the semantic-layer path being invalidated.
  */
-export function registerInvalidationHook(hook: (semanticLayer: string) => void): void {
+export function registerInvalidationHook(hook: (semanticLayer: string) => void): () => void {
   _invalidationHooks.push(hook)
+  return () => {
+    const i = _invalidationHooks.indexOf(hook)
+    if (i >= 0) _invalidationHooks.splice(i, 1)
+  }
 }
 
 // D2f: per-path corpus-version counter bumped on every invalidateCaches call.
@@ -347,6 +351,11 @@ function findEventPath(semanticLayer: string, name: string): string | null {
   }
   for (const domainDir of readdirSync(eventsDir).sort()) {
     const dp = join(eventsDir, domainDir)
+    try {
+      if (!statSync(dp).isDirectory()) continue
+    } catch {
+      continue
+    }
     for (const f of readdirSync(dp).sort()) {
       if (!f.endsWith('.yaml') || f === '_index.yaml') continue
       try {

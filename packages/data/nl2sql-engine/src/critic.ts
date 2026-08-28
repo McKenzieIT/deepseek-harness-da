@@ -52,6 +52,12 @@ export function extractSqlCandidate(phaseOutput: string | null | undefined): str
   if (!phaseOutput) return null
   const m = phaseOutput.match(/```sql\s*([\s\S]*?)```/i) ?? phaseOutput.match(/```([\s\S]*?)```/)
   let sql = m?.[1] ?? phaseOutput
+  // Strip `--` line comments BEFORE collapsing whitespace: the collapse turns
+  // newlines into spaces, after which a `--[^\n]*` strip would run to
+  // end-of-string and silently delete the rest of the SQL (D2-2). Stripping
+  // here keeps comment semantics line-scoped and feeds the critic + executor
+  // the same comment-free SQL (F2 same-source).
+  sql = sql.replace(/--[^\n]*/g, '')
   sql = sql.trim()
   if (!sql || !/\bselect\b/i.test(sql)) return null
   return sql.replace(/\s+/g, ' ').trim()
@@ -77,19 +83,34 @@ export function extractJsonPaths(sql: string): readonly JsonPathMatch[] {
 }
 
 /**
- * FROM/JOIN table names (strip db. prefix). Residual: CTE/comma-join/literal-FROM — fail-open + exec feedback.
+ * FROM/JOIN table names (strip db. prefix). CTE definition names (`WITH name
+ * AS (...)` / `, name AS (...)`) are excluded — a CTE alias is not a real
+ * table and must not trigger `table_not_in_candidates` (D2-1). Residual:
+ * comma-join/literal-FROM — fail-open + exec feedback.
  *
  * @param sql - The SQL candidate to scan for FROM/JOIN table references.
- * @returns The set of lowercased table names referenced (db. prefix stripped).
+ * @returns The set of lowercased table names referenced (db. prefix stripped, CTE aliases excluded).
  */
 export function extractTableNames(sql: string): Set<string> {
   const tables = new Set<string>()
+  // CTE definition names: `name AS (` (WITH-clause and `, name AS (` multi-CTE).
+  // A CTE alias referenced after FROM/JOIN is NOT a real table — skip it so the
+  // critic does not false-positive table_not_in_candidates on valid CTE SQL.
+  const cteNames = new Set<string>()
+  const cteRe = /\b([A-Z_][A-Z0-9_]*)\s+AS\s*\(/gi
+  let cteMatch: RegExpExecArray | null
+  while ((cteMatch = cteRe.exec(sql)) !== null) {
+    const cteName = cteMatch[1] ?? ''
+    if (cteName) cteNames.add(cteName.toLowerCase())
+  }
   // [A-Z_] (not [A-Za-z_]) + `i` flag — A-Z/a-z are duplicates under case-insensitive.
   const re = /\b(?:FROM|JOIN)\b\s+([A-Z_][A-Z0-9_.]*)/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(sql)) !== null) {
     const captured = m[1] ?? ''
-    tables.add(captured.toLowerCase().replace(/^.*\./, ''))
+    const table = captured.toLowerCase().replace(/^.*\./, '')
+    if (cteNames.has(table)) continue
+    tables.add(table)
   }
   return tables
 }
@@ -147,17 +168,34 @@ export function hasPartitionFilter(sql: string, partitionCols: ReadonlySet<strin
  * fallback). code-review-low fix #2: the P13 prototype matched only
  * `SELECT *`/`SELECT DISTINCT *` (immediately after SELECT), missing `t.*`
  * and `SELECT a, *`. Now parses the select list (between SELECT and FROM) and
- * detects `*` or `t.*` among the selected columns.
+ * detects `*` or `t.*` among the selected columns. D2-4: bind to the
+ * OUTERMOST (paren-depth-0) SELECT so a `SELECT *` inside a CTE body or
+ * subquery does not false-positive the outer query.
  *
  * @param sql - The SQL candidate to check for a star select.
- * @returns True when the select list contains a bare `*` or `t.*` column.
+ * @returns True when the outer query's select list contains a bare `*` or `t.*` column.
  */
 export function hasSelectStar(sql: string): boolean {
   const cleaned = sql.replace(/\w+\s*\(\s*\*\s*\)/gi, '') // strip COUNT(*)/SUM(*) etc.
-  const selectMatch = cleaned.match(/\bSELECT\s+(?:DISTINCT\s+)?([\s\S]*?)\bFROM\b/i)
+  // Locate the outermost SELECT (paren depth 0). CTE bodies and subqueries sit
+  // at depth >= 1; their `SELECT *` must not flag the outer query (D2-4).
+  let depth = 0
+  let outer = -1
+  for (let i = 0; i + 6 <= cleaned.length; i++) {
+    const ch = cleaned[i]
+    if (ch === '(') { depth++; continue }
+    if (ch === ')') { depth--; continue }
+    if (depth === 0 && /^SELECT\b/i.test(cleaned.slice(i, i + 7))) { outer = i; break }
+  }
+  if (outer === -1) {
+    // no top-level SELECT — fall back to the whole-tail check
+    return /\bSELECT\s+(?:DISTINCT\s+)?\*/i.test(cleaned)
+  }
+  const tail = cleaned.slice(outer)
+  const selectMatch = tail.match(/^SELECT\s+(?:DISTINCT\s+)?([\s\S]*?)\bFROM\b/i)
   if (!selectMatch) {
     // no FROM — fall back to the whole-tail check
-    return /\bSELECT\s+(?:DISTINCT\s+)?\*/i.test(cleaned)
+    return /\bSELECT\s+(?:DISTINCT\s+)?\*/i.test(tail)
   }
   const selectList = selectMatch[1] ?? ''
   const items = splitTopLevelCommas(selectList)

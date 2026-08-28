@@ -1,31 +1,51 @@
 {
   "name": "@deepseek-ai/dsh-patrol-mode",
   "description": "Autonomous patrol loop for the semantic layer management agent — iteratively finds weakest assets, diagnoses, proposes fixes with user confirmation, and triggers eval (W11 D7+S3)",
-  "version": "0.1.0-rc.1",
-  "publishConfig": { "access": "public" },
+  "version": "0.1.0-rc.8",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
     "directory": "packages/data/patrol-mode"
   },
   "type": "module",
-  "main": "src/index.ts",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts"
+  ],
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-management-session": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
-    "@deepseek-ai/dsh-evidence-query": "workspace:^"
+    "@deepseek-ai/dsh-evidence-query": "workspace:^",
+    "@deepseek-ai/dsh-eval-runner-service": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-management-session": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-evidence-query": "workspace:^",
+    "@deepseek-ai/dsh-eval-runner-service": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^",
     "vitest": "^3.2.1"
   }
 }

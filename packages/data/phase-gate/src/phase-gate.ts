@@ -24,7 +24,7 @@
 
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent, AgentCancelCause, PreStepDecision } from '@deepseek-ai/dsh-agent'
+import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { CallId, ReasoningEffortId, createUserMessage, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import { PERSONA_ORDER, PERSONA_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
@@ -39,9 +39,9 @@ import {
   INCOMPLETE_MARKER,
   extractRoute,
   freshPhaseGateState,
-  type PhaseGateState,
   type Phase as PhaseType,
-} from './types.ts'
+} from './domain.ts'
+import type { PhaseGateState } from './types.ts'
 import { extractSqlCandidate, extractTableNames, sqlSyntaxGate, type CriticCtx } from '@deepseek-ai/dsh-nl2sql-engine'
 
 /** Configuration overrides for the `PhaseGate` plugin; unset fields fall back to the adopted `PipelineConfig` defaults. */
@@ -177,7 +177,7 @@ export class PhaseGate {
     // undefined.includes crash if the early-return above is ever bypassed.
     const raw = s.current_phase
     if (raw === 'COMPLETE' || raw === 'DECLINED') return 'turn ended'
-    const phase = raw as PhaseType
+    const phase = raw
     const allowed = PHASE_TOOLS[phase]
     if (!allowed.includes(execution.name)) {
       return `phase-gate: "${execution.name}" not in ${phase} whitelist [${allowed.join('|')}]`
@@ -355,13 +355,19 @@ export class PhaseGate {
 
   private runGate(s: PhaseGateState): GateResult {
     const cfg = PHASE_CONFIGS[s.current_phase as PhaseType]
-    if (cfg.gate === 'always_pass') {
-      if (s.current_phase === Phase.INTERPRETATION) return this.interpretGate(s.phase_output) // M3
-      return GateResult.pass()
+    switch (cfg.gate) {
+      case 'always_pass':
+        if (s.current_phase === Phase.INTERPRETATION) return this.interpretGate(s.phase_output)
+        return GateResult.pass()
+      case 'sql_syntax_gate':
+        return this.generationGate(s)
+      case 'route_gate':
+        return this.routeGate(s)
+      default: {
+        const exhaustive: never = cfg.gate
+        throw new Error(`unknown gate: ${String(exhaustive)} (phase ${s.current_phase})`)
+      }
     }
-    if (cfg.gate === 'sql_syntax_gate') return this.generationGate(s)
-    if (cfg.gate === 'route_gate') return this.routeGate(s) // P-DA1: UNDERSTANDING 3-state route
-    throw new Error(`unknown gate: ${cfg.gate} (phase ${s.current_phase})`)
   }
 
   /**
@@ -556,7 +562,6 @@ export class PhaseGate {
   ): Promise<GenerateOptions> => {
     const s = this.state(String(agent.id))
     const base = await next()
-    if (base.provider === undefined || base.model === undefined) return base
     if (!(await this.modelExposesReasoningEffort(base.provider, base.model, signal))) return base
     const effort = REASONING_EFFORT[s.current_phase] ?? 'medium'
     return { ...base, reasoningEffort: ReasoningEffortId(effort) }
@@ -610,7 +615,7 @@ export class PhaseGate {
     // has no DECLINED/COMPLETE entry, so an unclamped terminal would yield `undefined` text.
     const rawPhase = s === null ? null : s.current_phase
     const phase = (rawPhase === null || rawPhase === 'DECLINED' || rawPhase === 'COMPLETE'
-      ? Phase.UNDERSTANDING : rawPhase) as PhaseType
+      ? Phase.UNDERSTANDING : rawPhase)
     const sections: AssembledSection[] = [
       ...merged.sections,
       // B12: AssembledSection is { name, text } (no order — ordering happened pre-waterfall in
@@ -724,11 +729,11 @@ export class PhaseGate {
     const m = re.exec(s.last_sql)
     if (!m?.[1]) return
     const project = m[1]
-    const execute = this.ctx.tools?.execute
-    if (!execute) return
+    const tools = this.ctx.tools as { execute(req: unknown): Promise<unknown> } | undefined
+    if (!tools) return
     this.ctx.logger.info(`[M4] auto-persist: ${table} → ${project}`)
     const ac = new AbortController()
-    execute({
+    tools.execute({
       callId: CallId('phase-gate:auto_persist'),
       name: 'update_table_config',
       arguments: { table_name: table, project },
@@ -749,10 +754,10 @@ export class PhaseGate {
     // (ctx.tools undefined), fail-open (the comment's intent) instead of throwing.
     // The route-gate backstop relies on forcedLoad being best-effort in tests/hosts
     // where the tools registry is absent.
-    const execute = this.ctx.tools?.execute
-    if (execute === undefined) return // host did not mount the tools registry — fail-open
+    const tools = this.ctx.tools as { execute(req: unknown): Promise<unknown> } | undefined
+    if (tools === undefined) return // host did not mount the tools registry — fail-open
     try {
-      await execute({ callId: CallId('phase-gate:forced_load'), name: 'search_data_sources', arguments: { query }, signal, agent })
+      await tools.execute({ callId: CallId('phase-gate:forced_load'), name: 'search_data_sources', arguments: { query }, signal, agent })
     } catch {
       // forced_load is best-effort; the gate + execution-feedback backstop it.
     }
@@ -819,9 +824,9 @@ export class PhaseGate {
    * the flag or probe says otherwise.
    */
   private criticToolsRegistered(): boolean {
-    if (this.cfg.critic_tools_registered === true) return true // flag preferred
+    if (this.cfg.critic_tools_registered) return true // flag preferred
     try {
-      const tools = this.ctx.tools
+      const tools = this.ctx.tools as { get(name: string): unknown } | undefined
       if (tools === undefined || typeof tools.get !== 'function') return false
       return tools.get('critique_sql_tool') !== undefined
         && tools.get('evaluate_sql_quality') !== undefined
@@ -847,7 +852,7 @@ export class PhaseGate {
       this.honestDecline(s, `stall watchdog: ${this.cfg.stall_watchdog_seconds}s with no events`)
       // A hung step needs interruption — stall is a timeout (external-ish), so cancel.
       try {
-        agent.cancel({ kind: 'hook', reason: 'phase-gate stall watchdog' } as AgentCancelCause)
+        agent.cancel({ kind: 'hook', reason: 'phase-gate stall watchdog' })
       } catch {
         // best-effort
       }
@@ -1035,7 +1040,7 @@ function collectFields(value: unknown, out: Set<string>, ...keys: string[]): voi
       // Substrate map shape (Record<string, FieldDef>): the map keys ARE the
       // field names. (load_* exposes the projected array form post-projection;
       // the helper stays shape-agnostic for direct-substrate callers.)
-      for (const f of Object.keys(v as Record<string, unknown>)) out.add(f.toLowerCase())
+      for (const f of Object.keys(v)) out.add(f.toLowerCase())
     }
   }
 }

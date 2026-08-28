@@ -68,13 +68,12 @@ describe('EvalRunnerService — mechanics', () => {
     expect(d.flips[0]?.case_id).toBe('c1')
   })
 
-  it('getLastRun/getLastTwoRuns track across runs (via stubbed runBatch)', async () => {
+  it('getLastRun tracks across runs (via stubbed runBatch)', async () => {
     // runBatch with no cases throws — so point at a tiny temp fixture. But the
     // real engine needs ctx.llm; that path is integration-tested below. Here
     // we only assert the initial state.
     const svc = new EvalRunnerService(new Context())
     expect(svc.getLastRun()).toBeNull()
-    expect(svc.getLastTwoRuns()).toBeNull()
   })
 })
 
@@ -96,8 +95,8 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
 
   function makeStubQuery() {
     return {
-      execute: async () => ({ state: 'done' as const, rows: [{ total: 1 }], result_id: 'rid-1' }),
-      attach: async () => ({ state: 'done' as const, rows: [{ total: 1 }], result_id: 'rid-1' }),
+      execute: async () => ({ state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }),
+      attach: async () => ({ state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }),
     }
   }
 
@@ -122,14 +121,13 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
       expect(result.cases.length).toBe(2)
       expect(result.summary.total).toBe(2)
       expect(svc.getLastRun()).toBe(result)
-      expect(svc.getLastTwoRuns()).toBeNull() // first run only
 
       // JSONL persisted in the FileBackedEvalResultStore record format
       const jsonlFiles = existsSync(resultsDir) ? readdirSync(resultsDir).filter((f: string) => f.endsWith('.jsonl')) : []
       expect(jsonlFiles.length).toBe(1)
       const lines = readFileSync(join(resultsDir, jsonlFiles[0] as string), 'utf8').trim().split('\n')
       expect(lines.length).toBe(2)
-      const rec = JSON.parse(lines[0])
+      const rec = JSON.parse(lines[0]!)
       expect(rec).toHaveProperty('runId')
       expect(rec).toHaveProperty('caseId')
       expect(rec).toHaveProperty('outcome')

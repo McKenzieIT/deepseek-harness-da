@@ -10,7 +10,7 @@ A Cordis Service adapter that translates the harness `ctx.llm` contract to DashS
 
 - Request body: `{model, input:{messages}, parameters:{result_format:"message", incremental_output:true, max_tokens?, temperature?, tools?}}`
 - Streaming: `X-DashScope-SSE:enable` header + SSE `data:` native JSON (cumulative `usage` per event, `finish_reason !== "null"` terminates — no `[DONE]` sentinel)
-- Identity: env `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL`, provider name `dashscope`
+- Identity: env `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL`, provider route `aga` (display name `DashScope`)
 - Catalog: qwen-flash, qwen-plus, qwen3.7-max, qwen3.6-plus
 - Reasoning: no per-request thinking toggle; reasoning via model selection (qwen3.6-plus etc.)
 

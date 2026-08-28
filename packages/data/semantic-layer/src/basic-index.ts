@@ -28,16 +28,23 @@ export class BasicIndex {
   private _events = new Map<string, EventIndexEntry>()
   private _tables = new Map<string, TableIndexEntry>()
   private _domains: Record<string, unknown> = {}
+  /** ADR-0011: disposer for this index's invalidation hook (call `dispose()` to remove it). */
+  private readonly _disposeHook: () => void
 
   constructor(semanticLayer: string) {
     this.semanticLayer = semanticLayer
     // ADR-0011: register this index's invalidation hook so writes trigger a rebuild.
-    registerInvalidationHook((sl) => {
+    this._disposeHook = registerInvalidationHook((sl) => {
       // ADR-0011: only dirty THIS index's layer (a write to layer A must not
-      // rebuild layer B's index). Hooks accumulate per BasicIndex (prototype-grade;
-      // a per-layer registry/dispose is a follow-up if many indexes share a process).
+      // rebuild layer B's index). The disposer removes this index's hook so the
+      // closure no longer pins the instance (call `dispose()` when done).
       if (sl === this.semanticLayer) this._dirty = true
     })
+  }
+
+  /** Remove this index's invalidation hook (call when the index is no longer used). */
+  dispose(): void {
+    this._disposeHook()
   }
 
   private _build(): void {

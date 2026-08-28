@@ -36,8 +36,17 @@ interface EvidenceQueryRemoteNamespace {
 }
 
 function unwrap<T>(result: RemoteResult<T>): T {
-  if (!result.ok) throw new Error(`evidence-query RPC failed: ${String(result.error ?? 'unknown')}`)
-  return result.value as T
+  if (!result.ok) {
+    let detail = 'unknown'
+    if (result.error instanceof Error) detail = result.error.message
+    else if (typeof result.error === 'string') detail = result.error
+    throw new Error(`evidence-query RPC failed: ${detail}`)
+  }
+  // RemoteResult.value is optional: a host { ok: true } with no value would
+  // otherwise surface as undefined typed as T. Treat its absence as a
+  // contract violation rather than returning a phantom value.
+  if (result.value === undefined) throw new Error('evidence-query RPC failed: ok response missing value')
+  return result.value
 }
 
 /**

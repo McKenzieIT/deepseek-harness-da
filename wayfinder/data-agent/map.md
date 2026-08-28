@@ -180,6 +180,8 @@
 - **D5b phase-scoped tool visibility (enhancement, resolved 2026-08-27)**：proactive guard 升级——`onAssemble` waterfall 中按 `PHASE_TOOLS[phase]` 过滤 `assembly.tools`（Set.has, O(1)），模型只看到当前阶段白名单工具（Approach A）。终态返回空工具列表（与 guard "turn ended" 对齐）。Guard 增加显式终态判断防 crash。reactive guard 保留作 defense-in-depth。debug 日志记录被 filter 的工具。17 tests（含 phase-transition、waterfall、alignment）。〔tickets/phase-misc/D5b-phase-scoped-tool-visibility.md〕
 - **多轮 follow-up candidate_tables 继承 (G-DA6, implemented 2026-08-27)**：7 决策锁定——follow-up 复用前轮表零 retry。方案 (a) 直接继承：`resetQuestionScoped` full-reset 从 `prior_turn_tables` 快照 seed `candidate_tables` + `definition_loaded`（替代 clear）。范围=仅前 1 轮（含 inheritance miss 可观测性日志支撑未来 N 扩展）；验证条件=EXECUTION 成功（`last_query_outcome=completed`）时快照；stale 保护=零额外（依赖现有 EXECUTION 报错 + fallback 链）；bias=gate-only 模型不可见（不注入 persona）；scope 切换清空；继承字段=仅 `candidate_tables` + `definition_loaded`（`event_params`/`partition_cols` 依赖 critic fail-open）。经 adversarial 审查通过（原标 2 BLOCKER 降级：definition_loaded=true 不阻断新表——模型始终 search；backstop 不误触发——模型不感知继承仍执行 search）。〔tickets/phase-misc/G-DA6-multiturn-candidate-tables-inheritance.md〕
 
+- **S1 Decouple MaxCompute config from bundle (task AFK, resolved 2026-08-28)**：3 层解耦——bundle patch 不再硬编码机器路径。Config `args: string[]` → `sidecarPath: string` + `maxcConfigPath: string`（默认空，部署覆盖）；spawn 从 Config 构造 `[sidecarPath, '--maxc-config', maxcConfigPath]`，空则 fail-loud；patch 仅供 `sidecarPath`，`maxcConfigPath` 由部署 cordis.yml 覆盖。tsc clean，无 regression。〔tickets/phase-misc/S1-decouple-maxcompute-from-bundle.md〕
+
 ## Next wave: 语义层/Ontology 管理 + 知识图谱可视化（2026-08-27 规划）
 
 <!-- 新方向：P11d 收尾 + M1 follow-up + 管理 UI infra + 知识图谱可视化 -->

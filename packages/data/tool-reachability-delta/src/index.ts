@@ -9,6 +9,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult, JsonValue } from '@deepseek-ai/dsh-tools'
+import type { EvidenceQueryService } from '@deepseek-ai/dsh-evidence-query'
 
 export const name = 'tool-reachability-delta'
 export const inject = ['tools']
@@ -33,24 +34,13 @@ export interface ReachabilityDeltaResult {
   newlyReachable: ReachablePair[]
 }
 
-export interface ReachabilityDeltaToolResult {
+export type ReachabilityDeltaToolResult = {
   ok: boolean
   proposedRelation: { sourceId: string; targetId: string; type: string; on?: string }
   newlyReachableCount: number
   newlyReachable: Array<{ from: string; to: string }>
-  message: string | null
-}
-
-/** Service seam for evidence-query's reachabilityDelta RPC. */
-export interface EvidenceQueryService {
-  reachabilityDelta(newRelation: ProposedRelation): ReachabilityDeltaResult | Promise<ReachabilityDeltaResult>
-}
-
-declare module '@deepseek-ai/cordis' {
-  interface Context {
-    evidenceQuery?: EvidenceQueryService
-  }
-}
+  message?: string
+} & Record<string, JsonValue>
 
 export function formatReachabilityDelta(value: ReachabilityDeltaToolResult): string {
   if (!value.ok) return value.message ?? 'reachability_delta failed'
@@ -81,7 +71,7 @@ export function projectMeta(v: ReachabilityDeltaToolResult): { [key: string]: Js
   const meta: { [key: string]: JsonValue } = {
     ok: v.ok,
     newlyReachableCount: v.newlyReachableCount,
-    message: v.message,
+    ...(v.message !== undefined ? { message: v.message } : {}),
   }
   meta.proposedRelation = {
     sourceId: v.proposedRelation.sourceId,
@@ -136,13 +126,13 @@ export function apply(ctx: Context, _config: Config = {}): void {
         return projectMeta(v)
       },
     },
-    async execute(args, exec) {
+    execute(args, exec) {
       if (exec.signal.aborted) throw new Error('reachability_delta aborted')
 
-      const evidenceQuery = ctx.get('evidenceQuery') as EvidenceQueryService | undefined
+      const evidenceQuery: EvidenceQueryService | undefined = ctx.get('evidenceQuery')
 
       if (!evidenceQuery) {
-        return {
+        return Promise.resolve({
           ok: false,
           proposedRelation: {
             sourceId: args.source_id,
@@ -153,7 +143,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           newlyReachableCount: 0,
           newlyReachable: [],
           message: 'evidenceQuery service not mounted',
-        } as unknown as ReachabilityDeltaToolResult
+        } as unknown as ReachabilityDeltaToolResult)
       }
 
       const proposed: ProposedRelation = {
@@ -163,15 +153,14 @@ export function apply(ctx: Context, _config: Config = {}): void {
         ...(args.on != null ? { on: args.on } : {}),
       }
 
-      const result = await evidenceQuery.reachabilityDelta(proposed)
+      const result = evidenceQuery.reachabilityDelta(proposed)
 
-      return {
+      return Promise.resolve({
         ok: true,
         proposedRelation: result.proposedRelation,
         newlyReachableCount: result.newlyReachable.length,
         newlyReachable: result.newlyReachable,
-        message: null,
-      } as unknown as ReachabilityDeltaToolResult
+      } as unknown as ReachabilityDeltaToolResult)
     },
     presentCall(): GenericCallView {
       return {

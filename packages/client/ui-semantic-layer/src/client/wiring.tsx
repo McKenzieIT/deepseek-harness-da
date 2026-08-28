@@ -13,17 +13,10 @@
  * inject factory. The framework memoizes each inject-factory result per
  * `SessionProvideInfo` identity, which is stable across `agentPreset` changes
  * (it re-materializes only on a provider-roster change, not on `noteAgentPreset`
- * list mutations) — so a boolean cached in the inject face would go stale:
- * a freshly-created management session's scope is materialized with the default
- * preset, the inject caches `active: false`, then `noteAgentPreset` lands and the
- * gate never re-evaluates. Reading it reactively in the component re-renders
- * when the list snapshot changes, so the dock/sidebar appear once the preset lands.
+ * list mutations) — so a boolean cached in the inject face would go stale.
  *
- * Placeholders until the client evidence-query RPC bridge lands:
- *  - `evalPassRates = []`   (GoalDock sparkline does not render)
- *  - `evalRunCount = 0`     (auto-flip stays in the B layout below the threshold)
- *  - `evidenceClient = null`
- * Each TODO below marks the wiring point for that future data.
+ * W11: evidence-query RPC bridge wired — `evidenceClient` injected from
+ * `index.ts` apply(), `useEvidenceMetrics` derives live evalRunCount/evalPassRates.
  */
 import { type FC } from 'react'
 // Type-only: pulls the `goal` SessionProjectionMap merge + the GoalProjection
@@ -40,6 +33,8 @@ import { GoalDock, type GoalDockGoalData } from './GoalDock.tsx'
 import { EvidenceSidebar } from './EvidenceSidebar.tsx'
 import { SchemaExplorer } from './SchemaExplorer.tsx'
 import type { SchemaGatewayClient } from './schemaGatewayBridge.ts'
+import type { EvidenceQueryClient } from './hooks/useEvidenceQuery.ts'
+import { useEvidenceMetrics } from './hooks/useEvidenceMetrics.ts'
 
 /** The semantic-layer management agent preset id (shared with index.ts's session-opening logic). */
 export const PRESET_ID = 'semantic-layer-management'
@@ -59,60 +54,54 @@ export function toGoalDockGoalData(
   return { goal: projection.goal, roundsStarted: projection.roundsStarted }
 }
 
-/** Full dock-adapter props: framework runtime kit + locale seat. `useSessions`,
- *  `sessionId`, and `useProjection` all arrive via the standard kit (no inject face). */
+/** Full dock-adapter props: framework runtime kit + locale seat + injected evidence client. */
 export type SemanticLayerGoalDockProps =
   PropsRuntime<'conversation.input.dock'>
   & PropsLocale<'semanticLayer'>
+  & { evidenceClient?: EvidenceQueryClient | null }
 
 /**
  * Dock adapter (E8): a second `conversation.input.dock` entry (after ui-goal's)
  * that renders the semantic-layer GoalDock (objective + phase + round + eval
- * sparkline) only in management agent sessions. `evalPassRates` is a placeholder
- * until the evidence-query client RPC bridge exists.
+ * sparkline) only in management agent sessions.
  */
-export const SemanticLayerGoalDock: FC<SemanticLayerGoalDockProps> = ({ useProjection, useSessions, sessionId, t }) => {
-  // Both hooks are unconditional (Rules of Hooks); the gate returns null after.
+export const SemanticLayerGoalDock: FC<SemanticLayerGoalDockProps> = ({ useProjection, useSessions, sessionId, t, evidenceClient }) => {
   const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
   const projection = useProjection('goal')
+  const { evalPassRates } = useEvidenceMetrics(evidenceClient ?? null)
   if (!active) return null
-  // TODO(evidence-query-rpc): replace [] with real eval pass rates from the
-  // evidence-query client once the client RPC bridge exists.
   const tAny = t as unknown as (key: string, params?: Record<string, unknown>) => string
-  return <GoalDock goalData={toGoalDockGoalData(projection)} evalPassRates={[]} t={tAny} />
+  return <GoalDock goalData={toGoalDockGoalData(projection)} evalPassRates={evalPassRates} t={tAny} />
 }
 
-/** Full details.aux-adapter props: framework runtime kit + locale seat (no inject face). */
+/** Full details.aux-adapter props: framework runtime kit + locale seat + injected evidence client. */
 export type SemanticLayerEvidenceProps =
   PropsRuntime<'details.aux'>
   & PropsLocale<'semanticLayer'>
+  & { evidenceClient?: EvidenceQueryClient | null }
 
 /**
  * Details-column adapter (E9/E10): mounts EvidenceSidebar into the
  * session-scoped `details.aux` list slot (declared by ui-layout, rendered
  * beside `details`/DetailsPanel in AppFrame), only in management agent
- * sessions. `goalData` comes from `useProjection('goal')`; `evalPassRates`,
- * `evalRunCount`, and `evidenceClient` are placeholders — auto resolves to
- * the B (compact) layout below the flip threshold until the evidence-query
- * RPC bridge lands.
+ * sessions. `goalData` comes from `useProjection('goal')`; evidence metrics
+ * are fetched live from the evidence-query RPC bridge.
  */
-export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProjection, useSessions, sessionId, t }) => {
+export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProjection, useSessions, sessionId, t, evidenceClient }) => {
   const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
   const projection = useProjection('goal')
+  const { evalRunCount, evalPassRates } = useEvidenceMetrics(evidenceClient ?? null)
   if (!active) return null
   const tAny2 = t as unknown as (key: string, params?: Record<string, unknown>) => string
   return (
     <EvidenceSidebar
       enabled={true}
       t={tAny2}
-      evidenceClient={null}
+      evidenceClient={evidenceClient ?? null}
       goalData={toGoalDockGoalData(projection)}
-      // TODO(evidence-query-rpc): real eval pass rates once the bridge exists.
-      evalPassRates={[]}
+      evalPassRates={evalPassRates}
       layoutMode="auto"
-      // TODO(evidence-query-rpc): real run count
-      // (`ctx.evidenceQuery.getEvalStore().getRunIds().length`) once the bridge exists.
-      evalRunCount={0}
+      evalRunCount={evalRunCount}
     />
   )
 }

@@ -49,8 +49,11 @@ export function listDomainsResult(schema: SemanticLayerService | undefined): Lis
 
   const counts = new Map<string, { tables: number; events: number; metrics: number }>()
   const ensure = (d: string) => {
-    if (!counts.has(d)) counts.set(d, { tables: 0, events: 0, metrics: 0 })
-    return counts.get(d)!
+    const existing = counts.get(d)
+    if (existing !== undefined) return existing
+    const fresh = { tables: 0, events: 0, metrics: 0 }
+    counts.set(d, fresh)
+    return fresh
   }
 
   for (const t of loadTables(root)) {
@@ -126,10 +129,10 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
       render: (_args, value) => [{ type: 'text', text: formatListDomains(value as unknown as ListDomainsResult) }],
     },
-    async execute(_args, exec) {
+    execute(_args, exec) {
       if (exec.signal.aborted) throw new Error('list_domains aborted')
-      const schema = ctx.get('schema') as SemanticLayerService | undefined
-      return listDomainsResult(schema) as any
+      const schema = ctx.get('schema')
+      return Promise.resolve(listDomainsResult(schema))
     },
   }))
 }

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-result-cache",
   "description": "Abstract result-cache seam (ctx.resultCache) for the DeepSeek Harness — store and retrieve query/compute results by result_id",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },

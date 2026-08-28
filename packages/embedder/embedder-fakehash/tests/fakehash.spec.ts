@@ -8,7 +8,7 @@
  * Run: `pnpm vitest run packages/embedder/embedder-fakehash`
  */
 import { test, expect } from 'vitest'
-import { tokenize, hashVec, fakeRecall, FakeReranker } from '../src/index.ts'
+import { tokenize, hashVec } from '../src/index.ts'
 
 test('tokenize: ASCII words lowercased + CJK bigrams', () => {
   expect(tokenize('hello world')).toEqual(['hello', 'world'])
@@ -27,18 +27,4 @@ test('hashVec: dim + L2-normalized + deterministic', () => {
 
 test('hashVec: distinct texts produce distinct vectors', () => {
   expect(hashVec('营收', 64)).not.toEqual(hashVec('充值', 64))
-})
-
-test('fakeRecall: query-token overlap fraction (empty query -> 0)', () => {
-  expect(fakeRecall('营收 充值', '营收日报')).toBeCloseTo(0.5, 6) // 1 of 2 query bigrams ('营收') in text
-  expect(fakeRecall('', 'x')).toBe(0)
-})
-
-test('FakeReranker: modelId + aligned recall-based scores', async () => {
-  const r = new FakeReranker()
-  expect(r.modelId).toBe('fake-recall')
-  const scores = await r.rerank('营收', ['营收日报', '充值金额', ''])
-  expect(scores).toHaveLength(3)
-  expect(scores[0]).toBeGreaterThan(scores[1]!) // '营收日报' overlaps '营收' > '充值金额'
-  expect(scores[2]).toBe(0) // empty text -> zero overlap
 })

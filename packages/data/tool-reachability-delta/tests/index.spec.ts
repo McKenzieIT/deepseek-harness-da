@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { apply, formatReachabilityDelta, projectMeta } from '../src/index'
+import { apply, formatReachabilityDelta, projectMeta } from '../src/index.ts'
 
 interface ToolDef {
   name: string
@@ -48,14 +48,14 @@ describe('tool-reachability-delta', () => {
 
     expect(ctx.tools.register).toHaveBeenCalledTimes(1)
     expect(registered).toHaveLength(1)
-    expect(registered[0].name).toBe('reachability_delta')
+    expect(registered[0]!.name).toBe('reachability_delta')
   })
 
   it('execute delegates to evidenceQuery.reachabilityDelta', async () => {
     const { ctx, registered, evidenceQuery } = createMockCtx({ hasEvidenceQuery: true })
     apply(ctx as never)
 
-    const tool = registered[0]
+    const tool = registered[0]!
     const exec = { signal: { aborted: false } }
     const args = {
       source_id: 'asset_orders',
@@ -78,14 +78,14 @@ describe('tool-reachability-delta', () => {
       { from: 'asset_orders', to: 'asset_addresses' },
       { from: 'asset_line_items', to: 'asset_customers' },
     ])
-    expect(result.message).toBeNull()
+    expect(result.message).toBeUndefined()
   })
 
   it('execute without on parameter omits it from the proposed relation', async () => {
     const { ctx, registered, evidenceQuery } = createMockCtx({ hasEvidenceQuery: true })
     apply(ctx as never)
 
-    const tool = registered[0]
+    const tool = registered[0]!
     const exec = { signal: { aborted: false } }
     const args = {
       source_id: 'asset_a',
@@ -106,7 +106,7 @@ describe('tool-reachability-delta', () => {
     const { ctx, registered } = createMockCtx({ hasEvidenceQuery: false })
     apply(ctx as never)
 
-    const tool = registered[0]
+    const tool = registered[0]!
     const exec = { signal: { aborted: false } }
     const args = {
       source_id: 'asset_x',
@@ -134,7 +134,6 @@ describe('tool-reachability-delta', () => {
         proposedRelation: { sourceId: 'a', targetId: 'b', type: 'joins', on: 'a.id = b.a_id' },
         newlyReachableCount: 2,
         newlyReachable: [{ from: 'a', to: 'c' }, { from: 'd', to: 'b' }],
-        message: null,
       }
       const output = formatReachabilityDelta(result)
       expect(output).toContain('Proposed relation: a —[joins]→ b')
@@ -163,7 +162,6 @@ describe('tool-reachability-delta', () => {
         proposedRelation: { sourceId: 'x', targetId: 'y', type: 'joins' },
         newlyReachableCount: 25,
         newlyReachable: pairs,
-        message: null,
       }
       const output = formatReachabilityDelta(result)
       expect(output).toContain('... +5 more')
@@ -177,7 +175,6 @@ describe('tool-reachability-delta', () => {
         proposedRelation: { sourceId: 'a', targetId: 'b', type: 'joins', on: 'x' },
         newlyReachableCount: 1,
         newlyReachable: [{ from: 'a', to: 'c' }],
-        message: null,
       }
       const meta = projectMeta(result)
       expect(meta.ok).toBe(true)

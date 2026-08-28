@@ -34,7 +34,7 @@ Mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-source
 ```ts ignore-check
 export const name = 'tool-retrieve'
 export const inject = ['tools']
-export const Config: z<Config> = z.object({ topK: z.number().default(5) })
+export const Config: z<Config> = z.object({ topK: z.number().default(20) })
 
 export function retrieve(linker: RetrievalLinker, query: string, topK: number): RetrieveHit[] {
   const hits = linker.retrieve(query, { topK, mode: 'bm25-only' })
@@ -42,7 +42,7 @@ export function retrieve(linker: RetrievalLinker, query: string, topK: number): 
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
-  const defaultTopK = config.topK ?? 5
+  const defaultTopK = config.topK ?? 20
   const linker: RetrievalLinker = new Bm25Linker([])   // Q1-thin default
   ctx.tools.register(defineTool({
     name: 'retrieve',
@@ -70,7 +70,7 @@ Registration is effect-based (disposing the plugin fiber unregisters the tool). 
 
 | option | type | default | note |
 |---|---|---|---|
-| `topK` | `number` | `5` | Default candidate count when the call omits `top_k` (parity with `search_data_sources`). The agent may pass a higher `top_k` when re-searching a gap. |
+| `topK` | `number` | `20` | Default candidate count when the call omits `top_k` (parity with `search_data_sources`; D2h raised 5→20). The agent may pass a higher `top_k` when re-searching a gap. |
 
 ## Verification
 
@@ -79,7 +79,23 @@ Registration is effect-based (disposing the plugin fiber unregisters the tool). 
 pnpm vitest run packages/data/tool-retrieve
 ```
 
-11 specs (R1–R11) cover BM25 linking, the `top_k` cap, the empty thin-default, registration, the `ctx.retrieval` soft-fallback (R8), the `ctx.schema` enriched soft-fallback (R9), the abort guard (R10), and the config `topK` default (R11) — mirroring `tool-search-data-sources`'s S1–S9 + two retrieve-specific tests.
+12 specs (R1–R12) cover BM25 linking, the `top_k` cap, the empty thin-default, registration, the `ctx.retrieval` soft-fallback (R8), the `ctx.schema` enriched soft-fallback (R9), the abort guard (R10), the config `topK` default (R11), and the D2h 5→20 default raise (R12) — mirroring `tool-search-data-sources`'s S1–S9 + three retrieve-specific tests.
+
+## Model Experience
+
+### The `retrieve` tool call
+
+#### What the model sees
+
+The `retrieve` tool schema (name, description, the `query` and `top_k` parameters, and the `candidates` output array) flows into system-prompt assembly automatically once the plugin mounts (the preset row is commented by default — see Status), so a model whose bundle mounts the tool discovers it alongside the rest of its phase whitelist. When the model invokes it, `execute` returns one canonical `{ candidates: [...] }` JSON value that `output.render` projects into model-facing text: a numbered list (`1. <id> (score <score>) - <description>`) per ranked data source, or the single line `No matching data sources found.` when the corpus is empty (the Q1 thin default until `ctx.schema` mounts).
+
+#### Token effect
+
+The rendered `candidates` text in the tool result is the only per-call token charge for this tool; the `retrieve` schema rides the system prompt rather than the turn payload. With the empty Q1 corpus the result is one short line, and once `ctx.schema` mounts the enriched corpus the result scales with `top_k` (default 20).
+
+#### KV Cache effect
+
+Tool results are append-only: the `candidates` text follows the reusable request prefix and does not invalidate prior cache entries. The tool schema is part of that stable system-prompt prefix across turns, so registering or calling the tool adds no prefix churn.
 
 ## Known Limitations and Deferred Work
 

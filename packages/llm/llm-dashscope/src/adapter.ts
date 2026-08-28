@@ -27,7 +27,6 @@ import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type { AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
 import { serializeRequest } from './serialize.ts'
-import type { RequestDefaults } from './serialize.ts'
 import { parseSse } from './sse.ts'
 import { translate } from './translate.ts'
 import type { WireChunk } from './types.ts'
@@ -59,8 +58,6 @@ export interface DashScopeConnectionOptions {
   baseURL: string
   /** Credential reference of this same resolution, resolved per request. */
   apiKeyEnv: CredentialRef
-  /** Request defaults (native protocol has no per-request thinking knob; empty today). */
-  defaults: RequestDefaults
   /** Default per-request output cap; explicit request values win. */
   maxTokens: number
   /** Positive context capacity used when the selected model has no exact value. */
@@ -269,10 +266,17 @@ export class DashScopeAdapter extends LlmAdapter {
           { cause: error },
         )
       }
+      // Preserve an already-determined provider/translate LlmError (AUTH/RATE_LIMIT/
+      // MODEL_NOT_AVAILABLE/INVALID_REQUEST/SERVER/EMPTY_RESPONSE/MALFORMED_RESPONSE/STREAM_CLOSED)
+      // over a concurrent caller abort: if the gateway returned a non-2xx and the caller aborted
+      // around the same time, the abort is coincidental, not the root cause. Genuine caller aborts
+      // produce a bare AbortError (not an LlmError) and still reach the ABORTED branch below. The
+      // finish kind downstream is `aborted` either way (signal.aborted), but the terminal
+      // failure.code and provider facts (status/requestId) now reflect the real provider error.
+      if (error instanceof LlmError) throw error
       if (options.signal?.aborted) {
         throw new LlmError('DashScope request aborted by caller', 'ABORTED', { cause: error })
       }
-      if (error instanceof LlmError) throw error
       throw new LlmError(`DashScope API stream from ${connection.baseURL} failed`, 'TRANSPORT', { cause: error })
     } finally {
       consumer.abort('DashScope stream consumer stopped')
@@ -294,7 +298,7 @@ export class DashScopeAdapter extends LlmAdapter {
     userId: AnonymousUserId,
     onComment: () => void,
   ): AsyncIterable<StreamChunk> {
-    const body = serializeRequest(options, connection.defaults)
+    const body = serializeRequest(options)
     // Prepared outside the try so the TRANSPORT label below covers exactly the transport boundary.
     const payload = JSON.stringify(body)
     const headers = {

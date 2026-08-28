@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-nl2sql-engine",
   "description": "NL→SQL engine for the data agent: BM25 schema-linking + SQL-gen prompt (RBI v2-baseline staged SOP) + regex/JSON-path critic (sql_syntax_gate) + execution-feedback self-correction. Consumes ctx.query (agent-driven); local retrieval/substrate interfaces (P5/P6 production swap deferred via P13b grilling Q1)",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
@@ -18,23 +18,29 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
-    "lib/types/**/*.js",
+    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^"
   },
   "dependencies": {},
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^"
   }

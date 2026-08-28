@@ -17,7 +17,7 @@ import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { critiqueSql } from '@deepseek-ai/dsh-nl2sql-engine'
 import { PhaseGate } from '../src/phase-gate.ts'
-import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS } from '../src/types.ts'
+import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS } from '../src/domain.ts'
 
 function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancelled: AgentCancelCause[] } {
   const injected: UserMessage[] = []
@@ -767,7 +767,7 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
 // ── P-DA1: route-gate (UNDERSTANDING 3-state + grounding backstop) ──
 // P-DA2: generation-relax (criticToolsRegistered probe) ──
 // P-DA3: persona thickening (no chitchat filter — dropped) ──
-import { extractRoute, ROUTE_MARKER_REGEX } from '../src/types.ts'
+import { extractRoute, ROUTE_MARKER_REGEX } from '../src/domain.ts'
 
 describe('P-DA1 route-gate (UNDERSTANDING 3-state + grounding backstop)', () => {
   beforeEach(() => vi.useFakeTimers())
@@ -1799,7 +1799,7 @@ describe('G-DA6: prior_turn_tables inheritance', () => {
     await g.onPostExecute(
       execView('query_data', agent, { sql: 'SELECT * FROM pay_order_di' }),
       resultOk({ state: 'completed' }),
-      () => Promise.resolve({ kind: 'continue' as const }),
+      () => Promise.resolve({ kind: 'accept' as const }),
     )
     expect(s.prior_turn_tables).toEqual(new Set(['pay_order_di', 'proj.pay_order_di']))
 
@@ -1823,7 +1823,7 @@ describe('G-DA6: prior_turn_tables inheritance', () => {
     await g.onPostExecute(
       execView('query_data', agent, { sql: 'SELECT * FROM dws_user_active' }),
       resultOk({ state: 'completed' }),
-      () => Promise.resolve({ kind: 'continue' as const }),
+      () => Promise.resolve({ kind: 'accept' as const }),
     )
 
     // Follow-up turn
@@ -1893,7 +1893,7 @@ describe('G-DA6: prior_turn_tables inheritance', () => {
     await g.onPostExecute(
       execView('query_data', agent, { sql: 'SELECT * FROM new_table' }),
       resultOk({ state: 'failed', failureKind: 'syntax', error: 'SQL syntax error' }),
-      () => Promise.resolve({ kind: 'continue' as const }),
+      () => Promise.resolve({ kind: 'accept' as const }),
     )
 
     // prior_turn_tables unchanged (no snapshot on failure)

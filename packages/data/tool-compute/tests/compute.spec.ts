@@ -139,8 +139,8 @@ test('execute passes code to codeRuntime with data binding', async () => {
   expect(runtime.lastRequest).toBeDefined()
   expect(runtime.lastRequest!.program).toBe('my_code_here')
   expect(runtime.lastRequest!.bindings).toHaveLength(1)
-  expect(runtime.lastRequest!.bindings[0].global).toBe('data')
-  expect(runtime.lastRequest!.bindings[0].functions).toHaveProperty('load_result')
+  expect(runtime.lastRequest!.bindings[0]!.global).toBe('data')
+  expect(runtime.lastRequest!.bindings[0]!.functions).toHaveProperty('load_result')
 })
 
 test('load_result binding returns data from cache', async () => {
@@ -149,7 +149,7 @@ test('load_result binding returns data from cache', async () => {
 
   let capturedBinding: ((args: unknown) => Promise<unknown>) | undefined
   runtime.run = async (request) => {
-    capturedBinding = request.bindings[0].functions.load_result
+    capturedBinding = request.bindings[0]!.functions.load_result
     return { value: { columns: ['r'], rows: [[1]] }, logs: [] }
   }
 
@@ -170,7 +170,7 @@ test('load_result binding throws on missing result_id', async () => {
 
   let capturedBinding: ((args: unknown) => Promise<unknown>) | undefined
   runtime.run = async (request) => {
-    capturedBinding = request.bindings[0].functions.load_result
+    capturedBinding = request.bindings[0]!.functions.load_result
     return { value: { columns: ['r'], rows: [[1]] }, logs: [] }
   }
 
@@ -190,7 +190,7 @@ test('load_result binding throws on empty result_id argument', async () => {
 
   let capturedBinding: ((args: unknown) => Promise<unknown>) | undefined
   runtime.run = async (request) => {
-    capturedBinding = request.bindings[0].functions.load_result
+    capturedBinding = request.bindings[0]!.functions.load_result
     return { value: { columns: ['r'], rows: [[1]] }, logs: [] }
   }
 
@@ -250,7 +250,6 @@ test('execute propagates code runtime failure', async () => {
   const { cache, runtime } = createMocks()
   cache.store.set('qr_1', { columns: ['x'], rows: [[1]] })
   runtime.result = {
-    value: undefined,
     logs: ['Traceback...'],
     error: { kind: 'exception', message: "NameError: name 'foo' is not defined" },
   }
@@ -265,7 +264,6 @@ test('execute propagates timeout failure', async () => {
   const { cache, runtime } = createMocks()
   cache.store.set('qr_1', { columns: ['x'], rows: [[1]] })
   runtime.result = {
-    value: undefined,
     logs: [],
     error: { kind: 'timeout', message: 'CPU time limit exceeded' },
   }

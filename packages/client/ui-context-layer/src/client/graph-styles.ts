@@ -83,8 +83,8 @@ export function edgeStyle(isAggregate = false) {
 export function comboStyle(domainIndex: number) {
   const idx = domainIndex % DOMAIN_PALETTE.length
   return {
-    fill: DOMAIN_PALETTE[idx],
-    stroke: DOMAIN_BORDER_PALETTE[idx],
+    fill: DOMAIN_PALETTE[idx] ?? '#e6f7ff',
+    stroke: DOMAIN_BORDER_PALETTE[idx] ?? '#91d5ff',
     lineWidth: 1,
     radius: 8,
     padding: 20,

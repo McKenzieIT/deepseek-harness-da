@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import yaml from 'js-yaml'
+import { Context } from '@deepseek-ai/cordis'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { EvalResultStore, FileBackedEvalResultStore, EvidenceQueryService } from '../src/index.ts'
 
@@ -44,10 +45,10 @@ describe('EvalResultStore.loadFromDirectory', () => {
     const result = store.query({})
 
     expect(result.total).toBe(3)
-    expect(result.results[0].caseId).toBe('c1')
-    expect(result.results[0].status).toBe('pass')
-    expect(result.results[1].status).toBe('fail')
-    expect(result.results[2].status).toBe('error') // unjudged → error
+    expect(result.results[0]!.caseId).toBe('c1')
+    expect(result.results[0]!.status).toBe('pass')
+    expect(result.results[1]!.status).toBe('fail')
+    expect(result.results[2]!.status).toBe('error') // unjudged → error
   })
 
   it('uses caseAssetResolver to map caseId → assetId', () => {
@@ -59,8 +60,8 @@ describe('EvalResultStore.loadFromDirectory', () => {
     store.loadFromDirectory(dir, resolver)
     const result = store.query({})
 
-    expect(result.results[0].assetId).toBe('asset_c1')
-    expect(result.results[1].assetId).toBe('asset_c2')
+    expect(result.results[0]!.assetId).toBe('asset_c1')
+    expect(result.results[1]!.assetId).toBe('asset_c2')
   })
 
   it('defaults assetId to caseId when no resolver provided', () => {
@@ -71,7 +72,7 @@ describe('EvalResultStore.loadFromDirectory', () => {
     store.loadFromDirectory(dir)
     const result = store.query({})
 
-    expect(result.results[0].assetId).toBe('c1')
+    expect(result.results[0]!.assetId).toBe('c1')
   })
 
   it('loads multiple JSONL files', () => {
@@ -141,7 +142,6 @@ describe('EvidenceQueryService.beforeAfterDelta', () => {
 
   function makeServiceWithStore(store: EvalResultStore): EvidenceQueryService {
     const layerDir = seedMinimalLayer()
-    const { Context } = require('@deepseek-ai/cordis') as typeof import('@deepseek-ai/cordis')
     const ctx = new Context()
     new SemanticLayerService(ctx, { semanticRoot: layerDir, scopeId: 'test' })
     return new EvidenceQueryService(ctx, store)
@@ -215,8 +215,8 @@ describe('FileBackedEvalResultStore', () => {
     const dir = makeTmpDir()
     writeJsonl(dir, '2026-08-24T10-00-00-000Z_run-a.jsonl', runARecords)
 
-    const store = new FileBackedEvalResultStore(dir, (caseId) => `table_${caseId}`)
-    expect(store.query({}).results[0].assetId).toBe('table_c1')
+    const store = new FileBackedEvalResultStore(dir, caseId => `table_${caseId}`)
+    expect(store.query({}).results[0]!.assetId).toBe('table_c1')
   })
 
   it('handles empty directory', () => {

@@ -17,7 +17,6 @@ import type {} from '@deepseek-ai/dsh-session'
 
 export const name = 'goal-eval-policy'
 export const inject = ['goals', 'evidenceQuery']
-export const optional = ['evalRunner', 'agents']
 
 /** Plugin configuration. */
 export interface Config {

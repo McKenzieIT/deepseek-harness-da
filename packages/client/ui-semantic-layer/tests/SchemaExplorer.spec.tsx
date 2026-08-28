@@ -32,14 +32,14 @@ const SEARCH_RESULTS: SchemaSearchHit[] = [
 
 function makeClient(): SchemaGatewayClient {
   return {
-    listDomains: vi.fn<[], Promise<DomainEntry[]>>().mockResolvedValue(DOMAINS),
-    listTables: vi.fn<[], Promise<TableSummary[]>>().mockResolvedValue(TABLES),
-    listEvents: vi.fn<[], Promise<EventSummary[]>>().mockResolvedValue(EVENTS),
-    listMetrics: vi.fn<[], Promise<MetricSummary[]>>().mockResolvedValue(METRICS),
+    listDomains: vi.fn().mockResolvedValue(DOMAINS),
+    listTables: vi.fn().mockResolvedValue(TABLES),
+    listEvents: vi.fn().mockResolvedValue(EVENTS),
+    listMetrics: vi.fn().mockResolvedValue(METRICS),
     getTableDefinition: vi.fn().mockResolvedValue({ table_name: 'dws_acc_summary_df', columns: [], metrics: {}, dimension_refs: [] }),
     getEventDefinition: vi.fn().mockResolvedValue({ name: 'recharge_event', params_fields: {}, metrics: {} }),
     getMetricDefinition: vi.fn().mockResolvedValue({ name: 'daily_revenue', computation: {} }),
-    search: vi.fn<[string, number?], Promise<SchemaSearchHit[]>>().mockResolvedValue(SEARCH_RESULTS),
+    search: vi.fn().mockResolvedValue(SEARCH_RESULTS),
     getCoverageStats: vi.fn().mockResolvedValue({ table_count: 10, event_count: 5, metric_count: 3, domain_counts: {} }),
   }
 }
@@ -76,9 +76,9 @@ describe('SchemaExplorer', () => {
   it('navigates to domain detail on click', async () => {
     vi.useRealTimers()
     const { container } = render(<SchemaExplorer client={client} t={t} />)
-    await waitFor(() => expect(container.textContent).toContain('角色'))
+    await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
-    fireEvent.click(domainCards[0])
+    fireEvent.click(domainCards[0]!)
     await waitFor(() => {
       expect(client.listTables).toHaveBeenCalled()
       expect(container.textContent).toContain('dws_acc_summary_df')
@@ -88,9 +88,9 @@ describe('SchemaExplorer', () => {
   it('shows tables tab with kind badges', async () => {
     vi.useRealTimers()
     const { container } = render(<SchemaExplorer client={client} t={t} />)
-    await waitFor(() => expect(container.textContent).toContain('角色'))
+    await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
-    fireEvent.click(domainCards[0])
+    fireEvent.click(domainCards[0]!)
     await waitFor(() => {
       expect(container.textContent).toContain('dws')
       expect(container.textContent).toContain('dim')
@@ -117,10 +117,10 @@ describe('SchemaExplorer', () => {
   it('shows breadcrumb in domain-detail mode with back navigation', async () => {
     vi.useRealTimers()
     const { container } = render(<SchemaExplorer client={client} t={t} />)
-    await waitFor(() => expect(container.textContent).toContain('角色'))
+    await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
-    fireEvent.click(domainCards[0])
-    await waitFor(() => expect(container.textContent).toContain('schema.domains'))
+    fireEvent.click(domainCards[0]!)
+    await waitFor(() => { expect(container.textContent).toContain('schema.domains') })
     const backLink = container.querySelector('[class*="breadcrumbLink"]')!
     fireEvent.click(backLink)
     await waitFor(() => {
@@ -132,13 +132,13 @@ describe('SchemaExplorer', () => {
     vi.useRealTimers()
     const onNav = vi.fn()
     const { container } = render(<SchemaExplorer client={client} t={t} onNavigateToGraph={onNav} />)
-    await waitFor(() => expect(container.textContent).toContain('角色'))
+    await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
-    fireEvent.click(domainCards[0])
-    await waitFor(() => expect(container.textContent).toContain('dws_acc_summary_df'))
+    fireEvent.click(domainCards[0]!)
+    await waitFor(() => { expect(container.textContent).toContain('dws_acc_summary_df') })
     const assetRows = container.querySelectorAll('[class*="assetRow"]')
-    fireEvent.click(assetRows[0])
-    await waitFor(() => expect(container.querySelector('.sl-asset-detail__graph-btn')).not.toBeNull())
+    fireEvent.click(assetRows[0]!)
+    await waitFor(() => { expect(container.querySelector('.sl-asset-detail__graph-btn')).not.toBeNull() })
     const btn = container.querySelector('.sl-asset-detail__graph-btn')!
     fireEvent.click(btn)
     expect(onNav).toHaveBeenCalledWith('dws_acc_summary_df')

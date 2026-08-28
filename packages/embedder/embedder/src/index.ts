@@ -81,17 +81,13 @@ declare module '@deepseek-ai/cordis' {
 
 /**
  * Abstract embedder service. Providers implement `embed` (async — HTTP
- * inference must not block the event loop). `dim` is informational and MAY be
- * `undefined` until the first embed discovers it (HTTP embedder); consumers
- * infer the working dimension from the embedded vectors' length rather than
- * reading `dim` upfront.
+ * inference must not block the event loop). Consumers infer the working
+ * dimension from the embedded vectors' length.
  */
 export abstract class EmbedderService extends Service {
   constructor(ctx: Context) {
     super(ctx, 'embedder')
   }
-  /** Embedding dimension; `undefined` until discovered by an HTTP provider. */
-  abstract get dim(): number | undefined
   /** Provider-defined model id (for logging / config surfaces). */
   abstract get modelId(): string
   /**

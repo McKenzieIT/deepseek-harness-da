@@ -194,6 +194,9 @@ export class HybridRetriever {
   private readonly bm25: BM25Okapi
   private vecs: readonly (readonly number[])[] | null = null
   private vecDown = false
+  /** In-flight corpus-embed promise so concurrent retrieve calls share one
+   * embed (no duplicate round-trips, no success/failure race on vecs/vecDown). */
+  private vecsPromise: Promise<readonly (readonly number[])[]> | null = null
 
   constructor(
     corpus: readonly RetrievalCorpusItem[],
@@ -206,20 +209,39 @@ export class HybridRetriever {
     this.bm25 = new BM25Okapi(this.corpus)
   }
 
-  /** Embed the corpus once (lazy); `InferenceError` -> vec down (BM25-only). */
-  private async ensureVecs(): Promise<readonly (readonly number[])[]> {
-    if (this.vecs !== null || this.vecDown) return this.vecs ?? []
-    try {
-      this.vecs = await this.embedder.embed(this.corpus.map(d => d.text))
-    } catch (e) {
-      if (e instanceof InferenceError) {
-        this.vecs = []
-        this.vecDown = true
-      } else {
+  /** Embed the corpus once (lazy); `InferenceError` -> vec down (BM25-only).
+   * Concurrent callers share a single in-flight embed. */
+  private ensureVecs(): Promise<readonly (readonly number[])[]> {
+    // Cached terminal state: corpus embed succeeded (vecs) or failed
+    // permanently (vecDown). Concurrent callers short-circuit here.
+    if (this.vecs !== null || this.vecDown) return Promise.resolve(this.vecs ?? [])
+    // Memoize the in-flight embed so a second retrieve entering before the
+    // first resolves awaits the SAME promise (no duplicate embed, no race
+    // where a failure overwrites a concurrent success on the shared fields).
+    if (this.vecsPromise !== null) return this.vecsPromise
+    const corpusTexts = this.corpus.map(d => d.text)
+    this.vecsPromise = (async () => {
+      try {
+        const result = await this.embedder.embed(corpusTexts)
+        this.vecs = result
+        return result
+      } catch (e) {
+        if (e instanceof InferenceError) {
+          // Corpus-level permanent degradation (the corpus is fixed, so an
+          // InferenceError here means the vector plane is down for good).
+          this.vecs = []
+          this.vecDown = true
+          return []
+        }
         throw e
+      } finally {
+        // Clear the in-flight slot once settled. Terminal state (vecs or
+        // vecDown) now short-circuits future callers; a thrown non-
+        // InferenceError leaves vecs null so the next call retries.
+        this.vecsPromise = null
       }
-    }
-    return this.vecs ?? []
+    })()
+    return this.vecsPromise
   }
 
   /**
@@ -274,9 +296,13 @@ export class HybridRetriever {
           .map(h => ({ idx: h.idx, score: h.score, payload: this.corpus[h.idx]?.payload as RetrievalCorpusItem }))
       } catch (e) {
         if (!(e instanceof InferenceError)) throw e
-        // query-embed InferenceError -> degrade to BM25-only (mirrors the
-        // corpus-level degradation; the vector plane is down for this query).
-        this.vecDown = true
+        // query-embed InferenceError -> degrade to BM25-only for THIS query
+        // only (transient). Do NOT set the shared `vecDown` flag here: the
+        // corpus embed succeeded, so the vector plane is not actually down,
+        // and a single transient query-embed timeout must not permanently
+        // force BM25-only for every later query (the embedder may recover).
+        // Only the corpus-level ensureVecs catch may set `vecDown` (the
+        // corpus is fixed, so its failure is permanent).
         mode = 'bm25-only'
         hits = bm25Top.map(i => ({ idx: i, score: bm25Scores[i] ?? 0, payload: this.corpus[i]?.payload as RetrievalCorpusItem }))
       }

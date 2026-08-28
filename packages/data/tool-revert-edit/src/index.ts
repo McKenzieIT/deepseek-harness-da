@@ -68,7 +68,6 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
       to_version: {
         type: 'integer',
-        required: false,
         minimum: 1,
         description:
           'The snapshot version to restore. Use list mode (omit to_version and '
@@ -93,7 +92,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           from_version: { type: 'integer' },
           to_version: { type: 'integer' },
           message: { type: 'string' },
-          versions: { type: 'array', items: { type: 'object' } },
+          versions: { type: 'array', items: { type: 'object', additionalProperties: true } },
         },
       },
       render: (_args, value) => [{
@@ -104,7 +103,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       }],
       presentationMeta: (_args, value) => value,
     },
-    async execute(args, exec): Promise<RevertEditResult | { asset_name: string; versions: unknown[] }> {
+    async execute(args, exec) {
       if (exec.signal.aborted) throw new Error('revert_edit aborted')
 
       const schema = ctx.schema as unknown as SemanticLayerService
@@ -127,7 +126,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         return { asset_name: validated, versions }
       }
 
-      if (args.to_version === undefined || args.to_version === null) {
+      if (args.to_version === undefined) {
         return {
           reverted: false,
           asset_name: validated,
@@ -209,7 +208,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         reverted: true,
         asset_name: validated,
         kind,
-        from_version: fromVersion,
+        ...(fromVersion !== undefined ? { from_version: fromVersion } : {}),
         to_version: args.to_version,
       }
     },

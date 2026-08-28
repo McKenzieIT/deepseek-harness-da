@@ -157,7 +157,7 @@ test('F1 — on-write hook path: enrichOnWrite merges with existing refs', async
     const raw = yaml.load(readFileSync(join(dir, 'tables', 'dws_orders.yaml'), 'utf-8')) as Record<string, unknown>
     const refs = raw.dimension_refs as { dim_table: string; derivation: string }[]
     expect(refs.length).toBe(1)
-    expect(refs[0].derivation).toContain('LLM')
+    expect(refs[0]!.derivation).toContain('LLM')
   } finally {
     cleanup()
   }
@@ -189,7 +189,7 @@ test('F1 — alternative FK produces multiple independent join edges', () => {
   const rels = tableKindPlugin.relations(def)
   // Should produce 3 independent edges, not 1 AND-connected edge
   expect(rels.length).toBe(3)
-  expect(rels[0].on).toBe('act_server_id_fst = server_id')
-  expect(rels[1].on).toBe('act_server_id_lst = server_id')
-  expect(rels[2].on).toBe('pay_server_id_fst = server_id')
+  expect(rels[0]!.on).toBe('act_server_id_fst = server_id')
+  expect(rels[1]!.on).toBe('act_server_id_lst = server_id')
+  expect(rels[2]!.on).toBe('pay_server_id_fst = server_id')
 })

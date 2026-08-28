@@ -71,7 +71,7 @@ export function searchSchema(
   const hits = linker.retrieve(query, { topK, mode: 'bm25-only' })
   return {
     ok: true,
-    hits: hits.map(h => {
+    hits: hits.map((h) => {
       const p = h.payload as unknown as { kind?: string; domains?: string[]; description?: string } | undefined
       const hit: SearchSchemaHit = {
         id: h.id,
@@ -145,18 +145,18 @@ export function apply(ctx: Context, config: Config = {}): void {
       presentationMeta: (_args, value) => ({
         hits: (value.hits ?? []).map(h => ({
           id: h.id,
-          kind: h.kind,
-          domains: h.domains,
-          description: h.description,
+          ...(h.kind !== undefined ? { kind: h.kind } : {}),
+          ...(h.domains !== undefined ? { domains: h.domains } : {}),
+          ...(h.description !== undefined ? { description: h.description } : {}),
         })),
         ok: value.ok,
-        message: value.message,
+        ...(value.message !== undefined ? { message: value.message } : {}),
       }),
     },
-    async execute(args, exec) {
+    execute(args, exec) {
       if (exec.signal.aborted) throw new Error('search_schema aborted')
       const schema = ctx.get('schema') as SchemaCorpusSource | undefined
-      return searchSchema(schema, args.query, args.top_k ?? defaultTopK)
+      return Promise.resolve(searchSchema(schema, args.query, args.top_k ?? defaultTopK))
     },
     presentCall(args): GenericCallView {
       return {
@@ -165,7 +165,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         kind: 'search',
       }
     },
-    presentResult(args, result: ToolResult): GenericResultView | undefined {
+    presentResult(_args, result: ToolResult): GenericResultView | undefined {
       if (result.isError) return undefined
       const meta = result.meta as { hits?: { id: string }[]; ok?: boolean } | undefined
       const count = meta?.hits?.length ?? 0
