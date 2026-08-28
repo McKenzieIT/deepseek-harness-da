@@ -56,6 +56,8 @@ import { type CorpusVariant, type EventCorpusItem } from './corpus.ts'
 import {
   enrichAllDwsTables as enrichAllDwsTablesFromLayer,
   enrichAllEvents as enrichAllEventsFromLayer,
+  discoverAltLabels as discoverAltLabelsFromLayer,
+  enrichAllTablesAltLabels as enrichAllTablesAltLabelsFromLayer,
   type LlmCall,
 } from './enrichment.ts'
 import { DataSourceRegistry, type CorpusItem } from './registry.ts'
@@ -107,6 +109,7 @@ export {
   type EventCorpusInput,
 } from './corpus.ts'
 // G3: AI-Native enrichment substrate (B1/B2) + mechanical metrics extraction (B5).
+// CL-1 Phase 3: alt_labels enrichment (G3 同構).
 export {
   discoverRelationsDeterministic,
   mergeRefs,
@@ -119,6 +122,15 @@ export {
   buildEventLlmPrompt,
   discoverEventRelationsFor,
   enrichAllEvents,
+  discoverAltLabelsDeterministic,
+  buildAltLabelsPrompt,
+  parseAltLabelsResponse,
+  mergeAltLabels,
+  discoverAltLabelsFor,
+  enrichAllTablesAltLabels,
+  enrichAllEventsAltLabels,
+  discoverAltLabels,
+  type AltLabelsTarget,
   type DimInventoryEntry,
   type LlmCall,
 } from './enrichment.ts'
@@ -419,9 +431,25 @@ export class SemanticLayerService extends Service {
   }
 
   /**
+   * CL-1 Phase 3: discover alt_labels (SKOS aliases) for definitions in the
+   * layer. Two-round strategy: deterministic extraction from description/columns/
+   * domains + optional LLM semantic suggestions. Merges with existing labels
+   * (never removes curated aliases).
+   *
+   * @param opts - optional filters: `tables` (table_names) and/or `events` (event names).
+   * @returns combined `enriched` + `written` + `errors` across tables and events.
+   */
+  async discoverAltLabels(
+    opts: { readonly tables?: readonly string[]; readonly events?: readonly string[] } = {},
+  ): Promise<{ enriched: number; written: number; errors: string[] }> {
+    return discoverAltLabelsFromLayer(this.semanticRoot, this.llmCall, opts.tables, opts.events)
+  }
+
+  /**
    * G3 on-write hook: after a Service write, re-run DWS→DIM discovery for the
    * just-written tables and persist `dimension_refs` (best-effort: a failure
    * is logged, never propagated — it must not fail the originating write).
+   * Also runs alt_labels discovery for the written tables (CL-1 Phase 3).
    * Uses the substrate `enrichAllDwsTables` (which writes via substrate
    * `writeTable`), so the hook does NOT re-enter the Service write path. DIM
    * tables are skipped by `enrichAllDwsTables`. Gated by `autoEnrich`.
@@ -436,10 +464,19 @@ export class SemanticLayerService extends Service {
       // deterministic round does not rediscover (code-review B2).
       const res = await enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, names, true)
       if (res.errors.length > 0) {
-        this.ctx.logger.warn(`ctx.schema on-write enrichment partial failures: ${res.errors.join('; ')}`)
+        this.ctx.logger.warn(`ctx.schema on-write relation enrichment partial failures: ${res.errors.join('; ')}`)
       }
     } catch (e) {
-      this.ctx.logger.warn(`ctx.schema on-write enrichment failed: ${(e as Error).message}`)
+      this.ctx.logger.warn(`ctx.schema on-write relation enrichment failed: ${(e as Error).message}`)
+    }
+    // CL-1 Phase 3: also discover alt_labels for the written tables
+    try {
+      const res = await enrichAllTablesAltLabelsFromLayer(this.semanticRoot, this.llmCall, names)
+      if (res.errors.length > 0) {
+        this.ctx.logger.warn(`ctx.schema on-write alt_labels enrichment partial failures: ${res.errors.join('; ')}`)
+      }
+    } catch (e) {
+      this.ctx.logger.warn(`ctx.schema on-write alt_labels enrichment failed: ${(e as Error).message}`)
     }
   }
 

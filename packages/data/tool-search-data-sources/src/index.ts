@@ -252,13 +252,15 @@ function applyAliasFusion(
   const boosted = candidates.map((c) => {
     const hitCount = aliasHits.get(c.id)
     if (hitCount === undefined) return c
-    return { ...c, score: c.score * ALIAS_BOOST * hitCount, mode: 'alias-boosted' as const }
+    const capped = Math.min(hitCount, 2)
+    return { ...c, score: c.score * ALIAS_BOOST * capped, mode: 'alias-boosted' as const }
   })
 
   const seen = new Set(boosted.map(c => c.id))
   for (const [id, hitCount] of aliasHits) {
     if (seen.has(id)) continue
-    boosted.push({ id, score: ALIAS_BOOST * hitCount, mode: 'alias-resolved' })
+    const capped = Math.min(hitCount, 2)
+    boosted.push({ id, score: ALIAS_BOOST * capped, mode: 'alias-resolved' })
     seen.add(id)
   }
 
@@ -269,11 +271,25 @@ function applyAliasFusion(
 /**
  * Extract meaningful terms from a query for alias resolution.
  * Splits on whitespace/punctuation, keeps tokens ≥ 2 chars.
+ * For CJK-only continuous text (no spaces/separators), also emits overlapping
+ * bigrams so that compound terms like "日活跃用户" produce "日活", "活跃",
+ * "跃用", "用户" — increasing recall against single-bigram alt_labels.
  */
 function extractQueryTerms(query: string): string[] {
-  return query
+  const tokens = query
     .split(/[\s,，。？！?!、;；：:()（）\[\]【】{}]+/)
     .filter(t => t.length >= 2)
+  const out: string[] = [...tokens]
+  // CJK bigram: for tokens that are entirely CJK (≥3 chars), emit overlapping bigrams
+  const cjkRe = /^[一-鿿㐀-䶿]+$/
+  for (const t of tokens) {
+    if (t.length >= 3 && cjkRe.test(t)) {
+      for (let i = 0; i < t.length - 1; i++) {
+        out.push(t.slice(i, i + 2))
+      }
+    }
+  }
+  return out
 }
 
 /**

@@ -99,7 +99,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [T2 确认管理面板 web 端可见](tickets/T2-verify-management-panel-web-visibility.md) — Headless Playwright 自动化验证全部通过：sidebar 按钮渲染 + 点击进入 session + GoalDock/EvidenceSidebar 可见 + 零 console error。前置条件=web profile 含 data-agent bundle。
 - [R7 Terminology ontology 角色](research/r7-terminology-ontology-role.md) — **修订（前沿对齐）**：2026 context layer 共识= terminology IS ontology 一等组件；推荐方案 D（definition schema 加 `aliases` 节点属性 + RelationGraph 反向索引）；不新增 relation type（属性非边）；渐进三阶段实现
 - [R9 Context Layer 前沿审计](research/r9-context-layer-frontier-audit.md) — 现有决策与 2026 Forrester/Gartner/OpenMetadata/Atlan/Jedify 共识对照；大部分对齐（P3/G3/G4/G5/W6）；R7 已修订；G2 relation scope 偏窄（记为 fog）；缺 context layer 整体演进认知
-- [CL-1 Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — SKOS 对齐双字段（`pref_label` + `alt_labels: string[]`）；全 definition type 加；`toCorpusItem(def)` 移除 terminology 参数（原子迁移）；检索策略 = Strategy B（always-fused graph-anchored hybrid）；`lookup_terminology` → `resolve_term`（agent 消歧工具）；enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）
+- [CL-1 Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — SKOS 对齐双字段（`pref_label` + `alt_labels: string[]`）；全 definition type 加；`toCorpusItem(def)` 移除 terminology 参数（原子迁移）；检索策略 = Strategy B（always-fused graph-anchored hybrid）；`lookup_terminology` → `resolve_term`（agent 消歧工具）；enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）。**Phase 3 落地**：两轮发现（确定性提取括号/引号/domains + LLM 语义补充）；`@deepseek-ai/dsh-tool-discover-alt-labels` 新包；management preset 注册；on-write hook 扩展；code review fixes（score cap/CJK bigram/maxRelations）
 
 ## Not yet specified
 
@@ -238,7 +238,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
 ### Context Layer 对齐（CL 系列）
-- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — **Phase 1+2 完成**（P1: commit `d36c5d7f9a`；P2: 2026-08-29）：schema+接口+数据迁移+图反向索引+resolve_term tool+always-fused hybrid 检索。342 tests green。待实现 Phase 3（AI enrichment hook + discover_alt_labels tool）。
+- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — **全部三 Phase 完成**（P1: `d36c5d7f9a`；P2: `91794aec4f`；P3: 2026-08-29）：schema+接口+数据迁移+图反向索引+resolve_term+hybrid 检索+AI enrichment（on-write hook + discover_alt_labels tool + eval 验证）。Code review fixes: score cap / CJK bigram / maxRelations。
 - [CL-2: Domain/Concept 图节点](tickets/CL2-concept-kind-plugin.md) — grilling：ConceptKindPlugin 设计（blocked by CL-1）
 - [CL-3: 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — grilling：A/B/C 策略对比实验 + alias 质量验证机制（blocked by CL-1 Phase 2）
 - [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（blocked by CL-1 + CL-2，low priority）

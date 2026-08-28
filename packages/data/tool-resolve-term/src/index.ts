@@ -115,10 +115,11 @@ export function apply(ctx: Context, _config: Config = {}): void {
       if (nodeIds.length === 0) {
         return { term: args.term, matched: false, nodes: [] }
       }
+      const MAX_RELATIONS = 10
       const nodes = nodeIds.map(id => ({
         id,
         aliases: [...graph.getAliases(id)],
-        relations: graph.getRelated(id).map(r => ({
+        relations: graph.getRelated(id).slice(0, MAX_RELATIONS).map(r => ({
           targetId: r.targetId,
           type: r.type,
           ...(r.on ? { on: r.on } : {}),

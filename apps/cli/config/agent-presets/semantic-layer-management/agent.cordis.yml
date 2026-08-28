@@ -30,7 +30,8 @@
 
       You work with eval evidence: use get_coverage to assess current state,
       search_schema and get_definition to explore assets, discover_relations to
-      enrich the relation graph, and trigger_eval to measure progress via
+      enrich the relation graph, discover_alt_labels to improve search recall
+      with synonyms and abbreviations, and trigger_eval to measure progress via
       before/after delta comparison.
 
       You manage definitions and structure. The data agent serves user queries
@@ -80,10 +81,13 @@
 - id: tool-get-coverage
   name: '@deepseek-ai/dsh-tool-get-coverage'
 
-# ── enrichment tool (existing package) ─────────────────────────────────────
+# ── enrichment tools (relation + alias discovery) ──────────────────────────
 
 - id: tool-discover-relations
   name: '@deepseek-ai/dsh-tool-discover-relations'
+
+- id: tool-discover-alt-labels
+  name: '@deepseek-ai/dsh-tool-discover-alt-labels'
 
 # ── goal management (existing package) ─────────────────────────────────────
 

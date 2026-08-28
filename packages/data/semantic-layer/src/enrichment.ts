@@ -1,11 +1,18 @@
 /**
- * AI-Native enrichment (B1/B2) — discover DWS→DIM dimension relations.
+ * AI-Native enrichment (B1/B2/CL-1) — discover DWS→DIM dimension relations +
+ * discover alt_labels (SKOS aliases) for definitions.
  *
  * G3 design (resolved 2026-08-22):
- *  - Two-round strategy: (1) deterministic PK-name exact match (no LLM);
- *    (2) LLM-assisted semantic match via an injectable `llmCall`.
- *  - Results merged + deduped by `dim_table`; written directly (no approval).
+ *  - Two-round strategy: (1) deterministic inference (no LLM);
+ *    (2) LLM-assisted semantic supplement via an injectable `llmCall`.
+ *  - Results merged + deduped; written directly (no approval).
  *  - `llmCall` is OPTIONAL: when absent, only the deterministic round runs.
+ *
+ * CL-1 Phase 3 (alt_labels enrichment):
+ *  - Same two-round pattern: (1) deterministic extraction from description +
+ *    column comments + domains; (2) LLM-suggested semantic aliases.
+ *  - Targets all definition types (tables + events).
+ *  - Merge preserves existing human-curated alt_labels.
  *
  * Substrate discipline: this module imports ONLY the substrate (types/io) +
  * atomic-write — it does NOT import `@deepseek-ai/dsh-llm`. The `llmCall`
@@ -448,4 +455,314 @@ export async function enrichAllEvents(
     }
   }
   return { enriched, written, errors }
+}
+
+// ── CL-1 Phase 3: alt_labels enrichment (G3 同构) ──────────────────────
+
+/** A definition summary for alt_labels enrichment (works for both tables and events). */
+export interface AltLabelsTarget {
+  readonly id: string
+  readonly kind: 'table' | 'event'
+  readonly description: string
+  readonly domains: readonly string[]
+  readonly columns?: ReadonlyArray<{ name: string; comment?: string }>
+  readonly existingAltLabels: readonly string[]
+  readonly existingPrefLabel: string | undefined
+}
+
+/**
+ * Deterministic round for alt_labels discovery: extract candidate aliases from
+ * description, table_comment, column comments, and domains. No LLM needed.
+ *
+ * Heuristics:
+ * - Chinese parenthesized terms in description/table_comment (e.g. "用户活跃度（DAU）" → "DAU")
+ * - Quoted terms (single/double quotes, angle brackets) in description
+ * - Domain names as-is (they're already business vocabulary)
+ *
+ * Returns only NEW labels (not already in existingAltLabels or existingPrefLabel).
+ */
+export function discoverAltLabelsDeterministic(target: AltLabelsTarget): string[] {
+  const existing = new Set([
+    ...target.existingAltLabels.map(normalizeLabel),
+    ...(target.existingPrefLabel ? [normalizeLabel(target.existingPrefLabel)] : []),
+    normalizeLabel(target.id),
+  ])
+  const candidates: string[] = []
+
+  const desc = target.description || ''
+
+  // Extract parenthesized terms: （xxx）or (xxx)
+  for (const m of desc.matchAll(/[（(]([^）)]+)[）)]/g)) {
+    const term = m[1]?.trim()
+    if (term && term.length >= 2 && term.length <= 50) candidates.push(term)
+  }
+
+  // Extract quoted terms: "xxx" / 'xxx' / 「xxx」/ 《xxx》
+  for (const m of desc.matchAll(/["'「《]([^"'」》]+)["'」》]/g)) {
+    const term = m[1]?.trim()
+    if (term && term.length >= 2 && term.length <= 50) candidates.push(term)
+  }
+
+  // Domains are business vocabulary — add directly
+  for (const d of target.domains) {
+    if (d.length >= 2) candidates.push(d)
+  }
+
+  // Dedupe against existing + self-id, then dedupe among candidates
+  const seen = new Set(existing)
+  const out: string[] = []
+  for (const c of candidates) {
+    const key = normalizeLabel(c)
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(c)
+  }
+  return out
+}
+
+function normalizeLabel(s: string): string {
+  return s.toLowerCase().trim()
+}
+
+/**
+ * Build the LLM prompt for alt_labels discovery on one definition. Asks the
+ * model to suggest alternative search labels (Chinese + English abbreviations)
+ * based on the definition's description, columns/fields, and domains.
+ */
+export function buildAltLabelsPrompt(target: AltLabelsTarget): string {
+  const lines: string[] = [
+    'Suggest alternative search labels (alt_labels) for the following data asset definition.',
+    'These labels help users find this asset using different terminology — synonyms, abbreviations, Chinese/English variants, business jargon.',
+    '',
+    `Asset: ${target.id} (${target.kind})`,
+    `Description: ${target.description || '(none)'}`,
+  ]
+  if (target.domains.length > 0) {
+    lines.push(`Domains: ${target.domains.join(', ')}`)
+  }
+  if (target.columns && target.columns.length > 0) {
+    const colSummary = target.columns
+      .filter(c => c.comment)
+      .slice(0, 20)
+      .map(c => `  - ${c.name}: ${c.comment}`)
+      .join('\n')
+    if (colSummary) {
+      lines.push('Key columns:')
+      lines.push(colSummary)
+    }
+  }
+  if (target.existingAltLabels.length > 0) {
+    lines.push(`Existing labels (do NOT repeat): ${target.existingAltLabels.join(', ')}`)
+  }
+  lines.push('')
+  lines.push('Return ONLY a JSON array of strings — candidate alt_labels (2-50 chars each, 3-10 items).')
+  lines.push('Rules: no duplicates; no repetition of the asset name itself; Chinese terms preferred when the description is Chinese; include English abbreviations if applicable; if no good candidates, return [].')
+  return lines.join('\n')
+}
+
+/**
+ * Parse the LLM response for alt_labels: extract a JSON array of strings.
+ * Lenient — invalid items are dropped.
+ */
+export function parseAltLabelsResponse(text: string): string[] {
+  const arr = extractJsonArray(text)
+  const out: string[] = []
+  for (const item of arr) {
+    if (typeof item !== 'string') continue
+    const trimmed = item.trim()
+    if (trimmed.length >= 2 && trimmed.length <= 50) out.push(trimmed)
+  }
+  return out
+}
+
+/**
+ * Merge new alt_labels into existing ones (dedupe by normalized form).
+ * Preserves the order: existing first, then new.
+ */
+export function mergeAltLabels(existing: readonly string[], added: readonly string[]): string[] {
+  const seen = new Set(existing.map(normalizeLabel))
+  const out = [...existing]
+  for (const label of added) {
+    const key = normalizeLabel(label)
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(label)
+  }
+  return out
+}
+
+/**
+ * Discover alt_labels for one definition (two-round: deterministic + LLM).
+ * Returns the candidate labels to ADD (already deduped against existing).
+ */
+export async function discoverAltLabelsFor(
+  target: AltLabelsTarget,
+  llmCall?: LlmCall,
+): Promise<string[]> {
+  const det = discoverAltLabelsDeterministic(target)
+  if (!llmCall) return det
+  let llm: string[] = []
+  try {
+    const prompt = buildAltLabelsPrompt(target)
+    const text = await llmCall(prompt)
+    llm = parseAltLabelsResponse(text)
+  } catch {
+    // best-effort: LLM failure leaves the deterministic seed intact
+  }
+  // Merge deterministic + LLM, dedupe against existing
+  const existing = new Set([
+    ...target.existingAltLabels.map(normalizeLabel),
+    ...(target.existingPrefLabel ? [normalizeLabel(target.existingPrefLabel)] : []),
+    normalizeLabel(target.id),
+  ])
+  const seen = new Set(existing)
+  const out: string[] = []
+  for (const label of [...det, ...llm]) {
+    const key = normalizeLabel(label)
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(label)
+  }
+  return out
+}
+
+/** Build an AltLabelsTarget from a parsed TableDefinition. */
+function tableToAltLabelsTarget(def: TableDefinition): AltLabelsTarget {
+  return {
+    id: def.table_name,
+    kind: 'table',
+    description: def.description || def.table_comment,
+    domains: def.domains,
+    columns: def.columns.map(c => ({ name: c.name, comment: c.comment })),
+    existingAltLabels: def.alt_labels,
+    existingPrefLabel: def.pref_label,
+  }
+}
+
+/** Build an AltLabelsTarget from a parsed EventDefinition. */
+function eventToAltLabelsTarget(def: EventDefinition): AltLabelsTarget {
+  return {
+    id: def.name,
+    kind: 'event',
+    description: def.description,
+    domains: def.domains,
+    columns: Object.entries(def.params_fields ?? {}).map(([k, v]) => ({
+      name: k,
+      comment: v?.description,
+    })),
+    existingAltLabels: def.alt_labels,
+    existingPrefLabel: def.pref_label,
+  }
+}
+
+/**
+ * Enrich all tables in a semantic layer with alt_labels: discover aliases and
+ * write them back into each table's YAML. Two-round (deterministic + LLM).
+ * Merges with existing alt_labels (never removes curated labels).
+ *
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param llmCall - optional LLM call for the semantic round.
+ * @param tables - optional table_name filter; omit/empty to enrich all.
+ * @returns `enriched` (tables gaining >=1 new label) + `written` + per-table `errors`.
+ */
+export async function enrichAllTablesAltLabels(
+  semanticLayer: string,
+  llmCall?: LlmCall,
+  tables?: readonly string[],
+): Promise<{ enriched: number; written: number; errors: string[] }> {
+  const filter = tables !== undefined && tables.length > 0 ? new Set(tables) : undefined
+  let enriched = 0
+  let written = 0
+  const errors: string[] = []
+  for (const t of loadTables(semanticLayer)) {
+    if (filter !== undefined && !filter.has(t.table_name)) continue
+    const r = TableDefinitionSchema.safeParse(t.raw)
+    if (!r.success) {
+      errors.push(`${t.table_name}: schema parse failed`)
+      continue
+    }
+    try {
+      const target = tableToAltLabelsTarget(r.data)
+      const newLabels = await discoverAltLabelsFor(target, llmCall)
+      if (newLabels.length === 0) continue
+      const merged = mergeAltLabels(r.data.alt_labels, newLabels)
+      await writeTable(semanticLayer, t.table_name, { ...t.raw, alt_labels: merged })
+      written += 1
+      enriched += 1
+    } catch (e) {
+      errors.push(`${t.table_name}: ${(e as Error).message}`)
+    }
+  }
+  return { enriched, written, errors }
+}
+
+/**
+ * Enrich all events in a semantic layer with alt_labels: discover aliases and
+ * write them back into each event's YAML. Two-round (deterministic + LLM).
+ * Merges with existing alt_labels (never removes curated labels).
+ *
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param llmCall - optional LLM call for the semantic round.
+ * @param events - optional event-name filter; omit/empty to enrich all.
+ * @returns `enriched` (events gaining >=1 new label) + `written` + per-event `errors`.
+ */
+export async function enrichAllEventsAltLabels(
+  semanticLayer: string,
+  llmCall?: LlmCall,
+  events?: readonly string[],
+): Promise<{ enriched: number; written: number; errors: string[] }> {
+  const filter = events !== undefined && events.length > 0 ? new Set(events) : undefined
+  let enriched = 0
+  let written = 0
+  const errors: string[] = []
+  for (const e of loadEvents(semanticLayer)) {
+    if (filter !== undefined && !filter.has(e.name)) continue
+    const r = EventDefinitionSchema.safeParse(e.raw)
+    if (!r.success) {
+      errors.push(`${e.name}: schema parse failed`)
+      continue
+    }
+    try {
+      const target = eventToAltLabelsTarget(r.data)
+      const newLabels = await discoverAltLabelsFor(target, llmCall)
+      if (newLabels.length === 0) continue
+      const merged = mergeAltLabels(r.data.alt_labels, newLabels)
+      const content = dumpYaml({ ...e.raw, alt_labels: merged })
+      const res = await writeEventYaml(semanticLayer, e.name, content)
+      if (res.ok) {
+        written += 1
+        enriched += 1
+      } else {
+        errors.push(`${e.name}: ${res.error}`)
+      }
+    } catch (err) {
+      errors.push(`${e.name}: ${(err as Error).message}`)
+    }
+  }
+  return { enriched, written, errors }
+}
+
+/**
+ * Enrich ALL definitions (tables + events) in a semantic layer with alt_labels.
+ * Convenience wrapper: runs `enrichAllTablesAltLabels` + `enrichAllEventsAltLabels`.
+ *
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param llmCall - optional LLM call for the semantic round.
+ * @param tables - optional table_name filter (omit to enrich all tables).
+ * @param events - optional event-name filter (omit to enrich all events).
+ * @returns combined `enriched` + `written` + `errors`.
+ */
+export async function discoverAltLabels(
+  semanticLayer: string,
+  llmCall?: LlmCall,
+  tables?: readonly string[],
+  events?: readonly string[],
+): Promise<{ enriched: number; written: number; errors: string[] }> {
+  const tRes = await enrichAllTablesAltLabels(semanticLayer, llmCall, tables)
+  const eRes = await enrichAllEventsAltLabels(semanticLayer, llmCall, events)
+  return {
+    enriched: tRes.enriched + eRes.enriched,
+    written: tRes.written + eRes.written,
+    errors: [...tRes.errors, ...eRes.errors],
+  }
 }
