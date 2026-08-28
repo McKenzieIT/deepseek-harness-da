@@ -181,6 +181,12 @@
 - **多轮 follow-up candidate_tables 继承 (G-DA6, implemented 2026-08-27)**：7 决策锁定——follow-up 复用前轮表零 retry。方案 (a) 直接继承：`resetQuestionScoped` full-reset 从 `prior_turn_tables` 快照 seed `candidate_tables` + `definition_loaded`（替代 clear）。范围=仅前 1 轮（含 inheritance miss 可观测性日志支撑未来 N 扩展）；验证条件=EXECUTION 成功（`last_query_outcome=completed`）时快照；stale 保护=零额外（依赖现有 EXECUTION 报错 + fallback 链）；bias=gate-only 模型不可见（不注入 persona）；scope 切换清空；继承字段=仅 `candidate_tables` + `definition_loaded`（`event_params`/`partition_cols` 依赖 critic fail-open）。经 adversarial 审查通过（原标 2 BLOCKER 降级：definition_loaded=true 不阻断新表——模型始终 search；backstop 不误触发——模型不感知继承仍执行 search）。〔tickets/phase-misc/G-DA6-multiturn-candidate-tables-inheritance.md〕
 
 - **S1 Decouple MaxCompute config from bundle (task AFK, resolved 2026-08-28)**：3 层解耦——bundle patch 不再硬编码机器路径。Config `args: string[]` → `sidecarPath: string` + `maxcConfigPath: string`（默认空，部署覆盖）；spawn 从 Config 构造 `[sidecarPath, '--maxc-config', maxcConfigPath]`，空则 fail-loud；patch 仅供 `sidecarPath`，`maxcConfigPath` 由部署 cordis.yml 覆盖。tsc clean，无 regression。〔tickets/phase-misc/S1-decouple-maxcompute-from-bundle.md〕
+- **S2 Delete tool-scope-routing probe (task AFK, resolved 2026-08-28)**：E-DA4 陈旧探针包删除（无 src/、无 consumer、12 constraints 违规）。〔tickets/phase-misc/S2-delete-tool-scope-routing-probe.md〕
+- **S3 Delete FakeReranker+fakeRecall (task AFK, resolved 2026-08-28)**：D2d 实测有害 (64%<84%) 且无生产消费者——从 embedder-fakehash 删除。Reranker peer protocol + InfinityReranker 保留。〔tickets/phase-misc/S3-delete-fakereranker-fakeRecall.md〕
+- **S4 Delete RequestDefaults seam (task AFK, resolved 2026-08-28)**：llm-dashscope 空 speculative interface 删除（空接口、`_defaults` 未使用、never read）。〔tickets/phase-misc/S4-delete-requestdefaults-seam.md〕
+- **S5 Delete EmbedderService.dim getter (task AFK, resolved 2026-08-28)**：无读取者的公开 getter 删除（abstract + 2 impls）；私有 `_dim` 保留供内部使用。〔tickets/phase-misc/S5-delete-embedderservice-dim-getter.md〕
+- **S6 Delete getLastTwoRuns (task AFK, resolved 2026-08-28)**：test-only method+field 删除（trigger_eval 用 inline pair，无生产 caller）。〔tickets/phase-misc/S6-delete-evalrunner-getlasttworuns.md〕
+- **S7 Refactor data-python log metering (task AFK, resolved 2026-08-28)**：hand-rolled `JSON.stringify`+`Buffer.byteLength` 替换为 sibling `jsonStringBytesUpTo`（非分配式计量）。〔tickets/phase-misc/S7-refactor-data-python-log-metering.md〕
 
 ## Next wave: 语义层/Ontology 管理 + 知识图谱可视化（2026-08-27 规划）
 
