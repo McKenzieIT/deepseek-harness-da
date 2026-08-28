@@ -39,7 +39,7 @@ pnpm typecheck                              # tsc -b (host)
 
 #### What the model sees
 
-`buildPrompt`（在 `src/prompt.ts` 中）组装模型接收的 GENERATION 阶段 prompt section：用户问题、文本化 tool 目录（`search_data_sources`、`load_event_definition`、`query_data`、`check_query`、`critique_sql_tool`、`load_table_dimensions`、`save_accumulated_definition`、`lookup_terminology`）、staged 直接回答 SOP（§3 prepare/generate/validate/execute）、诚实拒绝规则（§5）、八条 SQL 规则（§6）、渲染的 MaxCompute 方言约定、BM25 链接的候选数据源、以及事件定义。生产中 P7b 经 `ctx.systemPrompt.assemble` 在 `phase=generation` 注入此 section；eval runner 的 `Nl2sqlEngine.run` 用相同 prompt 直接调用 `this.llm.generate`。
+`buildPrompt`（在 `src/prompt.ts` 中）组装模型接收的 GENERATION 阶段 prompt section：用户问题、文本化 tool 目录（`search_data_sources`、`load_event_definition`、`query_data`、`check_query`、`critique_sql_tool`、`load_table_dimensions`、`save_accumulated_definition`、`resolve_term`）、staged 直接回答 SOP（§3 prepare/generate/validate/execute）、诚实拒绝规则（§5）、八条 SQL 规则（§6）、渲染的 MaxCompute 方言约定、BM25 链接的候选数据源、以及事件定义。生产中 P7b 经 `ctx.systemPrompt.assemble` 在 `phase=generation` 注入此 section；eval runner 的 `Nl2sqlEngine.run` 用相同 prompt 直接调用 `this.llm.generate`。
 
 #### Token effect
 

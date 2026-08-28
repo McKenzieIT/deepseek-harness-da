@@ -219,6 +219,61 @@ interface RelationGraphSource {
   getJoinCondition(sourceId: string, targetId: string): string | null
   getRelated(sourceId: string, type?: string): readonly RelationGraphEdge[]
   getDerived(sourceId: string): readonly RelationGraphEdge[]
+  resolveAlias?(term: string): string[]
+}
+
+/** CL-1 Phase 2: configurable alias-resolution boost factor for rank fusion. */
+const ALIAS_BOOST = 2.0
+
+/**
+ * CL-1 Phase 2: always-fused hybrid — resolve query terms via the graph's
+ * alias index, boost alias-matched candidates, fuse with BM25 results.
+ * When the graph has no `resolveAlias` method (pre-CL-1 graph), returns
+ * candidates unchanged (soft fallback).
+ */
+function applyAliasFusion(
+  graph: RelationGraphSource | undefined,
+  candidates: SearchHit[],
+  query: string,
+): SearchHit[] {
+  if (!graph || typeof graph.resolveAlias !== 'function') return candidates
+  const terms = extractQueryTerms(query)
+  if (terms.length === 0) return candidates
+
+  const aliasHits = new Map<string, number>()
+  for (const term of terms) {
+    const nodeIds = graph.resolveAlias(term)
+    for (const id of nodeIds) {
+      aliasHits.set(id, (aliasHits.get(id) ?? 0) + 1)
+    }
+  }
+  if (aliasHits.size === 0) return candidates
+
+  const boosted = candidates.map((c) => {
+    const hitCount = aliasHits.get(c.id)
+    if (hitCount === undefined) return c
+    return { ...c, score: c.score * ALIAS_BOOST * hitCount, mode: 'alias-boosted' as const }
+  })
+
+  const seen = new Set(boosted.map(c => c.id))
+  for (const [id, hitCount] of aliasHits) {
+    if (seen.has(id)) continue
+    boosted.push({ id, score: ALIAS_BOOST * hitCount, mode: 'alias-resolved' })
+    seen.add(id)
+  }
+
+  boosted.sort((a, b) => b.score - a.score)
+  return boosted
+}
+
+/**
+ * Extract meaningful terms from a query for alias resolution.
+ * Splits on whitespace/punctuation, keeps tokens ≥ 2 chars.
+ */
+function extractQueryTerms(query: string): string[] {
+  return query
+    .split(/[\s,，。？！?!、;；：:()（）\[\]【】{}]+/)
+    .filter(t => t.length >= 2)
 }
 
 /**
@@ -440,9 +495,10 @@ export function apply(ctx: Context, config: Config = {}): void {
       // corpus path below (no longer "for qualify").
       const schema = ctx.get('schema') as SchemaCorpusSource | undefined
       const retrieval = ctx.get('retrieval') as RetrievalService | undefined
+      const graph = probeRelationGraph(ctx)
       if (retrieval !== undefined) {
         const hits = await retrieval.retrieve(query, { topK, mode: 'hybrid' })
-        const candidates = hits.map(projectHit)
+        const candidates = applyAliasFusion(graph, hits.map(projectHit), args.query)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
@@ -456,11 +512,11 @@ export function apply(ctx: Context, config: Config = {}): void {
       // `undefined` when none is registered. The defensive `typeof` probe
       // guards a non-schema object resolving to the 'schema' name.
       if (schema !== undefined && typeof schema.loadRetrievalCorpus === 'function') {
-        const candidates = searchDataSources(getEnrichedLinker(schema), query, topK)
+        const candidates = applyAliasFusion(graph, searchDataSources(getEnrichedLinker(schema), query, topK), args.query)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
-      const candidates = searchDataSources(linker, query, topK)
+      const candidates = applyAliasFusion(graph, searchDataSources(linker, query, topK), args.query)
       const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
       return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
     },

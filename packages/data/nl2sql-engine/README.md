@@ -39,7 +39,7 @@ The 9 scenarios (S1–S9) validate BM25 linking + prompt + critic gate + JSON-pa
 
 #### What the model sees
 
-`buildPrompt` (in `src/prompt.ts`) assembles the GENERATION-phase prompt section the model receives: the user question, a textual tool catalog (`search_data_sources`, `load_event_definition`, `query_data`, `check_query`, `critique_sql_tool`, `load_table_dimensions`, `save_accumulated_definition`, `lookup_terminology`), the staged direct-answer SOP (§3 prepare/generate/validate/execute), the honest-decline rule (§5), the eight SQL rules (§6), the rendered MaxCompute dialect conventions, the BM25-linked candidate data sources, and the event definition. In production P7b injects this section via `ctx.systemPrompt.assemble` at `phase=generation`; the eval runner's `Nl2sqlEngine.run` calls `this.llm.generate` directly with the same prompt.
+`buildPrompt` (in `src/prompt.ts`) assembles the GENERATION-phase prompt section the model receives: the user question, a textual tool catalog (`search_data_sources`, `load_event_definition`, `query_data`, `check_query`, `critique_sql_tool`, `load_table_dimensions`, `save_accumulated_definition`, `resolve_term`), the staged direct-answer SOP (§3 prepare/generate/validate/execute), the honest-decline rule (§5), the eight SQL rules (§6), the rendered MaxCompute dialect conventions, the BM25-linked candidate data sources, and the event definition. In production P7b injects this section via `ctx.systemPrompt.assemble` at `phase=generation`; the eval runner's `Nl2sqlEngine.run` calls `this.llm.generate` directly with the same prompt.
 
 #### Token effect
 

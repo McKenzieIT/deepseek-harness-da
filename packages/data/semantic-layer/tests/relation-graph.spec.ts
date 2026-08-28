@@ -1,10 +1,12 @@
 /**
  * P3-impl relation graph tests — G2 aligned: three relation types,
  * bidirectional edges, BFS join-path, getDerived.
+ * CL-1 Phase 2: alias index tests (resolveAlias, getAliases).
  */
 import { test, expect } from 'vitest'
 import { RelationGraph } from '../src/relation-graph.ts'
 import type { RelationDef } from '../src/registry.ts'
+import type { NodeAliasData } from '../src/relation-graph.ts'
 
 function makeEntries(...tuples: [string, RelationDef[]][]): { sourceId: string; relations: RelationDef[] }[] {
   return tuples.map(([sourceId, relations]) => ({ sourceId, relations }))
@@ -187,4 +189,124 @@ test('getDerived — unknown node returns empty', () => {
   const g = new RelationGraph()
   g.build([])
   expect(g.getDerived('X')).toEqual([])
+})
+
+// ── resolveAlias (CL-1 Phase 2) ────────────────────────────────────────
+
+test('resolveAlias — exact match on alt_labels', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'dws_active_user_di', altLabels: ['DAU', '日活跃用户'] },
+    { nodeId: 'role.online', altLabels: ['DAU', '在线'] },
+  ]
+  g.build([], aliases)
+  const result = g.resolveAlias('dau')
+  expect(result).toContain('dws_active_user_di')
+  expect(result).toContain('role.online')
+  expect(result).toHaveLength(2)
+})
+
+test('resolveAlias — case insensitive', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'dws_pay_order_di', altLabels: ['ARPPU', 'arppu'] },
+  ]
+  g.build([], aliases)
+  expect(g.resolveAlias('ARPPU')).toEqual(['dws_pay_order_di'])
+  expect(g.resolveAlias('arppu')).toEqual(['dws_pay_order_di'])
+  expect(g.resolveAlias('Arppu')).toEqual(['dws_pay_order_di'])
+})
+
+test('resolveAlias — matches pref_label', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'dws_pay_order_di', prefLabel: '付费订单宽表', altLabels: ['付费'] },
+  ]
+  g.build([], aliases)
+  expect(g.resolveAlias('付费订单宽表')).toEqual(['dws_pay_order_di'])
+})
+
+test('resolveAlias — no match returns empty', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'dws_active_user_di', altLabels: ['DAU'] },
+  ]
+  g.build([], aliases)
+  expect(g.resolveAlias('nonexistent')).toEqual([])
+})
+
+test('resolveAlias — empty term returns empty', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'A', altLabels: ['x'] },
+  ]
+  g.build([], aliases)
+  expect(g.resolveAlias('')).toEqual([])
+  expect(g.resolveAlias('  ')).toEqual([])
+})
+
+test('resolveAlias — no duplicate nodeIds for same alias', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'A', prefLabel: 'foo', altLabels: ['foo'] },
+  ]
+  g.build([], aliases)
+  expect(g.resolveAlias('foo')).toEqual(['A'])
+})
+
+// ── getAliases (CL-1 Phase 2) ──────────────────────────────────────────
+
+test('getAliases — returns all labels for a node', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'dws_active_user_di', prefLabel: '活跃用户宽表', altLabels: ['DAU', '日活'] },
+  ]
+  g.build([], aliases)
+  const result = g.getAliases('dws_active_user_di')
+  expect(result).toContain('活跃用户宽表')
+  expect(result).toContain('DAU')
+  expect(result).toContain('日活')
+  expect(result).toHaveLength(3)
+})
+
+test('getAliases — unknown node returns empty', () => {
+  const g = new RelationGraph()
+  g.build([], [])
+  expect(g.getAliases('unknown')).toEqual([])
+})
+
+test('getAliases — node with no aliases returns empty', () => {
+  const g = new RelationGraph()
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'A', altLabels: [] },
+  ]
+  g.build([], aliases)
+  expect(g.getAliases('A')).toEqual([])
+})
+
+// ── build clears alias index on rebuild ─────────────────────────────────
+
+test('build clears alias index on rebuild', () => {
+  const g = new RelationGraph()
+  g.build([], [{ nodeId: 'A', altLabels: ['x'] }])
+  expect(g.resolveAlias('x')).toEqual(['A'])
+  g.build([], [{ nodeId: 'B', altLabels: ['y'] }])
+  expect(g.resolveAlias('x')).toEqual([])
+  expect(g.resolveAlias('y')).toEqual(['B'])
+})
+
+// ── alias index coexists with relation edges ────────────────────────────
+
+test('alias index works alongside relation edges', () => {
+  const g = new RelationGraph()
+  const entries = makeEntries(['A', [{ type: 'joins', target: 'B', on: 'id = id' }]])
+  const aliases: NodeAliasData[] = [
+    { nodeId: 'A', altLabels: ['alpha'] },
+    { nodeId: 'B', prefLabel: 'Beta' },
+  ]
+  g.build(entries, aliases)
+  expect(g.resolveAlias('alpha')).toEqual(['A'])
+  expect(g.resolveAlias('beta')).toEqual(['B'])
+  expect(g.getRelated('A')).toHaveLength(1)
+  expect(g.findJoinPath('A', 'B')).toEqual(['A', 'B'])
 })

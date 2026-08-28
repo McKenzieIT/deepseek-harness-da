@@ -1497,7 +1497,7 @@ describe('D5b: proactive tool visibility — onAssemble filters tools per phase'
     'critique_sql_tool', 'evaluate_sql_quality', 'update_table_config',
     'query_data',
     'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
-    'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
+    'resolve_term', 'get_user_preferences', 'load_accumulated_definition',
     'present_clarification', 'goal', 'todo',
     'list_scopes', 'switch_scope',
   ]
@@ -1625,7 +1625,7 @@ describe('D5b: phase transition updates tool visibility on next assemble', () =>
     'critique_sql_tool', 'evaluate_sql_quality', 'update_table_config',
     'query_data',
     'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
-    'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
+    'resolve_term', 'get_user_preferences', 'load_accumulated_definition',
     'present_clarification', 'goal', 'todo',
     'list_scopes', 'switch_scope',
   ].map(makeTool)
@@ -1681,13 +1681,13 @@ describe('D5b: downstream waterfall tools are also filtered', () => {
         { name: 'search_data_sources', description: 'in U', parameters: {} },
         { name: 'query_data', description: 'in E only', parameters: {} },
         { name: 'present_decomposition', description: 'in I only', parameters: {} },
-        { name: 'lookup_terminology', description: 'universal', parameters: {} },
+        { name: 'resolve_term', description: 'universal', parameters: {} },
       ],
     }
     const out = await g.onAssemble(initial, ctx, () => Promise.resolve(downstream))
     const names = out.tools.map(t => t.name)
     expect(names).toContain('search_data_sources')
-    expect(names).toContain('lookup_terminology')
+    expect(names).toContain('resolve_term')
     expect(names).not.toContain('query_data')
     expect(names).not.toContain('present_decomposition')
   })
@@ -1724,7 +1724,7 @@ describe('D5b: guard and onAssemble alignment', () => {
       'critique_sql_tool', 'evaluate_sql_quality', 'update_table_config',
       'query_data',
       'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
-      'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
+      'resolve_term', 'get_user_preferences', 'load_accumulated_definition',
       'present_clarification', 'goal', 'todo',
       'list_scopes', 'switch_scope',
     ].map(n => ({ name: n, description: `stub ${n}`, parameters: {} }))
@@ -1753,13 +1753,13 @@ describe('D5b: guard and onAssemble alignment', () => {
     const ctx = { agent: { id: 'term-guard1' }, scope: { id: 'term-guard1' } } as unknown as AssembleContext
     const stub: PromptAssembly = {
       sections: [], contexts: [], variables: {},
-      tools: [{ name: 'lookup_terminology', description: 'universal', parameters: {} }],
+      tools: [{ name: 'resolve_term', description: 'universal', parameters: {} }],
     }
     // Assembly returns empty for terminal
     const out = await g.onAssemble(stub, ctx, () => Promise.resolve(stub))
     expect(out.tools).toEqual([])
     // Guard also rejects
-    expect(g.guard(execView('lookup_terminology', agent))).toBe('turn ended')
+    expect(g.guard(execView('resolve_term', agent))).toBe('turn ended')
   })
 })
 

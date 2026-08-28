@@ -110,6 +110,8 @@
   name: '@deepseek-ai/dsh-tool-update-table-config'
 - id: tool-present-clarification  # UNIVERSAL (self-evolution #2a: present ONE clarifying question; pure presentation — phase-gate captureToolData detects the call → awaiting_clarification → Task 6 HALTs any phase; pairs with update_table_config to close the not_found→ask→override→retry loop)
   name: '@deepseek-ai/dsh-tool-present-clarification'
+- id: tool-resolve-term           # UNIVERSAL (CL-1 Phase 2: exact alias resolution — agent disambiguates business terms to data assets via SKOS pref_label/alt_labels graph index)
+  name: '@deepseek-ai/dsh-tool-resolve-term'
 - id: tool-query-data            # EXECUTION (P4c: ctx.query.execute → MaxCompute via maxc-sidecar; agent runs its own SQL)
   name: '@deepseek-ai/dsh-query-tool'
 # - id: tool-retrieve            # ESCAPE-HATCH (D2c-impl): on-demand retrieval over the same BM25 corpus as search_data_sources; additive escape-hatch for when the UNDERSTANDING prefetch missed. SHIPPED but DORMANT (opt-in, mirrors D2e/P5b dormant-until-mount) — default boot does NOT mount it = pipeline-only current state, no regression. Activation = uncomment this row + add `retrieve` to the phase-gate whitelist + land the persona (P7b) teaching "prefer prefetched context; call retrieve only when the gap is obvious" (avoid double-retrieval redundancy). Soft-fallback == search_data_sources (ctx.retrieval -> ctx.schema enriched Bm25Linker -> empty Bm25Linker; NO FakeHash/FakeReranker default per D2d). Additive/reversible — unship if D2c-revisit regresses.

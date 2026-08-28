@@ -145,7 +145,7 @@ export const PHASE_CONFIGS: Readonly<Record<Phase, PhaseConfig>> = {
  * the guard is forward-compatible — names here are the stable rbi roster.
  */
 export const UNIVERSAL_TOOLS = Object.freeze([
-  'lookup_terminology',
+  'resolve_term',
   'get_user_preferences',
   'load_accumulated_definition',
   // #2b self-evolution: present_clarification is callable in ANY phase. The

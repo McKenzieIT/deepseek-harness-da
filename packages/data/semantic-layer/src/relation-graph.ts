@@ -2,6 +2,7 @@
  * In-memory relation graph — adjacency list over DataSource definitions.
  * G2 aligned: three relation types (joins/derived_from/related_to),
  * BFS join-path discovery, getDerived for lineage traversal.
+ * CL-1 Phase 2: alias index for SKOS pref_label/alt_labels resolution.
  *
  * @module @deepseek-ai/dsh-semantic-layer/src/relation-graph
  */
@@ -15,19 +16,32 @@ export interface RelationEdge {
   readonly description?: string
 }
 
+/** Alias data for a single node (pref_label + alt_labels from the definition). */
+export interface NodeAliasData {
+  readonly nodeId: string
+  readonly prefLabel?: string | undefined
+  readonly altLabels?: readonly string[] | undefined
+}
+
 /**
  * In-memory relation graph. Builds a bidirectional adjacency list from
  * RelationDef entries (plugin.relations() output + source id).
+ * CL-1 Phase 2: also builds a reverse alias index from SKOS labels.
  */
 export class RelationGraph {
   private adj = new Map<string, RelationEdge[]>()
+  private aliasIndex = new Map<string, string[]>()
+  private nodeAliases = new Map<string, string[]>()
 
   /**
-   * Build the graph from source-tagged relation declarations.
+   * Build the graph from source-tagged relation declarations and optional alias data.
    * Clears existing state. Stores bidirectional edges for traversal.
+   * When aliasData is provided, builds the reverse alias index (normalized_alias → nodeIds).
    */
-  build(entries: { sourceId: string; relations: RelationDef[] }[]): void {
+  build(entries: { sourceId: string; relations: RelationDef[] }[], aliasData?: readonly NodeAliasData[]): void {
     this.adj.clear()
+    this.aliasIndex.clear()
+    this.nodeAliases.clear()
     for (const { sourceId, relations } of entries) {
       for (const rel of relations) {
         this.addEdge(sourceId, {
@@ -36,13 +50,31 @@ export class RelationGraph {
           ...(rel.on ? { on: rel.on } : {}),
           ...(rel.description ? { description: rel.description } : {}),
         })
-        // Bidirectional: reverse edge for traversal
         this.addEdge(rel.target, {
           targetId: sourceId,
           type: rel.type,
           ...(rel.on ? { on: rel.on } : {}),
           ...(rel.description ? { description: rel.description } : {}),
         })
+      }
+    }
+    if (aliasData) {
+      for (const { nodeId, prefLabel, altLabels } of aliasData) {
+        const labels: string[] = []
+        if (prefLabel) labels.push(prefLabel)
+        if (altLabels) labels.push(...altLabels)
+        if (labels.length === 0) continue
+        this.nodeAliases.set(nodeId, labels)
+        for (const label of labels) {
+          const key = normalizeAlias(label)
+          if (!key) continue
+          const list = this.aliasIndex.get(key)
+          if (list) {
+            if (!list.includes(nodeId)) list.push(nodeId)
+          } else {
+            this.aliasIndex.set(key, [nodeId])
+          }
+        }
       }
     }
   }
@@ -114,4 +146,31 @@ export class RelationGraph {
     if (!edges) return []
     return edges.filter(e => e.type === 'derived_from')
   }
+
+  /**
+   * Resolve a term to node ids via the alias index. Normalizes the input
+   * and looks up the reverse index (normalized_alias → nodeIds).
+   * Returns an empty array when no match is found.
+   */
+  resolveAlias(term: string): string[] {
+    const key = normalizeAlias(term)
+    if (!key) return []
+    return this.aliasIndex.get(key) ?? []
+  }
+
+  /**
+   * Get all aliases (pref_label + alt_labels) registered for a node.
+   * Returns an empty array when the node has no aliases.
+   */
+  getAliases(nodeId: string): string[] {
+    return this.nodeAliases.get(nodeId) ?? []
+  }
+}
+
+/**
+ * Normalize an alias for index lookup: lowercase + trim whitespace.
+ * Returns empty string for blank inputs (caller skips).
+ */
+function normalizeAlias(label: string): string {
+  return label.toLowerCase().trim()
 }

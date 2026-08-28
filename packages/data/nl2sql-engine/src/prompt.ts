@@ -56,7 +56,7 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
 - critique_sql_tool(sql, question): pre-exec critic（P13b critic 填 P7 sql_syntax_gate 槽）
 - load_table_dimensions(table_name): DWS 表维表定义+JOIN 安全判定（P6 ctx.schema）
 - save_accumulated_definition(concept, def): 术语沉淀（P6 ctx.schema）
-- lookup_terminology(term): 术语查询
+- resolve_term(term): 将业务术语精确解析为数据资产（匹配 alt_labels/pref_label），返回命中节点及图上下文
 [drop] plan_query（LATENT，不在任何 phase allowlist，research §1.2 证）`
 
 /**

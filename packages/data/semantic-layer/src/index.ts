@@ -61,7 +61,7 @@ import {
 import { DataSourceRegistry, type CorpusItem } from './registry.ts'
 import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
-import { RelationGraph } from './relation-graph.ts'
+import { RelationGraph, type NodeAliasData } from './relation-graph.ts'
 import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
 import { loadEvents, loadTables } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
@@ -268,6 +268,7 @@ export class SemanticLayerService extends Service {
     }
     const g = new RelationGraph()
     const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
+    const aliasData: NodeAliasData[] = []
     // M1: each host table/event parsed ONCE — registered-kind relations +
     // derived metric relations pushed in the same iteration (loadTables/
     // loadEvents are uncached readdirSync+readYaml+safeParse, so the prior
@@ -276,19 +277,31 @@ export class SemanticLayerService extends Service {
       const r = TableDefinitionSchema.safeParse(t.raw)
       if (!r.success) continue
       entries.push({ sourceId: r.data.table_name, relations: tableKindPlugin.relations(r.data) })
+      if (r.data.pref_label || r.data.alt_labels.length > 0) {
+        aliasData.push({ nodeId: r.data.table_name, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
+      }
       for (const m of extractMetricsFromTable(r.data)) {
         entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
+        if (m.pref_label || m.alt_labels.length > 0) {
+          aliasData.push({ nodeId: m.name, prefLabel: m.pref_label, altLabels: m.alt_labels })
+        }
       }
     }
     for (const e of loadEvents(this.semanticRoot)) {
       const r = EventDefinitionSchema.safeParse(e.raw)
       if (!r.success) continue
       entries.push({ sourceId: r.data.name, relations: eventKindPlugin.relations(r.data) })
+      if (r.data.pref_label || r.data.alt_labels.length > 0) {
+        aliasData.push({ nodeId: r.data.name, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
+      }
       for (const m of extractMetricsFromEvent(r.data)) {
         entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
+        if (m.pref_label || m.alt_labels.length > 0) {
+          aliasData.push({ nodeId: m.name, prefLabel: m.pref_label, altLabels: m.alt_labels })
+        }
       }
     }
-    g.build(entries)
+    g.build(entries, aliasData)
     this.graphCache = g
     this.graphVersion = this.corpusVersion()
     return g
