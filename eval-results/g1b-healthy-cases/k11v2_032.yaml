@@ -1,0 +1,16 @@
+case_id: "k11v2_032"
+input:
+  question: "被标记为流失的角色总数"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"churn_count": 9200}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_role_churn_pred_output"

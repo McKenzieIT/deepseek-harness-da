@@ -8,6 +8,8 @@
  * When --with-query is set, also mounts ctx.credentials (EnvCredentialProvider)
  * and ctx.query (MaxComputeQueryEngine) for real SQL execution.
  */
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
@@ -408,7 +410,8 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     await ctx.plugin(EnvCredentialProvider)
 
     const sidecarPath = opts.sidecarPath ?? new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url).pathname
-    const fiber = ctx.plugin(MaxComputeQueryEngine, { args: [sidecarPath], credMode: 'sidecar-self' })
+    const maxcConfigPath = process.env.MAXC_CONFIG ?? join(homedir(), '.maxc/config_ieu_cdm.yaml.bak')
+    const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath })
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }

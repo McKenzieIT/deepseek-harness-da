@@ -1,0 +1,16 @@
+case_id: "k11v2_050"
+input:
+  question: "现金付费和代金券付费的金额占比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 2, "max_rows": 3}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "proportion"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"

@@ -1,0 +1,16 @@
+case_id: "k11v2_027"
+input:
+  question: "昨天金币的总消耗量是多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"gold_consume": 12000000}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_item_circle_df"

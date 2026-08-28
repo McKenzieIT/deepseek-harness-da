@@ -1,0 +1,16 @@
+case_id: "k11v2_018"
+input:
+  question: "通关最终关卡的角色有多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"cleared": 3200}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_pve_progress_df"

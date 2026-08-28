@@ -1,0 +1,3056 @@
+{
+  "run_id": "g1b-healthy-configC-qwen3.7-max",
+  "timestamp": "2026-08-28T13:07:06.125Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号汇总日全量快照表，使用SUM(pay_amt_std)计算截至昨日分区(ds='20260826')的累计总付费金额，符合用户查询昨天总付费金额的语义意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_amt_std) AS total_pay_amt FROM dws_10000251_acc_summary_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              null
+            ]
+          ],
+          "expected_result": {
+            "total_pay_amt": 13582635332
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.4,
+            "rationale": "SQL使用了累计付费汇总表及累计金额字段(pay_amt_std)，计算的是截至昨天的历史累计总付费金额，而非用户所问的昨日单日新增总付费金额，表与字段选择均不符合单日增量语义。",
+            "dimensions": {
+              "table_selection": 0,
+              "field_selection": 0,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_amt_std) AS total_pay_amt FROM dws_10000251_acc_summary_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              null
+            ]
+          ],
+          "expected_result": {
+            "total_pay_amt": 13582635332
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号全量快照表，通过ds条件过滤昨日分区，并对累计付费金额(pay_amt_std)求和，准确计算了截至昨天的累计总付费金额，符合用户意图与可用schema上下文。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_amt_std) AS total_pay_amt FROM dws_10000251_acc_summary_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              null
+            ]
+          ],
+          "expected_result": {
+            "total_pay_amt": 13582635332
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 216573
+    },
+    {
+      "case_id": "k11v2_002",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL 正确选择了账号日增量表，通过 ds 过滤昨天日期，通过 pay=1 过滤付费行为，并使用 COUNT(DISTINCT user_id) 准确统计了昨天的付费账号数，语义完全正确。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS pay_acc_uv FROM dws_10000251_univ_acc_act_di WHERE ds = '20260826' AND pay = 1;",
+          "query_result": [
+            [
+              158
+            ]
+          ],
+          "expected_result": {
+            "pay_users": 282507
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单日增量表，通过COUNT(DISTINCT account_id)统计去重付费账号数，并使用ds字段正确过滤了昨天（指定日期）的数据，语义完全匹配用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT account_id) AS paying_account_count FROM dws_10000251_pay_order_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              181
+            ]
+          ],
+          "expected_result": {
+            "pay_users": 282507
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号日增量表，利用值为0和1的付费标记字段求和来准确统计付费账号数，并正确过滤了代表昨天的日期条件，语义完全匹配用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(pay) AS pay_acc_cnt FROM dws_10000251_univ_acc_act_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              158
+            ]
+          ],
+          "expected_result": {
+            "pay_users": 282507
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 138913
+    },
+    {
+      "case_id": "k11v2_005",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了包含用户活跃状态的明细表，使用了schema中定义的DAU标准聚合逻辑（对act=1求和），并通过ds分区正确过滤了当日日期，能够准确回答用户的日活账号数问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN act = 1 THEN 1 ELSE 0 END) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds = '20260827'",
+          "query_result": [
+            [
+              3259
+            ]
+          ],
+          "expected_result": {
+            "dau": 3259
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL选择了正确的表和字段，使用了与指标定义一致的聚合逻辑（SUM CASE WHEN act=1）和正确的日期分区过滤条件，能够准确回答用户的日活账号数问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN act = 1 THEN 1 ELSE 0 END) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds = '20260827';",
+          "query_result": [
+            [
+              3259
+            ]
+          ],
+          "expected_result": {
+            "dau": 3259
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号日增量表，使用SUM(act)计算日活账号数，并通过ds字段正确过滤了当天日期，完全符合用户查询今天日活账号数的语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(act) AS dau FROM dws_10000251_univ_acc_act_di WHERE ds = '20260827'",
+          "query_result": [
+            [
+              3259
+            ]
+          ],
+          "expected_result": {
+            "dau": 3259
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 155787
+    },
+    {
+      "case_id": "k11v2_009",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色流失预测评分表，使用COUNT(DISTINCT role_id)统计角色数，并通过tag=1准确过滤出被预测为流失的角色，同时限定了日期分区，完全符合用户查询目前预测流失角色数量的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS predicted_churn_role_count FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds = '20260826' AND tag = 1;",
+          "query_result": [
+            [
+              7630
+            ]
+          ],
+          "expected_result": {
+            "churn_predicted": 1681379
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色画像表，通过最新分区、user_type=3（角色）和active_flag=4（流失）准确过滤，并使用COUNT(DISTINCT user_id)统计流失角色数量，完美契合用户问题语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS churn_role_count FROM dws_10000251_univ_role_feature_df WHERE ds = MAX_PT('dws_10000251_univ_role_feature_df') AND user_type = 3 AND active_flag = 4;",
+          "query_result": [
+            [
+              1678101
+            ]
+          ],
+          "expected_result": {
+            "churn_predicted": 1681379
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色流失预测评分表，使用COUNT(DISTINCT role_id)统计角色数，并通过tag=1准确过滤出被预测为流失的角色，ds条件符合每日快照表查询“目前”数据的语义，整体逻辑完全匹配用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT role_id) AS predicted_churn_role_cnt FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds = '20260826' AND tag = 1;",
+          "query_result": [
+            [
+              7630
+            ]
+          ],
+          "expected_result": {
+            "churn_predicted": 1681379
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 179242
+    },
+    {
+      "case_id": "k11v2_011",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "<tool>\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.yanwu.match\"}}\n</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917725BA0291FD4204D67E Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.yanwu.match\"}}\n</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "battle_count": 22640
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "无法回答该问题。\n\n**原因说明：**\n当前可用的数据源（如 `dws_10000251_pvp_score_di` 和 `dws_10000251_pvp_score_df`）主要记录 PVP 积分的日增量汇总与日全量快照，其数据粒度为“角色(role_id) × PVP玩法(pvp_type) × 日”。表中仅包含积分变化（如 `add_score`、`sub_score`）与段位信息，**并未记录单局对战明细，也缺乏对战场次相关的统计字段**（如 `battle_count`、`match_cnt` 等）。因此，无法通过现有表计算出具体的 PVP 对战场次（COUNT 记录数只能得到参与过 PVP 的“角色×玩法”组合数，而非对局数）。\n\n**解决建议：**\n需要接入包含 PVP 单局对战明细的埋点事件表（例如 `pvp_battle_end`、`pvp_match_result` 等事件），或者引入专门按对局粒度汇总的 DWS 事实表，方可准确统计 PVP 对战场次。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A9177394F7043614A098412 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法回答该问题。\n\n**原因说明：**\n当前可用的数据源（如 `dws_10000251_pvp_score_di` 和 `dws_10000251_pvp_score_df`）主要记录 PVP 积分的日增量汇总与日全量快照，其数据粒度为“角色(role_id) × PVP玩法(pvp_type) × 日”。表中仅包含积分变化（如 `add_score`、`sub_score`）与段位信息，**并未记录单局对战明细，也缺乏对战场次相关的统计字段**（如 `battle_count`、`match_cnt` 等）。因此，无法通过现有表计算出具体的 PVP 对战场次（COUNT 记录数只能得到参与过 PVP 的“角色×玩法”组合数，而非对局数）。\n\n**解决建议：**\n需要接入包含 PVP 单局对战明细的埋点事件表（例如 `pvp_battle_end`、`pvp_match_result` 等事件），或者引入专门按对局粒度汇总的 DWS 事实表，方可准确统计 PVP 对战场次。\nODPS-0130161:[1,1] Parse exception - invalid token '无法回答该问题'\nODPS-0130161:[4,283] Parse exception - invalid token 'PVP', expect 'SEMICOLON'"
+            }
+          ],
+          "expected_result": {
+            "battle_count": 22640
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "无法回答“昨天有多少场PVP对战”。\n\n**为什么不能答 / 缺什么：**\n当前检索到的数据源（如 `dws_10000251_pvp_score_di` 和 `dws_10000251_pvp_score_df`）仅记录了角色维度的 PVP 积分变化与状态快照。这些表的粒度是“角色 × 玩法 × 日”（即每个角色每天在每个玩法下只有一条汇总记录），包含的是积分增减（`add_score`、`sub_score`）和段位信息，**不包含具体的“对战场次”或“对局明细”字段**，因此无法通过现有表计算对战总场数。\n\n**怎么解决：**\n需要补充记录 PVP 对局明细的事件埋点（例如 `pvp_battle_end`、`pvp_match_result` 等包含对局 ID 的事件），或者提供按对局粒度聚合的 PVP 对战场次 DWS 事实表。补充相关数据源后，可重新进行检索与查询。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A91775129F32661CB6E9E60 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法回答“昨天有多少场PVP对战”。\n\n**为什么不能答 / 缺什么：**\n当前检索到的数据源（如 `dws_10000251_pvp_score_di` 和 `dws_10000251_pvp_score_df`）仅记录了角色维度的 PVP 积分变化与状态快照。这些表的粒度是“角色 × 玩法 × 日”（即每个角色每天在每个玩法下只有一条汇总记录），包含的是积分增减（`add_score`、`sub_score`）和段位信息，**不包含具体的“对战场次”或“对局明细”字段**，因此无法通过现有表计算对战总场数。\n\n**怎么解决：**\n需要补充记录 PVP 对局明细的事件埋点（例如 `pvp_battle_end`、`pvp_match_result` 等包含对局 ID 的事件），或者提供按对局粒度聚合的 PVP 对战场次 DWS 事实表。补充相关数据源后，可重新进行检索与查询。\nODPS-0130161:[1,1] Parse exception - invalid token '无法回答'"
+            }
+          ],
+          "expected_result": {
+            "battle_count": 22640
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 79072
+    },
+    {
+      "case_id": "k11v2_013",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "SQL选择了全量快照表(_df)，但仅通过分区字段ds过滤，缺少对业务日期字段ymd的过滤，会导致查出截至昨天的所有历史订单而非仅昨天的订单，无法正确回答昨日平均客单价。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT AVG(pay_amt) / 100.0 AS avg_order_amt_yuan FROM dws_10000251_com_pay_order_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              45.736859793887334
+            ]
+          ],
+          "expected_result": {
+            "avg_order_amt": 4574
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL选择了正确的日增量订单表，通过除以100.0正确处理了金额单位转换，并同时计算了ARPU（每账号客单价）和平均订单金额（每笔订单客单价）两种口径，过滤条件正确限制了昨天分区，能够准确回答用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_amt) / 100.0 / NULLIF(COUNT(DISTINCT account_id), 0) AS arpu_yuan, SUM(pay_amt) / 100.0 / NULLIF(COUNT(DISTINCT order_id), 0) AS avg_order_amt_yuan FROM dws_10000251_com_pay_order_di WHERE ds = '20260826'",
+          "query_result": [
+            [
+              174.71823204419888,
+              58.890130353817504
+            ]
+          ],
+          "expected_result": {
+            "avg_order_amt": 4574
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单全量表，使用AVG(pay_amt)计算平均订单金额（符合schema中笔单价口径的客单价定义），并正确过滤了代表昨天的分区日期，能够准确回答用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT AVG(pay_amt) / 100.0 AS avg_order_amt_yuan, AVG(pay_amt) AS avg_order_amt_fen FROM dws_10000251_com_pay_order_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              45.736859793887334,
+              4573.685979388733
+            ]
+          ],
+          "expected_result": {
+            "avg_order_amt": 4574
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 187509
+    },
+    {
+      "case_id": "k11v2_014",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单总表，利用最新分区代表'当前'，并根据schema提示使用pay_amt>=100000(分)作为大R阈值，通过COUNT DISTINCT account_id准确计算了大R玩家(账号)数量，语义完全匹配。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN pay_amt >= 100000 THEN account_id END) AS big_r_user_cnt FROM dws_10000251_com_pay_order_df WHERE ds = MAX_PT('dws_10000251_com_pay_order_df');",
+          "query_result": [
+            [
+              1067
+            ]
+          ],
+          "expected_result": {
+            "big_r_count": 1200
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单全量快照表的最新分区以获取所有历史订单，并使用了与Schema中定义一致的大R玩家（单笔付费>=100000分）去重统计逻辑，完美回答了用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN pay_amt >= 100000 THEN account_id END) AS big_r_user_cnt FROM dws_10000251_com_pay_order_df WHERE ds = MAX_PT('dws_10000251_com_pay_order_df');",
+          "query_result": [
+            [
+              1067
+            ]
+          ],
+          "expected_result": {
+            "big_r_count": 1200
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单总表，使用最新分区代表'当前'，并通过COUNT(DISTINCT CASE WHEN pay_amt >= 100000 THEN account_id END)准确计算了单笔充值大于等于10万元的大R玩家（账号）数量，完全符合用户意图和Schema定义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN pay_amt >= 100000 THEN account_id END) AS big_r_user_cnt FROM dws_10000251_com_pay_order_df WHERE ds = MAX_PT('dws_10000251_com_pay_order_df')",
+          "query_result": [
+            [
+              1067
+            ]
+          ],
+          "expected_result": {
+            "big_r_count": 1200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 175872
+    },
+    {
+      "case_id": "k11v2_015",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL选择了正确的购买明细表，使用COUNT(*)准确计算了购买次数（交易笔数），且对日增量表添加了合理的ds分区过滤条件，整体语义完全匹配用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(*) AS total_buy_cnt FROM dws_10000251_recharge_shop_buy_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              80
+            ]
+          ],
+          "expected_result": {
+            "total_purchases": 80
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了商店购买明细表，使用COUNT(*)准确计算了购买事件总次数，并合理添加了日增量表必需的分区过滤条件，整体语义符合用户查询商店购买次数的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(*) AS shop_buy_cnt FROM dws_10000251_recharge_shop_buy_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              80
+            ]
+          ],
+          "expected_result": {
+            "total_purchases": 80
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "SQL选择了正确的表和聚合逻辑，但用户并未指定时间范围，SQL却硬编码了特定日期（ds='20260826'）的过滤条件，导致查询结果仅为单日购买次数而非历史总购买次数，无法准确回答用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT COUNT(*) AS total_buy_cnt FROM dws_10000251_recharge_shop_buy_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              80
+            ]
+          ],
+          "expected_result": {
+            "total_purchases": 80
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 169463
+    },
+    {
+      "case_id": "k11v2_017",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "无法回答该问题。\n\n**为什么不能答**：\n当前语义层与数据字典中缺乏对“满级”的具体数值定义（例如最高等级是 100、120 还是其他数值，或者是指最高星级）。在现有的维度表（如 `dim_10000251_trans_card_df`）中，也未包含卡牌等级上限（`max_level`）或星级上限（`max_star`）的配置字段，无法准确构建过滤条件。\n\n**缺什么**：\n1. “满级”的具体判定条件（如 `card_level = 100` 或 `card_star = 5`）。\n2. 或包含卡牌等级/星级上限配置的维表信息。\n\n**怎么解决**：\n请明确“满级”在具体业务中的字段及对应数值阈值（例如：“等级达到100级”或“星级达到5星”），或者提供包含卡牌满级配置的相关维表，我将为您重新生成准确的查询。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917983704C01DD4AE13279 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法回答该问题。\n\n**为什么不能答**：\n当前语义层与数据字典中缺乏对“满级”的具体数值定义（例如最高等级是 100、120 还是其他数值，或者是指最高星级）。在现有的维度表（如 `dim_10000251_trans_card_df`）中，也未包含卡牌等级上限（`max_level`）或星级上限（`max_star`）的配置字段，无法准确构建过滤条件。\n\n**缺什么**：\n1. “满级”的具体判定条件（如 `card_level = 100` 或 `card_star = 5`）。\n2. 或包含卡牌等级/星级上限配置的维表信息。\n\n**怎么解决**：\n请明确“满级”在具体业务中的字段及对应数值阈值（例如：“等级达到100级”或“星级达到5星”），或者提供包含卡牌满级配置的相关维表，我将为您重新生成准确的查询。\nODPS-0130161:[1,1] Parse exception - invalid token '无法回答该问题'"
+            }
+          ],
+          "expected_result": {
+            "max_card_owners": 15000
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "当前无法直接回答“满级卡牌的持有角色数”。\n\n**拒绝原因**：\n当前数据源（如 `dws_10000251_card_coll_df`）中记录了卡牌的当前等级（`card_level`），但在语义层定义及卡牌配置维表（`dim_10000251_trans_card_df`）中，均**缺少关于“满级”的具体数值定义**（即满级对应的 `card_level` 具体是多少级，且不同品质卡牌的满级上限可能不同，当前维表也未提供 `max_level` 字段）。在缺乏明确阈值的情况下，无法硬编码等级条件进行过滤。\n\n**解决办法**：\n请补充提供“满级”对应的**具体等级数值**（例如：指定 `card_level >= 100`，或提供特定品质卡牌的满级标准）。收到具体数值后，我将立即为您生成并执行准确的统计 SQL。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A91799E16C903C3CBCD822B Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 当前无法直接回答“满级卡牌的持有角色数”。\n\n**拒绝原因**：\n当前数据源（如 `dws_10000251_card_coll_df`）中记录了卡牌的当前等级（`card_level`），但在语义层定义及卡牌配置维表（`dim_10000251_trans_card_df`）中，均**缺少关于“满级”的具体数值定义**（即满级对应的 `card_level` 具体是多少级，且不同品质卡牌的满级上限可能不同，当前维表也未提供 `max_level` 字段）。在缺乏明确阈值的情况下，无法硬编码等级条件进行过滤。\n\n**解决办法**：\n请补充提供“满级”对应的**具体等级数值**（例如：指定 `card_level >= 100`，或提供特定品质卡牌的满级标准）。收到具体数值后，我将立即为您生成并执行准确的统计 SQL。\nODPS-0130161:[1,1] Parse exception - invalid token '当前无法直接回答'"
+            }
+          ],
+          "expected_result": {
+            "max_card_owners": 15000
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.2,
+            "rationale": "SQL 计算的是最高卡牌等级（MAX），而用户意图是统计持有满级卡牌的去重角色数（COUNT DISTINCT role_id），且缺少满级条件的过滤，完全无法回答用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 0,
+              "filter_conditions": 0,
+              "aggregation_logic": 0,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT MAX(CAST(card_level AS BIGINT)) AS max_level FROM dws_10000251_card_coll_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              210
+            ]
+          ],
+          "expected_result": {
+            "max_card_owners": 15000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 118313
+    },
+    {
+      "case_id": "k11v2_018",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "SQL仅查询了关卡维度表的属性字段并进行了排序限制，完全未关联角色通关事实表，也未使用COUNT聚合函数统计角色数量，无法回答用户关于‘通关最终关卡的角色有多少’的问题。",
+            "dimensions": {
+              "table_selection": 0,
+              "field_selection": 0,
+              "filter_conditions": 0,
+              "aggregation_logic": 0,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT id, name, name2, chapter_id, type, difficulty FROM dim_10000251_trans_stage_df WHERE ds = MAX_PT('dim_10000251_trans_stage_df') ORDER BY chapter_id DESC, id DESC LIMIT 20",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,93] Semantic analysis exception - column ds cannot be resolved\nODPS-0130071:[1,105] Semantic analysis exception - dim_10000251_trans_stage_df is not a partitioned table"
+            }
+          ],
+          "expected_result": {
+            "cleared": 3200
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "无法回答该问题。\n\n**为什么不能答**：\n当前检索到的数据源（如灵器培养 `progression_charm`、风物培养 `progression_tactic`、卡牌/玩具收集 `card_coll_act` / `progression_toy` 等）均属于角色养成与道具收集维度，不包含任何与“关卡进度”、“关卡通关状态”或“最终关卡”相关的字段、事件或数据表。\n\n**缺什么**：\n缺少记录角色关卡挑战明细、主线/活动关卡通关状态的底层事件日志（如 `stage_clear`、`level_complete` 等埋点）或对应的数仓主题表（如 `dws_..._stage_progress_df`）。\n\n**怎么解决**：\n需要在数据字典或埋点管理系统中补充“关卡通关”相关的埋点事件定义及对应的数仓表结构，将其接入数据源检索库（Schema-linking）后，再进行查询。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917A28E144F92B18EBB8C0 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法回答该问题。\n\n**为什么不能答**：\n当前检索到的数据源（如灵器培养 `progression_charm`、风物培养 `progression_tactic`、卡牌/玩具收集 `card_coll_act` / `progression_toy` 等）均属于角色养成与道具收集维度，不包含任何与“关卡进度”、“关卡通关状态”或“最终关卡”相关的字段、事件或数据表。\n\n**缺什么**：\n缺少记录角色关卡挑战明细、主线/活动关卡通关状态的底层事件日志（如 `stage_clear`、`level_complete` 等埋点）或对应的数仓主题表（如 `dws_..._stage_progress_df`）。\n\n**怎么解决**：\n需要在数据字典或埋点管理系统中补充“关卡通关”相关的埋点事件定义及对应的数仓表结构，将其接入数据源检索库（Schema-linking）后，再进行查询。\nODPS-0130161:[1,1] Parse exception - invalid token '无法回答该问题'"
+            }
+          ],
+          "expected_result": {
+            "cleared": 3200
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "用户的问题是：“通关最终关卡的角色有多少”\n当前日期：20260827\n\n首先，需要理解“最终关卡”是什么意思。\n在提供的表结构中：\n- `dws_10000251_battle_stage_df`：K11-关卡通关总表（角色粒度关卡通关明细），包含 `stage_id`, `pass_status` (0-未通关 1-已通关), `stay_status` (0-停留未通关 1-停留已通关 2-未停留已通关)\n- `dws_10000251_battle_stage_part_df`：K11-关卡挑战情况表，包含 `pass_status` (0-未通关 1-已通关)\n- `dws_10000251_play_process_df`：玩法进度表，包含 `stay_stage_id` (停留关卡id), `stay_status` (3表示胜，1表示平，0表示负，-100表示进行中)\n- `dim_10000251_trans_stage_df`：关卡配置维度表，包含 `id` (关卡id), `name`, `type`, `difficulty`, `chapter_id` 等。\n\n“最终关卡”通常指的是某个玩法或主线中的最后一个关卡，或者通关了所有关卡的玩家。\n但在没有明确“最终关卡”具体 ID 的情况下，如何定义“最终关卡”？\n也许是指 `stay_status` = 1 (停留已通关) 且该关卡是最高关卡？或者是指关卡维度表中某种特定的关卡？\n或者，是不是指 `dws_10000251_play_process_df` 中的 `stay_status` = 3 (胜) 并且 `stay_stage_id` 是某个特定的最终关卡？\n如果没有明确的“最终关卡”ID，可能需要通过 `dim_10000251_trans_stage_df` 找到最大 ID 或特定的关卡名？但这可能不准确。\n再看 `dws_10000251_battle_stage_df`，有 `stay_status`：关卡停留状态，同一关卡类型下，玩家是否停留在此关卡，0-停留未通关 1-停留已通关 2-未停留已通关。如果玩家“停留已通关”(stay_status=1)，说明他已经通关了当前关卡，且没有更高的关卡可以挑战了（即卡在最终关卡，或者已经通关了最终关卡）。\n或者，“通关最终关卡”是指 `pass_status = 1` 且关卡是最终关卡？\n\n让我们仔细分析“最终关卡”在游戏数据分析中的常见定义。\n通常，如果没有指定具体的玩法（如主线、精英等），“最终关卡”可能无法精确定义，因为不同玩法有不同的最终关卡。\n但是，这里有一个表 `dws_10000251_play_process_df` (玩法进度表)，里面有 `stay_stage_id` 和 `stay_status`。\n或者，可能指的是某个特定玩法（比如主线）的最后一关？但题目没有指定玩法。\n如果题目只说“通关最终关卡”，可能指的是在 `dws_10000251_battle_stage_df` 中，`stay_status = 1`（停留已通关）的角色数？因为“停留已通关”意味着玩家已经通关了该关卡，并且没有后续关卡了，所以停留在该关卡（即最终关卡）。\n或者，指的是通关了所有关卡？\n\n让我们考虑另一种可能：是不是指 `dim_10000251_trans_stage_df` 中的某个特定关卡？比如 ID 最大的关卡？这不太可靠。\n或者，在 `dws_10000251_battle_stage_df` 中，`stay_status` = 1 表示“停留已通关”，也就是",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917A7F16C903C3CBDC9A20 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 用户的问题是：“通关最终关卡的角色有多少”\n当前日期：20260827\n\n首先，需要理解“最终关卡”是什么意思。\n在提供的表结构中：\n- `dws_10000251_battle_stage_df`：K11-关卡通关总表（角色粒度关卡通关明细），包含 `stage_id`, `pass_status` (0-未通关 1-已通关), `stay_status` (0-停留未通关 1-停留已通关 2-未停留已通关)\n- `dws_10000251_battle_stage_part_df`：K11-关卡挑战情况表，包含 `pass_status` (0-未通关 1-已通关)\n- `dws_10000251_play_process_df`：玩法进度表，包含 `stay_stage_id` (停留关卡id), `stay_status` (3表示胜，1表示平，0表示负，-100表示进行中)\n- `dim_10000251_trans_stage_df`：关卡配置维度表，包含 `id` (关卡id), `name`, `type`, `difficulty`, `chapter_id` 等。\n\n“最终关卡”通常指的是某个玩法或主线中的最后一个关卡，或者通关了所有关卡的玩家。\n但在没有明确“最终关卡”具体 ID 的情况下，如何定义“最终关卡”？\n也许是指 `stay_status` = 1 (停留已通关) 且该关卡是最高关卡？或者是指关卡维度表中某种特定的关卡？\n或者，是不是指 `dws_10000251_play_process_df` 中的 `stay_status` = 3 (胜) 并且 `stay_stage_id` 是某个特定的最终关卡？\n如果没有明确的“最终关卡”ID，可能需要通过 `dim_10000251_trans_stage_df` 找到最大 ID 或特定的关卡名？但这可能不准确。\n再看 `dws_10000251_battle_stage_df`，有 `stay_status`：关卡停留状态，同一关卡类型下，玩家是否停留在此关卡，0-停留未通关 1-停留已通关 2-未停留已通关。如果玩家“停留已通关”(stay_status=1)，说明他已经通关了当前关卡，且没有更高的关卡可以挑战了（即卡在最终关卡，或者已经通关了最终关卡）。\n或者，“通关最终关卡”是指 `pass_status = 1` 且关卡是最终关卡？\n\n让我们仔细分析“最终关卡”在游戏数据分析中的常见定义。\n通常，如果没有指定具体的玩法（如主线、精英等），“最终关卡”可能无法精确定义，因为不同玩法有不同的最终关卡。\n但是，这里有一个表 `dws_10000251_play_process_df` (玩法进度表)，里面有 `stay_stage_id` 和 `stay_status`。\n或者，可能指的是某个特定玩法（比如主线）的最后一关？但题目没有指定玩法。\n如果题目只说“通关最终关卡”，可能指的是在 `dws_10000251_battle_stage_df` 中，`stay_status = 1`（停留已通关）的角色数？因为“停留已通关”意味着玩家已经通关了该关卡，并且没有后续关卡了，所以停留在该关卡（即最终关卡）。\n或者，指的是通关了所有关卡？\n\n让我们考虑另一种可能：是不是指 `dim_10000251_trans_stage_df` 中的某个特定关卡？比如 ID 最大的关卡？这不太可靠。\n或者，在 `dws_10000251_battle_stage_df` 中，`stay_status` = 1 表示“停留已通关”，也就是\nODPS-0130161:[1,1] Parse exception - invalid token '用户的问题是'"
+            }
+          ],
+          "expected_result": {
+            "cleared": 3200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 163527
+    },
+    {
+      "case_id": "k11v2_020",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "SQL缺少对物品名称为“钻石”的过滤条件（如 b.name = '钻石'），导致实际计算的是所有物品的总产出量，无法正确回答用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT SUM(a.get_amt) AS total_get_amt FROM dws_10000251_item_circle_di a JOIN dim_10000251_trans_resource_item_df b ON a.item_type = b.type AND a.item_id = b.id WHERE a.ds = '20260826' AND b.ds = MAX_PT('dim_10000251_trans_resource_item_df')",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,193] Semantic analysis exception - column b.ds cannot be resolved\nODPS-0130071:[1,205] Semantic analysis exception - dim_10000251_trans_resource_item_df is not a partitioned table"
+            }
+          ],
+          "expected_result": {
+            "diamond_output": 8500000
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "SQL缺少对物品名称'钻石'的过滤条件（如 b.name = '钻石'），导致查询结果将是所有物品的总产出量而非钻石的产出量，无法正确回答用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT SUM(a.get_amt) AS total_diamond_get_amt FROM dws_10000251_item_circle_di a JOIN dim_10000251_trans_resource_item_df b ON a.item_type = b.type AND a.item_id = b.id WHERE a.ds = '20260826' AND b.ds = '20260826' 等等，规则1：“_df 后缀日期不明用 MAX_PT”。在 MaxCompute 中，MAX_PT('table_name') 是获取最新分区的内置函数。 让我们使用 `MAX_PT('dim_10000251_trans_resource_item_df')`。 或者，因为它是日全量快照，昨天的分区 '20260826' 应该存在。为安全起见，可以使用 `ds = MAX_PT('dim_10000251_trans_resource_item_df')`。 让我们检查 dws_10000251_item_circle_di 的字段： get_amt: 获得数量 item_type: 物品类型 item_id: 物品id dim_10000251_trans_resource_item_df 的字段： type: 物品类型 id: 物品id name: 物品名 SQL 构建：",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917AC316C903C3CBE15398 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: SELECT SUM(a.get_amt) AS total_diamond_get_amt FROM dws_10000251_item_circle_di a JOIN dim_10000251_trans_resource_item_df b ON a.item_type = b.type AND a.item_id = b.id WHERE a.ds = '20260826' AND b.ds = '20260826' 等等，规则1：“_df 后缀日期不明用 MAX_PT”。在 MaxCompute 中，MAX_PT('table_name') 是获取最新分区的内置函数。 让我们使用 `MAX_PT('dim_10000251_trans_resource_item_df')`。 或者，因为它是日全量快照，昨天的分区 '20260826' 应该存在。为安全起见，可以使用 `ds = MAX_PT('dim_10000251_trans_resource_item_df')`。 让我们检查 dws_10000251_item_circle_di 的字段： get_amt: 获得数量 item_type: 物品类型 item_id: 物品id dim_10000251_trans_resource_item_df 的字段： type: 物品类型 id: 物品id name: 物品名 SQL 构建：\nODPS-0130161:[1,217] Parse exception - invalid token '等等'"
+            }
+          ],
+          "expected_result": {
+            "diamond_output": 8500000
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "无法准确回答。\n\n**原因**：\n查询“钻石”的总产出量需要在物品流水表（如 `dws_10000251_item_circle_di` 或 `dws_10000251_item_circle_df`）中按物品进行过滤。但当前提供的数据源中仅包含 `item_type`（物品类型）和 `item_id`（物品ID）字段，**缺少物品维度配置表**（如 `dim_item_info`）来映射“钻石”所对应的具体 `item_id` 或 `item_type` 枚举值。在无法确定具体过滤值的情况下，强行猜测会导致数据错误。\n\n**解决方案**：\n1. 请提供“钻石”在系统中对应的具体 `item_id` 或 `item_type` 值（例如：`item_id = 10001`）。\n2. 或者补充提供包含物品名称与 ID 映射关系的物品维度表，以便进行准确的 JOIN 过滤。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917AEABA0291FD4246EEEE Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法准确回答。\n\n**原因**：\n查询“钻石”的总产出量需要在物品流水表（如 `dws_10000251_item_circle_di` 或 `dws_10000251_item_circle_df`）中按物品进行过滤。但当前提供的数据源中仅包含 `item_type`（物品类型）和 `item_id`（物品ID）字段，**缺少物品维度配置表**（如 `dim_item_info`）来映射“钻石”所对应的具体 `item_id` 或 `item_type` 枚举值。在无法确定具体过滤值的情况下，强行猜测会导致数据错误。\n\n**解决方案**：\n1. 请提供“钻石”在系统中对应的具体 `item_id` 或 `item_type` 值（例如：`item_id = 10001`）。\n2. 或者补充提供包含物品名称与 ID 映射关系的物品维度表，以便进行准确的 JOIN 过滤。\nODPS-0130161:[1,1] Parse exception - invalid token '无法准确回答'"
+            }
+          ],
+          "expected_result": {
+            "diamond_output": 8500000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 106381
+    },
+    {
+      "case_id": "k11v2_021",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了VIP账号标签表，使用COUNT(DISTINCT user_id)统计账号级(user_type=2)最新分区的VIP用户总数，完全符合用户询问VIP用户总数的语义意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS vip_user_count FROM dws_10000251_vip_acc_tag_df WHERE ds = MAX_PT('dws_10000251_vip_acc_tag_df') AND user_type = '2'",
+          "query_result": [
+            [
+              280682
+            ]
+          ],
+          "expected_result": {
+            "vip_count": 12000
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.2,
+            "rationale": "SQL使用的表dws_10000251_role_common_feature_di未在schema中明确定义为独立表；字段提取方式(GET_JSON_OBJECT从params解析viplevel)与metric定义中直接使用viplevel字段不一致；用户问'总数'未指定日期，但SQL硬编码了ds='20260826'；聚合逻辑COUNT(DISTINCT)正确匹配'总数'语义，但整体因表/字段/过滤条件问题无法确保正确回答用户问题。",
+            "dimensions": {
+              "table_selection": 0,
+              "field_selection": 0,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN CAST(GET_JSON_OBJECT(params, '$.viplevel') AS DOUBLE) > 0 THEN role_id END) AS vip_role_count FROM dws_10000251_role_common_feature_di WHERE ds = '20260826'",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,54] Semantic analysis exception - column params cannot be resolved"
+            }
+          ],
+          "expected_result": {
+            "vip_count": 12000
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了VIP账号标签快照表，使用COUNT(DISTINCT user_id)统计VIP用户总数，并合理限制了分区日期和账号类型(user_type=2)，语义完全匹配用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS vip_user_count FROM dws_10000251_vip_acc_tag_df WHERE ds = '20260826' AND user_type = '2'",
+          "query_result": [
+            [
+              280656
+            ]
+          ],
+          "expected_result": {
+            "vip_count": 12000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 165506
+    },
+    {
+      "case_id": "k11v2_022",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了每日用户集表，使用了与Schema中'角色日活'指标定义完全一致的聚合逻辑（COUNT DISTINCT act=1的user_id），并正确过滤了代表昨天的日期分区，语义完全匹配。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN act = 1 THEN user_id END) AS active_role_uv FROM dws_10000251_univ_role_summary_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              3500
+            ]
+          ],
+          "expected_result": {
+            "role_dau": 350000
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "SQL选择了包含角色活跃指标的表并使用了正确的聚合逻辑，但缺少 user_type = 3 的关键过滤条件，会导致将设备和账号的活跃用户一并统计，无法准确回答‘角色日活’的问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN act = 1 THEN user_id END) AS active_role_uv FROM dws_10000251_univ_role_summary_di WHERE ds = '20260826'",
+          "query_result": [
+            [
+              3500
+            ]
+          ],
+          "expected_result": {
+            "role_dau": 350000
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色粒度基础表，使用COUNT DISTINCT结合act=1条件准确计算了指定日期（代表昨天）的角色日活UV，完全符合用户问题的语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT CASE WHEN act = 1 THEN user_id END) AS active_uv FROM dws_10000251_univ_role_summary_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              3500
+            ]
+          ],
+          "expected_result": {
+            "role_dau": 350000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 199612
+    },
+    {
+      "case_id": "k11v2_024",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "SQL 选择了全量快照表(_df)但仅使用分区字段 ds 过滤，未使用业务日期字段 ymd 限制“昨天”，导致计算的是历史累计现金收入而非昨日单日收入，应改用日增量表(_di)或增加 ymd 过滤。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN pay_type = 1 THEN pay_amt ELSE 0 END) / 100.0 AS cash_pay_amt_yuan FROM dws_10000251_com_pay_order_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              108048463.32
+            ]
+          ],
+          "expected_result": {
+            "cash_revenue": 1200000
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "查询“昨天”的单日收入应使用日增量表(_di)或在全量快照表(_df)中增加业务日期(如ymd)过滤；当前SQL仅过滤了快照分区ds，会导致计算出截至昨天的历史累计收入而非昨日单日增量收入，语义错误。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN pay_type = 1 THEN pay_amt ELSE 0 END) / 100.0 AS cash_pay_amt_yuan FROM dws_10000251_com_pay_order_df WHERE ds = '20260826';",
+          "query_result": [
+            [
+              108048463.32
+            ]
+          ],
+          "expected_result": {
+            "cash_revenue": 1200000
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单总表，使用SUM(CASE WHEN pay_type=1 THEN pay_amt ELSE 0 END)/100.0正确计算现金收入（单位转换为元），WHERE条件通过ds和ymd过滤指定日期数据，聚合逻辑符合'总量'语义，整体能正确回答'昨天的现金收入'问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN CAST(pay_type AS BIGINT) = 1 THEN pay_amt ELSE 0 END) / 100.0 AS cash_income_yuan FROM dws_10000251_com_pay_order_df WHERE ds = '20260826' AND ymd = '20260826';",
+          "query_result": [
+            [
+              22176
+            ]
+          ],
+          "expected_result": {
+            "cash_revenue": 1200000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 248237
+    },
+    {
+      "case_id": "k11v2_027",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "<tool>{\"name\": \"search_data_sources\", \"arguments\": {\"query\": \"金币 消耗 变动\"}}</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917D6FDE60D68974465C0A Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>{\"name\": \"search_data_sources\", \"arguments\": {\"query\": \"金币 消耗 变动\"}}</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "gold_consume": 12000000
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "call:load_event_definition{\"event_name\": \"game.coin.change\"}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917D854E429721A82C2B6B Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call:load_event_definition{\"event_name\": \"game.coin.change\"}\nODPS-0130161:[1,6] Parse exception - invalid token 'load_event_definition', expect '':''"
+            }
+          ],
+          "expected_result": {
+            "gold_consume": 12000000
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "call\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.coin.change\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A917D965D9BB95A172D7690 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.coin.change\"}}\nODPS-0130161:[2,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "gold_consume": 12000000
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 71361
+    },
+    {
+      "case_id": "k11v2_029",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了包含角色等级字段的角色日全量快照表，使用AVG函数计算平均等级，并通过ds分区条件限制了当前日期，完美契合'目前全服平均等级'的查询意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT AVG(CAST(role_level AS BIGINT)) AS avg_role_level FROM dws_10000251_univ_role_tag_df WHERE ds = '20260826'",
+          "query_result": [
+            [
+              22.41907896458764
+            ]
+          ],
+          "expected_result": {
+            "avg_level": 45
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "avg_level": 45
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色主体表并提取最新分区数据，使用AVG函数计算角色等级平均值，完美契合“目前全服平均等级”的查询意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT AVG(CAST(role_level AS DOUBLE)) AS avg_role_level FROM dws_10000251_univ_role_tag_df WHERE ds = MAX_PT('dws_10000251_univ_role_tag_df')",
+          "query_result": [
+            [
+              22.41932458344039
+            ]
+          ],
+          "expected_result": {
+            "avg_level": 45
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 187569
+    },
+    {
+      "case_id": "k11v2_032",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色画像全量表，通过user_type=3和active_flag=4准确过滤出流失角色，并使用COUNT(DISTINCT user_id)正确计算了角色总数，完全符合用户意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(DISTINCT user_id) AS churn_role_cnt FROM dws_10000251_univ_role_feature_df WHERE ds = MAX_PT('dws_10000251_univ_role_feature_df') AND user_type = 3 AND active_flag = 4;",
+          "query_result": [
+            [
+              1678101
+            ]
+          ],
+          "expected_result": {
+            "churn_count": 9200
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL 选择了正确的角色画像表，通过 user_type=3 和 active_flag=4 准确过滤出流失角色，并使用 COUNT 正确计算了总数，语义完全匹配用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT COUNT(user_id) AS churn_role_count FROM dws_10000251_univ_role_feature_df WHERE ds = MAX_PT('dws_10000251_univ_role_feature_df') AND user_type = 3 AND active_flag = 4;",
+          "query_result": [
+            [
+              1678101
+            ]
+          ],
+          "expected_result": {
+            "churn_count": 9200
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.4,
+            "rationale": "SQL选择了日增量表（仅记录当日新增流失角色）而非包含全量用户流失状态的汇总表或算法预测表，无法计算历史累计流失总数；同时WHERE条件中凭空捏造了未指定的分区日期，导致整体语义错误。",
+            "dimensions": {
+              "table_selection": 0,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT COUNT(user_id) AS churn_role_count FROM dws_10000251_univ_role_churn_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              3636
+            ]
+          ],
+          "expected_result": {
+            "churn_count": 9200
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 200931
+    },
+    {
+      "case_id": "k11v2_033",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号日增量表，按日期分组并对付费金额求和，时间范围限制为7天，完美匹配用户查询过去7天每日付费金额趋势的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT ds, SUM(pay_amt) AS total_pay_amt FROM dws_10000251_univ_acc_act_di WHERE ds BETWEEN '20260821' AND '20260827' GROUP BY ds ORDER BY ds;",
+          "query_result": [
+            [
+              "20260821",
+              23187
+            ],
+            [
+              "20260822",
+              27470
+            ],
+            [
+              "20260823",
+              20528
+            ],
+            [
+              "20260824",
+              19170
+            ],
+            [
+              "20260825",
+              24113
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.4,
+            "rationale": "对于日全量快照表(_df)，应取最新一天快照(如 ds='20260826')并按行为日期(act_ymd)进行范围过滤和分组聚合；SQL错误地按快照分区字段(ds)进行范围过滤和分组，会导致严重的数据重复计算，无法正确反映每日付费趋势。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 0,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT ds, SUM(pay_amt) AS total_pay_amt FROM dws_10000251_selfhelp_new_pay_df WHERE ds BETWEEN '20260820' AND '20260826' GROUP BY ds ORDER BY ds;",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 204628
+    },
+    {
+      "case_id": "k11v2_034",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号粒度宽表，使用了Schema提示中标准的日活计算逻辑（比较act_tm_lst与ds），并通过BETWEEN限定了准确的30天时间范围，按天分组聚合完美契合‘日活趋势’的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT ds, COUNT(DISTINCT CASE WHEN SUBSTR(CAST(act_tm_lst AS STRING),1,10) = CONCAT(SUBSTR(ds,1,4),'-',SUBSTR(ds,5,2),'-',SUBSTR(ds,7,2)) THEN user_id END) AS daily_active_user_cnt FROM dws_10000251_univ_acc_server_whole_df WHERE ds BETWEEN '20260728' AND '20260826' GROUP BY ds ORDER BY ds",
+          "query_result": [
+            [
+              "20260728",
+              4576
+            ],
+            [
+              "20260729",
+              4438
+            ],
+            [
+              "20260730",
+              4364
+            ],
+            [
+              "20260731",
+              4415
+            ],
+            [
+              "20260801",
+              4338
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 25,
+            "max_rows": 30
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL选择了正确的明细表dws_10000251_univ_acc_summary_di，通过COUNT(DISTINCT CASE WHEN act=1 THEN user_id END)正确计算日活账号数，user_type=2过滤账号层级，ds BETWEEN过滤近30天时间范围，GROUP BY ds按日聚合呈现趋势，整体语义完全匹配用户'过去30天日活趋势'的需求。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT ds, COUNT(DISTINCT CASE WHEN act = 1 THEN user_id END) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds BETWEEN '20260729' AND '20260827' AND user_type = 2 GROUP BY ds ORDER BY ds",
+          "query_result": [
+            [
+              "20260729",
+              4520
+            ],
+            [
+              "20260730",
+              4453
+            ],
+            [
+              "20260731",
+              4517
+            ],
+            [
+              "20260801",
+              4416
+            ],
+            [
+              "20260802",
+              4544
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 25,
+            "max_rows": 30
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了每日用户明细表，通过act=1过滤活跃用户，并使用COUNT(DISTINCT user_id)按日聚合计算DAU，时间范围准确覆盖30天，按日期排序完美呈现日活趋势。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT ds, COUNT(DISTINCT user_id) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds BETWEEN '20260728' AND '20260826' AND act = 1 GROUP BY ds ORDER BY ds ASC;",
+          "query_result": [
+            [
+              "20260729",
+              4520
+            ],
+            [
+              "20260730",
+              4453
+            ],
+            [
+              "20260731",
+              4517
+            ],
+            [
+              "20260801",
+              4416
+            ],
+            [
+              "20260802",
+              4544
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 25,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 200053
+    },
+    {
+      "case_id": "k11v2_036",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单日增量表，按服务器分组求和付费金额并降序取前10，同时补充了必要的日期分区过滤条件，完全符合用户查询各服务器付费金额Top10的语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT server_id, SUM(pay_amt) AS total_pay_amt FROM dws_10000251_pay_order_di WHERE ds = '20260826' GROUP BY server_id ORDER BY total_pay_amt DESC LIMIT 10;",
+          "query_result": [
+            [
+              10643,
+              13203
+            ],
+            [
+              10634,
+              4097
+            ],
+            [
+              10642,
+              2902
+            ],
+            [
+              10640,
+              2782
+            ],
+            [
+              10639,
+              1731
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 10
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单全量快照表和服务器维度表，通过最新分区获取全量数据，按服务器分组求和付费金额（分转元），并降序取前10，完全符合用户意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT b.server_name, a.server_id, SUM(a.pay_amt) / 100.0 AS total_pay_amt_yuan FROM dws_10000251_com_pay_order_df a JOIN dim_10000251_server_info b ON a.server_id = b.server_id WHERE a.ds = MAX_PT('dws_10000251_com_pay_order_df') GROUP BY b.server_name, a.server_id ORDER BY total_pay_amt_yuan DESC LIMIT 10;",
+          "query_result": [
+            [
+              "同载酒",
+              "10001",
+              5129218
+            ],
+            [
+              "隆中对",
+              "10007",
+              3468392
+            ],
+            [
+              "出师表",
+              "10008",
+              3338803
+            ],
+            [
+              "少年游",
+              "10002",
+              2732407
+            ],
+            [
+              "惊鸿起",
+              "10003",
+              2703222
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 10
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单表和服务器维表，通过关联获取服务器名称，对金额（分转元）进行求和聚合，排除了免费代金券，并按总金额降序取前10，完全符合用户问题语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT b.server_name, SUM(a.pay_amt) / 100.0 AS total_pay_amt FROM dws_10000251_com_pay_order_df a JOIN dim_10000251_server_info b ON a.server_id = b.server_id WHERE a.ds = MAX_PT('dws_10000251_com_pay_order_df') AND a.pay_type <> '3' GROUP BY b.server_name ORDER BY total_pay_amt DESC LIMIT 10;",
+          "query_result": [
+            [
+              "同载酒",
+              5121319
+            ],
+            [
+              "隆中对",
+              3466041
+            ],
+            [
+              "出师表",
+              3334385
+            ],
+            [
+              "少年游",
+              2729778
+            ],
+            [
+              "惊鸿起",
+              2700191
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 10
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 175261
+    },
+    {
+      "case_id": "k11v2_040",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "**为什么不能答**\n当前检索到的数据源（如 `dws_10000251_pvp_score_di`）是“角色×玩法×日”粒度的积分变化汇总表，记录的是每个角色每天在各PVP玩法下的积分初始值、累计增减（`add_score`/`sub_score`）与最终段位。该表不包含单次对战的明细记录，也没有提供“对战场次”（如 `battle_count` / `match_count`）的统计字段。由于是日级汇总数据，无法通过简单的 `COUNT(*)` 来推算对战场次。\n\n**缺什么**\n缺少包含“PVP对战场次”指标的数据源。例如：\n1. 包含对战场次统计字段的 DWS 汇总表（如带有 `battle_count` 或 `match_count` 字段的表）。\n2. PVP 对战结算的明细事件表（如 `pvp_battle_end` 或 `pvp_match_result`），可通过 `COUNT(*)` 计算总场次。\n\n**怎么解决**\n请在数仓中补充 PVP 对战场次相关的统计宽表或明细事件表，并在元数据（语义层）中注册对应的表和字段定义后，再重新发起查询。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A918178FDD8139FA9AFAFD1 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: **为什么不能答**\n当前检索到的数据源（如 `dws_10000251_pvp_score_di`）是“角色×玩法×日”粒度的积分变化汇总表，记录的是每个角色每天在各PVP玩法下的积分初始值、累计增减（`add_score`/`sub_score`）与最终段位。该表不包含单次对战的明细记录，也没有提供“对战场次”（如 `battle_count` / `match_count`）的统计字段。由于是日级汇总数据，无法通过简单的 `COUNT(*)` 来推算对战场次。\n\n**缺什么**\n缺少包含“PVP对战场次”指标的数据源。例如：\n1. 包含对战场次统计字段的 DWS 汇总表（如带有 `battle_count` 或 `match_count` 字段的表）。\n2. PVP 对战结算的明细事件表（如 `pvp_battle_end` 或 `pvp_match_result`），可通过 `COUNT(*)` 计算总场次。\n\n**怎么解决**\n请在数仓中补充 PVP 对战场次相关的统计宽表或明细事件表，并在元数据（语义层）中注册对应的表和字段定义后，再重新发起查询。\nODPS-0130161:[1,1] Parse exception - invalid token '*'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "call\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.yanwu.match\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A9181B8704C01DD4A68547F Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.yanwu.match\"}}\nODPS-0130161:[2,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.yanwu.match\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A9181CBC8D3B68B0299C29E Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: {\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.yanwu.match\"}}\nODPS-0130161:[1,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 107768
+    },
+    {
+      "case_id": "k11v2_041",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了物品流水日增量表和物品维度配置表，通过按日期分组并聚合产出与消耗数量，准确过滤了钻石物品及过去7天的时间范围，完美契合对比趋势的查询语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT t1.ds, SUM(t1.get_amt) AS total_get_amt, SUM(t1.use_amt) AS total_use_amt FROM dws_10000251_item_circle_di t1 JOIN dim_10000251_trans_resource_item_df t2 ON t1.item_type = t2.type AND t1.item_id = t2.id WHERE t1.ds BETWEEN '20260821' AND '20260827' AND t2.ds = MAX_PT('dim_10000251_trans_resource_item_df') AND t2.name LIKE '%钻石%' GROUP BY t1.ds ORDER BY t1.ds;",
+          "query_result": [
+            {
+              "_error": "ODPS-0130071:[1,264] Semantic analysis exception - column t2.ds cannot be resolved\nODPS-0130071:[1,276] Semantic analysis exception - dim_10000251_trans_resource_item_df is not a partitioned table"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了日增量流水表dws_10000251_item_circle_di和物品维度表dim_10000251_trans_resource_item_df，通过b.name='钻石'过滤钻石物品，用ds BETWEEN限定7天范围，按日GROUP BY并SUM(get_amt)和SUM(use_amt)分别统计产出与消耗，ORDER BY ds呈现趋势，完全匹配用户'过去7天钻石产出和消耗的对比趋势'的语义需求。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT a.ds, SUM(a.get_amt) AS total_get_amt, SUM(a.use_amt) AS total_use_amt FROM dws_10000251_item_circle_di a JOIN dim_10000251_trans_resource_item_df b ON a.item_type = b.type AND a.item_id = b.id WHERE a.ds BETWEEN '20260820' AND '20260826' AND b.name = '钻石' GROUP BY a.ds ORDER BY a.ds",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了物品流水日增量表和物品维度表，通过关联过滤出'钻石'物品，并按日期聚合产出(get_amt)和消耗(use_amt)数量，完美契合过去7天对比趋势的查询意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT t1.ds, SUM(t1.get_amt) AS total_get_amt, SUM(t1.use_amt) AS total_use_amt FROM dws_10000251_item_circle_di t1 JOIN dim_10000251_trans_resource_item_df t2 ON t1.item_type = t2.type AND t1.item_id = t2.id WHERE t1.ds BETWEEN '20260820' AND '20260826' AND t2.name = '钻石' GROUP BY t1.ds ORDER BY t1.ds",
+          "query_result": [],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 169834
+    },
+    {
+      "case_id": "k11v2_042",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL选择了正确的角色快照表，按角色等级分组并统计去重角色数，同时正确指定了分区日期ds，完美契合各等级角色数量分布的查询意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT role_level, COUNT(DISTINCT user_id) AS role_count FROM dws_10000251_univ_role_tag_df WHERE ds = '20260826' GROUP BY role_level ORDER BY CAST(role_level AS BIGINT) ASC",
+          "query_result": [
+            [
+              0,
+              13
+            ],
+            [
+              1,
+              156983
+            ],
+            [
+              2,
+              61191
+            ],
+            [
+              3,
+              242200
+            ],
+            [
+              4,
+              45797
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "CASE \n  WHEN role_level BETWEEN 1 AND 10 THEN '1-10'\n  WHEN role_level BETWEEN 11 AND 20 THEN '11-20'\n  WHEN role_level BETWEEN 21 AND 30 THEN '21-30'\n  WHEN role_level BETWEEN 31 AND 40 THEN '31-40'\n  WHEN role_level BETWEEN 41 AND 50 THEN '41-50'\n  WHEN role_level >= 51 THEN '51+'\n  ELSE '未知'\nEND AS level_segment",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A9182EE4E429721A88999C5 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: CASE \n  WHEN role_level BETWEEN 1 AND 10 THEN '1-10'\n  WHEN role_level BETWEEN 11 AND 20 THEN '11-20'\n  WHEN role_level BETWEEN 21 AND 30 THEN '21-30'\n  WHEN role_level BETWEEN 31 AND 40 THEN '31-40'\n  WHEN role_level BETWEEN 41 AND 50 THEN '41-50'\n  WHEN role_level >= 51 THEN '51+'\n  ELSE '未知'\nEND AS level_segment\nODPS-0130161:[1,1] Parse exception - invalid token 'CASE'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色特征快照表，使用CASE WHEN对角色等级进行合理分段，并通过COUNT(DISTINCT role_id)准确统计了各等级段的角色数量分布，过滤条件和排序逻辑均符合业务语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT CASE WHEN CAST(rolelevel AS BIGINT) BETWEEN 1 AND 30 THEN '1-30' WHEN CAST(rolelevel AS BIGINT) BETWEEN 31 AND 60 THEN '31-60' WHEN CAST(rolelevel AS BIGINT) BETWEEN 61 AND 90 THEN '61-90' WHEN CAST(rolelevel AS BIGINT) BETWEEN 91 AND 120 THEN '91-120' WHEN CAST(rolelevel AS BIGINT) > 120 THEN '120+' ELSE '未知' END AS level_tier, COUNT(DISTINCT role_id) AS role_cnt FROM dws_10000251_role_common_feature_df WHERE ds = '20260826' GROUP BY CASE WHEN CAST(rolelevel AS BIGINT) BETWEEN 1 AND 30 THEN '1-30' WHEN CAST(rolelevel AS BIGINT) BETWEEN 31 AND 60 THEN '31-60' WHEN CAST(rolelevel AS BIGINT) BETWEEN 61 AND 90 THEN '61-90' WHEN CAST(rolelevel AS BIGINT) BETWEEN 91 AND 120 THEN '91-120' WHEN CAST(rolelevel AS BIGINT) > 120 THEN '120+' ELSE '未知' END ORDER BY MIN(CAST(rolelevel AS BIGINT))",
+          "query_result": [
+            [
+              "1-30",
+              1212078
+            ],
+            [
+              "31-60",
+              188156
+            ],
+            [
+              "61-90",
+              136191
+            ],
+            [
+              "91-120",
+              54527
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 187333
+    },
+    {
+      "case_id": "k11v2_044",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单日表，将金额从分转换为元作为充值档位进行分组，并统计对应的订单数量，完美契合用户查询各充值档位订单数量分布的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT CAST(pay_amt AS DOUBLE) / 100 AS recharge_tier, COUNT(order_id) AS order_cnt FROM dws_10000251_com_pay_order_di WHERE ds = '20260826' GROUP BY CAST(pay_amt AS DOUBLE) / 100 ORDER BY recharge_tier ASC",
+          "query_result": [
+            [
+              1,
+              27
+            ],
+            [
+              2,
+              27
+            ],
+            [
+              3,
+              82
+            ],
+            [
+              6,
+              18
+            ],
+            [
+              9,
+              28
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单日表，按订单金额(pay_amt)作为充值档位进行分组，并使用COUNT统计订单数量，聚合逻辑与用户意图完全匹配，能够准确回答各充值档位的订单数量分布问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT pay_amt AS recharge_tier, COUNT(order_id) AS order_count FROM dws_10000251_pay_order_di WHERE ds = '20260826' GROUP BY pay_amt ORDER BY pay_amt ASC;",
+          "query_result": [
+            [
+              1,
+              27
+            ],
+            [
+              2,
+              27
+            ],
+            [
+              3,
+              82
+            ],
+            [
+              6,
+              18
+            ],
+            [
+              9,
+              28
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单明细表，以订单金额(pay_amt)作为充值档位进行分组，并使用COUNT统计订单数量，聚合逻辑与字段选择完全匹配用户问题意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT pay_amt AS recharge_tier, COUNT(order_id) AS order_count FROM dws_10000251_pay_order_di WHERE ds = '20260826' GROUP BY pay_amt ORDER BY pay_amt ASC;",
+          "query_result": [
+            [
+              1,
+              27
+            ],
+            [
+              2,
+              27
+            ],
+            [
+              3,
+              82
+            ],
+            [
+              6,
+              18
+            ],
+            [
+              9,
+              28
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 146533
+    },
+    {
+      "case_id": "k11v2_045",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了评分表，使用tag=1过滤高风险预测，按天分组统计去重角色数并排序以展示趋势，语义与用户问题完全匹配。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT ds, COUNT(DISTINCT role_id) AS pred_churn_uv FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds BETWEEN '20260820' AND '20260826' AND tag = 1 GROUP BY ds ORDER BY ds;",
+          "query_result": [
+            [
+              "20260820",
+              7906
+            ],
+            [
+              "20260821",
+              7772
+            ],
+            [
+              "20260822",
+              7692
+            ],
+            [
+              "20260823",
+              7717
+            ],
+            [
+              "20260824",
+              7769
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色流失预测评分明细表，通过按天分组并统计tag=1的去重角色数，准确实现了过去7天高风险角色数趋势的查询意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT ds, COUNT(DISTINCT CASE WHEN CAST(tag AS BIGINT) = 1 THEN role_id END) AS high_risk_role_cnt FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds BETWEEN '20260820' AND '20260826' GROUP BY ds ORDER BY ds ASC;",
+          "query_result": [
+            [
+              "20260820",
+              7906
+            ],
+            [
+              "20260821",
+              7772
+            ],
+            [
+              "20260822",
+              7692
+            ],
+            [
+              "20260823",
+              7717
+            ],
+            [
+              "20260824",
+              7769
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色流失预测评分表，通过tag=1过滤预测流失（高风险）角色，按日期ds分组统计去重角色数并排序，完美契合过去7天高风险角色数趋势的查询意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT ds, COUNT(DISTINCT role_id) AS high_risk_role_cnt FROM dws_10000251_7_0_role_churn_pred_scoring WHERE ds BETWEEN '20260821' AND '20260827' AND tag = '1' GROUP BY ds ORDER BY ds",
+          "query_result": [
+            [
+              "20260821",
+              7772
+            ],
+            [
+              "20260822",
+              7692
+            ],
+            [
+              "20260823",
+              7717
+            ],
+            [
+              "20260824",
+              7769
+            ],
+            [
+              "20260825",
+              7695
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 157430
+    },
+    {
+      "case_id": "k11v2_048",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单日增量表，使用HOUR函数提取tm字段的小时数作为时段维度，通过COUNT统计订单笔数，并按ds分区过滤昨天数据，完美契合用户查询昨天各时段付费订单笔数分布的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT HOUR(CAST(tm AS DATETIME)) AS hour_of_day, COUNT(order_id) AS order_count FROM dws_10000251_com_pay_order_di WHERE ds = '20260826' GROUP BY HOUR(CAST(tm AS DATETIME)) ORDER BY hour_of_day ASC;",
+          "query_result": [
+            [
+              0,
+              47
+            ],
+            [
+              1,
+              35
+            ],
+            [
+              2,
+              19
+            ],
+            [
+              3,
+              8
+            ],
+            [
+              5,
+              24
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 10,
+            "max_rows": 24
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单日增量表，通过提取时间字段的小时部分进行分组并统计订单数，过滤了代表昨天的分区日期，准确回答了昨天各时段付费订单笔数分布的问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUBSTR(CAST(tm AS STRING), 12, 2) AS hour, COUNT(order_id) AS order_count FROM dws_10000251_com_pay_order_di WHERE ds = '20260826' GROUP BY SUBSTR(CAST(tm AS STRING), 12, 2) ORDER BY hour;",
+          "query_result": [
+            [
+              "00",
+              47
+            ],
+            [
+              "01",
+              35
+            ],
+            [
+              "02",
+              19
+            ],
+            [
+              "03",
+              8
+            ],
+            [
+              "05",
+              24
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 10,
+            "max_rows": 24
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了付费订单日增量表，通过提取tm字段的小时部分作为时段，使用COUNT统计订单笔数，并按特定日期（代表昨天）进行过滤，完美契合用户查询昨天各时段付费订单笔数分布的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUBSTR(CAST(tm AS STRING), 12, 2) AS hour_str, COUNT(order_id) AS order_count FROM dws_10000251_com_pay_order_di WHERE ds = '20260826' GROUP BY SUBSTR(CAST(tm AS STRING), 12, 2) ORDER BY hour_str ASC;",
+          "query_result": [
+            [
+              "00",
+              47
+            ],
+            [
+              "01",
+              35
+            ],
+            [
+              "02",
+              19
+            ],
+            [
+              "03",
+              8
+            ],
+            [
+              "05",
+              24
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 10,
+            "max_rows": 24
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 138579
+    },
+    {
+      "case_id": "k11v2_050",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了包含支付类型和金额的订单明细表，通过条件聚合准确计算了现金和代金券付费的金额及其占比，语义完全匹配用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN pay_type = '1' THEN CAST(pay_amt AS DOUBLE) ELSE 0 END) AS cash_pay_amt, SUM(CASE WHEN pay_type = '2' THEN CAST(pay_amt AS DOUBLE) ELSE 0 END) AS voucher_pay_amt, SUM(CAST(pay_amt AS DOUBLE)) AS total_pay_amt, SUM(CASE WHEN pay_type = '1' THEN CAST(pay_amt AS DOUBLE) ELSE 0 END) / NULLIF(SUM(CAST(pay_amt AS DOUBLE)), 0) AS cash_pay_rate, SUM(CASE WHEN pay_type = '2' THEN CAST(pay_amt AS DOUBLE) ELSE 0 END) / NULLIF(SUM(CAST(pay_amt AS DOUBLE)), 0) AS voucher_pay_rate FROM dws_10000251_pay_order_act_di WHERE ds = '20260826'",
+          "query_result": [
+            [
+              22176,
+              9448,
+              31624,
+              0.7012395648874272,
+              0.2987604351125727
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 3
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了dws_10000251_pay_order_act_di表，使用pay_type=1映射现金付费、pay_type=2映射代金券付费，通过SUM聚合计算各自金额及占比（除以总金额），NULLIF防除零，语义完整回答了用户关于金额占比的问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN pay_type = '1' THEN pay_amt ELSE 0 END) AS cash_pay_amt, SUM(CASE WHEN pay_type = '2' THEN pay_amt ELSE 0 END) AS voucher_pay_amt, SUM(pay_amt) AS total_pay_amt, SUM(CASE WHEN pay_type = '1' THEN pay_amt ELSE 0 END) * 1.0 / NULLIF(SUM(pay_amt), 0) AS cash_pay_ratio, SUM(CASE WHEN pay_type = '2' THEN pay_amt ELSE 0 END) * 1.0 / NULLIF(SUM(pay_amt), 0) AS voucher_pay_ratio FROM dws_10000251_pay_order_act_di WHERE ds = '20260826'",
+          "query_result": [
+            [
+              22176,
+              9448,
+              31624,
+              0.7012395648874272,
+              0.2987604351125727
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 3
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了订单付费表，利用pay_type区分现金和代金券付费，通过SUM和除法准确计算了两种付费方式的金额及其占总金额的比例，完全符合用户问题的语义。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(CASE WHEN pay_type = '1' THEN CAST(pay_amt AS DOUBLE) ELSE 0.0 END) AS cash_pay_amt, SUM(CASE WHEN pay_type = '2' THEN CAST(pay_amt AS DOUBLE) ELSE 0.0 END) AS voucher_pay_amt, SUM(CAST(pay_amt AS DOUBLE)) AS total_pay_amt, SUM(CASE WHEN pay_type = '1' THEN CAST(pay_amt AS DOUBLE) ELSE 0.0 END) / NULLIF(SUM(CAST(pay_amt AS DOUBLE)), 0) AS cash_pay_rate, SUM(CASE WHEN pay_type = '2' THEN CAST(pay_amt AS DOUBLE) ELSE 0.0 END) / NULLIF(SUM(CAST(pay_amt AS DOUBLE)), 0) AS voucher_pay_rate FROM dws_10000251_pay_order_act_di WHERE ds = '20260826'",
+          "query_result": [
+            [
+              22176,
+              9448,
+              31624,
+              0.7012395648874272,
+              0.2987604351125727
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 2,
+            "max_rows": 3
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 159619
+    },
+    {
+      "case_id": "k11v2_052",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "很抱歉，当前无法回答该问题。\n\n**为什么不能答**：\n在当前的候选数据源中，缺乏记录“商店购买”行为的事实表（事件日志表）。目前检索到的仅有商品配置维表（`dim_10000251_trans_goods_df`）、充值商品配置维表（`dim_10000251_trans_recharge_df`），以及特定玩法的购买事件（如交易所 `game.exchange.buy`、战令签到 `game.role.battlepassSign.onBuy`），没有通用商店购买的事实表来计算销售额。\n\n**缺什么**：\n缺少记录玩家在商店进行购买/交易行为的事实表（例如 `game.shop.buy`、`game.store.purchase` 或类似包含购买金额、消耗货币数量等字段的事件表）。\n\n**怎么解决**：\n请确认“商店购买”对应的具体埋点事件名称（Event Name）或事实表名。提供准确的事件名后，我可以重新加载事件定义并为您编写查询最近7天每天销售额的 SQL。",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A91859F4F7043614AF9E149 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 很抱歉，当前无法回答该问题。\n\n**为什么不能答**：\n在当前的候选数据源中，缺乏记录“商店购买”行为的事实表（事件日志表）。目前检索到的仅有商品配置维表（`dim_10000251_trans_goods_df`）、充值商品配置维表（`dim_10000251_trans_recharge_df`），以及特定玩法的购买事件（如交易所 `game.exchange.buy`、战令签到 `game.role.battlepassSign.onBuy`），没有通用商店购买的事实表来计算销售额。\n\n**缺什么**：\n缺少记录玩家在商店进行购买/交易行为的事实表（例如 `game.shop.buy`、`game.store.purchase` 或类似包含购买金额、消耗货币数量等字段的事件表）。\n\n**怎么解决**：\n请确认“商店购买”对应的具体埋点事件名称（Event Name）或事实表名。提供准确的事件名后，我可以重新加载事件定义并为您编写查询最近7天每天销售额的 SQL。\nODPS-0130161:[1,1] Parse exception - invalid token '很抱歉'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "call\n{\"name\": \"search_data_sources\", \"arguments\": {\"query\": \"商店 购买 销售\"}}\ncall\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.exchange.buy\"}}\ncall\n{\"name\": \"lookup_terminology\", \"arguments\": {\"term\": \"商店\"}}\ncall\n{\"name\": \"lookup_terminology\", \"arguments\": {\"term\": \"销售额\"}}",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A9185DD806B036BA8AAD007 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: call\n{\"name\": \"search_data_sources\", \"arguments\": {\"query\": \"商店 购买 销售\"}}\ncall\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.exchange.buy\"}}\ncall\n{\"name\": \"lookup_terminology\", \"arguments\": {\"term\": \"商店\"}}\ncall\n{\"name\": \"lookup_terminology\", \"arguments\": {\"term\": \"销售额\"}}\nODPS-0130161:[2,1] Parse exception - invalid token '{'\nODPS-0130161:[4,1] Parse exception - invalid token '{'\nODPS-0130161:[6,1] Parse exception - invalid token '{'\nODPS-0130161:[8,1] Parse exception - invalid token '{'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Input is not SQL (no SQL keywords detected)",
+            "dimensions": {}
+          },
+          "generated_sql": "<tool>\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.exchange.buy\"}}\n</tool>",
+          "query_result": [
+            {
+              "_error": "ParseError: RequestId: 6A9185E6FDD8139FA9F6FB5E Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: <tool>\n{\"name\": \"load_event_definition\", \"arguments\": {\"event_name\": \"game.exchange.buy\"}}\n</tool>\nODPS-0130161:[1,1] Parse exception - invalid token '<'"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 7
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 92214
+    },
+    {
+      "case_id": "k11v2_056",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.4,
+            "rationale": "日期分区字段ds格式应为yyyy-mm-dd，SQL中使用了yyyyMMdd格式导致过滤失败；此外“用户”通常指代账号，应使用账号表而非设备表。",
+            "dimensions": {
+              "table_selection": 0,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_fst) AS first_pay_user_cnt FROM dws_10000251_univ_dev_server_act_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              56
+            ]
+          ],
+          "expected_result": {
+            "first_pay": 850
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL 正确选择了账号表作为用户主体，使用 SUM(pay_fst) 准确计算首充用户数，聚合逻辑与字段选择均符合语义；虽然日期字符串格式 '20260826' 与 schema 提示的 'yyyy-mm-dd' 存在轻微格式差异，但整体时间过滤意图和查询语义完全正确。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_fst) AS first_pay_user_cnt FROM dws_10000251_univ_acc_server_act_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              48
+            ]
+          ],
+          "expected_result": {
+            "first_pay": 850
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0.6,
+            "rationale": "选择了正确的表和聚合字段，但 ds 分区字段格式错误，表定义中 ds 为 yyyy-mm-dd 格式，而 SQL 中使用了 yyyymmdd 格式，导致无法正确过滤数据。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 0,
+              "aggregation_logic": 1,
+              "overall_semantics": 0
+            }
+          },
+          "generated_sql": "SELECT SUM(pay_fst) AS first_pay_user_cnt FROM dws_10000251_univ_dev_server_act_di WHERE ds = '20260826';",
+          "query_result": [
+            [
+              56
+            ]
+          ],
+          "expected_result": {
+            "first_pay": 850
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 175379
+    },
+    {
+      "case_id": "k11v2_057",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了角色活跃付费明细表和服务器维度表，使用SUM(pay)和SUM(act)准确计算了付费人数与活跃人数并求得付费率，按服务器分组和排序，完美契合用户对比各服务器付费率的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT b.server_name, SUM(a.pay) AS pay_cnt, SUM(a.act) AS act_cnt, SUM(a.pay) * 1.0 / NULLIF(SUM(a.act), 0) AS pay_rate FROM dws_10000251_univ_role_server_act_di a JOIN dim_10000251_server_info b ON a.server_id = b.server_id WHERE a.ds = '20260826' GROUP BY b.server_name ORDER BY pay_rate DESC",
+          "query_result": [
+            [
+              "​​藏剑风​​",
+              1,
+              1,
+              1
+            ],
+            [
+              "玲珑心",
+              1,
+              1,
+              1
+            ],
+            [
+              "凌波舞",
+              1,
+              1,
+              1
+            ],
+            [
+              "​​风后图​​",
+              1,
+              2,
+              0.5
+            ],
+            [
+              "烟雨濛",
+              1,
+              3,
+              0.3333333333333333
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号-区服日增量表，使用SUM(pay)和SUM(act)准确计算付费人数与活跃人数，并正确计算了各服务器的付费率，聚合与过滤逻辑均符合用户意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT server_id, SUM(pay) AS pay_user_cnt, SUM(act) AS act_user_cnt, SUM(pay) * 1.0 / NULLIF(SUM(act), 0) AS pay_rate FROM dws_10000251_univ_acc_server_act_di WHERE ds = '20260826' GROUP BY server_id ORDER BY pay_rate DESC",
+          "query_result": [
+            [
+              "10267",
+              1,
+              1,
+              1
+            ],
+            [
+              "10219",
+              1,
+              1,
+              1
+            ],
+            [
+              "10527",
+              1,
+              1,
+              1
+            ],
+            [
+              "10222",
+              1,
+              2,
+              0.5
+            ],
+            [
+              "10493",
+              1,
+              3,
+              0.3333333333333333
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了账号-区服维度的日增量表，使用SUM(pay)和SUM(act)准确计算了付费人数和活跃人数，并正确计算了各服务器的付费率，分组和排序逻辑均符合用户对比各服务器付费率的意图。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT server_id, SUM(pay) AS pay_cnt, SUM(act) AS act_cnt, SUM(pay) * 1.0 / NULLIF(SUM(act), 0) AS pay_rate FROM dws_10000251_univ_acc_server_act_di WHERE ds = '20260826' GROUP BY server_id ORDER BY pay_rate DESC",
+          "query_result": [
+            [
+              "10267",
+              1,
+              1,
+              1
+            ],
+            [
+              "10219",
+              1,
+              1,
+              1
+            ],
+            [
+              "10527",
+              1,
+              1,
+              1
+            ],
+            [
+              "10222",
+              1,
+              2,
+              0.5
+            ],
+            [
+              "10493",
+              1,
+              3,
+              0.3333333333333333
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 50
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 181443
+    },
+    {
+      "case_id": "k11v2_065",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 1,
+            "rationale": "SQL正确选择了日增量订单表和服务器维表，通过对比相邻两日(ds)的SUM(pay_amt)计算环比增长率，并按降序取TOP5，语义和逻辑完全符合用户问题。",
+            "dimensions": {
+              "table_selection": 1,
+              "field_selection": 1,
+              "filter_conditions": 1,
+              "aggregation_logic": 1,
+              "overall_semantics": 1
+            }
+          },
+          "generated_sql": "SELECT t_curr.server_id, s.server_name, t_curr.pay_amt AS curr_pay_amt, t_prev.pay_amt AS prev_pay_amt, (t_curr.pay_amt - t_prev.pay_amt) / NULLIF(t_prev.pay_amt, 0) AS growth_rate FROM ( SELECT server_id, SUM(pay_amt) AS pay_amt FROM dws_10000251_pay_order_di WHERE ds = '20260826' GROUP BY server_id ) t_curr LEFT JOIN ( SELECT server_id, SUM(pay_amt) AS pay_amt FROM dws_10000251_pay_order_di WHERE ds = '20260825' GROUP BY server_id ) t_prev ON t_curr.server_id = t_prev.server_id LEFT JOIN dim_10000251_server_info s ON t_curr.server_id = s.server_id WHERE t_prev.pay_amt > 0 ORDER BY growth_rate DESC LIMIT 5;",
+          "query_result": [
+            [
+              10608,
+              "墨痕香",
+              249,
+              9,
+              26.666666666666668
+            ],
+            [
+              10593,
+              "千金诺",
+              185,
+              9,
+              19.555555555555557
+            ],
+            [
+              10634,
+              "吟月斋",
+              4097,
+              323,
+              11.68421052631579
+            ],
+            [
+              10604,
+              "长亭晚",
+              30,
+              3,
+              9
+            ],
+            [
+              10635,
+              "酌霞杯",
+              356,
+              36,
+              8.88888888888889
+            ]
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 5
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "sql_judge": {
+            "score": 0,
+            "rationale": "Failed to parse judge response: ",
+            "dimensions": {}
+          },
+          "generated_sql": "SELECT t1.server_id, t2.server_name, t1.pay_amt_today, t1.pay_amt_yesterday, (t1.pay_amt_today - t1.pay_amt_yesterday) / NULLIF(t1.pay_amt_yesterday, 0) AS growth_rate FROM ( SELECT server_id, SUM(CASE WHEN ds = '20260826' THEN pay_amt ELSE 0 END) AS pay_amt_today, SUM(CASE WHEN ds = '20260825' THEN pay_amt ELSE 0 END) AS pay_amt_yesterday FROM dws_10000251_pay_order_di WHERE ds IN ('20260826', '20260825') GROUP BY server_id ) t1 LEFT JOIN dim_10000251_server_info t2 ON t1.server_id = t2.server_id WHERE t1.pay_amt_yesterday > 0 ORDER BY growth_rate DESC LIMIT 5;",
+          "query_result": [
+            {
+              "_error": "HTTPConnectionPool(host='service-corp.odps.aliyun-inc.com', port=80): Max retries exceeded with url: /api/tenants?curr_project=ieu_cdm (Caused by NameResolutionError(\"HTTPConnection(host='service-corp.odps.aliyun-inc.com', port=80): Failed to resolve 'service-corp.odps.aliyun-inc.com' ([Errno 8] nodename nor servname provided, or not known)\"))"
+            }
+          ],
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 5
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 5
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 166083
+    },
+    {
+      "case_id": "k11v2_069",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 30
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 30
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 1886
+    },
+    {
+      "case_id": "k11v2_072",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "pay_then_churn": 420
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "pay_then_churn": 420
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "pay_then_churn": 420
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 1811
+    },
+    {
+      "case_id": "k11v2_073",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 5,
+            "max_rows": 30
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 1792
+    },
+    {
+      "case_id": "k11v2_078",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 1,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 1870
+    },
+    {
+      "case_id": "k11v2_080",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 2,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        },
+        {
+          "attempt_k": 3,
+          "execution_match": false,
+          "delivery_match": true,
+          "generated_sql": null,
+          "query_result": null,
+          "expected_result": {
+            "min_rows": 3,
+            "max_rows": 20
+          }
+        }
+      ],
+      "verdict": "wrong",
+      "latency_ms": 1718
+    }
+  ],
+  "summary": {
+    "total": 36,
+    "correct": 9,
+    "wrong": 27,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 0.25
+  }
+}

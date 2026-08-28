@@ -1,0 +1,16 @@
+case_id: "k11v2_022"
+input:
+  question: "昨天角色日活是多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"role_dau": 350000}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

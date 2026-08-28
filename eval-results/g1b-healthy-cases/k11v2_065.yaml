@@ -1,0 +1,16 @@
+case_id: "k11v2_065"
+input:
+  question: "付费金额环比增长最快的服务器TOP5"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 3, "max_rows": 5}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "ranking"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"

@@ -2,7 +2,7 @@
 
 **Type**: prototype
 **Phase**: misc
-**Status**: Partially resolved (2026-08-25) — C_prior resolved; model probe complete; eval pipeline validated end-to-end (LLM→SQL→MaxCompute→judge); full variant comparison (A/B/C/D) requires HarnessAgentResponder (eval CLI tests Nl2sqlEngine directly, not the agent loop with presets). Full matrix (~5h) is an async batch job. See `../../research/g1b-experiment-report.md`.
+**Status**: Partially resolved (2026-08-28) — Config C 模型对比完成：qwen3.7-max 25% pass (9/36)，qwen3.5-flash/qwen3.6-plus 0%（全 decline）。结论：NL2SQL 引擎只有 qwen3.7-max 可用（硬门槛）。Full variant comparison (A/B/C/D) requires HarnessAgentResponder. See `../../research/g1b-experiment-report.md`.
 **Assignee**: (unclaimed)
 
 **Question**: 跑 G1 设计的 staged 实验（2×2 变体 × 2 模型配置）+ 应用决策规则 + 出报告，答「ship 默认编排 + per-model 路由」。
@@ -57,18 +57,24 @@ G1b 原框定「依赖已解锁（P7b/P13b/P11b/G1 全 resolved）→ 可跑」*
 4. **query-maxcompute SQL normalization** (2026-08-27)：确定性方言修正（query-provider 层），防止 LLM 方言错误。
 5. **eval-runner diagnostics** (2026-08-27)：AttemptResult 新增 generated_sql/query_result/expected_result，eval 结果自诊断。
 
-**当前瓶颈（2026-08-27 诊断）**：
+~~**当前瓶颈（2026-08-27 诊断）**：~~ **✅ RESOLVED (2026-08-28)**
 
-execution_match=0% 根因定位——**不是方言/检索/代码问题，是 eval 数据环境**：
-- LLM 生成 SQL 方言正确（`MAX_PT()` = 正确 MaxCompute 函数），选对表
-- ODPS 返回 `ODPS-0130071: table "ieu_cdm.dws_10000251_acc_summary_df" has no partitions or none of the partitions have any data`
-- 即：eval case 引用的表分区为空或不存在
+execution_match=0% 根因定位为三重问题（详见 `../../research/g1b-experiment-report.md` §8）：
+1. **分区清空**：9 张表分区被运维清理（visible_partition_count=0），32/80 case 受影响
+2. **占位 expected_value**：scalar_exact case 的期望值为模板值（如 1500000），非真实 ODPS 数据（实际 13.5B）
+3. **eval-cli sidecar 配置 bug**：`MaxComputeQueryEngine` config 传 `args:[path]` 应为 `sidecarPath`
 
-**下一步**（解锁 execution_match > 0%）：
-1. 确认分区数据：`maxc -e "SHOW PARTITIONS dws_10000251_acc_summary_df"` 看有无数据
-2. 若 `_df` 表是全量快照（非分区表）：LLM 不该用 `MAX_PT()`——需 prompt/convention 告知
-3. 若有分区但数据被清理：恢复数据或调整 eval case 的 ds/expected
-4. 修复后重跑 30-case 矩阵（diagnostics 会直接显示改善）
+**修复**：
+- `context.ts`：修正 sidecarPath + 补充 maxcConfigPath
+- 创建 `eval-results/g1b-healthy-cases/`：36 case 子集（仅分区健康的表）
+- 7 个 scalar_exact case 用真实 ODPS 查询值更新
+
+**验证**：probe-004 (k11v2_034) execution_match=true, verdict=correct, sql_judge=1.0
+
+## Progress (2026-08-28) — Config C 模型对比跑批中
+
+6. **execution_match > 0% 解锁** (2026-08-28)：三重根因修复，首个 correct 出现（k11v2_034 row_count_range 通过）。
+7. **Config C 批量跑** (2026-08-28 启动)：36 healthy case × pass_k=3 × {qwen3.7-max, qwen3.5-flash, qwen3.6-plus}，结果输出到 `eval-results/g1b/g1b-healthy-configC-*.json`。监控：`bash eval-results/g1b/check-batch.sh`。
 
 ## 前置
 
