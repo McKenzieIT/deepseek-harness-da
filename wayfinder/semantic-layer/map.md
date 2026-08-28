@@ -101,6 +101,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [R9 Context Layer 前沿审计](research/r9-context-layer-frontier-audit.md) — 现有决策与 2026 Forrester/Gartner/OpenMetadata/Atlan/Jedify 共识对照；大部分对齐（P3/G3/G4/G5/W6）；R7 已修订；G2 relation scope 偏窄（记为 fog）；缺 context layer 整体演进认知
 - [CL-1 Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — SKOS 对齐双字段（`pref_label` + `alt_labels: string[]`）；全 definition type 加；`toCorpusItem(def)` 移除 terminology 参数（原子迁移）；检索策略 = Strategy B（always-fused graph-anchored hybrid）；`lookup_terminology` → `resolve_term`（agent 消歧工具）；enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）。**Phase 3 落地**：两轮发现（确定性提取括号/引号/domains + LLM 语义补充）；`@deepseek-ai/dsh-tool-discover-alt-labels` 新包；management preset 注册；on-write hook 扩展；code review fixes（score cap/CJK bigram/maxRelations）
 - [CL-2 Domain/Concept 图节点设计](tickets/CL2-concept-kind-plugin.md) — 引入 ConceptKindPlugin：concept = 显式一等实体（YAML in `concepts/`）；边从 asset.domains 派生（不含 related_assets）；引用验证（domain 值必须匹配 concept YAML）；concept 在 BM25 corpus 中（子图投射锚点）；graph-expand 新增 related_to 展开；零新 tool（泛化现有 tool 为 registry-driven）；node id = `concept:` 前缀；alt_labels 进统一 aliasIndex
+- [CL-2a ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md) — commit `f4fd17fee3`：ConceptDefinitionSchema + ConceptKindPlugin + loadConcepts + graph builder concept→asset related_to 边派生 + 严格引用验证 + expandCandidates related_to 展开（仅 concept: 前缀）+ 4 tool 泛化（get/edit/list_domains/get_coverage）+ K11 种子 10 concepts + 17 新 tests；306 tests 全绿
 
 ## Not yet specified
 
@@ -237,9 +238,8 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
 ### Context Layer 对齐（CL 系列）
-- [CL-2a: ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md) — task：CL-2 设计落地（ConceptKindPlugin + 引用验证 + graph-expand + tool 泛化 + K11 种子）（**frontier — CL-2 已完成，无阻塞**）
 - [CL-3: 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — grilling：A/B/C 策略对比实验 + alias 质量验证机制（**frontier — CL-1 P2 已完成，无阻塞**）
-- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（**frontier — CL-1 + CL-2 已完成，无阻塞**；low priority）
+- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（**frontier — CL-1 + CL-2a 已完成，无阻塞**；low priority）
 
 ## Out of scope
 

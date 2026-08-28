@@ -2,8 +2,8 @@
 
 **Type**: task (AFK)
 **Phase**: context-layer-alignment
-**Status**: open
-**Assignee**: unclaimed
+**Status**: closed
+**Assignee**: claimed
 **Blocked by**: [CL-2](CL2-concept-kind-plugin.md)（设计决策，已完成）
 **Blocks**: [G7](G7-context-projection-unification.md)（间接——CL-2a 实现后 G7 才有实际代码可讨论）
 **Related**: [CL-1](CL1-terminology-aliases-migration.md)（验证了图扩展模式）、[G1](G1-data-model-decision.md)（DataSourceKindPlugin 接口）
