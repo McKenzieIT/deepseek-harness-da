@@ -12,6 +12,8 @@
 4. **Ontology 决策落地**：完成知识图谱/ontology 调研，决定其在 data-agent 中的角色和实现方式，若决策为引入则实现之（限于 Phase 1-3；Phase 4 可视化+自动发现明确 out of scope）。
 5. **管理 agent 证据闭环**（③-gated，v1 后展开）：管理 agent 可通过 eval 证据自校准朝 goal 推进（autonomous goal loop），实现语义层质量的自主持续改善。v1 阶段仅建证据基建+人驱管理面；③ 自驱循环在 v1 ①② 栈完成后作为本 map 的后续阶段展开。
 
+**架构定位（2026.08 R9 前沿审计后追加）**：dsh-data-agent 的语义层 = 一个 **context layer** 的早期实现（对齐 Forrester/Gartner 2026 定义）。v1 聚焦核心链路+管理面+③自驱；v2+ 方向为完整 context layer 对齐（见下方"Context Layer 演进方向"章节）。
+
 前提：项目处于开发期、无用户、无兼容负担。任何不满足要求的现有代码可推翻重来。
 
 ### 验收假设（外部依赖）
@@ -94,14 +96,147 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [W11 Evidence-query client RPC bridge](tickets/W11-evidence-query-client-rpc-bridge.md) — EvidenceQueryService 转 TypertRemoteService（8 @Remote 方法）；typert generate 正式产物；client assembly 注册；buildEvidenceQueryClient 桥接适配器 + useEvidenceMetrics hook；wiring.tsx 三处 TODO 替换为真实数据；98 tests 全绿
 - [W12 删除过时 semantic-layer-goal 包](tickets/W12-remove-semantic-layer-goal-package.md) — 全部职责已被 dsh-goal-round-driver / dsh-goal-eval-policy / dsh-goal-eval-context / dsh-eval-runner / semantic-layer-management preset 覆盖；零消费者；14 文件删除，tsc clean
 - [W13 ③ 自驱循环端到端集成验证](tickets/W13-autonomous-loop-e2e-integration.md) — building blocks 全部就绪（goal-round-driver + eval-runner-service + goal-eval-policy + goal-eval-context + management preset）；端到端闭环验证通过- **W14 Web UI 运行时修复**（2026-08-28）— commit `c198421627` 引入的 `'layout'` 硬依赖 + Cordis Proxy inject guard 阻止了管理 UI sidebar 按钮注册；5 个级联问题修复：query-maxcompute graceful degrade / scope.get() 绕过 Proxy / 6 个 preset 包缺 lib/index.js / tool-revert-edit minimum keyword / preset-autojoin 竞争。修复后：sidebar 按钮可见 + session 正确选中 semantic-layer-management preset。package.json 合规修复（peer deps / dsh.client.inject / README）同批。
+- [T2 确认管理面板 web 端可见](tickets/T2-verify-management-panel-web-visibility.md) — Headless Playwright 自动化验证全部通过：sidebar 按钮渲染 + 点击进入 session + GoalDock/EvidenceSidebar 可见 + 零 console error。前置条件=web profile 含 data-agent bundle。
+- [R7 Terminology ontology 角色](research/r7-terminology-ontology-role.md) — **修订（前沿对齐）**：2026 context layer 共识= terminology IS ontology 一等组件；推荐方案 D（definition schema 加 `aliases` 节点属性 + RelationGraph 反向索引）；不新增 relation type（属性非边）；渐进三阶段实现
+- [R9 Context Layer 前沿审计](research/r9-context-layer-frontier-audit.md) — 现有决策与 2026 Forrester/Gartner/OpenMetadata/Atlan/Jedify 共识对照；大部分对齐（P3/G3/G4/G5/W6）；R7 已修订；G2 relation scope 偏窄（记为 fog）；缺 context layer 整体演进认知
 
 ## Not yet specified
 
-- **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化。Session prompt: `prompts/remaining-1-schema-provider-conflict.md`
-- **Terminology 挂载点**：全局注入（`ctx.terminology`）vs per-kind 构造参数。当前 `eventKindPlugin.toCorpusItem` 已接受 `terminology?` 参数，需统一为一种模式。Session prompt: `prompts/remaining-2-terminology-mount-point.md`
-- **定义版本管理**：数据源定义（TableDefinition/EventDefinition/MetricDefinition）的变更历史追踪方案。最小方案 = Tier-2 audit 已有 who/when/what；完整方案 = git-backed 或 append-only changelog
+- **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化。Session prompt: `prompts/remaining-1-schema-provider-conflict.md`。**保留为雾**（2026-08-28 确认——当前只有一个 provider，等引入第二个时再决策）。
+- **Context Layer 对齐演进**（R9 审计，详见下方独立章节）
+
+## Context Layer 演进方向（v2+）
+
+> 参考文档：`research/context-layer-2026-frontier.md`（完整前沿综述）、`research/r9-context-layer-frontier-audit.md`（决策审计）
+
+### 前沿定位
+
+2026 Forrester/Gartner 定义：**Context Layer = Semantic Layer + Knowledge Graph + Business Glossary + Policies + Trust Signals + Organizational Memory**，统一为 graph-based ontology，服务 agentic AI。
+
+dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实现**——只是缺少自觉的定位和几个组件的统一。
+
+### 当前覆盖 vs 缺口
+
+| Context Layer 组件 | 当前状态 | 缺口 |
+|---|---|---|
+| Metadata Catalog | ✅ definitions + SchemaGateway | — |
+| Ontology (typed relations) | ✅ RelationGraph (3 types) | 缺语义概念节点 |
+| Business Glossary | ⚠️ 扁平 terminology.yaml | → R7 方案 D 解决 |
+| Metrics Layer | ✅ MetricKindPlugin + execute_metric | — |
+| Trust Signals | ⚠️ eval pass_rate 仅覆盖质量 | 缺认证/新鲜度/使用频率 |
+| Lineage | ✅ derived_from (表级) | 缺列级 |
+| Policies | ✅ dsh-admin (访问控制) | 缺使用建议/敏感标记 |
+| Organizational Memory | ⚠️ goal (session 内) | 缺跨 session 累积知识 |
+| Context Projection | ⚠️ 三接口分离 | 未来统一 |
+
+### 解决路径（分阶段）
+
+#### Phase CL-1：Terminology 统一（R7 方案 D）
+
+**解决**：glossary 独立于 ontology 的偏差
+
+1. Definition schema 加 `aliases?: string[]` 字段
+2. `toCorpusItem(def)` 从 `def.aliases` 读取（消除外部 terminology 参数）
+3. RelationGraph 增加反向索引 `resolveAlias(term) → nodeId`
+4. NL2SQL 引擎查询前先 graph-resolve 术语 → 定位子图
+5. 迁移 `terminology.yaml` 数据到各 definition 的 aliases 字段
+
+**成本**：低-中（Phase 1 仅加字段，Phase 2 图索引，Phase 3 数据迁移）
+**收益**：对齐 Jedify 模式（图编码术语→子图投射），消除 toCorpusItem 参数不一致
+
+#### Phase CL-2：Domain/Concept 作为图节点
+
+**解决**：G2 relation type 范围偏窄（仅结构性关系，无语义概念映射）
+
+当前 `domains: string[]` 是 definition 的扁平属性。前沿方向：domain/concept 提升为**图节点**，用现有 `related_to` type 连接到 asset 节点。
+
+```
+概念模型：
+  [concept:用户活跃] --related_to--> [event:role.online]
+  [concept:用户活跃] --related_to--> [table:dws_active_user_di]
+  [concept:付费] --related_to--> [table:dws_pay_order_di]
+```
+
+**实现方式**：新增 `ConceptKindPlugin`（继承 DataSourceKindPlugin 体系），concept 定义存储为 YAML（与 table/event 同级）。**不新增 relation type**——concept→asset 使用现有 `related_to`，因为它本身就是"业务语义关联"的表达。
+
+**收益**：
+- Agent 可通过概念导航到相关资产（"付费相关的表有哪些？"→ 图查询一跳）
+- 对齐 OpenMetadata 2.0 的 ontology 层（business concepts + typed relationships）
+- Domain 不再是孤立标签，而是图中可遍历的节点
+
+**成本**：中（新 kind plugin + 数据建模 + 管理 tool 扩展）
+**依赖**：无硬依赖，但 CL-1 先行可验证图扩展模式
+
+#### Phase CL-3：Context Projection 统一
+
+**解决**：G1 三接口分离（toCorpusItem / toPromptContext / toCriticContext）
+
+当前三个接口各自独立消费 definition，消费者无法灵活组合。Jedify 模式 = 统一 context graph + 按需投射子图。
+
+**演进路径**（不破坏现有接口）：
+
+```typescript
+// 新增统一投射接口（现有三个方法保留为快捷方式）
+interface DataSourceKindPlugin<T> {
+  // 现有（保留，向后兼容）
+  toCorpusItem(def: T): CorpusItem | null
+  toPromptContext(def: T): string
+  toCriticContext?(def: T): CriticFields
+
+  // 新增：统一投射（消费者可自定义 view config）
+  project?(def: T, opts: ProjectionOptions): ProjectionResult
+}
+
+interface ProjectionOptions {
+  view: 'corpus' | 'prompt' | 'critic' | 'full'
+  includeAliases?: boolean     // CL-1 后可用
+  includeRelations?: boolean   // graph context
+  includeTrust?: boolean       // CL-4 trust signals
+  maxTokens?: number           // Jedify-style token budget
+}
+```
+
+**时机**：CL-1 和 CL-2 落地后，当多个消费者（NL2SQL、检索、critic、管理 agent）对同一 definition 需要不同 context 切片时，统一接口的价值才显现。过早引入 = over-engineering。
+
+#### Phase CL-4：Trust Signals 丰富（远期）
+
+**解决**：trust signals 仅有 eval pass_rate
+
+可扩展的信任维度：
+- **认证状态**：definition 是否经过人工审核（`certified: boolean`）
+- **数据新鲜度**：上次 schema 同步时间（依赖 live ODPS provider，已标记 out of scope）
+- **使用频率**：被查询的次数（可从 audit log 统计）
+- **质量分**：eval pass_rate（✅ 已有）
+
+**前置**：CL-1 和 CL-2 作为基础设施；trust signals 作为 definition schema 的可选字段逐步加入。
+
+#### Phase CL-5：Organizational Memory（远期）
+
+**解决**：跨 session 的管理 agent 累积知识
+
+OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent 的 goal 机制是 session-scoped。
+
+可能方向：
+- 管理 agent 的跨 session 知识（"上次发现 dws_pay_order_di 的 user_id 可以 join dim_user"→ 下次自动利用）
+- eval 历史趋势作为决策依据（W4 evidence-query 已有基础）
+- 关系发现的累积确信度（多次 enrichment 验证同一关系 → 提升 confidence）
+
+**前置**：③ 自驱循环（W6/W13）完成验证后作为自然延伸。
+- ~~**Terminology 挂载点**~~ — **毕业为 [R7](tickets/R7-terminology-ontology-role.md)**（2026-08-28）：research 调研 terminology 是否应作为知识图谱 ontology 的一部分存储和消费。
+- ~~**定义版本管理**~~ — **毕业为 [G6](tickets/G6-definition-version-management.md)**（2026-08-28）：grilling 讨论开源项目是否自带 git 版本管理。
 - ~~**Shell auto-flip 接入真实 evalRunCount**~~ — **已通过 W11 evidence-query RPC bridge 解决**：`evidenceClient` 传入 SemanticLayerShell，`useEvidenceMetrics` 读取真实 evalRunCount。验证 session prompt: `prompts/remaining-3-shell-autoflip-verification.md`
-- **Evidence-query push 订阅**：当前 v1 是 mount-time 拉取 + refresh() 手动刷新。后续需通过 Typert 事件转发（`$on`）实现 host eval-store 变更后主动 push 到 client，使 EvidenceSidebar/GoalDock sparkline 实时响应新 eval run 完成
+- ~~**Evidence-query push 订阅**~~ — **毕业为 [R8](tickets/R8-evidence-query-push-subscription.md)**（2026-08-28）：research+grilling，blocked by [T2](tickets/T2-verify-management-panel-web-visibility.md)（确认管理面板 web 端实际可见）。
+
+## Open tickets
+
+### v1 收尾
+- [G6: 定义版本管理](tickets/G6-definition-version-management.md) — grilling：开源项目是否自带 git 版本控制
+- [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
+
+### Context Layer 对齐（CL 系列）
+- [CL-1: Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — task (三阶段)：aliases 入 definition schema + RelationGraph 反向索引 + 数据迁移。**Frontier 首要对齐项**
+- [CL-2: Domain/Concept 图节点](tickets/CL2-concept-kind-plugin.md) — grilling：ConceptKindPlugin 设计（blocked by CL-1）
+- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（blocked by CL-1 + CL-2，low priority）
 
 ## Out of scope
 
