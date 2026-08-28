@@ -6,6 +6,7 @@
  *            [--case <id>] [--skip-health-gate] [--provider <name>]
  *            [--model <name>] [--today <YYYYMMDD>] [--run-id <id>]
  *            [--no-sql-judge]
+ *            [--responder engine|harness] [--variant A|B|C|D]
  */
 import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
@@ -44,6 +45,8 @@ interface CliArgs {
   sidecarPath: string | null
   noSqlJudge: boolean
   queryExpansion: boolean
+  responder: 'engine' | 'harness'
+  variant: string | null
 }
 
 function str(v: string | boolean | undefined, fallback: string): string {
@@ -68,6 +71,8 @@ function parseCliArgs(): CliArgs {
       sidecar: { type: 'string' },
       'no-sql-judge': { type: 'boolean', default: false },
       'no-query-expansion': { type: 'boolean', default: false },
+      responder: { type: 'string', default: 'engine' },
+      variant: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
     strict: false,
@@ -87,6 +92,20 @@ function parseCliArgs(): CliArgs {
 
   const caseVal = values.case
   const runIdVal = values['run-id']
+  const responderVal = str(values.responder, 'engine')
+  const variantVal = values.variant
+
+  if (responderVal !== 'engine' && responderVal !== 'harness') {
+    console.error(`Error: --responder must be 'engine' or 'harness', got '${responderVal}'`)
+    process.exit(1)
+  }
+  if (responderVal === 'harness') {
+    const valid = ['A', 'B', 'C', 'D']
+    if (typeof variantVal !== 'string' || !valid.includes(variantVal.toUpperCase())) {
+      console.error('Error: --variant must be one of A, B, C, D when --responder harness')
+      process.exit(1)
+    }
+  }
 
   return {
     cases: resolve(casesVal),
@@ -104,6 +123,8 @@ function parseCliArgs(): CliArgs {
     sidecarPath: typeof values.sidecar === 'string' ? values.sidecar : null,
     noSqlJudge: values['no-sql-judge'] === true,
     queryExpansion: values['no-query-expansion'] !== true,
+    responder: responderVal as 'engine' | 'harness',
+    variant: typeof variantVal === 'string' ? variantVal.toUpperCase() : null,
   }
 }
 
@@ -135,6 +156,11 @@ function printUsage(): void {
     --sidecar <path>       Path to MaxCompute sidecar script
     --no-sql-judge         Disable SQL semantic judge (auto-pass when no executor)
     --no-query-expansion   Disable LLM query expansion before BM25 retrieval
+    --responder <mode>     Responder mode: 'engine' (NL2SQL pipeline) or 'harness'
+                           (full agent with preset orchestration) [default: engine]
+    --variant <A|B|C|D>    G1b experiment variant (required when --responder harness)
+                           A = phase-gate, B = free ReAct + planning,
+                           C = hybrid (phase-gate + planning), D = bare ReAct
     --help                 Show this help
 
   Environment:
@@ -178,23 +204,81 @@ export async function main(): Promise<void> {
   console.log(`  Loading ${casePaths.length} case(s) from ${args.cases}`)
   console.log(`  Schema: ${args.schema}`)
   console.log(`  Model: ${args.provider}/${args.model}`)
+  console.log(`  Responder: ${args.responder}${args.variant ? ` (variant ${args.variant})` : ''}`)
   console.log(`  Pass@K: ${args.passK}  Concurrency: ${args.concurrency}`)
   if (!args.noSqlJudge && !args.withQuery) {
     console.log('  SQL Semantic Judge: enabled (use --no-sql-judge to disable)')
   }
   console.log('')
 
-  // Boot the mini Cordis context + build Collaborators
-  const { collaborators } = await boot({
-    schemaDir: args.schema,
-    provider: args.provider,
-    model: args.model,
-    today: args.today,
-    withQuery: args.withQuery,
-    noSqlJudge: args.noSqlJudge,
-    queryExpansion: args.queryExpansion,
-    ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
-  })
+  // Build Collaborators based on responder mode
+  let collaborators: import('@deepseek-ai/dsh-eval-runner').Collaborators
+  if (args.responder === 'harness') {
+    // G1b: full agent with variant preset orchestration
+    const { HarnessAgentResponder } = await import('./harness-responder.ts')
+    const { LlmSqlSemanticJudge } = await import('@deepseek-ai/dsh-eval-runner')
+    const variant = args.variant as 'A' | 'B' | 'C' | 'D'
+    const agent = new HarnessAgentResponder({
+      schemaDir: args.schema,
+      provider: args.provider,
+      model: args.model,
+      variant,
+      withQuery: args.withQuery,
+      ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
+      today: args.today,
+    })
+
+    // SQL Judge for harness mode (reuses the same LLM)
+    let sqlJudge: import('@deepseek-ai/dsh-eval-runner').SqlSemanticJudge | null = null
+    if (!args.noSqlJudge) {
+      const { BlockAssembler, createUserMessage: createMsg } = await import('@deepseek-ai/dsh-llm')
+      const { Context: Ctx } = await import('@deepseek-ai/cordis')
+      const { LlmRuntime: LlmRt } = await import('@deepseek-ai/dsh-llm')
+      const dashscope = await import('@deepseek-ai/dsh-llm-dashscope')
+      // Boot a lightweight ctx just for the judge LLM
+      const judgeCtx = new Ctx()
+      await judgeCtx.plugin(LlmRt)
+      await judgeCtx.plugin(dashscope)
+      sqlJudge = new LlmSqlSemanticJudge(async (prompt: string) => {
+        const assembler = new BlockAssembler()
+        const options = {
+          provider: args.provider,
+          model: args.model,
+          messages: [createMsg({
+            content: [{ type: 'text' as const, text: prompt }],
+            source: { kind: 'plugin' as const, plugin: 'eval-cli-judge' },
+          })],
+        }
+        for await (const chunk of judgeCtx.llm.stream(options)) assembler.push(chunk)
+        const blocks = assembler.blocks()
+        const text = blocks
+          .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+          .map(b => b.text)
+          .join('')
+        if (text.length > 0) return text
+        const reasoning = blocks
+          .filter((b): b is { type: 'reasoning'; text: string } => b.type === 'reasoning')
+          .map(b => b.text)
+          .join('')
+        return reasoning || ''
+      })
+    }
+
+    collaborators = { agent, sqlJudge }
+  } else {
+    // Default: NL2SQL engine pipeline (existing behavior)
+    const { collaborators: engineCollabs } = await boot({
+      schemaDir: args.schema,
+      provider: args.provider,
+      model: args.model,
+      today: args.today,
+      withQuery: args.withQuery,
+      noSqlJudge: args.noSqlJudge,
+      queryExpansion: args.queryExpansion,
+      ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
+    })
+    collaborators = engineCollabs
+  }
 
   // Run the batch via eval-runner's runBatch (explicit case paths)
   const started = Date.now()

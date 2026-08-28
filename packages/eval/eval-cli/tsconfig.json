@@ -19,6 +19,15 @@
     { "path": "../../credentials/credentials" },
     { "path": "../../query/query-maxcompute" },
     { "path": "../../query/query" },
-    { "path": "../../subprocess/subprocess" }
+    { "path": "../../subprocess/subprocess" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/agent-default-model" },
+    { "path": "../../core/agent-loop" },
+    { "path": "../../core/session" },
+    { "path": "../../core/system-prompt" },
+    { "path": "../../core/tools" },
+    { "path": "../../preset/agent-presets" },
+    { "path": "../../../vendor/loader" },
+    { "path": "../../../vendor/group" }
   ]
 }
