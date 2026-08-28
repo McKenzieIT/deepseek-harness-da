@@ -14,12 +14,14 @@ function createMockSchema(assets: {
   tables?: Record<string, Record<string, unknown>>
   events?: Record<string, Record<string, unknown>>
   metrics?: Record<string, Record<string, unknown>>
+  concepts?: Record<string, Record<string, unknown>>
 } = {}) {
   return {
     semanticRoot: '/tmp/test-semantic-layer',
     loadTableDefinition: vi.fn((name: string) => assets.tables?.[name] ?? null),
     loadEventDefinition: vi.fn((name: string) => assets.events?.[name] ?? null),
     loadMetricDefinition: vi.fn((name: string) => assets.metrics?.[name] ?? null),
+    loadConceptDefinition: vi.fn((name: string) => assets.concepts?.[name] ?? null),
     updateTableMeta: vi.fn().mockResolvedValue({ ok: true, table_name: 'test' }),
   }
 }
@@ -186,7 +188,7 @@ describe('tool-edit-definition', () => {
       const schema = createMockSchema() as unknown as SemanticLayerService
       const { result } = computeEdit(schema, 'nonexistent', { description: 'x' })
       expect(result.applied).toBe(false)
-      expect(result.message).toContain('no table, event, or metric')
+      expect(result.message).toContain('no table, event, metric, or concept')
     })
 
     it('successfully patches a table definition', () => {

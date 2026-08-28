@@ -16,10 +16,10 @@ function makeService(): SemanticLayerService {
   return new SemanticLayerService(ctx, { semanticRoot: '' })
 }
 
-test('A1 — service registers table + event kind plugins (metrics derived virtually, M1)', () => {
+test('A1 — service registers table + event + concept kind plugins (metrics derived virtually, M1)', () => {
   const svc = makeService()
   const reg = svc.getRegistry()
-  expect(reg.allKinds().sort()).toEqual(['event', 'table'])
+  expect(reg.allKinds().sort()).toEqual(['concept', 'event', 'table'])
 })
 
 test('A2 — getRelationGraph builds from tables/events/metrics + caches until corpusVersion bump', () => {

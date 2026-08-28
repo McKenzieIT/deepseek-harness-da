@@ -325,3 +325,18 @@ export const TableMetaSchema = z.object({
 }).loose()
 /** Inferred type of {@link TableMetaSchema} (the connector-returned table-meta shape). */
 export type TableMeta = z.infer<typeof TableMetaSchema>
+
+// ── ConceptDefinition (CL-2: domain/concept as graph node) ──────────────
+/**
+ * Zod schema for a concept definition (CL-2: first-class entity in concepts/ dir).
+ * Concepts represent semantic domains as explicit graph nodes; asset.domains
+ * values are validated against concept names at load time.
+ */
+export const ConceptDefinitionSchema = z.object({
+  name: z.string(),
+  description: z.string().default(''),
+  pref_label: z.string().optional(),
+  alt_labels: z.array(z.string()).default([]),
+}).loose()
+/** Inferred type of {@link ConceptDefinitionSchema}. */
+export type ConceptDefinition = z.infer<typeof ConceptDefinitionSchema>

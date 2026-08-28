@@ -20,8 +20,10 @@ import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import {
   EventDefinitionSchema,
   TableDefinitionSchema,
+  ConceptDefinitionSchema,
   type EventDefinition,
   type TableDefinition,
+  type ConceptDefinition,
   type TableMeta,
 } from './types.ts'
 import {
@@ -260,6 +262,51 @@ export function loadTableDefinition(semanticLayer: string, name: string): TableD
   }
   return null
 }
+
+// ── Concepts (CL-2) ────────────────────────────────────────────────────
+/** A scanned concept: its `name` and raw YAML dict (unvalidated). */
+export interface RawConcept {
+  readonly name: string
+  readonly raw: Record<string, unknown>
+}
+/**
+ * Scan the layer's `concepts/` dir (lenient: broken/non-object/unnamed YAML
+ * files are skipped) and collect every concept.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns a fresh array of raw concepts (name + raw), name-sorted.
+ */
+export function loadConcepts(semanticLayer: string): RawConcept[] {
+  const cdir = join(semanticLayer, 'concepts')
+  const out: RawConcept[] = []
+  if (!existsSync(cdir)) return out
+  for (const f of readdirSync(cdir).sort()) {
+    if (!f.endsWith('.yaml') || f.startsWith('_')) continue
+    try {
+      const raw = readYaml(join(cdir, f))
+      if (typeof raw !== 'object' || raw === null) continue
+      const r = raw as Record<string, unknown>
+      const n = r.name
+      if (typeof n !== 'string') continue
+      out.push({ name: n, raw: r })
+    } catch {
+      continue
+    }
+  }
+  return out
+}
+/**
+ * Load a validated concept definition by name.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param name - the concept `name` key to match.
+ * @returns the parsed `ConceptDefinition`, or null when no concept matches.
+ */
+export function loadConceptDefinition(semanticLayer: string, name: string): ConceptDefinition | null {
+  for (const c of loadConcepts(semanticLayer)) {
+    if (c.name === name) return ConceptDefinitionSchema.parse(c.raw)
+  }
+  return null
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }

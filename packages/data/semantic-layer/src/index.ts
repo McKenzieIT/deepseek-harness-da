@@ -63,10 +63,11 @@ import {
 import { DataSourceRegistry, type CorpusItem } from './registry.ts'
 import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
+import { conceptKindPlugin } from './kinds/concept-kind.ts'
 import { RelationGraph, type NodeAliasData } from './relation-graph.ts'
 import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
-import { loadEvents, loadTables } from './io.ts'
-import { EventDefinitionSchema, TableDefinitionSchema } from './types.ts'
+import { loadEvents, loadTables, loadConcepts, loadConceptDefinition as loadConceptDefinitionFromLayer } from './io.ts'
+import { EventDefinitionSchema, TableDefinitionSchema, ConceptDefinitionSchema } from './types.ts'
 import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
 
 // ── logic exports (substrate; consumers + tests use directly) ───────────
@@ -82,6 +83,8 @@ export {
   loadTables,
   loadEventDefinition,
   loadTableDefinition,
+  loadConcepts,
+  loadConceptDefinition,
   loadRetrievalCorpus,
   writeTable,
   writeEventYaml,
@@ -95,6 +98,7 @@ export {
   WriteValidationError,
   type RawEvent,
   type RawTable,
+  type RawConcept,
   type Tier2Recorder,
   type Tier2Opts,
   type WriteEventYamlResult,
@@ -236,7 +240,7 @@ export class SemanticLayerService extends Service {
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
     this.cfg = config
-    for (const p of [eventKindPlugin, tableKindPlugin]) this.registry.register(p)
+    for (const p of [eventKindPlugin, tableKindPlugin, conceptKindPlugin]) this.registry.register(p)
   }
 
   /**
@@ -281,6 +285,7 @@ export class SemanticLayerService extends Service {
     const g = new RelationGraph()
     const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
     const aliasData: NodeAliasData[] = []
+    const assetDomains: { sourceId: string; domains: string[] }[] = []
     // M1: each host table/event parsed ONCE — registered-kind relations +
     // derived metric relations pushed in the same iteration (loadTables/
     // loadEvents are uncached readdirSync+readYaml+safeParse, so the prior
@@ -292,6 +297,7 @@ export class SemanticLayerService extends Service {
       if (r.data.pref_label || r.data.alt_labels.length > 0) {
         aliasData.push({ nodeId: r.data.table_name, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
       }
+      if (r.data.domains.length > 0) assetDomains.push({ sourceId: r.data.table_name, domains: r.data.domains })
       for (const m of extractMetricsFromTable(r.data)) {
         entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
         if (m.pref_label || m.alt_labels.length > 0) {
@@ -306,10 +312,40 @@ export class SemanticLayerService extends Service {
       if (r.data.pref_label || r.data.alt_labels.length > 0) {
         aliasData.push({ nodeId: r.data.name, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
       }
+      if (r.data.domains.length > 0) assetDomains.push({ sourceId: r.data.name, domains: r.data.domains })
       for (const m of extractMetricsFromEvent(r.data)) {
         entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
         if (m.pref_label || m.alt_labels.length > 0) {
           aliasData.push({ nodeId: m.name, prefLabel: m.pref_label, altLabels: m.alt_labels })
+        }
+      }
+    }
+    // CL-2: load concepts as graph nodes + derive related_to edges from asset.domains
+    const conceptNames = new Set<string>()
+    for (const c of loadConcepts(this.semanticRoot)) {
+      const r = ConceptDefinitionSchema.safeParse(c.raw)
+      if (!r.success) continue
+      conceptNames.add(r.data.name)
+      entries.push({ sourceId: `concept:${r.data.name}`, relations: [] })
+      if (r.data.pref_label || r.data.alt_labels.length > 0) {
+        aliasData.push({ nodeId: `concept:${r.data.name}`, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
+      }
+    }
+    // CL-2 D2: validate asset.domains reference existing concepts (strict mode)
+    if (conceptNames.size > 0) {
+      for (const { sourceId, domains } of assetDomains) {
+        for (const d of domains) {
+          if (!conceptNames.has(d)) {
+            throw new Error(`Domain reference validation failed: asset "${sourceId}" references domain "${d}" which has no matching concept definition in concepts/`)
+          }
+        }
+      }
+    }
+    // Derive concept→asset related_to edges from asset.domains (second pass)
+    if (conceptNames.size > 0) {
+      for (const { sourceId, domains } of assetDomains) {
+        for (const d of domains) {
+          entries.push({ sourceId: `concept:${d}`, relations: [{ type: 'related_to', target: sourceId }] })
         }
       }
     }
@@ -362,6 +398,14 @@ export class SemanticLayerService extends Service {
       const out: unknown[] = []
       for (const t of loadTables(this.semanticRoot)) {
         const r = TableDefinitionSchema.safeParse(t.raw)
+        if (r.success) out.push(r.data)
+      }
+      return out
+    }
+    if (dir === 'concepts') {
+      const out: unknown[] = []
+      for (const c of loadConcepts(this.semanticRoot)) {
+        const r = ConceptDefinitionSchema.safeParse(c.raw)
         if (r.success) out.push(r.data)
       }
       return out
@@ -548,6 +592,15 @@ export class SemanticLayerService extends Service {
       if (m !== undefined) return toMetricDefinition(host, key, m, event.domains)
     }
     return null
+  }
+
+  /**
+   * Load a validated concept definition by name from the substrate.
+   * @param name - the concept `name` key to match.
+   * @returns the parsed `ConceptDefinition`, or null when no concept matches.
+   */
+  loadConceptDefinition(name: string): import('./types.ts').ConceptDefinition | null {
+    return loadConceptDefinitionFromLayer(this.semanticRoot, name)
   }
 
   /**

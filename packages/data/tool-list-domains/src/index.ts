@@ -14,8 +14,10 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import {
   loadTables,
   loadEvents,
+  loadConcepts,
   TableDefinitionSchema,
   EventDefinitionSchema,
+  ConceptDefinitionSchema,
 } from '@deepseek-ai/dsh-semantic-layer'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
 
@@ -27,6 +29,8 @@ export const Config: z<Config> = z.object({})
 
 export interface DomainEntry {
   readonly name: string
+  readonly description: string
+  readonly alt_labels: string[]
   readonly table_count: number
   readonly event_count: number
   readonly metric_count: number
@@ -75,14 +79,28 @@ export function listDomainsResult(schema: SemanticLayerService | undefined): Lis
     }
   }
 
+  // CL-2 D4: read domain metadata from concept definitions
+  const conceptMeta = new Map<string, { description: string; alt_labels: string[] }>()
+  for (const c of loadConcepts(root)) {
+    const r = ConceptDefinitionSchema.safeParse(c.raw)
+    if (!r.success) continue
+    conceptMeta.set(r.data.name, { description: r.data.description, alt_labels: r.data.alt_labels })
+    ensure(r.data.name)
+  }
+
   const domains: DomainEntry[] = [...counts.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, c]) => ({
-      name,
-      table_count: c.tables,
-      event_count: c.events,
-      metric_count: c.metrics,
-    }))
+    .map(([name, c]) => {
+      const meta = conceptMeta.get(name)
+      return {
+        name,
+        description: meta?.description ?? '',
+        alt_labels: meta?.alt_labels ?? [],
+        table_count: c.tables,
+        event_count: c.events,
+        metric_count: c.metrics,
+      }
+    })
 
   return { ok: true, domains }
 }
@@ -91,9 +109,11 @@ export function formatListDomains(value: ListDomainsResult): string {
   if (!value.ok) return value.message ?? 'list_domains failed'
   const domains = value.domains ?? []
   if (domains.length === 0) return 'No domains found in the semantic layer.'
-  const lines = domains.map(d =>
-    `• ${d.name}: ${d.table_count} tables, ${d.event_count} events, ${d.metric_count} metrics`,
-  )
+  const lines = domains.map(d => {
+    const desc = d.description ? ` — ${d.description}` : ''
+    const aliases = d.alt_labels.length > 0 ? ` [${d.alt_labels.join(', ')}]` : ''
+    return `• ${d.name}${desc}${aliases}: ${d.table_count} tables, ${d.event_count} events, ${d.metric_count} metrics`
+  })
   return `${domains.length} domain(s):\n${lines.join('\n')}`
 }
 
@@ -101,9 +121,9 @@ export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'list_domains',
     description:
-      'List all domains in the semantic layer with asset counts per kind '
-      + '(tables, events, metrics). Use this to understand the domain '
-      + 'structure and identify areas to focus on.',
+      'List all domains (concepts) in the semantic layer with descriptions, '
+      + 'aliases, and asset counts per kind (tables, events, metrics). Use '
+      + 'this to understand the domain structure and identify areas to focus on.',
     parameters: {},
     output: {
       schema: {
@@ -118,6 +138,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
               additionalProperties: false,
               properties: {
                 name: { type: 'string', required: true },
+                description: { type: 'string' },
+                alt_labels: { type: 'array', items: { type: 'string' } },
                 table_count: { type: 'number', required: true },
                 event_count: { type: 'number', required: true },
                 metric_count: { type: 'number', required: true },

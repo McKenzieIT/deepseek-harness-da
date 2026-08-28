@@ -116,6 +116,14 @@ export function expandCandidates(
       seen.add(e.targetId)
       out.push({ id: e.targetId, score: h.score * 0.5, payload: lookupDoc?.(e.targetId), mode: 'graph-expand' })
     }
+    // CL-2 D3: expand related_to edges only for concept-prefixed nodes
+    if (h.id.startsWith('concept:')) {
+      for (const e of graph.getRelated(h.id, 'related_to')) {
+        if (seen.has(e.targetId)) continue
+        seen.add(e.targetId)
+        out.push({ id: e.targetId, score: h.score * 0.5, payload: lookupDoc?.(e.targetId), mode: 'graph-expand' })
+      }
+    }
   }
   return out.slice(0, topK)
 }

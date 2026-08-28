@@ -107,6 +107,17 @@ export function applyPatch(
         }
       }
       result.domains = merged
+    } else if (key === 'alt_labels' && Array.isArray(value) && Array.isArray(existing.alt_labels)) {
+      const existingLabels = existing.alt_labels as readonly unknown[]
+      const seen = new Set<unknown>(existingLabels)
+      const merged = [...existingLabels]
+      for (const l of value as readonly unknown[]) {
+        if (!seen.has(l)) {
+          seen.add(l)
+          merged.push(l)
+        }
+      }
+      result.alt_labels = merged
     } else {
       result[key] = value
     }
@@ -221,13 +232,31 @@ export function computeEdit(
     }
   }
 
+  // Try concept (CL-2: concepts support description/pref_label direct overwrite, alt_labels union with dedup)
+  const concept = schema.loadConceptDefinition(validated)
+  if (concept !== null) {
+    const existing = concept as unknown as Record<string, unknown>
+    const merged = applyPatch(existing, patch)
+    return {
+      result: {
+        applied: true,
+        asset_name: validated,
+        kind: 'concept',
+        patched_fields: Object.keys(patch),
+      },
+      merged,
+      before: existing,
+      kind: 'concept',
+    }
+  }
+
   return {
     result: {
       applied: false,
       asset_name: validated,
       kind: 'unknown',
       patched_fields: [],
-      message: `no table, event, or metric named "${validated}" found`,
+      message: `no table, event, metric, or concept named "${validated}" found`,
     },
   }
 }
@@ -245,12 +274,12 @@ export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'edit_definition',
     description:
-      'Edit a data asset definition (table or event) by applying a partial '
-      + 'patch. The patch is shallow-merged at top level; for `columns` and '
-      + '`dimension_refs`, merges by identity field (name / dim_table). '
-      + '`domains` is unioned with dedup. All edits are marked "unreviewed" '
-      + 'and audited. Metrics are virtual and cannot be edited directly — '
-      + 'edit the host asset instead.',
+      'Edit a data asset definition (table, event, or concept) by applying a '
+      + 'partial patch. The patch is shallow-merged at top level; for `columns` '
+      + 'and `dimension_refs`, merges by identity field (name / dim_table). '
+      + '`domains` and `alt_labels` are unioned with dedup. All edits to '
+      + 'tables/events are marked "unreviewed" and audited. Metrics are virtual '
+      + 'and cannot be edited directly — edit the host asset instead.',
     parameters: {
       asset_name: {
         type: 'string',
@@ -340,9 +369,6 @@ export function apply(ctx: Context, _config: Config = {}): void {
           // Events use writeEventYaml (raw-edit surface). The event write path
           // does not have a Service-level method with Tier-2 audit, so we
           // record audit separately below.
-          // NIT: deep cross-package import via the ./src/* export map. This
-          // should be promoted to a root export on @deepseek-ai/dsh-semantic-layer
-          // so consumers don't reach into src/ paths.
           const { writeEventYaml, dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
           const yamlContent = dumpYaml(merged)
           const res = await writeEventYaml(schema.semanticRoot, result.asset_name, yamlContent)
@@ -355,6 +381,15 @@ export function apply(ctx: Context, _config: Config = {}): void {
               message: `write failed: ${res.error}`,
             }
           }
+        } else if (kind === 'concept') {
+          const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
+          const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
+          const { join } = await import('node:path')
+          const { mkdirSync } = await import('node:fs')
+          const conceptsDir = join(schema.semanticRoot, 'concepts')
+          mkdirSync(conceptsDir, { recursive: true })
+          const yamlContent = dumpYaml(merged)
+          await writeFileAtomic(join(conceptsDir, `${result.asset_name}.yaml`), yamlContent)
         }
       } catch (e) {
         return {

@@ -41,7 +41,7 @@ export interface GetCoverageResult {
   readonly [key: string]: JsonValue
 }
 
-export function getCoverageResult(schema: SemanticLayerService | undefined): GetCoverageResult {
+export function getCoverageResult(schema: SemanticLayerService | undefined, domain?: string): GetCoverageResult {
   if (schema === undefined) {
     return { ok: false, message: 'semantic-layer not mounted (ctx.schema unavailable)' }
   }
@@ -60,6 +60,7 @@ export function getCoverageResult(schema: SemanticLayerService | undefined): Get
   for (const t of loadTables(root)) {
     const r = TableDefinitionSchema.safeParse(t.raw)
     if (!r.success) continue
+    if (domain && !r.data.domains.includes(domain)) continue
     tableCount++
     metricCount += Object.keys(r.data.metrics).length
     const status = (r.data as { confirmation?: { status?: string } }).confirmation?.status
@@ -70,6 +71,7 @@ export function getCoverageResult(schema: SemanticLayerService | undefined): Get
   for (const e of loadEvents(root)) {
     const r = EventDefinitionSchema.safeParse(e.raw)
     if (!r.success) continue
+    if (domain && !r.data.domains.includes(domain)) continue
     eventCount++
     metricCount += Object.keys(r.data.metrics).length
     const status = (r.data as { confirmation?: { status?: string } }).confirmation?.status
@@ -113,9 +115,16 @@ export function apply(ctx: Context, _config: Config = {}): void {
     description:
       'Get semantic layer coverage statistics: total assets by kind (tables, '
       + 'events, metrics), confirmation status breakdown (confirmed vs draft), '
-      + 'and per-domain asset counts. Use this to assess the overall health '
-      + 'and completeness of the semantic layer.',
-    parameters: {},
+      + 'and per-domain asset counts. Optionally filter by a specific domain '
+      + '(concept). Use this to assess the overall health and completeness of '
+      + 'the semantic layer.',
+    parameters: {
+      domain: {
+        type: 'string',
+        required: false,
+        description: 'Optional domain name to scope statistics to (only assets belonging to this domain are counted).',
+      },
+    },
     output: {
       schema: {
         type: 'object',
@@ -132,10 +141,10 @@ export function apply(ctx: Context, _config: Config = {}): void {
         return { ok: true, ...(v.stats !== undefined ? { stats: v.stats } : {}) }
       },
     },
-    async execute(_args, exec) {
+    async execute(args, exec) {
       if (exec.signal.aborted) throw new Error('get_coverage aborted')
       const schema = ctx.get('schema')
-      return Promise.resolve(getCoverageResult(schema))
+      return Promise.resolve(getCoverageResult(schema, args.domain))
     },
     presentCall(): GenericCallView {
       return {

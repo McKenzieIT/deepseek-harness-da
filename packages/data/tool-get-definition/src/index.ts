@@ -53,7 +53,9 @@ export function getDefinitionResult(
   if (event !== null) return { found: true, kind: 'event', definition: event as unknown as Record<string, JsonValue> }
   const metric = schema.loadMetricDefinition(validated)
   if (metric !== null) return { found: true, kind: 'metric', definition: metric as unknown as Record<string, JsonValue> }
-  return { found: false, message: `no table, event, or metric named "${validated}" found` }
+  const concept = schema.loadConceptDefinition(validated)
+  if (concept !== null) return { found: true, kind: 'concept', definition: concept as unknown as Record<string, JsonValue> }
+  return { found: false, message: `no table, event, metric, or concept named "${validated}" found` }
 }
 
 export function formatGetDefinition(value: GetDefinitionResult): string {
@@ -77,7 +79,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'get_definition',
     description:
-      'Load the full definition of a data asset (table, event, or metric) by '
+      'Load the full definition of a data asset (table, event, metric, or concept) by '
       + 'name. Returns the complete definition including fields, relations, '
       + 'domains, metrics, and confirmation status. Use after search_schema '
       + 'identifies an asset to inspect.',
