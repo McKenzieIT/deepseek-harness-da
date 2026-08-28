@@ -280,7 +280,25 @@ export class HarnessAgentResponder implements AgentResponder {
     const { default: AgentLoop } = await import('@deepseek-ai/dsh-agent-loop')
     await ctx.plugin(AgentLoop, { agents: [] })
 
-    // ── 11. Query engine (optional) ─────────────────────────────────────────
+    // ── 11. Identity → ctx.identity (stub; returns undefined — T1 fallback) ─
+    const { default: IdentityService } = await import('@deepseek-ai/dsh-identity')
+    await ctx.plugin(IdentityService)
+
+    // ── 12. Audit → ctx.audit (tool-update-table-config requires it) ────────
+    const { default: Audit } = await import('@deepseek-ai/dsh-audit')
+    const { tmpdir } = await import('node:os')
+    const auditPath = join(tmpdir(), `dsh-eval-audit-${randomUUID()}.db`)
+    await ctx.plugin(Audit, { path: auditPath })
+
+    // ── 13. ResultCacheMemory → ctx.resultCache (tool-compute requires it) ──
+    const resultCacheMemory = await import('@deepseek-ai/dsh-result-cache-memory')
+    await ctx.plugin(resultCacheMemory)
+
+    // ── 14. CodeRuntimeWorkerThread → ctx.codeRuntime (tool-compute needs it)
+    const { default: WorkerThreadCodeRuntime } = await import('@deepseek-ai/dsh-code-runtime-worker-thread')
+    await ctx.plugin(WorkerThreadCodeRuntime)
+
+    // ── 15. Query engine (optional) ──────────────────────────────────────────
     if (this.opts.withQuery) {
       try {
         const { MaxComputeQueryEngine } = await import('@deepseek-ai/dsh-query-maxcompute')
@@ -384,7 +402,11 @@ export class HarnessAgentResponder implements AgentResponder {
 
       return {
         reply: declined ? `Declined: ${finalText.slice(0, 500)}` : finalText,
-        generated_sql: declined ? null : generatedSql,
+        // Always return the generated SQL (even on decline) so the eval runner
+        // can still judge SQL quality via the semantic judge. The decline signal
+        // is carried via the reply prefix; the runner's verdict_mapper treats
+        // presence of generated_sql as "the agent attempted SQL generation".
+        generated_sql: generatedSql,
         transcript: events as unknown as unknown[],
       }
     } catch (err) {
