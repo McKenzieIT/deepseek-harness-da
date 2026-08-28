@@ -298,7 +298,15 @@ export class HarnessAgentResponder implements AgentResponder {
     const { default: WorkerThreadCodeRuntime } = await import('@deepseek-ai/dsh-code-runtime-worker-thread')
     await ctx.plugin(WorkerThreadCodeRuntime)
 
-    // ── 15. Query engine (optional) ──────────────────────────────────────────
+    // ── 15. SessionProjectionRegistry → ctx.sessionProjections (goal/todo need it)
+    const { default: SessionProjectionRegistry } = await import('@deepseek-ai/dsh-session-projection')
+    await ctx.plugin(SessionProjectionRegistry)
+
+    // ── 16. GoalService → ctx.goals (tool-goal in B/C needs it) ─────────────
+    const { default: GoalService } = await import('@deepseek-ai/dsh-goal')
+    await ctx.plugin(GoalService)
+
+    // ── 17. Query engine (optional) ──────────────────────────────────────────
     if (this.opts.withQuery) {
       try {
         const { MaxComputeQueryEngine } = await import('@deepseek-ai/dsh-query-maxcompute')

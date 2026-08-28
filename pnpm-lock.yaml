@@ -5032,6 +5032,9 @@ importers:
       '@deepseek-ai/dsh-eval-runner':
         specifier: workspace:^
         version: link:../eval-runner
+      '@deepseek-ai/dsh-goal':
+        specifier: workspace:^
+        version: link:../../goal/goal
       '@deepseek-ai/dsh-identity':
         specifier: workspace:^
         version: link:../../identity/identity
@@ -5059,6 +5062,9 @@ importers:
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session
+      '@deepseek-ai/dsh-session-projection':
+        specifier: workspace:^
+        version: link:../../session/session-projection
       '@deepseek-ai/dsh-system-prompt':
         specifier: workspace:^
         version: link:../../core/system-prompt

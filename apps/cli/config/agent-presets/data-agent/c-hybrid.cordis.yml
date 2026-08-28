@@ -28,6 +28,7 @@
   group: true
   isolate:
     phaseGate: true
+    criticCtx: true
   config:
     - id: phase-gate
       name: '@deepseek-ai/dsh-phase-gate'

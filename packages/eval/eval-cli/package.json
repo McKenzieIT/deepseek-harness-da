@@ -28,6 +28,7 @@
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-result-cache": "workspace:^",
     "@deepseek-ai/dsh-result-cache-memory": "workspace:^",
+    "@deepseek-ai/dsh-goal": "workspace:^",
     "@deepseek-ai/dsh-eval": "workspace:^",
     "@deepseek-ai/dsh-eval-runner": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
@@ -36,6 +37,7 @@
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^",
     "@deepseek-ai/dsh-semantic-layer": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-session-projection": "workspace:^",
     "@deepseek-ai/dsh-system-prompt": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^"
   },
