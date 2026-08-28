@@ -124,7 +124,7 @@ toCorpusItem(def: T): CorpusItem | null
 
 - [x] Phase 1：`toCorpusItem(def)` 无 terminology 参数；`def.alt_labels` 从 definition 读取；现有 tests 通过；terminology.yaml 已删除 — **commit `d36c5d7f9a`（2026-08-29）**。tsc clean + 212 tests green。
 - [x] Phase 2：`graph.resolveAlias('dau')` → 命中 `role.online` + `dws_...act_di`；`resolve_term` tool 可用；`search_data_sources` 集成 hybrid 检索 — **commit `91794aec4f`（2026-08-29）**。tsc clean + 342 tests green（涉及包）。Code review: 无阻塞问题，3 个建议归入 CL-3 迭代（score cap / CJK 分词 / relation fan-out）。
-- [x] Phase 3：新 definition 写入后自动获得 AI 建议的 alt_labels；eval 无 regression — **commit TBD（2026-08-29）**。tsc clean + 233 tests green（涉及包）。Code review: 无阻塞问题，1 个 medium 性能关注（双轮 enrichOnWrite 顺序执行）v1 可接受。
+- [x] Phase 3：新 definition 写入后自动获得 AI 建议的 alt_labels；eval 无 regression — **commit `27d93b4c9e`（2026-08-29）**。tsc clean + 233 tests green（涉及包）。Code review: 无阻塞问题，1 个 medium 性能关注（双轮 enrichOnWrite 顺序执行）v1 可接受。
 
 ## 对齐前沿
 
