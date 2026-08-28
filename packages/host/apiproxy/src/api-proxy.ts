@@ -3016,10 +3016,21 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             details: { agentPreset, available: [] },
           })
         }
-        const found = await agentFor(sessionId)
-        if ('error' in found) return err(request, found.error)
-        const { agent } = found
-        const swap = async (): Promise<RpcResponse<{ agentPreset: string }>> => {
+        // Reserve a presetSwitches slot SYNCHRONOUSLY (before any await) so a
+        // concurrent prompt handler whose turnAgentFor resolves in the same
+        // microtask batch always sees a pending switch and waits for it.
+        const switchDone = Promise.withResolvers<void>()
+        const queued = presetSwitches.get(sessionId) ?? Promise.resolve()
+        const sentinel = queued.then(() => switchDone.promise).catch(() => undefined)
+        presetSwitches.set(sessionId, sentinel)
+        try {
+          const found = await agentFor(sessionId)
+          if ('error' in found) return err(request, found.error)
+          const { agent } = found
+
+          // Serialize: wait for any prior switch to complete before recomposing.
+          await queued.catch(() => undefined)
+
           // Re-read inside the queue: an earlier switch may have run, and a
           // conversation may have started, since this request arrived.
           if (!sessionBlank(agent.session)) {
@@ -3044,14 +3055,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
               details: {},
             })
           }
-        }
-        const queued = presetSwitches.get(sessionId) ?? Promise.resolve()
-        const turn = queued.then(swap)
-        presetSwitches.set(sessionId, turn.catch(() => undefined))
-        try {
-          return await turn
         } finally {
-          if (presetSwitches.get(sessionId) === turn) presetSwitches.delete(sessionId)
+          switchDone.resolve()
+          if (presetSwitches.get(sessionId) === sentinel) presetSwitches.delete(sessionId)
         }
       },
 
