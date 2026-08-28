@@ -98,6 +98,8 @@
 # whitelists (UNDERSTANDING/GENERATION/EXECUTION/INTERPRETATION_TOOLS) name
 # these tools, so registering one makes it callable in its phase.
 #
+- id: tool-scope-routing         # UNIVERSAL: list_scopes + switch_scope + alias-hint system-prompt (P-DA4)
+  name: '@deepseek-ai/dsh-tool-scope-routing'
 - id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item; Bm25Linker Q1 thin default, swap -> ctx.retrieval P5b / ctx.schema P6b)
   name: '@deepseek-ai/dsh-tool-search-data-sources'
 - id: tool-load-table-definition # UNDERSTANDING/GENERATION (P6 semantic-layer → ctx.schema.loadTableDefinition)

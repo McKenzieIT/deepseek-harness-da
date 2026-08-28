@@ -187,6 +187,7 @@
 - **S5 Delete EmbedderService.dim getter (task AFK, resolved 2026-08-28)**：无读取者的公开 getter 删除（abstract + 2 impls）；私有 `_dim` 保留供内部使用。〔tickets/phase-misc/S5-delete-embedderservice-dim-getter.md〕
 - **S6 Delete getLastTwoRuns (task AFK, resolved 2026-08-28)**：test-only method+field 删除（trigger_eval 用 inline pair，无生产 caller）。〔tickets/phase-misc/S6-delete-evalrunner-getlasttworuns.md〕
 - **S7 Refactor data-python log metering (task AFK, resolved 2026-08-28)**：hand-rolled `JSON.stringify`+`Buffer.byteLength` 替换为 sibling `jsonStringBytesUpTo`（非分配式计量）。〔tickets/phase-misc/S7-refactor-data-python-log-metering.md〕
+- **P-DA4 Scope routing 工具发布 (shipped 2026-08-28)**：scope-routing prototype 正式打包发布为 `@deepseek-ai/dsh-tool-scope-routing`（`packages/data/tool-scope-routing/`）。三项修复：(1) 新包提供 `list_scopes` + `switch_scope` 工具 + alias-hint system-prompt 注入（per-turn 检测用户消息中的 scope 别名→注入路由提示）；(2) `maxcConfigPath: ~/.maxc/config.yaml` 写入 bundle patch + provider constructor tilde 展开（修复 `Config.maxcConfigPath is required` 启动错误）；(3) `code-runtime` duplicate entry 修复（headless+data-agent 组合时 disable 原条目 + insert 新 id）。phase-gate `UNIVERSAL_TOOLS` 添加 `list_scopes`/`switch_scope`；`scopes.yaml` 增加 aliases/name/description metadata。端到端验证：X63 查询正确切换 scope，19 候选加载，四阶段流水线完整执行。〔tickets/phase-misc/P-DA4c-scope-routing-ship.md〕
 
 ## Next wave: 语义层/Ontology 管理 + 知识图谱可视化（2026-08-27 规划）
 

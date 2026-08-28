@@ -1355,6 +1355,9 @@ importers:
       '@deepseek-ai/dsh-tool-present-table':
         specifier: workspace:^
         version: link:../../data/tool-present-table
+      '@deepseek-ai/dsh-tool-scope-routing':
+        specifier: workspace:^
+        version: link:../../data/tool-scope-routing
       '@deepseek-ai/dsh-tool-search-data-sources':
         specifier: workspace:^
         version: link:../../data/tool-search-data-sources
@@ -2784,6 +2787,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-api-remotes':
+        specifier: workspace:^
+        version: link:../../api/remotes
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:^
         version: link:../connection
@@ -4751,6 +4757,19 @@ importers:
       vitest:
         specifier: ^3.2.1
         version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(jiti@2.7.0)(jsdom@29.1.1)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+
+  packages/data/tool-scope-routing:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
 
   packages/data/tool-search-data-sources:
     dependencies:

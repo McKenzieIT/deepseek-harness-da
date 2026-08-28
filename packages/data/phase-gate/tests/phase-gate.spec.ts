@@ -1499,6 +1499,7 @@ describe('D5b: proactive tool visibility — onAssemble filters tools per phase'
     'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
     'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
     'present_clarification', 'goal', 'todo',
+    'list_scopes', 'switch_scope',
   ]
   const ALL_TOOLS = ALL_TOOL_NAMES.map(makeTool)
 
@@ -1626,6 +1627,7 @@ describe('D5b: phase transition updates tool visibility on next assemble', () =>
     'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
     'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
     'present_clarification', 'goal', 'todo',
+    'list_scopes', 'switch_scope',
   ].map(makeTool)
 
   it('after advance UNDERSTANDING→GENERATION, next onAssemble returns GENERATION_TOOLS', async () => {
@@ -1724,6 +1726,7 @@ describe('D5b: guard and onAssemble alignment', () => {
       'present_decomposition', 'present_table', 'compute', 'record_template_usage', 'suggest_followups',
       'lookup_terminology', 'get_user_preferences', 'load_accumulated_definition',
       'present_clarification', 'goal', 'todo',
+      'list_scopes', 'switch_scope',
     ].map(n => ({ name: n, description: `stub ${n}`, parameters: {} }))
 
     for (const phase of phases) {

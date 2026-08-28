@@ -159,6 +159,12 @@ export const UNIVERSAL_TOOLS = Object.freeze([
   // UNIVERSAL avoids guard-rejected noise if the model references them elsewhere.
   'goal',
   'todo',
+  // P-DA4 scope-routing: list_scopes (read-only) and switch_scope (routing is
+  // orthogonal to phase progression — the model may realize it needs a different
+  // scope in any phase). Safe in all phases; scope-sensitive state (last_sql,
+  // candidate_tables, etc.) is reset on switch via scopes/active-changed event.
+  'list_scopes',
+  'switch_scope',
 ] as const)
 /** Tool whitelist for the UNDERSTANDING phase (candidate discovery, definition loading, clarification). */
 export const UNDERSTANDING_TOOLS = Object.freeze([

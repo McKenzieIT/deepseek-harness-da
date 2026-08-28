@@ -58,6 +58,7 @@
     "@deepseek-ai/dsh-schema-gateway": "workspace:^",
     "@deepseek-ai/dsh-scope-registry": "workspace:^",
     "@deepseek-ai/dsh-semantic-layer": "workspace:^",
+    "@deepseek-ai/dsh-tool-scope-routing": "workspace:^",
     "@deepseek-ai/dsh-tool-critique-sql": "workspace:^",
     "@deepseek-ai/dsh-tool-evaluate-sql-quality": "workspace:^",
     "@deepseek-ai/dsh-tool-load-event-definition": "workspace:^",

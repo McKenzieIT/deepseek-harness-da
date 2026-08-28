@@ -110,11 +110,12 @@
         # sidecar-self tells the Provider to skip the ctx.credentials
         # pushCredentials pre-check (P4d (b); maxc's config is the single
         # source of auth).
-        # S1 decouple: sidecarPath is the dev sidecar; maxcConfigPath is
-        # intentionally absent — deployment supplies it via cordis.yml override
-        # (no machine-specific paths in the bundle).
+        # S1 decouple: sidecarPath is the dev sidecar; maxcConfigPath defaults
+        # to ~/.maxc/config.yaml (tilde-expanded at runtime by the provider).
+        # Override via deployment cordis.yml for non-standard paths.
         sidecarPath: ./packages/query/query-maxcompute/dev/maxc-sidecar.mjs
         credMode: sidecar-self
+        maxcConfigPath: ~/.maxc/config.yaml
         # C: the ODPS project where the K11 DWS/event tables actually live
         # (ieu_cdm). Supersedes the misread config.yaml project.name
         # (game_10000251 — a game scope id, NOT an ODPS project) that
@@ -207,5 +208,15 @@
 #
     - id: result-cache          # ctx.resultCache seam — in-memory session-scoped Provider; tools/post-execute hook captures query_data results with qr_ prefix; compute tool stores derived results with cr_ prefix
       name: '@deepseek-ai/dsh-result-cache-memory'
-    - id: code-runtime
+
+# ── code-runtime: disable headless's worker-thread, insert data-python ──────
+# The headless bundle mounts code-runtime (worker-thread); the data agent needs
+# the data-python variant for pandas transforms. Disable + insert (different ids
+# aren't needed — disabled: true suppresses the original, the insert below adds
+# the replacement under the same conceptual role).
+- id: code-runtime
+  disabled: true
+
+- insert:
+    - id: code-runtime-data-python
       name: '@deepseek-ai/dsh-code-runtime-data-python'
