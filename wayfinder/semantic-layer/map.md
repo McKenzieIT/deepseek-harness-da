@@ -100,6 +100,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [R7 Terminology ontology 角色](research/r7-terminology-ontology-role.md) — **修订（前沿对齐）**：2026 context layer 共识= terminology IS ontology 一等组件；推荐方案 D（definition schema 加 `aliases` 节点属性 + RelationGraph 反向索引）；不新增 relation type（属性非边）；渐进三阶段实现
 - [R9 Context Layer 前沿审计](research/r9-context-layer-frontier-audit.md) — 现有决策与 2026 Forrester/Gartner/OpenMetadata/Atlan/Jedify 共识对照；大部分对齐（P3/G3/G4/G5/W6）；R7 已修订；G2 relation scope 偏窄（记为 fog）；缺 context layer 整体演进认知
 - [CL-1 Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — SKOS 对齐双字段（`pref_label` + `alt_labels: string[]`）；全 definition type 加；`toCorpusItem(def)` 移除 terminology 参数（原子迁移）；检索策略 = Strategy B（always-fused graph-anchored hybrid）；`lookup_terminology` → `resolve_term`（agent 消歧工具）；enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）。**Phase 3 落地**：两轮发现（确定性提取括号/引号/domains + LLM 语义补充）；`@deepseek-ai/dsh-tool-discover-alt-labels` 新包；management preset 注册；on-write hook 扩展；code review fixes（score cap/CJK bigram/maxRelations）
+- [CL-2 Domain/Concept 图节点设计](tickets/CL2-concept-kind-plugin.md) — 引入 ConceptKindPlugin：concept = 显式一等实体（YAML in `concepts/`）；边从 asset.domains 派生（不含 related_assets）；引用验证（domain 值必须匹配 concept YAML）；concept 在 BM25 corpus 中（子图投射锚点）；graph-expand 新增 related_to 展开；零新 tool（泛化现有 tool 为 registry-driven）；node id = `concept:` 前缀；alt_labels 进统一 aliasIndex
 
 ## Not yet specified
 
@@ -148,28 +149,26 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 **成本**：低-中（Phase 1 仅加字段+迁移，Phase 2 图索引+tool，Phase 3 enrichment）
 **收益**：SKOS 标准对齐 + Jedify 模式（图编码术语→子图投射）+ 消除 toCorpusItem 参数不一致
 
-#### Phase CL-2：Domain/Concept 作为图节点
+#### Phase CL-2：Domain/Concept 作为图节点 ✅ 决策已锁定
 
 **解决**：G2 relation type 范围偏窄（仅结构性关系，无语义概念映射）
 
-当前 `domains: string[]` 是 definition 的扁平属性。前沿方向：domain/concept 提升为**图节点**，用现有 `related_to` type 连接到 asset 节点。
+**决策（2026-08-29 grilling 锁定）**：
+- D1：Concept = 显式一等实体（`concepts/` 目录，YAML 文件，声明 name/description/pref_label/alt_labels）
+- D2：`domains: string[]` 保留在 asset 上 + 加载时引用验证（domain 必须匹配 concept YAML）
+- D3：Concept 在 BM25 corpus 中 + graph-expand 新增 `related_to` 展开（Jedify 子图投射锚点）
+- D4：零新 tool，泛化现有 tool 为 registry-driven（get_definition/edit_definition/list_domains/get_coverage）
+- D5：Node id = `concept:` 前缀；alt_labels 进统一 aliasIndex
 
 ```
 概念模型：
   [concept:用户活跃] --related_to--> [event:role.online]
   [concept:用户活跃] --related_to--> [table:dws_active_user_di]
-  [concept:付费] --related_to--> [table:dws_pay_order_di]
+  [concept:付费经济] --related_to--> [table:dws_pay_order_di]
 ```
 
-**实现方式**：新增 `ConceptKindPlugin`（继承 DataSourceKindPlugin 体系），concept 定义存储为 YAML（与 table/event 同级）。**不新增 relation type**——concept→asset 使用现有 `related_to`，因为它本身就是"业务语义关联"的表达。
-
-**收益**：
-- Agent 可通过概念导航到相关资产（"付费相关的表有哪些？"→ 图查询一跳）
-- 对齐 OpenMetadata 2.0 的 ontology 层（business concepts + typed relationships）
-- Domain 不再是孤立标签，而是图中可遍历的节点
-
-**成本**：中（新 kind plugin + 数据建模 + 管理 tool 扩展）
-**依赖**：无硬依赖，但 CL-1 先行可验证图扩展模式
+**成本**：中（新 kind plugin + 引用验证 + tool 泛化 + graph-expand 扩展）
+**依赖**：CL-1 已完成（验证了图扩展模式）
 
 #### Phase CL-3：Context Projection 统一
 
@@ -238,9 +237,9 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
 ### Context Layer 对齐（CL 系列）
-- [CL-2: Domain/Concept 图节点](tickets/CL2-concept-kind-plugin.md) — grilling：ConceptKindPlugin 设计（**frontier — CL-1 已完成，无阻塞**）
+- [CL-2a: ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md) — task：CL-2 设计落地（ConceptKindPlugin + 引用验证 + graph-expand + tool 泛化 + K11 种子）（**frontier — CL-2 已完成，无阻塞**）
 - [CL-3: 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — grilling：A/B/C 策略对比实验 + alias 质量验证机制（**frontier — CL-1 P2 已完成，无阻塞**）
-- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（blocked by CL-2，low priority）
+- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（**frontier — CL-1 + CL-2 已完成，无阻塞**；low priority）
 
 ## Out of scope
 
