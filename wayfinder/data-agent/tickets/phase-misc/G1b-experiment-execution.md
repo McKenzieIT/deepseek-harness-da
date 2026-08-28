@@ -74,7 +74,9 @@ execution_match=0% 根因定位为三重问题（详见 `../../research/g1b-expe
 ## Progress (2026-08-28) — Config C 模型对比跑批中
 
 6. **execution_match > 0% 解锁** (2026-08-28)：三重根因修复，首个 correct 出现（k11v2_034 row_count_range 通过）。
-7. **Config C 批量跑** (2026-08-28 启动)：36 healthy case × pass_k=3 × {qwen3.7-max, qwen3.5-flash, qwen3.6-plus}，结果输出到 `eval-results/g1b/g1b-healthy-configC-*.json`。监控：`bash eval-results/g1b/check-batch.sh`。
+7. **Config C 批量跑** (2026-08-28 完成)：36 healthy case × pass_k=3 × {qwen3.7-max, qwen3.5-flash, qwen3.6-plus}。结果：qwen3.7-max 25% (9/36) / sql_judge 71%；flash+plus 全 decline 0%。结论：二元能力门槛，只有 qwen3.7-max 可用。
+8. **HarnessAgentResponder 实现** (2026-08-28 commit `223210e64d`)：支持 `--responder harness --variant A|B|C|D`，boot 完整 Cordis agent loop + variant preset。
+9. **变体对比跑批** (2026-08-28 启动)：A/B/C/D × 36 case × pass_k=3 × qwen3.7-max，结果输出到 `eval-results/g1b/g1b-variant-*.json`。
 
 ## 前置
 
