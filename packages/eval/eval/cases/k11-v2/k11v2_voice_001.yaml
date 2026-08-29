@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_001"
+input:
+  question: "昨天大R充了多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"big_r_pay_amt": 500000}
+  match_mode: scalar_exact
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_di"

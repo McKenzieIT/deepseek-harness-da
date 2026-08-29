@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_010"
+input:
+  question: "首充转化率多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"first_pay_rate": 0.08}
+  match_mode: scalar_exact
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_selfhelp_new_pay_df"

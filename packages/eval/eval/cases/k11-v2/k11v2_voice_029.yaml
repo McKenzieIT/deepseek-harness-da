@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_029"
+input:
+  question: "充值最高的十个服的留存数据对比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 10, "max_rows": 100}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"
+    - "dws_10000251_selfhelp_new_remain_df"

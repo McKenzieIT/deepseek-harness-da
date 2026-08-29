@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_028"
+input:
+  question: "流失用户里面大R有多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"big_r_churn_cnt": 200}
+  match_mode: scalar_exact
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "filter"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_churn_di"
+    - "dws_10000251_univ_role_tag_df"

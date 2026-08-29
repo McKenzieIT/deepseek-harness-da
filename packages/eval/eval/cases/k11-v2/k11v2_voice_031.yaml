@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_031"
+input:
+  question: "新老用户活跃时长差多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 2, "max_rows": 2}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_acc_act_di"
+    - "dws_10000251_selfhelp_new_df"

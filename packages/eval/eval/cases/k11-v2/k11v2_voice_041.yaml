@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_041"
+input:
+  question: "最近数据有什么异常吗"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题过于宽泛，无法确定需要检查哪些指标的异常。请明确关注的指标领域，例如付费异常、活跃下降、留存波动等。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

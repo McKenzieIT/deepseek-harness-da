@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_005"
+input:
+  question: "这把卡池出金率多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"gold_rate": 0.02}
+  match_mode: scalar_exact
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_gacha_result_statis_di"

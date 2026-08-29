@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_043"
+input:
+  question: "有没有什么数据值得关注的"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题过于宽泛，无法自动识别所有值得关注的数据变化。请提供具体的关注方向，例如付费趋势、用户增长、流失预警等。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

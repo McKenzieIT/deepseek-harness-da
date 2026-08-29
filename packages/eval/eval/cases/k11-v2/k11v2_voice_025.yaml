@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_025"
+input:
+  question: "把大R用户的战力分布和普通用户对比一下"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 2, "max_rows": 50}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_role_common_feature_df"
+    - "dws_10000251_univ_role_tag_df"

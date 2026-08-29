@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_033"
+input:
+  question: "该不该加一波限时礼包"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题属于运营决策建议，超出数据查询范围。可以帮您查看当前付费趋势、付费率变化等数据作为决策参考。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"

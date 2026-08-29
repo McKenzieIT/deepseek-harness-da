@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_020"
+input:
+  question: "新版本上线后玩家接受度怎么样"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 2, "max_rows": 30}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"
+    - "dws_10000251_selfhelp_new_remain_df"

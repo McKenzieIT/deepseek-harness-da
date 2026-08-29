@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_047"
+input:
+  question: "有什么提升收入的方法吗"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "运营策略建议超出数据查询能力范围。可以帮您查看付费转化率、ARPPU、各付费点销量等数据作为决策参考。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

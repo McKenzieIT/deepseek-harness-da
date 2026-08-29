@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_042"
+input:
+  question: "帮我看看昨天的关键指标"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题未指明需要查看哪些关键指标。请明确需要查看的指标，例如DAU、充值金额、新增用户数、留存率等。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

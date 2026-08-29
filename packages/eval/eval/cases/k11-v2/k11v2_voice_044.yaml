@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_044"
+input:
+  question: "帮我出个周报"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "生成完整运营周报超出当前能力范围。可以帮您查询具体指标数据，例如本周DAU趋势、充值金额、新增用户等。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

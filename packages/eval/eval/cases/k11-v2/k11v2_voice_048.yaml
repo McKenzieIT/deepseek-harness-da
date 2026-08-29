@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_048"
+input:
+  question: "这个月运营数据总结一下"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "生成完整运营月度总结超出当前能力范围。请明确需要查看的具体指标，例如月活、月付费、月留存等。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

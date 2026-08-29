@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_045"
+input:
+  question: "预测一下下周的充值能到多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "数据预测超出当前能力范围，无法对未来数据进行预测。可以帮您查看近期充值趋势作为参考。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

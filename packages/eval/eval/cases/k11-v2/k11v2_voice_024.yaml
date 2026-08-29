@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_024"
+input:
+  question: "新用户七日留存按渠道拆一下，哪个渠道最差"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 2, "max_rows": 50}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "ranking"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_selfhelp_new_remain_df"

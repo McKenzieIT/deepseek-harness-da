@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_022"
+input:
+  question: "那个区的数据怎么样"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题未指明具体服务器/区服ID或名称，无法确定查询目标。请提供具体的服务器ID或区服名称。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

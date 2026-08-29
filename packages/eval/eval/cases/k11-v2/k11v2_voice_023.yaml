@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_023"
+input:
+  question: "对比一下上周和这周各服的充值，看看哪个服掉了"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 1, "max_rows": 100}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_df"

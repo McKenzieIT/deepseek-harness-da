@@ -1,0 +1,15 @@
+case_id: "k11v2_voice_015"
+input:
+  question: "数据看起来正常吗"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题过于宽泛，未指明需要查看哪些数据指标。请明确需要查看的指标，例如DAU、付费、留存等。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L1"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets: []

@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_040"
+input:
+  question: "道具产出速度是不是太快了"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 3, "max_rows": 50}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_item_circle_df"
+    - "dws_10000251_resource_item_df"

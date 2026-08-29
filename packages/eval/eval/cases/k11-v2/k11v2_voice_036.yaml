@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_036"
+input:
+  question: "当前卡池还值得继续开吗"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题属于运营决策建议，超出数据查询范围。可以帮您查看当前卡池的抽卡人数、消耗资源量、出金率等数据。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_gacha_statis_di"

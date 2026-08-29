@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_030"
+input:
+  question: "副本通关率和玩家等级有没有关系"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 3, "max_rows": 50}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L4"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_pve_progress_df"
+    - "dws_10000251_role_common_feature_df"

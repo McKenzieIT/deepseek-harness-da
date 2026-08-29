@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_038"
+input:
+  question: "VIP玩家最近有没有流失"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 1, "max_rows": 30}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "filter"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_vip_role_tag_df"
+    - "dws_10000251_univ_role_churn_di"

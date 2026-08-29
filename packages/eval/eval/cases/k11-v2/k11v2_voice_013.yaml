@@ -1,0 +1,16 @@
+case_id: "k11v2_voice_013"
+input:
+  question: "这个活动效果好不好"
+  scope_id: null
+  turns: []
+expected:
+  result_value: null
+  match_mode: null
+  answer: "该问题未指明具体活动名称或活动ID，无法确定查询目标。请提供具体的活动名称或ID。"
+  delivery_match: "llm_judge"
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "open_ended"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_activity_df"

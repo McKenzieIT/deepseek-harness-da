@@ -1,0 +1,17 @@
+case_id: "k11v2_voice_039"
+input:
+  question: "活动奖励发放是不是太多了"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 1, "max_rows": 50}
+  match_mode: row_count_range
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_gm_activity_order_df"
+    - "dws_10000251_item_circle_df"
