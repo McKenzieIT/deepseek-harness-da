@@ -175,7 +175,7 @@ function printUsage(): void {
 function globCasePaths(caseDir: string, caseFilter: string | null): string[] {
   const files = readdirSync(caseDir)
     .filter(f => /\.(yaml|yml|json)$/.test(f))
-    .filter(f => /^[a-z0-9]+_\d+\./i.test(f))
+    .filter(f => /^[a-z0-9]+(_[a-z0-9]+)*_\d+\./i.test(f))
     .sort()
 
   if (caseFilter !== null) {
