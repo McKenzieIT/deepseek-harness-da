@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_005"
+input:
+  question: "氪金100到500元的轻度付费玩家占活跃用户的比例"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"light_spender_ratio": 0.15}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "proportion"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_012"
+input:
+  question: "最近三个月的MAU分别是多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 3, "max_rows": 3}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

@@ -102,6 +102,8 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-1 Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — SKOS 对齐双字段（`pref_label` + `alt_labels: string[]`）；全 definition type 加；`toCorpusItem(def)` 移除 terminology 参数（原子迁移）；检索策略 = Strategy B（always-fused graph-anchored hybrid）；`lookup_terminology` → `resolve_term`（agent 消歧工具）；enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）。**Phase 3 落地**：两轮发现（确定性提取括号/引号/domains + LLM 语义补充）；`@deepseek-ai/dsh-tool-discover-alt-labels` 新包；management preset 注册；on-write hook 扩展；code review fixes（score cap/CJK bigram/maxRelations）
 - [CL-2 Domain/Concept 图节点设计](tickets/CL2-concept-kind-plugin.md) — 引入 ConceptKindPlugin：concept = 显式一等实体（YAML in `concepts/`）；边从 asset.domains 派生（不含 related_assets）；引用验证（domain 值必须匹配 concept YAML）；concept 在 BM25 corpus 中（子图投射锚点）；graph-expand 新增 related_to 展开；零新 tool（泛化现有 tool 为 registry-driven）；node id = `concept:` 前缀；alt_labels 进统一 aliasIndex
 - [CL-2a ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md) — commit `f4fd17fee3`：ConceptDefinitionSchema + ConceptKindPlugin + loadConcepts + graph builder concept→asset related_to 边派生 + 严格引用验证 + expandCandidates related_to 展开（仅 concept: 前缀）+ 4 tool 泛化（get/edit/list_domains/get_coverage）+ K11 种子 10 concepts + 17 新 tests；306 tests 全绿
+- [CL-3 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — 6 项决策：D1 检索级指标为主（precision@K/recall@K vs covered_assets）；D2 Strategy C 为目标 + subagent 并行 enrichment（方案 γ）；D3 覆盖率梯度实验（Level 0–3）取代静态 A/B/C 对比；D4 硬切换 vs 连续混合作为实验变量；D5 alias 质量分层评估（标注统计筛查 + lift 精确验证）；D6 补充 alias-dependent case（LLM 模拟业务角色 + 人工筛选）。关键推论：A/B/C 是同一 blending 函数 f(coverage)→weight 的特例。毕业 CL-4、CL-5
+- [CL-4 补充 alias-dependent eval case](tickets/CL4-supplement-alias-eval-cases.md) — 40 case 已生成（k11v2_alias_001–040）：17 unique alias terms（9 纯 alias-dependent + 8 表级），覆盖 4 目标表 × 3 业务域；全部验证通过（查询关键词不在目标表 corpus text 中；code review 修正 5 case 排除流失/LTV 误判）；concept bridging 留 CL-5 Level 3 验证
 
 ## Not yet specified
 
@@ -123,8 +125,8 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 | Context Layer 组件 | 当前状态 | 缺口 |
 |---|---|---|
 | Metadata Catalog | ✅ definitions + SchemaGateway | — |
-| Ontology (typed relations) | ✅ RelationGraph (3 types) | 缺语义概念节点 |
-| Business Glossary | ⚠️ 扁平 terminology.yaml | → R7 方案 D 解决 |
+| Ontology (typed relations) | ✅ RelationGraph (3 types) + ConceptKindPlugin (CL-2) | — |
+| Business Glossary | ✅ SKOS pref_label/alt_labels (CL-1) + aliasIndex 反向索引 | — |
 | Metrics Layer | ✅ MetricKindPlugin + execute_metric | — |
 | Trust Signals | ⚠️ eval pass_rate 仅覆盖质量 | 缺认证/新鲜度/使用频率 |
 | Lineage | ✅ derived_from (表级) | 缺列级 |
@@ -134,7 +136,7 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 
 ### 解决路径（分阶段）
 
-#### Phase CL-1：Terminology 统一（R7 方案 D — SKOS 对齐）✅ 决策已锁定
+#### Phase CL-1：Terminology 统一（R7 方案 D — SKOS 对齐）✅ 已完成
 
 **解决**：glossary 独立于 ontology 的偏差
 
@@ -150,7 +152,7 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 **成本**：低-中（Phase 1 仅加字段+迁移，Phase 2 图索引+tool，Phase 3 enrichment）
 **收益**：SKOS 标准对齐 + Jedify 模式（图编码术语→子图投射）+ 消除 toCorpusItem 参数不一致
 
-#### Phase CL-2：Domain/Concept 作为图节点 ✅ 决策已锁定
+#### Phase CL-2：Domain/Concept 作为图节点 ✅ 已完成
 
 **解决**：G2 relation type 范围偏窄（仅结构性关系，无语义概念映射）
 
@@ -171,7 +173,21 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 **成本**：中（新 kind plugin + 引用验证 + tool 泛化 + graph-expand 扩展）
 **依赖**：CL-1 已完成（验证了图扩展模式）
 
-#### Phase CL-3：Context Projection 统一
+#### 检索策略验证（CL-3 实验设计 ✅ 决策已锁定，CL-4 ✅ case 已补充，CL-5 待实施）
+
+**解决**：CL-1 D4a 选择 Strategy B 作为初始实现，但三策略优劣需数据验证
+
+**决策（2026-08-29 grilling 锁定）**：
+- Strategy C（子图投射 + BM25 fallback）为目标方向
+- data agent 通过 subagent 并行 enrichment 补全图谱缺口（方案 γ），形成自进化闭环
+- 覆盖率梯度实验（Level 0–3）取代静态 A/B/C 对比
+- A/B/C 是同一 blending 函数 f(coverage)→weight 的特例
+- 硬切换 vs 连续混合作为实验变量
+- 补充 alias-dependent eval case（LLM 模拟业务角色 + 人工筛选）
+
+**实施票**：[CL-4](tickets/CL4-supplement-alias-eval-cases.md)（✅ 40 alias-dependent case 已生成）→ [CL-5](tickets/CL5-retrieval-gradient-experiment.md)（梯度实验，frontier）
+
+#### Phase CL-3：Context Projection 统一 → 票 [G7](tickets/G7-context-projection-unification.md)
 
 **解决**：G1 三接口分离（toCorpusItem / toPromptContext / toCriticContext）
 
@@ -195,7 +211,7 @@ interface ProjectionOptions {
   view: 'corpus' | 'prompt' | 'critic' | 'full'
   includeAliases?: boolean     // CL-1 后可用
   includeRelations?: boolean   // graph context
-  includeTrust?: boolean       // CL-4 trust signals
+  includeTrust?: boolean       // trust signals
   maxTokens?: number           // Jedify-style token budget
 }
 ```
@@ -230,6 +246,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~**定义版本管理**~~ — **毕业为 [G6](tickets/G6-definition-version-management.md)**（2026-08-28）：grilling 讨论开源项目是否自带 git 版本管理。
 - ~~**Shell auto-flip 接入真实 evalRunCount**~~ — **已通过 W11 evidence-query RPC bridge 解决**：`evidenceClient` 传入 SemanticLayerShell，`useEvidenceMetrics` 读取真实 evalRunCount。验证 session prompt: `prompts/remaining-3-shell-autoflip-verification.md`
 - ~~**Evidence-query push 订阅**~~ — **毕业为 [R8](tickets/R8-evidence-query-push-subscription.md)**（2026-08-28）：research+grilling，blocked by [T2](tickets/T2-verify-management-panel-web-visibility.md)（确认管理面板 web 端实际可见）。
+- **Data agent subagent 并行 enrichment 机制**（CL-3 D2 方向确认）：data agent 在查询过程中通过 subagent 并行补全图谱缺口（方案 γ），形成使用→发现缺口→subagent 补全→图谱增长的自进化闭环。具体设计待 CL-5 实验结果验证 C 策略可行后再展开。
 
 ## Open tickets
 
@@ -238,7 +255,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
 ### Context Layer 对齐（CL 系列）
-- [CL-3: 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — grilling：A/B/C 策略对比实验 + alias 质量验证机制（**frontier — CL-1 P2 已完成，无阻塞**）
+- [CL-5: 检索策略覆盖率梯度实验](tickets/CL5-retrieval-gradient-experiment.md) — task：Level 0–3 × 硬切换/连续混合，找 C 超过 B 的拐点（**frontier — CL-4 已完成，无阻塞**）
 - [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（**frontier — CL-1 + CL-2a 已完成，无阻塞**；low priority）
 
 ## Out of scope

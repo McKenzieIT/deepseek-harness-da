@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_013"
+input:
+  question: "MAU中有付费行为的用户占多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"mau_pay_ratio": 0.18}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "proportion"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

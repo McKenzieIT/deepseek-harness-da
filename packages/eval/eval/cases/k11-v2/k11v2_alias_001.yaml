@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_001"
+input:
+  question: "这个月氪金超过500元的玩家有多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"high_spender_cnt": 1200}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_com_pay_order_di"

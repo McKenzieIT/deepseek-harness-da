@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_030"
+input:
+  question: "从注册到首次充值平均需要几天"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"avg_days_to_first_pay": 3}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_tag_df"

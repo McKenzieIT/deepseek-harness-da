@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_023"
+input:
+  question: "不同平台的ARPPU差异有多大"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 2, "max_rows": 5}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_tag_df"

@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_028"
+input:
+  question: "首充用户的后续7天在线时长变化"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 5, "max_rows": 7}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_tag_df"

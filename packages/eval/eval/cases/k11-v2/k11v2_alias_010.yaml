@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_010"
+input:
+  question: "零氪用户每天平均在线多久"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"avg_online_sec": 2400}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

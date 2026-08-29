@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_037"
+input:
+  question: "氪金用户和白嫖用户的MAU趋势对比"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 3, "max_rows": 12}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

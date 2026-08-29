@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_008"
+input:
+  question: "免费玩家的平均每日在线时长是多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"avg_online_dur": 3600}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

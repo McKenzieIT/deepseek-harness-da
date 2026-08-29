@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_021"
+input:
+  question: "新增用户首日付费转化率是多少"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"first_day_pay_rate": 0.06}
+  match_mode: "scalar_exact"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "metric_lookup"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"

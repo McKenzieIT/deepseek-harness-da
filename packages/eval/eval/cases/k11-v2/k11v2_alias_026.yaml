@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_026"
+input:
+  question: "最近6个月ARPU的变化趋势"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 5, "max_rows": 6}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "trend"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_tag_df"

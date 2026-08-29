@@ -1,0 +1,16 @@
+case_id: "k11v2_alias_025"
+input:
+  question: "各渠道来源用户的ARPU差异"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 3, "max_rows": 20}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L2"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_tag_df"

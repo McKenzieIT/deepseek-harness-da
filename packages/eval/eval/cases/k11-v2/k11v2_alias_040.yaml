@@ -1,0 +1,17 @@
+case_id: "k11v2_alias_040"
+input:
+  question: "回归玩家和新注册玩家谁的月活贡献更大"
+  scope_id: null
+  turns: []
+expected:
+  result_value: {"min_rows": 2, "max_rows": 2}
+  match_mode: "row_count_range"
+  answer: null
+  delivery_match: null
+dimensions:
+  sql_complexity: "L3"
+  query_intent: "comparison"
+  mode: "linear"
+  covered_assets:
+    - "dws_10000251_univ_role_act_di"
+    - "dws_10000251_univ_role_tag_df"
