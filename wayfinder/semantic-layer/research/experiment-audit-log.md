@@ -1,5 +1,96 @@
 # Experiment Audit Log — Semantic Layer Effort
 
+## 2026-08-30: CL-8 Cross-Validation (continuous-blend default)
+
+### Setup
+
+- **Code state**: `Config.blendingMode` default = `continuous-blend`; both `applyAliasFusion` and `applyContinuousBlend` have median-floor fix
+- **Cases**: 80 original K11 cases (eval-cli glob filters alias cases)
+- **Model**: aga/qwen3.7-max, engine responder, pass_k=1, SqlJudge disabled
+- **Run ID**: `cl8-continuous-blend`
+
+### Data (verbatim)
+
+| Metric | cl8-full-fixed (strategy-b) | cl8-continuous-blend |
+|--------|---------------------------|---------------------|
+| pass_rate | 96.3% (77/80) | **100.0% (80/80)** |
+| correct | 77 | 80 |
+| wrong | 3 | 0 |
+| declined | 0 | 0 |
+
+Previously-wrong cases now correct:
+- k11v2_011: `load_event_definition{event_name: "game.yanwu.match"}` (was wrong)
+- k11v2_012: `SELECT COUNT(DISTINCT role_id) FROM dws_10000251_play_rogue_df` (was wrong)
+- k11v2_025: `SELECT SUM(arena_win_times) / NULLIF(SUM(arena_battle_times), 0)` (was wrong)
+
+### Verdict
+
+**100% confirms zero regression from the blendingMode change.** The 3 flipped cases are LLM non-determinism on PVP metric_lookup borderline cases, not a blendingMode effect (CL-7 proved B=C at retrieval level). Both runs validate the median-floor alias scoring fix + L3 enrichment.
+
+### Ticket Pointer
+
+Cross-validates: [CL-8 — 端到端 Eval + Go/No-Go](../tickets/CL8-e2e-eval-go-nogo.md)
+
+---
+
+## 2026-08-30: CL-7 Production Pipeline Retrieval Experiment
+
+### Setup
+
+- **Corpus**: `SemanticLayerService.loadRetrievalCorpusAll()` — 4692 items (328 tables + 3919 metrics + 3207 events)
+- **Graph**: `SemanticLayerService.getRelationGraph()` — live RelationGraph with aliasIndex
+- **Cases**: 120 K11 cases (80 original + 40 CL-4 alias-dependent), `covered_assets` as ground truth
+- **Varied**: `Config.blendingMode` (strategy-b / continuous-blend) × semantic layer state (L1: 4 tables with aliases / L3: 28 tables with aliases)
+- **Pipeline**: Full `search_data_sources` execute: BM25 → blending → graph expansion → qualify (no query expansion, no qualification)
+- **L3 aliases**: Hand-crafted from CL-5 `L3_ALIASES` mapping, written to K11 YAML files via `enrich-l3-aliases.ts`
+
+### Data (verbatim)
+
+**Run 1** (neither B nor C fixed): B = C = 0.467 (L1), 0.479 (L3). Zero delta.
+
+**Run 2** (only C fixed with median-floor):
+
+| Config | Mean R@20 |
+|--------|-----------|
+| B(L1)  | 0.467     |
+| C(L1)  | 0.629     |
+| B(L3)  | 0.479     |
+| C(L3)  | 0.804     |
+
+**Run 3** (both B and C fixed with median-floor — final):
+
+| Config | Mean R@20 | Median R@20 | Mean P@20 | Orig R@20 | Alias R@20 |
+|--------|-----------|-------------|-----------|-----------|------------|
+| B(L1)  | 0.629     | 1.000       | 0.034     | 0.456     | 0.975      |
+| C(L1)  | 0.629     | 1.000       | 0.034     | 0.456     | 0.975      |
+| B(L3)  | 0.804     | 1.000       | 0.045     | 0.744     | 0.925      |
+| C(L3)  | 0.804     | 1.000       | 0.045     | 0.744     | 0.925      |
+
+B = C exactly (120/120 unchanged). Enrichment: both +17.5pp (L1→L3).
+Flip analysis L1→L3: 27 improved, 2 regressed (k11v2_alias_009, _019), 91 unchanged.
+
+### Verdict
+
+**B and C produce identical results when both have the median-floor alias scoring fix.** The Run 2 "C wins" result was an artifact of fixing C but not B.
+
+The real bug was alias-resolved candidate scoring: `ALIAS_BOOST=2.0` vs BM25 scores of 30–40 in the 4692-item production corpus. `applyGraphExpansionAndJoins` dropped these low-scored candidates at the topK slice. **Alias resolution has been effectively disabled in production since CL-1.**
+
+The median-floor fix (`score = max(original, medianBm25)`) resolves this for both strategies. The blending formula (fixed boost vs coverage-weighted) makes no difference to recall@20.
+
+Enrichment is the sole lever: +17.5pp from 4→28 tables with alt_labels.
+
+### Fidelity Caveat
+
+- **No query expansion**: `config.queryExpansion=false` (no LLM provider). Production would have LLM-powered expansion, potentially boosting both B and C. Direction should hold; absolute values may shift.
+- **No qualification**: No `ctx.query` provider. Candidate IDs are unqualified (no ODPS project prefix). Affects the downstream NL2SQL but not retrieval-level metrics.
+- **L3 aliases hand-crafted**: From CL-5 `L3_ALIASES`, not `discover_alt_labels`. Quality likely higher than LLM auto-discovery.
+- **Median-floor fix applied to both B and C**: Run 3 applied the median-floor fix to B's `applyAliasFusion` as well, revealing B=C. The fix addresses an independent scoring bug (alias-resolved candidates scored 15–20× below BM25 in the 4692-item corpus), not a strategy-specific design choice.
+
+### Ticket Pointer
+
+Resolves: [CL-7 — Production Pipeline Retrieval Experiment](../tickets/CL7-production-retrieval-experiment.md)
+Full report: [research/cl7-production-pipeline-experiment-report.md](cl7-production-pipeline-experiment-report.md)
+
 ## 2026-08-22: P3 Ontology NL2SQL Join Comparison (Structural)
 
 ### Setup

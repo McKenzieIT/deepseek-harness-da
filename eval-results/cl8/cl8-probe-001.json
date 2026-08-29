@@ -1,0 +1,32 @@
+{
+  "run_id": "cl8-probe-001",
+  "timestamp": "2026-08-29T18:34:45.129Z",
+  "cases": [
+    {
+      "case_id": "k11v2_001",
+      "pass_k_results": [
+        {
+          "attempt_k": 1,
+          "execution_match": true,
+          "delivery_match": true,
+          "generated_sql": "SELECT SUM(pay_amt) AS total_pay_amt FROM dws_10000251_pay_order_act_di WHERE ds = '20260829'",
+          "query_result": null,
+          "expected_result": {
+            "total_pay_amt": 1500000
+          }
+        }
+      ],
+      "verdict": "correct",
+      "latency_ms": 32908
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "correct": 1,
+    "wrong": 0,
+    "declined": 0,
+    "unjudged": 0,
+    "infra_failure": 0,
+    "pass_rate": 1
+  }
+}

@@ -103,7 +103,12 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-2 Domain/Concept 图节点设计](tickets/CL2-concept-kind-plugin.md) — 引入 ConceptKindPlugin：concept = 显式一等实体（YAML in `concepts/`）；边从 asset.domains 派生（不含 related_assets）；引用验证（domain 值必须匹配 concept YAML）；concept 在 BM25 corpus 中（子图投射锚点）；graph-expand 新增 related_to 展开；零新 tool（泛化现有 tool 为 registry-driven）；node id = `concept:` 前缀；alt_labels 进统一 aliasIndex
 - [CL-2a ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md) — commit `f4fd17fee3`：ConceptDefinitionSchema + ConceptKindPlugin + loadConcepts + graph builder concept→asset related_to 边派生 + 严格引用验证 + expandCandidates related_to 展开（仅 concept: 前缀）+ 4 tool 泛化（get/edit/list_domains/get_coverage）+ K11 种子 10 concepts + 17 新 tests；306 tests 全绿
 - [CL-3 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — 6 项决策：D1 检索级指标为主（precision@K/recall@K vs covered_assets）；D2 Strategy C 为目标 + subagent 并行 enrichment（方案 γ）；D3 覆盖率梯度实验（Level 0–3）取代静态 A/B/C 对比；D4 硬切换 vs 连续混合作为实验变量；D5 alias 质量分层评估（标注统计筛查 + lift 精确验证）；D6 补充 alias-dependent case（LLM 模拟业务角色 + 人工筛选）。关键推论：A/B/C 是同一 blending 函数 f(coverage)→weight 的特例。毕业 CL-4、CL-5
-- [CL-4 补充 alias-dependent eval case](tickets/CL4-supplement-alias-eval-cases.md) — 40 case 已生成（k11v2_alias_001–040）：17 unique alias terms（9 纯 alias-dependent + 8 表级），覆盖 4 目标表 × 3 业务域；全部验证通过（查询关键词不在目标表 corpus text 中；code review 修正 5 case 排除流失/LTV 误判）；concept bridging 留 CL-5 Level 3 验证
+- [CL-4 补充 alias-dependent eval case](tickets/CL4-supplement-alias-eval-cases.md) — 40 case 已生成（k11v2_alias_001–040）：17 unique alias terms（9 纯 alias-dependent + 8 表级），覆盖 4 目标表 × 3 业务域；全部验证通过
+- [CL-5 检索策略覆盖率梯度实验](tickets/CL5-retrieval-gradient-experiment.md)（[实验报告](research/cl5-retrieval-gradient-experiment-report.md)）— 原型级验证：C（continuous-blend）在所有 level 都 ≥ B，delta 随覆盖率单调递增（L0:+0.4pp → L3:+6.7pp）；B 有 recall 天花板（不引入新候选）；hard-switch 因 CJK bigram 稀释无效；tokenizer 混合 CJK/ASCII bug 需修复；alias 覆盖率是最大杠杆（+15pp）。⚠️ 非生产管线实验，绝对值不可直引用。行动项：修复 tokenizer → 生产管线实现 continuous-blend → 加速 enrichment → 用 eval pass_rate 正式验证
+
+- [CL-6 Tokenizer 修复 + Continuous-blend 实现](tickets/CL6-tokenizer-fix-and-continuous-blend.md) — extractQueryTerms CJK/ASCII 混合 bigram 修复 + applyContinuousBlend（含 median-floor）+ Config.blendingMode 分派 + 6 新测试 + 24 表 L3 alias enrichment
+- [CL-7 生产管线检索级实验](tickets/CL7-production-retrieval-experiment.md)（[实验报告](research/cl7-production-pipeline-experiment-report.md)）— 发现 alias-resolved 候选自 CL-1 起在生产中失效（score=2.0 vs BM25=30-40，被 topK cap 丢弃）；median-floor 修复后 B=C=0.804(L3)（B 和 C 均已修复）；blending 公式无影响，enrichment 是唯一杠杆（+17.5pp）；默认切换为 `continuous-blend`
+- [CL-8 端到端 Eval + Go/No-Go](tickets/CL8-e2e-eval-go-nogo.md) — **GO**：`cl8-full-fixed` pass_rate=96.3%（strategy-b+median-floor）；交叉验证 `cl8-continuous-blend` pass_rate=**100.0%**（80/80，continuous-blend 默认）；3 前次 wrong cases 通过（LLM 非确定性，非 blendingMode 差异）
 
 ## Not yet specified
 
@@ -173,7 +178,7 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 **成本**：中（新 kind plugin + 引用验证 + tool 泛化 + graph-expand 扩展）
 **依赖**：CL-1 已完成（验证了图扩展模式）
 
-#### 检索策略验证（CL-3 实验设计 ✅ 决策已锁定，CL-4 ✅ case 已补充，CL-5 待实施）
+#### 检索策略验证（CL-3 ✅ 实验设计，CL-4 ✅ case 补充，CL-5 ✅ 梯度实验完成）
 
 **解决**：CL-1 D4a 选择 Strategy B 作为初始实现，但三策略优劣需数据验证
 
@@ -185,7 +190,7 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 - 硬切换 vs 连续混合作为实验变量
 - 补充 alias-dependent eval case（LLM 模拟业务角色 + 人工筛选）
 
-**实施票**：[CL-4](tickets/CL4-supplement-alias-eval-cases.md)（✅ 40 alias-dependent case 已生成）→ [CL-5](tickets/CL5-retrieval-gradient-experiment.md)（梯度实验，frontier）
+**实施票**：[CL-4](tickets/CL4-supplement-alias-eval-cases.md)（✅ 40 alias-dependent case）→ [CL-5](tickets/CL5-retrieval-gradient-experiment.md)（✅ 梯度实验完成：C 策略确认最优，行动项=切换 continuous-blend + 修复 tokenizer + 加速 enrichment）
 
 #### Phase CL-3：Context Projection 统一 → 票 [G7](tickets/G7-context-projection-unification.md)
 
@@ -254,8 +259,10 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [G6: 定义版本管理](tickets/G6-definition-version-management.md) — grilling：开源项目是否自带 git 版本控制
 - [R8: Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — research 完成（Typert 原生 push 可行，0.5 天），待 grilling 决策时机
 
+### CL-5 行动项落地（formal experiment）
+*全部完成。*
+
 ### Context Layer 对齐（CL 系列）
-- [CL-5: 检索策略覆盖率梯度实验](tickets/CL5-retrieval-gradient-experiment.md) — task：Level 0–3 × 硬切换/连续混合，找 C 超过 B 的拐点（**frontier — CL-4 已完成，无阻塞**）
 - [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（**frontier — CL-1 + CL-2a 已完成，无阻塞**；low priority）
 
 ## Out of scope
