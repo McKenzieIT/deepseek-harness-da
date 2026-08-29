@@ -103,3 +103,9 @@ dimension_refs:
       - dws_column: act_server_id_fst
         dim_column: server_id
     derivation: DWS act_server_id_fst (首次活跃区服id) is a 区服 id that joins to dim_10000251_server_info (PK server_id), the 服务器/区服维度配置表 used for fact-table server attribute lookup.
+pref_label: 新增用户表
+alt_labels:
+  - 新增
+  - 新注
+  - 拉新
+  - 注册

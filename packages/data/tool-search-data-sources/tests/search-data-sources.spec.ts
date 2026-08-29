@@ -11,7 +11,7 @@ import { test, expect } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
 import { FIXTURE_DATA_SOURCES } from '@deepseek-ai/dsh-nl2sql-engine/src/eval/cases.ts'
-import { apply, searchDataSources, type SearchHit } from '../src/index.ts'
+import { apply, searchDataSources, extractQueryTerms, type SearchHit } from '../src/index.ts'
 
 /** The subset of the registered tool definition the tests exercise. */
 interface ToolDef {
@@ -267,4 +267,121 @@ test('S13 qualifyCandidates passes undefined override when payload has no projec
   expect(out.candidates[0]?.id).toBe('qualified.dws_pay_order_di')
   // no project key on the candidate (payload had none)
   expect(out.candidates[0]?.project).toBeUndefined()
+})
+
+// --- CL-6: extractQueryTerms tokenizer fix ---
+
+test('S14 extractQueryTerms generates bigrams for mixed CJK/ASCII tokens (CL-6 tokenizer fix)', () => {
+  const terms = extractQueryTerms('这个月氪金超过500元的玩家有多少')
+  expect(terms).toContain('氪金')
+  expect(terms).toContain('玩家')
+})
+
+test('S15 extractQueryTerms handles pure ASCII terms with CJK suffix', () => {
+  const terms = extractQueryTerms('ARPPU是多少')
+  expect(terms.some(t => t.toLowerCase() === 'arppu')).toBe(true)
+  expect(terms).toContain('是多')
+  expect(terms).toContain('多少')
+})
+
+test('S16 extractQueryTerms still works for pure CJK tokens', () => {
+  const terms = extractQueryTerms('日活跃用户')
+  expect(terms).toContain('日活跃用户')
+  expect(terms).toContain('日活')
+  expect(terms).toContain('活跃')
+  expect(terms).toContain('跃用')
+  expect(terms).toContain('用户')
+})
+
+// --- CL-6: continuous-blend mode ---
+
+test('S17 continuous-blend introduces graph-only candidates not in BM25 results', async () => {
+  const mockSchema = {
+    loadRetrievalCorpus: () => [
+      { id: 'dws_pay_order_di', description: '充值订单汇总表', metrics: {} },
+      { id: 'dws_active_user_di', description: '日活跃用户统计表', metrics: {} },
+    ],
+  }
+  const mockGraph = {
+    getRelationGraph: () => ({
+      findJoinPath: () => null,
+      getJoinCondition: () => null,
+      getRelated: () => [],
+      getDerived: () => [],
+      resolveAlias: (term: string) => {
+        if (term === '付费' || term === '充值') return ['dws_pay_order_di']
+        if (term === '留存') return ['dws_retention_di']
+        return []
+      },
+    }),
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? { ...mockSchema, ...mockGraph } : undefined),
+  } as unknown as Context
+  apply(ctx, { blendingMode: 'continuous-blend' })
+  if (def === undefined) throw new Error('apply did not register a tool')
+  const out = await def.execute({ query: '付费留存' }, { signal: new AbortController().signal })
+  const ids = out.candidates.map((c: SearchHit) => c.id)
+  expect(ids).toContain('dws_retention_di')
+  expect(out.candidates.find((c: SearchHit) => c.id === 'dws_retention_di')?.mode).toBe('graph-only')
+})
+
+test('S18 continuous-blend degrades to BM25 when graph has no resolveAlias', async () => {
+  const mockSchema = {
+    loadRetrievalCorpus: () => [
+      { id: 'dws_pay_order_di', description: '充值订单汇总表', metrics: {} },
+    ],
+  }
+  const mockGraph = {
+    getRelationGraph: () => ({
+      findJoinPath: () => null,
+      getJoinCondition: () => null,
+      getRelated: () => [],
+      getDerived: () => [],
+    }),
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? { ...mockSchema, ...mockGraph } : undefined),
+  } as unknown as Context
+  apply(ctx, { blendingMode: 'continuous-blend' })
+  if (def === undefined) throw new Error('apply did not register a tool')
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect(out.candidates.length).toBeGreaterThan(0)
+  expect(out.candidates[0]?.id).toBe('dws_pay_order_di')
+})
+
+test('S19 default blendingMode=continuous-blend uses applyContinuousBlend', async () => {
+  const mockSchema = {
+    loadRetrievalCorpus: () => [
+      { id: 'dws_pay_order_di', description: '充值订单汇总表', metrics: {} },
+    ],
+  }
+  const mockGraph = {
+    getRelationGraph: () => ({
+      findJoinPath: () => null,
+      getJoinCondition: () => null,
+      getRelated: () => [],
+      getDerived: () => [],
+      resolveAlias: (term: string) => {
+        if (term === '充值') return ['dws_pay_order_di']
+        return []
+      },
+    }),
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? { ...mockSchema, ...mockGraph } : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) throw new Error('apply did not register a tool')
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect(out.candidates.length).toBeGreaterThan(0)
+  const hit = out.candidates[0]!
+  expect(hit.id).toBe('dws_pay_order_di')
+  expect(hit.mode).toBe('blended')
 })

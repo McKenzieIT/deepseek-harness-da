@@ -94,3 +94,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 表为空(MAX(ds) NULL)，仅做结构性丰富，未实测指标；待有数据后补做最新ds抽样验证
 dimension_refs: []
+pref_label: 舆情表
+alt_labels:
+  - 舆情
+  - 论坛
+  - 评价
+  - 口碑

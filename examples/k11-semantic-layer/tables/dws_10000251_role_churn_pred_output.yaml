@@ -50,3 +50,8 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 已在最新分区 ds=20260715_7_0 实测 scored_role_uv=1654784、avg_pred_score≈0.0039、pred_churn_uv=9185、actual_churn_uv=0，与同源表 dws_10000251_7_0_role_churn_pred_scoring 同分区同值，数值合理（最新分区无回填 y 符合预期）。metrics 仅使用真实列 log_str 经 SPLIT_PART 提取并 NULLIF 兜底除零。
 dimension_refs: []
+pref_label: 流失预测输出表
+alt_labels:
+  - 流失标签
+  - 预测输出
+  - 模型

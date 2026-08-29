@@ -146,3 +146,9 @@ dimension_refs:
       - dws_column: stage_id
         dim_column: id
     derivation: "DWS column stage_id (comment: 关卡id) semantically matches PK id (关卡id) of dim_10000251_trans_stage_df (关卡配置维度表, 战斗关卡域), the canonical stage dimension."
+pref_label: 关卡通关表
+alt_labels:
+  - 关卡
+  - 通关
+  - 副本
+  - 挑战

@@ -160,3 +160,8 @@ confirmation:
   confirmed_by: enrichment-agent-2026-07-31
   confirmed_at: "2026-07-31"
 dimension_refs: []
+pref_label: 小队汇总表
+alt_labels:
+  - 小队
+  - 组队
+  - 队伍

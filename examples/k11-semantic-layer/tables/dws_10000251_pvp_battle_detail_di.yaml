@@ -105,3 +105,8 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 在最新 ds=20260730 抽样实测 5 项指标均合理；主体按命名推断为角色(role)，未实测 user_type。
 dimension_refs: []
+pref_label: PVP战斗详情表
+alt_labels:
+  - 场次
+  - 战斗
+  - 胜率

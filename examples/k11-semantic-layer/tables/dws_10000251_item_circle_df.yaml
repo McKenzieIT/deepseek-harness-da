@@ -112,3 +112,10 @@ dimension_refs:
       - dws_column: item_id
         dim_column: id
     derivation: DWS 列 item_type (物品类型) + item_id (物品id) 语义对应 dim trans_resource_item_df 复合主键 (type, id)；该 dim 为资源/物品维度表（域 资源产销，与事实表同域），明确供事实表通过 type+id JOIN 查物品名/类型。
+pref_label: 道具产销表
+alt_labels:
+  - 道具
+  - 物品
+  - 产销
+  - 资源
+  - 流水

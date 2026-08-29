@@ -131,3 +131,8 @@ dimension_refs:
       - dws_column: stage_id
         dim_column: id
     derivation: DWS stage_id (comment 关卡id，章节id+难度) semantically matches the PK id (关卡id) of dim_10000251_trans_stage_df, the 关卡配置 dimension for stage lookup by id.
+pref_label: 古战场肉鸽表
+alt_labels:
+  - 古战
+  - 肉鸽
+  - rogue

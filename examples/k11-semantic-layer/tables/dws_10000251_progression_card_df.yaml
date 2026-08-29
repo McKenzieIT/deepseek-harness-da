@@ -218,3 +218,8 @@ dimension_refs:
       - dws_column: equip_suit_id
         dim_column: suit_id
     derivation: DWS equip_suit_id (装备套装ID) is the equipment-suit FK; dim_10000251_trans_equipment_suit_info (装备套装信息, PK suit_id) is the equipment-suit dimension, so equip_suit_id joins suit_id.
+pref_label: 卡牌升级表
+alt_labels:
+  - 卡牌
+  - 卡片
+  - 升级

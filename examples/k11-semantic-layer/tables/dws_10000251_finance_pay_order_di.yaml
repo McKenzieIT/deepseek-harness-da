@@ -182,3 +182,8 @@ dimension_refs:
       - dws_column: item_id
         dim_column: item_id
     derivation: DWS 列 item_id (comment 商品id) 与 dim trans_finance_recharge_info_od 主键 item_id 完全一致；该 dim 为财务充值商品配置维表，与财务付费订单事实同属财务/付费经济域。
+pref_label: 现金收入日表
+alt_labels:
+  - 现金
+  - 财务
+  - 收入

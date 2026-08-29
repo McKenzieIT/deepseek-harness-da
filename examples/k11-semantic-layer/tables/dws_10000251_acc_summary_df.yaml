@@ -333,3 +333,10 @@ dimension_refs:
       - dws_column: pay_server_id_lst
         dim_column: server_id
     derivation: DWS columns act_server_id_fst (首次活跃区服id), act_server_id_lst (最近活跃区服id), pay_server_id_fst (首次付费区服id) and pay_server_id_lst (最近付费区服) hold server/区服 IDs that join dim_10000251_server_info on its primary key server_id to look up server name and open-time attributes.
+pref_label: 账号汇总表
+alt_labels:
+  - 账号
+  - 注册
+  - 活跃
+  - 转化
+  - 累计

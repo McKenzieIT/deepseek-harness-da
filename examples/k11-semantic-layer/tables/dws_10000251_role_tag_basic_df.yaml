@@ -276,3 +276,8 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id (区服id) joins to dim_10000251_server_info (PK server_id), the 服务器/区服维度配置表 used for fact-table server attribute lookup.
+pref_label: 角色基础标签表
+alt_labels:
+  - 标签
+  - 画像
+  - 分类

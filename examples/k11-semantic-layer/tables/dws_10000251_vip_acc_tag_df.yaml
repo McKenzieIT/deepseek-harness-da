@@ -67,3 +67,8 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 最新分区20260730实测user_type=2(账号)与3个核心指标取值合理，status=analyst_confirmed；指标/覆盖/口径已结构化补全，全量复核仍建议后续人工抽检。
 dimension_refs: []
+pref_label: VIP账号标签表
+alt_labels:
+  - VIP
+  - 大R
+  - 鲸鱼

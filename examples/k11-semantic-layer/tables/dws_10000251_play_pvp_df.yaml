@@ -155,3 +155,9 @@ dimension_refs:
       - dws_column: rank_level
         dim_column: id
     derivation: DWS play_func_id (PVP类型) exactly matches and rank_level (comment 最新段位) semantically matches the PK id (段位等级) of dim_10000251_trans_pvp_rank_df, the PVP段位 dimension explicitly keyed by (play_func_id, id) for fact-table rank-name lookup.
+pref_label: PVP对战表
+alt_labels:
+  - PVP
+  - 对战
+  - 演武
+  - 竞技

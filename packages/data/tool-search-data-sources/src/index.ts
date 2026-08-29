@@ -48,6 +48,10 @@ export interface Config {
   readonly expansionProvider?: string
   /** LLM model id for query expansion (defaults to `qwen-flash`; P15a). */
   readonly expansionModel?: string
+  /** Blending mode for alias-graph fusion (CL-6). `strategy-b` = boost existing
+   *  BM25 candidates; `continuous-blend` = coverage-weighted BM25+graph merge
+   *  that introduces new candidates from the alias graph. */
+  readonly blendingMode?: 'strategy-b' | 'continuous-blend'
 }
 
 /** Runtime configuration schema for the search_data_sources plugin. */
@@ -56,6 +60,7 @@ export const Config: z<Config> = z.object({
   queryExpansion: z.boolean().default(true),
   expansionProvider: z.string().default('aga'),
   expansionModel: z.string().default('qwen-flash'),
+  blendingMode: z.string().default('continuous-blend') as z<'strategy-b' | 'continuous-blend'>,
 })
 
 /** A ranked candidate data source returned to the model. */
@@ -256,11 +261,19 @@ function applyAliasFusion(
     return { ...c, score: c.score * ALIAS_BOOST * capped, mode: 'alias-boosted' as const }
   })
 
+  // Alias-resolved candidates (not in BM25) get a score competitive with
+  // mid-range BM25 candidates so they survive the downstream topK cap in
+  // applyGraphExpansionAndJoins. Without this, alias-resolved score
+  // (ALIAS_BOOST=2.0) is 15-20× below BM25 scores (30-40) in the 4692-item
+  // production corpus, and graph expansion drops them at the topK slice.
+  const medianBm25 = candidates.length > 0
+    ? candidates[Math.floor(candidates.length / 2)]?.score ?? ALIAS_BOOST
+    : ALIAS_BOOST
   const seen = new Set(boosted.map(c => c.id))
   for (const [id, hitCount] of aliasHits) {
     if (seen.has(id)) continue
     const capped = Math.min(hitCount, 2)
-    boosted.push({ id, score: ALIAS_BOOST * capped, mode: 'alias-resolved' })
+    boosted.push({ id, score: Math.max(ALIAS_BOOST * capped, medianBm25), mode: 'alias-resolved' })
     seen.add(id)
   }
 
@@ -271,25 +284,112 @@ function applyAliasFusion(
 /**
  * Extract meaningful terms from a query for alias resolution.
  * Splits on whitespace/punctuation, keeps tokens ≥ 2 chars.
- * For CJK-only continuous text (no spaces/separators), also emits overlapping
- * bigrams so that compound terms like "日活跃用户" produce "日活", "活跃",
- * "跃用", "用户" — increasing recall against single-bigram alt_labels.
+ * For CJK continuous text, emits overlapping bigrams ("日活跃用户" → "日活",
+ * "活跃", "跃用", "用户"). For mixed CJK/ASCII tokens (e.g. "氪金超过500元"),
+ * segments at CJK/non-CJK boundaries and generates bigrams per CJK segment —
+ * the prior version checked the whole token with a CJK-only regex, causing
+ * mixed tokens to skip bigram generation entirely (39% of K11 queries hit).
  */
-function extractQueryTerms(query: string): string[] {
+export function extractQueryTerms(query: string): string[] {
   const tokens = query
     .split(/[\s,，。？！?!、;；：:()（）\[\]【】{}]+/)
     .filter(t => t.length >= 2)
-  const out: string[] = [...tokens]
-  // CJK bigram: for tokens that are entirely CJK (≥3 chars), emit overlapping bigrams
+  const out: string[] = []
   const cjkRe = /^[一-鿿㐀-䶿]+$/
   for (const t of tokens) {
-    if (t.length >= 3 && cjkRe.test(t)) {
-      for (let i = 0; i < t.length - 1; i++) {
-        out.push(t.slice(i, i + 2))
+    if (cjkRe.test(t)) {
+      out.push(t)
+      if (t.length >= 3) {
+        for (let i = 0; i < t.length - 1; i++) {
+          out.push(t.slice(i, i + 2))
+        }
+      }
+    } else {
+      out.push(t)
+      const asciiTokens = t.match(/[A-Za-z_][A-Za-z0-9_]*/g)
+      if (asciiTokens) {
+        for (const at of asciiTokens) {
+          if (at.length >= 2) out.push(at.toLowerCase())
+        }
+      }
+      const cjkSegs = t.match(/[一-鿿㐀-䶿]+/g)
+      if (cjkSegs) {
+        for (const seg of cjkSegs) {
+          if (seg.length >= 2) out.push(seg)
+          if (seg.length >= 3) {
+            for (let i = 0; i < seg.length - 1; i++) {
+              out.push(seg.slice(i, i + 2))
+            }
+          }
+        }
       }
     }
   }
   return out
+}
+
+/**
+ * CL-5→CL-6: continuous-blend — coverage-weighted BM25 + graph fusion that
+ * introduces NEW candidates from the alias graph (unlike `applyAliasFusion`
+ * which only boosts existing BM25 hits). Drop-in replacement for
+ * `applyAliasFusion` when `config.blendingMode === 'continuous-blend'`.
+ *
+ * Scoring: final = (1 - coverage) × bm25_norm + coverage × graph_norm,
+ * where coverage = fraction of query terms resolving to at least one alias.
+ * At coverage=0, degrades to pure BM25; at coverage=1, degrades to pure graph.
+ */
+function applyContinuousBlend(
+  graph: RelationGraphSource | undefined,
+  candidates: SearchHit[],
+  query: string,
+): SearchHit[] {
+  if (!graph || typeof graph.resolveAlias !== 'function') return candidates
+  const terms = extractQueryTerms(query)
+  if (terms.length === 0) return candidates
+
+  let termHits = 0
+  for (const term of terms) {
+    if (graph.resolveAlias(term).length > 0) termHits++
+  }
+  const coverage = termHits / terms.length
+
+  const graphHits = new Map<string, number>()
+  for (const term of terms) {
+    for (const id of graph.resolveAlias(term)) {
+      graphHits.set(id, (graphHits.get(id) ?? 0) + 1)
+    }
+  }
+  if (graphHits.size === 0) return candidates
+
+  const maxBm25 = candidates[0]?.score ?? 1
+  const maxGraph = Math.max(...graphHits.values(), 1)
+
+  const merged = new Map<string, SearchHit>()
+  for (const c of candidates) {
+    const bm25Component = (1 - coverage) * (c.score / maxBm25)
+    const graphComponent = coverage * ((graphHits.get(c.id) ?? 0) / maxGraph)
+    merged.set(c.id, { ...c, score: bm25Component + graphComponent, mode: graphComponent > 0 ? 'blended' : c.mode })
+  }
+
+  // Graph-only candidates (not in BM25) get a floor score at the BM25 median
+  // so they survive the downstream topK cap in applyGraphExpansionAndJoins.
+  // Without this floor, graph-only scores (coverage × hitCount/maxGraph) are
+  // always below BM25 scores when coverage < 0.5, causing alias-resolved
+  // candidates to be dropped by the topK slice — effectively disabling alias
+  // resolution in the 4692-item production corpus.
+  const midIdx = Math.floor(candidates.length / 2)
+  const medianBm25Norm = candidates.length > 0
+    ? (1 - coverage) * ((candidates[midIdx]?.score ?? maxBm25) / maxBm25)
+    : 0.5
+  for (const [id, hitCount] of graphHits) {
+    if (merged.has(id)) continue
+    const graphScore = coverage * (hitCount / maxGraph)
+    merged.set(id, { id, score: Math.max(graphScore, medianBm25Norm), mode: 'graph-only' })
+  }
+
+  const result = [...merged.values()]
+  result.sort((a, b) => b.score - a.score)
+  return result
 }
 
 /**
@@ -411,6 +511,9 @@ export function apply(ctx: Context, config: Config = {}): void {
   const expansionEnabled = config.queryExpansion !== false
   const expansionProvider = config.expansionProvider
   const expansionModel = config.expansionModel
+  const blend = (config.blendingMode ?? 'continuous-blend') === 'continuous-blend'
+    ? applyContinuousBlend
+    : applyAliasFusion
   // Q1 thin default: empty corpus until P6b `ctx.schema` ships. With no
   // corpus, BM25 returns no candidates - callable but unwired, not a broken
   // mount. Swap to ctx.schema.discover when P6b ships.
@@ -514,7 +617,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       const graph = probeRelationGraph(ctx)
       if (retrieval !== undefined) {
         const hits = await retrieval.retrieve(query, { topK, mode: 'hybrid' })
-        const candidates = applyAliasFusion(graph, hits.map(projectHit), args.query)
+        const candidates = blend(graph, hits.map(projectHit), args.query)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
@@ -528,11 +631,11 @@ export function apply(ctx: Context, config: Config = {}): void {
       // `undefined` when none is registered. The defensive `typeof` probe
       // guards a non-schema object resolving to the 'schema' name.
       if (schema !== undefined && typeof schema.loadRetrievalCorpus === 'function') {
-        const candidates = applyAliasFusion(graph, searchDataSources(getEnrichedLinker(schema), query, topK), args.query)
+        const candidates = blend(graph, searchDataSources(getEnrichedLinker(schema), query, topK), args.query)
         const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
-      const candidates = applyAliasFusion(graph, searchDataSources(linker, query, topK), args.query)
+      const candidates = blend(graph, searchDataSources(linker, query, topK), args.query)
       const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
       return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
     },

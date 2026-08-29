@@ -152,3 +152,8 @@ dimension_refs:
       - dws_column: card_id
         dim_column: id
     derivation: DWS card_id（卡牌id，key）语义对应 dim_10000251_trans_card_df 主键 id（武将id）：本游戏 PVP 所用卡牌即武将（卡池抽取武将、ban/pick 武将），card_id 即武将id，JOIN 回填武将名/品质/阵营等属性。
+pref_label: 卡战日表
+alt_labels:
+  - 出战
+  - 战力
+  - 卡战

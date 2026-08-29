@@ -52,3 +52,7 @@ confirmation:
   confirmed_by: dim-enrichment-2026-07-31
   confirmed_at: "2026-07-31"
   note: '基于 maxc meta describe 与唯一性实测(r=d=608)建模；server_id 唯一性强。未做业务侧语义确认，状态保持 draft。'
+pref_label: 服务器信息维表
+alt_labels:
+  - 服务器
+  - 区服

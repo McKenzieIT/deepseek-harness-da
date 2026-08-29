@@ -124,3 +124,12 @@ dimension_refs:
       - dws_column: recharge_id
         dim_column: recharge_id
     derivation: DWS recharge_id（商品ID）与 dim_10000251_com_recharge_info 主键 recharge_id 精确匹配，JOIN 回填礼包名称/类型/主题/价格。
+pref_label: 付费订单总表
+alt_labels:
+  - 付费
+  - 充值
+  - 订单
+  - 金额
+  - ARPU
+  - ARPPU
+  - 消费
