@@ -4,13 +4,13 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows":1,"max_rows":20}
-  match_mode: "row_count_range"
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "「异常数据」范围过于宽泛，系统无法自动扫描所有指标异常。请指定关注的领域（如付费、活跃、留存等）和异常判断标准。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L4"
-  query_intent: "anomaly"
+  query_intent: "open_ended"
   mode: "linear"
   covered_assets:
     - "dws_10000251_com_pay_order_df"

@@ -121,3 +121,10 @@ dimension_refs:
 pref_label: PVP卡牌统计日表
 alt_labels:
   - 使用率
+  - PVP胜率
+  - 武将胜率
+  - 武将对战
+  - 对战统计
+  - 胜负
+  - 平衡性
+  - 武将平衡

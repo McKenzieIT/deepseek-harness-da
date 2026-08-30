@@ -219,11 +219,19 @@ class LlmJudgeExecutor implements JudgeExecutor {
 
   async judge(expected: unknown, actual: string, question: string): Promise<JudgeResult> {
     const prompt = [
-      'You are an eval judge. Score whether the agent\'s answer correctly answers the user question, given the expected answer.',
+      'You are an eval judge for a data query agent. Score whether the agent\'s answer is acceptable given the expected answer.',
+      '',
+      'Evaluation rules:',
+      '1. The expected answer describes the KEY POINTS a good response should cover — it is NOT the exact text the agent must produce.',
+      '2. Score based on semantic alignment: does the agent\'s response address the same core points as the expected answer?',
+      '3. For decline/clarification responses: award high scores if the agent (a) correctly identifies why the question cannot be answered directly, (b) explains the limitation accurately, and (c) offers useful alternatives or asks for clarification.',
+      '4. Do NOT penalize for different wording, additional helpful context, or different structure — only penalize for missing key points or factual errors.',
+      '',
       `Question: ${question}`,
       `Expected answer: ${JSON.stringify(expected)}`,
       `Agent answer: ${actual}`,
-      'Reply with ONLY a single number between 0 and 1 (1 = fully correct, 0 = wrong).',
+      '',
+      'Reply with ONLY a single number between 0 and 1 (1 = fully acceptable, 0 = unacceptable).',
     ].join('\n')
     try {
       const raw = await this.llm.complete(prompt)

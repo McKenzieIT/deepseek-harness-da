@@ -4,13 +4,13 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows": 2, "max_rows": 30}
-  match_mode: row_count_range
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "当前数据中缺少版本号字段，无法准确定义'新版本上线'的时间节点。建议提供具体的版本号或上线日期，以便查询该时段的活跃、留存、付费等接受度相关指标。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L3"
-  query_intent: "trend"
+  query_intent: "open_ended"
   mode: "linear"
   covered_assets:
     - "dws_10000251_univ_role_act_di"

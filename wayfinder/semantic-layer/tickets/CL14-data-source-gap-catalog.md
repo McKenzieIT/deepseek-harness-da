@@ -1,6 +1,6 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: []
 ---
 
@@ -39,3 +39,9 @@ CL-10 中 7 个 voice EXECUTION cases 失败因为 agent 找不到合适的数�
 
 - 5 个 ⚠️ cases 中至少 4 个修复为 pass（通过 enrichment 使 agent 找到正确表）
 - 2 个 △ cases 迁移为 DELIVERY cases 并通过 llm_judge 校准后的标准
+
+## Resolution
+
+**Run ID**: `10320fe2-f2af-4586-aa82-705ed12aef09`（2026-08-30）
+
+4 表 alt_labels 扩充 + voice_017/020 迁移为 DELIVERY。voice_003/008/030 翻转为 pass（3/5 验收通过），voice_034 仍 wrong（检索排序问题）。

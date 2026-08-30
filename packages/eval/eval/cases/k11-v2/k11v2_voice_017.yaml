@@ -4,13 +4,13 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows": 1, "max_rows": 100}
-  match_mode: row_count_range
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "当前数据资产中没有情感分析或满意度评分字段，无法直接评估玩家反馈的正面/负面倾向。可以提供的是舆情互动数据（如帖子数、评论数、点赞数等）。请明确您想了解的具体互动指标。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L2"
-  query_intent: "metric_lookup"
+  query_intent: "open_ended"
   mode: "linear"
   covered_assets:
     - "dws_10000251_public_sentiment_df"

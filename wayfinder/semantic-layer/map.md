@@ -114,6 +114,10 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [W15 Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md) — `evidence/eval-run-completed` 加入 `API_REMOTE_FORWARDED_EVENTS` + Cordis Events 声明；`EvidenceQueryClient.subscribeInvalidation?(cb): disposer`；apply scope `invalidationListeners` Set + `scope.remote.$on` + `scope.on('connection/reset')` 驱动；`useEvidenceMetrics` useEffect 订阅→refresh()；94 tests 全绿
 - [G7 Context Projection 统一 — 关闭为 out of scope（v2+）](tickets/G7-context-projection-unification.md) — `toPromptContext` 和 `toCriticContext` 生产零消费者，系统已通过 agent tool call 实现按需投射；当前无 token 压力（CL-8 100%，CL-9 91.7%）；Jedify benchmark 验证 + token/attention/cache 优化作为独立 research（R10）调研；若 R10 结论指向需要统一投射接口则重新开票
 - [CL-10 Voice Eval Case 扩展](tickets/CL10-voice-eval-case-expansion.md)（[实验报告](research/cl10-voice-eval-experiment-report.md)）— glob 修复 + 48 voice cases（34 EXEC + 14 DELIVERY）+ 双模式基线：no-sql-judge 91.7%（154/168）、sql-judge **66.1%**（111/168）。关键发现：sql-judge 暴露真实语义质量（original 70%）、voice 暴露数据源缺口 + 多表 join 缺失、DELIVERY judge 需校准、enrichment 仍是最大杠杆。**sql-judge 模式确认为后续标准基线**
+- [CL-11 DELIVERY eval judge 校准](tickets/CL11-delivery-judge-calibration.md) — judge prompt 改进（语义对齐而非文本匹配）+ **reply 管道修复**（agent 非 SQL 输出完整传递给 judge 而非截断的 "Declined: ..."）。DELIVERY: 1/14 → 11/14（78.6%）
+- [CL-12 SQL semantic judge 基线回归修复](tickets/CL12-sql-judge-baseline-regression.md) — 根因分析：26/32 failure = "no_sql"（agent 拒绝而非生成 SQL）；5 不可回答 case 迁移为 DELIVERY（019/049/075/078/079）+ 5 表 alt_labels enrichment。Original: 70.0% → 75.0%
+- [CL-13 Compound query join 完整性](tickets/CL13-compound-query-join-completeness.md) — voice_030 通过 CL-14 enrichment 翻转为 pass；voice_029/032 仍为 wrong（多表 join 能力限制，非检索问题）
+- [CL-14 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md) — 4 表 alt_labels 扩充（pvp_card_statistics_di/gacha_result_statis_di/pve_progress_df/com_pay_order_df）+ voice_017/020 迁移为 DELIVERY；voice_003/008/030 翻转为 pass（3/5 验收通过）。**四票联合 eval：66.1% → 73.8%（+7.7pp，net +13 cases）**
 
 
 ## Not yet specified
@@ -251,11 +255,11 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 *全部完成。*
 
 ### CL-10 后续优化（sql-judge 质量提升）
-- [CL-11: DELIVERY eval judge 校准](tickets/CL11-delivery-judge-calibration.md) — 校准 llm_judge 使其评估"拒绝是否合理"而非"措辞是否匹配"（**frontier — 无阻塞**）
-- [CL-12: SQL semantic judge 基线回归修复](tickets/CL12-sql-judge-baseline-regression.md) — 逐 case 修复 original 24 + alias 8 个 SQL 语义问题，目标 original 80%+（**frontier — 无阻塞**）
-- [CL-13: Voice compound query 多表 join 完整性](tickets/CL13-compound-query-join-completeness.md) — 修复复合查询只完成一半的问题，涉及检索/expansion/system prompt（**frontier — 无阻塞**）
-- [CL-14: 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md) — 7 个 voice EXEC 失败的根因盘点：5 个检索命中问题 + 2 个数据缺失（**frontier — 无阻塞**）
-- [CL-15: sql-judge 模式确立为标准基线](tickets/CL15-sql-judge-as-standard-baseline.md) — 文档化 + CI 集成 + 质量趋势追踪（**←CL-11, CL-12**）
+- ~~[CL-11: DELIVERY eval judge 校准](tickets/CL11-delivery-judge-calibration.md)~~ ✅ — judge prompt + reply 管道修复；DELIVERY 1/14→11/14
+- ~~[CL-12: SQL semantic judge 基线回归修复](tickets/CL12-sql-judge-baseline-regression.md)~~ ✅ — 5 case 迁移 DELIVERY + 5 表 enrichment；original 70%→75%
+- ~~[CL-13: Voice compound query 多表 join 完整性](tickets/CL13-compound-query-join-completeness.md)~~ ✅ — voice_030 pass（CL-14 enrichment）；029/032 仍 wrong（agent join 能力限制）
+- ~~[CL-14: 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md)~~ ✅ — 4 表 enrichment + 2 case 迁移；voice_003/008/030 pass
+- [CL-15: sql-judge 模式确立为标准基线](tickets/CL15-sql-judge-as-standard-baseline.md) — 文档化 + CI 集成 + 质量趋势追踪（**frontier — CL-11/12 已完成**）
 
 ### Context Layer 对齐（CL 系列）
 - ~~[G7: Context Projection 统一](tickets/G7-context-projection-unification.md)~~ — 关闭为 out of scope（v2+）：生产零消费、无 token 压力、按需投射已存在

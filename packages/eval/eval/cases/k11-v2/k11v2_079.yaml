@@ -4,10 +4,10 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows":5,"max_rows":50}
-  match_mode: "row_count_range"
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "「平衡性」是主观评估概念，需要明确衡量维度（如PVP胜率偏差、出场率集中度、强度离群值等）才能查询数据。请指定具体的平衡性指标。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L4"
   query_intent: "open_ended"

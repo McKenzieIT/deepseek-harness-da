@@ -1,6 +1,6 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: []
 ---
 
@@ -43,3 +43,9 @@ CL-10 中 5 个 voice compound cases 失败原因为 SQL 只完成了查询的�
 
 - 5 个 compound failure cases 中至少 3 个修复为 pass
 - 不引入 single-table case 的 regression
+
+## Resolution
+
+**Run ID**: `10320fe2-f2af-4586-aa82-705ed12aef09`（2026-08-30）
+
+受益于 CL-14 enrichment（pve_progress_df 添加"副本/通关"alt_labels）。voice_030 翻转为 pass。voice_029/032 仍为 wrong（多表 join 能力限制）。

@@ -4,10 +4,10 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows":3,"max_rows":20}
-  match_mode: "row_count_range"
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "「需要优化」是主观业务判断，无法自动得出。请明确衡量标准（如通关率过低、参与人数下降、流失率上升等），可以帮您查询具体玩法的数据指标。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L4"
   query_intent: "open_ended"

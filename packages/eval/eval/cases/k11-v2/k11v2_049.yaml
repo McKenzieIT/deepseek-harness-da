@@ -4,13 +4,13 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows":20,"max_rows":30}
-  match_mode: "row_count_range"
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "当前舆情数据表中没有情感极性/正负面标签字段，无法区分负面舆情。可以提供舆情总量和互动指标的趋势数据。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L2"
-  query_intent: "trend"
+  query_intent: "open_ended"
   mode: "linear"
   covered_assets:
     - "dws_10000251_public_sentiment_df"

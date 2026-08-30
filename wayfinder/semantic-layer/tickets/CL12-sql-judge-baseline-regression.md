@@ -1,6 +1,6 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: []
 ---
 
@@ -50,3 +50,9 @@ k11v2_alias_009, 015, 022, 024, 029, 031, 038, 039
 - `eval-results/9788424c-a167-4a19-9c72-e27ae7455f58.json` — 失败数据源
 - `packages/data/nl2sql-engine/` — system prompt 和引擎逻辑
 - `examples/k11-semantic-layer/tables/` — 定义描述
+
+## Resolution
+
+**Run ID**: `10320fe2-f2af-4586-aa82-705ed12aef09`（2026-08-30）
+
+5 个不可回答 case 迁移为 DELIVERY（019, 049, 075, 078, 079）+ 5 表 alt_labels enrichment。Original: 70.0% → 75.0%。

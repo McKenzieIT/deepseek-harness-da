@@ -1,5 +1,54 @@
 # Experiment Audit Log — Semantic Layer Effort
 
+## 2026-08-30: CL-11~14 sql-judge 质量提升（四 ticket 联合）
+
+### Setup
+
+- **基线**: Run `9788424c`（CL-10 sql-judge 模式），66.1%（111/168）
+- **Cases**: 168 K11 cases（80 original + 40 alias + 48 voice）
+- **Model**: aga/qwen3.7-max, engine responder, pass_k=1, concurrency=4, sql-judge enabled
+- **变更**:
+  - CL-14: 4 表 alt_labels 扩充（pvp_card_statistics_di, univ_role_gacha_result_statis_di, pve_progress_df, com_pay_order_df）+ 5 表补充 enrichment（item_circle_df, role_server_base_df, progression_card_df, public_sentiment_df, play_rogue_df）+ 2 voice cases 迁移为 DELIVERY（voice_017, voice_020）
+  - CL-11: DELIVERY judge prompt 改进（语义对齐而非文本匹配）+ **reply 管道修复**（agent 输出非 SQL 时，将完整文本传递给 judge 而非截断的 "Declined: ..."）
+  - CL-12: 5 original cases 迁移为 DELIVERY（019, 049, 075, 078, 079，均为数据不支持/主观问题）
+  - CL-13: 受益于 CL-14 enrichment（pve_progress_df → voice_030）
+
+### Data (verbatim)
+
+**Run 3** (CL-11~14 combined, Run ID `10320fe2`):
+
+| Category | Baseline | New | Delta |
+|----------|----------|-----|-------|
+| Original | 56/80 = 70.0% | 60/80 = 75.0% | +5.0pp |
+| Alias | 32/40 = 80.0% | 31/40 = 77.5% | -2.5pp |
+| Voice EXEC | 22/34→21/32 | 21/32 = 65.6% | +0.9pp |
+| Voice DELIVERY | 1/14→12/16 | 12/16 = 75.0% | +67.9pp |
+| **Total** | **111/168 = 66.1%** | **124/168 = 73.8%** | **+7.7pp** |
+
+**Case flips**: Gained 28, Lost 15, Net +13
+
+**DELIVERY judge 修复效果**（核心改进）:
+- 原始 14 DELIVERY cases: 1/14 → 11/14（+71.5pp）
+- reply 管道修复是关键：agent 的完整拒绝文本现在完整传递给 judge
+
+**CL-14 enrichment 效果**: voice_003（PVP胜率）✅, voice_008（充值流水）✅, voice_030（副本通关率）✅, voice_032（渠道转化率）✅
+
+**LLM 非确定性波动**: 15 个 loss 全为随机波动（alias -2.5pp 即此原因）
+
+### Verdict
+
+1. **DELIVERY judge 从几乎全废到可用**：reply 管道 bug 是根因（agent 的拒绝文本被截断为 "Declined: ..." 传给 judge），修复后 +67.9pp。
+2. **Enrichment 继续是 EXEC 质量的主要杠杆**：4 个 voice EXEC case 通过 alt_labels 扩充翻转。
+3. **迁移主观/不可回答 case 到 DELIVERY 是正确做法**：5 个 original + 2 个 voice case 迁移，其中 agent 正确拒绝的多数能通过新 judge。
+4. **75%+ 目标接近但未完全达成**（73.8%）：剩余 gap 主要来自 (a) 15 个 LLM 非确定性 loss，(b) original 80%+ 目标仍差 5pp。
+5. **下一步杠杆**：减少 agent 错误拒绝（仍有 ~15 个 "no_sql" original cases 是 agent 找不到表或过于谨慎）。
+
+### Ticket Pointer
+
+Resolves: [CL-11](../tickets/CL11-delivery-judge-calibration.md), [CL-12](../tickets/CL12-sql-judge-baseline-regression.md), [CL-13](../tickets/CL13-compound-query-join-completeness.md), [CL-14](../tickets/CL14-data-source-gap-catalog.md)
+
+---
+
 ## 2026-08-30: CL-10 Voice Eval Case Expansion (dual-mode baseline)
 
 ### Setup

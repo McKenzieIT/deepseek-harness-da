@@ -1,6 +1,6 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: []
 ---
 
@@ -40,3 +40,9 @@ CL-10 的 14 个 DELIVERY cases（测试 agent 合理拒绝/澄清能力）中 1
 - `packages/eval/eval/src/delivery.ts` — delivery match 逻辑
 - `packages/eval/eval/src/eval_case.ts` — case schema（若新增 match_mode）
 - `packages/eval/eval/cases/k11-v2/k11v2_voice_013.yaml` ~ `k11v2_voice_048.yaml` — 14 个 DELIVERY cases
+
+## Resolution
+
+**Run ID**: `10320fe2-f2af-4586-aa82-705ed12aef09`（2026-08-30）
+
+DELIVERY judge prompt 改进 + reply 管道修复（agent 非 SQL 输出完整传递给 judge）。DELIVERY pass rate: 1/14 → 11/14（78.6%）。
