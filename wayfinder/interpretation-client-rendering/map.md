@@ -15,7 +15,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
   - 遵循 `packages/client/AGENTS.md` 全部 slot/props/styling/export 纪律。
   - 遵循 `ui-tool` 的 toolview 注册模式：`ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key: '<tool_name>' }, Component))`。
   - `argsRaw`（tool call JSON）= 结构化 intent；`content`（tool result ContentBlock[]）= 渲染文本。client 从 `argsRaw` 解析 intent 渲染 UI。
-  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径是 R4 研究主题。
+  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径:v1 为同 turn TSV 扫描 + result_id 校验(T4 已修协议错位),正式 result store RPC 是 [R6](tickets/R6-result-store-server-side.md) 研究主题。
   - `compute` 延后（blocked on 安全计算环境）——本 map 不含。
 
 ## Decisions so far
@@ -27,12 +27,13 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [T1: Implement ui-present-decomposition package](tickets/T1-ui-present-decomposition.md) — packages/client/ui-present-decomposition/ 完成，toolview 注册 key='present_decomposition'，三态渲染（skeleton/fallback/rich card），15 tests green
 - [T2: Implement ui-present-table package](tickets/T2-ui-present-table.md) — packages/client/ui-present-table/ 完成，toolview 注册 key='present_table'，TSV 解析 + KPI 聚合 + 虚拟滚动 + Chart.js lazy load + 折叠/展开 + CSV 导出，52 tests green，100% 覆盖率
 - [T3: Implement ui-suggest-followups package](tickets/T3-ui-suggest-followups.md) — packages/client/ui-suggest-followups/ 完成，toolview 注册 key='suggest_followups'，inject face 提供 submit callback，chip 点击立即提交，旧 turn chips 从 DOM 移除，22 tests green，100% 覆盖率
+- [R7: 前沿 agent 数据展示 UI 调研(联网核验版)](tickets/R7-data-display-ui-patterns.md) — 表格交互基线成行业标配(ChatGPT 已渲染 interactive tables);图表自动生成三条路线+必须用户可切换;透明度三路径(Genie 同卡折叠 SQL 最贴合 DSH);Actionable Insights 是下一前沿;10/14 产品经 MCP 联网核验
+- [R8: present_table 展示层缺陷审计与优化方案](tickets/R8-data-display-optimization-plan.md) — Cordis 合规确认 + A/B/C 缺陷分级:A 级含 parseTsv 与真实 render 格式错位(表头变 result_id 行,实测复现)与 50 行天花板使虚拟滚动/CSV 不可达;host 侧 ctx.resultCache 已存在只差 client RPC;优化四阶段路径
+- [T4: present_table 展示层优化执行(Phase 0-2)](tickets/T4-present-table-display-upgrade.md) — parseQueryData 协议修复 + result_id 精确绑定/错配提示 + isError + KPI 截断诚实化;排序/类型对齐/locale/图表懒加载+主题+切换/复制 MD/SQL 折叠;79 tests + 100% 覆盖率 + tsc 通过;result store RPC 移交 R6
 
 ## Not yet specified
 
-- `present_table` 的 chart 渲染精度扩展（v1 仅 line/bar，后续是否加 area/pie/scatter）
-- Object layer result cache 的具体实现位置（runtime 内 vs 独立 service 包）及 LRU eviction 策略（TTL / maxEntries）
-- Result store server-side 设计（RPC 协议、存储后端、GC 策略）——client cache 的上游依赖，当前 v1 通过同 turn TSV 扫描 bypass
+(暂无——原三条雾已全部毕业为票:chart 精度扩展 → [R4](tickets/R4-chart-type-expansion.md),object layer cache → [R5](tickets/R5-object-layer-result-cache.md),result store server-side → [R6](tickets/R6-result-store-server-side.md))
 
 ## Out of scope
 

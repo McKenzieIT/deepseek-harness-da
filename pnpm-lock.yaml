@@ -4528,6 +4528,22 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
+  packages/data/tool-discover-alt-labels:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-semantic-layer':
+        specifier: workspace:^
+        version: link:../semantic-layer
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
   packages/data/tool-discover-relations:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -5122,6 +5138,19 @@ importers:
       '@deepseek-ai/dsh-query':
         specifier: workspace:^
         version: link:../../query/query
+
+  packages/eval/retrieval-experiment:
+    dependencies:
+      '@deepseek-ai/dsh-nl2sql-engine':
+        specifier: workspace:^
+        version: link:../../data/nl2sql-engine
+      '@deepseek-ai/dsh-semantic-layer':
+        specifier: workspace:^
+        version: link:../../data/semantic-layer
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.0
+        version: 22.20.0
 
   packages/examples/acp-demo:
     dependencies:

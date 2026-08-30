@@ -5,11 +5,20 @@
   overflow: hidden;
 }
 
+/* ── header bar: collapse button + row actions ─────────────────────────── */
+
+.headerBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .header {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 10px 12px;
   border: none;
   background: none;
@@ -24,6 +33,13 @@
   background: var(--dsw-alias-surface-hover);
 }
 
+.headerActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-right: 8px;
+}
+
 .chevron {
   display: inline-flex;
   transition: transform 150ms ease;
@@ -35,12 +51,16 @@
 
 .headerTitle {
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rowCount {
   margin-left: auto;
   font-size: 12px;
   color: var(--dsw-alias-content-tertiary);
+  flex-shrink: 0;
 }
 
 .body {
@@ -50,7 +70,51 @@
   gap: 12px;
 }
 
-/* KPI Cards */
+/* ── row actions (CSV / copy Markdown) ─────────────────────────────────── */
+
+.actionBtn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--dsw-alias-border-primary);
+  background: var(--dsw-alias-surface-secondary);
+  color: var(--dsw-alias-content-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.actionBtn:hover {
+  background: var(--dsw-alias-surface-hover);
+}
+
+/* ── SQL disclosure ────────────────────────────────────────────────────── */
+
+.sqlBox {
+  margin: 0 12px;
+  border: 1px solid var(--dsw-alias-border-primary);
+  border-radius: 6px;
+  background: var(--dsw-alias-surface-secondary);
+}
+
+.sqlSummary {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--dsw-alias-content-secondary);
+  cursor: pointer;
+}
+
+.sqlText {
+  margin: 0;
+  padding: 0 10px 8px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--dsw-alias-content-primary);
+}
+
+/* ── KPI cards ─────────────────────────────────────────────────────────── */
+
 .kpiRow {
   display: flex;
   gap: 10px;
@@ -81,7 +145,14 @@
   color: var(--dsw-alias-content-tertiary);
 }
 
-/* Table */
+.kpiNote {
+  padding: 0 12px 8px;
+  font-size: 11px;
+  color: var(--dsw-alias-state-warning-primary);
+}
+
+/* ── tables ────────────────────────────────────────────────────────────── */
+
 .tableWrap {
   overflow-x: auto;
   border-radius: 4px;
@@ -115,14 +186,49 @@
   white-space: nowrap;
 }
 
-/* Virtual scroll */
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sortBtn {
+  all: unset;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.sortBtn:hover {
+  color: var(--dsw-alias-content-primary);
+}
+
+/* ── virtual grid table (header + rows share one column template) ─────── */
+
+.gridHead {
+  display: grid;
+  min-width: 100%;
+  background: var(--dsw-alias-surface-secondary);
+  border-bottom: 1px solid var(--dsw-alias-border-primary);
+  scrollbar-gutter: stable;
+}
+
+.gridTh {
+  padding: 6px 10px;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--dsw-alias-content-secondary);
+}
+
 .virtualScroll {
   max-height: 400px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
-.virtualRow {
-  display: flex;
+.gridRow {
+  display: grid;
   align-items: center;
   position: absolute;
   top: 0;
@@ -131,8 +237,7 @@
   border-bottom: 1px solid var(--dsw-alias-border-primary);
 }
 
-.virtualCell {
-  flex: 1;
+.gridCell {
   padding: 6px 10px;
   font-size: 12px;
   line-height: 18px;
@@ -142,13 +247,22 @@
   text-overflow: ellipsis;
 }
 
+/* ── chart ─────────────────────────────────────────────────────────────── */
 
+.chartSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
-/* CSV download */
-.csvButton {
-  align-self: flex-start;
-  padding: 4px 10px;
-  border-radius: 4px;
+.chartToolbar {
+  display: flex;
+  gap: 6px;
+}
+
+.chartBtn {
+  padding: 2px 10px;
+  border-radius: 999px;
   border: 1px solid var(--dsw-alias-border-primary);
   background: var(--dsw-alias-surface-secondary);
   color: var(--dsw-alias-content-secondary);
@@ -156,11 +270,26 @@
   cursor: pointer;
 }
 
-.csvButton:hover {
-  background: var(--dsw-alias-surface-hover);
+.chartBtn[aria-pressed='true'] {
+  font-weight: 600;
+  color: var(--dsw-alias-content-primary);
+  border-color: var(--dsw-alias-content-secondary);
 }
 
-/* Data expired */
+.chartBox {
+  height: 240px;
+  position: relative;
+}
+
+.chartSkeleton {
+  height: 240px;
+  border-radius: 6px;
+  background: var(--dsw-alias-surface-secondary);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* ── banners ───────────────────────────────────────────────────────────── */
+
 .expiredBanner {
   padding: 8px 12px;
   font-size: 12px;
@@ -169,7 +298,22 @@
   border-bottom: 1px solid var(--dsw-alias-border-primary);
 }
 
-/* Skeleton loading */
+.errorBanner {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--dsw-alias-state-error-primary);
+  background: var(--dsw-alias-surface-secondary);
+  border-bottom: 1px solid var(--dsw-alias-border-primary);
+}
+
+.mismatchHint {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--dsw-alias-content-tertiary);
+}
+
+/* ── skeleton ──────────────────────────────────────────────────────────── */
+
 .skeleton {
   display: flex;
   flex-direction: column;
@@ -202,7 +346,8 @@
   50% { opacity: 0.4; }
 }
 
-/* Fallback */
+/* ── fallback ──────────────────────────────────────────────────────────── */
+
 .fallback {
   padding: 12px;
 }
