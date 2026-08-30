@@ -77,3 +77,9 @@ dimension_refs:
       - dws_column: play_func_id
         dim_column: function_id
     derivation: DWS play_func_id (玩法功能id) records the gameplay function being unlocked per the table description; dim_10000251_function_info (PK function_id, 功能配置维度表 with unlock conditions) is the function dimension, so play_func_id joins function_id.
+pref_label: 玩法解锁表
+alt_labels:
+  - 解锁
+  - 功能
+  - 开放
+  - 玩法

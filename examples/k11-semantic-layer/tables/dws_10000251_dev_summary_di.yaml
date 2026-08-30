@@ -229,3 +229,4 @@ dimension_refs:
       - dws_column: pay_server_id_lst
         dim_column: server_id
     derivation: DWS act_server_id_fst/act_server_id_lst（首次/最近活跃区服id）与 pay_server_id_fst/pay_server_id_lst（首次/最近付费区服）均为区服id，与 dim_10000251_server_info 主键 server_id 语义匹配，JOIN 回填区服名称与开服时间。
+pref_label: 设备汇总日增量表

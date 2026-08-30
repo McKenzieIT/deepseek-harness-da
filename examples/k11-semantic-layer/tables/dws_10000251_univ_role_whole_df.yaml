@@ -105,3 +105,7 @@ coverage:
   coverage_status: draft
 supersedes: []
 dimension_refs: []
+pref_label: 角色全量快照表
+alt_labels:
+  - 全量
+  - 快照

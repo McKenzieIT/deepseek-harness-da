@@ -101,3 +101,9 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (comment 服务器ID) is an exact-name match to dim_10000251_server_info's primary key server_id, used to look up server name and open-time attributes.
+pref_label: 流失评估样本表
+alt_labels:
+  - 评估
+  - 样本
+  - 算法
+  - 验证

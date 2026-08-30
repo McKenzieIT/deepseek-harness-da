@@ -126,3 +126,7 @@ dimension_refs:
       - dws_column: card_job
         dim_column: job_id
     derivation: DWS card_job (卡牌职业, dimension) is the card's profession code; dim_10000251_knight_job_name (职业配置维度表, PK job_id) translates 职业编码 to 可读名称, so card_job joins job_id.
+pref_label: 卡牌培养快照表
+alt_labels:
+  - 培养
+  - 状态

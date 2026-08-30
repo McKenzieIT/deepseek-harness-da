@@ -70,3 +70,8 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 最新分区(20251227)抽样验证列非空且取值合理(user_type=3,tag_key=角色等级,tag_value≤100,lt≤144)；全量UV聚合查询超时未取得实数值，故置draft
 dimension_refs: []
+pref_label: 角色生命周期标签表
+alt_labels:
+  - 生命周期
+  - 阶段
+  - LT

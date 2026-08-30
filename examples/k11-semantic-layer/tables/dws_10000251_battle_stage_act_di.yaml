@@ -98,3 +98,4 @@ dimension_refs:
       - dws_column: stay_stage_id
         dim_column: id
     derivation: "DWS column stay_stage_id (comment: 停留关卡id, 已通关的关卡) semantically matches PK id (关卡id) of dim_10000251_trans_stage_df (关卡配置维度表, 战斗关卡域), the canonical stage dimension for stage name/type/difficulty attributes."
+pref_label: 关卡活跃通关表

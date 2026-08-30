@@ -54,3 +54,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 已在最新 ds=20260730 上 spot-verify total_role_uv=31174、risk_role_uv=0、high_risk_role_uv=0，数值合理（当日全部角色为 risk_level=1）；结构与列经 meta describe 核实
 dimension_refs: []
+pref_label: 角色风险标识表
+alt_labels:
+  - 风险
+  - 作弊
+  - 异常
+  - 封号

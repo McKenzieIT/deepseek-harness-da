@@ -100,3 +100,9 @@ coverage:
     - 不携带用户属性(如等级、付费),需与其他主体表 JOIN 才能做画像分析
 supersedes: []
 dimension_refs: []
+pref_label: 用户关系表
+alt_labels:
+  - 关系
+  - 好友
+  - 社交
+  - 互动

@@ -67,3 +67,6 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 最新分区 ds=20260730 抽样实测 dev_uv/risk_dev_cnt/avg_max_role_level 数值合理，user_type=1 与设备主体推断一致，标记 analyst_confirmed。
 dimension_refs: []
+pref_label: 设备画像表
+alt_labels:
+  - 设备

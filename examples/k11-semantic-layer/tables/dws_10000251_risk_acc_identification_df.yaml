@@ -52,3 +52,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 已在 latest ds=20260730 抽样验证 账号UV=24984 与 risk_level 分布(均为1)，数值合理；高风险指标当日为0属预期(无>=3样本)
 dimension_refs: []
+pref_label: 账号风险标识表
+alt_labels:
+  - 风险
+  - 作弊
+  - 异常
+  - 封号

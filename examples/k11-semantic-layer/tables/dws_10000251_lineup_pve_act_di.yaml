@@ -92,3 +92,7 @@ dimension_refs:
       - dws_column: sub_play_id
         dim_column: sub_play_id
     derivation: DWS 列 sub_play_id (comment 子玩法id) 与 dim trans_sub_play_od 主键 sub_play_id 完全一致；该 dim 为子玩法配置维度表，提供子玩法名/所属玩法。
+pref_label: PVE阵容活跃表
+alt_labels:
+  - 阵容
+  - 编队

@@ -107,3 +107,6 @@ dimension_refs:
       - dws_column: sub_play_id
         dim_column: sub_play_id
     derivation: DWS sub_play_id (子玩法id) exactly matches the DIM PK sub_play_id; dim_10000251_trans_sub_play_od is the canonical 子玩法 config dimension.
+pref_label: PVE卡牌使用活跃表
+alt_labels:
+  - 使用

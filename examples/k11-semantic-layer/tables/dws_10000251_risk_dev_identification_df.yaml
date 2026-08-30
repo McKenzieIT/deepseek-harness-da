@@ -59,3 +59,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 最新分区 ds=20260730 抽样验证 total_uv=25015、risk_level 仅=1、high_risk_uv=0 合理；仅抽样验证非全量复核
 dimension_refs: []
+pref_label: 设备风险标识表
+alt_labels:
+  - 风险
+  - 作弊
+  - 异常
+  - 封号

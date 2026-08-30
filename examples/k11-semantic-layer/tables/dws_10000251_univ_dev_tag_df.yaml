@@ -365,3 +365,7 @@ dimension_refs:
       - dws_column: rel_role_srv_lst
         dim_column: server_id
     derivation: DWS columns rel_role_srv_fst (comment '首次关联角色区服') and rel_role_srv_lst (comment '最近关联角色区服') semantically reference a 区服 (server), matching the primary_key server_id of dim_10000251_server_info, the canonical 区服 dimension designed for fact-table joins via server_id.
+pref_label: 设备事件标签表
+alt_labels:
+  - 设备
+  - 事件

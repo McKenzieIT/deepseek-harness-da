@@ -115,3 +115,7 @@ dimension_refs:
       - dws_column: stay_stage_id
         dim_column: id
     derivation: DWS stay_stage_id (comment 停留关卡id) semantically matches the PK id (关卡id) of dim_10000251_trans_stage_df, the 关卡配置 dimension for stage lookup by id.
+pref_label: 玩法进度活跃表
+alt_labels:
+  - 玩法
+  - 推进

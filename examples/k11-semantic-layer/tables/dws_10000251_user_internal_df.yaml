@@ -66,3 +66,8 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 已对 latest ds=20260730 抽样验证 5 项指标(5365/67/1994/1594/1777)，分组求和一致且值合理；analyst 级确认，待业务方复核 user_type 语义。
 dimension_refs: []
+pref_label: 内部用户表
+alt_labels:
+  - 内部
+  - 员工
+  - 白名单

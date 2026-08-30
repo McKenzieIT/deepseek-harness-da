@@ -249,3 +249,6 @@ dimension_refs:
       - dws_column: rel_role_srv_lst
         dim_column: server_id
     derivation: "DWS columns rel_role_srv_fst/rel_role_srv_lst (comment: 首次/最近关联角色区服) are 区服(server) identifiers, semantically equal to the PK server_id of dim_10000251_server_info, which is the canonical 区服 dimension for joining fact tables by server_id."
+pref_label: 账号流失日表
+alt_labels:
+  - 沉默

@@ -118,3 +118,6 @@ dimension_refs:
       - dws_column: tactic_id
         dim_column: tactic_id
     derivation: DWS tactic_id (comment 风物ID) exactly matches dim_10000251_tactic_info primary key tactic_id, which is described as the 风物(tactic)配置维度表 keyed by tactic_id.
+pref_label: PVP卡牌统计日表
+alt_labels:
+  - 使用率

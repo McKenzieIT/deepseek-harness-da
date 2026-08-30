@@ -90,3 +90,8 @@ confirmation:
   note: "真实数据验证通过(2026-07-30, latest ds=20260729)。列均存在(user_type BIGINT/user_id STRING/rule1 BIGINT/rule2 BIGINT/ds STRING,5列匹配meta describe)。user_type 实测 DISTINCT={1,2,3} 与 description 的设备/账号/角色三类主体一致。rule1/rule2 实测值域 {0,1}(注意:源表列注释误标为'1-是、2-否',实际存储为 0/1;YAML 的 SUM/AVG 视作0/1标志位的逻辑正确)。核心指标实测(20260729): pred_user_cnt=755520、rule1_hit_cnt=353207、rule2_hit_cnt=540312、rule1_hit_rate=0.4675、rule2_hit_rate=0.7152、rule_any_hit_cnt=755520(全集,无rule1=0&rule2=0行)、rule_both_hit_cnt=137999、rule1_only_hit_cnt=215208、rule2_only_hit_cnt=402313、rule2_incremental_rate=1.0(rule1=0人群全部rule2=1,无除零)。粒度: total_rows=755520==COUNT(DISTINCT CONCAT(user_type,'_',user_id))=755520,即每(user_type,user_id)每ds恰一行,粒度成立。rule1/rule2 SUM/AVG口径与标志位语义吻合,所有指标通过。"
 supersedes: []
 dimension_refs: []
+pref_label: 预下载用户标签表
+alt_labels:
+  - 预下载
+  - 预约
+  - 渠道

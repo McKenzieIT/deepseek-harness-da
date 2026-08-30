@@ -101,3 +101,7 @@ dimension_refs:
       - dws_column: act_server_id_fst
         dim_column: server_id
     derivation: DWS column act_server_id_fst (comment 首次活跃区服id) holds a server/区服 identifier that semantically matches dim_10000251_server_info's primary key server_id (区服维度配置表), enabling server name/open-date lookup.
+pref_label: 新付费用户表
+alt_labels:
+  - 新付费
+  - 首付

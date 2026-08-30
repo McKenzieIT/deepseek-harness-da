@@ -96,3 +96,10 @@ dimension_refs:
       - dws_column: result_item_value
         dim_column: item_value
     derivation: DWS result_item_type/result_item_value (comment 结果道具类型/值) composite-match dim_10000251_resource_name_info composite PK (item_type, item_value); the dim resolves item codes to human-readable names.
+pref_label: 抽卡结果统计表
+alt_labels:
+  - 抽卡
+  - 结果
+  - 获得
+  - 产出
+  - 卡池

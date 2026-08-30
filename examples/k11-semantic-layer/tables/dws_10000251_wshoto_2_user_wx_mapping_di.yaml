@@ -51,3 +51,8 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 在 latest ds=20260730 实测 daily_uv_user=7、daily_uv_wx=7、daily_record_count=7、mapping_dup_rate=0，值合理；已 analyst_confirmed。
 dimension_refs: []
+pref_label: 微盛企微映射日表
+alt_labels:
+  - 微盛
+  - 企微
+  - 映射

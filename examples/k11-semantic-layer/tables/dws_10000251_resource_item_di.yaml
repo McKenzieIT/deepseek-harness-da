@@ -129,3 +129,4 @@ dimension_refs:
       - dws_column: reason1
         dim_column: reason1
     derivation: DWS column reason1 (产销原因1) exactly matches the PK reason1 of dim_10000251_trans_reason1_df, the一级原因映射表 for将事务/流水表中的变更一级原因编码翻译为人类可读描述.
+pref_label: 道具资源产销日表

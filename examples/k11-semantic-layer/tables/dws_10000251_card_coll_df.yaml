@@ -87,3 +87,8 @@ dimension_refs:
       - dws_column: card_id
         dim_column: id
     derivation: DWS card_id (卡牌id) semantically maps to trans_card_df PK id (武将/卡牌配置主键); trans_card_df is the card/武将 config dimension for this game.
+pref_label: 卡牌收集表
+alt_labels:
+  - 收集
+  - 持有
+  - 星级

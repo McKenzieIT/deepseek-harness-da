@@ -147,3 +147,10 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 表为空(MAX(ds) NULL)，仅做结构性丰富，未做实测；status=draft。待数据入库后须 SELECT MAX(ds) 复核并升级。
 dimension_refs: []
+pref_label: 角色上手循环表v3
+alt_labels:
+  - 上手
+  - 循环
+  - 新手
+  - PBT3
+  - 漏斗

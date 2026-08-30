@@ -87,3 +87,6 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 已对最新分区 ds=20260730 抽样执行 pvp_role_uv/pvp_win_rate 等指标查询，数值合理；表非空。
 dimension_refs: []
+pref_label: PVP阵容统计日表
+alt_labels:
+  - 阵容

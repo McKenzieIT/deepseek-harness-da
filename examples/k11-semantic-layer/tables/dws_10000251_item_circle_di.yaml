@@ -113,3 +113,7 @@ dimension_refs:
       - dws_column: reason1
         dim_column: reason1
     derivation: DWS 列 reason1 (comment 变更一级原因) 与 dim trans_reason1_df 主键 reason1 完全一致；该 dim 为一级原因映射表，专为流水表 JOIN 翻译变更原因编码。
+pref_label: 物品流水日增量表
+alt_labels:
+  - 产出
+  - 消耗

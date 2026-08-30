@@ -78,3 +78,9 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (comment 服务器id) is an exact-name foreign key to dim_10000251_server_info primary key server_id, the 区服维度配置表 used to backfill server name and open date.
+pref_label: 幻谷培养总表
+alt_labels:
+  - 幻谷
+  - 培养
+  - 玩具
+  - 养成

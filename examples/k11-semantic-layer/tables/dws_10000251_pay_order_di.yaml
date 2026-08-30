@@ -104,3 +104,6 @@ dimension_refs:
       - dws_column: activity_id
         dim_column: activity_id
     derivation: DWS activity_id (活动ID) exactly matches dim_10000251_com_activity_info primary key activity_id (商业化-活动信息配置维表，activity_id 实测唯一)，用于回填活动档期与类型维度。
+pref_label: 付费订单日表
+alt_labels:
+  - 日表

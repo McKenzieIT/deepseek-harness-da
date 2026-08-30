@@ -122,3 +122,8 @@ dimension_refs:
       - dws_column: user_id
         dim_column: user_id
     derivation: DWS user_id (用户id) is the device-table (user_type=1) identifier; dim_10000251_user_tag_before_ob_info has PK user_id and carries a user_type field, explicitly stating it is used to join fact tables via user_id for tag drill-down, so the device grain aligns.
+pref_label: 设备全量快照表
+alt_labels:
+  - 设备
+  - 全量
+  - 快照

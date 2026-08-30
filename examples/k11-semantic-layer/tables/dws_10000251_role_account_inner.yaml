@@ -49,3 +49,8 @@ primary_key:
   - account_id
 primary_key_unique: true
 dimension_refs: []
+pref_label: 内部账号表
+alt_labels:
+  - 内部
+  - 员工
+  - 白名单

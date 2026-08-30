@@ -121,3 +121,6 @@ dimension_refs:
       - dws_column: stage_id
         dim_column: stage_id
     derivation: DWS columns chapter_id (comment 章节ID) and stage_id (comment 关卡ID) form an exact composite-name foreign key to dim_10000251_trans_conquest_df primary key [chapter_id, stage_id], the 征服/推图关卡维度配置表 with one row per chapter-stage; DWS suggest_level also aligns with the dim's reco_level.
+pref_label: CBT2 PVE战斗详情表
+alt_labels:
+  - CBT2

@@ -82,3 +82,8 @@ dimension_refs:
       - dws_column: charm_id
         dim_column: charm_id
     derivation: DWS charm_id (灵器ID) exactly matches dim_10000251_charm_info PK charm_id (灵器配置维度表).
+pref_label: 灵器培养日表
+alt_labels:
+  - 灵器
+  - 培养
+  - 养成

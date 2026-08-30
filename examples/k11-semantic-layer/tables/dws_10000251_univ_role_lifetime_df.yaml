@@ -79,3 +79,8 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 已在最新分区 ds=20260730 实测 role_uv/total_pay/avg_act_days 取值合理，user_type=3 单值确认分析主体=角色
 dimension_refs: []
+pref_label: 角色生命周期N日表
+alt_labels:
+  - 生命周期
+  - N日
+  - 回访

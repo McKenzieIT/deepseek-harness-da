@@ -84,3 +84,6 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id (区服id) exactly matches dim_10000251_server_info primary key server_id (区服维度配置表)，用于按区服/开服批次切片付费分析。
+pref_label: 活跃商品付费表
+alt_labels:
+  - 商品

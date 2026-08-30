@@ -124,3 +124,8 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id (区服id) exactly matches dim_10000251_server_info primary key server_id (区服维度配置表)，用于按区服切片探索行为增量分析。
+pref_label: 玩法探索日增量表
+alt_labels:
+  - 探索
+  - 城池
+  - 轶事

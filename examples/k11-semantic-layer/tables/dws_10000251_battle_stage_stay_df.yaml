@@ -102,3 +102,8 @@ dimension_refs:
       - dws_column: stay_stage_id
         dim_column: id
     derivation: "DWS column stay_stage_id (comment: 停留关卡id) semantically matches PK id (关卡id) of dim_10000251_trans_stage_df (关卡配置维度表)."
+pref_label: 关卡停留表
+alt_labels:
+  - 停留
+  - 卡关
+  - 瓶颈

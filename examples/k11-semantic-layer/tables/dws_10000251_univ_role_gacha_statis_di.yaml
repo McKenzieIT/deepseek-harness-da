@@ -85,3 +85,9 @@ dimension_refs:
       - dws_column: card_pool_type
         dim_column: type_id
     derivation: DWS card_pool_type (comment 卡池类型) is semantically the card-pool type ID, matching dim_10000251_card_pool_type_info PK type_id (卡池类型ID); the dim is built to translate a fact table's 卡池类型ID into a readable name.
+pref_label: 抽卡统计总表
+alt_labels:
+  - 抽卡
+  - 卡池
+  - 概率
+  - 保底

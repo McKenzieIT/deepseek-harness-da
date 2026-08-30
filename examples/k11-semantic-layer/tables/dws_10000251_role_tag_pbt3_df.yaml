@@ -805,3 +805,7 @@ dimension_refs:
       - dws_column: fteam_dungeon_stay_stage_id
         dim_column: id
     derivation: DWS fteam_dungeon_stay_stage_id (协战boss停留关卡) is a 团队副本关卡 id matching dim_10000251_trans_fteam_dungeon_df (PK id, 关卡id), the 团队副本关卡维度/配置表 for stage-name and recommended-level lookup; the adjacent fteam_dungeon_stay_reco_level corroborates this dim.
+pref_label: 角色PBT3宽表
+alt_labels:
+  - PBT3
+  - 宽表

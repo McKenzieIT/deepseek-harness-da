@@ -45,3 +45,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 维表无 ds 分区，整表快照。已 maxc 实测全表聚合：COUNT(*)=15499，COUNT(DISTINCT code)=15499，COUNT(DISTINCT type)=8，NULL type=91，数值合理。
 dimension_refs: []
+pref_label: 激活码表
+alt_labels:
+  - 激活码
+  - 渠道
+  - 分发
+  - 邀请码

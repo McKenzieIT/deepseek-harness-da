@@ -86,3 +86,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 已对最新 ds(20260730) 抽样实测 5 项指标，数值合理(uv=276017)；user_type 未经实测(表无此列，按表名推断)。
 dimension_refs: []
+pref_label: 设备归集表
+alt_labels:
+  - 归集
+  - utdid
+  - 品牌
+  - 型号

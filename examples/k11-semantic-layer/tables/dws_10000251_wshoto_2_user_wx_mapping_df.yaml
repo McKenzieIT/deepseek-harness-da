@@ -51,3 +51,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 已在最新ds(20260730)抽样验证 mapped_user_uv/mapped_wx_uv/mapping_total_cnt 均返回 1903 且一对一，数值合理
 dimension_refs: []
+pref_label: 微盛企微映射表
+alt_labels:
+  - 微盛
+  - 企微
+  - 映射
+  - 客服

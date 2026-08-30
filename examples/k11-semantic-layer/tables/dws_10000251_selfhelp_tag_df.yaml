@@ -60,3 +60,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 在 latest ds=20260529 实测验证 account_uv=1181554、internal_cnt=783、natural_cnt=450358，数值合理；三类主体均存在(设备1.96M/账号1.18M/角色1.63M)
 dimension_refs: []
+pref_label: 归因标签表
+alt_labels:
+  - 归因
+  - 渠道
+  - 来源
+  - 用户画像

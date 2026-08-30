@@ -107,3 +107,4 @@ dimension_refs:
       - dws_column: item_value
         dim_column: item_value
     derivation: DWS columns item_type (资源类型) and item_value (资源值) exactly match the composite PK [item_type, item_value] of dim_10000251_resource_name_info, the资源/道具名称维度表 for将事实表道具编码解析为人类可读名称.
+pref_label: 道具资源产销总表

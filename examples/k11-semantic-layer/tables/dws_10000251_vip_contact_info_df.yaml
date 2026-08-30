@@ -142,3 +142,8 @@ dimension_refs:
       - dws_column: service_wshoto_user_id_raw
         dim_column: service_wshoto_user_id
     derivation: The DWS columns service_wshoto_user_id (账号关联的客服企微id) and service_wshoto_user_id_raw (客服企微id，VIP系统记录) both carry the customer-service enterprise-wechat staff id, exactly matching the PK service_wshoto_user_id of dim_10000251_kf_wx_info, the enterprise-wechat customer-service staff lookup dimension.
+pref_label: VIP建联信息表
+alt_labels:
+  - 建联
+  - 联系
+  - 客服

@@ -135,3 +135,6 @@ dimension_refs:
       - dws_column: tactic_id
         dim_column: tactic_id
     derivation: DWS column tactic_id (comment 风物ID) is an exact-name foreign key to dim_10000251_tactic_info primary key tactic_id, the 风物配置维度表.
+pref_label: PVE卡牌统计日表
+alt_labels:
+  - 使用率

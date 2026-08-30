@@ -51,3 +51,9 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: latest ds=20260730 抽样验证 4 指标（uv=1902, wv=1887, cnt=1902, avg≈1.008）值合理；表非空；columns 经 meta describe 校验一致
 dimension_refs: []
+pref_label: 账号企微映射表
+alt_labels:
+  - 企微
+  - 微信
+  - 映射
+  - 客服

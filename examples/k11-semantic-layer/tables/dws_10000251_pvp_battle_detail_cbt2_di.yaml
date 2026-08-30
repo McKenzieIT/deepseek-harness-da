@@ -106,3 +106,6 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 表为空（MAX(ds) NULL），指标为结构化草案未抽样验证；待有数据后复核。
 dimension_refs: []
+pref_label: CBT2 PVP战斗详情表
+alt_labels:
+  - CBT2

@@ -103,3 +103,6 @@ dimension_refs:
       - dws_column: auto_pvp_rank
         dim_column: rank_id
     derivation: DWS column auto_pvp_rank (role:dimension, comment 自动PVP段位) is the auto-PVP tier identifier matching primary key rank_id of dim_10000251_auto_pvp_rank_info (auto pvp rank 段位配置表, described as purpose-built for fact-table rank_id join).
+pref_label: 角色PVP画像日表
+alt_labels:
+  - 段位

@@ -78,3 +78,7 @@ dimension_refs:
       - dws_column: card_id
         dim_column: id
     derivation: "DWS column card_id (comment: 卡牌ID) semantically matches the primary key id (武将id) of dim_10000251_trans_card_df (武将/角色配置维度表); the table's 卡牌养成 progression (progre_type 0-获取/1-升星 = obtain/star-up) corresponds to 武将 collection mechanics, making trans_card_df the canonical character-card dimension."
+pref_label: 卡牌养成日表
+alt_labels:
+  - 养成
+  - 培养

@@ -202,3 +202,7 @@ dimension_refs:
       - dws_column: stage_id
         dim_column: id
     derivation: DWS stage_id (关卡id) semantically matches dim_10000251_trans_stage_df primary key id (关卡配置维度表，主键 id=关卡id，供事实表按 id 关联做关卡维度查找)。
+pref_label: 副本通关表
+alt_labels:
+  - 地牢
+  - 玩法

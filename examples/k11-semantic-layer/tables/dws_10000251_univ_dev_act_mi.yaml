@@ -125,3 +125,6 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: maxc 抽样实测 ds=20260701 通过（user_type=1 单值，5 项指标值合理）；未做全量跨月复核
 dimension_refs: []
+pref_label: 设备月活跃表
+alt_labels:
+  - 月增量

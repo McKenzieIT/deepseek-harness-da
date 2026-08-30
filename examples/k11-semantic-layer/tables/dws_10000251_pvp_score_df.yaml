@@ -70,3 +70,9 @@ dimension_refs:
       - dws_column: pvp_rank
         dim_column: id
     derivation: DWS pvp_type (PVP玩法) and pvp_rank (最终段位) match dim_10000251_trans_pvp_rank_df composite primary key (play_func_id, id), a dim explicitly described as the 段位维度供事实表按 play_func_id + 段位 id 关联取段位名称 — exactly the 玩法+段位 pattern of this PVP score fact table.
+pref_label: PVP积分总表
+alt_labels:
+  - 积分
+  - 段位
+  - 排名
+  - 分数

@@ -136,3 +136,4 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: "DWS column server_id (comment: 区服id) exactly matches the PK server_id of dim_10000251_server_info, the canonical 区服 dimension used to backfill server name and open-server time."
+pref_label: 账号区服全量表

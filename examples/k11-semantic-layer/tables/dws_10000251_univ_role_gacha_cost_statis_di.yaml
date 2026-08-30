@@ -104,3 +104,10 @@ dimension_refs:
       - dws_column: cost_item_value
         dim_column: item_value
     derivation: DWS cost_item_type/cost_item_value (comment 消耗道具类型/值) composite-match dim_10000251_resource_name_info composite PK (item_type, item_value); the dim resolves item codes to human-readable names.
+pref_label: 抽卡消耗统计表
+alt_labels:
+  - 抽卡
+  - 消耗
+  - 花费
+  - 成本
+  - 卡池

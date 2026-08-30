@@ -63,3 +63,7 @@ confirmation:
   confirmed_at: "2026-07-31"
   note: 已对 latest ds=20260730 实测 role_uv=8813、active_uv=4699、new_uv=619、churn_uv=4114、avg_churn_day=3.89，数值合理（活跃<总，新增<活跃），故 analyst_confirmed；指标仅单分区抽样验证，未做全量复核。
 dimension_refs: []
+pref_label: 角色日用户集
+alt_labels:
+  - 经分
+  - 用户集

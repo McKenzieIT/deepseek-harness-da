@@ -68,3 +68,6 @@ confirmation:
   confirmed_at: "2026-07-31"
   notes: 在latest ds=20260730实测验证role_uv=322201、pay_amt_l30d_total≈858434、pay_days_l30d_total=9507、user_type=3(角色)，结果合理故标记analyst_confirmed；指标为结构化口径，未做全量逐日复核
 dimension_refs: []
+pref_label: VIP角色支付标签表
+alt_labels:
+  - 支付

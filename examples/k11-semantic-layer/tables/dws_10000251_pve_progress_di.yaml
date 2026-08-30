@@ -153,3 +153,6 @@ dimension_refs:
       - dws_column: stage_id
         dim_column: id
     derivation: DWS stage_id (comment 关卡ID) is the stage identifier and matches dim_10000251_trans_stage_df primary key id, which is described as '每行一个关卡，主键 id（关卡id）' — a canonical 关卡(stage)配置维度表.
+pref_label: PVE进度日表
+alt_labels:
+  - 推进

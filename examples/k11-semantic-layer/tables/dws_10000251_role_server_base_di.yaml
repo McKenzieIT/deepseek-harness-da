@@ -180,3 +180,4 @@ dimension_refs:
       - dws_column: born_server_id_lst
         dim_column: server_id
     derivation: DWS columns server_id (区服id), born_server_id_fst (首次出生区服id) and born_server_id_lst (最近出生区服id) are all server identifiers matching primary key server_id of dim_10000251_server_info (服务器区服维度配置表, purpose-built for fact-table server_id JOIN).
+pref_label: 角色区服基础日表

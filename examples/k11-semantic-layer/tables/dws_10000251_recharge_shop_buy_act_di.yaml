@@ -97,3 +97,4 @@ dimension_refs:
       - dws_column: shop_id
         dim_column: id
     derivation: DWS column shop_id (商店id) semantically maps to dim_10000251_trans_recharge_shop_df PK id (付费商店唯一标识), the付费商店配置维表 for商店维度JOIN查询.
+pref_label: 活跃商店购买表
