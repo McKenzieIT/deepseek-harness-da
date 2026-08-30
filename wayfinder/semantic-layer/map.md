@@ -112,6 +112,8 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-9 批量 DWS enrichment](tickets/CL9-batch-enrichment-dws-coverage.md) — 135 DWS 表批量 enrichment（pref_label + alt_labels）→ 覆盖率 85.2%（138/162 DWS with alt_labels，162/162 with pref_label）；初轮 -12pp regression → 两轮修正（generic blocklist + 原 27 表 deconfliction）→ 检索级 A/B +0.6pp / 0 regression；**e2e eval: 原始 80 case 100%（=CL-8），alias 40 case 100%，总计 154/168 (91.7%)**
 - [R8 Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — native push（`ctx.remote.$on` + `connection/reset` 恢复）；注入点=方案 C 改良 bridge（`EvidenceQueryClient.subscribeInvalidation` 回调，apply scope 驱动）；无 debounce；`(): void` 无 payload。毕业实现票 W15
 - [W15 Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md) — `evidence/eval-run-completed` 加入 `API_REMOTE_FORWARDED_EVENTS` + Cordis Events 声明；`EvidenceQueryClient.subscribeInvalidation?(cb): disposer`；apply scope `invalidationListeners` Set + `scope.remote.$on` + `scope.on('connection/reset')` 驱动；`useEvidenceMetrics` useEffect 订阅→refresh()；94 tests 全绿
+- [G7 Context Projection 统一 — 关闭为 out of scope（v2+）](tickets/G7-context-projection-unification.md) — `toPromptContext` 和 `toCriticContext` 生产零消费者，系统已通过 agent tool call 实现按需投射；当前无 token 压力（CL-8 100%，CL-9 91.7%）；Jedify benchmark 验证 + token/attention/cache 优化作为独立 research（R10）调研；若 R10 结论指向需要统一投射接口则重新开票
+- [CL-10 Voice Eval Case 扩展](tickets/CL10-voice-eval-case-expansion.md)（[实验报告](research/cl10-voice-eval-experiment-report.md)）— glob 修复 + 48 voice cases（34 EXEC + 14 DELIVERY）+ 双模式基线：no-sql-judge 91.7%（154/168）、sql-judge **66.1%**（111/168）。关键发现：sql-judge 暴露真实语义质量（original 70%）、voice 暴露数据源缺口 + 多表 join 缺失、DELIVERY judge 需校准、enrichment 仍是最大杠杆。**sql-judge 模式确认为后续标准基线**
 
 
 ## Not yet specified
@@ -141,7 +143,7 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 | Lineage | ✅ derived_from (表级) | 缺列级 |
 | Policies | ✅ dsh-admin (访问控制) | 缺使用建议/敏感标记 |
 | Organizational Memory | ⚠️ goal (session 内) | 缺跨 session 累积知识 |
-| Context Projection | ⚠️ 三接口分离 | 未来统一 |
+| Context Projection | ⚠️ 三接口分离（G7 已关闭：生产零消费，按需 tool call 已实现投射） | R10 调研后再评估 |
 
 ### 解决路径（分阶段）
 
@@ -196,36 +198,13 @@ dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实
 
 **实施票**：[CL-4](tickets/CL4-supplement-alias-eval-cases.md)（✅ 40 alias-dependent case）→ [CL-5](tickets/CL5-retrieval-gradient-experiment.md)（✅ 梯度实验完成：C 策略确认最优，行动项=切换 continuous-blend + 修复 tokenizer + 加速 enrichment）
 
-#### Phase CL-3：Context Projection 统一 → 票 [G7](tickets/G7-context-projection-unification.md)
+#### Phase CL-3：Context Projection 统一 → 票 [G7](tickets/G7-context-projection-unification.md) ❌ 关闭为 out of scope（v2+）
 
-**解决**：G1 三接口分离（toCorpusItem / toPromptContext / toCriticContext）
+**G7 grilling 结论（2026-08-30）**：当前不需要引入统一 `project(def, opts)` 接口。
 
-当前三个接口各自独立消费 definition，消费者无法灵活组合。Jedify 模式 = 统一 context graph + 按需投射子图。
+**代码事实**：`toPromptContext` 和 `toCriticContext` 生产路径零消费者。NL2SQL 引擎通过 agent tool call 按需加载 definition JSON（`load_event_definition` / `load_table_dimensions`），已是按需投射模式。Eval pass rate 优秀（CL-8: 100%, CL-9: 91.7%），无 token 压力。
 
-**演进路径**（不破坏现有接口）：
-
-```typescript
-// 新增统一投射接口（现有三个方法保留为快捷方式）
-interface DataSourceKindPlugin<T> {
-  // 现有（保留，向后兼容）
-  toCorpusItem(def: T): CorpusItem | null
-  toPromptContext(def: T): string
-  toCriticContext?(def: T): CriticFields
-
-  // 新增：统一投射（消费者可自定义 view config）
-  project?(def: T, opts: ProjectionOptions): ProjectionResult
-}
-
-interface ProjectionOptions {
-  view: 'corpus' | 'prompt' | 'critic' | 'full'
-  includeAliases?: boolean     // CL-1 后可用
-  includeRelations?: boolean   // graph context
-  includeTrust?: boolean       // trust signals
-  maxTokens?: number           // Jedify-style token budget
-}
-```
-
-**时机**：CL-1 和 CL-2 落地后，当多个消费者（NL2SQL、检索、critic、管理 agent）对同一 definition 需要不同 context 切片时，统一接口的价值才显现。过早引入 = over-engineering。
+**后续**：token/attention/cache 优化作为独立方向，由 [R10](tickets/R10-token-attention-cache-optimization.md) 调研。若 R10 结论指向需要统一投射接口，届时重新开票。
 
 #### Phase CL-4：Trust Signals 丰富（远期）
 
@@ -256,6 +235,11 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~**Shell auto-flip 接入真实 evalRunCount**~~ — **已通过 W11 evidence-query RPC bridge 解决**：`evidenceClient` 传入 SemanticLayerShell，`useEvidenceMetrics` 读取真实 evalRunCount。验证 session prompt: `prompts/remaining-3-shell-autoflip-verification.md`
 - ~~**Evidence-query push 订阅**~~ — **毕业为 [R8](tickets/R8-evidence-query-push-subscription.md)**（2026-08-28）：research+grilling，blocked by [T2](tickets/T2-verify-management-panel-web-visibility.md)（确认管理面板 web 端实际可见）。
 - **Data agent subagent 并行 enrichment 机制**（CL-3 D2 方向确认）：data agent 在查询过程中通过 subagent 并行补全图谱缺口（方案 γ），形成使用→发现缺口→subagent 补全→图谱增长的自进化闭环。具体设计待 CL-5 实验结果验证 C 策略可行后再展开。
+- **DELIVERY eval judge 校准**（CL-10 F3）：当前 llm_judge 对 DELIVERY cases（agent 合理拒绝/澄清）的评估过于严格，13/14 cases 判负但 agent 回复质量实际很高。需要调整 judge prompt 或 scoring 逻辑，使其评估"拒绝是否合理"而非"措辞是否匹配"。可能方向：(a) judge prompt 明确评估标准为"是否正确识别问题的模糊性并给出合理建议"；(b) 新增 `declined_reasonable` match_mode。
+- **SQL semantic judge 基线回归修复**（CL-10 F1）：启用 sql-judge 后 original 80 cases 从 100% 降至 70%，24 个失败包含真实的 SQL 语义问题（选错 _df/_di 表、缺 join、过滤条件不精确）。需要逐 case 分析并修复 NL2SQL 引擎或 system prompt 中的选表/过滤指导。此项工作跨 NL2SQL 引擎和语义层（定义描述的清晰度直接影响 LLM 选表准确率）。
+- **Voice compound query 多表 join 完整性**（CL-10 F2）：voice_029（充值 top10 服 + 留存对比）、voice_032（各渠道付费转化率）等 compound cases 只完成了查询的一半。可能原因：(a) system prompt 对复合查询的拆解引导不足；(b) 检索只返回了一半相关表。与 P3 join expansion 机制有关。
+- **数据源缺口盘点与 enrichment**（CL-10 F4）：7 个 voice EXEC 失败因 agent 找不到合适数据源退化为拒绝（PVP 战斗明细表、抽卡流水表、副本通关记录表等）。部分是语义层缺定义（需补充 definition），部分是业务数据本身不存在（case 需修正）。需逐 case 盘点。
+- **sql-judge 模式作为标准 eval 基线**（CL-10 F1 延伸）：CL-8/CL-9 的 100% pass_rate 是 no-sql-judge 下的结果，sql-judge 下真实质量为 66-70%。后续 eval 应统一以 sql-judge 模式为标准，no-sql-judge 仅作为 smoke test。
 
 ## Open tickets
 
@@ -267,7 +251,8 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 *全部完成。*
 
 ### Context Layer 对齐（CL 系列）
-- [G7: Context Projection 统一](tickets/G7-context-projection-unification.md) — grilling：统一投射接口设计（**frontier — CL-1 + CL-2a 已完成，无阻塞**；low priority）
+- ~~[G7: Context Projection 统一](tickets/G7-context-projection-unification.md)~~ — 关闭为 out of scope（v2+）：生产零消费、无 token 压力、按需投射已存在
+- [R10: Token/Attention/Cache 优化前沿调研](tickets/R10-token-attention-cache-optimization.md) — research：Jedify benchmark 验证 + 2026 H2 前沿（Lost in the Middle / Context Rot / context engineering）+ 本系统 token 分析（**frontier — 无阻塞**）
 
 ## Out of scope
 
@@ -278,3 +263,4 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - Ontology Phase 4（关系图谱可视化 + 基于命名约定的关系自动发现）— 不在本 map 目标架构之内
 - 数据新鲜度监控（依赖 live-ODPS provider，P6b Q3 deferred；G4 Q6 确认出 v1）
 - always-on 自主守护/巡检（goal 非后台守护进程；"打开会话不开工"是有意安全设计；需 scheduler 超出 goal 设计；G4 ③ 边界确认）
+- Context Projection 统一 `project()` 接口（[G7](tickets/G7-context-projection-unification.md) 关闭：`toPromptContext`/`toCriticContext` 生产零消费者，系统已通过 tool call 实现按需投射；R10 调研后如需重新评估则另开票）

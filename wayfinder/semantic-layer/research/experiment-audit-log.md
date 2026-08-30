@@ -1,5 +1,59 @@
 # Experiment Audit Log — Semantic Layer Effort
 
+## 2026-08-30: CL-10 Voice Eval Case Expansion (dual-mode baseline)
+
+### Setup
+
+- **Code state**: glob fix (`/^[a-z0-9]+(_[a-z0-9]+)*_\d+\./i`) + 48 voice cases added
+- **Cases**: 168 K11 cases (80 original + 40 alias + 48 voice)
+- **Voice breakdown**: 34 EXECUTION (scalar_exact / row_count_range) + 14 DELIVERY (llm_judge)
+- **Model**: aga/qwen3.7-max, engine responder, pass_k=1, concurrency=4
+- **Varied**: SQL Semantic Judge (disabled vs enabled)
+
+### Data (verbatim)
+
+**Run 1** (no-sql-judge, Run ID `033fea6a`):
+
+| Category | Total | Pass | Wrong | Rate |
+|----------|-------|------|-------|------|
+| Original | 80 | 80 | 0 | 100.0% |
+| Alias | 40 | 40 | 0 | 100.0% |
+| Voice EXEC | 34 | 34 | 0 | 100.0% |
+| Voice DELIVERY | 14 | 0 | 14 | 0.0% |
+| **Total** | **168** | **154** | **14** | **91.7%** |
+
+**Run 2** (sql-judge enabled, Run ID `9788424c`):
+
+| Category | Total | Pass | Wrong | Rate |
+|----------|-------|------|-------|------|
+| Original | 80 | 56 | 24 | 70.0% |
+| Alias | 40 | 32 | 8 | 80.0% |
+| Voice EXEC | 34 | 22 | 12 | 64.7% |
+| Voice DELIVERY | 14 | 1 | 13 | 7.1% |
+| **Total** | **168** | **111** | **57** | **66.1%** |
+
+**Run 2 failure classification** (57 wrong):
+- execution_match=false (SQL judge 判负): 44
+- delivery_match=false (DELIVERY judge 判负): 13
+
+**Voice EXEC failures** (12/34 wrong):
+- "Input is not SQL" (agent 退化为拒绝/工具调用): 7
+- SQL 语义不完整 (缺 join / 缺聚合 / 选错表): 5
+
+### Verdict
+
+1. **SQL semantic judge 是更真实的质量标准**：no-sql-judge 下 100% 的 original cases 启用 judge 后降为 70%——judge 捕获了选错表（_df vs _di）、缺 join、过滤条件不精确等真实语义问题。
+2. **Voice cases 有效暴露独特失败模式**：数据源缺口（agent 找不到 PVP 明细/抽卡流水/副本通关表）和多表 join 缺失（复合查询只完成一半）。
+3. **DELIVERY judge 需校准**：agent 拒绝/澄清回复质量高（结构化 + 原因 + 建议），但 judge 几乎全判负。
+4. **Enrichment 仍是最大杠杆**：7/12 voice EXEC 失败 = agent 找不到合适数据源。
+
+### Ticket Pointer
+
+Resolves: [CL-10 — Voice Eval Case Expansion](../tickets/CL10-voice-eval-case-expansion.md)
+Full report: [research/cl10-voice-eval-experiment-report.md](cl10-voice-eval-experiment-report.md)
+
+---
+
 ## 2026-08-30: CL-8 Cross-Validation (continuous-blend default)
 
 ### Setup
