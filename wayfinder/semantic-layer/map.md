@@ -36,6 +36,12 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
   - **SchemaProvider**：代码中的接口名（PascalCase）。文中用「schema provider」指代概念时统一小写带空格。
   - **scope**：纯逻辑划分单元（用户自定义）。代码中 scope 内部通过文件系统目录实现隔离，但 scope ≠ namespace——scope 是业务概念，namespace 是隔离机制。
   - **定义（definition）**：本 map 中特指语义层中的数据源定义（`TableDefinition` / `EventDefinition` / `MetricDefinition`）。「定义版本管理」管理的是这些定义的变更历史，非 ontology 层概念。
+- **实验记录强制要求**（CL-15 追加）：
+  - **每次 eval run 必须记录到 `wayfinder/semantic-layer/research/experiment-audit-log.md`**，无例外。
+  - 使用标准模板（见 `packages/eval/eval-cli/README.md` "Recording Results" 章节）：Setup（基线 run_id + cases + model + 变更内容）→ Data（verbatim 数据，含 `compare.ts` 输出）→ Verdict（编号分析）→ Ticket Pointer。
+  - **趋势对比**：每次 eval 必须用 `compare.ts` 与上一次基线 run 对比，记录 category-level delta 和 case-level flips。
+  - **不允许"跑了 eval 但没记录"**——实验结果是不可重现的（LLM 非确定性），未记录等于未发生。
+  - 即使是单 case 调试（`--case`），若结果影响决策，也应记录简要条目。
 - **常设原则**：
   - **不做过渡方案**：LLM 编码场景下，直接做目标架构，不分短/中/长期妥协。
   - **语义层不绑定特定查询引擎**：SchemaProvider 可插拔（`registerSchemaProvider` + `engineType` 路由）。
@@ -263,6 +269,10 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~[CL-14: 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md)~~ ✅ — 4 表 enrichment + 2 case 迁移；voice_003/008/030 pass
 - ~~[CL-15: sql-judge 模式确立为标准基线](tickets/CL15-sql-judge-as-standard-baseline.md)~~ ✅ — sql-judge 确认默认；README + compare.ts 趋势工具；4 case DELIVERY 迁移；44 wrong cases 分析完成
 
+### sql-judge 质量推进至 80%+
+- [CL-16: Reply 管道二次修复](tickets/CL16-reply-pipeline-delivery-fix.md) — 8 个 DELIVERY judge 失败：3 pipeline（tool calls 被当作回复）+ 4 agent 行为（DELIVERY 问题错误生成 SQL）+ 1 空输出。目标 DELIVERY 85%+（**frontier — 无阻塞**）
+- [CL-17: 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md) — ~10 个 EXEC refusal 因检索缺口：7 数据源 BM25 信号不足 + 5 概念缺失（「大R」「回归」）。目标 overall 78%+（**frontier — 无阻塞，与 CL-16 并行**）
+
 ### Context Layer 对齐（CL 系列）
 - ~~[G7: Context Projection 统一](tickets/G7-context-projection-unification.md)~~ — 关闭为 out of scope（v2+）：生产零消费、无 token 压力、按需投射已存在
 - ~~[R10: Token/Attention/Cache 优化前沿调研](tickets/R10-token-attention-cache-optimization.md)~~ ✅ — 系统 ~1,720-2,665 tokens/call（Jedify 25K 的 7-15 倍效率）；G7 维持 out of scope；P0=prompt caching ~70% 成本节省
@@ -276,4 +286,4 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - Ontology Phase 4（关系图谱可视化 + 基于命名约定的关系自动发现）— 不在本 map 目标架构之内
 - 数据新鲜度监控（依赖 live-ODPS provider，P6b Q3 deferred；G4 Q6 确认出 v1）
 - always-on 自主守护/巡检（goal 非后台守护进程；"打开会话不开工"是有意安全设计；需 scheduler 超出 goal 设计；G4 ③ 边界确认）
-- Context Projection 统一 `project()` 接口（[G7](tickets/G7-context-projection-unification.md) 关闭：`toPromptContext`/`toCriticContext` 生产零消费者，系统已通过 tool call 实现按需投射；R10 调研后如需重新评估则另开票）
+- Context Projection 统一 `project()` 接口（[G7](tickets/G7-context-projection-unification.md) 关闭：`toPromptContext`/`toCriticContext` 生产零消费者，系统已通过 tool call 实现按需投射；[R10](research/r10-token-attention-cache-optimization.md) 确认不需要统一接口——系统 ~1.7K tokens/call，25 倍安全余量）
