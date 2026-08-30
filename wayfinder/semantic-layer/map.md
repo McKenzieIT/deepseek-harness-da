@@ -111,6 +111,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-8 端到端 Eval + Go/No-Go](tickets/CL8-e2e-eval-go-nogo.md) — **GO**：`cl8-full-fixed` pass_rate=96.3%（strategy-b+median-floor）；交叉验证 `cl8-continuous-blend` pass_rate=**100.0%**（80/80，continuous-blend 默认）；3 前次 wrong cases 通过（LLM 非确定性，非 blendingMode 差异）
 - [CL-9 批量 DWS enrichment](tickets/CL9-batch-enrichment-dws-coverage.md) — 135 DWS 表批量 enrichment（pref_label + alt_labels）→ 覆盖率 85.2%（138/162 DWS with alt_labels，162/162 with pref_label）；初轮 -12pp regression → 两轮修正（generic blocklist + 原 27 表 deconfliction）→ 检索级 A/B +0.6pp / 0 regression；**e2e eval: 原始 80 case 100%（=CL-8），alias 40 case 100%，总计 154/168 (91.7%)**
 - [R8 Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — native push（`ctx.remote.$on` + `connection/reset` 恢复）；注入点=方案 C 改良 bridge（`EvidenceQueryClient.subscribeInvalidation` 回调，apply scope 驱动）；无 debounce；`(): void` 无 payload。毕业实现票 W15
+- [W15 Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md) — `evidence/eval-run-completed` 加入 `API_REMOTE_FORWARDED_EVENTS` + Cordis Events 声明；`EvidenceQueryClient.subscribeInvalidation?(cb): disposer`；apply scope `invalidationListeners` Set + `scope.remote.$on` + `scope.on('connection/reset')` 驱动；`useEvidenceMetrics` useEffect 订阅→refresh()；94 tests 全绿
 
 
 ## Not yet specified
@@ -260,7 +261,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 
 ### v1 收尾
 - [G6: 定义版本管理](tickets/G6-definition-version-management.md) — grilling：开源项目是否自带 git 版本控制
-- [W15: Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md) — task：~16 行跨 4 文件，R8 决策的机械实现（frontier，无阻塞）
+- ~~[W15: Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md)~~ ✅ — `evidence/eval-run-completed` → allowlist + `EvidenceQueryClient.subscribeInvalidation` + `connection/reset` 恢复 + `useEvidenceMetrics` 自动 refresh；94 tests 全绿
 
 ### CL-5 行动项落地（formal experiment）
 *全部完成。*

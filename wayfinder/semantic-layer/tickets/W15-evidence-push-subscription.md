@@ -2,8 +2,8 @@
 
 **Type**: task
 **Phase**: v1 收尾
-**Status**: open
-**Assignee**: unclaimed
+**Status**: closed
+**Assignee**: claude
 **Blocked by**: 无
 **Graduated from**: [R8](R8-evidence-query-push-subscription.md)（grilling 决策）
 

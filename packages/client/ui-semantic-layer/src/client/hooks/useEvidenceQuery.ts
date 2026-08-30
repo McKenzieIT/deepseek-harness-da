@@ -30,6 +30,7 @@ export interface EvidenceQueryClient {
   triggerEvalRun?(assetId?: string): Promise<string>
   getEvalRunCount?(): Promise<number>
   getRecentPassRates?(n?: number): Promise<number[]>
+  subscribeInvalidation?(cb: () => void): () => void
 }
 
 /** State shape for the evidence query hook. */

@@ -36,5 +36,10 @@ export function useEvidenceMetrics(client: EvidenceQueryClient | null): Evidence
     return () => { cancelledRef.current = true }
   }, [refresh])
 
+  useEffect(() => {
+    if (!client?.subscribeInvalidation) return
+    return client.subscribeInvalidation(() => refresh())
+  }, [client, refresh])
+
   return { evalRunCount, evalPassRates, refresh }
 }

@@ -97,8 +97,23 @@ export function apply(ctx: ClientContext): void {
     const schemaClient = rawSchemaGateway
       ? buildSchemaGatewayClient(rawSchemaGateway as never)
       : null
+
+    const invalidationListeners = new Set<() => void>()
+    scope.remote.$on('evidence/eval-run-completed', () => {
+      for (const cb of invalidationListeners) cb()
+    })
+    scope.on('connection/reset', () => {
+      for (const cb of invalidationListeners) cb()
+    })
+
     const evidenceClient = rawEvidenceQuery
-      ? buildEvidenceQueryClient(rawEvidenceQuery as never)
+      ? {
+        ...buildEvidenceQueryClient(rawEvidenceQuery as never),
+        subscribeInvalidation(cb: () => void) {
+          invalidationListeners.add(cb)
+          return () => { invalidationListeners.delete(cb) }
+        },
+      }
       : null
     const contextLayer = scope.get('contextLayer') as { open(node?: string): void } | undefined
     const onNavigateToGraph = contextLayer

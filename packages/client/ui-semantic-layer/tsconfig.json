@@ -43,6 +43,9 @@
     },
     {
       "path": "../../goal/goal"
+    },
+    {
+      "path": "../../api/remotes/tsconfig.client.json"
     }
   ]
 }
