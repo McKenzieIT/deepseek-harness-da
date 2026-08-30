@@ -4,10 +4,10 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows": 1, "max_rows": 50}
-  match_mode: row_count_range
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "判断活动奖励是否「太多」需要明确参照标准。当前数据中包含多种奖励发放场景，但缺少「正常」基准定义。请指定具体的活动类型或奖励品类，以及判断「过多」的标准（如产销比、环比增幅等）。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L3"
   query_intent: "metric_lookup"

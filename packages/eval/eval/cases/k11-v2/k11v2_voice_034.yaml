@@ -4,10 +4,10 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows": 5, "max_rows": 50}
-  match_mode: row_count_range
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "判断武将是否需要调整平衡需要综合评估PVP胜率、出场率、场均伤害等实战数据。当前PVP卡牌统计表有部分数据，但缺少武将级别的胜率-出场率交叉分析。请提供具体的平衡评估标准（如胜率偏离阈值）。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L3"
   query_intent: "ranking"

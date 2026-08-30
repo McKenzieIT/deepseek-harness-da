@@ -4,10 +4,10 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows":3,"max_rows":20}
-  match_mode: "row_count_range"
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "「经济系统健康」是一个宏观定性问题，需要综合考量核心货币产销比、通胀率、玩家购买力等多个维度。请指定具体关注的经济指标（如金币产出/消耗比、钻石流通量等）。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L4"
   query_intent: "open_ended"

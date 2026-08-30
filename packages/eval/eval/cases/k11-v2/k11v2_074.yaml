@@ -4,10 +4,10 @@ input:
   scope_id: null
   turns: []
 expected:
-  result_value: {"min_rows":3,"max_rows":20}
-  match_mode: "row_count_range"
-  answer: null
-  delivery_match: null
+  result_value: null
+  match_mode: null
+  answer: "「用户质量」是一个综合性业务概念，没有单一对应的指标或字段。请明确具体的评估标准和分析视角，例如付费转化率、留存率、活跃度、LTV等。"
+  delivery_match: "llm_judge"
 dimensions:
   sql_complexity: "L4"
   query_intent: "open_ended"
