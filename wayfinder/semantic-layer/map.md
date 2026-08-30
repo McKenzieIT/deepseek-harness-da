@@ -235,11 +235,11 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~**Shell auto-flip 接入真实 evalRunCount**~~ — **已通过 W11 evidence-query RPC bridge 解决**：`evidenceClient` 传入 SemanticLayerShell，`useEvidenceMetrics` 读取真实 evalRunCount。验证 session prompt: `prompts/remaining-3-shell-autoflip-verification.md`
 - ~~**Evidence-query push 订阅**~~ — **毕业为 [R8](tickets/R8-evidence-query-push-subscription.md)**（2026-08-28）：research+grilling，blocked by [T2](tickets/T2-verify-management-panel-web-visibility.md)（确认管理面板 web 端实际可见）。
 - **Data agent subagent 并行 enrichment 机制**（CL-3 D2 方向确认）：data agent 在查询过程中通过 subagent 并行补全图谱缺口（方案 γ），形成使用→发现缺口→subagent 补全→图谱增长的自进化闭环。具体设计待 CL-5 实验结果验证 C 策略可行后再展开。
-- **DELIVERY eval judge 校准**（CL-10 F3）：当前 llm_judge 对 DELIVERY cases（agent 合理拒绝/澄清）的评估过于严格，13/14 cases 判负但 agent 回复质量实际很高。需要调整 judge prompt 或 scoring 逻辑，使其评估"拒绝是否合理"而非"措辞是否匹配"。可能方向：(a) judge prompt 明确评估标准为"是否正确识别问题的模糊性并给出合理建议"；(b) 新增 `declined_reasonable` match_mode。
-- **SQL semantic judge 基线回归修复**（CL-10 F1）：启用 sql-judge 后 original 80 cases 从 100% 降至 70%，24 个失败包含真实的 SQL 语义问题（选错 _df/_di 表、缺 join、过滤条件不精确）。需要逐 case 分析并修复 NL2SQL 引擎或 system prompt 中的选表/过滤指导。此项工作跨 NL2SQL 引擎和语义层（定义描述的清晰度直接影响 LLM 选表准确率）。
-- **Voice compound query 多表 join 完整性**（CL-10 F2）：voice_029（充值 top10 服 + 留存对比）、voice_032（各渠道付费转化率）等 compound cases 只完成了查询的一半。可能原因：(a) system prompt 对复合查询的拆解引导不足；(b) 检索只返回了一半相关表。与 P3 join expansion 机制有关。
-- **数据源缺口盘点与 enrichment**（CL-10 F4）：7 个 voice EXEC 失败因 agent 找不到合适数据源退化为拒绝（PVP 战斗明细表、抽卡流水表、副本通关记录表等）。部分是语义层缺定义（需补充 definition），部分是业务数据本身不存在（case 需修正）。需逐 case 盘点。
-- **sql-judge 模式作为标准 eval 基线**（CL-10 F1 延伸）：CL-8/CL-9 的 100% pass_rate 是 no-sql-judge 下的结果，sql-judge 下真实质量为 66-70%。后续 eval 应统一以 sql-judge 模式为标准，no-sql-judge 仅作为 smoke test。
+- ~~**DELIVERY eval judge 校准**~~ — **毕业为 [CL-11](tickets/CL11-delivery-judge-calibration.md)**
+- ~~**SQL semantic judge 基线回归修复**~~ — **毕业为 [CL-12](tickets/CL12-sql-judge-baseline-regression.md)**
+- ~~**Voice compound query 多表 join 完整性**~~ — **毕业为 [CL-13](tickets/CL13-compound-query-join-completeness.md)**
+- ~~**数据源缺口盘点与 enrichment**~~ — **毕业为 [CL-14](tickets/CL14-data-source-gap-catalog.md)**
+- ~~**sql-judge 模式作为标准 eval 基线**~~ — **毕业为 [CL-15](tickets/CL15-sql-judge-as-standard-baseline.md)**
 
 ## Open tickets
 
@@ -249,6 +249,13 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 
 ### CL-5 行动项落地（formal experiment）
 *全部完成。*
+
+### CL-10 后续优化（sql-judge 质量提升）
+- [CL-11: DELIVERY eval judge 校准](tickets/CL11-delivery-judge-calibration.md) — 校准 llm_judge 使其评估"拒绝是否合理"而非"措辞是否匹配"（**frontier — 无阻塞**）
+- [CL-12: SQL semantic judge 基线回归修复](tickets/CL12-sql-judge-baseline-regression.md) — 逐 case 修复 original 24 + alias 8 个 SQL 语义问题，目标 original 80%+（**frontier — 无阻塞**）
+- [CL-13: Voice compound query 多表 join 完整性](tickets/CL13-compound-query-join-completeness.md) — 修复复合查询只完成一半的问题，涉及检索/expansion/system prompt（**frontier — 无阻塞**）
+- [CL-14: 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md) — 7 个 voice EXEC 失败的根因盘点：5 个检索命中问题 + 2 个数据缺失（**frontier — 无阻塞**）
+- [CL-15: sql-judge 模式确立为标准基线](tickets/CL15-sql-judge-as-standard-baseline.md) — 文档化 + CI 集成 + 质量趋势追踪（**←CL-11, CL-12**）
 
 ### Context Layer 对齐（CL 系列）
 - ~~[G7: Context Projection 统一](tickets/G7-context-projection-unification.md)~~ — 关闭为 out of scope（v2+）：生产零消费、无 token 压力、按需投射已存在
