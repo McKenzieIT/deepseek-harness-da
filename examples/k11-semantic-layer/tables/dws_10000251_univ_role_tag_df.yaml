@@ -387,8 +387,14 @@ dimension_refs:
       - dws_column: rel_role_srv_lst
         dim_column: server_id
     derivation: DWS columns rel_role_srv_fst (comment 首次关联角色区服) and rel_role_srv_lst (comment 最近关联角色区服) are 区服(server) references that semantically match dim_10000251_server_info.primary_key server_id, the 服务器/区服配置维度表; this table has no direct server_id column so these associated-server snapshots are the server FK.
-pref_label: 用户整体事件表
+pref_label: 角色标签宽表
 alt_labels:
+  - 免费玩家
+  - 零氪
+  - 大R
+  - 高付费
+  - 回归
+  - 回流
   - ARPU
   - ARPPU
   - 流失

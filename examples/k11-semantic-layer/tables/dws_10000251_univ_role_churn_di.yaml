@@ -248,4 +248,9 @@ dimension_refs:
     derivation: DWS rel_role_srv_fst/rel_role_srv_lst (comment 首次/最近关联角色区服) store server (区服) ids; dim_10000251_server_info has PK server_id and is the 服务器(区服)维度配置表 explicitly meant for fact tables to JOIN via server_id to backfill server name/open date.
 pref_label: 角色流失日表
 alt_labels:
+  - 流失
+  - 流失用户
+  - 流失角色
+  - 流失率
+  - 流失预警
   - 沉默

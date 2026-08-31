@@ -8,17 +8,19 @@ Standalone eval CLI for the dsh-data-agent NL2SQL pipeline. Drives eval cases ag
 
 The older `--no-sql-judge` mode auto-passes any case that returns SQL, hiding real semantic errors (e.g., selecting the wrong table, missing JOINs, incorrect filters). It showed 100% on original cases while sql-judge revealed the true quality was 70%.
 
-### Quality Baseline (CL-11~14, 2026-08-30)
+### Quality Baseline (CL-16+17, 2026-08-31)
 
 | Category | Cases | Pass | Rate |
 |---|---|---|---|
-| Original | 80 | 60 | 75.0% |
-| Alias | 40 | 31 | 77.5% |
-| Voice EXEC | 32 | 21 | 65.6% |
-| Voice DELIVERY | 16 | 12 | 75.0% |
-| **Total** | **168** | **124** | **73.8%** |
+| Original | 80 | 64 | 80.0% |
+| Alias | 40 | 30 | 75.0% |
+| Voice EXEC | 30 | 21 | 70.0% |
+| Voice DELIVERY | 18 | 14 | 77.8% |
+| **Total** | **168** | **129** | **76.8%** |
 
-Run ID: `10320fe2-f2af-4586-aa82-705ed12aef09`
+Run ID: `1510b3e0-e9c8-4a62-b568-6535e70797be`
+
+Previous baseline (CL-11~14): `10320fe2` — 124/168 = 73.8%
 
 ### Quality Targets
 

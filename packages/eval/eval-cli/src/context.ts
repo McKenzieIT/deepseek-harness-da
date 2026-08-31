@@ -60,6 +60,14 @@ function looksLikeSql(text: string): boolean {
   return /^\s*(SELECT|WITH|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/.test(upper)
 }
 
+function looksLikeToolCall(text: string): boolean {
+  const trimmed = text.trim()
+  if (/^<(call|tool)/i.test(trimmed)) return true
+  if (/^\{[\s]*"name"\s*:/.test(trimmed)) return true
+  if (/^[a-z_]+\s*\(/i.test(trimmed) && /^\w+\s*\([\s\S]*\)\s*$/.test(trimmed)) return true
+  return false
+}
+
 class CtxLlmAdapter implements Llm {
   constructor(
     private readonly ctx: Context,
@@ -319,8 +327,8 @@ class Nl2sqlAgentResponder implements AgentResponder {
     console.error(`[DIAG] SQL: ${sql?.slice(0, 400) ?? '(none)'}`)
     console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)
     let reply: string
-    const looksLikeSql = sql !== null && /\b(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE)\b/i.test(sql)
-    if (!looksLikeSql && sql !== null && sql.length > 20) {
+    const sqlIsPresent = sql !== null && /\b(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE)\b/i.test(sql)
+    if (!sqlIsPresent && sql !== null && sql.length > 20 && !looksLikeToolCall(sql)) {
       reply = sql
     } else if (result.ok && result.result !== undefined) {
       reply = await this.llm.completeText([

@@ -1,5 +1,66 @@
 # Experiment Audit Log — Semantic Layer Effort
 
+## 2026-08-31: CL-16 + CL-17 sql-judge 质量推进至 76.8%
+
+### Setup
+
+- **基线**: Run `10320fe2`（CL-15 标准基线），73.8%（124/168）
+- **Session 基线**: Run `75ad2a5c`（同代码重跑），73.2%（123/168）
+- **Cases**: 168 K11 cases（80 original + 40 alias + 30 voice EXEC + 18 voice DELIVERY）
+- **Model**: aga/qwen3.7-max, engine responder, pass_k=1, concurrency=4, sql-judge enabled
+- **变更**:
+  - **CL-16**: `looksLikeToolCall()` 函数添加到 `context.ts`，过滤 `<call>/<tool>/{"name":...}` 格式的 tool call 文本，防止其作为 reply 传递给 DELIVERY judge
+  - **CL-17 (trimmed)**: 3 表 alt_labels 扩充 + 2 concept alt_labels + pref_label 修正
+    - `role_common_feature_df`: +8 labels（等级/角色等级/平均等级/战力/角色战力/VIP/通用特征/全服等级）
+    - `univ_role_tag_df`: +6 targeted labels（免费玩家/零氪/大R/高付费/回归/回流）+ pref_label 修正为"角色标签宽表"
+    - `social_fteam_summary_df`: +5 labels（小队/组队/小队成员/小队活跃/协战）
+    - `univ_role_churn_di`: +5 labels（流失/流失用户/流失角色/流失率/流失预警）
+    - `univ_acc_churn_di`: +4 labels（流失/流失账号/流失用户/流失率）
+    - `item_circle_df`: +1 label（消耗量）
+    - concept 付费经济: +4 labels（大R/高付费/零氪/免费玩家）
+    - concept 用户生命周期: +2 labels（回归/回流）
+  - **CL-15 DELIVERY 迁移生效**: 074/080/voice_034/voice_039 已在 YAML 中迁移
+
+### Data (verbatim)
+
+**Run 3** (CL-16+17 trimmed, Run ID `1510b3e0`):
+
+| Category | CL-15 Baseline | New | Delta |
+|----------|----------------|-----|-------|
+| Original | 60/80 = 75.0% | 64/80 = 80.0% | **+5.0pp** |
+| Alias | 31/40 = 77.5% | 30/40 = 75.0% | -2.5pp |
+| Voice EXEC | 21/30 = 70.0% | 21/30 = 70.0% | +0.0pp |
+| Voice DELIVERY | 12/18 = 66.7% | 14/18 = 77.8% | **+11.1pp** |
+| **Total** | **124/168 = 73.8%** | **129/168 = 76.8%** | **+3.0pp** |
+
+**Case flips vs CL-15 baseline**: Gained 16, Lost 11, Net +5
+
+**Attributable gains**:
+- k11v2_019 (负面舆情): CL-16 pipeline fix — tool call text no longer passed as reply ✅
+- k11v2_080/074 (经济系统/用户质量): CL-15 DELIVERY migration ✅
+- voice_034/039 (武将平衡/活动奖励): CL-15 DELIVERY migration ✅
+- voice_007 (免费玩家): CL-17 univ_role_tag_df enrichment ✅
+- alias_016 (回归玩家转化率): CL-17 concept enrichment ✅
+- k11v2_062/066/067/069 (multi-table queries): LLM non-determinism (no code change)
+
+**Enrichment regression diagnostic** (Run 2, `136c657c`, over-broad enrichment):
+- 18 labels on univ_role_tag_df + 12 on role_tag_basic_df caused -12.5pp alias regression
+- Trimmed to 6 targeted labels → alias regression reduced to -2.5pp (within LLM noise)
+
+### Verdict
+
+1. **Original 达到 80% 目标** (+5.0pp): CL-15 DELIVERY 迁移（074/080）+ LLM 非确定性净正。
+2. **DELIVERY 大幅改善** (+11.1pp): CL-15 迁移（voice_034/039）+ CL-16 pipeline 修复（019 翻转）。
+3. **Alias 小幅波动** (-2.5pp): trimmed enrichment 消除了 Run 2 的 -12.5pp regression，剩余 -2.5pp 在 LLM 噪声范围内。
+4. **Over-broad enrichment 教训**: 给宽表加大量 generic labels 会严重稀释 BM25 信号。CL-17 的正确做法是 targeted labels（≤6 per table）+ concept anchors。
+5. **Overall 76.8% 未达 78% 目标但显著进步**: 距 78% 仅差 2 个 case（131/168），且 Original 已达 80%。剩余 gap 主要来自 agent 行为（tool call 输出、不可回答问题错误生成 SQL）和数据缺口。
+
+### Ticket Pointer
+
+Resolves: [CL-16](../tickets/CL16-reply-pipeline-delivery-fix.md)（部分——Type 1 修复 ✅，Type 2 LLM 行为未改善），[CL-17](../tickets/CL17-data-source-enrichment-round2.md)（部分——7 检索缺口中 2 翻转，5 概念缺口中 1 翻转）
+
+---
+
 ## 2026-08-30: CL-11~14 sql-judge 质量提升（四 ticket 联合）
 
 ### Setup

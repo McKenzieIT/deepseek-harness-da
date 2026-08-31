@@ -121,7 +121,6 @@ export function apply(ctx: Context, _config: Config = {}): void {
     parameters: {
       domain: {
         type: 'string',
-        required: false,
         description: 'Optional domain name to scope statistics to (only assets belonging to this domain are counted).',
       },
     },
