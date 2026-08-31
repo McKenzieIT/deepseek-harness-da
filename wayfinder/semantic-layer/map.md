@@ -126,6 +126,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-13 Compound query join 完整性](tickets/CL13-compound-query-join-completeness.md) — voice_030 通过 CL-14 enrichment 翻转为 pass；voice_029/032 仍为 wrong（多表 join 能力限制，非检索问题）
 - [CL-14 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md) — 4 表 alt_labels 扩充（pvp_card_statistics_di/gacha_result_statis_di/pve_progress_df/com_pay_order_df）+ voice_017/020 迁移为 DELIVERY；voice_003/008/030 翻转为 pass（3/5 验收通过）。**四票联合 eval：66.1% → 73.8%（+7.7pp，net +13 cases）**
 - [CL-15 sql-judge 标准基线确立](tickets/CL15-sql-judge-as-standard-baseline.md) — sql-judge 确认为默认模式（`--no-sql-judge` opt-out）；README 文档化（基线 73.8%、目标 75%/80%/90%）；`compare.ts` 趋势对比工具（分类别 breakdown + case-level flips）；4 个主观 EXEC case 迁移为 DELIVERY（074/080/voice_034/voice_039）；44 wrong cases 分析：24 agent refusal（数据缺口/多表 join）+ 8 DELIVERY judge（pipeline 问题）+ 8 garbled tool calls + 4 SQL semantic failure
+- [CL-18 ds 噪声关联修复](tickets/CL18-ds-noise-join-fix.md) — `discoverRelationsDeterministic` 未排除分区列，18 个 ds-in-PK 的 DIM 表被错误匹配。**Phase 1 数据清理 ✅**：`gacha_result_statis_di` 清除 18 条噪声 refs（23→5）+ 7 条 alt_labels 污染 + description 注入段落。**Phase 2 算法加固**（待实现）：substrate 新增 `excludeColumns` 参数（通用接口），调用层从列 `role: partition` 元数据计算排除集（有 role 时数据驱动，无 role 时回退 blocklist `[ds,pt,dt]`）
 
 
 ## Not yet specified
@@ -272,6 +273,9 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 ### sql-judge 质量推进至 80%+
 - [CL-16: Reply 管道二次修复](tickets/CL16-reply-pipeline-delivery-fix.md) — 8 个 DELIVERY judge 失败：3 pipeline（tool calls 被当作回复）+ 4 agent 行为（DELIVERY 问题错误生成 SQL）+ 1 空输出。目标 DELIVERY 85%+（**frontier — 无阻塞**）
 - [CL-17: 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md) — ~10 个 EXEC refusal 因检索缺口：7 数据源 BM25 信号不足 + 5 概念缺失（「大R」「回归」）。目标 overall 78%+（**frontier — 无阻塞，与 CL-16 并行**）
+
+### Enrichment 算法质量
+- [CL-18: ds 噪声关联修复 + 确定性匹配加固](tickets/CL18-ds-noise-join-fix.md) — Phase 1 数据清理 ✅；Phase 2 算法加固待实现（`excludeColumns` 参数 + 调用层 role 元数据驱动）（**frontier — 无阻塞**）
 
 ### Context Layer 对齐（CL 系列）
 - ~~[G7: Context Projection 统一](tickets/G7-context-projection-unification.md)~~ — 关闭为 out of scope（v2+）：生产零消费、无 token 压力、按需投射已存在

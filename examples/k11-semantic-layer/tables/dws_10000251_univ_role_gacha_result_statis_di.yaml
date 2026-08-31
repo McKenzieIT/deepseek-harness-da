@@ -5,6 +5,15 @@ description: |-
   抽卡通用数仓-角色抽卡结果统计。
   粒度：日增量(_di)。分析主体=角色（user_type=3）。
   主要字段：role_id, server_id, card_pool_type, card_pool_id, result_item_type, result_item_value, result_item_amount, ds。
+
+  【规范维度关联（仅使用以下5个）】
+  1. dim_10000251_card_pool_info: (card_pool_type, card_pool_id) 双键等值 JOIN（复合业务键，勿单列关联）
+  2. dim_10000251_charm_gacha_info: CAST(card_pool_id AS STRING)=card_pool_id
+  3. dim_10000251_server_info: server_id=server_id
+  4. dim_10000251_card_pool_type_info: CAST(card_pool_type AS STRING)=type_id
+  5. dim_10000251_resource_name_info: (result_item_type,result_item_value)=(item_type,item_value)
+
+  【警告】其余 dimension_refs（*_arch 的 ds-only 关联等17个）为自动发现算法的同名列噪声，无业务语义，禁止用于 JOIN。charm_gacha_info_arch 与 charm_gacha_info 冗余，仅查询历史卡池配置时才使用。
 domains:
   - 探索收集
 granularity: 日增量(_di)
@@ -69,33 +78,132 @@ coverage:
     - result_item_value 含义为道具值/标识，按维度处理；如需道具维度聚合需结合 result_item_type 联合分析
     - 不区分付费/免费抽卡来源，无成本侧字段，仅产出侧统计
 confirmation:
-  status: analyst_confirmed
+  status: unreviewed
   confirmed_by: enrichment-agent-2026-07-31
   confirmed_at: "2026-07-31"
   note: 已对 latest ds=20260730 spot-verify 4 项核心指标值合理；metrics 仅基于 meta describe 验证的真实列；_di 语义已标注
 dimension_refs:
+  - dim_table: dim_10000251_card_pool_info
+    join_keys:
+      - dws_column: card_pool_type
+        dim_column: card_pool_type
+      - dws_column: card_pool_id
+        dim_column: card_pool_id
+    derivation: 卡池主配置维度表，复合业务键 (card_pool_type, card_pool_id)。DWS 侧 card_pool_type+card_pool_id (int,int) 与 dim 侧同名同型，双键等值 JOIN（勿仅按单列 card_pool_id 关联，96行中同 ID 可存在于不同卡池类型，单列 JOIN 会膨胀）。
+  - dim_table: dim_10000251_autobi_conf2_od
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_autobi_conf2_od 主键精确同名
+  - dim_table: dim_10000251_charm_gacha_info
+    join_keys:
+      - dws_column: card_pool_id
+        dim_column: card_pool_id
+    derivation: 根据规范，通过card_pool_id关联灵器抽卡卡池配置维度表以获取卡池详细配置与保底规则等信息。
+  - dim_table: dim_10000251_charm_gacha_info_arch
+    join_keys:
+      - dws_column: card_pool_id
+        dim_column: card_pool_id
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 card_pool_id, ds 与 dim_10000251_charm_gacha_info_arch 主键精确同名
+  - dim_table: dim_10000251_charm_info_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_charm_info_arch 主键精确同名
+  - dim_table: dim_10000251_function_info_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_function_info_arch 主键精确同名
+  - dim_table: dim_10000251_knight_job_name_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_knight_job_name_arch 主键精确同名
   - dim_table: dim_10000251_server_info
     join_keys:
       - dws_column: server_id
         dim_column: server_id
-    derivation: DWS server_id (comment 服务器ID) exactly matches dim_10000251_server_info PK server_id; the dim is the 服务器(区服)维度配置表 for joining fact tables by server_id.
-  - dim_table: dim_10000251_card_pool_info
+    derivation: 根据规范，通过server_id关联服务器维度表以获取区服名称及开服时间等基础属性。
+  - dim_table: dim_10000251_trans_conquest_df_arch
     join_keys:
-      - dws_column: card_pool_id
-        dim_column: card_pool_id
-    derivation: DWS card_pool_id (comment 卡池id) exactly matches dim_10000251_card_pool_info PK card_pool_id; the dim is the general 卡池配置维度表 for card-pool attribute lookup.
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_conquest_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_equipment_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_equipment_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_equipment_suit_info_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_equipment_suit_info_arch 主键精确同名
+  - dim_table: dim_10000251_trans_fteam_dungeon_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_fteam_dungeon_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_gacha_mission_group_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_gacha_mission_group_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_goods_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_goods_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_hard_boss_info_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_hard_boss_info_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_mission_info_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_mission_info_arch 主键精确同名
+  - dim_table: dim_10000251_trans_play_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_play_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_recharge_shop_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_recharge_shop_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resouce_type_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_resouce_type_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_resource_item_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_resource_item_df_arch 主键精确同名
+  - dim_table: dim_10000251_trans_toy_gacha_info_df_arch
+    join_keys:
+      - dws_column: ds
+        dim_column: ds
+    derivation: 确定性：DWS 列 ds 与 dim_10000251_trans_toy_gacha_info_df_arch 主键精确同名
   - dim_table: dim_10000251_card_pool_type_info
     join_keys:
       - dws_column: card_pool_type
         dim_column: type_id
-    derivation: DWS card_pool_type (comment 卡池类型) is semantically the card-pool type ID, matching dim_10000251_card_pool_type_info PK type_id (卡池类型ID); the dim is built to translate a fact table's 卡池类型ID into a readable name.
+    derivation: 根据规范，通过card_pool_type关联卡池类型配置维度表以将卡池类型ID翻译为可读名称。
   - dim_table: dim_10000251_resource_name_info
     join_keys:
       - dws_column: result_item_type
         dim_column: item_type
       - dws_column: result_item_value
         dim_column: item_value
-    derivation: DWS result_item_type/result_item_value (comment 结果道具类型/值) composite-match dim_10000251_resource_name_info composite PK (item_type, item_value); the dim resolves item codes to human-readable names.
+    derivation: 根据规范，使用result_item_type和result_item_value复合键关联资源名称信息维度表以解析抽卡结果道具的人类可读名称。
 pref_label: 抽卡结果统计表
 alt_labels:
   - 抽卡
@@ -108,3 +216,37 @@ alt_labels:
   - SSR
   - 金卡
   - 稀有
+  - _di
+  - user_type=3
+  - 探索收集
+  - 扭蛋
+  - 祈愿
+  - 召唤
+  - 寻访
+  - 抽卡统计
+  - 抽奖记录
+  - 保底
+  - Gacha
+  - 角色抽卡
+  - 抽卡产出
+  - 抽卡明细
+  - 卡池统计
+  - 抽卡流水
+  - 召唤结果
+  - 角色抽奖
+  - gacha_stats
+  - 仅使用以下5个
+  - card_pool_type, card_pool_id
+  - 复合业务键，勿单列关联
+  - card_pool_id AS STRING
+  - card_pool_type AS STRING
+  - result_item_type,result_item_value
+  - item_type,item_value
+  - "*_arch 的 ds-only 关联等17个"
+  - 抽奖结果
+  - 卡池产出
+  - 抽卡掉落
+  - 卡池掉落
+  - gacha_result
+  - pull_result
+  - 角色召唤统计
