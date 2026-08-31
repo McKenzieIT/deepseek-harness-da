@@ -19,8 +19,15 @@
  * @module @deepseek-ai/dsh-eval/text_sim
  */
 
-/** rbi's deliberate leniency threshold for the non-terminal derailment check. */
+/** rbi's deliberate leniency threshold for the non-terminal derailment check (CJK char-trigrams). */
 const DERAILMENT_THRESHOLD = 0.35
+
+/**
+ * English (whitespace-delimited Latin) derailment preset. Word-level token
+ * overlap is denser than char-trigrams for space-delimited prose, so the
+ * derailment bar is raised to 0.55 for Latin text (vs the 0.35 CJK default).
+ */
+export const ENGLISH_DERAILMENT_THRESHOLD = 0.55
 
 /** ≤ this many char-trigrams in the expected (i.e. ≤5 chars) ⇒ DELIVERY uses token-containment. */
 const SHORT_TRIGRAM_FLOOR = 3
@@ -44,17 +51,31 @@ export function charNgrams(text: string, n: number): Set<string> {
   return s
 }
 
+/** Tunable knobs for {@link turnMatchesExpectation}; defaults preserve rbi's 0.35 calibration. */
+export interface TurnMatchOpts {
+  /**
+   * `max(token overlap, char-trigram overlap) ≥` this ⇒ on-script. Default 0.35
+   * (rbi's CJK char-trigram calibration); use {@link ENGLISH_DERAILMENT_THRESHOLD}
+   * (0.55) or {@link derailmentThresholdFor} for whitespace-delimited Latin text.
+   */
+  readonly derailmentThreshold?: number
+}
+
 /**
  * rbi's non-terminal derailment check: `max(token overlap, char-trigram
- * overlap) ≥ 0.35`. Token overlap is substring-containment (a token is matched
- * if it appears in the actual reply); trigram overlap is the intersection over
- * the expected trigram set. Deliberately lenient — the terminal L1/DELIVERY
- * assertions carry the real pass/fail signal.
+ * overlap) ≥ derailmentThreshold` (default 0.35). Token overlap is
+ * substring-containment (a token is matched if it appears in the actual
+ * reply); trigram overlap is the intersection over the expected trigram set.
+ * Deliberately lenient — the terminal L1/DELIVERY assertions carry the real
+ * pass/fail signal. Pass `opts.derailmentThreshold` (e.g.
+ * {@link ENGLISH_DERAILMENT_THRESHOLD} or {@link derailmentThresholdFor}) to
+ * recalibrate for non-CJK text; absent, the rbi 0.35 default is used.
  * @param actualReply - the agent's reply this turn.
  * @param expectedContent - the scripted assistant turn content.
+ * @param opts - optional tunables (testing / language preset).
  * @returns whether the reply is broadly on-script.
  */
-export function turnMatchesExpectation(actualReply: string, expectedContent: string): boolean {
+export function turnMatchesExpectation(actualReply: string, expectedContent: string, opts?: TurnMatchOpts): boolean {
   const actualLower = String(actualReply).toLowerCase().trim()
   const expectedLower = String(expectedContent).toLowerCase().trim()
   if (actualLower === expectedLower) return true
@@ -75,7 +96,27 @@ export function turnMatchesExpectation(actualReply: string, expectedContent: str
   for (const g of expectedTrigrams) if (actualTrigrams.has(g)) inter++
   const trigramRatio = inter / expectedTrigrams.size
 
-  return Math.max(tokenRatio, trigramRatio) >= DERAILMENT_THRESHOLD
+  const threshold = opts?.derailmentThreshold ?? DERAILMENT_THRESHOLD
+  return Math.max(tokenRatio, trigramRatio) >= threshold
+}
+
+/**
+ * Pick a derailment threshold for the expected content. Returns
+ * {@link ENGLISH_DERAILMENT_THRESHOLD} (0.55) when the expected is
+ * whitespace-delimited Latin (space-separated words that are mostly ASCII
+ * letters — char-trigrams are a poor proxy for word-level similarity there, so
+ * the bar is raised) and the rbi CJK default (0.35) otherwise (unspaced CJK,
+ * single words, or non-Latin scripts).
+ * @param expected - the scripted assistant turn content.
+ * @returns the derailment threshold to thread to {@link turnMatchesExpectation}.
+ */
+export function derailmentThresholdFor(expected: string): number {
+  const t = expected.toLowerCase().trim()
+  if (t.length === 0) return DERAILMENT_THRESHOLD
+  const hasSpace = /\s/.test(t)
+  const asciiLetters = (t.match(/[a-z]/g) ?? []).length
+  const isLatin = asciiLetters / t.length >= 0.5
+  return hasSpace && isLatin ? ENGLISH_DERAILMENT_THRESHOLD : DERAILMENT_THRESHOLD
 }
 
 /** Tunable knobs for {@link deliveryFuzzyMatch}; all default to rbi/decision-2 values. */

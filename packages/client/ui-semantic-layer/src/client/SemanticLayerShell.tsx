@@ -40,6 +40,8 @@ export interface SemanticLayerShellProps {
   layoutMode?: LayoutMode
   /** Number of completed eval runs; used for auto-flip decision. */
   evalRunCount?: number
+  /** Minimum eval runs to auto-flip from B to A. Default: 3. */
+  autoFlipThreshold?: number
   /** Evidence query client for the dashboard view. */
   evidenceClient?: EvidenceQueryClient | null
   /** Callback to navigate to the workspace view (for dashboard drill-down). */
@@ -52,12 +54,13 @@ export function SemanticLayerShell({
   openOrCreateSession,
   layoutMode = 'auto',
   evalRunCount: evalRunCountProp = 0,
+  autoFlipThreshold = 3,
   evidenceClient,
   onNavigateToWorkspace,
 }: SemanticLayerShellProps) {
   const metrics = useEvidenceMetrics(evidenceClient ?? null)
   const evalRunCount = evidenceClient ? metrics.evalRunCount : evalRunCountProp
-  const effectiveMode = computeEffectiveMode(layoutMode, evalRunCount)
+  const effectiveMode = computeEffectiveMode(layoutMode, evalRunCount, autoFlipThreshold)
 
   // When effective mode is 'A', render the dashboard view as the default
   if (effectiveMode === 'A' && evidenceClient) {

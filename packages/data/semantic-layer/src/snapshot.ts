@@ -170,6 +170,14 @@ interface CachedSnapshot {
   events: readonly RawEvent[]
   corpus: readonly EventCorpusItem[]
 }
+/** Upper bound on the number of distinct semanticRoots the module-level
+ * snapshot cache retains. The cache is version-keyed and self-invalidating
+ * per root, but an unbounded set of distinct roots (one per scope) could grow
+ * without limit; this cap evicts the oldest entry (FIFO — Map preserves
+ * insertion order) when exceeded. Present-root cache-hit semantics are
+ * unchanged: a hit returns early (no eviction), so an actively-cached root is
+ * never displaced by a re-capture of itself. */
+export const SNAPSHOT_CACHE_MAX = 64
 const _snapshotCache = new Map<string, CachedSnapshot>()
 
 /**
@@ -200,6 +208,14 @@ export function captureSnapshot(
   Object.freeze(corpus)
   const entry: CachedSnapshot = { version: serviceVersion, tables, events, corpus }
   _snapshotCache.set(semanticRoot, entry)
+  // Bounded FIFO eviction: when the cache exceeds the cap, drop the oldest
+  // entry. Map preserves insertion order, so keys().next().value is the
+  // oldest. The just-set root sits at the insertion-order tail, so the head
+  // is always a distinct, defined key whenever the cap is exceeded.
+  if (_snapshotCache.size > SNAPSHOT_CACHE_MAX) {
+    const oldest = _snapshotCache.keys().next().value
+    _snapshotCache.delete(oldest as string)
+  }
   return new DefinitionSnapshot(serviceVersion, tables, events, corpus)
 }
 
@@ -209,4 +225,15 @@ export function captureSnapshot(
  */
 export function clearSnapshotCache(): void {
   _snapshotCache.clear()
+}
+
+/**
+ * The current number of cached snapshot entries (distinct semanticRoots).
+ * Exported for test/health observation of the bounded cache (mirrors
+ * `clearSnapshotCache`); production code does not need this — the cache is
+ * version-keyed and self-invalidating per root.
+ * @returns the number of entries currently in the module-level cache.
+ */
+export function getSnapshotCacheSize(): number {
+  return _snapshotCache.size
 }

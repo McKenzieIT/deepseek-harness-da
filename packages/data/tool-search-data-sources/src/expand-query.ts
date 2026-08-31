@@ -24,14 +24,35 @@ const EXPANSION_SYSTEM_PROMPT =
   + '用户：大R用户有多少\n'
   + '输出：大R 大R玩家 大R付费账号 高付费 重度付费 big_r pay_order 付费订单 累计付费 高消费'
 
-const DEFAULT_EXPANSION_MODEL = 'qwen-flash'
-const DEFAULT_EXPANSION_PROVIDER = 'aga'
+/**
+ * Resolve the enrichment LLM provider/model from explicit opts, falling back
+ * to the deployment env-var contract (`ENRICHMENT_LLM_PROVIDER` /
+ * `ENRICHMENT_LLM_MODEL`). Throws when neither opts nor env supplies both
+ * values — fail-loud instead of silently falling back to a vendor default.
+ *
+ * CL8 centralization: this exact resolver (env-var names + error message) is
+ * duplicated locally in `eval-cli/src/main.ts` and
+ * `semantic-layer/src/llm-wiring-plugin.ts` — the shared contract is the
+ * env-var names + error message, not shared code (no new cross-package dep).
+ */
+function resolveEnrichmentLlmConfig(
+  input: { provider?: string | undefined; model?: string | undefined },
+): { provider: string; model: string } {
+  const provider = input.provider || process.env.ENRICHMENT_LLM_PROVIDER || ''
+  const model = input.model || process.env.ENRICHMENT_LLM_MODEL || ''
+  if (!provider || !model) {
+    throw new Error('enrichment-llm-wiring: no provider/model configured')
+  }
+  return { provider, model }
+}
 
 /** Options for {@link expandQuery}. */
 export interface ExpandQueryOptions {
-  /** LLM provider route for the expansion call (defaults to `aga`). */
+  /** LLM provider route for the expansion call (env `ENRICHMENT_LLM_PROVIDER`
+   * when omitted; throws if unconfigured — no silent vendor fallback). */
   readonly provider?: string | undefined
-  /** LLM model id for the expansion call (defaults to `qwen-flash`). */
+  /** LLM model id for the expansion call (env `ENRICHMENT_LLM_MODEL` when
+   * omitted; throws if unconfigured — no silent vendor fallback). */
   readonly model?: string | undefined
   /** Caller cancellation forwarded to the LLM stream so an abort halts the
    * auxiliary expansion round-trip, not just the boundary check in `execute`. */
@@ -47,7 +68,12 @@ export interface ExpandQueryOptions {
  * @param opts - deployment-varying LLM route (`provider`/`model`) and the caller
  * abort `signal` forwarded into the LLM stream.
  * @returns the expanded BM25-friendly query, or the original `question` when
- * `ctx.llm` is unavailable or on any error (graceful degradation).
+ * `ctx.llm` is unavailable or on a runtime LLM stream error (graceful
+ * degradation).
+ * @throws {Error} `enrichment-llm-wiring: no provider/model configured` when
+ * `ctx.llm` IS mounted but neither `opts` nor the `ENRICHMENT_LLM_*` env vars
+ * supply both provider and model (CL8: fail-loud, no silent vendor fallback).
+ * Callers wrap the call to degrade gracefully (see `index.ts` execute).
  */
 export async function expandQuery(
   ctx: Context,
@@ -57,11 +83,18 @@ export async function expandQuery(
   const llm = ctx.get('llm') as { stream?(options: unknown): AsyncIterable<unknown> } | undefined
   if (llm === undefined || typeof llm.stream !== 'function') return question
 
+  // CL8: resolve provider/model from opts → env-var contract. Throws when
+  // unconfigured (no silent 'aga'/'qwen-flash' fallback). The throw propagates
+  // to the caller — callers wrap the call to degrade gracefully (see
+  // tool-search-data-sources/src/index.ts execute). Placed AFTER the ctx.llm
+  // probe so "no LLM mounted" still degrades without needing provider/model.
+  const { provider, model } = resolveEnrichmentLlmConfig({ provider: opts.provider, model: opts.model })
+
   try {
     const assembler = new BlockAssembler()
     const options = {
-      provider: opts.provider ?? DEFAULT_EXPANSION_PROVIDER,
-      model: opts.model ?? DEFAULT_EXPANSION_MODEL,
+      provider,
+      model,
       system: EXPANSION_SYSTEM_PROMPT,
       temperature: 0.1,
       maxTokens: 200,

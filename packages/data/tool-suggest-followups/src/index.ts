@@ -60,7 +60,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       + 'current query results. Use in the INTERPRETATION phase to offer '
       + 'actionable next steps (drill-downs, comparisons, time shifts). '
       + 'Provide 1-5 suggestions, each with a full query value and a label '
-      + 'of at most ~8 Chinese characters that never repeats the value — '
+      + 'of at most ≤ ~20 characters / ≤ 4 words that never repeats the value — '
       + 'the UI renders the label on the first line and the full value '
       + 'underneath, so the label is a short tag, not a preview.',
     parameters: {
@@ -70,7 +70,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           type: 'object',
           additionalProperties: false,
           properties: {
-            label: { type: 'string', required: true, description: 'Short tag for the row (≤ 8 Chinese characters). Never repeat the value — the UI shows the full value under the label.' },
+            label: { type: 'string', required: true, description: 'Short tag for the row (≤ ~20 characters / ≤ 4 words). Never repeat the value — the UI shows the full value under the label.' },
             value: { type: 'string', required: true, description: 'The full follow-up question/query to execute if the user selects this.' },
           },
         },

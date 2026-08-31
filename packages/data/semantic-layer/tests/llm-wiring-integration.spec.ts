@@ -3,9 +3,10 @@
  * wires ctx.llm into ctx.schema so both rounds of discoverRelations and
  * discoverEventRelations execute, and the on-write hook triggers enrichment.
  */
-import { test, expect } from 'vitest'
+import { describe, test, expect, afterEach, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SemanticLayerService, wireEnrichmentLlm, type TextLlm } from '../src/index.ts'
+import { apply } from '../src/llm-wiring-plugin.ts'
 import { tableKindPlugin } from '../src/kinds/table-kind.ts'
 import { TableDefinitionSchema } from '../src/types.ts'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
@@ -192,4 +193,55 @@ test('F1 — alternative FK produces multiple independent join edges', () => {
   expect(rels[0]!.on).toBe('act_server_id_fst = server_id')
   expect(rels[1]!.on).toBe('act_server_id_lst = server_id')
   expect(rels[2]!.on).toBe('pay_server_id_fst = server_id')
+})
+
+// ── CL8: provider/model resolution (no silent vendor fallback) ──────────
+
+describe('CL8 — enrichment-llm-wiring provider/model resolution', () => {
+  const savedProvider = process.env.ENRICHMENT_LLM_PROVIDER
+  const savedModel = process.env.ENRICHMENT_LLM_MODEL
+
+  afterEach(() => {
+    delete process.env.ENRICHMENT_LLM_PROVIDER
+    delete process.env.ENRICHMENT_LLM_MODEL
+    if (savedProvider !== undefined) process.env.ENRICHMENT_LLM_PROVIDER = savedProvider
+    if (savedModel !== undefined) process.env.ENRICHMENT_LLM_MODEL = savedModel
+  })
+
+  /** Minimal ctx mock capturing apply()'s schema.setLlmCall + logger.info. */
+  function mockApplyCtx(): { ctx: Context; logged: string[]; setLlmCall: ReturnType<typeof vi.fn> } {
+    const logged: string[] = []
+    const setLlmCall = vi.fn()
+    const ctx = {
+      schema: { setLlmCall },
+      logger: { info: (m: string) => { logged.push(m) } },
+    } as unknown as Context
+    return { ctx, logged, setLlmCall }
+  }
+
+  test('no config + no env → apply throws enrichment-llm-wiring error', () => {
+    const { ctx, setLlmCall } = mockApplyCtx()
+    expect(() => { apply(ctx, {}) }).toThrow('enrichment-llm-wiring: no provider/model configured')
+    expect(setLlmCall).not.toHaveBeenCalled()
+  })
+
+  test('config.provider/model override env (no silent vendor fallback)', () => {
+    process.env.ENRICHMENT_LLM_PROVIDER = 'envprov'
+    process.env.ENRICHMENT_LLM_MODEL = 'envmodel'
+    const { ctx, logged, setLlmCall } = mockApplyCtx()
+    apply(ctx, { provider: 'cfgprov', model: 'cfgmodel' })
+    expect(setLlmCall).toHaveBeenCalledTimes(1)
+    expect(logged[0]).toContain('cfgprov/cfgmodel')
+    expect(logged[0]).not.toContain('aga')
+    expect(logged[0]).not.toContain('qwen3.7-max')
+  })
+
+  test('env vars used when config empty', () => {
+    process.env.ENRICHMENT_LLM_PROVIDER = 'envprov'
+    process.env.ENRICHMENT_LLM_MODEL = 'envmodel'
+    const { ctx, logged, setLlmCall } = mockApplyCtx()
+    apply(ctx, {})
+    expect(setLlmCall).toHaveBeenCalledTimes(1)
+    expect(logged[0]).toContain('envprov/envmodel')
+  })
 })

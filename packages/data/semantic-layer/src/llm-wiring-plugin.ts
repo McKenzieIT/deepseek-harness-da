@@ -28,13 +28,33 @@ export const Config: z<Config> = z.object({
   model: z.string().default(''),
 })
 
+/**
+ * Resolve the enrichment LLM provider/model from explicit input, falling back
+ * to the deployment env-var contract (`ENRICHMENT_LLM_PROVIDER` /
+ * `ENRICHMENT_LLM_MODEL`). Throws when neither input nor env supplies both
+ * values — fail-loud instead of silently falling back to a vendor default.
+ *
+ * CL8 centralization: this exact resolver (env-var names + error message) is
+ * duplicated locally in `eval-cli/src/main.ts` and
+ * `tool-search-data-sources/src/expand-query.ts` — the shared contract is the
+ * env-var names + error message, not shared code (no new cross-package dep).
+ */
+function resolveEnrichmentLlmConfig(
+  input: { provider?: string | undefined; model?: string | undefined },
+): { provider: string; model: string } {
+  const provider = input.provider || process.env.ENRICHMENT_LLM_PROVIDER || ''
+  const model = input.model || process.env.ENRICHMENT_LLM_MODEL || ''
+  if (!provider || !model) {
+    throw new Error('enrichment-llm-wiring: no provider/model configured')
+  }
+  return { provider, model }
+}
+
 export function apply(ctx: Context, config: Config = {}): void {
-  // Deployment-default provider/model. 'aga' is the in-house LLM gateway
-  // provider name; 'qwen3.7-max' is the enrichment default. Both are
-  // overridable via plugin config (provider/model) and should be pinned to the
-  // deployment's actual gateway in bundle config rather than relying on these.
-  const provider = config.provider || 'aga'
-  const model = config.model || 'qwen3.7-max'
+  // CL8: resolve provider/model from plugin config → deployment env-var
+  // contract. No silent vendor fallback ('aga'/'qwen3.7-max' removed) — fail
+  // loud when unconfigured so the deployment pins its actual gateway.
+  const { provider, model } = resolveEnrichmentLlmConfig({ provider: config.provider, model: config.model })
 
   const textLlm: TextLlm = {
     async text(prompt: string): Promise<string> {

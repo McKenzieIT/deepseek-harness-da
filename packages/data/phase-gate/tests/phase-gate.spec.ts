@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { critiqueSql } from '@deepseek-ai/dsh-nl2sql-engine'
 import { PhaseGate } from '../src/phase-gate.ts'
 import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS } from '../src/domain.ts'
+import { Config } from '../src/index.ts'
 
 function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancelled: AgentCancelCause[] } {
   const injected: UserMessage[] = []
@@ -1901,5 +1902,20 @@ describe('G-DA6: prior_turn_tables inheritance', () => {
 
     // prior_turn_tables unchanged (no snapshot on failure)
     expect(s.prior_turn_tables).toEqual(new Set(['old_table']))
+  })
+})
+
+// CL6: the Config schema's scopeId default must be domain-neutral ('default'),
+// not a game-specific id. The schema (schemastery) is callable: Config({})
+// resolves the empty object, applying field defaults.
+describe('Config schema defaults (CL6)', () => {
+  it('defaults scopeId to a domain-neutral value', () => {
+    const config = Config({})
+    expect(config.scopeId).toBe('default')
+  })
+
+  it('honors an explicit scopeId override', () => {
+    const config = Config({ scopeId: 'custom-scope' })
+    expect(config.scopeId).toBe('custom-scope')
   })
 })

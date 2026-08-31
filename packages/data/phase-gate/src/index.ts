@@ -67,7 +67,7 @@ export const inject = ['tools', 'systemPrompt', 'agents']
 /** Runtime config schema (rbi `PipelineConfig` overrides; D6 adopts defaults). */
 export interface Config extends PhaseGateConfig {}
 export const Config: z<Config> = z.object({
-  scopeId: z.string().default('game-1'),
+  scopeId: z.string().default('default'),
   max_fallbacks: z.number().default(PipelineConfig.max_fallbacks),
   max_subquestions: z.number().default(PipelineConfig.max_subquestions),
   max_executions_per_turn: z.number().default(PipelineConfig.max_executions_per_turn),

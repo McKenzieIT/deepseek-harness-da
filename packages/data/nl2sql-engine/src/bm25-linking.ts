@@ -69,7 +69,7 @@ export function tokenize(text: string): string[] {
       if (parts.length > 1) tokens.push(...parts)
     }
   }
-  const cjk = text.match(/[一-鿿]+/g) ?? []
+  const cjk = text.match(/[一-鿿぀-ゟ゠-ヿ]+/g) ?? []
   for (const seg of cjk) {
     for (const ch of seg) tokens.push(ch) // unigram
     if (seg.length > 1) {

@@ -225,10 +225,10 @@ export const PHASE_TOOLS: Readonly<Record<Phase, readonly string[]>> = {
 
 /**
  * Construct a fresh per-agent phase-gate state object rooted in the UNDERSTANDING phase.
- * @param scopeId The analytics scope identifier (e.g. game id) this state is keyed to.
+ * @param scopeId The analytics scope identifier (e.g. the calling agent's scope) this state is keyed to.
  * @returns A new `PhaseGateState` with all counters zeroed and `current_phase=UNDERSTANDING`.
  */
-export function freshPhaseGateState(scopeId = 'game-1'): PhaseGateState {
+export function freshPhaseGateState(scopeId = 'default'): PhaseGateState {
   return {
     scope_id: scopeId,
     current_phase: Phase.UNDERSTANDING,

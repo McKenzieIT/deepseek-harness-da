@@ -22,8 +22,10 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import z from '@deepseek-ai/schemastery'
 import { SemanticLayerShell, type SemanticLayerShellProps } from './SemanticLayerShell.tsx'
 import { en, zh } from './locales.ts'
+import type { LayoutMode } from './hooks/useLayoutMode.ts'
 import { semanticLayerPresenters } from './presenters/index.ts'
 import { SemanticLayerGoalDock, SemanticLayerEvidence, SemanticLayerSchemaExplorer, PRESET_ID } from './wiring.tsx'
 import { buildSchemaGatewayClient } from './schemaGatewayBridge.ts'
@@ -62,7 +64,24 @@ const NS = 'semanticLayer'
 
 export const inject = ['slots', 'locale']
 
-export function apply(ctx: ClientContext): void {
+/**
+ * Plugin config for the semantic layer client half. Both fields default so the
+ * plugin runs unchanged when the host declares no config; the host can override
+ * `layoutMode` to pin a layout and `autoFlipThreshold` to tune the B→A flip.
+ */
+export interface Config {
+  /** Layout mode: 'B' (workspace-first), 'A' (dashboard-first), or 'auto' (flip on threshold). */
+  layoutMode?: LayoutMode
+  /** Minimum eval runs to auto-flip from B to A. Default: 3. */
+  autoFlipThreshold?: number
+}
+
+export const Config: z<Config> = z.object({
+  layoutMode: z.union(['B', 'A', 'auto']).default('auto'),
+  autoFlipThreshold: z.number().default(3),
+})
+
+export function apply(ctx: ClientContext, config: Config = {}): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-semantic-layer: dictionaries')
   ctx.plugin(semanticLayerPresenters)
 
@@ -134,9 +153,13 @@ export function apply(ctx: ClientContext): void {
       layout?.openDetails()
     }
 
+    const layoutMode: LayoutMode = config.layoutMode ?? 'auto'
+    const autoFlipThreshold: number = config.autoFlipThreshold ?? 3
+
     const injected = (): Omit<SemanticLayerShellProps, 'wide' | 't'> => ({
       openOrCreateSession,
-      layoutMode: 'auto',
+      layoutMode,
+      autoFlipThreshold,
       evidenceClient,
     })
 

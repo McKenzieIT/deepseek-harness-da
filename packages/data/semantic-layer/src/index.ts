@@ -73,7 +73,7 @@ import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
 // ── logic exports (substrate; consumers + tests use directly) ───────────
 export * from './types.ts'
 // W11 C1: MVCC query snapshot — consistent point-in-time view during query execution.
-export { DefinitionSnapshot, captureSnapshot, clearSnapshotCache } from './snapshot.ts'
+export { DefinitionSnapshot, captureSnapshot, clearSnapshotCache, getSnapshotCacheSize, SNAPSHOT_CACHE_MAX } from './snapshot.ts'
 export {
   dumpYaml,
   resolveSemanticLayer,
@@ -268,6 +268,13 @@ export class SemanticLayerService extends Service {
 
   private graphCache: RelationGraph | undefined
   private graphVersion = -1
+  /** CL-2 D2: dangling domain→concept refs collected during the last
+   * getRelationGraph() build — assets whose `domains` reference a concept
+   * name with no matching definition in concepts/. Such refs are SKIPPED
+   * (warned) rather than aborting the build, so valid assets still get their
+   * edges. Empty when all refs resolve (or no concepts are loaded). Exposed
+   * via getDanglingDomainRefs() as a health-check surface. */
+  private danglingDomainRefs: string[] = []
 
   /**
    * The live relation graph: bidirectional adjacency over every table's
@@ -331,20 +338,28 @@ export class SemanticLayerService extends Service {
         aliasData.push({ nodeId: `concept:${r.data.name}`, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
       }
     }
-    // CL-2 D2: validate asset.domains reference existing concepts (strict mode)
+    // CL-2 D2: validate asset.domains reference existing concepts. A dangling
+    // ref (no matching concept) is SKIPPED + warned rather than aborting the
+    // whole graph build, so valid assets still get their edges. Collected refs
+    // are exposed via getDanglingDomainRefs() (health-check surface).
+    this.danglingDomainRefs = []
     if (conceptNames.size > 0) {
       for (const { sourceId, domains } of assetDomains) {
         for (const d of domains) {
           if (!conceptNames.has(d)) {
-            throw new Error(`Domain reference validation failed: asset "${sourceId}" references domain "${d}" which has no matching concept definition in concepts/`)
+            const ref = `asset="${sourceId}" domain="${d}"`
+            this.danglingDomainRefs.push(ref)
+            this.ctx.logger.warn(`ctx.schema relation graph: dangling domain reference — ${ref} (no matching concept definition in concepts/; reference skipped)`)
           }
         }
       }
     }
-    // Derive concept→asset related_to edges from asset.domains (second pass)
+    // Derive concept→asset related_to edges from asset.domains (second pass).
+    // Dangling domains are skipped (warned above) — only valid concepts get edges.
     if (conceptNames.size > 0) {
       for (const { sourceId, domains } of assetDomains) {
         for (const d of domains) {
+          if (!conceptNames.has(d)) continue
           entries.push({ sourceId: `concept:${d}`, relations: [{ type: 'related_to', target: sourceId }] })
         }
       }
@@ -353,6 +368,18 @@ export class SemanticLayerService extends Service {
     this.graphCache = g
     this.graphVersion = this.corpusVersion()
     return g
+  }
+
+  /**
+   * CL-2 D2: dangling domain→concept references collected during the last
+   * getRelationGraph() build — assets whose `domains` reference a concept
+   * name with no matching definition in concepts/. Such refs are skipped
+   * (warned) rather than aborting the graph build, so valid assets still get
+   * their edges. Empty when all domain refs resolve or no concepts are loaded.
+   * @returns a snapshot of the dangling refs (`asset="..." domain="..."`) from the last build.
+   */
+  getDanglingDomainRefs(): string[] {
+    return [...this.danglingDomainRefs]
   }
 
   /**

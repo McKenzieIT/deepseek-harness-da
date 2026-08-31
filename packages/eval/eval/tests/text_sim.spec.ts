@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { charNgrams, deliveryFuzzyMatch, turnMatchesExpectation } from '../src/text_sim.ts'
+import { charNgrams, deliveryFuzzyMatch, derailmentThresholdFor, ENGLISH_DERAILMENT_THRESHOLD, turnMatchesExpectation } from '../src/text_sim.ts'
 
 describe('charNgrams', () => {
   it('returns the whole string as the sole gram when shorter than n', () => {
@@ -32,6 +32,35 @@ describe('turnMatchesExpectation (derailment, rbi ≥0.35)', () => {
   it('falls through the token guard when expected has no len≥2 tokens (single CJK char → trigram 0)', () => {
     // expected "好" has 0 tokens len≥2 → tokenRatio stays 0 → trigram ('好' vs '好好好' = 0) → false.
     expect(turnMatchesExpectation('好好好', '好')).toBe(false)
+  })
+  it('injecting a higher threshold (0.55) flips a 0.5-overlap reply from pass to fail', () => {
+    // 2/4 char-trigrams overlap (0.5) — passes the default 0.35, fails the injected 0.55.
+    const actual = '收入最高的游戏是游戏a'
+    const expected = '收入最高游戏'
+    expect(turnMatchesExpectation(actual, expected)).toBe(true)
+    expect(turnMatchesExpectation(actual, expected, { derailmentThreshold: 0.55 })).toBe(false)
+  })
+  it('injecting a lower threshold (0.2) flips a 0.333-overlap reply from fail to pass', () => {
+    // 2/6 char-trigrams overlap (0.333) — fails the default 0.35, passes the injected 0.2.
+    const actual = 'abcxdef'
+    const expected = 'abcdefgh'
+    expect(turnMatchesExpectation(actual, expected)).toBe(false)
+    expect(turnMatchesExpectation(actual, expected, { derailmentThreshold: 0.2 })).toBe(true)
+  })
+})
+
+describe('derailmentThresholdFor (language preset)', () => {
+  it('ENGLISH_DERAILMENT_THRESHOLD is 0.55', () => {
+    expect(ENGLISH_DERAILMENT_THRESHOLD).toBe(0.55)
+  })
+  it('returns the English preset (0.55) for whitespace-delimited Latin text', () => {
+    expect(derailmentThresholdFor('the revenue trend is up')).toBe(ENGLISH_DERAILMENT_THRESHOLD)
+    expect(derailmentThresholdFor('Hello World Foo Bar')).toBe(ENGLISH_DERAILMENT_THRESHOLD)
+  })
+  it('returns the CJK default (0.35) for unspaced CJK, single words, or non-Latin', () => {
+    expect(derailmentThresholdFor('收入最高游戏')).toBe(0.35)
+    expect(derailmentThresholdFor('hello')).toBe(0.35)
+    expect(derailmentThresholdFor('')).toBe(0.35)
   })
 })
 

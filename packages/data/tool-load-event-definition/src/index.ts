@@ -1,6 +1,6 @@
 /**
  * Model-facing `load_event_definition` tool — the UNDERSTANDING/GENERATION-phase
- * schema-grounding entry for event (埋点) definitions. The agent calls it to
+ * schema-grounding entry for instrumented event definitions. The agent calls it to
  * load a validated event definition (params_fields / metrics / disambiguation /
  * external dimension refs) from the semantic-layer substrate before it writes
  * SQL over an event ODS table.
@@ -351,7 +351,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'load_event_definition',
     description:
-      'Load a validated event (埋点) definition (params_fields, metrics, '
+      'Load a validated instrumented event definition (params_fields, metrics, '
       + 'disambiguation, external dimension references) from the semantic layer. '
       + 'Call this in the UNDERSTANDING/GENERATION phase to ground SQL in the '
       + 'real event schema before writing or critiquing a query over an event '

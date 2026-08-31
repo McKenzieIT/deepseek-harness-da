@@ -40,6 +40,13 @@ describe('computeEffectiveMode', () => {
     expect(computeEffectiveMode('auto', 1, 2)).toBe('B')
   })
 
+  it('custom threshold 5: flips to A only at >=5 runs (not at 3)', () => {
+    expect(computeEffectiveMode('auto', 3, 5)).toBe('B')
+    expect(computeEffectiveMode('auto', 4, 5)).toBe('B')
+    expect(computeEffectiveMode('auto', 5, 5)).toBe('A')
+    expect(computeEffectiveMode('auto', 6, 5)).toBe('A')
+  })
+
   it('uses default threshold of 3 when not explicitly provided', () => {
     expect(computeEffectiveMode('auto', 2)).toBe('B')
     expect(computeEffectiveMode('auto', 3)).toBe('A')
@@ -63,6 +70,21 @@ describe('useLayoutMode', () => {
       useLayoutMode({ mode: 'auto', evalRunCount: 2, autoFlipThreshold: 2 }),
     )
     expect(result.current.effectiveMode).toBe('A')
+  })
+
+  it('autoFlipThreshold 5: flips to A only at >=5 runs (not at 3)', () => {
+    const { result: r3 } = renderHook(() =>
+      useLayoutMode({ mode: 'auto', evalRunCount: 3, autoFlipThreshold: 5 }),
+    )
+    expect(r3.current.effectiveMode).toBe('B')
+    const { result: r4 } = renderHook(() =>
+      useLayoutMode({ mode: 'auto', evalRunCount: 4, autoFlipThreshold: 5 }),
+    )
+    expect(r4.current.effectiveMode).toBe('B')
+    const { result: r5 } = renderHook(() =>
+      useLayoutMode({ mode: 'auto', evalRunCount: 5, autoFlipThreshold: 5 }),
+    )
+    expect(r5.current.effectiveMode).toBe('A')
   })
 
   it('defaults evalRunCount to 0 when omitted', () => {

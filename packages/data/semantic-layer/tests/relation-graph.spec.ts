@@ -4,9 +4,15 @@
  * CL-1 Phase 2: alias index tests (resolveAlias, getAliases).
  */
 import { test, expect } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
 import { RelationGraph } from '../src/relation-graph.ts'
+import { SemanticLayerService } from '../src/index.ts'
 import type { RelationDef } from '../src/registry.ts'
 import type { NodeAliasData } from '../src/relation-graph.ts'
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import yaml from 'js-yaml'
 
 function makeEntries(...tuples: [string, RelationDef[]][]): { sourceId: string; relations: RelationDef[] }[] {
   return tuples.map(([sourceId, relations]) => ({ sourceId, relations }))
@@ -309,4 +315,86 @@ test('alias index works alongside relation edges', () => {
   expect(g.resolveAlias('beta')).toEqual(['B'])
   expect(g.getRelated('A')).toHaveLength(1)
   expect(g.findJoinPath('A', 'B')).toEqual(['A', 'B'])
+})
+
+// ── CL-2 D2: dangling domain refs are skipped + warned, not thrown ──────
+// A single dangling domain→concept ref previously aborted the ENTIRE graph
+// build for ALL assets. It now skips that ref (warned + collected via
+// getDanglingDomainRefs) and continues building edges for valid assets.
+
+function makeDanglingLayer(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'cl2-dangling-'))
+  mkdirSync(join(dir, 'tables'), { recursive: true })
+  mkdirSync(join(dir, 'concepts'), { recursive: true })
+  writeFileSync(join(dir, 'config.yaml'), yaml.dump({ project: { name: 'test', scope_id: 'test' } }))
+  // A valid concept 'pay'; the 'ghost' domain has NO concept definition.
+  writeFileSync(join(dir, 'concepts', 'pay.yaml'), yaml.dump({ name: 'pay', description: 'payment domain' }))
+  // Table with one valid domain (pay) + one dangling domain (ghost).
+  writeFileSync(join(dir, 'tables', 'dws_order.yaml'), yaml.dump({
+    table_name: 'dws_order',
+    table_comment: 'orders',
+    description: 'Order summary',
+    domains: ['pay', 'ghost'],
+    granularity: 'daily',
+    columns: [{ name: 'order_id', type: 'string', comment: 'ID', role: 'dimension' }],
+    metrics: {},
+    partitions: [{ name: 'ds', type: 'string' }],
+    confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
+  }))
+  return dir
+}
+
+function makeCleanLayer(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'cl2-clean-'))
+  mkdirSync(join(dir, 'tables'), { recursive: true })
+  mkdirSync(join(dir, 'concepts'), { recursive: true })
+  writeFileSync(join(dir, 'config.yaml'), yaml.dump({ project: { name: 'test', scope_id: 'test' } }))
+  writeFileSync(join(dir, 'concepts', 'pay.yaml'), yaml.dump({ name: 'pay', description: 'payment domain' }))
+  writeFileSync(join(dir, 'tables', 'dws_order.yaml'), yaml.dump({
+    table_name: 'dws_order',
+    table_comment: 'orders',
+    description: 'Order summary',
+    domains: ['pay'],
+    granularity: 'daily',
+    columns: [{ name: 'order_id', type: 'string', comment: 'ID', role: 'dimension' }],
+    metrics: {},
+    partitions: [{ name: 'ds', type: 'string' }],
+    confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
+  }))
+  return dir
+}
+
+test('CL-2 D2 — dangling domain ref does NOT throw; valid assets still build; ref collected', () => {
+  const dir = makeDanglingLayer()
+  try {
+    const ctx = new Context()
+    const svc = new SemanticLayerService(ctx, { semanticRoot: dir })
+    // Must NOT throw — the dangling 'ghost' ref is skipped + warned.
+    const g = svc.getRelationGraph()
+    // Valid domain 'pay' still gets its bidirectional related_to edge.
+    const payEdges = g.getRelated('concept:pay', 'related_to')
+    expect(payEdges.some(e => e.targetId === 'dws_order')).toBe(true)
+    expect(g.getRelated('dws_order', 'related_to').some(e => e.targetId === 'concept:pay')).toBe(true)
+    // The dangling 'ghost' concept node is NOT built (edge skipped).
+    expect(g.getRelated('concept:ghost', 'related_to')).toEqual([])
+    // The dangling ref is reported via the health-check surface.
+    const refs = svc.getDanglingDomainRefs()
+    expect(refs).toHaveLength(1)
+    expect(refs[0]).toContain('dws_order')
+    expect(refs[0]).toContain('ghost')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('CL-2 D2 — clean layer (all domains resolve) reports zero dangling refs', () => {
+  const dir = makeCleanLayer()
+  try {
+    const ctx = new Context()
+    const svc = new SemanticLayerService(ctx, { semanticRoot: dir })
+    svc.getRelationGraph()
+    expect(svc.getDanglingDomainRefs()).toEqual([])
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

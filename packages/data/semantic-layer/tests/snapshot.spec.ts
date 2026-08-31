@@ -9,7 +9,7 @@
  */
 import { test, expect, describe, afterEach } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { SemanticLayerService, DefinitionSnapshot, clearSnapshotCache } from '../src/index.ts'
+import { SemanticLayerService, DefinitionSnapshot, captureSnapshot, clearSnapshotCache, getSnapshotCacheSize, SNAPSHOT_CACHE_MAX } from '../src/index.ts'
 import { invalidateCaches } from '../src/io.ts'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -237,5 +237,36 @@ describe('W11 C1 — MVCC snapshot isolation', () => {
     await expect(
       svcLocal.withSnapshot(async () => { throw new Error('boom') }),
     ).rejects.toThrow('boom')
+  })
+
+  test('CL14 — cache bounded: caps size at SNAPSHOT_CACHE_MAX and re-scans evicted roots', () => {
+    clearSnapshotCache()
+    // Capture root0 first; save its tables-array reference (the cached version).
+    const root0 = makeLayer()
+    const snap0a = captureSnapshot(root0, 0, 'params+term')
+    const tables0a = snap0a.tables
+    // Capture MAX more distinct roots — evicts root0 (the oldest) once over cap.
+    const roots = [root0]
+    for (let i = 0; i < SNAPSHOT_CACHE_MAX; i++) {
+      const root = makeLayer()
+      roots.push(root)
+      captureSnapshot(root, 0, 'params+term')
+    }
+    // Cache never exceeds the cap.
+    expect(getSnapshotCacheSize()).toBe(SNAPSHOT_CACHE_MAX)
+    // root0 was evicted — re-capturing re-scans from disk (fresh arrays, not
+    // the cached reference). Contrast test (d): a hit reuses the same array.
+    const snap0b = captureSnapshot(root0, 0, 'params+term')
+    expect(snap0b.tables).not.toBe(tables0a)
+    // The re-scanned data is still correct.
+    expect(snap0b.loadTableDefinition('dws_order')!.description).toBe('Order summary v1')
+    // A still-cached root (the last captured) reuses its arrays (cache hit).
+    const last = roots[roots.length - 1]!
+    const snapLast1 = captureSnapshot(last, 0, 'params+term')
+    const snapLast2 = captureSnapshot(last, 0, 'params+term')
+    expect(snapLast1.tables).toBe(snapLast2.tables)
+    // cleanup
+    clearSnapshotCache()
+    for (const root of roots) rmSync(root, { recursive: true, force: true })
   })
 })

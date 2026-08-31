@@ -44,9 +44,11 @@ export interface Config {
   readonly topK?: number
   /** Enable LLM query expansion before BM25 retrieval (P15a). */
   readonly queryExpansion?: boolean
-  /** LLM provider route for query expansion (defaults to `aga`; P15a). */
+  /** LLM provider route for query expansion (CL8: empty default; resolved from
+   *  env `ENRICHMENT_LLM_PROVIDER` when omitted; P15a). */
   readonly expansionProvider?: string
-  /** LLM model id for query expansion (defaults to `qwen-flash`; P15a). */
+  /** LLM model id for query expansion (CL8: empty default; resolved from env
+   *  `ENRICHMENT_LLM_MODEL` when omitted; P15a). */
   readonly expansionModel?: string
   /** Blending mode for alias-graph fusion (CL-6). `strategy-b` = boost existing
    *  BM25 candidates; `continuous-blend` = coverage-weighted BM25+graph merge
@@ -58,8 +60,8 @@ export interface Config {
 export const Config: z<Config> = z.object({
   topK: z.number().default(20),
   queryExpansion: z.boolean().default(true),
-  expansionProvider: z.string().default('aga'),
-  expansionModel: z.string().default('qwen-flash'),
+  expansionProvider: z.string().default(''),
+  expansionModel: z.string().default(''),
   blendingMode: z.string().default('continuous-blend') as z<'strategy-b' | 'continuous-blend'>,
 })
 
@@ -295,7 +297,7 @@ export function extractQueryTerms(query: string): string[] {
     .split(/[\s,，。？！?!、;；：:()（）\[\]【】{}]+/)
     .filter(t => t.length >= 2)
   const out: string[] = []
-  const cjkRe = /^[一-鿿㐀-䶿]+$/
+  const cjkRe = /^[一-鿿㐀-䶿぀-ゟ゠-ヿ]+$/
   for (const t of tokens) {
     if (cjkRe.test(t)) {
       out.push(t)
@@ -312,7 +314,7 @@ export function extractQueryTerms(query: string): string[] {
           if (at.length >= 2) out.push(at.toLowerCase())
         }
       }
-      const cjkSegs = t.match(/[一-鿿㐀-䶿]+/g)
+      const cjkSegs = t.match(/[一-鿿㐀-䶿぀-ゟ゠-ヿ]+/g)
       if (cjkSegs) {
         for (const seg of cjkSegs) {
           if (seg.length >= 2) out.push(seg)
@@ -596,9 +598,18 @@ export function apply(ctx: Context, config: Config = {}): void {
       // P15a: LLM query expansion — rewrite the query for better BM25 recall.
       // Soft-probe ctx.llm (same discipline as schema/retrieval): skip when no
       // LLM provider is mounted or when expansion is disabled via config.
-      const query = expansionEnabled
-        ? await expandQuery(ctx, args.query, { provider: expansionProvider, model: expansionModel, signal: exec.signal })
-        : args.query
+      // CL8: expandQuery throws when provider/model are unconfigured (opts →
+      // env); degrade to the original question + warn so BM25 linking proceeds
+      // while the misconfig is surfaced loudly (no silent vendor fallback).
+      let query = args.query
+      if (expansionEnabled) {
+        try {
+          query = await expandQuery(ctx, args.query, { provider: expansionProvider, model: expansionModel, signal: exec.signal })
+        } catch {
+          console.warn('enrichment-llm-wiring: no provider/model configured; skipping query expansion')
+          query = args.query
+        }
+      }
       // P5b soft-fallback swap: when the `ctx.retrieval` seam is registered
       // (opt-in; the bundle mounts `dsh-retrieval-inproc`), use the real async
       // hybrid provider; otherwise the sync local `Bm25Linker` (Q1 thin

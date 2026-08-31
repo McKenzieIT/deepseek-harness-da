@@ -48,7 +48,7 @@ import { extractSqlCandidate, extractTableNames, sqlSyntaxGate, type CriticCtx }
 
 /** Configuration overrides for the `PhaseGate` plugin; unset fields fall back to the adopted `PipelineConfig` defaults. */
 export interface PhaseGateConfig {
-  /** Scope identifier the per-agent phase-gate state is rooted in; passed to `freshPhaseGateState`, defaults to `'game-1'` when unset. */
+  /** Scope identifier the per-agent phase-gate state is rooted in; passed to `freshPhaseGateState`, defaults to `'default'` when unset. */
   scopeId?: string
   /** Maximum number of phase fallbacks (retreats to an earlier phase) permitted per turn before honest decline. */
   max_fallbacks?: number
@@ -149,7 +149,7 @@ export class PhaseGate {
   constructor(ctx: Context, config: PhaseGateConfig = {}) {
     this.ctx = ctx
     this.cfg = {
-      scopeId: config.scopeId ?? 'game-1',
+      scopeId: config.scopeId ?? 'default',
       max_fallbacks: config.max_fallbacks ?? PipelineConfig.max_fallbacks,
       max_subquestions: config.max_subquestions ?? PipelineConfig.max_subquestions,
       max_executions_per_turn: config.max_executions_per_turn ?? PipelineConfig.max_executions_per_turn,
@@ -527,7 +527,7 @@ export class PhaseGate {
       // set must carry the db-stripped form for `table_not_in_candidates` to pass
       // (else the correct SQL fails the critic → generationGate blocks → the
       // model games the critic with an event-name-as-table → TABLE_NOT_FOUND →
-      // F2 deadlock). search_data_sources surfaces event NAMES (game.recharge),
+      // F2 deadlock). search_data_sources surfaces event NAMES,
       // NOT the event_view table — that gap is closed here. Add both the full
       // + db-stripped lowercased forms (the stripped form is what the critic
       // checks today; the full form is robustness against a prefix-preserving
