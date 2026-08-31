@@ -13,7 +13,7 @@
 | CL4 | nl2sql-engine/src/bm25-linking.ts:72; tool-search-data-sources/src/index.ts:303 | tokenizer 丢日文 kana | CJK regex 加 hiragana/katakana |
 | CL5 | semantic-layer/src/enrichment.ts:118 | mergeRefs '确定性' 前缀判定 | 加结构化 source 字段 |
 | CL6 | phase-gate/src/index.ts:70 | scopeId 默认 'game-1' | 默认中性或必填 |
-| CL7 | apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24 | B preset 默认 'per-game' persona | domain-neutral 模板 + {{domain}} |
+| ~~CL7~~ | ~~apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24~~ | ~~B preset 默认 'per-game' persona~~ | ~~→ absorbed by [GA-GT5](GA-GT5-domain-injection-seam.md) (ctx.domain seam)~~ |
 | CL8 | llm-wiring-plugin.ts:36; expand-query.ts:27; eval-cli/main.ts:65 | LLM 默认 Qwen/DashScope 无 fail-loud | 集中部署 config + fail-loud |
 | CL9 | nl2sql-engine/src/conventions.ts:33 | renderConventionsPrompt 中文段头 | 段头抽 locale bundle |
 | CL10 | tool-suggest-followups/src/index.ts:63 | '≤8 中文字符' 约束 | locale-neutral '≤~20 chars' |
@@ -26,4 +26,4 @@
 | CL17 | nl2sql-engine/src/index.ts:29; prompt.ts:18 | EngineConventions leaky import | 移入抽象 dsh-query 包 |
 | CL18 | client/ui-semantic-layer/src/client/hooks/useLayoutMode.ts:23 | B→A autoFlipThreshold=3 不可配 | 暴露 host config |
 
-**关联**: CL4/CL5/CL9/CL10/CL11/CL12 fold 入 GA-GRILL2；CL16/CL17 fold 入 GA-GT2；CL2/CL13 fold 入 GA-GT4。
+**关联**: CL4/CL5/CL9/CL10/CL11/CL12 fold 入 GA-GRILL2；CL16/CL17 fold 入 GA-GT2；CL2/CL13 fold 入 GA-GT4；CL7 absorbed by GA-GT5。
