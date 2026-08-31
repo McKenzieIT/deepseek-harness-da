@@ -48,11 +48,11 @@ describe('persistBatchResult + loadRunRecords', () => {
 
     const records = loadRunRecords(path)
     expect(records).toHaveLength(2)
-    expect(records[0].caseId).toBe('c1')
-    expect(records[0].outcome).toBe('correct')
-    expect(records[0].runId).toBe('run-1')
-    expect(records[1].caseId).toBe('c2')
-    expect(records[1].outcome).toBe('wrong')
+    expect(records[0]!.caseId).toBe('c1')
+    expect(records[0]!.outcome).toBe('correct')
+    expect(records[0]!.runId).toBe('run-1')
+    expect(records[1]!.caseId).toBe('c2')
+    expect(records[1]!.outcome).toBe('wrong')
   })
 
   it('creates directory if it does not exist', () => {
@@ -70,8 +70,8 @@ describe('listRunFiles', () => {
     persistBatchResult(makeBatchResult({ runId: 'late', timestamp: '2026-08-25T10:00:00.000Z' }), tmpDir)
     const files = listRunFiles(tmpDir)
     expect(files).toHaveLength(2)
-    expect(files[0].runId).toBe('early')
-    expect(files[1].runId).toBe('late')
+    expect(files[0]!.runId).toBe('early')
+    expect(files[1]!.runId).toBe('late')
   })
 
   it('returns empty for non-existent directory', () => {

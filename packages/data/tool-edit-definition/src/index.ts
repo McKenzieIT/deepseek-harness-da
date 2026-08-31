@@ -389,7 +389,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           const conceptsDir = join(schema.semanticRoot, 'concepts')
           mkdirSync(conceptsDir, { recursive: true })
           const yamlContent = dumpYaml(merged)
-          await writeFileAtomic(join(conceptsDir, `${result.asset_name}.yaml`), yamlContent)
+          await writeFileAtomic(join(conceptsDir, `${result.asset_name}.yaml`), yamlContent, { mode: 0o644 })
         }
       } catch (e) {
         return {

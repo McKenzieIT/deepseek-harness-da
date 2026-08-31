@@ -7,7 +7,7 @@
  *
  * Run: node --import tsx scripts/gen-schema-gateway-typert.ts
  */
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { WorkspaceTypertGenerator } from '../packages/typert/generator/src/workspace.ts'
 

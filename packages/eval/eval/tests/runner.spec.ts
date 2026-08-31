@@ -16,17 +16,9 @@ const simpleCase2 = makeCase({
 })
 
 function passingResponder() {
-  return async (req: { message: string }) => ({
+  return async (_req: { message: string }) => ({
     reply: 'Here is the answer',
     generatedSql: 'SELECT revenue FROM t',
-    generatedBehavior: null,
-  })
-}
-
-function failingResponder() {
-  return async () => ({
-    reply: 'I cannot answer',
-    generatedSql: 'SELECT bad FROM nowhere',
     generatedBehavior: null,
   })
 }
@@ -77,7 +69,7 @@ describe('runBatch', () => {
     })
     expect(result.runId).toBe('run1')
     expect(result.perCase).toHaveLength(1)
-    expect(result.perCase[0].caseId).toBe('c1')
+    expect(result.perCase[0]!.caseId).toBe('c1')
     expect(result.summary.totalCases).toBe(1)
     expect(result.summary.correct).toBe(1)
     expect(result.summary.passRate).toBe(1)
@@ -91,7 +83,7 @@ describe('runBatch', () => {
       responder: passingResponder(),
       executeSql: execute,
       passK: 1,
-      onCaseComplete: (r) => completed.push(r.caseId),
+      onCaseComplete: r => completed.push(r.caseId),
     })
     expect(result.perCase).toHaveLength(2)
     expect(completed).toEqual(['c1', 'c2'])
@@ -105,7 +97,7 @@ describe('runBatch', () => {
       passK: 1,
       maxInfraRetries: 0,
     })
-    expect(result.perCase[0].outcome).toBe('unjudged')
+    expect(result.perCase[0]!.outcome).toBe('unjudged')
     expect(result.summary.unjudged).toBe(1)
   })
 
@@ -126,6 +118,6 @@ describe('runBatch', () => {
     })
     // After 2 retries the 3rd attempt succeeds
     expect(callCount).toBe(3)
-    expect(result.perCase[0].outcome).toBe('correct')
+    expect(result.perCase[0]!.outcome).toBe('correct')
   })
 })

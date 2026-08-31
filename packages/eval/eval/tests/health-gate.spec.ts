@@ -31,8 +31,8 @@ describe('runHealthCheck', () => {
     const result = await runHealthCheck({ executeSql: passingExecutor() })
     expect(result.healthy).toBe(true)
     expect(result.checks).toHaveLength(1)
-    expect(result.checks[0].name).toBe('connectivity')
-    expect(result.checks[0].passed).toBe(true)
+    expect(result.checks[0]!.name).toBe('connectivity')
+    expect(result.checks[0]!.passed).toBe(true)
   })
 
   it('fails on executor failure', async () => {
@@ -44,25 +44,25 @@ describe('runHealthCheck', () => {
   it('fails on executor exception', async () => {
     const result = await runHealthCheck({ executeSql: throwingExecutor() })
     expect(result.healthy).toBe(false)
-    expect(result.checks[0].detail).toContain('network unreachable')
+    expect(result.checks[0]!.detail).toContain('network unreachable')
   })
 
   it('passes when responder is healthy', async () => {
     const result = await runHealthCheck({ responder: passingResponder() })
     expect(result.healthy).toBe(true)
-    expect(result.checks[0].name).toBe('responder')
+    expect(result.checks[0]!.name).toBe('responder')
   })
 
   it('fails on responder auth failure', async () => {
     const result = await runHealthCheck({ responder: failingResponder() })
     expect(result.healthy).toBe(false)
-    expect(result.checks[0].detail).toContain('auth failure')
+    expect(result.checks[0]!.detail).toContain('auth failure')
   })
 
   it('fails on responder timeout', async () => {
     const result = await runHealthCheck({ responder: hangingResponder(), timeoutMs: 50 })
     expect(result.healthy).toBe(false)
-    expect(result.checks[0].detail).toContain('timed out')
+    expect(result.checks[0]!.detail).toContain('timed out')
   })
 
   it('checks both executor and responder when provided', async () => {
@@ -75,7 +75,7 @@ describe('runHealthCheck', () => {
     const result = await runHealthCheck({ executeSql: failingExecutor(), responder: passingResponder() })
     expect(result.healthy).toBe(false)
     expect(result.checks).toHaveLength(1)
-    expect(result.checks[0].name).toBe('connectivity')
+    expect(result.checks[0]!.name).toBe('connectivity')
   })
 
   it('returns healthy with no options (nothing to check)', async () => {

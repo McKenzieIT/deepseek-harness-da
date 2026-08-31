@@ -185,7 +185,7 @@ async function e2eHarness(
   ctx.provide('evalRunner', { runBatch: runBatchSpy })
 
   // Mount goal-eval-policy via direct apply (bypasses inject checks)
-  applyEvalPolicy(ctx as unknown as Record<string, unknown>, {
+  applyEvalPolicy(ctx, {
     goalEvalIntervalRounds: K,
     noProgressThreshold: N,
   })
@@ -197,7 +197,7 @@ async function e2eHarness(
   // plugin is mounted in the agent's preset scope. In this test, the
   // listener is registered at the root — agent-scoped events may not bubble
   // to it. Scenario 2 verifies the render pipeline independently.
-  applyEvalContext(ctx as unknown as Record<string, unknown>, { hintEscalationThreshold: 2 })
+  applyEvalContext(ctx, { hintEscalationThreshold: 2 })
 
   await ctx.plugin(AgentLoop, { agents: [] })
 
@@ -256,8 +256,8 @@ describe('autonomous self-calibration loop end-to-end', () => {
 
     // Session events confirm admitted goal rounds (round > 0)
     const admittedRounds = test.agent.session.events
-      .filter(e => e.type === 'user/message' && e.data.source.kind === 'goal' && e.data.source.round > 0)
-      .map(e => e.type === 'user/message' ? e.data.source.round : 0)
+      .filter(e => e.type === 'user/message' && e.data.source.kind === 'goal' && (e.data.source as unknown as { round: number }).round > 0)
+      .map(e => e.type === 'user/message' ? (e.data.source as unknown as { round: number }).round : 0)
     expect(admittedRounds).toEqual([1, 2])
   })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildAgentResponder, extractReply, ProtocolError, validateRunResult } from '../src/adapter.ts'
 import type { AgentTurnRequest } from '../src/types.ts'
-import { StubHarness, assistantMessage, runResult, runResultDerailing, runResultMultiStep, toolCall } from './helpers.ts'
+import { StubHarness, assistantMessage, runResult, runResultMultiStep, toolCall } from './helpers.ts'
 
 const req = (message: string): AgentTurnRequest => ({ sessionId: 'sid', caseId: 'c', scopeId: null, turnIndex: 0, message })
 

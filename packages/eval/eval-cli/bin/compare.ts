@@ -13,7 +13,7 @@ const args = process.argv.slice(2)
 const dirIdx = args.indexOf('--dir')
 let dir = 'eval-results'
 if (dirIdx !== -1) {
-  dir = args[dirIdx + 1]
+  dir = args[dirIdx + 1]!
   args.splice(dirIdx, 2)
 }
 
@@ -22,4 +22,4 @@ if (args.length < 2) {
   process.exit(1)
 }
 
-compareRuns(args[0], args[1], dir)
+compareRuns(args[0]!, args[1]!, dir)

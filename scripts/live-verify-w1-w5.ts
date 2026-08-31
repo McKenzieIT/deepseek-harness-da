@@ -118,7 +118,7 @@ async function main(): Promise<void> {
   // Bridge eval-runner RunResult → evidence-query PersistedCaseRecordRaw JSONL.
   // This manual mapping IS the W3→W4 wiring gap (formats differ); W6a will wire
   // a real adapter. Doing it here proves the file→store→delta path live.
-  const tmpDir = mkdirSync(join(tmpdir(), 'live-verify-eval-'), { recursive: true })
+  const tmpDir = mkdirSync(join(tmpdir(), 'live-verify-eval-'), { recursive: true }) as string
   rmSync(tmpDir, { recursive: true, force: true })
   mkdirSync(tmpDir, { recursive: true })
   function verdictToOutcome(v: string): string {
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
     coverageQuery: async () => eq.coverageQuery(),
     gapAnalysis: async (id: string) => eq.gapAnalysis(id),
     reachabilityDelta: async (r: { sourceId: string; targetId: string; type: 'joins' | 'derived_from' | 'related_to' }) => eq.reachabilityDelta(r),
-    evalResultQuery: async (f: { assetId?: string; status?: string; domain?: string; limit?: number }) => eq.evalResultQuery(f),
+    evalResultQuery: async (f: { assetId?: string; status?: 'pass' | 'fail' | 'error' | 'pending'; domain?: string; limit?: number }) => eq.evalResultQuery(f),
     assetHealth: async (id: string) => eq.assetHealth(id),
     beforeAfterDelta: async (a: string, b: string) => eq.beforeAfterDelta(a, b),
   }

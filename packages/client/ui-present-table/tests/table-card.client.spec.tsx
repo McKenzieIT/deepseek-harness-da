@@ -94,7 +94,7 @@ function makeNullCallBlock(content: string): ToolCallBlock {
 interface QueryNodeSpec {
   seq: number
   text: string
-  argsRaw?: string | null
+  argsRaw?: string | null | undefined
   isError?: boolean
   name?: string
 }

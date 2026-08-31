@@ -51,7 +51,7 @@ function findRepoRoot(): string {
 function resolveRunFile(prefix: string, dir: string): string {
   const files = readdirSync(dir).filter(f => f.endsWith('.json') && f.startsWith(prefix))
   if (files.length === 0) throw new Error(`No run file matching "${prefix}" in ${dir}`)
-  return join(dir, files[0])
+  return join(dir, files[0] as string)
 }
 
 function loadRun(path: string): RunResult {

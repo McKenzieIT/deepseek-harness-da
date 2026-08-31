@@ -91,6 +91,7 @@
     "examples/*/src/**/*.ts",
     "examples/*/start.ts",
     "examples/*/tests/**/*.ts",
+
     "packages/*/*/tests/**/*.ts",
     "scripts/**/*.ts",
     "website/**/*.ts",
@@ -110,7 +111,8 @@
     "scripts/*.client.spec.ts",
     "scripts/client-bundle-css.spec.ts",
     "packages/typert/generator/tests/fixtures/**",
-    "scripts/client-bundle-purity.spec.ts"
+    "scripts/client-bundle-purity.spec.ts",
+    "packages/eval/eval-cli/**"
   ],
   "references": [
     { "path": "./vendor/cosmokit" },
@@ -202,9 +204,12 @@
     { "path": "./packages/embedder/embedder-fakehash" },
     { "path": "./packages/embedder/embedder-http" },
     { "path": "./packages/retrieval/retrieval-inproc" },
+    { "path": "./packages/data/tool-discover-alt-labels" },
+    { "path": "./packages/data/tool-resolve-term" },
     { "path": "./packages/eval/eval" },
     { "path": "./packages/eval/eval-runner" },
     { "path": "./packages/eval/eval-runner-service" },
+    { "path": "./packages/eval/retrieval-experiment" },
     { "path": "./packages/feedback/message-feedback" },
     { "path": "./packages/workspace/workspace" },
     { "path": "./packages/session/session-title" },
