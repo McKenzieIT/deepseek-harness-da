@@ -112,8 +112,10 @@ const runCount = gw.getEvalRunCount()
 check('getEvalRunCount', runCount === 2, `${runCount} runs`)
 
 const passRates = gw.getRecentPassRates(2)
+const [recentRate, previousRate] = passRates
 check('getRecentPassRates',
-  passRates.length === 2 && Math.abs(passRates[0] - 2/3) < 0.01 && passRates[1] === 1.0,
+  recentRate !== undefined && previousRate !== undefined
+    && Math.abs(recentRate - 2/3) < 0.01 && previousRate === 1.0,
   `[${passRates.map(r => r.toFixed(3)).join(', ')}] (expect [0.667, 1.000])`)
 
 // 4. Verify event-driven refresh
