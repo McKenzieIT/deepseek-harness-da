@@ -28,6 +28,8 @@ import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { CallId, ReasoningEffortId, createUserMessage, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import { PERSONA_ORDER, PERSONA_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
+import type {} from '@deepseek-ai/dsh-semantic-layer'
+import { loadConfig } from '@deepseek-ai/dsh-semantic-layer'
 import type { ToolExecution, PostToolDecision, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import {
   Phase,
@@ -116,7 +118,27 @@ If you emit no route token, the gate defaults to proceed but runs a grounding ba
   [Phase.INTERPRETATION]: `INTERPRETATION: deliver via tools only, strict order: present_decomposition (forced first) → present_table (pass result_id + intent) → compute → 【发现】(once) → 【注意】(once, list assumptions) → suggest_followups. Output purity: no **, no process narration, no SQL display, thousands separator. If you CANNOT answer, emit ${INCOMPLETE_MARKER} (NOT clarification — no HALT in delivery); the turn-stopping gate reads it → honest_decline. No fallback phase.`,
 }
 
-const SQL_CONVENTIONS = 'SQL conventions (MaxCompute/hive dialect): partition predicate ds=\'yyyyMMdd\' required for partitioned tables; SELECT-only; prefer explicit columns over SELECT *; GET_JSON_OBJECT field paths must reference event_params loaded in UNDERSTANDING. Event queries: FROM ieu_ods.ods_10000251_all_view WHERE event=\'<event_name>\' AND ds>=\'<start>\' AND ds<=\'<end>\'; extract event params via GET_JSON_OBJECT(params, \'$.<field_name>\').'
+function buildSqlConventions(ctx: Context): string {
+  const schema = ctx.get('schema') as { semanticRoot: string } | undefined
+  const root = schema?.semanticRoot
+  let eventViewFullName = '<event_view>'
+  let paramsTemplate = "GET_JSON_OBJECT(params, '$.{field_name}')"
+  if (root) {
+    try {
+      const config = loadConfig(root) as {
+        event_view?: { full_name?: string; params_extract_template?: string }
+      }
+      if (config.event_view?.full_name) eventViewFullName = config.event_view.full_name
+      if (config.event_view?.params_extract_template) paramsTemplate = config.event_view.params_extract_template
+    } catch { /* fallback to defaults if config unreadable */ }
+  }
+  return (
+    'SQL conventions (MaxCompute/hive dialect): partition predicate ds=\'yyyyMMdd\' required for partitioned tables; '
+    + 'SELECT-only; prefer explicit columns over SELECT *; GET_JSON_OBJECT field paths must reference event_params loaded in UNDERSTANDING. '
+    + `Event queries: FROM ${eventViewFullName} WHERE event='<event_name>' AND ds>='<start>' AND ds<='<end>'; `
+    + `extract event params via ${paramsTemplate}.`
+  )
+}
 
 /** The phase-gate plugin. Per-agent state keyed by agent id. Mounted agent-plane (isolate realm). */
 export class PhaseGate {
@@ -623,7 +645,7 @@ export class PhaseGate {
       { name: 'phase-instruction', text: PHASE_INSTRUCTIONS[phase] },
     ]
     if (phase === Phase.GENERATION) {
-      sections.push({ name: 'sql-conventions', text: SQL_CONVENTIONS })
+      sections.push({ name: 'sql-conventions', text: buildSqlConventions(this.ctx) })
     }
     // D5b proactive tool visibility: filter assembly.tools to the current phase's
     // whitelist so the LLM never sees tools it cannot use. Non-phase-gate agents
@@ -945,7 +967,37 @@ export class PhaseGate {
     // G-DA6 + P-DA4b: scope switch clears prior-turn inheritance (cross-scope tables are semantically wrong).
     // Event type registered by P-DA4b (forward-compat); cast until the Events interface ships.
     ;(ctx as unknown as { on(event: string, cb: () => void): void }).on('scopes/active-changed', () => {
-      for (const s of this.sessions.values()) s.prior_turn_tables.clear()
+      for (const s of this.sessions.values()) {
+        s.prior_turn_tables.clear()
+        s.candidate_tables.clear()
+        s.event_params.clear()
+        s.partition_cols.clear()
+        s.last_sql = null
+        s.last_critique = null
+        s.last_quality = null
+        s.definition_loaded = false
+        s.phase_output = ''
+        s.phase_idx = 0
+        s.current_phase = Phase.UNDERSTANDING
+        s.phase_attempts = 0
+        s.fallback_count = 0
+        s.llm_call_count = 0
+        s.exec_count = 0
+        s.turn_count = 0
+        s.step_count = 0
+        s.delivery_started = false
+        s.last_query_outcome = null
+        s.last_failure_kind = null
+        s.last_query_error = null
+        s.self_evolution_table = null
+        s.honest_decline_reason = null
+        s.cancelled = false
+        s.cancelled_reason = null
+        s.execution_auto_advance = false
+        s.awaiting_clarification = false
+        s.last_search_empty = true
+        s.last_retrieve_empty = true
+      }
     })
     ctx.effect(() => () => {
       for (const s of this.sessions.values()) this.clearStallTimer(s)

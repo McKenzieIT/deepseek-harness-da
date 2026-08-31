@@ -15,18 +15,17 @@ function buildScopeAwarenessSection(scopes: readonly ScopeSummary[]): string {
     return `## Active Data Scope\n\nYou are querying: **${s.name}** (id: \`${s.id}\`). ${s.description}`
   }
 
-  const lines = scopes.map((s) => {
-    const active = s.is_active ? ' ← active' : ''
-    const aliases = s.aliases.length > 0 ? ` (aliases: ${s.aliases.join(', ')})` : ''
-    return `- \`${s.id}\` **${s.name}**: ${s.description}${aliases}${active}`
-  })
+  const active = scopes.find(s => s.is_active)
+  const activeLine = active
+    ? `Currently active: **${active.name}** (\`${active.id}\`).`
+    : 'No scope is currently active.'
 
   return [
-    '## Available Data Scopes',
+    '## Data Scopes',
     '',
-    `${scopes.length} scopes are registered. Use \`switch_scope\` to change the active scope before querying.`,
-    '',
-    ...lines,
+    `${scopes.length} data scopes are registered. ${activeLine}`,
+    'Use `list_scopes` to see all available scopes, or `switch_scope` to change the active scope.',
+    'When the user\'s intent does not clearly indicate a specific scope, confirm which scope they want before proceeding.',
   ].join('\n')
 }
 
@@ -37,7 +36,7 @@ function buildAliasHint(
   activeScopeId: string | undefined,
 ): string {
   const scopeNames = matchedScopeIds.map((id) => {
-    const s = scopes.find((sc) => sc.id === id)
+    const s = scopes.find(sc => sc.id === id)
     return s ? `${s.name} (${id})` : id
   })
 
@@ -49,7 +48,7 @@ function buildAliasHint(
       '',
       `The user's message mentions "${matchedAliases[0]}" which matches scope **${scopeNames[0]}**.`,
       `The currently active scope is ${activeScopeId ?? '(none)'}.`,
-      'You MUST use `switch_scope` to switch to the correct scope before searching or querying.',
+      'Confirm with the user that they want to query this scope before switching. If they confirm (or the scope reference is unambiguous in context), use `switch_scope` to switch.',
     ].join('\n')
   }
 
@@ -57,7 +56,7 @@ function buildAliasHint(
     '## ⚡ Scope Routing Hint',
     '',
     `The user's message mentions multiple scopes: ${scopeNames.join(', ')}.`,
-    'Use `switch_scope` to switch to the target scope before querying.',
+    'Ask the user which scope they want to query first, then use `switch_scope` to switch to it.',
   ].join('\n')
 }
 
@@ -66,7 +65,7 @@ function buildSummaries(ctx: Context): ScopeSummary[] {
   if (!scopes) return []
   const all = scopes.list()
   const activeId = scopes.activeId()
-  return all.map((s) => ({
+  return all.map(s => ({
     id: s.id,
     name: (s.metadata?.['name'] as string) ?? s.id,
     description: (s.metadata?.['description'] as string) ?? '',
@@ -100,12 +99,12 @@ export function installScopeHint(ctx: Context): void {
       if (!agent) return ''
       const messages = agent.session?.messages as Array<{ role: string; content: unknown }> | undefined
       if (!messages) return ''
-      const lastUser = [...messages].reverse().find((m) => m.role === 'user')
+      const lastUser = [...messages].reverse().find(m => m.role === 'user')
       if (!lastUser || typeof lastUser.content !== 'string') return ''
 
       const aliasEntries: ScopeAliasEntry[] = all
-        .filter((s) => Array.isArray(s.metadata?.['aliases']) && (s.metadata?.['aliases'] as unknown[]).length > 0)
-        .map((s) => ({
+        .filter(s => Array.isArray(s.metadata?.['aliases']) && (s.metadata?.['aliases'] as unknown[]).length > 0)
+        .map(s => ({
           id: s.id,
           aliases: s.metadata?.['aliases'] as string[],
         }))
