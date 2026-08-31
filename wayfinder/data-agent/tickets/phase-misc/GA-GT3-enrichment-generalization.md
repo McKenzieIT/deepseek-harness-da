@@ -13,5 +13,5 @@
 - **默认 `mergeExisting=true`**（防抹 curated join）——可先做这一行
 - 空 inventory 时 short-circuit + 明确消息
 
-**Blocked by**: GA-GRILL3（kind enum 决策）  ·  **关联**: GA-GT2、CL5（确定性前缀→结构化 source 字段）
+**Blocked by**: GA-EXP1（LLM-driven 推断实验——决定 enrichment 推断模式 + ontology 结合深度 + kind 路由解耦验证；原阻塞者 GA-GRILL3 已 grilled，产出 5 项决策 + GA-EXP1 实验票）  ·  **关联**: GA-GT2、CL5（确定性前缀→结构化 source 字段）、GA-GRILL3（已 grilled，D1-D5）
 **Key files**: packages/data/semantic-layer/src/{enrichment.ts:71,144,151,226,316,348,types.ts:278}; packages/data/tool-discover-relations/src/index.ts:184,221
