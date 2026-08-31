@@ -54,3 +54,24 @@ node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
 ## Wayfinder Map
 
 语义层工作跟踪：`wayfinder/semantic-layer/map.md`。每个 session 通过 session prompt（`wayfinder/semantic-layer/prompts/`）获取上下文。
+
+## Workflow / 大规模审计经验（2026-08-31）
+
+在本环境（pod 侧运行 + Mac 侧 `mcp__local__` 工具）跑大规模 workflow / 多 agent 审计时踩过的硬约束。**再跑类似任务前先看这里。**
+
+### 已知坑
+
+- **workflow 返回结果 >~8KB 会在聊天通知里被截断**，尾部（通常是合成结论）读不到。需要大结果时，让 agent 把结果**写到本地文件**（每个文件 <20KB），主进程只返回一行确认，再用 `mcp__local__read_file` 读回（read_file 不截断）。
+- **inline `script` + `resumeFromRunId` 不命中缓存**，会完整重跑；只有 `scriptPath` + `resumeFromRunId` 才缓存。而 pod 侧脚本文件用 `mcp__local__` 工具无法编辑——所以"只改 return 复用缓存"的捷径走不通。
+- **pod 侧文件不可读**：`/tmp/claude-1001/...`、`/home/admin/.claude/.../transcript` 都在 pod，从 Mac 侧 `mcp__local__` 工具读不到（两台机器）。只有写到 `/Users/mckenzie/workspace/deepseek-harness-da/` 下的文件才能被 `mcp__local__read_file` 读回。
+- **单个 agent 一次性 `write_file` >~32KB 会撞输出上限**，可能拖垮整轮 run。大输出拆成多个小文件分别写。
+- `TaskOutput` 查不到 workflow task（"No task found"）；workflow 完成只靠 `<task-notification>`。
+
+### 推荐形态（大规模审计 / 多 agent 任务）
+
+直接并行 `Agent` 调用（**非单大 workflow**）：每个 agent 审一个维度、写自己的小 JSON（如 `.tmp/audit/dN.json`）、返回一行确认；合成 agent 读这些小文件再写小合成文件；主进程 `mcp__local__read_file` 读回。比单大 workflow **更可控、可重试单点、不受返回截断影响**。只有当结果确定 <~6KB 时才用单 workflow 直接返回。
+
+### 本次审计产物
+
+- 原始数据：`.tmp/audit/{d1..d8,actionlist,archdefects}.json`
+- 报告：`wayfinder/data-agent/research/generalization-audit-2026-08-31.md`（95 finding → 29 action item + 7 系统性缺陷）

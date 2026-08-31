@@ -236,6 +236,33 @@
 
 - **data-agent 全对话就绪 (conversation readiness)** — 2026-08-21 验证 sweep（15-agent read-only review workflow + 内联 build/boot/对话探针）：构建阻断（`query-maxcompute/src/index.ts` 2 TS errors，host-typecheck-wiring 暴露，TS4113 override-on-Service.init + TS2379 exactOptional signal）+ LLM provider wiring（settings `agent-default-model: dashscope` 路由到 **llm-pi-ai 的 dashscope**（openai-completions vs AGA native → 404）；da `llm-dashscope`（native AGA, P2）headless 未挂 / web 被 llm-pi-ai 抢路由）**已修 in-env**（backups `*.bak-llmfix`，uncommitted）—— 证：headless `Reply with PONG`→`PONG` via da llm-dashscope（native AGA，key 经 credentials seam）+ web HTTP 200。**剩余**（阻塞全 data-agent 对话）：data-agent model-facing tool 包占位（`query_data`/`load_*`/`critique_sql_tool`/`evaluate_sql_quality`/`present_*` 于 `agent.cordis.yml` 注释 "name TBD" → NL→SQL→query→delivery 链路不可跑，P4c real-ODPS + tool 包为硬门）+ ~~LLM-wiring 持久化~~ → **resolved 2026-08-21** 见 [dashscope-default-llm-plugin](tickets/phase-misc/dashscope-default-llm-plugin.md)（路由重命名 `dashscope`→`aga`、默认 profile 纯插件化用 DashScope、不靠 settings 删 dashscope 外科手术）。〔tickets/phase-misc/data-agent-conversation-readiness.md〕
 
+## Generalization audit (2026-08-31)
+
+通用性审计：识别 dsh-data-agent 语义层在"换业务方向 / 换数据源引擎 / 换企业"时的设计耦合。8 维度并行审计 + 每维自验证 → 95 finding → 合成去重为 29 action item + 7 系统性架构缺陷。
+
+- 报告：[generalization-audit-2026-08-31.md](research/generalization-audit-2026-08-31.md)
+- 开票决策清单：[generalization-audit-tickets-2026-08-31.md](research/generalization-audit-tickets-2026-08-31.md)
+
+### G 票（架构设计决策，已确认开票）
+
+- [GA-GT1 多租户隔离 / per-request scope 重构](tickets/phase-misc/GA-GT1-multi-tenant-scope.md) — **critical**（C1+H6 / arch G5）；per-request scope context + 移除全局 active 指针 + tenant 隔离 + 缓存 corpusVersion 校验
+- [GA-GT2 引擎抽象落地](tickets/phase-misc/GA-GT2-engine-abstraction.md) — **high**（H1+H2 / arch G1）；落地 dsh-query-postgres + conventions 驱动 prompt + 未知引擎 fail-loud
+- [GA-GT3 enrichment 泛化](tickets/phase-misc/GA-GT3-enrichment-generalization.md) — **high**（H4 / arch G4）；inventory 泛化 + schema-agnostic prompt + mergeExisting 默认 true
+- [GA-GT4 eval 框架去 K11](tickets/phase-misc/GA-GT4-eval-de-k11.md) — **high**（H5+H8 / arch G6）；scopeId/正则去 K11 + FailureClassifier 多引擎
+
+### 先 Grilling（已确认先辩论再开票）
+
+- [GA-GRILL1 persona 归属](tickets/phase-misc/GA-GRILL1-persona-ownership.md) — **critical**（C2 / arch G3）；grilling prompt：[grill-1-persona.md](research/grill-1-persona.md)
+- [GA-GRILL2 i18n 架构](tickets/phase-misc/GA-GRILL2-i18n-architecture.md) — **critical**（C3+H7 / arch G2）；grilling prompt：[grill-2-i18n.md](research/grill-2-i18n.md)
+- [GA-GRILL3 TableDefinition schema](tickets/phase-misc/GA-GRILL3-tabledef-schema.md) — **high**（H3）；grilling prompt：[grill-3-schema.md](research/grill-3-schema.md)
+
+### CL 票（直接修复，批量）
+
+- [GA-CL-batch 18 条 CL 清理](tickets/phase-misc/GA-CL-batch.md) — OdpsExecutor 命名 / mergeRefs '确定性' 前缀 / text_sim 阈值 / BM25 丢 kana / autoFlipThreshold 不可配 等
+
+### 推荐顺序
+1. GA-GT2（postgres 引擎，验证缝）→ 2. GA-GT1（多租户，critical）→ 3. 3 grilling → 4. GA-GT3 → 5. GA-GT4 → 6. GA-CL-batch
+
 ## Out of scope
 
 <!-- 超出 destination；closed，不毕业 -->
