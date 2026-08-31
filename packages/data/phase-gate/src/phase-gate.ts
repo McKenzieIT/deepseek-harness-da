@@ -438,7 +438,7 @@ export class PhaseGate {
           // treats it as failed (fallback/decline), not the stale 'not run' outcome.
           s.last_query_outcome = 'failed'
           s.execution_auto_advance = false
-          return { kind: 'block', feedback: [{ type: 'text', text: 'F2 same-source violation: query_data sql ≠ critiqued last_sql' }] }
+          return { kind: 'block', feedback: [{ type: 'text', text: `F2 same-source violation: the SQL you passed to query_data does NOT match the critiqued SQL. You MUST pass the EXACT same SQL that was critiqued — do not add project prefixes, do not rename tables, do not modify the SQL in any way. Expected SQL:\n${s.last_sql}` }] }
         }
       }
       // F7: advance to INTERPRETATION immediately after successful query_data.
