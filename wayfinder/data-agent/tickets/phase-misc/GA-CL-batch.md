@@ -52,3 +52,23 @@ Committed: `fix(data-agent): CL-batch cleanups (CL1/3/4/6/8/10/12/14/18) from ge
 - **CL18 `apply()` config-override branches** — untested; `apply()` was already uncovered pre-batch (no test calls it), so not a new regression; the new behavior is covered at `computeEffectiveMode` level. Full `apply()` coverage is a separate effort.
 - **CL8 expand-query call-site typeless catch** (code-review finding 7) — functionally correct today (only the resolver throws), but a future non-config throw would be mislabeled with the config message. Consider narrowing (`e.message` check before degrading).
 - **Pre-existing failures NOT from this batch** (awareness only): `verify-cordis-config` 3 errors; `query-maxcompute` `maxc-args.mjs` TS7016 (WIP); `phase-gate` 6 `ctx.get` test-stub failures; `k11-cases` missing `cases/k11` dir; 7 oxlint errors in committed/WIP code.
+
+---
+
+## Round 2 — skeptic + coverage verification (2026-09-01)
+
+Follow-up commit after `3f658a96df`, addressing the adversarial review (skeptic subagent) + full `vitest --coverage` findings.
+
+**Skeptic review** (`.tmp/cl-batch/skeptic.md`): **6/9 CLs confirmed-resolved** (CL1/4/6/10/12/14 ✅). 5 of the first code-review pass's 7 findings were stale (already fixed in `3f658a96df`). Found **4 real coverage gaps + 1 latent bug** — all fixed this round:
+
+- **CL3** `derailmentThresholdFor` `hasSpace && !isLatin` branch → +1 test (`'收入 最高'` / `'1 2 3'` → 0.35).
+- **CL8** resolver `!provider || !model` partial-config sub-branches (×2 sites: expand-query + llm-wiring) → +4 partial-config tests.
+- **CL8** expand-query call-site typeless `catch` → narrowed: config errors degrade+warn, others re-throw (no future mislabel).
+- **CL18** `apply()` `??` branches (index.ts was 0%-covered pre-existing GUI debt) → +`apply.client.spec.ts` (mock ClientContext, capture `injected()`, assert config threading + defaults). CL18 now behavior-tested; index.ts 整体 0% 仍是预存 GUI debt (separate effort).
+- **Q4 committed lint**: `text_sim.ts` 4× `String()` removed; `llm-wiring-integration:59` cleanup arrow braced (no-confusing-void-expression). tool-search `index.ts:627` `as SchemaCorpusSource | undefined` **left as-is** — removing it (fix 5c) let `schema` widen to `any` and introduced `no-unsafe-argument` at :648/:649 (net-negative: -1 unnecessary-assertion, +3 unsafe-argument); the assertion is load-bearing for narrowing.
+
+**Coverage** (`vitest --coverage` on semantic-layer + ui-semantic-layer): CL14 `snapshot.ts` + CL1 `index.ts` new branches covered (no new uncovered); CL18 `apply()` `??` now covered. semantic-layer + ui-semantic-layer per-file 100% gate was already <100% pre-batch (pre-existing GUI debt — other `ui-*` `src/client/index.ts` are excluded with `TODO(gui)`, ui-semantic-layer is not) — not introduced by this batch.
+
+**Verification**: 4 packages `tsc --noEmit` green; 41 affected tests green (text_sim 23, expand-query-config 7, llm-wiring-integration 9, apply.client 2); staged oxlint 0 new errors (1 pre-existing `no-unnecessary-type-assertion` at tool-search index.ts:631 `retrieval` — type-aware, staged hook `typeAware:false` doesn't flag).
+
+**Q2 follow-up ticket**: [GA-CL8-eval-cli-responder-config.md](GA-CL8-eval-cli-responder-config.md) — CL8 eval-cli site (responder config, not enrichment; needs WIP `main.spec.ts` update once WIP lands).

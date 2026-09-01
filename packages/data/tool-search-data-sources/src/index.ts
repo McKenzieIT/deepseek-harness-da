@@ -605,9 +605,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       if (expansionEnabled) {
         try {
           query = await expandQuery(ctx, args.query, { provider: expansionProvider, model: expansionModel, signal: exec.signal })
-        } catch {
-          console.warn('enrichment-llm-wiring: no provider/model configured; skipping query expansion')
-          query = args.query
+        } catch (e) {
+          if (e instanceof Error && e.message.includes('enrichment-llm-wiring')) {
+            console.warn('enrichment-llm-wiring: no provider/model configured; skipping query expansion')
+            query = args.query
+          } else {
+            throw e
+          }
         }
       }
       // P5b soft-fallback swap: when the `ctx.retrieval` seam is registered

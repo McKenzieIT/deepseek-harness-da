@@ -56,7 +56,7 @@ function setupLayer(): { dir: string; cleanup: () => void } {
     confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, coverage: null,
   }))
 
-  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
+  return { dir, cleanup: () => { rmSync(dir, { recursive: true, force: true }) } }
 }
 
 test('F1 — wireEnrichmentLlm enables two-round discoverRelations', async () => {
@@ -223,6 +223,16 @@ describe('CL8 — enrichment-llm-wiring provider/model resolution', () => {
     const { ctx, setLlmCall } = mockApplyCtx()
     expect(() => { apply(ctx, {}) }).toThrow('enrichment-llm-wiring: no provider/model configured')
     expect(setLlmCall).not.toHaveBeenCalled()
+  })
+
+  test('config.provider set but model unset → throws enrichment-llm-wiring (!model branch)', () => {
+    const { ctx } = mockApplyCtx()
+    expect(() => { apply(ctx, { provider: 'x' }) }).toThrow('enrichment-llm-wiring')
+  })
+
+  test('config.model set but provider unset → throws enrichment-llm-wiring (!provider branch)', () => {
+    const { ctx } = mockApplyCtx()
+    expect(() => { apply(ctx, { model: 'm' }) }).toThrow('enrichment-llm-wiring')
   })
 
   test('config.provider/model override env (no silent vendor fallback)', () => {

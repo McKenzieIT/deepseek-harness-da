@@ -51,6 +51,20 @@ describe('CL8 — expandQuery provider/model resolution', () => {
     await expect(expandQuery(ctx, 'ARPPU是多少')).rejects.toThrow('enrichment-llm-wiring: no provider/model configured')
   })
 
+  test('opts.provider set but model unset + no env model → throws enrichment-llm-wiring (!model branch)', async () => {
+    process.env.ENRICHMENT_LLM_PROVIDER = 'x'
+    delete process.env.ENRICHMENT_LLM_MODEL
+    // opts provider 'p' wins; model missing everywhere → throws via !model.
+    await expect(expandQuery(ctxWithLlm(), 'q', { provider: 'p' })).rejects.toThrow('enrichment-llm-wiring')
+  })
+
+  test('opts.model set but provider unset + no env provider → throws enrichment-llm-wiring (!provider branch)', async () => {
+    delete process.env.ENRICHMENT_LLM_PROVIDER
+    process.env.ENRICHMENT_LLM_MODEL = 'm'
+    // opts model 'm' wins; provider missing everywhere → throws via !provider.
+    await expect(expandQuery(ctxWithLlm(), 'q', { model: 'm' })).rejects.toThrow('enrichment-llm-wiring')
+  })
+
   test('opts.provider/model are used (NOT the vendor defaults aga/qwen-flash)', async () => {
     process.env.ENRICHMENT_LLM_PROVIDER = 'envprov'
     process.env.ENRICHMENT_LLM_MODEL = 'envmodel'

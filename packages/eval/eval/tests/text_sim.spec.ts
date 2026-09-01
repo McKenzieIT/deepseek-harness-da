@@ -62,6 +62,13 @@ describe('derailmentThresholdFor (language preset)', () => {
     expect(derailmentThresholdFor('hello')).toBe(0.35)
     expect(derailmentThresholdFor('')).toBe(0.35)
   })
+  it('returns the CJK default (0.35) for spaced non-Latin text (hasSpace && !isLatin branch)', () => {
+    // CJK with an embedded space → hasSpace true, but zero ascii letters →
+    // isLatin false (asciiLetters/length 0 < 0.5) → 0.35 CJK default.
+    expect(derailmentThresholdFor('收入 最高')).toBe(0.35)
+    // digits + spaces → hasSpace true, but no ascii letters → isLatin false → 0.35.
+    expect(derailmentThresholdFor('1 2 3')).toBe(0.35)
+  })
 })
 
 describe('deliveryFuzzyMatch (DELIVERY; short token-containment, decision 2)', () => {

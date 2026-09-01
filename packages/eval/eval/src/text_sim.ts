@@ -76,8 +76,8 @@ export interface TurnMatchOpts {
  * @returns whether the reply is broadly on-script.
  */
 export function turnMatchesExpectation(actualReply: string, expectedContent: string, opts?: TurnMatchOpts): boolean {
-  const actualLower = String(actualReply).toLowerCase().trim()
-  const expectedLower = String(expectedContent).toLowerCase().trim()
+  const actualLower = actualReply.toLowerCase().trim()
+  const expectedLower = expectedContent.toLowerCase().trim()
   if (actualLower === expectedLower) return true
   if (expectedLower.length === 0) return true
 
@@ -140,8 +140,8 @@ export interface DeliveryFuzzyOpts {
  * @returns whether the DELIVERY answer is acceptable.
  */
 export function deliveryFuzzyMatch(actualReply: string, expectedContent: string, opts?: DeliveryFuzzyOpts): boolean {
-  const actualLower = String(actualReply).toLowerCase().trim()
-  const expectedLower = String(expectedContent).toLowerCase().trim()
+  const actualLower = actualReply.toLowerCase().trim()
+  const expectedLower = expectedContent.toLowerCase().trim()
   if (actualLower === expectedLower) return true
   if (expectedLower.length === 0) return true
 
