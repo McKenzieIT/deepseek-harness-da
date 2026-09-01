@@ -1,6 +1,6 @@
 # GA-GT5 — domain injection seam（ctx.domain 服务 + domain-profile.yaml）
 
-**Type**: architecture (design-decision + impl)  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Open
 **Source**: [GA-GRILL1 grill resolution](GA-GRILL1-persona-ownership.md) — C-plus 方案（2026-08-31 grilled）
 **Priority**: **critical**（C2 / arch G3）
 

@@ -1,6 +1,6 @@
 # GA-GT2 — 引擎抽象落地
 
-**Type**: architecture (design-decision + impl)  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Open
 **Source**: [audit report](../../research/generalization-audit-2026-08-31.md) · [tickets doc](../../research/generalization-audit-tickets-2026-08-31.md) — H1+H2 / arch G1 · **high**
 
 **Problem**: MaxComputeQueryEngine 是唯一 `extends QueryEngine` 子类；`loadConventions` 对非 maxcompute 返回空 shape（静默 no-op，非路由）；prompt/critic/metric 用字面量烤 ODPS 方言（`ds=`+`MAX_PT`+`GET_JSON_OBJECT`+`['ds']` fallback）而非从注入的 conventions 驱动 → PG/Snowflake/ClickHouse 产错误 SQL 无信号。

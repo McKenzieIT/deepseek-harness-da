@@ -1,6 +1,6 @@
 # GA-GT4 — eval 框架去 K11
 
-**Type**: architecture (design-decision + impl)  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Open
 **Source**: [audit report](../../research/generalization-audit-2026-08-31.md) · [tickets doc](../../research/generalization-audit-tickets-2026-08-31.md) — H5+H8 / arch G6 · **high**
 
 **Problem**: eval runner + bundle 硬编码 K11（`scopeId='k11'`、case 正则 `/^k11_\d+\.yaml$/` 连自家 `k11v2_*` 都不匹配→`runBatch` 抛 "no cases found"、caseDir/defaultProject/semanticRoot 指向 K11）；`classifyExecutionFailure` 只认 ODPS 错误码+中文 marker，`verdict_mapper` 却只认英文 → PG/Snowflake/BigQuery 真实 SQL 缺陷静默不评分。

@@ -1,6 +1,6 @@
 # GA-GT3 — enrichment 泛化（去 DWS/DIM 星型强绑）
 
-**Type**: architecture (design-decision + impl)  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Open
 **Source**: [audit report](../../research/generalization-audit-2026-08-31.md) · [tickets doc](../../research/generalization-audit-tickets-2026-08-31.md) — H4 / arch G4 · **high**
 
 **Problem**: enrichment 强绑 DWS/DIM 星型：`buildDimInventory` 只扫 `kind='dim'`；`discoverRelationsDeterministic` 只做 PK 列名精确相等（无 FK 命名启发式）；LLM prompt 写死 "DWS fact table"；非星型 scope（flat wide / event-sourced / denormalized OLTP）在 replace 模式写 `dimension_refs:[]` **抹掉人工 curated join 且无信号**。

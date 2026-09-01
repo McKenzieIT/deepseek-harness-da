@@ -1,6 +1,6 @@
 # GA-GT1 — 多租户隔离 / per-request scope 重构
 
-**Type**: architecture (design-decision + impl)  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Open
 **Source**: [audit report](../../research/generalization-audit-2026-08-31.md) · [tickets doc](../../research/generalization-audit-tickets-2026-08-31.md) — C1+H6 / arch G5 · **critical**
 
 **Problem**: ScopeRegistry 用全局唯一 `active` 指针（共享 YAML，`load()` 每次 readFileSync），无 per-request/tenant 上下文（全仓 grep tenant/sessionId/AsyncLocalStorage 零命中）→ 并发租户竞态、租户 A 读到租户 B 的 semantic root。多租户 SaaS 不可行；H6 跨租户泄漏级联（scope-hint/list_scopes 暴露全部 scope；tool-retrieve enrichedLinkers 无 corpusVersion 校验；evidence-query eval store 无 scope 字段）是其子症状。
