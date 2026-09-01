@@ -307,3 +307,27 @@ The +80pp delta is driven primarily by mechanism #1 (recall expansion). Mechanis
 ### Ticket Pointer
 
 Resolves: [P3 — Ontology NL2SQL Integration](../tickets/P3-ontology-nl2sql-integration.md) acceptance criterion "对比实验：有/无 ontology 辅助的多表查询准确率"
+
+## 2026-08-31: B-DA6 option B 验证（FAILED — 已回滚）
+
+### Setup
+- **基线**: Run `10320fe2`（CL-15 标准基线，bare prompt），73.8%（124/168）
+- **Cases**: 168 K11 cases（k11-v2：80 original + 40 alias + 48 voice）
+- **Model**: aga/qwen3.7-max，Responder: engine，pass_k=1，concurrency=4，sql-judge enabled
+- **变更**: B-DA6 option B — NL2SQL `buildPrompt` 渲染候选表名为 provider-qualified 形（`ieu_cdm.dws_…`），经 simulated-qualify 在 eval-cli `context.ts` 激活（生产用 `ctx.query.qualifyTable`；eval `withQuery=false` 时 inactive，故标准 eval 不暴露——需 simulated patch 才测得到）。
+
+### Data (compare.ts 10320fe2 → 1f0ec09c)
+- Overall: **73.8% → 6.5% (-67.3pp)**
+- Original 75.0%→13.8%(-61.3pp) | Alias 77.5%→0%(-77.5pp) | Voice EXEC 70%→0%(-70pp) | Voice DELIVERY 66.7%→0%(-66.7pp)
+- Lost 113, Gained 0. 153/168 semantic wrong（仅 4 parse-fail ≈ baseline 1 → 排除 judge-infra flake）。
+
+### Verdict
+1. **生成破坏（非 judge bug）**：qualified 候选名（`ieu_cdm.` 前缀）使 LLM 在 `buildPrompt` 路径输出**推理 prose / tool-call 文本 / 空**，而非 ```sql 围栏 SQL → `extractSqlCandidate` 抽不出 SQL → judge "Input is not SQL" → 153 semantic wrong。抽样：k11v2_006 输出推理（"用户的问题是…在检索候选中…"）、k11v2_011 输出 tool-call、k11v2_020/021 空 SQL。
+2. 生产路径（`search_data_sources` tool 的 `qualifyCandidates`）在 session-31bd30c9 下正常生成 qualified SQL——破坏是 **buildPrompt-path-specific**（prompt 结构差异）。
+3. B-DA5 已让裸名经 per-scope config 解析（K11 DAU 实测 7 日返回），qualification 对 MaxCompute 正确性冗余。
+
+### Action
+B-DA6 option B 全量回滚（`prompt.ts`/`engine.ts`/`eval-cli context.ts`/`eval-runner-service index.ts` + 删 `qualify-table.spec.ts` + 回滚 S20）；E-DA5 `loadScopeCorpus` + `cases/k11→k11-v2` staleness fix 保留；104 tests 绿（2 pre-existing eval-runner-service env 失败，CL-15 staleness，非 B-DA6）。若需 qualification，走 option A（execute 时 SQL 改写，不动 prompt/LLM）。
+
+### Ticket Pointer
+Resolves: [B-DA6](../../data-agent/tickets/phase-misc/B-DA6-qualifytable-live-wiring.md)（reverted）；run `1f0ec09c`（qualified）vs `10320fe2`（baseline）。

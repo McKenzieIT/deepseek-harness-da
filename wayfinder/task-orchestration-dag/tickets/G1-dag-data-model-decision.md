@@ -1,7 +1,7 @@
 # G1 — DAG data model decision
 
 **Type**: grilling
-**Status**: open
+**Status**: in-progress (claimed)
 **Blocked by**: [R1 agent-team maturity audit](R1-agent-team-maturity-audit.md), [R3 subagent/workflow event surface](R3-subagent-workflow-event-surface.md)
 **Blocks**: [G2 DAG panel placement and interaction](G2-dag-panel-placement-and-interaction.md), [G3 preset universality strategy](G3-preset-universality-strategy.md), [G5 dynamic node insertion design](G5-dynamic-node-insertion-design.md)
 

@@ -30,10 +30,13 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [R7: 前沿 agent 数据展示 UI 调研(联网核验版)](tickets/R7-data-display-ui-patterns.md) — 表格交互基线成行业标配(ChatGPT 已渲染 interactive tables);图表自动生成三条路线+必须用户可切换;透明度三路径(Genie 同卡折叠 SQL 最贴合 DSH);Actionable Insights 是下一前沿;10/14 产品经 MCP 联网核验
 - [R8: present_table 展示层缺陷审计与优化方案](tickets/R8-data-display-optimization-plan.md) — Cordis 合规确认 + A/B/C 缺陷分级:A 级含 parseTsv 与真实 render 格式错位(表头变 result_id 行,实测复现)与 50 行天花板使虚拟滚动/CSV 不可达;host 侧 ctx.resultCache 已存在只差 client RPC;优化四阶段路径
 - [T4: present_table 展示层优化执行(Phase 0-2)](tickets/T4-present-table-display-upgrade.md) — parseQueryData 协议修复 + result_id 精确绑定/错配提示 + isError + KPI 截断诚实化;排序/类型对齐/locale/图表懒加载+主题+切换/复制 MD/SQL 折叠;79 tests + 100% 覆盖率 + tsc 通过;result store RPC 移交 R6
+- [R9: 查询理解卡片展示层缺陷审计与优化方案](tickets/R9-decomposition-display-optimization-plan.md) — 合规确认 + A/B/C 分级:A1 卡片 CSS 引用的 8 个 alias token 全部不存在于 ui-theme(边框/背景/层级失效,"混乱"的渲染级根源)、A2 不读 isError;应然编排=「查询契约」三层(焦点行/谱系 chips/指标明细)+信任带;Phase 0-3 路径;裁决经 P1 动态原型,执行入 T5
 
 ## Not yet specified
 
 (暂无——原三条雾已全部毕业为票:chart 精度扩展 → [R4](tickets/R4-chart-type-expansion.md),object layer cache → [R5](tickets/R5-object-layer-result-cache.md),result store server-side → [R6](tickets/R6-result-store-server-side.md))
+
+新雾(自 R9):查询理解声明与 present_table KPI 的互认/联动、低置信时的"改口径"回流通道——形状取决于 P1 裁决与 R6 result store,尚不能成票。
 
 ## Out of scope
 
