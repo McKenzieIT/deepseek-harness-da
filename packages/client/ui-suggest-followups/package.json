@@ -44,7 +44,6 @@
     "watch": "tsdown --watch"
   },
   "license": "MIT",
-  "dependencies": {},
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-client-locale": "workspace:^",
