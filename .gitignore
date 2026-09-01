@@ -61,3 +61,13 @@ packages/identity/identity/src/*.d.ts.map
 eval-results/*.json
 eval-results/**/*.log
 packages/eval/eval-cli/eval-results/
+
+# GA-EXP2 eval experiment outputs (regenerable) + broken WIP tests (keep local, CI clean) + operational handoff
+eval-results/g1b/
+eval-results/g1b-subset/
+**/__pycache__/
+packages/data/nl2sql-engine/tests/stand-in-odps.spec.ts
+packages/query/query-maxcompute/tests/per-scope-maxc-config.spec.ts
+packages/query/query-maxcompute/dev/maxc-args.mjs
+packages/query/query-maxcompute/tests/maxc-args.spec.ts
+wayfinder/data-agent/next-session-prompt.md
