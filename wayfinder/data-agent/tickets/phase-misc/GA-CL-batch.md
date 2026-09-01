@@ -116,3 +116,15 @@ Follow-up after `501c34672a`. With no concurrent session (WIP is static 遗留),
 **Verification**: `cd packages/eval/eval-cli && npx tsc --noEmit` → main.ts **0 errors** (context.ts WIP ~30 pre-existing, untouched). eval-cli vitest **10 passed** (main.spec 5 + cli-llm-config 5). **`npx tsc -b tsconfig.host.json` → 0 errors** (was 1 query-maxcompute TS7016 — now gone via `.d.mts`; CL8 main.ts 0 new). `pnpm verify-cordis-config` → 136 passed. staged oxlint (`.oxlintrc.staged.json`) 0 errors on CL8 files. (pre-push also runs `tsdown` host build + `tsc -b tsconfig.client.json` — not run here; verify on push.)
 
 **Still deferred (WIP-touched only, 2 left)**: CL15 I18N sub-ticket (WIP `context.ts` — ticket [GA-CL15-eval-cli-context-i18n.md](GA-CL15-eval-cli-context-i18n.md)); tool-search index.ts:631 `as` (load-bearing — removing introduces `no-unsafe-argument`, same as :627). query-maxcompute's larger WIP (`maxc-sidecar.mjs`/`src/index.ts` +75) left untracked for the WIP session (B-DA5/B-DA6).
+
+---
+
+## Round 6 — client tsc -b fix + GA-CL8 ticket Resolved (2026-09-01)
+
+Follow-up after `842787c730`. `pnpm typecheck` (pre-push gate = `tsc -b host` + `tsdown` host + `tsc -b tsconfig.client.json`) revealed `apply.client.spec.ts` (CL18 test, round 2) failed `tsc -b tsconfig.client.json` under `noUncheckedIndexedAccess: true` — `captured[0]` possibly `undefined` (3 TS18048/TS2532 errors). round 2 only ran per-pkg tsc (green), missed the full client build.
+
+**Fix**: `apply.client.spec.ts` +`sidebarSlot(captured)` helper that narrows `captured[0]` (throws a clear setup error if undefined) — no `!` non-null assertion (avoids `no-non-null-assertion` lint). Both tests use it.
+
+**GA-CL8 ticket Resolved**: `GA-CL8-eval-cli-responder-config.md` status Open → Resolved (round 5 `842787c730` did eval-cli 3/3); caveat noted in the ticket: dashscope hard import (line ~272 `await import('@deepseek-ai/dsh-llm-dashscope')`) + `DASHSCOPE_API_KEY` gate still in (GA-GT2 hard-import scope, not CL8).
+
+**Verification (full pre-push typecheck — all green)**: `pnpm typecheck` = `tsc -b tsconfig.host.json` (**0 errors**) + `tsdown --env.DSH_BUILD_FACE host` (**Build complete**) + `tsc -b tsconfig.client.json` (**0 errors**, was 3 in apply.client.spec.ts). apply.client vitest 2 passed. **pre-push typecheck gate now fully passes.**

@@ -55,12 +55,20 @@ function mockCtx(): { ctx: ClientContext; captured: Array<Record<string, unknown
   return { ctx, captured }
 }
 
+/** Narrow `captured[0]` (possibly undefined under noUncheckedIndexedAccess) to
+ *  the sidebar.footer.action slot config, or throw a clear setup error. */
+function sidebarSlot(captured: Array<Record<string, unknown>>): Record<string, unknown> {
+  const slot = captured[0]
+  if (slot === undefined) throw new Error('apply() did not register the sidebar.footer.action slot')
+  return slot
+}
+
 describe('CL18 — apply() threads host config into injected()', () => {
   it('host override layoutMode="B" + autoFlipThreshold=5 → injected() threads them', () => {
     const { ctx, captured } = mockCtx()
     apply(ctx, { layoutMode: 'B', autoFlipThreshold: 5 })
     // sidebar.footer.action is the first slot registered; it carries `inject: injected`.
-    const shellSlot = captured[0]
+    const shellSlot = sidebarSlot(captured)
     expect(shellSlot.id).toBe('semantic-layer')
     const props = (shellSlot.inject as () => Record<string, unknown>)()
     expect(props.layoutMode).toBe('B')
@@ -70,7 +78,8 @@ describe('CL18 — apply() threads host config into injected()', () => {
   it('no config → injected() defaults layoutMode="auto", autoFlipThreshold=3', () => {
     const { ctx, captured } = mockCtx()
     apply(ctx, {})
-    const props = (captured[0].inject as () => Record<string, unknown>)()
+    const shellSlot = sidebarSlot(captured)
+    const props = (shellSlot.inject as () => Record<string, unknown>)()
     expect(props.layoutMode).toBe('auto')
     expect(props.autoFlipThreshold).toBe(3)
   })
