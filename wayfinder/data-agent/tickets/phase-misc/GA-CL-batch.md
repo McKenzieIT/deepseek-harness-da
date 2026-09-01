@@ -87,3 +87,18 @@ Follow-up commit after `fa074093cb`. Addressed pre-existing (non-batch) CI failu
 **Verification**: phase-gate + eval/eval `tsc --noEmit` green; phase-gate 100 passed (was 6 failed|94 passed); k11-cases 6 passed; ui-semantic-layer coverage `index.ts` no longer flagged; staged oxlint (`.oxlintrc.staged.json`) 0 errors; WIP untouched.
 
 **Deferred (WIP-touched or root-config, not this round)**: query-maxcompute `maxc-args.mjs` TS7016 (WIP); CL8 eval-cli (WIP `main.spec.ts` — ticket opened); CL15 I18N sub-ticket (WIP `context.ts`); tool-search index.ts:631 `as` (load-bearing — removing introduces `no-unsafe-argument`, same as :627); cordis 3 `tsconfig.base.json` path mappings (root config, full-repo `tsc -b` verification — done serially as Round 4).
+
+---
+
+## Round 4 — cordis tsconfig path mappings (serial, 2026-09-01)
+
+Fixed the 3 pre-existing `verify-cordis-config` errors (missing `tsconfig.base.json` path mappings — packages this batch didn't touch, committed config; the errors said "add a mapping so the tsx source launch does not depend on built lib/"). Added 4 paths mappings to `tsconfig.base.json` (after `dsh-attachment/types`):
+
+- `@deepseek-ai/dsh-evidence-query/src/gateway.ts` → `./packages/data/evidence-query/src/gateway.ts`
+- `@deepseek-ai/dsh-client-ui-present-decomposition` → `./packages/client/ui-present-decomposition/src/index.ts`
+- `@deepseek-ai/dsh-client-ui-present-table` → `./packages/client/ui-present-table/src/index.ts`
+- `@deepseek-ai/dsh-client-ui-suggest-followups` → `./packages/client/ui-suggest-followups/src/index.ts`
+
+**Verification**: `pnpm verify-cordis-config` → `136 config files passed` (was 3 errors → 0). `npx tsc -b tsconfig.host.json` (full-repo) → still only the 1 pre-existing WIP error (`query-maxcompute` `maxc-args.mjs` TS7016) — **0 new errors** from the added paths. Root config change, full-repo verified (serial, not mixed with the parallel batch).
+
+**Still deferred (WIP-touched only)**: query-maxcompute `maxc-args.mjs` TS7016 (WIP); CL8 eval-cli (WIP `main.spec.ts` — ticket [GA-CL8-eval-cli-responder-config.md](GA-CL8-eval-cli-responder-config.md)); CL15 I18N sub-ticket (WIP `context.ts`); tool-search index.ts:631 `as` (load-bearing).
