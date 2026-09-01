@@ -26,7 +26,7 @@
 | CL17 | nl2sql-engine/src/index.ts:29; prompt.ts:18 | EngineConventions leaky import | 移入抽象 dsh-query 包 |
 | ✅ CL18 | client/ui-semantic-layer/src/client/hooks/useLayoutMode.ts:23 | B→A autoFlipThreshold=3 不可配 | 暴露 host config |
 
-**关联**: CL4/CL5/CL9/CL10/CL11/CL12 fold 入 GA-GRILL2；CL16/CL17 fold 入 GA-GT2；CL2/CL13 fold 入 GA-GT4；CL7 absorbed by GA-GT5。
+**关联**（fold 进 G 票）: CL5/CL9/CL11/CL15 → GA-GRILL2；CL16/CL17 → GA-GT2；CL2/CL13 → GA-GT4；CL7 absorbed by GA-GT5。CL4/CL10/CL12 本 batch 已做（见 Resolution，不 fold）。**CL15 gap**（Round 3 发现）: 关联行原漏 CL15——已补登 CL15→GRILL2；GRILL2 票正文未记 CL15（`eval-cli/src/context.ts` 是 WIP，GRILL2 griled→resolved 时未覆盖）；需 WIP 落地后开 I18N 子票覆盖（见 Round 3）。
 
 ---
 
@@ -72,3 +72,18 @@ Follow-up commit after `3f658a96df`, addressing the adversarial review (skeptic 
 **Verification**: 4 packages `tsc --noEmit` green; 41 affected tests green (text_sim 23, expand-query-config 7, llm-wiring-integration 9, apply.client 2); staged oxlint 0 new errors (1 pre-existing `no-unnecessary-type-assertion` at tool-search index.ts:631 `retrieval` — type-aware, staged hook `typeAware:false` doesn't flag).
 
 **Q2 follow-up ticket**: [GA-CL8-eval-cli-responder-config.md](GA-CL8-eval-cli-responder-config.md) — CL8 eval-cli site (responder config, not enrichment; needs WIP `main.spec.ts` update once WIP lands).
+
+---
+
+## Round 3 — pre-existing CI debt cleanup (parallel subagents, 2026-09-01)
+
+Follow-up commit after `fa074093cb`. Addressed pre-existing (non-batch) CI failures that were safe to fix (committed files, no WIP touch). 4 parallel subagents (file-independent, per-pkg verification, no WIP):
+
+- **phase-gate `ctx.get` 6 failures** (pre-existing test-stub gap, not CL6): `gate()` helper's fake ctx had no `.get` → `buildSqlConventions` threw in GENERATION onAssemble. Fix: +`get: () => undefined` to the fake ctx (buildSqlConventions tolerates undefined schema → emits default conventions string). Only `tests/phase-gate.spec.ts` touched (+8 lines); source `phase-gate.ts` untouched. **6 failures → 0 (100 passed)**.
+- **k11-cases ENOENT** (pre-existing; WIP renamed k11→k11-v2 but committed spec still pointed at `cases/k11`): k11-v2 is an **evolved** case set (not a rename), so fix updated path + filter (`k11_`→`k11v2_`) + assertions to match v2 actuals (count 161→168, case_id regex, intent set 7→8, skip 10 voice cases' empty `covered_assets`). Only `tests/k11-cases.spec.ts` touched. **ENOENT → 6 passed**. 2 review points flagged for case author (10 voice empty-assets; v2 intent taxonomy change).
+- **ui-semantic-layer `client/index.ts` 0% coverage** (pre-existing GUI debt): other `ui-*` `src/client/index.ts` are in `vitest.config.ts` coverage.exclude with `TODO(gui)`; ui-semantic-layer was missing (consistency gap). Fix: +1 exclude line. `index.ts` no longer flagged. (`SemanticLayerShell.tsx` etc. still 0% — separate effort, not excluded.)
+- **G-ticket fold audit** (read-only): 5/9 CLs explicitly referenced in G tickets (CL2/CL13→GT4, CL16/CL17→GT2, CL7→GT5); 3/9 semantic match no CL# (CL5/CL9/CL11→GRILL2, covered by GA-I18N-1/5); **1/9 CL15 "folded to nowhere"** — was not in `GA-CL-batch.md` 关联行 AND not in GRILL2 ticket (CL15 = `eval-cli/src/context.ts:221,375`, a WIP file; GRILL2 griled→resolved without covering it). 关联行 corrected above to add CL15→GRILL2; CL15 needs an I18N sub-ticket once `context.ts` WIP lands.
+
+**Verification**: phase-gate + eval/eval `tsc --noEmit` green; phase-gate 100 passed (was 6 failed|94 passed); k11-cases 6 passed; ui-semantic-layer coverage `index.ts` no longer flagged; staged oxlint (`.oxlintrc.staged.json`) 0 errors; WIP untouched.
+
+**Deferred (WIP-touched or root-config, not this round)**: query-maxcompute `maxc-args.mjs` TS7016 (WIP); CL8 eval-cli (WIP `main.spec.ts` — ticket opened); CL15 I18N sub-ticket (WIP `context.ts`); tool-search index.ts:631 `as` (load-bearing — removing introduces `no-unsafe-argument`, same as :627); cordis 3 `tsconfig.base.json` path mappings (root config, full-repo `tsc -b` verification — done serially as Round 4).

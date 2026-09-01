@@ -38,7 +38,14 @@ function execView(name: string, agent: Agent, args?: unknown): ToolExecution {
 function resultOk(value: unknown): ToolExecutionResult {
   return { isError: false, value, content: [] } as unknown as ToolExecutionResult
 }
-function gate(ctx: Context = { logger: { info: () => undefined, debug: () => undefined } } as unknown as Context): PhaseGate {
+function gate(ctx: Context = {
+  logger: { info: () => undefined, debug: () => undefined },
+  // buildSqlConventions(ctx) calls ctx.get('schema') to read semanticRoot for
+  // the sql-conventions section (only emitted in GENERATION). The stub returns
+  // undefined → buildSqlConventions falls back to its default conventions string
+  // (no loadConfig / fs read), so onAssemble in GENERATION no longer throws.
+  get: () => undefined,
+} as unknown as Context): PhaseGate {
   return new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
 }
 

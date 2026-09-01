@@ -252,6 +252,7 @@ export default defineConfig({
         'packages/client/ui-sidebar/src/client/index.ts',
         'packages/client/ui-skill/src/client/index.ts',
         'packages/client/ui-workspace/src/client/index.ts',
+        'packages/client/ui-semantic-layer/src/client/index.ts',
         'packages/test-support/client-runtime/src/translate.ts',
         'packages/client/ui-primitives/src/JsonTree.tsx',
         'packages/client/ui-settings-models/src/client/DeepSeekOnboardingDialog.tsx',
