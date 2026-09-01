@@ -1,6 +1,6 @@
 # GA-CL-batch — 18 条 CL 清理（通用性审计）
 
-**Type**: cleanup (batch)  ·  **Phase**: misc  ·  **Status**: Resolved (9 of 18 this batch — CL1/3/4/6/8/10/12/14/18; 9 folded to G tickets; CL8 partial — eval-cli site deferred)
+**Type**: cleanup (batch)  ·  **Phase**: misc  ·  **Status**: Resolved (9 of 18 this batch — CL1/3/4/6/8/10/12/14/18; 9 folded to G tickets; CL8 resolved (3/3 sites — round 5: eval-cli done))
 **Source**: [tickets doc](../../research/generalization-audit-tickets-2026-08-31.md) §C — 15 medium + 3 low
 
 批量 CL 清理（按文件分组，建议合并到相关 G 票分支一起做）：
@@ -14,7 +14,7 @@
 | CL5 | semantic-layer/src/enrichment.ts:118 | mergeRefs '确定性' 前缀判定 | 加结构化 source 字段 |
 | ✅ CL6 | phase-gate/src/index.ts:70 | scopeId 默认 'game-1' | 默认中性或必填 |
 | ~~CL7~~ | ~~apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24~~ | ~~B preset 默认 'per-game' persona~~ | ~~→ absorbed by [GA-GT5](GA-GT5-domain-injection-seam.md) (ctx.domain seam)~~ |
-| 🟡 CL8 | llm-wiring-plugin.ts:36; expand-query.ts:27; eval-cli/main.ts:65 | LLM 默认 Qwen/DashScope 无 fail-loud | 集中部署 config + fail-loud |
+| ✅ CL8 | llm-wiring-plugin.ts:36; expand-query.ts:27; eval-cli/main.ts:65 | LLM 默认 Qwen/DashScope 无 fail-loud | 集中部署 config + fail-loud |
 | CL9 | nl2sql-engine/src/conventions.ts:33 | renderConventionsPrompt 中文段头 | 段头抽 locale bundle |
 | ✅ CL10 | tool-suggest-followups/src/index.ts:63 | '≤8 中文字符' 约束 | locale-neutral '≤~20 chars' |
 | CL11 | phase-gate/src/phase-gate.ts:118 | INTERPRETATION 中文 marker | locale-configurable 或中性符号 |
@@ -102,3 +102,17 @@ Fixed the 3 pre-existing `verify-cordis-config` errors (missing `tsconfig.base.j
 **Verification**: `pnpm verify-cordis-config` → `136 config files passed` (was 3 errors → 0). `npx tsc -b tsconfig.host.json` (full-repo) → still only the 1 pre-existing WIP error (`query-maxcompute` `maxc-args.mjs` TS7016) — **0 new errors** from the added paths. Root config change, full-repo verified (serial, not mixed with the parallel batch).
 
 **Still deferred (WIP-touched only)**: query-maxcompute `maxc-args.mjs` TS7016 (WIP); CL8 eval-cli (WIP `main.spec.ts` — ticket [GA-CL8-eval-cli-responder-config.md](GA-CL8-eval-cli-responder-config.md)); CL15 I18N sub-ticket (WIP `context.ts`); tool-search index.ts:631 `as` (load-bearing).
+
+---
+
+## Round 5 — CL8 eval-cli 做满 + maxc-args.d.mts (2026-09-01)
+
+Follow-up after `501c34672a`. With no concurrent session (WIP is static 遗留), the staging 死结 resolved by user authorization to carry `main.spec.ts`'s WIP path hunk (k11→k11-v2, a legitimate path fix matching `k11-cases.spec.ts` round 3).
+
+**CL8 eval-cli site done (3/3)**: `eval-cli/src/main.ts` `--provider`/`--model` defaults removed (no silent `aga`/`qwen3.7-max`) + `resolveResponderLlmConfig` using **responder-specific** `EVAL_LLM_PROVIDER`/`EVAL_LLM_MODEL` env (NOT `ENRICHMENT_LLM_*` — that's enrichment-only; eval-cli's provider/model is the eval *responder* + SQL judge, the model under test) + fail-loud `'eval-cli: no responder provider/model configured'` (message distinct from enrichment's). dashscope hard import (line ~272 `await import('@deepseek-ai/dsh-llm-dashscope')`) + `DASHSCOPE_API_KEY` gate + import/exit logic untouched (GA-GT2 hard-import scope). `main.spec.ts` (WIP) "loads and runs" test +`EVAL_LLM_*` env (preserves WIP k11-v2 path hunk). +`cli-llm-config.spec.ts` (5 tests: no-input+env→throw, env-populated→used, override, partial provider-only/model-only→throw). **CL8 now ✅ 3/3.**
+
+**query-maxcompute `maxc-args.mjs` TS7016 fixed**: +`packages/query/query-maxcompute/dev/maxc-args.d.mts` (`.mjs`→`.d.mts` is TS's declaration-extension mapping for ESM `.mjs`) declaring `buildMaxcArgs(subArgs: string[], config: string): string[]`. The `.mjs` is B-DA5's pure arg-builder (complete 遗留, JSDoc'd) — owned by WIP session but uncommitted; the `.d.mts` is the type side. Did NOT commit the larger query-maxcompute WIP (`maxc-sidecar.mjs` +41 / `src/index.ts` +75 — B-DA5/B-DA6's bigger changes, left untracked for the WIP session).
+
+**Verification**: `cd packages/eval/eval-cli && npx tsc --noEmit` → main.ts **0 errors** (context.ts WIP ~30 pre-existing, untouched). eval-cli vitest **10 passed** (main.spec 5 + cli-llm-config 5). **`npx tsc -b tsconfig.host.json` → 0 errors** (was 1 query-maxcompute TS7016 — now gone via `.d.mts`; CL8 main.ts 0 new). `pnpm verify-cordis-config` → 136 passed. staged oxlint (`.oxlintrc.staged.json`) 0 errors on CL8 files. (pre-push also runs `tsdown` host build + `tsc -b tsconfig.client.json` — not run here; verify on push.)
+
+**Still deferred (WIP-touched only, 2 left)**: CL15 I18N sub-ticket (WIP `context.ts` — ticket [GA-CL15-eval-cli-context-i18n.md](GA-CL15-eval-cli-context-i18n.md)); tool-search index.ts:631 `as` (load-bearing — removing introduces `no-unsafe-argument`, same as :627). query-maxcompute's larger WIP (`maxc-sidecar.mjs`/`src/index.ts` +75) left untracked for the WIP session (B-DA5/B-DA6).

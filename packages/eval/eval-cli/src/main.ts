@@ -62,8 +62,8 @@ function parseCliArgs(): CliArgs {
       'pass-k': { type: 'string', default: '3' },
       case: { type: 'string' },
       'skip-health-gate': { type: 'boolean', default: false },
-      provider: { type: 'string', default: 'aga' },
-      model: { type: 'string', default: 'qwen3.7-max' },
+      provider: { type: 'string' },
+      model: { type: 'string' },
       today: { type: 'string' },
       'run-id': { type: 'string' },
       concurrency: { type: 'string', default: '1' },
@@ -114,8 +114,8 @@ function parseCliArgs(): CliArgs {
     passK: Number.parseInt(str(values['pass-k'], '3'), 10),
     caseFilter: typeof caseVal === 'string' ? caseVal : null,
     skipHealthGate: values['skip-health-gate'] === true,
-    provider: str(values.provider, 'aga'),
-    model: str(values.model, 'qwen3.7-max'),
+    provider: str(values.provider, ''),
+    model: str(values.model, ''),
     today: str(values.today, formatToday()),
     runId: typeof runIdVal === 'string' ? runIdVal : null,
     concurrency: Number.parseInt(str(values.concurrency, '1'), 10),
@@ -147,8 +147,10 @@ function printUsage(): void {
     --pass-k <n>           Pass@K attempts per case [default: 3]
     --case <id>            Run only a single case by case_id
     --skip-health-gate     Skip the health gate pre-flight
-    --provider <name>      LLM provider [default: aga]
-    --model <name>         LLM model [default: qwen3.7-max]
+    --provider <name>      LLM provider for the eval responder + SQL judge
+                           [env: EVAL_LLM_PROVIDER, no default]
+    --model <name>         LLM model for the eval responder + SQL judge
+                           [env: EVAL_LLM_MODEL, no default]
     --today <YYYYMMDD>     Reference date for time-param extraction
     --run-id <id>          Explicit run ID (default: auto-generated UUID)
     --concurrency <n>      Parallel case execution [default: 1]
@@ -165,6 +167,10 @@ function printUsage(): void {
 
   Environment:
     DASHSCOPE_API_KEY      API key for the DashScope LLM provider (required)
+    EVAL_LLM_PROVIDER      Eval responder + SQL judge LLM provider (required,
+                           no silent vendor fallback — fail-loud when unset)
+    EVAL_LLM_MODEL         Eval responder + SQL judge LLM model (required,
+                           no silent vendor fallback — fail-loud when unset)
     ODPS_ACCESS_ID         MaxCompute access ID (when --with-query)
     ODPS_ACCESS_KEY        MaxCompute access key (when --with-query)
     ODPS_PROJECT           MaxCompute project name (when --with-query)
@@ -190,6 +196,28 @@ function globCasePaths(caseDir: string, caseFilter: string | null): string[] {
   return files.map(f => join(caseDir, f))
 }
 
+/**
+ * Resolve the eval responder + SQL judge LLM provider/model from explicit CLI
+ * input, falling back to the deployment env-var contract (`EVAL_LLM_PROVIDER` /
+ * `EVAL_LLM_MODEL`). Throws when neither input nor env supplies both values —
+ * fail-loud instead of silently falling back to a vendor default.
+ *
+ * CL8: eval-cli's --provider/--model feeds the eval responder + SQL judge
+ * (the model under test), NOT the enrichment LLM — so it uses the EVAL_LLM_*
+ * env contract (not ENRICHMENT_LLM_*). The shared contract with the enrichment
+ * sites is the fail-loud shape, not shared code (no new cross-package dep).
+ */
+export function resolveResponderLlmConfig(
+  input: { provider?: string | undefined; model?: string | undefined },
+): { provider: string; model: string } {
+  const provider = input.provider || process.env.EVAL_LLM_PROVIDER || ''
+  const model = input.model || process.env.EVAL_LLM_MODEL || ''
+  if (!provider || !model) {
+    throw new Error('eval-cli: no responder provider/model configured')
+  }
+  return { provider, model }
+}
+
 export async function main(): Promise<void> {
   const args = parseCliArgs()
 
@@ -197,6 +225,13 @@ export async function main(): Promise<void> {
     console.error('Error: DASHSCOPE_API_KEY environment variable is not set')
     process.exit(1)
   }
+
+  // CL8: resolve responder provider/model from CLI args → env-var contract.
+  // No silent vendor fallback ('aga'/'qwen3.7-max' removed) — fail loud when
+  // unconfigured so the deployment pins its actual eval gateway.
+  const responderCfg = resolveResponderLlmConfig({ provider: args.provider, model: args.model })
+  args.provider = responderCfg.provider
+  args.model = responderCfg.model
 
   // Glob and load cases
   const casePaths = globCasePaths(args.cases, args.caseFilter)
