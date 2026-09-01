@@ -31,6 +31,8 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [R8: present_table 展示层缺陷审计与优化方案](tickets/R8-data-display-optimization-plan.md) — Cordis 合规确认 + A/B/C 缺陷分级:A 级含 parseTsv 与真实 render 格式错位(表头变 result_id 行,实测复现)与 50 行天花板使虚拟滚动/CSV 不可达;host 侧 ctx.resultCache 已存在只差 client RPC;优化四阶段路径
 - [T4: present_table 展示层优化执行(Phase 0-2)](tickets/T4-present-table-display-upgrade.md) — parseQueryData 协议修复 + result_id 精确绑定/错配提示 + isError + KPI 截断诚实化;排序/类型对齐/locale/图表懒加载+主题+切换/复制 MD/SQL 折叠;79 tests + 100% 覆盖率 + tsc 通过;result store RPC 移交 R6
 - [R9: 查询理解卡片展示层缺陷审计与优化方案](tickets/R9-decomposition-display-optimization-plan.md) — 合规确认 + A/B/C 分级:A1 卡片 CSS 引用的 8 个 alias token 全部不存在于 ui-theme(边框/背景/层级失效,"混乱"的渲染级根源)、A2 不读 isError;应然编排=「查询契约」三层(焦点行/谱系 chips/指标明细)+信任带;Phase 0-3 路径;裁决经 P1 动态原型,执行入 T5
+- [P1: 查询理解卡优化编排 · 动态插件原型裁决](tickets/P1-decomposition-prototype.md) — 三轮 HITL 裁决定稿:焦点行(summary 标题+置信度徽标)/谱系合行成立;悬停揭示口径否决(自洽性 bug+空间利用率);终版=指标口径常显+自适应多列网格(10 指标折 5 行)+信任带;动态原型保持挂载至 T5 折回
+- [T5: present_decomposition 展示层优化执行(Phase 0-2)](tickets/T5-present-decomposition-display-upgrade.md) — P1 定稿折回仓库包:token 全修+isError+locale+parse 防御(Phase 0)、焦点行/谱系 chips/常显指标网格/折叠焦点保留(Phase 1)、非最新 turn 默认折叠(Phase 2);30 tests+100% 覆盖+tsc/bundle 绿+test:gui 全绿(4211);e2e 失败属 code-mode 工作面(交接注);qdec 原型已停用作废
 
 ## Not yet specified
 
