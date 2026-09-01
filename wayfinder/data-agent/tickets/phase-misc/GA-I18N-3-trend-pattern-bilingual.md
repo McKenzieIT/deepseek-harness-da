@@ -1,6 +1,6 @@
 # GA-I18N-3 — TREND_PATTERN 中英双语
 
-**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GRILL2 D3](GA-GRILL2-i18n-architecture.md)
 **Size**: S  ·  **Risk**: Low（additive 正则分支，soft prefer 影响）
 
@@ -46,6 +46,14 @@ export function detectTrendIntent(question: string): boolean {
 3. 新增英文正例通过：`"DAU trend over the past week"` → true，`"monthly revenue growth"` → true，`"week-over-week change"` → true
 4. 新增英文负例通过：`"What is yesterday's DAU?"` → false，`"How many VIP users?"` → false
 5. 现有测试全部通过
+
+## Resolution
+
+- `TREND_PATTERN` (single regex) renamed to `TREND_PATTERNS` (array of two RegExp).
+- Chinese regex preserved as-is (first element); English regex added as second element with `/i` flag.
+- `detectTrendIntent` updated to `TREND_PATTERNS.some(p => p.test(question))`.
+- `TREND_PATTERN` was module-private (not exported), so no import sites needed updating.
+- 11 new English test cases added (8 positive, 3 negative); all 40 tests pass, zero regressions.
 
 ## 不做
 

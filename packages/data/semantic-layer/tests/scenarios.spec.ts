@@ -204,6 +204,33 @@ test('S4 BasicIndex — lookup + ADR-0011 invalidate -> rebuild after write', as
   expect(idx.lookupTable('dws_login_di')).not.toBeNull()
 })
 
+test('freshness preprocess maps legacy Chinese value', () => {
+  const parsed = TableDefinitionSchema.parse({
+    table_name: 'dws_test_freshness',
+    table_comment: '',
+    description: '',
+    domains: [],
+    granularity: '',
+    engine: 'maxcompute',
+    columns: [],
+    metrics: {},
+    partitions: [],
+    confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
+    coverage: null,
+    supersedes: [],
+    disambiguation: null,
+    kind: 'dws',
+    primary_key: [],
+    primary_key_unique: null,
+    duplicate_sample: [],
+    label_columns: [],
+    freshness: '静态参考',
+    alt_labels: [],
+    dimension_refs: [],
+  })
+  expect(parsed.freshness).toBe('static_reference')
+})
+
 test('S5 P13b swap reachable — substrate provides params_fields/partitions for makeCriticCtx', () => {
   resetLayer()
   // ctx.schema.load_* wraps these substrate readers; the contract P13b swaps to.

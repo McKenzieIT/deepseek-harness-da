@@ -44,12 +44,12 @@ export const PHASE_ORDER: readonly Phase[] = [
  * parse-side (gate regex) — `phases.py` comment: splitting these would let a
  * prompt-wording change silently break the gate parse.
  */
-export const DECOMPOSITION_MARKER = '【拆解】'
+export const DECOMPOSITION_MARKER = '【decompose】'
 /**
  * Marker the model emits in INTERPRETATION when it cannot answer this turn;
  * the turn-stopping gate reads it and triggers honest_decline (not clarification).
  */
-export const INCOMPLETE_MARKER = '【未完成】'
+export const INCOMPLETE_MARKER = '【incomplete】'
 
 /**
  * Route token the model emits at the end of an UNDERSTANDING turn (after
@@ -69,6 +69,24 @@ export const INCOMPLETE_MARKER = '【未完成】'
  * GENERATION on no corpus).
  */
 export const ROUTE_MARKER_REGEX = /【route:(proceed|clarify|decline)】/
+
+/**
+ * Regex matching all internal control markers (decompose, incomplete, route:*)
+ * that must never leak to the presentation layer. Does NOT match user-visible
+ * delivery markers (【发现】/【注意】) — those are Kind 1 (project-level i18n).
+ */
+const INTERNAL_MARKER_RE = /【(?:decompose|incomplete|route:[a-z]+)】/g
+
+/**
+ * Strip internal control markers from text before it reaches the presentation
+ * layer. Removes decompose, incomplete, and route tokens; preserves all other
+ * content (including user-visible delivery markers like 【发现】/【注意】).
+ * @param text The raw phase output text.
+ * @returns The cleaned text with internal markers removed and whitespace trimmed.
+ */
+export function stripInternalMarkers(text: string): string {
+  return text.replace(INTERNAL_MARKER_RE, '').trim()
+}
 
 /**
  * Extract the route decision from UNDERSTANDING phase output. Mirrors

@@ -191,6 +191,7 @@ export const DimensionRefSchema = z.object({
   dim_table: z.string(),
   join_keys: z.array(DimensionKeyPairSchema),
   derivation: z.string().default(''),
+  origin: z.enum(['deterministic', 'llm', 'manual']).optional(),
 }).loose().refine(
   d => d.join_keys.length > 0,
   { message: 'join_keys must contain at least one key pair' },
@@ -280,7 +281,10 @@ export const TableDefinitionSchema = z.object({
   primary_key_unique: z.boolean().nullable().default(null),
   duplicate_sample: z.array(z.record(z.string(), z.string())).default([]),
   label_columns: z.array(z.string()).default([]),
-  freshness: z.enum(['静态参考', 'T+1', '']).default(''),
+  freshness: z.preprocess(
+    (v) => v === '静态参考' ? 'static_reference' : v,
+    z.enum(['static_reference', 'T+1', '']).default('')
+  ),
   dimension_refs: z.array(DimensionRefSchema).default([]),
 }).loose().superRefine((t, ctx) => {
   if (t.kind === 'dim') {

@@ -1,6 +1,6 @@
 # GA-I18N-2 — freshness enum locale-neutral 迁移
 
-**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GRILL2 D2](GA-GRILL2-i18n-architecture.md)
 **Cross-ref**: [GA-GRILL3 D5](GA-GRILL3-tabledef-schema.md)（freshness 推断归 LLM enrichment，token 命名归本票）
 **Size**: XS  ·  **Risk**: Low（preprocess 兼容旧值，零 big-bang）
@@ -49,3 +49,23 @@ freshness: z.preprocess(
 4. `TableDefinitionSchema.safeParse({ ..., freshness: '' })` → 成功（default）
 5. grep 确认仓库内无 `'静态参考'` 残留（除 preprocess 映射代码和本票/研究文档）
 6. 现有测试全部通过
+
+## Resolution
+
+Implemented as specified. Changes:
+
+| File | Change |
+|------|--------|
+| `packages/data/semantic-layer/src/types.ts:283-287` | `freshness` field → `z.preprocess` shim mapping `'静态参考'` → `'static_reference'`, enum now `['static_reference', 'T+1', '']` |
+| `packages/data/semantic-layer/src/io.ts:559` | `generateDimYaml` output: `'静态参考'` → `'static_reference'` |
+| `packages/data/semantic-layer/tests/fixtures/dim_charm_info.yaml` | `freshness: 静态参考` → `freshness: static_reference` |
+| `packages/data/semantic-layer/tests/discover-relations.spec.ts:23` | Test fixture → `'static_reference'` |
+| `packages/data/evidence-query/tests/evidence-query.spec.ts:64,79` | Test fixtures → `'static_reference'` |
+| `packages/data/schema-gateway/tests/schema-gateway.spec.ts:52` | Test fixture → `'static_reference'` |
+
+Verification:
+- `pnpm tsc --noEmit` — clean (0 errors)
+- `pnpm vitest run` semantic-layer — 17 files, 221 tests passed
+- `pnpm vitest run` evidence-query + schema-gateway — 5 files, 58 tests passed
+- `grep '静态参考' packages/ --include='*.ts'` — only the preprocess mapping in `types.ts:285` remains
+- `tool-load-table-definition` untouched (pure passthrough, no logic branches on freshness value)

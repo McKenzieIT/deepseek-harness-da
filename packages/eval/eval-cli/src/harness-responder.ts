@@ -56,7 +56,7 @@ const CASE_TIMEOUT_MS = 5 * 60 * 1000
 // ─── Decline Detection ─────────────────────────────────────────────────────────
 
 /** Phase-gate's INCOMPLETE marker (A/C variants). */
-const INCOMPLETE_MARKER = '【未完成】'
+const INCOMPLETE_MARKER = '【incomplete】'
 
 /** Prose decline patterns for B/D variants (no phase-gate). */
 const PROSE_DECLINE_PATTERNS = [

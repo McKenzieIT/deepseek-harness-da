@@ -49,7 +49,7 @@ function seedLayer(): string {
     confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
     coverage: null, supersedes: [], disambiguation: null,
     primary_key: ['server_id'], primary_key_unique: null, duplicate_sample: [],
-    label_columns: ['server_name'], freshness: '静态参考', dimension_refs: [],
+    label_columns: ['server_name'], freshness: 'static_reference', dimension_refs: [],
   }))
 
   writeFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), yaml.dump({

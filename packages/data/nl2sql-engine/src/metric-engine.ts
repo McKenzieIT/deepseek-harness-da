@@ -75,10 +75,49 @@ function fmt(dt: Date): string {
   return `${dt.getUTCFullYear()}${String(dt.getUTCMonth() + 1).padStart(2, '0')}${String(dt.getUTCDate()).padStart(2, '0')}`
 }
 
+/** Bilingual keyword→handler rules for time extraction (checked in order;
+ *  longer/more-specific patterns first to avoid prefix collisions, e.g.
+ *  "day before yesterday" must precede "yesterday"). */
+const TIME_RULES: ReadonlyArray<{ pattern: RegExp; extract: (base: Date, today: string) => TimeParams }> = [
+  { pattern: /前天|day before yesterday/i,         extract: (b, _t) => ({ date: shiftDays(b, -2) }) },
+  { pattern: /昨天|昨日|yesterday/i,              extract: (b, _t) => ({ date: shiftDays(b, -1) }) },
+  { pattern: /今天|今日|today/i,                   extract: (_b, t) => ({ date: t }) },
+  { pattern: /上周|上一周|last week/i,             extract: (b, _t) => lastWeekRange(b) },
+  { pattern: /本月|当月|this month/i,              extract: (b, t) => thisMonthRange(b, t) },
+]
+
+/** Shift a base date by `days` and return YYYYMMDD. */
+function shiftDays(base: Date, days: number): string {
+  const dt = new Date(base.getTime())
+  dt.setUTCDate(dt.getUTCDate() + days)
+  return fmt(dt)
+}
+
+/** Last week (Mon–Sun) range relative to `base`. */
+function lastWeekRange(base: Date): TimeParams {
+  const day = base.getUTCDay() === 0 ? 7 : base.getUTCDay() // Mon=1..Sun=7
+  const thisMonday = new Date(base.getTime())
+  thisMonday.setUTCDate(base.getUTCDate() - (day - 1))
+  const sun = new Date(thisMonday.getTime())
+  sun.setUTCDate(thisMonday.getUTCDate() - 1)
+  const mon = new Date(thisMonday.getTime())
+  mon.setUTCDate(thisMonday.getUTCDate() - 7)
+  return { start_date: fmt(mon), end_date: fmt(sun) }
+}
+
+/** This month (1st–today) range. */
+function thisMonthRange(base: Date, today: string): TimeParams {
+  const y = base.getUTCFullYear()
+  const m = base.getUTCMonth() + 1
+  return { start_date: `${y}${String(m).padStart(2, '0')}01`, end_date: today }
+}
+
 /**
  * Extract time parameters from a question relative to a reference `today`
- * (YYYYMMDD; deterministic — no `Date.now`). Supports 昨天/今天/前天/上周/本月
- * + explicit YYYY-MM-DD / YYYYMMDD. Returns {} when nothing recognized.
+ * (YYYYMMDD; deterministic — no `Date.now`). Supports bilingual keywords
+ * (昨天/yesterday, 今天/today, 前天/day before yesterday, 上周/last week,
+ * 本月/this month) + explicit YYYY-MM-DD / YYYYMMDD. Returns {} when nothing
+ * recognized.
  * @param question - the natural-language question to extract time params from.
  * @param today - the reference date (YYYYMMDD).
  * @returns the extracted time parameters, or {} when nothing is recognized / today is invalid.
@@ -89,25 +128,9 @@ export function extractTimeParams(question: string, today: string): TimeParams {
   const m = Number(today.slice(4, 6))
   const d = Number(today.slice(6, 8))
   const base = new Date(Date.UTC(y, m - 1, d))
-  const shift = (days: number): string => {
-    const dt = new Date(base.getTime())
-    dt.setUTCDate(dt.getUTCDate() + days)
-    return fmt(dt)
+  for (const rule of TIME_RULES) {
+    if (rule.pattern.test(question)) return rule.extract(base, today)
   }
-  if (/昨天|昨日/.test(question)) return { date: shift(-1) }
-  if (/前天/.test(question)) return { date: shift(-2) }
-  if (/今天|今日/.test(question)) return { date: today }
-  if (/上周|上一周/.test(question)) {
-    const day = base.getUTCDay() === 0 ? 7 : base.getUTCDay() // Mon=1..Sun=7
-    const thisMonday = new Date(base.getTime())
-    thisMonday.setUTCDate(base.getUTCDate() - (day - 1))
-    const sun = new Date(thisMonday.getTime())
-    sun.setUTCDate(thisMonday.getUTCDate() - 1)
-    const mon = new Date(thisMonday.getTime())
-    mon.setUTCDate(thisMonday.getUTCDate() - 7)
-    return { start_date: fmt(mon), end_date: fmt(sun) }
-  }
-  if (/本月|当月/.test(question)) return { start_date: `${y}${String(m).padStart(2, '0')}01`, end_date: today }
   const m1 = question.match(/(\d{4})-(\d{2})-(\d{2})/)
   if (m1) {
     const yy = m1[1]; const mo = m1[2]; const dd = m1[3]

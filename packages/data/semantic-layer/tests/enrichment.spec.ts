@@ -17,6 +17,7 @@ import {
   discoverEventRelationsDeterministic,
   buildEventLlmPrompt,
   enrichAllEvents,
+  parseLlmRefs,
   type DimInventoryEntry,
 } from '../src/enrichment.ts'
 import { dumpYaml } from '../src/io.ts'
@@ -70,6 +71,7 @@ describe('discoverRelationsDeterministic', () => {
     const [r] = discoverRelationsDeterministic(dws(), [DIM_SERVER])
     expect(r!.derivation).toContain('确定性')
     expect(r!.derivation).toContain('server_id')
+    expect(r!.origin).toBe('deterministic')
   })
 
   test('dims with empty primary_key are skipped', () => {
@@ -93,22 +95,58 @@ describe('discoverRelationsDeterministic', () => {
 
 describe('mergeRefs', () => {
   test('dedupes by dim_table, unions join_keys', () => {
-    const det = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'server_id', dim_column: 'server_id' }], derivation: '确定性' }]
+    const det = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'server_id', dim_column: 'server_id' }], derivation: '确定性', origin: 'deterministic' as const }]
     const llm = [
-      { dim_table: 'dim_s', join_keys: [{ dws_column: 'srv_id', dim_column: 'server_id' }], derivation: 'llm: 语义匹配' },
-      { dim_table: 'dim_new', join_keys: [{ dws_column: 'x', dim_column: 'x' }], derivation: 'llm only' },
+      { dim_table: 'dim_s', join_keys: [{ dws_column: 'srv_id', dim_column: 'server_id' }], derivation: 'llm: 语义匹配', origin: 'llm' as const },
+      { dim_table: 'dim_new', join_keys: [{ dws_column: 'x', dim_column: 'x' }], derivation: 'llm only', origin: 'llm' as const },
     ]
     const merged = mergeRefs(det, llm)
     expect(merged).toHaveLength(2)
     const s = merged.find(m => m.dim_table === 'dim_s')!
     expect(s.join_keys).toHaveLength(2)
-    expect(s.derivation).toBe('llm: 语义匹配') // LLM derivation preferred when deterministic was generic
+    expect(s.derivation).toBe('llm: 语义匹配') // LLM derivation preferred over deterministic
+    expect(s.origin).toBe('llm')
   })
 
   test('keeps deterministic ref when LLM has nothing for that dim', () => {
-    const merged = mergeRefs([{ dim_table: 'd', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: '确定性' }], [])
+    const merged = mergeRefs([{ dim_table: 'd', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: '确定性', origin: 'deterministic' as const }], [])
     expect(merged).toHaveLength(1)
     expect(merged[0]!.join_keys).toHaveLength(1)
+    expect(merged[0]!.origin).toBe('deterministic')
+  })
+
+  test('origin=undefined (legacy) is not overridden by llm', () => {
+    const legacy = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'curated by analyst' }]
+    const llm = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'b', dim_column: 'b' }], derivation: 'llm suggested', origin: 'llm' as const }]
+    const merged = mergeRefs(legacy, llm)
+    expect(merged).toHaveLength(1)
+    expect(merged[0]!.derivation).toBe('curated by analyst') // legacy (undefined origin) not overridden
+    expect(merged[0]!.origin).toBeUndefined()
+    expect(merged[0]!.join_keys).toHaveLength(2) // join_keys still unioned
+  })
+
+  test('origin=manual is not overridden by llm or deterministic', () => {
+    const manual = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'manual', origin: 'manual' as const }]
+    const llm = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'llm says', origin: 'llm' as const }]
+    const merged = mergeRefs(manual, llm)
+    expect(merged[0]!.derivation).toBe('manual')
+    expect(merged[0]!.origin).toBe('manual')
+  })
+
+  test('origin=deterministic is overridden by llm', () => {
+    const det = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'det', origin: 'deterministic' as const }]
+    const llm = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'llm', origin: 'llm' as const }]
+    const merged = mergeRefs(det, llm)
+    expect(merged[0]!.derivation).toBe('llm')
+    expect(merged[0]!.origin).toBe('llm')
+  })
+
+  test('origin=llm is overridden by manual', () => {
+    const llm = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'llm', origin: 'llm' as const }]
+    const manual = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'manual', origin: 'manual' as const }]
+    const merged = mergeRefs(llm, manual)
+    expect(merged[0]!.derivation).toBe('manual')
+    expect(merged[0]!.origin).toBe('manual')
   })
 })
 
@@ -135,6 +173,7 @@ describe('discoverRelationsFor', () => {
     const refs = await discoverRelationsFor(dws(), [DIM_SERVER], llmCall)
     expect(refs).toHaveLength(1)
     expect(refs[0]!.derivation).toContain('确定性')
+    expect(refs[0]!.origin).toBe('deterministic')
   })
 
   test('llmCall returning invalid JSON -> graceful, deterministic round returned', async () => {
@@ -289,6 +328,7 @@ describe('discoverEventRelationsDeterministic', () => {
   test('derivation marks the match as deterministic', () => {
     const [r] = discoverEventRelationsDeterministic(event(), [DIM_SERVER])
     expect(r!.derivation).toContain('确定性')
+    expect(r!.origin).toBe('deterministic')
   })
 })
 
@@ -298,5 +338,23 @@ describe('buildEventLlmPrompt', () => {
     expect(p).toContain('game.pay.order')
     expect(p).toContain('server_id')
     expect(p).toContain('dim_10000251_server_info')
+  })
+})
+
+describe('parseLlmRefs', () => {
+  test('stamps origin=llm on all parsed refs', () => {
+    const refs = parseLlmRefs('[{"dim_table":"d","join_keys":[{"dws_column":"a","dim_column":"a"}],"derivation":"test"}]')
+    expect(refs).toHaveLength(1)
+    expect(refs[0]!.origin).toBe('llm')
+  })
+})
+
+describe('mergeRefs — empty derivation fill', () => {
+  test('fills empty derivation from added ref even when origin priority is not higher', () => {
+    const baseline = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: '', origin: 'llm' as const }]
+    const added = [{ dim_table: 'dim_s', join_keys: [{ dws_column: 'a', dim_column: 'a' }], derivation: 'filled by lower', origin: 'deterministic' as const }]
+    const merged = mergeRefs(baseline, added)
+    expect(merged[0]!.derivation).toBe('filled by lower')
+    expect(merged[0]!.origin).toBe('deterministic')
   })
 })

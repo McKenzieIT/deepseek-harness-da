@@ -1,6 +1,6 @@
 # GA-I18N-4 — extractTimeParams 中英双语
 
-**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GRILL2 D4](GA-GRILL2-i18n-architecture.md)
 **Size**: S  ·  **Risk**: Low（additive 关键词分支，hint-quality 影响）
 
@@ -38,6 +38,16 @@ export function extractTimeParams(question: string, today: string): TimeParams {
 |------|------|
 | `packages/data/nl2sql-engine/src/metric-engine.ts` | `extractTimeParams` 重构为 `TIME_RULES` 映射数组 |
 | `packages/data/nl2sql-engine/tests/` | 新增英文日期词测试用例 |
+
+## Resolution
+
+Refactored `extractTimeParams` in `metric-engine.ts` to use a `TIME_RULES` array with bilingual regex patterns. The inline if/regex chain was replaced with three extracted helper functions (`shiftDays`, `lastWeekRange`, `thisMonthRange`) and a declarative rule table iterated with a `for...of` loop.
+
+Key details:
+- **Rule ordering**: "前天/day before yesterday" precedes "昨天/yesterday" to prevent the substring "yesterday" in "day before yesterday" from matching the wrong rule.
+- **Case-insensitive**: All English patterns use the `/i` flag.
+- **Existing behavior preserved**: Date arithmetic is identical; Chinese keywords, explicit date formats (YYYY-MM-DD / YYYYMMDD), and the `{}` fallback are unchanged.
+- **Tests**: All 15 existing tests pass unchanged. 4 new test cases added covering English keywords (yesterday, today, day before yesterday, last week, this month), case-insensitivity, explicit date formats, and no-match scenarios.
 
 ## 验收标准
 

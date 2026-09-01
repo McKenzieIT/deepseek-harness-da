@@ -20,7 +20,7 @@ const dimDoc = (name: string, pk: string): TableDefinition => ({
   columns: [{ name: pk, type: 'string', comment: 'pk', role: 'dimension' }, { name: `${pk}_name`, type: 'string', comment: 'name', role: 'dimension' }],
   metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
   coverage: null, supersedes: [], disambiguation: null, kind: 'dim', primary_key: [pk], primary_key_unique: null,
-  duplicate_sample: [], label_columns: [`${pk}_name`], freshness: '静态参考', dimension_refs: [],
+  duplicate_sample: [], label_columns: [`${pk}_name`], freshness: 'static_reference', dimension_refs: [],
 } as TableDefinition)
 
 const dwsDoc = (name: string, cols: Array<{ name: string; comment?: string }>): TableDefinition => ({

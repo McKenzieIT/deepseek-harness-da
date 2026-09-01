@@ -40,6 +40,7 @@ import {
   GateResult,
   INCOMPLETE_MARKER,
   extractRoute,
+  stripInternalMarkers,
   freshPhaseGateState,
   type Phase as PhaseType,
 } from './domain.ts'
@@ -90,7 +91,7 @@ Three rules you must always follow:
 3. ROUTE: at the end of UNDERSTANDING (after search + load), emit exactly one token — 【route:proceed】 (search returned candidates + you loaded definitions + no ambiguity), 【route:clarify】 (real ambiguity — also call present_clarification with one specific question), or 【route:decline】 (no candidates / unanswerable). If search returned candidates and you loaded the definitions, you have grounding — emit 【route:proceed】; do not prematurely clarify or decline.`
 
 const PHASE_INSTRUCTIONS: Readonly<Record<PhaseType, string>> = {
-  [Phase.UNDERSTANDING]: `UNDERSTANDING: discover grounding, then decide the route. (0) SCOPE CHECK (multi-scope only): if multiple data scopes are registered and the user's message does not unambiguously name a scope, you MUST call present_clarification to ask which scope (game/product) they want to query BEFORE calling search_data_sources. Do NOT silently assume the currently active scope is correct. If only one scope is registered, or the user explicitly names a scope, skip this step. (1) Call search_data_sources with the user's question; it returns ranked candidates with id/score/mode/type. (2) Load the full definitions for the relevant candidates: events (ods_* / event names) via load_event_definition, DWS tables (dws_*) via load_table_definition — pick the loader by the candidate's mode/type, never call load_table_definition with an event name. Use load_table_dimensions when you need a dimension hint. Metric candidates surfaced by search_data_sources (aggregate metrics like DAU/MAU/pay_amt) inform the GENERATION context — the metric definition is injected as grounding there, no tool call required. The load result IS your GENERATION grounding: load_event_definition returns event_view.full_name (the FROM table) + params_extract_template; load_table_definition returns columns/partitions — use these in SQL, never hardcode table or field names. (3) Decompose compound questions into atomic sub-questions (≤${PipelineConfig.max_subquestions}) prefixed by 【拆解】; run the six-class disambiguation scan. (4) Decide the route and emit exactly one token at the end of this turn:
+  [Phase.UNDERSTANDING]: `UNDERSTANDING: discover grounding, then decide the route. (0) SCOPE CHECK (multi-scope only): if multiple data scopes are registered and the user's message does not unambiguously name a scope, you MUST call present_clarification to ask which scope (game/product) they want to query BEFORE calling search_data_sources. Do NOT silently assume the currently active scope is correct. If only one scope is registered, or the user explicitly names a scope, skip this step. (1) Call search_data_sources with the user's question; it returns ranked candidates with id/score/mode/type. (2) Load the full definitions for the relevant candidates: events (ods_* / event names) via load_event_definition, DWS tables (dws_*) via load_table_definition — pick the loader by the candidate's mode/type, never call load_table_definition with an event name. Use load_table_dimensions when you need a dimension hint. Metric candidates surfaced by search_data_sources (aggregate metrics like DAU/MAU/pay_amt) inform the GENERATION context — the metric definition is injected as grounding there, no tool call required. The load result IS your GENERATION grounding: load_event_definition returns event_view.full_name (the FROM table) + params_extract_template; load_table_definition returns columns/partitions — use these in SQL, never hardcode table or field names. (3) Decompose compound questions into atomic sub-questions (≤${PipelineConfig.max_subquestions}) prefixed by 【decompose】; run the six-class disambiguation scan. (4) Decide the route and emit exactly one token at the end of this turn:
 - 【route:proceed】 — search returned candidates AND you loaded the relevant definitions (grounding established) AND no real ambiguity remains → advance to GENERATION (which writes the SQL; do NOT call query_data here).
 - 【route:clarify】 — a real ambiguity remains (multiple competing candidates, unclear metric caliber). Also call present_clarification with ONE specific clarifying question, then HALT (await user; ${PipelineConfig.disambiguation_timeout_seconds}s → honest_decline). The gate HALTs on this token.
 - 【route:decline】 — no candidates returned or the question is unanswerable with the available data. Emit an honest decline: state WHY (what is missing), WHAT would be needed, HOW the user could rephrase. The gate honest-declines.
@@ -666,15 +667,26 @@ export class PhaseGate {
     return { ...merged, sections, tools }
   }
 
-  // ── hook 6: llm/stream (stream-wrap waterfall) — F5 billing (stream start) ──
-  /** `llm/stream` stream-wrap waterfall hook: charge one LLM call per agent at stream start (F5) before delegating downstream. */
+  // ── hook 6: llm/stream (stream-wrap waterfall) — F5 billing (stream start) + marker strip ──
+  /**
+   * `llm/stream` stream-wrap waterfall hook: charge one LLM call per agent at
+   * stream start (F5) before delegating downstream, and strip internal control
+   * markers (decompose/incomplete/route:*) from text-delta chunks so they never
+   * reach the presentation layer. User-visible delivery markers (【发现】/【注意】)
+   * are NOT stripped — those are Kind 1 (project-level i18n).
+   */
   onLlmStream = (options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk> => {
     const sid = (options as { sessionId?: unknown }).sessionId
     if (typeof sid === 'string') {
       const s = this.sessions.get(sid) // global event — only count known phase-gate agents
       if (s !== undefined) s.llm_call_count += 1 // F5: charge at stream start
     }
-    return next()
+    const upstream = next()
+    // Wrap the stream to strip internal markers from text-delta chunks.
+    // Strategy: buffer text when we see a partial marker opener (【) that has
+    // not yet closed (】). Once closed, apply stripInternalMarkers on the
+    // buffered span. This handles markers split across chunk boundaries.
+    return stripMarkersFromStream(upstream)
   }
 
   // ── hook 7: agent/pre-step (waterfall) — F6 step count + stall reset ──
@@ -1002,6 +1014,47 @@ export class PhaseGate {
     ctx.effect(() => () => {
       for (const s of this.sessions.values()) this.clearStallTimer(s)
     }, 'phase-gate.teardown')
+  }
+}
+
+// ── stream marker-stripping helper ──────────────────────────────────────────
+
+/**
+ * Wrap an LLM stream to strip internal control markers (【decompose】,
+ * 【incomplete】, 【route:*】) from text-delta chunks before they reach
+ * downstream consumers (presentation layer). Markers split across chunk
+ * boundaries are handled by buffering text between an unmatched `【` opener
+ * and the next `】` closer.
+ *
+ * User-visible delivery markers (【发现】/【注意】) pass through — they are NOT
+ * internal control tokens.
+ */
+export async function* stripMarkersFromStream(upstream: AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk> {
+  let buf = ''
+  for await (const chunk of upstream) {
+    if (chunk.type !== 'text-delta') { yield chunk; continue }
+    buf += chunk.text
+    // Wait until no partial marker is open (unmatched `【` without `】`).
+    const lastOpen = buf.lastIndexOf('【')
+    if (lastOpen !== -1 && buf.indexOf('】', lastOpen) === -1) {
+      // Flush everything before the potential marker opener; hold the rest.
+      const safe = buf.slice(0, lastOpen)
+      buf = buf.slice(lastOpen)
+      if (safe.length > 0) {
+        const stripped = stripInternalMarkers(safe)
+        if (stripped.length > 0) yield { ...chunk, text: stripped }
+      }
+      continue
+    }
+    // No partial marker — strip and flush the whole buffer.
+    const stripped = stripInternalMarkers(buf)
+    buf = ''
+    if (stripped.length > 0) yield { ...chunk, text: stripped }
+  }
+  // Flush any remaining buffer at stream end.
+  if (buf.length > 0) {
+    const stripped = stripInternalMarkers(buf)
+    if (stripped.length > 0) yield { type: 'text-delta', text: stripped } as StreamChunk
   }
 }
 

@@ -10,7 +10,11 @@
 
 import type { RetrievalHit } from './bm25-linking.ts'
 
-const TREND_PATTERN = /趋势|变化|逐日|每天|近\d+天|日均|环比|同比|每周|每月|增长|下降|走势/
+const TREND_PATTERNS: RegExp[] = [
+  /趋势|变化|逐日|每天|近\d+天|日均|环比|同比|每周|每月|增长|下降|走势/,
+  // eslint-disable-next-line @stylistic/max-len
+  /\btrend\b|\bchange\b|\bdaily\b|\bweekly\b|\bmonthly\b|\bgrowth\b|\bdecline\b|over\s+time|week[\s-]over[\s-]week|month[\s-]over[\s-]month/i,
+]
 
 /**
  * Detect whether a question expresses trend intent (time-series / temporal
@@ -19,7 +23,7 @@ const TREND_PATTERN = /趋势|变化|逐日|每天|近\d+天|日均|环比|同�
  * @returns true when the question expresses trend/time-series intent.
  */
 export function detectTrendIntent(question: string): boolean {
-  return TREND_PATTERN.test(question)
+  return TREND_PATTERNS.some(p => p.test(question))
 }
 
 const DI_SUFFIX = /_di$/

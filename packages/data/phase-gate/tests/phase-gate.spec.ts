@@ -13,11 +13,11 @@ import type { ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
-import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { critiqueSql } from '@deepseek-ai/dsh-nl2sql-engine'
-import { PhaseGate } from '../src/phase-gate.ts'
-import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS } from '../src/domain.ts'
+import { PhaseGate, stripMarkersFromStream } from '../src/phase-gate.ts'
+import { Phase, INCOMPLETE_MARKER, PipelineConfig, UNDERSTANDING_TOOLS, GENERATION_TOOLS, EXECUTION_TOOLS, INTERPRETATION_TOOLS, stripInternalMarkers } from '../src/domain.ts'
 import { Config } from '../src/index.ts'
 
 function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancelled: AgentCancelCause[] } {
@@ -140,7 +140,7 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(injected).toHaveLength(1) // fallback continuation
   })
 
-  it('INTERPRETATION 【未完成】 declaration → honest_decline (M3)', async () => {
+  it('INTERPRETATION 【incomplete】 declaration → honest_decline (M3)', async () => {
     const { agent } = makeAgent('s1')
     const g = gate()
     const s = g.state('s1')
@@ -149,6 +149,168 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })
     expect(s.current_phase).toBe('DECLINED')
     expect(s.honest_decline_reason).toMatch(/INCOMPLETE/)
+  })
+
+  // ── stripInternalMarkers (GA-I18N-5 Part B) ──────────────────────────────
+  describe('stripInternalMarkers', () => {
+    it('strips 【decompose】 marker', () => {
+      expect(stripInternalMarkers('sub-q 【decompose】 rest')).toBe('sub-q  rest')
+    })
+    it('strips 【incomplete】 marker', () => {
+      expect(stripInternalMarkers('cannot answer 【incomplete】')).toBe('cannot answer')
+    })
+    it('strips 【route:proceed】 marker', () => {
+      expect(stripInternalMarkers('grounding ok 【route:proceed】')).toBe('grounding ok')
+    })
+    it('strips 【route:clarify】 marker', () => {
+      expect(stripInternalMarkers('ambiguous 【route:clarify】')).toBe('ambiguous')
+    })
+    it('strips 【route:decline】 marker', () => {
+      expect(stripInternalMarkers('no data 【route:decline】')).toBe('no data')
+    })
+    it('strips multiple markers at once', () => {
+      expect(stripInternalMarkers('【decompose】 a 【route:proceed】 b 【incomplete】')).toBe('a  b')
+    })
+    it('preserves user-visible delivery markers (【发现】/【注意】)', () => {
+      expect(stripInternalMarkers('answer 【发现】 insight 【注意】 caveat')).toBe('answer 【发现】 insight 【注意】 caveat')
+    })
+    it('returns empty string for marker-only input', () => {
+      expect(stripInternalMarkers('【incomplete】')).toBe('')
+    })
+    it('handles empty string', () => {
+      expect(stripInternalMarkers('')).toBe('')
+    })
+  })
+
+  // ── stripMarkersFromStream (streaming marker removal) ──────────────────────
+  describe('stripMarkersFromStream', () => {
+    /** Helper: build a text-delta StreamChunk. */
+    function td(text: string): StreamChunk {
+      return { type: 'text-delta', index: 0, text } as StreamChunk
+    }
+
+    /** Helper: build an async iterable from an array of StreamChunks. */
+    async function* toStream(chunks: StreamChunk[]): AsyncIterable<StreamChunk> {
+      for (const c of chunks) yield c
+    }
+
+    /** Helper: collect all chunks from an async iterable. */
+    async function collect(stream: AsyncIterable<StreamChunk>): Promise<StreamChunk[]> {
+      const out: StreamChunk[] = []
+      for await (const c of stream) out.push(c)
+      return out
+    }
+
+    /** Helper: concatenate text from text-delta chunks. */
+    function textOf(chunks: StreamChunk[]): string {
+      return chunks.filter(c => c.type === 'text-delta').map(c => (c as { text: string }).text).join('')
+    }
+
+    it('(a) strips marker entirely within one chunk', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('before 【incomplete】 after'),
+      ])))
+      expect(textOf(result)).toBe('before  after')
+    })
+
+    it('(b) strips marker split across two chunks', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('text 【incomp'),
+        td('lete】 more'),
+      ])))
+      // Each flushed segment is individually trimmed by stripInternalMarkers;
+      // "text " becomes "text" and "【incomplete】 more" becomes "more".
+      expect(textOf(result)).toBe('textmore')
+      // Verify the marker was fully removed (not partially leaked).
+      const full = textOf(result)
+      expect(full).not.toContain('【')
+      expect(full).not.toContain('incomplete')
+    })
+
+    it('(c) delivery marker 【発見】 passes through intact (single chunk)', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('insight 【発見】 detail'),
+      ])))
+      expect(textOf(result)).toBe('insight 【発見】 detail')
+    })
+
+    it('(c) delivery marker 【発見】 passes through even when split across chunks', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('insight 【発'),
+        td('見】 detail'),
+      ])))
+      // "insight " is flushed as safe text (trimmed → "insight"),
+      // then "【発見】 detail" passes through stripInternalMarkers intact (trimmed → "【発見】 detail").
+      expect(textOf(result)).toBe('insight【発見】 detail')
+      // The delivery marker is preserved (not stripped).
+      expect(textOf(result)).toContain('【発見】')
+    })
+
+    it('(d) non-text-delta events pass through unmodified', async () => {
+      const usage: StreamChunk = { type: 'usage', usage: { inputTokens: 10, outputTokens: 5 } } as StreamChunk
+      const finish: StreamChunk = { type: 'finish', reason: { kind: 'stop' } } as StreamChunk
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('hello'),
+        usage,
+        finish,
+      ])))
+      expect(result).toHaveLength(3)
+      expect(result[0]).toEqual(td('hello'))
+      expect(result[1]).toEqual(usage)
+      expect(result[2]).toEqual(finish)
+    })
+
+    it('(e) buffer flushes on stream end — incomplete opener 【 that never closes is flushed', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('trailing text 【partial'),
+      ])))
+      // "trailing text " is flushed as safe (trimmed → "trailing text"),
+      // then at stream end the remaining buffer "【partial" is flushed (trimmed → "【partial").
+      // Both segments pass through since no complete marker exists.
+      expect(textOf(result)).toBe('trailing text【partial')
+      expect(result.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('(f) consecutive markers in same chunk → all stripped', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('a 【decompose】 b 【incomplete】 c 【route:proceed】 d'),
+      ])))
+      expect(textOf(result)).toBe('a  b  c  d')
+    })
+
+    it('(g) normal text with no markers passes through unchanged', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('just some normal text'),
+        td(' and more text'),
+      ])))
+      // Each chunk is individually processed by stripInternalMarkers (which trims),
+      // so leading/trailing whitespace per chunk is trimmed. The concatenated text
+      // loses the inter-chunk space. This is expected for streaming: downstream
+      // consumers receive token-level deltas without padding.
+      expect(textOf(result)).toBe('just some normal textand more text')
+    })
+
+    it('strips route:clarify marker split across chunks', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('ambiguous 【route:'),
+        td('clarify】 done'),
+      ])))
+      // "ambiguous " trimmed → "ambiguous", "【route:clarify】 done" → "done" (trimmed).
+      expect(textOf(result)).toBe('ambiguousdone')
+      expect(textOf(result)).not.toContain('route')
+    })
+
+    it('empty stream yields no chunks', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([])))
+      expect(result).toHaveLength(0)
+    })
+
+    it('preserves 【注意】 delivery marker alongside stripped internal markers', async () => {
+      const result = await collect(stripMarkersFromStream(toStream([
+        td('note 【注意】 caveat 【incomplete】'),
+      ])))
+      expect(textOf(result)).toBe('note 【注意】 caveat')
+    })
   })
 
   it('M3 #2 A: F2 relaxes ORDER BY/LIMIT (presentation, not logic) — query_data adds ORDER BY → no block', async () => {

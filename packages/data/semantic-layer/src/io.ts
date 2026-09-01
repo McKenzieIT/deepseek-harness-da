@@ -556,7 +556,7 @@ export function generateDimYaml(meta: TableMeta): Record<string, unknown> {
     primary_key: primaryKey,
     primary_key_unique: null,
     label_columns: labelColumns,
-    freshness: '静态参考',
+    freshness: 'static_reference',
     granularity: '维表(非分区,全量参考,无时间维度)',
     columns,
     metrics: {},

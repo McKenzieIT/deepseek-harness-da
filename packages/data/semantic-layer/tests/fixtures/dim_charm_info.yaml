@@ -34,5 +34,5 @@ primary_key_unique: null
 duplicate_sample: []
 label_columns:
   - charm_name
-freshness: 静态参考
+freshness: static_reference
 dimension_refs: []

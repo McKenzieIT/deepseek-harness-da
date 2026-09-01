@@ -1,6 +1,6 @@
 # GA-I18N-5 — 内部控制标记英文化 + 呈现层 strip
 
-**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GRILL2 D5](GA-GRILL2-i18n-architecture.md)
 **Size**: S  ·  **Risk**: Medium（prompt + gate + eval 三处同步改）
 
@@ -51,6 +51,30 @@ function stripInternalMarkers(text: string): string {
 5. `harness-responder.ts` 的 decline 检测正常工作
 6. grep 确认 `'【拆解】'` 和 `'【未完成】'` 无功能性残留（研究文档/注释除外）
 7. 现有测试全部通过
+
+## Resolution
+
+All changes implemented and verified:
+
+**Part A — Marker English-ification:**
+- `domain.ts`: `DECOMPOSITION_MARKER` changed from `'【拆解】'` to `'【decompose】'`; `INCOMPLETE_MARKER` changed from `'【未完成】'` to `'【incomplete】'`. `ROUTE_MARKER_REGEX` unchanged (already English).
+- `phase-gate.ts`: UNDERSTANDING phase instruction literal `【拆解】` updated to `【decompose】`. INTERPRETATION instruction uses `${INCOMPLETE_MARKER}` interpolation (auto-updated). `interpretGate` references the constant (auto-updated).
+- `harness-responder.ts`: hardcoded `'【未完成】'` on line 59 updated to `'【incomplete】'`.
+
+**Part B — Presentation strip:**
+- `domain.ts`: added `stripInternalMarkers(text)` function with `INTERNAL_MARKER_RE` regex matching `【decompose】`, `【incomplete】`, and `【route:*】`. Does NOT strip user-visible delivery markers (【发现】/【注意】).
+- `phase-gate.ts`: imported `stripInternalMarkers`; added `stripMarkersFromStream` async generator that wraps the `onLlmStream` hook's upstream to strip markers from text-delta chunks (handles markers split across chunk boundaries via buffering).
+- `index.ts`: re-exports `stripInternalMarkers` for external consumers.
+
+**Tests:**
+- Test description updated from `【未完成】` to `【incomplete】`.
+- Added 9-case `stripInternalMarkers` test block covering: each marker type, multiple markers, delivery marker preservation, empty input, marker-only input.
+- All 109 tests pass.
+
+**Verification:**
+- `pnpm tsc --noEmit` clean for phase-gate.
+- `pnpm tsc --noEmit` for eval-cli shows only pre-existing rootDir errors (unrelated).
+- grep confirms zero functional residue of `'【拆解】'` or `'【未完成】'` in source `.ts` files.
 
 ## 不做
 

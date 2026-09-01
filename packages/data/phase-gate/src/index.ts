@@ -50,6 +50,7 @@ export {
   INCOMPLETE_MARKER,
   ROUTE_MARKER_REGEX,
   extractRoute,
+  stripInternalMarkers,
   freshPhaseGateState,
 } from './domain.ts'
 export { type PhaseGateState } from './types.ts'

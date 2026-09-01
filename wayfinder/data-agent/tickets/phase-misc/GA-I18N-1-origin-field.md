@@ -1,6 +1,6 @@
 # GA-I18N-1 — DimensionRef `origin` 字段（derivation 覆盖逻辑去中文前缀）
 
-**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: implementation  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GRILL2 D1](GA-GRILL2-i18n-architecture.md)
 **Size**: S  ·  **Risk**: Low（additive optional field，零迁移）
 
@@ -47,3 +47,19 @@ origin: z.enum(['deterministic', 'llm', 'manual']).optional()
 
 - 批量迁移现存 YAML 文件加 `origin` 字段（lazy migration，自然写回时带上）
 - alt_labels 的 origin 追踪（同模式，但 alt_labels 目前无覆盖逻辑，不急）
+
+## Resolution
+
+Implemented 2026-09-01. Changes:
+
+1. **`types.ts`**: Added `origin: z.enum(['deterministic', 'llm', 'manual']).optional()` to `DimensionRefSchema`. Additive-only, backward compatible -- existing data without `origin` parses fine.
+
+2. **`enrichment.ts`**:
+   - `mergeRefs`: Replaced `ex.derivation.startsWith('确定性')` with origin-priority comparison (`deterministic=0 < llm=1 < manual=2`; `undefined` treated as priority 2 / manual). The added ref's derivation and origin override the existing only when the added origin has strictly higher priority. Join-key union behavior unchanged.
+   - `discoverRelationsDeterministic`: Sets `origin: 'deterministic'` on emitted refs.
+   - `discoverEventRelationsDeterministic`: Sets `origin: 'deterministic'` on emitted refs.
+   - `parseLlmRefs`: Sets `origin: 'llm'` on all parsed refs.
+
+3. **`enrichment.spec.ts`**: Updated existing `mergeRefs` tests to use `origin` field. Added 4 new test cases covering: legacy undefined not overridden by llm, manual not overridden, deterministic overridden by llm, llm overridden by manual. Added `origin` assertions to deterministic-round and LLM-failure tests.
+
+All 221 tests across 17 semantic-layer spec files pass. Zero `startsWith('确定性')` occurrences remain in functional code.

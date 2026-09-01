@@ -116,6 +116,61 @@ describe('detectTrendIntent', () => {
     expect(detectTrendIntent('VIP用户有多少人')).toBe(false)
     expect(detectTrendIntent('哪个服务器充值最多')).toBe(false)
   })
+
+  // ── English positive cases (GA-I18N-3) ──────────────────────────────
+
+  test('detects English "trend" keyword', () => {
+    expect(detectTrendIntent('DAU trend over the past week')).toBe(true)
+  })
+
+  test('detects English "growth" keyword', () => {
+    expect(detectTrendIntent('monthly revenue growth')).toBe(true)
+  })
+
+  test('detects English "change" keyword', () => {
+    expect(detectTrendIntent('week-over-week change')).toBe(true)
+  })
+
+  test('detects English "daily" keyword', () => {
+    expect(detectTrendIntent('daily active users report')).toBe(true)
+  })
+
+  test('detects English "weekly" keyword', () => {
+    expect(detectTrendIntent('weekly signups breakdown')).toBe(true)
+  })
+
+  test('detects English "monthly" keyword', () => {
+    expect(detectTrendIntent('monthly retention rate')).toBe(true)
+  })
+
+  test('detects English "decline" keyword', () => {
+    expect(detectTrendIntent('user decline this quarter')).toBe(true)
+  })
+
+  test('detects English "over time" phrase', () => {
+    expect(detectTrendIntent('how has DAU changed over time')).toBe(true)
+  })
+
+  test('detects English "month-over-month" phrase', () => {
+    expect(detectTrendIntent('month-over-month revenue comparison')).toBe(true)
+  })
+
+  test('detects English "week over week" phrase (spaces)', () => {
+    expect(detectTrendIntent('week over week active users')).toBe(true)
+  })
+
+  // ── English negative cases (GA-I18N-3) ──────────────────────────────
+
+  test('returns false for English non-trend queries', () => {
+    expect(detectTrendIntent("What is yesterday's DAU?")).toBe(false)
+    expect(detectTrendIntent('How many VIP users?')).toBe(false)
+    expect(detectTrendIntent('Show total revenue for last month')).toBe(false)
+  })
+
+  test('does not false-positive on words containing trend keywords', () => {
+    expect(detectTrendIntent('What is the exchange rate')).toBe(false)
+    expect(detectTrendIntent('The revenue remained unchanged')).toBe(false)
+  })
 })
 
 // ── rerankByGranularity ─────────────────────────────────────────────────

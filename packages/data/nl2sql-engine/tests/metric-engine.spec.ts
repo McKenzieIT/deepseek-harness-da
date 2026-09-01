@@ -44,7 +44,7 @@ test('D1 — routeMetric: metric present => level-2; none => null (M1b: Level 2.
   expect(routeMetric([tableHit('dws_pay')])).toBeNull()
 })
 
-test('D1 — extractTimeParams: 昨天/今天/前天/上周/本月/指定日期/none', () => {
+test('D1 — extractTimeParams: 昨天/今天/前天/上周/本月/指定日期/none (Chinese)', () => {
   expect(extractTimeParams('昨天的DAU', '20260820')).toEqual({ date: '20260819' })
   expect(extractTimeParams('今天的DAU', '20260820')).toEqual({ date: '20260820' })
   expect(extractTimeParams('前天DAU', '20260820')).toEqual({ date: '20260818' })
@@ -56,6 +56,36 @@ test('D1 — extractTimeParams: 昨天/今天/前天/上周/本月/指定日期/
   expect(month.end_date).toBe('20260820')
   expect(extractTimeParams('2026-08-15的DAU', '20260820')).toEqual({ date: '20260815' })
   expect(extractTimeParams('DAU是多少', '20260820')).toEqual({})
+})
+
+test('GA-I18N-4 — extractTimeParams: bilingual English keywords', () => {
+  // yesterday → shift(-1)
+  expect(extractTimeParams("yesterday's DAU", '20260820')).toEqual({ date: '20260819' })
+  // today → same day
+  expect(extractTimeParams("today's orders", '20260820')).toEqual({ date: '20260820' })
+  // day before yesterday → shift(-2)
+  expect(extractTimeParams('day before yesterday', '20260820')).toEqual({ date: '20260818' })
+  // last week → Mon–Sun range (20260820 is a Thursday; last week = Mon 20260810 – Sun 20260816)
+  const week = extractTimeParams('last week revenue', '20260820')
+  expect(week.start_date).toBe('20260810')
+  expect(week.end_date).toBe('20260816')
+  // this month → 1st to today
+  const month = extractTimeParams('this month', '20260820')
+  expect(month.start_date).toBe('20260801')
+  expect(month.end_date).toBe('20260820')
+  // case-insensitive
+  expect(extractTimeParams('Yesterday DAU', '20260820')).toEqual({ date: '20260819' })
+  expect(extractTimeParams('LAST WEEK sales', '20260820')).toEqual(week)
+})
+
+test('GA-I18N-4 — extractTimeParams: explicit date formats still work (language-neutral)', () => {
+  expect(extractTimeParams('DAU on 2026-08-15', '20260820')).toEqual({ date: '20260815' })
+  expect(extractTimeParams('20260815 DAU', '20260820')).toEqual({ date: '20260815' })
+})
+
+test('GA-I18N-4 — extractTimeParams: no match still returns {}', () => {
+  expect(extractTimeParams('what is the DAU', '20260820')).toEqual({})
+  expect(extractTimeParams('show me revenue', '20260820')).toEqual({})
 })
 
 test('D1 — buildMetricContext renders a context line', () => {

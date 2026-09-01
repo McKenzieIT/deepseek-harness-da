@@ -74,6 +74,7 @@ export function discoverRelationsDeterministic(
       dim_table: dim.table_name,
       join_keys: pks.map(pk => ({ dws_column: pk, dim_column: pk })),
       derivation: `确定性：DWS 列 ${pks.join(', ')} 与 ${dim.table_name} 主键精确同名`,
+      origin: 'deterministic',
     })
   }
   return refs
@@ -86,12 +87,19 @@ export function discoverRelationsDeterministic(
 // separator-free concatenation that hashed both to "abc".
 const pairKey = (k: { dws_column: string; dim_column: string }) => JSON.stringify([k.dws_column, k.dim_column])
 
+// origin-based override priority: deterministic < llm < manual (undefined treated as manual).
+const ORIGIN_PRIORITY: Record<string, number> = { deterministic: 0, llm: 1, manual: 2 }
+function originPriority(origin: string | undefined): number {
+  return origin != null ? (ORIGIN_PRIORITY[origin] ?? 2) : 2
+}
+
 /**
  * Merge two DimensionRef lists: dedupe by `dim_table`, unioning `join_keys`
- * (deduped by the dws|dim pair). The second list's `derivation` overrides the
- * first's when the first's derivation is absent or the deterministic generic
- * (starts with "确定性") — i.e. the LLM/semantic derivation wins over the
- * generic one, but a human-curated derivation is preserved.
+ * (deduped by the dws|dim pair). The second list's `derivation` (and `origin`)
+ * overrides the first's when the added ref has a strictly higher origin
+ * priority — i.e. 'llm' overrides 'deterministic', 'manual' overrides both,
+ * and `undefined` (legacy / human-curated) is treated as 'manual' (never
+ * auto-overridden).
  * @param baseline - the first list (e.g. deterministic refs, or existing curated refs).
  * @param added - the second list (e.g. LLM refs, or newly-discovered refs).
  * @returns the merged, deduped DimensionRef list (baseline preserved + added unioned).
@@ -102,7 +110,8 @@ export function mergeRefs(
 ): DimensionRef[] {
   const map = new Map<string, DimensionRef>()
   for (const r of baseline) {
-    map.set(r.dim_table, { dim_table: r.dim_table, join_keys: r.join_keys.map(k => ({ ...k })), derivation: r.derivation })
+    const keys = r.join_keys.map(k => ({ ...k }))
+    map.set(r.dim_table, { dim_table: r.dim_table, join_keys: keys, derivation: r.derivation, origin: r.origin })
   }
   for (const r of added) {
     const ex = map.get(r.dim_table)
@@ -115,11 +124,13 @@ export function mergeRefs(
           seen.add(key)
         }
       }
-      if (r.derivation && (!ex.derivation || ex.derivation.startsWith('确定性'))) {
+      if (r.derivation && (!ex.derivation || originPriority(r.origin) > originPriority(ex.origin))) {
         ex.derivation = r.derivation
+        ex.origin = r.origin
       }
     } else {
-      map.set(r.dim_table, { dim_table: r.dim_table, join_keys: r.join_keys.map(k => ({ ...k })), derivation: r.derivation })
+      const keys = r.join_keys.map(k => ({ ...k }))
+      map.set(r.dim_table, { dim_table: r.dim_table, join_keys: keys, derivation: r.derivation, origin: r.origin })
     }
   }
   return [...map.values()]
@@ -184,7 +195,7 @@ export function parseLlmRefs(text: string): DimensionRef[] {
   const refs: DimensionRef[] = []
   for (const item of arr) {
     const r = DimensionRefSchema.safeParse(item)
-    if (r.success) refs.push(r.data)
+    if (r.success) refs.push({ ...r.data, origin: 'llm' })
   }
   return refs
 }
@@ -346,6 +357,7 @@ export function discoverEventRelationsDeterministic(
       dim_table: dim.table_name,
       join_keys: pks.map(pk => ({ dws_column: pk, dim_column: pk })),
       derivation: `确定性：事件字段 ${pks.join(', ')} 与 ${dim.table_name} 主键精确同名`,
+      origin: 'deterministic',
     })
   }
   return refs
