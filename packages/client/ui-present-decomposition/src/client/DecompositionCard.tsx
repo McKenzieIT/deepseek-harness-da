@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactElement } from 'react'
 import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 import clsx from 'clsx'
 import css from './DecompositionCard.module.css'
@@ -52,8 +52,10 @@ function parseArgs(argsRaw: string): NormalizedArgs | null {
     if (typeof parsed.summary !== 'string' || parsed.summary === '') return null
     if (!Array.isArray(parsed.metrics)) return null
     const metrics: Metric[] = []
-    for (const m of parsed.metrics) {
-      if (m === null || typeof m !== 'object' || typeof m.name !== 'string' || m.name === '') continue
+    for (const item of parsed.metrics as unknown[]) {
+      if (typeof item !== 'object' || item === null) continue
+      const m = item as Partial<Metric>
+      if (typeof m.name !== 'string' || m.name === '') continue
       const unit = typeof m.unit === 'string' && m.unit !== '' ? m.unit : undefined
       metrics.push({
         name: m.name,
@@ -115,7 +117,7 @@ function RunningState() {
   )
 }
 
-function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }): JSX.Element {
+function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }) {
   const text = contentText(block)
   return (
     <div className={css.card}>
@@ -126,7 +128,7 @@ function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-resul
   )
 }
 
-function ErrorState({ block, t }: { block: ToolCallBlock & { kind: 'tool-result' }; t: DecompositionCardProps['t'] }): JSX.Element {
+function ErrorState({ block, t }: { block: ToolCallBlock & { kind: 'tool-result' }; t: DecompositionCardProps['t'] }) {
   const detail = contentText(block)
   return (
     <div className={css.card}>
@@ -140,7 +142,7 @@ function ErrorState({ block, t }: { block: ToolCallBlock & { kind: 'tool-result'
 }
 
 /** One lineage segment: a micro label plus plain values or typed chips. */
-function LineageSegment({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+function LineageSegment({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <span className={css.lineageSegment}>
       <span className={css.lineageLabel}>{label}</span>
@@ -150,8 +152,8 @@ function LineageSegment({ label, children }: { label: string; children: React.Re
 }
 
 /** Collapsed focal tail: time + up to three dimension chips on one line. */
-function MiniLine({ args }: { args: PresentDecompositionArgs }): JSX.Element | null {
-  const chips: JSX.Element[] = []
+function MiniLine({ args }: { args: PresentDecompositionArgs }) {
+  const chips: ReactElement[] = []
   if (args.time_range !== '') {
     chips.push(<span key="time" className={css.chip}>{args.time_range}</span>)
   }
@@ -169,7 +171,7 @@ function MiniLine({ args }: { args: PresentDecompositionArgs }): JSX.Element | n
  * filters, source on one line) → metrics grid with calibers always visible
  * in auto-filling columns → trust band (low-confidence warning, error row).
  */
-export function DecompositionCard({ block, useSession, t }: DecompositionCardProps): JSX.Element | null {
+export function DecompositionCard({ block, useSession, t }: DecompositionCardProps) {
   // Toggled state wins once the user interacts; until then the card collapses
   // itself on turns the conversation has moved past (P1 Phase 2).
   const [toggled, setToggled] = useState<boolean | null>(null)
