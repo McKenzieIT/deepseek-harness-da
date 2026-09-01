@@ -52,16 +52,16 @@ The map is done when: every architectural decision is locked (data model, UI pla
                                         │                                      │
 [✓] R2 G6 dagre layout feasibility ────┘                                      ├──▶ [✓] G3 preset universality
                                                                                │
-                                                                               └──▶ [✓] G5 dynamic insertion ──▶ G6 infra contracts ──┬──▶ G7 writeScopes detection
-                                                                                                           │                     ├──▶ G9 team-task integration
-                                                                                                           │                     └──▶ G10 subagent tree integration
-                                                                                                           │
-                                                                                                           └──▶ G11 view simplification strategies
+                                                                               └──▶ [✓] G5 dynamic insertion ──▶ [✓] G6 infra contracts ──┬──▶ G7 writeScopes detection
+                                                                                                                │                          ├──▶ G9 team-task integration
+                                                                                                                │                          └──▶ G10 subagent tree integration
+                                                                                                                │
+                                                                                                                └──▶ G11 view simplification strategies
 ```
 
-**Frontier (unblocked, open):** G2 (prototype, **in-progress**), G6 (grilling — unblocked by G5 ✅)
-**Blocked:** G4 (by G2), G7/G9/G10 (by G6), G8 (by G4), G11 (by G6 — G5 ✅)
-**Next tickets to resolve:** G6 (grilling — infra contracts, informed by G5 D2/D3), G2 (prototype — panel placement mockups)
+**Frontier (unblocked, open):** G2 (prototype, **in-progress**), G7 (task), G9 (task), G10 (task), G11 (task)
+**Blocked:** G4 (by G2), G8 (by G4)
+**Next tickets to resolve:** G2 (prototype — panel placement), G7/G9/G10/G11 (all unblocked by G6 ✅)
 
 ## Decisions so far
 
@@ -71,13 +71,14 @@ The map is done when: every architectural decision is locked (data model, UI pla
 - [G1 DAG data model decision](tickets/G1-dag-data-model-decision.md) — **Option B-prime: terminal state plugin with composite projection**. Disables `tool-todo`, registers `dag_task_*` tools with structured DagTask model (id, revision, subject, status, blockedBy with cycle detection, ownerId, writeScopes). 5 node types (task, team-task, workflow-run, workflow-agent, subagent), 4 edge types (dependency, sequence, containment, spawning). Solves task↔subagent gap via `tools/pre-execute` interception. State display: Option Y (node+edge animation) now, Z as enhancement. Zero upstream modifications — all new code in plugin packages.
 - [G3 preset universality strategy](tickets/G3-preset-universality-strategy.md) — **新建独立 Bundle（`packages/bundle/dag/`）+ 无条件注册 + 自然降级**。Bundle 的 `cordis.patch.yml` disable `tool-todo` + insert `tool-dag-task`；`ctx.tools.restrict()` 屏蔽 preset 级 `todo_write` 重挂。所有 preset 均可用 DAG 工具，节点类型随可用服务缩减（非禁用）。Phase-gate 集成（UNIVERSAL 白名单 + session events）归入 data-agent map [PG1](../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)。不创建新 preset，不 patch 现有 preset — profile 添加 bundle 即可。
 - [G5 dynamic node insertion design](tickets/G5-dynamic-node-insertion-design.md) — **8 项决策 resolved。** DAG 定位为执行基底（D2）；DagModelService Cordis 服务 + React Hook（D1）；同步命令式 API + 事件持久化保证读写一致性（D3）；节点永久保留 + `viewFilter` 管道（D4）；rAF 合并突发事件（D5）；全量 dagre + `prevGraph` 排序稳定 + 结构/状态变更分离（D6）；V1 不设规模硬上限（D7）；session-scoped 持久性与 Goal 一致（D8）。新增 G11（视图简化策略）。
+- [G6 infra contracts for dynamic workflows](tickets/G6-infra-contracts-for-dynamic-workflows.md) — **5 项基础设施契约 resolved。** 事件三层稳定性模型（稳定/半稳定/内部 + payload version 字段）（D1）；工具 API "只增不删不改名"、V1 不暴露 revision 和 action（D2）；多 Agent 不新建机制，靠数据模型预留 + Cordis 原生事件监听（D3）；DagModelService 暴露为 `ctx.dagModel` Cordis 服务契约（5 方法），工具 API 是薄壳（D4）；节点类型硬编码 5 种 + `DagNode.type` 为 string + 渲染 fallback，不建注册表（D5）。
 
 ## Not yet specified
 
 - **Data-agent phase-gate integration**: The data-agent's four-phase pipeline (`dsh-phase-gate`) is an implicit DAG (Understanding → Generation → Execution → Interpretation). G3 grilling 发现 phase-gate 当前零 session events（移植遗留），无法作为 DAG 数据源。已在 data-agent map 开票：[PG1 Phase-gate session events 改造](../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)（grilling）+ [调研 note](../data-agent/research/phase-gate-session-events.md)。**本 map 中任何 phase 节点渲染工作依赖 PG1 resolved。** UNIVERSAL 工具白名单 `todo` → `dag_task_*` 也归入 PG1。
 - **Goal-round-driver integration**: Goals have a linear phase state machine. Whether goal progression should appear in the DAG, and how, depends on the node taxonomy decision.
-- **Cross-session DAG persistence**: G5 D8 confirmed DAG state is session-scoped (consistent with Goal, which is also session-scoped — verified from code). UUID ids + sessionId fields pre-reserve cross-session extensibility. Conflict resolution (CAS revision) deferred to G6. Goal does NOT currently span sessions (`goal-round-driver` is same-session only).
-- **dsh-data-agent DAG-aware planning**: The idea that data-agent can follow DAG task planning to generate Agents is downstream of the data model and preset integration decisions — can't specify until G3 and G6 are locked.
+- **Cross-session DAG persistence**: G5 D8 confirmed DAG state is session-scoped (consistent with Goal, which is also session-scoped — verified from code). UUID ids + sessionId fields pre-reserve cross-session extensibility. G6 D2 决定 V1 不向 LLM 暴露 `expectedRevision`（单 Agent 无并发冲突），但 `revision` 字段保留在数据模型和事件中（G6 D1 稳定层），供未来多 Agent CAS 使用。Goal does NOT currently span sessions (`goal-round-driver` is same-session only).
+- **dsh-data-agent DAG-aware planning**: G3 ✅ + G6 ✅ 现已解锁。data-agent 可通过 `ctx.dagModel.addTask()` 程序化 API（G6 D4）批量创建有依赖的任务链，不必走工具 API。具体的 data-agent 规划器集成设计归入 data-agent map——本 map 已提供所需的全部基础设施契约。
 - **Multi-agent communication/mailbox**: Agent-to-agent messaging for coordination is a separate concern from the task DAG model. May require its own service when multi-agent arrives.
 
 ## Out of scope

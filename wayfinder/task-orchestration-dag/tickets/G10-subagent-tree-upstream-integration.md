@@ -9,11 +9,12 @@
 
 Enrich the subagent nodes in the DAG with full tree structure from session lineage, and integrate any upstream improvements to subagent event persistence.
 
-### Current state (from R3)
+### Current state (from R3 + G5 D2 refinement)
 - `subagent/start` and `subagent/end` are **ephemeral** Cordis events (not persisted in parent session)
 - `subagent/descriptor` is persisted in the **child** session only
 - Parent→child linkage: `SessionHeader.parentSession` (child side)
 - G1's `dag/subagent-linked` event bridges the gap by persisting correlation in the parent session
+- G5 D2 将关联机制从 G1 的"时间启发式"升级为"task ownership"——`tools/pre-execute` 拦截器找到当前 Agent 拥有的 in_progress task（而非最近一次 tool call），关联准确性是硬需求（DAG 是执行基底，Agent 依据 DAG 做决策）
 
 ### What full tree integration means
 - Recursive subagent trees: agent A spawns B, B spawns C → tree visualization A→B→C
@@ -28,9 +29,9 @@ Monitor upstream for:
 - Changes to `subagent/descriptor` schema
 
 ### If upstream adds native task↔subagent linkage
-- Our `tools/pre-execute` correlation mechanism becomes redundant
+- Our `tools/pre-execute` correlation mechanism (G5 D2 task ownership heuristic) becomes redundant
 - Switch to upstream's native linkage, remove our interception
-- The `dag/subagent-linked` event remains for backward compatibility (older sessions)
+- The `dag/subagent-linked` event remains for backward compatibility (older sessions), but `correlationSource` field (if adopted from G6) changes from `'pre-execute-heuristic'` to `'native'`
 
 ## Upstream sync risk
 

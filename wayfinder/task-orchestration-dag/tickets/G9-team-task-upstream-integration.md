@@ -10,14 +10,15 @@
 When upstream graduates `agent-team` from experimental (or evolves `todo_write` to include IDs and dependencies), integrate `team/task` events into the DAG visualization's composite projection.
 
 ### What this means
-- The `ConversationNodeDefinition` adds a new match rule for `team/task` events
+- `DagModelService`（Cordis 服务，G5 D1）订阅 `team/task` 事件，将 TeamTaskSnapshot 转换为 DAG 节点
 - `team-task` nodes replace `task` nodes when the preset composes `agent-team`
 - `TeamTaskSnapshot.blockedBy[]` provides real `dependency` edges (replacing `sequence` edges inferred from list order)
 - `TeamTaskSnapshot.ownerId` feeds into multi-agent ownership display
 
 ### Integration strategy
-- The DAG plugin's projection layer already separates event consumption from rendering — adding a new event source is a localized change
-- No architectural rework needed — the multi-source composite projection was designed for this
+- G5 D1 确认 DagModelService 通过事件订阅维护 DAG 状态，渲染层完全解耦。Adding a new event source (`team/task`) is a localized change to the service's event handler
+- G5 D3 的内核 `applyEvent(state, event) → state` 纯函数只需新增一个 case 分支
+- No architectural rework needed — the Cordis service + event replay architecture was designed for multi-source composition
 
 ### Trigger condition
 Monitor upstream for:
