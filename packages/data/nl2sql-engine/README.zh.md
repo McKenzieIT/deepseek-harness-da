@@ -27,7 +27,7 @@ pnpm test packages/data/nl2sql-engine           # the 9 scenarios (vitest)
 pnpm typecheck                              # tsc -b (host)
 ```
 
-9 个场景（S1–S9）验证 BM25 linking + prompt + critic gate + JSON-path + feedback self-correction + near-dup gate + eval-gate L1 pass-rate + honest decline + `sql_syntax_gate` slot。确定性测试（dsh-llm-replay stand-in + stand-in ODPS）；无需外部 LLM/ODPS 密钥。
+9 个场景（S1–S9）验证 BM25 linking + prompt + critic gate + JSON-path + feedback self-correction + near-dup gate + eval-gate L1 pass-rate + honest decline + `sql_syntax_gate` slot。确定性测试（dsh-llm-replay stand-in + stand-in engine）；无需外部 LLM/engine 密钥。
 
 ## Code-review-low 修复（已内置）
 
@@ -39,7 +39,7 @@ pnpm typecheck                              # tsc -b (host)
 
 #### What the model sees
 
-`buildPrompt`（在 `src/prompt.ts` 中）组装模型接收的 GENERATION 阶段 prompt section：用户问题、文本化 tool 目录（`search_data_sources`、`load_event_definition`、`query_data`、`check_query`、`critique_sql_tool`、`load_table_dimensions`、`save_accumulated_definition`、`resolve_term`）、staged 直接回答 SOP（§3 prepare/generate/validate/execute）、诚实拒绝规则（§5）、八条 SQL 规则（§6）、渲染的 MaxCompute 方言约定、BM25 链接的候选数据源、以及事件定义。生产中 P7b 经 `ctx.systemPrompt.assemble` 在 `phase=generation` 注入此 section；eval runner 的 `Nl2sqlEngine.run` 用相同 prompt 直接调用 `this.llm.generate`。
+`buildPrompt`（在 `src/prompt.ts` 中）组装模型接收的 GENERATION 阶段 prompt section：用户问题、文本化 tool 目录（`search_data_sources`、`load_event_definition`、`query_data`、`check_query`、`critique_sql_tool`、`load_table_dimensions`、`save_accumulated_definition`、`resolve_term`）、staged 直接回答 SOP（§3 prepare/generate/validate/execute）、诚实拒绝规则（§5）、八条 SQL 规则（§6）、渲染的 engine 方言约定、BM25 链接的候选数据源、以及事件定义。生产中 P7b 经 `ctx.systemPrompt.assemble` 在 `phase=generation` 注入此 section；eval runner 的 `Nl2sqlEngine.run` 用相同 prompt 直接调用 `this.llm.generate`。
 
 #### Token effect
 
@@ -49,7 +49,7 @@ pnpm typecheck                              # tsc -b (host)
 
 逐查询 prompt，不跨运行持久缓存；稳定前缀（tool 目录 + SOP + 八条规则 + 方言约定）在会话中重复时可跨查询复用，但候选列表、事件定义和问题构成每次查询都变化的尾部。
 
-### MaxCompute dialect conventions
+### engine dialect conventions
 
 #### What the model sees
 
@@ -67,6 +67,6 @@ pnpm typecheck                              # tsc -b (host)
 
 - **F3 — 向量 swap** — 仅 BM25 检索；seam 不变但真实向量 provider（经 P5b 的 `ctx.retrieval`）尚未连线。schema-linking 准确度在此之前受限于 BM25 召回率。
 - **F4 — 会话级近重复门控** — engine 内部精简 `NearDupGate` 保留，但跨 turn 会话级去重延期至尚未定义的 query-trio。
-- **F5 — 残余风险（执行反馈）** — 保留 regex + JSON-path + execution-feedback critic（fail-open）；sqlglot 无 TS 等价实现且无 MaxCompute 方言。记录残余风险：critic 可能放行语法无效的 SQL，仅在执行时才失败。
+- **F5 — 残余风险（执行反馈）** — 保留 regex + JSON-path + execution-feedback critic（fail-open）；sqlglot 无 TS 等价实现且无 engine 方言。记录残余风险：critic 可能放行语法无效的 SQL，仅在执行时才失败。
 - **F6 — Eval runner** — 当前发布 eval-gate-minimal；真实 `MultiTurnSession` eval runner 延期至 P11。
 - **`search_data_sources` tool 注册** — 经 `ctx.tools` 的 model-facing tool 注册最初延期（需要 `@deepseek-ai/dsh-tools` API grounding）；现已作为 `packages/data/tool-search-data-sources/` 发布。语料库在 P6b `ctx.schema` substrate 连线前为空。

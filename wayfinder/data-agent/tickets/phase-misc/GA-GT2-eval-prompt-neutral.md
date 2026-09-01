@@ -3,7 +3,7 @@
 **Type**: task  ·  **Phase**: misc  ·  **Status**: Open
 **Source**: [GA-GT2 D2 决策](GA-GT2-engine-abstraction.md)（规则 1/3 改写为引擎中性 + eval 验证约束）
 **Priority**: high
-**Blocked by**: [GA-GT2-impl](GA-GT2-impl-engine-abstraction.md)（需要 D2 代码改动先落地）
+**Blocked by**: 无（[GA-GT2-impl](GA-GT2-impl-engine-abstraction.md) Resolved 2026-09-01 — D2 已落地，unblocked）
 
 ## Question
 

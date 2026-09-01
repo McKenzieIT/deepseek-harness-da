@@ -250,7 +250,7 @@ export type PartitionDef = z.infer<typeof PartitionDefSchema>
 export const TableDefinitionSchema = z.object({
   table_name: z.string(),
   /**
-   * Per-table ODPS project override for table-name qualification (self-evolution #3a).
+   * Per-table engine project override for table-name qualification (self-evolution #3a).
    *
    * When present, `ctx.query.qualifyTable(tableName, project)` lets this table's
    * qualified name resolve to `<project>.<table>` — winning over the query

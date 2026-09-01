@@ -9,7 +9,7 @@ data-agent 的 data 能力包：query、retrieval/向量化、semantic layer、a
 | `query-engine/` *（计划，P4）* | 查询引擎 seam：`QueryEngine` 协议 + 每引擎 `conventions.yaml`；MaxCompute 为首引擎 | `ctx.query` |
 | `embedder/` *（计划，P5）* | embedder seam；默认轻量进程内，重模型作可选外置插件 | `ctx.embedder` |
 | `retrieval/` *（计划，P5）* | retrieval seam；默认 sqlite-vec/内存，hybrid 作 retriever 组合插件 | `ctx.retrieval` |
-| `semantic-layer/` *（计划，P6）* | 语义层（埋点 + 表）——data-agent 一等公民能力；ODPS schema 读取解耦到查询引擎 | — |
+| `semantic-layer/` *（计划，P6）* | 语义层（埋点 + 表）——data-agent 一等公民能力；engine schema 读取解耦到查询引擎 | — |
 | `audit/` *（计划，P8）* | guard/session-event + `tool-audit` + `ctx.storage`（SQLite） | — |
 | `admin/` *（计划，P9）* | harness app：per-game scope/credential/access-link + 系统配置 | — |
 

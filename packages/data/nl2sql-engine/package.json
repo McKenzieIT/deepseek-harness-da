@@ -35,6 +35,7 @@
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/dsh-query": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^"
   },
   "dependencies": {},
@@ -42,6 +43,7 @@
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/dsh-query": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^"
   }
 }

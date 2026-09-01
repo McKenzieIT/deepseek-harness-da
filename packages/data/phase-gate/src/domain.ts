@@ -167,7 +167,7 @@ export const UNIVERSAL_TOOLS = Object.freeze([
   'get_user_preferences',
   'load_accumulated_definition',
   // #2b self-evolution: present_clarification is callable in ANY phase. The
-  // model asks the user a clarifying question (e.g. which ODPS project a table
+  // model asks the user a clarifying question (e.g. which engine project a table
   // lives in after a TABLE_NOT_FOUND) wherever the ambiguity surfaces — not
   // just UNDERSTANDING route:clarify. captureToolData flags awaiting_clarification
   // on the call (any phase) and onTurnStopping HALTs awaiting the user reply.
@@ -213,7 +213,7 @@ export const GENERATION_TOOLS = Object.freeze([
   // definition directly.)
   'load_table_definition',
   'load_event_definition',
-  // #2b self-evolution: update_table_config persists a per-table ODPS project
+  // #2b self-evolution: update_table_config persists a per-table engine project
   // override after the user answers a present_clarification. GENERATION-scoped:
   // the model learns the project in GENERATION (post-fallback from EXECUTION
   // not_found) and persists it before regenerating the qualified SQL. RBAC

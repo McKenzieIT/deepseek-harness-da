@@ -10,7 +10,7 @@
  *
  * @module @deepseek-ai/dsh-nl2sql-engine/src/conventions
  */
-import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
+import type { EngineConventions } from '@deepseek-ai/dsh-query'
 
 /**
  * Render the loaded conventions as a markdown dialect cheatsheet for the
@@ -22,6 +22,7 @@ import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/co
 export function renderConventionsPrompt(conv: EngineConventions | null | undefined): string {
   if (!conv) return '（无 conventions）'
   const lines: string[] = []
+  lines.push(`# 方言规范（${conv.engine}）`)
   if (conv.key_differences.length > 0) {
     lines.push('## 方言速查')
     lines.push(...conv.key_differences.map(h => `- ${h}`))

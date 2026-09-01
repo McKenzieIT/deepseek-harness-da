@@ -26,7 +26,7 @@
  */
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { loadConventions, type EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.js'
+import type { EngineConventions } from '@deepseek-ai/dsh-query'
 
 // ── logic exports (P7b preset / phase-gate / eval consume) ───────────────
 export * from './types.ts'
@@ -34,7 +34,7 @@ export * from './types.ts'
 // re-exported so a consumer building Nl2sqlEngine collaborators (e.g. the
 // eval-runner-service ctx adapter) imports it from the engine package root
 // rather than a cross-package deep .ts path.
-export type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.js'
+export type { EngineConventions } from '@deepseek-ai/dsh-query'
 export { critiqueSql, sqlSyntaxGate, extractSqlCandidate, extractJsonPaths, extractTableNames, hasPartitionFilter, hasSelectStar, type CriticResult } from './critic.ts'
 export { buildPrompt, buildEvalPrompt, type EventDefinitionLite, type BuildPromptArgs, type BuildEvalPromptArgs } from './prompt.ts'
 export { renderConventionsPrompt } from './conventions.ts'
@@ -80,7 +80,12 @@ export class Nl2sqlEngineService extends Service {
 
   constructor(ctx: Context, config: Nl2sqlEngineConfig) {
     super(ctx, 'nl2sql')
-    this.conventions = loadConventions(config.conventionsEngine ?? 'maxcompute')
+    // D1 (GA-GT2-impl): conventions now come from the injected query engine
+    // (ctx.query.getConventions()) rather than the MaxCompute loader; the
+    // conventionsEngine config field is vestigial (ctx.query IS the engine
+    // selection) but retained for config-compat.
+    this.conventions = ctx.query.getConventions()
+    void config
   }
 
   /**

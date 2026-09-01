@@ -102,11 +102,11 @@
 #
 - insert:
 #     # ── query (P4) ───────────────────────────────────────────────────────
-    - id: query-engine        # ctx.query seam — mount ONLY the MaxCompute provider: it extends QueryEngine and registers ctx.query on instantiation; the abstract seam (dsh-query) is pulled transitively as the provider's peerDep, mounting it would instantiate a broken abstract service. Mirrors llm-dashscope mounting only the provider, not the dsh-llm seam.
+    - id: query-engine        # ctx.query seam — mount ONLY the concrete query provider: it extends QueryEngine and registers ctx.query on instantiation; the abstract seam (dsh-query) is pulled transitively as the provider's peerDep, mounting it would instantiate a broken abstract service. Mirrors llm-dashscope mounting only the provider, not the dsh-llm seam.
       name: '@deepseek-ai/dsh-query-maxcompute'
       config:
-        # P4c/P4d: the maxc sidecar self-manages ODPS auth in its config file
-        # (--maxc-config), so the da does NOT push ODPS creds. credMode:
+        # P4c/P4d: the maxc sidecar self-manages engine auth in its config file
+        # (--maxc-config), so the da does NOT push engine creds. credMode:
         # sidecar-self tells the Provider to skip the ctx.credentials
         # pushCredentials pre-check (P4d (b); maxc's config is the single
         # source of auth).
@@ -116,20 +116,36 @@
         sidecarPath: ./packages/query/query-maxcompute/dev/maxc-sidecar.mjs
         credMode: sidecar-self
         maxcConfigPath: ~/.maxc/config.yaml
-        # C: the ODPS project where the K11 DWS/event tables actually live
+        # C: the engine project where the K11 DWS/event tables actually live
         # (ieu_cdm). Supersedes the misread config.yaml project.name
-        # (game_10000251 — a game scope id, NOT an ODPS project) that
-        # qualified DAU's table as game_10000251.dws_... which ODPS could
+        # (game_10000251 — a game scope id, NOT an engine project) that
+        # qualified DAU's table as game_10000251.dws_... which the engine could
         # not find. qualifyTable on the query provider reads this; the
         # semantic layer no longer qualifies.
         defaultProject: ieu_cdm
         # rbi §3 阶段D true-timeout: the DAU query (full event_view
         # partition scan over 7 days + GET_JSON_OBJECT) takes >60s on real
-        # ODPS, so the Provider Config default 60_000 times out the MCP
+        # engine execution, so the Provider Config default 60_000 times out the MCP
         # tools/call → -32001 → no rows. 300_000 (300s) lets the heavy scan
         # finish; this is the only timeout knob in the prototype (the
         # engine-wrapper TimeoutGuard/abort-signal is deferred A1-split).
         toolCallTimeoutMs: 300000
+#     # ── Postgres engine swap (GT2-D5) ─────────────────────────────────────
+#     # Additive note: the active engine stays MaxCompute (row above). To
+#     # swap to Postgres, comment out the dsh-query-maxcompute block above
+#     # (the whole - id: query-engine row + its config) and uncomment the
+#     # alternative below — same ctx.query seam id, different provider
+#     # package. The Postgres provider mounts the same ctx.query seam; only
+#     # the provider package + its config change — engine-neutral tooling
+#     # (query-tool, nl2sql-engine, semantic-layer) is unaffected. NOTE:
+#     # @deepseek-ai/dsh-query-postgres is a GT2-D4 stub today (conventions
+#     # only; execute/attach/cancel/getProgress throw not-implemented), so
+#     # this swap is illustrative until the PG driver lands.
+#     - id: query-engine
+#       name: '@deepseek-ai/dsh-query-postgres'
+#       config:
+#         credMode: sidecar-self
+#         # Postgres connection config (host/db/user/password) goes here
 #     # ── retrieval / vectorization (P5) ───────────────────────────────────
 #     - id: embedder            # ctx.embedder seam — OPT-IN (P5b shipped @deepseek-ai/dsh-embedder-fakehash default zero-dep + dsh-embedder-http external OpenAI-compat; T2: AGA-embeddings NO, user self-deploys the heavy embedder). Uncomment + mount a provider to register ctx.embedder. Left commented: activation (hybrid-by-default vs the local Bm25Linker) is D2c's evals-driven keep/regress call; an unmounted seam keeps search_data_sources on its Bm25Linker default (no behavior change, P13b 9/9 unaffected).
 #       name: '@deepseek-ai/dsh-embedder-fakehash'
@@ -151,7 +167,7 @@
         # string for scope-registry to receive it verbatim and expand '~/'.
         registryPath: '~/.dsh/data/scopes.yaml'
 #     # ── semantic layer (P6) - first-class (map: 语义层一等公民) ───────────
-    - id: semantic-layer     # in-process core capability (loaders + tables); ODPS schema read decoupled to the query engine
+    - id: semantic-layer     # in-process core capability (loaders + tables); engine schema read decoupled to the query engine
       name: '@deepseek-ai/dsh-semantic-layer'
       config:
         # K11 dev default + per-scope fallback: the semantic-layer root carrying

@@ -1,7 +1,7 @@
 /**
  * Model-facing `query_data` tool - the EXECUTION-phase entry to real SQL
  * execution. The agent calls it with SQL + a per-game scope to run that SQL
- * against MaxCompute (via `ctx.query`) and get back rows. This is the agent
+ * against the query engine (via `ctx.query`) and get back rows. This is the agent
  * running its OWN SQL — not the eval harness re-running a canned SQL — so it
  * closes G1b's execution-match hard gate on the agent side.
  *
@@ -24,7 +24,7 @@
  * The core EXECUTION flow (`executeQuery` / `projectOutcome` /
  * `pollToSettlement`) is exported pure so the 3-state handling is testable
  * against a stub `QueryEngine`, and the P4c(c) smoke calls it against the real
- * MaxCompute provider (maxc-backed sidecar -> real ODPS rows), proving the
+ * query provider (maxc-backed sidecar -> real engine rows), proving the
  * tool path - not a direct sidecar call.
  *
  * @module @deepseek-ai/dsh-query-tool
@@ -42,7 +42,7 @@ export interface Config {
   /**
    * Max poll iterations for a pending query before returning the pending
    * state (the async-promote budget; maxc `--wait` derives pending vs
-   * completed from real ODPS execution).
+   * completed from real engine execution).
    */
   readonly maxPolls?: number
   /** Delay between progress polls in ms. */
@@ -204,7 +204,7 @@ export async function pollToSettlement(
  * settlement (or the budget, then honest pending); failed -> surface. Exported
  * so the full EXECUTION flow is testable against a stub or real QueryEngine.
  *
- * @param query The query engine to execute against (the MaxCompute provider).
+ * @param query The query engine to execute against (the query provider).
  * @param args Model-facing arguments: SQL + scope_id.
  * @param exec Execution context carrying outbound cancel.
  * @param cfg Resolved tool config.
@@ -223,7 +223,7 @@ export async function executeQuery(
     try {
       outcome = await pollToSettlement(query, instanceId, exec, cfg)
     } catch (error) {
-      // Abort or poll failure: best-effort cancel the pending ODPS instance so it
+      // Abort or poll failure: best-effort cancel the pending query instance so it
       // does not keep running/billing as an orphan. OrphanReaper (deferred) is
       // the backstop for instances that escape this path (e.g. cancel itself
       // failed). A failed cancel must not mask the original error.
@@ -294,7 +294,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'query_data',
     description:
-      'Execute a MaxCompute SQL statement against a per-game scope and return '
+      'Execute a SQL statement against a per-game scope and return '
       + 'the result rows. Call this in the EXECUTION phase to run SQL the agent '
       + 'has written (after search_data_sources / load_* in UNDERSTANDING and '
       + 'SQL generation). Returns a 3-state outcome: completed rows, pending '
@@ -305,7 +305,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       sql: {
         type: 'string',
         required: true,
-        description: 'The MaxCompute SQL statement to execute.',
+        description: 'The SQL statement to execute.',
       },
       scope_id: {
         type: 'string',

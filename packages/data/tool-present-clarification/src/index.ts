@@ -2,7 +2,7 @@
  * Model-facing `present_clarification` tool — the self-evolution #2a
  * clarification entry. The agent calls it to present ONE specific clarifying
  * question to the user when a real ambiguity or missing knowledge blocks
- * progress (e.g. which ODPS project a table lives in after a TABLE_NOT_FOUND).
+ * progress (e.g. which engine project a table lives in after a TABLE_NOT_FOUND).
  *
  * This is a PURE PRESENTATION tool: it records the question + options and
  * returns them for the UI to display. It has NO service dependency
@@ -105,7 +105,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     description:
       'Present a clarifying question to the user and HALT the turn awaiting '
       + 'their answer. Use when a real ambiguity or missing knowledge (e.g. '
-      + 'which ODPS project a table lives in) blocks progress. Emit exactly '
+      + 'which engine project a table lives in) blocks progress. Emit exactly '
       + 'one specific question; the gate HALTs on this call (any phase).',
     parameters: {
       question: {

@@ -33,8 +33,6 @@
 export const MAX_SQL_PER_TURN = 8 // v2-baseline.md:5 exploration budget (phases.py:124 max_executions_per_turn)
 /** Max self-correction retries before honest decline (v2-baseline.md §5). */
 export const MAX_FEEDBACK_RETRIES = 2 // v2-baseline.md §5: self-correct N times then decline
-/** The conventional partition column names the critic treats as ds-required (sql_evaluator.py:18). */
-export const PARTITION_COLUMNS = Object.freeze(['ds', 'dt', 'partition_date', 'p_date']) // sql_evaluator.py:18
 
 // ── GateResult (aligns P7 phases.py:33) ───────────────────────────────────
 /** The phase-gate verdict (aligns P7 phases.py:33): pass/fail + reason. */
@@ -160,11 +158,11 @@ export interface MakeCriticCtxOptions {
  * Build a critic guard context from the P6 substrate + retrieval results:
  * candidate tables, event params, and partition columns (all lowercased).
  *
- * @param options - The guard-data options (candidateTables, eventParams, partitionCols; each defaults to empty/`['ds']`).
+ * @param options - The guard-data options (candidateTables, eventParams, partitionCols; each defaults to empty).
  * @returns The constructed critic context.
  */
 export function makeCriticCtx(options: MakeCriticCtxOptions = {}): CriticCtx {
-  const { candidateTables = [], eventParams = {}, partitionCols = ['ds'], declaredJoinPairs } = options
+  const { candidateTables = [], eventParams = {}, partitionCols = [], declaredJoinPairs } = options
   return {
     candidateTables: new Set(candidateTables.map(t => t.toLowerCase())),
     eventParams: new Set(Object.keys(eventParams).map(f => f.toLowerCase())),

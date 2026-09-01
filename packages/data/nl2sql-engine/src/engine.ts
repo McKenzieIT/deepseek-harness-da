@@ -35,7 +35,7 @@ import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetric
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
 import { detectTrendIntent, rerankByGranularity } from './granularity.ts'
-import type { EngineConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
+import type { EngineConventions } from '@deepseek-ai/dsh-query'
 import { loadConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
 import { Bm25Linker, type RetrievalLinker, type DataSourceDoc } from './bm25-linking.ts'
 import type { OdpsExecutor } from './stand-in-odps.ts'
@@ -214,7 +214,7 @@ export class Nl2sqlEngine {
     }
 
     // critic ctx: candidate tables + event params + partition cols (from P6 substrate; not from conventions)
-    const partitionCols = eventDef?.partitions?.map(p => p.name) ?? ['ds']
+    const partitionCols = eventDef?.partitions?.map(p => p.name) ?? []
     let ctx = makeCriticCtx({
       candidateTables: candidateIds,
       eventParams: eventDef?.params_fields ?? {},

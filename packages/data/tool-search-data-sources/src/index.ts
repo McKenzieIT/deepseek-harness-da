@@ -76,7 +76,7 @@ export interface SearchHit {
    *  from a table/event — so it routes metrics to GENERATION context, not
    *  load_table_definition (which returns not-found on a metric name). */
   readonly type?: string
-  /** Per-table ODPS project override (self-evolution #3a). Carried from
+  /** Per-table engine project override (self-evolution #3a). Carried from
    *  `TableDefinitionSchema.project` on the hit payload through `projectHit` so
    *  `qualifyCandidates` can hand it to `ctx.query.qualifyTable(id, project)` —
    *  the override wins over `Config.defaultProject`. Absent on non-table kinds
@@ -159,8 +159,8 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
 function qualifyCandidates(ctx: Context, candidates: SearchHit[]): SearchHit[] {
   // C: probe ctx.query (engine-agnostic) for qualifyTable — supersedes the
   // SchemaCorpusSource.qualifyTableName path (which misread config.yaml
-  // project.name = game scope id, NOT an ODPS project → DAU qualified
-  // game_10000251.dws_... which ODPS could not find). Soft probe like
+  // project.name = game scope id, NOT an engine project → DAU qualified
+  // game_10000251.dws_... which the engine could not find). Soft probe like
   // ctx.get('schema'): returns undefined when no query provider is
   // registered, so candidates stay bare (callable but unwired, no crash).
   const q = ctx.get('query') as { qualifyTable?: (tableName: string, override?: string) => string } | undefined
@@ -168,7 +168,7 @@ function qualifyCandidates(ctx: Context, candidates: SearchHit[]): SearchHit[] {
   // method reference loses `this` → `this.cfg` undefined → 'reading cfg' crash.
   const qualify = q?.qualifyTable?.bind(q)
   if (qualify === undefined) return candidates
-  // Qualify only table-kind candidates (metric/event ids are not ODPS tables;
+  // Qualify only table-kind candidates (metric/event ids are not engine tables;
   // `mode` is the retrieval mode, not the data-source kind, so the prior
   // `c.mode === 'event'` check never matched — every candidate was qualified,
   // and qualifyTableName silently no-op'd non-tables).

@@ -1,0 +1,70 @@
+# Postgres engine conventions — the GA-GT2-D4 second-engine stub.
+#
+# A coherent Postgres dialect convention set mirroring the MaxCompute
+# `conventions.yaml` shape (engine/key_differences/functions/cast_map/
+# sql_templates) to prove the abstract `QueryEngine.getConventions()` seam
+# carries a second engine's conventions. This is a STUB (no real PG executor);
+# the conventions are nonetheless a plausible Postgres dialect ($n placeholders,
+# ::type casts, JSONB operators, DATE_TRUNC/NOW()/CURRENT_DATE, no ds partition
+# filter, LIMIT/OFFSET).
+#
+# The loader (`loadConventions`, mirror of RBI `conventions.py:32`) lives in
+# src/conventions.ts — it reads THIS file once (cached) so callers get the
+# canonical YAML, not a TS mirror that can drift.
+
+engine: postgres
+
+key_differences:
+  - "JSON 提取: col->>'path' 或 col#>>'{a,b}' (操作符而非函数)"
+  - "无 ds 分区字段: 用原生 DATE/TIMESTAMP 列 + 范围过滤 (BETWEEN / >=)"
+  - "无 ARG_MAX: 用 DISTINCT ON (col) ... ORDER BY col DESC LIMIT 1 取最大对应值"
+  - "类型: BIGINT / TEXT / DOUBLE PRECISION / NUMERIC / JSONB"
+  - "标识符: 双引号 \"col\"; 字符串字面量单引号 'literal'"
+  - "参数占位: $1/$2 位置参数 (prepared statement); 部分驱动支持 :param 命名"
+  - "分页: LIMIT n OFFSET m (无 ROWNUM / 无 LIMIT n, m 合成)"
+
+functions:
+  - name: DATE_TRUNC
+    signature: (unit, timestamp) → timestamp
+  - name: NOW
+    signature: () → timestamp
+  - name: CURRENT_DATE
+    signature: () → date
+  - name: EXTRACT
+    signature: (field FROM timestamp) → numeric
+  - name: COALESCE
+    signature: (val, ...) → first non-null
+  - name: JSONB_ACCESS
+    signature: "col->'key' (jsonb) / col->>'key' (text)"
+  - name: STRING_AGG
+    signature: (expr, delimiter) → text
+
+cast_map:
+  - { logical: int, meaning: 整数, cast: "x::BIGINT" }
+  - { logical: decimal, meaning: 小数/定点, cast: "x::NUMERIC(18,2)" }
+  - { logical: string, meaning: 文本, cast: "默认; 显式 x::TEXT" }
+  - { logical: bool, meaning: 布尔, cast: "x::BOOLEAN" }
+  - { logical: datetime, meaning: 日期/时间, cast: "x::TIMESTAMP 或 x::DATE" }
+  - { logical: json, meaning: 结构体/对象, cast: "x::JSONB; 嵌套 col->'a'->>'b'" }
+
+sql_templates:
+  - name: 基础聚合（UV + 次数）
+    sql: |
+      SELECT COUNT(*) AS total_count, COUNT(DISTINCT role_id) AS role_uv
+      FROM <数据视图> WHERE event = $1 AND created_at BETWEEN $2 AND $3
+  - name: 多维分组
+    sql: |
+      SELECT server_id, params->>'result' AS battle_result, COUNT(*) AS battle_count
+      FROM <数据视图> WHERE event = $1 AND created_at >= $2::date
+      GROUP BY server_id, params->>'result'
+  - name: TOP N
+    sql: |
+      SELECT params->>'coinType' AS coin_type,
+             SUM((params->>'amount')::BIGINT) AS total_amount
+      FROM <数据视图> WHERE event = $1 AND created_at BETWEEN $2 AND $3
+      GROUP BY params->>'coinType' ORDER BY total_amount DESC LIMIT 10
+  - name: 取最大对应值（ARG_MAX 替代）
+    sql: |
+      SELECT DISTINCT ON (server_id) server_id, params->>'result' AS battle_result
+      FROM <数据视图> WHERE event = $1
+      ORDER BY server_id, created_at DESC

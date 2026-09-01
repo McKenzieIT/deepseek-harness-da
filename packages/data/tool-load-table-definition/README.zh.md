@@ -73,6 +73,6 @@ pnpm verify-cordis-config
 
 - **ctx.schema bundle mount wired（已解）** —— bundle 的 `semantic-layer` service 行已解注释 + 加 `dsh-semantic-layer` dep（lockfile 经 `pnpm install` 同步）；`ctx.schema` 已挂载，故本工具已接通真 substrate（不再 "callable but unwired" 默认）。preset 行 + phase-gate 白名单本已就位。已验证：`verify-cordis-config` + `dsh --dump-config`（service 在）+ 真 `semanticRoot` smoke（`found:true` 投影 `partitions`）。
 - **空 substrate（默认 `semanticRoot`）** —— 默认空根下 substrate 不扫任何 `tables/` 目录，`loadTableDefinition` 返回 `null`（not-found，不崩）。真实 substrate 目录在 profile/运行时层配置；本工具契约不变。
-- **live-ODPS provider deferred（P6b Q3）** —— `ctx.schema.discover`/`describe`/`sample`（live-ODPS schema）在真实 MaxCompute provider 挂载前抛 "no provider"（P6b follow-up）。`load_table_definition` 仅读 substrate 定义，故不阻塞。
+- **live-engine provider deferred（P6b Q3）** —— `ctx.schema.discover`/`describe`/`sample`（live-engine schema）在真实 query provider 挂载前抛 "no provider"（P6b follow-up）。`load_table_definition` 仅读 substrate 定义，故不阻塞。
 - **路径穿越守卫仅边界生效** —— name 守卫在本工具（不可信模型输入边界）。substrate 的 `io.ts` 读路径按 `table_name` 字段匹配（非按文件名），故 `load_*` 不可达穿越；守卫是对未来 substrate 变更的纵深防御。`io.ts` 写入器（`writeTable`/`writeEventYaml`）会路径化 `name`，目前仅对可信内部调用方守卫（P6b #5/#6 follow-up）。
 - **substrate 写层加固 deferred** —— P6b code-review #4（canonicalize-on-write）与 #6（`updateTableMeta` `withFileLock`）在 `io.ts` deferred；不影响本只读工具（仅调校验读取器）。

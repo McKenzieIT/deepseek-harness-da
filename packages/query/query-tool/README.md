@@ -2,13 +2,13 @@
 
 English | [中文](README.zh.md)
 
-Model-facing `query_data` tool: **real SQL execution via `ctx.query`** for the data agent's `EXECUTION` phase. The agent calls it with SQL + a per-game scope to run that SQL against MaxCompute and get back rows — the agent running its OWN SQL, not the eval harness re-running a canned statement.
+Model-facing `query_data` tool: **real SQL execution via `ctx.query`** for the data agent's `EXECUTION` phase. The agent calls it with SQL + a per-game scope to run that SQL via the query engine and get back rows — the agent running its OWN SQL, not the eval harness re-running a canned statement.
 
 This is the **P4c(c)** tool — the SECOND model-facing tool registration in the data-agent effort (after `search_data_sources`, P13b), so it also extends the [`@deepseek-ai/dsh-tools`](../../core/tools) tool-registration API (`defineTool` + `ctx.tools.register`) to the EXECUTION phase. It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../../data/tool-search-data-sources): the same `inject: ['tools']` plugin that probes `ctx.get('query')` (NOT `inject: ['query']`), so the tool loads without a query provider mounted — an unregistered whitelisted tool is simply uncallable, not a broken mount (the phase-gate guard's EXECUTION whitelist already names `query_data`).
 
 ## Status: maxc-backed EXECUTION (P4c)
 
-The query engine is the [`@deepseek-ai/dsh-query-maxcompute`](../query-maxcompute) provider (P4c(a)): a da-self-held raw MCP SDK `Client` over the `maxc`-backed sidecar that shells to the real MaxCompute CLI and returns real ODPS rows. The provider programs ALL sidecar tools by raw name and registers NONE on `ctx.tools`, so control tools (`set_credentials` / `invalidate_scope`) stay non-model-callable (A1-split). The 3-state `QueryOutcome` (P4 decision B) is the whole EXECUTION shape: completed -> rows; pending -> poll `getProgress` to settlement (or the poll budget, then an honest pending); failed -> surface.
+The query engine is the [`@deepseek-ai/dsh-query-maxcompute`](../query-maxcompute) provider (P4c(a)): a da-self-held raw MCP SDK `Client` over the `maxc`-backed sidecar that shells to the real MaxCompute CLI and returns real engine rows. The provider programs ALL sidecar tools by raw name and registers NONE on `ctx.tools`, so control tools (`set_credentials` / `invalidate_scope`) stay non-model-callable (A1-split). The 3-state `QueryOutcome` (P4 decision B) is the whole EXECUTION shape: completed -> rows; pending -> poll `getProgress` to settlement (or the poll budget, then an honest pending); failed -> surface.
 
 The guard chain (CostGuard `estimate_cost` / TimeoutGuard signal / RetryGuard / OrphanReaper) is deferred to the A1-split engine-wrapper hardening (P4c(b)); this tool is the dumb model-facing consumer over `ctx.query.execute`.
 
@@ -40,7 +40,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 }
 ```
 
-The core EXECUTION flow (`executeQuery` / `projectOutcome` / `pollToSettlement`) is exported pure so the 3-state handling is testable against a stub `QueryEngine`, and the P4c(c) smoke calls it against the real provider (maxc-backed sidecar -> real ODPS rows), proving the tool path — not a direct sidecar call. Registration is effect-based (disposing the plugin fiber unregisters the tool); the schema flows into system-prompt assembly automatically. See [`docs/cookbook/adding-a-tool.md`](../../../docs/cookbook/adding-a-tool.md).
+The core EXECUTION flow (`executeQuery` / `projectOutcome` / `pollToSettlement`) is exported pure so the 3-state handling is testable against a stub `QueryEngine`, and the P4c(c) smoke calls it against the real provider (maxc-backed sidecar -> real engine rows), proving the tool path — not a direct sidecar call. Registration is effect-based (disposing the plugin fiber unregisters the tool); the schema flows into system-prompt assembly automatically. See [`docs/cookbook/adding-a-tool.md`](../../../docs/cookbook/adding-a-tool.md).
 
 ## Config
 
@@ -50,7 +50,7 @@ The core EXECUTION flow (`executeQuery` / `projectOutcome` / `pollToSettlement`)
 | `pollIntervalMs` | `number` | `2000`  | Delay between `getProgress` polls in ms.                                               |
 | `maxDisplayRows` | `number` | `50`    | Max rows rendered into model context (display cap); the engine row-cap is deferred.   |
 
-The query engine is **not** a config field: it is `ctx.query` (the MaxCompute provider mounted by the data-agent bundle). `scope_id` is the per-game access-isolation scope (the trust boundary); production hardening sources it from `ctx.identity` rather than the model.
+The query engine is **not** a config field: it is `ctx.query` (the query provider mounted by the data-agent bundle). `scope_id` is the per-game access-isolation scope (the trust boundary); production hardening sources it from `ctx.identity` rather than the model.
 
 ## Verification
 
@@ -58,10 +58,10 @@ The query engine is **not** a config field: it is `ctx.query` (the MaxCompute pr
 tsc -b packages/query/query-tool/tsconfig.json      # typecheck
 pnpm vitest run packages/query/query-tool            # 3-state spec (stub engine)
 pnpm verify-cordis-config                            # preset + bundle mounts resolve
-node --import tsx/esm packages/query/query-tool/dev/query-tool-smoke.ts  # tool -> real ODPS (4336)
+node --import tsx/esm packages/query/query-tool/dev/query-tool-smoke.ts  # tool -> real engine (4336)
 ```
 
-The smoke boots a cordis ctx + fake credentials + the MaxCompute provider (maxc-sidecar), captures the `query_data` tool def the plugin registers, and calls its `execute` with RBI case `eval_10000251_037`'s expected SQL, asserting the result reproduces `expected.result_value` (dau=4336) — through the tool path, not a direct sidecar call. The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-query-data`) is uncommented now that this package ships; the phase-gate guard's EXECUTION whitelist already names `query_data`, so registering it makes it callable in that phase.
+The smoke boots a cordis ctx + fake credentials + the query provider (maxc-sidecar), captures the `query_data` tool def the plugin registers, and calls its `execute` with RBI case `eval_10000251_037`'s expected SQL, asserting the result reproduces `expected.result_value` (dau=4336) — through the tool path, not a direct sidecar call. The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-query-data`) is uncommented now that this package ships; the phase-gate guard's EXECUTION whitelist already names `query_data`, so registering it makes it callable in that phase.
 
 ## Model Experience
 
@@ -82,6 +82,6 @@ Tool results are append-only: the rendered result text follows the reusable requ
 ## Known Limitations and Deferred Work
 
 - **Guard chain deferred (P4c(b))** — the engine-wrapper CostGuard (`estimate_cost`), TimeoutGuard (signal), RetryGuard (infra vs model attempt), and OrphanReaper (dispose async-job cleanup) are deferred; this tool is the dumb model-facing consumer, so a runaway query is display-capped, not cost- or row-gated at the source.
-- **`mode` is a prototype-only knob** — `QueryRequest.mode` (`fast`/`slow`/`blocking`/`fail`) is stand-in-sidecar machinery; the maxc provider derives pending vs completed from real ODPS execution and carries no mode, so this tool does not expose it to the model.
+- **`mode` is a prototype-only knob** — `QueryRequest.mode` (`fast`/`slow`/`blocking`/`fail`) is stand-in-sidecar machinery; the maxc provider derives pending vs completed from real engine execution and carries no mode, so this tool does not expose it to the model.
 - **Not fully runnable end-to-end yet** — the preset registers `query_data` (this package) and `search_data_sources`, but `load_table_definition` / `load_event_definition` (ctx.schema, P6b) and the `present_*` INTERPRETATION delivery tools are deferred, so the data-agent profile is not yet a complete four-phase run on its own (tracked by G1c).
 - **Pending polling is bounded, not push** — `ctx.query` offers no push notifications (G4 HOLE-D); a pending query is polled via `getProgress` up to `maxPolls`, then an honest pending is returned (the agent re-issues; no `attach` model-facing tool yet).

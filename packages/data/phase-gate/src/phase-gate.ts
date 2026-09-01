@@ -108,7 +108,7 @@ If you emit no route token, the gate defaults to proceed but runs a grounding ba
     + 'GET_JSON_OBJECT fields ∉ event_params; warns on SELECT * / missing ds partition. '
     + 'Wrap SQL in ```sql fences. TABLE_NOT_FOUND / FIELD_NOT_FOUND / '
     + 'SEMANTIC_MISMATCH are UNRECOVERABLE execution errors (per rbi §3 阶段D) — '
-    + 'they signal the SQL referenced a table/field absent from ODPS. Do NOT '
+    + 'they signal the SQL referenced a table/field absent from the engine. Do NOT '
     + 're-critique or re-execute with a corrected SQL: critique_sql_tool is '
     + 'GENERATION-only (the EXECUTION guard whitelist blocks it) and F2 same-source '
     + 'blocks a divergent query_data SQL, so re-critiquing in EXECUTION deadlocks. '
@@ -134,7 +134,7 @@ function buildSqlConventions(ctx: Context): string {
     } catch { /* fallback to defaults if config unreadable */ }
   }
   return (
-    'SQL conventions (MaxCompute/hive dialect): partition predicate ds=\'yyyyMMdd\' required for partitioned tables; '
+    'SQL conventions (engine dialect): partition predicate ds=\'yyyyMMdd\' required for partitioned tables; '
     + 'SELECT-only; prefer explicit columns over SELECT *; GET_JSON_OBJECT field paths must reference event_params loaded in UNDERSTANDING. '
     + `Event queries: FROM ${eventViewFullName} WHERE event='<event_name>' AND ds>='<start>' AND ds<='<end>'; `
     + `extract event params via ${paramsTemplate}.`
@@ -362,7 +362,7 @@ export class PhaseGate {
       this.inject(
         agent,
         `[self-evolution] ${s.last_query_error ?? 'TABLE_NOT_FOUND'}. `
-          + 'The table may be in a different ODPS project than the default. '
+          + 'The table may be in a different engine project than the default. '
           + 'Ask the user which project the table lives in (call present_clarification with a specific question), '
           + 'then call update_table_config(table_name, project) to persist the override, '
           + 'then regenerate the SQL with the qualified name and retry.',

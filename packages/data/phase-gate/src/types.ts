@@ -58,9 +58,9 @@ export interface PhaseGateState {
    */
   last_failure_kind: string | null
   /**
-   * #1/#2b self-evolution: verbatim query error text (ODPS error message)
+   * #1/#2b self-evolution: verbatim query error text (engine error message)
    * harvested from query_data's `error`. Surfaced to the model in the
-   * not_found fallback inject so it can act on the specific ODPS code. `null`
+   * not_found fallback inject so it can act on the specific engine error code. `null`
    * when no failure or not surfaced; cleared on a new question.
    */
   last_query_error: string | null

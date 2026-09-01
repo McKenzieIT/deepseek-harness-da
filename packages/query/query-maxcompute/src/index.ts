@@ -33,8 +33,9 @@ import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 import { QueryEngine } from '@deepseek-ai/dsh-query/src/index.ts'
 import { credentialRef, scopeId as brandScopeId } from '@deepseek-ai/dsh-credentials'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
-import type { InstanceId, QueryOutcome, QueryRequest, QuerySpec, ScopeId } from '@deepseek-ai/dsh-query/src/index.ts'
+import type { InstanceId, QueryOutcome, QueryRequest, QuerySpec, ScopeId, EngineConventions } from '@deepseek-ai/dsh-query/src/index.ts'
 import { normalizeForMaxCompute } from './normalize.ts'
+import { loadConventions } from './conventions.ts'
 
 /**
  * ODPS credential references — the 4-key creds map pushed to the sidecar via
@@ -594,6 +595,21 @@ export class MaxComputeQueryEngine extends QueryEngine {
     const scope = this.scopes()?.active()
     const mc = scope?.metadata?.maxcompute as { project?: string } | undefined
     return typeof mc?.project === 'string' && mc.project !== '' ? mc.project : undefined
+  }
+
+  /**
+   * D1 (GA-GT2-impl): the per-engine conventions for the nl2sql prompt dialect
+   * grounding. The MaxCompute provider owns the YAML-loading runtime
+   * (`loadConventions` in `./conventions.ts`, cached); the *types* live in the
+   * abstract `@deepseek-ai/dsh-query` package. The injected query engine
+   * (`ctx.query`) exposes this so consumers (the nl2sql-engine) obtain
+   * conventions through the abstract seam rather than importing the MaxCompute
+   * loader directly.
+   *
+   * @returns The cached MaxCompute convention set loaded from `conventions.yaml`.
+   */
+  override getConventions(): EngineConventions {
+    return loadConventions('maxcompute')
   }
 
   /**

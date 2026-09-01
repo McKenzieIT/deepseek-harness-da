@@ -9,7 +9,7 @@ The data-agent's data capability packages: query, retrieval/vectorization, seman
 | `query-engine/` *(planned, P4)* | The query engine seam: `QueryEngine` protocol + per-engine `conventions.yaml`; MaxCompute as the first engine | `ctx.query` |
 | `embedder/` *(planned, P5)* | The embedder seam; default lightweight in-process, heavy models as optional external plugins | `ctx.embedder` |
 | `retrieval/` *(planned, P5)* | The retrieval seam; default sqlite-vec/in-memory, hybrid as a retriever-composition plugin | `ctx.retrieval` |
-| `semantic-layer/` *(planned, P6)* | The semantic layer (loaders + tables) — a first-class data-agent capability; ODPS schema read decoupled to the query engine | — |
+| `semantic-layer/` *(planned, P6)* | The semantic layer (loaders + tables) — a first-class data-agent capability; engine schema read decoupled to the query engine | — |
 | `audit/` *(planned, P8)* | guard/session-event + `tool-audit` + `ctx.storage` (SQLite) | — |
 | `admin/` *(planned, P9)* | The harness app: per-game scope/credential/access-link + system config | — |
 

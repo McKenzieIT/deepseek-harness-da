@@ -1221,7 +1221,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'qualifyTable?(tableName: string, override?: string): string',
-        description: 'Qualify a bare table name with its project prefix (C: engine-agnostic).\n\nMoved off `SemanticLayerService.qualifyTableName` (which misread `config.yaml project.name` — a game scope id, NOT an ODPS project) to the query provider, whose `Config.defaultProject` (cordis.patch.yml fills `ieu_cdm`) is the single source of truth for the engine\'s project. A per-table `override` (Task 3: `SearchHit.project` / `update_table_config`) takes precedence over the configured default. When both are absent (empty default + no override), the bare table name is returned unchanged — graceful degradation so a misconfigured engine still surfaces the bare name rather than `undefined.table`.\n\nOptional: a provider that does not need project qualification (e.g. a single-project engine) may omit this; callers probe with `?.`.',
+        description: 'Qualify a bare table name with its project prefix (C: engine-agnostic).\n\nMoved off `SemanticLayerService.qualifyTableName` (which misread `config.yaml project.name` — a game scope id, NOT an engine project) to the query provider, whose `Config.defaultProject` (cordis.patch.yml fills `ieu_cdm`) is the single source of truth for the engine\'s project. A per-table `override` (Task 3: `SearchHit.project` / `update_table_config`) takes precedence over the configured default. When both are absent (empty default + no override), the bare table name is returned unchanged — graceful degradation so a misconfigured engine still surfaces the bare name rather than `undefined.table`.\n\nOptional: a provider that does not need project qualification (e.g. a single-project engine) may omit this; callers probe with `?.`.',
         parameters: [{ name: 'tableName', description: 'The bare table name to qualify.' }, { name: 'override', description: 'Optional per-table project override (wins over defaultProject).' }],
         returns: 'The qualified `<project>.<tableName>`, or the bare `tableName` when no project resolves.',
       },
@@ -1272,7 +1272,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'schema',
     summary: 'The semantic-layer Cordis `Service`.',
-    description: 'The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-ODPS schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.',
+    description: 'The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-engine schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.',
     methods: [
       {
         signature: 'getRegistry(): DataSourceRegistry',
@@ -1294,7 +1294,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'setSchemaProvider(provider: SchemaProvider | undefined): void',
-        description: 'Mount a live-ODPS schema provider (P6b Q3 deferred; follow-up mounts the real one).',
+        description: 'Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).',
         parameters: [{ name: 'provider', description: 'the provider to delegate discover/describe/sample to, or undefined to clear.' }],
       },
       {

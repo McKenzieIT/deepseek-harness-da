@@ -26,7 +26,7 @@
  *
  * @module @deepseek-ai/dsh-nl2sql-engine/src/critic
  */
-import { PARTITION_COLUMNS, GateResult, CriticFinding, type CriticCtx } from './types.ts'
+import { GateResult, CriticFinding, type CriticCtx } from './types.ts'
 
 /** The critic verdict: pass/fail + reason + the findings that drove it. */
 export interface CriticResult {
@@ -148,7 +148,7 @@ function splitTopLevelCommas(s: string): string[] {
  * @returns True when any statement's WHERE clause references a partition column (or when no partition columns exist).
  */
 export function hasPartitionFilter(sql: string, partitionCols: ReadonlySet<string>): boolean {
-  const cols = new Set<string>([...partitionCols, ...PARTITION_COLUMNS].map(c => c.toLowerCase()))
+  const cols = new Set<string>([...partitionCols].map(c => c.toLowerCase()))
   if (cols.size === 0) return true // non-partition DIM table — no ds required
   const statements = sql.split(/\s*;\s*/)
   for (const stmt of statements) {

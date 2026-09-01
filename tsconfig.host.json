@@ -200,6 +200,7 @@
     { "path": "./packages/query/query" },
     { "path": "./packages/query/query-tool" },
     { "path": "./packages/query/query-maxcompute" },
+    { "path": "./packages/query/query-postgres" },
     { "path": "./packages/embedder/embedder" },
     { "path": "./packages/embedder/embedder-fakehash" },
     { "path": "./packages/embedder/embedder-http" },

@@ -9,15 +9,15 @@
  *    nl2sql-engine). load_* model-facing tools are DEFERRED separate tool
  *    packages (mirror tool-search-data-sources; preset already names them
  *    dsh-tool-load-table-definition / dsh-tool-load-event-definition).
- *  - Q2 seam scope: `ctx.schema` covers BOTH live-ODPS (discover/describe/sample)
+ *  - Q2 seam scope: `ctx.schema` covers BOTH live-engine (discover/describe/sample)
  *    AND substrate definitions (loadEventDefinition/loadTableDefinition). P13b
  *    CriticGuardData swaps to `ctx.schema.load_*` (params_fields/partitions).
- *  - Q3 live-ODPS implementation: DEFERRED — P6b ships the Service Definition +
- *    substrate + a stand-in provider for sync demo/tests; the real MaxCompute
+ *  - Q3 live-engine implementation: DEFERRED — P6b ships the Service Definition +
+ *    substrate + a stand-in provider for sync demo/tests; the real query
  *    provider (query-maxcompute sidecar adding schema tools, or an independent
  *    schema-maxcompute provider) is a follow-up. discover/describe/sample throw
  *    "no provider" until mounted; the P13b swap only needs substrate definitions
- *    (no live ODPS), so it is unblocked.
+ *    (no live engine), so it is unblocked.
  *  - Q4 Tier-2 audit: routes through `ctx.audit.recordTier2Write` (P8b real
  *    sqlite audit), NOT the prototype's flat JSON log (intranet-security-first
  *    unified audit trail). The substrate `Tier2Recorder` interface is satisfied
@@ -148,12 +148,12 @@ export {
   loadMetricDefinitions,
 } from './metrics.ts'
 
-// ── SchemaProvider: live-ODPS schema source (P6b Q3 deferred) ───────────
+// ── SchemaProvider: live-engine schema source (P6b Q3 deferred) ───────────
 // The real provider (query-maxcompute sidecar adding list/describe/sample
 // tools, or an independent schema-maxcompute provider) is a follow-up. P6b
 // ships this interface + a stand-in for sync demo/tests. discover/describe/
 // sample on the Service throw "no provider" until one is mounted.
-/** Live-ODPS schema source: discover/describe/sample tables for sync-write (P6b Q3 deferred; production mounts a real provider). */
+/** Live-engine schema source: discover/describe/sample tables for sync-write (P6b Q3 deferred; production mounts a real provider). */
 export interface SchemaProvider {
   /** List tables in a scope (optionally filtered by kind). Real impl: maxc list + per-table describe. */
   discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>
@@ -176,7 +176,7 @@ interface ScopeRegistryLike {
   activeId(): string | undefined
 }
 
-// ── ctx.schema Service Definition (Q2: covers live-ODPS + substrate) ───
+// ── ctx.schema Service Definition (Q2: covers live-engine + substrate) ───
 /** Configuration for the `ctx.schema` Cordis Service (semantic-layer root + default scope id). */
 export interface SemanticLayerConfig {
   /** Semantic-layer scope root (the dir with config.yaml/events/tables). */
@@ -202,7 +202,7 @@ declare module '@deepseek-ai/cordis' {
 
 /**
  * The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate
- * definitions (load_*, sync-read) + live-ODPS schema (discover/describe/sample,
+ * definitions (load_*, sync-read) + live-engine schema (discover/describe/sample,
  * delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes
  * (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.
  */
@@ -444,7 +444,7 @@ export class SemanticLayerService extends Service {
   }
 
   /**
-   * Mount a live-ODPS schema provider (P6b Q3 deferred; follow-up mounts the real one).
+   * Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).
    * @param provider - the provider to delegate discover/describe/sample to, or undefined to clear.
    */
   setSchemaProvider(provider: SchemaProvider | undefined): void {
@@ -727,7 +727,7 @@ export class SemanticLayerService extends Service {
     return this.scopeEpoch * 1_000_000 + getCorpusVersionFromLayer(this.semanticRoot)
   }
 
-  // ── live-ODPS schema (deferred; throws until a provider is mounted) ──
+  // ── live-engine schema (deferred; throws until a provider is mounted) ──
   /**
    * List tables in a scope (optionally filtered by kind) via the mounted provider.
    * @param scopeId - the scope to discover tables in.
@@ -736,7 +736,7 @@ export class SemanticLayerService extends Service {
    */
   async discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]> {
     if (this.provider === undefined) {
-      throw new Error('ctx.schema.discover: no live-ODPS schema provider mounted (P6b Q3 deferred; mount query-maxcompute schema provider or setSchemaProvider)')
+      throw new Error('ctx.schema.discover: no live-engine schema provider mounted (P6b Q3 deferred; mount query-maxcompute schema provider or setSchemaProvider)')
     }
     return this.provider.discover(scopeId, kind)
   }
@@ -748,7 +748,7 @@ export class SemanticLayerService extends Service {
    */
   async describe(tableName: string): Promise<TableMeta | null> {
     if (this.provider === undefined) {
-      throw new Error('ctx.schema.describe: no live-ODPS schema provider mounted (P6b Q3 deferred)')
+      throw new Error('ctx.schema.describe: no live-engine schema provider mounted (P6b Q3 deferred)')
     }
     return this.provider.describe(tableName)
   }
@@ -761,7 +761,7 @@ export class SemanticLayerService extends Service {
    */
   async sample(tableName: string, n?: number): Promise<string> {
     if (this.provider === undefined) {
-      throw new Error('ctx.schema.sample: no live-ODPS schema provider mounted (P6b Q3 deferred)')
+      throw new Error('ctx.schema.sample: no live-engine schema provider mounted (P6b Q3 deferred)')
     }
     return this.provider.sample(tableName, n)
   }
@@ -833,10 +833,10 @@ export class SemanticLayerService extends Service {
 }
 
 /**
- * Stand-in live-ODPS schema provider (P6b Q3 deferred). Mirrors the P6
+ * Stand-in live-engine schema provider (P6b Q3 deferred). Mirrors the P6
  * prototype's `schema-stub.mjs` fake tables so the decoupled sync flow
  * (discover -> TableMeta[] -> generate/merge YAML -> write) is demoable +
- * testable without ODPS. Production mounts a real provider (follow-up).
+ * testable without the engine. Production mounts a real provider (follow-up).
  */
 export class StandInSchemaProvider implements SchemaProvider {
   private readonly tables: Readonly<Record<string, TableMeta>>

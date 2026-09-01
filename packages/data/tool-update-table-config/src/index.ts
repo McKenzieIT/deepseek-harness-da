@@ -2,11 +2,11 @@
  * Model-facing `update_table_config` tool — the self-evolution #3b write entry.
  *
  * When a TABLE_NOT_FOUND surfaces (query-maxcompute failureKind=not_found), the
- * self-evolution loop asks the user which ODPS project the table lives in
+ * self-evolution loop asks the user which engine project the table lives in
  * (Task 6's `present_clarification`), then calls this tool to persist the
  * answer as a per-table `project` override on the table YAML. The next
  * `qualifyTable` retry reads the override (Task 3a) and qualifies the table
- * `<project>.<table>` so ODPS finds it — closing the loop without a code
+ * `<project>.<table>` so the engine finds it — closing the loop without a code
  * change or a restart.
  *
  * This is the third model-facing tool (after `tool-search-data-sources` and
@@ -132,7 +132,7 @@ function isAdminCaller(identity: unknown): boolean {
  * @param audit - the `ctx.audit` recorder, or undefined.
  * @param identity - the `ctx.identity` service, or undefined.
  * @param tableName - the model-supplied table name to override.
- * @param project - the ODPS project the table lives in.
+ * @param project - the engine project the table lives in.
  * @returns `{ ok: true, table_name, qualified_name }` on success, or `{ ok: false, error }`.
  */
 export async function updateTableConfigResult(
@@ -152,7 +152,7 @@ export async function updateTableConfigResult(
   }
   const proj = project.trim()
   if (!proj) {
-    return { ok: false, error: 'invalid project: must be a non-empty ODPS project name' }
+    return { ok: false, error: 'invalid project: must be a non-empty engine project name' }
   }
   if (schema === undefined) {
     return { ok: false, error: 'semantic-layer substrate not mounted (ctx.schema unavailable)' }
@@ -190,10 +190,10 @@ export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'update_table_config',
     description:
-      'Write a per-table ODPS project override to the table definition (self-'
-      + 'evolution: after asking the user which ODPS project a table lives in, '
+      'Write a per-table engine project override to the table definition (self-'
+      + 'evolution: after asking the user which engine project a table lives in, '
       + 'persist it so future qualifyTable retries resolve <project>.<table> '
-      + 'and ODPS finds the table). Admin-only. Returns { ok, qualified_name } '
+      + 'and the engine finds the table). Admin-only. Returns { ok, qualified_name } '
       + 'on success, or { ok: false, error } when the caller is not admin, the '
       + 'name is invalid, or the table is not on disk.',
     parameters: {
@@ -205,7 +205,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       project: {
         type: 'string',
         required: true,
-        description: 'The ODPS project the table lives in (written as the per-table `project` override).',
+        description: 'The engine project the table lives in (written as the per-table `project` override).',
       },
     },
     output: {

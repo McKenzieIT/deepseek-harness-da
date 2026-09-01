@@ -16,8 +16,10 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { InstanceId, QueryOutcome, QueryRequest } from './types.ts'
+import type { EngineConventions } from './conventions.ts'
 
 export type { InstanceId, QueryOutcome, QueryRequest, QuerySpec, QueryState, ScopeId } from './types.ts'
+export type { EngineConventions, ConventionFunction, ConventionCast, ConventionTemplate } from './conventions.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -76,7 +78,7 @@ export abstract class QueryEngine extends Service {
    * Qualify a bare table name with its project prefix (C: engine-agnostic).
    *
    * Moved off `SemanticLayerService.qualifyTableName` (which misread
-   * `config.yaml project.name` — a game scope id, NOT an ODPS project) to the
+   * `config.yaml project.name` — a game scope id, NOT an engine project) to the
    * query provider, whose `Config.defaultProject` (cordis.patch.yml fills
    * `ieu_cdm`) is the single source of truth for the engine's project. A
    * per-table `override` (Task 3: `SearchHit.project` / `update_table_config`)
@@ -94,6 +96,22 @@ export abstract class QueryEngine extends Service {
    * when no project resolves.
    */
   qualifyTable?(tableName: string, override?: string): string
+
+  /**
+   * The per-engine convention set for the nl2sql prompt dialect grounding
+   * (key_differences / functions / cast_map / sql_templates) + the future
+   * query-guard/cost/dialect consumer. D1 (GA-GT2-impl): the *types* live in
+   * the abstract package (`./conventions.ts`); a concrete provider subclass
+   * overrides this to return its locally-loaded convention set (the
+   * YAML-loading runtime stays the provider's concern). Default throws so a
+   * provider that does not ground a dialect surfaces the gap loudly rather
+   * than silently injecting an empty conventions block.
+   *
+   * @returns The resolved per-engine convention set for this concrete provider.
+   */
+  getConventions(): EngineConventions {
+    throw new Error('QueryEngine.getConventions: not implemented; override in a concrete provider subclass')
+  }
 }
 
 export default QueryEngine

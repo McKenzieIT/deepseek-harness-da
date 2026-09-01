@@ -23,7 +23,7 @@ export type QueryState = 'completed' | 'pending' | 'failed'
  * `mode` is a PROTOTYPE-ONLY knob the stand-in sidecar uses to drive the
  * P1-wiring scenarios (fast=Completed, slow=Pending, blocking=held in-flight
  * for cancel/crash, fail=Failed). A real pyodps sidecar derives pending vs
- * completed from actual ODPS execution and carries no mode; production
+ * completed from actual engine execution and carries no mode; production
  * hardening drops it.
  */
 export interface QueryRequest {
@@ -42,7 +42,7 @@ export interface QuerySpec {
 /**
  * Settled query outcome; one of three states (P4 decision B 3-state).
  * - completed: columns/rows/rowCount (truncated flags a capped row set).
- * - pending: instanceId to attach/cancel + progress; the ODPS job is still running.
+ * - pending: instanceId to attach/cancel + progress; the query job is still running.
  * - failed: error + failureKind (semantic, transport, …).
  */
 export interface QueryOutcome {

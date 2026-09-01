@@ -27,7 +27,7 @@ pnpm test packages/data/nl2sql-engine           # the 9 scenarios (vitest)
 pnpm typecheck                              # tsc -b (host)
 ```
 
-The 9 scenarios (S1–S9) validate BM25 linking + prompt + critic gate + JSON-path + feedback self-correction + near-dup gate + eval-gate L1 pass-rate + honest decline + the `sql_syntax_gate` slot. Deterministic (dsh-llm-replay stand-in + stand-in ODPS); no external LLM/ODPS key.
+The 9 scenarios (S1–S9) validate BM25 linking + prompt + critic gate + JSON-path + feedback self-correction + near-dup gate + eval-gate L1 pass-rate + honest decline + the `sql_syntax_gate` slot. Deterministic (dsh-llm-replay stand-in + stand-in engine); no external LLM/engine key.
 
 ## Code-review-low fixes (baked in)
 
@@ -39,7 +39,7 @@ The 9 scenarios (S1–S9) validate BM25 linking + prompt + critic gate + JSON-pa
 
 #### What the model sees
 
-`buildPrompt` (in `src/prompt.ts`) assembles the GENERATION-phase prompt section the model receives: the user question, a textual tool catalog (`search_data_sources`, `load_event_definition`, `query_data`, `check_query`, `critique_sql_tool`, `load_table_dimensions`, `save_accumulated_definition`, `resolve_term`), the staged direct-answer SOP (§3 prepare/generate/validate/execute), the honest-decline rule (§5), the eight SQL rules (§6), the rendered MaxCompute dialect conventions, the BM25-linked candidate data sources, and the event definition. In production P7b injects this section via `ctx.systemPrompt.assemble` at `phase=generation`; the eval runner's `Nl2sqlEngine.run` calls `this.llm.generate` directly with the same prompt.
+`buildPrompt` (in `src/prompt.ts`) assembles the GENERATION-phase prompt section the model receives: the user question, a textual tool catalog (`search_data_sources`, `load_event_definition`, `query_data`, `check_query`, `critique_sql_tool`, `load_table_dimensions`, `save_accumulated_definition`, `resolve_term`), the staged direct-answer SOP (§3 prepare/generate/validate/execute), the honest-decline rule (§5), the eight SQL rules (§6), the rendered engine dialect conventions, the BM25-linked candidate data sources, and the event definition. In production P7b injects this section via `ctx.systemPrompt.assemble` at `phase=generation`; the eval runner's `Nl2sqlEngine.run` calls `this.llm.generate` directly with the same prompt.
 
 #### Token effect
 
@@ -49,7 +49,7 @@ The full prompt is rebuilt and sent per query attempt; token cost scales with th
 
 Per-query prompt, not durably cached across runs; the stable prefix (tool catalog + SOP + eight rules + dialect conventions) is reusable across queries in a session when it repeats, but the candidate list, event definition, and question form the per-query tail that changes every query.
 
-### MaxCompute dialect conventions
+### engine dialect conventions
 
 #### What the model sees
 
@@ -67,6 +67,6 @@ The conventions section is constant across queries for one engine instance, so i
 
 - **F3 — Vector swap** — BM25-only retrieval; the seam is unchanged but the real vector provider (`ctx.retrieval` via P5b) is not yet wired. Schema-linking accuracy is bounded by BM25 recall until then.
 - **F4 — Session-level near-duplicate gate** — the engine-internal thin `NearDupGate` is retained, but cross-turn session-level dedup is deferred to the Not-yet-specified query-trio.
-- **F5 — Residual risk (execution feedback)** — regex + JSON-path + execution-feedback critic is retained (fail-open); sqlglot has no TS equivalent and no MaxCompute dialect. Documented residual risk: the critic may pass syntactically invalid SQL that only fails at execution time.
+- **F5 — Residual risk (execution feedback)** — regex + JSON-path + execution-feedback critic is retained (fail-open); sqlglot has no TS equivalent and no engine dialect. Documented residual risk: the critic may pass syntactically invalid SQL that only fails at execution time.
 - **F6 — Eval runner** — eval-gate-minimal ships now; the real `MultiTurnSession` eval runner is deferred to P11.
 - **`search_data_sources` tool registration** — the model-facing tool registration via `ctx.tools` was initially deferred (needed `@deepseek-ai/dsh-tools` API grounding); now shipped as `packages/data/tool-search-data-sources/`. Corpus is empty until P6b `ctx.schema` substrate is wired.
