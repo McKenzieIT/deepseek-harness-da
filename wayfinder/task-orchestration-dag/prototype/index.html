@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · G2 — DAG 面板放置方案</title>
+<style>
+  /* Throwaway prototype styles: dsw dark-theme tokens copied from
+     packages/client/ui-theme/src/styles/design-platform.css (body[data-ds-dark-theme]). */
+  :root {
+    --bg-base: rgb(21, 21, 23);
+    --bg-layer-1: rgb(35, 35, 36);
+    --bg-layer-2: rgb(44, 44, 46);
+    --bg-layer-3: rgb(53, 54, 56);
+    --sidebar-fill: rgb(27, 27, 28);
+    --bubble: rgb(44, 44, 46);
+    --border-l1: rgba(255, 255, 255, 0.06);
+    --border-l2: rgba(255, 255, 255, 0.12);
+    --label-primary: rgb(249, 250, 251);
+    --label-secondary: rgb(207, 211, 214);
+    --label-tertiary: rgb(173, 178, 184);
+    --label-dim: rgb(129, 133, 140);
+    --brand: rgb(103, 158, 254);
+    --green: rgb(78, 209, 126);
+    --amber: rgb(247, 173, 49);
+    --violet: rgb(167, 139, 250);
+    --red: rgb(242, 90, 90);
+    --hover: rgba(255, 255, 255, 0.08);
+    --active: rgba(255, 255, 255, 0.14);
+    --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+    background: var(--bg-base);
+    color: var(--label-primary);
+    overflow: hidden;
+  }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+  /* ===== AppFrame mock: sidebar | center | details (widths from columns.ts) ===== */
+  #frame { display: flex; height: 100vh; }
+  #sidebar {
+    width: 280px; min-width: 264px; max-width: 420px;
+    background: var(--sidebar-fill);
+    border-right: 1px solid var(--border-l1);
+    display: flex; flex-direction: column;
+    transition: width .25s ease;
+  }
+  #center { flex: 1; min-width: 640px; display: flex; flex-direction: column; }
+  #details {
+    width: 360px; min-width: 300px; max-width: 520px;
+    border-left: 1px solid var(--border-l1);
+    background: var(--bg-layer-1);
+    display: flex; flex-direction: column;
+    transition: width .2s ease;
+  }
+  #details[data-closed] { width: 0 !important; min-width: 0; border-left: none; overflow: hidden; }
+
+  /* ===== Sidebar: session list ===== */
+  .sb-head { display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px; }
+  .sb-head .ws { font-weight: 600; font-size: 13px; }
+  .sb-head .new {
+    margin-left: auto; border: 1px solid var(--border-l2); border-radius: 6px;
+    padding: 2px 8px; font-size: 12px; color: var(--label-secondary);
+  }
+  .sb-head .new:hover { background: var(--hover); }
+  .sb-search { margin: 0 14px 8px; padding: 5px 10px; border-radius: 6px; background: var(--bg-layer-2); color: var(--label-dim); font-size: 12px; }
+  .sb-list { flex: 1; overflow: auto; padding: 4px 8px; }
+  .sb-item { padding: 7px 10px; border-radius: 8px; color: var(--label-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sb-item:hover { background: var(--hover); }
+  .sb-item.active { background: rgb(67, 69, 74); color: var(--label-primary); }
+  .sb-user { border-top: 1px solid var(--border-l1); padding: 10px 14px; color: var(--label-tertiary); font-size: 12px; display: flex; gap: 8px; align-items: center; }
+  .avatar { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), var(--violet)); }
+
+  /* ===== Center: conversation ===== */
+  #conv-header {
+    height: 46px; display: flex; align-items: center; gap: 10px; padding: 0 16px;
+    border-bottom: 1px solid var(--border-l1);
+  }
+  #conv-header .title { font-weight: 600; }
+  .ch-model { font-size: 11px; color: var(--label-dim); border: 1px solid var(--border-l2); border-radius: 4px; padding: 1px 6px; }
+  #conv-header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  #conv-scroll { flex: 1; overflow: auto; padding: 20px 8%; display: flex; flex-direction: column; gap: 14px; }
+  .msg-user, .msg-ai { max-width: 86%; padding: 9px 14px; border-radius: 12px; }
+  .msg-user { align-self: flex-end; background: rgb(72, 104, 178); }
+  .msg-ai { align-self: flex-start; background: var(--bubble); }
+  .msg-ai p { margin: 0 0 8px; color: var(--label-primary); }
+  .msg-ai p.dim { color: var(--label-tertiary); font-size: 12px; }
+
+  .toolcard {
+    border: 1px solid var(--border-l2); border-radius: 8px; overflow: hidden;
+    margin: 6px 0; font-size: 12px;
+  }
+  .toolcard-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-layer-3); }
+  .toolcard-head .name { font-family: var(--mono); color: var(--label-secondary); }
+  .toolcard-head .ok { color: var(--green); margin-left: auto; font-size: 11px; }
+  .toolcard-head .run { color: var(--violet); margin-left: auto; font-size: 11px; }
+  .toolcard pre {
+    margin: 0; padding: 8px 10px; font-family: var(--mono); font-size: 11px;
+    color: var(--label-tertiary); background: rgb(27, 27, 28); overflow: auto;
+  }
+
+  /* ===== Input zone + dock strip (conversation.input.dock) ===== */
+  #input-zone { padding: 8px 8% 16px; }
+  #dock-strip-zone:empty { display: none; }
+  .dock-strip {
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px; margin-bottom: 6px;
+    border: 1px solid var(--border-l1); border-radius: 10px 10px 0 0;
+    background: var(--bg-layer-2); color: var(--label-secondary); font-size: 12px;
+    cursor: pointer;
+  }
+  .dock-strip:hover { background: var(--bg-layer-3); }
+  .composer {
+    display: flex; gap: 10px; padding: 10px 14px;
+    background: var(--bg-layer-2); border: 1px solid var(--border-l1); border-radius: 12px;
+  }
+  #dock-strip-zone:not(:empty) + .composer { border-top-left-radius: 0; border-top-right-radius: 0; }
+  .composer .ph { flex: 1; color: var(--label-dim); align-self: center; }
+  .composer .send { background: var(--brand); color: #fff; border-radius: 8px; padding: 4px 14px; font-size: 12px; }
+
+  /* ===== Details column ===== */
+  #details-head { border-bottom: 1px solid var(--border-l1); min-height: 40px; }
+  #details-head .plain { padding: 10px 14px; color: var(--label-secondary); font-size: 12px; }
+  .tabs { display: flex; height: 40px; }
+  .tab {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    color: var(--label-dim); font-size: 12px; border-bottom: 2px solid transparent;
+  }
+  .tab:hover { color: var(--label-secondary); }
+  .tab.active { color: var(--label-primary); border-bottom-color: var(--brand); }
+  .tab .badge { background: var(--violet); color: #fff; border-radius: 8px; font-size: 10px; padding: 0 5px; }
+  #details-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .dtl-card { border-bottom: 1px solid var(--border-l1); padding: 10px 14px; font-size: 12px; }
+  .dtl-card .h { display: flex; gap: 8px; color: var(--label-secondary); margin-bottom: 6px; }
+  .dtl-card .h .name { font-family: var(--mono); }
+
+  /* ===== Shared DAG panel bits ===== */
+  .dag-summary {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    font-size: 12px; color: var(--label-secondary); border-bottom: 1px solid var(--border-l1);
+    flex: none;
+  }
+  .dag-summary .chip { display: inline-flex; gap: 4px; align-items: center; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dag-summary .spacer { flex: 1; }
+  .btn-mini {
+    border: 1px solid var(--border-l2); border-radius: 6px; padding: 2px 8px;
+    font-size: 11px; color: var(--label-secondary);
+  }
+  .btn-mini:hover { background: var(--hover); color: var(--label-primary); }
+  .dag-canvas-wrap { flex: 1; position: relative; min-height: 0; }
+  .dag-canvas-wrap > div { position: absolute; inset: 0; }
+  .dag-hint { flex: none; padding: 6px 12px; font-size: 11px; color: var(--label-dim); border-top: 1px solid var(--border-l1); }
+
+  .node-detail { border-top: 1px solid var(--border-l2); background: var(--bg-layer-2); padding: 10px 12px; font-size: 12px; flex: none; }
+  .node-detail .row { display: flex; gap: 8px; margin: 2px 0; }
+  .node-detail .k { color: var(--label-dim); width: 58px; flex: none; }
+  .node-detail .v { color: var(--label-secondary); font-family: var(--mono); font-size: 11px; }
+  .node-detail .head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .node-detail .head b { font-size: 12px; }
+  .status-chip { font-size: 10px; border-radius: 4px; padding: 1px 6px; border: 1px solid; }
+  .st-completed { color: var(--green); border-color: var(--green); }
+  .st-in_progress, .st-running { color: var(--brand); border-color: var(--brand); }
+  .st-pending { color: var(--label-dim); border-color: var(--label-dim); }
+  .st-ended { color: var(--label-dim); border-color: var(--label-dim); }
+
+  /* ===== Variant switcher (prototype chrome — not part of the design) ===== */
+  #switcher {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px; z-index: 1000;
+    background: rgb(15, 17, 21); border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px; padding: 6px 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+    user-select: none;
+  }
+  #switcher .arrow { width: 26px; height: 26px; border-radius: 50%; background: var(--bg-layer-3); color: var(--label-secondary); display: grid; place-items: center; }
+  #switcher .arrow:hover { background: var(--active); color: #fff; }
+  #switcher .vlabel { text-align: center; line-height: 1.25; }
+  #switcher .vlabel b { font-size: 12px; display: block; }
+  #switcher .vlabel span { font-size: 10px; color: var(--label-dim); }
+  #proto-tag { position: fixed; left: 12px; bottom: 18px; z-index: 1000; font-size: 10px; color: var(--label-dim); opacity: .8; }
+
+  /* ===== Overlay layer (shell.overlay) ===== */
+  #overlay-layer { position: fixed; inset: 0; pointer-events: none; z-index: 500; }
+  #overlay-layer > * { pointer-events: auto; }
+
+  .float-win {
+    position: absolute; display: flex; flex-direction: column;
+    background: var(--bg-layer-1); border: 1px solid var(--border-l2); border-radius: 12px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6); overflow: hidden;
+  }
+  .float-win .fw-head {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border-bottom: 1px solid var(--border-l1); cursor: grab; flex: none;
+    background: var(--bg-layer-2);
+  }
+  .float-win .fw-head:active { cursor: grabbing; }
+  .float-win .fw-head b { font-size: 12px; }
+  .float-win .fw-head .spacer { flex: 1; }
+  .fw-btn { width: 22px; height: 22px; border-radius: 6px; color: var(--label-dim); display: grid; place-items: center; }
+  .fw-btn:hover { background: var(--hover); color: var(--label-primary); }
+  .fw-resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
+  .float-pill {
+    position: absolute; right: 388px; bottom: 26px;
+    display: flex; align-items: center; gap: 8px; padding: 7px 14px;
+    background: var(--bg-layer-3); border: 1px solid var(--border-l2); border-radius: 999px;
+    color: var(--label-secondary); font-size: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.45);
+  }
+  .float-pill:hover { color: var(--label-primary); border-color: rgba(255,255,255,.24); }
+  .float-pill .live { width: 7px; height: 7px; border-radius: 50%; background: var(--violet); box-shadow: 0 0 6px var(--violet); }
+
+  /* ===== Variant B sidebar section ===== */
+  #sb-dag-zone { flex: none; border-top: 1px solid var(--border-l1); }
+  .sb-dag-head {
+    display: flex; align-items: center; gap: 8px; padding: 9px 14px;
+    color: var(--label-secondary); cursor: pointer; font-size: 12px;
+  }
+  .sb-dag-head:hover { background: var(--hover); }
+  .sb-dag-head b { font-size: 12px; color: var(--label-primary); }
+  .sb-dag-head .spacer { flex: 1; }
+  .sb-dag-mini { padding: 0 14px 10px; font-size: 11px; color: var(--label-dim); }
+  .sb-dag-mini .bar { height: 4px; border-radius: 2px; background: var(--bg-layer-3); overflow: hidden; margin-bottom: 6px; }
+  .sb-dag-mini .bar i { display: block; height: 100%; background: var(--green); transition: width .4s; }
+  .sb-dag-body { display: flex; flex-direction: column; height: 46vh; border-top: 1px solid var(--border-l1); }
+  .sb-popover {
+    position: absolute; z-index: 600; width: 240px;
+    background: var(--bg-layer-1); border: 1px solid var(--border-l2); border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.55);
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%);
+    background: rgb(67, 69, 74); border: 1px solid var(--border-l2); border-radius: 8px;
+    padding: 6px 14px; font-size: 12px; z-index: 1200; color: var(--label-primary);
+  }
+</style>
+</head>
+<body>
+
+<div id="frame">
+  <!-- ===================== sidebar (264–420, default 280) ===================== -->
+  <aside id="sidebar">
+    <div class="sb-head">
+      <span class="ws">deepseek-harness-da</span>
+      <button class="new">＋ 新会话</button>
+    </div>
+    <div class="sb-search">搜索会话…</div>
+    <nav class="sb-list">
+      <div class="sb-item active">G2 面板放置原型</div>
+      <div class="sb-item">G3 预设通用性策略</div>
+      <div class="sb-item">语义层 · eval 基线对比</div>
+      <div class="sb-item">K11 案例集扩充 · 语音</div>
+      <div class="sb-item">workflow 结果截断排查</div>
+      <div class="sb-item">会话标题生成复盘</div>
+    </nav>
+    <div id="sb-dag-zone"></div>
+    <div class="sb-user"><span class="avatar"></span><span>mckenzie · 免费额度</span></div>
+  </aside>
+
+  <!-- ===================== center (min 640) ===================== -->
+  <main id="center">
+    <header id="conv-header">
+      <span class="title">G2 面板放置原型</span>
+      <span class="ch-model">glm-5.2</span>
+      <div id="conv-header-actions"></div>
+    </header>
+
+    <div id="conv-scroll">
+      <div class="msg-user">帮我把现在的 todo 列表升级成 DAG 可视化:任务节点、依赖边、子代理和工作流都要在一个图里,侧边点击可以伸缩。</div>
+
+      <div class="msg-ai">
+        <p>好的。按照 G1 的决定,我注册了 <b>dag_task_*</b> 工具替代 todo_write,现在建立任务依赖:</p>
+        <div class="toolcard">
+          <div class="toolcard-head"><span class="name">dag_task_create</span><span class="ok">✓ 完成</span></div>
+          <pre>{
+  "subject": "实现会话事件投影层",
+  "blockedBy": ["dag_t1"],
+  "writeScopes": ["packages/dag/**"]
+}</pre>
+        </div>
+        <div class="toolcard">
+          <div class="toolcard-head"><span class="name">subagent</span><span class="run">● 运行中 · 评审代理</span></div>
+          <pre>{ "prompt": "评审投影层事件折叠方案…" } </pre>
+        </div>
+        <p class="dim">评审子代理与并行审计工作流已挂到当前任务下,图里用流动虚线表示派生关系。</p>
+      </div>
+
+      <div class="msg-ai">
+        <p>投影层事件折叠已实现,接下来并行推进客户端渲染与预设接入。</p>
+        <div class="toolcard">
+          <div class="toolcard-head"><span class="name">bash</span><span class="ok">✓ 退出码 0</span></div>
+          <pre>$ pnpm --filter @deepseek-ai/dag-tool run test</pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="input-zone">
+      <div id="dock-strip-zone"></div>
+      <div class="composer">
+        <span class="ph">发送消息,⌘K 查看命令…</span>
+        <button class="send">发送</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== details (300–520, default 360) ===================== -->
+  <aside id="details">
+    <header id="details-head"><div class="plain">工具调用详情</div></header>
+    <div id="details-body">
+      <div class="dtl-card">
+        <div class="h"><span class="name">bash</span><span>退出码 0 · 1.4s</span></div>
+        <pre style="margin:0;font-family:var(--mono);font-size:11px;color:var(--label-tertiary);white-space:pre-wrap;">$ pnpm --filter @deepseek-ai/dag-tool run test
+ ✓ src/projection.test.ts (12 tests)
+ Tests  12 passed (12)</pre>
+      </div>
+      <div class="dtl-card">
+        <div class="h"><span class="name">subagent · 评审代理</span><span style="color:var(--violet)">● 运行中</span></div>
+        <div style="color:var(--label-dim);font-size:11px;">已运行 2m 14s · 上下文 41%</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div id="overlay-layer"></div>
+
+<div id="proto-tag">PROTOTYPE · throwaway · G2 面板放置</div>
+<div id="switcher">
+  <button class="arrow" id="sw-prev" title="上一个方案 (←)">←</button>
+  <div class="vlabel"><b id="sw-name">A · 右侧详情栏</b><span id="sw-desc">details.aux 席位</span></div>
+  <button class="arrow" id="sw-next" title="下一个方案 (→)">→</button>
+</div>
+
+<script src="/vendor/g6.min.js"></script>
+<script src="dag-data.js"></script>
+<script src="dag-graph.js"></script>
+<script src="variants.js"></script>
+</body>
+</html>

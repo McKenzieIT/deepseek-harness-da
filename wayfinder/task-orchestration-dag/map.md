@@ -32,13 +32,16 @@ The map is done when: every architectural decision is locked (data model, UI pla
   - `packages/workflow/workflow/` — `ctx.workflowEngine` service with lifecycle events
 - **Key packages (new, our plugin)**:
   - `packages/dag/tool-dag-task/` — server-side tool plugin (dag_task_create/update/get/list + event listeners)
-  - `packages/client/ui-task-dag/` — client-side ConversationNodeDefinition + G6 v5 dagre renderer
+  - `packages/client/ui-task-dag/` — client-side DagModelService (Cordis) + `useDagModel()` Hook + G6 v5 dagre sidebar renderer
 - **Standing principles**:
-  - The DAG visualization is a **client-side rendering concern** backed by session projections — the server-side data model emits events, the client folds and renders.
+  - The DAG is **execution infrastructure**, not just a visualization layer — dsh-data-agent will use it as an orchestration substrate. Accuracy of task-agent relationships is a hard requirement.
+  - The DAG data model is maintained by a **Cordis service (`DagModelService`)** with synchronous command API + event persistence. Read-write consistency is guaranteed within a session.
+  - The DAG visualization is a **sidebar rendering concern** driven by `useDagModel()` React Hook — it does NOT use ConversationNodeDefinition.
   - **Zero upstream modifications** — extend via documented Cordis extension points only.
   - New session events must carry `ignorable: true` for persistence compatibility.
   - G6 v5 is already a project dependency with proven animation support — strongly prefer it over introducing a new graph library.
   - The user wants the panel to be **sidebar-positioned, click-to-expand/collapse** (not inline in the conversation or in the details column).
+  - DAG state is **session-scoped** (consistent with Goal scope). UUID ids + sessionId fields pre-reserve cross-session extensibility.
 
 ## Ticket frontier
 
@@ -49,16 +52,16 @@ The map is done when: every architectural decision is locked (data model, UI pla
                                         │                                      │
 [✓] R2 G6 dagre layout feasibility ────┘                                      ├──▶ [✓] G3 preset universality
                                                                                │
-                                                                               └──▶ G5 dynamic insertion ──▶ G6 infra contracts ──┬──▶ G7 writeScopes detection
+                                                                               └──▶ [✓] G5 dynamic insertion ──▶ G6 infra contracts ──┬──▶ G7 writeScopes detection
                                                                                                            │                     ├──▶ G9 team-task integration
                                                                                                            │                     └──▶ G10 subagent tree integration
                                                                                                            │
                                                                                                            └──▶ G11 view simplification strategies
 ```
 
-**Frontier (unblocked):** G2 (prototype, **in-progress**), G5 (grilling, **in-progress** — D1-D4 resolved)
-**Blocked:** G4 (by G2), G6 (by G5), G7/G9/G10 (by G6), G8 (by G4), G11 (by G5+G6)
-**In-progress:** G2 (prototype — panel placement mockups), G5 (grilling — D5-D8 remaining)
+**Frontier (unblocked, open):** G2 (prototype, **in-progress**), G6 (grilling — unblocked by G5 ✅)
+**Blocked:** G4 (by G2), G7/G9/G10 (by G6), G8 (by G4), G11 (by G6 — G5 ✅)
+**Next tickets to resolve:** G6 (grilling — infra contracts, informed by G5 D2/D3), G2 (prototype — panel placement mockups)
 
 ## Decisions so far
 
@@ -67,12 +70,13 @@ The map is done when: every architectural decision is locked (data model, UI pla
 - [R3 subagent/workflow event surface](research/R3-subagent-workflow-event-surface.md) — workflow events are well-persisted (4 `tool-workflow/*` types); subagent events are ephemeral in parent; **no task↔subagent linkage exists** — primary gap requiring a new correlation mechanism.
 - [G1 DAG data model decision](tickets/G1-dag-data-model-decision.md) — **Option B-prime: terminal state plugin with composite projection**. Disables `tool-todo`, registers `dag_task_*` tools with structured DagTask model (id, revision, subject, status, blockedBy with cycle detection, ownerId, writeScopes). 5 node types (task, team-task, workflow-run, workflow-agent, subagent), 4 edge types (dependency, sequence, containment, spawning). Solves task↔subagent gap via `tools/pre-execute` interception. State display: Option Y (node+edge animation) now, Z as enhancement. Zero upstream modifications — all new code in plugin packages.
 - [G3 preset universality strategy](tickets/G3-preset-universality-strategy.md) — **新建独立 Bundle（`packages/bundle/dag/`）+ 无条件注册 + 自然降级**。Bundle 的 `cordis.patch.yml` disable `tool-todo` + insert `tool-dag-task`；`ctx.tools.restrict()` 屏蔽 preset 级 `todo_write` 重挂。所有 preset 均可用 DAG 工具，节点类型随可用服务缩减（非禁用）。Phase-gate 集成（UNIVERSAL 白名单 + session events）归入 data-agent map [PG1](../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)。不创建新 preset，不 patch 现有 preset — profile 添加 bundle 即可。
+- [G5 dynamic node insertion design](tickets/G5-dynamic-node-insertion-design.md) — **8 项决策 resolved。** DAG 定位为执行基底（D2）；DagModelService Cordis 服务 + React Hook（D1）；同步命令式 API + 事件持久化保证读写一致性（D3）；节点永久保留 + `viewFilter` 管道（D4）；rAF 合并突发事件（D5）；全量 dagre + `prevGraph` 排序稳定 + 结构/状态变更分离（D6）；V1 不设规模硬上限（D7）；session-scoped 持久性与 Goal 一致（D8）。新增 G11（视图简化策略）。
 
 ## Not yet specified
 
 - **Data-agent phase-gate integration**: The data-agent's four-phase pipeline (`dsh-phase-gate`) is an implicit DAG (Understanding → Generation → Execution → Interpretation). G3 grilling 发现 phase-gate 当前零 session events（移植遗留），无法作为 DAG 数据源。已在 data-agent map 开票：[PG1 Phase-gate session events 改造](../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)（grilling）+ [调研 note](../data-agent/research/phase-gate-session-events.md)。**本 map 中任何 phase 节点渲染工作依赖 PG1 resolved。** UNIVERSAL 工具白名单 `todo` → `dag_task_*` 也归入 PG1。
 - **Goal-round-driver integration**: Goals have a linear phase state machine. Whether goal progression should appear in the DAG, and how, depends on the node taxonomy decision.
-- **Cross-session DAG persistence**: Whether the DAG state survives session boundaries (e.g., for durable goals that span sessions) depends on the infra contracts decision (G6).
+- **Cross-session DAG persistence**: G5 D8 confirmed DAG state is session-scoped (consistent with Goal, which is also session-scoped — verified from code). UUID ids + sessionId fields pre-reserve cross-session extensibility. Conflict resolution (CAS revision) deferred to G6. Goal does NOT currently span sessions (`goal-round-driver` is same-session only).
 - **dsh-data-agent DAG-aware planning**: The idea that data-agent can follow DAG task planning to generate Agents is downstream of the data model and preset integration decisions — can't specify until G3 and G6 are locked.
 - **Multi-agent communication/mailbox**: Agent-to-agent messaging for coordination is a separate concern from the task DAG model. May require its own service when multi-agent arrives.
 
