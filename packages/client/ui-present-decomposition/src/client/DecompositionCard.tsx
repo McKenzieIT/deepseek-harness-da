@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import type { ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 import clsx from 'clsx'
 import css from './DecompositionCard.module.css'
+import type { DecompositionKey } from './locales.ts'
 
 export interface Metric {
   name: string
@@ -21,20 +22,85 @@ export interface PresentDecompositionArgs {
 
 export interface DecompositionCardProps {
   block: ToolCallBlock
+  useSession: <S>(sel: (s: ConversationSnapshot) => S, eq?: (a: S, b: S) => boolean) => S
+  t: (key: DecompositionKey) => string
 }
 
-function parseArgs(argsRaw: string): PresentDecompositionArgs | null {
+/** argsRaw after defensive normalization: every field present and typed. */
+interface NormalizedArgs {
+  summary: string
+  metrics: Metric[]
+  dimensions: string[]
+  time_range: string
+  source?: string
+  filters: string[]
+  confidence?: number
+}
+
+const LOW_CONFIDENCE = 0.7
+
+/**
+ * Parse argsRaw defensively (R9-B2): every field is validated and normalized
+ * so a malformed payload degrades to the text fallback instead of throwing
+ * inside render. Duplicate-safe composite keys everywhere (suggestion-audit
+ * B1 lesson).
+ */
+function parseArgs(argsRaw: string): NormalizedArgs | null {
   try {
-    const parsed = JSON.parse(argsRaw) as PresentDecompositionArgs
-    if (typeof parsed.summary !== 'string' || !Array.isArray(parsed.metrics)) return null
-    return parsed
+    const parsed = JSON.parse(argsRaw) as Partial<PresentDecompositionArgs> | null
+    if (parsed === null || typeof parsed !== 'object') return null
+    if (typeof parsed.summary !== 'string' || parsed.summary === '') return null
+    if (!Array.isArray(parsed.metrics)) return null
+    const metrics: Metric[] = []
+    for (const m of parsed.metrics) {
+      if (m === null || typeof m !== 'object' || typeof m.name !== 'string' || m.name === '') continue
+      const unit = typeof m.unit === 'string' && m.unit !== '' ? m.unit : undefined
+      metrics.push({
+        name: m.name,
+        value: typeof m.value === 'string' ? m.value : '',
+        ...(unit !== undefined ? { unit } : {}),
+      })
+    }
+    if (metrics.length === 0) return null
+    const source = typeof parsed.source === 'string' && parsed.source !== '' ? parsed.source : undefined
+    const confidence = typeof parsed.confidence === 'number' && parsed.confidence >= 0 && parsed.confidence <= 1
+      ? parsed.confidence
+      : undefined
+    return {
+      summary: parsed.summary,
+      metrics,
+      dimensions: Array.isArray(parsed.dimensions)
+        ? parsed.dimensions.filter((d): d is string => typeof d === 'string')
+        : [],
+      time_range: typeof parsed.time_range === 'string' ? parsed.time_range : '',
+      filters: Array.isArray(parsed.filters)
+        ? parsed.filters.filter((f): f is string => typeof f === 'string')
+        : [],
+      ...(source !== undefined ? { source } : {}),
+      ...(confidence !== undefined ? { confidence } : {}),
+    }
   } catch {
     return null
   }
 }
 
-function isLowConfidence(confidence: number | undefined): boolean {
-  return confidence !== undefined && confidence < 0.7
+/** Whether the block belongs to the turn the conversation is still on. */
+function isLatestTurn(block: ToolCallBlock, snapshot: ConversationSnapshot): boolean {
+  if (!('kind' in block)) return true
+  const turnOrder = snapshot.chat.timeline.turnOrder
+  if (turnOrder.length === 0) return true
+  const latestTurn = turnOrder[turnOrder.length - 1] as number
+  const timing = snapshot.turnTimings.get(latestTurn)
+  if (!timing) return true
+  return block.time >= timing.startTime
+}
+
+function contentText(block: ToolCallBlock & { kind: 'tool-result' }): string {
+  return (block as unknown as { content: readonly { text?: string }[] }).content.map(c => c.text ?? '').join('\n').trim()
+}
+
+function interpolate(template: string, value: string): string {
+  return template.replace('{value}', value).replace('{count}', value)
 }
 
 function RunningState() {
@@ -49,8 +115,8 @@ function RunningState() {
   )
 }
 
-function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }) {
-  const text = (block as unknown as { content: readonly { text?: string }[] }).content.map(c => c.text ?? '').join('\n')
+function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }): JSX.Element {
+  const text = contentText(block)
   return (
     <div className={css.card}>
       <div className={css.fallback}>
@@ -60,11 +126,62 @@ function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-resul
   )
 }
 
-export function DecompositionCard({ block }: DecompositionCardProps) {
-  const [collapsed, setCollapsed] = useState(false)
+function ErrorState({ block, t }: { block: ToolCallBlock & { kind: 'tool-result' }; t: DecompositionCardProps['t'] }): JSX.Element {
+  const detail = contentText(block)
+  return (
+    <div className={css.card}>
+      <div className={css.error} role="alert">
+        <div className={css.errorTitle}>{t('error')}</div>
+        {detail !== '' && <div className={css.errorDetail}>{detail}</div>}
+        <div className={css.errorHint}>{t('errorHint')}</div>
+      </div>
+    </div>
+  )
+}
+
+/** One lineage segment: a micro label plus plain values or typed chips. */
+function LineageSegment({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <span className={css.lineageSegment}>
+      <span className={css.lineageLabel}>{label}</span>
+      {children}
+    </span>
+  )
+}
+
+/** Collapsed focal tail: time + up to three dimension chips on one line. */
+function MiniLine({ args }: { args: PresentDecompositionArgs }): JSX.Element | null {
+  const chips: JSX.Element[] = []
+  if (args.time_range !== '') {
+    chips.push(<span key="time" className={css.chip}>{args.time_range}</span>)
+  }
+  args.dimensions.slice(0, 3).forEach((d, i) => {
+    chips.push(<span key={`dim-${i}`} className={clsx(css.chip, css.chipDimension)} title={d}>{d}</span>)
+  })
+  if (chips.length === 0) return null
+  return <div className={css.miniLine}>{chips}</div>
+}
+
+/**
+ * Query-understanding card (P1 verdict): the card is the query's contract,
+ * not a result card. Focal line (summary as the title, confidence badge
+ * always visible, survives collapsing) → lineage chips row (time, dimensions,
+ * filters, source on one line) → metrics grid with calibers always visible
+ * in auto-filling columns → trust band (low-confidence warning, error row).
+ */
+export function DecompositionCard({ block, useSession, t }: DecompositionCardProps): JSX.Element | null {
+  // Toggled state wins once the user interacts; until then the card collapses
+  // itself on turns the conversation has moved past (P1 Phase 2).
+  const [toggled, setToggled] = useState<boolean | null>(null)
+  const isLatest = useSession(snapshot => isLatestTurn(block, snapshot))
+  const collapsed = toggled ?? !isLatest
 
   if (!('kind' in block)) {
     return <RunningState />
+  }
+
+  if (block.isError) {
+    return <ErrorState block={block} t={t} />
   }
 
   if (block.call === null) {
@@ -76,65 +193,82 @@ export function DecompositionCard({ block }: DecompositionCardProps) {
     return <FallbackContent block={block} />
   }
 
-  const lowConfidence = isLowConfidence(args.confidence)
+  const lowConfidence = args.confidence !== undefined && args.confidence < LOW_CONFIDENCE
+  const confidenceBadge = args.confidence !== undefined
+    ? interpolate(lowConfidence ? t('confidenceLow') : t('confidence'), args.confidence.toFixed(2))
+    : null
 
   return (
     <div className={clsx(css.card, lowConfidence && css.lowConfidence)}>
       <button
         type="button"
         className={css.header}
-        onClick={() => setCollapsed(v => !v)}
+        onClick={() => { setToggled(!collapsed) }}
         aria-expanded={!collapsed}
       >
         <span className={css.chevron} data-collapsed={collapsed || undefined}>▾</span>
-        <span className={css.headerTitle}>查询理解</span>
-        {lowConfidence && (
-          <span className={css.confidenceWarning}>理解可能不准确，请确认</span>
+        <span className={css.headerMain}>
+          <span className={css.eyebrow}>{t('cardTitle')}</span>
+          <span className={css.title} title={args.summary}>{args.summary}</span>
+        </span>
+        {confidenceBadge !== null && (
+          <span className={clsx(css.confidence, lowConfidence && css.confidenceLow)}>{confidenceBadge}</span>
         )}
       </button>
-      {!collapsed && (
-        <div className={css.body}>
-          <p className={css.summary}>{args.summary}</p>
-          <div className={css.metricsRow}>
-            {args.metrics.map(m => (
-              <div key={m.name} className={css.metricCard}>
-                <span className={css.metricValue}>{m.value}{m.unit ? ` ${m.unit}` : ''}</span>
-                <span className={css.metricLabel}>{m.name}</span>
+      {collapsed
+        ? <MiniLine args={args} />
+        : (
+          <div className={css.body}>
+            {(args.time_range !== '' || args.dimensions.length > 0 || args.filters.length > 0 || args.source !== undefined) && (
+              <div className={css.lineage}>
+                {args.time_range !== '' && (
+                  <LineageSegment label={t('timeLabel')}>
+                    <span className={css.lineageValue}>{args.time_range}</span>
+                  </LineageSegment>
+                )}
+                {args.dimensions.length > 0 && (
+                  <LineageSegment label={t('dimensionLabel')}>
+                    {args.dimensions.map((d, i) => (
+                      <span key={`dim-${i}`} className={clsx(css.chip, css.chipDimension)} title={d}>{d}</span>
+                    ))}
+                  </LineageSegment>
+                )}
+                {args.filters.length > 0 && (
+                  <LineageSegment label={t('filterLabel')}>
+                    {args.filters.map((f, i) => (
+                      <span key={`filter-${i}`} className={clsx(css.chip, css.chipFilter)} title={f}>{f}</span>
+                    ))}
+                  </LineageSegment>
+                )}
+                {args.source !== undefined && (
+                  <LineageSegment label={t('sourceLabel')}>
+                    <span className={clsx(css.chip, css.chipSource)} title={args.source}>{args.source}</span>
+                  </LineageSegment>
+                )}
               </div>
-            ))}
-          </div>
-          <div className={css.metaSection}>
-            <div className={css.metaRow}>
-              <span className={css.metaLabel}>维度</span>
-              <span className={css.metaValue}>
-                {args.dimensions.map(d => (
-                  <span key={d} className={css.badge}>{d}</span>
+            )}
+            <div className={css.metrics}>
+              <div className={css.metricsCaption}>{interpolate(t('metricsCaption'), String(args.metrics.length))}</div>
+              <div className={css.metricsGrid}>
+                {args.metrics.map((m, i) => (
+                  <div key={`${m.name}-${i}`} className={css.metricCell}>
+                    <div className={css.metricTop}>
+                      <span className={css.metricName} title={m.name}>{m.name}</span>
+                      {m.unit !== undefined && <span className={css.metricUnit}>{m.unit}</span>}
+                    </div>
+                    {m.value !== '' && <div className={css.metricExpr} title={m.value}>{m.value}</div>}
+                  </div>
                 ))}
-              </span>
-            </div>
-            <div className={css.metaRow}>
-              <span className={css.metaLabel}>时间范围</span>
-              <span className={css.metaValue}>{args.time_range}</span>
-            </div>
-            {args.source !== undefined && (
-              <div className={css.metaRow}>
-                <span className={css.metaLabel}>数据源</span>
-                <span className={css.metaValue}>{args.source}</span>
               </div>
-            )}
-            {args.filters !== undefined && args.filters.length > 0 && (
-              <div className={css.metaRow}>
-                <span className={css.metaLabel}>筛选</span>
-                <span className={css.metaValue}>
-                  {args.filters.map(f => (
-                    <span key={f} className={css.badge}>{f}</span>
-                  ))}
-                </span>
+            </div>
+            {lowConfidence && (
+              <div className={css.warningLine}>
+                <span aria-hidden="true">⚠</span>
+                <span>{t('warning')}</span>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
     </div>
   )
 }

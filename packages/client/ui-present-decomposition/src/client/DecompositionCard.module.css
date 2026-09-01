@@ -1,36 +1,50 @@
+/* Query-understanding card (P1 verdict): focal line → lineage chips →
+   always-visible metric grid → trust band. Alias tokens only — the previous
+   stylesheet referenced eight alias names that do not exist in ui-theme
+   (border-primary / surface-* / content-* / state-warning-primary), so the
+   card rendered without border, surface, or text hierarchy (R9-A1). */
+
 .card {
-  border-radius: 8px;
-  border: 1px solid var(--dsw-alias-border-primary);
-  background: var(--dsw-alias-surface-primary);
+  border-radius: 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
   overflow: hidden;
 }
 
 .lowConfidence {
-  border-color: var(--dsw-alias-state-warning-primary);
-  border-width: 2px;
+  border-color: var(--dsw-alias-state-warn-primary);
 }
+
+/* ── Focal line: the summary IS the title; survives collapsing ── */
 
 .header {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--dsw-alias-content-primary);
+  font: inherit;
+  line-height: 1.5;
+  color: inherit;
   text-align: left;
 }
 
 .header:hover {
-  background: var(--dsw-alias-surface-hover);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.header:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
 }
 
 .chevron {
   display: inline-flex;
+  flex-shrink: 0;
+  color: var(--dsw-alias-label-tertiary);
   transition: transform 150ms ease;
 }
 
@@ -38,100 +52,221 @@
   transform: rotate(-90deg);
 }
 
-.headerTitle {
+.headerMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--dsw-alias-label-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confidence {
+  flex-shrink: 0;
+  display: inline-flex;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.confidenceLow {
+  background: var(--dsw-alias-state-warn-tertiary);
+  color: var(--dsw-alias-state-warn-label);
   font-weight: 600;
 }
 
-.confidenceWarning {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--dsw-alias-state-warning-primary);
-  font-weight: 500;
+/* ── Collapsed focal tail ── */
+
+.miniLine {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  padding: 0 12px 9px 28px;
 }
+
+/* ── Expanded body ── */
 
 .body {
-  padding: 0 12px 12px;
+  padding: 2px 12px 11px 28px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 
-.summary {
-  margin: 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--dsw-alias-content-secondary);
-}
-
-.metricsRow {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.metricCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 14px;
-  border-radius: 6px;
-  background: var(--dsw-alias-surface-secondary);
-  min-width: 80px;
-}
-
-.metricValue {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--dsw-alias-content-primary);
-}
-
-.metricLabel {
-  font-size: 11px;
-  color: var(--dsw-alias-content-tertiary);
-}
-
-.metaSection {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.metaRow {
+.lineage {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.metaLabel {
-  flex-shrink: 0;
-  color: var(--dsw-alias-content-tertiary);
-  min-width: 56px;
-}
-
-.metaValue {
-  display: flex;
+  gap: 10px 14px;
   flex-wrap: wrap;
-  gap: 4px;
-  color: var(--dsw-alias-content-primary);
 }
 
-.badge {
+.lineageSegment {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.lineageLabel {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.lineageValue {
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.chip {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--dsw-alias-surface-secondary);
-  color: var(--dsw-alias-content-secondary);
+  padding: 1px 7px;
+  border-radius: 5px;
   font-size: 11px;
-  font-weight: 500;
-  line-height: 16px;
+  line-height: 17px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Skeleton loading */
+.chipFilter {
+  background: none;
+  border: 1px dashed var(--dsw-alias-border-l3);
+}
+
+.chipSource {
+  background: none;
+  border: 1px solid var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* ── Metrics: calibers always visible, columns adapt to card width —
+   ten metrics fold into ~five compact rows instead of stacking lines ── */
+
+.metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding-top: 8px;
+}
+
+.metricsCaption {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 5px 16px;
+}
+
+.metricCell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.metricTop {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.metricName {
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metricUnit {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.metricExpr {
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--dsw-alias-label-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* ── Trust band ── */
+
+.warningLine {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--dsw-alias-state-warn-label);
+}
+
+.error {
+  margin: 8px 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  background: var(--dsw-alias-bg-layer-1);
+  font-size: 12px;
+}
+
+.errorTitle {
+  font-weight: 600;
+  color: var(--dsw-alias-state-error-primary);
+  margin-bottom: 2px;
+}
+
+.errorDetail {
+  color: var(--dsw-alias-label-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.errorHint {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* ── Skeleton / fallback ── */
+
 .skeleton {
   display: flex;
   flex-direction: column;
@@ -142,16 +277,15 @@
 .skeletonLine {
   height: 14px;
   border-radius: 4px;
-  background: var(--dsw-alias-surface-secondary);
-  animation: pulse 1.2s ease-in-out infinite;
+  background: var(--dsw-alias-bg-skeleton);
+  animation: decomposition-pulse 1.2s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes decomposition-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
 
-/* Fallback */
 .fallback {
   padding: 12px;
 }
@@ -160,7 +294,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-content-secondary);
+  color: var(--dsw-alias-label-secondary);
   white-space: pre-wrap;
   word-break: break-word;
 }

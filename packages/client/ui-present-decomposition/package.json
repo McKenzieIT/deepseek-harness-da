@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-present-decomposition",
-  "description": "Toolview card for the present_decomposition INTERPRETATION tool: structured query decomposition with metrics, dimensions, and confidence indicator",
+  "description": "Toolview card for the present_decomposition INTERPRETATION tool: query-contract card with focal summary, lineage chips, always-visible metric calibers, and a trust band",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
@@ -32,7 +32,8 @@
   "dsh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime"
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale"
       ],
       "platform": "web"
     }
@@ -47,12 +48,17 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-client-locale": "workspace:^",
     "@deepseek-ai/dsh-client-runtime": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-tool": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-client-locale": "workspace:^",
     "@deepseek-ai/dsh-client-runtime": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-tool": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@types/react": "~18.3.1",
     "react": "^18.2.0"

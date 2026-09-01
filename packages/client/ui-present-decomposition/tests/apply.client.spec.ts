@@ -3,6 +3,16 @@ import { Context } from '@deepseek-ai/cordis'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-present-decomposition/client'
 
+interface StoredEntry {
+  options: { key?: string }
+  locale?: string
+}
+
+interface LocaleRegistration {
+  ns: string
+  dict: { zh: Record<string, string>; en: Record<string, string> }
+}
+
 async function bench() {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
@@ -19,21 +29,37 @@ async function bench() {
     } as never,
     () => null,
   )
-  return { ctx, slots }
+  const registered: LocaleRegistration[] = []
+  ctx.provide('locale', {
+    register: (ns: string, dict: LocaleRegistration['dict']) => {
+      registered.push({ ns, dict })
+      return () => {}
+    },
+  } as never)
+  return { ctx, slots, registered }
+}
+
+function getEntry(slots: SlotRegistry): StoredEntry {
+  const entries = slots.entries('tool.call.toolview') as unknown as StoredEntry[]
+  return entries.find(e => e.options.key === 'present_decomposition')!
 }
 
 describe('ui-present-decomposition apply', () => {
-  it('declares only the slots service', () => {
-    expect(inject).toEqual(['slots'])
+  it('declares the slots and locale services', () => {
+    expect(inject).toEqual(['slots', 'locale'])
   })
 
-  it('registers the present_decomposition keyed toolview', async () => {
-    const { ctx, slots } = await bench()
+  it('registers the present_decomposition keyed toolview with its locale namespace', async () => {
+    const { ctx, slots, registered } = await bench()
     await ctx.plugin({ inject: [...inject], apply }).await()
     await new Promise((r) => { setTimeout(r, 0) })
-    const entries = slots.entries('tool.call.toolview')
-    const entry = entries.find(e => e.options.key === 'present_decomposition')
+    const entry = getEntry(slots)
     expect(entry).toBeDefined()
+    expect(entry.locale).toBe('present.decomposition')
+    expect(registered).toHaveLength(1)
+    expect(registered[0]!.ns).toBe('present.decomposition')
+    expect(registered[0]!.dict.zh['cardTitle']).toBe('查询理解')
+    expect(registered[0]!.dict.en['cardTitle']).toBe('Query understanding')
   })
 
   it('removes the entry on teardown', async () => {
