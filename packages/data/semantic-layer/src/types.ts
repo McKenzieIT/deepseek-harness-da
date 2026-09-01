@@ -282,8 +282,8 @@ export const TableDefinitionSchema = z.object({
   duplicate_sample: z.array(z.record(z.string(), z.string())).default([]),
   label_columns: z.array(z.string()).default([]),
   freshness: z.preprocess(
-    (v) => v === '静态参考' ? 'static_reference' : v,
-    z.enum(['static_reference', 'T+1', '']).default('')
+    v => v === '静态参考' ? 'static_reference' : v,
+    z.enum(['static_reference', 'T+1', '']).default(''),
   ),
   dimension_refs: z.array(DimensionRefSchema).default([]),
 }).loose().superRefine((t, ctx) => {

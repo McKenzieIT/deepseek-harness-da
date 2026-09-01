@@ -116,6 +116,8 @@ export interface EngineDeps {
   readonly partitionResolver?: (tableName: string) => readonly string[] | null
   /** P14b: payload lookup for graph-expanded neighbors (injected, does not change RetrievalLinker interface). */
   readonly lookupDoc?: (id: string) => DataSourceDoc | undefined
+  /** GA-EXP2: optional prompt builder override for prompt language experiments. */
+  readonly promptBuilder?: (args: import('./prompt.ts').BuildPromptArgs) => string
 }
 
 /** The input arguments for a single engine run: the question + optional event definition + scope id. */
@@ -152,6 +154,7 @@ export class Nl2sqlEngine {
   private readonly graph: RelationGraphLike | undefined
   private readonly lookupDoc: ((id: string) => DataSourceDoc | undefined) | undefined
   private readonly partitionResolver: ((tableName: string) => readonly string[] | null) | undefined
+  private readonly promptBuilder: (args: import('./prompt.ts').BuildPromptArgs) => string
 
   constructor(deps: EngineDeps) {
     this.retrieval = deps.retrieval ?? new Bm25Linker(deps.dataSources ?? [])
@@ -161,6 +164,7 @@ export class Nl2sqlEngine {
     this.graph = deps.graph
     this.lookupDoc = deps.lookupDoc
     this.partitionResolver = deps.partitionResolver
+    this.promptBuilder = deps.promptBuilder ?? buildPrompt
   }
 
   private resolveHostTableInfo(sourceTable: string): HostTableInfo | undefined {
@@ -250,7 +254,7 @@ export class Nl2sqlEngine {
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
       // 2. prompt + 3. LLM generate
-      const prompt = buildPrompt({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
+      const prompt = this.promptBuilder({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback, prompt })
       const rawSql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql

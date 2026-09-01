@@ -15,6 +15,7 @@ import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Nl2sqlEngine, Bm25Linker, StandInOdps } from '@deepseek-ai/dsh-nl2sql-engine'
+import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
 
 import type {
   Llm,
@@ -237,12 +238,16 @@ const EXPANSION_SYSTEM_PROMPT =
 async function expandQuery(ctx: Context, question: string): Promise<string> {
   const llm = ctx.get('llm') as { stream?(options: unknown): AsyncIterable<unknown> } | undefined
   if (llm === undefined || typeof llm.stream !== 'function') return question
+  const exp2Arm = process.env.EXP2_ARM?.toUpperCase()
+  const expansionPrompt = (exp2Arm === 'B' || exp2Arm === 'C' || exp2Arm === 'D')
+    ? EXPANSION_SYSTEM_PROMPT_EN
+    : EXPANSION_SYSTEM_PROMPT
   try {
     const assembler = new BlockAssembler()
     const options = {
       provider: 'aga',
       model: 'qwen-flash',
-      system: EXPANSION_SYSTEM_PROMPT,
+      system: expansionPrompt,
       temperature: 0.1,
       maxTokens: 200,
       messages: [
@@ -312,6 +317,7 @@ class Nl2sqlAgentResponder implements AgentResponder {
       const def = svc?.loadTableDefinition?.(tableName)
       return def?.partitions?.map(p => p.name) ?? null
     }
+    const exp2Arm = process.env.EXP2_ARM?.toUpperCase()
     const engine = new Nl2sqlEngine({
       llm: this.llm,
       odps: this.odps,
@@ -320,6 +326,7 @@ class Nl2sqlAgentResponder implements AgentResponder {
       lookupDoc,
       partitionResolver,
       ...(graph !== undefined ? { graph } : {}),
+      ...((exp2Arm === 'B' || exp2Arm === 'C' || exp2Arm === 'D') ? { promptBuilder: buildPromptEN } : {}),
     })
 
     const result = await engine.run({ question, today: this.today, evalMode: true })
@@ -440,6 +447,8 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   }
 
   // 5. Build Collaborators
+  const exp2ArmBoot = process.env.EXP2_ARM?.toUpperCase()
+  if (exp2ArmBoot) console.log(`  [GA-EXP2] arm=${exp2ArmBoot} — prompt language variant active`)
   const llmAdapter = new CtxLlmAdapter(ctx, opts.provider, opts.model)
   const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery, opts.queryExpansion !== false)
   const judge = new LlmJudgeExecutor(llmAdapter)
@@ -448,6 +457,8 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   // 6. SQL Semantic Judge (enabled by default when no executor)
   let sqlJudge: SqlSemanticJudge | null = null
   if (!opts.noSqlJudge) {
+    const exp2Arm = process.env.EXP2_ARM?.toUpperCase()
+    const judgePromptOverride = exp2Arm === 'E' ? buildJudgePromptEN : undefined
     sqlJudge = new LlmSqlSemanticJudge(async (prompt) => {
       const assembler = new BlockAssembler()
       const options = {
@@ -472,7 +483,7 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
         .map(b => b.text)
         .join('')
       return reasoning || ''
-    })
+    }, judgePromptOverride)
   }
 
   return { ctx, collaborators: { agent, judge, executor, sqlJudge } }

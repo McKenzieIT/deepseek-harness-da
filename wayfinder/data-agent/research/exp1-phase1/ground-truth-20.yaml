@@ -1,0 +1,527 @@
+# GA-EXP1 Phase 1 — Ground Truth Annotations (20 tables)
+# Annotated: 2026-09-01
+# Method: manual review of YAML definitions + column semantics + heuristic code analysis
+#
+# Heuristic code: packages/data/semantic-layer/src/io.ts
+#   inferRole: ds/dt/date→dimension, *_id→dimension, MEASURE_TYPE+MEASURE_SUFFIX→measure, STRING→dimension, MEASURE_TYPE→measure, else→attribute
+#   generateDimYaml: PK=first *_id col, labels=STRING cols ending _name/_desc/_label/_title, kind=dim, freshness=static_reference
+#   generateTableYaml: no PK/labels/kind/freshness inference
+#
+# MEASURE_TYPES: BIGINT, INT, DOUBLE, FLOAT, DECIMAL
+# MEASURE_SUFFIXES: _count, _cnt, _sum, _amt, _amount, _avg, _total, _num
+# LABEL_SUFFIXES: _name, _desc, _label, _title
+
+# ═══════════════════════════════════════════════════════════════════
+# DWS TABLES (10)
+# ═══════════════════════════════════════════════════════════════════
+
+- table_name: dws_10000251_acc_summary_df
+  complexity: high
+  col_count: 69
+  ground_truth:
+    kind: dws
+    primary_key: [account_id, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues:
+      - col: os_id
+        type: int
+        current_role: dimension
+        correct_role: dimension
+        heuristic_would_say: dimension  # ends with _id
+        note: correct — _id suffix catches this
+  heuristic_output:
+    kind: ~  # generateTableYaml does not infer kind
+    primary_key: ~  # not inferred for DWS
+    label_columns: ~  # not inferred for DWS
+    freshness: ~  # not inferred for DWS
+  heuristic_correct:
+    kind: false  # not inferred
+    primary_key: false  # not inferred
+    label_columns: true  # N/A — no labels expected, none inferred
+    freshness: false  # not inferred
+
+- table_name: dws_10000251_dev_summary_df
+  complexity: high
+  col_count: 75
+  ground_truth:
+    kind: dws
+    primary_key: [utdid, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues:
+      - col: utdid
+        type: string
+        current_role: dimension
+        correct_role: dimension
+        heuristic_would_say: dimension  # STRING → dimension
+        note: correct by type, but heuristic would pick os_id as PK (wrong)
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false  # not inferred; if it were, would pick os_id (wrong — utdid is the device key)
+    label_columns: true
+    freshness: false
+
+- table_name: dws_10000251_play_stage_df
+  complexity: high
+  col_count: 68
+  ground_truth:
+    kind: dws
+    primary_key: [role_id, server_id, play_id, sub_play_id, stage_id, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues:
+      - col: pass_status
+        type: int
+        current_role: dimension
+        correct_role: dimension  # 0/1 binary flag, used for filtering
+        heuristic_would_say: measure  # INT without measure suffix → bare MEASURE_TYPE → measure
+        note: heuristic wrong — binary status flag is categorical
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false
+    label_columns: true
+    freshness: false
+
+- table_name: dws_10000251_bi_role_new_analysis_di
+  complexity: high
+  col_count: 49
+  ground_truth:
+    kind: dws
+    primary_key: [user_id, reg_ds]
+    label_columns: []
+    freshness: daily_incremental
+    column_role_issues:
+      - col: user_type
+        type: int
+        current_role: dimension
+        correct_role: dimension  # type code 1=device/2=account/3=role
+        heuristic_would_say: measure  # INT, _type not in MEASURE_SUFFIXES, bare MEASURE_TYPE → measure
+        note: heuristic wrong — categorical type code
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false
+    label_columns: true
+    freshness: false
+
+- table_name: dws_10000251_progression_card_df
+  complexity: high
+  col_count: 35
+  ground_truth:
+    kind: dws
+    primary_key: [role_id, card_id, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues:
+      - col: card_job
+        type: int
+        current_role: measure
+        correct_role: dimension  # 卡牌职业 = card class/job, a categorical dimension
+        heuristic_would_say: measure  # INT bare → measure
+        note: YAML role is WRONG (measure); heuristic also wrong — job/class is categorical
+      - col: card_star
+        type: int
+        current_role: measure
+        correct_role: measure  # 星级 is an ordinal count, measure is acceptable
+        heuristic_would_say: measure
+        note: debatable — star level is ordinal; measure is defensible
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false
+    label_columns: true
+    freshness: false
+
+- table_name: dws_10000251_maintask_process_df
+  complexity: low
+  col_count: 5
+  ground_truth:
+    kind: dws
+    primary_key: [role_id, server_id, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues: []
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false
+    label_columns: true
+    freshness: false
+
+- table_name: dws_10000251_pvp_score_df
+  complexity: low
+  col_count: 5
+  ground_truth:
+    kind: dws
+    primary_key: [pvp_type, role_id, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues:
+      - col: pvp_type
+        type: bigint
+        current_role: dimension
+        correct_role: dimension  # PVP mode type code
+        heuristic_would_say: measure  # BIGINT bare → measure
+        note: heuristic wrong — type code is categorical. Also DDL comment says "PVE玩法" (naming error)
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false
+    label_columns: true
+    freshness: false
+
+- table_name: dws_10000251_com_pay_order_df
+  complexity: low
+  col_count: 11
+  ground_truth:
+    kind: dws
+    primary_key: [order_id, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues:
+      - col: pay_type
+        type: int
+        current_role: attribute
+        correct_role: attribute  # type code 1=cash/2=paid voucher/3=free voucher; attribute is reasonable
+        heuristic_would_say: measure  # INT bare → measure
+        note: heuristic wrong — categorical code, attribute is correct
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false
+    label_columns: true
+    freshness: false
+
+- table_name: dws_10000251_active_code_info
+  complexity: low
+  col_count: 2
+  ground_truth:
+    kind: dim  # despite dws_ prefix! Table comment says "维表" (dimension table), it's a reference/config table
+    primary_key: [code]
+    label_columns: [type]  # debatable — type describes the code's distribution channel
+    freshness: static  # no partition, single snapshot
+    column_role_issues: []
+    note: misclassified by naming convention — dws_ prefix but semantically a dimension table
+  heuristic_output:
+    kind: ~  # DWS path, no kind inference
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false  # should be dim, not inferred (and prefix is dws_ so even if inferred, would be wrong)
+    primary_key: false
+    label_columns: false
+    freshness: false
+
+- table_name: dws_10000251_biz_acc_tag_df
+  complexity: low
+  col_count: 4
+  ground_truth:
+    kind: dws
+    primary_key: [user_type, user_id, ds]
+    label_columns: []
+    freshness: daily_snapshot
+    column_role_issues:
+      - col: user_type
+        type: bigint
+        current_role: dimension
+        correct_role: dimension  # type code 1/2/3
+        heuristic_would_say: measure  # BIGINT bare → measure
+        note: heuristic wrong — categorical type code
+  heuristic_output:
+    kind: ~
+    primary_key: ~
+    label_columns: ~
+    freshness: ~
+  heuristic_correct:
+    kind: false
+    primary_key: false
+    label_columns: true
+    freshness: false
+
+# ═══════════════════════════════════════════════════════════════════
+# DIM TABLES (10)
+# ═══════════════════════════════════════════════════════════════════
+
+- table_name: dim_10000251_charm_info
+  complexity: high
+  col_count: 19
+  ground_truth:
+    kind: dim
+    primary_key: [charm_id]
+    label_columns: [charm_name]
+    freshness: static_reference
+    column_role_issues: []
+  heuristic_output:
+    kind: dim
+    primary_key: [charm_id]  # first *_id column ✓
+    label_columns: [charm_name]  # STRING + _name suffix ✓
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: true
+    label_columns: true
+    freshness: true
+
+- table_name: dim_10000251_function_info_arch
+  complexity: high
+  col_count: ~  # columns not fully enumerated in sample
+  ground_truth:
+    kind: dim
+    primary_key: [function_id, ds]  # composite: per function per daily snapshot
+    label_columns: [function_name1, function_name2]
+    freshness: daily_snapshot  # _arch suffix + ds partition = daily archived snapshot
+    column_role_issues: []
+  heuristic_output:
+    kind: dim
+    primary_key: [function_id]  # only first *_id — misses ds
+    label_columns: [function_name1, function_name2]  # both end with a pattern containing "name" substring, but actually they end with "1"/"2" not "_name"
+    freshness: static_reference  # always static for DIM
+  heuristic_correct:
+    kind: true
+    primary_key: false  # partial — misses ds in composite PK
+    label_columns: false  # "function_name1" doesn't end with _name/_desc/_label/_title — it ends with "1"
+    freshness: false  # should be daily_snapshot, not static_reference
+
+- table_name: dim_10000251_knight_starup_info
+  complexity: high
+  col_count: ~
+  ground_truth:
+    kind: dim
+    primary_key: [knight_id, star]  # composite: per knight per star level
+    label_columns: [knight_name]  # star is debatable as label; knight_name is the real label
+    freshness: static_reference
+    column_role_issues: []
+    note: current YAML has label_columns=[knight_name, star] — star as label is debatable
+  heuristic_output:
+    kind: dim
+    primary_key: [knight_id]  # first *_id — misses star
+    label_columns: [knight_name]  # _name suffix ✓ (star has no label suffix)
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: false  # partial — misses star in composite
+    label_columns: true  # heuristic picks knight_name (correct core label); missing star is debatable
+    freshness: true
+
+- table_name: dim_10000251_trans_hard_boss_info_df_arch
+  complexity: high
+  col_count: ~
+  ground_truth:
+    kind: dim
+    primary_key: [boss_id, boss_level, dungeon_id, ds]  # 4-column composite
+    label_columns: [name, section]  # dungeon_id as label is questionable — it's an ID
+    freshness: daily_snapshot  # _df_arch + ds partition
+    column_role_issues: []
+    note: current YAML label_columns includes dungeon_id which is an ID not a label
+  heuristic_output:
+    kind: dim
+    primary_key: [boss_id]  # first *_id — misses 3 other PK columns
+    label_columns: []  # "name" doesn't end with _name (it IS "name"), "section" has no label suffix
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: false  # only 1 of 4 PK columns
+    label_columns: false  # misses all — "name" not caught by _name suffix check
+    freshness: false  # should be daily_snapshot
+
+- table_name: dim_10000251_trans_item_df
+  complexity: high
+  col_count: ~
+  ground_truth:
+    kind: dim
+    primary_key: [type, value]  # non-standard PK — no _id columns at all
+    label_columns: [name]
+    freshness: daily_snapshot  # _df suffix = daily full snapshot
+    column_role_issues: []
+  heuristic_output:
+    kind: dim
+    primary_key: []  # no *_id column found
+    label_columns: []  # "name" doesn't end with _name suffix
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: false  # empty — can't find non-_id PKs
+    label_columns: false  # "name" not caught
+    freshness: false  # should be daily_snapshot
+
+- table_name: dim_10000251_server_info
+  complexity: low
+  col_count: 4
+  ground_truth:
+    kind: dim
+    primary_key: [server_id]
+    label_columns: [server_name]
+    freshness: static_reference  # no partition, config table
+    column_role_issues: []
+  heuristic_output:
+    kind: dim
+    primary_key: [server_id]  # first *_id ✓
+    label_columns: [server_name]  # _name suffix ✓
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: true
+    label_columns: true
+    freshness: true
+
+- table_name: dim_10000251_resource_name_info
+  complexity: low
+  col_count: 3
+  ground_truth:
+    kind: dim
+    primary_key: [item_type, item_value]  # composite — neither ends with _id
+    label_columns: [item_name]
+    freshness: static_reference
+    column_role_issues:
+      - col: item_type
+        type: bigint
+        current_role: dimension
+        correct_role: dimension
+        heuristic_would_say: measure  # BIGINT bare → measure
+        note: heuristic wrong — item_type is a categorical code
+      - col: item_value
+        type: bigint
+        current_role: dimension
+        correct_role: dimension  # part of composite PK, identifies the item
+        heuristic_would_say: measure  # BIGINT bare → measure
+        note: heuristic wrong — item_value is a PK component, not a quantity
+  heuristic_output:
+    kind: dim
+    primary_key: []  # no *_id column found
+    label_columns: [item_name]  # _name suffix ✓
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: false  # empty — neither column ends with _id
+    label_columns: true
+    freshness: true
+
+- table_name: dim_10000251_auto_event_cfg_info
+  complexity: low
+  col_count: 5
+  ground_truth:
+    kind: dim
+    primary_key: [id]  # bare "id" column — no _id suffix
+    label_columns: [event, domain]  # event name + domain are human-readable labels
+    freshness: static_reference
+    column_role_issues: []
+  heuristic_output:
+    kind: dim
+    primary_key: []  # "id" doesn't endsWith("_id")
+    label_columns: []  # "event" and "domain" have no label suffixes
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: false  # bare "id" not caught
+    label_columns: false  # non-standard label column names
+    freshness: true
+
+- table_name: dim_10000251_card_pool_info
+  complexity: low
+  col_count: 4
+  ground_truth:
+    kind: dim
+    primary_key: [card_pool_id]  # note: primary_key_unique=false (96 rows, 80 distinct)
+    label_columns: [card_pool_name]
+    freshness: static_reference
+    column_role_issues:
+      - col: card_pool_type
+        type: int
+        current_role: dimension
+        correct_role: dimension  # pool type code
+        heuristic_would_say: measure  # INT bare → measure
+        note: heuristic wrong — type code is categorical
+      - col: card_pool_id
+        type: int
+        current_role: dimension
+        correct_role: dimension
+        heuristic_would_say: dimension  # ends with _id
+        note: correct; but uniqueness issue (96 rows, 80 distinct) — PK not truly unique
+  heuristic_output:
+    kind: dim
+    primary_key: [card_pool_id]  # first *_id ✓ (but uniqueness not verified)
+    label_columns: [card_pool_name]  # _name suffix ✓
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: true  # structurally correct, though uniqueness is questionable
+    label_columns: true
+    freshness: true
+
+- table_name: dim_10000251_toy_info
+  complexity: low
+  col_count: 14
+  ground_truth:
+    kind: dim
+    primary_key: [toy_id]
+    label_columns: [toy_name]
+    freshness: static_reference
+    column_role_issues: []
+  heuristic_output:
+    kind: dim
+    primary_key: [toy_id]  # first *_id ✓
+    label_columns: [toy_name]  # _name suffix ✓
+    freshness: static_reference
+  heuristic_correct:
+    kind: true
+    primary_key: true
+    label_columns: true
+    freshness: true
+
+# ═══════════════════════════════════════════════════════════════════
+# SUMMARY
+# ═══════════════════════════════════════════════════════════════════
+#
+# Heuristic accuracy across 20 tables:
+#
+#   Field            Correct   Incorrect   N/A or Partial   Accuracy
+#   ─────────────    ───────   ─────────   ──────────────   ────────
+#   kind (DWS)       0         10          0                0%   (not inferred at all)
+#   kind (DIM)       10        0           0                100% (always dim, always correct)
+#   primary_key (DWS) 0        10          0                0%   (not inferred at all)
+#   primary_key (DIM) 4         6          0                40%  (simple _id PKs caught; composite/bare-id missed)
+#   label_columns (DWS) 10     0           0                100% (no labels expected, none inferred)
+#   label_columns (DIM) 5      5           0                50%  (suffix-based: _name works; "name"/"event"/"domain"/numbered suffixes missed)
+#   freshness (DWS)  0         10          0                0%   (not inferred at all)
+#   freshness (DIM)  6         4           0                60%  (static correct for non-partitioned; wrong for _df/_arch partitioned dims)
+#
+# Key failure modes:
+#   1. DWS tables: zero inference for PK/kind/freshness — all metadata must be manually set or LLM-inferred
+#   2. Composite PKs: heuristic only picks first *_id column, missing multi-column keys
+#   3. Non-_id PKs: bare "id", "code", "type+value" composites all missed
+#   4. Label columns with non-standard names: "name" (not "_name"), "event", "domain", numbered suffixes
+#   5. Freshness for partitioned DIM tables: _df/_arch patterns indicate daily snapshots, not static
+#   6. Column roles: INT/BIGINT type codes (user_type, pvp_type, pay_type, card_job) misclassified as measure
+#   7. Kind misclassification: dws_active_code_info is semantically a DIM table despite dws_ prefix

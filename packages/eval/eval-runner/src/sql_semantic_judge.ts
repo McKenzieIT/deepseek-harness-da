@@ -46,13 +46,20 @@ export interface SqlSemanticJudge {
  * LLM-backed implementation of the SQL semantic judge.
  */
 export class LlmSqlSemanticJudge implements SqlSemanticJudge {
-  constructor(private readonly completeText: (prompt: string) => Promise<string>) {}
+  private readonly buildPromptFn: (input: SqlJudgeInput) => string
+
+  constructor(
+    private readonly completeText: (prompt: string) => Promise<string>,
+    buildPromptOverride?: (input: SqlJudgeInput) => string,
+  ) {
+    this.buildPromptFn = buildPromptOverride ?? buildJudgePrompt
+  }
 
   async judgeSql(input: SqlJudgeInput): Promise<SqlJudgeResult> {
     if (!looksLikeSql(input.generated_sql)) {
       return { score: 0, rationale: 'Input is not SQL (no SQL keywords detected)' }
     }
-    const prompt = buildJudgePrompt(input)
+    const prompt = this.buildPromptFn(input)
     try {
       const raw = await this.completeText(prompt)
       return parseJudgeResponse(raw)
