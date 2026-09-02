@@ -2,7 +2,7 @@
 
 **Type**: grilling (+ prototype candidate)
 **Status**: open
-**Blocked by**: [R2 G6 dagre layout feasibility](R2-g6-dagre-layout-feasibility.md) ✅, [G2 DAG panel placement and interaction](G2-dag-panel-placement-and-interaction.md)
+**Blocked by**: [R2 G6 dagre layout feasibility](R2-g6-dagre-layout-feasibility.md) ✅, [G2 DAG panel placement and interaction](G2-dag-panel-placement-and-interaction.md) ✅
 **Blocks**: [G8 Z enhancement — global progress wavefront](G8-z-enhancement-global-progress-wavefront.md)
 
 ## Context from G1 + G5
@@ -17,7 +17,21 @@ G5 D6 decided: **结构/状态变更分离**——
 - **结构变更**（增删节点/边）→ `setData()` + `render()` → 全量 dagre 重算 + `prevGraph` 排序稳定 + 动画过渡
 - **状态变更**（颜色/样式）→ `updateNodeData()` / `updateEdgeData()` → **零布局开销**
 
-这意味着 G4 的所有状态过渡动画（pending→completed 颜色变化、边变绿等）都通过 `updateNodeData`/`updateEdgeData` 实现，不触发布局重算。只有新节点/边出现时才走 `render()` 路径。可复用现有 `graph-animations.ts` 中的 `fadeIn`、`pulseNode`、`blinkNodes` 模式。
+## Context from G2(2026-09-02,修正与起点)
+
+- ⚠️ **修正上文两处**:(1) `updateNodeData`/`updateEdgeData` 在 G6 5.1.1 **不触发重绘**
+  (像素哈希实测;上游 `graph-animations.ts` 的 rAF 动画因此视觉全死,见 data-agent
+  [W13](../../data-agent/tickets/phase-misc/W13-contextlayer-animations-no-repaint.md))——状态
+  变更后必须补 `graph.draw()`,连续样式动画必须走 **@antv/g WAAPI**
+  (`element.animate()`,场景树按 item id 取显示对象);(2) "复用 graph-animations.ts
+  模式"作废——它是反面教材,修复参考 `prototype/dag-graph.js` 的
+  `findEl/installAnimations`。
+- **起点不是从零**:G2 原型(`prototype/`,用户已验收)已实现并像素级验证:节奏恒定
+  流动(派生 2 cyc/s、包含 1 cyc/s,与 zoom 无关)、活跃节点呼吸(0.67 cyc/s)、
+  状态变迁脉冲(750ms)、完成路径转绿、hover 上下游链路高亮、图例行、字号基线
+  (任务节点 134×38/13px)。G4 的主要剩余问题:failed/cancelled 状态族、
+  `classifyEdge` 两态抽象(Z 扩展点)、`prefers-reduced-motion` 降级、
+  containment 的"分组框 vs 显式边"取舍(G1 倾向分组框,原型用的显式边)。
 
 ## Question
 

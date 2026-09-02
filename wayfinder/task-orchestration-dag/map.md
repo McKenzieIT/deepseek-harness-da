@@ -48,7 +48,7 @@ The map is done when: every architectural decision is locked (data model, UI pla
 ```
 [✓] R1 agent-team maturity audit ──────┐
 [✓] R3 subagent/workflow event surface ─┤
-                                        ├──▶ [✓] G1 DAG data model decision ──┬──▶ G2 panel placement ──▶ G4 animation & edges ──▶ G8 Z enhancement
+                                        ├──▶ [✓] G1 DAG data model decision ──┬──▶ [✓] G2 panel placement ──▶ G4 animation & edges ──▶ G8 Z enhancement
                                         │                                      │
 [✓] R2 G6 dagre layout feasibility ────┘                                      ├──▶ [✓] G3 preset universality
                                                                                │
@@ -59,9 +59,9 @@ The map is done when: every architectural decision is locked (data model, UI pla
                                                                                                                 └──▶ G11 view simplification strategies
 ```
 
-**Frontier (unblocked, open):** G2 (prototype, **in-progress**), G7 (task), G9 (task), G10 (task), G11 (task)
-**Blocked:** G4 (by G2), G8 (by G4)
-**Next tickets to resolve:** G2 (prototype — panel placement), G7/G9/G10/G11 (all unblocked by G6 ✅)
+**Frontier (unblocked, open):** G4 (grilling+prototype), G7 (task), G9 (task), G10 (task), G11 (task)
+**Blocked:** G8 (by G4)
+**Next tickets to resolve:** G4 (animation & edge design — 继承 G2 原型的动效/理解层基线), G7/G9/G10/G11
 
 ## Decisions so far
 
@@ -72,6 +72,7 @@ The map is done when: every architectural decision is locked (data model, UI pla
 - [G3 preset universality strategy](tickets/G3-preset-universality-strategy.md) — **新建独立 Bundle（`packages/bundle/dag/`）+ 无条件注册 + 自然降级**。Bundle 的 `cordis.patch.yml` disable `tool-todo` + insert `tool-dag-task`；`ctx.tools.restrict()` 屏蔽 preset 级 `todo_write` 重挂。所有 preset 均可用 DAG 工具，节点类型随可用服务缩减（非禁用）。Phase-gate 集成（UNIVERSAL 白名单 + session events）归入 data-agent map [PG1](../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)。不创建新 preset，不 patch 现有 preset — profile 添加 bundle 即可。
 - [G5 dynamic node insertion design](tickets/G5-dynamic-node-insertion-design.md) — **8 项决策 resolved。** DAG 定位为执行基底（D2）；DagModelService Cordis 服务 + React Hook（D1）；同步命令式 API + 事件持久化保证读写一致性（D3）；节点永久保留 + `viewFilter` 管道（D4）；rAF 合并突发事件（D5）；全量 dagre + `prevGraph` 排序稳定 + 结构/状态变更分离（D6）；V1 不设规模硬上限（D7）；session-scoped 持久性与 Goal 一致（D8）。新增 G11（视图简化策略）。
 - [G6 infra contracts for dynamic workflows](tickets/G6-infra-contracts-for-dynamic-workflows.md) — **5 项基础设施契约 resolved。** 事件三层稳定性模型（稳定/半稳定/内部 + payload version 字段）（D1）；工具 API "只增不删不改名"、V1 不暴露 revision 和 action（D2）；多 Agent 不新建机制，靠数据模型预留 + Cordis 原生事件监听（D3）；DagModelService 暴露为 `ctx.dagModel` Cordis 服务契约（5 方法），工具 API 是薄壳（D4）；节点类型硬编码 5 种 + `DagNode.type` 为 string + 渲染 fallback，不建注册表（D5）。
+- [G2 DAG panel placement and interaction](tickets/G2-dag-panel-placement-and-interaction.md) — **D 融合方案（用户确认 2026-09-02）**：dock 摘要条（`conversation.input.dock`，TodoPanel 后继，点名当前任务）+ 侧栏「任务编排」分区（迷你条 ⇄ 420 限高一瞥）+ ⛶ 弹出大视图（`shell.overlay`）三层结构；节点点击 → 容器内底部详情卡（点空白收起），hover → 上下游链路高亮。**否 details.aux**（aux 无页签机制、改上游有 merge 风险）。动效基线（WAAPI——`update*Data` 不重绘；节奏恒定 流动 2/1 cyc/s、呼吸、脉冲、完成路径转绿）与字号基线（134×38/13px）移交 G4。原型 + 像素级自验：[prototype/](prototype/)（commit 512b5e104b、bafa5414a8）；顺带发现上游两 bug → data-agent [W12](../data-agent/tickets/phase-misc/W12-contextlayer-node-click-dead.md)/[W13](../data-agent/tickets/phase-misc/W13-contextlayer-animations-no-repaint.md)。
 
 ## Not yet specified
 
