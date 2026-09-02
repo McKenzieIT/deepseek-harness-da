@@ -150,12 +150,28 @@
   line-height: 17px;
   background: var(--dsw-alias-bg-layer-2);
   color: var(--dsw-alias-label-secondary);
-  /* wide enough for real date ranges ("2026-07-21 至 2026-07-27");
-     ellipsis + title stay as the last-resort safety net */
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* no fixed width cap: real values (annotated date ranges, qualified table
+     names with CJK suffixes) are unbounded — fill up to the container and
+     wrap internally instead of truncating */
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.chipDimension {
+  /* the base chip style IS the dimension style (solid fill); this key
+     exists so the component composes a defined class */
+}
+
+.chipMetric {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+
+.chipMore {
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .chipFilter {
@@ -167,8 +183,6 @@
   background: none;
   border: 1px solid var(--dsw-alias-border-l2);
   color: var(--dsw-alias-label-tertiary);
-  /* qualified table names ("hdyl_data_sg.ods_10000334_pay_order_di") */
-  max-width: 340px;
 }
 
 /* ── Metrics: calibers always visible, columns adapt to card width —

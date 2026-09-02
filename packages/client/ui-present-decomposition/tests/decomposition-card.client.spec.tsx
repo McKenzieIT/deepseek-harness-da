@@ -350,16 +350,37 @@ describe('DecompositionCard collapsing', () => {
     // focal line survives
     expect(getByText('按月统计订单金额')).toBeDefined()
     expect(getByText('置信度 0.85')).toBeDefined()
-    // mini chips carry time + dimensions
+    // mini chips carry time + dimensions + metric NAMES (calibers stay hidden)
     expect(getByText('最近 7 天')).toBeDefined()
     expect(getByText('月份')).toBeDefined()
-    // metric calibers are hidden
+    expect(getByText('订单金额')).toBeDefined()
+    expect(getByText('订单数')).toBeDefined()
     expect(queryByText('SUM(amount)')).toBeNull()
     expect(queryByText('将计算 · 2 项')).toBeNull()
     // toggling back re-expands (hook-stability discipline)
     fireEvent.click(collapsedHeader)
     expect(getByRole('button', { expanded: true })).toBeDefined()
     expect(getByText('SUM(amount)')).toBeDefined()
+  })
+
+  it('caps mini chips at three per kind with a +N overflow chip', () => {
+    const args = JSON.stringify({
+      summary: '多维度多指标',
+      metrics: [
+        { name: '甲', value: 'a()' },
+        { name: '乙', value: 'b()' },
+        { name: '丙', value: 'c()' },
+        { name: '丁', value: 'd()' },
+      ],
+      dimensions: ['一', '二', '三', '四', '五'],
+      time_range: '今天',
+    })
+    const { getByRole, getByText, queryByText } = renderCard(makeSettledBlock(args), stale)
+    expect(getByRole('button', { expanded: false })).toBeDefined()
+    expect(getByText('+2')).toBeDefined() // 5 dimensions - 3
+    expect(getByText('+1')).toBeDefined() // 4 metrics - 3
+    expect(queryByText('四')).toBeNull()
+    expect(queryByText('丁')).toBeNull()
   })
 
   it('collapses by default on turns the conversation has moved past', () => {
@@ -373,16 +394,17 @@ describe('DecompositionCard collapsing', () => {
     expect(getByText('SUM(amount)')).toBeDefined()
   })
 
-  it('renders no mini chips when collapsed args have neither time nor dimensions', () => {
+  it('carries metric names in the collapsed tail when time and dimensions are absent', () => {
     const args = JSON.stringify({
       summary: '极简',
-      metrics: [{ name: 'm', value: 'v' }],
+      metrics: [{ name: '裸指标', value: '' }],
       dimensions: [],
       time_range: '',
     })
-    const { getByRole, container } = renderCard(makeSettledBlock(args), stale)
+    const { getByRole, getByText, container } = renderCard(makeSettledBlock(args), stale)
     expect(getByRole('button', { expanded: false })).toBeDefined()
-    expect(container.querySelector('[class*="miniLine"]')).toBeNull()
+    expect(container.querySelector('[class*="miniLine"]')).not.toBeNull()
+    expect(getByText('裸指标')).toBeDefined()
   })
 
   it('treats empty turnOrder as latest turn', () => {

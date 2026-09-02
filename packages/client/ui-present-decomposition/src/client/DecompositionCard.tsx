@@ -151,7 +151,9 @@ function LineageSegment({ label, children }: { label: string; children: React.Re
   )
 }
 
-/** Collapsed focal tail: time + up to three dimension chips on one line. */
+/** Collapsed focal tail: time + dimensions + metric names, all capped at
+ *  three with a "+N" overflow chip — real payloads may omit dimensions
+ *  entirely (null), so metric names carry the caliber recall alone. */
 function MiniLine({ args }: { args: PresentDecompositionArgs }) {
   const chips: ReactElement[] = []
   if (args.time_range !== '') {
@@ -160,7 +162,15 @@ function MiniLine({ args }: { args: PresentDecompositionArgs }) {
   args.dimensions.slice(0, 3).forEach((d, i) => {
     chips.push(<span key={`dim-${i}`} className={clsx(css.chip, css.chipDimension)} title={d}>{d}</span>)
   })
-  if (chips.length === 0) return null
+  if (args.dimensions.length > 3) {
+    chips.push(<span key="dim-more" className={clsx(css.chip, css.chipMore)}>+{args.dimensions.length - 3}</span>)
+  }
+  args.metrics.slice(0, 3).forEach((m, i) => {
+    chips.push(<span key={`met-${i}`} className={clsx(css.chip, css.chipMetric)} title={m.value !== '' ? m.value : m.name}>{m.name}</span>)
+  })
+  if (args.metrics.length > 3) {
+    chips.push(<span key="met-more" className={clsx(css.chip, css.chipMore)}>+{args.metrics.length - 3}</span>)
+  }
   return <div className={css.miniLine}>{chips}</div>
 }
 
