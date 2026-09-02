@@ -151,6 +151,10 @@
       const id = evt.target?.id ?? evt.itemId
       if (id) opts.onNodeClick?.(id)
     })
+    // 点击画布空白处 → 取消节点详情(targetType 区分,点节点不会同时触发)。
+    graph.on('canvas:click', (evt) => {
+      if (evt.targetType === 'canvas') opts.onCanvasClick?.()
+    })
     graph.on('node:mouseenter', (evt) => {
       container.style.cursor = 'pointer'
       const id = evt.target?.id
@@ -176,28 +180,28 @@
       return found
     }
 
-    /** (重)装动画:流动边 + 活跃节点呼吸。任何 render/draw 后调用(元素会被重建)。 */
+    /** (重)装动画:流动边 + 活跃节点呼吸。任何 render/draw 后调用(元素会被重建)。
+     *  节奏恒定(周期/秒)而非像素速度:人眼感知的是 cycles/s;像素速度恒定在
+     *  低 zoom 下会变成 ~10 周期/秒 的抖动。派生 2 cyc/s、包含 1 cyc/s,
+     *  与 zoom 无关 → 缩放后无需重装。 */
     function installAnimations() {
       if (destroyed) return
       for (const a of anims) { try { a.cancel() } catch { /* already finished */ } }
       anims = []
       window.__animCount = 0
       const { NODES, EDGES, state } = window.DagData
-      const zoom = graph.getZoom() || 1
-      // 屏幕观感速度恒定(≈48px/s),换算回 graph 空间需除以 zoom。
-      const speed = Math.max(24, 48 / zoom)
       for (let i = 0; i < EDGES.length; i++) {
         const e = EDGES[i]
-        const full = e.type === 'spawning' && state.statuses[e.target] === 'running'
-        const slow = e.type === 'containment' && state.statuses[e.source] === 'running'
-        if (!full && !slow) continue
+        const spawning = e.type === 'spawning' && state.statuses[e.target] === 'running'
+        const containment = e.type === 'containment' && state.statuses[e.source] === 'running'
+        if (!spawning && !containment) continue
         const el = findEl(`e-${i}`)
         if (!el || typeof el.animate !== 'function') continue
-        const dist = e.type === 'spawning' ? 39 : 27 // 虚线周期整数倍,循环无缝
-        const dur = (dist / (full ? speed : speed / 2)) * 1000
+        const dist = spawning ? 39 : 27 // 3 个虚线周期,循环无缝
+        const frequency = spawning ? 2 : 1 // 周期/秒
         anims.push(el.animate(
           [{ lineDashOffset: 0 }, { lineDashOffset: -dist }],
-          { duration: dur, iterations: Infinity },
+          { duration: (3 / frequency) * 1000, iterations: Infinity },
         ))
       }
       // 活跃节点呼吸(执行中任务 / 运行中代理与工作流)——"现在在执行什么"。
@@ -218,13 +222,6 @@
       }
       window.__animCount = anims.length
     }
-
-    // 缩放/平移后速度感知需重算;防抖 300ms。
-    let transformTimer = null
-    graph.on('afterTransform', () => {
-      if (destroyed || transformTimer !== null) return
-      transformTimer = setTimeout(() => { transformTimer = null; installAnimations() }, 300)
-    })
 
     // ---- hover 上下游高亮:回答"上下游关联是什么" ------------------------------
     function relatedOf(id) {
@@ -325,7 +322,6 @@
         destroyed = true
         for (const a of anims) { try { a.cancel() } catch { /* already finished */ } }
         anims = []
-        if (transformTimer !== null) { clearTimeout(transformTimer); transformTimer = null }
         if (fitRaf !== null) cancelAnimationFrame(fitRaf)
         if (pulseTimer !== null) clearTimeout(pulseTimer)
         ro.disconnect()

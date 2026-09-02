@@ -110,12 +110,15 @@
         <div class="dag-canvas-wrap"><div id="a-canvas"></div></div>
         <div class="node-detail" id="a-detail" style="display:none"></div>
         <div class="dag-hint">点击节点 → 底部详情卡 · 悬停看上下游 · 拖拽平移 · 滚轮缩放</div>`
-      dag = DagGraph.create(el('a-canvas'), { onNodeClick: (id) => {
-        const d = el('a-detail')
-        d.style.display = ''
-        d.innerHTML = nodeDetailHTML(id)
-        wireLocate(d)
-      } })
+      dag = DagGraph.create(el('a-canvas'), {
+        onNodeClick: (id) => {
+          const d = el('a-detail')
+          d.style.display = ''
+          d.innerHTML = nodeDetailHTML(id)
+          wireLocate(d)
+        },
+        onCanvasClick: () => { const d = el('a-detail'); if (d) d.style.display = 'none' },
+      })
       el('a-evolve').addEventListener('click', () => { evolve(); dag.refresh(); updateBadges() })
     }
 
@@ -262,12 +265,15 @@
           <div class="node-detail" id="c-detail" style="display:none;width:190px;border-top:none;border-left:1px solid var(--border-l2)"></div>
         </div>
         <div class="fw-resize" id="c-resize"></div>`
-      dag = DagGraph.create(el('c-canvas'), { minimap: false, onNodeClick: (id) => {
-        const d = el('c-detail')
-        d.style.display = ''
-        d.innerHTML = nodeDetailHTML(id)
-        wireLocate(d)
-      } })
+      dag = DagGraph.create(el('c-canvas'), { minimap: false,
+        onNodeClick: (id) => {
+          const d = el('c-detail')
+          d.style.display = ''
+          d.innerHTML = nodeDetailHTML(id)
+          wireLocate(d)
+        },
+        onCanvasClick: () => { const d = el('c-detail'); if (d) d.style.display = 'none' },
+      })
       el('c-evolve').addEventListener('click', () => { evolve(); dag.refresh(); updateLive() })
       win.querySelector('[data-act="min"]').addEventListener('click', collapse)
       win.querySelector('[data-act="max"]').addEventListener('click', () => {
@@ -420,6 +426,7 @@
           d.innerHTML = nodeDetailHTML(id)
           wireLocate(d)
         },
+        onCanvasClick: () => { const d = el(`${prefix}-detail`); if (d) d.style.display = 'none' },
       })
       shellRoot.querySelector('[data-act="evolve"]').addEventListener('click', doEvolve)
       shellRoot.querySelector('[data-act="fit"]').addEventListener('click', () => dag?.fitNow())
