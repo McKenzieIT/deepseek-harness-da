@@ -11,19 +11,19 @@
     "directory": "packages/query/query-postgres"
   },
   "type": "module",
-  "main": "lib/index.js",
+  "main": "lib/types/index.js",
   "types": "lib/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
-      "default": "./lib/index.js"
+      "default": "./lib/types/index.js"
     },
     "./src/*.js": "./src/*.ts",
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib/index.js",
+    "lib/types/index.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

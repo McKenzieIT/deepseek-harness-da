@@ -24,7 +24,7 @@
  * The core EXECUTION flow (`executeQuery` / `projectOutcome` /
  * `pollToSettlement`) is exported pure so the 3-state handling is testable
  * against a stub `QueryEngine`, and the P4c(c) smoke calls it against the real
- * query provider (maxc-backed sidecar -> real engine rows), proving the
+ * query provider (the engine sidecar -> real engine rows), proving the
  * tool path - not a direct sidecar call.
  *
  * @module @deepseek-ai/dsh-query-tool
@@ -32,7 +32,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
-import type { InstanceId, QueryEngine, QueryOutcome, QueryState } from '@deepseek-ai/dsh-query/src/index.ts'
+import type { InstanceId, QueryEngine, QueryOutcome, QueryState } from '@deepseek-ai/dsh-query'
 
 export const name = 'query-tool'
 export const inject = ['tools']
@@ -41,7 +41,7 @@ export const inject = ['tools']
 export interface Config {
   /**
    * Max poll iterations for a pending query before returning the pending
-   * state (the async-promote budget; maxc `--wait` derives pending vs
+   * state (the async-promote budget; the engine sidecar's `--wait` flag derives pending vs
    * completed from real engine execution).
    */
   readonly maxPolls?: number
@@ -49,7 +49,7 @@ export interface Config {
   readonly pollIntervalMs?: number
   /**
    * Max rows rendered into model context (display cap). The engine row-cap
-   * (maxc `--max-rows`) is deferred to the engine-wrapper CostGuard.
+   * (the engine sidecar's `--max-rows` flag) is deferred to the engine-wrapper CostGuard.
    */
   readonly maxDisplayRows?: number
 }
@@ -338,8 +338,8 @@ export function apply(ctx: Context, config: Config = {}): void {
       const query = ctx.get('query')
       if (query === undefined) {
         throw new Error(
-          'query_data: no query engine registered; mount a provider such as '
-          + '@deepseek-ai/dsh-query-maxcompute so ctx.query is available',
+          'query_data: no query engine registered; mount a query provider such as '
+          + '@deepseek-ai/dsh-query-maxcompute or @deepseek-ai/dsh-query-postgres so ctx.query is available',
         )
       }
       return executeQuery(query, args, exec, cfg)

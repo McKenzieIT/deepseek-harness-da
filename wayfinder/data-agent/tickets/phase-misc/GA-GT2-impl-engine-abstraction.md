@@ -62,6 +62,6 @@ B1–B5 全部实施 + 验证通过：
 
 **跨线耦合（记 GA-GT1-impl）**：`Nl2sqlEngineService` 构造时 `this.conventions = ctx.query.getConventions()` 缓存——GT2-D1 正确但多租户坏（`ctx.query` 单例 → 所有 tenant 同一 conventions）。GA-GT1-impl（per-request scope，β）须让 `getConventions()` per-request-scope 解析。
 
-**Follow-ups（非阻塞）**：maxcompute 深路径 import 一致性（脆弱，靠 node_modules 符号链接）；query-postgres 运行时 `pnpm install` 建 symlink；conventions.yaml 可能需补 MAX_PT/latest-partition（B2 flag）。
+**Follow-ups（非阻塞）**：✓ ~~maxcompute 深路径 import 一致性~~ → **已由 [GA-GT2-nit-cleanup](GA-GT2-nit-cleanup.md) 解决（2026-09-02，NIT1 deep→bare）**；query-postgres 运行时 `pnpm install` 建 symlink；conventions.yaml 可能需补 MAX_PT/latest-partition（B2 flag → GA-GT2-eval 验）；query-postgres `package.json` `files` 漏 `lib/types/conventions.js`（publish 会破，改 `lib/types/**/*.js`，pre-existing NIT，out-of-scope）。
 
 **Unblock**：GA-GT2-eval（168-case eval 语义验证引擎中性化）。

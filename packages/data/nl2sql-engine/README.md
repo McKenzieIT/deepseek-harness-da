@@ -17,7 +17,7 @@ An additive Cordis `Service` (`ctx.nl2sql`) over the data-agent's NL→SQL pipel
 ## Seams consumed
 
 - `ctx.query` (P4b `@deepseek-ai/dsh-query`) — execution (3-state `QueryOutcome`), via the agent loop in production; the eval runner uses the in-package `StandInOdps`.
-- `@deepseek-ai/dsh-query-maxcompute` — `loadConventions` + `conventions.yaml` (the P4 per-engine conventions seam, F1).
+- `@deepseek-ai/dsh-query-maxcompute` — the maxcompute `loadConventions` loader + `conventions.yaml` is the eval-only conventions path (the P4 per-engine conventions seam, F1); production `Nl2sqlEngineService` obtains conventions via `ctx.query.getConventions()` (engine-injected, engine-neutral — see the `ctx.query` seam above).
 - `@deepseek-ai/cordis` + `@deepseek-ai/schemastery` — `Service`, `Context`, `z` (the Service shell + `ctx.nl2sql` seam).
 
 ## Run
@@ -53,7 +53,7 @@ Per-query prompt, not durably cached across runs; the stable prefix (tool catalo
 
 #### What the model sees
 
-`renderConventionsPrompt` (in `src/conventions.ts`) renders the loaded `EngineConventions` (from `@deepseek-ai/dsh-query-maxcompute` `loadConventions`) into a markdown dialect cheatsheet injected into the GENERATION prompt's dialect section: `key_differences` bullets, available `functions` with signatures, a `cast_map` (logical type → CAST) table, and named `sql_templates` as fenced SQL blocks; a null `EngineConventions` renders a `（无 conventions）` placeholder.
+`renderConventionsPrompt` (in `src/conventions.ts`) renders the loaded `EngineConventions` into a markdown dialect cheatsheet injected into the GENERATION prompt's dialect section: `key_differences` bullets, available `functions` with signatures, a `cast_map` (logical type → CAST) table, and named `sql_templates` as fenced SQL blocks; a null `EngineConventions` renders a `（无 conventions）` placeholder. In production the `Nl2sqlEngineService` obtains the `EngineConventions` via `ctx.query.getConventions()` (engine-injected, engine-neutral); the eval runner loads them via `@deepseek-ai/dsh-query-maxcompute` `loadConventions` (the eval-only path).
 
 #### Token effect
 

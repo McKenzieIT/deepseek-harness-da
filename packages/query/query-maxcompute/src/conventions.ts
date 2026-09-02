@@ -28,7 +28,7 @@ import { load as yamlLoad } from 'js-yaml'
 // importing from `@deepseek-ai/dsh-query-maxcompute/src/conventions`; the
 // YAML-loading *runtime* (`loadConventions` below) stays the MaxCompute
 // provider's concern.
-import type { EngineConventions, ConventionFunction, ConventionCast, ConventionTemplate } from '@deepseek-ai/dsh-query/src/index.ts'
+import type { EngineConventions, ConventionFunction, ConventionCast, ConventionTemplate } from '@deepseek-ai/dsh-query'
 export type { EngineConventions, ConventionFunction, ConventionCast, ConventionTemplate }
 
 const yamlPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'conventions.yaml')

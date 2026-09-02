@@ -17,7 +17,7 @@
 ## 消费的 Seams
 
 - `ctx.query`（P4b `@deepseek-ai/dsh-query`）— 执行（3-state `QueryOutcome`），生产中经 agent loop；eval runner 使用包内 `StandInOdps`。
-- `@deepseek-ai/dsh-query-maxcompute` — `loadConventions` + `conventions.yaml`（P4 per-engine conventions seam，F1）。
+- `@deepseek-ai/dsh-query-maxcompute` — maxcompute `loadConventions` 加载器 + `conventions.yaml` 为 eval-only conventions 路径（P4 per-engine conventions seam，F1）；生产 `Nl2sqlEngineService` 经 `ctx.query.getConventions()` 获取约定（engine-injected、engine-neutral——见上方 `ctx.query` seam）。
 - `@deepseek-ai/cordis` + `@deepseek-ai/schemastery` — `Service`、`Context`、`z`（Service shell + `ctx.nl2sql` seam）。
 
 ## 运行
@@ -53,7 +53,7 @@ pnpm typecheck                              # tsc -b (host)
 
 #### What the model sees
 
-`renderConventionsPrompt`（在 `src/conventions.ts` 中）将加载的 `EngineConventions`（来自 `@deepseek-ai/dsh-query-maxcompute` 的 `loadConventions`）渲染为注入 GENERATION prompt 方言 section 的 markdown 方言速查表：`key_differences` 要点、带签名的可用 `functions`、`cast_map`（逻辑类型 → CAST）表、以及作为围栏 SQL 块的具名 `sql_templates`；null `EngineConventions` 渲染 `（无 conventions）` 占位符。
+`renderConventionsPrompt`（在 `src/conventions.ts` 中）将加载的 `EngineConventions` 渲染为注入 GENERATION prompt 方言 section 的 markdown 方言速查表：`key_differences` 要点、带签名的可用 `functions`、`cast_map`（逻辑类型 → CAST）表、以及作为围栏 SQL 块的具名 `sql_templates`；null `EngineConventions` 渲染 `（无 conventions）` 占位符。生产中 `Nl2sqlEngineService` 经 `ctx.query.getConventions()` 获取 `EngineConventions`（engine-injected、engine-neutral）；eval runner 经 `@deepseek-ai/dsh-query-maxcompute` 的 `loadConventions` 加载（eval-only 路径）。
 
 #### Token effect
 
