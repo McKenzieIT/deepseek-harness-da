@@ -22,7 +22,7 @@ const dimDoc = (name: string, pk: string): TableDefinition => ({
   metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
   coverage: null, supersedes: [], disambiguation: null, kind: 'dim', primary_key: [pk], primary_key_unique: null,
   duplicate_sample: [], label_columns: [`${pk}_name`], freshness: 'static_reference', dimension_refs: [],
-} as TableDefinition)
+})
 
 const dwsDoc = (name: string, cols: Array<{ name: string; comment?: string }>): TableDefinition => ({
   table_name: name, table_comment: '', description: `${name} dws`, alt_labels: [], domains: [],
@@ -31,7 +31,7 @@ const dwsDoc = (name: string, cols: Array<{ name: string; comment?: string }>): 
   metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
   coverage: null, supersedes: [], disambiguation: null, kind: 'dws', primary_key: [], primary_key_unique: null,
   duplicate_sample: [], label_columns: [], freshness: '', dimension_refs: [],
-} as TableDefinition)
+})
 
 function newLayer(...dws: Array<{ name: string; cols: Array<{ name: string; comment?: string }> }>): string {
   const dir = mkdtempSync(join(tmpdir(), 'k11-b3-'))
@@ -126,7 +126,7 @@ describe('CL-18 Phase 2: discoverRelationsDeterministic excludeColumns', () => {
     coverage: null, supersedes: [], disambiguation: null, kind: 'dws', primary_key: [],
     primary_key_unique: null, duplicate_sample: [], label_columns: [], freshness: '',
     dimension_refs: [],
-  } as TableDefinition)
+  })
 
   const mkDim = (name: string, pks: readonly string[]): DimInventoryEntry => ({
     table_name: name, primary_key: pks, description: `${name} 维度表`,
@@ -154,8 +154,8 @@ describe('CL-18 Phase 2: discoverRelationsDeterministic excludeColumns', () => {
     const dims = [mkDim('dim_server', ['server_id']), mkDim('dim_arch_ds', ['ds'])]
     const refs = discoverRelationsDeterministic(dws, dims, new Set(['ds']))
     expect(refs).toHaveLength(1)
-    expect(refs[0].dim_table).toBe('dim_server')
-    expect(refs[0].join_keys).toEqual([{ dws_column: 'server_id', dim_column: 'server_id' }])
+    expect(refs[0]!.dim_table).toBe('dim_server')
+    expect(refs[0]!.join_keys).toEqual([{ dws_column: 'server_id', dim_column: 'server_id' }])
   })
 
   test('no excludeColumns (backward compat) → behavior unchanged (ds-only match still produced)', () => {
@@ -167,8 +167,8 @@ describe('CL-18 Phase 2: discoverRelationsDeterministic excludeColumns', () => {
     const dims = [mkDim('dim_arch_ds', ['ds'])]
     const refs = discoverRelationsDeterministic(dws, dims)
     expect(refs).toHaveLength(1)
-    expect(refs[0].dim_table).toBe('dim_arch_ds')
-    expect(refs[0].join_keys).toEqual([{ dws_column: 'ds', dim_column: 'ds' }])
+    expect(refs[0]!.dim_table).toBe('dim_arch_ds')
+    expect(refs[0]!.join_keys).toEqual([{ dws_column: 'ds', dim_column: 'ds' }])
   })
 
   test("buildExcludeColumns: role:'partition'-driven path excludes exactly the partition columns", () => {
@@ -244,7 +244,7 @@ describe('CL-18 Phase 2: ctx.schema.discoverRelations forwards excludeColumns (w
     const refs = readRefs(dir, 'dws_pay') as Array<{ dim_table: string }>
     // dim_server (PK server_id) matches; dim_arch_ds (PK ds) is filtered out.
     expect(refs).toHaveLength(1)
-    expect(refs[0].dim_table).toBe('dim_server')
+    expect(refs[0]!.dim_table).toBe('dim_server')
     expect(res.written).toBe(1)
   })
 })

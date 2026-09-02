@@ -233,7 +233,7 @@ export class MaxComputeQueryEngine extends QueryEngine {
     // the error to execution time — prevents crashing the entire app boot when the query
     // engine is mounted but not yet configured for a specific deployment.
     if (this.cfg.credMode === 'sidecar-self' && !this.cfg.maxcConfigPath) {
-      this.ctx.logger?.warn?.('query-maxcompute: maxcConfigPath not configured; query execution will fail until deployment provides it')
+      this.ctx.logger.warn('query-maxcompute: maxcConfigPath not configured; query execution will fail until deployment provides it')
       return
     }
     await this.ensureConnected()
@@ -542,6 +542,32 @@ export class MaxComputeQueryEngine extends QueryEngine {
 
   // ── the ctx.query seam (P4 B: execute / attach / cancel / getProgress) ────
 
+  /**
+   * B-DA5: the per-scope maxc config-FILE routing key. Reads
+   * `metadata.maxcompute.config_file` from the optional scope registry (a
+   * non-empty string wins); anything else — missing scope, missing/empty/
+   * non-string value, unmounted registry — falls back to the spawn-time
+   * `cfg.maxcConfigPath` (normalized `''` → undefined), and undefined means
+   * the sidecar keeps its spawn-time `--maxc-config` (no `config_path` key
+   * on the execute call at all).
+   */
+  protected resolveScopeMaxcConfig(scopeId: string): string | undefined {
+    const mc = this.scopes()?.get(scopeId)?.metadata?.maxcompute as { config_file?: unknown } | undefined
+    const raw = mc?.config_file
+    if (typeof raw === 'string' && raw !== '') return raw
+    return this.cfg.maxcConfigPath || undefined
+  }
+
+  /**
+   * B-DA5: the observable execute-tool seam — `execute` delegates here so a
+   * recorder subclass can capture the execute tool args (including the
+   * per-call `config_path`) without spawning the sidecar; production just
+   * calls `callTool` unchanged.
+   */
+  protected async runExecuteTool(args: Record<string, unknown>, signal?: AbortSignal): Promise<QueryOutcome> {
+    return this.callTool(TOOLS.execute, args, signal)
+  }
+
   override async execute(request: QueryRequest, signal?: AbortSignal): Promise<QueryOutcome> {
     const spec: QuerySpec = {
       sql: normalizeForMaxCompute(request.sql),
@@ -553,7 +579,13 @@ export class MaxComputeQueryEngine extends QueryEngine {
     // are the A1-split engine-wrapper guard chain — deferred; this provider is
     // the dumb raw executor. The signal is threaded straight through for the
     // prototype (production: the engine-wrapper's TimeoutGuard owns it).
-    return this.callTool(TOOLS.execute, { scope_id: spec.scopeId, sql: spec.sql, mode: spec.mode }, signal)
+    const args: Record<string, unknown> = { scope_id: spec.scopeId, sql: spec.sql, mode: spec.mode }
+    // B-DA5: route the per-scope maxc config file per call — the sidecar
+    // threads `config_path` to runMaxc's `--config` (falling back to its
+    // spawn-time `--maxc-config` when the key is absent).
+    const configPath = this.resolveScopeMaxcConfig(spec.scopeId)
+    if (configPath !== undefined) args.config_path = configPath
+    return this.runExecuteTool(args, signal)
   }
 
   override async attach(instanceId: InstanceId): Promise<QueryOutcome> {
