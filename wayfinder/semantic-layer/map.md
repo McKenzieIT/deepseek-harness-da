@@ -127,6 +127,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-14 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md) — 4 表 alt_labels 扩充（pvp_card_statistics_di/gacha_result_statis_di/pve_progress_df/com_pay_order_df）+ voice_017/020 迁移为 DELIVERY；voice_003/008/030 翻转为 pass（3/5 验收通过）。**四票联合 eval：66.1% → 73.8%（+7.7pp，net +13 cases）**
 - [CL-15 sql-judge 标准基线确立](tickets/CL15-sql-judge-as-standard-baseline.md) — sql-judge 确认为默认模式（`--no-sql-judge` opt-out）；README 文档化（基线 73.8%、目标 75%/80%/90%）；`compare.ts` 趋势对比工具（分类别 breakdown + case-level flips）；4 个主观 EXEC case 迁移为 DELIVERY（074/080/voice_034/voice_039）；44 wrong cases 分析：24 agent refusal（数据缺口/多表 join）+ 8 DELIVERY judge（pipeline 问题）+ 8 garbled tool calls + 4 SQL semantic failure
 - [CL-18 ds 噪声关联修复](tickets/CL18-ds-noise-join-fix.md) — `discoverRelationsDeterministic` 未排除分区列，18 个 ds-in-PK 的 DIM 表被错误匹配。**Phase 1 数据清理 ✅**：`gacha_result_statis_di` 清除 18 条噪声 refs（23→5）+ 7 条 alt_labels 污染 + description 注入段落。**Phase 2 算法加固**（待实现）：substrate 新增 `excludeColumns` 参数（通用接口），调用层从列 `role: partition` 元数据计算排除集（有 role 时数据驱动，无 role 时回退 blocklist `[ds,pt,dt]`）
+- [G6 定义版本管理](tickets/G6-definition-version-management.md) — **不引入 git，走 eval-driven 版本治理**；5 项决策：D1 不引入 git（现有快照+审计足够）、D2 γ 变更集锚定检查点 eval（eval run 携带 changeset）、D3 版本号不随查询传播（fog）、D4 edit_definition 写入时计算 structured delta（before/after 差异持久化）、D5 细粒度 auto-revert（独立开票）。行业调研（Databricks Genie Layer 5 / Cube versioned model / Hex eval-before-ship / Fowler traceability）确认 2026 前沿 = eval-centric 非 git-centric。毕业 V1-V3 实现票
 
 
 ## Not yet specified
@@ -247,6 +248,8 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~**定义版本管理**~~ — **毕业为 [G6](tickets/G6-definition-version-management.md)**（2026-08-28）：grilling 讨论开源项目是否自带 git 版本管理。
 - ~~**Shell auto-flip 接入真实 evalRunCount**~~ — **已通过 W11 evidence-query RPC bridge 解决**：`evidenceClient` 传入 SemanticLayerShell，`useEvidenceMetrics` 读取真实 evalRunCount。验证 session prompt: `prompts/remaining-3-shell-autoflip-verification.md`
 - ~~**Evidence-query push 订阅**~~ — **毕业为 [R8](tickets/R8-evidence-query-push-subscription.md)**（2026-08-28）：research+grilling，blocked by [T2](tickets/T2-verify-management-panel-web-visibility.md)（确认管理面板 web 端实际可见）。
+- **定义版本号随查询结果传播**（G6 D3）：Cube 模式——查询结果附带所用定义版本信息，供事后追溯。当前 agent tool call chain 已是隐式追溯链，无痛点。出现"追不到哪个版本定义导致答案错误"的场景时引入。
+- **eval affected scope 选择**（G6 γ v2 优化）：根据 changeset 中的 asset_name 筛选 eval case 子集（类似 dbt slim CI 的 `state:modified+`），减少 eval 成本。需要 case→asset 映射（case YAML 标注 target_assets 或运行时推断）。V2 changeset 就绪后作为成本优化展开。
 - **Data agent subagent 并行 enrichment 机制**（CL-3 D2 方向确认）：data agent 在查询过程中通过 subagent 并行补全图谱缺口（方案 γ），形成使用→发现缺口→subagent 补全→图谱增长的自进化闭环。具体设计待 CL-5 实验结果验证 C 策略可行后再展开。
 - ~~**DELIVERY eval judge 校准**~~ — **毕业为 [CL-11](tickets/CL11-delivery-judge-calibration.md)**
 - ~~**SQL semantic judge 基线回归修复**~~ — **毕业为 [CL-12](tickets/CL12-sql-judge-baseline-regression.md)**
@@ -257,7 +260,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 ## Open tickets
 
 ### v1 收尾
-- [G6: 定义版本管理](tickets/G6-definition-version-management.md) — grilling：开源项目是否自带 git 版本控制
+- ~~[G6: 定义版本管理](tickets/G6-definition-version-management.md)~~ ✅ — 不引入 git，走 eval-driven 版本治理；γ changeset + structured delta + 细粒度 auto-revert；毕业 V1-V3
 - ~~[W15: Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md)~~ ✅ — `evidence/eval-run-completed` → allowlist + `EvidenceQueryClient.subscribeInvalidation` + `connection/reset` 恢复 + `useEvidenceMetrics` 自动 refresh；94 tests 全绿
 
 ### CL-5 行动项落地（formal experiment）
@@ -276,6 +279,11 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 
 ### Enrichment 算法质量
 - [CL-18: ds 噪声关联修复 + 确定性匹配加固](tickets/CL18-ds-noise-join-fix.md) — Phase 1 数据清理 ✅；Phase 2 算法加固待实现（`excludeColumns` 参数 + 调用层 role 元数据驱动）（**frontier — 无阻塞**）
+
+### Eval-driven 版本治理（G6 毕业）
+- [V1: 审计 structured delta](tickets/V1-audit-structured-delta.md) — `edit_definition` 写入时计算 before/after 结构化差异并持久化（**frontier — 无阻塞**）
+- [V2: eval run changeset 标注](tickets/V2-eval-run-changeset-annotation.md) — eval run 记录携带 since-last-run changeset 元数据（**blocked by V1**）
+- [V3: 细粒度 auto-revert](tickets/V3-fine-grained-auto-revert.md) — 基于 changeset + affected scope 的定向回滚；③-gated（**blocked by V2**）
 
 ### Context Layer 对齐（CL 系列）
 - ~~[G7: Context Projection 统一](tickets/G7-context-projection-unification.md)~~ — 关闭为 out of scope（v2+）：生产零消费、无 token 压力、按需投射已存在
