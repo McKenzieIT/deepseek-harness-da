@@ -15,7 +15,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
   - 遵循 `packages/client/AGENTS.md` 全部 slot/props/styling/export 纪律。
   - 遵循 `ui-tool` 的 toolview 注册模式：`ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key: '<tool_name>' }, Component))`。
   - `argsRaw`（tool call JSON）= 结构化 intent；`content`（tool result ContentBlock[]）= 渲染文本。client 从 `argsRaw` 解析 intent 渲染 UI。
-  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径:v1 为同 turn TSV 扫描 + result_id 校验(T4 已修协议错位),正式 result store RPC 是 [R6](tickets/R6-result-store-server-side.md) 研究主题。
+  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径:v1 为同 turn TSV 扫描 + result_id 校验(T4 已修协议错位);正式 result store RPC 走 [R6](tickets/R6-result-store-server-side.md)（已解:host `ctx.resultCache` 在,加 `result.get` apiproxy 一行即可,destination 工作）。
   - `compute` 延后（blocked on 安全计算环境）——本 map 不含。
 
 ## Decisions so far
@@ -34,12 +34,13 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [P1: 查询理解卡优化编排 · 动态插件原型裁决](tickets/P1-decomposition-prototype.md) — 三轮 HITL 裁决定稿:焦点行(summary 标题+置信度徽标)/谱系合行成立;悬停揭示口径否决(自洽性 bug+空间利用率);终版=指标口径常显+自适应多列网格(10 指标折 5 行)+信任带;动态原型保持挂载至 T5 折回
 - [T5: present_decomposition 展示层优化执行(Phase 0-2)](tickets/T5-present-decomposition-display-upgrade.md) — P1 定稿折回仓库包:token 全修+isError+locale+parse 防御(Phase 0)、焦点行/谱系 chips/常显指标网格/折叠焦点保留(Phase 1)、非最新 turn 默认折叠(Phase 2);30 tests+100% 覆盖+tsc/bundle 绿+test:gui 全绿(4211);e2e 失败属 code-mode 工作面(交接注);qdec 原型已停用作废
 - [R4: present_table chart 渲染类型扩展](tickets/R4-chart-type-expansion.md) — 留 Chart.js 4;纳入全部 native 类型(area/h-bar/scatter/doughnut/bubble/radar/polarArea,不分阶段,排除 pie-only,heatmap/sankey/treemap→独立 ECharts effort);LLM 选型=启发式(语义层 metric×dimension×grain→type)+客户端列-kind/基数校验器(不可行降级 bar);K11 语义层锚定每图展示内容;原型 prototype/index.html(v6) 演示;实测入 [T6](tickets/T6-chart-integration-testing.md)
+- [R6: Result store server-side 设计调研](tickets/R6-result-store-server-side.md) — host 侧 `ctx.resultCache`（in-memory/session-scoped；`qr_`查询+`cr_`compute 不可变）已 ship 且 compute 衍生已通；rpcId apiproxy 已 ship，唯一缺口=未注册的 `result.get` RPC 行（纯机械四件，destination 工作，无新决策）；分页延后（day-1 全量 get）；R5 上游已解
 
 ## Not yet specified
 
 (暂无——原三条雾已全部毕业为票:chart 精度扩展 → [R4](tickets/R4-chart-type-expansion.md),object layer cache → [R5](tickets/R5-object-layer-result-cache.md),result store server-side → [R6](tickets/R6-result-store-server-side.md))
 
-新雾(自 R9):查询理解声明与 present_table KPI 的互认/联动、低置信时的"改口径"回流通道——形状取决于 P1 裁决与 R6 result store,尚不能成票。
+新雾(自 R9):查询理解声明与 present_table KPI 的互认/联动、低置信时的"改口径"回流通道——P1 裁决（卡终版）+ R6（result store + compute + `result.get` RPC 数据通路）已解其数据流依赖；剩余模糊在语义/UX 层（两卡是否互认同一 `result_id` 的 metric、低置信改口径的内联 affordance 形态），仍不能成票。
 
 ## Out of scope
 
