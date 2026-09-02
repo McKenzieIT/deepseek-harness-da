@@ -29,7 +29,7 @@
 ## 前置门（gated——满足后开本票实施）
 
 1. **Phase 1+2 生产验证**：多租户并发运行验证——无跨租户语料泄漏、无 `active()` 竞态、per-scope 缓存 root-check（#19/#22 已修）生产实证有效。
-2. **全 callers 迁移**：所有 `active()`/no-scopeId 调用迁移为显式 `scopeId`（含 carry-forward：#25 nested scopeId in code-mode `run_code` 子调度 + #32 harness-responder `bootContext` D3ii）。
+2. **全 callers 迁移**：所有 `active()`/no-scopeId 调用迁移为显式 `scopeId`。carry-forward #25（nested scopeId in code-mode `run_code` 子调度）+ #37（harness-responder `bootContext` D3ii）**已实施 2026-09-02**（commits `dd05d43bb3` + `e42f30e64f`）；剩余 caller 迁移待 Phase 3 scopeId required 时强制完成。
 3. **用户授权 breaking change**：Phase 3+4 是 breaking（scopeId required、删 `active`、`tenant` 必填）——需用户显式授权。
 
 ## Out of scope
