@@ -166,6 +166,14 @@ export interface HarnessBootOptions {
   readonly sidecarPath?: string
   /** Reference date (YYYYMMDD). */
   readonly today?: string
+  /**
+   * Explicit scopeId for SemanticLayerService (D3ii: no default pointer).
+   * bootContext() throws when this is undefined rather than silently falling
+   * back to a hardcoded 'k11'. Optional on the type so direct constructors
+   * fail-loud at bootContext instead of at the type boundary, but the runtime
+   * contract is: must be provided (main.ts passes args.scopeId).
+   */
+  readonly scopeId?: string
 }
 
 // ─── HarnessAgentResponder ─────────────────────────────────────────────────────
@@ -229,7 +237,31 @@ export class HarnessAgentResponder implements AgentResponder {
     return this.ctx
   }
 
+  /**
+   * Build the SemanticLayerService config (D3ii: explicit scopeId, no default
+   * pointer). Throws when scopeId is absent rather than silently falling back
+   * to a hardcoded 'k11'. Called by bootContext() before any plugin mount, so
+   * the fail-loud is fast (no ctx created, no side effects).
+   *
+   * Exposed as protected so the D3ii propagation test can assert scopeId flows
+   * into the SemanticLayerService config WITHOUT booting the full context —
+   * the in-process boot mounts ~15 plugins and requires the test-invariants
+   * companion (src/invariant.ts) that eval-cli lacks (same constraint as
+   * scope-id.spec.ts for context.ts boot()).
+   */
+  protected semanticLayerConfig(): { semanticRoot: string; scopeId: string } {
+    if (this.opts.scopeId === undefined) {
+      throw new Error('harness-responder bootContext: explicit scopeId required (D3ii)')
+    }
+    return { semanticRoot: this.opts.schemaDir, scopeId: this.opts.scopeId }
+  }
+
   private async bootContext(): Promise<Context> {
+    // D3ii: build the SemanticLayer config up front — semanticLayerConfig()
+    // throws (no default pointer) when scopeId is absent, before any plugin
+    // mount, so this is a fast fail-loud. The seam is also the D3ii
+    // propagation test surface (see harness-responder.spec.ts).
+    const schemaConfig = this.semanticLayerConfig()
     const ctx = new Context()
 
     // ── 1. Loader (needed for preset mounting via Include/EntryTree) ────────
@@ -248,10 +280,7 @@ export class HarnessAgentResponder implements AgentResponder {
     await ctx.plugin(llmDashscope)
 
     // ── 4. SemanticLayer → ctx.schema ───────────────────────────────────────
-    await ctx.plugin(SemanticLayerService, {
-      semanticRoot: this.opts.schemaDir,
-      scopeId: 'k11',
-    })
+    await ctx.plugin(SemanticLayerService, schemaConfig)
 
     // ── 5. SessionStore → ctx.sessions ──────────────────────────────────────
     const { default: SessionStore } = await import('@deepseek-ai/dsh-session')

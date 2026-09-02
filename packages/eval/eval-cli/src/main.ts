@@ -275,6 +275,7 @@ export async function main(): Promise<void> {
       withQuery: args.withQuery,
       ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
       today: args.today,
+      scopeId: args.scopeId,
     })
 
     // SQL Judge for harness mode (reuses the same LLM)
