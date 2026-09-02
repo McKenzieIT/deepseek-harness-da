@@ -43,3 +43,24 @@ Current AppFrame columns: `sidebar (264-420px) | center (min 640px) | details (3
 ## Prototype deliverable
 
 Build rough mockups of the DAG panel in each placement option (left sidebar, right details, floating overlay) using the G6 v5 dagre layout with sample DagTask nodes. The prototype should be reactive — click-to-expand/collapse, node status colors, basic edge rendering. The decision comes from reacting to the prototype, not from discussion alone.
+
+## Prototype(详见 ../prototype/README.md,含完整自验记录)
+
+- **Round 1(A/B/C,用户已反馈 2026-09-02)**:C 的 minimap 遮挡图(已修:默认关+右上角);
+  B 伸缩+dock 摘要条好,但展开太小、放大失全貌、浮出卡不美观;A 大屏兼顾单节点与全貌、
+  详情落点合理,但小屏看不清字太小;C 弹窗可补小屏 → **指示融合**。
+- **Round 2(D 融合方案,默认 variant,awaiting confirmation)**:dock 摘要条(含
+  **"正在执行 「任务名」"点名**)+ 侧栏分区折叠迷你条;展开 420 限高 min(42vh,400px)
+  作一瞥视图(40 会话压力实测:不限高会话列表仅剩 230px);节点点击 → 容器内底部详情卡;
+  **⛶ 弹出大视图**(860×600,拖/缩/最大化,⤡ 收回);字号加大(134×38/13px);
+  **自动演进**(⏸/⏵⏵,2.6s/步,6 步循环);**图例行**。
+- **动效(2026-09-02 定稿,像素级验证)**:@antv/g WAAPI——实测 `update*Data` **不触发
+  重绘**(rAF 循环无效),连续动画必须 `element.animate()`、离散切换补 `graph.draw()`。
+  派生边全速流动+包含边半速(zoom 感知,屏幕 ≈48px/s 恒定);**活跃节点呼吸**(执行什么);
+  **hover 上下游链路高亮+其余压暗**(上下游关联);变迁脉冲 750ms;完成路径转绿。
+  → 上游图谱同病已开 [W12](../../data-agent/tickets/phase-misc/W12-contextlayer-node-click-dead.md)(点击失效,
+  subagent 已修 test:gui 绿)/[W13](../../data-agent/tickets/phase-misc/W13-contextlayer-animations-no-repaint.md)(动画不重绘)。
+- **事故记录**:2026-09-02 18:10 原型四个代码文件+本工单被外部批量回滚至 9/1 状态
+  (疑似同步工具),同日已全部重建并重新像素级验证(点击/流动/自动演进/无错误)。
+
+**Awaiting confirmation of D** —— 确认后落决议关 G2、解锁 G4(动效与理解层已是 G4 预演素材)。

@@ -222,15 +222,15 @@ export function ContextLayerGraph({
       }
     })
 
-    // Node click handler (G6 v5: node ID is on evt.itemId)
-    graph.on<IElementEvent & { itemId?: string }>('node:click', (evt) => {
-      const itemId = evt.itemId
+    // Node click handler (G6 v5: node ID is on evt.target.id; evt.itemId does not exist in 5.1.1)
+    graph.on<IElementEvent>('node:click', (evt) => {
+      const itemId = evt.target?.id
       if (itemId) onNodeClick?.(itemId)
     })
 
     // Node double-click handler
-    graph.on<IElementEvent & { itemId?: string }>('node:dblclick', (evt) => {
-      const itemId = evt.itemId
+    graph.on<IElementEvent>('node:dblclick', (evt) => {
+      const itemId = evt.target?.id
       if (itemId) onNodeDoubleClick?.(itemId)
     })
 

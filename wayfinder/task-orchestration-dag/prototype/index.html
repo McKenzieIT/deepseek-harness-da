@@ -326,7 +326,10 @@
 
 <div id="overlay-layer"></div>
 
-<div id="proto-tag">PROTOTYPE · throwaway · G2 面板放置</div>
+<div id="proto-tag">
+  <span>PROTOTYPE · throwaway · G2 面板放置</span>
+  <button id="flood-toggle" title="压力测试:大量会话下侧栏分区是否还合理">◍ 模拟 40 会话</button>
+</div>
 <div id="switcher">
   <button class="arrow" id="sw-prev" title="上一个方案 (←)">←</button>
   <div class="vlabel"><b id="sw-name">A · 右侧详情栏</b><span id="sw-desc">details.aux 席位</span></div>
@@ -337,5 +340,25 @@
 <script src="dag-data.js"></script>
 <script src="dag-graph.js"></script>
 <script src="variants.js"></script>
+<script>
+  // 会话洪泛开关:检验「任务编排」分区与大量会话共存时的侧栏布局(原型专用)。
+  ;(function () {
+    const list = document.querySelector('.sb-list')
+    const original = list.innerHTML
+    const btn = document.getElementById('flood-toggle')
+    let on = false
+    btn.addEventListener('click', () => {
+      on = !on
+      if (on) {
+        const items = []
+        for (let i = 1; i <= 40; i++) items.push(`<div class="sb-item">会话 ${String(i).padStart(2, '0')} · 语义层例行任务与图谱巡检</div>`)
+        list.innerHTML = '<div class="sb-item active">G2 面板放置原型</div>' + items.join('')
+      } else {
+        list.innerHTML = original
+      }
+      btn.textContent = on ? '◍ 已模拟 40 会话(点击还原)' : '◍ 模拟 40 会话'
+    })
+  })()
+</script>
 </body>
 </html>

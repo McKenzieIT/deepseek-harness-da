@@ -26,6 +26,8 @@ const MIME = {
 }
 
 createServer(async (req, res) => {
+  // Prototype files change while iterating: never let the browser cache them.
+  res.setHeader('Cache-Control', 'no-store')
   try {
     const url = new URL(req.url ?? '/', 'http://localhost')
     if (url.pathname === '/vendor/g6.min.js') {
