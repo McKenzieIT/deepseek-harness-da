@@ -45,6 +45,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-identity'
 import { fromPayload, TAG, type AuditRecord } from './schema.ts'
 import { SQLiteAuditStore, openAuditDatabase, type AuditIdentity } from './store.ts'
+import type { StructuredDelta } from './delta.ts'
 
 export { fromPayload, toPayload, TAG, IDENTITY_FIELDS, type AuditRecord } from './schema.ts'
 export {
@@ -56,6 +57,11 @@ export {
   type AuditRecordWithHistory,
   type AuditStats,
 } from './store.ts'
+export {
+  computeStructuredDelta,
+  type StructuredDelta,
+  type DeltaEntry,
+} from './delta.ts'
 
 /** Audit service configuration. */
 export interface AuditConfig {
@@ -92,6 +98,16 @@ interface Tier2WriteOpts {
   readonly tenant_id?: string | null
   readonly user_id?: string | null
   readonly session_id?: string | null
+  /** V1 (G6 D4): structured before/after delta co-located with the write
+   * event. When provided, stored in `extra.delta` so {@link
+   * SQLiteAuditStore.listDeltasSince} can surface "what changed last" to the
+   * management agent's ③ self-driven loop. */
+  readonly delta?: StructuredDelta | null
+  /** V1: the asset name being edited (stored in `extra.asset_name` for
+   * `listDeltasSince` queryability). */
+  readonly asset_name?: string | null
+  /** V1: the definition kind ('table' / 'event' / 'concept'). */
+  readonly kind?: string | null
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -252,6 +268,18 @@ export class Audit extends Service {
   recordTier2Write(toolName: string, payload: unknown, opts: Tier2WriteOpts = {}): string {
     const identity = this.resolveIdentity()
     const body = typeof payload === 'string' ? payload : JSON.stringify(payload)
+    const extra: Record<string, unknown> = {
+      tier: 'tier-2',
+      tool_name: toolName,
+      payload_hash: this._store.hashBody(body),
+      payload_bytes: Buffer.byteLength(body),
+    }
+    // V1 (G6 D4): co-locate the structured delta + asset metadata with the
+    // write event (same audit_event row). The payload body is still hashed
+    // (intranet-security-first); the delta is a structured diff, not the body.
+    if (opts.delta !== undefined && opts.delta !== null) extra.delta = opts.delta
+    if (opts.asset_name !== undefined && opts.asset_name !== null) extra.asset_name = opts.asset_name
+    if (opts.kind !== undefined && opts.kind !== null) extra.kind = opts.kind
     const rec = fromPayload({
       log_id: newLogId(),
       timestamp: nowIso(),
@@ -260,12 +288,7 @@ export class Audit extends Service {
       tenant_id: opts.tenant_id ?? identity.tenant_id ?? null,
       user_id: opts.user_id ?? identity.user_id ?? null,
       auto_tags: [TAG.TOOL_WRITE],
-      extra: {
-        tier: 'tier-2',
-        tool_name: toolName,
-        payload_hash: this._store.hashBody(body),
-        payload_bytes: Buffer.byteLength(body),
-      },
+      extra,
     })
     try {
       return this._store.append(rec)

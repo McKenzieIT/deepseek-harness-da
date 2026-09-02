@@ -1,6 +1,6 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: []
 ---
 
@@ -77,3 +77,22 @@ CL-14 做了第一轮数据源缺口修复（4 表 alt_labels 扩充），翻转
 - eval cases：`packages/eval/eval/cases/k11-v2/`
 - compare 工具：`packages/eval/eval-cli/bin/compare.ts`
 - 实验日志：`wayfinder/semantic-layer/research/experiment-audit-log.md`
+
+---
+
+## Partial Resolution (2026-09-02) — enrichment 已尽，78% 需 trim/概念formula/迁移
+
+**Enrichment 杠杆已尽**：08-31 已 enrich（`付费经济` concept 大R/高付费/零氪/免费玩家；`用户生命周期` 回归/回流；`univ_role_tag_df` 等 6 表）。本 run `32dd9532`（dup 清理后）overall 70.8% < 78%；Alias 62.5%（-15pp，归因 LLM 非确定性 + dup 清理 BM25 非中性待查）。
+
+**ticket 前提（"add more alt_labels"）经 live eval 证伪**——labels 已在，概念 case（`voice_026`/`028`/`alias_022`/`038` 大R/回归）仍拒。真正剩余杠杆（皆非 enrichment）：
+1. **trim over-enriched 表**：`univ_role_tag_df` 12 alt_labels（应 ≤6 targeted；ARPU/ARPPU/流失/LTV/首充/首次充值 generic 稀释 BM25——CL-9 教训）。08-31 日志称 "trimmed to 6" 但文件实有 12-14 → 未完全落地。
+2. **概念 formula/定义**：大R 阈值（`pay_amt_std >= X`）/回归 标识字段（`is_return`/`react`）——agent 不知用 `pay_amt_std` 定义大R（live: `voice_026`/`028` 有时发明 `pay_amt_std>=1000`/`100000` 阈值，非确定性）。
+3. **迁移真不可答 EXEC-refusal→DELIVERY**：`018`（PVE 最终关卡）/`071`（小队）/`058`/`064`/`066`/`070`（多表/缺字段）——拒绝质量高，DELIVERY judge 可打高分（CL-12/14/15 先例）。
+
+**已做**：dup 清理（`univ_role_tag_df` 去重 回归/回流，正确 hygiene；BM25 效应单 run 无法区分于非确定性，flag 待查）。
+
+**未做（超出 CL-17 enrichment 范围）**：上述 3 杠杆 = trim/概念formula/迁移，属不同 ticket scope（case-curation 像 CL-12/14/15；概念 schema 像 CL-2；agent 行为另开）。
+
+**状态**：**关闭-部分**（2026-09-02 用户决策）。enrichment done；78% deferred——trim/概念formula/迁移→CL-21。
+
+**实验记录**：[experiment-audit-log.md](../research/experiment-audit-log.md)（2026-09-02 联合全量 eval）。

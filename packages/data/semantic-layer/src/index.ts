@@ -178,6 +178,45 @@ interface ScopeRegistryLike {
   get(id: string): { readonly id: string; readonly semanticRoot: string } | undefined
 }
 
+// ── CL-18 Phase 2: partition-column exclude set (calling-layer metadata) ──
+/**
+ * CL-18 Phase 2: minimal fallback blocklist of partition column names used
+ * when a target table has no `role: 'partition'` columns to drive a
+ * data-driven exclude set. These three names are the standard MaxCompute
+ * business-date partition spellings; hardcoding them keeps the substrate's
+ * `discoverRelationsDeterministic` free of any specific metadata format while
+ * still catching the common noise (a DIM keyed by `ds` matching every DWS).
+ */
+const DEFAULT_PARTITION_BLOCKLIST: readonly string[] = ['ds', 'pt', 'dt']
+
+/**
+ * CL-18 Phase 2: build the partition-column exclude set for a target table.
+ *
+ * Strategy (layered, per the ticket design):
+ *  - **Data-driven (preferred)**: when the table has columns tagged
+ *    `role: 'partition'`, those names form the exclude set. This is the
+ *    high-precision path — it excludes exactly the partition columns the
+ *    analyst declared for THIS table, including any custom partition names
+ *    beyond `ds`/`pt`/`dt`.
+ *  - **Fallback blocklist**: when the table has NO `role: 'partition'`
+ *    columns (e.g. a sync-written table whose partition columns live in the
+ *    separate `partitions` array rather than `columns`, or an unannotated
+ *    dataset), fall back to the minimal `DEFAULT_PARTITION_BLOCKLIST`
+ *    (`ds`/`pt`/`dt`). This still filters the common noise without depending
+ *    on metadata annotations.
+ *
+ * The result is forwarded into `discoverRelationsFor` via
+ * `enrichAllDwsTables`'s `excludeColumnsFn` so the deterministic PK match
+ * skips partition columns (e.g. an `_arch` DIM snapshot keyed by `ds` no
+ * longer matches every DWS carrying a `ds` column).
+ * @param def - the target table definition.
+ * @returns a set of column names to exclude from deterministic PK matching (never empty).
+ */
+export function buildExcludeColumns(def: TableDefinition): Set<string> {
+  const partitionCols = (def.columns ?? []).filter(c => c.role === 'partition').map(c => c.name)
+  return partitionCols.length > 0 ? new Set(partitionCols) : new Set(DEFAULT_PARTITION_BLOCKLIST)
+}
+
 // ── ctx.schema Service Definition (Q2: covers live-engine + substrate) ───
 /** Configuration for the `ctx.schema` Cordis Service (semantic-layer root + default scope id). */
 export interface SemanticLayerConfig {
@@ -585,7 +624,9 @@ export class SemanticLayerService extends Service {
   async discoverRelations(
     opts: { readonly tables?: readonly string[] } = {},
   ): Promise<{ enriched: number; written: number; errors: string[] }> {
-    return enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, opts.tables)
+    // CL-18 Phase 2: forward the partition-column exclude set so ds/pt/dt
+    // partition-column PK matches do not generate noise JOIN relations.
+    return enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, opts.tables, false, buildExcludeColumns)
   }
 
   /**
@@ -641,7 +682,9 @@ export class SemanticLayerService extends Service {
       // any existing dimension_refs (curated joins preserved) rather than
       // replacing — so auto-trigger can never wipe human-curated joins the
       // deterministic round does not rediscover (code-review B2).
-      const res = await enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, names, true)
+      // CL-18 Phase 2: forward buildExcludeColumns so partition-column PK
+      // matches (e.g. ds-only DIM snapshots) do not add noise JOIN relations.
+      const res = await enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, names, true, buildExcludeColumns)
       if (res.errors.length > 0) {
         this.ctx.logger.warn(`ctx.schema on-write relation enrichment partial failures: ${res.errors.join('; ')}`)
       }

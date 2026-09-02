@@ -57,18 +57,28 @@ export type LlmCall = (prompt: string) => Promise<string>
  * Deterministic round: for each DIM with a non-empty `primary_key`, emit a
  * DimensionRef for every DIM PK column whose name exactly matches a column on
  * the target DWS (G3 exact-name match). High-precision seed set; no LLM.
+ *
+ * CL-18 Phase 2: an optional `excludeColumns` set (typically the target
+ * table's partition columns, e.g. `ds`/`pt`/`dt`) filters out noise JOIN
+ * relations — a DIM whose PK is a partition column (e.g. an `_arch` snapshot
+ * table keyed by `ds`) would otherwise match every DWS that carries that
+ * partition column. The set is computed by the calling layer (see
+ * `buildExcludeColumns` in the Service shell) so this substrate stays free of
+ * any specific metadata-format assumption.
  * @param targetDef - the DWS table definition to find DIM joins for.
  * @param dimInventory - the DIM tables to match against.
- * @returns one DimensionRef per DIM whose PK shares at least one column name with the target.
+ * @param excludeColumns - optional set of column names to exclude from PK matching (e.g. partition columns).
+ * @returns one DimensionRef per DIM whose PK shares at least one non-excluded column name with the target.
  */
 export function discoverRelationsDeterministic(
   targetDef: TableDefinition,
   dimInventory: readonly DimInventoryEntry[],
+  excludeColumns?: ReadonlySet<string>,
 ): DimensionRef[] {
   const colNames = new Set((targetDef.columns ?? []).map(c => c.name))
   const refs: DimensionRef[] = []
   for (const dim of dimInventory) {
-    const pks = (dim.primary_key ?? []).filter(pk => colNames.has(pk))
+    const pks = (dim.primary_key ?? []).filter(pk => colNames.has(pk) && !(excludeColumns?.has(pk)))
     if (pks.length === 0) continue
     refs.push({
       dim_table: dim.table_name,
@@ -205,17 +215,22 @@ export function parseLlmRefs(text: string): DimensionRef[] {
  * Round 1 (deterministic, no LLM) always runs; round 2 (LLM) runs only when
  * `llmCall` is provided and is best-effort (a thrown call or invalid JSON
  * degrades to round-1 results only).
+ *
+ * CL-18 Phase 2: `excludeColumns` (optional) is forwarded to the
+ * deterministic round to filter out partition-column PK matches (noise JOINs).
  * @param targetDef - the DWS table definition.
  * @param dimInventory - the DIM tables to match against.
  * @param llmCall - optional one-shot LLM call for the semantic round.
+ * @param excludeColumns - optional set of column names to exclude from deterministic PK matching.
  * @returns the merged DimensionRefs for the target.
  */
 export async function discoverRelationsFor(
   targetDef: TableDefinition,
   dimInventory: readonly DimInventoryEntry[],
   llmCall?: LlmCall,
+  excludeColumns?: ReadonlySet<string>,
 ): Promise<DimensionRef[]> {
-  const det = discoverRelationsDeterministic(targetDef, dimInventory)
+  const det = discoverRelationsDeterministic(targetDef, dimInventory, excludeColumns)
   if (!llmCall) return det
   let llm: DimensionRef[] = []
   try {
@@ -294,10 +309,17 @@ function existingEventRefs(raw: Record<string, unknown>): DimensionRef[] {
  * human-curated joins the deterministic round does not rediscover. When `false`
  * (default), discovered refs REPLACE existing — used by the explicit
  * `discoverRelations` entry (re-discover + replace, G3 direct-write).
+ *
+ * CL-18 Phase 2: `excludeColumnsFn` (optional) computes a per-target exclude
+ * set from the target table's metadata (e.g. its partition columns) and
+ * forwards it to `discoverRelationsFor` so partition-column PK matches (e.g.
+ * `ds`-only DIM snapshots) do not generate noise JOIN relations. The calling
+ * layer supplies this function; the substrate applies it opaquely.
  * @param semanticLayer - the semantic-layer directory path.
  * @param llmCall - optional one-shot LLM call for the semantic round.
  * @param tables - optional table_name filter; omit or empty to enrich all DWS tables.
  * @param mergeExisting - when true, merge discovered refs with existing (preserve curated); default false (replace).
+ * @param excludeColumnsFn - optional per-target exclude-set builder (CL-18 Phase 2).
  * @returns `enriched` (DWS tables that gained at least one ref) + `written` (DWS
  *   tables updated) + per-table `errors`.
  */
@@ -306,6 +328,7 @@ export async function enrichAllDwsTables(
   llmCall?: LlmCall,
   tables?: readonly string[],
   mergeExisting = false,
+  excludeColumnsFn?: (def: TableDefinition) => ReadonlySet<string> | undefined,
 ): Promise<{ enriched: number; written: number; errors: string[] }> {
   const dimInventory = buildDimInventory(semanticLayer)
   const filter = tables !== undefined && tables.length > 0 ? new Set(tables) : undefined
@@ -321,7 +344,7 @@ export async function enrichAllDwsTables(
     }
     if (r.data.kind === 'dim') continue // only DWS
     try {
-      const discovered = await discoverRelationsFor(r.data, dimInventory, llmCall)
+      const discovered = await discoverRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
       const refs = mergeExisting ? mergeRefs(existingRefs(t.raw), discovered) : discovered
       // write raw + refs (preserves physical types / extra keys; writeTable validates)
       await writeTable(semanticLayer, t.table_name, { ...t.raw, dimension_refs: refs })
@@ -340,18 +363,24 @@ export async function enrichAllDwsTables(
  * Deterministic round for events: for each DIM with a non-empty `primary_key`,
  * emit a DimensionRef for every DIM PK column whose name exactly matches an
  * event `params_fields` key (the event param field is the foreign key).
+ *
+ * CL-18 Phase 2: an optional `excludeColumns` set filters out noise matches
+ * (parallel to `discoverRelationsDeterministic` for DWS tables), so a DIM
+ * keyed by a partition column does not match an event param of the same name.
  * @param eventDef - the event definition to find DIM joins for.
  * @param dimInventory - the DIM tables to match against.
- * @returns one DimensionRef per DIM whose PK shares at least one param-field name.
+ * @param excludeColumns - optional set of field names to exclude from PK matching (CL-18 Phase 2).
+ * @returns one DimensionRef per DIM whose PK shares at least one non-excluded param-field name.
  */
 export function discoverEventRelationsDeterministic(
   eventDef: EventDefinition,
   dimInventory: readonly DimInventoryEntry[],
+  excludeColumns?: ReadonlySet<string>,
 ): DimensionRef[] {
   const fieldNames = new Set(Object.keys(eventDef.params_fields ?? {}))
   const refs: DimensionRef[] = []
   for (const dim of dimInventory) {
-    const pks = (dim.primary_key ?? []).filter(pk => fieldNames.has(pk))
+    const pks = (dim.primary_key ?? []).filter(pk => fieldNames.has(pk) && !(excludeColumns?.has(pk)))
     if (pks.length === 0) continue
     refs.push({
       dim_table: dim.table_name,
@@ -396,17 +425,22 @@ export function buildEventLlmPrompt(eventDef: EventDefinition, dimInventory: rea
 
 /**
  * Discover dimension relations for one event (two-round: deterministic + LLM).
+ *
+ * CL-18 Phase 2: `excludeColumns` (optional) is forwarded to the
+ * deterministic round to filter out partition-column PK matches.
  * @param eventDef - the event definition.
  * @param dimInventory - the DIM tables to match against.
  * @param llmCall - optional one-shot LLM call for the semantic round.
+ * @param excludeColumns - optional set of field names to exclude from deterministic PK matching.
  * @returns the merged DimensionRefs for the event.
  */
 export async function discoverEventRelationsFor(
   eventDef: EventDefinition,
   dimInventory: readonly DimInventoryEntry[],
   llmCall?: LlmCall,
+  excludeColumns?: ReadonlySet<string>,
 ): Promise<DimensionRef[]> {
-  const det = discoverEventRelationsDeterministic(eventDef, dimInventory)
+  const det = discoverEventRelationsDeterministic(eventDef, dimInventory, excludeColumns)
   if (!llmCall) return det
   let llm: DimensionRef[] = []
   try {
@@ -427,10 +461,16 @@ export async function discoverEventRelationsFor(
  * check; no schema validation — `loadEvents` validates on read).
  * `mergeExisting`: when true, discovered refs merge WITH the event's existing
  * `external_refs` (preserve curated); default false (replace).
+ *
+ * CL-18 Phase 2: `excludeColumnsFn` (optional) computes a per-event exclude
+ * set and forwards it to `discoverEventRelationsFor` (parallel to
+ * `enrichAllDwsTables`). The calling layer supplies the builder; the
+ * substrate applies it opaquely.
  * @param semanticLayer - the semantic-layer directory path.
  * @param llmCall - optional one-shot LLM call for the semantic round.
  * @param events - optional event-name filter; omit/empty to enrich all events.
  * @param mergeExisting - when true, merge discovered with existing; default false.
+ * @param excludeColumnsFn - optional per-event exclude-set builder (CL-18 Phase 2).
  * @returns `enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.
  */
 export async function enrichAllEvents(
@@ -438,6 +478,7 @@ export async function enrichAllEvents(
   llmCall?: LlmCall,
   events?: readonly string[],
   mergeExisting = false,
+  excludeColumnsFn?: (def: EventDefinition) => ReadonlySet<string> | undefined,
 ): Promise<{ enriched: number; written: number; errors: string[] }> {
   const dimInventory = buildDimInventory(semanticLayer)
   const filter = events !== undefined && events.length > 0 ? new Set(events) : undefined
@@ -452,7 +493,7 @@ export async function enrichAllEvents(
       continue
     }
     try {
-      const discovered = await discoverEventRelationsFor(r.data, dimInventory, llmCall)
+      const discovered = await discoverEventRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
       const refs = mergeExisting ? mergeRefs(existingEventRefs(e.raw), discovered) : discovered
       const content = dumpYaml({ ...e.raw, external_refs: refs })
       const res = await writeEventYaml(semanticLayer, e.name, content)

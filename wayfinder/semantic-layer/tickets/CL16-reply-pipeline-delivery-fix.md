@@ -1,6 +1,6 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: []
 ---
 
@@ -71,3 +71,19 @@ CL-15 对 44 wrong cases 的诊断中，8 个 DELIVERY judge 失败分为三类�
 - judge prompt：`packages/eval/eval-runner-service/src/index.ts`
 - DELIVERY case YAML：`packages/eval/eval/cases/k11-v2/`
 - 实验日志：`wayfinder/semantic-layer/research/experiment-audit-log.md`
+
+---
+
+## Partial Resolution (2026-09-02) — pipeline 已尽，85% 需 agent 行为
+
+**Pipeline 部分 done**（CL-11 reply 管道 + 08-31 `looksLikeToolCall`，`context.ts`）：DELIVERY 66.7%→77.8%（+11.1pp，14/18，run `32dd9532` vs `10320fe2`）。`019`/`074`/`voice_034`/`039`/`042`/`043` 经正确结构化拒绝翻转。
+
+**85% 目标未达（77.8% < 85%）**，剩余 DELIV-FAIL 归因：
+- **Type-1（`voice_017`/`033`/`036`）**：eval LLM 发射 tool-call 文本（live 多格式：`call:default_api:`/`call:func{}`/`<tool>`/`{"tool_calls":[...]}`/`{"name":...}`），`looksLikeToolCall` 漏部分格式 → tool-call 直作 reply → judge 判负。根因 = LLM 行为 + prompt/model，非管道。→ **[CL-19](CL19-eval-toolcall-emission-rootcause.md)**（根因 + 修复定位）。
+- **Type-2（`075`/`079`/`voice_048` 等）**：agent 对开放/主观问题错误生成 SQL（非拒绝）= agent 行为，非管道/检索。
+
+**ticket 前提（"二次修复→85%"）经 live eval 证伪**：pipeline 杠杆已尽，剩余属 agent 行为。
+
+**状态**：**关闭-部分**（2026-09-02 用户决策）。pipeline done；85% deferred——Type-1→CL-19，Type-2 agent 行为→CL-20。
+
+**实验记录**：[experiment-audit-log.md](../research/experiment-audit-log.md)（2026-09-02 联合全量 eval + voice_017 单 case 诊断）。

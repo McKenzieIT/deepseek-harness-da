@@ -26,6 +26,7 @@ import {
   IDENTITY_FIELDS,
   type AuditRecord,
 } from './schema.ts'
+import type { StructuredDelta, DeltaEntry } from './delta.ts'
 
 /** On-disk schema version (PRAGMA user_version); bump only on a breaking table-layout change. */
 const AUDIT_SCHEMA_VERSION = 2
@@ -701,5 +702,47 @@ export class SQLiteAuditStore {
     return this.db.prepare(
       'SELECT version, kind, created_at, log_id FROM definition_snapshot WHERE asset_name = ? ORDER BY version DESC',
     ).all(assetName) as Array<{ version: number; kind: string; created_at: string; log_id: string | null }>
+  }
+
+  // ── V1 (G6 D4): structured delta query ─────────────────────────────────
+
+  /**
+   * List all structured deltas persisted by `edit_definition` since a
+   * timestamp, oldest-first (chronological replay for the management agent's
+   * ③ self-driven loop + the V2 eval-run changeset).
+   *
+   * Filters `audit_event` rows tagged `tool_write` whose payload carries
+   * `tool_name = 'edit_definition'` AND a non-null `delta` in the flattened
+   * `extra` payload. The delta, asset_name, and kind are extracted from the
+   * stored payload JSON (they were co-located with the write event by
+   * {@link Audit.recordTier2Write}). No ownership guard: deltas are
+   * definition-level change metadata, not per-user audit content (the
+   * underlying audit_event still carries the identity columns for compliance
+   * traceability — this query projects only the delta surface).
+   *
+   * @param timestamp - UTC ISO-8601 lower bound (inclusive); deltas at or
+   * after this instant are returned.
+   * @returns the matching deltas, oldest-first.
+   */
+  listDeltasSince(timestamp: string): DeltaEntry[] {
+    const rows = this.db.prepare(
+      `SELECT ae.ts AS ts, ae.payload AS payload
+       FROM audit_event ae
+       WHERE ae.ts >= ?
+         AND EXISTS (SELECT 1 FROM audit_tag t WHERE t.event_id = ae.id AND t.tag = ?)
+         AND json_extract(ae.payload, '$.tool_name') = ?
+         AND json_extract(ae.payload, '$.delta') IS NOT NULL
+       ORDER BY ae.ts ASC`,
+    ).all(timestamp, TAG.TOOL_WRITE, 'edit_definition') as Array<{ ts: string; payload: string }>
+
+    return rows.map((row) => {
+      const payload = JSON.parse(row.payload) as Record<string, unknown>
+      return {
+        asset_name: String(payload.asset_name ?? ''),
+        kind: String(payload.kind ?? ''),
+        timestamp: row.ts,
+        delta: payload.delta as StructuredDelta,
+      }
+    })
   }
 }

@@ -14,7 +14,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
-import type { Audit } from '@deepseek-ai/dsh-audit'
+import { computeStructuredDelta, type Audit } from '@deepseek-ai/dsh-audit'
 
 export const name = 'tool-edit-definition'
 export const inject = ['tools', 'schema', 'audit']
@@ -405,12 +405,27 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // updateTableMeta). WARN 5: inject guarantees audit is mounted, but
       // defense-in-depth — if Cordis somehow returns undefined, log a warning
       // rather than silently skipping the audit trail.
-      if (kind === 'event') {
+      // V1 (G6 D4): compute a structured before/after delta and co-locate it
+      // with the tier-2 write event for ALL kinds (table / event / concept).
+      // Tables already have a substrate-level `update_table_meta` audit row;
+      // this `edit_definition` row carries the structured delta that the
+      // management agent's ③ self-driven loop + the V2 eval-run changeset read
+      // via `audit.store.listDeltasSince(ts)`. The automatic `confirmation`
+      // status flip is stripped from the delta (noise — it is always
+      // 'unreviewed' after every edit, not a semantic change).
+      if (before !== undefined && kind !== undefined) {
         if (!audit) {
-          ctx.logger.warn('tool-edit-definition: audit service unavailable — write persisted without audit trail')
+          ctx.logger.warn('tool-edit-definition: audit service unavailable — write persisted without delta audit trail')
         } else {
           try {
-            audit.recordTier2Write('edit_definition', { asset_name: result.asset_name, patch })
+            const { confirmation: _bConf, ...beforeForDelta } = before
+            const { confirmation: _aConf, ...afterForDelta } = merged
+            const delta = computeStructuredDelta(beforeForDelta, afterForDelta)
+            audit.recordTier2Write(
+              'edit_definition',
+              { asset_name: result.asset_name, patch },
+              { delta, asset_name: result.asset_name, kind },
+            )
           } catch {
             // fail-silent: audit failure must not break the business write
           }

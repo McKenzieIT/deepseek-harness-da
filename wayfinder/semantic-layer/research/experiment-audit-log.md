@@ -1,5 +1,68 @@
 # Experiment Audit Log — Semantic Layer Effort
 
+## 2026-09-02: 联合全量 eval（CL-18+V1 完成 + CL-17 dup 清理后）
+
+### Setup
+- **基线**: Run `10320fe2`（CL-15 标准基线）73.8%；上次 run `1510b3e0` 76.8%
+- **Cases**: 168 K11 cases（80 original + 40 alias + 30 voice EXEC + 18 voice DELIVERY）
+- **Model**: aga/qwen3.7-max, engine responder, pass_k=1, concurrency=4, sql-judge on, --skip-health-gate
+- **凭证**: `DASHSCOPE_API_KEY` 从 `~/.dsh/.credentials.yaml`（`scripts/run-eval.sh`）；gateway `pre-aga-ai-gateway.alibaba-inc.com` 可达
+- **变更**: CL-18 Phase 2（算法加固，不改既有 dimension_refs）+ V1（audit delta，不影响 eval）+ CL-17 dup 清理（`univ_role_tag_df` 去重 回归/回流）+ CL-16 无新代码（Type-1→CL-19）。today=20260902（基线 today=20260830；日期相对问题不影 sql-judge 语义评分）
+
+### Data (compare.ts 10320fe2 → 32dd9532, verbatim)
+- Overall: **73.8% → 70.8% (-3.0pp)**；119/168 correct（49 wrong）；Run `32dd9532`，2283.5s
+
+| Category | A (10320fe2) | B (32dd9532) | Delta |
+|----------|-------------|-------------|-------|
+| Original | 75.0% (60/80) | 72.5% (58/80) | -2.5pp |
+| Alias | 77.5% (31/40) | 62.5% (25/40) | **-15.0pp** |
+| Voice EXEC | 70.0% (21/30) | 73.3% (22/30) | +3.3pp |
+| Voice DELIVERY | 66.7% (12/18) | 77.8% (14/18) | **+11.1pp** |
+
+- Gained 16 / Lost 21 / Net -5
+- Gained: 019/029/067/069/074 [Original], alias_004/016/028 [Alias], voice_007/026/028/029 [EXEC], voice_034/039/042/043 [DELIVERY]
+- Lost: 001/011/021/042/043/046/049 [Original], alias_003/005/009/011/018/024/029/033/037 [Alias], voice_008/025/030 [EXEC], voice_033/036 [DELIVERY]
+
+### Verdict
+1. **Voice DELIVERY +11.1pp（66.7%→77.8%，14/18）**：CL-11 reply 管道 + looksLikeToolCall + CL-15 迁移 + 校准 judge 的 DELIVERY 改进 **hold 且提升**（voice_034/039/042/043 经正确结构化拒绝翻转）。仍 4 wrong（voice_017/033/036 +1）= Type-1 tool-call/SQL 发射 + Type-2 agent 行为。**CL-16 85% 目标未达（77.8%<85%）**，差距在 agent 行为（Type-1→CL-19，Type-2 独立）。
+2. **Alias -15.0pp**：大幅回归但 **归因 LLM 非确定性**（lost 9 alias 多样：tool-call/SQL/CASE/拒绝，非 回归/回流 单一检索效应；回归 case alias_016/028 反 GAINED）。dup 清理理论中性（dup 不助 BM25）但 BM25 term-frequency 使其非严格中性——单 run 无法区分 dup 效应 vs 非确定性。**不回滚 dup（正确 hygiene），flag 待查**。
+3. **CL-17 数据质量发现**：`univ_role_tag_df` 12 alt_labels（去重后），远超 08-31 "≤6 targeted" guidance（ARPU/ARPPU/流失/LTV/首充/首次充值 等 generic 标签稀释 BM25——CL-9 教训）。08-31 日志称 "trimmed to 6" 但文件实有 12-14 → trim 未完全落地。
+4. **Overall -3pp 在 LLM 非确定性范围**（08-31 run 自身 Net +5 / "15 loss 全随机波动"；本次 Net -5）。单 run 不结论；趋势需多 run 中位数。
+5. **CL-17 78% 目标未达（70.8%）**：enrichment 杠杆已尽（labels 已在；概念 case 仍拒）。真正剩余杠杆（皆非 "add labels"）：(a) trim over-enriched 表（univ_role_tag_df→6 targeted），(b) 概念 formula/定义（大R 阈值/回归 标识字段），(c) 迁移真不可答 EXEC-refusal→DELIVERY（018/071/058/064/066/070 多表/缺字段 case，拒绝质量高，DELIVERY judge 可打高分，如 CL-12/14/15 先例）。
+
+### Ticket Pointer
+Resolves: [CL-16](../tickets/CL16-reply-pipeline-delivery-fix.md)（部分——DELIVERY 77.8%<85%，pipeline 已尽，Type-1→CL-19，Type-2 agent 行为），[CL-17](../tickets/CL17-data-source-enrichment-round2.md)（部分——enrichment 已尽，78% 未达，剩余=trim/概念formula/迁移，非 enrichment）。Informs: [CL-19](../tickets/CL19-eval-toolcall-emission-rootcause.md)（live 多格式 tool-call 发射证据：`call:default_api:`/`call:func{}`/`<tool>`/`{"tool_calls":[...]}`/`{"name":...}`——looksLikeToolCall 漏部分格式）。Run `32dd9532` vs `10320fe2`。
+
+---
+
+## 2026-09-02: CL-16/CL-19 voice_017 Type-1 单 case 诊断（live eval）
+
+### Setup
+- **基线**: Run `10320fe2`（CL-15 标准基线）73.8%；上次 CL-16+17 run `1510b3e0` 76.8%
+- **Cases**: 1（`k11v2_voice_017` "玩家反馈怎么样"，DELIVERY/llm_judge）
+- **Model**: aga/qwen3.7-max, engine responder, pass_k=1, concurrency=4, sql-judge on, **--skip-health-gate**
+- **凭证**: `DASHSCOPE_API_KEY` 从 `~/.dsh/.credentials.yaml` 加载（"secrets in file" 约定）；wrapper `scripts/run-eval.sh`
+- **变更**: 无代码变更（诊断 run）
+
+### Data (verbatim)
+- Run ID `8b465bd9`，1 case，pass_rate 0.0%（1 wrong），23.3s
+- `[DIAG] SQL: call:default_api:load_event_definition{event_name: "game.playerFeedback.sendFeedback"}`
+- `[DIAG] ok=true decline=undefined rows=1`
+- verdict: wrong（DELIVERY judge 判负）
+- health-gate 需 `--skip-health-gate`（5s budget < AGA ~6-17s 延迟，否则 pre-flight 超时退出）
+
+### Verdict
+1. **Type-1 根因 live 确认**：eval LLM（aga/qwen3.7-max）对开放 DELIVERY 问题发射 tool-call 文本而非 SQL。本 run 格式 `call:default_api:load_event_definition{...}`（08-31 snapshot 为 `<tool>{"name":...}`）——**格式跨 run 不确定**。
+2. **looksLikeToolCall 不完备**：08-31 的 `looksLikeToolCall()` 只捕 `<call>`/`<tool>`/`{"name":`/`func(...)`，**漏 `call:default_api:...`** → tool-call 文本直作 reply → judge 见乱码 → wrong。
+3. **engine ok=true（非 decline）**：critic 不拒非-SQL + StandInOdps 对任意输入返 done+rows → garbage "SQL" "成功"。与 08-31 snapshot 推断（decline+空 reason）不同——实为 ok=true+tool-call reply。
+4. **管道修复翻不了 case**：扩 looksLikeToolCall / critic 拒非-SQL / engine decline 都只改失败形态（乱码→劣质 LLM 答→干瘪 decline），judge 仍要结构化拒绝（仅 agent/LLM 能产出）。根因 = LLM 行为（对开放 Q 发 tool-call）+ prompt/model，见 CL-19。
+5. **凭证 + gateway + --skip-health-gate 可用**：eval 可跑（23.3s/case）；后续 full run + compare 走 `scripts/run-eval.sh`。
+
+### Ticket Pointer
+Informs: [CL-19](../tickets/CL19-eval-toolcall-emission-rootcause.md)（Type-1 根因 + 修复定位）；CL-16（部分——pipeline 已尽，85% 需 agent 行为）
+
+---
+
 ## 2026-08-31: CL-16 + CL-17 sql-judge 质量推进至 76.8%
 
 ### Setup

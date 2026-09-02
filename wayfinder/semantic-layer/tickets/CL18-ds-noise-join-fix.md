@@ -1,7 +1,7 @@
 # CL-18 — ds 噪声关联修复 + 确定性匹配算法加固
 
 **Type**: bugfix
-**Status**: In Progress
+**Status**: closed
 **Blocked by**: —
 
 ## Question
@@ -53,7 +53,7 @@ T1 原始 enrichment 用 subagent workflow 直接产出 refs 并通过 tsx 脚�
 2. **`alt_labels` 被严重污染**：将指令性文本（如 `"仅使用以下5个"`、`"card_pool_id AS STRING"`）塞入搜索别名，破坏 BM25 检索
 3. **"唯一快照就是带噪声的状态"判断错误**：T1 原始种子是干净的，噪声是该 session 自己引入的
 
-## Resolution — Phase 2: 算法加固（待实现）
+## Resolution — Phase 2: 算法加固 ✅
 
 ### 推荐方案：`excludeColumns` 参数 + 调用层元数据驱动
 
@@ -99,7 +99,7 @@ const pks = (dim.primary_key ?? []).filter(pk =>
 - 不误杀高频有效 FK（`server_id` 26.8% 出现率但 role=dimension → 不在排除集中）
 - 非 LLM 依赖，确定性 O(1)
 
-### 代码变更（待实现）
+### 代码变更（设计计划 → 已落地，见下方落地记录）
 
 **substrate 层**（`packages/data/semantic-layer/src/enrichment.ts`）：
 
@@ -118,3 +118,36 @@ const pks = (dim.primary_key ?? []).filter(pk =>
 7. ds-only 匹配 + excludeColumns 包含 ds → 跳过
 8. 混合匹配（business_key + ds）+ excludeColumns 包含 ds → 保留 business_key
 9. 无 excludeColumns（向后兼容）→ 行为不变
+
+### 落地记录（2026-09-02）
+
+**变更文件**：
+
+| 文件 | 变更 |
+|------|------|
+| `packages/data/semantic-layer/src/enrichment.ts` | `discoverRelationsDeterministic` / `discoverRelationsFor` / `enrichAllDwsTables` / `discoverEventRelationsDeterministic` / `discoverEventRelationsFor` / `enrichAllEvents` 新增可选 `excludeColumns` / `excludeColumnsFn` 参数；确定性 PK 匹配过滤排除列（`colNames.has(pk) && !(excludeColumns?.has(pk))`） |
+| `packages/data/semantic-layer/src/index.ts` | 新增并导出 `buildExcludeColumns(def)` 调用层 helper（`role:'partition'` 数据驱动，无标注时回退 `DEFAULT_PARTITION_BLOCKLIST = [ds,pt,dt]`）；`discoverRelations` + `enrichOnWrite` 透传该 helper 作为 `excludeColumnsFn` |
+| `packages/data/semantic-layer/tests/discover-relations.spec.ts` | 新增 6 个 CL-18 Phase 2 测试（5 substrate 级 + 1 Service 端到端 wiring） |
+
+**测试结果**（`npx vitest run packages/data/semantic-layer/tests/discover-relations.spec.ts packages/data/semantic-layer/tests/enrichment.spec.ts`）：
+
+- `discover-relations.spec.ts`：**10 passed**（4 既有 + 6 新增）
+- `enrichment.spec.ts`：**28 passed**
+- 合计：**38 passed / 0 failed**
+- 既有测试全绿（向后兼容：未传 `excludeColumns` 时确定性轮行为逐字节不变）
+
+**新增测试覆盖**：
+
+1. ds-only PK 匹配 + `excludeColumns` 含 ds → 0 refs（噪声跳过）✅
+2. 混合匹配（business_key + ds）+ `excludeColumns` 含 ds → 保留 business_key，跳过 ds-only ✅
+3. 无 `excludeColumns`（向后兼容）→ 行为不变（ds-only 仍产出，回归保护）✅
+4. `buildExcludeColumns` role:'partition' 数据驱动路径（精确集合，非 blocklist 超集）✅
+5. `buildExcludeColumns` 无 role 标注 → 回退 blocklist `[ds,pt,dt]` ✅
+6. Service `discoverRelations()` 端到端 wiring：ds-only DIM 快照不匹配、server_id DIM 保留 ✅
+
+**设计要点**：
+
+- substrate 层 `discoverRelationsDeterministic` 不依赖任何特定元数据格式 —— 仅接受一个 `ReadonlySet<string>` 排除集；过滤策略由调用层注入。
+- 调用层 `buildExcludeColumns` 分层：有 `role:'partition'` 列 → 数据驱动（精确，含自定义分区列）；无 → 最小 blocklist `[ds,pt,dt]`（兜底，仍能过滤常见噪声）。
+- 事件路径（`enrichAllEvents`）同样支持 `excludeColumnsFn`，但 `discoverEventRelations` 暂不传入（埋点无分区列，保持向后兼容）。
+- 所有新增参数均为可选 trailing 参数，既有调用方无需改动。

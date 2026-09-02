@@ -126,8 +126,11 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-13 Compound query join 完整性](tickets/CL13-compound-query-join-completeness.md) — voice_030 通过 CL-14 enrichment 翻转为 pass；voice_029/032 仍为 wrong（多表 join 能力限制，非检索问题）
 - [CL-14 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md) — 4 表 alt_labels 扩充（pvp_card_statistics_di/gacha_result_statis_di/pve_progress_df/com_pay_order_df）+ voice_017/020 迁移为 DELIVERY；voice_003/008/030 翻转为 pass（3/5 验收通过）。**四票联合 eval：66.1% → 73.8%（+7.7pp，net +13 cases）**
 - [CL-15 sql-judge 标准基线确立](tickets/CL15-sql-judge-as-standard-baseline.md) — sql-judge 确认为默认模式（`--no-sql-judge` opt-out）；README 文档化（基线 73.8%、目标 75%/80%/90%）；`compare.ts` 趋势对比工具（分类别 breakdown + case-level flips）；4 个主观 EXEC case 迁移为 DELIVERY（074/080/voice_034/voice_039）；44 wrong cases 分析：24 agent refusal（数据缺口/多表 join）+ 8 DELIVERY judge（pipeline 问题）+ 8 garbled tool calls + 4 SQL semantic failure
-- [CL-18 ds 噪声关联修复](tickets/CL18-ds-noise-join-fix.md) — `discoverRelationsDeterministic` 未排除分区列，18 个 ds-in-PK 的 DIM 表被错误匹配。**Phase 1 数据清理 ✅**：`gacha_result_statis_di` 清除 18 条噪声 refs（23→5）+ 7 条 alt_labels 污染 + description 注入段落。**Phase 2 算法加固**（待实现）：substrate 新增 `excludeColumns` 参数（通用接口），调用层从列 `role: partition` 元数据计算排除集（有 role 时数据驱动，无 role 时回退 blocklist `[ds,pt,dt]`）
+- [CL-18 ds 噪声关联修复](tickets/CL18-ds-noise-join-fix.md) — `discoverRelationsDeterministic` 未排除分区列，18 个 ds-in-PK 的 DIM 表被错误匹配。**Phase 1 数据清理 ✅**：`gacha_result_statis_di` 清除 18 条噪声 refs（23→5）+ 7 条 alt_labels 污染 + description 注入段落。**Phase 2 算法加固 ✅**：substrate `discoverRelationsDeterministic`/`discoverEventRelationsDeterministic`/`discoverRelationsFor`/`discoverEventRelationsFor` 新增 `excludeColumns` 参数；调用层 `buildExcludeColumns`（`role:partition` 数据驱动，无 role 回退 `[ds,pt,dt]`）接入 `discoverRelations()` + on-write hook；6 新测试 38/38 scoped 绿
 - [G6 定义版本管理](tickets/G6-definition-version-management.md) — **不引入 git，走 eval-driven 版本治理**；5 项决策：D1 不引入 git（现有快照+审计足够）、D2 γ 变更集锚定检查点 eval（eval run 携带 changeset）、D3 版本号不随查询传播（fog）、D4 edit_definition 写入时计算 structured delta（before/after 差异持久化）、D5 细粒度 auto-revert（独立开票）。行业调研（Databricks Genie Layer 5 / Cube versioned model / Hex eval-before-ship / Fowler traceability）确认 2026 前沿 = eval-centric 非 git-centric。毕业 V1-V3 实现票
+- [V1 审计 structured delta](tickets/V1-audit-structured-delta.md) — `edit_definition` 写入时计算 before/after `StructuredDelta`（columns 按 name / dimension_refs 按 dim_table / domains·alt_labels 集合语义 / 顶层直比；strip `confirmation` 噪声）持久化到 audit `extra`（Option A，无 schema 迁移）；`listDeltasSince` 查询；20 新测试 + 240 semantic-layer 兼容性全绿
+- [CL-16 Reply 管道二次修复](tickets/CL16-reply-pipeline-delivery-fix.md) — **部分关闭**：pipeline 已尽（CL-11+looksLikeToolCall），DELIVERY 66.7%→77.8%（+11.1pp，run `32dd9532` vs `10320fe2`）；85% 未达，剩余 Type-1 tool-call 发射→CL-19 + Type-2 agent 行为→CL-20
+- [CL-17 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md) — **部分关闭**：enrichment 已尽（labels 已在），overall 70.8%<78%；剩余=trim/概念formula/迁移真不可答→DELIVERY→CL-21（非 enrichment）；dup 清理已做（BM25 效应待 CL-22 查）
 
 
 ## Not yet specified
@@ -274,15 +277,19 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~[CL-15: sql-judge 模式确立为标准基线](tickets/CL15-sql-judge-as-standard-baseline.md)~~ ✅ — sql-judge 确认默认；README + compare.ts 趋势工具；4 case DELIVERY 迁移；44 wrong cases 分析完成
 
 ### sql-judge 质量推进至 80%+
-- [CL-16: Reply 管道二次修复](tickets/CL16-reply-pipeline-delivery-fix.md) — 8 个 DELIVERY judge 失败：3 pipeline（tool calls 被当作回复）+ 4 agent 行为（DELIVERY 问题错误生成 SQL）+ 1 空输出。目标 DELIVERY 85%+（**frontier — 无阻塞**）
-- [CL-17: 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md) — ~10 个 EXEC refusal 因检索缺口：7 数据源 BM25 信号不足 + 5 概念缺失（「大R」「回归」）。目标 overall 78%+（**frontier — 无阻塞，与 CL-16 并行**）
+- ~~[CL-16: Reply 管道二次修复](tickets/CL16-reply-pipeline-delivery-fix.md)~~ ✅ — **关闭-部分**：pipeline 已尽，DELIVERY 66.7%→77.8%（+11.1pp，run `32dd9532`）；85% deferred（Type-1→CL-19，Type-2→CL-20）
+- ~~[CL-17: 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md)~~ ✅ — **关闭-部分**：enrichment 已尽，overall 70.8%<78%；deferred→CL-21（trim/概念formula/迁移）；dup 清理已做
+- [CL-19: eval LLM tool-call 发射根因](tickets/CL19-eval-toolcall-emission-rootcause.md) — CL-16 Type-1 剩余；prompt vs model + 修复定位（engine decline / reply 合成 / prompt）；live 多格式证据（`call:default_api:`/`call:func{}`/`<tool>`/`{"tool_calls":[...]}`/`{"name":...}`——looksLikeToolCall 漏部分格式）（**frontier — 无阻塞，CL-16 partial 衍生**）
+- [CL-20: DELIVERY Type-2 agent 行为](tickets/CL20-delivery-agent-behavior-type2.md) — CL-16 剩余：开放问题错误生成 SQL（075/079/voice_048 等）；prompt/critic/judge 候选；目标 DELIVERY 85%+（**frontier — 无阻塞**）
+- [CL-21: 78% 推进——trim/概念formula/迁移](tickets/CL21-non-enrichment-levers-trim-formula-migration.md) — CL-17 剩余：trim over-enriched 表/大R·回归 formula/迁移真不可答→DELIVERY；目标 overall 78%+（**frontier — 无阻塞**）
+- [CL-22: eval 非确定性深查](tickets/CL22-eval-nondeterminism-deepcheck.md) — research：-3pp/Alias -15pp/dup BM25 效应；多 run 中位数 + 对照（**frontier — 无阻塞**）
 
 ### Enrichment 算法质量
-- [CL-18: ds 噪声关联修复 + 确定性匹配加固](tickets/CL18-ds-noise-join-fix.md) — Phase 1 数据清理 ✅；Phase 2 算法加固待实现（`excludeColumns` 参数 + 调用层 role 元数据驱动）（**frontier — 无阻塞**）
+~~[CL-18: ds 噪声关联修复 + 确定性匹配加固](tickets/CL18-ds-noise-join-fix.md)~~ ✅ — Phase 2 算法加固已落地：substrate `excludeColumns` 参数 + 调用层 `buildExcludeColumns`（`role:partition` 驱动，无 role 回退 `[ds,pt,dt]`）接入 `discoverRelations()` + on-write hook；6 新测试 38/38 scoped 绿
 
 ### Eval-driven 版本治理（G6 毕业）
-- [V1: 审计 structured delta](tickets/V1-audit-structured-delta.md) — `edit_definition` 写入时计算 before/after 结构化差异并持久化（**frontier — 无阻塞**）
-- [V2: eval run changeset 标注](tickets/V2-eval-run-changeset-annotation.md) — eval run 记录携带 since-last-run changeset 元数据（**blocked by V1**）
+~~[V1: 审计 structured delta](tickets/V1-audit-structured-delta.md)~~ ✅ — `StructuredDelta` 计算（columns 按 name / dimension_refs 按 dim_table / domains·alt_labels 集合语义 / 顶层直比；strip `confirmation` 噪声）+ 持久化到 audit `extra`（Option A，无 schema 迁移）+ `listDeltasSince` 查询；20 新测试 + 240 semantic-layer 兼容性全绿
+- [V2: eval run changeset 标注](tickets/V2-eval-run-changeset-annotation.md) — eval run 记录携带 since-last-run changeset 元数据（**frontier — 无阻塞（V1 已闭）**）
 - [V3: 细粒度 auto-revert](tickets/V3-fine-grained-auto-revert.md) — 基于 changeset + affected scope 的定向回滚；③-gated（**blocked by V2**）
 
 ### Context Layer 对齐（CL 系列）
