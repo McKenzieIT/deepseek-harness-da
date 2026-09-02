@@ -47,6 +47,14 @@ export interface BootOptions {
   readonly sidecarPath?: string
   readonly noSqlJudge?: boolean
   readonly queryExpansion?: boolean
+  /**
+   * Explicit scopeId for SemanticLayerService + ctx.query adapters
+   * (D3ii: no default pointer). boot() throws when this is undefined rather
+   * than silently falling back to a hardcoded scope. Optional on the type so
+   * existing call sites fail-loud at boot instead of at the type boundary —
+   * but the runtime contract is: must be provided.
+   */
+  readonly scopeId?: string
 }
 
 export interface BootResult {
@@ -143,7 +151,7 @@ class CtxLlmAdapter implements Llm {
 // ── ctx.query → engine OdpsExecutor (forked from eval-runner-service) ────
 
 class CtxOdpsAdapter implements OdpsExecutor {
-  constructor(private readonly ctx: Context) {}
+  constructor(private readonly ctx: Context, private readonly scopeId: string) {}
 
   private engine(): { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined {
     return this.ctx.get('query') as { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined
@@ -152,7 +160,7 @@ class CtxOdpsAdapter implements OdpsExecutor {
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql } as unknown as EngineQueryOutcome
-    const out = await q.execute({ sql, scopeId: 'k11', mode: 'fast' }, opts?.signal)
+    const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)
     return out as unknown as EngineQueryOutcome
   }
 
@@ -167,14 +175,14 @@ class CtxOdpsAdapter implements OdpsExecutor {
 // ── ctx.query → eval-runner QueryExecutor (forked from eval-runner-service) ──
 
 class CtxQueryExecutor implements QueryExecutor {
-  constructor(private readonly ctx: Context) {}
+  constructor(private readonly ctx: Context, private readonly scopeId: string) {}
 
   async execute(sql: string): Promise<QueryResult> {
     const q = this.ctx.get('query') as { execute(req: unknown): Promise<unknown> } | undefined
     if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
     let out: Record<string, unknown>
     try {
-      out = await q.execute({ sql, scopeId: 'k11', mode: 'fast' }) as Record<string, unknown>
+      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }) as Record<string, unknown>
     } catch (err) {
       return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
     }
@@ -286,20 +294,21 @@ class Nl2sqlAgentResponder implements AgentResponder {
     provider: string,
     model: string,
     withQuery: boolean,
+    private readonly scopeId: string,
     queryExpansion: boolean = true,
   ) {
     this.llm = new CtxLlmAdapter(ctx, provider, model)
-    this.odps = withQuery ? new CtxOdpsAdapter(ctx) : new StandInOdps()
+    this.odps = withQuery ? new CtxOdpsAdapter(ctx, this.scopeId) : new StandInOdps()
     this.queryExpansionEnabled = queryExpansion
   }
 
   async respond(question: string, _opts?: AgentRespondOpts): Promise<AgentResponse> {
     const schema = this.ctx.get('schema') as
-      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(): RelationGraphLike }
+      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(scopeId?: string): RelationGraphLike }
       | undefined
     const corpus = (schema?.loadRetrievalCorpusAll?.() ?? []) as readonly { id: string; description?: string; payload?: unknown }[]
     const baseLinker = new Bm25Linker(corpus)
-    const graph = schema?.getRelationGraph?.()
+    const graph = schema?.getRelationGraph?.(this.scopeId)
 
     // P15a: expand query for BM25 retrieval (engine uses question for both
     // prompting and retrieval; wrap the linker so only retrieval sees the
@@ -313,8 +322,8 @@ class Nl2sqlAgentResponder implements AgentResponder {
 
     const lookupDoc = (id: string) => corpus.find(d => d.id === id) as import('@deepseek-ai/dsh-nl2sql-engine').DataSourceDoc | undefined
     const partitionResolver = (tableName: string): readonly string[] | null => {
-      const svc = this.ctx.get('schema') as { loadTableDefinition?(name: string): { partitions: Array<{ name: string }> } | null } | undefined
-      const def = svc?.loadTableDefinition?.(tableName)
+      const svc = this.ctx.get('schema') as { loadTableDefinition?(name: string, scopeId?: string): { partitions: Array<{ name: string }> } | null } | undefined
+      const def = svc?.loadTableDefinition?.(tableName, this.scopeId)
       return def?.partitions?.map(p => p.name) ?? null
     }
     const exp2Arm = process.env.EXP2_ARM?.toUpperCase()
@@ -329,7 +338,7 @@ class Nl2sqlAgentResponder implements AgentResponder {
       ...((exp2Arm === 'B' || exp2Arm === 'C' || exp2Arm === 'D') ? { promptBuilder: buildPromptEN } : {}),
     })
 
-    const result = await engine.run({ question, today: this.today, evalMode: true })
+    const result = await engine.run({ question, scopeId: this.scopeId, today: this.today, evalMode: true })
     const sql = result.sql ?? null
     console.error(`[DIAG] SQL: ${sql?.slice(0, 400) ?? '(none)'}`)
     console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)
@@ -403,6 +412,13 @@ class Nl2sqlAgentResponder implements AgentResponder {
 // ── Boot ────────────────────────────────────────────────────────────────
 
 export async function boot(opts: BootOptions): Promise<BootResult> {
+  // D3ii: no default pointer — explicit scopeId is required. Fail-loud here
+  // rather than silently falling back to a hardcoded scope. The BootOptions
+  // field is optional on the type so existing callers fail at boot (not at
+  // the type boundary), but the runtime contract is: must be provided.
+  if (opts.scopeId === undefined) {
+    throw new Error('eval-cli boot: explicit scopeId required (D3ii: no default pointer)')
+  }
   const ctx = new Context()
 
   // 1. Mount LlmRuntime → provides ctx.llm
@@ -412,7 +428,7 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   await ctx.plugin(llmDashscope)
 
   // 3. Mount SemanticLayerService → provides ctx.schema
-  await ctx.plugin(SemanticLayerService, { semanticRoot: opts.schemaDir, scopeId: 'k11' })
+  await ctx.plugin(SemanticLayerService, { semanticRoot: opts.schemaDir, scopeId: opts.scopeId })
 
   // 4. Optionally mount query-maxcompute → provides ctx.query
   if (opts.withQuery) {
@@ -450,9 +466,9 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   const exp2ArmBoot = process.env.EXP2_ARM?.toUpperCase()
   if (exp2ArmBoot) console.log(`  [GA-EXP2] arm=${exp2ArmBoot} — prompt language variant active`)
   const llmAdapter = new CtxLlmAdapter(ctx, opts.provider, opts.model)
-  const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery, opts.queryExpansion !== false)
+  const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery, opts.scopeId, opts.queryExpansion !== false)
   const judge = new LlmJudgeExecutor(llmAdapter)
-  const executor = opts.withQuery ? new CtxQueryExecutor(ctx) : null
+  const executor = opts.withQuery ? new CtxQueryExecutor(ctx, opts.scopeId) : null
 
   // 6. SQL Semantic Judge (enabled by default when no executor)
   let sqlJudge: SqlSemanticJudge | null = null

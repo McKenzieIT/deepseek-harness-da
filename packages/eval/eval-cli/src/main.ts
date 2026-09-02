@@ -47,6 +47,14 @@ interface CliArgs {
   queryExpansion: boolean
   responder: 'engine' | 'harness'
   variant: string | null
+  /**
+   * Explicit scopeId for the SemanticLayerService + ctx.query adapters.
+   * CLI-layer explicit default 'k11' (the K11 case set's scope) — this is an
+   * explicit CLI default, NOT a runtime silent default pointer (D3ii allows
+   * this: the user can override with --scope-id; boot() still fail-louds when
+   * the value is absent, but the CLI always supplies one).
+   */
+  scopeId: string
 }
 
 function str(v: string | boolean | undefined, fallback: string): string {
@@ -73,6 +81,7 @@ function parseCliArgs(): CliArgs {
       'no-query-expansion': { type: 'boolean', default: false },
       responder: { type: 'string', default: 'engine' },
       variant: { type: 'string' },
+      'scope-id': { type: 'string', default: 'k11' },
       help: { type: 'boolean', default: false },
     },
     strict: false,
@@ -125,6 +134,7 @@ function parseCliArgs(): CliArgs {
     queryExpansion: values['no-query-expansion'] !== true,
     responder: responderVal as 'engine' | 'harness',
     variant: typeof variantVal === 'string' ? variantVal.toUpperCase() : null,
+    scopeId: str(values['scope-id'], 'k11'),
   }
 }
 
@@ -163,6 +173,10 @@ function printUsage(): void {
     --variant <A|B|C|D>    G1b experiment variant (required when --responder harness)
                            A = phase-gate, B = free ReAct + planning,
                            C = hybrid (phase-gate + planning), D = bare ReAct
+    --scope-id <id>        Explicit scopeId for SemanticLayerService + ctx.query
+                           adapters [default: k11 — the K11 case set's scope.
+                           D3ii: CLI-layer explicit default, not a runtime
+                           silent pointer; override for non-K11 scopes]
     --help                 Show this help
 
   Environment:
@@ -310,6 +324,7 @@ export async function main(): Promise<void> {
       withQuery: args.withQuery,
       noSqlJudge: args.noSqlJudge,
       queryExpansion: args.queryExpansion,
+      scopeId: args.scopeId,
       ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
     })
     collaborators = engineCollabs

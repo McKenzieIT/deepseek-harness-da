@@ -3,7 +3,16 @@ import { matchAliases, type ScopeAliasEntry } from './aliases.ts'
 import type { ScopeSummary } from './types.ts'
 
 interface ScopeRegistryLike {
-  list(): readonly { readonly id: string; readonly metadata?: Readonly<Record<string, unknown>> }[]
+  /**
+   * All registered scopes, optionally filtered by tenant.
+   *
+   * Backward-compatible: an omitted `tenant` returns every scope (the real
+   * ScopeRegistryService added `list(tenant?)` in Phase 1 — undefined returns
+   * all, matching the prior no-arg shape). A provided `tenant` returns only
+   * scopes owned by that tenant, preventing cross-tenant scope ids/names/aliases
+   * from leaking into the LLM system prompt (D5.4).
+   */
+  list(tenant?: string): readonly { readonly id: string; readonly metadata?: Readonly<Record<string, unknown>> }[]
   activeId(): string | undefined
 }
 
@@ -60,10 +69,10 @@ function buildAliasHint(
   ].join('\n')
 }
 
-function buildSummaries(ctx: Context): ScopeSummary[] {
+function buildSummaries(ctx: Context, tenant?: string): ScopeSummary[] {
   const scopes = ctx.get('scopes') as ScopeRegistryLike | undefined
   if (!scopes) return []
-  const all = scopes.list()
+  const all = scopes.list(tenant)
   const activeId = scopes.activeId()
   return all.map(s => ({
     id: s.id,
@@ -74,12 +83,32 @@ function buildSummaries(ctx: Context): ScopeSummary[] {
   }))
 }
 
+/**
+ * Resolve the current session's tenant for scope filtering (D5.4).
+ *
+ * Structurally reads `context.agent?.session?.tenant`. This is OPTIONAL and
+ * dormant in Phase 3d: the `tenant` field is not yet populated on the Session
+ * type (Phase 4 fills it). When the field is absent, undefined, or not a
+ * non-empty string, this returns `undefined`, so `scopes.list(undefined)`
+ * returns ALL scopes — preserving the current (un-filtered) behavior with no
+ * hard dependency on `session.tenant`. No cross-tenant leakage occurs once
+ * Phase 4 stamps the tenant: a tenant-scoped `list(tenant)` returns only that
+ * tenant's scopes.
+ */
+function resolveSessionTenant(context: unknown): string | undefined {
+  const session = (context as { agent?: { session?: { tenant?: unknown } } | null | undefined })?.agent?.session
+  const tenant = session?.tenant
+  if (typeof tenant === 'string' && tenant.length > 0) return tenant
+  return undefined
+}
+
 export function installScopeHint(ctx: Context): void {
   ctx.systemPrompt.section({
     name: 'scope-awareness',
     order: 50,
-    text: () => {
-      const summaries = buildSummaries(ctx)
+    text: (context: unknown) => {
+      const tenant = resolveSessionTenant(context)
+      const summaries = buildSummaries(ctx, tenant)
       if (summaries.length <= 1) return ''
       return buildScopeAwarenessSection(summaries)
     },
@@ -91,7 +120,8 @@ export function installScopeHint(ctx: Context): void {
     text: (context: unknown) => {
       const scopes = ctx.get('scopes') as ScopeRegistryLike | undefined
       if (!scopes) return ''
-      const all = scopes.list()
+      const tenant = resolveSessionTenant(context)
+      const all = scopes.list(tenant)
       if (all.length <= 1) return ''
 
       const ctx2 = context as { agent?: { session?: { messages?: unknown[] } } }
@@ -114,9 +144,9 @@ export function installScopeHint(ctx: Context): void {
       const match = matchAliases(lastUser.content, aliasEntries)
       if (!match.matched) return ''
 
-      const activeId = scopes.activeId()
-      const summaries = buildSummaries(ctx)
-      return buildAliasHint(match.scope_ids, match.matched_aliases, summaries, activeId)
+      const summaries = buildSummaries(ctx, tenant)
+      const activeScopeId = summaries.find(s => s.is_active)?.id
+      return buildAliasHint(match.scope_ids, match.matched_aliases, summaries, activeScopeId)
     },
   })
 }

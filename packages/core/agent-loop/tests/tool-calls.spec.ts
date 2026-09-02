@@ -760,3 +760,57 @@ describe('code-mode native-tool denial through the agent loop', () => {
     })
   })
 })
+
+describe('executeToolCalls: session-bound scopeId flows to ToolExecutionInput', () => {
+  it('forwards AgentOptions.scopeId to exec.scopeId (session-bound source, D4)', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'p', args: { id: '1' } }]),
+      textResponse('done'),
+    ])
+    const ctx = await harness(adapter)
+    ctx.tools.register(defineContentToolFixture({
+      name: 'p', description: 'probe', parameters: { id: { type: 'string', required: true } },
+      async execute(args) { return [{ type: 'text', text: `ok-${args.id}` }] },
+    }))
+    let captured: string | undefined
+    ctx.on('tools/pre-execute', async (exec, next): Promise<PreToolDecision> => {
+      captured = exec.scopeId
+      return next()
+    })
+    // One agent per session: scopeId on AgentOptions is the session-bound source.
+    // executeToolCalls forwards it to every ToolExecutionInput it builds, and
+    // createExecution propagates it onto the ToolRunContext that pre-execute sees.
+    const agent = ctx.agentLoop.create(SessionId('scope-probe'), {
+      provider: 'mock', model: 'mock', scopeId: 'test-scope',
+    })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(captured).toBe('test-scope')
+  })
+
+  it('leaves exec.scopeId undefined when no scopeId is set (dormant — pre-Phase-4 behavior)', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'p', args: { id: '1' } }]),
+      textResponse('done'),
+    ])
+    const ctx = await harness(adapter)
+    ctx.tools.register(defineContentToolFixture({
+      name: 'p', description: 'probe', parameters: { id: { type: 'string', required: true } },
+      async execute(args) { return [{ type: 'text', text: `ok-${args.id}` }] },
+    }))
+    // Sentinel proves the pre-execute hook ran; no scopeId set → undefined.
+    let captured: string | undefined = 'unset-sentinel'
+    ctx.on('tools/pre-execute', async (exec, next): Promise<PreToolDecision> => {
+      captured = exec.scopeId
+      return next()
+    })
+    const agent = ctx.agentLoop.create(SessionId('scope-dormant'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(captured).toBeUndefined()
+  })
+})

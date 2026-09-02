@@ -1,6 +1,6 @@
 # GA-GT1-impl — 多租户 scope 重构实施（Phase 1+2）
 
-**Type**: task  ·  **Phase**: misc  ·  **Status**: Open  ·  **Claim**: 2026-09-01 claude session — A impl (dual-line)
+**Type**: task  ·  **Phase**: misc  ·  **Status**: Resolved  ·  **Claim**: 2026-09-01 claude session — A impl (dual-line)  ·  **Resolved**: 2026-09-02
 **Source**: [GA-GT1 grilling](GA-GT1-multi-tenant-scope.md)（resolved 2026-09-01，D1-D6 锁定）
 **Priority**: critical
 **Blocked by**: 无（GA-GT1 grilling 已 resolved）
@@ -64,4 +64,22 @@
 
 ## 关联
 
-[GA-GT1 grilling](GA-GT1-multi-tenant-scope.md)（D1-D6 决策）、[GA-GT2-impl](GA-GT2-impl-engine-abstraction.md)（resolved，跨线 getConventions 耦合）、GA-GT1-cleanup（Phase 3+4，后续票，待创建）。
+[GA-GT1 grilling](GA-GT1-multi-tenant-scope.md)（D1-D6 决策）、[GA-GT2-impl](GA-GT2-impl-engine-abstraction.md)（resolved，跨线 getConventions 耦合）、GA-GT1-cleanup（Phase 3+4，后续票，[已创建](GA-GT1-cleanup-multi-tenant-scope.md)）。
+
+## Resolution (2026-09-02)
+
+Phase 1+2（additive 容量 + 调用方迁移 + 跨线 getConventions）实施完成，`active` 作兼容回退保留（纯叠加、不删、不 break 单 scope）。每阶段两阶段 subagent review（spec + code-quality）+ tsc/vitest gate 全过；GA-EXP2 WIP 全程保留（engine.ts promptBuilder / eval-cli EXP2_ARM / eval-runner sql_semantic_judge / 未追踪 eval 测试文件——零回退零 entangle）。
+
+**实施（additive-only）**：
+- **Phase 1 ScopeRegistry**：`ScopeDefinition` 加 `tenant?`（optional，现存 scope 无 tenant="default"）+ `forTenant(tenant,scopeId?)`/`list(tenant?)`；`active` 家族保留 `@deprecated`；`withTenant` 在读边界解析缺失→"default"（保旧文件 round-trip 形状）。
+- **Phase 2 SemanticLayerService**：5 读方法加 `scopeId?`（undefined→active 回退）+ per-scope LRU `graphCacheByScope`（**root-check 防 I-1 重注册泄漏**）+ `corpusVersionForRoot` 助手；`scopeEpoch` 保留（Phase 4 删）。
+- **Phase 3 H6 四处级联**：(1) enrichedLinkers×3（tool-retrieve/search-data-sources/search-schema）corpusVersion 校验 + per-scope 键控；(2) evidence-query `scope_id`+query 过滤+resultsDir per-scope 子目录+service 读方法 scopeId+`resolveRoot` fail-loud；(3) InProcRetrieval lazy per-scope re-probe + corpusVersion 失效重建；(4) scope-hint 按 session tenant 过滤（alias-hint 改从 filtered summaries 派生 active，不泄漏外 tenant）。
+- **Phase 4 ToolExecutionInput.scopeId**：`ToolExecutionInput` 加 `scopeId?`；`executeToolCalls` 从 `agent.options.scopeId` 填（session-bound，选 AgentOptions 而非 Session——后者私有构造+storage 契约侵入大）；`createExecution` base pick 传播到 ToolRunContext；dormant 直至 5d。
+- **Phase 5 调用方迁移**：5a 公开 `resolveScopeRoot` 作共享 seam；5b 4 per-scope 缓存加 `entry.root` 检查（**#19/#22 carry-forward 解决——TDD red→green 功能证明重注册跨租户泄漏闭合，parity Phase 2 I-1**）+ execute 透传 `exec.scopeId`；5c 4 外部 call site（tool-search-data-sources/tool-resolve-term/schema-gateway×2）传 scopeId；5d eval/CLI 显式配 scopeId（D3ii 无 default 指针——boot/runBatch 未提供则 throw）+ EXP2_ARM 全程保留。
+- **Phase 6 跨线 getConventions**：`Nl2sqlEngineService` 去构造时缓存，`getConventions(scopeId?)` per-call → `ctx.query.getConventions(scopeId)`；`QueryEngine.getConventions` 加 `scopeId?`（concrete override 未碰——TS 允许 `()` override `(scopeId?)`，零 query-maxcompute 纠缠）；engine.ts promptBuilder 未碰。
+
+**carry-forward（Phase 5+，tracked）**：
+- #25 nested scopeId propagation in code-mode `run_code` 子调度（code-mode.ts:475——子 ToolExecutionInput 未传播 scopeId；dormant 直至 nested scoped dispatch live）。
+- #32 harness-responder.ts D3ii（`HarnessAgentResponder.bootContext` 硬编码 'k11'；G1b 实验路径，~3 行修复，G1b land 时做）。
+
+**→ GA-GT1-cleanup 前置门**：Phase 3+4（scopeId required + active warn-on-use + 现存 scope 赋正式 default tenant + 删 active/setActive/clearActive + tenant 必填 + 移除 scopeEpoch）= breaking change。**前置条件**：①Phase 1+2 生产验证（多租户并发无泄漏/竞态）+ ②全 callers 迁移（含 #25 nested + #32 harness-responder carry-forward）+ ③用户授权 breaking change。满足后开 [GA-GT1-cleanup](GA-GT1-cleanup-multi-tenant-scope.md) 票。

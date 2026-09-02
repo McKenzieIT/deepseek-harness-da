@@ -26,7 +26,7 @@ interface ToolDef {
   }
   readonly execute: (
     args: { readonly query: string; readonly top_k?: number },
-    exec: { readonly signal: AbortSignal },
+    exec: { readonly signal: AbortSignal; readonly scopeId?: string },
   ) => Promise<{ readonly candidates: SearchHit[] }>
 }
 
@@ -203,6 +203,36 @@ test('S11 execute applies the default topK=20 when top_k omitted (D2h 5→20 rai
   if (def === undefined) throw new Error('apply did not register a tool')
   const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
   expect(out.candidates.length).toBe(20)
+})
+
+test('S11b (5b) execute passes exec.scopeId → getEnrichedLinker uses that scope’s corpus (per-scope isolation, dormant until 5d)', async () => {
+  // A mock ctx.schema whose loadRetrievalCorpus returns a different corpus per
+  // scopeId. execute must thread exec.scopeId → getEnrichedLinker(schema,
+  // exec.scopeId) so tenant-a sees only its corpus. DORMANT: prod callers do
+  // not set AgentOptions.scopeId yet (5d eval/CLI will) → exec.scopeId is
+  // undefined → ACTIVE_SENTINEL → active path (现状); this test pins the 5b
+  // activation seam so 5d wiring is already safe.
+  const mockSchema = {
+    loadRetrievalCorpus: (scopeId?: string) =>
+      scopeId === 'tenant-b'
+        ? [{ id: 'evt.b', description: '购买 tenantB', metrics: {} }]
+        : [{ id: 'evt.a', description: '充值 tenantA', metrics: {} }],
+    corpusVersion: () => 1,
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? mockSchema : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) throw new Error('apply did not register a tool')
+  // exec.scopeId = 'tenant-a' → getEnrichedLinker(schema, 'tenant-a') → corpusA
+  const outA = await def.execute({ query: '充值' }, { signal: new AbortController().signal, scopeId: 'tenant-a' })
+  expect(outA.candidates.some(h => h.id === 'evt.a')).toBe(true)
+  expect(outA.candidates.some(h => h.id === 'evt.b')).toBe(false)
+  // exec.scopeId = 'tenant-b' → corpusB (per-scope isolation)
+  const outB = await def.execute({ query: '购买' }, { signal: new AbortController().signal, scopeId: 'tenant-b' })
+  expect(outB.candidates.some(h => h.id === 'evt.b')).toBe(true)
 })
 
 test('S12 qualifyCandidates passes payload.project as override to qualifyTable (per-table override #3a)', async () => {
@@ -384,4 +414,81 @@ test('S19 default blendingMode=continuous-blend uses applyContinuousBlend', asyn
   const hit = out.candidates[0]!
   expect(hit.id).toBe('dws_pay_order_di')
   expect(hit.mode).toBe('blended')
+})
+
+// --- GA-GT1 Phase 5c: external getRelationGraph call site passes exec.scopeId ---
+
+test('S20 (5c) execute passes exec.scopeId → ctx.schema.getRelationGraph receives it (per-scope, dormant until 5d)', async () => {
+  // The 5c call site: probeRelationGraph threads exec.scopeId →
+  // schema.getRelationGraph(scopeId) (Phase 2 per-scope graph path). A mock
+  // schema records every scopeId it receives; execute must hand it
+  // exec.scopeId='tenant-a' so 5d wiring (agent.options.scopeId) activates
+  // per-scope graph isolation without further code change here. DORMANT:
+  // prod callers do not set AgentOptions.scopeId yet → exec.scopeId is
+  // undefined → active path (pinned by S21); this test pins the 5c seam.
+  const getRelationGraphCalls: (string | undefined)[] = []
+  const mockSchema = {
+    loadRetrievalCorpus: () => [
+      { id: 'recharge', description: '充值', metrics: {} },
+    ],
+    getRelationGraph: (scopeId?: string) => {
+      getRelationGraphCalls.push(scopeId)
+      // stub graph: no expand/alias edges, so candidates stay BM25-only
+      return {
+        findJoinPath: () => null,
+        getJoinCondition: () => null,
+        getRelated: () => [],
+        getDerived: () => [],
+        resolveAlias: () => [],
+      }
+    },
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? mockSchema : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) throw new Error('apply did not register a tool')
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal, scopeId: 'tenant-a' })
+  expect(out.candidates.length).toBeGreaterThan(0)
+  // getRelationGraph received 'tenant-a' on EVERY call (probeRelationGraph in
+  // execute + applyGraphExpansionAndJoins both thread exec.scopeId).
+  expect(getRelationGraphCalls.length).toBeGreaterThan(0)
+  expect(getRelationGraphCalls.every(s => s === 'tenant-a')).toBe(true)
+})
+
+test('S21 (5c) execute without scopeId → getRelationGraph receives undefined (active 现状, dormant)', async () => {
+  // DORMANT path: exec.scopeId omitted → undefined → getRelationGraph(undefined)
+  // → active scope graph (Phase 2 β fallback). Preserves the pre-5c behavior;
+  // the recorded `undefined` proves the call site degrades to active (no scope
+  // leakage, no behavioral change) until 5d activates named scopes.
+  const getRelationGraphCalls: (string | undefined)[] = []
+  const mockSchema = {
+    loadRetrievalCorpus: () => [
+      { id: 'recharge', description: '充值', metrics: {} },
+    ],
+    getRelationGraph: (scopeId?: string) => {
+      getRelationGraphCalls.push(scopeId)
+      return {
+        findJoinPath: () => null,
+        getJoinCondition: () => null,
+        getRelated: () => [],
+        getDerived: () => [],
+        resolveAlias: () => [],
+      }
+    },
+  }
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => (key === 'schema' ? mockSchema : undefined),
+  } as unknown as Context
+  apply(ctx, {})
+  if (def === undefined) throw new Error('apply did not register a tool')
+  // no scopeId on exec → undefined threaded through
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect(out.candidates.length).toBeGreaterThan(0)
+  expect(getRelationGraphCalls.length).toBeGreaterThan(0)
+  expect(getRelationGraphCalls.every(s => s === undefined)).toBe(true)
 })

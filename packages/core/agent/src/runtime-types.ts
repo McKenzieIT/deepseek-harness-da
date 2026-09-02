@@ -28,6 +28,20 @@ export interface AgentOptions {
   model?: string
   /** Maximum output tokens for each conversation-model request. */
   maxTokens?: number
+  /**
+   * Session-bound scope id routing this agent's tool data reads to a specific
+   * scope/tenant. One agent exists per session, so this value is session-bound
+   * and flows to {@link ToolExecutionInput.scopeId} for every call this agent
+   * drives via `executeToolCalls`. `undefined` — the dormant default, since no
+   * call site sets it yet — leaves tools on the active scope (pre-Phase-4
+   * behavior); Phase 5 call sites begin resolving a tenant→scope and supplying
+   * it at agent creation. Decision D4 picked `AgentOptions` over `Session`
+   * because `Session` is a class with a private validated constructor and a
+   * storage-oriented creation contract (no runtime metadata bag), while
+   * `AgentOptions` is merge-extensible and already carries the runtime-routing
+   * fields (`provider`/`model`) that `scopeId` naturally accompanies.
+   */
+  scopeId?: string
 }
 
 /** Options for {@link Agent.cancel}. */

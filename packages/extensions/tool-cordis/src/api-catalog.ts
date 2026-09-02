@@ -1127,10 +1127,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-gate hooks); holds the loaded conventions + exposes them for the preset / phase-gate. The logic functions are standalone exports (above); this service is the mount point + `ctx.nl2sql` seam. The `search_data_sources` model-facing tool registration is deferred (see module doc).',
     methods: [
       {
-        signature: 'getConventions(): EngineConventions',
-        description: 'The loaded per-engine conventions (prompt dialect grounding).',
-        parameters: [],
-        returns: 'The loaded per-engine conventions.',
+        signature: 'getConventions(scopeId?: string): EngineConventions',
+        description: 'The loaded per-engine conventions (prompt dialect grounding), resolved per-call from ctx.query (not construction-time cached). The optional scopeId is a dormant per-request-scope seam (current providers ignore it).',
+        parameters: [{ name: 'scopeId', description: 'Optional per-request-scope key (dormant seam; forwarded to ctx.query.getConventions — current providers ignore it).' }],
+        returns: 'The resolved per-engine conventions for the active scope.',
       },
     ],
   },

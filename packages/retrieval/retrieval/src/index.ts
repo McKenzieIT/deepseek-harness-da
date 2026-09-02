@@ -40,6 +40,14 @@ export interface RetrievalQuery {
   readonly topK?: number
   /** Retrieval mode hint (provider-defined; e.g. `hybrid`, `bm25-only`). */
   readonly mode?: string
+  /**
+   * Optional tenant/scope id (D5.3 Phase 3c): when the retrieval provider
+   * probes `ctx.schema` (a `SchemaCorpusSource`), it resolves this scope's
+   * corpus via `loadRetrievalCorpus(scopeId)`; `undefined` falls back to the
+   * active scope. Additive + optional: callers that omit it get the current
+   * (active-scope) behavior; providers that ignore it are unaffected.
+   */
+  readonly scopeId?: string
 }
 
 declare module '@deepseek-ai/cordis' {

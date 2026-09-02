@@ -27,7 +27,7 @@ interface ToolDef {
   }
   readonly execute: (
     args: { readonly query: string; readonly top_k?: number },
-    exec: { readonly signal: AbortSignal },
+    exec: { readonly signal: AbortSignal; readonly scopeId?: string },
   ) => Promise<{ readonly candidates: RetrieveHit[] }>
 }
 
@@ -163,4 +163,27 @@ test('R12 execute applies the default topK=20 when top_k omitted (D2h 5→20 rai
   const def = registerTool(key => (key === 'schema' ? mockSchema : undefined))
   const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
   expect(out.candidates.length).toBe(20)
+})
+
+test('R13 (5b) execute passes exec.scopeId → getEnrichedLinker uses that scope’s corpus (per-scope isolation, dormant until 5d)', async () => {
+  // A mock ctx.schema whose loadRetrievalCorpus returns a different corpus per
+  // scopeId. execute must thread exec.scopeId → getEnrichedLinker(schema,
+  // exec.scopeId) so tenant-a sees only its corpus. DORMANT: prod callers do
+  // not set AgentOptions.scopeId yet (5d eval/CLI will) → exec.scopeId is
+  // undefined → ACTIVE_SENTINEL → active path (现状); this test pins the
+  // 5b activation seam so 5d wiring is already safe.
+  const corpusA = [{ id: 'evt.a', description: '充值 tenantA', metrics: {} }]
+  const corpusB = [{ id: 'evt.b', description: '购买 tenantB', metrics: {} }]
+  const mockSchema = {
+    loadRetrievalCorpus: (scopeId?: string) => (scopeId === 'tenant-b' ? corpusB : corpusA),
+    corpusVersion: () => 1,
+  }
+  const def = registerTool(key => (key === 'schema' ? mockSchema : undefined))
+  // exec.scopeId = 'tenant-a' → getEnrichedLinker(schema, 'tenant-a') → corpusA
+  const outA = await def.execute({ query: '充值' }, { signal: new AbortController().signal, scopeId: 'tenant-a' })
+  expect(outA.candidates.some(h => h.id === 'evt.a')).toBe(true)
+  expect(outA.candidates.some(h => h.id === 'evt.b')).toBe(false)
+  // exec.scopeId = 'tenant-b' → corpusB (per-scope isolation)
+  const outB = await def.execute({ query: '购买' }, { signal: new AbortController().signal, scopeId: 'tenant-b' })
+  expect(outB.candidates.some(h => h.id === 'evt.b')).toBe(true)
 })

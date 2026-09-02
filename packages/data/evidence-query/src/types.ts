@@ -79,6 +79,9 @@ export interface EvalResultFilters {
   readonly domain?: string
   /** Maximum number of results to return. */
   readonly limit?: number
+  /** GA-GT1 Phase 3b (D5.2): filter by scope id. Additive — undefined returns
+   * records from all scopes (including legacy records with no scopeId). */
+  readonly scopeId?: string
 }
 
 /** A single persisted eval result record. */
@@ -90,6 +93,10 @@ export interface EvalResultRecord {
   readonly score?: number
   readonly timestamp: string
   readonly metadata?: Readonly<Record<string, unknown>>
+  /** GA-GT1 Phase 3b (D5.2): the scope id this record belongs to. Optional —
+   * undefined for legacy flat-layout records (no per-scope subdirectory).
+   * camelCase, consistent with assetId/caseId. */
+  readonly scopeId?: string
 }
 
 /** Result of evalResultQuery(filters). */

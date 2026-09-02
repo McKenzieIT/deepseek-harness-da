@@ -196,10 +196,16 @@ function qualifyCandidates(ctx: Context, candidates: SearchHit[]): SearchHit[] {
  * Optional: a schema without it degrades to build-once (D2e behavior).
  */
 interface SchemaCorpusSource {
-  loadRetrievalCorpus(): readonly DataSourceDoc[]
+  loadRetrievalCorpus(scopeId?: string): readonly DataSourceDoc[]
   /** P3/P4: full corpus (events+tables+metrics); preferred over events-only when present. */
-  loadRetrievalCorpusAll?(): readonly DataSourceDoc[]
-  corpusVersion?(): number
+  loadRetrievalCorpusAll?(scopeId?: string): readonly DataSourceDoc[]
+  /** Phase 3 (D5.1): corpus-version signal for stale-cache invalidation per scope. */
+  corpusVersion?(scopeId?: string): number
+  /** GA-GT1 Phase 5a: per-scope root-resolution seam for the #19/#22
+   *  root-check fix (5b adds `root` to the per-scope cache entry + checks
+   *  `entry.root === root` — parity with Phase 2 I-1). Optional so a schema
+   *  without it degrades via `?.` (build-once, D2e behavior). */
+  resolveScopeRoot?(scopeId?: string): string
 }
 
 /**
@@ -395,43 +401,104 @@ function applyContinuousBlend(
 }
 
 /**
- * D2e + D2f: cache of enriched `Bm25Linker`s keyed by schema instance — built
- * once per `ctx.schema` (lazy on first execute) so the 1966-event corpus is
- * tokenized once, not per query. `WeakMap` so a replaced/unmounted schema is
- * GC'd. D2f pairs each linker with the `corpusVersion()` it was built at; a
- * mismatch (a write bumped the counter) drops the entry and rebuilds from the
- * fresh corpus — one rebuild per write burst, not per write.
+ * Phase 3 (D5.1): sentinel key for the active scope (scopeId omitted) in the
+ * per-scope linker cache. A `symbol` is impossible to collide with any real
+ * string scopeId (`Map` distinguishes by type + reference), so the active-scope
+ * entry can never shadow or be shadowed by a named scope.
  */
-const enrichedLinkers = new WeakMap<SchemaCorpusSource, { linker: Bm25Linker; version: number }>()
+const ACTIVE_SENTINEL = Symbol('active-scope')
 
 /**
- * Get (or build+cache) the enriched `Bm25Linker` for a schema instance, rebuilding
- * when the schema's corpus-version signal advances (D2f cache-invalidation).
- * @param schema - the `ctx.schema` source whose `loadRetrievalCorpus()` feeds the corpus.
- * @returns a `Bm25Linker` over the schema's enriched corpus, rebuilt when stale.
+ * D2e + D2f + D5.1 + GA-GT1 Phase 5b: per-scope + version-keyed cache of
+ * enriched `Bm25Linker`s. The outer `WeakMap` keys by schema instance (GC'd
+ * when unmounted); the inner `Map` keys by scopeId (active scope uses
+ * `ACTIVE_SENTINEL`). Each entry pairs the linker with the
+ * `corpusVersion(scopeId)` it was built at AND the `resolveScopeRoot(scopeId)`
+ * it was built under; a mismatch on EITHER (a write bumped the counter for
+ * that scope, OR the scope was re-registered onto a different root) drops the
+ * entry and rebuilds from the fresh corpus — one rebuild per write burst,
+ * not per write, one scope's rebuild does not evict another's cached linker,
+ * AND a re-registration onto a different never-written root no longer leaks
+ * the OLD root's linker across tenants (#19, parity with Phase 2 I-1
+ * `graphCacheByScope`). Phase 3 ships the per-scope keying as dormant
+ * capacity (execute does not yet pass scopeId — that is Phase 4/5); the
+ * corpusVersion check is live now on the active path. Phase 5b adds the root
+ * field + check + wires `exec.scopeId` through execute (5b: dormant — prod
+ * callers do not set AgentOptions.scopeId yet; 5d eval/CLI will).
  */
-function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
-  const version = schema.corpusVersion?.() ?? 0
-  let entry = enrichedLinkers.get(schema)
-  if (entry === undefined || entry.version !== version) {
-    const corpus = schema.loadRetrievalCorpusAll?.() ?? schema.loadRetrievalCorpus()
-    entry = { linker: new Bm25Linker(corpus), version }
-    enrichedLinkers.set(schema, entry)
+const enrichedLinkers = new WeakMap<SchemaCorpusSource, Map<string | symbol, { linker: Bm25Linker; version: number; root: string | undefined }>>()
+
+/**
+ * Get (or build+cache) the enriched `Bm25Linker` for a schema instance + scope,
+ * rebuilding when the schema's corpus-version signal advances OR the scope's
+ * root changes (D2f/D5.1 + GA-GT1 Phase 5b cache-invalidation). `scopeId` is
+ * optional (undefined → active scope). GA-GT1 Phase 5b wires `exec.scopeId`
+ * through to here (dormant until 5d — prod callers do not set
+ * `AgentOptions.scopeId` yet; `exec.scopeId` undefined → `ACTIVE_SENTINEL` →
+ * the active path, unchanged).
+ *
+ * GA-GT1 Phase 5b (#19): the root check closes the re-registration
+ * cross-tenant leak. `resolveScopeRoot?.(scopeId)` is `undefined` when the
+ * schema has no `resolveScopeRoot` (mock / pre-5a schema) → `root=undefined`
+ * → `entry.root === root` is `undefined===undefined` → true → degrades to
+ * version-only (the pre-5b contract, preserved). A real
+ * `SemanticLayerService` exposes `resolveScopeRoot` → `root` is a real path
+ * → the check activates, so a scope re-registered onto a different,
+ * never-written root (version 0===0) MISSES + rebuilds from the new root's
+ * corpus instead of serving the OLD root's linker (parity with Phase 2 I-1
+ * `graphCacheByScope`).
+ *
+ * @param schema - the `ctx.schema` source whose `loadRetrievalCorpus(scopeId?)` feeds the corpus.
+ * @param scopeId - optional tenant/scope id; undefined falls back to the active scope.
+ * @returns a `Bm25Linker` over the schema's enriched corpus for that scope, rebuilt when stale.
+ */
+export function getEnrichedLinker(schema: SchemaCorpusSource, scopeId?: string): Bm25Linker {
+  const key = scopeId ?? ACTIVE_SENTINEL
+  let byScope = enrichedLinkers.get(schema)
+  if (byScope === undefined) {
+    byScope = new Map()
+    enrichedLinkers.set(schema, byScope)
   }
-  return entry.linker
+  const version = schema.corpusVersion?.(scopeId) ?? 0
+  // GA-GT1 Phase 5b (#19): resolve the scope's root via the 5a seam + check
+  // it on hit. `resolveScopeRoot?.()` is `undefined` when the schema has no
+  // resolveScopeRoot (mock / pre-5a schema) → root=undefined → entry.root
+  // (undefined) === root (undefined) → degrades to version-only (现状). A
+  // real SemanticLayerService exposes resolveScopeRoot → root is a real path
+  // → the check activates, closing the re-registration cross-tenant leak
+  // (parity with Phase 2 I-1 graphCacheByScope).
+  const root = schema.resolveScopeRoot?.(scopeId)
+  const entry = byScope.get(key)
+  if (entry !== undefined && entry.version === version && entry.root === root) {
+    return entry.linker
+  }
+  const corpus = schema.loadRetrievalCorpusAll?.(scopeId) ?? schema.loadRetrievalCorpus(scopeId)
+  const linker = new Bm25Linker(corpus)
+  byScope.set(key, { linker, version, root })
+  return linker
 }
 
 /**
  * Probe `ctx.get('schema')` for a `getRelationGraph` method and return the
  * graph if available. Structural probe — no static dep on semantic-layer.
  * Returns `undefined` when the schema is unmounted or doesn't expose a graph.
+ *
+ * GA-GT1 Phase 5c: threads `scopeId` through to
+ * `getRelationGraph(scopeId)` (the Phase 2 per-scope graph path). The
+ * structural cast declares `scopeId?: string` to match the real
+ * `SemanticLayerService.getRelationGraph(scopeId?)` signature; `undefined`
+ * → active scope (现状, preserved). Dormant until 5d — prod callers do not
+ * set `AgentOptions.scopeId` yet, so `exec.scopeId` is `undefined` here.
+ *
+ * @param ctx - the Cordis context (probed for `ctx.schema.getRelationGraph`).
+ * @param scopeId - optional tenant/scope id; undefined falls back to the active scope.
  */
-function probeRelationGraph(ctx: Context): RelationGraphSource | undefined {
+function probeRelationGraph(ctx: Context, scopeId?: string): RelationGraphSource | undefined {
   const schemaProbe = ctx.get('schema') as { getRelationGraph?: unknown } | undefined
   if (schemaProbe === undefined || typeof schemaProbe.getRelationGraph !== 'function') {
     return undefined
   }
-  return (schemaProbe as { getRelationGraph(): RelationGraphSource }).getRelationGraph()
+  return (schemaProbe as { getRelationGraph(scopeId?: string): RelationGraphSource }).getRelationGraph(scopeId)
 }
 
 /**
@@ -444,17 +511,20 @@ function probeRelationGraph(ctx: Context): RelationGraphSource | undefined {
  * `getRelationGraph`), returns the original candidates unchanged with no join
  * constraints (soft fallback).
  *
- * @param ctx - the Cordis context (probed for `ctx.schema.getRelationGraph()`).
+ * @param ctx - the Cordis context (probed for `ctx.schema.getRelationGraph(scopeId)`).
  * @param candidates - the BM25 search hits.
  * @param topK - max candidates to return after expansion.
+ * @param scopeId - optional tenant/scope id forwarded to `getRelationGraph`
+ *  (Phase 5c); `undefined` → active scope graph (现状, preserved).
  * @returns expanded candidates + join constraint strings.
  */
 function applyGraphExpansionAndJoins(
   ctx: Context,
   candidates: SearchHit[],
   topK: number,
+  scopeId?: string,
 ): { candidates: SearchHit[]; join_constraints: string[] } {
-  const graph = probeRelationGraph(ctx)
+  const graph = probeRelationGraph(ctx, scopeId)
   if (graph === undefined) {
     return { candidates, join_constraints: [] }
   }
@@ -629,11 +699,11 @@ export function apply(ctx: Context, config: Config = {}): void {
       // corpus path below (no longer "for qualify").
       const schema = ctx.get('schema') as SchemaCorpusSource | undefined
       const retrieval = ctx.get('retrieval') as RetrievalService | undefined
-      const graph = probeRelationGraph(ctx)
+      const graph = probeRelationGraph(ctx, exec.scopeId)
       if (retrieval !== undefined) {
         const hits = await retrieval.retrieve(query, { topK, mode: 'hybrid' })
         const candidates = blend(graph, hits.map(projectHit), args.query)
-        const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
+        const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK, exec.scopeId)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
       // D2e: schema-sourced enriched corpus (dormant until ctx.schema mounts).
@@ -646,12 +716,18 @@ export function apply(ctx: Context, config: Config = {}): void {
       // `undefined` when none is registered. The defensive `typeof` probe
       // guards a non-schema object resolving to the 'schema' name.
       if (schema !== undefined && typeof schema.loadRetrievalCorpus === 'function') {
-        const candidates = blend(graph, searchDataSources(getEnrichedLinker(schema), query, topK), args.query)
-        const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
+        // GA-GT1 Phase 5b: thread `exec.scopeId` through to getEnrichedLinker
+        // (dormant until 5d — prod callers do not set AgentOptions.scopeId yet
+        // → exec.scopeId is undefined → ACTIVE_SENTINEL → active path, 現状;
+        // 5d eval/CLI config scopeId activates per-scope isolation). The 5b
+        // root-check makes this safe: a scope re-registered onto a different
+        // root no longer leaks the OLD root's linker across tenants (#19).
+        const candidates = blend(graph, searchDataSources(getEnrichedLinker(schema, exec.scopeId), query, topK), args.query)
+        const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK, exec.scopeId)
         return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
       }
       const candidates = blend(graph, searchDataSources(linker, query, topK), args.query)
-      const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK)
+      const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK, exec.scopeId)
       return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
     },
   }))

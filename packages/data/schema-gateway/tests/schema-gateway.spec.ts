@@ -85,6 +85,54 @@ async function makeGateway(): Promise<SchemaGateway> {
   return new SchemaGateway(ctx)
 }
 
+/**
+ * GA-GT1 Phase 5c: makeGateway + spies on the real SemanticLayerService's
+ * `getRelationGraph` + `corpusVersion` so tests can assert the gateway's
+ * public methods thread `scopeId` → `this.ctx.schema.X(scopeId)`. The spies
+ * record the scopeId each receives and return stub values (a graph with no
+ * edges / version 0) so the gateway methods run without resolving an unknown
+ * named scope's root (which would throw in the real per-scope path).
+ */
+async function makeGatewayWithSpies(): Promise<{
+  gw: SchemaGateway
+  getRelationGraphCalls: (string | undefined)[]
+  corpusVersionCalls: (string | undefined)[]
+}> {
+  const dir = seedLayer()
+  const { Context } = await import('@deepseek-ai/cordis')
+  const ctx = new Context()
+  const svc = new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  const getRelationGraphCalls: (string | undefined)[] = []
+  const corpusVersionCalls: (string | undefined)[] = []
+  const stubGraph = {
+    getRelated: () => [],
+    getDerived: () => [],
+    findJoinPath: () => null,
+    getJoinCondition: () => null,
+    resolveAlias: () => [],
+  }
+  // Spy via own-property shadow (records scopeId; returns stubs to avoid the
+  // real per-scope root resolution which would throw for an unknown scope id).
+  Object.defineProperty(svc, 'getRelationGraph', {
+    value: (scopeId?: string) => {
+      getRelationGraphCalls.push(scopeId)
+      return stubGraph
+    },
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(svc, 'corpusVersion', {
+    value: (scopeId?: string) => {
+      corpusVersionCalls.push(scopeId)
+      return 0
+    },
+    writable: true,
+    configurable: true,
+  })
+  const gw = new SchemaGateway(ctx)
+  return { gw, getRelationGraphCalls, corpusVersionCalls }
+}
+
 describe('SchemaGateway', () => {
   it('publishes Remote methods under the schemaGateway namespace', async () => {
     const gw = await makeGateway()
@@ -210,5 +258,51 @@ describe('SchemaGateway', () => {
     expect(gw.getTableDefinition('nonexistent')).toBeNull()
     expect(gw.getEventDefinition('nonexistent')).toBeNull()
     expect(gw.getMetricDefinition('nonexistent')).toBeNull()
+  })
+
+  // --- GA-GT1 Phase 5c: external call sites pass scopeId through ---
+
+  it('(5c) getGraphData passes scopeId → ctx.schema.getRelationGraph receives it (β mode, dormant until 5d)', async () => {
+    // The 5c call site :247: getGraphData(opts?, scopeId?) threads scopeId →
+    // this.ctx.schema.getRelationGraph(scopeId) (Phase 2 per-scope graph
+    // path). The spy records it; the gateway must hand 'tenant-a' through.
+    // DORMANT: prod callers pass no scopeId yet → undefined → active (pinned
+    // by the next test); this test pins the 5c activation seam.
+    const { gw, getRelationGraphCalls } = await makeGatewayWithSpies()
+    gw.getGraphData(undefined, 'tenant-a')
+    expect(getRelationGraphCalls.length).toBe(1)
+    expect(getRelationGraphCalls[0]).toBe('tenant-a')
+  })
+
+  it('(5c) getGraphData without scopeId → getRelationGraph receives undefined (active 现状, dormant)', async () => {
+    // DORMANT path: scopeId omitted → undefined → getRelationGraph(undefined)
+    // → active scope graph (Phase 2 β fallback). Preserves the pre-5c
+    // behavior; the recorded `undefined` proves no scope leakage / no
+    // behavioral change until 5d activates named scopes.
+    const { gw, getRelationGraphCalls } = await makeGatewayWithSpies()
+    gw.getGraphData()
+    expect(getRelationGraphCalls.length).toBe(1)
+    expect(getRelationGraphCalls[0]).toBe(undefined)
+  })
+
+  it('(5c) search passes scopeId → ctx.schema.corpusVersion receives it (β mode, dormant until 5d)', async () => {
+    // The 5c call site :49: search(query, topK?, scopeId?) → getLinker(scopeId)
+    // → this.ctx.schema.corpusVersion(scopeId) (Phase 2 per-scope version
+    // signal). The spy records it; search must hand 'tenant-a' through to
+    // the per-scope cache key. DORMANT: prod callers pass no scopeId yet →
+    // undefined → active (pinned by the next test).
+    const { gw, corpusVersionCalls } = await makeGatewayWithSpies()
+    gw.search('订单', 10, 'tenant-a')
+    expect(corpusVersionCalls.length).toBe(1)
+    expect(corpusVersionCalls[0]).toBe('tenant-a')
+  })
+
+  it('(5c) search without scopeId → corpusVersion receives undefined (active 现状, dormant)', async () => {
+    // DORMANT path: scopeId omitted → undefined → corpusVersion(undefined)
+    // → active scope version (Phase 2 β fallback). Preserves pre-5c behavior.
+    const { gw, corpusVersionCalls } = await makeGatewayWithSpies()
+    gw.search('订单')
+    expect(corpusVersionCalls.length).toBe(1)
+    expect(corpusVersionCalls[0]).toBe(undefined)
   })
 })

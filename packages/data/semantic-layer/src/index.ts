@@ -174,6 +174,8 @@ interface ScopeRegistryLike {
   active(): { readonly id: string; readonly semanticRoot: string } | undefined
   /** The active scope id, or undefined when no scope is active. */
   activeId(): string | undefined
+  /** GA-GT1 Phase 2: resolve a scope by id for per-request scope (undefined when not found). */
+  get(id: string): { readonly id: string; readonly semanticRoot: string } | undefined
 }
 
 // ── ctx.schema Service Definition (Q2: covers live-engine + substrate) ───
@@ -259,6 +261,50 @@ export class SemanticLayerService extends Service {
   }
 
   /**
+   * GA-GT1 Phase 2: resolve the semanticRoot for a (optional) scopeId.
+   *  - scopeId undefined → active scope's root (current behavior; backward-compatible).
+   *  - scopeId provided + registry mounted + scope found → that scope's root.
+   *  - scopeId provided + registry mounted + scope NOT found → throw
+   *    (intranet-security: refuse silent fallback to active scope to prevent
+   *    cross-tenant corpus leak).
+   *  - scopeId provided + registry unmounted → active/cfg root (test stand-in).
+   * @param scopeId - optional scope id; omit for the active scope.
+   * @returns the resolved semantic-layer root path.
+   */
+  private resolveRoot(scopeId?: string): string {
+    if (scopeId === undefined) return this.semanticRoot
+    const reg = this.scopes()
+    if (reg === undefined) return this.semanticRoot // unmounted: fall back (test stand-in)
+    const def = reg.get(scopeId)
+    if (def !== undefined) return def.semanticRoot
+    throw new Error(`ctx.schema: scope "${scopeId}" not found in registry (intranet-security: refusing silent fallback to prevent cross-tenant corpus leak)`)
+  }
+
+  /**
+   * GA-GT1 Phase 5a: PUBLIC per-scope root-resolution seam. Delegates to the
+   * private `resolveRoot` (4-branch semantics unchanged) so consumer packages
+   * (tool-retrieve/tool-search-data-sources/tool-search-schema enrichedLinkers
+   * + retrieval-inproc scopedRetrievers) can resolve a scope's root for the
+   * #19/#22 root-check fix (5b adds `root` to the per-scope cache entry +
+   * checks `entry.root === root` — parity with the Phase 2 I-1
+   * `graphCacheByScope` root guard). Dormant in 5a: no consumer calls it yet;
+   * the method is exposed now so 5b can wire it through `SchemaCorpusSource`.
+   *
+   * 4 branches (same as `resolveRoot`):
+   *  - scopeId undefined → active scope's root (backward-compatible).
+   *  - scopeId provided + registry mounted + scope found → that scope's root.
+   *  - scopeId provided + registry mounted + scope NOT found → throw
+   *    (intranet-security: refuse silent fallback to active scope to prevent
+   *    cross-tenant corpus leak).
+   *  - scopeId provided + registry unmounted → active/cfg root (test stand-in).
+   * @param scopeId - optional scope id; omit for the active scope.
+   * @returns the resolved semantic-layer root path.
+   */
+  resolveScopeRoot(scopeId?: string): string {
+    return this.resolveRoot(scopeId)
+  }
+
+  /**
    * The live data-source-kind registry (events/tables/metrics plugins registered at construction).
    * @returns the live data-source-kind registry.
    */
@@ -268,6 +314,17 @@ export class SemanticLayerService extends Service {
 
   private graphCache: RelationGraph | undefined
   private graphVersion = -1
+  /** GA-GT1 Phase 2 (D4 β): per-scope cache (plain Map; LRU eviction deferred
+   * to Phase 3/4 — scope count is small) for `getRelationGraph(scopeId)` —
+   * layered ALONGSIDE the existing instance cache (the no-arg path is
+   * unchanged). Keyed by scopeId; each entry ALSO records the `root` the graph
+   * was built from + `corpusVersionForRoot(root)`, so the entry is invalidated
+   * when the version changes OR the scope is re-registered with a different
+   * `semanticRoot` (cross-tenant corpus leak guard — I-1: without the root
+   * check a re-registration onto a never-written root keeps version=0=0 and
+   * the cache would silently serve the OLD root's graph). Phase 3/4 cleanup
+   * unifies the two cache paths. */
+  private readonly graphCacheByScope = new Map<string, { graph: RelationGraph; version: number; root: string }>()
   /** CL-2 D2: dangling domain→concept refs collected during the last
    * getRelationGraph() build — assets whose `domains` reference a concept
    * name with no matching definition in concepts/. Such refs are SKIPPED
@@ -283,12 +340,58 @@ export class SemanticLayerService extends Service {
    * corpus-version counter advances (a write bumps it via `invalidateCaches`).
    * Events only enter the graph once `enrichAllEvents` has written their
    * `external_refs` (Part B).
+   *
+   * GA-GT1 Phase 2 (D4 β): an optional `scopeId` resolves a per-request scope's
+   * root (via `resolveRoot`); the no-arg path is unchanged (active scope, single
+   * instance cache — backward-compatible). The scopeId path uses a separate
+   * per-scope cache (`graphCacheByScope` — plain Map, LRU eviction deferred to
+   * Phase 3/4) keyed by scopeId + root + `corpusVersionForRoot(root)`. The root
+   * is part of the cache key so re-registering the scope with a different
+   * `semanticRoot` invalidates the entry even when the new root's content
+   * counter is still 0 (I-1: cross-tenant corpus leak guard). It is acceptable
+   * that `getRelationGraph()` and `getRelationGraph(activeId)` produce separate
+   * cache entries for the same active scope (data is identical; duplicate entry
+   * is harmless — Phase 3/4 cleanup unifies the two paths).
+   * @param scopeId - optional scope id; omit to use the active scope (backward-compatible).
    * @returns the cached `RelationGraph`, rebuilt when stale.
    */
-  getRelationGraph(): RelationGraph {
-    if (this.graphCache !== undefined && this.graphVersion === this.corpusVersion()) {
-      return this.graphCache
+  getRelationGraph(scopeId?: string): RelationGraph {
+    if (scopeId === undefined) {
+      // Existing no-arg path — single instance cache (backward-compatible; do not alter).
+      if (this.graphCache !== undefined && this.graphVersion === this.corpusVersion()) {
+        return this.graphCache
+      }
+      const g = this.buildGraph(this.semanticRoot)
+      this.graphCache = g
+      this.graphVersion = this.corpusVersion()
+      return g
     }
+    // GA-GT1 Phase 2: per-scope cache path — keyed by scopeId + root +
+    // corpusVersionForRoot(root). The root is resolved ONCE (M-2: avoids a
+    // duplicate resolveRoot/YAML read that corpusVersion(scopeId) would
+    // otherwise re-run); the root is ALSO stored in the entry + checked on hit
+    // so a re-registration that changes the scope's `semanticRoot` invalidates
+    // the entry even when the new root's per-path content counter is still 0
+    // (I-1: silent cross-tenant corpus leak guard).
+    const root = this.resolveRoot(scopeId)
+    const version = this.corpusVersionForRoot(root)
+    const entry = this.graphCacheByScope.get(scopeId)
+    if (entry !== undefined && entry.version === version && entry.root === root) {
+      return entry.graph
+    }
+    const g = this.buildGraph(root)
+    this.graphCacheByScope.set(scopeId, { graph: g, version, root })
+    return g
+  }
+
+  /**
+   * GA-GT1 Phase 2: build a fresh `RelationGraph` from `root` — the ~60-line
+   * build body shared by both the no-arg + per-scope paths of
+   * `getRelationGraph`, so the build logic is NOT duplicated. Pure w.r.t.
+   * cache state — the caller assigns the result to the relevant cache slot.
+   * Updates `danglingDomainRefs` as a build side-effect (same as pre-Phase-2).
+   */
+  private buildGraph(root: string): RelationGraph {
     const g = new RelationGraph()
     const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
     const aliasData: NodeAliasData[] = []
@@ -297,7 +400,7 @@ export class SemanticLayerService extends Service {
     // derived metric relations pushed in the same iteration (loadTables/
     // loadEvents are uncached readdirSync+readYaml+safeParse, so the prior
     // double scan was redundant work).
-    for (const t of loadTables(this.semanticRoot)) {
+    for (const t of loadTables(root)) {
       const r = TableDefinitionSchema.safeParse(t.raw)
       if (!r.success) continue
       entries.push({ sourceId: r.data.table_name, relations: tableKindPlugin.relations(r.data) })
@@ -312,7 +415,7 @@ export class SemanticLayerService extends Service {
         }
       }
     }
-    for (const e of loadEvents(this.semanticRoot)) {
+    for (const e of loadEvents(root)) {
       const r = EventDefinitionSchema.safeParse(e.raw)
       if (!r.success) continue
       entries.push({ sourceId: r.data.name, relations: eventKindPlugin.relations(r.data) })
@@ -329,7 +432,7 @@ export class SemanticLayerService extends Service {
     }
     // CL-2: load concepts as graph nodes + derive related_to edges from asset.domains
     const conceptNames = new Set<string>()
-    for (const c of loadConcepts(this.semanticRoot)) {
+    for (const c of loadConcepts(root)) {
       const r = ConceptDefinitionSchema.safeParse(c.raw)
       if (!r.success) continue
       conceptNames.add(r.data.name)
@@ -365,18 +468,23 @@ export class SemanticLayerService extends Service {
       }
     }
     g.build(entries, aliasData)
-    this.graphCache = g
-    this.graphVersion = this.corpusVersion()
     return g
   }
 
   /**
    * CL-2 D2: dangling domain→concept references collected during the last
-   * getRelationGraph() build — assets whose `domains` reference a concept
+   * `getRelationGraph()` build — assets whose `domains` reference a concept
    * name with no matching definition in concepts/. Such refs are skipped
    * (warned) rather than aborting the graph build, so valid assets still get
    * their edges. Empty when all domain refs resolve or no concepts are loaded.
-   * @returns a snapshot of the dangling refs (`asset="..." domain="..."`) from the last build.
+   *
+   * M-1: `danglingDomainRefs` is shared INSTANCE state — `buildGraph` is now
+   * called by BOTH the no-arg + scopeId paths of `getRelationGraph`, so this
+   * reflects the last build ACROSS ALL SCOPES (whichever `getRelationGraph`
+   * call ran last), NOT a per-scope view. Per-scope keying of this health
+   * surface is deferred to Phase 3/4 (scope count is small; the leak guard is
+   * on the graph cache, not this health-check surface).
+   * @returns a snapshot of the dangling refs (`asset="..." domain="..."`) from the last build (across all scopes).
    */
   getDanglingDomainRefs(): string[] {
     return [...this.danglingDomainRefs]
@@ -587,10 +695,11 @@ export class SemanticLayerService extends Service {
   /**
    * Load a validated table definition by name from the substrate.
    * @param name - the table `table_name` key to match.
+   * @param scopeId - GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).
    * @returns the parsed `TableDefinition`, or null when no table matches.
    */
-  loadTableDefinition(name: string): TableDefinition | null {
-    return loadTableDefinitionFromLayer(this.semanticRoot, name)
+  loadTableDefinition(name: string, scopeId?: string): TableDefinition | null {
+    return loadTableDefinitionFromLayer(this.resolveRoot(scopeId), name)
   }
 
   /**
@@ -635,10 +744,11 @@ export class SemanticLayerService extends Service {
    * `alt_labels` (SKOS aliases) + `params_fields` packed into the indexed
    * `description`. The `corpusVariant` config selects slices: 'params+term'
    * (default) packs both; 'term-only' packs aliases only.
+   * @param scopeId - GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).
    * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
    */
-  loadRetrievalCorpus(): readonly EventCorpusItem[] {
-    return loadRetrievalCorpusFromLayer(this.semanticRoot, this.corpusVariant)
+  loadRetrievalCorpus(scopeId?: string): readonly EventCorpusItem[] {
+    return loadRetrievalCorpusFromLayer(this.resolveRoot(scopeId), this.corpusVariant)
   }
 
   // ── W11 C1: MVCC query snapshot ──────────────────────────────────────────
@@ -655,10 +765,14 @@ export class SemanticLayerService extends Service {
    * Cheap: if the corpus version has not changed since the last call, the
    * cached data arrays are reused (no disk re-scan).
    *
+   * GA-GT1 Phase 2: an optional `scopeId` resolves a per-request scope's root
+   * + corpus version (via `resolveRoot`/`corpusVersion(scopeId)`); the no-arg
+   * path is unchanged (active scope — backward-compatible).
+   * @param scopeId - optional scope id; omit to use the active scope (backward-compatible).
    * @returns a frozen `DefinitionSnapshot` pinned at the current corpus version.
    */
-  acquireSnapshot(): DefinitionSnapshot {
-    return captureSnapshot(this.semanticRoot, this.corpusVersion(), this.corpusVariant)
+  acquireSnapshot(scopeId?: string): DefinitionSnapshot {
+    return captureSnapshot(this.resolveRoot(scopeId), this.corpusVersion(scopeId), this.corpusVariant)
   }
 
   /**
@@ -700,7 +814,18 @@ export class SemanticLayerService extends Service {
    * for `this.semanticRoot` (0 until the first write).
    * @returns the current corpus-version counter.
    */
-  corpusVersion(): number {
+  corpusVersion(scopeId?: string): number {
+    if (scopeId !== undefined) {
+      // GA-GT1 Phase 2: per-request scope path — the per-scope cache is keyed
+      // by scopeId (switch-back collision is handled by keying, not by epoch),
+      // so only the substrate's per-path content counter is needed here. The
+      // epoch stays for the undefined path (Phase 4 removes it entirely). M-2:
+      // delegates to corpusVersionForRoot(resolveRoot) so getRelationGraph
+      // (scopeId) can share the resolveRoot result + avoid a duplicate
+      // resolveRoot/YAML read (resolveRoot re-runs scopes()→ctx.get('scopes')
+      // →reg.get→load()→readFileSync each call).
+      return this.corpusVersionForRoot(this.resolveRoot(scopeId))
+    }
     // P1: lazily detect an active-scope change (no event listener — keeps the
     // constructor free of ctx side-effects, so test stand-ins without ctx.on
     // still construct the Service). When the active scope id differs from the
@@ -725,6 +850,22 @@ export class SemanticLayerService extends Service {
     this.lastScopeId = currentId
     this.hasObservedScope = true
     return this.scopeEpoch * 1_000_000 + getCorpusVersionFromLayer(this.semanticRoot)
+  }
+
+  /**
+   * M-2: the corpus-version counter for a RESOLVED root — the substrate's
+   * per-path content counter (0 until the first invalidateCaches on that
+   * path). Factored out of the `corpusVersion(scopeId)` scopeId path so
+   * `getRelationGraph(scopeId)` can resolve the root ONCE + reuse the version
+   * without a second `resolveRoot` (which re-runs `scopes()`→
+   * `ctx.get('scopes')`→`reg.get`→`load()`→`readFileSync`). The no-arg path
+   * does NOT route here — it combines `scopeEpoch` + the active root's counter
+   * inline (byte-for-byte unchanged).
+   * @param root - the resolved semantic-layer root path.
+   * @returns the per-path corpus-version counter for `root`.
+   */
+  private corpusVersionForRoot(root: string): number {
+    return getCorpusVersionFromLayer(root)
   }
 
   // ── live-engine schema (deferred; throws until a provider is mounted) ──

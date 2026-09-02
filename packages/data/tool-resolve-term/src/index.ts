@@ -31,10 +31,10 @@ interface RelationGraphSource {
   getRelated(sourceId: string, type?: string): readonly RelationGraphEdge[]
 }
 
-function probeGraph(ctx: Context): RelationGraphSource | undefined {
+function probeGraph(ctx: Context, scopeId?: string): RelationGraphSource | undefined {
   const schema = ctx.get('schema') as { getRelationGraph?: unknown } | undefined
   if (schema === undefined || typeof schema.getRelationGraph !== 'function') return undefined
-  const graph = (schema as { getRelationGraph(): unknown }).getRelationGraph() as RelationGraphSource
+  const graph = (schema as { getRelationGraph(scopeId?: string): unknown }).getRelationGraph(scopeId) as RelationGraphSource
   if (typeof graph.resolveAlias !== 'function') return undefined
   return graph
 }
@@ -106,8 +106,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
         return [{ type: 'text', text: lines.join('\n') }]
       },
     },
-    async execute(args) {
-      const graph = probeGraph(ctx)
+    async execute(args, exec) {
+      const graph = probeGraph(ctx, exec.scopeId)
       if (!graph) {
         return { term: args.term, matched: false, nodes: [] }
       }

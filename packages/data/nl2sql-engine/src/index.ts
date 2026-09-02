@@ -65,9 +65,10 @@ declare module '@deepseek-ai/cordis' {
 
 /**
  * The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the
- * phase-gate hooks); holds the loaded conventions + exposes them for the
- * preset / phase-gate. The logic functions are standalone exports (above);
- * this service is the mount point + `ctx.nl2sql` seam. The
+ * phase-gate hooks); holds no conventions state — `getConventions` resolves
+ * per-call from the injected query engine (`ctx.query.getConventions`) — and
+ * exposes them for the preset / phase-gate. The logic functions are standalone
+ * exports (above); this service is the mount point + `ctx.nl2sql` seam. The
  * `search_data_sources` model-facing tool registration is deferred (see
  * module doc).
  */
@@ -76,25 +77,41 @@ export class Nl2sqlEngineService extends Service {
     conventionsEngine: z.string().default('maxcompute'),
   })
 
-  private readonly conventions: EngineConventions
-
   constructor(ctx: Context, config: Nl2sqlEngineConfig) {
     super(ctx, 'nl2sql')
-    // D1 (GA-GT2-impl): conventions now come from the injected query engine
-    // (ctx.query.getConventions()) rather than the MaxCompute loader; the
-    // conventionsEngine config field is vestigial (ctx.query IS the engine
-    // selection) but retained for config-compat.
-    this.conventions = ctx.query.getConventions()
+    // D2 (GA-GT1 Phase 6): conventions are resolved per-call from
+    // `ctx.query.getConventions(scopeId)` in `getConventions` below — NOT
+    // cached at construction. The previous construction-time cache
+    // (`this.conventions = ctx.query.getConventions()` in the constructor)
+    // froze a single value from the singleton `ctx.query` for the service's
+    // lifetime, so every tenant/scope saw the same conventions (cross-line
+    // coupling). Per-call resolution lets a future per-scope engine mapping
+    // take effect without a service rebuild. The `conventionsEngine` config
+    // field is vestigial (ctx.query IS the engine selection) but retained for
+    // config-compat.
     void config
   }
 
   /**
-   * The loaded per-engine conventions (prompt dialect grounding).
+   * The loaded per-engine conventions (prompt dialect grounding), resolved
+   * per-call from the injected query engine — NOT construction-time cached.
    *
-   * @returns The loaded per-engine conventions.
+   * D2 (GA-GT1 Phase 6): the previous implementation cached
+   * `ctx.query.getConventions()` in the constructor and returned the frozen
+   * value here, so a singleton `ctx.query` made every tenant/scope share one
+   * conventions set (cross-line coupling). This delegates to
+   * `ctx.query.getConventions(scopeId)` on every call so a future per-scope
+   * engine mapping is honored without a service rebuild. The `scopeId` is
+   * threaded end-to-end from the caller but ignored by current concrete
+   * providers (dormant seam — undefined yields the provider's single loaded
+   * set; behavior unchanged today, just no longer frozen at construction).
+   *
+   * @param scopeId Optional per-request-scope key (dormant seam; forwarded to
+   * `ctx.query.getConventions(scopeId)` — current providers ignore it).
+   * @returns The resolved per-engine conventions for the active scope.
    */
-  getConventions(): EngineConventions {
-    return this.conventions
+  getConventions(scopeId?: string): EngineConventions {
+    return this.ctx.query.getConventions(scopeId)
   }
 }
 

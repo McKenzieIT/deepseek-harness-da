@@ -31,6 +31,11 @@ export interface ScopeDefinition {
   readonly id: string
   /** Filesystem path to this scope's semantic-layer root (dir with config.yaml/events/tables). */
   readonly semanticRoot: string
+  /**
+   * Owning tenant id. Phase 1 OPTIONAL: an existing scope with no tenant on
+   * disk reads back as `"default"` (D6: existing single scope = "default").
+   */
+  readonly tenant?: string
   /** Arbitrary metadata — active provider, project name, engine type, etc. */
   readonly metadata?: Readonly<Record<string, unknown>>
 }
@@ -38,7 +43,7 @@ export interface ScopeDefinition {
 /** On-disk shape of the scopes.yaml registry file. */
 interface RegistryFile {
   active?: string
-  scopes?: Record<string, { semanticRoot: string; metadata?: Record<string, unknown> }>
+  scopes?: Record<string, { semanticRoot: string; tenant?: string; metadata?: Record<string, unknown> }>
 }
 
 // ── Config (static Cordis, set at bundle mount) ─────────────────────────────
@@ -99,11 +104,19 @@ export class ScopeRegistryService extends Service {
   // ── Read API ────────────────────────────────────────────────────────────
 
   /**
-   * All registered scopes. Returns empty array when registryPath is unset or file missing.
-   * @returns all registered scope definitions (empty when the registry is unset or missing).
+   * All registered scopes, optionally filtered by tenant.
+   *
+   * Backward-compatible: an omitted `tenant` returns every scope (existing
+   * no-arg callers are unaffected). A provided `tenant` returns only scopes
+   * whose `tenant` equals it.
+   *
+   * @param tenant - optional tenant id to filter by; omit for all scopes.
+   * @returns the matching scope definitions (empty when the registry is unset, missing, or has no match).
    */
-  list(): readonly ScopeDefinition[] {
-    return [...this.load().scopes.values()]
+  list(tenant?: string): readonly ScopeDefinition[] {
+    const all = [...this.load().scopes.values()].map((s) => this.withTenant(s))
+    if (tenant === undefined) return all
+    return all.filter((s) => s.tenant === tenant)
   }
 
   /**
@@ -112,22 +125,61 @@ export class ScopeRegistryService extends Service {
    * @returns the matching scope definition, or undefined when no scope has this id.
    */
   get(id: string): ScopeDefinition | undefined {
-    return this.load().scopes.get(id)
+    const def = this.load().scopes.get(id)
+    return def === undefined ? undefined : this.withTenant(def)
+  }
+
+  /**
+   * Look up a scope belonging to a specific tenant.
+   *
+   * - `scopeId` provided → return the scope with that `id` IF it exists AND its
+   *   `tenant === tenant`; otherwise `undefined`. (D3: 1:N tenants must pass scopeId.)
+   * - `scopeId` omitted → return the single scope belonging to `tenant`:
+   *   exactly 1 → return it; 0 → `undefined`; >1 → throw (ambiguous — 1:N
+   *   tenants must pass scopeId). (D3: 1:1 may omit scopeId; 1:N requires it.)
+   *
+   * @param tenant - the tenant id whose scopes to look in.
+   * @param scopeId - optional scope id; required when the tenant owns >1 scope.
+   * @returns the matching scope definition, or undefined when no match exists.
+   */
+  forTenant(tenant: string, scopeId?: string): ScopeDefinition | undefined {
+    const { scopes } = this.load()
+    if (scopeId !== undefined) {
+      const def = scopes.get(scopeId)
+      if (!def) return undefined
+      const resolved = this.withTenant(def)
+      return resolved.tenant === tenant ? resolved : undefined
+    }
+    const owned: ScopeDefinition[] = []
+    for (const d of scopes.values()) {
+      const resolved = this.withTenant(d)
+      if (resolved.tenant === tenant) owned.push(resolved)
+    }
+    if (owned.length === 0) return undefined
+    if (owned.length > 1) {
+      throw new Error(
+        `ctx.scopes.forTenant: ambiguous - tenant "${tenant}" owns ${owned.length} scopes (${owned.map(s => s.id).join(', ')}); scopeId is required to disambiguate`,
+      )
+    }
+    return owned[0]
   }
 
   /**
    * The currently active scope definition, or undefined if none is active.
    * @returns the active scope definition, or undefined when no scope is active.
+   * @deprecated retained as compat fallback for unmigrated callers; Phase 4 / GA-GT1-cleanup removes
    */
   active(): ScopeDefinition | undefined {
     const { scopes, activeId } = this.load()
     if (activeId === undefined) return undefined
-    return scopes.get(activeId)
+    const def = scopes.get(activeId)
+    return def === undefined ? undefined : this.withTenant(def)
   }
 
   /**
    * The currently active scope id, or undefined if none is active.
    * @returns the active scope id, or undefined when no scope is active.
+   * @deprecated retained as compat fallback for unmigrated callers; Phase 4 / GA-GT1-cleanup removes
    */
   activeId(): string | undefined {
     return this.load().activeId
@@ -138,6 +190,7 @@ export class ScopeRegistryService extends Service {
   /**
    * Set the active scope by id. Throws if the scope does not exist in the registry.
    * @param id - the scope id to make active (must already be registered).
+   * @deprecated retained as compat fallback for unmigrated callers; Phase 4 / GA-GT1-cleanup removes
    */
   async setActive(id: string): Promise<void> {
     this.ensureConfigured()
@@ -150,7 +203,10 @@ export class ScopeRegistryService extends Service {
     this.ctx.emit('scopes/active-changed', id)
   }
 
-  /** Clear the active scope (no scope is active). */
+  /**
+   * Clear the active scope (no scope is active).
+   * @deprecated retained as compat fallback for unmigrated callers; Phase 4 / GA-GT1-cleanup removes
+   */
   async clearActive(): Promise<void> {
     this.ensureConfigured()
     await this.mutate((reg) => { reg.activeId = undefined })
@@ -201,6 +257,16 @@ export class ScopeRegistryService extends Service {
     }
   }
 
+  /**
+   * Resolve a scope's tenant to `"default"` when absent (D6: existing single
+   * scope = "default"). The on-disk value stays raw (undefined) so a mutate()
+   * round-trip preserves the original file shape; only the public read API
+   * normalizes undefined → "default".
+   */
+  private withTenant(def: ScopeDefinition): ScopeDefinition {
+    return def.tenant === undefined ? { ...def, tenant: 'default' } : def
+  }
+
   /** Read registry from disk on every call (file is tiny; no cache needed). */
   private load(): { scopes: Map<string, ScopeDefinition>; activeId: string | undefined } {
     if (!this.registryPath) {
@@ -215,13 +281,19 @@ export class ScopeRegistryService extends Service {
       return { scopes: new Map(), activeId: undefined }
     }
     const scopes = new Map<string, ScopeDefinition>()
-    const rawScopes = parsed.scopes as Record<string, { semanticRoot?: unknown; metadata?: unknown } | null | undefined> | undefined
+    const rawScopes = parsed.scopes as Record<string, { semanticRoot?: unknown; tenant?: unknown; metadata?: unknown } | null | undefined> | undefined
     if (rawScopes) {
       for (const [id, def] of Object.entries(rawScopes)) {
         if (def && typeof def.semanticRoot === 'string') {
           scopes.set(id, {
             id,
             semanticRoot: def.semanticRoot,
+            // Preserve the on-disk value as-is (string when set, undefined when
+            // absent). The read API resolves undefined → "default" at the
+            // boundary (see withTenant); keeping it raw here means a mutate()
+            // round-trip re-writes the file in its original shape (no tenant
+            // field stays absent) rather than upgrading every old entry.
+            ...(typeof def.tenant === 'string' ? { tenant: def.tenant } : {}),
             ...(def.metadata ? { metadata: def.metadata as Record<string, unknown> } : {}),
           })
         }
@@ -256,6 +328,9 @@ export class ScopeRegistryService extends Service {
     for (const [id, def] of reg.scopes) {
       scopes[id] = {
         semanticRoot: def.semanticRoot,
+        // Include tenant only when set; omit when undefined so re-writing an
+        // old file without tenant keeps the old (tenantless) shape.
+        ...(def.tenant !== undefined ? { tenant: def.tenant } : {}),
         ...(def.metadata !== undefined ? { metadata: { ...def.metadata } } : {}),
       }
     }

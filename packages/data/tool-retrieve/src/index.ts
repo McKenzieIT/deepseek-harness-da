@@ -120,30 +120,100 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
  * `SemanticLayerService` when mounted, `undefined` when not (bundle opt-in).
  * The returned corpus items are `DataSourceDoc`-shaped (params_fields +
  * terminology slang packed into `description`; NOT domain — see D2e).
+ *
+ * Phase 3 (D5.1): both read methods take an optional `scopeId` (Phase 2 added
+ * scopeId? to `SemanticLayerService.loadRetrievalCorpus`/`corpusVersion`;
+ * undefined falls back to the active scope — current behavior preserved).
+ * `corpusVersion` stays optional so a schema without it degrades to build-once
+ * (D2e behavior); a schema that exposes it gets stale-on-write protection.
  */
 interface SchemaCorpusSource {
-  loadRetrievalCorpus(): readonly DataSourceDoc[]
+  loadRetrievalCorpus(scopeId?: string): readonly DataSourceDoc[]
+  /** Phase 3 (D5.1): corpus-version signal for stale-cache invalidation;
+   *  optional so a schema without it degrades to build-once (D2e behavior). */
+  corpusVersion?(scopeId?: string): number
+  /** GA-GT1 Phase 5a: per-scope root-resolution seam for the #19/#22
+   *  root-check fix (5b adds `root` to the per-scope cache entry + checks
+   *  `entry.root === root` — parity with Phase 2 I-1). Optional so a schema
+   *  without it degrades via `?.` (build-once, D2e behavior). */
+  resolveScopeRoot?(scopeId?: string): string
 }
 
 /**
- * D2e: cache of enriched `Bm25Linker`s keyed by schema instance — built once
- * per `ctx.schema` (lazy on first execute) so the corpus is tokenized once, not
- * per query. `WeakMap` so a replaced/unmounted schema is GC'd (mirrors the
- * lazy-build intent without holding a stale provider).
+ * Phase 3 (D5.1): sentinel key for the active scope (scopeId omitted) in the
+ * per-scope linker cache. A `symbol` is impossible to collide with any real
+ * string scopeId (`Map` distinguishes by type + reference), so the active-scope
+ * entry can never shadow or be shadowed by a named scope.
  */
-const enrichedLinkers = new WeakMap<SchemaCorpusSource, Bm25Linker>()
+const ACTIVE_SENTINEL = Symbol('active-scope')
 
 /**
- * Get (or build+cache) the enriched `Bm25Linker` for a schema instance.
- * @param schema - the `ctx.schema` source whose `loadRetrievalCorpus()` feeds the corpus.
- * @returns a cached `Bm25Linker` over the schema's enriched corpus.
+ * D5.1 + GA-GT1 Phase 5b: per-scope + version-keyed cache of enriched
+ * `Bm25Linker`s. The outer `WeakMap` keys by schema instance (GC'd when
+ * unmounted); the inner `Map` keys by scopeId (active scope uses
+ * `ACTIVE_SENTINEL`). Each entry pairs the linker with the
+ * `corpusVersion(scopeId)` it was built at AND the `resolveScopeRoot(scopeId)`
+ * it was built under; a mismatch on EITHER (a write bumped the counter for
+ * that scope, OR the scope was re-registered onto a different root) drops the
+ * entry and rebuilds from the fresh corpus — fixing the D2e stale-on-write
+ * bug (a mid-session event edit was invisible until reboot) + the #19
+ * re-registration cross-tenant leak (a scope re-registered to a different,
+ * never-written root keeps version 0===0; without the root check the cache
+ * would HIT and serve the OLD root's linker — parity with Phase 2 I-1
+ * `graphCacheByScope`). Phase 3 ships the per-scope keying as dormant
+ * capacity (execute does not yet pass scopeId — that is Phase 4/5); the
+ * corpusVersion check is live now on the active path. Phase 5b adds the root
+ * field + check + wires `exec.scopeId` through execute (5b: dormant — prod
+ * callers do not set AgentOptions.scopeId yet; 5d eval/CLI will).
  */
-function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
-  let linker = enrichedLinkers.get(schema)
-  if (linker === undefined) {
-    linker = new Bm25Linker(schema.loadRetrievalCorpus())
-    enrichedLinkers.set(schema, linker)
+const enrichedLinkers = new WeakMap<SchemaCorpusSource, Map<string | symbol, { linker: Bm25Linker; version: number; root: string | undefined }>>()
+
+/**
+ * Get (or build+cache) the enriched `Bm25Linker` for a schema instance + scope,
+ * rebuilding when the schema's corpus-version signal advances OR the scope's
+ * root changes (D5.1 + GA-GT1 Phase 5b cache-invalidation). `scopeId` is
+ * optional (undefined → active scope). GA-GT1 Phase 5b wires
+ * `exec.scopeId` through to here (dormant until 5d — prod callers do not set
+ * `AgentOptions.scopeId` yet; `exec.scopeId` undefined → `ACTIVE_SENTINEL` →
+ * the active path, unchanged).
+ *
+ * GA-GT1 Phase 5b (#19): the root check closes the re-registration
+ * cross-tenant leak. `resolveScopeRoot?.(scopeId)` is `undefined` when the
+ * schema has no `resolveScopeRoot` (mock / pre-5a schema) → `root=undefined`
+ * → `entry.root === root` is `undefined===undefined` → true → degrades to
+ * version-only (the pre-5b contract, preserved). A real
+ * `SemanticLayerService` exposes `resolveScopeRoot` → `root` is a real path
+ * → the check activates, so a scope re-registered onto a different,
+ * never-written root (version 0===0) MISSES + rebuilds from the new root's
+ * corpus instead of serving the OLD root's linker (parity with Phase 2 I-1
+ * `graphCacheByScope`).
+ *
+ * @param schema - the `ctx.schema` source whose `loadRetrievalCorpus(scopeId?)` feeds the corpus.
+ * @param scopeId - optional tenant/scope id; undefined falls back to the active scope.
+ * @returns a `Bm25Linker` over the schema's enriched corpus for that scope, rebuilt when stale.
+ */
+export function getEnrichedLinker(schema: SchemaCorpusSource, scopeId?: string): Bm25Linker {
+  const key = scopeId ?? ACTIVE_SENTINEL
+  let byScope = enrichedLinkers.get(schema)
+  if (byScope === undefined) {
+    byScope = new Map()
+    enrichedLinkers.set(schema, byScope)
   }
+  const version = schema.corpusVersion?.(scopeId) ?? 0
+  // GA-GT1 Phase 5b (#19): resolve the scope's root via the 5a seam + check
+  // it on hit. `resolveScopeRoot?.()` is `undefined` when the schema has no
+  // resolveScopeRoot (mock / pre-5a schema) → root=undefined → entry.root
+  // (undefined) === root (undefined) → degrades to version-only (现状). A
+  // real SemanticLayerService exposes resolveScopeRoot → root is a real path
+  // → the check activates, closing the re-registration cross-tenant leak
+  // (parity with Phase 2 I-1 graphCacheByScope).
+  const root = schema.resolveScopeRoot?.(scopeId)
+  const entry = byScope.get(key)
+  if (entry !== undefined && entry.version === version && entry.root === root) {
+    return entry.linker
+  }
+  const linker = new Bm25Linker(schema.loadRetrievalCorpus(scopeId))
+  byScope.set(key, { linker, version, root })
   return linker
 }
 
@@ -240,7 +310,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       const schemaProbe = ctx.get('schema') as { loadRetrievalCorpus?: unknown } | undefined
       if (schemaProbe !== undefined && typeof schemaProbe.loadRetrievalCorpus === 'function') {
         const schema = schemaProbe as SchemaCorpusSource
-        return { candidates: retrieve(getEnrichedLinker(schema), args.query, topK) }
+        // GA-GT1 Phase 5b: thread `exec.scopeId` through to getEnrichedLinker
+        // (dormant until 5d — prod callers do not set AgentOptions.scopeId yet
+        // → exec.scopeId is undefined → ACTIVE_SENTINEL → active path, 現状;
+        // 5d eval/CLI config scopeId activates per-scope isolation). The 5b
+        // root-check makes this safe: a scope re-registered onto a different
+        // root no longer leaks the OLD root's linker across tenants (#19).
+        return { candidates: retrieve(getEnrichedLinker(schema, exec.scopeId), args.query, topK) }
       }
       return { candidates: retrieve(linker, args.query, topK) }
     },

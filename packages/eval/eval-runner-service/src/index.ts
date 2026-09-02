@@ -268,11 +268,11 @@ class Nl2sqlAgentResponder implements AgentResponder {
     const scopeId = (opts?.scope_id ?? this.scopeId) as unknown as ScopeId
     const odps = new CtxOdpsAdapter(this.ctx, scopeId)
     const schema = this.ctx.get('schema') as
-      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(): RelationGraphLike }
+      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(scopeId?: string): RelationGraphLike }
       | undefined
     const corpus = (schema?.loadRetrievalCorpusAll?.() ?? []) as readonly { id: string; description?: string; payload?: unknown }[]
     const retrieval = new Bm25Linker(corpus)
-    const graph = schema?.getRelationGraph?.()
+    const graph = schema?.getRelationGraph?.(scopeId)
     const engine = new Nl2sqlEngine({
       llm: this.llm,
       odps,
@@ -403,19 +403,28 @@ export class EvalRunnerService extends Service {
 
   /** Build the collaborators from the live ctx seams. */
   private buildCollaborators(scopeId: ScopeId): { agent: AgentResponder; executor: QueryExecutor | null; judge: JudgeExecutor | null } {
-    const conventions = (this.ctx.get('nl2sql') as { getConventions?(): EngineConventions } | undefined)?.getConventions?.() ?? null
+    // D2 (GA-GT1 Phase 6): thread scopeId to getConventions so the per-call
+    // resolution honors the active scope (dormant seam — current providers
+    // ignore scopeId, but the wiring is in place for a future per-scope engine
+    // mapping without a service rebuild).
+    const conventions = (this.ctx.get('nl2sql') as { getConventions?(scopeId?: string): EngineConventions } | undefined)?.getConventions?.(scopeId as string | undefined) ?? null
     const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model)
     const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId) : null
     const judge = new LlmJudgeExecutor(new CtxLlmAdapter(this.ctx, this.provider, this.model))
     return { agent, executor, judge }
   }
 
-  async runBatch(options?: { runId?: string; skipHealthGate?: boolean }): Promise<RunResult> {
+  async runBatch(options?: { runId?: string; skipHealthGate?: boolean; scopeId?: string }): Promise<RunResult> {
     const paths = this.casePaths()
     if (paths.length === 0) {
       throw new Error(`eval-runner-service: no cases found in ${this.caseDir}`)
     }
-    const scopeId = 'k11' as unknown as ScopeId
+    // D3ii: no default pointer — explicit scopeId required, fail-loud when
+    // absent rather than silently falling back to a hardcoded 'k11'.
+    if (options?.scopeId === undefined) {
+      throw new Error('eval-runner-service runBatch: explicit scopeId required (D3ii: no default pointer)')
+    }
+    const scopeId = options.scopeId as unknown as ScopeId
     const { agent, executor, judge } = this.buildCollaborators(scopeId)
     const result = await runBatch(paths, { agent, executor, judge }, {
       pass_k: this.passK,

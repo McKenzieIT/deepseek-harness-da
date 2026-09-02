@@ -43,7 +43,10 @@ describe('EvalRunnerService — JSONL bridge (W3→W4 format)', () => {
 
 describe('EvalRunnerService — mechanics', () => {
   it('getCaseCount discovers K11 cases when caseDir points at the real set', () => {
-    const svc = new EvalRunnerService(new Context(), { caseDir: 'packages/eval/eval/cases/k11' })
+    // Cases were archived to _archived/k11-v1 during the k11→k11-v2 migration;
+    // the v1 files still match the Service's `/^k11_\d+\.yaml$/` filter (161 of
+    // them; the 162nd entry, coverage-matrix.yaml, is excluded by the regex).
+    const svc = new EvalRunnerService(new Context(), { caseDir: 'packages/eval/eval/cases/_archived/k11-v1' })
     expect(svc.getCaseCount()).toBe(161)
   })
 
@@ -93,9 +96,18 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
     return { stream }
   }
 
-  function makeStubQuery() {
+  function makeStubQuery(capturedScopeIds?: string[]) {
     return {
-      execute: async () => ({ state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }),
+      execute: async (req?: unknown) => {
+        // Capture the scopeId threaded through from CtxOdpsAdapter/CtxQueryExecutor
+        // (Phase 5d D3ii: explicit scopeId propagation). Best-effort: the engine
+        // may decline without executing (empty corpus → no candidates), so the
+        // array may stay empty; when non-empty, every entry must equal the scope.
+        if (capturedScopeIds !== undefined && req !== undefined && typeof req === 'object' && 'scopeId' in (req as Record<string, unknown>)) {
+          capturedScopeIds.push((req as { scopeId: string }).scopeId)
+        }
+        return { state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }
+      },
       attach: async () => ({ state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }),
     }
   }
@@ -103,21 +115,22 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
   it('runs a batch against real cases, persists JSONL, tracks last/last-two', async () => {
     const resultsDir = mkdtempSync(join(tmpdir(), 'ers-results-'))
     const ctx = new Context()
+    const capturedScopeIds: string[] = []
     // Provide stubbed external seams the Service reads via ctx.get.
     ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
-    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', makeStubQuery())
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', makeStubQuery(capturedScopeIds))
 
     // Point caseDir at a 2-case temp dir (symlinks to real K11 cases) so the
     // batch is fast. The Service registers ctx.evalRunner on construction.
     const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-'))
     try {
-      const realCases = ['k11_001.yaml', 'k11_002.yaml'].map(f => `packages/eval/eval/cases/k11/${f}`)
+      const realCases = ['k11_001.yaml', 'k11_002.yaml'].map(f => `packages/eval/eval/cases/_archived/k11-v1/${f}`)
       for (const p of realCases) {
         const dest = join(tmpCases, p.split('/').pop()!)
         copyFileSync(p, dest)
       }
       const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1 })
-      const result = await svc.runBatch({ skipHealthGate: true })
+      const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })
       expect(result.cases.length).toBe(2)
       expect(result.summary.total).toBe(2)
       expect(svc.getLastRun()).toBe(result)
@@ -133,6 +146,80 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
       expect(rec).toHaveProperty('outcome')
       expect(rec).toHaveProperty('passed')
       expect(rec).toHaveProperty('passK')
+
+      // Phase 5d (D3ii): scopeId propagated from runBatch → buildCollaborators
+      // → CtxOdpsAdapter/CtxQueryExecutor → ctx.query.execute({scopeId}).
+      // Best-effort: the engine may decline without executing SQL (empty
+      // corpus → no candidate tables), so capturedScopeIds may be empty;
+      // when non-empty, every captured scopeId must equal the 'k11' passed
+      // to runBatch (no silent fallback to a different/hardcoded scope).
+      expect(capturedScopeIds.every(id => id === 'k11')).toBe(true)
+    } finally {
+      rmSync(tmpCases, { recursive: true, force: true })
+      rmSync(resultsDir, { recursive: true, force: true })
+    }
+  }, 60_000)
+})
+
+describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () => {
+  function makeStubLlm() {
+    const stream = async function* () {
+      yield { type: 'block-start' as const, index: 0, blockType: 'text' as const }
+      yield { type: 'text-delta' as const, index: 0, text: 'SELECT 1 AS total' }
+      yield { type: 'block-end' as const, index: 0, block: { type: 'text' as const, text: 'SELECT 1 AS total' } }
+      yield { type: 'finish' as const, reason: 'stop' as const }
+    }
+    return { stream }
+  }
+
+  it('runBatch without scopeId throws the D3ii no-default-pointer error (before any case runs)', async () => {
+    const ctx = new Context()
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
+    const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-d3ii-'))
+    try {
+      const realCases = ['k11_001.yaml'].map(f => `packages/eval/eval/cases/_archived/k11-v1/${f}`)
+      for (const p of realCases) {
+        copyFileSync(p, join(tmpCases, p.split('/').pop()!))
+      }
+      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, passK: 1 })
+      // No scopeId → D3ii fail-loud (no silent 'k11' fallback).
+      await expect(svc.runBatch({ skipHealthGate: true })).rejects.toThrow(
+        'eval-runner-service runBatch: explicit scopeId required (D3ii: no default pointer)',
+      )
+      // No JSONL persisted (threw before runBatch executed)
+      expect(svc.getLastRun()).toBeNull()
+    } finally {
+      rmSync(tmpCases, { recursive: true, force: true })
+    }
+  })
+
+  it('runBatch with explicit scopeId succeeds (no silent fallback, no throw)', async () => {
+    const ctx = new Context()
+    const capturedScopeIds: string[] = []
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', {
+      execute: async (req?: unknown) => {
+        if (req !== undefined && typeof req === 'object' && 'scopeId' in (req as Record<string, unknown>)) {
+          capturedScopeIds.push((req as { scopeId: string }).scopeId)
+        }
+        return { state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }
+      },
+      attach: async () => ({ state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }),
+    })
+    const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-d3ii-ok-'))
+    const resultsDir = mkdtempSync(join(tmpdir(), 'ers-results-d3ii-ok-'))
+    try {
+      const realCases = ['k11_001.yaml'].map(f => `packages/eval/eval/cases/_archived/k11-v1/${f}`)
+      for (const p of realCases) {
+        copyFileSync(p, join(tmpCases, p.split('/').pop()!))
+      }
+      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1 })
+      const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })
+      expect(result.cases.length).toBe(1)
+      expect(svc.getLastRun()).toBe(result)
+      // Propagation: any execute calls used the 'k11' scopeId (best-effort —
+      // the engine may decline without executing on the empty-corpus stub).
+      expect(capturedScopeIds.every(id => id === 'k11')).toBe(true)
     } finally {
       rmSync(tmpCases, { recursive: true, force: true })
       rmSync(resultsDir, { recursive: true, force: true })

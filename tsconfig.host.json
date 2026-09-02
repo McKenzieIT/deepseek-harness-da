@@ -177,6 +177,7 @@
     { "path": "./packages/data/semantic-layer" },
     { "path": "./packages/data/schema-gateway" },
     { "path": "./packages/data/evidence-query" },
+    { "path": "./packages/data/tool-scope-routing" },
     { "path": "./packages/data/patrol-mode" },
     { "path": "./packages/data/tool-search-data-sources" },
     { "path": "./packages/data/tool-load-table-definition" },

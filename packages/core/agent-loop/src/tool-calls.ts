@@ -67,6 +67,10 @@ export async function executeToolCalls(
   const agent = ctx.agents.requireInitiator()
   const { session } = agent
 
+  // `scopeId` is session-bound (one agent per session): forward the initiating
+  // agent's resolved scope id so each tool's data reads route to the correct
+  // scope. Dormant in Phase 4 — no caller sets `AgentOptions.scopeId`, so this
+  // is `undefined` and tools fall back to the active scope (Phase 2/3 β).
   // Inputs are distinct because tools/execute wrappers may replace `exec.signal`.
   const planned: PlannedCall[] = toolCalls.map(block => ({
     block,
@@ -75,6 +79,7 @@ export async function executeToolCalls(
       name: block.name,
       arguments: parseArguments(block.arguments),
       agent,
+      ...agent.options.scopeId !== undefined ? { scopeId: agent.options.scopeId } : {},
       signal,
     },
   }))

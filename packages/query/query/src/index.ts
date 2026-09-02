@@ -107,9 +107,23 @@ export abstract class QueryEngine extends Service {
    * provider that does not ground a dialect surfaces the gap loudly rather
    * than silently injecting an empty conventions block.
    *
+   * D2 (GA-GT1 Phase 6): the optional `scopeId` is a per-request-scope seam —
+   * callers thread the active scope so a future per-scope engine mapping can
+   * return a different convention set per tenant/scope without the consumer
+   * (`Nl2sqlEngineService`) caching at construction. Concrete providers
+   * TODAY ignore `scopeId` (return their single loaded dialect); the param is
+   * a dormant forward-looking seam (additive, undefined → current behavior).
+   * A provider that wants per-scope conventions overrides
+   * `getConventions(scopeId)` and reads scope metadata; until then the
+   * `scopeId` is threaded end-to-end but unused at the terminal.
+   *
+   * @param scopeId Optional per-request-scope key (dormant seam; ignored by
+   * current concrete providers — undefined yields the provider's single
+   * loaded convention set).
    * @returns The resolved per-engine convention set for this concrete provider.
    */
-  getConventions(): EngineConventions {
+  getConventions(scopeId?: string): EngineConventions {
+    void scopeId
     throw new Error('QueryEngine.getConventions: not implemented; override in a concrete provider subclass')
   }
 }

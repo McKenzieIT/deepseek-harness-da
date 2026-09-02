@@ -45,8 +45,17 @@ export class SchemaGateway extends TypertRemoteService {
     super(ctx, 'schemaGateway')
   }
 
-  private getLinker(): Bm25Linker {
-    const version = this.ctx.schema.corpusVersion()
+  /**
+   * GA-GT1 Phase 5c: private per-scope BM25 linker cache builder. `scopeId`
+   * (β mode, forwarded from the public `search(query, topK?, scopeId?)`)
+   * threads to `corpusVersion(scopeId)` (Phase 2 per-scope version signal);
+   * `undefined` → active scope (现状, preserved). `loadRetrievalCorpusAll()`
+   * is NOT scope-parameterized (the real method takes none), so the corpus
+   * load stays active-scope — 5c only covers the two listed call sites;
+   * full per-scope corpus isolation is a later phase. Dormant until 5d.
+   */
+  private getLinker(scopeId?: string): Bm25Linker {
+    const version = this.ctx.schema.corpusVersion(scopeId)
     if (this.linkerCache !== undefined && this.linkerCache.version === version) {
       return this.linkerCache.linker
     }
@@ -124,8 +133,8 @@ export class SchemaGateway extends TypertRemoteService {
   }
 
   @Remote('search')
-  search(query: string, topK?: number): SchemaSearchHit[] {
-    const linker = this.getLinker()
+  search(query: string, topK?: number, scopeId?: string): SchemaSearchHit[] {
+    const linker = this.getLinker(scopeId)
     const hits = linker.retrieve(query, { topK: topK ?? 20, mode: 'bm25-only' })
     return hits.map(h => ({
       id: h.id,
@@ -187,9 +196,14 @@ export class SchemaGateway extends TypertRemoteService {
    *
    * evalPassRate is left undefined in this base implementation — it will be
    * wired from the evidence-query service in a follow-up.
+   *
+   * GA-GT1 Phase 5c: `scopeId` (β mode, optional) threads to
+   * `this.ctx.schema.getRelationGraph(scopeId)` (Phase 2 per-scope graph
+   * path); `undefined` → active scope graph (现状, preserved). Dormant until
+   * 5d — prod callers do not set a scope here yet.
    */
   @Remote('getGraphData')
-  getGraphData(opts?: GraphDataOpts): GraphData {
+  getGraphData(opts?: GraphDataOpts, scopeId?: string): GraphData {
     const domain = opts?.domain
     const focus = opts?.focus
     const depth = opts?.depth
@@ -244,7 +258,7 @@ export class SchemaGateway extends TypertRemoteService {
     }
 
     // Collect edges from the relation graph
-    const relationGraph = this.ctx.schema.getRelationGraph()
+    const relationGraph = this.ctx.schema.getRelationGraph(scopeId)
     const allEdges: GraphEdge[] = []
     const edgeSet = new Set<string>() // dedupe "A->B" pairs
 

@@ -49,6 +49,19 @@ export type * from './types.ts'
 
 const STATUS_RANK: Record<EvalResultRecord['status'], number> = { pass: 3, fail: 1, error: 0, pending: 0 }
 
+/**
+ * GA-GT1 Phase 3b (D5.2): structural interface for the optional scope-registry
+ * probed via `ctx.get('scopes')` (undefined when unmounted). Declared locally
+ * in evidence-query (no static dep on @deepseek-ai/dsh-scope-registry) — the
+ * same structural-probe pattern as SemanticLayerService and tool-search-data-sources.
+ * Only `get(id)` is needed here (the active-scope path delegates to
+ * `ctx.schema.semanticRoot`, which probes `active()` itself).
+ */
+interface ScopeRegistryLike {
+  /** Resolve a scope by id for per-request scope (undefined when not found). */
+  get(id: string): { readonly id: string; readonly semanticRoot: string } | undefined
+}
+
 export interface EvidenceQueryConfig {
   readonly resultsDir?: string
 }
@@ -88,6 +101,13 @@ export class EvalResultStore {
     if (filters.domain !== undefined) {
       results = results.filter(r => r.metadata?.domain === filters.domain)
     }
+    // GA-GT1 Phase 3b (D5.2): scopeId filter — additive on top of the
+    // existing asset/status/domain/limit filters. When scopeId is undefined,
+    // no filtering is applied (all scopes returned, including legacy records
+    // with no scopeId — backward-compatible).
+    if (filters.scopeId !== undefined) {
+      results = results.filter(r => r.scopeId === filters.scopeId)
+    }
 
     const total = results.length
     if (filters.limit !== undefined && filters.limit > 0) {
@@ -121,17 +141,43 @@ export class EvalResultStore {
    * Load records from a directory of W3 JSONL persistence files.
    * Each line is a `PersistedCaseRecord`; mapped to `EvalResultRecord` via
    * the provided `caseAssetResolver` (defaults to caseId as assetId).
+   *
+   * GA-GT1 Phase 3b (D5.2): reads BOTH layouts — backward-compatible:
+   *  - Flat: `<dir>/*.jsonl` (legacy; records get scopeId=undefined).
+   *  - Per-scope: `<dir>/<scopeId>/*.jsonl` (the subdirectory name is the
+   *    scopeId, tagged onto each record from that subdirectory).
+   * A resultsDir with only flat files (the pre-3b layout) still works unchanged.
    */
   loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void {
     if (!existsSync(dir)) return
-    const files = readdirSync(dir).filter(f => f.endsWith('.jsonl'))
-    for (const file of files) {
-      const path = join(dir, file)
+    const entries = readdirSync(dir, { withFileTypes: true })
+
+    // Flat layout: <dir>/*.jsonl (legacy — scopeId=undefined, backward-compatible)
+    const flatFiles = entries.filter(e => e.isFile() && e.name.endsWith('.jsonl'))
+    for (const entry of flatFiles) {
+      const path = join(dir, entry.name)
       const text = readFileSync(path, 'utf8')
       const lines = text.trim().split('\n').filter(Boolean)
       for (const line of lines) {
         const raw = JSON.parse(line) as PersistedCaseRecordRaw
         this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver))
+      }
+    }
+
+    // Per-scope layout: <dir>/<scopeId>/*.jsonl (GA-GT1 Phase 3b D5.2)
+    const scopeDirs = entries.filter(e => e.isDirectory())
+    for (const entry of scopeDirs) {
+      const scopeId = entry.name
+      const scopeDir = join(dir, scopeId)
+      const scopeFiles = readdirSync(scopeDir, { withFileTypes: true }).filter(e => e.isFile() && e.name.endsWith('.jsonl')).map(e => e.name)
+      for (const file of scopeFiles) {
+        const path = join(scopeDir, file)
+        const text = readFileSync(path, 'utf8')
+        const lines = text.trim().split('\n').filter(Boolean)
+        for (const line of lines) {
+          const raw = JSON.parse(line) as PersistedCaseRecordRaw
+          this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver, scopeId))
+        }
       }
     }
   }
@@ -207,6 +253,7 @@ function mapOutcomeToStatus(outcome: string): EvalResultRecord['status'] {
 function mapPersistedToEvalRecord(
   raw: PersistedCaseRecordRaw,
   resolver?: (caseId: string) => string,
+  scopeId?: string,
 ): EvalResultRecord {
   const assetId = resolver ? resolver(raw.caseId) : raw.caseId
   return {
@@ -225,6 +272,10 @@ function mapPersistedToEvalRecord(
       attemptsCount: raw.attemptsCount,
       errorsCount: raw.errorsCount,
     },
+    // GA-GT1 Phase 3b (D5.2): tag the scopeId onto the record when loaded from
+    // a per-scope subdirectory. Flat-layout records omit the key entirely
+    // (scopeId=undefined → backward-compatible with pre-3b record shape).
+    ...(scopeId !== undefined ? { scopeId } : {}),
   }
 }
 
@@ -263,12 +314,40 @@ export class EvidenceQueryService extends Service {
   }
 
   /**
+   * GA-GT1 Phase 3b (D5.2): resolve the semantic-layer root for a (optional)
+   * scopeId. The active path's root value delegates to `ctx.schema.semanticRoot`,
+   * but the 4-branch structure (undefined / registry-mounted hit / miss /
+   * unmounted) is evidence-query's own local copy — semantically equivalent to
+   * SemanticLayerService.resolveRoot, kept here so Phase 1/2 additive work
+   * stays self-contained. Cleanup may centralize by making
+   * SemanticLayerService.resolveRoot public and delegating to it.
+   *
+   * Branches:
+   *  - scopeId undefined → `ctx.schema.semanticRoot` (active scope, current behavior).
+   *  - scopeId provided + registry mounted + scope found → that scope's `semanticRoot`.
+   *  - scopeId provided + registry mounted + scope NOT found → throw (fail-loud:
+   *    refuse silent fallback to active scope to prevent cross-scope leak).
+   *  - scopeId provided + registry unmounted → `ctx.schema.semanticRoot` (test stand-in fallback).
+   * @param scopeId - optional scope id; omit for the active scope (backward-compatible).
+   * @returns the resolved semantic-layer root path.
+   */
+  private resolveRoot(scopeId?: string): string {
+    if (scopeId === undefined) return this.ctx.schema.semanticRoot
+    const reg = this.ctx.get('scopes') as ScopeRegistryLike | undefined
+    if (reg === undefined) return this.ctx.schema.semanticRoot // unmounted: fall back (test stand-in)
+    const def = reg.get(scopeId)
+    if (def !== undefined) return def.semanticRoot
+    throw new Error(`ctx.evidenceQuery: scope "${scopeId}" not found in registry (intranet-security: refusing silent fallback to prevent cross-scope leak)`)
+  }
+
+  /**
    * Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats()
    * but enriches with confirmation.status breakdown across all assets.
+   * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns aggregated table/event/metric counts plus per-domain and confirmation-status tallies.
    */
-  coverageQuery(): EnrichedCoverageStats {
-    const root = this.ctx.schema.semanticRoot
+  coverageQuery(scopeId?: string): EnrichedCoverageStats {
+    const root = this.resolveRoot(scopeId)
     const tables = loadTables(root)
     const events = loadEvents(root)
     const metrics = loadMetricDefinitions(root)
@@ -326,10 +405,11 @@ export class EvidenceQueryService extends Service {
    * Gap analysis: given an asset, compute which other assets are reachable via
    * RelationGraph joins but have no eval case coverage.
    * @param assetId - the source asset to compute reachable-but-uncovered gaps from.
+   * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns the source asset plus the list of reachable assets lacking eval coverage (with join paths).
    */
-  gapAnalysis(assetId: string): GapAnalysisResult {
-    const graph = this.ctx.schema.getRelationGraph()
+  gapAnalysis(assetId: string, scopeId?: string): GapAnalysisResult {
+    const graph = this.ctx.schema.getRelationGraph(scopeId)
     const reachable = this.bfsJoinReachable(graph, assetId)
     const gaps: GapEntry[] = []
 
@@ -372,13 +452,14 @@ export class EvidenceQueryService extends Service {
    * newly reachable via joins?" Clones the current graph, adds the proposed
    * relation, and compares BFS reachability before/after.
    * @param newRelation - the proposed relation to add before recomputing reachability.
+   * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns the proposed relation plus the asset pairs newly reachable via joins after adding it.
    */
-  reachabilityDelta(newRelation: ProposedRelation): ReachabilityDeltaResult {
-    const graph = this.ctx.schema.getRelationGraph()
+  reachabilityDelta(newRelation: ProposedRelation, scopeId?: string): ReachabilityDeltaResult {
+    const graph = this.ctx.schema.getRelationGraph(scopeId)
 
     // Compute current reachability sets for all nodes
-    const allNodes = this.getAllAssetIds()
+    const allNodes = this.getAllAssetIds(scopeId)
     const beforeReachability = new Map<string, Set<string>>()
     for (const nodeId of allNodes) {
       const reachable = this.bfsJoinReachable(graph, nodeId)
@@ -386,7 +467,7 @@ export class EvidenceQueryService extends Service {
     }
 
     // Build a new graph with the proposed relation added
-    const augmentedGraph = this.buildAugmentedGraph(newRelation)
+    const augmentedGraph = this.buildAugmentedGraph(newRelation, scopeId)
 
     // Compute new reachability and diff
     const newlyReachable: ReachablePair[] = []
@@ -406,9 +487,12 @@ export class EvidenceQueryService extends Service {
   /**
    * Build an augmented RelationGraph with the proposed relation added.
    * Re-builds from scratch (same entries as the Service graph) plus the new relation.
+   * @param newRelation - the proposed relation to add.
+   * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id for per-request scope root resolution.
+   * @returns a fresh RelationGraph with all current relations plus the proposed one.
    */
-  private buildAugmentedGraph(newRelation: ProposedRelation): RelationGraph {
-    const root = this.ctx.schema.semanticRoot
+  private buildAugmentedGraph(newRelation: ProposedRelation, scopeId?: string): RelationGraph {
+    const root = this.resolveRoot(scopeId)
     const entries: { sourceId: string; relations: import('@deepseek-ai/dsh-semantic-layer/src/registry.ts').RelationDef[] }[] = []
 
     for (const t of loadTables(root)) {
@@ -456,9 +540,13 @@ export class EvidenceQueryService extends Service {
     return g
   }
 
-  /** Get all known asset ids from the semantic layer. */
-  private getAllAssetIds(): string[] {
-    const root = this.ctx.schema.semanticRoot
+  /**
+   * Get all known asset ids from the semantic layer.
+   * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id for per-request scope root resolution.
+   * @returns all table names, event names, and metric names in the resolved scope.
+   */
+  private getAllAssetIds(scopeId?: string): string[] {
+    const root = this.resolveRoot(scopeId)
     const ids: string[] = []
     for (const t of loadTables(root)) {
       const r = TableDefinitionSchema.safeParse(t.raw)
@@ -525,17 +613,18 @@ export class EvidenceQueryService extends Service {
    * Asset health: aggregate report for a single asset — confirmation status,
    * has_eval_coverage, relation_count, last_modified.
    * @param assetId - the table, event, or metric asset to report on.
+   * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns the aggregate health report, or null when no table/event/metric matches assetId.
    */
-  assetHealth(assetId: string): AssetHealthReport | null {
-    const root = this.ctx.schema.semanticRoot
+  assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null {
+    const root = this.resolveRoot(scopeId)
 
     // Try to find the asset as a table
     for (const t of loadTables(root)) {
       const r = TableDefinitionSchema.safeParse(t.raw)
       if (!r.success) continue
       if (r.data.table_name === assetId) {
-        const graph = this.ctx.schema.getRelationGraph()
+        const graph = this.ctx.schema.getRelationGraph(scopeId)
         const relations = graph.getRelated(assetId)
         return {
           assetId,
@@ -552,7 +641,7 @@ export class EvidenceQueryService extends Service {
       const r = EventDefinitionSchema.safeParse(e.raw)
       if (!r.success) continue
       if (r.data.name === assetId) {
-        const graph = this.ctx.schema.getRelationGraph()
+        const graph = this.ctx.schema.getRelationGraph(scopeId)
         const relations = graph.getRelated(assetId)
         return {
           assetId,
@@ -567,7 +656,7 @@ export class EvidenceQueryService extends Service {
     // Try to find the asset as a metric (metrics have no confirmation field)
     for (const m of loadMetricDefinitions(root)) {
       if (m.name === assetId) {
-        const graph = this.ctx.schema.getRelationGraph()
+        const graph = this.ctx.schema.getRelationGraph(scopeId)
         const relations = graph.getRelated(assetId)
         return {
           assetId,
