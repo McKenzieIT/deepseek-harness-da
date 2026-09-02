@@ -18,14 +18,16 @@ CL-17 部分关闭后的剩余：overall 70.8% < 78%。enrichment 杠杆已尽�
 
 - CL-17 partial（enrichment 已尽；本票接剩余 3 杠杆）。
 - 概念 case（`voice_026`/`028`/`alias_022`/`038` 大R/回归）08-31 已 enrich 但仍拒 → 需 formula 非 label。
-- 验证需 eval（`scripts/run-eval.sh`）；注意 CL-22（dup 清理 BM25 效应待查）。
+- **CL-22 已解决**：dup 清理安全（0/9 lost alias 使用回归/回流，alias_016 随机翻转）；真实基线中位数 **73.2%**（非 70.8%，后者是 3-run 异常值）；距 78% 差 **~8 cases**（非 12）。
+- **多 run 基线要求**（CL-22 新规）：验收 eval 必须 ≥3 run 取中位数，单 run delta 不可决策。
+- CL-22 alias trace 发现：4/9 lost alias 是"裸 CASE 表达式"（LLM 格式缺陷，非检索问题），不在本票 3 杠杆范围内。
 
 ## 验收
 
-- overall ≥78%。
-- 概念 case（大R/回归）≥2 翻转。
-- trim 无 BM25 稀释回归（对比 eval）。
-- 全量 eval + compare + experiment-log。
+- overall 中位数 ≥78%（≥3 run）。
+- 概念 case（大R/回归）≥2 翻转（中位数口径）。
+- trim 无 BM25 稀释回归（对比 eval，中位数口径）。
+- 全量 eval ≥3 run + compare + experiment-log。
 
 ## 关键文件
 
