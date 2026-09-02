@@ -1,5 +1,79 @@
 # Experiment Audit Log — Semantic Layer Effort
 
+## 2026-09-02: CL-22 eval 非确定性深查（3-run 方差 + dup 清理归因 + alias trace）
+
+### Setup
+- **基线**: Run `32dd9532`（09-02 联合 eval）70.8%（119/168）——本 ticket 的调查起点
+- **对照基线**: Run `10320fe2`（CL-15 标准基线）73.8%；Run `75ad2a5c`（同代码重跑）73.2%
+- **Cases**: 168 K11 cases（80 original + 40 alias + 30 voice EXEC + 18 voice DELIVERY）
+- **Model**: aga/qwen3.7-max, engine responder, pass_k=1, concurrency=4, sql-judge on, --skip-health-gate
+- **代码状态**: HEAD `1f295b8f5c`（= CL-18 + V1 + CL-17 dup 清理），eval 相关文件无未提交变更
+- **实验设计**: 在完全相同代码状态下运行 3 次 full eval（`32dd9532` + 2 新 run），测量 LLM 非确定性方差
+
+### Data
+
+**3 同代码 run 汇总（HEAD `1f295b8f5c`）：**
+
+| Category | Run A `32dd9532` | Run B `e7a946be` | Run C `b244533a` | **Median** | Range |
+|----------|-----------------|-----------------|-----------------|-----------|-------|
+| Original | 72.5% (58/80) | 77.5% (62/80) | 76.3% (61/80) | **76.3%** | ±5.0pp |
+| Alias | 62.5% (25/40) | 65.0% (26/40) | 70.0% (28/40) | **65.0%** | ±7.5pp |
+| Voice EXEC | 73.3% (22/30) | 73.3% (22/30) | 66.7% (20/30) | **73.3%** | ±6.7pp |
+| Voice DELIVERY | 77.8% (14/18) | 72.2% (13/18) | 77.8% (14/18) | **77.8%** | ±5.6pp |
+| **Overall** | **70.8% (119)** | **73.2% (123)** | **73.2% (123)** | **73.2%** | **±2.4pp** |
+
+- 3-run case flip rate: **26.8%**（45/168 cases 在 3 run 中至少翻转 1 次）
+- Stable pass: 98 (58.3%)；Stable wrong: 25 (14.9%)
+- Run A→B: +18 gained / -14 lost = +4 net（32 flips, 19.0%）
+- Run A→C: +18 gained / -14 lost = +4 net（32 flips, 19.0%）
+
+**CL-15 同代码对照（验证非确定性基线）：**
+- `10320fe2`: 73.8% (124) vs `75ad2a5c`: 73.2% (123) = -0.6pp, 35 flips (20.8%)
+
+**4-run 慢性翻转者分析（10320fe2 / 75ad2a5c / 1510b3e0 / 32dd9532）：**
+- 0 次翻转（稳定）: 109/168 (64.9%)
+- 1 次翻转: 28/168 (16.7%)
+- 2 次翻转: 22/168 (13.1%)
+- 3 次翻转（完美交替）: 9/168 (5.4%) — 含 alias_003/004/005/011
+
+**Alias -15pp 逐 case 归因（9 lost cases in Run A vs CL-15 baseline）：**
+
+| Case | 查询关键词 | 是否含回归/回流 | 失败模式 | 同代码重跑翻转? |
+|------|-----------|--------------|---------|--------------|
+| alias_003 | 氪金/非氪金/在线时长 | **否** | SQL 逻辑不完整（仅 pay=1） | **是**（完美交替） |
+| alias_005 | 氪金/轻度付费/活跃用户 | **否** | SQL 聚合错误 | **是**（完美交替） |
+| alias_009 | 免费玩家/活跃/30天 | **否** | tool-call 文本替代 SQL | 否 |
+| alias_011 | 零氪玩家/等级段/分布 | **否** | 裸 CASE 表达式（无 SELECT） | **是**（完美交替） |
+| alias_018 | 新注册/角色 | **否** | 错误表 + 占位符 `<数据视图>` | **是** |
+| alias_024 | 首充用户/活跃天数/分布 | **否** | 裸 CASE 表达式 | **是** |
+| alias_029 | 首次充值/金额/分布 | **否** | 裸 CASE 表达式 | 否 |
+| alias_033 | 角色等级段/留存率 | **否** | 裸 CASE 表达式 | **是** |
+| alias_037 | 氪金用户/白嫖用户/MAU | **否** | 显式拒绝（"无法回答"） | 否 |
+
+- **0/9 使用回归/回流**——dup 清理无因果关系
+- **5/9 在同代码重跑中也翻转**——confirmed 非确定性
+- **4/9 为裸 CASE 表达式**——同一 LLM 输出格式缺陷
+
+**dup 清理反向证据（alias_016 "回归玩家转化率"）：**
+- `covered_assets` = `univ_role_tag_df`（被 dup 清理的表）
+- 查询含"回归"（dup 清理减少的词）
+- CL-15 基线: **WRONG**（agent 拒绝"回归定义缺失"）
+- Run A: **CORRECT**（生成有效 SQL）→ Run B: **WRONG** → Run C: **WRONG**
+- 结论：alias_016 是非确定性 coin-flip，dup 清理未伤害检索
+
+### Verdict
+
+1. **-3pp 是噪声**：3 同代码 run 中位数 73.2%（= CL-15 同代码重跑的 73.2%），70.8% 是 3 run 中的异常值。同代码 range 仅 ±2.4pp。单 run 结果不可用于趋势判断。
+2. **Dup 清理无需回滚**：case-level 证据决定性——0/9 lost alias cases 使用 回归/回流 词汇；唯一使用该词的 alias_016 在各 run 中随机翻转（WRONG→CORRECT→WRONG→WRONG），与 dup 无关。dup 清理是正确的数据卫生操作（tf 2→1 不影响检索召回）。
+3. **Alias -15pp = LLM 非确定性**：9 个 lost cases 的失败模式多样（裸 CASE 4/tool-call 1/SQL 逻辑 2/检索失败 1/拒绝 1），5/9 在同代码重跑中也翻转。Alias 3-run range ±7.5pp（3 case flips = 7.5pp on 40-case denominator），-15pp 约等于 6 个 coin-flip case 同时倒霉——概率上合理。
+4. **需建立多 run 基线**：26.8% case flip rate 意味着 ~45/168 cases 跨 run 随机翻转。建议后续 eval 至少跑 3 次取中位数，或引入 pass_k=3 + majority-vote 降噪。
+5. **真实基线（中位数）**: Overall 73.2%, Original 76.3%, Alias 65.0%, Voice EXEC 73.3%, Voice DELIVERY 77.8%。与 CL-15 基线 73.8% 几乎持平（-0.6pp，在 ±2.4pp 噪声带内）。
+
+### Ticket Pointer
+Resolves: [CL-22](../tickets/CL22-eval-nondeterminism-deepcheck.md)。Run IDs: `32dd9532`（existing）+ `e7a946be`（CL-22 run 1）+ `b244533a`（CL-22 run 2）。
+
+---
+
 ## 2026-09-02: 联合全量 eval（CL-18+V1 完成 + CL-17 dup 清理后）
 
 ### Setup

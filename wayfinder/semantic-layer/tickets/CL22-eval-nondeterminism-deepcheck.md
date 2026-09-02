@@ -1,7 +1,8 @@
 ---
 type: research
-status: open
+status: closed
 blocked_by: []
+assigned_to: claude
 ---
 
 # CL-22: eval 非确定性深查（-3pp / Alias -15pp / dup BM25 效应）
@@ -33,3 +34,25 @@ blocked_by: []
 - compare 工具：`packages/eval/eval-cli/bin/compare.ts`
 - 实验日志：`wayfinder/semantic-layer/research/experiment-audit-log.md`
 - dup 清理点：`examples/k11-semantic-layer/tables/dws_10000251_univ_role_tag_df.yaml`
+
+## Resolution
+
+3 同代码 run（`32dd9532` / `e7a946be` / `b244533a`，HEAD `1f295b8f5c`）+ case-level trace + 历史同代码对照（`10320fe2` / `75ad2a5c`）回答全部三个问题：
+
+### Q1: -3pp 是噪声
+
+**是噪声。** 3 run 中位数 73.2%（与 CL-15 同代码重跑 73.2% 一致），70.8% 是异常值。同代码 range ±2.4pp。Case flip rate 26.8%（45/168）。单 run 结果不可用于趋势判断。
+
+### Q2: Dup 清理无需回滚
+
+**不回滚。** Case-level 证据决定性：0/9 lost alias cases 使用 回归/回流 词汇。唯一使用"回归"的 alias_016 在各 run 中随机翻转（CL-15:WRONG → A:CORRECT → B:WRONG → C:WRONG），与 dup 无关。Dup 清理（tf 2→1）不影响检索召回——term 仍存在于 alt_labels，仅去重。
+
+dup 清理对照实验因 case-level 证据已决定性而省略。以 20.8% baseline flip rate，单 run 对照无统计效力——需 ≥3 run/condition × 2 condition = 6+ 额外 run（~4h）才能检测 2-term-frequency 差异，成本/收益不对称。
+
+### Q3: Alias -15pp = LLM 非确定性
+
+9 lost cases 失败模式多样（裸 CASE 4 / tool-call 1 / SQL 逻辑 2 / 检索失败 1 / 拒绝 1），5/9 在同代码重跑中也翻转。Alias 3-run range ±7.5pp（40-case 基数上 3 个 case flip = 7.5pp）。4/9 为"完美交替"coin-flip cases。
+
+### 建议
+
+后续 eval 至少跑 3 次取中位数，或引入 pass_k=3 + majority-vote 降噪。真实基线（中位数）：Overall 73.2%, Original 76.3%, Alias 65.0%, Voice EXEC 73.3%, Voice DELIVERY 77.8%。

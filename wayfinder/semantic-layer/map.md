@@ -36,6 +36,11 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
   - **SchemaProvider**：代码中的接口名（PascalCase）。文中用「schema provider」指代概念时统一小写带空格。
   - **scope**：纯逻辑划分单元（用户自定义）。代码中 scope 内部通过文件系统目录实现隔离，但 scope ≠ namespace——scope 是业务概念，namespace 是隔离机制。
   - **定义（definition）**：本 map 中特指语义层中的数据源定义（`TableDefinition` / `EventDefinition` / `MetricDefinition`）。「定义版本管理」管理的是这些定义的变更历史，非 ontology 层概念。
+- **多 run 基线强制要求**（CL-22 追加）：
+  - **每次 eval 基线建立或趋势对比必须跑 ≥3 次取中位数**，无例外。单次 run 的 delta 不可用于决策（LLM 非确定性 flip rate ~27%，同代码极差 ±2.4pp overall / ±7.5pp per-category）。
+  - 报告格式：3 run 的 per-category 中位数 + 极差。若只跑 1 次（如单 case 调试），必须注明"单 run，不可作基线"。
+  - Run IDs 全部记入 experiment-audit-log（可追溯）。
+  - 未来可升级为 pass_k=3 + majority-vote（需改 `multi_turn.ts` pass 判定逻辑，当前语义为 all-must-pass 不适用）。
 - **实验记录强制要求**（CL-15 追加）：
   - **每次 eval run 必须记录到 `wayfinder/semantic-layer/research/experiment-audit-log.md`**，无例外。
   - 使用标准模板（见 `packages/eval/eval-cli/README.md` "Recording Results" 章节）：Setup（基线 run_id + cases + model + 变更内容）→ Data（verbatim 数据，含 `compare.ts` 输出）→ Verdict（编号分析）→ Ticket Pointer。
@@ -112,6 +117,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-4 补充 alias-dependent eval case](tickets/CL4-supplement-alias-eval-cases.md) — 40 case 已生成（k11v2_alias_001–040）：17 unique alias terms（9 纯 alias-dependent + 8 表级），覆盖 4 目标表 × 3 业务域；全部验证通过
 - [CL-5 检索策略覆盖率梯度实验](tickets/CL5-retrieval-gradient-experiment.md)（[实验报告](research/cl5-retrieval-gradient-experiment-report.md)）— 原型级验证：C（continuous-blend）在所有 level 都 ≥ B，delta 随覆盖率单调递增（L0:+0.4pp → L3:+6.7pp）；B 有 recall 天花板（不引入新候选）；hard-switch 因 CJK bigram 稀释无效；tokenizer 混合 CJK/ASCII bug 需修复；alias 覆盖率是最大杠杆（+15pp）。⚠️ 非生产管线实验，绝对值不可直引用。行动项：修复 tokenizer → 生产管线实现 continuous-blend → 加速 enrichment → 用 eval pass_rate 正式验证
 
+- [CL-22 eval 非确定性深查](tickets/CL22-eval-nondeterminism-deepcheck.md) — 3 同代码 run 中位数 73.2%（±2.4pp，26.8% case flip rate）；-3pp 是噪声（70.8% 为异常值）；dup 清理无需回滚（0/9 lost alias 使用 回归/回流，alias_016 随机翻转）；Alias -15pp 归因 LLM 非确定性；建议后续 ≥3 run 取中位数
 - [CL-6 Tokenizer 修复 + Continuous-blend 实现](tickets/CL6-tokenizer-fix-and-continuous-blend.md) — extractQueryTerms CJK/ASCII 混合 bigram 修复 + applyContinuousBlend（含 median-floor）+ Config.blendingMode 分派 + 6 新测试 + 24 表 L3 alias enrichment
 - [CL-7 生产管线检索级实验](tickets/CL7-production-retrieval-experiment.md)（[实验报告](research/cl7-production-pipeline-experiment-report.md)）— 发现 alias-resolved 候选自 CL-1 起在生产中失效（score=2.0 vs BM25=30-40，被 topK cap 丢弃）；median-floor 修复后 B=C=0.804(L3)（B 和 C 均已修复）；blending 公式无影响，enrichment 是唯一杠杆（+17.5pp）；默认切换为 `continuous-blend`
 - [CL-8 端到端 Eval + Go/No-Go](tickets/CL8-e2e-eval-go-nogo.md) — **GO**：`cl8-full-fixed` pass_rate=96.3%（strategy-b+median-floor）；交叉验证 `cl8-continuous-blend` pass_rate=**100.0%**（80/80，continuous-blend 默认）；3 前次 wrong cases 通过（LLM 非确定性，非 blendingMode 差异）
@@ -283,7 +289,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~[CL-19: eval LLM tool-call 发射根因](tickets/CL19-eval-toolcall-emission-rootcause.md)~~ ✅ — 根因=TOOL_CATALOG prompt（主）+ qwen3.7-max 模型倾向（协）；EXP2 无关；`buildEvalPrompt` 已存在但未接入；修复=(a) engine 检测 tool-call→clean decline + (b) reply 层 LLM 合成结构化拒绝 + 扩展 `looksLikeToolCall`（补 `call:` 前缀 + `{"tool_calls":` 格式）；影响 2 DELIVERY case（voice_017/042），翻转后 DELIVERY 可达 83.3-88.9%
 - [CL-20: DELIVERY Type-2 agent 行为](tickets/CL20-delivery-agent-behavior-type2.md) — CL-16 剩余：开放问题错误生成 SQL（075/079/voice_048 等）；prompt/critic/judge 候选；目标 DELIVERY 85%+（**frontier — 无阻塞**）
 - [CL-21: 78% 推进——trim/概念formula/迁移](tickets/CL21-non-enrichment-levers-trim-formula-migration.md) — CL-17 剩余：trim over-enriched 表/大R·回归 formula/迁移真不可答→DELIVERY；目标 overall 78%+（**frontier — 无阻塞**）
-- [CL-22: eval 非确定性深查](tickets/CL22-eval-nondeterminism-deepcheck.md) — research：-3pp/Alias -15pp/dup BM25 效应；多 run 中位数 + 对照（**frontier — 无阻塞**）
+- ~~[CL-22: eval 非确定性深查](tickets/CL22-eval-nondeterminism-deepcheck.md)~~ ✅ — 3 同代码 run 中位数 73.2%（±2.4pp）；70.8% 是异常值（噪声）；dup 清理无需回滚（0/9 lost 使用 回归/回流）；Alias -15pp = LLM 非确定性（26.8% case flip rate）；建议 ≥3 run 取中位数
 - [CL-23: tool-call 检测 + 结构化拒绝合成](tickets/CL23-toolcall-detection-and-structured-decline.md) — CL-19 修复落地：(a) engine 层 tool-call→clean decline + (b) reply 层 LLM 合成结构化拒绝 + looksLikeToolCall 扩展；目标翻转 voice_017/042（**frontier — 无阻塞，CL-19 衍生**）
 - [R11: eval 切换 buildEvalPrompt 实验](tickets/R11-eval-prompt-switch-experiment.md) — CL-19 option (c2)：eval promptBuilder 切换为无 tool-catalog 的 `buildEvalPrompt`，168 case full run 对比；权衡：消除 tool-call 发射 vs 改变评测标的（**frontier — 无阻塞，CL-19 衍生**）
 
