@@ -1,0 +1,289 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. R4: present_table 图表类型扩展 · 模拟对话场景原型 (v6: 自写 valueLabelsPlugin 替代 datalabels · 顶层叠数值不遮挡).
+
+  dsh-plugin-development 合规说明：throwaway 独立 HTML，非真正 DSH 插件包。
+  - UI 兼容：用 ui-present-table/TableCard.module.css 的真实 --dsw-alias-* token（带 standalone 回退），
+    镜像 .card / .chartBtn(药丸,aria-pressed) / .chartToolbar / .chartBox / .table/.th/.td/.num / .actionBtn。
+  - 规范映射（真实落地走 Mode 3 Repository Package）：toolview 注册 =
+    ctx.slots.inject('tool.call.toolview',()=>ctx.slots.register({name:'tool.call.toolview',key:'present_table'},Component))（见 R3/T2）。
+    本原型 JS 结构对应：heuristic↔system prompt、validator↔客户端列-kind sniff、ChartView↔toolview。
+    AGENTS.md slot/props/styling/export 纪律适用于真实包，不适用于此 throwaway。
+
+  v4 变更：
+  - "显示数值"开关移进每张图卡片（chartToolbar 内，原 line/bar 位置），per-turn。
+  - 去掉类型切换按钮（line/bar/...）；每图直接渲染启发式选定的类型；类型选择后续收敛到 DSH 设置。
+    → 8 类型各占一 turn（含新增 T11 polarArea）；T9/T10 默认即触发校验器降级（仍演示 validator）。
+  - 显示数值：自写 valueLabelsPlugin（afterDatasetsDraw 顶层绘制，不被 datasets 遮挡；位置直取 el.x/el.y；>8 点不叠；scatter/bubble 不叠），替代 chartjs-plugin-datalabels（去 CDN 依赖）。
+  - 保留"仅数据"（DSH 真实表格 + 复制 TSV）；动态不遮挡（autoSkip+旋转 / hbar 动态高 / >8 点不叠数值）。
+  非生产；无构建；需联网（仅 Chart.js CDN）。数据为 K11 语义层锚定样本。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R4 原型 · INTERPRETATION 图表渲染（DSH-UI · 显示数值开关 · 模拟对话）</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--dsw-alias-surface-secondary,#f6f7f9);color:var(--dsw-alias-content-primary,#1d2939);font:14px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif}
+  header{max-width:940px;margin:0 auto;padding:24px 20px 6px}
+  h1{font-size:18px;margin:0 0 6px;color:var(--dsw-alias-content-primary,#1d2939)}
+  .proto-note{color:var(--dsw-alias-content-secondary,#667085);font-size:12px;margin:0 0 14px}
+  .rules{background:var(--dsw-alias-surface-primary,#fff);border:1px solid var(--dsw-alias-border-primary,#e4e7ec);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--dsw-alias-content-secondary,#667085);margin-bottom:8px}
+  .rules b{color:var(--dsw-alias-content-primary,#1d2939)}
+  .chat{max-width:940px;margin:0 auto;padding:8px 20px 60px;display:flex;flex-direction:column;gap:18px}
+  .turn{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+  .user{align-self:flex-end;max-width:80%;background:var(--dsw-alias-surface-primary,#fff);border:1px solid var(--dsw-alias-border-primary,#e4e7ec);border-radius:14px 14px 4px 14px;padding:7px 12px;font-size:13px;color:var(--dsw-alias-content-primary,#1d2939)}
+  .card{width:100%;border-radius:8px;border:1px solid var(--dsw-alias-border-primary,#e4e7ec);background:var(--dsw-alias-surface-primary,#fff);overflow:hidden}
+  .card-body{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
+  .intent{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--dsw-alias-content-tertiary,#98a2b3);word-break:break-all}
+  .intent .rule{color:var(--dsw-alias-content-primary,#1d2939);background:var(--dsw-alias-surface-secondary,#f6f7f9);padding:1px 5px;border-radius:4px}
+  .chartToolbar{display:flex;flex-wrap:wrap;gap:6px}
+  .chartBtn{padding:2px 10px;border-radius:999px;border:1px solid var(--dsw-alias-border-primary,#e4e7ec);background:var(--dsw-alias-surface-secondary,#f6f7f9);color:var(--dsw-alias-content-secondary,#667085);font-size:12px;cursor:pointer}
+  .chartBtn:hover{background:var(--dsw-alias-surface-hover,#eef0f3)}
+  .chartBtn[aria-pressed='true']{font-weight:600;color:var(--dsw-alias-content-primary,#1d2939);border-color:var(--dsw-alias-content-secondary,#667085)}
+  .warn{background:var(--dsw-alias-surface-secondary,#f6f7f9);border:1px solid var(--dsw-alias-border-primary,#e4e7ec);border-left:3px solid var(--dsw-alias-state-warning-primary,#d97706);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--dsw-alias-state-warning-primary,#d97706)}
+  .chartBox{position:relative}
+  canvas{max-width:100%}
+  .tableWrap{overflow:auto;max-height:340px;border-radius:4px;border:1px solid var(--dsw-alias-border-primary,#e4e7ec);scrollbar-gutter:stable}
+  .table{width:100%;border-collapse:collapse;font-size:12px;line-height:18px}
+  .th{padding:6px 10px;text-align:left;font-weight:600;color:var(--dsw-alias-content-secondary,#667085);background:var(--dsw-alias-surface-secondary,#f6f7f9);border-bottom:1px solid var(--dsw-alias-border-primary,#e4e7ec);white-space:nowrap;position:sticky;top:0;z-index:1}
+  .td{padding:6px 10px;color:var(--dsw-alias-content-primary,#1d2939);white-space:nowrap}
+  .tr:nth-child(even) .td{background:var(--dsw-alias-surface-secondary,#f6f7f9)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tableActions{display:flex;gap:6px;margin-bottom:6px}
+  .actionBtn{padding:4px 10px;border-radius:4px;border:1px solid var(--dsw-alias-border-primary,#e4e7ec);background:var(--dsw-alias-surface-secondary,#f6f7f9);color:var(--dsw-alias-content-secondary,#667085);font-size:12px;cursor:pointer}
+  .actionBtn:hover{background:var(--dsw-alias-surface-hover,#eef0f3)}
+  .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;background:var(--dsw-alias-surface-secondary,#f6f7f9);color:var(--dsw-alias-content-secondary,#667085);margin-right:6px;font-family:ui-monospace,Menlo,monospace}
+  .err{color:var(--dsw-alias-state-error-primary,#d92d20);font-size:12px;padding:8px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>R4 原型 · INTERPRETATION 图表渲染（DSH-UI · 显示数值开关 · 模拟对话）</h1>
+  <p class="proto-note">PROTOTYPE — throwaway. 每图直接渲染启发式选定的类型（T9/T10 默认触发校验器降级 → warn + 回退 bar）。每图卡片内有"显示数值"开关（自写 valueLabelsPlugin · afterDatasetsDraw 顶层叠数值药丸，>8 点不叠）+"仅数据"（DSH 真实表格 + 复制 TSV）。hover tooltip、legend 可点 toggle。用真实 --dsw-alias-* token。非生产；无构建；需联网（仅 Chart.js CDN）。数据为 K11 语义层锚定样本。</p>
+  <div class="rules"><b>启发式</b>（system prompt，语义层词汇）：metric+类别维→bar（长标签→h-bar）｜metric+时间粒度(ds)→line/area｜2 metric→scatter｜metric+≤8值维+占比→doughnut｜3 metric→bubble｜实体×N metric→radar/polarArea</div>
+  <div class="rules"><b>校验器</b>（客户端，按 sniffed 列 kind）：scatter 但 &lt;2 数值列→bar｜doughnut 但 &gt;8 类→bar｜line/area 但 x 非日期/序数→bar｜bubble 但 &lt;3 数值列→bar｜radar/polarArea 但非"实体×N metric"→bar</div>
+</header>
+<main class="chat" id="chat"></main>
+<script>
+const C=['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+const grid='rgba(102,112,133,.18)', sub='#667085';
+
+// ---- K11-anchored sample data ----
+const days7=['07-24','07-25','07-26','07-27','07-28','07-29','07-30'];
+const amt7=[49200,51800,53600,50100,54200,57628,54900];
+const payType=['现金购买','代金券购买','免费代金券'];
+const amtType=[312400,64200,24100];
+const servers=['华东1区','华东2区','华北1区','华南1区','西南1区','海外1区'];
+const amtSrv=[41200,38500,35100,29800,21500,18200];
+const cum14L=['06-17','06-20','06-23','06-26','06-29','07-02','07-05','07-08','07-11','07-14','07-17','07-20','07-23','07-26'];
+const cum14=[1100,1280,1460,1590,1720,1860,2010,2160,2310,2460,2620,2780,2950,3120];
+const scatterPts=[{x:125,y:459},{x:142,y:780},{x:98,y:620},{x:110,y:540},{x:88,y:410},{x:156,y:890}];
+const bubblePts=[{x:41200,y:890,r:12.5},{x:38500,y:780,r:14.2},{x:35100,y:620,r:9.8},{x:29800,y:540,r:11},{x:21500,y:410,r:8.8},{x:18200,y:300,r:15.6}];
+const radarLbl=['充值额','订单数','ARPU','付费UV'];
+const radarVal=[100,95,80,100];
+const cfg12=['cfg_01','cfg_02','cfg_03','cfg_04','cfg_05','cfg_06','cfg_07','cfg_08','cfg_09','cfg_10','cfg_11','cfg_12'];
+const amtCfg=[62000,54000,48500,42100,38600,34200,29800,26400,22100,18200,14100,9800];
+
+// each turn: render the heuristic-chosen type (no per-chart type switching; type choice converges to DSH settings)
+const turns=[
+ {q:'最近 7 天每日充值金额走势', type:'line', intent:'chart.type=line · x=ds · y=pay_amt_sum · <span class="rule">启发式:metric+时间粒度(ds)→line</span>',
+  ds:{labels:days7, series:[{label:'pay_amt_sum(元)',data:amt7}], numericCols:1, catCard:7, xIsDate:true, isMulti:false}},
+ {q:'各付费类型充值金额对比', type:'bar', intent:'chart.type=bar · x=pay_type · y=pay_amt_sum · <span class="rule">启发式:metric+类别维→bar</span>',
+  ds:{labels:payType, series:[{label:'pay_amt_sum(元)',data:amtType}], numericCols:1, catCard:3, xIsDate:false, isMulti:false}},
+ {q:'各区服充值金额', type:'hbar', intent:'chart.type=bar(indexAxis=y) · x=server_id · y=pay_amt_sum · <span class="rule">启发式:metric+长标签维→h-bar</span>',
+  ds:{labels:servers, series:[{label:'pay_amt_sum(元)',data:amtSrv}], numericCols:1, catCard:6, xIsDate:false, isMulti:false}},
+ {q:'最近 14 天累计订单量', type:'area', intent:'chart.type=line(fill=true) · x=ds · y=pay_order_cnt(累计) · <span class="rule">启发式:metric+时间粒度+累计→area</span>',
+  ds:{labels:cum14L, series:[{label:'累计 pay_order_cnt',data:cum14}], numericCols:1, catCard:14, xIsDate:true, isMulti:false}},
+ {q:'各服 ARPU vs 付费UV（相关性）', type:'scatter', intent:'chart.type=scatter · x=pay_arpu · y=pay_account_uv · <span class="rule">启发式:2 metric→scatter</span>',
+  ds:{labels:servers, series:[{label:'pay_amt_sum(元)',data:amtSrv}], points:scatterPts, numericCols:2, catCard:6, xIsDate:false, isMulti:false, xLabel:'pay_arpu', yLabel:'pay_account_uv'}},
+ {q:'充值金额按付费类型占比', type:'doughnut', intent:'chart.type=doughnut · x=pay_type · y=pay_amt_sum · <span class="rule">启发式:metric+≤8值维+占比→doughnut</span>',
+  ds:{labels:payType, series:[{label:'pay_amt_sum(元)',data:amtType}], numericCols:1, catCard:3, xIsDate:false, isMulti:false}},
+ {q:'各服 充值额 × 付费UV × ARPU', type:'bubble', intent:'chart.type=bubble · x=pay_amt_sum · y=pay_account_uv · r=pay_arpu(缩放) · <span class="rule">启发式:3 metric→bubble</span>',
+  ds:{labels:servers, series:[{label:'pay_amt_sum(元)',data:amtSrv}], bubblePoints:bubblePts, numericCols:3, catCard:6, xIsDate:false, isMulti:false, xLabel:'pay_amt_sum', yLabel:'pay_account_uv'}},
+ {q:'华东1区 付费多维画像（雷达）', type:'radar', intent:'chart.type=radar · 实体=华东1区 · N metric · <span class="rule">启发式:实体×N metric→radar</span>',
+  ds:{labels:radarLbl, series:[{label:'华东1区(归一化)',data:radarVal}], numericCols:4, catCard:4, xIsDate:false, isMulti:true, entity:'华东1区'}},
+ {q:'华东1区 付费多维画像（极坐标）', type:'polarArea', intent:'chart.type=polarArea · 实体=华东1区 · N metric · <span class="rule">启发式:实体×N metric→polarArea</span>',
+  ds:{labels:radarLbl, series:[{label:'华东1区(归一化)',data:radarVal}], numericCols:4, catCard:4, xIsDate:false, isMulti:true, entity:'华东1区'}},
+ {q:'各服 ARPU vs 付费UV 散点', type:'scatter', intent:'LLM 选 chart.type=scatter · x=pay_arpu · y=pay_account_uv（实际结果仅 1 数值列）',
+  ds:{labels:servers, series:[{label:'pay_amt_sum(元)',data:amtSrv}], numericCols:1, catCard:6, xIsDate:false, isMulti:false}},
+ {q:'充值金额按商品(cfg_id)占比', type:'doughnut', intent:'LLM 选 chart.type=doughnut · x=cfg_id · y=pay_amt_sum（cfg_id 实际 12 值）',
+  ds:{labels:cfg12, series:[{label:'pay_amt_sum(元)',data:amtCfg}], numericCols:1, catCard:12, xIsDate:false, isMulti:false}},
+];
+
+// ---- validator (client-side, by sniffed column kind + cardinality) ----
+function validate(type,ds){
+  if((type==='line'||type==='area') && !ds.xIsDate) return {ok:false,reason:'line/area 需 x 为日期/序数',fallback:'bar'};
+  if(type==='scatter' && ds.numericCols<2) return {ok:false,reason:'scatter 需 ≥2 数值列，实际 '+ds.numericCols,fallback:'bar'};
+  if(type==='bubble' && ds.numericCols<3) return {ok:false,reason:'bubble 需 ≥3 数值列，实际 '+ds.numericCols,fallback:'bar'};
+  if(type==='doughnut' && ds.catCard>8) return {ok:false,reason:'doughnut 需 ≤8 类，实际 '+ds.catCard,fallback:'bar'};
+  if((type==='radar'||type==='polarArea') && !ds.isMulti) return {ok:false,reason:'radar/polarArea 需 实体×N metric 形态',fallback:'bar'};
+  return {ok:true};
+}
+
+function fmt(n){ if(n==null||n==='') return ''; const s=String(Math.round(Number(n))); if(isNaN(Number(n))) return ''; return s.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+// 自写内联插件（替代 chartjs-plugin-datalabels —— 无 CDN、draw order/位置全控、不被 datasets 遮挡）。
+// afterDatasetsDraw 保证画在所有图元之上；位置直取 el.x/el.y；>8 点(非 radial)不叠；scatter/bubble 不叠。
+const valueLabelsPlugin={
+  id:'valueLabels',
+  afterDatasetsDraw(chart,args,opts){
+    if(!opts||!opts.display) return;
+    const ctx=chart.ctx, type=chart.config.type, indexAxis=chart.options.indexAxis;
+    chart.data.datasets.forEach((ds,di)=>{
+      const meta=chart.getDatasetMeta(di);
+      if(!meta||!meta.data||meta.hidden) return;
+      const data=ds.data, n=data.length;
+      const isRadial=(type==='doughnut'||type==='pie'||type==='polarArea');
+      if(type==='scatter'||type==='bubble') return;
+      if(n>8 && !isRadial) return;
+      meta.data.forEach((el,ei)=>{
+        if(el==null) return;
+        const raw=(data[ei]!=null && typeof data[ei]==='object')?data[ei].y:data[ei];
+        if(raw==null||raw===''||isNaN(raw)) return;
+        const label=fmt(raw);
+        if(!label) return;
+        let x=el.x, y=el.y;
+        if(type==='bar' && indexAxis==='y'){ x=(el.x||0)+10; y=el.y; }       // hbar: 右侧
+        else if(type==='bar'){ x=el.x; y=(el.y||0)-10; }                      // vbar: 上方
+        else if(isRadial){ x=el.x; y=el.y; }                                  // doughnut/polarArea: 中心
+        else { x=el.x; y=(el.y||0)-10; }                                      // line/area/radar: 上方
+        ctx.save();
+        ctx.font='600 11px -apple-system,"Segoe UI",Roboto,sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        const w=ctx.measureText(label).width, padX=4, pillH=15, pillW=w+padX*2;
+        ctx.fillStyle=isRadial?'rgba(29,41,57,.78)':'rgba(255,255,255,.95)';
+        roundRect(ctx,x-pillW/2,y-pillH/2,pillW,pillH,3); ctx.fill();
+        if(!isRadial){ctx.strokeStyle='rgba(102,112,133,.35)';ctx.lineWidth=1;ctx.stroke();}
+        ctx.fillStyle=isRadial?'#fff':'#1d2939';
+        ctx.fillText(label,x,y);
+        ctx.restore();
+      });
+    });
+  }
+};
+
+function baseOpts(extra){return Object.assign({
+  responsive:true, maintainAspectRatio:false,
+  interaction:{mode:'index',intersect:false},
+  plugins:{
+    legend:{display:true,position:'top',labels:{color:sub,boxWidth:12,padding:14}},
+    tooltip:{backgroundColor:'rgba(29,41,57,.92)',titleColor:'#fff',bodyColor:'#fff',borderColor:'#e4e7ec',borderWidth:1,padding:10,cornerRadius:6,displayColors:true}
+  }
+}, extra||{});}
+function xyOpts(extra){
+  const s=extra&&extra.scatter;
+  const xo=s?{type:'linear',title:{display:true,text:(extra.xLabel||'x')},ticks:{color:sub},grid:{color:grid}}
+            :{ticks:{color:sub,autoSkip:true,maxRotation:45,minRotation:0},grid:{color:grid,display:false}};
+  const yo=s?{type:'linear',title:{display:true,text:(extra.yLabel||'y')},ticks:{color:sub},grid:{color:grid}}
+            :{ticks:{color:sub},grid:{color:grid}};
+  const o={interaction:{mode:s?'nearest':'index',intersect:false},scales:{x:xo,y:yo}};
+  if(extra&&extra.indexAxis) o.indexAxis=extra.indexAxis;
+  return baseOpts(o);
+}
+function buildConfig(type,ds,showLabels){
+  const pal=C, ser=ds.series||[];
+  const lineDS=(fill)=>ser.map((s,i)=>({label:s.label,data:s.data,borderColor:pal[i%pal.length],backgroundColor:fill?'rgba(59,130,246,.15)':'rgba(59,130,246,0)',fill:fill,tension:.3}));
+  let cfg;
+  switch(type){
+    case 'line':   cfg={type:'line',data:{labels:ds.labels,datasets:lineDS(false)},options:xyOpts()}; break;
+    case 'area':   cfg={type:'line',data:{labels:ds.labels,datasets:lineDS(true)},options:xyOpts()}; break;
+    case 'bar':    cfg={type:'bar',data:{labels:ds.labels,datasets:ser.map((s,i)=>({label:s.label,data:s.data,backgroundColor:pal[i%pal.length]}))},options:xyOpts()}; break;
+    case 'hbar':   cfg={type:'bar',data:{labels:ds.labels,datasets:ser.map((s,i)=>({label:s.label,data:s.data,backgroundColor:pal[i%pal.length]}))},options:xyOpts({indexAxis:'y'})}; break;
+    case 'scatter':cfg={type:'scatter',data:{datasets:[{label:'point',data:ds.points,backgroundColor:'rgba(59,130,246,.7)',pointRadius:5}]},options:xyOpts({scatter:true,xLabel:ds.xLabel,yLabel:ds.yLabel})}; break;
+    case 'bubble': cfg={type:'bubble',data:{datasets:[{label:'point',data:ds.bubblePoints,backgroundColor:'rgba(139,92,246,.55)'}]},options:xyOpts({scatter:true,xLabel:ds.xLabel,yLabel:ds.yLabel})}; break;
+    case 'doughnut':cfg={type:'doughnut',data:{labels:ds.labels,datasets:[{data:ser[0].data,backgroundColor:pal.slice(0,ds.labels.length)}]},options:baseOpts({cutout:'58%'})}; break;
+    case 'radar':  cfg={type:'radar',data:{labels:ds.labels,datasets:[{label:ds.entity||'实体',data:ser[0].data,borderColor:pal[3],backgroundColor:'rgba(239,68,68,.15)'}]},options:baseOpts({scales:{r:{suggestedMin:0,suggestedMax:100,grid:{color:grid},angleLines:{color:grid},pointLabels:{color:sub},ticks:{color:sub,backdropColor:'transparent'}}}})}; break;
+    case 'polarArea':cfg={type:'polarArea',data:{labels:ds.labels,datasets:[{data:ser[0].data,backgroundColor:pal.slice(0,ds.labels.length).map(c=>c+'bb')}]},options:baseOpts({scales:{r:{grid:{color:grid},angleLines:{color:grid},pointLabels:{color:sub},ticks:{color:sub,backdropColor:'transparent'}}}})}; break;
+    default: cfg={type:'bar',data:{labels:ds.labels,datasets:ser.map((s,i)=>({label:s.label,data:s.data,backgroundColor:pal[i%pal.length]}))},options:xyOpts()};
+  }
+  cfg.options.plugins=cfg.options.plugins||{};
+  cfg.options.plugins.valueLabels=showLabels?{display:true}:{display:false};
+  return cfg;
+}
+
+function chartHeight(ds,type){
+  if(type==='hbar') return Math.max(220, 40+ds.catCard*26);
+  if(ds.catCard>8) return 300;
+  return 240;
+}
+function tableHTML(ds){
+  let h='<div class="tableWrap"><table class="table"><thead><tr><th class="th">#</th><th class="th">类别</th>';
+  (ds.series||[]).forEach(s=>h+='<th class="th num">'+s.label+'</th>');
+  h+='</tr></thead><tbody>';
+  const n=(ds.series&&ds.series[0])?ds.series[0].data.length:0;
+  for(let r=0;r<n;r++){h+='<tr class="tr"><td class="td num">'+(r+1)+'</td><td class="td">'+(ds.labels?ds.labels[r]:'')+'</td>'; (ds.series||[]).forEach(s=>h+='<td class="td num">'+s.data[r]+'</td>'); h+='</tr>';}
+  h+='</tbody></table></div>';
+  return h;
+}
+function tsvOf(ds){const head=['#','类别'].concat((ds.series||[]).map(s=>s.label)).join('\t');const rows=[];const n=(ds.series&&ds.series[0])?ds.series[0].data.length:0;for(let r=0;r<n;r++){rows.push([r+1,ds.labels?ds.labels[r]:''].concat((ds.series||[]).map(s=>s.data[r])).join('\t'));}return head+'\n'+rows.join('\n');}
+function copyTSV(ds,btn){const t=tsvOf(ds);const ok=()=>{btn.textContent='已复制';setTimeout(()=>btn.textContent='复制 TSV',1200);};const fb=()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok();}catch(e){btn.textContent='复制失败';}document.body.removeChild(ta);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(ok).catch(fb);}else fb();}
+
+const chat=document.getElementById('chat');
+if(typeof Chart==='undefined'){
+  chat.innerHTML='<div class="card"><div class="card-body"><div class="err">未加载 Chart.js（CDN 不可达？需联网）。</div></div></div>';
+}else{
+  try{ if(Chart.registerables&&Chart.register) Chart.register(...Chart.registerables); }catch(e){}
+  Chart.register(valueLabelsPlugin);
+
+  const charts={};
+  const st=turns.map(()=>({labels:false, off:false}));
+
+  function render(t,i){
+    const wrap=document.getElementById('w'+i), warn=document.getElementById('wn'+i), tbl=document.getElementById('tb'+i);
+    if(charts[i]){try{charts[i].destroy();}catch(e){} delete charts[i];}
+    if(st[i].off){
+      wrap.style.display='none';
+      tbl.style.display='block';
+      tbl.innerHTML='<div class="tableActions"><button class="actionBtn">复制 TSV</button></div>'+tableHTML(t.ds);
+      const btn=tbl.querySelector('.actionBtn'); btn.onclick=()=>copyTSV(t.ds,btn);
+      warn.style.display='none'; return;
+    }
+    tbl.style.display='none';
+    const old=document.getElementById('c'+i);
+    const fresh=document.createElement('canvas'); fresh.id='c'+i;
+    old.parentNode.replaceChild(fresh,old);
+    wrap.style.display='block'; wrap.style.height=chartHeight(t.ds,t.type)+'px';
+    const v=validate(t.type,t.ds);
+    const useType=v.ok?t.type:v.fallback;
+    if(!v.ok){warn.style.display='block'; warn.innerHTML='校验器：'+v.reason+' → 降级为 '+v.fallback;} else {warn.style.display='none';}
+    try{ charts[i]=new Chart(fresh,buildConfig(useType,t.ds,st[i].labels)); }
+    catch(e){warn.style.display='block'; warn.innerHTML='渲染失败：'+(e&&e.message?e.message:e);}
+  }
+
+  turns.forEach((t,i)=>{
+    const turn=document.createElement('div'); turn.className='turn';
+    turn.innerHTML='<div class="user">用户：'+t.q+'</div>'+
+      '<div class="card"><div class="card-body">'+
+        '<div class="chartToolbar">'+
+          '<button class="chartBtn" aria-pressed="false" data-act="labels">显示数值</button>'+
+          '<button class="chartBtn" aria-pressed="false" data-act="off">仅数据</button>'+
+        '</div>'+
+        '<div class="warn" id="wn'+i+'" style="display:none"></div>'+
+        '<div class="chartBox" id="w'+i+'"><canvas id="c'+i+'"></canvas></div>'+
+        '<div id="tb'+i+'" style="display:none"></div>'+
+      '</div></div>';
+    chat.appendChild(turn);
+    turn.querySelectorAll('.chartBtn').forEach(b=>{
+      b.addEventListener('click',()=>{
+        const act=b.dataset.act;
+        if(act==='labels'){
+          st[i].labels=!st[i].labels;
+          b.setAttribute('aria-pressed', st[i].labels?'true':'false');
+          if(!st[i].off) render(t,i);
+        }else if(act==='off'){
+          st[i].off=!st[i].off;
+          b.setAttribute('aria-pressed', st[i].off?'true':'false');
+          render(t,i);
+        }
+      });
+    });
+    render(t,i);
+  });
+}
+</script>
+</body>
+</html>

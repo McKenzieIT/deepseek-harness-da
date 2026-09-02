@@ -33,6 +33,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [R9: 查询理解卡片展示层缺陷审计与优化方案](tickets/R9-decomposition-display-optimization-plan.md) — 合规确认 + A/B/C 分级:A1 卡片 CSS 引用的 8 个 alias token 全部不存在于 ui-theme(边框/背景/层级失效,"混乱"的渲染级根源)、A2 不读 isError;应然编排=「查询契约」三层(焦点行/谱系 chips/指标明细)+信任带;Phase 0-3 路径;裁决经 P1 动态原型,执行入 T5
 - [P1: 查询理解卡优化编排 · 动态插件原型裁决](tickets/P1-decomposition-prototype.md) — 三轮 HITL 裁决定稿:焦点行(summary 标题+置信度徽标)/谱系合行成立;悬停揭示口径否决(自洽性 bug+空间利用率);终版=指标口径常显+自适应多列网格(10 指标折 5 行)+信任带;动态原型保持挂载至 T5 折回
 - [T5: present_decomposition 展示层优化执行(Phase 0-2)](tickets/T5-present-decomposition-display-upgrade.md) — P1 定稿折回仓库包:token 全修+isError+locale+parse 防御(Phase 0)、焦点行/谱系 chips/常显指标网格/折叠焦点保留(Phase 1)、非最新 turn 默认折叠(Phase 2);30 tests+100% 覆盖+tsc/bundle 绿+test:gui 全绿(4211);e2e 失败属 code-mode 工作面(交接注);qdec 原型已停用作废
+- [R4: present_table chart 渲染类型扩展](tickets/R4-chart-type-expansion.md) — 留 Chart.js 4;纳入全部 native 类型(area/h-bar/scatter/doughnut/bubble/radar/polarArea,不分阶段,排除 pie-only,heatmap/sankey/treemap→独立 ECharts effort);LLM 选型=启发式(语义层 metric×dimension×grain→type)+客户端列-kind/基数校验器(不可行降级 bar);K11 语义层锚定每图展示内容;原型 prototype/index.html(v6) 演示;实测入 [T6](tickets/T6-chart-integration-testing.md)
 
 ## Not yet specified
 
@@ -45,3 +46,4 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - `compute` 工具的客户端渲染（blocked on 安全计算环境 research）
 - result data caching service 的设计/实现（data infra 层面，非 client 插件责任）
 - 对话流整体 redesign（only INTERPRETATION tools 的 toolview 替换）
+- ECharts 迁移与 heatmap/sankey/treemap（非 native Chart.js 类型；R4 决定推迟到独立 effort，不并入本 map）
