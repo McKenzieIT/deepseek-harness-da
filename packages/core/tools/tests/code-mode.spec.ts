@@ -1862,3 +1862,64 @@ describe('per-agent presentation', () => {
       .rejects.toThrow('mode "both" requires a code runtime')
   })
 })
+
+describe('scopeId propagation through run_code sub-dispatch', () => {
+  /** Register a tool that captures its child execution scopeId; returns the live capture. */
+  function registerScopeProbe(ctx: Context, name = 'probe'): { captured: () => string | undefined } {
+    let captured: string | undefined
+    ctx.tools.register(defineTool({
+      name,
+      description: `Captures the child execution scopeId for ${name}.`,
+      parameters: { value: { type: 'string', required: true } },
+      output: {
+        schema: { type: 'string' },
+        render: (_args, value) => [{ type: 'text', text: value }],
+      },
+      execute(args, exec) {
+        captured = exec.scopeId
+        return Promise.resolve(`${name}:${args.value}`)
+      },
+    }))
+    return { captured: () => captured }
+  }
+
+  it("propagates the parent execution's scopeId to the child ToolExecutionInput", async () => {
+    const { ctx, runtime } = await setup({ mode: 'code' })
+    const probe = registerScopeProbe(ctx)
+    runtime.behavior = async (request) => {
+      const tools = request.bindings[0]!.functions
+      const result = await tools.probe!({ value: 'tenant' })
+      return { logs: [], value: result }
+    }
+    // Root dispatch carries scopeId (as executeToolCalls would from
+    // agent.options.scopeId); the run_code sub-dispatch must mirror
+    // rootCallId/agent/parent and propagate it to the child ToolExecutionInput.
+    const result = await ctx.tools.execute({
+      signal: testToolSignal,
+      callId: CallId('call-1'),
+      name: RUN_CODE_NAME,
+      arguments: { code: 'await tools.probe({ value: "tenant" })', description: 'Propagate scopeId to sub-dispatch' },
+      scopeId: 'tenant-a',
+    })
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected run_code success')
+    expect(probe.captured()).toBe('tenant-a')
+  })
+
+  it('leaves the child scopeId undefined when the parent execution omits it (no active-scope leak)', async () => {
+    const { ctx, runtime } = await setup({ mode: 'code' })
+    const probe = registerScopeProbe(ctx)
+    runtime.behavior = async (request) => {
+      const tools = request.bindings[0]!.functions
+      const result = await tools.probe!({ value: 'unset' })
+      return { logs: [], value: result }
+    }
+    // No scopeId on the root execution: the conditional spread yields no key,
+    // so the child falls back to the active scope (undefined), matching the
+    // pre-Phase-4 behavior.
+    const result = await runCode(ctx, 'await tools.probe({ value: "unset" })')
+    expect(result.isError).toBe(false)
+    if (result.isError) throw new Error('expected run_code success')
+    expect(probe.captured()).toBeUndefined()
+  })
+})

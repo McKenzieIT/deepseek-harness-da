@@ -327,9 +327,9 @@ export interface ToolExecutionInput {
    * Session-bound scope id routing this call's data reads to a specific
    * scope/tenant. Filled by the agent loop's `executeToolCalls` from the
    * initiating agent's options (one agent per session, so the value is
-   * session-bound); Phase 5 will also propagate `scopeId` through
-   * nested/composite dispatches (mirroring {@link rootCallId}); until then
-   * only root `executeToolCalls` calls carry it. `undefined` — the dormant
+   * session-bound); also propagated through nested/composite dispatches
+   * (mirroring {@link rootCallId}) via the code-mode `run_code` sub-dispatch.
+   * `undefined` — the dormant
    * default, since
    * no caller sets `AgentOptions.scopeId` yet — leaves tools to fall back to
    * the active scope, preserving the pre-Phase-4 ({@link SemanticLayerService}
