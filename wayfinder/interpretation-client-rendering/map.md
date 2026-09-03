@@ -15,7 +15,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
   - 遵循 `packages/client/AGENTS.md` 全部 slot/props/styling/export 纪律。
   - 遵循 `ui-tool` 的 toolview 注册模式：`ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key: '<tool_name>' }, Component))`。
   - `argsRaw`（tool call JSON）= 结构化 intent；`content`（tool result ContentBlock[]）= 渲染文本。client 从 `argsRaw` 解析 intent 渲染 UI。
-  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径:v1 为同 turn TSV 扫描 + result_id 校验(T4 已修协议错位);正式 result store RPC 走 [R6](tickets/R6-result-store-server-side.md)（已解:host `ctx.resultCache` 在,加 `result.get` apiproxy 一行即可,impl 见 [T8](tickets/T8-result-get-rpc.md)）。client 侧热缓存（折叠/展开不重发 RPC、byte-bounded LRU、事件驱动失效）见 [R5](tickets/R5-object-layer-result-cache.md)（已解：单包 `packages/client/result-cache/`）。
+  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径:v1 为同 turn TSV 扫描 + result_id 校验(T4 已修协议错位);正式 result store RPC 走 [R6](tickets/R6-result-store-server-side.md)（已解:host `ctx.resultCache` 在,加 `result.get` apiproxy 一行即可,已 ship,见 [T8](tickets/T8-result-get-rpc.md)）。client 侧热缓存（折叠/展开不重发 RPC、byte-bounded LRU、事件驱动失效）见 [R5](tickets/R5-object-layer-result-cache.md)（已解：单包 `packages/client/result-cache/`）。
   - `compute` 延后（blocked on 安全计算环境）——本 map 不含。
 
 ## Decisions so far

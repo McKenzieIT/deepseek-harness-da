@@ -4,7 +4,7 @@
 **Phase**: post-v1
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: [T8](T8-result-get-rpc.md)（cache miss 通路依赖 `result.get` RPC;T8 完成本票可全链验证）
+**Blocked by**: [T8](T8-result-get-rpc.md)（cache miss 通路依赖 `result.get` RPC;[T8] 已 resolve 2026-09-03,`result.get` 已 ship,本票 miss 通路就绪）
 **Related**: [R5](R5-object-layer-result-cache.md)（决策:B 单包 / 事件驱动失效 / byte-bounded LRU / Config bound / gen-token v1 跳过）、[T8](T8-result-get-rpc.md)（miss 通路）、[T2](T2-ui-present-table.md)/[T4](T4-present-table-display-upgrade.md)（消费方 ui-present-table）
 
 ## Question
