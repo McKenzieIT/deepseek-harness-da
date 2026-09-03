@@ -27,6 +27,7 @@ function findRepoRoot(): string {
 const REPO_ROOT = findRepoRoot()
 import { loadCases } from '@deepseek-ai/dsh-eval'
 import { runBatch, writeRunResult, defaultOutputPath } from '@deepseek-ai/dsh-eval-runner'
+import type { RunConfig } from '@deepseek-ai/dsh-eval-runner'
 import { boot } from './context.ts'
 import { formatReport } from './report.ts'
 
@@ -349,11 +350,31 @@ export async function main(): Promise<void> {
   const started = Date.now()
   console.log('  Running eval batch...')
 
+  // GA-EVAL-REBASELINE item 4: stamp the run's protocol/semantics/concurrency/
+  // model onto the result artifact so a contaminated/mis-attributed run is
+  // detectable from its JSON alone. The CLI is the authority for every field
+  // (provider/model from resolveResponderLlmConfig, the rest from parsed args).
+  const runConfig: RunConfig = {
+    provider: args.provider,
+    model: args.model,
+    pass_k: args.passK,
+    concurrency: args.concurrency,
+    sql_judge: !args.noSqlJudge,
+    verdict_semantics: 'pass^k',
+    responder: args.responder,
+    scope_id: args.scopeId,
+    today: args.today,
+    query_expansion: args.queryExpansion,
+    with_query: args.withQuery,
+    skip_health_gate: args.skipHealthGate,
+  }
+
   const result = await runBatch(casePaths, collaborators, {
     pass_k: args.passK,
     skip_health_gate: args.skipHealthGate,
     ...(args.runId !== null ? { run_id: args.runId } : {}),
     concurrency: args.concurrency,
+    config: runConfig,
     on_progress: (completed, total, caseId) => {
       process.stdout.write(`\r  Progress: ${completed}/${total} (${caseId})`)
     },

@@ -75,6 +75,56 @@ export interface CaseVerdict {
   readonly raw?: MultiTurnCaseResult
 }
 
+// ─── Run Config (artifact self-description) ───────────────────────────────────
+
+/**
+ * The protocol/semantics/concurrency/model under which a run executed, recorded
+ * IN THE RESULT JSON ARTIFACT so a contaminated or mis-attributed run is
+ * detectable from its artifact alone (GA-EVAL-REBASELINE item 4).
+ *
+ * The gap this closes: a 63-case AGA-contaminated eval run went undetected from
+ * its JSON because the JSON had no model/concurrency/verdict-semantics — only
+ * run_id/timestamp/cases/summary. Recording the full run config in the artifact
+ * makes mis-attribution self-evident without a human-maintained audit log.
+ *
+ * Every field is load-bearing for contamination detection:
+ *  - `provider`/`model`: which gateway was actually hit (the AGA-contamination
+ *    gap was that the JSON couldn't reveal a wrong gateway was used).
+ *  - `verdict_semantics`: pass^k vs best-of-k changes what "correct" means.
+ *  - `sql_judge`/`responder`/`scope_id`/`today`: protocol inputs that change outcomes.
+ *  - `pass_k`/`concurrency`: runtime semantics that affect flakiness and ordering.
+ *  - `query_expansion`/`with_query`/`skip_health_gate`: feature flags that affect results.
+ *
+ * Optional on `RunResult` (additive — legacy artifacts and callers without a
+ * config are not broken); presence is the self-describing guarantee.
+ */
+export interface RunConfig {
+  /** LLM provider route that was actually used for the responder (+ judge). */
+  readonly provider: string
+  /** LLM model that was actually used for the responder (+ judge). */
+  readonly model: string
+  /** Number of pass_k attempts per case (runtime semantics). */
+  readonly pass_k: number
+  /** Concurrency limit for parallel case execution (runtime semantics). */
+  readonly concurrency: number
+  /** Whether the SQL semantic judge was enabled (!noSqlJudge). */
+  readonly sql_judge: boolean
+  /** Live verdict semantics (passKVerdict; best-of-k was removed). */
+  readonly verdict_semantics: 'pass^k'
+  /** Responder mode: NL2SQL engine pipeline or full agent harness. */
+  readonly responder: 'engine' | 'harness'
+  /** Explicit scopeId for SemanticLayerService + ctx.query adapters. */
+  readonly scope_id: string
+  /** Reference date YYYYMMDD for time-param extraction (reproducibility). */
+  readonly today: string
+  /** Whether LLM query expansion before BM25 retrieval was active. */
+  readonly query_expansion: boolean
+  /** Whether a real query executor (MaxCompute) was mounted. */
+  readonly with_query: boolean
+  /** Whether the health gate pre-flight was skipped. */
+  readonly skip_health_gate: boolean
+}
+
 // ─── Run Result ────────────────────────────────────────────────────────────────
 
 /**
@@ -89,6 +139,12 @@ export interface RunResult {
   readonly cases: CaseVerdict[]
   /** Summary statistics. */
   readonly summary: RunSummary
+  /**
+   * The protocol/semantics/concurrency/model under which this run executed.
+   * Optional (additive — legacy artifacts omit it); when present it makes a
+   * contaminated or mis-attributed run detectable from its JSON alone.
+   */
+  readonly config?: RunConfig
 }
 
 /**
@@ -235,6 +291,13 @@ export interface BatchRunOptions {
   readonly timeout_ms?: number | null
   /** Concurrency limit for parallel case execution (default: 1 = serial). */
   readonly concurrency?: number
+  /**
+   * Run protocol/semantics/concurrency/model to stamp onto the `RunResult.config`
+   * field so the artifact self-describes (GA-EVAL-REBASELINE item 4). The
+   * caller (eval-cli) builds this from its known args; when omitted, the
+   * result's `config` is undefined (legacy/non-self-describing artifact).
+   */
+  readonly config?: RunConfig
   /** Progress callback. */
   readonly on_progress?: (completed: number, total: number, case_id: string) => void
 }

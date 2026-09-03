@@ -440,3 +440,38 @@ surfaced:
 **Root cause + fix (credentials seam)**: the re-baseline initially returned "no content" for every case. Root cause: the eval CLI's Cordis ctx did not mount a credential provider -> `ctx.get('credentials')=undefined` -> llm-dashscope `resolveApiKey` fell back to `process.env.DASHSCOPE_API_KEY` (unset after the gate-fix that reads `~/.dsh/.credentials.yaml` instead) -> `MISSING_CREDENTIAL` -> the llm/stream waterfall masked the throw as an empty response. **Not** an AGA non-SSE issue (AGA streams SSE via the adapter's `X-DashScope-SSE: enable` header; an earlier curl probe without that header misdiagnosed it). Fix: mount `LocalCredentialProvider` in `context.ts:boot()` (engine responder ctx) + `main.ts` judge ctx + harness-responder, + add `static override name='credentials'` to `LocalCredentialProvider` so programmatic `ctx.plugin()` registers it under the `credentials` service name. -> resolveApiKey reads `~/.dsh/.credentials.yaml` via the seam -> key resolved -> AGA SSE -> SQL generated -> pass^k verdict. No `process.env` involved (intranet-security-first).
 
 **Pending**: full 168-case pass^k re-baseline (the 30-case subset is preliminary; the full run was interrupted at 100/168 when the long session's background shell was reaped). Debug logs (`console.error('[ADAPTER-DBG]...')` in adapter.ts/index.ts/harness-responder.ts) to be cleaned + rebuilt.
+
+## 2026-09-03 — pass^k 168-case re-baseline (DEFINITIVE, post-contamination-rerun)
+
+**Semantics**: `runner.ts` `passKVerdict` (all k=3 attempts must pass for `correct`) + `executionMatch=false` when neither executor nor sqlJudge can verify. Both landed + committed (unchanged from the 30-case preliminary).
+
+**Setup**: K11-v2 full 168 cases, `--pass-k 3 --concurrency 4 --provider aga --model qwen3.7-max --skip-health-gate`, SQL semantic judge enabled, `--responder engine`, `--scope-id k11`, qwen3.7-max (thinking model). Three result artifacts:
+- `rebaseline-passk-168.json` — the initial conc=4 full run (contaminated, raw).
+- `rebaseline-contam-rerun.json` — the 63 contaminated cases rerun clean at conc=4 (0 no-content).
+- `rebaseline-passk-168-merged.json` — the definitive merge (105 genuine cases from the initial run + 63 clean rerun).
+Credentials via `LocalCredentialProvider` seam (`~/.dsh/.credentials.yaml`), NOT `process.env` (intranet-security-first).
+
+**Results (DEFINITIVE merged, 168 cases)**:
+
+| Category | Cases | Correct | Rate |
+|---|---|---|---|
+| Original | 80 | 48 | 60.0% |
+| Alias | 40 | 16 | 40.0% |
+| Voice EXEC | 30 | 14 | 46.7% |
+| Voice DELIVERY | 18 | 10 | 55.6% |
+| **Total** | **168** | **88** | **52.4%** |
+
+- pass_rate = **52.4%** (88 correct / 80 wrong / 0 declined / 0 unjudged / 0 infra_failure)
+
+**Contamination + correction (READ BEFORE CITING)**: The initial conc=4 run was contaminated by **recurring AGA empty-response bursts** under machine load (concurrency=4 AGA streams + Qoder IDE + `pnpm dsh web` (PID 21923) + a concurrent MCP-runner pod crash (`468ef200bdcd`)). 63/168 cases (38%) had ≥1 empty-attempt (all 48 Voice cases + 12 Alias + 3 Originals), **raw pass_rate=33.9%** (57/168) — deflated by infra, not model quality. **NOT the credentials-seam bug**: `LocalCredentialProvider` was mounted in `context.ts:boot()` + `main.ts` judge ctx (+ has `static override name='credentials'` at `packages/credentials/credentials-local/src/index.ts:208`), and 105 cases produced real SQL throughout (550 empty responses were AGA stream empties, not MISSING_CREDENTIAL — the seam resolved the key for 100+ real-SQL cases). The 105 clean cases (no empty attempts: 57 correct + 48 wrong) were verified genuine — the 48 wrong had real outputs (semantically-wrong SQL / legitimate Chinese declines like `无法回答该问题` / tool-call emissions like `<tool_call...>`), not infra-garble. The 63 contaminated cases were **rerun clean at conc=4** (`rebaseline-contam-rerun`, 0 no-content, 2547.7s, 31/63=49.2% correct) after AGA recovered post-bridge-restart, and merged with the 105 → **definitive 52.4%**.
+
+**Contrast (verdict-semantics + protocol caveats)**:
+- vs 30-case preliminary 63.3% (2026-09-03): full 168 is lower — the 30-case subset was easier (early originals).
+- vs best-of-k 168-case 73.8% (`10320fe2`) / 88.1% (`exp4-arm-a`): **-21.4pp / -35.7pp** — the flakiness pass^k is designed to expose (best-of-k: any-of-3 passes; pass^k: all-3 must pass). These are NOT directly subtractable (different verdict semantics).
+- vs pass^k contaminated raw 33.9%: the +18.5pp to 52.4% is the contamination correction (63 infra-failed cases → clean rerun).
+
+**Verdict**: The definitive pass^k baseline for qwen3.7-max on K11-v2 (168 cases, SQL semantic judge, conc=4, no executor) is **52.4%**. This replaces the 30-case preliminary 63.3% (non-representative subset). It invalidates direct comparison with the best-of-k 73.8%/88.1% numbers (pass^k is strictly lower by design). The 63-case contamination is a measurement-fidelity warning: **eval runs at concurrency=4 under machine load are vulnerable to AGA empty-response bursts** — conc=1 (clean) is infeasible (~16h); future runs should use lower concurrency (conc=2-3) or ensure the machine is unloaded, AND the result JSON should record `verdict_semantics` + `concurrency` + `model` + `pass_k` (GA-EVAL-REBASELINE item 4 — `RunResult.config` field, still pending) so contaminated runs are detectable from the artifact, not just this audit log.
+
+**Fidelity**: pass^k semantics (`passKVerdict` all-must-pass + `executionMatch=false`-when-unverifiable), both committed. SQL semantic judge enabled (default; threshold 0.6 = 3/5 dimensions). No executor (`query_result` null for all attempts — judge-only for EXEC cases; the 18 Voice DELIVERY cases scored by `delivery_match` alone, `result_value: null` → execution block skipped). The 63-rerun was conc=4 (same as original) post-AGA-recovery → 0 empties → clean; the 105 kept cases had 0 empty attempts → genuine. Merge = 105 kept + 63 rerun, `summary` recomputed. Merged artifact `rebaseline-passk-168-merged.json` carries `run_id`/`timestamp`/`cases`/`summary`/`merge_notes` — still NO `config` field (item 4 pending), so attribution still depends on this log entry.
+
+**Pointer**: [GA-EVAL-REBASELINE](../tickets/phase-misc/GA-EVAL-REBASELINE-passk-semantics.md) (work item 2: re-run 168 cases under pass^k — resolved). Artifacts: `packages/eval/eval-cli/eval-results/rebaseline-passk-168.json` (contaminated raw, 33.9%), `…/rebaseline-contam-rerun.json` (63 clean rerun, 49.2%), `…/rebaseline-passk-168-merged.json` (definitive merged, 52.4%). Logs: `/tmp/eval-rebaseline.log` (initial run), `/tmp/eval-contam.log` (63-rerun).

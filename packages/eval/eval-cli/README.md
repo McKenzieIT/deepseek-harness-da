@@ -14,21 +14,26 @@ A pass rate is only comparable to another one measured under the **same protocol
 
 | Protocol | Model | Run ID | Date | Rate |
 |---|---|---|---|---|
+| **pass@3 pass^k, judge-only (CURRENT)** | **qwen3.7-max** | `rebaseline-passk-168-merged` | 2026-09-03 | **88/168 = 52.4%** |
+| pass@3 best-of-k, judge-only | qwen3.7-max | `exp4-arm-a` | 2026-09-02 | 148/168 = 88.1% |
 | pass@1, exec+judge | qwen3.7-max | `1510b3e0` (CL-16+17) | 2026-08-31 | 129/168 = 76.8% |
-| pass@3 best-of-k, judge-only | **qwen3.7-max** | `exp4-arm-a` | 2026-09-02 | **148/168 = 88.1%** |
 | pass@3 best-of-k, judge-only | qwen-plus *(rejected)* | `exp2-arm-a` | 2026-09-02 | 121/168 = 72.0% |
+
+> **2026-09-03: pass^k semantics is LIVE** (`runner.ts` `passKVerdict` landed). The definitive pass^k baseline is **52.4%** (`rebaseline-passk-168-merged`, 88/168) — vs best-of-k 88.1% = −35.7pp (pass^k is strictly lower by design; the two are NOT directly subtractable). The best-of-k / pass@1 rows below it are historical. The 52.4% run was contaminated by AGA empty-response bursts under machine load (63/168 cases) and corrected via a clean conc=4 rerun of those 63 + merge — see `wayfinder/data-agent/research/experiment-audit-log.md` (2026-09-03 definitive entry).
 
 **`76.8% → 88.1%` is a protocol + code delta, not a model delta.** Both rows are qwen3.7-max — it has been the de-facto model for every recorded run since 2026-08-30 (it used to be a silent CLI default, removed by CL-8). The model comparison is `exp4-arm-a` vs `exp2-arm-a` at constant code, protocol and date: **+16.1%**, with zero regressions across all 8 intents, 4 complexity levels and 4 categories.
 
-Per-category, for the current baseline (`exp4-arm-a`):
+Per-category, for the current pass^k baseline (`rebaseline-passk-168-merged`, 2026-09-03):
 
-| Category | Cases | Pass | Rate | vs qwen-plus |
-|---|---|---|---|---|
-| Original | 80 | 69 | 86.3% | +10.0pp |
-| Alias | 40 | 35 | 87.5% | +20.0pp |
-| Voice EXEC | 30 | 28 | 93.3% | +30.0pp |
-| Voice DELIVERY | 18 | 16 | 88.9% | +11.1pp |
-| **Total** | **168** | **148** | **88.1%** | **+16.1pp** |
+| Category | Cases | Pass | Rate |
+|---|---|---|---|
+| Original | 80 | 48 | 60.0% |
+| Alias | 40 | 16 | 40.0% |
+| Voice EXEC | 30 | 14 | 46.7% |
+| Voice DELIVERY | 18 | 10 | 55.6% |
+| **Total** | **168** | **88** | **52.4%** |
+
+> Historical best-of-k per-category (`exp4-arm-a`): Original 86.3% / Alias 87.5% / Voice EXEC 93.3% / Voice DELIVERY 88.9% = 88.1%. pass^k is strictly lower per-category (all-3-must-pass vs any-of-3). The +16.1pp vs qwen-plus model comparison still holds (semantics change affects both arms equally).
 
 Earlier baselines: `10320fe2` (CL-11~14) — 124/168 = 73.8% @ pass@1.
 
@@ -38,12 +43,14 @@ Full analysis, including per-intent/per-complexity breakdowns and the latency tr
 
 ### Quality Targets
 
-| Metric | Current | Short-term | Mid-term | Long-term |
+| Metric | Current (pass@3 pass^k) | Short-term | Mid-term | Long-term |
 |---|---|---|---|---|
-| Overall | 88.1% (`exp4-arm-a`, pass@3 best-of-k) | 75%+ | 80%+ | 90%+ |
-| Original | 80.0% (`1510b3e0`, pass@1) | 78%+ | 85%+ | 90%+ |
+| Overall | **52.4%** (`rebaseline-passk-168-merged`) | 60%+ | 70%+ | 85%+ |
+| Original | 60.0% (`rebaseline-passk-168-merged`) | 65%+ | 75%+ | 88%+ |
 
-> The target values were set under **best-of-k** verdict semantics. A pending change to `runner.ts` switches the runner to **pass^k** (all k attempts must pass) and stops auto-passing unverifiable executions; replaying the same attempt data under those semantics puts `exp4-arm-a` at ~47.6%. Targets must be re-set once that lands — see `wayfinder/data-agent/tickets/phase-misc/GA-EVAL-REBASELINE-passk-semantics.md`.
+> Target values are **PROPOSED under pass^k semantics** (2026-09-03), pending PM sign-off. Rationale: pass^k is ~21–36pp lower than best-of-k by design (all-3-must-pass vs any-of-3), so targets are set ambitious relative to the 52.4% pass^k current — mirroring the old best-of-k targets' ambition (75/80/90 → 60/70/85 pass^k). Long-term 85%+ approaches the best-of-k 88.1% under the stricter semantics (= genuinely high consistency). The old best-of-k-era targets (Overall 75/80/90, Original 78/85/90) are superseded.
+
+> **pass^k is now LIVE** (`runner.ts` `passKVerdict` landed 2026-09-03). The current baseline is **52.4%** pass^k (vs best-of-k 88.1% = −35.7pp, by design). Targets above have been **re-set under pass^k semantics (proposed, pending PM sign-off)** — GA-EVAL-REBASELINE item 3. Replay estimate was ~47.6%; the live definitive 52.4% is within the n=168 MDE (≈5.4–10.1pp). See `wayfinder/data-agent/tickets/phase-misc/GA-EVAL-REBASELINE-passk-semantics.md`.
 
 ### Category Definitions
 
@@ -64,10 +71,12 @@ The responder LLM has **no default** — provider and model must be given explic
 # The API key is read from ~/.dsh/.credentials.yaml (the credential seam),
 # NOT from process.env — see Environment below.
 EVAL_LLM_PROVIDER=aga EVAL_LLM_MODEL=qwen3.7-max \
-node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
+node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
   --cases packages/eval/eval/cases/k11-v2 \
   --pass-k 3 --concurrency 3 --skip-health-gate
 ```
+
+> **Operational note — concurrency under load (learned 2026-09-03)**: `--concurrency 4` under machine load (concurrent IDE / `pnpm dsh web` / other heavy node procs) can trigger **AGA empty-response bursts** — the AGA endpoint returns empty streams, failing pass^k for affected cases. A 168-case conc=4 run lost 63/168 cases this way (raw 33.9% vs the corrected 52.4%). **Prefer `--concurrency 2` or `3` for full runs**, or ensure the machine is unloaded (pause `pnpm dsh web`). `--concurrency 1` is cleanest but infeasible (~16h for 168 cases). See `wayfinder/data-agent/research/experiment-audit-log.md` (2026-09-03 entry).
 
 To reproduce the current baseline row exactly, add `--run-id exp4-arm-a`.
 
@@ -113,9 +122,9 @@ Run `--help` for the full flag list (`--sidecar`, `--scope-id`, `--no-query-expa
 
 ## Recording Results
 
-Result JSON records `run_id`, `timestamp`, `summary` and per-case verdicts — it does **not** record the model, `pass_k`, concurrency, judge settings or verdict semantics. Those live only in the audit log, so a run whose log entry is missing cannot be attributed afterwards. Recording is therefore mandatory, not optional. (Fixing this asymmetry is tracked by `GA-EVAL-REBASELINE`.)
+Result JSON records `run_id`, `timestamp`, `summary`, per-case verdicts, and — since 2026-09-03 (GA-EVAL-REBASELINE item 4) — a **`config` field** (`provider`/`model`/`pass_k`/`concurrency`/`sql_judge`/`verdict_semantics`/`responder`/`scope_id`/`today`/`query_expansion`/`with_query`/`skip_health_gate`) so a run's protocol+semantics are detectable from the artifact itself. **Token usage is NOT yet recorded** (follow-up — needs an LLM-stream interceptor; see GA-EVAL-REBASELINE). Recording in the audit log is still mandatory — `config` captures the protocol, but the audit log captures the narrative + contamination/correction history. (The `config` field was added by GA-EVAL-REBASELINE item 4.)
 
-After each eval run, record the results in `wayfinder/semantic-layer/research/experiment-audit-log.md` using this template:
+After each eval run, record the results in `wayfinder/data-agent/research/experiment-audit-log.md` using this template:
 
 ```markdown
 ## YYYY-MM-DD: <ticket/change description>

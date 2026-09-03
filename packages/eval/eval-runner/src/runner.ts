@@ -96,6 +96,13 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
     timestamp: new Date().toISOString(),
     cases: verdicts,
     summary,
+    // GA-EVAL-REBASELINE item 4: stamp the run's protocol/semantics/concurrency/
+    // model onto the artifact so a contaminated/mis-attributed run is detectable
+    // from its JSON alone. Optional — legacy callers without a config leave this
+    // undefined (the artifact is then non-self-describing, matching pre-item-4
+    // behavior). `writeRunResult` JSON.stringifies the whole RunResult, so this
+    // persists automatically.
+    ...(options?.config !== undefined ? { config: options.config } : {}),
   }
 
   // Persist if output path given

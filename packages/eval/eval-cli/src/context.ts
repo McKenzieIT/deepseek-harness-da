@@ -90,8 +90,8 @@ class CtxLlmAdapter implements Llm {
     if (prompt === undefined || prompt.length === 0) {
       throw new Error('CtxLlmAdapter: engine did not pass a prompt')
     }
-    const { text, reasoning } = await this.completeWithReasoning(prompt)
-    return { sql: text, reasoning }
+    const { text } = await this.completeWithReasoning(prompt)
+    return { sql: text }
   }
 
   async completeText(prompt: string): Promise<string> {
@@ -176,7 +176,7 @@ function toEngineOutcome(out: ProviderQueryOutcome): EngineQueryOutcome {
     case 'completed':
       return {
         state: 'done',
-        ...(out.rows !== undefined ? { rows: out.rows } : {}),
+        ...(out.rows !== undefined ? { rows: out.rows as unknown[] } : {}),
         ...(out.instanceId !== undefined ? { result_id: out.instanceId } : {}),
         sql,
       }
@@ -385,7 +385,7 @@ class Nl2sqlAgentResponder implements AgentResponder {
       ...((exp2Arm === 'B' || exp2Arm === 'C' || exp2Arm === 'D') ? { promptBuilder: buildPromptEN } : {}),
     })
 
-    const result = await engine.run({ question, scopeId: this.scopeId, today: this.today, evalMode: true })
+    const result = await engine.run({ question, scopeId: this.scopeId, today: this.today })
     const sql = result.sql ?? null
     console.error(`[DIAG] SQL: ${sql?.slice(0, 400) ?? '(none)'}`)
     console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)

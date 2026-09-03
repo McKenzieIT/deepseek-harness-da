@@ -15,6 +15,7 @@ export type {
   CaseVerdict,
   RunResult,
   RunSummary,
+  RunConfig,
   CaseFlip,
   DeltaReport,
   DeltaSummary,

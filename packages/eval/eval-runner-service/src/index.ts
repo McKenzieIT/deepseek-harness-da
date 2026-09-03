@@ -39,6 +39,7 @@ import type {
   JudgeExecutor,
   JudgeResult,
   RunResult,
+  RunConfig,
   DeltaReport,
   RunnerVerdict,
 } from '@deepseek-ai/dsh-eval-runner'
@@ -380,8 +381,10 @@ export class EvalRunnerService extends Service {
     this.caseDir = config.caseDir ?? 'packages/eval/eval/cases/k11'
     this.resultsDir = config.resultsDir ?? '.tmp/eval-results'
     this.passK = config.passK ?? 3
-    this.provider = config.provider ?? 'aga'
-    this.model = config.model ?? 'qwen3.7-max'
+    // R8 (PB-COMPLY): no silent vendor default — '' is a non-runnable sentinel;
+    // runBatch fails loud if provider/model were not explicitly configured.
+    this.provider = config.provider ?? ''
+    this.model = config.model ?? ''
     this.today = config.today ?? '20260825'
   }
 
@@ -425,12 +428,40 @@ export class EvalRunnerService extends Service {
     if (options?.scopeId === undefined) {
       throw new Error('eval-runner-service runBatch: explicit scopeId required (D3ii: no default pointer)')
     }
+    // R8 (PB-COMPLY): the eval LLM gateway (provider/model) must be explicitly
+    // configured in cordis.yml — fail loud at runBatch (the earliest resolvable
+    // point that doesn't break mechanics tests, which don't call runBatch) rather
+    // than silently running with a vendor default.
+    if (!this.provider || !this.model) {
+      throw new Error('eval-runner-service runBatch: provider and model are required (R8: configure the eval LLM gateway in cordis.yml; no silent vendor default)')
+    }
     const scopeId = options.scopeId
     const { agent, executor, judge } = this.buildCollaborators(scopeId)
+    // GA-EVAL-REBASELINE item 4: stamp the run's protocol/semantics/concurrency/
+    // model onto the artifact so a contaminated/mis-attributed run is detectable
+    // from its JSON alone. The service has fixed engine-mode semantics
+    // (Nl2sqlAgentResponder, no SQL semantic judge, no query expansion); the
+    // runtime-dependent with_query reflects whether ctx.query is mounted.
+    const skipHealthGate = options.skipHealthGate ?? false
+    const runConfig: RunConfig = {
+      provider: this.provider,
+      model: this.model,
+      pass_k: this.passK,
+      concurrency: 1,
+      sql_judge: false,
+      verdict_semantics: 'pass^k',
+      responder: 'engine',
+      scope_id: scopeId,
+      today: this.today,
+      query_expansion: false,
+      with_query: this.ctx.get('query') !== undefined,
+      skip_health_gate: skipHealthGate,
+    }
     const result = await runBatch(paths, { agent, executor, judge }, {
       pass_k: this.passK,
-      skip_health_gate: options.skipHealthGate ?? false,
+      skip_health_gate: skipHealthGate,
       ...(options.runId !== undefined ? { run_id: options.runId } : {}),
+      config: runConfig,
     })
     // Persist JSONL (the W3→W4 bridge) so evidence-query + goal-eval-policy read it.
     persistRunResultJsonl(result, this.resultsDir, this.passK)
