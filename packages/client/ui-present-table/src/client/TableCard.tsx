@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { TableKey } from './locales.ts'
@@ -29,9 +29,40 @@ export interface PresentTableArgs {
   chart?: ChartConfig
 }
 
+/**
+ * One cached query/compute result, mirrored locally (not imported from the
+ * result-cache package) so this browser plugin stays self-contained at the
+ * type boundary — the same stance the result-cache package takes for its own
+ * `ResultEntry` mirror of the apiproxy contract. Structurally identical to
+ * the `result.get` RPC value, so the inject face's `fetchResult` return
+ * assigns without coercion.
+ */
+export interface FetchResultEntry {
+  readonly columns: string[]
+  readonly rows: unknown[][]
+  readonly metadata?: { readonly sql?: string; readonly truncated?: boolean; readonly row_count?: number }
+}
+
+/**
+ * The inject face the slot wires into `TableCard` (mirrors `FollowupChipsInjected`
+ * for the `submit` face). `fetchResult` is the primary row source (a hot cache
+ * over the `result.get` RPC); `invalidateResult` drops a stale entry on a
+ * fresh same-turn `query_data` (R5 fresh-vs-folded). Both are optional on the
+ * component so the TSV fallback path still renders when the result-cache
+ * plugin is absent.
+ */
+export interface TableCardInjected {
+  fetchResult: (resultId: string) => Promise<FetchResultEntry | undefined>
+  invalidateResult: (resultId: string) => void
+}
+
 export interface TableCardProps {
   block: ToolCallBlock
   useSession: <T>(selector: (s: ConversationSnapshot) => T, eq?: (a: T, b: T) => boolean) => T
+  /** Primary row source over the result-store hot cache; absent → TSV fallback. */
+  fetchResult?: TableCardInjected['fetchResult']
+  /** Drops a stale entry so a fresh `query_data` re-fetches (R5 fresh-vs-folded). */
+  invalidateResult?: TableCardInjected['invalidateResult']
   t: (key: TableKey) => string
 }
 
@@ -193,10 +224,13 @@ export function candidatesEqual(a: QueryCandidate[], b: QueryCandidate[]): boole
   return true
 }
 
-/** A query_data result bound to the presented result_id, with its SQL. */
+/** A query_data result bound to the presented result_id, with its SQL and seq. */
 interface BoundQuery {
   parsed: ParsedQueryData
   sql: string | null
+  /** The candidate's `seq` — the freshness signal: a higher seq than the last
+   * invalidated one means a fresh `query_data` re-ran for this result_id. */
+  seq: number
 }
 
 /**
@@ -214,9 +248,9 @@ function bindQuery(candidates: QueryCandidate[], wantId: string): BoundQuery | n
     const sql = extractSql(candidate.argsRaw)
     if (parsed.resultId !== null) {
       sawId = true
-      if (parsed.resultId === wantId) return { parsed, sql }
+      if (parsed.resultId === wantId) return { parsed, sql, seq: candidate.seq }
     } else if (legacy === null) {
-      legacy = { parsed, sql }
+      legacy = { parsed, sql, seq: candidate.seq }
     }
   }
   if (sawId) return 'mismatch'
@@ -308,7 +342,7 @@ function FallbackContent({ block }: { block: ToolCallBlock }) {
   )
 }
 
-function ExpiredCard({ block, t }: { block: ToolCallBlock; t: TableCardProps['t'] }) {
+function ExpiredCard({ block, t, retry }: { block: ToolCallBlock; t: TableCardProps['t']; retry?: () => void }) {
   const text = extractText(block)
   return (
     <div className={css.card}>
@@ -316,6 +350,9 @@ function ExpiredCard({ block, t }: { block: ToolCallBlock; t: TableCardProps['t'
       <div className={css.fallback}>
         <pre className={css.fallbackText}>{text}</pre>
       </div>
+      {retry !== undefined && (
+        <button type="button" className={css.actionBtn} onClick={retry}>{t('retry')}</button>
+      )}
     </div>
   )
 }
@@ -508,7 +545,7 @@ function ChartSection({ chart, headers, rows, t }: { chart: ChartConfig; headers
   )
 }
 
-export function TableCard({ block, useSession, t }: TableCardProps) {
+export function TableCard({ block, useSession, fetchResult, invalidateResult, t }: TableCardProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   if (!('kind' in block)) {
@@ -534,8 +571,9 @@ export function TableCard({ block, useSession, t }: TableCardProps) {
   const seq = ('seq' in block) ? (block as { seq: number }).seq : /* v8 ignore next -- defensive: only settled blocks reach here */ 0
   return (
     <TableCardInner
-      block={block} blockSeq={seq} args={args}
-      useSession={useSession} collapsed={collapsed} setCollapsed={setCollapsed} t={t}
+      block={block} blockSeq={seq} args={args} useSession={useSession}
+      fetchResult={fetchResult} invalidateResult={invalidateResult}
+      collapsed={collapsed} setCollapsed={setCollapsed} t={t}
     />
   )
 }
@@ -545,6 +583,8 @@ interface TableCardInnerProps {
   blockSeq: number
   args: PresentTableArgs
   useSession: TableCardProps['useSession']
+  fetchResult?: TableCardProps['fetchResult']
+  invalidateResult?: TableCardProps['invalidateResult']
   collapsed: boolean
   setCollapsed: (fn: (v: boolean) => boolean) => void
   t: TableCardProps['t']
@@ -557,44 +597,174 @@ interface TableData {
   truncated: boolean
 }
 
-function TableCardInner({ block, blockSeq, args, useSession, collapsed, setCollapsed, t }: TableCardInnerProps) {
+/** Apply the `args.columns` override + the `MAX_DISPLAY_ROWS` cap to a raw row
+ *  set. Shared by the result-store entry and the same-turn TSV scan so the
+ *  override + cap logic lives (and is exercised by the TSV tests) once. */
+function toTableData(headers: string[], rows: string[][], totalRows: number | null, truncated: boolean, args: PresentTableArgs): TableData {
+  const finalHeaders = args.columns !== undefined && args.columns.length > 0 ? [...args.columns] : headers
+  let finalRows = rows
+  let finalTruncated = truncated
+  if (finalRows.length > MAX_DISPLAY_ROWS) {
+    finalRows = finalRows.slice(0, MAX_DISPLAY_ROWS)
+    finalTruncated = true
+  }
+  return { headers: finalHeaders, rows: finalRows, totalRows, truncated: finalTruncated }
+}
+
+/** Coerce a result-store entry into the string-row pipeline the table, KPI,
+ *  sort, CSV, and Markdown helpers already consume (they all work on strings). */
+function resultEntryToTableData(entry: FetchResultEntry, args: PresentTableArgs): TableData {
+  const rows = entry.rows.map(r => r.map(c => (c === null || c === undefined ? '' : String(c))))
+  return toTableData([...entry.columns], rows, entry.metadata?.row_count ?? null, entry.metadata?.truncated ?? false, args)
+}
+
+type FetchStatus = 'loading' | 'success' | 'not-found' | 'error'
+
+interface FetchState {
+  status: FetchStatus | 'no-face'
+  entry: FetchResultEntry | null
+  retry: () => void
+}
+
+/** No-op retry for the no-face state — no `fetchResult` ⇒ no retry button renders. */
+/* v8 ignore next -- never called: the no-face path renders no retry button */
+const NOOP_RETRY: () => void = () => {}
+
+/**
+ * Drive the async result-store fetch and the R5 fresh-vs-folded invalidation.
+ * The inject-face callbacks are held in refs so the effect's identity deps
+ * stay `[resultId, freshSeq, retryNonce]` — a new function instance per render
+ * (the slot need not memoize the inject face) cannot re-trigger a fetch.
+ *
+ * - `freshSeq` advances (a new same-turn `query_data` re-ran for this id) →
+ *   invalidate the cache entry, then refetch (miss → fresh RPC). A re-render
+ *   with the same `freshSeq` (fold/expand) does not re-run the effect, so the
+ *   cached entry is reused without a re-RPC (G1: fold/expand preserves data).
+ * - retry bumps `retryNonce` → refetch (failures are not cached, so retry re-RPCs).
+ */
+function useFetchResult(
+  resultId: string,
+  fetchResult: TableCardProps['fetchResult'],
+  invalidateResult: TableCardProps['invalidateResult'],
+  freshSeq: number | null,
+): FetchState {
+  const [status, setStatus] = useState<FetchStatus>('loading')
+  const [entry, setEntry] = useState<FetchResultEntry | null>(null)
+  const [retryNonce, setRetryNonce] = useState(0)
+  const lastInvalidatedSeq = useRef(-1)
+  // Latest-callback refs: the effect deps stay off the callback identities.
+  const fetchRef = useRef(fetchResult)
+  fetchRef.current = fetchResult
+  const invalidateRef = useRef(invalidateResult)
+  invalidateRef.current = invalidateResult
+
+  useEffect(() => {
+    const fetchFn = fetchRef.current
+    if (fetchFn === undefined) return
+    let cancelled = false
+    const invalidate = invalidateRef.current
+    if (invalidate !== undefined && freshSeq !== null && freshSeq > lastInvalidatedSeq.current) {
+      invalidate(resultId)
+      lastInvalidatedSeq.current = freshSeq
+    }
+    setStatus('loading')
+    fetchFn(resultId)
+      .then((resolved) => {
+        if (cancelled) return
+        if (resolved === undefined) { setEntry(null); setStatus('not-found') }
+        else { setEntry(resolved); setStatus('success') }
+      })
+      .catch(() => {
+        if (cancelled) return
+        setEntry(null); setStatus('error')
+      })
+    return () => { cancelled = true }
+  }, [resultId, freshSeq, retryNonce])
+
+  if (fetchResult === undefined) return { status: 'no-face', entry: null, retry: NOOP_RETRY }
+  return { status, entry, retry: () => { setRetryNonce(n => n + 1) } }
+}
+
+type RenderState = 'ready' | 'loading' | 'mismatch' | 'expired-retry' | 'expired-noretry'
+
+/**
+ * Decide the final table data, SQL, and render state from the fetch + the
+ * bound same-turn `query_data`. `fetchResult` (primary) wins on success; a
+ * not-found (undefined) falls back to the TSV scan; a rejection surfaces as
+ * expired+retry (G1 D2: result store unavailable). Without the `fetchResult`
+ * face the TSV scan is the sole source and no retry is offered.
+ */
+function decideTable(
+  fetch: FetchState,
+  fetchResult: TableCardProps['fetchResult'],
+  bound: BoundQuery | null | 'mismatch',
+  tsvData: TableData | null,
+  args: PresentTableArgs,
+): { tableData: TableData | null; sql: string | null; renderState: RenderState } {
+  const isBound = bound !== null && bound !== 'mismatch'
+  const boundSql = isBound ? (bound as BoundQuery).sql : null
+  const entry = fetch.entry
+  if (fetchResult !== undefined) {
+    if (entry !== null && (fetch.status === 'success' || fetch.status === 'loading')) {
+      return { tableData: resultEntryToTableData(entry, args), sql: entry.metadata?.sql ?? boundSql, renderState: 'ready' }
+    }
+    if (fetch.status === 'loading') return { tableData: null, sql: null, renderState: 'loading' }
+    if (fetch.status === 'not-found') {
+      if (tsvData !== null) return { tableData: tsvData, sql: boundSql, renderState: 'ready' }
+      return { tableData: null, sql: null, renderState: 'expired-retry' }
+    }
+    // fetch.status === 'error' (a rejected fetch). 'no-face' is unreachable
+    // here — the outer guard ensures fetchResult is defined, and the hook
+    // only returns 'no-face' when fetchResult is undefined — so the error
+    // case is the final return, with no separate branch to leave uncovered.
+    return { tableData: null, sql: null, renderState: 'expired-retry' }
+  }
+  if (bound === 'mismatch') return { tableData: null, sql: null, renderState: 'mismatch' }
+  if (tsvData !== null) return { tableData: tsvData, sql: boundSql, renderState: 'ready' }
+  return { tableData: null, sql: null, renderState: 'expired-noretry' }
+}
+
+function TableCardInner({
+  block, blockSeq, args, useSession, fetchResult, invalidateResult, collapsed, setCollapsed, t,
+}: TableCardInnerProps) {
   const candidates = useSession(s => collectQueryCandidates(s, blockSeq), candidatesEqual)
   const bound = useMemo(() => bindQuery(candidates, args.result_id), [candidates, args.result_id])
 
-  const data = useMemo<TableData | null>(() => {
-    if (bound === null || bound === 'mismatch') return null
-    const parsed = bound.parsed
-    const headers = args.columns !== undefined && args.columns.length > 0 ? [...args.columns] : parsed.headers
-    let rows = parsed.rows
-    let truncated = parsed.truncated
-    if (rows.length > MAX_DISPLAY_ROWS) {
-      rows = rows.slice(0, MAX_DISPLAY_ROWS)
-      truncated = true
-    }
-    return { headers, rows, totalRows: parsed.totalRows, truncated }
+  const isBound = bound !== null && bound !== 'mismatch'
+  const tsvData = useMemo<TableData | null>(() => {
+    if (!isBound) return null
+    const parsed = (bound as BoundQuery).parsed
+    return toTableData(parsed.headers, parsed.rows, parsed.totalRows, parsed.truncated, args)
   }, [bound, args.columns])
+
+  // Fresh-vs-folded signal: the bound query_data's seq (when its result_id
+  // matches args.result_id). A higher seq than last invalidated ⇒ a fresh
+  // same-turn re-run ⇒ invalidate the cache entry + refetch (R5).
+  const freshSeq = isBound && (bound as BoundQuery).parsed.resultId === args.result_id ? (bound as BoundQuery).seq : null
+  const fetch = useFetchResult(args.result_id, fetchResult, invalidateResult, freshSeq)
+  const { tableData, sql, renderState } = decideTable(fetch, fetchResult, bound, tsvData, args)
 
   const [sort, setSort] = useState<SortState | null>(() => {
     const col = args.sort_column
-    if (col === undefined || col < 0 || data === null || col >= data.headers.length) return null
+    if (col === undefined || col < 0 || tsvData === null || col >= tsvData.headers.length) return null
     return { col, dir: 'desc' }
   })
 
   const colKinds = useMemo(() => {
-    if (data === null) return []
-    return data.headers.map((_, i) => sniffKind(data.rows.map(r => r[i] ?? ''), args.column_types?.[i]))
-  }, [data, args.column_types])
+    if (tableData === null) return []
+    return tableData.headers.map((_, i) => sniffKind(tableData.rows.map(r => r[i] ?? ''), args.column_types?.[i]))
+  }, [tableData, args.column_types])
 
   const sortedRows = useMemo(() => {
-    if (data === null) return []
-    if (sort === null) return data.rows
-    const rows = [...data.rows]
-    /* v8 ignore next -- defensive: sort.col is validated against headers on every path */
+    if (tableData === null) return []
+    if (sort === null) return tableData.rows
+    const rows = [...tableData.rows]
+    /* v8 ignore next -- sort.col is always a valid header index (init-validated or user-clicked) */
     const kind = colKinds[sort.col] ?? 'string'
     rows.sort((a, b) => compareCells(a[sort.col] ?? '', b[sort.col] ?? '', kind))
     if (sort.dir === 'desc') rows.reverse()
     return rows
-  }, [data, sort, colKinds])
+  }, [tableData, sort, colKinds])
 
   const onSortClick = (col: number) => {
     setSort((prev) => {
@@ -604,14 +774,23 @@ function TableCardInner({ block, blockSeq, args, useSession, collapsed, setColla
     })
   }
 
-  if (bound === 'mismatch') {
+  if (renderState === 'mismatch') {
     return <MismatchCard block={block} t={t} />
   }
 
-  if (bound === null || data === null) {
+  if (renderState === 'loading') {
+    return <RunningState />
+  }
+
+  if (renderState === 'expired-retry') {
+    return <ExpiredCard block={block} t={t} retry={fetch.retry} />
+  }
+
+  if (renderState === 'expired-noretry') {
     return <ExpiredCard block={block} t={t} />
   }
 
+  const data = tableData as TableData
   const useVirtual = data.rows.length > VIRTUAL_THRESHOLD
   const incomplete = data.truncated
   const rowCountText = incomplete && data.totalRows !== null
@@ -636,10 +815,10 @@ function TableCardInner({ block, blockSeq, args, useSession, collapsed, setColla
           <CsvDownload headers={data.headers} rows={sortedRows} title={args.title} t={t} />
         </div>
       </div>
-      {bound.sql !== null && !collapsed && (
+      {sql !== null && !collapsed && (
         <details className={css.sqlBox}>
           <summary className={css.sqlSummary}>{t('viewSql')}</summary>
-          <pre className={css.sqlText}>{bound.sql}</pre>
+          <pre className={css.sqlText}>{sql}</pre>
         </details>
       )}
       {args.kpi_columns !== undefined && args.kpi_columns.length > 0 && (

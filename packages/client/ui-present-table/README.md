@@ -4,7 +4,7 @@ Toolview card for the `present_table` INTERPRETATION tool. Renders query
 results as a rich data table with KPI summary cards, sorting, virtual
 scrolling, SQL transparency, and optional Chart.js visualizations.
 
-## Model Experience
+## Rendering
 
 When the model calls `present_table`, this plugin replaces the generic tool
 row with a rich card showing:
@@ -26,20 +26,26 @@ row with a rich card showing:
 - **Collapse/expand** — collapsed state shows title + KPI cards; expanded
   shows SQL + full table + chart
 
-Data binding: scans the same turn's `query_data` ToolResultNodes (up to 6
-most recent) and binds the one whose rendered `result_id:` line matches
-`args.result_id`; nodes without any id (older render format) fall back to
-most-recent; ids present but none matching renders an explicit "mismatch"
-card instead of silently binding the wrong result. The parser understands
-the real `renderCompleted` shape: `result_id:` first line, elision markers
-(`... N more rows elided`), and the `(N rows)` trailer are metadata, never
-headers or data rows. This scan is the interim path until the result-store
-RPC lands (see wayfinder ticket `R6-result-store-server-side`).
+Data binding: the primary row source is the result-store hot cache
+(`ctx.results`, a session-scoped LRU over the `result.get` RPC), reached
+through the slot's inject face (`fetchResult`). `args.result_id` resolves the
+full entry; a fresh same-turn `query_data` (a higher `seq` for the same id)
+invalidates the stale entry and re-fetches (R5 fresh-vs-folded), so the card
+shows the latest snapshot while fold/expand reuses the cached entry without a
+re-RPC. The same-turn `query_data` TSV scan is the cache-miss fallback: when
+the result-cache plugin is absent (no `fetchResult` face) or the host answers
+`result-not-found`, the card renders the TSV rows it can see, keeping the
+existing `result_id` mismatch / `isError` honesty. The result-store RPC is
+wired (R5/T8/T9); the TSV scan was the interim path (see wayfinder ticket
+`R6-result-store-server-side`).
 
-Fallbacks: while the tool runs, a skeleton; when `block.call === null`
-(window truncation), `block.content` renders as plain text; a failed tool
-call (`isError`) renders an error banner; when no query result binds, an
-"expired" banner plus text fallback.
+Fallbacks: while the tool runs (or a fetch is in flight), a skeleton; when
+`block.call === null` (window truncation), `block.content` renders as plain
+text; a failed tool call (`isError`) renders an error banner; when no query
+result binds (the result store is unavailable / `result-not-found` with no
+same-turn TSV), an "expired" banner plus text fallback and a retry button
+that re-fetches from the result store (G1 D2/D6: retry = refetch; re-running
+the query is the user's job, not the card's).
 
 Row limit: 10,000 rows maximum; CSV export is available at any row count
 and exports the currently parsed rows (with truncation reported in the
@@ -50,6 +56,34 @@ Localization: the card registers the `present.table` locale namespace
 
 ## Tests
 
-79 tests across 4 spec files; fixtures use the real `renderCompleted`
+91 tests across 4 spec files; fixtures use the real `renderCompleted`
 output format (result_id line, elision markers, row-count trailer) so the
-parser contract cannot drift from `dsh-query-tool` silently.
+parser contract cannot drift from `dsh-query-tool` silently, and the
+fetchResult wiring specs cover the result-store primary path, the TSV
+cache-miss fallback, fresh-vs-folded invalidation, and retry = refetch.
+
+## Model Experience
+
+None, as this browser-side toolview renders the `present_table` tool result for the user; it registers no prompt, tool, schema, or session event, and rendered rows never enter model context.
+
+#### KV Cache effect
+
+No direct effect; the card renders query/compute result rows for the user, and the `fetchResult` `result.get` RPC fetches renderer data, not model context. The model already saw the `present_table`/`query_data` tool results in the conversation; the card's rendering and its hot cache change no token the provider KV-caches.
+
+## Known Limitations and Deferred Work
+
+- **The TSV cache-miss fallback is partial.** When the result-cache plugin
+  is absent (no `fetchResult` face) or the host answers `result-not-found`,
+  the card falls back to the same-turn `query_data` TSV scan, which renders
+  only the rows the tool-result text carries — the `renderCompleted` format
+  display-truncates (an elision marker) well below the 10,000-row full-result
+  cap. Full data requires the result-cache ([R5](../../wayfinder/interpretation-client-rendering/tickets/R5-object-layer-result-cache.md)/[T9](../../wayfinder/interpretation-client-rendering/tickets/T9-result-cache-package-impl.md)).
+- **Inherited fresh-vs-folded residual.** The card inherits the result-cache's
+  missed-event residual: a `fetchResult` that starts after an
+  `invalidateResult` but before the in-flight fetch resolves coalesces onto it
+  and receives the old value once. The full generation-token hardening is
+  deferred to the cache (R5 Known Limitation); the card's `freshSeq`-keyed
+  invalidation is the v1 mitigation.
+- **Retry re-fetches, not re-runs.** The retry button re-fetches from the
+  result store; re-running the query is the user's job, not the card's
+  ([G1](../../wayfinder/interpretation-client-rendering/tickets/G1-design-decisions.md) D6).

@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-present-table/client'
+import type { TableCardInjected } from '@deepseek-ai/dsh-client-ui-present-table/client'
 
 interface StoredEntry {
   options: { key?: string }
   locale?: string
+  inject?: (...args: never[]) => Record<string, unknown>
 }
 
 interface LocaleRegistration {
@@ -13,7 +15,7 @@ interface LocaleRegistration {
   dict: { zh: Record<string, string>; en: Record<string, string> }
 }
 
-async function bench() {
+async function bench(sessions?: unknown, locale?: unknown) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const slots = ctx.get('slots') as SlotRegistry
@@ -29,13 +31,14 @@ async function bench() {
     } as never,
     () => null,
   )
+  ctx.provide('sessions', (sessions ?? { scope: () => undefined }) as never)
   const registered: LocaleRegistration[] = []
-  ctx.provide('locale', {
+  ctx.provide('locale', (locale ?? {
     register: (ns: string, dict: LocaleRegistration['dict']) => {
       registered.push({ ns, dict })
       return () => {}
     },
-  } as never)
+  }) as never)
   return { ctx, slots, registered }
 }
 
@@ -45,8 +48,8 @@ function getEntry(slots: SlotRegistry): StoredEntry {
 }
 
 describe('ui-present-table apply', () => {
-  it('declares the slots and locale services', () => {
-    expect(inject).toEqual(['slots', 'locale'])
+  it('declares the slots, sessions, and locale services', () => {
+    expect(inject).toEqual(['slots', 'sessions', 'locale'])
   })
 
   it('registers the present_table keyed toolview with its locale namespace', async () => {
@@ -77,5 +80,30 @@ describe('ui-present-table apply', () => {
     await fiber.dispose()
     const entries = slots.entries('tool.call.toolview') as unknown as StoredEntry[]
     expect(entries.find(e => e.options.key === 'present_table')).toBeUndefined()
+  })
+
+  it('inject face fetchResult resolves undefined when the results service is absent (no result-cache)', async () => {
+    const { ctx, slots } = await bench({ scope: () => undefined })
+    await ctx.plugin({ inject: [...inject], apply }).await()
+    await new Promise((r) => { setTimeout(r, 0) })
+    const entry = getEntry(slots)
+    const face = entry.inject!('session-1' as never) as unknown as TableCardInjected
+    // A missing service degrades to a resolved undefined (not-found → TSV
+    // fallback), never a throw — the component's `.then` stays safe.
+    await expect(face.fetchResult('qr_1')).resolves.toBeUndefined()
+  })
+
+  it('inject face fetchResult calls the scoped results service and invalidateResult drops the entry', async () => {
+    const get = vi.fn().mockResolvedValue({ columns: ['a'], rows: [['1']], metadata: { row_count: 1 } })
+    const invalidate = vi.fn()
+    const { ctx, slots } = await bench({ scope: () => ({ get: () => ({ get, invalidate }) }) })
+    await ctx.plugin({ inject: [...inject], apply }).await()
+    await new Promise((r) => { setTimeout(r, 0) })
+    const entry = getEntry(slots)
+    const face = entry.inject!('session-1' as never) as unknown as TableCardInjected
+    await face.fetchResult('qr_1')
+    expect(get).toHaveBeenCalledWith('qr_1')
+    face.invalidateResult('qr_1')
+    expect(invalidate).toHaveBeenCalledWith('qr_1')
   })
 })

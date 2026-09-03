@@ -25,7 +25,7 @@ vi.mock('chart.js', () => ({
 }))
 
 import { TableCard, parseQueryData, candidatesEqual } from '../src/client/TableCard.tsx'
-import type { QueryCandidate } from '../src/client/TableCard.tsx'
+import type { QueryCandidate, FetchResultEntry } from '../src/client/TableCard.tsx'
 import { zh } from '../src/client/locales.ts'
 import type { TableKey } from '../src/client/locales.ts'
 import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
@@ -1067,5 +1067,225 @@ describe('TableCard coverage completions', () => {
     fireEvent.click(getByText(zh.copyMd))
     await vi.advanceTimersByTimeAsync(0)
     expect(getByText(zh.copyMd)).toBeDefined()
+  })
+})
+
+/** A full result from the result store — more rows than the same-turn TSV scan,
+ *  so an entry-rendered table is distinguishable from a TSV-rendered one. */
+const ENTRY_FULL = {
+  columns: ['date', 'revenue', 'users'],
+  rows: [
+    ['2026-08-01', '100', '88'],
+    ['2026-08-02', '200', '91'],
+    ['2026-08-03', '300', '95'],
+  ],
+  metadata: { row_count: 3 },
+}
+
+/** An entry whose cells include null/undefined (coerced to '') and that carries
+ *  no metadata — covers the entry-coercion + the metadata-absent branches. */
+const ENTRY_NULL_CELLS = {
+  columns: ['a', 'b'],
+  rows: [['x', null], ['y', undefined], ['z', 42]],
+}
+
+/** An entry whose metadata declares truncation + a total row count — covers
+ *  the entry metadata.truncated + metadata.row_count present branches. */
+const ENTRY_TRUNCATED = {
+  columns: ['d', 'v'],
+  rows: [['2026-09-01', '100'], ['2026-09-02', '200']],
+  metadata: { truncated: true, row_count: 60 },
+}
+
+describe('TableCard fetchResult wiring', () => {
+  it('renders full rows from fetchResult when it resolves (primary over TSV scan)', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(ENTRY_FULL)
+    const block = makeSettledBlock(VALID_ARGS)
+    const { findByText } = render(
+      <TableCard
+        block={block}
+        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        fetchResult={fetchResult}
+        t={t}
+      />,
+    )
+    // 2026-08-03 exists only in the entry, not the 2-row TSV → entry rendered.
+    expect(await findByText('2026-08-03')).toBeDefined()
+    expect(fetchResult).toHaveBeenCalledWith('qr_test01')
+  })
+
+  it('falls back to the same-turn TSV when fetchResult resolves undefined (not-found)', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(undefined)
+    const block = makeSettledBlock(VALID_ARGS)
+    const { findByText, queryByText } = render(
+      <TableCard
+        block={block}
+        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        fetchResult={fetchResult}
+        t={t}
+      />,
+    )
+    // TSV rows render (cache-miss fallback); the entry-only row never appears.
+    expect(await findByText('2026-08-01')).toBeDefined()
+    expect(queryByText('2026-08-03')).toBeNull()
+  })
+
+  it('shows expired banner + retry when fetchResult resolves undefined and no TSV binds', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(undefined)
+    const block = makeSettledBlock(VALID_ARGS)
+    const { findByText } = render(
+      <TableCard
+        block={block}
+        useSession={makeUseSession()}
+        fetchResult={fetchResult}
+        t={t}
+      />,
+    )
+    expect(await findByText(zh.expired)).toBeDefined()
+    expect(await findByText(zh.retry)).toBeDefined()
+  })
+
+  it('shows expired banner + retry when fetchResult rejects (transport/host error)', async () => {
+    const fetchResult = vi.fn().mockRejectedValue(new Error('network'))
+    const block = makeSettledBlock(VALID_ARGS)
+    const { findByText } = render(
+      <TableCard
+        block={block}
+        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        fetchResult={fetchResult}
+        t={t}
+      />,
+    )
+    expect(await findByText(zh.expired)).toBeDefined()
+    expect(await findByText(zh.retry)).toBeDefined()
+  })
+
+  it('falls back to the TSV when no fetchResult face is provided (result-cache absent)', () => {
+    const block = makeSettledBlock(VALID_ARGS)
+    const { getByText, queryByText } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+    )
+    expect(getByText('2026-08-01')).toBeDefined()
+    expect(queryByText('2026-08-03')).toBeNull()
+    expect(queryByText(zh.retry)).toBeNull()
+  })
+
+  it('re-fetches when the user clicks retry (retry = refetch)', async () => {
+    const fetchResult = vi.fn().mockRejectedValue(new Error('network'))
+    const block = makeSettledBlock(VALID_ARGS)
+    const { findByText, getByText } = render(
+      <TableCard
+        block={block}
+        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        fetchResult={fetchResult}
+        invalidateResult={vi.fn()}
+        t={t}
+      />,
+    )
+    await findByText(zh.retry)
+    expect(fetchResult).toHaveBeenCalledTimes(1)
+    fireEvent.click(getByText(zh.retry))
+    await new Promise((r) => { setTimeout(r, 0) })
+    expect(fetchResult).toHaveBeenCalledTimes(2)
+  })
+
+  it('invalidates + refetches when a fresh query_data re-runs for the same result_id (R5 fresh-vs-folded)', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(ENTRY_FULL)
+    const invalidateResult = vi.fn()
+    const block = makeSettledBlock(VALID_ARGS)
+    const useSession5 = makeUseSession([{ seq: 5, text: REAL_TSV }])
+    const useSession8 = makeUseSession([{ seq: 8, text: REAL_TSV }])
+    const { rerender, findByText } = render(
+      <TableCard
+        block={block}
+        useSession={useSession5}
+        fetchResult={fetchResult}
+        invalidateResult={invalidateResult}
+        t={t}
+      />,
+    )
+    await findByText('2026-08-03')
+    // seq=5 is fresh (> last invalidated -1) ⇒ invalidate once + fetch once.
+    expect(invalidateResult).toHaveBeenCalledWith('qr_test01')
+    expect(fetchResult).toHaveBeenCalledTimes(1)
+    // A fresh same-turn re-run (seq 5→8) ⇒ invalidate again + refetch.
+    rerender(
+      <TableCard
+        block={block}
+        useSession={useSession8}
+        fetchResult={fetchResult}
+        invalidateResult={invalidateResult}
+        t={t}
+      />,
+    )
+    await new Promise((r) => { setTimeout(r, 0) })
+    expect(invalidateResult).toHaveBeenCalledTimes(2)
+    expect(fetchResult).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not re-fetch on collapse/expand (fold preserves the cached entry)', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(ENTRY_FULL)
+    const block = makeSettledBlock(VALID_ARGS)
+    const { findByText, getByRole } = render(
+      <TableCard
+        block={block}
+        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        fetchResult={fetchResult}
+        t={t}
+      />,
+    )
+    await findByText('2026-08-03')
+    expect(fetchResult).toHaveBeenCalledTimes(1)
+    // Collapse then expand — freshSeq unchanged, so the effect does not re-run.
+    fireEvent.click(getByRole('button', { expanded: true }))
+    fireEvent.click(getByRole('button', { expanded: false }))
+    expect(fetchResult).toHaveBeenCalledTimes(1)
+  })
+
+  it('coerces null/undefined result-store cells to empty strings', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(ENTRY_NULL_CELLS)
+    const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_test01', title: '空单元' }))
+    const { findByText } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+    )
+    // 'z' and '42' (number coerced to string) render; the null/undefined cells
+    // become empty strings (no crash, no "null" text).
+    expect(await findByText('z')).toBeDefined()
+    expect(await findByText('42')).toBeDefined()
+  })
+
+  it('honors entry metadata.truncated + row_count (shown / total)', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(ENTRY_TRUNCATED)
+    const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_test01', title: '截断条目' }))
+    const { findByText } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+    )
+    expect(await findByText(`2 / 60 ${zh.rows}`)).toBeDefined()
+  })
+
+  it('swallows a fetch that resolves after unmount (cancelled guard holds)', async () => {
+    let resolveFetch: (v: FetchResultEntry | undefined) => void = () => {}
+    const fetchResult = vi.fn(() => new Promise<FetchResultEntry | undefined>((r) => { resolveFetch = r }))
+    const block = makeSettledBlock(VALID_ARGS)
+    const { unmount } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+    )
+    expect(fetchResult).toHaveBeenCalledTimes(1)
+    unmount()
+    // Settles after unmount — the .then must not set state or throw.
+    resolveFetch(ENTRY_FULL)
+    await new Promise((r) => { setTimeout(r, 0) })
+  })
+
+  it('swallows a fetch rejection that lands after unmount (no unhandled rejection)', async () => {
+    let rejectFetch: (e: unknown) => void = () => {}
+    const fetchResult = vi.fn(() => new Promise<never>((_, rej) => { rejectFetch = rej }))
+    const block = makeSettledBlock(VALID_ARGS)
+    const { unmount } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+    )
+    unmount()
+    rejectFetch(new Error('network'))
+    await new Promise((r) => { setTimeout(r, 0) })
   })
 })
