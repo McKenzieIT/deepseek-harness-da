@@ -279,6 +279,7 @@
 - ~~[GA-EXP2 Prompt 语言实验](tickets/phase-misc/GA-EXP2-prompt-language-experiment.md)~~ — **resolved 2026-09-02**；3 variant（A 中文 / B 全英文 / E 英文 judge）168 case；B=-41.1% 灾难性退化；保留中文 prompt；见 Decisions so far
 - ~~[GA-EXP3 英文 Prompt 退化根因](tickets/phase-misc/GA-EXP3-en-prompt-degradation-root-cause.md)~~ — **resolved 2026-09-02**；EXP2 后续根因分析；主因=模型行为模式切换（~55-60%）+ 跨语言干扰（~25-30%）；翻译非主因；见 Decisions so far
 - ~~[GA-EXP4 qwen3.7-max 英文 Prompt 交叉验证](tickets/phase-misc/GA-EXP4-qwen37max-en-prompt-crossval.md)~~ — **resolved 2026-09-03**；qwen3.7-max A/B 168 case：-3.0%（88.1%→85.1%）；EXP2 退化是 qwen-plus 能力问题；Kind 1 重新打开；见 Decisions so far
+- [GA-MODEL1 切 qwen3.7-max 为默认模型](tickets/phase-misc/GA-MODEL1-qwen37max-default.md) — **open**；EXP4 后续；配置变更 + eval 基线验证 + 成本/延迟评估；blocks GA-GT3（eval 基线依赖）+ Kind 1 重新评估（前提）
 
 ### CL 票（直接修复，批量）
 
@@ -299,7 +300,7 @@
 - [GA-CL-batch 18 条 CL 清理](tickets/phase-misc/GA-CL-batch.md) — OdpsExecutor 命名 / mergeRefs '确定性' 前缀 / text_sim 阈值 / BM25 丢 kana / autoFlipThreshold 不可配 等（CL5 mergeRefs 确定性前缀被 GA-I18N-1 吸收）
 
 ### 推荐顺序
-1. ~~GA-GT2（postgres 引擎，验证缝）~~ → 2. GA-GT1（多租户，critical）→ 3. GA-GT5（domain injection seam，GRILL1 resolved）→ ~~4. GA-I18N-1~5（Kind 2 逻辑层去中文，resolved 2026-09-01）~~ → 5. GA-EXP1（LLM 推断实验，GT3 前置）→ 6. GA-EXP2（prompt 语言实验，Kind 1 阻塞于此）→ 7. GA-GT3（enrichment 泛化，依赖 EXP1 结论）→ 8. GA-GT4 → 9. GA-CL-batch（CL5 被 I18N-1 吸收，CL7 被 GT5 吸收）
+1. ~~GA-GT2（postgres 引擎，验证缝）~~ → 2. GA-GT1（多租户，critical）→ 3. GA-GT5（domain injection seam，GRILL1 resolved）→ ~~4. GA-I18N-1~5（Kind 2 逻辑层去中文，resolved 2026-09-01）~~ → 5. GA-EXP1（LLM 推断实验，GT3 前置）→ 6. ~~GA-EXP2（prompt 语言实验，resolved）~~ → **6b. GA-MODEL1（切 qwen3.7-max，blocks GT3 eval 基线）** → 7. GA-GT3（enrichment 泛化，依赖 EXP1 + MODEL1）‖ Kind 1 重新评估（并行，依赖 MODEL1） → 8. GA-GT4 → 9. GA-CL-batch（CL5 被 I18N-1 吸收，CL7 被 GT5 吸收）
 
 ## Out of scope
 
@@ -309,6 +310,6 @@
 - reverse-bi 两个 evolution flywheel（Prompt Evolution + Golden-Case Corpus Evolution）、query-acceleration、9 前端页面、prompts/format-templates/flows/context 版本化超结构——成熟期/UX，可后期回挂，当前不迁（Q3 裁剪）。
 - rbi-agent core/ 的 ReAct loop/session/MCP-client/LLM——退役用 harness 等价物，不重新实现。
 - 物理删除 code-agent 包——Q2 修正为 disable-only 不删（保升级路径）；实际"删除"留作 (c) 纯产品仓库重构时。
-- "用 Qoder 内置模型当主 LLM"——无干净路径（Qoder SDK 无模型 API），不做。
+- "用 Qoder 内置模型当主 LLM"——无干净路径（Qoder SDK ���模型 API），不做。
 - rbi-web（FastAPI+React 9 页）——不迁，harness apps + 新插件替代。
 - **runtime-exfil per-item ACL (P12c — native keychain binding + Apple Developer code-signing)** — dropped as **over-spec** (2026-08-21): breaks dsh out-of-the-box (tsx/node scripts have no binary to sign; Apple Developer needs binary + Developer-ID signing + notarization + .app/.exec packaging); per-item Touch-ID is an enhancement, not an intranet-security-first hard edge (research §7.2/§A3); the runtime-exfil threat is already covered by P12b landed (at-rest + locked-keychain + auto-lock) + P10 tool-gating (business-user agents forbid bash → can't reach `security`; admin residual unlock-window = trusted-operator self-risk; per-item biometry is also operationally infeasible in the multi-user single-host topology). Native binding also violates additive-only. P12b's `security`-CLI-only + locked-keychain + auto-lock is the final state under out-of-the-box. Ticket closed/kept as decision record; optional lightweight hardening (shorter auto-lock + P8 PAT-read audit + lock-on-screen-lock) = non-blocking follow-up, not P12c. 〔[P12c](tickets/phase-2/P12c-native-keychain-binding-code-signing.md), [research/p12b-keychain-acl-feasibility.md](research/p12b-keychain-acl-feasibility.md)〕
