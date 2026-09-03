@@ -3081,6 +3081,17 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       })
       return Promise.resolve({ accepted: true })
     },
+    // The fixture hosts no result store: every result_id answers
+    // result-not-found, so ?fixture/demo/dev paths exercise the cache's
+    // miss → not-found → undefined path the same way a live host without a
+    // result-cache provider would (a graceful business miss, never a throw).
+    results: {
+      get: request => err(request, {
+        code: 'result-not-found',
+        message: `fixture has no result store for ${request.payload.resultId}`,
+        details: { resultId: request.payload.resultId },
+      }),
+    },
     // Satisfies the ApiProxy contract type only: the browser export button
     // hands GET /api/session.export to the native download manager, so this
     // stub is never reached through the fixture's dispatch.
@@ -3227,6 +3238,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'llm.providers': return this.api.llm.providers(request)
       case 'llm.models': return this.api.llm.models(request)
       case 'llm.discoverModels': return this.api.llm.discoverModels(request, signal)
+      case 'result.get': return this.api.results.get(request)
     }
   }
 

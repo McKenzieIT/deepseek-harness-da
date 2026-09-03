@@ -225,6 +225,22 @@ export class FakeApiClient implements IApiClient {
     discoverModels: payload => this.record('llm.discoverModels', payload, Promise.resolve(ok({ models: [] }))),
   }
 
+  // No result store behind this fake: every result_id answers result-not-found
+  // (a graceful business miss — the cache resolves it to undefined, never throws).
+  readonly results: IApiClient['results'] = {
+    get: (payload: unknown) => this.record('result.get', payload, Promise.resolve({
+      rpcId: RpcId(`fake-${nextRpc++}`),
+      result: {
+        ok: false as const,
+        error: {
+          code: 'result-not-found' as const,
+          message: 'fake api has no result store',
+          details: { resultId: (payload as { resultId: string }).resultId },
+        },
+      },
+    })),
+  }
+
   /** When true, streams never fire onOpen (misbehaving-carrier material for the handshake timeout guard). */
   suppressStreamOpen = false
 
