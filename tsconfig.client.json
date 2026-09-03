@@ -89,6 +89,7 @@
     { "path": "./packages/client/ui-trajectory" },
     { "path": "./packages/client/ui-present-decomposition" },
     { "path": "./packages/client/ui-present-table" },
+    { "path": "./packages/client/result-cache" },
     { "path": "./packages/client/ui-semantic-layer" },
     { "path": "./packages/client/ui-suggest-followups" },
     { "path": "./packages/client/ui-context-layer" },

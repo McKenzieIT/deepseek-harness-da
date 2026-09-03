@@ -294,6 +294,12 @@
     - id: ui-trajectory
       name: '@deepseek-ai/dsh-client-ui-trajectory'
 
+    # Object-layer hot cache for query/compute results: the ctx.results
+    # service (byte-bounded LRU over the result.get RPC), consumed by
+    # ui-present-table and ui-present-decomposition via the fetchResult face.
+    - id: result-cache
+      name: '@deepseek-ai/dsh-client-result-cache'
+
     # INTERPRETATION toolview: structured decomposition card.
     - id: ui-present-decomposition
       name: '@deepseek-ai/dsh-client-ui-present-decomposition'
