@@ -60,8 +60,12 @@
 - sql_semantic_judge.ts judge prompt 需改英文——2026 研究（arxiv 2607.14480）证实 LLM-as-judge 存在结构性语言偏差，GA-EXP2 Variant E 量化后执行
 - 用户可见 delivery 标记（【发现】/【注意】）随项目级 i18n 语言切换
 
-**待 GA-EXP2 数据决定**：
-- prompt.ts 结构性内容（TOOL_CATALOG / SOP / 八规则 / 诚实拒绝）保留中文还是改英文
-- "Respond in the user's language" 指令是否影响 SQL 生成质量
+**GA-EXP2 数据已出（2026-09-02）— Kind 1 语言决策锁定**：
+- prompt.ts 结构性内容（TOOL_CATALOG / SOP / 八规则 / 诚实拒绝）→ **保留中文**（英文 prompt 灾难性退化 -41.1%，72.0%→31.0%）
+- "Respond in the user's language" → **不测**（B 已灾难性退化，C variant 无边际价值）
+- judge prompt 语言 → **无所谓**（E vs A +0.0%，judge 语言无系统性偏差）
+- ~~**Kind 1 英文化方向关闭**~~ → **GA-EXP4 重新打开**（qwen3.7-max EN 退化仅 -3.0%，在文献 1.9-3.5% 范围内；EXP2 -41.1% 是 qwen-plus 能力问题）；Kind 1 剩余工作仅为域身份注入（已归 GA-GT5 `ctx.domain`）
+- 退化与前沿文献矛盾 → [GA-EXP3](GA-EXP3-en-prompt-degradation-root-cause.md) 根因分析 → [GA-EXP4](GA-EXP4-qwen37max-en-prompt-crossval.md) 交叉验证（qwen-plus 特定，模型升级后 Kind 1 可行）
+- 详见 [EXP2 实验报告](../../research/exp2-results-report.md)
 
 **Key files**: packages/data/nl2sql-engine/src/{prompt.ts:84,conventions.ts:33,granularity.ts:13,metric-engine.ts:97,bm25-linking.ts:72}; packages/data/tool-search-data-sources/src/{expand-query.ts:11,index.ts:303}; packages/eval/eval-runner/src/sql_semantic_judge.ts:70; packages/data/phase-gate/src/domain.ts:47; packages/data/semantic-layer/src/{enrichment.ts:118,types.ts:283}
