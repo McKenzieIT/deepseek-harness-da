@@ -43,7 +43,6 @@
     "@deepseek-ai/dsh-tools": "workspace:^",
     "@deepseek-ai/dsh-semantic-layer": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
-    "js-yaml": "^4.2.0",
     "vitest": "^3.2.1"
   }
 }

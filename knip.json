@@ -252,6 +252,7 @@
         "@deepseek-ai/dsh-agent-presets",
         "@deepseek-ai/dsh-audit",
         "@deepseek-ai/dsh-client-ui-semantic-layer",
+        "@deepseek-ai/dsh-client-ui-context-layer",
         "@deepseek-ai/dsh-code-runtime-data-python",
         "@deepseek-ai/dsh-evidence-query",
         "@deepseek-ai/dsh-eval-runner-service",
@@ -278,7 +279,8 @@
         "@deepseek-ai/dsh-tool-present-table",
         "@deepseek-ai/dsh-tool-suggest-followups",
         "@deepseek-ai/dsh-tool-search-data-sources",
-        "@deepseek-ai/dsh-tool-update-table-config"
+        "@deepseek-ai/dsh-tool-update-table-config",
+        "@deepseek-ai/dsh-tool-scope-routing"
       ]
     },
     "packages/*/*": {
@@ -288,6 +290,154 @@
       "project": [
         "src/**/*.ts",
         "tests/**/*.ts"
+      ]
+    },
+    "packages/data/result-cache": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/data/tool-get-coverage": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/data/tool-get-definition": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/data/tool-list-domains": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/embedder/embedder": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/query/query": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/query/query-postgres": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/retrieval/retrieval": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/client/ui-context-layer": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    },
+    "packages/data/patrol-mode": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-eval-runner-service"
+      ]
+    },
+    "packages/data/tool-search-schema": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-semantic-layer"
+      ]
+    },
+    "packages/eval/eval": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/cordis"
+      ]
+    },
+    "packages/eval/eval-runner-service": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-eval"
+      ]
+    },
+    "packages/goal/goal-eval-policy": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-eval-runner"
+      ]
+    },
+    "packages/retrieval/retrieval-inproc": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/schemastery"
       ]
     },
     "packages/core/tools": {
