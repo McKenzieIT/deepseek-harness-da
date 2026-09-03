@@ -41,6 +41,7 @@
   "dependencies": {
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-context-layer": "workspace:^",
     "@deepseek-ai/dsh-client-ui-semantic-layer": "workspace:^",
     "@deepseek-ai/dsh-code-runtime-data-python": "workspace:^",
     "@deepseek-ai/dsh-evidence-query": "workspace:^",

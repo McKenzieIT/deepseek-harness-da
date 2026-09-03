@@ -1283,6 +1283,9 @@ importers:
       '@deepseek-ai/dsh-audit':
         specifier: workspace:^
         version: link:../../data/audit
+      '@deepseek-ai/dsh-client-ui-context-layer':
+        specifier: workspace:^
+        version: link:../../client/ui-context-layer
       '@deepseek-ai/dsh-client-ui-semantic-layer':
         specifier: workspace:^
         version: link:../../client/ui-semantic-layer
@@ -4273,6 +4276,10 @@ importers:
         version: link:../../util/launch-environment
 
   packages/data/admin:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -4365,6 +4372,10 @@ importers:
         version: link:../../query/query-maxcompute
 
   packages/data/patrol-mode:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -4409,6 +4420,9 @@ importers:
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
+      '@deepseek-ai/dsh-scope-registry':
+        specifier: workspace:^
+        version: link:../scope-registry
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../semantic-layer
@@ -5061,9 +5075,6 @@ importers:
 
   packages/eval/eval-cli:
     dependencies:
-      '@deepseek-ai/cordis':
-        specifier: workspace:^
-        version: link:../../../vendor/cordis
       '@deepseek-ai/cordis-plugin-group':
         specifier: workspace:^
         version: link:../../../vendor/group
@@ -5094,6 +5105,9 @@ importers:
       '@deepseek-ai/dsh-credentials':
         specifier: workspace:^
         version: link:../../credentials/credentials
+      '@deepseek-ai/dsh-credentials-local':
+        specifier: workspace:^
+        version: link:../../credentials/credentials-local
       '@deepseek-ai/dsh-eval':
         specifier: workspace:^
         version: link:../eval
@@ -5140,6 +5154,12 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.0
@@ -5150,6 +5170,12 @@ importers:
         specifier: workspace:^
         version: link:../eval
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.0
@@ -5187,6 +5213,12 @@ importers:
         specifier: workspace:^
         version: link:../../data/semantic-layer
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
       '@types/node':
         specifier: ^22.20.0
         version: 22.20.0
@@ -9134,9 +9166,6 @@ importers:
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
-      '@deepseek-ai/dsh-loader-smoke':
-        specifier: workspace:^
-        version: link:../../test-support/loader-smoke
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session

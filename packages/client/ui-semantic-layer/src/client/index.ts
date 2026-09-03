@@ -149,10 +149,15 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
         },
       }
       : null
-    const contextLayer = scope.get('contextLayer') as { open(node?: string): void } | undefined
-    const onNavigateToGraph = contextLayer
-      ? (assetId: string) =>{  contextLayer.open(assetId) }
-      : undefined
+    // Resolved lazily, per render, rather than once here: `contextLayer` comes
+    // from ui-context-layer, which may mount after this plugin. Reading it at
+    // apply time would freeze the callback to `undefined` and silently drop the
+    // "view in graph" entry from AssetDetail.
+    const resolveNavigateToGraph = (): ((assetId: string) => void) | undefined => {
+      const contextLayer = scope.get('contextLayer') as { open(node?: string): void } | undefined
+      if (!contextLayer) return undefined
+      return (assetId: string) => { contextLayer.open(assetId) }
+    }
 
     const openOrCreateSession = (): void => {
       const state = sessions.list.getSnapshot()
@@ -211,7 +216,7 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
       order: 10,
       locale: NS,
       store: selectionStore,
-      inject: () => ({ schemaClient, onNavigateToGraph }),
+      inject: () => ({ schemaClient, onNavigateToGraph: resolveNavigateToGraph() }),
     }, SemanticLayerSchemaExplorer))
 
     return () => { stopListSub(); offEval() }

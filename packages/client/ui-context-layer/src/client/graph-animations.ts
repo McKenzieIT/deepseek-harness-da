@@ -11,6 +11,11 @@
  * The `useGraphAnimations` hook consumes released batches from the narration
  * gate and dispatches the appropriate animation per update type.
  *
+ * Every style mutation here pairs `update*Data` with `graph.draw()`: in G6
+ * 5.1.1 `update*Data` only writes the data model and does NOT repaint, so an
+ * unpaired call leaves the canvas pixel-identical while the data changes
+ * underneath (W13).
+ *
  * The `useOverlayMode` hook manages the diagnostic overlay state:
  *  - off: default styling
  *  - coverage: color nodes by whether they have eval data
@@ -77,6 +82,7 @@ export function fadeIn(
   // Apply opacity 0 immediately
   if (nodeUpdates.length > 0) graph.updateNodeData(nodeUpdates)
   if (edgeUpdates.length > 0) graph.updateEdgeData(edgeUpdates)
+  if (nodeUpdates.length > 0 || edgeUpdates.length > 0) void graph.draw()
 
   // Animate to opacity 1 after a microtask (let the 0-opacity render)
   requestAnimationFrame(() => {
@@ -89,6 +95,7 @@ export function fadeIn(
     if (edgeRestore.length > 0) {
       graph.updateEdgeData(edgeRestore)
     }
+    if (nodeRestore.length > 0 || edgeRestore.length > 0) void graph.draw()
 
     // G6 v5 supports animation via the graph's animation config. If the graph
     // has animation enabled (default), updateData transitions are animated.
@@ -117,6 +124,7 @@ export function dashedHighlight(graph: Graph, edgeIds: string[]): void {
   }))
 
   graph.updateEdgeData(updates)
+  void graph.draw()
 }
 
 /**
@@ -136,6 +144,7 @@ export function clearDashedHighlight(graph: Graph, edgeIds: string[]): void {
   }))
 
   graph.updateEdgeData(updates)
+  void graph.draw()
 }
 
 /**
@@ -174,6 +183,7 @@ export function pulseNode(
     }))
 
     graph.updateNodeData(updates)
+    void graph.draw()
     requestAnimationFrame(animate)
   }
 
@@ -192,6 +202,7 @@ export function pulseNode(
       },
     }))
     graph.updateNodeData(restore)
+    void graph.draw()
   }, PULSE_DURATION * 3)
 
   return () => {
@@ -206,6 +217,7 @@ export function pulseNode(
       },
     }))
     graph.updateNodeData(restore)
+    void graph.draw()
   }
 }
 
@@ -224,6 +236,7 @@ export function blinkNodes(graph: Graph, nodeIds: string[]): () => void {
       style: { opacity: visible ? 1 : 0.3 },
     }))
     graph.updateNodeData(updates)
+    void graph.draw()
   }, BLINK_INTERVAL)
 
   return () => {
@@ -234,6 +247,7 @@ export function blinkNodes(graph: Graph, nodeIds: string[]): () => void {
       style: { opacity: 1 },
     }))
     graph.updateNodeData(restore)
+    void graph.draw()
   }
 }
 
@@ -459,6 +473,7 @@ export function useOverlayMode(graph: Graph | null): OverlayModeState {
     })
 
     graph.updateNodeData(updates)
+    void graph.draw()
   }, [graph, mode])
 
   return { mode, setMode }

@@ -186,6 +186,11 @@
         resultsDir: .tmp/eval-results
     - id: evidence-query-gateway  # W8: RPC gateway for evidence-query (TypertRemoteService)
       name: '@deepseek-ai/dsh-evidence-query/src/gateway.ts'
+    - id: ui-context-layer    # W10: knowledge-graph fullscreen overlay (client plugin). Provides
+                              # ctx.contextLayer + the shell.overlay seat. Ordered BEFORE
+                              # ui-semantic-layer, which reads `contextLayer` to decide whether to
+                              # offer the "view in graph" entry on AssetDetail.
+      name: '@deepseek-ai/dsh-client-ui-context-layer'
     - id: ui-semantic-layer   # W5: semantic layer management UI (client plugin)
       name: '@deepseek-ai/dsh-client-ui-semantic-layer'
     - id: eval-runner-service # W6a-gap: wire the ctx.evalRunner seam — activates trigger_eval full_run + the ③ goal-eval-policy no-progress backstop. Drives the real Nl2sqlEngine (ctx.llm + ctx.query) over the K11 case set, persists JSONL for evidence-query, tracks last/last-two runs for delta. inject ['llm'] + optional ['query','nl2sql','schema'] — degrades to all-fail verdicts when a seam is unmounted, never crashes the bundle.
@@ -194,6 +199,10 @@
         caseDir: ./packages/eval/eval/cases/k11
         resultsDir: .tmp/eval-results
         passK: 3
+        # R8 (PB-COMPLY): eval LLM gateway — explicit, no silent vendor default
+        # (runBatch fails loud if omitted). Deployment overlays can override.
+        provider: aga
+        model: qwen3.7-max
     - id: goal-eval-policy   # W6a: no-progress backstop — counts rounds, triggers eval every K=3, blocks after N=3 consecutive no-improvement
       name: '@deepseek-ai/dsh-goal-eval-policy'
       config:
@@ -222,7 +231,10 @@
 # code-runtime runs pandas transforms (incl. Excel/report generation via
 # pandas) and is mounted here as the data-python variant.
 #
-    - id: result-cache          # ctx.resultCache seam — in-memory session-scoped Provider; tools/post-execute hook captures query_data results with qr_ prefix; compute tool stores derived results with cr_ prefix
+    - id: result-cache-memory   # ctx.resultCache seam — in-memory session-scoped Provider; tools/post-execute hook captures query_data results with qr_ prefix; compute tool stores derived results with cr_ prefix. Id is NOT `result-cache`: base's web-app bundle already mounts the
+                                # client-side object cache (`@deepseek-ai/dsh-client-result-cache`)
+                                # under that id, and two rows sharing a loader entry id abort the
+                                # whole include group (cold-boot failure).
       name: '@deepseek-ai/dsh-result-cache-memory'
 
 # ── code-runtime: disable headless's worker-thread, insert data-python ──────
