@@ -51,3 +51,18 @@ Resolved 2026-09-03 (this session). `packages/client/result-cache/` Mode 3 packa
 4. **`cordis.yml` Config 接线 bounds**:client 包用 `ctx.plugin(Class, config)` construction-config idiom(非 schemastery `cordis.yml`);bound 落 `cordis.yml` 待 client config 机制建立。
 
 **移交**:本包 `ctx.results` 就绪待消费方接线(step 6 follow-up)。前沿:T7(blocks T6,chart 线)、P2(prototype HITL)。
+
+## Code review(subagent,2026-09-03)
+
+T9 ship 后 subagent code review 发现 **4 HIGH + 5 MEDIUM + 5 LOW + 4 NIT** 项。包无消费方故皆 latent(reviewer verdict:「dormant package,nothing broken today」),但 T10 接线后 HIGH 即 detonate;两项 HIGH 直击 R5 的失效正确性机制:
+
+- **HIGH 1(in-flight invalidate 竞态)**:`get` miss→fetcher in-flight 时,消费方调 `invalidate(rid)`(fresh `query_data`)删空(key 未存)→ RPC resolve→`lru.set` 存**旧快照**→后续渲染命中旧值;无 TTL 故 stale 存活整 session。`qr_` content-addressed 故 re-run 复用同 key——正是 R5 fresh-vs-folded 正确性路径。`connection/reset` flush 同害。
+- **HIGH 2(无 single-flight)**:并发 `get` 同 key 皆 miss→重复 `result.get` RPC(React 18 StrictMode double-invoke + 并发渲染 + 两 toolview 共享 `result_id` 皆触发,重复多 MB payload)。
+- **HIGH 3(`ResultFetchError` 导出 type-only)**:consumers 不能 `instanceof` narrow;contract 在 `cache.ts`/`service.ts`/README 承诺但 constructor 未到 `/client` barrel。
+- **HIGH 4(transport 失败逃脱 taxonomy)**:`AbstractApiClient.callUnary` 在 non-2xx/timeout/abort/zod-parse 失败时 **throw**(仅 host business error 返 `{ok:false}`);故 "other failure→`ResultFetchError`" 只覆半。
+
+**MEDIUM**:`updateAgeOnGet: true` 是 no-op(lru「no effect if ttl not set」,无 TTL;test vacuous);`JSON.stringify` 跑两次/miss(admission guard + lru.set sizeCalculation);**bounds 非 overridable + Config claim 错**(Agent Note 称 client 包不用 schemastery Config,但 `ui-semantic-layer/src/client/index.ts` 导出 schemastery `Config` + `apply(ctx, config)`——R5 的 `cordis.yml` Config 实可达,Agent Note claim 证伪);`invalidateSession`/`invalidateScope` 无 call site 无 owner;`apply()` 零测试(`connection/reset` flush 是本 commit 唯一接线的失效却未验证);T9 `tsc -b` exit 2(依赖 T11)。
+
+**LOW/NIT**:inject face 混「no scope」与「not found」;global 非 per-session 预算;key-collision 仅 argue 未 enforce;export-discipline drift(三 value export 无消费方,`ResultFetchError` 反 type-only);`scopeId` drop `SessionId` brand + op-label;dead import + 冗余 cast + `RpcErrorCode` widen + timeout policy。
+
+修补 graduated 为 [T12](T12-harden-result-cache-per-review.md),**blocks [T10]**(消费方接线前必须先修 HIGH)。T11 扩展(runtime TypeError in `?fixture` + T9 `tsc -b` exit 2 依赖 T11)。Agent Note 的 Config claim(`cordis.yml` 不可达)被 `ui-semantic-layer` precedent 证伪,T12 corrects。详见 [T12](T12-harden-result-cache-per-review.md)。

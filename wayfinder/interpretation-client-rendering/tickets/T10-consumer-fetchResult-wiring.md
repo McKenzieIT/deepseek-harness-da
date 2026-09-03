@@ -4,7 +4,7 @@
 **Phase**: post-v1
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: [T9](T9-result-cache-package-impl.md)（`ctx.results` service 已 ship 2026-09-03;本票接其 inject face）
+**Blocked by**: [T12](T12-harden-result-cache-per-review.md)（HIGH 修补:epoch guard + single-flight + `ResultFetchError` value export + transport-throw folding;T10 接线前必须先修,否则 `invalidate` 失效 + 重复 RPC + transport 错未折叠）、[T9](T9-result-cache-package-impl.md)（`ctx.results` service 已 ship;本票接其 inject face）
 **Related**: [R5](R5-object-layer-result-cache.md)（决策）、[T9](T9-result-cache-package-impl.md)（cache 包 + inject face 契约）、[T2](T2-ui-present-table.md)/[T4](T4-present-table-display-upgrade.md)（ui-present-table）、[T1](T1-ui-present-decomposition.md)/[T5](T5-present-decomposition-display-upgrade.md)（ui-present-decomposition）
 
 ## Question
