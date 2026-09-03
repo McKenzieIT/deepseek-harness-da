@@ -92,6 +92,8 @@ export interface RpcErrorDetailsMap {
   'subagent-not-resumable': { childSessionId: SessionId }
   'subagent-unauthorized': { childSessionId: SessionId }
   'subagent-delivery-unavailable': { childSessionId: SessionId }
+  /** A result_id did not resolve to a cached entry (cross-session, aged out with the session, or never stored). */
+  'result-not-found': { resultId: string }
   'internal': {}
 }
 

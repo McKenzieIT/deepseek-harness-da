@@ -36,12 +36,14 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [R4: present_table chart 渲染类型扩展](tickets/R4-chart-type-expansion.md) — 留 Chart.js 4;纳入全部 native 类型(area/h-bar/scatter/doughnut/bubble/radar/polarArea,不分阶段,排除 pie-only,heatmap/sankey/treemap→独立 ECharts effort);LLM 选型=启发式(语义层 metric×dimension×grain→type)+客户端列-kind/基数校验器(不可行降级 bar);K11 语义层锚定每图展示内容;原型 prototype/index.html(v6) 演示;实测入 [T6](tickets/T6-chart-integration-testing.md)
 - [R6: Result store server-side 设计调研](tickets/R6-result-store-server-side.md) — host 侧 `ctx.resultCache`（in-memory/session-scoped；`qr_`查询+`cr_`compute 不可变）已 ship 且 compute 衍生已通；rpcId apiproxy 已 ship，唯一缺口=未注册的 `result.get` RPC 行（纯机械四件，impl → [T8](tickets/T8-result-get-rpc.md)，无新决策）；分页延后（day-1 全量 get）；R5 上游已解
 - [R5: Object layer result cache 实现方案](tickets/R5-object-layer-result-cache.md) — 单包 `packages/client/result-cache/`（Mode 3，SD+Provider 同包，session-scoped `ctx.results`，镜像 host 放置合二为一）；失效=(a) 事件驱动（观察 `query_data` 完成→invalidate cache[R]，`cr_` 不可变不失效，fresh-vs-folded 由时序处理）；eviction=byte-bounded LRU（`lru-cache` 进 deps，无 TTL，纠正原 count-based）；bound=`maxEntrySize ~8MB`/`maxSize ~64MB`/`max ~64`/`updateAgeOnGet`（Config 字段）；generation-token v1 跳过（missed-event 竞态记 Known Limitation）；不用 IndexedDB/WeakRef/tag 失效/HTTP-SWR/命中 clone；全程 dsh-plugin-development 合规；impl → [T9](tickets/T9-result-cache-package-impl.md)（blocked-by [T8](tickets/T8-result-get-rpc.md)）
+- [T8: result.get RPC 四件实现](tickets/T8-result-get-rpc.md) — host 侧 `result.get` RPC 上线（四镜像 + results.ts/schema + api-proxy handler + `result-not-found` 错误码）；`ctx.get('resultCache')` optional，miss=`result-not-found`，wire ResultEntry 本地定义；tsc + test:gui（4214）全绿；解 [T9] miss 通路前置
+- [R10: 查询理解卡与 present_table metric 身份互认](tickets/R10-decomposition-table-metric-identity.md) — 两卡 metric 独立：decomposition 纯 argsRaw 自由文本无 `result_id`，table kpi 值从 `result_id` 绑定数据计算；无共享 key/语义 id，无需 metric 联动（结论否）；P2 独立
 
 ## Not yet specified
 
 (暂无——原三条雾已全部毕业为票:chart 精度扩展 → [R4](tickets/R4-chart-type-expansion.md),object layer cache → [R5](tickets/R5-object-layer-result-cache.md),result store server-side → [R6](tickets/R6-result-store-server-side.md))
 
-原「查询理解↔table KPI 互认 + 改口径回流」雾(自 R9)已部分毕业为票:语义层(两卡 metric 身份是否共享)→ [R10](tickets/R10-decomposition-table-metric-identity.md)(research);UX 层(低置信改口径 affordance 形态)→ [P2](tickets/P2-decomposition-revision-prototype.md)(prototype)。剩余模糊=两者结论后的 grilling(是否联动 metric、选哪种 affordance),待 R10/P2 落地再成票。
+原「查询理解↔table KPI 互认 + 改口径回流」雾(自 R9)已毕业:语义层 → [R10](tickets/R10-decomposition-table-metric-identity.md)(结论:两卡 metric 身份独立——decomposition 为纯 argsRaw 自由文本无 `result_id`,table kpi 值从 `result_id` 绑定数据计算;无共享 key/语义 id,无需 metric 联动);UX 层(低置信改口径 affordance 形态)→ [P2](tickets/P2-decomposition-revision-prototype.md)(prototype,open;R10 既不 block 也不 bind P2,且「无 link」收窄 P2 scope)。
 
 ## Out of scope
 

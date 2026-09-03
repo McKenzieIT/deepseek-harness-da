@@ -89,6 +89,9 @@ import type { ApprovalOutcome, ApprovalRequestId } from '@deepseek-ai/dsh-user-a
 // Side-effect type import: resolves the `approval/request` waterfall and
 // `ctx.get('approval')` without a value dependency on the seam (optional composition).
 import type {} from '@deepseek-ai/dsh-user-approval'
+// Type-only: resolves `ctx.get('resultCache')` (the result-store seam; optional — a
+// composition without a result-cache provider still serves every other domain).
+import type {} from '@deepseek-ai/dsh-result-cache'
 import { approvalResponsePayloadSchema } from './api/approvals.schema.ts'
 import { imageLimitsProjectionSchema, sessionListMetadataProjectionSchema } from './api/sessions.schema.ts'
 import { questionResponsePayloadSchema } from './api/questions.schema.ts'
@@ -1870,6 +1873,11 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     return { code: 'internal', message: 'credentials service is absent: this deployment does not mount a credential provider (e.g. @deepseek-ai/dsh-credentials-local) in its composition', details: {} }
   }
 
+  /** Missing-service report for the results domain (the resultCache seam is optional). */
+  function resultsAbsent(): RpcError {
+    return { code: 'internal', message: 'result cache service is absent: this deployment does not mount a result-cache provider (e.g. @deepseek-ai/dsh-result-cache-memory) in its composition', details: {} }
+  }
+
   /** Map one redacted settings descriptor to its wire view. */
   function namespaceView(descriptor: SettingsDescriptor): SettingsNamespaceView {
     return {
@@ -3349,6 +3357,23 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             details: { settingsNs, ...baseURL === undefined ? {} : { baseURL } },
           })
         }
+      },
+    },
+
+    results: {
+      async get(request) {
+        const cache = ctx.get('resultCache')
+        if (cache === undefined) return err(request, resultsAbsent())
+        const { resultId } = request.payload
+        const entry = cache.get(resultId)
+        if (entry === undefined) {
+          return err(request, {
+            code: 'result-not-found',
+            message: `result_id "${resultId}" is not available in the session-scoped result cache (it may belong to another session or have aged out with it)`,
+            details: { resultId },
+          })
+        }
+        return ok(request, entry)
       },
     },
 

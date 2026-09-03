@@ -28,6 +28,7 @@ function scriptedApi(overrides: {
   settings?: Partial<ApiProxy['settings']>
   credentials?: Partial<ApiProxy['credentials']>
   llm?: Partial<ApiProxy['llm']>
+  results?: Partial<ApiProxy['results']>
   respond?: ApiProxy['respond']
 } = {}): ApiProxy {
   async function *empty<F>(): AsyncGenerator<RpcRequest<F>> { /* no frames */ }
@@ -127,6 +128,10 @@ function scriptedApi(overrides: {
       models: r => ok(r, { groups: [], failures: [] }),
       discoverModels: err,
       ...overrides.llm,
+    },
+    results: {
+      get: r => ok(r, { columns: [], rows: [] }),
+      ...overrides.results,
     },
     events: { mux: () => empty<MuxFrame>(), host: () => empty<HostFrame>(), ...overrides.events },
     respond: overrides.respond ?? (() => Promise.resolve({ accepted: false as const, reason: 'not-pending' as const })),
@@ -259,6 +264,27 @@ describe('unary round trip', () => {
     })
     const response = await client(api).sessions.cancel({ sessionId: sid('sx') })
     expect(response.result).toEqual({ ok: false, error: { code: 'session-not-found', message: 'nope', details: { sessionId: 'sx' } } })
+  })
+
+  it('round-trips result.get with its result_id and resolves the cached entry', async () => {
+    let seen: RpcRequest<{ resultId: string }> | undefined
+    const entry = { columns: ['id', 'name'], rows: [[1, 'ada'], [2, 'bob']], metadata: { sql: 'select *', truncated: false, row_count: 2 } }
+    const api = scriptedApi({
+      results: { get: (r) => { seen = r; return ok(r, entry) } },
+    })
+    const response = await client(api).results.get({ resultId: 'qr_abc123' })
+    expect(seen?.payload).toEqual({ resultId: 'qr_abc123' })
+    expect(response.result).toEqual({ ok: true, value: entry })
+  })
+
+  it('passes a result-not-found error through as 200 + err result', async () => {
+    const api = scriptedApi({
+      results: {
+        get: r => Promise.resolve({ rpcId: r.rpcId, result: { ok: false, error: { code: 'result-not-found', message: 'nope', details: { resultId: 'qr_x' } } } }),
+      },
+    })
+    const response = await client(api).results.get({ resultId: 'qr_x' })
+    expect(response.result).toEqual({ ok: false, error: { code: 'result-not-found', message: 'nope', details: { resultId: 'qr_x' } } })
   })
 
   it('throws on rpcId echo mismatch', async () => {
