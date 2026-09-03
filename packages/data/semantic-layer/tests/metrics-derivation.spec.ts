@@ -15,9 +15,9 @@ describe('metric derivation (M1 virtual projection)', () => {
   it('projectMetricCorpusItem produces a kind:metric CorpusItem with description', () => {
     const item = projectMetricCorpusItem(md)
     expect(item).not.toBeNull()
-    expect(item!.id).toBe('dws_acc_di__dau')
-    expect(item!.description).toContain('DAU')
-    expect((item!.payload as { kind: string }).kind).toBe('metric')
+    expect(item.id).toBe('dws_acc_di__dau')
+    expect(item.description).toContain('DAU')
+    expect((item.payload as { kind: string }).kind).toBe('metric')
   })
 
   it('deriveMetricRelations returns derived_from edge to source', () => {

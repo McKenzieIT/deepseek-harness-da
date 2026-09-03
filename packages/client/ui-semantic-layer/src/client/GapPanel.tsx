@@ -39,7 +39,7 @@ export const GapPanel: FC<GapPanelProps> = ({ gapAnalysis, loading, t }) => {
         {t('evidence.gap.from')} <code>{gapAnalysis.sourceAssetId}</code>
       </p>
       <ul className="sl-gap-panel__list">
-        {gapAnalysis.gaps.slice(0, 15).map((gap) => (
+        {gapAnalysis.gaps.slice(0, 15).map(gap => (
           <li key={gap.assetId} className="sl-gap-panel__item">
             <span className="sl-gap-panel__asset">{gap.assetId}</span>
             <span className="sl-gap-panel__path">

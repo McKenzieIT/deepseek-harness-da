@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { EvalCaseSchema, isMultiTurn, type EvalCase } from '../src/eval_case.ts'
+import { EvalCaseSchema, isMultiTurn } from '../src/eval_case.ts'
 
 const base = { case_id: 'x', input: { question: 'q' }, expected: { answer: 42 } }
 
 describe('EvalCaseSchema (da-fresh zod; file-boundary validation)', () => {
   it('parses a valid DELIVERY-only case + fills defaults', () => {
-    const c = EvalCaseSchema.parse(base) as EvalCase
+    const c = EvalCaseSchema.parse(base)
     expect(c.case_id).toBe('x')
     expect(c.input.scope_id).toBeNull()
     expect(c.input.turns).toEqual([])
@@ -22,7 +22,7 @@ describe('EvalCaseSchema (da-fresh zod; file-boundary validation)', () => {
       input: { question: 'q?', scope_id: 's', turns: [{ role: 'user', content: 'u' }] },
       expected: { result_value: { value: 1 }, match_mode: 'scalar_exact', answer: 'a', delivery_match: 'fuzzy' },
       dimensions: { domain: 'rev' },
-    }) as EvalCase
+    })
     expect(c.input.scope_id).toBe('s')
     expect(c.input.turns[0]!.role).toBe('user')
     expect(c.dimensions.domain).toBe('rev')
@@ -71,9 +71,9 @@ describe('EvalCaseSchema (da-fresh zod; file-boundary validation)', () => {
 
 describe('isMultiTurn', () => {
   it('true for a scripted case', () => {
-    expect(isMultiTurn(EvalCaseSchema.parse({ ...base, input: { question: 'q', turns: [{ role: 'user', content: 'u' }] } }) as EvalCase)).toBe(true)
+    expect(isMultiTurn(EvalCaseSchema.parse({ ...base, input: { question: 'q', turns: [{ role: 'user', content: 'u' }] } }))).toBe(true)
   })
   it('false for a single-turn case', () => {
-    expect(isMultiTurn(EvalCaseSchema.parse(base) as EvalCase)).toBe(false)
+    expect(isMultiTurn(EvalCaseSchema.parse(base))).toBe(false)
   })
 })

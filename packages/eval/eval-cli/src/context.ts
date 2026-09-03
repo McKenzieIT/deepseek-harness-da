@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
+import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Nl2sqlEngine, Bm25Linker, StandInOdps } from '@deepseek-ai/dsh-nl2sql-engine'
 import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
@@ -150,25 +151,71 @@ class CtxLlmAdapter implements Llm {
 
 // ── ctx.query → engine OdpsExecutor (forked from eval-runner-service) ────
 
+/** The dsh-query provider's runtime outcome shape (state names + field casing
+ *  differ from the engine's EngineQueryOutcome). Typed loose because the
+ *  ctx.query service is fetched here as an untyped `unknown`. */
+interface ProviderQueryOutcome {
+  readonly state?: string
+  readonly rows?: unknown
+  readonly instanceId?: string
+  readonly failureKind?: string
+  readonly error?: string
+  readonly stage?: string
+  readonly sql?: string
+}
+
+/** Map a dsh-query provider outcome ('completed'|'pending'|'failed') to the
+ *  engine's EngineQueryOutcome ('done'|'running'|'failed'). A bare
+ *  `as unknown as EngineQueryOutcome` cast is a runtime no-op, so a real
+ *  provider returning state:'completed' passed through unchanged and never
+ *  matched the engine's 'done'/'running' checks — every completed query fell
+ *  to the failed/decline path. Ported from eval-runner-service's adapter. */
+function toEngineOutcome(out: ProviderQueryOutcome): EngineQueryOutcome {
+  const sql = out.sql ?? ''
+  switch (out.state) {
+    case 'completed':
+      return {
+        state: 'done',
+        ...(out.rows !== undefined ? { rows: out.rows } : {}),
+        ...(out.instanceId !== undefined ? { result_id: out.instanceId } : {}),
+        sql,
+      }
+    case 'pending':
+      return {
+        state: 'running',
+        ...(out.instanceId !== undefined ? { instance_id: out.instanceId } : {}),
+        ...(out.stage !== undefined ? { stage: out.stage } : {}),
+        sql,
+      }
+    default:
+      return {
+        state: 'failed',
+        ...(out.failureKind !== undefined ? { failureKind: out.failureKind } : {}),
+        ...(out.error !== undefined ? { error: out.error } : {}),
+        sql,
+      }
+  }
+}
+
 class CtxOdpsAdapter implements OdpsExecutor {
   constructor(private readonly ctx: Context, private readonly scopeId: string) {}
 
   private engine(): { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined {
-    return this.ctx.get('query') as { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined
+    return this.ctx.get('query')
   }
 
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
-    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql } as unknown as EngineQueryOutcome
-    const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)
-    return out as unknown as EngineQueryOutcome
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql }
+    const out = (await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)) as ProviderQueryOutcome
+    return toEngineOutcome(out)
   }
 
   async attach(instanceId: string): Promise<EngineQueryOutcome> {
     const q = this.engine()
-    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' } as unknown as EngineQueryOutcome
-    const out = await q.attach(instanceId)
-    return out as unknown as EngineQueryOutcome
+    if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
+    const out = (await q.attach(instanceId)) as ProviderQueryOutcome
+    return toEngineOutcome(out)
   }
 }
 
@@ -190,7 +237,7 @@ class CtxQueryExecutor implements QueryExecutor {
       const rows = (out.rows ?? []) as Record<string, unknown>[]
       return { success: true, rows, row_count: rows.length, error: null }
     }
-    return { success: false, rows: [], row_count: 0, error: (out.error as string) ?? 'query failed' }
+    return { success: false, rows: [], row_count: 0, error: (out.error as string | undefined) ?? 'query failed' }
   }
 }
 
@@ -320,11 +367,11 @@ class Nl2sqlAgentResponder implements AgentResponder {
       ? { retrieve: (_q, opts) => baseLinker.retrieve(expandedQuestion, opts) } as typeof baseLinker
       : baseLinker
 
-    const lookupDoc = (id: string) => corpus.find(d => d.id === id) as import('@deepseek-ai/dsh-nl2sql-engine').DataSourceDoc | undefined
+    const lookupDoc = (id: string) => corpus.find(d => d.id === id)
     const partitionResolver = (tableName: string): readonly string[] | null => {
       const svc = this.ctx.get('schema') as { loadTableDefinition?(name: string, scopeId?: string): { partitions: Array<{ name: string }> } | null } | undefined
       const def = svc?.loadTableDefinition?.(tableName, this.scopeId)
-      return def?.partitions?.map(p => p.name) ?? null
+      return def?.partitions.map(p => p.name) ?? null
     }
     const exp2Arm = process.env.EXP2_ARM?.toUpperCase()
     const engine = new Nl2sqlEngine({
@@ -424,6 +471,13 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   // 1. Mount LlmRuntime → provides ctx.llm
   await ctx.plugin(LlmRuntime)
 
+  // 1b. Credential seam: LocalCredentialProvider reads ~/.dsh/.credentials.yaml so
+  // llm-dashscope resolves DASHSCOPE_API_KEY via ctx.credentials (not process.env).
+  await ctx.plugin(LocalCredentialProvider, {
+    path: join(homedir(), '.dsh', '.credentials.yaml'),
+    dshHome: join(homedir(), '.dsh'),
+  })
+
   // 2. Mount llm-dashscope → registers the 'aga' provider route on ctx.llm
   await ctx.plugin(llmDashscope)
 
@@ -457,7 +511,7 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }
-    if (qe?.start) await qe.start()
+    if (qe.start) await qe.start()
 
     console.log('  Query engine mounted (sidecar ready)')
   }
@@ -466,7 +520,15 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
   const exp2ArmBoot = process.env.EXP2_ARM?.toUpperCase()
   if (exp2ArmBoot) console.log(`  [GA-EXP2] arm=${exp2ArmBoot} — prompt language variant active`)
   const llmAdapter = new CtxLlmAdapter(ctx, opts.provider, opts.model)
-  const agent = new Nl2sqlAgentResponder(ctx, opts.today, opts.provider, opts.model, opts.withQuery, opts.scopeId, opts.queryExpansion !== false)
+  const agent = new Nl2sqlAgentResponder(
+    ctx,
+    opts.today,
+    opts.provider,
+    opts.model,
+    opts.withQuery,
+    opts.scopeId,
+    opts.queryExpansion !== false,
+  )
   const judge = new LlmJudgeExecutor(llmAdapter)
   const executor = opts.withQuery ? new CtxQueryExecutor(ctx, opts.scopeId) : null
 

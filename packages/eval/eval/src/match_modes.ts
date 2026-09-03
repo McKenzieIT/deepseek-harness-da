@@ -80,7 +80,7 @@ function multiScalarExact(expected: Record<string, unknown>, actualRows: readonl
   // Accept both envelope format ({fields: {k: v}}) and direct format ({k1: v1, k2: v2})
   let rawFields: unknown = 'fields' in expected ? expected.fields : expected
   if (Array.isArray(rawFields)) {
-    const first = rawFields[0]
+    const first: unknown = rawFields[0]
     if (first === undefined) return { status: 'fail', detail: 'fields list is empty' }
     rawFields = first
   }

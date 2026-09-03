@@ -100,10 +100,10 @@ async function checkResponder(responder: Responder, timeoutMs: number): Promise<
 /** Race a promise against a timeout. */
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`health check timed out after ${ms}ms`)), ms)
+    const timer = setTimeout(() =>{  reject(new Error(`health check timed out after ${ms}ms`)) }, ms)
     promise.then(
-      v => { clearTimeout(timer); resolve(v) },
-      e => { clearTimeout(timer); reject(e) },
+      (v) => { clearTimeout(timer); resolve(v) },
+      (e: unknown) => { clearTimeout(timer); reject(e instanceof Error ? e : new Error(String(e))) },
     )
   })
 }

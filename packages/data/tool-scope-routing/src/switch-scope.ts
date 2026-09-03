@@ -52,7 +52,7 @@ export function registerSwitchScope(ctx: Context): void {
     async execute(args, exec) {
       if (exec.signal.aborted) throw new Error('switch_scope aborted')
 
-      const scopeId = args.scope_id as string
+      const scopeId = args.scope_id
       const scopes = ctx.get('scopes') as ScopeRegistryLike | undefined
       if (!scopes) {
         return { ok: false, error: 'scope registry not mounted' } satisfies SwitchScopeResult as never
@@ -70,14 +70,14 @@ export function registerSwitchScope(ctx: Context): void {
       await scopes.setActive(scopeId)
 
       const name = typeof target.metadata?.['name'] === 'string'
-        ? target.metadata['name'] as string
+        ? target.metadata['name']
         : scopeId
 
       return {
         ok: true,
         scope_id: scopeId,
         scope_name: name,
-        previous_scope_id: previousId ?? "",
+        previous_scope_id: previousId ?? '',
       } satisfies SwitchScopeResult as never
     },
   }))

@@ -287,7 +287,7 @@ describe('enrichAllTablesAltLabels', () => {
     root = mkdtempSync(join(tmpdir(), 'alt-labels-'))
     mkdirSync(join(root, 'tables'), { recursive: true })
   })
-  afterEach(() => rmSync(root, { recursive: true, force: true }))
+  afterEach(() =>{  rmSync(root, { recursive: true, force: true }) })
 
   function writeTableYaml(name: string, extra: Record<string, unknown> = {}) {
     const def = {
@@ -366,7 +366,7 @@ describe('enrichAllEventsAltLabels', () => {
     root = mkdtempSync(join(tmpdir(), 'alt-labels-evt-'))
     mkdirSync(join(root, 'events', 'social'), { recursive: true })
   })
-  afterEach(() => rmSync(root, { recursive: true, force: true }))
+  afterEach(() =>{  rmSync(root, { recursive: true, force: true }) })
 
   function writeEventYaml(name: string, extra: Record<string, unknown> = {}) {
     const def = {
@@ -412,7 +412,7 @@ describe('discoverAltLabels', () => {
     mkdirSync(join(root, 'tables'), { recursive: true })
     mkdirSync(join(root, 'events', 'social'), { recursive: true })
   })
-  afterEach(() => rmSync(root, { recursive: true, force: true }))
+  afterEach(() =>{  rmSync(root, { recursive: true, force: true }) })
 
   test('enriches both tables and events', async () => {
     writeFileSync(join(root, 'tables', 'dws_active.yaml'), dumpYaml({

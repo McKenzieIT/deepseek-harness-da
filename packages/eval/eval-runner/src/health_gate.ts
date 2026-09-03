@@ -25,7 +25,7 @@ async function runCheck(name: string, fn: () => Promise<void>, timeoutMs: number
     await Promise.race([
       fn(),
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`health check timed out after ${timeoutMs}ms`)), timeoutMs)
+        timer = setTimeout(() =>{  reject(new Error(`health check timed out after ${timeoutMs}ms`)) }, timeoutMs)
       }),
     ])
     return {

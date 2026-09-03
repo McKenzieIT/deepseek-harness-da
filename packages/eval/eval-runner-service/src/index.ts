@@ -52,7 +52,7 @@ import type {
   RelationGraphLike,
   EngineConventions,
 } from '@deepseek-ai/dsh-nl2sql-engine'
-import type { QueryEngine, QueryRequest, ScopeId, InstanceId, QueryOutcome } from '@deepseek-ai/dsh-query'
+import type { QueryEngine, ScopeId, QueryOutcome } from '@deepseek-ai/dsh-query'
 import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
@@ -126,20 +126,20 @@ class CtxOdpsAdapter implements OdpsExecutor {
   constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
 
   private engine(): QueryEngine | undefined {
-    return this.ctx.get('query') as QueryEngine | undefined
+    return this.ctx.get('query')
   }
 
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql }
-    const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' } as QueryRequest, opts?.signal)
+    const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)
     return this.toEngineOutcome(out)
   }
 
   async attach(instanceId: string): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
-    const out = await q.attach(instanceId as unknown as InstanceId)
+    const out = await q.attach(instanceId)
     return this.toEngineOutcome(out)
   }
 
@@ -182,11 +182,11 @@ class CtxQueryExecutor implements QueryExecutor {
   constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
 
   async execute(sql: string): Promise<QueryResult> {
-    const q = this.ctx.get('query') as QueryEngine | undefined
+    const q = this.ctx.get('query')
     if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
     let out: QueryOutcome
     try {
-      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' } as QueryRequest)
+      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' })
     } catch (err) {
       return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
     }
@@ -265,7 +265,7 @@ class Nl2sqlAgentResponder implements AgentResponder {
   }
 
   async respond(question: string, opts?: AgentRespondOpts): Promise<AgentResponse> {
-    const scopeId = (opts?.scope_id ?? this.scopeId) as unknown as ScopeId
+    const scopeId = opts?.scope_id ?? this.scopeId
     const odps = new CtxOdpsAdapter(this.ctx, scopeId)
     const schema = this.ctx.get('schema') as
       | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(scopeId?: string): RelationGraphLike }
@@ -407,7 +407,7 @@ export class EvalRunnerService extends Service {
     // resolution honors the active scope (dormant seam — current providers
     // ignore scopeId, but the wiring is in place for a future per-scope engine
     // mapping without a service rebuild).
-    const conventions = (this.ctx.get('nl2sql') as { getConventions?(scopeId?: string): EngineConventions } | undefined)?.getConventions?.(scopeId as string | undefined) ?? null
+    const conventions = (this.ctx.get('nl2sql') as { getConventions?(scopeId?: string): EngineConventions } | undefined)?.getConventions?.(scopeId) ?? null
     const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model)
     const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId) : null
     const judge = new LlmJudgeExecutor(new CtxLlmAdapter(this.ctx, this.provider, this.model))
@@ -424,12 +424,12 @@ export class EvalRunnerService extends Service {
     if (options?.scopeId === undefined) {
       throw new Error('eval-runner-service runBatch: explicit scopeId required (D3ii: no default pointer)')
     }
-    const scopeId = options.scopeId as unknown as ScopeId
+    const scopeId = options.scopeId
     const { agent, executor, judge } = this.buildCollaborators(scopeId)
     const result = await runBatch(paths, { agent, executor, judge }, {
       pass_k: this.passK,
-      skip_health_gate: options?.skipHealthGate ?? false,
-      ...(options?.runId !== undefined ? { run_id: options.runId } : {}),
+      skip_health_gate: options.skipHealthGate ?? false,
+      ...(options.runId !== undefined ? { run_id: options.runId } : {}),
     })
     // Persist JSONL (the W3→W4 bridge) so evidence-query + goal-eval-policy read it.
     persistRunResultJsonl(result, this.resultsDir, this.passK)

@@ -30,7 +30,7 @@ export function writeRunResult(result: RunResult, outputPath: string): void {
   // Strip the `raw` field from case verdicts to keep output lean
   const stripped: RunResult = {
     ...result,
-    cases: result.cases.map(c => {
+    cases: result.cases.map((c) => {
       const { raw: _raw, ...rest } = c
       return rest
     }),

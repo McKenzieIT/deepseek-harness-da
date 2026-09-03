@@ -128,9 +128,9 @@ function applyLOD(graph: Graph, level: ZoomLevel): void {
   const comboData = graph.getComboData()
   for (const combo of comboData) {
     if (lod.combosCollapsed) {
-      graph.collapseElement(combo.id)
+      void graph.collapseElement(combo.id)
     } else {
-      graph.expandElement(combo.id)
+      void graph.expandElement(combo.id)
     }
   }
 }
@@ -224,13 +224,13 @@ export function ContextLayerGraph({
 
     // Node click handler (G6 v5: node ID is on evt.target.id; evt.itemId does not exist in 5.1.1)
     graph.on<IElementEvent>('node:click', (evt) => {
-      const itemId = evt.target?.id
+      const itemId = evt.target.id
       if (itemId) onNodeClick?.(itemId)
     })
 
     // Node double-click handler
     graph.on<IElementEvent>('node:dblclick', (evt) => {
-      const itemId = evt.target?.id
+      const itemId = evt.target.id
       if (itemId) onNodeDoubleClick?.(itemId)
     })
 
@@ -247,7 +247,7 @@ export function ContextLayerGraph({
 
     const g6Data = toG6Data(data, domainFilter)
     graph.setData(g6Data)
-    graph.render().then(() => {
+    void graph.render().then(() => {
       // Apply current LOD state after render completes
       applyLOD(graph, zoomLevelRef.current)
     })
@@ -266,7 +266,7 @@ export function ContextLayerGraph({
     })
 
     observer.observe(container)
-    return () => observer.disconnect()
+    return () =>{  observer.disconnect() }
   }, [])
 
   return (

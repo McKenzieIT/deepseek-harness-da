@@ -213,7 +213,7 @@ const DEFAULT_PARTITION_BLOCKLIST: readonly string[] = ['ds', 'pt', 'dt']
  * @returns a set of column names to exclude from deterministic PK matching (never empty).
  */
 export function buildExcludeColumns(def: TableDefinition): Set<string> {
-  const partitionCols = (def.columns ?? []).filter(c => c.role === 'partition').map(c => c.name)
+  const partitionCols = def.columns.filter(c => c.role === 'partition').map(c => c.name)
   return partitionCols.length > 0 ? new Set(partitionCols) : new Set(DEFAULT_PARTITION_BLOCKLIST)
 }
 
@@ -550,8 +550,7 @@ export class SemanticLayerService extends Service {
             ? extractMetricsFromEvent(def as EventDefinition)
             : []
         for (const m of metrics) {
-          const metricItem = projectMetricCorpusItem(m)
-          if (metricItem) out.push(metricItem)
+          out.push(projectMetricCorpusItem(m))
         }
       }
     }
@@ -977,7 +976,7 @@ export class SemanticLayerService extends Service {
       readonly scopeId?: string
     } = {},
   ): Promise<{ written: number; skipped: number; errors: string[] }> {
-    const res = await syncWriteDefinitionsFromLayer(this.semanticRoot, tableMetas, {
+    const res = await syncWriteDefinitionsFromLayer(this.resolveRoot(opts.scopeId), tableMetas, {
       recorder: this.recorder(),
       scope_id: opts.scopeId ?? this.scopeId,
       ...opts.dimTableNames !== undefined ? { dimTableNames: opts.dimTableNames } : {},
@@ -1005,7 +1004,7 @@ export class SemanticLayerService extends Service {
     updates: Record<string, unknown>,
     opts: { readonly scopeId?: string } = {},
   ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }> {
-    const res = await updateTableMetaFromLayer(this.semanticRoot, name, updates, {
+    const res = await updateTableMetaFromLayer(this.resolveRoot(opts.scopeId), name, updates, {
       recorder: this.recorder(),
       scope_id: opts.scopeId ?? this.scopeId,
     })

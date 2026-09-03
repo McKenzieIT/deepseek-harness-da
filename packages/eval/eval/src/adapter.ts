@@ -79,7 +79,7 @@ export function extractReply(runResult: RunResultView): AgentTurnReply {
     const sql = extractSql(e)
     if (sql !== null) generatedSql = sql // last one wins
   }
-  const reply = String(runResult.finalResponse)
+  const reply = runResult.finalResponse
   return { reply, generatedSql, generatedBehavior: null }
 }
 

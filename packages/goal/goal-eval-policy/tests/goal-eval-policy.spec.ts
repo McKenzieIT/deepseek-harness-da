@@ -84,12 +84,12 @@ function createMockCtx(options: {
     goals,
     evidenceQuery,
     agents,
-    async emitGoalChanged(change: GoalChanged) {
+    emitGoalChanged: async (change: GoalChanged) => {
       for (const listener of goalChangedListeners) {
         await listener({ agent: { id: 'agent-1' }, change })
       }
     },
-    async emitRound(goalId: string, round: number, revision: number = 1) {
+    emitRound: async (goalId: string, round: number, revision: number = 1) => {
       const event = {
         type: 'user/message',
         data: { source: { kind: 'goal', goalId, round, revision } },

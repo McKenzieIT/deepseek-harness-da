@@ -25,9 +25,7 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
       parts.push(col.name)
       if (col.comment) parts.push(col.comment)
     }
-    if (def.alt_labels) {
-      for (const s of def.alt_labels) parts.push(s)
-    }
+    for (const s of def.alt_labels) parts.push(s)
     return {
       id: def.table_name,
       ...(parts.length > 0 ? { description: parts.join(' ') } : {}),
@@ -70,7 +68,7 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
   },
 
   relations(def): RelationDef[] {
-    if (!def.dimension_refs || def.dimension_refs.length === 0) return []
+    if (def.dimension_refs.length === 0) return []
     const out: RelationDef[] = []
     for (const ref of def.dimension_refs) {
       const byDimCol = new Map<string, { dws_column: string; dim_column: string }[]>()

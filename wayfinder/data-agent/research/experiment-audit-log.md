@@ -427,3 +427,16 @@ surfaced:
   including tables. The probe confirms isolation, not recall parity.
 - Real ODPS cross-workspace execution (experiment 3) requires live MaxCompute
   credentials for both environments — deferred to integration testing.
+
+## 2026-09-03 — pass^k semantics re-baseline (preliminary, 30-case subset)
+
+**Semantics change**: `runner.ts` `bestOfKVerdict` -> `passKVerdict` (any->every: all k attempts must pass for `correct`) + `executionMatch` defaults to `false` when neither executor nor sqlJudge can verify (was `true`). Both changes landed + committed.
+
+**Result (30-case subset of k11-v2, pass-k=3, aga/qwen3.7-max, SQL semantic judge enabled)**:
+- pass_rate = **63.3%** (19 correct / 30 total, 11 wrong, 0 declined, 0 infra_failure)
+- Results JSON: `eval-results/a4fbd262-202d-4a5f-bfb1-f754ce07e60b.json`
+- vs best-of-k baseline 73.8% (168 cases): -~10pp — the flakiness pass^k is designed to expose (best-of-k: any-of-3 passes; pass^k: all-3 must pass).
+
+**Root cause + fix (credentials seam)**: the re-baseline initially returned "no content" for every case. Root cause: the eval CLI's Cordis ctx did not mount a credential provider -> `ctx.get('credentials')=undefined` -> llm-dashscope `resolveApiKey` fell back to `process.env.DASHSCOPE_API_KEY` (unset after the gate-fix that reads `~/.dsh/.credentials.yaml` instead) -> `MISSING_CREDENTIAL` -> the llm/stream waterfall masked the throw as an empty response. **Not** an AGA non-SSE issue (AGA streams SSE via the adapter's `X-DashScope-SSE: enable` header; an earlier curl probe without that header misdiagnosed it). Fix: mount `LocalCredentialProvider` in `context.ts:boot()` (engine responder ctx) + `main.ts` judge ctx + harness-responder, + add `static override name='credentials'` to `LocalCredentialProvider` so programmatic `ctx.plugin()` registers it under the `credentials` service name. -> resolveApiKey reads `~/.dsh/.credentials.yaml` via the seam -> key resolved -> AGA SSE -> SQL generated -> pass^k verdict. No `process.env` involved (intranet-security-first).
+
+**Pending**: full 168-case pass^k re-baseline (the 30-case subset is preliminary; the full run was interrupted at 100/168 when the long session's background shell was reaped). Debug logs (`console.error('[ADAPTER-DBG]...')` in adapter.ts/index.ts/harness-responder.ts) to be cleaned + rebuilt.

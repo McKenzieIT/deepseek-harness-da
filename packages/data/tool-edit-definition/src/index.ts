@@ -160,7 +160,7 @@ export function computeEdit(
     }
   }
 
-  if (typeof patch !== 'object' || patch === null || Array.isArray(patch)) {
+  if (typeof patch !== 'object' || Array.isArray(patch)) {
     return {
       result: {
         applied: false,
@@ -322,9 +322,9 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // ctx.get + `| undefined` fallback). The `as unknown as` on schema
       // bridges the project-reference type identity between the augmentation
       // and the explicit import.
-      const schema = ctx.schema as unknown as SemanticLayerService
+      const schema = ctx.schema
       const audit: Audit = ctx.audit
-      const patch = (args.patch ?? {}) as Record<string, unknown>
+      const patch = args.patch as Record<string, unknown>
 
       const { result, merged, before, kind } = computeEdit(schema, args.asset_name, patch)
 
@@ -384,6 +384,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         } else if (kind === 'concept') {
           const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
           const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
+          // oxlint-disable-next-line typescript/unbound-method -- static module function, no this-binding
           const { join } = await import('node:path')
           const { mkdirSync } = await import('node:fs')
           const conceptsDir = join(schema.semanticRoot, 'concepts')
@@ -402,9 +403,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       }
 
       // Record Tier-2 audit (for events; tables are already audited via
-      // updateTableMeta). WARN 5: inject guarantees audit is mounted, but
-      // defense-in-depth — if Cordis somehow returns undefined, log a warning
-      // rather than silently skipping the audit trail.
+      // updateTableMeta). inject guarantees audit is mounted — use it directly.
       // V1 (G6 D4): compute a structured before/after delta and co-locate it
       // with the tier-2 write event for ALL kinds (table / event / concept).
       // Tables already have a substrate-level `update_table_meta` audit row;
@@ -414,21 +413,17 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // status flip is stripped from the delta (noise — it is always
       // 'unreviewed' after every edit, not a semantic change).
       if (before !== undefined && kind !== undefined) {
-        if (!audit) {
-          ctx.logger.warn('tool-edit-definition: audit service unavailable — write persisted without delta audit trail')
-        } else {
-          try {
-            const { confirmation: _bConf, ...beforeForDelta } = before
-            const { confirmation: _aConf, ...afterForDelta } = merged
-            const delta = computeStructuredDelta(beforeForDelta, afterForDelta)
-            audit.recordTier2Write(
-              'edit_definition',
-              { asset_name: result.asset_name, patch },
-              { delta, asset_name: result.asset_name, kind },
-            )
-          } catch {
-            // fail-silent: audit failure must not break the business write
-          }
+        try {
+          const { confirmation: _bConf, ...beforeForDelta } = before
+          const { confirmation: _aConf, ...afterForDelta } = merged
+          const delta = computeStructuredDelta(beforeForDelta, afterForDelta)
+          audit.recordTier2Write(
+            'edit_definition',
+            { asset_name: result.asset_name, patch },
+            { delta, asset_name: result.asset_name, kind },
+          )
+        } catch {
+          // fail-silent: audit failure must not break the business write
         }
       }
 

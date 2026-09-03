@@ -114,9 +114,9 @@ export class ScopeRegistryService extends Service {
    * @returns the matching scope definitions (empty when the registry is unset, missing, or has no match).
    */
   list(tenant?: string): readonly ScopeDefinition[] {
-    const all = [...this.load().scopes.values()].map((s) => this.withTenant(s))
+    const all = [...this.load().scopes.values()].map(s => this.withTenant(s))
     if (tenant === undefined) return all
-    return all.filter((s) => s.tenant === tenant)
+    return all.filter(s => s.tenant === tenant)
   }
 
   /**
@@ -219,13 +219,13 @@ export class ScopeRegistryService extends Service {
    */
   async register(scope: ScopeDefinition): Promise<void> {
     this.ensureConfigured()
-    let becameActive = false
-    await this.mutate((reg) => {
+    const becameActive = await this.mutate((reg) => {
       reg.scopes.set(scope.id, scope)
       if (reg.activeId === undefined) {
         reg.activeId = scope.id
-        becameActive = true
+        return true
       }
+      return false
     })
     this.ctx.emit('scopes/changed')
     if (becameActive) this.ctx.emit('scopes/active-changed', scope.id)
@@ -237,13 +237,13 @@ export class ScopeRegistryService extends Service {
    */
   async remove(id: string): Promise<void> {
     this.ensureConfigured()
-    let deactivated = false
-    await this.mutate((reg) => {
+    const deactivated = await this.mutate((reg) => {
       reg.scopes.delete(id)
       if (reg.activeId === id) {
         reg.activeId = undefined
-        deactivated = true
+        return true
       }
+      return false
     })
     this.ctx.emit('scopes/changed')
     if (deactivated) this.ctx.emit('scopes/active-changed', undefined)
@@ -281,7 +281,10 @@ export class ScopeRegistryService extends Service {
       return { scopes: new Map(), activeId: undefined }
     }
     const scopes = new Map<string, ScopeDefinition>()
-    const rawScopes = parsed.scopes as Record<string, { semanticRoot?: unknown; tenant?: unknown; metadata?: unknown } | null | undefined> | undefined
+    const rawScopes = parsed.scopes as Record<
+      string,
+      { semanticRoot?: unknown; tenant?: unknown; metadata?: unknown } | null | undefined
+    > | undefined
     if (rawScopes) {
       for (const [id, def] of Object.entries(rawScopes)) {
         if (def && typeof def.semanticRoot === 'string') {
@@ -306,17 +309,18 @@ export class ScopeRegistryService extends Service {
   }
 
   /** Atomic read-modify-write cycle with cross-process file lock. */
-  private async mutate(
-    fn: (reg: { scopes: Map<string, ScopeDefinition>; activeId: string | undefined }) => void,
-  ): Promise<void> {
-    await withFileLock(this.registryPath, async () => {
+  private async mutate<T>(
+    fn: (reg: { scopes: Map<string, ScopeDefinition>; activeId: string | undefined }) => T,
+  ): Promise<T> {
+    return withFileLock(this.registryPath, async () => {
       const reg = this.load()
-      fn(reg)
+      const result = fn(reg)
       const fileContent = this.serialize(reg)
       await writeFileAtomic(this.registryPath, fileContent, {
         mode: 0o644,
         dirMode: 0o755,
       })
+      return result
     })
   }
 

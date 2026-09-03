@@ -51,7 +51,7 @@ function dws(over: Partial<TableDefinition> = {}): TableDefinition {
     alt_labels: [],
     dimension_refs: [],
     ...over,
-  } as TableDefinition
+  }
 }
 
 const DIM_SERVER: DimInventoryEntry = { table_name: 'dim_10000251_server_info', primary_key: ['server_id'], description: '区服维度表' }
@@ -197,7 +197,7 @@ describe('enrichAllDwsTables', () => {
     writeFileSync(join(dir, 'config.yaml'), 'project:\n  name: t\n  scope_id: t\n')
     mkdirSync(join(dir, 'tables'), { recursive: true })
   })
-  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+  afterEach(() =>{  rmSync(dir, { recursive: true, force: true }) })
 
   test('writes dimension_refs into DWS tables, preserves other fields (physical types)', async () => {
     // DWS with a physical type spelling (BIGINT) that canonicalizes to int on parse;
@@ -220,7 +220,7 @@ describe('enrichAllDwsTables', () => {
   })
 
   test('skips DIM tables (only enriches DWS)', async () => {
-    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml({ table_name: 'dim_server', kind: 'dim', primary_key: ['server_id'], label_columns: ['server_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition))
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml({ table_name: 'dim_server', kind: 'dim', primary_key: ['server_id'], label_columns: ['server_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] }))
     const res = await enrichAllDwsTables(dir)
     expect(res.enriched).toBe(0)
   })
@@ -275,7 +275,7 @@ function dimServerYaml(): string {
     domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute',
     coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null,
     alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [],
-  } as TableDefinition)
+  })
 }
 
 describe('enrichAllEvents', () => {
@@ -288,7 +288,7 @@ describe('enrichAllEvents', () => {
     writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dimServerYaml())
     writeFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), dumpYaml(event()))
   })
-  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+  afterEach(() =>{  rmSync(dir, { recursive: true, force: true }) })
 
   test('writes external_refs into events, preserves other fields', async () => {
     const res = await enrichAllEvents(dir)

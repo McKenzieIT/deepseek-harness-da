@@ -100,9 +100,10 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
       render: (_args, value) => [{
         type: 'text',
-        text: formatFollowups(value as SuggestFollowupsResult),
+        text: formatFollowups(value),
       }],
     },
+    // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<T>
     async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('suggest_followups aborted')

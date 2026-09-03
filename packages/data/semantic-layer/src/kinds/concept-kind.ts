@@ -21,9 +21,7 @@ export const conceptKindPlugin: DataSourceKindPlugin<ConceptDefinition> = {
     const parts: string[] = [def.name]
     if (def.description) parts.push(def.description)
     if (def.pref_label) parts.push(def.pref_label)
-    if (def.alt_labels) {
-      for (const s of def.alt_labels) parts.push(s)
-    }
+    for (const s of def.alt_labels) parts.push(s)
     return {
       id: `concept:${def.name}`,
       description: parts.join(' '),
@@ -35,7 +33,7 @@ export const conceptKindPlugin: DataSourceKindPlugin<ConceptDefinition> = {
     lines.push(`Concept: ${def.name}`)
     if (def.description) lines.push(`Description: ${def.description}`)
     if (def.pref_label) lines.push(`Preferred Label: ${def.pref_label}`)
-    if (def.alt_labels && def.alt_labels.length > 0) {
+    if (def.alt_labels.length > 0) {
       lines.push(`Aliases: ${def.alt_labels.join(', ')}`)
     }
     return lines.join('\n')

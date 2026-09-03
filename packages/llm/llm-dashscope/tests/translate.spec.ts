@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { CallId, EMPTY_RESPONSE_CODE } from '@deepseek-ai/dsh-llm'
 import type { StreamChunk } from '@deepseek-ai/dsh-llm'
 import { translate, mapFinishReason, mapUsage } from '../src/translate.ts'
-import type { WireUsage } from '../src/types.ts'
 
 async function* payloadsOf(arr: readonly string[]): AsyncGenerator<string> {
   for (const a of arr) yield a
@@ -77,12 +76,12 @@ describe('translate', () => {
   })
 
   it('subtracts cached_tokens to keep usage DISJOINT', () => {
-    const u = mapUsage({ input_tokens: 100, output_tokens: 5, prompt_tokens_details: { cached_tokens: 30 } } as WireUsage)
+    const u = mapUsage({ input_tokens: 100, output_tokens: 5, prompt_tokens_details: { cached_tokens: 30 } })
     expect(u).toEqual({ inputTokens: 70, outputTokens: 5, cacheReadTokens: 30 })
   })
 
   it('reports reasoning_tokens when present', () => {
-    const u = mapUsage({ input_tokens: 10, output_tokens: 327, output_tokens_details: { reasoning_tokens: 319 } } as WireUsage)
+    const u = mapUsage({ input_tokens: 10, output_tokens: 327, output_tokens_details: { reasoning_tokens: 319 } })
     expect(u).toEqual({ inputTokens: 10, outputTokens: 327, reasoningTokens: 319 })
   })
 

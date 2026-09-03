@@ -11,7 +11,10 @@ function isCjk(char: string): boolean {
 }
 
 function isCjkAlias(alias: string): boolean {
-  return [...alias].some(isCjk)
+  for (const char of alias) {
+    if (isCjk(char)) return true
+  }
+  return false
 }
 
 function aliasMatches(text: string, alias: string): boolean {

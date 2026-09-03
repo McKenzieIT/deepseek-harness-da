@@ -136,7 +136,7 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
       : null
     const contextLayer = scope.get('contextLayer') as { open(node?: string): void } | undefined
     const onNavigateToGraph = contextLayer
-      ? (assetId: string) => contextLayer.open(assetId)
+      ? (assetId: string) =>{  contextLayer.open(assetId) }
       : undefined
 
     const openOrCreateSession = (): void => {

@@ -170,7 +170,7 @@ test('M1 — buildTimeFilterHint: undefined partitions → empty hint', () => {
 
 test('M1 — buildTimeFilterHint: string partition format → works', () => {
   const hint = buildTimeFilterHint(
-    { partitions: ['ds'] as unknown as readonly ({ name: string } | string)[], granularity: '全量' },
+    { partitions: ['ds'], granularity: '全量' },
   )
   expect(hint).toContain('日全量快照表')
 })

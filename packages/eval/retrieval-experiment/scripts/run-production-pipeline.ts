@@ -54,7 +54,7 @@ interface EvalCase {
 const cases: EvalCase[] = readdirSync(casesDir)
   .filter(f => f.endsWith('.yaml'))
   .sort()
-  .map(f => {
+  .map((f) => {
     const raw = parseYaml(readFileSync(join(casesDir, f), 'utf-8')) as Record<string, unknown>
     const input = raw.input as { question: string }
     const dims = raw.dimensions as { covered_assets?: string[] }
@@ -253,7 +253,7 @@ async function main() {
   console.log(`\nSummary: ${eImproved} improved, ${eRegressed} regressed, ${eUnchanged} unchanged`)
 }
 
-main().catch(err => {
+main().catch((err) => {
   restoreToL3()
   console.error(err)
   process.exit(1)

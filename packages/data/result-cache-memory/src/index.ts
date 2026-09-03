@@ -96,6 +96,9 @@ export function apply(ctx: Context): void {
     if (result.isError) return decision
 
     const value = (result as { value?: Record<string, unknown> }).value
+    // value comes from a tool result (model/tool JSON boundary); may be null at
+    // runtime despite the optional-typed cast — keep the null guard.
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (value === null || value === undefined) return decision
     if (value.state !== 'completed') return decision
 

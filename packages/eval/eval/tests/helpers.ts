@@ -9,7 +9,7 @@ import type { CaseSqlExecutor, ExecutionResult, JudgePrompt, JudgeProvider, Judg
 
 /** Build + validate a case from a plain spec (mirrors the prototype's `makeCase`). */
 export function makeCase(spec: Record<string, unknown>): EvalCase {
-  return EvalCaseSchema.parse(spec) as EvalCase
+  return EvalCaseSchema.parse(spec)
 }
 
 /** A `tool/call` event (the agent's query tool call). */
@@ -31,7 +31,10 @@ export function runResult(reply: string, opts: { sql?: string | null; tool?: str
 }
 
 /** A multi-step `RunResult`: multiple `assistant/message` events (four-stage agent). `finalResponse` = the last reply. */
-export function runResultMultiStep(replies: string[], opts: { sql?: string | null; tool?: string; extraToolCalls?: RunResultEvent[] } = {}): RunResultView {
+export function runResultMultiStep(
+  replies: string[],
+  opts: { sql?: string | null; tool?: string; extraToolCalls?: RunResultEvent[] } = {},
+): RunResultView {
   const events: RunResultEvent[] = []
   if (opts.extraToolCalls) events.push(...opts.extraToolCalls)
   if (opts.sql) events.push(toolCall(opts.tool ?? 'query_data', { sql: opts.sql }))
@@ -69,7 +72,7 @@ export class StubHarness {
       return new Promise<RunResultView>(() => {}) // never resolves → Promise.race wall-clock timeout fires
     }
     const out = this._script(message, sessionId)
-    this.runLog.push({ sessionId, message, outcome: typeof out.finalResponse === 'string' ? out.finalResponse.slice(0, 40) : String(out) })
+    this.runLog.push({ sessionId, message, outcome: out.finalResponse.slice(0, 40) })
     return out
   }
 

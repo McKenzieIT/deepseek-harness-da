@@ -449,4 +449,4 @@ if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === realpathS
   main()
 }
 
-export { discover, exactEdits, postconditions, patterns, rewrite, type Rename, type ExactEdit, type PostCondition }
+export { discover, exactEdits, postconditions, patterns, rewrite, type Rename }

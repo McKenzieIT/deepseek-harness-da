@@ -19,7 +19,7 @@ interface MinCase { caseId: string; question: string; coveredAssets: string[] }
 const cases: MinCase[] = readdirSync(casesDir)
   .filter(f => f.endsWith('.yaml'))
   .sort()
-  .map(f => {
+  .map((f) => {
     const raw = parseYaml(readFileSync(join(casesDir, f), 'utf-8')) as Record<string, unknown>
     const input = raw.input as { question: string }
     const dims = raw.dimensions as { covered_assets?: string[] }
@@ -47,7 +47,7 @@ for (const [asset] of [...assetFreq.entries()].sort((a, b) => b[1] - a[1])) {
   }
 }
 
-console.log(`=== Coverage Gap Analysis ===\n`)
+console.log('=== Coverage Gap Analysis ===\n')
 console.log(`Total cases: ${cases.length}`)
 console.log(`Unique covered_assets: ${assetFreq.size}`)
 console.log(`Assets WITH aliases: ${assetsWithAlias.length}`)
@@ -75,7 +75,7 @@ console.log(`Cases where alias resolves to a covered_asset: ${casesHit}/${cases.
 console.log(`Cases with NO alias hit on covered_assets: ${casesMiss}/${cases.length}\n`)
 
 // Top-20 most frequent assets without aliases
-console.log(`=== Top 20 Most Referenced Assets WITHOUT Aliases ===\n`)
+console.log('=== Top 20 Most Referenced Assets WITHOUT Aliases ===\n')
 const topMissing = assetsWithoutAlias
   .map(a => ({ asset: a, freq: assetFreq.get(a) ?? 0 }))
   .sort((a, b) => b.freq - a.freq)
@@ -89,7 +89,7 @@ for (const { asset, freq } of topMissing) {
 }
 
 // Analyze what query terms appear in missed cases
-console.log(`\n=== Query Term → Needed Asset Mapping (for L2/L3 construction) ===\n`)
+console.log('\n=== Query Term → Needed Asset Mapping (for L2/L3 construction) ===\n')
 const termToAssets = new Map<string, Set<string>>()
 for (const c of missedCases.slice(0, 50)) {
   const terms = extractQueryTerms(c.question)

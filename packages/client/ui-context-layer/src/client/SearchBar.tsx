@@ -18,8 +18,8 @@ export function SearchBar({ data, graph, onNodeSelect }: SearchBarProps) {
     const lower = query.toLowerCase()
     return data.nodes
       .filter((node) => {
-        const label = (node.label ?? '').toLowerCase()
-        const id = (node.id ?? '').toLowerCase()
+        const label = node.label.toLowerCase()
+        const id = node.id.toLowerCase()
         return label.includes(lower) || id.includes(lower)
       })
       .slice(0, 8)
@@ -55,7 +55,7 @@ export function SearchBar({ data, graph, onNodeSelect }: SearchBarProps) {
           if (query.trim()) setIsOpen(true)
         }}
         onBlur={() => {
-          setTimeout(() => setIsOpen(false), 150)
+          setTimeout(() =>{  setIsOpen(false) }, 150)
         }}
         onKeyDown={handleKeyDown}
         style={{
@@ -90,7 +90,7 @@ export function SearchBar({ data, graph, onNodeSelect }: SearchBarProps) {
           {matches.map(node => (
             <li
               key={node.id}
-              onClick={() => handleSelect(node.id)}
+              onClick={() =>{  handleSelect(node.id) }}
               style={{
                 padding: '6px 10px',
                 fontSize: 13,

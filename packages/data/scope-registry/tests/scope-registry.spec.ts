@@ -24,7 +24,9 @@ describe('ScopeRegistryService', () => {
     const env = setup()
     tmp = env.tmp
     expect(env.svc.list()).toEqual([])
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.active()).toBeUndefined()
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.activeId()).toBeUndefined()
   })
 
@@ -32,7 +34,9 @@ describe('ScopeRegistryService', () => {
     const env = setup()
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.activeId()).toBe('game-a')
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.active()).toEqual({ id: 'game-a', semanticRoot: '/data/game-a', tenant: 'default' })
     expect(env.svc.list()).toHaveLength(1)
   })
@@ -42,6 +46,7 @@ describe('ScopeRegistryService', () => {
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
     await env.svc.register({ id: 'game-b', semanticRoot: '/data/game-b' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.activeId()).toBe('game-a')
     expect(env.svc.list()).toHaveLength(2)
   })
@@ -51,8 +56,11 @@ describe('ScopeRegistryService', () => {
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
     await env.svc.register({ id: 'game-b', semanticRoot: '/data/game-b' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     await env.svc.setActive('game-b')
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.activeId()).toBe('game-b')
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.active()!.semanticRoot).toBe('/data/game-b')
   })
 
@@ -60,6 +68,7 @@ describe('ScopeRegistryService', () => {
     const env = setup()
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     await expect(env.svc.setActive('nonexistent')).rejects.toThrow('not found')
   })
 
@@ -68,6 +77,7 @@ describe('ScopeRegistryService', () => {
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
     await env.svc.remove('game-a')
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.activeId()).toBeUndefined()
     expect(env.svc.list()).toHaveLength(0)
   })
@@ -76,7 +86,9 @@ describe('ScopeRegistryService', () => {
     const env = setup()
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     await env.svc.clearActive()
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.activeId()).toBeUndefined()
     expect(env.svc.list()).toHaveLength(1)
   })
@@ -95,10 +107,12 @@ describe('ScopeRegistryService', () => {
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
     await env.svc.register({ id: 'game-b', semanticRoot: '/data/game-b' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     await env.svc.setActive('game-b')
 
     const ctx2 = new Context()
     const svc2 = new ScopeRegistryService(ctx2, { registryPath: env.path })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(svc2.activeId()).toBe('game-b')
     expect(svc2.list()).toHaveLength(2)
     expect(svc2.get('game-a')!.semanticRoot).toBe('/data/game-a')
@@ -127,12 +141,14 @@ describe('ScopeRegistryService', () => {
     const ctx = new Context()
     const svc = new ScopeRegistryService(ctx, { registryPath: '' })
     expect(svc.list()).toEqual([])
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(svc.active()).toBeUndefined()
   })
 
   test('inert mode: setActive throws when registryPath is empty', async () => {
     const ctx = new Context()
     const svc = new ScopeRegistryService(ctx, { registryPath: '' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     await expect(svc.setActive('x')).rejects.toThrow('registryPath not configured')
   })
 
@@ -143,6 +159,7 @@ describe('ScopeRegistryService', () => {
     env.ctx.on('scopes/active-changed', (id) => { events.push(id) })
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
     await env.svc.register({ id: 'game-b', semanticRoot: '/data/game-b' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     await env.svc.setActive('game-b')
     expect(events).toContain('game-b')
   })
@@ -295,8 +312,11 @@ describe('ScopeRegistryService', () => {
     const env = setup()
     tmp = env.tmp
     await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a', tenant: 'acme' })
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     await env.svc.setActive('game-a')
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.active()?.tenant).toBe('acme')
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.active()?.id).toBe('game-a')
   })
 })

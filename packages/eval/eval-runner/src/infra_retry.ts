@@ -102,8 +102,8 @@ export async function withInfraRetry<T>(
       }
 
       // Backoff and retry
-      const backoffMs = INFRA_BACKOFF_MS[attempt] ?? INFRA_BACKOFF_MS[INFRA_BACKOFF_MS.length - 1]!
-      await sleep(backoffMs!)
+      const backoffMs = INFRA_BACKOFF_MS[attempt] ?? INFRA_BACKOFF_MS[INFRA_BACKOFF_MS.length - 1] ?? 0
+      await sleep(backoffMs)
     }
   }
 }
@@ -116,7 +116,7 @@ export interface InfraError extends Error {
 
 /** Whether an error is an InfraError (duck-type check). */
 export function isInfraError(err: unknown): err is InfraError {
-  return err instanceof Error && 'isInfraFailure' in err && (err as InfraError).isInfraFailure === true
+  return err instanceof Error && 'isInfraFailure' in err &&  (err as InfraError).isInfraFailure
 }
 
 /** Default sleep implementation. */

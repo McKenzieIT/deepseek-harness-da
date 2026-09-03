@@ -25,6 +25,8 @@ import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
+import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
+import { homedir } from 'node:os'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
@@ -276,6 +278,13 @@ export class HarnessAgentResponder implements AgentResponder {
     // ── 2. LlmRuntime → ctx.llm ────────────────────────────────────────────
     await ctx.plugin(LlmRuntime)
 
+    // ── 2b. Credential seam: LocalCredentialProvider reads ~/.dsh/.credentials.yaml
+    // so llm-dashscope resolves DASHSCOPE_API_KEY via ctx.credentials (not process.env).
+    await ctx.plugin(LocalCredentialProvider, {
+      path: join(homedir(), '.dsh', '.credentials.yaml'),
+      dshHome: join(homedir(), '.dsh'),
+    })
+
     // ── 3. llm-dashscope → registers 'aga' provider on ctx.llm ─────────────
     await ctx.plugin(llmDashscope)
 
@@ -430,7 +439,7 @@ export class HarnessAgentResponder implements AgentResponder {
       )
 
       // Extract results from session events
-      const events = handle.agent.session.events as readonly SessionEvent[]
+      const events = handle.agent.session.events
       const finalText = extractFinalText(events)
       const generatedSql = extractSqlFromEvents(events)
       const declined = detectDecline(variant, finalText, events)
@@ -449,7 +458,7 @@ export class HarnessAgentResponder implements AgentResponder {
     } catch (err) {
       console.error(`[HarnessAgentResponder] case error: ${err instanceof Error ? err.message : String(err)}`)
       // On timeout or error, still try to extract what we can
-      const events = handle.agent.session.events as readonly SessionEvent[]
+      const events = handle.agent.session.events
       const generatedSql = extractSqlFromEvents(events)
       return {
         reply: `Error: ${err instanceof Error ? err.message : String(err)}`,
@@ -466,7 +475,7 @@ export class HarnessAgentResponder implements AgentResponder {
   private async raceTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => reject(new Error(`HarnessAgentResponder: ${message}`)), ms)
+      timer = setTimeout(() =>{  reject(new Error(`HarnessAgentResponder: ${message}`)) }, ms)
     })
     try {
       return await Promise.race([promise, timeoutPromise])

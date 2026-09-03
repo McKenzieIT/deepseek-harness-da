@@ -186,7 +186,7 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
   describe('stripMarkersFromStream', () => {
     /** Helper: build a text-delta StreamChunk. */
     function td(text: string): StreamChunk {
-      return { type: 'text-delta', index: 0, text } as StreamChunk
+      return { type: 'text-delta', index: 0, text }
     }
 
     /** Helper: build an async iterable from an array of StreamChunks. */
@@ -247,8 +247,8 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     })
 
     it('(d) non-text-delta events pass through unmodified', async () => {
-      const usage: StreamChunk = { type: 'usage', usage: { inputTokens: 10, outputTokens: 5 } } as StreamChunk
-      const finish: StreamChunk = { type: 'finish', reason: { kind: 'stop' } } as StreamChunk
+      const usage: StreamChunk = { type: 'usage', usage: { inputTokens: 10, outputTokens: 5 } }
+      const finish: StreamChunk = { type: 'finish', reason: { kind: 'stop' } }
       const result = await collect(stripMarkersFromStream(toStream([
         td('hello'),
         usage,
@@ -838,6 +838,7 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(s.current_phase).toBe(Phase.INTERPRETATION)
     expect(s.execution_auto_advance).toBe(false)
     expect(injected).toHaveLength(1)
+    // oxlint-disable-next-line typescript/no-unsafe-assignment -- expect.stringContaining returns any per vitest types
     expect(injected[0]!.content[0]!).toMatchObject({ type: 'text', text: expect.stringContaining('phase advance') })
   })
 
@@ -880,7 +881,7 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
     const g = gateWithLlm('efforts')
     const result = await g.onRequest(
       { agent, turn: 1, step: 1, signal: new AbortController().signal },
-      async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] } as unknown as GenerateOptions),
+      async () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: [] }),
     )
     expect(result.reasoningEffort).toBe('high')
   })
@@ -890,7 +891,7 @@ describe('onRequest — per-phase reasoning effort (D7) + no-effort skip', () =>
     const g = gateWithLlm('none')
     const result = await g.onRequest(
       { agent, turn: 1, step: 1, signal: new AbortController().signal },
-      async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] } as unknown as GenerateOptions),
+      async () => ({ provider: 'aga', model: 'qwen3.7-max', messages: [] }),
     )
     expect(result.reasoningEffort).toBeUndefined()
   })
@@ -1114,7 +1115,7 @@ describe('P-DA3 — no chitchat pre-filter (dropped: 3 layers = route_gate + bac
     const { agent, injected } = makeAgent('cc1')
     const g = gate()
     const decision = await g.onPreStep(
-      { agent, messages: [{ role: 'user', content: '你好' } as unknown as UserMessage] as unknown as UserMessage[], turn: 1, step: 1, signal: new AbortController().signal },
+      { agent, messages: [{ role: 'user', content: '你好' } as unknown as UserMessage], turn: 1, step: 1, signal: new AbortController().signal },
       () => Promise.resolve({ kind: 'enter', messages: [] }),
     )
     expect(decision.kind).toBe('enter') // no short-circuit — pipeline runs

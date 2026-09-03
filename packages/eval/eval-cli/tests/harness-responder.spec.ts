@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Carry-forward #37 (D3ii completeness) — harness-responder explicit scopeId.
  *

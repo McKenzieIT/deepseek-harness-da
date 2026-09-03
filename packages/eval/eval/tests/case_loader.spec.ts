@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { loadCase, loadCases } from '../src/case_loader.ts'
 
-const fixtures = import.meta.dirname!
+const fixtures = import.meta.dirname
 const s1Yaml = `${fixtures}/fixtures/s1.yaml`
 const s3Json = `${fixtures}/fixtures/s3-scalar.json`
 

@@ -106,6 +106,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         return [{ type: 'text', text: lines.join('\n') }]
       },
     },
+    // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<T>
     async execute(args, exec) {
       const graph = probeGraph(ctx, exec.scopeId)
       if (!graph) {

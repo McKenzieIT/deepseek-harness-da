@@ -67,7 +67,7 @@ console.log(`L3: ${snapL3.stats.aliasCount} aliases, ${snapL3.stats.conceptCount
 
 // ── Verify coverage rates ───────────────────────────────────────────────
 interface MinCase { caseId: string; question: string; coveredAssets: string[] }
-const cases: MinCase[] = casePaths.map(p => {
+const cases: MinCase[] = casePaths.map((p) => {
   const raw = parseYaml(readFileSync(p, 'utf-8')) as Record<string, unknown>
   const input = raw.input as { question: string }
   const dims = raw.dimensions as { covered_assets?: string[] }
@@ -86,7 +86,7 @@ function aliasHitRate(snap: GraphSnapshot, cases: MinCase[]): number {
   return hit / cases.length
 }
 
-console.log(`\nAlias → covered_asset hit rate:`)
+console.log('\nAlias → covered_asset hit rate:')
 console.log(`  L0: ${(aliasHitRate(snapL0, cases) * 100).toFixed(1)}%`)
 console.log(`  L1: ${(aliasHitRate(snapL1, cases) * 100).toFixed(1)}%`)
 console.log(`  L2: ${(aliasHitRate(snapL2, cases) * 100).toFixed(1)}%`)
@@ -99,7 +99,7 @@ const topK = 20
 
 function runLevel(snap: GraphSnapshot, configs: BlendingConfig[]): void {
   for (const blending of configs) {
-    const caseResults = cases.map(c => {
+    const caseResults = cases.map((c) => {
       const candidates = runRetrieval(snap, c.question, topK, blending)
       const retrievedIds = candidates.map(r => r.id)
       const { precisionAtK, recallAtK } = computeRetrievalMetrics(retrievedIds, c.coveredAssets, topK)
@@ -117,7 +117,7 @@ function runLevel(snap: GraphSnapshot, configs: BlendingConfig[]): void {
     switch (blending.mode) {
       case 'strategy-b': label = `strategy-b(boost=${blending.aliasBoost ?? 2.0})`; break
       case 'hard-switch': label = `hard-switch(t=${blending.threshold ?? 0.5})`; break
-      case 'continuous-blend': label = `continuous-blend`; break
+      case 'continuous-blend': label = 'continuous-blend'; break
     }
     console.log(`| ${(snap.level + ' / ' + label).padEnd(39)} | ${agg.meanPrecision.toFixed(3).padStart(8)} | ${agg.meanRecall.toFixed(3).padStart(8)} | ${agg.medianRecall.toFixed(3).padStart(10)} | R:orig=${avgR(original)} alias=${avgR(alias)} |`)
   }

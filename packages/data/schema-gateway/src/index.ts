@@ -220,7 +220,7 @@ export class SchemaGateway extends TypertRemoteService {
       if (domain && !def.domains.includes(domain)) continue
       const node: GraphNode = {
         id: def.table_name,
-        kind: def.kind as 'dws' | 'dim',
+        kind: def.kind,
         label: def.table_name,
         domains: [...def.domains],
       }

@@ -76,7 +76,7 @@ describe('MemoryResultCache (direct)', () => {
     const ctx = new Context()
     const cache = new MemoryResultCache(ctx)
     cache.put('cr_conflict', { columns: ['a'], rows: [[1]] })
-    expect(() => cache.put('cr_conflict', { columns: ['b'], rows: [[2]] })).toThrow(
+    expect(() =>{  cache.put('cr_conflict', { columns: ['b'], rows: [[2]] }) }).toThrow(
       /cannot overwrite result_id "cr_conflict" with a different entry/,
     )
   })

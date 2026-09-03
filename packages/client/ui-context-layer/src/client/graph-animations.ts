@@ -55,7 +55,7 @@ export function fadeIn(
   elementIds: string[],
   duration = DEFAULT_FADE_DURATION,
 ): void {
-  if (!graph || elementIds.length === 0) return
+  if (elementIds.length === 0) return
 
   // Set initial opacity to 0
   const nodeData = graph.getNodeData()
@@ -104,7 +104,7 @@ export function fadeIn(
  * The dashed style persists until explicitly cleared.
  */
 export function dashedHighlight(graph: Graph, edgeIds: string[]): void {
-  if (!graph || edgeIds.length === 0) return
+  if (edgeIds.length === 0) return
 
   const updates = edgeIds.map(id => ({
     id,
@@ -123,7 +123,7 @@ export function dashedHighlight(graph: Graph, edgeIds: string[]): void {
  * Clear dashed highlight from edges (restore normal style).
  */
 export function clearDashedHighlight(graph: Graph, edgeIds: string[]): void {
-  if (!graph || edgeIds.length === 0) return
+  if (edgeIds.length === 0) return
 
   const updates = edgeIds.map(id => ({
     id,
@@ -147,7 +147,7 @@ export function pulseNode(
   nodeIds: string[],
   color = DEGRADATION_COLOR,
 ): () => void {
-  if (!graph || nodeIds.length === 0) return () => {}
+  if (nodeIds.length === 0) return () => {}
 
   let frame = 0
   const totalFrames = Math.ceil(PULSE_DURATION / 50) // ~50ms per frame
@@ -214,7 +214,7 @@ export function pulseNode(
  * Returns a cancel function that stops blinking and restores full opacity.
  */
 export function blinkNodes(graph: Graph, nodeIds: string[]): () => void {
-  if (!graph || nodeIds.length === 0) return () => {}
+  if (nodeIds.length === 0) return () => {}
 
   let visible = true
   const intervalId = setInterval(() => {
@@ -242,9 +242,7 @@ export function blinkNodes(graph: Graph, nodeIds: string[]): () => void {
  * Uses G6 v5's focusElement API with animation.
  */
 export function focusWithZoom(graph: Graph, nodeId: string): void {
-  if (!graph) return
-
-  graph.focusElement(nodeId, {
+  void graph.focusElement(nodeId, {
     duration: FOCUS_ANIMATION_DURATION,
     easing: 'ease-in-out',
   })
@@ -252,7 +250,7 @@ export function focusWithZoom(graph: Graph, nodeId: string): void {
   // Adjust zoom to bring the node into clear view
   const currentZoom = graph.getZoom()
   if (currentZoom < FOCUS_ZOOM_LEVEL) {
-    graph.zoomTo(FOCUS_ZOOM_LEVEL, {
+    void graph.zoomTo(FOCUS_ZOOM_LEVEL, {
       duration: FOCUS_ANIMATION_DURATION,
       easing: 'ease-in-out',
     })
@@ -413,7 +411,7 @@ export function useOverlayMode(graph: Graph | null): OverlayModeState {
     if (!graph) return
 
     const nodeData = graph.getNodeData()
-    if (!nodeData || nodeData.length === 0) return
+    if (nodeData.length === 0) return
 
     const updates = nodeData.map((node) => {
       const data = (node as { data?: Record<string, unknown> }).data ?? {}

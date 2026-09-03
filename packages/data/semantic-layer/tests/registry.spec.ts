@@ -40,7 +40,7 @@ test('registry — register + getKind + allKinds', () => {
 test('registry — duplicate kind throws', () => {
   const reg = new DataSourceRegistry()
   reg.register(eventKindPlugin)
-  expect(() => reg.register(eventKindPlugin)).toThrow('already registered')
+  expect(() =>{  reg.register(eventKindPlugin) }).toThrow('already registered')
 })
 
 // ── eventKindPlugin — G1 aligned ────────────────────────────────────────

@@ -13,11 +13,16 @@ CL15（通用性审计）: `eval-cli/src/context.ts:221,375` 重复中文扩展 
 - GRILL2（`GA-GRILL2-i18n-architecture.md`）已 Grilled→Resolved，产出 GA-I18N-1~5 + GA-I18N-R1 子票，但**未覆盖 CL15**（grep 确认 GRILL2 无 `context.ts`/`粒度`）——CL15 是 GRILL2 griled 时的遗漏。
 - `eval-cli/src/context.ts` 是 **WIP**（上一 session 在改，+22 行未提交）——CL15 的修法（i18n 改造）依赖 GRILL2 i18n 架构决策 + context.ts WIP 定稿。
 
-## What to do (WIP 落地后)
+## What to do (scope 已被 GA-EXP2 重新定义)
 
-1. 等 `context.ts` WIP 定稿（上一 session 的 eval-cli 扩展 prompt 工作）。
-2. 按 GRILL2 i18n 架构（GA-I18N-1~5 子票），把 context.ts 的重复中文扩展 prompt **引用单一源** + localize `[粒度]` marker。
-3. 或并入对应的 GA-I18N-* 子票（如果 context.ts 的扩展 prompt 属于某 I18N 子票范畴）——评估后归并。
+**GA-EXP2 结论（2026-09-02）**：英文 prompt 灾难性退化 -41%，prompt 保留中文。因此：
+
+- ~~localize（英文化）~~ → **不做**（EXP2 证实英文 prompt 不可行）
+- **引用单一源（去重）** → **仍可做**：context.ts:221 的 `EXPANSION_SYSTEM_PROMPT` 是 expand-query.ts 的复制品，应改为 import 单一源
+- **`[粒度]` marker** → 已被 GA-I18N-3 处理（TREND_PATTERN 双语化），`granularityTag` 返回的 `[日粒度]`/`[快照]` 保留中文（EXP2 证实不改）
+- context.ts 的 EXP2 WIP 已落地（`EXP2_ARM` env var + `buildPromptEN` import + expansion prompt 条件切换），作为实验基础设施保留
+
+**剩余行动**：仅 expansion prompt 去重（import from expand-query.ts 而非 copy）。scope 从 "i18n 改造" 缩减为 "去重引用"。
 
 ## Context pointers
 

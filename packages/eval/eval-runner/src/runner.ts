@@ -117,7 +117,7 @@ async function runConcurrent(
   concurrency: number,
   onProgress: ((completed: number, total: number, case_id: string) => void) | null,
 ): Promise<CaseVerdict[]> {
-  const results: CaseVerdict[] = new Array(cases.length)
+  const results: (CaseVerdict | undefined)[] = new Array<CaseVerdict | undefined>(cases.length)
   let completed = 0
   let nextIdx = 0
 
@@ -155,8 +155,8 @@ async function runSingleCase(
     attempts.push(attempt)
   }
 
-  // Best-of-k: if any attempt passed (execution + delivery), case is correct
-  const verdict = bestOfKVerdict(attempts)
+  // pass^k: ALL k attempts must pass (execution + delivery) for the case to be correct
+  const verdict = passKVerdict(attempts)
   const latencyMs = Date.now() - started
 
   return {
@@ -245,12 +245,12 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
       const execResult = await collaborators.executor.execute(agentResponse.generated_sql)
       if (!execResult.success) {
         executionMatch = false
-        queryResult = [{ _error: execResult.error ?? 'execution failed' }] as unknown as unknown[]
+        queryResult = [{ _error: execResult.error ?? 'execution failed' }]
       } else {
-        queryResult = execResult.rows?.slice(0, 5) ?? null
-        const matchMode = evalCase.expected.match_mode ?? undefined
-        const expectedRv = evalCase.expected.result_value as Record<string, unknown>
-        executionMatch = checkResultMatch(execResult.rows ?? [], expectedRv, matchMode)
+        queryResult = execResult.rows.slice(0, 5)
+        const matchMode = evalCase.expected.match_mode
+        const expectedRv = evalCase.expected.result_value
+        executionMatch = checkResultMatch(execResult.rows, expectedRv, matchMode)
       }
 
       // Dual-score: also run sql_judge if available (independent of execution_match)
@@ -283,7 +283,11 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
           judgeResult.dimensions ?? {},
         )
       } else {
-        executionMatch = true
+        // No executor AND no sqlJudge: the generated SQL cannot be verified
+        // against the expected result. An unverifiable execution must NOT count
+        // as matched — otherwise passKVerdict's all-must-pass rule would silently
+        // count it as passed, inflating the recorded pass_rate.
+        executionMatch = false
       }
     } else {
       executionMatch = false
@@ -301,7 +305,10 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
       )
       deliveryMatch = judgeResult.score >= 0.6
     } else {
-      deliveryMatch = String(evalCase.expected.answer) === agentResponse.reply
+      const expectedAnswer = evalCase.expected.answer
+      deliveryMatch = typeof expectedAnswer === 'string'
+        ? expectedAnswer === agentResponse.reply
+        : JSON.stringify(expectedAnswer) === agentResponse.reply
     }
   }
 
@@ -315,7 +322,7 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
 function toSqlJudgeVerdict(score: number, rationale: string, dims: object): SqlJudgeVerdict {
   const dimensions: Record<string, 0 | 1> = {}
   for (const [k, v] of Object.entries(dims)) {
-    dimensions[k] = (typeof v === 'number' && v >= 0.5 ? 1 : 0) as 0 | 1
+    dimensions[k] = (typeof v === 'number' && v >= 0.5 ? 1 : 0)
   }
   return { score, rationale, dimensions }
 }
@@ -356,15 +363,16 @@ function checkResultMatch(actualRows: unknown[], expected: Record<string, unknow
 }
 
 /**
- * Best-of-k verdict: any passing attempt means 'correct'.
- * All infra failures → 'infra_failure'.
- * Otherwise derive from attempt results.
+ * pass^k verdict (anti-flakiness): ALL k attempts must pass for 'correct'.
+ * A case that passes once but fails otherwise is NOT correct — pass^k exists
+ * to surface exactly that flakiness, which best-of-k would hide.
+ * All infra failures → 'infra_failure'; any wrong → 'wrong'; else 'unjudged'.
  */
-function bestOfKVerdict(attempts: AttemptResult[]): RunnerVerdict {
-  const anyCorrect = attempts.some(a =>
+function passKVerdict(attempts: AttemptResult[]): RunnerVerdict {
+  const allCorrect = attempts.every(a =>
     a.infra_error === undefined && a.execution_match !== false && a.delivery_match !== false,
   )
-  if (anyCorrect) return 'correct'
+  if (allCorrect) return 'correct'
 
   const allInfra = attempts.every(a => a.infra_error !== undefined)
   if (allInfra) return 'infra_failure'

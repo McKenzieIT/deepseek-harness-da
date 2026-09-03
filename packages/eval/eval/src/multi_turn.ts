@@ -338,7 +338,7 @@ function raceTimeout<T>(promise: Promise<T>, timeoutMs: number | null, onTimeout
     }, timeoutMs)
     promise.then(
       (v) => { clearTimeout(timer); resolve(v) },
-      (e) => { clearTimeout(timer); reject(e) },
+      (e: unknown) => { clearTimeout(timer); reject(e instanceof Error ? e : new Error(String(e))) },
     )
   })
 }

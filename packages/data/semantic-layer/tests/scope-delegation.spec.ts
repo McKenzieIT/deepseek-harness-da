@@ -96,6 +96,7 @@ describe('SemanticLayerService ctx.scopes delegation (P1 wiring)', () => {
     expect(kCorpus).not.toContain('x63.only_event')
 
     // switch → X63 → X63 corpus only (never K11)
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000334')
     const xCorpus = svc.loadRetrievalCorpusAll().map(c => c.id)
     expect(xCorpus).toContain('x63.only_event')
@@ -111,8 +112,10 @@ describe('SemanticLayerService ctx.scopes delegation (P1 wiring)', () => {
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 
     const v0 = svc.corpusVersion()                  // K11 active
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000334')
     const v1 = svc.corpusVersion()                  // X63 active
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000251')              // switch BACK to K11
     const v2 = svc.corpusVersion()
     expect(v1).not.toBe(v0)

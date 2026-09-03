@@ -519,8 +519,8 @@ export class EvidenceQueryService extends Service {
 
     for (const m of loadMetricDefinitions(root)) {
       const rels: import('@deepseek-ai/dsh-semantic-layer/src/registry.ts').RelationDef[] = []
-      for (const rel of m.relations ?? []) {
-        rels.push({ type: rel.type as 'joins' | 'derived_from' | 'related_to', target: rel.target })
+      for (const rel of m.relations) {
+        rels.push({ type: rel.type, target: rel.target })
       }
       entries.push({ sourceId: m.name, relations: rels })
     }

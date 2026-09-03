@@ -7,7 +7,7 @@
  */
 import { EVAL_CASES, FIXTURE_EVENT_DEF, type EvalCase } from './cases.ts'
 import { Nl2sqlEngine, type EngineDeps } from '../engine.ts'
-import { ReplayLlm, type ScriptedGen } from '../replay-llm.ts'
+import { ReplayLlm } from '../replay-llm.ts'
 import { StandInOdps } from '../stand-in-odps.ts'
 import { scoreMatch } from './scorer.ts'
 import { type EvalResult, type EvalDetail } from './runner.ts'
@@ -47,7 +47,7 @@ export async function runComparisonEval(options: {
     const details: EvalDetail[] = []
     let injected = false
     for (const c of cases) {
-      const llm = new ReplayLlm({ [c.question]: c.llm } as Record<string, ScriptedGen>)
+      const llm = new ReplayLlm({ [c.question]: c.llm })
       const scripted: Record<string, QueryOutcome> = c.odps ? { [c.odps.sub]: c.odps.out } : {}
       const odps = new StandInOdps(scripted)
       const deps: EngineDeps = {

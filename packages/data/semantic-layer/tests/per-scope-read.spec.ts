@@ -153,6 +153,7 @@ describe('GA-GT1 Phase 2 — SemanticLayerService per-request scopeId on read me
     const xRoot = makeScopeDir('10000334', 'x63.only_event', 'x63_only_table'); tmps.push(xRoot)
     await scopes.register({ id: '10000251', semanticRoot: kRoot })
     await scopes.register({ id: '10000334', semanticRoot: xRoot })
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000334') // X63 active — scopeId must override it
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 
@@ -183,6 +184,7 @@ describe('GA-GT1 Phase 2 — SemanticLayerService per-request scopeId on read me
     const xRoot = makeScopeDir('10000334', 'x63.only_event', 'x63_only_table'); tmps.push(xRoot)
     await scopes.register({ id: '10000251', semanticRoot: kRoot })
     await scopes.register({ id: '10000334', semanticRoot: xRoot })
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000334') // X63 active
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 
@@ -204,6 +206,7 @@ describe('GA-GT1 Phase 2 — SemanticLayerService per-request scopeId on read me
     const xRoot = makeScopeDirWithGraph('10000334', 'x63.only_event', 'x63_dws', 'x63_only_dim'); tmps.push(xRoot)
     await scopes.register({ id: '10000251', semanticRoot: kRoot })
     await scopes.register({ id: '10000334', semanticRoot: xRoot })
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000334')
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 
@@ -246,6 +249,7 @@ describe('GA-GT1 Phase 2 — SemanticLayerService per-request scopeId on read me
     const { ctx, scopes } = setup()
     const kRoot = makeScopeDir('10000251', 'k11.only_event', 'k11_only_table'); tmps.push(kRoot)
     await scopes.register({ id: '10000251', semanticRoot: kRoot })
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000251')
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 
@@ -313,6 +317,7 @@ describe('GA-GT1 Phase 2 — SemanticLayerService per-request scopeId on read me
     const xRoot = makeScopeDir('10000334', 'x63.only_event', 'x63_only_table'); tmps.push(xRoot)
     await scopes.register({ id: '10000251', semanticRoot: kRoot })
     await scopes.register({ id: '10000334', semanticRoot: xRoot })
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000334') // X63 active
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 
@@ -327,6 +332,7 @@ describe('GA-GT1 Phase 2 — SemanticLayerService per-request scopeId on read me
     const xRoot = makeScopeDir('10000334', 'x63.only_event', 'x63_only_table'); tmps.push(xRoot)
     await scopes.register({ id: '10000251', semanticRoot: kRoot })
     await scopes.register({ id: '10000334', semanticRoot: xRoot })
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000334') // X63 active — scopeId overrides
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 
@@ -339,6 +345,7 @@ describe('GA-GT1 Phase 2 — SemanticLayerService per-request scopeId on read me
     const { ctx, scopes } = setup()
     const kRoot = makeScopeDir('10000251', 'k11.only_event', 'k11_only_table'); tmps.push(kRoot)
     await scopes.register({ id: '10000251', semanticRoot: kRoot })
+    // oxlint-disable-next-line typescript/no-deprecated -- active-scope API; no replacement until Phase 4 GA-GT1-cleanup
     await scopes.setActive('10000251')
     const svc = new SemanticLayerService(ctx, { semanticRoot: kRoot })
 

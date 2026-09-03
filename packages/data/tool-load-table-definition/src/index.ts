@@ -403,6 +403,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           : (value.message ?? 'No table definition to display.'),
       }],
     },
+    // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<T>
     async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('load_table_definition aborted before loading')

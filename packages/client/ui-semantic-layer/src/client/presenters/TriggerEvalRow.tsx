@@ -73,7 +73,7 @@ export const TriggerEvalRow: FC<TriggerEvalRowProps> = ({ block }) => {
         <span className="sl-trigger-eval-row__pass-rate">{passPct}%</span>
         <span className="sl-trigger-eval-row__detail">
           {s.correct}/{s.total} {'通过'}
-          {s.wrong > 0 && ` · ${s.wrong} ${'失败'}`}
+          {s.wrong > 0 && ` · ${s.wrong} 失败`}
           {s.infra_failure > 0 && ` · ${s.infra_failure} infra`}
         </span>
       </div>

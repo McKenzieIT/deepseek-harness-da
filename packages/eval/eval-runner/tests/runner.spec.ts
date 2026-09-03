@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { mkdtempSync } from 'node:fs'
 
-const fixtureDir = import.meta.dirname!
+const fixtureDir = import.meta.dirname
 const caseA = `${fixtureDir}/fixtures/case-a.yaml`
 const caseB = `${fixtureDir}/fixtures/case-b.yaml`
 const caseC = `${fixtureDir}/fixtures/case-c.yaml`

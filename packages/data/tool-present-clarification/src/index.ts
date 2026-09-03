@@ -134,6 +134,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         text: formatClarification(value as PresentClarificationResult),
       }],
     },
+    // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<T>
     async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('present_clarification aborted')

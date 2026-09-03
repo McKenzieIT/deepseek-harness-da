@@ -16,7 +16,7 @@ function embeddingsFetch(vec: number[]): FetchLike {
     const body = JSON.parse(init?.body ?? '{}') as { input: string[] }
     const data = body.input.map((_, i) => ({ embedding: vec, index: i }))
     return Promise.resolve({ ok: true, status: 200, json: async () => ({ data }) })
-  }) as FetchLike
+  })
 }
 
 test('infinityEmbed: success, result aligned to input order', async () => {

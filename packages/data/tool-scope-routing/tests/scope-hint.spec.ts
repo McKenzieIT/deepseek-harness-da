@@ -235,7 +235,7 @@ describe('GA-GT1 Phase 3d — scope-alias-hint per-session-tenant filter (D5.4)'
 describe('GA-GT1 Phase 3d — backward compatibility without session.tenant (D5.4)', () => {
   it('no agent in the assembly context → lists all scopes (resolveSessionTenant → undefined)', async () => {
     const { ctx } = setupMultiTenant()
-    const awareness = sectionText(await ctx.systemPrompt.assemble({} as unknown as AssembleContext), 'scope-awareness')
+    const awareness = sectionText(await ctx.systemPrompt.assemble({}), 'scope-awareness')
     expect(awareness).toContain('3 data scopes')
   })
 

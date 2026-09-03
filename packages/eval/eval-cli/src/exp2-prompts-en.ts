@@ -34,9 +34,9 @@ export function buildPromptEN(args: BuildPromptArgs): string {
   const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines =
-    candidates && candidates.length > 0
+    candidates.length > 0
       ? candidates
-        .map((c) => `- ${c.id}${granularityTagEN(c.id)}: ${c.payload?.description ?? c.id} (score=${Number(c.score).toFixed(3)})`)
+        .map(c => `- ${c.id}${granularityTagEN(c.id)}: ${c.payload?.description ?? c.id} (score=${c.score.toFixed(3)})`)
         .join('\n')
       : '(no candidates)'
   const joinSection = joinConstraints && joinConstraints.length > 0

@@ -210,18 +210,18 @@ function buildCorpusFromDefs(
   const out: DataSourceDoc[] = []
   for (const t of tables) {
     const item = tableKindPlugin.toCorpusItem(t)
-    if (item) out.push(item as DataSourceDoc)
+    if (item) out.push(item)
     for (const m of extractMetricsFromTable(t)) {
       const mi = projectMetricCorpusItem(m)
-      if (mi) out.push(mi as DataSourceDoc)
+      out.push(mi)
     }
   }
   for (const e of events) {
     const item = eventKindPlugin.toCorpusItem(e)
-    if (item) out.push(item as DataSourceDoc)
+    if (item) out.push(item)
     for (const m of extractMetricsFromEvent(e)) {
       const mi = projectMetricCorpusItem(m)
-      if (mi) out.push(mi as DataSourceDoc)
+      out.push(mi)
     }
   }
   for (const c of concepts) {
@@ -231,7 +231,7 @@ function buildCorpusFromDefs(
       (asConcept as Record<string, unknown>).pref_label = c.pref_label
     }
     const item = conceptKindPlugin.toCorpusItem(asConcept)
-    if (item) out.push(item as DataSourceDoc)
+    if (item) out.push(item)
   }
   return out
 }
@@ -247,7 +247,7 @@ export function snapshotLevel1(semanticRoot: string): GraphSnapshot {
 export function snapshotLevel2(
   semanticRoot: string,
   extraAliases: ReadonlyMap<string, readonly string[]>,
-  extraConcepts?: readonly ConceptDef[] | undefined,
+  extraConcepts?: readonly ConceptDef[]  ,
 ): GraphSnapshot {
   return buildGraphSnapshot(semanticRoot, { extraAliases, extraConcepts }, 'L2')
 }
@@ -255,7 +255,7 @@ export function snapshotLevel2(
 export function snapshotLevel3(
   semanticRoot: string,
   extraAliases: ReadonlyMap<string, readonly string[]>,
-  extraConcepts?: readonly ConceptDef[] | undefined,
+  extraConcepts?: readonly ConceptDef[]  ,
 ): GraphSnapshot {
   return buildGraphSnapshot(semanticRoot, { extraAliases, extraConcepts }, 'L3')
 }

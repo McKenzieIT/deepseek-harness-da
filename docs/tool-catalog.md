@@ -42,6 +42,29 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
 | `@deepseek-ai/dsh-tool-search-data-sources` | `search_data_sources` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | search_data_sources is the UNDERSTANDING-phase entry to BM25 schema-linking: the agent calls it to learn which data sources (DWS tables / event ODS tables) match a natural-language question before writing SQL. The Q1 thin default uses the local Bm25Linker over an empty corpus (callable but unwired until ctx.schema ships) — an empty corpus returns no candidates. P5b swaps to ctx.retrieval when registered, and P6b sources the corpus from ctx.schema.discover; the tool contract is unchanged across both. |
+| `@deepseek-ai/dsh-tool-critique-sql` | `critique_sql_tool` | `ctx.tools` | `tool/call`, `tool/result` | - | critique_sql_tool is the GENERATION-phase SQL critic (folded-regex: table grounding, ds partition, SELECT *, JSON-path fields). It probes ctx.criticCtx and ctx.schema lazily via ctx.get (no provider mount needed for the schema harvest); an empty critic context fail-opens so the tool registers its schema without the phase-gate or semantic layer mounted. |
+| `@deepseek-ai/dsh-tool-discover-relations` | `discover_relations` | `ctx.tools` | `tool/call`, `DWS table dimension_refs enrichment`, `tool/result` | - | discover_relations is the ENRICHMENT-phase AI-native DWS->DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
+| `@deepseek-ai/dsh-tool-edit-definition` | `edit_definition` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `semantic-layer definition patch (Tier-2 audited)`, `tool/result` | - | edit_definition applies a partial patch to a table or event definition (shallow-merge; columns merged by name) and records a Tier-2 audit write, marking the asset unreviewed. Metrics are virtual and cannot be edited directly. The schema harvest mounts inert ctx.schema + ctx.audit providers so the Tier-2 inject resolves. |
+| `@deepseek-ai/dsh-tool-evaluate-sql-quality` | `evaluate_sql_quality` | `ctx.tools` | `tool/call`, `tool/result` | - | evaluate_sql_quality scores a SQL candidate 0-100 from the folded-regex critic findings. It probes ctx.criticCtx lazily; no provider mount needed for the schema harvest (empty critic context fail-opens). |
+| `@deepseek-ai/dsh-tool-get-coverage` | `get_coverage` | `ctx.tools` | `tool/call`, `tool/result` | - | get_coverage reports semantic-layer coverage statistics (assets by kind, confirmation status, per-domain counts). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
+| `@deepseek-ai/dsh-tool-get-definition` | `get_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | get_definition loads a unified data asset definition (table, event, or metric) by name. It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
+| `@deepseek-ai/dsh-tool-list-domains` | `list_domains` | `ctx.tools` | `tool/call`, `tool/result` | - | list_domains enumerates semantic-layer domains with per-kind asset counts (tables, events, metrics). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
+| `@deepseek-ai/dsh-tool-load-event-definition` | `load_event_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | load_event_definition loads a validated event definition (params_fields, metrics, disambiguation, external dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash). |
+| `@deepseek-ai/dsh-tool-load-table-definition` | `load_table_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | load_table_definition loads a validated table definition (columns, partitions, primary key, metrics, dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash). |
+| `@deepseek-ai/dsh-tool-present-clarification` | `present_clarification` | `ctx.tools` | `tool/call`, `awaiting_clarification (phase-gate HALT)`, `tool/result` | - | present_clarification is a pure presentation tool that records one clarifying question for the UI and relies on the phase-gate to HALT the turn. It has no service dependency beyond ctx.tools; the actual HALT is the phase-gate job (not the tool). |
+| `@deepseek-ai/dsh-tool-retrieve` | `retrieve` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | retrieve is the on-demand retrieval escape-hatch for when the prefetched UNDERSTANDING context has a visible gap. It probes ctx.retrieval and ctx.schema lazily; the Q1 thin default is an empty-corpus Bm25Linker (callable but unwired). Ships additive + dormant; a preset must mount it. |
+| `@deepseek-ai/dsh-tool-search-schema` | `search_schema` | `ctx.tools` | `tool/call`, `tool/result ranked asset matches` | - | search_schema is BM25 search over the semantic layer for the management agent (returns asset matches with kind and domain metadata). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
+| `@deepseek-ai/dsh-tool-trigger-eval` | `trigger_eval` | `ctx.tools` | `tool/call`, `eval run + persisted results`, `tool/result` | - | trigger_eval triggers a semantic-layer eval run and reports a before/after delta. It probes ctx.evalRunner and ctx.evidenceQuery lazily; without a mounted runner it reports not_configured (the host composition must wire the collaborators). |
+| `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves <project>.<table>. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves. |
+| `@deepseek-ai/dsh-tool-compute` | `compute` | `ctx.tools`, `ctx.codeRuntime`, `ctx.resultCache` | `tool/call`, `cr_ derived result via ctx.resultCache`, `tool/result` | - | compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute. |
+| `@deepseek-ai/dsh-tool-discover-alt-labels` | `discover_alt_labels` | `ctx.tools` | `tool/call`, `tool/result alt-label candidates` | - | discover_alt_labels mirrors discover_relations: it surfaces alternative labels (aliases) for a table/column to broaden recall. It probes ctx.schema lazily; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
+| `@deepseek-ai/dsh-tool-present-decomposition` | `present_decomposition` | `ctx.tools` | `tool/call`, `tool/result decomposition cards` | - | present_decomposition is a pure presentation tool that renders a query decomposition (breakdown) for the UI. No service dependency beyond ctx.tools. |
+| `@deepseek-ai/dsh-tool-present-table` | `present_table` | `ctx.tools` | `tool/call`, `tool/result rendered table/chart` | - | present_table renders a table or chart result (line/bar) for the UI. No service dependency beyond ctx.tools; chart.type is fail-loud-validated at the tool-args boundary. |
+| `@deepseek-ai/dsh-tool-reachability-delta` | `reachability_delta` | `ctx.tools` | `tool/call`, `tool/result reachability delta` | - | reachability_delta reports the join-reachability difference between two assets. It probes ctx.schema lazily; the schema harvest needs no schema provider. |
+| `@deepseek-ai/dsh-tool-resolve-term` | `resolve_term` | `ctx.tools` | `tool/call`, `tool/result resolved asset` | - | resolve_term maps a natural-language term to a data asset (table/event/metric). It probes ctx.schema lazily; the schema harvest needs no schema provider. |
+| `@deepseek-ai/dsh-tool-revert-edit` | `revert_edit` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `Tier-2 audit revert event`, `tool/result` | - | revert_edit reverts a semantic-layer edit (concept/table/event) and records the revert via ctx.audit (Tier-2). The schema harvest mounts inert schema + audit providers so the inject resolves; execute reads them lazily. |
+| `@deepseek-ai/dsh-tool-scope-routing` | `list_scopes`, `switch_scope` | `ctx.tools`, `ctx.systemPrompt` | `tool/call`, `active-scope switch`, `tool/result` | - | scope_routing is the per-scope routing surface: list_scopes + switch_scope + an alias-hint system-prompt contribution. systemPrompt is mounted by the harvest base; the tool reads the active scope lazily. |
+| `@deepseek-ai/dsh-tool-suggest-followups` | `suggest_followups` | `ctx.tools` | `tool/call`, `tool/result follow-up chips` | - | suggest_followups surfaces follow-up question chips after a result. No service dependency beyond ctx.tools. |
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -2239,7 +2262,7 @@ Find the data sources (DWS tables / event ODS tables) relevant to a natural-lang
     },
     "top_k": {
       "type": "number",
-      "description": "Maximum number of candidate data sources to return. Defaults to 5."
+      "description": "Maximum number of candidate data sources to return. Defaults to 20."
     }
   },
   "required": [
@@ -2251,3 +2274,850 @@ Find the data sources (DWS tables / event ODS tables) relevant to a natural-lang
 Source: [`packages/data/tool-search-data-sources/src/index.ts`](../packages/data/tool-search-data-sources/src/index.ts)
 
 search_data_sources is the UNDERSTANDING-phase entry to BM25 schema-linking: the agent calls it to learn which data sources (DWS tables / event ODS tables) match a natural-language question before writing SQL. The Q1 thin default uses the local Bm25Linker over an empty corpus (callable but unwired until ctx.schema ships) — an empty corpus returns no candidates. P5b swaps to ctx.retrieval when registered, and P6b sources the corpus from ctx.schema.discover; the tool contract is unchanged across both.
+
+<a id="deepseek-aidsh-tool-critique-sql"></a>
+
+## `@deepseek-ai/dsh-tool-critique-sql`
+
+### `critique_sql_tool`
+
+Critique a SQL candidate with the folded-regex SQL critic (table ∈ candidates, ds partition required, no SELECT *, GET_JSON_OBJECT field ∈ event_params). Call this in GENERATION before query_data — the turn-stopping gate requires confidence ≥ 0.6 to advance to EXECUTION. After a TABLE_NOT_FOUND or execution error, correct the SQL and RE-call critique_sql_tool (re-critique) before re-calling query_data — the gate's F2 same-source check requires the query_data SQL to match the critiqued SQL. Returns confidence, findings, and the normalized SQL.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sql": {
+      "type": "string",
+      "description": "The SQL to critique (raw SQL or a ```sql fenced block)."
+    },
+    "question": {
+      "type": "string",
+      "description": "The natural-language question the SQL answers (context for the critic)."
+    }
+  },
+  "required": [
+    "sql"
+  ]
+}
+```
+
+Source: [`packages/data/tool-critique-sql/src/index.ts`](../packages/data/tool-critique-sql/src/index.ts)
+
+critique_sql_tool is the GENERATION-phase SQL critic (folded-regex: table grounding, ds partition, SELECT *, JSON-path fields). It probes ctx.criticCtx and ctx.schema lazily via ctx.get (no provider mount needed for the schema harvest); an empty critic context fail-opens so the tool registers its schema without the phase-gate or semantic layer mounted.
+
+<a id="deepseek-aidsh-tool-discover-relations"></a>
+
+## `@deepseek-ai/dsh-tool-discover-relations`
+
+### `discover_relations`
+
+Discover DWS→DIM dimension join relations over the semantic layer (G3 AI-native enrichment: deterministic primary-key-name round + an optional LLM semantic round). Writes the discovered dimension_refs back into each DWS table. Call this in the ENRICHMENT phase to seed or refresh a scope's relation graph. Optionally limit to a `tables` set; omit it to enrich all DWS tables in the active scope.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "tables": {
+      "type": "array",
+      "description": "Optional list of table_name values to limit enrichment to. Omit to enrich all DWS tables in the active scope.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+Source: [`packages/data/tool-discover-relations/src/index.ts`](../packages/data/tool-discover-relations/src/index.ts)
+
+discover_relations is the ENRICHMENT-phase AI-native DWS->DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).
+
+<a id="deepseek-aidsh-tool-edit-definition"></a>
+
+## `@deepseek-ai/dsh-tool-edit-definition`
+
+### `edit_definition`
+
+Edit a data asset definition (table, event, or concept) by applying a partial patch. The patch is shallow-merged at top level; for `columns` and `dimension_refs`, merges by identity field (name / dim_table). `domains` and `alt_labels` are unioned with dedup. All edits to tables/events are marked "unreviewed" and audited. Metrics are virtual and cannot be edited directly — edit the host asset instead.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "asset_name": {
+      "type": "string",
+      "description": "The asset to edit (table_name or event name)."
+    },
+    "patch": {
+      "type": "object",
+      "description": "Partial definition fields to merge. Supports: description, columns (array merged by name), dimension_refs (array merged by dim_table), domains (unioned with dedup), granularity, metrics, etc.",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "asset_name",
+    "patch"
+  ]
+}
+```
+
+Source: [`packages/data/tool-edit-definition/src/index.ts`](../packages/data/tool-edit-definition/src/index.ts)
+
+edit_definition applies a partial patch to a table or event definition (shallow-merge; columns merged by name) and records a Tier-2 audit write, marking the asset unreviewed. Metrics are virtual and cannot be edited directly. The schema harvest mounts inert ctx.schema + ctx.audit providers so the Tier-2 inject resolves.
+
+<a id="deepseek-aidsh-tool-evaluate-sql-quality"></a>
+
+## `@deepseek-ai/dsh-tool-evaluate-sql-quality`
+
+### `evaluate_sql_quality`
+
+Score a SQL candidate's quality (0–100) from the folded-regex critic findings (table grounding, ds partition, SELECT *, JSON-path fields). Call this in GENERATION alongside critique_sql_tool before query_data — the turn-stopping gate requires score ≥ 60 to advance to EXECUTION. Returns the quality score.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sql": {
+      "type": "string",
+      "description": "The SQL to score (raw SQL or a ```sql fenced block)."
+    }
+  },
+  "required": [
+    "sql"
+  ]
+}
+```
+
+Source: [`packages/data/tool-evaluate-sql-quality/src/index.ts`](../packages/data/tool-evaluate-sql-quality/src/index.ts)
+
+evaluate_sql_quality scores a SQL candidate 0-100 from the folded-regex critic findings. It probes ctx.criticCtx lazily; no provider mount needed for the schema harvest (empty critic context fail-opens).
+
+<a id="deepseek-aidsh-tool-get-coverage"></a>
+
+## `@deepseek-ai/dsh-tool-get-coverage`
+
+### `get_coverage`
+
+Get semantic layer coverage statistics: total assets by kind (tables, events, metrics), confirmation status breakdown (confirmed vs draft), and per-domain asset counts. Optionally filter by a specific domain (concept). Use this to assess the overall health and completeness of the semantic layer.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "Optional domain name to scope statistics to (only assets belonging to this domain are counted)."
+    }
+  }
+}
+```
+
+Source: [`packages/data/tool-get-coverage/src/index.ts`](../packages/data/tool-get-coverage/src/index.ts)
+
+get_coverage reports semantic-layer coverage statistics (assets by kind, confirmation status, per-domain counts). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
+
+<a id="deepseek-aidsh-tool-get-definition"></a>
+
+## `@deepseek-ai/dsh-tool-get-definition`
+
+### `get_definition`
+
+Load the full definition of a data asset (table, event, metric, or concept) by name. Returns the complete definition including fields, relations, domains, metrics, and confirmation status. Use after search_schema identifies an asset to inspect.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The asset name (table_name, event name, or metric name) to look up."
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
+```
+
+Source: [`packages/data/tool-get-definition/src/index.ts`](../packages/data/tool-get-definition/src/index.ts)
+
+get_definition loads a unified data asset definition (table, event, or metric) by name. It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
+
+<a id="deepseek-aidsh-tool-list-domains"></a>
+
+## `@deepseek-ai/dsh-tool-list-domains`
+
+### `list_domains`
+
+List all domains (concepts) in the semantic layer with descriptions, aliases, and asset counts per kind (tables, events, metrics). Use this to understand the domain structure and identify areas to focus on.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/data/tool-list-domains/src/index.ts`](../packages/data/tool-list-domains/src/index.ts)
+
+list_domains enumerates semantic-layer domains with per-kind asset counts (tables, events, metrics). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
+
+<a id="deepseek-aidsh-tool-load-event-definition"></a>
+
+## `@deepseek-ai/dsh-tool-load-event-definition`
+
+### `load_event_definition`
+
+Load a validated instrumented event definition (params_fields, metrics, disambiguation, external dimension references) from the semantic layer. Call this in the UNDERSTANDING/GENERATION phase to ground SQL in the real event schema before writing or critiquing a query over an event ODS table. Returns the projected event definition when found, or a not-found / not-mounted message.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "event_name": {
+      "type": "string",
+      "description": "The event name (its `name` key in the semantic layer) to load."
+    }
+  },
+  "required": [
+    "event_name"
+  ]
+}
+```
+
+Source: [`packages/data/tool-load-event-definition/src/index.ts`](../packages/data/tool-load-event-definition/src/index.ts)
+
+load_event_definition loads a validated event definition (params_fields, metrics, disambiguation, external dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash).
+
+<a id="deepseek-aidsh-tool-load-table-definition"></a>
+
+## `@deepseek-ai/dsh-tool-load-table-definition`
+
+### `load_table_definition`
+
+Load a validated table definition (columns, partitions, primary key, metrics, dimension references) from the semantic layer. Call this in the UNDERSTANDING/GENERATION phase to ground SQL in the real schema before writing or critiquing a query. Returns the projected table definition when found, or a not-found / not-mounted message.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "table_name": {
+      "type": "string",
+      "description": "The table name (its `table_name` key in the semantic layer) to load."
+    }
+  },
+  "required": [
+    "table_name"
+  ]
+}
+```
+
+Source: [`packages/data/tool-load-table-definition/src/index.ts`](../packages/data/tool-load-table-definition/src/index.ts)
+
+load_table_definition loads a validated table definition (columns, partitions, primary key, metrics, dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash).
+
+<a id="deepseek-aidsh-tool-present-clarification"></a>
+
+## `@deepseek-ai/dsh-tool-present-clarification`
+
+### `present_clarification`
+
+Present a clarifying question to the user and HALT the turn awaiting their answer. Use when a real ambiguity or missing knowledge (e.g. which engine project a table lives in) blocks progress. Emit exactly one specific question; the gate HALTs on this call (any phase).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "One specific clarifying question for the user."
+    },
+    "options": {
+      "type": "array",
+      "description": "Optional multiple-choice options.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "question"
+  ]
+}
+```
+
+Source: [`packages/data/tool-present-clarification/src/index.ts`](../packages/data/tool-present-clarification/src/index.ts)
+
+present_clarification is a pure presentation tool that records one clarifying question for the UI and relies on the phase-gate to HALT the turn. It has no service dependency beyond ctx.tools; the actual HALT is the phase-gate job (not the tool).
+
+<a id="deepseek-aidsh-tool-retrieve"></a>
+
+## `@deepseek-ai/dsh-tool-retrieve`
+
+### `retrieve`
+
+Retrieve relevant data-source context on demand — the escape-hatch for when the prefetched UNDERSTANDING context has a visible gap (an ambiguous question, or a business synonym the prefetch did not bridge). Prefer the context already surfaced by search_data_sources; call this only when the gap is obvious, with a refined query. Returns ranked candidate data sources with id, score, and description.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "The natural-language query to retrieve data-source context for. Refine the prefetch query when it missed (a synonym, a more specific phrasing)."
+    },
+    "top_k": {
+      "type": "number",
+      "description": "Maximum number of candidate data sources to return. Defaults to 20."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/data/tool-retrieve/src/index.ts`](../packages/data/tool-retrieve/src/index.ts)
+
+retrieve is the on-demand retrieval escape-hatch for when the prefetched UNDERSTANDING context has a visible gap. It probes ctx.retrieval and ctx.schema lazily; the Q1 thin default is an empty-corpus Bm25Linker (callable but unwired). Ships additive + dormant; a preset must mount it.
+
+<a id="deepseek-aidsh-tool-search-schema"></a>
+
+## `@deepseek-ai/dsh-tool-search-schema`
+
+### `search_schema`
+
+Search the semantic layer for data assets (tables, events, metrics) matching a natural-language query. Returns ranked results with kind and domain metadata. Use this to discover what assets exist before inspecting them with get_definition.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Natural-language search query describing the assets to find."
+    },
+    "top_k": {
+      "type": "number",
+      "description": "Maximum number of results to return. Defaults to 20."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/data/tool-search-schema/src/index.ts`](../packages/data/tool-search-schema/src/index.ts)
+
+search_schema is BM25 search over the semantic layer for the management agent (returns asset matches with kind and domain metadata). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
+
+<a id="deepseek-aidsh-tool-trigger-eval"></a>
+
+## `@deepseek-ai/dsh-tool-trigger-eval`
+
+### `trigger_eval`
+
+Trigger a semantic layer eval run to measure data agent quality. Runs the full case set, reports pass rate, and compares against the previous run (before/after delta showing which cases improved or regressed). Use after making changes to assess impact.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "skip_health_gate": {
+      "type": "boolean",
+      "description": "Skip the pre-flight health check (use when debugging connectivity issues)"
+    }
+  }
+}
+```
+
+Source: [`packages/data/tool-trigger-eval/src/index.ts`](../packages/data/tool-trigger-eval/src/index.ts)
+
+trigger_eval triggers a semantic-layer eval run and reports a before/after delta. It probes ctx.evalRunner and ctx.evidenceQuery lazily; without a mounted runner it reports not_configured (the host composition must wire the collaborators).
+
+<a id="deepseek-aidsh-tool-update-table-config"></a>
+
+## `@deepseek-ai/dsh-tool-update-table-config`
+
+### `update_table_config`
+
+Write a per-table engine project override to the table definition (self-evolution: after asking the user which engine project a table lives in, persist it so future qualifyTable retries resolve <project>.<table> and the engine finds the table). Admin-only. Returns { ok, qualified_name } on success, or { ok: false, error } when the caller is not admin, the name is invalid, or the table is not on disk.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "table_name": {
+      "type": "string",
+      "description": "The table name (its `table_name` key in the semantic layer) to override."
+    },
+    "project": {
+      "type": "string",
+      "description": "The engine project the table lives in (written as the per-table `project` override)."
+    }
+  },
+  "required": [
+    "table_name",
+    "project"
+  ]
+}
+```
+
+Source: [`packages/data/tool-update-table-config/src/index.ts`](../packages/data/tool-update-table-config/src/index.ts)
+
+update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves <project>.<table>. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves.
+
+<a id="deepseek-aidsh-tool-compute"></a>
+
+## `@deepseek-ai/dsh-tool-compute`
+
+### `compute`
+
+Execute Python/pandas code against a query result to derive new data. The code runs as an async function body with pandas and numpy available. Access source data via `await data.load_result({"result_id": "qr_..."})` which returns {"columns": [...], "rows": [...]}. The code must return an object with the same shape: {"columns": [...], "rows": [...]}. Use in the INTERPRETATION phase for calculations the SQL query did not cover (ratios, running totals, pivots, statistical tests, etc.).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "result_id": {
+      "type": "string",
+      "description": "The result_id of the source data to compute against (from query_data execution)."
+    },
+    "code": {
+      "type": "string",
+      "description": "Python code to execute. Has pandas (pd) and numpy (np) available. Load data with `await data.load_result({\"result_id\": \"...\"})`. Must return {\"columns\": [...], \"rows\": [...]}."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this computation produces."
+    }
+  },
+  "required": [
+    "result_id",
+    "code",
+    "description"
+  ]
+}
+```
+
+Source: [`packages/data/tool-compute/src/index.ts`](../packages/data/tool-compute/src/index.ts)
+
+compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute.
+
+<a id="deepseek-aidsh-tool-discover-alt-labels"></a>
+
+## `@deepseek-ai/dsh-tool-discover-alt-labels`
+
+### `discover_alt_labels`
+
+Discover alternative search labels (alt_labels / SKOS aliases) for semantic layer definitions (CL-1 AI-native enrichment: deterministic extraction from description/columns/domains + optional LLM semantic round). Writes discovered labels back into each definition. Call this to improve search recall by adding synonyms, abbreviations, and Chinese/English variants. Optionally limit to `tables` and/or `events` sets; omit both to enrich all definitions.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "tables": {
+      "type": "array",
+      "description": "Optional list of table_name values to limit enrichment to.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "Optional list of event name values to limit enrichment to.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+Source: [`packages/data/tool-discover-alt-labels/src/index.ts`](../packages/data/tool-discover-alt-labels/src/index.ts)
+
+discover_alt_labels mirrors discover_relations: it surfaces alternative labels (aliases) for a table/column to broaden recall. It probes ctx.schema lazily; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).
+
+<a id="deepseek-aidsh-tool-present-decomposition"></a>
+
+## `@deepseek-ai/dsh-tool-present-decomposition`
+
+### `present_decomposition`
+
+Present a structured query decomposition to the user: the interpreted summary, metrics, dimensions, and time range extracted from the original question. Use in the INTERPRETATION phase to show the user how their natural-language question was understood before execution.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "A natural-language summary of the interpreted query intent."
+    },
+    "metrics": {
+      "type": "array",
+      "description": "The metrics (measures) identified in the query.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Metric name."
+          },
+          "value": {
+            "type": "string",
+            "description": "Metric expression or description."
+          },
+          "unit": {
+            "type": "string",
+            "description": "Optional unit of measurement."
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ]
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "description": "The dimensions (group-by axes) identified in the query.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "time_range": {
+      "type": "string",
+      "description": "The time range the query covers (e.g. \"last 7 days\", \"2024-01 to 2024-03\")."
+    },
+    "source": {
+      "type": "string",
+      "description": "The primary data source or table used."
+    },
+    "filters": {
+      "type": "array",
+      "description": "Filter conditions applied to the query.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Confidence score between 0 and 1 for the interpretation."
+    }
+  },
+  "required": [
+    "summary",
+    "metrics",
+    "dimensions",
+    "time_range"
+  ]
+}
+```
+
+Source: [`packages/data/tool-present-decomposition/src/index.ts`](../packages/data/tool-present-decomposition/src/index.ts)
+
+present_decomposition is a pure presentation tool that renders a query decomposition (breakdown) for the UI. No service dependency beyond ctx.tools.
+
+<a id="deepseek-aidsh-tool-present-table"></a>
+
+## `@deepseek-ai/dsh-tool-present-table`
+
+### `present_table`
+
+Present a query result table to the user with display metadata: title, column layout, sort order, KPI aggregations, and optional chart config. Use in the INTERPRETATION phase to instruct the UI how to render the executed query result.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "result_id": {
+      "type": "string",
+      "description": "The ID of the query result to present (from query_data execution)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for the table display."
+    },
+    "columns": {
+      "type": "array",
+      "description": "Column names for display (overrides raw result headers).",
+      "items": {
+        "type": "string"
+      }
+    },
+    "column_types": {
+      "type": "array",
+      "description": "Semantic type per column (e.g. \"number\", \"date\", \"string\").",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sort_column": {
+      "type": "number",
+      "description": "Index of the column to sort by (-1 for no sort)."
+    },
+    "kpi_columns": {
+      "type": "array",
+      "description": "Columns to display as KPI summary cards above the table.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "type": "number",
+            "description": "Column index."
+          },
+          "aggregation": {
+            "type": "string",
+            "description": "Aggregation function (sum, avg, max, min, count)."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label for the KPI."
+          },
+          "format": {
+            "type": "string",
+            "description": "Optional format string (e.g. \",.2f\", \"%\")."
+          }
+        },
+        "required": [
+          "column",
+          "aggregation",
+          "label"
+        ]
+      }
+    },
+    "chart": {
+      "type": "object",
+      "description": "Optional chart visualization config.",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Chart type.",
+          "enum": [
+            "line",
+            "bar"
+          ]
+        },
+        "x_column": {
+          "type": "number",
+          "description": "Column index for the x-axis."
+        },
+        "y_columns": {
+          "type": "array",
+          "description": "Column indices for y-axis series.",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "x_column",
+        "y_columns"
+      ]
+    }
+  },
+  "required": [
+    "result_id",
+    "title"
+  ]
+}
+```
+
+Source: [`packages/data/tool-present-table/src/index.ts`](../packages/data/tool-present-table/src/index.ts)
+
+present_table renders a table or chart result (line/bar) for the UI. No service dependency beyond ctx.tools; chart.type is fail-loud-validated at the tool-args boundary.
+
+<a id="deepseek-aidsh-tool-reachability-delta"></a>
+
+## `@deepseek-ai/dsh-tool-reachability-delta`
+
+### `reachability_delta`
+
+Compute reachability delta: if a proposed relation is added, which asset pairs become newly reachable via joins? Use to assess the impact of adding a new relation to the knowledge graph.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "description": "Source asset ID for the proposed relation"
+    },
+    "target_id": {
+      "type": "string",
+      "description": "Target asset ID for the proposed relation"
+    },
+    "type": {
+      "type": "string",
+      "description": "Relation type (joins | derived_from | related_to)"
+    },
+    "on": {
+      "type": "string",
+      "description": "Join condition expression (for joins type)"
+    }
+  },
+  "required": [
+    "source_id",
+    "target_id",
+    "type"
+  ]
+}
+```
+
+Source: [`packages/data/tool-reachability-delta/src/index.ts`](../packages/data/tool-reachability-delta/src/index.ts)
+
+reachability_delta reports the join-reachability difference between two assets. It probes ctx.schema lazily; the schema harvest needs no schema provider.
+
+<a id="deepseek-aidsh-tool-resolve-term"></a>
+
+## `@deepseek-ai/dsh-tool-resolve-term`
+
+### `resolve_term`
+
+将业务术语精确解析为数据资产（匹配 alt_labels/pref_label），返回命中节点及图上下文。用于消歧：当你不确定一个业务概念对应哪些表/事件/指标时调用此工具。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "term": {
+      "type": "string",
+      "description": "要解析的业务术语（如 \"DAU\"、\"付费用户\"、\"活跃\"）"
+    }
+  },
+  "required": [
+    "term"
+  ]
+}
+```
+
+Source: [`packages/data/tool-resolve-term/src/index.ts`](../packages/data/tool-resolve-term/src/index.ts)
+
+resolve_term maps a natural-language term to a data asset (table/event/metric). It probes ctx.schema lazily; the schema harvest needs no schema provider.
+
+<a id="deepseek-aidsh-tool-revert-edit"></a>
+
+## `@deepseek-ai/dsh-tool-revert-edit`
+
+### `revert_edit`
+
+Roll back a data asset definition (table or event) to a prior snapshot. Each edit_definition call records a before-snapshot with an incrementing version number per asset. Use this tool to undo edits by reverting to a specific version. The current state is also snapshotted before reverting (so the revert itself can be undone).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "asset_name": {
+      "type": "string",
+      "description": "The asset to revert (table_name or event name)."
+    },
+    "to_version": {
+      "type": "integer",
+      "description": "The snapshot version to restore (must be >= 1). Use list mode (omit to_version and set list_versions=true) to see available versions, or specify a version number to revert to that snapshot."
+    },
+    "list_versions": {
+      "type": "boolean",
+      "description": "If true, list available snapshot versions for the asset instead of reverting. Returns version metadata without modifying anything."
+    }
+  },
+  "required": [
+    "asset_name"
+  ]
+}
+```
+
+Source: [`packages/data/tool-revert-edit/src/index.ts`](../packages/data/tool-revert-edit/src/index.ts)
+
+revert_edit reverts a semantic-layer edit (concept/table/event) and records the revert via ctx.audit (Tier-2). The schema harvest mounts inert schema + audit providers so the inject resolves; execute reads them lazily.
+
+<a id="deepseek-aidsh-tool-scope-routing"></a>
+
+## `@deepseek-ai/dsh-tool-scope-routing`
+
+### `list_scopes`
+
+List all available data scopes (games/products) with their descriptions. Use this to see what scopes you can switch to. Each scope has its own semantic layer, event definitions, and query conventions.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/data/tool-scope-routing/src/index.ts`](../packages/data/tool-scope-routing/src/index.ts)
+
+### `switch_scope`
+
+Switch the active data scope to a different game/product. After switching, all subsequent data operations (search, load definitions, generate SQL, execute queries) will use the new scope's semantic layer and conventions. Use list_scopes first if unsure which scope to switch to.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scope_id": {
+      "type": "string",
+      "description": "The scope id to switch to (from list_scopes)."
+    }
+  },
+  "required": [
+    "scope_id"
+  ]
+}
+```
+
+Source: [`packages/data/tool-scope-routing/src/index.ts`](../packages/data/tool-scope-routing/src/index.ts)
+
+scope_routing is the per-scope routing surface: list_scopes + switch_scope + an alias-hint system-prompt contribution. systemPrompt is mounted by the harvest base; the tool reads the active scope lazily.
+
+<a id="deepseek-aidsh-tool-suggest-followups"></a>
+
+## `@deepseek-ai/dsh-tool-suggest-followups`
+
+### `suggest_followups`
+
+Suggest follow-up questions the user might ask next, based on the current query results. Use in the INTERPRETATION phase to offer actionable next steps (drill-downs, comparisons, time shifts). Provide 1-5 suggestions, each with a full query value and a label of at most ≤ ~20 characters / ≤ 4 words that never repeats the value — the UI renders the label on the first line and the full value underneath, so the label is a short tag, not a preview.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "suggestions": {
+      "type": "array",
+      "description": "Array of 1-5 follow-up suggestions, each with a label and value.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Short tag for the row (≤ ~20 characters / ≤ 4 words). Never repeat the value — the UI shows the full value under the label."
+          },
+          "value": {
+            "type": "string",
+            "description": "The full follow-up question/query to execute if the user selects this."
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "suggestions"
+  ]
+}
+```
+
+Source: [`packages/data/tool-suggest-followups/src/index.ts`](../packages/data/tool-suggest-followups/src/index.ts)
+
+suggest_followups surfaces follow-up question chips after a result. No service dependency beyond ctx.tools.

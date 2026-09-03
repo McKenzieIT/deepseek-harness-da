@@ -21,21 +21,17 @@ export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
   toCorpusItem(def): CorpusItem {
     const parts: string[] = []
     if (def.description) parts.push(def.description)
-    if (def.params_fields) {
-      for (const [fname, fdef] of Object.entries(def.params_fields)) {
-        if (!isPlainObject(fdef)) continue
-        parts.push(fname)
-        const d = (fdef as { description?: unknown }).description
-        if (typeof d === 'string' && d) parts.push(d)
-      }
+    for (const [fname, fdef] of Object.entries(def.params_fields)) {
+      if (!isPlainObject(fdef)) continue
+      parts.push(fname)
+      const d = (fdef as { description?: unknown }).description
+      if (typeof d === 'string' && d) parts.push(d)
     }
-    if (def.alt_labels) {
-      for (const s of def.alt_labels) parts.push(s)
-    }
+    for (const s of def.alt_labels) parts.push(s)
     return {
       id: def.name,
       ...(parts.length > 0 ? { description: parts.join(' ') } : {}),
-      ...(def.metrics && Object.keys(def.metrics).length > 0 ? { metrics: def.metrics } : {}),
+      ...(Object.keys(def.metrics).length > 0 ? { metrics: def.metrics } : {}),
       payload: def,
     }
   },
@@ -46,7 +42,7 @@ export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
     if (def.description) lines.push(`Description: ${def.description}`)
     if (def.event_filter) lines.push(`Filter: ${def.event_filter}`)
     if (def.domains.length > 0) lines.push(`Domains: ${def.domains.join(', ')}`)
-    if (def.params_fields && Object.keys(def.params_fields).length > 0) {
+    if (Object.keys(def.params_fields).length > 0) {
       lines.push('')
       lines.push('Parameters:')
       lines.push('| Field | Type | Description |')
@@ -60,12 +56,12 @@ export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
 
   toCriticContext(def): CriticFields {
     return {
-      eventParams: def.params_fields ?? {},
+      eventParams: def.params_fields,
     }
   },
 
   relations(def): RelationDef[] {
-    if (!def.external_refs || def.external_refs.length === 0) return []
+    if (def.external_refs.length === 0) return []
     return def.external_refs.map(ref => ({
       type: 'joins' as const,
       target: ref.dim_table,

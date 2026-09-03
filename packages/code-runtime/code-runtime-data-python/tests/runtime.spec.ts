@@ -272,7 +272,7 @@ describe('DataPythonCodeRuntime — abort', () => {
   it('aborts on signal', async () => {
     const { runtime } = await setup()
     const controller = new AbortController()
-    setTimeout(() => controller.abort('user cancelled'), 500)
+    setTimeout(() =>{  controller.abort('user cancelled') }, 500)
     const result = await runtime.run({
       program: `
 import time

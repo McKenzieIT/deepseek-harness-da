@@ -205,6 +205,7 @@ export function renderDocument(text: string | undefined, ref: CredentialRef, val
 
 /** File-backed credentials provider (`$DSH_HOME/.credentials.yaml`). */
 export class LocalCredentialProvider extends CredentialProvider {
+  static override name = 'credentials'
   /* jscpd:ignore-start -- deliberate config-surface and lifecycle symmetry with
      settings-file (prefer symmetry for parallel values); extracting the shared
      shape would couple the two providers' teardown semantics across packages. */

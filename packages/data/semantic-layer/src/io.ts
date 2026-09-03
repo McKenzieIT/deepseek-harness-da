@@ -328,7 +328,7 @@ function eventCorpusInput(e: RawEvent): EventCorpusInput {
     ...(typeof raw.description === 'string' ? { description: raw.description } : {}),
     ...(isPlainObject(pf) ? { params_fields: pf as Record<string, { description?: string }> } : {}),
     ...(Array.isArray(al) ? { alt_labels: al as string[] } : {}),
-    ...(isPlainObject(metrics) ? { metrics: metrics as Record<string, unknown> } : {}),
+    ...(isPlainObject(metrics) ? { metrics: metrics } : {}),
   }
 }
 /**

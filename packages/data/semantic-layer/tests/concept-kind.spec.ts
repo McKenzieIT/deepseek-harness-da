@@ -5,8 +5,9 @@
  */
 import { test, expect } from 'vitest'
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 import yaml from 'js-yaml'
 import { ConceptDefinitionSchema } from '../src/types.ts'
 import { conceptKindPlugin } from '../src/kinds/concept-kind.ts'
@@ -245,9 +246,6 @@ test('expandCandidates does NOT expand related_to for non-concept nodes', async 
 // ── Domain reference validation ─────────────────────────────────────────
 
 test('K11 seed concepts cover all domains used by assets', () => {
-  const { dirname } = require('node:path')
-  const { fileURLToPath } = require('node:url')
-  const { resolve } = require('node:path')
   const HERE = dirname(fileURLToPath(import.meta.url))
   const k11Root = resolve(HERE, '../../../../examples/k11-semantic-layer')
   const concepts = loadConcepts(k11Root)

@@ -25,7 +25,7 @@ describe('AuditRecord schema (zod mirror of RBI pydantic)', () => {
     expect(rec.log_id).toBe('abc12345')
     expect(rec.user_id).toBe('alice')
     expect(rec.auto_tags).toEqual(['qoder_call'])
-    expect((rec.extra as Record<string, unknown>).tool_name).toBe('subagent-qoder')
+    expect((rec.extra).tool_name).toBe('subagent-qoder')
     const wire = toPayload(rec)
     expect(wire.tool_name).toBe('subagent-qoder') // extra flattened back to top level
     expect(wire.user_id).toBe('alice')
@@ -34,10 +34,10 @@ describe('AuditRecord schema (zod mirror of RBI pydantic)', () => {
 
 describe('SQLiteAuditStore', () => {
   let s: SQLiteAuditStore
-  beforeEach(async () => {
-    s = new SQLiteAuditStore(await openAuditDatabase(':memory:'))
+  beforeEach(() => {
+    s = new SQLiteAuditStore(openAuditDatabase(':memory:'))
   })
-  afterEach(() => s.close())
+  afterEach(() =>{  s.close() })
 
   it('appends and retrieves with the override applied on read', () => {
     const logId = s.append(fromPayload({
@@ -176,9 +176,9 @@ describe('Audit service (ctx.audit) wiring', () => {
     const recs = ctx.audit.store.query({ tags: ['qoder_call'] }, admin)
     expect(recs).toHaveLength(1)
     expect(recs[0]!.auto_tags).toContain(TAG.QODER_CALL)
-    expect((recs[0]!.extra as Record<string, unknown>).credits).toMatchObject({ total_cost_usd: 0.1042, total_credits: 42 })
-    expect((recs[0]!.extra as Record<string, unknown>).tool_name).toBe('subagent')
-    expect((recs[0]!.extra as Record<string, unknown>).is_error).toBe(false)
+    expect((recs[0]!.extra).credits).toMatchObject({ total_cost_usd: 0.1042, total_credits: 42 })
+    expect((recs[0]!.extra).tool_name).toBe('subagent')
+    expect((recs[0]!.extra).is_error).toBe(false)
     expect(recs[0]!.model).toBe('qoder-max')
   })
 
@@ -188,8 +188,8 @@ describe('Audit service (ctx.audit) wiring', () => {
     await ctx.waterfall(ctx as never, 'tools/post-execute', exec as never, result as never, () => Promise.resolve({ kind: 'accept' as const }))
     const recs = ctx.audit.store.query({ tags: ['tool_call'] }, admin)
     expect(recs).toHaveLength(1)
-    expect((recs[0]!.extra as Record<string, unknown>).is_error).toBe(true)
-    expect((recs[0]!.extra as Record<string, unknown>).error).toBe('business-user ⊥ bash (intranet tool-gate)')
+    expect((recs[0]!.extra).is_error).toBe(true)
+    expect((recs[0]!.extra).error).toBe('business-user ⊥ bash (intranet tool-gate)')
     // The intranet tool-gate (P10) records an explicit guard_deny when it denies:
     ctx.audit.record({
       log_id: 'g1', timestamp: '2026-08-20T00:00:00Z', scope_id: 'game-1', tenant_id: 'acme', user_id: 'bob',
@@ -203,8 +203,8 @@ describe('Audit service (ctx.audit) wiring', () => {
     expect(typeof logId).toBe('string')
     const rec = ctx.audit.store.query({ tags: ['tool_write'] }, admin)[0]
     expect(rec).toBeDefined()
-    expect((rec!.extra as Record<string, unknown>).tier).toBe('tier-2')
-    expect((rec!.extra as Record<string, unknown>).payload_hash).toMatch(/^[0-9a-f]{64}$/)
+    expect((rec!.extra).tier).toBe('tier-2')
+    expect((rec!.extra).payload_hash).toMatch(/^[0-9a-f]{64}$/)
     expect(JSON.stringify(rec!.extra)).not.toContain('pay_amt') // body NOT in audit
   })
 
@@ -276,6 +276,8 @@ describe('definition_snapshot (W11 S1)', () => {
 
   it('migration from v1 creates snapshot table', async () => {
     const { mkdtempSync, rmSync } = await import('node:fs')
+    // module-level function, no this-binding
+    // oxlint-disable-next-line typescript/unbound-method
     const { join } = await import('node:path')
     const { DatabaseSync } = await import('node:sqlite')
     const os = await import('node:os')

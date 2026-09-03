@@ -149,6 +149,14 @@ function bodyAsStream(text: string): ReadableStream<BufferSource> {
   })
 }
 
+/** Yield one string payload once — for a non-SSE single-JSON response (the AGA gateway
+ *  sometimes returns a full snapshot instead of an SSE stream, even with
+ *  incremental_output:true + Accept: text/event-stream). */
+// oxlint-disable-next-line typescript/require-await -- async generator (AsyncIterable contract); yields, no await
+async function* singlePayload(text: string): AsyncGenerator<string> {
+  if (text.length > 0) yield text
+}
+
 /**
  * Parse a non-2xx error body into a {@link WireChunk}. AGA frames 4xx errors as SSE
  * (`id:1\nevent:error\n:HTTP_STATUS/<status>\ndata:{code,message,request_id}`) but labels them
@@ -359,6 +367,17 @@ export class DashScopeAdapter extends LlmAdapter {
       throw new LlmError('DashScope API returned no response body', 'EMPTY_RESPONSE')
     }
 
-    yield* translate(parseSse(response.body, onComment))
+    const bodyText = await response.text()
+    const trimmedStart = bodyText.trimStart()
+    // The AGA gateway does not always stream SSE — even with incremental_output:true +
+    // Accept: text/event-stream it may return a single JSON snapshot (no `data:` lines).
+    // parseSse (EventSourceParserStream) only yields `data:` events, so a single-JSON
+    // response yields nothing → "no content". Branch: a body that starts with `{`/`[`
+    // is a bare JSON snapshot fed to translate as one payload; otherwise parse SSE.
+    if (trimmedStart.startsWith('{') || trimmedStart.startsWith('[')) {
+      yield* translate(singlePayload(bodyText))
+    } else {
+      yield* translate(parseSse(bodyAsStream(bodyText), onComment))
+    }
   }
 }

@@ -4,7 +4,7 @@ import { buildCollaborators } from '../src/collaborators.ts'
 import { StubAgentResponder, StubQueryExecutor, StubJudgeExecutor } from '../src/stubs.ts'
 import type { SqlSemanticJudge, SqlJudgeInput, SqlJudgeResult } from '../src/sql_semantic_judge.ts'
 
-const fixtureDir = import.meta.dirname!
+const fixtureDir = import.meta.dirname
 const caseA = `${fixtureDir}/fixtures/case-a.yaml`
 
 class StubSqlSemanticJudge implements SqlSemanticJudge {

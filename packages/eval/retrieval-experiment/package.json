@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-retrieval-experiment",
   "description": "Retrieval strategy gradient experiment infrastructure: Level 0-3 graph snapshots, blending function variants, precision@K/recall@K harness",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },

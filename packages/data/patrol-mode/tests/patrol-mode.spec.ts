@@ -119,23 +119,25 @@ describe('PatrolService', () => {
       service.start()
       expect(service.getState()).toBe('running')
       expect(service.isRunning()).toBe(true)
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/started', expect.any(Object))
-      service.stop()
+      void service.stop()
     })
 
     it('throws when starting if already running', () => {
       const { service } = createPatrolService()
       service.start()
-      expect(() => service.start()).toThrow('Cannot start patrol')
-      service.stop()
+      expect(() =>{  service.start() }).toThrow('Cannot start patrol')
+      void service.stop()
     })
 
     it('transitions back to idle when stopped', () => {
       const { service, ctx } = createPatrolService()
       service.start()
-      service.stop()
+      void service.stop()
       expect(service.getState()).toBe('idle')
       expect(service.isRunning()).toBe(false)
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/stopped')
     })
 
@@ -153,23 +155,25 @@ describe('PatrolService', () => {
         scope: 'payment',
       }
       service.start(config)
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/started', {
         maxEditsPerRound: 5,
         confirmTimeoutMs: 30000,
         scope: 'payment',
       })
-      service.stop()
+      void service.stop()
     })
 
     it('uses defaults when no config is provided', () => {
       const { service, ctx } = createPatrolService()
       service.start()
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/started', {
         maxEditsPerRound: DEFAULT_MAX_EDITS_PER_ROUND,
         confirmTimeoutMs: DEFAULT_CONFIRM_TIMEOUT_MS,
         scope: '',
       })
-      service.stop()
+      void service.stop()
     })
   })
 
@@ -202,7 +206,7 @@ describe('PatrolService', () => {
         .filter(c => c[0] === 'patrol/confirm-request')
       expect(confirmCalls.length).toBeGreaterThanOrEqual(1)
 
-      service.stop()
+      void service.stop()
     })
 
     it('default maxEditsPerRound is 3', () => {
@@ -235,7 +239,7 @@ describe('PatrolService', () => {
         expect(timeoutCalls.length).toBeGreaterThanOrEqual(1)
       }
 
-      service.stop()
+      void service.stop()
     })
 
     it('default confirmTimeoutMs is 60000', () => {
@@ -264,7 +268,7 @@ describe('PatrolService', () => {
         expect(timeoutsBeforeAdvance.length).toBe(0)
       }
 
-      service.stop()
+      void service.stop()
     })
 
     it('respondToConfirm confirms the edit', async () => {
@@ -283,12 +287,12 @@ describe('PatrolService', () => {
         await vi.advanceTimersByTimeAsync(10)
       }
 
-      service.stop()
+      void service.stop()
     })
 
     it('throws when respondToConfirm is called without pending confirm', () => {
       const { service } = createPatrolService()
-      expect(() => service.respondToConfirm('confirmed'))
+      expect(() =>{  service.respondToConfirm('confirmed') })
         .toThrow('No pending confirmation to respond to')
     })
   })
@@ -308,8 +312,9 @@ describe('PatrolService', () => {
       await vi.advanceTimersByTimeAsync(10)
       await service.handleBtw('check order table')
 
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/btw-received', 'check order table')
-      service.stop()
+      void service.stop()
     })
 
     it('stops patrol on explicit stop command (Chinese)', async () => {
@@ -348,7 +353,7 @@ describe('PatrolService', () => {
 
       await service.handleBtw('what is the coverage of user domain?')
       expect(service.isRunning()).toBe(true)
-      service.stop()
+      void service.stop()
     })
 
     it('patrol resumes after btw is handled', async () => {
@@ -359,7 +364,7 @@ describe('PatrolService', () => {
       await service.handleBtw('quick question')
       expect(service.isRunning()).toBe(true)
       expect(service.getState()).not.toBe('idle')
-      service.stop()
+      void service.stop()
     })
   })
 
@@ -369,14 +374,16 @@ describe('PatrolService', () => {
     it('emits patrol/started on start', () => {
       const { service, ctx } = createPatrolService()
       service.start()
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/started', expect.any(Object))
-      service.stop()
+      void service.stop()
     })
 
     it('emits patrol/stopped on stop', () => {
       const { service, ctx } = createPatrolService()
       service.start()
-      service.stop()
+      void service.stop()
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/stopped')
     })
 
@@ -389,7 +396,7 @@ describe('PatrolService', () => {
         .filter(c => c[0] === 'patrol/round-start')
       expect(roundStarts.length).toBeGreaterThanOrEqual(1)
       expect(roundStarts[0]![1]).toBe(1)
-      service.stop()
+      void service.stop()
     })
   })
 
@@ -410,7 +417,7 @@ describe('PatrolService', () => {
       expect(pauseCalls.length).toBeGreaterThanOrEqual(1)
       expect(pauseCalls[0]![1]).toBe('no weak assets found')
 
-      service.stop()
+      void service.stop()
     })
   })
 
@@ -420,8 +427,9 @@ describe('PatrolService', () => {
     it('accepts scope config to restrict patrol domain', () => {
       const { service, ctx } = createPatrolService()
       service.start({ scope: 'payment' })
+      // oxlint-disable-next-line typescript/unbound-method -- ctx.emit is a vi.fn() mock; inspected for call history, no this
       expect(ctx.emit).toHaveBeenCalledWith('patrol/started', expect.objectContaining({ scope: 'payment' }))
-      service.stop()
+      void service.stop()
     })
   })
 })

@@ -159,8 +159,8 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 /** Normalize an identity value to the "unowned" bucket (mirror RBI _same_owner). */
-function norm(v: unknown): string {
-  return v === null || v === undefined || v === '' ? '' : String(v)
+function norm(v: string | null | undefined): string {
+  return v === null || v === undefined || v === '' ? '' : v
 }
 
 /** Coerce a caller identity value to a SQL bind value: empty/null/undefined → null (the unowned bucket). */
@@ -368,7 +368,7 @@ export class SQLiteAuditStore {
     const rec = this._materialize(row)
     const overrides = (this.db.prepare(
       'SELECT field, value, patched_by, patched_at, reason FROM audit_override WHERE log_id=? ORDER BY patched_at, id',
-    ).all(log_id) as unknown as OverrideRow[]).map(o => ({ ...o, value: o.value === null ? null : JSON.parse(o.value) }))
+    ).all(log_id) as unknown as OverrideRow[]).map(o => ({ ...o, value: o.value === null ? null : JSON.parse(o.value) as unknown }))
     return { ...rec, overrides }
   }
 
@@ -493,7 +493,7 @@ export class SQLiteAuditStore {
     const total = (this.db.prepare(`SELECT COUNT(*) c FROM audit_event WHERE ${where}`).get(...params) as { c: number }).c
     const byTag = (this.db.prepare(
       `SELECT tag, COUNT(*) c FROM audit_tag WHERE event_id IN (SELECT id FROM audit_event WHERE ${where}) GROUP BY tag`,
-    ).all(...params) as Array<{ tag: string; c: number }>).reduce((a, r) => { a[r.tag] = r.c; return a }, {} as Record<string, number>)
+    ).all(...params) as Array<{ tag: string; c: number }>).reduce< Record<string, number>>((a, r) => { a[r.tag] = r.c; return a }, {})
     const costWhere = `${where} AND EXISTS (SELECT 1 FROM audit_tag t WHERE t.event_id=audit_event.id AND t.tag=?)`
     const cost = this.db.prepare(
       `SELECT COALESCE(SUM(json_extract(payload,'$.credits.total_cost_usd')),0) cost_usd,
@@ -545,8 +545,8 @@ export class SQLiteAuditStore {
         const c = rec.extra.credits
         if (c !== null && c !== undefined && typeof c === 'object') {
           const cc = c as { total_cost_usd?: number; total_credits?: number }
-          costUsd += Number(cc.total_cost_usd ?? 0)
-          credits += Number(cc.total_credits ?? 0)
+          costUsd += cc.total_cost_usd ?? 0
+          credits += cc.total_credits ?? 0
         }
       }
       for (const t of rec.auto_tags) byTag[t] = (byTag[t] ?? 0) + 1
@@ -614,12 +614,13 @@ export class SQLiteAuditStore {
     add('chat_session_id', f.chat_session_id)
     if (f.since) { where.push('ts >= ?'); params.push(f.since) }
     if (f.until) { where.push('ts < ?'); params.push(f.until) }
-    const tags = (Array.isArray(f.tags) ? f.tags : f.tags ? [f.tags] : []).filter(Boolean)
+    const tags = (Array.isArray(f.tags) ? f.tags : f.tags ? [f.tags] : []).filter((t): t is string => typeof t === 'string' && t !== '')
     for (const t of tags) {
       where.push('EXISTS (SELECT 1 FROM audit_tag t WHERE t.event_id=audit_event.id AND t.tag=?)')
       params.push(t)
     }
-    const ex = (Array.isArray(f.exclude_tags) ? f.exclude_tags : f.exclude_tags ? [f.exclude_tags] : []).filter(Boolean)
+    const ex = (Array.isArray(f.exclude_tags) ? f.exclude_tags : f.exclude_tags ? [f.exclude_tags] : [])
+      .filter((t): t is string => typeof t === 'string' && t !== '')
     if (ex.length) {
       where.push(`NOT EXISTS (SELECT 1 FROM audit_tag t WHERE t.event_id=audit_event.id AND t.tag IN (${ex.map(() => '?').join(',')}))`)
       params.push(...ex)
@@ -738,8 +739,8 @@ export class SQLiteAuditStore {
     return rows.map((row) => {
       const payload = JSON.parse(row.payload) as Record<string, unknown>
       return {
-        asset_name: String(payload.asset_name ?? ''),
-        kind: String(payload.kind ?? ''),
+        asset_name: typeof payload.asset_name === 'string' ? payload.asset_name : '',
+        kind: typeof payload.kind === 'string' ? payload.kind : '',
         timestamp: row.ts,
         delta: payload.delta as StructuredDelta,
       }

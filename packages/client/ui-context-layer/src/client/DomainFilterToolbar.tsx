@@ -17,10 +17,8 @@ export function DomainFilterToolbar({
     if (!data) return []
     const domainSet = new Set<string>()
     for (const node of data.nodes) {
-      if (node.domains) {
-        for (const domain of node.domains) {
-          domainSet.add(domain)
-        }
+      for (const domain of node.domains) {
+        domainSet.add(domain)
       }
     }
     return Array.from(domainSet).sort()
@@ -57,7 +55,7 @@ export function DomainFilterToolbar({
         return (
           <button
             key={domain}
-            onClick={() => handleToggle(domain)}
+            onClick={() =>{  handleToggle(domain) }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',

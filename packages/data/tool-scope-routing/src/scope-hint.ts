@@ -74,13 +74,20 @@ function buildSummaries(ctx: Context, tenant?: string): ScopeSummary[] {
   if (!scopes) return []
   const all = scopes.list(tenant)
   const activeId = scopes.activeId()
-  return all.map(s => ({
-    id: s.id,
-    name: (s.metadata?.['name'] as string) ?? s.id,
-    description: (s.metadata?.['description'] as string) ?? '',
-    aliases: (Array.isArray(s.metadata?.['aliases']) ? s.metadata?.['aliases'] : []) as string[],
-    is_active: s.id === activeId,
-  }))
+  return all.map((s) => {
+    const name = s.metadata?.['name']
+    const description = s.metadata?.['description']
+    const aliases = s.metadata?.['aliases']
+    return {
+      id: s.id,
+      name: typeof name === 'string' ? name : s.id,
+      description: typeof description === 'string' ? description : '',
+      aliases: Array.isArray(aliases)
+        ? aliases.filter((a): a is string => typeof a === 'string')
+        : [],
+      is_active: s.id === activeId,
+    }
+  })
 }
 
 /**
@@ -96,8 +103,13 @@ function buildSummaries(ctx: Context, tenant?: string): ScopeSummary[] {
  * tenant's scopes.
  */
 function resolveSessionTenant(context: unknown): string | undefined {
-  const session = (context as { agent?: { session?: { tenant?: unknown } } | null | undefined })?.agent?.session
-  const tenant = session?.tenant
+  if (context == null || typeof context !== 'object') return undefined
+  const c = context as { agent?: { session?: { tenant?: unknown } } }
+  const agent = c.agent
+  if (!agent) return undefined
+  const session = agent.session
+  if (!session) return undefined
+  const tenant = session.tenant
   if (typeof tenant === 'string' && tenant.length > 0) return tenant
   return undefined
 }
@@ -124,8 +136,9 @@ export function installScopeHint(ctx: Context): void {
       const all = scopes.list(tenant)
       if (all.length <= 1) return ''
 
+      if (context == null || typeof context !== 'object') return ''
       const ctx2 = context as { agent?: { session?: { messages?: unknown[] } } }
-      const agent = ctx2?.agent
+      const agent = ctx2.agent
       if (!agent) return ''
       const messages = agent.session?.messages as Array<{ role: string; content: unknown }> | undefined
       if (!messages) return ''
@@ -133,7 +146,10 @@ export function installScopeHint(ctx: Context): void {
       if (!lastUser || typeof lastUser.content !== 'string') return ''
 
       const aliasEntries: ScopeAliasEntry[] = all
-        .filter(s => Array.isArray(s.metadata?.['aliases']) && (s.metadata?.['aliases'] as unknown[]).length > 0)
+        .filter((s) => {
+          const aliases = s.metadata?.['aliases']
+          return Array.isArray(aliases) && aliases.length > 0
+        })
         .map(s => ({
           id: s.id,
           aliases: s.metadata?.['aliases'] as string[],

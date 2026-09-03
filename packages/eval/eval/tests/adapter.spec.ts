@@ -7,16 +7,16 @@ const req = (message: string): AgentTurnRequest => ({ sessionId: 'sid', caseId: 
 
 describe('validateRunResult (H1 mitigation — relaxed for multi-step agents)', () => {
   it('passes when the interval has exactly one assistant/message', () => {
-    expect(() => validateRunResult(runResult('hi'))).not.toThrow()
+    expect(() =>{  validateRunResult(runResult('hi')) }).not.toThrow()
   })
   it('passes when the interval has multiple assistant/message (four-stage agent)', () => {
-    expect(() => validateRunResult(runResultMultiStep(['step1', 'step2', 'step3', 'final']))).not.toThrow()
+    expect(() =>{  validateRunResult(runResultMultiStep(['step1', 'step2', 'step3', 'final'])) }).not.toThrow()
   })
   it('throws ProtocolError when the interval has no assistant/message', () => {
-    expect(() => validateRunResult({ finalResponse: '', events: [toolCall('q', {})], notifications: [] })).toThrow(ProtocolError)
+    expect(() =>{  validateRunResult({ finalResponse: '', events: [toolCall('q', {})], notifications: [] }) }).toThrow(ProtocolError)
   })
   it('throws ProtocolError on an empty events array', () => {
-    expect(() => validateRunResult({ finalResponse: '', events: [], notifications: [] })).toThrow(ProtocolError)
+    expect(() =>{  validateRunResult({ finalResponse: '', events: [], notifications: [] }) }).toThrow(ProtocolError)
   })
 })
 

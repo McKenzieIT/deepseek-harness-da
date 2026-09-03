@@ -141,5 +141,12 @@ export function createAutojoinListener(presets: AutojoinPresetService) {
  * @param ctx - plugin context carrying the resolved `agentPresets` service.
  */
 export function apply(ctx: Context): void {
-  ctx.on('agent/created', createAutojoinListener(ctx.agentPresets))
+  const listener = createAutojoinListener(ctx.agentPresets)
+  ctx.on('agent/created', (event) => {
+    // agent/created is a fire-and-forget dispatch (it does not await
+    // listeners). The listener logs mount failures at ERROR before
+    // re-throwing; void + catch prevents an unhandled rejection (the
+    // re-throw fed a WARN report filtered at the default INFO threshold).
+    void listener(event).catch(() => {})
+  })
 }

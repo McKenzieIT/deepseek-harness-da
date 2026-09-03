@@ -206,7 +206,7 @@ describe('task admission and package contracts', () => {
     const ctx = { invariants: { register } } as unknown as Context
     await expect(invariant.apply(ctx)).resolves.toBe(dispose)
     expect(register).toHaveBeenCalledWith('@deepseek-ai/dsh-subagent-qoder', expect.any(Function))
-    const install = register.mock.calls[0]![1] as InvariantInstaller
+    const install = register.mock.calls[0]![1]
     await install(new Context(), (message: string) => { throw new Error(message) })
     expect(invariant.name).toBe('subagent-qoder-invariant')
     expect(invariant.inject).toEqual(['invariants'])

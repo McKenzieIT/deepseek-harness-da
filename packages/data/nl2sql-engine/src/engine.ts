@@ -59,12 +59,16 @@ function postProcessSql(sql: string, today?: string): string {
   out = out.replace(/\bGETDATE\s*\(\s*\)/gi, `'${today}'`)
   out = out.replace(/\bCURRENT_TIMESTAMP\b/gi, `'${today}'`)
   // Replace TO_CHAR(DATEADD('today', -N, 'dd'), 'yyyyMMdd') patterns with computed date
-  out = out.replace(/TO_CHAR\s*\(\s*DATEADD\s*\(\s*'(\d{8})'\s*,\s*(-?\d+)\s*,\s*'dd'\s*\)\s*,\s*'yyyyMMdd'\s*\)/gi, (_m, base, offset) => {
-    return `'${computeDate(base, Number(offset))}'`
-  })
-  // Replace DATEADD(GETDATE()|'today', -N, 'dd') → computed literal
-  // eslint-disable-next-line @stylistic/max-len
-  const dateAddRe = /(?:TO_CHAR\s*\(\s*)?DATEADD\s*\(\s*(?:GETDATE\s*\(\s*\)|'[^']*')\s*,\s*(-?\d+)\s*,\s*'dd'\s*\)(?:\s*,\s*'yyyyMMdd'\s*\))?/gi
+  out = out.replace(
+    /TO_CHAR\s*\(\s*DATEADD\s*\(\s*'(\d{8})'\s*,\s*(-?\d+)\s*,\s*'dd'\s*\)\s*,\s*'yyyyMMdd'\s*\)/gi,
+    (_m: string, base: string, offset: string) => {
+      return `'${computeDate(base, Number(offset))}'`
+    },
+  )
+  // Replace DATEADD(GETDATE(), -N, 'dd') → computed literal. A bare-literal-base
+  // DATEADD (no TO_CHAR wrapper) is already deterministic and left untouched; the
+  // TO_CHAR(DATEADD('YYYYMMDD', …), 'yyyyMMdd') form is handled by the regex above.
+  const dateAddRe = /(?:TO_CHAR\s*\(\s*)?DATEADD\s*\(\s*GETDATE\s*\(\s*\)\s*,\s*(-?\d+)\s*,\s*'dd'\s*\)(?:\s*,\s*'yyyyMMdd'\s*\))?/gi
   out = out.replace(dateAddRe, (_m, offset) => {
     return `'${computeDate(today, Number(offset))}'`
   })
@@ -112,7 +116,11 @@ export interface EngineDeps {
   readonly retrieval?: RetrievalLinker
   /** P3: live relation graph (absent => no join injection / recall / undeclared-JOIN rule). */
   readonly graph?: RelationGraphLike
-  /** P4 D2: resolve a table's partition columns (retained interface field; post-M1b the Level 2 path does not read it). */
+  /**
+   * P4 D2: resolve a table's partition columns. Read by resolveHostTableInfo
+   * in the Level 2 (metric) path to build the time-filter hint; unused only
+   * on the removed Level 2.5 deterministic arm.
+   */
   readonly partitionResolver?: (tableName: string) => readonly string[] | null
   /** P14b: payload lookup for graph-expanded neighbors (injected, does not change RetrievalLinker interface). */
   readonly lookupDoc?: (id: string) => DataSourceDoc | undefined
@@ -206,7 +214,7 @@ export class Nl2sqlEngine {
     candidates = rerankByGranularity(candidates, isTrend)
     trace.push({
       step: 'bm25_linking',
-      candidates: candidates.map(c => ({ id: c.id, score: Number(c.score).toFixed(3) })),
+      candidates: candidates.map(c => ({ id: c.id, score: c.score.toFixed(3) })),
     })
 
     // P3 C1/C2: graph-derived join constraints + declared-join pairs (no-op when no graph)

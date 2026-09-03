@@ -245,7 +245,7 @@ describe('ManagementSessionService (mock-driven)', () => {
 
   it('destroy throws for unknown session id', () => {
     const { service } = createServiceInstance()
-    expect(() => service.destroy('no-such-session')).toThrow('no active management session')
+    expect(() =>{  service.destroy('no-such-session') }).toThrow('no active management session')
   })
 
   it('getActive returns undefined when no sessions are active', () => {

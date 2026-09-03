@@ -57,7 +57,7 @@ export const EvalTrajectory: FC<EvalTrajectoryProps> = ({ evalResults, loading, 
         </span>
       </div>
       <div className="sl-eval-trajectory__timeline">
-        {evalResults.results.map((result) => (
+        {evalResults.results.map(result => (
           <div
             key={result.id}
             className={`sl-eval-trajectory__dot ${STATUS_CLASS[result.status] ?? ''}`}
@@ -66,7 +66,7 @@ export const EvalTrajectory: FC<EvalTrajectoryProps> = ({ evalResults, loading, 
         ))}
       </div>
       <ul className="sl-eval-trajectory__list">
-        {evalResults.results.slice(0, 10).map((result) => (
+        {evalResults.results.slice(0, 10).map(result => (
           <li key={result.id} className="sl-eval-trajectory__item">
             <span className={`sl-eval-trajectory__status-badge sl-eval-trajectory__status-badge--${result.status}`}>
               {result.status}

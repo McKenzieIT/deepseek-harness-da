@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * CL8 — eval-cli responder LLM config tests.
  *

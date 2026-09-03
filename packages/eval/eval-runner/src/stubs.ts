@@ -27,6 +27,7 @@ export class StubAgentResponder implements AgentResponder {
     this._defaultReply = response
   }
 
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<AgentResponse>
   async respond(question: string, opts?: AgentRespondOpts): Promise<AgentResponse> {
     this.calls.push({ question, opts })
     for (const [substring, response] of this._replies) {
@@ -55,6 +56,7 @@ export class StubQueryExecutor implements QueryExecutor {
     this._defaultResult = result
   }
 
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<QueryResult>
   async execute(sql: string): Promise<QueryResult> {
     this.calls.push(sql)
     return this._results.get(sql) ?? this._defaultResult
@@ -76,6 +78,7 @@ export class StubJudgeExecutor implements JudgeExecutor {
     if (rationale) this._rationale = rationale
   }
 
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<JudgeResult>
   async judge(expected: unknown, actual: string, question: string): Promise<JudgeResult> {
     this.calls.push({ expected, actual, question })
     return { score: this._score, rationale: this._rationale }
@@ -88,6 +91,7 @@ export class StubJudgeExecutor implements JudgeExecutor {
 export class FailingAgentResponder implements AgentResponder {
   constructor(private readonly _error: Error = new Error('ECONNREFUSED: agent unreachable')) {}
 
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<never>
   async respond(_question: string, _opts?: AgentRespondOpts): Promise<never> {
     throw this._error
   }
@@ -99,6 +103,7 @@ export class FailingAgentResponder implements AgentResponder {
 export class FailingQueryExecutor implements QueryExecutor {
   constructor(private readonly _error: Error = new Error('ECONNREFUSED: warehouse unreachable')) {}
 
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<never>
   async execute(_sql: string): Promise<never> {
     throw this._error
   }

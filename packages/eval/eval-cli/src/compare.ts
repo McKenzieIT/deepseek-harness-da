@@ -55,7 +55,8 @@ function resolveRunFile(prefix: string, dir: string): string {
 }
 
 function loadRun(path: string): RunResult {
-  return JSON.parse(readFileSync(path, 'utf8'))
+  const data: unknown = JSON.parse(readFileSync(path, 'utf8'))
+  return data as RunResult
 }
 
 function loadDeliveryCaseIds(casesDir: string): Set<string> {
@@ -65,7 +66,7 @@ function loadDeliveryCaseIds(casesDir: string): Set<string> {
     const text = readFileSync(join(casesDir, f), 'utf8')
     const raw = parseYaml(text) as Record<string, unknown>
     const expected = raw.expected as Record<string, unknown> | undefined
-    if (expected?.delivery_match != null && expected?.match_mode == null) {
+    if (expected?.delivery_match != null && expected.match_mode == null) {
       deliveryIds.add(raw.case_id as string)
     }
   }

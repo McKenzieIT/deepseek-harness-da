@@ -30,6 +30,18 @@ function makeRun(runId: string, cases: Array<{ case_id: string; verdict: RunnerV
   }
 }
 
+/** A stub LLM whose stream yields one text block "SELECT 1 AS total" for any
+ *  prompt. Shared by the runBatch integration + D3ii explicit-scopeId specs. */
+function makeStubLlm() {
+  const stream = async function* () {
+    yield { type: 'block-start' as const, index: 0, blockType: 'text' as const }
+    yield { type: 'text-delta' as const, index: 0, text: 'SELECT 1 AS total' }
+    yield { type: 'block-end' as const, index: 0, block: { type: 'text' as const, text: 'SELECT 1 AS total' } }
+    yield { type: 'finish' as const, reason: 'stop' as const }
+  }
+  return { stream }
+}
+
 describe('EvalRunnerService — JSONL bridge (W3→W4 format)', () => {
   it('persistRunResultJsonl writes records FileBackedEvalResultStore can read', () => {
     // Access the module-private bridge via runBatch is heavy; exercise it by
@@ -81,21 +93,6 @@ describe('EvalRunnerService — mechanics', () => {
 })
 
 describe('EvalRunnerService — runBatch integration (stubbed seams, real engine)', () => {
-  // A stub LLM whose stream yields one text block "SELECT 1 AS total" for any
-  // prompt. The engine extracts SQL from it; the critic may reject (empty
-  // corpus → no candidate tables) → the case declines, but the runner still
-  // produces a RunResult + persists JSONL + tracks runs. We assert STRUCTURE,
-  // not verdict correctness.
-  function makeStubLlm() {
-    const stream = async function* () {
-      yield { type: 'block-start' as const, index: 0, blockType: 'text' as const }
-      yield { type: 'text-delta' as const, index: 0, text: 'SELECT 1 AS total' }
-      yield { type: 'block-end' as const, index: 0, block: { type: 'text' as const, text: 'SELECT 1 AS total' } }
-      yield { type: 'finish' as const, reason: 'stop' as const }
-    }
-    return { stream }
-  }
-
   function makeStubQuery(capturedScopeIds?: string[]) {
     return {
       execute: async (req?: unknown) => {
@@ -140,7 +137,7 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
       expect(jsonlFiles.length).toBe(1)
       const lines = readFileSync(join(resultsDir, jsonlFiles[0] as string), 'utf8').trim().split('\n')
       expect(lines.length).toBe(2)
-      const rec = JSON.parse(lines[0]!)
+      const rec = JSON.parse(lines[0]!) as Record<string, unknown>
       expect(rec).toHaveProperty('runId')
       expect(rec).toHaveProperty('caseId')
       expect(rec).toHaveProperty('outcome')
@@ -162,16 +159,6 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
 })
 
 describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () => {
-  function makeStubLlm() {
-    const stream = async function* () {
-      yield { type: 'block-start' as const, index: 0, blockType: 'text' as const }
-      yield { type: 'text-delta' as const, index: 0, text: 'SELECT 1 AS total' }
-      yield { type: 'block-end' as const, index: 0, block: { type: 'text' as const, text: 'SELECT 1 AS total' } }
-      yield { type: 'finish' as const, reason: 'stop' as const }
-    }
-    return { stream }
-  }
-
   it('runBatch without scopeId throws the D3ii no-default-pointer error (before any case runs)', async () => {
     const ctx = new Context()
     ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())

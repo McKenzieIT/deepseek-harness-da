@@ -32,6 +32,7 @@ interface OpenBlock {
 /** The textual delta of a `message.content` that may be a string or an array of `{text}` parts. */
 function textDeltaOf(content: WireDelta['content']): string {
   if (typeof content === 'string') return content
+  // oxlint-disable-next-line typescript/no-unnecessary-condition -- wire boundary, element may be null despite non-nullish type
   if (Array.isArray(content)) return content.map(part => part?.text ?? '').join('')
   return ''
 }
@@ -142,6 +143,7 @@ export async function* translate(payloads: AsyncIterable<string>): AsyncGenerato
       // Reasoning first: thinking mode interleaves it before text.
       const reasoningRaw = message.reasoning_content
       const reasoning = typeof reasoningRaw === 'string' ? reasoningRaw
+        // oxlint-disable-next-line typescript/no-unnecessary-condition -- wire boundary, element may be null despite non-nullish type
         : Array.isArray(reasoningRaw) ? (reasoningRaw as Array<{ text?: string }>).map(part => part?.text ?? '').join('')
           : ''
       if (reasoning.length > 0) {

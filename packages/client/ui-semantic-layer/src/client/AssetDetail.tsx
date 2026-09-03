@@ -21,10 +21,10 @@ export const AssetDetail: FC<AssetDetailProps> = ({ definition, kind, name, load
     <div className="sl-asset-detail">
       <div className="sl-asset-detail__header">
         <h3 className="sl-asset-detail__title">{name}</h3>
-        {def.description && <p className="sl-asset-detail__desc">{String(def.description)}</p>}
+        {def.description && <p className="sl-asset-detail__desc">{asString(def.description)}</p>}
         {def.confirmation_status && (
-          <span className={`sl-asset-detail__status sl-asset-detail__status--${String(def.confirmation_status)}`}>
-            {String(def.confirmation_status)}
+          <span className={`sl-asset-detail__status sl-asset-detail__status--${asString(def.confirmation_status)}`}>
+            {asString(def.confirmation_status)}
           </span>
         )}
       </div>
@@ -52,7 +52,7 @@ const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
   const columns = asArray(def.columns)
   const metrics = asRecord(def.metrics)
   const dimensionRefs = asArray(def.dimension_refs)
-  const granularity = def.granularity ? String(def.granularity) : null
+  const granularity = def.granularity ? asString(def.granularity) : null
   const partitions = asArray(def.partitions)
 
   return (
@@ -80,10 +80,10 @@ const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
                 const c = col as Record<string, Json>
                 return (
                   <tr key={i}>
-                    <td>{String(c.name ?? '')}</td>
-                    <td>{String(c.type ?? '')}</td>
-                    <td>{String(c.comment ?? '')}</td>
-                    <td>{String(c.role ?? '')}</td>
+                    <td>{asString(c.name)}</td>
+                    <td>{asString(c.type)}</td>
+                    <td>{asString(c.comment)}</td>
+                    <td>{asString(c.role)}</td>
                   </tr>
                 )
               })}
@@ -97,7 +97,7 @@ const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
           <h4>{t('schema.detail.metrics')} ({Object.keys(metrics).length})</h4>
           <ul className="sl-asset-detail__list">
             {Object.entries(metrics).map(([k, v]) => (
-              <li key={k}><strong>{k}</strong>: {String((v as Record<string, Json>)?.description ?? '')}</li>
+              <li key={k}><strong>{k}</strong>: {asString(asRecord(v).description)}</li>
             ))}
           </ul>
         </div>
@@ -112,12 +112,12 @@ const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
               const joinKeys = asArray(r.join_keys)
               return (
                 <li key={i}>
-                  <strong>{String(r.dim_table ?? '')}</strong>
+                  <strong>{asString(r.dim_table)}</strong>
                   {joinKeys.length > 0 && (
                     <span className="sl-asset-detail__join-keys">
                       {' '}ON {joinKeys.map((k) => {
-                        const kk = k as Record<string, Json>
-                        return `${String(kk.source ?? '')}=${String(kk.target ?? '')}`
+                        const kk = asRecord(k)
+                        return `${asString(kk.source)}=${asString(kk.target)}`
                       }).join(', ')}
                     </span>
                   )}
@@ -132,7 +132,7 @@ const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
         <div className="sl-asset-detail__section">
           <h4>{t('schema.detail.partitions')}</h4>
           <ul className="sl-asset-detail__list">
-            {partitions.map((p, i) => <li key={i}>{String((p as Record<string, Json>)?.name ?? p)}</li>)}
+            {partitions.map((p, i) => <li key={i}>{asString(asRecord(p).name ?? p)}</li>)}
           </ul>
         </div>
       )}
@@ -144,7 +144,7 @@ const EventDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
   const paramsFields = asRecord(def.params_fields)
   const metrics = asRecord(def.metrics)
   const externalRefs = asArray(def.external_refs)
-  const eventFilter = def.event_filter ? String(def.event_filter) : null
+  const eventFilter = def.event_filter ? asString(def.event_filter) : null
 
   return (
     <>
@@ -165,8 +165,8 @@ const EventDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
                 return (
                   <tr key={k}>
                     <td>{k}</td>
-                    <td>{String(field.type ?? '')}</td>
-                    <td>{String(field.description ?? '')}</td>
+                    <td>{asString(field.type)}</td>
+                    <td>{asString(field.description)}</td>
                   </tr>
                 )
               })}
@@ -180,7 +180,7 @@ const EventDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
           <h4>{t('schema.detail.metrics')} ({Object.keys(metrics).length})</h4>
           <ul className="sl-asset-detail__list">
             {Object.entries(metrics).map(([k, v]) => (
-              <li key={k}><strong>{k}</strong>: {String((v as Record<string, Json>)?.description ?? '')}</li>
+              <li key={k}><strong>{k}</strong>: {asString(asRecord(v).description)}</li>
             ))}
           </ul>
         </div>
@@ -190,7 +190,7 @@ const EventDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
         <div className="sl-asset-detail__section">
           <h4>{t('schema.detail.externalRefs')}</h4>
           <ul className="sl-asset-detail__list">
-            {externalRefs.map((ref, i) => <li key={i}>{String(ref)}</li>)}
+            {externalRefs.map((ref, i) => <li key={i}>{asString(ref)}</li>)}
           </ul>
         </div>
       )}
@@ -208,18 +208,18 @@ const EventDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
 const MetricDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }> = ({ def, t }) => {
   const computation = def.computation as Record<string, Json> | undefined
   const caliberVariants = asArray(def.caliber_variants)
-  const hostTable = def.host_table ? String(def.host_table) : null
-  const hostEvent = def.host_event ? String(def.host_event) : null
+  const hostTable = def.host_table ? asString(def.host_table) : null
+  const hostEvent = def.host_event ? asString(def.host_event) : null
 
   return (
     <>
       {computation && (
         <div className="sl-asset-detail__section">
           <h4>{t('schema.detail.computation')}</h4>
-          {computation.sql && <code className="sl-asset-detail__code">{String(computation.sql)}</code>}
+          {computation.sql && <code className="sl-asset-detail__code">{asString(computation.sql)}</code>}
           {computation.metadata && (
             <p className="sl-asset-detail__meta">
-              {t('schema.detail.aggregation')}: {String((computation.metadata as Record<string, Json>)?.aggregation ?? '')}
+              {t('schema.detail.aggregation')}: {asString(asRecord(computation.metadata).aggregation)}
             </p>
           )}
         </div>
@@ -231,7 +231,7 @@ const MetricDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }
           <ul className="sl-asset-detail__list">
             {caliberVariants.map((v, i) => {
               const variant = v as Record<string, Json>
-              return <li key={i}><strong>{String(variant.name ?? '')}</strong>: {String(variant.description ?? '')}</li>
+              return <li key={i}><strong>{asString(variant.name)}</strong>: {asString(variant.description)}</li>
             })}
           </ul>
         </div>
@@ -256,4 +256,11 @@ function asArray(v: Json | undefined): Json[] {
 function asRecord(v: Json | undefined): Record<string, Json> {
   if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, Json>
   return {}
+}
+
+function asString(v: Json | undefined): string {
+  if (v === undefined || v === null) return ''
+  if (typeof v === 'string') return v
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  return JSON.stringify(v)
 }

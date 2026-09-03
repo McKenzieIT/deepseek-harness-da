@@ -266,7 +266,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
 
       const sendFrame = (frame: ReplyMessage): void => {
         if (settled) return
-        const line = encodeJsonPlain(frame as unknown as Record<string, unknown>) + '\n'
+        const line = encodeJsonPlain(frame) + '\n'
         fd3Write.write(line)
       }
 
@@ -297,7 +297,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
           if (bootAcked) return
           bootAcked = true
           // Send the run message
-          const runLine = encodeJsonPlain({ type: 'run', program: request.program } as unknown as Record<string, unknown>) + '\n'
+          const runLine = encodeJsonPlain({ type: 'run', program: request.program }) + '\n'
           fd3Write.write(runLine)
           return
         }
@@ -357,33 +357,34 @@ export class DataPythonCodeRuntime extends CodeRuntime {
           return
         }
 
-        if (frame.type === 'done') {
-          if (frame.error) {
-            finish({ logs: [...logs, ...strayLogs], error: { kind: frame.error.kind as CodeRunFailure['kind'], message: frame.error.message } })
-          } else if (frame.value !== undefined) {
-            const check = checkDoneValue(frame.value, this.config.maxValueBytes)
-            if (!check.ok) {
-              if (check.reason === 'over-budget') {
-                finish({ logs: [...logs, ...strayLogs], error: { kind: 'output-limit', message: `completion value exceeded ${this.config.maxValueBytes} bytes` } })
-              } else {
-                finish({ logs: [...logs, ...strayLogs], error: { kind: 'invalid-output', message: 'program completion must be lossless JSON' } })
-              }
+        // frame is DoneMessage: validateChildFrame returns a closed union
+        // (BootAckMessage | CallMessage | LogMessage | DoneMessage); the
+        // boot-ack/log/call branches above return, so the type narrows here.
+        if (frame.error) {
+          finish({ logs: [...logs, ...strayLogs], error: { kind: frame.error.kind, message: frame.error.message } })
+        } else if (frame.value !== undefined) {
+          const check = checkDoneValue(frame.value, this.config.maxValueBytes)
+          if (!check.ok) {
+            if (check.reason === 'over-budget') {
+              finish({ logs: [...logs, ...strayLogs], error: { kind: 'output-limit', message: `completion value exceeded ${this.config.maxValueBytes} bytes` } })
             } else {
-              finish({ logs: [...logs, ...strayLogs], value: frame.value as CodeJsonValue })
+              finish({ logs: [...logs, ...strayLogs], error: { kind: 'invalid-output', message: 'program completion must be lossless JSON' } })
             }
           } else {
-            finish({ logs: [...logs, ...strayLogs] })
+            finish({ logs: [...logs, ...strayLogs], value: frame.value as CodeJsonValue })
           }
-          return
+        } else {
+          finish({ logs: [...logs, ...strayLogs] })
         }
+        return
       })
 
       // Capture stray stdout/stderr from the child
-      child.stdout?.on('data', (chunk: Buffer) => {
+      child.stdout.on('data', (chunk: Buffer) => {
         if (settled) return
         strayLogs.push(chunk.toString('utf8'))
       })
-      child.stderr?.on('data', (chunk: Buffer) => {
+      child.stderr.on('data', (chunk: Buffer) => {
         if (settled) return
         strayLogs.push(chunk.toString('utf8'))
       })
@@ -419,7 +420,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
       this.live.add(live)
 
       // Send the boot message
-      const bootLine = encodeJsonPlain(bootMessage as unknown as Record<string, unknown>) + '\n'
+      const bootLine = encodeJsonPlain(bootMessage) + '\n'
       fd3Write.write(bootLine)
     })
   }

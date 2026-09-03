@@ -222,7 +222,7 @@ export class Audit extends Service {
     const rec = fromPayload({
       log_id: newLogId(),
       timestamp: nowIso(),
-      session_id: sessionId === undefined || sessionId === null ? null : String(sessionId),
+      session_id: typeof sessionId === 'string' ? sessionId : null,
       scope_id: identity.scope_id ?? null,
       tenant_id: identity.tenant_id ?? null,
       user_id: identity.user_id ?? null,
@@ -244,7 +244,7 @@ export class Audit extends Service {
     const rec = fromPayload({
       log_id: newLogId(),
       timestamp: nowIso(),
-      session_id: session.id === undefined ? null : String(session.id),
+      session_id: String(session.id),
       scope_id: identity.scope_id ?? null,
       tenant_id: identity.tenant_id ?? null,
       user_id: identity.user_id ?? null,

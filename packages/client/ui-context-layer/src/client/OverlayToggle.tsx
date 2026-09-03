@@ -28,7 +28,7 @@ export function OverlayToggle({ mode, onModeChange }: OverlayToggleProps) {
           <button
             key={value}
             type="button"
-            onClick={() => onModeChange(value)}
+            onClick={() =>{  onModeChange(value) }}
             style={{
               padding: '4px 10px',
               fontSize: 12,

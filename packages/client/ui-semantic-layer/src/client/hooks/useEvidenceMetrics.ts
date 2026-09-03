@@ -38,7 +38,7 @@ export function useEvidenceMetrics(client: EvidenceQueryClient | null): Evidence
 
   useEffect(() => {
     if (!client?.subscribeInvalidation) return
-    return client.subscribeInvalidation(() => refresh())
+    return client.subscribeInvalidation(() =>{  refresh() })
   }, [client, refresh])
 
   return { evalRunCount, evalPassRates, refresh }

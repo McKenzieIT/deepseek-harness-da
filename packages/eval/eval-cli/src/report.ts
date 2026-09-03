@@ -90,7 +90,8 @@ function buildIntentBreakdown(verdicts: readonly CaseVerdict[], cases: readonly 
 
   for (const v of verdicts) {
     const evalCase = caseMap.get(v.case_id)
-    const intent = String(evalCase?.dimensions?.query_intent ?? 'unknown')
+    const rawIntent = evalCase?.dimensions.query_intent
+    const intent = typeof rawIntent === 'string' ? rawIntent : 'unknown'
     const entry = intentMap.get(intent) ?? { total: 0, correct: 0, wrong: 0 }
     entry.total++
     if (v.verdict === 'correct') entry.correct++

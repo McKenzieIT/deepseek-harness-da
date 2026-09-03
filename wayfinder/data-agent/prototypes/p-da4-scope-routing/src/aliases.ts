@@ -8,9 +8,9 @@
  *   '10000251':
  *     semanticRoot: ./examples/k11-semantic-layer
  *     metadata:
- *       name: K11 大逃杀
- *       description: K11 大逃杀手游事件分析
- *       aliases: [K11, 大逃杀, k11]
+ *       name: K11
+ *       description: K11手游事件分析
+ *       aliases: [K11, k11]
  *   '10000334':
  *     semanticRoot: ./examples/x63-semantic-layer
  *     metadata:

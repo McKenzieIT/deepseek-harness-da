@@ -178,7 +178,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     async execute(args, exec) {
       if (exec.signal.aborted) throw new Error('trigger_eval aborted')
 
-      const evalRunner = ctx.get('evalRunner') as EvalRunnerService | undefined
+      const evalRunner = ctx.get('evalRunner')
 
       // Full run mode: eval runner service is available
       if (evalRunner) {
@@ -223,7 +223,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
             caseCount: 0,
             message: `Eval runner not wired (collaborators not configured). ${runIds.length} past run(s) available via evidence-query. Configure the eval runner service to trigger new runs.`,
             previousRunId: null,
-          } as unknown as TriggerEvalToolValue
+          }
         }
       }
 
@@ -237,7 +237,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         caseCount: 0,
         message: 'Eval runner service (ctx.evalRunner) is not mounted. The host composition must wire AgentResponder + QueryExecutor + JudgeExecutor collaborators to enable eval runs.',
         previousRunId: null,
-      } as unknown as TriggerEvalToolValue
+      }
     },
     presentCall(): GenericCallView {
       return {

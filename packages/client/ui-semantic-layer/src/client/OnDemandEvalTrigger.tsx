@@ -30,7 +30,9 @@ export const OnDemandEvalTrigger: FC<OnDemandEvalTriggerProps> = ({ assetId, onT
     <div className="sl-eval-trigger">
       <button
         className="sl-eval-trigger__button"
-        onClick={handleClick}
+        // onClick expects a void-returning handler; fire-and-forget the async
+        // trigger (errors surface via state, see handleClick).
+        onClick={() => { void handleClick() }}
         disabled={running}
         type="button"
       >

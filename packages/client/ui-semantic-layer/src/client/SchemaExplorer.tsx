@@ -64,7 +64,7 @@ export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateT
           type="text"
           placeholder={t('schema.search.placeholder')}
           value={searchQuery}
-          onChange={e => handleSearchInput(e.target.value)}
+          onChange={(e) =>{  handleSearchInput(e.target.value) }}
         />
       </div>
 
@@ -84,7 +84,7 @@ export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateT
             <button
               key={tab}
               className={`${styles.tab} ${view.tab === tab ? styles.tabActive : ''}`}
-              onClick={() => handleTabChange(tab, view.domain)}
+              onClick={() =>{  handleTabChange(tab, view.domain) }}
             >
               {t(`schema.tab.${tab}`)}
             </button>
@@ -104,7 +104,7 @@ export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateT
           <TableList
             items={state.tables}
             selected={selectedAsset?.kind === 'table' ? selectedAsset.name : null}
-            onSelect={name => handleAssetClick(name, 'table')}
+            onSelect={(name) =>{  handleAssetClick(name, 'table') }}
           />
         )}
 
@@ -112,7 +112,7 @@ export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateT
           <EventList
             items={state.events}
             selected={selectedAsset?.kind === 'event' ? selectedAsset.name : null}
-            onSelect={name => handleAssetClick(name, 'event')}
+            onSelect={(name) =>{  handleAssetClick(name, 'event') }}
           />
         )}
 
@@ -120,7 +120,7 @@ export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateT
           <MetricList
             items={state.metrics}
             selected={selectedAsset?.kind === 'metric' ? selectedAsset.name : null}
-            onSelect={name => handleAssetClick(name, 'metric')}
+            onSelect={(name) =>{  handleAssetClick(name, 'metric') }}
           />
         )}
 
@@ -151,7 +151,7 @@ const DomainList: FC<{ domains: DomainEntry[]; onSelect: (d: DomainEntry) => voi
   return (
     <div className={styles.domainGrid}>
       {domains.map(d => (
-        <div key={d.name} className={styles.domainCard} onClick={() => onSelect(d)}>
+        <div key={d.name} className={styles.domainCard} onClick={() =>{  onSelect(d) }}>
           <span className={styles.domainName}>{d.name}</span>
           <span className={styles.domainCounts}>
             <span>{d.table_count} T</span>
@@ -172,7 +172,7 @@ const TableList: FC<AssetListProps<TableSummary>> = ({ items: tables, selected, 
       <div
         key={t.table_name}
         className={`${styles.assetRow} ${selected === t.table_name ? styles.assetRowSelected : ''}`}
-        onClick={() => onSelect(t.table_name)}
+        onClick={() =>{  onSelect(t.table_name) }}
       >
         <span className={`${styles.badge} ${styles.badgeTable}`}>{t.kind}</span>
         <span>{t.table_name}</span>
@@ -187,7 +187,7 @@ const EventList: FC<AssetListProps<EventSummary>> = ({ items: events, selected, 
       <div
         key={e.name}
         className={`${styles.assetRow} ${selected === e.name ? styles.assetRowSelected : ''}`}
-        onClick={() => onSelect(e.name)}
+        onClick={() =>{  onSelect(e.name) }}
       >
         <span className={`${styles.badge} ${styles.badgeEvent}`}>event</span>
         <span>{e.name}</span>
@@ -202,7 +202,7 @@ const MetricList: FC<AssetListProps<MetricSummary>> = ({ items: metrics, selecte
       <div
         key={m.name}
         className={`${styles.assetRow} ${selected === m.name ? styles.assetRowSelected : ''}`}
-        onClick={() => onSelect(m.name)}
+        onClick={() =>{  onSelect(m.name) }}
       >
         <span className={`${styles.badge} ${styles.badgeMetric}`}>metric</span>
         <span>{m.name}</span>
@@ -218,7 +218,7 @@ const SearchResults: FC<{ results: SchemaSearchHit[]; onSelect: (name: string, k
       {results.map((hit) => {
         const kind = inferKindFromId(hit.id)
         return (
-          <div key={hit.id} className={styles.searchHit} onClick={() => onSelect(hit.id, kind)}>
+          <div key={hit.id} className={styles.searchHit} onClick={() =>{  onSelect(hit.id, kind) }}>
             <span className={`${styles.badge} ${kind === 'table' ? styles.badgeTable : kind === 'event' ? styles.badgeEvent : styles.badgeMetric}`}>
               {kind}
             </span>

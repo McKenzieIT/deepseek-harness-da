@@ -11,7 +11,7 @@
 import { EVAL_CASES, FIXTURE_DATA_SOURCES, FIXTURE_EVENT_DEF, type EvalCase } from './cases.ts'
 import { scoreMatch } from './scorer.ts'
 import { Nl2sqlEngine } from '../engine.ts'
-import { ReplayLlm, type ScriptedGen } from '../replay-llm.ts'
+import { ReplayLlm } from '../replay-llm.ts'
 import { StandInOdps } from '../stand-in-odps.ts'
 import type { QueryOutcome } from '../types.ts'
 
@@ -45,7 +45,7 @@ export async function runEval(options: { cases?: readonly EvalCase[]; verbose?: 
   const details: EvalDetail[] = []
   for (const c of cases) {
     // each case gets its own engine + scripted LLM/ODPS (deterministic, reproducible)
-    const llm = new ReplayLlm({ [c.question]: c.llm } as Record<string, ScriptedGen>)
+    const llm = new ReplayLlm({ [c.question]: c.llm })
     const scripted = c.odps ? ({ [c.odps.sub]: c.odps.out } as Record<string, QueryOutcome>) : {}
     const odps = new StandInOdps(scripted)
     const engine = new Nl2sqlEngine({ dataSources: FIXTURE_DATA_SOURCES, llm, odps })

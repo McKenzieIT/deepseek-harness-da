@@ -41,7 +41,7 @@ export function listScopesResult(ctx: Context): ListScopesResult {
   const activeId = scopes.activeId()
   const all = scopes.list()
 
-  const summaries: ScopeSummary[] = all.map((s) => ({
+  const summaries: ScopeSummary[] = all.map(s => ({
     id: s.id,
     name: extractName(s.metadata, s.id),
     description: extractDescription(s.metadata),
@@ -94,6 +94,8 @@ export function registerListScopes(ctx: Context): void {
         return [{ type: 'text', text: lines.join('\n') }]
       },
     },
+    // async for interface conformance, returns Promise<T>
+    // oxlint-disable-next-line typescript/require-await
     async execute(_args, exec) {
       if (exec.signal.aborted) throw new Error('list_scopes aborted')
       return listScopesResult(ctx) as never

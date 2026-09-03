@@ -26,7 +26,12 @@
       "entry": [
         "scripts/**/*.mjs",
         "scripts/**/*.cjs",
-        "scripts/types/client-build-environment/index.d.ts"
+        "scripts/types/client-build-environment/index.d.ts",
+        "scripts/gen-evidence-query-typert.ts",
+        "scripts/gen-schema-gateway-typert.ts",
+        "scripts/live-verify-w1-w5.ts",
+        "scripts/seed-event-external-refs.ts",
+        "scripts/verify-w8-gateway.ts"
       ],
       "ignoreUnresolved": [
         "client-build-environment"

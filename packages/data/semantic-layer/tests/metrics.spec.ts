@@ -132,7 +132,7 @@ describe('metrics I/O', () => {
     writeFileSync(join(dir, 'config.yaml'), 'project:\n  name: t\n  scope_id: t\n')
     mkdirSync(join(dir, 'tables'), { recursive: true })
   })
-  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+  afterEach(() =>{  rmSync(dir, { recursive: true, force: true }) })
 
   test('extractMetricsFromTables reads tables/ and extracts inline metrics', () => {
     const t = table({ metrics: { pay_amt_sum: mdef('SUM(pay_amt)', '总付费金额') } })

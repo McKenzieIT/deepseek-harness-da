@@ -275,6 +275,7 @@ export class PhaseGate {
       if (s.current_phase === Phase.UNDERSTANDING && s.candidate_tables.size === 0) {
         await this.forcedLoad(agent, signal, s.phase_output)
         // B6: forcedLoad runs ctx.tools.execute through guard — re-check decline/cancel before advancing.
+        // oxlint-disable-next-line typescript/no-unnecessary-condition -- re-check after await: forcedLoad mutates state
         if (s.honest_decline_reason !== null || s.cancelled) return
       }
       // P-DA1 backstop: route proceed/no-token but no grounding (search+retrieve

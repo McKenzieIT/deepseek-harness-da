@@ -60,6 +60,8 @@ export class ReplayLlm implements Llm {
    * @param args - The generate arguments (question, attempt, feedback).
    * @returns The scripted LLM generation result.
    */
+  // async for Llm interface conformance (returns Promise<LlmGenerateResult>); callers await it
+  // oxlint-disable-next-line typescript/require-await
   async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
     const { question, attempt = 0, feedback = null } = args
     this.callCount += 1

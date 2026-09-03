@@ -75,10 +75,10 @@ export function discoverRelationsDeterministic(
   dimInventory: readonly DimInventoryEntry[],
   excludeColumns?: ReadonlySet<string>,
 ): DimensionRef[] {
-  const colNames = new Set((targetDef.columns ?? []).map(c => c.name))
+  const colNames = new Set(targetDef.columns.map(c => c.name))
   const refs: DimensionRef[] = []
   for (const dim of dimInventory) {
-    const pks = (dim.primary_key ?? []).filter(pk => colNames.has(pk) && !(excludeColumns?.has(pk)))
+    const pks = dim.primary_key.filter(pk => colNames.has(pk) && !(excludeColumns?.has(pk)))
     if (pks.length === 0) continue
     refs.push({
       dim_table: dim.table_name,
@@ -157,9 +157,9 @@ export function mergeRefs(
  * @returns the assembled prompt text.
  */
 export function buildLlmPrompt(targetDef: TableDefinition, dimInventory: readonly DimInventoryEntry[]): string {
-  const cols = (targetDef.columns ?? []).map(c => `- ${c.name} (${c.type || 'string'}): ${c.comment || ''}`).join('\n')
+  const cols = targetDef.columns.map(c => `- ${c.name} (${c.type || 'string'}): ${c.comment || ''}`).join('\n')
   const dims = dimInventory
-    .map(d => `- ${d.table_name} | PK: [${(d.primary_key ?? []).join(', ')}] | ${d.description || ''}`)
+    .map(d => `- ${d.table_name} | PK: [${d.primary_key.join(', ')}] | ${d.description || ''}`)
     .join('\n')
   return [
     `Discover dimension (DIM) join relations for the DWS fact table \`${targetDef.table_name}\`.`,
@@ -186,7 +186,7 @@ function extractJsonArray(text: string): unknown[] {
   const end = t.lastIndexOf(']')
   if (start === -1 || end === -1 || end < start) return []
   try {
-    const parsed = JSON.parse(t.slice(start, end + 1))
+    const parsed: unknown = JSON.parse(t.slice(start, end + 1))
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
@@ -377,10 +377,10 @@ export function discoverEventRelationsDeterministic(
   dimInventory: readonly DimInventoryEntry[],
   excludeColumns?: ReadonlySet<string>,
 ): DimensionRef[] {
-  const fieldNames = new Set(Object.keys(eventDef.params_fields ?? {}))
+  const fieldNames = new Set(Object.keys(eventDef.params_fields))
   const refs: DimensionRef[] = []
   for (const dim of dimInventory) {
-    const pks = (dim.primary_key ?? []).filter(pk => fieldNames.has(pk) && !(excludeColumns?.has(pk)))
+    const pks = dim.primary_key.filter(pk => fieldNames.has(pk) && !(excludeColumns?.has(pk)))
     if (pks.length === 0) continue
     refs.push({
       dim_table: dim.table_name,
@@ -401,11 +401,11 @@ export function discoverEventRelationsDeterministic(
  * @returns the assembled prompt text.
  */
 export function buildEventLlmPrompt(eventDef: EventDefinition, dimInventory: readonly DimInventoryEntry[]): string {
-  const fields = Object.entries(eventDef.params_fields ?? {})
-    .map(([k, v]) => `- ${k} (${v?.type || 'string'}): ${v?.description || ''}`)
+  const fields = Object.entries(eventDef.params_fields)
+    .map(([k, v]) => `- ${k} (${v.type || 'string'}): ${v.description || ''}`)
     .join('\n')
   const dims = dimInventory
-    .map(d => `- ${d.table_name} | PK: [${(d.primary_key ?? []).join(', ')}] | ${d.description || ''}`)
+    .map(d => `- ${d.table_name} | PK: [${d.primary_key.join(', ')}] | ${d.description || ''}`)
     .join('\n')
   return [
     `Discover dimension (DIM) join relations for the event \`${eventDef.name}\`.`,
@@ -699,9 +699,9 @@ function eventToAltLabelsTarget(def: EventDefinition): AltLabelsTarget {
     kind: 'event',
     description: def.description,
     domains: def.domains,
-    columns: Object.entries(def.params_fields ?? {}).map(([k, v]) => ({
+    columns: Object.entries(def.params_fields).map(([k, v]) => ({
       name: k,
-      comment: v?.description,
+      comment: v.description,
     })),
     existingAltLabels: def.alt_labels,
     existingPrefLabel: def.pref_label,

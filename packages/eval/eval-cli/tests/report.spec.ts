@@ -9,7 +9,7 @@ function makeCase(id: string, question: string, intent: string): EvalCase {
     input: { question, scope_id: null, turns: [] },
     expected: { result_value: null, match_mode: null, answer: null, delivery_match: null },
     dimensions: { query_intent: intent },
-  } as unknown as EvalCase
+  }
 }
 
 function makeResult(cases: Array<{ id: string; verdict: 'correct' | 'wrong' | 'declined' | 'infra_failure' }>): RunResult {

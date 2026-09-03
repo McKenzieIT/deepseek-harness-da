@@ -221,7 +221,7 @@ describe('SQLiteAuditStore.listDeltasSince', () => {
     store = new SQLiteAuditStore(openAuditDatabase(':memory:'))
   })
 
-  afterEach(() => store.close())
+  afterEach(() =>{  store.close() })
 
   /** Append a delta-carrying edit_definition tier-2 record (mirrors what
    *  `Audit.recordTier2Write('edit_definition', payload, { delta, asset_name, kind })`

@@ -12,7 +12,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { SemanticLayerService as _SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
 import type { Audit } from '@deepseek-ai/dsh-audit'
 
 export const name = 'tool-revert-edit'
@@ -105,7 +105,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     async execute(args, exec) {
       if (exec.signal.aborted) throw new Error('revert_edit aborted')
 
-      const schema = ctx.schema as unknown as SemanticLayerService
+      const schema = ctx.schema
       const audit: Audit = ctx.audit
 
       const validated = validateAssetName(args.asset_name)
@@ -157,7 +157,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         if (kind === 'table') {
           const current = schema.loadTableDefinition(validated)
           if (current !== null) currentYaml = dumpYaml(current)
-        } else if (kind === 'event') {
+        } else {
           const current = schema.loadEventDefinition(validated)
           if (current !== null) currentYaml = dumpYaml(current)
         }
@@ -176,7 +176,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           const { load: yamlLoad } = await import('js-yaml')
           const obj = yamlLoad(snapshot.content) as Record<string, unknown>
           await writeTable(schema.semanticRoot, validated, obj)
-        } else if (kind === 'event') {
+        } else {
           const res = await writeEventYaml(schema.semanticRoot, validated, snapshot.content)
           if (!res.ok) {
             return {

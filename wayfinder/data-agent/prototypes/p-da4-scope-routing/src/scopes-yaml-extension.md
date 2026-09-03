@@ -11,22 +11,20 @@ scopes:
   '10000251':
     semanticRoot: ./examples/k11-semantic-layer
     metadata:
-      name: K11 大逃杀
-      description: K11 大逃杀手游事件分析——日活、留存、付费、行为漏斗
+      name: K11
+      description: K11手游事件分析——日活、留存、付费、行为漏斗
       aliases:
         - K11
-        - 大逃杀
         - k11
         - 251
   '10000334':
     semanticRoot: ./examples/x63-semantic-layer
     metadata:
-      name: X63 射击
-      description: X63 射击手游事件分析（司测阶段）——对局、战斗、经济、社交
+      name: X63
+      description: X63手游事件分析（司测阶段）——对局、战斗、经济、社交
       aliases:
         - X63
         - x63
-        - 射击
         - 334
 ```
 
@@ -45,7 +43,7 @@ const aliases = (scope.metadata?.['aliases'] as string[]) ?? []
 
 Administrators configure aliases via:
 1. **Direct YAML edit** of `~/.dsh/data/scopes.yaml` (current)
-2. **CLI**: `dsh scope update <id> --alias K11 --alias 大逃杀` (future; not in scope)
+2. **CLI**: `dsh scope update <id> --alias K11 --alias k11` (future; not in scope)
 3. **Web UI**: scope CRUD form with an aliases multi-input (W5; not in scope)
 
 ## Design Constraints

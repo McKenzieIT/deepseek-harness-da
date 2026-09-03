@@ -10,7 +10,8 @@
  */
 import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
-import { readdirSync, existsSync } from 'node:fs'
+import { readdirSync, existsSync, readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 
 function findRepoRoot(): string {
   let dir = resolve('.')
@@ -132,7 +133,7 @@ function parseCliArgs(): CliArgs {
     sidecarPath: typeof values.sidecar === 'string' ? values.sidecar : null,
     noSqlJudge: values['no-sql-judge'] === true,
     queryExpansion: values['no-query-expansion'] !== true,
-    responder: responderVal as 'engine' | 'harness',
+    responder: responderVal,
     variant: typeof variantVal === 'string' ? variantVal.toUpperCase() : null,
     scopeId: str(values['scope-id'], 'k11'),
   }
@@ -180,7 +181,7 @@ function printUsage(): void {
     --help                 Show this help
 
   Environment:
-    DASHSCOPE_API_KEY      API key for the DashScope LLM provider (required)
+    DASHSCOPE_API_KEY      API key in ~/.dsh/.credentials.yaml (required; llm-dashscope reads it via the credential seam, not process.env)
     EVAL_LLM_PROVIDER      Eval responder + SQL judge LLM provider (required,
                            no silent vendor fallback — fail-loud when unset)
     EVAL_LLM_MODEL         Eval responder + SQL judge LLM model (required,
@@ -235,8 +236,15 @@ export function resolveResponderLlmConfig(
 export async function main(): Promise<void> {
   const args = parseCliArgs()
 
-  if (!process.env.DASHSCOPE_API_KEY) {
-    console.error('Error: DASHSCOPE_API_KEY environment variable is not set')
+  // Intranet-security-first: the DashScope key lives in the credential seam
+  // (~/.dsh/.credentials.yaml, file 0600), NOT process.env — llm-dashscope
+  // resolves it per-request via ctx.credentials. This pre-flight fast-fails when
+  // the key is absent from the credential file (MISSING_CREDENTIAL would
+  // otherwise surface only at the first LLM call).
+  const credFile = join(homedir(), '.dsh', '.credentials.yaml')
+  const credText = existsSync(credFile) ? readFileSync(credFile, 'utf8') : ''
+  if (!/^DASHSCOPE_API_KEY:[ \t]*\S/m.test(credText)) {
+    console.error('Error: DASHSCOPE_API_KEY not found in ~/.dsh/.credentials.yaml (the credential seam; llm-dashscope reads it via ctx.credentials, not process.env)')
     process.exit(1)
   }
 
@@ -285,9 +293,15 @@ export async function main(): Promise<void> {
       const { Context: Ctx } = await import('@deepseek-ai/cordis')
       const { LlmRuntime: LlmRt } = await import('@deepseek-ai/dsh-llm')
       const dashscope = await import('@deepseek-ai/dsh-llm-dashscope')
+      const credLocal = await import('@deepseek-ai/dsh-credentials-local')
       // Boot a lightweight ctx just for the judge LLM
       const judgeCtx = new Ctx()
       await judgeCtx.plugin(LlmRt)
+      // Credential seam for the judge (same ~/.dsh/.credentials.yaml as the responder)
+      await judgeCtx.plugin(credLocal.LocalCredentialProvider, {
+        path: join(homedir(), '.dsh', '.credentials.yaml'),
+        dshHome: join(homedir(), '.dsh'),
+      })
       await judgeCtx.plugin(dashscope)
       sqlJudge = new LlmSqlSemanticJudge(async (prompt: string) => {
         const assembler = new BlockAssembler()

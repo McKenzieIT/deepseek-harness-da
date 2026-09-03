@@ -73,7 +73,7 @@ export function fromPayload(data: unknown): AuditRecord {
   const extra: Record<string, unknown> = { ...existingExtra }
   for (const k of Object.keys(source)) if (!KNOWN_KEYS.has(k)) extra[k] = source[k]
   init.extra = extra
-  return AuditRecord.parse(init) as AuditRecord
+  return AuditRecord.parse(init)
 }
 
 /**
@@ -85,10 +85,10 @@ export function fromPayload(data: unknown): AuditRecord {
  * @returns the flattened wire dict with `extra` keys at top level.
  */
 export function toPayload(rec: unknown): Record<string, unknown> {
-  const d = AuditRecord.parse(rec) as AuditRecord
+  const d = AuditRecord.parse(rec)
   const out: Record<string, unknown> = {}
   for (const k of KNOWN_KEYS) if (k !== 'extra') out[k] = d[k as keyof AuditRecord]
-  if (d.extra !== undefined && typeof d.extra === 'object') Object.assign(out, d.extra)
+  Object.assign(out, d.extra)
   return out
 }
 

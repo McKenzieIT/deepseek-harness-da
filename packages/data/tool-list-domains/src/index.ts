@@ -109,7 +109,7 @@ export function formatListDomains(value: ListDomainsResult): string {
   if (!value.ok) return value.message ?? 'list_domains failed'
   const domains = value.domains ?? []
   if (domains.length === 0) return 'No domains found in the semantic layer.'
-  const lines = domains.map(d => {
+  const lines = domains.map((d) => {
     const desc = d.description ? ` — ${d.description}` : ''
     const aliases = d.alt_labels.length > 0 ? ` [${d.alt_labels.join(', ')}]` : ''
     return `• ${d.name}${desc}${aliases}: ${d.table_count} tables, ${d.event_count} events, ${d.metric_count} metrics`

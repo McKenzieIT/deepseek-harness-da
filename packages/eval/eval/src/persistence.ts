@@ -110,7 +110,10 @@ export function listRunFiles(dir: string): RunFileMeta[] {
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
 }
 
-/** Parse a run filename into metadata. Format: `{safeTimestamp}_{runId}.jsonl` where safeTimestamp has no underscores (colons/dots replaced with dashes by persistBatchResult). */
+/**
+ * Parse a run filename into metadata. Format: `{safeTimestamp}_{runId}.jsonl`
+ * where safeTimestamp has no underscores (colons/dots replaced with dashes by persistBatchResult).
+ */
 function parseRunFilename(filename: string, dir: string): RunFileMeta | null {
   const base = basename(filename, '.jsonl')
   // The timestamp portion never contains underscores (ISO with :-. replaced by -).

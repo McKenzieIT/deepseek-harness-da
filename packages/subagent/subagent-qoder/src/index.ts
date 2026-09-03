@@ -146,7 +146,7 @@ export function apply(ctx: Context, config: Config): void {
   assertPositiveFinite('subagent-qoder', 'disposeGraceMs', resolved.disposeGraceMs)
   if (resolved.disposeGraceMs > MAX_TIMER_DELAY_MS) {
     throw new Error(
-      'subagent-qoder: disposeGraceMs must be no greater than ' + MAX_TIMER_DELAY_MS,
+      `subagent-qoder: disposeGraceMs must be no greater than ${MAX_TIMER_DELAY_MS}`,
     )
   }
   ctx.subagents.registerProvider(new QoderProvider(ctx, resolved))

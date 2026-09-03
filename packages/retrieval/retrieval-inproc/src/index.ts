@@ -103,7 +103,10 @@ const ACTIVE_SENTINEL = Symbol('active-scope')
  * passes `opts?.scopeId` through (5b: dormant until 5d — prod callers do not
  * set AgentOptions.scopeId yet; 5d eval/CLI will).
  */
-const scopedRetrievers = new WeakMap<SchemaCorpusSource, Map<string | symbol, { retriever: HybridRetriever; version: number; root: string | undefined }>>()
+const scopedRetrievers = new WeakMap<
+  SchemaCorpusSource,
+  Map<string | symbol, { retriever: HybridRetriever; version: number; root: string | undefined }>
+>()
 
 /**
  * Get (or build+cache) the `HybridRetriever` for a schema instance + scope,

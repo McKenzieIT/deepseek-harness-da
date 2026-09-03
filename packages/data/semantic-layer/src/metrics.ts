@@ -34,7 +34,7 @@ const AGG_RE = /^\s*(COUNT_DISTINCT|COUNT|SUM|AVG|MIN|MAX)\s*\((.*)\)\s*$/i
  * @returns the inferred aggregation verb + field (empty when not inferable).
  */
 export function inferAggregation(expression: string): { aggregation: string; field: string } {
-  const m = AGG_RE.exec(expression ?? '')
+  const m = AGG_RE.exec(expression)
   if (!m) return { aggregation: '', field: '' }
   let agg = (m[1] ?? '').toLowerCase()
   let field = (m[2] ?? '').trim()
@@ -86,9 +86,9 @@ export function toMetricDefinition(
     kind: 'metric',
     name: metricName(source, key),
     description: def.description,
-    alt_labels: [...(def.alt_labels ?? [])],
+    alt_labels: [...def.alt_labels],
     domains: [...domains],
-    caliber_variants: [...(def.caliber_variants ?? [])],
+    caliber_variants: [...def.caliber_variants],
     computation: {
       sql: def.expression,
       metadata: {
@@ -139,8 +139,8 @@ export function deriveMetricRelations(def: MetricDefinition): { type: 'joins' | 
  */
 export function extractMetricsFromTable(def: TableDefinition): MetricDefinition[] {
   const out: MetricDefinition[] = []
-  for (const [key, mdef] of Object.entries(def.metrics ?? {})) {
-    out.push(toMetricDefinition(def.table_name, key, mdef, def.domains ?? []))
+  for (const [key, mdef] of Object.entries(def.metrics)) {
+    out.push(toMetricDefinition(def.table_name, key, mdef, def.domains))
   }
   return out
 }
@@ -153,8 +153,8 @@ export function extractMetricsFromTable(def: TableDefinition): MetricDefinition[
  */
 export function extractMetricsFromEvent(def: EventDefinition): MetricDefinition[] {
   const out: MetricDefinition[] = []
-  for (const [key, mdef] of Object.entries(def.metrics ?? {})) {
-    out.push(toMetricDefinition(def.name, key, mdef, def.domains ?? []))
+  for (const [key, mdef] of Object.entries(def.metrics)) {
+    out.push(toMetricDefinition(def.name, key, mdef, def.domains))
   }
   return out
 }

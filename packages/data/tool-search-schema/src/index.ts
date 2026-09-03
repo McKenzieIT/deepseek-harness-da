@@ -79,7 +79,10 @@ const ACTIVE_SENTINEL = Symbol('active-scope')
  * `searchSchema`/execute (5b: dormant — prod callers do not set
  * AgentOptions.scopeId yet; 5d eval/CLI will).
  */
-const linkerCache = new WeakMap<SchemaCorpusSource, Map<string | symbol, { linker: Bm25Linker; version: number; root: string | undefined }>>()
+const linkerCache = new WeakMap<
+  SchemaCorpusSource,
+  Map<string | symbol, { linker: Bm25Linker; version: number; root: string | undefined }>
+>()
 
 /**
  * Get (or build+cache) the `Bm25Linker` for a schema instance + scope,

@@ -14,7 +14,7 @@ export interface NodeDetailPanelProps {
 export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onInsertReference }) => {
   if (!node) return null
 
-  const kindColor = KIND_COLORS[node.kind] ?? '#888'
+  const kindColor = KIND_COLORS[node.kind]
 
   return (
     <div
@@ -116,7 +116,7 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
       {/* Chat reference button */}
       {onInsertReference && (
         <button
-          onClick={() => onInsertReference(node.id)}
+          onClick={() =>{  onInsertReference(node.id) }}
           style={{
             display: 'flex',
             alignItems: 'center',

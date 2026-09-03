@@ -166,6 +166,7 @@ export class NarrationGate {
       const edgeItems: Array<{ id: string;[key: string]: unknown }> = []
 
       for (const item of added) {
+        // oxlint-disable-next-line typescript/no-unnecessary-condition -- external boundary (meta.added), type may lie
         if (!item || typeof item !== 'object') continue
         // Items with source/target are edges; others are nodes
         if ('source' in item && 'target' in item) {

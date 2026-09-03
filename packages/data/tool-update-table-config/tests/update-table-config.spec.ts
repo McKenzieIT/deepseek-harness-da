@@ -96,8 +96,8 @@ function writeTable(layer: string, name: string, def: unknown): void {
 }
 
 /** Read back a table definition YAML from the layer (parsed through the schema). */
-function readTable<T = unknown>(layer: string, name: string): T {
-  return yaml.load(readFileSync(join(layer, 'tables', `${name}.yaml`), 'utf-8')) as T
+function readTable(layer: string, name: string): unknown {
+  return yaml.load(readFileSync(join(layer, 'tables', `${name}.yaml`), 'utf-8'))
 }
 
 /** The subset of the registered tool definition the tests exercise. */
@@ -275,7 +275,7 @@ test('S7 updateTableConfigResult - YAML merged with {project} on disk', async ()
       'dws_pay_order_di',
       'ieu_cdm',
     )
-    const after = readTable<{ table_name: string; project?: string }>(layer, 'dws_pay_order_di')
+    const after = readTable(layer, 'dws_pay_order_di') as { table_name: string; project?: string }
     expect(after.table_name).toBe('dws_pay_order_di')
     expect(after.project).toBe('ieu_cdm')
   } finally {

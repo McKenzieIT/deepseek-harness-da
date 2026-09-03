@@ -59,6 +59,8 @@ async function main(): Promise<void> {
   check('getTableDefinition', fullDef !== null, `${sampleTable?.table_name} → full def returned`)
 
   const searchHits = gw.search('订单 金额 充值')
+  // searchHits[0] is undefined at runtime for an empty result; without noUncheckedIndexedAccess TS types it non-null
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   check('search (BM25)', searchHits.length > 0, `${searchHits.length} hits for "订单 金额 充值"; top="${searchHits[0]?.id ?? '-'}" (${searchHits[0]?.score?.toFixed(3) ?? '-'})`)
 
   const domains = gw.listDomains()
@@ -150,6 +152,8 @@ async function main(): Promise<void> {
 
   const gapAsset = sampleTable?.table_name ?? 'dws_order_di'
   const gap = eq.gapAnalysis(gapAsset)
+  // defensive; gapAnalysis return shape guarantees gaps present
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   check('gapAnalysis', gap.gaps !== undefined, `${gap.gaps.length} join-reachable-uncovered assets from "${gapAsset}"`)
 
   const runIds = eq.getEvalStore().getRunIds().sort()
@@ -165,12 +169,12 @@ async function main(): Promise<void> {
   // The EvidenceQueryClient interface that useEvidenceQuery consumes, backed by
   // the LIVE EvidenceQueryService (not a mock). Proves the UI's data layer.
   const client = {
-    coverageQuery: async () => eq.coverageQuery(),
-    gapAnalysis: async (id: string) => eq.gapAnalysis(id),
-    reachabilityDelta: async (r: { sourceId: string; targetId: string; type: 'joins' | 'derived_from' | 'related_to' }) => eq.reachabilityDelta(r),
-    evalResultQuery: async (f: { assetId?: string; status?: 'pass' | 'fail' | 'error' | 'pending'; domain?: string; limit?: number }) => eq.evalResultQuery(f),
-    assetHealth: async (id: string) => eq.assetHealth(id),
-    beforeAfterDelta: async (a: string, b: string) => eq.beforeAfterDelta(a, b),
+    coverageQuery: () => Promise.resolve(eq.coverageQuery()),
+    gapAnalysis: (id: string) => Promise.resolve(eq.gapAnalysis(id)),
+    reachabilityDelta: (r: { sourceId: string; targetId: string; type: 'joins' | 'derived_from' | 'related_to' }) => Promise.resolve(eq.reachabilityDelta(r)),
+    evalResultQuery: (f: { assetId?: string; status?: 'pass' | 'fail' | 'error' | 'pending'; domain?: string; limit?: number }) => Promise.resolve(eq.evalResultQuery(f)),
+    assetHealth: (id: string) => Promise.resolve(eq.assetHealth(id)),
+    beforeAfterDelta: (a: string, b: string) => Promise.resolve(eq.beforeAfterDelta(a, b)),
   }
   const clientCov = await client.coverageQuery()
   check('client.coverageQuery()', clientCov.table_count === 321, `via client face → ${clientCov.table_count} tables`)
@@ -195,7 +199,7 @@ async function main(): Promise<void> {
   const failed = results.filter(r => !r.pass).length
   console.log(`\n${'═'.repeat(60)}`)
   console.log(`LIVE VERIFICATION: ${passed} passed, ${failed} failed (of ${results.length})`)
-  console.log(`${'═'.repeat(60)}`)
+  console.log('═'.repeat(60))
   if (failed > 0) {
     console.log('FAILURES:')
     for (const r of results.filter(x => !x.pass)) console.log(`  ❌ ${r.name}: ${r.detail}`)
@@ -204,7 +208,7 @@ async function main(): Promise<void> {
   process.exit(failed > 0 ? 1 : 0)
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   console.error('\n💥 Live verification crashed:')
   console.error(err)
   process.exit(2)

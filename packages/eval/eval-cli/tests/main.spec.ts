@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'

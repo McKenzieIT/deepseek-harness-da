@@ -47,7 +47,7 @@ async function callLlm(messages: Array<{ role: string; content: string }>): Prom
     const text = await resp.text()
     throw new Error(`DashScope ${resp.status}: ${text.slice(0, 200)}`)
   }
-  const data = await resp.json() as { choices: Array<{ message: { content: string } }> }
+  const data = await resp.json() as { choices?: Array<{ message?: { content: string } }> }
   const latency = Date.now() - start
   const content = data.choices?.[0]?.message?.content ?? ''
   console.log(`  [LLM] ${EXPANSION_MODEL} latency=${latency}ms len=${content.length}`)
@@ -67,7 +67,7 @@ async function expandQuery(question: string, useLlm: boolean): Promise<string> {
     ])
     return expanded.trim().replace(/\n/g, ' ')
   } catch (err) {
-    console.log(`  [LLM FAILED] ${err instanceof Error ? err.message.slice(0, 80) : err}`)
+    console.log(`  [LLM FAILED] ${err instanceof Error ? err.message.slice(0, 80) : String(err)}`)
     console.log('  [FALLBACK] using simulated expansion')
     return SIMULATED_EXPANSIONS[question] ?? question
   }
@@ -149,4 +149,4 @@ async function main() {
   }
 }
 
-main().catch((err) => { console.error(err); process.exit(1) })
+main().catch((err: unknown) => { console.error(err); process.exit(1) })

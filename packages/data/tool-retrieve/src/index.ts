@@ -45,7 +45,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { Bm25Linker, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
-import { type RetrievalService } from '@deepseek-ai/dsh-retrieval/src/index.ts'
+import { type RetrievalService as _RetrievalService } from '@deepseek-ai/dsh-retrieval/src/index.ts'
 
 export const name = 'tool-retrieve'
 export const inject = ['tools']
@@ -166,7 +166,10 @@ const ACTIVE_SENTINEL = Symbol('active-scope')
  * field + check + wires `exec.scopeId` through execute (5b: dormant — prod
  * callers do not set AgentOptions.scopeId yet; 5d eval/CLI will).
  */
-const enrichedLinkers = new WeakMap<SchemaCorpusSource, Map<string | symbol, { linker: Bm25Linker; version: number; root: string | undefined }>>()
+const enrichedLinkers = new WeakMap<
+  SchemaCorpusSource,
+  Map<string | symbol, { linker: Bm25Linker; version: number; root: string | undefined }>
+>()
 
 /**
  * Get (or build+cache) the enriched `Bm25Linker` for a schema instance + scope,
@@ -293,7 +296,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       // real embedder (D2c-revisit). Reranker peer is NOT defaulted (D2d F2:
       // FakeReranker harms implicit cases); it stays injectable for a real
       // cross-encoder a user self-deploys.
-      const retrieval = ctx.get('retrieval') as RetrievalService | undefined
+      const retrieval = ctx.get('retrieval')
       if (retrieval !== undefined) {
         const hits = await retrieval.retrieve(args.query, { topK, mode: 'hybrid' })
         return { candidates: hits.map(projectHit) }

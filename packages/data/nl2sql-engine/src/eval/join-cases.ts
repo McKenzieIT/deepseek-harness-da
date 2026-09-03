@@ -9,7 +9,6 @@ import type { RelationGraphLike, RelationGraphEdge } from '../ontology.ts'
 import { MatchMode } from '../types.ts'
 import type { DataSourceDoc } from '../bm25-linking.ts'
 import type { EvalCase } from './cases.ts'
-import type { ScriptedGen } from '../replay-llm.ts'
 
 /** Fixture corpus for the join eval (2 DWS + 1 DIM). */
 export const JOIN_FIXTURE_DS: readonly DataSourceDoc[] = [
@@ -64,7 +63,7 @@ export const JOIN_EVAL_CASES: readonly EvalCase[] = [
   {
     id: 'j01',
     question: '各服务器的充值总金额',
-    llm: { sql: MULTI_SQL } as ScriptedGen,
+    llm: { sql: MULTI_SQL },
     odps: { sub: 'JOIN dim_server_info', out: { state: 'done', result_id: 'j1', rows: [{ server_name: 's1', total: 100 }] } },
     expected: { result_value: [{ server_name: 's1', total: 100 }], match_mode: MatchMode.SET_EXACT },
     turns: 1,
@@ -72,7 +71,7 @@ export const JOIN_EVAL_CASES: readonly EvalCase[] = [
   {
     id: 'j02',
     question: '各服务器战斗次数',
-    llm: { sql: MULTI_SQL.replace('dws_pay_order_di', 'dws_battle_di').replace('SUM(p.pay_amt) AS total', 'COUNT(*) AS battle_count') } as ScriptedGen,
+    llm: { sql: MULTI_SQL.replace('dws_pay_order_di', 'dws_battle_di').replace('SUM(p.pay_amt) AS total', 'COUNT(*) AS battle_count') },
     odps: { sub: 'server_name', out: { state: 'done', result_id: 'j2', rows: [{ server_name: 's1', battle_count: 5 }] } },
     expected: { result_value: [{ server_name: 's1', battle_count: 5 }], match_mode: MatchMode.SET_EXACT },
     turns: 1,
@@ -80,7 +79,7 @@ export const JOIN_EVAL_CASES: readonly EvalCase[] = [
   {
     id: 'j03',
     question: '充值最高的区服名',
-    llm: { sql: `${MULTI_SQL} ORDER BY total DESC LIMIT 1` } as ScriptedGen,
+    llm: { sql: `${MULTI_SQL} ORDER BY total DESC LIMIT 1` },
     odps: { sub: 'ORDER BY total', out: { state: 'done', result_id: 'j3', rows: [{ server_name: 's1', total: 100 }] } },
     expected: { result_value: [{ server_name: 's1', total: 100 }], match_mode: MatchMode.SET_EXACT },
     turns: 1,

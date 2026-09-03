@@ -1,6 +1,6 @@
 import type { RelationGraph } from '@deepseek-ai/dsh-semantic-layer/src/relation-graph.ts'
 import type { RetrievalHit } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
-import { expandCandidates, type RelationGraphLike } from '@deepseek-ai/dsh-nl2sql-engine/src/ontology.ts'
+import { expandCandidates } from '@deepseek-ai/dsh-nl2sql-engine/src/ontology.ts'
 import type { GraphSnapshot, BlendingConfig, RetrievalCandidate } from './types.ts'
 
 const DEFAULT_ALIAS_BOOST = 2.0
@@ -81,7 +81,7 @@ export function strategyB(
   const boosted = applyAliasFusion(snapshot.graph, hits, query, boost)
   const expanded = expandCandidates(
     boosted,
-    snapshot.graph as unknown as RelationGraphLike,
+    snapshot.graph,
     topK,
   )
   return expanded.map(projectCandidate)
@@ -142,7 +142,7 @@ export function hardSwitch(
   const hits = snapshot.linker.retrieve(query, { topK, mode: 'bm25-only' })
   const expanded = expandCandidates(
     [...hits],
-    snapshot.graph as unknown as RelationGraphLike,
+    snapshot.graph,
     topK,
   )
   return expanded.map(projectCandidate)
@@ -226,7 +226,7 @@ export function continuousBlend(
   const asHits: RetrievalHit[] = sorted.map(s => ({ id: s.id, score: s.score, payload: undefined, mode: s.mode }))
   const expanded = expandCandidates(
     asHits,
-    snapshot.graph as unknown as RelationGraphLike,
+    snapshot.graph,
     topK,
   )
   return expanded.map(projectCandidate)

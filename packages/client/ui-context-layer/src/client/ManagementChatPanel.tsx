@@ -242,7 +242,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
         <input
           type="text"
           value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
+          onChange={(e) =>{  setInputValue(e.target.value) }}
           onKeyDown={handleKeyDown}
           placeholder={onSendMessage ? 'Type a message...' : 'Management session not available'}
           disabled={isStreaming || !onSendMessage}

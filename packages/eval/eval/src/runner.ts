@@ -162,7 +162,7 @@ function computeSummary(perCase: readonly ClassifiedCaseResult[]): BatchSummary 
       case 'declined': declined++; break
       case 'wrong': wrong++; break
       case 'unjudged': unjudged++; break
-      default: { const _exhaustive: never = c.outcome; throw new Error(`unknown outcome: ${_exhaustive}`) }
+      default: { const _exhaustive: never = c.outcome; throw new Error(`unknown outcome: ${String(_exhaustive)}`) }
     }
     totalLatencyMs += c.result.latencyMs
   }

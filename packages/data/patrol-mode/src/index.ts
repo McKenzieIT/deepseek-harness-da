@@ -323,6 +323,7 @@ export class PatrolService extends Service {
     while (!signal.aborted) {
       // Drain any pending btw messages before starting a new round
       await this.drainBtwQueue()
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- AbortSignal mutated externally during await
       if (signal.aborted) break
 
       this.roundNumber++
@@ -330,6 +331,7 @@ export class PatrolService extends Service {
       this.ctx.emit('patrol/round-start', this.roundNumber)
 
       const roundResult = await this.executeRound(signal)
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- AbortSignal mutated externally during await
       if (signal.aborted) break
 
       // Emit round-complete for C2 batch rendering
@@ -340,6 +342,7 @@ export class PatrolService extends Service {
         await this.triggerEval(roundResult.assetsProcessed)
       }
 
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- AbortSignal mutated externally during await
       if (signal.aborted) break
 
       // Brief pause between rounds to allow interruptions
@@ -375,10 +378,12 @@ export class PatrolService extends Service {
 
       // Drain btw queue between edits
       await this.drainBtwQueue()
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- AbortSignal mutated externally during await
       if (signal.aborted) break
 
       // a. Diagnose
       const diagnosis = await this.diagnose(assetId)
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- AbortSignal mutated externally during await
       if (signal.aborted) break
 
       // b. Propose fix
@@ -422,7 +427,7 @@ export class PatrolService extends Service {
    * Returns asset IDs sorted by weakness (least healthy first).
    */
   private findWeakestAssets(): string[] {
-    const evidenceQuery = this.ctx.get('evidenceQuery') as Context['evidenceQuery'] | undefined
+    const evidenceQuery = this.ctx.get('evidenceQuery')
     if (!evidenceQuery) return []
 
     const coverage = evidenceQuery.coverageQuery()
@@ -477,9 +482,10 @@ export class PatrolService extends Service {
    * Diagnose an asset's issues via the management session.
    * Returns a textual diagnosis string.
    */
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<string>
   private async diagnose(assetId: string): Promise<string> {
     // Delegate to evidence query for concrete diagnosis data
-    const evidenceQuery = this.ctx.get('evidenceQuery') as Context['evidenceQuery'] | undefined
+    const evidenceQuery = this.ctx.get('evidenceQuery')
     if (!evidenceQuery) return `Asset ${assetId} requires attention`
 
     const health = evidenceQuery.assetHealth(assetId)
@@ -511,6 +517,7 @@ export class PatrolService extends Service {
    *
    * @returns true when the edit was applied, false when no active session.
    */
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<boolean>
   private async executeEdit(edit: PatrolProposedEdit): Promise<boolean> {
     const mgmt = this.ctx.managementSession.getActive()
     if (!mgmt) return false
@@ -592,6 +599,7 @@ export class PatrolService extends Service {
    * Drain all queued btw messages by routing each through the management
    * session as a one-off request.
    */
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<void>
   private async drainBtwQueue(): Promise<void> {
     while (this.btwQueue.length > 0) {
       const msg = this.btwQueue.shift()

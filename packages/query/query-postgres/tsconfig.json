@@ -19,6 +19,9 @@
     },
     {
       "path": "../query"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

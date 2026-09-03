@@ -47,6 +47,9 @@ export function presentTableResult(
   if (typeof title !== 'string' || title.trim() === '') {
     throw new Error('present_table requires a non-empty title')
   }
+  // Tool args are an external boundary (model/tool JSON); chart.type may be
+  // invalid at runtime despite the typed 'line' | 'bar' — keep fail-loud.
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (chart !== undefined && chart.type !== 'line' && chart.type !== 'bar') {
     throw new Error('present_table: chart.type must be "line" or "bar"')
   }
@@ -67,16 +70,18 @@ function formatTable(value: PresentTableResult): string {
     return 'No table to present.'
   }
   const parts: string[] = [`Table: ${value.title} (result: ${value.result_id}`]
+  let header = parts[0] ?? ''
   if (value.columns && value.columns.length > 0) {
-    parts[0] += `, ${value.columns.length} columns`
+    header += `, ${value.columns.length} columns`
   }
   if (value.sort_column !== undefined && value.sort_column >= 0) {
-    parts[0] += `, sort: col ${value.sort_column}`
+    header += `, sort: col ${value.sort_column}`
   }
   if (value.chart) {
-    parts[0] += `, chart: ${value.chart.type}`
+    header += `, chart: ${value.chart.type}`
   }
-  parts[0] += ')'
+  header += ')'
+  parts[0] = header
   if (value.kpi_columns && value.kpi_columns.length > 0) {
     parts.push('KPIs:')
     for (const kpi of value.kpi_columns) {
@@ -184,6 +189,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         text: formatTable(value as PresentTableResult),
       }],
     },
+    // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<T>
     async execute(args, exec) {
       if (exec.signal.aborted) {
         throw new Error('present_table aborted')
@@ -194,8 +200,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
         args.columns,
         args.column_types,
         args.sort_column,
-        args.kpi_columns as KpiColumn[] | undefined,
-        args.chart as ChartConfig | undefined,
+        args.kpi_columns,
+        args.chart,
       ) as typeof args & { presented: boolean }
     },
   }))

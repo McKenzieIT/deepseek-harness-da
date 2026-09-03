@@ -7,7 +7,7 @@ import {
 } from '../src/classify_failure.ts'
 import type { QueryOutcomeView } from '../src/types.ts'
 
-const oc = (o: Partial<QueryOutcomeView> & { state: QueryOutcomeView['state'] }): QueryOutcomeView => o as QueryOutcomeView
+const oc = (o: Partial<QueryOutcomeView> & { state: QueryOutcomeView['state'] }): QueryOutcomeView => o
 
 describe('classifyExecutionFailure (rbi l1.classify_execution_failure mirror)', () => {
   it('null/undefined/empty → infrastructure (the fewest-consequences default)', () => {

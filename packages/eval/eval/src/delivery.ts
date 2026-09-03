@@ -106,6 +106,6 @@ export async function scoreDelivery(
  * @returns the first numeric token found (e.g. `-3.14`), or `NaN` when no number is present.
  */
 export function parseNumber(text: string): number {
-  const m = String(text).match(/-?\d+(\.\d+)?/)
+  const m = text.match(/-?\d+(\.\d+)?/)
   return m === null ? Number.NaN : Number(m[0])
 }

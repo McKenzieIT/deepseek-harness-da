@@ -11,7 +11,7 @@ import type { EvalResultRecord, ProposedRelation } from '../src/types.ts'
 const dirs: string[] = []
 
 afterEach(() => {
-  dirs.splice(0).forEach(d => rmSync(d, { recursive: true, force: true }))
+  dirs.splice(0).forEach((d) =>{  rmSync(d, { recursive: true, force: true }) })
 })
 
 /**

@@ -165,7 +165,7 @@ test('SR5 (e) schema not mounted → retrieve falls back to config.dataSources r
   // behavior, preserved as the additive fallback (zero break). Uses a real
   // Cordis Context with an embedder provided but NO schema provided.
   const ctx = new Context()
-  ctx.provide('embedder', hashEmbedder as unknown as EmbedderLike)
+  ctx.provide('embedder', hashEmbedder)
   const dataSources: readonly RetrievalCorpusItem[] = [
     { id: 'fallback.营收', description: '营收 revenue fallback path', metrics: {} },
   ]

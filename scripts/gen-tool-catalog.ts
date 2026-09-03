@@ -81,6 +81,15 @@ import * as ToolRetrieve from '@deepseek-ai/dsh-tool-retrieve'
 import * as ToolSearchSchema from '@deepseek-ai/dsh-tool-search-schema'
 import * as ToolTriggerEval from '@deepseek-ai/dsh-tool-trigger-eval'
 import * as ToolUpdateTableConfig from '@deepseek-ai/dsh-tool-update-table-config'
+import * as ToolCompute from '@deepseek-ai/dsh-tool-compute'
+import * as ToolDiscoverAltLabels from '@deepseek-ai/dsh-tool-discover-alt-labels'
+import * as ToolPresentDecomposition from '@deepseek-ai/dsh-tool-present-decomposition'
+import * as ToolPresentTable from '@deepseek-ai/dsh-tool-present-table'
+import * as ToolReachabilityDelta from '@deepseek-ai/dsh-tool-reachability-delta'
+import * as ToolResolveTerm from '@deepseek-ai/dsh-tool-resolve-term'
+import * as ToolRevertEdit from '@deepseek-ai/dsh-tool-revert-edit'
+import * as ToolScopeRouting from '@deepseek-ai/dsh-tool-scope-routing'
+import * as ToolSuggestFollowups from '@deepseek-ai/dsh-tool-suggest-followups'
 import { githubSlug } from './verify-md-links.ts'
 
 /** Attachment seam marker that makes the attachments-conditional `read_image` schema harvestable. */
@@ -819,6 +828,122 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves <project>.<table>. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-compute',
+    dir: 'tool-compute',
+    source: 'packages/data/tool-compute/src/index.ts',
+    requires: ['ctx.tools', 'ctx.codeRuntime', 'ctx.resultCache'],
+    writes: ['tool/call', 'cr_ derived result via ctx.resultCache', 'tool/result'],
+    async mount(ctx) {
+      // Inert providers so the codeRuntime + resultCache inject resolves for
+      // the schema harvest (compute reads them only at execute, not register).
+      ctx.provide('codeRuntime', {})
+      ctx.provide('resultCache', {})
+      await ctx.plugin(ToolCompute)
+    },
+    note:
+      'compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-discover-alt-labels',
+    dir: 'tool-discover-alt-labels',
+    source: 'packages/data/tool-discover-alt-labels/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result alt-label candidates'],
+    async mount(ctx) {
+      await ctx.plugin(ToolDiscoverAltLabels)
+    },
+    note:
+      'discover_alt_labels mirrors discover_relations: it surfaces alternative labels (aliases) for a table/column to broaden recall. It probes ctx.schema lazily; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-present-decomposition',
+    dir: 'tool-present-decomposition',
+    source: 'packages/data/tool-present-decomposition/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result decomposition cards'],
+    async mount(ctx) {
+      await ctx.plugin(ToolPresentDecomposition)
+    },
+    note:
+      'present_decomposition is a pure presentation tool that renders a query decomposition (breakdown) for the UI. No service dependency beyond ctx.tools.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-present-table',
+    dir: 'tool-present-table',
+    source: 'packages/data/tool-present-table/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result rendered table/chart'],
+    async mount(ctx) {
+      await ctx.plugin(ToolPresentTable)
+    },
+    note:
+      'present_table renders a table or chart result (line/bar) for the UI. No service dependency beyond ctx.tools; chart.type is fail-loud-validated at the tool-args boundary.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-reachability-delta',
+    dir: 'tool-reachability-delta',
+    source: 'packages/data/tool-reachability-delta/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result reachability delta'],
+    async mount(ctx) {
+      await ctx.plugin(ToolReachabilityDelta)
+    },
+    note:
+      'reachability_delta reports the join-reachability difference between two assets. It probes ctx.schema lazily; the schema harvest needs no schema provider.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-resolve-term',
+    dir: 'tool-resolve-term',
+    source: 'packages/data/tool-resolve-term/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result resolved asset'],
+    async mount(ctx) {
+      await ctx.plugin(ToolResolveTerm)
+    },
+    note:
+      'resolve_term maps a natural-language term to a data asset (table/event/metric). It probes ctx.schema lazily; the schema harvest needs no schema provider.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-revert-edit',
+    dir: 'tool-revert-edit',
+    source: 'packages/data/tool-revert-edit/src/index.ts',
+    requires: ['ctx.tools', 'ctx.schema', 'ctx.audit'],
+    writes: ['tool/call', 'Tier-2 audit revert event', 'tool/result'],
+    async mount(ctx) {
+      // Inert providers so the schema + audit inject resolves for the harvest
+      // (revert-edit reads ctx.schema lazily in execute + writes ctx.audit).
+      ctx.provide('schema', {})
+      ctx.provide('audit', {})
+      await ctx.plugin(ToolRevertEdit)
+    },
+    note:
+      'revert_edit reverts a semantic-layer edit (concept/table/event) and records the revert via ctx.audit (Tier-2). The schema harvest mounts inert schema + audit providers so the inject resolves; execute reads them lazily.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-scope-routing',
+    dir: 'tool-scope-routing',
+    source: 'packages/data/tool-scope-routing/src/index.ts',
+    requires: ['ctx.tools', 'ctx.systemPrompt'],
+    writes: ['tool/call', 'active-scope switch', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolScopeRouting)
+    },
+    note:
+      'scope_routing is the per-scope routing surface: list_scopes + switch_scope + an alias-hint system-prompt contribution. systemPrompt is mounted by the harvest base; the tool reads the active scope lazily.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-suggest-followups',
+    dir: 'tool-suggest-followups',
+    source: 'packages/data/tool-suggest-followups/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result follow-up chips'],
+    async mount(ctx) {
+      await ctx.plugin(ToolSuggestFollowups)
+    },
+    note:
+      'suggest_followups surfaces follow-up question chips after a result. No service dependency beyond ctx.tools.',
   },
 ]
 

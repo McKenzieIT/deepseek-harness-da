@@ -70,5 +70,5 @@ GA-EXP4 证明 qwen3.7-max 下英文 prompt 退化仅 -3.0%，Kind 1（prompt �
 
 3. **产出**：grilling session 的决策记录，更新 GA-GRILL2 ticket，如果决定做则开实施票
 
-两个 subagent 完成后，汇总结果，更新 map，commit。
+两个 subagent 完成后，汇总结果，更新 map和tickets确保前后一致，通过subagent进行code review和测试，commit。
 ```

@@ -73,7 +73,7 @@ export async function infinityEmbed(
   if (texts.length === 0) return []
   const { url, model, timeout = 2000, fetch: fetchImpl, expectedDim } = opts
   const ac = new AbortController()
-  const to = setTimeout(() => ac.abort(), timeout)
+  const to = setTimeout(() =>{  ac.abort() }, timeout)
   try {
     const r = await fetchImpl(`${url}/v1/embeddings`, {
       method: 'POST',
@@ -95,7 +95,7 @@ export async function infinityEmbed(
     return vecs
   } catch (e) {
     if (e instanceof InferenceError) throw e
-    const name = (e as { name?: string })?.name
+    const name = (e as { name?: string }).name
     if (name === 'AbortError' || name === 'TimeoutError') throw new InferenceError('timeout', String(e))
     throw new InferenceError('unavailable', String(e))
   } finally {
@@ -119,7 +119,7 @@ export async function infinityRerank(
   if (texts.length === 0) return []
   const { url, model, timeout = 2000, fetch: fetchImpl } = opts
   const ac = new AbortController()
-  const to = setTimeout(() => ac.abort(), timeout)
+  const to = setTimeout(() =>{  ac.abort() }, timeout)
   try {
     const r = await fetchImpl(`${url}/rerank`, {
       method: 'POST',
@@ -137,7 +137,7 @@ export async function infinityRerank(
     return sc
   } catch (e) {
     if (e instanceof InferenceError) throw e
-    const name = (e as { name?: string })?.name
+    const name = (e as { name?: string }).name
     if (name === 'AbortError' || name === 'TimeoutError') throw new InferenceError('timeout', String(e))
     throw new InferenceError('unavailable', String(e))
   } finally {
@@ -178,7 +178,7 @@ export class InfinityEmbedder extends EmbedderService {
 
   constructor(ctx: Context, public config: InfinityEmbedderConfig) {
     super(ctx)
-    this._fetch = config.fetch ?? globalThis.fetch as unknown as FetchLike
+    this._fetch = config.fetch ?? globalThis.fetch
   }
 
   get modelId(): string {
@@ -221,7 +221,7 @@ export class InfinityReranker implements Reranker {
     this._url = config.url
     this._model = config.model
     this._timeout = config.timeout ?? 2000
-    this._fetch = config.fetch ?? globalThis.fetch as unknown as FetchLike
+    this._fetch = config.fetch ?? globalThis.fetch
   }
 
   get modelId(): string {

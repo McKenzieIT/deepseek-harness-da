@@ -48,7 +48,7 @@ export const EvalDeltaView: FC<EvalDeltaViewProps> = ({ evalDelta, loading, t })
       </div>
       {flipped.length > 0 && (
         <ul className="sl-eval-delta__flip-list">
-          {flipped.slice(0, 20).map((flip) => (
+          {flipped.slice(0, 20).map(flip => (
             <li key={flip.caseId} className="sl-eval-delta__flip">
               <span className={`sl-eval-delta__flip-badge sl-eval-delta__flip-badge--${flip.after}`}>
                 {flip.before} → {flip.after}

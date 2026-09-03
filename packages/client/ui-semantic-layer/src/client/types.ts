@@ -6,7 +6,12 @@
  */
 
 export type AssetKind = 'table' | 'event' | 'metric'
-export type TableKind = 'dws' | 'dim' | 'dwd' | 'ods' | 'ads' | string
+/**
+ * Table kind delivered by the wire. Known values are 'dws' | 'dim' | 'dwd' |
+ * 'ods' | 'ads'; the bare `string` keeps the type open so unknown future
+ * kinds from the model JSON do not break the client at the type level.
+ */
+export type TableKind = string
 export type ConfirmationStatus = 'draft' | 'confirmed'
 
 export interface ConfirmationBreakdown {

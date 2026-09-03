@@ -10,7 +10,7 @@ import { EvalResultStore, FileBackedEvalResultStore, EvidenceQueryService } from
 const dirs: string[] = []
 
 afterEach(() => {
-  dirs.splice(0).forEach(d => rmSync(d, { recursive: true, force: true }))
+  dirs.splice(0).forEach((d) =>{  rmSync(d, { recursive: true, force: true }) })
 })
 
 function makeTmpDir(): string {

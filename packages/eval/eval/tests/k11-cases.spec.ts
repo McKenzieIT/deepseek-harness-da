@@ -31,7 +31,7 @@ describe('K11 eval cases', () => {
 
   it('covers all 8 query intents', () => {
     const cases = loadCases(casePaths)
-    const intents = new Set(cases.map(c => (c.dimensions as Record<string, unknown>).query_intent))
+    const intents = new Set(cases.map(c => (c.dimensions).query_intent))
     expect(intents).toEqual(new Set([
       'metric_lookup', 'trend', 'ranking', 'distribution',
       'proportion', 'comparison', 'open_ended', 'filter',
@@ -40,7 +40,7 @@ describe('K11 eval cases', () => {
 
   it('covers all 4 SQL complexity levels', () => {
     const cases = loadCases(casePaths)
-    const levels = new Set(cases.map(c => (c.dimensions as Record<string, unknown>).sql_complexity))
+    const levels = new Set(cases.map(c => (c.dimensions).sql_complexity))
     expect(levels).toEqual(new Set(['L1', 'L2', 'L3', 'L4']))
   })
 
@@ -49,7 +49,7 @@ describe('K11 eval cases', () => {
     for (const c of cases) {
       // voice/open-ended cases legitimately carry no specific covered_asset.
       if (c.case_id.startsWith('k11v2_voice_')) continue
-      const assets = (c.dimensions as Record<string, unknown>).covered_assets as string[]
+      const assets = (c.dimensions).covered_assets as string[]
       expect(assets.length).toBeGreaterThan(0)
     }
   })

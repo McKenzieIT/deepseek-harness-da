@@ -100,7 +100,7 @@ export function apply(ctx: Context, config: Config): void {
 
   // Count rounds via session events (roundsStarted increments on user/message
   // with goal source, not on goal/changed — see fold.ts)
-  ctx.on('session/event', async (session, event) => {
+  ctx.on('session/event', (session, event) => {
     if (event.type !== 'user/message') return
     const source = event.data.source
     if (source.kind !== 'goal' || source.round <= 0) return
@@ -135,11 +135,16 @@ export function apply(ctx: Context, config: Config): void {
 
     const ref = { id: goalId, revision: source.revision } as GoalRef
 
-    try {
-      await runEvalCheck(ctx, agent, ref, state, N)
-    } finally {
-      state.evalInFlight = false
-    }
+    // Fire-and-forget: the evalInFlight guard above prevents overlap, and the
+    // finally resets it. ctx.on expects a void return, so the async work is
+    // intentionally voided rather than awaited.
+    void (async () => {
+      try {
+        await runEvalCheck(ctx, agent, ref, state, N)
+      } finally {
+        state.evalInFlight = false
+      }
+    })()
   })
 }
 
@@ -176,7 +181,6 @@ async function runEvalCheck(
     currentRunId = runIds[runIds.length - 1] ?? ''
   }
 
-  if (currentRunId === null) return
   // No new run to compare — skip delta computation
   if (state.lastEvalRunId !== null && currentRunId === state.lastEvalRunId) return
 

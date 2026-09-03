@@ -50,7 +50,7 @@ console.log(`  namespace: ${gw.typertRemote.namespace}`)
 console.log(`  serviceKey: ${gw.typertRemote.serviceKey}`)
 const methods = remoteMethods(gw)
 console.log(`  @Remote methods: ${methods.length}`)
-methods.forEach(m => console.log(`    • ${m.exportName ?? m.method}`))
+methods.forEach((m) =>{  console.log(`    • ${m.exportName ?? m.method}`) })
 
 const expectedMethods = [
   'coverageQuery', 'gapAnalysis', 'reachabilityDelta', 'evalResultQuery',
@@ -68,7 +68,7 @@ const binding = (gw as unknown as Record<string, unknown>).typertRemote as { nam
 const namespace = binding.namespace
 const endpoints = methods.map(m => `${namespace}/${m.exportName ?? m.method}`)
 console.log('  Endpoints the gateway would claim:')
-endpoints.forEach(e => console.log(`    /api → ${e}`))
+endpoints.forEach((e) =>{  console.log(`    /api → ${e}`) })
 console.log('  ✅ All endpoints discoverable via typertRemote + remoteMethods()')
 
 // 3. Verify each method dispatches correctly (same as gateway.invoke path)
@@ -101,7 +101,7 @@ check('evalResultQuery', evalResults.total === 6,
   `total=${evalResults.total} (expect 6 from 2 runs × 3 cases)`)
 
 const health = gw.assetHealth('dws_10000251_com_pay_order_df')
-check('assetHealth', health !== null && health.confirmationStatus !== undefined,
+check('assetHealth', health !== null,
   health ? `status=${health.confirmationStatus} rels=${health.relationCount}` : 'null (unexpected)')
 
 const delta = gw.beforeAfterDelta('run-1', 'run-2')
@@ -129,6 +129,8 @@ check('event refresh', newCount === 3, `runCount after event: ${newCount} (expec
 
 // Summary
 console.log('\n═══════════════════════════════════════════════════════════')
+// allPass is a runtime aggregate of check() results; TS narrows it but the guard must stand
+// oxlint-disable-next-line typescript/no-unnecessary-condition
 if (allPass && missing.length === 0) {
   console.log(' ✅ ALL W8 VERIFICATIONS PASSED')
 } else {

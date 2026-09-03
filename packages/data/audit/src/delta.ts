@@ -64,7 +64,7 @@ function stableJsonStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(stableJsonStringify).join(',')}]`
   }
-  const keys = Object.keys(value as Record<string, unknown>).sort()
+  const keys = Object.keys(value).sort()
   const pairs = keys.map(
     k => `${JSON.stringify(k)}:${stableJsonStringify((value as Record<string, unknown>)[k])}`,
   )
