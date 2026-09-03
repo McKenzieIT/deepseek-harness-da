@@ -173,6 +173,12 @@ export function createResultCache(config: ResultCacheConfig, fetcher: ResultFetc
       if (existing !== undefined) return existing.pending
 
       const entry: InFlight = { pending: undefined as unknown as Promise<ResultEntry | undefined>, aborted: false }
+      // Set the slot BEFORE invoking the IIFE so its `finally` runs (on a sync
+      // throw OR an async reject) with the entry present in the map — otherwise
+      // a synchronously-throwing fetcher leaks the slot (the `finally` would run
+      // before this set and skip the delete, leaving a stale rejected promise
+      // that later `get`s would coalesce onto instead of refetching).
+      inFlight.set(key, entry)
       const pending = (async (): Promise<ResultEntry | undefined> => {
         try {
           let result: RpcResult<ResultEntry>
@@ -200,7 +206,6 @@ export function createResultCache(config: ResultCacheConfig, fetcher: ResultFetc
         }
       })()
       entry.pending = pending
-      inFlight.set(key, entry)
       return pending
     },
 

@@ -50,6 +50,11 @@ function throwing(message = 'network timeout'): Mock<ResultFetcher> {
   return vi.fn(async () => { throw new Error(message) })
 }
 
+/** A fetcher that throws synchronously (a sync guard / bug — never returns a Promise) for every id. */
+function syncThrowing(message = 'sync boom'): Mock<ResultFetcher> {
+  return vi.fn(() => { throw new Error(message) })
+}
+
 describe('createResultCache', () => {
   it('misses then fetches, and a second read hits without a second fetch', async () => {
     const fetcher = ok(entry('qr_1'))
@@ -115,6 +120,18 @@ describe('createResultCache', () => {
     await expect(cache.get('s1', 'qr_1')).rejects.toMatchObject({ code: 'transport' })
     await expect(cache.get('s1', 'qr_1')).rejects.toThrow(/network timeout/)
     expect(fetcher).toHaveBeenCalledTimes(3) // never cached -> each get refetches
+  })
+
+  it('releases the in-flight slot when a fetcher throws synchronously (no stale-reject leak)', async () => {
+    const fetcher = syncThrowing('sync boom')
+    const cache = createResultCache(DEFAULT_RESULT_CACHE_CONFIG, fetcher)
+
+    await expect(cache.get('s1', 'qr_1')).rejects.toMatchObject({ code: 'transport' })
+    // The slot must be cleared (the `finally` ran with the entry present in the
+    // map) so a fresh get refetches — it must NOT return the stale rejected
+    // promise that the first get left behind.
+    await expect(cache.get('s1', 'qr_1')).rejects.toMatchObject({ code: 'transport' })
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 
   it('coalesces concurrent gets for the same key into one fetch (single-flight)', async () => {
