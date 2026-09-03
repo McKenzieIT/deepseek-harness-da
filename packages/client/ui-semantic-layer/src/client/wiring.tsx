@@ -32,6 +32,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import { GoalDock, type GoalDockGoalData } from './GoalDock.tsx'
 import { EvidenceSidebar } from './EvidenceSidebar.tsx'
 import { SchemaExplorer } from './SchemaExplorer.tsx'
+import type { SelectionState, SelectionStoreProps } from './selectionStore.ts'
 import type { SchemaGatewayClient } from './schemaGatewayBridge.ts'
 import type { EvidenceQueryClient } from './hooks/useEvidenceQuery.ts'
 import { useEvidenceMetrics } from './hooks/useEvidenceMetrics.ts'
@@ -78,6 +79,7 @@ export const SemanticLayerGoalDock: FC<SemanticLayerGoalDockProps> = ({ useProje
 export type SemanticLayerEvidenceProps =
   PropsRuntime<'details.aux'>
   & PropsLocale<'semanticLayer'>
+  & SelectionStoreProps
   & { evidenceClient?: EvidenceQueryClient | null }
 
 /**
@@ -87,9 +89,12 @@ export type SemanticLayerEvidenceProps =
  * sessions. `goalData` comes from `useProjection('goal')`; evidence metrics
  * are fetched live from the evidence-query RPC bridge.
  */
-export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProjection, useSessions, sessionId, t, evidenceClient }) => {
+export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({
+  useProjection, useSessions, sessionId, t, evidenceClient, useStore,
+}) => {
   const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
   const projection = useProjection('goal')
+  const selectedAsset = useStore((s: SelectionState) => s.selectedAsset)
   const { evalRunCount, evalPassRates } = useEvidenceMetrics(evidenceClient ?? null)
   if (!active) return null
   const tAny2 = t as unknown as (key: string, params?: Record<string, unknown>) => string
@@ -98,6 +103,7 @@ export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProje
       enabled={true}
       t={tAny2}
       evidenceClient={evidenceClient ?? null}
+      selectedAssetId={selectedAsset?.name}
       goalData={toGoalDockGoalData(projection)}
       evalPassRates={evalPassRates}
       layoutMode="auto"
@@ -110,6 +116,7 @@ export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({ useProje
 export type SemanticLayerSchemaExplorerProps =
   PropsRuntime<'details.aux'>
   & PropsLocale<'semanticLayer'>
+  & SelectionStoreProps
   & { schemaClient?: SchemaGatewayClient | null; onNavigateToGraph?: ((assetId: string) => void) | undefined }
 
 /**
@@ -119,7 +126,7 @@ export type SemanticLayerSchemaExplorerProps =
  * fullscreen context layer overlay (W10).
  */
 export const SemanticLayerSchemaExplorer: FC<SemanticLayerSchemaExplorerProps> = ({
-  useSessions, sessionId, t, schemaClient, onNavigateToGraph,
+  useSessions, sessionId, t, schemaClient, onNavigateToGraph, useStore, actions,
 }) => {
   const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
   if (!active) return null
@@ -129,6 +136,8 @@ export const SemanticLayerSchemaExplorer: FC<SemanticLayerSchemaExplorerProps> =
       client={schemaClient ?? null}
       t={tAny}
       onNavigateToGraph={onNavigateToGraph}
+      useStore={useStore}
+      actions={actions}
     />
   )
 }

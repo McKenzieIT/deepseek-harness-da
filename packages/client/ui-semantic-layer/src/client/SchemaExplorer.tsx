@@ -2,6 +2,7 @@ import { useState, useCallback, type FC } from 'react'
 import type { DomainEntry, TableSummary, EventSummary, MetricSummary, SchemaSearchHit } from './schemaGatewayBridge.ts'
 import { useSchemaGateway, type AssetKind, type SchemaGatewayClient } from './hooks/useSchemaGateway.ts'
 import { AssetDetail } from './AssetDetail.tsx'
+import type { SelectionState, SelectionStoreProps } from './selectionStore.ts'
 import styles from './SchemaExplorer.module.css'
 
 type ViewState =
@@ -9,31 +10,31 @@ type ViewState =
   | { mode: 'domain-detail'; domain: string; tab: 'tables' | 'events' | 'metrics' }
   | { mode: 'search' }
 
-export interface SchemaExplorerProps {
+export type SchemaExplorerProps = SelectionStoreProps & {
   client: SchemaGatewayClient | null
   t: (key: string, params?: Record<string, unknown>) => string
   onNavigateToGraph?: ((assetId: string) => void) | undefined
 }
 
-export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateToGraph }) => {
+export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateToGraph, useStore, actions }) => {
   const { state, loadTablesForDomain, loadEventsForDomain, loadMetricsForDomain, loadAssetDefinition, search } = useSchemaGateway(client)
   const [view, setView] = useState<ViewState>({ mode: 'domains' })
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedAsset, setSelectedAsset] = useState<{ name: string; kind: AssetKind } | null>(null)
+  const selectedAsset = useStore((s: SelectionState) => s.selectedAsset)
 
   const handleDomainClick = useCallback((domain: DomainEntry) => {
     setView({ mode: 'domain-detail', domain: domain.name, tab: 'tables' })
-    setSelectedAsset(null)
+    actions.select(null)
     void loadTablesForDomain(domain.name)
-  }, [loadTablesForDomain])
+  }, [loadTablesForDomain, actions])
 
   const handleTabChange = useCallback((tab: 'tables' | 'events' | 'metrics', domain: string) => {
     setView(v => v.mode === 'domain-detail' ? { ...v, tab } : v)
-    setSelectedAsset(null)
+    actions.select(null)
     if (tab === 'tables') void loadTablesForDomain(domain)
     else if (tab === 'events') void loadEventsForDomain(domain)
     else void loadMetricsForDomain(domain)
-  }, [loadTablesForDomain, loadEventsForDomain, loadMetricsForDomain])
+  }, [loadTablesForDomain, loadEventsForDomain, loadMetricsForDomain, actions])
 
   const handleSearchInput = useCallback((value: string) => {
     setSearchQuery(value)
@@ -46,15 +47,15 @@ export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateT
   }, [search])
 
   const handleAssetClick = useCallback((name: string, kind: AssetKind) => {
-    setSelectedAsset({ name, kind })
+    actions.select({ name, kind })
     void loadAssetDefinition(name, kind)
-  }, [loadAssetDefinition])
+  }, [loadAssetDefinition, actions])
 
   const handleBack = useCallback(() => {
     setView({ mode: 'domains' })
-    setSelectedAsset(null)
+    actions.select(null)
     setSearchQuery('')
-  }, [])
+  }, [actions])
 
   return (
     <div className={styles.root}>

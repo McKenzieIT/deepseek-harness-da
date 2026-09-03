@@ -1,10 +1,28 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, fireEvent, waitFor, act } from '@testing-library/react'
+import { useSyncExternalStore } from 'react'
 import { SchemaExplorer } from '../src/client/SchemaExplorer.tsx'
 import type { SchemaGatewayClient, DomainEntry, TableSummary, EventSummary, MetricSummary, SchemaSearchHit } from '../src/client/schemaGatewayBridge.ts'
+import { createSelectionStore, type SelectionState, type SelectionStoreProps } from '../src/client/selectionStore.ts'
 
 const t = (key: string): string => key
+
+/**
+ * Bind a `useStore` selector hook over a snapshot-store instance via uSES —
+ * the production binding (ui-renderer observableHook) is a uSES bridge over
+ * the same subscribe/getSnapshot contract. SchemaExplorer reads
+ * `selectedAsset` from the store (its selected-asset signal is shared with the
+ * sibling EvidenceSidebar adapter via the session-scoped slot store), so the
+ * test mounts it with a real store instance to exercise that read path.
+ */
+function bindUseStore(instance: { getSnapshot(): SelectionState; subscribe(fn: () => void): () => void }): SelectionStoreProps['useStore'] {
+  const subscribe = instance.subscribe
+  const getSnapshot = instance.getSnapshot
+  const useStore = <S,>(sel: (s: SelectionState) => S): S =>
+    useSyncExternalStore(subscribe, () => sel(getSnapshot()))
+  return useStore as SelectionStoreProps['useStore']
+}
 
 const DOMAINS: DomainEntry[] = [
   { name: '角色', table_count: 5, event_count: 2, metric_count: 3 },
@@ -46,15 +64,22 @@ function makeClient(): SchemaGatewayClient {
 
 describe('SchemaExplorer', () => {
   let client: SchemaGatewayClient
+  let useStore: SelectionStoreProps['useStore']
+  let actions: SelectionStoreProps['actions']
 
   beforeEach(() => {
     client = makeClient()
     vi.useFakeTimers()
+    // Fresh per-session selection store instance: SchemaExplorer reads
+    // selectedAsset from it and writes actions.select on click.
+    const instance = createSelectionStore().create('test')
+    useStore = bindUseStore(instance)
+    actions = instance.actions
   })
 
   it('renders domain cards on mount', async () => {
     vi.useRealTimers()
-    const { container } = render(<SchemaExplorer client={client} t={t} />)
+    const { container } = render(<SchemaExplorer client={client} t={t} useStore={useStore} actions={actions} />)
     await waitFor(() => {
       expect(container.textContent).toContain('角色')
       expect(container.textContent).toContain('付费经济')
@@ -65,7 +90,7 @@ describe('SchemaExplorer', () => {
 
   it('shows domain counts', async () => {
     vi.useRealTimers()
-    const { container } = render(<SchemaExplorer client={client} t={t} />)
+    const { container } = render(<SchemaExplorer client={client} t={t} useStore={useStore} actions={actions} />)
     await waitFor(() => {
       expect(container.textContent).toContain('5 T')
       expect(container.textContent).toContain('2 E')
@@ -75,7 +100,7 @@ describe('SchemaExplorer', () => {
 
   it('navigates to domain detail on click', async () => {
     vi.useRealTimers()
-    const { container } = render(<SchemaExplorer client={client} t={t} />)
+    const { container } = render(<SchemaExplorer client={client} t={t} useStore={useStore} actions={actions} />)
     await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
     fireEvent.click(domainCards[0]!)
@@ -87,7 +112,7 @@ describe('SchemaExplorer', () => {
 
   it('shows tables tab with kind badges', async () => {
     vi.useRealTimers()
-    const { container } = render(<SchemaExplorer client={client} t={t} />)
+    const { container } = render(<SchemaExplorer client={client} t={t} useStore={useStore} actions={actions} />)
     await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
     fireEvent.click(domainCards[0]!)
@@ -98,7 +123,7 @@ describe('SchemaExplorer', () => {
   })
 
   it('performs debounced search', async () => {
-    const { container } = render(<SchemaExplorer client={client} t={t} />)
+    const { container } = render(<SchemaExplorer client={client} t={t} useStore={useStore} actions={actions} />)
     const input = container.querySelector('input')!
     fireEvent.change(input, { target: { value: '充值' } })
     expect(client.search).not.toHaveBeenCalled()
@@ -108,7 +133,7 @@ describe('SchemaExplorer', () => {
 
   it('renders nothing when client is null', async () => {
     vi.useRealTimers()
-    const { container } = render(<SchemaExplorer client={null} t={t} />)
+    const { container } = render(<SchemaExplorer client={null} t={t} useStore={useStore} actions={actions} />)
     await waitFor(() => {
       expect(container.querySelector('input')).not.toBeNull()
     })
@@ -116,7 +141,7 @@ describe('SchemaExplorer', () => {
 
   it('shows breadcrumb in domain-detail mode with back navigation', async () => {
     vi.useRealTimers()
-    const { container } = render(<SchemaExplorer client={client} t={t} />)
+    const { container } = render(<SchemaExplorer client={client} t={t} useStore={useStore} actions={actions} />)
     await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
     fireEvent.click(domainCards[0]!)
@@ -131,7 +156,7 @@ describe('SchemaExplorer', () => {
   it('calls onNavigateToGraph when button clicked in asset detail', async () => {
     vi.useRealTimers()
     const onNav = vi.fn()
-    const { container } = render(<SchemaExplorer client={client} t={t} onNavigateToGraph={onNav} />)
+    const { container } = render(<SchemaExplorer client={client} t={t} onNavigateToGraph={onNav} useStore={useStore} actions={actions} />)
     await waitFor(() => { expect(container.textContent).toContain('角色') })
     const domainCards = container.querySelectorAll('[class*="domainCard"]')
     fireEvent.click(domainCards[0]!)

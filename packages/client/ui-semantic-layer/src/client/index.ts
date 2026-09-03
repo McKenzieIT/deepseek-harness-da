@@ -30,6 +30,7 @@ import { semanticLayerPresenters } from './presenters/index.ts'
 import { SemanticLayerGoalDock, SemanticLayerEvidence, SemanticLayerSchemaExplorer, PRESET_ID } from './wiring.tsx'
 import { buildSchemaGatewayClient } from './schemaGatewayBridge.ts'
 import { buildEvidenceQueryClient } from './evidenceQueryBridge.ts'
+import { createSelectionStore } from './selectionStore.ts'
 
 // W5-full exports: evidence panel components for host composition
 export { EvidenceSidebar, type EvidenceSidebarProps } from './EvidenceSidebar.tsx'
@@ -84,6 +85,15 @@ export const Config: z<Config> = z.object({
 export function apply(ctx: ClientContext, config: Config = {}): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-semantic-layer: dictionaries')
   ctx.plugin(semanticLayerPresenters)
+
+  // GA-WIRING: session-scoped selection store handle, shared across both
+  // `details.aux` entries (SchemaExplorer writes the selected asset;
+  // EvidenceSidebar reads it). Constructed at apply time so identity follows
+  // the fiber — never exported at module level (module-cache identity is a
+  // disguised singleton across plugin reloads). resolveStore indexes live
+  // instances by handle × sessionId, so siblings in one session share one
+  // instance while sessions stay isolated.
+  const selectionStore = createSelectionStore()
 
   ctx.inject(['sessions', 'workspaces', 'connection', 'remote'], (scope: ClientContext) => {
     const sessions = scope.sessions
@@ -191,6 +201,7 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
       id: 'semantic-layer-evidence',
       order: 0,
       locale: NS,
+      store: selectionStore,
       inject: () => ({ evidenceClient }),
     }, SemanticLayerEvidence))
 
@@ -199,6 +210,7 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
       id: 'semantic-layer-schema-explorer',
       order: 10,
       locale: NS,
+      store: selectionStore,
       inject: () => ({ schemaClient, onNavigateToGraph }),
     }, SemanticLayerSchemaExplorer))
 
