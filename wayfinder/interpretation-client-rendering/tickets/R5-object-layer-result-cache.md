@@ -38,9 +38,9 @@
 
 IndexedDB spill（session 级 + host 是 source of truth，recoverability 非目标）、WeakRef/FinalizationRegistry（无容量控制、GC 时机不保证）、tag/CDN 式失效（错层）、HTTP `stale-while-revalidate` 指令（浏览器支持参差）、命中时 `structuredClone`（共享引用 + 标注不可变即可）。
 
-### 实现路径（destination 工作，无新决策——handoff）
+### 实现路径（→ [T9](T9-result-cache-package-impl.md)，blocked-by [T8](T8-result-get-rpc.md)）
 
-**前置依赖（R6 destination，无票）**：host 侧 `result.get` RPC 四件——`ResultsApi` 接口 + `results.schema.ts`（`{ resultId }` → `ResultEntry | not-found`）；`RpcMethodMap` 加 `'result.get'` 行；`IApiClient.results.get` + `UNARY_VALUE_SCHEMAS` 一项；host handler 包 `ctx.resultCache.get(rid)`，not-found 走 `RpcError`（`result-not-found` 码）。未接入期：T4 `parseQueryData` 同 turn TSV 扫描留作 cache-miss fallback。
+**前置依赖（→ [T8](T8-result-get-rpc.md)）**：host 侧 `result.get` RPC 四件——`ResultsApi` 接口 + `results.schema.ts`（`{ resultId }` → `ResultEntry | not-found`）；`RpcMethodMap` 加 `'result.get'` 行；`IApiClient.results.get` + `UNARY_VALUE_SCHEMAS` 一项；host handler 包 `ctx.resultCache.get(rid)`，not-found 走 `RpcError`（`result-not-found` 码）。未接入期：T4 `parseQueryData` 同 turn TSV 扫描留作 cache-miss fallback。
 
 **client 包（Mode 3）**：
 - `packages/client/result-cache/`：`package.json`（`@deepseek-ai/dsh-client-result-cache`，`dsh.client` manifest，`lru-cache` 进 `dependencies`）+ `tsconfig.json`（references runtime）+ `src/client/{index.ts,service.ts,...}` + `README.md`（Model Experience + Known Limitations）。
@@ -62,4 +62,4 @@ Mode 3 Repository Package（永久能力、他包依赖）；拓扑规则——s
 
 ### 移交
 
-R5 决策面已尽；实现 = destination 工作（handoff）。无新 grilling/决策票。前沿不变：T6 仍 gated on R4 图表目的地实现；`result.get` RPC 四件是已 spec 的 destination 工作（无票，R6 已记）。「查询理解↔table KPI 互认 + 改口径回流」雾暂留（语义/UX 层，仍不能成票）。
+R5 决策面已尽；实现 → [T9](T9-result-cache-package-impl.md)（blocked-by [T8](T8-result-get-rpc.md)）——当前项目开发依赖票推进，故从 destination handoff 拉进 ticket。无新 grilling/决策票。前沿：T6 blocked-by [T7](T7-chart-type-implementation.md)（R4 图表接入）；`result.get` RPC 四件 → [T8](T8-result-get-rpc.md)；「查询理解↔table KPI 互认 + 改口径回流」雾已部分毕业（[R10](R10-decomposition-table-metric-identity.md) research + [P2](P2-decomposition-revision-prototype.md) prototype），残留=下游 grilling。

@@ -4,7 +4,7 @@
 **Phase**: post-impl
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: 无（gated on 7 类型实现——实现为 destination 工作，非票；本票 gate 其 go/no-go）
+**Blocked by**: [T7](T7-chart-type-implementation.md)（R4 7 类型接入实现;实现已从 destination 无票拉进 map 作 T7——当前项目开发依赖票推进;T7 完成本票即 go/no-go gate）
 **Related**: [R4](R4-chart-type-expansion.md)（决策）、[prototype/index.html](../prototype/index.html)（参考原型 v6）、[T2](T2-ui-present-table.md)（v1 line/bar 实现）
 
 ## Question
