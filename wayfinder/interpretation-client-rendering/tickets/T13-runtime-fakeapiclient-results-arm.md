@@ -2,8 +2,8 @@
 
 **Type**: task (AFK)
 **Phase**: post-v1
-**Status**: in progress
-**Assignee**: claude-code · 2026-09-03 (this session — shepherding; see status note)
+**Status**: closed (resolved 2026-09-04)
+**Assignee**: claude-code · 2026-09-04 (this session — resolved; prior 2026-09-03 shepherding-claim was stale, this session drove verification + close)
 **Blocked by**: 无
 **Related**: [T8](T8-result-get-rpc.md)（T8 加 `results: ResultsApi` 到 `IApiClient`/`ApiProxy`）、[T11](T11-connection-fixture-results-arm.md)（T11 做 connection 半——fixture + connection 测试 fake；本票做 runtime 半）
 
@@ -37,3 +37,18 @@ T8 residual 的 runtime 半（机械补 `results` stub，无新决策）。镜�
 3. resolve 本票（resolution comment + close + map Decisions-so-far 指针）。
 
 **若 WIP 被 revert**（并发 session 弃了）：本票回 open/unclaimed，聚合回红；下一 session 按 Scope 重做即可（机械补 `results` stub，镜像 T11）。
+
+## Resolution
+
+Resolved 2026-09-04 (this session). **No implementation commit by this session** — the runtime fake `results` arm WIP was committed by a **concurrent session** in `e9bc392f60` ("fix(data): GA-AUDIT1-followup 修 52 条对抗 review findings + FakeApiClient stub"), folded into that broad sweep commit rather than a clean T13 pathspec commit. The committed arm mirrors T11's connection fake exactly — `packages/client/runtime/tests/fake-api.client.ts:228` `readonly results: IApiClient['results'] = { get: ... code: 'result-not-found' as const }` — which is T13's scope verbatim. So the 2026-09-03 status note's "conditionally green on uncommitted WIP" is now **unconditional**: the WIP is in HEAD.
+
+This session drove verification + close because the prior session's claim was a stale shepherding-claim (it explicitly did not produce or verify the WIP; it claimed only to prevent a duplicate pick-up). Picking it up directly (per the user's instruction that a stale shepherding-claim can be taken over) is appropriate for a trivial, decision-free ticket.
+
+**Verification (this session)**:
+
+1. **Aggregate `tsc -b tsconfig.client.json` — exit 0** (the comprehensive client typecheck). This is the gate the T13 status note reported red-from-T8 (~114 `TS2345 Property 'results' is missing in type 'FakeApiClient'` across runtime/ui-conversation tests). The committed arm clears them; green is now unconditional (WIP in HEAD, not working-tree-only).
+   - Note: `tsc -b packages/client/runtime/tsconfig.client.json` (the path in the prior prompt) does not exist — runtime has `tsconfig.json` (referenced by the aggregate), not a `tsconfig.client.json`. The aggregate is the superset gate and is green, so the runtime package typechecks; the prior path was a naming slip, not a real gap.
+2. **Targeted `vitest run packages/client/runtime packages/client/ui-conversation` — 811 passed / 0 failed (53 test files)**. These are the two packages whose tests `import { FakeApiClient }` and were the T8-red victims; the arm is type-only and no test exercises the `results` path at runtime, so they pass unchanged.
+3. **Full `pnpm run test:gui` — 4243 passed / 5 failed / 1 skipped**. The 5 failures are ALL `packages/client/ui-semantic-layer/tests/wiring.spec.tsx` (`TypeError: useStore is not a function` at `SchemaExplorer.tsx:23` / `wiring.tsx:95`), caused by the concurrent session's uncommitted WIP in `ui-semantic-layer` (`SchemaExplorer.tsx`/`wiring.tsx` are modified in the working tree). Unrelated to T13 — different package, and T13's change is a type-only additive arm. T13's packages are green within the full suite.
+
+**Outcome**: T8 residual runtime half closed. With T11 (connection half) + T12 (cache hardening) + T13 (runtime half), the T8 residual is fully cleared and the R5 data line's T8 residual is closed; [T10](T10-consumer-fetchResult-wiring.md) (consumer wiring) is the remaining R5 piece. Trivial housekeeping — no Agent Note.
