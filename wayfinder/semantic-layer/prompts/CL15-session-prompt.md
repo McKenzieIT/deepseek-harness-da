@@ -75,7 +75,7 @@ CL-15 的核心目标是将 sql-judge 模式**确立为标准 eval 基线**，�
 ```bash
 # sql-judge 模式（标准）
 DASHSCOPE_API_KEY=$(grep DASHSCOPE_API_KEY ~/.dsh/.credentials.yaml | awk '{print $2}') \
-node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
+node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
   --cases packages/eval/eval/cases/k11-v2 --pass-k 1 --concurrency 4 --skip-health-gate
 ```
 

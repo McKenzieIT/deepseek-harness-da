@@ -86,7 +86,7 @@ sql-judge 基线（Run 9788424c，2026-08-30）：
 ```bash
 # sql-judge 模式（标准）
 DASHSCOPE_API_KEY=$(grep DASHSCOPE_API_KEY ~/.dsh/.credentials.yaml | awk '{print $2}') \
-node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
+node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
   --cases packages/eval/eval/cases/k11-v2 --pass-k 1 --concurrency 4 --skip-health-gate
 
 # smoke test（仅语法检查）

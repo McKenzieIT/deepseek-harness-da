@@ -113,12 +113,12 @@ CL-15 已迁移 4 个主观 case 为 DELIVERY（074/080/voice_034/voice_039）�
 ```bash
 # 全量 sql-judge eval
 DASHSCOPE_API_KEY=$(grep DASHSCOPE_API_KEY ~/.dsh/.credentials.yaml | awk '{print $2}') \
-node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
+node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
   --cases packages/eval/eval/cases/k11-v2 --pass-k 1 --concurrency 4 --skip-health-gate
 
 # 单 case 调试
 DASHSCOPE_API_KEY=$(grep DASHSCOPE_API_KEY ~/.dsh/.credentials.yaml | awk '{print $2}') \
-node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
+node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
   --cases packages/eval/eval/cases/k11-v2 --case k11v2_019 --pass-k 1 --skip-health-gate
 
 # 趋势对比（基线 vs 新 run）

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 
-const BIN = join(__dirname, '..', 'bin', 'eval.ts')
+const BIN = join(__dirname, '..', 'src', 'bin.ts')
 const ROOT = join(__dirname, '..', '..', '..', '..')
 
 function run(args: string[], env: Record<string, string> = {}): { stdout: string; status: number } {

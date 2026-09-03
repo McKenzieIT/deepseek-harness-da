@@ -10,6 +10,9 @@
   "references": [
     {
       "path": "../eval"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

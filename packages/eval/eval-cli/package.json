@@ -1,20 +1,46 @@
 {
   "name": "@deepseek-ai/dsh-eval-cli",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.8",
   "description": "Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/eval/eval-cli"
+  },
+  "license": "MIT",
   "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
   "bin": {
-    "dsh-eval": "./bin/eval.ts"
+    "dsh-eval": "./lib/bin.js"
   },
   "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/bin.js",
+    "lib/types/**/*.d.ts"
+  ],
   "scripts": {
-    "eval": "node --import tsx/esm bin/eval.ts"
+    "eval": "node --import tsx/esm src/bin.ts",
+    "compare": "node --import tsx/esm bin/compare.ts",
+    "bundle": "tsc -b && tsdown"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-group": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
     "@deepseek-ai/dsh-agent": "workspace:^",
@@ -25,6 +51,7 @@
     "@deepseek-ai/dsh-code-runtime": "workspace:^",
     "@deepseek-ai/dsh-code-runtime-worker-thread": "workspace:^",
     "@deepseek-ai/dsh-credentials": "workspace:^",
+    "@deepseek-ai/dsh-credentials-local": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-result-cache": "workspace:^",
     "@deepseek-ai/dsh-result-cache-memory": "workspace:^",
@@ -41,7 +68,13 @@
     "@deepseek-ai/dsh-system-prompt": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^"
   },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^"
+  },
   "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^",
     "@types/node": "^22.20.0"
   }
 }

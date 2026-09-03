@@ -47,7 +47,7 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 
 ```bash
 DASHSCOPE_API_KEY=$(grep DASHSCOPE_API_KEY ~/.dsh/.credentials.yaml | awk '{print $2}') \
-node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
+node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
   --cases packages/eval/eval/cases/k11-v2 --pass-k 1 --concurrency 4 --skip-health-gate
 ```
 

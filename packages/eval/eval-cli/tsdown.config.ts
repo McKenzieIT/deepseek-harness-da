@@ -1,9 +1,17 @@
 import { defineConfig } from 'tsdown'
 
-/**
- * Source-only CLI package: consumed via `./src/*` subpath exports, not as a
- * bundled lib. tsconfig has noEmit: true so no lib/types/ output exists.
- */
-export default defineConfig(() => ({
-  entry: false as any,
-}))
+/** Builds each published entry as a self-contained file admitted by the package whitelist. Mirrors the dsh-sdk-jsonrpc-demo CLI package. */
+export default defineConfig([
+  {
+    entry: ['lib/types/index.js'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024',
+    fixedExtension: false, outputOptions: { codeSplitting: false }, dts: false, clean: false,
+  },
+  {
+    entry: ['lib/types/invariant.js'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024',
+    fixedExtension: false, outputOptions: { codeSplitting: false }, dts: false, clean: false,
+  },
+  {
+    entry: ['lib/types/bin.js'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024',
+    fixedExtension: false, outputOptions: { codeSplitting: false }, dts: false, clean: false,
+  },
+])

@@ -9,9 +9,9 @@
  * Translation principle: semantic, not mechanical. Domain terms (tool names,
  * route tokens 【route:proceed】, markers %%INCOMPLETE%%) preserved verbatim.
  */
-import { MAX_SQL_PER_TURN, MAX_FEEDBACK_RETRIES } from '@deepseek-ai/dsh-nl2sql-engine/src/types.ts'
+import { MAX_SQL_PER_TURN, MAX_FEEDBACK_RETRIES } from '@deepseek-ai/dsh-nl2sql-engine'
 import type { BuildPromptArgs } from '@deepseek-ai/dsh-nl2sql-engine'
-import { renderConventionsPrompt } from '@deepseek-ai/dsh-nl2sql-engine/src/conventions.ts'
+import { renderConventionsPrompt } from '@deepseek-ai/dsh-nl2sql-engine'
 
 function granularityTagEN(id: string): string {
   if (/_di$/.test(id)) return ' [daily-increment]'
