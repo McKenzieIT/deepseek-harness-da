@@ -21,7 +21,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { IApiClient, RpcResult } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls the ctx.sessions Context merge so `ctx.get('sessions')` is
 // typed, and ISessions/SessionId for the scope-addressed calls.
-import type { ISessions, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import { createResultCache } from './cache.ts'
 import type { ResultCache, ResultCacheConfig } from './cache.ts'
 import type { ResultEntry } from './types.ts'
@@ -77,25 +77,28 @@ export class ResultServiceImpl extends Service implements ResultService {
     return response.result
   }
 
-  /** The caller's session id (scope-addressed via the tracker-rebound ctx). */
-  private scopeId(): string {
-    const sessions = this.ctx.get('sessions') as ISessions | undefined
+  /**
+   * The caller's session id (scope-addressed via the tracker-rebound ctx).
+   * `op` labels the throw so `invalidate()` does not blame `get`.
+   */
+  private scopeId(op: string): SessionId {
+    const sessions = this.ctx.get('sessions')
     if (sessions === undefined) {
-      throw new Error('results: sessions service unavailable — address the service via sessions.scope(id).results')
+      throw new Error("results: sessions service unavailable — address the service via sessions.scope(id).get('results')")
     }
     const sessionId = sessions.scopeOf(this.ctx)
     if (sessionId === undefined) {
-      throw new Error('results: get requires a session scope — address the service via sessions.scope(id).results')
+      throw new Error(`results: ${op} requires a session scope — address the service via sessions.scope(id).get('results')`)
     }
     return sessionId
   }
 
   async get(resultId: string, signal?: AbortSignal): Promise<ResultEntry | undefined> {
-    return this.cache.get(this.scopeId(), resultId, signal)
+    return this.cache.get(this.scopeId('get'), resultId, signal)
   }
 
   invalidate(resultId: string): void {
-    this.cache.invalidate(this.scopeId(), resultId)
+    this.cache.invalidate(this.scopeId('invalidate'), resultId)
   }
 
   invalidateSession(sessionId: SessionId): void {

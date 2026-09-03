@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import type { ResultFetcher } from '../src/client/cache.ts'
 import {
   DEFAULT_RESULT_CACHE_CONFIG,
-  ResultFetchError,
   RESULT_NOT_FOUND,
+  ResultFetchError,
   createResultCache,
 } from '../src/client/cache.ts'
 import type { ResultEntry } from '../src/client/types.ts'
@@ -16,25 +17,37 @@ function entry(resultId: string, rows = 1): ResultEntry {
   }
 }
 
+/** A deferred ok-value settlement (for single-flight / epoch-race timing). */
+function settleable(): { promise: Promise<{ ok: true; value: ResultEntry }>; settle: (value: { ok: true; value: ResultEntry }) => void } {
+  let settle!: (value: { ok: true; value: ResultEntry }) => void
+  const promise = new Promise<{ ok: true; value: ResultEntry }>((resolve) => { settle = resolve })
+  return { promise, settle }
+}
+
 /** An ok fetcher return for one id. */
-function ok(result: ResultEntry): ResultFetcher {
+function ok(result: ResultEntry): Mock<ResultFetcher> {
   return vi.fn(async () => ({ ok: true as const, value: result }))
 }
 
 /** A fetcher that answers not-found for every id. */
-function notFound(): ResultFetcher {
+function notFound(): Mock<ResultFetcher> {
   return vi.fn(async (resultId: string) => ({
     ok: false as const,
     error: { code: RESULT_NOT_FOUND, message: 'miss', details: { resultId } },
-  })) as unknown as ResultFetcher
+  }))
 }
 
-/** A fetcher that answers a transport/service error for every id. */
-function serviceError(code = 'internal'): ResultFetcher {
+/** A fetcher that answers a service-absent (internal) error for every id. */
+function serviceError(): Mock<ResultFetcher> {
   return vi.fn(async () => ({
     ok: false as const,
-    error: { code, message: 'boom', details: {} },
-  })) as unknown as ResultFetcher
+    error: { code: 'internal' as const, message: 'boom', details: {} },
+  }))
+}
+
+/** A fetcher that throws (transport: network/timeout/abort) for every id. */
+function throwing(message = 'network timeout'): Mock<ResultFetcher> {
+  return vi.fn(async () => { throw new Error(message) })
 }
 
 describe('createResultCache', () => {
@@ -86,12 +99,65 @@ describe('createResultCache', () => {
   })
 
   it('propagates a non-not-found error as a ResultFetchError and does not cache it', async () => {
-    const fetcher = serviceError('internal')
+    const fetcher = serviceError()
     const cache = createResultCache(DEFAULT_RESULT_CACHE_CONFIG, fetcher)
 
     await expect(cache.get('s1', 'qr_1')).rejects.toBeInstanceOf(ResultFetchError)
     await expect(cache.get('s1', 'qr_1')).rejects.toThrow(/internal: boom/)
     expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  it('folds a throwing (transport) fetcher into a ResultFetchError with code `transport` and does not cache it', async () => {
+    const fetcher = throwing('network timeout')
+    const cache = createResultCache(DEFAULT_RESULT_CACHE_CONFIG, fetcher)
+
+    await expect(cache.get('s1', 'qr_1')).rejects.toBeInstanceOf(ResultFetchError)
+    await expect(cache.get('s1', 'qr_1')).rejects.toMatchObject({ code: 'transport' })
+    await expect(cache.get('s1', 'qr_1')).rejects.toThrow(/network timeout/)
+    expect(fetcher).toHaveBeenCalledTimes(3) // never cached -> each get refetches
+  })
+
+  it('coalesces concurrent gets for the same key into one fetch (single-flight)', async () => {
+    const { promise, settle } = settleable()
+    const fetcher: Mock<ResultFetcher> = vi.fn(() => promise)
+    const cache = createResultCache(DEFAULT_RESULT_CACHE_CONFIG, fetcher)
+
+    const a = cache.get('s1', 'qr_1')
+    const b = cache.get('s1', 'qr_1') // in-flight -> coalesced, no second fetch
+    expect(fetcher).toHaveBeenCalledTimes(1)
+
+    settle({ ok: true as const, value: entry('qr_1') })
+    const aValue = await a
+    const bValue = await b
+    expect(aValue).toEqual(entry('qr_1'))
+    expect(bValue).toBe(aValue) // same reference — one fetch, cached, no clone
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not store a stale snapshot when invalidate lands during an in-flight fetch (epoch guard)', async () => {
+    // First call is held open (the in-flight window); later calls resolve immediately with a distinct value.
+    let firstSettle!: (value: { ok: true; value: ResultEntry }) => void
+    let calls = 0
+    const fetcher: Mock<ResultFetcher> = vi.fn(() => {
+      calls += 1
+      if (calls === 1) return new Promise<{ ok: true; value: ResultEntry }>((resolve) => { firstSettle = resolve })
+      return Promise.resolve({ ok: true as const, value: entry(`qr_1_v${calls}`) })
+    })
+    const cache = createResultCache(DEFAULT_RESULT_CACHE_CONFIG, fetcher)
+
+    const inFlight = cache.get('s1', 'qr_1') // call 1 -> held
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    cache.invalidate('s1', 'qr_1') // fresh query_data invalidates mid-flight
+    firstSettle({ ok: true as const, value: entry('qr_1_v1') }) // late fetch resolves with the OLD snapshot
+
+    // The in-flight caller still receives its fetched value (the missed-event
+    // residual R5 documents — a full generation-token would block it; this
+    // minimal epoch guard does not).
+    expect(await inFlight).toEqual(entry('qr_1_v1'))
+    // ...but the stale snapshot is NOT cached: a fresh get refetches (call 2 -> v2).
+    const fresh = await cache.get('s1', 'qr_1')
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(fresh).toEqual(entry('qr_1_v2'))
   })
 
   it('does not admit entries above maxEntrySize (fetched on demand each time)', async () => {
@@ -104,7 +170,7 @@ describe('createResultCache', () => {
   })
 
   it('evicts least-recently-used when the byte budget (maxSize) is exceeded', async () => {
-    const fetcher = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) })) as unknown as ResultFetcher
+    const fetcher: Mock<ResultFetcher> = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) }))
     // Each entry's serialized size (~36) fits one-at-a-time under 50 but two exceed it.
     const cache = createResultCache({ ...DEFAULT_RESULT_CACHE_CONFIG, maxSize: 50 }, fetcher)
 
@@ -115,7 +181,7 @@ describe('createResultCache', () => {
   })
 
   it('enforces the entry-count backstop (max) even when the byte budget is huge', async () => {
-    const fetcher = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) })) as unknown as ResultFetcher
+    const fetcher: Mock<ResultFetcher> = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) }))
     const cache = createResultCache({ ...DEFAULT_RESULT_CACHE_CONFIG, max: 2, maxSize: 1_000_000 }, fetcher)
 
     await cache.get('s1', 'qr_1') // count 1
@@ -127,8 +193,8 @@ describe('createResultCache', () => {
     expect(fetcher).toHaveBeenLastCalledWith('qr_1', undefined)
   })
 
-  it('updateAgeOnGet rescues a read entry from eviction (recency refreshed on read)', async () => {
-    const fetcher = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) })) as unknown as ResultFetcher
+  it('a read refreshes recency so a hot entry survives an LRU sweep (no TTL)', async () => {
+    const fetcher: Mock<ResultFetcher> = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) }))
     const cache = createResultCache({ ...DEFAULT_RESULT_CACHE_CONFIG, max: 2, maxSize: 1_000_000 }, fetcher)
 
     await cache.get('s1', 'qr_1') // count 1
@@ -154,7 +220,7 @@ describe('createResultCache', () => {
   })
 
   it('invalidateScope drops only that session, leaving other sessions intact', async () => {
-    const fetcher = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) })) as unknown as ResultFetcher
+    const fetcher: Mock<ResultFetcher> = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) }))
     const cache = createResultCache(DEFAULT_RESULT_CACHE_CONFIG, fetcher)
 
     await cache.get('s1', 'qr_1')
@@ -172,7 +238,7 @@ describe('createResultCache', () => {
   })
 
   it('invalidateAll drops every entry across all sessions', async () => {
-    const fetcher = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) })) as unknown as ResultFetcher
+    const fetcher: Mock<ResultFetcher> = vi.fn(async (rid: string) => ({ ok: true as const, value: entry(rid) }))
     const cache = createResultCache(DEFAULT_RESULT_CACHE_CONFIG, fetcher)
 
     await cache.get('s1', 'qr_1')
