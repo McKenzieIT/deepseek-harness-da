@@ -64,7 +64,7 @@ client 消费走既有 inject-face 模式（参 `ui-suggest-followups/src/client
 ### 移交
 
 - 唯一实现项（`result.get` RPC 四件）是 **destination 工作**（wayfinder "plan don't do"）——无决策，走既有模式。接入后：R5 client cache 的 cache-miss = 调 `fetchResult(rid)`；G1 #2/#6 retry = 重发同一 unary RPC（自然落地，无独立 retry 协议）；T4 的 `parseQueryData` 同 turn TSV 扫描保留为未接入期 / cache-miss fallback。
-- **R5 上游依赖已解**：R5 Q3（key = `result_id`，`qr_`/`cr_`）确认、Q5（cache-miss = `result.get` RPC，非 re-query）已答；R5 research 部分收窄，剩 grilling 决策（location / eviction / bounds）。已在 R5 ticket 同步。
+- **R5 上游依赖已解，且 R5 已 resolve（2026-09-03）**：R5 Q3（key = `result_id`，`qr_`/`cr_`）确认、Q5（cache-miss = `result.get` RPC，非 re-query）已答；R5 的 grilling 全部落定——location=B 单包 / 失效=事件驱动 / eviction=byte-bounded LRU 无 TTL / bound=Config 字段 / generation-token v1 跳过，见 [R5](R5-object-layer-result-cache.md) 的 Resolution。上游闭合。
 - **不开新 grilling 票**——见上「结论」。
 
 资产：

@@ -15,7 +15,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
   - 遵循 `packages/client/AGENTS.md` 全部 slot/props/styling/export 纪律。
   - 遵循 `ui-tool` 的 toolview 注册模式：`ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key: '<tool_name>' }, Component))`。
   - `argsRaw`（tool call JSON）= 结构化 intent；`content`（tool result ContentBlock[]）= 渲染文本。client 从 `argsRaw` 解析 intent 渲染 UI。
-  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径:v1 为同 turn TSV 扫描 + result_id 校验(T4 已修协议错位);正式 result store RPC 走 [R6](tickets/R6-result-store-server-side.md)（已解:host `ctx.resultCache` 在,加 `result.get` apiproxy 一行即可,destination 工作）。
+  - `present_table` 的 `result_id` 引用 `query_data` 执行结果——数据行的获取路径:v1 为同 turn TSV 扫描 + result_id 校验(T4 已修协议错位);正式 result store RPC 走 [R6](tickets/R6-result-store-server-side.md)（已解:host `ctx.resultCache` 在,加 `result.get` apiproxy 一行即可,destination 工作）。client 侧热缓存（折叠/展开不重发 RPC、byte-bounded LRU、事件驱动失效）见 [R5](tickets/R5-object-layer-result-cache.md)（已解：单包 `packages/client/result-cache/`）。
   - `compute` 延后（blocked on 安全计算环境）——本 map 不含。
 
 ## Decisions so far
@@ -35,6 +35,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - [T5: present_decomposition 展示层优化执行(Phase 0-2)](tickets/T5-present-decomposition-display-upgrade.md) — P1 定稿折回仓库包:token 全修+isError+locale+parse 防御(Phase 0)、焦点行/谱系 chips/常显指标网格/折叠焦点保留(Phase 1)、非最新 turn 默认折叠(Phase 2);30 tests+100% 覆盖+tsc/bundle 绿+test:gui 全绿(4211);e2e 失败属 code-mode 工作面(交接注);qdec 原型已停用作废
 - [R4: present_table chart 渲染类型扩展](tickets/R4-chart-type-expansion.md) — 留 Chart.js 4;纳入全部 native 类型(area/h-bar/scatter/doughnut/bubble/radar/polarArea,不分阶段,排除 pie-only,heatmap/sankey/treemap→独立 ECharts effort);LLM 选型=启发式(语义层 metric×dimension×grain→type)+客户端列-kind/基数校验器(不可行降级 bar);K11 语义层锚定每图展示内容;原型 prototype/index.html(v6) 演示;实测入 [T6](tickets/T6-chart-integration-testing.md)
 - [R6: Result store server-side 设计调研](tickets/R6-result-store-server-side.md) — host 侧 `ctx.resultCache`（in-memory/session-scoped；`qr_`查询+`cr_`compute 不可变）已 ship 且 compute 衍生已通；rpcId apiproxy 已 ship，唯一缺口=未注册的 `result.get` RPC 行（纯机械四件，destination 工作，无新决策）；分页延后（day-1 全量 get）；R5 上游已解
+- [R5: Object layer result cache 实现方案](tickets/R5-object-layer-result-cache.md) — 单包 `packages/client/result-cache/`（Mode 3，SD+Provider 同包，session-scoped `ctx.results`，镜像 host 放置合二为一）；失效=(a) 事件驱动（观察 `query_data` 完成→invalidate cache[R]，`cr_` 不可变不失效，fresh-vs-folded 由时序处理）；eviction=byte-bounded LRU（`lru-cache` 进 deps，无 TTL，纠正原 count-based）；bound=`maxEntrySize ~8MB`/`maxSize ~64MB`/`max ~64`/`updateAgeOnGet`（Config 字段）；generation-token v1 跳过（missed-event 竞态记 Known Limitation）；不用 IndexedDB/WeakRef/tag 失效/HTTP-SWR/命中 clone；全程 dsh-plugin-development 合规；实现=destination 工作 handoff
 
 ## Not yet specified
 
