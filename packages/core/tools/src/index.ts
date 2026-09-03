@@ -657,6 +657,8 @@ function errorInfo(error: unknown): ToolErrorInfo | undefined {
   try {
     return error instanceof HarnessError ? { name: error.name, code: error.code } : undefined
   } catch {
+    // instanceof / property access can trap on a hostile thrown value
+    // (non-object, null-proto, throwing getter); normalization falls back to undefined.
     return undefined
   }
 }
@@ -1294,6 +1296,8 @@ export class ToolRuntime extends Service {
       const concurrencySafe: unknown = tool.isConcurrencySafe(exec.arguments)
       return concurrencySafe === true ? { kind: 'parallel' } : { kind: 'exclusive' }
     } catch {
+      // isConcurrencySafe classifier threw (hostile args or impl bug); treat as
+      // exclusive — the safe default (parallel would risk concurrent mutation).
       return { kind: 'exclusive' }
     }
   }

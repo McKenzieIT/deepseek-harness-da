@@ -74,6 +74,10 @@ export interface PhaseGateConfig {
    * opt-in overrides the probe).
    */
   critic_tools_registered?: boolean
+  /** Critique confidence floor (0–1); GENERATION gate rejects last_critique below it. */
+  critique_confidence_floor?: number
+  /** Quality score floor (0–100); GENERATION gate rejects last_quality below it. */
+  quality_score_floor?: number
 }
 
 const REASONING_EFFORT: Readonly<Record<string, 'high' | 'medium'>> = {
@@ -158,6 +162,8 @@ export class PhaseGate {
       max_state_turns: config.max_state_turns ?? PipelineConfig.max_state_turns,
       stall_watchdog_seconds: config.stall_watchdog_seconds ?? PipelineConfig.stall_watchdog_seconds,
       critic_tools_registered: config.critic_tools_registered ?? false,
+      critique_confidence_floor: config.critique_confidence_floor ?? PipelineConfig.critique_confidence_floor,
+      quality_score_floor: config.quality_score_floor ?? PipelineConfig.quality_score_floor,
     }
   }
 
@@ -837,12 +843,12 @@ export class PhaseGate {
     // When the critic ships (flag/probe), re-tighten — the floor checks return.
     if (!this.criticToolsRegistered()) return GateResult.pass()
     if (s.last_critique === null) return GateResult.fail('critique not run (critique_sql_tool missing)')
-    if (s.last_critique < PipelineConfig.critique_confidence_floor) {
-      return GateResult.fail(`critique confidence ${s.last_critique} < ${PipelineConfig.critique_confidence_floor}`)
+    if (s.last_critique < this.cfg.critique_confidence_floor) {
+      return GateResult.fail(`critique confidence ${s.last_critique} < ${this.cfg.critique_confidence_floor}`)
     }
     if (s.last_quality === null) return GateResult.fail('quality not run / not evaluated (evaluate_sql_quality missing)')
-    if (s.last_quality < PipelineConfig.quality_score_floor) {
-      return GateResult.fail(`quality score ${s.last_quality} < ${PipelineConfig.quality_score_floor}`)
+    if (s.last_quality < this.cfg.quality_score_floor) {
+      return GateResult.fail(`quality score ${s.last_quality} < ${this.cfg.quality_score_floor}`)
     }
     return GateResult.pass()
   }

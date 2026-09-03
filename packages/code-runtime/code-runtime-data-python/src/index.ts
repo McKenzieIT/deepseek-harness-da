@@ -233,6 +233,30 @@ export class DataPythonCodeRuntime extends CodeRuntime {
       const strayLogs: string[] = []
       let logBytesUsed = 2
       let logTruncated = false
+      // core-runtime-scripts-2: meter stray stdout/stderr against the same
+      // maxLogBytes cap (mirrors the fd-3 log path) — model code writing raw
+      // fd 1/2 (os.write(1,...)) bypasses the metered fd-3 log channel and was
+      // uncapped, able to exhaust host heap within the wall timeout.
+      let strayBytesUsed = 0
+      let strayTruncated = false
+      const pushStray = (chunk: Buffer): void => {
+        if (strayTruncated) return
+        const remaining = this.config.maxLogBytes - strayBytesUsed
+        if (remaining <= 0) {
+          strayTruncated = true
+          strayLogs.push(logTruncationMarker(this.config.maxLogBytes))
+          return
+        }
+        if (chunk.length <= remaining) {
+          strayBytesUsed += chunk.length
+          strayLogs.push(chunk.toString('utf8'))
+        } else {
+          strayLogs.push(chunk.subarray(0, remaining).toString('utf8'))
+          strayBytesUsed += remaining
+          strayTruncated = true
+          strayLogs.push(logTruncationMarker(this.config.maxLogBytes))
+        }
+      }
 
       // Substrate-death signal: resolves once the child has exited AND its
       // stdio pipes have closed ('close' follows 'exit' and the pipe drain),
@@ -287,6 +311,8 @@ export class DataPythonCodeRuntime extends CodeRuntime {
         try {
           raw = JSON.parse(line)
         } catch {
+          // malformed JSON frame from the child process (a partial/forged line
+          // before the host-side protocol cap completes a full frame); drop it.
           return
         }
 
@@ -343,6 +369,8 @@ export class DataPythonCodeRuntime extends CodeRuntime {
               try {
                 value = snapshotJsonValue(resolved)
               } catch {
+                // snapshotJsonValue rejects non-lossless-JSON binding return
+                // values (BigInt/undefined/etc.); reply with ok:false below.
                 value = undefined
               }
               if (value === undefined) {
@@ -379,14 +407,14 @@ export class DataPythonCodeRuntime extends CodeRuntime {
         return
       })
 
-      // Capture stray stdout/stderr from the child
+      // Capture stray stdout/stderr from the child (metered by pushStray)
       child.stdout.on('data', (chunk: Buffer) => {
         if (settled) return
-        strayLogs.push(chunk.toString('utf8'))
+        pushStray(chunk)
       })
       child.stderr.on('data', (chunk: Buffer) => {
         if (settled) return
-        strayLogs.push(chunk.toString('utf8'))
+        pushStray(chunk)
       })
 
       // Child exit without done

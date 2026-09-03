@@ -71,6 +71,11 @@ declare module '@deepseek-ai/cordis' {
     evidenceQuery: EvidenceQueryService
   }
   interface Events {
+    /**
+     * Emitted after an eval run completes; listeners may refresh the eval store.
+     *
+     * @mode emit
+     */
     'evidence/eval-run-completed'(): void
   }
 }
@@ -118,8 +123,11 @@ export class EvalResultStore {
   }
 
   /** Check if any eval result exists for the given asset. */
-  hasResultsFor(assetId: string): boolean {
-    return this.records.some(r => r.assetId === assetId)
+  hasResultsFor(assetId: string, scopeId?: string): boolean {
+    // data-infra-3: filter by scopeId when provided — the store loads ALL scope
+    // subdirs, so an unscoped hasResultsFor lets scope A's coverage mask scope
+    // B's gaps (gapAnalysis/assetHealth pass their resolved scopeId here).
+    return this.records.some(r => r.assetId === assetId && (scopeId === undefined || r.scopeId === scopeId))
   }
 
   /** Get all records for a specific runId. */
@@ -159,8 +167,15 @@ export class EvalResultStore {
       const text = readFileSync(path, 'utf8')
       const lines = text.trim().split('\n').filter(Boolean)
       for (const line of lines) {
-        const raw = JSON.parse(line) as PersistedCaseRecordRaw
-        this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver))
+        // data-infra-9: a malformed line must not abort the whole load
+        // (refresh clears first, so a mid-load throw would leave the store
+        // empty until the next successful refresh). Log + skip the bad line.
+        try {
+          const raw = JSON.parse(line) as PersistedCaseRecordRaw
+          this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver))
+        } catch (e) {
+          console.warn(`evidence-query: skipping malformed record line in ${path}: ${(e as Error).message}`)
+        }
       }
     }
 
@@ -175,8 +190,15 @@ export class EvalResultStore {
         const text = readFileSync(path, 'utf8')
         const lines = text.trim().split('\n').filter(Boolean)
         for (const line of lines) {
-          const raw = JSON.parse(line) as PersistedCaseRecordRaw
-          this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver, scopeId))
+          // data-infra-9: a malformed line must not abort the whole load
+          // (refresh clears first, so a mid-load throw would leave the store
+          // empty until the next successful refresh). Log + skip the bad line.
+          try {
+            const raw = JSON.parse(line) as PersistedCaseRecordRaw
+            this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver, scopeId))
+          } catch (e) {
+            console.warn(`evidence-query: skipping malformed record line in ${path} (scope ${scopeId}): ${(e as Error).message}`)
+          }
         }
       }
     }
@@ -415,7 +437,7 @@ export class EvidenceQueryService extends Service {
 
     for (const [targetId, path] of reachable) {
       if (targetId === assetId) continue
-      if (!this.evalStore.hasResultsFor(targetId)) {
+      if (!this.evalStore.hasResultsFor(targetId, scopeId)) {
         gaps.push({ assetId: targetId, joinPath: path })
       }
     }
@@ -629,7 +651,7 @@ export class EvidenceQueryService extends Service {
         return {
           assetId,
           confirmationStatus: r.data.confirmation.status,
-          hasEvalCoverage: this.evalStore.hasResultsFor(assetId),
+          hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
           lastModified: '',
         }
@@ -646,7 +668,7 @@ export class EvidenceQueryService extends Service {
         return {
           assetId,
           confirmationStatus: r.data.confirmation.status,
-          hasEvalCoverage: this.evalStore.hasResultsFor(assetId),
+          hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
           lastModified: '',
         }
@@ -661,7 +683,7 @@ export class EvidenceQueryService extends Service {
         return {
           assetId,
           confirmationStatus: 'n/a',
-          hasEvalCoverage: this.evalStore.hasResultsFor(assetId),
+          hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
           lastModified: '',
         }

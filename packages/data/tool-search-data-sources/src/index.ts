@@ -54,6 +54,12 @@ export interface Config {
    *  BM25 candidates; `continuous-blend` = coverage-weighted BM25+graph merge
    *  that introduces new candidates from the alias graph. */
   readonly blendingMode?: 'strategy-b' | 'continuous-blend'
+  /** Alias-resolution boost factor for rank fusion (CL-1 Phase 2). */
+  readonly aliasBoost?: number
+  /** LLM sampling temperature for query expansion. */
+  readonly expansionTemperature?: number
+  /** LLM max output tokens for query expansion. */
+  readonly expansionMaxTokens?: number
 }
 
 /** Runtime configuration schema for the search_data_sources plugin. */
@@ -63,6 +69,9 @@ export const Config: z<Config> = z.object({
   expansionProvider: z.string().default(''),
   expansionModel: z.string().default(''),
   blendingMode: z.string().default('continuous-blend') as z<'strategy-b' | 'continuous-blend'>,
+  aliasBoost: z.number().default(2.0),
+  expansionTemperature: z.number().default(0.1),
+  expansionMaxTokens: z.number().default(200),
 })
 
 /** A ranked candidate data source returned to the model. */
@@ -248,6 +257,7 @@ function applyAliasFusion(
   graph: RelationGraphSource | undefined,
   candidates: SearchHit[],
   query: string,
+  aliasBoost: number = ALIAS_BOOST,
 ): SearchHit[] {
   if (!graph || typeof graph.resolveAlias !== 'function') return candidates
   const terms = extractQueryTerms(query)
@@ -266,7 +276,7 @@ function applyAliasFusion(
     const hitCount = aliasHits.get(c.id)
     if (hitCount === undefined) return c
     const capped = Math.min(hitCount, 2)
-    return { ...c, score: c.score * ALIAS_BOOST * capped, mode: 'alias-boosted' as const }
+    return { ...c, score: c.score * aliasBoost * capped, mode: 'alias-boosted' as const }
   })
 
   // Alias-resolved candidates (not in BM25) get a score competitive with
@@ -275,13 +285,13 @@ function applyAliasFusion(
   // (ALIAS_BOOST=2.0) is 15-20× below BM25 scores (30-40) in the 4692-item
   // production corpus, and graph expansion drops them at the topK slice.
   const medianBm25 = candidates.length > 0
-    ? candidates[Math.floor(candidates.length / 2)]?.score ?? ALIAS_BOOST
-    : ALIAS_BOOST
+    ? candidates[Math.floor(candidates.length / 2)]?.score ?? aliasBoost
+    : aliasBoost
   const seen = new Set(boosted.map(c => c.id))
   for (const [id, hitCount] of aliasHits) {
     if (seen.has(id)) continue
     const capped = Math.min(hitCount, 2)
-    boosted.push({ id, score: Math.max(ALIAS_BOOST * capped, medianBm25), mode: 'alias-resolved' })
+    boosted.push({ id, score: Math.max(aliasBoost * capped, medianBm25), mode: 'alias-resolved' })
     seen.add(id)
   }
 
@@ -586,9 +596,13 @@ export function apply(ctx: Context, config: Config = {}): void {
   const expansionEnabled = config.queryExpansion !== false
   const expansionProvider = config.expansionProvider
   const expansionModel = config.expansionModel
+  const aliasBoost = config.aliasBoost ?? ALIAS_BOOST
+  const expansionTemperature = config.expansionTemperature ?? 0.1
+  const expansionMaxTokens = config.expansionMaxTokens ?? 200
   const blend = (config.blendingMode ?? 'continuous-blend') === 'continuous-blend'
     ? applyContinuousBlend
-    : applyAliasFusion
+    : (graph: RelationGraphSource | undefined, candidates: SearchHit[], query: string) =>
+      applyAliasFusion(graph, candidates, query, aliasBoost)
   // Q1 thin default: empty corpus until P6b `ctx.schema` ships. With no
   // corpus, BM25 returns no candidates - callable but unwired, not a broken
   // mount. Swap to ctx.schema.discover when P6b ships.
@@ -677,7 +691,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       let query = args.query
       if (expansionEnabled) {
         try {
-          query = await expandQuery(ctx, args.query, { provider: expansionProvider, model: expansionModel, signal: exec.signal })
+          query = await expandQuery(ctx, args.query, {
+            provider: expansionProvider,
+            model: expansionModel,
+            expansionTemperature,
+            expansionMaxTokens,
+            signal: exec.signal,
+          })
         } catch (e) {
           if (e instanceof Error && e.message.includes('enrichment-llm-wiring')) {
             console.warn('enrichment-llm-wiring: no provider/model configured; skipping query expansion')

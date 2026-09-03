@@ -57,6 +57,10 @@ export interface ExpandQueryOptions {
   /** Caller cancellation forwarded to the LLM stream so an abort halts the
    * auxiliary expansion round-trip, not just the boundary check in `execute`. */
   readonly signal?: AbortSignal
+  /** LLM sampling temperature (defaults to 0.1). */
+  readonly expansionTemperature?: number
+  /** LLM max output tokens (defaults to 200). */
+  readonly expansionMaxTokens?: number
 }
 
 /**
@@ -96,8 +100,8 @@ export async function expandQuery(
       provider,
       model,
       system: EXPANSION_SYSTEM_PROMPT,
-      temperature: 0.1,
-      maxTokens: 200,
+      temperature: opts.expansionTemperature ?? 0.1,
+      maxTokens: opts.expansionMaxTokens ?? 200,
       signal: opts.signal,
       messages: [
         createUserMessage({
@@ -119,6 +123,9 @@ export async function expandQuery(
 
     return text.length > 0 ? text : question
   } catch {
+    // LLM stream or text-processing error; degrade to the original question so
+    // BM25 linking proceeds. (The enrichment-llm-wiring missing-config error
+    // is thrown before this try and handled by the caller in index.ts.)
     return question
   }
 }

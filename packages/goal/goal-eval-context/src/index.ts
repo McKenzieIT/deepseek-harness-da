@@ -221,7 +221,7 @@ export function apply(ctx: Context, config: Config): void {
     }
   })
 
-  ctx.systemPrompt.section({
+  ctx.effect(() => ctx.systemPrompt.section({
     name: 'eval-evidence',
     order: 50,
     text: () => {
@@ -233,5 +233,5 @@ export function apply(ctx: Context, config: Config): void {
       )
       return renderEvalEvidence({ ...params, hintEscalationThreshold }) ?? ''
     },
-  })
+  }), 'goal-eval-context: eval-evidence section')
 }

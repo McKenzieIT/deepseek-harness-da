@@ -231,6 +231,9 @@ export function extractEventView(semanticRoot: string): EventViewInfo | undefine
     }
     return { full_name: fullName, params_extract_template: template, base_columns: baseCols }
   } catch {
+    // loadConfig throws on malformed/missing config.yaml; event_view is optional
+    // enrichment and the main loadEventDefinition path surfaces the substrate
+    // error, so swallow here rather than crash the tool.
     return undefined
   }
 }

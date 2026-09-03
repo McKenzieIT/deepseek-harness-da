@@ -255,9 +255,11 @@ export class MaxComputeQueryEngine extends QueryEngine {
     // crashes mid-operation, respawns on the next call) is rate-limited and
     // eventually abandoned, mirroring the spawn-failure ceiling. Linear backoff
     // prevents a respawn storm; the ceiling reuses crashLoopMaxAttempts.
-    if (this.operationalCrashes > this.cfg.crashLoopMaxAttempts) {
+    // query-engines-12: >= (not >) so the bound fires when operationalCrashes
+    // reaches the cap — same off-by-one as the spawn-failure ceiling above.
+    if (this.operationalCrashes >= this.cfg.crashLoopMaxAttempts) {
       throw new Error(
-        `query-maxcompute: sidecar crash-loop exceeded ${this.cfg.crashLoopMaxAttempts} operational crashes; aborting re-spawn`,
+        `query-maxcompute: sidecar crash-loop reached ${this.cfg.crashLoopMaxAttempts} operational crashes (cap); aborting re-spawn`,
       )
     }
     if (this.operationalCrashes > 0) {
@@ -332,9 +334,11 @@ export class MaxComputeQueryEngine extends QueryEngine {
     } catch (error) {
       this.dead = true
       this.crashAttempts += 1
-      if (this.crashAttempts > this.cfg.crashLoopMaxAttempts) {
+      // query-engines-12: >= (not >) so the bound fires when crashAttempts
+      // reaches the cap — 'Max re-spawn attempts' implies N allowed, not N+1.
+      if (this.crashAttempts >= this.cfg.crashLoopMaxAttempts) {
         throw new Error(
-          `query-maxcompute: sidecar crash-loop exceeded ${this.cfg.crashLoopMaxAttempts} attempts; aborting re-spawn`,
+          `query-maxcompute: sidecar crash-loop reached ${this.cfg.crashLoopMaxAttempts} attempts (cap); aborting re-spawn`,
         )
       }
       throw error // surface to caller; the next call lazy re-spawns
@@ -433,7 +437,8 @@ export class MaxComputeQueryEngine extends QueryEngine {
         }
         return parsed
       } catch {
-        // fall through to failure
+        // JSON.parse failed on the untrusted sidecar text blob (malformed JSON,
+        // not a valid QueryOutcome); fall through to the transport-failure return below.
       }
     }
     return { state: 'failed', error: `undecodable ${tool} result`, failureKind: 'transport', sql: '' }
@@ -705,11 +710,14 @@ export class MaxComputeQueryEngine extends QueryEngine {
    * Provider-internal diagnostic: live/dead + re-spawn budget for scenarios.
    *
    * @returns The engine's connection-health snapshot: `dead` (sidecar down,
-   * awaiting lazy re-spawn), `disposed` (provider torn down, calls reject), and
-   * `crashAttempts` (consecutive re-spawn failures toward the crash-loop ceiling).
+   * awaiting lazy re-spawn), `disposed` (provider torn down, calls reject),
+   * `crashAttempts` (consecutive re-spawn failures toward the crash-loop
+   * ceiling), and `operationalCrashes` (post-connect flap toward the same
+   * ceiling — query-engines-10: surface it so a scenario can read the value
+   * that drives the operational crash-loop bound).
    */
-  status(): { dead: boolean; disposed: boolean; crashAttempts: number } {
-    return { dead: this.dead, disposed: this.disposed, crashAttempts: this.crashAttempts }
+  status(): { dead: boolean; disposed: boolean; crashAttempts: number; operationalCrashes: number } {
+    return { dead: this.dead, disposed: this.disposed, crashAttempts: this.crashAttempts, operationalCrashes: this.operationalCrashes }
   }
 
   // ── dispose (G4 NEW边界(1): lifecycle hook; ODPS orphan → OrphanReaper deferred) ─

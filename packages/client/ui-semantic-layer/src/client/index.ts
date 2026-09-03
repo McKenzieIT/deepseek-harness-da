@@ -106,6 +106,11 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
         if (response.result.ok) {
           sessions.noteAgentPreset(current, response.result.value.agentPreset)
         }
+      }).catch((e: unknown) => {
+        // ui-semantic-layer-7: a rejecting RPC (transport error, disposed scope)
+        // is an unhandled rejection + silently swallowed preset apply. The staged
+        // preset is already cleared above; surface nothing to the model.
+        console.warn(`ui-semantic-layer: agentPresets.select failed: ${e instanceof Error ? e.message : String(e)}`)
       })
     })
 
@@ -118,7 +123,7 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
       : null
 
     const invalidationListeners = new Set<() => void>()
-    scope.remote.$on('evidence/eval-run-completed', () => {
+    const offEval = scope.remote.$on('evidence/eval-run-completed', () => {
       for (const cb of invalidationListeners) cb()
     })
     scope.on('connection/reset', () => {
@@ -197,6 +202,6 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
       inject: () => ({ schemaClient, onNavigateToGraph }),
     }, SemanticLayerSchemaExplorer))
 
-    return stopListSub
+    return () => { stopListSub(); offEval() }
   })
 }

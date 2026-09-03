@@ -452,7 +452,9 @@ function CsvDownload({ headers, rows, title, t }: { headers: string[]; rows: str
     a.href = url
     a.download = `${title}.csv`
     a.click()
-    URL.revokeObjectURL(url)
+    // ui-present-misc-11: defer revoke — Safari lazily reads the blob on click;
+    // a synchronous revoke can abort the download before the browser reads it.
+    window.setTimeout(() => { URL.revokeObjectURL(url) }, 1000)
   }
   return (
     <button type="button" className={css.actionBtn} onClick={handleClick}>
@@ -470,7 +472,10 @@ function CopyMdButton({ headers, rows, title, t }: { headers: string[]; rows: st
         setCopied(true)
         window.setTimeout(() => { setCopied(false) }, 1500)
       })
-      .catch(() => {})
+      .catch(() => {
+        // clipboard write rejected (permissions/abort/unsupported document);
+        // copy button silently no-ops — non-critical, no user error surface.
+      })
   }
   return (
     <button type="button" className={css.actionBtn} onClick={handleClick}>
@@ -510,12 +515,15 @@ export function TableCard({ block, useSession, t }: TableCardProps) {
     return <RunningState />
   }
 
-  if (block.call === null) {
-    return <FallbackContent block={block} />
-  }
-
+  // ui-present-misc-4: check isError BEFORE call===null (matching
+  // DecompositionCard) — for an errored result-only node (call:null && isError)
+  // the prior order rendered FallbackContent, hiding the error.
   if (block.isError) {
     return <ErrorCard block={block} t={t} />
+  }
+
+  if (block.call === null) {
+    return <FallbackContent block={block} />
   }
 
   const args = parseArgs(block.call.argsRaw)

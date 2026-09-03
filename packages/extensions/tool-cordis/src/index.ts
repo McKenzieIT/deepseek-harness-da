@@ -33,12 +33,12 @@ function requireAgent(exec: ToolExecution): Agent {
 
 /** Register the Cordis tools and explicit `@pluginId` context injection. */
 export function apply(ctx: Context): void {
-  ctx.systemPrompt.section({ name: 'tool:cordis', order: 115, text: CORDIS_SYSTEM_PROMPT })
+  ctx.effect(() => ctx.systemPrompt.section({ name: 'tool:cordis', order: 115, text: CORDIS_SYSTEM_PROMPT }), 'tool-cordis: prompt section')
   for (const provider of hostInspectProviders(ctx)) {
     ctx.effect(() => ctx.cordisInspect.register(provider), `tool-cordis: inspect ${provider.manifest.id}`)
   }
 
-  ctx.tools.register(defineTool({
+  ctx.effect(() => ctx.tools.register(defineTool({
     name: 'cordis_inspect_list',
     description:
       'List every Cordis Inspect Provider currently known to the Host, including local Host Providers and the latest '
@@ -55,9 +55,9 @@ export function apply(ctx: Context): void {
       return Promise.resolve({ providers: ctx.cordisInspect.list() } as unknown as JsonValue)
     },
     presentCall: presentInspectListCall,
-  }))
+  })), 'tool-cordis: register cordis_inspect_list')
 
-  ctx.tools.register(defineTool({
+  ctx.effect(() => ctx.tools.register(defineTool({
     name: 'cordis_inspect_query',
     description:
       'Run a read-only query explicitly declared by an Inspect Provider. platform, provider, and method must come '
@@ -91,9 +91,9 @@ export function apply(ctx: Context): void {
       return { platform: args.platform, provider: args.provider, method: args.method, data }
     },
     presentCall: presentInspectQueryCall,
-  }))
+  })), 'tool-cordis: register cordis_inspect_query')
 
-  ctx.tools.register(defineTool({
+  ctx.effect(() => ctx.tools.register(defineTool({
     name: 'cordis_inspect_self',
     description:
       'Inspect dynamic Cordis objects owned by the current Session at increasing levels of detail. With no IDs, '
@@ -143,9 +143,9 @@ export function apply(ctx: Context): void {
       ) as unknown as JsonValue)
     },
     presentCall: presentInspectSelfCall,
-  }))
+  })), 'tool-cordis: register cordis_inspect_self')
 
-  ctx.tools.register(defineTool({
+  ctx.effect(() => ctx.tools.register(defineTool({
     name: 'cordis_define',
     description:
       'Define an immutable Cordis Package. For a new Plugin, use kind:"new" and provide only a semantic prefix of '
@@ -235,9 +235,9 @@ export function apply(ctx: Context): void {
       })
     },
     presentCall: presentDefineCall,
-  }))
+  })), 'tool-cordis: register cordis_define')
 
-  ctx.tools.register(defineTool({
+  ctx.effect(() => ctx.tools.register(defineTool({
     name: 'cordis_run',
     description:
       'Activate one exact Package of a dynamic Plugin. Use mode:"run" for the first activation, restarting '
@@ -324,9 +324,9 @@ export function apply(ctx: Context): void {
       }
     },
     presentCall: presentRunCall,
-  }))
+  })), 'tool-cordis: register cordis_run')
 
-  ctx.tools.register(defineTool({
+  ctx.effect(() => ctx.tools.register(defineTool({
     name: 'cordis_stop',
     description:
       'Stop the current Run of a dynamic Plugin and cancel unfinished approval or activation requests. Retain the '
@@ -346,9 +346,9 @@ export function apply(ctx: Context): void {
       return { pluginId: args.pluginId }
     },
     presentCall: presentStopCall,
-  }))
+  })), 'tool-cordis: register cordis_stop')
 
-  ctx.tools.register(defineTool({
+  ctx.effect(() => ctx.tools.register(defineTool({
     name: 'cordis_undefine',
     description:
       'Permanently remove a dynamic Plugin owned by the current Session. If it is running or awaiting approval, '
@@ -376,7 +376,7 @@ export function apply(ctx: Context): void {
       return { pluginId: args.pluginId, wasRunning: receipt.wasRunning }
     },
     presentCall: presentUndefineCall,
-  }))
+  })), 'tool-cordis: register cordis_undefine')
 
   ctx.on('agent/pre-step', async ({ agent, messages, signal }, next): Promise<PreStepDecision> => {
     const decision = await next()

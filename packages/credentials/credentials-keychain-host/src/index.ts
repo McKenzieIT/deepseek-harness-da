@@ -87,6 +87,9 @@ function readInteractivePassword(): string | undefined {
     if (n <= 0) return undefined
     return buf.toString('utf8', 0, n).replace(/\r?\n$/, '')
   } catch {
+    // readSync on a tty stdin can only throw on a closed/EINTR/EAGAIN stdin;
+    // the isTTY gate above excludes non-tty, so nothing else reaches here —
+    // treat as 'no password entered'.
     return undefined
   }
 }

@@ -305,6 +305,7 @@ class Nl2sqlAgentResponder implements AgentResponder {
     try {
       return await this.llm.complete(prompt)
     } catch {
+      // answer-gen LLM call failed; degrade to raw rows so the case still scores.
       return JSON.stringify(rows).slice(0, 1000)
     }
   }

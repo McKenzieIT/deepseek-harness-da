@@ -91,6 +91,11 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
     scrypt(password, salt, SCRYPT_KEYLEN, (err, key) => {
       if (err) { reject(err); return }
       const expected = Buffer.from(hash, 'hex')
+      // data-infra-6: a malformed/truncated stored hash yields
+      // expected.length !== key.length (SCRYPT_KEYLEN); timingSafeEqual throws
+      // RangeError on the mismatch — an uncaughtException that crashes the
+      // process on a single corrupted passwordHash row. Fail closed instead.
+      if (expected.length !== key.length) { resolve(false); return }
       resolve(timingSafeEqual(key, expected))
     })
   })
@@ -499,6 +504,13 @@ async function handleCreateAccessLink(
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
+    /**
+     * Emitted when a per-user PAT resolve returns undefined (PAT-miss UX).
+     *
+     * @mode emit
+     * @param userId - the user whose PAT is missing.
+     * @param ref - the credential ref that failed to resolve.
+     */
     'admin/pat-miss'(userId: string, ref: string): void
   }
 }

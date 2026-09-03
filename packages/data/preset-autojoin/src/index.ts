@@ -106,7 +106,11 @@ export function createAutojoinListener(presets: AutojoinPresetService) {
     let preset: { id: string }
     try {
       preset = await presets.resolve(undefined)
-    } catch {
+    } catch (e) {
+      // Swallow only the expected "no default preset" answer, but log it so a
+      // roster-loader bug (malformed presets config, disk error) — which throws
+      // the same way — surfaces instead of degrading the agent to bare silently.
+      agent.ctx.logger.warn(`[preset-autojoin] no default preset resolved: ${(e as Error).message}`)
       return
     }
     // A mount failure (broken composition, leaked service) propagates: the

@@ -68,11 +68,15 @@ declare module '@deepseek-ai/cordis' {
   interface Events {
     /**
      * Emitted when a management session is created.
+     *
+     * @mode emit
      * @param descriptor - the created management session descriptor.
      */
     'management-session/created'(descriptor: ManagementSessionDescriptor): void
     /**
      * Emitted when a management session is destroyed.
+     *
+     * @mode emit
      * @param sessionId - the destroyed management session id.
      */
     'management-session/destroyed'(sessionId: SessionId): void

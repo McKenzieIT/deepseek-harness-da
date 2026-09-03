@@ -76,6 +76,8 @@ export const Config: z<Config> = z.object({
   max_state_turns: z.number().default(PipelineConfig.max_state_turns),
   stall_watchdog_seconds: z.number().default(PipelineConfig.stall_watchdog_seconds),
   critic_tools_registered: z.boolean().default(false),
+  critique_confidence_floor: z.number().default(PipelineConfig.critique_confidence_floor),
+  quality_score_floor: z.number().default(PipelineConfig.quality_score_floor),
 })
 
 /**

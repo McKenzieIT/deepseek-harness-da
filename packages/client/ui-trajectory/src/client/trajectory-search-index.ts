@@ -15,6 +15,8 @@ function searchableJson(value: unknown): string {
   try {
     return JSON.stringify(value)
   } catch {
+    // JSON.stringify throws on circular refs / BigInt — the index skips
+    // unstringifiable values rather than crashing trajectory search.
     return ''
   }
 }

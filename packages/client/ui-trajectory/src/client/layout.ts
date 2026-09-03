@@ -843,6 +843,8 @@ function safeImageSource(value: string): string | undefined {
     const protocol = new URL(value).protocol
     return protocol === 'http:' || protocol === 'https:' ? value : undefined
   } catch {
+    // new URL() throws TypeError on non-URL strings (the data:/blob: fast-path
+    // returned above); treat as an unsafe image source.
     return undefined
   }
 }
