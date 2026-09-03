@@ -106,11 +106,14 @@ export interface UpdateTableConfigResult {
 /**
  * RBAC stub: an admin caller is required to mutate table config. The role is
  * read from `CallerIdentity.role` (populated by P9's admin login).
- * Safe-by-default: an unmounted identity, an undefined caller, or a role-less
- * caller all refuse (only `role === 'admin'` allows). The structural cast on
- * `identity` is the minimal assertion for calling `current()` on the
- * `unknown`-typed seam (the pure core takes `unknown` so test stubs are plain
- * objects); the `role` field is the real `CallerIdentity.role`, not a fabrication.
+ * Pre-P9 all-admin stub (data-tools-discovery-6): when `current()` returns
+ * undefined (no P9 login yet, single-user deployment), the call is ALLOWED —
+ * NOT refused, despite the prior JSDoc's "safe-by-default" claim. Once P9
+ * populates a real identity, only `role === 'admin'` allows (return false on
+ * undefined then). The structural cast on `identity` is the minimal assertion
+ * for calling `current()` on the `unknown`-typed seam (the pure core takes
+ * `unknown` so test stubs are plain objects); the `role` field is the real
+ * `CallerIdentity.role`, not a fabrication.
  * @param identity - the `ctx.identity` service (or undefined when unmounted).
  * @returns `true` when the caller is an admin, `false` otherwise.
  */

@@ -280,7 +280,10 @@ export class SchemaGateway extends TypertRemoteService {
 
     // If focus is specified, restrict to the focus-reachable subgraph.
     if (focus) {
-      if (!nodeIdSet.has(focus)) return { nodes: allNodes, edges: allEdges } // focus not in filtered set
+      // data-infra-15: return empty (not the whole graph) so a caller asking for
+      // a focus subgraph detects the bad/filtered focus id instead of silently
+      // getting the entire graph (asymmetric with the bounded BFS success path).
+      if (!nodeIdSet.has(focus)) return { nodes: [], edges: [] } // focus not in filtered set
       const reachable = new Set<string>([focus])
       if (depth === undefined || depth > 0) {
         // unlimited (or capped) BFS from focus

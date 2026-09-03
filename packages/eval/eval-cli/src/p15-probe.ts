@@ -78,8 +78,10 @@ async function expandQuery(question: string, useLlm: boolean): Promise<string> {
 async function loadCorpus() {
   const ctx = new Context()
   const schemaDir = join(process.cwd(), '../../../examples/k11-semantic-layer')
-  ctx.plugin(SemanticLayerService, { semanticRoot: schemaDir, scopeId: 'k11' })
-  await new Promise(r => setTimeout(r, 100))
+  // eval-cli-exp-6: await the plugin fiber so the service is ready before
+  // reading the corpus; the 100ms setTimeout race-lost if schema parsing
+  // exceeded 100ms (context.ts boot() uses this same await pattern).
+  await ctx.plugin(SemanticLayerService, { semanticRoot: schemaDir, scopeId: 'k11' })
   const schema = ctx.get('schema') as { loadRetrievalCorpusAll?(): unknown[] } | undefined
   if (!schema?.loadRetrievalCorpusAll) throw new Error('loadRetrievalCorpusAll not found')
   type Item = { id: string; description?: string; metrics?: Record<string, unknown>; payload?: unknown }

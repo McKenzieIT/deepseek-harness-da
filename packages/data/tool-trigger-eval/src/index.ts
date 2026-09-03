@@ -22,9 +22,16 @@ export const inject = ['tools']
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
-/** The Cordis service seam for eval execution. */
+/**
+ * The Cordis service seam for eval execution. Mirrors the REAL
+ * `EvalRunnerService.runBatch` in `dsh-eval-runner-service` (D3ii: the options
+ * are `{ runId?, skipHealthGate?, scopeId? }` — there is NO `signal` param, and
+ * `scopeId` is REQUIRED: the service throws `'explicit scopeId required'` when it
+ * is undefined). Keep this interface in sync with that signature, or
+ * `trigger_eval full_run` silently throws at runtime (data-tools-present-eval-1).
+ */
 export interface EvalRunnerService {
-  runBatch(options?: { runId?: string; skipHealthGate?: boolean; signal?: AbortSignal }): Promise<RunResult>
+  runBatch(options?: { runId?: string; skipHealthGate?: boolean; scopeId?: string }): Promise<RunResult>
   getLastRun(): RunResult | null
   computeDelta(runA: RunResult, runB: RunResult): DeltaReport
   getCaseCount(): number
@@ -77,6 +84,9 @@ export function formatTriggerEval(value: TriggerEvalResult): string {
       const s = value.summary
       lines.push(`Results: ${s.correct}/${s.total} correct (${(s.pass_rate * 100).toFixed(1)}% pass rate)`)
     }
+    // data-tools-present-eval-3: surface the configuration guidance message
+    // (mirror not_configured) — without it the model gets a bare run id.
+    if (value.message) lines.push(value.message)
   } else {
     lines.push(value.message ?? 'Eval runner not configured')
     return lines.join('\n')
@@ -180,15 +190,31 @@ export function apply(ctx: Context, _config: Config = {}): void {
 
       const evalRunner = ctx.get('evalRunner')
 
-      // Full run mode: eval runner service is available
+      // Full run mode: eval runner service is available.
       if (evalRunner) {
+        // D3ii: the real EvalRunnerService.runBatch requires an explicit scopeId
+        // (no default pointer — it throws `'explicit scopeId required'` when
+        // undefined). If this tool call has no scope, surface not_configured
+        // rather than let runBatch throw. (data-tools-present-eval-1)
+        if (exec.scopeId === undefined) {
+          return {
+            ok: false,
+            mode: 'not_configured',
+            runId: null,
+            summary: null,
+            delta: null,
+            caseCount: 0,
+            message: 'trigger_eval full_run requires a scope; exec.scopeId is undefined. Invoke from within a scoped session.',
+            previousRunId: null,
+          }
+        }
         const runId = randomUUID()
         const previousRun = evalRunner.getLastRun()
 
         const result = await evalRunner.runBatch({
           runId,
           skipHealthGate: args.skip_health_gate ?? false,
-          signal: exec.signal,
+          scopeId: exec.scopeId,
         })
 
         let delta: DeltaReport | null = null

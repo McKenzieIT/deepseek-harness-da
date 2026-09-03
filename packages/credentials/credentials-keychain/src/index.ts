@@ -270,7 +270,10 @@ export class KeychainCredentialProvider extends CredentialProvider {
 
   override async describe(ref: CredentialRef, address?: CredentialAddress): Promise<CredentialInfo> {
     const account = address?.userId
-    if (account === undefined) return this.fallback?.describe(ref) ?? { configured: false, writable: true }
+    // embedder-retrieval-creds-4: writable must reflect whether `set` would succeed.
+    // On the global no-fallback path set() throws ('per-user set requires userId'),
+    // so writable=true was a contract violation. writable iff a fallback set exists.
+    if (account === undefined) return this.fallback?.describe(ref) ?? { configured: false, writable: this.fallback?.set !== undefined }
     const value = await this.find(ref, account)
     if (value !== undefined) return { configured: true, source: 'keychain', writable: true }
     // A per-user miss: if this ref is NOT fallback-eligible (stable, gated off),

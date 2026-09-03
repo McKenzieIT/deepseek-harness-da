@@ -133,7 +133,9 @@ export function FollowupChips({ block, useSession, submit, t }: FollowupChipsPro
               className={css.item}
               disabled={!current}
               title={current ? undefined : t('expired')}
-              aria-label={t('sendAria').replace('{label}', s.label)}
+              // ui-present-misc-5: function replacement so $-patterns in s.label
+              // ($$, $&, $`) are not interpreted by String.replace.
+              aria-label={t('sendAria').replace('{label}', () => s.label)}
               tabIndex={i === 0 ? 0 : -1}
               onClick={() => { submit(s.value) }}
             >

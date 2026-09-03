@@ -38,6 +38,9 @@ const INITIAL: SchemaGatewayState = {
 export function useSchemaGateway(client: SchemaGatewayClient | null) {
   const [state, setState] = useState<SchemaGatewayState>(INITIAL)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // ui-semantic-layer-8: tracks the latest loadAssetDefinition request name so
+  // a stale fetch (superseded by a rapid A→B click) is ignored on resolve.
+  const latestDefRequest = useRef<string | null>(null)
 
   const loadDomains = useCallback(async () => {
     if (!client) return
@@ -88,14 +91,20 @@ export function useSchemaGateway(client: SchemaGatewayClient | null) {
 
   const loadAssetDefinition = useCallback(async (name: string, kind: AssetKind) => {
     if (!client) return
+    // ui-semantic-layer-8: stamp the originating name; ignore a stale result
+    // from a superseded fetch (rapid A→B clicks fire two uncancelled fetches;
+    // the last to resolve would otherwise write B's header with A's definition).
+    latestDefRequest.current = name
     setState(s => ({ ...s, loading: true, error: null, assetDefinition: null }))
     try {
       let def: Json | null
       if (kind === 'table') def = await client.getTableDefinition(name)
       else if (kind === 'event') def = await client.getEventDefinition(name)
       else def = await client.getMetricDefinition(name)
+      if (latestDefRequest.current !== name) return
       setState(s => ({ ...s, assetDefinition: def, loading: false }))
     } catch (err) {
+      if (latestDefRequest.current !== name) return
       setState(s => ({ ...s, loading: false, error: err instanceof Error ? err.message : String(err) }))
     }
   }, [client])

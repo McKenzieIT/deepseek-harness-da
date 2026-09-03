@@ -78,6 +78,9 @@ interface PendingConfirm {
   readonly edit: PatrolProposedEdit
   resolve: (decision: ConfirmDecision) => void
   timer: ReturnType<typeof setTimeout> | null
+  /** data-infra-7: tracked so clearPendingConfirm can remove the abort listener. */
+  readonly signal: AbortSignal
+  readonly onAbort: () => void
 }
 
 // ── Events ──────────────────────────────────────────────────────────────
@@ -242,8 +245,10 @@ export class PatrolService extends Service {
     this.roundNumber = 0
     this.btwQueue = []
     this.loopPromise = null
-    this.running = false
-
+    // data-infra-8: keep this.running=true until the in-flight runLoop settles
+    // (below) so a non-awaiting stop(); start() sees running=true and cannot
+    // spawn a second concurrent loop whose continuations would mutate state
+    // after it has been reset here. runLoop never rejects.
     this.ctx.emit('patrol/stopped')
 
     // Quiesce: drain the in-flight runLoop so its continuations settle before a
@@ -255,6 +260,7 @@ export class PatrolService extends Service {
         /* runLoop never rejects */
       }
     }
+    this.running = false
   }
 
   /**
@@ -553,12 +559,15 @@ export class PatrolService extends Service {
         }
       }, this.config.confirmTimeoutMs)
 
-      this.pendingConfirm = { edit, resolve, timer }
-
       // If signal aborts while waiting, reject
       const onAbort = () => {
         this.clearPendingConfirm('rejected')
       }
+      // data-infra-7: track onAbort (+ signal) on pendingConfirm so
+      // clearPendingConfirm can remove it from the long-lived signal on the
+      // timeout/respondToConfirm path — { once: true } only auto-removes on
+      // abort, so the listener would otherwise accumulate across patrol rounds.
+      this.pendingConfirm = { edit, resolve, timer, signal, onAbort }
       signal.addEventListener('abort', onAbort, { once: true })
     })
   }
@@ -571,6 +580,9 @@ export class PatrolService extends Service {
     if (this.pendingConfirm.timer) {
       clearTimeout(this.pendingConfirm.timer)
     }
+    // data-infra-7: remove the abort listener so it doesn't accumulate on the
+    // long-lived abortController.signal across patrol rounds.
+    this.pendingConfirm.signal.removeEventListener('abort', this.pendingConfirm.onAbort)
     const { resolve } = this.pendingConfirm
     this.pendingConfirm = null
     if (this.state === 'awaiting-confirm') {

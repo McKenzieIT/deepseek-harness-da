@@ -79,6 +79,10 @@ function DragHandle(props: { side: 'sidebar' | 'details'; left: number; onStart:
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      // ui-present-misc-3: pointercancel (OS gesture / over-subscription) must
+      // release capture + cancel rAF + fire final onDrag+onEnd + setDragging(false),
+      // else dragging state stays true until a later successful drag.
+      onPointerCancel={onPointerUp}
     />
   )
 }

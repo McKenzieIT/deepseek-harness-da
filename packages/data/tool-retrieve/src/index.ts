@@ -129,6 +129,10 @@ function projectHit(h: { readonly id: string; readonly score: number; readonly p
  */
 interface SchemaCorpusSource {
   loadRetrievalCorpus(scopeId?: string): readonly DataSourceDoc[]
+  /** Full corpus (tables + events + metrics) when the schema exposes it;
+   *  preferred over `loadRetrievalCorpus` (events-only) so `retrieve` recalls
+   *  tables + metrics too — mirrors search_data_sources (data-tools-discovery-1). */
+  loadRetrievalCorpusAll?(scopeId?: string): readonly DataSourceDoc[]
   /** Phase 3 (D5.1): corpus-version signal for stale-cache invalidation;
    *  optional so a schema without it degrades to build-once (D2e behavior). */
   corpusVersion?(scopeId?: string): number
@@ -215,7 +219,8 @@ export function getEnrichedLinker(schema: SchemaCorpusSource, scopeId?: string):
   if (entry !== undefined && entry.version === version && entry.root === root) {
     return entry.linker
   }
-  const linker = new Bm25Linker(schema.loadRetrievalCorpus(scopeId))
+  const corpus = schema.loadRetrievalCorpusAll?.(scopeId) ?? schema.loadRetrievalCorpus(scopeId)
+  const linker = new Bm25Linker(corpus)
   byScope.set(key, { linker, version, root })
   return linker
 }

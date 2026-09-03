@@ -147,36 +147,57 @@ export function apply(ctx: Context, _config: Config = {}): void {
         }
       }
 
-      const kind = snapshot.kind as 'table' | 'event'
+      const kind = snapshot.kind
 
-      // Record a before-snapshot of the CURRENT state (so this revert can be undone)
+      // data-tools-discovery-2: previously `kind as 'table'|'event'` was a runtime
+      // no-op, so a concept snapshot (runtime kind 'concept') fell into the event
+      // write path — writeEventYaml on concept content (a bogus event, or silent
+      // failure) — yet the tool returned reverted:true. Reject unknown kinds up
+      // front and give concepts a real write branch below.
+      if (kind !== 'table' && kind !== 'event' && kind !== 'concept') {
+        return {
+          reverted: false,
+          asset_name: validated,
+          kind,
+          to_version: args.to_version,
+          message: `cannot revert asset of kind "${kind}" (only table/event/concept are supported)`,
+        }
+      }
+
+      // Record a before-snapshot of the CURRENT state (so this revert can be undone).
+      // Concepts skip the pre-snapshot: this seam exposes no loadConceptDefinition,
+      // and the write branch below restores the concept regardless (no undo-of-undo
+      // for concepts — same as the prior behavior, which read loadEventDefinition=null).
       let fromVersion: number | undefined
       try {
         const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
         let currentYaml: string | undefined
+        let snapshotKind: 'table' | 'event' | undefined
         if (kind === 'table') {
           const current = schema.loadTableDefinition(validated)
-          if (current !== null) currentYaml = dumpYaml(current)
-        } else {
+          if (current !== null) { currentYaml = dumpYaml(current); snapshotKind = 'table' }
+        } else if (kind === 'event') {
           const current = schema.loadEventDefinition(validated)
-          if (current !== null) currentYaml = dumpYaml(current)
+          if (current !== null) { currentYaml = dumpYaml(current); snapshotKind = 'event' }
         }
-        if (currentYaml !== undefined) {
-          fromVersion = audit.store.recordSnapshot(validated, kind, currentYaml)
+        if (currentYaml !== undefined && snapshotKind !== undefined) {
+          fromVersion = audit.store.recordSnapshot(validated, snapshotKind, currentYaml)
         }
       } catch { /* fail-silent: pre-revert snapshot failure must not block the revert */ }
 
       // Write the snapshot content back to the semantic layer.
       // Intentionally uses raw writeTable (not schema.updateTableMeta) because a
       // revert restores the exact prior state — re-enrichment (enrichOnWrite) would
-      // mutate the restored definition, defeating the purpose of an undo.
+      // mutate the restored definition, defeating the purpose of an undo. The
+      // concept branch mirrors edit-definition's raw writeFileAtomic to concepts/.
       try {
-        const { writeTable, writeEventYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
         if (kind === 'table') {
+          const { writeTable } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
           const { load: yamlLoad } = await import('js-yaml')
           const obj = yamlLoad(snapshot.content) as Record<string, unknown>
           await writeTable(schema.semanticRoot, validated, obj)
-        } else {
+        } else if (kind === 'event') {
+          const { writeEventYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
           const res = await writeEventYaml(schema.semanticRoot, validated, snapshot.content)
           if (!res.ok) {
             return {
@@ -187,6 +208,16 @@ export function apply(ctx: Context, _config: Config = {}): void {
               message: `write failed: ${res.error}`,
             }
           }
+        } else {
+          // kind === 'concept' — raw write to concepts/<name>.yaml, mirroring
+          // edit-definition (no substrate writeConceptYaml helper exists yet).
+          const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
+          // oxlint-disable-next-line typescript/unbound-method -- static module function, no this-binding
+          const { join } = await import('node:path')
+          const { mkdirSync } = await import('node:fs')
+          const conceptsDir = join(schema.semanticRoot, 'concepts')
+          mkdirSync(conceptsDir, { recursive: true })
+          await writeFileAtomic(join(conceptsDir, `${validated}.yaml`), snapshot.content, { mode: 0o644 })
         }
       } catch (e) {
         return {

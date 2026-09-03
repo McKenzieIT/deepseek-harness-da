@@ -382,7 +382,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
             }
           }
         } else if (kind === 'concept') {
-          const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
+          const { dumpYaml, invalidateCaches } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
           const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
           // oxlint-disable-next-line typescript/unbound-method -- static module function, no this-binding
           const { join } = await import('node:path')
@@ -391,6 +391,10 @@ export function apply(ctx: Context, _config: Config = {}): void {
           mkdirSync(conceptsDir, { recursive: true })
           const yamlContent = dumpYaml(merged)
           await writeFileAtomic(join(conceptsDir, `${result.asset_name}.yaml`), yamlContent, { mode: 0o644 })
+          // data-tools-discovery-3: bump the corpus-version signal so Bm25Linker
+          // caches + the alias graph rebuild (mirrors writeTable/writeEventYaml
+          // at io.ts:415/455 — a concept edit changes alt_labels/description).
+          invalidateCaches(schema.semanticRoot)
         }
       } catch (e) {
         return {

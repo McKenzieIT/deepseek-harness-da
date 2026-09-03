@@ -49,8 +49,11 @@ function serializeAssistant(message: Message): WireMessage {
     // message.content verbatim (which is "") and some gateways reject null. Reasoning-ONLY turns:
     // content must still be SET, or a null here poisons the session log and bricks later turns.
     content: text,
-    // Passback rule: reasoning_content returns on tool-call turns; ignored on plain turns
-    // (drop it there to save tokens).
+    // llm-dashscope-1: divergence from llm-deepseek — deepseek replays
+    // reasoning_content on every reasoning-carrying turn (the gateway
+    // re-encoding recovers the thinking signature); dashscope intentionally
+    // drops it on non-tool-call turns to save tokens (serialize.spec locks
+    // this). NOT mirrored from deepseek despite the original docstring's claim.
     ...toolCalls.length > 0 && reasoning.length > 0 ? { reasoning_content: reasoning } : {},
     ...toolCalls.length > 0 ? { tool_calls: toolCalls } : {},
   }
@@ -118,9 +121,13 @@ export function serializeRequest(options: GenerateOptions): WireRequest {
     },
   }))
 
-  // NOTE: options.stop is intentionally NOT serialized — the DashScope native protocol's
-  // stop-sequence support is unprobed (调用文档 §3 lists max_tokens/temperature only); silently
-  // dropped in phase 1. Add when the gateway's stop support is confirmed.
+  // llm-dashscope-3: options.stop is NOT serialized (DashScope stop-sequence
+  // support is unprobed — 调用文档 §3 lists max_tokens/temperature only). Warn
+  // when a caller sets it so the silent no-op (the model may run past the stop
+  // string) is at least observable, not fully silent. Serialize once support is probed.
+  if (options.stop !== undefined) {
+    console.warn('llm-dashscope: options.stop is ignored (DashScope stop-sequence support unprobed)')
+  }
   return {
     model: options.model,
     input: { messages },

@@ -88,6 +88,12 @@ export async function infinityEmbed(
     const j = await r.json() as EmbeddingsResponse
     const rows = (j.data ?? []).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
     const vecs = rows.map(x => x.embedding ?? [])
+    // embedder-retrieval-creds-2: validate the response COUNT matches texts.length,
+    // not just the dim — a malformed 200 (missing/empty/partial data) returned
+    // []/short silently, which left ensureVecs with vecs=[] (BM25-only, no retry).
+    if (vecs.length !== texts.length) {
+      throw new InferenceError('unavailable', `expected ${texts.length} embeddings, got ${vecs.length}`)
+    }
     if (expectedDim !== undefined && vecs.length > 0) {
       const obs = vecs[0]?.length ?? 0
       if (obs !== expectedDim) throw new InferenceError('dim_mismatch', `expected ${expectedDim}, got ${obs}`)

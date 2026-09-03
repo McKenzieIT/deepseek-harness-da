@@ -9,7 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { loadCases, checkResultMatch as coreCheckResultMatch } from '@deepseek-ai/dsh-eval'
+import { loadCases, checkResultMatch as coreCheckResultMatch, JUDGE_PASS_THRESHOLD } from '@deepseek-ai/dsh-eval'
 import type { EvalCase } from '@deepseek-ai/dsh-eval'
 import type { Collaborators } from './collaborators.ts'
 import type {
@@ -37,7 +37,7 @@ const SQL_JUDGE_PASS_THRESHOLD = 0.6
 /**
  * Run a batch of eval cases.
  *
- * For each case, runs pass_k attempts; verdict = best-of-k (any pass = correct).
+ * For each case, runs pass_k attempts; verdict = pass^k (ALL attempts must pass).
  * Handles infra errors with bounded retry (max 2 by default), labels as
  * infra_failure if all attempts fail due to infra.
  *
@@ -303,7 +303,7 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
         agentResponse.reply,
         question,
       )
-      deliveryMatch = judgeResult.score >= 0.6
+      deliveryMatch = judgeResult.score >= JUDGE_PASS_THRESHOLD
     } else {
       const expectedAnswer = evalCase.expected.answer
       deliveryMatch = typeof expectedAnswer === 'string'

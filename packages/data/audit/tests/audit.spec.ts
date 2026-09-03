@@ -52,6 +52,20 @@ describe('SQLiteAuditStore', () => {
     expect(rec?.extra.credits).toMatchObject({ total_cost_usd: 0.1042, total_credits: 42 })
   })
 
+  it('update_review_status is visible on read (no split-brain: column re-injected like auto_tags)', () => {
+    // data-infra-1: update_review_status mutates the COLUMN, not the payload;
+    // _materialize must re-inject row.review_status (mirroring auto_tags) or
+    // get()/query() return the insert-time status and a compliance flip to
+    // 'flagged' is invisible.
+    s.append(fromPayload({
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+    }))
+    expect(s.get('r1', alice)?.review_status).toBe('pending')
+    expect(s.update_review_status('r1', 'flagged', alice)).toBe(true)
+    expect(s.get('r1', alice)?.review_status).toBe('flagged')
+    expect(s.query({ user_id: 'alice' }, admin).find(r => r.log_id === 'r1')?.review_status).toBe('flagged')
+  })
+
   it('ownership guard: bob ⊥ alice record = null = not-found (IDOR-safe, no existence oracle)', () => {
     s.append(fromPayload({
       log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'],

@@ -76,13 +76,15 @@ function postProcessSql(sql: string, today?: string): string {
 }
 
 function computeDate(base: string, offsetDays: number): string {
+  // nl2sql-engine-6: use UTC (matching metric-engine shiftDays/fmt) — local
+  // components drift vs UTC near a timezone boundary for the same YYYYMMDD today.
   const y = Number(base.slice(0, 4))
   const m = Number(base.slice(4, 6)) - 1
   const d = Number(base.slice(6, 8))
-  const dt = new Date(y, m, d + offsetDays)
-  const yy = dt.getFullYear()
-  const mm = String(dt.getMonth() + 1).padStart(2, '0')
-  const dd = String(dt.getDate()).padStart(2, '0')
+  const dt = new Date(Date.UTC(y, m, d + offsetDays))
+  const yy = dt.getUTCFullYear()
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getUTCDate()).padStart(2, '0')
   return `${yy}${mm}${dd}`
 }
 

@@ -64,7 +64,7 @@ describe('runBatch', () => {
     expect(result.cases[0]!.verdict).toBe('wrong')
   })
 
-  it('pass_k best-of-k: any passing attempt produces correct', async () => {
+  it('pass^k: a failing attempt makes the case wrong (all attempts must pass)', async () => {
     const { agent, executor, judge } = makeStubs()
     let callCount = 0
 
@@ -90,8 +90,11 @@ describe('runBatch', () => {
       skip_health_gate: true,
     })
 
-    // Best-of-k: at least one attempt passed
-    expect(result.cases[0]!.verdict).toBe('correct')
+    // pass^k (eval-core-1 / re-baseline): ALL attempts must pass — a single
+    // failing attempt makes the case 'wrong'. The prior best-of-k ('any pass =
+    // correct') semantics was retired (pass_k is the anti-flakiness mechanism
+    // requiring every attempt to pass, not best-of-k).
+    expect(result.cases[0]!.verdict).toBe('wrong')
     expect(result.cases[0]!.pass_k_results).toHaveLength(2)
   })
 

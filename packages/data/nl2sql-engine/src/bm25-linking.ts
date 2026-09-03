@@ -179,8 +179,9 @@ export function buildCorpus(dataSources: readonly DataSourceDoc[]): readonly Cor
 
 /**
  * Compute a name-match bonus: what fraction of the query's ASCII tokens appear
- * as sub-tokens of the table id? Prefix matches (≥3 chars) also count.
- * Returns a score in [0, 1] representing coverage.
+ * as sub-tokens of the table id? Prefix matches (≥2 chars) also count.
+ * Returns a score in [0, 1] representing coverage. (nl2sql-engine-9: JSDoc
+ * said ≥3 but the code branches on qt.length >= 2.)
  */
 function nameMatchCoverage(queryAsciiTokens: readonly string[], tableId: string): number {
   if (queryAsciiTokens.length === 0) return 0

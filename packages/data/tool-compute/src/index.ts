@@ -43,6 +43,14 @@ function validateComputeOutput(value: CodeJsonValue | undefined): { columns: str
       + 'Example: return {"columns": ["date", "value"], "rows": [["2024-01-01", 100], ...]}',
     )
   }
+  // data-tools-present-eval-6: every row's length must match columns.length — a
+  // jagged payload {columns:['a','b','c'], rows:[[1,2],[3,4,5]]} was accepted, cached, surfaced.
+  const columns = obj.columns as string[]
+  if (!obj.rows.every((r: unknown[]) => r.length === columns.length)) {
+    throw new Error(
+      `compute: returned rows must each have ${columns.length} cells (columns.length); a jagged payload is rejected.`,
+    )
+  }
   return { columns: obj.columns, rows: obj.rows }
 }
 

@@ -181,9 +181,12 @@ export async function pollToSettlement(
   let last: QueryOutcome | undefined
   for (let i = 0; i < cfg.maxPolls; i += 1) {
     if (exec.signal.aborted) throw new Error('query_data: polling aborted')
-    await sleep(cfg.pollIntervalMs)
+    // query-engines-9: poll BEFORE sleeping — a fast (sub-interval) completion
+    // no longer waits a full pollIntervalMs; the trailing sleep is skipped on
+    // the last iteration (budget exhausted → honest pending return below).
     last = await query.getProgress(instanceId)
     if (last.state !== 'pending') return last
+    if (i < cfg.maxPolls - 1) await sleep(cfg.pollIntervalMs)
   }
   // Budget exhausted — return an honest pending outcome that preserves the
   // ORIGINAL instance id (a fallback poll may omit it), plus the last poll's

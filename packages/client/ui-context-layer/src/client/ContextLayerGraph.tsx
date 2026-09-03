@@ -85,7 +85,10 @@ function toG6Data(data: GraphData, domainFilter?: string) {
   const nodes = filteredNodes.map(n => ({
     id: n.id,
     label: n.label,
-    combo: `combo-${n.domains[0] ?? 'unknown'}`,
+    // ui-context-layer-3: when a domainFilter is active, assign every filtered
+    // node to the filter's combo — a node whose domains[0] differs from the
+    // filter domain would otherwise reference an uncreated combo.
+    combo: `combo-${domainFilter ?? n.domains[0] ?? 'unknown'}`,
     data: {
       kind: n.kind,
       evalPassRate: n.evalPassRate,
@@ -152,6 +155,17 @@ export function ContextLayerGraph({
   const [currentZoomLevel, setCurrentZoomLevel] = useState<ZoomLevel>('mid')
   const zoomLevelRef = useRef<ZoomLevel>(currentZoomLevel)
   zoomLevelRef.current = currentZoomLevel
+
+  // ui-context-layer-1: keep the latest click callbacks in refs so the G6
+  // handlers (registered once in the mount effect) always invoke the current
+  // closure. Without this the `[]`-deps init effect captures the mount-render
+  // onNodeClick; ContextLayerView's handleNodeClick depends on [data] and bails
+  // while data is null (the overlay load path), so the captured handler bails
+  // forever and node click never opens the detail panel.
+  const onNodeClickRef = useRef(onNodeClick)
+  onNodeClickRef.current = onNodeClick
+  const onNodeDoubleClickRef = useRef(onNodeDoubleClick)
+  onNodeDoubleClickRef.current = onNodeDoubleClick
 
   // Initialize graph
   useEffect(() => {
@@ -222,16 +236,18 @@ export function ContextLayerGraph({
       }
     })
 
-    // Node click handler (G6 v5: node ID is on evt.target.id; evt.itemId does not exist in 5.1.1)
+    // Node click handler (G6 v5: node ID is on evt.target.id; evt.itemId does
+    // not exist in 5.1.1). Read the callback from the ref so the latest
+    // onNodeClick closure is used (ui-context-layer-1 stale-closure fix).
     graph.on<IElementEvent>('node:click', (evt) => {
       const itemId = evt.target.id
-      if (itemId) onNodeClick?.(itemId)
+      if (itemId) onNodeClickRef.current?.(itemId)
     })
 
-    // Node double-click handler
+    // Node double-click handler (same ref-latest pattern).
     graph.on<IElementEvent>('node:dblclick', (evt) => {
       const itemId = evt.target.id
-      if (itemId) onNodeDoubleClick?.(itemId)
+      if (itemId) onNodeDoubleClickRef.current?.(itemId)
     })
 
     return () => {

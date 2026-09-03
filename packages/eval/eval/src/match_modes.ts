@@ -124,8 +124,15 @@ function setEqual(expected: Record<string, unknown>, actualRows: readonly Record
     const actualValues = new Set(actualRows.flatMap(r => Object.values(r).map(v => String(v))))
     const expectedSet = new Set(expectedRows.map(v => String(v)))
     const missing = [...expectedSet].filter(k => !actualValues.has(k))
-    if (missing.length === 0) return { status: 'pass', detail: '' }
-    return { status: 'fail', detail: `missing ${missing.length} expected value(s): ${missing.slice(0, 5).join(', ')}` }
+    // eval-core-3: the scalar branch checked only missing (expected present in
+    // actual), never extra — so actual {1,2,3} vs expected {1,2} passed. Mirror
+    // the row-object branch below: also fail on extra.
+    const extra = [...actualValues].filter(k => !expectedSet.has(k))
+    if (missing.length === 0 && extra.length === 0) return { status: 'pass', detail: '' }
+    const parts: string[] = []
+    if (missing.length > 0) parts.push(`missing ${missing.length} expected value(s): ${missing.slice(0, 5).join(', ')}`)
+    if (extra.length > 0) parts.push(`extra ${extra.length} unexpected value(s): ${extra.slice(0, 5).join(', ')}`)
+    return { status: 'fail', detail: parts.join('; ') }
   }
   // Row-object comparison (original envelope format)
   const expectedSet = new Set((expectedRows as readonly Record<string, unknown>[]).map(rowKey))

@@ -405,9 +405,18 @@ export class SQLiteAuditStore {
    */
   patch(log_id: string, field: string, value: unknown, opts: { by?: string; reason?: string } = {}, caller: AuditCaller = {}): boolean {
     const firstSegment = field.split('.')[0] as string
-    if (IDENTITY_FIELDS.has(firstSegment)) {
+    // data-infra-2: auto_tags is the table-derived single source of truth
+    // (audit_tag table); a patch override would diverge correctedStats
+    // (override-applied) from stats() (table-derived), breaking the
+    // 'by_tag counts are immutable' contract the correctedStats docstring
+    // asserts. Refuse it like identity fields.
+    if (IDENTITY_FIELDS.has(firstSegment) || firstSegment === 'auto_tags') {
       throw new Error(
-        `audit patch refuses identity field "${firstSegment}": identity is immutable (P8b①a); correct misattribution via appendCorrection`,
+        `audit patch refuses field "${firstSegment}": ${
+          IDENTITY_FIELDS.has(firstSegment)
+            ? 'identity is immutable (P8b①a); correct misattribution via appendCorrection'
+            : 'auto_tags is table-derived (by_tag counts are immutable); not patchable (data-infra-2)'
+        }`,
       )
     }
     const row = this.db.prepare('SELECT tenant_id, scope_id, user_id FROM audit_event WHERE log_id=?').get(log_id) as RowIdentity | undefined
@@ -634,9 +643,20 @@ export class SQLiteAuditStore {
     return { where: where.join(' AND '), params }
   }
 
-  /** Reconstruct an AuditRecord: parse payload, re-inject tags, apply latest overrides (dotted-path). */
+  /**
+   * Reconstruct an AuditRecord: parse payload, re-inject the in-place-mutable
+   * column + tag table, then apply latest verdict overrides (dotted-path).
+   *
+   * `review_status` is RBI's ONE in-place-mutable column — `update_review_status`
+   * mutates the COLUMN, not the payload (the stored payload keeps the insert-time
+   * status). Re-inject it from the column here, mirroring `auto_tags` from the
+   * tag table, or `get()`/`query()`/`get_with_history()` return the insert-time
+   * status and a compliance flip to 'flagged'/'reviewed' is invisible (split-brain).
+   * Overrides still apply after, so a patched review_status verdict wins over the column.
+   */
   private _materialize(row: AuditEventRow): AuditRecord {
     const payload = JSON.parse(row.payload) as Record<string, unknown>
+    payload.review_status = row.review_status
     payload.auto_tags = this._tagsOf(row.id)
     const latest = this._latestOverrides(row.log_id)
     for (const [field, value] of Object.entries(latest)) setDotted(payload, field, value)

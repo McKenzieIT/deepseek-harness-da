@@ -92,6 +92,13 @@ function restoreToL3(): void {
   }
 }
 
+// eval-cli-exp-2: restore L3 on signal exit — stripToL1 truncates committed
+// YAMLs in place, and main().catch only fires on a rejected promise, not a
+// SIGINT/SIGTERM (Ctrl+C / kill mid-run left the files truncated). OOM can't
+// be caught (process dies); signal coverage is the achievable fix here.
+process.on('SIGINT', () => { try { restoreToL3() } catch { /* best-effort */ } process.exit(130) })
+process.on('SIGTERM', () => { try { restoreToL3() } catch { /* best-effort */ } process.exit(143) })
+
 // ── Build tool from real SemanticLayerService ───────────────────────────
 interface ToolDef {
   execute: (
@@ -126,7 +133,11 @@ function computeMetrics(retrieved: string[], groundTruth: string[], k: number) {
   let hits = 0
   for (const id of retrievedSet) if (gtSet.has(id)) hits++
   return {
-    precisionAtK: retrievedSet.size > 0 ? hits / retrievedSet.size : 0,
+    // eval-cli-exp-3: precision@K = hits / k (standard, matches metrics.ts
+    // computeRetrievalMetrics) — hits/retrievedSet.size (deduped actual count)
+    // diverged when <k candidates returned, making cross-experiment numbers
+    // not comparable.
+    precisionAtK: k > 0 ? hits / k : 0,
     recallAtK: gtSet.size > 0 ? hits / gtSet.size : 0,
   }
 }

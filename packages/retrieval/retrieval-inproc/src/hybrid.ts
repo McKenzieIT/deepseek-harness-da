@@ -227,10 +227,17 @@ export class HybridRetriever {
         return result
       } catch (e) {
         if (e instanceof InferenceError) {
-          // Corpus-level permanent degradation (the corpus is fixed, so an
-          // InferenceError here means the vector plane is down for good).
-          this.vecs = []
-          this.vecDown = true
+          // dim_mismatch is a permanent capability/config mismatch (the embedder
+          // returns the wrong dimension) — retrying won't help; mark the vector
+          // plane down for the session. not_ready (HTTP 503) / timeout /
+          // unavailable are transient — leave `vecs` null so the NEXT retrieve
+          // retries (BM25-only this call), instead of permanently disabling the
+          // vector plane for the session on a brief first-warm embedder blip
+          // (embedder-retrieval-creds-1).
+          if (e.kind === 'dim_mismatch') {
+            this.vecs = []
+            this.vecDown = true
+          }
           return []
         }
         throw e

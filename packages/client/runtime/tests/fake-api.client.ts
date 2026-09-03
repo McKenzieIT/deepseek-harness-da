@@ -222,6 +222,23 @@ export class FakeApiClient implements IApiClient {
       this.record('workspace.archiveSession', payload, this.onWorkspaceArchiveSession(payload)),
   }
 
+  // No result store behind this fake (W11 result.get RPC stub): every result_id
+  // answers result-not-found (a graceful business miss — the cache resolves it
+  // to undefined, never throws). Mirrors connection FakeApiClient.
+  readonly results: IApiClient['results'] = {
+    get: (payload: unknown) => this.record('result.get', payload, Promise.resolve({
+      rpcId: RpcId(`fake-${nextRpc++}`),
+      result: {
+        ok: false as const,
+        error: {
+          code: 'result-not-found' as const,
+          message: 'fake api has no result store',
+          details: { resultId: (payload as { resultId: string }).resultId },
+        },
+      },
+    })),
+  }
+
   // Payloads stay `unknown` (lint-lane note above); response rows are the real
   // wire shapes so cases can program requires-bearing catalogs and dual-address
   // skill lists without casts.

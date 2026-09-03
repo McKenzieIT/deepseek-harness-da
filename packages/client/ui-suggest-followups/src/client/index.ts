@@ -37,7 +37,11 @@ export function apply(ctx: ClientContext): void {
         if (scoped === undefined) return
         const conversation = scoped.get('conversation')
         if (conversation === undefined) return
-        void conversation.send(text)
+        // ui-present-misc-8: send returns a Promise (throws on !result.ok);
+        // a failed submit is an unhandled browser rejection without a .catch.
+        void conversation.send(text).catch((e: unknown) => {
+          console.warn(`ui-suggest-followups: conversation.send failed: ${e instanceof Error ? e.message : String(e)}`)
+        })
       },
     }),
   }, FollowupChips))

@@ -28,6 +28,7 @@ import {
 } from './types.ts'
 import {
   buildRetrievalCorpus,
+  isPlainObject,
   type CorpusVariant,
   type EventCorpusInput,
   type EventCorpusItem,
@@ -307,9 +308,7 @@ export function loadConceptDefinition(semanticLayer: string, name: string): Conc
   return null
 }
 
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v)
-}
+// semantic-layer-9: isPlainObject imported from ./corpus.ts above (was a byte-identical private dup here).
 /**
  * Project a scanned `RawEvent` to the corpus-input shape (name + description +
  * params_fields + metrics; `domain` dropped — not indexed). Lenient: malformed

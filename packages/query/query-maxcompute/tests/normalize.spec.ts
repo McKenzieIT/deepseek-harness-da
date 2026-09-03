@@ -92,12 +92,22 @@ describe('normalizeForMaxCompute', () => {
       expect(normalizeForMaxCompute('SELECT IFNULL(name, "")')).toBe('SELECT NVL(name, "")')
     })
 
-    it('STR_TO_DATE → TO_DATE', () => {
-      expect(normalizeForMaxCompute("STR_TO_DATE(x, '%Y%m%d')")).toBe("TO_DATE(x, '%Y%m%d')")
+    it('STR_TO_DATE → TO_DATE with translated Java format', () => {
+      expect(normalizeForMaxCompute("STR_TO_DATE(x, '%Y%m%d')")).toBe("TO_DATE(x, 'yyyyMMdd')")
     })
 
-    it('DATE_FORMAT → TO_CHAR', () => {
-      expect(normalizeForMaxCompute("DATE_FORMAT(d, '%Y-%m-%d')")).toBe("TO_CHAR(d, '%Y-%m-%d')")
+    it('STR_TO_DATE with a literal date arg translates too', () => {
+      expect(normalizeForMaxCompute("STR_TO_DATE('2026-01-01', '%Y-%m-%d')")).toBe("TO_DATE('2026-01-01', 'yyyy-MM-dd')")
+    })
+
+    it('DATE_FORMAT → TO_CHAR with translated Java format', () => {
+      expect(normalizeForMaxCompute("DATE_FORMAT(d, '%Y-%m-%d')")).toBe("TO_CHAR(d, 'yyyy-MM-dd')")
+    })
+
+    it('DATE_FORMAT with an unmappable specifier is left un-rewritten (clean error, no silent garble)', () => {
+      // %M (month name) is locale-dependent in Java SimpleDateFormat — bail so
+      // MaxCompute errors on DATE_FORMAT rather than emit silent wrong data.
+      expect(normalizeForMaxCompute("DATE_FORMAT(d, '%M')")).toBe("DATE_FORMAT(d, '%M')")
     })
   })
 

@@ -506,7 +506,10 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     await ctx.plugin(EnvCredentialProvider)
 
     const sidecarPath = opts.sidecarPath ?? new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url).pathname
-    const maxcConfigPath = process.env.MAXC_CONFIG ?? join(homedir(), '.maxc/config_ieu_cdm.yaml.bak')
+    // eval-cli-exp-9: do NOT default to a .bak (stale backup) — align with
+    // harness-responder.ts which uses ~/.maxc/config.yaml. Same concept, one
+    // default; both overridable via MAXC_CONFIG.
+    const maxcConfigPath = process.env.MAXC_CONFIG ?? join(homedir(), '.maxc/config.yaml')
     const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath })
     await fiber
     // Wait for the sidecar to be ready

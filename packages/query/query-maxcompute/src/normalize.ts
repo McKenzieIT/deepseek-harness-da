@@ -24,6 +24,44 @@ const REASONING_COMMENT_RE = /^--\s*(Wait|Note|Actually|Let me|Hmm|思考|注意
  */
 const FENCED_BLOCK_RE = /^```(?:sql|SQL)?\s*$/gm
 
+/** MySQL `%X` → Java SimpleDateFormat pattern, for the safe specifier set. */
+const MYSQL_TO_JAVA_FORMAT: Record<string, string> = {
+  Y: 'yyyy', y: 'yy', m: 'MM', d: 'dd',
+  H: 'HH', h: 'hh', i: 'mm', S: 'ss', s: 'ss',
+  p: 'a', j: 'D',
+}
+
+/**
+ * Translate a MySQL `%X` date format to a Java SimpleDateFormat pattern
+ * (MaxCompute TO_CHAR/TO_DATE use Java patterns, NOT MySQL `%X`). Returns null
+ * when the format has a `%X` specifier or a bare letter not in the safe map —
+ * the caller then leaves the SQL function un-rewritten so MaxCompute errors
+ * cleanly on the unknown function, rather than emit silent wrong data from a
+ * partial translation (e.g. an unmapped `M` is a Java month-number, not the
+ * MySQL `%M` month-name). Punctuation (space, `-`, `/`, `:`, `.`, `,`) is a
+ * literal in both. (query-engines-1)
+ */
+function translateMySqlFormatToJava(fmt: string): string | null {
+  let out = ''
+  for (let i = 0; i < fmt.length; i++) {
+    const ch = fmt[i] as string
+    if (ch === '%') {
+      const spec = fmt[i + 1]
+      if (spec === undefined) return null // trailing % — malformed
+      if (spec === '%') { out += '%'; i++; continue } // %% → literal %
+      const mapped = MYSQL_TO_JAVA_FORMAT[spec]
+      if (mapped === undefined) return null // unknown specifier — bail (clean error)
+      out += mapped
+      i++
+    } else if (/[a-zA-Z]/.test(ch)) {
+      return null // bare letter would be a Java pattern letter — bail (clean error)
+    } else {
+      out += ch // punctuation literal — safe in both MySQL and Java
+    }
+  }
+  return out
+}
+
 /**
  * Function rewrites: source dialect → MaxCompute equivalent.
  * Each entry: [pattern, replacement] where replacement is string or replacer fn.
@@ -73,10 +111,25 @@ const FUNCTION_REWRITES: Array<[RegExp, string | ((...args: string[]) => string)
   [/\bIFNULL\s*\(/gi, 'NVL('],
   // MySQL LIMIT offset, count → MaxCompute doesn't support offset in basic LIMIT
   // (leave as-is — MaxCompute does support LIMIT n, just not LIMIT offset,n in all modes)
-  // MySQL STR_TO_DATE → TO_DATE
-  [/\bSTR_TO_DATE\s*\(/gi, 'TO_DATE('],
-  // MySQL DATE_FORMAT → TO_CHAR
-  [/\bDATE_FORMAT\s*\(/gi, 'TO_CHAR('],
+  // MySQL DATE_FORMAT(date, fmt) → TO_CHAR(date, javaFmt); STR_TO_DATE(str, fmt)
+  // → TO_DATE(str, javaFmt). MaxCompute TO_CHAR/TO_DATE use Java SimpleDateFormat
+  // patterns, NOT MySQL %X — a bare function rename leaves '%Y-%m-%d' which
+  // SimpleDateFormat misreads (Y=week-year, m=minute) → silent garbled output.
+  // translateMySqlFormatToJava maps the safe specifiers; when it returns null
+  // (unknown specifier or bare letter) the call is left un-rewritten so
+  // MaxCompute errors cleanly on the unknown function. The arg pattern allows a
+  // bare column, a one-level call like GETDATE(), or a quoted literal date.
+  // (query-engines-1)
+  [/\bDATE_FORMAT\s*\(\s*((?:[^()',]|\([^()]*\)|'[^']*')*)\s*,\s*'([^']*)'\s*\)/gi,
+    (_match, dateArg: string, fmt: string) => {
+      const java = translateMySqlFormatToJava(fmt)
+      return java === null ? _match : `TO_CHAR(${dateArg.trim()}, '${java}')`
+    }],
+  [/\bSTR_TO_DATE\s*\(\s*((?:[^()',]|\([^()]*\)|'[^']*')*)\s*,\s*'([^']*)'\s*\)/gi,
+    (_match, strArg: string, fmt: string) => {
+      const java = translateMySqlFormatToJava(fmt)
+      return java === null ? _match : `TO_DATE(${strArg.trim()}, '${java}')`
+    }],
 ]
 
 /**

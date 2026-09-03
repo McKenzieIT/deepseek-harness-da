@@ -20,7 +20,7 @@
  */
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 
 /** A queued Tier-1 self-modification suggestion (one JSON file in the pending `var/` queue). */
 export interface PendingSuggestion {
@@ -37,11 +37,14 @@ export interface PendingSuggestion {
 // suggestion_id = timestamp + content short-hash (mirrors pending_writes.submit).
 // id-validated (path-traversal gate): ^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}$ — no '.'
 // '/' '\' —封 .. / 绝对路径 / 穿越.
-const ID_RE = /^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}$/
+// semantic-layer-6: + a 4-hex random nonce — stamp is second-granularity +
+// shortHash is deterministic, so two identical-content suggestions in the same
+// UTC second produced the same id and the second writeFileSync overwrote the first.
+const ID_RE = /^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}_[0-9a-f]{4}$/
 /**
- * Validate a suggestion id against the path-traversal-safe format (timestamp + 8-hex short hash).
+ * Validate a suggestion id against the path-traversal-safe format (timestamp + 8-hex short hash + 4-hex nonce).
  * @param id - the candidate id (null/undefined treated as empty string).
- * @returns true when the id matches `^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}$`.
+ * @returns true when the id matches `^[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}_[0-9a-f]{4}$`.
  */
 export function isValidId(id: string | undefined | null): boolean {
   return ID_RE.test(id ?? '')
@@ -76,7 +79,8 @@ export interface SubmitArgs {
  */
 export function submit(root: string, args: SubmitArgs): PendingSuggestion {
   mkdirSync(root, { recursive: true })
-  const suggestion_id = `${stamp(new Date())}_${shortHash(args.content)}`
+  // semantic-layer-6: + a 4-hex random nonce to avoid same-second same-content collisions.
+  const suggestion_id = `${stamp(new Date())}_${shortHash(args.content)}_${randomBytes(2).toString('hex')}`
   const rec: PendingSuggestion = {
     suggestion_id,
     kind: args.kind,
@@ -115,8 +119,19 @@ export function load(root: string, suggestion_id: string): PendingSuggestion | n
  */
 export function listing(root: string): PendingSuggestion[] {
   if (!existsSync(root)) return []
+  // semantic-layer-8: read+parse directly here — load() re-checks existsSync per
+  // entry (readdirSync already returned the names; only defends a TOCTOU race the
+  // try/catch below also handles). Keep isValidId as the path-traversal filter.
   return readdirSync(root)
-    .map(f => load(root, f.replace(/\.json$/, '')))
+    .map(f => f.replace(/\.json$/, ''))
+    .filter(isValidId)
+    .map((id) => {
+      try {
+        return JSON.parse(readFileSync(join(root, `${id}.json`), 'utf8')) as PendingSuggestion
+      } catch {
+        return null
+      }
+    })
     .filter((x): x is PendingSuggestion => x !== null)
     .sort((a, b) => a.submitted_at.localeCompare(b.submitted_at))
 }

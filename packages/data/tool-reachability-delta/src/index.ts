@@ -102,6 +102,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       },
       type: {
         type: 'string',
+        enum: ['joins', 'derived_from', 'related_to'],
         description: 'Relation type (joins | derived_from | related_to)',
         required: true,
       },
@@ -149,7 +150,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       const proposed: ProposedRelation = {
         sourceId: args.source_id,
         targetId: args.target_id,
-        type: args.type as ProposedRelation['type'],
+        type: args.type,
         ...(args.on != null ? { on: args.on } : {}),
       }
 

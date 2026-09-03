@@ -717,6 +717,7 @@ describe('TableCard SQL transparency', () => {
 
 describe('TableCard actions', () => {
   it('offers CSV download for any row count and triggers the download', () => {
+    vi.useFakeTimers()
     const block = makeSettledBlock(VALID_ARGS)
     const revokeUrl = vi.fn()
     const createUrl = vi.fn(() => 'blob:test')
@@ -732,9 +733,12 @@ describe('TableCard actions', () => {
       <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     fireEvent.click(getByText(zh.downloadCsv))
+    // ui-present-misc-11: revoke is deferred (setTimeout 1000ms for Safari lazy blob read)
+    vi.advanceTimersByTime(1000)
     expect(createUrl).toHaveBeenCalled()
     expect(clicked).toHaveBeenCalled()
     expect(revokeUrl).toHaveBeenCalledWith('blob:test')
+    vi.useRealTimers()
   })
 
   it('CSV-escapes cells containing commas and quotes', () => {
