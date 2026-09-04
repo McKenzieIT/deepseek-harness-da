@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: ${{ vars.DSH_CI_FAILOVER_LINUX != 'selfhosted' }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -132,7 +132,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          persist-credentials: false
+          persist-credentials: ${{ vars.DSH_CI_FAILOVER_LINUX != 'selfhosted' }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -196,7 +196,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          persist-credentials: false
+          persist-credentials: ${{ vars.DSH_CI_FAILOVER_LINUX != 'selfhosted' }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -351,7 +351,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - uses: pnpm/action-setup@v4
         with:
@@ -482,7 +482,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          persist-credentials: false
+          persist-credentials: ${{ vars.DSH_CI_FAILOVER_WINDOWS != 'selfhosted' }}
 
       - name: Enable Developer Mode (symlink support)
         shell: pwsh
