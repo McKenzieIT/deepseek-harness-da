@@ -257,6 +257,7 @@
 
 .chartToolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -286,6 +287,16 @@
   border-radius: 6px;
   background: var(--dsw-alias-surface-secondary);
   animation: pulse 1.2s ease-in-out infinite;
+}
+
+.chartWarn {
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--dsw-alias-state-warning-primary);
+  background: var(--dsw-alias-surface-secondary);
+  border: 1px solid var(--dsw-alias-border-primary);
+  border-left: 3px solid var(--dsw-alias-state-warning-primary);
+  border-radius: 6px;
 }
 
 /* ── banners ───────────────────────────────────────────────────────────── */

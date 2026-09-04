@@ -20,9 +20,15 @@ row with a rich card showing:
   virtual table (>100 rows); click-to-sort per column with type-aware
   compare (`column_types` wins, values are sniffed otherwise), numeric
   columns right-aligned
-- **Chart** (optional) — Chart.js 4 line/bar, code-split via `React.lazy`
-  so chart.js never loads without chart intent; a toolbar lets the user
-  switch line/bar/hide (auto-generated chart types are a hint, not a lock)
+- **Chart** (optional) — Chart.js 4, code-split via `React.lazy` so chart.js
+  never loads without chart intent. The R4 native type set (line, bar, area,
+  horizontal-bar, scatter, doughnut, bubble, radar, polarArea) renders the
+  model's `chart.type`; a client column-kind/cardinality validator degrades an
+  infeasible choice to bar with an honest banner (e.g. scatter with <2 numeric
+  columns, doughnut with >8 classes, line/area whose x is not a date). A
+  toolbar offers per-type override plus 显示数值 (value-pills via a self-written
+  `valueLabelsPlugin`, >8 non-radial points skipped) and 仅数据 (hide the chart;
+  the data table above is always visible)
 - **Collapse/expand** — collapsed state shows title + KPI cards; expanded
   shows SQL + full table + chart
 
@@ -56,11 +62,13 @@ Localization: the card registers the `present.table` locale namespace
 
 ## Tests
 
-91 tests across 4 spec files; fixtures use the real `renderCompleted`
+141 tests across 4 spec files; fixtures use the real `renderCompleted`
 output format (result_id line, elision markers, row-count trailer) so the
 parser contract cannot drift from `dsh-query-tool` silently, and the
 fetchResult wiring specs cover the result-store primary path, the TSV
 cache-miss fallback, fresh-vs-folded invalidation, and retry = refetch.
+The R4 chart specs cover all 9 native types, the `valueLabelsPlugin` draw
+branches, the validator's degrade-to-bar rules, and the toolbar toggles.
 
 ## Model Experience
 
@@ -87,3 +95,11 @@ No direct effect; the card renders query/compute result rows for the user, and t
 - **Retry re-fetches, not re-runs.** The retry button re-fetches from the
   result store; re-running the query is the user's job, not the card's
   ([G1](../../wayfinder/interpretation-client-rendering/tickets/G1-design-decisions.md) D6).
+- **Chart-type validator degrades to bar.** A client column-kind/cardinality
+  check degrades an infeasible `chart.type` to bar (scatter with <2 numeric
+  columns, doughnut with >8 classes, line/area whose x is not a date, bubble
+  with <3 numeric columns, radar/polarArea not in entity × N-metric shape).
+  Line/area over an ordinal-numeric x is not yet recognized — a date x-column
+  is required, else the validator falls back to bar; relaxing this is a T6
+  ([T6](../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)) HITL refinement candidate. The model-side heuristic lives in the
+  `present_table` tool description ([R4](../../wayfinder/interpretation-client-rendering/tickets/R4-chart-type-expansion.md)).

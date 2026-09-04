@@ -2,29 +2,49 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, fireEvent } from '@testing-library/react'
 
-vi.mock('react-chartjs-2', () => ({
-  Line: ({ data }: { data: unknown }) => (
-    <div data-testid="line-chart" data-labels={JSON.stringify((data as { labels: string[] }).labels)} />
-  ),
-  Bar: ({ data }: { data: unknown }) => (
-    <div data-testid="bar-chart" data-labels={JSON.stringify((data as { labels: string[] }).labels)} />
-  ),
-}))
+vi.mock('react-chartjs-2', () => {
+  const make = (testid: string) =>
+    ({ data, options }: { data: unknown; options: unknown }) => (
+      <div
+        data-testid={testid}
+        data-labels={JSON.stringify((data as { labels?: string[] | undefined }).labels ?? null)}
+        data-datasets={JSON.stringify((data as { datasets: { data: unknown[] }[] }).datasets)}
+        data-options={JSON.stringify(options)}
+      />
+    )
+  return {
+    Line: make('line-chart'),
+    Bar: make('bar-chart'),
+    Scatter: make('scatter-chart'),
+    Bubble: make('bubble-chart'),
+    Doughnut: make('doughnut-chart'),
+    Radar: make('radar-chart'),
+    PolarArea: make('polararea-chart'),
+  }
+})
 
 vi.mock('chart.js', () => ({
   Chart: { register: vi.fn() },
   CategoryScale: 'CategoryScale',
   LinearScale: 'LinearScale',
+  RadialLinearScale: 'RadialLinearScale',
   PointElement: 'PointElement',
   LineElement: 'LineElement',
   BarElement: 'BarElement',
+  ArcElement: 'ArcElement',
+  Filler: 'Filler',
   BarController: 'BarController',
   LineController: 'LineController',
+  DoughnutController: 'DoughnutController',
+  PolarAreaController: 'PolarAreaController',
+  RadarController: 'RadarController',
+  ScatterController: 'ScatterController',
+  BubbleController: 'BubbleController',
   Tooltip: 'Tooltip',
   Legend: 'Legend',
 }))
 
-import { TableCard, parseQueryData, candidatesEqual } from '../src/client/TableCard.tsx'
+import { TableCard, parseQueryData, candidatesEqual, validateChartType } from '../src/client/TableCard.tsx'
 import type { QueryCandidate, FetchResultEntry } from '../src/client/TableCard.tsx'
 import { zh } from '../src/client/locales.ts'
 import type { TableKey } from '../src/client/locales.ts'
@@ -874,9 +894,59 @@ describe('TableCard chart section', () => {
     expect(await findByTestId('bar-chart')).toBeDefined()
     fireEvent.click(getByRole('button', { name: zh.chartLine }))
     expect(await findByTestId('line-chart')).toBeDefined()
-    fireEvent.click(getByRole('button', { name: zh.chartOff }))
+    fireEvent.click(getByRole('button', { name: zh.chartData }))
     expect(queryByTestId('line-chart')).toBeNull()
     expect(queryByTestId('bar-chart')).toBeNull()
+  })
+
+  it('toggles 显示数值 and passes showLabels to the chart as valueLabels.display', async () => {
+    const block = makeSettledBlock(chartArgs)
+    const { findByTestId, getByRole, container } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+    )
+    await findByTestId('line-chart')
+    const before = JSON.parse(
+      container.querySelector('[data-testid="line-chart"]')!.getAttribute('data-options')!,
+    ) as { plugins: { valueLabels: { display: boolean } } }
+    expect(before.plugins.valueLabels.display).toBe(false)
+    fireEvent.click(getByRole('button', { name: zh.chartLabels }))
+    await findByTestId('line-chart')
+    const after = JSON.parse(
+      container.querySelector('[data-testid="line-chart"]')!.getAttribute('data-options')!,
+    ) as { plugins: { valueLabels: { display: boolean } } }
+    expect(after.plugins.valueLabels.display).toBe(true)
+  })
+
+  it('shows a degradation banner + falls back to bar for an infeasible type', async () => {
+    // scatter over a date x + one numeric y → <2 numeric columns → degrade to bar
+    const scatterArgs = JSON.stringify({
+      result_id: 'qr_test01',
+      title: '散点降级',
+      chart: { type: 'scatter', x_column: 0, y_columns: [1] },
+    })
+    const block = makeSettledBlock(scatterArgs)
+    const { findByTestId, findByText, queryByTestId } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+    )
+    expect(await findByText(zh.degradeScatter)).toBeDefined()
+    expect(await findByTestId('bar-chart')).toBeDefined()
+    expect(queryByTestId('scatter-chart')).toBeNull()
+  })
+
+  it('renders the requested type when the validator accepts it', async () => {
+    const scatterArgs = JSON.stringify({
+      result_id: 'qr_test01',
+      title: '散点',
+      column_types: ['number', 'number'],
+      chart: { type: 'scatter', x_column: 0, y_columns: [1] },
+    })
+    const tsv = 'result_id: qr_test01\tx\ty\n10\t100\n20\t200\n(2 rows)'
+    const block = makeSettledBlock(scatterArgs)
+    const { findByTestId, queryByText } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+    )
+    expect(await findByTestId('scatter-chart')).toBeDefined()
+    expect(queryByText(zh.degradeScatter)).toBeNull()
   })
 
   it('does not show chart when collapsed', () => {
@@ -1287,5 +1357,89 @@ describe('TableCard fetchResult wiring', () => {
     unmount()
     rejectFetch(new Error('network'))
     await new Promise((r) => { setTimeout(r, 0) })
+  })
+})
+
+describe('validateChartType (R4 client validator → degrade to bar)', () => {
+  // index: 0=date, 1=number, 2=number, 3=string, 4=number
+  const KINDS = ['date', 'number', 'number', 'string', 'number'] as const
+  const ROWS = [['a', '1'], ['b', '2']]
+
+  it('accepts bar and hbar unconditionally', () => {
+    for (const type of ['bar', 'hbar'] as const) {
+      expect(validateChartType(type, { type, x_column: 0, y_columns: [1] }, KINDS, ROWS)).toEqual({ ok: true })
+    }
+  })
+
+  it('accepts line/area when x is a date', () => {
+    expect(validateChartType('line', { type: 'line', x_column: 0, y_columns: [1] }, KINDS, ROWS).ok).toBe(true)
+    expect(validateChartType('area', { type: 'area', x_column: 0, y_columns: [1] }, KINDS, ROWS).ok).toBe(true)
+  })
+
+  it('degrades line/area to bar when x is not a date', () => {
+    const r = validateChartType('line', { type: 'line', x_column: 4, y_columns: [1] }, KINDS, ROWS)
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.reasonKey).toBe('degradeLineDate')
+      expect(r.fallback).toBe('bar')
+    }
+  })
+
+  it('accepts scatter when x and y are numeric (≥2 numeric columns)', () => {
+    expect(validateChartType('scatter', { type: 'scatter', x_column: 1, y_columns: [2] }, KINDS, ROWS).ok).toBe(true)
+  })
+
+  it('degrades scatter to bar when x is not numeric', () => {
+    const r = validateChartType('scatter', { type: 'scatter', x_column: 0, y_columns: [1] }, KINDS, ROWS)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reasonKey).toBe('degradeScatter')
+  })
+
+  it('accepts bubble when x, y, and r_column are numeric (≥3 numeric columns)', () => {
+    expect(validateChartType('bubble', { type: 'bubble', x_column: 1, y_columns: [2], r_column: 4 }, KINDS, ROWS).ok).toBe(true)
+  })
+
+  it('degrades bubble to bar when r_column is missing or non-numeric', () => {
+    const noR = validateChartType('bubble', { type: 'bubble', x_column: 1, y_columns: [2] }, KINDS, ROWS)
+    expect(noR.ok).toBe(false)
+    if (!noR.ok) expect(noR.reasonKey).toBe('degradeBubble')
+    const badR = validateChartType('bubble', { type: 'bubble', x_column: 1, y_columns: [2], r_column: 3 }, KINDS, ROWS)
+    expect(badR.ok).toBe(false)
+    if (!badR.ok) expect(badR.reasonKey).toBe('degradeBubble')
+  })
+
+  it('accepts doughnut when x has ≤8 distinct classes', () => {
+    expect(validateChartType('doughnut', { type: 'doughnut', x_column: 0, y_columns: [1] }, KINDS, ROWS).ok).toBe(true)
+  })
+
+  it('degrades doughnut to bar when x has >8 distinct classes', () => {
+    const manyRows = Array.from({ length: 9 }, (_, i) => [`c${i}`, '1'])
+    const r = validateChartType('doughnut', { type: 'doughnut', x_column: 0, y_columns: [1] }, ['string', 'number'] as const, manyRows)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reasonKey).toBe('degradeDoughnut')
+  })
+
+  it('accepts radar/polarArea when x is categorical and y is numeric (entity × N metric)', () => {
+    expect(validateChartType('radar', { type: 'radar', x_column: 3, y_columns: [1] }, KINDS, ROWS).ok).toBe(true)
+    expect(validateChartType('polarArea', { type: 'polarArea', x_column: 3, y_columns: [1] }, KINDS, ROWS).ok).toBe(true)
+  })
+
+  it('degrades radar/polarArea to bar when x is not categorical (not entity × N metric)', () => {
+    const r = validateChartType('radar', { type: 'radar', x_column: 0, y_columns: [1] }, KINDS, ROWS)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reasonKey).toBe('degradeRadar')
+  })
+
+  it('reads y_kind at index -1 when y_columns is empty (scatter degrades)', () => {
+    const r = validateChartType('scatter', { type: 'scatter', x_column: 1, y_columns: [] }, KINDS, ROWS)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reasonKey).toBe('degradeScatter')
+  })
+
+  it('treats a missing x_column cell as an empty string for doughnut cardinality', () => {
+    // ragged row r[0] undefined → the ?? '' fallback in the distinct-value set
+    const ragged = [['a', '1'], ['b', '2'], [] as string[]]
+    const r = validateChartType('doughnut', { type: 'doughnut', x_column: 0, y_columns: [1] }, ['string', 'number'] as const, ragged)
+    expect(r.ok).toBe(true)
   })
 })

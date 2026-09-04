@@ -1,7 +1,8 @@
 /**
  * `present.table` namespace dictionaries: the table card copy — row count,
- * export actions, SQL disclosure, chart toolbar, sort affordances, and the
- * expired / mismatched / error banners.
+ * export actions, SQL disclosure, chart toolbar (R4: 9 types + show-values /
+ * data-only toggles), sort affordances, and the expired / mismatched / error
+ * banners plus the chart-type degradation reasons.
  */
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
@@ -20,7 +21,20 @@ export const zh = {
   'chartGroup': '图表类型',
   'chartLine': '折线',
   'chartBar': '柱状',
-  'chartOff': '隐藏图表',
+  'chartArea': '面积',
+  'chartHbar': '横柱',
+  'chartScatter': '散点',
+  'chartDoughnut': '环形',
+  'chartBubble': '气泡',
+  'chartRadar': '雷达',
+  'chartPolarArea': '极坐标',
+  'chartLabels': '显示数值',
+  'chartData': '仅数据',
+  'degradeScatter': '散点图需至少 2 个数值列,已降级为柱状图',
+  'degradeDoughnut': '环形图需不超过 8 个类别,已降级为柱状图',
+  'degradeLineDate': '折线/面积图需 x 轴为日期,已降级为柱状图',
+  'degradeBubble': '气泡图需至少 3 个数值列,已降级为柱状图',
+  'degradeRadar': '雷达/极坐标图需实体×N 指标形态,已降级为柱状图',
   'sortAria': '按此列排序',
   'tableAria': '数据表',
 } satisfies Record<string, string>
@@ -44,7 +58,20 @@ export const en = {
   'chartGroup': 'Chart type',
   'chartLine': 'Line',
   'chartBar': 'Bar',
-  'chartOff': 'Hide chart',
+  'chartArea': 'Area',
+  'chartHbar': 'H-Bar',
+  'chartScatter': 'Scatter',
+  'chartDoughnut': 'Doughnut',
+  'chartBubble': 'Bubble',
+  'chartRadar': 'Radar',
+  'chartPolarArea': 'Polar',
+  'chartLabels': 'Show values',
+  'chartData': 'Data only',
+  'degradeScatter': 'Scatter needs ≥2 numeric columns; degraded to bar',
+  'degradeDoughnut': 'Doughnut needs ≤8 classes; degraded to bar',
+  'degradeLineDate': 'Line/area needs a date x-axis; degraded to bar',
+  'degradeBubble': 'Bubble needs ≥3 numeric columns; degraded to bar',
+  'degradeRadar': 'Radar/polarArea needs an entity × N-metric shape; degraded to bar',
   'sortAria': 'Sort by this column',
   'tableAria': 'Data table',
 } satisfies Record<TableKey, string>

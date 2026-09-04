@@ -13,10 +13,14 @@ export interface KpiColumn {
   format?: string
 }
 
+export type ChartType = 'line' | 'bar' | 'area' | 'hbar' | 'scatter' | 'doughnut' | 'bubble' | 'radar' | 'polarArea'
+
 export interface ChartConfig {
-  type: 'line' | 'bar'
+  type: ChartType
   x_column: number
   y_columns: number[]
+  /** Column index for the bubble radius (the 3rd numeric metric; bubble only). */
+  r_column?: number
 }
 
 export interface PresentTableArgs {
@@ -293,6 +297,68 @@ function compareCells(a: string, b: string, kind: ColumnKind): number {
   return a.localeCompare(b)
 }
 
+/** R4 client chart-type validator's degradation-reason keys (one per rule). */
+export type DegradeReason =
+  | 'degradeScatter'
+  | 'degradeDoughnut'
+  | 'degradeLineDate'
+  | 'degradeBubble'
+  | 'degradeRadar'
+
+export type ChartValidationResult = { ok: true } | { ok: false; reasonKey: DegradeReason; fallback: 'bar' }
+
+/**
+ * Client-side chart-type validator (R4): degrade an infeasible choice to bar,
+ * honestly surfacing why. Mirrors the R4 heuristic's feasibility floor — the
+ * sniffed column kinds (declared win; otherwise sniffed upstream) + the x
+ * cardinality decide whether the requested type can render the data shape:
+ *
+ *   line/area      x must be a date (time series)
+ *   scatter        x + y numeric (≥2 numeric columns)
+ *   bubble         x + y + r_column numeric (≥3 numeric columns)
+ *   doughnut       ≤8 distinct x classes
+ *   radar/polarArea categorical x + numeric y (one entity × N metrics)
+ *   bar/hbar       always feasible
+ *
+ * Ordinal-numeric x for line/area is not relaxed here (the heuristic guides a
+ * date column); see the Agent Note.
+ */
+export function validateChartType(
+  type: ChartType,
+  chart: ChartConfig,
+  colKinds: ReadonlyArray<'number' | 'date' | 'string'>,
+  rows: string[][],
+): ChartValidationResult {
+  const xKind = colKinds[chart.x_column]
+  const yKind = colKinds[chart.y_columns[0] ?? -1]
+  if (type === 'line' || type === 'area') {
+    if (xKind !== 'date') return { ok: false, reasonKey: 'degradeLineDate', fallback: 'bar' }
+    return { ok: true }
+  }
+  if (type === 'scatter') {
+    if (xKind !== 'number' || yKind !== 'number') return { ok: false, reasonKey: 'degradeScatter', fallback: 'bar' }
+    return { ok: true }
+  }
+  if (type === 'bubble') {
+    const rKind = chart.r_column !== undefined ? colKinds[chart.r_column] : undefined
+    if (xKind !== 'number' || yKind !== 'number' || rKind !== 'number') {
+      return { ok: false, reasonKey: 'degradeBubble', fallback: 'bar' }
+    }
+    return { ok: true }
+  }
+  if (type === 'doughnut') {
+    const distinct = new Set(rows.map(r => r[chart.x_column] ?? '')).size
+    if (distinct > 8) return { ok: false, reasonKey: 'degradeDoughnut', fallback: 'bar' }
+    return { ok: true }
+  }
+  if (type === 'radar' || type === 'polarArea') {
+    if (xKind !== 'string' || yKind !== 'number') return { ok: false, reasonKey: 'degradeRadar', fallback: 'bar' }
+    return { ok: true }
+  }
+  // bar / hbar always render the data shape
+  return { ok: true }
+}
+
 interface SortState {
   col: number
   dir: 'asc' | 'desc'
@@ -521,22 +587,71 @@ function CopyMdButton({ headers, rows, title, t }: { headers: string[]; rows: st
   )
 }
 
-function ChartSection({ chart, headers, rows, t }: { chart: ChartConfig; headers: string[]; rows: string[][]; t: TableCardProps['t'] }) {
-  const [kind, setKind] = useState<'line' | 'bar' | 'off'>(chart.type)
+/** The 9 R4 native chart types in toolbar order. */
+const CHART_TYPE_ORDER: readonly ChartType[] = [
+  'line', 'bar', 'area', 'hbar', 'scatter', 'doughnut', 'bubble', 'radar', 'polarArea',
+]
+
+/** Per-type toolbar label (locale key). */
+const CHART_TYPE_LABEL: Record<ChartType, TableKey> = {
+  line: 'chartLine',
+  bar: 'chartBar',
+  area: 'chartArea',
+  hbar: 'chartHbar',
+  scatter: 'chartScatter',
+  doughnut: 'chartDoughnut',
+  bubble: 'chartBubble',
+  radar: 'chartRadar',
+  polarArea: 'chartPolarArea',
+}
+
+interface ChartSectionProps {
+  chart: ChartConfig
+  headers: string[]
+  rows: string[][]
+  colKinds: ColumnKind[]
+  t: TableCardProps['t']
+}
+
+/**
+ * Chart toolbar (R4): one pill per native type (the user's override), plus the
+ * 显示数值 (valueLabels) and 仅数据 (data-only) toggles. The validator runs on
+ * the selected type; an infeasible choice degrades to bar with an honest banner.
+ * `仅数据` hides the chart (the real table is always rendered above).
+ */
+function ChartSection({ chart, headers, rows, colKinds, t }: ChartSectionProps) {
+  const [kind, setKind] = useState<ChartType | 'data'>(chart.type)
+  const [showLabels, setShowLabels] = useState(false)
+  const validation = kind === 'data' ? null : validateChartType(kind, chart, colKinds, rows)
+  // `kind === 'data'` narrows the else-branch to ChartType; validation is null
+  // only on the data-only branch, so the ok-branch kind is a ChartType.
+  const effectiveType: ChartType = kind === 'data' ? 'bar' : (validation?.ok ? kind : 'bar')
   return (
     <div className={css.chartSection}>
       <div className={css.chartToolbar} role="group" aria-label={t('chartGroup')}>
-        <button type="button" className={css.chartBtn} aria-pressed={kind === 'line'} onClick={() => { setKind('line') }}>{t('chartLine')}</button>
-        <button type="button" className={css.chartBtn} aria-pressed={kind === 'bar'} onClick={() => { setKind('bar') }}>{t('chartBar')}</button>
-        <button type="button" className={css.chartBtn} aria-pressed={kind === 'off'} onClick={() => { setKind('off') }}>{t('chartOff')}</button>
+        {CHART_TYPE_ORDER.map(type => (
+          <button key={type} type="button" className={css.chartBtn} aria-pressed={kind === type} onClick={() => { setKind(type) }}>
+            {t(CHART_TYPE_LABEL[type])}
+          </button>
+        ))}
+        <button type="button" className={css.chartBtn} aria-pressed={showLabels} onClick={() => { setShowLabels(v => !v) }}>
+          {t('chartLabels')}
+        </button>
+        <button type="button" className={css.chartBtn} aria-pressed={kind === 'data'} onClick={() => { setKind('data') }}>
+          {t('chartData')}
+        </button>
       </div>
-      {kind !== 'off' && (
+      {validation !== null && !validation.ok && (
+        <div className={css.chartWarn}>{t(validation.reasonKey)}</div>
+      )}
+      {kind !== 'data' && (
         <div className={css.chartBox}>
           <Suspense fallback={<div className={css.chartSkeleton} />}>
             <ChartView
-              chart={{ type: kind, x_column: chart.x_column, y_columns: chart.y_columns }}
+              chart={{ ...chart, type: effectiveType }}
               headers={headers}
               rows={rows}
+              showLabels={showLabels}
             />
           </Suspense>
         </div>
@@ -833,7 +948,7 @@ function TableCardInner({
             ? <GridVirtualTable headers={data.headers} rows={sortedRows} colKinds={colKinds} sort={sort} onSortClick={onSortClick} t={t} />
             : <SortableTable headers={data.headers} rows={sortedRows} colKinds={colKinds} sort={sort} onSortClick={onSortClick} t={t} />}
           {args.chart !== undefined && (
-            <ChartSection chart={args.chart} headers={data.headers} rows={sortedRows} t={t} />
+            <ChartSection chart={args.chart} headers={data.headers} rows={sortedRows} colKinds={colKinds} t={t} />
           )}
         </div>
       )}
