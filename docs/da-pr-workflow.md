@@ -131,6 +131,7 @@ CHANGELOG entry (记录层)
 - 一个 wayfinder ticket 可产生 1+ 个 PR
 - 一个 PR 关联恰好 1 个 ticket（PR body Why 里链接）
 - 纯 wayfinder docs 变更直推 main，不需要 PR
+- **每个 ticket 头部声明 `Branch: <type>/<ticket-id>-<slug>`**；认领 ticket 前先建对应分支（`git worktree add ../dsh-<ticket-id> -b <type>/<ticket-id>-<slug> master`，见上方“Session-prompt 分支契约”小节）。
 
 ## Upstream Sync PR
 
