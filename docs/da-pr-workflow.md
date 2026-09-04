@@ -22,6 +22,19 @@ main ─────────────────────────
 | 构建接线（tsconfig ref、manifest） | **随功能 PR** | 附属于功能变更 |
 | Upstream sync | **分支 + PR** | 验证 merge 通过 CI |
 
+> **直推 main 的前提**:该 commit 的 diff 不触及 `packages/*/src`(即纯 `wayfinder/` 文档或实验 probe 脚本)。任何触及 `packages/`、`apps/`、`examples/`、`native/`、`python/`、`scripts/` 的 `feat`/`fix`/`refactor` 必须走分支 + PR。
+
+## Session-prompt 分支契约
+
+每个 `wayfinder/*/prompts/*-session-prompt.md` 必须在开头实例化分支契约——session 启动第一步就是建 worktree 和分支,而不是直接在 master 上工作。模板见 [`wayfinder/_templates/session-prompt.md`](../wayfinder/_templates/session-prompt.md);根因与完整方案见 [Per-session branch and worktree isolation for parallel work](../.agents/notes/proposed/process/2026-09-04-parallel-session-branching-policy.md)。
+
+要点:
+
+- 每个 in-flight ticket 一个 worktree(`git worktree add ../dsh-<ticket-id> -b <type>/<id>-<slug> master`)。
+- 分支命名遵循 `feat/<ticket-id>-<slug>` / `fix/<ticket-id>-<slug>` / `refactor/<slug>`。
+- **禁止把 `feat`/`fix`/`refactor` 直推 master。**
+- 收尾 `gh pr create`(依赖链 `gh stack link`),通过 [dsh-pre-push-checks](../.agents/skills/dsh-pre-push-checks/SKILL.md) 后再合并。
+
 ## Commit 格式
 
 ```
