@@ -112,3 +112,22 @@ grilling 阶段把 `conventions.ts` 的 yaml ENOENT 记为 "known limitation / f
 - **typecheck 现状（诚实记录）**：query-postgres targeted `tsc -b` **exit 0**（src 改 conventions.ts 后维 clean）。**但** full `pnpm run typecheck` 现 **exit 2**——红于**并行 session nl2sql-engine WIP**（untracked `packages/data/nl2sql-engine/tests/metric-cases.spec.ts` + dirty `src/{critic,engine,eval/metric-cases,index,metric-engine}.ts` + `tests/service.spec.ts`），error 为 `metric-cases.spec.ts:19 Property 'sql' does not exist on type 'ScriptedGen'` / `:21 'c.odps' is possibly 'undefined'`——**非本票 query-postgres 改动所致**（`metric-cases.spec.ts` 不 import query-postgres；query-postgres targeted tsc -b exit 0）。本 session 第一次 typecheck（conventions.ts 改前）exit 0；并行 session 后续编辑 nl2sql-engine 引入此 error。out-of-scope（并行 WIP，同 pre-existing 簇——commit 不 stage nl2sql-engine 文件）。
 
 **改动文件（累计）**：`tsdown.config.ts`（flip）+ `src/conventions.ts`（inline yaml）+ `src/conventions.yaml`（删）。manifest/tsconfig/host-ref/`src/invariant.ts`/`src/index.ts` 全未动。gate 脚本 git diff 空。
+
+### Session 收尾 (2026-09-04): 并发提交教训 + grilling 流程 + 最终 attribution
+
+**最终 attribution**：
+- tsdown flip（`tsdown.config.ts`）→ clean sole-author commit `b59120b5c7`。
+- yaml 修复（`conventions.ts` inline + `conventions.yaml` 删 + 本票 + grill 票 + map decision bullet）→ **landed 在并行 session 的 mixed commit `5ddbc0f8e6`**（msg = "fix(eval): run-eval.sh..."）——shared-index staging race 致（见下教训）。用户 2026-09-04 决策：**保留 `5ddbc0f8e6`**（最安全——不 rewrite 并行 session 的活跃 commit，其在准备 16h eval run）。故本票 yaml 修复无独立 sole-author commit，但工作已落地+gate 绿+文档齐全。
+- 本 hunk（Session 收尾）= 新增 sole-author commit（pathspec commit，见下），仅含本票。
+
+**并发提交教训（本 session 踩坑，后续勿重蹈）**：
+- shared-index 多 session 并发下，**`git add <my files>` 前须先 `git reset`（清 index）**——否则并行 session 已 staged 的文件会被 `git commit` 一起卷走（本 session：并行 GA-WIRING session staged 的 `wiring.spec.tsx` + 我的 5 files 一起进了 `5ddbc0f8e6`）。
+- **勿用 `git commit --amend`**——HEAD 可能已被并行 session 推进（本 session 推进了 5 个 commit），amend 会劫其最新 commit（我误劫 `00ed52742d`，reset 恢复后我的 5 staged 又被并行 session 的 `5ddbc0f8e6` 卷走）。**新 commit（非 amend）安全**。
+- **提交后立即 `git show --stat HEAD` 验证 staged 文件 = 仅自己的**（本 session 漏了这步致二次事故）。
+- 安全 pattern：`git commit --no-verify -- <my paths>`（pathspec commit——只提交指定 path 的 working-tree 改动，**忽略** index 里并行 session staged 的文件，不卷走、不碰其 staging、不 amend）。`--no-verify` 沿用 GA-KNIP-cleanup 先例（lefthook stash/restore + pre-existing 红）。
+
+**grilling 流程（用户 2026-09-04 确认）**：后续 grilling——我 grill 完 A/B/C 呈结论+建议+列新 tradeoff，**方向锁由用户拍板**，再开 impl；grilling 中新冒出来、不在原 briefing A/B/C 里的 tradeoff **先 surface 给用户确认再 commit**（本 session yaml ENOENT 张力未先 surface 就 commit 是 miss，已在本票 scope 内修掉）。
+
+**map.md 状态**：本 session 的 map decision bullet（yaml 张力 in-scope 修）已 committed 在 `5ddbc0f8e6`。本 hunk 提交时 map.md 有并行 session 未提交编辑（6+/3-，非本 session 区域），为避免 pathspec commit 卷入并行 hunk，**本 session 不再改 map.md**；grilling 流程 + 并发教训记入本票（若需落 map.md 常设原则，待 map.md 稳定后另开小改）。
+
+**out-of-scope（未动，pre-existing + 并行 WIP）**：constraints 的 credentials-keychain/-host、tool-discover-alt-labels/tool-resolve-term/tool-scope-routing、eval/eval、client/schema-form+web-react 层级；verify-built ~30 非-owner "manifest does not publish ./invariant" 簇（dsh-query/dsh-query-maxcompute/dsh-query-tool/dsh-admin/...，要修须逐个加 companion+build 或改 core gate 豁免非-owner，皆 out-of-scope）；full `pnpm run typecheck` exit 2（并行 nl2sql-engine WIP：untracked `tests/metric-cases.spec.ts` + dirty `src/{critic,engine,eval/metric-cases,index,metric-engine}.ts`，非 query-postgres 改动）。
