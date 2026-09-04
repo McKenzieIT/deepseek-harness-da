@@ -40,9 +40,52 @@ Host 连线真实协作者并注入：
 
 无直接影响；agent 运行时和注入的 judge LLM 拥有所有模型可见请求。
 
+## Batch Runner + Persistence (W3 — P11c)
+
+证据引擎(随 W3 发布)在核心之上添加批量执行、持久化与 delta 分析:
+
+- **`runBatch(cases, { runId, responder, executeSql?, provider?, passK?, maxInfraRetries?, onCaseComplete? })`** — 顺序驱动全量 case 集。每个 case 跑 `passK` 次。基础设施故障(所有尝试 errored、非超时)重试至 `maxInfraRetries`(默认 2)——这些不计入 pass_k(属基础设施故障,非模型表现)。
+- **`classifyCaseOutcome(result)`** — 将 `MultiTurnCaseResult` 映射为 `correct` | `declined` | `wrong` | `unjudged` 之一(与 evidence-query 中的 `EvalResultRecord` 对齐)。
+- **`persistBatchResult(result, dir)`** — 将 `BatchResult` 写为 JSONL(每个 case 一行)。文件名编码 `{timestamp}_{runId}.jsonl`。
+- **`loadRunRecords(path)` / `listRunFiles(dir)`** — 读回持久化的结果。
+- **`computeDelta(runA, runB)`** — 识别两次 run 之间逐 case 的 outcome 翻转(improved / regressed / unchanged / new / removed)。
+- **`passAtK(records)`** — 全部 k 次尝试都通过的 case 占比。
+- **`runHealthCheck({ responder?, executeSql?, timeoutMs? })`** — 预运行闸门,在消耗 eval 预算前对连通性或凭证问题快速失败(G1 Q9)。健康检查失败则中止运行且不产生结果。
+
+## Host wiring — complete integration pattern
+
+```typescript
+import { runBatch, runHealthCheck, persistBatchResult, buildAgentResponder, mapQueryOutcome } from '@deepseek-ai/dsh-eval'
+
+// 1. Health gate
+const health = await runHealthCheck({ responder, executeSql })
+if (!health.healthy) throw new Error(`Pre-run check failed: ${health.error}`)
+
+// 2. Run batch
+const result = await runBatch(cases, {
+  runId: `run-${Date.now()}`,
+  responder: buildAgentResponder({ run: (msg, sid) => harness.run(msg, { sessionId: sid }) }),
+  executeSql: async (sql) => mapQueryOutcome(await ctx.query.execute({ sql, scopeId })),
+  provider: judgeProvider,
+  passK: 3,
+  onCaseComplete: (r, i, total) => console.log(`[${i+1}/${total}] ${r.caseId}: ${r.outcome}`),
+})
+
+// 3. Persist
+const path = persistBatchResult(result, './eval-results')
+
+// 4. Delta (optional)
+import { loadRunRecords, computeDelta } from '@deepseek-ai/dsh-eval'
+const prev = loadRunRecords(previousRunPath)
+const curr = loadRunRecords(path)
+const delta = computeDelta(prev, curr)
+console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regressed`)
+```
+
+## Host wiring (the seams this library does not own)
+
 ## Known Limitations and Deferred Work
 
-- **无 CLI / persistence / pass_at_k 报告** — 本库是核心（编排 + 评分 + case loader）；CLI runner、run-result 持久化和 pass_at_k 报告延期到 **P11c**。`runMultiTurnCase` 返回 per-case `MultiTurnCaseResult`；runner 批量处理 cases 并聚合。
 - **已移除 SQL-hygiene 断言** — rbi L1 的 sqlglot 绑定 `field_coverage`/`limit_reasonable`/`partition_compliant` 已移除（G2 权衡）：结果集正确但 SQL "不整洁"（SELECT *、缺 LIMIT、缺分区谓词）的 agent 通过 da (ii)。
 - **Judge 方差** — judge 不比特可复现（决策 1）；完全确定性回归的独立 judge snapshot 延期。
 - **Live e2e 延期** — 本库用 stub 协作者做单元测试；live e2e（真实 runtime + 真实 `dsh-llm-replay` snapshot + 真实 `ctx.query.execute` + 真实 `llm-dashscope` judge）延期（with-key，self-skip）。
