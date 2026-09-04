@@ -66,6 +66,20 @@ node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
 
 harness 不会自动建 worktree/分支（[agent-teams 笔记](.agents/notes/implemented/feature/2026-08-05-agent-teams.md)：“Worktree isolation is not a harness runtime behavior”），所以这条纪律必须由 session prompt 和本文件承载。
 
+## 提交与引证纪律（并发 session）
+
+本仓常被多个 session 并发改。根因见 [concurrent-session commit & citation discipline](.agents/notes/proposed/process/2026-09-04-concurrent-session-commit-citation-discipline.md)。两条硬约束：
+
+1. **改完一个逻辑单元立即 commit，不要攒到阶段末。** 同一处修正曾被并发写覆盖两次：一次 `47.6%→56.5%` 修正被覆盖、错误版本被他人提交；一次 brief 顶部的更正块整段消失（`grep` 零痕迹）。两次 `edit` 当时都报成功——"已编辑"到"已提交"之间就是风险窗口，攒批会放大它。
+   - 动一个本 session 早先碰过的文件前，先 `git status` / 重读它——之前的编辑可能已不在。
+   - **绝不 `git add -A`**：树常挂 100+ 个其他 session 的在途文件。按路径显式 stage，提交前 `git diff --cached --name-only` 核一遍。
+
+2. **任何要写进持久产物（ticket/map/README/research note）的数字和 `file:line`，落笔那一刻由自己机械重导一遍。** 一个 subagent 交回的"已排版表格"被当成已验证事实写进四张票；code review 抓出 CJK 计数 `847→782`、`见方言规范` 行号 `:111/:113→:54/:56/:145`（所列行无一命中）、`buildEvalPrompt :159→:180`，且"八规则第二份副本、无测试保证"是**假的**（`renderCoreRules` 是共享函数、`prompt.spec.ts` 逐字节 pin 两者输出）——这条曾反转一条建议。
+   - subagent 的输出认识论地位 = 自己凭记忆的断言：未验证前不能进产物。
+   - 错 `file:line` 比错形容词更糟——引证格式全部意义在于后来的人能跳过去核，一个死指针会让同一文档里其他每条引证被打折。
+   - 改一条声明时，**证据文档也要改**，不只改票——brief 才是人们点进去看细节的地方。
+   - 验证通常就是一行 `node -e` 计数；省掉它从不省时间。
+
 ## Workflow / 大规模审计经验（2026-08-31）
 
 在本环境（pod 侧运行 + Mac 侧 `mcp__local__` 工具）跑大规模 workflow / 多 agent 审计时踩过的硬约束。**再跑类似任务前先看这里。**
