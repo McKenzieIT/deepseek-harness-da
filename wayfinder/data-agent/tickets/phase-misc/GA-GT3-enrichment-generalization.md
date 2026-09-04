@@ -6,12 +6,12 @@
 **Problem**: enrichment 强绑 DWS/DIM 星型：`buildDimInventory` 只扫 `kind='dim'`；`discoverRelationsDeterministic` 只做 PK 列名精确相等（无 FK 命名启发式）；LLM prompt 写死 "DWS fact table"；非星型 scope（flat wide / event-sourced / denormalized OLTP）在 replace 模式写 `dimension_refs:[]` **抹掉人工 curated join 且无信号**。
 
 **Scope**:
-- inventory 泛化为任意有非空 `primary_key` 的表（不只 `kind='dim'`）
-- `buildLlmPrompt`/`buildEventLlmPrompt` 改 schema-model-agnostic
-- 加 FK 命名启发式（列名 ends `_id`/`_key` 且等于 dim PK）
-- `kind` enum 加 `ods`/`entity`/`flat`（或开放字符串），未标记导入默认 `ods`（依赖 GA-GRILL3）
-- **默认 `mergeExisting=true`**（防抹 curated join）——可先做这一行
-- 空 inventory 时 short-circuit + 明确消息
+- ⏳ inventory 泛化为任意有非空 `primary_key` 的表（不只 `kind='dim'`）——partially EXP1-gated（D1 决策已定，sufficiency 待 EXP1 Phase 3 量）
+- ⏳ `buildLlmPrompt`/`buildEventLlmPrompt` 改 schema-model-agnostic——partially EXP1-gated（纯字符串改独立，prompt 结构改待 EXP1）
+- ⏳ 加 FK 命名启发式（列名 ends `_id`/`_key` 且等于 dim PK）——EXP1-gated（即 EXP1 Phase 2 Arm A 本身）
+- ⏳ `kind` enum 加 `ods`/`entity`/`flat`（或开放字符串），未标记导入默认 `ods`——EXP1-gated（双重：GRILL3 D4 取值统一 + 159 YAML 静默重分类）
+- ✅ **item 5：origin-aware replace**（grilling 选定方案 (b)，非默认翻 mergeExisting）——preserve `manual`/`undefined`、替换 `deterministic`/`llm`，additive `preserveCurated=true` 默认 safe；`undefined`≡manual 续 GA-I18N-1；on-write hook 保持 merge；events 路径 + seed 脚本一并接。**已实施 2026-09-05**
+- ✅ **item 6：空 inventory short-circuit + `note` 消息**（additive）+ tool 报告 add+remove（`computeRemovedRelations`，item 6 扩展）。**已实施 2026-09-05**
 
 **Blocked by**: GA-EXP1（**仍 Open**——LLM-driven 推断实验，决定 enrichment 推断模式 + ontology 结合深度 + kind 路由解耦验证；原阻塞者 GA-GRILL3 已 grilled，产出 5 项决策 + GA-EXP1 实验票）  ·  **关联**: GA-GT2、CL5（确定性前缀→结构化 source 字段）、GA-GRILL3（已 grilled，D1-D5）
 **Key files**: packages/data/semantic-layer/src/{enrichment.ts:71,144,151,226,316,348,types.ts:278}; packages/data/tool-discover-relations/src/index.ts:184,221
@@ -83,3 +83,16 @@ GA-I18N-1 的 `origin` 优先级逻辑在 `mergeRefs` **内部**，而 `mergeRef
 ### 工作树注意
 
 报告涉及的 `enrichment.ts`、`index.ts`、`enrichment.spec.ts`、`tool-search-data-sources`、`io.ts`、`tool-load-table-definition` 在工作树中均为 modified，差异经核对均为装饰性且与结论不重叠（brief §8）。ticket 原列行号除 `enrichment.ts:348`（巧合精确）外**全部已漂移**，漂移对照表见 brief §10。
+
+---
+
+## Resolution（2026-09-05）：item 5 + 6 已实施；items 1/2/3/4 留 GA-EXP1（Status 仍 Open）
+
+分支 `fix/ga-gt3-mergeexisting-dataloss`（3 commit：`e707f59d6d` fix + `b8597718d0` K11 origin 回填 + `cee50021f7` code-review fixes）。PR 待网络恢复（pod 连不上 github.com；push 前 `git fetch` 确认 base，必要时 `git rebase --onto origin/master c385487d85`——我的 3 commit 与本地 master 上 6 个未 push 的 wayfinder/client commit 无文件交集，rebase 安全）。
+
+- **item 5**：substrate `originAwareRefs`（`mergeRefs(existing.filter(originPriority >= manual), discovered)`——保留 `manual`/`undefined`、替换 `deterministic`/`llm`）+ additive `preserveCurated?: boolean = true`（default safe）on `enrichAllDwsTables`/`enrichAllEvents`；显式入口（`index.ts` `discoverRelations`/`discoverEventRelations` + seed 脚本）传 `preserveCurated=true`；on-write hook 保持 `mergeExisting=true`（auto-trigger 不删，避并发 inventory 隐患）；events on-write hook 仍 deferred。`undefined`≡`manual`（GA-I18N-1 安全默认延伸到 replace 路径）。grilling 选定方案 (b)（非默认翻 mergeExisting，非显式 flag）。
+- **item 6**：`discover_relations` tool 加 `computeRemovedRelations`，`formatDiscoverRelations` 渲染「−N removed, +N added」+ 列出被删 ref（销毁不再藏在 "+N added" 后）；空 DIM inventory short-circuit + 返回 `note`（additive，经 `discoverRelationsResult` 透传 + `formatDiscoverRelations` 渲染）。
+- **K11 origin 回填**（独立 commit `b8597718d0`）：`scripts/backfill-k11-deterministic-origin.ts` 对 K11 跑 deterministic round，复现的 undefined ref 补 `origin: 'deterministic'`（DWS 144/244，events 4100/4100；共 4244/4344，193 文件）；LLM-found（asymmetric）留 `undefined`（保留档，待 `llmCall` 挂载后 LLM round 重校验）。
+- **验证**：typecheck 绿；semantic-layer 265 + tool-discover-relations 14 测试绿（4 red→green 周期：tables/events origin-aware-replace、tool 报告 add+remove、空 inventory short-circuit + note surfacing；+1 manual-rediscovered merge 覆盖）；subagent code review **0 must-fix**（处理 2 NICE-TO-HAVE：迁移脚本 usage 注释、manual-rediscovered merge 测试）。
+- **剩余 gating**：items 1/2/3/4 留 GA-EXP1（仍 Open，Phase 1 半成，judge 校准从未跑）。
+- **新开 follow-up 票**：GA-GT3-1b（`discover_relations` preview/confirm mode）、GA-GT3-3（`discover_relations` audit-log 到 `packages/data/audit`）、GA-GT3-4a（`tool-discover-event-relations` agent 工具）。问题 2（修改后无 eval）= GA-EXP1（已存在的 enrichment eval 实验，非新票）；问题 4b（跨数据源关联 table↔event 等）= fog（可能归 EXP1 Phase 3 ontology 结合深度），暂不开票。
