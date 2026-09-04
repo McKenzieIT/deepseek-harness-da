@@ -15,7 +15,7 @@ import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-import { Nl2sqlEngine, Bm25Linker, StandInOdps } from '@deepseek-ai/dsh-nl2sql-engine'
+import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall} from '@deepseek-ai/dsh-nl2sql-engine'
 import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
 
 import type {
@@ -68,14 +68,6 @@ export interface BootResult {
 function looksLikeSql(text: string): boolean {
   const upper = text.trim().toUpperCase()
   return /^\s*(SELECT|WITH|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/.test(upper)
-}
-
-function looksLikeToolCall(text: string): boolean {
-  const trimmed = text.trim()
-  if (/^<(call|tool)/i.test(trimmed)) return true
-  if (/^\{[\s]*"name"\s*:/.test(trimmed)) return true
-  if (/^[a-z_]+\s*\(/i.test(trimmed) && /^\w+\s*\([\s\S]*\)\s*$/.test(trimmed)) return true
-  return false
 }
 
 class CtxLlmAdapter implements Llm {
@@ -389,6 +381,9 @@ class Nl2sqlAgentResponder implements AgentResponder {
     const sql = result.sql ?? null
     console.error(`[DIAG] SQL: ${sql?.slice(0, 400) ?? '(none)'}`)
     console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)
+    // Hoisted above the reply branches: the tool-call decline path synthesises a
+    // reply from the retrieved candidates, so it needs the schema context too.
+    const schemaContext = this.buildSchemaContext(result.trace, corpus)
     let reply: string
     const sqlIsPresent = sql !== null && /\b(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE)\b/i.test(sql)
     if (!sqlIsPresent && sql !== null && sql.length > 20 && !looksLikeToolCall(sql)) {
@@ -399,6 +394,23 @@ class Nl2sqlAgentResponder implements AgentResponder {
         `Question: ${question}`,
         `Rows: ${JSON.stringify(result.result).slice(0, 4000)}`,
       ].join('\n'))
+    } else if (result.decline && result.declineKind === 'tool_call_emitted') {
+      // CL-23: the engine caught the model emitting a tool-call instead of SQL
+      // (CL-19 root cause: TOOL_CATALOG in a prompt with no tool-execution loop).
+      // `Declined: LLM 发射 tool-call…` is an internal diagnostic, not an answer —
+      // the DELIVERY judge rightly scores it zero. Synthesise the honest reply the
+      // agent should have produced: why it can't answer, what it *can* do, and how
+      // to re-ask. This is the only layer that can turn these cases around, since
+      // the model's raw output is unusable.
+      reply = await this.llm.completeText([
+        `用户问："${question}"`,
+        '数据 agent 无法直接回答这个问题。请基于下列候选数据源，生成一条简洁的中文回复：',
+        '1. 说明为什么不能直接回答（问题过于开放/主观，或缺少可量化的指标口径）；',
+        '2. 说明基于这些数据源你能提供什么；',
+        '3. 给出 1-2 个更具体的提问方式建议。',
+        '不要输出 SQL，不要提及 tool、函数调用或任何内部实现细节。',
+        `候选数据源：\n${schemaContext.slice(0, 3000)}`,
+      ].join('\n'))
     } else if (result.decline) {
       reply = `Declined: ${result.reason ?? 'unable to answer'}`
     } else if (result.pending) {
@@ -406,8 +418,6 @@ class Nl2sqlAgentResponder implements AgentResponder {
     } else {
       reply = result.reason ?? 'No answer.'
     }
-    // Build schema context from retrieved candidates for SQL semantic judge
-    const schemaContext = this.buildSchemaContext(result.trace, corpus)
     return { reply, generated_sql: sql, transcript: result.trace, schema_context: schemaContext }
   }
 

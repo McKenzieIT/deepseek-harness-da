@@ -30,7 +30,7 @@ import {
   makeCriticCtx,
   type QueryOutcome,
 } from './types.ts'
-import { critiqueSql, extractSqlCandidate, stripLineComments } from './critic.ts'
+import { critiqueSql, extractSqlCandidate, looksLikeToolCall, stripLineComments } from './critic.ts'
 import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetricContext, type HostTableInfo } from './metric-engine.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
@@ -147,6 +147,8 @@ export interface EngineRunResult {
   readonly outcome?: QueryOutcome
   readonly result?: unknown[] | undefined
   readonly decline?: boolean
+  /** Why the engine declined, when the reason is machine-actionable (CL-23). */
+  readonly declineKind?: 'tool_call_emitted'
   readonly reason?: string
   readonly pending?: boolean
   readonly trace: EngineTraceEntry[]
@@ -268,6 +270,23 @@ export class Nl2sqlEngine {
       const prompt = this.promptBuilder({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback, prompt })
+
+      // CL-23: the model emitted a tool-call instead of SQL. Retrying does not
+      // help — the prompt's TOOL_CATALOG is what elicits it (CL-19) — and
+      // feeding it downstream would let `nearDup.allow('')` and the stand-in
+      // executor's default-done turn it into a false success. Decline cleanly so
+      // the reply layer can synthesise a real answer for the user.
+      if (looksLikeToolCall(gen.sql)) {
+        trace.push({ step: 'tool_call_detected', attempt, text: gen.sql.slice(0, 200) })
+        return {
+          ok: false,
+          decline: true,
+          declineKind: 'tool_call_emitted',
+          reason: `LLM 发射 tool-call 而非 SQL: ${gen.sql.slice(0, 100)}`,
+          trace,
+        }
+      }
+
       const rawSql = extractSqlCandidate('```sql\n' + gen.sql + '\n```') ?? gen.sql
       const sql = rawSql ? postProcessSql(rawSql, args.today) : rawSql
       trace.push({ step: 'llm_generate', attempt, sql })
