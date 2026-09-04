@@ -96,17 +96,24 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
             return k ?? null
           })
           .filter((k): k is { dws_column: string; dim_column: string } => k !== null)
-        const alternativeGroups = [...byDimCol.entries()].filter(([, g]) => g.length > 1)
-        for (const [, alternatives] of alternativeGroups) {
-          for (const alt of alternatives) {
-            const keys = [...compositeKeys, alt]
-            out.push({
-              type: 'joins' as const,
-              target: ref.dim_table,
-              on: keys.map(k => `${k.dws_column} = ${k.dim_column}`).join(' AND '),
-              ...(ref.derivation ? { description: ref.derivation } : {}),
-            })
-          }
+        const alternativeGroups = [...byDimCol.entries()]
+          .filter(([, g]) => g.length > 1)
+          .map(([, g]) => g)
+        // Cartesian product across all alternative dim_columns: each emitted
+        // join combines the composite keys with ONE alternative from EVERY
+        // alternative group. A per-group loop would emit single-group edges
+        // that omit the other alternative dim_columns (sl-5).
+        let combos: { dws_column: string; dim_column: string }[][] = [compositeKeys]
+        for (const group of alternativeGroups) {
+          combos = combos.flatMap(combo => group.map(alt => [...combo, alt]))
+        }
+        for (const combo of combos) {
+          out.push({
+            type: 'joins' as const,
+            target: ref.dim_table,
+            on: combo.map(k => `${k.dws_column} = ${k.dim_column}`).join(' AND '),
+            ...(ref.derivation ? { description: ref.derivation } : {}),
+          })
         }
       }
     }

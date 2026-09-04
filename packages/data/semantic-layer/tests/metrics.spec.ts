@@ -11,6 +11,7 @@ import {
   extractMetricsFromTable,
   extractMetricsFromTables,
   metricName,
+  splitMetricName,
   inferAggregation,
 } from '../src/metrics.ts'
 import { MetricDefinitionSchema } from '../src/types.ts'
@@ -53,6 +54,21 @@ const mdef = (e: string, d = '', cv: MetricDef['caliber_variants'] = []): Metric
 describe('metricName', () => {
   test('namespaces as <source>__<key>', () => {
     expect(metricName('dws_pay_order_di', 'pay_amt_sum')).toBe('dws_pay_order_di__pay_amt_sum')
+  })
+})
+
+describe('splitMetricName', () => {
+  test('splits <host>__<key> into host + key', () => {
+    expect(splitMetricName('dws_order__total_amount')).toEqual({ host: 'dws_order', key: 'total_amount' })
+  })
+  test('splits on the LAST __ (host may itself contain __)', () => {
+    expect(splitMetricName('a__b__c')).toEqual({ host: 'a__b', key: 'c' })
+  })
+  test('returns null when no __ separator', () => {
+    expect(splitMetricName('nosep')).toBeNull()
+  })
+  test('returns null when __ is at the start (sep <= 0)', () => {
+    expect(splitMetricName('__key')).toBeNull()
   })
 })
 

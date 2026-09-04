@@ -61,6 +61,26 @@ export function metricName(source: string, key: string): string {
 }
 
 /**
+ * Split a namespaced metric name (`<source>__<key>`, as built by {@link metricName})
+ * back into its host source + key. Splits on the LAST `__` so a source or key
+ * that itself contains `__` is handled (the trailing segment is the key).
+ * Returns null when the name has no `__` separator or it sits at the start
+ * (no host). The inverse of {@link metricName}.
+ *
+ * Used by `SemanticLayerService.loadMetricDefinition` and
+ * `DefinitionSnapshot.loadMetricDefinition` to recover the host + key from a
+ * metric name and look the key up in the host's inline `metrics:` block (M1
+ * virtual projection — no standalone `metrics/*.yaml` files are read).
+ * @param name - the namespaced metric name.
+ * @returns `{ host, key }` or null when the name is not a `<host>__<key>` pair.
+ */
+export function splitMetricName(name: string): { host: string; key: string } | null {
+  const sep = name.lastIndexOf(SEP)
+  if (sep <= 0) return null
+  return { host: name.slice(0, sep), key: name.slice(sep + SEP.length) }
+}
+
+/**
  * Convert one inline MetricDef (from a table/event `metrics:` block) into a
  * standalone MetricDefinition. `expression` → `computation.sql`,
  * `source` → `computation.metadata.source`, and a `derived_from` relation to

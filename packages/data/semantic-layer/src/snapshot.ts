@@ -32,7 +32,7 @@ import {
   type TableDefinition,
   type MetricDefinition,
 } from './types.ts'
-import { toMetricDefinition } from './metrics.ts'
+import { splitMetricName, toMetricDefinition } from './metrics.ts'
 import type { EventCorpusItem, CorpusVariant } from './corpus.ts'
 
 /**
@@ -120,10 +120,9 @@ export class DefinitionSnapshot {
    * @returns the parsed `MetricDefinition`, or null when no host defines it.
    */
   loadMetricDefinition(name: string): MetricDefinition | null {
-    const sep = name.lastIndexOf('__')
-    if (sep <= 0) return null
-    const host = name.slice(0, sep)
-    const key = name.slice(sep + 2)
+    const parts = splitMetricName(name)
+    if (parts === null) return null
+    const { host, key } = parts
     const table = this.loadTableDefinition(host)
     if (table !== null) {
       const m = table.metrics[key]

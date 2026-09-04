@@ -65,7 +65,7 @@ import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
 import { conceptKindPlugin } from './kinds/concept-kind.ts'
 import { RelationGraph, type NodeAliasData } from './relation-graph.ts'
-import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
+import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, splitMetricName, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
 import { loadEvents, loadTables, loadConcepts, loadConceptDefinition as loadConceptDefinitionFromLayer } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema, ConceptDefinitionSchema } from './types.ts'
 import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
@@ -144,6 +144,7 @@ export {
   extractMetricsFromTables,
   toMetricDefinition,
   metricName,
+  splitMetricName,
   inferAggregation,
   loadMetricDefinitions,
 } from './metrics.ts'
@@ -752,13 +753,12 @@ export class SemanticLayerService extends Service {
   loadMetricDefinition(name: string): MetricDefinition | null {
     // M1 virtual projection: derive a metric on demand from its host table or
     // event `metrics:` block. The metric name is `<host>__<key>` (see
-    // `metricName`); split on the last `__` to recover the host + key, then
-    // look the key up in the host's inline metrics block. No standalone
+    // `metricName`); split via `splitMetricName` to recover the host + key,
+    // then look the key up in the host's inline metrics block. No standalone
     // `metrics/*.yaml` files are read.
-    const sep = name.lastIndexOf('__')
-    if (sep <= 0) return null
-    const host = name.slice(0, sep)
-    const key = name.slice(sep + 2)
+    const parts = splitMetricName(name)
+    if (parts === null) return null
+    const { host, key } = parts
     const table = loadTableDefinitionFromLayer(this.semanticRoot, host)
     if (table !== null) {
       const m = table.metrics[key]
@@ -854,6 +854,7 @@ export class SemanticLayerService extends Service {
    * Bm25Linker rebuilds after a mid-session event edit instead of staying stale
    * until reboot (D2e-deferred cache-invalidation). Reads the per-path counter
    * for `this.semanticRoot` (0 until the first write).
+   * @param scopeId - optional per-request scope; when omitted, the undefined (root) path's counter is read.
    * @returns the current corpus-version counter.
    */
   corpusVersion(scopeId?: string): number {
