@@ -1,7 +1,9 @@
 # W13 — ContextLayer 动画层不重绘（update*Data ≠ repaint）
 
 **Type**: task（直接修复）
-**Status**: open
+**Status**: **resolved 2026-09-03/04**（commit `60740d5197`）—— 路线 1 落地：`graph-animations.ts` 全部 12 处 `update*Data` 现已配对 `void graph.draw()`（10 个 batch 点：fadeIn ×2、dashedHighlight、clearDashedHighlight、pulseNode rAF/timeout-restore/cancel-restore、blinkNodes interval/cancel-restore、useOverlayMode）。G6 5.1.1 `draw(): Promise<void>`，沿用本仓 `void graph.<async>()` 惯例；模块 JSDoc 记下「update*Data 不重绘」这条契约。
+**⚠️ 目前不可观测**：动画唯一驱动源是 narration gate 的 `releasedUpdates`，而 `ContextLayerOverlay.tsx:66` 不传 `eventSource` → 恒为空 → `useGraphAnimations` 永不触发。**须等 [W17](../../../semantic-layer/tickets/W17-management-session-client-bridge.md) 才能验证。**
+**遗留**：`pulseNode` 的 rAF 循环现在每帧全画布 `draw()` —— 原型是 12-30 节点，生产图谱 ~800 节点，连续脉冲性能需实测；若成瓶颈则转路线 2（WAAPI）。`applyLOD` 同病未查。
 **Blocked by**: —
 **发现来源**: task-orchestration-dag G2 原型（2026-09-02，像素哈希实测）;与
 [W12](W12-contextlayer-node-click-dead.md) 同族——G6 使用层 API 误用,组件测试未覆盖

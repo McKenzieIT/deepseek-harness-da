@@ -29,3 +29,27 @@ A second, "purer" eval engine that someone might have intended to wire in. It is
 ## Risks
 
 Behavior: changing `pass_k` to pass^k LOWERS the recorded pass_rate (a case with one passing attempt in k=3 would flip pass→fail) — re-run the K11 eval + re-record in `experiment-audit-log.md` (the whole point of the metric is anti-flakiness; the current best-of-k was inflating it). Public API: `dsh-eval`'s exported `runBatch`/`passKVerdict` may be imported by out-of-tree eval consumers — grep the monorepo first; if only types are used, narrow the exports.
+
+## 2026-09-04 更新：`pass_k` 语义那一项**已被解决**（本 note 的其余部分仍有效）
+
+本 note 当时写道「the live eval path ... `bestOfKVerdict`」、「Pick **one** canonical
+`pass_k` semantics ... either rename the CLI flag/metric to `best-of-k`/`pass@k` ...
+or change `bestOfKVerdict` to pass^k and re-baseline the recorded pass_rate」。
+
+**第二条路已经走完**：
+- `bestOfKVerdict` → `passKVerdict`（`packages/eval/eval-runner/src/runner.ts:378`，
+  `every(attempts)` 全中才算过），随 GA-AUDIT1 / `cfbb710b50` 落地。
+- 已 re-baseline：当前基线 `rebaseline-passk-168-clean` = **61.9%** pass^k
+  （commit `56c74aebae`），`eval-cli/README.md` 已声明 "pass^k semantics is LIVE"
+  并按新语义重设 Quality Targets。
+- `RunResult.config` 现持久化 `pass_k` + `verdict_semantics`，`compare.ts` 已加
+  协议守卫（跨 k 比较 exit 2），`scripts/run-eval.sh` 的 `--pass-k 1` 偏离已移除
+  （commit `236f876f2a`）。
+
+所以验收项「One `pass_k` semantics, named honestly」**已满足** —— 指标名与实现
+现在一致（都是 pass^k），且 CLI 默认 `--pass-k 3` 与 SPEC §6.5 / D9 Q2 对齐。
+
+**仍然有效的部分**：删除 `verdict_mapper.ts`、移除 `eval/eval/src/` 里未被调用的
+`runMultiTurnCase`/`runBatch`/`computeDelta` 运行时函数（`passKVerdict` 现已是活语义，
+但 `eval/eval` 里那份仍是与 `eval-runner` 并存的第二实现——**并存本身仍是本 note 要
+消除的重复**）、以及 `OUTCOME_RANK`/`VERDICT_SEVERITY` 这对互相矛盾且无调用者的排序。

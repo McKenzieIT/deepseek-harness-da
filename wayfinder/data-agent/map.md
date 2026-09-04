@@ -24,6 +24,8 @@
 
 <!-- 一行一 closed 决策的 gist；详情在 research/ 笔记或后续 ticket -->
 
+- **GA-CORDIS-CATALOG-FIX (task, resolved 2026-09-04)**：test-final.txt 20 失败 triage（3 fork-own + 7 stale + 5 upstream + 5 env）；修 result-cache-memory 测试（重复注册→单注册双执行）+ cordis-catalog typert `metadata→Json` + 6 道 masked catalog gate（events JSDoc @mode / type-link / scope-page、services JSDoc / type-link、partition）+ 重生成 11 工件；修 7 newly-revealed（wiring `useStoreStub` ×5、eval stub `provider`/`model` ×2）。subagent 并行 code review（clean）+ full suite 0 failures（16118 pass / 251s）。〔tickets/phase-misc/GA-CORDIS-CATALOG-FIX.md〕
+
 - **P11d LLM Judge SQL 语义 (task, resolved 2026-08-27)**：eval-runner 引入 5 维度 LLM-as-Judge（table/field/filter/aggregation/overall）。(1) `AttemptResult` 新增 `sql_judge` 字段持久化完整 verdict；(2) dual-score policy（executor 在时 execution_match + sql_judge 两列独立）；(3) 4 个 few-shot examples 校准 prompt；(4) calibration run：65% pass rate（目标 60-80%），维度分布 59-70% 无退化。额外修复 eval-cli judge LLM 调用绕过 SQL 偏好适配器。〔tickets/phase-4/P11d-eval-llm-judge-sql-semantics.md〕
 
 - **M1-range-where-hint (task, resolved 2026-08-27)**：`buildMetricContext` 追加时间过滤 hint——新增 `HostTableInfo` 接口 + `buildTimeFilterHint` 纯函数（快照表→MAX_PT() 勿跨天聚合；日粒度→ds WHERE 过滤；无 ds→不追加）；engine 通过 `partitionResolver` + DataSourceDoc payload（fallback `_df` 后缀推断）解析宿主表信息传入。7 新测试全绿。〔tickets/phase-misc/M1-range-where-hint.md〕
@@ -302,8 +304,9 @@
 
 ### CL 票（直接修复，批量）
 
-- [W12 ContextLayerGraph 节点点击回调失效](tickets/phase-misc/W12-contextlayer-node-click-dead.md) — **code fixed 2026-09-02（未 commit）**；两 handler 改读 `evt.target.id`（G6 5.1.1 无 `evt.itemId`），test:gui 306 files/4211 passed 绿 + tsc exit 0；剩组装路径浏览器验证 + 随 PR commit；task-orchestration-dag G2 原型实测发现
-- [W13 ContextLayer 动画层不重绘](tickets/phase-misc/W13-contextlayer-animations-no-repaint.md) — open；`graph-animations.ts` 11 处 `update*Data` 零处 `draw()`，G6 5.1.1 实测该调用**不触发重绘**（像素哈希不变）——pulse/blink/边 fade-in/narration-gate 动画视觉上从未生效；修复路线（draw() 补齐 + WAAPI 连续动画）已在 G2 原型像素级验证，`applyLOD` 疑似同病；与 W12 同族（数据动、画面不动）
+- ~~[W12 ContextLayerGraph 节点点击回调失效](tickets/phase-misc/W12-contextlayer-node-click-dead.md)~~ ✅ **resolved 2026-09-03/04**（commit `60740d5197`）— 前状 **code fixed 2026-09-02（未 commit）**；两 handler 改读 `evt.target.id`（G6 5.1.1 无 `evt.itemId`），test:gui 306 files/4211 passed 绿 + tsc exit 0；剩组装路径浏览器验证 + 随 PR commit；task-orchestration-dag G2 原型实测发现
+- ~~[W13 ContextLayer 动画层不重绘](tickets/phase-misc/W13-contextlayer-animations-no-repaint.md)~~ ✅ **resolved 2026-09-03/04**（commit `60740d5197`，12 处 `update*Data` 全部配对 `graph.draw()`；⚠️ 需 W17 才可观测——`eventSource` 未接通则动画无驱动源）；原状 open：`graph-animations.ts` 11 处 `update*Data` 零处 `draw()`，G6 5.1.1 实测该调用**不触发重绘**（像素哈希不变）——pulse/blink/边 fade-in/narration-gate 动画视觉上从未生效；修复路线（draw() 补齐 + WAAPI 连续动画）已在 G2 原型像素级验证，`applyLOD` 疑似同病；与 W12 同族（数据动、画面不动）
+- **W14b `ui-context-layer` 挂载（resolved 2026-09-03/04，commit `60740d5197`）** — W10/W11 交付的图谱包**从未挂载**：任何 bundle patch 都没有它、不在 boot manifest 的 46 条里、`/plugins/@deepseek-ai/dsh-client-ui-context-layer/client.js` **404**，只有 `tsconfig.client.json:95` 引用它；`wayfinder/semantic-layer/e2e-test-checklist.md:100` 早已记录「D6 需 ui-context-layer 插件挂载（W10），否则按钮不显示」。修复：bundle `package.json` 加 dep + `cordis.patch.yml` 加行**置于 `ui-semantic-layer` 之前**（后者读 `contextLayer` 决定是否给出「在知识图谱中查看」入口）+ 包的 `dsh.client.inject` 补 `ui-layout`（它注册的 `shell.overlay` 由 ui-layout 声明）+ `ui-semantic-layer` 对 `contextLayer` 改**惰性**解析（原先 apply 时读一次，晚挂载即永久 undefined）。实测：boot manifest 46→**48**、两插件路由 200、`shell.overlay` seat 进入 DOM。**同批还修了一个更严重的 blocker**：`duplicate loader entry id: result-cache`（web-app:300 客户端对象缓存 vs data-agent 服务端 `ctx.resultCache` seam）使 `--profile web` **冷启动整组失败** → data-agent 全部行消失（含 `ui-semantic-layer`，即用户报的「语义层按钮消失」）；已改名 `result-cache-memory` + 加回归 gate `scripts/bundle-loader-ids.spec.ts`（commit `0df7371b58`）。详见 [CB-1](../semantic-layer/tickets/CB1-cold-boot-blockers.md)。**遗留**：W10 D4 定的「独立全屏入口」不存在（仅能经 语义层→管理 session→SchemaExplorer→选资产）；`ManagementChatPanel` 无客户端桥接 → [W17](../semantic-layer/tickets/W17-management-session-client-bridge.md)。
 
 ### i18n 实施票（GA-GRILL2 Kind 2 产出，中英双语 scope）— **GA-I18N-1~5 resolved 2026-09-01**
 

@@ -468,3 +468,96 @@ B-DA6 option B 全量回滚（`prompt.ts`/`engine.ts`/`eval-cli context.ts`/`eva
 
 ### Ticket Pointer
 Resolves: [B-DA6](../../data-agent/tickets/phase-misc/B-DA6-qualifytable-live-wiring.md)（reverted）；run `1f0ec09c`（qualified）vs `10320fe2`（baseline）。
+
+## 2026-09-04: pass^k 离线重打分 + 方差实测（决策依据：是否把验收切到 k=3 pass^k）
+
+**AGENTS.md:124 合规补录** —— 本实验的结论直接驱动了「切 k=3 pass^k」的决策，
+但当时未按规则落盘，此条为事后补录（原始脚本已提交：`.tmp/rescore-passk.py`
+逻辑见下，方差部分为一次性内联脚本）。
+
+### Setup
+
+- **无新 LLM 调用**：全部结论从已存 run 的 `cases[].pass_k_results[]` 重算
+  （每 attempt 的 `execution_match` / `delivery_match` / `sql_judge` / `infra_error`
+  均已持久化）。零成本、零 credentials。
+- **判定规则**（镜像 `packages/eval/eval-runner/src/runner.ts:378 passKVerdict`）：
+  attempt 通过 = `infra_error === undefined && execution_match !== false && delivery_match !== false`；
+  pass^k = `every(attempts)`；best-of-k（旧） = `any(attempts)`。
+- **样本**：`eval-results/` + `packages/eval/eval-cli/eval-results/` 下全部 ≥20 case 的 run，共 46 个。
+- **变量**：仅判定规则（pass^k vs best-of-k），代码/数据/模型全部不变。
+
+### Data（verbatim）
+
+**(1) k=1 的 run：pass^k 与 best-of-k 恒等**
+
+26 个 k=1 run 的 delta **全部为 +0.0pp**（`any([v]) == every([v])`，数学恒等）。
+含 CL-15 基线 `10320fe2` 73.8%、CL-22 三 run 中位数成员 `75ad2a5c` 73.2% /
+`136c657c` 70.8% / `1510b3e0` 76.8%、CL-8 `cl8-full-fixed` 96.2% /
+`cl8-continuous-blend` 100.0%、CL-9/CL-10 `033fea6a` 91.7% / `9788424c` 66.1%。
+
+**(2) k=3 的 run：全线崩塌**
+
+| run | 记录值(best-of-k) | pass^k 重算 | delta |
+|---|---|---|---|
+| exp4-arm-a（中文, qwen3.7-max） | 88.1% | **56.5%** | −31.5pp |
+| exp4-arm-b（英文, qwen3.7-max） | 85.1% | **57.7%** | −27.4pp |
+| exp2-arm-a（中文, qwen-plus） | 72.0% | 26.8% | −45.2pp |
+| exp2-arm-e（英文 judge） | 72.0% | 17.3% | −54.8pp |
+| exp2-arm-b（全英文） | 31.0% | 3.0% | −28.0pp |
+| g1b-variant-B | 83.3% | 47.2% | −36.1pp |
+| g1b-variant-D | 63.9% | 16.7% | −47.2pp |
+| g1b-variant-A | 50.0% | 38.9% | −11.1pp |
+| g1b-healthy-configC-qwen3.7-max | 25.0% | 16.7% | −8.3pp |
+
+**(3) 方差实测（exp4-arm-a，168 case，k=3）**
+
+- k=1 口径：把 3 个 attempt slot 各当作一次独立 k=1 run →
+  **71.4% / 73.8% / 75.6%**，极差 **4.2pp**
+- pass^k 真实三连：**56.5%**
+- pass^k bootstrap（每 case 从其 3 个 attempt 有放回重采样 3 次，2000 轮）：
+  中位数 63.1%，p5–p95 = **[60.1%, 65.5%]**，90% 区间宽 **5.4pp**
+- **每 case 通过次数分布（0/1/2/3）= 20 / 20 / 33 / 95**
+  → 不稳定（通过 1 或 2 次）= **53 / 168 = 31.5%**
+
+对照 exp2-arm-a（qwen-plus）：k=1 极差 2.4pp；分布 47/38/38/45 → 不稳定 **45.2%**。
+
+**(4) `executionMatch` 不可验证→false 规则对 k=1 基线的影响 = 零**
+
+4 个 k=1 基线 run 中「无 `sql_judge` 且 `execution_match=true`」的 case 各 21–25 个。
+对 `10320fe2` 的 21 个逐一比对 `packages/eval/eval/cases/k11-v2/` 的 case YAML：
+**21/21 全是 DELIVERY case**（`019`/`049`/`075`/`078`/`079` 正是 CL-12 迁移的 5 个，
+其余为 voice DELIVERY 组）。它们 `expected.result` 为 null、由 DELIVERY judge 经
+`delivery_match` 判分，本就不进 SQL judge 分支 → **genuinely-flip = 0**。
+
+### Verdict
+
+1. **k=1 与 k=3 pass^k 是两个不同指标**，不是新旧对错：前者问"能不能做对"，
+   后者问"是不是**稳定**做对"。52.4%/61.9% 相对 73.8% 的落差主要来自 **k 从 1 变 3**。
+2. **「pass^k 方差更大」不成立**：k=1 极差 4.2pp vs pass^k 90% 区间 5.4pp，量级相当。
+   pass^k 把 p≈0.5 的边界 case 推向稳定失败（p³≈0.125），run 间反而更一致。
+   （此前以此为由反对切换，方向搞反，已作废。）
+3. **决策性发现：31.5% 的 case 是非确定性的，而 k=1 在定义上看不到它。**
+   k=1 随机给这 53 个 case 记分 → 报 71–76%；可靠通过的只有 95/168 = 56.5%。
+   对取数 agent，"三次里对一次"比"一直错"更危险（后者可发现，前者会被当正确答案用）。
+   → **支持把验收切到 k=3 pass^k**（与 SPEC §6.5 / D9 Q2 及 CLI 默认一致）。
+4. **GA-EXP4 结论口径依赖**：英文 vs 中文 best-of-k −3.0pp → pass^k **+1.2pp**，
+   符号翻转，两者都在噪声内 → 诚实结论「无显著差异」，非「英文差 3%」。
+5. **方向性决策存活**：GA-MODEL1（qwen3.7-max vs qwen-plus：+16.1% → **+29.7pp**）、
+   G1c ship variant（B 仍最优）。且 pass^k 显示模型升级同时降低了抖动（45.2% → 31.5%）。
+
+### Fidelity caveat
+
+- 重打分读的是**已存的** `execution_match` 值，因此**测不出**判定链上游的规则变化
+  （唯一相关的 `executionMatch` 不可验证→false 已按 (4) 单独核查并排除）。
+- bootstrap 从每 case 仅 3 个观测重采样，是**下界估计**：真实 run 间方差还含
+  attempt 间不独立、gateway 负载（README:82 的 AGA empty-response burst）等来源。
+- pass^k 重算值（exp4-arm-a 56.5%）与 GA-MODEL1 记录的重放值 47.6% 不同：后者
+  同时应用了不可验证→false，更严。两者均远低于 88.1%，不影响结论方向。
+
+### Pointer
+
+决策票：[GA-EVAL-REBASELINE](../../data-agent/tickets/phase-misc/GA-EVAL-REBASELINE-passk-semantics.md)、
+[GA-EXP4](../../data-agent/tickets/phase-misc/GA-EXP4-qwen37max-en-prompt-crossval.md)；
+报告：[passk-rescore-2026-09-03.md](passk-rescore-2026-09-03.md)；
+落地：commit `236f876f2a`（run-eval.sh 去 `--pass-k 1` + compare.ts 协议守卫）。
+受影响验收票：CL-20 / CL-21 / CL-23 / R11（各已追加更正段）。

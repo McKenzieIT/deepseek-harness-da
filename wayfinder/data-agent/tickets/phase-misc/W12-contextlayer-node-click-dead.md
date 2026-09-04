@@ -1,7 +1,7 @@
 # W12 — ContextLayerGraph 节点点击/双击回调失效（evt.itemId 不存在）
 
 **Type**: task（直接修复）
-**Status**: code fixed 2026-09-02（未 commit；组装路径验证仍欠）
+**Status**: **resolved 2026-09-03/04**（commit `60740d5197`）—— 代码修复在工作树确认（`ContextLayerGraph.tsx:227/233` 读 `evt.target.id`）；「组装路径验证」此前**无法进行**，因为 `ui-context-layer` 从未挂载（孤儿包：无 bundle 行、不在 boot manifest 46 条、plugin 路由 404）。挂载后实测路由 200 + `shell.overlay` seat 进入 DOM。**真实浏览器点击验证仍待 W17** —— `ContextLayerOverlay.tsx:65-66` 不传 `eventSource`/`onSendMessage`，图谱交互链尚未通电。
 **Blocked by**: —
 **发现来源**: task-orchestration-dag map 的 G2 原型验证（2026-09-02，headless 浏览器实测）
 
