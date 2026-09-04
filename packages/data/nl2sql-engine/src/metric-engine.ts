@@ -8,7 +8,7 @@
  *
  * @module @deepseek-ai/dsh-nl2sql-engine/src/metric-engine
  */
-import type { RetrievalHit } from './bm25-linking.ts'
+import type { RetrievalHit, DataSourceDoc } from './bm25-linking.ts'
 
 /** Minimal host-table info for time-filter hint generation (structurally compatible with the semantic-layer TableModel). */
 export interface HostTableInfo {
@@ -33,16 +33,30 @@ export interface TimeParams {
   readonly end_date?: string
 }
 
+/** A corpus doc whose payload is a derived metric def. The discriminator
+ * (`kind: 'metric'`) and the `MetricDefinitionLite` fields live in one typed
+ * object so retrieval consumers narrow via {@link isMetricHit} instead of
+ * re-casting `hit.payload.payload` from `unknown` (nl2sql-8: the prior
+ * `unknown`→`{kind?:string}` / `unknown`→`MetricDefinitionLite` casts were
+ * unchecked at a parser boundary and silently dropped the `kind` field). */
+export interface MetricCorpusDoc extends DataSourceDoc {
+  readonly payload: MetricDefinitionLite & { readonly kind: 'metric' }
+}
+
 /**
  * Is a retrieval hit a metric corpus item? (the corpus item's `payload` is the
  * MetricDefinition; its `kind` === 'metric' distinguishes it from table defs,
  * whose `kind` is 'dws'/'dim', and events, which have no `kind`.)
+ *
+ * Type guard: narrows `hit` so the payload's `kind` discriminator + the
+ * `MetricDefinitionLite` fields are typed — no `unknown`→typed cast at the
+ * call site (nl2sql-8). Narrows via `typeof` + `in` (no `as`).
  * @param hit - the retrieval hit to test.
  * @returns true when the hit's payload kind is 'metric'.
  */
-export function isMetricHit(hit: RetrievalHit): boolean {
-  const inner = hit.payload?.payload as { kind?: string } | undefined
-  return inner?.kind === 'metric'
+export function isMetricHit(hit: RetrievalHit): hit is RetrievalHit & { payload: MetricCorpusDoc } {
+  const p = hit.payload?.payload
+  return typeof p === 'object' && p !== null && 'kind' in p && p.kind === 'metric'
 }
 
 /**
@@ -52,8 +66,7 @@ export function isMetricHit(hit: RetrievalHit): boolean {
  */
 export function metricFromHit(hit: RetrievalHit): MetricDefinitionLite | null {
   if (!isMetricHit(hit)) return null
-  const outer = hit.payload
-  return outer !== undefined ? (outer.payload as MetricDefinitionLite) : null
+  return hit.payload.payload
 }
 
 /**

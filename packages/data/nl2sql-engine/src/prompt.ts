@@ -24,6 +24,43 @@ function granularityTag(id: string): string {
   return ''
 }
 
+/** Render the retrieval-candidate list block (shared by buildPrompt + buildEvalPrompt — nl2sql-4). */
+function renderCandidates(candidates: readonly RetrievalHit[]): string {
+  return candidates.length > 0
+    ? candidates
+      .map(c => `- ${c.id}${granularityTag(c.id)}: ${c.payload?.description ?? c.id} (score=${c.score.toFixed(3)})`)
+      .join('\n')
+    : '（无候选）'
+}
+
+/** Render the known-JOIN-constraints block (shared — nl2sql-4). */
+function renderJoinSection(joinConstraints: readonly string[] | undefined): string {
+  return joinConstraints && joinConstraints.length > 0
+    ? `\n# 已知 JOIN 关系（必须使用，勿自行推断 JOIN key）\n${joinConstraints.map(c => `- ${c}`).join('\n')}\n`
+    : ''
+}
+
+/** Render the known-metric-definitions block (shared — nl2sql-4). */
+function renderMetricSection(metricContext: string | undefined): string {
+  return metricContext
+    ? `\n# 已知指标定义（请基于此规则构建查询）\n${metricContext}\n`
+    : ''
+}
+
+/** Render the 8 core SQL rules (+ optional rule 9 when isTrend). Shared by
+ * buildPrompt's §6 八规则 + buildEvalPrompt's 核心规则 (nl2sql-4 dedup — the
+ * rule text was duplicated verbatim across the two prompts). */
+function renderCoreRules(isTrend: boolean | undefined): string {
+  return `1. 分区表查询须带分区列过滤（分区列名/格式见方言规范）；非分区 DIM 表不带分区过滤；_df 后缀日期不明时取最新分区（见方言规范）
+2. 去重主体由用户意图：角色→role_id，账号→account_id
+3. params 字段提取用方言规范中的 JSON 函数；数值字段按 cast_map CAST（见方言规范）
+4. JOIN 规则：跨日多事件 JOIN 禁；同日同主体交集许可；维表 lookup JOIN 受控
+5. NULLIF(COUNT(*),0) 防除零
+6. 复合问题拆多条原子 SQL
+7. 时效：埋点 ~10min，通用数仓 T+1
+8. 千位以上加千分位${isTrend ? '\n9. 趋势/时序类问题优先使用 _di（日粒度增量）表；_df（快照）表仅在无 _di 候选时使用' : ''}`
+}
+
 /** Minimal event-definition shape the prompt renders (full P6 zod schema arrives with P6b). */
 export interface EventDefinitionLite {
   readonly params_fields?: Record<string, unknown>
@@ -69,18 +106,9 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
 export function buildPrompt(args: BuildPromptArgs): string {
   const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend } = args
   const dialect = renderConventionsPrompt(conventions)
-  const candLines =
-    candidates.length > 0
-      ? candidates
-        .map(c => `- ${c.id}${granularityTag(c.id)}: ${c.payload?.description ?? c.id} (score=${c.score.toFixed(3)})`)
-        .join('\n')
-      : '（无候选）'
-  const joinSection = joinConstraints && joinConstraints.length > 0
-    ? `\n# 已知 JOIN 关系（必须使用，勿自行推断 JOIN key）\n${joinConstraints.map(c => `- ${c}`).join('\n')}\n`
-    : ''
-  const metricSection = metricContext
-    ? `\n# 已知指标定义（请基于此规则构建查询）\n${metricContext}\n`
-    : ''
+  const candLines = renderCandidates(candidates)
+  const joinSection = renderJoinSection(joinConstraints)
+  const metricSection = renderMetricSection(metricContext)
   return `你是游戏埋点数据分析 Agent。宁可少答慢答，不可错答。
 
 ${TOOL_CATALOG}
@@ -108,14 +136,7 @@ ${TOOL_CATALOG}
 触发：语义层无定义/params 无字段/自修 ${MAX_FEEDBACK_RETRIES} 次仍失败/发现路径走不通。拒时说明：为什么不能答/缺什么/怎么解决。不做降级，不给"仅供参考"。
 
 # §6 八规则
-1. 分区表查询须带分区列过滤（分区列名/格式见方言规范）；非分区 DIM 表不带分区过滤；_df 后缀日期不明时取最新分区（见方言规范）
-2. 去重主体由用户意图：角色→role_id，账号→account_id
-3. params 字段提取用方言规范中的 JSON 函数；数值字段按 cast_map CAST（见方言规范）
-4. JOIN 规则：跨日多事件 JOIN 禁；同日同主体交集许可；维表 lookup JOIN 受控
-5. NULLIF(COUNT(*),0) 防除零
-6. 复合问题拆多条原子 SQL
-7. 时效：埋点 ~10min，通用数仓 T+1
-8. 千位以上加千分位${isTrend ? '\n9. 趋势/时序类问题优先使用 _di（日粒度增量）表；_df（快照）表仅在无 _di 候选时使用' : ''}
+${renderCoreRules(isTrend)}
 
 ${dialect}
 
@@ -159,18 +180,9 @@ export interface BuildEvalPromptArgs {
 export function buildEvalPrompt(args: BuildEvalPromptArgs): string {
   const { question, candidates, conventions, joinConstraints, metricContext, isTrend } = args
   const dialect = renderConventionsPrompt(conventions)
-  const candLines =
-    candidates.length > 0
-      ? candidates
-        .map(c => `- ${c.id}${granularityTag(c.id)}: ${c.payload?.description ?? c.id} (score=${c.score.toFixed(3)})`)
-        .join('\n')
-      : '（无候选）'
-  const joinSection = joinConstraints && joinConstraints.length > 0
-    ? `\n# 已知 JOIN 关系（必须使用，勿自行推断 JOIN key）\n${joinConstraints.map(c => `- ${c}`).join('\n')}\n`
-    : ''
-  const metricSection = metricContext
-    ? `\n# 已知指标定义（请基于此规则构建查询）\n${metricContext}\n`
-    : ''
+  const candLines = renderCandidates(candidates)
+  const joinSection = renderJoinSection(joinConstraints)
+  const metricSection = renderMetricSection(metricContext)
   return `你是 SQL 生成引擎。根据下方检索到的候选表定义和用户问题，生成一条符合方言规范的 SQL。
 
 # 输出要求
@@ -183,14 +195,7 @@ ${joinSection}${metricSection}
 ${candLines}
 
 # 核心规则
-1. 分区表查询须带分区列过滤（分区列名/格式见方言规范）；非分区 DIM 表不带分区过滤；_df 后缀日期不明时取最新分区（见方言规范）
-2. 去重主体由用户意图：角色→role_id，账号→account_id
-3. params 字段提取用方言规范中的 JSON 函数；数值字段按 cast_map CAST（见方言规范）
-4. JOIN 规则：跨日多事件 JOIN 禁；同日同主体交集许可；维表 lookup JOIN 受控
-5. NULLIF(COUNT(*),0) 防除零
-6. 复合问题拆多条原子 SQL
-7. 时效：埋点 ~10min，通用数仓 T+1
-8. 千位以上加千分位${isTrend ? '\n9. 趋势/时序类问题优先使用 _di（日粒度增量）表；_df（快照）表仅在无 _di 候选时使用' : ''}
+${renderCoreRules(isTrend)}
 
 # 用户问题
 ${question}`

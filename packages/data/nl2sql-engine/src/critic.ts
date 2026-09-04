@@ -53,14 +53,54 @@ export function extractSqlCandidate(phaseOutput: string | null | undefined): str
   const m = phaseOutput.match(/```sql\s*([\s\S]*?)```/i) ?? phaseOutput.match(/```([\s\S]*?)```/)
   let sql = m?.[1] ?? phaseOutput
   // Strip `--` line comments BEFORE collapsing whitespace: the collapse turns
-  // newlines into spaces, after which a `--[^\n]*` strip would run to
+  // newlines into spaces, after which a line-comment strip would run to
   // end-of-string and silently delete the rest of the SQL (D2-2). Stripping
   // here keeps comment semantics line-scoped and feeds the critic + executor
-  // the same comment-free SQL (F2 same-source).
-  sql = sql.replace(/--[^\n]*/g, '')
+  // the same comment-free SQL (F2 same-source). Uses `stripLineComments` so a
+  // `--` inside a single-quoted string literal is preserved (nl2sql-3).
+  sql = stripLineComments(sql)
   sql = sql.trim()
   if (!sql || !/\bselect\b/i.test(sql)) return null
   return sql.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Strip SQL `--` line comments while preserving single-quoted string literals
+ * (nl2sql-3). A naive line-comment strip truncates a literal containing `--`
+ * (e.g. `'a--b'`) from the `--` to end-of-line. This walks the SQL with a small
+ * state machine: inside a single-quoted string it copies verbatim (handling the
+ * SQL `''` escape), and only skips `--` to end-of-line when outside a string.
+ * Multi-line strings are handled (the string state spans newlines).
+ * @param sql - the raw SQL (may contain `--` comments + string literals).
+ * @returns the SQL with `--` line comments removed, string literals preserved.
+ */
+export function stripLineComments(sql: string): string {
+  let out = ''
+  let i = 0
+  const n = sql.length
+  while (i < n) {
+    const ch = sql.charAt(i)
+    if (ch === "'") {
+      // Single-quoted string literal: copy verbatim (`''` escape + multi-line).
+      out += ch
+      i++
+      while (i < n) {
+        const c = sql.charAt(i)
+        out += c
+        i++
+        if (c === "'") {
+          if (sql.charAt(i) === "'") { out += "'"; i++; continue } // `''` escape
+          break // end of string literal
+        }
+      }
+    } else if (ch === '-' && sql.charAt(i + 1) === '-') {
+      while (i < n && sql.charAt(i) !== '\n') i++ // line comment → skip to EOL
+    } else {
+      out += ch
+      i++
+    }
+  }
+  return out
 }
 
 /**

@@ -76,6 +76,11 @@ export class Nl2sqlEngineService extends Service {
   static Config: z<Nl2sqlEngineConfig> = z.object({
     conventionsEngine: z.string().default('maxcompute'),
   })
+  /** nl2sql-7: the service reads `ctx.query.getConventions` at call time, so it
+   * declares `query` as a dependency — Cordis then waits for `ctx.query` to be
+   * registered before the service is ready (AGENTS.md: a Service that reads
+   * another service on `ctx` declares it in `inject`). */
+  static inject = ['query']
 
   constructor(ctx: Context, config: Nl2sqlEngineConfig) {
     super(ctx, 'nl2sql')

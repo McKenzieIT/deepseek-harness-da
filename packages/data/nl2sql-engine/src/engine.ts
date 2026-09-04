@@ -30,7 +30,7 @@ import {
   makeCriticCtx,
   type QueryOutcome,
 } from './types.ts'
-import { critiqueSql, extractSqlCandidate } from './critic.ts'
+import { critiqueSql, extractSqlCandidate, stripLineComments } from './critic.ts'
 import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetricContext, type HostTableInfo } from './metric-engine.ts'
 import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
@@ -53,8 +53,9 @@ const UNRECOVERABLE = UNRECOVERABLE_FAILURES as readonly string[]
 function postProcessSql(sql: string, today?: string): string {
   if (!today || !/^\d{8}$/.test(today)) return sql
   let out = sql
-  // Strip single-line comments (reasoning leakage like "-- Wait, DATEDIFF returns...")
-  out = out.replace(/--[^\n]*/g, '')
+  // Strip single-line comments (reasoning leakage like "-- Wait, DATEDIFF returns...");
+  // string-literal-aware so a `--` inside a SQL string literal isn't truncated (nl2sql-3).
+  out = stripLineComments(out)
   // Replace GETDATE() / CURRENT_TIMESTAMP with today literal
   out = out.replace(/\bGETDATE\s*\(\s*\)/gi, `'${today}'`)
   out = out.replace(/\bCURRENT_TIMESTAMP\b/gi, `'${today}'`)

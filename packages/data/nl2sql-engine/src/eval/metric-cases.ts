@@ -30,13 +30,13 @@ export const METRIC_EVAL_CASES: readonly EvalCase[] = [
   {
     id: 'm01', question: '昨天DAU是多少', today: '20260820',
     llm: { sql: "SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds='20260819'" },
-    odps: { sub: "FROM ods_login WHERE ds = '20260819'", out: { state: 'done', result_id: 'm1', rows: [{ cnt: 7 }] } },
+    odps: { sub: "FROM ods_login WHERE ds='20260819'", out: { state: 'done', result_id: 'm1', rows: [{ cnt: 7 }] } },
     expected: { result_value: 7, match_mode: MatchMode.SCALAR_EXACT }, turns: 1,
   },
   {
     id: 'm02', question: '昨天充值总金额', today: '20260820',
     llm: { sql: "SELECT SUM(pay_amt) FROM dws_pay_order_di WHERE ds='20260819'" },
-    odps: { sub: "FROM dws_pay_order_di WHERE ds = '20260819'", out: { state: 'done', result_id: 'm2', rows: [{ _c0: 42 }] } },
+    odps: { sub: "FROM dws_pay_order_di WHERE ds='20260819'", out: { state: 'done', result_id: 'm2', rows: [{ _c0: 42 }] } },
     expected: { result_value: 42, match_mode: MatchMode.SCALAR_EXACT }, turns: 1,
   },
   {
@@ -48,13 +48,13 @@ export const METRIC_EVAL_CASES: readonly EvalCase[] = [
   {
     id: 'm04', question: '今天战斗次数', today: '20260820',
     llm: { sql: "SELECT COUNT(*) FROM dws_battle_di WHERE ds='20260820'" },
-    odps: { sub: "FROM dws_battle_di WHERE ds = '20260820'", out: { state: 'done', result_id: 'm4', rows: [{ cnt: 9 }] } },
+    odps: { sub: "FROM dws_battle_di WHERE ds='20260820'", out: { state: 'done', result_id: 'm4', rows: [{ cnt: 9 }] } },
     expected: { result_value: 9, match_mode: MatchMode.SCALAR_EXACT }, turns: 1,
   },
   {
     id: 'm05', question: '2026-08-15的DAU', today: '20260820',
     llm: { sql: "SELECT COUNT(DISTINCT user_id) FROM ods_login WHERE ds='20260815'" },
-    odps: { sub: "FROM ods_login WHERE ds = '20260815'", out: { state: 'done', result_id: 'm5', rows: [{ cnt: 11 }] } },
+    odps: { sub: "FROM ods_login WHERE ds='20260815'", out: { state: 'done', result_id: 'm5', rows: [{ cnt: 11 }] } },
     expected: { result_value: 11, match_mode: MatchMode.SCALAR_EXACT }, turns: 1,
   },
 ]

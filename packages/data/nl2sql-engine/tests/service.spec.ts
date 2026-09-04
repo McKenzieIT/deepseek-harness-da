@@ -135,3 +135,14 @@ describe('Nl2sqlEngineService.getConventions — D2 per-call resolution (Phase 6
     expect(() => svc.getConventions()).toThrow('should not be called at construction')
   })
 })
+
+// nl2sql-7: Nl2sqlEngineService.getConventions reads `ctx.query.getConventions`
+// at call time but the class declared no `inject = ['query']`, so Cordis had no
+// static ordering guarantee — a caller invoking getConventions before ctx.query
+// is registered would throw with no framework-level wait. AGENTS.md: a Service
+// that reads another service on `ctx` declares it in `inject`.
+describe('Nl2sqlEngineService — inject declaration (nl2sql-7)', () => {
+  it('declares ctx.query as a dependency (inject includes "query")', () => {
+    expect(Nl2sqlEngineService.inject).toContain('query')
+  })
+})
