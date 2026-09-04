@@ -146,6 +146,27 @@ export function mergeRefs(
   return [...map.values()]
 }
 
+/**
+ * Origin-aware replace: the safe replacement strategy for the explicit
+ * discoverRelations / discoverEventRelations entry. Preserve existing refs
+ * whose origin is manual (and undefined/legacy, treated as manual per
+ * GA-I18N-1's safe default); replace only deterministic/llm-origin refs with
+ * the freshly-discovered set. Curated joins survive a re-discover; stale
+ * machine-generated refs the round no longer reproduces are dropped; manual/
+ * undefined refs are preserved (not auto-cleanable — GA-I18N-1's safe-default
+ * stance extended to the replace path).
+ * @param baseline - the existing DimensionRefs on the table/event.
+ * @param added - the freshly-discovered DimensionRefs.
+ * @returns curated preserved + discovered unioned (deterministic/llm replaced).
+ */
+export function originAwareRefs(
+  baseline: readonly DimensionRef[],
+  added: readonly DimensionRef[],
+): DimensionRef[] {
+  const curated = baseline.filter(r => originPriority(r.origin) >= originPriority('manual'))
+  return mergeRefs(curated, added)
+}
+
 // ── Round 2: LLM-assisted ───────────────────────────────────────────────
 
 /**
@@ -329,8 +350,12 @@ export async function enrichAllDwsTables(
   tables?: readonly string[],
   mergeExisting = false,
   excludeColumnsFn?: (def: TableDefinition) => ReadonlySet<string> | undefined,
-): Promise<{ enriched: number; written: number; errors: string[] }> {
+  preserveCurated = true,
+): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
   const dimInventory = buildDimInventory(semanticLayer)
+  if (dimInventory.length === 0) {
+    return { enriched: 0, written: 0, errors: [], note: 'no DIM tables in scope, nothing to enrich' }
+  }
   const filter = tables !== undefined && tables.length > 0 ? new Set(tables) : undefined
   let enriched = 0
   let written = 0
@@ -345,7 +370,11 @@ export async function enrichAllDwsTables(
     if (r.data.kind === 'dim') continue // only DWS
     try {
       const discovered = await discoverRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
-      const refs = mergeExisting ? mergeRefs(existingRefs(t.raw), discovered) : discovered
+      const refs = mergeExisting
+        ? mergeRefs(existingRefs(t.raw), discovered)
+        : preserveCurated
+          ? originAwareRefs(existingRefs(t.raw), discovered)
+          : discovered
       // write raw + refs (preserves physical types / extra keys; writeTable validates)
       await writeTable(semanticLayer, t.table_name, { ...t.raw, dimension_refs: refs })
       written += 1
@@ -479,8 +508,12 @@ export async function enrichAllEvents(
   events?: readonly string[],
   mergeExisting = false,
   excludeColumnsFn?: (def: EventDefinition) => ReadonlySet<string> | undefined,
-): Promise<{ enriched: number; written: number; errors: string[] }> {
+  preserveCurated = true,
+): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
   const dimInventory = buildDimInventory(semanticLayer)
+  if (dimInventory.length === 0) {
+    return { enriched: 0, written: 0, errors: [], note: 'no DIM tables in scope, nothing to enrich' }
+  }
   const filter = events !== undefined && events.length > 0 ? new Set(events) : undefined
   let enriched = 0
   let written = 0
@@ -494,7 +527,11 @@ export async function enrichAllEvents(
     }
     try {
       const discovered = await discoverEventRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
-      const refs = mergeExisting ? mergeRefs(existingEventRefs(e.raw), discovered) : discovered
+      const refs = mergeExisting
+        ? mergeRefs(existingEventRefs(e.raw), discovered)
+        : preserveCurated
+          ? originAwareRefs(existingEventRefs(e.raw), discovered)
+          : discovered
       const content = dumpYaml({ ...e.raw, external_refs: refs })
       const res = await writeEventYaml(semanticLayer, e.name, content)
       if (res.ok) {

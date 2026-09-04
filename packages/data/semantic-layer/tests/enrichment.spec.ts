@@ -249,6 +249,42 @@ describe('enrichAllDwsTables', () => {
     const dimTables = (out.dimension_refs as Array<{ dim_table: string }>).map(r => r.dim_table).sort()
     expect(dimTables).toEqual(['dim_other', 'dim_server']) // curated dim_other preserved + dim_server rediscovered
   })
+
+  test('replace + preserveCurated=true preserves manual/undefined AND drops stale deterministic/llm', async () => {
+    // origin-aware replace (mergeExisting=false, preserveCurated=true): curated
+    // (manual/undefined) survive, stale auto (deterministic/llm) the round does
+    // not reproduce are dropped, and freshly-rediscovered matches are added.
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dimServerYaml())
+    const curated = {
+      ...dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '区服ID', role: 'dimension' }] }),
+      dimension_refs: [
+        { dim_table: 'dim_curated_undef', join_keys: [{ dws_column: 'c1', dim_column: 'c1' }], derivation: 'curated by analyst' },
+        { dim_table: 'dim_curated_manual', join_keys: [{ dws_column: 'c2', dim_column: 'c2' }], derivation: 'manual', origin: 'manual' },
+        { dim_table: 'dim_stale_det', join_keys: [{ dws_column: 'c3', dim_column: 'c3' }], derivation: 'old det', origin: 'deterministic' },
+        { dim_table: 'dim_stale_llm', join_keys: [{ dws_column: 'c4', dim_column: 'c4' }], derivation: 'old llm', origin: 'llm' },
+      ],
+    }
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(curated))
+    const res = await enrichAllDwsTables(dir, undefined, ['dws_pay'], false, undefined, true)
+    expect(res.errors).toEqual([])
+    expect(res.written).toBe(1)
+    const out = yaml.load(readFileSync(join(dir, 'tables', 'dws_pay.yaml'), 'utf-8')) as Record<string, unknown>
+    const byDim = Object.fromEntries((out.dimension_refs as Array<{ dim_table: string; origin?: string }>).map(r => [r.dim_table, r]))
+    expect(byDim.dim_curated_undef).toBeDefined() // undefined-origin curated preserved
+    expect(byDim.dim_curated_manual?.origin).toBe('manual') // manual curated preserved
+    expect(byDim.dim_stale_det).toBeUndefined() // stale deterministic dropped
+    expect(byDim.dim_stale_llm).toBeUndefined() // stale llm dropped
+    expect(byDim.dim_server).toBeDefined() // rediscovered match present
+  })
+
+  test('empty DIM inventory short-circuits + returns a clear note (writes nothing)', async () => {
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(dws({ table_name: 'dws_pay' })))
+    const res = await enrichAllDwsTables(dir)
+    expect(res.written).toBe(0)
+    expect(res.enriched).toBe(0)
+    expect(res.note).toBeDefined()
+    expect(res.note).toMatch(/no DIM|empty inventory|nothing to enrich/i)
+  })
 })
 
 function event(over: Partial<EventDefinition> = {}): EventDefinition {
@@ -314,6 +350,28 @@ describe('enrichAllEvents', () => {
   test('events? filter enriches only named events', async () => {
     const res = await enrichAllEvents(dir, undefined, ['nonexistent.event'])
     expect(res.written).toBe(0)
+  })
+
+  test('replace + preserveCurated=true preserves manual/undefined external_refs AND drops stale deterministic/llm', async () => {
+    const curated = event({
+      external_refs: [
+        { dim_table: 'dim_curated_undef', join_keys: [{ dws_column: 'c1', dim_column: 'c1' }], derivation: 'curated by analyst' },
+        { dim_table: 'dim_curated_manual', join_keys: [{ dws_column: 'c2', dim_column: 'c2' }], derivation: 'manual', origin: 'manual' },
+        { dim_table: 'dim_stale_det', join_keys: [{ dws_column: 'c3', dim_column: 'c3' }], derivation: 'old det', origin: 'deterministic' },
+        { dim_table: 'dim_stale_llm', join_keys: [{ dws_column: 'c4', dim_column: 'c4' }], derivation: 'old llm', origin: 'llm' },
+      ],
+    })
+    writeFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), dumpYaml(curated))
+    const res = await enrichAllEvents(dir, undefined, ['game.pay.order'], false, undefined, true)
+    expect(res.errors).toEqual([])
+    expect(res.written).toBe(1)
+    const out = yaml.load(readFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), 'utf-8')) as Record<string, unknown>
+    const byDim = Object.fromEntries((out.external_refs as Array<{ dim_table: string; origin?: string }>).map(r => [r.dim_table, r]))
+    expect(byDim.dim_curated_undef).toBeDefined()
+    expect(byDim.dim_curated_manual?.origin).toBe('manual')
+    expect(byDim.dim_stale_det).toBeUndefined()
+    expect(byDim.dim_stale_llm).toBeUndefined()
+    expect(byDim.dim_server).toBeDefined()
   })
 })
 

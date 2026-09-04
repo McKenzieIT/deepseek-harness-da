@@ -623,10 +623,12 @@ export class SemanticLayerService extends Service {
    */
   async discoverRelations(
     opts: { readonly tables?: readonly string[] } = {},
-  ): Promise<{ enriched: number; written: number; errors: string[] }> {
+  ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
     // CL-18 Phase 2: forward the partition-column exclude set so ds/pt/dt
     // partition-column PK matches do not generate noise JOIN relations.
-    return enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, opts.tables, false, buildExcludeColumns)
+    // mergeExisting=false (replace) + preserveCurated=true: origin-aware replace —
+    // preserve manual/undefined curated refs, replace only deterministic/llm (GA-GT3 item 5).
+    return enrichAllDwsTablesFromLayer(this.semanticRoot, this.llmCall, opts.tables, false, buildExcludeColumns, true)
   }
 
   /**
@@ -646,8 +648,10 @@ export class SemanticLayerService extends Service {
    */
   async discoverEventRelations(
     opts: { readonly events?: readonly string[] } = {},
-  ): Promise<{ enriched: number; written: number; errors: string[] }> {
-    return enrichAllEventsFromLayer(this.semanticRoot, this.llmCall, opts.events)
+  ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
+    // origin-aware replace (preserveCurated=true): preserve manual/undefined external_refs,
+    // replace only deterministic/llm (GA-GT3 item 5).
+    return enrichAllEventsFromLayer(this.semanticRoot, this.llmCall, opts.events, false, undefined, true)
   }
 
   /**
