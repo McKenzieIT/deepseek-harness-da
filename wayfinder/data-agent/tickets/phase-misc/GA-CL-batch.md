@@ -128,3 +128,23 @@ Follow-up after `842787c730`. `pnpm typecheck` (pre-push gate = `tsc -b host` + 
 **GA-CL8 ticket Resolved**: `GA-CL8-eval-cli-responder-config.md` status Open → Resolved (round 5 `842787c730` did eval-cli 3/3); caveat noted in the ticket: dashscope hard import (line ~272 `await import('@deepseek-ai/dsh-llm-dashscope')`) + `DASHSCOPE_API_KEY` gate still in (GA-GT2 hard-import scope, not CL8).
 
 **Verification (full pre-push typecheck — all green)**: `pnpm typecheck` = `tsc -b tsconfig.host.json` (**0 errors**) + `tsdown --env.DSH_BUILD_FACE host` (**Build complete**) + `tsc -b tsconfig.client.json` (**0 errors**, was 3 in apply.client.spec.ts). apply.client vitest 2 passed. **pre-push typecheck gate now fully passes.**
+
+---
+
+## 新增待办 — CL19: 删除 `buildEvalPrompt` 死代码（2026-09-03，Kind 1 grilling 产出；**已按 code review 下调价值**）
+
+**来源**: [GA-GRILL2](GA-GRILL2-i18n-architecture.md) Kind 1 重新评估 · [kind1-grilling-brief.md](../../research/kind1-grilling-brief.md) §1
+
+`packages/data/nl2sql-engine/src/prompt.ts:180` `buildEvalPrompt` **无任何运行时调用方**：
+
+- `engine.ts:35` 只 import `buildPrompt`，`engine.ts` 内零处引用 `buildEvalPrompt`
+- 生产引用为零；其余引用全在测试与导出面：barrel export `src/index.ts:39`、`tests/prompt.spec.ts`（8 处，**逐字节 pin 输出**）、`tests/ontology-enrichment.spec.ts`（5 处）、`wayfinder/.../arm-c-english/prompt-variant.ts`（注释）
+
+**⚠ 本条原写的三条理由中有两条经 code review 证伪，已删除**（记录以免重犯）：
+
+- ~~「它含 314/1161 = 27% 的 LLM-facing 中文」~~ —— 数字来自未经复核的转述。实测：`prompt.ts` 全文 **782 个汉字**，`buildEvalPrompt` 约 **85 个 = 10.9%**，非 27%。
+- ~~「它把八条核心规则复制了第二份，且无测试保证一致」~~ —— **完全错误**。`renderCoreRules(isTrend)` 是**共享函数**（`prompt.ts:53`），`buildPrompt:139` 与 `buildEvalPrompt:198` 调用的是**同一个**；`renderCandidates` 亦共享（`:27`）。nl2sql-4 refactor 已做过 dedup，一致性由构造保证。且 `tests/prompt.spec.ts` 明确是 "exact-output pin (nl2sql-4 refactor guard)"，**两个函数的输出都被逐字节 pin 住**。
+
+**剩下的真实理由（价值有限）**：它是生产死代码，读者会误以为 eval 走的是它。
+
+**因此本条降级为低优先级洁癖项**，且删除有实际代价：`prompt.spec.ts` 的输出 pin 与 `ontology-enrichment.spec.ts` 的 5 处断言需一并处理，而那些 pin 正在守护 `renderCoreRules`/`renderCandidates` 的共享重构。**建议：除非有人明确要清理，否则不做。**
