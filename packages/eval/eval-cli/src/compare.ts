@@ -33,6 +33,58 @@ interface RunResult {
     wrong: number
     pass_rate: number
   }
+  /**
+   * Run protocol, persisted since 2026-09-04. Absent on the ~169 runs recorded
+   * before that, which is why `describeProtocol` reports "unknown" rather than
+   * assuming a default.
+   */
+  config?: {
+    pass_k?: number
+    verdict_semantics?: string
+  } | null
+}
+
+/** Human-readable protocol tag, or null when the run predates `config`. */
+function describeProtocol(run: RunResult): string | null {
+  const k = run.config?.pass_k
+  const semantics = run.config?.verdict_semantics
+  if (k === undefined && semantics === undefined) return null
+  return `pass_k=${k ?? '?'} ${semantics ?? '?'}`
+}
+
+/**
+ * Refuse to silently compare runs measured under different protocols.
+ *
+ * A k=1 run and a k=3 pass^k run of identical code differ by ~12pp on k11-v2
+ * (pass^k requires every attempt to pass; 31.5% of cases are non-deterministic).
+ * Diffing across that boundary reports a protocol artifact as a quality delta —
+ * exactly the trap that `scripts/run-eval.sh --pass-k 1` left behind while the
+ * recorded baseline moved to pass^k.
+ *
+ * Known-and-different is an error (definitely wrong). Unknown is a warning
+ * (merely unverifiable) so historical baselines stay diffable.
+ */
+function checkProtocolMatch(runA: RunResult, runB: RunResult): void {
+  const a = describeProtocol(runA)
+  const b = describeProtocol(runB)
+
+  if (a !== null && b !== null && a !== b) {
+    console.error('\n  ✗ PROTOCOL MISMATCH — these runs are not comparable')
+    console.error(`      A (${runA.run_id}): ${a}`)
+    console.error(`      B (${runB.run_id}): ${b}`)
+    console.error('    A k=1 vs k=3 pass^k gap is ~12pp of protocol, not quality.')
+    console.error('    Re-run one side under the other\'s protocol, or pass')
+    console.error('    --allow-protocol-mismatch if you know what you are doing.\n')
+    if (!process.argv.includes('--allow-protocol-mismatch')) process.exit(2)
+  } else if (a === null || b === null) {
+    const which = a === null && b === null
+      ? 'neither run records'
+      : `${a === null ? 'A' : 'B'} does not record`
+    console.log(`\n  ⚠ protocol unverified: ${which} its run config (pre-2026-09-04).`)
+    console.log(`      A: ${a ?? 'unknown'}    B: ${b ?? 'unknown'}`)
+    console.log('    If one is k=1 and the other k=3 pass^k, the delta below is')
+    console.log('    ~12pp of protocol artifact. Check the run\'s provenance.')
+  }
 }
 
 type Category = 'Original' | 'Alias' | 'Voice EXEC' | 'Voice DELIVERY' | 'Voice'
@@ -127,6 +179,8 @@ export function compareRuns(runIdA: string, runIdB: string, dir: string): void {
   const runA = loadRun(fileA)
   const runB = loadRun(fileB)
 
+  checkProtocolMatch(runA, runB)
+
   const repoRoot = findRepoRoot()
   const defaultCasesDir = join(repoRoot, 'packages/eval/eval/cases/k11-v2')
   let deliveryIds: Set<string> | null = null
@@ -143,6 +197,7 @@ export function compareRuns(runIdA: string, runIdB: string, dir: string): void {
   console.log('\n  Eval Run Comparison')
   console.log(`  A (baseline): ${runA.run_id}  (${runA.timestamp})`)
   console.log(`  B (new):      ${runB.run_id}  (${runB.timestamp})`)
+  console.log(`  Protocol:     A=${describeProtocol(runA) ?? 'unknown'}  B=${describeProtocol(runB) ?? 'unknown'}`)
   console.log()
 
   // Overall

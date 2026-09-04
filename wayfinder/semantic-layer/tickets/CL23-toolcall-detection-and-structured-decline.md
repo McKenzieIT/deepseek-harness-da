@@ -100,3 +100,32 @@ if (result.decline && result.sql && looksLikeToolCall(result.sql)) {
 **结论：本票的验收阈值按 `run-eval.sh`（k=1）+ CL-22 的 ≥3 run 中位数口径，原样有效，
 无需重设，也无需重跑基线。** 若将来决定把验收切到 k=3+pass^k（更严的可靠性口径），
 则须整体重设阈值并重建基线——那是一次独立的口径变更决策，不在本票范围。
+
+## 2026-09-04 更正:上一段结论错误 —— 阈值**确实**已重设(按 pass^k)
+
+上一段(「阈值不需要重设」)**是错的,已作废**。三处事实纠正:
+
+1. **k=1 不是标准,是偏离。** CLI 默认就是 `--pass-k 3`(`main.ts:72`,help:
+   "Pass@K attempts per case [default: 3]"),`DEFAULT_PASS_K = 3`,且
+   **SPEC §6.5 / D9 Q2 明确规定 pass^k、k=3**("Three is D9's number")。
+   `run-eval.sh` 的 `--pass-k 1` 是为"对齐旧基线"临时加的——循环论证
+   (基线是 k=1 因为 wrapper 是 k=1)。**已修复:该 flag 已移除**,恢复 k=3。
+2. **切换已经发生。** 当前基线是 `rebaseline-passk-168-clean` = **61.9%**
+   (pass@3 pass^k,conc=3,零污染,commit `56c74aebae`)。
+   `packages/eval/eval-cli/README.md` 已声明 "pass^k semantics is LIVE",
+   且**目标值已按 pass^k 重设**:Overall **60%/70%/85%**、
+   Original **65%/75%/88%**(标注 proposed, pending PM sign-off),
+   旧的 best-of-k 目标(75/80/90)已标 superseded。
+3. **"pass^k 方差更大"的反对理由不成立(方向搞反了)。** 实测 exp4-arm-a:
+   k=1 三个 attempt slot 的 pass rate 为 71.4/73.8/75.6%(极差 **4.2pp**),
+   pass^k bootstrap 2000× 的 90% 区间 **5.4pp** —— **量级相当**。
+   pass^k 会把 p≈0.5 的边界 case 推向稳定失败(p³≈0.125),反而更一致。
+
+**真正的数字:每 case 通过次数分布 20/20/33/95 → 53/168 = 31.5% 的 case 不确定
+(3 次里通过 1 或 2 次)。** k=1 把这 31.5% 完全藏起来,随机给它们记分,于是报
+71-76%,而真正可靠通过的只有 95/168 = 56.5%。对一个用户要信任其数字的取数 agent,
+"三次里对一次"比"一直错"更危险——后者可发现,前者会被当成正确答案用。
+
+**本票验收口径:以 README 的 pass^k 目标为准**(不要另发明数字),
+基线 = `rebaseline-passk-168-clean` 61.9%,并按 CL-22 的 ≥3 run 中位数执行。
+`pass_k=3` 管单 run 内抖动、`≥3 run 中位数` 管 run 间抖动,二者正交可叠加。
