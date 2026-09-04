@@ -4276,10 +4276,6 @@ importers:
         version: link:../../util/launch-environment
 
   packages/data/admin:
-    dependencies:
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -4372,10 +4368,6 @@ importers:
         version: link:../../query/query-maxcompute
 
   packages/data/patrol-mode:
-    dependencies:
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -4420,9 +4412,6 @@ importers:
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
-      '@deepseek-ai/dsh-scope-registry':
-        specifier: workspace:^
-        version: link:../scope-registry
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../semantic-layer
