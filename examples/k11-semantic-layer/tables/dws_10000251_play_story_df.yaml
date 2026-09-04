@@ -86,6 +86,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id (区服id，key) is the server foreign key; dim_10000251_server_info has PK server_id and provides 区服名称/开服时间 per its description.
+    origin: deterministic
 pref_label: 玩法剧情总表
 alt_labels:
   - 剧情

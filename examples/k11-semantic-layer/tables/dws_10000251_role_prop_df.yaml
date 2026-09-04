@@ -64,6 +64,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (comment 区服id) is an exact name match to the primary key server_id of dim_10000251_server_info, the 服务器(区服)维度配置表 described as purpose-built for fact-table server_id JOIN.
+    origin: deterministic
 pref_label: 玩家资产表
 alt_labels:
   - 资产

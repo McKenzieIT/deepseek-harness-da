@@ -126,8 +126,10 @@ external_refs:
       - dws_column: value
         dim_column: value
     derivation: 确定性：事件字段 value 与 dim_10000251_trans_item_df 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_item_df_arch
     join_keys:
       - dws_column: value
         dim_column: value
     derivation: 确定性：事件字段 value 与 dim_10000251_trans_item_df_arch 主键精确同名
+    origin: deterministic

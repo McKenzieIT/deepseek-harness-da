@@ -87,11 +87,13 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (区服id) exactly matches the PK server_id of dim_10000251_server_info, which is the区服维度表 for JOIN回填区服名称与开服时间.
+    origin: deterministic
   - dim_table: dim_10000251_com_recharge_info
     join_keys:
       - dws_column: recharge_id
         dim_column: recharge_id
     derivation: DWS column recharge_id (商品配置id/充值礼包配置id) exactly matches the PK recharge_id of dim_10000251_com_recharge_info, the商业化礼包信息维表 explicitly intended for事实表通过 recharge_id JOIN查询礼包维度属性.
+    origin: deterministic
   - dim_table: dim_10000251_trans_recharge_shop_df
     join_keys:
       - dws_column: shop_id

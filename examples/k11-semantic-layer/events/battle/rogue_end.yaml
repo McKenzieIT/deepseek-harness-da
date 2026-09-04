@@ -168,8 +168,10 @@ external_refs:
       - dws_column: difficulty
         dim_column: difficulty
     derivation: 确定性：事件字段 difficulty 与 dim_10000251_trans_rogue_df 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_rogue_df_arch
     join_keys:
       - dws_column: difficulty
         dim_column: difficulty
     derivation: 确定性：事件字段 difficulty 与 dim_10000251_trans_rogue_df_arch 主键精确同名
+    origin: deterministic
