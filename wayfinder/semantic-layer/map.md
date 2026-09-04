@@ -148,6 +148,8 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 
 
 
+- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; merge 阻于仓库 CI runner 基建(`dsh-ubuntu-24-04-16core` label 无在线 runner, 非代码)
+
 ### 2026-09-03/04 运行时审计（「语义层按钮消失」根因 + 三处客户端断链 + pass^k 重打分）
 
 - **「按钮消失」真因 = `--profile web` 冷启动失败,非按钮代码** → [CB-1](tickets/CB1-cold-boot-blockers.md)。按钮注册链路全绿(slot 注册/boot manifest/5 个 inject/served bundle md5 匹配/mode B),但冷启动有**两个独立 blocker**,任一触发即令 `data-agent` include 组**整组不挂载**,连带 `ui-semantic-layer` 消失(base 树已挂载 → app 照常打开,只是 data-agent 的一切都没了)。用户 3080 上的进程是 8/31 15:56 启动的**幸存者**,早于两 blocker 落地,故它至今仍渲染按钮(headless DOM 实证)——一旦重启即消失。① `duplicate loader entry id: result-cache`(web-app:300 客户端对象缓存 vs data-agent 服务端 seam,随 T9 `9ab8189b0b` 落地)→ **已修**(改名 `result-cache-memory`,commit `60740d5197`);② `enrichment-llm-wiring: no provider/model configured`(CL-8 移除静默默认改 fail-loud,但 `ENRICHMENT_LLM_*` 全仓无处提供)→ **决策=graceful degrade(α:apply 期 throw→ctx.logger.warn+跳过 wire,非致命;substrate 不动;boot warn 为 surface)**,落地见 [CB-1a](tickets/CB1a-cold-boot-stabilization.md);设置项路线(CB-2)推迟(插件未接 ctx.settings,pull-based,需改代码非只加 UI)。
