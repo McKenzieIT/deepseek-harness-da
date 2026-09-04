@@ -20,6 +20,14 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
+    /**
+     * Emitted when an eval run finishes and every case is persisted, so the
+     * evidence-query sidebar / dashboard can auto-refresh coverage and
+     * pass-rate views without polling. Carries no payload — a listener that
+     * needs the run id reads it from the eval store.
+     *
+     * @mode emit
+     */
     'evidence/eval-run-completed'(): void
   }
 }

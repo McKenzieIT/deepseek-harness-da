@@ -383,6 +383,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Root interface of the unified API. New client-request domain = one new file pair + one field here + one map row.',
     methods: [
       {
+        signature: 'results: ResultsApi',
+        description: 'Resolve a cached query/compute result by id (unary; the miss path for the client result-cache).',
+        parameters: [],
+      },
+      {
         signature: 'downloads: DownloadsApi',
         description: 'Host-only download surfaces (GET, no wire envelope); absent from IApiClient.',
         parameters: [],
@@ -686,7 +691,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'embedder',
     summary: 'Abstract embedder service.',
-    description: 'Abstract embedder service. Providers implement `embed` (async — HTTP inference must not block the event loop). `dim` is informational and MAY be `undefined` until the first embed discovers it (HTTP embedder); consumers infer the working dimension from the embedded vectors\' length rather than reading `dim` upfront.',
+    description: 'Abstract embedder service. Providers implement `embed` (async — HTTP inference must not block the event loop). Consumers infer the working dimension from the embedded vectors\' length.',
     methods: [
       {
         signature: 'abstract embed(texts: readonly string[]): Promise<EmbedResult>',
@@ -708,21 +713,21 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the service\'s eval result store.',
       },
       {
-        signature: 'coverageQuery(): EnrichedCoverageStats',
+        signature: 'coverageQuery(scopeId?: string): EnrichedCoverageStats',
         description: 'Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats() but enriches with confirmation.status breakdown across all assets.',
-        parameters: [],
+        parameters: [{ name: 'scopeId', description: 'GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'aggregated table/event/metric counts plus per-domain and confirmation-status tallies.',
       },
       {
-        signature: 'gapAnalysis(assetId: string): GapAnalysisResult',
+        signature: 'gapAnalysis(assetId: string, scopeId?: string): GapAnalysisResult',
         description: 'Gap analysis: given an asset, compute which other assets are reachable via RelationGraph joins but have no eval case coverage.',
-        parameters: [{ name: 'assetId', description: 'the source asset to compute reachable-but-uncovered gaps from.' }],
+        parameters: [{ name: 'assetId', description: 'the source asset to compute reachable-but-uncovered gaps from.' }, { name: 'scopeId', description: 'GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'the source asset plus the list of reachable assets lacking eval coverage (with join paths).',
       },
       {
-        signature: 'reachabilityDelta(newRelation: ProposedRelation): ReachabilityDeltaResult',
+        signature: 'reachabilityDelta(newRelation: ProposedRelation, scopeId?: string): ReachabilityDeltaResult',
         description: 'Reachability delta: "if we add this relation, which asset pairs become newly reachable via joins?" Clones the current graph, adds the proposed relation, and compares BFS reachability before/after.',
-        parameters: [{ name: 'newRelation', description: 'the proposed relation to add before recomputing reachability.' }],
+        parameters: [{ name: 'newRelation', description: 'the proposed relation to add before recomputing reachability.' }, { name: 'scopeId', description: 'GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'the proposed relation plus the asset pairs newly reachable via joins after adding it.',
       },
       {
@@ -738,9 +743,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the run ids, the flipped cases, and improved/regressed/unchanged counts.',
       },
       {
-        signature: 'assetHealth(assetId: string): AssetHealthReport | null',
+        signature: 'assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null',
         description: 'Asset health: aggregate report for a single asset — confirmation status, has_eval_coverage, relation_count, last_modified.',
-        parameters: [{ name: 'assetId', description: 'the table, event, or metric asset to report on.' }],
+        parameters: [{ name: 'assetId', description: 'the table, event, or metric asset to report on.' }, { name: 'scopeId', description: 'GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'the aggregate health report, or null when no table/event/metric matches assetId.',
       },
     ],
@@ -1097,6 +1102,43 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'managementSession',
+    summary: 'Management Session Service: creates dedicated agent sessions scoped to the `semantic-layer-management` preset for the full-screen graph management UI.',
+    description: 'Management Session Service: creates dedicated agent sessions scoped to the `semantic-layer-management` preset for the full-screen graph management UI.\n\n- `create()` — opens a new management session\n- `destroy(sessionId)` — tears down a management session\n- `getActive()` — returns the currently active management session (if any)\n\nTool gating is handled by the preset: the management session is composed from the `semantic-layer-management` agent preset which only exposes the management-relevant tools.',
+    methods: [
+      {
+        signature: 'create(opts?: CreateManagementSessionOptions): ManagementSessionDescriptor',
+        description: 'Create a new management session scoped to the semantic-layer-management preset tools.\n\nWhen `parentSessionId` is provided, derives a read-only summary of the parent session\'s recent conversation and includes it in the management session\'s creation metadata. This is a one-time snapshot at creation, not live-updating.',
+        parameters: [{ name: 'opts', description: 'creation options.' }],
+        returns: 'the management session descriptor. Multiple management sessions may be active concurrently; this method does not reject when one is already active (use {@link getActive} for the most recent). When `parentSessionId` is provided but no such session exists in the store, creation proceeds without a parent context summary (no throw).',
+      },
+      {
+        signature: 'destroy(sessionId: string): void',
+        description: 'Tear down a management session.',
+        parameters: [{ name: 'sessionId', description: 'the management session to destroy.' }],
+        throws: ['if the session id does not correspond to an active management session.'],
+      },
+      {
+        signature: 'getActive(): ManagementSessionDescriptor | undefined',
+        description: 'Returns the currently active management session, or undefined if none. When multiple management sessions are active, returns the most recently created one.',
+        parameters: [],
+        returns: 'the most recently created active descriptor, or `undefined` when none is active.',
+      },
+      {
+        signature: 'listActive(): ManagementSessionDescriptor[]',
+        description: 'Returns all active management sessions.',
+        parameters: [],
+        returns: 'the descriptors of every currently active management session.',
+      },
+      {
+        signature: 'isManagementSession(sessionId: string): boolean',
+        description: 'Check if a given session id belongs to an active management session.',
+        parameters: [{ name: 'sessionId', description: 'the session id to test.' }],
+        returns: 'whether `sessionId` is an active management session.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -1124,13 +1166,54 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'nl2sql',
     summary: 'The nl2sql-engine Cordis `Service`.',
-    description: 'The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-gate hooks); holds the loaded conventions + exposes them for the preset / phase-gate. The logic functions are standalone exports (above); this service is the mount point + `ctx.nl2sql` seam. The `search_data_sources` model-facing tool registration is deferred (see module doc).',
+    description: 'The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-gate hooks); holds no conventions state — `getConventions` resolves per-call from the injected query engine (`ctx.query.getConventions`) — and exposes them for the preset / phase-gate. The logic functions are standalone exports (above); this service is the mount point + `ctx.nl2sql` seam. The `search_data_sources` model-facing tool registration is deferred (see module doc).',
     methods: [
       {
         signature: 'getConventions(scopeId?: string): EngineConventions',
-        description: 'The loaded per-engine conventions (prompt dialect grounding), resolved per-call from ctx.query (not construction-time cached). The optional scopeId is a dormant per-request-scope seam (current providers ignore it).',
-        parameters: [{ name: 'scopeId', description: 'Optional per-request-scope key (dormant seam; forwarded to ctx.query.getConventions — current providers ignore it).' }],
+        description: 'The loaded per-engine conventions (prompt dialect grounding), resolved per-call from the injected query engine — NOT construction-time cached.\n\nD2 (GA-GT1 Phase 6): the previous implementation cached `ctx.query.getConventions()` in the constructor and returned the frozen value here, so a singleton `ctx.query` made every tenant/scope share one conventions set (cross-line coupling). This delegates to `ctx.query.getConventions(scopeId)` on every call so a future per-scope engine mapping is honored without a service rebuild. The `scopeId` is threaded end-to-end from the caller but ignored by current concrete providers (dormant seam — undefined yields the provider\'s single loaded set; behavior unchanged today, just no longer frozen at construction).',
+        parameters: [{ name: 'scopeId', description: 'Optional per-request-scope key (dormant seam; forwarded to `ctx.query.getConventions(scopeId)` — current providers ignore it).' }],
         returns: 'The resolved per-engine conventions for the active scope.',
+      },
+    ],
+  },
+  {
+    key: 'patrol',
+    summary: 'Patrol Mode service — autonomous patrol loop for iterative semantic layer improvement.',
+    description: 'Patrol Mode service — autonomous patrol loop for iterative semantic layer improvement. Registered at `ctx.patrol`.\n\nThe patrol loop: 1. Finds weakest assets via evidenceQuery (assetHealth / gapAnalysis) 2. For each weak asset (up to maxEditsPerRound): a. Diagnoses via management session b. Proposes fix and emits confirm request event c. Waits for user confirm (timeout 60s -> reject + pause) d. If confirmed: executes edit 3. After edits: triggers eval on modified assets (C3) 4. Emits round-complete event (for C2 batch rendering) 5. Waits for next round or continues if auto',
+    methods: [
+      {
+        signature: 'start(opts?: PatrolConfig): void',
+        description: 'Start the autonomous patrol loop.',
+        parameters: [{ name: 'opts', description: 'optional patrol configuration overrides.' }],
+        throws: ['if patrol is already running.'],
+      },
+      {
+        signature: 'async stop(): Promise<void>',
+        description: 'Stop the patrol loop. Cleans up pending confirms and resets state.\n\nAwaits the still-running runLoop so a rapid start() cannot spawn a second concurrent loop whose in-flight continuations would mutate state after it has been reset here. runLoop never rejects.',
+        parameters: [],
+      },
+      {
+        signature: 'isRunning(): boolean',
+        description: 'Returns whether the patrol loop is currently active (running, paused, or awaiting confirmation).',
+        parameters: [],
+        returns: 'whether the patrol loop is in a non-idle state.',
+      },
+      {
+        signature: 'getState(): PatrolState',
+        description: 'Returns the current patrol state.',
+        parameters: [],
+        returns: 'the current `PatrolState` (idle/running/paused/awaiting-confirm).',
+      },
+      {
+        signature: 'async handleBtw(message: string): Promise<void>',
+        description: 'Process a "by the way" user message during an active patrol.\n\nPer S3: the message is handled as a one-off request via the management session. The patrol context is preserved and the loop resumes after the btw is handled.\n\nOnly explicit "停止巡检"/"stop patrol" terminates the loop.',
+        parameters: [{ name: 'message', description: 'the user\'s btw message.' }],
+      },
+      {
+        signature: 'respondToConfirm(decision: \'confirmed\' | \'rejected\'): void',
+        description: 'Respond to a pending confirmation request.',
+        parameters: [{ name: 'decision', description: '\'confirmed\' or \'rejected\'.' }],
+        throws: ['if there is no pending confirmation.'],
       },
     ],
   },
@@ -1225,6 +1308,36 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'tableName', description: 'The bare table name to qualify.' }, { name: 'override', description: 'Optional per-table project override (wins over defaultProject).' }],
         returns: 'The qualified `<project>.<tableName>`, or the bare `tableName` when no project resolves.',
       },
+      {
+        signature: 'getConventions(scopeId?: string): EngineConventions',
+        description: 'The per-engine convention set for the nl2sql prompt dialect grounding (key_differences / functions / cast_map / sql_templates) + the future query-guard/cost/dialect consumer. D1 (GA-GT2-impl): the *types* live in the abstract package (`./conventions.ts`); a concrete provider subclass overrides this to return its locally-loaded convention set (the YAML-loading runtime stays the provider\'s concern). Default throws so a provider that does not ground a dialect surfaces the gap loudly rather than silently injecting an empty conventions block.\n\nD2 (GA-GT1 Phase 6): the optional `scopeId` is a per-request-scope seam — callers thread the active scope so a future per-scope engine mapping can return a different convention set per tenant/scope without the consumer (`Nl2sqlEngineService`) caching at construction. Concrete providers TODAY ignore `scopeId` (return their single loaded dialect); the param is a dormant forward-looking seam (additive, undefined → current behavior). A provider that wants per-scope conventions overrides `getConventions(scopeId)` and reads scope metadata; until then the `scopeId` is threaded end-to-end but unused at the terminal.',
+        parameters: [{ name: 'scopeId', description: 'Optional per-request-scope key (dormant seam; ignored by current concrete providers — undefined yields the provider\'s single loaded convention set).' }],
+        returns: 'The resolved per-engine convention set for this concrete provider.',
+      },
+    ],
+  },
+  {
+    key: 'resultCache',
+    summary: 'Abstract result cache service.',
+    description: 'Abstract result cache service. Subclass, implement get/put/has, and load the subclass as a plugin — it registers as `ctx.resultCache`.\n\nSemantics every implementation must honor:\n\n- get returns the entry for `resultId`, or `undefined` if not found. The caller decides whether a missing id is an error.\n- put stores an entry under `resultId`. Idempotent when the entry is identical; throws when a DIFFERENT entry is stored under an existing id (immutable-once-written).\n- has returns whether an entry exists for `resultId`.',
+    methods: [
+      {
+        signature: 'abstract get(resultId: string): ResultEntry | undefined',
+        description: 'Read the cached entry for a result id.',
+        parameters: [{ name: 'resultId', description: 'the result id to read.' }],
+        returns: 'the stored entry, or `undefined` when no entry is cached under `resultId`.',
+      },
+      {
+        signature: 'abstract put(resultId: string, entry: ResultEntry): void',
+        description: 'Store a result entry under its id. `cr_` (compute-derived) ids are immutable-once-written: a different entry under an existing `cr_` id throws; `qr_` (query-derived) ids overwrite with the latest entry.',
+        parameters: [{ name: 'resultId', description: 'the result id to store under.' }, { name: 'entry', description: 'the result entry to cache.' }],
+      },
+      {
+        signature: 'abstract has(resultId: string): boolean',
+        description: 'Test whether an entry is cached for a result id.',
+        parameters: [{ name: 'resultId', description: 'the result id to test.' }],
+        returns: 'whether an entry is cached under `resultId`.',
+      },
     ],
   },
   {
@@ -1275,16 +1388,28 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-engine schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.',
     methods: [
       {
+        signature: 'resolveScopeRoot(scopeId?: string): string',
+        description: 'GA-GT1 Phase 5a: PUBLIC per-scope root-resolution seam. Delegates to the private `resolveRoot` (4-branch semantics unchanged) so consumer packages (tool-retrieve/tool-search-data-sources/tool-search-schema enrichedLinkers + retrieval-inproc scopedRetrievers) can resolve a scope\'s root for the #19/#22 root-check fix (5b adds `root` to the per-scope cache entry + checks `entry.root === root` — parity with the Phase 2 I-1 `graphCacheByScope` root guard). Dormant in 5a: no consumer calls it yet; the method is exposed now so 5b can wire it through `SchemaCorpusSource`.\n\n4 branches (same as `resolveRoot`): - scopeId undefined → active scope\'s root (backward-compatible). - scopeId provided + registry mounted + scope found → that scope\'s root. - scopeId provided + registry mounted + scope NOT found → throw (intranet-security: refuse silent fallback to active scope to prevent cross-tenant corpus leak). - scopeId provided + registry unmounted → active/cfg root (test stand-in).',
+        parameters: [{ name: 'scopeId', description: 'optional scope id; omit for the active scope.' }],
+        returns: 'the resolved semantic-layer root path.',
+      },
+      {
         signature: 'getRegistry(): DataSourceRegistry',
         description: 'The live data-source-kind registry (events/tables/metrics plugins registered at construction).',
         parameters: [],
         returns: 'the live data-source-kind registry.',
       },
       {
-        signature: 'getRelationGraph(): RelationGraph',
-        description: 'The live relation graph: bidirectional adjacency over every table\'s `dimension_refs` (joins), every event\'s `external_refs` (joins), and every metric\'s `relations` (derived_from). Cached; rebuilt when the layer\'s corpus-version counter advances (a write bumps it via `invalidateCaches`). Events only enter the graph once `enrichAllEvents` has written their `external_refs` (Part B).',
-        parameters: [],
+        signature: 'getRelationGraph(scopeId?: string): RelationGraph',
+        description: 'The live relation graph: bidirectional adjacency over every table\'s `dimension_refs` (joins), every event\'s `external_refs` (joins), and every metric\'s `relations` (derived_from). Cached; rebuilt when the layer\'s corpus-version counter advances (a write bumps it via `invalidateCaches`). Events only enter the graph once `enrichAllEvents` has written their `external_refs` (Part B).\n\nGA-GT1 Phase 2 (D4 β): an optional `scopeId` resolves a per-request scope\'s root (via `resolveRoot`); the no-arg path is unchanged (active scope, single instance cache — backward-compatible). The scopeId path uses a separate per-scope cache (`graphCacheByScope` — plain Map, LRU eviction deferred to Phase 3/4) keyed by scopeId + root + `corpusVersionForRoot(root)`. The root is part of the cache key so re-registering the scope with a different `semanticRoot` invalidates the entry even when the new root\'s content counter is still 0 (I-1: cross-tenant corpus leak guard). It is acceptable that `getRelationGraph()` and `getRelationGraph(activeId)` produce separate cache entries for the same active scope (data is identical; duplicate entry is harmless — Phase 3/4 cleanup unifies the two paths).',
+        parameters: [{ name: 'scopeId', description: 'optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'the cached `RelationGraph`, rebuilt when stale.',
+      },
+      {
+        signature: 'getDanglingDomainRefs(): string[]',
+        description: 'CL-2 D2: dangling domain→concept references collected during the last `getRelationGraph()` build — assets whose `domains` reference a concept name with no matching definition in concepts/. Such refs are skipped (warned) rather than aborting the graph build, so valid assets still get their edges. Empty when all domain refs resolve or no concepts are loaded.\n\nM-1: `danglingDomainRefs` is shared INSTANCE state — `buildGraph` is now called by BOTH the no-arg + scopeId paths of `getRelationGraph`, so this reflects the last build ACROSS ALL SCOPES (whichever `getRelationGraph` call ran last), NOT a per-scope view. Per-scope keying of this health surface is deferred to Phase 3/4 (scope count is small; the leak guard is on the graph cache, not this health-check surface).',
+        parameters: [],
+        returns: 'a snapshot of the dangling refs (`asset="..." domain="..."`) from the last build (across all scopes).',
       },
       {
         signature: 'loadRetrievalCorpusAll(): CorpusItem[]',
@@ -1315,15 +1440,21 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: '`enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.',
       },
       {
+        signature: 'async discoverAltLabels( opts: { readonly tables?: readonly string[]; readonly events?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>',
+        description: 'CL-1 Phase 3: discover alt_labels (SKOS aliases) for definitions in the layer. Two-round strategy: deterministic extraction from description/columns/ domains + optional LLM semantic suggestions. Merges with existing labels (never removes curated aliases).',
+        parameters: [{ name: 'opts', description: 'optional filters: `tables` (table_names) and/or `events` (event names).' }],
+        returns: 'combined `enriched` + `written` + `errors` across tables and events.',
+      },
+      {
         signature: 'loadEventDefinition(name: string): EventDefinition | null',
         description: 'Load a validated event definition by name from the substrate.',
         parameters: [{ name: 'name', description: 'the event `name` key to match.' }],
         returns: 'the parsed `EventDefinition`, or null when no event matches.',
       },
       {
-        signature: 'loadTableDefinition(name: string): TableDefinition | null',
+        signature: 'loadTableDefinition(name: string, scopeId?: string): TableDefinition | null',
         description: 'Load a validated table definition by name from the substrate.',
-        parameters: [{ name: 'name', description: 'the table `table_name` key to match.' }],
+        parameters: [{ name: 'name', description: 'the table `table_name` key to match.' }, { name: 'scopeId', description: 'GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'the parsed `TableDefinition`, or null when no table matches.',
       },
       {
@@ -1333,15 +1464,33 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the parsed `MetricDefinition`, or null when no host table/event defines a metric with this name.',
       },
       {
-        signature: 'loadRetrievalCorpus(): readonly EventCorpusItem[]',
-        description: 'D2e (2026-08-21): build an enriched retrieval corpus from the substrate — each event\'s `params_fields` (field name + description) + `terminology` slang packed into the indexed `description`; `domain` is NOT indexed (probe refuted it). D2h: the `corpusVariant` mount-time config selects the slices — \'params+term\' (default, shipped) packs params_fields + slang; \'term-only\' (D2g verdict (A) higher-recall) packs slang only, dropping params_fields. This is the corpus feed the real-default prefetch path (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when `ctx.schema` is unmounted (bundle opt-in), the tool\'s corpus stays empty (current behavior) — enrichment activates on mount. Empty `semanticRoot` yields an empty corpus.',
-        parameters: [],
+        signature: 'loadConceptDefinition(name: string): import(\'./types.ts\').ConceptDefinition | null',
+        description: 'Load a validated concept definition by name from the substrate.',
+        parameters: [{ name: 'name', description: 'the concept `name` key to match.' }],
+        returns: 'the parsed `ConceptDefinition`, or null when no concept matches.',
+      },
+      {
+        signature: 'loadRetrievalCorpus(scopeId?: string): readonly EventCorpusItem[]',
+        description: 'Build an enriched retrieval corpus from the substrate — each event\'s `alt_labels` (SKOS aliases) + `params_fields` packed into the indexed `description`. The `corpusVariant` config selects slices: \'params+term\' (default) packs both; \'term-only\' packs aliases only.',
+        parameters: [{ name: 'scopeId', description: 'GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.',
       },
       {
-        signature: 'corpusVersion(): number',
+        signature: 'acquireSnapshot(scopeId?: string): DefinitionSnapshot',
+        description: 'W11 C1: Capture a point-in-time snapshot of the semantic layer definitions. The returned `DefinitionSnapshot` provides the same read API (`loadTableDefinition`, `loadEventDefinition`, `loadMetricDefinition`, `loadRetrievalCorpus`) but the data is pinned at the version when captured. Subsequent `invalidateCaches()` calls (from management-session writes) do NOT affect the returned snapshot. The next call to `acquireSnapshot` after a write sees the new data.\n\nCheap: if the corpus version has not changed since the last call, the cached data arrays are reused (no disk re-scan).\n\nGA-GT1 Phase 2: an optional `scopeId` resolves a per-request scope\'s root + corpus version (via `resolveRoot`/`corpusVersion(scopeId)`); the no-arg path is unchanged (active scope — backward-compatible).',
+        parameters: [{ name: 'scopeId', description: 'optional scope id; omit to use the active scope (backward-compatible).' }],
+        returns: 'a frozen `DefinitionSnapshot` pinned at the current corpus version.',
+      },
+      {
+        signature: 'async withSnapshot<T>(fn: (snap: DefinitionSnapshot) => Promise<T>): Promise<T>',
+        description: 'W11 C1: Execute `fn` with a consistent snapshot — definitions do not reload mid-execution even if `invalidateCaches` fires concurrently (e.g. from a management-session write). The snapshot is acquired before `fn` and released after (release is a no-op in v1; reserved for future GC).\n\nUsage (in the NL2SQL query engine): ```ts const sql = await ctx.schema.withSnapshot(async (snap) => { const table = snap.loadTableDefinition(\'dws_pay_order_di\') const event = snap.loadEventDefinition(\'game.pay.order\') // ... generate SQL using pinned definitions ... return generatedSql }) ```',
+        parameters: [{ name: 'fn', description: 'the async function to execute with a pinned snapshot.' }],
+        returns: 'the value returned by `fn`.',
+      },
+      {
+        signature: 'corpusVersion(scopeId?: string): number',
         description: 'D2f (2026-08-21): the corpus-version counter for this layer - a monotonic signal bumped by every writer via `invalidateCaches` (writeEventYaml / writeTable / updateTableMeta / syncWriteDefinitions). Probed structurally by `tool-search-data-sources` (no static dep) so its cached enriched Bm25Linker rebuilds after a mid-session event edit instead of staying stale until reboot (D2e-deferred cache-invalidation). Reads the per-path counter for `this.semanticRoot` (0 until the first write).',
-        parameters: [],
+        parameters: [{ name: 'scopeId', description: 'optional per-request scope; when omitted, the undefined (root) path\'s counter is read.' }],
         returns: 'the current corpus-version counter.',
       },
       {
@@ -1382,10 +1531,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Scope registry Cordis service. Reads and writes a YAML file at `registryPath` containing scope definitions and the active scope id. All mutations are atomic (cross-process safe via file lock + atomic write).',
     methods: [
       {
-        signature: 'list(): readonly ScopeDefinition[]',
-        description: 'All registered scopes. Returns empty array when registryPath is unset or file missing.',
-        parameters: [],
-        returns: 'all registered scope definitions (empty when the registry is unset or missing).',
+        signature: 'list(tenant?: string): readonly ScopeDefinition[]',
+        description: 'All registered scopes, optionally filtered by tenant.\n\nBackward-compatible: an omitted `tenant` returns every scope (existing no-arg callers are unaffected). A provided `tenant` returns only scopes whose `tenant` equals it.',
+        parameters: [{ name: 'tenant', description: 'optional tenant id to filter by; omit for all scopes.' }],
+        returns: 'the matching scope definitions (empty when the registry is unset, missing, or has no match).',
       },
       {
         signature: 'get(id: string): ScopeDefinition | undefined',
@@ -1394,26 +1543,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the matching scope definition, or undefined when no scope has this id.',
       },
       {
-        signature: 'active(): ScopeDefinition | undefined',
-        description: 'The currently active scope definition, or undefined if none is active.',
-        parameters: [],
-        returns: 'the active scope definition, or undefined when no scope is active.',
-      },
-      {
-        signature: 'activeId(): string | undefined',
-        description: 'The currently active scope id, or undefined if none is active.',
-        parameters: [],
-        returns: 'the active scope id, or undefined when no scope is active.',
-      },
-      {
-        signature: 'async setActive(id: string): Promise<void>',
-        description: 'Set the active scope by id. Throws if the scope does not exist in the registry.',
-        parameters: [{ name: 'id', description: 'the scope id to make active (must already be registered).' }],
-      },
-      {
-        signature: 'async clearActive(): Promise<void>',
-        description: 'Clear the active scope (no scope is active).',
-        parameters: [],
+        signature: 'forTenant(tenant: string, scopeId?: string): ScopeDefinition | undefined',
+        description: 'Look up a scope belonging to a specific tenant.\n\n- `scopeId` provided → return the scope with that `id` IF it exists AND its `tenant === tenant`; otherwise `undefined`. (D3: 1:N tenants must pass scopeId.)\n- `scopeId` omitted → return the single scope belonging to `tenant`: exactly 1 → return it; 0 → `undefined`; >1 → throw (ambiguous — 1:N tenants must pass scopeId). (D3: 1:1 may omit scopeId; 1:N requires it.)',
+        parameters: [{ name: 'tenant', description: 'the tenant id whose scopes to look in.' }, { name: 'scopeId', description: 'optional scope id; required when the tenant owns >1 scope.' }],
+        returns: 'the matching scope definition, or undefined when no match exists.',
       },
       {
         signature: 'async register(scope: ScopeDefinition): Promise<void>',
@@ -2593,6 +2726,14 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
 /** Every harness event, sorted by name. */
 export const EVENT_API: readonly EventApiEntry[] = [
   {
+    name: 'admin/pat-miss',
+    mode: 'emit',
+    signature: '\'admin/pat-miss\'(userId: string, ref: string): void',
+    summary: 'Emitted when a per-user PAT resolve returns undefined (PAT-miss UX).',
+    description: 'Emitted when a per-user PAT resolve returns undefined (PAT-miss UX).',
+    parameters: [{ name: 'userId', description: 'the user whose PAT is missing.' }, { name: 'ref', description: 'the credential ref that failed to resolve.' }],
+  },
+  {
     name: 'agent-loop/config-start-failed',
     mode: 'emit',
     signature: '\'agent-loop/config-start-failed\'(payload: { sessionId: SessionId; error: unknown }): void',
@@ -2785,6 +2926,30 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'change', description: 'domain, table (`\'\'` for global), key (`\'\'` for global), operation discriminant, and on `put` the new snapshot.' }],
   },
   {
+    name: 'evidence/eval-run-completed',
+    mode: 'emit',
+    signature: '\'evidence/eval-run-completed\'(): void',
+    summary: 'Emitted when an eval run finishes and every case is persisted, so the evidence-query sidebar / dashboard can auto-refresh coverage and pass-rate views without polling.',
+    description: 'Emitted when an eval run finishes and every case is persisted, so the evidence-query sidebar / dashboard can auto-refresh coverage and pass-rate views without polling. Carries no payload — a listener that needs the run id reads it from the eval store.',
+    parameters: [],
+  },
+  {
+    name: 'evidence/eval-run-completed',
+    mode: 'parallel',
+    signature: '\'evidence/eval-run-completed\'(): void',
+    summary: 'Emitted after an eval batch is persisted to JSONL.',
+    description: 'Emitted after an eval batch is persisted to JSONL. @mode parallel',
+    parameters: [],
+  },
+  {
+    name: 'evidence/eval-run-completed',
+    mode: 'emit',
+    signature: '\'evidence/eval-run-completed\'(): void',
+    summary: 'Emitted after an eval run completes; listeners may refresh the eval store.',
+    description: 'Emitted after an eval run completes; listeners may refresh the eval store.',
+    parameters: [],
+  },
+  {
     name: 'fs/edit-intent',
     mode: 'waterfall',
     signature: '\'fs/edit-intent\'(target: FsTarget, actor: object | undefined, next: () => { version: FsVersion } | undefined | Promise<{ version: FsVersion } | undefined>): Promise<{ version: FsVersion } | undefined>',
@@ -2831,6 +2996,94 @@ export const EVENT_API: readonly EventApiEntry[] = [
     summary: 'Waterfall around every streaming model call (retry, replay, routing).',
     description: 'Waterfall around every streaming model call (retry, replay, routing). Bound to the LlmRuntime; call `next()` to reach the resolved adapter\'s stream, or yield your own chunks to short-circuit.',
     parameters: [{ name: 'options', description: 'the full request. A LOOP-built request carries the process-local {@link markAgentLoopRequest} identity and arrives deep-frozen (mutation throws): its content is a pure function of the session log (the reconstructability Agent Note), so listeners read it, never rewrite it. Hand-built calls do not carry that marker; their messages already obey the immutable creation contract.' }],
+  },
+  {
+    name: 'management-session/created',
+    mode: 'emit',
+    signature: '\'management-session/created\'(descriptor: ManagementSessionDescriptor): void',
+    summary: 'Emitted when a management session is created.',
+    description: 'Emitted when a management session is created.',
+    parameters: [{ name: 'descriptor', description: 'the created management session descriptor.' }],
+  },
+  {
+    name: 'management-session/destroyed',
+    mode: 'emit',
+    signature: '\'management-session/destroyed\'(sessionId: SessionId): void',
+    summary: 'Emitted when a management session is destroyed.',
+    description: 'Emitted when a management session is destroyed.',
+    parameters: [{ name: 'sessionId', description: 'the destroyed management session id.' }],
+  },
+  {
+    name: 'patrol/btw-received',
+    mode: 'parallel',
+    signature: '\'patrol/btw-received\'(message: string): void',
+    summary: 'User sent a "btw" message during patrol.',
+    description: 'User sent a "btw" message during patrol.',
+    parameters: [{ name: 'message', description: 'the btw message routed as a one-off request.' }],
+  },
+  {
+    name: 'patrol/confirm-request',
+    mode: 'parallel',
+    signature: '\'patrol/confirm-request\'(edit: PatrolProposedEdit): void',
+    summary: 'Patrol is requesting user confirmation for a proposed edit.',
+    description: 'Patrol is requesting user confirmation for a proposed edit.',
+    parameters: [{ name: 'edit', description: 'the proposed edit awaiting a confirm/reject decision.' }],
+  },
+  {
+    name: 'patrol/confirm-timeout',
+    mode: 'parallel',
+    signature: '\'patrol/confirm-timeout\'(edit: PatrolProposedEdit): void',
+    summary: 'User did not respond within the confirmation timeout.',
+    description: 'User did not respond within the confirmation timeout.',
+    parameters: [{ name: 'edit', description: 'the edit whose confirmation timed out.' }],
+  },
+  {
+    name: 'patrol/edit-executed',
+    mode: 'parallel',
+    signature: '\'patrol/edit-executed\'(edit: PatrolProposedEdit): void',
+    summary: 'A confirmed patrol edit was executed (audit).',
+    description: 'A confirmed patrol edit was executed (audit).',
+    parameters: [{ name: 'edit', description: 'the edit that was confirmed and audited.' }],
+  },
+  {
+    name: 'patrol/paused',
+    mode: 'parallel',
+    signature: '\'patrol/paused\'(reason: string): void',
+    summary: 'Patrol has been paused (max edits reached or timeout).',
+    description: 'Patrol has been paused (max edits reached or timeout).',
+    parameters: [{ name: 'reason', description: 'why the patrol paused.' }],
+  },
+  {
+    name: 'patrol/round-complete',
+    mode: 'parallel',
+    signature: '\'patrol/round-complete\'(summary: PatrolRoundSummary): void',
+    summary: 'A patrol round has completed (triggers C2 batch rendering).',
+    description: 'A patrol round has completed (triggers C2 batch rendering).',
+    parameters: [{ name: 'summary', description: 'the round\'s asset/edit tally.' }],
+  },
+  {
+    name: 'patrol/round-start',
+    mode: 'parallel',
+    signature: '\'patrol/round-start\'(roundNumber: number): void',
+    summary: 'A new patrol round is beginning.',
+    description: 'A new patrol round is beginning.',
+    parameters: [{ name: 'roundNumber', description: 'the 1-indexed round number.' }],
+  },
+  {
+    name: 'patrol/started',
+    mode: 'parallel',
+    signature: '\'patrol/started\'(config: PatrolConfig): void',
+    summary: 'Patrol loop has started.',
+    description: 'Patrol loop has started.',
+    parameters: [{ name: 'config', description: 'the active patrol configuration.' }],
+  },
+  {
+    name: 'patrol/stopped',
+    mode: 'parallel',
+    signature: '\'patrol/stopped\'(): void',
+    summary: 'Patrol loop has stopped.',
+    description: 'Patrol loop has stopped.',
+    parameters: [],
   },
   {
     name: 'scopes/active-changed',
@@ -3082,7 +3335,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AgentOptions',
-    declaration: 'export interface AgentOptions {\n    provider?: string;\n    model?: string;\n    maxTokens?: number;\n}',
+    declaration: 'export interface AgentOptions {\n    provider?: string;\n    model?: string;\n    maxTokens?: number;\n    scopeId?: string;\n}',
   },
   {
     name: 'AgentPreset',
@@ -3151,10 +3404,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'AssembledSection',
     declaration: 'export interface AssembledSection {\n    name: string;\n    text: string;\n}',
-  },
-  {
-    name: 'AssetHealthReport',
-    declaration: 'export interface AssetHealthReport {\n    readonly assetId: string;\n    readonly confirmationStatus: string;\n    readonly hasEvalCoverage: boolean;\n    readonly relationCount: number;\n    readonly lastModified: string;\n}',
   },
   {
     name: 'AssistantMessage',
@@ -3285,16 +3534,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type CompactionTrigger = \'pressure\' | \'context-overflow\';',
   },
   {
+    name: 'ConceptDefinition',
+    declaration: 'export type ConceptDefinition = z.infer<typeof ConceptDefinitionSchema>;',
+  },
+  {
     name: 'ConfinedArgv',
     declaration: 'export interface ConfinedArgv {\n    argv: string[];\n    enforcement: SandboxEnforcement;\n    denialSignatures: readonly string[];\n    runnerFailureRules: readonly RunnerFailureRule[];\n}',
   },
   {
     name: 'ConfinedSandboxMode',
     declaration: 'export type ConfinedSandboxMode = Exclude<SandboxMode, \'danger-full-access\'>;',
-  },
-  {
-    name: 'ConfirmationBreakdown',
-    declaration: 'export interface ConfirmationBreakdown {\n    readonly draft: number;\n    readonly confirmed: number;\n    readonly rejected: number;\n}',
   },
   {
     name: 'ContentBlockMap',
@@ -3393,6 +3642,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CreateGoalResult {\n    readonly ref: GoalRef;\n}',
   },
   {
+    name: 'CreateManagementSessionOptions',
+    declaration: 'export interface CreateManagementSessionOptions {\n    parentSessionId?: string;\n    summaryMessageCount?: number;\n}',
+  },
+  {
     name: 'CreateSessionOptions',
     declaration: 'export interface CreateSessionOptions {\n    readonly seed?: readonly SessionEvent[];\n    readonly meta?: {\n        readonly cwd?: string;\n        readonly parentSession?: SessionId;\n        readonly createdAt?: number;\n        readonly seedLength?: number;\n        readonly origin?: \'subagent\';\n        readonly delegationDepth?: number;\n        readonly agentPreset?: string;\n    };\n}',
   },
@@ -3427,6 +3680,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DataSourceRegistry',
     declaration: 'export class DataSourceRegistry {\n    register(plugin: DataSourceKindPlugin): void;\n    getKind(kind: string): DataSourceKindPlugin | undefined;\n    allKinds(): string[];\n    allPlugins(): DataSourceKindPlugin[];\n}',
+  },
+  {
+    name: 'DefinitionSnapshot',
+    declaration: 'export class DefinitionSnapshot {\n    readonly version: number;\n    constructor(version: number, tables: readonly RawTable[], events: readonly RawEvent[], corpus: readonly EventCorpusItem[]);\n    loadTableDefinition(name: string): TableDefinition | null;\n    loadEventDefinition(name: string): EventDefinition | null;\n    loadMetricDefinition(name: string): MetricDefinition | null;\n    loadRetrievalCorpus(): readonly EventCorpusItem[];\n    get tables(): readonly RawTable[];\n    get events(): readonly RawEvent[];\n}',
   },
   {
     name: 'DiffCallView',
@@ -3549,36 +3806,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EngineConventions {\n    readonly engine: string;\n    readonly key_differences: readonly string[];\n    readonly functions: readonly ConventionFunction[];\n    readonly cast_map: readonly ConventionCast[];\n    readonly sql_templates: readonly ConventionTemplate[];\n}',
   },
   {
-    name: 'EnrichedCoverageStats',
-    declaration: 'export interface EnrichedCoverageStats {\n    readonly table_count: number;\n    readonly event_count: number;\n    readonly metric_count: number;\n    readonly domain_counts: Readonly<Record<string, number>>;\n    readonly confirmation: ConfirmationBreakdown;\n}',
-  },
-  {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
   },
   {
-    name: 'EvalCaseFlip',
-    declaration: 'export interface EvalCaseFlip {\n    readonly caseId: string;\n    readonly before: EvalResultRecord[\'status\'];\n    readonly after: EvalResultRecord[\'status\'];\n}',
-  },
-  {
-    name: 'EvalDeltaReport',
-    declaration: 'export interface EvalDeltaReport {\n    readonly runIdA: string;\n    readonly runIdB: string;\n    readonly flipped: readonly EvalCaseFlip[];\n    readonly summary: {\n        readonly improved: number;\n        readonly regressed: number;\n        readonly unchanged: number;\n    };\n}',
-  },
-  {
-    name: 'EvalResultFilters',
-    declaration: 'export interface EvalResultFilters {\n    readonly assetId?: string;\n    readonly status?: \'pass\' | \'fail\' | \'error\' | \'pending\';\n    readonly domain?: string;\n    readonly limit?: number;\n}',
-  },
-  {
-    name: 'EvalResultQueryResult',
-    declaration: 'export interface EvalResultQueryResult {\n    readonly results: readonly EvalResultRecord[];\n    readonly total: number;\n}',
-  },
-  {
-    name: 'EvalResultRecord',
-    declaration: 'export interface EvalResultRecord {\n    readonly id: string;\n    readonly assetId: string;\n    readonly caseId: string;\n    readonly status: \'pass\' | \'fail\' | \'error\' | \'pending\';\n    readonly score?: number;\n    readonly timestamp: string;\n    readonly metadata?: Readonly<Record<string, unknown>>;\n}',
-  },
-  {
     name: 'EvalResultStore',
-    declaration: 'export class EvalResultStore {\n    add(record: EvalResultRecord): void;\n    query(filters: EvalResultFilters): EvalResultQueryResult;\n    hasResultsFor(assetId: string): boolean;\n    getByRunId(runId: string): EvalResultRecord[];\n    getRunIds(): string[];\n    loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void;\n    clear(): void;\n}',
+    declaration: 'export class EvalResultStore {\n    add(record: EvalResultRecord): void;\n    query(filters: EvalResultFilters): EvalResultQueryResult;\n    hasResultsFor(assetId: string, scopeId?: string): boolean;\n    getByRunId(runId: string): EvalResultRecord[];\n    getRunIds(): string[];\n    loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void;\n    clear(): void;\n}',
   },
   {
     name: 'EventCorpusItem',
@@ -3588,7 +3821,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     name: 'EventDefinition',
     declaration: 'export type EventDefinition = z.infer<typeof EventDefinitionSchema>;',
   },
-
   {
     name: 'FileDiff',
     declaration: 'export interface FileDiff {\n    path: string;\n    oldText: string | null;\n    newText: string;\n}',
@@ -3652,14 +3884,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsWriteOutcome',
     declaration: 'export interface FsWriteOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n    before: string | null;\n    after: string;\n}',
-  },
-  {
-    name: 'GapAnalysisResult',
-    declaration: 'export interface GapAnalysisResult {\n    readonly sourceAssetId: string;\n    readonly gaps: readonly GapEntry[];\n}',
-  },
-  {
-    name: 'GapEntry',
-    declaration: 'export interface GapEntry {\n    readonly assetId: string;\n    readonly joinPath: readonly string[];\n}',
   },
   {
     name: 'GenerateOptions',
@@ -3938,6 +4162,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface LspRange {\n    readonly start: LspPosition;\n    readonly end: LspPosition;\n}',
   },
   {
+    name: 'ManagementSessionDescriptor',
+    declaration: 'export interface ManagementSessionDescriptor {\n    readonly sessionId: SessionId;\n    readonly session: Session;\n    readonly parentSessionId?: SessionId;\n    readonly parentContextSummary?: string;\n    readonly createdAt: number;\n    readonly dispose: () => void;\n}',
+  },
+  {
     name: 'ManualCompactAgentContext',
     declaration: 'export interface ManualCompactAgentContext extends CompactionAgentContext {\n    runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>;\n}',
   },
@@ -4050,12 +4278,32 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ModelModalityMap {\n    text: \'text\';\n    image: \'image\';\n}',
   },
   {
+    name: 'NodeAliasData',
+    declaration: 'export interface NodeAliasData {\n    readonly nodeId: string;\n    readonly prefLabel?: string | undefined;\n    readonly altLabels?: readonly string[] | undefined;\n}',
+  },
+  {
     name: 'ObjectJsonSchema',
     declaration: 'export type ObjectJsonSchema = JsonSchemaNode & {\n    type: \'object\';\n};',
   },
   {
     name: 'OneShotSubagentDescriptorData',
     declaration: 'export interface OneShotSubagentDescriptorData extends SubagentDescriptorBase {\n    readonly mode: \'one-shot\';\n    readonly label?: string;\n}',
+  },
+  {
+    name: 'PatrolConfig',
+    declaration: 'export interface PatrolConfig {\n    readonly maxEditsPerRound?: number;\n    readonly confirmTimeoutMs?: number;\n    readonly scope?: string;\n}',
+  },
+  {
+    name: 'PatrolProposedEdit',
+    declaration: 'export interface PatrolProposedEdit {\n    readonly assetId: string;\n    readonly description: string;\n    readonly diagnosis: string;\n}',
+  },
+  {
+    name: 'PatrolRoundSummary',
+    declaration: 'export interface PatrolRoundSummary {\n    readonly roundNumber: number;\n    readonly assetsProcessed: readonly string[];\n    readonly editsExecuted: number;\n    readonly editsRejected: number;\n}',
+  },
+  {
+    name: 'PatrolState',
+    declaration: 'export type PatrolState = \'idle\' | \'running\' | \'paused\' | \'awaiting-confirm\';',
   },
   {
     name: 'PermissionSelect',
@@ -4130,10 +4378,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PromptSection {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n    readonly complete?: boolean;\n}',
   },
   {
-    name: 'ProposedRelation',
-    declaration: 'export interface ProposedRelation {\n    readonly sourceId: string;\n    readonly targetId: string;\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly on?: string;\n}',
-  },
-  {
     name: 'ProviderRequestId',
     declaration: 'export type ProviderRequestId = Branded<\'ProviderRequestId\'>;',
   },
@@ -4150,12 +4394,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface QueryRequest {\n    readonly sql: string;\n    readonly scopeId: ScopeId;\n    readonly mode?: \'fast\' | \'slow\' | \'blocking\' | \'fail\';\n}',
   },
   {
-    name: 'ReachabilityDeltaResult',
-    declaration: 'export interface ReachabilityDeltaResult {\n    readonly proposedRelation: ProposedRelation;\n    readonly newlyReachable: readonly ReachablePair[];\n}',
+    name: 'RawEvent',
+    declaration: 'export interface RawEvent {\n    readonly name: string;\n    readonly raw: Record<string, unknown>;\n    readonly domain: string;\n}',
   },
   {
-    name: 'ReachablePair',
-    declaration: 'export interface ReachablePair {\n    readonly from: string;\n    readonly to: string;\n}',
+    name: 'RawTable',
+    declaration: 'export interface RawTable {\n    readonly path: string;\n    readonly table_name: string;\n    readonly raw: Record<string, unknown>;\n}',
   },
   {
     name: 'ReadFileLine',
@@ -4187,7 +4431,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RelationGraph',
-    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: \'joins\' | \'derived_from\' | \'related_to\'): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n}',
+    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[], aliasData?: readonly NodeAliasData[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: \'joins\' | \'derived_from\' | \'related_to\'): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n    resolveAlias(term: string): string[];\n    getAliases(nodeId: string): string[];\n}',
   },
   {
     name: 'ReplayEnvelope',
@@ -4238,6 +4482,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface RestoredSessionOptions {\n    readonly seed: SessionEvent[];\n    readonly meta: SessionHeader;\n    readonly seedSource: \'persistence\';\n}',
   },
   {
+    name: 'ResultsApi',
+    declaration: 'export interface ResultsApi {\n    get(request: RpcRequest<{\n        resultId: string;\n    }>): Promise<RpcResponse<ResultEntry>>;\n}',
+  },
+  {
     name: 'ResumeAgentOptions',
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
@@ -4260,6 +4508,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'RpcReceipt',
     declaration: 'export type RpcReceipt = {\n    accepted: true;\n} | {\n    accepted: false;\n    reason: \'not-pending\' | \'bad-response\';\n};',
+  },
+  {
+    name: 'RpcRequest',
+    declaration: 'export interface RpcRequest<P> {\n    rpcId: RpcId;\n    payload: P;\n}',
+  },
+  {
+    name: 'RpcResponse',
+    declaration: 'export interface RpcResponse<T> {\n    rpcId: RpcId;\n    result: RpcResult<T>;\n}',
   },
   {
     name: 'RpcResult',
@@ -4319,7 +4575,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ScopeDefinition',
-    declaration: 'export interface ScopeDefinition {\n    readonly id: string;\n    readonly semanticRoot: string;\n    readonly metadata?: Readonly<Record<string, unknown>>;\n}',
+    declaration: 'export interface ScopeDefinition {\n    readonly id: string;\n    readonly semanticRoot: string;\n    readonly tenant?: string;\n    readonly metadata?: Readonly<Record<string, unknown>>;\n}',
   },
   {
     name: 'ScopeKey',
@@ -5067,7 +5323,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolExecutionInput',
-    declaration: 'export interface ToolExecutionInput {\n    readonly callId: CallId;\n    readonly rootCallId?: CallId;\n    readonly name: string;\n    readonly arguments: unknown;\n    readonly agent?: Agent;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export interface ToolExecutionInput {\n    readonly callId: CallId;\n    readonly rootCallId?: CallId;\n    readonly name: string;\n    readonly arguments: unknown;\n    readonly agent?: Agent;\n    readonly scopeId?: string;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'ToolExecutionMode',
@@ -5372,11 +5628,7 @@ function referencedTypeClosure(seeds: readonly string[]): TypeApiEntry[] {
     const next: string[] = []
     for (const entry of TYPE_API) {
       if (included.has(entry.name)) continue
-      // core-runtime-scripts-1: `\\b` (double-backslash) is a regex word boundary;
-      // `\b` in a template literal is the BACKSPACE escape (U+0008), so the
-      // pattern never matched and referencedTypeClosure returned nothing.
-      // Mirrors inspect.ts:223.
-      const pattern = new RegExp(`\\b${entry.name}\\b`)
+      const pattern = new RegExp(`\b${entry.name}\b`)
       if (!frontier.some(text => pattern.test(text))) continue
       included.add(entry.name)
       next.push(entry.declaration)

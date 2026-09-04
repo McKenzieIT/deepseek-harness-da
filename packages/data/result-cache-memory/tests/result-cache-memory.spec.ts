@@ -129,15 +129,35 @@ describe('tools/post-execute hook', () => {
   it('overwrites (no isError) when the same SQL re-runs with changed rows', async () => {
     const ctx = await setup()
     const sql = 'SELECT x FROM t WHERE ds=1'
-    // first run: row [42]
-    ctx.tools.register(queryDataTool({ state: 'completed', sql, columns: ['x'], rows: [[42]], rowCount: 1 }))
+    // One query_data tool whose rows change between calls: the first run
+    // returns [42], the second (same SQL, data changed underneath) returns [99].
+    // Re-registering the same tool name is forbidden — NamedEntries is unique
+    // by design ("for a per-agent variant, register through that agent's
+    // `agent.ctx` instead") — so a data-change between runs is modelled as a
+    // second execute of the same tool, not a second registration.
+    let run = 0
+    ctx.tools.register(defineTool({
+      name: 'query_data',
+      description: 'execute SQL',
+      parameters: {
+        sql: { type: 'string', required: true },
+        scope_id: { type: 'string', required: true },
+      },
+      output: {
+        schema: { type: 'object', additionalProperties: true, properties: { state: { type: 'string' } } },
+        render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+      },
+      async execute() {
+        const rows = run++ === 0 ? [[42]] : [[99]]
+        return { state: 'completed', sql, columns: ['x'], rows, rowCount: 1 }
+      },
+    }))
     const r1 = await ctx.tools.execute({ signal: testSignal, callId: CallId('re-1'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
     expect(r1.isError).toBe(false)
     const id1 = (r1.value as Record<string, unknown>).result_id as string
     expect(ctx.resultCache.get(id1)?.rows).toEqual([[42]])
 
     // second run, SAME sql, DIFFERENT rows (data changed)
-    ctx.tools.register(queryDataTool({ state: 'completed', sql, columns: ['x'], rows: [[99]], rowCount: 1 }))
     const r2 = await ctx.tools.execute({ signal: testSignal, callId: CallId('re-2'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
     expect(r2.isError).toBe(false)               // D8-2: must NOT error
     const id2 = (r2.value as Record<string, unknown>).result_id as string

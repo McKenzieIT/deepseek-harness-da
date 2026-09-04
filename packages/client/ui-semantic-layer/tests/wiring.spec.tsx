@@ -48,6 +48,12 @@ const sessionsSnapshotFor = (agentPreset: string | undefined) => ({
 const useSessionsStub = <S,>(snapshot: unknown) =>
   (selector: (s: unknown) => S): S => selector(snapshot)
 
+// `SemanticLayerEvidence` / `SemanticLayerSchemaExplorer` also take `useStore`
+// (a Zustand selector hook over SelectionState) as a prop — stub it the same
+// way: evaluate the selector against an empty selection (nothing selected).
+const useStoreStub = <S,>(selector: (s: any) => S): S =>
+  selector({ selectedAsset: null } as any)
+
 describe('toGoalDockGoalData', () => {
   it('returns null when the projection is undefined (capability absent)', () => {
     expect(toGoalDockGoalData(undefined)).toBeNull()
@@ -127,6 +133,7 @@ describe('SemanticLayerEvidence (E9/E10 details.aux adapter)', () => {
     const props = {
       useProjection,
       useSessions: useSessionsStub(sessionsSnapshotFor(agentPreset)),
+      useStore: useStoreStub,
       sessionId: 's1',
       t,
     } as unknown as SemanticLayerEvidenceProps
@@ -160,6 +167,7 @@ describe('SemanticLayerSchemaExplorer (W9/W10 details.aux adapter)', () => {
     const props = {
       useProjection: () => null,
       useSessions: useSessionsStub(sessionsSnapshotFor(agentPreset)),
+      useStore: useStoreStub,
       sessionId: 's1',
       t,
       schemaClient: null,

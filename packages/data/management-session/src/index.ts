@@ -252,6 +252,7 @@ export class ManagementSessionService extends Service {
    * Returns the currently active management session, or undefined if none.
    * When multiple management sessions are active, returns the most recently
    * created one.
+   * @returns the most recently created active descriptor, or `undefined` when none is active.
    */
   getActive(): ManagementSessionDescriptor | undefined {
     if (this.active.size === 0) return undefined
@@ -267,6 +268,7 @@ export class ManagementSessionService extends Service {
 
   /**
    * Returns all active management sessions.
+   * @returns the descriptors of every currently active management session.
    */
   listActive(): ManagementSessionDescriptor[] {
     return [...this.active.values()]
@@ -274,6 +276,8 @@ export class ManagementSessionService extends Service {
 
   /**
    * Check if a given session id belongs to an active management session.
+   * @param sessionId - the session id to test.
+   * @returns whether `sessionId` is an active management session.
    */
   isManagementSession(sessionId: string): boolean {
     return this.active.has(sessionId)

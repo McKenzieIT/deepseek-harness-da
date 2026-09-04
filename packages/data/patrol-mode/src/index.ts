@@ -266,6 +266,7 @@ export class PatrolService extends Service {
   /**
    * Returns whether the patrol loop is currently active (running, paused, or
    * awaiting confirmation).
+   * @returns whether the patrol loop is in a non-idle state.
    */
   isRunning(): boolean {
     return this.state !== 'idle'
@@ -273,6 +274,7 @@ export class PatrolService extends Service {
 
   /**
    * Returns the current patrol state.
+   * @returns the current `PatrolState` (idle/running/paused/awaiting-confirm).
    */
   getState(): PatrolState {
     return this.state

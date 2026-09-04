@@ -36,8 +36,25 @@ export abstract class ResultCache extends Service {
     super(ctx, 'resultCache')
   }
 
+  /**
+   * Read the cached entry for a result id.
+   * @param resultId - the result id to read.
+   * @returns the stored entry, or `undefined` when no entry is cached under `resultId`.
+   */
   abstract get(resultId: string): ResultEntry | undefined
+  /**
+   * Store a result entry under its id. `cr_` (compute-derived) ids are
+   * immutable-once-written: a different entry under an existing `cr_` id
+   * throws; `qr_` (query-derived) ids overwrite with the latest entry.
+   * @param resultId - the result id to store under.
+   * @param entry - the result entry to cache.
+   */
   abstract put(resultId: string, entry: ResultEntry): void
+  /**
+   * Test whether an entry is cached for a result id.
+   * @param resultId - the result id to test.
+   * @returns whether an entry is cached under `resultId`.
+   */
   abstract has(resultId: string): boolean
 }
 

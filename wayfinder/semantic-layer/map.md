@@ -41,6 +41,12 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
   - 报告格式：3 run 的 per-category 中位数 + 极差。若只跑 1 次（如单 case 调试），必须注明"单 run，不可作基线"。
   - Run IDs 全部记入 experiment-audit-log（可追溯）。
   - 未来可升级为 pass_k=3 + majority-vote（需改 `multi_turn.ts` pass 判定逻辑，当前语义为 all-must-pass 不适用）。
+  - **分层协议（2026-09-04 修订「无例外」）**：原规则字面要求「每次趋势对比 ≥3 轮，无例外」，但一轮 168-case 约 5.4h（conc=3；conc=1 约 16h），三轮约 16h —— **按字面执行则迭代开发在经济上不可能**（CL-20/21/23 每票都改 engine，每次验证付 16h）。故分层：
+    - **决策点用中位数**：批次的 before/after、GO/NO-GO、目标达成判定、口径变更 → 必须 ≥3 轮取中位数 + 极差。
+    - **迭代中用 n=1**：单票开发过程中的导航性 run → 允许单轮，但**必须标注「单 run，不可作决策依据」**，且不得写入 README 的基线表或 Quality Targets 达成判断。
+    - **基线摊到批次而非单票**：中位数基线是**一批票共享的 before**（例：CL-20/21/23 共用一个批前中位数），不是每票各建一次。这是让 16h 成本可接受的关键。
+    - **中位数的三轮必须同代码**：跨代码的轮次不可混入同一中位数（`compare.ts` 的协议守卫只拦 `pass_k`/`verdict_semantics` 不一致，**拦不住代码差异** —— 靠 run id 命名 + audit-log 记录 commit 保证）。
+    - 三轮之间机器须空闲（README:82：conc=4 在负载下触发 AGA empty-response burst，曾丢 63/168 case）；实践上作隔夜批处理，占用的是墙钟时间而非工作时间。
 - **实验记录强制要求**（CL-15 追加）：
   - **每次 eval run 必须记录到 `wayfinder/semantic-layer/research/experiment-audit-log.md`**，无例外。
   - 使用标准模板（见 `packages/eval/eval-cli/README.md` "Recording Results" 章节）：Setup（基线 run_id + cases + model + 变更内容）→ Data（verbatim 数据，含 `compare.ts` 输出）→ Verdict（编号分析）→ Ticket Pointer。

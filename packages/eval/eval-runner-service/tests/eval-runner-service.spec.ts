@@ -126,7 +126,7 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
         const dest = join(tmpCases, p.split('/').pop()!)
         copyFileSync(p, dest)
       }
-      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1 })
+      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model' })
       const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })
       expect(result.cases.length).toBe(2)
       expect(result.summary.total).toBe(2)
@@ -200,7 +200,7 @@ describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () 
       for (const p of realCases) {
         copyFileSync(p, join(tmpCases, p.split('/').pop()!))
       }
-      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1 })
+      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model' })
       const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })
       expect(result.cases.length).toBe(1)
       expect(svc.getLastRun()).toBe(result)

@@ -66,7 +66,7 @@ record(rec: AuditRecord | Record<string, unknown>): string
 
 Types: [Session](session.md) · [SessionEvent](session.md)
 
-Source: [`packages/data/audit/src/index.ts:109`](../../packages/data/audit/src/index.ts)
+Source: [`packages/data/audit/src/index.ts:125`](../../packages/data/audit/src/index.ts)
 
 <a id="ctxcriticctx--criticctxservice"></a>
 
@@ -86,13 +86,13 @@ Cordis `Service` exposing the per-agent critic guard context as `ctx.criticCtx`.
 forAgent(agentId: string): CriticCtx | undefined
 ```
 
-Source: [`packages/data/phase-gate/src/phase-gate.ts:1022`](../../packages/data/phase-gate/src/phase-gate.ts)
+Source: [`packages/data/phase-gate/src/phase-gate.ts:1208`](../../packages/data/phase-gate/src/phase-gate.ts)
 
 <a id="ctxembedder--embedderservice-abstract-seam"></a>
 
 ### `ctx.embedder` — `EmbedderService` (abstract seam)
 
-Abstract embedder service. Providers implement `embed` (async — HTTP inference must not block the event loop). `dim` is informational and MAY be `undefined` until the first embed discovers it (HTTP embedder); consumers infer the working dimension from the embedded vectors' length rather than reading `dim` upfront.
+Abstract embedder service. Providers implement `embed` (async — HTTP inference must not block the event loop). Consumers infer the working dimension from the embedded vectors' length.
 
 ```ts cordis-catalog
 /**
@@ -105,7 +105,7 @@ Abstract embedder service. Providers implement `embed` (async — HTTP inference
 abstract embed(texts: readonly string[]): Promise<EmbedResult>
 ```
 
-Source: [`packages/embedder/embedder/src/index.ts:89`](../../packages/embedder/embedder/src/index.ts)
+Source: [`packages/embedder/embedder/src/index.ts:87`](../../packages/embedder/embedder/src/index.ts)
 
 <a id="ctxevidencequery--evidencequeryservice"></a>
 
@@ -123,26 +123,29 @@ getEvalStore(): EvalResultStore
 /**
  * Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats()
  * but enriches with confirmation.status breakdown across all assets.
+ * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
  * @returns aggregated table/event/metric counts plus per-domain and confirmation-status tallies.
  */
-coverageQuery(): EnrichedCoverageStats
+coverageQuery(scopeId?: string): EnrichedCoverageStats
 
 /**
  * Gap analysis: given an asset, compute which other assets are reachable via
  * RelationGraph joins but have no eval case coverage.
  * @param assetId - the source asset to compute reachable-but-uncovered gaps from.
+ * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
  * @returns the source asset plus the list of reachable assets lacking eval coverage (with join paths).
  */
-gapAnalysis(assetId: string): GapAnalysisResult
+gapAnalysis(assetId: string, scopeId?: string): GapAnalysisResult
 
 /**
  * Reachability delta: "if we add this relation, which asset pairs become
  * newly reachable via joins?" Clones the current graph, adds the proposed
  * relation, and compares BFS reachability before/after.
  * @param newRelation - the proposed relation to add before recomputing reachability.
+ * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
  * @returns the proposed relation plus the asset pairs newly reachable via joins after adding it.
  */
-reachabilityDelta(newRelation: ProposedRelation): ReachabilityDeltaResult
+reachabilityDelta(newRelation: ProposedRelation, scopeId?: string): ReachabilityDeltaResult
 
 /**
  * Eval result query: query persisted eval run results.
@@ -164,12 +167,13 @@ beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport
  * Asset health: aggregate report for a single asset — confirmation status,
  * has_eval_coverage, relation_count, last_modified.
  * @param assetId - the table, event, or metric asset to report on.
+ * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
  * @returns the aggregate health report, or null when no table/event/metric matches assetId.
  */
-assetHealth(assetId: string): AssetHealthReport | null
+assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:229`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:308`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="ctxidentity--identityservice"></a>
 
@@ -189,22 +193,161 @@ current(): CallerIdentity | undefined
 
 Source: [`packages/identity/identity/src/index.ts:59`](../../packages/identity/identity/src/index.ts)
 
+<a id="ctxmanagementsession--managementsessionservice"></a>
+
+### `ctx.managementSession` — `ManagementSessionService`
+
+Management Session Service: creates dedicated agent sessions scoped to the `semantic-layer-management` preset for the full-screen graph management UI.
+
+- `create()` — opens a new management session
+- `destroy(sessionId)` — tears down a management session
+- `getActive()` — returns the currently active management session (if any)
+
+Tool gating is handled by the preset: the management session is composed from the `semantic-layer-management` agent preset which only exposes the management-relevant tools.
+
+```ts cordis-catalog
+/**
+ * Create a new management session scoped to the semantic-layer-management
+ * preset tools.
+ *
+ * When `parentSessionId` is provided, derives a read-only summary of the
+ * parent session's recent conversation and includes it in the management
+ * session's creation metadata. This is a one-time snapshot at creation, not
+ * live-updating.
+ *
+ * @param opts - creation options.
+ * @returns the management session descriptor.
+ * Multiple management sessions may be active concurrently; this method does
+ * not reject when one is already active (use {@link getActive} for the most
+ * recent). When `parentSessionId` is provided but no such session exists in
+ * the store, creation proceeds without a parent context summary (no throw).
+ */
+create(opts?: CreateManagementSessionOptions): ManagementSessionDescriptor
+
+/**
+ * Tear down a management session.
+ *
+ * @param sessionId - the management session to destroy.
+ * @throws if the session id does not correspond to an active management session.
+ */
+destroy(sessionId: string): void
+
+/**
+ * Returns the currently active management session, or undefined if none.
+ * When multiple management sessions are active, returns the most recently
+ * created one.
+ * @returns the most recently created active descriptor, or `undefined` when none is active.
+ */
+getActive(): ManagementSessionDescriptor | undefined
+
+/**
+ * Returns all active management sessions.
+ * @returns the descriptors of every currently active management session.
+ */
+listActive(): ManagementSessionDescriptor[]
+
+/**
+ * Check if a given session id belongs to an active management session.
+ * @param sessionId - the session id to test.
+ * @returns whether `sessionId` is an active management session.
+ */
+isManagementSession(sessionId: string): boolean
+```
+
+Source: [`packages/data/management-session/src/index.ts:161`](../../packages/data/management-session/src/index.ts)
+
 <a id="ctxnl2sql--nl2sqlengineservice"></a>
 
 ### `ctx.nl2sql` — `Nl2sqlEngineService`
 
-The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-gate hooks); holds the loaded conventions + exposes them for the preset / phase-gate. The logic functions are standalone exports (above); this service is the mount point + `ctx.nl2sql` seam. The `search_data_sources` model-facing tool registration is deferred (see module doc).
+The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-gate hooks); holds no conventions state — `getConventions` resolves per-call from the injected query engine (`ctx.query.getConventions`) — and exposes them for the preset / phase-gate. The logic functions are standalone exports (above); this service is the mount point + `ctx.nl2sql` seam. The `search_data_sources` model-facing tool registration is deferred (see module doc).
 
 ```ts cordis-catalog
 /**
- * The loaded per-engine conventions (prompt dialect grounding).
+ * The loaded per-engine conventions (prompt dialect grounding), resolved
+ * per-call from the injected query engine — NOT construction-time cached.
  *
- * @returns The loaded per-engine conventions.
+ * D2 (GA-GT1 Phase 6): the previous implementation cached
+ * `ctx.query.getConventions()` in the constructor and returned the frozen
+ * value here, so a singleton `ctx.query` made every tenant/scope share one
+ * conventions set (cross-line coupling). This delegates to
+ * `ctx.query.getConventions(scopeId)` on every call so a future per-scope
+ * engine mapping is honored without a service rebuild. The `scopeId` is
+ * threaded end-to-end from the caller but ignored by current concrete
+ * providers (dormant seam — undefined yields the provider's single loaded
+ * set; behavior unchanged today, just no longer frozen at construction).
+ *
+ * @param scopeId Optional per-request-scope key (dormant seam; forwarded to
+ * `ctx.query.getConventions(scopeId)` — current providers ignore it).
+ * @returns The resolved per-engine conventions for the active scope.
  */
-getConventions(): EngineConventions
+getConventions(scopeId?: string): EngineConventions
 ```
 
-Source: [`packages/data/nl2sql-engine/src/index.ts:74`](../../packages/data/nl2sql-engine/src/index.ts)
+Source: [`packages/data/nl2sql-engine/src/index.ts:75`](../../packages/data/nl2sql-engine/src/index.ts)
+
+<a id="ctxpatrol--patrolservice"></a>
+
+### `ctx.patrol` — `PatrolService`
+
+Patrol Mode service — autonomous patrol loop for iterative semantic layer improvement. Registered at `ctx.patrol`.
+
+The patrol loop: 1. Finds weakest assets via evidenceQuery (assetHealth / gapAnalysis) 2. For each weak asset (up to maxEditsPerRound): a. Diagnoses via management session b. Proposes fix and emits confirm request event c. Waits for user confirm (timeout 60s -> reject + pause) d. If confirmed: executes edit 3. After edits: triggers eval on modified assets (C3) 4. Emits round-complete event (for C2 batch rendering) 5. Waits for next round or continues if auto
+
+```ts cordis-catalog
+/**
+ * Start the autonomous patrol loop.
+ *
+ * @param opts - optional patrol configuration overrides.
+ * @throws if patrol is already running.
+ */
+start(opts?: PatrolConfig): void
+
+/**
+ * Stop the patrol loop. Cleans up pending confirms and resets state.
+ *
+ * Awaits the still-running runLoop so a rapid start() cannot spawn a second
+ * concurrent loop whose in-flight continuations would mutate state after it
+ * has been reset here. runLoop never rejects.
+ */
+async stop(): Promise<void>
+
+/**
+ * Returns whether the patrol loop is currently active (running, paused, or
+ * awaiting confirmation).
+ * @returns whether the patrol loop is in a non-idle state.
+ */
+isRunning(): boolean
+
+/**
+ * Returns the current patrol state.
+ * @returns the current `PatrolState` (idle/running/paused/awaiting-confirm).
+ */
+getState(): PatrolState
+
+/**
+ * Process a "by the way" user message during an active patrol.
+ *
+ * Per S3: the message is handled as a one-off request via the management
+ * session. The patrol context is preserved and the loop resumes after the
+ * btw is handled.
+ *
+ * Only explicit "停止巡检"/"stop patrol" terminates the loop.
+ *
+ * @param message - the user's btw message.
+ */
+async handleBtw(message: string): Promise<void>
+
+/**
+ * Respond to a pending confirmation request.
+ *
+ * @param decision - 'confirmed' or 'rejected'.
+ * @throws if there is no pending confirmation.
+ */
+respondToConfirm(decision: 'confirmed' | 'rejected'): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:176`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="ctxquery--queryengine-abstract-seam"></a>
 
@@ -252,7 +395,7 @@ abstract getProgress(instanceId: InstanceId): Promise<QueryOutcome>
  * Qualify a bare table name with its project prefix (C: engine-agnostic).
  *
  * Moved off `SemanticLayerService.qualifyTableName` (which misread
- * `config.yaml project.name` — a game scope id, NOT an ODPS project) to the
+ * `config.yaml project.name` — a game scope id, NOT an engine project) to the
  * query provider, whose `Config.defaultProject` (cordis.patch.yml fills
  * `ieu_cdm`) is the single source of truth for the engine's project. A
  * per-table `override` (Task 3: `SearchHit.project` / `update_table_config`)
@@ -270,17 +413,105 @@ abstract getProgress(instanceId: InstanceId): Promise<QueryOutcome>
  * when no project resolves.
  */
 qualifyTable?(tableName: string, override?: string): string
+
+/**
+ * The per-engine convention set for the nl2sql prompt dialect grounding
+ * (key_differences / functions / cast_map / sql_templates) + the future
+ * query-guard/cost/dialect consumer. D1 (GA-GT2-impl): the *types* live in
+ * the abstract package (`./conventions.ts`); a concrete provider subclass
+ * overrides this to return its locally-loaded convention set (the
+ * YAML-loading runtime stays the provider's concern). Default throws so a
+ * provider that does not ground a dialect surfaces the gap loudly rather
+ * than silently injecting an empty conventions block.
+ *
+ * D2 (GA-GT1 Phase 6): the optional `scopeId` is a per-request-scope seam —
+ * callers thread the active scope so a future per-scope engine mapping can
+ * return a different convention set per tenant/scope without the consumer
+ * (`Nl2sqlEngineService`) caching at construction. Concrete providers
+ * TODAY ignore `scopeId` (return their single loaded dialect); the param is
+ * a dormant forward-looking seam (additive, undefined → current behavior).
+ * A provider that wants per-scope conventions overrides
+ * `getConventions(scopeId)` and reads scope metadata; until then the
+ * `scopeId` is threaded end-to-end but unused at the terminal.
+ *
+ * @param scopeId Optional per-request-scope key (dormant seam; ignored by
+ * current concrete providers — undefined yields the provider's single
+ * loaded convention set).
+ * @returns The resolved per-engine convention set for this concrete provider.
+ */
+getConventions(scopeId?: string): EngineConventions
 ```
 
-Source: [`packages/query/query/src/index.ts:35`](../../packages/query/query/src/index.ts)
+Source: [`packages/query/query/src/index.ts:37`](../../packages/query/query/src/index.ts)
+
+<a id="ctxresultcache--resultcache-abstract-seam"></a>
+
+### `ctx.resultCache` — `ResultCache` (abstract seam)
+
+Abstract result cache service. Subclass, implement get/put/has, and load the subclass as a plugin — it registers as `ctx.resultCache`.
+
+Semantics every implementation must honor:
+
+- get returns the entry for `resultId`, or `undefined` if not found. The caller decides whether a missing id is an error.
+- put stores an entry under `resultId`. Idempotent when the entry is identical; throws when a DIFFERENT entry is stored under an existing id (immutable-once-written).
+- has returns whether an entry exists for `resultId`.
+
+```ts cordis-catalog
+/**
+ * Read the cached entry for a result id.
+ * @param resultId - the result id to read.
+ * @returns the stored entry, or `undefined` when no entry is cached under `resultId`.
+ */
+abstract get(resultId: string): ResultEntry | undefined
+
+/**
+ * Store a result entry under its id. `cr_` (compute-derived) ids are
+ * immutable-once-written: a different entry under an existing `cr_` id
+ * throws; `qr_` (query-derived) ids overwrite with the latest entry.
+ * @param resultId - the result id to store under.
+ * @param entry - the result entry to cache.
+ */
+abstract put(resultId: string, entry: ResultEntry): void
+
+/**
+ * Test whether an entry is cached for a result id.
+ * @param resultId - the result id to test.
+ * @returns whether an entry is cached under `resultId`.
+ */
+abstract has(resultId: string): boolean
+```
+
+Source: [`packages/data/result-cache/src/index.ts:34`](../../packages/data/result-cache/src/index.ts)
 
 <a id="ctxschema--semanticlayerservice"></a>
 
 ### `ctx.schema` — `SemanticLayerService`
 
-The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-ODPS schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.
+The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-engine schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.
 
 ```ts cordis-catalog
+/**
+ * GA-GT1 Phase 5a: PUBLIC per-scope root-resolution seam. Delegates to the
+ * private `resolveRoot` (4-branch semantics unchanged) so consumer packages
+ * (tool-retrieve/tool-search-data-sources/tool-search-schema enrichedLinkers
+ * + retrieval-inproc scopedRetrievers) can resolve a scope's root for the
+ * #19/#22 root-check fix (5b adds `root` to the per-scope cache entry +
+ * checks `entry.root === root` — parity with the Phase 2 I-1
+ * `graphCacheByScope` root guard). Dormant in 5a: no consumer calls it yet;
+ * the method is exposed now so 5b can wire it through `SchemaCorpusSource`.
+ *
+ * 4 branches (same as `resolveRoot`):
+ *  - scopeId undefined → active scope's root (backward-compatible).
+ *  - scopeId provided + registry mounted + scope found → that scope's root.
+ *  - scopeId provided + registry mounted + scope NOT found → throw
+ *    (intranet-security: refuse silent fallback to active scope to prevent
+ *    cross-tenant corpus leak).
+ *  - scopeId provided + registry unmounted → active/cfg root (test stand-in).
+ * @param scopeId - optional scope id; omit for the active scope.
+ * @returns the resolved semantic-layer root path.
+ */
+resolveScopeRoot(scopeId?: string): string
+
 /**
  * The live data-source-kind registry (events/tables/metrics plugins registered at construction).
  * @returns the live data-source-kind registry.
@@ -294,9 +525,39 @@ getRegistry(): DataSourceRegistry
  * corpus-version counter advances (a write bumps it via `invalidateCaches`).
  * Events only enter the graph once `enrichAllEvents` has written their
  * `external_refs` (Part B).
+ *
+ * GA-GT1 Phase 2 (D4 β): an optional `scopeId` resolves a per-request scope's
+ * root (via `resolveRoot`); the no-arg path is unchanged (active scope, single
+ * instance cache — backward-compatible). The scopeId path uses a separate
+ * per-scope cache (`graphCacheByScope` — plain Map, LRU eviction deferred to
+ * Phase 3/4) keyed by scopeId + root + `corpusVersionForRoot(root)`. The root
+ * is part of the cache key so re-registering the scope with a different
+ * `semanticRoot` invalidates the entry even when the new root's content
+ * counter is still 0 (I-1: cross-tenant corpus leak guard). It is acceptable
+ * that `getRelationGraph()` and `getRelationGraph(activeId)` produce separate
+ * cache entries for the same active scope (data is identical; duplicate entry
+ * is harmless — Phase 3/4 cleanup unifies the two paths).
+ * @param scopeId - optional scope id; omit to use the active scope (backward-compatible).
  * @returns the cached `RelationGraph`, rebuilt when stale.
  */
-getRelationGraph(): RelationGraph
+getRelationGraph(scopeId?: string): RelationGraph
+
+/**
+ * CL-2 D2: dangling domain→concept references collected during the last
+ * `getRelationGraph()` build — assets whose `domains` reference a concept
+ * name with no matching definition in concepts/. Such refs are skipped
+ * (warned) rather than aborting the graph build, so valid assets still get
+ * their edges. Empty when all domain refs resolve or no concepts are loaded.
+ *
+ * M-1: `danglingDomainRefs` is shared INSTANCE state — `buildGraph` is now
+ * called by BOTH the no-arg + scopeId paths of `getRelationGraph`, so this
+ * reflects the last build ACROSS ALL SCOPES (whichever `getRelationGraph`
+ * call ran last), NOT a per-scope view. Per-scope keying of this health
+ * surface is deferred to Phase 3/4 (scope count is small; the leak guard is
+ * on the graph cache, not this health-check surface).
+ * @returns a snapshot of the dangling refs (`asset="..." domain="..."`) from the last build (across all scopes).
+ */
+getDanglingDomainRefs(): string[]
 
 /**
  * Registry-driven full retrieval corpus: every registered kind's definitions
@@ -310,7 +571,7 @@ getRelationGraph(): RelationGraph
 loadRetrievalCorpusAll(): CorpusItem[]
 
 /**
- * Mount a live-ODPS schema provider (P6b Q3 deferred; follow-up mounts the real one).
+ * Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).
  * @param provider - the provider to delegate discover/describe/sample to, or undefined to clear.
  */
 setSchemaProvider(provider: SchemaProvider | undefined): void
@@ -356,6 +617,17 @@ async discoverRelations( opts: { readonly tables?: readonly string[] } = {}, ): 
 async discoverEventRelations( opts: { readonly events?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>
 
 /**
+ * CL-1 Phase 3: discover alt_labels (SKOS aliases) for definitions in the
+ * layer. Two-round strategy: deterministic extraction from description/columns/
+ * domains + optional LLM semantic suggestions. Merges with existing labels
+ * (never removes curated aliases).
+ *
+ * @param opts - optional filters: `tables` (table_names) and/or `events` (event names).
+ * @returns combined `enriched` + `written` + `errors` across tables and events.
+ */
+async discoverAltLabels( opts: { readonly tables?: readonly string[]; readonly events?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>
+
+/**
  * Load a validated event definition by name from the substrate.
  * @param name - the event `name` key to match.
  * @returns the parsed `EventDefinition`, or null when no event matches.
@@ -365,9 +637,10 @@ loadEventDefinition(name: string): EventDefinition | null
 /**
  * Load a validated table definition by name from the substrate.
  * @param name - the table `table_name` key to match.
+ * @param scopeId - GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).
  * @returns the parsed `TableDefinition`, or null when no table matches.
  */
-loadTableDefinition(name: string): TableDefinition | null
+loadTableDefinition(name: string, scopeId?: string): TableDefinition | null
 
 /**
  * Load a validated metric definition by name from the substrate.
@@ -377,20 +650,62 @@ loadTableDefinition(name: string): TableDefinition | null
 loadMetricDefinition(name: string): MetricDefinition | null
 
 /**
- * D2e (2026-08-21): build an enriched retrieval corpus from the substrate —
- * each event's `params_fields` (field name + description) + `terminology`
- * slang packed into the indexed `description`; `domain` is NOT indexed
- * (probe refuted it). D2h: the `corpusVariant` mount-time config selects the
- * slices — 'params+term' (default, shipped) packs params_fields + slang;
- * 'term-only' (D2g verdict (A) higher-recall) packs slang only, dropping
- * params_fields. This is the corpus feed the real-default prefetch path
- * (`Bm25Linker` in `search_data_sources`) probes `ctx.schema` for; when
- * `ctx.schema` is unmounted (bundle opt-in), the tool's corpus stays empty
- * (current behavior) — enrichment activates on mount. Empty `semanticRoot`
- * yields an empty corpus.
+ * Load a validated concept definition by name from the substrate.
+ * @param name - the concept `name` key to match.
+ * @returns the parsed `ConceptDefinition`, or null when no concept matches.
+ */
+loadConceptDefinition(name: string): import('./types.ts').ConceptDefinition | null
+
+/**
+ * Build an enriched retrieval corpus from the substrate — each event's
+ * `alt_labels` (SKOS aliases) + `params_fields` packed into the indexed
+ * `description`. The `corpusVariant` config selects slices: 'params+term'
+ * (default) packs both; 'term-only' packs aliases only.
+ * @param scopeId - GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).
  * @returns enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.
  */
-loadRetrievalCorpus(): readonly EventCorpusItem[]
+loadRetrievalCorpus(scopeId?: string): readonly EventCorpusItem[]
+
+/**
+ * W11 C1: Capture a point-in-time snapshot of the semantic layer definitions.
+ * The returned `DefinitionSnapshot` provides the same read API
+ * (`loadTableDefinition`, `loadEventDefinition`, `loadMetricDefinition`,
+ * `loadRetrievalCorpus`) but the data is pinned at the version when captured.
+ * Subsequent `invalidateCaches()` calls (from management-session writes) do
+ * NOT affect the returned snapshot. The next call to `acquireSnapshot` after
+ * a write sees the new data.
+ *
+ * Cheap: if the corpus version has not changed since the last call, the
+ * cached data arrays are reused (no disk re-scan).
+ *
+ * GA-GT1 Phase 2: an optional `scopeId` resolves a per-request scope's root
+ * + corpus version (via `resolveRoot`/`corpusVersion(scopeId)`); the no-arg
+ * path is unchanged (active scope — backward-compatible).
+ * @param scopeId - optional scope id; omit to use the active scope (backward-compatible).
+ * @returns a frozen `DefinitionSnapshot` pinned at the current corpus version.
+ */
+acquireSnapshot(scopeId?: string): DefinitionSnapshot
+
+/**
+ * W11 C1: Execute `fn` with a consistent snapshot — definitions do not
+ * reload mid-execution even if `invalidateCaches` fires concurrently (e.g.
+ * from a management-session write). The snapshot is acquired before `fn` and
+ * released after (release is a no-op in v1; reserved for future GC).
+ *
+ * Usage (in the NL2SQL query engine):
+ * ```ts
+ * const sql = await ctx.schema.withSnapshot(async (snap) => {
+ *   const table = snap.loadTableDefinition('dws_pay_order_di')
+ *   const event = snap.loadEventDefinition('game.pay.order')
+ *   // ... generate SQL using pinned definitions ...
+ *   return generatedSql
+ * })
+ * ```
+ *
+ * @param fn - the async function to execute with a pinned snapshot.
+ * @returns the value returned by `fn`.
+ */
+async withSnapshot<T>(fn: (snap: DefinitionSnapshot) => Promise<T>): Promise<T>
 
 /**
  * D2f (2026-08-21): the corpus-version counter for this layer - a monotonic
@@ -400,9 +715,10 @@ loadRetrievalCorpus(): readonly EventCorpusItem[]
  * Bm25Linker rebuilds after a mid-session event edit instead of staying stale
  * until reboot (D2e-deferred cache-invalidation). Reads the per-path counter
  * for `this.semanticRoot` (0 until the first write).
+ * @param scopeId - optional per-request scope; when omitted, the undefined (root) path's counter is read.
  * @returns the current corpus-version counter.
  */
-corpusVersion(): number
+corpusVersion(scopeId?: string): number
 
 /**
  * List tables in a scope (optionally filtered by kind) via the mounted provider.
@@ -452,7 +768,7 @@ async syncWrite( tableMetas: readonly TableMeta[], opts: { readonly dimTableName
 async updateTableMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }>
 ```
 
-Source: [`packages/data/semantic-layer/src/index.ts:193`](../../packages/data/semantic-layer/src/index.ts)
+Source: [`packages/data/semantic-layer/src/index.ts:251`](../../packages/data/semantic-layer/src/index.ts)
 
 <a id="ctxscopes--scoperegistryservice"></a>
 
@@ -462,10 +778,16 @@ Scope registry Cordis service. Reads and writes a YAML file at `registryPath` co
 
 ```ts cordis-catalog
 /**
- * All registered scopes. Returns empty array when registryPath is unset or file missing.
- * @returns all registered scope definitions (empty when the registry is unset or missing).
+ * All registered scopes, optionally filtered by tenant.
+ *
+ * Backward-compatible: an omitted `tenant` returns every scope (existing
+ * no-arg callers are unaffected). A provided `tenant` returns only scopes
+ * whose `tenant` equals it.
+ *
+ * @param tenant - optional tenant id to filter by; omit for all scopes.
+ * @returns the matching scope definitions (empty when the registry is unset, missing, or has no match).
  */
-list(): readonly ScopeDefinition[]
+list(tenant?: string): readonly ScopeDefinition[]
 
 /**
  * Get a scope by id. Returns undefined when not found.
@@ -475,25 +797,19 @@ list(): readonly ScopeDefinition[]
 get(id: string): ScopeDefinition | undefined
 
 /**
- * The currently active scope definition, or undefined if none is active.
- * @returns the active scope definition, or undefined when no scope is active.
+ * Look up a scope belonging to a specific tenant.
+ *
+ * - `scopeId` provided → return the scope with that `id` IF it exists AND its
+ *   `tenant === tenant`; otherwise `undefined`. (D3: 1:N tenants must pass scopeId.)
+ * - `scopeId` omitted → return the single scope belonging to `tenant`:
+ *   exactly 1 → return it; 0 → `undefined`; >1 → throw (ambiguous — 1:N
+ *   tenants must pass scopeId). (D3: 1:1 may omit scopeId; 1:N requires it.)
+ *
+ * @param tenant - the tenant id whose scopes to look in.
+ * @param scopeId - optional scope id; required when the tenant owns >1 scope.
+ * @returns the matching scope definition, or undefined when no match exists.
  */
-active(): ScopeDefinition | undefined
-
-/**
- * The currently active scope id, or undefined if none is active.
- * @returns the active scope id, or undefined when no scope is active.
- */
-activeId(): string | undefined
-
-/**
- * Set the active scope by id. Throws if the scope does not exist in the registry.
- * @param id - the scope id to make active (must already be registered).
- */
-async setActive(id: string): Promise<void>
-
-/** Clear the active scope (no scope is active). */
-async clearActive(): Promise<void>
+forTenant(tenant: string, scopeId?: string): ScopeDefinition | undefined
 
 /**
  * Register (or update) a scope definition. If this is the first scope, it becomes active.
@@ -508,7 +824,291 @@ async register(scope: ScopeDefinition): Promise<void>
 async remove(id: string): Promise<void>
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:85`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts:90`](../../packages/data/scope-registry/src/index.ts)
+
+<a id="admin-events"></a>
+
+### `admin/*` events
+
+<a id="adminpat-miss--emit"></a>
+
+#### `admin/pat-miss` — emit
+
+Emitted when a per-user PAT resolve returns undefined (PAT-miss UX).
+
+```ts cordis-catalog
+/**
+ * Emitted when a per-user PAT resolve returns undefined (PAT-miss UX).
+ *
+ * @mode emit
+ * @param userId - the user whose PAT is missing.
+ * @param ref - the credential ref that failed to resolve.
+ */
+'admin/pat-miss'(userId: string, ref: string): void
+```
+
+Source: [`packages/data/admin/src/index.ts:514`](../../packages/data/admin/src/index.ts)
+
+<a id="evidence-events"></a>
+
+### `evidence/*` events
+
+<a id="evidenceeval-run-completed--emit"></a>
+
+#### `evidence/eval-run-completed` — emit
+
+Emitted when an eval run finishes and every case is persisted, so the evidence-query sidebar / dashboard can auto-refresh coverage and pass-rate views without polling. Carries no payload — a listener that needs the run id reads it from the eval store.
+
+```ts cordis-catalog
+/**
+ * Emitted when an eval run finishes and every case is persisted, so the
+ * evidence-query sidebar / dashboard can auto-refresh coverage and
+ * pass-rate views without polling. Carries no payload — a listener that
+ * needs the run id reads it from the eval store.
+ *
+ * @mode emit
+ */
+'evidence/eval-run-completed'(): void
+```
+
+Source: [`packages/api/remotes/src/types.ts:31`](../../packages/api/remotes/src/types.ts)
+
+<a id="evidenceeval-run-completed--parallel"></a>
+
+#### `evidence/eval-run-completed` — parallel
+
+Emitted after an eval batch is persisted to JSONL. @mode parallel
+
+```ts cordis-catalog
+/** Emitted after an eval batch is persisted to JSONL. @mode parallel */
+'evidence/eval-run-completed'(): void
+```
+
+Source: [`packages/eval/eval-runner-service/src/index.ts:28`](../../packages/eval/eval-runner-service/src/index.ts)
+
+<a id="evidenceeval-run-completed--emit"></a>
+
+#### `evidence/eval-run-completed` — emit
+
+Emitted after an eval run completes; listeners may refresh the eval store.
+
+```ts cordis-catalog
+/**
+ * Emitted after an eval run completes; listeners may refresh the eval store.
+ *
+ * @mode emit
+ */
+'evidence/eval-run-completed'(): void
+```
+
+Source: [`packages/data/evidence-query/src/index.ts:79`](../../packages/data/evidence-query/src/index.ts)
+
+<a id="management-session-events"></a>
+
+### `management-session/*` events
+
+<a id="management-sessioncreated--emit"></a>
+
+#### `management-session/created` — emit
+
+Emitted when a management session is created.
+
+```ts cordis-catalog
+/**
+ * Emitted when a management session is created.
+ *
+ * @mode emit
+ * @param descriptor - the created management session descriptor.
+ */
+'management-session/created'(descriptor: ManagementSessionDescriptor): void
+```
+
+Source: [`packages/data/management-session/src/index.ts:75`](../../packages/data/management-session/src/index.ts)
+
+<a id="management-sessiondestroyed--emit"></a>
+
+#### `management-session/destroyed` — emit
+
+Emitted when a management session is destroyed.
+
+```ts cordis-catalog
+/**
+ * Emitted when a management session is destroyed.
+ *
+ * @mode emit
+ * @param sessionId - the destroyed management session id.
+ */
+'management-session/destroyed'(sessionId: SessionId): void
+```
+
+Types: [SessionId](core.md)
+
+Source: [`packages/data/management-session/src/index.ts:82`](../../packages/data/management-session/src/index.ts)
+
+<a id="patrol-events"></a>
+
+### `patrol/*` events
+
+<a id="patrolbtw-received--parallel"></a>
+
+#### `patrol/btw-received` — parallel
+
+User sent a "btw" message during patrol.
+
+```ts cordis-catalog
+/**
+ * User sent a "btw" message during patrol.
+ *
+ * @mode parallel
+ * @param message - the btw message routed as a one-off request.
+ */
+'patrol/btw-received'(message: string): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:148`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patrolconfirm-request--parallel"></a>
+
+#### `patrol/confirm-request` — parallel
+
+Patrol is requesting user confirmation for a proposed edit.
+
+```ts cordis-catalog
+/**
+ * Patrol is requesting user confirmation for a proposed edit.
+ *
+ * @mode parallel
+ * @param edit - the proposed edit awaiting a confirm/reject decision.
+ */
+'patrol/confirm-request'(edit: PatrolProposedEdit): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:127`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patrolconfirm-timeout--parallel"></a>
+
+#### `patrol/confirm-timeout` — parallel
+
+User did not respond within the confirmation timeout.
+
+```ts cordis-catalog
+/**
+ * User did not respond within the confirmation timeout.
+ *
+ * @mode parallel
+ * @param edit - the edit whose confirmation timed out.
+ */
+'patrol/confirm-timeout'(edit: PatrolProposedEdit): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:141`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patroledit-executed--parallel"></a>
+
+#### `patrol/edit-executed` — parallel
+
+A confirmed patrol edit was executed (audit).
+
+```ts cordis-catalog
+/**
+ * A confirmed patrol edit was executed (audit).
+ *
+ * @mode parallel
+ * @param edit - the edit that was confirmed and audited.
+ */
+'patrol/edit-executed'(edit: PatrolProposedEdit): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:134`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patrolpaused--parallel"></a>
+
+#### `patrol/paused` — parallel
+
+Patrol has been paused (max edits reached or timeout).
+
+```ts cordis-catalog
+/**
+ * Patrol has been paused (max edits reached or timeout).
+ *
+ * @mode parallel
+ * @param reason - why the patrol paused.
+ */
+'patrol/paused'(reason: string): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:155`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patrolround-complete--parallel"></a>
+
+#### `patrol/round-complete` — parallel
+
+A patrol round has completed (triggers C2 batch rendering).
+
+```ts cordis-catalog
+/**
+ * A patrol round has completed (triggers C2 batch rendering).
+ *
+ * @mode parallel
+ * @param summary - the round's asset/edit tally.
+ */
+'patrol/round-complete'(summary: PatrolRoundSummary): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:120`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patrolround-start--parallel"></a>
+
+#### `patrol/round-start` — parallel
+
+A new patrol round is beginning.
+
+```ts cordis-catalog
+/**
+ * A new patrol round is beginning.
+ *
+ * @mode parallel
+ * @param roundNumber - the 1-indexed round number.
+ */
+'patrol/round-start'(roundNumber: number): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:113`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patrolstarted--parallel"></a>
+
+#### `patrol/started` — parallel
+
+Patrol loop has started.
+
+```ts cordis-catalog
+/**
+ * Patrol loop has started.
+ *
+ * @mode parallel
+ * @param config - the active patrol configuration.
+ */
+'patrol/started'(config: PatrolConfig): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:100`](../../packages/data/patrol-mode/src/index.ts)
+
+<a id="patrolstopped--parallel"></a>
+
+#### `patrol/stopped` — parallel
+
+Patrol loop has stopped.
+
+```ts cordis-catalog
+/**
+ * Patrol loop has stopped.
+ *
+ * @mode parallel
+ */
+'patrol/stopped'(): void
+```
+
+Source: [`packages/data/patrol-mode/src/index.ts:106`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="scopes-events"></a>
 
@@ -532,7 +1132,7 @@ Emitted after the active scope id changes — via setActive(), clearActive(), re
 'scopes/active-changed': (scopeId: string | undefined) => void
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:74`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts:79`](../../packages/data/scope-registry/src/index.ts)
 
 <a id="scopeschanged--emit"></a>
 
@@ -551,5 +1151,5 @@ Emitted after the set of registered scopes changes — a scope was added or upda
 'scopes/changed': () => void
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:65`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts:70`](../../packages/data/scope-registry/src/index.ts)
 <!-- END GENERATED cordis-surface -->

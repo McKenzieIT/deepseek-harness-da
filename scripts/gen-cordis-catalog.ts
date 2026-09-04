@@ -117,6 +117,9 @@ export const SERVICE_PAGE: Record<string, string> = {
   evidenceQuery: 'data-agent.md',
   criticCtx: 'data-agent.md',
   query: 'data-agent.md',
+  managementSession: 'data-agent.md',
+  patrol: 'data-agent.md',
+  resultCache: 'data-agent.md',
 }
 
 /**
@@ -167,6 +170,8 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   workspaces: 'client-side interface-typed browser service — packages/client/runtime/README.md owns the API',
   retrieval: 'abstract retrieval seam: implemented by providers (e.g. retrieval-inproc); packages/retrieval/retrieval/README.md owns the seam',
   evalRunner: 'optional eval-runner seam (EvalRunnerService | undefined) the host composition mounts at boot — packages/data/tool-trigger-eval/src/index.ts owns the seam contract',
+  results: 'client-side interface-typed browser service — packages/client/result-cache/README.md owns the API',
+  contextLayer: 'client-side interface-typed browser service — packages/client/ui-context-layer/src/client/index.ts owns the API',
 }
 
 /**
@@ -197,6 +202,10 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'tools': 'tools.md',
   'workflow': 'workflow.md',
   'scopes': 'data-agent.md',
+  'patrol': 'data-agent.md',
+  'management-session': 'data-agent.md',
+  'evidence': 'data-agent.md',
+  'admin': 'data-agent.md',
 }
 
 /**
@@ -642,6 +651,14 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   QueryRequest: 'query request contract is owned by packages/query/query/src/types.ts',
   InstanceId: 'query instance id contract is owned by packages/query/query/src/types.ts',
   CriticCtx: 'critic context contract is owned by packages/data/nl2sql-engine/src/types.ts',
+  PatrolConfig: 'patrol config contract is owned by packages/data/patrol-mode/src/index.ts',
+  PatrolProposedEdit: 'patrol proposed-edit contract is owned by packages/data/patrol-mode/src/index.ts',
+  PatrolRoundSummary: 'patrol round summary contract is owned by packages/data/patrol-mode/src/index.ts',
+  ManagementSessionDescriptor: 'management session descriptor contract is owned by packages/data/management-session/src/index.ts',
+  CreateManagementSessionOptions: 'management session create options contract is owned by packages/data/management-session/src/index.ts',
+  PatrolState: 'patrol state contract is owned by packages/data/patrol-mode/src/index.ts',
+  ResultEntry: 'result cache entry contract is owned by packages/data/result-cache/src/types.ts',
+  DefinitionSnapshot: 'definition snapshot contract is owned by packages/data/semantic-layer/src/snapshot.ts',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

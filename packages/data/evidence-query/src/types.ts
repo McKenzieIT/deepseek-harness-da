@@ -84,6 +84,17 @@ export interface EvalResultFilters {
   readonly scopeId?: string
 }
 
+/**
+ * A Typert-safe arbitrary-JSON value. `Record<string, unknown>` carries an
+ * `unknown` index signature that the Typert analyzer rejects at a `@Remote`
+ * boundary ("Remote boundary contains unconstrained unknown data"); this
+ * recursive JSON union is constrained (no `unknown`/`any`) yet permissive
+ * enough to carry every metadata field an eval result record persists
+ * (runId, outcome, domain, passK, latencyMs, …). Mirrors the `Json` type
+ * in `@deepseek-ai/dsh-schema-gateway`.
+ */
+export type Json = string | number | boolean | null | readonly Json[] | { readonly [key: string]: Json }
+
 /** A single persisted eval result record. */
 export interface EvalResultRecord {
   readonly id: string
@@ -92,7 +103,7 @@ export interface EvalResultRecord {
   readonly status: 'pass' | 'fail' | 'error' | 'pending'
   readonly score?: number
   readonly timestamp: string
-  readonly metadata?: Readonly<Record<string, unknown>>
+  readonly metadata?: Readonly<Record<string, Json>>
   /** GA-GT1 Phase 3b (D5.2): the scope id this record belongs to. Optional —
    * undefined for legacy flat-layout records (no per-scope subdirectory).
    * camelCase, consistent with assetId/caseId. */

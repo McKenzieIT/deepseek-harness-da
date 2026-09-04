@@ -6,7 +6,7 @@
 # wayfinder/data-agent/research/r1-dashscope-seam.md +
 # G1b-experiment-execution.md) and sets the eval responder + SQL judge
 # provider/model (EVAL_LLM_PROVIDER / EVAL_LLM_MODEL), then runs eval-cli
-# with --concurrency 4 and sql-judge ON (the default; pass --no-sql-judge to
+# with --concurrency 3 and sql-judge ON (the default; pass --no-sql-judge to
 # opt out). pass_k is NOT pinned here: the CLI default is 3, which is the
 # SPEC §6.5 / D9 Q2 semantics (pass^k — all k attempts must pass) and matches
 # the current baseline `rebaseline-passk-168-clean` (61.9%).
@@ -15,7 +15,13 @@
 # circular — the baseline was k=1 because the wrapper was k=1 — and it went
 # stale when the pass^k baseline landed (2026-09-03/04), leaving anyone who
 # ran this script with a number ~12pp above the recorded baseline and silently
-# incomparable to it. k=1 measures "can it pass"; pass^k measures "does it
+# incomparable to it.
+#
+# --concurrency 3 (was 4): README.md's operational note records that conc=4
+# under machine load triggers AGA empty-response bursts — a 168-case conc=4 run
+# lost 63/168 cases that way (raw 33.9% vs corrected 52.4%). The clean baseline
+# `rebaseline-passk-168-clean` used conc=3. The wrapper now matches the guidance
+# it was contradicting. k=1 measures "can it pass"; pass^k measures "does it
 # pass reliably" — 31.5% of k11-v2 cases are non-deterministic, which k=1
 # cannot see. Pass `--pass-k 1` explicitly if you specifically want the old
 # capability-only number.
@@ -46,13 +52,13 @@ fi
 export EVAL_LLM_PROVIDER="${EVAL_LLM_PROVIDER:-aga}"
 export EVAL_LLM_MODEL="${EVAL_LLM_MODEL:-qwen3.7-max}"
 
-echo "  provider=$EVAL_LLM_PROVIDER model=$EVAL_LLM_MODEL pass-k=3 concurrency=4 sql-judge=on"
+echo "  provider=$EVAL_LLM_PROVIDER model=$EVAL_LLM_MODEL pass-k=3 concurrency=3 sql-judge=on"
 # --skip-health-gate: the health-gate pre-flight (5s budget) is mis-tuned for
 # the AGA gateway's ~6-17s LLM latency — it times out before any case runs.
 # Skip it here (creds + gateway reachability are validated separately; if the
 # gateway were down, cases would fail/hang, not the gate).
 exec node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
   --cases packages/eval/eval/cases/k11-v2 \
-  --concurrency 4 \
+  --concurrency 3 \
   --skip-health-gate \
   "$@"

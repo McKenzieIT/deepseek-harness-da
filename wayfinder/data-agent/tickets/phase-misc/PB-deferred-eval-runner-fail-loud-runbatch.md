@@ -2,7 +2,7 @@
 
 **Type**: task (AFK)
 **Phase**: misc
-**Status**: ⏳ deferred (2026-09-03)
+**Status**: ✅ resolved (2026-09-04) — 决策 A 已实现（runBatch guard `src/index.ts:434`）+ 2 runBatch 集成测试补 stub provider/model（见 [GA-CORDIS-CATALOG-FIX](GA-CORDIS-CATALOG-FIX.md) §3）
 **Spawned from**: PB-COMPLY plugin-body audit, R8 finding `packages/eval/eval-runner-service/src/index.ts:382-383`
 
 ## Question
@@ -19,3 +19,9 @@ eval-runner 构造函数 `config.provider ?? 'aga'` / `config.model ?? 'qwen3.7-
 ## 为何留后续
 
 正确修法（A）需读 runBatch 流程 + 验证 stub 测试不受影响，非纯加法；本 session 已 24 修，不宜再塞需测试改动的项。
+
+## Resolution（2026-09-04）
+
+**决策 A 已实现**：runBatch 处加 guard `if (!this.provider || !this.model) throw new Error('eval-runner-service runBatch: provider and model are required (R8: configure the eval LLM gateway in cordis.yml; no silent vendor default)')`（`src/index.ts:434-436`），constructor 不动。mechanics 测试（不调 runBatch）如预测不受影响。
+
+**测试侧补全**（[GA-CORDIS-CATALOG-FIX](GA-CORDIS-CATALOG-FIX.md) §3）：2 个 runBatch 集成测试（describe "stubbed seams, real engine"）构造时补 `provider:'stub-provider', model:'stub-model'`——stub LLM（`makeStubLlm()` 的 `stream`）忽略参数，stub 值 inert，仅过 R8 guard 的 non-empty 检查；不弱化任何 assertion。eval-runner-service 8/8 通过。
