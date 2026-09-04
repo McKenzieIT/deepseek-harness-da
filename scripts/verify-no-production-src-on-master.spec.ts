@@ -6,7 +6,21 @@ describe('PROD_SRC_PATTERN', () => {
     'packages/data/evidence-query/src/index.ts',
     'packages/core/session/src/types.ts',
     'packages/data/src/foo.ts',
-  ])('matches production package source: %s', (path) => {
+    // apps/<app>/src — apps/ is a policy-protected surface (template §2 allowlist).
+    'apps/cli/src/bin.ts',
+    'apps/web/src/index.tsx',
+    'apps/web/lib/types/src/x.ts',
+    // native/<pkg>/.../src — native/ is a policy-protected surface.
+    'native/landlock-run/packages/entry/src/index.ts',
+    // python/<pkg>/src — python/ is a policy-protected surface.
+    'python/sdk/src/mod.py',
+    'python/sdk-runtime/src/x.py',
+    // scripts/ has no src/ subdir; the .ts/.sh/.py files are themselves the source,
+    // so the whole scripts/ tree is protected (matches the policy's protected dir).
+    'scripts/verify-md-links.ts',
+    'scripts/types/foo.ts',
+    'scripts/release/bump.ts',
+  ])('matches protected production source: %s', (path) => {
     expect(PROD_SRC_PATTERN.test(path)).toBe(true)
   })
 
@@ -16,8 +30,16 @@ describe('PROD_SRC_PATTERN', () => {
     'packages/eval/eval/cases/k11-v2/case.yaml',
     'wayfinder/data-agent/map.md',
     'docs/da-pr-workflow.md',
-    'scripts/verify-foo.ts',
     'lefthook.yml',
+    // src-style gaps: policy protects entire apps/native/python dirs, but this gate
+    // stays src-only to mirror the existing packages/*/src scope. Non-src files in
+    // those dirs are NOT caught here — the PR body lists them as known gaps.
+    'apps/web/README.md',
+    'apps/cli/config/foo.json',
+    'python/sdk/tests/x.py',
+    'python/sdk-runtime/hatch_build.py',
+    'native/landlock-run/docs/README.md',
+    'native/landlock-run/scripts/foo.sh',
   ])('does not match non-src paths: %s', (path) => {
     expect(PROD_SRC_PATTERN.test(path)).toBe(false)
   })

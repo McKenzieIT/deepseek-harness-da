@@ -1,13 +1,13 @@
 /**
  * Pre-push gate: refuse a push to master whose push range contains a commit
- * touching production package source (packages/<group>/<pkg>/src).
- *
- * Enforces the CLAUDE.md and docs/da-pr-workflow.md rule that changes touching
- * packages source land on a feature branch plus PR, not master; direct-to-main
- * is allowed only for Wayfinder docs and experiment scripts whose diff does not
- * touch packages source. The gate skips every branch other than master and
- * skips when master has nothing to push. Tests override the branch and range
- * through GATE_BRANCH and GATE_RANGE.
+ * touching protected production source (see PROD_SRC_PATTERN for the exact
+ * surfaces: packages/.../src, apps/.../src, native/.../src, python/.../src,
+ * and scripts/). Enforces the CLAUDE.md and docs/da-pr-workflow.md rule that
+ * feat/fix/refactor touching a protected surface land on a branch + PR, not
+ * master; direct-to-main is allowed only for Wayfinder docs and experiment
+ * scripts whose diff touches none of those surfaces. The gate skips every
+ * branch other than master and skips when master has nothing to push. Tests
+ * override the branch and range through GATE_BRANCH and GATE_RANGE.
  */
 import { execFileSync } from 'node:child_process'
 
@@ -20,8 +20,18 @@ export interface Violation {
   files: string[]
 }
 
-/** Matches `packages/<group>/<pkg>/src/...` (one or more path segments before `src`). */
-export const PROD_SRC_PATTERN = /^packages\/(?:[^/]+\/)+src\//
+/**
+ * Matches production source on a direct push to master, mirroring the
+ * CLAUDE.md / docs/da-pr-workflow.md rule that feat/fix/refactor touching a
+ * protected surface land on a branch + PR, not master. Protected surfaces:
+ *   - `packages/<group>/<pkg>/src/`, `apps/<app>/src/`, `native/<pkg>/.../src/`,
+ *     `python/<pkg>/src/` — source under a `src/` directory.
+ *   - `scripts/` — no `src/` subdir; the .ts/.sh/.py files are themselves the
+ *     source, so the whole tree is protected.
+ * The gate is src-only to match the existing packages source scope; non-src
+ * files in apps/native/python (READMEs, configs, tests/) are NOT caught here.
+ */
+export const PROD_SRC_PATTERN = /^(?:(?:packages|apps|native|python)\/(?:[^/]+\/)+src\/|scripts\/)/
 
 /** Return the commits that touch production package source. Pure: git access is injected. */
 export function findViolations(
@@ -59,7 +69,7 @@ function pushRange(): string | null {
 
 function report(violations: Violation[]): never {
   console.error('verify-no-production-src-on-master: refusing push to master.')
-  console.error('These commits touch packages/*/src and must land on a feature branch + PR, not master:')
+  console.error('These commits touch protected production source and must land on a feature branch + PR, not master:')
   for (const v of violations) {
     console.error(`  ${v.sha.slice(0, 10)} ${v.subject}`)
     for (const file of v.files.slice(0, 8)) console.error(`    ${file}`)
