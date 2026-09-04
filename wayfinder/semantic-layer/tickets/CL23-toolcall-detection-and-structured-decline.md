@@ -179,3 +179,35 @@ voice_017 attempt 2 产出 `call\n{"name": "load_event_definition", …}` ——
 - `gh pr create` 失败：`McKenzieIT does not have the correct permissions to execute CreatePullRequest`。token 有 `repo` scope、viewerPermission=ADMIN，但仓库 `isFork: true` 而 `parent: null`（upstream 不可达）—— GitHub 侧配置问题，非代码问题。分支已 push，PR 待人工建：
   https://github.com/McKenzieIT/deepseek-harness-da/pull/new/fix/cl23-toolcall-structured-decline
 - 验证 run `cl23-verify-017` / `cl23-reverify-voice_017` / `-voice_042` 均为**单 run，不可作决策依据**（CL-22 分层协议）。voice_042 亦仍 wrong。
+
+## 2026-09-04 grounding 翻转 + 部分闭票（PR #1）
+
+**Branch**: `fix/cl23-toolcall-structured-decline`（PR #1，已 merge 前待合）
+
+### voice_017：彻底翻转（grounding 落地后）
+
+合成 prompt 改为强制 grounding（点名缺失字段类型 + 引用 schemaContext 真实列名 + 就具体列问用户），实测 `cl23-ground-voice_017`：
+
+| attempt | delivery_match |
+|---|---|
+| 1 | True |
+| 2 | True |
+| 3 | True |
+
+**3/3 correct**（was 1/3）。grounding 方向验证成功。
+
+### voice_042：不在此票范围 → 衍生 CL-24
+
+grounding 对 042 无效，但根因不在 CL-23：模型在 6 个 attempt 里只有 1 个发射真 tool-call 文本，其余 5 个产出**自然语言伪回复**（`无法直接回答…` / `【诚实拒绝】…` / `为了准确回答…我将为您查询`）——被引擎当 SQL 放行（`ok=true`），根本走不到 CL-23 的合成分支。详见 [CL-24](CL24-pseudo-reply-as-sql.md)。
+
+### 本票状态：部分达成
+
+- ✅ tool-call 文本检测（含 CL-19 未记录的 `call\n{...}` 新格式）
+- ✅ voice_017 翻转（grounding prompt）
+- ❌ voice_042（衍生 CL-24，不在本票范围）
+- ⚠️ 017 的 3/3 为**单 run**，按 CL-22 须 ≥3 run 取中位数确认；但 pass^k 三次全中的随机概率约 1/27，撞运气概率低
+
+### 遗留
+
+- 017 的 ≥3 run 中位数确认（待基线可用后补，或在 PR review 时跑）
+- CL-24（伪回复被当 SQL）独立推进
