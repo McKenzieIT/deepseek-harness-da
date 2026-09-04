@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/phase-gate/README.md
-README.md: 3596c2592552193ebeb4d0d390c8c6824e994c7b
-README.zh.md: c1db49931e96b1465ecf0134fa854a87ae73473e
+README.md: e81cfec2e45842befb49dc40a8a24335be24a82e
+README.zh.md: 4f42adcd1db2c07e785f4642f9f7036a94739c7d

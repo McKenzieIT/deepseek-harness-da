@@ -85,7 +85,7 @@ No direct effect; the card renders query/compute result rows for the user, and t
   the card falls back to the same-turn `query_data` TSV scan, which renders
   only the rows the tool-result text carries — the `renderCompleted` format
   display-truncates (an elision marker) well below the 10,000-row full-result
-  cap. Full data requires the result-cache ([R5](../../wayfinder/interpretation-client-rendering/tickets/R5-object-layer-result-cache.md)/[T9](../../wayfinder/interpretation-client-rendering/tickets/T9-result-cache-package-impl.md)).
+  cap. Full data requires the result-cache ([R5](../../../wayfinder/interpretation-client-rendering/tickets/R5-object-layer-result-cache.md)/[T9](../../../wayfinder/interpretation-client-rendering/tickets/T9-result-cache-package-impl.md)).
 - **Inherited fresh-vs-folded residual.** The card inherits the result-cache's
   missed-event residual: a `fetchResult` that starts after an
   `invalidateResult` but before the in-flight fetch resolves coalesces onto it
@@ -94,19 +94,19 @@ No direct effect; the card renders query/compute result rows for the user, and t
   invalidation is the v1 mitigation.
 - **Retry re-fetches, not re-runs.** The retry button re-fetches from the
   result store; re-running the query is the user's job, not the card's
-  ([G1](../../wayfinder/interpretation-client-rendering/tickets/G1-design-decisions.md) D6).
+  ([G1](../../../wayfinder/interpretation-client-rendering/tickets/G1-design-decisions.md) D6).
 - **Chart-type validator degrades to bar.** A client column-kind/cardinality
   check degrades an infeasible `chart.type` to bar (scatter with <2 numeric
   columns, doughnut with >8 classes, line/area whose x is not a date, bubble
   with <3 numeric columns, radar/polarArea not in entity × N-metric shape).
   Line/area over an ordinal-numeric x is not yet recognized — a date x-column
   is required, else the validator falls back to bar; relaxing this is a T6
-  ([T6](../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)) HITL refinement candidate. The model-side heuristic lives in the
-  `present_table` tool description ([R4](../../wayfinder/interpretation-client-rendering/tickets/R4-chart-type-expansion.md)).
+  ([T6](../../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)) HITL refinement candidate. The model-side heuristic lives in the
+  `present_table` tool description ([R4](../../../wayfinder/interpretation-client-rendering/tickets/R4-chart-type-expansion.md)).
 - **Radial value-labels stack at the donut center.** The `valueLabelsPlugin`
   draws doughnut/polarArea value-pills at each `ArcElement`'s `x`/`y`, which
   Chart.js sets to the shared donut center — so enabling 显示数值 on a
   multi-slice radial chart stacks the pills at one point (unreadable). Per-slice
   arc-centroid placement is a
-  [T6](../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)
+  [T6](../../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)
   HITL refinement candidate (the R4 prototype has the same behavior).
