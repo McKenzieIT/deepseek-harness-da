@@ -319,12 +319,14 @@ export class KeychainCredentialProvider extends CredentialProvider {
       }
       return
     }
-    const before = await this.find(ref, account)
-    if (before === undefined) return
+    // erc-3: skip the find-generic-password preflight — it reads the secret value
+    // (`-w`) needlessly. delete-generic-password's not-found result already
+    // distinguishes absence (and a TOCTOU miss) from a real fault, so the find
+    // is redundant + leaks the secret.
     const removed = await this.runner(['delete-generic-password', '-a', account, '-s', ref, this.spec.keychain])
     if (!removed.ok) {
-      // A not-found here is a TOCTOU miss (the item was deleted between the find and the
-      // delete): treat as an idempotent no-op (no event), not a fault.
+      // A not-found is an idempotent no-op: the item was absent, or deleted
+      // between the resolve and this delete (TOCTOU) — no event, not a fault.
       if (isItemNotFound(removed.stderr)) return
       throw new Error(`credentials-keychain: delete-generic-password for "${ref}"/${account} failed: ${removed.stderr}`)
     }

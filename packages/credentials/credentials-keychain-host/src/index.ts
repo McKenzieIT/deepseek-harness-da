@@ -112,6 +112,21 @@ function resolveUnlockPassword(config: HostConfig): string | undefined {
  * Service, so it does not double-register `ctx.credentials`. The read path
  * caches the parsed file; writes invalidate + refresh the cache. Mirrors
  * credentials-local's `assertOwnerOnly` mode guard + env-shadow refusal.
+ *
+ * erc-5 (documented limitation): unlike credentials-local (which installs a
+ * chokidar watcher for hot-publish of external edits + re-runs assertOwnerOnly
+ * on every change), this fallback sets `watch: false` + installs NO watcher:
+ *  (1) an external edit to `.credentials.yaml` (by another process or the user)
+ *      stays stale in `cache` until the next set/unset on THIS provider refreshes
+ *      it — restart the host to pick up external edits;
+ *  (2) `assertOwnerOnly` (the 0600 mode guard) runs only on first load + on
+ *      writes, NOT on cached reads between writes — a mode loosened by an
+ *      external editor is caught only on the next write, not the next read.
+ * The env/dotenv layers stay live (re-read each resolve); only the FILE layer
+ * is cached once. Install a chokidar watcher mirroring credentials-local's
+ * awaitWriteFinish + queueRefresh + reconcileFromDisk to restore hot-publish +
+ * per-read mode guard (follow-up — the fallback is a plain object with no ctx,
+ * so it can invalidate the cache but cannot publish changed refs on its own).
  */
 function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
   const filename = resolveLocalSpec({

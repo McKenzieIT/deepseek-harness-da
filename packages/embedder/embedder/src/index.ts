@@ -68,7 +68,12 @@ export interface Reranker {
    * reranking and keep the RRF order (degradation).
    * @param query - the natural-language query.
    * @param texts - the candidate texts to re-score.
-   * @returns one relevance score per text, aligned to `texts`.
+   * @returns one relevance score per text, aligned to `texts`. Scores MUST be
+   * non-negative, roughly in [0, 1] (higher = more relevant): the retrieval
+   * provider applies a noise floor (RERANKER_NOISE_FLOOR) assuming this range,
+   * so a peer returning raw logits (e.g. [-8, +8]) would see valid candidates
+   * dropped below the floor (silent empty result). Normalize (sigmoid / min-max)
+   * before returning if the underlying server emits logits. (erc-6)
    */
   rerank(query: string, texts: readonly string[]): Promise<readonly number[]>
 }

@@ -26,7 +26,10 @@ import type { RetrievalHit } from '@deepseek-ai/dsh-retrieval/src/index.ts'
 
 /** RRF damping constant (Cormack et al. 2009); mirrors rbi `constants.RRF_K`. */
 export const RRF_K = 60
-/** Per-candidate reranker noise floor; mirrors rbi `constants.RERANKER_NOISE_FLOOR`. */
+/** Per-candidate reranker noise floor; mirrors rbi `constants.RERANKER_NOISE_FLOOR`.
+ * Assumes the Reranker peer returns non-negative scores ~[0,1] (see the
+ * `Reranker.rerank` contract in @deepseek-ai/dsh-embedder) — a peer returning
+ * raw logits would see valid candidates dropped below this floor. (erc-6) */
 export const RERANKER_NOISE_FLOOR = 0.1
 /** Default top-K; mirrors rbi `retrieval.DEFAULT_TOP_K`. */
 export const DEFAULT_TOP_K = 10
