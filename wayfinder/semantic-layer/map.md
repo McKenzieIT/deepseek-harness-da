@@ -53,6 +53,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
   - **趋势对比**：每次 eval 必须用 `compare.ts` 与上一次基线 run 对比，记录 category-level delta 和 case-level flips。
   - **不允许"跑了 eval 但没记录"**——实验结果是不可重现的（LLM 非确定性），未记录等于未发生。
   - 即使是单 case 调试（`--case`），若结果影响决策，也应记录简要条目。
+- **`dsh web` 不自动 build client lib**（2026-09-04 踩）：`dsh web`（`bin.ts web`）**只读已构建的 `lib/`**，不跑 tsdown。任何 client 包缺 `lib/index.js` + `lib/client.js` → 启动 `ERR_MODULE_NOT_FOUND` → 整个 include 组失败 → 按钮消失（CB-1 同形状）。**正确工作流**：开发用 `pnpm run dev:web`（`scripts/dev-web.ts` watch-build 所有 client lib + vite dist），一次性用 `pnpm run build` / `npm run build:lib:client`。**何时踩**：新加 client 包到 bundle 后（如 W14b 挂 `ui-context-layer`）、或 lib 被 git clean / 并发 build 清掉后。`scripts/dev-web.ts` 注释 + `docs/api-gateway.md:144-148` 有说明但分散。不开票：是工作流非 bug，记此防再踩。
 - **常设原则**：
   - **不做过渡方案**：LLM 编码场景下，直接做目标架构，不分短/中/长期妥协。
   - **语义层不绑定特定查询引擎**：SchemaProvider 可插拔（`registerSchemaProvider` + `engineType` 路由）。

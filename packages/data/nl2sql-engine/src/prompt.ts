@@ -83,6 +83,18 @@ export interface BuildPromptArgs {
   readonly isTrend?: boolean
   /** Reference date (yyyyMMdd) for relative date computation (yesterday, last 7 days). */
   readonly today?: string | undefined
+  /**
+   * GA-EVAL-SQLGEN-PROMPT-FIX: engine-responder mode. When true, the prompt
+   * reframes the tool catalog as "candidates + event definitions already
+   * pre-fetched into context — do NOT emit tool-call format, generate SQL
+   * directly" (the Nl2sqlEngine pre-fetches BM25 candidates + schema and does
+   * NOT expose search_data_sources/load_event_definition as callable to the
+   * LLM, unlike the harness agent which really calls them via ctx.tools and
+   * needs the invocable descriptions in the default branch). Default false =
+   * the agent-loop prompt, byte-identical to pre-fix (harness path +
+   * byte-stability snapshots unaffected).
+   */
+  readonly contextPrefetched?: boolean
 }
 
 const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
@@ -104,11 +116,52 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
  * @returns The assembled prompt string.
  */
 export function buildPrompt(args: BuildPromptArgs): string {
-  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend } = args
+  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend, contextPrefetched } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines = renderCandidates(candidates)
   const joinSection = renderJoinSection(joinConstraints)
   const metricSection = renderMetricSection(metricContext)
+  if (contextPrefetched) {
+    return `你是游戏埋点数据分析 SQL 生成引擎。宁可少答慢答，不可错答。
+
+# 上下文（已 pre-fetch，勿调用任何工具）
+下方 # 检索候选（BM25 schema-linking 已 pre-fetch）与 # 事件定义（若已加载）是生成 SQL 的全部 schema 上下文。本引擎不暴露可调用工具——不要输出工具调用格式（如 call:default_api:...、<tool>...</tool>、{"name":"...","arguments":...}），直接基于下方上下文在 \`\`\`sql 围栏内生成 SQL。critic、执行与失败自修由引擎内部完成。
+
+# §3 直答路径（staged SOP）
+## 阶段 A 准备
+- 复合判断门：≥2 不同性质指标 / ≥2 层维度交叉 / "对比"语义 / 模糊结论词 → 复合，拆原子子问题各一条 SQL
+- 字段清单校验：SQL 每个字段名（尤其 params 内）须在下方 # 事件定义 的 params_fields/metrics 有定义（若 # 事件定义 未加载，字段须来自 # 检索候选 的候选表定义），不得硬编码
+
+## 阶段 B 生成
+- 方案先行：生成 SQL 前在思维链形成方案（视图/过滤/指标/维度/预期量级），然后在 \`\`\`sql 围栏内输出 SQL
+
+## 阶段 C/D 校验与执行（引擎内部）
+- 引擎对生成的 SQL 做 pre-exec critic + 执行 + 失败自修；你只须输出 SQL。若引擎反馈错误，按反馈重写 SQL，不得重复相同 SQL（近重复门防重发）
+
+# §5 诚实拒绝
+触发：语义层无定义/params 无字段/自修 ${MAX_FEEDBACK_RETRIES} 次仍失败/发现路径走不通。拒时说明：为什么不能答/缺什么/怎么解决。不做降级，不给"仅供参考"。
+
+# §6 八规则
+${renderCoreRules(isTrend)}
+
+${dialect}
+
+${joinSection}${metricSection}
+# 当前日期
+今天是 ${args.today ?? '未知'}（yyyyMMdd 格式）。"昨天"= 今天-1 天，"过去7天"= 从今天往回7天。分区列格式见方言规范。计算相对日期时用字面值，不要用运行时日期函数。
+
+# 当前问题
+${question}
+
+# 检索候选（已 BM25 pre-fetch）
+${candLines}
+
+# 事件定义（若已加载）
+${eventDef ? JSON.stringify(eventDef, null, 2) : '（未加载）'}
+
+# 当前阶段（P7 四阶段适配：phase=${phase}）
+GENERATION 阶段：直接基于上方上下文生成 SQL（\`\`\`sql 围栏）；critic、执行与自修由引擎内部完成。`
+  }
   return `你是游戏埋点数据分析 Agent。宁可少答慢答，不可错答。
 
 ${TOOL_CATALOG}

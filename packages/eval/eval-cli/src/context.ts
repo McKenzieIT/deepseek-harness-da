@@ -15,7 +15,7 @@ import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall} from '@deepseek-ai/dsh-nl2sql-engine'
+import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs } from '@deepseek-ai/dsh-nl2sql-engine'
 import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
 
 import type {
@@ -374,7 +374,16 @@ class Nl2sqlAgentResponder implements AgentResponder {
       lookupDoc,
       partitionResolver,
       ...(graph !== undefined ? { graph } : {}),
-      ...((exp2Arm === 'B' || exp2Arm === 'C' || exp2Arm === 'D') ? { promptBuilder: buildPromptEN } : {}),
+      // GA-EVAL-SQLGEN-PROMPT-FIX: the engine responder pre-fetches BM25
+      // candidates + schema and does NOT expose search_data_sources /
+      // load_event_definition as callable to the LLM, so use the
+      // contextPrefetched prompt variant (drops the invocable # 工具集
+      // catalog → no tool-call-format emissions). The harness responder
+      // (--responder harness) is unaffected: it uses the variant preset's
+      // phase-gate prompt, not Nl2sqlEngine. EXP2_ARM B/C/D keep buildPromptEN.
+      ...((exp2Arm === 'B' || exp2Arm === 'C' || exp2Arm === 'D')
+        ? { promptBuilder: buildPromptEN }
+        : { promptBuilder: (args: BuildPromptArgs) => buildPrompt({ ...args, contextPrefetched: true }) }),
     })
 
     const result = await engine.run({ question, scopeId: this.scopeId, today: this.today })
