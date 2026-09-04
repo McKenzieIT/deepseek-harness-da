@@ -1,6 +1,6 @@
 # GA-EXP2 — Prompt 语言实验：中文 vs 英文 vs 混合对 SQL 生成质量的影响
 
-**Type**: experiment  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: experiment  ·  **Phase**: misc  ·  **Status**: Resolved（2026-09-02；结果见 [exp2-results-report](../../research/exp2-results-report.md)，统计显著性已复核——见下方 Resolution）
 **Source**: [GA-GRILL2 grilling session](GA-GRILL2-i18n-architecture.md) Kind 1 讨论（2026-09-01）
 **Blocked by**: 无（使用现有 K11-v2 eval 基础设施）
 **关联**: GA-GRILL2（i18n 架构）、GA-GT5（domain injection seam）、GA-I18N-1~5（Kind 2 逻辑层去中文）
@@ -142,3 +142,29 @@ Variant D 需要将语义层 YAML 中的中文 description 翻译为英文。两
 ## Key files
 
 packages/data/nl2sql-engine/src/prompt.ts; packages/eval/eval-runner/src/sql_semantic_judge.ts; packages/eval/eval/cases/k11-v2/; packages/eval/eval-cli/src/{main.ts,report.ts}
+
+---
+
+## Resolution（2026-09-02；统计复核 2026-09-03）
+
+**完整报告**: [exp2-results-report.md](../../research/exp2-results-report.md)
+
+### 结果
+
+| Variant | Pass Rate | vs A |
+|---|---|---|
+| A（中文 baseline） | 72.0%（121/168） | — |
+| B（全英文） | 31.0%（52/168） | **-41.1pp** |
+| E（英文 judge） | 72.0%（121/168） | +0.0pp |
+
+### 统计显著性复核（2026-09-03，GA-MODEL1 调查）
+
+EXP2 的 -41.1% **经配对检验确认显著**（McNemar p<0.001；序数 Wilcoxon p<0.001；flaky 76 vs 47，p=0.002）。与 GA-EXP4 的 -3.0%（**不显著**，p=0.332）不同——EXP2 的结论符号在 best-of-k / pass^k 两种语义下均稳健（-41.1pp / -23.8pp，均显著）。详见 [model1-baseline-analysis.md](../../research/model1-baseline-analysis.md)。
+
+### 决策
+
+按决策矩阵：B < A（中文显著更好，gap ≥ 3%）→ **保留中文 prompt**。Kind 1（prompt 英文化）前提**当时**否决——后被 [GA-EXP4](GA-EXP4-qwen37max-en-prompt-crossval.md) 在 qwen3.7-max 上重新打开（-3.0% 不显著），再经 [GA-GRILL2](GA-GRILL2-i18n-architecture.md) Kind 1 重新评估（2026-09-03）以**无 i18n seam / 无非中文部署诉求**为由**关闭为 won't-do**，研究诉求转 [GA-EXP5](GA-EXP5-language-correlation.md)。
+
+### 可复用基础设施
+
+`promptBuilder` 注入点（`engine.ts`）、`EXP2_ARM` env 切换（`context.ts`）、英文变体文件 `exp2-prompts-en.ts`、`buildJudgePromptEN` —— 被 GA-EXP4 / GA-EXP5 复用。注意 `exp2-prompts-en.ts` 的规则 1/3 是 GA-GT2 之前的 MaxCompute 硬编码版（`:75`/`:77`），采纳前需重译。
