@@ -35,4 +35,6 @@ destination 实现(按 R4 已定 spec 机械构建,无新决策)。完成后 →
 
 详见 Agent Note:[`.agents/notes/implemented/architecture/2026-09-04-client-present-table-chart-type-expansion.md`](../../../.agents/notes/implemented/architecture/2026-09-04-client-present-table-chart-type-expansion.md)。
 
-→ [T6](T6-chart-integration-testing.md)(HITL 实测 gate)unblocked。建议 post-ship subagent code-review(参 T10 commit `469fd8967b`)。
+→ [T6](T6-chart-integration-testing.md)(HITL 实测 gate)unblocked。
+
+**Post-ship subagent code-review**(2026-09-04,参 T10 `469fd8967b`):static + adversarial probes(`as never` cast / `effectiveType` narrowing / 空 y_columns → yKind@-1 / bubble r_column undefined / meta null·data null / el 无几何 `?? 0` / area=Line·hbar=Bar 的 chart.config.type / 7 类型 render / heuristic description)全 fine;1 **HIGH**(ChartView `seriesColor` 的 `?? '#3b82f6'` 不可达分支 → per-file 100% gate fail,**本 post-ship commit 已修**:`/* v8 ignore next 1 */` + 真实 reason——SERIES_COLORS 非空 literal + i%length 必 in-bounds,fallback 仅为 noUncheckedIndexedAccess);2 MEDIUM(radial(doughnut/polarArea)value-labels 叠在 donut center——R4 prototype 同行为,per-slice arc-centroid 留 T6 HITL 精修,已记 README Known Limitations;line/area 序数 numeric x 不识别——已记);LOW/NIT(`as never` boundary cast[per-type union 故,structurally correct+tested]/ hbar 复用 cartesianScales[cosmetic]/ scatter 空单元点[Chart.js 自处]/ literal tooltip canvas 色[v1 pattern,非 CSS]——acceptable)。coverage 复 `ChartView`/`TableCard`/`locales` 100/100/100/100。详见 Agent Note。

@@ -103,3 +103,10 @@ No direct effect; the card renders query/compute result rows for the user, and t
   is required, else the validator falls back to bar; relaxing this is a T6
   ([T6](../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)) HITL refinement candidate. The model-side heuristic lives in the
   `present_table` tool description ([R4](../../wayfinder/interpretation-client-rendering/tickets/R4-chart-type-expansion.md)).
+- **Radial value-labels stack at the donut center.** The `valueLabelsPlugin`
+  draws doughnut/polarArea value-pills at each `ArcElement`'s `x`/`y`, which
+  Chart.js sets to the shared donut center — so enabling 显示数值 on a
+  multi-slice radial chart stacks the pills at one point (unreadable). Per-slice
+  arc-centroid placement is a
+  [T6](../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)
+  HITL refinement candidate (the R4 prototype has the same behavior).

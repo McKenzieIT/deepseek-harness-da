@@ -31,6 +31,9 @@ const SERIES_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#
 /** Series color at palette index `i` (cycling). The `??` fallback means array
  *  access never yields `undefined`, avoiding the forbidden non-null assertion. */
 function seriesColor(i: number): string {
+  /* v8 ignore next 1 -- SERIES_COLORS is a non-empty literal and i % length is
+     always in-bounds, so the ?? right operand is an unreachable defensive arm
+     kept only to satisfy noUncheckedIndexedAccess typing. */
   return SERIES_COLORS[i % SERIES_COLORS.length] ?? '#3b82f6'
 }
 
