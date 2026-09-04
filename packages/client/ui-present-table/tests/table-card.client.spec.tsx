@@ -1376,13 +1376,52 @@ describe('validateChartType (R4 client validator → degrade to bar)', () => {
     expect(validateChartType('area', { type: 'area', x_column: 0, y_columns: [1] }, KINDS, ROWS).ok).toBe(true)
   })
 
-  it('degrades line/area to bar when x is not a date', () => {
+  it('accepts line/area when x is an ordinal numeric sequence (non-date)', () => {
+    const kinds = ['number', 'number'] as const
+    const rows = [['1', '10'], ['2', '20'], ['3', '30'], ['5', '50']]
+    expect(validateChartType('line', { type: 'line', x_column: 0, y_columns: [1] }, kinds, rows).ok).toBe(true)
+    expect(validateChartType('area', { type: 'area', x_column: 0, y_columns: [1] }, kinds, rows).ok).toBe(true)
+  })
+
+  it('degrades line/area to bar when numeric x is empty (not an ordinal sequence)', () => {
+    // x_column 4 is number-kind but ROWS only carry 2 cells → all-empty x →
+    // not an ordinal sequence (the ?? '' + seen>0 false paths) → degrade.
     const r = validateChartType('line', { type: 'line', x_column: 4, y_columns: [1] }, KINDS, ROWS)
     expect(r.ok).toBe(false)
     if (!r.ok) {
       expect(r.reasonKey).toBe('degradeLineDate')
       expect(r.fallback).toBe('bar')
     }
+  })
+
+  it('degrades line/area to bar when x is a string (not date, not numeric)', () => {
+    // xKind !== 'date' and xKind !== 'number' → the && short-circuits before
+    // isOrdinalNumericX runs → degrade (a string x is categorical, not a trend).
+    const kinds = ['string', 'number'] as const
+    const rows = [['a', '10'], ['b', '20']]
+    const r = validateChartType('line', { type: 'line', x_column: 0, y_columns: [1] }, kinds, rows)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reasonKey).toBe('degradeLineDate')
+  })
+
+  it('degrades line/area to bar when numeric x is not a monotonic ordinal sequence', () => {
+    // 3 → 1 decreases (the value < prev arm): a line would connect points out
+    // of sequence, so degrade to bar.
+    const kinds = ['number', 'number'] as const
+    const rows = [['3', '30'], ['1', '10'], ['2', '20']]
+    const r = validateChartType('line', { type: 'line', x_column: 0, y_columns: [1] }, kinds, rows)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reasonKey).toBe('degradeLineDate')
+  })
+
+  it('degrades line/area to bar when a numeric-kind x cell is non-numeric', () => {
+    // a declared number column with a non-numeric cell (Number → NaN, the
+    // !isFinite arm) is not a clean ordinal sequence → degrade to bar.
+    const kinds = ['number', 'number'] as const
+    const rows = [['1', '10'], ['abc', '20'], ['3', '30']]
+    const r = validateChartType('line', { type: 'line', x_column: 0, y_columns: [1] }, kinds, rows)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reasonKey).toBe('degradeLineDate')
   })
 
   it('accepts scatter when x and y are numeric (≥2 numeric columns)', () => {

@@ -117,7 +117,20 @@ export const valueLabelsPlugin = {
         } else if (type === 'bar') {
           y = ey - 10
         } else if (isRadial) {
-          // arc center: x, y unchanged
+          // Per-slice arc centroid: Chart.js ArcElement exposes the shared
+          // donut center (x, y) plus startAngle/endAngle (radians, from the
+          // +x axis) and innerRadius/outerRadius. Place the pill at the
+          // slice's visual midpoint so multi-slice labels no longer collapse
+          // onto the one shared center. Missing arc geometry (a malformed
+          // element) falls back to the center via the ?? 0 arms.
+          const sa = (el as { startAngle?: number }).startAngle ?? 0
+          const ea = (el as { endAngle?: number }).endAngle ?? 0
+          const inner = (el as { innerRadius?: number }).innerRadius ?? 0
+          const outer = (el as { outerRadius?: number }).outerRadius ?? 0
+          const mid = (sa + ea) / 2
+          const radius = (inner + outer) / 2
+          x = ex + Math.cos(mid) * radius
+          y = ey + Math.sin(mid) * radius
         } else {
           y = ey - 10
         }
