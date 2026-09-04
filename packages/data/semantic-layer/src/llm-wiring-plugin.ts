@@ -31,30 +31,40 @@ export const Config: z<Config> = z.object({
 /**
  * Resolve the enrichment LLM provider/model from explicit input, falling back
  * to the deployment env-var contract (`ENRICHMENT_LLM_PROVIDER` /
- * `ENRICHMENT_LLM_MODEL`). Throws when neither input nor env supplies both
- * values — fail-loud instead of silently falling back to a vendor default.
+ * `ENRICHMENT_LLM_MODEL`). Returns `''` for whichever field neither input nor
+ * env supplies; `apply` graceful-degrades when either is empty (warn + skip
+ * `wireEnrichmentLlm`, so enrichment runs its deterministic round only). An
+ * unconfigured enrichment capability must not take down the whole bundle
+ * group at boot (CB-1a α; the substrate treats an unwired llmCall as
+ * deterministic-only — see `enrichment.ts` / `setLlmCall`).
  *
- * CL8 centralization: this exact resolver (env-var names + error message) is
- * duplicated locally in `eval-cli/src/main.ts` and
- * `tool-search-data-sources/src/expand-query.ts` — the shared contract is the
- * env-var names + error message, not shared code (no new cross-package dep).
+ * CL8 centralization: this resolver (env-var names) is duplicated locally in
+ * `eval-cli/src/main.ts` and `tool-search-data-sources/src/expand-query.ts`.
+ * Those sibling resolvers still throw (fail-loud is correct for eval/tooling
+ * contexts, which are not boot-critical); this boot-time resolver diverges to
+ * graceful-degrade. Reconciling the divergence is deferred to CB-2. The shared
+ * contract is the env-var names, not shared code (no new cross-package dep).
  */
 function resolveEnrichmentLlmConfig(
   input: { provider?: string | undefined; model?: string | undefined },
 ): { provider: string; model: string } {
   const provider = input.provider || process.env.ENRICHMENT_LLM_PROVIDER || ''
   const model = input.model || process.env.ENRICHMENT_LLM_MODEL || ''
-  if (!provider || !model) {
-    throw new Error('enrichment-llm-wiring: no provider/model configured')
-  }
   return { provider, model }
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
   // CL8: resolve provider/model from plugin config → deployment env-var
-  // contract. No silent vendor fallback ('aga'/'qwen3.7-max' removed) — fail
-  // loud when unconfigured so the deployment pins its actual gateway.
+  // contract. No silent vendor fallback ('aga'/'qwen3.7-max' removed).
+  // CB-1a α: unconfigured enrichment is non-fatal at boot — warn + run the
+  // deterministic round only (skip wireEnrichmentLlm). Throwing here rolls
+  // back the whole bundle group (vendor all-or-nothing) and drops the
+  // semantic-layer UI; see CB-1 blocker 2 / CB-3 S2.
   const { provider, model } = resolveEnrichmentLlmConfig({ provider: config.provider, model: config.model })
+  if (!provider || !model) {
+    ctx.logger.warn('enrichment-llm-wiring: no provider/model configured; enrichment runs deterministic-only. Set ENRICHMENT_LLM_PROVIDER/MODEL or the settings item (CB-2, deferred) to enable the semantic round.')
+    return
+  }
 
   const textLlm: TextLlm = {
     async text(prompt: string): Promise<string> {
