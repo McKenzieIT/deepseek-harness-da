@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/query/query-maxcompute/README.md
-README.md: a250523865f11bf2deb61e097af4e6549de7c6db
-README.zh.md: 23ad7f609e064438412f6b7bd26c8330a5f0a7ca
+README.md: 44dbd79c2f7cf1941c3c67ed61cc6e911eb0c855
+README.zh.md: 38ea692ae33bf19dfaba875908c671be0c538926
