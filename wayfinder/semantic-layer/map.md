@@ -140,10 +140,29 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 - [CL-17 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md) — **部分关闭**：enrichment 已尽（labels 已在），overall 70.8%<78%；剩余=trim/概念formula/迁移真不可答→DELIVERY→CL-21（非 enrichment）；dup 清理已做（BM25 效应待 CL-22 查）
 
 
+
+### 2026-09-03/04 运行时审计（「语义层按钮消失」根因 + 三处客户端断链 + pass^k 重打分）
+
+- **「按钮消失」真因 = `--profile web` 冷启动失败,非按钮代码** → [CB-1](tickets/CB1-cold-boot-blockers.md)。按钮注册链路全绿(slot 注册/boot manifest/5 个 inject/served bundle md5 匹配/mode B),但冷启动有**两个独立 blocker**,任一触发即令 `data-agent` include 组**整组不挂载**,连带 `ui-semantic-layer` 消失(base 树已挂载 → app 照常打开,只是 data-agent 的一切都没了)。用户 3080 上的进程是 8/31 15:56 启动的**幸存者**,早于两 blocker 落地,故它至今仍渲染按钮(headless DOM 实证)——一旦重启即消失。① `duplicate loader entry id: result-cache`(web-app:300 客户端对象缓存 vs data-agent 服务端 seam,随 T9 `9ab8189b0b` 落地)→ **已修**(改名 `result-cache-memory`,commit `60740d5197`);② `enrichment-llm-wiring: no provider/model configured`(CL-8 移除静默默认改 fail-loud,但 `ENRICHMENT_LLM_*` 全仓无处提供)→ **决策=改为设置项**,见 [CB-2](tickets/CB2-enrichment-llm-as-settings-item.md)。
+- **失败隔离决策(2026-09-04)**:「先自检止血,per-row 后评」。自检**已落地**——`scripts/bundle-loader-ids.spec.ts` 跨 bundle 断言"同一 id 不得声明两个不同 plugin",**双向验证**(修复后 pass;改回 `result-cache` 则 fail 并报出两处精确位置)。per-row 容错评估 → [CB-3](tickets/CB3-per-row-fault-isolation.md),其中关键提问=三次事故的真正症状是**失败静默**而非失败粒度,故先答"可观测性"可能就不必改 vendor。
+- **[W16 evidence-query 客户端 remote 缺口](tickets/W16-evidence-query-client-remote-gap.md)** — 服务端 gateway 齐全(8 个 `@Remote`,namespace `evidenceQuery`,bundle 已挂),**客户端那一半从未接**:`evidence-query/package.json` 无 `./remote` 导出(schema-gateway 有),`api/remotes/src/client/index.ts:11` 也没 import → `remote.evidenceQuery` 恒 undefined → `evidenceClient === null` → GoalDock/EvidenceSidebar/CoveragePanel/EvalTrajectory/EvalDeltaView/GapPanel/DashboardView/W15 push **全部零数据**,B→A auto-flip **永远**触发不了(`SemanticLayerShell.tsx:66` 要求 `evidenceClient` 非 null)。**⚠️ 本 map 的 W11「三处 TODO 替换为真实数据」与 W15「已闭」与代码事实矛盾**——测试全绿是因为直接注入 fake client,不走真实解析路径。顺带:`DashboardView` **零 CSS**(`sl-dashboard*` 不在任何 `.css`);`index.ts` `$on` disposer 未捕获(reload 泄漏)。(`selectedAssetId` 缺口已由并发 commit `e823800368` 修复。)
+- **[W17 管理 session 客户端桥接](tickets/W17-management-session-client-bridge.md)** — 知识图谱对话闭环断在**一个点**:`ContextLayerOverlay.tsx:65-66` 只传 `data` + 硬编码 `messages={[]}`,`ContextLayerViewProps` 的 6 个 prop 里 4 个交互 prop 全没传(`onSendMessage` 无法发消息 / `eventSource` **narration gate 无事件源→动画永不触发** / `isStreaming` / `onInsertReference`)。根因=`ManagementSessionService` 是服务端 Service 无客户端桥接(W10 的 `messages=[]` TODO 从 08-27 挂到现在)。**与 W16 同形,是第三例"服务端有、客户端没接"**。⚠️ **W13 的修复目前不可观测**——动画唯一驱动源是 narration gate,`eventSource=null` 使其恒空。
+- **知识图谱管理面首次可达(W14b,commit `60740d5197`)** — `ui-context-layer` 此前是**孤儿包**(W10/W11 已交付却从未挂载:无 bundle 行、不在 boot manifest 46 条、plugin 路由 **404**;`e2e-test-checklist.md:100` 早有记录)。现挂载 + `dsh.client.inject` 补 `ui-layout`(它注册的 `shell.overlay` 由 ui-layout 声明) + 置于 `ui-semantic-layer` **之前** + 后者对 `contextLayer` 改**惰性**解析(原先 apply 时读一次,晚挂载即永久 undefined)。实测 boot manifest 46→**48**、两插件路由 200、`shell.overlay` seat 进入 DOM。W12(`evt.target.id`)+ W13(12 处 `update*Data` 全部配对 `graph.draw()`)同批。
+- **eval pass^k 迁移 —— 离线重打分完成,blast radius 远小于预期**（[重打分报告](research/passk-rescore-2026-09-03.md)）:
+  - **更正**:① pass^k **已提交**(`runner.ts:378 passKVerdict`),非"未提交";② pass^k 基线**已存在**——`rebaseline-passk-168-merged` = **52.4%**,随 commit `cfbb710b50 "pass^k 168-case definitive baseline (52.4%)"` 落地,但它是**单个拼接 run**,违反 CL-22 的 ≥3 run 硬要求 → **目前无合法基线**(同日冲突 run:`f4bc4a06`=0% 坏 run、`rebaseline-passk-168`=33.9%);③ **每次 attempt 判定已持久化**(`cases[].pass_k_results[]`)→ pass^k 可**离线重算,零 LLM 零成本**(`.tmp/rescore-passk.py`)。
+  - **结论 A:k=1 的 run 完全不受影响** —— pass^k 与 best-of-k 在单 attempt 下数学恒等,26 个 k=1 run 的 delta 全为 **+0.0pp**。故 **CL-5/7/8/9/10/11/12/13/14/15/16/17/22、P3、P4 的数字按记录成立,无需重跑**(73.2% 中位数本身即三个 k=1 run 的中位数)。残余风险=同批的 `executionMatch` 不可验证→false 规则,重打分读存量值故测不出,需单独核查。
+  - **结论 B:k=3 的 run 全线崩塌** —— exp4-arm-a 88.1%→**56.5%**、exp2-arm-a 72.0%→26.8%、g1b-variant-D 63.9%→16.7%、variant-B 83.3%→47.2%。(GA-MODEL1 记的 47.6% 更严,因它同时应用了不可验证→false。)
+  - **结论 C:一个决策翻转 —— GA-EXP4 / Kind 1(prompt 英文化)**。英文 vs 中文:best-of-k **−3.0pp**(88.1/85.1)→ pass^k **+1.2pp**(56.5/57.7),**符号翻转**;+1.2pp 在噪声内 → 诚实结论是**中英文无显著差异**,而非"英文更差故保留中文"。原决策事实基础不成立,Kind 1 门禁需重议。
+  - **结论 D:方向性决策均存活** —— GA-MODEL1(qwen3.7-max:+16.1%→**+29.7pp**)、G1c ship variant(B 仍最优)。
+  - **目标值须重设**:78%/80%/90% 是对着 best-of-k ~73.8% 定的;pass^k 起点 52.4%,同样数字含义完全不同 → CL-20/21/23/R11 的阈值重设后才有意义。**另注:pass^k 对噪声更敏感**(全中才算过,单次抖动即失败),故其极差可能远大于 best-of-k 时代测得的 ±2.4pp——建议先用 30-case ×3 探针量方差,再决定是否投 ~16h 建全量基线。
+
 ## Not yet specified
 
 - **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化。Session prompt: `prompts/remaining-1-schema-provider-conflict.md`。**保留为雾**（2026-08-28 确认——当前只有一个 provider，等引入第二个时再决策）。
 - **Context Layer 对齐演进**（R9 审计，详见下方独立章节）
+- **prompt caching**（R10 认定的 P0:~70% 成本节省、零风险,是系统当前最大优化杠杆）—— R10 已给结论但**未开实施票**。
+- **`executionMatch` 不可验证→false 对 k=1 run 的影响**（pass^k 重打分读存量值,测不出这条规则的变化;GA-MODEL1 提到 exp4 的 504 attempt 中 75 个无 judge。需单独核查它是否也动摇了 CL 系列的 k=1 结论）。
+- **pass^k 下的方差量级未知**（best-of-k 时代测得 flip rate 26.8% / 极差 ±2.4pp;pass^k 全中才算过,对噪声更敏感,极差可能显著更大。若大到无法用中位数判定阈值,则 CL-20/21/23/R11 的验收方式本身需重设计,而非只改数字）。
 
 ## Context Layer 演进方向（v2+）
 
@@ -292,6 +311,13 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - ~~[CL-22: eval 非确定性深查](tickets/CL22-eval-nondeterminism-deepcheck.md)~~ ✅ — 3 同代码 run 中位数 73.2%（±2.4pp）；70.8% 是异常值（噪声）；dup 清理无需回滚（0/9 lost 使用 回归/回流）；Alias -15pp = LLM 非确定性（26.8% case flip rate）；建议 ≥3 run 取中位数
 - [CL-23: tool-call 检测 + 结构化拒绝合成](tickets/CL23-toolcall-detection-and-structured-decline.md) — CL-19 修复落地：(a) engine 层 tool-call→clean decline + (b) reply 层 LLM 合成结构化拒绝 + looksLikeToolCall 扩展；目标翻转 voice_017/042（**frontier — 无阻塞，CL-19 衍生**）
 - [R11: eval 切换 buildEvalPrompt 实验](tickets/R11-eval-prompt-switch-experiment.md) — CL-19 option (c2)：eval promptBuilder 切换为无 tool-catalog 的 `buildEvalPrompt`，168 case full run 对比；权衡：消除 tool-call 发射 vs 改变评测标的（**frontier — 无阻塞，CL-19 衍生**）
+
+### 运行时/接线可用性（2026-09-03/04 审计毕业）
+- ~~[CB-1: 冷启动 blocker](tickets/CB1-cold-boot-blockers.md)~~ — blocker① 已修(result-cache 改名) + 自检 gate 已落地;blocker② → CB-2;失败隔离 → CB-3
+- [CB-2: enrichment LLM 配置改为设置项](tickets/CB2-enrichment-llm-as-settings-item.md) — settings key 形状 / 设置 UI 落点 / 未配置语义 / 三处重复 resolver（**frontier — 无阻塞;冷启动仍需 env 直到本票落地**）
+- [CB-3: include 组 per-row 失败隔离（评估）](tickets/CB3-per-row-fault-isolation.md) — 关键提问=真正症状是失败**静默**而非失败粒度,先答可观测性可能就不必改 vendor（**frontier — 无阻塞**）
+- [W16: evidence-query 客户端 remote 缺口](tickets/W16-evidence-query-client-remote-gap.md) — 补 `./remote` 导出 + `api/remotes` 装配 + 真实解析路径测试;**同批须补 DashboardView CSS**(`.tmp/eval-results` 已有 3 个 runId,阈值也是 3 → RPC 一通 auto-flip 立刻触发一个零样式视图)（**frontier — 无阻塞;B 组总闸**）
+- [W17: 管理 session 客户端桥接](tickets/W17-management-session-client-bridge.md) — 图谱对话闭环唯一断点;**W13 动画需它才可观测**;开为 grilling 因为管理 session 就是普通 session、客户端已有消息流,若成立则 = 接线而非新建 RPC,且 W9/W10 的 presenter 卡片可直接复用（**frontier — 无阻塞**）
 
 ### Enrichment 算法质量
 ~~[CL-18: ds 噪声关联修复 + 确定性匹配加固](tickets/CL18-ds-noise-join-fix.md)~~ ✅ — Phase 2 算法加固已落地：substrate `excludeColumns` 参数 + 调用层 `buildExcludeColumns`（`role:partition` 驱动，无 role 回退 `[ds,pt,dt]`）接入 `discoverRelations()` + on-write hook；6 新测试 38/38 scoped 绿
