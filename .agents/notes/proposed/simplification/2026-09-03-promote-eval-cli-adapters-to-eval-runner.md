@@ -14,6 +14,12 @@ Promote the five adapters (plus the `toEngineOutcome` state-mapping helper) into
 
 `eval-cli` and `eval-runner-service` would share one adapter implementation, so a change to either's adapter shape must be intentional (no silent local divergence). That divergence was a bug source, not a feature; the one place it arguably helped (fast CLI iteration without touching the service package) is a workflow cost worth paying for correctness.
 
+## Alternatives considered
+
+**Keep the fork so eval-cli can iterate without touching the service package.** A local fork lets the CLI change its adapters fast. It lost because the fork already diverged (`CtxOdpsAdapter` carried the bare `as unknown as EngineQueryOutcome` cast — every completed query misread as failed — that the original had fixed via `toEngineOutcome`), and the drift-induced bug survived precisely because the two copies are not shared — the fast-iteration benefit buys correctness divergence.
+
+**Copy `toEngineOutcome` back into the fork without promoting.** Fix the drift locally by porting the state-mapping helper into eval-cli. It lost because it leaves the five adapters forked (the same drift can recur on any of them), and the proposal promotes all five plus `toEngineOutcome` to the shared `dsh-eval-runner` home so both the CLI and the service use one reconciled implementation.
+
 ## Acceptance criteria
 
 - `eval-cli/context.ts` contains no `CtxLlmAdapter`/`CtxOdpsAdapter`/`CtxQueryExecutor`/`LlmJudgeExecutor`/`Nl2sqlAgentResponder` definition; it imports them from `dsh-eval-runner`.

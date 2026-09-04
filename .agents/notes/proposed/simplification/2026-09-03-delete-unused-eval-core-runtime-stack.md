@@ -19,6 +19,12 @@ Delete `verdict_mapper.ts`. Remove the unused `runMultiTurnCase`/`passKVerdict`/
 
 A second, "purer" eval engine that someone might have intended to wire in. It is not wired, its semantics contradict the live one, and its delta orderings are dead and inconsistent — keeping it is a standing footgun for whoever next touches eval.
 
+## Alternatives considered
+
+**Keep the dead stack as a parallel pass^k implementation.** It encodes "must pass every time" semantics the live path now also reports, so it could cross-check `passKVerdict`. It lost because the two disagree on the metric, the dead copy has zero callers, and its `OUTCOME_RANK`/`VERDICT_SEVERITY` orderings are themselves uncalled and mutually inconsistent — a contradictory second implementation is a footgun, not a cross-check.
+
+**Keep only the types, defer the function deletions.** `AttemptResult`/`RunnerVerdict` are still imported, so preserve them and leave the runtime functions for a later sweep. It lost as a scope reduction (the proposal already keeps the types), not as a sequencing escape: the dead runtime functions are the duplication this note removes, and the `pass_k` semantics decision has already shipped, so there is no reason to keep the second runtime copy.
+
 ## Acceptance criteria
 
 - `verdict_mapper.ts` deleted; `runMultiTurnCase`/`passKVerdict`/`runBatch`/`computeDelta` removed (types kept if still imported).

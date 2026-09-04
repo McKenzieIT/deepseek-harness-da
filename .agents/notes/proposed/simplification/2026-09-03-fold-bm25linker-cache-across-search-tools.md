@@ -20,6 +20,12 @@ Extract a single shared `getEnrichedLinker(schema, scopeId)` + a `SchemaCorpusSo
 
 Three private copies let each tool tweak its cache key independently; folding them commits the three to one cache shape. That shape is already identical in two of three sites, and the third's divergence is a bug, not a feature, so the lost flexibility is the flexibility to reintroduce this bug.
 
+## Alternatives considered
+
+**Keep three copies so each tool can tweak its cache key independently.** It lost because two of three copies are already identical and the third's divergence (`tool-retrieve` using events-only `loadRetrievalCorpus` while siblings use `loadRetrievalCorpusAll ?? loadRetrievalCorpus`) is a bug that makes `tool-retrieve` silently miss tables and metrics, breaking its own "recall == search_data_sources" contract — the lost flexibility is the flexibility to keep this bug.
+
+**Standardize on `tool-retrieve`'s events-only form.** Picking the narrower corpus as the shared shape. It lost because the events-only form is the drifted, buggy one; the proposal carries `loadRetrievalCorpusAll ?? loadRetrievalCorpus` (the full tables+events+metrics form) as the shared shape, fixing `tool-retrieve`'s recall by construction rather than propagating its gap to the other two tools.
+
 ## Acceptance criteria
 
 - One definition of `getEnrichedLinker`/`SchemaCorpusSource`; the three tools' `index.ts` import it and contain no `ACTIVE_SENTINEL`/`WeakMap`/`corpusVersion` copy.
