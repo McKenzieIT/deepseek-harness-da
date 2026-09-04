@@ -1,6 +1,6 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: [CB1, CB3]
 ---
 
@@ -65,3 +65,13 @@ blocked_by: [CB1, CB3]
 - `packages/host/plugin-inventory/src/index.ts:64`（inventory 失败行显示）
 - `vendor/loader/src/config/group.ts`（**不动**：事务 all-or-nothing）
 - 决策来源：[CB-1](CB1-cold-boot-blockers.md)、[CB-3](CB3-per-row-fault-isolation.md)；推迟项：[CB-2](CB2-enrichment-llm-as-settings-item.md)
+
+## Resolution（2026-09-04 landed）
+
+α + S2 落地：[PR #11](https://github.com/McKenzieIT/deepseek-harness-da/pull/11)（commit `6a2551cb82`，分支 `fix/cb1a-cold-boot-stabilization`）。
+
+- **α**（`llm-wiring-plugin.ts`）：`apply()` 未配置 → `ctx.logger.warn` + 早返回（确定性轮）；配置齐全路径字节不变（不回归 CL-8）；`resolveEnrichmentLlmConfig` 签名不变；substrate + vendor 未动。
+- **S2**（`app-boot/src/index.ts`）：boot catch 枚举多 entry `AggregateError` 的 per-entry id/name/cause 到顶层（不再埋在 `cause.cause.errors[]`）；单失败路径不变。**规格偏离**：spec 的「`mountRootInclude` 后置自检」drop 为冗余（boot 已 loud reject，复现确认当前 master 对 cold-boot 组失败是 crash 非 silent）；inventory 失败行显示**推迟（Option A）**——loud 世界对失败 case moot（失败 entry 被事务回滚从 `tree.store` 删除、app 崩前 inventory 不被查；需 S1 per-row 隔离才有用）。
+- **验证**：4× subagent review（无 blocker）；117 owning 测试绿（107 app-boot + 9 llm-wiring + 1 bundle-loader-ids）；`pnpm run typecheck` exit 0；`app-boot/src/index.ts` 100% 覆盖；端到端零 env `web --port 3099` 启动成功（`dsh web: http://127.0.0.1:3099`），不再 exit-1 crash。
+- **预存（非本 PR）**：`llm-wiring-plugin.ts` 的 `textLlm.text` 块未覆盖——master 亦然（α 未触该块，git-stash 确认）；按 dsh-pre-push skill 留 CI。
+- **merge 状态**：PR #11 `MERGEABLE` 但 `UNSTABLE`——仓库 CI runner 基建不可用（自定义 `dsh-ubuntu-24-04-16core` label 无在线 runner；仓库零近期绿 run、master 亦红）。merge 阻于 runner-provisioning 基建，**非 α+S2**。
