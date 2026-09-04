@@ -1,0 +1,86 @@
+name: No production src on master (direct-push guard)
+
+# Catches a `--no-verify` / no-lefthook bypass of the local pre-push gate
+# (scripts/verify-no-production-src-on-master.ts, wired in lefthook.yml). If
+# someone directly pushes commits touching production source
+# (packages/.../src, apps/.../src, native/.../src, python/.../src, or
+# scripts/) to master, this CI gate fails loudly.
+#
+# REACTIVE, not preventative: the push has already landed, so this only alerts.
+# The real prevention is origin/master branch protection ("restrict pushes" +
+# "require status checks"), which blocks direct pushes entirely — a GitHub
+# admin setting this session cannot enable (the PR body calls it out for the
+# owner). This workflow is the belt-and-suspenders backstop for when branch
+# protection is off or incomplete.
+#
+# PR merges are SKIPPED: a PR that touches src is the LEGIT path (reviewed),
+# so the gate must not flag it. This repo merges PRs with GitHub's
+# "Merge pull request #N" merge commits (--merge); the skip keys on that
+# subject prefix. If the repo ever switches to squash/rebase merges, this skip
+# needs rework (squash subjects are arbitrary) — the gate would then flag
+# merged src.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+env:
+  # CI runs must never report to the production telemetry endpoint baked
+  # into apps/cli/cordis.yml (AppCLIEntry disables the row when set).
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  verify-no-production-src-on-master:
+    name: verify-no-production-src-on-master
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so `git rev-list before..after` + `git diff-tree`
+          # resolve the push range (a shallow clone would miss `before`).
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify no production src on master (catch --no-verify bypass)
+        env:
+          GATE_BRANCH: master
+          GATE_BEFORE: ${{ github.event.before }}
+          GATE_AFTER: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+          before="$GATE_BEFORE"
+          after="$GATE_AFTER"
+          # workflow_dispatch has no push before/after; fall back to the
+          # latest master commit so a manual run still exercises the gate.
+          if [ -z "$before" ] || [ -z "$after" ]; then
+            after="$(git rev-parse --verify --quiet origin/master || true)"
+            before="$(git rev-parse --verify --quiet 'origin/master~1' || true)"
+            echo "Manual dispatch — checking latest master commit ${before}..${after}."
+          fi
+          # PR merges are the legit path for src (via review); only catch
+          # direct pushes. This repo merges PRs with "Merge pull request #N".
+          if git log -1 --format=%s "$after" 2>/dev/null | grep -q '^Merge pull request #'; then
+            echo "Head commit is a PR merge (reviewed) — legit src path, skipping gate."
+            exit 0
+          fi
+          # First-push / branch-creation edge: before is the all-zero SHA.
+          if [ "$before" = "0000000000000000000000000000000000000000" ]; then
+            echo "Push has no 'before' (first push / branch creation); nothing to compare, skipping."
+            exit 0
+          fi
+          export GATE_RANGE="$before..$after"
+          echo "Checking direct push range $GATE_RANGE for production src..."
+          pnpm run verify-no-production-src-on-master
