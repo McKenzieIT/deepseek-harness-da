@@ -15,10 +15,15 @@ CL-8（96.2% / 100%）、CL-9（91.7%）、CL-10（66.1% / 91.7%）、CL-11、CL
 CL-15（73.8%）、CL-16（70.8%）、CL-17、CL-22（73.2% = 73.2/70.8/76.8 三 run 中位数）、
 CL-5、CL-7、P3、P4、G1b-k11v2 系列、p11d-calibration。
 
-> ⚠️ 残余风险：GA-AUDIT1 同批还改了 `executionMatch` 不可验证→false。本重打分读的是
-> **已存的** `execution_match` 值，因此**测不出**该规则变化的影响。对 k=1 而言
-> pass^k 语义切换可证为 no-op，但"不可验证→false"是否影响这些 run 仍需单独核查
-> （GA-MODEL1 提到 exp4 的 504 attempt 中 75 个无 judge）。
+> ✅ **残余风险已核查并排除**（2026-09-04）：GA-AUDIT1 同批还改了 `executionMatch`
+> 不可验证→false。在 4 个 k=1 基线 run 上逐 attempt 统计"无 `sql_judge` 且
+> `execution_match=true`"者，各得 21-25 个 case；与 `packages/eval/eval/cases/k11-v2/`
+> 的 case YAML 逐一比对，**21/21 全部是 DELIVERY case**（`019`/`049`/`075`/`078`/`079`
+> 正是 CL-12 迁移的 5 个，其余为 voice DELIVERY 组）。DELIVERY case 由 DELIVERY judge
+> 经 `delivery_match` 判分，`expected.result` 为 null，本就不进 SQL judge 分支
+> → **genuinely-flip 数为 0**。
+>
+> **结论：k=1 基线完整有效。CL-15 的 73.8% 与 CL-22 的 73.2% 中位数可复现。**
 
 ## 结论 2：k=3 的 run 全线崩塌
 

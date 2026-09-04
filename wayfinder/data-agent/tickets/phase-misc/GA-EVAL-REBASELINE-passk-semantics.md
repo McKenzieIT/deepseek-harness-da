@@ -93,3 +93,39 @@ pass^k 语义落地后，如何重建可信基线，并让"数字含协议"成�
 **仍遗留**：
 - adapter.ts/harness-responder 的 debug log（`console.error('[ADAPTER-DBG]...')`）待清理。
 - item 4 token usage（interceptor design，见上）。
+
+## 2026-09-04 重构本票前提：这是**新口径**，不是旧基线的修正
+
+三项事实核查（[重打分报告](../../../semantic-layer/research/passk-rescore-2026-09-03.md)）：
+
+1. **pass^k 已提交**（`runner.ts:378 passKVerdict`），本票"未提交改动"的描述已过期。
+   落地 commit：`cfbb710b50 "pass^k 168-case definitive baseline (52.4%)"`。
+2. **每次 attempt 的判定已持久化**（`cases[].pass_k_results[]` 含
+   `execution_match`/`delivery_match`/`sql_judge`/`infra_error`）→ 任何历史 run 都可
+   **离线重打分，零 LLM 调用零成本**（脚本 `.tmp/rescore-passk.py`）。这就是本票
+   "重放 exp4-arm-a 得 47.6%" 的机制。**故"全部基线失效需重跑"的成本判断过高。**
+3. **k=1 的 run 完全不受影响** —— pass^k 与 best-of-k 在单 attempt 下数学恒等，
+   26 个 k=1 run 的 delta 全为 **+0.0pp**。而 `scripts/run-eval.sh` 的显式默认就是
+   **`--pass-k 1`**（注释："baseline-matching flags: `--pass-k 1`"），CL-15 的 73.8%
+   与 CL-22 的 73.2% 中位数**都是 k=1**。
+
+**因此本票的定位应从「修正失效基线」改为「引入一个更严的新口径」**：
+
+| 口径 | 168-case | 问的是什么 |
+|---|---|---|
+| k=1（现行验收） | ~73% | 能不能做对 |
+| k=3 + pass^k（新） | 52.4%（n=1 拼接 run） | 是不是**稳定**做对 |
+
+**未解决的真问题**（本票应聚焦于此）：
+- **要不要把验收口径切到 k=3+pass^k？** 若切，CL-20/21/23/R11 及所有历史目标值
+  须整体重设——这是一次口径变更决策，不是 bug 修复。若不切，k=1 基线继续有效，
+  pass^k 作为**附加的可靠性指标**并行观测。
+- **CL-22 的「≥3 run 取中位数」与 pass_k=3 方向相反**（前者把抖动当噪声抹平，
+  后者当失败惩罚）。两条规则并存需明确各自适用范围，否则会出现"3 run 中位数的
+  pass_k=3 结果"这种双重惩罚口径。
+- **pass^k 的方差量级未知**。best-of-k 时代测得极差 ±2.4pp；pass^k 全中才算过，
+  单次抖动即失败，极差应显著更大。**若极差大到无法用中位数判定阈值，则问题不是
+  "阈值定多少"而是"这个口径能否用于验收"。** 建议先用 30-case ×3 探针量方差
+  （约 3h，现有 `a4fbd262`=63.3% 可作第一个 run），再决定是否投 ~16h 建全量基线。
+- **52.4% 本身不合法**：单个**拼接** run（11:06 的 33.9% run 干净部分 + 63 case
+  重跑合并），违反 CL-22 的 ≥3 run 硬要求。同日另有 `f4bc4a06`=0%（坏 run）。

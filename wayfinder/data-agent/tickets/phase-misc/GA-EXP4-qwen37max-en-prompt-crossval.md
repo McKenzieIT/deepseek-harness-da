@@ -84,3 +84,27 @@ node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
 - SQL 生成率两组完全一致（no_sql=0 vs 0），"Helpful Assistant" 模式切换问题完全消除
 - **GA-EXP3 "qwen-plus 特定" 标注被验证**——退化是模型能力不足，不是英文 prompt 的结构性问题
 - **Kind 1（prompt 英文化）重新打开**——模型升级后英文 prompt 可行
+
+## 2026-09-04 重打分：结论是**口径依赖**的，−3.0% 不稳
+
+[离线重打分](../../../semantic-layer/research/passk-rescore-2026-09-03.md)（读
+`cases[].pass_k_results[]`，零 LLM 调用）对本票的两个 arm 重算：
+
+| 英文 vs 中文 | 中文 (arm-a) | 英文 (arm-b) | 差 |
+|---|---|---|---|
+| best-of-k（本票原记录） | 88.1% | 85.1% | **−3.0pp** |
+| pass^k（同一份数据重算） | 56.5% | 57.7% | **+1.2pp** |
+
+**符号翻转。** 两个 arm 都是 k=3，同一份 attempt 数据，只换判定规则即得相反方向。
+
+结合 CL-22 实测的噪声水平（case flip rate 26.8%、overall 极差 ±2.4pp，且 pass^k
+对抖动更敏感故极差应更大），**−3.0pp 与 +1.2pp 都在噪声内**。诚实结论：
+**中英文 prompt 在 qwen3.7-max 上无显著差异**，而非「英文更差 3.0%」。
+
+**影响**：本票"保留中文 prompt"的**定量依据不成立**（定性结论——
+EXP2 的英文灾难性退化是 qwen-plus 能力问题、在 qwen3.7-max 上消失——**仍成立**，
+且被 pass^k 加强：exp2-arm-a 26.8% → exp2-arm-b 3.0%）。
+**Kind 1（prompt 英文化）的门禁需重议**：它当前的阻塞理由是"英文差 3pp"，
+而该理由已不成立；真实情况是"无显著差异"，则英文化的取舍回到**可维护性**
+（原本 GA-GRILL2 的动机）而非性能。若要给出定量结论，需 ≥3 run 取中位数
+（单 run delta 不可决策，CL-22 规则）。

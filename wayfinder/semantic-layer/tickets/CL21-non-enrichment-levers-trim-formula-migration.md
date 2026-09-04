@@ -36,3 +36,28 @@ CL-17 部分关闭后的剩余：overall 70.8% < 78%。enrichment 杠杆已尽�
 - eval cases：`packages/eval/eval/cases/k11-v2/`
 - eval wrapper：`scripts/run-eval.sh`
 - 实验日志：`wayfinder/semantic-layer/research/experiment-audit-log.md`
+
+## 2026-09-04 pass^k 协议澄清（阈值**不需要**重设）
+
+先前一度以为「pass^k 落地使全部基线失效，78%/80%/85% 阈值全须重设」。
+[离线重打分](../research/passk-rescore-2026-09-03.md) + 协议核查后**更正**：
+
+**基线不是一个数，它取决于 `passK`：**
+
+| 协议 | 168-case 结果 | 来源 |
+|---|---|---|
+| **k=1**（`scripts/run-eval.sh` 的显式默认，注释写明 "baseline-matching flags: `--pass-k 1`"） | **73.8%** / 73.2% / 70.8% / 76.8% | CL-15、CL-22 全部基线 |
+| k=3 + pass^k（全中才算过） | 52.4%（单个拼接 run） | `rebaseline-passk-168-merged`, `cfbb710b50` |
+| k=3 + best-of-k（旧规则） | 89.3% | 同一份数据重打分 |
+
+**关键**：pass^k 与 best-of-k 在 k=1 时**数学恒等**（26 个 k=1 run 的 delta 全为 +0.0pp）。
+所以 `run-eval.sh` 今天跑出来仍是 ~73%——**CL-15 的标准基线没有失效，可复现**。
+52.4% 的跌幅来自 **k 从 1 改成 3**，不是来自判定规则。
+
+**两者测的是不同问题**：k=1 问「能不能做对」，k=3+pass^k 问「是不是**稳定**做对」。
+注意 CL-22 的「≥3 run 取中位数」与 pass_k=3 **方向相反**——前者把抖动当噪声抹平，
+后者把抖动当失败惩罚。二者都用「3」但含义对立，不可混用。
+
+**结论：本票的验收阈值按 `run-eval.sh`（k=1）+ CL-22 的 ≥3 run 中位数口径，原样有效，
+无需重设，也无需重跑基线。** 若将来决定把验收切到 k=3+pass^k（更严的可靠性口径），
+则须整体重设阈值并重建基线——那是一次独立的口径变更决策，不在本票范围。
