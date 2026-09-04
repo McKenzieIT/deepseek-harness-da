@@ -193,7 +193,7 @@ A naive repo-wide `grep kind` is useless here: at least **four unrelated** `kind
 
 | Site | Line | Code | Consequence |
 |---|---|---|---|
-| `packages/data/tool-search-data-sources/src/index.ts` | **:98** | `if (k === 'dws' \|\| k === 'dim') return 'table'` | **Highest-risk silent regression.** A table with `kind:'ods'` falls through to `return 'source'` (`:100`), so it is no longer typed as a table in agent-facing search results. No compile error, no test failure — just wrong labels for the agent. |
+| `packages/data/tool-search-data-sources/src/index.ts` | **:107** | `if (k === 'dws' \|\| k === 'dim') return 'table'` | **Highest-risk silent regression.** A table with `kind:'ods'` falls through to `return 'source'` (`:100`), so it is no longer typed as a table in agent-facing search results. No compile error, no test failure — just wrong labels for the agent. |
 | `packages/data/semantic-layer/src/basic-index.ts` | :110-119, esp. **:115** | `const kindStr = typeof k === 'string' ? k : 'dws'` in `tableCountByKind` | Absent-kind default is hardcoded `'dws'` **independently of the zod default**. If item 4 flips the schema default to `'ods'`, this function silently disagrees with the schema for every YAML lacking a `kind:` key — i.e. 159 K11 files. Two sources of truth for the same default. |
 | `packages/client/ui-context-layer/src/client/graph-animations.ts` | :418 | `const kind = (data.kind ?? 'dws') as NodeKind` | Third hardcoded `'dws'` default, plus an unchecked `as NodeKind` cast — a new kind reaches `KIND_COLORS[kind]` and yields `undefined` at runtime with no type error. |
 | `packages/data/tool-load-table-definition/src/index.ts` | :247, :249 | `${table.kind === 'dim' ? ' (dim)' : ''}` | Display-only. New kinds render with no annotation (degraded, not broken). `kind` is passed through as open `readonly kind?: string` at `:110`/`:135` and declared `{ type: 'string' }` in the output schema at `:330` — **already open**, so no break here. |
@@ -340,7 +340,7 @@ Phase 1 artifacts that exist: `wayfinder/data-agent/research/exp1-phase1/` conta
 | `packages/data/semantic-layer/tests/discover-relations.spec.ts` | clean | — |
 | `packages/data/tool-discover-relations/tests/discover-relations.spec.ts` | clean | — |
 | `packages/data/semantic-layer/src/io.ts` | ` M` modified | +1/-1; the changed line contains none of `kind`/`dws`/`dim`. `:555` (`kind: 'dim'`) and `:654` unchanged in content; line numbers may shift ≤1. |
-| `packages/data/tool-search-data-sources/src/index.ts` | ` M` modified | +6/-3; **none** of the changed lines contain `kind`/`'dws'`/`'dim'`. The load-bearing `:98` (`if (k === 'dws' \|\| k === 'dim') return 'table'`) is unchanged in content; its line number may differ from HEAD by ≤3. |
+| `packages/data/tool-search-data-sources/src/index.ts` | ` M` modified | +6/-3; **none** of the changed lines contain `kind`/`'dws'`/`'dim'`. The load-bearing `:107` (`if (k === 'dws' \|\| k === 'dim') return 'table'`) is unchanged in content; its line number may differ from HEAD by ≤3. |
 | `packages/data/tool-load-table-definition/src/index.ts` | ` M` modified | +1/-0; the added line contains no `kind`. `:247`/`:249` unchanged in content; numbers may shift ≤1. |
 | `packages/data/semantic-layer/src/basic-index.ts` | clean | — |
 | `packages/data/schema-gateway/src/types.ts` | clean | — |

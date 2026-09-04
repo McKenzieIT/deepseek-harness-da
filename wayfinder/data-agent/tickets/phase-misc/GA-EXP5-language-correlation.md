@@ -85,7 +85,7 @@ EXP2/EXP3/EXP4 **均只报点估计，无一做显著性检验或功效分析**�
 
 英文 conventions 用**注入 fixture** 实现（`renderConventionsPrompt` 接受 `EngineConventions` 对象，不关心来源），**不改 `packages/query/*`**——把实验与架构决策解耦。
 
-约 **82%** 的英文 `buildPrompt` 已存在可复用（`exp2-prompts-en.ts`，166 行 / 9132 chars），约 18% 因 GT2 而失效需重译。
+约 **82%** 的英文 `buildPrompt` 已存在可复用（`exp2-prompts-en.ts`，166 行 / 9132 chars），约 **18%** 因 GT2 而失效需重译。（经独立重算：GT2 改过的三处中文源 `prompt.ts:54` 规则1=50 汉字、`:56` 规则3=23、`:145` 日期块=52，合计 **125**；分母 buildPrompt 侧 = 782 − 85（buildEvalPrompt 区域）= **697**；125/697 = **17.9%**。对应的失效英文译文确认在 `exp2-prompts-en.ts:75`、`:77`、`:89`。）
 
 ### 已知不在本票范围
 
