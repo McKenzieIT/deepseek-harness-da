@@ -15,10 +15,23 @@ export interface KpiColumn {
   format?: string
 }
 
+/** The native Chart.js types this tool and the ui-present-table client render
+ *  (R4 chart-type expansion). pie-only is excluded (doughnut is preferred);
+ *  heatmap/sankey/treemap are non-native and deferred to a separate ECharts
+ *  effort. Kept as a runtime list so the schema enum and the fail-loud guard
+ *  stay in lockstep with the literal union. */
+export const CHART_TYPES = [
+  'line', 'bar', 'area', 'hbar', 'scatter', 'doughnut', 'bubble', 'radar', 'polarArea',
+] as const
+
+export type ChartType = typeof CHART_TYPES[number]
+
 export interface ChartConfig {
-  type: 'line' | 'bar'
+  type: ChartType
   x_column: number
   y_columns: number[]
+  /** Column index for the bubble radius (the 3rd numeric metric; bubble only). */
+  r_column?: number
 }
 
 export interface PresentTableResult {
@@ -48,10 +61,11 @@ export function presentTableResult(
     throw new Error('present_table requires a non-empty title')
   }
   // Tool args are an external boundary (model/tool JSON); chart.type may be
-  // invalid at runtime despite the typed 'line' | 'bar' — keep fail-loud.
-  // oxlint-disable-next-line typescript/no-unnecessary-condition
-  if (chart !== undefined && chart.type !== 'line' && chart.type !== 'bar') {
-    throw new Error('present_table: chart.type must be "line" or "bar"')
+  // invalid at runtime despite the typed union — keep fail-loud. pie-only and
+  // any non-native type are rejected here (R4: doughnut over pie; heatmap/
+  // sankey/treemap deferred to a separate ECharts effort).
+  if (chart !== undefined && !(CHART_TYPES as readonly string[]).includes(chart.type)) {
+    throw new Error(`present_table: chart.type must be one of ${CHART_TYPES.join(', ')}`)
   }
   return {
     presented: true,
@@ -98,7 +112,17 @@ export function apply(ctx: Context, _config: Config = {}): void {
       'Present a query result table to the user with display metadata: title, '
       + 'column layout, sort order, KPI aggregations, and optional chart config. '
       + 'Use in the INTERPRETATION phase to instruct the UI how to render the '
-      + 'executed query result.',
+      + 'executed query result. '
+      + 'Chart-type heuristic — pick by metric × dimension × grain: '
+      + 'metric + time grain (ds) → line (cumulative → area); '
+      + 'metric + category dimension → bar (long labels → hbar); '
+      + '2 metrics (correlation) → scatter; '
+      + '3 metrics → bubble (x, y, r); '
+      + 'metric + ≤8 value dimensions + share → doughnut; '
+      + 'one entity × N metrics → radar/polarArea. '
+      + 'The client validator degrades an infeasible choice to bar '
+      + '(e.g. scatter with <2 numeric columns, doughnut with >8 classes, '
+      + 'line/area whose x is not a date/ordinal).',
     parameters: {
       result_id: {
         type: 'string',
@@ -142,9 +166,27 @@ export function apply(ctx: Context, _config: Config = {}): void {
         type: 'object',
         additionalProperties: false,
         properties: {
-          type: { type: 'string', required: true, enum: ['line', 'bar'], description: 'Chart type.' },
-          x_column: { type: 'number', required: true, description: 'Column index for the x-axis.' },
-          y_columns: { type: 'array', items: { type: 'number' }, required: true, description: 'Column indices for y-axis series.' },
+          type: {
+            type: 'string',
+            required: true,
+            enum: [...CHART_TYPES],
+            description:
+              'Chart type. Pick by metric×dimension×grain (see the tool heuristic); '
+              + 'the client degrades infeasible choices to bar.',
+          },
+          x_column: {
+            type: 'number', required: true,
+            description:
+              'Column index for the x-axis '
+              + '(category for bar/doughnut/radar; numeric x for scatter/bubble).',
+          },
+          y_columns: {
+            type: 'array', items: { type: 'number' }, required: true,
+            description:
+              'Column indices for y-axis series '
+              + '(scatter/bubble use the first as y).',
+          },
+          r_column: { type: 'number', description: 'Column index for the bubble radius (3rd numeric metric; bubble only).' },
         },
         description: 'Optional chart visualization config.',
       },
@@ -180,6 +222,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
               type: { type: 'string', required: true },
               x_column: { type: 'number', required: true },
               y_columns: { type: 'array', items: { type: 'number' }, required: true },
+              r_column: { type: 'number' },
             },
           },
         },

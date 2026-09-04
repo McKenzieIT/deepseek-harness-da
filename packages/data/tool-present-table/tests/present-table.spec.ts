@@ -188,3 +188,43 @@ test('presentTableResult rejects empty title', () => {
 test('presentTableResult rejects invalid chart.type', () => {
   expect(() => presentTableResult('qr-1', 'T', undefined, undefined, undefined, undefined, { type: 'pie' as unknown as 'bar', x_column: 0, y_columns: [1] })).toThrow(/chart\.type/i)
 })
+
+test('execute accepts the R4 native chart types beyond line/bar', async () => {
+  const def = registerTool()
+  for (const type of ['area', 'hbar', 'scatter', 'doughnut', 'bubble', 'radar', 'polarArea'] as const) {
+    const out = await def.execute(
+      { result_id: 'qr-1', title: 'T', chart: { type, x_column: 0, y_columns: [1] } },
+      { signal: new AbortController().signal },
+    )
+    expect(out.chart).toEqual({ type, x_column: 0, y_columns: [1] })
+  }
+})
+
+test('execute passes through chart.r_column (bubble radius column)', async () => {
+  const def = registerTool()
+  const out = await def.execute(
+    {
+      result_id: 'qr-1', title: 'T',
+      chart: { type: 'bubble', x_column: 0, y_columns: [1], r_column: 2 },
+    },
+    { signal: new AbortController().signal },
+  )
+  expect(out.chart).toEqual({ type: 'bubble', x_column: 0, y_columns: [1], r_column: 2 })
+})
+
+test('presentTableResult accepts the R4 native chart types beyond line/bar', () => {
+  for (const type of ['area', 'hbar', 'scatter', 'doughnut', 'bubble', 'radar', 'polarArea'] as const) {
+    const result = presentTableResult('qr-1', 'T', undefined, undefined, undefined, undefined, { type, x_column: 0, y_columns: [1] })
+    expect(result.chart).toEqual({ type, x_column: 0, y_columns: [1] })
+  }
+})
+
+test('tool description carries the metric×dimension×grain chart-type heuristic', () => {
+  const def = registerTool()
+  const description = def.description
+  // The heuristic anchors each native type to its data shape (R4).
+  expect(description).toContain('scatter')
+  expect(description).toContain('doughnut')
+  expect(description).toContain('radar')
+  expect(description).toContain('dimension')
+})
