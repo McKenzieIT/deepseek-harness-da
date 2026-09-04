@@ -131,3 +131,51 @@ if (result.decline && result.sql && looksLikeToolCall(result.sql)) {
 **本票验收口径:以 README 的 pass^k 目标为准**(不要另发明数字),
 基线 = `rebaseline-passk-168-clean` 61.9%,并按 CL-22 的 ≥3 run 中位数执行。
 `pass_k=3` 管单 run 内抖动、`≥3 run 中位数` 管 run 间抖动,二者正交可叠加。
+
+## 2026-09-04 实施：三层已落地，**部分达成**，不闭票
+
+**Branch**: `fix/cl23-toolcall-structured-decline`（worktree `../dsh-cl23`，commit `d934e8af60`，已 push 到 origin）
+
+### 已完成
+
+- **① 共享 `looksLikeToolCall`** 落在 `nl2sql-engine/src/critic.ts`（与 `extractSqlCandidate` 同处）+ 从包 index 导出；eval-cli 的重复实现已删除改为导入。放 engine 包的理由：engine 与 eval reply 层都要用，而 engine 不能依赖 eval-cli。
+- **② engine 层检测**：`engine.ts run()` 在 `llm.generate()` 之后、`extractSqlCandidate` 之前拦下 → clean decline + 新增 `declineKind: 'tool_call_emitted'`。不重试（TOOL_CATALOG 是诱因，重试无用；放行会被 `nearDup.allow('')` + stand-in default-done 变成**假成功**）。
+- **③ reply 层合成**：`context.ts respond()` 在 `declineKind === 'tool_call_emitted'` 时用 LLM 基于候选合成诚实回复，取代 `Declined: …` 诊断串。`schemaContext` 上提到分支之前以供合成使用。
+- 验证：critic 20 tests + nl2sql-engine/eval 453 tests 全绿，`tsc -b tsconfig.host.json` exit 0。
+
+### 实测发现一个 CL-19 未记录的格式（已修 + 已钉测试）
+
+voice_017 attempt 2 产出 `call\n{"name": "load_event_definition", …}` —— `call` + **换行** + JSON、**无冒号**，原 `^call\s*:` 匹配不到。已加 `^call\b\s*\{`。**CL-19 的格式清单需补这一条。**
+
+### 为什么不闭票：剩余问题不是检测，是合成回复质量
+
+| | 修复前 | 现在 |
+|---|---|---|
+| tool-call 泄漏成 `generated_sql` | attempt 2 泄漏 | **无泄漏**（全 `sql=None`）✅ |
+| voice_017 `delivery_match` | 1 pass / 2 fail | 1 pass / 2 fail ❌ |
+| pass^k 判定 | wrong | wrong |
+
+`expected.answer` 要求 **schema-grounded 的具体内容**：
+
+> 当前数据资产中没有**情感分析或满意度评分字段**，无法直接评估…可以提供的是**舆情互动数据（帖子数、评论数、点赞数）**。请明确您想了解的具体互动指标。
+
+而合成 prompt 只说「缺少可量化的指标口径」这种**泛化**表述 → 模型有时命中具体版本（pass）、有时给泛化版本（fail）→ 稳定在 1/3。
+
+### 下一步（明确、可执行）
+
+合成 prompt 改为**强制 grounding**，三点写死：
+1. 点明缺的是**哪一类字段**（从 question 意图与候选 schema 的差集推出，如"情感分析/满意度评分"）
+2. **列出候选表实际有的列/指标**（从 `schemaContext` 的 top 候选取真实列名，如 `dws_10000251_public_sentiment_df` 的帖子数/评论数/点赞数）
+3. 就这些**具体列**问用户要哪个
+
+即：从"解释为什么不能答"升级为"用候选 schema 的真实列名构造可执行的下一步"。这是 prompt 对齐工作，**不是继续加检测格式**。
+
+### 一个口径观察（支持切 k=3）
+
+这个 case 在 **k=1 口径下会随机显示为已修复**（1/3 概率）。只有 pass^k 才暴露「合成回复只是有时满意」。反过来印证了切 k=3+pass^k 的价值。
+
+### 遗留
+
+- `gh pr create` 失败：`McKenzieIT does not have the correct permissions to execute CreatePullRequest`。token 有 `repo` scope、viewerPermission=ADMIN，但仓库 `isFork: true` 而 `parent: null`（upstream 不可达）—— GitHub 侧配置问题，非代码问题。分支已 push，PR 待人工建：
+  https://github.com/McKenzieIT/deepseek-harness-da/pull/new/fix/cl23-toolcall-structured-decline
+- 验证 run `cl23-verify-017` / `cl23-reverify-voice_017` / `-voice_042` 均为**单 run，不可作决策依据**（CL-22 分层协议）。voice_042 亦仍 wrong。
