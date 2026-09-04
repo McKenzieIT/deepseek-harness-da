@@ -3,6 +3,55 @@
 > Status: COMPLETE. Sections 1-3 by evidence subagent; sections 4-7 + open questions completed by the main session after the subagent's connection dropped.
 > Purpose: evidence for a human-led decision. This brief does NOT make the decision and does NOT modify tickets/maps/source.
 
+---
+
+# ⚠️ TWO RETRACTIONS (2026-09-04) — read before using any number below
+
+An earlier revision of this header was lost to a concurrent commit; this is the restored and expanded version.
+
+## Retraction 1 — statistical: EXP4's `-3.0%` is not significant
+
+Post-hoc paired testing finds the qwen3.7-max language effect **null on every metric**:
+
+| metric | EXP4 (qwen3.7-max) | EXP2 (qwen-plus) |
+|---|---|---|
+| best-of-k pass rate | −3.0pp, McNemar **p=0.332** | −41.1pp, **p<0.001** |
+| pass^k pass rate | +1.2pp, **p=0.875** | −23.8pp, **p<0.001** |
+| attempt-level (n=504) | 371/504 vs 366/504 | 249/504 vs 71/504 |
+| ordinal Wilcoxon (pass-count 0–3) | **p=0.749** | **p<0.001** |
+| flakiness (any-pass, not all-pass) | 53 vs 46, **p=0.427** | 76 vs 47, **p=0.002** |
+
+At n=168 the **MDE is ~5.4–10.1pp**; detecting the observed 1.2pp would need **N≈10,000**. The sign even flips between verdict semantics — itself evidence the effect sits inside the noise band.
+
+Wherever §1–§3 reason about "the −3.0% degradation", substitute **"no detectable difference, effect < 5.4pp"**. This *strengthens* the case for Kind 1's technical viability. It also makes **§3's "two defects confound the headline numbers" moot** — there is no headline effect to confound. Any per-dimension concentration (L3, comparison, distribution) is sub-slice noise on n≈10–44 and is **not** a finding. EXP2's qwen-plus effect remains significant on every metric.
+
+## Retraction 2 — measurement: §1–§3's corpus figures and line numbers are WRONG
+
+These were produced by this brief's authoring pass, then propagated into four tickets before an independent review caught them. Verified corrections, re-derived mechanically against the working tree:
+
+| §1–§3 claim | **Verified actual** |
+|---|---|
+| `prompt.ts` = 1129 CJK / 198 lines; "combined LLM-facing = 1161"; "live LLM-facing = **847**" | **782 CJK ideographs** (913 incl. CJK punctuation), **203 lines**. No counting method reproduces 1129/1161/847. |
+| `见方言规范` at `:111`, `:113`; 6 dependent sites `:111,113,124,174,186,188` | **`:54`, `:56`** (inside `renderCoreRules` rules 1 and 3) **and `:145`** (date block) — **3 sites; none of the claimed lines contain it** |
+| `buildEvalPrompt` defined at `:159` | **`:180`** |
+| `renderConventionsPrompt` called at `:71` / `:161` | **`:108`** (buildPrompt) / **`:182`** (buildEvalPrompt) |
+| `TOOL_CATALOG` at `:51`; normative strings at `:53`, `:54` | `TOOL_CATALOG` at **`:88`**; `不得硬编码` at **`:119`**; `仅 SELECT，必带分区过滤` at **`:91`** |
+| `buildEvalPrompt` holds 314/1161 = **27%** of the CJK | ≈**85 = 10.9%** |
+| "The 8 core rules are **duplicated near-verbatim** at `:110-118` vs `:185-193` (187 vs 188 CJK)" | **FALSE — no duplicate exists.** `renderCoreRules(isTrend)` is a **shared function** (`prompt.ts:53`); `buildPrompt:139` and `buildEvalPrompt:198` call the **same** one. `renderCandidates` is shared too (`:27`). The `nl2sql-4` refactor already deduplicated these. Actual rule-block sizes: 64 and 68 CJK. |
+| "No test guarantees the two rule copies stay in sync" | **FALSE.** `tests/prompt.spec.ts` is explicitly *"exact-output pin (nl2sql-4 refactor guard)"* and **byte-pins both functions' output**. |
+| `query-postgres/src/conventions.yaml` (130 CJK) | the file is **`conventions.ts`** (130 CJK is correct) |
+| `conventions.ts` 39 CJK | **35 ideographs** (39 incl. punctuation) |
+| `exp2-prompts-en.ts` 166 lines / 9164 chars | 166 lines / **9132 chars** |
+| "全仓引用仅 barrel export + 3 个测试" | also **`tests/prompt.spec.ts`** (8 refs) and `research/exp2-arms/arm-c-english/prompt-variant.ts` (comments) |
+
+**What survives — every §2/§3 argument.** The narrow-scope rejection (§2a) rests on the *existence* of a pointer from Chinese rule bodies to a boilerplate header; that coupling is **real**, only the citations were wrong. §3's "≈82% of the English already exists, ≈18% stale in exactly the GA-GT2 dimension" verdict is unaffected. §1's 0.2% ratio is unaffected (817 vs 440,988 ≈ 0.19%). The §2 "13.6% boilerplate" share was computed on the falsified 1161 denominator and has **not** been recomputed — treat it as "small, unquantified".
+
+**What was reversed** — the `buildEvalPrompt` deletion case (GA-CL-batch CL19). Both of its stated reasons (the 27% figure, the duplicate-rules hazard) were false, so CL19 is **downgraded to "do not do unless someone explicitly wants the cleanup"**: deleting `buildEvalPrompt` also deletes the `prompt.spec.ts` pins guarding the shared-helper refactor.
+
+Tickets corrected in commit `4dc531f097` (`GA-EXP5`, `GA-GRILL2`, `GA-CL-batch`, `map.md`).
+
+---
+
 ## Sharp open questions
 
 Ordered so that answering an early one can dissolve the later ones.

@@ -69,7 +69,7 @@ GA-I18N-1 的 `origin` 优先级逻辑在 `mergeRefs` **内部**，而 `mergeRef
 
 `examples/` 下 **321 个 table YAML**（全 K11；x63 为零）：`kind: dim` **159**、`kind: dws` **3**、**无 `kind:` 键 159**——后者在默认值翻成 `ods` 后**静默改变语义**。届时三处独立硬编码 `'dws'` 默认值将与 schema 不一致（`basic-index.ts:115`、`graph-animations.ts:418`、`types.ts:279`）。
 
-**最高风险的静默回归**：`tool-search-data-sources/src/index.ts:98` 的 `k === 'dws' || k === 'dim'`——新 kind 会落到 `'source'`。编译期即报错的闭合联合（较安全）：`schema-gateway/src/types.ts:79`、`ui-context-layer/.../types.ts:22`、`graph-styles.ts:14`。
+**最高风险的静默回归**：`tool-search-data-sources/src/index.ts:107` 的 `if (k === 'dws' || k === 'dim') return 'table'`——新 kind 会落到 `'source'`。（brief 记的 `:98` 已漂移，本条行号经复核更正。）编译期即报错的闭合联合（较安全）：`schema-gateway/src/types.ts:79`、`ui-context-layer/.../types.ts:22`、`graph-styles.ts:14`。
 
 两个意外发现：**`packages/data/phase-gate` 一次都没读 `TableDefinition.kind`**（全部命中是 `last_failure_kind`）；`ui-semantic-layer/.../types.ts:8-13` **已经**是开放字符串且已列 `ods`。
 
