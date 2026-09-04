@@ -14,9 +14,14 @@
 /**
  * Reasoning-leak comment patterns. LLM thinking models emit SQL-style comments
  * that contain reasoning text rather than legitimate schema/hint annotations.
- * Match: `-- Wait, ...`, `-- 注意...`, `-- Let me...`, `-- Actually...` etc.
+ * Match: `-- Wait, ...`, `-- Let me...`, `-- Actually...` etc.
+ *
+ * qe-7: `Note` / `注意` are NOT matched — they are generic legitimate comment
+ * starters (e.g. `-- Note: partitioned by ds`, `-- 注意: 分区键 ds`), so
+ * stripping them would drop real schema hints. A `-- Note: ...` that happens
+ * to be reasoning leakage is preserved (it's a SQL comment, ODPS ignores it).
  */
-const REASONING_COMMENT_RE = /^--\s*(Wait|Note|Actually|Let me|Hmm|思考|注意|这里|其实|等等|首先|然后|接下来|但是|不对|所以|因此|看来|需要)[^\n]*$/gm
+const REASONING_COMMENT_RE = /^--\s*(Wait|Actually|Let me|Hmm|思考|这里|其实|等等|首先|然后|接下来|但是|不对|所以|因此|看来|需要)[^\n]*$/gm
 
 /**
  * Fenced code block markers that LLM sometimes wraps SQL in.
@@ -74,7 +79,10 @@ const FUNCTION_REWRITES: Array<[RegExp, string | ((...args: string[]) => string)
   // MySQL CURDATE() → MaxCompute TO_CHAR(GETDATE(), 'yyyyMMdd')
   [/\bCURDATE\s*\(\s*\)/gi, "TO_CHAR(GETDATE(), 'yyyyMMdd')"],
   // SQL Server DATEDIFF(unit, d1, d2) → MaxCompute DATEDIFF(d1, d2, 'unit')
-  // d1/d2 use (?:[^(),]*|\([^()]*\))* to handle nested parens (e.g. GETDATE())
+  // d1/d2 use (?:[^(),]*|\([^()]*\))* to handle ONE level of parens (e.g.
+  // GETDATE() — one level, not nested); genuinely nested calls (e.g.
+  // DATE_ADD(NOW(), INTERVAL 1 DAY)) are not consumed — the DATEDIFF won't
+  // match + is left for ODPS to reject. (qe-6)
   [new RegExp(
     '\\bDATEDIFF\\s*\\(\\s*' +
     '(day|dd|d|month|mm|m|year|yy|y|hour|hh|h|minute|mi|n|second|ss|s)' +

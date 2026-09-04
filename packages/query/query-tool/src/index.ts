@@ -61,11 +61,20 @@ export interface ResolvedConfig {
   readonly maxDisplayRows: number
 }
 
+/** Shared defaults for the query_data config (qe-14: single source of truth
+ * for both the Config schema below + `resolveConfig`'s manual defaults —
+ * previously the same 60/2000/50 were duplicated in both places). */
+const DEFAULTS = {
+  maxPolls: 60,
+  pollIntervalMs: 2000,
+  maxDisplayRows: 50,
+} as const
+
 /** Runtime configuration schema for the query_data plugin. */
 export const Config: z<Config> = z.object({
-  maxPolls: z.number().default(60),
-  pollIntervalMs: z.number().default(2000),
-  maxDisplayRows: z.number().default(50),
+  maxPolls: z.number().default(DEFAULTS.maxPolls),
+  pollIntervalMs: z.number().default(DEFAULTS.pollIntervalMs),
+  maxDisplayRows: z.number().default(DEFAULTS.maxDisplayRows),
 })
 
 /** Model-facing query result: the 3-state QueryOutcome projected for the agent. */
@@ -107,9 +116,9 @@ export interface ExecLike {
  */
 export function resolveConfig(config: Config = {}): ResolvedConfig {
   return {
-    maxPolls: config.maxPolls ?? 60,
-    pollIntervalMs: config.pollIntervalMs ?? 2000,
-    maxDisplayRows: config.maxDisplayRows ?? 50,
+    maxPolls: config.maxPolls ?? DEFAULTS.maxPolls,
+    pollIntervalMs: config.pollIntervalMs ?? DEFAULTS.pollIntervalMs,
+    maxDisplayRows: config.maxDisplayRows ?? DEFAULTS.maxDisplayRows,
   }
 }
 

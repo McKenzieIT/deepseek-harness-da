@@ -8,9 +8,10 @@
  * loader reads the canonical sibling `../conventions.yaml` once (cached) so
  * callers get the source of truth, not a TS mirror that can drift.
  *
- * `import.meta.url` resolves the YAML next to this module in both the
- * workspace (vitest, `.ts`) and the built package (`lib/`, `.js`);
- * `conventions.yaml` is shipped in `files`. Single-engine (maxcompute) today;
+ * `import.meta.url` resolves the YAML next to this module in the workspace
+ * (vitest, `.ts`); the package is source-only (consumed via `./src/*`; tsdown
+ * entry:[]) so `conventions.yaml` is NOT in `files` + the built tarball does
+ * not ship it — the YAML resolves only in-workspace. Single-engine (maxcompute) today;
  * a second engine routes by name (the shared query-package loader ideal is
  * deferred until a second consumer/engine arrives — P13b grilling Q1/Q3).
  *

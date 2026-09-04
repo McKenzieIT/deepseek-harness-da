@@ -14,12 +14,17 @@ describe('normalizeForMaxCompute', () => {
     })
 
     it('strips multiple reasoning comments', () => {
-      const sql = '-- Actually let me reconsider\nSELECT 1\n-- Note this might fail\nFROM t'
+      const sql = '-- Actually let me reconsider\nSELECT 1\n-- Hmm this might fail\nFROM t'
       expect(normalizeForMaxCompute(sql)).toBe('SELECT 1\n\nFROM t')
     })
 
     it('preserves legitimate SQL comments', () => {
       const sql = 'SELECT * FROM t\n-- partition pruning hint\nWHERE ds = \'20240101\''
+      expect(normalizeForMaxCompute(sql)).toBe(sql)
+    })
+
+    it('preserves -- Note / -- 注意 (legitimate comment starters, not reasoning leakage) — qe-7', () => {
+      const sql = 'SELECT 1\n-- Note: partitioned by ds\n-- 注意: 分区键 ds\nFROM t'
       expect(normalizeForMaxCompute(sql)).toBe(sql)
     })
   })
