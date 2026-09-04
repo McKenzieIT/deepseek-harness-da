@@ -92,3 +92,23 @@ manifest / `tsconfig.json` / `tsconfig.host.json` ref / `src/invariant.ts` / `sr
 - **`lib/index.js` disk 状态**：翻前 9/4 02:16 已有 5142B 拋留/并行 build 产物（`lib/` gitignored 不显于 git status）；翻后 9/4 09:53 tsdown 覆盖为 5154B。git status 确认 query-postgres source 无未提交改动（无并行 session 编 source；唯 `tsdown.config.ts` 是本 session 改）。
 - **dirty-state 并发（非本 session，commit 不 stage）**：`packages/eval/eval-cli/src/context.ts` M（GA-EVAL-CLEAN-RERUN fix——移 duplicate EnvCredentialProvider mount，typecheck 验证有效非 break）、`pnpm-lock.yaml` M、`wayfinder/data-agent/research/experiment-audit-log.md` M、12 个 `.agents/notes/proposed/simplification/*` ??、`GA-GRILL-eval-manifests.md` ??（上 session 未提交 grill 票）——皆非本 session sole-author 文件。
 - **`bundle` script 未加**：query-postgres 是 lib（非 CLI），与 E1/E2 的 eval-runner/retrieval-experiment 同（靠 root `build:lib:host` 构 build，无 per-package `scripts.bundle`）；eval-cli 加 `bundle` 因它是 CLI 需自包含 build。本票用 `pnpm exec tsdown` 替代 `pnpm --filter ... bundle`（criterion 意图"产 lib/* + smoke"等价满足）。
+
+### Resolution 补充 (2026-09-04): yaml 张力 in-scope 修复（用户决策：扩展本票顺手修 yaml）
+
+grilling 阶段把 `conventions.ts` 的 yaml ENOENT 记为 "known limitation / follow-up"。用户 review 后定：在本票 scope 内修掉（非 follow-up）。
+
+**改动**：
+- `packages/query/query-postgres/src/conventions.ts`：把 `conventions.yaml` 内容 **inline 为 template-literal string**（`CONVENTIONS_YAML`），`loadConventions` 改 parse 内嵌 string（`yamlLoad(CONVENTIONS_YAML)`）；删 `readFileSync`/`fileURLToPath`/`dirname`/`resolve`/`yamlPath` 的 runtime 文件读。yaml 是 single source of truth（无 TS mirror drift）。注释更新——记 inline 理据（built lib 自包含；gate 不让 yaml 进 `files`）+ 指向本票。
+- `packages/query/query-postgres/src/conventions.yaml`：**删除**（内容已 inline 进 conventions.ts，single source）。
+- （试过 `?raw` import + `src/assets.d.ts` ambient `declare module '*.yaml?raw'`：tsc -b 接受（ambient decl 让 `*.yaml?raw` 解析为 string），但 tsdown/rolldown 从 tsc-emit 的 `lib/types/conventions.js` 解析 `./conventions.yaml?raw` 时路径错——yaml 不在 `lib/types/`（tsc 不 copy 非 TS 文件）→ `UNRESOLVED_IMPORT`。故弃 `?raw`，用 inline string，维 mirror eval-cli 的 bundle-from-lib/types 模式。`assets.d.ts` 已删。）
+
+**验证**：
+- `pnpm exec tsc -b` query-postgres **exit 0**（inline string 无 `?raw` 解析问题）。
+- `pnpm exec tsdown` 出 `lib/index.js`(8.64kB，含内嵌 yaml) + `lib/invariant.js`(1.01kB)。
+- grep `lib/index.js` 含内嵌 yaml 内容（`engine: postgres` / `key_differences` / `DATE_TRUNC` 等共 8 处命中；sample `engine: postgres\n\nkey_differences:\n  - "JSON 提取...`）。
+- smoke `lib/types/conventions.js` 的 `loadConventions`（self-contained——runtime 只 import js-yaml，`@deepseek-ai/dsh-query` 是 type-only erased）：`loadConventions('postgres')` → `engine=postgres`/`key_differences=7`/`functions=7`/`cast_map=6`/`sql_templates=4` ✓；`loadConventions('other')` → empty（fail-open）✓；cached 同引用 ✓。
+- smoke `lib/invariant.js`：`name=query-postgres-invariant`/`inject=['invariants']`/`apply=function`/no-default ✓（不变）。
+- 3 gates 维绿：`constraints` query-postgres 0 violation；`verify-package-invariants` 262 conform（0 violation）；`verify-built` query-postgres 0 failure。
+- **typecheck 现状（诚实记录）**：query-postgres targeted `tsc -b` **exit 0**（src 改 conventions.ts 后维 clean）。**但** full `pnpm run typecheck` 现 **exit 2**——红于**并行 session nl2sql-engine WIP**（untracked `packages/data/nl2sql-engine/tests/metric-cases.spec.ts` + dirty `src/{critic,engine,eval/metric-cases,index,metric-engine}.ts` + `tests/service.spec.ts`），error 为 `metric-cases.spec.ts:19 Property 'sql' does not exist on type 'ScriptedGen'` / `:21 'c.odps' is possibly 'undefined'`——**非本票 query-postgres 改动所致**（`metric-cases.spec.ts` 不 import query-postgres；query-postgres targeted tsc -b exit 0）。本 session 第一次 typecheck（conventions.ts 改前）exit 0；并行 session 后续编辑 nl2sql-engine 引入此 error。out-of-scope（并行 WIP，同 pre-existing 簇——commit 不 stage nl2sql-engine 文件）。
+
+**改动文件（累计）**：`tsdown.config.ts`（flip）+ `src/conventions.ts`（inline yaml）+ `src/conventions.yaml`（删）。manifest/tsconfig/host-ref/`src/invariant.ts`/`src/index.ts` 全未动。gate 脚本 git diff 空。

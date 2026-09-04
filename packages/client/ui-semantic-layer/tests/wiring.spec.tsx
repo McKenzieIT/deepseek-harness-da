@@ -51,8 +51,8 @@ const useSessionsStub = <S,>(snapshot: unknown) =>
 // `SemanticLayerEvidence` / `SemanticLayerSchemaExplorer` also take `useStore`
 // (a Zustand selector hook over SelectionState) as a prop — stub it the same
 // way: evaluate the selector against an empty selection (nothing selected).
-const useStoreStub = <S,>(selector: (s: any) => S): S =>
-  selector({ selectedAsset: null } as any)
+const useStoreStub = <S,>(selector: (s: unknown) => S): S =>
+  selector({ selectedAsset: null })
 
 describe('toGoalDockGoalData', () => {
   it('returns null when the projection is undefined (capability absent)', () => {

@@ -72,3 +72,5 @@ grilling 锁定方向 **A**（翻 query-postgres tsdown `entry:[]`→lib/types-e
 - **A 的 known limitation**（记，不阻塞）：`conventions.ts` 的 yaml 经 `import.meta.url` 旁路解析——built `lib/index.js` 调 `getConventions('postgres')` 会 ENOENT（yaml 在 `src/`，`files` 不含，`expectedDshPackageFiles` gate-hardcoded 无法加）。pre-existing 设计张力（src-only 本为 src-channel yaml 工作而设；翻前 `lib/index.js` 已是 phantom broken-as-published）+ gate 不测 + 无现存消费者调 `getConventions` + `./src/*` channel 仍工作 + 与 `dsh-query-maxcompute` 同款。净改善（phantom→实文件）。若未来有消费者需 built-lib `getConventions`，开 follow-up（要么 `conventions.ts` 改 inline yaml-as-string，要么 gate 加 `packageFileExtras` for yaml——后者碰 core 须 grilling）。
 
 实施 → [GA-QUERY-POSTGRES-impl-comply](GA-QUERY-POSTGRES-impl-comply.md)。
+
+**2026-09-04 impl 补充**：上述 "A 的 known limitation"（yaml ENOENT）已在 impl scope 内**解决**（非 follow-up）——用户 review 后定扩展本票顺手修。`conventions.ts` 把 yaml 内容 inline 为 string（single source、无 drift）+ 删 `conventions.yaml`；built `lib/index.js` 的 `getConventions('postgres')` 现 parse 内嵌 string 不再 ENOENT（smoke 验 kd=7/fn=7/cast=6/tpl=4）。`?raw` 试过但 rolldown 从 lib/types/ 解析路径错，故用 inline string。详见 [GA-QUERY-POSTGRES-impl-comply Resolution 补充](GA-QUERY-POSTGRES-impl-comply.md)。

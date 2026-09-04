@@ -57,7 +57,11 @@ echo "  provider=$EVAL_LLM_PROVIDER model=$EVAL_LLM_MODEL pass-k=3 concurrency=3
 # the AGA gateway's ~6-17s LLM latency — it times out before any case runs.
 # Skip it here (creds + gateway reachability are validated separately; if the
 # gateway were down, cases would fail/hang, not the gate).
-exec node --import tsx/esm packages/eval/eval-cli/bin/eval.ts \
+# Entry is src/bin.ts (NOT bin/eval.ts): GA-EVAL-MANIFEST-impl (ec7ee34f07)
+# flipped eval-cli from src-only to build+publish and the old path stopped
+# existing, which left this wrapper — the documented standard entry point —
+# broken on HEAD. Mirrors the package's own `eval` script.
+exec node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
   --cases packages/eval/eval/cases/k11-v2 \
   --concurrency 3 \
   --skip-health-gate \
