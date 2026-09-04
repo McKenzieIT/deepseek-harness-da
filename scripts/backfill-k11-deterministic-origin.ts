@@ -18,7 +18,7 @@
  * Quantifies: X backfilled / Y stayed undefined / Z total (DWS dimension_refs
  * + event external_refs).
  *
- * Usage: npx tsx scripts/backfill-k11-deterministic-origin.mjs
+ * Usage: npx tsx scripts/backfill-k11-deterministic-origin.ts
  */
 import {
   buildDimInventory,
