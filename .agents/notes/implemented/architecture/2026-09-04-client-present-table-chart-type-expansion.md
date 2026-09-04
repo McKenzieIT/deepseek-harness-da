@@ -154,5 +154,48 @@ extension R4 requires.
 [T7](../../../../wayfinder/interpretation-client-rendering/tickets/T7-chart-type-implementation.md)
 → unblocks
 [T6](../../../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)
-(the HITL real-rendering gate). A post-ship subagent code-review (like T10's)
-is the recommended next step before T6.
+(the HITL real-rendering gate).
+
+## Final review pass (post-H1-fix, 2026-09-04)
+
+A second independent subagent code-review + test verification on the final HEAD
+(post-H1-fix, interleaved with concurrent-session commits that did not touch
+the T7 pathspec). Verdict: **SHIP, no HIGH**.
+
+- Tests: 160 pass (141 owning + 19 server); `tsc -b packages/client/ui-present-table`
+  + `tsc -b tsconfig.client.json` both exit 0; coverage `ChartView.tsx` /
+  `TableCard.tsx` / `locales.ts` = 100/100/100/100 (the `seriesColor` `/* v8
+  ignore */` holds — `SERIES_COLORS` is a non-empty literal, `i % length`
+  always in-bounds, the `??` right operand is genuinely unreachable).
+- Bundle: `lib/client.js` 22.16 kB gzip; lazy chart chunk ~70.8 kB minified
+  gzip (increment ~31 kB < R4's ~55 kB budget).
+- Adversarial probes re-verified FINE at HEAD: the `as never` boundary casts
+  (per-type union, 9 render tests + 100% cov), `effectiveType` narrowing, empty
+  `y_columns` → `yKind@-1` degrade, bubble `r_column` undefined, `meta` null,
+  element-geometry `?? 0`, area=Line / hbar=Bar via `chart.config.type` in the
+  plugin, locale zh/en parity (compiler-enforced via `satisfies Record<TableKey>`),
+  `chartWarn` locale key, `args.columns` override + `colKinds` threading
+  (override renames headers only, no reordering), bundle tree-shaken (no
+  `PieController`, no `MatrixController`).
+- Standards (AGENTS.md): no cross-package import (`ChartConfig`/`ChartType`
+  mirrored locally; no `result-cache`/`tool-present-table` value import — only
+  comments reference them); no new `/client` entry exports
+  (`valueLabelsPlugin`/`validateChartType` are internal module exports, tests
+  import via relative `../src/client/…`); `.chartWarn` uses only
+  `--dsw-alias-*` tokens (zero literal color); component props are the four
+  shares; no Cordis `ctx` in components (the `ctx.` matches in ChartView are
+  `CanvasRenderingContext2D`, false positives).
+
+### M-1: pre-existing repo-wide theme-token gap (not T7, not blocking)
+
+The final review surfaced that the `--dsw-alias-content-*` / `surface-*` /
+`border-primary` / `state-warning-primary` aliases are **consumed but never
+defined** in `packages/client/ui-theme/src/styles/` (only `state-error-primary`
+/ `-success-primary` / `-business-primary` are in `design-platform.css`). This
+is **not T7-introduced** — v1 `TableCard.module.css` (`.kpiNote`,
+`.card`, `.th`, `.actionBtn`) and `ui-semantic-layer` (concurrent session)
+already consume the same unset tokens. T7's `.chartWarn` only reuses existing
+tokens; AGENTS.md's "no literal colors" rule is satisfied; at runtime unset
+vars resolve to inherited/initial values (fallback styling, not a crash). The
+fix is theme-infrastructure (add the missing aliases to `design-platform.css`)
+— out of T7's pathspec, deferred to a repo-wide theme-token sweep.
