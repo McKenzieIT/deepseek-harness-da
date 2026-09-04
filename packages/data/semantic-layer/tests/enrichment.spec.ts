@@ -285,6 +285,26 @@ describe('enrichAllDwsTables', () => {
     expect(res.note).toBeDefined()
     expect(res.note).toMatch(/no DIM|empty inventory|nothing to enrich/i)
   })
+
+  test('replace + preserveCurated unions join_keys when a manual ref is rediscovered (manual origin preserved)', async () => {
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dimServerYaml())
+    const curated = {
+      ...dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '区服ID', role: 'dimension' }] }),
+      dimension_refs: [
+        { dim_table: 'dim_server', join_keys: [{ dws_column: 'srv_id', dim_column: 'server_id' }], derivation: 'manual semantic', origin: 'manual' },
+      ],
+    }
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(curated))
+    const res = await enrichAllDwsTables(dir, undefined, ['dws_pay'], false, undefined, true)
+    expect(res.errors).toEqual([])
+    expect(res.written).toBe(1)
+    const out = yaml.load(readFileSync(join(dir, 'tables', 'dws_pay.yaml'), 'utf-8')) as Record<string, unknown>
+    type Ref = { dim_table: string; join_keys: Array<{ dws_column: string; dim_column: string }>; origin?: string }
+    const refs = out.dimension_refs as Ref[]
+    const serverRef = refs.find(r => r.dim_table === 'dim_server')!
+    expect(serverRef.origin).toBe('manual')
+    expect(serverRef.join_keys.map(k => `${k.dws_column}->${k.dim_column}`).sort()).toEqual(['server_id->server_id', 'srv_id->server_id'])
+  })
 })
 
 function event(over: Partial<EventDefinition> = {}): EventDefinition {
