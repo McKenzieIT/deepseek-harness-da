@@ -60,6 +60,13 @@ base 树已挂载，所以 **app 照常打开，只是 data-agent 的一切静�
 先答 Q3（可观测性）——若"显式报错 + inventory 显示失败行"就消除了三次事故的痛，
 那 per-row 容错可能根本不必做，Q1/Q2 的成本与风险都可以不付。
 
+## 决策（2026-09-04 grilling）→ 评估结论
+
+- **S2（显式 boot 自检 + inventory 显示失败行）先做；S1 per-row 隔离推迟。** 即本票「建议的评估顺序」Q3 的答案：显式报错消除三次事故的「静默缺按钮」真症状后，per-row 容错的成本/风险不必付。
+- **S1 不做的理由**：`vendor/loader/src/config/group.ts` 的 `EntryGroup.update` 是**故意的事务 all-or-nothing**（`Promise.allSettled` → 任一失败 throw + 整组回滚），vendor README 本地改动 #8 已加固；S1 逆 #8 方向、改 vendored 代码、跨 upstream sync 维护，预防性不值。
+- **S2 落地**：见 [CB-1a](CB1a-cold-boot-stabilization.md)（`mountRootInclude` 自检 + plugin-inventory 失败行显示）。`scripts/bundle-loader-ids.spec.ts`（重复 id gate）继续保留，与本票 S2 互补（前者防重复 id 成因，后者兜底 apply 期 throw 成因）。
+- **per-row（S1）重开条件**：第 4 颗「一行炸整组」同形状地雷出现，且 S2 的显式报错证明仍不足以止损时。
+
 ## 关键文件
 
 - `vendor/loader/src/config/group.ts:64`（throw 点）

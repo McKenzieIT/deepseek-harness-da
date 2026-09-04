@@ -33,7 +33,7 @@ web profile 同时组合两个 bundle → `EntryGroup.update` throw → `Include
 **修复**：data-agent 侧改 id 为 `result-cache-memory`（该 id 全仓无字符串引用，两插件角色不同、
 都需要，所以是改名不是 disable）。
 
-### Blocker 2 — `enrichment-llm-wiring: no provider/model configured` ⚠️ 待决策
+### Blocker 2 — `enrichment-llm-wiring: no provider/model configured` ✅ 已决策（grilling 2026-09-04 → [CB-1a](CB1a-cold-boot-stabilization.md) 落地）
 
 `packages/data/semantic-layer/src/llm-wiring-plugin.ts:48` 在 **apply 时** fail-loud：
 
@@ -75,6 +75,13 @@ unmounted, **never crashes the bundle**"。
 **更大的问题（本票核心）**：include 组的失败语义是"一行炸=整组没"。是否需要
 per-row 隔离（一行失败只丢那一行 + 显式 warn）？这决定了每个新增 data 行都是一颗
 潜在的"整组消失"地雷——W14、本票都是这个形状，第三次了。
+
+## 决策（2026-09-04 grilling，[CB-1a](CB1a-cold-boot-stabilization.md) 落地）
+
+- **boot 契约 = 非致命**：enrichment 未配置不阻 boot（底座 `enrichment.ts` 全程 `llmCall?` 可选，确定性轮为基底；`index.ts:32/618/636` "absent => deterministic round only"；`setLlmCall(fn?)` 接受未接线）。无核心能力依赖 enrichment 的 LLM 轮。
+- **未配置时行为 = graceful degrade（α）**：apply 期 `throw` → `ctx.logger.warn` + 早返回（跳过 wire），enrichment 退确定性轮。**否决候选 1「defer fail-loud 到 use 时」**：substrate 8 处 best-effort `try/catch`（`discoverRelationsFor` 等）会吞掉挂抛错适配器，结果与不接线一样但白抛 + 零 surface，严格劣于 α。substrate 不动。
+- **include 组失败隔离 = S2（维持整组 + boot 自检），S1 per-row 推迟**：vendor `EntryGroup.update`（`group.ts`）是故意的事务 all-or-nothing 且 vendor README 本地改动 #8 已加固，S1 逆它代价高、预防性不值；S2 消灭「静默缺按钮」真症状成本是 S1 零头。per-row 重开条件：第 4 颗同形状地雷。详见 [CB-3](CB3-per-row-fault-isolation.md)。
+- **CB-2（enrichment 设置项）推迟**：非 boot 必需；且 CB-2 票前提高估现状（插件未接 `ctx.settings`，pull-based，连 settings 配都需改插件代码）。待产品优先级成立单独 grill。
 
 ## 验收
 

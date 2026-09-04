@@ -56,6 +56,13 @@ Cordis 也已支持从 `~/.dsh/settings.yaml` 按插件名注入 config（`llm-d
    非共享代码"）。改成 settings 后，这三处要不要统一？若统一，是否需要一个
    共享 seam（与 CL-8 当初"不新增跨包依赖"的决定相反）？
 
+## 决策（2026-09-04 grilling）
+
+- **Q3（没填时语义）→ 由 CB-1 决议回答**：graceful degrade（α，boot warn），不在本票。CB-1 blocker 2 落地见 [CB-1a](CB1a-cold-boot-stabilization.md)。
+- **本票整体推迟（Q4a）**：CB-2 是产品可配置性打磨，非 boot 稳定性；boot 已由 [CB-1a](CB1a-cold-boot-stabilization.md) 解决。
+- **票前提高估现状（纠正）**：原文「管道已存在，缺的只是设置面」高估——`enrichment-llm-wiring` 的 `inject = ['schema', 'llm']` **无 `'settings'`**，`apply` 只读 config+env；settings 服务（`packages/settings/settings`）是 **pull-based 注册式**（消费方须 `register` / `installSettingsSection`），此插件未接。故连「settings.yaml 可配」都需改插件代码（加 `'settings'` inject + `installSettingsSection` + 改 resolver 读 scope），非「只加 UI」。
+- **重开条件**：产品优先级成立「UI 用户需配 enrichment」时，单独 grill 本票 Q1（key 形状）/Q2（UI 落点）/Q4（env 契约是否统一三处重复 resolver）。
+
 ## 验收
 
 - `--profile web` 在**零 env** 下能冷启动
