@@ -263,10 +263,25 @@ export function ContextLayerGraph({
 
     const g6Data = toG6Data(data, domainFilter)
     graph.setData(g6Data)
-    void graph.render().then(() => {
-      // Apply current LOD state after render completes
-      applyLOD(graph, zoomLevelRef.current)
-    })
+    // ucl-9: guard the post-render LOD apply against unmount / data-change
+    // races. The init effect's cleanup calls graph.destroy() + nulls
+    // graphRef, but this .then still closes over the local `graph` const —
+    // without a cancelled flag it would run applyLOD on the destroyed/stale
+    // graph, and a rejected render promise would surface as an unhandled
+    // rejection. The flag is set in this effect's cleanup (runs on unmount
+    // and on every data/domainFilter change).
+    let cancelled = false
+    void graph.render()
+      .then(() => {
+        if (cancelled) return
+        applyLOD(graph, zoomLevelRef.current)
+      })
+      .catch(() => {
+        // render failed (e.g. graph torn down mid-render) — nothing to apply.
+      })
+    return () => {
+      cancelled = true
+    }
   }, [data, domainFilter])
 
   // Handle container resize

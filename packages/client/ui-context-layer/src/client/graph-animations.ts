@@ -59,8 +59,8 @@ export function fadeIn(
   graph: Graph,
   elementIds: string[],
   duration = DEFAULT_FADE_DURATION,
-): void {
-  if (elementIds.length === 0) return
+): () => void {
+  if (elementIds.length === 0) return () => {}
 
   // Set initial opacity to 0
   const nodeData = graph.getNodeData()
@@ -84,8 +84,13 @@ export function fadeIn(
   if (edgeUpdates.length > 0) graph.updateEdgeData(edgeUpdates)
   if (nodeUpdates.length > 0 || edgeUpdates.length > 0) void graph.draw()
 
-  // Animate to opacity 1 after a microtask (let the 0-opacity render)
-  requestAnimationFrame(() => {
+  // Animate to opacity 1 after a microtask (let the 0-opacity render).
+  // ucl-10: capture the rAF handle and return a cancel fn so callers
+  // (useGraphAnimations) can cancel the pending opacity-1 restore on unmount —
+  // mirroring the cancellers blinkNodes/pulseNode return. Without this, an
+  // unmount between the opacity-0 set and the rAF firing would invoke
+  // updateNodeData on a destroyed graph instance.
+  const rafHandle = requestAnimationFrame(() => {
     const nodeRestore = nodeUpdates.map(u => ({ id: u.id, style: { opacity: 1 } }))
     const edgeRestore = edgeUpdates.map(u => ({ id: u.id, style: { opacity: 1 } }))
 
@@ -104,6 +109,8 @@ export function fadeIn(
     // transition if `animation: true` is set on the graph instance.
     void duration
   })
+
+  return () => { cancelAnimationFrame(rafHandle) }
 }
 
 /**
@@ -299,6 +306,10 @@ export function useGraphAnimations(
   const activeBlinkRef = useRef<Map<string, () => void>>(new Map())
   // Track active pulse cancellers keyed by node id
   const activePulseRef = useRef<Map<string, () => void>>(new Map())
+  // Track active fadeIn restore-rAF cancellers (ucl-10): fadeIn schedules a
+  // one-shot rAF for the opacity-1 restore; cancel on unmount so it does not
+  // fire updateNodeData on a destroyed graph.
+  const activeFadeRef = useRef<Set<() => void>>(new Set())
   // Track dashed-highlight edge ids for session-level persistence
   const dashedEdgesRef = useRef<Set<string>>(new Set())
 
@@ -315,12 +326,11 @@ export function useGraphAnimations(
 
       switch (update.type) {
         case 'add_nodes':
-          fadeIn(graph, ids)
+        case 'add_edges': {
+          const cancel = fadeIn(graph, ids)
+          activeFadeRef.current.add(cancel)
           break
-
-        case 'add_edges':
-          fadeIn(graph, ids)
-          break
+        }
 
         case 'update_nodes':
           for (const item of update.items) {
@@ -384,6 +394,10 @@ export function useGraphAnimations(
       activeBlinkRef.current.clear()
       for (const cancel of activePulseRef.current.values()) cancel()
       activePulseRef.current.clear()
+      // ucl-10: cancel any pending fadeIn restore rAFs so they don't fire
+      // updateNodeData on the destroyed graph after unmount.
+      for (const cancel of activeFadeRef.current.values()) cancel()
+      activeFadeRef.current.clear()
     }
   }, [])
 }
