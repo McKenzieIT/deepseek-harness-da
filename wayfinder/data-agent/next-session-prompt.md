@@ -1,8 +1,15 @@
-# Next Session Prompt — GA-MODEL1 → GT3 ‖ Kind 1
+# Next Session Prompt — GT3 item 5 数据丢失 → SQLGEN-PROMPT-FIX
 
-## 目标
+## 上一 session 结果（2026-09-04，commit `4dc531f097`）
 
-分三阶段：先完成 GA-MODEL1（模型切换），然后并行启动 GA-GT3 和 Kind 1 重新评估。
+- **GA-MODEL1** resolved（+16.1%、16 切片零回归、延迟 +48.9%）；顺带**推翻 GA-EXP4 的 `-3.0%`**——补做配对检验后所有指标均不显著（p=0.332/0.875/0.749/0.427），n=168 的 **MDE≈5.4–10.1pp**，正确结论是**零结果**。
+- **Kind 1 实施方向 → won't-do**（K1-D1~D5 记在 GA-GRILL2）；研究诉求转新票 **GA-EXP5**（2×2×2 全因子），功效前置为新票 **GA-EVAL-EXPAND**。
+- **GA-GT3 只收了证据未解票**（grilling=HITL + 仍被 Open 的 GA-EXP1 阻塞）。证据 brief：`research/gt3-grilling-brief.md`。
+- 并发 session 同期落地了 pass^k（当前基线 **61.9%**）并测出 **judge false-pass = 35.9pp**（GA-EVAL-REAL-EXEC）。
+
+## 本次目标
+
+**一件主线 + 一件可选**：先 grill 并修掉 GA-GT3 item 5 的真实数据丢失（这是 map 上唯一「已确认为 bug 且无测试护栏」的项），再看要不要接 SQLGEN-PROMPT-FIX。
 
 ---
 
@@ -11,64 +18,68 @@
 ```
 /effort max
 
-我要按顺序完成三件事。先读 wayfinder map 和相关 tickets 获取上下文：
+先读上下文，注意仓库可能有其他 session 的在途改动（上一 session 遇到过并发改写）：
 
-- `wayfinder/data-agent/map.md`（Decisions so far 中的 GA-EXP2/EXP3/EXP4/MODEL1）
-- `wayfinder/data-agent/tickets/phase-misc/GA-MODEL1-qwen37max-default.md`
-- `wayfinder/data-agent/tickets/phase-misc/GA-GT3-enrichment-generalization.md`
-- `wayfinder/data-agent/tickets/phase-misc/GA-GRILL2-i18n-architecture.md`
+- `wayfinder/data-agent/map.md` — 只读 Destination / Notes / Decisions so far 里 GA-GT3、GA-EVAL-REAL-EXEC、GA-GRILL2 三条 + 推荐顺序
+- `wayfinder/data-agent/tickets/phase-misc/GA-GT3-enrichment-generalization.md` — **重点读末尾「证据收集（2026-09-03）」章**
+- `wayfinder/data-agent/research/gt3-grilling-brief.md` — 373 行完整证据，每条带 file:line
 
-## 阶段 1：GA-MODEL1 — 切 qwen3.7-max 为默认模型
+开工前先 `git status --short` 和 `git log --oneline -8`，确认哪些改动不是你的；本次只提交你自己触及的文件。
 
-背景：GA-EXP4 证明 qwen3.7-max baseline 88.1%（vs qwen-plus 72.0%），英文 prompt 退化仅 -3.0%。现在要把它切为默认 eval/生产模型。
+## 主线：GA-GT3 item 5 — 修掉 dimension_refs 数据丢失
 
-### 需要做的：
+这是一张 grilling 票（HITL），**决策要问我，不要自己拍**。已确认的事实（无需重新调查）：
 
-1. **eval-cli README 更新**：
-   - 更新 Quality Baseline 表（当前 76.8% @ qwen-plus → 新基线用 EXP4 ARM A 数据 88.1% @ qwen3.7-max）
-   - 更新 run-id 引用为 exp4-arm-a
-   - 更新示例命令中的模型参考
-   - 确认 Quality Targets 是否需要上调
+- `origin` 优先级逻辑在 `mergeRefs` 内部，而 `mergeRefs` **只在 `mergeExisting === true` 分支被调用**；replace 分支 `enrichment.ts:348`（`refs = discovered`）**根本不调 `existingRefs()`**，`manual` ref 被整体丢弃后 `:350` 无条件写盘。
+- 链路：`tool-discover-relations/src/index.ts:166` → `semantic-layer/src/index.ts:628`（**显式传 `false`**）→ `enrichment.ts:330`（默认 `false`）→ `:348`。
+- **「可先做这一行」是错的**：只翻 `enrichment.ts:330` 的默认值对 agent tool 无效，因为 `index.ts:628` 硬编码 `false`；events 路径（`index.ts:649`、`scripts/seed-event-external-refs.ts:19`）连参数都不传，**没有 merge-mode 入口**。
+- **没有任何测试断言 replace 模式** → 改默认值挡不住任何测试（低摩擦，但也无护栏）。
+- 真实张力：`mergeRefs` 是**并集语义、从不删除**，所以 replace 是唯一能清掉过期 ref 的路径——CL-18 Phase 1 那次 23→5 噪声清理在纯 merge 下将无法进行。且 auto=merge / explicit=replace 是一次 code-review 的**刻意决定**（`.agents/notes/implemented/feature/2026-08-22-…:29`）。
 
-2. **成本/延迟评估**（从 EXP4 数据提取）：
-   - 对比 EXP2 ARM A (qwen-plus) vs EXP4 ARM A (qwen3.7-max) 的平均延迟
-   - 检查 EXP4 结果文件中是否有 token usage 数据
-   - 如果延迟/成本可接受，记录结论；如果不可接受，标注 tradeoff
+### 第一步：grill 我在三个方案里选一个
 
-3. **per-intent / per-complexity breakdown**：
-   - 用 eval-results/exp4/exp4-arm-a.json 做 per-intent 和 per-complexity 分析
-   - 确认没有意外回归（某个 intent 大幅下降）
-   - 对比 EXP2 ARM A 的同维度数据
+| 方案 | 内容 | 代价 |
+|---|---|---|
+| (a) | 默认翻 `mergeExisting=true` | 保住 curated ref，但**失去清理过期 ref 的能力** |
+| (b) | origin-aware replace——只替换 `deterministic`/`llm`，保留 `manual` | brief 推荐的调和方案 |
+| (c) | 显式 opt-in replace flag | 调用方全改；语义最清楚 |
 
-4. **关闭 ticket**：更新 GA-MODEL1 ticket status → Resolved，写 resolution，更新 map Decisions so far
+用 `/grilling`，一次一个问题。至少压这几点：CL-18 那类噪声清理在你选的方案下还做得到吗？`origin` 为 `undefined` 的历史 ref（GA-I18N-1 之前写的）算 manual 还是算 deterministic？events 路径要不要一并开 merge-mode 入口？
 
-完成 MODEL1 后，告诉我结果，然后进入阶段 2。
+### 第二步：实施（TDD）
 
-## 阶段 2：并行启动 GA-GT3 + Kind 1 grilling
+决策落定后按 `/tdd`：**先写红测试**闭合数据丢失（现在零覆盖），再改。必须同时处理 `index.ts:628` 的硬编码 `false` 和 events 路径缺失的入口，否则改动无效。
+注意 `enrichment.spec.ts:222`（`'skips DIM tables'`）是唯一编码星型假设的测试——本次若不动 item 1 就别碰它。
 
-MODEL1 完成后，用两个并行 subagent 同时处理：
+### 第三步：只解 item 5 + item 6
 
-### Subagent A：GA-GT3 enrichment 泛化（wayfinder ticket 解决）
+GA-GT3 六项里只有 **item 5、6 是 independent**（未被 GA-EXP1 阻塞）。item 1、3 partially gated，item 2、4 EXP1-gated（item 2 **就是** EXP1 Phase 2 Arm A 本身）。
+**别顺手做 item 1/2/3/4**——它们等 GA-EXP1（`Status: Open`，Phase 1 只做了一半，judge 校准从未执行）。
+票不整体 resolved，只勾掉 item 5、6 并在票里记清剩余 gating。
 
-用 `/wayfinder wayfinder/data-agent/tickets/phase-misc/GA-GT3-enrichment-generalization.md` 处理这张 ticket。它是 map 主线上的下一个 frontier ticket，依赖 GA-EXP1 的结论（已 resolved）。按 wayfinder 流程：claim → resolve → record resolution → 更新 map。
+## 可选（若主线还有余量）：GA-EVAL-SQLGEN-PROMPT-FIX
 
-### Subagent B：Kind 1 重新评估（grilling session）
+`tickets/phase-misc/GA-EVAL-SQLGEN-PROMPT-FIX-non-sql-emission.md` — real-exec 基线里 **34% 的 attempt 发射 RBI tool-call 格式而非 SQL**（集中在 case 119-138），怀疑 engine responder 的 SQL-gen prompt 漏了 RBI 工具目录给 LLM。修完会触发 real-exec re-baseline。这是纯工程活，不需要 grilling。
 
-GA-EXP4 证明 qwen3.7-max 下英文 prompt 退化仅 -3.0%，Kind 1（prompt 英文化）重新打开。需要一次 grilling session 重新评估 Kind 1 的 scope 和优先级：
+## 不要在本 session 做
 
-1. **读取上下文**：
-   - GA-GRILL2 ticket（原始 Kind 1 讨论 + EXP2 关闭 + EXP4 重新打开）
-   - GA-EXP4 crossval report（`research/exp4-crossval-report.md`）
-   - prompt.ts 和 exp2-prompts-en.ts（中英文 prompt 对比）
+- **GA-EVAL-EXPAND / GA-EXP5** — 是研究支线，且 EXPAND 含 57 个 case 逐个人工确定正确 SQL 的重活（**注意循环性风险：参考 SQL 必须人工写，交给 LLM 会把系统当前错误固化为「正确答案」**）。排在 GT3 之后。
+- **GA-EXP1** — 大实验，需 live LLM，独立 session。
+- 别改 `runner.ts` 判分语义（pass^k 已落地并重基线两次，当前 61.9%）。
 
-2. **Grilling 问题**（按 `/grilling` skill）：
-   - Kind 1 现在可行了，但 **应该做吗**？英文 prompt 的可维护性收益 vs 迁移成本
-   - 如果做，scope 是什么？全部英文化，还是只做 boilerplate（section headers + tool catalog），保留中文核心规则？
-   - 优先级：相对于 GT3/GT4/CL-batch 等 map 主线工作，Kind 1 排在哪里？
-   - conventions prompt（`renderConventionsPrompt`）要不要一起改？它目前永远输出中文，但 EXP4 证明中文 conventions + 英文指令在 qwen3.7-max 下无问题
-   - 如果决定做，开实施票还是留作 backlog？
+## 收尾
 
-3. **产出**：grilling session 的决策记录，更新 GA-GRILL2 ticket，如果决定做则开实施票
+更新 GA-GT3 票 + map（Decisions so far 一行 + 推荐顺序），跑 `pnpm typecheck` + 相关包 vitest，subagent code review，只提交你触及的文件。
 
-两个 subagent 完成后，汇总结果，更新 map和tickets确保前后一致，通过subagent进行code review和测试，commit。
+顺带留意两个悬空项（上一 session 已在 map 标注，待原 session 处理，你不用管除非顺路）：
+`packages/eval/eval/cases/rbi-10000251-exec/`（39 个 case，12.8% 真实执行基线所依赖）**未被 git 追踪**，源文件在仓库外；仓库根目录有未追踪的 `analyze-real-exec-gap.mjs`。
 ```
+
+---
+
+## 为什么是这个顺序
+
+1. **GT3 item 5 是 map 上唯一「已确认为 bug + 零测试护栏 + 未被阻塞」的项** —— 数据丢失比研究工作紧急，且已定位到行。
+2. **SQLGEN-PROMPT-FIX 便宜且解锁 re-baseline** —— 34% 非 SQL 发射压低了真实执行基线，修完那个 12.8% 才有意义。
+3. **EXPAND/EXP5 推后** —— 研究支线；且 REAL-EXEC 已用便宜路径拿到 judge false-pass 的第一个数字（35.9pp），EXPAND 的剩余理由收窄为「k11-v3 与 168-case 历史谱系可比」+「EXP5 功效前置」，不再是「首次测量」。
+4. **GA-EXP1 仍是 GT3 其余四项的真正瓶颈** —— 独立 session 处理。
