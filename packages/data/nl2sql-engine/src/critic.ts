@@ -74,6 +74,40 @@ export function extractSqlCandidate(phaseOutput: string | null | undefined): str
  * @param sql - the raw SQL (may contain `--` comments + string literals).
  * @returns the SQL with `--` line comments removed, string literals preserved.
  */
+
+/**
+ * Whether the model emitted a tool-call instead of SQL.
+ *
+ * CL-19 root-caused this: the generation prompt carries TOOL_CATALOG (7 tool
+ * descriptions + the agentic SOP), but eval runs a single completion with no
+ * tool-execution loop, so open-ended questions make the model emit a tool-call
+ * as *text*. The formats vary run-to-run — CL-19 observed `call:default_api:…`,
+ * `<tool>…`, `{"name":…}`, `call:func{…}` and `{"tool_calls":[…]}` — so this
+ * matches the shape rather than any one vendor syntax.
+ *
+ * Lives here (not in eval-cli) because both the engine and the eval reply layer
+ * need it and the engine must not depend on eval-cli.
+ *
+ * @param text - raw model output.
+ * @returns true when the text is a tool-call rather than a SQL statement.
+ */
+export function looksLikeToolCall(text: string): boolean {
+  const trimmed = text.trim()
+  // <call …> / <tool …> XML-ish emission
+  if (/^<(call|tool)/i.test(trimmed)) return true
+  // {"name": …} or {"tool_calls": [...]} JSON emission
+  if (/^\{\s*"(name|tool_calls)"\s*:/i.test(trimmed)) return true
+  // `call:default_api:foo(...)` / `call:func{...}` / bare `call\n{"name":…}`.
+  // The newline-then-JSON variant was found live on 2026-09-04 (voice_017,
+  // qwen3.7-max) and is NOT in CL-19's recorded format list — hence matching
+  // `call` as a word followed by a colon or an object, rather than `call:` only.
+  if (/^call\s*:/i.test(trimmed)) return true
+  if (/^call\b\s*\{/i.test(trimmed)) return true
+  // bare `some_tool({...})` — a whole-string function application
+  if (/^[a-z_]+\s*\(/i.test(trimmed) && /^\w+\s*\([\s\S]*\)\s*$/.test(trimmed)) return true
+  return false
+}
+
 export function stripLineComments(sql: string): string {
   let out = ''
   let i = 0

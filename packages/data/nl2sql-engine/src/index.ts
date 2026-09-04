@@ -35,7 +35,8 @@ export * from './types.ts'
 // eval-runner-service ctx adapter) imports it from the engine package root
 // rather than a cross-package deep .ts path.
 export type { EngineConventions } from '@deepseek-ai/dsh-query'
-export { critiqueSql, sqlSyntaxGate, extractSqlCandidate, extractJsonPaths, extractTableNames, hasPartitionFilter, hasSelectStar, type CriticResult } from './critic.ts'
+export { critiqueSql, sqlSyntaxGate, looksLikeToolCall,
+  extractSqlCandidate, extractJsonPaths, extractTableNames, hasPartitionFilter, hasSelectStar, type CriticResult } from './critic.ts'
 export { buildPrompt, buildEvalPrompt, type EventDefinitionLite, type BuildPromptArgs, type BuildEvalPromptArgs } from './prompt.ts'
 export { renderConventionsPrompt } from './conventions.ts'
 export { Bm25Linker, BM25Okapi, buildCorpus, tokenize, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from './bm25-linking.ts'
