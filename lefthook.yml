@@ -51,5 +51,7 @@ pre-merge-commit:
 
 pre-push:
   jobs:
+    - name: no production src on master
+      run: pnpm run verify-no-production-src-on-master
     - name: typecheck
       run: pnpm run typecheck
