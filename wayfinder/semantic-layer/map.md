@@ -162,6 +162,13 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
   - **结论 D:方向性决策均存活** —— GA-MODEL1(qwen3.7-max:+16.1%→**+29.7pp**)、G1c ship variant(B 仍最优)。
   - **更正²(2026-09-04 晚,已作废前一条更正):阈值**确实**已重设,且切换已经发生。** 前一条"目标值不需要重设"是错的——① k=1 **不是标准而是偏离**:CLI 默认 `--pass-k 3`、`DEFAULT_PASS_K = 3`、**SPEC §6.5 / D9 Q2 明确规定 pass^k k=3**;`run-eval.sh` 的 `--pass-k 1` 是为"对齐旧基线"加的循环论证,**已移除**。② 当前基线已是 `rebaseline-passk-168-clean` = **61.9%** pass^k(commit `56c74aebae`),README 已声明 "pass^k is LIVE" 并**已把目标重设为 Overall 60/70/85、Original 65/75/88**(pending PM sign-off),旧 75/80/90 标 superseded。③ 我的"pass^k 方差更大"反对理由**方向搞反了**:实测 k=1 极差 **4.2pp** vs pass^k bootstrap 90% 区间 **5.4pp**,量级相当;pass^k 把 p≈0.5 的 case 推向稳定失败反而更一致。**真正的数字:每 case 通过次数分布 20/20/33/95 → 31.5% 的 case 不确定,k=1 在定义上看不到。** 四票已各自追加更正段,验收以 README 的 pass^k 目标为准。
   - **k=1 偏离泄漏到三处,已修**:① `run-eval.sh --pass-k 1`(**活陷阱**——README 基线已是 pass^k 61.9%,而跑这个脚本得 ~74% 且静默不可比)→ 已移除;② `compare.ts` **无 pass_k 守卫**(CL-15 定它为标准趋势工具,拿 k=1 基线比 k=3 新 run 会静默报出纯协议差异的 +12pp "改善")→ 已加 `checkProtocolMatch`:已知协议不一致则 exit 2(可 `--allow-protocol-mismatch` 绕过),任一为 unknown 则警告,并在 header 打印协议;③ `RunResult.config` 只在 5/174 run 里有值(169 个历史 run 为 null,无法判断其 k)→ 守卫按"unknown"档处理而非假设默认。**③ 自驱循环无此问题**:`eval-runner-service` 用 `passK: 3`(bundle:201),与 README 口径一致,管理 agent 经 `<eval_evidence>` 看到的是同一把尺。
+  - **中位数基线延后（2026-09-04 决定）** —— 尝试过一次并**主动中止**，原因是**并发开发使基线不可复现**，这条教训必须留档：
+    - 起了 `scripts/run-median-baseline.sh` 跑 2 轮补足 CL-22 的三轮，run 1 跑到 96/168 时中止。
+    - **中止原因不是守卫误报**：期间 10+ 个并发 commit 真的改了 eval 核心路径（`nl2sql-engine/src/prompt.ts` 85 行、`critic.ts` 46 行、`metric-engine.ts`、`engine.ts`、`query-maxcompute/src/normalize.ts`+`conventions.ts`）。run 1 与任何 run 2 之间隔着真实行为变更，合并成中位数等于平均两个不同系统。
+    - **更深的问题：我守错了对象。** driver 守 `git rev-parse HEAD`，但 **tsx 执行的是工作树**。实测 `critic.ts` mtime 10:50、`prompt.ts` 11:00 —— 都在 run 1 启动（11:01:12）**之前**被改且当时**未提交**；`query-maxcompute/lib/index.js` 更是在 **11:54 跑到一半被重建**。所以 run 1 执行的代码**对应不上任何 commit**，而 driver 记录的 `HEAD: 5ddbc0f8e6` 是**假溯源**。不可复现的数字不能当基线 → run 1 作废（产物留在 `.tmp/median-baseline/`，**勿当基线引用**）。
+    - **正解 = 隔离 worktree**（正是项目 2026-09-04 11:35 落地的 per-session 策略，CLAUDE.md:60-67）：worktree 里的文件并发 session 碰不到，既合规又让基线可复现。driver 已按此加固（拒绝在有 eval 相关未提交改动的主树里跑 + 记录内容哈希而非 HEAD）。
+    - **延后到并行 PR 收口后再建**：并发 session 仍在活跃改 nl2sql-engine，worktree 能隔离文件但基线的意义是"代表当前系统"，主线一变保鲜期就到。且当前 HEAD 含**未经 eval 验证**的 prompt/critic 变更，在其上建基线会把未验证改动烘进基线。
+    - **在此之前**：按分层协议用 n=1 导航（标注"单 run，不可作决策依据"），基线仍以 `rebaseline-passk-168-clean` 61.9% 为**唯一**参考点且注明 n=1。
   - **CL-22 与 pass_k=3 的张力已定性**:`pass_k=3` 管**单 run 内**抖动(惩罚),`≥3 run 中位数` 管 **run 间**抖动(抹平),二者正交、可叠加,不冲突。CL-22 当初说 all-must-pass"不适用"是因为它设想用 majority-vote 替代中位数——那才是冲突的方案。
 
 ## Not yet specified

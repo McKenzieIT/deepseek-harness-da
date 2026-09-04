@@ -6,6 +6,8 @@ blocked_by: []
 
 # CL-23: tool-call 检测 + 结构化拒绝合成（CL-19 修复落地）
 
+**Branch**: `fix/cl23-toolcall-structured-decline`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
+
 ## Question
 
 CL-19 根因已定位（TOOL_CATALOG prompt 触发 LLM 发射 tool-call 文本），需实施 (a) engine 检测 + (b) reply 层合成 + looksLikeToolCall 扩展三层修复，翻转 voice_017/voice_042 DELIVERY case。

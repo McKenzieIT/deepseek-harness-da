@@ -6,6 +6,8 @@ blocked_by: []
 
 # W17: 管理 session 客户端桥接 —— 知识图谱闭环断在一个点上
 
+**Branch**: `feat/w17-management-session-bridge`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
+
 ## 事实（2026-09-03 代码核查）
 
 W10/W11 设计的闭环是「**看图 → 发现问题 → 对话让 agent 调 tool 修正 → 图上叙述后动画 → 再看**」。

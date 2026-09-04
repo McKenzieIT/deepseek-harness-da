@@ -6,6 +6,8 @@ blocked_by: []
 
 # W16: evidence-query 客户端 remote 缺口 —— 证据 UI 在生产中是死的
 
+**Branch**: `fix/w16-evidence-query-client-remote`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
+
 ## 事实（2026-09-03 代码核查）
 
 服务端**齐全**，客户端那一半**从未接上**。`evidenceClient` 在生产里恒为 `null`。

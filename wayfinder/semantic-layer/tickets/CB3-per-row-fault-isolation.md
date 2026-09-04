@@ -6,6 +6,8 @@ blocked_by: []
 
 # CB-3: include 组的 per-row 失败隔离（评估，非立即实施）
 
+**Branch**: `chore/cb3-per-row-fault-isolation`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
+
 **来源**：CB-1 决策（2026-09-04）——「先自检止血，per-row 开票后评」。
 自检部分**已落地**（见下）；本票承接 per-row 容错的可行性评估。
 

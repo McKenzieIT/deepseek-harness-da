@@ -6,6 +6,8 @@ blocked_by: []
 
 # CB-1: 冷启动 blocker —— 单行失败炸掉整个 data-agent include 组
 
+**Branch**: `fix/cb1-cold-boot-blockers`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
+
 ## 事实（2026-09-03 实测，`--profile web` 冷启动）
 
 用户报「语义层按钮又消失了」。**按钮代码完全正常**——真因是 `--profile web` **冷启动失败**，

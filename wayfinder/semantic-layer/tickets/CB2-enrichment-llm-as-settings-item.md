@@ -6,6 +6,8 @@ blocked_by: []
 
 # CB-2: enrichment LLM 配置改为 dsh-data-agent 设置项
 
+**Branch**: `feat/cb2-enrichment-llm-settings`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
+
 **来源**：CB-1 blocker 2 的决策（2026-09-04）——不走"选哪种 fail 语义"，
 而是**把配置本身搬到设置项里**，让它成为用户可见、可填的东西。
 
