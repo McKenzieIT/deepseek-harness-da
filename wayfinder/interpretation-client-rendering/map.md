@@ -51,6 +51,7 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 (暂无——原三条雾已全部毕业为票:chart 精度扩展 → [R4](tickets/R4-chart-type-expansion.md),object layer cache → [R5](tickets/R5-object-layer-result-cache.md),result store server-side → [R6](tickets/R6-result-store-server-side.md))
 
 原「查询理解↔table KPI 互认 + 改口径回流」雾(自 R9)已毕业:语义层 → [R10](tickets/R10-decomposition-table-metric-identity.md)(结论:两卡 metric 身份独立——decomposition 为纯 argsRaw 自由文本无 `result_id`,table kpi 值从 `result_id` 绑定数据计算;无共享 key/语义 id,无需 metric 联动);UX 层(低置信改口径 affordance 形态)→ [P2](tickets/P2-decomposition-revision-prototype.md)(prototype,open;R10 既不 block 也不 bind P2,且「无 link」收窄 P2 scope)。
+- **date-x 与 numeric-x 序数对称性**：当前 `validateChartType` 的 line/area 分支——date-x 无条件接受（无单调检查），numeric-x 需单调非递减（T6 fix 2）。若 team 欲对称（date-x 也校验序数，避免 date-x 表按他列 desc 重排后画锯齿线），加一个 `isOrdinalDateX` companion；非 bug，是 LOW 未来精修（subagent code review 指出，pre-existing）。
 
 ## Out of scope
 
@@ -58,3 +59,4 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 - result data caching service 的设计/实现（data infra 层面，非 client 插件责任）
 - 对话流整体 redesign（only INTERPRETATION tools 的 toolview 替换）
 - ECharts 迁移与 heatmap/sankey/treemap（非 native Chart.js 类型；R4 决定推迟到独立 effort，不并入本 map）
+- worktree-setup 不 build workspace package（fresh worktree 缺 `lib/` 假性「master break」）+ ui-theme 被 consume 的 `--dsw-alias-*` token 未定义——repo-wide build/theme infra，已开 [repo-infra/T1](../../repo-infra/tickets/T1-worktree-builds.md) + [repo-infra/T2](../../repo-infra/tickets/T2-theme-token-gap.md)（独立 effort，本 map 不含）
