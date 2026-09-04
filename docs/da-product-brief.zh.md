@@ -1,6 +1,6 @@
 # dsh-data-agent 产品简介
 
-English | [中文](da-product-brief.zh.md)
+[English](da-product-brief.md) | 中文
 
 ## 一句话
 
