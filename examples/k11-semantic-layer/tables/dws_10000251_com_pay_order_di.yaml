@@ -116,11 +116,13 @@ dimension_refs:
       - dws_column: order_id
         dim_column: order_id
     derivation: DWS order_id（订单号）与 dim_10000251_com_order_detail_info 主键 order_id 精确匹配，JOIN 回填订单维度的商品配置属性。
+    origin: deterministic
   - dim_table: dim_10000251_server_info
     join_keys:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id（服务器ID）与 dim_10000251_server_info 主键 server_id 精确匹配，JOIN 回填区服名称与开服时间。
+    origin: deterministic
 pref_label: 商业化-付费订单日表
 alt_labels:
   - 氪金

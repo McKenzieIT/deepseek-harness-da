@@ -125,6 +125,7 @@ dimension_refs:
       - dws_column: stage_id
         dim_column: stage_id
     derivation: DWS columns chapter_id (comment 章节ID) and stage_id (comment 关卡ID) form an exact composite-name foreign key to dim_10000251_trans_conquest_df primary key [chapter_id, stage_id], the 征服/推图关卡维度配置表.
+    origin: deterministic
   - dim_table: dim_10000251_trans_card_df
     join_keys:
       - dws_column: card_id
@@ -135,6 +136,7 @@ dimension_refs:
       - dws_column: tactic_id
         dim_column: tactic_id
     derivation: DWS column tactic_id (comment 风物ID) is an exact-name foreign key to dim_10000251_tactic_info primary key tactic_id, the 风物配置维度表.
+    origin: deterministic
 pref_label: PVE卡牌统计日表
 alt_labels:
   - 使用率

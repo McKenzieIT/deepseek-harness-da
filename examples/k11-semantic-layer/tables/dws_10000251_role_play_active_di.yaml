@@ -198,6 +198,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (comment '区服id，key') is an exact name match to dim_10000251_server_info primary key server_id, and the DIM is explicitly designed to be joined by server_id to look up server name and open-date attributes.
+    origin: deterministic
 pref_label: 角色上手循环表
 alt_labels:
   - 上手

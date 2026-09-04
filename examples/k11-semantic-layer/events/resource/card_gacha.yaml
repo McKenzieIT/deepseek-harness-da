@@ -191,33 +191,40 @@ external_refs:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_gacha_mission_group_df_arch 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_item_df
     join_keys:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_item_df_arch
     join_keys:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_item_df_arch 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_resource_df
     join_keys:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_resource_df_arch
     join_keys:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_df_arch 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_resource_item_df
     join_keys:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_trans_resource_item_df_arch
     join_keys:
       - dws_column: type
         dim_column: type
     derivation: 确定性：事件字段 type 与 dim_10000251_trans_resource_item_df_arch 主键精确同名
+    origin: deterministic
