@@ -1,0 +1,59 @@
+schema_version: 3
+case_id: eval_10000251_059
+input:
+  question: 昨天各付费金额段（0-10元/10-100元/100-1000元/1000元以上）的付费人数？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT
+      CASE
+        WHEN pay_amt/100.0 <= 10 THEN '0-10元'
+        WHEN pay_amt/100.0 <= 100 THEN '10-100元'
+        WHEN pay_amt/100.0 <= 1000 THEN '100-1000元'
+        ELSE '1000元以上'
+      END AS pay_band,
+      COUNT(DISTINCT role_id) AS paying_roles,
+      SUM(pay_amt) / 100.0 AS total_yuan
+    FROM ieu_cdm.dws_10000251_com_pay_order_di
+    WHERE ds = '{{ds_yesterday}}'
+      AND pay_type = 1
+    GROUP BY
+      CASE
+        WHEN pay_amt/100.0 <= 10 THEN '0-10元'
+        WHEN pay_amt/100.0 <= 100 THEN '10-100元'
+        WHEN pay_amt/100.0 <= 1000 THEN '100-1000元'
+        ELSE '1000元以上'
+      END
+    ORDER BY MIN(pay_amt)
+  result_value:
+    value:
+    - pay_band: 0-10元
+      paying_roles: 139
+      total_yuan: 885.0
+    - pay_band: 10-100元
+      paying_roles: 92
+      total_yuan: 5478.0
+    - pay_band: 100-1000元
+      paying_roles: 4
+      total_yuan: 1372.0
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L4
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: proportion
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  needs_repin: true
+  tier: verified
+  provenance: migrated
+  difficulty: medium
+  created_at: '2026-08-04'
+  retired: false

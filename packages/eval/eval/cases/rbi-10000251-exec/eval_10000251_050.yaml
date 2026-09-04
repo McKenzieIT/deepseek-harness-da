@@ -1,0 +1,47 @@
+schema_version: 3
+case_id: eval_10000251_050
+input:
+  question: 最近7天每天的新增角色数趋势？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT ds,
+      COUNT(DISTINCT user_id) AS new_roles
+    FROM ieu_cdm.dws_10000251_univ_role_act_di
+    WHERE ds BETWEEN '{{ds_7d_ago}}' AND '{{ds_yesterday}}'
+      AND act_fst = 1
+    GROUP BY ds
+    ORDER BY ds
+  result_value:
+    value:
+    - ds: '20260714'
+      new_roles: 512
+    - ds: '20260715'
+      new_roles: 536
+    - ds: '20260716'
+      new_roles: 638
+    - ds: '20260717'
+      new_roles: 698
+    - ds: '20260718'
+      new_roles: 835
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L2
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: range
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: ranking
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  needs_repin: true
+  tier: verified
+  provenance: migrated
+  difficulty: easy
+  created_at: '2026-08-04'
+  retired: false

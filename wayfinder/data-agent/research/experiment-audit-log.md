@@ -564,3 +564,122 @@ Credentials via `LocalCredentialProvider` seam (`~/.dsh/.credentials.yaml`), NOT
 ### Pointer
 
 [GA-EVAL-CLEAN-RERUN](../tickets/phase-misc/GA-EVAL-CLEAN-RERUN-uniform-clean-and-executor-baseline.md) (Phase 1 resolved; Phase 2 re-scoped — not viable on k11-v2, needs a real-exec-derived case set). Artifacts: `eval-results/rebaseline-passk-168-clean.json` (uniform clean, 61.9%); `/tmp/eval-exec-smoke/exec-smoke2.json` (with-query smoke, k11v2_001, real query_result=`[[26770]]`). Logs: `/tmp/eval-clean.log` (Phase 1 full run), `/tmp/eval-exec-smoke2.log` (Phase 2 smoke). Code fix: `packages/eval/eval-cli/src/context.ts:488-506`.
+
+## 2026-09-04 — GA-EVAL-REAL-EXEC: executor real-exec baseline on RBI real-exec-derived case set + judge false-pass gap
+
+**Ticket**: [GA-EVAL-REAL-EXEC](../tickets/phase-misc/GA-EVAL-REAL-EXEC-real-execution-baseline.md)
+**Artifacts**: `eval-results/rebaseline-real-exec-rbi-10000251.json` (real-exec, 39 EXEC cases, 144KB); smoke `real-exec-smoke-037` (/tmp/eval-real-exec-smoke/).
+
+### Setup
+
+- **Cases**: RBI scope 10000251 real-exec-derived case set (`/Users/mckenzie/workspace/reverse-bi/eval-cases/10000251/` — the canonical reverse-bi RBI eval). **39 EXEC cases** (scalar_exact, `expected.result_value={value:N}` derived from `expected.sql` against real ODPS ieu_cdm, anchor 20260806) — curated into `packages/eval/eval/cases/rbi-10000251-exec/` (copies; the loader's name regex + zod schema exclude the 6 clarify/non-numeric cases: 047/058 are `behavior:clarify` with no result_value → not execution-matchable; ta01-04/synth_* are non-digit-suffix → excluded by `globCasePaths`). Each case has `expected.sql` (reference, unused by the da — the model generates its own SQL) + `expected.result_value.value` (the real-exec-derived comparison target) + `meta.anchor_ds:20260806`.
+- **Model/protocol**: aga/qwen3.7-max, `--pass-k 3 --concurrency 3 --provider aga --model qwen3.7-max --skip-health-gate --responder engine --scope-id 10000251 --today 20260806`, SQL semantic judge on. `--with-query` + `--sidecar packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs` (real maxc-sidecar.mjs → spawns `maxc` CLI 0.4.8, REAL ODPS via ieu_cdm; the default standin-sidecar.mjs is a MOCK). `MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml` (project=ieu_cdm — K11 lives in ieu_cdm per maxc-sidecar.mjs header; the default ~/.maxc/config.yaml is overseas hdyl_data_sg_dev, wrong; the k11 wrapper pushes .bak as a 2nd --maxc-config but arg() takes the first = MAXC_CONFIG). `--today 20260806` PINNED = the case set's anchor (meta.anchor_ds; ds_yesterday=20260805 — verified by maxc-smoke: case 037 → dau=4336). `--scope-id 10000251` (RBI cases carry scope_id 10000251; K11 = scope 10000251; the CLI default 'k11' is the k11-v2 alias).
+- **Credentials**: LocalCredentialProvider seam (~/.dsh/.credentials.yaml, DASHSCOPE_API_KEY), not process.env. Machine load ~5 (conc=3 — prior session proved conc=3 tolerates this load; conc=4 under load triggers AGA empty-bursts).
+- **Pre-flight verification (smoke, 1-case pass-k=1, case 037)**: `--with-query` boots (context.ts EnvCredentialProvider-duplicate fix from GA-EVAL-CLEAN-RERUN holds — no crash); sidecar mounts with real config; model generated alternate SQL `SELECT SUM(CASE WHEN act=1 THEN 1 ELSE 0 END) AS dau FROM dws_10000251_univ_acc_summary_di WHERE ds='20260805'` → executor returned `[[4336]]` → `execution_match=true` (REAL value comparison, not SQL-text); `sql_judge.score=1.0` (dual-score, execution-blind); `config.with_query=true` + all 12 item-4 fields. Smoke PASS in 82.7s.
+
+### Methodology — dual-score derives the judge ceiling + false-pass gap from ONE run
+
+The runner (`eval-runner/src/runner.ts executeAttempt`) dual-scores every attempt when `--with-query`: it (1) **executes** the model's SQL → `execution_match = checkResultMatch(rows, expected.result_value, match_mode)` (REAL), AND (2) independently runs `sqlJudge.judgeSql({question, generated_sql, schema_context})` — **NO query_result passed** → the judge is execution-BLIND. Since the engine responder's SQL-gen is independent of `--with-query` (the executor mounts post-gen), the judge scores identical SQL to a standalone `--with-query-off` run. So the judge ceiling + the false-pass gap are derivable from the real-exec run's own `sql_judge` fields — a separate judge-only run would produce identical judge scores at 2× LLM cost + AGA-burst risk. (Verified 0 infra failures in the run → the dual-score is clean; `infra_failure` cases are excluded from the gap as contamination, not judge false-pass.)
+
+### Results (real-exec, 39 EXEC cases, SINGLE config-stamped artifact `rebaseline-real-exec-rbi-10000251.json`)
+
+- **real-exec pass_rate**: **5/39 = 12.8%** (verdict=correct; execution_match = model SQL → real ODPS ieu_cdm → compare to `expected.result_value.value` via `scalar_exact`; pass^k = all-3-must-pass).
+- **judge pass_rate (dual-score, execution-blind ceiling)**: **19/39 = 48.7%** (all-k `sql_judge.score ≥ 0.6`; the judge is execution-BLIND — `judgeSql` takes `{question, generated_sql, schema_context}`, no `query_result` → identical to a standalone judge-only run on the same SQL).
+- **gap = judge false-pass rate**: **14/39 = 35.9pp** (judge passed AND verdict='wrong' — judge semantically passed but the real-executed value was wrong). real-exec ≤ judge-only (12.8% ≤ 48.7%) ✓ as the ticket expected. Equivalently, 14/19 = **73.7% of the judge's passes are false** (real-exec value wrong) — the judge over-counts correctness by 35.9pp on this case set.
+- **infra_failure**: **0/39** (clean run — 0 ODPS/infra contamination; 0 empty-SQL throughout = NO AGA empty-burst, unlike the 2026-09-03 conc=4 contamination).
+- **real-exec wrong (value mismatch)**: 34/39 = 87.2% (= 14 judge false-pass + 20 both-fail). The 20 both-fail include cases where the model emitted RBI tool-call format instead of SQL (see characteristic below) — these fail BOTH real-exec + judge, so they are NOT judge false-passes.
+- **unjudged**: 0/39.
+
+Per-intent (query_intent from case `dimensions`; pass^k all-must-pass):
+
+| intent | total | real pass | judge pass | gap (false-pass) | infra |
+|---|---:|---:|---:|---:|---:|
+| metric_lookup | 23 | 3 | 10 | 7 | 0 |
+| proportion | 11 | 2 | 7 | 5 | 0 |
+| ranking | 3 | 0 | 1 | 1 | 0 |
+| trend | 2 | 0 | 1 | 1 | 0 |
+| **Total** | **39** | **5** | **19** | **14** | **0** |
+
+Judge false-pass case_ids (14 — judge passed but real-executed value wrong): `eval_10000251_040`, `_043`, `_044`, `_049`, `_050`, `_054`, `_055`, `_056`, `_060`, `_120`, `_123`, `_128`, `_135`, `_138`.
+
+**Non-SQL emission characteristic (notable, NOT contamination) — ROOT CAUSE CONFIRMED**: ~40/117 = 34% of attempts emitted RBI tool-call format (`{"name":"load_event_definition","arguments":{"event_name":"game.role.create"}}`, `<tool>search_data_sources("...")</tool>`, `call:default_api:load_event_definition{...}`) instead of SQL. **Root cause**: `packages/data/nl2sql-engine/src/prompt.ts` (the SQL-gen prompt) explicitly describes `search_data_sources` (line 89) + `load_event_definition` (line 90, 119, 150-153) as tools — but the engine responder (`--responder engine`) **pre-fetches** these (BM25 retrieval + schema layer) and does **NOT** expose them as callable to the LLM. The model (qwen3.7-max), seeing the tool descriptions in the prompt, sometimes emits tool-call format (expecting them to be invoked) instead of generating SQL directly. These attempts fail `execution_match` (non-SQL → executor ok=false) AND the judge scores them low → both fail → **EXCLUDED from the judge false-pass gap** (the gap is purely wrong-VALUE cases, clean of non-SQL). This deflates the real-exec pass_rate but does NOT inflate the gap. **Fix (follow-up ticket)**: the engine-responder SQL-gen prompt should NOT describe `search_data_sources`/`load_event_definition` as invocable (or clarify they're pre-fetched) — a prompt-engineering fix in `prompt.ts`, NOT a baseline-validity issue (the baseline is the honest measurement of the engine responder as-is). Fixing it would materially raise the real-exec pass_rate (the 34% non-SQL attempts would mostly become valid SQL) → a re-baseline follow-up.
+
+### Verdict
+
+1. **Real-exec baseline established on a real-exec-derived case set** (RBI scope 10000251, 39 EXEC cases): `execution_match` is REAL (SQL executed against ODPS ieu_cdm + result compared to `expected.result_value.value`), NOT judge-only. `config.with_query=true` + all 12 item-4 fields self-stamped (item-4 anti-recurrence LIVE — distinguishes this real-exec run from judge-only). **Success criterion 1 + 3 met.**
+2. **Judge false-pass gap quantified** (real-exec ≤ judge-only): **35.9pp** (14/39) of cases the judge semantically passed but whose real-executed value was wrong — the judge leniency the ticket set out to measure. The judge ceiling is the dual-score (19/39 = 48.7%, execution-blind, equivalent to standalone judge-only on identical SQL); real-exec is 12.8% (5/39); the 35.9pp gap = 73.7% of the judge's passes are false. **Success criterion 2 met.**
+3. Case-set caveat: this is a DIFFERENT case set from k11-v2 (39 RBI EXEC scalar_exact cases vs 168 k11-v2 mixed). The real-exec 12.8% here is NOT directly comparable to the k11-v2 61.9% judge-only — only to the same-case-set judge ceiling (48.7% dual-score) above. The much lower absolute number reflects (a) real-exec being strictly harder than judge-only (value must match, not just semantics) + (b) the 34% non-SQL tool-call emission rate deflating real-exec.
+4. **0 AGA-burst contamination** (empty-SQL=0 throughout, infra_failure=0) — the conc=3 + machine-unloaded discipline held; the artifact is a clean single run (no merge/rerun needed), config-stamped.
+
+### Fidelity
+
+- pass^k semantics (`passKVerdict` all-must-pass + `executionMatch=false`-when-unverifiable). SQL semantic judge on (threshold 0.6 = 3/5 dimensions). `with_query=true` (real ODPS via maxc CLI 0.4.8, ieu_cdm project, anchor 20260806).
+- Item-4 `config` field LIVE: 12 fields, `verdict_semantics='pass^k'`, `with_query=true`, `today='20260806'`, `concurrency=3`, `scope_id='10000251'` — anti-recurrence effective (a real-exec run is now distinguishable from judge-only from the artifact alone).
+- Dual-score methodology: judge execution-blind (`judgeSql` takes `{question, generated_sql, schema_context}`, no `query_result`); engine responder SQL-gen independent of `--with-query` → judge scores identical to standalone judge-only. No separate judge-only run needed (would produce identical judge scores at 2× LLM cost + AGA-burst risk).
+- Real-exec substrate: maxc CLI 0.4.8 + `~/.maxc/config_ieu_cdm.yaml` (ieu_cdm) + `maxc-sidecar-k11.mjs` (real, spawns maxc binary). The `--with-query` boot fix (context.ts EnvCredentialProvider duplicate removed, committed GA-EVAL-CLEAN-RERUN) holds — verified by smoke + this full run (0 boot crashes).
+- Analysis script: `analyze-real-exec-gap.mjs` (repo root) computes real-exec pass_rate + dual-score judge ceiling + gap (judge false-pass) + infra + per-intent + false-pass case_ids from one result JSON. Tested on smoke (1-case, 100% both) before the full run.
+
+### Pointer
+
+[GA-EVAL-REAL-EXEC](../tickets/phase-misc/GA-EVAL-REAL-EXEC-real-execution-baseline.md) (resolved: real-exec baseline on RBI real-exec-derived case set + judge false-pass gap via dual-score). Artifact: `eval-results/rebaseline-real-exec-rbi-10000251.json`. Smoke: `/tmp/eval-real-exec-smoke/real-exec-smoke-037.json`. Curated case set: `packages/eval/eval/cases/rbi-10000251-exec/` (39 EXEC cases, source: `reverse-bi/eval-cases/10000251/`). Analysis script: `analyze-real-exec-gap.mjs` (repo root). Log: `/tmp/eval-real-exec-rbi.log`.
+
+## 2026-09-04 — GA-EVAL-REAL-EXEC correction: dual-score methodology invalid (engine self-correction); standalone judge-only baseline added
+
+**Context**: a post-resolution code review (subagent) flagged the dual-score methodology claim as invalid. Independently verified before acting:
+
+- `packages/eval/eval-cli/src/context.ts:348` — `this.odps = withQuery ? new CtxOdpsAdapter(ctx, this.scopeId) : new StandInOdps()` (the executor is wired INTO the Nl2sqlEngine, and differs by `--with-query`).
+- `packages/data/nl2sql-engine/src/engine.ts:264-300` — `run()` has a `while (attempt <= MAX_FEEDBACK_RETRIES)` self-correction loop calling `this.llm.generate({question, attempt, feedback: lastFeedback})` + retrying on `critic_fail`/`near_dup`/empty-SQL; docstring line 11 confirms "the SQL the critic checks = the SQL `odps.execute` receives" — the engine uses `this.odps` DURING generation.
+- result JSON `rebaseline-real-exec-rbi-10000251.json`: **11 of 117 attempts have null `generated_sql`** (6 cases: `eval_10000251_124/126/127/129/130/136`) — the engine exhausted `MAX_FEEDBACK_RETRIES` → returned without SQL. This is **impossible** with `--with-query` off (`StandInOdps.execute()` always returns `done` → no execution-error self-correction → SQL always present). Definitive proof self-correction fired in the real-exec run.
+
+**Flaw**: the Nl2sqlEngine self-corrects SQL using execution feedback (`this.odps` = real CtxOdpsAdapter when `--with-query` on; `StandInOdps` always-`done` when off). So `--with-query` **changes SQL generation** (real-exec self-corrects on real ODPS execution errors; judge-only does not). The real-exec run's SQL (self-corrected) ≠ a standalone judge-only run's SQL (first-attempt). **The dual-score claim — "the real-exec run's `sql_judge` = a standalone judge-only run on identical SQL, so no separate judge-only run is needed" — is FALSE. Withdrawn.**
+
+**What is STILL valid (unchanged)**:
+
+- **real-exec pass_rate = 12.8% (5/39)** — on the engine's final (self-corrected) SQL; the engine's actual behavior under `--with-query`. The real-exec baseline stands. ✓
+- **within-run judge 放过率 = 35.9pp (14/39) / 73.7% (14/19)** — 14 cases where the judge passed the engine's final SQL (score ≥ 0.6 all-k) but the real-executed value was wrong (`verdict='wrong'`). This is a **per-SQL judge-leniency measure on the SAME final SQL within the run** — valid. It does NOT require a standalone judge-only (judge + execution_match are on the same final SQL within the real-exec run). ✓
+- 0 AGA-burst (empty-SQL=0 throughout), 0 infra_failure, config fields live (item-4). The run itself is clean. ✓
+
+**Withdrawn**:
+
+- "judge ceiling = 48.7% (19/39) = dual-score, execution-blind, equivalent to standalone judge-only on identical SQL" — FALSE. 48.7% is the judge pass rate on the real-exec run's **self-corrected** SQL, NOT a standalone judge-only ceiling (which would be on first-attempt SQL).
+- "no separate judge-only run needed" — FALSE. A standalone `--with-query-off` run IS needed for the true judge-only ceiling.
+
+**Confound (noted for the real-exec vs judge-only comparison)**: real-exec SQL is self-corrected (engine uses execution feedback); standalone judge-only SQL is first-attempt (`StandInOdps` → no execution-error self-correction). So "real-exec pass_rate vs judge-only pass_rate" compares **different SQL** — the gap is confounded, NOT a clean per-SQL judge false-pass. The within-run 35.9pp (above) is the cleaner per-SQL judge-leniency measure; the cross-run gap is an upper-bound-ish comparison with the self-correction caveat.
+
+**Action (A+B)**: running a standalone judge-only baseline `rebaseline-judge-only-rbi-10000251` (`--with-query` off → `StandInOdps` → engine first-attempt SQL → judge scores it; verdict set by judge score ≥ 0.6) to get the true judge-only ceiling on first-attempt SQL. This satisfies the ticket's original checklist item ("先跑 judge-only baseline") that the dual-score shortcut invalidly skipped. The cross-run gap (judge-only ceiling − real-exec) has the self-correction confound, noted. Result appended below when the run completes.
+
+**Ticket pointer**: [GA-EVAL-REAL-EXEC](../tickets/phase-misc/GA-EVAL-REAL-EXEC-real-execution-baseline.md) Resolution updated (Methodology section corrected: dual-score withdrawn, within-run 35.9pp stands, standalone judge-only added).
+
+### Standalone judge-only result (B) — `rebaseline-judge-only-rbi-10000251`
+
+**Run**: `--with-query` OFF (→ `StandInOdps` always-`done` → engine first-attempt SQL, NO execution-error self-correction; verdict set by judge score ≥ 0.6). Same protocol otherwise: aga/qwen3.7-max, pass-k=3, conc=3, --today 20260806, --scope-id 10000251, 39 EXEC cases. 0 AGA-burst (empty-SQL=0 throughout), 0 infra_failure. `config.with_query=false` ✓ (judge-only mode confirmed). 117 attempts (39×3). 10 null-SQL attempts across 8 cases (038, 056, 124, 125, 126, 127, 130, 136) — engine exhausted critic-retries (NOT execution-error retries, since StandInOdps never errors).
+
+**judge-only pass_rate = 19/39 = 48.7%** (verdict=correct = all-k judge score ≥ 0.6).
+
+| intent | total | correct | rate |
+|---|---:|---:|---|
+| metric_lookup | 23 | 8 | 34.8% |
+| proportion | 11 | 8 | 72.7% |
+| ranking | 3 | 1 | 33.3% |
+| trend | 2 | 2 | 100.0% |
+| **Total** | **39** | **19** | **48.7%** |
+
+**Cross-run gap (CONFOUNDED) = 48.7% (judge-only, first-attempt SQL) − 12.8% (real-exec, self-corrected SQL) = 35.9pp.** This is NOT a clean per-SQL judge false-pass — the two runs are on DIFFERENT SQL (real-exec self-corrects via execution feedback; judge-only doesn't), so the comparison is confounded by self-correction. The within-run 35.9pp (14/39, from the real-exec run's dual-score: judge passed the engine's final self-corrected SQL but the executed value was wrong) is the CLEAN per-SQL judge-leniency measure.
+
+**Judge-pass set comparison (proves dual-score ≠ standalone judge-only)**: the real-exec run's dual-score judge-pass set (19 cases, all-k `sql_judge.score ≥ 0.6`) and the judge-only run's judge-pass set (19 cases, `verdict=correct`) are NOT the same set:
+- **overlap (judge-pass in BOTH): 13 cases**
+- real-exec judge-pass ONLY (not in judge-only): 6 cases — `eval_10000251_043/050/056/123/128/138`
+- judge-only judge-pass ONLY (not in real-exec): 6 cases — `eval_10000251_042/045/048/059/122/137`
+
+The COUNT equality (19/19 = 48.7% in both) is **coincidental** — the SETS differ. This confirms the dual-score methodology is invalid: `--with-query` changes SQL gen (self-correction), so the real-exec run's SQL (self-corrected) ≠ the judge-only run's SQL (first-attempt) → the judge passes DIFFERENT cases. **Notable**: all 6 real-exec-judge-pass-ONLY cases (043/050/056/123/128/138) are among the 14 within-run false-pass cases — the self-correction improved those cases' SQL enough for the judge to pass (on self-corrected SQL) but the executed value was still wrong; in the judge-only run (first-attempt SQL, no self-correction) the judge did NOT pass them. I.e., self-correction INFLATED the real-exec run's judge pass for those 6 (and they're still execution-wrong → false-pass).
+
+### Interpretation (final, honest)
+
+- **real-exec pass_rate = 12.8% (5/39)** — on the engine's final (self-corrected) SQL; the engine's actual behavior under `--with-query`. VALID (the real-exec baseline).
+- **standalone judge-only ceiling = 48.7% (19/39)** — on first-attempt SQL (StandInOdps, no execution-error self-correction). VALID (the judge-only ceiling the ticket asked for).
+- **within-run judge 放过率 = 35.9pp (14/39) / 73.7% (14/19)** — judge passed the real-exec run's final (self-corrected) SQL but the executed value was wrong. CLEAN per-SQL measure (same final SQL within the run). This is the "judge 语义放过但真执行值错" the ticket wanted.
+- **cross-run gap = 35.9pp** (48.7% − 12.8%) — CONFOUNDED (different SQL + different judge-pass sets; coincidentally equals the within-run 35.9pp because both judge pass rates are 48.7%). NOT a clean per-SQL measure; the within-run 35.9pp is the one to cite.
+- **dual-score methodology**: INVALID (the 48.7% count equality was coincidental; the judge-pass sets differ). Withdrawn. The standalone judge-only run (B) was necessary to establish the true ceiling — the dual-score shortcut was wrong.
+- **prompt.ts tool-catalog leakage (GA-EVAL-SQLGEN-PROMPT-FIX)**: affects BOTH runs (~34% non-SQL in real-exec, ~10/117=8.5% null-SQL in judge-only + tool-call emissions) → fixing the prompt would raise BOTH baselines. The 48.7% judge-only ceiling is ALSO deflated by the non-SQL emissions.
+
+**Bottom line**: the ticket's "judge 放过率" = **35.9pp (14/39) / 73.7% (14/19)**, the within-run per-SQL measure (judge passed the executed SQL but value wrong). The standalone judge-only ceiling is **48.7%** (on first-attempt SQL). real-exec is **12.8%** (on self-corrected SQL). The cross-run 35.9pp gap is confounded by self-correction; the within-run 35.9pp is the clean measure (both happen to be 35.9pp because both judge pass rates are 48.7% — a coincidence, not a validation of the dual-score).

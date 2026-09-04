@@ -15,7 +15,7 @@ A pass rate is only comparable to another one measured under the **same protocol
 | Protocol | Model | Run ID | Date | Rate |
 |---|---|---|---|---|
 | **pass@3 pass^k, judge-only (CURRENT)** | **qwen3.7-max** | `rebaseline-passk-168-clean` | 2026-09-04 | **104/168 = 61.9%** |
-| pass@3 pass^k, **real-exec** (RBI 10000251, 39 EXEC cases — **different case set**) | qwen3.7-max | `rebaseline-real-exec-rbi-10000251` | 2026-09-04 | **5/39 = 12.8%** real-exec; within-run judge 放过率 **35.9pp (14/39)** ⚠ dual-score ceiling withdrawn (engine self-correction; standalone judge-only `rebaseline-judge-only-rbi-10000251` pending) |
+| pass@3 pass^k, **real-exec** (RBI 10000251, 39 EXEC cases — **different case set**) | qwen3.7-max | `rebaseline-real-exec-rbi-10000251` | 2026-09-04 | **5/39 = 12.8%** real-exec; within-run judge 放过率 **35.9pp (14/39)** ⚠ dual-score ceiling withdrawn (engine self-correction; standalone judge-only `rebaseline-judge-only-rbi-10000251` = **48.7% (19/39, first-attempt SQL)**; cross-run gap 35.9pp **CONFOUNDED** (self-correction — judge-pass sets differ: 13 overlap + 6 real-exec-only + 6 judge-only-only; count equality coincidental); within-run 35.9pp (14/39) is the clean per-SQL measure |
 | pass@3 pass^k, judge-only (hybrid merge, superseded by clean) | qwen3.7-max | `rebaseline-passk-168-merged` | 2026-09-03 | 88/168 = 52.4% |
 | pass@3 best-of-k, judge-only | qwen3.7-max | `exp4-arm-a` | 2026-09-02 | 148/168 = 88.1% |
 | pass@1, exec+judge | qwen3.7-max | `1510b3e0` (CL-16+17) | 2026-08-31 | 129/168 = 76.8% |

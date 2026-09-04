@@ -1,0 +1,47 @@
+schema_version: 3
+case_id: eval_10000251_052
+input:
+  question: 累计付费金额最高的10个角色分别付了多少？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT user_id,
+      pay_amt_std AS total_pay_yuan
+    FROM ieu_cdm.dws_10000251_univ_role_tag_df
+    WHERE ds = '{{ds_yesterday}}'
+    ORDER BY pay_amt_std DESC
+    LIMIT 10
+  result_value:
+    value:
+    - user_id: '10740639552234'
+      total_pay_yuan: 297283.0
+    - user_id: '10738491993655'
+      total_pay_yuan: 294457.0
+    - user_id: '10851236029653'
+      total_pay_yuan: 210203.0
+    - user_id: '11071353506973'
+      total_pay_yuan: 196248.0
+    - user_id: '11150810432413'
+      total_pay_yuan: 173165.0
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L1
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: ranking
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  needs_repin: true
+  tier: verified
+  provenance: migrated
+  difficulty: easy
+  business_context: univ_role_tag_df为全量快照，pay_amt_std为累计付费金额
+  created_at: '2026-08-04'
+  retired: false

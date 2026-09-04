@@ -1,0 +1,47 @@
+schema_version: 3
+case_id: eval_10000251_053
+input:
+  question: 当前各等级段的角色数分布（10级一档）？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT
+      FLOOR(role_level / 10) * 10 AS level_band,
+      COUNT(DISTINCT user_id) AS role_count
+    FROM ieu_cdm.dws_10000251_univ_role_tag_df
+    WHERE ds = '{{ds_yesterday}}'
+    GROUP BY FLOOR(role_level / 10) * 10
+    ORDER BY level_band
+  result_value:
+    value:
+    - level_band: 0
+      role_count: 708922
+    - level_band: 10
+      role_count: 240462
+    - level_band: 20
+      role_count: 316248
+    - level_band: 30
+      role_count: 91369
+    - level_band: 40
+      role_count: 62960
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L2
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: proportion
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  needs_repin: true
+  tier: verified
+  provenance: migrated
+  difficulty: medium
+  created_at: '2026-08-04'
+  retired: false

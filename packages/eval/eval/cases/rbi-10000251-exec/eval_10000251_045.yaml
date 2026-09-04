@@ -1,0 +1,48 @@
+schema_version: 3
+case_id: eval_10000251_045
+input:
+  question: 昨天各区服的活跃角色数分布？Top5区服是哪些？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT server_id,
+      COUNT(DISTINCT user_id) AS dau
+    FROM ieu_cdm.dws_10000251_univ_role_server_act_di
+    WHERE ds = '{{ds_yesterday}}'
+      AND act = 1
+    GROUP BY server_id
+    ORDER BY dau DESC
+    LIMIT 5
+  result_value:
+    value:
+    - server_id: '10606'
+      dau: 469
+    - server_id: '10605'
+      dau: 263
+    - server_id: '10604'
+      dau: 199
+    - server_id: '10603'
+      dau: 148
+    - server_id: '10602'
+      dau: 91
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L2
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: ranking
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  needs_repin: true
+  tier: verified
+  provenance: migrated
+  difficulty: easy
+  created_at: '2026-08-04'
+  retired: false

@@ -1,0 +1,33 @@
+schema_version: 3
+case_id: eval_10000251_038
+input:
+  question: 昨天新增了多少个角色？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT COUNT(DISTINCT user_id) AS new_roles
+    FROM ieu_cdm.dws_10000251_univ_role_act_di
+    WHERE ds = '{{ds_yesterday}}'
+      AND act_fst = 1
+  result_value:
+    value: 552
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L2
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: metric_lookup
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  tier: verified
+  provenance: migrated
+  difficulty: easy
+  created_at: '2026-08-04'
+  retired: false

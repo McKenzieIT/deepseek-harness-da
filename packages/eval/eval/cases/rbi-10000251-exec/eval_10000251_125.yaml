@@ -1,0 +1,33 @@
+schema_version: 3
+case_id: eval_10000251_125
+input:
+  question: 昨天货币变动涉及的独立角色数是多少？
+  scope_id: '10000251'
+expected:
+  sql: |
+    SELECT COUNT(DISTINCT role_id) AS coin_change_role_uv
+    FROM ieu_ods.ods_10000251_all_view
+    WHERE event = 'game.coin.change' AND ds = '{{ds_yesterday}}'
+  result_value:
+    value: 4327
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L2
+  interaction_complexity: I1
+  data_source: event
+  domain: 资源产销
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: metric_lookup
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  tier: verified
+  provenance: migrated
+  difficulty: easy
+  business_context: 货币变动涉及角色数（game.coin.change）；去重 role_id
+  created_at: '2026-08-04'
+  retired: false

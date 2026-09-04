@@ -1,0 +1,48 @@
+schema_version: 3
+case_id: eval_10000251_049
+input:
+  question: 昨天各付费类型（真实付费/付费代金券/免费代金券）的订单数和总金额？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT
+      pay_type,
+      COUNT(*) AS order_count,
+      SUM(pay_amt) / 100.0 AS total_yuan
+    FROM ieu_cdm.dws_10000251_com_pay_order_di
+    WHERE ds = '{{ds_yesterday}}'
+    GROUP BY pay_type
+    ORDER BY pay_type
+  result_value:
+    value:
+    - pay_type: 1
+      order_count: 384
+      total_yuan: 7735.0
+    - pay_type: 2
+      order_count: 157
+      total_yuan: 2641.0
+    - pay_type: 3
+      order_count: 279
+      total_yuan: 2909.0
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L2
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: proportion
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  needs_repin: true
+  tier: verified
+  provenance: migrated
+  difficulty: medium
+  business_context: 'pay_type: 1=真实付费 2=付费代金券 3=免费代金券'
+  created_at: '2026-08-04'
+  retired: false

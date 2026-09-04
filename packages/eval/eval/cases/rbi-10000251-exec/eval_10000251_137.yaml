@@ -1,0 +1,35 @@
+schema_version: 3
+case_id: eval_10000251_137
+input:
+  question: 昨天付费的角色有多少个？
+  scope_id: '10000251'
+expected:
+  sql: |
+    SELECT COUNT(DISTINCT role_id) AS paying_role_uv
+    FROM ieu_ods.ods_10000251_all_view
+    WHERE event = 'game.recharge' AND ds = '{{ds_yesterday}}'
+      AND GET_JSON_OBJECT(params, '$.moneyType') = '1'
+      AND CAST(GET_JSON_OBJECT(params, '$.money') AS BIGINT) > 0
+  result_value:
+    value: 288
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L3
+  interaction_complexity: I1
+  data_source: event
+  domain: 用户生命周期
+  time_complexity: single_day
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: metric_lookup
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  tier: verified
+  provenance: migrated
+  difficulty: medium
+  business_context: '"付费"默认指现金充值(moneyType=1)，不含仅使用现金券充值的角色；用户2026-07-22确认此口径。2026-08-08(T15/D18)：sql+value 已修正为过滤 money>0 后的口径,原值3681系零金额打点噪声污染,详见 tests/golden/cases/10000251/golden_137.yaml 的 business_validity.rationale。'
+  created_at: '2026-08-04'
+  retired: false

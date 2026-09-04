@@ -1,0 +1,64 @@
+schema_version: 3
+case_id: eval_10000251_054
+input:
+  question: 最近7天每天新增角色数及其次日留存率？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT a.ds AS cohort_ds,
+      COUNT(DISTINCT a.user_id) AS new_roles,
+      COUNT(DISTINCT b.user_id) AS d1_retained,
+      COUNT(DISTINCT b.user_id) * 1.0 / COUNT(DISTINCT a.user_id) AS d1_retention
+    FROM ieu_cdm.dws_10000251_univ_role_act_di a
+    LEFT JOIN ieu_cdm.dws_10000251_univ_role_act_di b
+      ON a.user_id = b.user_id
+      AND b.ds = TO_CHAR(DATEADD(TO_DATE(a.ds, 'yyyymmdd'), 1, 'dd'), 'yyyymmdd')
+      AND b.act = 1
+    WHERE a.ds BETWEEN '{{ds_7d_ago}}' AND '{{ds_yesterday}}'
+      AND a.act_fst = 1
+    GROUP BY a.ds
+    ORDER BY a.ds
+  result_value:
+    value:
+    - cohort_ds: '20260714'
+      new_roles: 512
+      d1_retained: 195
+      d1_retention: 0.380859375
+    - cohort_ds: '20260715'
+      new_roles: 536
+      d1_retained: 191
+      d1_retention: 0.35634328358208955
+    - cohort_ds: '20260716'
+      new_roles: 638
+      d1_retained: 217
+      d1_retention: 0.3401253918495298
+    - cohort_ds: '20260717'
+      new_roles: 698
+      d1_retained: 264
+      d1_retention: 0.37822349570200575
+    - cohort_ds: '20260718'
+      new_roles: 835
+      d1_retained: 335
+      d1_retention: 0.40119760479041916
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L4
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: range
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: proportion
+meta:
+  anchor_ds: "20260806"
+  roles:
+  - eval
+  needs_repin: true
+  tier: verified
+  provenance: migrated
+  difficulty: hard
+  business_context: 日期+1的计算方式为MaxCompute ODPS语法
+  created_at: '2026-08-04'
+  retired: false

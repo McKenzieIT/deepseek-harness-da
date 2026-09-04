@@ -1,0 +1,35 @@
+schema_version: 3
+case_id: eval_10000251_044
+input:
+  question: 7月14日新增角色的次日留存率是多少？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT
+      COUNT(DISTINCT b.user_id) * 1.0 / COUNT(DISTINCT a.user_id) AS d1_retention
+    FROM ieu_cdm.dws_10000251_univ_role_act_di a
+    JOIN ieu_cdm.dws_10000251_univ_role_act_di b
+      ON a.user_id = b.user_id
+    WHERE a.ds = '20260714' AND a.act_fst = 1
+      AND b.ds = '20260715' AND b.act = 1
+  result_value:
+    value: 1.0
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  sql_complexity: L3
+  interaction_complexity: I1
+  data_source: dws
+  domain: 用户生命周期
+  time_complexity: range
+  ambiguity_type: none
+  semantic_coverage: covered
+  query_intent: proportion
+meta:
+  roles:
+  - eval
+  tier: verified
+  provenance: migrated
+  difficulty: medium
+  created_at: '2026-08-04'
+  retired: false
