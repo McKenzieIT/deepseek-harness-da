@@ -199,3 +199,21 @@ tokens; AGENTS.md's "no literal colors" rule is satisfied; at runtime unset
 vars resolve to inherited/initial values (fallback styling, not a crash). The
 fix is theme-infrastructure (add the missing aliases to `design-platform.css`)
 — out of T7's pathspec, deferred to a repo-wide theme-token sweep.
+
+## Alternatives considered
+
+**Phase the 7 types 3+4 instead of shipping all at once.** R4 explicitly chose no-phasing. It lost because the validator and the server-side heuristic cover the full set; phasing would split the work and leave the interim types without the degrade-to-bar guard, so the all-at-once decision is what makes the validator coherent.
+
+**Use `pie` instead of `doughnut`.** It lost because R4 preferred doughnut and excluded pie-only; the union carries `doughnut`, and the server still rejects a bare `pie` type (R4: doughnut over pie).
+
+**Use `chartjs-plugin-datalabels` instead of a self-written `valueLabelsPlugin`.** A maintained plugin is less code to own. It lost because the self-written plugin gives full draw-order and per-type position control (hbar → right, radial → arc center, vbar/line/area/radar → above) and removes a CDN dependency; the maintained plugin could not express the placement rules without forking it anyway.
+
+**Keep the chart-selection heuristic client-side.** It lost because the prompt-ownership rule puts per-tool semantics and selection guidance in the tool `description` (server-side); a client-side copy would be a second owner and could drift from the server schema, so the heuristic lives in `tool-present-table`'s description and the client adds no second copy.
+
+**Render heatmap/sankey/treemap as native types.** It lost because they are non-native to Chart.js 4 and belong to a separate ECharts effort; adding them here would pull in a second charting library, so they are deferred.
+
+## Consequences
+
+The work buys the full native Chart.js 4 set (9 types: line, bar, area, hbar, scatter, doughnut, bubble, radar, polarArea) with an LLM heuristic (metric × dimension × grain → type) and a client column-kind/cardinality validator that degrades an infeasible choice to `bar` with a locale-keyed reason; a self-written `valueLabelsPlugin` (no CDN dependency); the server `present_table` schema widened to the 9 types with a fail-loud guard held in lockstep with the `CHART_TYPES` union; 141 owning tests + 19 server tests at per-file 100% coverage; and T6 (the HITL real-rendering gate) unblocked.
+
+The trade-off costs a lazy chart chunk of ~70.8 kB minified gzip (off the initial load; the ~31 kB increment is within R4's ~55 kB budget); line/area require a date x-column (ordinal-numeric x is not auto-recognized and degrades to `bar` — conservative, not broken, a T6 HITL refinement candidate); the validator degrades infeasible choices to `bar` rather than rendering them; and the work surfaced (but did not introduce) a pre-existing repo-wide theme-token gap — `--dsh-alias-content-*`, `surface-*`, `border-primary`, and `state-warning-primary` are consumed but undefined in `ui-theme`, deferred to a repo-wide theme-token sweep.
