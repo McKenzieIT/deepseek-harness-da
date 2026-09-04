@@ -14,24 +14,27 @@ A pass rate is only comparable to another one measured under the **same protocol
 
 | Protocol | Model | Run ID | Date | Rate |
 |---|---|---|---|---|
-| **pass@3 pass^k, judge-only (CURRENT)** | **qwen3.7-max** | `rebaseline-passk-168-merged` | 2026-09-03 | **88/168 = 52.4%** |
+| **pass@3 pass^k, judge-only (CURRENT)** | **qwen3.7-max** | `rebaseline-passk-168-clean` | 2026-09-04 | **104/168 = 61.9%** |
+| pass@3 pass^k, judge-only (hybrid merge, superseded by clean) | qwen3.7-max | `rebaseline-passk-168-merged` | 2026-09-03 | 88/168 = 52.4% |
 | pass@3 best-of-k, judge-only | qwen3.7-max | `exp4-arm-a` | 2026-09-02 | 148/168 = 88.1% |
 | pass@1, exec+judge | qwen3.7-max | `1510b3e0` (CL-16+17) | 2026-08-31 | 129/168 = 76.8% |
 | pass@3 best-of-k, judge-only | qwen-plus *(rejected)* | `exp2-arm-a` | 2026-09-02 | 121/168 = 72.0% |
 
 > **2026-09-03: pass^k semantics is LIVE** (`runner.ts` `passKVerdict` landed). The definitive pass^k baseline is **52.4%** (`rebaseline-passk-168-merged`, 88/168) — vs best-of-k 88.1% = −35.7pp (pass^k is strictly lower by design; the two are NOT directly subtractable). The best-of-k / pass@1 rows below it are historical. The 52.4% run was contaminated by AGA empty-response bursts under machine load (63/168 cases) and corrected via a clean conc=4 rerun of those 63 + merge — see `wayfinder/data-agent/research/experiment-audit-log.md` (2026-09-03 definitive entry).
 
+> **2026-09-04 (GA-EVAL-CLEAN-RERUN): the CURRENT pass^k baseline is now the single uniform-clean artifact `rebaseline-passk-168-clean` = 61.9% (104/168, conc=3, --today 20260903 pinned, 0 AGA-burst contamination).** Replaces the 52.4% hybrid merge (105 genuine + 63 clean rerun) with one clean single-artifact run. +9.5pp vs 52.4% is within the n=168 two-sample MDE (~10.5pp, not significant) — likely model non-determinism (pass^k noise) + conc=3 cleaner AGA than the prior conc=4-under-load merge. Item-4 `config` field is LIVE on the artifact (verdict_semantics='pass^k', today, with_query, concurrency). **Executor real-exec (`--with-query`) is NOT a viable baseline on k11-v2**: k11-v2 expected result_values are judge-only semantic targets (not real-exec-derived; no `expected.sql`; k11v2_001's 1.5M unachievable by any reasonable SQL — SUM on the covered table = 13.6B). A real-exec baseline needs a real-exec-derived case set (the RBI eval `eval_10000251_*` has one). The `--with-query` boot bug (credentials-seam regression) was fixed (context.ts). See `experiment-audit-log.md` (2026-09-04 entry).
+
 **`76.8% → 88.1%` is a protocol + code delta, not a model delta.** Both rows are qwen3.7-max — it has been the de-facto model for every recorded run since 2026-08-30 (it used to be a silent CLI default, removed by CL-8). The model comparison is `exp4-arm-a` vs `exp2-arm-a` at constant code, protocol and date: **+16.1%**, with zero regressions across all 8 intents, 4 complexity levels and 4 categories.
 
-Per-category, for the current pass^k baseline (`rebaseline-passk-168-merged`, 2026-09-03):
+Per-category, for the current pass^k baseline (`rebaseline-passk-168-clean`, 2026-09-04; prior merge in parens):
 
-| Category | Cases | Pass | Rate |
-|---|---|---|---|
-| Original | 80 | 48 | 60.0% |
-| Alias | 40 | 16 | 40.0% |
-| Voice EXEC | 30 | 14 | 46.7% |
-| Voice DELIVERY | 18 | 10 | 55.6% |
-| **Total** | **168** | **88** | **52.4%** |
+| Category | Cases | Pass | Rate | (prior merge) |
+|---|---|---|---|---|
+| Original | 80 | 54 | 67.5% | (48/60.0%) |
+| Alias | 40 | 20 | 50.0% | (16/40.0%) |
+| Voice EXEC | 30 | 19 | 63.3% | (14/46.7%) |
+| Voice DELIVERY | 18 | 11 | 61.1% | (10/55.6%) |
+| **Total** | **168** | **104** | **61.9%** | (88/52.4%) |
 
 > Historical best-of-k per-category (`exp4-arm-a`): Original 86.3% / Alias 87.5% / Voice EXEC 93.3% / Voice DELIVERY 88.9% = 88.1%. pass^k is strictly lower per-category (all-3-must-pass vs any-of-3). The +16.1pp vs qwen-plus model comparison still holds (semantics change affects both arms equally).
 
@@ -45,8 +48,8 @@ Full analysis, including per-intent/per-complexity breakdowns and the latency tr
 
 | Metric | Current (pass@3 pass^k) | Short-term | Mid-term | Long-term |
 |---|---|---|---|---|
-| Overall | **52.4%** (`rebaseline-passk-168-merged`) | 60%+ | 70%+ | 85%+ |
-| Original | 60.0% (`rebaseline-passk-168-merged`) | 65%+ | 75%+ | 88%+ |
+| Overall | **61.9%** (`rebaseline-passk-168-clean`) | 60%+ | 70%+ | 85%+ |
+| Original | 67.5% (`rebaseline-passk-168-clean`) | 65%+ | 75%+ | 88%+ |
 
 > Target values are **PROPOSED under pass^k semantics** (2026-09-03), pending PM sign-off. Rationale: pass^k is ~21–36pp lower than best-of-k by design (all-3-must-pass vs any-of-3), so targets are set ambitious relative to the 52.4% pass^k current — mirroring the old best-of-k targets' ambition (75/80/90 → 60/70/85 pass^k). Long-term 85%+ approaches the best-of-k 88.1% under the stricter semantics (= genuinely high consistency). The old best-of-k-era targets (Overall 75/80/90, Original 78/85/90) are superseded.
 
@@ -78,7 +81,7 @@ node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
 
 > **Operational note — concurrency under load (learned 2026-09-03)**: `--concurrency 4` under machine load (concurrent IDE / `pnpm dsh web` / other heavy node procs) can trigger **AGA empty-response bursts** — the AGA endpoint returns empty streams, failing pass^k for affected cases. A 168-case conc=4 run lost 63/168 cases this way (raw 33.9% vs the corrected 52.4%). **Prefer `--concurrency 2` or `3` for full runs**, or ensure the machine is unloaded (pause `pnpm dsh web`). `--concurrency 1` is cleanest but infeasible (~16h for 168 cases). See `wayfinder/data-agent/research/experiment-audit-log.md` (2026-09-03 entry).
 
-To reproduce the current baseline row exactly, add `--run-id exp4-arm-a`.
+To reproduce the current pass^k baseline exactly: `--run-id rebaseline-passk-168-clean --today 20260903` (conc=3; --today pinned to match the prior protocol — see audit-log 2026-09-04).
 
 ### Compare two runs
 
@@ -104,7 +107,7 @@ Outputs category-level pass rate deltas and case-level flips (gained/lost). Run 
 | `--today <YYYYMMDD>` | *(system date)* | Reference date for time-param extraction |
 | `--no-sql-judge` | *(off)* | Disable SQL semantic judge (not recommended) |
 | `--skip-health-gate` | *(off)* | Skip health gate pre-flight |
-| `--with-query` | *(off)* | Mount query-maxcompute for real SQL execution |
+| `--with-query` | *(off)* | Mount query-maxcompute for real SQL execution (requires `--sidecar maxc-sidecar-k11.mjs` + `MAXC_CONFIG`; see Environment) |
 | `--responder <mode>` | `engine` | `engine` (NL2SQL pipeline) or `harness` (full agent) |
 | `--variant <A\|B\|C\|D>` | — | G1b experiment variant (required with `--responder harness`) |
 
@@ -117,7 +120,7 @@ Run `--help` for the full flag list (`--sidecar`, `--scope-id`, `--no-query-expa
 | `DASHSCOPE_API_KEY` | yes | Must live in `~/.dsh/.credentials.yaml` (file mode 0600), **not** `process.env` — `llm-dashscope` resolves it per-request via `ctx.credentials` (intranet-security-first). The CLI pre-flights the file and exits if the key is absent. |
 | `EVAL_LLM_PROVIDER` | yes | Responder + SQL judge provider. No silent vendor fallback — fail-loud when unset. Overridden by `--provider`. |
 | `EVAL_LLM_MODEL` | yes | Responder + SQL judge model. No silent vendor fallback — fail-loud when unset. Overridden by `--model`. |
-| `ODPS_ACCESS_ID` / `ODPS_ACCESS_KEY` / `ODPS_PROJECT` / `ODPS_ENDPOINT` | with `--with-query` | MaxCompute connection settings |
+| `MAXC_CONFIG` | with `--with-query` | Path to the maxc config yaml (e.g. `~/.maxc/config_ieu_cdm.yaml` — K11 lives in the `ieu_cdm` project). **Required**: the default `~/.maxc/config.yaml` is overseas (hdyl_data_sg_dev). Also pass `--sidecar packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs` (the default `standin-sidecar.mjs` is a mock; `maxc-sidecar-k11.mjs` -> real `maxc` CLI). Requires the `maxc` CLI on PATH. |
 | `EXP2_ARM` | no | Prompt-language experiment arm (`B` = full-English structural prompt, `E` = English judge). Leave unset for the standard Chinese prompt. |
 
 ## Recording Results

@@ -506,3 +506,61 @@ Credentials via `LocalCredentialProvider` seam (`~/.dsh/.credentials.yaml`), NOT
 **Verdict**: The uniform clean conc=3 pass^k baseline for qwen3.7-max on K11-v2 is **61.9%** (104/168), a single clean config-stamped artifact (`rebaseline-passk-168-clean.json`) with 0 AGA-burst contamination (3 scattered empties = normal flakiness). It replaces the 2026-09-03 hybrid merge (52.4%) as the current pass^k baseline; +9.5pp is within the n=168 MDE (not significant; high-end, model variance + conc=3 cleanliness). Item 4's `config` field is LIVE in the artifact (anti-recurrence confirmed). Phase 2 (executor real-execution) is blocked by a credentials-seam duplicate-registration regression at `context.ts:506` — see the next entry for the fix decision + resolution.
 
 **Pointer**: [GA-EVAL-CLEAN-RERUN](../tickets/phase-misc/GA-EVAL-CLEAN-RERUN-uniform-clean-and-executor-baseline.md) (item 1: uniform clean conc=3 — RESOLVED, 61.9% single clean config-stamped artifact). Artifact: `packages/eval/eval-cli/eval-results/rebaseline-passk-168-clean.json`. Logs: `/tmp/eval-clean.log` (full run), `/tmp/eval-smoke/smoke-config-check.json` (config-stamp verify smoke).
+
+## 2026-09-04 — GA-EVAL-CLEAN-RERUN: uniform clean conc=3 pass^k baseline + executor real-exec viability
+
+**Ticket**: [GA-EVAL-CLEAN-RERUN](../tickets/phase-misc/GA-EVAL-CLEAN-RERUN-uniform-clean-and-executor-baseline.md)
+**Artifacts**: `eval-results/rebaseline-passk-168-clean.json` (uniform clean); smoke `exec-smoke2` (with-query, /tmp/eval-exec-smoke/).
+
+### Setup (uniform clean conc=3)
+
+- **Cases**: K11-v2 full 168 (Original 80 / Alias 40 / Voice EXEC 30 / Voice DELIVERY 18).
+- **Model/protocol**: aga/qwen3.7-max, `--pass-k 3 --concurrency 3 --provider aga --model qwen3.7-max --skip-health-gate --responder engine --scope-id k11 --today 20260903`, SQL semantic judge on. Single uniform run (no merge) — replaces the prior hybrid merge (`rebaseline-passk-168-merged`).
+- **Concurrency=3** (not the ticket's 4): user-chosen — machine load was ~5 even after stopping `pnpm dsh web` (PID 21923) + the orphaned probing Chrome (PID 72652), dominated by an unkillable AliEntSafe security scan (~62% CPU, root). README's "prefer conc 2-3" + the prior conc=4-under-load contamination → conc=3. pass^k per-case concurrency-independent → verdict comparable.
+- **--today 20260903 pinned**: the prior 52.4% run (9/3) used system date = 20260903 (yesterday→ds=20260902). Now system date is 9/4 → without --today, dates shift 1 day → not comparable to 52.4%. Pinned to replicate the prior protocol exactly (config.today records this; date-resolution identical: 昨天→20260902, 今天→20260903).
+- **Credentials**: LocalCredentialProvider seam (~/.dsh/.credentials.yaml), not process.env. Machine unloaded as feasible (dsh web killed).
+- **Build prerequisite was overcautious**: the ticket's "must `pnpm build` so lib/ stamps config" premise was wrong. The live CLI's `runBatch` (eval-runner lib/index.js) ALREADY contained the item-4 config spread (`...options?.config !== undefined ? {config: options.config} : {}`) from the 9/3 tsc emit; the ticket's verify `grep verdict_semantics lib/index.js > 0` was simply incorrect — `verdict_semantics` is constructed in eval-cli main.ts:363 (tsx-live, not in eval-runner's bundle) + eval-runner-service:452, NEVER in eval-runner/runner.ts. `pnpm build:lib:host` re-bundled to identical bytes (31,942), confirming the lib was already correct. A 1-case smoke verified config stamps end-to-end (12 fields).
+
+### Results (uniform clean conc=3, 168 cases, SINGLE artifact with config)
+
+| Category | Cases | Correct | Rate | vs prior 52.4% (merge) |
+|---|---|---|---|---|
+| Original | 80 | 54 | 67.5% | +7.5pp |
+| Alias | 40 | 20 | 50.0% | +10.0pp |
+| Voice EXEC | 30 | 19 | 63.3% | +16.7pp |
+| Voice DELIVERY | 18 | 11 | 61.1% | +5.6pp |
+| **Total** | **168** | **104** | **61.9%** | **+9.5pp** |
+
+- pass_rate = **61.9%** (104 correct / 64 wrong / 0 declined / 0 unjudged / 0 infra_failure).
+- **config field LIVE** (item 4 anti-recurrence): `{provider:aga, model:qwen3.7-max, pass_k:3, concurrency:3, sql_judge:true, verdict_semantics:'pass^k', responder:'engine', scope_id:'k11', today:'20260903', query_expansion:true, with_query:false, skip_health_gate:true}` — protocol/semantics/concurrency/model/date detectable from the artifact.
+- **Contamination: 0 AGA burst** — 3 scattered empty attempts (k11v2_025 a2, k11v2_voice_017 a3, k11v2_voice_042 a2; 3 distinct cases, 3/504=0.6%, NOT clustered) → normal AGA flakiness, NOT the prior 63/168 burst. Single clean artifact, no merge/rerun needed.
+- **vs prior 52.4%**: +9.5pp. Two-sample 95% MDE (n=168×2) ≈10.5pp → **not significant** (within noise). Positive shift across ALL 4 categories (uniform) → likely model non-determinism (pass^k amplifies any single failed attempt) + conc=3 cleaner AGA (less contention than the prior conc=4-under-load hybrid, which may have had subtle non-empty quality degradation). Per-category deltas all within their small-n MDE (Voice EXEC n=30 → MDE~18pp, +16.7pp within). CONSISTENT per the ticket's "within MDE" criterion.
+
+### Phase 2 (executor real-exec, --with-query) — NOT viable on k11-v2
+
+**Setup**: `MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml --with-query --sidecar packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs` (maxc CLI 0.4.8; config_ieu_cdm.yaml project=ieu_cdm — K11's project, per maxc-sidecar.mjs header "all 5 scopes live in the ieu_cdm project"). The DEFAULT standin-sidecar.mjs is a FAKE/mock ("PROTOTYPE STAND-IN ... owns no real ODPS connection ... Fakes ODPS behavior") — must use `--sidecar maxc-sidecar-k11.mjs` (wrapper → real `maxc-sidecar.mjs`: spawns the `maxc` binary, REAL ODPS). MUST set `MAXC_CONFIG` explicitly (else context.ts defaults to ~/.maxc/config.yaml = overseas hdyl_data_sg_dev, wrong project).
+
+**Bug found + fixed (code change to committed context.ts)**: `--with-query` boot CRASHED. context.ts:476 (credentials seam) mounts `LocalCredentialProvider` (static name='credentials'); the withQuery branch (context.ts:506) ALSO mounted `EnvCredentialProvider` (same name='credentials') → cordis threw `service "credentials" has been registered at <credentials>` → --with-query broken (bin.ts's catch printed only `err.message`, which == the cordis throw text, so it looked like a normal log line — silent failure). **Regression from the credentials-seam landing**: the seam added LocalCredentialProvider (1b) but did not drop the now-redundant EnvCredentialProvider in the withQuery branch. **Fix**: removed the EnvCredentialProvider class + CredentialProvider import + `ctx.plugin(EnvCredentialProvider)` mount from context.ts:489-506 (in credMode 'sidecar-self' the maxc sidecar self-auths from its own config — `set_credentials` is a no-op — so no creds are pushed; `ctx.credentials` from the seam satisfies MaxComputeQueryEngine's `static inject=['credentials']`, unused in sidecar-self). Verified: `--with-query` boot now reaches "Query engine mounted (sidecar ready)" + real execution (smoke k11v2_001: `query_result=[[26770]]`, `config.with_query=true`).
+
+**Real-exec path WORKS but k11-v2 expected values are NOT real-exec-derived** → a full Phase 2 real-exec baseline on k11-v2 is NOT meaningful. Evidence (k11v2_001: expected `total_pay_amt=1500000`, covered_assets=`dws_10000251_com_pay_order_df`):
+- `SUM(pay_amt) FROM com_pay_order_df WHERE ds='20260902'` → 13,604,855,432 (13.6B)
+- `SUM(pay_amt) FROM pay_order_di` → 26,770; `pay_order_act_di` → 26,770; `acc_summary_df pay_amt_std` → null
+- `COUNT(*) FROM com_pay_order_df` → 2,975,826; `AVG(pay_amt)` → 4,571.79
+- NONE = 1,500,000; no clean unit conversion (ratio ~9069×). Probed ds=20260902/20260805/20260831/20260901/20260830 — all ~13.5-13.6B (none 1.5M).
+- k11-v2 case yamls have NO `expected.sql` field (only `result_value`) — vs the RBI eval (`eval_10000251_037`, `maxc-smoke.mjs`) which HAS expected SQL + real-exec matches (dau=4336, anchor 20260806).
+→ k11-v2 is a JUDGE-ONLY eval (expected values are semantic targets/placeholders, not real-exec-derived). A full `--with-query` run would score ~0% (expected unachievable by any reasonable SQL) — NOT the ticket's intended "judge false-pass rate" (real-exec ≤ judge-only; gap = judge leniency). SQL probes are sufficient evidence; the full ~3h run was NOT executed.
+
+### Verdict
+
+1. **Uniform clean conc=3 pass^k baseline = 61.9%** (104/168, single artifact with config, 0 burst contamination). Within MDE of prior hybrid 52.4% (+9.5pp, not significant) → REPLACES the merge as the clean single-artifact baseline. **Phase 1 SUCCESS.**
+2. **Phase 2 (--with-query) NOT viable on k11-v2**: the credentials-seam regression is fixed (context.ts code change) + the real-exec path is verified working (smoke: real ODPS query_result), BUT k11-v2's expected result_values are not real-exec-derived (judge-only semantic targets; no expected.sql; k11v2_001's 1.5M unachievable by any reasonable SQL) → a real-exec baseline would be ~0% (expected unachievable), not a judge false-pass rate. **Phase 2 needs a real-exec-derived case set** (the RBI eval `eval_10000251_*` has one — expected.sql + real-exec match; k11-v2 does not). Recommendation: re-scope Phase 2 to the RBI eval case set, OR add real-exec-derived `expected.sql` to k11-v2.
+
+### Fidelity
+
+- pass^k semantics (`passKVerdict` all-must-pass + executionMatch=false-when-unverifiable), committed. SQL semantic judge on (threshold 0.6). Phase 1 with_query=false (query_result null; execution_match from judge). Phase 2 smoke with_query=true (real ODPS via maxc CLI, ieu_cdm project).
+- Item-4 config field LIVE on both artifacts: 12 fields, verdict_semantics='pass^k', today, with_query, concurrency — anti-recurrence effective (exec-smoke config shows with_query=true, distinguishing it from judge-only).
+- **Code change (committed this session)**: context.ts withQuery branch (removed EnvCredentialProvider duplicate, line 488-506) — a real bug fix (--with-query was broken for ALL uses, not just k11-v2); needed for any future real-exec run. Well-commented (line 491); reversible. Committed this session (GA-EVAL-CLEAN-RERUN).
+
+### Pointer
+
+[GA-EVAL-CLEAN-RERUN](../tickets/phase-misc/GA-EVAL-CLEAN-RERUN-uniform-clean-and-executor-baseline.md) (Phase 1 resolved; Phase 2 re-scoped — not viable on k11-v2, needs a real-exec-derived case set). Artifacts: `eval-results/rebaseline-passk-168-clean.json` (uniform clean, 61.9%); `/tmp/eval-exec-smoke/exec-smoke2.json` (with-query smoke, k11v2_001, real query_result=`[[26770]]`). Logs: `/tmp/eval-clean.log` (Phase 1 full run), `/tmp/eval-exec-smoke2.log` (Phase 2 smoke). Code fix: `packages/eval/eval-cli/src/context.ts:488-506`.

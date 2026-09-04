@@ -5,8 +5,8 @@
  * ctx.schema (SemanticLayerService), then builds eval-runner Collaborators
  * by forking the adapter classes from eval-runner-service (D1: "复用/fork").
  *
- * When --with-query is set, also mounts ctx.credentials (EnvCredentialProvider)
- * and ctx.query (MaxComputeQueryEngine) for real SQL execution.
+ * When --with-query is set, also mounts ctx.query (MaxComputeQueryEngine) for
+ * real SQL execution (ctx.credentials is already provided by the seam in 1b).
  */
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -486,24 +486,18 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
 
   // 4. Optionally mount query-maxcompute → provides ctx.query
   if (opts.withQuery) {
-    const { CredentialProvider } = await import('@deepseek-ai/dsh-credentials')
     const { MaxComputeQueryEngine } = await import('@deepseek-ai/dsh-query-maxcompute')
 
-    // Env-based credential provider: reads ODPS_* from process.env
-    class EnvCredentialProvider extends CredentialProvider {
-      resolve(ref: unknown): Promise<{ value: string; source: string } | undefined> {
-        const name = String(ref)
-        const value = process.env[name]
-        return Promise.resolve(value ? { value, source: 'env' } : undefined)
-      }
-      describe(ref: unknown): Promise<{ configured: boolean; writable: boolean }> {
-        return Promise.resolve({ configured: !!process.env[String(ref)], writable: false })
-      }
-      set(): Promise<void> { return Promise.reject(new Error('env credentials are read-only')) }
-      unset(): Promise<void> { return Promise.reject(new Error('env credentials are read-only')) }
-    }
-
-    await ctx.plugin(EnvCredentialProvider)
+    // GA-EVAL-CLEAN-RERUN fix: the EnvCredentialProvider mount that lived here was
+    // removed. The LocalCredentialProvider mounted above (step 1b, the credentials
+    // seam) already provides ctx.credentials; this withQuery branch's EnvCredentialProvider
+    // DUPLICATED the 'credentials' service registration → cordis threw
+    // "service 'credentials' has been registered" → --with-query boot crashed (a
+    // regression from the credentials-seam landing, which did not drop the now-
+    // redundant withQuery provider). In credMode 'sidecar-self' (below) the maxc
+    // sidecar self-auths from its own config (set_credentials is a no-op), so no
+    // creds are pushed; ctx.credentials (LocalCredentialProvider) still satisfies
+    // MaxComputeQueryEngine's static inject=['credentials'] (unused in sidecar-self).
 
     const sidecarPath = opts.sidecarPath ?? new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url).pathname
     // eval-cli-exp-9: do NOT default to a .bak (stale backup) — align with
