@@ -147,8 +147,8 @@ export interface EngineRunResult {
   readonly outcome?: QueryOutcome
   readonly result?: unknown[] | undefined
   readonly decline?: boolean
-  /** Why the engine declined, when the reason is machine-actionable (CL-23). */
-  readonly declineKind?: 'tool_call_emitted'
+  /** Why the engine declined, when the reason is machine-actionable (CL-23, CL-20). */
+  readonly declineKind?: 'tool_call_emitted' | 'open_ended_question'
   readonly reason?: string
   readonly pending?: boolean
   readonly trace: EngineTraceEntry[]
@@ -263,6 +263,22 @@ export class Nl2sqlEngine {
       }
     }
 
+    // CL-20: deterministic open-ended question gate. Under pass^k all-must-pass,
+    // the model's §5 refusal is correct ~67% of attempts but not 100% — the
+    // remaining attempts drift into SQL, failing 4/9 DELIVERY cases. An LLM
+    // triage before the generation loop makes refusal deterministic.
+    const triageResult = await this.triageQuestion(question, candidateIds)
+    if (triageResult !== null) {
+      trace.push({ step: 'open_ended_triage', result: 'needs_clarification' })
+      return {
+        ok: false,
+        decline: true,
+        declineKind: 'open_ended_question',
+        reason: triageResult,
+        trace,
+      }
+    }
+
     let attempt = 0
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
@@ -354,5 +370,50 @@ export class Nl2sqlEngine {
       return { ok: false, decline: true, reason: `未知错误 ${fk ?? '?'}`, sql, trace }
     }
     return { ok: false, decline: true, reason: `自修 ${MAX_FEEDBACK_RETRIES} 次仍失败`, trace }
+  }
+
+  /**
+   * CL-20: lightweight LLM triage — can this question be answered with a
+   * concrete SQL query against the retrieved candidates, or must the user
+   * first specify metrics / scope / criteria?
+   *
+   * Returns `null` when the question is answerable (proceed to generation),
+   * or a short reason string when clarification is needed (trigger decline).
+   */
+  private async triageQuestion(
+    question: string,
+    candidateIds: readonly string[],
+  ): Promise<string | null> {
+    const prompt = [
+      '你是一个预判断模块。给定下方候选数据表和用户问题，判断：',
+      '这个问题是否能被转化为一条具体的 SQL 查询来回答？',
+      '',
+      '判 answerable 的标准：问题隐含了可落地到表/列的具体指标或维度',
+      '（如"收入表现""留存情况""服务器差异"→ 有隐含指标可映射到 SQL）。',
+      '',
+      '判 needs_clarification 的标准（满足任一即判）：',
+      '- 问题用了主观/定性判断词（健康、平衡、好不好、该不该、值不值得）且无具体量化标准',
+      '- 问题要求"总结/周报/月报/概述"等超出单条 SQL 的综合输出',
+      '- 问题要求"预测/建议/策略"等超出数据查询的能力',
+      '- 问题范围过宽且未指明任何具体指标（"最近有什么异常""有什么值得关注的"）',
+      '',
+      `候选表: ${candidateIds.join(', ') || '(无候选)'}`,
+      `问题: ${question}`,
+      '',
+      '只回复一个词: answerable 或 needs_clarification',
+    ].join('\n')
+
+    const gen = await this.llm.generate({
+      question: prompt,
+      attempt: 0,
+      feedback: null,
+      prompt,
+    })
+
+    const answer = (gen.sql ?? '').trim().toLowerCase()
+    if (answer.startsWith('needs')) {
+      return '问题需要用户先明确具体指标、范围或标准才能查询'
+    }
+    return null
   }
 }
