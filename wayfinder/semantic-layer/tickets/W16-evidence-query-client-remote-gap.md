@@ -1,10 +1,31 @@
 ---
 type: task
-status: open
+status: closed
 blocked_by: []
 ---
 
 # W16: evidence-query 客户端 remote 缺口 —— 证据 UI 在生产中是死的
+
+## Resolution (2026-09-05, PR #14)
+
+[PR #14](https://github.com/McKenzieIT/deepseek-harness-da/pull/14) (base master, head `fix/w16-evidence-query-client-remote`):
+
+- **evidence-query** (`9daf4cd`): `./typert` + `./remote` exports (+files) — the `hasTypertExport` gate; typert generator (workspace-mode, root `tsdown.config.ts`) now emits `lib/typert.host.js` + `typert.remote-client.js`. Drop `.ts` on non-relative `RelationGraph` import (TS2877, exposed once the generator began analyzing this package).
+- **api-remotes** (`f61bcb9`): import + mount `evidenceQueryRemote` (mirroring `schemaGatewayRemote`) + declare dep.
+- **ui-semantic-layer** (`781f1aa`): DashboardView CSS module (was unstyled BEM strings; auto-flip would overflow).
+- **api-remotes test** (`515f774`+`c433e68`): real-path resolution test (`.client.spec.ts`) — asserts `evidenceQueryRemote` resolves + `apply` mounts it; `vi.mock(zod)` bypasses CB-4.
+
+**Verified**: typecheck ✅, `verify-client-packages` ✅, 121 surface tests ✅, `build:lib:host` (typert artifacts) ✅, `build:lib:client` ✅, app bootstrap (dsh web no zod error) ✅.
+
+**Findings/deviations**:
+- Typert generator wiring is GLOBAL (root `tsdown.config.ts`, workspace mode, gated by package.json `exports`) — not per-package; simpler than the ticket feared.
+- Both "顺带同链" items (selectedAssetId + `$on` disposer) already fixed by `e823800368` (in master) — skipped.
+- Baseline sha `7cbf35ad48` is on a concurrent branch (not master) — branched off current master `cec3cb5896` per CLAUDE.md.
+- ⚠️ **CB-4 (runtime zod)**: the generated `typert.remote-client.js` imports zod; schema-gateway's zod was removed by CB-4 (knip false-positive — src doesn't use zod, but the generated lib does), evidence-query never declared it. This PR fixes compile+assembly; runtime zod is CB-4's scope (the test + bundle use a temp uncommitted zod bypass).
+- Browser test partial: bundle+bootstrap verified; full UI browse blocked by port 3080 (user's existing dsh web "幸存者") + browse-tool uncertainty → manual step.
+- Test naming: `.client.spec.ts` (Client aggregate) — a `.spec.ts` name would include it in the host typecheck (TS6307/TS2420 via pulling `api-remotes/src/client` + `connection/src`); the `c433e68` rename enforces the convention.
+
+**CL-22**: no eval baseline run in this PR (browser verification blocked); any eval run would be n=1 navigation, not a decision baseline.
 
 **Branch**: `fix/w16-evidence-query-client-remote`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
 

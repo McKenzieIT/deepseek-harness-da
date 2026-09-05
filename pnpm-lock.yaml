@@ -877,6 +877,9 @@ importers:
 
   packages/api/remotes:
     dependencies:
+      '@deepseek-ai/dsh-evidence-query':
+        specifier: workspace:^
+        version: link:../../data/evidence-query
       '@deepseek-ai/dsh-schema-gateway':
         specifier: workspace:^
         version: link:../../data/schema-gateway
