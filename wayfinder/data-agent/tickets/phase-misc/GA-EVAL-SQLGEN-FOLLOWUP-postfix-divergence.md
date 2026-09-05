@@ -16,6 +16,7 @@
 3. **eventDef 未 pre-fetch 的影响**：engine responder（`Nl2sqlAgentResponder.respond()`，`packages/eval/eval-cli/src/context.ts`）调 `engine.run({ question, scopeId, today })` **不传 `eventDef`** → prompt `# 事件定义` 渲染「未加载」→ 模型缺 event schema → event case（119-138）生成错表/占位符 SQL → real-exec fail。这是 real-exec 低主因吗？pre-fetch eventDef 能修多少？
 4. **engine-mode prompt 误导 gap**：`# 上下文` preamble 说 "candidates + event definitions are pre-fetched into context"，但 eventDef 实际未加载（rendered 「未加载」）——**可能误导**模型（说 pre-fetched 但实际未加载）。这是 (b) 修订 prompt 的线索。
 5. **follow-up 方向决定**：(a) pre-fetch eventDef in engine responder（impl 票，真修 real-exec 瓶颈）；(b) 修订 engine-mode prompt（# 上下文 preamble 改 "if loaded" + 可能补 eventDef 加载提示）；(c) 接受 mixed result（fix 达成直接目标 criterion #1，real-exec 瓶颈是独立 concern，另票或挂起）。
+6. **feedback-wiring gap**（code review nit 2）：engine.ts `run()` 在 critic_fail/execution-error 时 retry，传 `feedback: lastFeedback` 给 `llm.generate()`，但 `CtxLlmAdapter.generate`（context.ts）**忽略 `args.feedback`**（只用 `args.prompt`）-> self-correction 反馈未到 LLM prompt -> retry 用同一 prompt + near-dup gate -> 耗尽 -> null-SQL。这解释了 null-SQL case（real-exec 23 / judge-only 22）。是否贡献 real-exec drop？应否 wire feedback to prompt（另 impl）？
 
 ## 背景（why，from GA-EVAL-SQLGEN-PROMPT-FIX 2026-09-05）
 
@@ -34,6 +35,8 @@
 - [ ] 如选 (a)：开 impl 票（engine responder pre-fetch eventDef via semantic layer + pass to `engine.run`）。
 - [ ] 如选 (b)：开 impl 票（修订 engine-mode prompt 的 # 上下文 preamble）。
 - [ ] 记录（audit-log + map frontier）。
+
+- [ ] 深查 feedback-wiring gap：`CtxLlmAdapter.generate` 忽略 `args.feedback` -> self-correction 反馈未到 LLM -> null-SQL。是否贡献 real-exec drop？应否 wire feedback to prompt？
 
 ## 成功标准
 
