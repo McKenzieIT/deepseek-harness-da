@@ -148,7 +148,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 
 
 
-- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; merge 阻于仓库 CI runner 基建(`dsh-ubuntu-24-04-16core` label 无在线 runner, 非代码)
+- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; 已 admin-merge(PR #11 `a905858f5d`);CLAUDE.md mode 修复(PR #17 `2e487635ce`)解 ubuntu-latest checkout ENAMETOOLONG 红;larger-runner 3 job 维持 pending(User 账户无 larger-runner,不红不阻塞)
 
 ### 2026-09-03/04 运行时审计（「语义层按钮消失」根因 + 三处客户端断链 + pass^k 重打分）
 
