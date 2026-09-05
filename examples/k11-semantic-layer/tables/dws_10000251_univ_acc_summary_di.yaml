@@ -70,6 +70,7 @@ dimension_refs:
       - dws_column: user_id
         dim_column: user_id
     derivation: "DWS column user_id (comment: 用户id) is the account identifier matching the PK user_id of dim_10000251_user_tag_before_ob_info, which is explicitly described as used to join fact tables via user_id for tag-based segmentation."
+    origin: deterministic
 pref_label: 账号日用户集
 alt_labels:
   - 经分

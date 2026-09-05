@@ -188,6 +188,7 @@ dimension_refs:
       - dws_column: tactic_id
         dim_column: tactic_id
     derivation: DWS tactic_id (风物ID) exactly matches dim_10000251_tactic_info PK tactic_id (风物配置维度表).
+    origin: deterministic
   - dim_table: dim_10000251_trans_equipment_df
     join_keys:
       - dws_column: weapon_id
@@ -213,6 +214,7 @@ dimension_refs:
       - dws_column: equip_suit_index
         dim_column: equip_suit_index
     derivation: DWS equip_suit_index (装备套装索引) exactly matches dim_10000251_equipment_suit_detail_info PK equip_suit_index (装备套装明细).
+    origin: deterministic
   - dim_table: dim_10000251_trans_equipment_suit_info
     join_keys:
       - dws_column: equip_suit_id

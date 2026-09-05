@@ -140,3 +140,30 @@ test('S11 render formats the not-mounted message', () => {
   const out = def.output.render({}, { ok: false, message: 'semantic-layer substrate not mounted' })
   expect(out[0]?.text).toContain('not mounted')
 })
+
+test('S12 render reports added + removed relations when before/after differ', () => {
+  const def = registerTool()
+  const before = [{ table: 'dws_a', refs: [{ dim_table: 'dim_old', join_keys: [{ dws_column: 'x', dim_column: 'x' }], derivation: 'old' }] }]
+  const after = [{ table: 'dws_a', refs: [{ dim_table: 'dim_new', join_keys: [{ dws_column: 'y', dim_column: 'y' }], derivation: 'new' }] }]
+  const out = def.output.render({}, { ok: true, enriched: 1, written: 1, errors: [], _before: before, _after: after })
+  expect(out[0]?.text).toContain('removed')
+  expect(out[0]?.text).toContain('dim_old')
+  expect(out[0]?.text).toContain('added')
+  expect(out[0]?.text).toContain('dim_new')
+})
+
+test('S13 render surfaces the substrate note when present', () => {
+  const def = registerTool()
+  const out = def.output.render({}, { ok: true, enriched: 0, written: 0, errors: [], note: 'no DIM tables in scope, nothing to enrich' })
+  expect(out[0]?.text).toContain('no DIM')
+  expect(out[0]?.text).toContain('nothing to enrich')
+})
+
+test('S14 discoverRelationsResult forwards the substrate note', async () => {
+  const stub = {
+    discoverRelations: async () => ({ enriched: 0, written: 0, errors: [], note: 'no DIM tables in scope, nothing to enrich' }),
+  }
+  const r = await discoverRelationsResult(stub as unknown as SemanticLayerService)
+  expect(r.ok).toBe(true)
+  expect(r.note).toBe('no DIM tables in scope, nothing to enrich')
+})

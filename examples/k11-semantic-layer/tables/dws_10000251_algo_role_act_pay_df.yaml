@@ -71,6 +71,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (server context of the role, referenced in the table description) is an exact-name match to dim_10000251_server_info's primary key server_id, used to look up server name and open-time attributes.
+    origin: deterministic
 pref_label: 角色活跃付费快照表
 alt_labels:
   - 算法

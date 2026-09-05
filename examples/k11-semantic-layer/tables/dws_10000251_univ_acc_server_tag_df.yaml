@@ -278,9 +278,11 @@ dimension_refs:
       - dws_column: user_id
         dim_column: user_id
     derivation: "DWS column user_id (comment: 用户id) is the account identifier matching the PK user_id of dim_10000251_user_tag_before_ob_info, which is explicitly described as used to join fact tables via user_id for tag drilldown."
+    origin: deterministic
   - dim_table: dim_10000251_server_info
     join_keys:
       - dws_column: server_id
         dim_column: server_id
     derivation: "DWS column server_id (comment: 区服id) exactly matches the PK server_id of dim_10000251_server_info, the canonical 区服 dimension for joining fact tables by server_id."
+    origin: deterministic
 pref_label: 账号区服标签表

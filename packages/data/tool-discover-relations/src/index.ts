@@ -90,6 +90,8 @@ export type DiscoverRelationsResult = {
   readonly errors?: string[]
   /** A short reason when `!ok` (not mounted / invalid name / substrate error). */
   readonly message?: string
+  /** An informational note from the substrate (e.g. empty-inventory short-circuit reason). */
+  readonly note?: string
   /** Before snapshot of relations (for presentationMeta). */
   readonly _before?: RelationSnapshot[]
   /** After snapshot of relations (for presentationMeta). */
@@ -165,7 +167,15 @@ export async function discoverRelationsResult(
   try {
     const res = await schema.discoverRelations(validated.length > 0 ? { tables: validated } : {})
     const after = captureRelationSnapshot(schema, validated.length > 0 ? validated : undefined)
-    return { ok: true, enriched: res.enriched, written: res.written, errors: res.errors, _before: before, _after: after }
+    return {
+      ok: true,
+      enriched: res.enriched,
+      written: res.written,
+      errors: res.errors,
+      ...(res.note ? { note: res.note } : {}),
+      _before: before,
+      _after: after,
+    }
   } catch (e) {
     return { ok: false, message: `substrate error: ${sanitizeError(e)}` }
   }
@@ -182,6 +192,23 @@ export function formatDiscoverRelations(value: DiscoverRelationsResult): string 
   }
   const lines: string[] = []
   lines.push(`discover_relations: enriched ${value.enriched ?? 0} DWS table(s) (written ${value.written ?? 0}).`)
+  if (value.note) {
+    lines.push(`note: ${value.note}`)
+  }
+  // surface what changed (added + removed) when before/after snapshots are present,
+  // so a replace that drops curated refs is visible to the agent, not just "+N added"
+  const added = value._before && value._after ? computeAddedRelations(value._before, value._after) : []
+  const removed = value._before && value._after ? computeRemovedRelations(value._before, value._after) : []
+  if (added.length > 0) {
+    lines.push(`added (${added.length}):`)
+    for (const r of added.slice(0, 20)) lines.push(`  + ${r.table} -> ${r.dim_table}`)
+    if (added.length > 20) lines.push(`  ... +${added.length - 20} more`)
+  }
+  if (removed.length > 0) {
+    lines.push(`removed (${removed.length}):`)
+    for (const r of removed.slice(0, 20)) lines.push(`  - ${r.table} -> ${r.dim_table}`)
+    if (removed.length > 20) lines.push(`  ... +${removed.length - 20} more`)
+  }
   const errors = value.errors ?? []
   if (errors.length > 0) {
     lines.push(`errors (${errors.length}):`)
@@ -215,6 +242,33 @@ function computeAddedRelations(
   return added
 }
 
+/** A relation diffed as removed between before/after snapshots (same shape as AddedRelation). */
+type RemovedRelation = { table: string; dim_table: string; join_keys: JoinKey[]; derivation: string }
+
+/** Compute removed relations by diffing before vs after (before refs absent from after). */
+function computeRemovedRelations(
+  before: RelationSnapshot[],
+  after: RelationSnapshot[],
+): RemovedRelation[] {
+  const removed: RemovedRelation[] = []
+  const afterMap = new Map<string, Set<string>>()
+  for (const snap of after) {
+    const keys = new Set<string>()
+    for (const ref of snap.refs) keys.add(`${ref.dim_table}::${JSON.stringify(ref.join_keys)}`)
+    afterMap.set(snap.table, keys)
+  }
+  for (const snap of before) {
+    const afterKeys = afterMap.get(snap.table) ?? new Set()
+    for (const ref of snap.refs) {
+      const key = `${ref.dim_table}::${JSON.stringify(ref.join_keys)}`
+      if (!afterKeys.has(key)) {
+        removed.push({ table: snap.table, dim_table: ref.dim_table, join_keys: ref.join_keys, derivation: ref.derivation })
+      }
+    }
+  }
+  return removed
+}
+
 export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'discover_relations',
@@ -242,6 +296,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           written: { type: 'number' },
           errors: { type: 'array', items: { type: 'string' } },
           message: { type: 'string' },
+          note: { type: 'string' },
         },
       },
       render: (_args, value) => [{

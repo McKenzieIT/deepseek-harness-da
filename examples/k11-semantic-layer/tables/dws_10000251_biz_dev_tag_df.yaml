@@ -60,6 +60,7 @@ dimension_refs:
       - dws_column: user_id
         dim_column: user_id
     derivation: DWS user_id (用户id) exactly matches the DIM PK user_id; both tables share the biz_name CBT-batch tagging concept within the 用户生命周期 domain, and the DIM states it is designed for joining fact tables via user_id.
+    origin: deterministic
 pref_label: 设备大事件标签表
 alt_labels:
   - CBT

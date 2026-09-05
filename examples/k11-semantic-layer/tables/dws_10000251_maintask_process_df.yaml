@@ -67,6 +67,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id (区服id) exactly matches dim_10000251_server_info primary key server_id (区服维度配置表，每一个 server_id 一行)，用于回填区服名称与开服时间维度。
+    origin: deterministic
 pref_label: 主线任务进度表
 alt_labels:
   - 主线

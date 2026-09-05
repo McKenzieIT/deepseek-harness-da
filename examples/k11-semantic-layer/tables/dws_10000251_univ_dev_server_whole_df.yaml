@@ -136,4 +136,5 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (comment '区服id') exactly matches the primary_key server_id of dim_10000251_server_info, the canonical 区服 dimension whose description states it is used by fact tables to JOIN via server_id to backfill server attributes.
+    origin: deterministic
 pref_label: 设备区服全量表

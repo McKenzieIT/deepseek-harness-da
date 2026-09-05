@@ -242,6 +242,7 @@ dimension_refs:
       - dws_column: user_id
         dim_column: user_id
     derivation: "DWS column user_id (comment: 用户id) is the account identifier matching the PK user_id of dim_10000251_user_tag_before_ob_info, which is explicitly meant for joining fact tables via user_id to provide pre-OB user tag/batch dimensions."
+    origin: deterministic
   - dim_table: dim_10000251_server_info
     join_keys:
       - dws_column: rel_role_srv_fst

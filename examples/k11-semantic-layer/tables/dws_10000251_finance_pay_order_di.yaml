@@ -172,16 +172,19 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS 列 server_id (comment 区服id) 与 dim server_info 主键 server_id 完全一致；该 dim 为区服维度配置表，按 server_id 提供区服名/开服时间。
+    origin: deterministic
   - dim_table: dim_10000251_com_order_detail_info
     join_keys:
       - dws_column: order_id
         dim_column: order_id
     derivation: DWS 列 order_id (comment 订单id) 与 dim com_order_detail_info 主键 order_id 完全一致；该 dim 为商业化订单信息维表（每订单一行，order_id 唯一），用于订单维度商品属性查找。
+    origin: deterministic
   - dim_table: dim_10000251_trans_finance_recharge_info_od
     join_keys:
       - dws_column: item_id
         dim_column: item_id
     derivation: DWS 列 item_id (comment 商品id) 与 dim trans_finance_recharge_info_od 主键 item_id 完全一致；该 dim 为财务充值商品配置维表，与财务付费订单事实同属财务/付费经济域。
+    origin: deterministic
 pref_label: 现金收入日表
 alt_labels:
   - 现金

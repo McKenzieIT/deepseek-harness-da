@@ -106,6 +106,7 @@ dimension_refs:
       - dws_column: user_id
         dim_column: user_id
     derivation: The DWS column user_id (用户id) is the multi-subject user identifier, and dim_10000251_user_tag_before_ob_info is keyed by PK user_id to store pre-OB test-batch tags and is explicitly built for user_id fact-table lookups; both tables cover the test/beta-period user cohort.
+    origin: deterministic
 pref_label: 测试期用户标签表
 alt_labels:
   - 测试期

@@ -16,7 +16,8 @@ const root = './examples/k11-semantic-layer'
 async function main() {
   console.log('Enriching events (deterministic round only — no LLM)...')
   console.time('enrichAllEvents')
-  const result = await enrichAllEvents(root, undefined)
+  // origin-aware replace (preserveCurated=true): preserves any curated external_refs on re-run (GA-GT3 item 5).
+  const result = await enrichAllEvents(root, undefined, undefined, false, undefined, true)
   console.timeEnd('enrichAllEvents')
   console.log(`  enriched: ${result.enriched} events gained ≥1 external_ref`)
   console.log(`  written:  ${result.written} event files updated`)

@@ -60,6 +60,7 @@ dimension_refs:
       - dws_column: user_id
         dim_column: user_id
     derivation: DWS user_id (用户id) exactly matches the DIM PK user_id; both share the biz_name CBT-batch tagging concept, and the DIM carries a user_type field covering role-level (user_type=3) rows.
+    origin: deterministic
 pref_label: 角色业务标签表
 alt_labels:
   - 业务
