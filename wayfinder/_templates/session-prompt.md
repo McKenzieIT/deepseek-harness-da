@@ -7,7 +7,8 @@
 ```sh
 git worktree add ../dsh-<ticket-id> -b <type>/<ticket-id>-<slug> master
 cd ../dsh-<ticket-id>
-node scripts/install-lefthook.mjs   # 重新生成 worktree-local hooks
+pnpm install                       # 装 deps + 跑 lefthook postinstall（生成 worktree-local hooks；fresh worktree 无 node_modules，必跑）
+pnpm -r run build                  # build 全 workspace package → 生成 lib/（fresh worktree 否则缺 built lib/，致 aggregate tsc + bundle types-build 假性「master break」——见 wayfinder/repo-infra/tickets/T1-worktree-builds.md）
 ```
 
 - worktree:`../dsh-<ticket-id>`

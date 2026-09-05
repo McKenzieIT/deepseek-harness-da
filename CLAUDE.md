@@ -59,7 +59,7 @@ node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
 
 每个 session 必须在独立 worktree + 独立分支上工作，禁止把 `feat`/`fix`/`refactor` 直推 master。详见 [dsh-data-agent PR 工作流](docs/da-pr-workflow.md) 的“Session-prompt 分支契约”与 [wayfinder session-prompt 模板](wayfinder/_templates/session-prompt.md)；根因见 [Per-session branch and worktree isolation for parallel work](.agents/notes/proposed/process/2026-09-04-parallel-session-branching-policy.md)。
 
-- session 启动第一步：`git worktree add ../dsh-<ticket-id> -b <type>/<ticket-id>-<slug> master`。
+- session 启动第一步：`git worktree add ../dsh-<ticket-id> -b <type>/<ticket-id>-<slug> master`，随后 `cd ../dsh-<ticket-id> && pnpm install && pnpm -r run build`（fresh worktree 无 node_modules / built `lib/`，必跑——否则 aggregate tsc + bundle types-build 假性「master break」；详见 [T1](wayfinder/repo-infra/tickets/T1-worktree-builds.md)）。
 - 直推 master 仅限 diff 不触及 `packages/*/src` 的纯 `wayfinder/` 文档或实验脚本。
 - **Wayfinder 每个 ticket头部必须声明 `Branch: <type>/<ticket-id>-<slug>`**；未声明分支的票不算认领。
 - Lead 在 push 前跑 `pnpm run typecheck` + 相关 surface 测试；上一批 PR 未 merge/abandon 前不开下一并行批。
