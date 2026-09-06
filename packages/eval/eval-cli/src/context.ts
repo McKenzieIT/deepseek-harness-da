@@ -357,6 +357,43 @@ interface SchemaSeam {
 }
 
 /**
+ * GA-EVAL-EVENTDEF-PREFETCH: render the pre-fetched event grounding for the
+ * `schema_context` the eval runner hands to the SQL semantic judge.
+ *
+ * The judge scores `table_selection` / `field_selection` against this context,
+ * and the event view is NOT a corpus item (it is scope-level config), so without
+ * this the judge marks CORRECT event-view SQL as out-of-schema. Measured on case
+ * 135 (`data_source: event`, whose own reference SQL is the event-view query):
+ * pre-(a) the model wrote DWS-table SQL and the judge gave it 1.0 on all three
+ * attempts; post-(a) it wrote the reference-shaped event-view SQL and the judge
+ * gave 0.4/0.2/0.2 with the rationale 「使用了 Schema 上下文之外的 ODS 底层表…
+ * 导致表和字段选择错误」 (`table_selection: 0`, `field_selection: 0`). Same class
+ * of false-reject as the critic's `table_not_in_candidates`, which `engine.ts`
+ * fixes via `makeCriticCtx` — the judge needs the identical courtesy, or the
+ * instrument penalises exactly the grounding this ticket adds.
+ * @param eventCtx - the pre-fetched event grounding.
+ * @returns a schema-context block naming the event view, event filter, and params fields.
+ */
+function renderEventSchemaContext(eventCtx: EventContext): string {
+  const def = eventCtx.eventDef as { name?: unknown; event_filter?: unknown; params_fields?: unknown }
+  const lines: string[] = ['', '事件数据源（已 pre-fetch，属于本次可用 schema）：']
+  if (eventCtx.eventView !== undefined) {
+    lines.push(`- 事件视图表（合法 FROM 目标）: ${eventCtx.eventView.full_name}`)
+    lines.push(`- params 字段提取模板: ${eventCtx.eventView.params_extract_template}`)
+    if (eventCtx.eventView.base_columns.length > 0) {
+      lines.push(`- 视图基础列: ${eventCtx.eventView.base_columns.join(', ')}`)
+    }
+  }
+  if (typeof def.name === 'string') lines.push(`- 事件名: ${def.name}`)
+  if (typeof def.event_filter === 'string' && def.event_filter !== '') lines.push(`- 事件过滤: ${def.event_filter}`)
+  if (typeof def.params_fields === 'object' && def.params_fields !== null) {
+    const names = Object.keys(def.params_fields as Record<string, unknown>)
+    if (names.length > 0) lines.push(`- params 可用字段: ${names.join(', ')}`)
+  }
+  return lines.join('\n')
+}
+
+/**
  * Project a validated substrate `EventDefinition` to the slice the SQL prompt +
  * critic actually consume. `params_fields` MUST stay a map: the critic derives
  * its `json_field_not_in_params` guard from `Object.keys(eventParams)`, so the
@@ -555,7 +592,12 @@ class Nl2sqlAgentResponder implements AgentResponder {
     console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)
     // Hoisted above the reply branches: the tool-call decline path synthesises a
     // reply from the retrieved candidates, so it needs the schema context too.
+    // GA-EVAL-EVENTDEF-PREFETCH: the judge must score against the same schema
+    // the model was given, or it false-rejects the event view (see
+    // renderEventSchemaContext). Appended, so the BM25 candidate block is
+    // byte-unchanged when no event was detected.
     const schemaContext = this.buildSchemaContext(result.trace, corpus)
+      + (eventCtx !== null ? renderEventSchemaContext(eventCtx) : '')
     let reply: string
     const sqlIsPresent = sql !== null && /\b(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE)\b/i.test(sql)
     if (!sqlIsPresent && sql !== null && sql.length > 20 && !looksLikeToolCall(sql)) {
