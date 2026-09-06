@@ -1,7 +1,12 @@
 /**
- * CL-20: open-ended question triage gate — deterministic decline for questions
- * that need clarification before SQL generation. Validates the gate fires for
- * known open-ended patterns and does NOT fire for answerable questions.
+ * CL-20: capability triage gate — deterministic decline for requests whose
+ * DELIVERABLE no single query can produce (report / forecast / recommendation).
+ *
+ * Deliberately does NOT gate on vagueness or subjectivity: that boundary is not
+ * self-consistent in the k11-v2 case set (`076 服务器之间有没有不平衡` expects SQL
+ * while `079 卡牌平衡性怎么样` expects a refusal — same word stem, opposite ground
+ * truth), so a classifier drawn there only trades one error class for another.
+ * Deliverable-kind transfers across business domains without a vocabulary list.
  *
  * Run: `pnpm vitest run packages/data/nl2sql-engine/tests/open-ended-triage.spec.ts`
  */
@@ -14,102 +19,98 @@ import type { Llm, LlmGenerateArgs, LlmGenerateResult } from '../src/replay-llm.
 const DS = FIXTURE_DATA_SOURCES
 const EV = FIXTURE_EVENT_DEF
 
+/** Marker unique to the triage prompt, used to route the mock's two roles. */
+const TRIAGE_MARKER = 'beyond_single_query or data_request'
+
 /**
- * Test LLM that separates triage calls from generation calls.
- * Triage calls contain '只回复一个词' (the triage prompt's instruction);
- * generation calls get a canned SQL response.
+ * Test LLM separating triage calls from generation calls: the triage prompt is
+ * identified by its final instruction line, generation gets canned SQL.
  */
 class TriageMockLlm implements Llm {
-  constructor(private readonly triageAnswer: 'answerable' | 'needs_clarification') {}
+  constructor(private readonly verdict: 'beyond_single_query' | 'data_request') {}
   callCount = 0
   triageCallCount = 0
 
   async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
     this.callCount += 1
-    if (args.prompt?.includes('只回复一个词')) {
+    if (args.prompt?.includes(TRIAGE_MARKER)) {
       this.triageCallCount += 1
-      return { sql: this.triageAnswer }
+      return { sql: this.verdict }
     }
-    return { sql: "SELECT COUNT(*) FROM dws_10000251_com_pay_order_df WHERE ds='20260903'" }
+    return { sql: "SELECT COUNT(*) FROM dws_pay_order_di WHERE ds='20260903'" }
   }
 }
 
-function makeEngine(triageAnswer: 'answerable' | 'needs_clarification') {
-  const llm = new TriageMockLlm(triageAnswer)
-  const odps = new StandInOdps({})
-  const engine = new Nl2sqlEngine({ dataSources: DS, llm, odps })
+function makeEngine(verdict: 'beyond_single_query' | 'data_request') {
+  const llm = new TriageMockLlm(verdict)
+  const engine = new Nl2sqlEngine({ dataSources: DS, llm, odps: new StandInOdps({}) })
   return { engine, llm }
 }
 
-describe('CL-20 open-ended triage gate', () => {
-  // --- DECLINE cases: triage returns needs_clarification ---
+describe('CL-20 capability triage gate', () => {
+  // --- Deliverable is beyond a single query → decline before generation ---
 
-  const SHOULD_DECLINE = [
-    { id: '079', q: '卡牌平衡性怎么样', reason: '主观判断词（平衡性）' },
-    { id: '080', q: '经济系统健康吗', reason: '主观判断词（健康）' },
-    { id: 'voice_033', q: '该不该加一波限时礼包', reason: '运营决策建议' },
-    { id: 'voice_036', q: '当前卡池还值得继续开吗', reason: '主观判断（值不值得）' },
-    { id: 'voice_041', q: '最近数据有什么异常吗', reason: '范围过宽' },
-    { id: 'voice_048', q: '这个月运营数据总结一下', reason: '综合总结' },
+  const BEYOND = [
+    { id: 'voice_048', q: '这个月运营数据总结一下', kind: '综合总结' },
+    { id: 'voice_044', q: '帮我出个周报', kind: '周期报告' },
+    { id: 'voice_045', q: '预测一下下周的充值能到多少', kind: '预测' },
+    { id: 'voice_047', q: '有什么提升收入的方法吗', kind: '策略建议' },
+    { id: 'voice_033', q: '该不该加一波限时礼包', kind: '决策建议' },
   ]
 
-  for (const { id, q, reason } of SHOULD_DECLINE) {
-    test(`decline: ${id} — ${reason}`, async () => {
-      const { engine, llm } = makeEngine('needs_clarification')
+  for (const { id, q, kind } of BEYOND) {
+    test(`decline: ${id}（${kind}）`, async () => {
+      const { engine, llm } = makeEngine('beyond_single_query')
       const r = await engine.run({ question: q, eventDef: EV })
+      expect(r.ok).toBe(false)
       expect(r.decline).toBe(true)
       expect(r.declineKind).toBe('open_ended_question')
-      expect(r.ok).toBe(false)
+      expect(r.trace.some(t => t.step === 'capability_triage')).toBe(true)
+      // Gate fires BEFORE generation — no generation call is made at all
       expect(llm.triageCallCount).toBe(1)
-      expect(r.trace.some(t => t.step === 'open_ended_triage')).toBe(true)
+      expect(llm.callCount).toBe(1)
+      expect(r.trace.some(t => t.step === 'llm_generate')).toBe(false)
     })
   }
 
-  // --- PASS-THROUGH cases: triage returns answerable ---
+  // --- Data requests proceed to generation, including vague/subjective ones ---
 
-  const SHOULD_PASS_THROUGH = [
-    { id: '073', q: '游戏收入最近表现怎么样', reason: '有隐含指标（收入→pay_amt）' },
-    { id: '076', q: '服务器之间有没有不平衡的情况', reason: '有隐含维度（服务器×角色数）' },
-    { id: '077', q: '玩家留存有什么问题吗', reason: '有隐含指标（留存→次留/7留）' },
-    { id: 'normal', q: '昨天充值了多少钱', reason: '明确指标查询' },
+  const DATA_REQUESTS = [
+    { id: '073', q: '游戏收入最近表现怎么样', why: '模糊但要数值' },
+    { id: '076', q: '服务器之间有没有不平衡的情况', why: '主观措辞但期望 SQL（不可误伤）' },
+    { id: '077', q: '玩家留存有什么问题吗', why: '模糊但期望 SQL' },
+    { id: '079', q: '卡牌平衡性怎么样', why: '主观——本门禁刻意不管，留给 §5' },
+    { id: 'exec', q: '昨天充值了多少钱', why: '明确指标' },
   ]
 
-  for (const { id, q, reason } of SHOULD_PASS_THROUGH) {
-    test(`pass-through: ${id} — ${reason}`, async () => {
-      const { engine, llm } = makeEngine('answerable')
+  for (const { id, q, why } of DATA_REQUESTS) {
+    test(`pass-through: ${id}（${why}）`, async () => {
+      const { engine, llm } = makeEngine('data_request')
       const r = await engine.run({ question: q, eventDef: EV })
-      // The triage should NOT trigger — declineKind must NOT be open_ended_question.
-      // (The engine may still decline for other reasons — e.g. StandInOdps has no
-      // matching scripted outcome — but that's unrelated to the triage gate.)
+      // The capability gate must not claim this one. (The engine may still
+      // decline downstream — StandInOdps has no scripted outcome — but never
+      // via this gate.)
       expect(r.declineKind).not.toBe('open_ended_question')
+      expect(r.trace.some(t => t.step === 'capability_triage')).toBe(false)
+      // Generation was entered
       expect(llm.triageCallCount).toBe(1)
-      expect(r.trace.some(t => t.step === 'open_ended_triage')).toBe(false)
-      // Generation loop was entered (triage didn't short-circuit)
       expect(r.trace.some(t => t.step === 'llm_generate')).toBe(true)
     })
   }
 
-  // --- When triage says answerable, generation proceeds ---
+  // --- Scope guard: the gate is deliverable-kind, not vagueness ---
 
-  test('triage answerable → generation loop executes', async () => {
-    const { engine, llm } = makeEngine('answerable')
-    const r = await engine.run({ question: '昨天充值了多少钱', eventDef: EV })
-    // Should have triage call + at least one generation call
-    expect(llm.triageCallCount).toBe(1)
-    expect(llm.callCount).toBeGreaterThan(1)
-    expect(r.trace.some(t => t.step === 'llm_generate')).toBe(true)
+  test('门禁不判模糊性：主观问题在 data_request 下照常进生成', async () => {
+    const { engine } = makeEngine('data_request')
+    for (const q of ['经济系统健康吗', '卡牌平衡性怎么样', '数据看起来正常吗']) {
+      const r = await engine.run({ question: q, eventDef: EV })
+      expect(r.declineKind).not.toBe('open_ended_question')
+    }
   })
 
-  // --- When triage says needs_clarification, no generation calls ---
-
-  test('triage needs_clarification → no generation, immediate decline', async () => {
-    const { engine, llm } = makeEngine('needs_clarification')
-    const r = await engine.run({ question: '经济系统健康吗', eventDef: EV })
-    expect(r.decline).toBe(true)
-    expect(r.declineKind).toBe('open_ended_question')
-    // Only the triage call, no generation calls
+  test('triage 只调一次，与生成重试次数无关', async () => {
+    const { engine, llm } = makeEngine('data_request')
+    await engine.run({ question: '昨天充值了多少钱', eventDef: EV })
     expect(llm.triageCallCount).toBe(1)
-    expect(llm.callCount).toBe(1)
-    expect(r.trace.some(t => t.step === 'llm_generate')).toBe(false)
   })
 })

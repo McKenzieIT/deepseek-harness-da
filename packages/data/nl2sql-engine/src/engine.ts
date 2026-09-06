@@ -263,13 +263,13 @@ export class Nl2sqlEngine {
       }
     }
 
-    // CL-20: deterministic open-ended question gate. Under pass^k all-must-pass,
-    // the model's §5 refusal is correct ~67% of attempts but not 100% — the
-    // remaining attempts drift into SQL, failing 4/9 DELIVERY cases. An LLM
-    // triage before the generation loop makes refusal deterministic.
-    const triageResult = await this.triageQuestion(question, candidateIds)
+    // CL-20: capability triage — refuse requests whose DELIVERABLE no single
+    // query can produce (report / forecast / recommendation). Scoped to
+    // deliverable-kind, not vagueness: see triageQuestion for why the vagueness
+    // boundary is not implementable against this case set.
+    const triageResult = await this.triageQuestion(question)
     if (triageResult !== null) {
-      trace.push({ step: 'open_ended_triage', result: 'needs_clarification' })
+      trace.push({ step: 'capability_triage', result: 'beyond_single_query' })
       return {
         ok: false,
         decline: true,
@@ -373,34 +373,46 @@ export class Nl2sqlEngine {
   }
 
   /**
-   * CL-20: lightweight LLM triage — can this question be answered with a
-   * concrete SQL query against the retrieved candidates, or must the user
-   * first specify metrics / scope / criteria?
+   * CL-20: capability triage — does the question ask for a DELIVERABLE that no
+   * single query can produce (a compiled report, a forecast, a strategy
+   * recommendation), as opposed to a data value?
    *
-   * Returns `null` when the question is answerable (proceed to generation),
-   * or a short reason string when clarification is needed (trigger decline).
+   * Deliberately narrow. It does NOT judge whether a question is vague,
+   * subjective, or under-specified — that boundary is not self-consistent in
+   * the case set (`076 服务器之间有没有不平衡` expects SQL while `079 卡牌平衡性
+   * 怎么样` expects a refusal, same word stem, opposite ground truth), so any
+   * classifier drawn on it only trades one class of error for the other.
+   * Scoping the gate to deliverable-kind keeps it domain-agnostic: "give me a
+   * weekly report" is not a single query in ANY business domain, which is what
+   * makes this判据 transfer without a per-domain vocabulary (contrast
+   * `TREND_PATTERN`'s keyword list — GA-GRILL2 D3 measured it at 85% recall and
+   * opened GA-I18N-R1 to escape that ceiling via LLM intent classification).
+   *
+   * Under-specification is left to the model's own §5 honest-decline, which
+   * already produces judge-passing refusals in 7 of 9 observed prose attempts.
+   *
+   * Returns `null` to proceed to generation, or a reason string to decline.
    */
-  private async triageQuestion(
-    question: string,
-    candidateIds: readonly string[],
-  ): Promise<string | null> {
+  private async triageQuestion(question: string): Promise<string | null> {
     const prompt = [
-      '你是一个预判断模块。给定下方候选数据表和用户问题，判断：',
-      '这个问题是否能被转化为一条具体的 SQL 查询来回答？',
+      'Classify what the user is ASKING FOR — the kind of deliverable, not its topic.',
       '',
-      '判 answerable 的标准：问题隐含了可落地到表/列的具体指标或维度',
-      '（如"收入表现""留存情况""服务器差异"→ 有隐含指标可映射到 SQL）。',
+      'Reply `beyond_single_query` when the request is for an artefact that no',
+      'single database query can produce, regardless of what data exists:',
+      '  - a compiled/periodic report or summary ("weekly report", "summarise the month")',
+      '  - a forecast or projection of future values ("predict next week")',
+      '  - a recommendation, strategy, or course of action ("how do we raise revenue",',
+      '    "should we run a promotion")',
       '',
-      '判 needs_clarification 的标准（满足任一即判）：',
-      '- 问题用了主观/定性判断词（健康、平衡、好不好、该不该、值不值得）且无具体量化标准',
-      '- 问题要求"总结/周报/月报/概述"等超出单条 SQL 的综合输出',
-      '- 问题要求"预测/建议/策略"等超出数据查询的能力',
-      '- 问题范围过宽且未指明任何具体指标（"最近有什么异常""有什么值得关注的"）',
+      'Reply `data_request` for everything else — any request whose answer is a',
+      'value, a list, a comparison, or a trend that could be read out of a table.',
+      'This includes vague, broad, or subjectively-worded requests: if the user is',
+      'ultimately after numbers, it is a data_request even when it is unclear WHICH',
+      'numbers. Under-specification is NOT your concern here.',
       '',
-      `候选表: ${candidateIds.join(', ') || '(无候选)'}`,
-      `问题: ${question}`,
+      `Request: ${question}`,
       '',
-      '只回复一个词: answerable 或 needs_clarification',
+      'Reply with exactly one word: beyond_single_query or data_request',
     ].join('\n')
 
     const gen = await this.llm.generate({
@@ -411,8 +423,8 @@ export class Nl2sqlEngine {
     })
 
     const answer = (gen.sql ?? '').trim().toLowerCase()
-    if (answer.startsWith('needs')) {
-      return '问题需要用户先明确具体指标、范围或标准才能查询'
+    if (answer.includes('beyond_single_query')) {
+      return '该请求要求的产物（报告/预测/策略建议）超出单条数据查询的能力范围'
     }
     return null
   }
