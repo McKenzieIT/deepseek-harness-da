@@ -200,3 +200,42 @@ test('S11 retry wires feedback into the SQL-gen prompt (GA-EVAL-RETRY-FEEDBACK)'
   expect(seenPrompts[1]).toContain(FailureKind.PARSE_FAILED)
   expect(seenPrompts[1]).toContain('syntax error near BAD')
 })
+
+test('S12 event view reaches the prompt AND the critic candidate set (GA-EVAL-EVENTDEF-PREFETCH)', async () => {
+  // The event ODS view is scope-level config, not a corpus item, so BM25 never
+  // returns it. Telling the model to write `FROM ieu_ods.ods_10000251_all_view`
+  // while the critic still rejects that table (`table_not_in_candidates`) would
+  // make (a) strictly worse than doing nothing: every attempt fails the gate and
+  // the engine declines. This pins both halves — the prompt surface AND the
+  // candidate-table injection — plus the without-view control that shows the
+  // rejection is real rather than hypothetical.
+  const eventView = {
+    full_name: 'ieu_ods.ods_10000251_all_view',
+    params_extract_template: "GET_JSON_OBJECT(params,'$.{field_name}')",
+    base_columns: ['role_id', 'ds', 'event', 'params'],
+  }
+  const eventSql = "SELECT COUNT(DISTINCT role_id) AS uv FROM ieu_ods.ods_10000251_all_view WHERE event = 'game.pay.order' AND ds = '20260805'"
+  const prompts: string[] = []
+  const llm: Llm = {
+    generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+      prompts.push(args.prompt ?? '')
+      return Promise.resolve({ sql: eventSql })
+    },
+  }
+
+  const withView = await new Nl2sqlEngine({ dataSources: DS, llm, odps: new StandInOdps() })
+    .run({ question: '昨天下单的独立角色数', eventDef: EV, eventView })
+  expect(withView.ok).toBe(true)
+  expect(withView.sql).toContain('ieu_ods.ods_10000251_all_view')
+  expect(prompts[0]).toContain('# 事件查询落表')
+  expect(prompts[0]).toContain(eventView.full_name)
+  expect(prompts[0]).toContain(eventView.params_extract_template)
+
+  // Control: same SQL, no eventView → the critic rejects the table by name and
+  // the engine exhausts its retries.
+  const withoutView = await new Nl2sqlEngine({ dataSources: DS, llm, odps: new StandInOdps() })
+    .run({ question: '昨天下单的独立角色数', eventDef: EV })
+  expect(withoutView.ok).toBe(false)
+  const criticStep = withoutView.trace.find(e => e.step === 'critic') as { reason?: string | null } | undefined
+  expect(criticStep?.reason ?? '').toContain('ods_10000251_all_view')
+})

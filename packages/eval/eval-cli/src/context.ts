@@ -15,8 +15,10 @@ import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs } from '@deepseek-ai/dsh-nl2sql-engine'
+import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs, type EventDefinitionLite } from '@deepseek-ai/dsh-nl2sql-engine'
+import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition/src/index.ts'
 import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
+import { detectEventName, type CorpusItemLike } from './event-detect.ts'
 
 import type {
   Llm,
@@ -327,12 +329,72 @@ async function expandQuery(ctx: Context, question: string): Promise<string> {
   }
 }
 
+// ── GA-EVAL-EVENTDEF-PREFETCH: event-definition pre-fetch ────────────────
+
+/**
+ * The detection model. Pinned to qwen3.7-max independently of the run's
+ * `--model`: the risk gate measured qwen-flash at 4 false positives (it cannot
+ * separate the generic 「付费」 from the event-specific 「充值」), and a false
+ * positive here injects the event view into a DWS question, which returns a
+ * plausible wrong value the semantic judge accepts. Detection safety is not
+ * negotiable against the run's model choice.
+ */
+const DETECTION_PROVIDER = 'aga'
+const DETECTION_MODEL = 'qwen3.7-max'
+
+/** The event grounding handed to `engine.run`: the definition slice the prompt + critic read, plus the scope's event view. */
+interface EventContext {
+  readonly eventDef: EventDefinitionLite
+  readonly eventView: EventViewInfo | undefined
+}
+
+/** The `SemanticLayerService` surface this module needs (probed via `ctx.get('schema')`, so typed structurally). */
+interface SchemaSeam {
+  loadRetrievalCorpusAll?(): unknown[]
+  getRelationGraph?(scopeId?: string): RelationGraphLike
+  loadEventDefinition?(name: string): unknown
+  readonly semanticRoot?: string
+}
+
+/**
+ * Project a validated substrate `EventDefinition` to the slice the SQL prompt +
+ * critic actually consume. `params_fields` MUST stay a map: the critic derives
+ * its `json_field_not_in_params` guard from `Object.keys(eventParams)`, so the
+ * array projection `tool-load-event-definition.projectEvent` produces (correct
+ * for the model-facing tool boundary) would degrade the guard to the indices
+ * `0,1,2…`. Workflow-state fields (`confirmation`/`coverage`) and retrieval-only
+ * fields (`alt_labels`/`domains`) are dropped — they are prompt noise here.
+ * @param def - the raw event definition from `ctx.schema.loadEventDefinition`.
+ * @returns the prompt/critic-facing event definition slice.
+ */
+function projectEventDefForPrompt(def: Record<string, unknown>): EventDefinitionLite {
+  const params = def['params_fields']
+  const metrics = def['metrics']
+  return {
+    ...(typeof def['name'] === 'string' ? { name: def['name'] } : {}),
+    ...(typeof def['event_filter'] === 'string' ? { event_filter: def['event_filter'] } : {}),
+    ...(typeof def['description'] === 'string' ? { description: def['description'] } : {}),
+    ...(typeof params === 'object' && params !== null ? { params_fields: params as Record<string, unknown> } : {}),
+    ...(typeof metrics === 'object' && metrics !== null && Object.keys(metrics).length > 0 ? { metrics } : {}),
+  }
+}
+
 // ── Nl2sqlEngine-backed AgentResponder ───────────────────────────────────
 
 class Nl2sqlAgentResponder implements AgentResponder {
   private readonly llm: CtxLlmAdapter
   private readonly odps: OdpsExecutor
   private readonly queryExpansionEnabled: boolean
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: per-question detection cache. Two reasons, both
+   * load-bearing. (1) Cost: `respond()` runs once per pass^k attempt, so
+   * without it a 39-case × k=3 run pays 117 detection calls instead of 39.
+   * (2) Correctness of the verdict: `passKVerdict` requires ALL k attempts to
+   * pass, so a detection that flipped between attempts would inject the event
+   * schema for some attempts and not others and charge the difference to SQL
+   * generation. Caching pins the grounding across a case's attempts.
+   */
+  private readonly eventCtxCache = new Map<string, EventContext | null>()
 
   constructor(
     private readonly ctx: Context,
@@ -348,10 +410,93 @@ class Nl2sqlAgentResponder implements AgentResponder {
     this.queryExpansionEnabled = queryExpansion
   }
 
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: one qwen3.7-max detection call, bound to the
+   * eval-cli plugin source. Separate from `CtxLlmAdapter` because that adapter
+   * carries the run's `--provider/--model` (which must not decide detection —
+   * see {@link DETECTION_MODEL}) and its SQL-vs-reasoning extraction, which is
+   * wrong for a one-token routing answer.
+   * @param prompt - the detection prompt.
+   * @returns the model's reply text (falling back to reasoning when a thinking model emits no text block).
+   */
+  private async completeDetection(prompt: string): Promise<string> {
+    const assembler = new BlockAssembler()
+    const options = {
+      provider: DETECTION_PROVIDER,
+      model: DETECTION_MODEL,
+      temperature: 0.1,
+      maxTokens: 64,
+      messages: [
+        createUserMessage({
+          content: [{ type: 'text' as const, text: prompt }],
+          source: { kind: 'plugin' as const, plugin: 'eval-cli-event-detect' },
+        }),
+      ],
+    }
+    for await (const chunk of this.ctx.llm.stream(options)) assembler.push(chunk)
+    const blocks = assembler.blocks()
+    const text = blocks
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim()
+    if (text.length > 0) return text
+    return blocks
+      .filter((b): b is { type: 'reasoning'; text: string } => b.type === 'reasoning')
+      .map(b => b.text)
+      .join('')
+      .trim()
+  }
+
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: detect the event this question is about and load
+   * its grounding through the G-DA4 seam (`ctx.schema.loadEventDefinition` +
+   * `extractEventView`). Returns null when the question is not about a raw event
+   * — the common case (21 of 39 eval cases are DWS questions) — which reproduces
+   * the pre-(a) behaviour exactly: no `eventDef`, prompt renders 「（未加载）」.
+   *
+   * Every failure path returns null rather than throwing: this is enrichment on
+   * the way to SQL generation, and a detection outage must degrade the answer,
+   * not fail the case.
+   * @param schema - the semantic-layer seam (may be unmounted).
+   * @param corpus - the retrieval corpus the responder already loaded.
+   * @param question - the user question.
+   * @returns the event grounding, or null when no event applies.
+   */
+  private async loadEventContext(
+    schema: SchemaSeam | undefined,
+    corpus: readonly CorpusItemLike[],
+    question: string,
+  ): Promise<EventContext | null> {
+    const cached = this.eventCtxCache.get(question)
+    if (cached !== undefined) return cached
+    let resolved: EventContext | null = null
+    if (schema?.loadEventDefinition !== undefined) {
+      const detection = await detectEventName(
+        { corpus, complete: p => this.completeDetection(p) },
+        question,
+      )
+      if (detection.eventName !== null) {
+        const raw = schema.loadEventDefinition(detection.eventName)
+        if (typeof raw === 'object' && raw !== null) {
+          const semanticRoot = schema.semanticRoot ?? ''
+          resolved = {
+            eventDef: projectEventDefForPrompt(raw as Record<string, unknown>),
+            eventView: semanticRoot !== '' ? extractEventView(semanticRoot) : undefined,
+          }
+        }
+        console.error(
+          `[DIAG] event detected=${detection.eventName} loaded=${resolved !== null}`
+          + ` view=${resolved?.eventView?.full_name ?? '(none)'}`,
+        )
+      }
+    }
+    this.eventCtxCache.set(question, resolved)
+    return resolved
+  }
+
   async respond(question: string, _opts?: AgentRespondOpts): Promise<AgentResponse> {
-    const schema = this.ctx.get('schema') as
-      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(scopeId?: string): RelationGraphLike }
-      | undefined
+    const schema = this.ctx.get('schema') as SchemaSeam | undefined
     const corpus = (schema?.loadRetrievalCorpusAll?.() ?? []) as readonly { id: string; description?: string; payload?: unknown }[]
     const baseLinker = new Bm25Linker(corpus)
     const graph = schema?.getRelationGraph?.(this.scopeId)
@@ -393,7 +538,18 @@ class Nl2sqlAgentResponder implements AgentResponder {
         : { promptBuilder: (args: BuildPromptArgs) => buildPrompt({ ...args, contextPrefetched: true }) }),
     })
 
-    const result = await engine.run({ question, scopeId: this.scopeId, today: this.today })
+    // GA-EVAL-EVENTDEF-PREFETCH: pre-fetch the event grounding (null for DWS
+    // questions → identical to the pre-(a) call). Runs after the engine is
+    // constructed but before `run` so the detection call and the BM25/graph
+    // setup do not serialise needlessly.
+    const eventCtx = await this.loadEventContext(schema, corpus, question)
+    const result = await engine.run({
+      question,
+      scopeId: this.scopeId,
+      today: this.today,
+      ...(eventCtx !== null ? { eventDef: eventCtx.eventDef } : {}),
+      ...(eventCtx?.eventView !== undefined ? { eventView: eventCtx.eventView } : {}),
+    })
     const sql = result.sql ?? null
     console.error(`[DIAG] SQL: ${sql?.slice(0, 400) ?? '(none)'}`)
     console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)

@@ -32,7 +32,7 @@ import {
 } from './types.ts'
 import { critiqueSql, extractSqlCandidate, looksLikeToolCall, stripLineComments } from './critic.ts'
 import { routeMetric, isMetricHit, metricFromHit, extractTimeParams, buildMetricContext, type HostTableInfo } from './metric-engine.ts'
-import { buildPrompt, type EventDefinitionLite } from './prompt.ts'
+import { buildPrompt, type EventDefinitionLite, type EventViewLite } from './prompt.ts'
 import { buildJoinConstraints, buildDeclaredJoinPairs, expandCandidates, type RelationGraphLike } from './ontology.ts'
 import { detectTrendIntent, rerankByGranularity } from './granularity.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query'
@@ -135,9 +135,37 @@ export interface EngineDeps {
 export interface EngineRunArgs {
   readonly question: string
   readonly eventDef?: EventDefinitionLite | null
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: the event-view grounding that goes with
+   * `eventDef` — the FROM table + params-extraction template read from the
+   * scope's `config.yaml` (G-DA4). Passed alongside rather than folded into
+   * `eventDef` because it is scope-level, not an event property, and because
+   * the prompt renders it as its own section. Absent → no event-view section
+   * and no extra critic candidate table (byte-stable, pre-(a) behaviour).
+   */
+  readonly eventView?: EventViewLite | null
   readonly scopeId?: string
   /** P4 D2: reference date YYYYMMDD for time-param extraction (eval reproducibility). */
   readonly today?: string
+}
+
+/**
+ * GA-EVAL-EVENTDEF-PREFETCH: the event view's table names for the critic's
+ * candidate set. Mirrors G-DA4's phase-gate `captureToolData`, which adds
+ * `event_view.full_name` to `candidate_tables`. Without this the critic rejects
+ * the very table this ticket injects (`table_not_in_candidates`) and the engine
+ * burns every retry on a table it just told the model to use. Both the qualified
+ * and the bare name are added because `extractTableNames` strips the `db.`
+ * prefix — the bare name is what actually matches today, the qualified one keeps
+ * a prefix-preserving extractor working.
+ * @param view - the event view, or null/undefined when no event was detected.
+ * @returns the table names to add to the critic's candidate set (empty when absent).
+ */
+function eventViewTableNames(view: EventViewLite | null | undefined): readonly string[] {
+  const full = view?.full_name
+  if (full === undefined || full === '') return []
+  const bare = full.replace(/^.*\./, '')
+  return bare === full ? [full] : [full, bare]
 }
 
 /** The engine run outcome: ok/fail, the SQL, the ODPS outcome, result rows, decline/pending flags, and the trace. */
@@ -232,8 +260,11 @@ export class Nl2sqlEngine {
 
     // critic ctx: candidate tables + event params + partition cols (from P6 substrate; not from conventions)
     const partitionCols = eventDef?.partitions?.map(p => p.name) ?? []
+    // GA-EVAL-EVENTDEF-PREFETCH: the event view is a legitimate FROM target the
+    // BM25 candidates never contain (it is config-level, not a corpus item).
+    const eventViewTables = eventViewTableNames(args.eventView)
     let ctx = makeCriticCtx({
-      candidateTables: candidateIds,
+      candidateTables: [...candidateIds, ...eventViewTables],
       eventParams: eventDef?.params_fields ?? {},
       partitionCols,
       ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
@@ -253,7 +284,7 @@ export class Nl2sqlEngine {
         // (JOIN ods_login ...) is not falsely rejected by table_not_in_candidates.
         const sourceTables = [metricDef.computation.metadata.source]
         ctx = makeCriticCtx({
-          candidateTables: [...new Set([...candidateIds, ...sourceTables])],
+          candidateTables: [...new Set([...candidateIds, ...sourceTables, ...eventViewTables])],
           eventParams: eventDef?.params_fields ?? {},
           partitionCols,
           ...(declaredJoinPairs !== undefined ? { declaredJoinPairs } : {}),
@@ -271,7 +302,7 @@ export class Nl2sqlEngine {
       // so the LLM self-corrects. The CtxLlmAdapter streams args.prompt only, so
       // feedback must live IN the prompt — not the vestigial args.feedback side-channel.
       // attempt 0 → lastFeedback null → section omitted → byte-identical to pre-fix.
-      const prompt = this.promptBuilder({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}), feedback: lastFeedback })
+      const prompt = this.promptBuilder({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}), feedback: lastFeedback, ...(args.eventView != null ? { eventView: args.eventView } : {}) })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback, prompt })
 

@@ -5142,6 +5142,9 @@ importers:
       '@deepseek-ai/dsh-system-prompt':
         specifier: workspace:^
         version: link:../../core/system-prompt
+      '@deepseek-ai/dsh-tool-load-event-definition':
+        specifier: workspace:^
+        version: link:../../data/tool-load-event-definition
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools

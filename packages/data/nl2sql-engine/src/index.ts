@@ -37,7 +37,7 @@ export * from './types.ts'
 export type { EngineConventions } from '@deepseek-ai/dsh-query'
 export { critiqueSql, sqlSyntaxGate, looksLikeToolCall,
   extractSqlCandidate, extractJsonPaths, extractTableNames, hasPartitionFilter, hasSelectStar, type CriticResult } from './critic.ts'
-export { buildPrompt, buildEvalPrompt, type EventDefinitionLite, type BuildPromptArgs, type BuildEvalPromptArgs } from './prompt.ts'
+export { buildPrompt, buildEvalPrompt, type EventDefinitionLite, type EventViewLite, type BuildPromptArgs, type BuildEvalPromptArgs } from './prompt.ts'
 export { renderConventionsPrompt } from './conventions.ts'
 export { Bm25Linker, BM25Okapi, buildCorpus, tokenize, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from './bm25-linking.ts'
 export { Nl2sqlEngine, type EngineDeps, type EngineRunArgs, type EngineRunResult, type EngineTraceEntry } from './engine.ts'
