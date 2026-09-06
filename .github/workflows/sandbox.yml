@@ -96,11 +96,13 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: pnpm run build:lib:host
-      - name: Write DASHSCOPE_API_KEY to .env (eval-cli darwin parity — ctx.credentials reads cwd/.env fallback, not process.env)
+      - name: Write DASHSCOPE_API_KEY to ~/.dsh/.credentials.yaml (eval-cli darwin parity — ctx.credentials reads the managed store, not process.env)
         if: matrix.runner == 'seatbelt'
         env:
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
-        run: echo "DASHSCOPE_API_KEY=$DASHSCOPE_API_KEY" > .env
+        run: |
+          mkdir -p ~/.dsh
+          printf 'DASHSCOPE_API_KEY: "%s"\n' "$DASHSCOPE_API_KEY" > ~/.dsh/.credentials.yaml
       - name: Unit tests (darwin parity)
         if: matrix.runner == 'seatbelt'
         run: pnpm run test
