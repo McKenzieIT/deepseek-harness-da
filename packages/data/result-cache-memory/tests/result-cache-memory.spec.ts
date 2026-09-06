@@ -82,6 +82,48 @@ describe('MemoryResultCache (direct)', () => {
   })
 })
 
+// data-infra-14: entriesEqual compared row cells via JSON.stringify, whose
+// key-order sensitivity made equal-but-reordered objects compare UNEQUAL →
+// false-positive immutability throws on a valid deterministic re-put. A
+// structural recursive deep-equal compares equal regardless of key order.
+describe('(di-14) entriesEqual deep-equal — cr_ immutability check', () => {
+  it('cr_ re-put with equal rows under a different object key order does not throw (top-level)', () => {
+    const ctx = new Context()
+    const cache = new MemoryResultCache(ctx)
+    cache.put('cr_di14_a', { columns: ['d'], rows: [[{ a: 1, b: 2 }]], metadata: {} })
+    // Same data, different key insertion order — JSON.stringify would differ.
+    expect(() => {
+      cache.put('cr_di14_a', { columns: ['d'], rows: [[{ b: 2, a: 1 }]], metadata: {} })
+    }).not.toThrow()
+  })
+
+  it('cr_ re-put with equal NESTED rows under a different key order does not throw (recursive)', () => {
+    const ctx = new Context()
+    const cache = new MemoryResultCache(ctx)
+    cache.put('cr_di14_b', {
+      columns: ['d'],
+      rows: [[{ outer: { a: 1, b: 2 }, kept: true }]],
+      metadata: {},
+    })
+    expect(() => {
+      cache.put('cr_di14_b', {
+        columns: ['d'],
+        rows: [[{ kept: true, outer: { b: 2, a: 1 } }]],
+        metadata: {},
+      })
+    }).not.toThrow()
+  })
+
+  it('cr_ re-put still throws when rows genuinely differ (guard against false-equal)', () => {
+    const ctx = new Context()
+    const cache = new MemoryResultCache(ctx)
+    cache.put('cr_di14_c', { columns: ['d'], rows: [[{ a: 1 }]], metadata: {} })
+    expect(() => {
+      cache.put('cr_di14_c', { columns: ['d'], rows: [[{ a: 2 }]], metadata: {} })
+    }).toThrow(/cannot overwrite result_id "cr_di14_c" with a different entry/)
+  })
+})
+
 describe('generateQueryResultId', () => {
   it('produces a qr_ prefix with a 12-char hex hash', () => {
     const id = generateQueryResultId('SELECT 1')

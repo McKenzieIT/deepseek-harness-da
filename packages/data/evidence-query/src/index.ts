@@ -623,6 +623,12 @@ export class EvidenceQueryService extends Service {
         flipped.push({ caseId, before: a.status, after: b.status })
         if (b.status === 'pass' && a.status !== 'pass') improved++
         else if (a.status === 'pass' && b.status !== 'pass') regressed++
+        // data-infra-12: error↔pending are rank-equal (both non-gradeable:
+        // infra fault vs unjudged). A status-string flip between them is NOT
+        // an improvement or regression — classify as unchanged instead of the
+        // arbitrary 'regressed' the rank-tie `>` test produced for both
+        // directions. (The flip itself is still recorded above.)
+        else if (STATUS_RANK[b.status] === STATUS_RANK[a.status]) unchanged++
         else if (STATUS_RANK[b.status] > STATUS_RANK[a.status]) improved++
         else regressed++
       }
