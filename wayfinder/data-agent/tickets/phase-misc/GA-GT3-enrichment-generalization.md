@@ -36,8 +36,8 @@
 | 2 | FK 命名启发式 | **EXP1-gated**——它**就是** EXP1 Phase 2 Arm A 本身 |
 | 3 | `buildLlmPrompt` schema-model-agnostic | **partially gated** |
 | 4 | `kind` enum 加 `ods`/`entity`/`flat` | **EXP1-gated**（且双重 gated，见下） |
-| 5 | **默认 `mergeExisting=true`** | **independent** ✅ |
-| 6 | 空 inventory short-circuit | **independent** ✅ |
+| 5 | **默认 `mergeExisting=true`** → 实采 **(b) origin-aware replace** | **independent** ✅ → **resolved 2026-09-07** |
+| 6 | 空 inventory short-circuit | **independent** ✅ → **resolved 2026-09-07** |
 
 **两个安全项（5、6）未被阻塞** → 票头的 `Blocked by: GA-EXP1` 粒度过粗。
 
@@ -55,15 +55,17 @@ GA-I18N-1 的 `origin` 优先级逻辑在 `mergeRefs` **内部**，而 `mergeRef
 
 **但存在真实张力，不能简单翻默认值**：`mergeRefs` 是**并集语义、从不删除**，所以 replace 模式是唯一能清掉过期 ref 的路径——CL-18 Phase 1 那次 23→5 的噪声清理在纯 merge 下**将无法进行**。且 auto=merge / explicit=replace 的现状是一次 code-review 的**刻意决定**（`.agents/notes/implemented/feature/2026-08-22-…:29`）。
 
-### ⬅ 下一个 frontier 动作：item 5 三选一（需人工 grilling）
+### ⬅ 下一个 frontier 动作：item 5 三选一（需人工 grilling）→ **resolved 2026-09-07，选 (b)**
 
 | 方案 | 内容 | 代价 |
 |---|---|---|
 | (a) | 默认翻 `mergeExisting=true` | 保住 curated ref，但**失去清理过期 ref 的能力** |
-| **(b)** | **origin-aware replace**——只替换 `deterministic`/`llm`，保留 `manual` | brief 推荐的调和方案；需同时改 `index.ts:628` 与 events 路径 |
+| **(b) ✅ 选用** | **origin-aware replace**——只替换 `deterministic`/`llm`，保留 `manual`/`undefined` | brief 推荐的调和方案 |
 | (c) | 显式 opt-in replace flag | 调用方全部要改；语义最清楚 |
 
-注意任一方案都须同时处理 `index.ts:628` 的硬编码 `false` 和 events 路径缺失的 merge-mode 入口，否则改动无效（见更正 (a)）。
+**决策（2026-09-07 grilling，HITL）**：选 **(b)**。子决策 `undefined` ≡ `manual`（保留）——`examples/` 4344 条现存 ref `origin` 字段命中 0 次（全 undefined），且 GA-I18N-1 已 shipped `undefined`→priority 2=manual；否则 = bug 复活。实现精炼：只改 `enrichment.ts` 的 replace 分支（tables+events 共用 `originAwareReplaceRefs` helper，复用 `mergeRefs`），**不动 `index.ts`**——`:629` 硬编码 `false` 现在正好选中 origin-aware 分支。events 路径同构，一并修。on-write hook（`true`/全量 merge）原样不动（已安全）。逃逸阀（Q4）不开。详见下方 Resolution。
+
+> **历史更正**：三方案择一阶段的「任一方案都须同时处理 `index.ts:628` 的硬编码 `false` 和 events 路径缺失的 merge-mode 入口」是针对 **(a)**（翻默认值）的顾虑——(a) 翻默认值会被 `index.ts:629` 的显式 `false` 盖掉。(b) 改的是 false 分支**行为**而非默认值，故该顾虑**不适用**；`index.ts:629` 的 `false` 反而是我们要的（选中 origin-aware 分支）。
 
 ### blast radius 实测（item 4 的迁移成本输入）
 
@@ -83,3 +85,47 @@ GA-I18N-1 的 `origin` 优先级逻辑在 `mergeRefs` **内部**，而 `mergeRef
 ### 工作树注意
 
 报告涉及的 `enrichment.ts`、`index.ts`、`enrichment.spec.ts`、`tool-search-data-sources`、`io.ts`、`tool-load-table-definition` 在工作树中均为 modified，差异经核对均为装饰性且与结论不重叠（brief §8）。ticket 原列行号除 `enrichment.ts:348`（巧合精确）外**全部已漂移**，漂移对照表见 brief §10。
+
+---
+
+## Resolution — items 5+6（2026-09-07）
+
+**只解 item 5 + item 6（independent，未被 GA-EXP1 阻塞）。票仍 Open——item 1/3 partially gated、item 2/4 EXP1-gated，待 GA-EXP1。**
+
+### 决策（grilling，HITL）
+
+- **item 5**：方案 **(b) origin-aware replace**——re-discovery 丢 `deterministic`/`llm` ref，保留 `manual`/`undefined`。唯一同时保住 curated-ref 安全 + 过期机器 ref 可清理性。(a) 牺牲清理能力，(c) 在 flag 触发时重开 manual 丢失路径。
+- **子决策 `undefined`**：≡ `manual`（保留）。事实锁死——`examples/` 4344 条现存 ref `origin` 字段命中 0 次（全 undefined，GA-I18N-1 选 lazy migration）；GA-I18N-1 已 shipped `undefined`→priority 2=manual。否则 = bug 复活。
+- **逃逸阀（Q4）**：不开（工具删不掉 `manual`/`undefined` ref，手改 YAML，同 merge 模式现状）。CL-18 具体案例不回归（Phase 1 已清 `gacha_result_statis_di` 23→5 + Phase 2 `excludeColumns` 防复发）。
+
+### 实现（TDD，仅 `enrichment.ts`）
+
+| 改动 | 内容 |
+|---|---|
+| `originAwareReplaceRefs(existing, discovered)` helper | `mergeRefs(existing.filter(r => r.origin === 'manual' \|\| r.origin == null), discovered)`——复用 `mergeRefs` + 已有 `originPriority`，零新优先级逻辑 |
+| `enrichAllDwsTables` replace 分支 | `discovered` → `originAwareReplaceRefs(existingRefs(t.raw), discovered)` |
+| `enrichAllEvents` replace 分支 | 同构：`discovered` → `originAwareReplaceRefs(existingEventRefs(e.raw), discovered)` |
+| item 6 short-circuit | 两函数 `buildDimInventory` 返回 `[]` 时提前 `return {enriched:0,written:0,errors:[]}` + `console.warn` |
+| docstring | `mergeExisting=false` 语义从「全量替换」更新为「origin-aware 替换」 |
+
+**不动**：`index.ts`（`:629`/`:650` 硬编码/省略 `false` 现在正好选中 origin-aware 分支）、schema（`origin` 字段 GA-I18N-1 已加，tables+events 共用 `DimensionRefSchema`）、call-site、`scripts/seed-event-external-refs.ts`、on-write hook（`true`/全量 merge，原样安全）、events on-write hook（deferred，超 item 5）、events `excludeColumns`（events 无分区列）。
+
+### 测试（5 新增，全绿）
+
+- `enrichment.spec.ts`：① tables replace 保 manual+undefined、刷 deterministic；② events 同构；③ item 6 tables 空 inventory short-circuit（written:0）；④ item 6 events 同构。
+- `discover-relations.spec.ts`：⑤ Service 端 `ctx.schema.discoverRelations()` 保 pre-existing curated ref（闭合 agent 工具路径）。
+- **264/264 pass**（semantic-layer 20 文件 + tool-discover-relations）；既有 `enrichment.spec.ts:222`（'skips DIM tables'，item 1 才动）未碰。
+- `enrichment.spec.ts` 现 32 tests（+4 新）；`discover-relations.spec.ts` 11（+1 新）。
+
+### 剩余 gating（票仍 Open）
+
+| # | scope 项 | 状态 |
+|---|---|---|
+| 1 | inventory 泛化为非空 `primary_key` | **partially gated**（EXP1 Phase 3 Level A 验证充分性；D2 还需拆 target-side `:345`） |
+| 2 | FK 命名启发式 | **EXP1-gated**（= EXP1 Phase 2 Arm A 本身） |
+| 3 | `buildLlmPrompt` schema-model-agnostic | **partially gated**（删 "DWS fact table" 字面量零测试护栏可独立做；prompt 结构重写待 EXP1） |
+| 4 | `kind` enum 加 `ods`/`entity`/`flat` | **EXP1-gated**（且 GT3 与 EXP1 取值集不一致，需先统一；159 YAML 静默改义） |
+| ~~5~~ | ~~origin-aware replace~~ | **✅ resolved 2026-09-07** |
+| ~~6~~ | ~~空 inventory short-circuit~~ | **✅ resolved 2026-09-07** |
+
+**下一步 frontier**：GA-EXP1（仍 Open，Phase 1 只做一半，judge 校准从未执行）解阻塞后，item 1/3 的 independent 部分可先落地，item 2/4 随实验结论。
