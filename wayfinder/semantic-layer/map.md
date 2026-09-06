@@ -344,6 +344,7 @@ OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent
 - [W17: 管理 session 客户端桥接](tickets/W17-management-session-client-bridge.md) — 图谱对话闭环唯一断点;**W13 动画需它才可观测**;开为 grilling 因为管理 session 就是普通 session、客户端已有消息流,若成立则 = 接线而非新建 RPC,且 W9/W10 的 presenter 卡片可直接复用（**frontier — 无阻塞**）
 - [W18: evidence-query runs-list/delta data-store 对齐](tickets/W18-evidence-runs-list-data-store.md) — W16 浏览器测试发现:evalRunCount=3(auto-flip)但 runs-list(evalResultQuery)空;trace FileBackedEvalResultStore 的 runs-list/delta store + 对齐 count（**frontier — 无阻塞,W4 域**）
 - [W19: DashboardView i18n keys 缺失](tickets/W19-dashboard-i18n-keys.md) — W16 浏览器测试发现:dashboard.title/goToWorkspace 未翻译(W6d 作者漏加 locale dict key);locales.ts 加两 key（**frontier — 无阻塞,快速修**）
+- [W20: api-remotes built-lib e2e stub 不模拟 shell module table](tickets/W20-api-remotes-e2e-stub-module-table.md) — CB-4 期间发现:`built-lib.e2e.ts` instantiate stub 只 handle `@deepseek-ai/cordis`,api-remotes bundle `require("zod")`(loader-mediated)→ stub throw "unexpected Client external zod" → e2e big it() 跑不起(CI 因 `requiredArtifacts` skip 无 build,latent)。fix=stub 模拟 shell module table(返回 `PLATFORM_MODULES` incl. zod,推荐复用 `getStaticModules()`);test-infra 非 CB-4 回归(pre-existing)。CB-4 红线"不碰 W16 code"致本票独立（**frontier — 无阻塞,PR #30 merge 后开分支**）
 
 ### Enrichment 算法质量
 ~~[CL-18: ds 噪声关联修复 + 确定性匹配加固](tickets/CL18-ds-noise-join-fix.md)~~ ✅ — Phase 2 算法加固已落地：substrate `excludeColumns` 参数 + 调用层 `buildExcludeColumns`（`role:partition` 驱动，无 role 回退 `[ds,pt,dt]`）接入 `discoverRelations()` + on-write hook；6 新测试 38/38 scoped 绿
