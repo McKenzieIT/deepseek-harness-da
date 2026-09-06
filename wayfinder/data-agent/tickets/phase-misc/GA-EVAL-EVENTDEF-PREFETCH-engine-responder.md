@@ -131,7 +131,18 @@ dev sidecar 跑 `maxc query run --wait 60` 才提交异步 job，而 `MaxCompute
 ### 成功标准逐条核对（诚实版）
 
 1. **criterion #1（event case real-exec `execution_match=true` ≥3/8）—— UNINSTRUMENTED，不是达成也不是未达成。** 16/18 event case 的期望值已与自己的 reference SQL 不符；(a) 在 119 上生成了逐字一致的 reference SQL，仍判 `wrong`。要测这条得先解 [GA-EVAL-CASESET-EVENT-ANCHOR](GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)。
-2. **criterion #2（real-exec pass_rate > 7.7%）—— 见下方 real-exec 段。** judge-only 侧：v1（judge 未修）**16/39 = 41.0%**，低于 (d) 的 53.8%；per-case 查明 **5 个回退的 DWS case 每一次 attempt 都没碰 event view**（`eventView=false`），检测没在它们上触发，生成 prompt 与 (d) **逐字节相同**（缺省不渲染，已单测）→ 那 −5 是 all-must-pass 放大的采样抖动（每个 case 都同时有 sj=1.0 和 sj=0.4/0.6/0 的 attempt；038/041/043 的不稳定是 FOLLOWUP 已记录过的同一现象），**不是 (a) 造成的**。唯一「被注入且回退」的是 135，根因是仪表缺陷 (ii)，已修。
+2. **criterion #2 —— judge-only 侧 MET（53.8% → 61.5%）；real-exec 侧见下。**
+
+| judge-only（39 case × k=3） | (d) | (a)+(d) v1（judge 未修） | (a)+(d) v2（judge 已修） |
+|---|---|---|---|
+| pass_rate | 21/39 = 53.8% | 16/39 = 41.0% | **24/39 = 61.5%** |
+| null-SQL /117 | 21 | 13 | **13** |
+| 非 SQL 发射 | 0% | 0% | **0%** |
+| event view attempts | 0 | 17 | **18** |
+
+v2 vs (d)：**+9**（057/119/125/126/128/136/137 = **7 个 event case**，其中 5 个正是检测器的 6 个 TP；另 045/059）、**−6**。**收益分布不是噪声形状——精准落在 (a) 针对的 case 上。**
+
+6 个回退逐一查明**无一由 (a) 造成**：5 个 DWS（038/039/042/043/051）三次 attempt 的 `eventView` **全为 false**，检测未触发、prompt 与 (d) 逐字节相同 → 只能是采样；每个都同时有 sj=1.0 与 sj≤0.6 的 attempt（038=[1,0.2,1]、039=[0.4,1,1]、042=[0.4,0,1]、043=[0.6,0.2,1]、051=[1,0,0]），是 `passKVerdict=every` 放大的抖动。135（唯一被注入的回退）的 judge 修复**已生效**——att1/att3 现在 sj=1.0 五维全 1、rationale 称赞「正确选择了事件视图表…完美契合」；att2 得 0.4 是 judge 换了领域论点（ODS 客户端埋点有掉单风险，「真实营收」应以服务端 DWS 订单表为准）且漏了 `/100.0` → case 口径歧义 + all-must-pass，非 (a) 缺陷。
 3. **criterion #3（0 FP，DWS 不回退）—— MET（检测层面）。** 探针 21/21 DWS 判 NONE（两跑一致）；实跑 117 个 attempt 里 DWS case 用 event view 的次数为 **0**。038/039/041/043/051 的 verdict 变化经 per-case 确认与注入无关。
 4. **criterion #4（走 G-DA4 seam、additive、harness responder 不受影响）—— MET。** 用的是 `loadEventDefinition` + `extractEventView`，无新 substrate；`harness-responder.ts` 不经 `buildPrompt`/`Nl2sqlEngine`；另一个 `engine.run` 调用点（`eval-runner-service:284`）不传新参数；prompt 缺省 byte-stable（快照未动）。
 

@@ -869,11 +869,19 @@ sidecar 跑 `maxc query run --wait 60` 才提交异步 job，`toolCallTimeoutMs`
 
 ### Results（judge-only 双跑）
 
-| judge-only | (d) 基线 | (a)+(d) **v1**（judge 未修） | (a)+(d) **v2**（judge 已修） |
+| judge-only（39 case × k=3） | (d) 基线 | (a)+(d) **v1**（judge 未修） | (a)+(d) **v2**（judge 已修） |
 |---|---|---|---|
-| pass_rate | 21/39 = 53.8% | 16/39 = **41.0%** | 见下 |
-| null-SQL /117 | 21 | **13** | 见下 |
-| 非 SQL 发射 | 0% | **0%** | 见下 |
-| event view attempts | 0 | **17** | 见下 |
+| pass_rate | 21/39 = 53.8% | 16/39 = 41.0% | **24/39 = 61.5%** |
+| null-SQL /117 | 21 | 13 | **13**（−38%）|
+| 非 SQL tool-call 发射 | 0% | 0% | **0%**（维持）|
+| 用 event view 的 attempt | 0 | 17 | **18** |
+
+Run: `--pass-k 3 --concurrency 3 --today 20260806 --scope-id 10000251 --provider aga --model qwen3.7-max --skip-health-gate`；artifacts `eval-results/eventdef-judgeonly{,-v2}.json`（v1 1792s / v2 ~1900s）。
+
+**v2 vs (d) 逐 case**：**+9**（057/119/125/126/128/136/137 = **7 个 event case**，其中 5 个正是检测器的 6 个 TP；另 045/059 dws）、**−6**（038/039/042/043/051 dws + 135 event）。**收益的分布不是噪声形状——精准落在 (a) 针对的 case 上。**
+
+**6 个回退逐一查明，无一由 (a) 造成**：
+- 5 个 DWS（038/039/042/043/051）**三次 attempt 的 `eventView` 全为 false** —— 检测一次未触发；未检测到 event 时生成 prompt 与 (d) **逐字节相同**（section 缺省不渲染，已单测）→ 差异只能来自采样。每个都同时有 sj=1.0 和 sj≤0.6 的 attempt，是 `passKVerdict=every` 放大的 attempt 级抖动（038 sj=[1,0.2,1]、039=[0.4,1,1]、042=[0.4,0,1]、043=[0.6,0.2,1]、051=[1,0,0]；038/041/043 的不稳定 FOLLOWUP 已记录过）。
+- 135（唯一被注入的回退）：judge 修复**已生效**——att1/att3 现在 **sj=1.0 且五维全 1**，rationale 明确称赞「正确选择了事件视图表…完美契合」。att2 得 0.4 是 judge 换了个**领域论点**（ODS 客户端埋点有掉单风险，「真实营收」应以服务端 DWS 订单表为准），且该 attempt 还漏了 `/100.0`。即 case 本身的口径歧义 + all-must-pass，不是 (a) 缺陷。
 
 **v1 的 −5 经 per-case 排除与 (a) 无关**：5 个回退的 DWS case（038/039/041/043/051）**每一次 attempt 都 `eventView=false`**，检测没触发，且未检测到 event 时生成 prompt 与 (d) **逐字节相同**（section 缺省不渲染，已单测）→ 差异只能来自采样。每个回退 case 都同时有 sj=1.0 与 sj=0.4/0.6/0 的 attempt，是 `passKVerdict=every` 放大的 attempt 级抖动（038/041/043 的不稳定 FOLLOWUP 已记录过）。038 att2 自己写了 `FROM <数据视图>` 占位符——(a) 没给它注入任何东西，那是原有行为。唯一「被注入且回退」的 135 根因是缺陷 2。
