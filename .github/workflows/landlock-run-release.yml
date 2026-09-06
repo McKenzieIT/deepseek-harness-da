@@ -151,7 +151,7 @@ jobs:
       # imports nothing outside Node's builtins, so there is no install step.
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
