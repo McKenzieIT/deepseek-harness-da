@@ -760,6 +760,40 @@ describe('boot', () => {
     ].join('')))
   })
 
+  it('enumerates every failed entry when a group apply fails with multiple errors (CB-1a S2)', async () => {
+    const dir = tmp()
+    // Two plugins that both throw on apply → the transactional
+    // EntryGroup.update wraps them in an AggregateError; boot must surface
+    // each entry's id/name + root cause at the top level, not buried in
+    // cause.cause.errors[].
+    writeFileSync(join(dir, 'fail-a.mjs'), [
+      'export function apply() {',
+      "  throw new Error('fail-a: boom')",
+      '}',
+      '',
+    ].join('\n'))
+    writeFileSync(join(dir, 'fail-b.mjs'), [
+      'export function apply() {',
+      "  throw new Error('fail-b: kapow')",
+      '}',
+      '',
+    ].join('\n'))
+    writeFileSync(join(dir, 'cordis.yml'), [
+      '- id: fail-a',
+      '  name: ./fail-a.mjs',
+      '- id: fail-b',
+      '  name: ./fail-b.mjs',
+      '',
+    ].join('\n'))
+    await expect(boot(NAME, join(dir, 'cordis.yml'))).rejects.toThrow(new RegExp([
+      'plugin tree failed to load:',
+      'loader entries failed to apply',
+      'failed entries \\(2\\):',
+      '1\\. failed to apply loader entry fail-a \\(\\./fail-a\\.mjs\\): fail-a: boom',
+      '2\\. failed to apply loader entry fail-b \\(\\./fail-b\\.mjs\\): fail-b: kapow',
+    ].join('[\\s\\S]*')))
+  })
+
   it('falls back to the deepest cause message when its stack was erased', async () => {
     const dir = tmp()
     const deepest = new Error('stackless deep failure')

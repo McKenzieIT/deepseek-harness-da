@@ -725,6 +725,40 @@ export async function assertEntriesActivated(ctx: Context, binName: string): Pro
 }
 
 /**
+ * Collect every entry-level failure message buried inside `AggregateError.errors[]`
+ * anywhere along the cause chain. The transactional Loader wraps a multi-entry
+ * apply failure in an `AggregateError` (vendor `EntryGroup.update`); each
+ * element is an `updateError(...)` whose message already names the entry
+ * id/name + root cause. {@link boot} surfaces these at the top of its
+ * diagnostic (CB-1a S2: explicit boot error with group/entry/cause) instead of
+ * forcing the reader to dig through `cause.cause.errors[]`.
+ *
+ * The landed location is `boot`'s catch: the failure originates at
+ * `mountRootInclude`'s `ctx.loader.create` rejecting, but the diagnostic
+ * message is formatted here. The spec's "post-mount self-check at
+ * mountRootInclude" presumed a silent-open path that the current transactional
+ * propagation already makes loud — see CB-1a / CB-3.
+ */
+function collectAggregateEntryFailures(error: unknown): string[] {
+  const out: string[] = []
+  let node: unknown = error
+  while (node instanceof Error) {
+    if (node instanceof AggregateError) {
+      for (const sub of node.errors) {
+        // `updateError` (vendor entry.ts) always yields a non-empty Error
+        // message; the `String(sub)` arm defends a malformed AggregateError
+        // the boot flow cannot produce.
+        /* v8 ignore next -- vendor updateError always yields Error elements */
+        const message = sub instanceof Error ? sub.message : String(sub)
+        out.push(message)
+      }
+    }
+    node = node.cause
+  }
+  return out
+}
+
+/**
  * Boot the Loader against `absoluteConfigPath` and return only after the whole
  * tree settles. Relative entry names resolve against the config directory;
  * bare package names resolve there by default or against an explicit
@@ -797,7 +831,16 @@ export async function boot(
     let deepest: unknown = cause
     while (deepest instanceof Error && deepest.cause !== undefined) deepest = deepest.cause
     const stack = deepest instanceof Error && deepest !== cause ? `\n${deepest.stack ?? deepest.message}` : ''
-    throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause })
+    // CB-1a S2: a multi-entry apply failure is wrapped in an `AggregateError`
+    // whose `.errors[]` each name one failed entry (id/name + root cause);
+    // surface them at the top of the diagnostic instead of leaving them buried
+    // in `cause.cause.errors[]`. Single-entry failures have no aggregate, so
+    // this adds nothing and the existing message is unchanged.
+    const failedEntries = collectAggregateEntryFailures(cause)
+    const failures = failedEntries.length > 0
+      ? `\nfailed entries (${String(failedEntries.length)}):\n${failedEntries.map((message, index) => `  ${String(index + 1)}. ${message}`).join('\n')}`
+      : ''
+    throw new Error(`${binName}: ${stage}: ${detail}${stack}${failures}`, { cause })
   }
 }
 

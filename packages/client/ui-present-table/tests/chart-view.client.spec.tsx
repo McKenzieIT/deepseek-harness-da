@@ -432,4 +432,22 @@ describe('valueLabelsPlugin afterDatasetsDraw', () => {
     const chart = mockChart({ type: 'bar', values: [100], points: [{} as MockPoint] })
     expect(await draw(chart)).toHaveBeenCalledWith('100', expect.any(Number), expect.any(Number))
   })
+
+  it('places radial pills at per-slice arc centroids, not stacked at the shared donut center', async () => {
+    const slice = (startAngle: number, endAngle: number) => ({
+      x: 50, y: 50, startAngle, endAngle, innerRadius: 10, outerRadius: 40,
+    } as MockPoint)
+    // Three equal slices around the donut center (50, 50).
+    const points = [
+      slice(0, (Math.PI * 2) / 3),
+      slice((Math.PI * 2) / 3, (Math.PI * 4) / 3),
+      slice((Math.PI * 4) / 3, Math.PI * 2),
+    ]
+    const fillText = await draw(mockChart({ type: 'doughnut', values: [100, 200, 300], points }))
+    expect(fillText).toHaveBeenCalledTimes(3)
+    const positions = fillText.mock.calls.map(call => `${call[1]},${call[2]}`)
+    // All three pills land at distinct positions (one per slice centroid),
+    // not collapsed onto the single shared donut center.
+    expect(new Set(positions).size).toBe(3)
+  })
 })

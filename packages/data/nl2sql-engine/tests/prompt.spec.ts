@@ -236,4 +236,69 @@ describe('buildPrompt / buildEvalPrompt — exact output pinned (nl2sql-4)', () 
       随便问个问题"
     `)
   })
+
+  it('buildPrompt contextPrefetched=true drops the invocable tool catalog (engine-responder mode — GA-EVAL-SQLGEN-PROMPT-FIX)', () => {
+    expect(buildPrompt({
+      question: '昨天充值总金额是多少', candidates, eventDef: null, conventions: null, phase: 'generation',
+      joinConstraints: ['dws_pay_order_di JOIN ods_login ON user_id = user_id'],
+      metricContext: '- pay_amt_sum = SUM(pay_amt) FROM dws_pay_order_di',
+      isTrend: true, today: '20260820',
+      contextPrefetched: true,
+    })).toMatchInlineSnapshot(`
+      "你是游戏埋点数据分析 SQL 生成引擎。宁可少答慢答，不可错答。
+
+      # 上下文（已 pre-fetch，勿调用任何工具）
+      下方 # 检索候选（BM25 schema-linking 已 pre-fetch）与 # 事件定义（若已加载）是生成 SQL 的全部 schema 上下文。本引擎不暴露可调用工具——不要输出工具调用格式（如 call:default_api:...、<tool>...</tool>、{"name":"...","arguments":...}），直接基于下方上下文在 \`\`\`sql 围栏内生成 SQL。critic、执行与失败自修由引擎内部完成。
+
+      # §3 直答路径（staged SOP）
+      ## 阶段 A 准备
+      - 复合判断门：≥2 不同性质指标 / ≥2 层维度交叉 / "对比"语义 / 模糊结论词 → 复合，拆原子子问题各一条 SQL
+      - 字段清单校验：SQL 每个字段名（尤其 params 内）须在下方 # 事件定义 的 params_fields/metrics 有定义（若 # 事件定义 未加载，字段须来自 # 检索候选 的候选表定义），不得硬编码
+
+      ## 阶段 B 生成
+      - 方案先行：生成 SQL 前在思维链形成方案（视图/过滤/指标/维度/预期量级），然后在 \`\`\`sql 围栏内输出 SQL
+
+      ## 阶段 C/D 校验与执行（引擎内部）
+      - 引擎对生成的 SQL 做 pre-exec critic + 执行 + 失败自修；你只须输出 SQL。若引擎反馈错误，按反馈重写 SQL，不得重复相同 SQL（近重复门防重发）
+
+      # §5 诚实拒绝
+      触发：语义层无定义/params 无字段/自修 2 次仍失败/发现路径走不通。拒时说明：为什么不能答/缺什么/怎么解决。不做降级，不给"仅供参考"。
+
+      # §6 八规则
+      1. 分区表查询须带分区列过滤（分区列名/格式见方言规范）；非分区 DIM 表不带分区过滤；_df 后缀日期不明时取最新分区（见方言规范）
+      2. 去重主体由用户意图：角色→role_id，账号→account_id
+      3. params 字段提取用方言规范中的 JSON 函数；数值字段按 cast_map CAST（见方言规范）
+      4. JOIN 规则：跨日多事件 JOIN 禁；同日同主体交集许可；维表 lookup JOIN 受控
+      5. NULLIF(COUNT(*),0) 防除零
+      6. 复合问题拆多条原子 SQL
+      7. 时效：埋点 ~10min，通用数仓 T+1
+      8. 千位以上加千分位
+      9. 趋势/时序类问题优先使用 _di（日粒度增量）表；_df（快照）表仅在无 _di 候选时使用
+
+      （无 conventions）
+
+
+      # 已知 JOIN 关系（必须使用，勿自行推断 JOIN key）
+      - dws_pay_order_di JOIN ods_login ON user_id = user_id
+
+      # 已知指标定义（请基于此规则构建查询）
+      - pay_amt_sum = SUM(pay_amt) FROM dws_pay_order_di
+
+      # 当前日期
+      今天是 20260820（yyyyMMdd 格式）。"昨天"= 今天-1 天，"过去7天"= 从今天往回7天。分区列格式见方言规范。计算相对日期时用字面值，不要用运行时日期函数。
+
+      # 当前问题
+      昨天充值总金额是多少
+
+      # 检索候选（已 BM25 pre-fetch）
+      - dws_pay_order_di [日粒度]: 付费订单宽表 (score=0.123)
+      - dws_pay_order_di__pay_amt_sum: 付费总金额 (score=0.456)
+
+      # 事件定义（若已加载）
+      （未加载）
+
+      # 当前阶段（P7 四阶段适配：phase=generation）
+      GENERATION 阶段：直接基于上方上下文生成 SQL（\`\`\`sql 围栏）；critic、执行与自修由引擎内部完成。"
+    `)
+  })
 })

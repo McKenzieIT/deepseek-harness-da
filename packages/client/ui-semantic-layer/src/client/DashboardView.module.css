@@ -1,0 +1,63 @@
+/* DashboardView — the "A" (evidence-first) layout.
+ * Rendered as the SemanticLayerShell content when auto-flip fires
+ * (evalRunCount >= threshold). Lives in a narrow sidebar (264px) or rail
+ * (56px), so the layout is a vertical scroll column that never overflows
+ * horizontally; the detail row stacks rather than splitting into columns. */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--dsw-alias-surface-default);
+  color: var(--dsw-alias-content-primary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-subtle);
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dsw-alias-content-primary);
+}
+
+.workspaceLink {
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--dsw-alias-content-link);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.workspaceLink:hover {
+  background: var(--dsw-alias-surface-hover);
+}
+
+.hero,
+.kpiRow {
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-subtle);
+  border-radius: 6px;
+  background: var(--dsw-alias-surface-default);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

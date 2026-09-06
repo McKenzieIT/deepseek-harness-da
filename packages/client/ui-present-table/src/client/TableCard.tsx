@@ -307,21 +307,42 @@ export type DegradeReason =
 
 export type ChartValidationResult = { ok: true } | { ok: false; reasonKey: DegradeReason; fallback: 'bar' }
 
+/** Whether a numeric x column reads as an ordered sequence: monotonic
+ *  non-decreasing in row order, skipping empty/non-numeric cells. A line over
+ *  such an x tells a real trend; an unordered numeric x would connect points
+ *  out of sequence (jagged/misleading) and the validator degrades it to bar. */
+function isOrdinalNumericX(chart: ChartConfig, rows: string[][]): boolean {
+  let prev = -Infinity
+  let seen = 0
+  for (const row of rows) {
+    const trimmed = (row[chart.x_column] ?? '').trim()
+    if (trimmed === '') continue
+    const value = Number(trimmed)
+    if (!Number.isFinite(value)) return false
+    seen += 1
+    if (value < prev) return false
+    prev = value
+  }
+  return seen > 0
+}
+
 /**
  * Client-side chart-type validator (R4): degrade an infeasible choice to bar,
  * honestly surfacing why. Mirrors the R4 heuristic's feasibility floor — the
  * sniffed column kinds (declared win; otherwise sniffed upstream) + the x
  * cardinality decide whether the requested type can render the data shape:
  *
- *   line/area      x must be a date (time series)
+ *   line/area      x is a date, or a numeric ordinal sequence (time/trend)
  *   scatter        x + y numeric (≥2 numeric columns)
  *   bubble         x + y + r_column numeric (≥3 numeric columns)
  *   doughnut       ≤8 distinct x classes
  *   radar/polarArea categorical x + numeric y (one entity × N metrics)
  *   bar/hbar       always feasible
  *
- * Ordinal-numeric x for line/area is not relaxed here (the heuristic guides a
- * date column); see the Agent Note.
+ * A numeric x counts as ordinal when its cells are monotonic non-decreasing
+ * in row order (the data is presented as an x-ordered sequence); an unordered
+ * numeric x would connect points out of sequence and degrades to bar. R4's
+ * date-or-ordinal relaxation — a continuous-numeric x belongs in scatter.
  */
 export function validateChartType(
   type: ChartType,
@@ -332,8 +353,9 @@ export function validateChartType(
   const xKind = colKinds[chart.x_column]
   const yKind = colKinds[chart.y_columns[0] ?? -1]
   if (type === 'line' || type === 'area') {
-    if (xKind !== 'date') return { ok: false, reasonKey: 'degradeLineDate', fallback: 'bar' }
-    return { ok: true }
+    if (xKind === 'date') return { ok: true }
+    if (xKind === 'number' && isOrdinalNumericX(chart, rows)) return { ok: true }
+    return { ok: false, reasonKey: 'degradeLineDate', fallback: 'bar' }
   }
   if (type === 'scatter') {
     if (xKind !== 'number' || yKind !== 'number') return { ok: false, reasonKey: 'degradeScatter', fallback: 'bar' }

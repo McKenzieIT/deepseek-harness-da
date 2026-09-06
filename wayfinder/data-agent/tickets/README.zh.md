@@ -51,33 +51,39 @@
 - [R3 多轮 eval hook](phase-4/R3-multiturn-eval-hook.md) — research, **resolved**, blocks P11
 - [P11 eval harness](phase-4/P11-eval-harness.md) — prototype, **resolved**（2026-08-20；throwaway proto 11 .mjs 8/8 绿 + grilling 6 决策 D1-D6 + 9 surfaced finding → P11b 生产）
 - [P11b eval harness 生产硬化](phase-4/P11b-eval-harness-hardening.md) — prototype, **resolved**（2026-08-20；生产 `packages/eval/eval/` TS 纯库 zero-seam-dep + 7 grilled 决策 + 9 finding 全解 + rbi-faithful 逐条 VERIFIED + typecheck-clean + 201 tests + coverage 100%；毕业雾 D2 (c)→D2c；CLI/persist/pass_at_k→P11c；解锁 G1b）
-- [P11c eval CLI runner + persistence + pass_at_k](phase-4/P11c-eval-cli-runner.md) — prototype, **blocked by P11b**（resolved；CLI runner + run-result 持久化 + pass_at_k 报告聚合，~800 行外围）
+- [P11c eval CLI runner + persistence + pass_at_k](phase-4/P11c-eval-cli-runner.md) — prototype, **resolved**（2026-08-25；`packages/eval/eval-cli/` ship：CLI runner + context + report；G1b 消费它跑矩阵）
+- [P11d eval LLM Judge SQL 语义验证](phase-4/P11d-eval-llm-judge-sql-semantics.md) — prototype, **resolved**（2026-08-26；5 维度 0/1 评分 judge + schema context 注入 + 非 SQL 快速拒绝；修复 buildSchemaContext 表类型 columns 提取）
+- [P11e eval case set v2 基于真实场景](phase-4/P11e-eval-case-set-v2-realistic.md) — task, **resolved**（2026-08-26；80 case 自然语言 NL2SQL 评测，30 张核心表，9 种 intent；pass rate 67.5%；暴露粒度混淆/BM25 gap/多表关联 → P14/P15）
 - [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **resolved**（2026-08-20；TS `packages/eval/` 重实现编排 + 判分 (ii) DELIVERY/EXECUTION 不进 sqlglot + python/ 包不修订 Q10；解锁 P11）
 
 ## phase-misc（cross-phase / 低优先）
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **resolved**（2026-08-20；实验设计 11 决策定稿——2×2 变体×2 模型配置 staged、execution-match 三分判分+决策规则；设计(不跑)→毕业 G1b 执行票）
-- [G1b 实验执行](phase-misc/G1b-experiment-execution.md) — prototype, **unblocked**（P7b+P11b resolved；跑 G1 设计的 staged 矩阵+决策规则+报告，消费 `packages/eval/eval/` 库 + P11c runner/report）
-- [D2c retrieve-tool escape-hatch keep/regress](phase-misc/D2c-retrieve-tool-keep-regress.md) — grilling, **unblocked**（graduated from map Not-yet-specified D2 (c)；P11b eval 就绪→可跑召回/歧义数据驱动 keep (b) 还是 regress (a) pipeline-only）
+- [G1b 实验执行](phase-misc/G1b-experiment-execution.md) — prototype, **in-progress**（所有 blocker resolved：P4c✅/P11c✅/G1c✅/present_*✅。已跑：infra bug fix + BM25 recall 0%→86.7% + P15a query expansion。当前瓶颈：LLM SQL 生成质量（execution_match=0%，bottleneck 从 retrieval 移至 model）
+- [D2c retrieve-tool escape-hatch keep/regress](phase-misc/D2c-retrieve-tool-keep-regress.md) — grilling, **resolved**（2026-08-21；keep (b) escape-hatch，regress-to-(a) 延后到真 eval 数据）
 - [R4 goals:false 抑制](phase-misc/R4-goals-false.md) — research, **resolved**（2026-08-20；goals:false 完全抑制 spine goal mount：agent-spine-demo/src/index.ts:239 守卫 + agent-core.spec.ts:210-214 钉死，README:82 fixed 指 core 非指 goal；shipped base+patch 走 disabled:true 等价零 code 改 → Q8 保留是选择非约束）
 - [R5 acp 测试 fallout](phase-misc/R5-acp-fallout.md) — research, **resolved**（2026-08-20；删 acp/ 级联 acp-demo+acp-agent ~70 场景/57 配置/18 测试，acp-snapshot 零依赖存活，da 零交集——给 (c) 代价基线）
 - [P2b dashscope 200+error-body](phase-misc/P2b-dashscope-200-error-body.md) — task, **resolved**（2026-08-20；200+err-body 证伪（4 case 全 4xx）；改 fix 同源 4xx SSE-框架错误体 mis-parse（adapter.parseErrorBody 先 JSON 再 parseSse drain）+7 测试，2xx/translate 不动）
 - [P2c dashscope queue keep-alive](phase-misc/P2c-dashscope-queue-keepalive.md) — task, **resolved**（2026-08-20；hold 368-498ms 远<300s，keep-alive comment 首字节即 pulse，300s 默认安全无 fix）
 - [host-typecheck-wiring](phase-misc/host-typecheck-wiring.md) — task, **resolved**（2026-08-20；tsconfig.host +3 data refs 修 TS6307 + critic-dedup WIP 验 M1✓/M2 defer/M3✓ + PromptAssembly 已由 WIP B12 解；scoped vitest 238/238；ticket Resolved 经 shared-index sweep 落 commit 2e116bafb0）
-
 - [G-DA6 多轮 candidate_tables 继承](phase-misc/G-DA6-multiturn-candidate-tables-inheritance.md) — grilling, **unblocked**（G-DA4 symmetric fix resolved 2026-08-27；follow-up 复用前轮表时 search miss → 额外 retry，继承策略待 grill）
 
-## phase-misc — 简化候选（S 系列，OPEN，待新 session 二次验证）
+- [aga per-phase thinking control — B vs B'](phase-misc/aga-per-phase-thinking-control.md) — grilling, **resolved**（2026-08-21; **B 够** — Option B〔phase-gate 对 aga 跳过 reasoningEffort; cd2b741409 引入 + a127875845 亦触 phase-gate.ts〕= qwen3.7-max 跨四 phase 永远思考; B'〔per-phase 选模型〕deferred — rbi 无 per-phase thinking〔qwen-plus non-thinking 全 phase〕、D7 在 aga 从未生效〔pre-B 硬报错非 no-op〕、B' 成本未达实测痛点）
+- [P14 Ontology-aware 表选择（粒度感知 + 关系图扩展）](phase-misc/P14-ontology-aware-table-selection.md) — grilling, **resolved** 2026-08-26（D1-D5 全锁定：(a) engine pipeline step + soft prefer + payload 补全 + regression gate 67.5%）
+- [P14b Post-Retrieval Ontology Enrichment 实现](phase-misc/P14b-ontology-enrichment-implementation.md) — prototype, **resolved**（2026-08-26；granularity.ts detectTrendIntent + rerankByGranularity + ontology expandCandidates lookupDoc + prompt Rule 9；28/28 + 56/56 green）
+- [P15 Query Rewriting（查询侧语义扩展）](phase-misc/P15-query-rewriting.md) — grilling, **resolved**（2026-08-26；方案 B validated：LLM query expansion via qwen-flash 6/6 hit@5。P15a 实现 commit `e0ef1b0711` ship）
+
+## phase-misc — simplification candidates (S-series, OPEN, pending new-session 2nd verification)
 > 来源：dsh-data-agent 全量审计（WF1-WF5 + dsh-find-simplifications skill）的 strong 候选。每张票 `status=open`、`blocked-by: 新 session 二次验证`——不在审计 originating session 直接执行；新 session 重新核证调用点/证据后再 claim 执行。
 
-- [S1 解耦 MaxCompute 配置出 bundle](phase-misc/S1-decouple-maxcompute-from-bundle.md) — task, **resolved 2026-08-28**（Config `args`→`sidecarPath`+`maxcConfigPath`；spawn 构造；patch 去机器路径；部署覆盖）
-- [S2 删 tool-scope-routing 探针](phase-misc/S2-delete-tool-scope-routing-probe.md) — task, **open**（E-DA4 陈旧探针，非真包；删清 12 条 constraints）
-- [S3 删 FakeReranker+fakeRecall](phase-misc/S3-delete-fakereranker-fakeRecall.md) — task, **open**（D2d 实测有害、无生产消费者；InfinityReranker 覆盖）
-- [S4 删 RequestDefaults seam](phase-misc/S4-delete-requestdefaults-seam.md) — task, **open**（空 speculative 接口，从不被读）
-- [S5 删 EmbedderService.dim getter](phase-misc/S5-delete-embedderservice-dim-getter.md) — task, **open**（死公开面；私有 _dim 留）
-- [S6 删 getLastTwoRuns+lastTwoRuns](phase-misc/S6-delete-evalrunner-getlasttworuns.md) — task, **open**（test-only 冗余；trigger_eval 用内联 pair）
-- [S7 重构 data-python log metering](phase-misc/S7-refactor-data-python-log-metering.md) — task, **open**（复用 protocol.ts 的 jsonStringBytesUpTo，删手搓分配式 meter）
+- [S1 Decouple MaxCompute config from bundle](phase-misc/S1-decouple-maxcompute-from-bundle.md) — task, **resolved 2026-08-28**（Config `args`→`sidecarPath`+`maxcConfigPath`；spawn 构造；patch 去机器路径；部署覆盖）
+- [S2 Delete tool-scope-routing probe](phase-misc/S2-delete-tool-scope-routing-probe.md) — task, **open**（E-DA4 陈旧探针，非真包；删清 12 条 constraints）
+- [S3 Delete FakeReranker+fakeRecall](phase-misc/S3-delete-fakereranker-fakeRecall.md) — task, **open**（D2d 实测有害、无生产消费者；InfinityReranker 覆盖）
+- [S4 Delete RequestDefaults seam](phase-misc/S4-delete-requestdefaults-seam.md) — task, **open**（空 speculative 接口，从不被读）
+- [S5 Delete EmbedderService.dim getter](phase-misc/S5-delete-embedderservice-dim-getter.md) — task, **open**（死公开面；私有 _dim 留）
+- [S6 Delete getLastTwoRuns+lastTwoRuns](phase-misc/S6-delete-evalrunner-getlasttworuns.md) — task, **open**（test-only 冗余；trigger_eval 用内联 pair）
+- [S7 Refactor data-python log metering](phase-misc/S7-refactor-data-python-log-metering.md) — task, **open**（复用 protocol.ts 的 jsonStringBytesUpTo，删手搓分配式 meter）
 
 > 保留（暂时没人用/计划后续/在用，不开删除票）：patrol-mode（W11 在建）、SQL-critic 工具路径（phase-gate re-tighten 计划）、scopes/changed 事件（文档化扩展点）、management-session 事件（W11 为 UI 预留）、QueryEngine.attach（有生产调用者：eval-runner-service + nl2sql-engine）。
 
 ## 当前可立即取（unblocked frontier）
-P9b · P11c · G1b · D2c · G-DA6（P11/P11b/G3c/R4/R5/P7b/P13b/P6b/P5b/host-typecheck-wiring 已 resolved）
+P9b · G1b（in-progress，瓶颈=LLM SQL quality）（P11c/D2c/P14b/P15/P14/G1c 已 resolved 2026-08-21~26）

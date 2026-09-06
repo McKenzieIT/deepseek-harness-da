@@ -97,16 +97,9 @@ No direct effect; the card renders query/compute result rows for the user, and t
   ([G1](../../../wayfinder/interpretation-client-rendering/tickets/G1-design-decisions.md) D6).
 - **Chart-type validator degrades to bar.** A client column-kind/cardinality
   check degrades an infeasible `chart.type` to bar (scatter with <2 numeric
-  columns, doughnut with >8 classes, line/area whose x is not a date, bubble
-  with <3 numeric columns, radar/polarArea not in entity × N-metric shape).
-  Line/area over an ordinal-numeric x is not yet recognized — a date x-column
-  is required, else the validator falls back to bar; relaxing this is a T6
-  ([T6](../../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)) HITL refinement candidate. The model-side heuristic lives in the
-  `present_table` tool description ([R4](../../../wayfinder/interpretation-client-rendering/tickets/R4-chart-type-expansion.md)).
-- **Radial value-labels stack at the donut center.** The `valueLabelsPlugin`
-  draws doughnut/polarArea value-pills at each `ArcElement`'s `x`/`y`, which
-  Chart.js sets to the shared donut center — so enabling 显示数值 on a
-  multi-slice radial chart stacks the pills at one point (unreadable). Per-slice
-  arc-centroid placement is a
-  [T6](../../../wayfinder/interpretation-client-rendering/tickets/T6-chart-integration-testing.md)
-  HITL refinement candidate (the R4 prototype has the same behavior).
+  columns, doughnut with >8 classes, line/area whose x is neither a date nor
+  an ordinal-numeric sequence, bubble with <3 numeric columns, radar/polarArea
+  not in entity × N-metric shape). Line/area accepts a date x or a numeric x
+  whose cells are monotonic non-decreasing in row order (an ordered sequence);
+  an unordered or non-numeric x degrades to bar. The model-side heuristic lives
+  in the `present_table` tool description ([R4](../../../wayfinder/interpretation-client-rendering/tickets/R4-chart-type-expansion.md)).

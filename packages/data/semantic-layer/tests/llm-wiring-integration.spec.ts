@@ -208,31 +208,46 @@ describe('CL8 — enrichment-llm-wiring provider/model resolution', () => {
     if (savedModel !== undefined) process.env.ENRICHMENT_LLM_MODEL = savedModel
   })
 
-  /** Minimal ctx mock capturing apply()'s schema.setLlmCall + logger.info. */
-  function mockApplyCtx(): { ctx: Context; logged: string[]; setLlmCall: ReturnType<typeof vi.fn> } {
+  /** Minimal ctx mock capturing apply()'s schema.setLlmCall + logger.info/warn. */
+  function mockApplyCtx(): { ctx: Context; logged: string[]; warned: string[]; setLlmCall: ReturnType<typeof vi.fn> } {
     const logged: string[] = []
+    const warned: string[] = []
     const setLlmCall = vi.fn()
     const ctx = {
       schema: { setLlmCall },
-      logger: { info: (m: string) => { logged.push(m) } },
+      logger: {
+        info: (m: string) => { logged.push(m) },
+        warn: (m: string) => { warned.push(m) },
+      },
     } as unknown as Context
-    return { ctx, logged, setLlmCall }
+    return { ctx, logged, warned, setLlmCall }
   }
 
-  test('no config + no env → apply throws enrichment-llm-wiring error', () => {
-    const { ctx, setLlmCall } = mockApplyCtx()
-    expect(() => { apply(ctx, {}) }).toThrow('enrichment-llm-wiring: no provider/model configured')
+  test('no config + no env → apply warns + skips wire (CB-1a α graceful degrade)', () => {
+    const { ctx, warned, setLlmCall } = mockApplyCtx()
+    expect(() => { apply(ctx, {}) }).not.toThrow()
     expect(setLlmCall).not.toHaveBeenCalled()
+    expect(warned).toHaveLength(1)
+    expect(warned[0]).toContain('enrichment-llm-wiring: no provider/model configured')
+    expect(warned[0]).toContain('deterministic-only')
   })
 
-  test('config.provider set but model unset → throws enrichment-llm-wiring (!model branch)', () => {
-    const { ctx } = mockApplyCtx()
-    expect(() => { apply(ctx, { provider: 'x' }) }).toThrow('enrichment-llm-wiring')
+  test('config.provider set but model unset → warns + skips wire (!model branch)', () => {
+    const { ctx, warned, setLlmCall } = mockApplyCtx()
+    expect(() => { apply(ctx, { provider: 'x' }) }).not.toThrow()
+    expect(setLlmCall).not.toHaveBeenCalled()
+    expect(warned).toHaveLength(1)
+    expect(warned[0]).toContain('enrichment-llm-wiring: no provider/model configured')
+    expect(warned[0]).toContain('deterministic-only')
   })
 
-  test('config.model set but provider unset → throws enrichment-llm-wiring (!provider branch)', () => {
-    const { ctx } = mockApplyCtx()
-    expect(() => { apply(ctx, { model: 'm' }) }).toThrow('enrichment-llm-wiring')
+  test('config.model set but provider unset → warns + skips wire (!provider branch)', () => {
+    const { ctx, warned, setLlmCall } = mockApplyCtx()
+    expect(() => { apply(ctx, { model: 'm' }) }).not.toThrow()
+    expect(setLlmCall).not.toHaveBeenCalled()
+    expect(warned).toHaveLength(1)
+    expect(warned[0]).toContain('enrichment-llm-wiring: no provider/model configured')
+    expect(warned[0]).toContain('deterministic-only')
   })
 
   test('config.provider/model override env (no silent vendor fallback)', () => {

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-resolve-term",
   "description": "Model-facing resolve_term tool: exact alias resolution from SKOS pref_label/alt_labels via the relation graph's reverse index",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },

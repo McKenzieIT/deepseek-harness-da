@@ -1,5 +1,7 @@
 # ADR-0001: Typed Pluggable Data Source Model
 
+English | [中文](0001-typed-pluggable-data-source-model.zh.md)
+
 **Status**: Accepted (2026-08-21)
 **Context**: semantic-layer map, G1 ticket
 

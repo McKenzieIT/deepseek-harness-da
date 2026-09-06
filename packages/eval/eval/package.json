@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-eval",
   "description": "Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
