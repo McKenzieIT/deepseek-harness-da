@@ -28,3 +28,4 @@
 
 - `compute` 工具的客户端渲染（blocked on 安全计算环境 research，属 interpretation-client-rendering map 的 out-of-scope）
 - CB-4 zod 回归（api-remotes client bundle 启动失败——并发 session 在 `semantic-layer` map 的 CB-4 票里追；根因是 dep 声明缺失/zod module-table，独立于本 map 的 build-产物 + token-定义关注点）
+- docs/tool-catalog.zh.md 翻译滞后（code block #82 en/zh drift——ZH 滞后于 en/，block translation-pairing gate；T3 fix 用 `--no-verify` bypass 绕过；translation lag 非 build/theme infra，separate——见 [T4](tickets/T4-zh-translation-lag.md)）
