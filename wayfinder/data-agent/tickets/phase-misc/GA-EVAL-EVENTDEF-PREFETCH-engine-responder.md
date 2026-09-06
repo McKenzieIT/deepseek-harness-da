@@ -175,3 +175,11 @@ real-exec 侧（run `eventdef-realexec`，1h35m）：
 - **召回 6/18** 受 `alt_labels` 覆盖（453 事件中仅 6 个有）限制——扩召回（description-mining / BM25 event-candidate）是独立后续。
 - **检测成本**：每个有词法候选的问题 +1 次 qwen3.7-max 调用（~2-3s，按 question 缓存）。
 - 056/130 的 reference SQL 返回 0（登录账号 UV=0、付费抽卡次数=0）本身可疑，已记进新票工作清单。
+
+### Pointer
+
+- **PR [#38](https://github.com/McKenzieIT/deepseek-harness-da/pull/38)**（within-fork，base=`fix/ga-eval-sqlgen-prompt-fix` 即叠在 PR #26 (d) 之上，使 diff 恰为 (a) 的改动；#26 merge 后 retarget 到 master）。分支 `task/ga-eval-eventdef-prefetch`，backup `backup-ga-eval-eventdef-prefetch`。
+- Commits：`36622d45eb`（主体 impl + 测试）· `3229590eeb`（MCP/wait timeout collision）· `761b8551d0`（仪表审计 + CASESET 新票）· `0f7b9234a2`（judge schema context）· `57b6ad3456`/`83533b79f9`/`8dea406297`（记录）。
+- Artifacts（`eval-results/`，按仓库惯例不入 git）：`eventdef-judgeonly.json`（v1，judge 未修）· `eventdef-judgeonly-v2.json`（v2）· `eventdef-realexec.json` · `smoke119b.json`。审计与重锚输出入库于 `wayfinder/data-agent/research/artifacts/`。
+- 工具：`packages/eval/eval-cli/dev/event-detect-fp-probe.ts`（FP=0 探针）· `dev/case-expected-value-audit.mjs`（仪表校验）· `dev/reanchored-score.mjs`（重锚评分）。
+- 后续票：[GA-EVAL-CASESET-EVENT-ANCHOR](GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)（期望值锚点口径——blocks criterion #1 回填）· [GA-EVAL-EVENTDEF-RECALL](GA-EVAL-EVENTDEF-RECALL-alt-labels-coverage.md)（召回 6/18，下一个瓶颈）。

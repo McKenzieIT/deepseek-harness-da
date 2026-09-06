@@ -924,3 +924,7 @@ Run id `eventdef-realexec`（1h35m），artifact `eval-results/eventdef-realexec
 4. **criterion #4（G-DA4 seam · additive · harness 不受影响）—— MET。**
 
 **净判断**：(a) 做对了它该做的事——event schema 到位、null-SQL 降 38-43%、占位符清零、6 个可检测的 event case 计算全部正确。但**衡量它的两把尺子都是坏的**：一把（case 期望值）本票只能诊断并另开票，一把（SQL judge 的 schema context）本票已修。**下一个瓶颈是召回（6/18），且形状清楚（453 事件仅 6 个有 `alt_labels`）——不是精度。**
+
+### Pointer
+
+[GA-EVAL-EVENTDEF-PREFETCH](../tickets/phase-misc/GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md) resolved 2026-09-06 — **PR [#38](https://github.com/McKenzieIT/deepseek-harness-da/pull/38)**（base=`fix/ga-eval-sqlgen-prompt-fix`，叠在 (d) 的 PR #26 之上；#26 merge 后 retarget master）。分支 `task/ga-eval-eventdef-prefetch` + backup。artifacts `eval-results/eventdef-{judgeonly,judgeonly-v2,realexec}.json` + `smoke119b.json`（不入 git）；审计/重锚输出入库 `research/artifacts/`。工具三件：`dev/event-detect-fp-probe.ts`、`dev/case-expected-value-audit.mjs`、`dev/reanchored-score.mjs`。**下一步**：(1) [GA-EVAL-EVENTDEF-RECALL](../tickets/phase-misc/GA-EVAL-EVENTDEF-RECALL-alt-labels-coverage.md)——召回 6/18 是下一个瓶颈，形状清楚（453 事件仅 6 个有 `alt_labels`；仓库已有 `enrichment.ts` 的 alt_labels 发现流程，先查为何只覆盖 6 个）；(2) [GA-EVAL-CASESET-EVENT-ANCHOR](../tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)——定锚点口径后回填 criterion #1；(3) 两者都解开才能在 real-exec 上看到数字动（n=39 + all-must-pass 使该指标目前是抽奖：两次 run 的 pass 集合零重叠）。
