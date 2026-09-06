@@ -93,6 +93,8 @@ jobs:
       # take their darwin branch only on this runner.
       - name: Build host lib (darwin parity — vendored @deepseek-ai/cordis resolves via lib — vite-tsconfig-paths is broken on vite 8 so tests can't resolve it to src)
         if: matrix.runner == 'seatbelt'
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: pnpm run build:lib:host
       - name: Write DASHSCOPE_API_KEY to .env (eval-cli darwin parity — ctx.credentials reads cwd/.env fallback, not process.env)
         if: matrix.runner == 'seatbelt'
