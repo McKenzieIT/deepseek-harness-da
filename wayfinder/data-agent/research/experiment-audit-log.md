@@ -885,3 +885,42 @@ Run: `--pass-k 3 --concurrency 3 --today 20260806 --scope-id 10000251 --provider
 - 135（唯一被注入的回退）：judge 修复**已生效**——att1/att3 现在 **sj=1.0 且五维全 1**，rationale 明确称赞「正确选择了事件视图表…完美契合」。att2 得 0.4 是 judge 换了个**领域论点**（ODS 客户端埋点有掉单风险，「真实营收」应以服务端 DWS 订单表为准），且该 attempt 还漏了 `/100.0`。即 case 本身的口径歧义 + all-must-pass，不是 (a) 缺陷。
 
 **v1 的 −5 经 per-case 排除与 (a) 无关**：5 个回退的 DWS case（038/039/041/043/051）**每一次 attempt 都 `eventView=false`**，检测没触发，且未检测到 event 时生成 prompt 与 (d) **逐字节相同**（section 缺省不渲染，已单测）→ 差异只能来自采样。每个回退 case 都同时有 sj=1.0 与 sj=0.4/0.6/0 的 attempt，是 `passKVerdict=every` 放大的 attempt 级抖动（038/041/043 的不稳定 FOLLOWUP 已记录过）。038 att2 自己写了 `FROM <数据视图>` 占位符——(a) 没给它注入任何东西，那是原有行为。唯一「被注入且回退」的 135 根因是缺陷 2。
+
+### Results（real-exec，`--with-query` + `MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml` + `MAXC_WAIT_SECONDS=240` + maxc-sidecar-k11）
+
+| real-exec（39 case × k=3） | post-prompt-fix（2026-09-05）| (a)+(d)（2026-09-06）|
+|---|---|---|
+| pass_rate（as-shipped）| 3/39 = 7.7% | 2/39 = **5.1%** |
+| pass_rate（**按 live 值重锚**）| — | **5/39 = 12.8%** |
+| event case pass | 0/18 | as-shipped **0/18** · 重锚 **3/18** |
+| null-SQL /117 | 23 | **13**（−43%）|
+| 用 event view 的 attempt | 0 | **18** |
+| `FROM <数据视图>` 占位符 attempt | **3** | **0** |
+| 非 SQL tool-call · infra_failure | 0 · 0 | 0 · 0 |
+
+Run id `eventdef-realexec`（1h35m），artifact `eval-results/eventdef-realexec.json`（未 git 追踪，与历次基线一致）；重锚评分工具 `packages/eval/eval-cli/dev/reanchored-score.mjs`，输出存 `research/artifacts/reanchored-score-eventdef-realexec-20260906.txt`。
+
+**as-shipped 的 7.7%→5.1% 不可解读**：通过的 case 从 {036,037,039} 变成 {041,046}——**零重叠，全是 DWS**。n=39 + `passKVerdict=every` 下 real-exec 的 pass 集合基本是 DWS case 之间的抽奖（036 三次都选了 `univ_role_summary_di` 返 0；037 att2 用对表拿到 4336 但 att1/att3 换表返 null）。这个 n 上比较 real-exec pass_rate 没有意义——两次 run 的 pass 集合都不相交。
+
+**重锚后 event case 3/18 达成 criterion #1 的 ≥3 目标**，且是最强形式（三次 attempt 全部精确命中）：
+
+| case | 三次 attempt 的实际值 | live 锚点 | 记录的期望值 |
+|---|---|---|---|
+| **119** | 552 / 552 / 552 | **552** | 510（stale）|
+| **125** | 4545 / 4545 / 4545 | **4545** | 4327（stale）|
+| **126** | 3413512 / 3413512 / 3413512 | **3413512** | 2774223（stale）|
+
+另外 3 个被检测到的也都算对了，只差在别处：**135** `[24099, 2409900, 24099]` 与 **057** `[24099×3]` 是同一个数的 **fen/yuan 单位差**（reference SQL 返 fen，模型除了 100 返 yuan；顺带一提 24099 恰好等于 DWS case 039 的期望值）；**136** `[482, query failed, 482]` 两次精确命中 + 一次瞬时查询失败。**6 个被检测到的 event case，计算全部正确——0 个因为「不知道表名」而失败。**
+
+**检测边界的另一面同样清楚**：12 个未被检测到（词法无候选）的 event case 照旧崩坏——129 把事件名当表名（`FROM \`game.card.gacha\``→Table not found）、123 幻觉出 `game.yanwu.match` 后诚实拒答、124/127/130 全 null、120/128 用 DWS 表出错值。**召回是下一个瓶颈，且它的形状已经完全清楚。**
+
+**criterion #3 在实跑中再次确认**：`ods_10000251_all_view` 出现在 **18 个 attempt**，全部属于那 6 个检测到的 event case（057/119/125/126/135/136）——**DWS case 使用它的次数为 0**。judge-only 与 real-exec 两次 run 一致。
+
+### Verdict（成功标准逐条）
+
+1. **criterion #1（event case execution_match ≥3/8）—— as-shipped UNINSTRUMENTED（0/18）；重锚后 MET（3/18，三次全精确）。** 期望值 16/18 已 stale，(a) 在 119 上生成逐字一致的 reference SQL 仍判 wrong。回填等 [GA-EVAL-CASESET-EVENT-ANCHOR](../tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md) 定口径。
+2. **criterion #2 —— judge-only MET（53.8%→61.5%）；real-exec as-shipped NOT MET（7.7%→5.1%，但两次 run 的 pass 集合零重叠 → 该指标在 n=39 上是抽奖），重锚 12.8%。** 非 SQL 发射维持 0%，且**占位符 3→0**。
+3. **criterion #3（0 FP，DWS 不回退）—— MET。** 探针 21/21 DWS 判 NONE（两跑一致）；judge-only + real-exec 两次实跑中 DWS case 使用 event view 的次数均为 0；6 个回退 case 逐一查明与注入无关。
+4. **criterion #4（G-DA4 seam · additive · harness 不受影响）—— MET。**
+
+**净判断**：(a) 做对了它该做的事——event schema 到位、null-SQL 降 38-43%、占位符清零、6 个可检测的 event case 计算全部正确。但**衡量它的两把尺子都是坏的**：一把（case 期望值）本票只能诊断并另开票，一把（SQL judge 的 schema context）本票已修。**下一个瓶颈是召回（6/18），且形状清楚（453 事件仅 6 个有 `alt_labels`）——不是精度。**

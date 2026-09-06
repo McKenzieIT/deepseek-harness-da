@@ -1,0 +1,43 @@
+dws   036 shipped=wrong reanchored=fail eventView=n
+dws   037 shipped=wrong reanchored=fail eventView=n
+dws   038 shipped=wrong reanchored=fail eventView=n
+dws   039 shipped=wrong reanchored=fail eventView=n
+dws   040 shipped=wrong reanchored=fail eventView=n
+dws   041 shipped=PASS reanchored=PASS eventView=n
+dws   042 shipped=wrong reanchored=fail eventView=n
+dws   043 shipped=wrong reanchored=fail eventView=n
+dws   044 shipped=wrong reanchored=fail eventView=n
+dws   045 shipped=wrong reanchored=fail eventView=n
+dws   046 shipped=PASS reanchored=PASS eventView=n
+dws   048 shipped=wrong reanchored=fail eventView=n
+dws   049 shipped=wrong reanchored=fail eventView=n
+dws   050 shipped=wrong reanchored=fail eventView=n
+dws   051 shipped=wrong reanchored=fail eventView=n
+dws   052 shipped=wrong reanchored=fail eventView=n
+dws   053 shipped=wrong reanchored=fail eventView=n
+dws   054 shipped=wrong reanchored=fail eventView=n
+dws   055 shipped=wrong reanchored=fail eventView=n
+EVENT 056 shipped=wrong reanchored=fail eventView=n live=0 recorded=0 got=[4336,4336,4336]
+EVENT 057 shipped=wrong reanchored=fail eventView=Y live=2409900 recorded=773500 got=[24099,24099,24099]
+dws   059 shipped=wrong reanchored=fail eventView=n
+dws   060 shipped=wrong reanchored=fail eventView=n
+EVENT 119 shipped=wrong reanchored=PASS eventView=Y live=552 recorded=510 got=[552,552,552]
+EVENT 120 shipped=wrong reanchored=fail eventView=n live=4530 recorded=4314 got=[4563,4563,4563]
+EVENT 121 shipped=wrong reanchored=fail eventView=n live=46306 recorded=33503 got=[null,63876,null]
+EVENT 122 shipped=wrong reanchored=fail eventView=n live=4095 recorded=3708 got=[4075,4075,4075]
+EVENT 123 shipped=wrong reanchored=fail eventView=n live=38098 recorded=33571 got=["ODPS-0130131:[1,41] Table not found - table game.yanwu.match cannot be resolved","ParseError: RequestId: 6A9D8FB5704C01DD4A7E3134 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 当前提供的数据表（PVP积分每日变化表、PVP积分状态总表、PVP段位配置维表）中仅包含积分增减、最终积分与段位等字段，没有“对战次数”或“发起次数”相关的指标字段。同时，底层埋点事件定义未加载，无法通过原始事件日志（如对战开始/匹配成功事件）来统计发起次数。\n\n**缺什么**：\n缺少记录 PVP 对战发起/开始的埋点事件定义（如 `pvp_battle_start` 等），或者缺少已聚合“对战次数”指标的 DWS/ADS 层宽表。\n\n**怎么解决**：\n请补充提供 PVP 对战发起相关的埋点事件名称及其参数定义，或提供包含“对战次数/发起次数”字段的聚合表 Schema，以便生成准确的统计 SQL。\nODPS-0130161:[1,1] Parse exception - invalid token '当前提供的数据表'\nODPS-0130161:[1,10] Parse exception - invalid token 'PVP积分每日变化表', expect one of 'REDUCE','FROM','SELECT','LPAREN','MAP'\nODPS-0130161:[1,41] Parse exception - invalid token '中仅包含积分增减'","ParseError: RequestId: 6A9D8FDE16C903C3CB5AC7BF Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 无法回答该问题。\n\n**为什么不能答**：\n在当前可用的数据源中，唯一可能记录 PVP 对战场次的事件 `game.yanwu.match`（演武场匹配事件）不可用（系统校验该表不在合法数据源中，且近期日志零命中，疑似事件已下线）。其余 PVP 相关的 DWS 表（如 `dws_10000251_pvp_score_di`、`dws_10000251_pvp_score_df`）仅记录积分变化、活跃角色数与段位快照，不包含“对战发起次数”或“对战场次”字段，导致查询路径走不通。\n\n**缺什么**：\n缺少记录 PVP 对战发起/完成次数的有效埋点事件或对应的 DWS 聚合指标。\n\n**怎么解决**：\n1. 确认 `game.yanwu.match` 事件是否已下线，并找到当前实际在上报的 PVP 对战埋点事件（如 `game.pvp.battle` 等）进行替换。\n2. 或在数仓中补充包含 PVP 对战场次统计的 DWS 汇总表。\nODPS-0130161:[1,1] Parse exception - invalid token '无法回答该问题'"]
+EVENT 124 shipped=wrong reanchored=fail eventView=n live=129189 recorded=110362 got=[null,null,null]
+EVENT 125 shipped=wrong reanchored=PASS eventView=Y live=4545 recorded=4327 got=[4545,4545,4545]
+EVENT 126 shipped=wrong reanchored=PASS eventView=Y live=3413512 recorded=2774223 got=[3413512,3413512,3413512]
+EVENT 127 shipped=wrong reanchored=fail eventView=n live=45845 recorded=33564 got=[null,null,null]
+EVENT 128 shipped=wrong reanchored=fail eventView=n live=285137 recorded=231133 got=[409865,409865,409865]
+EVENT 129 shipped=wrong reanchored=fail eventView=n live=8183 recorded=6901 got=["ODPS-0130131:[1,89] Table not found - table game.card.gacha cannot be resolved","ODPS-0130131:[1,89] Table not found - table game.card.gacha cannot be resolved","ODPS-0130071:[1,174] Semantic analysis exception - column t2.ds cannot be resolved"]
+EVENT 130 shipped=wrong reanchored=fail eventView=n live=0 recorded=0 got=[null,null,null]
+EVENT 135 shipped=wrong reanchored=fail eventView=Y live=2409900 recorded=773500 got=[24099,2409900,24099]
+EVENT 136 shipped=wrong reanchored=fail eventView=Y live=482 recorded=432 got=[482,"query failed",482]
+EVENT 137 shipped=wrong reanchored=fail eventView=n live=259 recorded=288 got=["ParseError: RequestId: 6A9D930FACDC405505ADA5D3 Tag: ODPS Endpoint: http://service-corp.odps.aliyun-inc.com/api\nSQL Statement: 【诚实拒绝】\n\n- **为什么不能答**：当前上下文中提供的表（如 `dws_10000251_acc_summary_df`、`dws_10000251_acc_summary_di`）均为**账号粒度**（`account_id`），且仅提供了累计、近7日（`pay_role_list_1w`）、近30日（`pay_role_list_1m`）的付费角色列表，**没有单日（1d）的付费角色列表字段**。若使用 `pay_role_id_lst`（最近付费角色id）进行统计，只能获取每个账号最后一次付费的角色，会严重漏掉同一账号下在昨日有其他角色付费的情况，无法保证指标准确性。\n- **缺什么**：缺少**角色粒度**的付费明细表/日增量汇总表（包含 `role_id` 与付费行为），或当前账号表中缺少单日付费角色列表字段（如 `pay_role_list_1d`）。\n- **怎么解决**：请补充提供角色粒度的付费事件表（如 `dwd_role_pay_event_di`）或包含单日付费角色列表的账号级宽表，以便通过 `COUNT(DISTINCT role_id)` 进行准确计算。\nODPS-0130161:[1,1] Parse exception - invalid token '诚实拒绝'",361,361]
+EVENT 138 shipped=wrong reanchored=fail eventView=n live=39 recorded=48 got=[39,39,0]
+
+as-shipped : 2/39 = 5.1%
+re-anchored: 5/39 = 12.8%   (event cases scored against their own reference SQL's live value)
+event cases: as-shipped 0/18, re-anchored 3/18
