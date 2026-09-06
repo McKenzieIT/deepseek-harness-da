@@ -423,7 +423,7 @@ D「修 prompt 样例冲突」照做了一版：把判据从「周期报告」�
 | ② | rebase 到 origin/master | **完成**（落后 78 commits，非 60）。`context.ts` 冲突只有 import 一行（master 的 `buildPrompt` + `BuildPromptArgs` 是超集，取 master）；`:397` 的 `declineKind` 分支**自动合并成功**，无需手工合 |
 | ③ | 重跑测试 | **完成**：`tsc --noEmit` clean、nl2sql-engine **132** 绿（其中本 spec 14）、eval **339** 绿 |
 | ④ | rebase 后重跑全量 | 见下方 `cl20-postrebase-n1` 记录 |
-| ⑤ | 开 PR | 见下方 |
+| ⑤ | 开 PR | **完成**：[PR #37](https://github.com/McKenzieIT/deepseek-harness-da/pull/37)（base `master`，3 个 code commit，4 文件）。CI 状态见票尾 |
 
 顺带项（CL-26 附带）：`declineKind` `'open_ended_question'` → `'beyond_single_query'`，
 3 处调用点全改（`engine.ts` union + 返回、`context.ts:406`、spec）。
