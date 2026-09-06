@@ -709,7 +709,19 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     // harness-responder.ts which uses ~/.maxc/config.yaml. Same concept, one
     // default; both overridable via MAXC_CONFIG.
     const maxcConfigPath = process.env.MAXC_CONFIG ?? join(homedir(), '.maxc/config.yaml')
-    const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath })
+    // GA-EVAL-EVENTDEF-PREFETCH: the MCP tool-call timeout must sit ABOVE the
+    // sidecar's `maxc query run --wait <N>` window (N = MAXC_WAIT_SECONDS,
+    // default 60), so derive it from the same env var. At the previous 60s/60s
+    // parity the client gave up in the same instant maxc was handing back a job
+    // id, so any query slower than the wait window surfaced as
+    // `MCP error -32001: Request timed out` instead of taking the pending/attach
+    // path the sidecar was built for. Event-view queries make that reachable in
+    // practice: `COUNT(DISTINCT role_id)` over ieu_ods.ods_10000251_all_view
+    // measured 68s, against a few seconds for the pre-aggregated DWS tables the
+    // earlier baselines hit — so (a)'s own SQL was being scored infra_failure.
+    const maxcWaitSeconds = Number(process.env.MAXC_WAIT_SECONDS ?? 60)
+    const toolCallTimeoutMs = ((Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60) + 60) * 1000
+    const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath, toolCallTimeoutMs })
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }
