@@ -2,6 +2,7 @@
 
 > 按 direction 组织。每 ticket 一个文件(多 session 并行 claim 不冲突)。状态全 open。blocking 在每文件内。已 resolved 的决策见 `../map.md` 的 Decisions so far;研究笔记在 `../research/`。
 > **命名**:`<type><n>-<slug>.md`,type ∈ {R research,G grilling,T task,P prototype}。本 effort 命名空间,**独立于 data-agent 的 R/G/T**(同号不同 dir,路径区分)。
+> **执行流程**: T/R-experiment(impl/experiment)不在本环境直接做(走 SPEC→rubric 包→另一环境);G/R认读/P 本环境直接做。见 [`../playbook.md`](../playbook.md)。
 > **历史 eval 票**(`P11*`/`R3`/`G2`/`GA-EVAL-*`/`GA-EXP*`/`GA-GRILL*`)在 `../../data-agent/tickets/`(phase-4 + phase-misc),**不在本目录**——本 effort 仅放 2026-09-06 起的新方向票。
 
 ## 取票流程(多 session 并行)

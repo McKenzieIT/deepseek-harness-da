@@ -12,6 +12,7 @@
 
 - **域**: evaluation 框架(`packages/eval/`)的可信化与扩展。data-agent 的 eval 子流,独立成 wayfinder effort(同 `semantic-layer` 先例)。
 - **每会话应查 skills**:`research`(认读论文/调查)、`grilling`+`domain-modeling`(决策)、`prototype`(新 seam 原型)、`tdd`(impl)。
+- **执行流程**: T/R-experiment(impl/experiment)不在本环境直接做——走 SPEC→instruction+rubric→另一环境执行;G/R认读/P 在本环境直接做。见 [`playbook.md`](playbook.md)(流程不写进本 map,只引)。
 - **常设原则**:
   - **每方向先 R 票认读分析论文**(产 `research/<slug>-papers.md`,持久化关键 claim + 对本仓映射)→ 再 grilling → impl → experiment R。grilling 必须有论文分析在手。
   - **引用只引已验证论文**(见 §验证 TODO);进 ticket 前待核项须 primary-fetch arxiv.org(本环境 403,换网络/人工核)。subagent 输出 = 凭记忆断言,未验证前不进产物。
