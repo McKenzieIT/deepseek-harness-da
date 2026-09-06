@@ -5,7 +5,7 @@
 **Source**: [GA-AUDIT1-followup-findings](./GA-AUDIT1-followup-findings.md) (the resolved ticket's 73 deferred) + the 2026-09-04 `.tmp/adversarial-review/confirmed*.json` reconciliation (50 smell items re-verified).
 **Related**: [GA-GRILL-derived-from-lineage-direction](./GA-GRILL-derived-from-lineage-direction.md) (sl-3), [GA-GRILL-search-asset-id-normalization](./GA-GRILL-search-asset-id-normalization.md) (usl-9)
 
-## Progress to date (5 commits, 18 ④ items — 2026-09-04 across 2 sessions)
+## Progress to date (6 commits, 22 ④ items — 2026-09-04/09-06 across 3 sessions)
 
 | commit | batch | items |
 |---|---|---|
@@ -14,8 +14,9 @@
 | `24a0fd884b` fix(credentials) | embedder-retrieval-creds | erc-3 (drop find preflight — no secret read), -5 (keychain-host staleness doc), -6 (Reranker range doc) |
 | `33d025b472` fix(query) | query-engines | qe-6 (DATEDIFF comment), -7 (--Note/注意 preserved), -14 (DEFAULTS dedup), -15 (conventions comment) |
 | `c26eada21b` fix(client) | ui-context-layer | ucl-7 (NodeDetailPanel chip color → global sorted domain index via new `allDomains` prop, threaded from ContextLayerView's sorted set), -8 (narration-gate node id → first string via type-predicate `.find`, not `??`+`as string`), -9 (ContextLayerGraph `render().then(applyLOD)` cancelled-flag guard + `.catch`), -10 (`fadeIn` returns rAF cancel fn; `useGraphAnimations` cancels pending fadeIn rAFs on unmount) |
+| `5249e90d0c` fix(data) | data-infra | di-5 (getLinker cache key → active-scope `corpusVersion(undefined)` not per-scope — stale-linker window when active corpus changed but scopeId version stayed), di-12 (STATUS_RANK error↔pending rank-tie → `unchanged` not arbitrary `regressed` both directions; flip still recorded), di-13 (patrol findWeakestAssets: drop dead domain_counts loop + unused coverageQuery + broken assetHealth scope check; thread config.scope as upstream domain filter to evalResultQuery), di-14 (entriesEqual JSON.stringify → structural recursive `deepEqualCell`: order-insensitive objects, `Object.is` NaN, recursive — fixes key-order/NaN/undefined-key holes on cr_ immutability check) |
 
-= 18 items (14 prior + 4 this batch; 14 real fixes + 4 doc fixes). Every batch: TDD RED→GREEN (each fix RED-watched-fail → minimal GREEN → persistence-checked via `git diff <file> | grep <marker>`); per-file `pnpm exec oxlint` 0 (89-rule); full-tree `pnpm run typecheck` exit 0 throughout; subagent code-review + test review (ucl-9 Test 2 strengthened to assert a non-empty LOD update — closed a no-op false-green). New tests this batch: +8 (narration-gate.client.spec 3 / NodeDetailPanel.spec 1 / graph-animations.client.spec 2 / ContextLayerGraph.spec 2).
+= 22 items (18 prior + 4 this batch; 18 real fixes + 4 doc fixes). Every batch: TDD RED→GREEN (each fix RED-watched-fail → minimal GREEN → persistence-checked via `git diff <file> | grep <marker>`); per-file `pnpm exec oxlint` 0 (89-rule); full-tree `pnpm run typecheck` exit 0 throughout; subagent code-review + test review (ucl-9 Test 2 strengthened to assert a non-empty LOD update — closed a no-op false-green). New tests this batch: +8 (narration-gate.client.spec 3 / NodeDetailPanel.spec 1 / graph-animations.client.spec 2 / ContextLayerGraph.spec 2).
 
 ## Deferred → ② this session (7 — need grilling / mock-sidecar / cross-package)
 
@@ -27,7 +28,7 @@
 
 | package | items | note |
 |---|---|---|
-| data-infra | di-5 (getLinker stale cache, dormant), di-12 (STATUS_RANK error/pending tie), di-13 (patrol-mode dead loop + broken scope filter), di-14 (entriesEqual JSON.stringify holes) | 4 doable. **di-10/di-11 DEFERRED** (phase-gate.ts has uncommitted PB-COMPLY WIP — WIP-entangled; di-11 also multi-agent semantics). |
+| data-infra | ~~di-5/-12/-13/-14~~ **RESOLVED via PR #32** (`5249e90d0c`, merged `f4782bf61a`): getLinker active-version cache key / STATUS_RANK error↔pending→unchanged / patrol scope upstream domain filter / entriesEqual deepEqualCell. **di-10/di-11 DEFERRED** (phase-gate.ts PB-COMPLY WIP-entangled; di-11 multi-agent semantics). |
 | ui-semantic-layer | usl-10 (RemoteResult/unwrap dup), usl-11 (kindBadgeClass dup), usl-12 (triggerEval loading), usl-13 (useLayoutMode stale docstring) | 4 doable. **usl-9 DEFERRED** (inferKindFromId prefix — gated on open grilling GA-GRILL-search-asset-id-normalization; SchemaExplorer.tsx has GA-WIRING-impl WIP). |
 | ui-present-misc | upm-2 (isLatestTurn dup), upm-9 (parseFloat vs Number inconsistent), upm-10 (extractText dup + trim) | 3. **RE-VERIFY** — TableCard.tsx moved (concurrent R4 chart-types commit `b2860731d5`/`2abfd47bd1` + post-ship `4f11d43762`); line numbers + possibly code changed. upm-7 RESOLVED (PB-COMPLY R11). |
 | eval-cli-exp | ece-13 (resolveRunFile unsorted), ece-14 (expandQuery bare catch), ece-15 (LEVEL_CONFIGS ?? {}) | 3. **RE-VERIFY** — eval-cli had uncommitted GA-EVAL-MANIFEST-impl WIP (bin/eval.ts→src/bin.ts, +src/index.ts/invariant.ts); compare.ts/context.ts/harness.ts may have moved. |
@@ -35,7 +36,7 @@
 | data-tools-discovery | dtd-7 (alt-labels presentationMeta regex → structured) | 1, local. |
 | core-runtime-scripts | crs-3 (seed-event-external-refs --with-llm unread) | 1, local. |
 
-(ui-context-layer 4 done — `c26eada21b`; was the recommended single-package starting point. data-infra 4 or ③ eval-core 5 are the next low-risk picks.) |
+(ui-context-layer 4 done — `c26eada21b`; data-infra 4 done — PR #32 `5249e90d0c`. Next low-risk picks: ui-semantic-layer 4 or ③ eval-core 5.) |
 
 ## ② refactor (11 — larger/cross-package, each its own scope)
 
