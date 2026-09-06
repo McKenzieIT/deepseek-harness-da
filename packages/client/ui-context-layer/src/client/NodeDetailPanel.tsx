@@ -9,9 +9,17 @@ export interface NodeDetailPanelProps {
   onClose: () => void
   /** Insert a reference to this asset into the chat. */
   onInsertReference?: (assetName: string) => void
+  /**
+   * Sorted set of ALL domains in the graph, used to key chip colors by the
+   * GLOBAL domain index — matching the graph's comboStyle (which keys off the
+   * same sorted set in ContextLayerGraph.toG6Data) and DomainFilterToolbar —
+   * so a chip visually correlates with its combo. Omitted = fall back to the
+   * local index within this node's domains (prior behavior). (ucl-7)
+   */
+  allDomains?: readonly string[]
 }
 
-export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onInsertReference }) => {
+export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onInsertReference, allDomains }) => {
   if (!node) return null
 
   const kindColor = KIND_COLORS[node.kind]
@@ -68,8 +76,14 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
         <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>Domains</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {node.domains.map((domain, i) => {
-            const bg = DOMAIN_PALETTE[i % DOMAIN_PALETTE.length]
-            const border = DOMAIN_BORDER_PALETTE[i % DOMAIN_BORDER_PALETTE.length]
+            // ucl-7: key the palette off the GLOBAL sorted domain index (when the
+            // caller supplies allDomains) so a chip's color matches its combo +
+            // the DomainFilterToolbar, which both color by the same sorted set.
+            // Fall back to the local index within this node's domains otherwise.
+            const idx = allDomains?.indexOf(domain) ?? -1
+            const colorIdx = idx >= 0 ? idx : i
+            const bg = DOMAIN_PALETTE[colorIdx % DOMAIN_PALETTE.length]
+            const border = DOMAIN_BORDER_PALETTE[colorIdx % DOMAIN_BORDER_PALETTE.length]
             return (
               <span
                 key={domain}

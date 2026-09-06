@@ -175,8 +175,14 @@ export class NarrationGate {
             : `${String(item.source)}->${String(item.target)}`
           edgeItems.push({ ...item, id })
         } else if (typeof item.id === 'string' || typeof item.table === 'string' || typeof item.dim_table === 'string') {
-          // Node-like items: use id, table, or dim_table as the identifier
-          const id = (item.id ?? item.table ?? item.dim_table) as string
+          // Node-like items: use the first of id/table/dim_table that is
+          // actually a string. The branch condition guarantees one is, but
+          // `??` would keep a truthy non-string (e.g. a numeric item.id)
+          // and the `as string` would lie downstream (ucl-8).
+          const id = [item.id, item.table, item.dim_table].find(
+            (v): v is string => typeof v === 'string',
+          )
+          if (id === undefined) continue
           nodeItems.push({ ...item, id })
         }
       }
