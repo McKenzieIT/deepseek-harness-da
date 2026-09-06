@@ -102,6 +102,7 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
               <NodeDetailPanel
                 node={selectedNode}
                 onClose={handleCloseDetail}
+                allDomains={allDomains}
                 {...(onInsertReference ? { onInsertReference } : {})}
               />
             </div>
