@@ -90,3 +90,16 @@ not a materialized module, and no registered package factory
 **GA-AUDIT1 协调**：`52330a98fa` 删了 schema-gateway zod dep，本 PR **不**恢复该 dep（platform-module 修复下不需要）。GA-AUDIT1 followup（`fix/ga-audit1-followup-ucl-batch-recover`，PR #9）已 merge，未碰 knip.json 或 loader，无冲突。
 
 **brief drift（供 map 记录）**：session brief 前提经代码核实更正——(1)"三包都有 typert.remote-client.js import zod"→只有 schema-gateway/evidence-query 有 remote-client，且自包含不 import zod，zod 引用是 typert 生成 wire schema 的 `zod.z`；(2)"移除 vi.mock('zod') bypass"→全仓无 vi.mock('zod')；(3)"bundler 经 schema-gateway dep 注册 zod"→bundler 不这么做，bundle 字节级一致；(4)"base=master"→本地 master 停 CB-1a（pre-W16），从 origin/master（含 W16 PR #14）建 worktree。
+
+## Follow-up（2026-09-07，CB-1b/CB-5 session 发现）
+
+本 PR 打破了**上游**的 `scripts/client-bundle-purity.spec.ts:115`：
+
+```
+AssertionError: expected true to be false
+  expect(requesting.neverBundle('zod')).toBe(false)
+```
+
+机制：`packages/client/tsdown.client.ts:238` 是 `neverBundle: isProductionDependency`，而 `3833acdec3`（"share zod as a platform module so plugin bundles resolve require(\"zod\") (CB-4)"）给 `packages/client/web/package.json:42` 加了 `"zod": "^4.4.3"` → zod 成为生产依赖 → `neverBundle('zod')` 变 true，而上游那条断言期望 false。本机实测：17 tests / 1 failed。
+
+按"DA 不应影响上游"的原则（[CB-5](CB5-da-ci-upstream-boundary.md)），这属 **DA 改动打破上游测试**，需要归属决定：改上游期望值（zod 现在确实该 external，则该断言已过时）、还是换一种不把 zod 变成生产依赖的做法。本票已 closed 且该 session 已 inactive，故记录到 [CB-5](CB5-da-ci-upstream-boundary.md) 的 Q4，未在本 session 修。
