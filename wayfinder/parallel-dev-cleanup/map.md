@@ -25,7 +25,9 @@
 
 - **⑤ 的 53 defer**——scheduled follow-up。下 3-5 key:da-upstream-debt(132L)、da-architecture(146L)、da-pr-workflow(153L)。〔tickets/R1-translation-defer-53.md〕
 - **④ 的 2 unmerged 分支**——user/Lead 决策(开 PR 或留;两个都有 1 unique commit)。〔tickets/R2-unmerged-branches.md〕
-- **branch protection**(origin/master:restrict pushes + require CI green)——GitHub admin 开。〔tickets/R3-branch-protection.md〕
+- **branch protection**(origin/master:restrict pushes + require CI green)——GitHub admin 开。**⚠️ 2026-09-06 审计：不能按原文执行,已被 R4 阻塞** ——实测 master 当前 `protection` = **404 未受保护**(故本项尚未做),而 CI 在 PR 上 **6 个 check 恒红**(全为 master 既有欠债,已与已合并 PR #36 逐项比对确认与 diff 无关):加 "require CI green" 会**永久锁死 master**;"restrict pushes" 会**切断 CLAUDE.md 明文允许的 wayfinder 文档直推路径**(本次 CL-20 收尾 session 用了两次)。两条约束已写进 R3 票体。〔tickets/R3-branch-protection.md〕
+- **CI 门禁策略**——6 个红 check 的处置:哪些进 required、其余修/冻结基线/明示放弃。规模:coverage **512 ERROR / 161 文件**(`vitest.config.ts:285-292` per-file 100%)、static **17 gate**(含 402 条 jsdoc)、snapshots **30 包**缺 `./invariant`、python closure **25** 依赖;windows 是**不稳定**(失败集合 run-to-run 抖 ±3 文件)而非确定失败,处置方式不同。**阻塞 R3**。〔tickets/R4-ci-red-gate-policy.md〕
+- **`Issue lifecycle`/`Issue policy` 上游专用**——`issue-lifecycle.yml:53-54` + `config.json:2-3` 硬编码 `deepseek-harness/deepseek-harness`,`policy.mjs:618` 据此拼 URL → 404;且 fork 无 Actions variable(`total_count: 0`)故 App token 报 client-id 空。**在 fork 上永不可能绿**,加 `if: github.repository_owner == ...` 守卫即可。R4 里最便宜可先做的一块。〔tickets/R5-issue-workflows-upstream-only.md〕
 - **重启在跑 session**(含 dsh-cl23)让新 CLAUDE.md 生效——ops(session 做不了)。
 - **本地 master 发散**(并发 session 的 commit,含生产-src `c26eada21b fix(client): ui-context-layer`,推不上 gate 拦;origin/master 安全)——Lead 收敛。
 
