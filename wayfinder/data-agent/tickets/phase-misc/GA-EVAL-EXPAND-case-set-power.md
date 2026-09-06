@@ -133,6 +133,23 @@ P11e 当初解决的正是作弊问题——原 161 个 case 的问法是**表�
 - [ ] 扩出来的作为**高功效实验集**，供 [GA-EXP5](GA-EXP5-language-correlation.md) 用
 - [ ] 两者分别报告。**不要**用 LLM 生成的 case 去改写绝对质量基线
 
+## 新证据（2026-09-06，来自 [GA-EVAL-EVENTDEF-PREFETCH](GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md)）：real-exec pass_rate 在 n=39 上是抽奖
+
+本票的功效论证此前靠 MDE 估算（n=39 → MDE~20pp）。(a) 的两次 real-exec run 给出了**直接证据**，比估算强：
+
+| run | 通过的 case |
+|---|---|
+| post-prompt-fix（2026-09-05）| {036, 037, 039} = 3/39 |
+| (a)+(d)（2026-09-06）| {041, 046} = 2/39 |
+
+**两个集合零重叠**，且全是 DWS case。同一套 case、同一个模型、相邻两天，通过的是完全不同的 case —— 在 `passKVerdict=every`（k=3 全过才算过）下，real-exec pass_rate 衡量的主要是**哪三次采样恰好都没抖**，而不是能力。per-case 机制已查明：036 三次都选了 `univ_role_summary_di` 返 0；037 att2 用对表拿到 4336 但 att1/att3 换表返 null。
+
+**对本票的意义**：
+
+- 不一致对数 n_d 的问题在 real-exec 上比 judge-only 更严重——all-must-pass 把「3 次里有 1 次抖」也计入不一致，等于对同一个 n 施加了三倍的翻转机会。功效计算若只按 case 数算，会**高估** real-exec 的分辨力。
+- 「扩 case set」和「换 verdict 语义」在这里不是二选一：[GA-EVAL-REBASELINE](GA-EVAL-REBASELINE-passk-semantics.md) 已把 any→every 定为有意的 anti-flakiness 决策，那个决策没错（它确实惩罚重试不一致），但它把 pass_rate 变成了一个**不适合做前后对比**的指标。本票在定目标 n 时应显式区分：要检测的是「能力提升」还是「一致性提升」。
+- 与 [GA-EVAL-CASESET-EVENT-ANCHOR](GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md) 叠加后更窄：39 个 case 里 18 个是 event case，而其中 **16 个的期望值已 stale**（DWS 侧 13/13 仍精确）→ real-exec 上**真实可测的样本远小于 39**。扩 case set 之前先确认新 case 的期望值有冻结锚点，否则加的是不可测的样本。
+
 ## 成功标准
 
 1. **n_d ≥ 85**（pass^k 口径），而非仅 N ≥ 360

@@ -41,6 +41,7 @@
 
 - [ ] grill 口径（A-E 或组合）——核心权衡：eval 作为**回归门**（需冻结锚点）vs 作为**正确性度量**（需跟随真实数据）。
 - [ ] 查 056/130 为何 reference SQL 返回 0（登录账号 UV=0、付费抽卡次数=0 都不合理）——可能 reference SQL 的 event 名/过滤写错，是独立的 case 质量问题。
+- [ ] **单位口径未声明**：135/057 的 reference SQL 返回 **fen**（`cash_revenue_fen`），而模型算出 `/100.0` 后的 **yuan**——两者是同一个数（`2409900` fen == `24099` yuan），但 `scalar_exact` 判 false。且 `24099` 恰好等于 DWS case 039 的期望值，说明 DWS 表存 yuan、event params 存 fen。所以「event case 怎么算对」除了锚点还得定**单位**：case 是否该声明期望值的单位，或 match 是否该容许已知的 100 倍换算。（(a) 的 6 个 TP 里有 2 个只输在这一点上——见 [GA-EVAL-EVENTDEF-PREFETCH](GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md) Resolution）
 - [ ] 查 137/138 为何**下降**（288→259、48→39）——与其余上升方向相反，可能另有机制（沙盒过滤？分区重算？）。
 - [ ] 定下口径后，回填 [GA-EVAL-EVENTDEF-PREFETCH](GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md) criterion #1 的测量（该票已按 live 值重锚做过一次一次性评分，见其 Resolution）。
 - [ ] 同步检查另一处：DWS 侧 8 个多行期望值本次 SKIPPED 未验（需镜像 runner 的行集匹配器）——它们可能也漂了，只是没测。
