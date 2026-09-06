@@ -193,6 +193,16 @@ CL-23 `looksLikeToolCall` 同款前缀正则 / 其余非空即散文）：
 在 real-exec 上 **-2 case 回归**（041/046）、结论「假设证伪」，另有未决 grilling 票
 GA-EVAL-SQLGEN-FOLLOWUP。→ 需先定合并顺序，勿两头同时改同一文件。
 
+> **E8 更正（2026-09-06）：`contextPrefetched` 已进 origin/master**（`git grep -c contextPrefetched origin/master -- .../prompt.ts` = **3**）。
+> 上文「不在 master 上」是 2026-09-05 落笔时的事实，现已过时。三点后果：
+> 1. **本票选择不改 `prompt.ts`（D2）的判断反而更划算** —— 若当初改了，现在要和已落地的 `contextPrefetched` 手工合。
+> 2. `context.ts` 有一处需手工合：master 在同文件加了 `promptBuilder: (args) => buildPrompt({...args, contextPrefetched: true})`，
+>    本票改的是 `:397` 的 `declineKind` 分支条件 —— **同文件不同位置，非同行冲突**。
+> 3. ⚠️ **本票的全量 eval（`cl20-full-n1`）因此失效为验收证据**：`contextPrefetched` 把 engine responder 的可调用
+>    `# 工具集` 目录删掉，按 GA-EVAL-SQLGEN-PROMPT-FIX 自测将 tool-call 发射从 16-22% 打到 **0%**；
+>    而 tool-call 正是本票 9 个 fail case 中 **6/27 个 attempt** 的形态 → rebase 后模型行为改变，**须重跑**。
+>    该 run 保留为 pre-rebase 历史记录（见 experiment-audit-log 2026-09-06 条目）。
+
 ---
 
 ## Resolution（2026-09-05）—— 关闭-部分：交付「超出能力」门禁，主观边界证伪为 case-set 问题
@@ -272,3 +282,33 @@ run id `cl20-v3-<case>`：
 
 → **毕业新票 CL-25**（复审 26 个 open_ended case 的期望行为 + 拆分 5 类拒绝理由）。
 DELIVERY 目标值待 CL-25 定齐 case set 后重设。
+
+---
+
+## 全量 eval 结果（2026-09-06，`cl20-full-n1`）—— **pre-rebase，非验收证据**
+
+完整记录见 [experiment-audit-log 2026-09-06 条目](../research/experiment-audit-log.md)。摘要：
+
+| 同协议（k=1）可比项 | 本次 | CL-22 k=1 中位数 | delta |
+|---|---|---|---|
+| Overall | 77.4%（130/168） | 73.2%（极差 ±2.4pp，最大 76.8%） | **+4.2pp**（高于历史观测最大值） |
+| **Voice DELIVERY（18 子集）** | **94.4%（17/18）** | **77.8%（14/18）** | **+16.6pp** |
+| DELIVERY 全 25 | 80.0%（20/25） | —（历史无此切法） | — |
+
+**门禁误伤 = 0**（关键验证）：9 个 EXEC case 出现空 SQL，逐一比对基线后 8 个本已 wrong；
+唯一疑点 `052`（基线 correct 3/3 SQL）单独重跑 `cl20-fp052` **正常出 SQL、门禁未触发、100% 通过**
+→ 全量 run 那次 EMPTY 属 LLM 非确定性（CL-22 实测 26.8% flip rate），非门禁所致。
+
+门禁在 DELIVERY 侧触发 11 个，其中 10 个 correct（仅 `080` wrong）。
+
+**为何不作验收证据**：见上方 E8 更正第 3 点（`contextPrefetched` 已落地，模型不再发射 tool-call，
+须在 rebase 后重跑）。
+
+## 收尾状态（2026-09-06）
+
+- 代码在 `fix/cl20-delivery-agent-behavior`（`d6b376d296` + `4c2a1c7764`），**未合并**。
+  按 `docs/da-pr-workflow.md`，触及 `packages/*/src` 必须走 PR（CI 有 "No production src on
+  master (direct-push guard)"）。
+- **待办**：① rebase 到 origin/master（落后 58 commits，`context.ts` 一处手工合）→
+  ② 重跑测试 → ③ **在 rebase 后代码上重跑全量**（这才是验收数字）→ ④ 开 PR。
+- wayfinder 文档部分（本票 + CL-25/26/27 + map + audit-log）按同一工作流允许直推 master，已先行合入。

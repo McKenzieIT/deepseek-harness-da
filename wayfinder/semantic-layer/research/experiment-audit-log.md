@@ -561,3 +561,45 @@ Resolves: [B-DA6](../../data-agent/tickets/phase-misc/B-DA6-qualifytable-live-wi
 报告：[passk-rescore-2026-09-03.md](passk-rescore-2026-09-03.md)；
 落地：commit `236f876f2a`（run-eval.sh 去 `--pass-k 1` + compare.ts 协议守卫）。
 受影响验收票：CL-20 / CL-21 / CL-23 / R11（各已追加更正段）。
+
+## 2026-09-06: CL-20 capability triage gate — 全量 168-case（**pre-rebase，已失效为验收证据**）
+
+### Setup
+- **基线**: 同协议可比者 = CL-22 的 k=1 三轮中位数（`32dd9532`/`e7a946be`/`b244533a`，overall 中位 73.2%、Voice DELIVERY 中位 77.8%）。**不可**与 `rebaseline-passk-168-clean`（61.9%，k=3 pass^k）直接比——协议不同，纯 k 差异约 12pp。
+- **Cases**: 168 K11-v2（80 original + 40 alias + 48 voice）
+- **Model**: aga/qwen3.7-max, responder=engine, **pass_k=1**, concurrency=3, sql-judge on, `today=20260906`
+- **Run ID**: `cl20-full-n1`
+- **变更**: CL-20 capability triage gate（`engine.ts` `triageQuestion` 前置门禁，判交付物类型 report/forecast/recommendation；`declineKind` union 加 `'open_ended_question'`；`context.ts:397` 合成分支复用 CL-23 grounded 三段式）。commits `d6b376d296` + `4c2a1c7764`。
+- ⚠️ **代码基线 = 落后 origin/master 58 commits 的旧 master**，**不含** master 已落地的 `contextPrefetched`（GA-EVAL-SQLGEN-PROMPT-FIX）。
+
+### Data (verbatim)
+
+`cl20-full-n1` summary：`total 168, correct 130, wrong 38, declined 0, unjudged 0, infra_failure 0, pass_rate 0.7738095238095238`
+
+| 类别 | 本次 (k=1) | `rebaseline-passk-168-clean` (k=3 pass^k) |
+|---|---|---|
+| ORIGINAL_EXEC | 57/73 = 78.1% | 49/73 = 67.1% |
+| ALIAS | 31/40 = 77.5% | 20/40 = 50.0% |
+| VOICE_EXEC | 22/30 = 73.3% | 19/30 = 63.3% |
+| **DELIVERY（全 25）** | **20/25 = 80.0%** | 16/25 = 64.0% |
+| TOTAL | 130/168 = 77.4% | 104/168 = 61.9% |
+
+**同协议（k=1）可比项**：
+- Overall 77.4% vs CL-22 k=1 中位 **73.2%**（三轮 70.8/73.2/73.2，极差 ±2.4pp）→ +4.2pp，**高于历史观测最大值 76.8%**
+- **Voice DELIVERY 17/18 = 94.4% vs CL-22 k=1 中位 77.8%（14/18）→ +16.6pp**
+- 数字 DELIVERY 3/7 = 42.9%（`079`/`080` 主观类未过，设计如此；`074`/`078` 亦未过）
+
+门禁触发（19 个空 SQL 中，DELIVERY 侧 11 个）：`075` `080` `voice_017` `voice_033` `voice_036` `voice_041` `voice_044` `voice_045` `voice_047` `voice_048` 全部 correct（`080` wrong）。
+
+**误伤核查**：9 个 EXEC case 出现空 SQL（`018` `033` `052` `066` `alias_016` `alias_018` `alias_037` `voice_008` `voice_027`）。逐一比对基线：8 个在基线中**本已 wrong**；唯一疑点 `052`（基线 correct，3/3 SQL）**已单独重跑排除** —— `cl20-fp052` 正常出 SQL、门禁未触发、100% 通过 → 全量 run 那次 EMPTY 是 LLM 非确定性（CL-22 实测 26.8% case flip rate），**非门禁误伤**。**门禁误伤 = 0。**
+
+### Verdict
+
+1. **单 run，pass_k=1，不可作决策依据**（CL-22 分层协议：迭代中用 n=1 导航，决策点须 ≥3 轮中位数）。
+2. **本 run 已失效为 CL-20 的验收证据**：`contextPrefetched` 已进 origin/master（`prompt.ts` 3 处），它把 engine responder 的可调用 `# 工具集` 目录删掉、按 GA-EVAL-SQLGEN-PROMPT-FIX 自测把 tool-call 发射从 16-22% 打到 **0%**。而 tool-call 正是本票 9 个 DELIVERY fail case 中 6/27 个 attempt 的形态 → **rebase 后模型行为改变，须在 rebase 后重跑**。本条目保留为 pre-rebase 历史记录。
+3. 方向性信号（待重验确认）：Voice DELIVERY 同协议 +16.6pp、门禁误伤 0、11 个 DELIVERY case 经门禁走 grounded 合成后 10 个 correct。
+4. 未做 ≥3 轮中位数（CL-20 的 D5 验收要求）——理由见 CL-20 Resolution：该目标判定为引擎侧不可达（case set 主观类边界不自洽 → CL-25）。
+
+### Ticket Pointer
+Resolves（部分）: [CL-20](../tickets/CL20-delivery-agent-behavior-type2.md)
+衍生: [CL-25](../tickets/CL25-open-ended-case-set-consistency.md) · [CL-26](../tickets/CL26-eval-runner-service-decline-synthesis-gap.md) · [CL-27](../tickets/CL27-triage-unconditional-call-cost.md)
