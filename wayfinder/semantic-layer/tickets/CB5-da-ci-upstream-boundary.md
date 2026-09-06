@@ -62,6 +62,15 @@ env:{}（运行时实际用这个）  -> /Applications/Xcode.app/Contents/Develo
 
 **推论（供 Q1 参考）**：若将来真要在 darwin 上覆盖 pandas 路径，正确做法不是往上游 workflow 加 pip 步骤，而是让配置显式 `pythonPath` 指到一个绝对路径解释器，并对那个解释器装依赖。
 
+### 另一个实例：两个上游 gate 在本 fork 永久红
+
+不只是 darwin 腿。`issue-policy.yml` 与 `issue-lifecycle.yml`（均属上游）在本 fork 的**每个** PR 上都失败，因为它们硬编码了上游的 org/repo：
+
+- `Issue policy` → `GET /repos/deepseek-harness/deepseek-harness/pulls/<n>/requested_reviewers: 404` —— 查的是上游仓库，不是本 fork。
+- `Issue lifecycle` → `actions/create-github-app-token` 以 `owner: deepseek-harness` / `repositories: deepseek-harness` 请求，本 fork 无该 App 的 `client-id` secret → `must be set to a non-empty string`。
+
+实测 PR #41 / #36 / #35 / #30（全部已合并）这两项**都是 fail**，故属既有、非阻塞、与改动无关的噪音。但它意味着本 fork 的 PR 检查面里长期有两个恒红项，会稀释"检查全绿"这个信号 —— 属 Q1 的一部分：要么让这两个 workflow 在 fork 里 no-op，要么换成 DA 自己的等价 gate。
+
 ## Question（待决策）
 
 1. **DA 要不要建自己的 CI 腿？** 现状是 15/16 workflow 属上游、DA 无自己的腿。若建，边界怎么划（DA 包清单？路径过滤？），上游 workflow 是否要回收到 pristine 以便干净合并？
