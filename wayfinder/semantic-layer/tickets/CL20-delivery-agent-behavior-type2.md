@@ -295,9 +295,34 @@ DELIVERY 目标值待 CL-25 定齐 case set 后重设。
 | **Voice DELIVERY（18 子集）** | **94.4%（17/18）** | **77.8%（14/18）** | **+16.6pp** |
 | DELIVERY 全 25 | 80.0%（20/25） | —（历史无此切法） | — |
 
-**门禁误伤 = 0**（关键验证）：9 个 EXEC case 出现空 SQL，逐一比对基线后 8 个本已 wrong；
-唯一疑点 `052`（基线 correct 3/3 SQL）单独重跑 `cl20-fp052` **正常出 SQL、门禁未触发、100% 通过**
-→ 全量 run 那次 EMPTY 属 LLM 非确定性（CL-22 实测 26.8% flip rate），非门禁所致。
+> ### ⚠️ 更正（2026-09-06 晚）：本节原写「门禁误伤 = 0」，**该结论是错的，已作废**
+>
+> 原判断只查了「9 个 EXEC 空 SQL」，**漏查 `compare.ts` 报出的 Lost 全集**；且对 `052` 只重跑一次
+> 就下了「非门禁所致」的结论。补做 5 次观测后事实相反：
+>
+> | run | SQL | latency | verdict |
+> |---|---|---|---|
+> | `cl20-full-n1` | EMPTY | 26,576ms | wrong |
+> | `cl20-fp052` | SQL | 41,980ms | correct |
+> | `cl20-det052-r1` | EMPTY | 35,587ms | wrong |
+> | `cl20-det052-r2` | EMPTY | 39,519ms | wrong |
+> | `cl20-det052-r3` | SQL | 42,398ms | correct |
+>
+> **3/5 门禁触发 → `052` 是真实的、间歇性的门禁误伤。** 判别依据：三次 EMPTY 延迟
+> （26.6/35.6/39.5s）一致低于两次出 SQL（42.0/42.4s），与门禁在生成前短路吻合（参照：
+> 确认门禁触发的 7 case 中位 29.7s、正常出 SQL 中位 50.1s）。trace 未持久化，故判别为**推断性**。
+>
+> **根因已定位**：`052` = 「最近7天**每天的**商店销售额」，明确的数据请求（`query_intent: trend`、
+> `match_mode: row_count_range`）。triage prompt 把 `a compiled/periodic report or summary
+> ("weekly report", "summarise the month")` 列为 `beyond_single_query` 样例 ——
+> **「7天每天的」与「周报」词法紧邻**，模型约 60% 判成后者。
+>
+> **含义（重要）**：收窄后的 deliverable-kind 门禁**仍有边界问题，只是位置搬了** ——
+> 从「主观 vs 客观」搬到「多日明细 vs 周期报告」。误伤率 ≈ 1/143 EXEC（0.7%）但**间歇性**。
+> → **门禁在当前形态下不可进 PR**，须先修 prompt 样例冲突再重验。
+
+其余 4 个 Lost（`019`/`069`/`078`/`voice_034`）**门禁均未触发**（出 SQL 或 PROSE），
+系基线 k=3 全中 vs 本次 k=1 单抽样的采样差异，非门禁所致。
 
 门禁在 DELIVERY 侧触发 11 个，其中 10 个 correct（仅 `080` wrong）。
 
@@ -309,6 +334,11 @@ DELIVERY 目标值待 CL-25 定齐 case set 后重设。
 - 代码在 `fix/cl20-delivery-agent-behavior`（`d6b376d296` + `4c2a1c7764`），**未合并**。
   按 `docs/da-pr-workflow.md`，触及 `packages/*/src` 必须走 PR（CI 有 "No production src on
   master (direct-push guard)"）。
-- **待办**：① rebase 到 origin/master（落后 58 commits，`context.ts` 一处手工合）→
-  ② 重跑测试 → ③ **在 rebase 后代码上重跑全量**（这才是验收数字）→ ④ 开 PR。
+- **待办**：① **修 triage prompt 的样例冲突**（`"weekly report"` 样例误伤「最近7天每天的…」，
+  见上方 2026-09-06 晚更正；3/5 误伤率不可接受）→ ② rebase 到 origin/master（落后约 60 commits，
+  `context.ts` 一处手工合）→ ③ 重跑测试 → ④ **在 rebase 后代码上重跑全量**（这才是验收数字，
+  须专门核 `052` 及同形态「N天每天的X」类 case）→ ⑤ 开 PR。
+- **status 保持 `in_progress`**：定时任务原计划改 `closed`，但该指令写在 052 误伤证据出现之前。
+  门禁存在**已知未修缺陷**（间歇性误伤明确数据请求），关票会让 map 读者以为能力已安全交付。
+  决策部分（D1-D5）已完结且不会再变；剩余是实现缺陷 + 交付机制。
 - wayfinder 文档部分（本票 + CL-25/26/27 + map + audit-log）按同一工作流允许直推 master，已先行合入。

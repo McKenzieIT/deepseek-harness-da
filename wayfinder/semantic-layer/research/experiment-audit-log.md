@@ -603,3 +603,68 @@ Resolves: [B-DA6](../../data-agent/tickets/phase-misc/B-DA6-qualifytable-live-wi
 ### Ticket Pointer
 Resolves（部分）: [CL-20](../tickets/CL20-delivery-agent-behavior-type2.md)
 衍生: [CL-25](../tickets/CL25-open-ended-case-set-consistency.md) · [CL-26](../tickets/CL26-eval-runner-service-decline-synthesis-gap.md) · [CL-27](../tickets/CL27-triage-unconditional-call-cost.md)
+
+### 追加（2026-09-06 晚）：`compare.ts` 输出 + **「误伤 0」结论已推翻**
+
+#### compare.ts（协议不一致，已用 `--allow-protocol-mismatch` 强制）
+
+守卫先按设计拦下（正是 CL-15/CL-22 为防「+12pp 纯协议假改善」加的）：
+```
+✗ PROTOCOL MISMATCH — these runs are not comparable
+    A (rebaseline-passk-168-clean): pass_k=3 pass^k
+    B (cl20-full-n1): pass_k=1 pass^k
+  A k=1 vs k=3 pass^k gap is ~12pp of protocol, not quality.
+```
+
+强制后输出（verbatim）：
+```
+  Overall: 61.9% → 77.4%  (+15.5pp)
+
+  Category                         A               B     Delta
+  ────────────────────────────────────────────────────────────
+  Original             67.5% (54/80)   75.0% (60/80)    +7.5pp
+  Alias                50.0% (20/40)   77.5% (31/40)   +27.5pp
+  Voice EXEC           63.3% (19/30)   73.3% (22/30)   +10.0pp
+  Voice DELIVERY       61.1% (11/18)   94.4% (17/18)   +33.3pp
+
+  Net: +31 / -5 = +26 flips
+```
+**Overall 与各类 delta 均被协议混淆（约 12pp 来自 k），不可当质量结论。**
+Gained 31 里 DELIVERY 侧：`voice_017` `voice_033` `voice_036` `voice_039` `voice_041` `voice_042` `voice_048`。
+Lost 5：`019` `052` `069` `078` `voice_034`。
+
+#### ⚠️ 更正：上一条目的「门禁误伤 = 0」**是错的**
+
+上一条目只查了「9 个 EXEC 空 SQL」，漏查了 compare 报出的 Lost 全集。补查 5 个 Lost：
+
+| case | 类型 | 本次形态 | 门禁触发 | 结论 |
+|---|---|---|---|---|
+| `019` | DELIVERY | SQL | 否 | 非门禁（基线 3/3 PROSE，本次单抽样漂成 SQL） |
+| `069` | EXEC | SQL | 否 | 非门禁 |
+| `078` | DELIVERY | PROSE | 否 | 非门禁 |
+| `voice_034` | DELIVERY | SQL | 否 | 非门禁 |
+| **`052`** | **EXEC** | **EMPTY** | **是** | **门禁误伤（间歇性）** |
+
+**`052` 专项测定（5 次观测）**：
+
+| run | SQL | latency | verdict |
+|---|---|---|---|
+| `cl20-full-n1` | EMPTY | 26,576ms | wrong |
+| `cl20-fp052` | SQL | 41,980ms | correct |
+| `cl20-det052-r1` | EMPTY | 35,587ms | wrong |
+| `cl20-det052-r2` | EMPTY | 39,519ms | wrong |
+| `cl20-det052-r3` | SQL | 42,398ms | correct |
+
+**3/5 门禁触发。** 判别依据：三次 EMPTY 的延迟（26.6/35.6/39.5s）一致低于两次出 SQL（42.0/42.4s），
+与门禁在生成前短路（1 次 LLM 调用 vs 1-3 次生成）吻合；参照确认门禁触发的 7 个 case 延迟中位 29.7s、
+正常出 SQL 中位 50.1s。（trace 未持久化，故此判别为**推断性**而非直接观测。）
+
+**根因可定位**：`052` = 「最近7天**每天的**商店销售额」，是明确的数据请求（`query_intent: trend`，
+`match_mode: row_count_range`）。而 triage prompt 把
+`a compiled/periodic report or summary ("weekly report", "summarise the month")`
+列为 `beyond_single_query` 样例 —— **「7天每天的」与「周报」在词法上紧邻**，模型约 60% 判成前者。
+
+**含义**：CL-20 收窄后的 deliverable-kind 门禁**仍有边界问题，只是位置搬了**——
+从「主观 vs 客观」搬到「多日明细 vs 周期报告」。误伤率 ≈ 1/143 EXEC（0.7%）但**间歇性**，
+即同一 case 跨 run 翻转，与 CL-22 记录的 LLM 非确定性同源。
+**门禁在当前形态下不可直接进 PR**，须先修 prompt 样例冲突并重验。
