@@ -20,6 +20,14 @@ describe('PROD_SRC_PATTERN', () => {
     'scripts/verify-md-links.ts',
     'scripts/types/foo.ts',
     'scripts/release/bump.ts',
+    // bin/ — executable entry points are source too. Added 2026-09-06 after the
+    // gate was measured returning false for the first path below, i.e. runnable
+    // code could be pushed straight to master.
+    'packages/eval/eval-cli/bin/probe-triage.ts',
+    'packages/eval/eval-cli/bin/compare.ts',
+    'apps/cli/bin/dsh.js',
+    'python/sdk-runtime/bin/agent.py',
+    'native/landlock-run/packages/entry/bin/run.ts',
   ])('matches protected production source: %s', (path) => {
     expect(PROD_SRC_PATTERN.test(path)).toBe(true)
   })
@@ -36,6 +44,10 @@ describe('PROD_SRC_PATTERN', () => {
     // those dirs are NOT caught here — the PR body lists them as known gaps.
     'apps/web/README.md',
     'apps/cli/config/foo.json',
+    // tests/ stays OUT for now. It is arguably protected (a direct push could
+    // weaken the tests CI judges by), but that is an open decision with an
+    // unmeasured friction cost — see R4-ci-red-gate-policy.md. Listed here so a
+    // future reader sees it is deliberate, not forgotten.
     'python/sdk/tests/x.py',
     'python/sdk-runtime/hatch_build.py',
     'native/landlock-run/docs/README.md',
