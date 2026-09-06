@@ -37,6 +37,12 @@ if (!MAXC_CONFIG) {
   process.exit(2)
 }
 
+// GA-EVAL-EVENTDEF-PREFETCH: how long `maxc query run` polls before promoting to
+// an async job. Overridable so slow event-view queries can stay synchronous (see
+// executeOp). Keep the consumer's MCP tool-call timeout ABOVE this — eval-cli's
+// boot() derives it from the same env var for exactly that reason.
+const WAIT_SECONDS = process.env.MAXC_WAIT_SECONDS ?? '60'
+
 const PROTOCOL_VERSION_FALLBACK = '2025-06-18'
 
 // ── MCP framing (mirror standin-sidecar.mjs) ────────────────────────────────
@@ -122,9 +128,17 @@ function toOutcome(env, sql) {
 // ── tool handlers ───────────────────────────────────────────────────────────
 async function executeOp({ sql }) {
   // `mode` (fast/slow/fail/blocking) was a stand-in test knob; for real ODPS it
-  // is meaningless — always run via `maxc query run`. --wait 60 keeps short
+  // is meaningless — always run via `maxc query run`. The wait window keeps short
   // queries synchronous (promotes to a pending job only if genuinely long).
-  const env = await runMaxc(['query', 'run', '--wait', '60'], sql)
+  //
+  // GA-EVAL-EVENTDEF-PREFETCH made the window matter: event-view queries are an
+  // order of magnitude slower than the pre-aggregated DWS tables earlier eval
+  // runs hit (`COUNT(DISTINCT role_id)` over ieu_ods.ods_10000251_all_view
+  // measured 68s), and the engine's attach polling fires its 3 polls with no
+  // delay between them, so a promoted job is almost always still running when
+  // the polls run out. Raising the window via MAXC_WAIT_SECONDS keeps such a
+  // query synchronous instead. Default 60 = the previously hardcoded value.
+  const env = await runMaxc(['query', 'run', '--wait', WAIT_SECONDS], sql)
   return toOutcome(env, sql)
 }
 

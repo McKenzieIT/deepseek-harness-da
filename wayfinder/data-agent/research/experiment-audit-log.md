@@ -734,3 +734,197 @@ Per-intent post-fix: real-exec metric_lookup 2/23 (8.7%), proportion 1/11 (9.1%)
 - **Nit 1 (minor/design → GA-EVAL-SQLGEN-FOLLOWUP)**: the `# 上下文` preamble says "candidates + event definitions are pre-fetched into context" but `Nl2sqlAgentResponder.respond()` doesn't pass `eventDef` -> for event questions `# 事件定义` renders `（未加载）` -> misleading; contributes to the real-exec drop (model lacks event schema). Not a bug in this fix (direct goal — eliminate tool-call emissions — met, non-SQL 0%).
 - **Nit 2 (pre-existing, out of scope, -> GA-EVAL-SQLGEN-FOLLOWUP investigation)**: engine.ts `run()` retries on critic_fail/execution-errors passing `feedback: lastFeedback` to `llm.generate()`, but `CtxLlmAdapter.generate` IGNORES `args.feedback` (only uses `args.prompt`) -> self-correction feedback doesn't reach the LLM prompt -> retries use the same prompt + near-dup gate -> null-SQL on exhaust. Pre-existing (not introduced by this fix); explains the null-SQL cases (23 real-exec / 22 judge-only).
 - **Merged to master**: `47584b85d7` (records `d8b4d7630f` + FOLLOWUP ticket `47584b85d7` rebased onto origin/master + fast-forward pushed; push guard passed: `no production src on master` + `typecheck`). Code fix itself on master via `fcdb18779c` (contaminated — concurrent session's `git add -A` swept the code into its docs commit; permanent, force-push unsafe). Backups (backup branch `backup-ga-eval-sqlgen-prompt-fix` + stash@{0} "concurrent-session WIP") dropped post-merge (code on master + reflog preserves).
+
+---
+
+## 2026-09-06 — GA-EVAL-SQLGEN-FOLLOWUP (post-prompt-fix divergence root-cause + follow-up direction)
+
+**Ticket**: [GA-EVAL-SQLGEN-FOLLOWUP](../tickets/phase-misc/GA-EVAL-SQLGEN-FOLLOWUP-postfix-divergence.md) (resolved 2026-09-06). Source: GA-EVAL-SQLGEN-PROMPT-FIX 2026-09-05 Resolution — prompt fix (`contextPrefetched` flag) eliminated non-SQL emissions (criterion #1, both modes 0%) but re-baseline diverged: judge-only 48.7→56.4 (criterion #2 ✓), real-exec 12.8→7.7 (criterion #2 ✗, hypothesis refuted).
+
+### Method
+
+Per-case comparison of pre vs post rebaseline artifacts — `rebaseline-real-exec-rbi-10000251{,-postpromptfix}.json` + `rebaseline-judge-only-rbi-10000251{,-postpromptfix}.json` — per-case verdict + per-attempt `execution_match` / `sql_judge` / `generated_sql` / `query_result` / `expected_result`. 39 EXEC cases, pass^k k=3, conc=3, --today 20260806, scope 10000251, responder=engine. Verdict semantics source-confirmed at `packages/eval/eval-runner/lib/types/runner.js:297-309`.
+
+### Findings — divergence root cause (success criterion #1)
+
+**Verdict semantics (source-confirmed, not new)**: `passKVerdict` = ALL k attempts must pass (`allCorrect = attempts.every(a => a.infra_error===undefined && a.execution_match!==false && a.delivery_match!==false)`; `hasWrong = attempts.some(a => a.execution_match===false || a.delivery_match===false)`). Deliberate anti-flakiness decision from [GA-EVAL-REBASELINE](../tickets/phase-misc/GA-EVAL-REBASELINE-passk-semantics.md) (bestOfK→passK, any→every, 2026-09-03). NOT a mislabeled pass^k. Reframes real-exec "drop": penalizes retry inconsistency — a single bad retry flips the case.
+
+**Divergence = judge-leniency + anti-flakiness×feedback-gap + event-case bottleneck; NOT systematic prompt degradation.**
+- **judge-only +3** (gained 050/051/056/119/128/138, lost 042/049/059): judge-leniency — pre-fix the gained cases emitted tool-calls (sj=0) on would-pass attempts; post-fix generate semantically-plausible SQL → judge 1.0. Judge is execution-blind (119 post-fix DWS-table SQL sj=1.0, real-exec 552 vs 510 wrong). ↑ = higher over-count, not quality gain.
+- **real-exec −2** (041/046 regressed, 0 gained) — three mechanisms:
+  1. **Anti-flakiness + retry drift (the −2):** 046 att1+2 correct (em=true, qr=67.81415=exp), att3 adds `ROUND(...,2)`→67.81≠67.814→em=false→case wrong; pre-fix att3 unrounded. 041 att2 = identical correct SQL to pre-fix (`SUM(pay_fst)`, qr=58=exp, em=true), att1 now DECLINES (contextPrefetched §5 honest-decline framing), att3 wrong table (`selfhelp_new_pay_df`, qr=0). Under any-pass 041 would pass; all-must-pass fails it.
+  2. **0 gained = bottleneck untouched:** 19 converted non-SQL→SQL attempts all wrong/null. Event cases (119-138) fail three ways — placeholder (`FROM <数据视图> WHERE event='<事�����名>'`→ParseError; 119/126), null-SQL (decline→retry exhaust→empty; 125/127/129/130), wrong-table fallback (DWS table→wrong value, sj=1.0 judge passes; 119 att3 552v510, 136 att3 482v432). Model lacks event table `ieu_ods.ods_10000251_all_view` + params template.
+  3. **Feedback-wiring gap amplifies both:** `engine.run` passes `feedback: lastFeedback` to `llm.generate()`, but `CtxLlmAdapter.generate` (context.ts) IGNORES `args.feedback` (only reads `args.prompt`) → retries use identical prompt (promptBuilder rebuilds without feedback) → can't self-correct → drift (ROUND/decline) or null-SQL exhaust. = null-SQL explosion (real-exec 11→23, judge-only 10→22) + the retry-inconsistency anti-flakiness penalizes.
+- **Key**: NOT systematic degradation — 041 att2 / 046 att1-2 = identical correct SQL to pre-fix. The prompt fix didn't break generation; it shifted retry stochasticity, which anti-flakiness + feedback gap amplified into 2 failed cases. n=39 noise (MDE~20pp) but qualitative mechanisms per-case-evidenced.
+
+### Decision (success criterion #2) — (a)+(d), 2 impl tickets charted
+
+- **(a) [GA-EVAL-EVENTDEF-PREFETCH](../tickets/phase-misc/GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md)**: port [G-DA4](../tickets/phase-misc/G-DA4-event-table-name-grounding.md) (resolved 2026-08-25, commit `0548fe4f8a`) event_view grounding from harness path to engine responder eval path. Reuse `SemanticLayerService.loadEventDefinition(name)` (snapshot.ts:97) + `extractEventView(semanticRoot)` (tool-load-event-definition, returns `EventViewInfo`{`full_name`=`ieu_ods.ods_10000251_all_view`, `params_extract_template`, `base_columns`}) → pass `engine.run({...,eventDef})` + extend prompt `# 事件定义` to surface FROM table + params template. Main risk: event-name detection (BM25 surfaces event doc? events in corpus — `buildSchemaContext` branches event candidates; if unreliable, add alt_labels matcher). Targets event-case wrong-table/placeholder/null cluster (119-138). Subsumes (b).
+- **(d) [GA-EVAL-RETRY-FEEDBACK](../tickets/phase-misc/GA-EVAL-RETRY-FEEDBACK-wiring-gap.md)**: wire `args.feedback` into SQL-gen prompt (`BuildPromptArgs.feedback` + `engine.run` promptBuilder call + prompt render `# 上次失败反馈`). Lets retries self-correct on critic reason / execution error → kills null-SQL explosion + retry drift. Independent of (a); amplifies (a)'s consistency (right schema + consistent retries).
+- **(b) DROPPED** — contextPrefetched prompt already hedges (`# 事件定义（若已加载）` + "若已加载"); residual value marginal; (a) subsumes it (loading real eventDef makes the preamble truthful).
+- **(c) NOT chosen** — destination (real-exec pass_rate) unaddressed.
+
+### Pointer (success criterion #3)
+
+[GA-EVAL-SQLGEN-FOLLOWUP](../tickets/phase-misc/GA-EVAL-SQLGEN-FOLLOWUP-postfix-divergence.md) (resolved 2026-09-06). Pre/post artifacts: `packages/eval/eval-cli/eval-results/rebaseline-{real-exec,judge-only}-rbi-10000251{,-postpromptfix}.json`. Code under review: `packages/eval/eval-cli/src/context.ts` (Nl2sqlAgentResponder.respond → engine.run without eventDef; CtxLlmAdapter.generate ignores args.feedback), `packages/data/nl2sql-engine/src/{engine,prompt}.ts`. Verdict source: `packages/eval/eval-runner/lib/types/runner.js:297-309`. Follow-up (both open, unblocked, in map frontier): GA-EVAL-EVENTDEF-PREFETCH + GA-EVAL-RETRY-FEEDBACK.
+
+---
+
+## 2026-09-06 — GA-EVAL-RETRY-FEEDBACK: wire retry feedback into SQL-gen prompt (# 上次失败反馈) — code + tests landed; judge-only baseline running
+
+**Ticket**: [GA-EVAL-RETRY-FEEDBACK](../tickets/phase-misc/GA-EVAL-RETRY-FEEDBACK-wiring-gap.md) (code + tests landed 2026-09-06; judge-only re-baseline running at commit time — numbers + verdict to amend when complete). Source: GA-EVAL-SQLGEN-FOLLOWUP nit 2 — `engine.run` passes `feedback: lastFeedback` to `llm.generate()` but `CtxLlmAdapter.generate` ignores `args.feedback` (only reads `args.prompt`) + `BuildPromptArgs` had no feedback field → promptBuilder rebuilds an IDENTICAL prompt per retry → self-correction feedback never reaches the LLM → identical-prompt retry → near-dup reject / drift → null-SQL exhaust (real-exec 11→23, judge-only 10→22) + 041/046 drift.
+
+### Setup (the fix — commit `ba1b1ed597` on `fix/ga-eval-sqlgen-prompt-fix`; backup branch `backup-ga-eval-retry-feedback`)
+
+- **`packages/data/nl2sql-engine/src/prompt.ts`**: `BuildPromptArgs` += `feedback?: LlmFeedback | null | undefined`. New `renderFeedbackSection(feedback)` → `''` when null/undefined (byte-stable) else `\n# 上次失败反馈（据此修正，勿重复相同错误）\n- 失败类型：${failureKind}\n- 错误：${sanitizeFeedbackError(error)}\n`. `sanitizeFeedbackError` mirrors tool-load-event-definition's `sanitizeSubstrateError` (strip control, redact slash-paths, collapse ws, bound 400; table names dot-joined survive). Inserted `${renderFeedbackSection(feedback)}` after `${joinSection}${metricSection}` in BOTH contextPrefetched + default branches — 5 existing prompt.spec.ts inline snapshots pass unchanged (feedback absent → section omitted → byte-identical).
+- **`packages/data/nl2sql-engine/src/engine.ts`**: `run()` passes `feedback: lastFeedback` to `this.promptBuilder({...})` (lastFeedback null on attempt 0 → omitted → byte-stable; set on critic_fail / execution-error / near-dup → attempt ≥1 prompt carries the failure). The `llm.generate({feedback})` side-channel kept (ReplayLlm scripted-rewrite tests read it); the real CtxLlmAdapter path now gets feedback via the prompt.
+- **`packages/eval/eval-cli/src/context.ts`**: `CtxLlmAdapter.generate` doc comment — confirms it streams `args.prompt` (now carries feedback); `args.feedback` vestigial there. No behavior change.
+- **Tests**: `prompt.spec.ts` +2 (feedback-rendering contextPrefetched+default; byte-stability when absent). `scenarios.spec.ts` +1 (S11 retry-uses-feedback: mock LLM records each attempt's prompt + returns good SQL on retry ONLY when the prompt carries `# 上次失败反馈` — directly proves success criterion #3). **128/128 nl2sql-engine tests pass** (5 existing prompt snapshots byte-identical + k11-live-comparison).
+- **Smoke** (real path, judge-only, case 119 × pass^k=3, 108s): ran clean — 3 attempts decline(null)→DWS-table→event-name-as-table. 119 still wrong (expected — event case needing (a)'s schema, not (d)'s feedback); the retry loop ran (run 1 declined after retries) → feedback path wired in the real CtxLlmAdapter path.
+
+### Concurrent-session disruption (recovered)
+
+Concurrent session (active on `fix/ga-eval-sqlgen-prompt-fix`) stashed my uncommitted (d) edits twice to "clear the merge path" (stash@{1}=engine.ts+prompt.ts; stash@{0}=tests+context.ts+leftover) + committed my (a) deferral note as `b11719e8a0`. Recovered via `git stash apply` (stashes retained as backup) + committed the 5 code files as `ba1b1ed597` (lefthook pre-commit: lint+whitespace+vendor-guard passed). The judge-only baseline had loaded my (d) code into memory at startup (tsx module cache) → disk wipes didn't invalidate the running run.
+
+### Results (judge-only re-baseline — COMPLETE; real-exec deferred)
+
+| baseline (judge-only) | pre-(d) (post-prompt-fix) | post-(d) | Δ | non-SQL | null-SQL |
+|---|---|---|---|---|---|
+| pass_rate | 22/39 = 56.4% | **21/39 = 53.8%** | **−1** (noise, MDE~20pp) | 0/117=0% → 0/117=0% | 22/117=18.8% → **21/117=17.9%** |
+
+Per-intent post-(d): metric_lookup 10/23 (43.5%), proportion 9/11 (81.8%), ranking 0/3, trend 2/2 (100%). infra_failure=0. Run: `node --import tsx/esm packages/eval/eval-cli/src/bin.ts --cases packages/eval/eval/cases/rbi-10000251-exec --pass-k 3 --concurrency 3 --today 20260806 --scope-id 10000251 --provider aga --model qwen3.7-max --skip-health-gate --run-id ga-eval-retry-feedback-judgeonly-20260906` (1701s). Artifact: `eval-results/rebaseline-judge-only-rbi-10000251-postfeedbackwire.json` (+ log). **Real-exec baseline NOT run** (deferred — needs --with-query + MAXC_CONFIG + maxc-sidecar-k11.mjs; run when concurrent session idle + network restored, like GA-EVAL-SQLGEN-PROMPT-FIX).
+
+### Verdict (success criteria — partial, pending baseline)
+
+1. **Criterion #3 (retry 真 self-correct — feedback 到 LLM prompt): MET (unit-level).** S11 directly asserts the attempt-1 prompt contains `# 上次失败反馈`+failureKind+error + the mock self-corrects only then. Wiring proven; real path ran it (smoke 119 retries).
+2. **Criterion #4 (additive — harness responder unaffected; default buildPrompt byte-stable): MET.** 5 existing snapshots byte-identical; harness responder uses phase-gate (not buildPrompt); feedback optional, null→omitted.
+3. **Criteria #1 (null-SQL→<12) + #2 (pass_rate >56.4%): NOT MET (judge-only).** null-SQL 22→21 (−1, flat within noise) + pass_rate 56.4→53.8 (−1, within noise, direction down). The (d) fix did NOT measurably help judge-only on this case set. **This was the predicted honest caveat** (criterion #4 below) — confirmed empirically.
+4. **Why (d) alone is bounded — confirmed**: the null-SQL explosion is dominated by EVENT cases (125/127/129/130) where the model declines for lack of the event schema (the (a) problem); (d)'s feedback "LLM 未产出 SQL" doesn't hand the model the missing event table `ieu_ods.ods_10000251_all_view` + `GET_JSON_OBJECT` template → the model still can't write the event SQL → still null-SQL (the -1 is noise, not a real drop). (d) would help fixable-critic-error cases (DWS 038-060 cluster: missing partition / wrong-but-close table) — but on THIS set those mostly already pass or fail for value reasons (not retry-feedback-fixable). **(d) is the correct fix (the wiring was broken — retries used identical prompts) but its standalone measured benefit is ~nil here; the real win is (a)+(d) combined** — (a) gives the event schema → (d)'s feedback then keeps retries consistent (exactly the ticket's "组合最大收益"). Real-exec baseline (deferred) would show the same pattern (event cases null/wrong-value unless (a) lands).
+
+### Pointer
+
+[GA-EVAL-RETRY-FEEDBACK](../tickets/phase-misc/GA-EVAL-RETRY-FEEDBACK-wiring-gap.md) — code + tests landed (commit `ba1b1ed597`; backup `backup-ga-eval-retry-feedback`). Judge-only baseline COMPLETE: null-SQL 22→21 (flat), pass_rate 56.4→53.8 (−1, noise) — (d) alone does NOT move the needle (null-SQLs are event cases needing (a)'s schema, not retry feedback). **Follow-up**: (1) run the real-exec baseline (`--with-query` + `MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml` + `maxc-sidecar-k11.mjs`) when concurrent session idle + network restored — expect the same bounded pattern (event cases null/wrong-value unless (a) lands); (2) **resolve (a) GA-EVAL-EVENTDEF-PREFETCH next** (LLM-detection or description-mining — risk-gate verdict on its ticket) — (a)+(d) combined is where the real win is ((a) gives schema, (d) keeps retries consistent); (3) re-baseline after (a) lands to measure the combined effect.
+
+---
+
+## 2026-09-06 — GA-EVAL-EVENTDEF-PREFETCH: event_view grounding ported to the eval path — grounding works; the measurement instrument was broken in two places
+
+**Ticket**: [GA-EVAL-EVENTDEF-PREFETCH](../tickets/phase-misc/GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md)（resolved 2026-09-06）。Source: [GA-EVAL-SQLGEN-FOLLOWUP](../tickets/phase-misc/GA-EVAL-SQLGEN-FOLLOWUP-postfix-divergence.md) 决策 (a)。Branch `task/ga-eval-eventdef-prefetch`（backup `backup-ga-eval-eventdef-prefetch`），基于含 (d) 的 `fix/ga-eval-sqlgen-prompt-fix`@`9221e21bd0`（PR #26 仍 open 未 merge）。
+
+### Setup（4 commits）
+
+- **`36622d45eb`** 主体：`eval-cli/src/event-detect.ts`（新，两段式检测）+ `context.ts` wiring（detect → `loadEventDefinition`+`extractEventView` → `engine.run({eventDef,eventView})`，按 question 缓存）+ `prompt.ts`（`BuildPromptArgs.eventView` + `# 事件查询落表` section，缺省不渲染 → byte-stable）+ `engine.ts`（eventView → promptBuilder **且** → `makeCriticCtx.candidateTables`）+ 测试 123/123（+2 prompt，+1 scenario S12 带 without-view 对照）+ `dev/event-detect-fp-probe.ts`。eval-cli 加 dep `@deepseek-ai/dsh-tool-load-event-definition`（lockfile +3 行）。
+- **`3229590eeb`** timeout collision（见下）。
+- **`761b8551d0`** 仪表审计工具 + 新票 + 原始输出 artifacts。
+- **`0f7b9234a2`** SQL semantic judge 的 schema context（见下）。
+
+### 检测器标定（`dev/event-detect-fp-probe.ts`，39 case，连续两跑一致）
+
+**TP=6 · FP=0 · TN=21 · FN=12**（TP = 057/119/125/126/135/136）。
+
+**修正上 session 的 FP=0**：上 session 的 FP 定义只算「DWS → event」，「event case → **错的** event」被记成 FN。严格定义下 122「PVE副本挑战」命中 `DungeonOnkeyPass` 的泛 alt_label「副本」被选中（真值 `game.pve.begin`）= FP。加通用规则（命中泛词 ≠ 对得上；候选是另一个具名活动的埋点 → NONE）后归零，TP 7→6（138 按「新增角色=泛词」回 NONE，规则内一致）。
+
+**12 FN 全是词法段无候选**：scope 内 **453 个事件只有 6 个填了 `alt_labels`**（recharge/role.create/coin.change/item.change/DungeonOnkeyPass×2）→ `card.gacha` 无「抽卡」、`role.online` 无「登录」。召回上限是语料覆盖，不是逻辑。
+
+### (a) 生效的机制级证据（比 pass_rate 可靠）
+
+| judge-only, 117 attempts | (d) | (a)+(d) |
+|---|---|---|
+| 用 `ieu_ods.ods_10000251_all_view` 的 attempt | **0** | **17** |
+| null-SQL | **21** | **13**（−38%）|
+| 非 SQL tool-call | 0 | 0 |
+| `FROM <数据视图>` 占位符 | 0 | 1 |
+
+**null-SQL 21→13 是 (a)+(d) 组合首次被测到的收益**——(d) 单独只有 22→21。机制正如两票预测：event schema 到位 → 模型不再因无表可写而 decline。
+
+smoke 119（real-exec）生成的 SQL 与 case 自己的 reference SQL **逐字一致**；135 生成 `GET_JSON_OBJECT(params,'$.moneyType')`/`'$.money'` 与 reference 同构（119 用不到 params，role_id 是基础列）。
+
+### 缺陷 1：case-set 的 event 期望值不是冻结锚点（→ 新票）
+
+把每个 case **自己的 `expected.sql`** 实跑（`ds=20260805`）对账 `expected.result_value`（工具 `packages/eval/eval-cli/dev/case-expected-value-audit.mjs`，原始输出 `research/artifacts/case-expected-value-audit-{event,dws}-20260906.log`）：
+
+| data_source | MATCH | STALE | SKIPPED（多行） |
+|---|---|---|---|
+| **event** | 2（都是 `0==0`）| **16** | 0 |
+| **dws** | **13** | **0** | 8 |
+
+119 `510→552`、136 `432→482`、057/135 `773500→2409900`(3.1×)、121 `33503→46306`、126 `2774223→3413512`。方向多数升但不全（137 `288→259`、138 `48→39`）→ 只能确证「ODS 原始视图历史分区不稳定、DWS 汇总表稳定（T+1 算完即冻结）」，机制未证。
+
+**这推翻了一条既有结论**：FOLLOWUP 记「119 att3 → 552 错值」「136 att3 → 482 错值」，552/482 正是那两条 reference SQL 今天的值——**模型算对了，判错的是仪表**。所以 audit-log 里「real-exec 瓶颈 = SQL 正确性/错值」对 event case 至少部分失效，本票 criterion #1 是 **uninstrumented 而非 unmet**。新票 [GA-EVAL-CASESET-EVENT-ANCHOR](../tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)（grilling，5 个候选口径 A-E，都不免费）。
+
+### 缺陷 2：SQL semantic judge 与 critic 犯同一个错（本票已修）
+
+judge 用 responder 的 `schema_context`（BM25 候选）打 `table_selection`/`field_selection`，event view 是 scope 级 config 不是 corpus item。**case 135（`data_source: event`，reference SQL 就是 event view 查询）**：
+
+| | 生成 SQL | sql_judge | verdict |
+|---|---|---|---|
+| (d) 之前 | 3/3 用 DWS 表 | **1.0/1.0/1.0** | correct |
+| (a) 之后 | 3/3 用 reference 同构 event view SQL | **0.4/0.2/0.2** | wrong |
+
+judge 原话：「使用了 **Schema 上下文之外的** ODS 底层表…导致表和字段选择错误」（`table_selection:0`、`field_selection:0`）。**仪表在惩罚 (a)，且此前一直在奖励取错源的答案**——这是 FOLLOWUP「judge-leniency」的一个更强版本：不只是宽容错答案，而是主动扣正确答案的分。修法与 critic 同构（检测到 event 时把 event view + 事件名 + params 字段追加进 `schema_context`；追加式，21 个 DWS case 该段 byte 不变）。
+
+### 潜伏 bug：MCP timeout 与 sidecar wait 窗口相撞（`3229590eeb`）
+
+sidecar 跑 `maxc query run --wait 60` 才提交异步 job，`toolCallTimeoutMs` **也**默认 60s → 比 wait 窗口慢的查询表现为 `MCP error -32001: Request timed out`，走不到 sidecar 设计的 pending/attach 路径。潜伏至今因为历次 real-exec 打的都是秒级的预聚合 DWS 表；(a) 指向 event ODS 视图后 `COUNT(DISTINCT role_id)` 实测 **68s**，于是 (a) 自己的正确 SQL 被判 infra_failure（smoke 119 首跑 3 attempts/222s 全超时）。修：wait 读 `MAXC_WAIT_SECONDS`（默认 60 = 原值），eval-cli 从同一变量派生 timeout（+60s），构造上不可能相撞。附带发现：engine 的 attach 轮询 3 次之间**无间隔**，被提升为异步的 job 几乎必然在轮询用完时仍在 running——所以把慢查询留在同步窗口内是目前可靠的路径。
+
+### Results（judge-only 双跑）
+
+| judge-only（39 case × k=3） | (d) 基线 | (a)+(d) **v1**（judge 未修） | (a)+(d) **v2**（judge 已修） |
+|---|---|---|---|
+| pass_rate | 21/39 = 53.8% | 16/39 = 41.0% | **24/39 = 61.5%** |
+| null-SQL /117 | 21 | 13 | **13**（−38%）|
+| 非 SQL tool-call 发射 | 0% | 0% | **0%**（维持）|
+| 用 event view 的 attempt | 0 | 17 | **18** |
+
+Run: `--pass-k 3 --concurrency 3 --today 20260806 --scope-id 10000251 --provider aga --model qwen3.7-max --skip-health-gate`；artifacts `eval-results/eventdef-judgeonly{,-v2}.json`（v1 1792s / v2 ~1900s）。
+
+**v2 vs (d) 逐 case**：**+9**（057/119/125/126/128/136/137 = **7 个 event case**，其中 5 个正是检测器的 6 个 TP；另 045/059 dws）、**−6**（038/039/042/043/051 dws + 135 event）。**收益的分布不是噪声形状——精准落在 (a) 针对的 case 上。**
+
+**6 个回退逐一查明，无一由 (a) 造成**：
+- 5 个 DWS（038/039/042/043/051）**三次 attempt 的 `eventView` 全为 false** —— 检测一次未触发；未检测到 event 时生成 prompt 与 (d) **逐字节相同**（section 缺省不渲染，已单测）→ 差异只能来自采样。每个都同时有 sj=1.0 和 sj≤0.6 的 attempt，是 `passKVerdict=every` 放大的 attempt 级抖动（038 sj=[1,0.2,1]、039=[0.4,1,1]、042=[0.4,0,1]、043=[0.6,0.2,1]、051=[1,0,0]；038/041/043 的不稳定 FOLLOWUP 已记录过）。
+- 135（唯一被注入的回退）：judge 修复**已生效**——att1/att3 现在 **sj=1.0 且五维全 1**，rationale 明确称赞「正确选择了事件视图表…完美契合」。att2 得 0.4 是 judge 换了个**领域论点**（ODS 客户端埋点有掉单风险，「真实营收」应以服务端 DWS 订单表为准），且该 attempt 还漏了 `/100.0`。即 case 本身的口径歧义 + all-must-pass，不是 (a) 缺陷。
+
+**v1 的 −5 经 per-case 排除与 (a) 无关**：5 个回退的 DWS case（038/039/041/043/051）**每一次 attempt 都 `eventView=false`**，检测没触发，且未检测到 event 时生成 prompt 与 (d) **逐字节相同**（section 缺省不渲染，已单测）→ 差异只能来自采样。每个回退 case 都同时有 sj=1.0 与 sj=0.4/0.6/0 的 attempt，是 `passKVerdict=every` 放大的 attempt 级抖动（038/041/043 的不稳定 FOLLOWUP 已记录过）。038 att2 自己写了 `FROM <数据视图>` 占位符——(a) 没给它注入任何东西，那是原有行为。唯一「被注入且回退」的 135 根因是缺陷 2。
+
+### Results（real-exec，`--with-query` + `MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml` + `MAXC_WAIT_SECONDS=240` + maxc-sidecar-k11）
+
+| real-exec（39 case × k=3） | post-prompt-fix（2026-09-05）| (a)+(d)（2026-09-06）|
+|---|---|---|
+| pass_rate（as-shipped）| 3/39 = 7.7% | 2/39 = **5.1%** |
+| pass_rate（**按 live 值重锚**）| — | **5/39 = 12.8%** |
+| event case pass | 0/18 | as-shipped **0/18** · 重锚 **3/18** |
+| null-SQL /117 | 23 | **13**（−43%）|
+| 用 event view 的 attempt | 0 | **18** |
+| `FROM <数据视图>` 占位符 attempt | **3** | **0** |
+| 非 SQL tool-call · infra_failure | 0 · 0 | 0 · 0 |
+
+Run id `eventdef-realexec`（1h35m），artifact `eval-results/eventdef-realexec.json`（未 git 追踪，与历次基线一致）；重锚评分工具 `packages/eval/eval-cli/dev/reanchored-score.mjs`，输出存 `research/artifacts/reanchored-score-eventdef-realexec-20260906.txt`。
+
+**as-shipped 的 7.7%→5.1% 不可解读**：通过的 case 从 {036,037,039} 变成 {041,046}——**零重叠，全是 DWS**。n=39 + `passKVerdict=every` 下 real-exec 的 pass 集合基本是 DWS case 之间的抽奖（036 三次都选了 `univ_role_summary_di` 返 0；037 att2 用对表拿到 4336 但 att1/att3 换表返 null）。这个 n 上比较 real-exec pass_rate 没有意义——两次 run 的 pass 集合都不相交。
+
+**重锚后 event case 3/18 达成 criterion #1 的 ≥3 目标**，且是最强形式（三次 attempt 全部精确命中）：
+
+| case | 三次 attempt 的实际值 | live 锚点 | 记录的期望值 |
+|---|---|---|---|
+| **119** | 552 / 552 / 552 | **552** | 510（stale）|
+| **125** | 4545 / 4545 / 4545 | **4545** | 4327（stale）|
+| **126** | 3413512 / 3413512 / 3413512 | **3413512** | 2774223（stale）|
+
+另外 3 个被检测到的也都算对了，只差在别处：**135** `[24099, 2409900, 24099]` 与 **057** `[24099×3]` 是同一个数的 **fen/yuan 单位差**（reference SQL 返 fen，模型除了 100 返 yuan；顺带一提 24099 恰好等于 DWS case 039 的期望值）；**136** `[482, query failed, 482]` 两次精确命中 + 一次瞬时查询失败。**6 个被检测到的 event case，计算全部正确——0 个因为「不知道表名」而失败。**
+
+**检测边界的另一面同样清楚**：12 个未被检测到（词法无候选）的 event case 照旧崩坏——129 把事件名当表名（`FROM \`game.card.gacha\``→Table not found）、123 幻觉出 `game.yanwu.match` 后诚实拒答、124/127/130 全 null、120/128 用 DWS 表出错值。**召回是下一个瓶颈，且它的形状已经完全清楚。**
+
+**criterion #3 在实跑中再次确认**：`ods_10000251_all_view` 出现在 **18 个 attempt**，全部属于那 6 个检测到的 event case（057/119/125/126/135/136）——**DWS case 使用它的次数为 0**。judge-only 与 real-exec 两次 run 一致。
+
+### Verdict（成功标准逐条）
+
+1. **criterion #1（event case execution_match ≥3/8）—— as-shipped UNINSTRUMENTED（0/18）；重锚后 MET（3/18，三次全精确）。** 期望值 16/18 已 stale，(a) 在 119 上生成逐字一致的 reference SQL 仍判 wrong。回填等 [GA-EVAL-CASESET-EVENT-ANCHOR](../tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md) 定口径。
+2. **criterion #2 —— judge-only MET（53.8%→61.5%）；real-exec as-shipped NOT MET（7.7%→5.1%，但两次 run 的 pass 集合零重叠 → 该指标在 n=39 上是抽奖），重锚 12.8%。** 非 SQL 发射维持 0%，且**占位符 3→0**。
+3. **criterion #3（0 FP，DWS 不回退）—— MET。** 探针 21/21 DWS 判 NONE（两跑一致）；judge-only + real-exec 两次实跑中 DWS case 使用 event view 的次数均为 0；6 个回退 case 逐一查明与注入无关。
+4. **criterion #4（G-DA4 seam · additive · harness 不受影响）—— MET。**
+
+**净判断**：(a) 做对了它该做的事——event schema 到位、null-SQL 降 38-43%、占位符清零、6 个可检测的 event case 计算全部正确。但**衡量它的两把尺子都是坏的**：一把（case 期望值）本票只能诊断并另开票，一把（SQL judge 的 schema context）本票已修。**下一个瓶颈是召回（6/18），且形状清楚（453 事件仅 6 个有 `alt_labels`）——不是精度。**
+
+### Pointer
+
+[GA-EVAL-EVENTDEF-PREFETCH](../tickets/phase-misc/GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md) resolved 2026-09-06 — **PR [#38](https://github.com/McKenzieIT/deepseek-harness-da/pull/38)**（base=`fix/ga-eval-sqlgen-prompt-fix`，叠在 (d) 的 PR #26 之上；#26 merge 后 retarget master）。分支 `task/ga-eval-eventdef-prefetch` + backup。artifacts `eval-results/eventdef-{judgeonly,judgeonly-v2,realexec}.json` + `smoke119b.json`（不入 git）；审计/重锚输出入库 `research/artifacts/`。工具三件：`dev/event-detect-fp-probe.ts`、`dev/case-expected-value-audit.mjs`、`dev/reanchored-score.mjs`。**下一步**：(1) [GA-EVAL-EVENTDEF-RECALL](../tickets/phase-misc/GA-EVAL-EVENTDEF-RECALL-alt-labels-coverage.md)——召回 6/18 是下一个瓶颈，形状清楚（453 事件仅 6 个有 `alt_labels`；仓库已有 `enrichment.ts` 的 alt_labels 发现流程，先查为何只覆盖 6 个）；(2) [GA-EVAL-CASESET-EVENT-ANCHOR](../tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)——定锚点口径后回填 criterion #1；(3) 两者都解开才能在 real-exec 上看到数字动（n=39 + all-must-pass 使该指标目前是抽奖：两次 run 的 pass 集合零重叠）。

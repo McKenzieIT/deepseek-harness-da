@@ -12,7 +12,7 @@ import { Bm25Linker } from '../src/bm25-linking.ts'
 import { buildPrompt } from '../src/prompt.ts'
 import { critiqueSql, sqlSyntaxGate, extractJsonPaths } from '../src/critic.ts'
 import { Nl2sqlEngine } from '../src/engine.ts'
-import { ReplayLlm } from '../src/replay-llm.ts'
+import { ReplayLlm, type Llm, type LlmGenerateArgs, type LlmGenerateResult } from '../src/replay-llm.ts'
 import { StandInOdps, outcome } from '../src/stand-in-odps.ts'
 import { makeCriticCtx, GateResult, MAX_SQL_PER_TURN, FailureKind, type QueryOutcome } from '../src/types.ts'
 import { runEval } from '../src/eval/runner.ts'
@@ -22,6 +22,21 @@ import { loadConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventio
 const DS = FIXTURE_DATA_SOURCES
 const EV = FIXTURE_EVENT_DEF
 const asScripted = (sub: string, out: QueryOutcome): Record<string, QueryOutcome> => ({ [sub]: out })
+
+/**
+ * Select the SQL-generation prompts out of everything a mock LLM recorded.
+ *
+ * CL-20's capability triage issues its own `llm.generate` call BEFORE generation,
+ * so a recorded-prompt list no longer starts at the SQL prompt and positional
+ * indexing silently reads the triage classifier instead. Select by content:
+ * `# 当前问题` appears in both branches of `buildPrompt` and never in the
+ * English triage prompt. Do NOT revert to `recorded[0]` — the next prompt-stage
+ * addition would break it again the same way.
+ * @param recorded - every prompt the mock LLM saw, in call order.
+ * @returns just the SQL-generation prompts, in attempt order.
+ */
+const sqlGenPrompts = (recorded: readonly string[]): readonly string[] =>
+  recorded.filter(p => p.includes('# 当前问题'))
 
 test('S1 BM25 linking 召回 dws_pay_order_di top-1（per-field 权重 + CJK bigram）', () => {
   const r = new Bm25Linker(DS)
@@ -165,4 +180,80 @@ test('S10 running → attach(check_query) 续取 → done（fix #3 running→att
   const r = await eng.run({ question: '充值场景五', eventDef: EV })
   expect(r.ok).toBe(true)
   expect(r.trace.some(t => t.step === 'attach')).toBe(true)
+})
+
+test('S11 retry wires feedback into the SQL-gen prompt (GA-EVAL-RETRY-FEEDBACK)', async () => {
+  // Proves success criterion #3: the engine renders lastFeedback into the
+  // prompt (# 上次失败反馈) so a real ctx.llm-backed LLM — which streams
+  // args.prompt only (CtxLlmAdapter ignores args.feedback) — self-corrects
+  // instead of re-generating near-dup SQL. A mock LLM records each attempt's
+  // prompt + returns good SQL on retry ONLY when the prompt carries the
+  // feedback section (else re-sends bad SQL → NearDupGate reject → decline).
+  const seenPrompts: string[] = []
+  const llm: Llm = {
+    async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+      seenPrompts.push(args.prompt ?? '')
+      if ((args.attempt ?? 0) === 0) {
+        return { sql: 'SELECT BAD SYNTAX FROM dws_pay_order_di WHERE ds=20260819' }
+      }
+      // attempt >= 1: succeed only if the prompt carried the feedback section
+      if ((args.prompt ?? '').includes('# 上次失败反馈')) {
+        return { sql: "SELECT SUM(pay_amt) AS total FROM dws_pay_order_di WHERE ds='20260819'" }
+      }
+      return { sql: 'SELECT BAD SYNTAX FROM dws_pay_order_di WHERE ds=20260819' }
+    },
+  }
+  const odps = new StandInOdps(asScripted('BAD SYNTAX', outcome.failed(FailureKind.PARSE_FAILED, 'syntax error near BAD')))
+  const eng = new Nl2sqlEngine({ dataSources: DS, llm, odps })
+  const r = await eng.run({ question: '充值场景六', eventDef: EV })
+  expect(r.ok).toBe(true)
+  const genPrompts = sqlGenPrompts(seenPrompts)
+  // attempt 0 prompt: no feedback (initial generate, lastFeedback null)
+  expect(genPrompts.length).toBeGreaterThanOrEqual(2)
+  expect(genPrompts[0]).not.toContain('# 上次失败反馈')
+  // attempt 1 prompt: contains the feedback section + failureKind + error
+  expect(genPrompts[1]).toContain('# 上次失败反馈')
+  expect(genPrompts[1]).toContain(FailureKind.PARSE_FAILED)
+  expect(genPrompts[1]).toContain('syntax error near BAD')
+})
+
+test('S12 event view reaches the prompt AND the critic candidate set (GA-EVAL-EVENTDEF-PREFETCH)', async () => {
+  // The event ODS view is scope-level config, not a corpus item, so BM25 never
+  // returns it. Telling the model to write `FROM ieu_ods.ods_10000251_all_view`
+  // while the critic still rejects that table (`table_not_in_candidates`) would
+  // make (a) strictly worse than doing nothing: every attempt fails the gate and
+  // the engine declines. This pins both halves — the prompt surface AND the
+  // candidate-table injection — plus the without-view control that shows the
+  // rejection is real rather than hypothetical.
+  const eventView = {
+    full_name: 'ieu_ods.ods_10000251_all_view',
+    params_extract_template: "GET_JSON_OBJECT(params,'$.{field_name}')",
+    base_columns: ['role_id', 'ds', 'event', 'params'],
+  }
+  const eventSql = "SELECT COUNT(DISTINCT role_id) AS uv FROM ieu_ods.ods_10000251_all_view WHERE event = 'game.pay.order' AND ds = '20260805'"
+  const prompts: string[] = []
+  const llm: Llm = {
+    generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+      prompts.push(args.prompt ?? '')
+      return Promise.resolve({ sql: eventSql })
+    },
+  }
+
+  const withView = await new Nl2sqlEngine({ dataSources: DS, llm, odps: new StandInOdps() })
+    .run({ question: '昨天下单的独立角色数', eventDef: EV, eventView })
+  expect(withView.ok).toBe(true)
+  expect(withView.sql).toContain('ieu_ods.ods_10000251_all_view')
+  const genPrompt = sqlGenPrompts(prompts)[0]
+  expect(genPrompt).toBeDefined()
+  expect(genPrompt).toContain('# 事件查询落表')
+  expect(genPrompt).toContain(eventView.full_name)
+  expect(genPrompt).toContain(eventView.params_extract_template)
+
+  // Control: same SQL, no eventView → the critic rejects the table by name and
+  // the engine exhausts its retries.
+  const withoutView = await new Nl2sqlEngine({ dataSources: DS, llm, odps: new StandInOdps() })
+    .run({ question: '昨天下单的独立角色数', eventDef: EV })
+  expect(withoutView.ok).toBe(false)
+  const criticStep = withoutView.trace.find(e => e.step === 'critic') as { reason?: string | null } | undefined
+  expect(criticStep?.reason ?? '').toContain('ods_10000251_all_view')
 })

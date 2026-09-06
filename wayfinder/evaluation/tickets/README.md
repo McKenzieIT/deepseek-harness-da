@@ -1,0 +1,30 @@
+# evaluation tickets — dsh-data-agent
+
+> 按 direction 组织。每 ticket 一个文件(多 session 并行 claim 不冲突)。状态全 open。blocking 在每文件内。已 resolved 的决策见 `../map.md` 的 Decisions so far;研究笔记在 `../research/`。
+> **命名**:`<type><n>-<slug>.md`,type ∈ {R research,G grilling,T task,P prototype}。本 effort 命名空间,**独立于 data-agent 的 R/G/T**(同号不同 dir,路径区分)。
+> **执行流程**: T/R-experiment(impl/experiment)不在本环境直接做(走 SPEC→rubric 包→另一环境);G/R认读/P 本环境直接做。见 [`../playbook.md`](../playbook.md)。
+> **历史 eval 票**(`P11*`/`R3`/`G2`/`GA-EVAL-*`/`GA-EXP*`/`GA-GRILL*`)在 `../../data-agent/tickets/`(phase-4 + phase-misc),**不在本目录**——本 effort 仅放 2026-09-06 起的新方向票。
+
+## 取票流程(多 session 并行)
+- 每 session claim 一个 ticket(先 claim 再做)。
+- 从最低 unblocked direction 取;blocked 票等其 blocker 解。
+- 一个 ticket 一个 session(grilling/prototype HITL;research/task AFK)。
+- ticket 头声明 `Branch: <type>/<id>-<slug>`;改完逻辑单元立即 commit、绝不 `git add -A`、按路径 stage。
+- research 票产数字必入 `../research/experiment-audit-log.md`;认读分析产 `../research/<slug>-papers.md`。
+
+## 方向与票链(见 `../map.md` §Frontier directions)
+| # | 方向 | 认读 R | grilling G | impl T/P | experiment R |
+|---|---|---|---|---|---|
+| 1 | 执行级评分+非循环 GT | R1 | G1 | T1 | R12 |
+| 2 | Judge blind-rewrite | R2 | G2 | T2 | R13 |
+| 3 | Judge 校准+gated | R3 | G3 | T3 | R14/R15 |
+| 4 | Power-aware+显著性 | R4 | G4 | T4/T4b | R16 |
+| 5 | 污染+动态 pipeline | R5 | G5 | T5/T5b | R17 |
+| 6 | 轨迹+多轮基准 | R6 | G6 | P1/T6 | R18 |
+| 7 | Step-level PRM | R7 | G7 | — | R19 |
+| 8 | Pairwise/rubric judge | R8 | G8 | T7 | R20 |
+| 9 | Error taxonomy | R9 | G9 | T8 | — |
+| 10 | Harness B/H/E+Goodhart | R10 | G10 | T9 | R21 |
+| 11 | Robustness+active sampling | R11 | G11 | T10 | R22 |
+
+(票文件在 claim 时创建;本 README 是 index,map.md 是权威状态。)

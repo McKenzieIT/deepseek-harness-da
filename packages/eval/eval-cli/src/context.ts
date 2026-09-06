@@ -15,8 +15,10 @@ import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs } from '@deepseek-ai/dsh-nl2sql-engine'
+import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs, type EventDefinitionLite } from '@deepseek-ai/dsh-nl2sql-engine'
+import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition/src/index.ts'
 import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
+import { detectEventName, type CorpusItemLike } from './event-detect.ts'
 
 import type {
   Llm,
@@ -78,6 +80,13 @@ class CtxLlmAdapter implements Llm {
   ) {}
 
   async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+    // GA-EVAL-RETRY-FEEDBACK: the engine renders `lastFeedback` into the
+    // prompt itself (# 上次失败反馈 section, via BuildPromptArgs.feedback), so
+    // this adapter streams `args.prompt` and the retry actually sees the prior
+    // failure. The `args.feedback` side-channel is vestigial here (ignored) —
+    // kept only for ReplayLlm (eval stub) scripted-rewrite tests. Do NOT add
+    // args.feedback handling here: it would diverge from the prompt the engine
+    // assembled + re-introduce the identical-prompt retry drift this fixes.
     const prompt = args.prompt
     if (prompt === undefined || prompt.length === 0) {
       throw new Error('CtxLlmAdapter: engine did not pass a prompt')
@@ -320,12 +329,109 @@ async function expandQuery(ctx: Context, question: string): Promise<string> {
   }
 }
 
+// ── GA-EVAL-EVENTDEF-PREFETCH: event-definition pre-fetch ────────────────
+
+/**
+ * The detection model. Pinned to qwen3.7-max independently of the run's
+ * `--model`: the risk gate measured qwen-flash at 4 false positives (it cannot
+ * separate the generic 「付费」 from the event-specific 「充值」), and a false
+ * positive here injects the event view into a DWS question, which returns a
+ * plausible wrong value the semantic judge accepts. Detection safety is not
+ * negotiable against the run's model choice.
+ */
+const DETECTION_PROVIDER = 'aga'
+const DETECTION_MODEL = 'qwen3.7-max'
+
+/** The event grounding handed to `engine.run`: the definition slice the prompt + critic read, plus the scope's event view. */
+interface EventContext {
+  readonly eventDef: EventDefinitionLite
+  readonly eventView: EventViewInfo | undefined
+}
+
+/** The `SemanticLayerService` surface this module needs (probed via `ctx.get('schema')`, so typed structurally). */
+interface SchemaSeam {
+  loadRetrievalCorpusAll?(): unknown[]
+  getRelationGraph?(scopeId?: string): RelationGraphLike
+  loadEventDefinition?(name: string): unknown
+  readonly semanticRoot?: string
+}
+
+/**
+ * GA-EVAL-EVENTDEF-PREFETCH: render the pre-fetched event grounding for the
+ * `schema_context` the eval runner hands to the SQL semantic judge.
+ *
+ * The judge scores `table_selection` / `field_selection` against this context,
+ * and the event view is NOT a corpus item (it is scope-level config), so without
+ * this the judge marks CORRECT event-view SQL as out-of-schema. Measured on case
+ * 135 (`data_source: event`, whose own reference SQL is the event-view query):
+ * pre-(a) the model wrote DWS-table SQL and the judge gave it 1.0 on all three
+ * attempts; post-(a) it wrote the reference-shaped event-view SQL and the judge
+ * gave 0.4/0.2/0.2 with the rationale 「使用了 Schema 上下文之外的 ODS 底层表…
+ * 导致表和字段选择错误」 (`table_selection: 0`, `field_selection: 0`). Same class
+ * of false-reject as the critic's `table_not_in_candidates`, which `engine.ts`
+ * fixes via `makeCriticCtx` — the judge needs the identical courtesy, or the
+ * instrument penalises exactly the grounding this ticket adds.
+ * @param eventCtx - the pre-fetched event grounding.
+ * @returns a schema-context block naming the event view, event filter, and params fields.
+ */
+function renderEventSchemaContext(eventCtx: EventContext): string {
+  const def = eventCtx.eventDef as { name?: unknown; event_filter?: unknown; params_fields?: unknown }
+  const lines: string[] = ['', '事件数据源（已 pre-fetch，属于本次可用 schema）：']
+  if (eventCtx.eventView !== undefined) {
+    lines.push(`- 事件视图表（合法 FROM 目标）: ${eventCtx.eventView.full_name}`)
+    lines.push(`- params 字段提取模板: ${eventCtx.eventView.params_extract_template}`)
+    if (eventCtx.eventView.base_columns.length > 0) {
+      lines.push(`- 视图基础列: ${eventCtx.eventView.base_columns.join(', ')}`)
+    }
+  }
+  if (typeof def.name === 'string') lines.push(`- 事件名: ${def.name}`)
+  if (typeof def.event_filter === 'string' && def.event_filter !== '') lines.push(`- 事件过滤: ${def.event_filter}`)
+  if (typeof def.params_fields === 'object' && def.params_fields !== null) {
+    const names = Object.keys(def.params_fields as Record<string, unknown>)
+    if (names.length > 0) lines.push(`- params 可用字段: ${names.join(', ')}`)
+  }
+  return lines.join('\n')
+}
+
+/**
+ * Project a validated substrate `EventDefinition` to the slice the SQL prompt +
+ * critic actually consume. `params_fields` MUST stay a map: the critic derives
+ * its `json_field_not_in_params` guard from `Object.keys(eventParams)`, so the
+ * array projection `tool-load-event-definition.projectEvent` produces (correct
+ * for the model-facing tool boundary) would degrade the guard to the indices
+ * `0,1,2…`. Workflow-state fields (`confirmation`/`coverage`) and retrieval-only
+ * fields (`alt_labels`/`domains`) are dropped — they are prompt noise here.
+ * @param def - the raw event definition from `ctx.schema.loadEventDefinition`.
+ * @returns the prompt/critic-facing event definition slice.
+ */
+function projectEventDefForPrompt(def: Record<string, unknown>): EventDefinitionLite {
+  const params = def['params_fields']
+  const metrics = def['metrics']
+  return {
+    ...(typeof def['name'] === 'string' ? { name: def['name'] } : {}),
+    ...(typeof def['event_filter'] === 'string' ? { event_filter: def['event_filter'] } : {}),
+    ...(typeof def['description'] === 'string' ? { description: def['description'] } : {}),
+    ...(typeof params === 'object' && params !== null ? { params_fields: params as Record<string, unknown> } : {}),
+    ...(typeof metrics === 'object' && metrics !== null && Object.keys(metrics).length > 0 ? { metrics } : {}),
+  }
+}
+
 // ── Nl2sqlEngine-backed AgentResponder ───────────────────────────────────
 
 class Nl2sqlAgentResponder implements AgentResponder {
   private readonly llm: CtxLlmAdapter
   private readonly odps: OdpsExecutor
   private readonly queryExpansionEnabled: boolean
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: per-question detection cache. Two reasons, both
+   * load-bearing. (1) Cost: `respond()` runs once per pass^k attempt, so
+   * without it a 39-case × k=3 run pays 117 detection calls instead of 39.
+   * (2) Correctness of the verdict: `passKVerdict` requires ALL k attempts to
+   * pass, so a detection that flipped between attempts would inject the event
+   * schema for some attempts and not others and charge the difference to SQL
+   * generation. Caching pins the grounding across a case's attempts.
+   */
+  private readonly eventCtxCache = new Map<string, EventContext | null>()
 
   constructor(
     private readonly ctx: Context,
@@ -341,10 +447,93 @@ class Nl2sqlAgentResponder implements AgentResponder {
     this.queryExpansionEnabled = queryExpansion
   }
 
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: one qwen3.7-max detection call, bound to the
+   * eval-cli plugin source. Separate from `CtxLlmAdapter` because that adapter
+   * carries the run's `--provider/--model` (which must not decide detection —
+   * see {@link DETECTION_MODEL}) and its SQL-vs-reasoning extraction, which is
+   * wrong for a one-token routing answer.
+   * @param prompt - the detection prompt.
+   * @returns the model's reply text (falling back to reasoning when a thinking model emits no text block).
+   */
+  private async completeDetection(prompt: string): Promise<string> {
+    const assembler = new BlockAssembler()
+    const options = {
+      provider: DETECTION_PROVIDER,
+      model: DETECTION_MODEL,
+      temperature: 0.1,
+      maxTokens: 64,
+      messages: [
+        createUserMessage({
+          content: [{ type: 'text' as const, text: prompt }],
+          source: { kind: 'plugin' as const, plugin: 'eval-cli-event-detect' },
+        }),
+      ],
+    }
+    for await (const chunk of this.ctx.llm.stream(options)) assembler.push(chunk)
+    const blocks = assembler.blocks()
+    const text = blocks
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim()
+    if (text.length > 0) return text
+    return blocks
+      .filter((b): b is { type: 'reasoning'; text: string } => b.type === 'reasoning')
+      .map(b => b.text)
+      .join('')
+      .trim()
+  }
+
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: detect the event this question is about and load
+   * its grounding through the G-DA4 seam (`ctx.schema.loadEventDefinition` +
+   * `extractEventView`). Returns null when the question is not about a raw event
+   * — the common case (21 of 39 eval cases are DWS questions) — which reproduces
+   * the pre-(a) behaviour exactly: no `eventDef`, prompt renders 「（未加载）」.
+   *
+   * Every failure path returns null rather than throwing: this is enrichment on
+   * the way to SQL generation, and a detection outage must degrade the answer,
+   * not fail the case.
+   * @param schema - the semantic-layer seam (may be unmounted).
+   * @param corpus - the retrieval corpus the responder already loaded.
+   * @param question - the user question.
+   * @returns the event grounding, or null when no event applies.
+   */
+  private async loadEventContext(
+    schema: SchemaSeam | undefined,
+    corpus: readonly CorpusItemLike[],
+    question: string,
+  ): Promise<EventContext | null> {
+    const cached = this.eventCtxCache.get(question)
+    if (cached !== undefined) return cached
+    let resolved: EventContext | null = null
+    if (schema?.loadEventDefinition !== undefined) {
+      const detection = await detectEventName(
+        { corpus, complete: p => this.completeDetection(p) },
+        question,
+      )
+      if (detection.eventName !== null) {
+        const raw = schema.loadEventDefinition(detection.eventName)
+        if (typeof raw === 'object' && raw !== null) {
+          const semanticRoot = schema.semanticRoot ?? ''
+          resolved = {
+            eventDef: projectEventDefForPrompt(raw as Record<string, unknown>),
+            eventView: semanticRoot !== '' ? extractEventView(semanticRoot) : undefined,
+          }
+        }
+        console.error(
+          `[DIAG] event detected=${detection.eventName} loaded=${resolved !== null}`
+          + ` view=${resolved?.eventView?.full_name ?? '(none)'}`,
+        )
+      }
+    }
+    this.eventCtxCache.set(question, resolved)
+    return resolved
+  }
+
   async respond(question: string, _opts?: AgentRespondOpts): Promise<AgentResponse> {
-    const schema = this.ctx.get('schema') as
-      | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(scopeId?: string): RelationGraphLike }
-      | undefined
+    const schema = this.ctx.get('schema') as SchemaSeam | undefined
     const corpus = (schema?.loadRetrievalCorpusAll?.() ?? []) as readonly { id: string; description?: string; payload?: unknown }[]
     const baseLinker = new Bm25Linker(corpus)
     const graph = schema?.getRelationGraph?.(this.scopeId)
@@ -386,13 +575,29 @@ class Nl2sqlAgentResponder implements AgentResponder {
         : { promptBuilder: (args: BuildPromptArgs) => buildPrompt({ ...args, contextPrefetched: true }) }),
     })
 
-    const result = await engine.run({ question, scopeId: this.scopeId, today: this.today })
+    // GA-EVAL-EVENTDEF-PREFETCH: pre-fetch the event grounding (null for DWS
+    // questions → identical to the pre-(a) call). Runs after the engine is
+    // constructed but before `run` so the detection call and the BM25/graph
+    // setup do not serialise needlessly.
+    const eventCtx = await this.loadEventContext(schema, corpus, question)
+    const result = await engine.run({
+      question,
+      scopeId: this.scopeId,
+      today: this.today,
+      ...(eventCtx !== null ? { eventDef: eventCtx.eventDef } : {}),
+      ...(eventCtx?.eventView !== undefined ? { eventView: eventCtx.eventView } : {}),
+    })
     const sql = result.sql ?? null
     console.error(`[DIAG] SQL: ${sql?.slice(0, 400) ?? '(none)'}`)
     console.error(`[DIAG] ok=${result.ok} decline=${result.decline} rows=${Array.isArray(result.result) ? result.result.length : '?'}`)
     // Hoisted above the reply branches: the tool-call decline path synthesises a
     // reply from the retrieved candidates, so it needs the schema context too.
+    // GA-EVAL-EVENTDEF-PREFETCH: the judge must score against the same schema
+    // the model was given, or it false-rejects the event view (see
+    // renderEventSchemaContext). Appended, so the BM25 candidate block is
+    // byte-unchanged when no event was detected.
     const schemaContext = this.buildSchemaContext(result.trace, corpus)
+      + (eventCtx !== null ? renderEventSchemaContext(eventCtx) : '')
     let reply: string
     const sqlIsPresent = sql !== null && /\b(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE)\b/i.test(sql)
     if (!sqlIsPresent && sql !== null && sql.length > 20 && !looksLikeToolCall(sql)) {
@@ -547,7 +752,19 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     // harness-responder.ts which uses ~/.maxc/config.yaml. Same concept, one
     // default; both overridable via MAXC_CONFIG.
     const maxcConfigPath = process.env.MAXC_CONFIG ?? join(homedir(), '.maxc/config.yaml')
-    const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath })
+    // GA-EVAL-EVENTDEF-PREFETCH: the MCP tool-call timeout must sit ABOVE the
+    // sidecar's `maxc query run --wait <N>` window (N = MAXC_WAIT_SECONDS,
+    // default 60), so derive it from the same env var. At the previous 60s/60s
+    // parity the client gave up in the same instant maxc was handing back a job
+    // id, so any query slower than the wait window surfaced as
+    // `MCP error -32001: Request timed out` instead of taking the pending/attach
+    // path the sidecar was built for. Event-view queries make that reachable in
+    // practice: `COUNT(DISTINCT role_id)` over ieu_ods.ods_10000251_all_view
+    // measured 68s, against a few seconds for the pre-aggregated DWS tables the
+    // earlier baselines hit — so (a)'s own SQL was being scored infra_failure.
+    const maxcWaitSeconds = Number(process.env.MAXC_WAIT_SECONDS ?? 60)
+    const toolCallTimeoutMs = ((Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60) + 60) * 1000
+    const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath, toolCallTimeoutMs })
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }

@@ -17,6 +17,7 @@ import { MAX_SQL_PER_TURN, MAX_FEEDBACK_RETRIES } from './types.ts'
 import { renderConventionsPrompt } from './conventions.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query'
 import type { RetrievalHit } from './bm25-linking.ts'
+import type { LlmFeedback } from './replay-llm.ts'
 
 function granularityTag(id: string): string {
   if (/_di$/.test(id)) return ' [日粒度]'
@@ -47,6 +48,63 @@ function renderMetricSection(metricContext: string | undefined): string {
     : ''
 }
 
+/**
+ * Bound + sanitize a feedback error for the prompt: collapse to one line,
+ * strip control chars, redact slash-joined file paths, bound length. Mirrors
+ * tool-load-event-definition's `sanitizeSubstrateError` (the feedback crosses
+ * the same model-facing boundary). Table names are dot-joined, so they
+ * survive — the LLM needs "table not found" detail to self-correct.
+ * @param error - the raw feedback error string (critic reason / ODPS error).
+ * @returns a bounded single-line sanitized message.
+ */
+function sanitizeFeedbackError(error: string): string {
+  const clean = (error ?? '')
+    .replace(/[\x00-\x1f\x7f]/g, ' ')
+    .replace(/\/?[\w.\-]+\/[\w.\-]+(?:\/[\w.\-]+)*/g, '<path>')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return clean.length > 400 ? `${clean.slice(0, 400)}...` : clean
+}
+
+/**
+ * GA-EVAL-RETRY-FEEDBACK: render the last retry's failure as prompt context so
+ * the LLM self-corrects instead of re-generating near-dup SQL (the
+ * `CtxLlmAdapter` streams `args.prompt` only, so feedback must live IN the
+ * prompt, not a side-channel arg). Returns `''` when no feedback (attempt 0 /
+ * no prior failure) → byte-stable with the pre-feedback prompt.
+ * @param feedback - the last retry's failureKind + error, or null/undefined.
+ * @returns the `# 上次失败反馈` section, or `''` when absent.
+ */
+function renderFeedbackSection(feedback: LlmFeedback | null | undefined): string {
+  if (!feedback) return ''
+  return `\n# 上次失败反馈（据此修正，勿重复相同错误）\n- 失败类型：${feedback.failureKind}\n- 错误：${sanitizeFeedbackError(feedback.error)}\n`
+}
+
+/**
+ * GA-EVAL-EVENTDEF-PREFETCH: render the event-view grounding — the FROM table +
+ * the `params` extraction template + the mandatory `ds` filter. This is the
+ * eval-path counterpart of G-DA4's harness-path fix: the same facts, reached
+ * through the prompt instead of a tool result. Rendered as an explicit section
+ * (not folded into the `eventDef` JSON) so the FROM table is unmissable —
+ * burying it in a 23-field JSON blob is what left the model writing
+ * `FROM <数据视图>`. Returns `''` when no event view is loaded → byte-stable
+ * with the pre-(a) prompt.
+ * @param view - the event view for the loaded event, or null/undefined.
+ * @returns the `# 事件查询落表` section, or `''` when absent.
+ */
+function renderEventViewSection(view: EventViewLite | null | undefined): string {
+  if (!view || view.full_name === '') return ''
+  const cols = view.base_columns !== undefined && view.base_columns.length > 0
+    ? `\n- 视图基础列（可直接引用，无需 GET_JSON_OBJECT）：${view.base_columns.join(', ')}`
+    : ''
+  return `\n# 事件查询落表（已加载，必须照用）
+- FROM 表：${view.full_name}——所有埋点事件共用这一个视图。不要改用 DWS 汇总表，不要臆造表名，不要写占位符。
+- 事件过滤：WHERE event = '<上方 # 事件定义 的 name 值>'
+- params 字段提取：${view.params_extract_template}——把 {field_name} 替换为上方 # 事件定义 params_fields 中的字段名（区分大小写）。
+- 必须带分区过滤 ds（该视图按 ds 分区，缺分区过滤会全表扫）。${cols}
+`
+}
+
 /** Render the 8 core SQL rules (+ optional rule 9 when isTrend). Shared by
  * buildPrompt's §6 八规则 + buildEvalPrompt's 核心规则 (nl2sql-4 dedup — the
  * rule text was duplicated verbatim across the two prompts). */
@@ -68,6 +126,23 @@ export interface EventDefinitionLite {
   readonly [k: string]: unknown
 }
 
+/**
+ * GA-EVAL-EVENTDEF-PREFETCH: the scope-level event-view grounding — the FROM
+ * table every instrumented event is queried through, plus the SQL template for
+ * reading a `params` field. Structurally matches
+ * `tool-load-event-definition`'s `EventViewInfo` (declared here so the engine
+ * keeps no dependency on the tool package; G-DA4 established that the table is
+ * a scope property read from `config.yaml`, not an event property).
+ */
+export interface EventViewLite {
+  /** The fully-qualified FROM table (e.g. `ieu_ods.ods_10000251_all_view`). */
+  readonly full_name: string
+  /** The params-extraction SQL template (e.g. `GET_JSON_OBJECT(params,'$.{field_name}')`). */
+  readonly params_extract_template: string
+  /** Flat list of base column names available in the view. */
+  readonly base_columns?: readonly string[]
+}
+
 /** Arguments for building the SQL-generation prompt. */
 export interface BuildPromptArgs {
   readonly question: string
@@ -83,6 +158,28 @@ export interface BuildPromptArgs {
   readonly isTrend?: boolean
   /** Reference date (yyyyMMdd) for relative date computation (yesterday, last 7 days). */
   readonly today?: string | undefined
+  /**
+   * GA-EVAL-RETRY-FEEDBACK: the last retry's failure (critic reason / execution
+   * error / near-dup), rendered into the prompt as `# 上次失败反馈` so the LLM
+   * self-corrects instead of re-generating near-dup SQL. The eval engine
+   * responder's `CtxLlmAdapter` streams `args.prompt` only (it does not read
+   * `args.feedback`), so the feedback must live IN the prompt — wiring it here
+   * lets the production retry path actually see why the prior attempt failed.
+   * Null/undefined (attempt 0 / no prior failure) → the section is omitted →
+   * byte-identical to the pre-feedback prompt (byte-stability).
+   */
+  readonly feedback?: LlmFeedback | null | undefined
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: the event-view grounding for the loaded event —
+   * rendered as its own `# 事件查询落表` section rather than left inside the
+   * `eventDef` JSON blob, because the FROM table and the params template are the
+   * two facts the model was actually missing. Without them, event questions
+   * produced `FROM <数据视图>` placeholders (ParseError), declined outright, or
+   * fell back to a DWS summary table and returned a plausible wrong value.
+   * Null/undefined (no event detected — the common case) → the section is
+   * omitted → byte-identical to the pre-(a) prompt.
+   */
+  readonly eventView?: EventViewLite | null | undefined
   /**
    * GA-EVAL-SQLGEN-PROMPT-FIX: engine-responder mode. When true, the prompt
    * reframes the tool catalog as "candidates + event definitions already
@@ -116,7 +213,7 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
  * @returns The assembled prompt string.
  */
 export function buildPrompt(args: BuildPromptArgs): string {
-  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend, contextPrefetched } = args
+  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend, contextPrefetched, feedback, eventView } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines = renderCandidates(candidates)
   const joinSection = renderJoinSection(joinConstraints)
@@ -146,7 +243,7 @@ ${renderCoreRules(isTrend)}
 
 ${dialect}
 
-${joinSection}${metricSection}
+${joinSection}${metricSection}${renderFeedbackSection(feedback)}
 # 当前日期
 今天是 ${args.today ?? '未知'}（yyyyMMdd 格式）。"昨天"= 今天-1 天，"过去7天"= 从今天往回7天。分区列格式见方言规范。计算相对日期时用字面值，不要用运行时日期函数。
 
@@ -158,7 +255,7 @@ ${candLines}
 
 # 事件定义（若已加载）
 ${eventDef ? JSON.stringify(eventDef, null, 2) : '（未加载）'}
-
+${renderEventViewSection(eventView)}
 # 当前阶段（P7 四阶段适配：phase=${phase}）
 GENERATION 阶段：直接基于上方上下文生成 SQL（\`\`\`sql 围栏）；critic、执行与自修由引擎内部完成。`
   }
@@ -193,7 +290,7 @@ ${renderCoreRules(isTrend)}
 
 ${dialect}
 
-${joinSection}${metricSection}
+${joinSection}${metricSection}${renderFeedbackSection(feedback)}
 # 当前日期
 今天是 ${args.today ?? '未知'}（yyyyMMdd 格式）。"昨天"= 今天-1 天，"过去7天"= 从今天往回7天。分区列格式见方言规范。计算相对日期时用字面值，不要用运行时日期函数。
 
@@ -205,7 +302,7 @@ ${candLines}
 
 # 事件定义（load_event_definition）
 ${eventDef ? JSON.stringify(eventDef, null, 2) : '（未加载）'}
-
+${renderEventViewSection(eventView)}
 # 当前阶段（P7 四阶段适配：phase=${phase}）
 GENERATION 阶段：生成 SQL（\`\`\`sql 围栏），调 critique_sql_tool 校验，过 gate 后 query_data 执行。`
 }
