@@ -103,6 +103,9 @@ jobs:
         run: |
           mkdir -p ~/.dsh
           printf 'DASHSCOPE_API_KEY: "%s"\n' "$DASHSCOPE_API_KEY" > ~/.dsh/.credentials.yaml
+      - name: Install pandas/numpy (code-runtime-data-python darwin parity — runtime uses system python3)
+        if: matrix.runner == 'seatbelt'
+        run: python3 -m pip install pandas numpy
       - name: Unit tests (darwin parity)
         if: matrix.runner == 'seatbelt'
         run: pnpm run test
