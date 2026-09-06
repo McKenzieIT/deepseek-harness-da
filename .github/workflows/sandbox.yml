@@ -91,6 +91,9 @@ jobs:
       # in the workflow, so run it here too — the platform-dependent unit
       # expectations (Seatbelt path canonicalization: /tmp IS /private/tmp)
       # take their darwin branch only on this runner.
+      - name: Build host lib (darwin parity: vendored @deepseek-ai/cordis resolves via lib — vite-tsconfig-paths is broken on vite 8 so tests can't resolve it to src)
+        if: matrix.runner == 'seatbelt'
+        run: pnpm run build:lib:host
       - name: Unit tests (darwin parity)
         if: matrix.runner == 'seatbelt'
         run: pnpm run test
