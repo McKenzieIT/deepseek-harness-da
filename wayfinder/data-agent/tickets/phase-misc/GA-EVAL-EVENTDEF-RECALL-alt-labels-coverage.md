@@ -38,6 +38,7 @@
 ## 工作清单
 
 - [ ] grill 方向（A-D 或组合）。**先做 (A) 的前置调查**：`enrichment.ts` 的 alt_labels 发现有没有对 events 跑过？只有 6 个的原因是什么？
+- [ ] ⚠️ **认领本票前先看 `packages/data/semantic-layer/src/enrichment.ts` 的在途改动**：2026-09-06 深夜有并发 session 正在改该文件及其两个测试（`enrichment.spec.ts` / `discover-relations.spec.ts`，主 worktree 未提交状态）。方向 (A) 直接落在这块 territory 上——先确认那边在做什么，避免撞车或重复。
 - [ ] 任何改动都必须重跑 `packages/eval/eval-cli/dev/event-detect-fp-probe.ts` 确认 **FP 仍为 0**（严格定义：DWS→event **和** event→错的 event 都算 FP）。当前基线 TP=6/FP=0/TN=21/FN=12。
 - [ ] 12 个 FN 里有几个是「扩了 alt_labels 就能救」的？（`card.gacha`+「抽卡」直接救 121/128/129/130 四个——单条别名收益最高）
 - [ ] 注意 137/138 是**规则性 NONE**而非词法 miss（「付费的角色」「新增且…的角色」按泛词规则回 NONE），扩召回救不了它们——它们需要的是口径判断，可能本就该 NONE。
