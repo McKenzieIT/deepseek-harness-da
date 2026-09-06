@@ -46,16 +46,23 @@ export class SchemaGateway extends TypertRemoteService {
   }
 
   /**
-   * GA-GT1 Phase 5c: private per-scope BM25 linker cache builder. `scopeId`
-   * (β mode, forwarded from the public `search(query, topK?, scopeId?)`)
-   * threads to `corpusVersion(scopeId)` (Phase 2 per-scope version signal);
-   * `undefined` → active scope (现状, preserved). `loadRetrievalCorpusAll()`
-   * is NOT scope-parameterized (the real method takes none), so the corpus
-   * load stays active-scope — 5c only covers the two listed call sites;
-   * full per-scope corpus isolation is a later phase. Dormant until 5d.
+   * GA-GT1 Phase 5c: private BM25 linker cache builder. `scopeId` (β mode,
+   * forwarded from the public `search(query, topK?, scopeId?)`) is accepted
+   * for the future per-scope path but is NOT threaded to `corpusVersion`:
+   * `loadRetrievalCorpusAll()` always returns the ACTIVE scope's corpus (no
+   * scopeId arg), so the cache keys on the ACTIVE scope's version
+   * (`corpusVersion(undefined)`) to match the corpus actually loaded.
+   * data-infra-5: keying on `corpusVersion(scopeId)` while loading the
+   * active-scope corpus returned a STALE linker when the active corpus
+   * changed but scopeId's version stayed the same. When
+   * loadRetrievalCorpusAll becomes scope-parameterized (5d), revert to
+   * `corpusVersion(scopeId)`. Dormant until 5d — prod callers do not set
+   * scopeId here yet.
    */
   private getLinker(scopeId?: string): Bm25Linker {
-    const version = this.ctx.schema.corpusVersion(scopeId)
+    // 5d: thread scopeId to a scope-parameterized corpus load + corpusVersion(scopeId).
+    void scopeId
+    const version = this.ctx.schema.corpusVersion(undefined)
     if (this.linkerCache !== undefined && this.linkerCache.version === version) {
       return this.linkerCache.linker
     }

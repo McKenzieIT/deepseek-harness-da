@@ -1,17 +1,8 @@
 # da Upstream Debt Registry
 
-> Tracked debt from the `da-plugin-development-guidelines` compliance audit (2026-08-22).
-> Each item records a place where da currently modifies dsh-owned source, or carries an
-> in-fork anti-pattern, the reason da needs the capability, the planned resolution, and
-> the interim workaround that avoids merge conflicts with `upstream`
-> (`deepseek-ai/deepseek-harness`).
+> Tracked debt from the `da-plugin-development-guidelines` compliance audit (2026-08-22). > Each item records a place where da currently modifies dsh-owned source, or carries an > in-fork anti-pattern, the reason da needs the capability, the planned resolution, and > the interim workaround that avoids merge conflicts with `upstream` > (`deepseek-ai/deepseek-harness`).
 >
-> Per rules 4.1 / 4.4 / §3.2 of `docs/da-plugin-development-guidelines.md`, da must not
-> modify dsh-owned package src. The items below are the known exceptions — to be resolved
-> upstream (or via a §4.2 wrapper seam) rather than reverted in-fork. All dsh-src
-> modifications here are **additive / backward-compatible** (optional params, new optional
-> fields, new types/exports) — none is breaking — so existing upstream callers and
-> providers continue to typecheck.
+> Per rules 4.1 / 4.4 / §3.2 of `docs/da-plugin-development-guidelines.md`, da must not > modify dsh-owned package src. The items below are the known exceptions — to be resolved > upstream (or via a §4.2 wrapper seam) rather than reverted in-fork. All dsh-src > modifications here are **additive / backward-compatible** (optional params, new optional > fields, new types/exports) — none is breaking — so existing upstream callers and > providers continue to typecheck.
 
 ---
 
@@ -86,10 +77,7 @@
 
 ## §2 In-fork deferred anti-patterns (NOT upstream-PR)
 
-> These are anti-patterns in **da-owned** code (no dsh source modified). They do not need an
-> upstream PR. They are recorded here because the correct fix is a structural refactor the
-> team has **explicitly deferred** (per in-code comments); they are tracked for a future
-> follow-up, not force-fixed against the deferral.
+> These are anti-patterns in **da-owned** code (no dsh source modified). They do not need an > upstream PR. They are recorded here because the correct fix is a structural refactor the > team has **explicitly deferred** (per in-code comments); they are tracked for a future > follow-up, not force-fixed against the deferral.
 
 ### D4 — nl2sql-engine Service Definition does provider I/O (§6:io-in-definition)
 

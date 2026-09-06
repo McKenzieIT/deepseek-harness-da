@@ -59,13 +59,19 @@ reply 侧成果对它**全部不可见**，所以：
 3. **修完是否要重跑 ③ 的基线？** 若管理 agent 的历史 eval run 都带这个缺陷，
    `evidence-query` 里的存量 run 是否需标记为「管道缺陷期」以免 delta 对比跨越修复点？
 
-## 附带：`declineKind` 命名已不准确
+## 附带：`declineKind` 命名已不准确 —— **已完成（2026-09-06，随 CL-20 收尾）**
 
 CL-20 把门禁收窄为「交付物类型」判定后，`declineKind: 'open_ended_question'`
 （`engine.ts:151`）名不符实——它判的是 report/forecast/recommendation，不是「开放性」。
 建议随本票一并重命名为 `'beyond_single_query'`（调用点：`engine.ts` 门禁、
 `context.ts:397`、`tests/open-ended-triage.spec.ts`）。**未在 CL-20 内改的原因**：
 改动期间全量 eval 正在用 tsx 跑工作树，改则结果对不上任何 commit（map Notes 已记录过这个坑）。
+
+> **已落地**（[PR #37](https://github.com/McKenzieIT/deepseek-harness-da/pull/37)，merge `f4e4b4e4c7`）：
+> 3 处调用点全部改为 `'beyond_single_query'` —— `engine.ts:151` union 定义 + 门禁返回、
+> `context.ts`（rebase 后行号为 `:406`，非票体写的 `:397`）、`tests/open-ended-triage.spec.ts`。
+> master 上实测 `open_ended_question` 残留 **0** 处。时机上是在全量 run 结束后才改的，避开了上面那个坑。
+> **本票主体（`eval-runner-service` 零 `declineKind` 处理）不受影响，仍 open。**
 
 ## 验收
 

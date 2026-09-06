@@ -1,6 +1,6 @@
 ---
 type: grilling
-status: open
+status: closed
 blocked_by: []
 ---
 
@@ -74,3 +74,19 @@ not a materialized module, and no registered package factory
 - zod 的声明位置有明确决定 + knip gate 不会再次误删
 - scope-registry 的 zod 状态明确（加回 or 证无需）
 - 一条回归测试：api-remotes client bundle 的 `require("zod")` 计数 = 0（防再现）
+
+## Resolution（2026-09-06，PR #30）
+
+**状态**：已关闭。修复落地为 [PR #30](https://github.com/McKenzieIT/deepseek-harness-da/pull/30)（`fix/cb4-zod-externals-drift`，base master）。
+
+**根因更正**：票里"bundler 把内联 zod 注册进 module table，需 zod 在 schema-gateway 声明为 dep"是**错误归因**。实测（CB4 worktree，origin/master 481d8cc480）：api-remotes client bundle 在 schema-gateway 有/无 zod dep 时**字节级几乎一致**（232725 vs 231841 字节），`require("zod")` line 7 两边都有，zod 始终通过 `alwaysBundle` 内联（tsdown.client.ts `clientConfig`），与 schema-gateway 是否声明 zod **无关**。浏览器 shell 的 module table **只**由 `platform.ts` 静态常量填充（`PLATFORM_MODULES` = react/react-dom/cordis/ui-slots/ui-primitives；`PRELOADED_CLIENT_EXTERNALS` = dsh-client-runtime/client），**不读任何包的 dependencies**——所以"schema-gateway 加回 zod dep"从未把 "zod" 塞进 shell table，浏览器端 `require("zod")` 永远 miss。票里"已验证修复（boot 200）"量的是**服务端** boot（GET / → 200，两种状态都通，与 zod 无关），浏览器端插件加载（require("zod") 所在）从未被该 dep 修复。
+
+**真修复（PR #30）**：把 zod 做成**共享 platform module**（像 react/cordis）——`platform.ts` `PLATFORM_MODULES` 加 `'zod'`；`seed.ts` `import * as Zod from 'zod'` + `'zod': Zod` 进 `getStaticModules()`（shell 预置共享 zod 进 frozen module table）；`packages/client/web/package.json` zod devDep（shell bundle 进 web dist）。bundler（`clientExternals` union `PLATFORM_MODULES`）把 zod 当 external（`neverBundle`），plugin bundle 不再内联 zod，`require("zod")` 解析到 shell 共享实例。zod 有 runtime identity（schema 实例、`_zod` 属性），共享而非每 bundle 内联才对。
+
+**实测**：api-remotes bundle 232KB→94KB（zod external，不再内联）；web dist 399KB→681KB（shell bundle 共享 zod）。浏览器（gstack，n=1，CL-22 caveat：单 run 确认性非决策依据）：dsh web boot；api-remotes 插件加载（无 `require("zod") missed`）；证据 UI 真实数据（Coverage 23 assets、gaps by domain、eval runs）；B→A auto-flip 触发（DashboardView 可见 = `effectiveMode === 'A'`、有样式 `display:flex`）；console 无错。无 temp zod、无 vi.mock bypass（本就不存在）。typecheck/knip/verify-client-packages 全绿（knip 无需豁免——seed.ts 用 zod）。回归测试 `packages/client/web/tests/platform-zod.client.spec.ts` 断言 zod 在 `PLATFORM_MODULES`+`getStaticModules`。
+
+**Q1-Q4 回答**：Q1——zod 声明在 `platform.ts` `PLATFORM_MODULES`（shell seed module table 处），**非** package dep；bundler 不注册 zod，是 shell 从 platform 常量 seed。Q2——无需 knip 豁免，seed.ts import zod，knip 视为 used。Q3——scope-registry 无 `./remote` 导出、src 零 zod 用，GA-AUDIT1 删除正确，无 latent 回归。Q4——独立于 CB-3，根因是 module-table seeding 非 failure 粒度。
+
+**GA-AUDIT1 协调**：`52330a98fa` 删了 schema-gateway zod dep，本 PR **不**恢复该 dep（platform-module 修复下不需要）。GA-AUDIT1 followup（`fix/ga-audit1-followup-ucl-batch-recover`，PR #9）已 merge，未碰 knip.json 或 loader，无冲突。
+
+**brief drift（供 map 记录）**：session brief 前提经代码核实更正——(1)"三包都有 typert.remote-client.js import zod"→只有 schema-gateway/evidence-query 有 remote-client，且自包含不 import zod，zod 引用是 typert 生成 wire schema 的 `zod.z`；(2)"移除 vi.mock('zod') bypass"→全仓无 vi.mock('zod')；(3)"bundler 经 schema-gateway dep 注册 zod"→bundler 不这么做，bundle 字节级一致；(4)"base=master"→本地 master 停 CB-1a（pre-W16），从 origin/master（含 W16 PR #14）建 worktree。

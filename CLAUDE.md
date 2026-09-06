@@ -80,6 +80,12 @@ harness 不会自动建 worktree/分支（[agent-teams 笔记](.agents/notes/imp
    - 改一条声明时，**证据文档也要改**，不只改票——brief 才是人们点进去看细节的地方。
    - 验证通常就是一行 `node -e` 计数；省掉它从不省时间。
 
+3. **改 CJK 密集文档后，push 前逐条核对 diff 的删除侧。** 一次 read-modify-write 静默把 `map.md` 里一行**没碰过**的字打坏：`客`（`\xe5\xae\xa2`）变成 U+FFFD x3（`\xef\xbf\xbd` x3），位置离真实编辑点约 4 行。`tsc`、lint、whitespace hook、`no production src on master` hook **全部通过** —— 工具链里没有任何东西会报 mojibake，`--stat` 和 diff 摘要也看不出来。当时是靠核对删除侧、发现一行不该出现的 `-`（一条 W17 行）才抓到的。
+   - **落地做法**：push 前跑 `git diff origin/master..HEAD | grep "^-"`，**为每一条删除行给出理由**；给不出理由的就是事故。
+   - 两个坑：① `grep -v "^[-+][-+]"` 会把 markdown 列表项误过滤掉（`-- [CL-20]...` 是 diff 标记 + 列表短横，恰好是你最该看的那些行）；② 对 CJK 子串用 `grep -c` 可能同时命中正常与损坏两种写法 —— 改用 `diff` 把该行与 `git show origin/master:<path>` 里的同一行逐字节比。
+   - 修复用**字节级**替换（`open(p,'rb')`，整行换成 master 的字节），别再走一次可能同样损坏的文本改写。
+   - **先分清「我打坏的」和「我的 base 落后」**：同一份 diff 里其他删除行往往是**别人已在 master 上的改动**（你的 base 旧才显示出来），cherry-pick 会保留它们，不该去"修"。
+
 ## Workflow / 大规模审计经验（2026-08-31）
 
 在本环境（pod 侧运行 + Mac 侧 `mcp__local__` 工具）跑大规模 workflow / 多 agent 审计时踩过的硬约束。**再跑类似任务前先看这里。**

@@ -2,8 +2,7 @@
 
 [English](0001-typed-pluggable-data-source-model.md) | 中文
 
-**状态**:Accepted(2026-08-21)
-**上下文**:semantic-layer map,G1 ticket
+**状态**:Accepted(2026-08-21) **上下文**:semantic-layer map,G1 ticket
 
 ## 决策
 
