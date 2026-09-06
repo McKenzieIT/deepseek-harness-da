@@ -297,6 +297,11 @@ DELIVERY 目标值待 CL-25 定齐 case set 后重设。
 
 > ### ⚠️ 更正（2026-09-06 晚）：本节原写「门禁误伤 = 0」，**该结论是错的，已作废**
 >
+> **⚠️⚠️ 本更正本身也已被直接测量推翻** —— 见本票后半的
+> 「2026-09-06 夜 · 门禁直接测量：推翻「052 误伤」结论」一节。
+> 下面这段的推断链（EMPTY + 低延迟 ⇒ 门禁触发）不成立，`052` 不是门禁误伤。
+> 保留原文以记录推断为何失败。
+>
 > 原判断只查了「9 个 EXEC 空 SQL」，**漏查 `compare.ts` 报出的 Lost 全集**；且对 `052` 只重跑一次
 > 就下了「非门禁所致」的结论。补做 5 次观测后事实相反：
 >
@@ -329,15 +334,99 @@ DELIVERY 目标值待 CL-25 定齐 case set 后重设。
 **为何不作验收证据**：见上方 E8 更正第 3 点（`contextPrefetched` 已落地，模型不再发射 tool-call，
 须在 rebase 后重跑）。
 
+---
+
+## 2026-09-06 夜 · 门禁直接测量：推翻「052 误伤」结论
+
+前序两轮结论（先「误伤 0」、后「052 是真实间歇误伤」）**都建立在同一条推断链上**：
+trace 未持久化 → 用 `generated_sql` 为空 + 延迟偏低 ⇒ 判定门禁触发。
+本轮**不再推断，直接测量**。
+
+### 工具：`packages/eval/eval-cli/bin/probe-triage.ts`（本 session 新增）
+
+读**引擎自己的 trace**（`step === 'capability_triage'`）判定门禁是否触发，
+每题跑 N 次。只有 triage 那一次调用走网络（generation 用固定 SQL 短路），故每 rep = 1 次 LLM 调用。
+
+**为何该探针等价于管道内的门禁行为**（三条，均由本 session 核过代码）：
+1. `engine.run({ question })` 收到的是**原始问题** —— query expansion 只包住 retrieval linker
+   （`context.ts:355-359`：`retrieve: (_q, opts) => baseLinker.retrieve(expandedQuestion, opts)`），
+   不改 `question` 本身；
+2. `triageQuestion(question)` **只吃 question**，不吃候选表/schema → 探针用 fixture 数据源
+   不可能改变判定；
+3. 门禁在 `while` 生成循环**之前**（D2），故触发与否与检索/生成质量无关。
+
+### 数据（n=5/题，145 次 LLM 调用，prompt 为**当前分支未改动**的版本）
+
+| case | 问题 | 期望 | 实测 |
+|---|---|---|---|
+| `052` | 最近7天每天的商店销售额 | 放行 | **放行 5/5** |
+| `073` | 游戏收入最近表现怎么样 | 放行 | 放行 5/5 |
+| `076` | 服务器之间有没有不平衡的情况 | 放行 | 放行 5/5 |
+| `077` | 玩家留存有什么问题吗 | 放行 | 放行 5/5 |
+| `DAILY_dau` | 最近30天每天的活跃用户数 | 放行 | 放行 5/5 |
+| `DAILY_month` | 这个月每天的充值金额 | 放行 | 放行 5/5 |
+| `DAILY_week` | 上周每天的订单量 | 放行 | 放行 5/5 |
+| `DAILY_item` | 各个渠道昨天的新增用户数 | 放行 | 放行 5/5 |
+| `voice_033/036/044/045/047/048` | 建议/报告/预测/总结 | 拦截 | **拦截 5/5** |
+| `voice_041` | 最近数据有什么异常吗 | （票体称拦截） | **放行 0/5 —— 票体记载有误** |
+
+后 4 个 `DAILY_*` 不是 k11-v2 case，是 `052` 同形态的改写题 —— 单一 case 无法说明
+修复是否泛化，故专门造了「跨月逐日」「这个月+逐日」「上周+逐日」「逐项非逐日」四种，
+其中两种词法上比 `052` 更贴近「周报/月报」。**全部 5/5 放行。**
+
+### 两处票体记载被更正
+
+1. **`052` 不是门禁误伤。** 用被指控的那版 prompt 实测 5/5 放行。前序判据（EMPTY + 低延迟）
+   **无法区分两条 decline 路径**：CL-23 的 tool-call decline（`declineKind:
+   'tool_call_emitted'`）同样产出 `generated_sql: null`，而 pre-rebase run 里 tool-call
+   恰是高频形态（E4：9 个 fail case 的 27 个 attempt 中 6 个）。AGA empty-response burst
+   （`packages/eval/eval-cli/README.md:93` 记录过一次 conc=4 丢 63/168）是第三种同形态。
+   三者在产物里长得一样。
+2. **`voice_041` 不在门禁的拦截集内**（0/5）。它的拒绝来自模型自己的 §5 诚实拒绝 ——
+   E4 已证该形态能过 judge（9 散文 attempt 中 7 个过），故**不需要**门禁管它。
+
+### 按票体要求实施的 prompt 重写：实测为净负，已回退
+
+D「修 prompt 样例冲突」照做了一版：把判据从「周期报告」改写为「叙述性编排」，
+并显式声明「粒度/时间跨度不构成 beyond_single_query」。为让 `voice_041` 按票体要求触发，
+加了一条「未点名度量对象的综合发现」子句。**实测该子句把 `077` 打到触发 5/5、`076` 打到 2/5** ——
+两者都期望 SQL，触发即必败。
+
+即：**这版重写没有修好任何东西**（原 prompt 在全部 8 个放行题上已 5/5），
+**只引入了一个比被指控的缺陷更严重的真实误伤**（`077` 5/5 vs `052` 声称的 3/5）。
+→ **prompt 回退为字节一致**，重写的教训写进 `triageQuestion` doc comment
++ 探针 case 表注释，防再犯。
+
+### 对 PR 门槛的影响
+
+「门禁在当前形态下不可进 PR」的依据（已知未修的间歇性误伤）**不成立** ——
+该误伤经直接测量不存在。门禁在 8 个放行题上 40/40 放行、6 个拦截题上 30/30 拦截。
+
+**遗留（诚实记录）**：本轮只测了门禁的**分类判定**，n=5，且全部为中文题。
+`GA-GRILL2` D3 / `GA-I18N-R1` 的英文侧问题不在本轮覆盖内。
+
 ## 收尾状态（2026-09-06）
 
 - 代码在 `fix/cl20-delivery-agent-behavior`（`d6b376d296` + `4c2a1c7764`），**未合并**。
   按 `docs/da-pr-workflow.md`，触及 `packages/*/src` 必须走 PR（CI 有 "No production src on
   master (direct-push guard)"）。
-- **待办**：① **修 triage prompt 的样例冲突**（`"weekly report"` 样例误伤「最近7天每天的…」，
+- ~~**待办**：① **修 triage prompt 的样例冲突**（`"weekly report"` 样例误伤「最近7天每天的…」，
   见上方 2026-09-06 晚更正；3/5 误伤率不可接受）→ ② rebase 到 origin/master（落后约 60 commits，
   `context.ts` 一处手工合）→ ③ 重跑测试 → ④ **在 rebase 后代码上重跑全量**（这才是验收数字，
-  须专门核 `052` 及同形态「N天每天的X」类 case）→ ⑤ 开 PR。
+  须专门核 `052` 及同形态「N天每天的X」类 case）→ ⑤ 开 PR。~~
+
+### 2026-09-06 夜 · 上述五项待办的实际结果
+
+| # | 待办 | 结果 |
+|---|---|---|
+| ① | 修 prompt 样例冲突 | **前提被推翻，prompt 未改**（字节一致）。照做的重写实测把 `077` 打成 5/5 误伤 → 回退。见「门禁直接测量」节 |
+| ② | rebase 到 origin/master | **完成**（落后 78 commits，非 60）。`context.ts` 冲突只有 import 一行（master 的 `buildPrompt` + `BuildPromptArgs` 是超集，取 master）；`:397` 的 `declineKind` 分支**自动合并成功**，无需手工合 |
+| ③ | 重跑测试 | **完成**：`tsc --noEmit` clean、nl2sql-engine **132** 绿（其中本 spec 14）、eval **339** 绿 |
+| ④ | rebase 后重跑全量 | 见下方 `cl20-postrebase-n1` 记录 |
+| ⑤ | 开 PR | 见下方 |
+
+顺带项（CL-26 附带）：`declineKind` `'open_ended_question'` → `'beyond_single_query'`，
+3 处调用点全改（`engine.ts` union + 返回、`context.ts:406`、spec）。
 - **status 保持 `in_progress`**：定时任务原计划改 `closed`，但该指令写在 052 误伤证据出现之前。
   门禁存在**已知未修缺陷**（间歇性误伤明确数据请求），关票会让 map 读者以为能力已安全交付。
   决策部分（D1-D5）已完结且不会再变；剩余是实现缺陷 + 交付机制。
