@@ -149,7 +149,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 
 
 
-- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; 已 admin-merge(PR #11 `a905858f5d`);CLAUDE.md mode 修复(PR #17 `2e487635ce`)解 ubuntu-latest checkout ENAMETOOLONG 红;larger-runner 3 job 跑 ubuntu-latest(#21);Sandbox 全解(cordis #19+pwsh/Python #28 macos-14+eval-cli #27+catalog #29);#31 YAML fix(Sandbox 0s→能跑)+#33 NODE_OPTIONS=4G(seatbelt build OOM);Pages 启用;E2E manual-only(#25);剩 ubuntu-latest OOM+vitepress 待验
+- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; 已 admin-merge(PR #11 `a905858f5d`);CLAUDE.md mode 修复(PR #17 `2e487635ce`)解 ubuntu-latest checkout ENAMETOOLONG 红;larger-runner 3 job 跑 ubuntu-latest(#21);Sandbox da 测试全绿(cordis #19+catalog #29);#31 YAML fix+#33 NODE_OPTIONS=4G+#35 ci-workflow+eval-cli credential——我引入的 CI red 全修;剩 pwsh(CI pwsh Console::OutputEncoding)+Python(CI 缺 pandas/numpy)+client-bundle(#30)+doc-sync drift
 
 ### 2026-09-03/04 运行时审计（「语义层按钮消失」根因 + 三处客户端断链 + pass^k 重打分）
 
