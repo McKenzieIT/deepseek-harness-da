@@ -2,7 +2,7 @@
 
 **Type**: task（或 research——需先定 root cause）
 **Phase**: post-discovery
-**Status**: open
+**Status**: closed (resolved 2026-09-06, fixed in PR #22)
 **Assignee**: unclaimed
 **Related**: 2026-09-05 T1 验证发现（`pnpm -r run build` exit 1 on `@deepseek-ai/website`）
 
@@ -24,4 +24,4 @@
 
 ## Scope
 
-定 root cause（(a)/(b)/(c)），修，验 `pnpm -r run build` exit 0（website build 绿）。出 T1 范围（website docs，非 data/tsc）。
+undefined
