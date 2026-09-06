@@ -1,7 +1,7 @@
 ---
 type: grilling
-status: in_progress
-assignee: cl20-session-2026-09-05
+status: closed
+assignee: cl20-session-2026-09-06-followup
 blocked_by: []
 ---
 
@@ -427,7 +427,56 @@ D「修 prompt 样例冲突」照做了一版：把判据从「周期报告」�
 
 顺带项（CL-26 附带）：`declineKind` `'open_ended_question'` → `'beyond_single_query'`，
 3 处调用点全改（`engine.ts` union + 返回、`context.ts:406`、spec）。
-- **status 保持 `in_progress`**：定时任务原计划改 `closed`，但该指令写在 052 误伤证据出现之前。
-  门禁存在**已知未修缺陷**（间歇性误伤明确数据请求），关票会让 map 读者以为能力已安全交付。
-  决策部分（D1-D5）已完结且不会再变；剩余是实现缺陷 + 交付机制。
+- ~~**status 保持 `in_progress`**：…门禁存在**已知未修缺陷**（间歇性误伤明确数据请求）…~~
+  **该阻塞理由已消失**（2026-09-06 夜）：所谓「已知未修缺陷」经直接测量不存在。
 - wayfinder 文档部分（本票 + CL-25/26/27 + map + audit-log）按同一工作流允许直推 master，已先行合入。
+
+## 全量 eval 结果（2026-09-06 夜，`cl20-postrebase-n1`）—— post-rebase，**本票的验收数字**
+
+完整记录见 [experiment-audit-log 2026-09-06（夜）条目](../research/experiment-audit-log.md)。
+commit `5c84a903af`，k=1，conc=3，`today=20260906`，工作树干净且 run 期间未改 `packages/*/src`。
+
+> **基线可用性更正**：session prompt 要求「与 `rebaseline-passk-168-clean` 比 + 标注 12pp 协议差」。
+> 该产物**磁盘上不存在**（8 个 worktree 的 `eval-results/` 全查 + `find` 全仓零命中；
+> `eval-results/*.json` 在 `.gitignore:61`）。改用两个**同协议 k=1** 基线，反而不引入协议噪声。
+
+| 口径 | `10320fe2`（**无门禁**，k=1） | `cl20-full-n1`（门禁，pre-rebase） | `cl20-postrebase-n1`（门禁，post-rebase） |
+|---|---|---|---|
+| Overall | 73.8%（124/168） | 77.4%（130/168） | **75.6%（127/168）** |
+| Voice DELIVERY（18） | 66.7%（12/18） | 94.4%（17/18） | **72.2%（13/18）** |
+| **DELIVERY 全 25** | **52.0%（13/25）** | 80.0%（20/25） | **64.0%（16/25）** |
+
+**两个方向要分开读**：
+
+1. **vs 无门禁基线 = 门禁的净效果：overall +1.8pp、DELIVERY 全 25 52.0%→64.0%（+12pp）、
+   voice DELIVERY +5.6pp、EXEC 侧零回归。** 即门禁本身**没有引入任何回归**且有可观增益。
+2. **vs pre-rebase = rebase 的影响：DELIVERY 全 25 回吐 16pp。**
+   该 delta **只能归因于 rebase** —— 本分支相对 pre-rebase 状态的**运行时 diff 只有一个
+   字符串改名**（`declineKind`，3 处），其余全是注释/测试/新探针。
+   机制：`contextPrefetched` 把 tool-call 发射打到 0%，而 tool-call 正是 CL-23 grounded
+   三段式的**入口条件**（`context.ts:406` 的 `'tool_call_emitted'`）→ 通道失效。
+   → 毕业 **[CL-28](CL28-contextprefetched-decline-synthesis-entrypoint.md)**。
+
+### 门禁误伤 = 0（穷举 + 直接测量，非延迟推断）
+
+前序两轮靠「空 SQL + 低延迟 ⇒ 门禁触发」推断，本轮改为读引擎 trace。**方法为穷举，不再只看空 SQL**：
+
+- 全 run **48** 个非 SQL 输出逐个分类。**门禁触发时 `generated_sql` 恒为 `null`，绝不可能是 PROSE**
+  （门禁返回不带 `sql`；PROSE 走 `context.ts:398` 的模型自述通道）→ 其中 25 个 PROSE
+  **结构上不可能**是门禁所致。
+- 余下 NULL 中，期望数值（无 `delivery_match: llm_judge`）的**只有 `040`**
+  「最近一周每天的PVP对战场次变化」—— 正是要求专查的「N天每天的X」形态 → **实测门禁 0/5 不触发**。
+- 丢失的 5 个 DELIVERY case 亦逐个测：`voice_013` 0/3、`voice_017` 1/3、`voice_039` 0/3、
+  `voice_041` 0/3、`voice_042` 0/3、`077` 0/3 → 门禁均非其失败原因。
+- **`052` 反证**：本次 NULL/wrong(26.6s) → **SQL/correct(42.4s)** 自行翻正。门禁与
+  `contextPrefetched` 完全解耦 → 若曾由门禁造成，rebase 不可能修好它。
+
+### status → `closed`
+
+D1-D5 决策完结且不再变；门禁已实现、零回归、误伤经直接测量为 0；测试与全量 run 齐备并记入 audit-log。
+剩余全部是**别的票**的范围：CL-25（case set 不自洽）、CL-26（另一 runner 无 decline 处理）、
+CL-27（门禁调用成本）、CL-28（合成入口被掐）。
+
+**D5（DELIVERY ≥80% 三轮中位数）明确未达成**（本次 64.0%，n=1），且本票不再追它 ——
+两条独立压低因素分别归 CL-25 与 CL-28，目标值待 CL-25 定齐 case set 后重设。
+**关票不等于达标**，这一点写在此处以免 map 读者误读。
