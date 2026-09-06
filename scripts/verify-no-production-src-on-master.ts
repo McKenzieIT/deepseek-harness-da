@@ -2,7 +2,7 @@
  * Pre-push gate: refuse a push to master whose push range contains a commit
  * touching protected production source (see PROD_SRC_PATTERN for the exact
  * surfaces: packages/.../src, apps/.../src, native/.../src, python/.../src,
- * and scripts/). Enforces the CLAUDE.md and docs/da-pr-workflow.md rule that
+ * their bin/ counterparts, and scripts/). Enforces the CLAUDE.md and docs/da-pr-workflow.md rule that
  * feat/fix/refactor touching a protected surface land on a branch + PR, not
  * master; direct-to-main is allowed only for Wayfinder docs and experiment
  * scripts whose diff touches none of those surfaces. The gate skips every
@@ -26,12 +26,19 @@ export interface Violation {
  * protected surface land on a branch + PR, not master. Protected surfaces:
  *   - `packages/<group>/<pkg>/src/`, `apps/<app>/src/`, `native/<pkg>/.../src/`,
  *     `python/<pkg>/src/` — source under a `src/` directory.
+ *   - the same dirs' `bin/` — executable entry points are source too. Added
+ *     2026-09-06: the gate returned false for
+ *     `packages/eval/eval-cli/bin/probe-triage.ts`, i.e. runnable code could be
+ *     pushed straight to master. Same risk class as `src/`, so same treatment.
  *   - `scripts/` — no `src/` subdir; the .ts/.sh/.py files are themselves the
  *     source, so the whole tree is protected.
- * The gate is src-only to match the existing packages source scope; non-src
- * files in apps/native/python (READMEs, configs, tests/) are NOT caught here.
+ * Still NOT caught (deliberate, tracked as a known gap): `tests/` and other
+ * non-src files in apps/native/python (READMEs, configs). Whether `tests/`
+ * should join is an open decision — it changes CI verdicts, so it is arguably
+ * protected, but nothing has measured the friction cost yet. See
+ * `wayfinder/parallel-dev-cleanup/tickets/R4-ci-red-gate-policy.md`.
  */
-export const PROD_SRC_PATTERN = /^(?:(?:packages|apps|native|python)\/(?:[^/]+\/)+src\/|scripts\/)/
+export const PROD_SRC_PATTERN = /^(?:(?:packages|apps|native|python)\/(?:[^/]+\/)+(?:src|bin)\/|scripts\/)/
 
 /** Return the commits that touch production package source. Pure: git access is injected. */
 export function findViolations(
