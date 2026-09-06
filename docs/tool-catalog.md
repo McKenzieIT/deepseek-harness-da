@@ -43,7 +43,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
 | `@deepseek-ai/dsh-tool-search-data-sources` | `search_data_sources` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | search_data_sources is the UNDERSTANDING-phase entry to BM25 schema-linking: the agent calls it to learn which data sources (DWS tables / event ODS tables) match a natural-language question before writing SQL. The Q1 thin default uses the local Bm25Linker over an empty corpus (callable but unwired until ctx.schema ships) — an empty corpus returns no candidates. P5b swaps to ctx.retrieval when registered, and P6b sources the corpus from ctx.schema.discover; the tool contract is unchanged across both. |
 | `@deepseek-ai/dsh-tool-critique-sql` | `critique_sql_tool` | `ctx.tools` | `tool/call`, `tool/result` | - | critique_sql_tool is the GENERATION-phase SQL critic (folded-regex: table grounding, ds partition, SELECT *, JSON-path fields). It probes ctx.criticCtx and ctx.schema lazily via ctx.get (no provider mount needed for the schema harvest); an empty critic context fail-opens so the tool registers its schema without the phase-gate or semantic layer mounted. |
-| `@deepseek-ai/dsh-tool-discover-relations` | `discover_relations` | `ctx.tools` | `tool/call`, `DWS table dimension_refs enrichment`, `tool/result` | - | discover_relations is the ENRICHMENT-phase AI-native DWS->DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
+| `@deepseek-ai/dsh-tool-discover-relations` | `discover_relations` | `ctx.tools` | `tool/call`, `DWS table dimension_refs enrichment`, `tool/result` | - | discover_relations is the ENRICHMENT-phase AI-native DWS-&gt;DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
 | `@deepseek-ai/dsh-tool-edit-definition` | `edit_definition` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `semantic-layer definition patch (Tier-2 audited)`, `tool/result` | - | edit_definition applies a partial patch to a table or event definition (shallow-merge; columns merged by name) and records a Tier-2 audit write, marking the asset unreviewed. Metrics are virtual and cannot be edited directly. The schema harvest mounts inert ctx.schema + ctx.audit providers so the Tier-2 inject resolves. |
 | `@deepseek-ai/dsh-tool-evaluate-sql-quality` | `evaluate_sql_quality` | `ctx.tools` | `tool/call`, `tool/result` | - | evaluate_sql_quality scores a SQL candidate 0-100 from the folded-regex critic findings. It probes ctx.criticCtx lazily; no provider mount needed for the schema harvest (empty critic context fail-opens). |
 | `@deepseek-ai/dsh-tool-get-coverage` | `get_coverage` | `ctx.tools` | `tool/call`, `tool/result` | - | get_coverage reports semantic-layer coverage statistics (assets by kind, confirmation status, per-domain counts). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
@@ -55,7 +55,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-retrieve` | `retrieve` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | retrieve is the on-demand retrieval escape-hatch for when the prefetched UNDERSTANDING context has a visible gap. It probes ctx.retrieval and ctx.schema lazily; the Q1 thin default is an empty-corpus Bm25Linker (callable but unwired). Ships additive + dormant; a preset must mount it. |
 | `@deepseek-ai/dsh-tool-search-schema` | `search_schema` | `ctx.tools` | `tool/call`, `tool/result ranked asset matches` | - | search_schema is BM25 search over the semantic layer for the management agent (returns asset matches with kind and domain metadata). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
 | `@deepseek-ai/dsh-tool-trigger-eval` | `trigger_eval` | `ctx.tools` | `tool/call`, `eval run + persisted results`, `tool/result` | - | trigger_eval triggers a semantic-layer eval run and reports a before/after delta. It probes ctx.evalRunner and ctx.evidenceQuery lazily; without a mounted runner it reports not_configured (the host composition must wire the collaborators). |
-| `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves <project>.<table>. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves. |
+| `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves &lt;project&gt;.&lt;table&gt;. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves. |
 | `@deepseek-ai/dsh-tool-compute` | `compute` | `ctx.tools`, `ctx.codeRuntime`, `ctx.resultCache` | `tool/call`, `cr_ derived result via ctx.resultCache`, `tool/result` | - | compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute. |
 | `@deepseek-ai/dsh-tool-discover-alt-labels` | `discover_alt_labels` | `ctx.tools` | `tool/call`, `tool/result alt-label candidates` | - | discover_alt_labels mirrors discover_relations: it surfaces alternative labels (aliases) for a table/column to broaden recall. It probes ctx.schema lazily; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
 | `@deepseek-ai/dsh-tool-present-decomposition` | `present_decomposition` | `ctx.tools` | `tool/call`, `tool/result decomposition cards` | - | present_decomposition is a pure presentation tool that renders a query decomposition (breakdown) for the UI. No service dependency beyond ctx.tools. |
@@ -205,7 +205,7 @@ exit_plan_mode stays in the model-facing schema while planning is inactive so tr
 
 ### `bash`
 
-Execute a bash command (`bash -c`) and return its stdout/stderr. Each call runs in a fresh shell: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under <mode> mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
+Execute a bash command (`bash -c`) and return its stdout/stderr. Each call runs in a fresh shell: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under &lt;mode&gt; mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
 
 ```json
 {
@@ -249,7 +249,7 @@ The bash tool is the model-facing consumer of the bash executor seam. A `run_in_
 
 ### `pwsh`
 
-Execute a PowerShell command (`pwsh -Command`) and return its stdout/stderr. Each call runs in a fresh pwsh process: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Paths use native Windows form (`C:\...`); read environment variables with `$env:NAME`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$env:DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under <mode> mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. On Windows a force-killed command settles as `[exit code: 1]` without a signal marker — treat it as an interruption, not a command failure. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
+Execute a PowerShell command (`pwsh -Command`) and return its stdout/stderr. Each call runs in a fresh pwsh process: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Paths use native Windows form (`C:\...`); read environment variables with `$env:NAME`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$env:DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under &lt;mode&gt; mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. On Windows a force-killed command settles as `[exit code: 1]` without a signal marker — treat it as an interruption, not a command failure. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
 
 ```json
 {
@@ -589,7 +589,7 @@ Custom editing tool for viewing, creating and editing files
 * State is persistent across command calls and discussions with the user
 * If `path` is a file, `view` displays the result of applying `cat -n`. If `path` is a directory, `view` lists non-hidden files and directories up to 2 levels deep
 * The `create` command cannot be used if the specified `path` already exists as a file
-* If a `command` generates a long output, it will be truncated and marked with `<response clipped>`
+* If a `command` generates a long output, it will be truncated and marked with `&lt;response clipped&gt;`
 
 Notes for using the `str_replace` command:
 * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
@@ -2106,12 +2106,12 @@ todo_write is session-owned state; UIs render the latest todo/write event as a c
 
 Run a JavaScript workflow script that orchestrates subagents at scale. Use this for work that fans out across many independent pieces — an audit over many files, a migration, multi-angle research, adversarial verification of findings — where you write the orchestration as a script instead of delegating turn by turn.
 
-The workflow's identity rides the `meta` parameter as JSON: required `name` (short kebab-case) and `description` strings, optional `whenToUse` string and `phases` array (`{title, detail?, provider?, model?}`). The `script` parameter is the plain JavaScript body ONLY (NOT TypeScript, and NO `export const meta` statement — meta is a parameter, not code), running with top-level await; end with `return <value>` — the value must be JSON-serializable and is this tool's result.
+The workflow's identity rides the `meta` parameter as JSON: required `name` (short kebab-case) and `description` strings, optional `whenToUse` string and `phases` array (`{title, detail?, provider?, model?}`). The `script` parameter is the plain JavaScript body ONLY (NOT TypeScript, and NO `export const meta` statement — meta is a parameter, not code), running with top-level await; end with `return &lt;value&gt;` — the value must be JSON-serializable and is this tool's result.
 
 Script-body hooks:
-- `agent(prompt, opts?): Promise<any>` — run one subagent to completion. Without `opts.schema` it resolves to the child's final text; with `opts.schema` (an object-rooted JSON Schema using ONLY type/properties/required/additionalProperties/items/enum/const/oneOf — no pattern/format/numeric bounds) it resolves to the validated object. Resolves `null` when the child fails (filter with `.filter(Boolean)`). Other opts: `label` (display), `phase` (progress group), and independent `provider`/`model` LLM target overrides (either may be provided alone). Anything else (`effort`/`isolation`/`agentType`) is rejected loudly.
-- `pipeline(items, ...stages): Promise<any[]>` — run each item through the stages independently with NO barrier between stages (prefer this for multi-stage work). Each stage receives `(prev, item, index)`. An ordinary stage throw drops that ITEM to `null` and skips its remaining stages.
-- `parallel(thunks): Promise<any[]>` — run zero-argument functions concurrently and await ALL of them (a barrier; use only when a stage genuinely needs every prior result together). A throwing thunk resolves to `null`.
+- `agent(prompt, opts?): Promise&lt;any&gt;` — run one subagent to completion. Without `opts.schema` it resolves to the child's final text; with `opts.schema` (an object-rooted JSON Schema using ONLY type/properties/required/additionalProperties/items/enum/const/oneOf — no pattern/format/numeric bounds) it resolves to the validated object. Resolves `null` when the child fails (filter with `.filter(Boolean)`). Other opts: `label` (display), `phase` (progress group), and independent `provider`/`model` LLM target overrides (either may be provided alone). Anything else (`effort`/`isolation`/`agentType`) is rejected loudly.
+- `pipeline(items, ...stages): Promise&lt;any[]&gt;` — run each item through the stages independently with NO barrier between stages (prefer this for multi-stage work). Each stage receives `(prev, item, index)`. An ordinary stage throw drops that ITEM to `null` and skips its remaining stages.
+- `parallel(thunks): Promise&lt;any[]&gt;` — run zero-argument functions concurrently and await ALL of them (a barrier; use only when a stage genuinely needs every prior result together). A throwing thunk resolves to `null`.
 - `phase(title)` — start a progress phase; `log(message)` — narrate progress; `args` — the tool call's `args` input, verbatim.
 
 Misused hooks (bad arguments, unknown options, unsupported schemas, tripped caps) throw errors that ALWAYS kill the script — they never dissolve into a per-item `null`.
@@ -2331,7 +2331,7 @@ Discover DWS→DIM dimension join relations over the semantic layer (G3 AI-nativ
 
 Source: [`packages/data/tool-discover-relations/src/index.ts`](../packages/data/tool-discover-relations/src/index.ts)
 
-discover_relations is the ENRICHMENT-phase AI-native DWS->DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).
+discover_relations is the ENRICHMENT-phase AI-native DWS-&gt;DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).
 
 <a id="deepseek-aidsh-tool-edit-definition"></a>
 
@@ -2643,7 +2643,7 @@ trigger_eval triggers a semantic-layer eval run and reports a before/after delta
 
 ### `update_table_config`
 
-Write a per-table engine project override to the table definition (self-evolution: after asking the user which engine project a table lives in, persist it so future qualifyTable retries resolve <project>.<table> and the engine finds the table). Admin-only. Returns { ok, qualified_name } on success, or { ok: false, error } when the caller is not admin, the name is invalid, or the table is not on disk.
+Write a per-table engine project override to the table definition (self-evolution: after asking the user which engine project a table lives in, persist it so future qualifyTable retries resolve &lt;project&gt;.&lt;table&gt; and the engine finds the table). Admin-only. Returns { ok, qualified_name } on success, or { ok: false, error } when the caller is not admin, the name is invalid, or the table is not on disk.
 
 ```json
 {
@@ -2667,7 +2667,7 @@ Write a per-table engine project override to the table definition (self-evolutio
 
 Source: [`packages/data/tool-update-table-config/src/index.ts`](../packages/data/tool-update-table-config/src/index.ts)
 
-update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves <project>.<table>. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves.
+update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves &lt;project&gt;.&lt;table&gt;. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves.
 
 <a id="deepseek-aidsh-tool-compute"></a>
 
@@ -2828,7 +2828,7 @@ present_decomposition is a pure presentation tool that renders a query decomposi
 
 ### `present_table`
 
-Present a query result table to the user with display metadata: title, column layout, sort order, KPI aggregations, and optional chart config. Use in the INTERPRETATION phase to instruct the UI how to render the executed query result.
+Present a query result table to the user with display metadata: title, column layout, sort order, KPI aggregations, and optional chart config. Use in the INTERPRETATION phase to instruct the UI how to render the executed query result. Chart-type heuristic — pick by metric × dimension × grain: metric + time grain (ds) → line (cumulative → area); metric + category dimension → bar (long labels → hbar); 2 metrics (correlation) → scatter; 3 metrics → bubble (x, y, r); metric + ≤8 value dimensions + share → doughnut; one entity × N metrics → radar/polarArea. The client validator degrades an infeasible choice to bar (e.g. scatter with &lt;2 numeric columns, doughnut with &gt;8 classes, line/area whose x is not a date/ordinal).
 
 ```json
 {
@@ -2898,22 +2898,33 @@ Present a query result table to the user with display metadata: title, column la
       "properties": {
         "type": {
           "type": "string",
-          "description": "Chart type.",
+          "description": "Chart type. Pick by metric×dimension×grain (see the tool heuristic); the client degrades infeasible choices to bar.",
           "enum": [
             "line",
-            "bar"
+            "bar",
+            "area",
+            "hbar",
+            "scatter",
+            "doughnut",
+            "bubble",
+            "radar",
+            "polarArea"
           ]
         },
         "x_column": {
           "type": "number",
-          "description": "Column index for the x-axis."
+          "description": "Column index for the x-axis (category for bar/doughnut/radar; numeric x for scatter/bubble)."
         },
         "y_columns": {
           "type": "array",
-          "description": "Column indices for y-axis series.",
+          "description": "Column indices for y-axis series (scatter/bubble use the first as y).",
           "items": {
             "type": "number"
           }
+        },
+        "r_column": {
+          "type": "number",
+          "description": "Column index for the bubble radius (3rd numeric metric; bubble only)."
         }
       },
       "required": [
@@ -2956,7 +2967,12 @@ Compute reachability delta: if a proposed relation is added, which asset pairs b
     },
     "type": {
       "type": "string",
-      "description": "Relation type (joins | derived_from | related_to)"
+      "description": "Relation type (joins | derived_from | related_to)",
+      "enum": [
+        "joins",
+        "derived_from",
+        "related_to"
+      ]
     },
     "on": {
       "type": "string",

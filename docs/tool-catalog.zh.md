@@ -57,7 +57,7 @@
 | `@deepseek-ai/dsh-tool-retrieve` | `retrieve` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | retrieve 是按需检索 escape-hatch,用于预取的 UNDERSTANDING 上下文有明显缺口时。它惰性探查 ctx.retrieval 和 ctx.schema;Q1 thin default 是空语料 Bm25Linker(可调用但未接线)。以 additive + dormant 形式发布;preset 必须挂载它。 |
 | `@deepseek-ai/dsh-tool-search-schema` | `search_schema` | `ctx.tools` | `tool/call`, `tool/result ranked asset matches` | - | search_schema 是对语义层的 BM25 检索,供管理 agent 使用(返回带 kind 和域元数据的资产匹配)。它惰性探查 ctx.schema;在 ctx.schema 挂载前可调用但未接线。 |
 | `@deepseek-ai/dsh-tool-trigger-eval` | `trigger_eval` | `ctx.tools` | `tool/call`, `eval run + persisted results`, `tool/result` | - | trigger_eval 触发一次语义层 eval run 并报告 before/after delta。它惰性探查 ctx.evalRunner 和 ctx.evidenceQuery;未挂载 runner 时报告 not_configured(host 组合须接线协作者)。 |
-| `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | update_table_config 向表定义写一个按表的 ODPS project override(self-evolution #3b),使未来 qualifyTable 重试能解析 <project>.<table>。仅 admin(RBAC stub 读 ctx.identity)。经 ctx.audit 做 Tier-2 audit。schema 收集挂载 inert ctx.schema + ctx.audit + ctx.identity provider 使 Tier-2 inject 可达。 |
+| `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | update_table_config 向表定义写一个按表的 ODPS project override(self-evolution #3b),使未来 qualifyTable 重试能解析 &lt;project&gt;.&lt;table&gt;。仅 admin(RBAC stub 读 ctx.identity)。经 ctx.audit 做 Tier-2 audit。schema 收集挂载 inert ctx.schema + ctx.audit + ctx.identity provider 使 Tier-2 inject 可达。 |
 | `@deepseek-ai/dsh-tool-compute` | `compute` | `ctx.tools`, `ctx.codeRuntime`, `ctx.resultCache` | `tool/call`, `cr_ derived result via ctx.resultCache`, `tool/result` | - | compute 对一个源 result_id 跑代码绑定,经 ctx.resultCache 把派生结果存到 cr_ 前缀下。schema 收集挂载 inert codeRuntime + resultCache provider 使 inject 可达;工具仅在 execute 时读取它们。 |
 | `@deepseek-ai/dsh-tool-discover-alt-labels` | `discover_alt_labels` | `ctx.tools` | `tool/call`, `tool/result alt-label candidates` | - | discover_alt_labels 镜像 discover_relations:它为表/列呈现替代标签(alias)以扩大召回。它惰性探查 ctx.schema;schema 收集无需 schema provider(在 ctx.schema 发布前可调用但未接线)。 |
 | `@deepseek-ai/dsh-tool-present-decomposition` | `present_decomposition` | `ctx.tools` | `tool/call`, `tool/result decomposition cards` | - | present_decomposition 是纯展示工具,为 UI 渲染一个查询分解(breakdown)。除 ctx.tools 外无服务依赖。 |
@@ -207,7 +207,7 @@ ask_user_question 会暂停工具调用，直到当前 UI 提供方返回人类�
 
 ### `bash`
 
-执行 bash 命令（`bash -c`）并返回 stdout/stderr。每次调用都在新 shell 中运行：调用之间不保留任何状态（cwd、变量、函数），请传入 `workdir`，不要使用 `cd`。非零退出会报告为 `[exit code: N]`。当前 harness 环境信息通过托管的 `$DSH_*` 变量公开，需要时请检查这些变量。命令可能在文件沙箱中运行；被阻止的文件操作报告为 `[sandbox: file access denied under <mode> mode]`，这是策略拒绝，而不是命令缺陷，请勿换一种方式重试。较长的输出会截断，只保留尾部；如可用，完整输出会保存到文件并报告其路径。对于长时间运行的命令，请设置 `run_in_background: true`：调用会立即返回 job id；使用 `job_output` 读取输出，使用 `job_kill` 停止任务。
+执行 bash 命令（`bash -c`）并返回 stdout/stderr。每次调用都在新 shell 中运行：调用之间不保留任何状态（cwd、变量、函数），请传入 `workdir`，不要使用 `cd`。非零退出会报告为 `[exit code: N]`。当前 harness 环境信息通过托管的 `$DSH_*` 变量公开，需要时请检查这些变量。命令可能在文件沙箱中运行；被阻止的文件操作报告为 `[sandbox: file access denied under &lt;mode&gt; mode]`，这是策略拒绝，而不是命令缺陷，请勿换一种方式重试。较长的输出会截断，只保留尾部；如可用，完整输出会保存到文件并报告其路径。对于长时间运行的命令，请设置 `run_in_background: true`：调用会立即返回 job id；使用 `job_output` 读取输出，使用 `job_kill` 停止任务。
 
 ```json
 {
@@ -251,7 +251,7 @@ bash 工具是 bash 执行器 seam 面向模型的消费方。使用 `run_in_bac
 
 ### `pwsh`
 
-执行 PowerShell 命令（`pwsh -Command`）并返回 stdout/stderr。每次调用都在新的 pwsh 进程中运行：调用之间不保留任何状态（cwd、变量、函数），请传入 `workdir`，不要使用 `cd`。路径采用 Windows 原生形式（`C:\...`）；使用 `$env:NAME` 读取环境变量。非零退出会报告为 `[exit code: N]`。当前 harness 环境信息通过托管的 `$env:DSH_*` 变量公开，需要时请检查这些变量。命令可能在文件沙箱中运行；被阻止的文件操作报告为 `[sandbox: file access denied under <mode> mode]`，这是策略拒绝，而不是命令缺陷，请勿换一种方式重试。较长的输出会截断，只保留尾部；如可用，完整输出会保存到文件并报告其路径。在 Windows 上，被强制终止的命令会以 `[exit code: 1]` 结算且不带信号标记，请将其视为中断，而不是命令失败。对于长时间运行的命令，请设置 `run_in_background: true`：调用会立即返回 job id；使用 `job_output` 读取输出，使用 `job_kill` 停止任务。
+执行 PowerShell 命令（`pwsh -Command`）并返回 stdout/stderr。每次调用都在新的 pwsh 进程中运行：调用之间不保留任何状态（cwd、变量、函数），请传入 `workdir`，不要使用 `cd`。路径采用 Windows 原生形式（`C:\...`）；使用 `$env:NAME` 读取环境变量。非零退出会报告为 `[exit code: N]`。当前 harness 环境信息通过托管的 `$env:DSH_*` 变量公开，需要时请检查这些变量。命令可能在文件沙箱中运行；被阻止的文件操作报告为 `[sandbox: file access denied under &lt;mode&gt; mode]`，这是策略拒绝，而不是命令缺陷，请勿换一种方式重试。较长的输出会截断，只保留尾部；如可用，完整输出会保存到文件并报告其路径。在 Windows 上，被强制终止的命令会以 `[exit code: 1]` 结算且不带信号标记，请将其视为中断，而不是命令失败。对于长时间运行的命令，请设置 `run_in_background: true`：调用会立即返回 job id；使用 `job_output` 读取输出，使用 `job_kill` 停止任务。
 
 ```json
 {
@@ -592,7 +592,7 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 * 状态会在命令调用以及与用户的讨论之间持久保留
 * 如果 `path` 是文件，`view` 会显示应用 `cat -n` 后的结果。如果 `path` 是目录，`view` 会列出最多向下 2 层的非隐藏文件和目录
 * 如果指定的 `create` 命令目标 `path` 已作为文件存在，则不能使用该命令
-* 如果 `command` 产生较长输出，输出会被截断并标记为 `<response clipped>`
+* 如果 `command` 产生较长输出，输出会被截断并标记为 `&lt;response clipped&gt;`
 
 使用 `str_replace` 命令时请注意：
 
@@ -2109,7 +2109,7 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 
 运行用于大规模编排 subagent 的 JavaScript 工作流脚本。当工作会分散到许多相互独立的部分时，请使用此工具，例如审查大量文件、执行迁移、开展多角度研究或对发现进行对抗式验证；此时应将编排写成脚本，而不是逐轮委派。
 
-工作流的身份通过 `meta` 参数以 JSON 形式传入：必填的 `name`（简短 kebab-case）和 `description` 字符串，以及可选的 `whenToUse` 字符串和 `phases` 数组（`{title, detail?, provider?, model?}`）。`script` 参数只能是纯 JavaScript **函数体**，不能是 TypeScript，也不能包含 `export const meta` 语句；meta 是参数而非代码。脚本支持顶层 await；请以 `return <value>` 结尾，该值必须可以 JSON 序列化，并作为此工具的结果。
+工作流的身份通过 `meta` 参数以 JSON 形式传入：必填的 `name`（简短 kebab-case）和 `description` 字符串，以及可选的 `whenToUse` 字符串和 `phases` 数组（`{title, detail?, provider?, model?}`）。`script` 参数只能是纯 JavaScript **函数体**，不能是 TypeScript，也不能包含 `export const meta` 语句；meta 是参数而非代码。脚本支持顶层 await；请以 `return &lt;value&gt;` 结尾，该值必须可以 JSON 序列化，并作为此工具的结果。
 
 脚本函数体提供以下钩子：
 
@@ -2647,7 +2647,7 @@ trigger_eval 触发一次语义层 eval run 并报告 before/after delta。它�
 
 ### `update_table_config`
 
-向表定义写一个按表的 engine project override(self-evolution:问用户某表在哪个 engine project 后持久化,使未来 qualifyTable 重试能解析 <project>.<table> 且 engine 找到该表)。仅 admin。成功返回 { ok, qualified_name },非 admin / name 无效 / 表不在磁盘时返回 { ok: false, error }。
+向表定义写一个按表的 engine project override(self-evolution:问用户某表在哪个 engine project 后持久化,使未来 qualifyTable 重试能解析 &lt;project&gt;.&lt;table&gt; 且 engine 找到该表)。仅 admin。成功返回 { ok, qualified_name },非 admin / name 无效 / 表不在磁盘时返回 { ok: false, error }。
 
 ```json
 {
@@ -2671,7 +2671,7 @@ trigger_eval 触发一次语义层 eval run 并报告 before/after delta。它�
 
 Source: [`packages/data/tool-update-table-config/src/index.ts`](../packages/data/tool-update-table-config/src/index.ts)
 
-update_table_config 向表定义写一个按表的 ODPS project override(self-evolution #3b),使未来 qualifyTable 重试能解析 <project>.<table>。仅 admin(RBAC stub 读 ctx.identity)。经 ctx.audit 做 Tier-2 audit。schema 收集挂载 inert ctx.schema + ctx.audit + ctx.identity provider 使 Tier-2 inject 可达。
+update_table_config 向表定义写一个按表的 ODPS project override(self-evolution #3b),使未来 qualifyTable 重试能解析 &lt;project&gt;.&lt;table&gt;。仅 admin(RBAC stub 读 ctx.identity)。经 ctx.audit 做 Tier-2 audit。schema 收集挂载 inert ctx.schema + ctx.audit + ctx.identity provider 使 Tier-2 inject 可达。
 
 <a id="deepseek-aidsh-tool-compute"></a>
 
