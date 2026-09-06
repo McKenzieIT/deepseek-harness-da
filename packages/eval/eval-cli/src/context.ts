@@ -78,6 +78,13 @@ class CtxLlmAdapter implements Llm {
   ) {}
 
   async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+    // GA-EVAL-RETRY-FEEDBACK: the engine renders `lastFeedback` into the
+    // prompt itself (# 上次失败反馈 section, via BuildPromptArgs.feedback), so
+    // this adapter streams `args.prompt` and the retry actually sees the prior
+    // failure. The `args.feedback` side-channel is vestigial here (ignored) —
+    // kept only for ReplayLlm (eval stub) scripted-rewrite tests. Do NOT add
+    // args.feedback handling here: it would diverge from the prompt the engine
+    // assembled + re-introduce the identical-prompt retry drift this fixes.
     const prompt = args.prompt
     if (prompt === undefined || prompt.length === 0) {
       throw new Error('CtxLlmAdapter: engine did not pass a prompt')

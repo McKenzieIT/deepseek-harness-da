@@ -301,4 +301,36 @@ describe('buildPrompt / buildEvalPrompt — exact output pinned (nl2sql-4)', () 
       GENERATION 阶段：直接基于上方上下文生成 SQL（\`\`\`sql 围栏）；critic、执行与自修由引擎内部完成。"
     `)
   })
+
+  it('buildPrompt renders # 上次失败反馈 when feedback present (contextPrefetched) + byte-stable when absent (GA-EVAL-RETRY-FEEDBACK)', () => {
+    // feedback present → section rendered with failureKind + (sanitized) error
+    const withFb = buildPrompt({
+      question: '昨天充值总金额是多少', candidates, eventDef: null, conventions: null, phase: 'generation',
+      isTrend: true, today: '20260820', contextPrefetched: true,
+      feedback: { failureKind: 'parse_failed', error: 'syntax error near BAD' },
+    })
+    expect(withFb).toContain('# 上次失败反馈')
+    expect(withFb).toContain('parse_failed')
+    expect(withFb).toContain('syntax error near BAD')
+    // null feedback → section omitted (byte-stability: attempt 0 has no prior failure)
+    const noFb = buildPrompt({
+      question: '昨天充值总金额是多少', candidates, eventDef: null, conventions: null, phase: 'generation',
+      isTrend: true, today: '20260820', contextPrefetched: true,
+    })
+    expect(noFb).not.toContain('# 上次失败反馈')
+  })
+
+  it('buildPrompt default branch renders # 上次失败反馈 when feedback present + byte-stable when absent', () => {
+    const withFb = buildPrompt({
+      question: '昨天充值总金额是多少', candidates, eventDef: null, conventions: null, phase: 'generation',
+      feedback: { failureKind: 'near_dup', error: '近重复 SQL 拒重发，须重写' },
+    })
+    expect(withFb).toContain('# 上次失败反馈')
+    expect(withFb).toContain('near_dup')
+    expect(withFb).toContain('近重复 SQL 拒重发，须重写')
+    const noFb = buildPrompt({
+      question: '昨天充值总金额是多少', candidates, eventDef: null, conventions: null, phase: 'generation',
+    })
+    expect(noFb).not.toContain('# 上次失败反馈')
+  })
 })

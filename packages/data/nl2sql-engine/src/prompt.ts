@@ -17,6 +17,7 @@ import { MAX_SQL_PER_TURN, MAX_FEEDBACK_RETRIES } from './types.ts'
 import { renderConventionsPrompt } from './conventions.ts'
 import type { EngineConventions } from '@deepseek-ai/dsh-query'
 import type { RetrievalHit } from './bm25-linking.ts'
+import type { LlmFeedback } from './replay-llm.ts'
 
 function granularityTag(id: string): string {
   if (/_di$/.test(id)) return ' [日粒度]'
@@ -45,6 +46,38 @@ function renderMetricSection(metricContext: string | undefined): string {
   return metricContext
     ? `\n# 已知指标定义（请基于此规则构建查询）\n${metricContext}\n`
     : ''
+}
+
+/**
+ * Bound + sanitize a feedback error for the prompt: collapse to one line,
+ * strip control chars, redact slash-joined file paths, bound length. Mirrors
+ * tool-load-event-definition's `sanitizeSubstrateError` (the feedback crosses
+ * the same model-facing boundary). Table names are dot-joined, so they
+ * survive — the LLM needs "table not found" detail to self-correct.
+ * @param error - the raw feedback error string (critic reason / ODPS error).
+ * @returns a bounded single-line sanitized message.
+ */
+function sanitizeFeedbackError(error: string): string {
+  const clean = (error ?? '')
+    .replace(/[\x00-\x1f\x7f]/g, ' ')
+    .replace(/\/?[\w.\-]+\/[\w.\-]+(?:\/[\w.\-]+)*/g, '<path>')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return clean.length > 400 ? `${clean.slice(0, 400)}...` : clean
+}
+
+/**
+ * GA-EVAL-RETRY-FEEDBACK: render the last retry's failure as prompt context so
+ * the LLM self-corrects instead of re-generating near-dup SQL (the
+ * `CtxLlmAdapter` streams `args.prompt` only, so feedback must live IN the
+ * prompt, not a side-channel arg). Returns `''` when no feedback (attempt 0 /
+ * no prior failure) → byte-stable with the pre-feedback prompt.
+ * @param feedback - the last retry's failureKind + error, or null/undefined.
+ * @returns the `# 上次失败反馈` section, or `''` when absent.
+ */
+function renderFeedbackSection(feedback: LlmFeedback | null | undefined): string {
+  if (!feedback) return ''
+  return `\n# 上次失败反馈（据此修正，勿重复相同错误）\n- 失败类型：${feedback.failureKind}\n- 错误：${sanitizeFeedbackError(feedback.error)}\n`
 }
 
 /** Render the 8 core SQL rules (+ optional rule 9 when isTrend). Shared by
@@ -84,6 +117,17 @@ export interface BuildPromptArgs {
   /** Reference date (yyyyMMdd) for relative date computation (yesterday, last 7 days). */
   readonly today?: string | undefined
   /**
+   * GA-EVAL-RETRY-FEEDBACK: the last retry's failure (critic reason / execution
+   * error / near-dup), rendered into the prompt as `# 上次失败反馈` so the LLM
+   * self-corrects instead of re-generating near-dup SQL. The eval engine
+   * responder's `CtxLlmAdapter` streams `args.prompt` only (it does not read
+   * `args.feedback`), so the feedback must live IN the prompt — wiring it here
+   * lets the production retry path actually see why the prior attempt failed.
+   * Null/undefined (attempt 0 / no prior failure) → the section is omitted →
+   * byte-identical to the pre-feedback prompt (byte-stability).
+   */
+  readonly feedback?: LlmFeedback | null | undefined
+  /**
    * GA-EVAL-SQLGEN-PROMPT-FIX: engine-responder mode. When true, the prompt
    * reframes the tool catalog as "candidates + event definitions already
    * pre-fetched into context — do NOT emit tool-call format, generate SQL
@@ -116,7 +160,7 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
  * @returns The assembled prompt string.
  */
 export function buildPrompt(args: BuildPromptArgs): string {
-  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend, contextPrefetched } = args
+  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend, contextPrefetched, feedback } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines = renderCandidates(candidates)
   const joinSection = renderJoinSection(joinConstraints)
@@ -146,7 +190,7 @@ ${renderCoreRules(isTrend)}
 
 ${dialect}
 
-${joinSection}${metricSection}
+${joinSection}${metricSection}${renderFeedbackSection(feedback)}
 # 当前日期
 今天是 ${args.today ?? '未知'}（yyyyMMdd 格式）。"昨天"= 今天-1 天，"过去7天"= 从今天往回7天。分区列格式见方言规范。计算相对日期时用字面值，不要用运行时日期函数。
 
@@ -193,7 +237,7 @@ ${renderCoreRules(isTrend)}
 
 ${dialect}
 
-${joinSection}${metricSection}
+${joinSection}${metricSection}${renderFeedbackSection(feedback)}
 # 当前日期
 今天是 ${args.today ?? '未知'}（yyyyMMdd 格式）。"昨天"= 今天-1 天，"过去7天"= 从今天往回7天。分区列格式见方言规范。计算相对日期时用字面值，不要用运行时日期函数。
 

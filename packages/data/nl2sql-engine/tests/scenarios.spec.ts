@@ -12,7 +12,7 @@ import { Bm25Linker } from '../src/bm25-linking.ts'
 import { buildPrompt } from '../src/prompt.ts'
 import { critiqueSql, sqlSyntaxGate, extractJsonPaths } from '../src/critic.ts'
 import { Nl2sqlEngine } from '../src/engine.ts'
-import { ReplayLlm } from '../src/replay-llm.ts'
+import { ReplayLlm, type Llm, type LlmGenerateArgs, type LlmGenerateResult } from '../src/replay-llm.ts'
 import { StandInOdps, outcome } from '../src/stand-in-odps.ts'
 import { makeCriticCtx, GateResult, MAX_SQL_PER_TURN, FailureKind, type QueryOutcome } from '../src/types.ts'
 import { runEval } from '../src/eval/runner.ts'
@@ -165,4 +165,38 @@ test('S10 running → attach(check_query) 续取 → done（fix #3 running→att
   const r = await eng.run({ question: '充值场景五', eventDef: EV })
   expect(r.ok).toBe(true)
   expect(r.trace.some(t => t.step === 'attach')).toBe(true)
+})
+
+test('S11 retry wires feedback into the SQL-gen prompt (GA-EVAL-RETRY-FEEDBACK)', async () => {
+  // Proves success criterion #3: the engine renders lastFeedback into the
+  // prompt (# 上次失败反馈) so a real ctx.llm-backed LLM — which streams
+  // args.prompt only (CtxLlmAdapter ignores args.feedback) — self-corrects
+  // instead of re-generating near-dup SQL. A mock LLM records each attempt's
+  // prompt + returns good SQL on retry ONLY when the prompt carries the
+  // feedback section (else re-sends bad SQL → NearDupGate reject → decline).
+  const seenPrompts: string[] = []
+  const llm: Llm = {
+    async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
+      seenPrompts.push(args.prompt ?? '')
+      if ((args.attempt ?? 0) === 0) {
+        return { sql: 'SELECT BAD SYNTAX FROM dws_pay_order_di WHERE ds=20260819' }
+      }
+      // attempt >= 1: succeed only if the prompt carried the feedback section
+      if ((args.prompt ?? '').includes('# 上次失败反馈')) {
+        return { sql: "SELECT SUM(pay_amt) AS total FROM dws_pay_order_di WHERE ds='20260819'" }
+      }
+      return { sql: 'SELECT BAD SYNTAX FROM dws_pay_order_di WHERE ds=20260819' }
+    },
+  }
+  const odps = new StandInOdps(asScripted('BAD SYNTAX', outcome.failed(FailureKind.PARSE_FAILED, 'syntax error near BAD')))
+  const eng = new Nl2sqlEngine({ dataSources: DS, llm, odps })
+  const r = await eng.run({ question: '充值场景六', eventDef: EV })
+  expect(r.ok).toBe(true)
+  // attempt 0 prompt: no feedback (initial generate, lastFeedback null)
+  expect(seenPrompts.length).toBeGreaterThanOrEqual(2)
+  expect(seenPrompts[0]).not.toContain('# 上次失败反馈')
+  // attempt 1 prompt: contains the feedback section + failureKind + error
+  expect(seenPrompts[1]).toContain('# 上次失败反馈')
+  expect(seenPrompts[1]).toContain(FailureKind.PARSE_FAILED)
+  expect(seenPrompts[1]).toContain('syntax error near BAD')
 })

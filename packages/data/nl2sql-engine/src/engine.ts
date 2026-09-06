@@ -267,7 +267,11 @@ export class Nl2sqlEngine {
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
       // 2. prompt + 3. LLM generate
-      const prompt = this.promptBuilder({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}) })
+      // GA-EVAL-RETRY-FEEDBACK: render lastFeedback into the prompt (# 上次失败反馈)
+      // so the LLM self-corrects. The CtxLlmAdapter streams args.prompt only, so
+      // feedback must live IN the prompt — not the vestigial args.feedback side-channel.
+      // attempt 0 → lastFeedback null → section omitted → byte-identical to pre-fix.
+      const prompt = this.promptBuilder({ question, candidates, eventDef, conventions: this.conventions, phase: 'generation', isTrend, today: args.today, ...(joinConstraints !== undefined ? { joinConstraints } : {}), ...(metricContext !== undefined ? { metricContext } : {}), feedback: lastFeedback })
       trace.push({ step: 'prompt_built', attempt, len: prompt.length })
       const gen = await this.llm.generate({ question, attempt, feedback: lastFeedback, prompt })
 
