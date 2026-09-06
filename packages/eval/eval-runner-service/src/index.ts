@@ -67,8 +67,9 @@ export interface Config {
   readonly resultsDir?: string
   /** pass_k attempts per case (default 3). */
   readonly passK?: number
-  /** LLM provider/model for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
+  /** LLM provider for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
   readonly provider?: string
+  /** LLM model name for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
   readonly model?: string
   /** Reference date YYYYMMDD for time-param extraction (eval reproducibility). */
   readonly today?: string
@@ -378,7 +379,7 @@ export class EvalRunnerService extends Service {
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'evalRunner')
-    this.caseDir = config.caseDir ?? 'packages/eval/eval/cases/k11'
+    this.caseDir = config.caseDir ?? 'packages/eval/eval/cases/k11-v2'
     this.resultsDir = config.resultsDir ?? '.tmp/eval-results'
     this.passK = config.passK ?? 3
     // R8 (PB-COMPLY): no silent vendor default — '' is a non-runnable sentinel;

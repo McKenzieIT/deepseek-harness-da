@@ -195,6 +195,20 @@ interface ToolExecutionInput {
   /** The agent on whose behalf the call runs (set by the agent loop). */
   readonly agent?: Agent
   /**
+   * Session-bound scope id routing this call's data reads to a specific
+   * scope/tenant. Filled by the agent loop's `executeToolCalls` from the
+   * initiating agent's options (one agent per session, so the value is
+   * session-bound); also propagated through nested/composite dispatches
+   * (mirroring {@link rootCallId}) via the code-mode `run_code` sub-dispatch.
+   * `undefined` — the dormant
+   * default, since
+   * no caller sets `AgentOptions.scopeId` yet — leaves tools to fall back to
+   * the active scope, preserving the pre-Phase-4 ({@link SemanticLayerService}
+   * /retrieval `scopeId?` β) behavior. Phase 5 call sites begin resolving a
+   * tenant→scope and supplying it here.
+   */
+  readonly scopeId?: string
+  /**
    * Opaque token of the enclosing transport execution, when one exists. Code
    * Mode sets this on SDK sub-dispatches so commit-style observers can wait for
    * the outer `run_code` outcome without receiving its live mutable execution.

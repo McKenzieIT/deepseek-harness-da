@@ -215,6 +215,28 @@ flowchart LR
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
   svc_cordisInspect["ctx.cordisInspect<br/>Dynamic Cordis inspect registry"]
+  pkg_scope_registry["scope-registry"]
+  svc_scopes["ctx.scopes<br/>Multi-tenant scope registry"]
+  pkg_evidence_query["evidence-query"]
+  pkg_tool_scope_routing["tool-scope-routing"]
+  pkg_query["query"]
+  svc_query["ctx.query<br/>NL→SQL query engine"]
+  pkg_query_tool["query-tool"]
+  pkg_tool_trigger_eval["tool-trigger-eval"]
+  pkg_result_cache["result-cache"]
+  svc_resultCache["ctx.resultCache<br/>Tool result cache seam"]
+  pkg_result_cache_memory["result-cache-memory"]
+  pkg_tool_compute["tool-compute"]
+  pkg_phase_gate["phase-gate"]
+  svc_criticCtx["ctx.criticCtx<br/>Per-agent critic guard context"]
+  pkg_tool_critique_sql["tool-critique-sql"]
+  pkg_tool_evaluate_sql_quality["tool-evaluate-sql-quality"]
+  svc_evidenceQuery["ctx.evidenceQuery<br/>Eval result evidence store"]
+  pkg_tool_reachability_delta["tool-reachability-delta"]
+  pkg_management_session["management-session"]
+  svc_managementSession["ctx.managementSession<br/>Management session service"]
+  pkg_patrol_mode["patrol-mode"]
+  svc_patrol["ctx.patrol<br/>Patrol mode service"]
   pkg_acp --> svc_approval
   pkg_agent --> svc_agents
   pkg_agent_default_model --> svc_agentDefaultModel
@@ -246,6 +268,7 @@ flowchart LR
   pkg_embedder --> svc_embedder
   pkg_embedder_fakehash --> svc_embedder
   pkg_embedder_http --> svc_embedder
+  pkg_evidence_query --> svc_evidenceQuery
   pkg_file_reference --> svc_fileReferences
   pkg_file_reference_local --> svc_fileReferences
   pkg_fs --> svc_fs
@@ -263,15 +286,22 @@ flowchart LR
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_local --> svc_lsp
+  pkg_management_session --> svc_managementSession
   pkg_message_feedback --> svc_messageFeedback
   pkg_modules --> svc_clientModules
   pkg_nl2sql_engine --> svc_nl2sql
+  pkg_patrol_mode --> svc_patrol
   pkg_permission_presets --> svc_permissionPresets
+  pkg_phase_gate --> svc_criticCtx
   pkg_plan_mode --> svc_planMode
   pkg_pwsh_local --> svc_shell
+  pkg_query --> svc_query
+  pkg_result_cache --> svc_resultCache
+  pkg_result_cache_memory --> svc_resultCache
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
+  pkg_scope_registry --> svc_scopes
   pkg_semantic_layer --> svc_schema
   pkg_session --> svc_sessions
   pkg_session_persistence --> svc_sessionPersistence
@@ -345,11 +375,14 @@ flowchart LR
   svc_credentials --> pkg_apiproxy
   svc_credentials --> pkg_llm_deepseek
   svc_credentials --> pkg_llm_pi_ai
+  svc_criticCtx --> pkg_tool_critique_sql
+  svc_criticCtx --> pkg_tool_evaluate_sql_quality
   svc_directoryPicker --> pkg_apiproxy
   svc_dynamicCordisRunner --> pkg_tool_cordis
   svc_e2b --> pkg_fs_e2b
   svc_e2b --> pkg_subprocess_e2b
   svc_embedder --> pkg_retrieval_inproc
+  svc_evidenceQuery --> pkg_tool_reachability_delta
   svc_fs --> pkg_tool_fs
   svc_identity --> pkg_audit
   svc_identity --> pkg_credentials_keychain
@@ -365,7 +398,14 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_managementSession --> pkg_patrol_mode
+  svc_managementSession --> pkg_tool_scope_routing
   svc_nl2sql --> pkg_tool_search_data_sources
+  svc_patrol --> pkg_tool_trigger_eval
+  svc_query --> pkg_nl2sql_engine
+  svc_query --> pkg_query_tool
+  svc_query --> pkg_tool_trigger_eval
+  svc_resultCache --> pkg_tool_compute
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -373,6 +413,9 @@ flowchart LR
   svc_sandboxPolicy --> pkg_terminal_bash
   svc_schema --> pkg_nl2sql_engine
   svc_schema --> pkg_tool_search_data_sources
+  svc_scopes --> pkg_evidence_query
+  svc_scopes --> pkg_semantic_layer
+  svc_scopes --> pkg_tool_scope_routing
   svc_sessionPersistence --> pkg_agent_loop
   svc_sessionPersistence --> pkg_hooks_claude_code
   svc_sessionPersistence --> pkg_hooks_codex
@@ -514,5 +557,12 @@ flowchart LR
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | The transport-agnostic host gateway face: it dispatches browser API calls, and each open host stream subscribes to the events it forwards rather than being pushed to through a broadcast verb. |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Owns the in-memory definition registry, the vm sandbox for host halves, and the request-run round trip; browser pages reach the same service over the wire through its remote namespace. |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Registers host inspect providers, mirrors the client provider manifest, and routes client queries through the dynamic Cordis transport. |
+| `ctx.scopes` | `seam` | [`scope-registry`](../packages/data/scope-registry) | - | [`evidence-query`](../packages/data/evidence-query), [`semantic-layer`](../packages/data/semantic-layer), [`tool-scope-routing`](../packages/data/tool-scope-routing) | - | Resolves scopeId→semantic-root mappings for per-request tenant routing; plugins register and remove scopes, and the active-scope event drives data-isolation boundaries. |
+| `ctx.query` | `core` | [`query`](../packages/query/query) | - | [`nl2sql-engine`](../packages/data/nl2sql-engine), [`query-tool`](../packages/query/query-tool), [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | - | Owns the per-scope QueryEngine: convention resolution, execution, and outcome reporting that the NL→SQL engine and the query tool drive. |
+| `ctx.resultCache` | `seam` | [`result-cache`](../packages/data/result-cache) | [`result-cache-memory`](../packages/data/result-cache-memory) | [`tool-compute`](../packages/data/tool-compute) | - | Abstract get/put/has cache for idempotent tool results; a memory backend registers as ctx.resultCache so deterministic tools short-circuit repeat calls. |
+| `ctx.criticCtx` | `core` | [`phase-gate`](../packages/data/phase-gate) | - | [`tool-critique-sql`](../packages/data/tool-critique-sql), [`tool-evaluate-sql-quality`](../packages/data/tool-evaluate-sql-quality) | - | The phase-gate exposes candidate-table/event-param/partition-col guard context as an isolated realm service so critique tools probe the same agent phase without leaking to root. |
+| `ctx.evidenceQuery` | `core` | [`evidence-query`](../packages/data/evidence-query) | - | [`tool-reachability-delta`](../packages/data/tool-reachability-delta) | - | Owns the ctx.evidenceQuery seam: loads and refreshes per-scope eval-result records and answers reachability/coverage queries against them. |
+| `ctx.managementSession` | `core` | [`management-session`](../packages/data/management-session) | - | [`patrol-mode`](../packages/data/patrol-mode), [`tool-scope-routing`](../packages/data/tool-scope-routing) | - | Owns the management session used by patrol and scope-routing tools to act on the managed tenant session. |
+| `ctx.patrol` | `core` | [`patrol-mode`](../packages/data/patrol-mode) | - | [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | - | Owns the patrol state machine and drives trigger-eval runs on a schedule; the trigger-eval tool consumes the live patrol context. |
 
 Maintenance mode: hybrid: services are discovered from Cordis declarations; interface/implementation/consumer roles are classified in `scripts/gen-doc-graphs.ts` with a completeness guard.

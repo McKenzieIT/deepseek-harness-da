@@ -19,6 +19,7 @@ export const name = 'tool-search-schema'
 export const inject = ['tools']
 
 export interface Config {
+  /** Maximum number of schema-corpus rows the BM25 linker returns per query (default 20). */
   readonly topK?: number
 }
 

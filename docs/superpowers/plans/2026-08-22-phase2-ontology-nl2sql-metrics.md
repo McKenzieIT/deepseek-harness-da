@@ -54,8 +54,8 @@ These facts were verified against the real code on 2026-08-22 — they are NOT a
 - Create `src/eval/join-cases.ts` — multi-table join eval cases + `JOIN_FIXTURE` graph.
 - Create `src/eval/comparison-runner.ts` — `runComparisonEval` (graph on vs off).
 - Create `src/eval/metric-cases.ts` — metric eval cases (≥5).
-- Create `src/eval/metric-comparison-runner.ts` — `runMetricComparisonEval` (Level 2.5 vs Level 2).
-- Create `tests/ontology.spec.ts`, `tests/metric-engine.spec.ts`, `tests/comparison.spec.ts`, `tests/metric-comparison.spec.ts`; extend `tests/scenarios.spec.ts` with a no-op-when-absent regression test.
+- Create `src/eval/comparison-runner.ts` — `runMetricComparisonEval` (Level 2.5 vs Level 2).
+- Create `tests/ontology.spec.ts`, `tests/metric-engine.spec.ts`, `tests/comparison.spec.ts`, `tests/comparison.spec.ts`; extend `tests/scenarios.spec.ts` with a no-op-when-absent regression test.
 
 ---
 
@@ -89,8 +89,7 @@ test('A1 — service registers all 3 kind plugins', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: FAIL — `svc.getRegistry is not a function`.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `svc.getRegistry is not a function`.
 
 - [ ] **Step 3: Implement — add registry + imports**
 
@@ -136,8 +135,7 @@ Change to:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -172,8 +170,7 @@ test('A2 — getRelationGraph builds from tables/events/metrics + caches until c
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: FAIL — `svc.getRelationGraph is not a function`.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `svc.getRelationGraph is not a function`.
 
 - [ ] **Step 3: Implement — add cached graph builder**
 
@@ -220,8 +217,7 @@ In `src/index.ts`, add fields + method to `SemanticLayerService` (after `getRegi
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -276,8 +272,7 @@ test('A3b — loadRetrievalCorpusAll includes tables + metrics (not just events)
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: FAIL — `tableKindPlugin.toCorpusItem(DWS)` returns `null` (current impl); `svc.loadRetrievalCorpusAll is not a function`.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `tableKindPlugin.toCorpusItem(DWS)` returns `null` (current impl); `svc.loadRetrievalCorpusAll is not a function`.
 
 - [ ] **Step 3: Implement `tableKindPlugin.toCorpusItem`**
 
@@ -373,8 +368,7 @@ In `src/index.ts`, add to `SemanticLayerService`:
 
 - [ ] **Step 6: Run the service-wiring + registry tests**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts packages/data/semantic-layer/tests/registry.spec.ts`
-Expected: PASS (both files).
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts packages/data/semantic-layer/tests/registry.spec.ts` Expected: PASS (both files).
 
 - [ ] **Step 7: Wire `tool-search-data-sources` to prefer `loadRetrievalCorpusAll`**
 
@@ -406,8 +400,7 @@ function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
 
 - [ ] **Step 8: Run tool tests + K11 seed test (must stay green)**
 
-Run: `pnpm vitest run packages/data/tool-search-data-sources/ packages/data/semantic-layer/tests/k11-seed.spec.ts`
-Expected: PASS. (`k11-seed.spec.ts` asserts `loadRetrievalCorpus` → 445; that method is unchanged.)
+Run: `pnpm vitest run packages/data/tool-search-data-sources/ packages/data/semantic-layer/tests/k11-seed.spec.ts` Expected: PASS. (`k11-seed.spec.ts` asserts `loadRetrievalCorpus` → 445; that method is unchanged.)
 
 - [ ] **Step 9: Commit**
 
@@ -520,8 +513,7 @@ describe('enrichAllEvents', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/enrichment.spec.ts`
-Expected: FAIL — `discoverEventRelationsDeterministic`/`buildEventLlmPrompt`/`enrichAllEvents` not exported.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/enrichment.spec.ts` Expected: FAIL — `discoverEventRelationsDeterministic`/`buildEventLlmPrompt`/`enrichAllEvents` not exported.
 
 - [ ] **Step 3: Implement the event enrichment functions**
 
@@ -713,8 +705,7 @@ export {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/enrichment.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/enrichment.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -783,8 +774,7 @@ test('B2 — discoverEventRelations writes events external_refs via the Service'
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: FAIL — `svc.discoverEventRelations is not a function`.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `svc.discoverEventRelations is not a function`.
 
 - [ ] **Step 3: Implement the Service method**
 
@@ -825,8 +815,7 @@ Add the method to `SemanticLayerService` (after `discoverRelations`):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -869,8 +858,7 @@ test('B3 — wireEnrichmentLlm adapts a text-LLM into the Service llmCall seam',
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: FAIL — `wireEnrichmentLlm` not exported.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `wireEnrichmentLlm` not exported.
 
 - [ ] **Step 3: Implement the adapter + seam**
 
@@ -904,8 +892,7 @@ export function wireEnrichmentLlm(schema: { setLlmCall(fn?: (prompt: string) => 
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -959,8 +946,7 @@ test('C1 — buildJoinConstraints returns [] when no path exists', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts`
-Expected: FAIL — module `../src/ontology.ts` not found.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts` Expected: FAIL — module `../src/ontology.ts` not found.
 
 - [ ] **Step 3: Implement `ontology.ts` (graph helpers; pure, no semantic-layer runtime dep)**
 
@@ -1073,13 +1059,11 @@ C1's tests import directly from `../src/ontology.ts`, so no package-level re-exp
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts` Expected: PASS.
 
 - [ ] **Step 7: Run the prompt regression test (S2 must still pass — new sections are conditional)**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts -t "S2"`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts -t "S2"` Expected: PASS.
 
 - [ ] **Step 8: Commit**
 
@@ -1140,8 +1124,7 @@ test('C2 — critic warns on an undeclared JOIN when declaredJoinPairs is set (n
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts`
-Expected: FAIL — `buildDeclaredJoinPairs` not exported; `declaredJoinPairs` not on `makeCriticCtx`.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts` Expected: FAIL — `buildDeclaredJoinPairs` not exported; `declaredJoinPairs` not on `makeCriticCtx`.
 
 - [ ] **Step 3: Implement `buildDeclaredJoinPairs` in `ontology.ts`**
 
@@ -1238,13 +1221,11 @@ In `src/critic.ts`, inside `critiqueSql` (after the `select_star` block, before 
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts` Expected: PASS.
 
 - [ ] **Step 7: Run the critic regression (S3 must still pass — declaredJoinPairs absent there)**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts -t "S3"`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts -t "S3"` Expected: PASS.
 
 - [ ] **Step 8: Commit**
 
@@ -1294,8 +1275,7 @@ test('C3 — expandCandidates caps at topK and dedupes', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts`
-Expected: FAIL — `expandCandidates` not exported.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts` Expected: FAIL — `expandCandidates` not exported.
 
 - [ ] **Step 3: Implement `expandCandidates` in `ontology.ts`**
 
@@ -1435,13 +1415,11 @@ Then pass `joinConstraints` into the `buildPrompt` call inside the loop:
 
 - [ ] **Step 5: Run the C3 test**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts -t "C3"`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/ontology.spec.ts -t "C3"` Expected: PASS.
 
 - [ ] **Step 6: Run the full scenarios regression (S1–S10 must stay green — graph absent = no-op)**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts`
-Expected: PASS (all 10, including S7's `pass === total`).
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts` Expected: PASS (all 10, including S7's `pass === total`).
 
 - [ ] **Step 7: Commit**
 
@@ -1483,8 +1461,7 @@ test('C4 — runComparisonEval injects join constraints when the graph is on (an
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/comparison.spec.ts`
-Expected: FAIL — modules not found.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/comparison.spec.ts` Expected: FAIL — modules not found.
 
 - [ ] **Step 3: Implement `join-cases.ts`**
 
@@ -1638,13 +1615,11 @@ export { runComparisonEval, type ComparisonResult } from './eval/comparison-runn
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/comparison.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/comparison.spec.ts` Expected: PASS.
 
 - [ ] **Step 7: Run the full engine regression once more**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts`
-Expected: PASS (S1–S10).
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts` Expected: PASS (S1–S10).
 
 - [ ] **Step 8: Commit**
 
@@ -1742,8 +1717,7 @@ test('D3 — buildMetricContext renders a context line', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts`
-Expected: FAIL — module not found.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts` Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement `metric-engine.ts` (pure, no semantic-layer dep)**
 
@@ -1966,13 +1940,11 @@ export {
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts` Expected: PASS.
 
 - [ ] **Step 7: Run the full regression (S7 stays 9/9 — no metric hits in FIXTURE_DATA_SOURCES => route null => normal path)**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts`
-Expected: PASS (S1–S10).
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/scenarios.spec.ts` Expected: PASS (S1–S10).
 
 - [ ] **Step 8: Commit**
 
@@ -2028,8 +2000,7 @@ test('D2-e2e — metric execution failure => honest decline (no LLM self-correct
 
 - [ ] **Step 2: Run test to verify it fails (or passes if D1 wiring is correct)**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts -t "D2-e2e"`
-Expected: PASS (D1's engine wiring already implements this). If it fails, fix the engine routing in D1 Step 4 (the most common cause: the `metric_level25` branch not short-circuiting before the `while` loop, or `partitionResolver` not consulted).
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts -t "D2-e2e"` Expected: PASS (D1's engine wiring already implements this). If it fails, fix the engine routing in D1 Step 4 (the most common cause: the `metric_level25` branch not short-circuiting before the `while` loop, or `partitionResolver` not consulted).
 
 - [ ] **Step 3: Commit**
 
@@ -2084,8 +2055,7 @@ test('D3 — buildPrompt renders the metric-context section when metricContext i
 
 - [ ] **Step 2: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts -t "D3"`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts -t "D3"` Expected: PASS.
 
 - [ ] **Step 3: Commit**
 
@@ -2100,17 +2070,17 @@ git commit -m "test(nl2sql-engine): Level 2 mixed-query metric-context injection
 
 **Files:**
 - Create: `packages/data/nl2sql-engine/src/eval/metric-cases.ts`
-- Create: `packages/data/nl2sql-engine/src/eval/metric-comparison-runner.ts`
+- Create: `packages/data/nl2sql-engine/src/eval/comparison-runner.ts`
 - Modify: `packages/data/nl2sql-engine/src/index.ts`
-- Test: `packages/data/nl2sql-engine/tests/metric-comparison.spec.ts` (create)
+- Test: `packages/data/nl2sql-engine/tests/comparison.spec.ts` (create)
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/metric-comparison.spec.ts
+// tests/comparison.spec.ts
 import { test, expect } from 'vitest'
 import { METRIC_EVAL_CASES, METRIC_FIXTURE_DS } from '../src/eval/metric-cases.ts'
-import { runMetricComparisonEval } from '../src/eval/metric-comparison-runner.ts'
+import { runMetricComparisonEval } from '../src/eval/comparison-runner.ts'
 
 test('D4 — runMetricComparisonEval runs ≥5 metric cases Level 2.5 vs Level 2', async () => {
   expect(METRIC_EVAL_CASES.length).toBeGreaterThanOrEqual(5)
@@ -2124,8 +2094,7 @@ test('D4 — runMetricComparisonEval runs ≥5 metric cases Level 2.5 vs Level 2
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-comparison.spec.ts`
-Expected: FAIL — modules not found.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/comparison.spec.ts` Expected: FAIL — modules not found.
 
 - [ ] **Step 3: Implement `metric-cases.ts`**
 
@@ -2195,10 +2164,10 @@ export interface EvalCase {
 }
 ```
 
-- [ ] **Step 4: Implement `metric-comparison-runner.ts`**
+- [ ] **Step 4: Implement `comparison-runner.ts`**
 
 ```ts
-// src/eval/metric-comparison-runner.ts
+// src/eval/comparison-runner.ts
 import { FIXTURE_EVENT_DEF, type EvalCase } from './cases.ts'
 import { Nl2sqlEngine, type EngineDeps } from '../engine.ts'
 import { ReplayLlm, type ScriptedGen } from '../replay-llm.ts'
@@ -2266,28 +2235,25 @@ export async function runMetricComparisonEval(options: {
 
 ```ts
 export { METRIC_EVAL_CASES, METRIC_FIXTURE_DS } from './eval/metric-cases.ts'
-export { runMetricComparisonEval, type MetricComparisonResult, type MetricEvalResult } from './eval/metric-comparison-runner.ts'
+export { runMetricComparisonEval, type MetricComparisonResult, type MetricEvalResult } from './eval/comparison-runner.ts'
 ```
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/tests/metric-comparison.spec.ts`
-Expected: PASS.
+Run: `pnpm vitest run packages/data/nl2sql-engine/tests/comparison.spec.ts` Expected: PASS.
 
 - [ ] **Step 7: Run the entire nl2sql-engine suite as a final regression**
 
-Run: `pnpm vitest run packages/data/nl2sql-engine/`
-Expected: PASS (all files: scenarios, ontology, comparison, metric-engine, metric-comparison).
+Run: `pnpm vitest run packages/data/nl2sql-engine/` Expected: PASS (all files: scenarios, ontology, comparison, metric-engine, metric-comparison).
 
 - [ ] **Step 8: Run the semantic-layer suite as a final regression**
 
-Run: `pnpm vitest run packages/data/semantic-layer/ packages/data/tool-search-data-sources/`
-Expected: PASS (all files).
+Run: `pnpm vitest run packages/data/semantic-layer/ packages/data/tool-search-data-sources/` Expected: PASS (all files).
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add packages/data/nl2sql-engine/src/eval/metric-cases.ts packages/data/nl2sql-engine/src/eval/metric-comparison-runner.ts packages/data/nl2sql-engine/src/eval/cases.ts packages/data/nl2sql-engine/src/index.ts packages/data/nl2sql-engine/tests/metric-comparison.spec.ts
+git add packages/data/nl2sql-engine/src/eval/metric-cases.ts packages/data/nl2sql-engine/src/eval/comparison-runner.ts packages/data/nl2sql-engine/src/eval/cases.ts packages/data/nl2sql-engine/src/index.ts packages/data/nl2sql-engine/tests/comparison.spec.ts
 git commit -m "feat(nl2sql-engine): metric eval cases + Level 2.5 vs Level 2 comparison runner (P4 D4)"
 ```
 

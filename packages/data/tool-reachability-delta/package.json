@@ -26,6 +26,7 @@
     "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
+  "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
