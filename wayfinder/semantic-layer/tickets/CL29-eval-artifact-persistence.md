@@ -39,9 +39,25 @@ worktree 一删就没了。这与三条已写死的纪律直接冲突：
 
 ## 候选（互斥性待 grilling）
 
+> ### 更正（2026-09-06 同日）：「仓库膨胀」这条反对理由**不成立**，候选优先级据此重排
+>
+> 落笔时我写了「40+ 个 run → 仓库膨胀」，那是**估的，没量**。实测全 workspace 的
+> gitignored eval 产物（`git ls-files --others --ignored --exclude-standard -- eval-results`）：
+> 主树 **118 个 / 3.8MB** + `dsh-eventdef` **7 个 / 416KB** + 本次存档 **42 个 / 908KB**
+> = **167 个，合计约 5MB**。
+>
+> **以 git 标准 5MB 不是膨胀**（相比之下本仓单次 CI 的 windows 日志就 2.9MB）。
+> 故候选 1 与 2 的成本远低于我原先的描述，**候选 3（瘦身）应降级** ——
+> 它用「省体积」换掉 `generated_sql`，而省下的那点体积根本不是瓶颈，
+> 代价却是毁掉形态分析（SQL/PROSE/TOOLCALL/NULL），那正是 CL-20 判定「门禁误伤 = 0」的手段。
+>
+> **修正后的倾向**：候选 2（`rebaseline-*` 白名单）优先 —— 它精确覆盖 `compare.ts` 的使用场景，
+> 增量按「被提升为基线的那几个」计，每个约 200KB；候选 1 次之（简单但会连一次性调试 run 一起收）。
+
 1. **纳入版本管理**：去掉 `.gitignore:61`，全量 run 产物入库。
-   代价：单个 168-case 产物约 200KB+（实测 `10320fe2-*.json` = 213,564 B），
-   历史上已有 40+ 个 run → 仓库膨胀；且多为一次性调试 run，噪声大。
+   代价：单个 168-case 产物约 200KB（实测 `10320fe2-*.json` = 213,564 B）；
+   ~~历史上已有 40+ 个 run → 仓库膨胀~~ → **实测全量仅约 5MB，见上方更正**。
+   真正的代价不是体积而是**噪声**：多数 run 是一次性调试，入库后基线难辨。
 2. **只留「基线」产物**：加白名单（如 `!eval-results/rebaseline-*.json`），
    只把被 README 声明为基线的那几个入库。代价小，且正好覆盖 `compare.ts` 的使用场景。
    需定「什么算基线、谁来提升一个 run 为基线」。
@@ -60,6 +76,13 @@ worktree 一删就没了。这与三条已写死的纪律直接冲突：
 - `packages/eval/eval-cli/README.md` —— 已加 2026-09-06 更正块说明产物缺失；定案后按结论重写。
 - CLAUDE.md「趋势对比工具」节 —— 命令假设基线产物在磁盘上。
 - [CL-22](CL22-eval-nondeterminism-deepcheck.md) 的 ≥3 轮中位数协议 —— 若产物不留，「同代码三轮」无法事后核验。
+
+## 本次的止血（非解法）
+
+CL-20 收尾时把 `dsh-CL20` worktree 里 **64 个 gitignored 文件**（992KB，含验收产物
+`cl20-postrebase-n1.json`）搬到了 `/Users/mckenzie/workspace/dsh-eval-archive-cl20-2026-09-06/`
+（含出处说明 README），随后删除该 worktree。**这只是把「随 worktree 消失」推迟为
+「随这台机器消失」**，本票的决策仍未做。
 
 ## 验收
 

@@ -405,6 +405,14 @@ D「修 prompt 样例冲突」照做了一版：把判据从「周期报告」�
 **遗留（诚实记录）**：本轮只测了门禁的**分类判定**，n=5，且全部为中文题。
 `GA-GRILL2` D3 / `GA-I18N-R1` 的英文侧问题不在本轮覆盖内。
 
+## 产物存档（2026-09-06）
+
+本票引用的全部 run 产物（`cl20-postrebase-n1` / `cl20-full-n1` / `10320fe2-*` /
+`cl20-det052-r1..r3` / `cl20-v3-*` 等 42 个 json）连同探针测量日志，已从
+`dsh-CL20` worktree 搬至 `/Users/mckenzie/workspace/dsh-eval-archive-cl20-2026-09-06/`
+（992KB，含 README 说明出处），该 worktree 已删除。
+**它们不在版本管理内** —— 根因见 [CL-29](CL29-eval-artifact-persistence.md)。
+
 ## 收尾状态（2026-09-06）
 
 - 代码在 `fix/cl20-delivery-agent-behavior`（`d6b376d296` + `4c2a1c7764`），**未合并**。

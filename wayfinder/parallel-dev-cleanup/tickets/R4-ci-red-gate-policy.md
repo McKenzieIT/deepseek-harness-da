@@ -40,6 +40,41 @@ protection）的**前置条件** —— 现在直接开 "require CI green"，mas
 **windows 与其余的处置方式不同**：其余是「确定的债，可直接修」；windows 是「不稳定」，
 先要量化 flake 率（同 commit 重跑 N 次），否则「修好了」无法验证。
 
+## 附带决策：直推 master 的「措辞」与「gate」不一致，且两边错的方向相反
+
+2026-09-06 实测发现的一个独立问题，与本票同属门禁策略，故并入。
+
+**现状（均已实测）**：
+
+| | 允许什么 | 问题 |
+|---|---|---|
+| CLAUDE.md 措辞 | 「仅限……**纯 `wayfinder/`** 文档或实验脚本」 | **比 gate 窄** —— 连 `packages/*/README.md` 这种零运行时风险的文档都禁 |
+| `PROD_SRC_PATTERN`（实际强制的） | 只拦 `(packages\|apps\|native\|python)/**/src/` 和 `scripts/` | **比它自己的目的宽** —— `bin/`、`tests/`、`.github/` 全部放行 |
+
+实测证据：`PROD_SRC_PATTERN.test('packages/eval/eval-cli/bin/probe-triage.ts')` = **false**，
+即 `bin/` 下的**可执行代码**可以直推 master。（已同步记进本 map ① 的已知缺口列表。）
+
+**为什么不能简单地「把措辞放开到与 gate 一致」**：那会顺带把直推 `bin/*.ts` 合法化 ——
+恰好把唯一的真风险合法化，方向反了。
+
+**建议（两步，可分别落地）**：
+
+1. **措辞精确化**：允许集合 = **纯文档 diff**，即 `wayfinder/**` + 任意 `*.md`
+   （README / docs / `.agents/notes`）。**明确排除** `bin/`、`tests/`、`.github/`、
+   任何配置与锁文件。理由：`.md` 零运行时影响，为一行 README 更正开 PR 是纯摩擦；
+   而 `bin/`（可执行）、`tests/`（影响 CI 判定）、`.github/`（影响 CI 本身）都该过 review。
+2. **gate 收紧**：`PROD_SRC_PATTERN` 扩到 `bin/`（并评估 `tests/`）。
+   `scripts/verify-no-production-src-on-master.spec.ts` 现有 **27 个测试**（实测通过），
+   有回归网托着，扩展成本低。
+
+**一个自洽性自检**：改 `PROD_SRC_PATTERN` 本身属于 `scripts/` → **会被 gate 自己拦**，
+必须走 PR。规则能约束到修改规则的行为，说明这个方向自洽。
+
+**诚实记录**：提出本建议的 session 自己推了一次 `packages/eval/eval-cli/README.md` 到 master
+（为修正 README 里 8 处指向不存在产物的基线引用，见 [CL-29](../../semantic-layer/tickets/CL29-eval-artifact-persistence.md)）。
+gate 放行，但**在现行措辞下越界**。不做事后合规化辩解 —— 正确的解法是让措辞与 gate 各自归位，
+而不是继续在两者的缝隙里操作。
+
 ## 与其他票的关系
 
 - **阻塞 [R3](R3-branch-protection.md)**：R3 要 required CI green，本票不定案则 R3 一开即锁死 master。
