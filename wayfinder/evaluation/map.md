@@ -31,6 +31,8 @@
 | G2 (phase-4) | grilling | 2026-08-20 | TS 重实现非 Python;DELIVERY/EXECUTION 判分 |
 | GA-EVAL-REAL-EXEC (phase-misc) | task | 2026-09-04 | 首个真执行基线 12.8%;dual-score 测 judge false-pass 35.9pp(73.7% 假通过) |
 | GA-EVAL-SQLGEN-PROMPT-FIX (phase-misc) | task | 2026-09-05 | 34% 非 SQL 发射→0%;real-exec 12.8→7.7(假设证伪,真瓶颈=SQL 正确性/eventDef) |
+| GA-EVAL-SQLGEN-FOLLOWUP (phase-misc) | grilling | 2026-09-06 | post-prompt-fix 分歧根因=judge-leniency+anti-flakiness×feedback-gap+event-case 瓶颈(非 prompt 退化);chart (a)+(d) 2 impl 票 |
+| GA-EVAL-RETRY-FEEDBACK (phase-misc) | task | 2026-09-06 | wire retry feedback 进 prompt(# 上次失败反馈);wiring 正确+unit-proven,但 judge-only null-SQL 22→21/pass 56.4→53.8(均 noise)— (d) alone 有界,需 (a) 组合给 schema |
 | GA-EVAL-CLEAN-RERUN (phase-misc) | task | 2026-09-04 | uniform clean pass^k = 61.9%(104/168) |
 | GA-EVAL-REBASELINE (phase-misc) | task | 2026-09-03 | pass^k 语义落地;52.4%→61.9%;item4 token usage open |
 | GA-EVAL-MANIFEST-impl (phase-misc) | task | 2026-09-03 | 三 eval 包 manifest 合规 |
@@ -45,7 +47,7 @@
 | GA-EVAL-EXPAND | research | open | n=168 MDE 5.4-10.1pp;需 n_d≥85;硬要求 expected 真实执行推导(0/168 带 expected.sql)→ k11-v3 | blocks GA-EXP5 |
 | GA-EXP5 | research | open | 2×2×2 全因子 8 臂语言相关性 | by GA-EVAL-EXPAND |
 | GA-EXP1 | research | open·high | LLM-driven 表推断 vs 启发式;judge 校准从未执行 | — |
-| GA-EVAL-SQLGEN-FOLLOWUP | grilling | open | prompt-fix 后 pass-rate 分歧;grill (a) pre-fetch eventDef / (b) 修订 prompt / (c) 接受 | — |
+| GA-EVAL-EVENTDEF-PREFETCH (phase-misc) | task | open | (a) port G-DA4 event_view grounding 进 engine responder eval path(复用 loadEventDefinition+extractEventView seam);风险门已过:BM25 0/4 + lexical matcher unsafe(14 FP—038 552≠510/040 259≠4227/130 wrong-event),需 LLM-detection 或 description-mining;**next priority**((d) alone 有界,(a) 给 schema 才是 real win) | — |
 | GA-EVAL-REBASELINE item4 | task | open | token usage interceptor | — |
 | GA-GT4 | task | open | eval 去 K11(FailureClassifier+多引擎);**被本 map G9/G10 结构化** | — |
 
