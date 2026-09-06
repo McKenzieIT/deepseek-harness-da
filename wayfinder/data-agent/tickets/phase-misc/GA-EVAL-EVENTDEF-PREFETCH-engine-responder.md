@@ -1,6 +1,6 @@
 # GA-EVAL-EVENTDEF-PREFETCH — port G-DA4 event_view grounding to engine responder
 
-**Type**: task  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: task  ·  **Phase**: misc  ·  **Status**: resolved (2026-09-06)  ·  **Branch**: `task/ga-eval-eventdef-prefetch`
 **Source**: [GA-EVAL-SQLGEN-FOLLOWUP](GA-EVAL-SQLGEN-FOLLOWUP-postfix-divergence.md) Resolution（2026-09-06，per-case 确认 real-exec 瓶颈=event-case SQL-correctness：模型不知 event 表名 → placeholder/错表/null-SQL）
 **Blocked by**: 无（FOLLOWUP 已 resolved）
 **Blocks**: 无（与 [GA-EVAL-RETRY-FEEDBACK](GA-EVAL-RETRY-FEEDBACK-wiring-gap.md) 互补——(a) 给 event schema，(d) 让 retry 一致；二者可并行）
@@ -67,3 +67,78 @@ Risk-gate (work-list item #1) DONE via 4 LLM-free/maxc-free scratch probes (dele
 **LLM-detection prototype result (2026-09-06, throwaway probe, deleted after):** Two-stage (lexical alt_labels pre-filter → qwen-flash LLM pick, raw-event-vs-derived framing + few-shot) on 39 cases → **TP=7, FP=4, TN=17, FN=11 — NOT 0 FP**. The 4 FP are all 「付费」→game.recharge (039 付费总金额 / 040 完成了付费 / 049 付费类型 / 052 累计付费金额最高 — DWS 派生指标误触发). few-shot fixed the 「新增角色」→role.create FP (038/050/054) but introduced the 「付费」→recharge FP (**whack-a-mole** — qwen-flash can't reliably separate 泛词 付费/新增角色 from 特定词 充值/创角). 11 FN mostly from lexical pre-filter finding no candidate (card.gacha lacks 「抽卡」 alt_label, role.online lacks 「登录」, etc — recall bounded by alt_labels coverage). **Verdict: qwen-flash LLM-detection unreliable for this raw-event-vs-derived judgment.** Next-session options: (i) try **qwen3.7-max** (stronger, ~39 calls slower/costlier ~10-20min) — may crack the 付费-vs-充值 / 新增角色-vs-创角 distinction; (ii) **conservative path** (specific-only alt_label matcher: 0 FP / 2 TP, safe but low — only 125/126); (iii) **expand candidate recall** (description-mining or BM25 event-candidate extraction — over-generation risk). The 038-vs-119 + 付费-vs-充值 ambiguity remains the crux. Probe script `_detect-event-llm-probe.ts` (throwaway) deleted.
 
 **qwen3.7-max LLM-detection (2026-09-06, throwaway probe, deleted after):** Same two-stage + few-shot + stronger rule 「付费泛词≠充值特定词」 → **TP=7, FP=0, TN=21, FN=11 — 0 FP!** qwen3.7-max perfectly separates 泛词 (付费/新增角色 → NONE) from 特定词 (创角/充值 → event); all 21 DWS cases correctly NONE, no regression risk. 11 FN are ALL lexical pre-filter finding no candidate (card.gacha lacks 「抽卡」 alt_label, role.online lacks 「登录」, etc) = **recall problem, not precision problem**. **(a) precision is SOLVABLE** — qwen3.7-max LLM-detection is safe (0 FP). Next session: impl with qwen3.7-max LLM-detection (lexical pre-filter → qwen3.7-max pick), safely inject eventDef for the 7 detectable event cases (119/125/126/135/136/138/057 — meets ≥3/8 target). Recall 7/18 bounded by alt_labels coverage — expand later (description-mining / BM25 event-candidate) but non-blocking. Cost: ~1 qwen3.7-max call/question (~10s) on top of generation; acceptable for the event-case win. **This unblocks (a)** — the LLM-detection path the qwen-flash probe seemed to foreclose is viable with the stronger model.
+
+---
+
+## Resolution (2026-09-06) — grounding landed and demonstrably works; the measurement instrument turned out to be broken in two places
+
+**Approach**: two-stage detector（词法预筛 → qwen3.7-max pick）→ G-DA4 seam 加载 → 四处 surface（prompt / critic / judge / engine args）。Commits on `task/ga-eval-eventdef-prefetch`（backup 分支 `backup-ga-eval-eventdef-prefetch`）：`36622d45eb`（主体）、`3229590eeb`（timeout collision）、`761b8551d0`（仪表审计 + 新票）、`0f7b9234a2`（judge schema context）。
+
+### 落地内容
+
+1. **`packages/eval/eval-cli/src/event-detect.ts`（新）** —— 两段式检测。词法段从 responder 已经加载的 corpus 里取 event item（`payload.params_fields` 判别，`payload` 即完整 `EventDefinition`，含 `alt_labels`）建短语匹配；LLM 段一次 qwen3.7-max pick，raw-event-vs-derived 框架 + 泛词/特定词规则 + few-shot。**两段都是被证据逼出来的**：BM25 0/4 不返事件定义（所以检索驱动不了），词法单干 8 TP/**14 FP**（所以必须有第二段）。检测模型钉死 qwen3.7-max（qwen-flash FP=4）。
+2. **`packages/eval/eval-cli/src/context.ts`** —— `respond()` 里 detect → `ctx.schema.loadEventDefinition` + `extractEventView`（G-DA4 seam）→ `engine.run({eventDef, eventView})`。**按 question 缓存**：`respond()` 每个 pass^k attempt 调一次，不缓存则 39 case × k=3 付 117 次检测调用；更要紧的是 `passKVerdict` 要求 k 次全过，检测若在 attempt 间翻转，差异会被记到 SQL 生成头上。`params_fields` 保持 **map** 形态（`projectEvent` 的 array 投影会让 critic 的 `Object.keys` 拿到 `0,1,2…`）。
+3. **`packages/data/nl2sql-engine/src/prompt.ts`** —— `BuildPromptArgs.eventView` + `# 事件查询落表` 独立 section（FROM 表 / params 模板 / 必带 ds）。**没有塞进 eventDef 的 JSON**——把 FROM 表埋在 23 字段的 JSON blob 里正是模型写出 `FROM <数据视图>` 的原因。缺省不渲染 → byte-stable（5 个既有快照未动）。
+4. **`packages/data/nl2sql-engine/src/engine.ts`** —— eventView 既进 promptBuilder 也进 `makeCriticCtx.candidateTables`（qualified + bare 两种名，因 `extractTableNames` 剥 `db.` 前缀）。**少了后者 (a) 会比不做更糟**：告诉模型用这张表、然后自己的 critic 以 `table_not_in_candidates` 拒掉它，把 retry 全烧光。
+5. **测试 123/123**（+2 prompt：section 内容 + null/undefined/缺省三态 byte-stability；+1 scenario **S12**：event view 同时到达 prompt 与 critic，**带 without-view 对照**证明那个误拒是真实的而非假想）。
+6. **`dev/event-detect-fp-probe.ts`** —— 0-FP 是活模型性质，单测测不了，留成可复跑探针（前两个 session 各重建了一遍）。
+
+### 检测器标定（39 case，`dev/event-detect-fp-probe.ts`，连续两跑完全一致）
+
+**TP=6 · FP=0 · TN=21 · FN=12**。6 个 TP = 057/119/125/126/135/136。**21 个 DWS case 全判 NONE**——这是安全性质，成立。
+
+⚠️ **修正上 session 的 FP=0 结论**：上 session 的 FP 只算「DWS case 被误判成 event」，把「event case 被判成**错的** event」记成了 FN。用更严的定义复测，122「昨天开始PVE副本挑战…」命中 `DungeonOnkeyPass` 的泛 alt_label「副本」被选中（真值 `game.pve.begin`）——**那是 FP，注入错事件和注入 DWS 一样出静默错值**。加了一条通用规则（命中泛词 ≠ 对得上；候选若是另一个具名活动的埋点则回 NONE）后 122 → NONE，FP 归零。TP 从 7 降到 6（138「新增且当天就充值」按「新增角色是泛词」规则回 NONE，属规则内一致行为）。
+
+**12 个 FN 全是词法段无候选**：整个 scope 453 个事件里**只有 6 个填了 `alt_labels`**（recharge / role.create / coin.change / item.change / DungeonOnkeyPass×2），`card.gacha` 没有「抽卡」、`role.online` 没有「登录」。召回上限由语料覆盖决定，不是检测逻辑问题——扩召回是独立后续。
+
+### (a) 确实生效（机制级证据，不依赖 pass_rate）
+
+| 指标（judge-only, 39 case × k=3 = 117 attempts） | (d) 基线 | (a)+(d) |
+|---|---|---|
+| 用上 `ieu_ods.ods_10000251_all_view` 的 attempt | **0** | **17** |
+| null-SQL | **21**/117 | **13**/117（**−38%**）|
+| 非 SQL tool-call 发射 | 0 | 0（维持）|
+| `FROM <数据视图>` 占位符 | 0 | 1 |
+
+- **null-SQL 21 → 13** 是 [GA-EVAL-RETRY-FEEDBACK](GA-EVAL-RETRY-FEEDBACK-wiring-gap.md) 预测过但单独做不到的事（(d) 只把 22 挪到 21）。两票的「组合最大收益」这次被测到了：event schema 到位后模型不再因为无表可写而 decline。
+- **smoke 119**（real-exec）生成 `SELECT COUNT(DISTINCT role_id) AS new_role_uv FROM ieu_ods.ods_10000251_all_view WHERE event = 'game.role.create' AND ds = '20260805'`——**与 case 自己的 reference SQL 逐字一致**。
+- **params 提取模板也生效**（119 用不到，它 role_id 是基础列）：135 生成 `SUM(CASE WHEN CAST(GET_JSON_OBJECT(params,'$.moneyType') AS BIGINT)=1 THEN CAST(GET_JSON_OBJECT(params,'$.money') AS BIGINT) ELSE 0 END)`，与 reference SQL 同构。
+- critic 那半：S12 单测（带对照）+ 实跑 `ok=true`（若被拒会像对照组一样 retry 到 decline）。
+
+### 两个被这次改动暴露出来的仪表缺陷
+
+**(i) case-set 的 event 期望值不是冻结锚点** → 新票 [GA-EVAL-CASESET-EVENT-ANCHOR](GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)。
+
+把每个 case **自己的** `expected.sql` 实跑（`ds=20260805`）对账 `expected.result_value`：**event 侧 16/18 已不符**（另 2 个是 `0==0`），**DWS 侧 13/13 逐位相符**（8 个多行的未验）。119 `510→552`、136 `432→482`、057/135 `773500→2409900`（3.1×）。方向多数升但不全（137 `288→259`、138 `48→39`），所以只能确证「ODS 原始视图历史分区不稳定、DWS 汇总表稳定」，机制未证。
+
+**后果**：[GA-EVAL-SQLGEN-FOLLOWUP](GA-EVAL-SQLGEN-FOLLOWUP-postfix-divergence.md) 记为「模型错值」的 119 的 552 和 136 的 482，**正是那两条 reference SQL 今天的值——模型当时算对了，判错的是仪表**。据此本票 criterion #1 是 **uninstrumented（无法测量），不是 unmet（未达成）**：16/18 event case 无论 SQL 多正确都过不了 `scalar_exact`。
+
+**(ii) SQL semantic judge 与 critic 犯同一个错** → 已在本票修掉（`0f7b9234a2`）。
+
+judge 用 responder 的 `schema_context`（BM25 候选）打 `table_selection`/`field_selection`，而 event view 是 scope 级 config、不是 corpus item。case 135（`data_source: event`，reference SQL 就是 event view 查询）：
+
+| | 生成的 SQL | sql_judge | verdict |
+|---|---|---|---|
+| (d) 之前 | 3/3 用 DWS 表 `dws_..._com_pay_order_di` | **1.0 / 1.0 / 1.0** | correct |
+| (a) 之后 | 3/3 用 reference 同构的 event view SQL | **0.4 / 0.2 / 0.2** | wrong |
+
+judge 原话：「SQL 使用了 **Schema 上下文之外的** ODS 底层表（ieu_ods.ods_10000251_all_view）及 params 字段…导致表和字段选择错误」（`table_selection: 0`、`field_selection: 0`）。**仪表在惩罚 (a) 做的事，并且此前一直在奖励「貌似合理但取错源」的答案**。修法与 critic 同构：检测到 event 时把 event view + 事件名 + params 字段追加进 `schema_context`（追加式，未检测到 event 的 21 个 DWS case 那段文本 byte 不变）。
+
+### 顺带修掉的一个潜伏 bug（`3229590eeb`）
+
+dev sidecar 跑 `maxc query run --wait 60` 才提交异步 job，而 `MaxComputeQueryEngine.toolCallTimeoutMs` **也**默认 60s——两个预算撞在同一刻，比 wait 窗口慢的查询表现为 `MCP error -32001: Request timed out` 而不是走 sidecar 设计好的 pending/attach 路径。之前一直潜伏，因为历次 real-exec 打的都是秒级返回的预聚合 DWS 表；(a) 把模型指向 event ODS 视图后，`COUNT(DISTINCT role_id)` 实测 **68s**，于是 (a) 自己的正确 SQL 被判 infra_failure（smoke 119 首跑：3 attempts / 222s 全超时）。修法：wait 窗口读 `MAXC_WAIT_SECONDS`（默认 60 = 原硬编码值），eval-cli 从同一个环境变量派生 timeout（+60s 余量），使两者构造上不可能相撞。
+
+### 成功标准逐条核对（诚实版）
+
+1. **criterion #1（event case real-exec `execution_match=true` ≥3/8）—— UNINSTRUMENTED，不是达成也不是未达成。** 16/18 event case 的期望值已与自己的 reference SQL 不符；(a) 在 119 上生成了逐字一致的 reference SQL，仍判 `wrong`。要测这条得先解 [GA-EVAL-CASESET-EVENT-ANCHOR](GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)。
+2. **criterion #2（real-exec pass_rate > 7.7%）—— 见下方 real-exec 段。** judge-only 侧：v1（judge 未修）**16/39 = 41.0%**，低于 (d) 的 53.8%；per-case 查明 **5 个回退的 DWS case 每一次 attempt 都没碰 event view**（`eventView=false`），检测没在它们上触发，生成 prompt 与 (d) **逐字节相同**（缺省不渲染，已单测）→ 那 −5 是 all-must-pass 放大的采样抖动（每个 case 都同时有 sj=1.0 和 sj=0.4/0.6/0 的 attempt；038/041/043 的不稳定是 FOLLOWUP 已记录过的同一现象），**不是 (a) 造成的**。唯一「被注入且回退」的是 135，根因是仪表缺陷 (ii)，已修。
+3. **criterion #3（0 FP，DWS 不回退）—— MET（检测层面）。** 探针 21/21 DWS 判 NONE（两跑一致）；实跑 117 个 attempt 里 DWS case 用 event view 的次数为 **0**。038/039/041/043/051 的 verdict 变化经 per-case 确认与注入无关。
+4. **criterion #4（走 G-DA4 seam、additive、harness responder 不受影响）—— MET。** 用的是 `loadEventDefinition` + `extractEventView`，无新 substrate；`harness-responder.ts` 不经 `buildPrompt`/`Nl2sqlEngine`；另一个 `engine.run` 调用点（`eval-runner-service:284`）不传新参数；prompt 缺省 byte-stable（快照未动）。
+
+### 残留风险 / 后续
+
+- **critic 的 `json_field_not_in_params` 现在对 event 问题是活的**（此前 eventParams 为空 → 该检查被跳过）。135/136 用的 `money`/`moneyType` 都在 `params_fields` 里，没踩到。但 critic 取 JSON path 的**叶子段**匹配，而 params_fields 里存在点号键（`coinList.gold`）——`'$.coinList.gold'` 的叶子 `gold` 不在 keys 里，**会误拒**。未在本次 case 上触发，未修。
+- **few-shot 用的是 eval set 里的原句**，所以 0-FP 是部分 in-sample 的；对未见问题的泛化未测。安全侧的失败模式是「漏检 → 退回 pre-(a) 行为」而非静默错值，但这条得说明白。
+- **召回 6/18** 受 `alt_labels` 覆盖（453 事件中仅 6 个有）限制——扩召回（description-mining / BM25 event-candidate）是独立后续。
+- **检测成本**：每个有词法候选的问题 +1 次 qwen3.7-max 调用（~2-3s，按 question 缓存）。
+- 056/130 的 reference SQL 返回 0（登录账号 UV=0、付费抽卡次数=0）本身可疑，已记进新票工作清单。

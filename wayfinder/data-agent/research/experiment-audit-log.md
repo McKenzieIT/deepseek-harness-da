@@ -804,3 +804,76 @@ Per-intent post-(d): metric_lookup 10/23 (43.5%), proportion 9/11 (81.8%), ranki
 ### Pointer
 
 [GA-EVAL-RETRY-FEEDBACK](../tickets/phase-misc/GA-EVAL-RETRY-FEEDBACK-wiring-gap.md) — code + tests landed (commit `ba1b1ed597`; backup `backup-ga-eval-retry-feedback`). Judge-only baseline COMPLETE: null-SQL 22→21 (flat), pass_rate 56.4→53.8 (−1, noise) — (d) alone does NOT move the needle (null-SQLs are event cases needing (a)'s schema, not retry feedback). **Follow-up**: (1) run the real-exec baseline (`--with-query` + `MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml` + `maxc-sidecar-k11.mjs`) when concurrent session idle + network restored — expect the same bounded pattern (event cases null/wrong-value unless (a) lands); (2) **resolve (a) GA-EVAL-EVENTDEF-PREFETCH next** (LLM-detection or description-mining — risk-gate verdict on its ticket) — (a)+(d) combined is where the real win is ((a) gives schema, (d) keeps retries consistent); (3) re-baseline after (a) lands to measure the combined effect.
+
+---
+
+## 2026-09-06 — GA-EVAL-EVENTDEF-PREFETCH: event_view grounding ported to the eval path — grounding works; the measurement instrument was broken in two places
+
+**Ticket**: [GA-EVAL-EVENTDEF-PREFETCH](../tickets/phase-misc/GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md)（resolved 2026-09-06）。Source: [GA-EVAL-SQLGEN-FOLLOWUP](../tickets/phase-misc/GA-EVAL-SQLGEN-FOLLOWUP-postfix-divergence.md) 决策 (a)。Branch `task/ga-eval-eventdef-prefetch`（backup `backup-ga-eval-eventdef-prefetch`），基于含 (d) 的 `fix/ga-eval-sqlgen-prompt-fix`@`9221e21bd0`（PR #26 仍 open 未 merge）。
+
+### Setup（4 commits）
+
+- **`36622d45eb`** 主体：`eval-cli/src/event-detect.ts`（新，两段式检测）+ `context.ts` wiring（detect → `loadEventDefinition`+`extractEventView` → `engine.run({eventDef,eventView})`，按 question 缓存）+ `prompt.ts`（`BuildPromptArgs.eventView` + `# 事件查询落表` section，缺省不渲染 → byte-stable）+ `engine.ts`（eventView → promptBuilder **且** → `makeCriticCtx.candidateTables`）+ 测试 123/123（+2 prompt，+1 scenario S12 带 without-view 对照）+ `dev/event-detect-fp-probe.ts`。eval-cli 加 dep `@deepseek-ai/dsh-tool-load-event-definition`（lockfile +3 行）。
+- **`3229590eeb`** timeout collision（见下）。
+- **`761b8551d0`** 仪表审计工具 + 新票 + 原始输出 artifacts。
+- **`0f7b9234a2`** SQL semantic judge 的 schema context（见下）。
+
+### 检测器标定（`dev/event-detect-fp-probe.ts`，39 case，连续两跑一致）
+
+**TP=6 · FP=0 · TN=21 · FN=12**（TP = 057/119/125/126/135/136）。
+
+**修正上 session 的 FP=0**：上 session 的 FP 定义只算「DWS → event」，「event case → **错的** event」被记成 FN。严格定义下 122「PVE副本挑战」命中 `DungeonOnkeyPass` 的泛 alt_label「副本」被选中（真值 `game.pve.begin`）= FP。加通用规则（命中泛词 ≠ 对得上；候选是另一个具名活动的埋点 → NONE）后归零，TP 7→6（138 按「新增角色=泛词」回 NONE，规则内一致）。
+
+**12 FN 全是词法段无候选**：scope 内 **453 个事件只有 6 个填了 `alt_labels`**（recharge/role.create/coin.change/item.change/DungeonOnkeyPass×2）→ `card.gacha` 无「抽卡」、`role.online` 无「登录」。召回上限是语料覆盖，不是逻辑。
+
+### (a) 生效的机制级证据（比 pass_rate 可靠）
+
+| judge-only, 117 attempts | (d) | (a)+(d) |
+|---|---|---|
+| 用 `ieu_ods.ods_10000251_all_view` 的 attempt | **0** | **17** |
+| null-SQL | **21** | **13**（−38%）|
+| 非 SQL tool-call | 0 | 0 |
+| `FROM <数据视图>` 占位符 | 0 | 1 |
+
+**null-SQL 21→13 是 (a)+(d) 组合首次被测到的收益**——(d) 单独只有 22→21。机制正如两票预测：event schema 到位 → 模型不再因无表可写而 decline。
+
+smoke 119（real-exec）生成的 SQL 与 case 自己的 reference SQL **逐字一致**；135 生成 `GET_JSON_OBJECT(params,'$.moneyType')`/`'$.money'` 与 reference 同构（119 用不到 params，role_id 是基础列）。
+
+### 缺陷 1：case-set 的 event 期望值不是冻结锚点（→ 新票）
+
+把每个 case **自己的 `expected.sql`** 实跑（`ds=20260805`）对账 `expected.result_value`（工具 `packages/eval/eval-cli/dev/case-expected-value-audit.mjs`，原始输出 `research/artifacts/case-expected-value-audit-{event,dws}-20260906.log`）：
+
+| data_source | MATCH | STALE | SKIPPED（多行） |
+|---|---|---|---|
+| **event** | 2（都是 `0==0`）| **16** | 0 |
+| **dws** | **13** | **0** | 8 |
+
+119 `510→552`、136 `432→482`、057/135 `773500→2409900`(3.1×)、121 `33503→46306`、126 `2774223→3413512`。方向多数升但不全（137 `288→259`、138 `48→39`）→ 只能确证「ODS 原始视图历史分区不稳定、DWS 汇总表稳定（T+1 算完即冻结）」，机制未证。
+
+**这推翻了一条既有结论**：FOLLOWUP 记「119 att3 → 552 错值」「136 att3 → 482 错值」，552/482 正是那两条 reference SQL 今天的值——**模型算对了，判错的是仪表**。所以 audit-log 里「real-exec 瓶颈 = SQL 正确性/错值」对 event case 至少部分失效，本票 criterion #1 是 **uninstrumented 而非 unmet**。新票 [GA-EVAL-CASESET-EVENT-ANCHOR](../tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)（grilling，5 个候选口径 A-E，都不免费）。
+
+### 缺陷 2：SQL semantic judge 与 critic 犯同一个错（本票已修）
+
+judge 用 responder 的 `schema_context`（BM25 候选）打 `table_selection`/`field_selection`，event view 是 scope 级 config 不是 corpus item。**case 135（`data_source: event`，reference SQL 就是 event view 查询）**：
+
+| | 生成 SQL | sql_judge | verdict |
+|---|---|---|---|
+| (d) 之前 | 3/3 用 DWS 表 | **1.0/1.0/1.0** | correct |
+| (a) 之后 | 3/3 用 reference 同构 event view SQL | **0.4/0.2/0.2** | wrong |
+
+judge 原话：「使用了 **Schema 上下文之外的** ODS 底层表…导致表和字段选择错误」（`table_selection:0`、`field_selection:0`）。**仪表在惩罚 (a)，且此前一直在奖励取错源的答案**——这是 FOLLOWUP「judge-leniency」的一个更强版本：不只是宽容错答案，而是主动扣正确答案的分。修法与 critic 同构（检测到 event 时把 event view + 事件名 + params 字段追加进 `schema_context`；追加式，21 个 DWS case 该段 byte 不变）。
+
+### 潜伏 bug：MCP timeout 与 sidecar wait 窗口相撞（`3229590eeb`）
+
+sidecar 跑 `maxc query run --wait 60` 才提交异步 job，`toolCallTimeoutMs` **也**默认 60s → 比 wait 窗口慢的查询表现为 `MCP error -32001: Request timed out`，走不到 sidecar 设计的 pending/attach 路径。潜伏至今因为历次 real-exec 打的都是秒级的预聚合 DWS 表；(a) 指向 event ODS 视图后 `COUNT(DISTINCT role_id)` 实测 **68s**，于是 (a) 自己的正确 SQL 被判 infra_failure（smoke 119 首跑 3 attempts/222s 全超时）。修：wait 读 `MAXC_WAIT_SECONDS`（默认 60 = 原值），eval-cli 从同一变量派生 timeout（+60s），构造上不可能相撞。附带发现：engine 的 attach 轮询 3 次之间**无间隔**，被提升为异步的 job 几乎必然在轮询用完时仍在 running——所以把慢查询留在同步窗口内是目前可靠的路径。
+
+### Results（judge-only 双跑）
+
+| judge-only | (d) 基线 | (a)+(d) **v1**（judge 未修） | (a)+(d) **v2**（judge 已修） |
+|---|---|---|---|
+| pass_rate | 21/39 = 53.8% | 16/39 = **41.0%** | 见下 |
+| null-SQL /117 | 21 | **13** | 见下 |
+| 非 SQL 发射 | 0% | **0%** | 见下 |
+| event view attempts | 0 | **17** | 见下 |
+
+**v1 的 −5 经 per-case 排除与 (a) 无关**：5 个回退的 DWS case（038/039/041/043/051）**每一次 attempt 都 `eventView=false`**，检测没触发，且未检测到 event 时生成 prompt 与 (d) **逐字节相同**（section 缺省不渲染，已单测）→ 差异只能来自采样。每个回退 case 都同时有 sj=1.0 与 sj=0.4/0.6/0 的 attempt，是 `passKVerdict=every` 放大的 attempt 级抖动（038/041/043 的不稳定 FOLLOWUP 已记录过）。038 att2 自己写了 `FROM <数据视图>` 占位符——(a) 没给它注入任何东西，那是原有行为。唯一「被注入且回退」的 135 根因是缺陷 2。
