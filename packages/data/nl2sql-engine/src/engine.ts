@@ -147,8 +147,8 @@ export interface EngineRunResult {
   readonly outcome?: QueryOutcome
   readonly result?: unknown[] | undefined
   readonly decline?: boolean
-  /** Why the engine declined, when the reason is machine-actionable (CL-23). */
-  readonly declineKind?: 'tool_call_emitted'
+  /** Why the engine declined, when the reason is machine-actionable (CL-23, CL-20). */
+  readonly declineKind?: 'tool_call_emitted' | 'beyond_single_query'
   readonly reason?: string
   readonly pending?: boolean
   readonly trace: EngineTraceEntry[]
@@ -263,6 +263,22 @@ export class Nl2sqlEngine {
       }
     }
 
+    // CL-20: capability triage — refuse requests whose DELIVERABLE no single
+    // query can produce (report / forecast / recommendation). Scoped to
+    // deliverable-kind, not vagueness: see triageQuestion for why the vagueness
+    // boundary is not implementable against this case set.
+    const triageResult = await this.triageQuestion(question)
+    if (triageResult !== null) {
+      trace.push({ step: 'capability_triage', result: 'beyond_single_query' })
+      return {
+        ok: false,
+        decline: true,
+        declineKind: 'beyond_single_query',
+        reason: triageResult,
+        trace,
+      }
+    }
+
     let attempt = 0
     let lastFeedback: LlmFeedback | null = null
     while (attempt <= MAX_FEEDBACK_RETRIES) {
@@ -354,5 +370,82 @@ export class Nl2sqlEngine {
       return { ok: false, decline: true, reason: `未知错误 ${fk ?? '?'}`, sql, trace }
     }
     return { ok: false, decline: true, reason: `自修 ${MAX_FEEDBACK_RETRIES} 次仍失败`, trace }
+  }
+
+  /**
+   * CL-20: capability triage — does the question ask for a DELIVERABLE that no
+   * single query can produce (a compiled report, a forecast, a strategy
+   * recommendation), as opposed to a data value?
+   *
+   * Deliberately narrow. It does NOT judge whether a question is vague,
+   * subjective, or under-specified — that boundary is not self-consistent in
+   * the case set (`076 服务器之间有没有不平衡` expects SQL while `079 卡牌平衡性
+   * 怎么样` expects a refusal, same word stem, opposite ground truth), so any
+   * classifier drawn on it only trades one class of error for the other.
+   * Scoping the gate to deliverable-kind keeps it domain-agnostic: "give me a
+   * weekly report" is not a single query in ANY business domain, which is what
+   * makes this判据 transfer without a per-domain vocabulary (contrast
+   * `TREND_PATTERN`'s keyword list — GA-GRILL2 D3 measured it at 85% recall and
+   * opened GA-I18N-R1 to escape that ceiling via LLM intent classification).
+   *
+   * Under-specification is left to the model's own §5 honest-decline, which
+   * already produces judge-passing refusals in 7 of 9 observed prose attempts.
+   *
+   * ## Do not "fix" the report example (measured 2026-09-06)
+   *
+   * CL-20 recorded `052 最近7天每天的商店销售额` as a 3-in-5 false positive here,
+   * blamed on 「7天/每天」 reading as 「周报」 next to the "periodic report" example,
+   * and asked for the wording to be rewritten. Measuring the gate directly with
+   * `packages/eval/eval-cli/bin/probe-triage.ts` (n=5, trace-based) falsified that:
+   * this prompt classifies 052 as `data_request` **5/5**, along with 073/076/077
+   * and four paraphrased multi-day shapes (「最近30天每天的活跃用户数」,
+   * 「这个月每天的充值金额」, 「上周每天的订单量」, 「各个渠道昨天的新增用户数」).
+   * The original claim came from inferring gate firing from latency, because eval
+   * artefacts do not persist the trace — but the CL-23 tool-call decline lands on
+   * the same `generated_sql: null`, so low-latency empty SQL never distinguished
+   * the two paths.
+   *
+   * A rewrite was attempted anyway and **regressed**: adding an
+   * unspecified-subject clause (to make `voice_041` fire, which this prompt does
+   * NOT do — 0/5, another CL-20 claim the probe corrected) pulled `077 玩家留存有
+   * 什么问题吗` to 5/5 firing and `076` to 2/5. Both expect SQL, so both became
+   * guaranteed failures. Re-measure before touching the wording.
+   *
+   * Returns `null` to proceed to generation, or a reason string to decline.
+   */
+  private async triageQuestion(question: string): Promise<string | null> {
+    const prompt = [
+      'Classify what the user is ASKING FOR — the kind of deliverable, not its topic.',
+      '',
+      'Reply `beyond_single_query` when the request is for an artefact that no',
+      'single database query can produce, regardless of what data exists:',
+      '  - a compiled/periodic report or summary ("weekly report", "summarise the month")',
+      '  - a forecast or projection of future values ("predict next week")',
+      '  - a recommendation, strategy, or course of action ("how do we raise revenue",',
+      '    "should we run a promotion")',
+      '',
+      'Reply `data_request` for everything else — any request whose answer is a',
+      'value, a list, a comparison, or a trend that could be read out of a table.',
+      'This includes vague, broad, or subjectively-worded requests: if the user is',
+      'ultimately after numbers, it is a data_request even when it is unclear WHICH',
+      'numbers. Under-specification is NOT your concern here.',
+      '',
+      `Request: ${question}`,
+      '',
+      'Reply with exactly one word: beyond_single_query or data_request',
+    ].join('\n')
+
+    const gen = await this.llm.generate({
+      question: prompt,
+      attempt: 0,
+      feedback: null,
+      prompt,
+    })
+
+    const answer = (gen.sql ?? '').trim().toLowerCase()
+    if (answer.includes('beyond_single_query')) {
+      return '该请求要求的产物（报告/预测/策略建议）超出单条数据查询的能力范围'
+    }
+    return null
   }
 }

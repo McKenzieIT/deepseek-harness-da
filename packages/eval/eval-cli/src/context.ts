@@ -403,9 +403,10 @@ class Nl2sqlAgentResponder implements AgentResponder {
         `Question: ${question}`,
         `Rows: ${JSON.stringify(result.result).slice(0, 4000)}`,
       ].join('\n'))
-    } else if (result.decline && result.declineKind === 'tool_call_emitted') {
-      // CL-23: the engine caught the model emitting a tool-call instead of SQL
-      // (CL-19 root cause: TOOL_CATALOG in a prompt with no tool-execution loop).
+    } else if (result.decline && (result.declineKind === 'tool_call_emitted' || result.declineKind === 'beyond_single_query')) {
+      // CL-23 + CL-20: the engine declined — either tool-call emission (CL-23)
+      // or a deliverable no single query can produce (CL-20). Both routes use
+      // the same grounded synthesis: name the gap, list available columns, guide.
       // `Declined: LLM 发射 tool-call…` is an internal diagnostic — the DELIVERY
       // judge scores it zero. Synthesise the honest reply the agent should have
       // produced, GROUNDED in the actual candidate schema below (CL-23 grounding
