@@ -45,3 +45,21 @@ engine responder（`packages/eval/eval-cli/src/context.ts` `Nl2sqlAgentResponder
 - 与 [GA-EVAL-EXPAND](GA-EVAL-EXPAND-case-set-power.md) 正交（本票 engine path，EXPAND case-set 维度）。
 - 环境：maxc CLI 0.4.8（`~/Library/Python/3.13/bin/maxc`，需 export PATH），`MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml`，maxc-sidecar-k11.mjs（real wrapper，非 standin MOCK）。conc=3（conc=4 under load 触发 AGA empty-burst）。key 走 `~/.dsh/.credentials.yaml` credentials seam。
 - 不 force-push；rebase onto origin/master；concurrent session 活跃（工作树 leftover 非我——rebase 前 stash）。
+
+---
+
+## Progress (2026-09-06) — risk-gate resolved; session pivoted to (d); (a) deferred (open)
+
+Risk-gate (work-list item #1) DONE via 4 LLM-free/maxc-free scratch probes (deleted after). **Verdict: BM25 unreliable + lexical matcher unsafe → detection sub-problem harder than this ticket assumed.**
+
+- **BM25 surfaces the expected event doc 0/4** (top-8 per raw question, no expansion): 119→top-8 all DWS `new_role` tables (model picks DWS = the wrong-table bug); 125→top-8 other events' role-uv metrics (`game.coin.change` absent); 126/136→the event's *metric* items surface (`game.item.change__..._cnt`, `game.recharge__..._fen`) but the event *definition* (FROM-table grounding) does not.
+- **G-DA4 infra confirmed live in eval path** (no wiring yet): `schema.loadEventDefinition('game.role.create')`→found (23 params/4 metrics); `extractEventView(semanticRoot)`→`EventViewInfo{full_name:"ieu_ods.ods_10000251_all_view", params_extract_template:"GET_JSON_OBJECT(params,'$.{field_name}')", base_columns:[account_id,role_id,ds,event,params,...]}`. Seams work; this ticket's job (wire into `respond()`) unchanged.
+- **Lexical alt_labels matcher UNSAFE**: 8 TP / **14 FP** / 7 TN / 10 FN. FPs are DWS derived-metric questions matching 2-char generic alt_labels ("新增"→role.create on 038/044/048/050/054; "付费"→recharge on 039-059). **FP regression is concrete (value-based execution_match)**: 038 expected DWS `act_fst=1`=**552** vs event SQL=**510**; 040 expected `pay=1`=**259** vs recharge event=**4227**; 130 "付费抽卡" wrongly→recharge not `game.card.gacha`.
+- **Specific-only matcher (alt_label ∉ DWS table text) too aggressive**: 0 FP but only 2 TP (125/126). `game.role.create` alt_labels=[新增,新增用户,新注册] ALL generic; `game.recharge`=[氪金,充值,付费] ALL generic. Specific nouns ("创角","现金券") live in event *descriptions*, not alt_labels → 119/136/card.gacha undetectable lexically; description-mining over-generates.
+- **Root issue is semantic**: 038 "新增了多少个角色" (dws, exp 552) vs 119 "创角的新增角色数" (event, exp 510) are near-identical questions w/ different expected sources — only the event-specific noun "创角" distinguishes, and it's not in role.create's alt_labels. Lexical can't reliably separate raw-event from derived-metric.
+
+**Implication**: the "focused alt_labels matcher" this ticket anticipated is insufficient. Robust detection needs (i) LLM-based 2-stage (lexical pre-filter → qwen-flash pick, raw-event-vs-derived framing; P15a expandQuery precedent) or (ii) description-specificity mining (over-gen risk). Either is heavier than scoped. **The infra-wiring (prompt surface eventView; critic accept event_view as FROM) remains valid + achievable regardless of the detector** — only the detector is the open sub-problem.
+
+**Decision (per user direction 2026-09-06)**: session pivoted to **(d) GA-EVAL-RETRY-FEEDBACK** (cheaper/deterministic/independent — wire `args.feedback` into prompt). (a) stays **open**. Next session on (a): do NOT re-investigate BM25/alt_labels (evidence above stands); go straight to LLM-detection or description-mining.
+
+**Sharpened work-list item #1** (replaces "investigate BM25"): *implement event-name detection via LLM 2-stage OR description-specificity matcher; must handle the 038-vs-119 semantic-twin ambiguity (don't inject role.create for 038 "新增角色"); validate 0 FP on all 39 cases before re-baseline.* Items #2-#5 (responder wiring, prompt surface, critic candidate_tables, smoke, re-baseline) unchanged.
