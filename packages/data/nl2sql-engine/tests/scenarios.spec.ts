@@ -23,6 +23,21 @@ const DS = FIXTURE_DATA_SOURCES
 const EV = FIXTURE_EVENT_DEF
 const asScripted = (sub: string, out: QueryOutcome): Record<string, QueryOutcome> => ({ [sub]: out })
 
+/**
+ * Select the SQL-generation prompts out of everything a mock LLM recorded.
+ *
+ * CL-20's capability triage issues its own `llm.generate` call BEFORE generation,
+ * so a recorded-prompt list no longer starts at the SQL prompt and positional
+ * indexing silently reads the triage classifier instead. Select by content:
+ * `# 当前问题` appears in both branches of `buildPrompt` and never in the
+ * English triage prompt. Do NOT revert to `recorded[0]` — the next prompt-stage
+ * addition would break it again the same way.
+ * @param recorded - every prompt the mock LLM saw, in call order.
+ * @returns just the SQL-generation prompts, in attempt order.
+ */
+const sqlGenPrompts = (recorded: readonly string[]): readonly string[] =>
+  recorded.filter(p => p.includes('# 当前问题'))
+
 test('S1 BM25 linking 召回 dws_pay_order_di top-1（per-field 权重 + CJK bigram）', () => {
   const r = new Bm25Linker(DS)
   const hits = r.retrieve('昨天充值总金额', { topK: 5, mode: 'bm25-only' })
@@ -192,13 +207,14 @@ test('S11 retry wires feedback into the SQL-gen prompt (GA-EVAL-RETRY-FEEDBACK)'
   const eng = new Nl2sqlEngine({ dataSources: DS, llm, odps })
   const r = await eng.run({ question: '充值场景六', eventDef: EV })
   expect(r.ok).toBe(true)
+  const genPrompts = sqlGenPrompts(seenPrompts)
   // attempt 0 prompt: no feedback (initial generate, lastFeedback null)
-  expect(seenPrompts.length).toBeGreaterThanOrEqual(2)
-  expect(seenPrompts[0]).not.toContain('# 上次失败反馈')
+  expect(genPrompts.length).toBeGreaterThanOrEqual(2)
+  expect(genPrompts[0]).not.toContain('# 上次失败反馈')
   // attempt 1 prompt: contains the feedback section + failureKind + error
-  expect(seenPrompts[1]).toContain('# 上次失败反馈')
-  expect(seenPrompts[1]).toContain(FailureKind.PARSE_FAILED)
-  expect(seenPrompts[1]).toContain('syntax error near BAD')
+  expect(genPrompts[1]).toContain('# 上次失败反馈')
+  expect(genPrompts[1]).toContain(FailureKind.PARSE_FAILED)
+  expect(genPrompts[1]).toContain('syntax error near BAD')
 })
 
 test('S12 event view reaches the prompt AND the critic candidate set (GA-EVAL-EVENTDEF-PREFETCH)', async () => {
@@ -227,9 +243,11 @@ test('S12 event view reaches the prompt AND the critic candidate set (GA-EVAL-EV
     .run({ question: '昨天下单的独立角色数', eventDef: EV, eventView })
   expect(withView.ok).toBe(true)
   expect(withView.sql).toContain('ieu_ods.ods_10000251_all_view')
-  expect(prompts[0]).toContain('# 事件查询落表')
-  expect(prompts[0]).toContain(eventView.full_name)
-  expect(prompts[0]).toContain(eventView.params_extract_template)
+  const genPrompt = sqlGenPrompts(prompts)[0]
+  expect(genPrompt).toBeDefined()
+  expect(genPrompt).toContain('# 事件查询落表')
+  expect(genPrompt).toContain(eventView.full_name)
+  expect(genPrompt).toContain(eventView.params_extract_template)
 
   // Control: same SQL, no eventView → the critic rejects the table by name and
   // the engine exhausts its retries.

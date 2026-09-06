@@ -176,6 +176,14 @@ real-exec 侧（run `eventdef-realexec`，1h35m）：
 - **检测成本**：每个有词法候选的问题 +1 次 qwen3.7-max 调用（~2-3s，按 question 缓存）。
 - 056/130 的 reference SQL 返回 0（登录账号 UV=0、付费抽卡次数=0）本身可疑，已记进新票工作清单。
 
+### Caveat — the baselines predate CL-20's triage gate (merge 3dc137e1b3)
+
+本票的 judge-only / real-exec 数字都在 `9221e21bd0` 基线上测得，**早于 master 的 CL-20 open-ended triage gate**（`1115368559`/`84553f3c5f`/`93de1cd480`）。合并 master 后流水线在 SQL 生成**之前**多了一道 `llm.generate` 分类调用，可对「报告/预测/策略建议」类请求确定性拒答。event 类问题是 `data_request` 会放行（S12 合并后仍绿），但：
+
+- 上述所有数字描述的是 **(a)+(d) 无 triage** 的流水线，不是合并后的代码；下次 re-baseline 会同时包含 triage 的影响，届时不要把差异全记在 (a) 头上。
+- 每个问题现在有 **两次**额外 LLM 调用（triage 分类 + (a) 的事件检测），成本需要重新算。
+- CL-20 的 triage 在生成前插入了一次 `llm.generate`，使按位置索引录制 prompt 的测试失效——S11（(d) 的）与 S12（本票的）都因此变红，已改为按内容筛选（`sqlGenPrompts` helper，见 `scenarios.spec.ts`）。**这是 (d) 的 S11 第一次与 master 汇合才暴露的**：CL-20 落 master 时 S11 只存在于未合并的分支上。
+
 ### Pointer
 
 - **PR [#38](https://github.com/McKenzieIT/deepseek-harness-da/pull/38)**（within-fork，base=`fix/ga-eval-sqlgen-prompt-fix` 即叠在 PR #26 (d) 之上，使 diff 恰为 (a) 的改动；#26 merge 后 retarget 到 master）。分支 `task/ga-eval-eventdef-prefetch`，backup `backup-ga-eval-eventdef-prefetch`。
