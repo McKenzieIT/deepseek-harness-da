@@ -30,11 +30,14 @@ class TriageMockLlm implements Llm {
   constructor(private readonly verdict: 'beyond_single_query' | 'data_request') {}
   callCount = 0
   triageCallCount = 0
+  /** The triage prompt as the engine actually built it (for the wording guard). */
+  triagePrompt: string | null = null
 
   async generate(args: LlmGenerateArgs): Promise<LlmGenerateResult> {
     this.callCount += 1
     if (args.prompt?.includes(TRIAGE_MARKER)) {
       this.triageCallCount += 1
+      this.triagePrompt = args.prompt
       return { sql: this.verdict }
     }
     return { sql: "SELECT COUNT(*) FROM dws_pay_order_di WHERE ds='20260903'" }
@@ -64,7 +67,7 @@ describe('CL-20 capability triage gate', () => {
       const r = await engine.run({ question: q, eventDef: EV })
       expect(r.ok).toBe(false)
       expect(r.decline).toBe(true)
-      expect(r.declineKind).toBe('open_ended_question')
+      expect(r.declineKind).toBe('beyond_single_query')
       expect(r.trace.some(t => t.step === 'capability_triage')).toBe(true)
       // Gate fires BEFORE generation — no generation call is made at all
       expect(llm.triageCallCount).toBe(1)
@@ -81,6 +84,7 @@ describe('CL-20 capability triage gate', () => {
     { id: '077', q: '玩家留存有什么问题吗', why: '模糊但期望 SQL' },
     { id: '079', q: '卡牌平衡性怎么样', why: '主观——本门禁刻意不管，留给 §5' },
     { id: 'exec', q: '昨天充值了多少钱', why: '明确指标' },
+    { id: '052', q: '最近7天每天的商店销售额', why: '多日逐日明细——曾 3/5 误伤，见 prompt 的 DECISIVE 段' },
   ]
 
   for (const { id, q, why } of DATA_REQUESTS) {
@@ -90,7 +94,7 @@ describe('CL-20 capability triage gate', () => {
       // The capability gate must not claim this one. (The engine may still
       // decline downstream — StandInOdps has no scripted outcome — but never
       // via this gate.)
-      expect(r.declineKind).not.toBe('open_ended_question')
+      expect(r.declineKind).not.toBe('beyond_single_query')
       expect(r.trace.some(t => t.step === 'capability_triage')).toBe(false)
       // Generation was entered
       expect(llm.triageCallCount).toBe(1)
@@ -104,7 +108,7 @@ describe('CL-20 capability triage gate', () => {
     const { engine } = makeEngine('data_request')
     for (const q of ['经济系统健康吗', '卡牌平衡性怎么样', '数据看起来正常吗']) {
       const r = await engine.run({ question: q, eventDef: EV })
-      expect(r.declineKind).not.toBe('open_ended_question')
+      expect(r.declineKind).not.toBe('beyond_single_query')
     }
   })
 
@@ -112,5 +116,31 @@ describe('CL-20 capability triage gate', () => {
     const { engine, llm } = makeEngine('data_request')
     await engine.run({ question: '昨天充值了多少钱', eventDef: EV })
     expect(llm.triageCallCount).toBe(1)
+  })
+
+  // --- What this file can and cannot prove ---
+  //
+  // Every test above feeds the classifier a MOCKED verdict. That pins the
+  // plumbing — gate fires before generation, sets `declineKind`, costs one call,
+  // never claims a data request — and it CANNOT fail for a prompt-wording bug.
+  // Classification is only measurable against a live model:
+  // `packages/eval/eval-cli/bin/probe-triage.ts` does that (n reps per question,
+  // read off the engine's own trace) and is the evidence to cite when changing
+  // the prompt. CL-20 asserted a 3-in-5 false positive on `052` from latency
+  // inference alone; the probe measured 5/5 correct and the rewrite it motivated
+  // regressed `076`/`077`. See the `triageQuestion` doc comment.
+
+  test('mock 不越权：verdict 由 prompt 决定，本文件只固定管道', async () => {
+    // Same question, opposite mocked verdicts → opposite routes. Demonstrates
+    // that nothing here constrains the wording, only the wiring.
+    const gated = makeEngine('beyond_single_query')
+    const passed = makeEngine('data_request')
+    const q = '最近7天每天的商店销售额'
+    const a = await gated.engine.run({ question: q, eventDef: EV })
+    const b = await passed.engine.run({ question: q, eventDef: EV })
+    expect(a.declineKind).toBe('beyond_single_query')
+    expect(b.declineKind).not.toBe('beyond_single_query')
+    // Both built the identical triage prompt — the input never varies by verdict.
+    expect(gated.llm.triagePrompt).toBe(passed.llm.triagePrompt)
   })
 })

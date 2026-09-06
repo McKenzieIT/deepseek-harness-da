@@ -148,7 +148,7 @@ export interface EngineRunResult {
   readonly result?: unknown[] | undefined
   readonly decline?: boolean
   /** Why the engine declined, when the reason is machine-actionable (CL-23, CL-20). */
-  readonly declineKind?: 'tool_call_emitted' | 'open_ended_question'
+  readonly declineKind?: 'tool_call_emitted' | 'beyond_single_query'
   readonly reason?: string
   readonly pending?: boolean
   readonly trace: EngineTraceEntry[]
@@ -273,7 +273,7 @@ export class Nl2sqlEngine {
       return {
         ok: false,
         decline: true,
-        declineKind: 'open_ended_question',
+        declineKind: 'beyond_single_query',
         reason: triageResult,
         trace,
       }
@@ -390,6 +390,26 @@ export class Nl2sqlEngine {
    *
    * Under-specification is left to the model's own §5 honest-decline, which
    * already produces judge-passing refusals in 7 of 9 observed prose attempts.
+   *
+   * ## Do not "fix" the report example (measured 2026-09-06)
+   *
+   * CL-20 recorded `052 最近7天每天的商店销售额` as a 3-in-5 false positive here,
+   * blamed on 「7天/每天」 reading as 「周报」 next to the "periodic report" example,
+   * and asked for the wording to be rewritten. Measuring the gate directly with
+   * `packages/eval/eval-cli/bin/probe-triage.ts` (n=5, trace-based) falsified that:
+   * this prompt classifies 052 as `data_request` **5/5**, along with 073/076/077
+   * and four paraphrased multi-day shapes (「最近30天每天的活跃用户数」,
+   * 「这个月每天的充值金额」, 「上周每天的订单量」, 「各个渠道昨天的新增用户数」).
+   * The original claim came from inferring gate firing from latency, because eval
+   * artefacts do not persist the trace — but the CL-23 tool-call decline lands on
+   * the same `generated_sql: null`, so low-latency empty SQL never distinguished
+   * the two paths.
+   *
+   * A rewrite was attempted anyway and **regressed**: adding an
+   * unspecified-subject clause (to make `voice_041` fire, which this prompt does
+   * NOT do — 0/5, another CL-20 claim the probe corrected) pulled `077 玩家留存有
+   * 什么问题吗` to 5/5 firing and `076` to 2/5. Both expect SQL, so both became
+   * guaranteed failures. Re-measure before touching the wording.
    *
    * Returns `null` to proceed to generation, or a reason string to decline.
    */
