@@ -149,7 +149,7 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
 
 
 
-- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; 已 admin-merge(PR #11 `a905858f5d`);CLAUDE.md mode 修复(PR #17 `2e487635ce`)解 ubuntu-latest checkout ENAMETOOLONG 红;larger-runner 3 job 跑 ubuntu-latest(#21);Sandbox da 测试全绿(cordis #19+catalog #29);#31 YAML fix+#33 NODE_OPTIONS=4G+#35 ci-workflow+eval-cli credential——我引入的 CI red 全修;剩 pwsh(CI pwsh Console::OutputEncoding)+Python(CI 缺 pandas/numpy)+client-bundle(#30)+doc-sync drift
+- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; 已 admin-merge(PR #11 `a905858f5d`);CLAUDE.md mode 修复(PR #17 `2e487635ce`)解 ubuntu-latest checkout ENAMETOOLONG 红;larger-runner 3 job 跑 ubuntu-latest(#21);Sandbox da 测试全绿(cordis #19+catalog #29);#31 YAML fix+#33 NODE_OPTIONS=4G+#35 ci-workflow+eval-cli credential+#36 pip install pandas/numpy——我引入的 CI red 全修+Python 修;pwsh 3 deferred to CB-1b(terminal-bash pwsh-in-PTY bug);client-bundle(#30)+doc-sync drift(其它 session)
 
 ### 2026-09-03/04 运行时审计（「语义层按钮消失」根因 + 三处客户端断链 + pass^k 重打分）
 
@@ -176,6 +176,8 @@ Destination 第 1 条「全链路可用」的验收依赖以下外部系统在�
   - **CL-22 与 pass_k=3 的张力已定性**:`pass_k=3` 管**单 run 内**抖动(惩罚),`≥3 run 中位数` 管 **run 间**抖动(抹平),二者正交、可叠加,不冲突。CL-22 当初说 all-must-pass"不适用"是因为它设想用 majority-vote 替代中位数——那才是冲突的方案。
 
 ## Not yet specified
+
+<!-- CB-1b: pwsh in PTY doesn't evaluate expressions on GitHub macOS runners (terminal-bash session.ts bug) -->
 
 - **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化。Session prompt: `prompts/remaining-1-schema-provider-conflict.md`。**保留为雾**（2026-08-28 确认——当前只有一个 provider，等引入第二个时再决策）。
 - **Context Layer 对齐演进**（R9 审计，详见下方独立章节）
