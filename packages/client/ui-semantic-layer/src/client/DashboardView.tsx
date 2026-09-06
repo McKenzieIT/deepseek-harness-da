@@ -13,6 +13,7 @@ import { EvalTrajectory } from './EvalTrajectory.tsx'
 import { EvalDeltaView } from './EvalDeltaView.tsx'
 import { GapPanel } from './GapPanel.tsx'
 import { useEvidenceQuery, type EvidenceQueryClient } from './hooks/useEvidenceQuery.ts'
+import css from './DashboardView.module.css'
 
 export interface DashboardViewProps {
   evidenceClient?: EvidenceQueryClient | null
@@ -28,25 +29,25 @@ export const DashboardView: FC<DashboardViewProps> = ({
   const { state } = useEvidenceQuery(evidenceClient ?? null)
 
   return (
-    <div className="sl-dashboard">
-      <div className="sl-dashboard__header">
-        <h1 className="sl-dashboard__title">{t('dashboard.title')}</h1>
+    <div className={css.dashboard}>
+      <div className={css.header}>
+        <h1 className={css.title}>{t('dashboard.title')}</h1>
         {onNavigateToWorkspace && (
-          <button className="sl-dashboard__workspace-link" onClick={onNavigateToWorkspace}>
+          <button className={css.workspaceLink} onClick={onNavigateToWorkspace}>
             {t('dashboard.goToWorkspace')}
           </button>
         )}
       </div>
 
-      <div className="sl-dashboard__hero">
+      <div className={css.hero}>
         <EvalTrajectory evalResults={state.evalResults} loading={state.loading} t={t} />
       </div>
 
-      <div className="sl-dashboard__kpi-row">
+      <div className={css.kpiRow}>
         <CoveragePanel coverage={state.coverage} loading={state.loading} t={t} />
       </div>
 
-      <div className="sl-dashboard__detail">
+      <div className={css.detail}>
         <EvalDeltaView evalDelta={state.evalDelta} loading={state.loading} t={t} />
         <GapPanel gapAnalysis={state.gapAnalysis} loading={state.loading} t={t} />
       </div>
