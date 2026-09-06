@@ -438,27 +438,29 @@ export class PatrolService extends Service {
     const evidenceQuery = this.ctx.get('evidenceQuery')
     if (!evidenceQuery) return []
 
-    const coverage = evidenceQuery.coverageQuery()
     const allAssetIds: string[] = []
 
-    // Collect all asset ids from domain_counts (available signal)
-    for (const domain of Object.keys(coverage.domain_counts)) {
-      if (this.config.scope && domain !== this.config.scope) continue
-      // Domain-level filtering
-    }
-
-    // Use gap analysis from a root asset to find uncovered assets
-    // For simplicity, query health of known assets and sort by weakness
+    // data-infra-13: the domain_counts loop here was dead code — its body was
+    // just a `continue` conditional, collecting nothing (removed). Scope
+    // filtering is now applied UPSTREAM via the evalResultQuery domain filter
+    // (the old assetHealth-based check never inspected the asset's domain, so
+    // a configured scope filter did not actually restrict patrol to that
+    // scope's assets). Caveat: the store's domain filter matches on
+    // r.metadata.domain, which the eval persistence layer
+    // (mapPersistedToEvalRecord) does not yet populate — so a scoped patrol
+    // against persisted results over-excludes until that layer tags domains
+    // (follow-up). The unscoped path (config.scope = '') is unaffected.
     const healthReports: { assetId: string; score: number }[] = []
 
-    // Gather asset ids from eval results — assets with failing evals are weak
-    const evalResults = evidenceQuery.evalResultQuery({ status: 'fail', limit: 20 })
+    // Gather asset ids from eval results — assets with failing evals are weak.
+    // When a scope is configured, restrict to that domain upstream so patrol
+    // only processes the scope's assets.
+    const evalResults = evidenceQuery.evalResultQuery({
+      status: 'fail',
+      limit: 20,
+      ...(this.config.scope ? { domain: this.config.scope } : {}),
+    })
     for (const result of evalResults.results) {
-      if (this.config.scope) {
-        // Scope filtering via asset health domain check
-        const health = evidenceQuery.assetHealth(result.assetId)
-        if (!health) continue
-      }
       if (!allAssetIds.includes(result.assetId)) {
         allAssetIds.push(result.assetId)
       }

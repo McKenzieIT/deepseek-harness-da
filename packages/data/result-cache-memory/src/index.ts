@@ -68,8 +68,50 @@ function entriesEqual(a: ResultEntry, b: ResultEntry): boolean {
     const rb = b.rows[i] as unknown[]
     if (ra.length !== rb.length) return false
     for (let j = 0; j < ra.length; j++) {
-      if (ra[j] !== rb[j] && JSON.stringify(ra[j]) !== JSON.stringify(rb[j])) return false
+      // data-infra-14: structural recursive deep-equal (not JSON.stringify) so
+      // equal cell values compare equal regardless of object key insertion
+      // order, and without JSON.stringify's coercion holes (NaN→'null',
+      // undefined-valued keys dropped). Fixes a false-positive immutability
+      // throw on a valid deterministic re-put with reordered object keys.
+      if (!deepEqualCell(ra[j], rb[j])) return false
     }
+  }
+  return true
+}
+
+/**
+ * Structural recursive deep-equality for two row cell values. Order-insensitive
+ * for plain objects (so `{a:1,b:2}` equals `{b:2,a:1}`), element-order-sensitive
+ * for arrays, and treats `NaN` as equal to `NaN` (via `Object.is`, unlike `===`).
+ * Replaces the ad-hoc `JSON.stringify` compare that had key-order / NaN /
+ * undefined-key holes on the cr_ immutability check.
+ */
+function deepEqualCell(a: unknown, b: unknown): boolean {
+  // Object.is handles identical primitives AND NaN===NaN (=== does not).
+  if (Object.is(a, b)) return true
+  if (typeof a !== typeof b) return false
+  if (a === null || b === null) return false
+  if (typeof a !== 'object') return false
+  const aIsArray = Array.isArray(a)
+  const bIsArray = Array.isArray(b)
+  if (aIsArray !== bIsArray) return false
+  if (aIsArray) {
+    const aa = a as unknown[]
+    const bb = b as unknown[]
+    if (aa.length !== bb.length) return false
+    for (let i = 0; i < aa.length; i++) {
+      if (!deepEqualCell(aa[i], bb[i])) return false
+    }
+    return true
+  }
+  const aObj = a as Record<string, unknown>
+  const bObj = b as Record<string, unknown>
+  const aKeys = Object.keys(aObj)
+  const bKeys = Object.keys(bObj)
+  if (aKeys.length !== bKeys.length) return false
+  for (const key of aKeys) {
+    if (!Object.prototype.hasOwnProperty.call(bObj, key)) return false
+    if (!deepEqualCell(aObj[key], bObj[key])) return false
   }
   return true
 }

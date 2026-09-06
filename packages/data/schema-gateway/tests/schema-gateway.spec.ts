@@ -285,16 +285,18 @@ describe('SchemaGateway', () => {
     expect(getRelationGraphCalls[0]).toBe(undefined)
   })
 
-  it('(5c) search passes scopeId → ctx.schema.corpusVersion receives it (β mode, dormant until 5d)', async () => {
-    // The 5c call site :49: search(query, topK?, scopeId?) → getLinker(scopeId)
-    // → this.ctx.schema.corpusVersion(scopeId) (Phase 2 per-scope version
-    // signal). The spy records it; search must hand 'tenant-a' through to
-    // the per-scope cache key. DORMANT: prod callers pass no scopeId yet →
-    // undefined → active (pinned by the next test).
+  it('(5c/di-5) search keys the linker cache on the ACTIVE scope version (corpusVersion(undefined)), not the per-scope version', async () => {
+    // data-infra-5: getLinker loads the ACTIVE scope's corpus
+    // (loadRetrievalCorpusAll takes no scopeId), so the cache must key on
+    // corpusVersion(undefined) — NOT corpusVersion(scopeId). Keying on the
+    // per-scope version returned a stale linker when the active corpus
+    // changed but scopeId's version stayed the same. search still ACCEPTS
+    // scopeId (5d future) but does not thread it to corpusVersion until
+    // loadRetrievalCorpusAll is scope-parameterized.
     const { gw, corpusVersionCalls } = await makeGatewayWithSpies()
     gw.search('订单', 10, 'tenant-a')
     expect(corpusVersionCalls.length).toBe(1)
-    expect(corpusVersionCalls[0]).toBe('tenant-a')
+    expect(corpusVersionCalls[0]).toBe(undefined)
   })
 
   it('(5c) search without scopeId → corpusVersion receives undefined (active 现状, dormant)', async () => {
@@ -304,5 +306,41 @@ describe('SchemaGateway', () => {
     gw.search('订单')
     expect(corpusVersionCalls.length).toBe(1)
     expect(corpusVersionCalls[0]).toBe(undefined)
+  })
+
+  it('(di-5) getLinker cache invalidates when the ACTIVE corpus version changes, even if scopeId version is unchanged (stale-cache window)', async () => {
+    const dir = seedLayer()
+    const { Context } = await import('@deepseek-ai/cordis')
+    const ctx = new Context()
+    const svc = new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+
+    let activeVersion = 1
+    let loadCalls = 0
+    const realLoadRetrievalCorpusAll = svc.loadRetrievalCorpusAll.bind(svc)
+    Object.defineProperty(svc, 'corpusVersion', {
+      value: (scopeId?: string) => (scopeId === undefined ? activeVersion : 999),
+      writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(svc, 'loadRetrievalCorpusAll', {
+      value: () => {
+        loadCalls++
+        return realLoadRetrievalCorpusAll()
+      },
+      writable: true,
+      configurable: true,
+    })
+    const gw = new SchemaGateway(ctx)
+
+    // scopeB version stays 999 across both calls; only the ACTIVE version
+    // changes (1→2) — matching how loadRetrievalCorpusAll always loads the
+    // active-scope corpus regardless of the scopeId passed to search.
+    gw.search('q', 5, 'scopeB')
+    expect(loadCalls).toBe(1)
+    activeVersion = 2
+    gw.search('q', 5, 'scopeB')
+    // FIXED: cache keyed on active version (2≠1) → miss → reload (loadCalls=2).
+    // BUG (pre-di-5): keyed on scopeB version (999===999) → stale hit → stays 1.
+    expect(loadCalls).toBe(2)
   })
 })

@@ -431,5 +431,30 @@ describe('PatrolService', () => {
       expect(ctx.emit).toHaveBeenCalledWith('patrol/started', expect.objectContaining({ scope: 'payment' }))
       void service.stop()
     })
+
+    // data-infra-13: findWeakestAssets' domain loop was dead code (empty body)
+    // and the assetHealth-based scope check never inspected the asset's domain
+    // — so a configured scope filter did not actually restrict patrol to that
+    // scope's assets. The fix threads config.scope as a domain filter to
+    // evalResultQuery upstream (the store's domain filter does the rest).
+    it('(di-13) threads config.scope as a domain filter to evalResultQuery', async () => {
+      const { service, mockEvidenceQuery } = createPatrolService()
+      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0 })
+      service.start({ scope: 'payment', confirmTimeoutMs: 5000 })
+      await vi.advanceTimersByTimeAsync(10)
+      expect(mockEvidenceQuery.evalResultQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'fail', domain: 'payment' }),
+      )
+      void service.stop()
+    })
+
+    it('(di-13) omits the domain filter when no scope is configured (preserves unscoped behavior)', async () => {
+      const { service, mockEvidenceQuery } = createPatrolService()
+      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0 })
+      service.start({ confirmTimeoutMs: 5000 })
+      await vi.advanceTimersByTimeAsync(10)
+      expect(mockEvidenceQuery.evalResultQuery).toHaveBeenCalledWith({ status: 'fail', limit: 20 })
+      void service.stop()
+    })
   })
 })

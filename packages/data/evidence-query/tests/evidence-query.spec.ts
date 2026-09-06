@@ -338,6 +338,53 @@ describe('EvidenceQueryService.assetHealth', () => {
   })
 })
 
+// ── beforeAfterDelta ───────────────────────────────────────────────────
+
+describe('EvidenceQueryService.beforeAfterDelta', () => {
+  it('counts a pass→fail transition as regressed', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'r1', assetId: 'a1', caseId: 'c1', status: 'pass', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'runA' } })
+    store.add({ id: 'r2', assetId: 'a1', caseId: 'c1', status: 'fail', timestamp: '2026-08-25T00:00:00Z', metadata: { runId: 'runB' } })
+    const svc = makeService(store)
+    const report = svc.beforeAfterDelta('runA', 'runB')
+    expect(report.summary).toEqual({ improved: 0, regressed: 1, unchanged: 0 })
+  })
+
+  it('counts a fail→pass transition as improved', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'r1', assetId: 'a1', caseId: 'c1', status: 'fail', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'runA' } })
+    store.add({ id: 'r2', assetId: 'a1', caseId: 'c1', status: 'pass', timestamp: '2026-08-25T00:00:00Z', metadata: { runId: 'runB' } })
+    const svc = makeService(store)
+    const report = svc.beforeAfterDelta('runA', 'runB')
+    expect(report.summary).toEqual({ improved: 1, regressed: 0, unchanged: 0 })
+  })
+
+  // data-infra-12: STATUS_RANK assigns BOTH 'error' and 'pending' rank 0, so
+  // error↔pending transitions are rank-equal and the `>` tie-break classified
+  // BOTH directions as 'regressed' (arbitrary). Moving between two
+  // non-gradeable buckets (infra fault vs unjudged) is a status-string flip
+  // but NOT an improvement or regression — classify as unchanged (the flip
+  // is still recorded in `flipped`).
+  it('(di-12) counts error→pending as unchanged, not regressed (non-gradeable re-bucketing)', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'r1', assetId: 'a1', caseId: 'c1', status: 'error', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'runA' } })
+    store.add({ id: 'r2', assetId: 'a1', caseId: 'c1', status: 'pending', timestamp: '2026-08-25T00:00:00Z', metadata: { runId: 'runB' } })
+    const svc = makeService(store)
+    const report = svc.beforeAfterDelta('runA', 'runB')
+    expect(report.summary).toEqual({ improved: 0, regressed: 0, unchanged: 1 })
+    expect(report.flipped).toEqual([{ caseId: 'c1', before: 'error', after: 'pending' }])
+  })
+
+  it('(di-12) counts pending→error as unchanged too (reverse direction)', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'r1', assetId: 'a1', caseId: 'c1', status: 'pending', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'runA' } })
+    store.add({ id: 'r2', assetId: 'a1', caseId: 'c1', status: 'error', timestamp: '2026-08-25T00:00:00Z', metadata: { runId: 'runB' } })
+    const svc = makeService(store)
+    const report = svc.beforeAfterDelta('runA', 'runB')
+    expect(report.summary).toEqual({ improved: 0, regressed: 0, unchanged: 1 })
+  })
+})
+
 // ── EvalResultStore ─────────────────────────────────────────────────────
 
 describe('EvalResultStore', () => {
