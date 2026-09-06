@@ -1,6 +1,6 @@
 # GA-EVAL-SQLGEN-FOLLOWUP — investigate post-prompt-fix pass-rate divergence + decide follow-up (eventDef pre-fetch)
 
-**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Resolved (2026-09-06)
 **Source**: [GA-EVAL-SQLGEN-PROMPT-FIX](GA-EVAL-SQLGEN-PROMPT-FIX-non-sql-emission.md) Resolution（2026-09-05，prompt fix 落地后 re-baseline 出现分歧：judge-only 回升 48.7→56.4，real-exec 反降 12.8→7.7）
 **Blocked by**: 无
 **Blocks**: 无（但 grill 决定方向后可能开 eventDef pre-fetch impl 票 / prompt 修订票）
@@ -51,3 +51,36 @@
 - 若选 (a) eventDef pre-fetch：需评估 engine responder 如何 load event definitions——`Nl2sqlAgentResponder.respond()` 当前只做 BM25 linking（candidates），不 load eventDef。semantic layer（`ctx.schema`）是否有 event definition API？按 question 检测 event-based intent（game.role.create 等）+ load 对应 eventDef？可能需新 infra 或复用 harness agent 的 `load_event_definition` 工具逻辑。
 - 若选 (b) prompt 修订：最小改——`# 上下文` preamble 的 "event definitions are pre-fetched into context" 改 "event definitions IF loaded (below # 事件定义)"，避免误导。但 (b) 不修 real-exec 瓶颈（eventDef 仍未加载）——只修误导，real-exec 仍低。
 - (a) 是真修 real-exec 瓶颈的方向（pre-fetch eventDef → 模型有 event schema → 生成正确 SQL）。(b) 是 prompt 诚实性修补。(c) 是接受现状（criterion #1 达标，real-exec 瓶颈另票）。
+
+---
+
+## Resolution (2026-09-06, GA-EVAL-SQLGEN-FOLLOWUP)
+
+### Root cause confirmed (per-case evidence) — success criterion #1 MET
+
+Divergence = **judge-leniency (judge-only ↑) + anti-flakiness all-must-pass fragility × feedback-wiring gap (real-exec −2) + untouched event-case bottleneck (real-exec 0-gained)** — **NOT systematic prompt degradation**.
+
+**Verdict semantics (source-confirmed, not new)**: `packages/eval/eval-runner/lib/types/runner.js:297-309` — `passKVerdict` = ALL k attempts must pass (`attempts.every(a => no infra_error && execution_match!==false && delivery_match!==false)`; any single `execution_match===false` flips case to `wrong`). This is the **deliberate anti-flakiness decision from [GA-EVAL-REBASELINE](GA-EVAL-REBASELINE-passk-semantics.md)** (bestOfK→passK, any→every, 2026-09-03) — NOT a mislabeled pass^k bug. Reframes the real-exec "drop": the metric penalizes retry inconsistency.
+
+**Judge-only 48.7→56.4 (+3: gained 050/051/056/119/128/138, lost 042/049/059) = judge-leniency confirmed.** Gained cases pre-fix emitted tool-calls (sj=0) on the would-pass attempts; post-fix generate semantically-plausible SQL → judge 1.0. Judge is execution-blind (119 post-fix DWS-table SQL sj=1.0, real-exec 552 vs 510 wrong).
+
+**Real-exec 12.8→7.7 (−2: 041/046 regressed, 0 gained) — three mechanisms:**
+1. **Anti-flakiness + retry drift (the −2):** 046 att1+2 correct (em=true, qr=67.81415=exp), att3 adds `ROUND(...,2)`→67.81≠67.814→em=false→case wrong; pre-fix att3 unrounded. 041 att2 = identical correct SQL to pre-fix (`SUM(pay_fst)`, qr=58=exp, em=true), att1 now DECLINES (contextPrefetched §5 honest-decline framing), att3 wrong table (`selfhelp_new_pay_df`, qr=0). Under any-pass 041 would pass; all-must-pass fails it.
+2. **0 gained = bottleneck untouched:** 19 converted non-SQL→SQL attempts all wrong/null. Event cases (119-138) fail three ways — placeholder (`FROM <数据视图> WHERE event='<事件名>'`→ParseError; 119/126), null-SQL (decline→exhaust→empty; 125/127/129/130), wrong-table fallback (DWS table→wrong value; 119 att3 552v510, 136 att3 482v432, sj=1.0 judge passes). Model lacks event table `ieu_ods.ods_10000251_all_view` + params template.
+3. **Feedback-wiring gap amplifies both:** `engine.run` passes `feedback: lastFeedback` to `llm.generate()`, but `CtxLlmAdapter.generate` (context.ts) IGNORES `args.feedback` → retries use identical prompt → can't self-correct → drift (ROUND/decline) or null-SQL exhaust. = null-SQL explosion (real-exec 11→23, judge-only 10→22) + the retry-inconsistency anti-flakiness penalizes.
+
+**Key**: NOT systematic degradation — 041 att2 / 046 att1-2 = identical correct SQL to pre-fix. The prompt fix didn't break generation; it shifted retry stochasticity, which anti-flakiness + feedback gap amplified into 2 failed cases. n=39 noise (MDE~20pp) but qualitative mechanisms per-case-evidenced.
+
+### Follow-up direction decided — success criterion #2 MET
+
+**(a)+(d)** — chart 2 impl tickets (both open, unblocked, in map frontier):
+- **(a) [GA-EVAL-EVENTDEF-PREFETCH](GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md)**: port [G-DA4](G-DA4-event-table-name-grounding.md)'s event_view grounding to engine responder (reuse `loadEventDefinition`+`extractEventView` infra; main risk = event-name detection — BM25 surfaces event doc? events in corpus, `buildSchemaContext` branches event candidates; if unreliable, add alt_labels matcher). Targets event-case wrong-table/placeholder/null — the biggest real-exec cluster. Subsumes (b).
+- **(d) [GA-EVAL-RETRY-FEEDBACK](GA-EVAL-RETRY-FEEDBACK-wiring-gap.md)**: wire `args.feedback` into SQL-gen prompt (`BuildPromptArgs.feedback` + `engine.run` promptBuilder call + prompt render). Targets null-SQL explosion + retry drift. Independent of (a); amplifies (a)'s consistency.
+
+**Dropped (b)**: contextPrefetched prompt already hedges `# 事件定义（若已加载）` + "若已加载" — residual value marginal; (a) subsumes it (loading real eventDef makes the preamble truthful).
+**Not (c)**: destination (real-exec pass_rate) unaddressed.
+
+### Records — success criterion #3 MET
+
+- audit-log: 2026-09-06 GA-EVAL-SQLGEN-FOLLOWUP entry ([experiment-audit-log](../research/experiment-audit-log.md)).
+- map.md: Decisions-so-far + ticket-list (FOLLOWUP resolved, 2 new impl tickets GA-EVAL-EVENTDEF-PREFETCH + GA-EVAL-RETRY-FEEDBACK in frontier) + 推荐顺序 updated.
