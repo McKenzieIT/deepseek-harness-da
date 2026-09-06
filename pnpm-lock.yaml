@@ -10243,9 +10243,15 @@ importers:
       '@deepseek-ai/dsh-app-boot':
         specifier: workspace:^
         version: link:../../packages/boot/app-boot
+      '@deepseek-ai/dsh-atomic-write':
+        specifier: workspace:^
+        version: link:../../packages/util/atomic-write
       '@deepseek-ai/dsh-attachment':
         specifier: workspace:^
         version: link:../../packages/attachment/attachment
+      '@deepseek-ai/dsh-audit':
+        specifier: workspace:^
+        version: link:../../packages/data/audit
       '@deepseek-ai/dsh-bash-local':
         specifier: workspace:^
         version: link:../../packages/shell/bash-local
@@ -10282,6 +10288,12 @@ importers:
       '@deepseek-ai/dsh-credentials':
         specifier: workspace:^
         version: link:../../packages/credentials/credentials
+      '@deepseek-ai/dsh-eval-runner':
+        specifier: workspace:^
+        version: link:../../packages/eval/eval-runner
+      '@deepseek-ai/dsh-evidence-query':
+        specifier: workspace:^
+        version: link:../../packages/data/evidence-query
       '@deepseek-ai/dsh-fs':
         specifier: workspace:^
         version: link:../../packages/fs/fs
@@ -10312,6 +10324,9 @@ importers:
       '@deepseek-ai/dsh-hooks-codex':
         specifier: workspace:^
         version: link:../../packages/hooks/hooks-codex
+      '@deepseek-ai/dsh-identity':
+        specifier: workspace:^
+        version: link:../../packages/identity/identity
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../packages/runtime-diagnostics/invariants
@@ -10339,6 +10354,9 @@ importers:
       '@deepseek-ai/dsh-mcp-client':
         specifier: workspace:^
         version: link:../../packages/mcp/mcp-client
+      '@deepseek-ai/dsh-nl2sql-engine':
+        specifier: workspace:^
+        version: link:../../packages/data/nl2sql-engine
       '@deepseek-ai/dsh-output-retention':
         specifier: workspace:^
         version: link:../../packages/util/output-retention
@@ -10348,15 +10366,33 @@ importers:
       '@deepseek-ai/dsh-persona':
         specifier: workspace:^
         version: link:../../packages/preset/persona
+      '@deepseek-ai/dsh-phase-gate':
+        specifier: workspace:^
+        version: link:../../packages/data/phase-gate
       '@deepseek-ai/dsh-plan-mode':
         specifier: workspace:^
         version: link:../../packages/plan/plan-mode
       '@deepseek-ai/dsh-pwsh-local':
         specifier: workspace:^
         version: link:../../packages/shell/pwsh-local
+      '@deepseek-ai/dsh-query':
+        specifier: workspace:^
+        version: link:../../packages/query/query
+      '@deepseek-ai/dsh-query-maxcompute':
+        specifier: workspace:^
+        version: link:../../packages/query/query-maxcompute
+      '@deepseek-ai/dsh-query-tool':
+        specifier: workspace:^
+        version: link:../../packages/query/query-tool
       '@deepseek-ai/dsh-repeat-tool-reminder':
         specifier: workspace:^
         version: link:../../packages/guard/repeat-tool-reminder
+      '@deepseek-ai/dsh-result-cache':
+        specifier: workspace:^
+        version: link:../../packages/data/result-cache
+      '@deepseek-ai/dsh-retrieval':
+        specifier: workspace:^
+        version: link:../../packages/retrieval/retrieval
       '@deepseek-ai/dsh-sandbox':
         specifier: workspace:^
         version: link:../../packages/sandbox/sandbox
@@ -10378,6 +10414,9 @@ importers:
       '@deepseek-ai/dsh-sdk-protocol':
         specifier: workspace:^
         version: link:../../packages/sdk/protocol
+      '@deepseek-ai/dsh-semantic-layer':
+        specifier: workspace:^
+        version: link:../../packages/data/semantic-layer
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../packages/core/session
@@ -10474,24 +10513,84 @@ importers:
       '@deepseek-ai/dsh-tool-call-timeout-policy':
         specifier: workspace:^
         version: link:../../packages/guard/timeout-policy
+      '@deepseek-ai/dsh-tool-compute':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-compute
       '@deepseek-ai/dsh-tool-cordis':
         specifier: workspace:^
         version: link:../../packages/extensions/tool-cordis
+      '@deepseek-ai/dsh-tool-critique-sql':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-critique-sql
+      '@deepseek-ai/dsh-tool-discover-alt-labels':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-discover-alt-labels
+      '@deepseek-ai/dsh-tool-discover-relations':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-discover-relations
+      '@deepseek-ai/dsh-tool-edit-definition':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-edit-definition
+      '@deepseek-ai/dsh-tool-evaluate-sql-quality':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-evaluate-sql-quality
       '@deepseek-ai/dsh-tool-fs':
         specifier: workspace:^
         version: link:../../packages/fs/tool-fs
       '@deepseek-ai/dsh-tool-fs-search':
         specifier: workspace:^
         version: link:../../packages/fs/tool-fs-search
+      '@deepseek-ai/dsh-tool-get-coverage':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-get-coverage
+      '@deepseek-ai/dsh-tool-get-definition':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-get-definition
       '@deepseek-ai/dsh-tool-goal':
         specifier: workspace:^
         version: link:../../packages/goal/tool-goal
       '@deepseek-ai/dsh-tool-jobs':
         specifier: workspace:^
         version: link:../../packages/jobs/tool-jobs
+      '@deepseek-ai/dsh-tool-list-domains':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-list-domains
+      '@deepseek-ai/dsh-tool-load-event-definition':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-load-event-definition
+      '@deepseek-ai/dsh-tool-load-table-definition':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-load-table-definition
+      '@deepseek-ai/dsh-tool-present-clarification':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-present-clarification
+      '@deepseek-ai/dsh-tool-present-decomposition':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-present-decomposition
+      '@deepseek-ai/dsh-tool-present-table':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-present-table
       '@deepseek-ai/dsh-tool-ralph':
         specifier: workspace:^
         version: link:../../packages/workflow/tool-ralph
+      '@deepseek-ai/dsh-tool-reachability-delta':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-reachability-delta
+      '@deepseek-ai/dsh-tool-resolve-term':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-resolve-term
+      '@deepseek-ai/dsh-tool-revert-edit':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-revert-edit
+      '@deepseek-ai/dsh-tool-scope-routing':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-scope-routing
+      '@deepseek-ai/dsh-tool-search-data-sources':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-search-data-sources
+      '@deepseek-ai/dsh-tool-search-schema':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-search-schema
       '@deepseek-ai/dsh-tool-skill':
         specifier: workspace:^
         version: link:../../packages/skill/tool-skill
@@ -10504,9 +10603,18 @@ importers:
       '@deepseek-ai/dsh-tool-subagent-control':
         specifier: workspace:^
         version: link:../../packages/subagent/tool-subagent-control
+      '@deepseek-ai/dsh-tool-suggest-followups':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-suggest-followups
       '@deepseek-ai/dsh-tool-todo':
         specifier: workspace:^
         version: link:../../packages/todo/tool-todo
+      '@deepseek-ai/dsh-tool-trigger-eval':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-trigger-eval
+      '@deepseek-ai/dsh-tool-update-table-config':
+        specifier: workspace:^
+        version: link:../../packages/data/tool-update-table-config
       '@deepseek-ai/dsh-tool-web':
         specifier: workspace:^
         version: link:../../packages/web/tool-web

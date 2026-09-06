@@ -173,7 +173,7 @@ beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport
 assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:308`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:309`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="ctxidentity--identityservice"></a>
 
@@ -901,7 +901,7 @@ Emitted after an eval run completes; listeners may refresh the eval store.
 'evidence/eval-run-completed'(): void
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:79`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:80`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="management-session-events"></a>
 

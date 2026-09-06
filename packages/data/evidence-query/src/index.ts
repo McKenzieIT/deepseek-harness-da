@@ -63,6 +63,7 @@ interface ScopeRegistryLike {
 }
 
 export interface EvidenceQueryConfig {
+  /** Directory holding the JSONL eval-result files the service loads into its eval store (defaults to an in-memory store when unset). */
   readonly resultsDir?: string
 }
 
