@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { DataPythonCodeRuntime } from '../src/index.ts'
@@ -107,7 +108,18 @@ return 42
   })
 })
 
-describe('DataPythonCodeRuntime — pandas compute', () => {
+// pandas and numpy are third-party wheels, not stdlib, so probe for them and skip
+// where they are absent instead of failing. Mirrors the hasPwsh gate in
+// terminal-bash's local.spec.ts: a host that cannot supply the dependency skips
+// the proof rather than turning every unprovisioned lane red.
+//
+// The probe reproduces the runtime's own spawn conditions — `Config.pythonPath`
+// (default `python3`) under `env: {}`, as run() does — so a pandas reachable only
+// through an ambient PYTHONPATH/VIRTUAL_ENV cannot report a false positive here
+// and then fail inside the interpreter the runtime actually gets.
+const hasPandas = spawnSync('python3', ['-c', 'import pandas, numpy'], { encoding: 'utf8', env: {} }).status === 0
+
+describe.skipIf(!hasPandas)('DataPythonCodeRuntime — pandas compute', () => {
   it('executes DataFrame operations and returns results', async () => {
     const { runtime } = await setup()
     const result = await runtime.run({

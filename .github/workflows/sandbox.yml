@@ -96,16 +96,11 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: pnpm run build:lib:host
-      - name: Write DASHSCOPE_API_KEY to ~/.dsh/.credentials.yaml (eval-cli darwin parity — ctx.credentials reads the managed store, not process.env)
-        if: matrix.runner == 'seatbelt'
-        env:
-          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
-        run: |
-          mkdir -p ~/.dsh
-          printf 'DASHSCOPE_API_KEY: "%s"\n' "$DASHSCOPE_API_KEY" > ~/.dsh/.credentials.yaml
-      - name: Install pandas/numpy (code-runtime-data-python darwin parity — runtime uses system python3)
-        if: matrix.runner == 'seatbelt'
-        run: python3 -m pip install pandas numpy
+      # No credential or pandas/numpy provisioning here: the suites that need
+      # them own their own preconditions (eval-cli builds an isolated home,
+      # code-runtime-data-python probes the interpreter it spawns and skips).
+      # Provisioning a fork-local package's dependencies inside this
+      # upstream-shared workflow is what made this leg accumulate setup steps.
       - name: Unit tests (darwin parity)
         if: matrix.runner == 'seatbelt'
         run: pnpm run test
