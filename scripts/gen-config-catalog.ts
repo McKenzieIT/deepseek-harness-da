@@ -303,6 +303,40 @@ function declForTypeName(world: World, ctx: FileCtx, name: string): { decl: Type
   return findExportedTypeDecl(world, entry, imp.imported) ?? 'unknown'
 }
 
+/**
+ * Extract the config type name from a constructor/apply config parameter.
+ * A plain type-name reference is the canonical form. A union (e.g. an
+ * overload-via-union `EvidenceQueryConfig | EvalResultStore`, where the store
+ * is a class and the config is an interface) is accepted when one branch
+ * resolves to a package-local declaration — the declaration branch is the
+ * pasteable config type, the class branch is not. Returns the name, or null
+ * when no branch is a plain named config type.
+ */
+function extractConfigTypeName(
+  ctx: FileCtx,
+  configParam: ts.ParameterDeclaration,
+  cache: Map<string, FileCtx>,
+): string | null {
+  const type = configParam.type
+  if (!type) return null
+  const branches = ts.isUnionTypeNode(type) ? [...type.types] : [type]
+  const candidates: string[] = []
+  for (const branch of branches) {
+    if (ts.isTypeReferenceNode(branch) && ts.isIdentifier(branch.typeName)) candidates.push(branch.typeName.text)
+  }
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) return candidates[0] ?? null
+  // Union: probe each candidate with a throwaway violation sink (the probe
+  // must not surface import hygiene errors for the non-config branch) and pick
+  // the first that resolves to a package-local type declaration.
+  const probe: string[] = []
+  for (const name of candidates) {
+    const resolved = resolveTypeName(ctx, name, cache, probe)
+    if (resolved !== null && 'decl' in resolved) return name
+  }
+  return null
+}
+
 /** Utility wrappers that pass a member lookup through to their type argument. */
 const PASSTHROUGH_WRAPPERS = new Set(['Partial', 'Required', 'Readonly', 'NonNullable'])
 
@@ -521,11 +555,16 @@ function findSchemaExpr(ctx: FileCtx, pluginClass: ts.ClassDeclaration | null): 
  * file, else `static inject = […]` on the plugin class. */
 function findInject(ctx: FileCtx, pluginClass: ts.ClassDeclaration | null, violations: string[]): string[] {
   const fromArray = (expr: ts.Expression, where: string): string[] => {
-    if (!ts.isArrayLiteralExpression(expr)) {
+    // Unwrap `as`/`satisfies`/parenthesized wrappers (e.g. `['k'] as const`)
+    // before checking for an array literal — the repo's newer data-infra
+    // packages declare `inject` with `as const` for tuple-typed inference,
+    // which is a valid declaration form the generator must recognize.
+    const inner = unwrapExpr(expr)
+    if (!ts.isArrayLiteralExpression(inner)) {
       violations.push(`${where}: inject is not a plain string-array literal; teach the generator the new declaration form.`)
       return []
     }
-    return expr.elements.map(el => ts.isStringLiteral(el) ? el.text : el.getText(ctx.sf))
+    return inner.elements.map(el => ts.isStringLiteral(el) ? el.text : el.getText(ctx.sf))
   }
   for (const stmt of ctx.sf.statements) {
     if (!ts.isVariableStatement(stmt)) continue
@@ -654,11 +693,11 @@ export function collectConfigCatalog(scanRoot: string = root): CatalogEntry[] {
     if (kind !== 'config' || !configParam) continue
 
     // Resolve the config type and paste its package-local transitive closure.
-    if (!configParam.type || !ts.isTypeReferenceNode(configParam.type) || !ts.isIdentifier(configParam.type.typeName)) {
+    const typeName = extractConfigTypeName(ctx, configParam, cache)
+    if (typeName === null) {
       violations.push(`${pkg}: config parameter type (${pointer(entryRel, ctx.sf, configParam)}) is not a plain type-name reference; declare a named config type.`)
       continue
     }
-    const typeName = configParam.type.typeName.text
     entry.configTypeName = typeName
     const pastes: Paste[] = []
     const refs = new Map<string, TypeRef>()

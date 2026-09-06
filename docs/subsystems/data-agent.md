@@ -105,7 +105,7 @@ Abstract embedder service. Providers implement `embed` (async — HTTP inference
 abstract embed(texts: readonly string[]): Promise<EmbedResult>
 ```
 
-Source: [`packages/embedder/embedder/src/index.ts:87`](../../packages/embedder/embedder/src/index.ts)
+Source: [`packages/embedder/embedder/src/index.ts:92`](../../packages/embedder/embedder/src/index.ts)
 
 <a id="ctxevidencequery--evidencequeryservice"></a>
 
@@ -173,7 +173,7 @@ beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport
 assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:308`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:309`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="ctxidentity--identityservice"></a>
 
@@ -284,7 +284,7 @@ The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-g
 getConventions(scopeId?: string): EngineConventions
 ```
 
-Source: [`packages/data/nl2sql-engine/src/index.ts:75`](../../packages/data/nl2sql-engine/src/index.ts)
+Source: [`packages/data/nl2sql-engine/src/index.ts:76`](../../packages/data/nl2sql-engine/src/index.ts)
 
 <a id="ctxpatrol--patrolservice"></a>
 
@@ -901,7 +901,7 @@ Emitted after an eval run completes; listeners may refresh the eval store.
 'evidence/eval-run-completed'(): void
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:79`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:80`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="management-session-events"></a>
 

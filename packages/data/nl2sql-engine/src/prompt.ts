@@ -80,6 +80,31 @@ function renderFeedbackSection(feedback: LlmFeedback | null | undefined): string
   return `\n# 上次失败反馈（据此修正，勿重复相同错误）\n- 失败类型：${feedback.failureKind}\n- 错误：${sanitizeFeedbackError(feedback.error)}\n`
 }
 
+/**
+ * GA-EVAL-EVENTDEF-PREFETCH: render the event-view grounding — the FROM table +
+ * the `params` extraction template + the mandatory `ds` filter. This is the
+ * eval-path counterpart of G-DA4's harness-path fix: the same facts, reached
+ * through the prompt instead of a tool result. Rendered as an explicit section
+ * (not folded into the `eventDef` JSON) so the FROM table is unmissable —
+ * burying it in a 23-field JSON blob is what left the model writing
+ * `FROM <数据视图>`. Returns `''` when no event view is loaded → byte-stable
+ * with the pre-(a) prompt.
+ * @param view - the event view for the loaded event, or null/undefined.
+ * @returns the `# 事件查询落表` section, or `''` when absent.
+ */
+function renderEventViewSection(view: EventViewLite | null | undefined): string {
+  if (!view || view.full_name === '') return ''
+  const cols = view.base_columns !== undefined && view.base_columns.length > 0
+    ? `\n- 视图基础列（可直接引用，无需 GET_JSON_OBJECT）：${view.base_columns.join(', ')}`
+    : ''
+  return `\n# 事件查询落表（已加载，必须照用）
+- FROM 表：${view.full_name}——所有埋点事件共用这一个视图。不要改用 DWS 汇总表，不要臆造表名，不要写占位符。
+- 事件过滤：WHERE event = '<上方 # 事件定义 的 name 值>'
+- params 字段提取：${view.params_extract_template}——把 {field_name} 替换为上方 # 事件定义 params_fields 中的字段名（区分大小写）。
+- 必须带分区过滤 ds（该视图按 ds 分区，缺分区过滤会全表扫）。${cols}
+`
+}
+
 /** Render the 8 core SQL rules (+ optional rule 9 when isTrend). Shared by
  * buildPrompt's §6 八规则 + buildEvalPrompt's 核心规则 (nl2sql-4 dedup — the
  * rule text was duplicated verbatim across the two prompts). */
@@ -99,6 +124,23 @@ export interface EventDefinitionLite {
   readonly params_fields?: Record<string, unknown>
   readonly partitions?: readonly { readonly name: string }[]
   readonly [k: string]: unknown
+}
+
+/**
+ * GA-EVAL-EVENTDEF-PREFETCH: the scope-level event-view grounding — the FROM
+ * table every instrumented event is queried through, plus the SQL template for
+ * reading a `params` field. Structurally matches
+ * `tool-load-event-definition`'s `EventViewInfo` (declared here so the engine
+ * keeps no dependency on the tool package; G-DA4 established that the table is
+ * a scope property read from `config.yaml`, not an event property).
+ */
+export interface EventViewLite {
+  /** The fully-qualified FROM table (e.g. `ieu_ods.ods_10000251_all_view`). */
+  readonly full_name: string
+  /** The params-extraction SQL template (e.g. `GET_JSON_OBJECT(params,'$.{field_name}')`). */
+  readonly params_extract_template: string
+  /** Flat list of base column names available in the view. */
+  readonly base_columns?: readonly string[]
 }
 
 /** Arguments for building the SQL-generation prompt. */
@@ -127,6 +169,17 @@ export interface BuildPromptArgs {
    * byte-identical to the pre-feedback prompt (byte-stability).
    */
   readonly feedback?: LlmFeedback | null | undefined
+  /**
+   * GA-EVAL-EVENTDEF-PREFETCH: the event-view grounding for the loaded event —
+   * rendered as its own `# 事件查询落表` section rather than left inside the
+   * `eventDef` JSON blob, because the FROM table and the params template are the
+   * two facts the model was actually missing. Without them, event questions
+   * produced `FROM <数据视图>` placeholders (ParseError), declined outright, or
+   * fell back to a DWS summary table and returned a plausible wrong value.
+   * Null/undefined (no event detected — the common case) → the section is
+   * omitted → byte-identical to the pre-(a) prompt.
+   */
+  readonly eventView?: EventViewLite | null | undefined
   /**
    * GA-EVAL-SQLGEN-PROMPT-FIX: engine-responder mode. When true, the prompt
    * reframes the tool catalog as "candidates + event definitions already
@@ -160,7 +213,7 @@ const TOOL_CATALOG = `# 工具集（da harness tool seam 映射）
  * @returns The assembled prompt string.
  */
 export function buildPrompt(args: BuildPromptArgs): string {
-  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend, contextPrefetched, feedback } = args
+  const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend, contextPrefetched, feedback, eventView } = args
   const dialect = renderConventionsPrompt(conventions)
   const candLines = renderCandidates(candidates)
   const joinSection = renderJoinSection(joinConstraints)
@@ -202,7 +255,7 @@ ${candLines}
 
 # 事件定义（若已加载）
 ${eventDef ? JSON.stringify(eventDef, null, 2) : '（未加载）'}
-
+${renderEventViewSection(eventView)}
 # 当前阶段（P7 四阶段适配：phase=${phase}）
 GENERATION 阶段：直接基于上方上下文生成 SQL（\`\`\`sql 围栏）；critic、执行与自修由引擎内部完成。`
   }
@@ -249,7 +302,7 @@ ${candLines}
 
 # 事件定义（load_event_definition）
 ${eventDef ? JSON.stringify(eventDef, null, 2) : '（未加载）'}
-
+${renderEventViewSection(eventView)}
 # 当前阶段（P7 四阶段适配：phase=${phase}）
 GENERATION 阶段：生成 SQL（\`\`\`sql 围栏），调 critique_sql_tool 校验，过 gate 后 query_data 执行。`
 }

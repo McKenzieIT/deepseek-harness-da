@@ -8,8 +8,7 @@ This is a **pure presentation tool** (`inject=['tools']` only): it records the s
 
 The model calls `suggest_followups` with:
 - `suggestions` (required): array of 1-5 `{label, value}` objects
-  - `label`: short tag for the row — at most ~8 Chinese characters, never
-    repeating the value (the UI shows the full value under the label)
+  - `label`: short tag for the row — at most ~8 Chinese characters, never repeating the value (the UI shows the full value under the label)
   - `value`: the full follow-up query to execute if the user clicks it
 
 The tool returns `{ presented: true, suggestions }` and renders a bulleted list for the model's tool-result context.

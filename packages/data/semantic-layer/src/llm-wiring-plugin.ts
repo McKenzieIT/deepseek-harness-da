@@ -11,7 +11,6 @@
  * @module @deepseek-ai/dsh-semantic-layer/src/llm-wiring-plugin
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import z from '@deepseek-ai/schemastery'
 import { wireEnrichmentLlm, type TextLlm } from './index.ts'
 
@@ -68,6 +67,9 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   const textLlm: TextLlm = {
     async text(prompt: string): Promise<string> {
+      // dsh-llm is an optional peer (peerDependenciesMeta): load it at call
+      // time so module scope never depends on an absent optional dependency.
+      const { BlockAssembler, createUserMessage } = await import('@deepseek-ai/dsh-llm')
       const assembler = new BlockAssembler()
       const options = {
         provider,

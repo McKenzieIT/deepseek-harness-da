@@ -27,7 +27,7 @@
 - `packages/data/semantic-layer/src/index.ts` exports — drop `metricKindPlugin`, keep `MetricDefinition`/`MetricDefinitionSchema` from types.ts
 
 **Deleted:**
-- `packages/data/semantic-layer/src/kinds/metric-kind.ts` (entire file — schema moved, methods moved, dead code removed)
+- the `metric-kind.ts` leaf in `packages/data/semantic-layer/src/kinds/` (deleted — entire file; schema moved, methods moved, dead code removed)
 - `packages/data/tool-execute-metric/` (entire package — tool + tests + package.json)
 - `examples/k11-semantic-layer/metrics/` (3916 files — pure mechanical projection, zero information loss per M1c)
 - `packages/data/semantic-layer/src/metrics.ts` `seedMetrics` (no longer writes standalone YAMLs)
@@ -36,7 +36,7 @@
 - `packages/data/semantic-layer/tests/metrics.spec.ts` (new or extend) — derivation pure functions
 - `packages/data/semantic-layer/tests/registry.spec.ts` — remove metricKindPlugin tests
 - `packages/data/nl2sql-engine/tests/metric-engine.spec.ts` — drop L2.5 assertions
-- `packages/data/nl2sql-engine/tests/metric-comparison.spec.ts` — fold into single L2 eval or delete
+- `packages/data/nl2sql-engine/tests/comparison.spec.ts` — fold into single L2 eval or delete
 
 ---
 
@@ -98,8 +98,7 @@ export type MetricDefinition = z.infer<typeof MetricDefinitionSchema>
 
 - [ ] **Step 2: Typecheck**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm tsc -b packages/data/semantic-layer/tsconfig.json --noEmit 2>&1 | grep -E "types\.ts" || echo "types.ts clean"`
-Expected: "types.ts clean" (existing metric-kind.ts still defines its own MetricDefinitionSchema — a temporary duplicate; resolved in Task 4)
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm tsc -b packages/data/semantic-layer/tsconfig.json --noEmit 2>&1 | grep -E "types\.ts" || echo "types.ts clean"` Expected: "types.ts clean" (existing metric-kind.ts still defines its own MetricDefinitionSchema — a temporary duplicate; resolved in Task 4)
 
 - [ ] **Step 3: Commit**
 
@@ -154,8 +153,7 @@ describe('metric derivation (M1 virtual projection)', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/metrics-derivation.spec.ts`
-Expected: FAIL — `projectMetricCorpusItem` / `deriveMetricRelations` not exported; `caliber_variants` not carried.
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/metrics-derivation.spec.ts` Expected: FAIL — `projectMetricCorpusItem` / `deriveMetricRelations` not exported; `caliber_variants` not carried.
 
 - [ ] **Step 3: Update metrics.ts — import from types.ts, carry caliber, add pure functions**
 
@@ -226,8 +224,7 @@ export function loadMetricDefinitions(semanticLayer: string): MetricDefinition[]
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/metrics-derivation.spec.ts`
-Expected: PASS (3 tests)
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/metrics-derivation.spec.ts` Expected: PASS (3 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -269,8 +266,7 @@ describe('M1 virtual metric projection', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts -t "virtual metric projection"`
-Expected: FAIL — `loadMetricDefinition` still reads standalone files; `loadRetrievalCorpusAll` doesn't emit virtual items.
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts -t "virtual metric projection"` Expected: FAIL — `loadMetricDefinition` still reads standalone files; `loadRetrievalCorpusAll` doesn't emit virtual items.
 
 - [ ] **Step 3: Modify index.ts**
 
@@ -345,8 +341,7 @@ for (const plugin of this.registry.allPlugins()) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts`
-Expected: PASS
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS
 
 - [ ] **Step 5: Typecheck + commit**
 
@@ -361,14 +356,14 @@ git commit -m "refactor(semantic-layer): wire virtual metric projection in Servi
 ### Task 4: Delete metric-kind.ts + fix registry.spec.ts
 
 **Files:**
-- Delete: `packages/data/semantic-layer/src/kinds/metric-kind.ts`
+- Delete: the `metric-kind.ts` file in `packages/data/semantic-layer/src/kinds/`
 - Modify: `packages/data/semantic-layer/tests/registry.spec.ts`
 
 - [ ] **Step 1: Delete metric-kind.ts**
 
 ```bash
 cd /Users/mckenzie/workspace/deepseek-harness-da
-rm packages/data/semantic-layer/src/kinds/metric-kind.ts
+# metric-kind.ts deleted from packages/data/semantic-layer/src/kinds/
 ```
 
 - [ ] **Step 2: Remove metricKindPlugin tests from registry.spec.ts**
@@ -423,9 +418,9 @@ In `packages/data/nl2sql-engine/tests/metric-engine.spec.ts`: delete tests asser
 
 ```bash
 cd /Users/mckenzie/workspace/deepseek-harness-da
-pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts packages/data/nl2sql-engine/tests/metric-comparison.spec.ts
+pnpm vitest run packages/data/nl2sql-engine/tests/metric-engine.spec.ts packages/data/nl2sql-engine/tests/comparison.spec.ts
 ```
-Expected: PASS (or delete metric-comparison.spec.ts if it compares L2.5 vs L2 — fold into single L2 eval)
+Expected: PASS (or delete comparison.spec.ts if it compares L2.5 vs L2 — fold into single L2 eval)
 
 - [ ] **Step 5: Commit**
 

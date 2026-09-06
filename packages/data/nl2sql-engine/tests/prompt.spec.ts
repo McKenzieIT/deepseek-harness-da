@@ -333,4 +333,45 @@ describe('buildPrompt / buildEvalPrompt — exact output pinned (nl2sql-4)', () 
     })
     expect(noFb).not.toContain('# 上次失败反馈')
   })
+
+  it('buildPrompt renders # 事件查询落表 with the FROM table + params template (GA-EVAL-EVENTDEF-PREFETCH)', () => {
+    const rendered = buildPrompt({
+      question: '昨天创角的新增角色数是多少？', candidates, conventions: null, phase: 'generation',
+      today: '20260806', contextPrefetched: true,
+      eventDef: { name: 'game.role.create', event_filter: "event = 'game.role.create'", params_fields: { roleId: { type: 'int' } } },
+      eventView: {
+        full_name: 'ieu_ods.ods_10000251_all_view',
+        params_extract_template: "GET_JSON_OBJECT(params,'$.{field_name}')",
+        base_columns: ['account_id', 'role_id', 'ds', 'event', 'params'],
+      },
+    })
+    // The two facts the model was missing must both be present verbatim: the
+    // FROM table (else `FROM <数据视图>` placeholders / DWS fallback) and the
+    // params-extraction template (else it cannot read a params field at all).
+    expect(rendered).toContain('# 事件查询落表')
+    expect(rendered).toContain('ieu_ods.ods_10000251_all_view')
+    expect(rendered).toContain("GET_JSON_OBJECT(params,'$.{field_name}')")
+    expect(rendered).toContain('account_id, role_id, ds, event, params')
+    expect(rendered).toContain('必须带分区过滤 ds')
+    // The section sits with the event definition, after it, so the FROM table is
+    // the last thing before the phase footer rather than buried in the JSON.
+    expect(rendered.indexOf('# 事件定义')).toBeLessThan(rendered.indexOf('# 事件查询落表'))
+    expect(rendered.indexOf('# 事件查询落表')).toBeLessThan(rendered.indexOf('# 当前阶段'))
+  })
+
+  it('buildPrompt omits # 事件查询落表 when no event view — byte-identical to the field being absent (GA-EVAL-EVENTDEF-PREFETCH)', () => {
+    const base = {
+      question: '昨天充值总金额是多少', candidates, eventDef: null, conventions: null,
+      phase: 'generation', isTrend: true, today: '20260820',
+    } as const
+    // Absent, null, and undefined must all reproduce the pre-(a) prompt exactly:
+    // 21 of 39 eval cases detect no event, so this is the dominant path and any
+    // drift here would change every DWS question's prompt.
+    for (const variant of [{ contextPrefetched: true }, {}] as const) {
+      const omitted = buildPrompt({ ...base, ...variant })
+      expect(buildPrompt({ ...base, ...variant, eventView: null })).toBe(omitted)
+      expect(buildPrompt({ ...base, ...variant, eventView: undefined })).toBe(omitted)
+      expect(omitted).not.toContain('# 事件查询落表')
+    }
+  })
 })

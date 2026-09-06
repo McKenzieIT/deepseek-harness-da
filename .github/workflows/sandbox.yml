@@ -50,7 +50,7 @@ jobs:
             runner: landlock
           - os: ubuntu-24.04-arm
             runner: landlock
-          - os: macos-latest
+          - os: macos-14
             runner: seatbelt
     name: sandbox e2e (${{ matrix.runner }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -91,14 +91,21 @@ jobs:
       # in the workflow, so run it here too — the platform-dependent unit
       # expectations (Seatbelt path canonicalization: /tmp IS /private/tmp)
       # take their darwin branch only on this runner.
-      - name: Build host lib (darwin parity: vendored @deepseek-ai/cordis resolves via lib — vite-tsconfig-paths is broken on vite 8 so tests can't resolve it to src)
+      - name: Build host lib (darwin parity — vendored @deepseek-ai/cordis resolves via lib — vite-tsconfig-paths is broken on vite 8 so tests can't resolve it to src)
         if: matrix.runner == 'seatbelt'
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: pnpm run build:lib:host
-      - name: Write DASHSCOPE_API_KEY to .env (eval-cli darwin parity — ctx.credentials reads cwd/.env fallback, not process.env)
+      - name: Write DASHSCOPE_API_KEY to ~/.dsh/.credentials.yaml (eval-cli darwin parity — ctx.credentials reads the managed store, not process.env)
         if: matrix.runner == 'seatbelt'
         env:
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
-        run: echo "DASHSCOPE_API_KEY=$DASHSCOPE_API_KEY" > .env
+        run: |
+          mkdir -p ~/.dsh
+          printf 'DASHSCOPE_API_KEY: "%s"\n' "$DASHSCOPE_API_KEY" > ~/.dsh/.credentials.yaml
+      - name: Install pandas/numpy (code-runtime-data-python darwin parity — runtime uses system python3)
+        if: matrix.runner == 'seatbelt'
+        run: python3 -m pip install pandas numpy
       - name: Unit tests (darwin parity)
         if: matrix.runner == 'seatbelt'
         run: pnpm run test

@@ -668,3 +668,118 @@ Lost 5：`019` `052` `069` `078` `voice_034`。
 从「主观 vs 客观」搬到「多日明细 vs 周期报告」。误伤率 ≈ 1/143 EXEC（0.7%）但**间歇性**，
 即同一 case 跨 run 翻转，与 CL-22 记录的 LLM 非确定性同源。
 **门禁在当前形态下不可直接进 PR**，须先修 prompt 样例冲突并重验。
+
+---
+
+## 2026-09-06（夜）: CL-20 post-rebase 全量 168-case + 门禁直接测量
+
+### Setup
+- **基线**（两个，都同协议 k=1，故本条目**无需** `--allow-protocol-mismatch` 的 12pp 折扣）：
+  - `cl20-full-n1`（pre-rebase，同样带门禁，k=1，`today=20260906`）→ **隔离 rebase 的影响**
+  - `10320fe2-f2af-4586-aa82-705ed12aef09`（CL-15/CL-22 的 k=1 标准基线，73.8%，**无门禁**）→ 隔离整个 CL-20
+  - ⚠️ `rebaseline-passk-168-clean`（README 声明的当前基线）**磁盘上不存在** —— 8 个 worktree 的
+    `eval-results/` 全查过，`find` 全仓零命中（`eval-results/*.json` 在 `.gitignore:61`，未纳版本管理）。
+    故 session prompt 要求的「与该基线比 + 标注 12pp 协议差」**无法执行**；改用上面两个 k=1 基线，
+    协议本就一致，反而不引入协议噪声。
+- **Cases**: 168 K11-v2 · **Model**: aga/qwen3.7-max, responder=engine, **pass_k=1**, concurrency=3,
+  sql-judge on, `today=20260906`（与 `cl20-full-n1` 对齐）
+- **Run ID**: `cl20-postrebase-n1` · **commit**: `5c84a903af`（工作树干净，run 期间未改 `packages/*/src`）
+- **变更**: rebase 到 `origin/master`（+78 commits，含 `contextPrefetched`）。
+  **本分支相对 pre-rebase 状态的运行时 diff 只有一个字符串改名**
+  （`declineKind` `'open_ended_question'`→`'beyond_single_query'`，3 处），其余是注释/测试/新探针。
+  → 故 `cl20-full-n1` → `cl20-postrebase-n1` 的 delta **纯粹是 rebase 的影响**。
+
+### Data (verbatim)
+
+`cl20-postrebase-n1` summary：`total 168, correct 127, wrong 41, declined 0, unjudged 0, infra_failure 0, pass_rate 0.7560975...`（75.6%）
+
+`compare.ts cl20-full-n1 cl20-postrebase-n1`（协议一致，无告警）：
+```
+  Protocol:     A=pass_k=1 pass^k  B=pass_k=1 pass^k
+
+  Overall: 77.4% → 75.6%  (-1.8pp)
+
+  Category                         A               B     Delta
+  ────────────────────────────────────────────────────────────
+  Original             75.0% (60/80)   76.3% (61/80)    +1.3pp
+  Alias                77.5% (31/40)   80.0% (32/40)    +2.5pp
+  Voice EXEC           73.3% (22/30)   70.0% (21/30)    -3.3pp
+  Voice DELIVERY       94.4% (17/18)   72.2% (13/18)   -22.2pp
+
+  Gained (19) / Lost (22)
+```
+
+`compare.ts 10320fe2 cl20-postrebase-n1 --allow-protocol-mismatch`：
+```
+  ⚠ protocol unverified: A does not record its run config (pre-2026-09-04).
+
+  Overall: 73.8% → 75.6%  (+1.8pp)
+  Original             75.0% (60/80)   76.3% (61/80)    +1.3pp
+  Alias                77.5% (31/40)   80.0% (32/40)    +2.5pp
+  Voice EXEC           70.0% (21/30)   70.0% (21/30)    +0.0pp
+  Voice DELIVERY       66.7% (12/18)   72.2% (13/18)    +5.6pp
+```
+> 守卫报的是「协议**未记录**」（A 是 2026-09-04 前的产物，无 `config` 块），不是「协议不同」。
+> A 的 73.8% 与 CL-22 记录的 k=1 三轮（70.8/73.2/73.2、极差 ±2.4pp）同量级，且 CLAUDE.md 的
+> `compare.ts` 示例即以 `10320fe2` 为 k=1 基线 → **A 是 k=1**，那 12pp 协议折扣在此**不适用**。
+
+DELIVERY 全 25 口径（与票体 80.0% 可比）：
+
+| run | 代码状态 | DELIVERY 全 25 |
+|---|---|---|
+| `10320fe2` | 无门禁（CL-20 前） | 13/25 = **52.0%** |
+| `cl20-full-n1` | 门禁 + pre-rebase | 20/25 = **80.0%** |
+| `cl20-postrebase-n1` | 门禁 + post-rebase | 16/25 = **64.0%** |
+
+### 门禁误伤核查：**0**（本次为直接测量，非延迟推断）
+
+前两轮结论（先 0、后「052 是真实误伤」）都靠「空 SQL + 低延迟 ⇒ 门禁触发」推断。
+本轮改为读**引擎自己的 trace**（新增 `packages/eval/eval-cli/bin/probe-triage.ts`）。
+
+**穷举法（不再只看空 SQL）**：`cl20-postrebase-n1` 全部 **48** 个非 SQL 输出逐个分类。
+关键判据：**门禁触发时 `generated_sql` 恒为 `null`，绝不可能是 PROSE** ——
+门禁返回 `{ok:false, decline:true, declineKind, reason}` 不带 `sql`，PROSE 走的是
+`context.ts:398` 的模型自述通道（`!sqlIsPresent && sql !== null && sql.length > 20`）。
+故 48 个里 PROSE 的 25 个**结构上不可能**是门禁所致。
+
+余下 NULL 中，期望数值（无 `delivery_match: llm_judge`）的**只有 `040`** 一个：
+
+| case | 问题 | 期望 | pre → post | 门禁实测 |
+|---|---|---|---|---|
+| `040` | 最近一周每天的PVP对战场次变化 | row_count_range | SQL/correct/49.2s → NULL/wrong/79.2s | **0/5 不触发** |
+
+`040` 恰是 session prompt 要求专查的「N天每天的X」形态 —— **实测门禁 0/5 不碰它**，
+其 NULL 另有来源（79.2s 远高于门禁短路的量级，与生成重试耗尽吻合；具体路径未持久化，属推断）。
+
+**`052` 反证（决定性）**：本次 `052` NULL/wrong(26.6s) → **SQL/correct(42.4s)**，翻正。
+门禁与 `contextPrefetched` **完全解耦**（独立 prompt、在生成循环之前、只吃 question）——
+**若 `052` 的 NULL 曾由门禁造成，rebase 不可能修好它。** 修好了 ⇒ 当初不是门禁。
+与探针 n=5 全放行相互独立地指向同一结论。
+
+丢失的 5 个 DELIVERY case 亦逐个测过门禁：`voice_013` 0/3、`voice_017` 1/3、`voice_039` 0/3、
+`voice_041` 0/3、`voice_042` 0/3、`077` 0/3 → **门禁均非其失败原因**。
+
+### Verdict
+
+1. **单 run，pass_k=1，不可作决策依据**（CL-22 分层协议）。门禁安全性结论**不依赖本 run**，
+   依赖探针的 n=5 直接测量 + 48 个非 SQL 输出的穷举。
+2. **门禁误伤 = 0**，本轮为直接测量。同时推翻票体两处记载：`052` 不是门禁误伤；
+   `voice_041` 不在门禁拦截集内（0/5）。**按票体要求实施的 prompt 重写实测为净负**
+   （`077` → 触发 5/5、`076` → 2/5，两者都期望 SQL），已回退为字节一致。
+3. **DELIVERY −22.2pp（voice 18）/ −16pp（全 25）是 rebase 造成的，不是门禁。**
+   机制：`contextPrefetched` 把 tool-call 发射打到 0%，而 tool-call 正是 CL-23 grounded
+   三段式合成的**入口条件**（`declineKind === 'tool_call_emitted'`）。入口消失 → CL-23/CL-20
+   在该通道上挣到的 DELIVERY 分随之蒸发。形态转移可见：`voice_039`/`voice_042` 由
+   PROSE(judge 过) → NULL(judge 0)、`voice_017`/`voice_041` NULL→NULL 但 correct→wrong。
+   （post-rebase 那条 NULL 的**确切**路径未持久化，属推断 → 归 CL-26 确认。）
+4. **净效果 vs 无门禁基线仍为正**：overall +1.8pp、DELIVERY 全 25 52.0%→64.0%（+12pp）。
+   即门禁本身没有引入回归，且带来可观增益；**是 rebase 吃掉了它一半的 DELIVERY 增益**。
+5. **D5（DELIVERY ≥80% 三轮中位数）仍未达成**（本次 64.0%，n=1）。原因除 CL-25 的
+   case-set 不自洽外，**新增一条**：合成通道的入口被 `contextPrefetched` 掐掉。
+   → 新票 **CL-28**。
+6. 遗留：探针只测中文题、n=5；英文侧（`GA-I18N-R1`）未覆盖。
+
+### Ticket Pointer
+Resolves（收尾）: [CL-20](../tickets/CL20-delivery-agent-behavior-type2.md)
+衍生: [CL-28](../tickets/CL28-contextprefetched-decline-synthesis-entrypoint.md)（新）
+相关: [CL-25](../tickets/CL25-open-ended-case-set-consistency.md) · [CL-26](../tickets/CL26-eval-runner-service-decline-synthesis-gap.md) · [CL-27](../tickets/CL27-triage-unconditional-call-cost.md)
