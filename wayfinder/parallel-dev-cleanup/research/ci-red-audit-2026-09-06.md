@@ -5,6 +5,26 @@
 > 认识论地位 = 凭记忆的断言）。下文标注了哪些是核过的、哪些是 subagent 断言但我未逐项复核的。
 > 原始日志留在 `.tmp/ci-audit/*.rawlog`（gitignore，会随清理消失）。
 
+## ⚠️ 本审计有保质期 —— 2026-09-07 实测漂移
+
+审计快照取自 2026-09-06 的 PR #37。**一天后数字已实质变化**（在 PR #41 上重测）：
+
+| check | 审计时（#37） | 2026-09-07（#41） | 说明 |
+|---|---|---|---|
+| `node 24 / static` | 17 个 gate 失败 | **4 个**（`run-gates: 33 passed, 4 failed`） | 并发 session 的 `856aacd2b2 fix(ci): resolve 13 red check:ci:static meta-gates` 修掉 13 个。剩下 4 个**全是文档类**：export jsdoc、package README limitations、package README model experience、translation pairing |
+| `python runtime / node24-linux-x64` | fail（25 个 preset 插件缺 dep） | **pass** | 同一个 commit 改了 `python/sdk-runtime/package.json`。本地实测 `npx tsx scripts/verify-runtime-closure.ts` → `6 agent presets and 154 workspace packages form a closed runtime dependency graph`，exit 0 |
+| `node 24 / coverage` | 512 ERROR / 161 文件 | **516 / 162**（**变差**） | 新增的失败文件是 `packages/eval/eval-cli/src/event-detect.ts` —— 另一个 session 新加的代码。**coverage 债随新代码增长** |
+| `node 24 / snapshots and artifacts` | 30 个包缺 `./invariant` | **30，未变** | |
+| `windows node 24 / native complete` | 14 文件失败 | 写作时 pending | 本就判定为不稳定 |
+
+**这不是说下文写错了** —— 落笔时每个数字都核过。但**任何引用本文的人必须先重测**，
+尤其别把「17 个 gate」当现状。给 R4 的两条实质影响：
+
+1. **static 只剩 4 个文档类 gate** → R4 的候选 1（先修再开）对 static 而言从"修 17 个"变成
+   "补 jsdoc + README + 翻译对"，可行性大幅提高。
+2. **coverage 一天内从 161 涨到 162 个文件** → 候选 3（冻结基线）必须回答
+   「新代码带来的新债怎么办」，否则基线要天天更新；候选 1（全修绿）对 coverage 是个移动靶。
+
 ## 一句话结论
 
 **PR 上有 6 个 check 恒红，全部是 master 既有欠债，与 PR diff 无关；且 master 根本没有分支保护，

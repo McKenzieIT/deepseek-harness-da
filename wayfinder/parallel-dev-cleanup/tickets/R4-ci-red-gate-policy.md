@@ -25,7 +25,21 @@ protection）的**前置条件** —— 现在直接开 "require CI green"，mas
 4. **接受现状**：不开 protection，CI 保持装饰，靠 session 纪律 + lefthook。明确写下来，
    免得后来的人以为 CI 在把关。
 
-## 已知事实（均已机械重导，详见 research note）
+## ⚠️ 数字已漂移（2026-09-07 重测，PR #41）
+
+下表是 2026-09-06 的快照。一天后：**static 17 → 4**（并发 commit `856aacd2b2` 修掉 13 个，
+剩余 4 个全是文档类）、**python closure 已修**（本地校验 exit 0）、
+**coverage 512/161 → 516/162 变差**（新增 `eval-cli/src/event-detect.ts`，来自另一 session 的新代码）、
+snapshots 30 未变。详见 research note 顶部的漂移表。
+
+**对候选评估的两条实质影响**：
+
+- 候选 1（先修再开）对 **static** 从"修 17 个 gate"降为"补 jsdoc + 2 个 README gate + 翻译对"，
+  可行性大幅提高。
+- 候选 3（冻结基线）必须先回答**「新代码带来的新债怎么办」** —— coverage 一天内多了 1 个文件。
+  不回答这条，基线就要天天更新，等于没有门禁。同理，候选 1 对 coverage 是**移动靶**。
+
+## 已知事实（2026-09-06 快照，均已机械重导，详见 research note）
 
 | check | 规模 | 性质 |
 |---|---|---|
