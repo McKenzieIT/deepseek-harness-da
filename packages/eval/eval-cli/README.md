@@ -12,6 +12,26 @@ The older `--no-sql-judge` mode auto-passes any case that returns SQL, hiding re
 
 A pass rate is only comparable to another one measured under the **same protocol**. Always read the protocol column with the number.
 
+> ### ⚠ 2026-09-06: the baseline ARTIFACTS are gone from disk — the numbers below survive, `compare.ts` against them does not
+>
+> `rebaseline-passk-168-clean` (the row marked CURRENT) **does not exist as a file anywhere**: checked
+> `eval-results/` in all 8 worktrees plus a repo-wide `find` — zero hits. Cause: `eval-results/*.json`
+> is gitignored (`.gitignore:61`), so run artifacts live only on the machine that produced them and
+> vanish with the worktree.
+>
+> Consequences, concretely:
+> - **`node --import tsx/esm packages/eval/eval-cli/bin/compare.ts rebaseline-passk-168-clean <new>` cannot run.**
+>   Every "compare against the baseline" instruction in this README (including the reproduce line below)
+>   is currently unexecutable.
+> - CLAUDE.md mandates recording every eval run, and CL-22 mandates ≥3-run medians — both assume the
+>   artifacts persist. They do not.
+> - The recorded NUMBERS are still trustworthy (they are in this table and in experiment-audit-log.md);
+>   it is per-case comparison and re-scoring that are lost.
+>
+> A 2026-09-06 CL-20 session hit this directly: it was told to compare against
+> `rebaseline-passk-168-clean` and could not, so it compared against two same-protocol k=1 runs that
+> did still exist. Decision pending in [CL-29](../../../wayfinder/semantic-layer/tickets/CL29-eval-artifact-persistence.md).
+
 | Protocol | Model | Run ID | Date | Rate |
 |---|---|---|---|---|
 | **pass@3 pass^k, judge-only (CURRENT)** | **qwen3.7-max** | `rebaseline-passk-168-clean` | 2026-09-04 | **104/168 = 61.9%** |
