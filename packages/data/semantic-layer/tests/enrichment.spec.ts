@@ -249,6 +249,56 @@ describe('enrichAllDwsTables', () => {
     const dimTables = (out.dimension_refs as Array<{ dim_table: string }>).map(r => r.dim_table).sort()
     expect(dimTables).toEqual(['dim_other', 'dim_server']) // curated dim_other preserved + dim_server rediscovered
   })
+
+  test('replace mode (default) preserves manual + undefined (curated) existing refs while refreshing deterministic ones', async () => {
+    // dim_server (PK server_id) is rediscoverable by the deterministic round;
+    // dim_other / dim_manual have no matching PK column on the DWS -> not
+    // rediscoverable. Today's replace mode discards all three existing refs
+    // (the data-loss bug: agent re-discovery wipes curated joins). Origin-aware
+    // replace must preserve manual + undefined (curated / legacy) and drop +
+    // re-discover deterministic.
+    const dimServer = { table_name: 'dim_server', kind: 'dim' as const, primary_key: ['server_id'], label_columns: ['s_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml(dimServer))
+    const curated = {
+      ...dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '区服ID', role: 'dimension' }] }),
+      dimension_refs: [
+        { dim_table: 'dim_other', join_keys: [{ dws_column: 'other_id', dim_column: 'other_id' }], derivation: 'curated by analyst' },
+        { dim_table: 'dim_manual', join_keys: [{ dws_column: 'm_id', dim_column: 'm_id' }], derivation: 'manual join', origin: 'manual' },
+        { dim_table: 'dim_server', join_keys: [{ dws_column: 'server_id', dim_column: 'server_id' }], derivation: 'stale deterministic', origin: 'deterministic' },
+      ],
+    }
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(curated))
+    const res = await enrichAllDwsTables(dir, undefined, ['dws_pay']) // default mergeExisting=false (replace)
+    expect(res.written).toBe(1)
+    const out = yaml.load(readFileSync(join(dir, 'tables', 'dws_pay.yaml'), 'utf-8')) as Record<string, unknown>
+    const refs = out.dimension_refs as Array<{ dim_table: string; origin?: string; derivation: string }>
+    const byDim = Object.fromEntries(refs.map(r => [r.dim_table, r]))
+    expect(refs).toHaveLength(3) // dim_other + dim_manual preserved, dim_server refreshed
+    // undefined-origin legacy curated ref survives untouched:
+    expect(byDim.dim_other).toBeDefined()
+    expect(byDim.dim_other!.derivation).toBe('curated by analyst')
+    expect(byDim.dim_other!.origin).toBeUndefined()
+    // explicit manual ref survives untouched:
+    expect(byDim.dim_manual).toBeDefined()
+    expect(byDim.dim_manual!.derivation).toBe('manual join')
+    expect(byDim.dim_manual!.origin).toBe('manual')
+    // deterministic existing ref dropped & re-discovered fresh:
+    expect(byDim.dim_server).toBeDefined()
+    expect(byDim.dim_server!.derivation).toContain('确定性')
+    expect(byDim.dim_server!.origin).toBe('deterministic')
+  })
+
+  test('empty DIM inventory short-circuits: written:0, no per-table writes (GA-GT3 item 6)', async () => {
+    // No DIM tables in the layer -> no joins possible. Re-discovery is a no-op;
+    // without a short-circuit the loop writes dimension_refs to every DWS and
+    // reports written:N (misleading). GA-GT3 item 6: short-circuit early,
+    // write nothing, report written:0 (curated refs already on disk, untouched).
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }] })))
+    const res = await enrichAllDwsTables(dir)
+    expect(res.written).toBe(0)
+    expect(res.enriched).toBe(0)
+    expect(res.errors).toEqual([])
+  })
 })
 
 function event(over: Partial<EventDefinition> = {}): EventDefinition {
@@ -314,6 +364,52 @@ describe('enrichAllEvents', () => {
   test('events? filter enriches only named events', async () => {
     const res = await enrichAllEvents(dir, undefined, ['nonexistent.event'])
     expect(res.written).toBe(0)
+  })
+
+  test('replace mode (default) preserves manual + undefined (curated) existing external_refs while refreshing deterministic ones', async () => {
+    // dim_server (PK server_id) is rediscoverable via the event's server_id
+    // param; dim_other / dim_manual are not. Today's replace mode discards all
+    // three existing external_refs (the data-loss bug). Origin-aware replace
+    // must preserve manual + undefined (curated / legacy) and drop + re-discover
+    // deterministic (parallel to enrichAllDwsTables, GA-GT3 item 5).
+    const curated = event({
+      external_refs: [
+        { dim_table: 'dim_other', join_keys: [{ dws_column: 'other_id', dim_column: 'other_id' }], derivation: 'curated by analyst' },
+        { dim_table: 'dim_manual', join_keys: [{ dws_column: 'm_id', dim_column: 'm_id' }], derivation: 'manual join', origin: 'manual' },
+        { dim_table: 'dim_server', join_keys: [{ dws_column: 'server_id', dim_column: 'server_id' }], derivation: 'stale deterministic', origin: 'deterministic' },
+      ],
+    })
+    writeFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), dumpYaml(curated))
+    const res = await enrichAllEvents(dir) // default mergeExisting=false (replace)
+    expect(res.written).toBe(1)
+    const out = yaml.load(readFileSync(join(dir, 'events', 'pay', 'game.pay.order.yaml'), 'utf-8')) as Record<string, unknown>
+    const refs = out.external_refs as Array<{ dim_table: string; origin?: string; derivation: string }>
+    const byDim = Object.fromEntries(refs.map(r => [r.dim_table, r]))
+    expect(refs).toHaveLength(3) // dim_other + dim_manual preserved, dim_server refreshed
+    // undefined-origin legacy curated ref survives untouched:
+    expect(byDim.dim_other).toBeDefined()
+    expect(byDim.dim_other!.derivation).toBe('curated by analyst')
+    expect(byDim.dim_other!.origin).toBeUndefined()
+    // explicit manual ref survives untouched:
+    expect(byDim.dim_manual).toBeDefined()
+    expect(byDim.dim_manual!.derivation).toBe('manual join')
+    expect(byDim.dim_manual!.origin).toBe('manual')
+    // deterministic existing ref dropped & re-discovered fresh:
+    expect(byDim.dim_server).toBeDefined()
+    expect(byDim.dim_server!.derivation).toContain('确定性')
+    expect(byDim.dim_server!.origin).toBe('deterministic')
+  })
+
+  test('empty DIM inventory short-circuits: written:0, no per-event writes (GA-GT3 item 6)', async () => {
+    // No DIM tables in the layer -> no joins possible. Re-discovery is a no-op;
+    // GA-GT3 item 6: short-circuit early, write nothing, report written:0.
+    // (beforeEach wrote dim_server.yaml for the other tests; remove it so the
+    // inventory is empty.)
+    rmSync(join(dir, 'tables', 'dim_server.yaml'))
+    const res = await enrichAllEvents(dir)
+    expect(res.written).toBe(0)
+    expect(res.enriched).toBe(0)
+    expect(res.errors).toEqual([])
   })
 })
 
