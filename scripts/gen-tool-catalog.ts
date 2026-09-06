@@ -1058,10 +1058,16 @@ function toolSource(entry: ToolPackage, toolName: string): string {
   return source
 }
 
+/** Escape `&`/`<`/`>` so vitepress (Vue) doesn't parse description prose
+ *  (e.g. `<project>.<table>` placeholders) as HTML elements — see T3. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 /** Render one tool's entry: name, description, JSON-Schema parameters, source. */
 function renderTool(schema: ToolSchema, source: string): string[] {
   const out = [`### \`${schema.name}\``, '']
-  if (schema.description) out.push(schema.description, '')
+  if (schema.description) out.push(escapeHtml(schema.description), '')
   out.push('```json', JSON.stringify(schema.parameters, null, 2), '```', '')
   out.push(`Source: [\`${source}\`](../${source})`, '')
   return out
@@ -1072,7 +1078,8 @@ function codeList(values: string[] | undefined): string {
 }
 
 function tableCell(value: string | undefined): string {
-  return value ? value.replace(/\|/g, '\\|').replace(/\n/g, '<br>') : '-'
+  if (!value) return '-'
+  return escapeHtml(value).replace(/\|/g, '\\|').replace(/\n/g, '<br>')
 }
 
 /** Render the full catalog (pure, deterministic given the manifest-ordered input). */
@@ -1105,7 +1112,7 @@ export function render(catalog: ToolCatalog): string {
       const source = entry.sources[schema.name] as string
       lines.push(...renderTool(schema, source))
     }
-    if (entry.note) lines.push(entry.note, '')
+    if (entry.note) lines.push(escapeHtml(entry.note), '')
   }
   return lines.join('\n')
 }
