@@ -294,6 +294,32 @@ function existingEventRefs(raw: Record<string, unknown>): DimensionRef[] {
 }
 
 /**
+ * Origin-aware replace: the strategy used by the explicit `discoverRelations`
+ * / `discoverEventRelations` entry (re-discover + replace). Keeps curated
+ * existing refs — `manual` and `undefined` (legacy YAML written before the
+ * `origin` field shipped, treated as manual per GA-I18N-1) — and drops
+ * machine-generated ones — `deterministic` / `llm` — so a re-run can refresh
+ * stale machine refs while never wiping a join the deterministic round cannot
+ * rediscover. The kept-curated and freshly-discovered lists are then merged
+ * via `mergeRefs` (union join_keys; curated derivation/origin preserved by
+ * origin priority). GA-GT3 item 5 data-loss fix: the old replace branch
+ * (`refs = discovered`) discarded all existing refs and wrote
+ * `dimension_refs: []` with a misleading `enriched: 0`.
+ * @param existing - the table's / event's existing validated refs (pre-write).
+ * @param discovered - the freshly discovered refs (deterministic + optional LLM).
+ * @returns curated existing preserved + machine-discovered refreshed, merged + deduped.
+ */
+function originAwareReplaceRefs(
+  existing: readonly DimensionRef[],
+  discovered: readonly DimensionRef[],
+): DimensionRef[] {
+  return mergeRefs(
+    existing.filter(r => r.origin === 'manual' || r.origin == null),
+    discovered,
+  )
+}
+
+/**
  * Enrich every DWS table (kind !== 'dim') in a semantic layer: discover its
  * DIM relations and write them back into the table YAML's `dimension_refs`.
  *
@@ -303,12 +329,15 @@ function existingEventRefs(raw: Record<string, unknown>): DimensionRef[] {
  * tables are left untouched. Per-table fail-tolerant: a thrown discover/write
  * becomes an error string rather than aborting the batch.
  *
- * `mergeExisting`: when `true`, the discovered refs are merged WITH the table's
- * existing `dimension_refs` (existing preserved, discovered unioned) instead of
- * replacing them — used by the on-write hook so auto-trigger can never wipe
- * human-curated joins the deterministic round does not rediscover. When `false`
- * (default), discovered refs REPLACE existing — used by the explicit
- * `discoverRelations` entry (re-discover + replace, G3 direct-write).
+ * `mergeExisting`: when `true`, discovered refs are merged WITH the table's
+ * existing `dimension_refs` (everything preserved, discovered unioned) — used by
+ * the on-write hook so auto-trigger can never wipe any existing join. When
+ * `false` (default), origin-aware replace: curated existing refs (`manual` /
+ * `undefined`) are preserved and machine-generated ones (`deterministic` / `llm`)
+ * are dropped so re-discovery can refresh them — used by the explicit
+ * `discoverRelations` entry (re-discover, G3 direct-write). Either way,
+ * human-curated joins the deterministic round does not rediscover are never
+ * wiped (GA-GT3 item 5).
  *
  * CL-18 Phase 2: `excludeColumnsFn` (optional) computes a per-target exclude
  * set from the target table's metadata (e.g. its partition columns) and
@@ -331,6 +360,15 @@ export async function enrichAllDwsTables(
   excludeColumnsFn?: (def: TableDefinition) => ReadonlySet<string> | undefined,
 ): Promise<{ enriched: number; written: number; errors: string[] }> {
   const dimInventory = buildDimInventory(semanticLayer)
+  // GA-GT3 item 6: no DIM tables -> no joins are possible for any table; skip
+  // the per-table write loop entirely (avoids writing dimension_refs:[] to every
+  // DWS + a misleading written:N report). Curated refs are already on disk,
+  // untouched. Under origin-aware replace (item 5) nothing would be destroyed
+  // anyway; this is the efficiency + honest-reporting guard.
+  if (dimInventory.length === 0) {
+    console.warn(`[enrichAllDwsTables] no DIM tables in ${semanticLayer}; skipping enrichment (curated dimension_refs left untouched)`)
+    return { enriched: 0, written: 0, errors: [] }
+  }
   const filter = tables !== undefined && tables.length > 0 ? new Set(tables) : undefined
   let enriched = 0
   let written = 0
@@ -345,7 +383,15 @@ export async function enrichAllDwsTables(
     if (r.data.kind === 'dim') continue // only DWS
     try {
       const discovered = await discoverRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
-      const refs = mergeExisting ? mergeRefs(existingRefs(t.raw), discovered) : discovered
+      // mergeExisting=true (on-write hook): merge everything (preserve all existing,
+      //   incl. machine).
+      // mergeExisting=false (default, explicit discoverRelations): origin-aware
+      //   replace — keep curated (manual/undefined), drop machine (deterministic/llm)
+      //   so re-discovery refreshes stale machine refs without wiping joins the
+      //   deterministic round cannot rediscover (GA-GT3 item 5 data-loss fix).
+      const refs = mergeExisting
+        ? mergeRefs(existingRefs(t.raw), discovered)
+        : originAwareReplaceRefs(existingRefs(t.raw), discovered)
       // write raw + refs (preserves physical types / extra keys; writeTable validates)
       await writeTable(semanticLayer, t.table_name, { ...t.raw, dimension_refs: refs })
       written += 1
@@ -460,7 +506,10 @@ export async function discoverEventRelationsFor(
  * the existing raw, inject `external_refs`, re-dump to YAML text, name-match
  * check; no schema validation — `loadEvents` validates on read).
  * `mergeExisting`: when true, discovered refs merge WITH the event's existing
- * `external_refs` (preserve curated); default false (replace).
+ * `external_refs` (everything preserved, discovered unioned); default false —
+ * origin-aware replace (curated `manual`/`undefined` preserved, machine
+ * `deterministic`/`llm` dropped so re-discovery refreshes them; GA-GT3 item 5,
+ * parallel to `enrichAllDwsTables`).
  *
  * CL-18 Phase 2: `excludeColumnsFn` (optional) computes a per-event exclude
  * set and forwards it to `discoverEventRelationsFor` (parallel to
@@ -481,6 +530,12 @@ export async function enrichAllEvents(
   excludeColumnsFn?: (def: EventDefinition) => ReadonlySet<string> | undefined,
 ): Promise<{ enriched: number; written: number; errors: string[] }> {
   const dimInventory = buildDimInventory(semanticLayer)
+  // GA-GT3 item 6: no DIM tables -> no joins possible for any event; skip the
+  // per-event write loop (parallel to enrichAllDwsTables).
+  if (dimInventory.length === 0) {
+    console.warn(`[enrichAllEvents] no DIM tables in ${semanticLayer}; skipping enrichment (curated external_refs left untouched)`)
+    return { enriched: 0, written: 0, errors: [] }
+  }
   const filter = events !== undefined && events.length > 0 ? new Set(events) : undefined
   let enriched = 0
   let written = 0
@@ -494,7 +549,14 @@ export async function enrichAllEvents(
     }
     try {
       const discovered = await discoverEventRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
-      const refs = mergeExisting ? mergeRefs(existingEventRefs(e.raw), discovered) : discovered
+      // mergeExisting=true (on-write hook — none for events today): merge everything.
+      // mergeExisting=false (default, explicit discoverEventRelations): origin-aware
+      //   replace — keep curated (manual/undefined), drop machine (deterministic/llm)
+      //   so re-discovery refreshes stale machine refs without wiping curated joins
+      //   (GA-GT3 item 5 data-loss fix; parallel to enrichAllDwsTables).
+      const refs = mergeExisting
+        ? mergeRefs(existingEventRefs(e.raw), discovered)
+        : originAwareReplaceRefs(existingEventRefs(e.raw), discovered)
       const content = dumpYaml({ ...e.raw, external_refs: refs })
       const res = await writeEventYaml(semanticLayer, e.name, content)
       if (res.ok) {

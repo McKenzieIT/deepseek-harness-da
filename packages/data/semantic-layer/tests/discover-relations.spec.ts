@@ -72,6 +72,43 @@ describe('ctx.schema.discoverRelations (B3)', () => {
     expect(readRefs(dir, 'dws_a')).toHaveLength(1)
     expect(readRefs(dir, 'dws_b')).toHaveLength(0)
   })
+
+  test('discoverRelations preserves pre-existing curated refs on a DWS (origin-aware replace, GA-GT3 item 5)', async () => {
+    // The agent-invoked discover_relations tool runs in replace mode
+    // (mergeExisting=false, hardcoded in SemanticLayerService.discoverRelations).
+    // Before GA-GT3 item 5, a re-discovery discarded ALL existing dimension_refs
+    // — including hand-curated joins the deterministic round cannot rediscover —
+    // and wrote dimension_refs: [] with a misleading enriched:0. Origin-aware
+    // replace (landed in the substrate) now preserves curated manual/undefined
+    // refs end-to-end through the Service, while refreshing deterministic ones.
+    dir = mkdtempSync(join(tmpdir(), 'gt3-svc-'))
+    writeFileSync(join(dir, 'config.yaml'), 'project:\n  name: t\n  scope_id: t\n')
+    mkdirSync(join(dir, 'tables'), { recursive: true })
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml(dimDoc('dim_server', 'server_id')))
+    // DWS with a server_id FK (rediscoverable) + a curated manual ref (not
+    // rediscoverable: dim_curated is not in the layer's DIM inventory).
+    const dws = {
+      ...dwsDoc('dws_pay', [{ name: 'server_id', comment: '区服ID' }]),
+      dimension_refs: [
+        { dim_table: 'dim_curated', join_keys: [{ dws_column: 'curated_id', dim_column: 'curated_id' }], derivation: 'curated by analyst' },
+        { dim_table: 'dim_server', join_keys: [{ dws_column: 'server_id', dim_column: 'server_id' }], derivation: 'stale', origin: 'deterministic' },
+      ],
+    }
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(dws))
+
+    const ctx = new Context()
+    const schema = new SemanticLayerService(ctx, { semanticRoot: dir })
+    const res = await schema.discoverRelations()
+    expect(res.written).toBe(1)
+    const refs = readRefs(dir, 'dws_pay') as Array<{ dim_table: string; origin?: string; derivation: string }>
+    const byDim = Object.fromEntries(refs.map(r => [r.dim_table, r]))
+    // curated (undefined-origin legacy manual) ref survives the agent re-discovery:
+    expect(byDim.dim_curated).toBeDefined()
+    expect(byDim.dim_curated!.derivation).toBe('curated by analyst')
+    // deterministic ref refreshed (derivation reset to 确定性):
+    expect(byDim.dim_server).toBeDefined()
+    expect(byDim.dim_server!.derivation).toContain('确定性')
+  })
 })
 
 describe('ctx.schema on-write hook (B3, G3 auto-trigger)', () => {
