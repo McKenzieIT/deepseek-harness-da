@@ -2,7 +2,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Audit from '../src/index.ts'
 import { fromPayload, TAG, toPayload } from '../src/schema.ts'
-import { openAuditDatabase, SQLiteAuditStore } from '../src/store.ts'
+import { openAuditDatabase, SQLiteAuditStore, type AuditQueryFilter } from '../src/store.ts'
 import { IdentityService } from '@deepseek-ai/dsh-identity'
 import { userId, scopeId } from '@deepseek-ai/dsh-credentials'
 
@@ -137,26 +137,76 @@ describe('SQLiteAuditStore', () => {
     expect(corrected.qoder_credits).toBe(67) // credits not overridden → same
   })
 
-  it('P8b①a+②c interaction: correctedStats dedups a superseded original after appendCorrection (M1)', () => {
+  it('P8b①a+②c interaction: correctedStats dedups superseded-original COST only; total/by_tag match stats (A11)', () => {
     s.append(fromPayload({ log_id: 'a', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1042, total_credits: 42 } } }))
     s.append(fromPayload({ log_id: 'b', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.07, total_credits: 25 } } }))
     s.appendCorrection('a', { user_id: 'carol' }, { by: 'compliance', reason: 'misattribution' }, admin)
-    // correctedStats(alice): a superseded (correction is carol's, outside the alice filter) → skip a, count b.
+    // correctedStats(alice): a is superseded → skip a's COST only; total counts a+b (matches stats); cost = b only.
     const aliceCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
-    expect(aliceCorrected.total).toBe(1)
-    expect(aliceCorrected.qoder_cost_usd).toBeCloseTo(0.07, 4)
+    const aliceStats = s.stats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
+    expect(aliceCorrected.total).toBe(2) // a + b (superseded original still counted in total)
+    expect(aliceCorrected.total).toBe(aliceStats.total)
+    expect(aliceCorrected.by_tag).toEqual(aliceStats.by_tag) // by_tag matches stats (a counted too)
+    expect(aliceCorrected.qoder_cost_usd).toBeCloseTo(0.07, 4) // a's cost skipped (correction carries it under carol)
     // correctedStats(carol): the correction record (0.1042) — the call's cost attributed to carol.
     const carolCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'carol' }, admin)
+    const carolStats = s.stats({ tags: ['qoder_call'], user_id: 'carol' }, admin)
     expect(carolCorrected.total).toBe(1)
+    expect(carolCorrected.total).toBe(carolStats.total)
+    expect(carolCorrected.by_tag).toEqual(carolStats.by_tag)
     expect(carolCorrected.qoder_cost_usd).toBeCloseTo(0.1042, 4)
-    // correctedStats(admin, no user filter): a superseded → skip; correction (0.1042) + b (0.07) = 0.1742, no double-count.
+    // correctedStats(admin, no user filter): total = all 3 (matches stats); cost deduped (a skipped, b + correction).
     const allCorrected = s.correctedStats({ tags: ['qoder_call'] }, admin)
-    expect(allCorrected.total).toBe(2)
-    expect(allCorrected.qoder_cost_usd).toBeCloseTo(0.1742, 4)
+    const allStats = s.stats({ tags: ['qoder_call'] }, admin)
+    expect(allCorrected.total).toBe(3) // a + b + correction (all counted in total)
+    expect(allCorrected.total).toBe(allStats.total)
+    expect(allCorrected.by_tag).toEqual(allStats.by_tag) // {qoder_call: 3, attribution_correction: 1}
+    expect(allCorrected.qoder_cost_usd).toBeCloseTo(0.1742, 4) // a's cost skipped; b (0.07) + correction (0.1042)
     // stats (immutable original) counts all 3 recorded rows — the "recorded at the time" baseline.
-    const immutable = s.stats({ tags: ['qoder_call'] }, admin)
-    expect(immutable.total).toBe(3)
-    expect(immutable.qoder_cost_usd).toBeCloseTo(0.1042 + 0.1042 + 0.07, 4)
+    expect(allStats.total).toBe(3)
+    expect(allStats.qoder_cost_usd).toBeCloseTo(0.1042 + 0.1042 + 0.07, 4)
+  })
+
+  it('A11: correctedStats total/by_tag are consistent with stats() across a corrections scenario', () => {
+    // Setup: alice x2, bob x1 (all qoder_call) + 1 correction of alice's first call → carol.
+    s.append(fromPayload({ log_id: 'a1', scope_id: 'g1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1, total_credits: 10 } } }))
+    s.append(fromPayload({ log_id: 'a2', scope_id: 'g2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.2, total_credits: 20 } } }))
+    s.append(fromPayload({ log_id: 'b1', scope_id: 'g3', tenant_id: 'acme', user_id: 'bob', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.3, total_credits: 30 } } }))
+    s.appendCorrection('a1', { user_id: 'carol' }, { by: 'compliance', reason: 'misattribution' }, admin)
+
+    // For every filter scope, correctedStats.total === stats().total AND
+    // correctedStats.by_tag deep-equals stats().by_tag (superseded originals
+    // are counted in total/by_tag — only cost is deduped).
+    const scopes: AuditQueryFilter[] = [
+      {}, // all (admin)
+      { user_id: 'alice' },
+      { user_id: 'bob' },
+      { user_id: 'carol' },
+      { tags: ['qoder_call'] },
+      { tags: ['attribution_correction'] },
+      { tags: ['qoder_call'], user_id: 'alice' },
+    ]
+    for (const f of scopes) {
+      const st = s.stats(f, admin)
+      const cs = s.correctedStats(f, admin)
+      expect(cs.total, `total mismatch for filter ${JSON.stringify(f)}`).toBe(st.total)
+      expect(cs.by_tag, `by_tag mismatch for filter ${JSON.stringify(f)}`).toEqual(st.by_tag)
+    }
+
+    // Cost dedup is the ONLY divergence from stats().
+    const aliceCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
+    expect(aliceCorrected.total).toBe(2) // a1 + a2 (a1 superseded but still counted)
+    expect(aliceCorrected.qoder_cost_usd).toBeCloseTo(0.2, 4) // a1 cost skipped (correction carries it under carol); a2 = 0.2
+    const carolCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'carol' }, admin)
+    expect(carolCorrected.total).toBe(1)
+    expect(carolCorrected.qoder_cost_usd).toBeCloseTo(0.1, 4) // the correction record (a1's cost, 0.1)
+    const allCorrected = s.correctedStats({ tags: ['qoder_call'] }, admin)
+    expect(allCorrected.total).toBe(4) // a1 + a2 + b1 + correction (all counted in total)
+    expect(allCorrected.qoder_cost_usd).toBeCloseTo(0.6, 4) // a1 skipped; a2 (0.2) + b1 (0.3) + correction (0.1)
+    // stats (immutable original) sums all 4 recorded rows (no dedup).
+    const allStats = s.stats({ tags: ['qoder_call'] }, admin)
+    expect(allStats.total).toBe(4)
+    expect(allStats.qoder_cost_usd).toBeCloseTo(0.1 + 0.2 + 0.3 + 0.1, 4)
   })
 
   it('tier-2 hashBody: hash not body (intranet-security-first)', () => {
@@ -350,14 +400,129 @@ describe('definition_snapshot (W11 S1)', () => {
       db.exec('PRAGMA user_version = 1')
       db.close()
 
-      // Re-open via openAuditDatabase — should trigger v1→v2 migration
+      // Re-open via openAuditDatabase — should trigger v1→v2→v3 migration
       const db2 = openAuditDatabase(dbPath)
       const store2 = new SQLiteAuditStore(db2)
       const v = store2.recordSnapshot('test_asset', 'table', 'content')
       expect(v).toBe(1)
       const ver = db2.prepare('PRAGMA user_version').get() as { user_version: number }
-      expect(ver.user_version).toBe(2)
+      expect(ver.user_version).toBe(3)
       db2.close()
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('A11: migration from v2 adds corrects/is_correction columns + index + backfills from payload', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs')
+    // oxlint-disable-next-line typescript/unbound-method
+    const { join } = await import('node:path')
+    const { DatabaseSync } = await import('node:sqlite')
+    const os = await import('node:os')
+    const tmpDir = mkdtempSync(join(os.tmpdir(), 'audit-migration-v3-'))
+    const dbPath = join(tmpDir, 'audit.db')
+    try {
+      // Create a v2 database (audit_event WITHOUT corrects/is_correction columns).
+      const db = new DatabaseSync(dbPath)
+      db.exec('PRAGMA foreign_keys = ON')
+      db.exec('PRAGMA journal_mode = WAL')
+      db.exec(`
+        CREATE TABLE audit_event (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          log_id TEXT UNIQUE NOT NULL,
+          ts TEXT NOT NULL,
+          session_id TEXT, chat_session_id INTEGER,
+          scope_id TEXT, tenant_id TEXT, user_id TEXT, model TEXT,
+          review_status TEXT NOT NULL DEFAULT 'pending',
+          payload TEXT NOT NULL, ingested_at TEXT NOT NULL
+        ) STRICT;
+        CREATE TABLE audit_override (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          log_id TEXT NOT NULL, field TEXT NOT NULL, value TEXT,
+          patched_by TEXT, patched_at TEXT NOT NULL, reason TEXT
+        ) STRICT;
+        CREATE TABLE audit_tag (
+          event_id INTEGER NOT NULL, tag TEXT NOT NULL,
+          PRIMARY KEY (event_id, tag),
+          FOREIGN KEY (event_id) REFERENCES audit_event(id) ON DELETE CASCADE
+        ) STRICT;
+        CREATE TABLE definition_snapshot (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          asset_name TEXT NOT NULL, version INTEGER NOT NULL,
+          kind TEXT NOT NULL, content TEXT NOT NULL,
+          created_at TEXT NOT NULL, log_id TEXT,
+          UNIQUE(asset_name, version)
+        ) STRICT;
+        CREATE INDEX ix_snapshot_asset ON definition_snapshot(asset_name, version);
+      `)
+      // Insert the original + its correction (payload carries $.corrects) + a
+      // plain row, all written by a v2-era store (corrects lives only in payload
+      // JSON — the new columns do not exist yet).
+      const insertEvent = db.prepare(
+        'INSERT INTO audit_event (log_id, ts, scope_id, tenant_id, user_id, review_status, payload, ingested_at) VALUES (?,?,?,?,?,?,?,?)',
+      )
+      insertEvent.run('r0', '2026-09-07T00:00:00Z', 'g1', 'acme', 'alice', 'pending', JSON.stringify({ log_id: 'r0', credits: { total_cost_usd: 0.1, total_credits: 10 } }), '2026-09-07T00:00:00Z')
+      insertEvent.run('c0', '2026-09-07T00:00:01Z', 'g1', 'acme', 'carol', 'pending', JSON.stringify({ log_id: 'c0', corrects: 'r0', credits: { total_cost_usd: 0.1, total_credits: 10 } }), '2026-09-07T00:00:01Z')
+      insertEvent.run('p1', '2026-09-07T00:00:02Z', 'g2', 'acme', 'alice', 'pending', JSON.stringify({ log_id: 'p1', credits: { total_cost_usd: 0.2, total_credits: 20 } }), '2026-09-07T00:00:02Z')
+      const insertTag = db.prepare('INSERT OR IGNORE INTO audit_tag (event_id, tag) VALUES (?, ?)')
+      const r0Id = (db.prepare('SELECT id FROM audit_event WHERE log_id=?').get('r0') as { id: number }).id
+      const c0Id = (db.prepare('SELECT id FROM audit_event WHERE log_id=?').get('c0') as { id: number }).id
+      const p1Id = (db.prepare('SELECT id FROM audit_event WHERE log_id=?').get('p1') as { id: number }).id
+      insertTag.run(r0Id, 'qoder_call')
+      insertTag.run(c0Id, 'qoder_call')
+      insertTag.run(c0Id, 'attribution_correction')
+      insertTag.run(p1Id, 'qoder_call')
+      db.exec('PRAGMA user_version = 2')
+      db.close()
+
+      // Re-open via openAuditDatabase — should trigger v2→v3 migration.
+      const db2 = openAuditDatabase(dbPath)
+      const store2 = new SQLiteAuditStore(db2)
+
+      // Schema version bumped to 3.
+      const ver = db2.prepare('PRAGMA user_version').get() as { user_version: number }
+      expect(ver.user_version).toBe(3)
+
+      // New columns exist on audit_event.
+      const cols = (db2.prepare('PRAGMA table_info(audit_event)').all() as Array<{ name: string }>).map(r => r.name)
+      expect(cols).toContain('corrects')
+      expect(cols).toContain('is_correction')
+
+      // Partial index was created.
+      const idx = db2.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_audit_is_correction'").get() as { name: string } | undefined
+      expect(idx?.name).toBe('ix_audit_is_correction')
+
+      // Backfill: c0 (a correction, payload.corrects='r0') → corrects='r0', is_correction=1.
+      const c0Row = db2.prepare('SELECT corrects, is_correction FROM audit_event WHERE log_id=?').get('c0') as { corrects: string | null; is_correction: number }
+      expect(c0Row.corrects).toBe('r0')
+      expect(c0Row.is_correction).toBe(1)
+
+      // Plain rows: corrects=NULL, is_correction=0.
+      const r0Row = db2.prepare('SELECT corrects, is_correction FROM audit_event WHERE log_id=?').get('r0') as { corrects: string | null; is_correction: number }
+      expect(r0Row.corrects).toBeNull()
+      expect(r0Row.is_correction).toBe(0)
+      const p1Row = db2.prepare('SELECT corrects, is_correction FROM audit_event WHERE log_id=?').get('p1') as { corrects: string | null; is_correction: number }
+      expect(p1Row.corrects).toBeNull()
+      expect(p1Row.is_correction).toBe(0)
+
+      // correctedStats reads the denormalized column (no json_extract) and dedups
+      // r0's cost (superseded by c0): total=3 (all rows), cost = c0 (0.1) + p1 (0.2) = 0.3.
+      const cs = store2.correctedStats({ tags: ['qoder_call'] }, admin)
+      expect(cs.total).toBe(3) // r0 + c0 + p1 (all counted; total matches stats)
+      expect(cs.qoder_cost_usd).toBeCloseTo(0.3, 4) // r0 superseded → cost skipped; c0 (0.1) + p1 (0.2)
+      const st = store2.stats({ tags: ['qoder_call'] }, admin)
+      expect(cs.total).toBe(st.total)
+      expect(cs.by_tag).toEqual(st.by_tag) // {qoder_call: 3, attribution_correction: 1}
+
+      // Re-opening is idempotent (migration is a no-op on a v3 DB).
+      db2.close()
+      const db3 = openAuditDatabase(dbPath)
+      const ver3 = db3.prepare('PRAGMA user_version').get() as { user_version: number }
+      expect(ver3.user_version).toBe(3)
+      const c0Re = db3.prepare('SELECT corrects, is_correction FROM audit_event WHERE log_id=?').get('c0') as { corrects: string | null; is_correction: number }
+      expect(c0Re.corrects).toBe('r0')
+      expect(c0Re.is_correction).toBe(1)
+      db3.close()
     } finally {
       rmSync(tmpDir, { recursive: true, force: true })
     }
