@@ -140,6 +140,9 @@ function extractBearerToken(req: IncomingMessage): string | undefined {
 export const name = 'admin'
 export const inject = ['storageDomain', 'credentials', 'webServer']
 
+/** Default tenant id when neither a request body nor `Config.defaultTenantId` names one. */
+const DEFAULT_TENANT_ID = 'default'
+
 /** Config */
 export interface Config {
   /** Default admin user id seeded on first boot (no users table → create). */
@@ -148,11 +151,22 @@ export interface Config {
   readonly seedAdminPassword?: string
   /** Default tenant id for the seeded admin. */
   readonly seedTenantId?: string
+  /**
+   * Default tenant id assigned when a request (user creation, access-link
+   * creation, seeded admin) omits one. Defaults to `'default'` so existing
+   * deployments keep their current behavior unless `cordis.yml` overrides it.
+   */
+  readonly defaultTenantId?: string
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
   let domain: AdminDomainHandle | undefined
   let identityService: AdminIdentityService | undefined
+
+  // Explicit default-tenant resolve step (CONVENTIONS: no hidden `?? default`
+  // inside handlers). `config.defaultTenantId` is overridable from cordis.yml;
+  // the fallback keeps the historic `'default'` value for back-compat.
+  const defaultTenantId = config.defaultTenantId ?? DEFAULT_TENANT_ID
 
   ctx.effect(async () => {
     domain = await ctx.storageDomain.open(AdminDomain)
@@ -163,7 +177,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       await domain.table('users').put(config.seedAdminId, {
         passwordHash: hash,
         role: 'admin',
-        tenantId: config.seedTenantId ?? 'default',
+        tenantId: config.seedTenantId ?? defaultTenantId,
         createdAt: new Date().toISOString(),
       })
     }
@@ -172,7 +186,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     identityService = new AdminIdentityService(ctx, domain)
 
     // Register admin routes.
-    const disposeRoutes = registerRoutes(ctx, domain, identityService)
+    const disposeRoutes = registerRoutes(ctx, domain, identityService, defaultTenantId)
 
     return () => {
       disposeRoutes()
@@ -219,6 +233,7 @@ function registerRoutes(
   ctx: Context,
   domain: AdminDomainHandle,
   identity: AdminIdentityService,
+  defaultTenantId: string,
 ): () => void {
   const dispose = ctx.webServer.register({
     kind: 'prefix',
@@ -281,12 +296,12 @@ function registerRoutes(
           return
         }
         if (pathname === '/admin/api/users' && req.method === 'POST') {
-          return handleCreateUser(domain, req, res)
+          return handleCreateUser(domain, req, res, defaultTenantId)
         }
 
         // ── /admin/api/access-links — access link management ──
         if (pathname === '/admin/api/access-links' && req.method === 'POST') {
-          return handleCreateAccessLink(domain, req, res)
+          return handleCreateAccessLink(domain, req, res, defaultTenantId)
         }
 
         json(res, 404, { error: 'not found' })
@@ -443,6 +458,7 @@ async function handleCreateUser(
   domain: AdminDomainHandle,
   req: IncomingMessage,
   res: ServerResponse,
+  defaultTenantId: string,
 ): Promise<void> {
   let body: { userId?: string; password?: string; role?: string; tenantId?: string; displayName?: string }
   try {
@@ -466,7 +482,7 @@ async function handleCreateUser(
   await domain.table('users').put(body.userId, {
     passwordHash: hash,
     role: body.role ?? 'user',
-    tenantId: body.tenantId ?? 'default',
+    tenantId: body.tenantId ?? defaultTenantId,
     displayName: body.displayName,
     createdAt: new Date().toISOString(),
   })
@@ -478,6 +494,7 @@ async function handleCreateAccessLink(
   domain: AdminDomainHandle,
   req: IncomingMessage,
   res: ServerResponse,
+  defaultTenantId: string,
 ): Promise<void> {
   let body: { scopeId?: string; tenantId?: string }
   try {
@@ -495,7 +512,7 @@ async function handleCreateAccessLink(
   const linkToken = randomBytes(24).toString('hex')
   await domain.table('access_links').put(linkToken, {
     scopeId: body.scopeId,
-    tenantId: body.tenantId ?? 'default',
+    tenantId: body.tenantId ?? defaultTenantId,
     createdAt: new Date().toISOString(),
   })
 

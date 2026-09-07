@@ -101,10 +101,16 @@ export interface Config {
   readonly seedAdminPassword?: string
   /** Default tenant id for the seeded admin. */
   readonly seedTenantId?: string
+  /**
+   * Default tenant id assigned when a request (user creation, access-link
+   * creation, seeded admin) omits one. Defaults to `'default'` so existing
+   * deployments keep their current behavior unless `cordis.yml` overrides it.
+   */
+  readonly defaultTenantId?: string
 }
 ```
 
-Source: [`packages/data/admin/src/index.ts:144`](../packages/data/admin/src/index.ts)
+Source: [`packages/data/admin/src/index.ts:147`](../packages/data/admin/src/index.ts)
 
 <a id="deepseek-aidsh-agent-default-model"></a>
 
@@ -3764,7 +3770,7 @@ Requires: `tools` · `schema` · `audit` · `identity`
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-update-table-config/src/index.ts:54`](../packages/data/tool-update-table-config/src/index.ts)
+Source: [`packages/data/tool-update-table-config/src/index.ts:55`](../packages/data/tool-update-table-config/src/index.ts)
 
 <a id="deepseek-aidsh-tool-web"></a>
 
