@@ -361,6 +361,18 @@
 - [CI: CLAUDE.md symlink-mode mistake — prevention guard](tickets/phase-misc/CI-claude-md-symlink-mode-guard.md) — **open**; CLAUDE.md was committed as a symlink (mode 120000) with text content (not a path) → ENAMETOOLONG on ubuntu checkout (the CI-red root cause, fixed by PR #12). Audit the cause + add a guard against .md/docs symlink-mode mistakes.
 - [GA-AUDIT1-followup ucl-7 residual: chip↔combo color divergence under multi-domain filter](tickets/phase-misc/GA-AUDIT1-followup-ucl7-color-divergence.md) — **open** (DEFERRED from ucl-7 fix `c26eada21b`/PR #9); thread full `allDomains` into `ContextLayerGraph`→`toG6Data`→`domainIndexMap`; TDD RED/GREEN sketched. Linked from [GA-AUDIT1-followup-residual.md](tickets/phase-misc/GA-AUDIT1-followup-residual.md) Notes.
 
+## GA-FORK-CI node-24 meta-gates (2026-09-07)
+
+master 从"永久飘红（无 PR 能变绿）"推进到 **7 个 node-24 meta-gate 中 6 个绿 + 6 个解除跳过**。本 session 合并 10 个 PR（#48 #52 #56 #59 #63 #64 #67 #68 #69 #72）。
+
+**GREEN（6 门 + 6 解除跳过）**：publint（#63）、cordis-catalog（#63 regen）、package-readme-limitations（#64 — 29 README）、export-jsdoc（#67 — 279 JSDoc）、built-package-invariants（#68 — 30 invariant.ts companion，**连带解除 node-next-types / built-bin-smoke / +4**）、package-readme-model-experience（#72 — 21 工具包 allowlist）+ 集成跟进（#69）。CI 解锁：删 6 个死 master-push job + sandbox macos 腿（#48）、issue-policy/lifecycle fork 上禁用（#52）。lint 27→0 + TableCard 数据损坏 bug（#56）、attach/asset-name 守卫（#59）。
+
+**RED（1 门，i18n 债）**：`verify-translation-pairing` — moving-target（并行 session 持续新增文档，比翻译快）+ subagent 翻译难保严格 structural parity。26 个 .zh.md 翻译有 parity bug（已回退）+ 24 篇新文档待译 + Class B 未完全解决。需要专门一轮（并行 session 暂停 + 逐篇精心翻译保 parity + re-record）。〔tickets/phase-misc/GA-FORK-CI-translation-pairing-debt.md〕
+
+**审计**：本 session 跑了 7 维对抗审计（workflow + 7 subagent + synthesis），26 个 action（P0=4 / P1=13 / P2=9）在 `.tmp/audit/SYNTHESIS.md` + `ACTION-LIST.json`；HTML 架构图 `.tmp/audit/architecture.html`；流程优化 `.tmp/audit/PROCESS-OPTIMIZATION.md`。剩余 action（A4 原型污染 / A5 铸 callId + 回退 id-less 簇 / A6 apiproxy / A9-A11/A13 深 bug / A14/A18/A20/A22）见 ACTION-LIST.json。
+
+**GA-GT3 数据丢失修复**：已落在 master（`packages/data/semantic-layer/src/enrichment.ts` 的 `originAwareReplaceRefs` + `preserveCurated` escape-hatch，经 #54/#57/#58 GA-GT3-5b/5c/6b）。PR #15（origin-aware replace 旧分支）已作为陈旧/被取代关闭——实质修复已入库。
+
 ## Out of scope
 
 <!-- 超出 destination；closed，不毕业 -->
