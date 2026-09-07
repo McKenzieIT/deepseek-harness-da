@@ -12,8 +12,8 @@
   padding: 8px;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--dsw-alias-surface-default);
-  color: var(--dsw-alias-content-primary);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
 }
 
 .header {
@@ -29,7 +29,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--dsw-alias-content-primary);
+  color: var(--dsw-alias-label-primary);
 }
 
 .workspaceLink {
@@ -37,7 +37,7 @@
   background: transparent;
   padding: 2px 4px;
   border-radius: 4px;
-  color: var(--dsw-alias-content-link);
+  color: var(--dsw-alias-link);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -45,7 +45,7 @@
 }
 
 .workspaceLink:hover {
-  background: var(--dsw-alias-surface-hover);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .hero,
@@ -53,7 +53,7 @@
   padding: 8px;
   border: 1px solid var(--dsw-alias-border-subtle);
   border-radius: 6px;
-  background: var(--dsw-alias-surface-default);
+  background: var(--dsw-alias-bg-base);
 }
 
 .detail {

@@ -8,7 +8,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--dsw-alias-content-primary);
+  color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 13px;
   line-height: 1;
@@ -17,11 +17,11 @@
 }
 
 .trigger:hover {
-  background: var(--dsw-alias-surface-hover);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .trigger:active {
-  background: var(--dsw-alias-surface-active);
+  background: var(--dsw-alias-interactive-bg-active);
 }
 
 .triggerRail {

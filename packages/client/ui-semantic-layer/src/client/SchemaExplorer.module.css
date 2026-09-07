@@ -17,17 +17,17 @@
   flex: 1;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--dsw-alias-border-default);
+  border: 1px solid var(--dsw-alias-border-l1);
   border-radius: 4px;
-  background: var(--dsw-alias-surface-default);
-  color: var(--dsw-alias-content-primary);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 13px;
   outline: none;
 }
 
 .searchInput:focus {
-  border-color: var(--dsw-alias-border-focus);
+  border-color: var(--dsw-alias-border-l4);
 }
 
 .breadcrumb {
@@ -36,13 +36,13 @@
   gap: 4px;
   padding: 6px 12px;
   font-size: 12px;
-  color: var(--dsw-alias-content-secondary);
+  color: var(--dsw-alias-label-secondary);
   border-bottom: 1px solid var(--dsw-alias-border-subtle);
 }
 
 .breadcrumbLink {
   cursor: pointer;
-  color: var(--dsw-alias-content-link);
+  color: var(--dsw-alias-link);
 }
 
 .breadcrumbLink:hover {
@@ -73,21 +73,21 @@
 }
 
 .domainCard:hover {
-  background: var(--dsw-alias-surface-hover);
-  border-color: var(--dsw-alias-border-default);
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-color: var(--dsw-alias-border-l1);
 }
 
 .domainName {
   font-size: 13px;
   font-weight: 500;
-  color: var(--dsw-alias-content-primary);
+  color: var(--dsw-alias-label-primary);
 }
 
 .domainCounts {
   display: flex;
   gap: 8px;
   font-size: 11px;
-  color: var(--dsw-alias-content-secondary);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .tabs {
@@ -102,7 +102,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
-  color: var(--dsw-alias-content-secondary);
+  color: var(--dsw-alias-label-secondary);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -110,12 +110,12 @@
 }
 
 .tab:hover {
-  color: var(--dsw-alias-content-primary);
+  color: var(--dsw-alias-label-primary);
 }
 
 .tabActive {
-  color: var(--dsw-alias-content-primary);
-  border-bottom-color: var(--dsw-alias-content-link);
+  color: var(--dsw-alias-label-primary);
+  border-bottom-color: var(--dsw-alias-link);
 }
 
 .assetList {
@@ -132,16 +132,16 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  color: var(--dsw-alias-content-primary);
+  color: var(--dsw-alias-label-primary);
   transition: background 120ms ease;
 }
 
 .assetRow:hover {
-  background: var(--dsw-alias-surface-hover);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .assetRowSelected {
-  background: var(--dsw-alias-surface-active);
+  background: var(--dsw-alias-interactive-bg-active);
 }
 
 .badge {
@@ -152,8 +152,8 @@
   font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
-  background: var(--dsw-alias-surface-hover);
-  color: var(--dsw-alias-content-secondary);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .badgeTable { background: #e3f2fd; color: #1565c0; }
@@ -167,20 +167,20 @@
 .loading {
   padding: 24px;
   text-align: center;
-  color: var(--dsw-alias-content-secondary);
+  color: var(--dsw-alias-label-secondary);
   font-size: 13px;
 }
 
 .error {
   padding: 12px;
-  color: var(--dsw-alias-content-danger);
+  color: var(--dsw-alias-state-error-primary);
   font-size: 13px;
 }
 
 .empty {
   padding: 24px;
   text-align: center;
-  color: var(--dsw-alias-content-secondary);
+  color: var(--dsw-alias-label-secondary);
   font-size: 13px;
 }
 
@@ -196,15 +196,15 @@
 }
 
 .searchHit:hover {
-  background: var(--dsw-alias-surface-hover);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .searchHitName {
   flex: 1;
-  color: var(--dsw-alias-content-primary);
+  color: var(--dsw-alias-label-primary);
 }
 
 .searchHitScore {
   font-size: 11px;
-  color: var(--dsw-alias-content-secondary);
+  color: var(--dsw-alias-label-secondary);
 }
