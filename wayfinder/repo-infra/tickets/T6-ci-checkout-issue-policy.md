@@ -36,3 +36,7 @@ PR #7 的 CI 多 job fast-fail（6-8s，未到 build/test）：
 Issue policy / Issue lifecycle 失败的 root cause **更精确**（原 (b) 猜 "GH token/permission" 不完整）：`node .github/issue-management/policy.mjs pr` 发 `GET /repos/deepseek-harness/deepseek-harness/pulls/44/requested_reviewers` → **404 Not Found**——`policy.mjs` 推导/硬编码错 repo 路径（`deepseek-harness/deepseek-harness`），应为 `McKenzieIT/deepseek-harness-da`（本 fork 的 owner/repo）。故 (b) **是 agent-doable**：修 `.github/issue-management/policy.mjs` 读 `GITHUB_REPOSITORY` env（GitHub Actions 注入 `owner/repo` 格式）OR 硬编码正确 owner/repo，而非靠 GH token permissions。CI log: Issue policy workflow run 34074751385 + job 101598597553 (static) 的 Issue policy step。**verify on current master cf813c18c0 before fixing。**
 
 checkout git exit 1 (a) 在 PR #44 CI **未再现**（PR #44 checkout 步骤通过，job 跑到 build/test）——疑 PR #7 的 `da9483a` post-merge 特定状态已过；(a) 可降优先级。
+
+## Upstream merge 2026-09-07（re-violated）
+
+merge 带回 upstream 版 `issue-policy.yml`/`issue-lifecycle.yml`（无 fork #52 的 `if: github.repository_owner` skip）。本票 (b) 再破。**重落 #52**（owner 守卫）针对 upstream 新 issue-mgmt 结构。追踪 → [UM2](../../data-agent/tickets/phase-upstream-merge/UM2-ci-conflicts-reland-48-52.md)。upstream `a33ed4d ci: stop PR gray checks from lifecycle and release publish jobs` 主动维护 issue-mgmt CI——评估是否采其 gray-check 守卫作补充。Status 维持 closed（PR #52 历史），re-land 后以 UM2 为准。

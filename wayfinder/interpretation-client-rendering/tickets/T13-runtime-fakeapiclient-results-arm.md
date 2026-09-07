@@ -52,3 +52,7 @@ This session drove verification + close because the prior session's claim was a 
 3. **Full `pnpm run test:gui` — 4243 passed / 5 failed / 1 skipped**. The 5 failures are ALL `packages/client/ui-semantic-layer/tests/wiring.spec.tsx` (`TypeError: useStore is not a function` at `SchemaExplorer.tsx:23` / `wiring.tsx:95`), caused by the concurrent session's uncommitted WIP in `ui-semantic-layer` (`SchemaExplorer.tsx`/`wiring.tsx` are modified in the working tree). Unrelated to T13 — different package, and T13's change is a type-only additive arm. T13's packages are green within the full suite.
 
 **Outcome**: T8 residual runtime half closed. With T11 (connection half) + T12 (cache hardening) + T13 (runtime half), the T8 residual is fully cleared and the R5 data line's T8 residual is closed; [T10](T10-consumer-fetchResult-wiring.md) (consumer wiring) is the remaining R5 piece. Trivial housekeeping — no Agent Note.
+
+## Upstream merge 2026-09-07（supersession）
+
+upstream `4f00a8b` 删 `packages/host/apiproxy`。本票 premised on T8 的 apiproxy `result.get` RPC——现落点 moot（整 R5 数据线 T8→T9→T10→T11/T12/T13 同 supersession）。re-home 进 `packages/api/remotes/` 追踪 → [UM4](../../data-agent/tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)。Status 维持 closed（历史），re-home 后以 UM4 为准。

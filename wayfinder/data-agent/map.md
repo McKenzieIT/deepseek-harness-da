@@ -373,6 +373,33 @@ master 从"永久飘红（无 PR 能变绿）"推进到 **7 个 node-24 meta-gat
 
 **GA-GT3 数据丢失修复**：已落在 master（`packages/data/semantic-layer/src/enrichment.ts` 的 `originAwareReplaceRefs` + `preserveCurated` escape-hatch，经 #54/#57/#58 GA-GT3-5b/5c/6b）。PR #15（origin-aware replace 旧分支）已作为陈旧/被取代关闭——实质修复已入库。
 
+## Upstream merge 2026-09-07
+
+merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）→ fork。2270 commits / 8525 files。session-prompt：[upstream-merge-2026-09-07-session-prompt](prompts/upstream-merge-2026-09-07-session-prompt.md)。预分析：`.tmp/audit/d5-upstream-impact.md`。
+
+**Merge 票务（UM-*，`tickets/phase-upstream-merge/`）**：
+- [UM1](tickets/phase-upstream-merge/UM1-pre-merge-branch-cleanup-and-merge.md) — 预清分支 + merge worktree + git merge upstream/master（入口）
+- [UM2](tickets/phase-upstream-merge/UM2-ci-conflicts-reland-48-52.md) — CI 冲突 + 针对新结构重落 #48/#52
+- [UM3](tickets/phase-upstream-merge/UM3-session-format-v2-drop-idless-cluster.md) — session format-v2 + 丢 fork id-less 簇（A5 → resolved-by-upstream）
+- [UM4](tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md) — apiproxy 重落户（results-RPC→packages/api/remotes；presetSwitches→data-agent，A6）
+- [UM5](tickets/phase-upstream-merge/UM5-drop-session-persistence-sqlite.md) — 丢 session-persistence-sqlite（对齐 handle-based jsonl）
+- [UM6](tickets/phase-upstream-merge/UM6-docs-subsystems-keep-data-agent.md) — docs/subsystems 保 fork data-agent + 接受 upstream 其他
+- [UM7](tickets/phase-upstream-merge/UM7-packages-ts-d5-buckets.md) — packages/* 68 .ts 按 d5 桶处置
+- [UM8](tickets/phase-upstream-merge/UM8-config-divergence-revert-churn.md) — 配置分歧 + 回退 churn
+- [UM9](tickets/phase-upstream-merge/UM9-code-mode-ptc-rename-sync.md) — code-mode→ptc 同步
+- [UM10](tickets/phase-upstream-merge/UM10-verify-typecheck-lint-ci-gates.md) — verify（typecheck/lint/check:ci:*/surface）
+- [UM11](tickets/phase-upstream-merge/UM11-pr-merge-post-cleanup.md) — PR + merge + 后清理
+- [UM12](tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) — post-merge GA-FORK-CI re-sweep（重基线 + 修 residual/new red gate；补 UM10 只验非回归的 gap）
+
+依赖链：UM1 → {UM2, UM3, UM9} → {UM4(after UM3), UM5(after UM3)} → {UM6, UM7, UM8} → UM10 → UM11 → UM12。
+
+**违反当前 upstream 的本域票据（更新后归档 + 此标记）**：
+- [B-DA1-preset-switch-tool-interrupt-race](tickets/phase-misc/B-DA1-preset-switch-tool-interrupt-race.md) — partial-fix 在 apiproxy（已删）；re-home → UM4
+- [GA-FORK-CI-green](tickets/phase-misc/GA-FORK-CI-green.md) — CI 结构迁移；重评 → UM2/UM10
+- [harness-package-removal（research）](research/harness-package-removal.md) — apiproxy 已被 upstream Remote 迁移 supersede；→ UM4
+
+跨域违反票据：[interpretation-client-rendering T8–T13 簇](../interpretation-client-rendering/map.md)（results-RPC 落 apiproxy，已删；re-home → UM4）、[repo-infra T6](../repo-infra/tickets/T6-ci-checkout-issue-policy.md)（#52 re-violated；→ UM2）、[task-orchestration-dag G10](../task-orchestration-dag/tickets/G10-subagent-tree-upstream-integration.md)（subagent upstream sync 触发）。
+
 ## Out of scope
 
 <!-- 超出 destination；closed，不毕业 -->

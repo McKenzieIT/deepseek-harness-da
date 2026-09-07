@@ -82,6 +82,15 @@ The map is done when: every architectural decision is locked (data model, UI pla
 - **dsh-data-agent DAG-aware planning**: G3 ✅ + G6 ✅ 现已解锁。data-agent 可通过 `ctx.dagModel.addTask()` 程序化 API（G6 D4）批量创建有依赖的任务链，不必走工具 API。具体的 data-agent 规划器集成设计归入 data-agent map——本 map 已提供所需的全部基础设施契约。
 - **Multi-agent communication/mailbox**: Agent-to-agent messaging for coordination is a separate concern from the task DAG model. May require its own service when multi-agent arrives.
 
+## Upstream merge 2026-09-07
+
+upstream 已动 subagent（`feat(subagent): authorize selectable child models`、`refactor(subagent): retain identity projection state`、`feat(subagent): unify adjacent agent delivery on steer`、`feat(subagent): migrate browser control to Remote`）。
+
+**upstream sync 触发的本域票据**：
+- [G10-subagent-tree-upstream-integration](tickets/G10-subagent-tree-upstream-integration.md) — 专为 upstream sync 设计。merge 时评估：upstream 是否 persist `subagent/start` 于 parent session / `SubagentStartRequest` 加 `taskId`/`contextId` / 新 session projection for child listing → 若是，G5 D2 task-ownership heuristic（`tools/pre-execute` 拦截）被 upstream 原生 linkage 取代，`correlationSource` `'pre-execute-heuristic'` → `'native'`。
+
+Status 维持 open，merge session 落地后更新。
+
 ## Out of scope
 
 - **Implementing the full multi-agent coordination protocol** — this map delivers the DAG visualization and data model infrastructure; the actual multi-agent negotiation, consensus, and dynamic workflow execution are future work that builds on what this map produces.

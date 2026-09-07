@@ -108,3 +108,7 @@
 5. **Interactive vs automated** — does the data agent need human approval/commands, or is it headless-only? Decides `interaction/` keep scope.
 6. **`goal/` spine coupling** — `agent-spine-demo:23-25` mounts goal unconditionally in code (README says config can omit via `goals`), but "Most of the spine set is fixed in code" (`agent-spine-demo/README.md` Known Limitations). Confirm whether `goals: false` fully suppresses before Phase 5.
 7. **`acp/` + `test-support/acp-snapshot`** — snapshot tests depend on ACP; removing `acp/` requires retiring those snapshot harnesses. Quantify test fallout before Phase 2.
+
+## Upstream merge 2026-09-07（superseded）
+
+本研究自标 `host/apiproxy` "LIKELY-UNNECESSARY / legacy BFF fallback"——upstream 已用 **Remote controllers 迁移**（`4f00a8b` 删 apiproxy + `packages/api/remotes/` + `refactor(connection): own RPC transport contracts`）解决，非纯删。本研究的 removal ORDER（Phase 1-4）部分被 upstream 实际演进 supersede。追踪 → [UM4](../tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)。本研究作历史 reference 保留，re-home 后以 UM4 为准。

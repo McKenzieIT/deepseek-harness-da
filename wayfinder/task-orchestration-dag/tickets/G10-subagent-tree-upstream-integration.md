@@ -41,3 +41,7 @@ Monitor upstream for:
 - If they add a session projection for child listing → can replace cross-session queries
 
 Track upstream changes on each merge and re-evaluate.
+
+## Upstream merge 2026-09-07（upstream sync 触发）
+
+本票专为 upstream sync 设计（"Monitor upstream...re-evaluate each merge"）。upstream 已动 subagent：`feat(subagent): authorize selectable child models`、`refactor(subagent): retain identity projection state`、`feat(subagent): unify adjacent agent delivery on steer`、`feat(subagent): migrate browser control to Remote`（后两条触及本票的 subagent 事件/Remote 迁移）。**评估**：upstream 是否 persist `subagent/start` 于 parent session / `SubagentStartRequest` 加 `taskId`/`contextId` / 新 session projection for child listing——若是，本票 G5 D2 task-ownership heuristic（`tools/pre-execute` 拦截）可被 upstream 原生 linkage 取代，`correlationSource` 从 `'pre-execute-heuristic'` → `'native'`。merge session 落地后更新。

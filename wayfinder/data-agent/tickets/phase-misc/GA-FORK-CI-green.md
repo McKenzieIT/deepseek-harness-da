@@ -37,3 +37,7 @@ PR #15 rebased 到 `origin/master` `24f954afa8` 后，临时改 standard runner�
 - GA-GT3 item 5/6（已落地 PR #15）。
 - upstream 的 CI（upstream 有 larger runner + secret；本票只关 fork）。
 - GA-EXP1-gated items 1/2/3/4（GA-GT3 剩余）。
+
+## Upstream merge 2026-09-07（merge-impact）
+
+upstream CI 结构已变：`61f910d ci: split master-only jobs into ci-master.yml`（master-only job 拆进 `ci-master.yml`）+ 新增 `build-preview-cloudflare.yml`/`release-publish.yml`/`release-vendor-publish.yml`。本票的三根因分析（runner/master-gate/ci.yml guardrail）针对**老 ci.yml 结构**——merge 后须针对新结构（ci-master.yml + ci.yml + 新 workflow）重评。重落 fork #48/#52 + 评估 3 新 workflow 追踪 → [UM2](../phase-upstream-merge/UM2-ci-conflicts-reland-48-52.md)；verify → [UM10](../phase-upstream-merge/UM10-verify-typecheck-lint-ci-gates.md)；post-merge re-sweep → [UM12](../phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md)。Status 维持 Open，merge 后更新。

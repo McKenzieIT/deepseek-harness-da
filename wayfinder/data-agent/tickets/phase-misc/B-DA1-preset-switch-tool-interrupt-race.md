@@ -180,3 +180,7 @@ This guarantees:
 ### Status
 
 Partially resolved: the mechanism is clarified (recompose itself is safe; the abort source is agent disposal from an unknown fiber lifecycle edge), the structural fix is designed. Full resolution requires reproducing and inspecting the JSONL to confirm `turn/end.reason.reason.kind === 'disposed'` vs an LLM error.
+
+## Upstream merge 2026-09-07（supersession）
+
+partial-fix 含 apiproxy `swapPreset` 序列化（d5 A6 / `packages/host/apiproxy/src/api-proxy.ts:2397,:3024`）——upstream `4f00a8b` 删了 apiproxy 整包。race（若真实）改在 **data-agent observer rebind-safe** 或 **Remote 层** 重做。追踪 → [UM4](../phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)。Status 维持 partially-resolved，re-evaluate 后以 UM4 为准。

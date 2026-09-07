@@ -66,3 +66,7 @@ T9 ship 后 subagent code review 发现 **4 HIGH + 5 MEDIUM + 5 LOW + 4 NIT** �
 **LOW/NIT**:inject face 混「no scope」与「not found」;global 非 per-session 预算;key-collision 仅 argue 未 enforce;export-discipline drift(三 value export 无消费方,`ResultFetchError` 反 type-only);`scopeId` drop `SessionId` brand + op-label;dead import + 冗余 cast + `RpcErrorCode` widen + timeout policy。
 
 修补 graduated 为 [T12](T12-harden-result-cache-per-review.md),**blocks [T10]**(消费方接线前必须先修 HIGH)。T11 扩展(runtime TypeError in `?fixture` + T9 `tsc -b` exit 2 依赖 T11)。Agent Note 的 Config claim(`cordis.yml` 不可达)被 `ui-semantic-layer` precedent 证伪,T12 corrects。详见 [T12](T12-harden-result-cache-per-review.md)。
+
+## Upstream merge 2026-09-07（supersession）
+
+upstream `4f00a8b` 删 `packages/host/apiproxy`。本票 premised on T8 的 apiproxy `result.get` RPC——现落点 moot（整 R5 数据线 T8→T9→T10→T11/T12/T13 同 supersession）。re-home 进 `packages/api/remotes/` 追踪 → [UM4](../../data-agent/tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)。Status 维持 closed（历史），re-home 后以 UM4 为准。
