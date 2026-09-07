@@ -100,6 +100,7 @@ dimension_refs:
       - dws_column: card_pool_id
         dim_column: card_pool_id
     derivation: 根据规范，通过card_pool_id关联灵器抽卡卡池配置维度表以获取卡池详细配置与保底规则等信息。
+    origin: deterministic
   - dim_table: dim_10000251_charm_gacha_info_arch
     join_keys:
       - dws_column: card_pool_id
@@ -127,6 +128,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: 根据规范，通过server_id关联服务器维度表以获取区服名称及开服时间等基础属性。
+    origin: deterministic
   - dim_table: dim_10000251_trans_conquest_df_arch
     join_keys:
       - dws_column: ds

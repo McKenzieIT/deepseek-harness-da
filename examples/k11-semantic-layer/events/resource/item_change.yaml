@@ -157,5 +157,6 @@ external_refs:
       - dws_column: reason1
         dim_column: reason1
     derivation: 确定性：事件字段 reason1 与 dim_10000251_trans_reason1_df 主键精确同名
+    origin: deterministic
 alt_labels:
   - 道具变动

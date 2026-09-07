@@ -136,6 +136,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: "DWS column server_id (comment: 区服id) is an exact match to PK server_id of dim_10000251_server_info (服务器维度配置表)."
+    origin: deterministic
   - dim_table: dim_10000251_function_info
     join_keys:
       - dws_column: play_func_id
