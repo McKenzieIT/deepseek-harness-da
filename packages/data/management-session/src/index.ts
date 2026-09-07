@@ -38,7 +38,16 @@ export interface ManagementSessionDescriptor {
   readonly session: Session
   /** The parent session id this management session references (if any). */
   readonly parentSessionId?: SessionId
-  /** The read-only parent context summary snapshot taken at creation time. */
+  /**
+   * The read-only parent context summary snapshot taken at creation time.
+   * Descriptor-only metadata — exposed via `getActive()`/`listActive()` and
+   * the `management-session/created` event, **not** injected into the system
+   * prompt.
+   *
+   * @security Raw unsanitized truncation of parent turns; parent user turns
+   *   are attacker-controllable. If ever wired into a prompt, MUST be
+   *   LLM-summarized or wrapped in an `<untrusted_data>` fence first.
+   */
   readonly parentContextSummary?: string
   /** Timestamp when this management session was created. */
   readonly createdAt: number
@@ -49,9 +58,17 @@ export interface ManagementSessionDescriptor {
 /** Options for creating a management session. */
 export interface CreateManagementSessionOptions {
   /**
-   * The parent data-query session id. When provided, the management session's
-   * system prompt will include a read-only summary of the parent session's
-   * recent conversation for context continuity.
+   * The parent data-query session id. When provided, a read-only summary of
+   * the parent session's recent conversation is captured as the
+   * `parentContextSummary` descriptor field, exposed via `getActive()`/
+   * `listActive()` and emitted on the `management-session/created` event. It
+   * is **not** injected into the management session's system prompt.
+   *
+   * @security The summary is a raw role-labeled truncation of parent turns
+   *   (`User:`/`Assistant:`) and is unsanitized. Parent user turns are
+   *   attacker-controllable. If this summary is ever wired into a prompt, it
+   *   MUST be LLM-summarized into a neutral digest or wrapped in an
+   *   `<untrusted_data>` fence before insertion — never injected raw.
    */
   parentSessionId?: string
   /**
@@ -95,8 +112,16 @@ export interface SummarizableMessage {
 
 /**
  * Summarize recent messages from a session for cross-session context reference.
- * Produces a concise text summary of the last N messages suitable for inclusion
- * in a system prompt.
+ * Produces a role-labeled text summary of the last N messages, stored as the
+ * `parentContextSummary` descriptor field (emitted via the
+ * `management-session/created` event) — **not** injected into the system
+ * prompt.
+ *
+ * @security The output is a raw, unsanitized truncation of parent turns
+ *   (`User:`/`Assistant:`). Parent user turns are attacker-controllable. If
+ *   this summary is ever wired into a prompt, it MUST be LLM-summarized into a
+ *   neutral digest or wrapped in an `<untrusted_data>` fence before insertion
+ *   — never injected raw.
  *
  * @param messages - the derived message history from the parent session.
  * @param maxMessages - maximum messages to include.
