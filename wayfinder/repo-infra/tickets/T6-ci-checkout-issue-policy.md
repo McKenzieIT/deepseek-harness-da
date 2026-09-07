@@ -21,3 +21,9 @@ PR #7 的 CI 多 job fast-fail（6-8s，未到 build/test）：
 ## Scope
 
 定 root cause（checkout (a) agent-doable；Issue policy (b) 可能需用户 GH settings），修，验 CI 绿。出 build/theme infra 范围（CI infra，separate）。
+
+## 更正（2026-09-07，PR #44 CI 验证）
+
+Issue policy / Issue lifecycle 失败的 root cause **更精确**（原 (b) 猜 "GH token/permission" 不完整）：`node .github/issue-management/policy.mjs pr` 发 `GET /repos/deepseek-harness/deepseek-harness/pulls/44/requested_reviewers` → **404 Not Found**——`policy.mjs` 推导/硬编码错 repo 路径（`deepseek-harness/deepseek-harness`），应为 `McKenzieIT/deepseek-harness-da`（本 fork 的 owner/repo）。故 (b) **是 agent-doable**：修 `.github/issue-management/policy.mjs` 读 `GITHUB_REPOSITORY` env（GitHub Actions 注入 `owner/repo` 格式）OR 硬编码正确 owner/repo，而非靠 GH token permissions。CI log: Issue policy workflow run 34074751385 + job 101598597553 (static) 的 Issue policy step。**verify on current master cf813c18c0 before fixing。**
+
+checkout git exit 1 (a) 在 PR #44 CI **未再现**（PR #44 checkout 步骤通过，job 跑到 build/test）——疑 PR #7 的 `da9483a` post-merge 特定状态已过；(a) 可降优先级。
