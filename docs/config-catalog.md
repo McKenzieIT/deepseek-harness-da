@@ -93,6 +93,7 @@ Source: [`packages/examples/acp-demo/src/index.ts:39`](../packages/examples/acp-
 Requires: `storageDomain` · `credentials` · `webServer`
 
 ```ts config-catalog
+/** Config */
 export interface Config {
   /** Default admin user id seeded on first boot (no users table → create). */
   readonly seedAdminId?: string
@@ -103,7 +104,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/data/admin/src/index.ts:142`](../packages/data/admin/src/index.ts)
+Source: [`packages/data/admin/src/index.ts:144`](../packages/data/admin/src/index.ts)
 
 <a id="deepseek-aidsh-agent-default-model"></a>
 
@@ -746,6 +747,7 @@ Source: [`packages/embedder/embedder-http/src/index.ts:155`](../packages/embedde
 Requires: `llm`
 
 ```ts config-catalog
+/** Config */
 export interface Config {
   /** Directory holding the eval case YAMLs (default: the K11 case set). */
   readonly caseDir?: string
@@ -762,7 +764,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/eval/eval-runner-service/src/index.ts:63`](../packages/eval/eval-runner-service/src/index.ts)
+Source: [`packages/eval/eval-runner-service/src/index.ts:64`](../packages/eval/eval-runner-service/src/index.ts)
 
 <a id="deepseek-aidsh-evidence-query"></a>
 
@@ -771,13 +773,14 @@ Source: [`packages/eval/eval-runner-service/src/index.ts:63`](../packages/eval/e
 Requires: `schema`
 
 ```ts config-catalog
+/** EvidenceQueryConfig */
 export interface EvidenceQueryConfig {
   /** Directory holding the JSONL eval-result files the service loads into its eval store (defaults to an in-memory store when unset). */
   readonly resultsDir?: string
 }
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:65`](../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:66`](../packages/data/evidence-query/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-agent-team"></a>
 
@@ -903,6 +906,7 @@ Source: [`packages/goal/goal/src/index.ts:116`](../packages/goal/goal/src/index.
 Requires: `evidenceQuery` · `systemPrompt`
 
 ```ts config-catalog
+/** Config */
 export interface Config {
   /**
    * Number of consecutive no-improvement evaluations after which the direction
@@ -913,7 +917,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/goal/goal-eval-context/src/index.ts:25`](../packages/goal/goal-eval-context/src/index.ts)
+Source: [`packages/goal/goal-eval-context/src/index.ts:26`](../packages/goal/goal-eval-context/src/index.ts)
 
 <a id="deepseek-aidsh-goal-eval-policy"></a>
 
@@ -2122,13 +2126,14 @@ Source: [`packages/sandbox/sandbox-policy/src/index.ts:67`](../packages/sandbox/
 ## `@deepseek-ai/dsh-scope-registry`
 
 ```ts config-catalog
+/** ScopeRegistryConfig */
 export interface ScopeRegistryConfig {
   /** Path to the scopes.yaml registry file. Empty = service is inert (no scopes). */
   readonly registryPath: string
 }
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:51`](../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts:52`](../packages/data/scope-registry/src/index.ts)
 
 <a id="deepseek-aidsh-sdk-jsonrpc-server"></a>
 
@@ -3059,10 +3064,11 @@ Source: [`packages/shell/tool-bash-persistent/src/index.ts:432`](../packages/she
 Requires: `tools` · `codeRuntime` · `resultCache`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-compute/src/index.ts:11`](../packages/data/tool-compute/src/index.ts)
+Source: [`packages/data/tool-compute/src/index.ts:12`](../packages/data/tool-compute/src/index.ts)
 
 <a id="deepseek-aidsh-tool-critique-sql"></a>
 
@@ -3084,10 +3090,11 @@ Source: [`packages/data/tool-critique-sql/src/index.ts:49`](../packages/data/too
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-discover-alt-labels/src/index.ts:24`](../packages/data/tool-discover-alt-labels/src/index.ts)
+Source: [`packages/data/tool-discover-alt-labels/src/index.ts:25`](../packages/data/tool-discover-alt-labels/src/index.ts)
 
 <a id="deepseek-aidsh-tool-discover-relations"></a>
 
@@ -3109,10 +3116,11 @@ Source: [`packages/data/tool-discover-relations/src/index.ts:27`](../packages/da
 Requires: `tools` · `schema` · `audit`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-edit-definition/src/index.ts:22`](../packages/data/tool-edit-definition/src/index.ts)
+Source: [`packages/data/tool-edit-definition/src/index.ts:23`](../packages/data/tool-edit-definition/src/index.ts)
 
 <a id="deepseek-aidsh-tool-evaluate-sql-quality"></a>
 
@@ -3191,10 +3199,11 @@ Source: [`packages/fs/tool-fs-search/src/index.ts:73`](../packages/fs/tool-fs-se
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-get-coverage/src/index.ts:24`](../packages/data/tool-get-coverage/src/index.ts)
+Source: [`packages/data/tool-get-coverage/src/index.ts:25`](../packages/data/tool-get-coverage/src/index.ts)
 
 <a id="deepseek-aidsh-tool-get-definition"></a>
 
@@ -3203,10 +3212,11 @@ Source: [`packages/data/tool-get-coverage/src/index.ts:24`](../packages/data/too
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-get-definition/src/index.ts:20`](../packages/data/tool-get-definition/src/index.ts)
+Source: [`packages/data/tool-get-definition/src/index.ts:21`](../packages/data/tool-get-definition/src/index.ts)
 
 <a id="deepseek-aidsh-tool-goal"></a>
 
@@ -3265,10 +3275,11 @@ Source: [`packages/jobs/tool-jobs/src/index.ts:32`](../packages/jobs/tool-jobs/s
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-list-domains/src/index.ts:27`](../packages/data/tool-list-domains/src/index.ts)
+Source: [`packages/data/tool-list-domains/src/index.ts:28`](../packages/data/tool-list-domains/src/index.ts)
 
 <a id="deepseek-aidsh-tool-load-event-definition"></a>
 
@@ -3336,10 +3347,11 @@ Source: [`packages/data/tool-present-clarification/src/index.ts:39`](../packages
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-present-decomposition/src/index.ts:8`](../packages/data/tool-present-decomposition/src/index.ts)
+Source: [`packages/data/tool-present-decomposition/src/index.ts:9`](../packages/data/tool-present-decomposition/src/index.ts)
 
 <a id="deepseek-aidsh-tool-present-table"></a>
 
@@ -3348,10 +3360,11 @@ Source: [`packages/data/tool-present-decomposition/src/index.ts:8`](../packages/
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-present-table/src/index.ts:8`](../packages/data/tool-present-table/src/index.ts)
+Source: [`packages/data/tool-present-table/src/index.ts:9`](../packages/data/tool-present-table/src/index.ts)
 
 <a id="deepseek-aidsh-tool-pwsh"></a>
 
@@ -3420,10 +3433,11 @@ Source: [`packages/workflow/tool-ralph/src/index.ts:23`](../packages/workflow/to
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-reachability-delta/src/index.ts:17`](../packages/data/tool-reachability-delta/src/index.ts)
+Source: [`packages/data/tool-reachability-delta/src/index.ts:18`](../packages/data/tool-reachability-delta/src/index.ts)
 
 <a id="deepseek-aidsh-tool-resolve-term"></a>
 
@@ -3432,10 +3446,11 @@ Source: [`packages/data/tool-reachability-delta/src/index.ts:17`](../packages/da
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-resolve-term/src/index.ts:18`](../packages/data/tool-resolve-term/src/index.ts)
+Source: [`packages/data/tool-resolve-term/src/index.ts:19`](../packages/data/tool-resolve-term/src/index.ts)
 
 <a id="deepseek-aidsh-tool-retrieve"></a>
 
@@ -3462,10 +3477,11 @@ Source: [`packages/data/tool-retrieve/src/index.ts:54`](../packages/data/tool-re
 Requires: `tools` · `schema` · `audit`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-revert-edit/src/index.ts:21`](../packages/data/tool-revert-edit/src/index.ts)
+Source: [`packages/data/tool-revert-edit/src/index.ts:22`](../packages/data/tool-revert-edit/src/index.ts)
 
 <a id="deepseek-aidsh-tool-scope-routing"></a>
 
@@ -3474,10 +3490,11 @@ Source: [`packages/data/tool-revert-edit/src/index.ts:21`](../packages/data/tool
 Requires: `tools` · `systemPrompt`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-scope-routing/src/index.ts:10`](../packages/data/tool-scope-routing/src/index.ts)
+Source: [`packages/data/tool-scope-routing/src/index.ts:11`](../packages/data/tool-scope-routing/src/index.ts)
 
 <a id="deepseek-aidsh-tool-search-data-sources"></a>
 
@@ -3522,13 +3539,14 @@ Source: [`packages/data/tool-search-data-sources/src/index.ts:40`](../packages/d
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {
   /** Maximum number of schema-corpus rows the BM25 linker returns per query (default 20). */
   readonly topK?: number
 }
 ```
 
-Source: [`packages/data/tool-search-schema/src/index.ts:21`](../packages/data/tool-search-schema/src/index.ts)
+Source: [`packages/data/tool-search-schema/src/index.ts:22`](../packages/data/tool-search-schema/src/index.ts)
 
 <a id="deepseek-aidsh-tool-session-query"></a>
 
@@ -3676,10 +3694,11 @@ Source: [`packages/subagent/tool-subagent-report/src/index.ts:27`](../packages/s
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-suggest-followups/src/index.ts:8`](../packages/data/tool-suggest-followups/src/index.ts)
+Source: [`packages/data/tool-suggest-followups/src/index.ts:9`](../packages/data/tool-suggest-followups/src/index.ts)
 
 <a id="deepseek-aidsh-tool-terminal"></a>
 
@@ -3728,10 +3747,11 @@ Source: [`packages/todo/tool-todo/src/index.ts:29`](../packages/todo/tool-todo/s
 Requires: `tools`
 
 ```ts config-catalog
+/** Config */
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-trigger-eval/src/index.ts:22`](../packages/data/tool-trigger-eval/src/index.ts)
+Source: [`packages/data/tool-trigger-eval/src/index.ts:23`](../packages/data/tool-trigger-eval/src/index.ts)
 
 <a id="deepseek-aidsh-tool-update-table-config"></a>
 
