@@ -45,6 +45,7 @@ import type {} from '@deepseek-ai/dsh-audit'
 import {
   syncWriteDefinitions as syncWriteDefinitionsFromLayer,
   updateTableMeta as updateTableMetaFromLayer,
+  updateEventMeta as updateEventMetaFromLayer,
   loadEventDefinition as loadEventDefinitionFromLayer,
   loadTableDefinition as loadTableDefinitionFromLayer,
   loadRetrievalCorpus as loadRetrievalCorpusFromLayer,
@@ -89,6 +90,7 @@ export {
   writeTable,
   writeEventYaml,
   updateTableMeta,
+  updateEventMeta,
   inferRole,
   generateTableYaml,
   generateDimYaml,
@@ -1037,6 +1039,35 @@ export class SemanticLayerService extends Service {
       await this.enrichOnWrite([name])
     }
     return res
+  }
+
+  /**
+   * Tier-2 per-scope write: read-merge-validate-write a single event's meta
+   * updates, recording the write via `ctx.audit` (D5 non-disableable). Parallel
+   * to `updateTableMeta` for the event substrate (A13 TOCTOU lost-update fix):
+   * the substrate re-reads the latest on-disk event YAML at write time and
+   * shallow-merges `updates` on top, so a concurrent edit between load+write
+   * is no longer silently overwritten.
+   *
+   * The on-write event enrichment hook (parallel to `enrichOnWrite` for tables)
+   * remains deferred — see the note on `discoverEventRelations`. This method
+   * closes the "no Service-level event-write path" gap by routing through the
+   * substrate `updateEventMeta` (Tier-2 audited) instead of the raw-edit
+   * `writeEventYaml` surface.
+   * @param name - the event `name` to update (must already exist on disk).
+   * @param updates - the field overrides merged over the existing event YAML.
+   * @param opts - optional scope id override (default scope id is used when omitted).
+   * @returns `{ ok: true, event_name }` on success, or `{ ok: false, error }` when the event is missing/malformed or validation fails.
+   */
+  async updateEventMeta(
+    name: string,
+    updates: Record<string, unknown>,
+    opts: { readonly scopeId?: string } = {},
+  ): Promise<{ ok: true; event_name: string } | { ok: false; error: string }> {
+    return updateEventMetaFromLayer(this.resolveRoot(opts.scopeId), name, updates, {
+      recorder: this.recorder(),
+      scope_id: opts.scopeId ?? this.scopeId,
+    })
   }
 }
 
