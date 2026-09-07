@@ -288,6 +288,38 @@ describe('enrichAllDwsTables', () => {
     expect(byDim.dim_server!.origin).toBe('deterministic')
   })
 
+  test('preserveCurated=false (escape-hatch) drops curated refs for a raw full replace (GA-GT3-5b)', async () => {
+    // GA-GT3-5b escape-hatch: preserveCurated=false opts out of origin-aware
+    // replace (PR #43) and does a RAW full replace — only the rediscovered
+    // refs remain; manual + undefined (curated) existing refs are dropped. This
+    // is the rare blow-away-rebuild case (deferred from GA-GT3 item 5);
+    // default (preserveCurated=true) keeps the origin-aware behavior unchanged.
+    const dimServer = { table_name: 'dim_server', kind: 'dim' as const, primary_key: ['server_id'], label_columns: ['s_name'], columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }, { name: 's_name', type: 'string', comment: '', role: 'dimension' }], metrics: {}, partitions: [], confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' }, domains: [], description: '', table_comment: '', granularity: '', engine: 'maxcompute', coverage: null, supersedes: [], disambiguation: null, primary_key_unique: null, alt_labels: [], duplicate_sample: [], freshness: '', dimension_refs: [] } as TableDefinition
+    writeFileSync(join(dir, 'tables', 'dim_server.yaml'), dumpYaml(dimServer))
+    const curated = {
+      ...dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '区服ID', role: 'dimension' }] }),
+      dimension_refs: [
+        { dim_table: 'dim_other', join_keys: [{ dws_column: 'other_id', dim_column: 'other_id' }], derivation: 'curated by analyst' },
+        { dim_table: 'dim_manual', join_keys: [{ dws_column: 'm_id', dim_column: 'm_id' }], derivation: 'manual join', origin: 'manual' },
+        { dim_table: 'dim_server', join_keys: [{ dws_column: 'server_id', dim_column: 'server_id' }], derivation: 'stale deterministic', origin: 'deterministic' },
+      ],
+    }
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(curated))
+    // 6th arg preserveCurated=false -> raw full replace (escape-hatch)
+    const res = await enrichAllDwsTables(dir, undefined, ['dws_pay'], false, undefined, false)
+    expect(res.written).toBe(1)
+    const out = yaml.load(readFileSync(join(dir, 'tables', 'dws_pay.yaml'), 'utf-8')) as Record<string, unknown>
+    const refs = out.dimension_refs as Array<{ dim_table: string; origin?: string; derivation: string }>
+    const byDim = Object.fromEntries(refs.map(r => [r.dim_table, r]))
+    // only the rediscovered dim_server remains; curated dim_other + dim_manual DROPPED
+    expect(refs).toHaveLength(1)
+    expect(byDim.dim_server).toBeDefined()
+    expect(byDim.dim_server!.derivation).toContain('确定性')
+    expect(byDim.dim_server!.origin).toBe('deterministic')
+    expect(byDim.dim_other).toBeUndefined()
+    expect(byDim.dim_manual).toBeUndefined()
+  })
+
   test('empty DIM inventory short-circuits: written:0, no per-table writes (GA-GT3 item 6)', async () => {
     // No DIM tables in the layer -> no joins possible. Re-discovery is a no-op;
     // without a short-circuit the loop writes dimension_refs to every DWS and

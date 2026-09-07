@@ -332,12 +332,14 @@ function originAwareReplaceRefs(
  * `mergeExisting`: when `true`, discovered refs are merged WITH the table's
  * existing `dimension_refs` (everything preserved, discovered unioned) — used by
  * the on-write hook so auto-trigger can never wipe any existing join. When
- * `false` (default), origin-aware replace: curated existing refs (`manual` /
- * `undefined`) are preserved and machine-generated ones (`deterministic` / `llm`)
- * are dropped so re-discovery can refresh them — used by the explicit
- * `discoverRelations` entry (re-discover, G3 direct-write). Either way,
- * human-curated joins the deterministic round does not rediscover are never
- * wiped (GA-GT3 item 5).
+ * `false` (default), replace: curated existing refs (`manual` / `undefined`)
+ * are preserved and machine-generated ones (`deterministic` / `llm`) are
+ * dropped so re-discovery can refresh them — used by the explicit
+ * `discoverRelations` entry (re-discover, G3 direct-write). By default
+ * (`preserveCurated=true`) the replace is origin-aware (GA-GT3 item 5);
+ * `preserveCurated=false` is the escape-hatch (GA-GT3-5b) for the rare
+ * blow-away-rebuild case: a raw full replace that drops ALL existing refs
+ * (incl. curated manual/undefined) and writes only the freshly-discovered set.
  *
  * CL-18 Phase 2: `excludeColumnsFn` (optional) computes a per-target exclude
  * set from the target table's metadata (e.g. its partition columns) and
@@ -349,6 +351,10 @@ function originAwareReplaceRefs(
  * @param tables - optional table_name filter; omit or empty to enrich all DWS tables.
  * @param mergeExisting - when true, merge discovered refs with existing (preserve curated); default false (replace).
  * @param excludeColumnsFn - optional per-target exclude-set builder (CL-18 Phase 2).
+ * @param preserveCurated - when true (default), origin-aware replace (curated
+ *   manual/undefined preserved, machine dropped); when false, raw full replace
+ *   (ALL existing refs dropped, only discovered remain) — the escape-hatch for
+ *   blow-away-rebuild (GA-GT3-5b). Ignored when `mergeExisting=true`.
  * @returns `enriched` (DWS tables that gained at least one ref) + `written` (DWS
  *   tables updated) + per-table `errors`.
  */
@@ -358,6 +364,7 @@ export async function enrichAllDwsTables(
   tables?: readonly string[],
   mergeExisting = false,
   excludeColumnsFn?: (def: TableDefinition) => ReadonlySet<string> | undefined,
+  preserveCurated = true,
 ): Promise<{ enriched: number; written: number; errors: string[] }> {
   const dimInventory = buildDimInventory(semanticLayer)
   // GA-GT3 item 6: no DIM tables -> no joins are possible for any table; skip
@@ -385,13 +392,19 @@ export async function enrichAllDwsTables(
       const discovered = await discoverRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
       // mergeExisting=true (on-write hook): merge everything (preserve all existing,
       //   incl. machine).
-      // mergeExisting=false (default, explicit discoverRelations): origin-aware
-      //   replace — keep curated (manual/undefined), drop machine (deterministic/llm)
-      //   so re-discovery refreshes stale machine refs without wiping joins the
-      //   deterministic round cannot rediscover (GA-GT3 item 5 data-loss fix).
+      // mergeExisting=false (default, explicit discoverRelations): replace —
+      //   preserveCurated=true (default): origin-aware — keep curated
+      //     (manual/undefined), drop machine (deterministic/llm) so re-discovery
+      //     refreshes stale machine refs without wiping joins the deterministic
+      //     round cannot rediscover (GA-GT3 item 5 data-loss fix).
+      //   preserveCurated=false: raw full replace — drop ALL existing (incl.
+      //     curated) and write only discovered (GA-GT3-5b escape-hatch for
+      //     blow-away-rebuild).
       const refs = mergeExisting
         ? mergeRefs(existingRefs(t.raw), discovered)
-        : originAwareReplaceRefs(existingRefs(t.raw), discovered)
+        : preserveCurated
+          ? originAwareReplaceRefs(existingRefs(t.raw), discovered)
+          : discovered
       // write raw + refs (preserves physical types / extra keys; writeTable validates)
       await writeTable(semanticLayer, t.table_name, { ...t.raw, dimension_refs: refs })
       written += 1
@@ -507,9 +520,12 @@ export async function discoverEventRelationsFor(
  * check; no schema validation — `loadEvents` validates on read).
  * `mergeExisting`: when true, discovered refs merge WITH the event's existing
  * `external_refs` (everything preserved, discovered unioned); default false —
- * origin-aware replace (curated `manual`/`undefined` preserved, machine
- * `deterministic`/`llm` dropped so re-discovery refreshes them; GA-GT3 item 5,
- * parallel to `enrichAllDwsTables`).
+ * replace (curated `manual`/`undefined` preserved, machine `deterministic`/`llm`
+ * dropped so re-discovery refreshes them; GA-GT3 item 5, parallel to
+ * `enrichAllDwsTables`). By default (`preserveCurated=true`) the replace is
+ * origin-aware; `preserveCurated=false` is the escape-hatch (GA-GT3-5b) for the
+ * rare blow-away-rebuild case: a raw full replace that drops ALL existing refs
+ * (incl. curated manual/undefined) and writes only the freshly-discovered set.
  *
  * CL-18 Phase 2: `excludeColumnsFn` (optional) computes a per-event exclude
  * set and forwards it to `discoverEventRelationsFor` (parallel to
@@ -520,6 +536,10 @@ export async function discoverEventRelationsFor(
  * @param events - optional event-name filter; omit/empty to enrich all events.
  * @param mergeExisting - when true, merge discovered with existing; default false.
  * @param excludeColumnsFn - optional per-event exclude-set builder (CL-18 Phase 2).
+ * @param preserveCurated - when true (default), origin-aware replace (curated
+ *   manual/undefined preserved, machine dropped); when false, raw full replace
+ *   (ALL existing refs dropped, only discovered remain) — the escape-hatch for
+ *   blow-away-rebuild (GA-GT3-5b). Ignored when `mergeExisting=true`.
  * @returns `enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.
  */
 export async function enrichAllEvents(
@@ -528,6 +548,7 @@ export async function enrichAllEvents(
   events?: readonly string[],
   mergeExisting = false,
   excludeColumnsFn?: (def: EventDefinition) => ReadonlySet<string> | undefined,
+  preserveCurated = true,
 ): Promise<{ enriched: number; written: number; errors: string[] }> {
   const dimInventory = buildDimInventory(semanticLayer)
   // GA-GT3 item 6: no DIM tables -> no joins possible for any event; skip the
@@ -550,13 +571,19 @@ export async function enrichAllEvents(
     try {
       const discovered = await discoverEventRelationsFor(r.data, dimInventory, llmCall, excludeColumnsFn?.(r.data))
       // mergeExisting=true (on-write hook — none for events today): merge everything.
-      // mergeExisting=false (default, explicit discoverEventRelations): origin-aware
-      //   replace — keep curated (manual/undefined), drop machine (deterministic/llm)
-      //   so re-discovery refreshes stale machine refs without wiping curated joins
-      //   (GA-GT3 item 5 data-loss fix; parallel to enrichAllDwsTables).
+      // mergeExisting=false (default, explicit discoverEventRelations): replace —
+      //   preserveCurated=true (default): origin-aware — keep curated
+      //     (manual/undefined), drop machine (deterministic/llm) so re-discovery
+      //     refreshes stale machine refs without wiping curated joins (GA-GT3
+      //     item 5 data-loss fix; parallel to enrichAllDwsTables).
+      //   preserveCurated=false: raw full replace — drop ALL existing (incl.
+      //     curated) and write only discovered (GA-GT3-5b escape-hatch for
+      //     blow-away-rebuild; parallel to enrichAllDwsTables).
       const refs = mergeExisting
         ? mergeRefs(existingEventRefs(e.raw), discovered)
-        : originAwareReplaceRefs(existingEventRefs(e.raw), discovered)
+        : preserveCurated
+          ? originAwareReplaceRefs(existingEventRefs(e.raw), discovered)
+          : discovered
       const content = dumpYaml({ ...e.raw, external_refs: refs })
       const res = await writeEventYaml(semanticLayer, e.name, content)
       if (res.ok) {
