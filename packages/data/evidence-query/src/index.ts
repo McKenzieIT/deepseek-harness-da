@@ -333,6 +333,17 @@ export class EvidenceQueryService extends Service {
 
   private readonly evalStore: EvalResultStore
 
+  /**
+   * A10: cached asset-id set per scope, invalidated by corpus version so a
+   * stale cache is never served after a semantic-layer write. Eliminates the
+   * per-call `loadTables`/`loadEvents`/`loadMetricDefinitions` YAML reparse
+   * that the old `reachabilityDelta` did via `getAllAssetIds()`. Keyed by
+   * scopeId + the `SemanticLayerService.corpusVersion(scopeId)` counter (which
+   * advances on every write via `invalidateCaches`), so the cache is sound
+   * across concurrent writes without an event listener.
+   */
+  private assetIdCache: { scopeId: string | undefined; version: number; ids: Set<string> } | undefined
+
   constructor(ctx: Context, configOrStore?: EvidenceQueryConfig | EvalResultStore) {
     super(ctx, 'evidenceQuery')
     if (configOrStore instanceof EvalResultStore) {
@@ -494,8 +505,33 @@ export class EvidenceQueryService extends Service {
 
   /**
    * Reachability delta: "if we add this relation, which asset pairs become
-   * newly reachable via joins?" Clones the current graph, adds the proposed
-   * relation, and compares BFS reachability before/after.
+   * newly reachable via joins?" Computes the join-reachability of sourceId
+   * and targetId on the before-graph (2 BFS, not 2*N) and reasons about the
+   * one-edge difference — the new edge (when type=joins) merges sourceId's
+   * and targetId's join-components, so every cross-component pair is newly
+   * reachable. When sourceId and targetId are already in the same component
+   * (or the relation type is not 'joins'), no new reachability appears.
+   *
+   * A10 (incremental BFS): previously this method ran `bfsJoinReachable` from
+   * EVERY node (O(N²)) + rebuilt the entire `RelationGraph` from YAML twice
+   * (`getAllAssetIds` + `buildAugmentedGraph`). The incremental approach does
+   * 2 BFS on the cached before-graph and caches the parsed asset-id set, so a
+   * delta call is O(N+E) with zero YAML reparse (the before-graph is already
+   * cached in `SemanticLayerService.getRelationGraph`). LLM-triggerable via
+   * the `reachabilityDelta` tool, so the O(N²) + 2-full-reparse-per-call was
+   * a real cost on every delta query.
+   *
+   * Correctness: the `joins` subgraph stored by `RelationGraph.build` is
+   * undirected (bidirectional edges), so "reachable from sourceId" === "can
+   * reach sourceId". The new bidirectional `joins` edge merges the two
+   * previously-disjoint components; every cross pair `(u, v)` with `u` in
+   * sourceId's component and `v` in targetId's component is newly reachable
+   * (they couldn't reach each other before — different components). Pairs
+   * within a single component were already reachable, so they are excluded.
+   * The `from` set is filtered by the cached asset-id set to match the old
+   * allNodes-iteration (a proposed sourceId/targetId that doesn't correspond
+   * to a semantic-layer asset is excluded from the `from` side, just as the
+   * old `getAllAssetIds()` loop did).
    * @param newRelation - the proposed relation to add before recomputing reachability.
    * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns the proposed relation plus the asset pairs newly reachable via joins after adding it.
@@ -503,26 +539,44 @@ export class EvidenceQueryService extends Service {
   reachabilityDelta(newRelation: ProposedRelation, scopeId?: string): ReachabilityDeltaResult {
     const graph = this.ctx.schema.getRelationGraph(scopeId)
 
-    // Compute current reachability sets for all nodes
-    const allNodes = this.getAllAssetIds(scopeId)
-    const beforeReachability = new Map<string, Set<string>>()
-    for (const nodeId of allNodes) {
-      const reachable = this.bfsJoinReachable(graph, nodeId)
-      beforeReachability.set(nodeId, new Set(reachable.keys()))
+    // BFS only traverses 'joins' edges, so a non-joins proposed relation adds
+    // no new reachability. Short-circuit without any BFS or graph rebuild.
+    if (newRelation.type !== 'joins') {
+      return { proposedRelation: newRelation, newlyReachable: [] }
     }
 
-    // Build a new graph with the proposed relation added
-    const augmentedGraph = this.buildAugmentedGraph(newRelation, scopeId)
+    const { sourceId, targetId } = newRelation
 
-    // Compute new reachability and diff
+    // Single BFS from sourceId and targetId on the BEFORE graph (2 BFS, not 2*N).
+    const reachableFromSource = this.bfsJoinReachable(graph, sourceId)
+    const reachableFromTarget = this.bfsJoinReachable(graph, targetId)
+    const sourceComponent = new Set(reachableFromSource.keys())
+    const targetComponent = new Set(reachableFromTarget.keys())
+
+    // If sourceId and targetId are already in the same join-component, the
+    // new edge connects two already-mutually-reachable nodes → no new
+    // reachability. (Equivalently: targetId ∈ sourceComponent.)
+    if (sourceComponent.has(targetId)) {
+      return { proposedRelation: newRelation, newlyReachable: [] }
+    }
+
+    // Different components — the new bidirectional edge merges them. Every
+    // node in sourceComponent can newly reach every node in targetComponent
+    // (and vice versa), since the components were previously disjoint. Filter
+    // `from` by the cached asset-id set (see getCachedAssetIds) to match the
+    // old allNodes-iteration without reparsing the YAML on every call.
+    const allAssets = this.getCachedAssetIds(scopeId)
     const newlyReachable: ReachablePair[] = []
-    for (const nodeId of allNodes) {
-      const afterReachable = this.bfsJoinReachable(augmentedGraph, nodeId)
-      const beforeSet = beforeReachability.get(nodeId) ?? new Set()
-      for (const targetId of afterReachable.keys()) {
-        if (!beforeSet.has(targetId)) {
-          newlyReachable.push({ from: nodeId, to: targetId })
-        }
+    for (const from of sourceComponent) {
+      if (!allAssets.has(from)) continue
+      for (const to of targetComponent) {
+        newlyReachable.push({ from, to })
+      }
+    }
+    for (const from of targetComponent) {
+      if (!allAssets.has(from)) continue
+      for (const to of sourceComponent) {
+        newlyReachable.push({ from, to })
       }
     }
 
@@ -530,59 +584,24 @@ export class EvidenceQueryService extends Service {
   }
 
   /**
-   * Build an augmented RelationGraph with the proposed relation added.
-   * Re-builds from scratch (same entries as the Service graph) plus the new relation.
-   * @param newRelation - the proposed relation to add.
+   * A10: get the set of all asset ids (tables + events + metrics) for a scope,
+   * cached by corpus version so repeated `reachabilityDelta` calls don't
+   * reparse the YAML. The cache is invalidated when the corpus-version
+   * counter advances (a write bumps it via `invalidateCaches`), so the set
+   * stays sound across writes without an event listener.
    * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id for per-request scope root resolution.
-   * @returns a fresh RelationGraph with all current relations plus the proposed one.
+   * @returns the cached set of all table names, event names, and metric names in the resolved scope.
    */
-  private buildAugmentedGraph(newRelation: ProposedRelation, scopeId?: string): RelationGraph {
-    const root = this.resolveRoot(scopeId)
-    const entries: { sourceId: string; relations: import('@deepseek-ai/dsh-semantic-layer/src/registry.ts').RelationDef[] }[] = []
-
-    for (const t of loadTables(root)) {
-      const r = TableDefinitionSchema.safeParse(t.raw)
-      if (!r.success) continue
-      const def = r.data
-      const rels: import('@deepseek-ai/dsh-semantic-layer/src/registry.ts').RelationDef[] = []
-      for (const ref of def.dimension_refs) {
-        rels.push({ type: 'joins', target: ref.dim_table, on: ref.join_keys.map(k => `${k.dws_column} = ${k.dim_column}`).join(' AND ') })
-      }
-      entries.push({ sourceId: def.table_name, relations: rels })
+  private getCachedAssetIds(scopeId?: string): Set<string> {
+    const version = this.ctx.schema.corpusVersion(scopeId)
+    if (this.assetIdCache !== undefined
+      && this.assetIdCache.scopeId === scopeId
+      && this.assetIdCache.version === version) {
+      return this.assetIdCache.ids
     }
-
-    for (const e of loadEvents(root)) {
-      const r = EventDefinitionSchema.safeParse(e.raw)
-      if (!r.success) continue
-      const def = r.data
-      const rels: import('@deepseek-ai/dsh-semantic-layer/src/registry.ts').RelationDef[] = []
-      for (const ref of def.external_refs) {
-        rels.push({ type: 'joins', target: ref.dim_table, on: ref.join_keys.map(k => `${k.dws_column} = ${k.dim_column}`).join(' AND ') })
-      }
-      entries.push({ sourceId: def.name, relations: rels })
-    }
-
-    for (const m of loadMetricDefinitions(root)) {
-      const rels: import('@deepseek-ai/dsh-semantic-layer/src/registry.ts').RelationDef[] = []
-      for (const rel of m.relations) {
-        rels.push({ type: rel.type, target: rel.target })
-      }
-      entries.push({ sourceId: m.name, relations: rels })
-    }
-
-    // Add the proposed relation
-    entries.push({
-      sourceId: newRelation.sourceId,
-      relations: [{
-        type: newRelation.type,
-        target: newRelation.targetId,
-        ...(newRelation.on ? { on: newRelation.on } : {}),
-      }],
-    })
-
-    const g = new RelationGraph()
-    g.build(entries)
-    return g
+    const ids = new Set(this.getAllAssetIds(scopeId))
+    this.assetIdCache = { scopeId, version, ids }
+    return ids
   }
 
   /**

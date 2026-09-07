@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
@@ -413,5 +413,143 @@ describe('EvalResultStore', () => {
     store.clear()
     expect(store.query({}).total).toBe(0)
     expect(store.hasResultsFor('a1')).toBe(false)
+  })
+})
+
+// ── reachabilityDelta A10 — incremental BFS (was O(N²)) ──────────────────
+//
+// A10: reachabilityDelta previously ran bfsJoinReachable from EVERY node
+// (O(N²)) + rebuilt the entire RelationGraph from YAML twice per call
+// (getAllAssetIds + buildAugmentedGraph). The incremental fix does a single
+// BFS from sourceId/targetId on the before-graph and diffs the two
+// components — O(N+E) instead of O(N²) + zero YAML reparse (cached).
+//
+// These tests are written FIRST (RED: the current O(N²) code violates the
+// BFS-count and reparse-count bounds) and drive the incremental BFS fix.
+
+describe('EvidenceQueryService.reachabilityDelta — A10 incremental BFS', () => {
+  /**
+   * Seed a semantic layer with two disjoint join-chains:
+   *   Chain A: a0 → a1 → ... → a(chainLen-1)
+   *   Chain B: b0 → b1 → ... → b(chainLen-1)
+   * Each table joins the next in its chain; the two chains are disjoint, so
+   * proposing a0 joins b0 merges them and makes every node in A newly
+   * reachable from every node in B (and vice versa).
+   */
+  function seedTwoChainLayer(chainLen: number): string {
+    const dir = mkdtempSync(join(tmpdir(), 'eq-a10-'))
+    dirs.push(dir)
+    writeFileSync(join(dir, 'config.yaml'), 'project:\n  name: test\n  scope_id: test\n')
+    mkdirSync(join(dir, 'tables'), { recursive: true })
+    for (let c = 0; c < 2; c++) {
+      const prefix = c === 0 ? 'a' : 'b'
+      for (let i = 0; i < chainLen; i++) {
+        const name = `${prefix}${i}`
+        const hasNext = i < chainLen - 1
+        const nextName = `${prefix}${i + 1}`
+        writeFileSync(join(dir, 'tables', `${name}.yaml`), yaml.dump({
+          table_name: name, kind: 'dws', description: '', table_comment: '',
+          domains: ['test'], granularity: '', engine: 'maxcompute',
+          columns: [{ name: 'id', type: 'string', comment: '', role: 'dimension' }],
+          metrics: {}, partitions: [],
+          confirmation: { status: 'draft', confirmed_by: '', confirmed_at: '' },
+          coverage: null, supersedes: [], disambiguation: null,
+          primary_key: ['id'], primary_key_unique: null, duplicate_sample: [],
+          label_columns: [], freshness: 'static_reference',
+          dimension_refs: hasNext
+            ? [{ dim_table: nextName, join_keys: [{ dws_column: 'id', dim_column: 'id' }], derivation: '' }]
+            : [],
+        }))
+      }
+    }
+    return dir
+  }
+
+  function makeChainService(chainLen: number): EvidenceQueryService {
+    const dir = seedTwoChainLayer(chainLen)
+    const ctx = new Context()
+    new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+    return new EvidenceQueryService(ctx)
+  }
+
+  it('(A10) does NOT BFS from every node — bounded count, not 2*N', () => {
+    const chainLen = 10 // 20 nodes total → old code does 2*20=40 BFS calls
+    const svc = makeChainService(chainLen)
+    const bfsSpy = vi.spyOn(svc as unknown as { bfsJoinReachable: (...args: unknown[]) => unknown }, 'bfsJoinReachable')
+
+    const proposed: ProposedRelation = {
+      sourceId: 'a0', targetId: 'b0', type: 'joins', on: 'id = id',
+    }
+    svc.reachabilityDelta(proposed)
+
+    // Old: 2*N=40 BFS calls (from every node, before + after).
+    // New: 2 BFS (sourceId + targetId on the before-graph). The old code also
+    // rebuilt the entire RelationGraph from YAML via buildAugmentedGraph (a
+    // second full reparse per call); that method is now removed.
+    expect(bfsSpy.mock.calls.length).toBeLessThanOrEqual(4)
+  })
+
+  it('(A10) does NOT reparse YAML on repeated calls (cached asset IDs)', () => {
+    const svc = makeChainService(5)
+    const getAssetSpy = vi.spyOn(svc as unknown as { getAllAssetIds: (...args: unknown[]) => unknown }, 'getAllAssetIds')
+
+    const proposed: ProposedRelation = {
+      sourceId: 'a0', targetId: 'b0', type: 'joins', on: 'id = id',
+    }
+    svc.reachabilityDelta(proposed)
+    const afterFirst = getAssetSpy.mock.calls.length
+    svc.reachabilityDelta(proposed)
+    const afterSecond = getAssetSpy.mock.calls.length
+
+    // Old: getAllAssetIds called once per reachabilityDelta (reparse YAML each call)
+    //      → afterSecond = 2.
+    // New: cached → getAllAssetIds called at most once total across both calls
+    //      → afterSecond === afterFirst (no additional parse on the second call).
+    expect(afterSecond).toBe(afterFirst)
+  })
+
+  it('(A10) correctness — matches the expected delta on a two-chain graph', () => {
+    const chainLen = 6
+    const svc = makeChainService(chainLen)
+    const proposed: ProposedRelation = {
+      sourceId: 'a0', targetId: 'b0', type: 'joins', on: 'id = id',
+    }
+    const result = svc.reachabilityDelta(proposed)
+
+    // After merging the two chains, every node in A can newly reach every node
+    // in B (and vice versa). Cross pairs = chainLen*chainLen (A→B) + chainLen*chainLen (B→A).
+    expect(result.newlyReachable.length).toBe(chainLen * chainLen * 2)
+
+    const has = (from: string, to: string): boolean =>
+      result.newlyReachable.some(p => p.from === from && p.to === to)
+    // Cross-chain pairs are newly reachable
+    expect(has('a0', 'b0')).toBe(true)
+    expect(has('a0', 'b5')).toBe(true)
+    expect(has('a5', 'b0')).toBe(true)
+    expect(has('a5', 'b5')).toBe(true)
+    expect(has('b0', 'a0')).toBe(true)
+    expect(has('b5', 'a5')).toBe(true)
+    // Intra-chain pairs were already reachable (not newly reachable)
+    expect(has('a0', 'a5')).toBe(false)
+    expect(has('b0', 'b5')).toBe(false)
+  })
+
+  it('(A10) correctness — non-joins relation type produces no new reachability', () => {
+    const svc = makeChainService(4)
+    const proposed: ProposedRelation = {
+      sourceId: 'a0', targetId: 'b0', type: 'related_to',
+    }
+    const result = svc.reachabilityDelta(proposed)
+    expect(result.newlyReachable.length).toBe(0)
+  })
+
+  it('(A10) correctness — already-connected pair produces no new reachability', () => {
+    const svc = makeChainService(4)
+    // a0 and a1 are already in the same chain (same component)
+    const proposed: ProposedRelation = {
+      sourceId: 'a0', targetId: 'a1', type: 'joins', on: 'id = id',
+    }
+    const result = svc.reachabilityDelta(proposed)
+    expect(result.newlyReachable.length).toBe(0)
   })
 })
