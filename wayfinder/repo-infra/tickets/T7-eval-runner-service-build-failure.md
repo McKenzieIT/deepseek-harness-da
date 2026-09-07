@@ -2,7 +2,7 @@
 
 **Type**: task（或 research——需先定 root cause + 是否 intentional）
 **Phase**: post-discovery
-**Status**: closed (fixed 2026-09-07 via PR #<T7-PR>, branch `fix/T7-eval-runner-service-build`)
+**Status**: closed (fixed 2026-09-07 via PR #80, merge commit `2802f3679`)
 **Assignee**: unclaimed
 **Branch**: fix/T7-eval-runner-service-build
 **Related**: 2026-09-07 T2 session fresh-worktree `pnpm -r run build` 发现；[T1](T1-worktree-builds.md) note 的「pnpm -r run build exit 1，用 targeted bar（8 data package lib/ + tsc 绿即 OK）」模式
@@ -35,7 +35,7 @@
 
 ## Resolution（2026-09-07）
 
-**Status**: closed (fixed via branch `fix/T7-eval-runner-service-build`; PR #<T7-PR> pending lead via gh).
+**Status**: closed (fixed via PR #80, merge commit `2802f3679`).
 
 **Root cause** (verified 2026-09-07):
 - `packages/eval/eval-runner-service/package.json` had a stray `scripts.build = "tsdown"` — the only repo-wide per-package `build` script that points at `tsdown` with NO per-package `tsdown.config.ts`. Running `tsdown` in that dir resolves the ROOT `tsdown.config.ts` (upward), which (1) `import`s `./packages/typert/generator/lib/types/tsdown-plugin.js` (absent in a fresh worktree where `tsc -b tsconfig.host.json` never ran) → `Cannot find module`; and (2) resolves the root `workspace` glob from the wrong cwd → `No workspace packages found` (the error shifts between first run and post-`build:lib:host` run).
