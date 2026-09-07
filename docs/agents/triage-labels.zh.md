@@ -1,6 +1,6 @@
-# Triage labels
+# 分诊标签
 
-English | [中文](triage-labels.zh.md)
+[English](triage-labels.md) | 中文
 
 工程技能使用五种规范分诊角色；右列是本 Fork 的实际 GitHub 标签。
 
