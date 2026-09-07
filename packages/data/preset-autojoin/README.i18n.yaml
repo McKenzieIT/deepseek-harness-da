@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/preset-autojoin/README.md
 README.md: f0c7980cab7e2f1550d38d13b58112cbedc9d0bd
-README.zh.md: 7b58f316263e5a3ed456b9a0937e625ca0aea7c6
+README.zh.md: c3e5744b0d215c50328b244aca129b5bb8be3c81

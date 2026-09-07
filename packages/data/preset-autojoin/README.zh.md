@@ -45,10 +45,7 @@ pnpm dsh --profile headless --patch packages/bundle/data-agent/cordis.patch.yml 
 - §4.2：包装层 seam，注入既有的 `agentPresets` seam；不改变任何 dsh 接口。
 - §4.5：da 所有的位置 `packages/data/preset-autojoin/`。
 
-> 注：`agent/created` 派发是同步的，并将监听器返回的 promise 视为即发即弃
-> （拒绝会被上报，但不被等待）。对于一次性 headless 运行，若其唯一的
-> `followup` 在异步 `presets.mount` 完成之前到达，则加入对首个提示词而言
-> 可能太迟（见实验报告）；上游修复（headless `setup` 加入默认 preset）是回退方案。
+> 注：`agent/created` 派发是同步的，并将监听器返回的 promise 视为即发即弃（拒绝会被上报，但不被等待）。对于一次性 headless 运行，若其唯一的 `followup` 在异步 `presets.mount` 完成之前到达，则加入对首个提示词而言可能太迟（见实验报告）；上游修复（headless `setup` 加入默认 preset）是回退方案。
 
 ## 模型体验
 
