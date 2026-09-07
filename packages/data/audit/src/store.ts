@@ -29,7 +29,7 @@ import {
 import type { StructuredDelta, DeltaEntry } from './delta.ts'
 
 /** On-disk schema version (PRAGMA user_version); bump only on a breaking table-layout change. */
-const AUDIT_SCHEMA_VERSION = 2
+const AUDIT_SCHEMA_VERSION = 3
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS audit_event (
@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS audit_event (
   model           TEXT,
   review_status   TEXT NOT NULL DEFAULT 'pending',
   payload         TEXT NOT NULL,
-  ingested_at     TEXT NOT NULL
+  ingested_at     TEXT NOT NULL,
+  corrects        TEXT,
+  is_correction   INTEGER NOT NULL DEFAULT 0
 ) STRICT;
 CREATE INDEX IF NOT EXISTS ix_audit_tenant_scope_ts ON audit_event(tenant_id, scope_id, ts);
 CREATE INDEX IF NOT EXISTS ix_audit_chat_session    ON audit_event(chat_session_id);
@@ -52,6 +54,7 @@ CREATE INDEX IF NOT EXISTS ix_audit_session         ON audit_event(session_id);
 CREATE INDEX IF NOT EXISTS ix_audit_user_ts        ON audit_event(user_id, ts);
 CREATE INDEX IF NOT EXISTS ix_audit_scope_ts       ON audit_event(scope_id, ts);
 CREATE INDEX IF NOT EXISTS ix_audit_ts             ON audit_event(ts);
+CREATE INDEX IF NOT EXISTS ix_audit_is_correction ON audit_event(is_correction) WHERE is_correction = 1;
 
 CREATE TABLE IF NOT EXISTS audit_override (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,6 +102,34 @@ CREATE TABLE IF NOT EXISTS definition_snapshot (
 CREATE INDEX IF NOT EXISTS ix_snapshot_asset ON definition_snapshot(asset_name, version);
 `
 
+/**
+ * Idempotent v2→v3 migration: denormalize `corrects`/`is_correction` out of
+ * the payload JSON into indexed columns so {@link SQLiteAuditStore.correctedStats}
+ * reads them via an index lookup instead of a `json_extract` full-table scan over
+ * the append-only `audit_event` table. `ALTER TABLE ADD COLUMN` is NOT idempotent
+ * (a second run raises "duplicate column name"), so column existence is checked
+ * via `PRAGMA table_info`; the backfill UPDATE is constrained to `corrects IS NULL`
+ * so re-running touches zero rows. Existing rows written by a v2-era store carry
+ * `$.corrects` inside the payload JSON (the only place it lived); the backfill
+ * copies that value into the new column so the index covers them.
+ * @param db - the open database handle (WAL + STRICT already applied).
+ */
+function migrateV2ToV3(db: DatabaseSync): void {
+  const cols = new Set(
+    (db.prepare('PRAGMA table_info(audit_event)').all() as Array<{ name: string }>).map(r => r.name),
+  )
+  if (!cols.has('corrects')) db.exec('ALTER TABLE audit_event ADD COLUMN corrects TEXT')
+  if (!cols.has('is_correction')) {
+    db.exec('ALTER TABLE audit_event ADD COLUMN is_correction INTEGER NOT NULL DEFAULT 0')
+  }
+  db.exec('CREATE INDEX IF NOT EXISTS ix_audit_is_correction ON audit_event(is_correction) WHERE is_correction = 1')
+  db.exec(
+    `UPDATE audit_event
+       SET corrects = json_extract(payload, '$.corrects'), is_correction = 1
+     WHERE json_extract(payload, '$.corrects') IS NOT NULL AND corrects IS NULL`,
+  )
+}
+
 /** Exclusively create a missing database file with owner-only permissions. */
 function createDatabaseFileSync(path: string): void {
   try {
@@ -113,9 +144,12 @@ function createDatabaseFileSync(path: string): void {
  * Open the audit database and apply schema + pragmas. Missing directories and
  * database files are created owner-only (`:memory:` skips filesystem setup,
  * for tests). A zero `user_version` is stamped with
- * {@link AUDIT_SCHEMA_VERSION}; every other non-current version rejects rather
- * than being migrated in place (the audit log is immutable history). Mirrors
- * the `dsh-storage-sqlite` open sequence (the third node:sqlite user in this
+ * {@link AUDIT_SCHEMA_VERSION}; older versions are migrated forward in place
+ * (v1→v2 adds the `definition_snapshot` table; v2→v3 denormalizes
+ * `corrects`/`is_correction` out of the payload JSON into indexed columns +
+ * backfills legacy rows). Any other non-current version rejects rather than
+ * being migrated (the audit log is immutable history). Mirrors the
+ * `dsh-storage-sqlite` open sequence (the third node:sqlite user in this
  * repo) but is self-contained — audit owns its DB, not the storage hub.
  * @param path - the SQLite database file to open, or `:memory:`.
  * @returns the open handle with pragmas + schema applied.
@@ -134,6 +168,10 @@ export function openAuditDatabase(path: string): DatabaseSync {
     const onDisk = db.prepare('PRAGMA user_version').get() as { user_version: number }
     if (onDisk.user_version === 1) {
       db.exec(MIGRATION_V1_TO_V2)
+      migrateV2ToV3(db)
+      db.exec(`PRAGMA user_version = ${AUDIT_SCHEMA_VERSION}`)
+    } else if (onDisk.user_version === 2) {
+      migrateV2ToV3(db)
       db.exec(`PRAGMA user_version = ${AUDIT_SCHEMA_VERSION}`)
     } else if (onDisk.user_version !== 0 && onDisk.user_version !== AUDIT_SCHEMA_VERSION) {
       throw new Error(
@@ -263,6 +301,8 @@ interface AuditEventRow {
   readonly review_status: string
   readonly payload: string
   readonly ingested_at: string
+  readonly corrects: string | null
+  readonly is_correction: number
 }
 
 interface OverrideRow {
@@ -317,16 +357,22 @@ export class SQLiteAuditStore {
     const payloadBody: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(wire)) if (k !== 'auto_tags') payloadBody[k] = v
     const payloadJson = JSON.stringify(payloadBody)
+    // Denormalize `corrects`/`is_correction` at insert (v3 schema): the flattened
+    // wire payload carries `corrects` at top level (extra key → toPayload
+    // flattens it); mirror it into indexed columns so correctedStats reads the
+    // index instead of a json_extract full-table scan over the append-only log.
+    const corrects = typeof payloadBody.corrects === 'string' ? payloadBody.corrects : null
+    const isCorrection = corrects !== null ? 1 : 0
     const ts = rec.timestamp || nowIso()
     const ingestedAt = nowIso()
     try {
       this.db.exec('BEGIN')
       const res = this.db.prepare(
         `INSERT INTO audit_event
-           (log_id, ts, session_id, chat_session_id, scope_id, tenant_id, user_id, model, review_status, payload, ingested_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+           (log_id, ts, session_id, chat_session_id, scope_id, tenant_id, user_id, model, review_status, payload, ingested_at, corrects, is_correction)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       ).run(rec.log_id, ts, rec.session_id, rec.chat_session_id, rec.scope_id, rec.tenant_id,
-        rec.user_id, rec.model, rec.review_status, payloadJson, ingestedAt)
+        rec.user_id, rec.model, rec.review_status, payloadJson, ingestedAt, corrects, isCorrection)
       const eventId = Number(res.lastInsertRowid)
       const insTag = this.db.prepare('INSERT OR IGNORE INTO audit_tag (event_id, tag) VALUES (?, ?)')
       for (const t of rec.auto_tags) insTag.run(eventId, t)
@@ -513,14 +559,24 @@ export class SQLiteAuditStore {
   }
 
   /**
-   * Override-applied (corrected) aggregation (P8b tension② decision (c)): O(n)
-   * re-aggregation over the materialized view (overrides applied per record).
-   * Answers "what is the corrected/current cost" for compliance reconciliation
-   * against Qoder billing. by_tag counts are immutable (tags are not patchable
-   * — identity is corrected via appendCorrection, verdicts don't touch tags),
-   * so they match {@link stats}; only the cost/credits reflect overrides. No
-   * LIMIT: reconciliation aggregates the full filtered set (the accepted O(n)
-   * cost for an infrequent compliance query — not a hot path).
+   * Override-applied + correction-deduped aggregation (P8b tension② decision
+   * (c)): O(n) re-aggregation over the materialized view (overrides applied
+   * per record). Answers "what is the corrected/current cost" for compliance
+   * reconciliation against Qoder billing.
+   *
+   * total/by_tag count EVERY matched row (including superseded originals) so
+   * they are consistent with {@link stats} (the immutable recorded baseline):
+   * tags are not patchable, identity is corrected via appendCorrection, and the
+   * original row is still a recorded event that exists at the time of the
+   * query. Only the cost/credits are deduped — a superseded original's cost is
+   * skipped (the correction record carries the same cost under the corrected
+   * identity, so counting both would double-count). No LIMIT: reconciliation
+   * aggregates the full filtered set (the accepted O(n) cost for an infrequent
+   * compliance query — not a hot path).
+   *
+   * Correction links are read from the denormalized `corrects`/`is_correction`
+   * columns (v3 schema, index-backed) — NOT via `json_extract(payload,
+   * '$.corrects')` which scanned the full append-only `audit_event` table.
    *
    * @param f - the query filter scoping the aggregation (identity, tags, time window).
    * @param caller - the caller identity for the ownership guard (privileged bypasses it).
@@ -531,14 +587,17 @@ export class SQLiteAuditStore {
     const rows = this.db.prepare(`SELECT * FROM audit_event WHERE ${where} ORDER BY ts DESC`).all(...params) as unknown as AuditEventRow[]
     const recs = rows.map(r => this._materialize(r))
     const matchedIds = new Set(recs.map(r => r.log_id))
-    // P8b①a + ②c interaction: an appendCorrection supersedes its original, so the
-    // corrected view dedups — it skips superseded originals (the correction record
-    // carries the corrected identity + the same cost, counted once in its own
-    // right). Corrections may sit OUTSIDE this filter (a different user_id), so
-    // look across the whole table for `extra.corrects` links at a matched original.
+    // P8b①a + ②c interaction: an appendCorrection supersedes its original, so
+    // the corrected COST view dedups — it skips superseded originals for
+    // cost/credits only (the correction record carries the corrected identity +
+    // the same cost, counted once in its own right). total/by_tag are NOT
+    // deduped: they count every matched row, matching stats() (the immutable
+    // recorded baseline). Corrections may sit OUTSIDE this filter (a different
+    // user_id), so look across the whole table via the denormalized `corrects`
+    // column (index-backed `is_correction` — no json_extract full-table scan).
     const superseded = new Set<string>()
     const corrections = this.db.prepare(
-      'SELECT json_extract(payload, \'$.corrects\') AS original FROM audit_event WHERE json_extract(payload, \'$.corrects\') IS NOT NULL',
+      'SELECT corrects AS original FROM audit_event WHERE is_correction = 1',
     ).all() as Array<{ original: string | null }>
     for (const c of corrections) {
       if (c.original !== null && matchedIds.has(c.original)) superseded.add(c.original)
@@ -548,8 +607,10 @@ export class SQLiteAuditStore {
     let counted = 0
     const byTag: Record<string, number> = {}
     for (const rec of recs) {
-      if (superseded.has(rec.log_id)) continue
-      counted += 1
+      const isSupersededOriginal = superseded.has(rec.log_id)
+      counted += 1 // total: every matched row counts (matches stats)
+      for (const t of rec.auto_tags) byTag[t] = (byTag[t] ?? 0) + 1 // by_tag: every matched row's tags (matches stats)
+      if (isSupersededOriginal) continue // cost/credits: skip superseded originals (correction carries the cost)
       if (rec.auto_tags.includes(TAG.QODER_CALL)) {
         const c = rec.extra.credits
         if (c !== null && c !== undefined && typeof c === 'object') {
@@ -558,7 +619,6 @@ export class SQLiteAuditStore {
           credits += cc.total_credits ?? 0
         }
       }
-      for (const t of rec.auto_tags) byTag[t] = (byTag[t] ?? 0) + 1
     }
     return { total: counted, by_tag: byTag, qoder_cost_usd: costUsd, qoder_credits: credits }
   }
