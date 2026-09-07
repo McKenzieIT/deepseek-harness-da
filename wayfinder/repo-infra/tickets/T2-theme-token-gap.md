@@ -3,7 +3,7 @@
 **Type**: task
 **Phase**: post-discovery
 **Branch**: fix/T2-theme-token-gap
-**Status**: in-progress (claimed 2026-09-07 — grilling; impl worktree deferred to post-decision)
+**Status**: closed (merged 2026-09-07 via PR #66, merge commit `4dfcab9ed4`)
 **Assignee**: claimed 2026-09-07 (grilling session)
 **Related**: T7 post-ship review 的 M-1（pre-existing，repo-wide）、2026-09-04 T6 session 确认（grep `ui-theme/src/` 无 `--dsw-alias-content-secondary` / `border-primary` / `content-primary` 定义）
 
@@ -67,3 +67,23 @@ grilling 3 轮（values/naming → upstream 调研 → shade-intent+视觉+scope
 **验证 bar**：(a) `grep` 确认 source 零残留旧名（`content-*`/`surface-*`/`border-primary`/`state-warning-*`）；(b) `getComputedStyle(:root)` 相关 token 非空；(c) `pnpm -r run build` + `pnpm run typecheck` + oxlint 绿；(d) dev-server 可渲染 chart 视图则 `browse` 截图 before/after（不强求）。
 **约束**：不触 `packages/*/src` 直推 master（已在 worktree 分支）；pre-commit lefthook（oxlint `*.{ts,tsx,mts,cts,mjs}` + whitespace + vendor guard）；pre-push typecheck；**禁止 upstream PR**（不动 `deepseek-ai/deepseek-harness`）。
 详见 [research/T2-upstream-design-system-divergence.md](../research/T2-upstream-design-system-divergence.md)。
+
+## Resolution（2026-09-07 — impl complete, PR #66 open, pending merge）
+
+**Implementation**: worktree `../dsh-T2`（branch `fix/T2-theme-token-gap`），6 commits，via subagent（implementer + two-stage review APPROVE_WITH_NITS）。PR: https://github.com/McKenzieIT/deepseek-harness-da/pull/66
+
+**Commits**:
+1. `d810304c1b` Cat 3: apply upstream `8ffdee4fe5` design-platform.css hunk（`--dsw-alias-link` + `markdown-inline-code`，byte-identical to upstream）。
+2. `5accc720a0` Cat 1: define 7 upstream-acknowledged-undefined tokens（light+dark）。
+3. `857e9bce75` Cat 2: align 15 fork-invented token families to upstream canonical（8 consumer files）。
+4. `9922d1b7dc` Cat 2 (state-info): define net-new `state-info-primary`/`-surface`（no upstream parallel; blue family）。
+5. `09b3ea4a49` fix-up: scrollbar elevation rebind on `.virtualScroll`（consequence of `surface-secondary`→`bg-layer-2`）。
+6. `2e510f3ce4` review nit: `state-info-surface` dark `blue-950`→`blue-900`（parallel `green-900`/`amber-900`）。
+
+**Verify**: `pnpm run typecheck` exit 0；grep zero-remaining old names；oxlint/pre-commit clean；287 tests pass（ui-theme 22 / ui-present-table 146 / ui-semantic-layer 107 / ui-present-decomposition 31）。独立 spec+quality review = APPROVE_WITH_NITS。
+
+**Known nits (post-merge or minor)**:
+- `.virtualScroll` scrollbar l2 rebind — loose elevated-surface contract application（light no-op, dark subtle; defensible polish; 可 revert 到 default l1）。
+- `fill-l2`/`fill-tertiary`/`fill-tsp-secondary` share values — upstream naming situation; non-actionable。
+
+**Merged**: 2026-09-07 via PR #66（merge commit `4dfcab9ed4`）。已加入 map Decisions-so-far。T2 引入 0 CI 回归（350 tests pass，typecheck 绿）；PR #66 CI 红 = master pre-existing GA-FORK-CI backlog（stale module-graph / system-prompt expected.md / 非-T2 包 coverage / knip），非 T2。
