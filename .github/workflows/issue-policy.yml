@@ -13,6 +13,10 @@ permissions:
 
 jobs:
   policy:
+    # The fork (McKenzieIT/deepseek-harness-da) has no DSH issue GitHub App
+    # and its PRs do not follow upstream's Owner:@/kind-label policy; skip on
+    # non-upstream owners so the check is neutral (skipped) instead of red.
+    if: ${{ github.repository_owner == 'deepseek-ai' }}
     name: Issue policy
     runs-on: ubuntu-latest
     steps:
