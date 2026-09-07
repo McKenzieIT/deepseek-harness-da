@@ -1,6 +1,6 @@
 # G1 — Execution grader seam
 
-**Type**: grilling  ·  **Status**: open
+**Type**: grilling  ·  **Status**: in-progress
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: [R1 — 执行级评分与非循环 ground truth 论文认读](R1-exec-grader-papers.md)（resolved）
 **Blocks**: T1-exec-grader-impl
