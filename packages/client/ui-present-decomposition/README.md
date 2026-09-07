@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-client-ui-present-decomposition
 
+English | [中文](README.zh.md)
+
 Toolview card for the `present_decomposition` INTERPRETATION tool. The card is the **query's contract, not a result card**: it shows what the agent understood, at what caliber, and with how much confidence — three layers plus a trust band (wayfinder: interpretation-client-rendering R9 audit + P1 prototype verdict).
 
 ## Model Experience

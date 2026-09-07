@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-client-ui-present-table
 
+English | [中文](README.zh.md)
+
 Toolview card for the `present_table` INTERPRETATION tool. Renders query results as a rich data table with KPI summary cards, sorting, virtual scrolling, SQL transparency, and optional Chart.js visualizations.
 
 ## Rendering

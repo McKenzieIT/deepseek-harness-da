@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-admin
 
+English | [中文](README.zh.md)
+
 Admin + access isolation: per-user login, identity, scope resolution, PAT self-service, fail-closed authz
 
 ## Model Experience
