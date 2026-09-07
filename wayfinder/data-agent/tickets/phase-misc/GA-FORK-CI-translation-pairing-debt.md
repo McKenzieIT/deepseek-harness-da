@@ -1,6 +1,6 @@
 # GA-FORK-CI: verify-translation-pairing debt (the 1 remaining red node-24 gate)
 
-Branch: (none yet — decision; needs parallel sessions paused first)
+Branch: fix/ga-fork-ci-translation-pairing (claimed 2026-09-07 session 2; worktree ../dsh-translation-pairing, off master @ 356d0c9b3a). LOCAL — not pushed (gate red, push/PR decision pending). Prior dsh-ga-i18n worktree's 26 .zh.md + manifest excludes + Class B were uncommitted+removed = LOST; session 2 re-derived + re-applied. Progress + OOS drift analysis + next-session plan: `.tmp/audit/fix-translation-session2-status.md` (main tree).
 
 ## Question
 

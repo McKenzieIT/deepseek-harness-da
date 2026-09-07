@@ -1,6 +1,6 @@
 # dsh-data-agent 插件化开发准则
 
-English | [中文](da-plugin-development-guidelines.zh.md)
+[English](da-plugin-development-guidelines.md) | 中文
 
 > 本文档定义 dsh-data-agent 项目如何基于 dsh（DeepSeek Harness）的 Cordis 插件框架进行开发。所有功能开发必须遵循本准则。
 
@@ -8,7 +8,7 @@ English | [中文](da-plugin-development-guidelines.zh.md)
 
 ### 1.1 没有特权核心
 
-> "There is no privileged core to patch: you extend dsh by mounting a plugin beside the others, and registrations are effects that unwind when their plugin unloads."
+> "不存在需要打补丁的特权核心：你通过在旁边挂一个插件来扩展 dsh，而注册是当其插件卸载时会逆序清理的 effect。"
 
 含义：dsh 的每个部分——agent loop、LLM adapter、tool registry、session log——都是 cordis.yml 中的一行。没有任何代码具有"不可替换"的特权。扩展 = 在旁边挂一个插件，不是修改已有插件。
 

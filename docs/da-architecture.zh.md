@@ -1,6 +1,6 @@
-# dsh-data-agent Architecture
+# dsh-data-agent 架构
 
-English | [中文](da-architecture.zh.md)
+[English](da-architecture.md) | 中文
 
 ## 数据管道全景
 
