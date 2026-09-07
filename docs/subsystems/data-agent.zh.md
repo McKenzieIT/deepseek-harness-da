@@ -86,7 +86,7 @@ Cordis `Service` exposing the per-agent critic guard context as `ctx.criticCtx`.
 forAgent(agentId: string): CriticCtx | undefined
 ```
 
-Source: [`packages/data/phase-gate/src/phase-gate.ts:1208`](../../packages/data/phase-gate/src/phase-gate.ts)
+Source: [`packages/data/phase-gate/src/phase-gate.ts:1210`](../../packages/data/phase-gate/src/phase-gate.ts)
 
 <a id="ctxembedder--embedderservice-abstract-seam"></a>
 
@@ -173,7 +173,7 @@ beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport
 assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:309`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:331`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="ctxidentity--identityservice"></a>
 
@@ -254,7 +254,7 @@ listActive(): ManagementSessionDescriptor[]
 isManagementSession(sessionId: string): boolean
 ```
 
-Source: [`packages/data/management-session/src/index.ts:161`](../../packages/data/management-session/src/index.ts)
+Source: [`packages/data/management-session/src/index.ts:162`](../../packages/data/management-session/src/index.ts)
 
 <a id="ctxnl2sql--nl2sqlengineservice"></a>
 
@@ -837,7 +837,7 @@ async register(scope: ScopeDefinition): Promise<void>
 async remove(id: string): Promise<void>
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:90`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts:91`](../../packages/data/scope-registry/src/index.ts)
 
 <a id="admin-events"></a>
 
@@ -860,7 +860,7 @@ Emitted when a per-user PAT resolve returns undefined (PAT-miss UX).
 'admin/pat-miss'(userId: string, ref: string): void
 ```
 
-Source: [`packages/data/admin/src/index.ts:514`](../../packages/data/admin/src/index.ts)
+Source: [`packages/data/admin/src/index.ts:516`](../../packages/data/admin/src/index.ts)
 
 <a id="evidence-events"></a>
 
@@ -914,7 +914,7 @@ Emitted after an eval run completes; listeners may refresh the eval store.
 'evidence/eval-run-completed'(): void
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:80`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:81`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="management-session-events"></a>
 
@@ -936,7 +936,7 @@ Emitted when a management session is created.
 'management-session/created'(descriptor: ManagementSessionDescriptor): void
 ```
 
-Source: [`packages/data/management-session/src/index.ts:75`](../../packages/data/management-session/src/index.ts)
+Source: [`packages/data/management-session/src/index.ts:76`](../../packages/data/management-session/src/index.ts)
 
 <a id="management-sessiondestroyed--emit"></a>
 
@@ -956,7 +956,7 @@ Emitted when a management session is destroyed.
 
 Types: [SessionId](core.md)
 
-Source: [`packages/data/management-session/src/index.ts:82`](../../packages/data/management-session/src/index.ts)
+Source: [`packages/data/management-session/src/index.ts:83`](../../packages/data/management-session/src/index.ts)
 
 <a id="patrol-events"></a>
 
@@ -1145,7 +1145,7 @@ Emitted after the active scope id changes — via setActive(), clearActive(), re
 'scopes/active-changed': (scopeId: string | undefined) => void
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:79`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts:80`](../../packages/data/scope-registry/src/index.ts)
 
 <a id="scopeschanged--emit"></a>
 
@@ -1164,5 +1164,5 @@ Emitted after the set of registered scopes changes — a scope was added or upda
 'scopes/changed': () => void
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:70`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts:71`](../../packages/data/scope-registry/src/index.ts)
 <!-- END GENERATED cordis-surface -->
