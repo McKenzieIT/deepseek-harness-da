@@ -594,10 +594,17 @@ setLlmCall(fn?: LlmCall): void
  * `llmCall` is injected via `setLlmCall`). No Tier-2 audit — this is the
  * explicit enrichment entry (used by the `discover_relations` agent tool +
  * batch seeding); the on-write hook is the auto path.
- * @param opts - optional `tables` filter (table_names to limit enrichment to).
+ *
+ * GA-GT3-5b: `preserveCurated` (default `true`) toggles the replace strategy
+ * when `mergeExisting=false` (the default): `true` = origin-aware replace
+ * (curated manual/undefined preserved, machine dropped — PR #43); `false` =
+ * raw full-replace escape-hatch (ALL existing refs dropped, only discovered
+ * remain — for the rare blow-away-rebuild case). Additive: default behavior
+ * unchanged.
+ * @param opts - optional `tables` filter + `preserveCurated` toggle (default true).
  * @returns `enriched` (DWS gaining >=1 ref) + `written` (DWS updated) + per-table `errors`.
  */
-async discoverRelations( opts: { readonly tables?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>
+async discoverRelations( opts: { readonly tables?: readonly string[]; readonly preserveCurated?: boolean } = {}, ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }>
 
 /**
  * Discover event→DIM relations (parallel to `discoverRelations` for DWS
@@ -611,10 +618,16 @@ async discoverRelations( opts: { readonly tables?: readonly string[] } = {}, ): 
  * written via the substrate `writeEventYaml` raw-edit surface, not a Service
  * method). The hook lands with a future `syncWriteEvents`/`updateEventMeta`
  * Service method.
- * @param opts - optional `events` filter (event names to limit enrichment to).
+ *
+ * GA-GT3-5b: `preserveCurated` (default `true`) toggles the replace strategy
+ * (parallel to `discoverRelations`): `true` = origin-aware replace (curated
+ * manual/undefined preserved, machine dropped — PR #43); `false` = raw
+ * full-replace escape-hatch (ALL existing refs dropped, only discovered
+ * remain). Additive: default behavior unchanged.
+ * @param opts - optional `events` filter + `preserveCurated` toggle (default true).
  * @returns `enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.
  */
-async discoverEventRelations( opts: { readonly events?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>
+async discoverEventRelations( opts: { readonly events?: readonly string[]; readonly preserveCurated?: boolean } = {}, ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }>
 
 /**
  * CL-1 Phase 3: discover alt_labels (SKOS aliases) for definitions in the
