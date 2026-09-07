@@ -85,6 +85,7 @@ export {
 } from './sessions/conversation.ts'
 export { emptyAssistantBlock } from './sessions/partial.ts'
 export { isTokenDelta } from './sessions/assistant-timing.ts'
+export { isLatestTurn, blockText } from './cards.ts'
 export { contextForm, contextProvenance, sessionRecallLabels } from './sessions/context-provenance.ts'
 export { displayFailureMessage } from './sessions/failure-display.ts'
 export type {

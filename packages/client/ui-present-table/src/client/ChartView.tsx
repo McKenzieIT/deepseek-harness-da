@@ -22,6 +22,7 @@ import {
 import { Bar, Bubble, Doughnut, Line, PolarArea, Radar, Scatter } from 'react-chartjs-2'
 import type { Chart } from 'chart.js'
 import type { ChartConfig, ChartType } from './TableCard.tsx'
+import { parseNumericCell } from './numeric.ts'
 
 /** Series palette — literal canvas colors passed to Chart.js dataset props
  *  (not CSS; the token rule applies to TableCard.module.css). Mirrors the R4
@@ -52,10 +53,7 @@ function readCssColor(name: string, fallback: string): string {
 
 /** Parse one cell into a chart value; empty/non-numeric cells become null gaps. */
 function numericCell(row: string[] | undefined, index: number): number | null {
-  const raw = row?.[index] ?? ''
-  if (raw.trim() === '') return null
-  const value = Number(raw)
-  return Number.isFinite(value) ? value : null
+  return parseNumericCell(row?.[index] ?? '')
 }
 
 /** Thousands-separated integer label for the value-pills (R4 valueLabelsPlugin). */

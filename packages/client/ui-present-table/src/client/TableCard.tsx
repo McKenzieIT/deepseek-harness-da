@@ -1,7 +1,9 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
+import { blockText } from '@deepseek-ai/dsh-client-runtime/client'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { TableKey } from './locales.ts'
+import { parseNumericCell } from './numeric.ts'
 import css from './TableCard.module.css'
 
 const ChartView = lazy(() => import('./ChartView.tsx'))
@@ -140,8 +142,8 @@ export function parseQueryData(content: string): ParsedQueryData | null {
 
 function computeKpi(rows: string[][], kpi: KpiColumn): string {
   const values = rows
-    .map(r => parseFloat(r[kpi.column] ?? ''))
-    .filter(v => !isNaN(v))
+    .map(r => parseNumericCell(r[kpi.column] ?? ''))
+    .filter((v): v is number => v !== null)
   if (values.length === 0) return '—'
   let result: number
   switch (kpi.aggregation) {
@@ -177,12 +179,6 @@ function toMarkdown(title: string, headers: string[], rows: string[][]): string 
     ...rows.map(r => `| ${r.map(esc).join(' | ')} |`),
   ]
   return `### ${title}\n\n${lines.join('\n')}`
-}
-
-function extractText(block: ToolCallBlock): string {
-  /* v8 ignore next -- defensive: callers only pass settled blocks */
-  if (!('kind' in block)) return ''
-  return (block.content as readonly { text?: string }[]).map(c => c.text ?? '').join('\n')
 }
 
 function extractSql(argsRaw: string | null): string | null {
@@ -420,7 +416,7 @@ function RunningState() {
 }
 
 function FallbackContent({ block }: { block: ToolCallBlock }) {
-  const text = extractText(block)
+  const text = blockText(block)
   return (
     <div className={css.card}>
       <div className={css.fallback}>
@@ -431,7 +427,7 @@ function FallbackContent({ block }: { block: ToolCallBlock }) {
 }
 
 function ExpiredCard({ block, t, retry }: { block: ToolCallBlock; t: TableCardProps['t']; retry?: () => void }) {
-  const text = extractText(block)
+  const text = blockText(block)
   return (
     <div className={css.card}>
       <div className={css.expiredBanner}>{t('expired')}</div>
@@ -446,7 +442,7 @@ function ExpiredCard({ block, t, retry }: { block: ToolCallBlock; t: TableCardPr
 }
 
 function ErrorCard({ block, t }: { block: ToolCallBlock; t: TableCardProps['t'] }) {
-  const text = extractText(block)
+  const text = blockText(block)
   return (
     <div className={css.card}>
       <div className={css.errorBanner}>{t('error')}</div>
@@ -458,7 +454,7 @@ function ErrorCard({ block, t }: { block: ToolCallBlock; t: TableCardProps['t'] 
 }
 
 function MismatchCard({ block, t }: { block: ToolCallBlock; t: TableCardProps['t'] }) {
-  const text = extractText(block)
+  const text = blockText(block)
   return (
     <div className={css.card}>
       <div className={css.errorBanner}>

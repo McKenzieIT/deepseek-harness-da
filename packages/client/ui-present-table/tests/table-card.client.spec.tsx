@@ -692,6 +692,22 @@ describe('TableCard KPI cards', () => {
     expect(getByText('10,135.80')).toBeDefined()
   })
 
+  it('treats already-percent cells as non-numeric so % format does not double-scale them', () => {
+    // ui-present-misc-9: a cell already in percent form ('85%') must not be
+    // parsed as 85 then × 100 → '8500.0%'; the strict parser drops it → '—'.
+    const tsv = 'metric\trate\nA\t85%\nB\t12.5%'
+    const args = JSON.stringify({
+      result_id: 'r_pct',
+      title: '百分比文本',
+      kpi_columns: [{ column: 1, aggregation: 'sum', label: '率合计', format: '%' }],
+    })
+    const block = makeSettledBlock(args)
+    const { getAllByText } = render(
+      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+    )
+    expect(getAllByText('—')).toHaveLength(1)
+  })
+
   it('does not render KPI row when kpi_columns is empty', () => {
     const args = JSON.stringify({ result_id: 'qr_test01', title: 'test', kpi_columns: [] })
     const block = makeSettledBlock(args)

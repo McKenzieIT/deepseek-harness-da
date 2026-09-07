@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import { isLatestTurn, blockText } from '@deepseek-ai/dsh-client-runtime/client'
 import type { FollowupChipsInjected } from './index.ts'
 import type { FollowupKey } from './locales.ts'
 import css from './FollowupChips.module.css'
@@ -31,16 +32,6 @@ function parseSuggestions(argsRaw: string): Suggestion[] | null {
   }
 }
 
-function isLatestTurn(block: ToolCallBlock, snapshot: ConversationSnapshot): boolean {
-  if (!('kind' in block)) return true
-  const turnOrder = snapshot.chat.timeline.turnOrder
-  if (turnOrder.length === 0) return true
-  const latestTurn = turnOrder[turnOrder.length - 1] as number
-  const timing = snapshot.turnTimings.get(latestTurn)
-  if (!timing) return true
-  return block.time >= timing.startTime
-}
-
 function SkeletonState() {
   return (
     <div className={css.skeleton} aria-hidden="true">
@@ -52,7 +43,7 @@ function SkeletonState() {
 }
 
 function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }) {
-  const text = (block as unknown as { content: readonly { text?: string }[] }).content.map(c => c.text ?? '').join('\n')
+  const text = blockText(block)
   return (
     <div className={css.fallback}>
       <pre className={css.fallbackText}>{text}</pre>
@@ -111,8 +102,7 @@ export function FollowupChips({ block, useSession, submit, t }: FollowupChipsPro
   }
 
   if (block.isError) {
-    const detail = (block as unknown as { content: readonly { text?: string }[] })
-      .content.map(c => c.text ?? '').join('\n').trim()
+    const detail = blockText(block)
     return <ErrorState detail={detail} t={t} />
   }
 
