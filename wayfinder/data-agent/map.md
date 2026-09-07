@@ -400,6 +400,18 @@ merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）
 
 跨域违反票据：[interpretation-client-rendering T8–T13 簇](../interpretation-client-rendering/map.md)（results-RPC 落 apiproxy，已删；re-home → UM4）、[repo-infra T6](../repo-infra/tickets/T6-ci-checkout-issue-policy.md)（#52 re-violated；→ UM2）、[task-orchestration-dag G10](../task-orchestration-dag/tickets/G10-subagent-tree-upstream-integration.md)（subagent upstream sync 触发）。
 
+## Audit actions 2026-09-07（24 PR 合并，21 fork-own action 已修）
+
+本 session 对抗审计 27 个 action（`.tmp/audit/ACTION-LIST.json`）的去向：
+
+**DONE（21，fork-own，已 merge）**：A0,A1,A2,A3（P0 CI/worktree 解锁 #48/#52）+ A4（原型污染 #88）+ A7（TableCard 数据损坏 #56）+ A8（路径穿越守卫 #59）+ A9（sessions Map 泄漏 #94）+ A10（reachabilityDelta O(N²) #95）+ A11（correctedStats 计数+schema migration #98）+ A12（typed-events cast #99）+ A13（event-edit TOCTOU #93）+ A17（27 lint #56）+ A18-mech（d3-2/3/5/8/9 Cordis #90）+ A18-d3-6（cfg 集中 #96）+ A18-d3-7（tenant Config #97）+ A19（Branch 规则修订 #89）+ A20（U+FFFD 考古 72/72 #91）+ A21（陈旧引用 #59）+ A24（attach 守卫 #59）+ A26-doc（stale doc #92）。
+
+**defer 到 upstream-merge（6，触上游）**：A5（id-less 簇：session:336+assembler:71,81+ui-conv:240+ui-traj:223）+ A6（apiproxy presetSwitches:2397,3024）+ A15（ci.yml vars 隔离）+ A16（credentials-local:208 override revert）+ A22（~12 churn 回退）+ A25（headless setup race——修法在 dsh-owned `packages/bundle/headless`）。upstream-merge prompt（`wayfinder/data-agent/prompts/upstream-merge-2026-09-07-session-prompt.md`，PR #82）覆盖。
+
+**blocked（1）**：A23（worktree/branch 收尾）——阻塞于**并行 session**仍活跃（9 个非我 worktree：dsh-cb1b/dsh-ece/dsh-R1/dsh-T2/dsh-T4/dsh-T7/dsh-upm/dsh-translation-pairing/dsh-upstream-merge-plan/dsh-repo-infra-matt-pocock-setup）。无法安全删并行 session 的活跃 worktree/branch；等并行 session 停后评估 rescue/abandon + 清理。
+
+**translation debt（1）**：A18-d3-4（未配对 da-guidelines 文档）——属 translation-pairing 债（`tickets/phase-misc/GA-FORK-CI-translation-pairing-debt.md`）。
+
 ## Out of scope
 
 <!-- 超出 destination；closed，不毕业 -->
