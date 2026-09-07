@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-retrieval-experiment
 
+English | [中文](README.zh.md)
+
 Retrieval strategy gradient experiment infrastructure: Level 0-3 graph snapshots, blending function variants, precision@K/recall@K harness
 
 ## Model Experience

@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-scope-routing
 
+English | [中文](README.zh.md)
+
 Scope-routing tools for the data agent: list_scopes, switch_scope + alias-based system-prompt hints for automatic scope detection
 
 ## Model Experience

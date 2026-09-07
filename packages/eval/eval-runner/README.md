@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-eval-runner
 
+English | [中文](README.zh.md)
+
 Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness
 
 ## Model Experience

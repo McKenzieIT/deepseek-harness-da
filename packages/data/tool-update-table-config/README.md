@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-update-table-config
 
+English | [中文](README.zh.md)
+
 Model-facing update_table_config tool: write a per-table ODPS project override to the semantic-layer substrate for the data agent's self-evolution loop (admin-only; Tier-2 audited)
 
 ## Model Experience

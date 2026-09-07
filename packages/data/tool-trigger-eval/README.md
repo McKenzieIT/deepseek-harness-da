@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-trigger-eval
 
+English | [中文](README.zh.md)
+
 Model-facing `trigger_eval` tool for the DeepSeek Harness data agent. Triggers a semantic layer eval run against the data agent's case set, persists results, and reports a before/after delta. A function plugin (`apply(ctx, config)`) that registers a single tool via `ctx.tools.register`.
 
 ## Overview

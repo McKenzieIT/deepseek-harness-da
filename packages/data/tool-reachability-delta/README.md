@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-tool-reachability-delta`
 
+English | [中文](README.zh.md)
+
 Model-facing `reachability_delta` tool: **compute how many new asset pairs become newly reachable via joins if a proposed relation is added to the knowledge graph**. The agent calls it to assess the impact of adding a new relation before committing the edit.
 
 It is a model-facing wrapper over the [`ctx.evidenceQuery`](../evidence-query) `reachabilityDelta` substrate (shipped with the `@deepseek-ai/dsh-evidence-query` service). It mirrors [`@deepseek-ai/dsh-tool-load-table-definition`](../tool-load-table-definition) and [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) for the [`@deepseek-ai/dsh-tools`](../../core/tools) registration shape (`defineTool` + `ctx.tools.register`).

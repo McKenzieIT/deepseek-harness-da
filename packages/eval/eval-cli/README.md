@@ -1,5 +1,7 @@
 # dsh-eval-cli
 
+English | [中文](README.zh.md)
+
 Standalone eval CLI for the dsh-data-agent NL2SQL pipeline. Drives eval cases against the real engine, persists results as JSON, and reports to stdout.
 
 ## Standard Eval Mode: SQL Semantic Judge
