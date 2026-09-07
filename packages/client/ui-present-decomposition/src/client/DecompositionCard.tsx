@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
+import { isLatestTurn, blockText } from '@deepseek-ai/dsh-client-runtime/client'
 import clsx from 'clsx'
 import css from './DecompositionCard.module.css'
 import type { DecompositionKey } from './locales.ts'
@@ -86,21 +87,6 @@ function parseArgs(argsRaw: string): NormalizedArgs | null {
   }
 }
 
-/** Whether the block belongs to the turn the conversation is still on. */
-function isLatestTurn(block: ToolCallBlock, snapshot: ConversationSnapshot): boolean {
-  if (!('kind' in block)) return true
-  const turnOrder = snapshot.chat.timeline.turnOrder
-  if (turnOrder.length === 0) return true
-  const latestTurn = turnOrder[turnOrder.length - 1] as number
-  const timing = snapshot.turnTimings.get(latestTurn)
-  if (!timing) return true
-  return block.time >= timing.startTime
-}
-
-function contentText(block: ToolCallBlock & { kind: 'tool-result' }): string {
-  return (block as unknown as { content: readonly { text?: string }[] }).content.map(c => c.text ?? '').join('\n').trim()
-}
-
 function interpolate(template: string, value: string): string {
   return template.replace('{value}', value).replace('{count}', value)
 }
@@ -118,7 +104,7 @@ function RunningState() {
 }
 
 function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-result' } }) {
-  const text = contentText(block)
+  const text = blockText(block)
   return (
     <div className={css.card}>
       <div className={css.fallback}>
@@ -129,7 +115,7 @@ function FallbackContent({ block }: { block: ToolCallBlock & { kind: 'tool-resul
 }
 
 function ErrorState({ block, t }: { block: ToolCallBlock & { kind: 'tool-result' }; t: DecompositionCardProps['t'] }) {
-  const detail = contentText(block)
+  const detail = blockText(block)
   return (
     <div className={css.card}>
       <div className={css.error} role="alert">
