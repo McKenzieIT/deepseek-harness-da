@@ -385,12 +385,23 @@ export function apply(ctx: Context, _config: Config = {}): void {
             }
           }
         } else if (kind === 'event') {
-          // Events use writeEventYaml (raw-edit surface). The event write path
-          // does not have a Service-level method with Tier-2 audit, so we
-          // record audit separately below.
-          const { writeEventYaml, dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
-          const yamlContent = dumpYaml(merged)
-          const res = await writeEventYaml(schema.semanticRoot, result.asset_name, yamlContent)
+          // A13 (TOCTOU lost-update): mirror the table branch (D3-3) — pass a
+          // PARTIAL override (patch + confirmation flip) to updateEventMeta,
+          // not the full `merged` dict. The substrate re-reads the current
+          // on-disk event YAML and shallow-merges `updates` on top, so stale
+          // `existing`-sourced fields in `merged` would silently revert a
+          // concurrent edit to any non-patched field. `merged` stays the
+          // before/after snapshot source. Previously this branch dumped the
+          // full `merged` via `writeEventYaml` (raw-edit surface), so a
+          // concurrent edit between load+write was silently overwritten (lost
+          // update). updateEventMeta records the Tier-2 `update_event_meta`
+          // audit row (parallel to `update_table_meta`); the tool-level
+          // `edit_definition` delta audit below still runs for all kinds.
+          const updates: Record<string, unknown> = {
+            ...patch,
+            confirmation: merged.confirmation,
+          }
+          const res = await schema.updateEventMeta(result.asset_name, updates)
           if (!res.ok) {
             return {
               applied: false,
@@ -425,12 +436,13 @@ export function apply(ctx: Context, _config: Config = {}): void {
         }
       }
 
-      // Record Tier-2 audit (for events; tables are already audited via
-      // updateTableMeta). inject guarantees audit is mounted — use it directly.
+      // Record Tier-2 audit (the structured before/after delta for ALL kinds).
+      // inject guarantees audit is mounted — use it directly.
       // V1 (G6 D4): compute a structured before/after delta and co-locate it
       // with the tier-2 write event for ALL kinds (table / event / concept).
-      // Tables already have a substrate-level `update_table_meta` audit row;
-      // this `edit_definition` row carries the structured delta that the
+      // Tables + events already have a substrate-level audit row
+      // (`update_table_meta` / `update_event_meta`); this `edit_definition`
+      // row carries the structured delta that the
       // management agent's ③ self-driven loop + the V2 eval-run changeset read
       // via `audit.store.listDeltasSince(ts)`. The automatic `confirmation`
       // status flip is stripped from the delta (noise — it is always

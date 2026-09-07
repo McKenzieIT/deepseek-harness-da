@@ -492,6 +492,52 @@ export async function updateTableMeta(
   return { ok: true, table_name: name }
 }
 
+// A13 (TOCTOU lost-update): Tier-2 per-scope event-meta update — read-merge-
+// validate-write, parallel to `updateTableMeta`. The event branch of
+// `edit_definition` previously dumped the full `merged` dict (computed from a
+// stale `existing` load) via `writeEventYaml`, silently reverting any
+// concurrent edit to a non-patched field between load+write. Mirrors
+// `updateTableMeta`'s re-read-merge-write: re-read the LATEST on-disk event
+// YAML at write time, shallow-merge the caller's `updates` on top, validate,
+// write. Locates the event file via `findEventPath` (events live in
+// `events/<domain>/<name>.yaml`, not a fixed `tables/<name>.yaml` path); a
+// missing file is an error (this is an UPDATE, not a create — a concurrently
+// deleted event must not be silently re-created here).
+/**
+ * Result of a Tier-2 event-meta update: `{ ok: true, event_name }` on success,
+ * or `{ ok: false, error }` when the event is missing/malformed or post-merge
+ * validation fails.
+ */
+export type UpdateEventMetaResult = { ok: true; event_name: string } | { ok: false; error: string }
+/**
+ * Tier-2 per-scope write: read-merge-validate-write a single event's meta
+ * updates and record the write via `opts.recorder` (D5 non-disableable audit).
+ * Mirrors `updateTableMeta` for the event substrate (A13 TOCTOU fix).
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param name - the event `name` to update (must already exist on disk).
+ * @param updates - the field overrides merged over the existing event YAML.
+ * @param opts - the recorder + optional scope id used for the Tier-2 audit record.
+ * @returns `{ ok: true, event_name }` on success, or `{ ok: false, error }` when the event is missing/malformed or validation fails.
+ */
+export async function updateEventMeta(
+  semanticLayer: string,
+  name: string,
+  updates: Record<string, unknown>,
+  opts: Tier2Opts,
+): Promise<UpdateEventMetaResult> {
+  const ef = findEventPath(semanticLayer, name)
+  if (ef === null) return { ok: false, error: `Event not found: ${name}` }
+  const data = readYaml(ef)
+  if (typeof data !== 'object' || data === null) return { ok: false, error: `Event malformed: ${name}` }
+  const merged: Record<string, unknown> = { ...(data as Record<string, unknown>), ...updates }
+  const r = EventDefinitionSchema.safeParse(merged)
+  if (!r.success) return { ok: false, error: `Validation failed after update: ${r.error.message}` }
+  await atomicWrite(ef, merged)
+  invalidateCaches(semanticLayer)
+  opts.recorder.recordTier2Write('update_event_meta', { event_name: name, updates }, opts.scope_id !== undefined ? { scope_id: opts.scope_id } : {})
+  return { ok: true, event_name: name }
+}
+
 // ── Sync-write (mirrors rbi_semantic/sync.py: YAML-write-only, receives pre-fetched schema dicts) ──
 // ODPS-DECOUPLED: receives TableMeta[] (from ctx.schema.discover/describe) and writes YAML.
 // Does NOT touch ODPS — that lives in the query-engine MaxCompute sidecar (P4 / ⑤a).
