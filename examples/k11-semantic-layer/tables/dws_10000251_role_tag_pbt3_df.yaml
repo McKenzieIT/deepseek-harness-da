@@ -800,6 +800,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS server_id (区服id) joins to dim_10000251_server_info (PK server_id), the 服务器/区服维度配置表 used for fact-table server attribute lookup.
+    origin: deterministic
   - dim_table: dim_10000251_trans_fteam_dungeon_df
     join_keys:
       - dws_column: fteam_dungeon_stay_stage_id

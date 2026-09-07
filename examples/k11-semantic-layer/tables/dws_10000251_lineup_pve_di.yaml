@@ -86,6 +86,7 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS 列 server_id (comment 区服id) 与 dim server_info 主键 server_id 完全一致；该 dim 为区服维度配置表。
+    origin: deterministic
   - dim_table: dim_10000251_trans_play_df
     join_keys:
       - dws_column: play_id
@@ -96,6 +97,7 @@ dimension_refs:
       - dws_column: sub_play_id
         dim_column: sub_play_id
     derivation: DWS 列 sub_play_id (comment 子玩法id) 与 dim trans_sub_play_od 主键 sub_play_id 完全一致；该 dim 为子玩法配置维度表。
+    origin: deterministic
 pref_label: PVE阵容表
 alt_labels:
   - 阵容

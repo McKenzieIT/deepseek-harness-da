@@ -132,13 +132,16 @@ external_refs:
       - dws_column: level
         dim_column: level
     derivation: 确定性：事件字段 level 与 dim_10000251_knight_awaken_info_arch 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_knight_level_info
     join_keys:
       - dws_column: level
         dim_column: level
     derivation: 确定性：事件字段 level 与 dim_10000251_knight_level_info 主键精确同名
+    origin: deterministic
   - dim_table: dim_10000251_knight_level_info_arch
     join_keys:
       - dws_column: level
         dim_column: level
     derivation: 确定性：事件字段 level 与 dim_10000251_knight_level_info_arch 主键精确同名
+    origin: deterministic

@@ -138,6 +138,7 @@ dimension_refs:
       - dws_column: tactic_id
         dim_column: tactic_id
     derivation: DWS tactic_id (风物ID) exactly matches dim_10000251_tactic_info PK tactic_id (风物配置维度表).
+    origin: deterministic
   - dim_table: dim_10000251_knight_job_name
     join_keys:
       - dws_column: card_job

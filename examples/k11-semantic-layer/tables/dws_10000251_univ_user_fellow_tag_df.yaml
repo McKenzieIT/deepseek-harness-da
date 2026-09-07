@@ -77,6 +77,7 @@ dimension_refs:
       - dws_column: rule_id
         dim_column: rule_id
     derivation: DWS column rule_id (comment 命中规则id) exactly matches dim_10000251_fellow_rule_df.primary_key rule_id; both tables are in the fellow/社交规则 domain and the DIM's stated purpose is 供事实表通过 rule_id JOIN 解析规则语义.
+    origin: deterministic
 pref_label: 内部用户标签表
 alt_labels:
   - 内部

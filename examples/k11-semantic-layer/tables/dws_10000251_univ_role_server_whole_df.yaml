@@ -129,4 +129,5 @@ dimension_refs:
       - dws_column: server_id
         dim_column: server_id
     derivation: DWS column server_id (comment 区服id) exactly matches dim_10000251_server_info.primary_key server_id, the 服务器/区服配置维度表 used to resolve 区服名称与开服时间.
+    origin: deterministic
 pref_label: 角色区服全量表
