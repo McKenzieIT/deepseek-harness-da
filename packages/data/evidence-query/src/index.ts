@@ -725,8 +725,4 @@ export class EvidenceQueryService extends Service {
 
 export default EvidenceQueryService
 
-export function apply(ctx: Context, config: EvidenceQueryConfig = {}): void {
-  new EvidenceQueryService(ctx, config)
-}
-
 export { EvidenceQueryGateway } from './gateway.ts'

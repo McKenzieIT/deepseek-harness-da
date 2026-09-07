@@ -151,6 +151,12 @@ export function apply(ctx: Context): void {
     // listeners). The listener logs mount failures at ERROR before
     // re-throwing; void + catch prevents an unhandled rejection (the
     // re-throw fed a WARN report filtered at the default INFO threshold).
-    void listener(event).catch(() => {})
+    void listener(event).catch((err: unknown) => {
+      // d3-8 (rule 12): the listener already logged the mount failure at ERROR
+      // (createAutojoinListener logs + re-throws); swallow the re-throw here to
+      // avoid an unhandled rejection — agent/created is fire-and-forget, so the
+      // WARN report the re-throw raises is filtered at the default INFO threshold.
+      void err
+    })
   })
 }

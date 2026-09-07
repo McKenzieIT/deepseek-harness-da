@@ -43,6 +43,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
 import { updateTableMeta } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
 import type { Tier2Recorder } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
 import type { CallerIdentity } from '@deepseek-ai/dsh-identity'
@@ -226,6 +227,11 @@ export function apply(ctx: Context, _config: Config = {}): void {
         type: 'text',
         text: formatResult(value),
       }],
+      // d3-5 (rule 7): project the UpdateTableConfigResult value into
+      // result.meta so presentResult can read ok/table_name/qualified_name/error
+      // without parsing the rendered text (presenters are pure — args/result
+      // only, no ctx access).
+      presentationMeta: (_args, value) => value,
     },
     async execute(args, exec) {
       if (exec.signal.aborted) {
@@ -235,6 +241,27 @@ export function apply(ctx: Context, _config: Config = {}): void {
       const audit = ctx.get('audit') as Tier2Recorder | undefined
       const identity = ctx.get('identity')
       return updateTableConfigResult(schema, audit, identity, args.table_name, args.project)
+    },
+    // d3-5 (rule 7): pick the render intent up front. A simple ok/error write
+    // result → a generic call/result card (no diff: presenters are pure, so
+    // `ctx.schema.semanticRoot` is unavailable to derive the on-disk table
+    // YAML `path`, and the value carries no before/after text for `FileDiff`).
+    presentCall(args): GenericCallView {
+      const { table_name, project } = args as { table_name: string; project: string }
+      return {
+        card: 'generic',
+        title: `Update table config: ${table_name} → ${project}`,
+        kind: 'edit',
+      }
+    },
+    presentResult(args, result: ToolResult): GenericResultView | undefined {
+      if (result.isError) return undefined
+      const meta = result.meta as UpdateTableConfigResult | undefined
+      const tableName = (args as { table_name: string }).table_name
+      if (!meta?.ok) {
+        return { card: 'generic', title: `Update failed: ${tableName} (${meta?.error ?? 'unknown error'})` }
+      }
+      return { card: 'generic', title: `Updated ${meta.table_name ?? tableName} → ${meta.qualified_name ?? ''}` }
     },
   }))
 }
