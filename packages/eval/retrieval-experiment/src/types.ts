@@ -24,9 +24,19 @@ export interface GraphSnapshotStats {
   readonly conceptCount: number
 }
 
+/**
+ * The closed set of graph snapshot coverage levels. `'L0'|'L1'` are the
+ * experiment-harness-supported levels (carry no runtime args); `'L2'|'L3'`
+ * require runtime `extraAliases`/`extraConcepts` (see `snapshotLevel2`/
+ * `snapshotLevel3` in graph-snapshot.ts) and are rejected by the experiment
+ * harness. The union is closed so a typo like `'L0 '`/`'l0'`/`'L4'` fails at the
+ * type boundary instead of silently degrading to the empty `{}` config.
+ */
+export type SnapshotLevel = 'L0' | 'L1' | 'L2' | 'L3'
+
 /** GraphSnapshot */
 export interface GraphSnapshot {
-  readonly level: string
+  readonly level: SnapshotLevel
   readonly graph: RelationGraph
   readonly linker: Bm25Linker
   readonly stats: GraphSnapshotStats
@@ -62,7 +72,7 @@ export interface CaseRetrievalResult {
 
 /** ExperimentConfig */
 export interface ExperimentConfig {
-  readonly snapshotLevel: string
+  readonly snapshotLevel: SnapshotLevel
   readonly blending: BlendingConfig
   readonly topK: number
 }

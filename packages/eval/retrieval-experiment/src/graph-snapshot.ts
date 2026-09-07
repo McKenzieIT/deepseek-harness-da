@@ -19,7 +19,7 @@ import {
   projectMetricCorpusItem,
 } from '@deepseek-ai/dsh-semantic-layer/src/metrics.ts'
 import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
-import type { GraphSnapshotConfig, GraphSnapshot, GraphSnapshotStats, ConceptDef } from './types.ts'
+import type { GraphSnapshotConfig, GraphSnapshot, GraphSnapshotStats, SnapshotLevel, ConceptDef } from './types.ts'
 
 interface ConceptRow {
   readonly name: string
@@ -106,7 +106,7 @@ function injectExtraAliases(
 export function buildGraphSnapshot(
   semanticRoot: string,
   config: GraphSnapshotConfig,
-  label: string,
+  label: SnapshotLevel,
 ): GraphSnapshot {
   const raw = loadAndParse(semanticRoot)
   const strip = config.stripAliases === true

@@ -10,7 +10,7 @@
  * When --cases is provided, Voice cases are split into EXEC/DELIVERY.
  * Without it, Voice is reported as a single category.
  */
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { load as parseYaml } from 'js-yaml'
 
@@ -100,9 +100,32 @@ function findRepoRoot(): string {
   return resolve('.')
 }
 
-function resolveRunFile(prefix: string, dir: string): string {
-  const files = readdirSync(dir).filter(f => f.endsWith('.json') && f.startsWith(prefix))
+/**
+ * Resolve a run-result file by id prefix. Deterministic + fail-loud:
+ *   1. Prefer an exact `${prefix}.json` so a shorter id that is a prefix of
+ *      another (e.g. "run-1" vs "run-10") resolves to itself, not whichever
+ *      entry `readdirSync` happened to return first.
+ *   2. Otherwise sort the prefix-colliding candidates for a stable error.
+ *   3. Throw when more than one ambiguous candidate remains — the caller must
+ *      pass a run id specific enough to name exactly one run file, otherwise
+ *      `compareRuns` would silently diff the wrong pair.
+ * Exported so the resolution rule is unit-testable independent of the CLI.
+ * @param prefix - the run id prefix to match.
+ * @param dir - directory containing run result JSON files.
+ * @returns the resolved file path.
+ */
+export function resolveRunFile(prefix: string, dir: string): string {
+  const exact = join(dir, `${prefix}.json`)
+  if (existsSync(exact)) return exact
+  const files = readdirSync(dir)
+    .filter(f => f.endsWith('.json') && f.startsWith(prefix))
+    .sort()
   if (files.length === 0) throw new Error(`No run file matching "${prefix}" in ${dir}`)
+  if (files.length > 1) {
+    throw new Error(
+      `Ambiguous run file prefix "${prefix}" in ${dir}: matched ${files.length} files [${files.join(', ')}]. Pass the full run id so exactly one "${prefix}.json" exists.`,
+    )
+  }
   return join(dir, files[0] as string)
 }
 

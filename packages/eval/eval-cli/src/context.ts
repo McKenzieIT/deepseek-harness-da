@@ -326,7 +326,13 @@ async function expandQuery(ctx: Context, question: string): Promise<string> {
       .trim()
       .replace(/\n/g, ' ')
     return text.length > 0 ? text : question
-  } catch {
+  } catch (err) {
+    // Name the error rather than swallowing it bare: a silent `return question`
+    // hides LLM/transport failures as "no expansion" — indistinguishable from a
+    // model that simply echoed the query. Log to stderr so the [DIAG] line
+    // surfaces alongside the other [DIAG] markers in eval output, then fall back
+    // to the original question (expansion is enrichment, not a hard gate).
+    console.error(`[DIAG] expandQuery failed: ${err instanceof Error ? err.message : String(err)}`)
     return question
   }
 }
