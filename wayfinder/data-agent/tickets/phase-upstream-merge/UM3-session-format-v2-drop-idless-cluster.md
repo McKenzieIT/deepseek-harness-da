@@ -6,7 +6,7 @@
 **Assignee**: unclaimed
 **Blocked by**: UM1
 **Blocks**: UM4（results-RPC 触 session）、UM5、UM6、UM7
-**Related**: d5 A5（[`.tmp/audit/d5-upstream-impact.md`](../../../../.tmp/audit/d5-upstream-impact.md) line 12-14）；upstream `a1271a4 fix(llm): keep streamed tool-call identity across empty deltas`、`f99b06e feat(session)!: embed assistant streams in format v2`
+**Related**: d5 A5（`.tmp/audit/d5-upstream-impact.md` line 12-14）；upstream `a1271a4 fix(llm): keep streamed tool-call identity across empty deltas`、`f99b06e feat(session)!: embed assistant streams in format v2`
 
 ## 背景
 

@@ -6,7 +6,7 @@
 **Assignee**: unclaimed
 **Blocked by**: UM3, UM4（3 logic-change 文件先归 UM3/UM4）
 **Blocks**: UM10
-**Related**: d5 审计（[`.tmp/audit/d5-upstream-impact.md`](../../../../.tmp/audit/d5-upstream-impact.md)，68 .ts 分桶：45 legit-extension / 8 coupled / 12 churn / 3 logic-change）
+**Related**: d5 审计（`.tmp/audit/d5-upstream-impact.md`，68 .ts 分桶：45 legit-extension / 8 coupled / 12 churn / 3 logic-change）
 
 ## 背景
 

@@ -375,7 +375,7 @@ master 从"永久飘红（无 PR 能变绿）"推进到 **7 个 node-24 meta-gat
 
 ## Upstream merge 2026-09-07
 
-merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）→ fork。2270 commits / 8525 files。session-prompt：[upstream-merge-2026-09-07-session-prompt](prompts/upstream-merge-2026-09-07-session-prompt.md)。预分析：[`.tmp/audit/d5-upstream-impact.md`](../../.tmp/audit/d5-upstream-impact.md)。
+merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）→ fork。2270 commits / 8525 files。session-prompt：[upstream-merge-2026-09-07-session-prompt](prompts/upstream-merge-2026-09-07-session-prompt.md)。预分析：`.tmp/audit/d5-upstream-impact.md`。
 
 **Merge 票务（UM-*，`tickets/phase-upstream-merge/`）**：
 - [UM1](tickets/phase-upstream-merge/UM1-pre-merge-branch-cleanup-and-merge.md) — 预清分支 + merge worktree + git merge upstream/master（入口）

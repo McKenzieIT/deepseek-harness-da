@@ -6,7 +6,7 @@
 **Assignee**: unclaimed
 **Blocked by**: 无（入口）
 **Blocks**: UM2, UM3, UM9（冲突解决需先有 staged merge）
-**Related**: session-prompt [upstream-merge-2026-09-07-session-prompt](../../prompts/upstream-merge-2026-09-07-session-prompt.md)；预分析 [`.tmp/audit/d5-upstream-impact.md`](../../../../.tmp/audit/d5-upstream-impact.md)
+**Related**: session-prompt [upstream-merge-2026-09-07-session-prompt](../../prompts/upstream-merge-2026-09-07-session-prompt.md)；预分析 `.tmp/audit/d5-upstream-impact.md`
 
 ## 背景
 
