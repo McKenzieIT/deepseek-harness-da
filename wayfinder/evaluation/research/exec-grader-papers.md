@@ -248,6 +248,33 @@ version，避免历史 run 被静默重解释。
 实时数据漂移，而 DWS 聚合相对稳定。这说明现有 143 个值不能仅因已存在就视为
 可审计 ground truth。
 
+### 5.1a 补记（2026-09-07，G1 session）：本认读只枚举了 k11-v2
+
+本节的枚举范围是 `k11-v2`，结论在该范围内成立。但仓库里**另有一套带完整
+provenance 的 case set**，本认读未覆盖：
+
+| case set | 文件数 | 带 `expected.sql` | 带 `meta.anchor_ds` |
+| --- | ---: | ---: | ---: |
+| `k11-v2` | 168 | 0 | 0 |
+| `rbi-10000251-exec` | 39 | **39** | **37** |
+
+`rbi-10000251-exec` 的 case 采用 rbi `schema_version: 3`，带 `expected.sql`、
+`meta.anchor_ds`、`meta.tier: verified`、`meta.provenance: migrated`。所以
+§3.3 所列的「最小 provenance 契约」有一部分**已经在仓库里实现**，后续设计应
+以它为起点而非从零设计。
+
+三点限定，避免把这套 schema 误当成已解决的答案：
+
+1. **eval 路径读不到它。** `loadCase` 的 zod object 会 strip 未知键，
+   `expected.sql`、`meta`、`schema_version` 在加载时被静默丢弃（实测）。
+2. **`expected.sql` 是模板而非可执行 SQL。** 37/39 含 `{{ds_yesterday}}` 或
+   `{{ds_7d_ago}}`，解析依赖同一 case 的 `meta.anchor_ds`；因此§6「可从
+   reference SQL + snapshot 重放」这条要求包含参数绑定契约。
+3. **`anchor_ds` 已被证明不是有效冻结锚点。** 实跑每个 case 自己的
+   `expected.sql` 对账其 `result_value`：event 类 16/18 已不符，DWS 类 13/13
+   相符——ODS 原始视图的历史分区不冻结，DWS 汇总表 T+1 算完即冻。这恰好是
+   §3.3「只记录查询日期不能固定动态数据」的实测确证。
+
 ### 5.2 设计推论：迁移步骤
 
 对全部 168 个 case 建议逐项执行以下流程：

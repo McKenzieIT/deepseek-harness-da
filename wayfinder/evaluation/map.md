@@ -107,7 +107,7 @@
 ### 10. Harness Benchmark/Harness/Environment 拆分 + Goodhart 审计(de-K11 架构答案)
 做什:AgentCompass 三件套拆 eval-cli——K11-v2 移出版本化 benchmark-pack;eval-runner+MultiTurnSession benchmark-agnostic;加 LiveK11 pack;compare.ts 出 Goodhart Δ(K11-train vs heldout vs fresh);Arena-Hard 式 style control+separability+95%CI;dye-pack sentinel。
 论文:AgentCompass(2607.13705 ✅验,B/H/E 拆分)、HELM(2211.09110)、BIG-bench(2206.04615)、Arena-Hard/MT-Bench(2306.05685)、WildBench(2406.04770)、LED(2602.01698,GRPO 升 pass@1 塌 pass@n=pass^k 上的 Goodhart)、Data Laundering(2412.15255)、MMLU-CF(2412.15194)、LLMs-Get-Lost(2505.06120)。
-票链:**R10-harness-goodhart-papers** → **G10-harness-bhe-split**(grilling,supersedes GA-GT4 架构面)→ **T9-bhe-split-impl** + **R21-goodhart-audit**(experiment,by T1)。
+票链:[**R10 — Harness/Goodhart 论文认读**](tickets/R10-harness-goodhart-papers.md)（**下一 session 起这张**）→ [**G10 — Harness B/H/E 拆分**](tickets/G10-harness-bhe-split.md)(grilling,supersedes GA-GT4 架构面;**持有 G1 移交的包边界/case schema 归属**)→ **T9-bhe-split-impl** + **R21-goodhart-audit**(experiment,by T1)。
 
 ### 11. Robustness/perturbation(consistency@k)+ IRT active sampling(新维度+power 解)
 做什:自动产 paraphrase + schema-perturbed 变体测 consistency@k(第 6 维);LaRT/IRT CAT 主动采样——cheap probe 估 per-case discordance p̂,预算砸 near-boundary(p̂≈0.5)→ ~40 case×3 run 出 n_d≥85,比 168 flat 更少 run 更高 n_d。
@@ -119,11 +119,13 @@
 **Historical(在 `wayfinder/data-agent/tickets/`)**:见 §Decisions so far + §Open frontier。
 
 **新票(在 `wayfinder/evaluation/tickets/`,本 effort R/G/T/P 命名空间)**:
-- **R(认读分析论文,AFK,产 research note)**:R1-exec-grader-papers、R2-judge-blind-papers、R3-judge-calibration-papers、R4-significance-papers、R5-contamination-papers、R6-trajectory-papers、R7-step-prm-papers、R8-pairwise-judge-papers、R9-error-taxonomy-papers、R10-harness-goodhart-papers、R11-robustness-sampling-papers。
-- **R(experiment,AFK,数字入 audit-log)**:R12-exec-orm-baseline、R13-judge-blind-baseline、R14-judge-falsepass-by-dim、R15-calibrated-rebaseline、R16-significance-rerun、R17-contamination-audit、R18-trajectory-baseline、R19-step-prm-divergence、R20-radar-redundancy、R21-goodhart-audit、R22-consistency-at-k、R23-comparator-policy-mutation-baseline。
-- **G(grilling,HITL)**:G1-exec-grader-seam、G1b-ground-truth-lifecycle、G2-judge-blind-rewrite、G3-judge-calibration、G4-significance-contract、G5-dynamic-case-pipeline、G6-trajectory-scoring、G7-step-prm、G8-pairwise-judge、G9-failure-classifier、G10-harness-bhe-split、G11-irt-sampler、(+G12-exec-orm-verifier 条件)。
-- **T(impl,AFK TDD)**:T1-exec-grader-impl、T2-judge-blind-impl、T3-calibration-impl、T4-sample-planner-impl+T4b-significance-impl、T5-dynamic-cases-impl+T5b-evolving-slice-impl、T6-multiturn-cases、T7-pairwise-judge-impl、T8-failure-classifier-impl、T9-bhe-split-impl、T10-active-sampler-impl、[T11-loader-provenance-strip](tickets/T11-loader-provenance-strip.md)(G1 产出,**阻塞 T1 与 G1b**)。
+- **R(认读分析论文,AFK,产 research note)**:[R1](tickets/R1-exec-grader-papers.md)(resolved)、R2-judge-blind-papers、R3-judge-calibration-papers、R4-significance-papers、R5-contamination-papers、R6-trajectory-papers、R7-step-prm-papers、R8-pairwise-judge-papers、R9-error-taxonomy-papers、[R10](tickets/R10-harness-goodhart-papers.md)、R11-robustness-sampling-papers。
+- **R(experiment,AFK,数字入 audit-log)**:R12-exec-orm-baseline、R13-judge-blind-baseline、R14-judge-falsepass-by-dim、R15-calibrated-rebaseline、R16-significance-rerun、R17-contamination-audit、R18-trajectory-baseline、R19-step-prm-divergence、R20-radar-redundancy、R21-goodhart-audit、R22-consistency-at-k、[R23](tickets/R23-comparator-policy-mutation-baseline.md)。
+- **G(grilling,HITL)**:[G1](tickets/G1-exec-grader-seam.md)(resolved)、[G1b](tickets/G1b-ground-truth-lifecycle.md)、G2-judge-blind-rewrite、G3-judge-calibration、G4-significance-contract、G5-dynamic-case-pipeline、G6-trajectory-scoring、G7-step-prm、G8-pairwise-judge、G9-failure-classifier、[G10](tickets/G10-harness-bhe-split.md)、G11-irt-sampler、(+G12-exec-orm-verifier 条件)。
+- **T(impl,AFK TDD)**:[T1](tickets/T1-exec-grader-impl.md)、T2-judge-blind-impl、T3-calibration-impl、T4-sample-planner-impl+T4b-significance-impl、T5-dynamic-cases-impl+T5b-evolving-slice-impl、T6-multiturn-cases、T7-pairwise-judge-impl、T8-failure-classifier-impl、T9-bhe-split-impl、T10-active-sampler-impl、[T11-loader-provenance-strip](tickets/T11-loader-provenance-strip.md)(G1 产出,**阻塞 T1 与 G1b**)。
 - **P(prototype,HITL)**:P1-trajectory-prototype。
+
+> **已建票文件 8 张**:R1、R10、R23、G1、G1b、G10、T1、T11。其余仅在本 map 点名——问题尚未 sharp,**不预先切割 fog**(判据是「能否现在精确陈述这个问题」,不是「能否现在回答它」)。
 
 ## 推荐认领顺序
 

@@ -28,4 +28,6 @@
 | 10 | Harness B/H/E+Goodhart | R10 | G10 | T9 | R21 |
 | 11 | Robustness+active sampling | R11 | G11 | T10 | R22 |
 
+**已建票文件**(其余仅在 map 点名,问题尚未 sharp,不预先切割 fog):[R1](R1-exec-grader-papers.md)、[R10](R10-harness-goodhart-papers.md)、[R23](R23-comparator-policy-mutation-baseline.md)、[G1](G1-exec-grader-seam.md)(resolved)、[G1b](G1b-ground-truth-lifecycle.md)、[G10](G10-harness-bhe-split.md)、[T1](T1-exec-grader-impl.md)、[T11](T11-loader-provenance-strip.md)。
+
 (问题已 sharp 时可在 charting 阶段创建票文件;claim 只改变占用状态。本 README 是 index,map.md 是权威状态。)
