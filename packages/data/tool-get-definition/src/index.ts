@@ -17,9 +17,15 @@ import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/i
 export const name = 'tool-get-definition'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/**
+ *  validateAssetName
+ * @param raw - raw
+ * @returns the result
+ */
 export function validateAssetName(raw: string): string | null {
   const trimmed = raw.trim()
   if (!trimmed) return null
@@ -28,6 +34,7 @@ export function validateAssetName(raw: string): string | null {
   return trimmed
 }
 
+/** GetDefinitionResult */
 export interface GetDefinitionResult {
   readonly found: boolean
   readonly kind?: string
@@ -36,6 +43,12 @@ export interface GetDefinitionResult {
   readonly [key: string]: JsonValue
 }
 
+/**
+ *  getDefinitionResult
+ * @param schema - schema
+ * @param name - name
+ * @returns the result
+ */
 export function getDefinitionResult(
   schema: SemanticLayerService | undefined,
   name: string,
@@ -58,6 +71,11 @@ export function getDefinitionResult(
   return { found: false, message: `no table, event, metric, or concept named "${validated}" found` }
 }
 
+/**
+ *  formatGetDefinition
+ * @param value - value
+ * @returns the result
+ */
 export function formatGetDefinition(value: GetDefinitionResult): string {
   if (!value.found) return value.message ?? 'not found'
   return `[${value.kind}] ${JSON.stringify(value.definition, null, 2)}`

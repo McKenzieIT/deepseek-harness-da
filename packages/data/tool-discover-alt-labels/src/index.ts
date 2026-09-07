@@ -21,12 +21,15 @@ import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/i
 export const name = 'tool-discover-alt-labels'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
 /**
  * Validate a definition name at the model-input boundary (defense-in-depth).
  * Rejects path traversal, empty, NUL, and overlength names.
+ * @param raw - raw
+ * @returns the result
  */
 export function validateName(raw: string): string | null {
   const trimmed = raw.trim()
@@ -58,6 +61,10 @@ function sanitizeError(e: unknown): string {
 /**
  * The pure discover core — probe the schema seam, validate names, delegate
  * to `ctx.schema.discoverAltLabels`. Exported for testing.
+ * @param schema - schema
+ * @param tables - tables
+ * @param events - events
+ * @returns the result
  */
 export async function discoverAltLabelsResult(
   schema: SemanticLayerService | undefined,
@@ -93,6 +100,8 @@ export async function discoverAltLabelsResult(
 
 /**
  * Format a discover result as readable text for the model.
+ * @param value - value
+ * @returns the result
  */
 export function formatDiscoverAltLabels(value: DiscoverAltLabelsResult): string {
   if (!value.ok) {

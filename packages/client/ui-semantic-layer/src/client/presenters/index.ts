@@ -12,6 +12,7 @@ import { GetCoverageRow } from './GetCoverageRow.tsx'
 import { DiscoverRelationsRow } from './DiscoverRelationsRow.tsx'
 import { TriggerEvalRow } from './TriggerEvalRow.tsx'
 
+/** semanticLayerPresenters */
 export const semanticLayerPresenters = {
   name: 'semantic-layer-presenters',
   inject: ['slots'],

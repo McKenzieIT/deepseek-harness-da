@@ -80,6 +80,7 @@ export type SemanticLayerKey =
   | 'schema.detail.hostEvent'
   | 'schema.detail.viewInGraph'
 
+/** zh */
 export const zh: Record<SemanticLayerKey, string> = {
   'title': '语义层',
   'loading': '加载中…',
@@ -161,6 +162,7 @@ export const zh: Record<SemanticLayerKey, string> = {
   'schema.detail.viewInGraph': '在知识图谱中查看',
 }
 
+/** en */
 export const en: Record<SemanticLayerKey, string> = {
   'title': 'Semantic Layer',
   'loading': 'Loading…',

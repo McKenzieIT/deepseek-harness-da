@@ -8,9 +8,11 @@ import type { ResultEntry } from '@deepseek-ai/dsh-result-cache'
 export const name = 'tool-compute'
 export const inject = ['tools', 'codeRuntime', 'resultCache']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/** ComputeResult */
 export interface ComputeResult {
   computed: boolean
   result_id: string

@@ -108,6 +108,11 @@ export function looksLikeToolCall(text: string): boolean {
   return false
 }
 
+/**
+ *  stripLineComments
+ * @param sql - sql
+ * @returns the result
+ */
 export function stripLineComments(sql: string): string {
   let out = ''
   let i = 0

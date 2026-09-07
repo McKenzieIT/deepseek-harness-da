@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ScopeSummary } from './types.ts'
 
+/** ListScopesResult */
 export interface ListScopesResult {
   readonly ok: boolean
   readonly scopes: readonly ScopeSummary[]
@@ -32,6 +33,11 @@ interface ScopeRegistryLike {
   activeId(): string | undefined
 }
 
+/**
+ *  listScopesResult
+ * @param ctx - ctx
+ * @returns the result
+ */
 export function listScopesResult(ctx: Context): ListScopesResult {
   const scopes = ctx.get('scopes') as ScopeRegistryLike | undefined
   if (!scopes) {
@@ -52,6 +58,10 @@ export function listScopesResult(ctx: Context): ListScopesResult {
   return { ok: true, scopes: summaries, active_scope_id: activeId }
 }
 
+/**
+ *  registerListScopes
+ * @param ctx - ctx
+ */
 export function registerListScopes(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'list_scopes',

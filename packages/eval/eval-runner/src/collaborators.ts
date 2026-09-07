@@ -27,6 +27,11 @@ export interface Collaborators {
 
 /**
  * Build a Collaborators object (convenience over raw object literal).
+ * @param agent - agent
+ * @param executor - executor
+ * @param judge - judge
+ * @param sqlJudge - sqlJudge
+ * @returns the result
  */
 export function buildCollaborators(
   agent: AgentResponder,

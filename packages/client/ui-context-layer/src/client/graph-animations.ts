@@ -54,6 +54,10 @@ const COVERAGE_NO_EVAL = '#bfbfbf'
 /**
  * Fade in nodes/edges by animating opacity from 0 to 1.
  * Uses G6 v5's updateData + animation config.
+ * @param graph - graph
+ * @param elementIds - elementIds
+ * @param duration - duration
+ * @returns the result
  */
 export function fadeIn(
   graph: Graph,
@@ -116,6 +120,8 @@ export function fadeIn(
 /**
  * Apply dashed stroke style to edges for reachability preview.
  * The dashed style persists until explicitly cleared.
+ * @param graph - graph
+ * @param edgeIds - edgeIds
  */
 export function dashedHighlight(graph: Graph, edgeIds: string[]): void {
   if (edgeIds.length === 0) return
@@ -136,6 +142,8 @@ export function dashedHighlight(graph: Graph, edgeIds: string[]): void {
 
 /**
  * Clear dashed highlight from edges (restore normal style).
+ * @param graph - graph
+ * @param edgeIds - edgeIds
  */
 export function clearDashedHighlight(graph: Graph, edgeIds: string[]): void {
   if (edgeIds.length === 0) return
@@ -157,6 +165,10 @@ export function clearDashedHighlight(graph: Graph, edgeIds: string[]): void {
 /**
  * Pulse a colored ring around nodes to signal degradation or alerts.
  * Uses a setInterval-based expand+fade cycle. Returns a cancel function.
+ * @param graph - graph
+ * @param nodeIds - nodeIds
+ * @param color - color
+ * @returns the result
  */
 export function pulseNode(
   graph: Graph,
@@ -231,6 +243,9 @@ export function pulseNode(
 /**
  * Blink nodes by toggling opacity rapidly to indicate "evaluating" state.
  * Returns a cancel function that stops blinking and restores full opacity.
+ * @param graph - graph
+ * @param nodeIds - nodeIds
+ * @returns the result
  */
 export function blinkNodes(graph: Graph, nodeIds: string[]): () => void {
   if (nodeIds.length === 0) return () => {}
@@ -261,6 +276,8 @@ export function blinkNodes(graph: Graph, nodeIds: string[]): () => void {
 /**
  * Smooth pan + zoom to center on a specific node.
  * Uses G6 v5's focusElement API with animation.
+ * @param graph - graph
+ * @param nodeId - nodeId
  */
 export function focusWithZoom(graph: Graph, nodeId: string): void {
   void graph.focusElement(nodeId, {
@@ -409,6 +426,7 @@ export function useGraphAnimations(
 /** Diagnostic overlay modes for the graph. */
 export type OverlayMode = 'off' | 'coverage' | 'heatmap'
 
+/** OverlayModeState */
 export interface OverlayModeState {
   /** Current overlay mode. */
   mode: OverlayMode
@@ -426,6 +444,7 @@ export interface OverlayModeState {
  * When mode changes, all nodes are re-styled accordingly.
  *
  * @param graph - the G6 graph instance (null if not yet mounted)
+ * @returns the result
  */
 export function useOverlayMode(graph: Graph | null): OverlayModeState {
   const [mode, setModeInternal] = useState<OverlayMode>('off')

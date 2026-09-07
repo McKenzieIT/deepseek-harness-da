@@ -25,7 +25,11 @@ import type { DeliveryOpts } from './delivery.ts'
 /** Classification of a case outcome for aggregation and evidence-query alignment. */
 export type CaseOutcome = 'correct' | 'declined' | 'wrong' | 'unjudged'
 
-/** Classify a `MultiTurnCaseResult` into a top-level outcome bucket. */
+/**
+ *  Classify a `MultiTurnCaseResult` into a top-level outcome bucket.
+ * @param result - result
+ * @returns the result
+ */
 export function classifyCaseOutcome(result: MultiTurnCaseResult): CaseOutcome {
   if (result.passed) return 'correct'
   if (result.attempts.every(a => a.error !== null)) return 'unjudged'

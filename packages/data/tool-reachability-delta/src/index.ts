@@ -14,9 +14,11 @@ import type { EvidenceQueryService } from '@deepseek-ai/dsh-evidence-query'
 export const name = 'tool-reachability-delta'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/** ProposedRelation */
 export interface ProposedRelation {
   sourceId: string
   targetId: string
@@ -24,16 +26,19 @@ export interface ProposedRelation {
   on?: string
 }
 
+/** ReachablePair */
 export interface ReachablePair {
   from: string
   to: string
 }
 
+/** ReachabilityDeltaResult */
 export interface ReachabilityDeltaResult {
   proposedRelation: ProposedRelation
   newlyReachable: ReachablePair[]
 }
 
+/** ReachabilityDeltaToolResult */
 export type ReachabilityDeltaToolResult = {
   ok: boolean
   proposedRelation: { sourceId: string; targetId: string; type: string; on?: string }
@@ -42,6 +47,11 @@ export type ReachabilityDeltaToolResult = {
   message?: string
 } & Record<string, JsonValue>
 
+/**
+ *  formatReachabilityDelta
+ * @param value - value
+ * @returns the result
+ */
 export function formatReachabilityDelta(value: ReachabilityDeltaToolResult): string {
   if (!value.ok) return value.message ?? 'reachability_delta failed'
 
@@ -66,7 +76,11 @@ export function formatReachabilityDelta(value: ReachabilityDeltaToolResult): str
   return lines.join('\n')
 }
 
-/** Project ReachabilityDeltaToolResult into a JsonValue-compatible record for persistence. */
+/**
+ *  Project ReachabilityDeltaToolResult into a JsonValue-compatible record for persistence.
+ * @param v - v
+ * @returns the result
+ */
 export function projectMeta(v: ReachabilityDeltaToolResult): { [key: string]: JsonValue } {
   const meta: { [key: string]: JsonValue } = {
     ok: v.ok,

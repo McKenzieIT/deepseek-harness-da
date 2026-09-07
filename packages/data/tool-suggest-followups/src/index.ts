@@ -5,19 +5,27 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 export const name = 'tool-suggest-followups'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/** Suggestion */
 export interface Suggestion {
   label: string
   value: string
 }
 
+/** SuggestFollowupsResult */
 export interface SuggestFollowupsResult {
   presented: boolean
   suggestions: Suggestion[]
 }
 
+/**
+ *  suggestFollowupsResult
+ * @param suggestions - suggestions
+ * @returns the result
+ */
 export function suggestFollowupsResult(
   suggestions: Suggestion[],
 ): SuggestFollowupsResult {

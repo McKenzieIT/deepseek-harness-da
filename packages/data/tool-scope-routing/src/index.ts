@@ -7,6 +7,7 @@ import { installScopeHint } from './scope-hint.ts'
 export const name = 'tool-scope-routing'
 export const inject = ['tools', 'systemPrompt']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 

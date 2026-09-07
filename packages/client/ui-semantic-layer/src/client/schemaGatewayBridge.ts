@@ -1,6 +1,7 @@
 import { unwrapRemoteResult } from './remoteResult.ts'
 import type { RemoteResult } from './remoteResult.ts'
 
+/** TableSummary */
 export interface TableSummary {
   readonly table_name: string
   readonly kind: string
@@ -10,6 +11,7 @@ export interface TableSummary {
   readonly metric_count: number
 }
 
+/** EventSummary */
 export interface EventSummary {
   readonly name: string
   readonly domains: readonly string[]
@@ -18,6 +20,7 @@ export interface EventSummary {
   readonly metric_count: number
 }
 
+/** MetricSummary */
 export interface MetricSummary {
   readonly name: string
   readonly domains: readonly string[]
@@ -26,12 +29,14 @@ export interface MetricSummary {
   readonly aggregation: string
 }
 
+/** SchemaSearchHit */
 export interface SchemaSearchHit {
   readonly id: string
   readonly score: number
   readonly description?: string
 }
 
+/** CoverageStats */
 export interface CoverageStats {
   readonly table_count: number
   readonly event_count: number
@@ -39,6 +44,7 @@ export interface CoverageStats {
   readonly domain_counts: Readonly<Record<string, number>>
 }
 
+/** DomainEntry */
 export interface DomainEntry {
   readonly name: string
   readonly table_count: number
@@ -46,8 +52,10 @@ export interface DomainEntry {
   readonly metric_count: number
 }
 
+/** Json */
 export type Json = string | number | boolean | null | readonly Json[] | { readonly [key: string]: Json }
 
+/** SchemaGatewayClient */
 export interface SchemaGatewayClient {
   listDomains: () => Promise<DomainEntry[]>
   listTables: () => Promise<TableSummary[]>
@@ -72,6 +80,11 @@ interface SchemaGatewayRemoteNamespace {
   getCoverageStats(): Promise<RemoteResult<CoverageStats>>
 }
 
+/**
+ *  buildSchemaGatewayClient
+ * @param remote - remote
+ * @returns the result
+ */
 export function buildSchemaGatewayClient(remote: SchemaGatewayRemoteNamespace): SchemaGatewayClient {
   return {
     async listDomains() { return unwrapRemoteResult(await remote.listDomains(), 'schema-gateway') },

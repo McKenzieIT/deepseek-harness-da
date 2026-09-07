@@ -18,6 +18,7 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-agent-presets'
 
+/** MANAGEMENT_PRESET_ID */
 export const MANAGEMENT_PRESET_ID = 'semantic-layer-management'
 
 /**

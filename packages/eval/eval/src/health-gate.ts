@@ -39,6 +39,8 @@ export interface HealthGateOptions {
 /**
  * Run all health checks. Returns immediately on first failure when
  * `failFast` is true (default).
+ * @param opts - opts
+ * @returns the result
  */
 export async function runHealthCheck(opts: HealthGateOptions): Promise<HealthCheckResult> {
   const checks: CheckResult[] = []

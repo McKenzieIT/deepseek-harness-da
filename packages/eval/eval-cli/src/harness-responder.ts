@@ -151,6 +151,7 @@ function extractFinalText(events: readonly SessionEvent[]): string {
 
 // ─── Boot Options ──────────────────────────────────────────────────────────────
 
+/** HarnessBootOptions */
 export interface HarnessBootOptions {
   /** Path to the semantic layer directory. */
   readonly schemaDir: string

@@ -1035,6 +1035,8 @@ export class PhaseGate {
  *
  * User-visible delivery markers (【发现】/【注意】) pass through — they are NOT
  * internal control tokens.
+ * @param upstream - upstream
+ * @returns the result
  */
 export async function* stripMarkersFromStream(upstream: AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk> {
   let buf = ''

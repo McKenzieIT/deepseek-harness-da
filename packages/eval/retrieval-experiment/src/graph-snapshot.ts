@@ -98,6 +98,10 @@ function injectExtraAliases(
  * disk, transforms them per config, then constructs the RelationGraph + BM25
  * corpus pair. The logic mirrors SemanticLayerService.getRelationGraph() and
  * loadRetrievalCorpusAll() but operates on in-memory transformed definitions.
+ * @param semanticRoot - semanticRoot
+ * @param config - config
+ * @param label - label
+ * @returns the result
  */
 export function buildGraphSnapshot(
   semanticRoot: string,
@@ -236,14 +240,31 @@ function buildCorpusFromDefs(
   return out
 }
 
+/**
+ *  snapshotLevel0
+ * @param semanticRoot - semanticRoot
+ * @returns the result
+ */
 export function snapshotLevel0(semanticRoot: string): GraphSnapshot {
   return buildGraphSnapshot(semanticRoot, { stripAliases: true, stripConcepts: true }, 'L0')
 }
 
+/**
+ *  snapshotLevel1
+ * @param semanticRoot - semanticRoot
+ * @returns the result
+ */
 export function snapshotLevel1(semanticRoot: string): GraphSnapshot {
   return buildGraphSnapshot(semanticRoot, {}, 'L1')
 }
 
+/**
+ *  snapshotLevel2
+ * @param semanticRoot - semanticRoot
+ * @param extraAliases - extraAliases
+ * @param extraConcepts - extraConcepts
+ * @returns the result
+ */
 export function snapshotLevel2(
   semanticRoot: string,
   extraAliases: ReadonlyMap<string, readonly string[]>,
@@ -252,6 +273,13 @@ export function snapshotLevel2(
   return buildGraphSnapshot(semanticRoot, { extraAliases, extraConcepts }, 'L2')
 }
 
+/**
+ *  snapshotLevel3
+ * @param semanticRoot - semanticRoot
+ * @param extraAliases - extraAliases
+ * @param extraConcepts - extraConcepts
+ * @returns the result
+ */
 export function snapshotLevel3(
   semanticRoot: string,
   extraAliases: ReadonlyMap<string, readonly string[]>,

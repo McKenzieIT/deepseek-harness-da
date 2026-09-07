@@ -92,17 +92,27 @@ export class NarrationGate {
     this.unsubscribe = options.eventSource.subscribe(this.handleEvent)
   }
 
-  /** Current pending (buffered, not yet released) updates. */
+  /**
+   *  Current pending (buffered, not yet released) updates.
+   * @returns the result
+   */
   getPending(): readonly GraphUpdate[] {
     return this.pending
   }
 
-  /** All released updates (cumulative history for the current session). */
+  /**
+   *  All released updates (cumulative history for the current session).
+   * @returns the result
+   */
   getReleased(): readonly GraphUpdate[] {
     return this.released
   }
 
-  /** Register a change listener (for React integration). Returns unsubscribe. */
+  /**
+   *  Register a change listener (for React integration). Returns unsubscribe.
+   * @param listener - listener
+   * @returns the result
+   */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }

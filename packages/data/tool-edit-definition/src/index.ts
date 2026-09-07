@@ -19,11 +19,17 @@ import { computeStructuredDelta, type Audit } from '@deepseek-ai/dsh-audit'
 export const name = 'tool-edit-definition'
 export const inject = ['tools', 'schema', 'audit']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
 // ── Validation ──────────────────────────────────────────────────────────────
 
+/**
+ *  validateAssetName
+ * @param raw - raw
+ * @returns the result
+ */
 export function validateAssetName(raw: string): string | null {
   const trimmed = raw.trim()
   if (!trimmed) return null
@@ -34,6 +40,7 @@ export function validateAssetName(raw: string): string | null {
 
 // ── Result type ─────────────────────────────────────────────────────────────
 
+/** EditDefinitionResult */
 export interface EditDefinitionResult {
   readonly applied: boolean
   readonly asset_name: string
@@ -84,6 +91,9 @@ function mergeByName(
  *  - `dimension_refs` — by-name merge (identity field: `dim_table`).
  *  - `domains` — string array, union with dedup (preserving existing order).
  *  - All other arrays and scalars — top-level replace.
+ * @param existing - existing
+ * @param patch - patch
+ * @returns the result
  */
 export function applyPatch(
   existing: Record<string, unknown>,
@@ -129,6 +139,10 @@ export function applyPatch(
  * Core edit logic: resolves the asset, applies the patch, sets unreviewed
  * status, and returns the result. Does NOT perform I/O or audit — the caller
  * handles persistence.
+ * @param schema - schema
+ * @param assetName - assetName
+ * @param patch - patch
+ * @returns the result
  */
 export function computeEdit(
   schema: SemanticLayerService | undefined,
@@ -263,6 +277,11 @@ export function computeEdit(
 
 // ── Formatting ──────────────────────────────────────────────────────────────
 
+/**
+ *  formatEditDefinition
+ * @param value - value
+ * @returns the result
+ */
 export function formatEditDefinition(value: EditDefinitionResult): string {
   if (!value.applied) return value.message ?? 'edit failed'
   return `[${value.kind}] ${value.asset_name}: patched fields: ${value.patched_fields.join(', ')}`

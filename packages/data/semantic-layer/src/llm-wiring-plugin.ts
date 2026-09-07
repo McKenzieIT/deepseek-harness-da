@@ -17,6 +17,7 @@ import { wireEnrichmentLlm, type TextLlm } from './index.ts'
 export const name = 'enrichment-llm-wiring'
 export const inject = ['schema', 'llm']
 
+/** Config */
 export interface Config {
   readonly provider?: string
   readonly model?: string

@@ -37,11 +37,18 @@ function aliasMatches(text: string, alias: string): boolean {
   }
 }
 
+/** ScopeAliasEntry */
 export interface ScopeAliasEntry {
   readonly id: string
   readonly aliases: readonly string[]
 }
 
+/**
+ *  matchAliases
+ * @param message - message
+ * @param scopes - scopes
+ * @returns the result
+ */
 export function matchAliases(message: string, scopes: readonly ScopeAliasEntry[]): AliasMatchResult {
   const matched_scope_ids: string[] = []
   const matched_aliases: string[] = []

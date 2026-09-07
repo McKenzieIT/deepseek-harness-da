@@ -18,6 +18,7 @@ import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/s
 export const name = 'tool-search-schema'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {
   /** Maximum number of schema-corpus rows the BM25 linker returns per query (default 20). */
   readonly topK?: number
@@ -39,12 +40,14 @@ interface SchemaCorpusSource {
   resolveScopeRoot?(scopeId?: string): string
 }
 
+/** SearchSchemaResult */
 export interface SearchSchemaResult {
   readonly ok: boolean
   readonly hits?: SearchSchemaHit[]
   readonly message?: string
 }
 
+/** SearchSchemaHit */
 export interface SearchSchemaHit {
   readonly id: string
   readonly score: number
@@ -129,6 +132,14 @@ function getCachedLinker(schema: SchemaCorpusSource, scopeId?: string): Bm25Link
   return linker
 }
 
+/**
+ *  searchSchema
+ * @param schema - schema
+ * @param query - query
+ * @param topK - topK
+ * @param scopeId - scopeId
+ * @returns the result
+ */
 export function searchSchema(
   schema: SchemaCorpusSource | undefined,
   query: string,
@@ -161,6 +172,11 @@ export function searchSchema(
   }
 }
 
+/**
+ *  formatSearchSchema
+ * @param value - value
+ * @returns the result
+ */
 export function formatSearchSchema(value: SearchSchemaResult): string {
   if (!value.ok) return value.message ?? 'search_schema failed'
   const hits = value.hits ?? []

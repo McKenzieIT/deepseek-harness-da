@@ -15,14 +15,22 @@ import type { AgentResponder, AgentResponse, AgentRespondOpts, QueryExecutor, Qu
 export class StubAgentResponder implements AgentResponder {
   private readonly _replies: Map<string, AgentResponse> = new Map()
   private _defaultReply: AgentResponse = { reply: 'stub response', generated_sql: null }
+  /** StubAgentResponder.calls */
   readonly calls: Array<{ question: string; opts?: AgentRespondOpts | undefined }> = []
 
-  /** Set a canned response for a specific question (substring match). */
+  /**
+   *  Set a canned response for a specific question (substring match).
+   * @param questionSubstring - questionSubstring
+   * @param response - response
+   */
   setReply(questionSubstring: string, response: AgentResponse): void {
     this._replies.set(questionSubstring, response)
   }
 
-  /** Set the default response for unmatched questions. */
+  /**
+   *  Set the default response for unmatched questions.
+   * @param response - response
+   */
   setDefaultReply(response: AgentResponse): void {
     this._defaultReply = response
   }
@@ -44,14 +52,22 @@ export class StubAgentResponder implements AgentResponder {
 export class StubQueryExecutor implements QueryExecutor {
   private readonly _results: Map<string, QueryResult> = new Map()
   private _defaultResult: QueryResult = { success: true, rows: [{ result: 1 }], row_count: 1, error: null }
+  /** StubQueryExecutor.calls */
   readonly calls: string[] = []
 
-  /** Set a canned result for a specific SQL (exact match). */
+  /**
+   *  Set a canned result for a specific SQL (exact match).
+   * @param sql - sql
+   * @param result - result
+   */
   setResult(sql: string, result: QueryResult): void {
     this._results.set(sql, result)
   }
 
-  /** Set the default result for unmatched SQL. */
+  /**
+   *  Set the default result for unmatched SQL.
+   * @param result - result
+   */
   setDefaultResult(result: QueryResult): void {
     this._defaultResult = result
   }
@@ -70,9 +86,14 @@ export class StubQueryExecutor implements QueryExecutor {
 export class StubJudgeExecutor implements JudgeExecutor {
   private _score: number = 1.0
   private _rationale: string = 'stub judge: always passes'
+  /** StubJudgeExecutor.calls */
   readonly calls: Array<{ expected: unknown; actual: string; question: string }> = []
 
-  /** Set the score that the stub judge returns. */
+  /**
+   *  Set the score that the stub judge returns.
+   * @param score - score
+   * @param rationale - rationale
+   */
   setScore(score: number, rationale?: string): void {
     this._score = score
     if (rationale) this._rationale = rationale

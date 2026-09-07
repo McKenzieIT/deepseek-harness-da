@@ -9,6 +9,8 @@ const DEFAULT_ALIAS_BOOST = 2.0
  * Extract meaningful terms from a query for alias resolution.
  * Improved over tool-search-data-sources: handles mixed CJK/ASCII content
  * by splitting at CJK/non-CJK boundaries before generating bigrams.
+ * @param query - query
+ * @returns the result
  */
 export function extractQueryTerms(query: string): string[] {
   const tokens = query
@@ -51,6 +53,9 @@ export function extractQueryTerms(query: string): string[] {
 /**
  * Fraction of query terms that resolve to at least one node via the graph's
  * alias index. 0 = no alias coverage, 1 = every term hits.
+ * @param graph - graph
+ * @param query - query
+ * @returns the result
  */
 export function computeQueryCoverage(graph: RelationGraph, query: string): number {
   const terms = extractQueryTerms(query)
@@ -69,6 +74,11 @@ function projectCandidate(h: RetrievalHit): RetrievalCandidate {
 /**
  * Strategy B (current production behavior): BM25 + alias boost fusion +
  * graph expansion. Control group for the experiment.
+ * @param snapshot - snapshot
+ * @param query - query
+ * @param topK - topK
+ * @param config - config
+ * @returns the result
  */
 export function strategyB(
   snapshot: GraphSnapshot,
@@ -126,6 +136,11 @@ function applyAliasFusion(
 /**
  * Hard switch: if query coverage >= threshold, return subgraph-only candidates;
  * otherwise return pure BM25 candidates. No fusion.
+ * @param snapshot - snapshot
+ * @param query - query
+ * @param topK - topK
+ * @param config - config
+ * @returns the result
  */
 export function hardSwitch(
   snapshot: GraphSnapshot,
@@ -183,6 +198,11 @@ function subgraphCandidates(
 /**
  * Continuous blend: final_score = coverage × graph_score + (1 - coverage) × bm25_score.
  * Coverage is the fraction of query terms resolved by aliases.
+ * @param snapshot - snapshot
+ * @param query - query
+ * @param topK - topK
+ * @param _config - _config
+ * @returns the result
  */
 export function continuousBlend(
   snapshot: GraphSnapshot,
@@ -234,6 +254,11 @@ export function continuousBlend(
 
 /**
  * Unified retrieval entry point — dispatches to the appropriate blending variant.
+ * @param snapshot - snapshot
+ * @param query - query
+ * @param topK - topK
+ * @param config - config
+ * @returns the result
  */
 export function runRetrieval(
   snapshot: GraphSnapshot,

@@ -16,6 +16,7 @@
 
 import type { PhaseConfig, PhaseGateState } from './types.ts'
 
+/** Phase */
 export const Phase = Object.freeze({
   UNDERSTANDING: 'understanding',
   GENERATION: 'generation',

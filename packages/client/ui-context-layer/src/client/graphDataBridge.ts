@@ -1,5 +1,6 @@
 import type { GraphData, GraphDataOpts } from './types.ts'
 
+/** GraphDataClient */
 export interface GraphDataClient {
   fetchGraphData: (opts?: GraphDataOpts) => Promise<GraphData>
 }
@@ -28,6 +29,11 @@ function unwrap<T>(result: RemoteResult<T>): T {
   return result.value
 }
 
+/**
+ *  buildGraphDataClient
+ * @param remote - remote
+ * @returns the result
+ */
 export function buildGraphDataClient(remote: GraphDataRemoteNamespace): GraphDataClient {
   return {
     async fetchGraphData(opts?) { return unwrap(await remote.getGraphData(opts)) },

@@ -22,6 +22,7 @@ export const name = 'goal-eval-context'
 // any context, so the goals service handle is not required here.
 export const inject = ['evidenceQuery', 'systemPrompt']
 
+/** Config */
 export interface Config {
   /**
    * Number of consecutive no-improvement evaluations after which the direction
@@ -73,6 +74,9 @@ export interface EvalEvidenceParams {
  * @param hintEscalationThreshold — number of consecutive no-improvement
  *   evaluations after which the hint escalates. Defaults to 2 (the hint
  *   escalates before the goal policy blocks at N=3).
+ * @param delta - delta
+ * @param consecutiveNoImprovement - consecutiveNoImprovement
+ * @returns the result
  */
 export function computeDirectionHint(
   delta: EvalEvidenceParams['delta'],
@@ -94,6 +98,8 @@ export function computeDirectionHint(
 /**
  * Render the eval evidence block from structured parameters.
  * Returns null when the section should not be emitted.
+ * @param params - params
+ * @returns the result
  */
 export function renderEvalEvidence(params: EvalEvidenceParams): string | null {
   if (!params.goalActive) return null
@@ -137,6 +143,9 @@ export function renderEvalEvidence(params: EvalEvidenceParams): string | null {
  * per-goal, per-trigger counter that gates round advancement. Keeping the
  * two counters separate avoids the context accidentally shadowing policy
  * state.
+ * @param runIds - runIds
+ * @param beforeAfterDelta - beforeAfterDelta
+ * @returns the result
  */
 export function computeConsecutiveNoImprovement(
   runIds: string[],
@@ -157,6 +166,10 @@ export function computeConsecutiveNoImprovement(
 
 /**
  * Build the EvalEvidenceParams from live service state.
+ * @param goalActive - goalActive
+ * @param store - store
+ * @param beforeAfterDelta - beforeAfterDelta
+ * @returns the result
  */
 export function buildEvalEvidenceParams(
   goalActive: boolean,

@@ -7,6 +7,7 @@
  */
 import { TableDefinitionSchema, type TableDefinition } from '../types.ts'
 import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem } from '../registry.ts'
+/** tableKindPlugin */
 export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
   kind: 'table',
   schema: TableDefinitionSchema,

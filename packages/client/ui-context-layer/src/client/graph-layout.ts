@@ -10,6 +10,8 @@
  * positioning inside each combo).
  */
 
+import type { LayoutOptions } from '@antv/g6'
+
 /** Semantic zoom level thresholds. */
 export const ZOOM_THRESHOLDS = {
   /** Below this zoom => far view (collapsed combos). */
@@ -18,10 +20,13 @@ export const ZOOM_THRESHOLDS = {
   MID_MAX: 1.0,
 } as const
 
+/** ZoomLevel */
 export type ZoomLevel = 'far' | 'mid' | 'near'
 
 /**
  * Determine the current semantic zoom level from a numeric zoom value.
+ * @param zoom - zoom
+ * @returns the result
  */
 export function getZoomLevel(zoom: number): ZoomLevel {
   if (zoom < ZOOM_THRESHOLDS.FAR_MAX) return 'far'
@@ -33,8 +38,9 @@ export function getZoomLevel(zoom: number): ZoomLevel {
  * G6 v5 combo-force layout options. Nodes cluster by their primary domain
  * (combo). The layout uses a force simulation to position combos apart and
  * nodes within each combo close together.
+ * @returns the result
  */
-export function getLayoutConfig() {
+export function getLayoutConfig(): LayoutOptions {
   return {
     type: 'combo-combined',
     outerLayout: {
@@ -70,6 +76,8 @@ export interface LODConfig {
 
 /**
  * Get the LOD config for a given zoom level.
+ * @param level - level
+ * @returns the result
  */
 export function getLODConfig(level: ZoomLevel): LODConfig {
   switch (level) {

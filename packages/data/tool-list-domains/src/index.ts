@@ -24,9 +24,11 @@ import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/i
 export const name = 'tool-list-domains'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/** DomainEntry */
 export interface DomainEntry {
   readonly name: string
   readonly description: string
@@ -36,12 +38,18 @@ export interface DomainEntry {
   readonly metric_count: number
 }
 
+/** ListDomainsResult */
 export interface ListDomainsResult {
   readonly ok: boolean
   readonly domains?: DomainEntry[]
   readonly message?: string
 }
 
+/**
+ *  listDomainsResult
+ * @param schema - schema
+ * @returns the result
+ */
 export function listDomainsResult(schema: SemanticLayerService | undefined): ListDomainsResult {
   if (schema === undefined) {
     return { ok: false, message: 'semantic-layer not mounted (ctx.schema unavailable)' }
@@ -105,6 +113,11 @@ export function listDomainsResult(schema: SemanticLayerService | undefined): Lis
   return { ok: true, domains }
 }
 
+/**
+ *  formatListDomains
+ * @param value - value
+ * @returns the result
+ */
 export function formatListDomains(value: ListDomainsResult): string {
   if (!value.ok) return value.message ?? 'list_domains failed'
   const domains = value.domains ?? []

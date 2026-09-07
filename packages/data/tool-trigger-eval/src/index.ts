@@ -19,6 +19,7 @@ import type { RunResult, RunSummary, DeltaReport } from '@deepseek-ai/dsh-eval-r
 export const name = 'tool-trigger-eval'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
@@ -44,6 +45,7 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+/** TriggerEvalResult */
 export interface TriggerEvalResult {
   readonly ok: boolean
   readonly mode: 'full_run' | 'report_last' | 'not_configured'
@@ -64,6 +66,11 @@ export interface TriggerEvalResult {
  */
 type TriggerEvalToolValue = { ok: boolean; mode: string; message?: string } & Record<string, JsonValue>
 
+/**
+ *  formatTriggerEval
+ * @param value - value
+ * @returns the result
+ */
 export function formatTriggerEval(value: TriggerEvalResult): string {
   if (!value.ok) return value.message ?? 'trigger_eval failed'
 
@@ -111,7 +118,11 @@ export function formatTriggerEval(value: TriggerEvalResult): string {
   return lines.join('\n')
 }
 
-/** Project TriggerEvalResult into a JsonValue-compatible record for persistence. */
+/**
+ *  Project TriggerEvalResult into a JsonValue-compatible record for persistence.
+ * @param v - v
+ * @returns the result
+ */
 export function projectMeta(v: TriggerEvalResult): { [key: string]: JsonValue } {
   const meta: { [key: string]: JsonValue } = {
     ok: v.ok,

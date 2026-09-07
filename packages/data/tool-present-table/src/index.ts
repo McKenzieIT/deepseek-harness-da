@@ -5,9 +5,11 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 export const name = 'tool-present-table'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/** KpiColumn */
 export interface KpiColumn {
   column: number
   aggregation: string
@@ -24,8 +26,10 @@ export const CHART_TYPES = [
   'line', 'bar', 'area', 'hbar', 'scatter', 'doughnut', 'bubble', 'radar', 'polarArea',
 ] as const
 
+/** ChartType */
 export type ChartType = typeof CHART_TYPES[number]
 
+/** ChartConfig */
 export interface ChartConfig {
   type: ChartType
   x_column: number
@@ -34,6 +38,7 @@ export interface ChartConfig {
   r_column?: number
 }
 
+/** PresentTableResult */
 export interface PresentTableResult {
   presented: boolean
   result_id: string
@@ -45,6 +50,17 @@ export interface PresentTableResult {
   chart?: ChartConfig
 }
 
+/**
+ *  presentTableResult
+ * @param result_id - result_id
+ * @param title - title
+ * @param columns - columns
+ * @param column_types - column_types
+ * @param sort_column - sort_column
+ * @param kpi_columns - kpi_columns
+ * @param chart - chart
+ * @returns the result
+ */
 export function presentTableResult(
   result_id: string,
   title: string,

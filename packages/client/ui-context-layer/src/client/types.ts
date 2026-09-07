@@ -15,6 +15,7 @@ export interface GraphDataOpts {
   includeMetrics?: boolean
 }
 
+/** GraphNode */
 export interface GraphNode {
   /** Unique identifier (table_name, event name, or metric name). */
   id: string
@@ -28,6 +29,7 @@ export interface GraphNode {
   evalPassRate?: number
 }
 
+/** GraphEdge */
 export interface GraphEdge {
   /** Source node id. */
   source: string
@@ -39,6 +41,7 @@ export interface GraphEdge {
   on?: string
 }
 
+/** GraphData */
 export interface GraphData {
   nodes: GraphNode[]
   edges: GraphEdge[]

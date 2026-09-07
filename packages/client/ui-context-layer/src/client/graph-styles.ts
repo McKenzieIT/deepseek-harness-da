@@ -36,6 +36,8 @@ export const DOMAIN_BORDER_PALETTE: readonly string[] = [
 /**
  * Compute border color from eval pass rate (0..1).
  * Returns a CSS color string. Undefined rate => neutral gray.
+ * @param passRate - passRate
+ * @returns the result
  */
 export function evalBorderColor(passRate: number | undefined): string {
   if (passRate === undefined) return '#d9d9d9'
@@ -55,8 +57,11 @@ export function evalBorderColor(passRate: number | undefined): string {
 /**
  * Produce the G6 v5 node style spec for a given kind and eval pass rate.
  * Used at both initial render and when LOD level changes.
+ * @param kind - kind
+ * @param evalPassRate - evalPassRate
+ * @returns the result
  */
-export function nodeStyle(kind: NodeKind, evalPassRate?: number) {
+export function nodeStyle(kind: NodeKind, evalPassRate?: number): Record<string, unknown> {
   return {
     fill: KIND_COLORS[kind],
     stroke: evalBorderColor(evalPassRate),
@@ -68,8 +73,10 @@ export function nodeStyle(kind: NodeKind, evalPassRate?: number) {
 /**
  * Edge style spec. Inter-combo (aggregate) edges are thicker and translucent;
  * intra-combo edges are thin.
+ * @param isAggregate - isAggregate
+ * @returns the result
  */
-export function edgeStyle(isAggregate = false) {
+export function edgeStyle(isAggregate = false): Record<string, unknown> {
   return {
     stroke: isAggregate ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.45)',
     lineWidth: isAggregate ? 3 : 1,
@@ -79,8 +86,10 @@ export function edgeStyle(isAggregate = false) {
 
 /**
  * Combo (domain cluster) style from a domain index.
+ * @param domainIndex - domainIndex
+ * @returns the result
  */
-export function comboStyle(domainIndex: number) {
+export function comboStyle(domainIndex: number): Record<string, unknown> {
   const idx = domainIndex % DOMAIN_PALETTE.length
   return {
     fill: DOMAIN_PALETTE[idx] ?? '#e6f7ff',

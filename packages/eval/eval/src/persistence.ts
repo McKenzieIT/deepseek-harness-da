@@ -60,6 +60,8 @@ export interface RunFileMeta {
  * runs after the batch completes (not on the hot path) and simplifies error
  * handling for the caller.
  * @returns the file path written.
+ * @param result - result
+ * @param dir - dir
  */
 export function persistBatchResult(result: BatchResult, dir: string): string {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -100,6 +102,8 @@ export function loadRunRecords(path: string): PersistedCaseRecord[] {
 
 /**
  * List all run files in a directory, sorted by timestamp (oldest first).
+ * @param dir - dir
+ * @returns the result
  */
 export function listRunFiles(dir: string): RunFileMeta[] {
   if (!existsSync(dir)) return []
@@ -129,6 +133,9 @@ function parseRunFilename(filename: string, dir: string): RunFileMeta | null {
 /**
  * Compute the delta between two runs: which cases flipped outcome.
  * "Improved" = moved toward correct; "regressed" = moved away from correct.
+ * @param runA - runA
+ * @param runB - runB
+ * @returns the result
  */
 export function computeDelta(runA: readonly PersistedCaseRecord[], runB: readonly PersistedCaseRecord[]): DeltaReport {
   const mapA = new Map(runA.map(r => [r.caseId, r]))
@@ -179,6 +186,8 @@ function isImprovement(before: CaseOutcome, after: CaseOutcome): boolean {
  * IMPORTANT: records must be from a SINGLE run. Passing records from multiple
  * runs produces a meaningless ratio (same caseId appears multiple times).
  * Use `loadRunRecords(path)` to get a single-run record set.
+ * @param records - records
+ * @returns the result
  */
 export function passAtK(records: readonly PersistedCaseRecord[]): number {
   if (records.length === 0) return 0

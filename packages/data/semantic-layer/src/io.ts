@@ -80,6 +80,7 @@ const _invalidationHooks: Array<(semanticLayer: string) => void> = []
 /**
  * Register a cache-invalidation hook fired by `invalidateCaches` (ADR-0011).
  * @param hook - the callback invoked with the semantic-layer path being invalidated.
+ * @returns the result
  */
 export function registerInvalidationHook(hook: (semanticLayer: string) => void): () => void {
   _invalidationHooks.push(hook)

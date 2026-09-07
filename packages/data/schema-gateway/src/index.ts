@@ -36,6 +36,7 @@ import type {
 
 export type * from './types.ts'
 
+/** SchemaGateway */
 export class SchemaGateway extends TypertRemoteService {
   static inject = ['schema']
 
@@ -72,6 +73,10 @@ export class SchemaGateway extends TypertRemoteService {
     return linker
   }
 
+  /**
+   *  SchemaGateway.listTables
+   * @returns the result
+   */
   @Remote('listTables')
   listTables(): TableSummary[] {
     const results: TableSummary[] = []
@@ -91,6 +96,10 @@ export class SchemaGateway extends TypertRemoteService {
     return results
   }
 
+  /**
+   *  SchemaGateway.listEvents
+   * @returns the result
+   */
   @Remote('listEvents')
   listEvents(): EventSummary[] {
     const results: EventSummary[] = []
@@ -109,6 +118,10 @@ export class SchemaGateway extends TypertRemoteService {
     return results
   }
 
+  /**
+   *  SchemaGateway.listMetrics
+   * @returns the result
+   */
   @Remote('listMetrics')
   listMetrics(): MetricSummary[] {
     const results: MetricSummary[] = []
@@ -124,21 +137,43 @@ export class SchemaGateway extends TypertRemoteService {
     return results
   }
 
+  /**
+   *  SchemaGateway.getTableDefinition
+   * @param name - name
+   * @returns the result
+   */
   @Remote('getTableDefinition')
   getTableDefinition(name: string): Json | null {
     return this.ctx.schema.loadTableDefinition(name) as Json | null
   }
 
+  /**
+   *  SchemaGateway.getEventDefinition
+   * @param name - name
+   * @returns the result
+   */
   @Remote('getEventDefinition')
   getEventDefinition(name: string): Json | null {
     return this.ctx.schema.loadEventDefinition(name) as Json | null
   }
 
+  /**
+   *  SchemaGateway.getMetricDefinition
+   * @param name - name
+   * @returns the result
+   */
   @Remote('getMetricDefinition')
   getMetricDefinition(name: string): Json | null {
     return this.ctx.schema.loadMetricDefinition(name) as Json | null
   }
 
+  /**
+   *  SchemaGateway.search
+   * @param query - query
+   * @param topK - topK
+   * @param scopeId - scopeId
+   * @returns the result
+   */
   @Remote('search')
   search(query: string, topK?: number, scopeId?: string): SchemaSearchHit[] {
     const linker = this.getLinker(scopeId)
@@ -150,6 +185,10 @@ export class SchemaGateway extends TypertRemoteService {
     }))
   }
 
+  /**
+   *  SchemaGateway.listDomains
+   * @returns the result
+   */
   @Remote('listDomains')
   listDomains(): DomainEntry[] {
     const counts = new Map<string, { tables: number; events: number; metrics: number }>()
@@ -178,6 +217,10 @@ export class SchemaGateway extends TypertRemoteService {
       }))
   }
 
+  /**
+   *  SchemaGateway.getCoverageStats
+   * @returns the result
+   */
   @Remote('getCoverageStats')
   getCoverageStats(): CoverageStats {
     const tables = this.listTables()
@@ -208,6 +251,9 @@ export class SchemaGateway extends TypertRemoteService {
    * `this.ctx.schema.getRelationGraph(scopeId)` (Phase 2 per-scope graph
    * path); `undefined` → active scope graph (现状, preserved). Dormant until
    * 5d — prod callers do not set a scope here yet.
+   * @param opts - opts
+   * @param scopeId - scopeId
+   * @returns the result
    */
   @Remote('getGraphData')
   getGraphData(opts?: GraphDataOpts, scopeId?: string): GraphData {

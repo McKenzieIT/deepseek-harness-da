@@ -77,7 +77,21 @@ function failFetch(s: EvidenceQueryState, err: unknown): EvidenceQueryState {
   return { ...s, pendingCount, loading: pendingCount > 0, error: describeError(err) }
 }
 
-export function useEvidenceQuery(client: EvidenceQueryClient | null) {
+/**
+ *  useEvidenceQuery
+ * @param client - client
+ * @returns the result
+ */
+export function useEvidenceQuery(client: EvidenceQueryClient | null): {
+  state: EvidenceQueryState
+  fetchCoverage: () => Promise<void>
+  fetchGapAnalysis: (assetId: string) => Promise<void>
+  fetchEvalResults: (filters: EvalResultFilters) => Promise<void>
+  fetchAssetHealth: (assetId: string) => Promise<void>
+  fetchReachabilityDelta: (relation: ProposedRelation) => Promise<void>
+  fetchEvalDelta: (runIdA: string, runIdB: string) => Promise<void>
+  triggerEval: (assetId?: string) => Promise<string | null>
+} {
   const [state, setState] = useState<EvidenceQueryState>(INITIAL_STATE)
 
   const fetchCoverage = useCallback(async () => {
