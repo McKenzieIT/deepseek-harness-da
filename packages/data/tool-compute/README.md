@@ -19,3 +19,9 @@ The model calls `compute` when it needs calculations the SQL query did not cover
 Preset row: `tool-compute` → `@deepseek-ai/dsh-tool-compute`
 
 Phase-gate: `INTERPRETATION_TOOLS` already includes `'compute'`.
+
+## Known Limitations and Deferred Work
+
+- The sandbox is a Python subprocess with no GPU access.
+- `result_id` is unvalidated until `present_table` resolves it — a stale or colliding id surfaces there, not at compute time.
+- Source data is loaded via the `data.load_result()` binding only; there is no ad-hoc SQL/file ingest path here.

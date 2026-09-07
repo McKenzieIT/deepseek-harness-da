@@ -14,3 +14,9 @@ When the model calls `present_decomposition`, this plugin replaces the generic t
 Cards on turns the conversation has moved past collapse themselves by default (`useSession` latest-turn probe, aligned with ui-suggest-followups); the user's toggle always wins. Fallback: `block.call === null` (window truncation) or malformed argsRaw renders `block.content` as plain text — argsRaw parsing validates and normalizes every field, so dirty payloads degrade to the fallback instead of throwing in render. While the tool is running, a skeleton shows.
 
 Copy lives in the `present.decomposition` locale namespace (zh source of truth, en complete); registration passes `locale: NS`.
+
+## Known Limitations and Deferred Work
+
+- Latest-turn collapse is the default; cards on past turns collapse unless the user toggles.
+- `block.call === null` (window truncation) or malformed `argsRaw` falls back to plain-text `block.content` rather than throwing in render.
+- Confidence is model-self-reported; the trust band only warns below 0.7, it does not independently validate the score.

@@ -15,7 +15,7 @@ When the model calls `suggest_followups`, this plugin replaces the generic tool 
 
 Fallback: when `block.call === null` (window truncation), renders `block.content` as plain text.
 
-## Known Limitations
+## Known Limitations and Deferred Work
 
 - Clicking a row submits immediately; there is no fill-composer-first mode and no undo for submitted follow-up messages (phase-2 candidates).
 - Expired rows are inert: they cannot be re-sent from an older turn.

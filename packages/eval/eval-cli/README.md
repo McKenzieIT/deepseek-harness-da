@@ -175,3 +175,9 @@ After each eval run, record the results in `wayfinder/data-agent/research/experi
 
 Resolves: [<ticket>](link)
 ```
+
+## Known Limitations and Deferred Work
+
+- Eval artifacts are gitignored and transient — `compare.ts` against vanished baselines is currently unexecutable (see the 2026-09-06 note).
+- Judge-only numbers are an upper bound: judge leniency was measured at a 35.9pp within-run gap.
+- Token usage is not yet recorded by the runner.

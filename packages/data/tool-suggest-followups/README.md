@@ -13,7 +13,7 @@ The model calls `suggest_followups` with:
 
 The tool returns `{ presented: true, suggestions }` and renders a bulleted list for the model's tool-result context.
 
-## Known Limitations
+## Known Limitations and Deferred Work
 
 - Pure intent recording only — the UI layer owns the click-to-query interaction.
 - Suggestion values are free-text queries, not validated against any schema.

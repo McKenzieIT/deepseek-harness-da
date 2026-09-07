@@ -48,3 +48,22 @@ grep 全 repo 被 consume 但未 define 的 `--dsw-alias-*` token，补定义到
   - **Cat 3**：拉上游 `8ffdee4fe5` 吸收 `--dsw-alias-link`。
 - **Q2 命名**：`state-warn` 是上游 canonical（23:1 consumer + 8 def + 0 warning def）。fork 的 `state-warning` 是偏离 → align 到 `state-warn`。
 - **Q1 values**：对 Cat 2，决策不是「define」而是 align-to-upstream-canonical / alias / define-net-new。对 Cat 1，follow-upstream-undefined-stance vs define-locally。
+
+## Decisions（2026-09-07 grilling — shared understanding 达成；impl 进行中）
+
+grilling 3 轮（values/naming → upstream 调研 → shade-intent+视觉+scope）后 frontier 清空。决策：
+
+- **D1 = (a) align** —— Cat 2 fork 自造非 canonical 名 → align 到上游 canonical 族：
+  - `content-primary/secondary/tertiary` → `label-primary/secondary/tertiary`；`content-danger` → `state-error-primary`；`content-link` → `link`（D3 拉来后）
+  - `surface-primary/secondary/active/default/hover` → `bg-base` / `bg-layer-1/2/3`（按语义映射）
+  - `border-primary/default/focus` → `border-l1..l4`（按语义映射）
+  - `state-warning-primary/surface` → `state-warn-primary` / `state-warn-tertiary`
+  - **shade-intent 事实解决**：fork 的 `#667085`（content-secondary fallback）≈ 上游 `neutral-bluish-700`（label-secondary = #61666B），align 的色值 shift 小、可接受；`border-primary` 网格 `rgba(102,112,133,0.25)`→`border-l2 rgba(0,0,0,0.1)`（灰→黑、都是淡网格线，可接受）。`#667085` 不精确匹配任何 `--dsw-static-*` 档位，精确保留需新增 static step（重 divergence 不值得）→ 无 token 走 (c)。
+  - **例外**：`state-info-primary/surface`（无上游平行族——上游无 `state-info-*`）→ **(c) define net-new**（按 `state-info-*` 模式 + `--dsw-static-blue-*` 定义，consumer 不改名）。
+- **D2 = (b) define locally** —— Cat 1 上游既有债 token（`border-subtle`/`text-primary`/`text-tertiary`/`fill-tsp-secondary`/`fill-tertiary`/`fill-l2`/`separator-primary`）在 fork `design-platform.css` 本地 define（`var(--dsw-static-*)`，light+dark 块）。`text-*` 走 define（跟随上游意图——上游 ModelsSection 注释承认这些 token 名只是未定义——**不** align 到 `label-*`，否则消掉上游本意要有的 `text-*` 族）。
+- **D3 = (a) pull `8ffdee4fe5`** —— cherry-pick 上游 commit 拿 canonical `--dsw-alias-link`（+ `markdown-inline-code` tweak），fork 这块没动过、无冲突预期。
+
+**实施**：worktree `../dsh-T2`（branch `fix/T2-theme-token-gap`），按 **Cat3 → Cat1 → Cat2** 顺序逻辑 commit（CLAUDE.md：改完即 commit、pathspec-limited `git add`、绝不 `git add -A`、动文件前先 `git status`）。
+**验证 bar**：(a) `grep` 确认 source 零残留旧名（`content-*`/`surface-*`/`border-primary`/`state-warning-*`）；(b) `getComputedStyle(:root)` 相关 token 非空；(c) `pnpm -r run build` + `pnpm run typecheck` + oxlint 绿；(d) dev-server 可渲染 chart 视图则 `browse` 截图 before/after（不强求）。
+**约束**：不触 `packages/*/src` 直推 master（已在 worktree 分支）；pre-commit lefthook（oxlint `*.{ts,tsx,mts,cts,mjs}` + whitespace + vendor guard）；pre-push typecheck；**禁止 upstream PR**（不动 `deepseek-ai/deepseek-harness`）。
+详见 [research/T2-upstream-design-system-divergence.md](../research/T2-upstream-design-system-divergence.md)。

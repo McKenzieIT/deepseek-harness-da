@@ -17,7 +17,7 @@ The model calls `present_decomposition` with:
 
 The tool returns `{ presented: true, summary, metrics, dimensions, time_range, ... }` and renders a readable decomposition summary for the model's tool-result context.
 
-## Known Limitations
+## Known Limitations and Deferred Work
 
 - Pure intent recording only — no downstream side effects or service interactions.
 - The confidence score is model-self-reported; no ground-truth calibration exists yet.
