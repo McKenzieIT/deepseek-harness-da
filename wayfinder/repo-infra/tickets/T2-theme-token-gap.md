@@ -33,3 +33,18 @@ grep 全 repo 被 consume 但未 define 的 `--dsw-alias-*` token，补定义到
   - (c) 全 repo grep 一遍 consumed-but-undefined 的 `--dsw-alias-*`（diff consumed vs defined），列全清单再补。
 
 需设计输入（token 值 + 命名）+ 视觉验证，非 quick fix。
+
+## Findings（2026-09-07 upstream-divergence research）
+
+详见 [research/T2-upstream-design-system-divergence.md](../research/T2-upstream-design-system-divergence.md)（primary sources: 上游 commit `8ffdee4fe5`、`ModelsSection.module.css:433-438` 注释、`design-platform.css:157-210/250-296`）。
+
+**fork vs upstream 关键结论：**
+
+- 设计系统源 = 上游 `design-platform.css` 的 `--dsw-alias-*: var(--dsw-static-*)` 模式（light+dark 块），上游 ui-theme README 文档化。无 tokens.json/figma。
+- fork 落后上游 1 commit（`8ffdee4fe5` 新增 `--dsw-alias-link` + markdown-inline-code tweak），fork 缺 `--dsw-alias-link`。
+- fork 的「缺失 token」分 3 类：
+  - **Cat 1 上游既有债**（consumed+undefined 上游，fork 继承）：`border-subtle`/`text-primary`/`text-tertiary`（上游 ModelsSection 注释自认 undefined）、`fill-tsp-secondary`/`fill-tertiary`/`fill-l2`/`separator-primary`（上游有 consumer 无 def）。上游 stance = 留 undefined + `var(token, literal)` fallback。fork consumer 多无 fallback（更糟）。
+  - **Cat 2 fork 自造非 canonical 名**（上游零存在，平行上游 canonical 族）：`content-*`（≈上游 `label-*`）、`content-link`（≈上游 `link`）、`surface-*`（≈上游 `bg-base`/`bg-layer-*`）、`border-primary/default/focus`（≈上游 `border-l1..l4`）、`state-warning-*`（≈上游 `state-warn-*`）、`state-info-*`（无上游对应）。consumer 全在 fork-added 包（ui-semantic-layer、ui-present-table）。
+  - **Cat 3**：拉上游 `8ffdee4fe5` 吸收 `--dsw-alias-link`。
+- **Q2 命名**：`state-warn` 是上游 canonical（23:1 consumer + 8 def + 0 warning def）。fork 的 `state-warning` 是偏离 → align 到 `state-warn`。
+- **Q1 values**：对 Cat 2，决策不是「define」而是 align-to-upstream-canonical / alias / define-net-new。对 Cat 1，follow-upstream-undefined-stance vs define-locally。
