@@ -5,7 +5,7 @@
 **Source**: [GA-AUDIT1-followup-findings](./GA-AUDIT1-followup-findings.md) (the resolved ticket's 73 deferred) + the 2026-09-04 `.tmp/adversarial-review/confirmed*.json` reconciliation (50 smell items re-verified).
 **Related**: [GA-GRILL-derived-from-lineage-direction](./GA-GRILL-derived-from-lineage-direction.md) (sl-3), [GA-GRILL-search-asset-id-normalization](./GA-GRILL-search-asset-id-normalization.md) (usl-9)
 
-## Progress to date (10 commits, 29 ④ items — 2026-09-04/09-06/09-07 across 4 sessions)
+## Progress to date (14 commits, 35 ④ items — 2026-09-04/09-06/09-07 across 4 sessions)
 
 | commit | batch | items |
 |---|---|---|
@@ -19,8 +19,12 @@
 | `be24f0e3d4` fix(llm-dashscope) | llm-dashscope | ld-4 (reasoning_content inline → reuse shared `partsToText` helper extracted from `textDeltaOf`; both content + reasoning_content sites call it; `textDeltaOf` removed, `WireDelta` import pruned, `WireContentPart` added, `as Array<{text?:string}>` cast eliminated, oxlint-disable directive consolidated 2→1) |
 | `a4afab5a06` fix(data) | data-tools-discovery | dtd-7 (discover_alt_labels presentResult regex → structured: add `output.presentationMeta` mirroring discover-relations sibling `{ ok, enriched, written }`; presentResult reads `result.meta.enriched` instead of `text.match(/enriched (\d+)/)`; behavior identical — regex extracted value.enriched from rendered text generated FROM value.enriched) |
 | `64194baf34` fix(scripts) | core-runtime-scripts | crs-3 (seed-event-external-refs --with-llm flag documented but never parsed — silent no-op; removed the --with-llm docs so the contract matches the deterministic-only behavior) |
+| `c05c5606e1` fix(eval) | eval-runner | eval-core-6 (remove dead 'permanent' from InfraFailureKind + dead branch in infra_retry), eval-core-8 (remove dead 'declined' switch-case; keep field+const for switch-exhaustiveness/prefer-const + RunSummary shape) |
+| `fcea601526` refactor(eval) | eval-runner | eval-core-5 (delete zero-caller verdict_mapper.ts + remove re-export from index.ts; full eval-core runtime stack deletion deferred to dedicated cleanup) |
+| `359b760ecb` fix(eval) | eval-cli-exp | ece-13 (resolveRunFile sort + prefer exact prefix.json + throw on ambiguous), ece-14 (expandQuery narrow catch + name error + [DIAG] log), ece-15 (LEVEL_CONFIGS closed SnapshotLevel union + throw on unknown) |
+| `0bcdd9161b` fix(client) | ui-present-misc | upm-2 (isLatestTurn lift to dsh-client-runtime/client cards.ts), upm-9 (parseNumericCell Number-based — '85%'→'—' bug fix, was parseFloat 85→8500%), upm-10 (blockText lift to cards.ts, trim policy = trim) |
 
-= 29 items (28 prior + 1 this batch; 23 real fixes + 6 doc fixes). Every batch: TDD RED→GREEN (each fix RED-watched-fail → minimal GREEN → persistence-checked via `git diff <file> | grep <marker>`); per-file `pnpm exec oxlint` 0 (89-rule); full-tree `pnpm run typecheck` exit 0 throughout; subagent code-review + test review (ucl-9 Test 2 strengthened to assert a non-empty LOD update — closed a no-op false-green). New tests this batch: +8 (narration-gate.client.spec 3 / NodeDetailPanel.spec 1 / graph-animations.client.spec 2 / ContextLayerGraph.spec 2).
+= 35 items (29 prior + 6 this batch; 29 real fixes + 6 doc fixes). Every batch: TDD RED→GREEN (each fix RED-watched-fail → minimal GREEN → persistence-checked via `git diff <file> | grep <marker>`); per-file `pnpm exec oxlint` 0 (89-rule); full-tree `pnpm run typecheck` exit 0 throughout; subagent code-review + test review (ucl-9 Test 2 strengthened to assert a non-empty LOD update — closed a no-op false-green). New tests this batch: +8 (narration-gate.client.spec 3 / NodeDetailPanel.spec 1 / graph-animations.client.spec 2 / ContextLayerGraph.spec 2).
 
 usl batch (PR #45, `277e22bb85` merged `5c37eb6f23`): +14 tests (remoteResult.client.spec 6 / kindBadge.client.spec 5 / useEvidenceQuery.client.spec 3); subagent code-review APPROVED (4/4 CORRECT, no blockers); test-review mutation RED (usl-12 revert triggerEval→2 RED, usl-11 mutate kindBadge→2 RED, usl-10 mutate remoteResult→5 RED across 3 specs); CI master-debt only (static = 4 content-creation gates, snapshots = publint/built-package-invariants — all pre-existing, PR #43 identical; node 22.19/26 vitest green). usl-9 DEFERRED (SchemaExplorer.tsx GA-WIRING-impl WIP).
 
@@ -29,6 +33,12 @@ ld-4 batch (PR #51, `be24f0e3d4` merged `cf813c18c`): +1 test (translate.spec re
 dtd-7 batch (PR #61, `a4afab5a06` merged `8173c1ac21`): +3 tests (presentResult title pin x2 [enriched>0, enriched=0] + presentationMeta RED→GREEN); subagent code-review APPROVED (CORRECT — mirrors discover-relations sibling, byte-identical title, regex fully removed, all 5 input shapes behavior-identical; one accepted shared edge tradeoff for nested calls, mirrors sibling); test-review mutation RED (presentResult title→constant → 2 pin tests RED); CI master-debt only (node 22.19/26 vitest green; static = 4 content-creation + cordis-catalog [concurrent-PR debt, confirmed red on baseline via stash] + snapshots = publint/built-package-invariants — all pre-existing).
 
 crs-3 batch (PR #70, `64194baf34` merged `0c439ef2c5`): doc fix (removed stale --with-llm docs from seed-event-external-refs.ts — flag documented but never parsed, silent no-op; contract now matches deterministic-only behavior); oxlint 0/0; no test (doc fix per residual.md Notes); CI master-debt only; network blip (github.com unreachable ~30min, cron auto-retried push + completed merge when recovered).
+
+eval-core A/B batch (PR #75 `c05c5606e1` merged `6f7c7d9e3a` + PR #74 `fcea601526` merged `a26683bfec`): eval-core-6/-8 (dead 'permanent' branch + dead 'declined' switch-case removal, LIVE eval-runner) + eval-core-5 (delete zero-caller verdict_mapper.ts). vitest 42 pass, oxlint 0/0, typecheck 0. Self-review PASS. PR B broke a doc ref (.agents/notes proposed simplification note → verdict_mapper.ts path) → fixed in doc-fix PR.
+
+eval-cli-exp batch (PR #79, `359b760ecb` merged `59fcad99a1`): ece-13/-14/-15. vitest 57 pass, oxlint 0/0, typecheck 0. Self-review: ece-13 remove sort→colliding-prefix test RED, ece-15 remove throw→unknown-level test RED. Regen module-graph/config-catalog/doc-graphs (SnapshotLevel export).
+
+ui-present-misc batch (PR #77, `0bcdd9161b` merged `356d0c9b3a`): upm-2/-9/-10. vitest 205 pass, oxlint 0/0, typecheck 0. Self-review: upm-9 mutate parseFloat→RED, upm-2 mutate isLatestTurn→true→5 RED, upm-10 mutate blockText→''→11 RED. Regen module-graph/config-catalog/doc-graphs (cards.ts export). Network blip (github.com unreachable, cron auto-retried force-push via gh-api-fetched explicit lease).
 
 ## Deferred → ② this session (7 — need grilling / mock-sidecar / cross-package)
 
@@ -42,13 +52,13 @@ crs-3 batch (PR #70, `64194baf34` merged `0c439ef2c5`): doc fix (removed stale -
 |---|---|---|
 | data-infra | ~~di-5/-12/-13/-14~~ **RESOLVED via PR #32** (`5249e90d0c`, merged `f4782bf61a`): getLinker active-version cache key / STATUS_RANK error↔pending→unchanged / patrol scope upstream domain filter / entriesEqual deepEqualCell. **di-10/di-11 DEFERRED** (phase-gate.ts PB-COMPLY WIP-entangled; di-11 multi-agent semantics). |
 | ui-semantic-layer | ~~usl-10 (RemoteResult/unwrap dup), usl-11 (kindBadgeClass dup), usl-12 (triggerEval loading), usl-13 (useLayoutMode stale docstring)~~ **RESOLVED via PR #45** (`277e22bb85`, merged `5c37eb6f23`): dedupe RemoteResult/unwrap → shared `remoteResult.ts`; dedupe kindBadgeClass → shared `kindBadge.ts`; triggerEval routed through `beginFetch`/`finishFetch`/`failFetch`; useLayoutMode NIT rewritten (host derives evalRunCount live via useEvidenceMetrics RPC, fallback to prop). **usl-9 DEFERRED** (inferKindFromId prefix — gated on open grilling GA-GRILL-search-asset-id-normalization; SchemaExplorer.tsx has GA-WIRING-impl WIP). |
-| ui-present-misc | upm-2 (isLatestTurn dup), upm-9 (parseFloat vs Number inconsistent), upm-10 (extractText dup + trim) | 3. **RE-VERIFY** — TableCard.tsx moved (concurrent R4 chart-types commit `b2860731d5`/`2abfd47bd1` + post-ship `4f11d43762`); line numbers + possibly code changed. upm-7 RESOLVED (PB-COMPLY R11). |
-| eval-cli-exp | ece-13 (resolveRunFile unsorted), ece-14 (expandQuery bare catch), ece-15 (LEVEL_CONFIGS ?? {}) | 3. **RE-VERIFY** — eval-cli had uncommitted GA-EVAL-MANIFEST-impl WIP (bin/eval.ts→src/bin.ts, +src/index.ts/invariant.ts); compare.ts/context.ts/harness.ts may have moved. |
+| ui-present-misc | ~~upm-2 (isLatestTurn dup), upm-9 (parseFloat vs Number inconsistent), upm-10 (extractText dup + trim)~~ **RESOLVED via PR #77** (`0bcdd9161b`, merged `356d0c9b3a`): upm-2 lift isLatestTurn → dsh-client-runtime/client cards.ts; upm-10 lift blockText → same; upm-9 shared parseNumericCell (Number-based) — '85%'→'—' bug fix. |
+| eval-cli-exp | ~~ece-13 (resolveRunFile unsorted), ece-14 (expandQuery bare catch), ece-15 (LEVEL_CONFIGS ?? {})~~ **RESOLVED via PR #79** (`359b760ecb`, merged `59fcad99a1`): ece-13 sort + prefer exact + throw; ece-14 narrow catch + [DIAG] log; ece-15 closed SnapshotLevel union + throw. |
 | llm-dashscope | ~~ld-4 (reasoning_content inline → reuse textDeltaOf)~~ **RESOLVED via PR #51** (`be24f0e3d4`, merged `cf813c18c`): extracted shared `partsToText` helper; both content + reasoning_content sites call it. |
 | data-tools-discovery | ~~dtd-7 (alt-labels presentationMeta regex → structured)~~ **RESOLVED via PR #61** (`a4afab5a06`, merged `8173c1ac21`): added `output.presentationMeta` (mirrors discover-relations sibling); presentResult reads `result.meta.enriched` (structured) instead of regex. |
 | core-runtime-scripts | ~~crs-3 (seed-event-external-refs --with-llm unread)~~ **RESOLVED via PR #70** (`64194baf34`, merged `0c439ef2c5`): removed the stale --with-llm docs (flag was never parsed — silent no-op); contract now matches deterministic-only behavior. |
 
-(ui-context-layer 4 done — `c26eada21b`; data-infra 4 done — PR #32 `5249e90d0c`; ui-semantic-layer 4 done — PR #45 `277e22bb85`; llm-dashscope ld-4 done — PR #51 `be24f0e3d4`; data-tools-discovery dtd-7 done — PR #61 `a4afab5a06`; core-runtime-scripts crs-3 done — PR #70 `64194baf34`. Next low-risk picks: ③ eval-core 5, ui-present-misc 3, eval-cli-exp 3.) |
+(ui-context-layer 4 done — `c26eada21b`; data-infra 4 done — PR #32 `5249e90d0c`; ui-semantic-layer 4 done — PR #45 `277e22bb85`; llm-dashscope ld-4 done — PR #51 `be24f0e3d4`; data-tools-discovery dtd-7 done — PR #61 `a4afab5a06`; core-runtime-scripts crs-3 done — PR #70 `64194baf34`; eval-core-6/-8 done — PR #75 `c05c5606e1`; eval-core-5 done — PR #74 `fcea601526`; eval-cli-exp ece-13/-14/-15 done — PR #79 `359b760ecb`; ui-present-misc upm-2/-9/-10 done — PR #77 `0bcdd9161b`. Next low-risk picks: ③ eval-core 2 remaining [eval-core-4 decision + eval-core-9 dead-stack DEFERRED], or ② refactor items.) |
 
 ## ② refactor (11 — larger/cross-package, each its own scope)
 
@@ -56,7 +66,7 @@ sl-3 (grilling opened) · qe-2/3/5/8/11 (mock-sidecar) · qe-13 (cross-package c
 
 ## ③ dead/cosmetic (5 — eval-core)
 
-eval-core-4/-5 (delete unused eval-core runtime stack — small consolidation decision: delete vs wire as the single eval engine) · eval-core-6/-8/-9 (pure dead-branch/cosmetic: infra_retry 'permanent' dead branch, computeSummary dead counters, checkResponder auth-heuristic divergence).
+~~eval-core-5~~ **RESOLVED via PR #74** (delete zero-caller verdict_mapper.ts); ~~eval-core-6/-8~~ **RESOLVED via PR #75** (dead 'permanent' branch + dead 'declined' switch-case). eval-core-4 (delete vs wire the eval-core runtime stack — small consolidation decision) · eval-core-9 (checkResponder auth-heuristic divergence, in dead eval-core stack — DEFERRED to eval-core-4 decision).
 
 ## ① design decisions (2 — breaking, need product input)
 
