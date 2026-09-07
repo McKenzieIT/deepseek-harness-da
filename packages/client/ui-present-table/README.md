@@ -27,11 +27,11 @@ Localization: the card registers the `present.table` locale namespace (zh/en) wi
 
 ## Model Experience
 
-None, as this browser-side toolview renders the `present_table` tool result for the user; it registers no prompt, tool, schema, or session event, and rendered rows never enter model context.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-No direct effect; the card renders query/compute result rows for the user, and the `fetchResult` `result.get` RPC fetches renderer data, not model context. The model already saw the `present_table`/`query_data` tool results in the conversation; the card's rendering and its hot cache change no token the provider KV-caches.
+The package does not extend or invalidate the agent loop's reusable request prefix.
 
 ## Known Limitations and Deferred Work
 

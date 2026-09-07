@@ -2,6 +2,14 @@
 
 Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness
 
+## Model Experience
+
+None, as this model-agnostic eval runner delegates all model calls to the injected responder and judge.
+
+#### KV Cache effect
+
+The package registers nothing model-facing, so no KV-cache prefix is extended or invalidated.
+
 ## Known Limitations and Deferred Work
 
 - `pass_k` verdict semantics only — there is no best-of-k fallback here.

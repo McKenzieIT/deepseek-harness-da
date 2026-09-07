@@ -154,6 +154,7 @@ Result JSON records `run_id`, `timestamp`, `summary`, per-case verdicts, and —
 After each eval run, record the results in `wayfinder/data-agent/research/experiment-audit-log.md` using this template:
 
 ```markdown
+
 ## YYYY-MM-DD: <ticket/change description>
 
 ### Setup
@@ -175,6 +176,14 @@ After each eval run, record the results in `wayfinder/data-agent/research/experi
 
 Resolves: [<ticket>](link)
 ```
+
+## Model Experience
+
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
+
+#### KV Cache effect
+
+Eval-run LLM calls execute on a separate call path and do not extend or invalidate the agent loop's reusable request prefix.
 
 ## Known Limitations and Deferred Work
 

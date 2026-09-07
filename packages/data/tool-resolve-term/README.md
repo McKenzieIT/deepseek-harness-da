@@ -2,6 +2,14 @@
 
 Model-facing resolve_term tool: exact alias resolution from SKOS pref_label/alt_labels via the relation graph's reverse index
 
+## Model Experience
+
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
+
+#### KV Cache effect
+
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
+
 ## Known Limitations and Deferred Work
 
 - Exact alias resolution only — no fuzzy or typo tolerance.

@@ -32,14 +32,6 @@ The host wires the real collaborators and injects them:
 - **Execution** — `executeSql = async (sql) => mapQueryOutcome(await ctx.query.execute({ sql, scopeId }))` (the host may `attach`+poll to resolve `pending` first; `mapQueryOutcome` is robust to an unresolved pending → `patience` refuse).
 - **Judge** — `provider = async (prompt) => { const { stream } = await ctx.llm.stream({ provider: 'dashscope', model, messages: [judgeSystemPrompt, …] }); …parse JSON → { score, rationale } }` (the host owns the judge prompt + JSON parsing + `llm-dashscope` route; `judgeWithProvider` adds the retry/backoff + `classifyError` + `AuthenticationAbort`).
 
-## Model Experience
-
-None, as the package is a test harness that injects its responder, executor, and judge collaborators and neither assembles nor sends a model request, prompt, tool, or result.
-
-#### KV Cache effect
-
-No direct effect; the agent runtime and the injected judge LLM own any model-visible request.
-
 ## Batch Runner + Persistence (W3 — P11c)
 
 The evidence engine (shipped with W3) adds batch execution, persistence, and delta analysis on top of the core:
@@ -83,6 +75,15 @@ console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regr
 ```
 
 ## Host wiring (the seams this library does not own)
+
+
+## Model Experience
+
+None, as the package is a test harness that injects its responder, executor, and judge collaborators and neither assembles nor sends a model request, prompt, tool, or result.
+
+#### KV Cache effect
+
+No direct effect; the agent runtime and the injected judge LLM own any model-visible request.
 
 ## Known Limitations and Deferred Work
 

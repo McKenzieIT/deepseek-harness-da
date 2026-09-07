@@ -20,11 +20,11 @@ pnpm vitest run packages/data/result-cache-memory         # unit specs
 
 ## Model Experience
 
-The cache makes a `query_data` result self-describing: each completed result is augmented with a short `result_id` token (`qr_<12-char hex>`) that the model can pass to `present_table` (`result_id`) or `compute` (chained `source_result_id`) instead of re-embedding the full row set in the prompt. This keeps tool arguments compact and lets the model reference prior results by id across turns within the same session.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
-### KV Cache effect
+#### KV Cache effect
 
-Minimal and indirect. The cache itself is in-process `Map` memory and never enters a model prompt; only the short `result_id` string is surfaced in the `query_data` result value. Because the augmented value is deterministic for a given SQL string (the id is a stable hash), repeated `query_data` calls against the same SQL produce the same `result_id`, which helps prompt-prefix stability for tools that echo the id back.
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
 
 ## Known Limitations and Deferred Work
 

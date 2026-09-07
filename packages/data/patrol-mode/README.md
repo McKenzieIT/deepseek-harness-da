@@ -52,19 +52,11 @@ pnpm verify-package-invariants                   # invariant companion resolves
 
 ## Model Experience
 
-### Confirm-request round
-
-#### What the model sees
-
-`patrol/confirm-request(edit)` is a model-/user-visible event: it surfaces a proposed edit (asset id, description, diagnosis) and blocks the patrol loop until the user confirms or rejects (or the `confirmTimeoutMs` window elapses). The model does not see raw patrol internals; it experiences the patrol as the sequence of confirm prompts and the round-complete summaries that bracket its turns.
-
-#### Token effect
-
-The patrol itself does not issue model calls directly. The token-bearing path is the post-round eval trigger (`triggerEval`): when `ctx.get('evalRunner')` is mounted and a round applied edits, it calls `evalRunner.runBatch()`, which fans out across the K11 case set × `passK` LLM generate + judge + answer calls. Those tokens are billed to the eval run (see `@deepseek-ai/dsh-eval-runner-service`), not to the agent's turn loop.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-Patrol confirm prompts and round-complete summaries are emitted as session events, not as agent-loop messages, so they do not extend the agent's conversation prefix. The eval-triggered `ctx.llm` calls run in a separate eval context (the eval runner's own sessions), so they do not share the agent loop's KV-cache prefix.
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
 
 ## Known Limitations and Deferred Work
 

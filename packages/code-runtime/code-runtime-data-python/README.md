@@ -38,11 +38,11 @@ A `CodeRunResult.error.kind` is one of: `worker-exit` (spawn error or the proces
 
 ## Model Experience
 
-This sandboxed executor has no direct model, token, or KV-cache effect: it produces a `CodeRunResult` (`{ value, logs, error? }`) and never touches a request prefix, token stream, or cache itself. Its effect is indirect, through Code Mode in [`dsh-tools`](../../core/tools/README.md), which renders this backend's exact completion value when it fits (or an explicit `invalid-output` / `output-limit` failure), plus the exact `[dsh-code-runtime-python] log capture truncated at <maxLogBytes> bytes` log marker, into a retained `run_code` result. Only the outer `run_code` result enters model context and its ordinary spill policy; binding traffic and intermediate values remain execution-local.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-No direct invalidation; the named consumer owns any request-prefix changes.
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
 
 ## Known Limitations and Deferred Work
 

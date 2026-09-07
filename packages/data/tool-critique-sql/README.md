@@ -55,19 +55,11 @@ pnpm verify-cordis-config
 
 ## Model Experience
 
-### The `critique_sql_tool` tool call
-
-#### What the model sees
-
-The `critique_sql_tool` tool schema (name, description, the `sql` and `question` parameters, and the `{ confidence, sql?, findings }` output object) flows into system-prompt assembly automatically once the plugin mounts, so the model discovers the tool alongside the rest of the `GENERATION`-phase whitelist. When the model invokes it, `execute` returns one canonical `{ confidence, sql?, findings }` JSON value that `output.render` projects into model-facing text via `formatCritique`: a `confidence: <0.00-1.00>` line, the `sql: <normalized>` line (omitted when no SELECT was extracted), and a `findings:` block listing each `[severity] rule: message` (or `findings: none (SQL passed all critic checks)` when the SQL is clean).
-
-#### Token effect
-
-The rendered critique text in the tool result is the only per-call token charge for this tool; the `critique_sql_tool` schema rides the system prompt rather than the turn payload. The result is a small fixed-size block (one confidence line, one optional sql line, one line per finding), so it does not scale with SQL length.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-Tool results are append-only: the critique text follows the reusable request prefix and does not invalidate prior cache entries. The tool schema is part of that stable system-prompt prefix across turns, so registering or calling the tool adds no prefix churn.
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
 
 ## Known Limitations and Deferred Work
 
