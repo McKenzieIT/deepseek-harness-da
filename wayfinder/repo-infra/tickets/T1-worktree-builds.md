@@ -31,3 +31,7 @@ DSH pnpm workspace 的 fresh worktree 跑 `pnpm install` 后，workspace package
 **Note**：`pnpm -r run build` exit 1——但失败在 `@deepseek-ai/website`（vitepress，Vue compiler-sfc parse error，**separate pre-existing issue**，见 [T3](T3-website-build-failure.md)），**非 8 个 data package**（它们 build 成功，`lib/typert.remote-client.*` 已生成）。session 跑 `pnpm -r run build` 见 exit 1 时，查 8 个 data package 的 `lib/typert.remote-client.*` 存在 + `tsc -b tsconfig.client.json` 绿即 OK（website 失败不影响 data/tsc）。
 
 → T1 closed。
+
+## Note (T7 update, 2026-09-07)
+
+T7 research (2026-09-07): `pnpm -r run build` is NOT a sanctioned entrypoint — it invokes `eval-runner-service`'s broken `build=tsdown` (no per-package config → root config resolution → fail; fresh worktree also lacks `lib/types/tsdown-plugin.js` since `tsc -b tsconfig.host.json` never ran). Fresh worktrees should run `pnpm run build:official` (full, = `build:lib:host && build:lib:client` via `tsx scripts/build.ts --profile official`) or `pnpm run build:lib:host` (host face only). The earlier "website exit 1" caveat above is a separate pre-existing issue (T3, fixed in PR #22) — the real fresh-worktree blocker was eval-runner-service's stray `build` script. T7 fix (PR #<T7-PR>, branch `fix/T7-eval-runner-service-build`) updated CLAUDE.md + session-prompt to `build:official` + dropped eval-runner-service's broken `build` script.
