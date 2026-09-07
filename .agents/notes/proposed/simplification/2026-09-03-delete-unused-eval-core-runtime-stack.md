@@ -6,7 +6,7 @@ Status: proposed
 
 A whole eval-core runtime stack in `packages/eval/eval/` is dead at runtime — only its **types** are referenced:
 
-- `packages/eval/eval-runner/src/verdict_mapper.ts` — `mapVerdict`/`mapAttempts` exported, **zero callers** (grep-confirmed).
+- ~~verdict_mapper.ts~~ — **DELETED by PR #74 (2026-09-07)**; was `mapVerdict`/`mapAttempts`, zero callers (grep-confirmed).
 - `packages/eval/eval/src/multi_turn.ts` (`runMultiTurnCase`, `passKVerdict`) + `packages/eval/eval/src/session.ts`/`runner.ts` (`runBatch`, `computeDelta`) — the live eval path (`eval-cli` → `dsh-eval-runner runBatch` → `bestOfKVerdict`) bypasses this stack entirely; only the `AttemptResult`/`RunnerVerdict` types are imported.
 
 The dead stack also encodes the **pass^k** ("must pass every time") semantics that contradict the live `bestOfKVerdict` (best-of-k) the CLI actually runs — so it is not just unused, it is a misleading parallel implementation of the metric the repo calls `pass_k`. `OUTCOME_RANK`/`VERDICT_SEVERITY` (persistence.ts:165 / delta.ts) — the delta orderings this stack would use — are themselves uncalled and disagree with each other.
