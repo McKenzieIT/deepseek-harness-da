@@ -36,7 +36,9 @@ concurrency:
 jobs:
   lifecycle:
     name: Issue lifecycle
-    if: ${{ github.event_name != 'pull_request_review' || (github.event.action == 'submitted' && github.event.review.state == 'changes_requested') }}
+    # Skip on non-upstream owners — the fork has no DSH issue GitHub App
+    # (DSH_ISSUE_APP_CLIENT_ID/PRIVATE_KEY) and does not run this automation.
+    if: ${{ github.repository_owner == 'deepseek-ai' && (github.event_name != 'pull_request_review' || (github.event.action == 'submitted' && github.event.review.state == 'changes_requested')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out trusted policy
