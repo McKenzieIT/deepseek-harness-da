@@ -114,7 +114,11 @@ export interface InfraError extends Error {
   isInfraFailure: boolean
 }
 
-/** Whether an error is an InfraError (duck-type check). */
+/**
+ *  Whether an error is an InfraError (duck-type check).
+ * @param err - err
+ * @returns the result
+ */
 export function isInfraError(err: unknown): err is InfraError {
   return err instanceof Error && 'isInfraFailure' in err &&  (err as InfraError).isInfraFailure
 }

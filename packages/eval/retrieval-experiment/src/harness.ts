@@ -37,6 +37,11 @@ const LEVEL_CONFIGS: Record<string, GraphSnapshotConfig> = {
   L1: {},
 }
 
+/**
+ *  runExperiment
+ * @param opts - opts
+ * @returns the result
+ */
 export function runExperiment(opts: ExperimentOptions): ComparisonTable {
   const cases = opts.casePaths.map(loadMinimalCase)
 
@@ -98,6 +103,11 @@ function configLabel(config: ExperimentConfig): string {
   }
 }
 
+/**
+ *  formatComparisonTable
+ * @param table - table
+ * @returns the result
+ */
 export function formatComparisonTable(table: ComparisonTable): string {
   const lines: string[] = []
   const header = '| Config                                  | Mean P@K | Mean R@K | Median R@K |'

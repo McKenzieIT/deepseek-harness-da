@@ -8,6 +8,7 @@
 import { ConceptDefinitionSchema, type ConceptDefinition } from '../types.ts'
 import type { DataSourceKindPlugin, RelationDef, CorpusItem } from '../registry.ts'
 
+/** conceptKindPlugin */
 export const conceptKindPlugin: DataSourceKindPlugin<ConceptDefinition> = {
   kind: 'concept',
   schema: ConceptDefinitionSchema,

@@ -30,6 +30,11 @@ const TOOL_CATALOG_EN = `# Tool Catalog (da harness tool seam mapping)
 - resolve_term(term): Resolve business term to data asset (matches alt_labels/pref_label), returns matched node and graph context
 [drop] plan_query (LATENT, not in any phase allowlist, proven in research §1.2)`
 
+/**
+ *  buildPromptEN
+ * @param args - args
+ * @returns the result
+ */
 export function buildPromptEN(args: BuildPromptArgs): string {
   const { question, candidates, eventDef, conventions, phase = 'generation', joinConstraints, metricContext, isTrend } = args
   const dialect = renderConventionsPrompt(conventions)
@@ -103,6 +108,7 @@ GENERATION phase: generate SQL (\`\`\`sql fences), call critique_sql_tool to val
 
 // ── Expansion prompt ────────────────────────────────────────────────────
 
+/** EXPANSION_SYSTEM_PROMPT_EN */
 export const EXPANSION_SYSTEM_PROMPT_EN =
   'You are a search query expander for a game analytics data warehouse. '
   + 'Rewrite the user question into a BM25-friendly expanded query for matching DWS wide table names and field names. '
@@ -121,6 +127,11 @@ export const EXPANSION_SYSTEM_PROMPT_EN =
 
 // ── Judge prompt ────────────────────────────────────────────────────────
 
+/**
+ *  buildJudgePromptEN
+ * @param input - input
+ * @returns the result
+ */
 export function buildJudgePromptEN(input: {
   question: string
   generated_sql: string

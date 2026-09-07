@@ -9,6 +9,12 @@
 import type { RunResult, CaseVerdict } from '@deepseek-ai/dsh-eval-runner'
 import type { EvalCase } from '@deepseek-ai/dsh-eval'
 
+/**
+ *  formatReport
+ * @param result - result
+ * @param cases - cases
+ * @returns the result
+ */
 export function formatReport(result: RunResult, cases: readonly EvalCase[]): string {
   const lines: string[] = []
   const { summary } = result

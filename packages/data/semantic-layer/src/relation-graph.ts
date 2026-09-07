@@ -37,6 +37,8 @@ export class RelationGraph {
    * Build the graph from source-tagged relation declarations and optional alias data.
    * Clears existing state. Stores bidirectional edges for traversal.
    * When aliasData is provided, builds the reverse alias index (normalized_alias → nodeIds).
+   * @param entries - entries
+   * @param aliasData - aliasData
    */
   build(entries: { sourceId: string; relations: RelationDef[] }[], aliasData?: readonly NodeAliasData[]): void {
     this.adj.clear()
@@ -91,6 +93,9 @@ export class RelationGraph {
   /**
    * BFS shortest path over 'joins'-type edges only.
    * Returns the node-id path [source, ..., target] or null if unreachable.
+   * @param sourceId - sourceId
+   * @param targetId - targetId
+   * @returns the result
    */
   findJoinPath(sourceId: string, targetId: string): string[] | null {
     if (sourceId === targetId) return [sourceId]
@@ -119,6 +124,9 @@ export class RelationGraph {
 
   /**
    * Get directly related node ids (optionally filtered by relation type).
+   * @param sourceId - sourceId
+   * @param type - type
+   * @returns the result
    */
   getRelated(sourceId: string, type?: 'joins' | 'derived_from' | 'related_to'): RelationEdge[] {
     const edges = this.adj.get(sourceId)
@@ -129,6 +137,9 @@ export class RelationGraph {
 
   /**
    * Get the join condition between two directly connected nodes, or null.
+   * @param sourceId - sourceId
+   * @param targetId - targetId
+   * @returns the result
    */
   getJoinCondition(sourceId: string, targetId: string): string | null {
     const edges = this.adj.get(sourceId)
@@ -140,6 +151,8 @@ export class RelationGraph {
   /**
    * Get the derived-from chain: all nodes reachable via 'derived_from' edges
    * from the given source (G2 lineage traversal).
+   * @param sourceId - sourceId
+   * @returns the result
    */
   getDerived(sourceId: string): RelationEdge[] {
     const edges = this.adj.get(sourceId)
@@ -151,6 +164,8 @@ export class RelationGraph {
    * Resolve a term to node ids via the alias index. Normalizes the input
    * and looks up the reverse index (normalized_alias → nodeIds).
    * Returns an empty array when no match is found.
+   * @param term - term
+   * @returns the result
    */
   resolveAlias(term: string): string[] {
     const key = normalizeAlias(term)
@@ -161,6 +176,8 @@ export class RelationGraph {
   /**
    * Get all aliases (pref_label + alt_labels) registered for a node.
    * Returns an empty array when the node has no aliases.
+   * @param nodeId - nodeId
+   * @returns the result
    */
   getAliases(nodeId: string): string[] {
     return this.nodeAliases.get(nodeId) ?? []

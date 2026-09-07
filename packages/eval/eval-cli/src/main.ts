@@ -222,6 +222,8 @@ function globCasePaths(caseDir: string, caseFilter: string | null): string[] {
  * (the model under test), NOT the enrichment LLM — so it uses the EVAL_LLM_*
  * env contract (not ENRICHMENT_LLM_*). The shared contract with the enrichment
  * sites is the fail-loud shape, not shared code (no new cross-package dep).
+ * @param input - input
+ * @returns the result
  */
 export function resolveResponderLlmConfig(
   input: { provider?: string | undefined; model?: string | undefined },
@@ -234,6 +236,7 @@ export function resolveResponderLlmConfig(
   return { provider, model }
 }
 
+/** main */
 export async function main(): Promise<void> {
   const args = parseCliArgs()
 

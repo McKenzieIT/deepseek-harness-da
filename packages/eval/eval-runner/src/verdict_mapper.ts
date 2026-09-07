@@ -21,6 +21,8 @@ import type { RunnerVerdict, AttemptResult } from './types.ts'
  * - No verdict could be produced → 'unjudged'
  * - Agent explicitly declined (detected via reply heuristics) → 'declined'
  * - Otherwise → 'wrong'
+ * @param result - result
+ * @returns the result
  */
 export function mapVerdict(result: MultiTurnCaseResult): RunnerVerdict {
   // All attempts passed — correct
@@ -44,6 +46,8 @@ export function mapVerdict(result: MultiTurnCaseResult): RunnerVerdict {
 
 /**
  * Map eval core attempts to runner `AttemptResult` records.
+ * @param attempts - attempts
+ * @returns the result
  */
 export function mapAttempts(attempts: readonly MultiTurnAttempt[]): AttemptResult[] {
   return attempts.map(a => mapOneAttempt(a))

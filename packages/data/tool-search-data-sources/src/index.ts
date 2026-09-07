@@ -307,6 +307,8 @@ function applyAliasFusion(
  * segments at CJK/non-CJK boundaries and generates bigrams per CJK segment —
  * the prior version checked the whole token with a CJK-only regex, causing
  * mixed tokens to skip bigram generation entirely (39% of K11 queries hit).
+ * @param query - query
+ * @returns the result
  */
 export function extractQueryTerms(query: string): string[] {
   const tokens = query

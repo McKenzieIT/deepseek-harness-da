@@ -62,6 +62,7 @@ interface ScopeRegistryLike {
   get(id: string): { readonly id: string; readonly semanticRoot: string } | undefined
 }
 
+/** EvidenceQueryConfig */
 export interface EvidenceQueryConfig {
   /** Directory holding the JSONL eval-result files the service loads into its eval store (defaults to an in-memory store when unset). */
   readonly resultsDir?: string
@@ -89,12 +90,19 @@ declare module '@deepseek-ai/cordis' {
 export class EvalResultStore {
   private records: EvalResultRecord[] = []
 
-  /** Add a record to the store. */
+  /**
+   *  Add a record to the store.
+   * @param record - record
+   */
   add(record: EvalResultRecord): void {
     this.records.push(record)
   }
 
-  /** Query records matching the given filters. */
+  /**
+   *  Query records matching the given filters.
+   * @param filters - filters
+   * @returns the result
+   */
   query(filters: EvalResultFilters): EvalResultQueryResult {
     let results = [...this.records]
 
@@ -123,7 +131,12 @@ export class EvalResultStore {
     return { results, total }
   }
 
-  /** Check if any eval result exists for the given asset. */
+  /**
+   *  Check if any eval result exists for the given asset.
+   * @param assetId - assetId
+   * @param scopeId - scopeId
+   * @returns the result
+   */
   hasResultsFor(assetId: string, scopeId?: string): boolean {
     // data-infra-3: filter by scopeId when provided — the store loads ALL scope
     // subdirs, so an unscoped hasResultsFor lets scope A's coverage mask scope
@@ -131,12 +144,19 @@ export class EvalResultStore {
     return this.records.some(r => r.assetId === assetId && (scopeId === undefined || r.scopeId === scopeId))
   }
 
-  /** Get all records for a specific runId. */
+  /**
+   *  Get all records for a specific runId.
+   * @param runId - runId
+   * @returns the result
+   */
   getByRunId(runId: string): EvalResultRecord[] {
     return this.records.filter(r => r.metadata?.runId === runId)
   }
 
-  /** Get all distinct runIds in the store. */
+  /**
+   *  Get all distinct runIds in the store.
+   * @returns the result
+   */
   getRunIds(): string[] {
     const ids = new Set<string>()
     for (const r of this.records) {
@@ -156,6 +176,8 @@ export class EvalResultStore {
    *  - Per-scope: `<dir>/<scopeId>/*.jsonl` (the subdirectory name is the
    *    scopeId, tagged onto each record from that subdirectory).
    * A resultsDir with only flat files (the pre-3b layout) still works unchanged.
+   * @param dir - dir
+   * @param caseAssetResolver - caseAssetResolver
    */
   loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void {
     if (!existsSync(dir)) return

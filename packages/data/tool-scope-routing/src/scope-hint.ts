@@ -114,6 +114,10 @@ function resolveSessionTenant(context: unknown): string | undefined {
   return undefined
 }
 
+/**
+ *  installScopeHint
+ * @param ctx - ctx
+ */
 export function installScopeHint(ctx: Context): void {
   ctx.systemPrompt.section({
     name: 'scope-awareness',

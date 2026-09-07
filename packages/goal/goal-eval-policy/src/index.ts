@@ -69,6 +69,11 @@ export interface GoalEvalState {
   lastObservedRounds: number
 }
 
+/**
+ *  freshState
+ * @param roundsStarted - roundsStarted
+ * @returns the result
+ */
 export function freshState(roundsStarted: number): GoalEvalState {
   return {
     roundsSinceLastEval: 0,

@@ -684,6 +684,11 @@ export class SQLiteAuditStore {
    *
    * Safe under SQLite WAL single-writer serialization: concurrent writers wait
    * on busy_timeout, so MAX(version) is always consistent within the txn.
+   * @param assetName - assetName
+   * @param kind - kind
+   * @param content - content
+   * @param logId - logId
+   * @returns the result
    */
   recordSnapshot(assetName: string, kind: 'table' | 'event', content: string, logId?: string): number {
     if (!content) throw new Error('recordSnapshot: content must be non-empty')
@@ -707,6 +712,9 @@ export class SQLiteAuditStore {
   /**
    * Get a snapshot's content by asset name + version.
    * Returns null when not found.
+   * @param assetName - assetName
+   * @param version - version
+   * @returns the result
    */
   getSnapshot(assetName: string, version: number): { content: string; kind: string; created_at: string } | null {
     const row = this.db.prepare(
@@ -718,6 +726,8 @@ export class SQLiteAuditStore {
   /**
    * List all snapshot versions for an asset (metadata only, no content).
    * Returns newest-first.
+   * @param assetName - assetName
+   * @returns the result
    */
   listSnapshots(assetName: string): Array<{ version: number; kind: string; created_at: string; log_id: string | null }> {
     return this.db.prepare(

@@ -12,14 +12,17 @@ export type AssetKind = 'table' | 'event' | 'metric'
  * kinds from the model JSON do not break the client at the type level.
  */
 export type TableKind = string
+/** ConfirmationStatus */
 export type ConfirmationStatus = 'draft' | 'confirmed'
 
+/** ConfirmationBreakdown */
 export interface ConfirmationBreakdown {
   readonly draft: number
   readonly confirmed: number
   readonly rejected: number
 }
 
+/** EnrichedCoverageStats */
 export interface EnrichedCoverageStats {
   readonly table_count: number
   readonly event_count: number
@@ -28,16 +31,19 @@ export interface EnrichedCoverageStats {
   readonly confirmation: ConfirmationBreakdown
 }
 
+/** GapEntry */
 export interface GapEntry {
   readonly assetId: string
   readonly joinPath: readonly string[]
 }
 
+/** GapAnalysisResult */
 export interface GapAnalysisResult {
   readonly sourceAssetId: string
   readonly gaps: readonly GapEntry[]
 }
 
+/** ProposedRelation */
 export interface ProposedRelation {
   readonly sourceId: string
   readonly targetId: string
@@ -45,16 +51,19 @@ export interface ProposedRelation {
   readonly on?: string
 }
 
+/** ReachablePair */
 export interface ReachablePair {
   readonly from: string
   readonly to: string
 }
 
+/** ReachabilityDeltaResult */
 export interface ReachabilityDeltaResult {
   readonly proposedRelation: ProposedRelation
   readonly newlyReachable: readonly ReachablePair[]
 }
 
+/** EvalResultFilters */
 export interface EvalResultFilters {
   readonly assetId?: string
   readonly status?: 'pass' | 'fail' | 'error' | 'pending'
@@ -62,6 +71,7 @@ export interface EvalResultFilters {
   readonly limit?: number
 }
 
+/** EvalResultRecord */
 export interface EvalResultRecord {
   readonly id: string
   readonly assetId: string
@@ -72,11 +82,13 @@ export interface EvalResultRecord {
   readonly metadata?: Readonly<Record<string, unknown>>
 }
 
+/** EvalResultQueryResult */
 export interface EvalResultQueryResult {
   readonly results: readonly EvalResultRecord[]
   readonly total: number
 }
 
+/** AssetHealthReport */
 export interface AssetHealthReport {
   readonly assetId: string
   readonly confirmationStatus: string

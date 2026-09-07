@@ -55,6 +55,7 @@ const AccessLinkSchema = z.object({
 })
 type AccessLinkRecord = z.infer<typeof AccessLinkSchema>
 
+/** AdminDomain */
 export const AdminDomain = defineDomain({
   name: 'admin',
   version: 1,
@@ -139,6 +140,7 @@ function extractBearerToken(req: IncomingMessage): string | undefined {
 export const name = 'admin'
 export const inject = ['storageDomain', 'credentials', 'webServer']
 
+/** Config */
 export interface Config {
   /** Default admin user id seeded on first boot (no users table → create). */
   readonly seedAdminId?: string
@@ -519,6 +521,10 @@ declare module '@deepseek-ai/cordis' {
  * Exported for P3/subagent-qoder to call when a per-user credential resolve
  * returns `undefined`. The emitted event carries a user-facing message that
  * the client UI can surface as a notification/toast.
+ * @param ctx - ctx
+ * @param userId - userId
+ * @param ref - ref
+ * @returns the result
  */
 export function notifyPatMiss(ctx: Context, userId: string, ref: string): string {
   ctx.emit('admin/pat-miss', userId, ref)

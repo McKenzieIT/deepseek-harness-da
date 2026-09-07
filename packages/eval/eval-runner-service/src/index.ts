@@ -60,6 +60,7 @@ import { join, resolve } from 'node:path'
 export const name = 'eval-runner-service'
 export const inject = ['llm']
 
+/** Config */
 export interface Config {
   /** Directory holding the eval case YAMLs (default: the K11 case set). */
   readonly caseDir?: string
@@ -398,10 +399,18 @@ export class EvalRunnerService extends Service {
       .map(f => resolve(this.caseDir, f))
   }
 
+  /**
+   *  EvalRunnerService.getCaseCount
+   * @returns the result
+   */
   getCaseCount(): number {
     return this.casePaths().length
   }
 
+  /**
+   *  EvalRunnerService.getResultsDir
+   * @returns the result
+   */
   getResultsDir(): string {
     return this.resultsDir
   }
@@ -419,6 +428,11 @@ export class EvalRunnerService extends Service {
     return { agent, executor, judge }
   }
 
+  /**
+   *  EvalRunnerService.runBatch
+   * @param options - options
+   * @returns the result
+   */
   async runBatch(options?: { runId?: string; skipHealthGate?: boolean; scopeId?: string }): Promise<RunResult> {
     const paths = this.casePaths()
     if (paths.length === 0) {
@@ -471,10 +485,20 @@ export class EvalRunnerService extends Service {
     return result
   }
 
+  /**
+   *  EvalRunnerService.getLastRun
+   * @returns the result
+   */
   getLastRun(): RunResult | null {
     return this.lastRun
   }
 
+  /**
+   *  EvalRunnerService.computeDelta
+   * @param runA - runA
+   * @param runB - runB
+   * @returns the result
+   */
   computeDelta(runA: RunResult, runB: RunResult): DeltaReport {
     return compareDelta(runA, runB)
   }

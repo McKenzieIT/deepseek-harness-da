@@ -41,6 +41,7 @@ import type {
 } from '@deepseek-ai/dsh-eval-runner'
 import { LlmSqlSemanticJudge } from '@deepseek-ai/dsh-eval-runner'
 
+/** BootOptions */
 export interface BootOptions {
   readonly schemaDir: string
   readonly provider: string
@@ -60,6 +61,7 @@ export interface BootOptions {
   readonly scopeId?: string
 }
 
+/** BootResult */
 export interface BootResult {
   readonly ctx: Context
   readonly collaborators: Collaborators
@@ -706,6 +708,11 @@ class Nl2sqlAgentResponder implements AgentResponder {
 
 // ── Boot ────────────────────────────────────────────────────────────────
 
+/**
+ *  boot
+ * @param opts - opts
+ * @returns the result
+ */
 export async function boot(opts: BootOptions): Promise<BootResult> {
   // D3ii: no default pointer — explicit scopeId is required. Fail-loud here
   // rather than silently falling back to a hardcoded scope. The BootOptions

@@ -1,5 +1,12 @@
 import type { AggregateMetrics, CaseRetrievalResult } from './types.ts'
 
+/**
+ *  computeRetrievalMetrics
+ * @param retrievedIds - retrievedIds
+ * @param coveredAssets - coveredAssets
+ * @param k - k
+ * @returns the result
+ */
 export function computeRetrievalMetrics(
   retrievedIds: readonly string[],
   coveredAssets: readonly string[],
@@ -20,6 +27,11 @@ export function computeRetrievalMetrics(
   }
 }
 
+/**
+ *  aggregateMetrics
+ * @param cases - cases
+ * @returns the result
+ */
 export function aggregateMetrics(cases: readonly CaseRetrievalResult[]): AggregateMetrics {
   if (cases.length === 0) {
     return { meanPrecision: 0, meanRecall: 0, medianRecall: 0 }

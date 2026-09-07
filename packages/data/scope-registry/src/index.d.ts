@@ -26,6 +26,7 @@ export interface ScopeDefinition {
   /** Arbitrary metadata — active provider, project name, engine type, etc. */
   readonly metadata?: Readonly<Record<string, unknown>>
 }
+/** ScopeRegistryConfig */
 export interface ScopeRegistryConfig {
   /** Path to the scopes.yaml registry file. Empty = service is inert (no scopes). */
   readonly registryPath: string
@@ -49,21 +50,43 @@ export declare class ScopeRegistryService extends Service {
   private readonly registryPath
   private cache
   constructor(ctx: Context, config: ScopeRegistryConfig)
-  /** All registered scopes. Returns empty array when registryPath is unset or file missing. */
+  /**
+   *  All registered scopes. Returns empty array when registryPath is unset or file missing.
+   * @returns the result
+   */
   list(): readonly ScopeDefinition[]
-  /** Get a scope by id. Returns undefined when not found. */
+  /**
+   *  Get a scope by id. Returns undefined when not found.
+   * @param id - id
+   * @returns the result
+   */
   get(id: string): ScopeDefinition | undefined
-  /** The currently active scope definition, or undefined if none is active. */
+  /**
+   *  The currently active scope definition, or undefined if none is active.
+   * @returns the result
+   */
   active(): ScopeDefinition | undefined
-  /** The currently active scope id, or undefined if none is active. */
+  /**
+   *  The currently active scope id, or undefined if none is active.
+   * @returns the result
+   */
   activeId(): string | undefined
-  /** Set the active scope by id. Throws if the scope does not exist in the registry. */
+  /**
+   *  Set the active scope by id. Throws if the scope does not exist in the registry.
+   * @param id - id
+   */
   setActive(id: string): Promise<void>
   /** Clear the active scope (no scope is active). */
   clearActive(): Promise<void>
-  /** Register (or update) a scope definition. If this is the first scope, it becomes active. */
+  /**
+   *  Register (or update) a scope definition. If this is the first scope, it becomes active.
+   * @param scope - scope
+   */
   register(scope: ScopeDefinition): Promise<void>
-  /** Remove a scope from the registry. If it was active, active becomes undefined. */
+  /**
+   *  Remove a scope from the registry. If it was active, active becomes undefined.
+   * @param id - id
+   */
   remove(id: string): Promise<void>
   private ensureConfigured
   /** Load (or return cached) registry from disk. Returns empty state when inert. */

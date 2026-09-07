@@ -11,8 +11,10 @@ import type {
 
 export type { SchemaGatewayClient } from '../schemaGatewayBridge.ts'
 
+/** AssetKind */
 export type AssetKind = 'table' | 'event' | 'metric'
 
+/** SchemaGatewayState */
 export interface SchemaGatewayState {
   domains: DomainEntry[]
   tables: TableSummary[]
@@ -35,7 +37,20 @@ const INITIAL: SchemaGatewayState = {
   error: null,
 }
 
-export function useSchemaGateway(client: SchemaGatewayClient | null) {
+/**
+ *  useSchemaGateway
+ * @param client - client
+ * @returns the result
+ */
+export function useSchemaGateway(client: SchemaGatewayClient | null): {
+  state: SchemaGatewayState
+  loadDomains: () => Promise<void>
+  loadTablesForDomain: (domain?: string) => Promise<void>
+  loadEventsForDomain: (domain?: string) => Promise<void>
+  loadMetricsForDomain: (domain?: string) => Promise<void>
+  loadAssetDefinition: (name: string, kind: AssetKind) => Promise<void>
+  search: (query: string, topK?: number) => void
+} {
   const [state, setState] = useState<SchemaGatewayState>(INITIAL)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // ui-semantic-layer-8: tracks the latest loadAssetDefinition request name so

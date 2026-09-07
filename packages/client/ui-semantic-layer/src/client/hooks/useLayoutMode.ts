@@ -17,6 +17,7 @@
  */
 export type LayoutMode = 'B' | 'A' | 'auto'
 
+/** UseLayoutModeOptions */
 export interface UseLayoutModeOptions {
   /** Layout mode from plugin config. */
   mode: LayoutMode
@@ -26,6 +27,7 @@ export interface UseLayoutModeOptions {
   autoFlipThreshold?: number
 }
 
+/** UseLayoutModeResult */
 export interface UseLayoutModeResult {
   /** Resolved mode (auto resolved to B or A). */
   effectiveMode: 'B' | 'A'
@@ -38,6 +40,10 @@ export interface UseLayoutModeResult {
  * Auto-flip: when eval store has >= threshold run IDs, flip to 'A'.
  *
  * Pure function for testability.
+ * @param mode - mode
+ * @param evalRunCount - evalRunCount
+ * @param threshold - threshold
+ * @returns the result
  */
 export function computeEffectiveMode(
   mode: LayoutMode,
@@ -50,6 +56,11 @@ export function computeEffectiveMode(
   return evalRunCount >= threshold ? 'A' : 'B'
 }
 
+/**
+ *  useLayoutMode
+ * @param options - options
+ * @returns the result
+ */
 export function useLayoutMode(options: UseLayoutModeOptions): UseLayoutModeResult {
   const { mode, evalRunCount = 0, autoFlipThreshold = 3 } = options
   return {

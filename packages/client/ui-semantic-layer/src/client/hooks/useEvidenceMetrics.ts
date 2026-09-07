@@ -6,12 +6,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { EvidenceQueryClient } from './useEvidenceQuery.ts'
 
+/** EvidenceMetrics */
 export interface EvidenceMetrics {
   evalRunCount: number
   evalPassRates: number[]
   refresh(): void
 }
 
+/**
+ *  useEvidenceMetrics
+ * @param client - client
+ * @returns the result
+ */
 export function useEvidenceMetrics(client: EvidenceQueryClient | null): EvidenceMetrics {
   const [evalRunCount, setEvalRunCount] = useState(0)
   const [evalPassRates, setEvalPassRates] = useState<number[]>([])

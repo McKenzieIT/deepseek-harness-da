@@ -628,6 +628,8 @@ export interface AltLabelsTarget {
  * - Domain names as-is (they're already business vocabulary)
  *
  * Returns only NEW labels (not already in existingAltLabels or existingPrefLabel).
+ * @param target - target
+ * @returns the result
  */
 export function discoverAltLabelsDeterministic(target: AltLabelsTarget): string[] {
   const existing = new Set([
@@ -676,6 +678,8 @@ function normalizeLabel(s: string): string {
  * Build the LLM prompt for alt_labels discovery on one definition. Asks the
  * model to suggest alternative search labels (Chinese + English abbreviations)
  * based on the definition's description, columns/fields, and domains.
+ * @param target - target
+ * @returns the result
  */
 export function buildAltLabelsPrompt(target: AltLabelsTarget): string {
   const lines: string[] = [
@@ -711,6 +715,8 @@ export function buildAltLabelsPrompt(target: AltLabelsTarget): string {
 /**
  * Parse the LLM response for alt_labels: extract a JSON array of strings.
  * Lenient — invalid items are dropped.
+ * @param text - text
+ * @returns the result
  */
 export function parseAltLabelsResponse(text: string): string[] {
   const arr = extractJsonArray(text)
@@ -726,6 +732,9 @@ export function parseAltLabelsResponse(text: string): string[] {
 /**
  * Merge new alt_labels into existing ones (dedupe by normalized form).
  * Preserves the order: existing first, then new.
+ * @param existing - existing
+ * @param added - added
+ * @returns the result
  */
 export function mergeAltLabels(existing: readonly string[], added: readonly string[]): string[] {
   const seen = new Set(existing.map(normalizeLabel))
@@ -742,6 +751,9 @@ export function mergeAltLabels(existing: readonly string[], added: readonly stri
 /**
  * Discover alt_labels for one definition (two-round: deterministic + LLM).
  * Returns the candidate labels to ADD (already deduped against existing).
+ * @param target - target
+ * @param llmCall - llmCall
+ * @returns the result
  */
 export async function discoverAltLabelsFor(
   target: AltLabelsTarget,

@@ -5,15 +5,18 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 export const name = 'tool-present-decomposition'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/** Metric */
 export interface Metric {
   name: string
   value: string
   unit?: string
 }
 
+/** PresentDecompositionResult */
 export interface PresentDecompositionResult {
   presented: boolean
   summary: string
@@ -25,6 +28,17 @@ export interface PresentDecompositionResult {
   confidence?: number
 }
 
+/**
+ *  presentDecompositionResult
+ * @param summary - summary
+ * @param metrics - metrics
+ * @param dimensions - dimensions
+ * @param time_range - time_range
+ * @param source - source
+ * @param filters - filters
+ * @param confidence - confidence
+ * @returns the result
+ */
 export function presentDecompositionResult(
   summary: string,
   metrics: Metric[],

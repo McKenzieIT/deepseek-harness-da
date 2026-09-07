@@ -47,6 +47,7 @@ export function apply(ctx: ClientContext): void {
   }, FollowupChips))
 }
 
+/** FollowupChipsInjected */
 export interface FollowupChipsInjected {
   submit: (text: string) => void
 }

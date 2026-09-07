@@ -18,6 +18,7 @@ import type { Audit } from '@deepseek-ai/dsh-audit'
 export const name = 'tool-revert-edit'
 export const inject = ['tools', 'schema', 'audit']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
@@ -33,6 +34,7 @@ function validateAssetName(raw: string): string | null {
 
 // ── Result type ─────────────────────────────────────────────────────────────
 
+/** RevertEditResult */
 export interface RevertEditResult {
   readonly reverted: boolean
   readonly asset_name: string

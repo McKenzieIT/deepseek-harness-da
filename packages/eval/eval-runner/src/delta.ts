@@ -92,6 +92,8 @@ function computeSummary(
 
 /**
  * Filter flips to only regressions (verdict got worse).
+ * @param report - report
+ * @returns the result
  */
 export function regressions(report: DeltaReport): CaseFlip[] {
   return report.flips.filter(f => VERDICT_SEVERITY[f.new_verdict] > VERDICT_SEVERITY[f.old_verdict])
@@ -99,6 +101,8 @@ export function regressions(report: DeltaReport): CaseFlip[] {
 
 /**
  * Filter flips to only improvements (verdict got better).
+ * @param report - report
+ * @returns the result
  */
 export function improvements(report: DeltaReport): CaseFlip[] {
   return report.flips.filter(f => VERDICT_SEVERITY[f.new_verdict] < VERDICT_SEVERITY[f.old_verdict])

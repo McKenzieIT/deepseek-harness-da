@@ -34,6 +34,8 @@ interface EvidenceQueryRemoteNamespace {
 /**
  * Build an EvidenceQueryClient from the typed remote namespace.
  * Each method delegates to the host via RPC and unwraps the RemoteResult.
+ * @param remote - remote
+ * @returns the result
  */
 export function buildEvidenceQueryClient(remote: EvidenceQueryRemoteNamespace): EvidenceQueryClient {
   return {

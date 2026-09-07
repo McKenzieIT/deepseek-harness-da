@@ -129,7 +129,11 @@ export function toMetricDefinition(
   }
 }
 
-/** Project a derived MetricDefinition to a kind:metric CorpusItem for BM25 indexing. */
+/**
+ *  Project a derived MetricDefinition to a kind:metric CorpusItem for BM25 indexing.
+ * @param def - def
+ * @returns the result
+ */
 export function projectMetricCorpusItem(def: MetricDefinition): { id: string; description?: string; payload: MetricDefinition } {
   const parts: string[] = []
   if (def.description) parts.push(def.description)
@@ -142,7 +146,11 @@ export function projectMetricCorpusItem(def: MetricDefinition): { id: string; de
   }
 }
 
-/** Derive relation edges for a metric (derived_from → source; plus any explicit). */
+/**
+ *  Derive relation edges for a metric (derived_from → source; plus any explicit).
+ * @param def - def
+ * @returns the result
+ */
 export function deriveMetricRelations(def: MetricDefinition): { type: 'joins' | 'derived_from' | 'related_to'; target: string; on?: string; description?: string }[] {
   return def.relations.map(r => ({
     type: r.type, target: r.target,

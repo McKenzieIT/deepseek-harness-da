@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
+/** SwitchScopeResult */
 export interface SwitchScopeResult {
   readonly ok: boolean
   readonly scope_id?: string
@@ -15,6 +16,10 @@ interface ScopeRegistryLike {
   setActive(id: string): Promise<void>
 }
 
+/**
+ *  registerSwitchScope
+ * @param ctx - ctx
+ */
 export function registerSwitchScope(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'switch_scope',

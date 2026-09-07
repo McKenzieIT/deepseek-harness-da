@@ -27,6 +27,9 @@ export interface RemoteResult<T> {
  * than returning a phantom `undefined` typed as `T`. A present `null` is a
  * valid value and is returned (only `undefined` triggers the missing-value
  * error).
+ * @param result - result
+ * @param ns - ns
+ * @returns the result
  */
 export function unwrapRemoteResult<T>(result: RemoteResult<T>, ns: string): T {
   if (!result.ok) {

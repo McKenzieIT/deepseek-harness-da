@@ -1,3 +1,4 @@
+/** ScopeSummary */
 export interface ScopeSummary {
   readonly id: string
   readonly name: string
@@ -6,6 +7,7 @@ export interface ScopeSummary {
   readonly is_active: boolean
 }
 
+/** AliasMatchResult */
 export interface AliasMatchResult {
   readonly matched: boolean
   readonly scope_ids: readonly string[]

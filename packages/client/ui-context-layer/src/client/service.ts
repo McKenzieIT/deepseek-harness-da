@@ -18,6 +18,7 @@ interface Snapshot {
   readonly focusNode: string | undefined
 }
 
+/** ContextLayerService */
 export class ContextLayerService implements IContextLayer {
   #snapshot: Snapshot = { isOpen: false, focusNode: undefined }
   #listeners = new Set<() => void>()
@@ -36,11 +37,13 @@ export class ContextLayerService implements IContextLayer {
     this.#notify()
   }
 
+  /** ContextLayerService.subscribe */
   subscribe = (cb: () => void): (() => void) => {
     this.#listeners.add(cb)
     return () => { this.#listeners.delete(cb) }
   }
 
+  /** ContextLayerService.getSnapshot */
   getSnapshot = (): Snapshot => this.#snapshot
 
   #notify(): void {

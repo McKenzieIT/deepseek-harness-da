@@ -21,9 +21,11 @@ import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/i
 export const name = 'tool-get-coverage'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 
+/** CoverageStats */
 export interface CoverageStats {
   readonly table_count: number
   readonly event_count: number
@@ -34,6 +36,7 @@ export interface CoverageStats {
   readonly [key: string]: JsonValue
 }
 
+/** GetCoverageResult */
 export interface GetCoverageResult {
   readonly ok: boolean
   readonly stats?: CoverageStats
@@ -41,6 +44,12 @@ export interface GetCoverageResult {
   readonly [key: string]: JsonValue
 }
 
+/**
+ *  getCoverageResult
+ * @param schema - schema
+ * @param domain - domain
+ * @returns the result
+ */
 export function getCoverageResult(schema: SemanticLayerService | undefined, domain?: string): GetCoverageResult {
   if (schema === undefined) {
     return { ok: false, message: 'semantic-layer not mounted (ctx.schema unavailable)' }
@@ -93,6 +102,11 @@ export function getCoverageResult(schema: SemanticLayerService | undefined, doma
   }
 }
 
+/**
+ *  formatGetCoverage
+ * @param value - value
+ * @returns the result
+ */
 export function formatGetCoverage(value: GetCoverageResult): string {
   if (!value.ok) return value.message ?? 'get_coverage failed'
   const s = value.stats

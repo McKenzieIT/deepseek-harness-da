@@ -197,6 +197,7 @@ function sanitizeSubstrateError(e: unknown): string {
  * @param schema - the semantic-layer service (`ctx.get('schema')`), or undefined when unmounted.
  * @param tableName - the model-supplied table name to load.
  * @returns `{ found: true, table }` on a hit, or `{ found: false, message }` otherwise.
+ * @param qualify - qualify
  */
 export function loadTableDefinitionResult(
   schema: SemanticLayerService | undefined,

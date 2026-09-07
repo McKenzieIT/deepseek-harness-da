@@ -171,6 +171,12 @@ function rpad(s: string, w: number): string {
 
 const CATEGORY_ORDER: Category[] = ['Original', 'Alias', 'Voice EXEC', 'Voice DELIVERY', 'Voice']
 
+/**
+ *  compareRuns
+ * @param runIdA - runIdA
+ * @param runIdB - runIdB
+ * @param dir - dir
+ */
 export function compareRuns(runIdA: string, runIdB: string, dir: string): void {
   const resolvedDir = resolve(dir)
   const fileA = resolveRunFile(runIdA, resolvedDir)

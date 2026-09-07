@@ -15,6 +15,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 export const name = 'tool-resolve-term'
 export const inject = ['tools']
 
+/** Config */
 export interface Config {}
 export const Config: z<Config> = z.object({})
 

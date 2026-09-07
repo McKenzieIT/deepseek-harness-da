@@ -48,6 +48,7 @@ interface RegistryFile {
 
 // ── Config (static Cordis, set at bundle mount) ─────────────────────────────
 
+/** ScopeRegistryConfig */
 export interface ScopeRegistryConfig {
   /** Path to the scopes.yaml registry file. Empty = service is inert (no scopes). */
   readonly registryPath: string

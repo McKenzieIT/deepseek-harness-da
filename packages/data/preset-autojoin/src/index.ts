@@ -92,7 +92,7 @@ export const inject = ['agentPresets'] as const
  * @param presets - the preset roster service (or a structural mock).
  * @returns an `agent/created` listener.
  */
-export function createAutojoinListener(presets: AutojoinPresetService) {
+export function createAutojoinListener(presets: AutojoinPresetService): (arg: { agent: { ctx: Context } }) => Promise<void> {
   return async ({ agent }: { agent: { ctx: Context } }): Promise<void> => {
     // Idempotent: an agent whose setup already joined a preset (the api-proxy
     // host path) is left alone — this wrapper must not re-parent a scope the

@@ -9,6 +9,7 @@ import { EventDefinitionSchema, type EventDefinition } from '../types.ts'
 import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem } from '../registry.ts'
 import { isPlainObject } from '../corpus.ts'
 
+/** eventKindPlugin */
 export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
   kind: 'event',
   schema: EventDefinitionSchema,

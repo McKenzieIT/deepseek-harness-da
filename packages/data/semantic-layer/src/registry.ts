@@ -103,7 +103,10 @@ export interface DataSourceKindPlugin<T = unknown> {
 export class DataSourceRegistry {
   private readonly plugins = new Map<string, DataSourceKindPlugin>()
 
-  /** Register a kind plugin. Throws if the kind is already registered. */
+  /**
+   *  Register a kind plugin. Throws if the kind is already registered.
+   * @param plugin - plugin
+   */
   register(plugin: DataSourceKindPlugin): void {
     if (this.plugins.has(plugin.kind)) {
       throw new Error(`DataSourceRegistry: kind "${plugin.kind}" is already registered`)
@@ -111,17 +114,27 @@ export class DataSourceRegistry {
     this.plugins.set(plugin.kind, plugin)
   }
 
-  /** Get a registered plugin by kind, or undefined if not registered. */
+  /**
+   *  Get a registered plugin by kind, or undefined if not registered.
+   * @param kind - kind
+   * @returns the result
+   */
   getKind(kind: string): DataSourceKindPlugin | undefined {
     return this.plugins.get(kind)
   }
 
-  /** Return all registered kind strings. */
+  /**
+   *  Return all registered kind strings.
+   * @returns the result
+   */
   allKinds(): string[] {
     return [...this.plugins.keys()]
   }
 
-  /** Return all registered plugins. */
+  /**
+   *  Return all registered plugins.
+   * @returns the result
+   */
   allPlugins(): DataSourceKindPlugin[] {
     return [...this.plugins.values()]
   }
