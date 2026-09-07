@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { dump as dumpYaml } from 'js-yaml'
 import { runExperiment, formatComparisonTable } from '../src/harness.ts'
-import type { ExperimentConfig } from '../src/types.ts'
+import type { ExperimentConfig, SnapshotLevel } from '../src/types.ts'
 
 let root: string
 let casePaths: string[]
@@ -126,6 +126,47 @@ describe('runExperiment', () => {
       expect(r.aggregate.meanRecall).toBeGreaterThanOrEqual(0)
       expect(r.aggregate.meanRecall).toBeLessThanOrEqual(1)
     }
+  })
+
+  // GA-AUDIT1-followup ece-15: the experiment harness must reject unsupported
+  // / unknown snapshot levels instead of silently degrading to the empty `{}`
+  // config (the old `LEVEL_CONFIGS[level] ?? {}` behaviour treated 'L2'/'L3'/
+  // typos as L1 semantics with no signal). L2/L3 need runtime args the
+  // ExperimentConfig cannot carry; a typo falls through to assertNever.
+  it('throws on an unsupported snapshot level (L2 needs runtime args)', () => {
+    const configs: ExperimentConfig[] = [
+      { snapshotLevel: 'L2', blending: { mode: 'strategy-b' }, topK: 10 },
+    ]
+    expect(() => runExperiment({
+      semanticRoot: join(root, 'semantic'),
+      casePaths,
+      configs,
+    })).toThrow(/requires runtime args|snapshot level/i)
+  })
+
+  it('throws on an unsupported snapshot level (L3 needs runtime args)', () => {
+    const configs: ExperimentConfig[] = [
+      { snapshotLevel: 'L3', blending: { mode: 'strategy-b' }, topK: 10 },
+    ]
+    expect(() => runExperiment({
+      semanticRoot: join(root, 'semantic'),
+      casePaths,
+      configs,
+    })).toThrow(/requires runtime args|snapshot level/i)
+  })
+
+  it('throws on an unknown snapshot level via the assertNever default arm', () => {
+    // Cast a typo through the type boundary to exercise the runtime default:
+    // the closed SnapshotLevel union rejects this at compile time in real
+    // code; this test guards the assertNever arm for any future drift.
+    const configs: ExperimentConfig[] = [
+      { snapshotLevel: 'L9' as unknown as SnapshotLevel, blending: { mode: 'strategy-b' }, topK: 10 },
+    ]
+    expect(() => runExperiment({
+      semanticRoot: join(root, 'semantic'),
+      casePaths,
+      configs,
+    })).toThrow(/unknown snapshot level/i)
   })
 })
 

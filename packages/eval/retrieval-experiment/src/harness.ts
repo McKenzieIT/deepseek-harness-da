@@ -11,6 +11,7 @@ import type {
   CaseRetrievalResult,
   GraphSnapshot,
   GraphSnapshotConfig,
+  SnapshotLevel,
 } from './types.ts'
 
 interface MinimalCase {
@@ -32,9 +33,43 @@ function loadMinimalCase(path: string): MinimalCase {
   }
 }
 
-const LEVEL_CONFIGS: Record<string, GraphSnapshotConfig> = {
-  L0: { stripAliases: true, stripConcepts: true },
-  L1: {},
+/** Exhaustiveness check — turns a forgotten `case` in `configForLevel`'s
+ *  switch into a compile error so a future `SnapshotLevel` addition forces
+ *  this switch to be updated rather than silently falling through. */
+function assertNever(level: never): never {
+  throw new Error(`unknown snapshot level: ${String(level)}`)
+}
+
+/**
+ * Resolve the {@link GraphSnapshotConfig} for a coverage level. Replaces the
+ * silent `LEVEL_CONFIGS[level] ?? {}` lookup, which treated `'L2'`/`'L3'`/typos
+ * as the empty `{}` config (degrading to L1 semantics with no signal).
+ *
+ * `'L0'`/`'L1'` are the experiment-harness-supported levels (no runtime args).
+ * `'L2'`/`'L3'` need `extraAliases`/`extraConcepts` (see `snapshotLevel2`/
+ * `snapshotLevel3` in graph-snapshot.ts) which an `ExperimentConfig` cannot
+ * carry, so they throw here rather than silently degrading. Typos are excluded
+ * by the `SnapshotLevel` union at the type boundary; the `assertNever` arm is
+ * the runtime defence for any union member this switch forgets to handle.
+ * @param level - the snapshot coverage level.
+ * @returns the config to hand to buildGraphSnapshot.
+ */
+function configForLevel(level: SnapshotLevel): GraphSnapshotConfig {
+  switch (level) {
+    case 'L0':
+      return { stripAliases: true, stripConcepts: true }
+    case 'L1':
+      return {}
+    case 'L2':
+    case 'L3':
+      throw new Error(
+        `snapshot level ${level} requires runtime args (extraAliases/extraConcepts) `
+        + 'not carried by ExperimentConfig — use snapshotLevel2/snapshotLevel3 from '
+        + 'graph-snapshot.ts directly, not the experiment harness',
+      )
+    default:
+      return assertNever(level)
+  }
 }
 
 /**
@@ -45,11 +80,11 @@ const LEVEL_CONFIGS: Record<string, GraphSnapshotConfig> = {
 export function runExperiment(opts: ExperimentOptions): ComparisonTable {
   const cases = opts.casePaths.map(loadMinimalCase)
 
-  const snapshotCache = new Map<string, GraphSnapshot>()
-  function getSnapshot(level: string): GraphSnapshot {
+  const snapshotCache = new Map<SnapshotLevel, GraphSnapshot>()
+  function getSnapshot(level: SnapshotLevel): GraphSnapshot {
     let snap = snapshotCache.get(level)
     if (!snap) {
-      const config = LEVEL_CONFIGS[level] ?? {}
+      const config = configForLevel(level)
       snap = buildGraphSnapshot(opts.semanticRoot, config, level)
       snapshotCache.set(level, snap)
     }

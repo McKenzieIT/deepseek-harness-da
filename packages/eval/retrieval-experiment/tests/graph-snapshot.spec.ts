@@ -120,7 +120,7 @@ describe('buildGraphSnapshot', () => {
       ['dws_pay', ['月卡', '首充']],
       ['dim_server', ['区服']],
     ])
-    const snap = buildGraphSnapshot(root, { extraAliases: extras }, 'L2-test')
+    const snap = buildGraphSnapshot(root, { extraAliases: extras }, 'L2')
     expect(snap.graph.resolveAlias('月卡')).toContain('dws_pay')
     expect(snap.graph.resolveAlias('区服')).toContain('dim_server')
     expect(snap.graph.resolveAlias('付费')).toContain('dws_pay')
@@ -129,7 +129,7 @@ describe('buildGraphSnapshot', () => {
   it('extra concepts injection adds concept nodes', () => {
     const snap = buildGraphSnapshot(root, {
       extraConcepts: [{ name: '社交', description: '社交玩法', alt_labels: ['好友', '公会'] }],
-    }, 'L2-extra-concept')
+    }, 'L2')
     expect(snap.graph.resolveAlias('好友')).toContain('concept:社交')
     expect(snap.stats.conceptCount).toBe(3)
   })
