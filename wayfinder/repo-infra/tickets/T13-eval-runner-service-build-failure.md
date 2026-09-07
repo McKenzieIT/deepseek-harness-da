@@ -1,4 +1,4 @@
-# T7 — pnpm -r run build 在 eval-runner-service 失败（typert/generator 无 build script）
+# T13 — pnpm -r run build 在 eval-runner-service 失败（typert/generator 无 build script）
 
 **Type**: task（或 research——需先定 root cause + 是否 intentional）
 **Phase**: post-discovery
