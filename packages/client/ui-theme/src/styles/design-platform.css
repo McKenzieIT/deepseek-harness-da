@@ -332,7 +332,7 @@ body[data-ds-dark-theme] {
   --dsw-alias-state-error-primary: var(--dsw-static-red-400);
   --dsw-alias-state-error-secondary: var(--dsw-static-red-400);
   --dsw-alias-state-info-primary: var(--dsw-static-blue-400);
-  --dsw-alias-state-info-surface: var(--dsw-static-blue-950);
+  --dsw-alias-state-info-surface: var(--dsw-static-blue-900);
   --dsw-alias-state-success-primary: var(--dsw-static-green-500);
   --dsw-alias-state-success-secondary: var(--dsw-static-green-400);
   --dsw-alias-state-success-tertiary: var(--dsw-static-green-900);
