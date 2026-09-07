@@ -1,3 +1,6 @@
+import { unwrapRemoteResult } from './remoteResult.ts'
+import type { RemoteResult } from './remoteResult.ts'
+
 export interface TableSummary {
   readonly table_name: string
   readonly kind: string
@@ -57,12 +60,6 @@ export interface SchemaGatewayClient {
   getCoverageStats: () => Promise<CoverageStats>
 }
 
-interface RemoteResult<T> {
-  ok: boolean
-  value?: T
-  error?: unknown
-}
-
 interface SchemaGatewayRemoteNamespace {
   listDomains(): Promise<RemoteResult<DomainEntry[]>>
   listTables(): Promise<RemoteResult<TableSummary[]>>
@@ -75,30 +72,16 @@ interface SchemaGatewayRemoteNamespace {
   getCoverageStats(): Promise<RemoteResult<CoverageStats>>
 }
 
-function unwrap<T>(result: RemoteResult<T>): T {
-  if (!result.ok) {
-    let detail = 'unknown'
-    if (result.error instanceof Error) detail = result.error.message
-    else if (typeof result.error === 'string') detail = result.error
-    throw new Error(`schema-gateway RPC failed: ${detail}`)
-  }
-  // RemoteResult.value is optional: a host { ok: true } with no value would
-  // otherwise surface as undefined typed as T. Treat its absence as a
-  // contract violation rather than returning a phantom value.
-  if (result.value === undefined) throw new Error('schema-gateway RPC failed: ok response missing value')
-  return result.value
-}
-
 export function buildSchemaGatewayClient(remote: SchemaGatewayRemoteNamespace): SchemaGatewayClient {
   return {
-    async listDomains() { return unwrap(await remote.listDomains()) },
-    async listTables() { return unwrap(await remote.listTables()) },
-    async listEvents() { return unwrap(await remote.listEvents()) },
-    async listMetrics() { return unwrap(await remote.listMetrics()) },
-    async getTableDefinition(name) { return unwrap(await remote.getTableDefinition(name)) },
-    async getEventDefinition(name) { return unwrap(await remote.getEventDefinition(name)) },
-    async getMetricDefinition(name) { return unwrap(await remote.getMetricDefinition(name)) },
-    async search(query, topK?) { return unwrap(await remote.search(query, topK)) },
-    async getCoverageStats() { return unwrap(await remote.getCoverageStats()) },
+    async listDomains() { return unwrapRemoteResult(await remote.listDomains(), 'schema-gateway') },
+    async listTables() { return unwrapRemoteResult(await remote.listTables(), 'schema-gateway') },
+    async listEvents() { return unwrapRemoteResult(await remote.listEvents(), 'schema-gateway') },
+    async listMetrics() { return unwrapRemoteResult(await remote.listMetrics(), 'schema-gateway') },
+    async getTableDefinition(name) { return unwrapRemoteResult(await remote.getTableDefinition(name), 'schema-gateway') },
+    async getEventDefinition(name) { return unwrapRemoteResult(await remote.getEventDefinition(name), 'schema-gateway') },
+    async getMetricDefinition(name) { return unwrapRemoteResult(await remote.getMetricDefinition(name), 'schema-gateway') },
+    async search(query, topK?) { return unwrapRemoteResult(await remote.search(query, topK), 'schema-gateway') },
+    async getCoverageStats() { return unwrapRemoteResult(await remote.getCoverageStats(), 'schema-gateway') },
   }
 }

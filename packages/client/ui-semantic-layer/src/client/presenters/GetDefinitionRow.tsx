@@ -1,6 +1,7 @@
 import { IconBrowseOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 import css from './presenters.module.css'
+import { kindBadgeClass } from './kindBadge.ts'
 
 interface DefinitionMeta {
   found: boolean
@@ -13,13 +14,6 @@ interface DefinitionMeta {
   relations?: unknown
   confirmation?: string
   message?: string
-}
-
-function kindBadgeClass(kind: string | undefined) {
-  if (kind === 'table') return css.badgeTable ?? ''
-  if (kind === 'event') return css.badgeEvent ?? ''
-  if (kind === 'metric') return css.badgeMetric ?? ''
-  return css.badge ?? ''
 }
 
 export interface GetDefinitionRowProps {

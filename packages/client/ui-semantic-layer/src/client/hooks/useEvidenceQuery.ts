@@ -148,10 +148,15 @@ export function useEvidenceQuery(client: EvidenceQueryClient | null) {
 
   const triggerEval = useCallback(async (assetId?: string): Promise<string | null> => {
     if (!client?.triggerEvalRun) return null
+    // Route through beginFetch/finishFetch/failFetch like every other fetch so
+    // the shared loading indicator reflects an in-progress on-demand trigger.
+    setState(beginFetch)
     try {
-      return await client.triggerEvalRun(assetId)
+      const runId = await client.triggerEvalRun(assetId)
+      setState(s => finishFetch(s, {}))
+      return runId
     } catch (err) {
-      setState(s => ({ ...s, error: describeError(err) }))
+      setState(s => failFetch(s, err))
       return null
     }
   }, [client])
