@@ -15,6 +15,10 @@ const artifact = (path: string): string => join(root, path)
 const artifactUrl = (path: string): string => pathToFileURL(artifact(path)).href
 
 const requiredArtifacts = [
+  // W20: the stub reuses getStaticModules() exported from this built lib as
+  // its require table — single-source with platform.ts/seed.ts, so a platform
+  // change flows into the stub at the next build rather than drifting.
+  'packages/client/web/lib/index.js',
   'packages/client/connection/lib/client.js',
   'packages/client/connection/lib/index.js',
   'packages/api/remotes/lib/client.js',
@@ -34,6 +38,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       agent: 'packages/core/agent/lib/index.js',
       apiGatewayClient: 'packages/api/gateway/lib/client.js',
       apiGatewayHost: 'packages/api/gateway/lib/index.js',
+      clientWebLib: 'packages/client/web/lib/index.js',
       connectionClient: 'packages/client/connection/lib/client.js',
       connectionHost: 'packages/client/connection/lib/index.js',
       goal: 'packages/goal/goal/lib/index.js',
@@ -45,10 +50,28 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
     }).map(([key, path]) => [key, artifactUrl(path)]))
     const script = `
       import { createServer } from 'node:http'
+      import { register } from 'node:module'
       import * as cordis from '@deepseek-ai/cordis'
 
       const urls = ${JSON.stringify(urls)}
       const { Context } = cordis
+      // W20: the stub reuses the shell's real module table — single-source
+      // with platform.ts/seed.ts, so the require callback answers every
+      // platform external (zod, cordis, react, …) the api-remotes bundle
+      // emits, and a platform change reaches the stub at the next build.
+      // The built client/web lib is a browser artifact whose CSS Modules
+      // graph has no loader in plain Node; a test-only load hook stubs .css
+      // imports to empty before the lib evaluates — only getStaticModules
+      // is consumed, so the boot page's styling is irrelevant here.
+      register('data:text/javascript,' + encodeURIComponent(
+        'export function load(url, context, nextLoad) {'
+        + '  return url.endsWith(".css")'
+        + '    ? { format: "module", source: "export default {};", shortCircuit: true }'
+        + '    : nextLoad(url, context);'
+        + '}',
+      ))
+      const { getStaticModules } = await import(urls.clientWebLib)
+      const staticModules = getStaticModules()
       const { default: AgentRegistry } = await import(urls.agent)
       const connectionHost = await import(urls.connectionHost)
       const { default: TypertRemoteService } = await import(urls.apiGatewayHost)
@@ -123,7 +146,8 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
         const handoff = handoffs.get(id)
         if (handoff === undefined) throw new Error('missing Client bundle handoff ' + id)
         return handoff.factory(specifier => {
-          if (specifier === '@deepseek-ai/cordis') return cordis
+          const resolved = staticModules[specifier]
+          if (resolved !== undefined) return resolved
           throw new Error('unexpected Client external ' + specifier)
         })
       }
