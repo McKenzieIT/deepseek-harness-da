@@ -25,6 +25,9 @@
     },
     {
       "path": "../../data/nl2sql-engine"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }
