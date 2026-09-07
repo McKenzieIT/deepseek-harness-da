@@ -190,6 +190,21 @@ function sameOwner(recIdent: RowIdentity, caller: AuditCaller | undefined): bool
 /** Apply an override via dotted path (mirror RBI _apply_overrides dotted-path setter). */
 function setDotted(obj: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split('.')
+  // A4: prototype-pollution guard. A dotted override whose path walks
+  // `__proto__` (reaches Object.prototype via the __proto__ accessor),
+  // `constructor` or `prototype` would mutate shared prototypes, so every
+  // subsequent audit read pollutes Object.prototype. patch() only denies
+  // IDENTITY_FIELDS + auto_tags, so a bad audit_override row (direct DB
+  // insert or a future writer) can still reach setDotted on materialization.
+  // Reject every dangerous segment here — fail loud (Cordis "misconfiguration
+  // fails loud") so the bad row never silently corrupts global state.
+  for (const seg of parts) {
+    if (seg === '__proto__' || seg === 'constructor' || seg === 'prototype') {
+      throw new Error(
+        `audit setDotted refuses segment "${seg}" in path "${path}": prototype-pollution guard (A4)`,
+      )
+    }
+  }
   let o: Record<string, unknown> = obj
   for (let i = 0; i < parts.length - 1; i++) {
     const k = parts[i] as string

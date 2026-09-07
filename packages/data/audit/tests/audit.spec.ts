@@ -165,6 +165,30 @@ describe('SQLiteAuditStore', () => {
     expect(hash).toMatch(/^[0-9a-f]{64}$/)
     expect(hash).not.toContain('pay_amt')
   })
+
+  it('A4: setDotted rejects __proto__ — bad override row must not pollute Object.prototype on read', () => {
+    // A bad audit_override row whose dotted path walks `__proto__` would
+    // reach Object.prototype and pollute every subsequent read. patch()
+    // only denies IDENTITY_FIELDS + auto_tags, so the prototype-pollution
+    // guard lives in setDotted (the materialization path) — fail loud.
+    s.append(fromPayload({
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+    }))
+    // patch admits the dangerous field (not an identity field) and stores
+    // the override row — the guard fires on the next read (setDotted).
+    expect(s.patch('r1', '__proto__.polluted', 'pwned', { by: 'compliance', reason: 'A4' }, admin)).toBe(true)
+    expect(() => s.get('r1', admin)).toThrow(/refuses segment "__proto__"/) // setDotted throws
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined() // Object.prototype not polluted
+  })
+
+  it('A4: setDotted rejects constructor/prototype segments — no Object.prototype pollution on read', () => {
+    s.append(fromPayload({
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+    }))
+    expect(s.patch('r1', 'constructor.prototype.polluted', 'pwned', { by: 'compliance', reason: 'A4' }, admin)).toBe(true)
+    expect(() => s.get('r1', admin)).toThrow(/refuses segment "constructor"/) // first dangerous segment
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+  })
 })
 
 describe('Audit service (ctx.audit) wiring', () => {
