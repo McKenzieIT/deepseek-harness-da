@@ -3,7 +3,7 @@
  * + LLM round, merged) + enrichAllDwsTables (writes dimension_refs back).
  * G3 §1 two-round strategy; §3 LLM results merged with deterministic.
  */
-import { test, expect, describe, beforeEach, afterEach } from 'vitest'
+import { test, expect, describe, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -331,6 +331,20 @@ describe('enrichAllDwsTables', () => {
     expect(res.enriched).toBe(0)
     expect(res.errors).toEqual([])
   })
+
+  test('empty DIM inventory returns agent-visible note (NOT console.warn) [GA-GT3-6b]', async () => {
+    // GA-GT3-6b: the short-circuit must surface an agent-visible `note` field
+    // (replacing console.warn, which the agent cannot see). The note lets
+    // callers/tooling understand why enriched/written are 0 without scraping
+    // stderr, and is forwarded up to the discover_relations tool result.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    writeFileSync(join(dir, 'tables', 'dws_pay.yaml'), dumpYaml(dws({ table_name: 'dws_pay', columns: [{ name: 'server_id', type: 'string', comment: '', role: 'dimension' }] })))
+    const res = await enrichAllDwsTables(dir)
+    expect(res.note).toBe('no DIM tables in scope, nothing to enrich')
+    expect(res.written).toBe(0)
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
 })
 
 function event(over: Partial<EventDefinition> = {}): EventDefinition {
@@ -442,6 +456,18 @@ describe('enrichAllEvents', () => {
     expect(res.written).toBe(0)
     expect(res.enriched).toBe(0)
     expect(res.errors).toEqual([])
+  })
+
+  test('empty DIM inventory returns agent-visible note (NOT console.warn) [GA-GT3-6b]', async () => {
+    // GA-GT3-6b: parallel to enrichAllDwsTables — agent-visible note replaces
+    // console.warn (agent cannot see stderr). Forwarded to discoverEventRelations.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    rmSync(join(dir, 'tables', 'dim_server.yaml'))
+    const res = await enrichAllEvents(dir)
+    expect(res.note).toBe('no DIM tables in scope, nothing to enrich')
+    expect(res.written).toBe(0)
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
   })
 })
 

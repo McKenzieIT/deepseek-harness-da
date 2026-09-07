@@ -630,7 +630,7 @@ export class SemanticLayerService extends Service {
    */
   async discoverRelations(
     opts: { readonly tables?: readonly string[]; readonly preserveCurated?: boolean } = {},
-  ): Promise<{ enriched: number; written: number; errors: string[] }> {
+  ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
     // CL-18 Phase 2: forward the partition-column exclude set so ds/pt/dt
     // partition-column PK matches do not generate noise JOIN relations.
     // GA-GT3-5b: forward preserveCurated (default true = origin-aware replace;
@@ -668,7 +668,7 @@ export class SemanticLayerService extends Service {
    */
   async discoverEventRelations(
     opts: { readonly events?: readonly string[]; readonly preserveCurated?: boolean } = {},
-  ): Promise<{ enriched: number; written: number; errors: string[] }> {
+  ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
     // GA-GT3-5b: forward preserveCurated (default true = origin-aware replace;
     // false = raw full-replace escape-hatch; parallel to discoverRelations).
     return enrichAllEventsFromLayer(this.semanticRoot, this.llmCall, opts.events, false, undefined, opts.preserveCurated ?? true)

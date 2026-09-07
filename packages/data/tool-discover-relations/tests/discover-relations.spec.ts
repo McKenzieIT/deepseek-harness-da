@@ -13,6 +13,7 @@ import {
   apply,
   validateTableName,
   discoverRelationsResult,
+  formatDiscoverRelations,
   type DiscoverRelationsResult,
 } from '../src/index.ts'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
@@ -139,4 +140,42 @@ test('S11 render formats the not-mounted message', () => {
   const def = registerTool()
   const out = def.output.render({}, { ok: false, message: 'semantic-layer substrate not mounted' })
   expect(out[0]?.text).toContain('not mounted')
+})
+
+test('S12 render shows added/removed diff when before/after snapshots differ [GA-GT3-6b]', () => {
+  // GA-GT3-6b: formatDiscoverRelations renders an agent-visible add/remove
+  // diff (computeAddedRelations + computeRemovedRelations via _before/_after)
+  // so the agent sees exactly which dimension_refs changed, not just counts.
+  const before = [
+    { table: 'dws_a', refs: [{ dim_table: 'dim_old', join_keys: [{ dws_column: 'old_id', dim_column: 'old_id' }], derivation: 'old' }] },
+  ]
+  const after = [
+    { table: 'dws_a', refs: [{ dim_table: 'dim_new', join_keys: [{ dws_column: 'new_id', dim_column: 'new_id' }], derivation: 'new' }] },
+  ]
+  const value = {
+    ok: true,
+    enriched: 1,
+    written: 1,
+    errors: [],
+    _before: before,
+    _after: after,
+  } as DiscoverRelationsResult
+  const out = formatDiscoverRelations(value)
+  expect(out).toContain('added (')
+  expect(out).toContain('removed (')
+  expect(out).toContain('dim_new')
+  expect(out).toContain('dim_old')
+})
+
+test('S13 render shows a note line when result carries a note [GA-GT3-6b]', () => {
+  const value = {
+    ok: true,
+    enriched: 0,
+    written: 0,
+    errors: [],
+    note: 'no DIM tables in scope, nothing to enrich',
+  } as DiscoverRelationsResult
+  const out = formatDiscoverRelations(value)
+  expect(out).toContain('note:')
+  expect(out).toContain('no DIM tables in scope, nothing to enrich')
 })
