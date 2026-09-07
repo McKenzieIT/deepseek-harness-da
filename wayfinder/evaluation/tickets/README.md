@@ -16,7 +16,7 @@
 ## 方向与票链(见 `../map.md` §Frontier directions)
 | # | 方向 | 认读 R | grilling G | impl T/P | experiment R |
 |---|---|---|---|---|---|
-| 1 | 执行级评分+非循环 GT | R1 | G1/G1b | T1 | R23/R12 |
+| 1 | 执行级评分+非循环 GT | R1 | G1/G1b | T1、**T11** | R23/R12 |
 | 2 | Judge blind-rewrite | R2 | G2 | T2 | R13 |
 | 3 | Judge 校准+gated | R3 | G3 | T3 | R14/R15 |
 | 4 | Power-aware+显著性 | R4 | G4 | T4/T4b | R16 |
