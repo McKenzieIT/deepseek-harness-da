@@ -8,7 +8,7 @@
 git worktree add ../dsh-<ticket-id> -b <type>/<ticket-id>-<slug> master
 cd ../dsh-<ticket-id>
 pnpm install                       # 装 deps + 跑 lefthook postinstall（生成 worktree-local hooks；fresh worktree 无 node_modules，必跑）
-pnpm run build:official           # sanctioned 全量 build → 生成 lib/（fresh worktree 否则缺 built lib/，致 aggregate tsc + bundle types-build 假性「master break」；pnpm -r run build 非 entrypoint, fails on eval-runner-service per T7——见 wayfinder/repo-infra/tickets/T1-worktree-builds.md + T7-eval-runner-service-build-failure.md）
+pnpm run build:official           # sanctioned 全量 build → 生成 lib/（fresh worktree 否则缺 built lib/，致 aggregate tsc + bundle types-build 假性「master break」；pnpm -r run build 非 entrypoint, fails on eval-runner-service per T13——见 wayfinder/repo-infra/tickets/T1-worktree-builds.md + T13-eval-runner-service-build-failure.md）
 ```
 
 - worktree:`../dsh-<ticket-id>`
