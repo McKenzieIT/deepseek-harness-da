@@ -2,7 +2,7 @@
  * `@deepseek-ai/dsh-eval-runner` — the eval evidence engine.
  *
  * Public API: batch runner, persistence, delta comparison, health gate,
- * infra retry, verdict mapping, collaborator interfaces, and stubs.
+ * infra retry, collaborator interfaces, and stubs.
  *
  * @module @deepseek-ai/dsh-eval-runner
  */
@@ -53,9 +53,6 @@ export type { HealthGateOptions } from './health_gate.ts'
 // Infra retry
 export { withInfraRetry, classifyInfraFailure, isInfraError, DEFAULT_MAX_INFRA_RETRIES, INFRA_BACKOFF_MS } from './infra_retry.ts'
 export type { InfraError } from './infra_retry.ts'
-
-// Verdict mapper
-export { mapVerdict, mapAttempts } from './verdict_mapper.ts'
 
 // SQL Semantic Judge
 export type { SqlJudgeInput, SqlJudgeDimensions, SqlJudgeResult, SqlSemanticJudge } from './sql_semantic_judge.ts'
