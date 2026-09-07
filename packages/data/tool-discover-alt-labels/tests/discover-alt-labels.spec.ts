@@ -27,11 +27,13 @@ interface ToolDef {
   readonly output: {
     readonly schema: unknown
     readonly render: (args: unknown, value: DiscoverAltLabelsResult) => readonly { readonly type: 'text'; readonly text: string }[]
+    readonly presentationMeta?: (args: unknown, value: DiscoverAltLabelsResult) => { ok: boolean; enriched?: number; written?: number }
   }
   readonly execute: (
     args: { readonly tables?: string[]; readonly events?: string[] },
     exec: { readonly signal: AbortSignal },
   ) => Promise<DiscoverAltLabelsResult>
+  readonly presentResult?: (args: unknown, result: { readonly isError?: boolean; readonly content?: readonly { readonly type: 'text'; readonly text: string }[]; readonly meta?: { ok?: boolean; enriched?: number; written?: number } }) => { readonly card: string; readonly title: string } | undefined
 }
 
 function registerTool(schema?: unknown): ToolDef {
@@ -140,4 +142,33 @@ test('render formats not-mounted message', () => {
   const def = registerTool()
   const out = def.output.render({}, { ok: false, message: 'semantic-layer substrate not mounted' })
   expect(out[0]?.text).toContain('not mounted')
+})
+
+test('presentResult title reflects enriched count (pin: stable across regex→meta refactor)', () => {
+  // The result carries BOTH content (rendered text — current presentResult regex-matches it)
+  // AND meta (structured — fixed presentResult reads it). Same title either way.
+  const def = registerTool()
+  const value: DiscoverAltLabelsResult = { ok: true, enriched: 5, written: 3 }
+  const content = def.output.render({}, value)
+  const meta = { ok: true, enriched: 5, written: 3 }
+  const result = { isError: false, content, meta }
+  const view = def.presentResult?.({}, result)
+  expect(view?.title).toBe('+5 definitions gained new labels')
+})
+
+test('presentResult title is "No new labels discovered" when enriched=0', () => {
+  const def = registerTool()
+  const value: DiscoverAltLabelsResult = { ok: true, enriched: 0, written: 0 }
+  const content = def.output.render({}, value)
+  const meta = { ok: true, enriched: 0, written: 0 }
+  const result = { isError: false, content, meta }
+  const view = def.presentResult?.({}, result)
+  expect(view?.title).toBe('No new labels discovered')
+})
+
+test('presentationMeta returns structured { ok, enriched, written } from the result', () => {
+  const def = registerTool()
+  const value: DiscoverAltLabelsResult = { ok: true, enriched: 5, written: 3 }
+  const meta = def.output.presentationMeta?.({}, value)
+  expect(meta).toEqual({ ok: true, enriched: 5, written: 3 })
 })
