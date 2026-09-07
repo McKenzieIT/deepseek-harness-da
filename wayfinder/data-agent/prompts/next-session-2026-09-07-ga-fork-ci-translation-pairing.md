@@ -1,5 +1,7 @@
 # Next Session Prompt — GA-FORK-CI translation-pairing + 审计 action 收尾
 
+> **STATUS: DONE (2026-09-07)** — 债务经 sessions 3-6 清零（PR #102/#104/#106/#108），`verify-translation-pairing` corpus green（1069 pairs，0 missing，0 OOS，exit 0）。本 prompt 的 Goal A 已达成；保留作历史记录，不再是下一 session 指导。详见 [map § GA-FORK-CI](../map.md#ga-fork-ci-node-24-meta-gates-2026-09-07) + `.tmp/audit/fix-translation-session6-status.md`。
+
 > 从 `wayfinder/_templates/session-prompt.md` 实例化。上一 session（2026-09-07）已把 GA-FORK-CI 推到 **6/7 绿 + 6 解除跳过** + GA-GT3 数据丢失修复已落地（详见 `wayfinder/data-agent/map.md` § GA-FORK-CI）。下一 session 目标：**translation-pairing 变绿**（如并行可暂停）+ 推进审计 action。
 
 ## 1. 环境/分支契约（session 启动第一步，必填）
