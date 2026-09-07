@@ -983,6 +983,34 @@ export class PhaseGate {
     ctx.on('llm/stream', this.onLlmStream)
     ctx.on('agent/pre-step', this.onPreStep)
     ctx.on('agent/status', this.onStatus)
+    // A9: evict the per-agent PhaseGateState when the session is disposed. Was an
+    // unbounded leak — `management-session.destroy()` detaches the session but
+    // phase-gate was never notified, so destroyed agents' state leaked for process
+    // lifetime. `session/disposed` fires synchronously from SessionStore.emitDisposed
+    // on detach (the management-session destroy path). `agentId === sessionId` (the
+    // agent registry rejects mismatched ids, core/agent index.ts:477), so
+    // `session.id` is the exact Map key. Clear the stall timer first so no leaked
+    // timer fires after eviction.
+    ctx.on('session/disposed', (session) => {
+      const id = String(session.id)
+      const st = this.sessions.get(id)
+      if (st) {
+        this.clearStallTimer(st)
+        this.sessions.delete(id)
+      }
+    })
+    // Belt-and-suspenders: agent-only teardown paths (e.g. owner-fiber unload
+    // without session detach). `agent/disposed` does NOT fire for the
+    // management-session destroy path, so `session/disposed` above is the primary
+    // hook; this covers the rare gap.
+    ctx.on('agent/disposed', ({ agent }) => {
+      const id = String(agent.id)
+      const st = this.sessions.get(id)
+      if (st) {
+        this.clearStallTimer(st)
+        this.sessions.delete(id)
+      }
+    })
     // G-DA6 + P-DA4b: scope switch clears prior-turn inheritance (cross-scope tables are semantically wrong).
     // Event type registered by P-DA4b (forward-compat); cast until the Events interface ships.
     ;(ctx as unknown as { on(event: string, cb: () => void): void }).on('scopes/active-changed', () => {

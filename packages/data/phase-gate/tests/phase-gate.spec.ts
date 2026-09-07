@@ -2075,6 +2075,110 @@ describe('G-DA6: prior_turn_tables inheritance', () => {
   })
 })
 
+// A9: phase-gate per-agent `sessions` Map was unbounded — `state(agentId)`
+// lazily populates and `management-session.destroy()` detaches the session but
+// never notified phase-gate, so destroyed agents' PhaseGateState leaked for
+// process lifetime. Fix: `session/disposed` (primary) + `agent/disposed`
+// (belt-and-suspenders) listeners in `register()` evict the Map entry, clearing
+// the stall timer first.
+describe('A9: sessions Map eviction on session/disposed (was unbounded leak)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  function makeRegisterCtx(): { ctx: Context; listeners: Record<string, ((...args: unknown[]) => void)[]> } {
+    const listeners: Record<string, ((...args: unknown[]) => void)[]> = {}
+    const ctx = {
+      logger: { info: () => undefined, debug: () => undefined },
+      on: (event: string, fn: (...args: unknown[]) => void) => { (listeners[event] ??= []).push(fn) },
+      effect: () => () => undefined,
+      tools: { guard: () => undefined },
+      systemPrompt: { section: () => undefined },
+    } as unknown as Context
+    return { ctx, listeners }
+  }
+
+  it('session/disposed deletes the per-agent state from the sessions Map', () => {
+    const { ctx, listeners } = makeRegisterCtx()
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    g.register(ctx)
+    const agentId = 'a9-leak-1'
+    const s = g.state(agentId) // lazily creates the Map entry
+    expect(g.peekState(agentId)).toBe(s)
+
+    // Fire the session/disposed listener (mirrors management-session.destroy() →
+    // SessionStore.emitDisposed → session/disposed(session)). `agentId === sessionId`
+    // so `session.id` is the exact Map key.
+    const handlers = listeners['session/disposed'] ?? []
+    expect(handlers.length).toBeGreaterThan(0)
+    for (const handler of handlers) handler({ id: agentId })
+
+    // Map entry evicted — no leak for process lifetime.
+    expect(g.peekState(agentId)).toBeUndefined()
+  })
+
+  it('session/disposed clears the stall timer before deleting (no leaked timer)', () => {
+    const { ctx, listeners } = makeRegisterCtx()
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    g.register(ctx)
+    const agentId = 'a9-leak-2'
+    const s = g.state(agentId)
+    // Arm a stall timer (mirror the field touchStallTimer sets).
+    s.stall_timer = setTimeout(() => { throw new Error('stall timer fired after eviction') }, 1000)
+    expect(s.stall_timer).not.toBeNull()
+
+    const handlers = listeners['session/disposed'] ?? []
+    for (const handler of handlers) handler({ id: agentId })
+
+    // clearStallTimer ran (timer nulled) AND the Map entry was deleted.
+    expect(s.stall_timer).toBeNull()
+    expect(g.peekState(agentId)).toBeUndefined()
+  })
+
+  it('session/disposed for an unknown id is a no-op (safe for non-data-query sessions)', () => {
+    const { ctx, listeners } = makeRegisterCtx()
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    g.register(ctx)
+    // No state created for this id — firing must not throw (the listener guards on `if (st)`).
+    const handlers = listeners['session/disposed'] ?? []
+    expect(handlers.length).toBeGreaterThan(0)
+    for (const handler of handlers) handler({ id: 'never-seen' })
+    expect(g.peekState('never-seen')).toBeUndefined()
+  })
+
+  it('agent/disposed also evicts the per-agent state (belt-and-suspenders)', () => {
+    const { ctx, listeners } = makeRegisterCtx()
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    g.register(ctx)
+    const agentId = 'a9-leak-3'
+    const s = g.state(agentId)
+    s.stall_timer = setTimeout(() => { throw new Error('stall timer fired after eviction') }, 1000)
+
+    const handlers = listeners['agent/disposed'] ?? []
+    expect(handlers.length).toBeGreaterThan(0)
+    for (const handler of handlers) handler({ agent: { id: agentId } })
+
+    expect(s.stall_timer).toBeNull()
+    expect(g.peekState(agentId)).toBeUndefined()
+  })
+
+  it('a second destroyed agent does not evict the first; each id is independent', () => {
+    const { ctx, listeners } = makeRegisterCtx()
+    const g = new PhaseGate(ctx, { stall_watchdog_seconds: 9999 })
+    g.register(ctx)
+    const a = g.state('a9-a')
+    const b = g.state('a9-b')
+    expect(g.peekState('a9-a')).toBe(a)
+    expect(g.peekState('a9-b')).toBe(b)
+
+    const handlers = listeners['session/disposed'] ?? []
+    for (const handler of handlers) handler({ id: 'a9-a' })
+
+    // Only a is evicted; b survives.
+    expect(g.peekState('a9-a')).toBeUndefined()
+    expect(g.peekState('a9-b')).toBe(b)
+  })
+})
+
 // CL6: the Config schema's scopeId default must be domain-neutral ('default'),
 // not a game-specific id. The schema (schemastery) is callable: Config({})
 // resolves the empty object, applying field defaults.
