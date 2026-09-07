@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-edit-definition
 
+English | [中文](README.zh.md)
+
 Model-facing edit_definition tool: apply partial patches to semantic layer asset definitions with audit trail
 
 ## Model Experience
