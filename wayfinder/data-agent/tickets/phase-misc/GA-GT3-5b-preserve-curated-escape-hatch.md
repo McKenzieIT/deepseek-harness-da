@@ -1,6 +1,6 @@
 # GA-GT3-5b — preserveCurated 逃逸阀（opt-in 全量替换）
 
-**Type**: task  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: task  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GT3 item 5/6 Resolution](GA-GT3-enrichment-generalization.md)（Q4 deferred）
 **Size**: S  ·  **Risk**: Low（additive toggle，默认行为不变）
 
@@ -26,3 +26,9 @@ GA-GT3 item 5（origin-aware replace，已落地 PR #43）让 re-discovery 默�
 ## 参考
 
 PR #15（`fix/ga-gt3-mergeexisting-dataloss`，已 close）有 `preserveCurated` 实现，但和其重复的 origin-aware replace 纠缠；本票干净重写，行为参考即可。
+
+---
+
+## Resolution（2026-09-07）
+
+**Resolved via PR #54（merge `0f1d7d9a75`）**。`enrichAllDwsTables`/`enrichAllEvents` 加 trailing `preserveCurated = true` 参数；replace 分支 `mergeExisting ? mergeRefs(...) : (preserveCurated ? originAwareReplaceRefs(...) : discovered)`；`index.ts` `discoverRelations`/`discoverEventRelations` 透传 `opts.preserveCurated ?? true`。**Additive**——默认 `true` 行为不变（PR #43 origin-aware）。TDD red→green（`preserveCurated=false` 丢 manual ref）；typecheck exit 0；vitest 265/265。干净重写（未 cherry-pick PR #15）。

@@ -1,6 +1,6 @@
 # GA-GT3-6b — discover_relations agent 可见报告（note? + 加减 diff）
 
-**Type**: task  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: task  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GT3 item 5/6 Resolution](GA-GT3-enrichment-generalization.md)（item 6 报告增强）
 **Size**: M  ·  **Risk**: Low（additive）
 
@@ -29,3 +29,9 @@ GA-GT3 item 6（PR #43）的空 inventory short-circuit 用 `console.warn` 报�
 ## 参考
 
 PR #15 有 `computeRemovedRelations` + `note?` 实现，但和其重复的 origin-aware replace 纠缠；本票干净重写，行为参考即可。
+
+---
+
+## Resolution（2026-09-07）
+
+**Resolved via PR #58（merge `f5e111295e`）**。`enrichAllDwsTables`/`enrichAllEvents` 返回类型加 `note?: string`，空 inventory short-circuit 返 `note`（**移除 `console.warn`**）；`index.ts` `discoverRelations`/`discoverEventRelations` 返回类型加 `note?`（透传）；`tool-discover-relations` 的 `DiscoverRelationsResult`+schema 加 `note`，`formatDiscoverRelations` 渲染 `note:` + added/removed（新增 `computeRemovedRelations` 镜像 `computeAddedRelations`，复用 `_before`/`_after`）。Additive。TDD red→green（4 测试）；typecheck exit 0；vitest 269/269。**Rebase**：基于 5b 合并前的 master → 与 5b 在 enrichment.ts/index.ts 声明行冲突（5b 加 `preserveCurated` 参数、6b 加 `note?` 返回类型）→ rebase 解 4 块声明冲突（union：保 preserveCurated + 加 note?）后 merge。
