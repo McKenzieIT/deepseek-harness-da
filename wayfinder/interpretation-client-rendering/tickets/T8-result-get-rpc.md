@@ -37,3 +37,9 @@ Resolved 2026-09-03 (this session). 四件已实现并全链验证通过——ho
 **验证**:tsc -b apiproxy(exit 0)+ tsc -b tsconfig.host.json 全 host 聚合含 tests(exit 0;含 `fetch-carrier.spec.ts`/`client-handler.spec.ts` 两处 `ApiProxy` fixture 补 `results` stub)+ apiproxy vitest 377/377 + `pnpm run test:gui` 4214/4214(1 skipped,exit 0)。四镜像编译期校验 = 完整性保证;runtime round-trip 测试覆盖 ok + result-not-found 通路(`client-handler.spec.ts` +2 tests)+ error-code accept/reject(`rpc-schemas.spec.ts` +2 断言)。
 
 **移交**:[T9](T9-result-cache-package-impl.md)(client result-cache 包,按 [R5](R5-object-layer-result-cache.md) Resolution:inject fetchResult face + lru-cache + Config + 事件订阅失效)的 cache-miss = 调 `IApiClient.results.get(rid)`——T8 是其 miss 通路前置,现已就绪可全链验证。分页(`result.getPage`)day-1 不含,后续非破坏性加入。
+
+## Upstream merge 2026-09-07（supersession）
+
+upstream `4f00a8b refactor(api): remove ApiProxy package` 删了整个 `packages/host/apiproxy`（ls-tree 确认 upstream 已无此目录）。本票 ship 的 `result.get` RPC 四件全落 `packages/host/apiproxy/src/api/{results.ts,results.schema.ts,rpc-map.ts,fetch/client.ts,fetch/handler.ts,api-proxy.ts,index.ts}`——现全在 upstream 已删包里。
+
+**处置**：re-home 进 `packages/api/remotes/`（upstream 的 Remote controllers 替代），按 upstream Remote 模式重落四镜像。追踪 → [UM4](../../data-agent/tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)。T9/T10/T11/T12/T13 同簇同 supersession。本票 Status 维持 closed（实现历史），但实现落点已 moot——re-home 后以 UM4 Resolution 为准。

@@ -53,6 +53,16 @@ Ship three client-side rendering plugins (`packages/client/ui-present-table/`, `
 原「查询理解↔table KPI 互认 + 改口径回流」雾(自 R9)已毕业:语义层 → [R10](tickets/R10-decomposition-table-metric-identity.md)(结论:两卡 metric 身份独立——decomposition 为纯 argsRaw 自由文本无 `result_id`,table kpi 值从 `result_id` 绑定数据计算;无共享 key/语义 id,无需 metric 联动);UX 层(低置信改口径 affordance 形态)→ [P2](tickets/P2-decomposition-revision-prototype.md)(prototype,open;R10 既不 block 也不 bind P2,且「无 link」收窄 P2 scope)。
 - **date-x 与 numeric-x 序数对称性**：当前 `validateChartType` 的 line/area 分支——date-x 无条件接受（无单调检查），numeric-x 需单调非递减（T6 fix 2）。若 team 欲对称（date-x 也校验序数，避免 date-x 表按他列 desc 重排后画锯齿线），加一个 `isOrdinalDateX` companion；非 bug，是 LOW 未来精修（subagent code review 指出，pre-existing）。
 
+## Upstream merge 2026-09-07
+
+upstream `4f00a8b refactor(api): remove ApiProxy package` 删了整个 `packages/host/apiproxy`。本域 R5 数据线（T8 `result.get` RPC → T9 cache → T10 消费方 + T11/T12/T13 residual）**全 premised on apiproxy**——ship 产物落 `packages/host/apiproxy/src/api/*` + `fetch/*`，现全在 upstream 已删包里。
+
+**违反当前 upstream 的本域票据（supersession addendum 已加，re-home 追踪）**：
+- [T8-result-get-rpc](tickets/T8-result-get-rpc.md) → re-home `packages/api/remotes/` → [UM4](../data-agent/tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)
+- [T9](tickets/T9-result-cache-package-impl.md)/[T10](tickets/T10-consumer-fetchResult-wiring.md)/[T11](tickets/T11-connection-fixture-results-arm.md)/[T12](tickets/T12-harden-result-cache-per-review.md)/[T13](tickets/T13-runtime-fakeapiclient-results-arm.md) — 同簇 supersession，re-home 后以 UM4 为准
+
+Status 维持 closed（实现历史），re-home 后实现落点以 UM4 Resolution 为准。
+
 ## Out of scope
 
 - `compute` 工具的客户端渲染（blocked on 安全计算环境 research）

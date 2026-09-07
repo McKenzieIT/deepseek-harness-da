@@ -44,3 +44,7 @@ Resolved 2026-09-03 (this session). T8 residual 的 **connection 半**补齐—�
 2. **result-cache `.mock` tsc 错**（T9 测试 cast 问题，非 T8 residual）→ [T12](T12-harden-result-cache-per-review.md)（T12 重写 result-cache 测试加 throwing-fetcher/single-flight/epoch-race/apply.client.spec 时，`notFound()`/`serviceError()` 的 `as unknown as ResultFetcher` cast + `.mock` 访问一并理顺）。
 
 **移交**：T11 解 → T12 的 `tsc -b packages/client/result-cache`（src-only）通路就绪（connection fixture 已修），T12 可全链验证。聚合 tsc 复绿待 T13 + T12 的 `.mock` 修齐做。前沿：[T12](T12-harden-result-cache-per-review.md)（blocks T10）、[T13](T13-runtime-fakeapiclient-results-arm.md)（latent，不阻）、T7（chart 线，large）、P2（HITL prototype）。
+
+## Upstream merge 2026-09-07（supersession）
+
+upstream `4f00a8b` 删 `packages/host/apiproxy`。本票 premised on T8 的 apiproxy `result.get` RPC——现落点 moot（整 R5 数据线 T8→T9→T10→T11/T12/T13 同 supersession）。re-home 进 `packages/api/remotes/` 追踪 → [UM4](../../data-agent/tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)。Status 维持 closed（历史），re-home 后以 UM4 为准。

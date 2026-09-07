@@ -40,6 +40,15 @@
 
 （暂无）
 
+## Upstream merge 2026-09-07
+
+upstream CI 结构已变（`61f910d ci: split master-only jobs into ci-master.yml` + 新 `build-preview-cloudflare.yml`/`release-publish.yml`/`release-vendor-publish.yml`）。
+
+**违反当前 upstream 的本域票据（re-violated，re-land 追踪）**：
+- [T6-ci-checkout-issue-policy](tickets/T6-ci-checkout-issue-policy.md) — fork #52 的 `if: github.repository_owner` skip 落 issue-policy/lifecycle；merge 带回 upstream 版（无 skip）→ (b) 再破。重落 #52 → [UM2](../data-agent/tickets/phase-upstream-merge/UM2-ci-conflicts-reland-48-52.md)
+
+Status 维持 closed（PR #52 历史），re-land 后以 UM2 为准。
+
 ## Out of scope
 
 - `compute` 工具的客户端渲染（blocked on 安全计算环境 research，属 interpretation-client-rendering map 的 out-of-scope）
