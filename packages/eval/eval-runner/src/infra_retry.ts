@@ -83,9 +83,6 @@ export async function withInfraRetry<T>(
       // Not an infra failure — propagate immediately
       if (kind === null) throw err
 
-      // Permanent classification — do not retry
-      if (kind === 'permanent') throw err
-
       retries.push({
         attempt: attempt + 1,
         kind,
