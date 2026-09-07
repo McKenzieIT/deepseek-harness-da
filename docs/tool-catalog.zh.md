@@ -2902,22 +2902,33 @@ present_decomposition 是纯展示工具,为 UI 渲染一个查询分解(breakdo
       "properties": {
         "type": {
           "type": "string",
-          "description": "Chart type.",
+          "description": "Chart type. Pick by metric×dimension×grain (see the tool heuristic); the client degrades infeasible choices to bar.",
           "enum": [
             "line",
-            "bar"
+            "bar",
+            "area",
+            "hbar",
+            "scatter",
+            "doughnut",
+            "bubble",
+            "radar",
+            "polarArea"
           ]
         },
         "x_column": {
           "type": "number",
-          "description": "Column index for the x-axis."
+          "description": "Column index for the x-axis (category for bar/doughnut/radar; numeric x for scatter/bubble)."
         },
         "y_columns": {
           "type": "array",
-          "description": "Column indices for y-axis series.",
+          "description": "Column indices for y-axis series (scatter/bubble use the first as y).",
           "items": {
             "type": "number"
           }
+        },
+        "r_column": {
+          "type": "number",
+          "description": "Column index for the bubble radius (3rd numeric metric; bubble only)."
         }
       },
       "required": [
@@ -2960,7 +2971,12 @@ present_table 为 UI 渲染表或图表结果(line/bar)。除 ctx.tools 外无�
     },
     "type": {
       "type": "string",
-      "description": "Relation type (joins | derived_from | related_to)"
+      "description": "Relation type (joins | derived_from | related_to)",
+      "enum": [
+        "joins",
+        "derived_from",
+        "related_to"
+      ]
     },
     "on": {
       "type": "string",
