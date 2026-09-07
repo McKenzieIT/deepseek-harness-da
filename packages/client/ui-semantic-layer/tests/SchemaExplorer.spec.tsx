@@ -17,11 +17,11 @@ const t = (key: string): string => key
  * test mounts it with a real store instance to exercise that read path.
  */
 function bindUseStore(instance: { getSnapshot(): SelectionState; subscribe(fn: () => void): () => void }): SelectionStoreProps['useStore'] {
-  const subscribe = instance.subscribe
-  const getSnapshot = instance.getSnapshot
+  const subscribe = instance.subscribe.bind(instance)
+  const getSnapshot = instance.getSnapshot.bind(instance)
   const useStore = <S,>(sel: (s: SelectionState) => S): S =>
     useSyncExternalStore(subscribe, () => sel(getSnapshot()))
-  return useStore as SelectionStoreProps['useStore']
+  return useStore
 }
 
 const DOMAINS: DomainEntry[] = [

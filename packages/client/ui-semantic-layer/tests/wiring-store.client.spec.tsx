@@ -48,11 +48,11 @@ interface InstanceFace {
  * stable reference between updates) it is functionally identical.
  */
 function bindUseStore(instance: InstanceFace): SelectionStoreProps['useStore'] {
-  const subscribe = instance.subscribe
-  const getSnapshot = instance.getSnapshot
+  const subscribe = instance.subscribe.bind(instance)
+  const getSnapshot = instance.getSnapshot.bind(instance)
   const useStore = <S,>(sel: (s: SelectionState) => S): S =>
     useSyncExternalStore(subscribe, () => sel(getSnapshot()))
-  return useStore as SelectionStoreProps['useStore']
+  return useStore
 }
 
 /** A mock EvidenceQueryClient with `gapAnalysis`/`evalResultQuery` as spies. */
@@ -100,7 +100,7 @@ function mockSchemaClient(opts: { domains: DomainEntry[]; tables: TableSummary[]
     getMetricDefinition: async () => null,
     search: async () => [],
     getCoverageStats: async () => ({ table_count: 0, event_count: 0, metric_count: 0, domain_counts: {} }),
-  } as unknown as SchemaGatewayClient
+  }
 }
 
 /** `useSessions` stub that reports the given session as the management preset. */

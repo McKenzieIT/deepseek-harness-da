@@ -751,7 +751,7 @@ function toTableData(headers: string[], rows: string[][], totalRows: number | nu
 /** Coerce a result-store entry into the string-row pipeline the table, KPI,
  *  sort, CSV, and Markdown helpers already consume (they all work on strings). */
 function resultEntryToTableData(entry: FetchResultEntry, args: PresentTableArgs): TableData {
-  const rows = entry.rows.map(r => r.map(c => (c === null || c === undefined ? '' : String(c))))
+  const rows = entry.rows.map(r => r.map(c => (c === null || c === undefined ? '' : typeof c === 'object' ? JSON.stringify(c) : String(c as string | number | boolean))))
   return toTableData([...entry.columns], rows, entry.metadata?.row_count ?? null, entry.metadata?.truncated ?? false, args)
 }
 
@@ -839,7 +839,7 @@ function decideTable(
   args: PresentTableArgs,
 ): { tableData: TableData | null; sql: string | null; renderState: RenderState } {
   const isBound = bound !== null && bound !== 'mismatch'
-  const boundSql = isBound ? (bound as BoundQuery).sql : null
+  const boundSql = isBound ? bound.sql : null
   const entry = fetch.entry
   if (fetchResult !== undefined) {
     if (entry !== null && (fetch.status === 'success' || fetch.status === 'loading')) {
@@ -870,14 +870,14 @@ function TableCardInner({
   const isBound = bound !== null && bound !== 'mismatch'
   const tsvData = useMemo<TableData | null>(() => {
     if (!isBound) return null
-    const parsed = (bound as BoundQuery).parsed
+    const parsed = bound.parsed
     return toTableData(parsed.headers, parsed.rows, parsed.totalRows, parsed.truncated, args)
   }, [bound, args.columns])
 
   // Fresh-vs-folded signal: the bound query_data's seq (when its result_id
   // matches args.result_id). A higher seq than last invalidated ⇒ a fresh
   // same-turn re-run ⇒ invalidate the cache entry + refetch (R5).
-  const freshSeq = isBound && (bound as BoundQuery).parsed.resultId === args.result_id ? (bound as BoundQuery).seq : null
+  const freshSeq = isBound && bound.parsed.resultId === args.result_id ? bound.seq : null
   const fetch = useFetchResult(args.result_id, fetchResult, invalidateResult, freshSeq)
   const { tableData, sql, renderState } = decideTable(fetch, fetchResult, bound, tsvData, args)
 

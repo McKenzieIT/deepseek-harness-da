@@ -46,7 +46,7 @@ describe('evidence-query client remote — real-path resolution (W16)', () => {
         mounted.push(contribution)
         return async () => {}
       },
-    } as never)
+    })
     expect(inject).toContain('remote')
     const dispose = await apply(ctx)
     expect(mounted).toContain(evidenceQueryRemote)

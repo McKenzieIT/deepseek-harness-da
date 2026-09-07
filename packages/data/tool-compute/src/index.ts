@@ -45,7 +45,7 @@ function validateComputeOutput(value: CodeJsonValue | undefined): { columns: str
   }
   // data-tools-present-eval-6: every row's length must match columns.length — a
   // jagged payload {columns:['a','b','c'], rows:[[1,2],[3,4,5]]} was accepted, cached, surfaced.
-  const columns = obj.columns as string[]
+  const columns = obj.columns
   if (!obj.rows.every((r: unknown[]) => r.length === columns.length)) {
     throw new Error(
       `compute: returned rows must each have ${columns.length} cells (columns.length); a jagged payload is rejected.`,

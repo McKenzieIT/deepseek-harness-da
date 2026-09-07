@@ -97,12 +97,16 @@ export const valueLabelsPlugin = {
     const isRadial = type === 'doughnut' || type === 'polarArea'
     chart.data.datasets.forEach((ds, di) => {
       const meta = chart.getDatasetMeta(di)
+      // chart.js getDatasetMeta/data can be null before first render; guard is runtime-defensive.
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       if (!meta || !meta.data || meta.hidden) return
       const data = ds.data as unknown[]
       const n = data.length
       if (type === 'scatter' || type === 'bubble') return
       if (n > 8 && !isRadial) return
       meta.data.forEach((el, ei) => {
+        // chart.js elements can be null at runtime; defensive.
+        // eslint-disable-next-line typescript/no-unnecessary-condition
         if (el == null) return
         const point = data[ei]
         const raw = point != null && typeof point === 'object' ? (point as { y?: number }).y : point

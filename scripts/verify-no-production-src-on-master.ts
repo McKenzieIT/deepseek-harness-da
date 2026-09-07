@@ -55,7 +55,7 @@ export function findViolations(
 }
 
 function git(args: readonly string[]): string {
-  return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }) as string
+  return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
 }
 
 function currentBranch(): string {
