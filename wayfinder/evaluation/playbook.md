@@ -76,7 +76,7 @@
 ## 4. 方向顺序(推荐)
 
 ### 顺序原则
-1. 先做 **linchpin 链**(方向 1):R1 已 resolved，下一步并行 G1+G1b→[T1 SPEC→rubric 包→另一环境]→R23→GA-EVAL-EXPAND。T1 解锁 execution grader，R23 再为 comparator defaults 与例外提供 mutation evidence。
+1. 先做 **linchpin 链**(方向 1):R1、G1 已 resolved。**下一步 = R10 认读**(不是 T1)——G1 把包边界与 case schema 归属移交 G10,而 G10 的论文前置(AgentCompass B/H/E)未做;T1 若先落地,grader 位置会被 G10 重切。之后 R10→G10→[攒批:T11+T1(+T9)SPEC→rubric 包→另一环境]→R23→GA-EVAL-EXPAND。另有两条与 T1 并行的阻塞:**T11**(loader 丢弃 reference SQL,blocks T1 验收面)与 **GA-EVAL-CASESET-EVENT-ANCHOR**(event 锚点不冻结,blocks T1 的 re-baseline 有意义)。
 2. 并行做**独立于 T1**的方向(本环境 Phase 1 部分):方向 4(R4→G4)、方向 6(R6→G6)、方向 8(R8→R20→G8)。
 3. T1 完成后,做**依赖 T1** 的方向:3(R14→G3→T3)、5(R17→G5)、7(R7→G7→R19)、9(G9→T8)、10(G10→T9→R21)。
 4. 最后做 scope 扩展:方向 6 的 prototype/benchmark(P1→T6→R18)。
@@ -90,8 +90,22 @@
 - **R14-judge-falsepass-by-dim**(方向 3,AFK,既有数据分析):分解 73.7% 假通过 → 喂 G3。
 - 二者皆 Layer 0,本环境 Phase 1,先做无依赖。
 
-### 单方向内顺序(滚动,每方向独立)
-R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ rubric 包(Phase 3)→ 另一环境执行(Phase 4)→ 结果回传更新 map。**不攒批**:一方向 G 定了就生成该方向 SPEC,不等其他方向。
+### 单方向内顺序
+R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ rubric 包(Phase 3)→ 另一环境执行(Phase 4)→ 结果回传更新 map。
+
+**G 与 R-认读:不攒批。** 一方向 G 定了就往下走,不等其他方向——它们本环境直接做,没有打包成本。
+
+**T(impl):攒批**(2026-09-07 改,取代原「一律不攒批」)。单张 T 票往往撑不满一个完整 SPEC + `instruction.md` + `attachment/repo/` + `quality.toml`(7-10 项 rubric)的包——实测 T11 只有 ~76 KB 源码半径 / 约 20k tokens 全读,占 400k 窗口 15-20%,仪式成本会超过工作本身。**攒到实施任务足够大再落包。**
+
+判据是「一个包能把另一环境的一个 session 用满」,**不是**「票齐了」。当前批:**T11 + T1**(T11 blocks T1);G10 定完架构后可并入 **T9-bhe-split**。
+
+### T 票必须伴随 eval 执行(2026-09-07 加)
+
+每个 T(impl)包的验收面**必须含一次 eval 执行,且数字入 [`research/experiment-audit-log.md`](research/experiment-audit-log.md)**,按 CLAUDE.md「Eval 实验记录规范」的模板 + 与上一次基线 run 对比。未跑 eval 的 impl 不算完成——LLM 输出不可重现,未记录的实验结果等于不存在。
+
+**但要选对那一次 eval。** 当前全量 k11-v2 run 的仪表已知有坏处:judge false-pass 35.9pp;event case 期望值 16/18 已失效;12.8% 真执行基线本身被污染(见 map §⚠ 可复现性风险)。所以**第一批 T 的「eval 执行」= T11 的 39-case 对账重跑**(须复现 event MATCH=2/STALE=16 + DWS 13/0),不是 k11-v2 全量 pass_rate——用坏尺量新改动只会产出不可解释的数字,GA-EVAL-SQLGEN-PROMPT-FIX(12.8→7.7)与 GA-EVAL-RETRY-FEEDBACK(56.4→53.8,判为噪声)已经各演示过一次。
+
+全量 run 恢复为主验收,要等 T11 + GA-EVAL-CASESET-EVENT-ANCHOR 之后。
 
 ---
 
@@ -99,7 +113,7 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 
 | # | 方向 | Phase1 本环境 | Phase2-4 另一环境 |
 |---|---|---|---|
-| 1 | 执行级评分+非循环 GT | R1, G1, G1b | T1, R23, R12, (+G12 条件) |
+| 1 | 执行级评分+非循环 GT | R1, G1, G1b | T11, T1, R23, R12, (+G12 条件) |
 | 2 | Judge blind-rewrite | R2, G2 | T2, R13 |
 | 3 | Judge 校准+gated | R3, G3(+R14 喂) | T3, R15 |
 | 4 | Power-aware+显著性 | R4, G4 | T4/T4b, R16 |
@@ -128,4 +142,4 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 - 更新 `map.md` Notes 加交叉引用 → 本 playbook(流程不写进 map,只引)。
 - 更新 `tickets/README.md` 加 T/R-experiment 不直接做的提示 → 本 playbook。
 - commit(playbook + 两个交叉引用)。
-- 下一 session prompt:按 §4 顺序认领 linchpin 方向 1 的 G1 或 G1b；两者都 resolved 后才能生成 T1 SPEC。也可走 cheap-first(R20/R14)。
+- 下一 session prompt:**认领 R10-harness-goodhart-papers**(方向 10 认读,AFK,本环境)。G1 已 resolved 并把包边界/case schema 归属移交 G10,所以 R10 是 linchpin 链的当前瓶颈。T11 已 unblocked 但按 §4 T-攒批规则不单独落。也可并行走 cheap-first(R20/R14)。

@@ -134,11 +134,12 @@
 3. **GA-EVAL-CASESET-EVENT-ANCHOR**(HITL grilling)——event case 期望值不是冻结锚点,它 blocks 任何用 real-exec `execution_match` 衡量 event case 的测量,因而也 blocks T1 的 re-baseline 有意义。
 
 **现在 unblocked(AFK 可自跑,先开,为 grilling 做数据/论文前置)**:
-1. **[T11](tickets/T11-loader-provenance-strip.md)**(impl;**最高优先——它 blocks 最多**:T1 + G1b + GA-EVAL-EXPAND)
-2. **R10-harness-goodhart-papers**(认读;解 G10,而 G10 现在持有 G1 移交的包边界与 case schema 归属)
-3. **R14-judge-falsepass-by-dim**(既有数据分析,便宜)→ 喂 G3
-4. **R20-radar-redundancy**(quick win,可能直接定位 0.6 通胀根因)→ 喂 G8
-5. **R4-significance-papers**、**R8-pairwise-judge-papers**(认读分析,独立,便宜)
+1. **R10-harness-goodhart-papers**(认读;**下一 session 起这张**)——解 G10,而 G10 现在持有 G1 移交的包边界与 case schema 归属
+2. **R14-judge-falsepass-by-dim**(既有数据分析,便宜)→ 喂 G3
+3. **R20-radar-redundancy**(quick win,可能直接定位 0.6 通胀根因)→ 喂 G8
+4. **R4-significance-papers**、**R8-pairwise-judge-papers**(认读分析,独立,便宜)
+
+**[T11](tickets/T11-loader-provenance-strip.md) 已 unblocked 但攒批不单独落**——它 blocks 最多(T1 + G1b + GA-EVAL-EXPAND),但只有 ~76 KB 源码半径,撑不满一个 rubric 包;按 [playbook §4](playbook.md) 的 T-攒批规则与 T1(+G10 后的 T9)同批落。
 
 **HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
 
