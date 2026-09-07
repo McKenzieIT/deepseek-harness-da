@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-search-schema
 
+English | [中文](README.zh.md)
+
 Model-facing search_schema tool: BM25 search over the semantic layer for the management agent to discover assets by natural-language query
 
 ## Model Experience
