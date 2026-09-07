@@ -28,6 +28,7 @@ import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { CallId, ReasoningEffortId, createUserMessage, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import { PERSONA_ORDER, PERSONA_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
+import type {} from '@deepseek-ai/dsh-scope-registry'
 import type {} from '@deepseek-ai/dsh-semantic-layer'
 import { loadConfig } from '@deepseek-ai/dsh-semantic-layer'
 import type { ToolExecution, PostToolDecision, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
@@ -984,8 +985,7 @@ export class PhaseGate {
     ctx.on('agent/pre-step', this.onPreStep)
     ctx.on('agent/status', this.onStatus)
     // G-DA6 + P-DA4b: scope switch clears prior-turn inheritance (cross-scope tables are semantically wrong).
-    // Event type registered by P-DA4b (forward-compat); cast until the Events interface ships.
-    ;(ctx as unknown as { on(event: string, cb: () => void): void }).on('scopes/active-changed', () => {
+    ctx.on('scopes/active-changed', (_scopeId) => {
       for (const s of this.sessions.values()) {
         s.prior_turn_tables.clear()
         s.candidate_tables.clear()

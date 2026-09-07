@@ -18,6 +18,7 @@
     { "path": "../../core/tools" },
     { "path": "../../data/nl2sql-engine" },
     { "path": "../../runtime-diagnostics/invariants" },
+    { "path": "../../data/scope-registry" },
     { "path": "../../data/semantic-layer" }
   ]
 }

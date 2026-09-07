@@ -4427,6 +4427,9 @@ importers:
       '@deepseek-ai/dsh-nl2sql-engine':
         specifier: workspace:^
         version: link:../nl2sql-engine
+      '@deepseek-ai/dsh-scope-registry':
+        specifier: workspace:^
+        version: link:../scope-registry
       '@deepseek-ai/dsh-semantic-layer':
         specifier: workspace:^
         version: link:../semantic-layer
