@@ -9,7 +9,9 @@
 
 ## Question
 
-`EvalCaseSchema` 的 zod object 默认 strip 未知键，导致 case 文件里已有的 provenance 字段在加载时被静默丢弃：`expected.sql`（reference SQL）、`meta`（含 `anchor_ds` 快照锚点、`tier`、`provenance`）、`schema_version`。应如何扩展 schema 与 loader，使这些字段被保留、可被 execution grader 读取、并能进入可重放证据；同时不破坏 `k11-v2`（0/168 带 `sql`）的加载？
+`EvalCaseSchema` 的 zod object 默认 strip 未知键，导致 case 文件里已有的 provenance 字段在加载时被静默丢弃：`expected.sql`（reference SQL）、`meta`（含 `anchor_ds` 快照锚点、`tier`、`provenance`）、`schema_version`。且 `expected.sql` 是**模板**而非可直接执行的 SQL（含 `{{ds_yesterday}}` 等占位符），其解析依赖同一 case 的 `meta.anchor_ds`。
+
+应如何扩展 schema 与 loader，使这些字段被保留、reference SQL **可解析**、并能被 execution grader 与既有对账工具共用；同时不破坏 `k11-v2`（0/168 带 `sql`）的加载？
 
 ## 已核事实（G1 session 实测）
 
@@ -40,17 +42,52 @@ meta present     : false   schema_version: false
 3. **它是既有污染的机制。** [GA-EVAL-CASESET-EVENT-ANCHOR](../../data-agent/tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md) 查出 event 16/18 期望值与自己的 `expected.sql` 不符，靠的是独立脚本 `packages/eval/eval-cli/dev/case-expected-value-audit.mjs` 绕过 loader 直接解 YAML。eval 路径本身看不到 `expected.sql`，所以这类漂移无法在评分时被发现——12.8% 真执行基线正测在这 39 个 case 上。
 4. **通用缺陷**：只要 strip 行为不变，**今后往 case 文件加的任何 provenance 字段都会被静默忽略**，且没有任何信号。这比丢掉当前三个字段更严重。
 
+## reference SQL 是模板，不是可执行 SQL（2026-09-07 实测）
+
+`rbi-10000251-exec` 39 个 case 中：
+
+| 项 | 数量 |
+| --- | ---: |
+| 含模板变量的 case | **37 / 39** |
+| `{{ds_yesterday}}` 出现次数 | 38 |
+| `{{ds_7d_ago}}` 出现次数 | 6 |
+| 带 `meta.anchor_ds: "20260806"` 的 case | **37 / 39** |
+
+所以「保住 `expected.sql`」不足以让它可用——还须保住 `meta.anchor_ds`，并把「占位符如何绑定到 anchor」这条契约放在一个有测试的共享位置。
+
+目前这条契约**只存在于一个 dev 脚本里，且是硬编码的**：`packages/eval/eval-cli/dev/case-expected-value-audit.mjs:44` 写死 `TODAY = '20260806'`，`:51` 由它算出 `ds_yesterday`/`ds_7d_ago`，`:75` 做正则替换。它重复了 37 个 case 自己已经声明的 `anchor_ds`，且一旦某个 case 换锚点就会静默算错。
+
+同一个脚本还带另外两处**已过期**的痕迹：`:39` 默认路径指向另一个 worktree(`/Users/mckenzie/workspace/dsh-eventdef/...`)，`:31` 的注释仍称 case set「not git-tracked」——两者都已不成立（2026-09-07 `git ls-files` 核实已追踪）。
+
 ## 验收
+
+**loader 侧**
 
 - `loadCase` 保留 `expected.sql`、`meta.anchor_ds`、`meta.tier`、`meta.provenance`、`schema_version`（或显式声明的等价字段），并有测试逐字段 pin 一个带这些字段的 fixture 往返不丢。
 - `k11-v2` 168 个 case 仍全部加载通过——缺 `sql`/`meta` 不得报错（两套 schema 并存是当前事实）。
 - **未知键不再被静默 strip**：要么保留，要么显式报错；选哪个须在 ticket 里写明理由（zod `strict` 会让 `rbi-10000251-exec` 立即失败，`passthrough` 会让未声明字段无类型——两者都有代价）。
-- `rbi-10000251-exec` 39 个 case 的 `expected.sql` 可从 loader 输出读到，无需绕过 loader 解 YAML。
 - 与 AGENTS.md「在 durable/file 边界做校验」一致：保留字段不等于放弃校验。
+
+**模板解析侧**
+
+- 占位符 → 具体 ds 的替换从 dev 脚本移到有测试的共享位置，且**按 case 读 `meta.anchor_ds`**，不使用全局常量。
+- 缺 `anchor_ds` 却含占位符的 case（当前 39 里有 2 个不带模板，须核对是否同一批）必须**显式失败或显式跳过**，不得静默产出未替换的 SQL 送去执行。
+- 支持的占位符集合是封闭且被测试枚举的；出现未知占位符要报错，不是原样透传。
+
+**端到端验收演示**
+
+- `case-expected-value-audit.mjs` 改用 `loadCase` + 共享的模板解析，删掉自己的 `yaml.load`、硬编码 `TODAY`、以及跨 worktree 的默认路径；更正 `:31` 的 not-git-tracked 注释。
+- 改造后重跑全部 39 个 case，**结果须复现已知结论**：`data_source=event` MATCH=2 / STALE=16（共 18），`data_source=dws` MATCH=13 / STALE=0（共 21，8 个 multi-row SKIPPED）。复现即证明修复在真数据上成立；不复现说明改动引入了语义偏移，须查清后才算完成。
 
 ## 不在本票范围
 
+- **`anchor_ds` 是否算合法的 snapshot identity**。本票只让它可达、可用于模板解析；它**是不是冻结锚点是另一回事**——GA-EVAL-CASESET-EVENT-ANCHOR 已实测 event 数据的历史分区不冻结，所以对 event case 而言 `anchor_ds` 恰恰**不是**有效锚点。本票不得暗示它是。
+- 用 reference SQL 实际执行来重新派生 expected 值（[G1b](G1b-ground-truth-lifecycle.md)）——本票只对账，不回填。
 - comparator policy object 的设计（R1 §4.2 → [R23](R23-comparator-policy-mutation-baseline.md)）。
-- case migration 与 expected 值重新派生（[G1b](G1b-ground-truth-lifecycle.md)）。
 - 两套 case schema 的合流与包边界（R10 → G10）。
 - event case 的评分口径（GA-EVAL-CASESET-EVENT-ANCHOR）。
+- 让 audit 脚本改走 `ctx.query`（它现在 `:55` 直接 spawn `maxc`，是第三条执行路径）——属 T1 的 grader 接线，本票只换 YAML 解析与模板来源，不动执行方式。
+
+## 规模
+
+约 76 KB 源码半径（核心 6 文件 21 KB + 可能牵连的下游 55 KB），估 ~20k tokens 全读；实际 session 落点 50-80k。单 session 可完成，无需 subagent。
