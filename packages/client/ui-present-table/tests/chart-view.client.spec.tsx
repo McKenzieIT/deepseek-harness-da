@@ -118,7 +118,7 @@ describe('ChartView', () => {
 
   it('reads tick and grid colors from theme CSS variables', async () => {
     const spy = vi.fn().mockReturnValue({
-      getPropertyValue: (name: string) => name === '--dsw-alias-content-secondary' ? '#abc123' : '',
+      getPropertyValue: (name: string) => name === '--dsw-alias-label-secondary' ? '#abc123' : '',
     })
     vi.stubGlobal('getComputedStyle', spy)
     window.getComputedStyle = spy

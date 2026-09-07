@@ -201,8 +201,8 @@ interface BuiltChart {
  *  linear x-axis with titled scales; doughnut uses `ArcElement` + cutout;
  *  radar/polarArea use `RadialLinearScale`. */
 function buildChart(chart: ChartConfig, headers: string[], rows: string[][], showLabels: boolean): BuiltChart {
-  const text = readCssColor('--dsw-alias-content-secondary', '#667085')
-  const grid = readCssColor('--dsw-alias-border-primary', 'rgba(102, 112, 133, 0.25)')
+  const text = readCssColor('--dsw-alias-label-secondary', '#667085')
+  const grid = readCssColor('--dsw-alias-border-l2', 'rgba(102, 112, 133, 0.25)')
   const valueLabels: ValueLabelsOpts = { display: showLabels }
   const legend = { display: chart.y_columns.length > 1, labels: { color: text } }
   const tooltip = {

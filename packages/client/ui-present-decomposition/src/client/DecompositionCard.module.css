@@ -1,8 +1,9 @@
 /* Query-understanding card (P1 verdict): focal line → lineage chips →
    always-visible metric grid → trust band. Alias tokens only — the previous
-   stylesheet referenced eight alias names that do not exist in ui-theme
-   (border-primary / surface-* / content-* / state-warning-primary), so the
-   card rendered without border, surface, or text hierarchy (R9-A1). */
+   stylesheet referenced eight fork-invented non-canonical alias names
+   (border-primary / surface-* / content-* / state-warning-primary) that
+   do not exist in upstream ui-theme; R9-A1 aligned this card, T2 aligned
+   the remaining consumers. */
 
 .card {
   border-radius: 10px;
