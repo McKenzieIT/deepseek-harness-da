@@ -244,6 +244,14 @@ export function apply(ctx: Context, _config: Config = {}): void {
         to_version: args.to_version,
       }
     },
+    // d3-3 (rule 7): file-mutating revert tool, but a `card: 'diff'` is not
+    // derivable purely from args/result. Presenters are pure (no `ctx.schema.
+    // semanticRoot` → no on-disk file `path`), and `RevertEditResult` carries
+    // only version numbers, not the before/after YAML text for `FileDiff` hunks
+    // (the snapshot content lives in the audit store, read only inside
+    // `execute`). Generic card kept; switching to diff would require exposing
+    // before/after YAML + the resolved path in the model-facing result (a
+    // contract change beyond this mechanical pass).
     presentCall(args): GenericCallView {
       return {
         card: 'generic',

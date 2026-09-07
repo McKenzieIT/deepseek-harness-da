@@ -452,6 +452,17 @@ export function apply(ctx: Context, _config: Config = {}): void {
 
       return result
     },
+    // d3-2 (rule 7): this tool mutates YAML files (table/event/concept
+    // definitions) but keeps a generic card — a `card: 'diff'` cannot be
+    // derived purely from args/result. Presenters are pure (no `ctx` access to
+    // `ctx.schema.semanticRoot`, so the on-disk file `path` is unavailable) and
+    // the model-facing `EditDefinitionResult` carries only `patched_fields`
+    // (field names), not the before/after YAML text needed for `FileDiff` hunks.
+    // Exposing before/after YAML + the resolved path in the result would be a
+    // model-facing contract change beyond this mechanical pass, and is
+    // redundant with the structured before/after delta already recorded in the
+    // Tier-2 audit trail (audit.recordTier2Write + computeStructuredDelta) for
+    // the management agent's self-driven loop and eval-run changeset reads.
     presentCall(args): GenericCallView {
       return {
         card: 'generic',
