@@ -32,11 +32,11 @@ The plugin has no host-side behavior (`src/index.ts` is an empty apply). All log
 
 ## Model Experience
 
-None, as this package contributes only browser-side UI rendering and has no model-visible context effect.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
-### KV Cache effect
+#### KV Cache effect
 
-Independent. This package does not contribute to or modify the model request assembly.
+The package does not extend or invalidate the agent loop's reusable request prefix.
 
 ## Known Limitations and Deferred Work
 

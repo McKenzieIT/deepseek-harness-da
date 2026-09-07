@@ -52,19 +52,11 @@ pnpm verify-cordis-config
 
 ## Model Experience
 
-### The `reachability_delta` tool call
-
-#### What the model sees
-
-The `reachability_delta` tool schema (name, description, the `source_id`/`target_id`/`type`/`on` parameters, and the `ok`/`newlyReachableCount`/`message` output shape) flows into system-prompt assembly automatically once the plugin mounts, so the model discovers the tool alongside the rest of the phase whitelist. When the model invokes it, `execute` returns one canonical `{ ok, proposedRelation, newlyReachableCount, newlyReachable, message? }` JSON value that `output.render` projects into model-facing text: a `Proposed relation: <source> —[<type>]→ <target>` line, the optional join condition, a `Newly reachable pairs: N` line, then up to 20 `from ↔ to` pair lines (and a `... +M more` truncation marker), or the single-line not-mounted message when the service is absent.
-
-#### Token effect
-
-The rendered delta text in the tool result is the only per-call token charge for this tool; the `reachability_delta` schema rides the system prompt rather than the turn payload. The text scales with `newlyReachableCount` but is capped at 20 displayed pairs (the `+M more` marker summarizes the remainder). The full pair list is retained in the JSON value's `newlyReachable` array, but the model-facing text is bounded.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-Tool results are append-only: the delta text follows the reusable request prefix and does not invalidate prior cache entries. The tool schema is part of that stable system-prompt prefix across turns, so registering or calling the tool adds no prefix churn.
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
 
 ## Known Limitations and Deferred Work
 

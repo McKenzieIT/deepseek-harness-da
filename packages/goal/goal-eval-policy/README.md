@@ -34,39 +34,11 @@ pnpm vitest run packages/goal/goal-eval-policy          # unit + integration
 
 ## Model Experience
 
-### No-progress block reason
-
-#### What the model sees
-
-When `consecutiveNoImprovement` reaches `noProgressThreshold`, the policy calls `ctx.goals.block(agent, ref, { code: 'no-progress', message }) with a human-readable message stating how many consecutive eval runs showed no improvement. The blocked goal surfaces to the model/agent as a goal whose `phase` is no longer `active`; downstream goal-round-driver logic observes the block and stops admitting rounds for that goal.
-
-##### Block message
-
-```markdown
-Goal blocked: N consecutive eval runs showed no improvement (0 cases flipped to correct).
-```
-
-#### Token effect
-
-The block reason is a short, fixed-length string emitted once per blocked goal; it does not scale with conversation history.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-None directly; the block is a goal-state mutation, not a prompt append.
-
-### Eval-run fan-out (indirect)
-
-#### What the model sees
-
-When `evalRunner` is present, `runEvalCheck` calls `evalRunner.runBatch()`, which fans out to judge/answer/SQL-generation LLM calls inside `@deepseek-ai/dsh-eval-runner`. These runs are **not** part of the agent loop's conversation; they execute against the eval case set and persist results to a JSONL file in the evidence store. The agent does not observe the eval tokens in its own context.
-
-#### Token effect
-
-Eval runs consume `ctx.llm` tokens (judge + answer + SQL generation) outside the agent's visible conversation; the spend is bounded by the eval case set size and `passK`.
-
-#### KV Cache effect
-
-Eval-run LLM calls are independent of the agent's KV cache prefix; they do not extend or invalidate the agent's reusable prefix.
+Eval-run LLM calls execute on a separate call path and do not extend or invalidate the agent loop's reusable request prefix.
 
 ## Known Limitations and Deferred Work
 

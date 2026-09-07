@@ -21,19 +21,11 @@ pnpm vitest run packages/data/tool-trigger-eval         # unit specs
 
 ## Model Experience
 
-### `trigger_eval` tool result
-
-#### What the model sees
-
-Calling `trigger_eval` returns a tool result whose text (`formatTriggerEval`) reports, for a `full_run`: the run id, the pass rate (`correct/total` plus a percentage), wrong/declined/infra-failure counts, and a delta block listing improved/regressed/unchanged case counts plus up to 10 per-case flip lines (`old_verdict -> new_verdict`). In `report_last` mode it reports the last run id and its pass rate; in `not_configured` mode it reports a configuration-status message. The model therefore experiences the tool as a quality probe it can invoke after making changes to assess impact.
-
-#### Token effect
-
-A `full_run` drives the `EvalRunnerService` to execute the case set, which consumes `ctx.llm` tokens out-of-band (judge, answer, and SQL-generation calls performed by the eval runner service). These tokens are charged against the eval-time LLM call path, not against the agent loop's per-turn budget for the triggering model. The tool's own result text is a bounded, fixed-shape block appended to the conversation history.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-The eval run's LLM calls happen on a separate call path from the agent loop's conversation and do not extend or invalidate the agent's conversation KV-cache prefix. The tool's returned text is appended as a tool-result message, extending the context append-only without invalidating the cache prefix.
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
 
 ## Known Limitations and Deferred Work
 

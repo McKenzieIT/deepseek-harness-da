@@ -28,19 +28,11 @@ pnpm vitest run packages/eval/eval-runner-service          # mechanics + runBatc
 
 ## Model Experience
 
-### Eval-run token spend
-
-#### What the model sees
-
-Eval runs are NOT part of the agent loop's conversation. `runBatch` drives the `Nl2sqlEngine` (a separate runtime path from the agent loop) over the case set: for each case x pass_k, it calls `ctx.llm` for SQL generation, then (when the query returns rows) for a natural-language answer, and the `LlmJudgeExecutor` calls `ctx.llm` once more to score the answer (0-1). The agent under test never sees these calls interleaved with its own turns.
-
-#### Token effect
-
-Each case consumes SQL-generation + answer + judge LLM tokens (3+ `ctx.llm` completions per case per pass_k attempt, plus self-correction retries). A full K11 batch (161 cases x pass_k=3) is a large, bounded token spend charged to `ctx.llm` billing (keyed on `sessionId`), separate from the agent loop's context.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-None shared with the agent loop. Eval completions are independent one-shot `ctx.llm.stream` calls with their own message arrays; they do not extend or invalidate the agent's conversation cache prefix. (See Known Limitations: the abort signal is not yet threaded into these calls.)
+Eval-run LLM calls execute on a separate call path and do not extend or invalidate the agent loop's reusable request prefix.
 
 ## Known Limitations and Deferred Work
 

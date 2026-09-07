@@ -31,11 +31,11 @@ Pure cache-core specs (`result-cache.client.spec.ts`) anchor the byte-bounded LR
 
 ## Model Experience
 
-None, as this browser-side cache serves renderer fold/expand re-renders over the `result.get` RPC; it registers no prompt, tool, schema, or session event, and cached rows never enter model context.
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
 #### KV Cache effect
 
-No direct effect; the cache holds renderer data (query/compute result rows), not model KV state, so a hit or miss changes no token the provider KV-caches.
+The package does not extend or invalidate the agent loop's reusable request prefix.
 
 ## Known Limitations and Deferred Work
 

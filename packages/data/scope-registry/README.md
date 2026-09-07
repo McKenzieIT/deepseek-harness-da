@@ -57,17 +57,11 @@ pnpm verify-cordis-config
 
 ## Model Experience
 
-### What the model sees
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
 
-The scope registry itself is not a model-facing tool and contributes no tool schema to the system prompt. Its effect on the model is indirect: the active scope id selects the `semanticRoot` the `ctx.schema` semantic-layer service scans, so a scope switch re-grounds the table / event / metric corpus the model reasons over in the `UNDERSTANDING` / `GENERATION` phases. The model discovers the resulting corpus through the model-facing `load_*` / `search_*` tools, not through `ctx.scopes` directly.
+#### KV Cache effect
 
-### Token effect
-
-The registry carries no per-turn token charge: it publishes no tool schema and appends no tool-result text. Its only token-side effect is that a scope switch can change which definitions the `load_*` / `search_*` tools return on subsequent turns, which in turn changes those tools' result-token cost. The registry reads / writes themselves are out-of-band (YAML on disk), not part of the conversation payload.
-
-### KV Cache effect
-
-A scope switch does not rewrite the conversation history, so prior cache entries survive. The downstream effect is that the `load_*` / `search_*` tool results may differ on the next call (a different corpus), which appends fresh, cache-miss tool-result text — but the reusable request prefix (system prompt + tool schemas) is unchanged by a scope switch. The registry emits no cache-churning output of its own.
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
 
 ## Known Limitations and Deferred Work
 

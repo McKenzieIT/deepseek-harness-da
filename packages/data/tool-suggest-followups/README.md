@@ -4,21 +4,6 @@ Model-facing `suggest_followups`: **suggest follow-up questions the user might a
 
 This is a **pure presentation tool** (`inject=['tools']` only): it records the suggestions and returns them for the UI to display as clickable chips. It has NO service dependency and does not probe `ctx.schema` / `ctx.audit` / `ctx.identity`. The phase-gate's `captureToolData` detects the call via `tools/post-execute`.
 
-## Model Experience
-
-The model calls `suggest_followups` with:
-- `suggestions` (required): array of 1-5 `{label, value}` objects
-  - `label`: short tag for the row — at most ~8 Chinese characters, never repeating the value (the UI shows the full value under the label)
-  - `value`: the full follow-up query to execute if the user clicks it
-
-The tool returns `{ presented: true, suggestions }` and renders a bulleted list for the model's tool-result context.
-
-## Known Limitations and Deferred Work
-
-- Pure intent recording only — the UI layer owns the click-to-query interaction.
-- Suggestion values are free-text queries, not validated against any schema.
-- The 5-suggestion cap is a UX constraint (chip overflow); the model must prioritize.
-
 ## Config
 
 No knobs. Pure presentation.
@@ -30,3 +15,17 @@ tsc -b packages/data/tool-suggest-followups/tsconfig.json
 pnpm vitest run packages/data/tool-suggest-followups
 pnpm verify-cordis-config
 ```
+
+## Model Experience
+
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
+
+#### KV Cache effect
+
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
+
+## Known Limitations and Deferred Work
+
+- Pure intent recording only — the UI layer owns the click-to-query interaction.
+- Suggestion values are free-text queries, not validated against any schema.
+- The 5-suggestion cap is a UX constraint (chip overflow); the model must prioritize.

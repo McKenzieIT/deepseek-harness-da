@@ -45,6 +45,14 @@ pnpm dsh --profile headless --patch packages/bundle/data-agent/cordis.patch.yml 
 
 > Note: the `agent/created` dispatch is synchronous and treats a listener's > returned promise as fire-and-forget (rejection reported, not awaited). For a > one-shot headless run whose only `followup` lands before the async > `presets.mount` settles, the join may arrive too late for the first prompt — > see the experiment report; the upstream fix (headless `setup` joins the > default) is the fallback.
 
+## Model Experience
+
+Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.
+
+#### KV Cache effect
+
+The package's contributions are append-only to the reusable request prefix and do not invalidate prior cache entries.
+
 ## Known Limitations and Deferred Work
 
 - Async `presets.mount` may settle after the first prompt in one-shot headless runs (a race), so the first turn can run without the preset applied.
