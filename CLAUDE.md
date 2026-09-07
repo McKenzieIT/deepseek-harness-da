@@ -75,7 +75,7 @@ node --import tsx/esm packages/eval/eval-cli/src/bin.ts \
 
 - session 启动第一步：`git worktree add ../dsh-<ticket-id> -b <type>/<ticket-id>-<slug> master`，随后 `cd ../dsh-<ticket-id> && pnpm install && pnpm run build:official`（fresh worktree 无 node_modules / built `lib/`，必跑——否则 aggregate tsc + bundle types-build 假性「master break」；build:official 为 sanctioned 全量 build（pnpm -r run build 非 entrypoint，fails on eval-runner-service per T13）——详见 [T1](wayfinder/repo-infra/tickets/T1-worktree-builds.md) + [T13](wayfinder/repo-infra/tickets/T13-eval-runner-service-build-failure.md)）。
 - 直推 master 仅限 diff 不触及 `packages/*/src` 的纯 `wayfinder/` 文档或实验脚本。
-- **Wayfinder 每个 ticket头部必须声明 `Branch: <type>/<ticket-id>-<slug>`**；未声明分支的票不算认领。
+- ticket-state ≠ branch-claim：ticket 的 `**Status**` 字段跟踪状态（open/in-progress/resolved）；branch-claim 由 git 分支/worktree 佐证（见上 `git worktree add -b <type>/<ticket-id>-<slug>`），不要求 ticket 头部声明 `Branch:`。
 - Lead 在 push 前跑 `pnpm run typecheck` + 相关 surface 测试；上一批 PR 未 merge/abandon 前不开下一并行批。
 
 harness 不会自动建 worktree/分支（[agent-teams 笔记](.agents/notes/implemented/feature/2026-08-05-agent-teams.md)：“Worktree isolation is not a harness runtime behavior”），所以这条纪律必须由 session prompt 和本文件承载。
