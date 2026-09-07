@@ -2,8 +2,9 @@
 
 **Type**: task
 **Phase**: post-discovery
-**Status**: open
-**Assignee**: unclaimed
+**Branch**: fix/T2-theme-token-gap
+**Status**: in-progress (claimed 2026-09-07 — grilling; impl worktree deferred to post-decision)
+**Assignee**: claimed 2026-09-07 (grilling session)
 **Related**: T7 post-ship review 的 M-1（pre-existing，repo-wide）、2026-09-04 T6 session 确认（grep `ui-theme/src/` 无 `--dsw-alias-content-secondary` / `border-primary` / `content-primary` 定义）
 
 ## Question
