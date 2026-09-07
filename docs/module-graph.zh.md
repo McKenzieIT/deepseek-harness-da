@@ -430,6 +430,7 @@ flowchart TD
   pkg_result_cache --> pkg_invariants
   pkg_e2b --> pkg_invariants
   pkg_embedder --> pkg_invariants
+  pkg_eval --> pkg_invariants
   pkg_eval_cli --> pkg_invariants
   pkg_eval_runner --> pkg_invariants
   pkg_retrieval_experiment --> pkg_invariants
@@ -438,8 +439,7 @@ flowchart TD
   pkg_host_directory_picker_browse --> pkg_invariants
   pkg_host_directory_picker_native --> pkg_invariants
   pkg_host_webserver --> pkg_invariants
-  pkg_query_postgres --> pkg_invariants
-  pkg_query_postgres --> pkg_query
+  pkg_query --> pkg_invariants
   pkg_retrieval --> pkg_invariants
   pkg_sandbox_windows_acl --> pkg_invariants
   pkg_storage --> pkg_invariants
@@ -455,6 +455,7 @@ flowchart TD
   pkg_credentials --> pkg_brand
   pkg_credentials --> pkg_invariants
   pkg_scope_registry --> pkg_atomic_write
+  pkg_scope_registry --> pkg_invariants
   pkg_subprocess_e2b --> pkg_e2b
   pkg_subprocess_e2b --> pkg_invariants
   pkg_subprocess_e2b --> pkg_subprocess
@@ -471,6 +472,8 @@ flowchart TD
   pkg_anonymous_user_id --> pkg_brand
   pkg_anonymous_user_id --> pkg_home_paths
   pkg_anonymous_user_id --> pkg_invariants
+  pkg_query_postgres --> pkg_invariants
+  pkg_query_postgres --> pkg_query
   pkg_retrieval_inproc --> pkg_embedder
   pkg_retrieval_inproc --> pkg_invariants
   pkg_retrieval_inproc --> pkg_retrieval
@@ -508,6 +511,7 @@ flowchart TD
   pkg_identity --> pkg_credentials
   pkg_identity --> pkg_invariants
   pkg_query_maxcompute --> pkg_credentials
+  pkg_query_maxcompute --> pkg_invariants
   pkg_query_maxcompute --> pkg_query
   pkg_query_maxcompute --> pkg_subprocess
   pkg_settings_file --> pkg_atomic_write
@@ -558,6 +562,7 @@ flowchart TD
   pkg_admin --> pkg_credentials
   pkg_admin --> pkg_host_webserver
   pkg_admin --> pkg_identity
+  pkg_admin --> pkg_invariants
   pkg_admin --> pkg_storage_domain
   pkg_nl2sql_engine --> pkg_invariants
   pkg_nl2sql_engine --> pkg_query
@@ -802,6 +807,7 @@ flowchart TD
   pkg_tmux_context --> pkg_session
   pkg_tmux_context --> pkg_shell
   pkg_management_session --> pkg_agent_presets
+  pkg_management_session --> pkg_invariants
   pkg_management_session --> pkg_session
   pkg_preset_autojoin --> pkg_agent
   pkg_preset_autojoin --> pkg_agent_presets
@@ -1003,6 +1009,7 @@ flowchart TD
   pkg_result_cache_memory --> pkg_result_cache
   pkg_result_cache_memory --> pkg_tools
   pkg_tool_compute --> pkg_code_runtime
+  pkg_tool_compute --> pkg_invariants
   pkg_tool_compute --> pkg_result_cache
   pkg_tool_compute --> pkg_tools
   pkg_tool_critique_sql --> pkg_invariants
@@ -1011,18 +1018,25 @@ flowchart TD
   pkg_tool_evaluate_sql_quality --> pkg_invariants
   pkg_tool_evaluate_sql_quality --> pkg_nl2sql_engine
   pkg_tool_evaluate_sql_quality --> pkg_tools
+  pkg_tool_present_clarification --> pkg_invariants
   pkg_tool_present_clarification --> pkg_tools
+  pkg_tool_present_decomposition --> pkg_invariants
   pkg_tool_present_decomposition --> pkg_tools
+  pkg_tool_present_table --> pkg_invariants
   pkg_tool_present_table --> pkg_tools
+  pkg_tool_resolve_term --> pkg_invariants
   pkg_tool_resolve_term --> pkg_tools
+  pkg_tool_retrieve --> pkg_invariants
   pkg_tool_retrieve --> pkg_nl2sql_engine
   pkg_tool_retrieve --> pkg_retrieval
   pkg_tool_retrieve --> pkg_tools
+  pkg_tool_scope_routing --> pkg_invariants
   pkg_tool_scope_routing --> pkg_tools
   pkg_tool_search_data_sources --> pkg_invariants
   pkg_tool_search_data_sources --> pkg_nl2sql_engine
   pkg_tool_search_data_sources --> pkg_retrieval
   pkg_tool_search_data_sources --> pkg_tools
+  pkg_tool_suggest_followups --> pkg_invariants
   pkg_tool_suggest_followups --> pkg_tools
   pkg_tool_trigger_eval --> pkg_eval_runner
   pkg_tool_trigger_eval --> pkg_invariants
@@ -1065,6 +1079,7 @@ flowchart TD
   pkg_mcp_client --> pkg_subprocess
   pkg_mcp_client --> pkg_timeout
   pkg_mcp_client --> pkg_tools
+  pkg_query_tool --> pkg_invariants
   pkg_query_tool --> pkg_query
   pkg_query_tool --> pkg_tools
   pkg_schedule --> pkg_agent
@@ -1214,6 +1229,7 @@ flowchart TD
   pkg_compaction_tool_result_pruner --> pkg_token_meter
   pkg_semantic_layer --> pkg_atomic_write
   pkg_semantic_layer --> pkg_audit
+  pkg_semantic_layer --> pkg_invariants
   pkg_semantic_layer --> pkg_llm
   pkg_experimental_agent_team --> pkg_agent
   pkg_experimental_agent_team --> pkg_brand
@@ -1298,6 +1314,7 @@ flowchart TD
   pkg_compaction_basic --> pkg_llm
   pkg_compaction_basic --> pkg_session
   pkg_compaction_basic --> pkg_token_meter
+  pkg_evidence_query --> pkg_invariants
   pkg_evidence_query --> pkg_semantic_layer
   pkg_evidence_query --> pkg_typert_protocol
   pkg_phase_gate --> pkg_agent
@@ -1308,34 +1325,46 @@ flowchart TD
   pkg_phase_gate --> pkg_session
   pkg_phase_gate --> pkg_system_prompt
   pkg_phase_gate --> pkg_tools
+  pkg_schema_gateway --> pkg_invariants
   pkg_schema_gateway --> pkg_nl2sql_engine
   pkg_schema_gateway --> pkg_semantic_layer
   pkg_schema_gateway --> pkg_typert_protocol
+  pkg_tool_discover_alt_labels --> pkg_invariants
   pkg_tool_discover_alt_labels --> pkg_semantic_layer
   pkg_tool_discover_alt_labels --> pkg_tools
+  pkg_tool_discover_relations --> pkg_invariants
   pkg_tool_discover_relations --> pkg_semantic_layer
   pkg_tool_discover_relations --> pkg_tools
   pkg_tool_edit_definition --> pkg_audit
+  pkg_tool_edit_definition --> pkg_invariants
   pkg_tool_edit_definition --> pkg_semantic_layer
   pkg_tool_edit_definition --> pkg_tools
+  pkg_tool_get_coverage --> pkg_invariants
   pkg_tool_get_coverage --> pkg_semantic_layer
   pkg_tool_get_coverage --> pkg_tools
+  pkg_tool_get_definition --> pkg_invariants
   pkg_tool_get_definition --> pkg_semantic_layer
   pkg_tool_get_definition --> pkg_tools
+  pkg_tool_list_domains --> pkg_invariants
   pkg_tool_list_domains --> pkg_semantic_layer
   pkg_tool_list_domains --> pkg_tools
+  pkg_tool_load_event_definition --> pkg_invariants
   pkg_tool_load_event_definition --> pkg_semantic_layer
   pkg_tool_load_event_definition --> pkg_tools
+  pkg_tool_load_table_definition --> pkg_invariants
   pkg_tool_load_table_definition --> pkg_semantic_layer
   pkg_tool_load_table_definition --> pkg_tools
   pkg_tool_revert_edit --> pkg_audit
+  pkg_tool_revert_edit --> pkg_invariants
   pkg_tool_revert_edit --> pkg_semantic_layer
   pkg_tool_revert_edit --> pkg_tools
+  pkg_tool_search_schema --> pkg_invariants
   pkg_tool_search_schema --> pkg_nl2sql_engine
   pkg_tool_search_schema --> pkg_semantic_layer
   pkg_tool_search_schema --> pkg_tools
   pkg_tool_update_table_config --> pkg_audit
   pkg_tool_update_table_config --> pkg_identity
+  pkg_tool_update_table_config --> pkg_invariants
   pkg_tool_update_table_config --> pkg_semantic_layer
   pkg_tool_update_table_config --> pkg_tools
   pkg_agent_spine_demo --> pkg_agent
@@ -1403,6 +1432,7 @@ flowchart TD
   pkg_patrol_mode --> pkg_invariants
   pkg_patrol_mode --> pkg_management_session
   pkg_tool_reachability_delta --> pkg_evidence_query
+  pkg_tool_reachability_delta --> pkg_invariants
   pkg_tool_reachability_delta --> pkg_tools
   pkg_acp_demo --> pkg_acp
   pkg_acp_demo --> pkg_agent_instructions
@@ -1725,8 +1755,6 @@ flowchart TD
 
 | Package | Group | Depends on |
 | --- | --- | --- |
-| [`eval`](../packages/eval/eval) | `eval` | — |
-| [`query`](../packages/query/query) | `query` | — |
 | [`invariants`](../packages/runtime-diagnostics/invariants) | `runtime-diagnostics` | — |
 | [`atomic-write`](../packages/util/atomic-write) | `util` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`brand`](../packages/util/brand) | `util` | [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1747,6 +1775,7 @@ flowchart TD
 | [`result-cache`](../packages/data/result-cache) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`e2b`](../packages/e2b/e2b) | `e2b` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`embedder`](../packages/embedder/embedder) | `embedder` | [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`eval`](../packages/eval/eval) | `eval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`eval-cli`](../packages/eval/eval-cli) | `eval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`eval-runner`](../packages/eval/eval-runner) | `eval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`retrieval-experiment`](../packages/eval/retrieval-experiment) | `eval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1755,7 +1784,7 @@ flowchart TD
 | [`host-directory-picker-browse`](../packages/host/directory-picker-browse) | `host` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`host-directory-picker-native`](../packages/host/directory-picker-native) | `host` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`host-webserver`](../packages/host/webserver) | `host` | [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`query-postgres`](../packages/query/query-postgres) | `query` | [`invariants`](../packages/runtime-diagnostics/invariants), [`query`](../packages/query/query) |
+| [`query`](../packages/query/query) | `query` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`retrieval`](../packages/retrieval/retrieval) | `retrieval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`sandbox-windows-acl`](../packages/sandbox/sandbox-windows-acl) | `sandbox` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`storage`](../packages/storage/storage) | `storage` | [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1767,13 +1796,14 @@ flowchart TD
 | [`attachment`](../packages/attachment/attachment) | `attachment` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-modules`](../packages/client/modules) | `client` | [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`credentials`](../packages/credentials/credentials) | `credentials` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`scope-registry`](../packages/data/scope-registry) | `data` | [`atomic-write`](../packages/util/atomic-write) |
+| [`scope-registry`](../packages/data/scope-registry) | `data` | [`atomic-write`](../packages/util/atomic-write), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`subprocess-e2b`](../packages/e2b/subprocess-e2b) | `e2b` | [`e2b`](../packages/e2b/e2b), [`invariants`](../packages/runtime-diagnostics/invariants), [`subprocess`](../packages/subprocess/subprocess), [`timeout`](../packages/util/timeout) |
 | [`embedder-fakehash`](../packages/embedder/embedder-fakehash) | `embedder` | [`embedder`](../packages/embedder/embedder), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`embedder-http`](../packages/embedder/embedder-http) | `embedder` | [`embedder`](../packages/embedder/embedder), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`host-frontend-static`](../packages/host/frontend-static) | `host` | [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`host-plugin-inventory`](../packages/host/plugin-inventory) | `host` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`typert-protocol`](../packages/typert/protocol) |
 | [`anonymous-user-id`](../packages/identity/anonymous-user-id) | `identity` | [`brand`](../packages/util/brand), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`query-postgres`](../packages/query/query-postgres) | `query` | [`invariants`](../packages/runtime-diagnostics/invariants), [`query`](../packages/query/query) |
 | [`retrieval-inproc`](../packages/retrieval/retrieval-inproc) | `retrieval` | [`embedder`](../packages/embedder/embedder), [`invariants`](../packages/runtime-diagnostics/invariants), [`retrieval`](../packages/retrieval/retrieval) |
 | [`settings`](../packages/settings/settings) | `settings` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`storage-domain`](../packages/storage/storage-domain) | `storage` | [`invariants`](../packages/runtime-diagnostics/invariants), [`storage`](../packages/storage/storage) |
@@ -1787,7 +1817,7 @@ flowchart TD
 | [`credentials-keychain`](../packages/credentials/credentials-keychain) | `credentials` | [`credentials`](../packages/credentials/credentials), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`credentials-local`](../packages/credentials/credentials-local) | `credentials` | [`atomic-write`](../packages/util/atomic-write), [`credentials`](../packages/credentials/credentials), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`launch-environment`](../packages/util/launch-environment) |
 | [`identity`](../packages/identity/identity) | `identity` | [`credentials`](../packages/credentials/credentials), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`query-maxcompute`](../packages/query/query-maxcompute) | `query` | [`credentials`](../packages/credentials/credentials), [`query`](../packages/query/query), [`subprocess`](../packages/subprocess/subprocess) |
+| [`query-maxcompute`](../packages/query/query-maxcompute) | `query` | [`credentials`](../packages/credentials/credentials), [`invariants`](../packages/runtime-diagnostics/invariants), [`query`](../packages/query/query), [`subprocess`](../packages/subprocess/subprocess) |
 | [`settings-file`](../packages/settings/settings-file) | `settings` | [`atomic-write`](../packages/util/atomic-write), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`settings`](../packages/settings/settings) |
 | [`llm-dashscope`](../packages/llm/llm-dashscope) | `llm` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`credentials`](../packages/credentials/credentials), [`invariants`](../packages/runtime-diagnostics/invariants), [`launch-environment`](../packages/util/launch-environment), [`llm`](../packages/llm/llm), [`settings`](../packages/settings/settings), [`timeout`](../packages/util/timeout) |
 | [`llm-deepseek`](../packages/llm/llm-deepseek) | `llm` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`attachment`](../packages/attachment/attachment), [`credentials`](../packages/credentials/credentials), [`invariants`](../packages/runtime-diagnostics/invariants), [`launch-environment`](../packages/util/launch-environment), [`llm`](../packages/llm/llm), [`settings`](../packages/settings/settings), [`timeout`](../packages/util/timeout) |
@@ -1797,7 +1827,7 @@ flowchart TD
 | [`skill`](../packages/skill/skill) | `skill` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope) |
 | [`web`](../packages/web/web) | `web` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm) |
 | [`credentials-keychain-host`](../packages/credentials/credentials-keychain-host) | `credentials` | [`atomic-write`](../packages/util/atomic-write), [`credentials`](../packages/credentials/credentials), [`credentials-keychain`](../packages/credentials/credentials-keychain), [`credentials-local`](../packages/credentials/credentials-local), [`invariants`](../packages/runtime-diagnostics/invariants), [`launch-environment`](../packages/util/launch-environment) |
-| [`admin`](../packages/data/admin) | `data` | [`credentials`](../packages/credentials/credentials), [`host-webserver`](../packages/host/webserver), [`identity`](../packages/identity/identity), [`storage-domain`](../packages/storage/storage-domain) |
+| [`admin`](../packages/data/admin) | `data` | [`credentials`](../packages/credentials/credentials), [`host-webserver`](../packages/host/webserver), [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`storage-domain`](../packages/storage/storage-domain) |
 | [`nl2sql-engine`](../packages/data/nl2sql-engine) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`query`](../packages/query/query), [`query-maxcompute`](../packages/query/query-maxcompute) |
 | [`lsp`](../packages/lsp/lsp) | `lsp` | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm) |
 | [`agent`](../packages/core/agent) | `core` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`typert-protocol`](../packages/typert/protocol) |
@@ -1854,7 +1884,7 @@ flowchart TD
 | [`headless`](../packages/bundle/headless) | `bundle` | [`agent`](../packages/core/agent), [`agent-default-model`](../packages/core/agent-default-model), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session) |
 | [`compaction`](../packages/compaction/compaction) | `compaction` | [`brand`](../packages/util/brand), [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session) |
 | [`tmux-context`](../packages/context/tmux-context) | `context` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`shell`](../packages/shell/shell) |
-| [`management-session`](../packages/data/management-session) | `data` | [`agent-presets`](../packages/preset/agent-presets), [`session`](../packages/core/session) |
+| [`management-session`](../packages/data/management-session) | `data` | [`agent-presets`](../packages/preset/agent-presets), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session) |
 | [`preset-autojoin`](../packages/data/preset-autojoin) | `data` | [`agent`](../packages/core/agent), [`agent-presets`](../packages/preset/agent-presets), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`fs-e2b`](../packages/e2b/fs-e2b) | `e2b` | [`e2b`](../packages/e2b/e2b), [`fs`](../packages/fs/fs), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`command-feedback`](../packages/feedback/command-feedback) | `feedback` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`session-telemetry`](../packages/session/session-telemetry) |
@@ -1888,17 +1918,17 @@ flowchart TD
 | [`session-reference`](../packages/context/session-reference) | `context` | [`agent`](../packages/core/agent), [`compaction`](../packages/compaction/compaction), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`session`](../packages/core/session), [`session-query`](../packages/session-query/session-query), [`typert-protocol`](../packages/typert/protocol) |
 | [`audit`](../packages/data/audit) | `data` | [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`tools`](../packages/core/tools) |
 | [`result-cache-memory`](../packages/data/result-cache-memory) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`result-cache`](../packages/data/result-cache), [`tools`](../packages/core/tools) |
-| [`tool-compute`](../packages/data/tool-compute) | `data` | [`code-runtime`](../packages/code-runtime/code-runtime), [`result-cache`](../packages/data/result-cache), [`tools`](../packages/core/tools) |
+| [`tool-compute`](../packages/data/tool-compute) | `data` | [`code-runtime`](../packages/code-runtime/code-runtime), [`invariants`](../packages/runtime-diagnostics/invariants), [`result-cache`](../packages/data/result-cache), [`tools`](../packages/core/tools) |
 | [`tool-critique-sql`](../packages/data/tool-critique-sql) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`tools`](../packages/core/tools) |
 | [`tool-evaluate-sql-quality`](../packages/data/tool-evaluate-sql-quality) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`tools`](../packages/core/tools) |
-| [`tool-present-clarification`](../packages/data/tool-present-clarification) | `data` | [`tools`](../packages/core/tools) |
-| [`tool-present-decomposition`](../packages/data/tool-present-decomposition) | `data` | [`tools`](../packages/core/tools) |
-| [`tool-present-table`](../packages/data/tool-present-table) | `data` | [`tools`](../packages/core/tools) |
-| [`tool-resolve-term`](../packages/data/tool-resolve-term) | `data` | [`tools`](../packages/core/tools) |
-| [`tool-retrieve`](../packages/data/tool-retrieve) | `data` | [`nl2sql-engine`](../packages/data/nl2sql-engine), [`retrieval`](../packages/retrieval/retrieval), [`tools`](../packages/core/tools) |
-| [`tool-scope-routing`](../packages/data/tool-scope-routing) | `data` | [`tools`](../packages/core/tools) |
+| [`tool-present-clarification`](../packages/data/tool-present-clarification) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-present-decomposition`](../packages/data/tool-present-decomposition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-present-table`](../packages/data/tool-present-table) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-resolve-term`](../packages/data/tool-resolve-term) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-retrieve`](../packages/data/tool-retrieve) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`retrieval`](../packages/retrieval/retrieval), [`tools`](../packages/core/tools) |
+| [`tool-scope-routing`](../packages/data/tool-scope-routing) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-search-data-sources`](../packages/data/tool-search-data-sources) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`retrieval`](../packages/retrieval/retrieval), [`tools`](../packages/core/tools) |
-| [`tool-suggest-followups`](../packages/data/tool-suggest-followups) | `data` | [`tools`](../packages/core/tools) |
+| [`tool-suggest-followups`](../packages/data/tool-suggest-followups) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | `data` | [`eval-runner`](../packages/eval/eval-runner), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | `extensions` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`tools`](../packages/core/tools), [`typert-protocol`](../packages/typert/protocol) |
 | [`repeat-tool-reminder`](../packages/guard/repeat-tool-reminder) | `guard` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
@@ -1907,7 +1937,7 @@ flowchart TD
 | [`tool-jobs`](../packages/jobs/tool-jobs) | `jobs` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`jobs`](../packages/jobs/jobs), [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`tool-lsp`](../packages/lsp/tool-lsp) | `lsp` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`lsp`](../packages/lsp/lsp), [`system-prompt`](../packages/core/system-prompt), [`timeout`](../packages/util/timeout), [`tools`](../packages/core/tools) |
 | [`mcp-client`](../packages/mcp/mcp-client) | `mcp` | [`attachment`](../packages/attachment/attachment), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`subprocess`](../packages/subprocess/subprocess), [`timeout`](../packages/util/timeout), [`tools`](../packages/core/tools) |
-| [`query-tool`](../packages/query/query-tool) | `query` | [`query`](../packages/query/query), [`tools`](../packages/core/tools) |
+| [`query-tool`](../packages/query/query-tool) | `query` | [`invariants`](../packages/runtime-diagnostics/invariants), [`query`](../packages/query/query), [`tools`](../packages/core/tools) |
 | [`schedule`](../packages/schedule/schedule) | `schedule` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`tools`](../packages/core/tools) |
 | [`session-checkpoint-policy`](../packages/session/session-checkpoint-policy) | `session` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`tools`](../packages/core/tools) |
 | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | `session` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`command-feedback`](../packages/feedback/command-feedback), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-telemetry`](../packages/session/session-telemetry) |
@@ -1933,7 +1963,7 @@ flowchart TD
 | [`hooks-claude-code`](../packages/hooks/hooks-claude-code) | `hooks` | [`agent`](../packages/core/agent), [`hook-protocol`](../packages/hooks/hook-protocol), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`subagent`](../packages/subagent/subagent), [`tools`](../packages/core/tools) |
 | [`web-app`](../packages/bundle/web-app) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants), [`shell-env`](../packages/shell/shell-env), [`system-prompt`](../packages/core/system-prompt) |
 | [`compaction-tool-result-pruner`](../packages/compaction/compaction-tool-result-pruner) | `compaction` | [`compaction`](../packages/compaction/compaction), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`token-meter`](../packages/llm/token-meter) |
-| [`semantic-layer`](../packages/data/semantic-layer) | `data` | [`atomic-write`](../packages/util/atomic-write), [`audit`](../packages/data/audit), [`llm`](../packages/llm/llm) |
+| [`semantic-layer`](../packages/data/semantic-layer) | `data` | [`atomic-write`](../packages/util/atomic-write), [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm) |
 | [`experimental-agent-team`](../packages/experimental/agent-team) | `experimental` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`subagent`](../packages/subagent/subagent) |
 | [`tool-cordis`](../packages/extensions/tool-cordis) | `extensions` | [`agent`](../packages/core/agent), [`cordis-host-runner`](../packages/extensions/cordis-host-runner), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`host-apiproxy`](../packages/host/apiproxy) | `host` | [`agent-presets`](../packages/preset/agent-presets), [`cordis-host-runner`](../packages/extensions/cordis-host-runner), [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1946,20 +1976,20 @@ flowchart TD
 | [`subagent-spawn-in-process`](../packages/subagent/subagent-spawn-in-process) | `subagent` | [`invariants`](../packages/runtime-diagnostics/invariants), [`subagent`](../packages/subagent/subagent), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) |
 | [`client-connection`](../packages/client/connection) | `client` | [`attachment`](../packages/attachment/attachment), [`commands`](../packages/interaction/commands), [`host-apiproxy`](../packages/host/apiproxy), [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`tools`](../packages/core/tools) |
 | [`compaction-basic`](../packages/compaction/compaction-basic) | `compaction` | [`agent`](../packages/core/agent), [`commands`](../packages/interaction/commands), [`compaction`](../packages/compaction/compaction), [`compaction-tool-result-pruner`](../packages/compaction/compaction-tool-result-pruner), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`token-meter`](../packages/llm/token-meter) |
-| [`evidence-query`](../packages/data/evidence-query) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`typert-protocol`](../packages/typert/protocol) |
+| [`evidence-query`](../packages/data/evidence-query) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`typert-protocol`](../packages/typert/protocol) |
 | [`phase-gate`](../packages/data/phase-gate) | `data` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
-| [`schema-gateway`](../packages/data/schema-gateway) | `data` | [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`typert-protocol`](../packages/typert/protocol) |
-| [`tool-discover-alt-labels`](../packages/data/tool-discover-alt-labels) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-discover-relations`](../packages/data/tool-discover-relations) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-edit-definition`](../packages/data/tool-edit-definition) | `data` | [`audit`](../packages/data/audit), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-get-coverage`](../packages/data/tool-get-coverage) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-get-definition`](../packages/data/tool-get-definition) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-list-domains`](../packages/data/tool-list-domains) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-load-event-definition`](../packages/data/tool-load-event-definition) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-load-table-definition`](../packages/data/tool-load-table-definition) | `data` | [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-revert-edit`](../packages/data/tool-revert-edit) | `data` | [`audit`](../packages/data/audit), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-search-schema`](../packages/data/tool-search-schema) | `data` | [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-update-table-config`](../packages/data/tool-update-table-config) | `data` | [`audit`](../packages/data/audit), [`identity`](../packages/identity/identity), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`schema-gateway`](../packages/data/schema-gateway) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`typert-protocol`](../packages/typert/protocol) |
+| [`tool-discover-alt-labels`](../packages/data/tool-discover-alt-labels) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-discover-relations`](../packages/data/tool-discover-relations) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-edit-definition`](../packages/data/tool-edit-definition) | `data` | [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-get-coverage`](../packages/data/tool-get-coverage) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-get-definition`](../packages/data/tool-get-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-list-domains`](../packages/data/tool-list-domains) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-load-event-definition`](../packages/data/tool-load-event-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-load-table-definition`](../packages/data/tool-load-table-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-revert-edit`](../packages/data/tool-revert-edit) | `data` | [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-search-schema`](../packages/data/tool-search-schema) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-update-table-config`](../packages/data/tool-update-table-config) | `data` | [`audit`](../packages/data/audit), [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
 | [`agent-spine-demo`](../packages/examples/agent-spine-demo) | `examples` | [`agent`](../packages/core/agent), [`agent-instructions`](../packages/context/agent-instructions), [`agent-loop`](../packages/core/agent-loop), [`goal`](../packages/goal/goal), [`goal-round-driver`](../packages/goal/goal-round-driver), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`jobs-local`](../packages/jobs/jobs-local), [`llm`](../packages/llm/llm), [`llm-retry`](../packages/llm/llm-retry), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-title`](../packages/session/session-title), [`shell-env`](../packages/shell/shell-env), [`skill`](../packages/skill/skill), [`skill-filesystem`](../packages/skill/skill-filesystem), [`system-prompt`](../packages/core/system-prompt), [`tool-bash`](../packages/shell/tool-bash), [`tool-goal`](../packages/goal/tool-goal), [`tool-jobs`](../packages/jobs/tool-jobs), [`tool-skill`](../packages/skill/tool-skill), [`tools`](../packages/core/tools) |
 | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | `experimental` | [`agent`](../packages/core/agent), [`experimental-agent-team`](../packages/experimental/agent-team), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`sdk-client`](../packages/sdk/client) | `sdk` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session) |
@@ -1969,7 +1999,7 @@ flowchart TD
 | [`subagent-dsh-sdk`](../packages/subagent/subagent-dsh-sdk) | `subagent` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`sdk-client`](../packages/sdk/client), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent), [`subprocess`](../packages/subprocess/subprocess) |
 | [`api-gateway`](../packages/api/gateway) | `api` | [`client-connection`](../packages/client/connection), [`invariants`](../packages/runtime-diagnostics/invariants), [`typert-registry`](../packages/typert/registry) |
 | [`patrol-mode`](../packages/data/patrol-mode) | `data` | [`audit`](../packages/data/audit), [`eval-runner-service`](../packages/eval/eval-runner-service), [`evidence-query`](../packages/data/evidence-query), [`invariants`](../packages/runtime-diagnostics/invariants), [`management-session`](../packages/data/management-session) |
-| [`tool-reachability-delta`](../packages/data/tool-reachability-delta) | `data` | [`evidence-query`](../packages/data/evidence-query), [`tools`](../packages/core/tools) |
+| [`tool-reachability-delta`](../packages/data/tool-reachability-delta) | `data` | [`evidence-query`](../packages/data/evidence-query), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`acp-demo`](../packages/examples/acp-demo) | `examples` | [`acp`](../packages/acp/acp), [`agent-instructions`](../packages/context/agent-instructions), [`agent-spine-demo`](../packages/examples/agent-spine-demo), [`app-boot`](../packages/boot/app-boot), [`invariants`](../packages/runtime-diagnostics/invariants), [`session-checkpoint-policy`](../packages/session/session-checkpoint-policy), [`session-persistence-jsonl`](../packages/session/session-persistence-jsonl), [`session-query`](../packages/session-query/session-query), [`session-query-sqlite`](../packages/session-query/session-query-sqlite), [`tools`](../packages/core/tools) |
 | [`api-remotes`](../packages/api/remotes) | `api` | [`agent`](../packages/core/agent), [`agent-presets`](../packages/preset/agent-presets), [`api-gateway`](../packages/api/gateway), [`commands`](../packages/interaction/commands), [`cordis-host-runner`](../packages/extensions/cordis-host-runner), [`credentials`](../packages/credentials/credentials), [`file-reference`](../packages/context/file-reference), [`goal`](../packages/goal/goal), [`host-plugin-inventory`](../packages/host/plugin-inventory), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`message-feedback`](../packages/feedback/message-feedback), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`session-reference`](../packages/context/session-reference), [`settings`](../packages/settings/settings), [`typert-registry`](../packages/typert/registry) |
 | [`client-runtime`](../packages/client/runtime) | `client` | [`agent`](../packages/core/agent), [`api-remotes`](../packages/api/remotes), [`attachment`](../packages/attachment/attachment), [`client-connection`](../packages/client/connection), [`commands`](../packages/interaction/commands), [`host-apiproxy`](../packages/host/apiproxy), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`llm-retry`](../packages/llm/llm-retry), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`session-title`](../packages/session/session-title), [`tools`](../packages/core/tools), [`typert-protocol`](../packages/typert/protocol), [`typert-registry`](../packages/typert/registry) |
