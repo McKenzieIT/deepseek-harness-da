@@ -57,6 +57,15 @@ describe('translate', () => {
     expect(text && text.type === 'text-delta' && text.text).toBe('9.8')
   })
 
+  it('joins an array reasoning_content (thinking) into a reasoning delta', async () => {
+    const chunks = await run([
+      '{"output":{"choices":[{"finish_reason":"null","message":{"role":"assistant","reasoning_content":[{"text":"ponder"},{"text":" more"}]}}]},"usage":{"input_tokens":1,"output_tokens":1}}',
+      '{"output":{"choices":[{"finish_reason":"stop","message":{"content":""}}]},"usage":{"input_tokens":1,"output_tokens":1}}',
+    ])
+    const reasoning = chunks.find(c => c.type === 'reasoning-delta')
+    expect(reasoning && reasoning.type === 'reasoning-delta' && reasoning.text).toBe('ponder more')
+  })
+
   it('assembles tool-call fragments by index into one tool-call block', async () => {
     // arguments fragments "{" + "}" concatenate to "{}" (avoids JSON-escape pitfalls in the fixture).
     const chunks = await run([

@@ -17,7 +17,7 @@
 
 import { CallId, EMPTY_RESPONSE_CODE, LlmError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, FinishReason, StreamChunk, TokenUsage } from '@deepseek-ai/dsh-llm'
-import type { WireChunk, WireDelta, WireUsage } from './types.ts'
+import type { WireChunk, WireContentPart, WireUsage } from './types.ts'
 
 /** One open block under assembly. */
 interface OpenBlock {
@@ -29,8 +29,13 @@ interface OpenBlock {
   name?: string
 }
 
-/** The textual delta of a `message.content` that may be a string or an array of `{text}` parts. */
-function textDeltaOf(content: WireDelta['content']): string {
+/**
+ * Extract the textual delta from a `message.content` / `message.reasoning_content` field that
+ * may be a string (text models) or an array of `{text}` parts (thinking/multimodal models); both
+ * fields share the same wire shape. Wire-boundary elements may be null despite the non-nullish
+ * type, so guard each part's text.
+ */
+function partsToText(content: string | WireContentPart[] | null | undefined): string {
   if (typeof content === 'string') return content
   // oxlint-disable-next-line typescript/no-unnecessary-condition -- wire boundary, element may be null despite non-nullish type
   if (Array.isArray(content)) return content.map(part => part?.text ?? '').join('')
@@ -141,11 +146,7 @@ export async function* translate(payloads: AsyncIterable<string>): AsyncGenerato
       if (message === undefined) continue
 
       // Reasoning first: thinking mode interleaves it before text.
-      const reasoningRaw = message.reasoning_content
-      const reasoning = typeof reasoningRaw === 'string' ? reasoningRaw
-        // oxlint-disable-next-line typescript/no-unnecessary-condition -- wire boundary, element may be null despite non-nullish type
-        : Array.isArray(reasoningRaw) ? (reasoningRaw as Array<{ text?: string }>).map(part => part?.text ?? '').join('')
-          : ''
+      const reasoning = partsToText(message.reasoning_content)
       if (reasoning.length > 0) {
         if (!reasoningBlock) {
           reasoningBlock = open('reasoning')
@@ -155,7 +156,7 @@ export async function* translate(payloads: AsyncIterable<string>): AsyncGenerato
         yield { type: 'reasoning-delta', index: reasoningBlock.index, text: reasoning }
       }
 
-      const text = textDeltaOf(message.content)
+      const text = partsToText(message.content)
       if (text.length > 0) {
         if (!textBlock) {
           textBlock = open('text')
