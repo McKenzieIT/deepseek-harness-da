@@ -148,6 +148,15 @@ export function apply(ctx: Context, _config: Config = {}): void {
         type: 'text',
         text: formatDiscoverAltLabels(value),
       }],
+      presentationMeta: (_args, value) => {
+        const v = value as DiscoverAltLabelsResult
+        if (!v.ok) return { ok: false }
+        return {
+          ok: true,
+          enriched: v.enriched ?? 0,
+          written: v.written ?? 0,
+        }
+      },
     },
     async execute(args, exec) {
       if (exec.signal.aborted) {
@@ -170,11 +179,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
     },
     presentResult(_args, result: ToolResult): GenericResultView | undefined {
       if (result.isError) return undefined
-      const content = result.content
-      if (!Array.isArray(content) || content.length === 0) return undefined
-      const text = content[0]?.type === 'text' ? content[0].text : ''
-      const enrichMatch = text.match(/enriched (\d+)/)
-      const enriched = enrichMatch?.[1] ? parseInt(enrichMatch[1], 10) : 0
+      const meta = result.meta as { ok?: boolean; enriched?: number } | undefined
+      const enriched = meta?.ok ? (meta.enriched ?? 0) : 0
       return {
         card: 'generic',
         title: enriched > 0
