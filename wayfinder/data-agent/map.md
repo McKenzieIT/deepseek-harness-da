@@ -389,8 +389,9 @@ merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）
 - [UM9](tickets/phase-upstream-merge/UM9-code-mode-ptc-rename-sync.md) — code-mode→ptc 同步
 - [UM10](tickets/phase-upstream-merge/UM10-verify-typecheck-lint-ci-gates.md) — verify（typecheck/lint/check:ci:*/surface）
 - [UM11](tickets/phase-upstream-merge/UM11-pr-merge-post-cleanup.md) — PR + merge + 后清理
+- [UM12](tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) — post-merge GA-FORK-CI re-sweep（重基线 + 修 residual/new red gate；补 UM10 只验非回归的 gap）
 
-依赖链：UM1 → {UM2, UM3, UM9} → {UM4(after UM3), UM5(after UM3)} → {UM6, UM7, UM8} → UM10 → UM11。
+依赖链：UM1 → {UM2, UM3, UM9} → {UM4(after UM3), UM5(after UM3)} → {UM6, UM7, UM8} → UM10 → UM11 → UM12。
 
 **违反当前 upstream 的本域票据（更新后归档 + 此标记）**：
 - [B-DA1-preset-switch-tool-interrupt-race](tickets/phase-misc/B-DA1-preset-switch-tool-interrupt-race.md) — partial-fix 在 apiproxy（已删）；re-home → UM4
