@@ -11,10 +11,10 @@
 | 票类型 | 本环境直接做? | 环节 | 说明 |
 |---|---|---|---|
 | R1-R11(认读分析论文) | ✅ 本环境(AFK) | Phase 1 | 读论文产 `research/<slug>-papers.md`,喂 grilling |
-| G1-G12(grilling) | ✅ 本环境(HITL) | Phase 1 | 你 grill 定 A/B/C 方向,产决策 |
+| G1-G12(grilling，含 G1b) | ✅ 本环境(HITL) | Phase 1 | 你 grill 定 A/B/C 方向,产决策 |
 | P1(prototype) | ✅ 本环境(HITL)* | Phase 1 | 新 seam 先验原型(*见 §6 假设) |
 | T1-T10(impl/实现票) | ❌ 不直接 | Phase 2→3→4 | 走 SPEC→instruction+rubric→另一环境执行 |
-| R12-R22(experiment/实验票) | ❌ 不直接 | Phase 2→3→4 | 同上 |
+| R12-R23(experiment/实验票) | ❌ 不直接 | Phase 2→3→4 | 同上 |
 
 历史票(`P11*`/`R3`/`G2`/`GA-EVAL-*`/`GA-EXP*`/`GA-GRILL*`)在 `wayfinder/data-agent/tickets/`,不在本流程(已 resolved/或既有 open,各自管)。
 
@@ -63,12 +63,12 @@
 ## 3. 当前 map 流程 recap(详见 [`map.md`](map.md))
 
 - **11 方向**(round-1 五角度 + round-2 五新角度),每方向票链:`R(认读) → G(grilling) → [SPEC] → T impl & R-experiment(另一环境) → R-experiment 结果回传`。
-- **linchpin = T1(EX grader)**:解 R12/R17/G3(靠 R14)/G9/G10(靠 R21)/R19 + 既有 GA-EVAL-EXPAND。
+- **linchpin = T1(EX grader)**:直接解 R12/R17/G3(靠 R14)/G9/G10(靠 R21)/R19，并解 R23；GA-EVAL-EXPAND 再由 R23 解锁。
 - **依赖图**(分层):
-  - Layer 0(unblocked,本环境 Phase 1 可起):R1-R11、R14、R20(+ 既有 GA-EXP1/GA-EVAL-SQLGEN-FOLLOWUP/GA-EVAL-REBASELINE item4)。
-  - Layer 1(grilling,HITL):G1-G12(G5/G9/G10 ⚠ supersede GA-GT4,须先调和)。
-  - Layer 2(SPEC→另一环境):T1-T10 + R12-R22(T1 = linchpin,先做)。
-  - 既有 open:GA-EVAL-EXPAND←T1;GA-EXP5←GA-EVAL-EXPAND。
+  - Layer 0(unblocked,本环境 Phase 1 可起):R2-R11、R14、R20(+ 既有 GA-EXP1/GA-EVAL-SQLGEN-FOLLOWUP/GA-EVAL-REBASELINE item4);R1 已 resolved。
+  - Layer 1(grilling,HITL):G1 与 G1b 已由 R1 解锁;其余 G2-G12 按各自 research 前置，G5/G9/G10 ⚠ supersede GA-GT4,须先调和。
+  - Layer 2(SPEC→另一环境):T1-T10 + R12-R23；T1 = linchpin，blocked by G1+G1b，R23 blocked by T1。
+  - 既有 open:GA-EVAL-EXPAND←R23←T1;GA-EXP5←GA-EVAL-EXPAND。
 - 方向间:4/6/8 独立于 T1 可并行;11 与 4 互补(都攻 power)。
 
 ---
@@ -76,7 +76,7 @@
 ## 4. 方向顺序(推荐)
 
 ### 顺序原则
-1. 先做 **linchpin 链**(方向 1):R1→G1→[T1 SPEC→rubric 包→另一环境]。T1 解锁最多。
+1. 先做 **linchpin 链**(方向 1):R1 已 resolved，下一步并行 G1+G1b→[T1 SPEC→rubric 包→另一环境]→R23→GA-EVAL-EXPAND。T1 解锁 execution grader，R23 再为 comparator defaults 与例外提供 mutation evidence。
 2. 并行做**独立于 T1**的方向(本环境 Phase 1 部分):方向 4(R4→G4)、方向 6(R6→G6)、方向 8(R8→R20→G8)。
 3. T1 完成后,做**依赖 T1** 的方向:3(R14→G3→T3)、5(R17→G5)、7(R7→G7→R19)、9(G9→T8)、10(G10→T9→R21)。
 4. 最后做 scope 扩展:方向 6 的 prototype/benchmark(P1→T6→R18)。
@@ -99,7 +99,7 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 
 | # | 方向 | Phase1 本环境 | Phase2-4 另一环境 |
 |---|---|---|---|
-| 1 | 执行级评分+非循环 GT | R1, G1 | T1, R12, (+G12 条件) |
+| 1 | 执行级评分+非循环 GT | R1, G1, G1b | T1, R23, R12, (+G12 条件) |
 | 2 | Judge blind-rewrite | R2, G2 | T2, R13 |
 | 3 | Judge 校准+gated | R3, G3(+R14 喂) | T3, R15 |
 | 4 | Power-aware+显著性 | R4, G4 | T4/T4b, R16 |
@@ -128,4 +128,4 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 - 更新 `map.md` Notes 加交叉引用 → 本 playbook(流程不写进 map,只引)。
 - 更新 `tickets/README.md` 加 T/R-experiment 不直接做的提示 → 本 playbook。
 - commit(playbook + 两个交叉引用)。
-- 下一 session prompt:按 §4 顺序,从 linchpin 方向 1 的 Phase 1(R1→G1)起,或 cheap-first(R20/R14)。
+- 下一 session prompt:按 §4 顺序认领 linchpin 方向 1 的 G1 或 G1b；两者都 resolved 后才能生成 T1 SPEC。也可走 cheap-first(R20/R14)。

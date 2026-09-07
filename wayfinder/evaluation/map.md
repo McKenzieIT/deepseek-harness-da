@@ -11,6 +11,7 @@
 ## Notes
 
 - **域**: evaluation 框架(`packages/eval/`)的可信化与扩展。data-agent 的 eval 子流,独立成 wayfinder effort(同 `semantic-layer` 先例)。
+- **职责**: evaluation 拥有 ground-truth provenance、snapshot identity、result normalization、comparator policy、评分与 evidence 语义；SQL 提交、scope routing、credentials、provider error 和 backend lifecycle 复用 dsh-data-agent 的 `@deepseek-ai/dsh-query` capability（`ctx.query.execute`），不在 evaluation 重建 warehouse executor。Rationale 见 [Evaluation 通过 query capability 执行 SQL](../../.agents/notes/proposed/testing/2026-09-07-evaluation-query-capability-boundary.md)。
 - **每会话应查 skills**:`research`(认读论文/调查)、`grilling`+`domain-modeling`(决策)、`prototype`(新 seam 原型)、`tdd`(impl)。
 - **执行流程**: T/R-experiment(impl/experiment)不在本环境直接做——走 SPEC→instruction+rubric→另一环境执行;G/R认读/P 在本环境直接做。见 [`playbook.md`](playbook.md)(流程不写进本 map,只引)。
 - **常设原则**:
@@ -21,7 +22,7 @@
   - **反循环**:expected 值须真实执行推导或人写,禁止 LLM 生成"正确 SQL"作 ground truth(会把系统当前错误固化为答案)。
   - 一票一 session+worktree;ticket 头声明 `Branch: <type>/<id>-<slug>`;改完逻辑单元立即 commit、绝不 `git add -A`。
 
-## Decisions so far(historical,票在 `wayfinder/data-agent/tickets/`)
+## Decisions so far
 
 | 票(loc) | Type | Resolved | 一句话 |
 |---|---|---|---|
@@ -39,12 +40,13 @@
 | GA-MODEL1 (phase-misc) | task | 2026-09-03 | qwen3.7-max 默认化(+16.1%,延迟 +48.9%) |
 | GA-EXP2/3/4 (phase-misc) | research | 2026-09-02~03 | prompt 语言实验:中文保留 |
 | GA-GRILL2 (phase-misc) | grilling | 2026-09-03 | Kind 1 英文化 won't-do → GA-EXP5 |
+| [R1 — 执行级评分与非循环 ground truth 论文认读](tickets/R1-exec-grader-papers.md) (evaluation) | research | 2026-09-07 | execution match 无统一语义；G1/G1b 须定义逐 case、可版本化 policy 与非循环 provenance，默认 profile 交 R23 实测 |
 
 ## Open frontier(未解,票在 `wayfinder/data-agent/tickets/`)
 
 | 票(loc) | Type | Status | 核心 | blocked-by/blocks |
 |---|---|---|---|---|
-| GA-EVAL-EXPAND | research | open | n=168 MDE 5.4-10.1pp;需 n_d≥85;硬要求 expected 真实执行推导(0/168 带 expected.sql)→ k11-v3 | blocks GA-EXP5 |
+| GA-EVAL-EXPAND | task | open | n=168 MDE 5.4-10.1pp;需 n_d≥85;全部 EXEC expected 由真实执行推导（当前 0/168 带 expected.sql），25 个 DELIVERY case 豁免 | by R23;blocks GA-EXP5 |
 | GA-EXP5 | research | open | 2×2×2 全因子 8 臂语言相关性 | by GA-EVAL-EXPAND |
 | GA-EXP1 | research | open·high | LLM-driven 表推断 vs 启发式;judge 校准从未执行 | — |
 | GA-EVAL-EVENTDEF-PREFETCH (phase-misc) | task | open | (a) port G-DA4 event_view grounding 进 engine responder eval path(复用 loadEventDefinition+extractEventView seam);风险门已过:BM25 0/4 + lexical matcher unsafe(14 FP—038 552≠510/040 259≠4227/130 wrong-event),需 LLM-detection 或 description-mining;**next priority**((d) alone 有界,(a) 给 schema 才是 real win) | — |
@@ -56,9 +58,9 @@
 > 排序按对 73.7% false-pass 危机的杠杆。每条给:**做什 / 已验证论文 / 票链**。R(n) 为认读分析票(AFK,产 research note),G(n) grilling(HITL),T(n) impl(AFK TDD),P(n) prototype,R(m) experiment。
 
 ### 1. 执行级评分 + 非循环 GT 溯源(linchpin)
-做什:EX grader(结果集相等归一);为 168 case 派生非-LLM expected RESULT(human-DBA `expected.sql`+snapshot hash);退役 34 手挑圆整数;多 SQL test-suite 接受。执行成 ground truth。
+做什:EX grader 通过 evaluation adapter 复用 `ctx.query.execute` 并归一结果集；evaluation 只拥有评分、ground truth、policy 与 evidence。为 143 个 EXEC cases 派生非-LLM expected result(human-reviewed `expected.sql`+snapshot identity)，25 个 DELIVERY cases 保持非 execution，退役 34 手挑圆整数，接受多种显式声明的等价结果。
 论文:Spider(1809.08887)、BIRD(2305.03111)、Spider 2.0(2411.07763)、Northcutt(2103.14749)、GradeSQL ORM(2606.30851 ✅验)。
-票链:**R1-exec-grader-papers**(认读 Spider/BIRD/Spider2.0/GradeSQL)→ **G1-exec-grader-seam**(grilling 定 seam)→ **T1-exec-grader-impl**(task)→ 派生 168 答案=**GA-EVAL-EXPAND**(已 open)→ 条件 **G12-exec-orm-verifier** + **R12-exec-orm-baseline**(用执行结果训 ORM 替代 judge)。
+票链:[**R1 — 执行级评分与非循环 ground truth 论文认读**](tickets/R1-exec-grader-papers.md)（resolved）→ 并行 [**G1 — Execution grader seam**](tickets/G1-exec-grader-seam.md)+[**G1b — Ground-truth lifecycle**](tickets/G1b-ground-truth-lifecycle.md)→ **T1-exec-grader-impl**（blocked by G1+G1b）→ [**R23 — Comparator-policy mutation baseline**](tickets/R23-comparator-policy-mutation-baseline.md)→ [**GA-EVAL-EXPAND**](../data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md)→ 条件 **G12-exec-orm-verifier**+**R12-exec-orm-baseline**（用执行结果训 ORM 替代 judge）。
 
 ### 2. Judge 重写:blind-solve-then-score(根因)
 做什:两阶段——judge 先独立推导+提交 expected 维度再看候选;候选对已提交 reference 比对而非自评 plausibility;目标 false-pass 35.9pp→<10pp。
@@ -116,8 +118,8 @@
 
 **新票(在 `wayfinder/evaluation/tickets/`,本 effort R/G/T/P 命名空间)**:
 - **R(认读分析论文,AFK,产 research note)**:R1-exec-grader-papers、R2-judge-blind-papers、R3-judge-calibration-papers、R4-significance-papers、R5-contamination-papers、R6-trajectory-papers、R7-step-prm-papers、R8-pairwise-judge-papers、R9-error-taxonomy-papers、R10-harness-goodhart-papers、R11-robustness-sampling-papers。
-- **R(experiment,AFK,数字入 audit-log)**:R12-exec-orm-baseline、R13-judge-blind-baseline、R14-judge-falsepass-by-dim、R15-calibrated-rebaseline、R16-significance-rerun、R17-contamination-audit、R18-trajectory-baseline、R19-step-prm-divergence、R20-radar-redundancy、R21-goodhart-audit、R22-consistency-at-k。
-- **G(grilling,HITL)**:G1-exec-grader-seam、G2-judge-blind-rewrite、G3-judge-calibration、G4-significance-contract、G5-dynamic-case-pipeline、G6-trajectory-scoring、G7-step-prm、G8-pairwise-judge、G9-failure-classifier、G10-harness-bhe-split、G11-irt-sampler、(+G12-exec-orm-verifier 条件)。
+- **R(experiment,AFK,数字入 audit-log)**:R12-exec-orm-baseline、R13-judge-blind-baseline、R14-judge-falsepass-by-dim、R15-calibrated-rebaseline、R16-significance-rerun、R17-contamination-audit、R18-trajectory-baseline、R19-step-prm-divergence、R20-radar-redundancy、R21-goodhart-audit、R22-consistency-at-k、R23-comparator-policy-mutation-baseline。
+- **G(grilling,HITL)**:G1-exec-grader-seam、G1b-ground-truth-lifecycle、G2-judge-blind-rewrite、G3-judge-calibration、G4-significance-contract、G5-dynamic-case-pipeline、G6-trajectory-scoring、G7-step-prm、G8-pairwise-judge、G9-failure-classifier、G10-harness-bhe-split、G11-irt-sampler、(+G12-exec-orm-verifier 条件)。
 - **T(impl,AFK TDD)**:T1-exec-grader-impl、T2-judge-blind-impl、T3-calibration-impl、T4-sample-planner-impl+T4b-significance-impl、T5-dynamic-cases-impl+T5b-evolving-slice-impl、T6-multiturn-cases、T7-pairwise-judge-impl、T8-failure-classifier-impl、T9-bhe-split-impl、T10-active-sampler-impl。
 - **P(prototype,HITL)**:P1-trajectory-prototype。
 
@@ -128,11 +130,11 @@
 **现在 unblocked(AFK 可自跑,先开,为 grilling 做数据/论文前置)**:
 1. **R14-judge-falsepass-by-dim**(既有数据分析,便宜)→ 喂 G3
 2. **R20-radar-redundancy**(quick win,可能直接定位 0.6 通胀根因)→ 喂 G8
-3. **R1-exec-grader-papers**、**R4-significance-papers**、**R8-pairwise-judge-papers**(认读分析,独立,便宜)
+3. **R4-significance-papers**、**R8-pairwise-judge-papers**(认读分析,独立,便宜)
 
-**HITL grilling(你,先开)**:G1-exec-grader-seam(linchpin 设计)→ 解 T1;G4/G2/G6 独立可开。
+**HITL grilling(你,先开)**:[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)与[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md)均已由 R1 解锁，可并行决策并共同解 T1；G4/G2/G6 独立可开。
 
-**AFK 级联**(各 G 解后):G1→T1→{GA-EVAL-EXPAND/R12/R17/G9/G10};G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G10→T9+R21;G11→T10。
+**AFK 级联**(各 G 解后):{G1+G1b}→T1→R23→GA-EVAL-EXPAND→{R12/R17/G9/G10};G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G10→T9+R21;G11→T10。
 
 ## ⚠ 验证 TODO(2026 引用,进 ticket 前必 primary-fetch arxiv.org)
 
