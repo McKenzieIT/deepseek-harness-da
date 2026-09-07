@@ -1,6 +1,6 @@
 # dsh-data-agent PR 工作流
 
-English | [中文](da-pr-workflow.zh.md)
+[English](da-pr-workflow.md) | 中文
 
 ## 分支模型
 
@@ -28,7 +28,7 @@ main ─────────────────────────
 
 ## Session-prompt 分支契约
 
-每个 `wayfinder/*/prompts/*-session-prompt.md` 必须在开头实例化分支契约——session 启动第一步就是建 worktree 和分支,而不是直接在 master 上工作。模板见 [`wayfinder/_templates/session-prompt.md`](../wayfinder/_templates/session-prompt.md);根因与完整方案见 [Per-session branch and worktree isolation for parallel work](../.agents/notes/proposed/process/2026-09-04-parallel-session-branching-policy.md)。
+每个 `wayfinder/*/prompts/*-session-prompt.md` 必须在开头实例化分支契约——session 启动第一步就是建 worktree 和分支,而不是直接在 master 上工作。模板见 [`wayfinder/_templates/session-prompt.md`](../wayfinder/_templates/session-prompt.md);根因与完整方案见 [面向并行工作的 per-session 分支与 worktree 隔离](../.agents/notes/proposed/process/2026-09-04-parallel-session-branching-policy.md)。
 
 要点:
 
@@ -94,7 +94,7 @@ chore: migrate probes to experiments/ directory
 <copy to CHANGELOG.md [Unreleased] section>
 ```
 
-## Self-review Checklist
+## 自查清单
 
 Agent session 完成 PR 前必须自查：
 
@@ -135,7 +135,7 @@ CHANGELOG entry (记录层)
 - 纯 wayfinder docs 变更直推 main，不需要 PR
 - **每个 ticket 头部声明 `Branch: <type>/<ticket-id>-<slug>`**；认领 ticket 前先建对应分支（`git worktree add ../dsh-<ticket-id> -b <type>/<ticket-id>-<slug> master`，见上方“Session-prompt 分支契约”小节）。
 
-## Upstream Sync PR
+## 上游同步 PR
 
 ```markdown
 ## upstream: merge upstream/master (YYYY-MM-DD)

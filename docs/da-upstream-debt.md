@@ -1,5 +1,7 @@
 # da Upstream Debt Registry
 
+English | [中文](da-upstream-debt.zh.md)
+
 > Tracked debt from the `da-plugin-development-guidelines` compliance audit (2026-08-22). > Each item records a place where da currently modifies dsh-owned source, or carries an > in-fork anti-pattern, the reason da needs the capability, the planned resolution, and > the interim workaround that avoids merge conflicts with `upstream` > (`deepseek-ai/deepseek-harness`).
 >
 > Per rules 4.1 / 4.4 / §3.2 of `docs/da-plugin-development-guidelines.md`, da must not > modify dsh-owned package src. The items below are the known exceptions — to be resolved > upstream (or via a §4.2 wrapper seam) rather than reverted in-fork. All dsh-src > modifications here are **additive / backward-compatible** (optional params, new optional > fields, new types/exports) — none is breaking — so existing upstream callers and > providers continue to typecheck.

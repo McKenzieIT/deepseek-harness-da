@@ -1,6 +1,6 @@
 # dsh-data-agent 实验记录规范
 
-English | [中文](da-experiment-recording.zh.md)
+[English](da-experiment-recording.md) | 中文
 
 > 每个决策必须有实验数据支撑。实验可复跑。旧实验是新实验的 baseline。
 
