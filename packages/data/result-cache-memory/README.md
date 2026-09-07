@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-result-cache-memory
 
+English | [中文](README.zh.md)
+
 In-memory, session-scoped implementation of the `ctx.resultCache` storage seam from `@deepseek-ai/dsh-result-cache`. Stores entries in a `Map` keyed by `result_id` and hooks `tools/post-execute` to capture `query_data` completed results automatically, so the model can reference a query's rows by id in subsequent `present_table` / `compute` calls.
 
 ## Overview

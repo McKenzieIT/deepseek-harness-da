@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-preset-autojoin
 
+English | [中文](README.zh.md)
+
 [data-agent] da wrapper (§4.2) that joins the configured default agent preset to every published agent on `agent/created`, closing the headless-doesn't-join-default-preset gap without modifying dsh src.
 
 ## Why

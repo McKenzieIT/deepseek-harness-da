@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-client-ui-suggest-followups
 
+English | [中文](README.zh.md)
+
 Toolview card for the `suggest_followups` INTERPRETATION tool. Renders follow-up question suggestions as a two-line list: the short label on the primary line, the full query `value` visible underneath. Clicking a row submits the value as a new message to the conversation.
 
 ## Style notes

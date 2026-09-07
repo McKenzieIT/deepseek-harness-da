@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-management-session
 
+English | [中文](README.zh.md)
+
 Dedicated management agent session for the full-screen graph management UI — creates a scoped session under the semantic-layer-management preset with read-only parent context reference
 
 ## Model Experience

@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-client-ui-semantic-layer
 
+English | [中文](README.zh.md)
+
 The semantic layer management UI plugin (browser half). Registers:
 
 - `SemanticLayerShell` into `sidebar.footer.action` — trigger that opens or resumes the management agent session

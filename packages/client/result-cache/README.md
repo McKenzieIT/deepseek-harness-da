@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-client-result-cache
 
+English | [中文](README.zh.md)
+
 Browser-side hot cache for INTERPRETATION query/compute results: a session-scoped, byte-bounded LRU over the `result.get` RPC, wired as the `ctx.results` Cordis service. The cache memoizes result rows so folding and expanding a rendered table never re-RPCs the host, while a fresh `query_data` re-run invalidates the stale entry so the next render re-fetches.
 
 Consumers reach the service through the inject face, addressed from a scoped ctx so `get`/`invalidate` resolve the caller's session:

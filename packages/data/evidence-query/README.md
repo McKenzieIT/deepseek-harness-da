@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-evidence-query
 
+English | [中文](README.zh.md)
+
 Unified evidence-query backend layer — coverage, gap analysis, reachability, eval results, and asset health for both sidebar and dashboard consumption.
 
 ## Model Experience

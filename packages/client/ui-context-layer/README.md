@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-client-ui-context-layer
 
+English | [中文](README.zh.md)
+
 Context layer graph — G6 v5 interactive relation graph with semantic zoom and domain filtering
 
 ## Model Experience
