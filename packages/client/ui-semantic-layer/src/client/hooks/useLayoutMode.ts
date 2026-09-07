@@ -8,9 +8,12 @@
  * The `auto` mode resolves to B or A based on eval run count against a threshold.
  * The `computeEffectiveMode` function is pure and independently testable.
  *
- * NIT: the host already resolves `evalRunCount` (via
- * `ctx.evidenceQuery.getEvalStore().getRunIds().length`) and passes it as a
- * prop, so this hook is a pure computation — no async fetch, no state/effect.
+ * NIT: this hook is a pure computation — no async fetch, no state/effect.
+ * `evalRunCount` is resolved upstream: `SemanticLayerShell` derives it live
+ * from `useEvidenceMetrics` (which RPCs `getEvalRunCount`) when an
+ * `evidenceClient` is present, falling back to the `evalRunCount` prop
+ * otherwise. The fetch happens in the host, so this hook stays a pure function
+ * of its props.
  */
 export type LayoutMode = 'B' | 'A' | 'auto'
 

@@ -17,12 +17,8 @@ import type {
   ReachabilityDeltaResult,
   EvalDeltaReport,
 } from './types.ts'
-
-interface RemoteResult<T> {
-  ok: boolean
-  value?: T
-  error?: unknown
-}
+import { unwrapRemoteResult } from './remoteResult.ts'
+import type { RemoteResult } from './remoteResult.ts'
 
 interface EvidenceQueryRemoteNamespace {
   coverageQuery(): Promise<RemoteResult<EnrichedCoverageStats>>
@@ -35,20 +31,6 @@ interface EvidenceQueryRemoteNamespace {
   getRecentPassRates(n?: number): Promise<RemoteResult<number[]>>
 }
 
-function unwrap<T>(result: RemoteResult<T>): T {
-  if (!result.ok) {
-    let detail = 'unknown'
-    if (result.error instanceof Error) detail = result.error.message
-    else if (typeof result.error === 'string') detail = result.error
-    throw new Error(`evidence-query RPC failed: ${detail}`)
-  }
-  // RemoteResult.value is optional: a host { ok: true } with no value would
-  // otherwise surface as undefined typed as T. Treat its absence as a
-  // contract violation rather than returning a phantom value.
-  if (result.value === undefined) throw new Error('evidence-query RPC failed: ok response missing value')
-  return result.value
-}
-
 /**
  * Build an EvidenceQueryClient from the typed remote namespace.
  * Each method delegates to the host via RPC and unwraps the RemoteResult.
@@ -56,28 +38,28 @@ function unwrap<T>(result: RemoteResult<T>): T {
 export function buildEvidenceQueryClient(remote: EvidenceQueryRemoteNamespace): EvidenceQueryClient {
   return {
     async coverageQuery() {
-      return unwrap(await remote.coverageQuery())
+      return unwrapRemoteResult(await remote.coverageQuery(), 'evidence-query')
     },
     async gapAnalysis(assetId: string) {
-      return unwrap(await remote.gapAnalysis(assetId))
+      return unwrapRemoteResult(await remote.gapAnalysis(assetId), 'evidence-query')
     },
     async reachabilityDelta(relation: ProposedRelation) {
-      return unwrap(await remote.reachabilityDelta(relation))
+      return unwrapRemoteResult(await remote.reachabilityDelta(relation), 'evidence-query')
     },
     async evalResultQuery(filters: EvalResultFilters) {
-      return unwrap(await remote.evalResultQuery(filters))
+      return unwrapRemoteResult(await remote.evalResultQuery(filters), 'evidence-query')
     },
     async assetHealth(assetId: string) {
-      return unwrap(await remote.assetHealth(assetId))
+      return unwrapRemoteResult(await remote.assetHealth(assetId), 'evidence-query')
     },
     async beforeAfterDelta(runIdA: string, runIdB: string) {
-      return unwrap(await remote.beforeAfterDelta(runIdA, runIdB))
+      return unwrapRemoteResult(await remote.beforeAfterDelta(runIdA, runIdB), 'evidence-query')
     },
     async getEvalRunCount() {
-      return unwrap(await remote.getEvalRunCount())
+      return unwrapRemoteResult(await remote.getEvalRunCount(), 'evidence-query')
     },
     async getRecentPassRates(n?: number) {
-      return unwrap(await remote.getRecentPassRates(n))
+      return unwrapRemoteResult(await remote.getRecentPassRates(n), 'evidence-query')
     },
   }
 }
