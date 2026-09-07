@@ -365,7 +365,7 @@ export async function enrichAllDwsTables(
   mergeExisting = false,
   excludeColumnsFn?: (def: TableDefinition) => ReadonlySet<string> | undefined,
   preserveCurated = true,
-): Promise<{ enriched: number; written: number; errors: string[] }> {
+): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
   const dimInventory = buildDimInventory(semanticLayer)
   // GA-GT3 item 6: no DIM tables -> no joins are possible for any table; skip
   // the per-table write loop entirely (avoids writing dimension_refs:[] to every
@@ -373,8 +373,12 @@ export async function enrichAllDwsTables(
   // untouched. Under origin-aware replace (item 5) nothing would be destroyed
   // anyway; this is the efficiency + honest-reporting guard.
   if (dimInventory.length === 0) {
-    console.warn(`[enrichAllDwsTables] no DIM tables in ${semanticLayer}; skipping enrichment (curated dimension_refs left untouched)`)
-    return { enriched: 0, written: 0, errors: [] }
+    // GA-GT3-6b: surface an agent-visible `note` (replaces console.warn, which
+    // the agent cannot see) so callers/tooling understand why enriched/written
+    // are 0 without scraping stderr. Curated dimension_refs are already on
+    // disk, untouched. The note is forwarded up through discoverRelations ->
+    // discover_relations tool result so the agent sees it inline.
+    return { enriched: 0, written: 0, errors: [], note: 'no DIM tables in scope, nothing to enrich' }
   }
   const filter = tables !== undefined && tables.length > 0 ? new Set(tables) : undefined
   let enriched = 0
@@ -549,13 +553,15 @@ export async function enrichAllEvents(
   mergeExisting = false,
   excludeColumnsFn?: (def: EventDefinition) => ReadonlySet<string> | undefined,
   preserveCurated = true,
-): Promise<{ enriched: number; written: number; errors: string[] }> {
+): Promise<{ enriched: number; written: number; errors: string[]; note?: string }> {
   const dimInventory = buildDimInventory(semanticLayer)
   // GA-GT3 item 6: no DIM tables -> no joins possible for any event; skip the
   // per-event write loop (parallel to enrichAllDwsTables).
   if (dimInventory.length === 0) {
-    console.warn(`[enrichAllEvents] no DIM tables in ${semanticLayer}; skipping enrichment (curated external_refs left untouched)`)
-    return { enriched: 0, written: 0, errors: [] }
+    // GA-GT3-6b: agent-visible `note` (replaces console.warn; parallel to
+    // enrichAllDwsTables). Forwarded through discoverEventRelations so the
+    // agent sees why enriched/written are 0 inline.
+    return { enriched: 0, written: 0, errors: [], note: 'no DIM tables in scope, nothing to enrich' }
   }
   const filter = events !== undefined && events.length > 0 ? new Set(events) : undefined
   let enriched = 0

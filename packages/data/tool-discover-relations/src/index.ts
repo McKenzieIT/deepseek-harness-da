@@ -90,6 +90,8 @@ export type DiscoverRelationsResult = {
   readonly errors?: string[]
   /** A short reason when `!ok` (not mounted / invalid name / substrate error). */
   readonly message?: string
+  /** Agent-visible note forwarded from the substrate (e.g. empty-DIM-inventory short-circuit). GA-GT3-6b. */
+  readonly note?: string
   /** Before snapshot of relations (for presentationMeta). */
   readonly _before?: RelationSnapshot[]
   /** After snapshot of relations (for presentationMeta). */
@@ -165,7 +167,18 @@ export async function discoverRelationsResult(
   try {
     const res = await schema.discoverRelations(validated.length > 0 ? { tables: validated } : {})
     const after = captureRelationSnapshot(schema, validated.length > 0 ? validated : undefined)
-    return { ok: true, enriched: res.enriched, written: res.written, errors: res.errors, _before: before, _after: after }
+    return {
+      ok: true,
+      enriched: res.enriched,
+      written: res.written,
+      errors: res.errors,
+      // GA-GT3-6b: forward the substrate's agent-visible note (e.g. empty-DIM
+      // short-circuit). Conditional spread keeps `note` absent (not undefined)
+      // under exactOptionalPropertyTypes when the substrate omits it.
+      ...(res.note !== undefined ? { note: res.note } : {}),
+      _before: before,
+      _after: after,
+    }
   } catch (e) {
     return { ok: false, message: `substrate error: ${sanitizeError(e)}` }
   }
@@ -181,7 +194,32 @@ export function formatDiscoverRelations(value: DiscoverRelationsResult): string 
     return value.message ?? 'discover_relations: no result.'
   }
   const lines: string[] = []
+  // GA-GT3-6b: render the agent-visible note (forwarded from the substrate)
+  // before the counts so the agent reads the why-first context inline.
+  if (value.note) {
+    lines.push(`note: ${value.note}`)
+  }
   lines.push(`discover_relations: enriched ${value.enriched ?? 0} DWS table(s) (written ${value.written ?? 0}).`)
+  // GA-GT3-6b: agent-visible add/remove diff via _before/_after snapshots so
+  // the agent sees exactly which dimension_refs changed, not just counts.
+  const before = value._before ?? []
+  const after = value._after ?? []
+  const added = computeAddedRelations(before, after)
+  const removed = computeRemovedRelations(before, after)
+  if (added.length > 0) {
+    lines.push(`added (${added.length}):`)
+    for (const a of added.slice(0, 20)) {
+      lines.push(`  - ${a.table} → ${a.dim_table} ${JSON.stringify(a.join_keys)}`)
+    }
+    if (added.length > 20) lines.push(`  ... +${added.length - 20} more`)
+  }
+  if (removed.length > 0) {
+    lines.push(`removed (${removed.length}):`)
+    for (const r of removed.slice(0, 20)) {
+      lines.push(`  - ${r.table} → ${r.dim_table} ${JSON.stringify(r.join_keys)}`)
+    }
+    if (removed.length > 20) lines.push(`  ... +${removed.length - 20} more`)
+  }
   const errors = value.errors ?? []
   if (errors.length > 0) {
     lines.push(`errors (${errors.length}):`)
@@ -215,6 +253,43 @@ function computeAddedRelations(
   return added
 }
 
+/** A diffed relation removed between before and after snapshots. */
+type RemovedRelation = {
+  table: string
+  dim_table: string
+  join_keys: JoinKey[]
+  derivation: string
+}
+
+/**
+ * Compute removed relations by diffing before and after snapshots (mirror of
+ * {@link computeAddedRelations}): refs present in `before` but absent in
+ * `after`. GA-GT3-6b — gives the agent a visible "what changed" remove list
+ * alongside the add list in {@link formatDiscoverRelations}.
+ */
+function computeRemovedRelations(
+  before: RelationSnapshot[],
+  after: RelationSnapshot[],
+): RemovedRelation[] {
+  const removed: RemovedRelation[] = []
+  const afterMap = new Map<string, Set<string>>()
+  for (const snap of after) {
+    const keys = new Set<string>()
+    for (const ref of snap.refs) keys.add(`${ref.dim_table}::${JSON.stringify(ref.join_keys)}`)
+    afterMap.set(snap.table, keys)
+  }
+  for (const snap of before) {
+    const afterKeys = afterMap.get(snap.table) ?? new Set()
+    for (const ref of snap.refs) {
+      const key = `${ref.dim_table}::${JSON.stringify(ref.join_keys)}`
+      if (!afterKeys.has(key)) {
+        removed.push({ table: snap.table, dim_table: ref.dim_table, join_keys: ref.join_keys, derivation: ref.derivation })
+      }
+    }
+  }
+  return removed
+}
+
 export function apply(ctx: Context, _config: Config = {}): void {
   ctx.tools.register(defineTool({
     name: 'discover_relations',
@@ -242,6 +317,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           written: { type: 'number' },
           errors: { type: 'array', items: { type: 'string' } },
           message: { type: 'string' },
+          note: { type: 'string' },
         },
       },
       render: (_args, value) => [{
@@ -252,6 +328,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         const v = value as DiscoverRelationsResult
         if (!v.ok || !v._before || !v._after) return { ok: false }
         const added = computeAddedRelations(v._before, v._after)
+        const removed = computeRemovedRelations(v._before, v._after)
         return {
           ok: true,
           enriched: v.enriched ?? 0,
@@ -259,6 +336,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
           before: v._before,
           after: v._after,
           added,
+          removed,
         }
       },
     },
