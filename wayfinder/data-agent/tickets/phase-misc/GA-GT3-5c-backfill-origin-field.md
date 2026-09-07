@@ -1,6 +1,6 @@
 # GA-GT3-5c — backfill `origin` 字段到 K11 现存 ref（数据卫生）
 
-**Type**: task  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: task  ·  **Phase**: misc  ·  **Status**: Resolved
 **Parent**: [GA-GT3 item 5/6 Resolution](GA-GT3-enrichment-generalization.md)（origin 字段卫生）
 **Size**: M  ·  **Risk**: Med（分类错→下次 re-discovery 丢数据）
 
@@ -26,3 +26,9 @@ GA-I18N-1 加了 `origin` 字段但选了 lazy migration——`examples/k11-sema
 ## 参考
 
 PR #15（`fix/ga-gt3-mergeexisting-dataloss`，已 close）的 commit `04f4b7fe82` + `scripts/backfill-k11-deterministic-origin.ts` 有现成实现，**可参考但必须审分类逻辑 + TDD**（不盲 cherry-pick）。
+
+---
+
+## Resolution（2026-09-07）
+
+**Resolved via PR #57（merge `11791d339c`）**。新脚本 `scripts/backfill-k11-deterministic-origin.ts` + `scripts/backfill-k11-deterministic-origin.spec.ts`（6 测试）；跑在 `examples/k11-semantic-layer/` → 193 个 YAML 改动。**分类用超集判据**（非票面「至少一组匹配」——后者对部分可复现 ref 误判丢数据）：现存 ref 仅当确定性轮重新导出同 `dim_table` 且其 `join_keys` 是现有 ref 的**超集**（每对都复现）才标 `origin: deterministic`；含非对称 pair（LLM-found）或部分可复现的留 `undefined`（保真）。4344 ref 全扫，**0 误判**（4244 标 deterministic 全对称、100 留 undefined 非可复现）。typecheck exit 0；semantic-layer 238/238。干净重写（参考 PR #15 `04f4b7fe82` 但审分类逻辑 + TDD，未盲挑）。
