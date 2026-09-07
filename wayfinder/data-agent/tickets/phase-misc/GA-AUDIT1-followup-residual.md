@@ -5,7 +5,7 @@
 **Source**: [GA-AUDIT1-followup-findings](./GA-AUDIT1-followup-findings.md) (the resolved ticket's 73 deferred) + the 2026-09-04 `.tmp/adversarial-review/confirmed*.json` reconciliation (50 smell items re-verified).
 **Related**: [GA-GRILL-derived-from-lineage-direction](./GA-GRILL-derived-from-lineage-direction.md) (sl-3), [GA-GRILL-search-asset-id-normalization](./GA-GRILL-search-asset-id-normalization.md) (usl-9)
 
-## Progress to date (9 commits, 28 ④ items — 2026-09-04/09-06/09-07 across 4 sessions)
+## Progress to date (10 commits, 29 ④ items — 2026-09-04/09-06/09-07 across 4 sessions)
 
 | commit | batch | items |
 |---|---|---|
@@ -18,14 +18,17 @@
 | `277e22bb85` fix(client) | ui-semantic-layer | usl-10 (RemoteResult/unwrap dedup → shared `remoteResult.ts` + `unwrapRemoteResult(result, ns)`; evidenceQueryBridge + schemaGatewayBridge import it, error-message prefixes preserved), usl-11 (kindBadgeClass dedup → shared `presenters/kindBadge.ts`; SearchSchemaRow + GetDefinitionRow import it; SchemaExplorer's reinlined copy left — usl-9 WIP-entangled), usl-12 (triggerEval loading → routed through `beginFetch`/`finishFetch`/`failFetch` so `state.loading`/`pendingCount` reflects an in-flight on-demand trigger), usl-13 (useLayoutMode stale NIT docstring → host SemanticLayerShell derives evalRunCount live via useEvidenceMetrics RPC, fallback to prop) |
 | `be24f0e3d4` fix(llm-dashscope) | llm-dashscope | ld-4 (reasoning_content inline → reuse shared `partsToText` helper extracted from `textDeltaOf`; both content + reasoning_content sites call it; `textDeltaOf` removed, `WireDelta` import pruned, `WireContentPart` added, `as Array<{text?:string}>` cast eliminated, oxlint-disable directive consolidated 2→1) |
 | `a4afab5a06` fix(data) | data-tools-discovery | dtd-7 (discover_alt_labels presentResult regex → structured: add `output.presentationMeta` mirroring discover-relations sibling `{ ok, enriched, written }`; presentResult reads `result.meta.enriched` instead of `text.match(/enriched (\d+)/)`; behavior identical — regex extracted value.enriched from rendered text generated FROM value.enriched) |
+| `64194baf34` fix(scripts) | core-runtime-scripts | crs-3 (seed-event-external-refs --with-llm flag documented but never parsed — silent no-op; removed the --with-llm docs so the contract matches the deterministic-only behavior) |
 
-= 28 items (27 prior + 1 this batch; 23 real fixes + 5 doc fixes). Every batch: TDD RED→GREEN (each fix RED-watched-fail → minimal GREEN → persistence-checked via `git diff <file> | grep <marker>`); per-file `pnpm exec oxlint` 0 (89-rule); full-tree `pnpm run typecheck` exit 0 throughout; subagent code-review + test review (ucl-9 Test 2 strengthened to assert a non-empty LOD update — closed a no-op false-green). New tests this batch: +8 (narration-gate.client.spec 3 / NodeDetailPanel.spec 1 / graph-animations.client.spec 2 / ContextLayerGraph.spec 2).
+= 29 items (28 prior + 1 this batch; 23 real fixes + 6 doc fixes). Every batch: TDD RED→GREEN (each fix RED-watched-fail → minimal GREEN → persistence-checked via `git diff <file> | grep <marker>`); per-file `pnpm exec oxlint` 0 (89-rule); full-tree `pnpm run typecheck` exit 0 throughout; subagent code-review + test review (ucl-9 Test 2 strengthened to assert a non-empty LOD update — closed a no-op false-green). New tests this batch: +8 (narration-gate.client.spec 3 / NodeDetailPanel.spec 1 / graph-animations.client.spec 2 / ContextLayerGraph.spec 2).
 
 usl batch (PR #45, `277e22bb85` merged `5c37eb6f23`): +14 tests (remoteResult.client.spec 6 / kindBadge.client.spec 5 / useEvidenceQuery.client.spec 3); subagent code-review APPROVED (4/4 CORRECT, no blockers); test-review mutation RED (usl-12 revert triggerEval→2 RED, usl-11 mutate kindBadge→2 RED, usl-10 mutate remoteResult→5 RED across 3 specs); CI master-debt only (static = 4 content-creation gates, snapshots = publint/built-package-invariants — all pre-existing, PR #43 identical; node 22.19/26 vitest green). usl-9 DEFERRED (SchemaExplorer.tsx GA-WIRING-impl WIP).
 
 ld-4 batch (PR #51, `be24f0e3d4` merged `cf813c18c`): +1 test (translate.spec reasoning-content array join — pins the previously-untested reasoning-array branch); subagent code-review APPROVED (CORRECT — byte-identical logic, both sites use partsToText, textDeltaOf fully removed, WireDelta removal safe); test-review mutation RED (partsToText text→image → 2 array tests RED); CI master-debt only (node 22.19/26 vitest green; static/snapshots/issue = pre-existing master-debt, PR #43/#45 identical).
 
 dtd-7 batch (PR #61, `a4afab5a06` merged `8173c1ac21`): +3 tests (presentResult title pin x2 [enriched>0, enriched=0] + presentationMeta RED→GREEN); subagent code-review APPROVED (CORRECT — mirrors discover-relations sibling, byte-identical title, regex fully removed, all 5 input shapes behavior-identical; one accepted shared edge tradeoff for nested calls, mirrors sibling); test-review mutation RED (presentResult title→constant → 2 pin tests RED); CI master-debt only (node 22.19/26 vitest green; static = 4 content-creation + cordis-catalog [concurrent-PR debt, confirmed red on baseline via stash] + snapshots = publint/built-package-invariants — all pre-existing).
+
+crs-3 batch (PR #70, `64194baf34` merged `0c439ef2c5`): doc fix (removed stale --with-llm docs from seed-event-external-refs.ts — flag documented but never parsed, silent no-op; contract now matches deterministic-only behavior); oxlint 0/0; no test (doc fix per residual.md Notes); CI master-debt only; network blip (github.com unreachable ~30min, cron auto-retried push + completed merge when recovered).
 
 ## Deferred → ② this session (7 — need grilling / mock-sidecar / cross-package)
 
@@ -43,9 +46,9 @@ dtd-7 batch (PR #61, `a4afab5a06` merged `8173c1ac21`): +3 tests (presentResult 
 | eval-cli-exp | ece-13 (resolveRunFile unsorted), ece-14 (expandQuery bare catch), ece-15 (LEVEL_CONFIGS ?? {}) | 3. **RE-VERIFY** — eval-cli had uncommitted GA-EVAL-MANIFEST-impl WIP (bin/eval.ts→src/bin.ts, +src/index.ts/invariant.ts); compare.ts/context.ts/harness.ts may have moved. |
 | llm-dashscope | ~~ld-4 (reasoning_content inline → reuse textDeltaOf)~~ **RESOLVED via PR #51** (`be24f0e3d4`, merged `cf813c18c`): extracted shared `partsToText` helper; both content + reasoning_content sites call it. |
 | data-tools-discovery | ~~dtd-7 (alt-labels presentationMeta regex → structured)~~ **RESOLVED via PR #61** (`a4afab5a06`, merged `8173c1ac21`): added `output.presentationMeta` (mirrors discover-relations sibling); presentResult reads `result.meta.enriched` (structured) instead of regex. |
-| core-runtime-scripts | crs-3 (seed-event-external-refs --with-llm unread) | 1, local. |
+| core-runtime-scripts | ~~crs-3 (seed-event-external-refs --with-llm unread)~~ **RESOLVED via PR #70** (`64194baf34`, merged `0c439ef2c5`): removed the stale --with-llm docs (flag was never parsed — silent no-op); contract now matches deterministic-only behavior. |
 
-(ui-context-layer 4 done — `c26eada21b`; data-infra 4 done — PR #32 `5249e90d0c`; ui-semantic-layer 4 done — PR #45 `277e22bb85`; llm-dashscope ld-4 done — PR #51 `be24f0e3d4`; data-tools-discovery dtd-7 done — PR #61 `a4afab5a06`. Next low-risk picks: ③ eval-core 5, ui-present-misc 3, eval-cli-exp 3, or single-file crs-3.) |
+(ui-context-layer 4 done — `c26eada21b`; data-infra 4 done — PR #32 `5249e90d0c`; ui-semantic-layer 4 done — PR #45 `277e22bb85`; llm-dashscope ld-4 done — PR #51 `be24f0e3d4`; data-tools-discovery dtd-7 done — PR #61 `a4afab5a06`; core-runtime-scripts crs-3 done — PR #70 `64194baf34`. Next low-risk picks: ③ eval-core 5, ui-present-misc 3, eval-cli-exp 3.) |
 
 ## ② refactor (11 — larger/cross-package, each its own scope)
 
