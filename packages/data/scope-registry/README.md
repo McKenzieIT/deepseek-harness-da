@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-scope-registry`
 
+English | [中文](README.zh.md)
+
 Per-scope namespace registry (`ctx.scopes`): a runtime-mutable store of scope definitions for the data agent. Each scope maps an id to a filesystem `semanticRoot` path plus optional metadata (active provider, project name, engine type, etc.). The registry is persisted to a YAML file on disk; the Cordis static config tells the service WHERE the file lives (`registryPath`), while the file itself is the runtime-mutable state that CLI / API / Web UI can read and write.
 
 This is the scope seam the [`@deepseek-ai/dsh-semantic-layer`](../semantic-layer) service consumes: the active scope id selects which `semanticRoot` the semantic layer scans for `config.yaml`/`events/`/`tables/`, so a scope switch re-grounds the corpus the model reasons over.

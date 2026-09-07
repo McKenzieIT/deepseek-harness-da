@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-compute
 
+English | [中文](README.zh.md)
+
 Model-facing `compute` tool for the data-agent INTERPRETATION phase. Executes LLM-generated Python/pandas code against cached query results via `ctx.codeRuntime`, stores derived results via `ctx.resultCache` with `cr_` prefix, and returns a `result_id` for downstream `present_table` rendering.
 
 ## Services

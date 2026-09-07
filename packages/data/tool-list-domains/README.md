@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-list-domains
 
+English | [中文](README.zh.md)
+
 Model-facing list_domains tool: enumerate semantic layer domains with asset counts per kind
 
 ## Model Experience
