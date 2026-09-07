@@ -32,14 +32,6 @@ Host 连线真实协作者并注入：
 - **Execution** — `executeSql = async (sql) => mapQueryOutcome(await ctx.query.execute({ sql, scopeId }))`（host 可 `attach`+poll 以先解析 `pending`；`mapQueryOutcome` 对未解析的 pending 健壮 → `patience` refuse）。
 - **Judge** — `provider = async (prompt) => { const { stream } = await ctx.llm.stream({ provider: 'dashscope', model, messages: [judgeSystemPrompt, …] }); …parse JSON → { score, rationale } }`（host 拥有 judge prompt + JSON parsing + `llm-dashscope` route；`judgeWithProvider` 添加 retry/backoff + `classifyError` + `AuthenticationAbort`）。
 
-## Model Experience
-
-无 — 这是测试 harness 库；它既不组装也不发送 provider 请求。模型在 spawned runtime（agent）或 eval 侧 judge LLM 中运行，两者都由 host 连线拥有。
-
-#### KV Cache effect
-
-无直接影响；agent 运行时和注入的 judge LLM 拥有所有模型可见请求。
-
 ## Batch Runner + Persistence (W3 — P11c)
 
 证据引擎(随 W3 发布)在核心之上添加批量执行、持久化与 delta 分析:
@@ -83,6 +75,14 @@ console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regr
 ```
 
 ## Host wiring (the seams this library does not own)
+
+## Model Experience
+
+无 — 这是测试 harness 库；它既不组装也不发送 provider 请求。模型在 spawned runtime（agent）或 eval 侧 judge LLM 中运行，两者都由 host 连线拥有。
+
+#### KV Cache effect
+
+无直接影响；agent 运行时和注入的 judge LLM 拥有所有模型可见请求。
 
 ## Known Limitations and Deferred Work
 
