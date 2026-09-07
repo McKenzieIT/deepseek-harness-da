@@ -17,7 +17,7 @@ The model calls `present_table` with:
 
 The tool returns `{ presented: true, result_id, title, ... }` and renders a compact summary for the model's tool-result context.
 
-## Known Limitations
+## Known Limitations and Deferred Work
 
 - Pure intent recording only — the UI layer owns actual rendering; this tool only declares the intent.
 - `result_id` is not validated against any result store (the UI resolves it at display time).

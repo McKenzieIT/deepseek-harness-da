@@ -44,3 +44,9 @@ pnpm dsh --profile headless --patch packages/bundle/data-agent/cordis.patch.yml 
 - §4.5: da-owned location `packages/data/preset-autojoin/`.
 
 > Note: the `agent/created` dispatch is synchronous and treats a listener's > returned promise as fire-and-forget (rejection reported, not awaited). For a > one-shot headless run whose only `followup` lands before the async > `presets.mount` settles, the join may arrive too late for the first prompt — > see the experiment report; the upstream fix (headless `setup` joins the > default) is the fallback.
+
+## Known Limitations and Deferred Work
+
+- Async `presets.mount` may settle after the first prompt in one-shot headless runs (a race), so the first turn can run without the preset applied.
+- Mount failure propagates and the agent runs bare rather than blocking.
+- Calling `resolve` on an undefined preset throws and is currently caught as a silent skip.
