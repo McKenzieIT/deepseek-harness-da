@@ -307,7 +307,7 @@ export interface BatchRunOptions {
 /**
  * Classification of a failure for retry purposes.
  */
-export type InfraFailureKind = 'connectivity' | 'timeout' | 'rate_limit' | 'transient' | 'permanent'
+export type InfraFailureKind = 'connectivity' | 'timeout' | 'rate_limit' | 'transient'
 
 /**
  * Record of an infra retry attempt.

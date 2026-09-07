@@ -397,7 +397,7 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
   const total = verdicts.length
   let correct = 0
   let wrong = 0
-  let declined = 0
+  const declined = 0
   let unjudged = 0
   let infraFailure = 0
 
@@ -405,7 +405,7 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
     switch (v.verdict) {
       case 'correct': correct++; break
       case 'wrong': wrong++; break
-      case 'declined': declined++; break
+      case 'declined': break
       case 'unjudged': unjudged++; break
       case 'infra_failure': infraFailure++; break
     }
