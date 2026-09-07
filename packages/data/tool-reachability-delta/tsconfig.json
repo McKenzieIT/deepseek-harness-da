@@ -22,6 +22,9 @@
     },
     {
       "path": "../../data/evidence-query"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }
