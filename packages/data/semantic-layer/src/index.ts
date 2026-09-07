@@ -238,9 +238,42 @@ export interface SemanticLayerConfig {
   readonly autoEnrich?: boolean
 }
 
+/** Resolved config: all cfg defaults applied ONCE in the constructor into a
+ * typed object with REQUIRED fields (Cordis CONVENTIONS.md "no hardcoded
+ * tunables" + "defaulting is an explicit `resolve(request): Spec` step, never
+ * a hidden `?? default` inside run()"). Use sites read resolved fields — no
+ * inline `?? default` tunables scattered across the implementation. Mirrors
+ * the shell request→spec seam (docs/subsystems/shell.md) and the local
+ * `resolveEnrichmentLlmConfig` pattern in llm-wiring-plugin.ts. */
+export interface ResolvedSemanticLayerConfig {
+  /** Semantic-layer scope root (the dir with config.yaml/events/tables); '' when unset. */
+  readonly semanticRoot: string
+  /** Default scope id for Tier-2 audit + schema discovery; '' when unset. */
+  readonly scopeId: string
+  /** D2h enrichment variant — 'params+term' (default, D2e-shipped) or 'term-only'. */
+  readonly corpusVariant: CorpusVariant
+  /** G3 auto-run DWS→DIM relation discovery after a Service write. Default true. */
+  readonly autoEnrich: boolean
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     schema: SemanticLayerService
+  }
+}
+
+/** CONVENTIONS.md "explicit resolve step": apply cfg defaults ONCE into a
+ * typed resolved-config object (required fields), so run()-path use sites
+ * carry no inline `?? default` tunables. This is the single defaulting point;
+ * every other read uses `this.resolved.<field>` directly. Mirrors the
+ * `resolveEnrichmentLlmConfig` pattern in llm-wiring-plugin.ts and the shell
+ * request→spec seam (docs/subsystems/shell.md). */
+function resolveSemanticLayerConfig(config: SemanticLayerConfig): ResolvedSemanticLayerConfig {
+  return {
+    semanticRoot: config.semanticRoot ?? '',
+    scopeId: config.scopeId ?? '',
+    corpusVariant: config.corpusVariant ?? 'params+term',
+    autoEnrich: config.autoEnrich ?? true,
   }
 }
 
@@ -258,7 +291,7 @@ export class SemanticLayerService extends Service {
     autoEnrich: z.boolean().default(true),
   })
 
-  private readonly cfg: SemanticLayerConfig
+  private readonly resolved: ResolvedSemanticLayerConfig
   private provider: SchemaProvider | undefined
   /** G3: injected one-shot LLM call for the semantic relation round (undefined => deterministic round only). */
   private llmCall: LlmCall | undefined
@@ -283,7 +316,7 @@ export class SemanticLayerService extends Service {
 
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
-    this.cfg = config
+    this.resolved = resolveSemanticLayerConfig(config)
     for (const p of [eventKindPlugin, tableKindPlugin, conceptKindPlugin]) this.registry.register(p)
   }
 
@@ -702,7 +735,7 @@ export class SemanticLayerService extends Service {
    * @param names - the table_names just written via syncWrite/updateTableMeta.
    */
   private async enrichOnWrite(names: readonly string[]): Promise<void> {
-    if (!(this.cfg.autoEnrich ?? true) || names.length === 0) return
+    if (!this.resolved.autoEnrich || names.length === 0) return
     try {
       // mergeExisting=true: the auto on-write hook MERGES discovered refs with
       // any existing dimension_refs (curated joins preserved) rather than
@@ -734,7 +767,7 @@ export class SemanticLayerService extends Service {
   get semanticRoot(): string {
     const active = this.scopes()?.active()
     if (active !== undefined) return active.semanticRoot
-    return this.cfg.semanticRoot ?? ''
+    return this.resolved.semanticRoot
   }
 
   /** The default scope id for Tier-2 audit + schema discovery, or empty string
@@ -743,12 +776,12 @@ export class SemanticLayerService extends Service {
   get scopeId(): string {
     const id = this.scopes()?.activeId()
     if (id !== undefined) return id
-    return this.cfg.scopeId ?? ''
+    return this.resolved.scopeId
   }
 
   /** D2h: the enrichment variant (mount-time config); 'params+term' (D2e-shipped) by default. */
   get corpusVariant(): CorpusVariant {
-    return this.cfg.corpusVariant ?? 'params+term'
+    return this.resolved.corpusVariant
   }
 
   // ── substrate definitions (P13b swap target: params_fields / partitions) ──
@@ -1009,7 +1042,7 @@ export class SemanticLayerService extends Service {
       ...opts.dimTableNames !== undefined ? { dimTableNames: opts.dimTableNames } : {},
       ...opts.existingTables !== undefined ? { existingTables: opts.existingTables } : {},
     })
-    if ((this.cfg.autoEnrich ?? true)) {
+    if (this.resolved.autoEnrich) {
       const written = tableMetas.filter(m => m.table_name).map(m => m.table_name)
       await this.enrichOnWrite(written)
     }
@@ -1035,7 +1068,7 @@ export class SemanticLayerService extends Service {
       recorder: this.recorder(),
       scope_id: opts.scopeId ?? this.scopeId,
     })
-    if (res.ok && (this.cfg.autoEnrich ?? true)) {
+    if (res.ok && this.resolved.autoEnrich) {
       await this.enrichOnWrite([name])
     }
     return res
