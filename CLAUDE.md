@@ -1,5 +1,19 @@
 # CLAUDE.md
 
+## Agent skills
+
+### Issue tracker
+
+Data Agent 工作项记录在本 Fork 的 GitHub Issues 中，不在 upstream 仓库创建 Fork 内部工作项。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+分诊使用默认五态标签。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+领域文档采用仅覆盖 Fork Data Agent 内容的多上下文布局；upstream DSH 不纳入该领域地图。详见 `docs/agents/domain.md`。
+
 ## Eval 实验记录规范
 
 **每次 eval run 必须记录**。LLM 输出不可重现，未记录的实验结果等于不存在。
