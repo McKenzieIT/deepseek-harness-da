@@ -19,3 +19,7 @@
 ## Scope
 
 列全 in-scope README 缺双语对侧的清单，加对侧 OR 排除，re-record pairing，验 `verify-translation-pairing` gate 过。**需翻译输入（ZH）——非 agent-doable**。
+
+## Findings（2026-09-07 T2 session 验证）
+
+- `verify-translation-pairing` gate 实际报 **~56 个 in-scope 文件**缺双语对侧（非票面 ~20+）：含 `packages/*/README.md`、`.agents/notes/**`（implemented + proposed）、`docs/*`（da-architecture 等）、`wayfinder/*` README。仍是 HITL（真实 ZH 翻译，非 mechanical——这些是 prose 文档）。

@@ -2,7 +2,7 @@
 
 **Type**: task（或 research——需先定 root cause）
 **Phase**: post-discovery
-**Status**: open
+**Status**: closed (resolved 2026-09-07 — (a) checkout + (b) issue-policy/lifecycle both resolved; verified during T2 frontier-verification)
 **Assignee**: unclaimed
 **Related**: 2026-09-06 PR #7 的 CI 发现（fast-fail at checkout + Issue lifecycle/policy）
 
@@ -21,6 +21,15 @@ PR #7 的 CI 多 job fast-fail（6-8s，未到 build/test）：
 ## Scope
 
 定 root cause（checkout (a) agent-doable；Issue policy (b) 可能需用户 GH settings），修，验 CI 绿。出 build/theme infra 范围（CI infra，separate）。
+
+## Resolution（2026-09-07 — both parts resolved; closed）
+
+**Verified 2026-09-07**（T2 session frontier-verification 顺带确认，非本 session 驱动 T6）:
+
+- **(a) checkout git exit 1 — RESOLVED**: CI workflows 现用 `actions/checkout@v6` + `fetch-depth: 0` + `persist-credentials: false`（`ci.yml:68-70` 等），**无 `git submodule foreach`**（原 ticket 的 submodule 假设已不存在）。最新 completed CI run（PR #64, run `34082364433`）所有 job 的 `Run actions/checkout@v6` 步骤全 ✓（python 3.10 / node 22.19 / node 26 / node 24 coverage / windows node 24 / node 24 snapshots）。run 整体 X 是因后续 step（exhaustive coverage / native Windows gate / snapshot gates）失败，**非 checkout**。→ checkout 不再 fast-fail。
+- **(b) Issue lifecycle / Issue policy — RESOLVED via PR #52**（`bf4e0dd577` "skip issue-policy + issue-lifecycle on non-upstream owners (GA-FORK-CI)"）: `issue-policy.yml:18` + `issue-lifecycle.yml:39` 都在 non-upstream owner 上 skip（注释 "the fork has no DSH issue GitHub App"）。fork（McKenzieIT）是 non-upstream owner → 这俩 job 在 fork 上 neutral-skipped，不再红。**非**改 GH settings（handoff 的「需用户 GH settings」判断 stale）——fork 直接 skip 这俩 job。
+
+→ T6 closed。
 
 ## 更正（2026-09-07，PR #44 CI 验证）
 
