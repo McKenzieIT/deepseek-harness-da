@@ -58,7 +58,7 @@ function renderMetricSection(metricContext: string | undefined): string {
  * @returns a bounded single-line sanitized message.
  */
 function sanitizeFeedbackError(error: string): string {
-  const clean = (error ?? '')
+  const clean = error
     .replace(/[\x00-\x1f\x7f]/g, ' ')
     .replace(/\/?[\w.\-]+\/[\w.\-]+(?:\/[\w.\-]+)*/g, '<path>')
     .replace(/\s+/g, ' ')

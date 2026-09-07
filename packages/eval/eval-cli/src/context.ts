@@ -387,7 +387,7 @@ function renderEventSchemaContext(eventCtx: EventContext): string {
   if (typeof def.name === 'string') lines.push(`- 事件名: ${def.name}`)
   if (typeof def.event_filter === 'string' && def.event_filter !== '') lines.push(`- 事件过滤: ${def.event_filter}`)
   if (typeof def.params_fields === 'object' && def.params_fields !== null) {
-    const names = Object.keys(def.params_fields as Record<string, unknown>)
+    const names = Object.keys(def.params_fields)
     if (names.length > 0) lines.push(`- params 可用字段: ${names.join(', ')}`)
   }
   return lines.join('\n')

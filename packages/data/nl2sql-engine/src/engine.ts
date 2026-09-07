@@ -477,7 +477,7 @@ export class Nl2sqlEngine {
       prompt,
     })
 
-    const answer = (gen.sql ?? '').trim().toLowerCase()
+    const answer = gen.sql.trim().toLowerCase()
     if (answer.includes('beyond_single_query')) {
       return '该请求要求的产物（报告/预测/策略建议）超出单条数据查询的能力范围'
     }

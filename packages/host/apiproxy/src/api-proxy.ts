@@ -3361,6 +3361,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     },
 
     results: {
+      // eslint-disable-next-line typescript/require-await -- async preserves the Promise return contract; the body is synchronous.
       async get(request) {
         const cache = ctx.get('resultCache')
         if (cache === undefined) return err(request, resultsAbsent())
