@@ -60,7 +60,7 @@
 
 ## Resolution (2026-09-07)
 
-产物：[`../research/R1-exec-grader-papers.md`](../research/R1-exec-grader-papers.md)。
+产物：[`../research/exec-grader-papers.md`](../research/exec-grader-papers.md)。
 
 **六条对 G1 有直接后果的结论：**
 

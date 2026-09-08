@@ -16,7 +16,7 @@
 ## 方向与票链(见 `../map.md` §Frontier directions)
 | # | 方向 | 认读 R | grilling G | impl T/P | experiment R |
 |---|---|---|---|---|---|
-| 1 | 执行级评分+非循环 GT | R1 | G1/G1b | T1 | R23/R12 |
+| 1 | 执行级评分+非循环 GT | R1、**R24** | G1/G1b | T1、**T11**、**T12** | R23/R12 |
 | 2 | Judge blind-rewrite | R2 | G2 | T2 | R13 |
 | 3 | Judge 校准+gated | R3 | G3 | T3 | R14/R15 |
 | 4 | Power-aware+显著性 | R4 | G4 | T4/T4b | R16 |
@@ -27,5 +27,7 @@
 | 9 | Error taxonomy | R9 | G9 | T8 | — |
 | 10 | Harness B/H/E+Goodhart | R10 | G10 | T9 | R21 |
 | 11 | Robustness+active sampling | R11 | G11 | T10 | R22 |
+
+**已建票文件**（其余仅在 map 点名,问题尚未 sharp,不预先切割 fog）:[R1](R1-exec-grader-papers.md)（resolved v3）、[R10](R10-harness-goodhart-papers.md)、[R23](R23-comparator-policy-mutation-baseline.md)、[R24](R24-eval-package-consolidation.md)（resolved）、[G1](G1-exec-grader-seam.md)（resolved）、[G1b](G1b-ground-truth-lifecycle.md)、[G10](G10-harness-bhe-split.md)、[T1](T1-exec-grader-impl.md)、[T11](T11-loader-provenance-strip.md)、[T12](T12-eval-package-consolidation.md)。
 
 (问题已 sharp 时可在 charting 阶段创建票文件;claim 只改变占用状态。本 README 是 index,map.md 是权威状态。)
