@@ -4,7 +4,7 @@
 **Branch**: `research/R1-exec-grader-papers`（worktree `../dsh-R1`，base `master` @ `47ef19a26f`）
 **Blocked by**: 无
 **Blocks**: [G1-exec-grader-seam](G1-exec-grader-seam.md)（grilling 需论文分析在手）→ T1-exec-grader-impl
-**产物**: [`../research/R1-exec-grader-papers.md`](../research/R1-exec-grader-papers.md)
+**产物**: [`../research/exec-grader-papers.md`](../research/exec-grader-papers.md)
 
 ---
 
@@ -40,7 +40,7 @@
 
 ## Resolution (2026-09-07)
 
-产物：[`../research/R1-exec-grader-papers.md`](../research/R1-exec-grader-papers.md)。
+产物：[`../research/exec-grader-papers.md`](../research/exec-grader-papers.md)。
 
 **六条对 G1 有直接后果的结论：**
 
