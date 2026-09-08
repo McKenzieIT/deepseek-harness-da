@@ -20,9 +20,9 @@
 
 **采信 v2 的独有发现**：A 栈失败分类（infrastructure/timeout/patience）与环境性失败不计分；`match_modes.ts` 内部三种相等语义冲突；**拼错 `match_mode` 会被记成模型答错**；`row_count_range` 靠 `rows.length` 判定故存 5 行无法重算。
 
-**本轮自我修正两处**：单测确实约束 CLI 分数（私有包装器转调库实现）；judge-only 与真执行模式在 run 级可由 `RunConfig.with_query` 恢复（判读 61.9% 与 12.8% 两条基线的前置条件）。
+**本轮自我修正三处**：单测确实约束 CLI 分数（私有包装器转调库实现）；“run 级可由 `RunConfig.with_query` 恢复”只对 4 个批量 run 成立——其余 35 个（含全部 168-case run）连 `config` 都没有，**从未有完整 168-case run 真连过数仓**；同条件对比为 judge-only 61.5% vs real-exec 5.1%（**56.4pp**）。
 
-**v1 处置**：论文层留用（两条头条经 PDF 原文证实）；仓内层退役（分析集中在零使用的 `set_equal`/`ordered_subset`）；其“建议 comparator 默认档”不作为 G1 起点。
+**v1 处置**：论文层留用（两条头条经 PDF 原文证实）；仓内层的 comparator 分析退役（集中在零使用的 `set_equal`/`ordered_subset`），其“建议 comparator 默认档”不作为 G1 起点；**但 v1 的 G1 决议反过来修正了 v3**（provider 的 `truncated`/`durationMs` 是硬编码常量，不可当证据；双栈的成因考古）——详见 G1 决议里与 v1 的对账。
 
 **对 map 的修正项**：方向 1 论文行需把 test-suite 从 Spider 1.0 拆出并补 2010.02840；`2606.30851` 改用真标题；待核清单中本方向 6 篇可移入已验证。
 

@@ -5,7 +5,7 @@
 **Status**: open（题面需在 G10 解后重定）
 **Blocked by**: T1-exec-grader-impl（先完成 [G1](G1-exec-grader-seam.md) D2 的去分叉）+ G10-harness-bhe-split（它会重新切同一批包）
 **Blocks**: 无
-**证据**: [R24 — eval 包级合并可行性](../research/eval-package-consolidation.md)
+**证据**: [R24 — eval 包级合并可行性](../research/eval-package-consolidation.md)；两篇先行 Agent Note：[delete-unused-eval-core-runtime-stack](../../../.agents/notes/proposed/simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md)（core 死编排该删）、[promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)（两份 adapter fork 该退役）——二者描述的删除已归 [G1](G1-exec-grader-seam.md) D2 的 T1 验收项，本票只管**包边界**。
 
 ---
 
