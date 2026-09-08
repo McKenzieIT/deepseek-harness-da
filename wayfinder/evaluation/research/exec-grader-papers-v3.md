@@ -116,7 +116,7 @@ sql survived?         : false
 | `packages/eval/eval/src/match_modes.ts:51` | `(expected, actualRows, matchMode) → AssertionResult{status,detail}` | 文档称 rbi 5 模式 1:1 镜像 | `packages/eval/eval/src/scoring.ts:70`；单测 `packages/eval/eval/tests/match_modes.spec.ts` |
 | `packages/eval/eval-runner/src/runner.ts:358`（**私有**） | `(actualRows, expected, matchMode?) → boolean` | 数组行改写为 `col0..colN` 后转调前者，**把 `{status,detail}` 压成 boolean**；且 **`if (!matchMode) return actualRows.length > 0`**（L359） | CLI 真实判分路径（`executeAttempt`，runner.ts:260） |
 
-两条后果：其一，`match_modes.ts` 上的单测与覆盖率**约束不到** CLI 产出的分数；其二，比较失败的 `detail`（为什么不匹配）在进入落盘前就被丢弃。另外 `if (!matchMode) return actualRows.length > 0` 意味着**缺 match_mode 时“有行即通过”**——`k11-v2` 有 25 个 case 的 `match_mode` 为 null，它们不走这一支（被 L249 的 `result_value !== null && match_mode !== null` 挡住），但该分支对任何未来的“只给 expected 不给 mode”的 case 是静默放行。
+私有包装器在 `runner.ts:12` 以 `checkResultMatch as coreCheckResultMatch` 转调库实现，故**被测的核心语义确实生效**；未被 `match_modes.spec.ts` 覆盖的是包装器自身的三个行为：`!matchMode` 时的“有行即通过”、数组行改写 `col0..colN`、以及把 `{status,detail}` 压成 boolean 从而**丢弃比较失败的原因**。（本文首版把这条写成“单测约束不到 CLI 分数”，过强，已按 §7 对账修正。）另外 `if (!matchMode) return actualRows.length > 0` 意味着**缺 match_mode 时“有行即通过”**——`k11-v2` 有 25 个 case 的 `match_mode` 为 null，它们不走这一支（被 L249 的 `result_value !== null && match_mode !== null` 挡住），但该分支对任何未来的“只给 expected 不给 mode”的 case 是静默放行。
 
 ### 4.4 仓库返回“仍在执行”被记成模型答错
 
@@ -137,7 +137,7 @@ sql survived?         : false
 - 无 executor 无 sqlJudge：`executionMatch = false`（L297，注释明写这是为免虚高 `pass_rate`）；
 - case 无 `result_value`/`match_mode`（25 个 DELIVERY case）：`executionMatch` 保持初值 `true`（L248）——一个**从未执行过**的 `true`。
 
-落盘只有一个 `execution_match: boolean`，四种来路事后不可分辨。
+落盘只有一个 `execution_match: boolean`，attempt 级四种来路不可分辨。**run 级可恢复**：executor 按 run 挂载而非按 case，故 `RunConfig.with_query`（`packages/eval/eval-runner/src/types.ts:123`）足以区分“judge-only 模式”与“真执行模式”——判读任何历史数字前必须先读该字段，否则 judge-only 与 real-exec 两条基线会被误当作同一指标的两次测量。（本文首版称四种来路“事后不可分辨”，未区分 attempt 级与 run 级，已按 §7 对账修正。）
 
 ### 4.6 evidence 不足以重放一次评分
 
@@ -163,4 +163,65 @@ sql survived?         : false
 
 ## 7. 三方对账（v1 / v2 / v3）
 
-本节在本文 §1-§6 定稿提交后追加。
+对账在 v3 的 §1-§6 提交（`8a97b3812b`）之后进行。v1 = `exec-grader-papers.md`（master），v2 = `exec-grader-papers-v2.md`（`grilling/G1-exec-grader-seam-redo`）。凡本轮能亲自复核的 v2 断言，均以命令复核后再采信，不因“v2 说过”而入账。
+
+### 7.1 三方独立收敛（最高可信度，G1 可直接依赖）
+
+v2 与 v3 各自机械重导、互不参照，数字逐位相同：
+
+| 事实 | v1 | v2 | v3 |
+|---|---|---|---|
+| 168 case / 143 EXECUTION / 25 DELIVERY / 交集 0 | ✅ | ✅ | ✅ |
+| `row_count_range` 86、`scalar_exact` 57、其余三模式 0 使用 | ❌ 未报告 | ✅ | ✅ |
+| `k11-v2` 带 reference SQL = 0 | ✅ | ✅ | ✅ |
+| loader 静默 strip `expected.sql`（zod 4.4.3） | ✅ 提出 | ✅ 复现 schema 证明 | ✅ 真实 `loadCase()` 端到端证明 |
+| 生产判分路径是 `eval-runner`，`mapQueryOutcome` / `patience` 不在其上 | ⚠ 低估为“一个函数未被调用” | ✅ 证明整条 A 栈无非测试调用点 | ✅ 由 README 与调用点确认 |
+| 仓库 `pending` → `execution_match=false` → verdict `wrong` | ❌ 未报告 | ✅ | ✅ |
+| `query_result` 截断前 5 行，不足以重放 | ✅ | ✅ | ✅ |
+| 四套官方 evaluator 语义两两不同，唯 Spider 2.0 有 `abs_tol=1e-2` | ✅ | ✅ | ✅ |
+| G1 不应从“选 comparator 默认档”起手 | ❌ 反之：v1 给出建议默认档 | ✅ 明确拒绝背书 | ✅ 独立得出同一优先级 |
+
+本轮亲自复核的 v2 数字，全部复现：`row_count_range` 区间宽度 86 个中 13 个宽度为 0、73 个为区间、最宽 99（`k11v2_voice_023` 为 1..100；v2 举的 `k11v2_038` 是 3..20、宽 17，非最宽）。
+
+### 7.2 v3 独有的新增（v1/v2 均无）
+
+| 新增 | 依据 |
+|---|---|
+| 6 个 arXiv 编号经权威 API 全部确认真实 | v2 §0 明记“编号本轮未独立确认”，并把 `2606.30851` 标为“编号存疑”——本轮解除该存疑 |
+| `2606.30851` 真标题为 Test-Time Verification for Text-to-SQL via Outcome Reward Models，GradeSQL 是框架名 | 论文 §1 原文（与 v2 引用的 `sisinflab/GradeSQL` 仓库一致） |
+| Spider 1.0 “do not provide Execution Accuracy in the current version” 逐字取自 PDF | v1 提出该结论，v2 未复核论文散文；本轮补齐一手证据 |
+| test-suite accuracy 出自 2010.02840（“We propose test suite accuracy”） | PDF 摘要原文 |
+| GradeSQL **丢弃**执行报错的候选而非记为答错 | 论文 Stage 2 原文；给“执行失败≠答错”提供已发表先例 |
+| Northcutt “at least 3.3%” 与 51% 人工复核率 | arXiv 摘要原文 |
+| runner 私有包装器的 `if (!matchMode) return actualRows.length > 0` | `runner.ts:359` |
+
+### 7.3 v2 独有的新增（v3 未发现，复核后采信）
+
+| v2 的新增 | 本轮复核 |
+|---|---|
+| A 栈的失败分类体系：`classify_failure.ts` 的 `ENVIRONMENTAL_FAILURE_CLASSES` = infrastructure/timeout/patience，`multi_turn.ts:150-155` 环境性失败拒绝推进且不计分 | 采信（v3 仅由 README 认出 `mapQueryOutcome`，未追到分类常量与拒绝语义） |
+| `driveSession` 在 `packages/` 内无非测试调用点 | 采信 |
+| `match_modes.ts` 内部三种相等语义并存：`looseNumericEqual` / `String(v)` 压平 / `rowKey` 的 `JSON.stringify` 精确（故 `1` 与 `"1"` 在行对象分支**不**相等，与标量分支冲突） | 采信 |
+| 未知 `match_mode` 返回 `{status:'fail'}`（`match_modes.ts:62`）——**拼错模式名会被记成模型答错**，而非配置错误 | 采信；与本文 §4.4 的“基础设施故障算进模型分母”同类，属同一个 verdict 语义缺陷 |
+| runner 私有比较器的 docstring 失实（自称忽略列名 + 1:1 消费，实现两者皆无） | 采信 |
+| `row_count_range` 的判定依据是 `rows.length`，故存 5 行**无法重算**该判定 | 采信，且这使“不可重放”从缺陷升级为对 60% 活跃 case 的**判定不可复核** |
+
+### 7.4 对 v3 的两处自我修正（由 v2 触发，本轮复核确认）
+
+1. **“单测约束不到 CLI 分数”过强**：`runner.ts:12` 显示私有包装器转调库实现，核心语义生效；未覆盖的只是包装器三行为。已改 §4.3。
+2. **“四种来路事后不可分辨”未分层**：attempt 级不可分辨，但 run 级由 `RunConfig.with_query` 可恢复（executor 按 run 挂载）。已改 §4.5。这条同时是判读 61.9%（judge-only）与 12.8%（real-exec）两条历史基线的前置条件。
+
+### 7.5 v1 的处置
+
+- **论文层留用**：其两条头条（Spider 1.0 无 EX、test-suite 归属 2010.02840）本轮由 PDF 原文独立证实，Northcutt 3.3% 的纠正亦成立。
+- **仓内层退役**：v1 对 `set_equal` set-vs-bag、`ordered_subset` 子序列语义的分析针对**零使用**的模式，对现状无约束；其“建议默认档”（bag / 位置列 / 显式行序 / 严格 NULL / 无容差）**不作为 G1 起点**——三方一致认为默认档应在 reference SQL 与断言宽度问题解决后、由 R23 mutation baseline 检验时再定。
+- v1 未报告而 v2/v3 共同确认的结构缺陷（模式分布、双栈、`execution_match` 多义、pending 计入模型分母、不可重放、provenance 无处可放）构成 G1 的实际输入。
+
+### 7.6 G1 的输入以此为准（按解释力排序）
+
+1. **verdict 混装**：`pending`/执行失败与“答错”同为 `wrong`（§4.4）；拼错 mode 名亦然（§7.3）。有一手先例支持拆分（§3.2、A 栈 `patience`）。
+2. **断言宽度**：86/143 只查行数（13 个精确、最宽 1..100），57/143 只查首行首格，**无一个 case 断言多于一个单元格**（§4.1、§7.1）。
+3. **`execution_match` 多义**：SQL-only 模式下由 LLM 意见填充；run 级需靠 `with_query` 反查（§4.5）。
+4. **ground truth 就在仓内却被丢弃**：39 个人写 SQL + `tier: verified` 被 schema strip（§4.2）。
+5. **不可重放/不可复核**：截断 5 行、无 policy 版本、无 snapshot（§4.6、§7.3）。
+6. **comparator 语义内部三分 + 跨基准无共识默认**（§2、§7.3）——优先级最低，当前触及 0 个活跃 case。
