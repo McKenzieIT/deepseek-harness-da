@@ -54,12 +54,20 @@
 - 回归集覆盖 R1 §6 清单：重复行、NULL vs 0、浮点边界、字符串数字、列排列、额外列、有/无 `ORDER BY`、多个 accepted result、超时、gold failure、单快照假阳性。
 - **不得**在 T1 内做 case migration（G1b）或包边界重切（G10）。
 
-### 遗留给后续票的一处 open 风险
+### 遗留给后续票的 open 风险
 
 采纳 `mapQueryOutcome` 会带来两处**行为变化，非纯重构**，T1 必须带一次 re-baseline：
 
 - **列语义冲突**：`mapQueryOutcome` 的 `zipRow` 按列名 key（`classify_failure.ts:115-124`），而 runner 私有 `checkResultMatch` 按位置 key `col${i}`（`runner.ts:360-367`，理由写着 aliases 因模型/方言而异）。二者直接矛盾；这是 R1 §4.2 `column_semantics` 的决策点，属 R23。
 - **pending → 不计分**：sidecar 等待窗口默认 60s 而 event-view 查询实测 68s（`maxc-sidecar.mjs:134-140`），超窗即 promote 成 pending，而 `mapQueryOutcome` 判 `patience` refuse。**event case 会从 `wrong` 变成不计分——分母会变。** 与 GA-EVAL-CASESET-EVENT-ANCHOR 的口径决策耦合。
+
+第三处不属于本 seam 但同批落地时会撞上：**浮点容差是四篇论文的集体留白，且本仓已有实测回归**——case `046` 因 `67.81 ≠ 67.814`（模型加了 `ROUND`）翻案；`looseNumericEqual`（`match_modes.ts:24-30`）做了类型宽松（`"42" == 42`）但**零浮点容差**。G1 锁定第 6 条把「不透传 provider 声明」定死了，但**容差取值本身归 R23**，T1 不得顺手设一个。
+
+### 与 GA-EVAL-CASESET-EVENT-ANCHOR 的关系（R1 要求 G1 裁定）
+
+两票在归一化规则与 provenance 上重叠。**本票不 supersede 它**——分工是：G1 定 execution grader 的 seam 与三事实分离（**架构无关**，对任何 case set 都成立）；CASESET-EVENT-ANCHOR 定 **event case 这一类** 的评分口径（锚点不冻结时怎么办，5 个候选立场）。两者正交，可并行推进。
+
+唯一的耦合点是上面第二条：G1 采纳 pending→`patience` 后，event case 移出计分分母，这会改变 CASESET-EVENT-ANCHOR 那 5 个立场的代价对比。**因此 CASESET-EVENT-ANCHOR 应在 T1 落地前定口径**，否则 T1 的 re-baseline 无法解释。
 
 ### 产出
 
