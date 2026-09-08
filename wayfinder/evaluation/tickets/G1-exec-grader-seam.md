@@ -107,3 +107,24 @@
 5. **报告层不得把不同执行模式的 run 混算成一个 pass 率**；历史上 35 个无 `config` 的批量 run 在任何对比中标为**不可归属**，不得作为基线引用。
 
 **对 map 的修正**：Destination 里“61.9% judge-only 基线很可能虚高”应改为：该数字来自无 `config` 记录的 run，模式不可恢复；唯一同条件对比（同 39 case / 同模型 / 同 k）显示便宜模式相对真执行虚高 **56.4pp**。
+
+### D5 — G1 管机器，G1b 管语料
+
+**G1 拥有**：D1 的结局枚举（含 `not-measured`）、D3 的两个纯函数与 `ExecutionArtifact`（含 raw/normalized digest 与行数上限）、policy 的**机制与版本号**、D2 的去分叉、D4 的模式落盘与拒渲染，以及**loader 不得静默吐掉未知 `expected.*` 字段**——写了就要么用、要么报错，不得假装没看见（AGENTS.md 的 fail-loud；与 provenance 内容无关，因而属本票）。
+
+**G1b 拥有**：provenance schema 的具体字段、谁有权写 expected、snapshot 身份与过期语义、以及 case 迁移（86 个 `row_count_range` 是否改为值断言）。**comparator 默认值归 R23**。
+
+**得失**：T1 上线后真执行判分只覆盖 **57 个 `scalar_exact` case**（它们至少断言一个真实值）；86 个行数 case 待语料修好再纳入。换来的是 T1 立刻可开工，且日后数字异动可归因到引擎而非语料。
+
+### D6 — 当前 EXECUTION 语料不合格，应重建（约束 G1b 与 GA-EVAL-EXPAND）
+
+**依据**：已发表基准的 gold 一律是**人写的参考 SQL**——Spider 由 11 名 CS 标注者手写，BIRD 由专家配数据库，Spider 2.0 由 8 名标注者写 gold SQL 而 LLM 只得润色问题措辞；评分时 gold 与候选**都执行**。本仓 143 个 EXECUTION case **零参考 SQL**，期望值来路不可考，其中 86 个只断言行数。按已发表标准评定，它们不是 benchmark case，是启发式断言；而 test-suite 的结论是**即使有 gold SQL**，单库执行仍会假阳性——本仓连它当年要改进的起点都未达到。
+
+**决定**：143 个 EXECUTION case 的 expected **重建**，而非打补丁：由领域人员写参考 SQL、在钉住的数据快照上执行派生真值，继承而来的旧期望值退役。**模型不得充当 gold 的作者或最终裁决者**（map 已有的反循环原则，与 Spider 2.0 的 LLM 仅润色问题一致）。
+
+**这条的辐射**：
+
+- 39 个 rbi case（带 `expected.sql` + `tier: verified` + `anchor_ds`）是仓内**唯一合格的模板**，而它正被 loader 吐掉——D5 里的 fail-loud 因此从“卫生项”升为重建的前置。
+- [GA-EVAL-EXPAND](../../data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md) 从“扩充至 n_d≥85”改为“**重建**后再谈功效”；在重建前计算的 MDE 无意义。
+- 历史 168-case 百分数双重失效：既是 judge-only 或不可归属（D4），又是对不合格语料的测量（D6）。map 的基线表需加此警示。
+- 重建的范围、次序与人力归 **G1b**；本票只定“不合格、需重建”这一约束。
