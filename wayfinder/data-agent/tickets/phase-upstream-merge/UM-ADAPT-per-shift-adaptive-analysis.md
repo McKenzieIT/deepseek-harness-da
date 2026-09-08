@@ -35,3 +35,25 @@ per-shift 表：移位 | why | data-agent 当前 | 冲突/对齐 | adaptive 改�
 ## Resolution
 
 (open；这次 re-sync 的一次性分析；模板被 UM15 自动化作 durable 方法)
+
+**Progress (Session C, 2026-09-08)**：seam 3/4 的 admin 小 piece 已落地——
+admin lazy-webServer refactor（mirror seam 3）commit `9ba8638eac` on
+`refactor/rda-admin-lazy-webserver-2026-09-08`（worktree `../dsh-rda-admin`，
+base `upstream/merge-2026-09-07`），验证 vitest 16/16 + full host tsc exit 0 +
+lefthook lint。详见
+[research/um-adapt-seam34-sample-2026-09-08.md §7 Resolution](../../research/um-adapt-seam34-sample-2026-09-08.md)。
+
+- **已落地移位**：seam 3（webServer-lazy/carrier-neutral）+ seam 4（manifest
+  集中化）的 admin adaptive 重构——data-agent 唯一 eager-webServer 插件
+  (`packages/data/admin`) 改 lazy。seam 4 的 `fetchBundle`/条件 lazy 变体对
+  HTTP-only admin N/A，用 seam 3 无条件 `ctx.inject(['webServer'], …)` 形。
+- **修正**：session-prompt 称 "d347e703 有 seam 3 lazy pattern 可镜像" 有误
+  ——`d347e703` 是 pre-refactor 基线；lazy pattern 在 `upstream/master`
+  （`c389f96bf3`），`merge-2026-09-07` 无之；镜像自 upstream/master。
+- **未落地移位**（待 UM14 + 本票后续分析）：workspace-files 新 seam、
+  invariant-cleanup（package-owned companions）、agent-inbox durable projection、
+  subprocess native containment、session-format v0→v2 migration、根 entry
+  build-blocker（→ UM16，非 adaptive 判定）。
+- **关联**：45-pkg client-runtime decommission
+  （`R-DA-CLIENT-RUNTIME-DECOMMISSION`）是 R-DA 另一子票，blocked-by UM14，
+  本 session 未触碰。本票保持 **open**（UM15 自动化模板）。

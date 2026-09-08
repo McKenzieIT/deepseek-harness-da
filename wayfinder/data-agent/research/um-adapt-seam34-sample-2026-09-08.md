@@ -164,3 +164,51 @@ File: `packages/data/admin/src/index.ts`
   webServer, so the lazy refactor is behavior-preserving (routes still register
   when webServer present); it adds graceful no-webServer load + convention
   alignment as the only behavior delta.
+
+---
+
+## 7. Resolution (Session C, 2026-09-08)
+
+Verdict **implemented** in Session C: admin lazy-webServer refactor, mirroring
+seam 3 (`packages/client/connection`).
+
+- **Commit**: `9ba8638eac` on branch `refactor/rda-admin-lazy-webserver-2026-09-08`
+  (worktree `../dsh-rda-admin`, base `upstream/merge-2026-09-07`).
+- **Changes** (per §5):
+  1. `inject` — dropped `'webServer'` → `['storageDomain', 'credentials']`.
+  2. Route registration wrapped in
+     `ctx.inject(['webServer'], (webCtx) => webCtx.effect(() => registerRoutes(webCtx, …), 'admin: routes'))`,
+     nested inside the existing domain-open `ctx.effect` so routes register
+     only after the async `storageDomain.open` (fail-closed preserved). Route
+     disposal rides the webServer carrier fiber; Cordis LIFO disposes it before
+     `domain.close()` (same routes-then-domain order as the prior explicit
+     `disposeRoutes()` + `domain.close()`).
+  3. `domain` + `identityService` made `const` in-effect — the outer `let`s were
+     reset on dispose, so TS couldn't narrow them inside the inject closure
+     (the one real typecheck catch; vitest doesn't typecheck, so tsc found it).
+- **Seam 4 variant**: N/A for admin (HTTP-only; no `fetchBundle`/non-HTTP
+  carrier) — uses the seam 3 unconditional `ctx.inject(['webServer', …])` shape.
+- **Verification**: `vitest run packages/data/admin` → 16/16 (inject assertion
+  `not.toContain('webServer')` + a harness with memory-backed `storageDomain` +
+  no-op `credentials` asserting (a) admin loads & opens its domain without a
+  webServer, (b) registers `/admin/api` when one is present); bounded
+  `tsc -b packages/data/admin/tsconfig.json` clean; full
+  `tsc -b tsconfig.host.json` exit 0; lefthook pre-commit `lint (staged)` /
+  `whitespace` / `vendor manifest guard` all pass.
+- **Branch-rationale correction**: the session prompt's claim "d347e703 has the
+  seam 3 lazy pattern to mirror; seam 3 unchanged d347e703..latest" is **wrong**
+  — `d347e703` is the *pre-refactor* base (eager webServer); the lazy pattern
+  was *added* in `d347e703..upstream/master`; `upstream/merge-2026-09-07`
+  (`558e6f4f66`) lacks seam 3/4 (behind `upstream/master`, not an ancestor). The
+  pattern was mirrored from `upstream/master` (read-only via `git show`). The
+  branch decision still holds: admin is fork-only and byte-identical on both
+  branches, so the refactor lands cleanly on `merge-2026-09-07` and stays
+  isolated from UM14.
+- **Out of scope (unchanged)**: the 45-pkg client-runtime decommission
+  (`R-DA-CLIENT-RUNTIME-DECOMMISSION`) is a separate ticket, blocked-by UM14 —
+  untouched.
+- **Deferred verification**: `dsh --profile <da> --dump-config` (criterion 3's
+  strongest form) was not run (the CLI is not built in the worktree); covered
+  by the vitest behavior tests + tsc + the inject assertion.
+- **Next (future session, not this one)**: after UM14 re-sync completes,
+  clean-rebase this branch onto the synced branch.
