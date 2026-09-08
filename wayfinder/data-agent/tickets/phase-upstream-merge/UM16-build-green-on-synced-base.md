@@ -30,3 +30,7 @@ build:official green on synced base。
 ## Resolution
 
 (open；resync-then-fix——fix 在 UM14 之后，不 churn)
+## Session A finding (2026-09-08)
+
+tsdown fail（on synced base `8112743d69`）：`[@deepseek-ai/dsh-root] Cannot find entry: ["lib/types/{index,invariant,startup}.js"]`（tsdown 0.22.2 resolveEntry）— root entry 是 upstream-shared breakage。Host tsc green；client tsc（`tsc -b tsconfig.client.json`）~50 errors（见 UM-flow Session A outcome — 多疑 stale typert/catalog 工件下游，CORDIS regen 后解；zombie tsconfig=R-DA）。UM16 应在 CORDIS regen + R-DA 后做 build green。
+

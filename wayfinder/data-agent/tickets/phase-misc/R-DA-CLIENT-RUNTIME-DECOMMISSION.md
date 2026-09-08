@@ -37,3 +37,10 @@ It's a boot-order migration + snapshot-model change + registration-pattern chang
 - Post-merge (after the merge commits + UM11 PR + UM12 CI re-sweep).
 - Doesn't block the merge (the minimal-patch keeps the zombie alive).
 - Overlaps R-DA-UI-PRESENTER-COMPOSITION (the presenter view-registry migration is a sub-part).
+## Session A finding (2026-09-08)
+
+zombie `packages/client/runtime`（fork-only，0 upstream commits in 449，absent at base `d347e703`+tip `c389f96bf3`）在 synced base `8112743d69` 仍存。R-DA 入口（UM14 发现）：
+1. `client/runtime/src/client/slots.ts:41` 声明 slot `'root'`（owner props `RootOwnerProps` 未 export）+ 与 `packages/client/ui-renderer/src/client/registry.ts:43` 的 `'root'` 重复 → 阻塞 `gen-client-catalog`（CORDIS catalog regen）。
+2. `client/runtime/tsconfig.json:20` 引用已删 `packages/host/apiproxy`（TS6053；449-impact 确认 apiproxy pre-base 已删）→ client tsc error。
+R-DA 解这两处后，CORDIS catalog regen + client tsc 的 zombie 相关 error 可解。
+
