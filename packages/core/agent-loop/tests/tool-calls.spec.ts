@@ -787,7 +787,7 @@ describe('executeToolCalls: session-bound scopeId flows to ToolExecutionInput', 
     // One agent per session: scopeId on AgentOptions is the session-bound source.
     // executeToolCalls forwards it to every ToolExecutionInput it builds, and
     // createExecution propagates it onto the ToolRunContext that pre-execute sees.
-    const agent = ctx.agentLoop.create(SessionId('scope-probe'), {
+    const agent = await ctx.agentLoop.create(SessionId('scope-probe'), {
       provider: 'mock', model: 'mock', scopeId: 'test-scope',
     })
 
@@ -813,7 +813,7 @@ describe('executeToolCalls: session-bound scopeId flows to ToolExecutionInput', 
       captured = exec.scopeId
       return next()
     })
-    const agent = ctx.agentLoop.create(SessionId('scope-dormant'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(SessionId('scope-dormant'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await waitForIdle(ctx, agent)
