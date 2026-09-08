@@ -20,6 +20,62 @@ pi-ai profile 的 `models` 列表就在卡片上编辑：一行一个模型，�
 
 **添加自定义提供方**用来声明 pi-ai 未提供的路由。它是独立的一张卡片而非在编辑器上加字段，因为路由 id 正是在这里被*选定*的，而在选定之前 settings 地址并不存在：一次 `settings.mutate` 在 `providers.<route>` 上设置整个 profile，密钥则经 `credentials.set` 单独传递，使用与既有提供方相同的 `<ROUTE>_API_KEY` 派生。手工声明的路由无法默认的东西会门控创建按钮——唯一的 **Provider ID**、端点、协议，以及至少一个标识唯一的模型——因此失败会在用户仍看着该字段时点名它。该 id 必须以小写字母开头，因为它同时是派生凭据引用的词干，而引用是 POSIX shell 标识符：数字开头的 id 否则会通过这张卡片的每一项检查，然后在凭据 seam 上抛出原始正则表达式错误。容量不参与门控：端点只按 id 描述的模型（这正是多数列表返回的形态）由适配器的回退值定尺寸。协议选项读自该 namespace 自己的 schema，而非某个协议字段或常量，因此它们不会与适配器实际接受的集合发生漂移。只有键入了密钥，这张卡片才记录约定的 `apiKeyEnv` 引用，与编辑器同一条规则，因此一条为提供方原生认证声明的路由不会一出生就指向一个永远不会被设置的引用。当 profile 写入成功而密钥写入失败时，提供方已经存在：卡片会把描述它的字段定住，只重试凭据——再跑一次 profile 写入会带着刚被自己这次写入取代的 revision，宿主将以 `settings-conflict` 应答，密钥就再也无法从这里存下——并且即使用户随后取消，也照实报告提供方已创建。
 
+### 编辑提供方
+
+收起的「自定义设置」折叠区承载精选的额外字段：两个家族都有 `baseURL`（deepseek 的占位符显示公共端点）、各适配器自己的模型目录，以及适配器未提供的 pi-ai 路由的**显示名称**与 **API 协议**。Profile `headers` 仍是 `settings.yaml` 或 Cordis 配置中的部署配置，Models 页面不提供编辑器。Provider ID 保持固定：它是 settings 的键、其他每个 namespace 与每一条已记录会话引用的名字，也是页面读不回、因而搬不走的凭据引用词干。推理等级刻意不在可编辑字段之列：它是按模型的能力，提供方级的控件只可能被设成某些模型会拒绝的值。每个 DeepSeek 行编辑 `id`、可选显示 `name` 与可选 `contextWindow`/`maxTokens`；该精选集之外的现有字段在编辑后仍会保留。
+
+### 新增与删除提供方
+
+「新增」流程是一张承载休眠目录提供方选择框的卡片——裸挂载的 `llm-pi-ai` 在任何路由存在之前就能提供其完整的已安装 catalog。**添加自定义提供方**声明一条 pi-ai 不提供的路由；创建卡片会索要唯一的 **Provider ID**、端点、协议与至少一个可唯一识别的模型，因为没有东西能为它们兜底。**获取可用模型**通过 `llm/discoverModels` Remote 查询表单显示的端点，因此新增提供方一次即可完成，而非先保存再返回；回复打开的是可搜索选择器而非直接写入，只有点击**添加所选**才会写入。每个选中候选会在提供方公布相应信息时，把 id、显示名、上下文窗口与最大输出 token 数复制进可编辑行；已经存在的行保留用户调整过的值。搜索会匹配模型 id 与可选显示名称，且不会清除隐藏项的勾选状态。**全选**会加入可见结果，而**取消全选**会清空全部勾选，以免意外采用隐藏结果。只有用户层单独携带某行时，该行才可删除（删除会恢复组合基线），其确认对话框会指名该提供方。
+
+### 首次运行弹窗
+
+版本化声明步骤完成后，DeepSeek 步骤从同一份合并快照投影首次运行就绪状态。用户已经能够到达的**任何**提供方都会直接结束该步骤、不做渲染；只有没有任何提供方的用户才会被询问官方 DeepSeek 密钥。「稍后配置」只完成这次协调器遍历；适配器缺失、路由不活动、合并失败、只读部署或能力不可用时，该步骤不渲染即完成——Models 仍是诊断界面。
+
+### 扩展插槽
+
+本分区为仓库外分发的插件声明两个席位，类型定义在 [`src/client/slot-contract.ts`](src/client/slot-contract.ts) 并从 `./client` 导出。`settings.models.provider-card`（keyed）渲染在每张展示目录行的卡片内部——已保存行的卡片、其首次运行 setup 形态、以及「添加提供方」草稿卡——以 `entryKey = settingsNs` 分发，owner props 携带该行的 `ConfigurableProviderView`、其 configured 状态与已确认的 api-key 凭据状态，因此以某适配器家族的 namespace 注册一次即可收到该家族的全部卡片，含手工声明的路由；手工声明的草稿卡尚无目录行，保存之前不分发。`settings.models.footer`（list）渲染在行列表与新增控件之后。注册方通过 `ctx.slots.inject` 激活，并以 type-only import 引入本包 `/client` 入口；没有注册方时两个席位均不渲染任何内容。
+
+-----
+
+<a id="understand-the-implementation"></a>
+## 理解实现
+
+<details>
+<summary>实现细节——点击展开</summary>
+
+页面只持有脱敏后的描述符，从不持有完整设置分区：因此每次编辑都以 `settings.mutate` 路径操作落到已存分区上——每个改动字段一次 set、每个清除字段一次 unset、删除提供方行则一次 unset。
+
+### 校验
+
+键入的 API 密钥按其自身字段判定：去除首尾空白后必须非空，且每个字符都必须是可打印 ASCII（`[\x21-\x7E]`），这正是 HTTP 头值能够携带的字符集——与 `@deepseek-ai/dsh-llm` 中的 `normalizeApiKey` 互为镜像，此处复刻是因为源平面拆分禁止导入它。与粘贴的 `NAME=value` 环境行一致或包裹在匹配引号内的值，会作为同样的格式失败被拒绝。空 id、重复 id、空显式名称以及不可读、非正数或小数的容量都会在任何写入之前失败。DeepSeek 的 `models` 是一个按值整体替换的数组：编辑器先显示继承的有效行，直到第一次模型编辑把完整数组物化进用户层，重置则取消该覆盖。
+
+### 并发与凭据
+
+每次 settings 写入都携带卡片当前的 `revision`，因此来自另一个标签页或外部 `settings.yaml` 编辑的并发写入会以 `settings/conflict` 被拒绝。settings 提交后，卡片会在存储凭据前采纳返回的脱敏用户子树与 revision，因此失败的凭据阶段只重试该阶段。删除只会在 profile 指名本页派生的 `<ROUTE>_API_KEY` 目标时移除已配置且可写的凭据，然后 unset 该 profile；两个操作都幂等。加载完成后，页面订阅转发的 `settings/document-updated`、`credentials/reference-updated` 与 `llm/adapters-updated` 属主事件，以及本地 `connection/reset`，因此外部编辑无需轮询即可收敛。
+
+### 引导协调器
+
+声明步骤在 `src/client/locales.ts` 中持有精确文案，并在 `src/onboarding-copy.ts` 中持有确认版本；回环时它通过既有 settings API 比较并写入 `ui-onboarding.welcomeNoticeVersion`，且只有显式点击「继续」才会记录当前版本。非回环浏览器无法使用这个仅限宿主的 namespace，因此确认只保留在进程内，刷新后声明会再次出现。DeepSeek 步骤在共享引导模态框内以仅凭据模式渲染既有 `ProviderEditor`；`credentials.set` 仍是唯一的机密写入，且不改变任何提供方设置。
+
+</details>
+
+-----
+
+<a id="further-exploration"></a>
+## 进一步探索
+
+以下页面覆盖设置底座、本页所合并的 seam 与设计依据。
+
+- [ui-settings](../ui-settings/README.zh.md)——本页所依赖 scope 与 schema 服务所在的领域底座。
+- [settings](../../settings/README.zh.md)——持久化用户设置 seam 及其文件提供方。
+- [credentials](../../credentials/README.zh.md)——本页写入密钥所经的凭据引用 seam。
+- [llm](../../llm/README.zh.md)——本页所配置提供方所在的适配器注册表。
+- [Web 配置平面](../../../.agents/notes/archived/architecture/2026-07-30-web-config-plane.md)——手写编辑器的设计依据。
+
+-----
+
+<a id="model-experience"></a>
 ## 模型体验
 
 无。该分区渲染浏览器配置 UI；这里没有任何内容进入模型请求。

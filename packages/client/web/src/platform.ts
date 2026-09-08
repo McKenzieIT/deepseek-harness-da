@@ -19,6 +19,7 @@ export const PLATFORM_MODULES = [
   // makes every plugin bundle's wire schemas throw "require("zod") missed
   // the module table" at boot and the whole plugin group fails to load.
   'zod',
+  '@deepseek-ai/dsh-client-ui-dockkit',
 ] as const
 
 /** Client-bundle specifiers whose factories the parser preloads before the shell starts. */

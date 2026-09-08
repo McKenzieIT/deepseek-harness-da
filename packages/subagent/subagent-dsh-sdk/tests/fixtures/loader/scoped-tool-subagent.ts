@@ -23,7 +23,7 @@ export function apply(ctx: Context, config: Config): void {
         : { enableRunInBackground: config.enableRunInBackground }),
       ...(config.backgroundMode === undefined ? {} : { backgroundMode: config.backgroundMode }),
       ...(config.agentOptions === undefined ? {} : { agentOptions: config.agentOptions }),
-      ...(config.persona === undefined ? {} : { persona: config.persona }),
+      ...(config.persona === undefined ? {} : { personaPrefix: config.persona }),
       ...(config.toolFilter === undefined ? {} : { toolFilter: config.toolFilter }),
       ...(config.maxDepth === undefined ? {} : { maxDepth: config.maxDepth }),
     })

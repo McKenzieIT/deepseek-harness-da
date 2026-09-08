@@ -135,6 +135,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   patrol: 'data-agent.md',
   resultCache: 'data-agent.md',
   workspaceController: 'workspace.md',
+  workspaceFiles: 'workspace.md',
   directoryPickerController: 'workspace.md',
 }
 
@@ -191,6 +192,9 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   evalRunner: 'optional eval-runner seam (EvalRunnerService | undefined) the host composition mounts at boot — packages/data/tool-trigger-eval/src/index.ts owns the seam contract',
   results: 'client-side interface-typed browser service — packages/client/result-cache/README.md owns the API',
   contextLayer: 'client-side interface-typed browser service — packages/client/ui-context-layer/src/client/index.ts owns the API',
+  resources: 'client-side resource model (protocol providers, pins, live sources) — packages/client/resources/README.md owns the API',
+  sidebarRight: 'client-side right-Sidebar navigation face — packages/client/ui-sidebar-right/README.md owns the API',
+  sidebarRightTabs: 'client-side right-Sidebar tab-type registry — packages/client/ui-sidebar-right/README.md owns the API',
 }
 
 /**
@@ -220,6 +224,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'subagent': 'subagent.md',
   'system-prompt': 'system-prompt.md',
   'session-telemetry': 'session-telemetry.md',
+  'feedback': 'feedback.md',
   'tools': 'tools.md',
   'user-questions': 'user-questions.md',
   'webserver': 'web-server.md',
@@ -273,6 +278,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   ContentBlock: 'llm-streaming.md',
   CreateAgentOptions: 'core.md',
   GenerateOptions: 'llm-streaming.md',
+  Inbox: 'core.md',
   InboxItem: 'core.md',
   InboxPlacement: 'core.md',
   InspectorJsonValue: 'extensions.md',
@@ -691,6 +697,9 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
   'Promise',
   'Record',
   'Readonly',
+  'ReadonlyMap',
+  'Request',
+  'Response',
   'Uint8Array',
   'Set',
 ])
@@ -813,6 +822,14 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   PatrolState: 'patrol state contract is owned by packages/data/patrol-mode/src/index.ts',
   ResultEntry: 'result cache entry contract is owned by packages/data/result-cache/src/types.ts',
   DefinitionSnapshot: 'definition snapshot contract is owned by packages/data/semantic-layer/src/snapshot.ts',
+  WorkspaceByteRange: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceDirectoryListing: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileBytes: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileChange: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileWatchFrame: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileRange: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileStat: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileText: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

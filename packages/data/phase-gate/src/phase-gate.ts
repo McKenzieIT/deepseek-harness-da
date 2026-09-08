@@ -27,7 +27,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { ToolCallId, ReasoningEffortId, createUserMessage, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
-import { PERSONA_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
+import { PERSONA_PREFIX_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-scope-registry'
 import type {} from '@deepseek-ai/dsh-semantic-layer'
 import { loadConfig } from '@deepseek-ai/dsh-semantic-layer'
@@ -975,7 +975,7 @@ export class PhaseGate {
    * @param ctx The Cordis context to mount the persona section, tool guard, and event listeners on.
    */
   register(ctx: Context): void {
-    ctx.effect(() => ctx.systemPrompt.section({ name: PERSONA_SECTION, order: ctx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA'), text: BASE_PERSONA }), 'phase-gate.persona')
+    ctx.effect(() => ctx.systemPrompt.section({ name: PERSONA_PREFIX_SECTION, order: ctx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_PREFIX'), text: BASE_PERSONA }), 'phase-gate.persona')
     ctx.tools.guard(this.guard)
     ctx.on('agent/turn-stopping', this.onTurnStopping)
     ctx.on('tools/post-execute', this.onPostExecute)

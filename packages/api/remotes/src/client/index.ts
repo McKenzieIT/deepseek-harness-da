@@ -17,6 +17,7 @@ import workspaceRemote from '@deepseek-ai/dsh-api-workspace-controller/remote'
 import schemaGatewayRemote from '@deepseek-ai/dsh-schema-gateway/remote'
 import evidenceQueryRemote from '@deepseek-ai/dsh-evidence-query/remote'
 import resultCacheRemote from '@deepseek-ai/dsh-result-cache/remote'
+import workspaceFilesRemote from '@deepseek-ai/dsh-api-workspace-files/remote'
 import type { ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
 
 export type { ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
@@ -36,6 +37,8 @@ export type {} from '@deepseek-ai/dsh-api-session-controller/remote'
 export type * from '@deepseek-ai/dsh-api-session-controller/types'
 export type {} from '@deepseek-ai/dsh-api-workspace-controller/remote'
 export type * from '@deepseek-ai/dsh-api-workspace-controller/types'
+export type {} from '@deepseek-ai/dsh-api-workspace-files/remote'
+export type * from '@deepseek-ai/dsh-api-workspace-files/types'
 export type { SessionJob as JobView } from '@deepseek-ai/dsh-api-session-controller/types'
 export type {} from '@deepseek-ai/dsh-schema-gateway/remote'
 export type {} from '@deepseek-ai/dsh-evidence-query/remote'
@@ -159,6 +162,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       pluginInventoryRemote, messageFeedbackRemote, fileUploadsRemote, sessionReferencesRemote,
       subagentsRemote, sessionRemote, workspaceRemote,
       schemaGatewayRemote, evidenceQueryRemote, resultCacheRemote,
+      workspaceFilesRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }
