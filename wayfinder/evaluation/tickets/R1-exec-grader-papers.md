@@ -1,7 +1,9 @@
 # R1-exec-grader-papers — 认读执行级评分与非循环 GT 溯源的一手文献
 
-**Type**: research（AFK，认读分析）  ·  **Direction**: 1（执行级评分 + 非循环 GT 溯源，linchpin）  ·  **Status**: Resolved (2026-09-07)
-**Branch**: `research/R1-exec-grader-papers`（worktree `../dsh-R1`，base `master` @ `47ef19a26f`）
+**Type**: research（AFK，认读分析）  ·  **Direction**: 1（执行级评分 + 非循环 GT 溯源，linchpin）  ·  **Status**: **v3 独立重做，claimed 2026-09-08（mckenzie）**；v1 Resolved 2026-09-07
+**Branch**: `grilling/R1-G1-v3-independent`（主工作区）；v1 在 `research/R1-exec-grader-papers`，v2 在 `grilling/G1-exec-grader-seam-redo`
+
+> **为何有 v3**：v1 与 v2 都在网络/API 不稳定的环境下完成——v1 的 pod 对 arxiv.org 返回 403，v2 全程网络阻断（自述 arXiv 元数据未验证），且 v2 机械复核推翻了 v1 的仓库层结论。本环境实测可直连 arxiv.org、export.arxiv.org API 与 raw.githubusercontent.com，并有 `pdftotext`，故做**第三次独立重做**：不读 v1/v2 产物，全部结论从一手来源重新推导，再与 v1/v2 三方对账，只保留可复现的结论。
 **Blocked by**: 无
 **Blocks**: [G1-exec-grader-seam](G1-exec-grader-seam.md)（grilling 需论文分析在手）→ T1-exec-grader-impl
 **产物**: [`../research/R1-exec-grader-papers.md`](../research/R1-exec-grader-papers.md)

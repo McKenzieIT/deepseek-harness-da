@@ -1,11 +1,11 @@
 # G1 — Execution grader seam
 
-**Type**: grilling  ·  **Status**: open
+**Type**: grilling  ·  **Status**: **claimed 2026-09-08（mckenzie）——v3 独立重做**
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [R1 — 执行级评分与非循环 ground truth 论文认读](R1-exec-grader-papers.md)（resolved）
+**Blocked by**: [R1 — 执行级评分与非循环 ground truth 论文认读](R1-exec-grader-papers.md)（v3 重做中，同会话）
 **Blocks**: T1-exec-grader-impl
 **Mode**: HITL
-**Branch**: `grilling/G1-exec-grader-seam`
+**Branch**: `grilling/R1-G1-v3-independent`（主工作区）；v1 已在 `grilling/G1-exec-grader-seam` 上 resolve 过，本轮先独立重定、再与 v1 对账
 
 ## Question
 
