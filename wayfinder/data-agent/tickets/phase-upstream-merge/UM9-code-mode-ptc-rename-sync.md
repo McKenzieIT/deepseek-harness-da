@@ -18,5 +18,10 @@ upstream `3ca9c7d` 重命名 code-mode → ptc（PTC mode），**except session-
 3. 保 `apps/cli/config/agent-presets/code/preset.yml`（preset 目录名 `code` 非 code-mode token——核确认）。
 4. 跑 ptc 相关 snapshot 测试核无 regression（upstream `test(snapshot): refresh Python PTC fixture` 等）。
 
-## Resolution
-（待落地后填：LIVE code-mode token grep 结果 + 同步的文件）
+## Merge outcome (2026-09-07)
+
+**0 textual conflict**——`packages/core/tools/src/ptc.ts` **auto-merged**（upstream 的 code-mode→ptc 重命名干净并入）。LIVE code-mode token grep 仍须跑（archived notes 的 code-mode 可接受）。ptc snapshot 测试跑核无 regression。
+
+## Resolution (2026-09-08)
+
+`packages/core/tools/src/ptc.ts` auto-merged (upstream code-mode→ptc rename clean). LIVE `ptc-dispatch-log` token consistent across upstream + merged result — no rename, no sync needed. archived-notes `code-mode` references acceptable (historical, untouched).

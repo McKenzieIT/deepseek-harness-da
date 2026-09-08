@@ -16,7 +16,7 @@ This table connects model-visible tool names to the plugin package and service s
 | Tool package | Model-visible names | Requires | Writes / affects | Shipped aliases | Deployment note |
 | --- | --- | --- | --- | --- | --- |
 | `@deepseek-ai/dsh-tool-ask-user` | `ask_user_question` | `ctx.tools`, `ctx.userQuestions` | `tool/call`, `tool/result after a UI/provider answers the question` | - | ask_user_question pauses the tool call until the active UI provider returns a human answer. |
-| `@deepseek-ai/dsh-tools` | `run_code` | `ctx.tools`, `ctx.codeRuntime (execution time)`, `ctx.systemPrompt` | `tool/call`, `one tool/code-dispatch-start + tool/code-dispatch pair per bridged sub-call`, `tool/result` | - | Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: code` / `mode: both` (see the Code Mode Agent Note). Under `code` it is the registry's only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime's language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result. |
+| `@deepseek-ai/dsh-tools` | `run_code` | `ctx.tools`, `ctx.codeRuntime (execution time)`, `ctx.systemPrompt` | `tool/call`, `one tool/code-dispatch-start + tool/code-dispatch pair per bridged sub-call`, `tool/result` | - | Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: ptc` / `mode: both` (see the PTC mode Agent Note). Under `ptc` it is the registry's only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime's language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result. |
 | `@deepseek-ai/dsh-plan-mode` | `exit_plan_mode` | `ctx.tools`, `ctx.systemPrompt`, `ctx.userQuestions (execution time, opportunistic)` | `tool/call`, `plan/mode inactive on an approved review`, `tool/result` | - | exit_plan_mode stays in the model-facing schema while planning is inactive so transitions add no tool-catalog churn on top of the plan-policy change. Its execute path rejects calls outside plan mode; in plan mode it presents the plan over the user-questions seam (approve / keep planning with feedback), and approval logs plan mode inactive at the step boundary. |
 | `@deepseek-ai/dsh-tool-bash` | `bash` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@deepseek-ai/dsh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled. |
 | `@deepseek-ai/dsh-tool-pwsh` | `pwsh` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@deepseek-ai/dsh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `DSH_*` environment comes from `@deepseek-ai/dsh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables. |
@@ -24,7 +24,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-bash-persistent` | `bash` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent bash tool; deployment composition supplies the PTY backend and may override the model-facing environment description. |
 | `@deepseek-ai/dsh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent pwsh tool, the Windows counterpart of the persistent bash tool; deployment composition supplies a pwsh-dialect PTY backend and may override the model-facing environment description. |
 | `@deepseek-ai/dsh-tool-str-replace-editor` | `str_replace_editor` | `ctx.tools`, `ctx.fs` | `tool/call`, `fs/observed after view presence/absence, edit absence, or successful mutation`, `tool/result` | - | Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API. |
-| `@deepseek-ai/dsh-tool-fs` | `edit`, `read`, `read_image`, `write` | `ctx.tools`, `ctx.fs`, `ctx.systemPrompt`, `ctx.attachments (read_image registration)`, `ctx.llm + an image-capable route (read_image execution)` | `tool/call`, `fs/write-intent or fs/edit-intent for mutations`, `fs/observed after read presence/absence or successful file operation`, `durable attachment (read_image)`, `tool/result` | - | The read-before-write/edit policy is added by `@deepseek-ai/dsh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. `read_image` is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input. |
+| `@deepseek-ai/dsh-tool-fs` | `edit`, `read`, `read_image`, `write` | `ctx.tools`, `ctx.fs`, `ctx.systemPrompt`, `ctx.attachments (image-tool registration)`, `ctx.llm + an image-capable route (image-tool execution)` | `tool/call`, `fs/write-intent or fs/edit-intent for mutations`, `fs/observed after read presence/absence or successful file operation`, `durable attachment (read_image)`, `tool/result` | - | The read-before-write/edit policy is added by `@deepseek-ai/dsh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. The image tool is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input. |
 | `@deepseek-ai/dsh-tool-fs-search` | `glob`, `grep` | `ctx.tools`, `ctx.subprocess`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | glob and grep are unconditional discovery tools that spawn the packaged ripgrep binary (`@vscode/ripgrep`) through ctx.subprocess as ordinary foreground calls (never background jobs) — no host `rg` install and no shell layer. The catalog uses `sampleOverCapGlobResults: true`; deployments must choose that behavior explicitly. Capped results save the complete formatted list through the optional ctx.spillStore backend; returned locators are follow-up-readable/searchable when the backend exposes local paths in co-located deployments. |
 | `@deepseek-ai/dsh-tool-terminal` | `terminal_close`, `terminal_list`, `terminal_open`, `terminal_read`, `terminal_send`, `terminal_signal` | `ctx.tools`, `ctx.terminals`, `ctx.systemPrompt`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The six terminal tools are opt-in and complement one-shot shell/filesystem tools. `terminal_send(run_in_background: true)` registers with `ctx.jobs`; TUI, named key sequences, BEL, resize, auto-start, and cross-agent sharing are absent from the schema. |
 | `@deepseek-ai/dsh-tool-goal` | `create_goal`, `get_goal`, `update_goal` | `ctx.tools`, `ctx.agents`, `ctx.goals`, `ctx.systemPrompt`, `a calling Agent in an authorized open turn` | `tool/call`, `goal/change for mutations`, `tool/result` | - | create, edit, pause, and resume require direct-human root authority; complete and blocked also accept the exact current goal round. The default blocked lower bound is three admitted rounds. |
@@ -33,38 +33,13 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`, `ctx.workflowEngine`, `ctx.subagents`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents every fresh round)` | `tool/call`, `tool/result`, `workflow and child session events during execution` | - | A fixed foreground workflow starts one fresh structured child per round; the model selects only the immutable objective and an optional round cap. |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`, `ctx.agents`, `ctx.skills` | `tool/call`, `tool/result`, `user/message replacement catalogs via agent.inject()` | - | - |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`, `session_event_search`, `session_event_trace`, `session_search`, `session_trace` | `ctx.tools`, `ctx.systemPrompt`, `ctx.sessionQuery`, `a calling Agent for workspace authority` | `tool/call`, `tool/result` | - | The five read-only tools hide provider cursors and authorize every result from the immutable calling agent session. The package is opt-in; compositions that need enforced deadlines or bounded inline output also mount the generic timeout or spill policies. |
-| `@deepseek-ai/dsh-tool-subagent` | `subagent` | `ctx.tools`, `ctx.subagents`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `child session events through the chosen provider` | `subagent`, `subagent_fork` | The registered tool name is the load-time `toolName` config (default `subagent`); the schema above is that default. The shipped compositions load this package once per subagent backend, so the model additionally sees `subagent_fork` bound to the fork backend. Each instance's description, `run_in_background` parameter, and system-prompt policy follow its own `backgroundMode` and `enableRunInBackground`, so the two shipped schemas are not identical: `subagent` is `continuable` and defaults omitted calls to background with automatic settlement delivery, while `subagent_fork` stays `one-shot` and defaults them to foreground — see `packages/bundle/base/cordis.patch.yml` and `examples/acp-agent/cordis.yml`. |
+| `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`, `subagent` | `ctx.tools`, `ctx.subagents`, `ctx.systemPrompt`, `ctx.llm for model discovery and selected-route validation` | `tool/call`, `tool/result`, `child session events through the chosen provider` | `subagent`, `subagent_fork` | The registered delegation name is the load-time `toolName` config (default `subagent`); the default schema above has model selection off, while the discovery schema is shown as the fixed companion available in an enabled Session. Web presets sample the Plugins preference for each new top-level Session and preserve that decision for its child Sessions; `subagent_fork` remains fixed-route. Each instance independently controls whether it reads model-selection settings and its background behavior through `modelSelectionSettings`, `backgroundMode`, and `enableRunInBackground`. |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`, `list_agents`, `send_message` | `ctx.tools`, `ctx.subagents`, `ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`, `tool/result`, `child session events through ctx.subagents` | - | The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries). |
-| `@deepseek-ai/dsh-tool-subagent-report` | `report` | `ctx.subagents`, `ctx.systemPrompt`, `a live continuable in-process child Agent` | `tool/call`, `tool/result`, `a user-role message in the direct parent session` | - | Registered per continuable in-process child rather than globally, so this schema is visible only inside such a child and survives its global `toolFilter`. The same contribution installs the child-scoped `tool:report` prompt section, which this catalog does not render. The parent-facing `send_message` tool is installed independently. |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
-| `@deepseek-ai/dsh-experimental-tool-agent-team` | `followup_task`, `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
+| `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
-| `@deepseek-ai/dsh-tool-search-data-sources` | `search_data_sources` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | search_data_sources is the UNDERSTANDING-phase entry to BM25 schema-linking: the agent calls it to learn which data sources (DWS tables / event ODS tables) match a natural-language question before writing SQL. The Q1 thin default uses the local Bm25Linker over an empty corpus (callable but unwired until ctx.schema ships) — an empty corpus returns no candidates. P5b swaps to ctx.retrieval when registered, and P6b sources the corpus from ctx.schema.discover; the tool contract is unchanged across both. |
-| `@deepseek-ai/dsh-tool-critique-sql` | `critique_sql_tool` | `ctx.tools` | `tool/call`, `tool/result` | - | critique_sql_tool is the GENERATION-phase SQL critic (folded-regex: table grounding, ds partition, SELECT *, JSON-path fields). It probes ctx.criticCtx and ctx.schema lazily via ctx.get (no provider mount needed for the schema harvest); an empty critic context fail-opens so the tool registers its schema without the phase-gate or semantic layer mounted. |
-| `@deepseek-ai/dsh-tool-discover-relations` | `discover_relations` | `ctx.tools` | `tool/call`, `DWS table dimension_refs enrichment`, `tool/result` | - | discover_relations is the ENRICHMENT-phase AI-native DWS-&gt;DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
-| `@deepseek-ai/dsh-tool-edit-definition` | `edit_definition` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `semantic-layer definition patch (Tier-2 audited)`, `tool/result` | - | edit_definition applies a partial patch to a table or event definition (shallow-merge; columns merged by name) and records a Tier-2 audit write, marking the asset unreviewed. Metrics are virtual and cannot be edited directly. The schema harvest mounts inert ctx.schema + ctx.audit providers so the Tier-2 inject resolves. |
-| `@deepseek-ai/dsh-tool-evaluate-sql-quality` | `evaluate_sql_quality` | `ctx.tools` | `tool/call`, `tool/result` | - | evaluate_sql_quality scores a SQL candidate 0-100 from the folded-regex critic findings. It probes ctx.criticCtx lazily; no provider mount needed for the schema harvest (empty critic context fail-opens). |
-| `@deepseek-ai/dsh-tool-get-coverage` | `get_coverage` | `ctx.tools` | `tool/call`, `tool/result` | - | get_coverage reports semantic-layer coverage statistics (assets by kind, confirmation status, per-domain counts). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
-| `@deepseek-ai/dsh-tool-get-definition` | `get_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | get_definition loads a unified data asset definition (table, event, or metric) by name. It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
-| `@deepseek-ai/dsh-tool-list-domains` | `list_domains` | `ctx.tools` | `tool/call`, `tool/result` | - | list_domains enumerates semantic-layer domains with per-kind asset counts (tables, events, metrics). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
-| `@deepseek-ai/dsh-tool-load-event-definition` | `load_event_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | load_event_definition loads a validated event definition (params_fields, metrics, disambiguation, external dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash). |
-| `@deepseek-ai/dsh-tool-load-table-definition` | `load_table_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | load_table_definition loads a validated table definition (columns, partitions, primary key, metrics, dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash). |
-| `@deepseek-ai/dsh-tool-present-clarification` | `present_clarification` | `ctx.tools` | `tool/call`, `awaiting_clarification (phase-gate HALT)`, `tool/result` | - | present_clarification is a pure presentation tool that records one clarifying question for the UI and relies on the phase-gate to HALT the turn. It has no service dependency beyond ctx.tools; the actual HALT is the phase-gate job (not the tool). |
-| `@deepseek-ai/dsh-tool-retrieve` | `retrieve` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | retrieve is the on-demand retrieval escape-hatch for when the prefetched UNDERSTANDING context has a visible gap. It probes ctx.retrieval and ctx.schema lazily; the Q1 thin default is an empty-corpus Bm25Linker (callable but unwired). Ships additive + dormant; a preset must mount it. |
-| `@deepseek-ai/dsh-tool-search-schema` | `search_schema` | `ctx.tools` | `tool/call`, `tool/result ranked asset matches` | - | search_schema is BM25 search over the semantic layer for the management agent (returns asset matches with kind and domain metadata). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
-| `@deepseek-ai/dsh-tool-trigger-eval` | `trigger_eval` | `ctx.tools` | `tool/call`, `eval run + persisted results`, `tool/result` | - | trigger_eval triggers a semantic-layer eval run and reports a before/after delta. It probes ctx.evalRunner and ctx.evidenceQuery lazily; without a mounted runner it reports not_configured (the host composition must wire the collaborators). |
-| `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves &lt;project&gt;.&lt;table&gt;. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves. |
-| `@deepseek-ai/dsh-tool-compute` | `compute` | `ctx.tools`, `ctx.codeRuntime`, `ctx.resultCache` | `tool/call`, `cr_ derived result via ctx.resultCache`, `tool/result` | - | compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute. |
-| `@deepseek-ai/dsh-tool-discover-alt-labels` | `discover_alt_labels` | `ctx.tools` | `tool/call`, `tool/result alt-label candidates` | - | discover_alt_labels mirrors discover_relations: it surfaces alternative labels (aliases) for a table/column to broaden recall. It probes ctx.schema lazily; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
-| `@deepseek-ai/dsh-tool-present-decomposition` | `present_decomposition` | `ctx.tools` | `tool/call`, `tool/result decomposition cards` | - | present_decomposition is a pure presentation tool that renders a query decomposition (breakdown) for the UI. No service dependency beyond ctx.tools. |
-| `@deepseek-ai/dsh-tool-present-table` | `present_table` | `ctx.tools` | `tool/call`, `tool/result rendered table/chart` | - | present_table renders a table or chart result (line/bar) for the UI. No service dependency beyond ctx.tools; chart.type is fail-loud-validated at the tool-args boundary. |
-| `@deepseek-ai/dsh-tool-reachability-delta` | `reachability_delta` | `ctx.tools` | `tool/call`, `tool/result reachability delta` | - | reachability_delta reports the join-reachability difference between two assets. It probes ctx.schema lazily; the schema harvest needs no schema provider. |
-| `@deepseek-ai/dsh-tool-resolve-term` | `resolve_term` | `ctx.tools` | `tool/call`, `tool/result resolved asset` | - | resolve_term maps a natural-language term to a data asset (table/event/metric). It probes ctx.schema lazily; the schema harvest needs no schema provider. |
-| `@deepseek-ai/dsh-tool-revert-edit` | `revert_edit` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `Tier-2 audit revert event`, `tool/result` | - | revert_edit reverts a semantic-layer edit (concept/table/event) and records the revert via ctx.audit (Tier-2). The schema harvest mounts inert schema + audit providers so the inject resolves; execute reads them lazily. |
-| `@deepseek-ai/dsh-tool-scope-routing` | `list_scopes`, `switch_scope` | `ctx.tools`, `ctx.systemPrompt` | `tool/call`, `active-scope switch`, `tool/result` | - | scope_routing is the per-scope routing surface: list_scopes + switch_scope + an alias-hint system-prompt contribution. systemPrompt is mounted by the harvest base; the tool reads the active scope lazily. |
-| `@deepseek-ai/dsh-tool-suggest-followups` | `suggest_followups` | `ctx.tools` | `tool/call`, `tool/result follow-up chips` | - | suggest_followups surfaces follow-up question chips after a result. No service dependency beyond ctx.tools. |
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -168,9 +143,9 @@ Execute a TypeScript program against the available tools. Takes two required arg
 }
 ```
 
-Source: [`packages/core/tools/src/code-mode.ts`](../packages/core/tools/src/code-mode.ts)
+Source: [`packages/core/tools/src/ptc.ts`](../packages/core/tools/src/ptc.ts)
 
-Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: code` / `mode: both` (see the Code Mode Agent Note). Under `code` it is the registry's only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime's language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result.
+Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: ptc` / `mode: both` (see the PTC mode Agent Note). Under `ptc` it is the registry's only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime's language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result.
 
 <a id="deepseek-aidsh-plan-mode"></a>
 
@@ -205,7 +180,7 @@ exit_plan_mode stays in the model-facing schema while planning is inactive so tr
 
 ### `bash`
 
-Execute a bash command (`bash -c`) and return its stdout/stderr. Each call runs in a fresh shell: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under &lt;mode&gt; mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
+Execute a bash command (`bash -c`) and return its stdout/stderr. Each call runs in a fresh shell: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under <mode> mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
 
 ```json
 {
@@ -249,7 +224,7 @@ The bash tool is the model-facing consumer of the bash executor seam. A `run_in_
 
 ### `pwsh`
 
-Execute a PowerShell command (`pwsh -Command`) and return its stdout/stderr. Each call runs in a fresh pwsh process: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Paths use native Windows form (`C:\...`); read environment variables with `$env:NAME`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$env:DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under &lt;mode&gt; mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. On Windows a force-killed command settles as `[exit code: 1]` without a signal marker — treat it as an interruption, not a command failure. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
+Execute a PowerShell command (`pwsh -Command`) and return its stdout/stderr. Each call runs in a fresh pwsh process: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Paths use native Windows form (`C:\...`); read environment variables with `$env:NAME`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$env:DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under <mode> mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. On Windows a force-killed command settles as `[exit code: 1]` without a signal marker — treat it as an interruption, not a command failure. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`.
 
 ```json
 {
@@ -589,7 +564,8 @@ Custom editing tool for viewing, creating and editing files
 * State is persistent across command calls and discussions with the user
 * If `path` is a file, `view` displays the result of applying `cat -n`. If `path` is a directory, `view` lists non-hidden files and directories up to 2 levels deep
 * The `create` command cannot be used if the specified `path` already exists as a file
-* If a `command` generates a long output, it will be truncated and marked with `&lt;response clipped&gt;`
+* If a `command` generates a long output, it will be truncated and marked with `<response clipped>`
+* A null placeholder for a parameter unused by the selected command is treated as omitted. Required parameters still need values; omit `str_replace.new_str` rather than setting it to null when deleting a match
 
 Notes for using the `str_replace` command:
 * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
@@ -615,27 +591,62 @@ Notes for using the `str_replace` command:
       "description": "Absolute path to file or directory, e.g. `/repo/file.py` or `/repo`."
     },
     "file_text": {
-      "type": "string",
-      "description": "Required parameter of `create` command, with the content of the file to be created."
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Required string parameter of `create` command, with the content of the file to be created. A null placeholder is treated as omitted by commands that do not use this parameter."
     },
     "insert_line": {
-      "type": "integer",
-      "description": "Required parameter of `insert` command. The `new_str` will be inserted AFTER the line `insert_line` of `path`."
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Required integer parameter of `insert` command. The `new_str` will be inserted AFTER the line `insert_line` of `path`. A null placeholder is treated as omitted by commands that do not use this parameter."
     },
     "new_str": {
-      "type": "string",
-      "description": "Optional parameter of `str_replace` command containing the new string (if not given, no string will be added). Required parameter of `insert` command containing the string to insert."
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Optional string parameter of `str_replace` command containing the new string (if omitted, no string will be added). Required string parameter of `insert` command containing the string to insert. A null placeholder is accepted only by commands that do not use this parameter."
     },
     "old_str": {
-      "type": "string",
-      "description": "Required parameter of `str_replace` command containing the string in `path` to replace."
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Required string parameter of `str_replace` command containing the string in `path` to replace. A null placeholder is treated as omitted by commands that do not use this parameter."
     },
     "view_range": {
-      "type": "array",
-      "description": "Optional parameter of `view` command when `path` points to a file. If none is given, the full file is shown. If provided, the file will be shown in the indicated line number range, e.g. [11, 12] will show lines 11 and 12. Indexing at 1 to start. Setting `[start_line, -1]` shows all lines from `start_line` to the end of the file.",
-      "items": {
-        "type": "integer"
-      }
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Optional parameter of `view` command when `path` points to a file. If omitted or null, the full file is shown. If provided, the file will be shown in the indicated line number range, e.g. [11, 12] will show lines 11 and 12. Indexing at 1 to start. Setting `[start_line, -1]` shows all lines from `start_line` to the end of the file."
     }
   },
   "required": [
@@ -719,7 +730,7 @@ Source: [`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts
 
 ### `read_image`
 
-Read a PNG/JPEG/WebP/GIF file and return the image itself. Requires the current model to accept image input.
+Read a PNG/JPEG/WebP/GIF file and return the image itself. A path without a file extension is accepted; the format is detected from the file content, so normalized attachment paths can be passed directly without copying or renaming. Harness validates and downscales large supported images before the next model request, so use this tool directly instead of installing image libraries or creating thumbnails merely to inspect an image. Independent files may be read concurrently in small batches. Requires the current model to accept image input.
 
 ```json
 {
@@ -764,7 +775,7 @@ Create or fully replace a UTF-8 text file.
 
 Source: [`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts)
 
-The read-before-write/edit policy is added by `@deepseek-ai/dsh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. `read_image` is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input.
+The read-before-write/edit policy is added by `@deepseek-ai/dsh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. The image tool is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input.
 
 <a id="deepseek-aidsh-tool-fs-search"></a>
 
@@ -1525,6 +1536,28 @@ The five read-only tools hide provider cursors and authorize every result from t
 
 ## `@deepseek-ai/dsh-tool-subagent`
 
+### `list_subagent_models`
+
+Discover LLM routes for subagents without changing the current Agent. Call with no arguments to list registered providers, with `provider` to list its advertised models, or with `provider` and `model` to inspect that exact model and its reasoning efforts. Catalog membership is advisory: an adapter may accept an unlisted model id. Use the returned ids with a delegation tool's `provider`, `model`, and `reasoning_effort` fields.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "description": "Registered LLM provider id. Omit to list providers."
+    },
+    "model": {
+      "type": "string",
+      "description": "Exact model id to inspect. Requires provider; omit to list that provider's advertised models."
+    }
+  }
+}
+```
+
+Source: [`packages/subagent/tool-subagent/src/list-models.ts`](../packages/subagent/tool-subagent/src/list-models.ts)
+
 ### `subagent`
 
 Delegate a self-contained task to a subagent (a separate agent that works in its own context) to offload focused, independent work — research, a scoped implementation, an analysis — so it does not consume this conversation's context. The subagent returns its result, not its intermediate steps. Give it a complete, standalone prompt: it does not see this conversation. This call waits for the result by default. Set `run_in_background: true` to return a job id; collect with `job_output` and stop with `job_kill`.
@@ -1555,7 +1588,7 @@ Delegate a self-contained task to a subagent (a separate agent that works in its
 
 Source: [`packages/subagent/tool-subagent/src/index.ts`](../packages/subagent/tool-subagent/src/index.ts)
 
-The registered tool name is the load-time `toolName` config (default `subagent`); the schema above is that default. The shipped compositions load this package once per subagent backend, so the model additionally sees `subagent_fork` bound to the fork backend. Each instance's description, `run_in_background` parameter, and system-prompt policy follow its own `backgroundMode` and `enableRunInBackground`, so the two shipped schemas are not identical: `subagent` is `continuable` and defaults omitted calls to background with automatic settlement delivery, while `subagent_fork` stays `one-shot` and defaults them to foreground — see `packages/bundle/base/cordis.patch.yml` and `examples/acp-agent/cordis.yml`.
+The registered delegation name is the load-time `toolName` config (default `subagent`); the default schema above has model selection off, while the discovery schema is shown as the fixed companion available in an enabled Session. Web presets sample the Plugins preference for each new top-level Session and preserve that decision for its child Sessions; `subagent_fork` remains fixed-route. Each instance independently controls whether it reads model-selection settings and its background behavior through `modelSelectionSettings`, `backgroundMode`, and `enableRunInBackground`.
 
 <a id="deepseek-aidsh-tool-subagent-control"></a>
 
@@ -1584,7 +1617,7 @@ Source: [`packages/subagent/tool-subagent-control/src/index.ts`](../packages/sub
 
 ### `list_agents`
 
-List your continuable background subagents by durable id and label. Use it to recall which ones you started, not to poll for completion — you are told when one finishes. Status comes from the live registry: running means the agent is working right now, idle means it is loaded but between turns (it may be waiting on agents it started), and ready means it exists only in storage — resumable, not terminal, and not a result waiting to be collected; a `send_message` starts a new turn on the same conversation, and a direct child remains a `send_message` candidate in every status. The snapshot is not a delivery promise — `send_message` performs the authoritative check and may still fail. Children that could not be read are reported as diagnostics instead of being silently dropped. Scope `descendants` walks the whole tree below you in stable pre-order, annotating each entry with its durable direct-parent session id and depth. You may use `send_message` only for depth-1 entries; deeper entries are candidates for `interrupt_agent` only.
+List your continuable background subagents by durable id and label. Use it to recall which ones you started, not to poll for completion — you are told when one finishes. Status comes from the live registry: running means the agent is working right now, idle means it is loaded but between turns (it may be waiting on agents it started), and ready means it exists only in storage — resumable, not terminal, and not a result waiting to be collected; a `send_message` steers a running child at its nearest step boundary or starts a turn for an idle or ready child, and a direct child remains a `send_message` candidate in every status. The snapshot is not a delivery promise — `send_message` performs the authoritative check and may still fail. Children that could not be read are reported as diagnostics instead of being silently dropped. Scope `descendants` walks the whole tree below you in stable pre-order, annotating each entry with its durable direct-parent session id and depth. You may use `send_message` only for depth-1 entries; deeper entries are candidates for `interrupt_agent` only.
 
 ```json
 {
@@ -1606,23 +1639,23 @@ Source: [`packages/subagent/tool-subagent-control/src/list-agents.ts`](../packag
 
 ### `send_message`
 
-Send a message to a background subagent by its subagent id, continuing the same conversation. It becomes the subagent's next turn: if it is still working, the message waits until its current turn finishes, so it cannot redirect work already underway. This call returns no answer from the subagent — only confirmation that the message was delivered — so use it to give it more work. A failure means the message was NOT delivered.
+Send a message to a direct continuable child by its agent id. If you are a resident continuable child, you may also target your direct parent. If the target is still working, the message steers its nearest step; if it is idle, the message starts a turn. This call returns no answer from the agent — only confirmation that the message was delivered. A failure means the message was NOT delivered.
 
 ```json
 {
   "type": "object",
   "properties": {
-    "subagent_id": {
+    "agent_id": {
       "type": "string",
-      "description": "The subagent id returned when the background subagent was started."
+      "description": "The agent id of your direct continuable child, or your direct parent when you are a resident continuable child."
     },
     "message": {
       "type": "string",
-      "description": "The message to deliver to the subagent."
+      "description": "The message to deliver to the agent."
     }
   },
   "required": [
-    "subagent_id",
+    "agent_id",
     "message"
   ]
 }
@@ -1631,33 +1664,6 @@ Send a message to a background subagent by its subagent id, continuing the same 
 Source: [`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts)
 
 The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries).
-
-<a id="deepseek-aidsh-tool-subagent-report"></a>
-
-## `@deepseek-ai/dsh-tool-subagent-report`
-
-### `report`
-
-Report selected content to the agent that started you. Call this once before you finish, with a self-contained final result, and earlier for progress or findings that change what that agent does next. That agent shares your workspace but does not automatically receive your transcript, tool output, or reasoning, so finishing your work is not itself a result. Reporting does not end your turn or finish your work, and only your direct parent receives it. A failed call may still have arrived, so do not blindly repeat it.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "output": {
-      "type": "string",
-      "description": "Actionable content for your parent; summarize conclusions and reference relevant shared paths."
-    }
-  },
-  "required": [
-    "output"
-  ]
-}
-```
-
-Source: [`packages/subagent/tool-subagent-report/src/index.ts`](../packages/subagent/tool-subagent-report/src/index.ts)
-
-Registered per continuable in-process child rather than globally, so this schema is visible only inside such a child and survives its global `toolFilter`. The same contribution installs the child-scoped `tool:report` prompt section, which this catalog does not render. The parent-facing `send_message` tool is installed independently.
 
 <a id="deepseek-aidsh-tool-jobs"></a>
 
@@ -1736,32 +1742,6 @@ The kind-agnostic background-job controller: background bash commands, PTY sends
 
 ## `@deepseek-ai/dsh-experimental-tool-agent-team`
 
-### `followup_task`
-
-Send a durable follow-up task to another Team member and start a turn when needed.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "target": {
-      "type": "string",
-      "description": "Team member name, or lead."
-    },
-    "message": {
-      "type": "string",
-      "description": "Self-contained message for the target."
-    }
-  },
-  "required": [
-    "target",
-    "message"
-  ]
-}
-```
-
-Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
-
 ### `interrupt_agent`
 
 Interrupt one teammate's current turn while preserving its pending inbox. Team Lead only.
@@ -1798,7 +1778,7 @@ Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/exper
 
 ### `send_message`
 
-Send durable information to another Team member without starting an idle member.
+Send one durable message to another Team member. A running target receives it at the nearest step boundary; an idle target starts a turn; an inactive teammate cold-resumes.
 
 ```json
 {
@@ -2046,7 +2026,7 @@ Wait for the next teammate status, mailbox, or shared-task change after this cal
 
 Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
 
-All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.
+All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.
 
 <a id="deepseek-aidsh-tool-todo"></a>
 
@@ -2106,12 +2086,12 @@ todo_write is session-owned state; UIs render the latest todo/write event as a c
 
 Run a JavaScript workflow script that orchestrates subagents at scale. Use this for work that fans out across many independent pieces — an audit over many files, a migration, multi-angle research, adversarial verification of findings — where you write the orchestration as a script instead of delegating turn by turn.
 
-The workflow's identity rides the `meta` parameter as JSON: required `name` (short kebab-case) and `description` strings, optional `whenToUse` string and `phases` array (`{title, detail?, provider?, model?}`). The `script` parameter is the plain JavaScript body ONLY (NOT TypeScript, and NO `export const meta` statement — meta is a parameter, not code), running with top-level await; end with `return &lt;value&gt;` — the value must be JSON-serializable and is this tool's result.
+The workflow's identity rides the `meta` parameter as JSON: required `name` (short kebab-case) and `description` strings, optional `whenToUse` string and `phases` array (`{title, detail?, provider?, model?}`). The `script` parameter is the plain JavaScript body ONLY (NOT TypeScript, and NO `export const meta` statement — meta is a parameter, not code), running with top-level await; end with `return <value>` — the value must be JSON-serializable and is this tool's result.
 
 Script-body hooks:
-- `agent(prompt, opts?): Promise&lt;any&gt;` — run one subagent to completion. Without `opts.schema` it resolves to the child's final text; with `opts.schema` (an object-rooted JSON Schema using ONLY type/properties/required/additionalProperties/items/enum/const/oneOf — no pattern/format/numeric bounds) it resolves to the validated object. Resolves `null` when the child fails (filter with `.filter(Boolean)`). Other opts: `label` (display), `phase` (progress group), and independent `provider`/`model` LLM target overrides (either may be provided alone). Anything else (`effort`/`isolation`/`agentType`) is rejected loudly.
-- `pipeline(items, ...stages): Promise&lt;any[]&gt;` — run each item through the stages independently with NO barrier between stages (prefer this for multi-stage work). Each stage receives `(prev, item, index)`. An ordinary stage throw drops that ITEM to `null` and skips its remaining stages.
-- `parallel(thunks): Promise&lt;any[]&gt;` — run zero-argument functions concurrently and await ALL of them (a barrier; use only when a stage genuinely needs every prior result together). A throwing thunk resolves to `null`.
+- `agent(prompt, opts?): Promise<any>` — run one subagent to completion. Without `opts.schema` it resolves to the child's final text; with `opts.schema` (an object-rooted JSON Schema using ONLY type/properties/required/additionalProperties/items/enum/const/oneOf — no pattern/format/numeric bounds) it resolves to the validated object. Resolves `null` when the child fails (filter with `.filter(Boolean)`). Other opts: `label` (display), `phase` (progress group), and independent `provider`/`model` LLM target overrides (either may be provided alone). Anything else (`effort`/`isolation`/`agentType`) is rejected loudly.
+- `pipeline(items, ...stages): Promise<any[]>` — run each item through the stages independently with NO barrier between stages (prefer this for multi-stage work). Each stage receives `(prev, item, index)`. An ordinary stage throw drops that ITEM to `null` and skips its remaining stages.
+- `parallel(thunks): Promise<any[]>` — run zero-argument functions concurrently and await ALL of them (a barrier; use only when a stage genuinely needs every prior result together). A throwing thunk resolves to `null`.
 - `phase(title)` — start a progress phase; `log(message)` — narrate progress; `args` — the tool call's `args` input, verbatim.
 
 Misused hooks (bad arguments, unknown options, unsupported schemas, tripped caps) throw errors that ALWAYS kill the script — they never dissolve into a per-item `null`.
@@ -2243,897 +2223,3 @@ Search the web for current information. Provide 1–4 queries in the required qu
 Source: [`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.
-
-<a id="deepseek-aidsh-tool-search-data-sources"></a>
-
-## `@deepseek-ai/dsh-tool-search-data-sources`
-
-### `search_data_sources`
-
-Find the data sources (DWS tables / event ODS tables) relevant to a natural-language question, via BM25 schema-linking over the semantic layer. Call this in the UNDERSTANDING phase to learn which tables and events can answer the question before writing SQL. Returns ranked candidate data sources with id, score, and description.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "query": {
-      "type": "string",
-      "description": "The natural-language data question to link against the data-source corpus."
-    },
-    "top_k": {
-      "type": "number",
-      "description": "Maximum number of candidate data sources to return. Defaults to 20."
-    }
-  },
-  "required": [
-    "query"
-  ]
-}
-```
-
-Source: [`packages/data/tool-search-data-sources/src/index.ts`](../packages/data/tool-search-data-sources/src/index.ts)
-
-search_data_sources is the UNDERSTANDING-phase entry to BM25 schema-linking: the agent calls it to learn which data sources (DWS tables / event ODS tables) match a natural-language question before writing SQL. The Q1 thin default uses the local Bm25Linker over an empty corpus (callable but unwired until ctx.schema ships) — an empty corpus returns no candidates. P5b swaps to ctx.retrieval when registered, and P6b sources the corpus from ctx.schema.discover; the tool contract is unchanged across both.
-
-<a id="deepseek-aidsh-tool-critique-sql"></a>
-
-## `@deepseek-ai/dsh-tool-critique-sql`
-
-### `critique_sql_tool`
-
-Critique a SQL candidate with the folded-regex SQL critic (table ∈ candidates, ds partition required, no SELECT *, GET_JSON_OBJECT field ∈ event_params). Call this in GENERATION before query_data — the turn-stopping gate requires confidence ≥ 0.6 to advance to EXECUTION. After a TABLE_NOT_FOUND or execution error, correct the SQL and RE-call critique_sql_tool (re-critique) before re-calling query_data — the gate's F2 same-source check requires the query_data SQL to match the critiqued SQL. Returns confidence, findings, and the normalized SQL.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "sql": {
-      "type": "string",
-      "description": "The SQL to critique (raw SQL or a ```sql fenced block)."
-    },
-    "question": {
-      "type": "string",
-      "description": "The natural-language question the SQL answers (context for the critic)."
-    }
-  },
-  "required": [
-    "sql"
-  ]
-}
-```
-
-Source: [`packages/data/tool-critique-sql/src/index.ts`](../packages/data/tool-critique-sql/src/index.ts)
-
-critique_sql_tool is the GENERATION-phase SQL critic (folded-regex: table grounding, ds partition, SELECT *, JSON-path fields). It probes ctx.criticCtx and ctx.schema lazily via ctx.get (no provider mount needed for the schema harvest); an empty critic context fail-opens so the tool registers its schema without the phase-gate or semantic layer mounted.
-
-<a id="deepseek-aidsh-tool-discover-relations"></a>
-
-## `@deepseek-ai/dsh-tool-discover-relations`
-
-### `discover_relations`
-
-Discover DWS→DIM dimension join relations over the semantic layer (G3 AI-native enrichment: deterministic primary-key-name round + an optional LLM semantic round). Writes the discovered dimension_refs back into each DWS table. Call this in the ENRICHMENT phase to seed or refresh a scope's relation graph. Optionally limit to a `tables` set; omit it to enrich all DWS tables in the active scope.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "tables": {
-      "type": "array",
-      "description": "Optional list of table_name values to limit enrichment to. Omit to enrich all DWS tables in the active scope.",
-      "items": {
-        "type": "string"
-      }
-    }
-  }
-}
-```
-
-Source: [`packages/data/tool-discover-relations/src/index.ts`](../packages/data/tool-discover-relations/src/index.ts)
-
-discover_relations is the ENRICHMENT-phase AI-native DWS-&gt;DIM join discovery entry. It delegates to ctx.schema.discoverRelations, probed lazily via ctx.get; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).
-
-<a id="deepseek-aidsh-tool-edit-definition"></a>
-
-## `@deepseek-ai/dsh-tool-edit-definition`
-
-### `edit_definition`
-
-Edit a data asset definition (table, event, or concept) by applying a partial patch. The patch is shallow-merged at top level; for `columns` and `dimension_refs`, merges by identity field (name / dim_table). `domains` and `alt_labels` are unioned with dedup. All edits to tables/events are marked "unreviewed" and audited. Metrics are virtual and cannot be edited directly — edit the host asset instead.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "asset_name": {
-      "type": "string",
-      "description": "The asset to edit (table_name or event name)."
-    },
-    "patch": {
-      "type": "object",
-      "description": "Partial definition fields to merge. Supports: description, columns (array merged by name), dimension_refs (array merged by dim_table), domains (unioned with dedup), granularity, metrics, etc.",
-      "additionalProperties": true
-    }
-  },
-  "required": [
-    "asset_name",
-    "patch"
-  ]
-}
-```
-
-Source: [`packages/data/tool-edit-definition/src/index.ts`](../packages/data/tool-edit-definition/src/index.ts)
-
-edit_definition applies a partial patch to a table or event definition (shallow-merge; columns merged by name) and records a Tier-2 audit write, marking the asset unreviewed. Metrics are virtual and cannot be edited directly. The schema harvest mounts inert ctx.schema + ctx.audit providers so the Tier-2 inject resolves.
-
-<a id="deepseek-aidsh-tool-evaluate-sql-quality"></a>
-
-## `@deepseek-ai/dsh-tool-evaluate-sql-quality`
-
-### `evaluate_sql_quality`
-
-Score a SQL candidate's quality (0–100) from the folded-regex critic findings (table grounding, ds partition, SELECT *, JSON-path fields). Call this in GENERATION alongside critique_sql_tool before query_data — the turn-stopping gate requires score ≥ 60 to advance to EXECUTION. Returns the quality score.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "sql": {
-      "type": "string",
-      "description": "The SQL to score (raw SQL or a ```sql fenced block)."
-    }
-  },
-  "required": [
-    "sql"
-  ]
-}
-```
-
-Source: [`packages/data/tool-evaluate-sql-quality/src/index.ts`](../packages/data/tool-evaluate-sql-quality/src/index.ts)
-
-evaluate_sql_quality scores a SQL candidate 0-100 from the folded-regex critic findings. It probes ctx.criticCtx lazily; no provider mount needed for the schema harvest (empty critic context fail-opens).
-
-<a id="deepseek-aidsh-tool-get-coverage"></a>
-
-## `@deepseek-ai/dsh-tool-get-coverage`
-
-### `get_coverage`
-
-Get semantic layer coverage statistics: total assets by kind (tables, events, metrics), confirmation status breakdown (confirmed vs draft), and per-domain asset counts. Optionally filter by a specific domain (concept). Use this to assess the overall health and completeness of the semantic layer.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "domain": {
-      "type": "string",
-      "description": "Optional domain name to scope statistics to (only assets belonging to this domain are counted)."
-    }
-  }
-}
-```
-
-Source: [`packages/data/tool-get-coverage/src/index.ts`](../packages/data/tool-get-coverage/src/index.ts)
-
-get_coverage reports semantic-layer coverage statistics (assets by kind, confirmation status, per-domain counts). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
-
-<a id="deepseek-aidsh-tool-get-definition"></a>
-
-## `@deepseek-ai/dsh-tool-get-definition`
-
-### `get_definition`
-
-Load the full definition of a data asset (table, event, metric, or concept) by name. Returns the complete definition including fields, relations, domains, metrics, and confirmation status. Use after search_schema identifies an asset to inspect.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "description": "The asset name (table_name, event name, or metric name) to look up."
-    }
-  },
-  "required": [
-    "name"
-  ]
-}
-```
-
-Source: [`packages/data/tool-get-definition/src/index.ts`](../packages/data/tool-get-definition/src/index.ts)
-
-get_definition loads a unified data asset definition (table, event, or metric) by name. It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
-
-<a id="deepseek-aidsh-tool-list-domains"></a>
-
-## `@deepseek-ai/dsh-tool-list-domains`
-
-### `list_domains`
-
-List all domains (concepts) in the semantic layer with descriptions, aliases, and asset counts per kind (tables, events, metrics). Use this to understand the domain structure and identify areas to focus on.
-
-```json
-{
-  "type": "object",
-  "properties": {}
-}
-```
-
-Source: [`packages/data/tool-list-domains/src/index.ts`](../packages/data/tool-list-domains/src/index.ts)
-
-list_domains enumerates semantic-layer domains with per-kind asset counts (tables, events, metrics). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
-
-<a id="deepseek-aidsh-tool-load-event-definition"></a>
-
-## `@deepseek-ai/dsh-tool-load-event-definition`
-
-### `load_event_definition`
-
-Load a validated instrumented event definition (params_fields, metrics, disambiguation, external dimension references) from the semantic layer. Call this in the UNDERSTANDING/GENERATION phase to ground SQL in the real event schema before writing or critiquing a query over an event ODS table. Returns the projected event definition when found, or a not-found / not-mounted message.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "event_name": {
-      "type": "string",
-      "description": "The event name (its `name` key in the semantic layer) to load."
-    }
-  },
-  "required": [
-    "event_name"
-  ]
-}
-```
-
-Source: [`packages/data/tool-load-event-definition/src/index.ts`](../packages/data/tool-load-event-definition/src/index.ts)
-
-load_event_definition loads a validated event definition (params_fields, metrics, disambiguation, external dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash).
-
-<a id="deepseek-aidsh-tool-load-table-definition"></a>
-
-## `@deepseek-ai/dsh-tool-load-table-definition`
-
-### `load_table_definition`
-
-Load a validated table definition (columns, partitions, primary key, metrics, dimension references) from the semantic layer. Call this in the UNDERSTANDING/GENERATION phase to ground SQL in the real schema before writing or critiquing a query. Returns the projected table definition when found, or a not-found / not-mounted message.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "table_name": {
-      "type": "string",
-      "description": "The table name (its `table_name` key in the semantic layer) to load."
-    }
-  },
-  "required": [
-    "table_name"
-  ]
-}
-```
-
-Source: [`packages/data/tool-load-table-definition/src/index.ts`](../packages/data/tool-load-table-definition/src/index.ts)
-
-load_table_definition loads a validated table definition (columns, partitions, primary key, metrics, dimension refs). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts (an empty semanticRoot returns not-found, no crash).
-
-<a id="deepseek-aidsh-tool-present-clarification"></a>
-
-## `@deepseek-ai/dsh-tool-present-clarification`
-
-### `present_clarification`
-
-Present a clarifying question to the user and HALT the turn awaiting their answer. Use when a real ambiguity or missing knowledge (e.g. which engine project a table lives in) blocks progress. Emit exactly one specific question; the gate HALTs on this call (any phase).
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "question": {
-      "type": "string",
-      "description": "One specific clarifying question for the user."
-    },
-    "options": {
-      "type": "array",
-      "description": "Optional multiple-choice options.",
-      "items": {
-        "type": "string"
-      }
-    }
-  },
-  "required": [
-    "question"
-  ]
-}
-```
-
-Source: [`packages/data/tool-present-clarification/src/index.ts`](../packages/data/tool-present-clarification/src/index.ts)
-
-present_clarification is a pure presentation tool that records one clarifying question for the UI and relies on the phase-gate to HALT the turn. It has no service dependency beyond ctx.tools; the actual HALT is the phase-gate job (not the tool).
-
-<a id="deepseek-aidsh-tool-retrieve"></a>
-
-## `@deepseek-ai/dsh-tool-retrieve`
-
-### `retrieve`
-
-Retrieve relevant data-source context on demand — the escape-hatch for when the prefetched UNDERSTANDING context has a visible gap (an ambiguous question, or a business synonym the prefetch did not bridge). Prefer the context already surfaced by search_data_sources; call this only when the gap is obvious, with a refined query. Returns ranked candidate data sources with id, score, and description.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "query": {
-      "type": "string",
-      "description": "The natural-language query to retrieve data-source context for. Refine the prefetch query when it missed (a synonym, a more specific phrasing)."
-    },
-    "top_k": {
-      "type": "number",
-      "description": "Maximum number of candidate data sources to return. Defaults to 20."
-    }
-  },
-  "required": [
-    "query"
-  ]
-}
-```
-
-Source: [`packages/data/tool-retrieve/src/index.ts`](../packages/data/tool-retrieve/src/index.ts)
-
-retrieve is the on-demand retrieval escape-hatch for when the prefetched UNDERSTANDING context has a visible gap. It probes ctx.retrieval and ctx.schema lazily; the Q1 thin default is an empty-corpus Bm25Linker (callable but unwired). Ships additive + dormant; a preset must mount it.
-
-<a id="deepseek-aidsh-tool-search-schema"></a>
-
-## `@deepseek-ai/dsh-tool-search-schema`
-
-### `search_schema`
-
-Search the semantic layer for data assets (tables, events, metrics) matching a natural-language query. Returns ranked results with kind and domain metadata. Use this to discover what assets exist before inspecting them with get_definition.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "query": {
-      "type": "string",
-      "description": "Natural-language search query describing the assets to find."
-    },
-    "top_k": {
-      "type": "number",
-      "description": "Maximum number of results to return. Defaults to 20."
-    }
-  },
-  "required": [
-    "query"
-  ]
-}
-```
-
-Source: [`packages/data/tool-search-schema/src/index.ts`](../packages/data/tool-search-schema/src/index.ts)
-
-search_schema is BM25 search over the semantic layer for the management agent (returns asset matches with kind and domain metadata). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts.
-
-<a id="deepseek-aidsh-tool-trigger-eval"></a>
-
-## `@deepseek-ai/dsh-tool-trigger-eval`
-
-### `trigger_eval`
-
-Trigger a semantic layer eval run to measure data agent quality. Runs the full case set, reports pass rate, and compares against the previous run (before/after delta showing which cases improved or regressed). Use after making changes to assess impact.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "skip_health_gate": {
-      "type": "boolean",
-      "description": "Skip the pre-flight health check (use when debugging connectivity issues)"
-    }
-  }
-}
-```
-
-Source: [`packages/data/tool-trigger-eval/src/index.ts`](../packages/data/tool-trigger-eval/src/index.ts)
-
-trigger_eval triggers a semantic-layer eval run and reports a before/after delta. It probes ctx.evalRunner and ctx.evidenceQuery lazily; without a mounted runner it reports not_configured (the host composition must wire the collaborators).
-
-<a id="deepseek-aidsh-tool-update-table-config"></a>
-
-## `@deepseek-ai/dsh-tool-update-table-config`
-
-### `update_table_config`
-
-Write a per-table engine project override to the table definition (self-evolution: after asking the user which engine project a table lives in, persist it so future qualifyTable retries resolve &lt;project&gt;.&lt;table&gt; and the engine finds the table). Admin-only. Returns { ok, qualified_name } on success, or { ok: false, error } when the caller is not admin, the name is invalid, or the table is not on disk.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "table_name": {
-      "type": "string",
-      "description": "The table name (its `table_name` key in the semantic layer) to override."
-    },
-    "project": {
-      "type": "string",
-      "description": "The engine project the table lives in (written as the per-table `project` override)."
-    }
-  },
-  "required": [
-    "table_name",
-    "project"
-  ]
-}
-```
-
-Source: [`packages/data/tool-update-table-config/src/index.ts`](../packages/data/tool-update-table-config/src/index.ts)
-
-update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves &lt;project&gt;.&lt;table&gt;. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves.
-
-<a id="deepseek-aidsh-tool-compute"></a>
-
-## `@deepseek-ai/dsh-tool-compute`
-
-### `compute`
-
-Execute Python/pandas code against a query result to derive new data. The code runs as an async function body with pandas and numpy available. Access source data via `await data.load_result({"result_id": "qr_..."})` which returns {"columns": [...], "rows": [...]}. The code must return an object with the same shape: {"columns": [...], "rows": [...]}. Use in the INTERPRETATION phase for calculations the SQL query did not cover (ratios, running totals, pivots, statistical tests, etc.).
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "result_id": {
-      "type": "string",
-      "description": "The result_id of the source data to compute against (from query_data execution)."
-    },
-    "code": {
-      "type": "string",
-      "description": "Python code to execute. Has pandas (pd) and numpy (np) available. Load data with `await data.load_result({\"result_id\": \"...\"})`. Must return {\"columns\": [...], \"rows\": [...]}."
-    },
-    "description": {
-      "type": "string",
-      "description": "Human-readable description of what this computation produces."
-    }
-  },
-  "required": [
-    "result_id",
-    "code",
-    "description"
-  ]
-}
-```
-
-Source: [`packages/data/tool-compute/src/index.ts`](../packages/data/tool-compute/src/index.ts)
-
-compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute.
-
-<a id="deepseek-aidsh-tool-discover-alt-labels"></a>
-
-## `@deepseek-ai/dsh-tool-discover-alt-labels`
-
-### `discover_alt_labels`
-
-Discover alternative search labels (alt_labels / SKOS aliases) for semantic layer definitions (CL-1 AI-native enrichment: deterministic extraction from description/columns/domains + optional LLM semantic round). Writes discovered labels back into each definition. Call this to improve search recall by adding synonyms, abbreviations, and Chinese/English variants. Optionally limit to `tables` and/or `events` sets; omit both to enrich all definitions.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "tables": {
-      "type": "array",
-      "description": "Optional list of table_name values to limit enrichment to.",
-      "items": {
-        "type": "string"
-      }
-    },
-    "events": {
-      "type": "array",
-      "description": "Optional list of event name values to limit enrichment to.",
-      "items": {
-        "type": "string"
-      }
-    }
-  }
-}
-```
-
-Source: [`packages/data/tool-discover-alt-labels/src/index.ts`](../packages/data/tool-discover-alt-labels/src/index.ts)
-
-discover_alt_labels mirrors discover_relations: it surfaces alternative labels (aliases) for a table/column to broaden recall. It probes ctx.schema lazily; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships).
-
-<a id="deepseek-aidsh-tool-present-decomposition"></a>
-
-## `@deepseek-ai/dsh-tool-present-decomposition`
-
-### `present_decomposition`
-
-Present a structured query decomposition to the user: the interpreted summary, metrics, dimensions, and time range extracted from the original question. Use in the INTERPRETATION phase to show the user how their natural-language question was understood before execution.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "summary": {
-      "type": "string",
-      "description": "A natural-language summary of the interpreted query intent."
-    },
-    "metrics": {
-      "type": "array",
-      "description": "The metrics (measures) identified in the query.",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Metric name."
-          },
-          "value": {
-            "type": "string",
-            "description": "Metric expression or description."
-          },
-          "unit": {
-            "type": "string",
-            "description": "Optional unit of measurement."
-          }
-        },
-        "required": [
-          "name",
-          "value"
-        ]
-      }
-    },
-    "dimensions": {
-      "type": "array",
-      "description": "The dimensions (group-by axes) identified in the query.",
-      "items": {
-        "type": "string"
-      }
-    },
-    "time_range": {
-      "type": "string",
-      "description": "The time range the query covers (e.g. \"last 7 days\", \"2024-01 to 2024-03\")."
-    },
-    "source": {
-      "type": "string",
-      "description": "The primary data source or table used."
-    },
-    "filters": {
-      "type": "array",
-      "description": "Filter conditions applied to the query.",
-      "items": {
-        "type": "string"
-      }
-    },
-    "confidence": {
-      "type": "number",
-      "description": "Confidence score between 0 and 1 for the interpretation."
-    }
-  },
-  "required": [
-    "summary",
-    "metrics",
-    "dimensions",
-    "time_range"
-  ]
-}
-```
-
-Source: [`packages/data/tool-present-decomposition/src/index.ts`](../packages/data/tool-present-decomposition/src/index.ts)
-
-present_decomposition is a pure presentation tool that renders a query decomposition (breakdown) for the UI. No service dependency beyond ctx.tools.
-
-<a id="deepseek-aidsh-tool-present-table"></a>
-
-## `@deepseek-ai/dsh-tool-present-table`
-
-### `present_table`
-
-Present a query result table to the user with display metadata: title, column layout, sort order, KPI aggregations, and optional chart config. Use in the INTERPRETATION phase to instruct the UI how to render the executed query result. Chart-type heuristic — pick by metric × dimension × grain: metric + time grain (ds) → line (cumulative → area); metric + category dimension → bar (long labels → hbar); 2 metrics (correlation) → scatter; 3 metrics → bubble (x, y, r); metric + ≤8 value dimensions + share → doughnut; one entity × N metrics → radar/polarArea. The client validator degrades an infeasible choice to bar (e.g. scatter with &lt;2 numeric columns, doughnut with &gt;8 classes, line/area whose x is not a date/ordinal).
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "result_id": {
-      "type": "string",
-      "description": "The ID of the query result to present (from query_data execution)."
-    },
-    "title": {
-      "type": "string",
-      "description": "Human-readable title for the table display."
-    },
-    "columns": {
-      "type": "array",
-      "description": "Column names for display (overrides raw result headers).",
-      "items": {
-        "type": "string"
-      }
-    },
-    "column_types": {
-      "type": "array",
-      "description": "Semantic type per column (e.g. \"number\", \"date\", \"string\").",
-      "items": {
-        "type": "string"
-      }
-    },
-    "sort_column": {
-      "type": "number",
-      "description": "Index of the column to sort by (-1 for no sort)."
-    },
-    "kpi_columns": {
-      "type": "array",
-      "description": "Columns to display as KPI summary cards above the table.",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "column": {
-            "type": "number",
-            "description": "Column index."
-          },
-          "aggregation": {
-            "type": "string",
-            "description": "Aggregation function (sum, avg, max, min, count)."
-          },
-          "label": {
-            "type": "string",
-            "description": "Display label for the KPI."
-          },
-          "format": {
-            "type": "string",
-            "description": "Optional format string (e.g. \",.2f\", \"%\")."
-          }
-        },
-        "required": [
-          "column",
-          "aggregation",
-          "label"
-        ]
-      }
-    },
-    "chart": {
-      "type": "object",
-      "description": "Optional chart visualization config.",
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Chart type. Pick by metric×dimension×grain (see the tool heuristic); the client degrades infeasible choices to bar.",
-          "enum": [
-            "line",
-            "bar",
-            "area",
-            "hbar",
-            "scatter",
-            "doughnut",
-            "bubble",
-            "radar",
-            "polarArea"
-          ]
-        },
-        "x_column": {
-          "type": "number",
-          "description": "Column index for the x-axis (category for bar/doughnut/radar; numeric x for scatter/bubble)."
-        },
-        "y_columns": {
-          "type": "array",
-          "description": "Column indices for y-axis series (scatter/bubble use the first as y).",
-          "items": {
-            "type": "number"
-          }
-        },
-        "r_column": {
-          "type": "number",
-          "description": "Column index for the bubble radius (3rd numeric metric; bubble only)."
-        }
-      },
-      "required": [
-        "type",
-        "x_column",
-        "y_columns"
-      ]
-    }
-  },
-  "required": [
-    "result_id",
-    "title"
-  ]
-}
-```
-
-Source: [`packages/data/tool-present-table/src/index.ts`](../packages/data/tool-present-table/src/index.ts)
-
-present_table renders a table or chart result (line/bar) for the UI. No service dependency beyond ctx.tools; chart.type is fail-loud-validated at the tool-args boundary.
-
-<a id="deepseek-aidsh-tool-reachability-delta"></a>
-
-## `@deepseek-ai/dsh-tool-reachability-delta`
-
-### `reachability_delta`
-
-Compute reachability delta: if a proposed relation is added, which asset pairs become newly reachable via joins? Use to assess the impact of adding a new relation to the knowledge graph.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "source_id": {
-      "type": "string",
-      "description": "Source asset ID for the proposed relation"
-    },
-    "target_id": {
-      "type": "string",
-      "description": "Target asset ID for the proposed relation"
-    },
-    "type": {
-      "type": "string",
-      "description": "Relation type (joins | derived_from | related_to)",
-      "enum": [
-        "joins",
-        "derived_from",
-        "related_to"
-      ]
-    },
-    "on": {
-      "type": "string",
-      "description": "Join condition expression (for joins type)"
-    }
-  },
-  "required": [
-    "source_id",
-    "target_id",
-    "type"
-  ]
-}
-```
-
-Source: [`packages/data/tool-reachability-delta/src/index.ts`](../packages/data/tool-reachability-delta/src/index.ts)
-
-reachability_delta reports the join-reachability difference between two assets. It probes ctx.schema lazily; the schema harvest needs no schema provider.
-
-<a id="deepseek-aidsh-tool-resolve-term"></a>
-
-## `@deepseek-ai/dsh-tool-resolve-term`
-
-### `resolve_term`
-
-将业务术语精确解析为数据资产（匹配 alt_labels/pref_label），返回命中节点及图上下文。用于消歧：当你不确定一个业务概念对应哪些表/事件/指标时调用此工具。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "term": {
-      "type": "string",
-      "description": "要解析的业务术语（如 \"DAU\"、\"付费用户\"、\"活跃\"）"
-    }
-  },
-  "required": [
-    "term"
-  ]
-}
-```
-
-Source: [`packages/data/tool-resolve-term/src/index.ts`](../packages/data/tool-resolve-term/src/index.ts)
-
-resolve_term maps a natural-language term to a data asset (table/event/metric). It probes ctx.schema lazily; the schema harvest needs no schema provider.
-
-<a id="deepseek-aidsh-tool-revert-edit"></a>
-
-## `@deepseek-ai/dsh-tool-revert-edit`
-
-### `revert_edit`
-
-Roll back a data asset definition (table or event) to a prior snapshot. Each edit_definition call records a before-snapshot with an incrementing version number per asset. Use this tool to undo edits by reverting to a specific version. The current state is also snapshotted before reverting (so the revert itself can be undone).
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "asset_name": {
-      "type": "string",
-      "description": "The asset to revert (table_name or event name)."
-    },
-    "to_version": {
-      "type": "integer",
-      "description": "The snapshot version to restore (must be >= 1). Use list mode (omit to_version and set list_versions=true) to see available versions, or specify a version number to revert to that snapshot."
-    },
-    "list_versions": {
-      "type": "boolean",
-      "description": "If true, list available snapshot versions for the asset instead of reverting. Returns version metadata without modifying anything."
-    }
-  },
-  "required": [
-    "asset_name"
-  ]
-}
-```
-
-Source: [`packages/data/tool-revert-edit/src/index.ts`](../packages/data/tool-revert-edit/src/index.ts)
-
-revert_edit reverts a semantic-layer edit (concept/table/event) and records the revert via ctx.audit (Tier-2). The schema harvest mounts inert schema + audit providers so the inject resolves; execute reads them lazily.
-
-<a id="deepseek-aidsh-tool-scope-routing"></a>
-
-## `@deepseek-ai/dsh-tool-scope-routing`
-
-### `list_scopes`
-
-List all available data scopes (games/products) with their descriptions. Use this to see what scopes you can switch to. Each scope has its own semantic layer, event definitions, and query conventions.
-
-```json
-{
-  "type": "object",
-  "properties": {}
-}
-```
-
-Source: [`packages/data/tool-scope-routing/src/index.ts`](../packages/data/tool-scope-routing/src/index.ts)
-
-### `switch_scope`
-
-Switch the active data scope to a different game/product. After switching, all subsequent data operations (search, load definitions, generate SQL, execute queries) will use the new scope's semantic layer and conventions. Use list_scopes first if unsure which scope to switch to.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "scope_id": {
-      "type": "string",
-      "description": "The scope id to switch to (from list_scopes)."
-    }
-  },
-  "required": [
-    "scope_id"
-  ]
-}
-```
-
-Source: [`packages/data/tool-scope-routing/src/index.ts`](../packages/data/tool-scope-routing/src/index.ts)
-
-scope_routing is the per-scope routing surface: list_scopes + switch_scope + an alias-hint system-prompt contribution. systemPrompt is mounted by the harvest base; the tool reads the active scope lazily.
-
-<a id="deepseek-aidsh-tool-suggest-followups"></a>
-
-## `@deepseek-ai/dsh-tool-suggest-followups`
-
-### `suggest_followups`
-
-Suggest follow-up questions the user might ask next, based on the current query results. Use in the INTERPRETATION phase to offer actionable next steps (drill-downs, comparisons, time shifts). Provide 1-5 suggestions, each with a full query value and a label of at most ≤ ~20 characters / ≤ 4 words that never repeats the value — the UI renders the label on the first line and the full value underneath, so the label is a short tag, not a preview.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "suggestions": {
-      "type": "array",
-      "description": "Array of 1-5 follow-up suggestions, each with a label and value.",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "label": {
-            "type": "string",
-            "description": "Short tag for the row (≤ ~20 characters / ≤ 4 words). Never repeat the value — the UI shows the full value under the label."
-          },
-          "value": {
-            "type": "string",
-            "description": "The full follow-up question/query to execute if the user selects this."
-          }
-        },
-        "required": [
-          "label",
-          "value"
-        ]
-      }
-    }
-  },
-  "required": [
-    "suggestions"
-  ]
-}
-```
-
-Source: [`packages/data/tool-suggest-followups/src/index.ts`](../packages/data/tool-suggest-followups/src/index.ts)
-
-suggest_followups surfaces follow-up question chips after a result. No service dependency beyond ctx.tools.

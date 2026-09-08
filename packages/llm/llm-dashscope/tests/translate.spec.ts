@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CallId, EMPTY_RESPONSE_CODE } from '@deepseek-ai/dsh-llm'
+import { ToolCallId, EMPTY_RESPONSE_CODE } from '@deepseek-ai/dsh-llm'
 import type { StreamChunk } from '@deepseek-ai/dsh-llm'
 import { translate, mapFinishReason, mapUsage } from '../src/translate.ts'
 
@@ -76,7 +76,7 @@ describe('translate', () => {
     const blockEnd = chunks.find(c => c.type === 'block-end' && c.block.type === 'tool-call')
     expect(blockEnd).toBeDefined()
     if (blockEnd !== undefined && blockEnd.type === 'block-end' && blockEnd.block.type === 'tool-call') {
-      expect(blockEnd.block.id).toBe(CallId('call_1'))
+      expect(blockEnd.block.id).toBe(ToolCallId('call_1'))
       expect(blockEnd.block.name).toBe('get_weather')
       expect(blockEnd.block.arguments).toBe('{}')
     }

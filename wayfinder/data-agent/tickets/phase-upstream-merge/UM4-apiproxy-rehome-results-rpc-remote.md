@@ -26,5 +26,14 @@ fork 的 `packages/host/apiproxy/src/api-proxy.ts`（grep 确认 fork 仍有）�
 4. **更新 T8-T13 + B-DA1 + R5/R6 + harness-package-removal**：加 upstream-supersession addendum（re-home 落此票）——本批 PR 已加 addendum。
 5. **knip.json**：清 `packages/host/apiproxy` 死指针（UM8 接力）。
 
-## Resolution
-（待落地后填：results-RPC 重落户后的 remotes 路径 + A6 race 在新架构下的处置）
+## Merge outcome (2026-09-07)
+
+22 conflicts，确认 apiproxy 整簇删 + re-home 目标：
+- **13 UD apiproxy 簇**（upstream 删整包，fork 改）：`packages/host/apiproxy/{package.json, src/api-proxy.ts, src/api/{index,rpc-map,rpc.schema,rpc}.ts, src/fetch/{client,handler}.ts, src/index.ts, tests/{client-handler,fetch-carrier,rpc-schemas}.spec.ts, tsconfig.json}` → 接受删除（drop fork 侧）。
+- **4 UU `packages/api/remotes/`**（re-home 目标）：`package.json, src/client/index.ts, src/remote-events.ts, tests/built-lib.e2e.ts` → 把 `result.get` RPC 按 Remote 模式重落此处。
+- **UD runtime/connection fake-api**（T11/T13 residual）：`client/connection/tests/fake-api.client.ts`、`client/runtime/{src/client/index.ts, tests/fake-api.client.ts}`、`code-runtime/code-runtime-python/src/index.ts` → 接受 upstream 删除/迁移，fake-api arm 重落 `packages/api/remotes/` 或 `session-controller`。
+- `client/connection/src/client/fixture.ts`(UU) → 审 + re-home results arm（跨 UM7）。
+
+## Resolution (2026-09-08)
+
+**A**: 13 UD apiproxy files `git rm`'d (accept upstream deletion). **B**: results-RPC re-homed — `packages/data/result-cache/` gains `src/remote.ts` (`ResultsRemoteGateway extends TypertRemoteService`, `@Remote('get')`→`ctx.get('resultCache')`) + `src/client/index.ts` + `src/types.ts` + package.json exports; 4 UU `packages/api/remotes/` resolved. ⚠️ UM4-B invented `TypertLookupFailure` (never existed); build-fix corrected to `RemoteError` + `result-not-found` via module augmentation in `result-cache/src/types.ts`. **C**: `result-cache-gateway` bundle row added to `data-agent/cordis.patch.yml`; fake-api `results` arms confirmed matching. **A6**: accept deletion — fork's `presetSwitches`/`await pendingSwitch` placebo dropped (against a refuted hypothesis); B-DA1 real fix → post-build task #10.

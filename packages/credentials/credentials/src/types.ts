@@ -1,8 +1,9 @@
 /**
- * Client-safe type surface of the credential-reference seam: the reference
- * brand and the seam's Cordis event declaration. Types only — no runtime code,
- * and nothing here reaches a Host-only symbol, so a Client compilation face
- * reads exactly the signature the Host emits.
+ * Client-safe type surface of the credential seam: the two key brands, the
+ * stored-record union, the reference view crossing the Remote wire, and the
+ * seam's Cordis event declarations. Types only — no runtime code, and nothing
+ * here reaches a Host-only symbol, so a Client compilation face reads exactly
+ * the signature the Host emits.
  *
  * @module @deepseek-ai/dsh-credentials/types
  */
@@ -22,8 +23,8 @@ export type CredentialRef = Branded<'CredentialRef'>
  * provider that does not distinguish a dimension ignores it.
  *
  * The slot keys are branded cross-boundary ids ({@link UserId}, {@link ScopeId});
- * their values stay opaque to this seam, with format and provenance in the
- * identity and access-isolation layers (the web-login `Tenant` and the
+ * their values stay opaque to this seam, with format and provenance in
+ * the identity and access-isolation layers (the web-login `Tenant` and the
  * per-game `scope_id`).
  */
 export interface CredentialAddress {
@@ -31,6 +32,66 @@ export interface CredentialAddress {
   readonly userId?: UserId
   /** Per-scope slot key, orthogonal to `userId`; absent for a cross-scope credential. */
   readonly scopeId?: ScopeId
+}
+
+/**
+ * Nominal address of one stored credential record: `<scope>/<id>`, where
+ * `scope` is the registered name of the plugin that owns the record and `id`
+ * is that plugin's own addressing unit (an LLM adapter uses its provider route
+ * key).
+ *
+ * The scope is the owner rather than the domain because a record's payload is
+ * written in its owner's format: two plugins serving the same provider name
+ * would otherwise read each other's payload, and a record left behind by an
+ * uninstalled plugin could not be told apart from a live one. The `/` also
+ * keeps this grammar disjoint from {@link CredentialRef}, so the two key
+ * spaces can never collide.
+ */
+export type CredentialKey = Branded<'CredentialKey'>
+
+/**
+ * A credential the harness itself understands: an api key, provider
+ * environment values, or both. Either field may be absent — a record carrying
+ * neither states that the owner confirmed this route authenticates from its
+ * own ambient discovery, which is a different fact from having no record.
+ */
+export interface ApiKeyRecord {
+  /** Discriminant. */
+  readonly kind: 'api-key'
+  /** The non-empty secret value, when this credential is a key at all. */
+  readonly key?: string
+  /** Provider environment values such as `AWS_PROFILE`; names are POSIX identifiers. */
+  readonly env?: Readonly<Record<string, string>>
+}
+
+/**
+ * The product of one authorization grant, kept verbatim for its owner. The
+ * seam never reads, validates, or reshapes {@link payload}: it is written in
+ * the owning plugin's format and only that plugin can interpret it. The single
+ * constraint is that it survives a JSON round trip.
+ */
+export interface GrantRecord {
+  /** Discriminant. */
+  readonly kind: 'grant'
+  /** Owner-defined JSON value; opaque to the seam and to every other plugin. */
+  readonly payload: unknown
+}
+
+/** One durable credential record, tagged by what the seam may do with it. */
+export type CredentialRecord = ApiKeyRecord | GrantRecord
+
+/**
+ * Source and writability facts for one reference, safe for configuration UIs —
+ * never the value. The view has no slot a value could ride in, which is what
+ * lets the whole read half cross the Remote wire.
+ */
+export interface CredentialInfo {
+  /** Whether resolving the reference would currently return a value. */
+  configured: boolean
+  /** Source layer currently supplying the value; absent while unconfigured. */
+  source?: string
+  /** Whether the active provider can write this reference. */
+  writable: boolean
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -48,6 +109,18 @@ declare module '@deepseek-ai/cordis' {
      * @param address - per-user/scope slot this change is scoped to; absent for a global/shared change.
      * @mode emit
      */
-    'credentials/updated'(ref: CredentialRef, address?: CredentialAddress): void
+    'credentials/reference-updated'(ref: CredentialRef, address?: CredentialAddress): void
+
+    /**
+     * Committed change to a stored credential record: a `modifyRecord` that
+     * wrote, a `deleteRecord` that removed, or an external edit observed in
+     * storage. Separate from `credentials/reference-updated` because the two key
+     * grammars are disjoint — a listener that received both on one event could
+     * not tell which space a subject belongs to. Listener failures are
+     * contained on the same terms as `credentials/reference-updated`.
+     * @param key - the record whose stored value changed.
+     * @mode emit
+     */
+    'credentials/record-updated'(key: CredentialKey): void
   }
 }

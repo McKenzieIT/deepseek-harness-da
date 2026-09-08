@@ -20,5 +20,15 @@
 5. **revert d5 12 churn 配置文件**（UNNECESSARY-DIVERGENCE）。
 6. **CHANGELOG.md**：fork-only，保（upstream 无 CHANGELOG，用 `.agents/notes/implemented/` 替代——fork 双轨）。
 
-## Resolution
-（待落地后填：knip 死指针清理 + tsconfig 对账 + churn 回退清单）
+## Merge outcome (2026-09-07)
+
+~21 config+scripts conflicts：`AGENTS.md`、`THIRD_PARTY_NOTICES.md`、`apps/cli/package.json`、`knip.json`(UD — upstream 删，fork 改；fork-only config)、`pnpm-lock.yaml`、`python/sdk-runtime/package.json`、`scripts/{ci-workflow.spec, doc-budgets.manifest, gen-cordis-catalog, gen-third-party-notices, install-lefthook.spec, package-invariants, verify-package-readme-model-experience}` 7、`tsconfig.{base,client,host}.json` 3。
+
+跨 UM 重叠：`api/remotes/package.json` ∈ UM4∩UM8、`bundle/web-app/package.json` ∈ UM7∩UM8、`host/apiproxy/{package.json,tsconfig.json}` ∈ UM4∩UM8（归 UM4 处置）。`knip.json`(UD) 清 apiproxy/sqlite 死指针（UM4/UM5 删后）；revert d5 churn 配置。
+
+### Cascade update（pnpm-install unblock 发现）
+package.json 解 = A-merge（4 UU：upstream base + fork data-agent deps）+ 5 restructured 包临时 restore（`client-runtime`/`sqlite`/`code-runtime-python`/`agent-spine-demo`/`jsonrpc-demo`）+ apiproxy deps 移除（apps/cli+web-app）。**临时 deviation**：UM4/5/7 迁移后回来清（移 restore + 更新 deps）。+ `pnpm install` 须 `--ignore-scripts`（fs-ext postinstall fail 挡 `.bin` 链接）；`build:official` 延后到 UM2–9 解 39 .ts 冲突后（tsc parse marker 失败）。
+
+## Resolution (2026-09-08)
+
+`knip.json` (UD — upstream deleted): kept fork's (clear apiproxy/sqlite dead pointers post UM4/UM5). `tsconfig.{base,client,host}.json`: merged upstream's new package path-mappings + fork's data-agent + zombie mappings KEPT (zombie alive, no dead pointers). `THIRD_PARTY_NOTICES.md`: accept-upstream (regen at Final via `gen-third-party-notices.ts`). lefthook `no-production-src-on-master` + `@qoder-ai/qoder-agent-sdk: false` override retained.

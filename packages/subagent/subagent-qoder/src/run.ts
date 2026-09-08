@@ -23,7 +23,8 @@ import {
   type SDKResultMessage,
 } from '@qoder-ai/qoder-agent-sdk'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import { SessionId, type JsonValue } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import {
   settleRunResult,
   subprocessRunHandle,

@@ -236,6 +236,8 @@
                                 # under that id, and two rows sharing a loader entry id abort the
                                 # whole include group (cold-boot failure).
       name: '@deepseek-ai/dsh-result-cache-memory'
+    - id: result-cache-gateway  # RPC gateway for result-cache (TypertRemoteService) — result.get → ctx.get('resultCache'); re-homed from apiproxy's results domain
+      name: '@deepseek-ai/dsh-result-cache/src/remote.ts'
 
 # ── code-runtime: disable headless's worker-thread, insert data-python ──────
 # The headless bundle mounts code-runtime (worker-thread); the data agent needs

@@ -15,9 +15,9 @@ import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { CodeRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@deepseek-ai/dsh-code-runtime'
 import type { CodeBindingNamespace, CodeJsonValue, CodeRunFailure, CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
-import { checkDoneValue, encodeJsonPlain, hasNonLosslessNumber, hasUnsafeIntegerToken, jsonStringBytesUpTo, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-code-runtime-python'
-import type { BootMessage, ReplyMessage } from '@deepseek-ai/dsh-code-runtime-python'
-import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
+import { checkDoneValue, encodeJsonPlain, hasNonLosslessNumber, hasUnsafeIntegerToken, jsonStringBytesUpTo, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-experimental-code-runtime-python'
+import type { BootMessage, ReplyMessage } from '@deepseek-ai/dsh-experimental-code-runtime-python'
+import { snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
 
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
 

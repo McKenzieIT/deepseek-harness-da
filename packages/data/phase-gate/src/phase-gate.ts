@@ -25,9 +25,9 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { CallId, ReasoningEffortId, createUserMessage, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import { ToolCallId, ReasoningEffortId, createUserMessage, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
-import { PERSONA_ORDER, PERSONA_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
+import { PERSONA_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-scope-registry'
 import type {} from '@deepseek-ai/dsh-semantic-layer'
 import { loadConfig } from '@deepseek-ai/dsh-semantic-layer'
@@ -228,7 +228,7 @@ export class PhaseGate {
   // contributes no text blocks. Only `text` blocks are captured — `tool_use`
   // and `reasoning` blocks are not the phase deliverable.
   private capturePhaseOutput(agent: Agent, s: PhaseGateState): void {
-    const events = agent.session.events
+    const events = agent.session.snapshotEvents()
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i]
       if (e !== undefined && e.type === 'assistant/message') {
@@ -776,7 +776,7 @@ export class PhaseGate {
     this.ctx.logger.info(`[M4] auto-persist: ${table} → ${project}`)
     const ac = new AbortController()
     tools.execute({
-      callId: CallId('phase-gate:auto_persist'),
+      callId: ToolCallId('phase-gate:auto_persist'),
       name: 'update_table_config',
       arguments: { table_name: table, project },
       signal: ac.signal,
@@ -799,7 +799,7 @@ export class PhaseGate {
     const tools = this.ctx.tools as { execute(req: unknown): Promise<unknown> } | undefined
     if (tools === undefined) return // host did not mount the tools registry — fail-open
     try {
-      await tools.execute({ callId: CallId('phase-gate:forced_load'), name: 'search_data_sources', arguments: { query }, signal, agent })
+      await tools.execute({ callId: ToolCallId('phase-gate:forced_load'), name: 'search_data_sources', arguments: { query }, signal, agent })
     } catch {
       // forced_load is best-effort; the gate + execution-feedback backstop it.
     }
@@ -975,7 +975,7 @@ export class PhaseGate {
    * @param ctx The Cordis context to mount the persona section, tool guard, and event listeners on.
    */
   register(ctx: Context): void {
-    ctx.effect(() => ctx.systemPrompt.section({ name: PERSONA_SECTION, order: PERSONA_ORDER, text: BASE_PERSONA }), 'phase-gate.persona')
+    ctx.effect(() => ctx.systemPrompt.section({ name: PERSONA_SECTION, order: ctx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA'), text: BASE_PERSONA }), 'phase-gate.persona')
     ctx.tools.guard(this.guard)
     ctx.on('agent/turn-stopping', this.onTurnStopping)
     ctx.on('tools/post-execute', this.onPostExecute)

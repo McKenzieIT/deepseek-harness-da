@@ -32,7 +32,7 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       'discover_relations', 'edit', 'edit_definition', 'evaluate_sql_quality', 'exit_plan_mode',
       'followup_task', 'get_coverage', 'get_definition', 'get_goal', 'glob', 'grep',
       'interrupt_agent', 'interrupt_agent', 'job_kill', 'job_list', 'job_output', 'list_agents',
-      'list_agents', 'list_domains', 'list_scopes', 'load_event_definition',
+      'list_agents', 'list_domains', 'list_scopes', 'list_subagent_models', 'load_event_definition',
       'load_table_definition', 'lsp', 'present_clarification', 'present_decomposition',
       'present_table', 'pwsh', 'pwsh', 'ralph', 'reachability_delta', 'read', 'read_image',
       'report', 'resolve_term', 'retrieve', 'revert_edit', 'run_code', 'schedule_create',
@@ -94,7 +94,7 @@ describe('gen-tool-catalog collectToolCatalog', () => {
     // agents surface this one package as both `subagent` and `subagent_fork`.
     const catalog = await collectToolCatalog()
     const subagent = catalog.find(entry => entry.pkg === '@deepseek-ai/dsh-tool-subagent')
-    expect(subagent?.schemas.map(s => s.name)).toEqual(['subagent'])
+    expect(subagent?.schemas.map(s => s.name)).toEqual(['list_subagent_models', 'subagent'])
     expect(subagent?.note).toMatch(/subagent_fork/)
   })
 })

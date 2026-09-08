@@ -29,5 +29,12 @@ d5 审计 A5 记 fork 做了 id-less 容忍簇：`packages/core/session/src/inde
 5. d5 A5 标记 → resolved-by-upstream（map 标记见 [data-agent/map.md § Upstream merge](../../map.md)）。
 6. `legacy-empty-callid` × 2 分支（`fix/legacy-empty-callid`、`fix/legacy-empty-callid-pr`）tied to A5，UM3 解决后 UM11 删。
 
-## Resolution
-（待落地后填：接受的 upstream 文件 + data-agent adapter callId 发射验证）
+## Merge outcome (2026-09-07)
+
+⚠️ **`packages/core/session/src/index.ts` + `packages/llm/llm/src/assembler.ts` AUTO-MERGED（git 无 textual conflict marker）**。但 fork 的 id-less 容忍（session `:336-346` 松弛 + assembler `:71,81` guard/backfill）+ upstream 的严格（session `:376-377` 拒空 callId）/源头修（`a1271a4`）**很可能共存于合并结果** → semantic 矛盾（一个允许空、一个拒空）。
+
+→ **UM3 任务不是 conflict-marker resolution，是 semantic review**：审 auto-merged 的 session/src/index.ts + assembler.ts，手动丢 fork 的 id-less 容忍（accept upstream 严格 + 源头修），确保 data-agent adapter 每 delta 发 callId（对齐 `a1271a4`）。**git 没标 ≠ semantic OK**——这是 A5 最隐蔽的风险点。
+
+## Resolution (2026-09-08)
+
+4 files reverted to upstream byte-identical: `packages/core/session/src/index.ts`, `packages/llm/llm/src/assembler.ts`, `packages/client/ui-trajectory/src/client/trajectory-tool-definition.ts`, `packages/client/ui-chat/src/client/conversation-nodes/tool.ts`. Dropped fork's id-less tolerance (session `:336-346` relaxation + assembler `:71` guard + `:78-84` backfill); accepted upstream strict (reject empty callId + unconditional `partial.toolCallId = chunk.id` + `a1271a4` source fix). DashScope (non-conformant — emits deltas without callId) fixed in UM7-2.

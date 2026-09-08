@@ -14,7 +14,7 @@ import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import {
   createUserMessage,
-  CallId,
+  ToolCallId,
   LlmAdapter,
   LlmError,
   resolveRetryPolicy,
@@ -38,7 +38,7 @@ declare module '@deepseek-ai/dsh-jobs' {
 }
 
 async function composePrefix(ctx: Context, cwd: string): Promise<Message[]> {
-  const agent = ctx.agentLoop.create(SessionId('agent-spine-prefix'), {}, { cwd })
+  const agent = await ctx.agentLoop.create(SessionId('agent-spine-prefix'), {}, { cwd })
   const signal = new AbortController().signal
   const decision = await agentEvents(ctx, agent).waterfall(
     'agent/pre-step', { messages: [], turn: 1, step: 1, signal },
@@ -250,11 +250,11 @@ describe('dsh-agent-spine-demo bundle', () => {
     await waitForIdle(ctx, handle.agent)
 
     expect(adapter.requests).toBe(2)
-    const retryEvents = handle.agent.session.events.filter(event => event.type === 'llm/retry')
+    const retryEvents = handle.agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')
     expect(retryEvents).toHaveLength(1)
     expect(retryEvents[0]?.data.retry).toBe(1)
     expect(retryEvents[0]?.data).toMatchObject({ provider: 'mock', mode: 'normal', maxRetries: 1 })
-    expect(handle.agent.session.events.find(event => event.type === 'session/title')?.data.title).toBe('recover')
+    expect(handle.agent.session.snapshotEvents().find(event => event.type === 'session/title')?.data.title).toBe('recover')
     expect(messageText(handle.agent.session.deriveMessages().at(-1))).toBe('recovered by bundled policy')
     await handle.dispose()
     await ctx.fiber.dispose()
@@ -506,7 +506,7 @@ describe('dsh-agent-spine-demo bundle', () => {
       expect(loadedRequest).toContain('<skill_instructions>')
       expect(loadedRequest).toContain('Use the freshly loaded body.')
 
-      const transcript = handle.agent.session.events.flatMap<Record<string, unknown>>((event) => {
+      const transcript = handle.agent.session.snapshotEvents().flatMap<Record<string, unknown>>((event) => {
         if (event.type === 'user/message' && event.data.source.kind === 'skill-catalog') {
           return [{
             type: event.type,
@@ -605,8 +605,8 @@ describe('dsh-agent-spine-demo bundle', () => {
     const execution: ToolExecution = {
       signal: testToolSignal,
       token: Symbol('agent-core-dsh-home-test') as ToolExecution['token'],
-      callId: CallId('agent-core-dsh-home'),
-      rootCallId: CallId('agent-core-dsh-home'),
+      callId: ToolCallId('agent-core-dsh-home'),
+      rootCallId: ToolCallId('agent-core-dsh-home'),
       name: 'bash',
       arguments: { command: 'true' },
     }
@@ -685,7 +685,7 @@ describe('dsh-agent-spine-demo bundle', () => {
     const wait = vi.spyOn(ctx.jobs, 'wait')
     await ctx.tools.execute({
       signal: testToolSignal,
-      callId: CallId('task-config-forwarding'),
+      callId: ToolCallId('task-config-forwarding'),
       name: 'job_output',
       arguments: { job_id: id, wait: true },
     })

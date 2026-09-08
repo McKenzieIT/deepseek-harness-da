@@ -42,6 +42,10 @@ import { CredentialProvider } from '@deepseek-ai/dsh-credentials'
 import type {
   CredentialAddress,
   CredentialInfo,
+  CredentialKey,
+  CredentialRecord,
+  CredentialRecordEntry,
+  CredentialRecordInfo,
   CredentialRef,
   ResolvedCredential,
   UserId,
@@ -331,6 +335,37 @@ export class KeychainCredentialProvider extends CredentialProvider {
       throw new Error(`credentials-keychain: delete-generic-password for "${ref}"/${account} failed: ${removed.stderr}`)
     }
     this.notifyUpdated(ref, address)
+  }
+
+  // ── Record management ──────────────────────────────────────────────────
+  // The keychain provider is a ref-only PAT store; it owns no OAuth grant or
+  // api-key records (records live in a document-backed provider such as
+  // credentials-local). Reads report absence so configuration surfaces can
+  // route record operations to the document provider; the read-modify-write
+  // path refuses so a caller cannot believe a record rotation landed when no
+  // record store exists here. This mirrors how a deployment composes a ref
+  // provider and a record provider separately.
+  override readRecord(_key: CredentialKey): Promise<CredentialRecord | undefined> {
+    return Promise.resolve(undefined)
+  }
+
+  override describeRecord(_key: CredentialKey): Promise<CredentialRecordInfo> {
+    return Promise.resolve({ configured: false, writable: false })
+  }
+
+  override listRecords(): Promise<readonly CredentialRecordEntry[]> {
+    return Promise.resolve([])
+  }
+
+  override modifyRecord(
+    _key: CredentialKey,
+    _mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>,
+  ): Promise<CredentialRecord | undefined> {
+    return Promise.reject(new Error('credentials-keychain: record modification is not supported; the keychain provider stores references, not records (mount a document-backed provider such as credentials-local for records)'))
+  }
+
+  override deleteRecord(_key: CredentialKey): Promise<void> {
+    return Promise.resolve()
   }
 
   /**

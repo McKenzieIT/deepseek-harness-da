@@ -28,7 +28,7 @@ Status: implemented
 
 **保留首尾折叠，仅对展开区域加滚动。** 否决：一个关注点上两套重叠机制。一旦整份列表始终渲染，折叠的算术、展开/折叠状态与那个按钮都是累赘；仅靠滚动即可约束高度。
 
-**把滚动高度做成插件配置字段。** 否决：该高度约束的是卡片在屏幕上的几何形状，而非部署策略，因此它属于 `WebBlock.module.css`，与 [Web result 卡片前端笔记](2026-07-30-web-result-card-frontend.md) 已作为本卡片几何固定在那里的圆角、表面与外边距并列。
+**把滚动高度做成插件配置字段。** 否决：该高度约束的是卡片在屏幕上的几何形状，而非部署策略，因此它属于 `WebBlock.module.css`，与 [Web result 卡片前端笔记](2026-07-30-web-result-card-frontend.zh.md) 已作为本卡片几何固定在那里的圆角、表面与外边距并列。
 
 ## 后果
 
@@ -38,9 +38,9 @@ Status: implemented
 
 `packages/client/ui-primitives/tests/web-block.client.spec.tsx` 删去折叠相关用例（首尾切片、点击展开、折叠尾部编号、展开器不计入编号、仅首部、默认上限），并新增：一张含 30 条来源的卡片渲染出全部 30 个 `<li>`，无 `[aria-expanded]`、无 `<button>`，每个 `<ol>` 子元素都是一条来源 `<li>`，且 `<li value>` 从 1 到 N 连续编号。`packages/client/ui-tool/tests/web-card.client.spec.tsx` 删去 `CHAT_WEB_MAX_SOURCES` 上限断言；WebRow 展开测试仍断言卡片展示每一个来源字段。`packages/web/tool-web` 独立固定单查询与多查询的模型侧上限。
 
-jsdom 不解析 CSS Modules 布局，对任何元素都报 `scrollHeight === clientHeight`，因此它根本无从见证这次滚动。几何改由组装态浏览器钉住，位于 `apps/web/tests/web-search-round.e2e.ts`：其确定性 search double 为两个查询分别返回 6 条结果，每条带标题、引用摘录与日期。真实组合会观察两次提供方请求，并固定工具的轮询组合上限——出厂 `searchMaxResults` 保留代表两个查询的 8 条来源，面向模型的 render 文本不含被丢弃的 4 条 URL，并含 `(Showing the first 8 sources. Refine the query for more.)`，`meta.truncated` 为 true。随后位于 aria golden 之后的一个用例展开 `web_search` 行，对卡片的 `<ol>` 断言：8 个 `<li>`、卡片内任何位置都没有 `<button>`、`来源列表已截断` 指示可见，以及计算样式 `max-height: 320px` 与 `overflow-y: auto`，滚动主体高于容器。再后一个用例在列表自身继承的字体下量出 `999. ` 序号的宽度，要求计算后的 `padding-left` 不小于该宽度，从而把滚动容器无从滚回的那段序号空间钉在最宽序号上，而非钉在某一份 fixture（测试前置数据）的来源条数上。回放是对 fixture 中 `assistant/chunk` 条目的位置游标，而 search double 是提供方经 `fetch` 抵达的另一个本地端点。
+jsdom 不解析 CSS Modules layout，对任何 element 都报告 `scrollHeight === clientHeight`，因此无法见证滚动。几何由 assembled browser 的 `apps/web/tests/web-search-round.e2e.ts` 固定：确定性 search double 为两个 query 分别返回 6 条 result，每条带 title、citation snippet 与 date。真实 composition 观察两次 provider request，并固定 tool 的 round-robin combined cap——出厂 `searchMaxResults` 保留代表两个 query 的 8 条 source，model-visible render text 不含被丢弃的 4 条 URL，并含 `(Showing the first 8 sources. Refine the query for more.)`，`meta.truncated` 为 true。aria golden 后的 case 展开 `web_search` row，对 card 的 `<ol>` 断言：8 个 `<li>`、card 内没有 `<button>`、`来源列表已截断` indicator 可见，以及 computed style `max-height: 320px` 与 `overflow-y: auto`，scroll body 高于 container。后续 case 在 list 自身继承 font 下测量 `999. ` marker 宽度，要求 computed `padding-left` 不小于该宽度，从而把 scroll container 无法滚回的 marker space 固定在最宽 marker，而不是某个 fixture 的 source count。Replay 是对 fixture 嵌入式 Assistant settlement 的位置 cursor，search double 是 provider 通过 `fetch` 抵达的另一个 local endpoint。
 
 ## 相关文档
 
-- [Web result card](2026-07-30-web-result-card.md) —— 本卡片消费的 `card: 'web'` 渲染意图分支与 `presentationMeta` 路由；最终有界列表的来源。
-- [Web result 卡片前端](2026-07-30-web-result-card-frontend.md) —— `WebBlock`、唯一的 `web-card-model` 派生，以及绘制该卡片的各渲染点由它拥有；本笔记替换掉它所规定的来源列表折叠，它的其余决策（一个组件绘制两种 kind、http(s) 链接 allowlist、单一派生、常驻姿态）依然成立。
+- [Web result card](2026-07-30-web-result-card.zh.md) —— 本卡片消费的 `card: 'web'` 渲染意图分支与 `presentationMeta` 路由；最终有界列表的来源。
+- [Web result 卡片前端](2026-07-30-web-result-card-frontend.zh.md) —— `WebBlock`、唯一的 `web-card-model` 派生，以及绘制该卡片的各渲染点由它拥有；本笔记替换掉它所规定的来源列表折叠，它的其余决策（一个组件绘制两种 kind、http(s) 链接 allowlist、单一派生、常驻姿态）依然成立。
