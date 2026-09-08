@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-query-postgres
 
+English | [中文](README.zh.md)
+
 Postgres query-engine provider (ctx.query): GA-GT2-D4 second-engine stub proving the engine-neutral abstraction — getConventions loads a Postgres dialect; execute/attach/cancel/getProgress throw not-implemented (seam proof, not a real PG executor)
 
 ## Model Experience

@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-discover-relations
 
+English | [中文](README.zh.md)
+
 Model-facing discover_relations tool: AI-native DWS→DIM relation discovery over the semantic layer (G3 enrichment), for the data agent's enrichment phase
 
 ## Model Experience

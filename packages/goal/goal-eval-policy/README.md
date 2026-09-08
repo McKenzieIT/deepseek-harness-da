@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-goal-eval-policy
 
+English | [中文](README.zh.md)
+
 No-progress backstop for the autonomous goal loop. A function plugin (`apply(ctx, config)`) that counts admitted goal rounds, triggers an eval run every `goalEvalIntervalRounds` rounds (default 3), and force-blocks a goal with code `'no-progress'` after `noProgressThreshold` consecutive eval runs show zero improvement (0 cases flipped to correct).
 
 ## Overview

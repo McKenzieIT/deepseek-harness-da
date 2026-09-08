@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-schema-gateway
 
+English | [中文](README.zh.md)
+
 Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI consumption
 
 ## Model Experience

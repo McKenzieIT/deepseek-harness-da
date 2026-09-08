@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-eval-runner-service
 
+English | [中文](README.zh.md)
+
 Cordis Service wiring the `ctx.evalRunner` seam: drives the real NL2SQL engine + `ctx.query` + `ctx.llm` collaborators against the eval case set, persists JSONL in the format `FileBackedEvalResultStore` reads, and tracks last / last-two runs for delta. Activates the autonomous goal loop's no-progress backstop (`dsh-goal-eval-policy`) and `trigger_eval` full_run (`dsh-tool-trigger-eval`).
 
 ## Overview

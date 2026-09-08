@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-goal-eval-context
 
+English | [中文](README.zh.md)
+
 Context plugin for the DeepSeek Harness data agent: injects evaluation evidence into the goal round context so the model can self-adjust direction before a no-progress block fires.
 
 ## Overview

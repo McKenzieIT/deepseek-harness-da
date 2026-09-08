@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-tool-critique-sql`
 
+English | [中文](README.zh.md)
+
 Model-facing `critique_sql_tool`: **folded-regex SQL critic (sqlSyntaxGate) over the phase-gate's per-agent critic context** for the data agent's `GENERATION` phase. The agent calls it to critique a SQL candidate (table in candidates / ds partition required / no SELECT * / GET_JSON_OBJECT field in event_params) before calling `query_data`.
 
 This is the **(b) root-cause fix** — it makes F2 (the same-source gate) satisfiable: the tool returns `{ confidence, findings, sql }` where `sql` is the normalized critiqued SQL. The phase-gate's `captureToolData` captures `last_critique` from `confidence` AND `last_sql` from `sql`. So when the model re-critiques a corrected SQL (after a `TABLE_NOT_FOUND`), `last_sql` updates → F2 passes the corrected SQL → execution → rows.

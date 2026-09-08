@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-result-cache
 
+English | [中文](README.zh.md)
+
 Abstract result-cache seam (ctx.resultCache) for the DeepSeek Harness — store and retrieve query/compute results by result_id
 
 ## Model Experience

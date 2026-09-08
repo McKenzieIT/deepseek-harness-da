@@ -38,11 +38,11 @@
 
 ## Model Experience
 
-此沙箱化执行器对模型、token 或 KV 缓存无直接影响：它产生一个 `CodeRunResult`（`{ value, logs, error? }`），从不触及请求前缀、token 流或缓存本身。其效果是间接的，经由 [`dsh-tools`](../../core/tools/README.md) 中的 Code Mode，后者在完成值放得下时渲染本后端的精确完成值（或显式的 `invalid-output` / `output-limit` 失败），加上精确的 `[dsh-code-runtime-python] log capture truncated at <maxLogBytes> bytes` 日志标记，写入一个保留的 `run_code` 结果。只有外层 `run_code` 结果进入模型上下文及其常规溢出策略；绑定流量与中间值保持执行局部。
+间接，经由 @deepseek-ai/dsh-nl2sql-engine 的 LLM 适配器。
 
 #### KV Cache effect
 
-无直接失效；具名消费者负责任何请求前缀变更。
+本包的贡献对可复用请求前缀是仅追加的，不会使既有缓存条目失效。
 
 ## Known Limitations and Deferred Work
 

@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-patrol-mode
 
+English | [中文](README.zh.md)
+
 Autonomous patrol loop for the DeepSeek Harness data agent's semantic layer. Iteratively finds the weakest assets (via `evidenceQuery` health/gap analysis), diagnoses each, proposes a fix, requests explicit user confirmation, and triggers an eval batch after each round's confirmed edits.
 
 ## Overview

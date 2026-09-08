@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-revert-edit
 
+English | [中文](README.zh.md)
+
 Model-facing revert_edit tool: roll back a semantic layer asset to a prior definition snapshot
 
 ## Model Experience

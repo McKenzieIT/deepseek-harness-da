@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-tool-evaluate-sql-quality`
 
+English | [中文](README.zh.md)
+
 Model-facing `evaluate_sql_quality`: **0-100 SQL quality score over the folded-regex critic findings + basic heuristics** for the data agent's `GENERATION` phase. The agent calls it alongside `critique_sql_tool` to score a SQL candidate. The phase-gate's `captureToolData` captures `last_quality` from the returned `score`; the GENERATION gate (P-DA2, re-tightened when `critic_tools_registered`) requires `last_quality >= 60` (`PipelineConfig.quality_score_floor`) to advance to EXECUTION.
 
 This is the **(b) root-cause fix** — paired with `critique_sql_tool`: the model calls both on its SQL before `query_data`; after a `TABLE_NOT_FOUND`, it corrects the SQL + RE-calls `critique_sql_tool` (re-critique → `last_sql` updates → F2 passes) + RE-calls `evaluate_sql_quality` (→ `last_quality` updates).

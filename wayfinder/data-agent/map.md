@@ -367,7 +367,7 @@ master 从"永久飘红（无 PR 能变绿）"推进到 **7 个 node-24 meta-gat
 
 **GREEN（6 门 + 6 解除跳过）**：publint（#63）、cordis-catalog（#63 regen）、package-readme-limitations（#64 — 29 README）、export-jsdoc（#67 — 279 JSDoc）、built-package-invariants（#68 — 30 invariant.ts companion，**连带解除 node-next-types / built-bin-smoke / +4**）、package-readme-model-experience（#72 — 21 工具包 allowlist）+ 集成跟进（#69）。CI 解锁：删 6 个死 master-push job + sandbox macos 腿（#48）、issue-policy/lifecycle fork 上禁用（#52）。lint 27→0 + TableCard 数据损坏 bug（#56）、attach/asset-name 守卫（#59）。
 
-**RED（1 门，i18n 债）**：`verify-translation-pairing` — moving-target（并行 session 持续新增文档，比翻译快）+ subagent 翻译难保严格 structural parity。26 个 .zh.md 翻译有 parity bug（已回退）+ 24 篇新文档待译 + Class B 未完全解决。需要专门一轮（并行 session 暂停 + 逐篇精心翻译保 parity + re-record）。〔tickets/phase-misc/GA-FORK-CI-translation-pairing-debt.md〕
+**GREEN（i18n 债清零，2026-09-07；PR #108）**：`verify-translation-pairing` — corpus 全配对一致（1069 pairs，0 missing，0 OOS，exit 0）。**进展（sessions 3+4+5+6，PR #102 + #104 + #106 + #108 admin-merge Option B）**：50→0 missing（0 OOS）；session 6 译最后 6 篇（packages/goal 2 + packages/query 1 + docs/agents 3），单波 6/6 首 clean（0 byte-fix）；method 可靠（并行 subagent + verify-translation-pairing 工具门[非自报] + --write re-record + 显式路径 commit + md-wrap 一行一段；3+4+6 均 0 首轮；session 5 wave 2 7/7）。**GA-FORK-CI translation-pairing debt CLEARED。** handoff：`.tmp/audit/fix-translation-session6-status.md`。〔tickets/phase-misc/GA-FORK-CI-translation-pairing-debt.md〕
 
 **审计**：本 session 跑了 7 维对抗审计（workflow + 7 subagent + synthesis），26 个 action（P0=4 / P1=13 / P2=9）在 `.tmp/audit/SYNTHESIS.md` + `ACTION-LIST.json`；HTML 架构图 `.tmp/audit/architecture.html`；流程优化 `.tmp/audit/PROCESS-OPTIMIZATION.md`。剩余 action（A4 原型污染 / A5 铸 callId + 回退 id-less 簇 / A6 apiproxy / A9-A11/A13 深 bug / A14/A18/A20/A22）见 ACTION-LIST.json。
 
@@ -399,6 +399,18 @@ merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）
 - [harness-package-removal（research）](research/harness-package-removal.md) — apiproxy 已被 upstream Remote 迁移 supersede；→ UM4
 
 跨域违反票据：[interpretation-client-rendering T8–T13 簇](../interpretation-client-rendering/map.md)（results-RPC 落 apiproxy，已删；re-home → UM4）、[repo-infra T6](../repo-infra/tickets/T6-ci-checkout-issue-policy.md)（#52 re-violated；→ UM2）、[task-orchestration-dag G10](../task-orchestration-dag/tickets/G10-subagent-tree-upstream-integration.md)（subagent upstream sync 触发）。
+
+## Audit actions 2026-09-07（24 PR 合并，21 fork-own action 已修）
+
+本 session 对抗审计 27 个 action（`.tmp/audit/ACTION-LIST.json`）的去向：
+
+**DONE（21，fork-own，已 merge）**：A0,A1,A2,A3（P0 CI/worktree 解锁 #48/#52）+ A4（原型污染 #88）+ A7（TableCard 数据损坏 #56）+ A8（路径穿越守卫 #59）+ A9（sessions Map 泄漏 #94）+ A10（reachabilityDelta O(N²) #95）+ A11（correctedStats 计数+schema migration #98）+ A12（typed-events cast #99）+ A13（event-edit TOCTOU #93）+ A17（27 lint #56）+ A18-mech（d3-2/3/5/8/9 Cordis #90）+ A18-d3-6（cfg 集中 #96）+ A18-d3-7（tenant Config #97）+ A19（Branch 规则修订 #89）+ A20（U+FFFD 考古 72/72 #91）+ A21（陈旧引用 #59）+ A24（attach 守卫 #59）+ A26-doc（stale doc #92）。
+
+**defer 到 upstream-merge（6，触上游）**：A5（id-less 簇：session:336+assembler:71,81+ui-conv:240+ui-traj:223）+ A6（apiproxy presetSwitches:2397,3024）+ A15（ci.yml vars 隔离）+ A16（credentials-local:208 override revert）+ A22（~12 churn 回退）+ A25（headless setup race——修法在 dsh-owned `packages/bundle/headless`）。upstream-merge prompt（`wayfinder/data-agent/prompts/upstream-merge-2026-09-07-session-prompt.md`，PR #82）覆盖。
+
+**blocked（1）**：A23（worktree/branch 收尾）——阻塞于**并行 session**仍活跃（9 个非我 worktree：dsh-cb1b/dsh-ece/dsh-R1/dsh-T2/dsh-T4/dsh-T7/dsh-upm/dsh-translation-pairing/dsh-upstream-merge-plan/dsh-repo-infra-matt-pocock-setup）。无法安全删并行 session 的活跃 worktree/branch；等并行 session 停后评估 rescue/abandon + 清理。
+
+**translation debt（0，已清 2026-09-07 PR #108）**：A18-d3-4（未配对 da-guidelines 文档）——属 translation-pairing 债，已随 corpus 清零（`tickets/phase-misc/GA-FORK-CI-translation-pairing-debt.md`，resolved）。
 
 ## Out of scope
 
