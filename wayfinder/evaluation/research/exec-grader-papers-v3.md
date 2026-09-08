@@ -137,7 +137,7 @@ sql survived?         : false
 - 无 executor 无 sqlJudge：`executionMatch = false`（L297，注释明写这是为免虚高 `pass_rate`）；
 - case 无 `result_value`/`match_mode`（25 个 DELIVERY case）：`executionMatch` 保持初值 `true`（L248）——一个**从未执行过**的 `true`。
 
-落盘只有一个 `execution_match: boolean`，attempt 级四种来路不可分辨。**run 级可恢复**：executor 按 run 挂载而非按 case，故 `RunConfig.with_query`（`packages/eval/eval-runner/src/types.ts:123`）足以区分“judge-only 模式”与“真执行模式”——判读任何历史数字前必须先读该字段，否则 judge-only 与 real-exec 两条基线会被误当作同一指标的两次测量。（本文首版称四种来路“事后不可分辨”，未区分 attempt 级与 run 级，已按 §7 对账修正。）
+落盘只有一个 `execution_match: boolean`，attempt 级四种来路不可分辨。**run 级只在极少数文件里可恢复**：executor 按 run 挂载而非按 case，故 `RunConfig.with_query`（`packages/eval/eval-runner/src/types.ts:123`）原则上能区分“judge-only 模式”与“真执行模式”——但实测 `eval-results/` 内**仅 4 个批量 run 带 `config` 块**，其余 35 个（含全部 168-case run）连 `config` 都没有，模式**不可恢复**；且四个有记录的 run 里，同 39 case / 同模型 / 同 `pass_k=3` 的对比为 judge-only 61.5% vs real-exec 5.1%（**56.4pp**）。（本文首版称四种来路“事后不可分辨”、二版称“run 级可恢复”，二者都不准，已按 §7.4 修正。）
 
 ### 4.6 evidence 不足以重放一次评分
 
@@ -209,7 +209,8 @@ v2 与 v3 各自机械重导、互不参照，数字逐位相同：
 ### 7.4 对 v3 的两处自我修正（由 v2 触发，本轮复核确认）
 
 1. **“单测约束不到 CLI 分数”过强**：`runner.ts:12` 显示私有包装器转调库实现，核心语义生效；未覆盖的只是包装器三行为。已改 §4.3。
-2. **“四种来路事后不可分辨”未分层**：attempt 级不可分辨，但 run 级由 `RunConfig.with_query` 可恢复（executor 按 run 挂载）。已改 §4.5。这条同时是判读 61.9%（judge-only）与 12.8%（real-exec）两条历史基线的前置条件。
+2. **“四种来路事后不可分辨”未分层**：attempt 级不可分辨，而 run 级原则上由 `RunConfig.with_query` 可恢复（executor 按 run 挂载）。已改 §4.5。
+3. **但“run 级可恢复”也不准（G1 D4 期间新发现，本轮第三处自我修正）**：逐文件解析 `eval-results/` 后，**仅 4 个批量 run 带 `config` 块**（均为 39-case rbi 集），其余 **35 个批量 run——包括全部 168-case run——没有 `config`**，执行模式不可恢复。**从未有任何一次完整 168-case run 真连过数仓**（唯三个 `with_query=True` 的文件是 39-case 的 `eventdef-realexec` 与两个单 case smoke）。同条件对比（同 39 case / 同模型 / 同 k=3）：judge-only 61.5% / 53.8% / 41.0% vs real-exec **5.1%**。故 map 与历史票中所有 168-case 百分数（68.1%、73.8%、61.9% 等）均为 judge-only 或不可归属，不得与真执行数字同尺比较。
 
 ### 7.5 v1 的处置
 

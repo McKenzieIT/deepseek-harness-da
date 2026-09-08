@@ -82,3 +82,28 @@
 **policy 是显式解析且带版本号的值**，随 verdict 落盘（AGENTS.md：插件内不得有硬编码可调项，默认值走显式 resolve 步骤；R23 要求逐字记录 policy version）。**具体默认值不在本票定**，由 R23 的 mutation baseline 给证据后再定（三方对账一致：现在定默认档是空转，因活跃 case 尚未用到行集比较）。
 
 **T1 的关键验收信号**：能对存量 artifact 离线重打分（换 policy 不回数仓），且同一 artifact + 同一 policy 版本重打分结果稳定。
+
+### D4 — judge 永不填 execution 维度；模式必须随 run 落盘
+
+**本轮新取的证据（`eval-results/` 逐文件解析）**：全仓**只有 4 个批量 run 记录了 `with_query`**。同一批 39 个 case、同一模型（qwen3.7-max）、同样 `pass_k=3`，唯一差别是接不接数仓：
+
+| run | `with_query` | n | correct | pass |
+|---|---|---|---|---|
+| `eventdef-judgeonly-v2.json` | False | 39 | 24 | **61.5%** |
+| `rebaseline-judge-only-rbi-10000251-postfeedback` | False | 39 | 21 | 53.8% |
+| `eventdef-judgeonly.json` | False | 39 | 16 | 41.0% |
+| `eventdef-realexec.json` | True | 39 | 2 | **5.1%** |
+
+同案同模型同 k，便宜模式与真执行相差 **56.4pp**。另外 **35 个批量 run 连 `config` 块都没有**（包括全部 168-case run：91.7% / 88.1% / 73.8% / 72.0% / 66.1% / 63.7% …），其模式**不可恢复**。**从未有任何一次完整 168-case run 真连过数仓。**
+
+**论文侧**：四个已发表基准无一例外以执行为准；test-suite 存在的理由恰恰是“即使真执行，只在单个数据库上执行仍会产生假阳性”，故它加的是**更多**执行（蒸馏多库测试集）；GradeSQL 用执行派生的标签训 verifier。“让 LLM 读 SQL 文本打分”不是某个已发表指标的弱化版，它在已发表家族之外。
+
+**决定**：
+
+1. **judge 分数永不得写入 execution 维度**（删除 `runner.ts:286` 的顶替）。judge 仍作为独立记录的维度存在（dual-score 不变）。
+2. 未接数仓时，EXECUTION case 的 execution 结局为 **`not-measured`**——枚举的第五个成员，不是缺失值。选显式 tag 的理由是本仓已经犯过“缺失被默认成 `true`”（`runner.ts:248`）；枚举成员使每个消费者必须显式处理它，而空值容易再被 `?? true` 掩盖。
+3. 同理，25 个 DELIVERY-only case 不得再写 `execution_match: true`（当前 L248 初值），应为 `not-measured`。
+4. **每个 run 必须落盘它的执行模式与 policy 版本**；缺这两项的结果文件在 `compare.ts` 侧**拒渲染**（与 map 方向 4 “缺 n_d/p 拒渲染”同一原则）。
+5. **报告层不得把不同执行模式的 run 混算成一个 pass 率**；历史上 35 个无 `config` 的批量 run 在任何对比中标为**不可归属**，不得作为基线引用。
+
+**对 map 的修正**：Destination 里“61.9% judge-only 基线很可能虚高”应改为：该数字来自无 `config` 记录的 run，模式不可恢复；唯一同条件对比（同 39 case / 同模型 / 同 k）显示便宜模式相对真执行虚高 **56.4pp**。
