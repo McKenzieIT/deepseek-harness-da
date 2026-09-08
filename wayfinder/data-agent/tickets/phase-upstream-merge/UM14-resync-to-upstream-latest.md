@@ -1,6 +1,6 @@
 # UM14 — re-sync 到 upstream 最新版（执行）
 
-**Type**: task (multi-session) · **Status**: open · **Phase**: upstream-merge
+**Type**: task (multi-session) · **Status**: resolved (Session A 2026-09-08) · **Phase**: upstream-merge
 **Blocking**: 无（UM13 research 已完成，可直接启动）
 **Flow**: 见 `UM-flow-2026-09-08.md`（Phase A）
 
@@ -27,4 +27,14 @@ synced 分支（build **仍不绿**——根 entry 是 upstream 共享 breakage�
 
 ## Resolution
 
-(open — multi-session task；按子步 1-4 推进；每子步 commit 落 `upstream/merge-2026-09-07` 或 re-sync 专用分支)
+**Resolved 2026-09-08 (Session A)** — commit `8112743d69` on `upstream/resync-2026-09-08`（2-parent merge: base `558e6f4f66` + upstream `c389f96bf3`）。
+
+Re-merge + 全解 36 冲突（21 UU+15 AU，merge-base `d347e703`）按 dry-run `um14-merge-dryrun-2026-09-08.md` 8 步：tsconfig.host.json additive-union；workspace/config 含 workspace-files 采纳；15 AU 重命名；source inputs（api/remotes client mount `workspaceFilesRemote`+留 fork 3 data-agent remotes；ui-layout 采纳 `rightbar` rename+留 `details.aux` slot for ui-semantic-layer；platform/seed union zod+dockkit）；gen-cordis-catalog union；ui-settings-models cluster；剩余 1-hunk。
+
+**Persona seam 表面迁移**（tsc 发现，dry-run/449-impact 未标）：`PERSONA_SECTION→PERSONA_PREFIX_SECTION`、`Config.persona→personaPrefix`、`DEPLOYMENT_PERSONA→DEPLOYMENT_PERSONA_PREFIX`（phase-gate/agent-spine-demo/tool-subagent/scoped-tool-subagent/tool-scope-routing）。
+
+**tsc green（host）**；**tsdown fail** root entry `lib/types/{index,invariant,startup}.js`=UM16。
+
+**延至 Phase B（per UM-flow）**：catalog regen（CORDIS task）——`slot-catalog.ts`+`api-catalog.ts` 取 fork（`--ours`）；阻塞 by `packages/client/runtime` zombie `root`（R-DA decommission）+ `result-cache/remote.ts:74` typert unconstrained-unknown；tsc-safe（catalogs 被 providers.ts opaque import）。seam 3/4 adaptive（admin lazy-webServer）=R-DA Session C。
+
+`pnpm install` green（lockfile 重生成 1532 entries）；fs-ext 跳过（--ignore-scripts，node v25 V8 ABI 不兼容，runtime-only）。
