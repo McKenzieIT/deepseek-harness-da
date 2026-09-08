@@ -1,16 +1,26 @@
 # R1 — 执行级评分与非循环 ground truth 论文认读
 
-**Type**: research  ·  **Status**: resolved
+**Type**: research  ·  **Status**: claimed（**重做 v2**，2026-09-08）
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无
-**Branch**: `research/R1-exec-grader-papers`
+**Blocks**: [G1 — Execution grader seam](G1-exec-grader-seam.md)、[G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)
+**Branch**: `grilling/G1-exec-grader-seam-redo`
 
 ## Question
 
-Spider、BIRD、Spider 2.0 与 GradeSQL 如何定义并实现 SQL 执行级评分、结果集归一化、多 SQL 等价接受和非循环 ground truth；这些方法映射到 `packages/eval/` 时，哪些事实足以约束后续的 execution-grader seam 与 168-case expected result 派生决策？
+为方向 1（EX grader + 非循环 expected 溯源）建立一手文献基线：**执行级评分（EX）在已发表基准里到底怎么定义、结果集怎么归一化、gold 怎么产出与验证、如何避免"用模型产 ground truth"的循环**。产出一份可直接喂 G1 grilling 的 research note，逐篇给核心方法 + 对本仓映射 + 可执行的规则清单。
+
+## 为什么重做（2026-09-08）
+
+前一轮 R1 与 G1 均在**多次中断**的 session 里完成，其结论未经独立复核即被 G1 采纳并据此开出 T11/R10/G10/T1 四张票。用户判定该轮"研究和 grilling 可能是错的"，要求 R1+G1 二次重做、**忽略已有结论**。
+
+处置：
+
+- 前一轮产物**未删除**，移到 [`../research/_superseded/2026-09-07-exec-grader-papers.SUSPECT.md`](../research/_superseded/2026-09-07-exec-grader-papers.SUSPECT.md) 保留审计痕迹；本轮**不引用、不作为前提**。
+- 本轮所有 claim 必须由**一手来源**独立重建：arXiv API 权威元数据 + PDF 全文，以及本仓 `packages/eval/` 的实际代码（file:line 须为本轮亲自读过）。
+- 前一轮的仓内发现（如 "mapQueryOutcome 从未被调用"、"loader 静默丢弃 expected.sql"）在本轮视为**未验证传闻**：独立复核后才可写入，且须标明本轮是否确认。
+- 诚实披露：执行本轮的 agent 在收到重做指令**之前**已读过前一轮的 R1 Answer 与 G1 Resolution，无法"未读"。因此本轮结论须逐条注明与前一轮**一致 / 不一致 / 无法确认**，使锚定效应可被审查。
 
 ## Answer
 
-完整认读与来源见 [执行级评分与非循环 ground truth 论文认读](../research/exec-grader-papers.md)。四套体系没有统一的 execution-match 语义：BIRD 与 GradeSQL 使用 set equality，Spider distilled test-suite 使用 bag equality、列排列和条件式行序，Spider 2.0 使用 focused columns、逐题行序策略与多个答案文件。G1 因而需要显式、可版本化且逐 case 声明的 comparator policy；严格 bag equality、位置列、显式行序、严格 NULL 与无隐式数值容差只是待 R23 mutation baseline 检验的起始 profile，不是论文已经证明的统一默认值。
-
-168 个 K11-v2 case 当前没有 reference SQL；143 个已有 `result_value` 也缺 snapshot、执行 SQL 和可重放 provenance。后续 ground truth 必须由领域人员编写并复核的 reference SQL 在不可变数据库快照上实际执行派生，保存 raw/normalized artifacts、digest 与 policy version；被测模型或同源 LLM 不得成为 gold 的作者或最终裁决者。25 个 delivery-only case 保持非 execution case，不伪造 expected result。
+（待本轮认读完成后填写）

@@ -1,11 +1,13 @@
 # G1 — Execution grader seam
 
-**Type**: grilling  ·  **Status**: open
+**Type**: grilling  ·  **Status**: claimed（**重做 v2**，2026-09-08）
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [R1 — 执行级评分与非循环 ground truth 论文认读](R1-exec-grader-papers.md)（resolved）
+**Blocked by**: [R1 — 执行级评分与非循环 ground truth 论文认读](R1-exec-grader-papers.md)（v2 重做中，本轮同 session 先完成）
 **Blocks**: T1-exec-grader-impl
 **Mode**: HITL
-**Branch**: `grilling/G1-exec-grader-seam`
+**Branch**: `grilling/G1-exec-grader-seam-redo`
+
+> **重做说明（2026-09-08）**：前一轮 G1 在多次中断的 session 中 resolved，并据其结论开出 T11/R10/G10/T1 四张票。用户判定该轮 grilling 可能有误，要求忽略已有结论重做。前一轮的 resolution 与四张衍生票**只存在于 `grilling/G1-exec-grader-seam` 分支**（未合并 master），本分支自 master 起，因此不继承；四张衍生票是否应当存在，由本轮 G1 重新决定。重做理由与锚定披露见 [R1 v2](R1-exec-grader-papers.md#为什么重做2026-09-08)。
 
 ## Question
 
