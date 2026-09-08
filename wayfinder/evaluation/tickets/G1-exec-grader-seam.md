@@ -66,3 +66,19 @@
 **包级重组另票**：[T12-eval-package-consolidation](T12-eval-package-consolidation.md)，blocked by T1 + G10。R24 已确认合并**无循环依赖、且为 benchmark-agnostic 目标铺路而非冲突**；但 G10 会重新切这几个包（K11 移出成版本化 benchmark pack），故 T12 的题面需在 G10 解后重定。
 
 **对 map 常设原则的修订**：additive-only（不改/不删 core）的适用范围限于 agent core 与评分维度的叠加；**`packages/eval/` 内部的去分叉删除是被允许的**，否则该原则会挡住 T1。map Notes 需同步这一修订。
+
+### D3 — seam 是两个纯函数加一个可落盘 artifact
+
+**决定**：evaluation 自有的接口由三件构成：
+
+1. **注入的窄接口**：`{ execute(sql, signal?): Promise<QueryOutcome>; attach?(instanceId): Promise<QueryOutcome> }`。不是裸函数，也不是现在的 `QueryExecutor` 肥类。保留 `attach` 是为了让 D1 的 `environment-blocked` 保持为**策略结论**——将来改成“attach 后等它跑完”时有落点，而不是把“遇 `pending` 就放弃”写成结构。SQL 提交、scope routing、credentials、backend lifecycle 仍归 `@deepseek-ai/dsh-query`。
+2. **`normalizeOutcome(outcome): ExecutionArtifact`**（纯函数，evaluation 拥有）：把三态 `QueryOutcome` 翻成判别联合，保留 `columns` / 行 / `rowCount` / `truncated` / `instanceId` / `failureKind` / `sql` / 执行元数据。归一化不再住在 adapter 里（adapter 历史上就是分叉源）。
+3. **`gradeExecution(artifact, expected, policy): ExecutionVerdict`**（纯函数，evaluation 拥有）：输出 D1 的四分与失败原因（不再把比较器的 `detail` 丢掉）。
+
+**为何必须拆成两个函数（承重理由，非审美）**：[R23](R23-comparator-policy-mutation-baseline.md) 要测几十种 comparator policy 组合的 false-accept / false-reject，必须能对**已存 artifact 离线重打分**而不是每个变体回数仓重跑（贵，且 `gold replay stability` 本身就是被测指标，需存量 artifact 作基准）；且 R23 要求 **raw 与 normalized 两种 digest**，只有归一化是独立一步且输出被持久化时，这两个 digest 才存在。
+
+**落盘与成本上限**：`ExecutionArtifact` **就是落盘对象**，存 `columns` + 不超过配置上限的行 + `rowCount` + `truncated` + **完整 raw 与 normalized 结果的 digest**；超限则只存 digest 与截断行。不得把“5 行不可重放”换成“无上限大 blob”。R23 的“单快照偶然命中”检查也靠这个 digest。
+
+**policy 是显式解析且带版本号的值**，随 verdict 落盘（AGENTS.md：插件内不得有硬编码可调项，默认值走显式 resolve 步骤；R23 要求逐字记录 policy version）。**具体默认值不在本票定**，由 R23 的 mutation baseline 给证据后再定（三方对账一致：现在定默认档是空转，因活跃 case 尚未用到行集比较）。
+
+**T1 的关键验收信号**：能对存量 artifact 离线重打分（换 policy 不回数仓），且同一 artifact + 同一 policy 版本重打分结果稳定。
