@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import {
   ModelsSection, needsSetup, providerCopy, providerTargetLabel, removeProviderProfile,
@@ -89,7 +90,7 @@ function wireNamespaces(): SettingsNamespaceView[] {
   return [
     {
       ns: 'llm-deepseek',
-      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as JsonValue,
       value: {
         apiKeyEnv: 'DEEPSEEK_API_KEY',
         baseURL: 'https://base',
@@ -107,7 +108,7 @@ function wireNamespaces(): SettingsNamespaceView[] {
       ns: 'llm-plain',
       schema: JSON.parse(JSON.stringify(Schema.object({
         profiles: Schema.dict(Schema.object({ note: Schema.string() })),
-      }).toJSON())) as unknown,
+      }).toJSON())) as JsonValue,
       value: {},
       applies: 'live',
       secrets: [],
@@ -115,7 +116,7 @@ function wireNamespaces(): SettingsNamespaceView[] {
     },
     {
       ns: 'llm-pi-ai',
-      schema: JSON.parse(JSON.stringify(PiAiConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(PiAiConfig.toJSON())) as JsonValue,
       value: { providers: { openai: { apiKeyEnv: 'OPENAI_API_KEY', baseURL: 'https://proxy', headers: { 'X-Team': 'a' } }, zombie: {} } },
       user: { providers: { openai: { apiKeyEnv: 'OPENAI_API_KEY', baseURL: 'https://proxy', headers: { 'X-Team': 'a' } }, zombie: {} } },
       applies: 'live',
@@ -193,7 +194,7 @@ async function mountFace(scripted: ReturnType<typeof scriptedFace>) {
   const injected: ModelsSectionProps = {
     controller,
     useSnapshot: bindSnapshotSelector(controller.store),
-    api: face as never,
+    ctx: face as never,
     schema: settingsSchema,
     t,
   }
@@ -274,7 +275,7 @@ describe('ModelsSection', () => {
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={face as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -298,7 +299,7 @@ describe('ModelsSection', () => {
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={face as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -308,9 +309,10 @@ describe('ModelsSection', () => {
   })
 
   it('decides setup need from the joined credential state and the first-run posture', () => {
-    const entry = { provider: 'p', displayName: 'p', settingsNs: 'llm-deepseek', settingsPath: [], active: true }
+    const entry = { provider: 'p', displayName: 'p', settingsNs: 'llm-deepseek', settingsPath: [] }
     const row = (credential: ProviderRow['credential']): ProviderRow => ({
       entry,
+      active: true,
       configured: true,
       removable: false,
       apiKeyEnv: 'X',
@@ -379,7 +381,7 @@ describe('ModelsSection', () => {
       namespace={wireNamespaces()[0]!}
       schema={settingsSchema}
       settingsPath={[]}
-      api={face as never}
+      ctx={face as never}
       t={t}
       readOnly={false}
       credentialOnly
@@ -617,7 +619,7 @@ describe('ModelsSection', () => {
     const stored = { models: [{ id: 'user-only-model', name: 'User Only' }] }
     const overridden: SettingsNamespaceView = {
       ns: 'llm-deepseek',
-      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as JsonValue,
       value: { ...stored, defaultContextWindow: 1_000_000 },
       ...base === undefined ? {} : { base },
       user: stored,
@@ -632,7 +634,7 @@ describe('ModelsSection', () => {
       namespace={overridden}
       schema={settingsSchema}
       settingsPath={[]}
-      api={face as never}
+      ctx={face as never}
       t={t}
       readOnly={false}
       onClose={() => {}}
@@ -849,7 +851,7 @@ describe('ModelsSection', () => {
     const { face } = scriptedFace()
     const bare: SettingsNamespaceView = {
       ns: 'llm-deepseek',
-      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as JsonValue,
       value: {},
       applies: 'live',
       secrets: [],
@@ -862,7 +864,7 @@ describe('ModelsSection', () => {
       namespace={bare}
       schema={settingsSchema}
       settingsPath={[]}
-      api={face as never}
+      ctx={face as never}
       t={t}
       readOnly={false}
       onClose={() => {}}
@@ -1028,7 +1030,7 @@ describe('ModelsSection', () => {
       render(<ModelsSection
         controller={controller}
         useSnapshot={bindSnapshotSelector(controller.store)}
-        api={face as never}
+        ctx={face as never}
         schema={settingsSchema}
         t={t}
       />)
@@ -1167,7 +1169,7 @@ describe('ModelsSection', () => {
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face.face as never}
+      ctx={face.face as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -1189,7 +1191,7 @@ describe('ModelsSection', () => {
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={face as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -1250,7 +1252,7 @@ describe('ModelsSection', () => {
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={face as never}
       schema={settingsSchema}
       t={t}
     />)

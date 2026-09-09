@@ -10,6 +10,10 @@ import { SettingsScopeController } from '@deepseek-ai/dsh-client-ui-settings/src
 
 // Every fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
 const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
+// Attention hook stub: the welcome notice never reads it, so the fixture
+// returns an empty attention snapshot to the selector.
+const useSessionPendingInteraction = ((selector: (state: Map<string, unknown>) => unknown) =>
+  selector(new Map<string, unknown>())) as never
 
 /** Stateless schema service for scope construction in this jsdom fixture. */
 const schemaService = new SettingsSchemaService(new Context())

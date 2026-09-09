@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import { ModelsSection, providerCopy } from '../src/client/ModelsSection.tsx'
 import type { ModelsSectionInjected, ModelsSectionProps } from '../src/client/ModelsSection.tsx'
@@ -53,12 +54,12 @@ function piAiNamespace(
 ): SettingsNamespaceView {
   return {
     ns: 'llm-pi-ai',
-    schema: JSON.parse(JSON.stringify(PiAiConfig.toJSON())) as unknown,
+    schema: JSON.parse(JSON.stringify(PiAiConfig.toJSON())) as JsonValue,
     // `value` is the effective section; `user` is only the layer this page
     // writes. They differ whenever a composition `base` supplies something.
-    value: { providers },
-    base: { providers: baseProviders },
-    user: { providers: userProviders },
+    value: { providers } as JsonValue,
+    base: { providers: baseProviders } as JsonValue,
+    user: { providers: userProviders } as JsonValue,
     applies: 'live',
     secrets: [],
     revision: 3,
@@ -147,7 +148,7 @@ async function mountSection(options: Parameters<typeof scriptedFace>[0] = {}) {
   const injected: ModelsSectionProps = {
     controller,
     useSnapshot: bindSnapshotSelector(controller.store),
-    api: scripted.face as never,
+    ctx: scripted.face as never,
     schema: settingsSchema,
     t,
   }
@@ -189,7 +190,7 @@ describe('protocolChoices', () => {
     const { namespace } = scriptedFace()
     expect(protocolChoices(namespace, settingsSchema)).toEqual(PROTOCOLS)
     expect(protocolChoices(undefined, settingsSchema)).toEqual([])
-    const plain = { ...namespace, schema: JSON.parse(JSON.stringify(Schema.object({}).toJSON())) as unknown }
+    const plain = { ...namespace, schema: JSON.parse(JSON.stringify(Schema.object({}).toJSON())) as JsonValue }
     expect(protocolChoices(plain, settingsSchema)).toEqual([])
     await Promise.resolve()
   })
@@ -540,7 +541,7 @@ describe('endpoint interrogation', () => {
     const scripted = scriptedFace()
     render(
       <CustomProviderCard
-        taken={[]} protocols={PROTOCOLS} revision={7} api={scripted.face as never}
+        taken={[]} protocols={PROTOCOLS} revision={7} ctx={scripted.face as never}
         t={t} readOnly={false} onClose={vi.fn()}
       />,
     )
@@ -668,7 +669,7 @@ describe('provider rows', () => {
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={scripted.face as never}
+      ctx={scripted.face as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -691,7 +692,7 @@ describe('hand-declared providers', () => {
         taken={['openai']}
         protocols={PROTOCOLS}
         revision={7}
-        api={scripted.face as never}
+        ctx={scripted.face as never}
         t={t}
         readOnly={false}
         onClose={onClose}
@@ -1121,7 +1122,7 @@ describe('hand-declared providers', () => {
 
   it('surfaces a refused write and a rejected transport without closing', async () => {
     const refused = vi.fn(() => Promise.resolve(fail('read-only settings', 'settings-rejected')))
-    const { onClose } = mountCard({ api: { ...scriptedFace({ mutate: refused }).face } as never })
+    const { onClose } = mountCard({ ctx: { ...scriptedFace({ mutate: refused }).face } as never })
 
     fireEvent.change(screen.getByLabelText(en.customRoute), { target: { value: 'acme' } })
     fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://acme.test/v1' } })
@@ -1135,7 +1136,7 @@ describe('hand-declared providers', () => {
 
   it('surfaces a rejected transport during create', async () => {
     const rejecting = vi.fn(() => Promise.reject(new Error('carrier down')))
-    const { onClose } = mountCard({ api: { ...scriptedFace({ mutate: rejecting }).face } as never })
+    const { onClose } = mountCard({ ctx: { ...scriptedFace({ mutate: rejecting }).face } as never })
 
     fireEvent.change(screen.getByLabelText(en.customRoute), { target: { value: 'acme' } })
     fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://acme.test/v1' } })
@@ -1149,7 +1150,7 @@ describe('hand-declared providers', () => {
 
   it('reports a stored profile whose key write was refused', async () => {
     const set = vi.fn(() => Promise.resolve(fail('credential is read-only', 'credential-rejected')))
-    const { onClose } = mountCard({ api: { ...scriptedFace({ set }).face } as never })
+    const { onClose } = mountCard({ ctx: { ...scriptedFace({ set }).face } as never })
 
     fireEvent.change(screen.getByLabelText(en.customRoute), { target: { value: 'acme' } })
     fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://acme.test/v1' } })

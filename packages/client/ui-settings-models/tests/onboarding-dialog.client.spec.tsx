@@ -4,8 +4,10 @@ import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
-import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import type { Context } from '@deepseek-ai/cordis'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import type { RemoteFailure, RemoteResult, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import { bindSnapshotSelector, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import { DeepSeekOnboardingDialog } from '../src/client/DeepSeekOnboardingDialog.tsx'
 import type { DeepSeekOnboardingDialogProps } from '../src/client/DeepSeekOnboardingDialog.tsx'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
@@ -15,20 +17,23 @@ import { settingsSchema } from './settings-schema.client.ts'
 
 // Every fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
 const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
+// Attention hook stub: the onboarding step never reads it, so the fixture
+// returns an empty attention snapshot to the selector.
+const useSessionPendingInteraction = ((selector: (state: Map<string, unknown>) => unknown) =>
+  selector(new Map<string, unknown>())) as never
 
 afterEach(() => {
   cleanup()
   document.getElementById('root')?.remove()
 })
 
-let nextRpc = 0
-function ok<T>(value: T): RpcResponse<T> {
-  return { rpcId: `onboarding-${nextRpc++}` as never, result: { ok: true, value } }
+function ok<T>(value: T): RemoteResult<T> {
+  return { ok: true, value }
 }
-function fail<T>(message: string): RpcResponse<T> {
+function fail<T>(message: string): RemoteResult<T> {
   return {
-    rpcId: `onboarding-${nextRpc++}` as never,
-    result: { ok: false, error: { code: 'internal', message, details: {} } },
+    ok: false,
+    error: new RemoteError('gateway/internal', message, {}) as unknown as RemoteFailure,
   }
 }
 
@@ -46,10 +51,10 @@ const DeepSeekConfig = Schema.object({
 })
 
 function deepSeekNamespace(apiKeyEnv: string | null): SettingsNamespaceView {
-  const value = apiKeyEnv === null ? {} : { apiKeyEnv }
+  const value: JsonValue = apiKeyEnv === null ? {} : { apiKeyEnv }
   return {
     ns: 'llm-deepseek',
-    schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as unknown,
+    schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as JsonValue,
     value,
     base: value,
     user: {},
@@ -82,27 +87,36 @@ function harness(options: {
   const configured = options.configured ?? (() => fileConfigured)
   const apiKeyEnv = options.apiKeyEnv === undefined ? 'DEEPSEEK_API_KEY' : options.apiKeyEnv
   const mutate = vi.fn(() => Promise.resolve(ok(deepSeekNamespace(apiKeyEnv))))
-  const set = vi.fn((_payload: { ref: string; value: string }) => {
+  const set = vi.fn((_ref: string, _value: string) => {
     if (options.setReject !== undefined) return Promise.reject(new Error(options.setReject))
     if (options.setFailure !== undefined) return Promise.resolve(fail(options.setFailure))
     fileConfigured = true
     return Promise.resolve(ok({}))
   })
+  const providerActive = options.providerActive ?? true
+  const providerId = options.provider === false ? undefined : 'deepseek-official'
   const face = {
     llm: {
-      providers: () => {
+      listConfigurableProviders: () => {
         if (options.providersReject === true) return Promise.reject(new Error('provider transport unavailable'))
-        return Promise.resolve(ok({
-          providers: options.provider === false
+        return Promise.resolve(ok(
+          providerId === undefined
             ? []
             : [{
-              provider: 'deepseek-official',
+              provider: providerId,
               displayName: 'DeepSeek',
               settingsNs: options.providerSettingsNs ?? 'llm-deepseek',
               settingsPath: [],
-              active: options.providerActive ?? true,
             }],
-        }))
+        ))
+      },
+      listProviders: () => {
+        if (options.providersReject === true) return Promise.reject(new Error('provider transport unavailable'))
+        return Promise.resolve(ok(
+          providerId !== undefined && providerActive
+            ? [{ id: providerId, name: 'DeepSeek' }]
+            : [],
+        ))
       },
     },
     settings: {
@@ -114,23 +128,22 @@ function harness(options: {
       mutate,
     },
     credentials: {
-      describe: () => options.describeFailure === undefined
+      describe: (_refs: string[]) => options.describeFailure === undefined
         ? Promise.resolve(ok({
-          credentials: {
-            DEEPSEEK_API_KEY: {
-              configured: configured(),
-              ...configured() && options.credential?.source !== undefined
-                ? { source: options.credential.source }
-                : {},
-              writable: options.credential?.writable ?? true,
-            },
+          DEEPSEEK_API_KEY: {
+            configured: configured(),
+            ...configured() && options.credential?.source !== undefined
+              ? { source: options.credential.source }
+              : {},
+            writable: options.credential?.writable ?? true,
           },
         }))
         : Promise.resolve(fail(options.describeFailure)),
       set,
     },
   }
-  const controller = new ModelsSettingsStore(face as never, settingsSchema, new SettingsDescribeMirror(face as never))
+  const ctx = { remote: face } as unknown as Context
+  const controller = new ModelsSettingsStore(ctx, settingsSchema, new SettingsDescribeMirror(ctx))
   const openSection = vi.fn()
   const complete = vi.fn()
   const unusedHook = (() => { throw new Error('unused standard hook') }) as never
@@ -144,7 +157,7 @@ function harness(options: {
     useWorkspaces: unusedHook,
     controller,
     useModels: bindSnapshotSelector(controller.store),
-    api: face as never,
+    ctx,
     schema: settingsSchema,
     t: key => en[key],
   }

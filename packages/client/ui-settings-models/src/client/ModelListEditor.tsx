@@ -16,7 +16,10 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { DiscoveredModelView, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Context } from '@deepseek-ai/cordis'
+import type { LlmDiscoveredModel } from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: pulls the ctx.remote merge into this program.
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { formatCapacity, parseCapacity } from './DeepSeekModelsEditor.tsx'
 import type { DeepSeekModelDraft } from './DeepSeekModelsEditor.tsx'
@@ -81,8 +84,8 @@ export interface ModelListEditorProps {
    * told what the field already says.
    */
   probeBlocked?: keyof typeof en | undefined
-  /** Wire face the fetch action calls. */
-  api: Pick<IApiClient, 'llm'>
+  /** Plugin context; `ctx.remote.llm.discoverModels` answers the fetch action. */
+  ctx: Context
   /** Section copy. */
   t: (key: keyof typeof en) => string
   /** Disable every control (read-only deployment or a pending write). */
@@ -144,7 +147,7 @@ function capacitySpelling(value: number | undefined): string {
 }
 
 /** Adopt a candidate, keeping whatever capacities the provider disclosed. */
-function adopt(candidate: DiscoveredModelView): ModelDraft {
+function adopt(candidate: LlmDiscoveredModel): ModelDraft {
   return {
     id: candidate.id,
     ...candidate.name === undefined ? {} : { name: candidate.name },
@@ -159,10 +162,10 @@ function adopt(candidate: DiscoveredModelView): ModelDraft {
  * @returns the model-list editor.
  */
 export function ModelListEditor(props: ModelListEditorProps): ReactNode {
-  const { models, onChange, probe, api, t, disabled } = props
+  const { models, onChange, probe, ctx, t, disabled } = props
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | undefined>(undefined)
-  const [candidates, setCandidates] = useState<readonly DiscoveredModelView[] | undefined>(undefined)
+  const [candidates, setCandidates] = useState<readonly LlmDiscoveredModel[] | undefined>(undefined)
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set())
   // Rows carry an id and a name; capacities are the exception, so they stay
   // folded until asked for rather than crowding every row with four inputs.
@@ -231,18 +234,18 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
     setBusy(true)
     setFailure(undefined)
     try {
-      const response = await api.llm.discoverModels({
-        settingsNs: probe.settingsNs,
+      const request = {
         ...probe.provider === undefined ? {} : { provider: probe.provider },
         ...probe.baseURL === undefined || probe.baseURL.length === 0 ? {} : { baseURL: probe.baseURL },
         ...probe.api === undefined ? {} : { api: probe.api },
         ...probe.apiKey === undefined ? {} : { apiKey: probe.apiKey },
-      })
-      if (!response.result.ok) {
-        setFailure(response.result.error.message)
+      }
+      const response = await ctx.remote.llm.discoverModels(probe.settingsNs, request)
+      if (!response.ok) {
+        setFailure(response.error.message)
         return
       }
-      const found = response.result.value.models
+      const found = response.value
       if (found.length === 0) {
         setFailure(t('fetchEmpty'))
         return
@@ -251,7 +254,7 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
       // selection never silently rewrites a capacity the user corrected.
       const known = new Set(models.map(model => textOf(model, 'id')))
       setCandidates(found)
-      setPicked(new Set(found.filter(model => !known.has(model.id)).map(model => model.id)))
+      setPicked(new Set(found.filter((model: LlmDiscoveredModel) => !known.has(model.id)).map(model => model.id)))
     } catch (error) {
       // The transport rejected rather than answering; without this the button
       // would stay busy with nothing shown.
