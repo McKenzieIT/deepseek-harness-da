@@ -2,7 +2,7 @@
 
 **Type**: grilling  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [R10 — Harness/Goodhart 论文认读](R10-harness-goodhart-papers.md)
+**Blocked by**: 无（[R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读](R10-harness-goodhart-papers.md) 已于 2026-09-09 resolved）
 **Blocks**: T9-bhe-split-impl；并解 [G1](G1-exec-grader-seam.md) 移交的三条；[T1](T1-exec-grader-impl.md) 的落点
 **Mode**: HITL
 **Branch**: `grilling/G10-harness-bhe-split`

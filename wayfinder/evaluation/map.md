@@ -50,6 +50,7 @@
 | GA-GRILL2 (phase-misc) | grilling | 2026-09-03 | Kind 1 英文化 won't-do → GA-EXP5 |
 | [R1 — 执行级评分与非循环 ground truth 论文认读](tickets/R1-exec-grader-papers.md) (evaluation) | research | 2026-09-07 / **v3 重做 09-08** | execution match 无统一语义；G1/G1b 须定义逐 case、可版本化 policy 与非循环 provenance，默认 profile 交 R23 实测。**v3（网络可用后重做）**:6 个 arXiv 编号经权威 API 验真;`2606.30851` 真标题为 *Test-Time Verification for Text-to-SQL via Outcome Reward Models*(GradeSQL 是框架名);143 个 EXEC case 只用 2/5 模式(`row_count_range` 86 + `scalar_exact` 57);GradeSQL **丢弃**执行报错候选而非记答错 |
 | [R24 — eval 包级合并可行性](tickets/R24-eval-package-consolidation.md) (evaluation) | research | 2026-09-08 | 一套 eval 引擎存两份（两份 `runBatch`、两份 health gate、两份比较器、两份已分叉的 adapter）；合并**无循环依赖**且为 benchmark-agnostic 铺路，但包边界移动触及仓外 5 处消费者 → 去重归 T1、包重组归 T12 |
+| [R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读](tickets/R10-harness-goodhart-papers.md) (evaluation) | research | 2026-09-09 | Benchmark 拥有 case 与评分语义，Harness 拥有 rollout，Environment 拥有隔离执行；历史 schema 应无损编译到 canonical envelope。Goodhart 审计需 train/heldout/fresh、provenance、CI 与 style control；LED 的 `pass@n` 不等于本仓 strict `pass^k` |
 | [G1 — Execution grader seam](tickets/G1-exec-grader-seam.md) (evaluation) | grilling | 2026-09-07 | 锁 6 条架构无关决策(三事实分离/execution 主裁决/gold 失败=benchmark infra/端口一函数/provenance 由 grader 装配/截断与耗时自己观测);包边界与 case schema 归属移交 R10→G10。查出:两栈并存是撞车非设计、`mapQueryOutcome` 从未被调用、infra 失败被计为模型失败、**loader 静默丢弃 39 个 case 已有的 reference SQL 与快照锚点**(→ T11) |
 | ↑ **同票 v3 重做并合并** | grilling | **2026-09-08** | D1 结局四分 + `not-measured`（pass/fail/environment-blocked/case-defect）;D2 一能力一实现（包边界不动→T12）;D3 seam = `normalizeOutcome` + `gradeExecution` 两纯函数 + 可落盘 artifact（R23 需离线重打分）;D4 **judge 永不填 execution**、模式必须落盘（测出 56.4pp）;D5 G1 管机器/G1b 管语料;D6 **当前 EXECUTION 语料不合格、需重建**。合并裁定：归一位置取 v3、端口纪律取 v1；v1 修正 v3 两处（provider 声明不可当证据、provenance 由 grader 装配） |
 | [R8 — 判官读出 / 量表 / 顺序论文认读](tickets/R8-pairwise-judge-papers.md) (evaluation) | research | 2026-09-10 | 6/6 论文经 arXiv 元数据 + PDF 全文认读、83 条引文机械回核（两处称法修正：`2608.14684` 的 SARA 是**方法名**非标题；`2602.02219` 主题是**位置偏置**非 pointwise/pairwise 之争）。**决定性结果在本仓、不在论文**：五维 flat-mean 读出实测 = `overall_semantics` 单闸门 + **8.56pp 的漏**（`overall=1` 判 FAIL **0/1495**、`overall=0` 判 PASS **128**；判官说「答不了」的 246 次里 **52.03%** 仍通过）。RADAR 是**干预式**、跑不了既有数据 → R20 重切为四探针（a 已完成 / b、c 便宜 / d 有前置）；「给判官参考答案」与 **T11 是同一块工作**，并改了方向 2 的题面 |
@@ -118,8 +119,8 @@
 
 ### 10. Harness Benchmark/Harness/Environment 拆分 + Goodhart 审计(de-K11 架构答案)
 做什:AgentCompass 三件套拆 eval-cli——K11-v2 移出版本化 benchmark-pack;eval-runner+MultiTurnSession benchmark-agnostic;加 LiveK11 pack;compare.ts 出 Goodhart Δ(K11-train vs heldout vs fresh);Arena-Hard 式 style control+separability+95%CI;dye-pack sentinel。
-论文:AgentCompass(2607.13705 ✅验,B/H/E 拆分)、HELM(2211.09110)、BIG-bench(2206.04615)、Arena-Hard/MT-Bench(2306.05685)、WildBench(2406.04770)、LED(2602.01698,GRPO 升 pass@1 塌 pass@n=pass^k 上的 Goodhart)、Data Laundering(2412.15255)、MMLU-CF(2412.15194)、LLMs-Get-Lost(2505.06120)。
-票链:[**R10 — Harness/Goodhart 论文认读**](tickets/R10-harness-goodhart-papers.md)（**下一 session 起这张**）→ [**G10 — Harness B/H/E 拆分**](tickets/G10-harness-bhe-split.md)(grilling,supersedes GA-GT4 架构面;**持有 G1 移交的包边界/case schema 归属**)→ **T9-bhe-split-impl** + **R21-goodhart-audit**(experiment,by T1)。
+论文:AgentCompass(2607.13705 ✅验,B/H/E 拆分)、HELM(2211.09110)、BIG-bench(2206.04615)、MT-Bench(2306.05685)、Arena-Hard(2406.11939)、WildBench(2406.04770)、LED(2602.01698,post-training 升 pass@1 但采样探索塌缩；标准 `pass@n` ≠ 本仓 strict `pass^k`)、Data Laundering(2412.15255)、MMLU-CF(2412.15194)、LLMs-Get-Lost(2505.06120)。
+票链:[**R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读**](tickets/R10-harness-goodhart-papers.md)（resolved；[认读产物](research/harness-goodhart-papers.md)）→ [**G10 — Harness B/H/E 拆分**](tickets/G10-harness-bhe-split.md)(grilling,**现已解锁**,supersedes GA-GT4 架构面;**持有 G1 移交的包边界/case schema 归属**)→ **T9-bhe-split-impl** + **R21-goodhart-audit**(experiment,by T1)。
 
 ### 11. Robustness/perturbation(consistency@k)+ IRT active sampling(新维度+power 解)
 做什:自动产 paraphrase + schema-perturbed 变体测 consistency@k(第 6 维);LaRT/IRT CAT 主动采样——cheap probe 估 per-case discordance p̂,预算砸 near-boundary(p̂≈0.5)→ ~40 case×3 run 出 n_d≥85,比 168 flat 更少 run 更高 n_d。
@@ -131,7 +132,7 @@
 **Historical(在 `wayfinder/data-agent/tickets/`)**:见 §Decisions so far + §Open frontier。
 
 **新票(在 `wayfinder/evaluation/tickets/`,本 effort R/G/T/P 命名空间)**:
-- **R(认读分析论文,AFK,产 research note)**:[R1](tickets/R1-exec-grader-papers.md)(resolved v3)、R2-judge-blind-papers、R3-judge-calibration-papers、R4-significance-papers、R5-contamination-papers、R6-trajectory-papers、R7-step-prm-papers、[R8](tickets/R8-pairwise-judge-papers.md)(**resolved**)、[**R8b**](tickets/R8b-judge-readout-papers.md)、[**R8c**](tickets/R8c-reference-anchor-papers.md)、R9-error-taxonomy-papers、[R10](tickets/R10-harness-goodhart-papers.md)、R11-robustness-sampling-papers、[R24](tickets/R24-eval-package-consolidation.md)(resolved,仓库取证)。
+- **R(认读分析论文,AFK,产 research note)**:[R1](tickets/R1-exec-grader-papers.md)(resolved v3)、R2-judge-blind-papers、R3-judge-calibration-papers、R4-significance-papers、R5-contamination-papers、R6-trajectory-papers、R7-step-prm-papers、[R8](tickets/R8-pairwise-judge-papers.md)(**resolved**)、[**R8b**](tickets/R8b-judge-readout-papers.md)、[**R8c**](tickets/R8c-reference-anchor-papers.md)、R9-error-taxonomy-papers、[R10](tickets/R10-harness-goodhart-papers.md)(resolved)、R11-robustness-sampling-papers、[R24](tickets/R24-eval-package-consolidation.md)(resolved,仓库取证)。
 - **R(experiment,AFK,数字入 audit-log)**:R12-exec-orm-baseline、R13-judge-blind-baseline、R14-judge-falsepass-by-dim(**前置已改**:须在 T11 之后、在重建的 EXECUTION 语料上做——R8 查出唯一可配对的 `eventdef-realexec.json` 只有 n=95/35 case 且真值受 event anchor 污染)、R15-calibrated-rebaseline、R16-significance-rerun、R17-contamination-audit、R18-trajectory-baseline、R19-step-prm-divergence、[R20](tickets/R20-judge-readout-probes.md)(**原 `R20-radar-redundancy`**;R8 重切为四探针)、R21-goodhart-audit、R22-consistency-at-k、[R23](tickets/R23-comparator-policy-mutation-baseline.md)。
 - **G(grilling,HITL)**:[G1](tickets/G1-exec-grader-seam.md)(resolved)、[G1b](tickets/G1b-ground-truth-lifecycle.md)、G2-judge-blind-rewrite(**题面须加 R8 的边界**:有 `expected.sql` 的 case 走 reference-anchored、没有的才走 blind-solve)、G3-judge-calibration、G4-significance-contract、G5-dynamic-case-pipeline、G6-trajectory-scoring、G7-step-prm、[G8](tickets/G8-judge-readout-scale.md)(**原 `G8-pairwise-judge`**)、G9-failure-classifier、[G10](tickets/G10-harness-bhe-split.md)、G11-irt-sampler、(+G12-exec-orm-verifier 条件)。
 - **T(impl,AFK TDD)**:[T1](tickets/T1-exec-grader-impl.md)、T2-judge-blind-impl、T3-calibration-impl、T4-sample-planner-impl+T4b-significance-impl、T5-dynamic-cases-impl+T5b-evolving-slice-impl、T6-multiturn-cases、T7-pairwise-judge-impl、T8-failure-classifier-impl、T9-bhe-split-impl、T10-active-sampler-impl、[T11-loader-provenance-strip](tickets/T11-loader-provenance-strip.md)(G1 产出,**阻塞 T1 与 G1b**)、[T12-eval-package-consolidation](tickets/T12-eval-package-consolidation.md)(G1 D2 产出,blocked by T1+G10)。
@@ -152,18 +153,17 @@
 
 **现在 unblocked(AFK 可自跑,先开,为 grilling 做数据/论文前置)**:
 1. **T11 + T1 同批**（impl；**推荐的下一步**）——T11 是唯一硬前置且已 unblocked，两票同批即可开工
-2. **R10-harness-goodhart-papers**(认读)——解 G10（case schema 归属与 B/H/E 切分）；**已不再阻塞 T1**，但它 blocks T9/T12
-3. **R14-judge-falsepass-by-dim** ——**前置已改,不再是「便宜的既有数据分析」**:R8 查出唯一带逐维+`execution_match` 配对的文件只有 `eventdef-realexec.json`(n=95/35 case),且其真值受 event anchor 污染(16/18 失效)⇒ 须等 T11 + 语料重建
-4. [**R20 探针 b + c**](tickets/R20-judge-readout-probes.md)(**真正的 quick win**:只重跑判官、不重跑 agent;测准则顺序与 isolation-vs-joint)→ 喂 [G8](tickets/G8-judge-readout-scale.md)
-5. [**R8c**](tickets/R8c-reference-anchor-papers.md)(认读,**紧迫**)——它改 T11 的下游语义:恢复出的 `expected.sql` **不能直接当真值**,须先过锚可信度门;而 T11+T1 是推荐的下一步
-6. [**R8b**](tickets/R8b-judge-readout-papers.md)(认读)→ 喂 G8 的决策 1/3/4,并为 R20 探针 b/c 定指标口径
-7. **R4-significance-papers**(认读分析,独立,便宜);~~R8~~ 已 resolved(2026-09-10)
+2. **R14-judge-falsepass-by-dim** ——**前置已改,不再是「便宜的既有数据分析」**:R8 查出唯一带逐维+`execution_match` 配对的文件只有 `eventdef-realexec.json`(n=95/35 case),且其真值受 event anchor 污染(16/18 失效)⇒ 须等 T11 + 语料重建
+3. [**R20 探针 b + c**](tickets/R20-judge-readout-probes.md)(**真正的 quick win**:只重跑判官、不重跑 agent;测准则顺序与 isolation-vs-joint)→ 喂 [G8](tickets/G8-judge-readout-scale.md)
+4. [**R8c**](tickets/R8c-reference-anchor-papers.md)(认读,**紧迫**)——它改 T11 的下游语义:恢复出的 `expected.sql` **不能直接当真值**,须先过锚可信度门;而 T11+T1 是推荐的下一步
+5. [**R8b**](tickets/R8b-judge-readout-papers.md)(认读)→ 喂 G8 的决策 1/3/4,并为 R20 探针 b/c 定指标口径
+6. **R4-significance-papers**(认读分析,独立,便宜);~~R8~~ 已 resolved(2026-09-10)
 
 **[T11](tickets/T11-loader-provenance-strip.md) 与 T1 同批本地实现** —— T11 是 T1 唯一硬前置；方向 1 是**后端方向**，不走另环境/rubric（见 [playbook §1.1](playbook.md)），在本仓起 worktree 直接做，包内顺序 **T11 全部验收 → T1**。本仓有数仓凭证，39-case 真对账可就地跑。
 
-**HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
+**HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);[G10 — Harness B/H/E 拆分](tickets/G10-harness-bhe-split.md) 已由 R10 解锁;**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
 
-**AFK 级联**(各 G 解后):**T11→T1**（同批，T11 先验收）;**R10→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;**R20(b,c)→G8→T7**（G8 决议后才解锁 R20 探针 d）;G11→T10。
+**AFK 级联**(各 G 解后):**T11→T1**（同批，T11 先验收）;**~~R10~~→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;**R20(b,c)→G8→T7**（G8 决议后才解锁 R20 探针 d）;G11→T10。
 
 ## Not yet specified(fog)
 
@@ -183,7 +183,7 @@
 > ——踩法：先按坑 1 误判 `2606.00093` 是同类错误，核渲染页后发现是坑 2，二手来源反而是对的；随后一个 subagent 又据检索片段提出「v2 改名」的第三种解释，逐版查证否掉——**三次都要靠一手取证，猜不出来**。
 
 **已元数据 + PDF 全文认读(最强一档)**:方向 1 六篇经 [R1 v3](tickets/R1-exec-grader-papers.md);**方向 8 六篇经 [R8](tickets/R8-pairwise-judge-papers.md)(2026-09-10)** —— 2608.01810 / 2509.21117 / 2602.02219 / 2608.17938 / 2608.14684 / 2608.12097,一次 6-id 批量查 `export.arxiv.org`(`totalResults=6`)+ `pdftotext` 全文,83 条引文机械回核。**这六条不再属「primary-URL-confirmed」,且其中两条标题在 map 里曾写错**(见方向 8 论文行)。
-**已 primary-URL-confirmed(WebSearch 返回 arxiv.org URL)**:见各方向论文行(2305.20050/2312.08935/2501.07301/2603.17815/2605.02395/2607.22572/2509.00581/2606.31041/2408.05109/2211.09110/2206.04615/2406.04770/2602.01698/2412.15255/2412.15194/2505.06120/2606.17634/2607.06799/2512.07019/2501.10970/2512.11150/2507.08794/2306.05685/2107.03374/2203.11171/2504.07086/2103.14749/1809.08887/2305.03111/2411.07763/2406.19314/2403.07974/2410.10783/2404.04453)。
+**已 primary-URL-confirmed(WebSearch 返回 arxiv.org URL)**:见各方向论文行(2406.11939/2305.20050/2312.08935/2501.07301/2603.17815/2605.02395/2607.22572/2509.00581/2606.31041/2408.05109/2211.09110/2206.04615/2406.04770/2602.01698/2412.15255/2412.15194/2505.06120/2606.17634/2607.06799/2512.07019/2501.10970/2512.11150/2507.08794/2306.05685/2107.03374/2203.11171/2504.07086/2103.14749/1809.08887/2305.03111/2411.07763/2406.19314/2403.07974/2410.10783/2404.04453)。
 **❌ 弃用(臆造)**:"More Convincing Not More Correct"(2607.05904)、"Noisy but Valid"(2601.20913)。
 **⚠ 待核(未独立确认)**:CoreEval(2511.18889)、SWE-bench-Live(2505.23419)、DySQL-Bench、Claw-Eval(2604.06132)、AgentAtlas(2605.20530)、LiveAgentBench(2603.02586)、ClawArena-Team(2606.31174)、Privacy-Defenses-RAG(2608.09001)、CoDeC。
 **secondary-only(不引,仅概念)**:NL2SQL-BUGs、ROSE(2604.12988)、RTS(2501.10858)、IRT-safety-bench(2606.20626)、Spider-SYN/DK/ADVETA/Dr.Spider、DyePack(2505.23001)。
