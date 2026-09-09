@@ -138,23 +138,27 @@
 
 ## 推荐认领顺序
 
-**linchpin 仍是 T1(EX grader)**——它是 R14/G3/R17/G9/G10/R21 的校准 oracle 与客观 GT 来源。但 2026-09-07 的 [G1](tickets/G1-exec-grader-seam.md) 查出三个**前置**,T1 不再是立即下一步:
+**linchpin 仍是 T1(EX grader)**——它是 R14/G3/R17/G9/G10/R21 的校准 oracle 与客观 GT 来源。**2026-09-09 修正前置判定**（依据：G1 已在 09-08 完成 v3 重做并合并，D2 把包边界移出 T1）：
 
-1. **[T11](tickets/T11-loader-provenance-strip.md)**(AFK impl)——loader 丢弃 39 个 case 已有的 reference SQL 与快照锚点,T1 的「可重放证据」与「gold 失败=benchmark infra failure」两条验收面在此之前无法成立。
-2. **R10-harness-goodhart-papers**(AFK 认读)——G1 把包边界与 case schema 归属移交 G10,而 G10 的论文前置(AgentCompass B/H/E)尚未做。T1 若先落地,grader 的位置会被 G10 重切。
-3. **GA-EVAL-CASESET-EVENT-ANCHOR**(HITL grilling)——event case 期望值不是冻结锚点,它 blocks 任何用 real-exec `execution_match` 衡量 event case 的测量,因而也 blocks T1 的 re-baseline 有意义。
+**硬前置只剩一个** —— **[T11](tickets/T11-loader-provenance-strip.md)**（AFK impl）：loader 丢弃 39 个 case 已有的 reference SQL 与快照锚点，T1 的「可重放证据」与「gold 失败=benchmark infra failure」两条验收面在此之前无法成立。二者**同批落包，T11 先完成全部验收再起 T1**。
+
+**原列的另两个前置降为软前置**：
+
+- ~~R10 → G10 定包边界~~——D2 定下 **T1 不动包名与 exports**（仓外共 5 处消费者），包级重组另开 [T12](tickets/T12-eval-package-consolidation.md)（blocked by T1+G10）。新代码落在 `dsh-eval`（被测比较器已在此），G10 日后重切时随 T12 一起搬。故 **T1 不必等 R10/G10**。
+- GA-EVAL-CASESET-EVENT-ANCHOR——它 blocks 的是数字的**解读**，不是实现：本批以「复现 39-case 的 MATCH/STALE 计数」为验收，不以 pass 率为验收；任何 pass 率解读须标注「event 口径未定」。
 
 **现在 unblocked(AFK 可自跑,先开,为 grilling 做数据/论文前置)**:
-1. **R10-harness-goodhart-papers**(认读;**下一 session 起这张**)——解 G10,而 G10 现在持有 G1 移交的包边界与 case schema 归属
-2. **R14-judge-falsepass-by-dim**(既有数据分析,便宜)→ 喂 G3
-3. **R20-radar-redundancy**(quick win,可能直接定位 0.6 通胀根因)→ 喂 G8
-4. **R4-significance-papers**、**R8-pairwise-judge-papers**(认读分析,独立,便宜)
+1. **T11 + T1 同批**（impl；**推荐的下一步**）——T11 是唯一硬前置且已 unblocked，两票同批即可开工
+2. **R10-harness-goodhart-papers**(认读)——解 G10（case schema 归属与 B/H/E 切分）；**已不再阻塞 T1**，但它 blocks T9/T12
+3. **R14-judge-falsepass-by-dim**(既有数据分析,便宜)→ 喂 G3
+4. **R20-radar-redundancy**(quick win,可能直接定位 0.6 通胀根因)→ 喂 G8
+5. **R4-significance-papers**、**R8-pairwise-judge-papers**(认读分析,独立,便宜)
 
-**[T11](tickets/T11-loader-provenance-strip.md) 已 unblocked 但攒批不单独落**——它 blocks 最多(T1 + G1b + GA-EVAL-EXPAND),但只有 ~76 KB 源码半径,撑不满一个 rubric 包;按 [playbook §4](playbook.md) 的 T-攒批规则与 T1(+G10 后的 T9)同批落。
+**[T11](tickets/T11-loader-provenance-strip.md) 与 T1 同批落包** —— T11 是 T1 唯一的硬前置，且它自己的源码面撑不满一个 rubric 包；按 [playbook §4](playbook.md) 的 T-攒批规则与 T1 同批，包内顺序为 **T11 全部验收 → T1**。
 
 **HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
 
-**AFK 级联**(各 G 解后):**T11→T1**(新增前置);**R10→G10→T9+R21**(G10 现持有 G1 移交的包边界/case schema 归属);{G1 已解 + G1b + CASESET-EVENT-ANCHOR}→T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G11→T10。
+**AFK 级联**(各 G 解后):**T11→T1**（同批，T11 先验收）;**R10→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G11→T10。
 
 ## Not yet specified(fog)
 
