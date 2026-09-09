@@ -31,6 +31,24 @@
 10. **归一与评分是两个纯函数** —— `normalizeOutcome(outcome): ExecutionArtifact` 与 `gradeExecution(artifact, expected, policy): ExecutionVerdict`；`ExecutionArtifact` **即落盘对象**，带完整 raw 与 normalized 结果的 digest 加**配置化的行数上限**（超限只存 digest 与截断行）。拆分是承重的：[R23](R23-comparator-policy-mutation-baseline.md) 须对已存 artifact 离线重打分，且要 raw/normalized 两种 digest。
 11. **一能力一实现（D2 去分叉）** —— 下列每项收敛到一份，验收信号是"该符号在仓内只剩一个定义"：两份 `runBatch`（`eval/src/runner.ts:99` 与 `eval-runner/src/runner.ts:49`）、两份 health gate（`eval/src/health-gate.ts` 与 `eval-runner/src/health_gate.ts`）、两份结果比较器（库实现与 `eval-runner/src/runner.ts:358` 私有包装器）、两套 adapter（`eval-cli/src/context.ts` 与 `eval-runner-service/src/index.ts`，保留 eval-cli 侧的 reasoning 提取、event-def 预取、query expansion）。失败分类（`eval/src/classify_failure.ts` 的 `infrastructure`/`timeout`/`patience`）真接入判分路径以服务第 7 条。`eval-cli` 去掉对 `@deepseek-ai/dsh-query-maxcompute` 的直接依赖，改由外部注入。**被删实现的测试必须迁移**，不得跟着实现一起消失。
 
+### executor 的实际接线（核实于 2026-09-09；不要重新实现执行能力）
+
+evaluation **没有**自建 SQL 执行引擎，执行能力一律来自 dsh-data-agent 的 query capability：四个 adapter 类（`packages/eval/eval-cli/src/context.ts:203`、`:227`，`packages/eval/eval-runner-service/src/index.ts:128`、`:184`）全部只是转调 `ctx.get('query').execute(...)`。所以第 11 条「去分叉」收敛的是这层 adapter，**不是**执行引擎。
+
+但**执行器接口有三种形状**并存，「单一端口」指的是收敛它们，须知道各自归属：
+
+| 形状 | 位置 | 归属 |
+|---|---|---|
+| `CaseSqlExecutor = (sql) => Promise<ExecutionResult>` | `packages/eval/eval/src/types.ts:141` | dsh-eval 库 |
+| `interface QueryExecutor` | `packages/eval/eval-runner/src/types.ts:225` | eval-runner |
+| `interface OdpsExecutor` | `packages/data/nl2sql-engine/src/stand-in-odps.ts:39` | **engine 侧（非 eval）** |
+
+两处偏离在本票收口：`eval-cli` 自己动态 import 并挂载 `MaxComputeQueryEngine`（`context.ts:750`），即包依赖里直连具体 provider——改为外部注入；audit 脚本 `spawn maxc`（`case-expected-value-audit.mjs:55`）是仓内唯一真正绕过 query capability 的执行路径。
+
+### 执行器身份必须落盘（D4 的扩展，2026-09-09 新增）
+
+`--with-query` 的默认 sidecar 是 `packages/query/query-maxcompute/dev/standin-sidecar.mjs`，其文件头自称 **throwaway / fake / owns no real ODPS**；真连数仓须显式 `--sidecar` 指向 `maxc-sidecar.mjs`。而 `RunConfig` 目前**不记 sidecar 路径**（核实：`eventdef-realexec.json` 的 config 无 sidecar 字段），所以历史那条 5.1% 「真执行」基线从记录上无法判定跑的是真 maxc 还是 stand-in。**验收要求：run 记录须落盘执行器身份（sidecar 路径或等价标识），使「真执行」与「stand-in」可事后分辨。** 这属于第 9 条「模式随 run 落盘」——模式不只是 `with_query` 布尔，还包括用了哪个执行器。
+
 ### 代码落在哪（由 D2 推出，非新决策）
 
 两个纯函数落在 `dsh-eval`（被单测覆盖的比较器已在此），`eval-runner` 消费；**包名与 `exports` 一律不动**（`dsh-eval-runner` 在仓外有 4 处消费者，`dsh-eval-runner-service` 另有 1 处）。若 [G10](G10-harness-bhe-split.md) 之后重切包边界，这些代码随 [T12](T12-eval-package-consolidation.md) 一起搬。**T1 不得为放置花力气，也不得自行决定包边界。**
@@ -57,11 +75,16 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 1. **列语义冲突** —— `mapQueryOutcome` 的 `zipRow` 按**列名** key（`packages/eval/eval/src/classify_failure.ts:115-124`），而 runner 私有比较器按**位置** key `col${i}`（`runner.ts:360-367`，注释理由是 aliases 因模型/方言而异）。二者直接矛盾；凡模型用了不同别名的 case 都可能翻面。取值由 [R23](R23-comparator-policy-mutation-baseline.md) 定；T1 须记录**哪些 case 因此翻面**，不得当作回归失败掩掉。
 2. **pending → 不计分，分母会变** —— `MAXC_WAIT_SECONDS`（默认 `60`）**同时**控制 sidecar 的 `maxc query run --wait <N>` 窗口（`maxc-sidecar.mjs:44`、`:141`）与 eval-cli 派生的工具调用超时（`packages/eval/eval-cli/src/context.ts:778-779`，`(wait + 60) * 1000`）。event-view 查询实测 68s，故默认 60 会把 event case 推成 pending → 按第 7 条落 `environment-blocked`，从 `wrong` 分母中移出。audit 脚本自己用 `--wait 300`。**开工前须固定一个值并写进 run 记录**：取 ≥300 让 event 查询同步完成，或保留 60 并接受 event case 落 `environment-blocked` —— 两种选择产出的分母不同，**同一批内不得中途更换**。
 
+## 合并 adapter 时两个容易踩的坑（2026-09-09）
+
+1. **`'done'` 白名单不得静默丢失** —— `eval-cli` 侧接受 `state === 'done' || 'completed'`（`context.ts:239`），`eval-runner-service` 侧只接受 `'completed'`（`index.ts:200`），而 `QueryOutcome` 类型只有 `completed`/`pending`/`failed`。合并四个 adapter 时必须**显式定义 state 白名单**，否则某个返回 `'done'` 的路径会从“成功”静默变成 `environment-blocked`。
+2. **默认 sidecar 是假的** —— 见上「执行器身份必须落盘」：不显式 `--sidecar` 指向 `maxc-sidecar.mjs`，`--with-query` 跑的是 throwaway stand-in。验收的 39-case 对账必须用真 maxc，否则 MATCH/STALE 计数不可信。
+
 ## 前置（开工前需就位）
 
 - **[T11](T11-loader-provenance-strip.md) 全部验收通过**，含 39-case 对账复现。T1 读 reference SQL 与模板解析都依赖它。
-- **warehouse 凭证与 `maxc` 可用**：`MAXC_CONFIG`（`context.ts:767`，默认 `~/.maxc/config.yaml`）。
-- **LLM 侧凭证**：`DASHSCOPE_API_KEY`、`DASHSCOPE_BASE_URL`、`EVAL_LLM_PROVIDER`、`EVAL_LLM_MODEL`（既有基线用 `qwen3.7-max`，换模型即换基线）。
+- **warehouse 凭证与真 sidecar 可用**：`MAXC_CONFIG`（`context.ts:767`，默认 `~/.maxc/config.yaml`）；`--with-query` 时还需 `ODPS_ACCESS_ID`/`ODPS_ACCESS_KEY`/`ODPS_PROJECT`/`ODPS_ENDPOINT`（`main.ts:190-193`）；且必须 `--sidecar` 指向真 `maxc-sidecar.mjs`（默认是 throwaway stand-in）。
+- **LLM 侧凭证**：`DASHSCOPE_API_KEY`（走 credential seam / `~/.dsh/.credentials.yaml`，非 process.env）、`EVAL_LLM_PROVIDER`、`EVAL_LLM_MODEL`（三者必须显式设，无静默 fallback；既有基线用 `qwen3.7-max`，换模型即换基线）。
 - **`MAXC_WAIT_SECONDS` 取值已定**（见上一节），并作为 run config 的一部分落盘。
 - **一个已知超大结果集**：截断信号实测的物料，须事先备好能触发截断的查询或表；备不出来就按"回落透传 + 开 provider 缺陷票"走，并在票里写明原因。
 - **eval run 的命令面**：`--with-query`（真执行，缺它按第 8 条只会得到 `not-measured`）、case 目录指向 `rbi-10000251-exec`、`pass_k=3`、必要时 `--sidecar`。
