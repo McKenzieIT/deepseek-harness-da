@@ -9,13 +9,18 @@
 
 import type { RunResult, RunnerVerdict, CaseFlip, DeltaReport, DeltaSummary } from './types.ts'
 
-/** Verdict severity ordering (lower = better). Used to determine improvement vs regression. */
+/**
+ * Verdict severity ordering (lower = better). Used to determine improvement vs
+ * regression. `case_defect` sits past `infra_failure`: a rerun clears an
+ * environment block but not a broken case.
+ */
 const VERDICT_SEVERITY: Record<RunnerVerdict, number> = {
   correct: 0,
   declined: 1,
   unjudged: 2,
   wrong: 3,
   infra_failure: 4,
+  case_defect: 5,
 }
 
 /**

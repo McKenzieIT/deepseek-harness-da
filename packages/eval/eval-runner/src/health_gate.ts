@@ -78,8 +78,10 @@ export async function runHealthGate(opts: HealthGateOptions): Promise<HealthGate
   if (opts.executor) {
     const executor = opts.executor
     checks.push(await runCheck('query_executor', async () => {
-      const result = await executor.execute('SELECT 1 AS health_check')
-      if (!result.success) throw new Error(`query failed: ${result.error ?? 'unknown'}`)
+      const outcome = await executor.execute('SELECT 1 AS health_check')
+      // A pending probe is as unusable as a failed one: the gate asks whether the
+      // warehouse answers now, and only `completed` answers.
+      if (outcome.state !== 'completed') throw new Error(`query ${outcome.state}: ${outcome.error ?? 'no detail'}`)
     }, timeoutMs))
   }
 

@@ -29,13 +29,13 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { runBatch, compareDelta } from '@deepseek-ai/dsh-eval-runner'
+import { runBatch, compareDelta, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
+import { COMPARATOR_POLICY_VERSION } from '@deepseek-ai/dsh-eval'
 import type {
   AgentResponder,
   AgentRespondOpts,
   AgentResponse,
   QueryExecutor,
-  QueryResult,
   JudgeExecutor,
   JudgeResult,
   RunResult,
@@ -177,40 +177,6 @@ class CtxOdpsAdapter implements OdpsExecutor {
           sql: out.sql,
         }
     }
-  }
-}
-
-/** Bridges the eval-runner's result-match `QueryExecutor` to `ctx.query` (maps QueryOutcome → QueryResult). */
-class CtxQueryExecutor implements QueryExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
-
-  async execute(sql: string): Promise<QueryResult> {
-    const q = this.ctx.get('query')
-    if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
-    let out: QueryOutcome
-    try {
-      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' })
-    } catch (err) {
-      return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
-    }
-    return this.mapOutcome(out)
-  }
-
-  private mapOutcome(out: QueryOutcome): QueryResult {
-    if (out.state === 'completed') {
-      const cols = out.columns ?? []
-      const rows = (out.rows ?? []).map((row): Record<string, unknown> => {
-        if (Array.isArray(row)) {
-          return Object.fromEntries(row.map((cell, i) => [cols[i] ?? `col_${i}`, cell]))
-        }
-        return row
-      })
-      return { success: true, rows, row_count: out.rowCount ?? rows.length, error: null }
-    }
-    if (out.state === 'pending') {
-      return { success: false, rows: [], row_count: 0, error: 'query still running' }
-    }
-    return { success: false, rows: [], row_count: 0, error: out.error ?? 'query failed' }
   }
 }
 
@@ -470,6 +436,12 @@ export class EvalRunnerService extends Service {
       today: this.today,
       query_expansion: false,
       with_query: this.ctx.get('query') !== undefined,
+      // The service consumes whichever query provider the bundle mounted, so it
+      // cannot name a sidecar path; the policy fields are still recorded because
+      // `compare.ts` refuses to render a run that does not state how it graded.
+      comparator_policy_version: COMPARATOR_POLICY_VERSION,
+      column_semantics: 'by-name',
+      max_stored_rows: 200,
       skip_health_gate: skipHealthGate,
     }
     const result = await runBatch(paths, { agent, executor, judge }, {

@@ -26,6 +26,7 @@ function findRepoRoot(): string {
 
 const REPO_ROOT = findRepoRoot()
 import { loadCases } from '@deepseek-ai/dsh-eval'
+import { COMPARATOR_POLICY_VERSION } from '@deepseek-ai/dsh-eval'
 import { runBatch, writeRunResult, defaultOutputPath } from '@deepseek-ai/dsh-eval-runner'
 import type { RunConfig } from '@deepseek-ai/dsh-eval-runner'
 import { boot } from './context.ts'
@@ -47,6 +48,15 @@ interface CliArgs {
   sidecarPath: string | null
   noSqlJudge: boolean
   queryExpansion: boolean
+  /**
+   * How result cells are addressed when comparing against an expectation.
+   * `by-name` and `positional` disagree on any case whose candidate SQL chose
+   * different aliases, so the run records which was used and a batch never
+   * mixes the two.
+   */
+  columnSemantics: 'by-name' | 'positional'
+  /** Rows an execution artifact stores; its digests still cover the full result. */
+  maxStoredRows: number
   responder: 'engine' | 'harness'
   variant: string | null
   /**
@@ -77,6 +87,8 @@ function parseCliArgs(): CliArgs {
       today: { type: 'string' },
       'run-id': { type: 'string' },
       concurrency: { type: 'string', default: '1' },
+      'column-semantics': { type: 'string', default: 'by-name' },
+      'max-stored-rows': { type: 'string', default: '200' },
       'with-query': { type: 'boolean', default: false },
       sidecar: { type: 'string' },
       'no-sql-judge': { type: 'boolean', default: false },
@@ -118,6 +130,12 @@ function parseCliArgs(): CliArgs {
     }
   }
 
+  const columnSemanticsVal = str(values['column-semantics'], 'by-name')
+  if (columnSemanticsVal !== 'by-name' && columnSemanticsVal !== 'positional') {
+    console.error(`Error: --column-semantics must be 'by-name' or 'positional', got '${columnSemanticsVal}'`)
+    process.exit(1)
+  }
+
   return {
     cases: resolve(casesVal),
     schema: typeof values.schema === 'string' ? resolve(values.schema) : join(REPO_ROOT, 'examples/k11-semantic-layer'),
@@ -130,6 +148,8 @@ function parseCliArgs(): CliArgs {
     today: str(values.today, formatToday()),
     runId: typeof runIdVal === 'string' ? runIdVal : null,
     concurrency: Number.parseInt(str(values.concurrency, '1'), 10),
+    columnSemantics: columnSemanticsVal,
+    maxStoredRows: Number.parseInt(str(values['max-stored-rows'], '200'), 10),
     withQuery: values['with-query'] === true,
     sidecarPath: typeof values.sidecar === 'string' ? values.sidecar : null,
     noSqlJudge: values['no-sql-judge'] === true,
@@ -274,6 +294,10 @@ export async function main(): Promise<void> {
 
   // Build Collaborators based on responder mode
   let collaborators: import('@deepseek-ai/dsh-eval-runner').Collaborators
+  /** Which executor ran the SQL, recorded so a real-execution run stays attributable. */
+  let executorIdentity: string | undefined
+  /** The wait window that decides a result from an `environment-blocked` outcome. */
+  let queryWaitSeconds: number | undefined
   if (args.responder === 'harness') {
     // G1b: full agent with variant preset orchestration
     const { HarnessAgentResponder } = await import('./harness-responder.ts')
@@ -335,7 +359,7 @@ export async function main(): Promise<void> {
     collaborators = { agent, sqlJudge }
   } else {
     // Default: NL2SQL engine pipeline (existing behavior)
-    const { collaborators: engineCollabs } = await boot({
+    const booted = await boot({
       schemaDir: args.schema,
       provider: args.provider,
       model: args.model,
@@ -346,7 +370,9 @@ export async function main(): Promise<void> {
       scopeId: args.scopeId,
       ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
     })
-    collaborators = engineCollabs
+    collaborators = booted.collaborators
+    executorIdentity = booted.executorIdentity
+    queryWaitSeconds = booted.queryWaitSeconds
   }
 
   // Run the batch via eval-runner's runBatch (explicit case paths)
@@ -369,6 +395,14 @@ export async function main(): Promise<void> {
     today: args.today,
     query_expansion: args.queryExpansion,
     with_query: args.withQuery,
+    // T1: which executor ran the SQL, not merely whether one did — the default
+    // sidecar is a throwaway stand-in, so the boolean alone cannot tell a real
+    // warehouse run from a fake one after the fact.
+    ...(executorIdentity === undefined ? {} : { executor_identity: executorIdentity }),
+    ...(queryWaitSeconds === undefined ? {} : { query_wait_seconds: queryWaitSeconds }),
+    comparator_policy_version: COMPARATOR_POLICY_VERSION,
+    column_semantics: args.columnSemantics,
+    max_stored_rows: args.maxStoredRows,
     skip_health_gate: args.skipHealthGate,
   }
 
