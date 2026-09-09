@@ -8,6 +8,8 @@
  * @module @deepseek-ai/dsh-result-cache/types
  */
 
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+
 /**
  * Opaque lookup token identifying one cached result. The vocabulary is
  * `qr_<sha256(sql)[0:12]>` for query-engine results and
@@ -20,7 +22,7 @@ export type ResultId = string
 /** One cached query or compute result. */
 export interface ResultEntry {
   readonly columns: string[]
-  readonly rows: unknown[][]
+  readonly rows: JsonValue[][]
   readonly metadata?: ResultMetadata
 }
 

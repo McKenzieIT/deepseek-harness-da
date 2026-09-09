@@ -4,6 +4,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { CodeBindingFunction, CodeJsonValue, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
 import type { ResultEntry } from '@deepseek-ai/dsh-result-cache'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 
 export const name = 'tool-compute'
 export const inject = ['tools', 'codeRuntime', 'resultCache']
@@ -164,7 +165,9 @@ export function apply(ctx: Context, _config: Config = {}): void {
 
       const output = validateComputeOutput(runResult.value)
       const newResultId = computeResultId(code, resultId)
-      const entry: ResultEntry = { columns: output.columns, rows: output.rows }
+      // The code-runtime result is JSON-serializable (CodeJsonValue); assert the
+      // validated array-of-arrays shape so ResultEntry crosses the Remote boundary.
+      const entry: ResultEntry = { columns: output.columns, rows: output.rows as JsonValue[][] }
       ctx.resultCache.put(newResultId, entry)
 
       return {
