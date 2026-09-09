@@ -101,6 +101,36 @@ describe('normalizeOutcome', () => {
     const a = normalizeOutcome({ ...completed([[1]]), sql: 'SELECT COUNT(*) FROM t' }, { policy, durationMs: 0 })
     expect(a.sql).toBe('SELECT COUNT(*) FROM t')
   })
+
+  it('treats a completed outcome that returned no rows array as zero rows', () => {
+    const a = normalizeOutcome({ state: 'completed', sql: 'SELECT 1', columns: ['n'] }, { policy, durationMs: 0 })
+    expect(a.rows).toEqual([])
+    expect(a.rowCount).toBe(0)
+    expect(a.providerTruncated).toBe(false)
+  })
+
+  it('keeps a row the provider already keyed, rather than discarding it', () => {
+    const a = normalizeOutcome({ state: 'completed', sql: 'SELECT 1', rows: [{ dau: 7 } as unknown as unknown[]] }, { policy, durationMs: 0 })
+    expect(a.rows).toEqual([{ dau: 7 }])
+  })
+
+  it('re-keys an already-keyed row positionally under positional semantics', () => {
+    const positional = resolveComparatorPolicy({ columnSemantics: 'positional', maxStoredRows: 100 })
+    const a = normalizeOutcome({ state: 'completed', sql: 'SELECT 1', rows: [{ dau: 7 } as unknown as unknown[]] }, { policy: positional, durationMs: 0 })
+    expect(a.rows).toEqual([{ col0: 7 }])
+  })
+
+  it('names a pending query with no instance id rather than reporting an empty one', () => {
+    const a = normalizeOutcome({ state: 'pending', sql: 'SELECT 1' }, { policy, durationMs: 0 })
+    expect(a.instanceId).toBeNull()
+    expect(a.error).toContain('unknown')
+  })
+
+  it('supplies a reason when the provider fails without one', () => {
+    const a = normalizeOutcome({ state: 'failed', sql: 'SELECT 1' }, { policy, durationMs: 0 })
+    expect(a.error).toBe('query failed (no error detail)')
+    expect(a.failureClass).toBe('infrastructure')
+  })
 })
 
 describe('gradeExecution', () => {
@@ -171,6 +201,12 @@ describe('gradeExecution', () => {
     expect(v.outcome).toBe('case-defect')
   })
 
+  it('calls an expectation that declares neither field a case defect', () => {
+    const v = gradeExecution(artifactOf([[7]]), { result_value: null, match_mode: null }, policy)
+    expect(v.outcome).toBe('case-defect')
+    expect(v.detail).toContain('no EXECUTION expectation')
+  })
+
   it('stamps the policy version so a verdict says how it was graded', () => {
     const v = gradeExecution(artifactOf([[7]]), scalarExpected, policy)
     expect(v.policyVersion).toBe(COMPARATOR_POLICY_VERSION)
@@ -192,6 +228,13 @@ describe('gradeExecution', () => {
 
   it('enumerates the five closed outcomes', () => {
     expect([...EXECUTION_OUTCOMES]).toEqual(['pass', 'fail', 'environment-blocked', 'case-defect', 'not-measured'])
+  })
+
+  it('explains a non-completed artifact that carries no error text', () => {
+    const stored = { ...artifactOf([[7]]), kind: 'failed' as const, error: null, failureClass: null }
+    const v = gradeExecution(stored, scalarExpected, policy)
+    expect(v.outcome).toBe('environment-blocked')
+    expect(v.detail).toBe('execution did not complete')
   })
 })
 

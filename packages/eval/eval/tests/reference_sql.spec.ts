@@ -76,6 +76,13 @@ describe('resolveReferenceSql', () => {
     expect(r.detail).toContain('ds_tomorrow')
   })
 
+  it('names a repeated unknown placeholder once', () => {
+    const r = resolveReferenceSql(caseWith("a='{{ds_tomorrow}}' OR b='{{ds_tomorrow}}'", '20260806'))
+    expect(r.kind).toBe('unresolvable')
+    if (r.kind !== 'unresolvable') return
+    expect(r.detail.match(/ds_tomorrow/g)).toHaveLength(1)
+  })
+
   it('refuses a malformed anchor_ds rather than computing a bogus ds', () => {
     const r = resolveReferenceSql(caseWith("ds='{{ds_yesterday}}'", '2026-08-06'))
     expect(r.kind).toBe('unresolvable')

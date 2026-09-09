@@ -59,6 +59,32 @@ describe('CtxQueryExecutor', () => {
     expect(out.error).toContain('no query provider mounted')
   })
 
+  it('resolves a pending query when the provider can attach', async () => {
+    const out = await new CtxQueryExecutor(ctxWith({ state: 'completed', columns: ['n'], rows: [[9]] }), 's').attach('i-1')
+    expect(out.state).toBe('completed')
+    expect(out.rows).toEqual([[9]])
+  })
+
+  it('reports attach against a missing query capability as a failure', async () => {
+    const out = await new CtxQueryExecutor(ctxWith(), 's').attach('i-1')
+    expect(out.state).toBe('failed')
+    expect(out.error).toContain('cannot attach')
+  })
+
+  it('omits columns and rowCount the provider did not report', async () => {
+    const out = await new CtxQueryExecutor(ctxWith({ state: 'completed', rows: [[1]] }), 's').execute('SELECT 1')
+    expect(out.state).toBe('completed')
+    expect(out.columns).toBeUndefined()
+    expect(out.rowCount).toBeUndefined()
+    expect(out.rows).toEqual([[1]])
+  })
+
+  it('omits rows the provider did not report', async () => {
+    const out = await new CtxQueryExecutor(ctxWith({ state: 'completed', columns: ['n'] }), 's').execute('SELECT 1')
+    expect(out.state).toBe('completed')
+    expect(out.rows).toBeUndefined()
+  })
+
   it('echoes back the submitted SQL when the provider does not', async () => {
     const out = await new CtxQueryExecutor(ctxWith({ state: 'completed', rows: [] }), 's').execute('SELECT 42')
     expect(out.sql).toBe('SELECT 42')

@@ -74,9 +74,8 @@ export function resolveReferenceSql(c: EvalCase): ReferenceSqlResolution {
 
   const used: ReferencePlaceholder[] = []
   const unknown: string[] = []
-  for (const match of template.matchAll(PLACEHOLDER_RE)) {
-    const name = match[1]
-    if (name === undefined) continue
+  // `PLACEHOLDER_RE` has one mandatory capture group, so every match carries a name.
+  for (const [, name] of template.matchAll(PLACEHOLDER_RE) as Iterable<[string, string]>) {
     if (isReferencePlaceholder(name)) {
       if (!used.includes(name)) used.push(name)
     } else if (!unknown.includes(name)) {
