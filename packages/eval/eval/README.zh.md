@@ -18,7 +18,8 @@ Data-agent eval harness：da-fresh TypeScript 镜像 `reverse-bi` 的 `rbi-eval`
 - **`judgeWithProvider(provider, prompt, opts?)` / `classifyError(err)`** — DELIVERY LLM-judge 含 retry/backoff（SPEC §5.5）+ `AuthenticationAbort`。
 - **`checkResultMatch(expected, actualRows, matchMode)`** — 5 种 EXECUTION 匹配模式（1:1 rbi 镜像）。
 - **`turnMatchesExpectation(actual, expected)`**（derailment，rbi `≥0.35`）/ **`deliveryFuzzyMatch(actual, expected, opts?)`**（DELIVERY；短 expected → token-containment — 强化 `gameX` vs `gameA` 误报）。
-- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema（zod）+ YAML/JSON loader。
+- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema（zod）+ YAML/JSON loader。结构位置拒绝未声明的键；`meta` 与 `dimensions` 保留 case 自带的未声明 provenance。
+- **`resolveReferenceSql(case)`** — 把 case 的 `expected.sql` 模板占位符（`{{ds_yesterday}}`、`{{ds_7d_ago}}`）绑定到它自己的 `meta.anchor_ds`；遇未知占位符、缺锚点或锚点格式错时拒绝，而不是产出一段能跑但答错的 SQL。
 
 ## 确定性
 
