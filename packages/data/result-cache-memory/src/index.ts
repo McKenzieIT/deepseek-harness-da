@@ -13,6 +13,7 @@
 import { createHash } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import { ResultCache, type ResultEntry } from '@deepseek-ai/dsh-result-cache'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { PostToolDecision } from '@deepseek-ai/dsh-tools'
 
 export const name = 'result-cache-memory'
@@ -145,7 +146,7 @@ export function apply(ctx: Context): void {
     if (value.state !== 'completed') return decision
 
     const columns = value.columns as string[] | undefined
-    const rows = value.rows as unknown[][] | undefined
+    const rows = value.rows as JsonValue[][] | undefined
     const sql = value.sql as string | undefined
     if (columns === undefined || rows === undefined || sql === undefined) return decision
 

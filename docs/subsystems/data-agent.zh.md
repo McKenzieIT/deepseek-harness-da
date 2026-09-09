@@ -1,10 +1,10 @@
 # 数据代理
 
-中文 | [English](data-agent.md)
+[English](data-agent.md) | 中文
 
 data-agent 叠加层挂载五个 Cordis 服务——`ctx.audit`（只追加的审计/tier-2 写入存储）、`ctx.embedder`（嵌入/重排 seam）、`ctx.identity`（调用方身份）、`ctx.nl2sql`（自然语言→SQL 引擎）、`ctx.schema`（语义层：发现/描述/采样数据源）——它们共同实现自然语言数据访问。
 
-来源：[`packages/data`](../../packages/data/README.md)
+来源：[`packages/data`](../../packages/data/README.zh.md)
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -12,7 +12,7 @@ data-agent 叠加层挂载五个 Cordis 服务——`ctx.audit`（只追加的�
 
 ## Cordis API
 
-Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
 <a id="ctxaudit--audit"></a>
 
@@ -64,9 +64,9 @@ recordTier2Write(toolName: string, payload: unknown, opts: Tier2WriteOpts = {}):
 record(rec: AuditRecord | Record<string, unknown>): string
 ```
 
-Types: [Session](session.md) · [SessionEvent](session.md)
+Types: [Session](session.zh.md) · [SessionEvent](session.zh.md)
 
-Source: [`packages/data/audit/src/index.ts:125`](../../packages/data/audit/src/index.ts)
+Source: [`packages/data/audit/src/index.ts`](../../packages/data/audit/src/index.ts)
 
 <a id="ctxcriticctx--criticctxservice"></a>
 
@@ -86,7 +86,7 @@ Cordis `Service` exposing the per-agent critic guard context as `ctx.criticCtx`.
 forAgent(agentId: string): CriticCtx | undefined
 ```
 
-Source: [`packages/data/phase-gate/src/phase-gate.ts:1210`](../../packages/data/phase-gate/src/phase-gate.ts)
+Source: [`packages/data/phase-gate/src/phase-gate.ts`](../../packages/data/phase-gate/src/phase-gate.ts)
 
 <a id="ctxembedder--embedderservice-abstract-seam"></a>
 
@@ -105,7 +105,7 @@ Abstract embedder service. Providers implement `embed` (async — HTTP inference
 abstract embed(texts: readonly string[]): Promise<EmbedResult>
 ```
 
-Source: [`packages/embedder/embedder/src/index.ts:92`](../../packages/embedder/embedder/src/index.ts)
+Source: [`packages/embedder/embedder/src/index.ts`](../../packages/embedder/embedder/src/index.ts)
 
 <a id="ctxevidencequery--evidencequeryservice"></a>
 
@@ -139,8 +139,33 @@ gapAnalysis(assetId: string, scopeId?: string): GapAnalysisResult
 
 /**
  * Reachability delta: "if we add this relation, which asset pairs become
- * newly reachable via joins?" Clones the current graph, adds the proposed
- * relation, and compares BFS reachability before/after.
+ * newly reachable via joins?" Computes the join-reachability of sourceId
+ * and targetId on the before-graph (2 BFS, not 2*N) and reasons about the
+ * one-edge difference — the new edge (when type=joins) merges sourceId's
+ * and targetId's join-components, so every cross-component pair is newly
+ * reachable. When sourceId and targetId are already in the same component
+ * (or the relation type is not 'joins'), no new reachability appears.
+ *
+ * A10 (incremental BFS): previously this method ran `bfsJoinReachable` from
+ * EVERY node (O(N²)) + rebuilt the entire `RelationGraph` from YAML twice
+ * (`getAllAssetIds` + `buildAugmentedGraph`). The incremental approach does
+ * 2 BFS on the cached before-graph and caches the parsed asset-id set, so a
+ * delta call is O(N+E) with zero YAML reparse (the before-graph is already
+ * cached in `SemanticLayerService.getRelationGraph`). LLM-triggerable via
+ * the `reachabilityDelta` tool, so the O(N²) + 2-full-reparse-per-call was
+ * a real cost on every delta query.
+ *
+ * Correctness: the `joins` subgraph stored by `RelationGraph.build` is
+ * undirected (bidirectional edges), so "reachable from sourceId" === "can
+ * reach sourceId". The new bidirectional `joins` edge merges the two
+ * previously-disjoint components; every cross pair `(u, v)` with `u` in
+ * sourceId's component and `v` in targetId's component is newly reachable
+ * (they couldn't reach each other before — different components). Pairs
+ * within a single component were already reachable, so they are excluded.
+ * The `from` set is filtered by the cached asset-id set to match the old
+ * allNodes-iteration (a proposed sourceId/targetId that doesn't correspond
+ * to a semantic-layer asset is excluded from the `from` side, just as the
+ * old `getAllAssetIds()` loop did).
  * @param newRelation - the proposed relation to add before recomputing reachability.
  * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
  * @returns the proposed relation plus the asset pairs newly reachable via joins after adding it.
@@ -173,7 +198,7 @@ beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport
 assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:331`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="ctxidentity--identityservice"></a>
 
@@ -191,7 +216,7 @@ Per-user caller identity service. The default implementation returns `undefined`
 current(): CallerIdentity | undefined
 ```
 
-Source: [`packages/identity/identity/src/index.ts:59`](../../packages/identity/identity/src/index.ts)
+Source: [`packages/identity/identity/src/index.ts`](../../packages/identity/identity/src/index.ts)
 
 <a id="ctxmanagementsession--managementsessionservice"></a>
 
@@ -254,7 +279,7 @@ listActive(): ManagementSessionDescriptor[]
 isManagementSession(sessionId: string): boolean
 ```
 
-Source: [`packages/data/management-session/src/index.ts:162`](../../packages/data/management-session/src/index.ts)
+Source: [`packages/data/management-session/src/index.ts`](../../packages/data/management-session/src/index.ts)
 
 <a id="ctxnl2sql--nl2sqlengineservice"></a>
 
@@ -284,7 +309,7 @@ The nl2sql-engine Cordis `Service`. Owns no `ctx.on` hooks (P7b owns the phase-g
 getConventions(scopeId?: string): EngineConventions
 ```
 
-Source: [`packages/data/nl2sql-engine/src/index.ts:76`](../../packages/data/nl2sql-engine/src/index.ts)
+Source: [`packages/data/nl2sql-engine/src/index.ts`](../../packages/data/nl2sql-engine/src/index.ts)
 
 <a id="ctxpatrol--patrolservice"></a>
 
@@ -347,7 +372,7 @@ async handleBtw(message: string): Promise<void>
 respondToConfirm(decision: 'confirmed' | 'rejected'): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:176`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="ctxquery--queryengine-abstract-seam"></a>
 
@@ -442,7 +467,7 @@ qualifyTable?(tableName: string, override?: string): string
 getConventions(scopeId?: string): EngineConventions
 ```
 
-Source: [`packages/query/query/src/index.ts:37`](../../packages/query/query/src/index.ts)
+Source: [`packages/query/query/src/index.ts`](../../packages/query/query/src/index.ts)
 
 <a id="ctxresultcache--resultcache-abstract-seam"></a>
 
@@ -481,7 +506,28 @@ abstract put(resultId: string, entry: ResultEntry): void
 abstract has(resultId: string): boolean
 ```
 
-Source: [`packages/data/result-cache/src/index.ts:34`](../../packages/data/result-cache/src/index.ts)
+Source: [`packages/data/result-cache/src/index.ts`](../../packages/data/result-cache/src/index.ts)
+
+<a id="ctxresultgateway--resultsremotegateway"></a>
+
+### `ctx.resultGateway` — `ResultsRemoteGateway`
+
+Host Remote gateway over the optional `ctx.resultCache` store seam. Register as a Host plugin (`host.plugin(ResultsRemoteGateway)`) to expose the `result/get` endpoint; the Typert Gateway routes incoming calls through the live `@Remote('get')` marker (or the generated strict descriptor once `build:lib:host` emits `lib/typert.host.js` + `lib/typert.remote-client.js`).
+
+```ts cordis-catalog
+/**
+ * Remote face of the result-cache `get`. Reads the optional `resultCache`
+ * service: absent → `internal` (the carrier's `rpcFailure` catch-all maps a
+ * thrown `Error` to `{ code: 'internal' }`); a missing id →
+ * `result-not-found` (a `RemoteError` carries its `.details` payload
+ * through the boundary unchanged, so the `code` survives to the Client).
+ * @param resultId - opaque lookup token.
+ * @returns the cached entry.
+ */
+@Remote('get') get(resultId: ResultId): ResultEntry
+```
+
+Source: [`packages/data/result-cache/src/remote.ts`](../../packages/data/result-cache/src/remote.ts)
 
 <a id="ctxschema--semanticlayerservice"></a>
 
@@ -779,9 +825,29 @@ async syncWrite( tableMetas: readonly TableMeta[], opts: { readonly dimTableName
  * @returns `{ ok: true, table_name }` on success, or `{ ok: false, error }` when the table is missing/malformed or validation fails.
  */
 async updateTableMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }>
+
+/**
+ * Tier-2 per-scope write: read-merge-validate-write a single event's meta
+ * updates, recording the write via `ctx.audit` (D5 non-disableable). Parallel
+ * to `updateTableMeta` for the event substrate (A13 TOCTOU lost-update fix):
+ * the substrate re-reads the latest on-disk event YAML at write time and
+ * shallow-merges `updates` on top, so a concurrent edit between load+write
+ * is no longer silently overwritten.
+ *
+ * The on-write event enrichment hook (parallel to `enrichOnWrite` for tables)
+ * remains deferred — see the note on `discoverEventRelations`. This method
+ * closes the "no Service-level event-write path" gap by routing through the
+ * substrate `updateEventMeta` (Tier-2 audited) instead of the raw-edit
+ * `writeEventYaml` surface.
+ * @param name - the event `name` to update (must already exist on disk).
+ * @param updates - the field overrides merged over the existing event YAML.
+ * @param opts - optional scope id override (default scope id is used when omitted).
+ * @returns `{ ok: true, event_name }` on success, or `{ ok: false, error }` when the event is missing/malformed or validation fails.
+ */
+async updateEventMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; event_name: string } | { ok: false; error: string }>
 ```
 
-Source: [`packages/data/semantic-layer/src/index.ts:251`](../../packages/data/semantic-layer/src/index.ts)
+Source: [`packages/data/semantic-layer/src/index.ts`](../../packages/data/semantic-layer/src/index.ts)
 
 <a id="ctxscopes--scoperegistryservice"></a>
 
@@ -837,7 +903,7 @@ async register(scope: ScopeDefinition): Promise<void>
 async remove(id: string): Promise<void>
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:91`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts`](../../packages/data/scope-registry/src/index.ts)
 
 <a id="admin-events"></a>
 
@@ -860,7 +926,7 @@ Emitted when a per-user PAT resolve returns undefined (PAT-miss UX).
 'admin/pat-miss'(userId: string, ref: string): void
 ```
 
-Source: [`packages/data/admin/src/index.ts:516`](../../packages/data/admin/src/index.ts)
+Source: [`packages/data/admin/src/index.ts`](../../packages/data/admin/src/index.ts)
 
 <a id="evidence-events"></a>
 
@@ -884,7 +950,7 @@ Emitted when an eval run finishes and every case is persisted, so the evidence-q
 'evidence/eval-run-completed'(): void
 ```
 
-Source: [`packages/api/remotes/src/types.ts:31`](../../packages/api/remotes/src/types.ts)
+Source: [`packages/api/remotes/src/types.ts`](../../packages/api/remotes/src/types.ts)
 
 <a id="evidenceeval-run-completed--parallel"></a>
 
@@ -897,7 +963,7 @@ Emitted after an eval batch is persisted to JSONL. @mode parallel
 'evidence/eval-run-completed'(): void
 ```
 
-Source: [`packages/eval/eval-runner-service/src/index.ts:28`](../../packages/eval/eval-runner-service/src/index.ts)
+Source: [`packages/eval/eval-runner-service/src/index.ts`](../../packages/eval/eval-runner-service/src/index.ts)
 
 <a id="evidenceeval-run-completed--emit"></a>
 
@@ -914,7 +980,7 @@ Emitted after an eval run completes; listeners may refresh the eval store.
 'evidence/eval-run-completed'(): void
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:81`](../../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts`](../../packages/data/evidence-query/src/index.ts)
 
 <a id="management-session-events"></a>
 
@@ -936,7 +1002,7 @@ Emitted when a management session is created.
 'management-session/created'(descriptor: ManagementSessionDescriptor): void
 ```
 
-Source: [`packages/data/management-session/src/index.ts:76`](../../packages/data/management-session/src/index.ts)
+Source: [`packages/data/management-session/src/index.ts`](../../packages/data/management-session/src/index.ts)
 
 <a id="management-sessiondestroyed--emit"></a>
 
@@ -954,9 +1020,9 @@ Emitted when a management session is destroyed.
 'management-session/destroyed'(sessionId: SessionId): void
 ```
 
-Types: [SessionId](core.md)
+Types: [SessionId](core.zh.md)
 
-Source: [`packages/data/management-session/src/index.ts:83`](../../packages/data/management-session/src/index.ts)
+Source: [`packages/data/management-session/src/index.ts`](../../packages/data/management-session/src/index.ts)
 
 <a id="patrol-events"></a>
 
@@ -978,7 +1044,7 @@ User sent a "btw" message during patrol.
 'patrol/btw-received'(message: string): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:148`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patrolconfirm-request--parallel"></a>
 
@@ -996,7 +1062,7 @@ Patrol is requesting user confirmation for a proposed edit.
 'patrol/confirm-request'(edit: PatrolProposedEdit): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:127`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patrolconfirm-timeout--parallel"></a>
 
@@ -1014,7 +1080,7 @@ User did not respond within the confirmation timeout.
 'patrol/confirm-timeout'(edit: PatrolProposedEdit): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:141`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patroledit-executed--parallel"></a>
 
@@ -1032,7 +1098,7 @@ A confirmed patrol edit was executed (audit).
 'patrol/edit-executed'(edit: PatrolProposedEdit): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:134`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patrolpaused--parallel"></a>
 
@@ -1050,7 +1116,7 @@ Patrol has been paused (max edits reached or timeout).
 'patrol/paused'(reason: string): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:155`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patrolround-complete--parallel"></a>
 
@@ -1068,7 +1134,7 @@ A patrol round has completed (triggers C2 batch rendering).
 'patrol/round-complete'(summary: PatrolRoundSummary): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:120`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patrolround-start--parallel"></a>
 
@@ -1086,7 +1152,7 @@ A new patrol round is beginning.
 'patrol/round-start'(roundNumber: number): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:113`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patrolstarted--parallel"></a>
 
@@ -1104,7 +1170,7 @@ Patrol loop has started.
 'patrol/started'(config: PatrolConfig): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:100`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="patrolstopped--parallel"></a>
 
@@ -1121,7 +1187,7 @@ Patrol loop has stopped.
 'patrol/stopped'(): void
 ```
 
-Source: [`packages/data/patrol-mode/src/index.ts:106`](../../packages/data/patrol-mode/src/index.ts)
+Source: [`packages/data/patrol-mode/src/index.ts`](../../packages/data/patrol-mode/src/index.ts)
 
 <a id="scopes-events"></a>
 
@@ -1145,7 +1211,7 @@ Emitted after the active scope id changes — via setActive(), clearActive(), re
 'scopes/active-changed': (scopeId: string | undefined) => void
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:80`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts`](../../packages/data/scope-registry/src/index.ts)
 
 <a id="scopeschanged--emit"></a>
 
@@ -1164,5 +1230,5 @@ Emitted after the set of registered scopes changes — a scope was added or upda
 'scopes/changed': () => void
 ```
 
-Source: [`packages/data/scope-registry/src/index.ts:71`](../../packages/data/scope-registry/src/index.ts)
+Source: [`packages/data/scope-registry/src/index.ts`](../../packages/data/scope-registry/src/index.ts)
 <!-- END GENERATED cordis-surface -->
