@@ -98,3 +98,28 @@ Follow-on 3 ticket 原假设"18 包缺 `src/remote.ts` → `ClientRemote` 缺 X 
 2. Shard 1：dispatch Explore subagent 调研 `packages/client/runtime` 131 error 三类 driver（ghost→Typert 映射 / 错位 view 定义包+barrel / transport 成员缺处）。
 3. 主 session 重验 → 决策（若需，按 #3 grill）→ 实现 → tsc 验 → 记。
 4. 推进 shard 2-4 到 70% 切 session。
+
+## Session progress（2026-09-10 end — 主 session 重验，铁律）
+
+**tsc client 287→187（-100）**。3 fix 全 clean/mechanical（type-only / test-fake，无 logic 改）：
+- Follow-on 1 fixture（resync `63659a22d4`）+ Follow-on 2 config（`5ee128214d`）→ 287→217。
+- **connection fake-api**（resync `[Follow-on-3-B]`，本 session）→ 217→187。`packages/client/connection/tests/fake-api.client.ts`：strip `implements IApiClient` + 12 `IApiClient['X']` 注解 + repoint 4 misplaced 到 `@deepseek-ai/dsh-api-remotes/client` barrel + 3 ghost（HostFrame/MuxFrame/SessionModels）→`unknown` + 22 payload `:unknown`（D4-a 最小，test fake 上游忠实）。30→0，无新增。
+
+## 剩余 B（187→0）
+
+**actionable 非 Phase-2（D3 方法签名迁移，PRODUCTION src，delicate，需 QA）**：
+- **ui-settings-models（39 visible + ~15-20 D3 masked）**：`IApiClient`→`ClientRemote`（6 site）+ `CredentialView`→`CredentialInfo`（3）+ `DiscoveredModelView`→`LlmDiscoveredModel` + `ConfigurableProviderView`→`LlmConfigurableProvider`（unmask D3）+ `.api`→`ctx.remote`（3）+ `$dispatch`→`emit`（6 test）+ event 名 `'credentials/updated'`→`'credentials/reference-updated'` + JsonValue cast（12）+ shorthand（2）+ double cast（1）。**D3**：`api.llm.providers()`→`ctx.remote.llm.listConfigurableProviders()`、`response.result.ok/value`→`response.ok/value`（RemoteResult 无 `.result` wrapper）、positional args——按已迁移 `ui-settings`/`ui-settings-plugins` 模式。**D1 决策**：`LlmConfigurableProvider` 无 `active` field（旧 `ConfigurableProviderView` 有，code 用 `row.entry.active`）——(a) cross-ref `ctx.remote.llm.listProviders()` 定 active / (b) 若 `listConfigurableProviders` 只返 active 则删 check（**事实，先查 settings-controller/llm Host impl**）/ (c) fork 加 `active`（非上游忠实，排除）。
+- **result-cache（4 visible + D3）**：`IApiClient`→`ClientRemote`（3）+ `.api`→`ctx.remote`（1）unmask D3——`api.results.get({resultId})`→`ctx.remote.result.get(resultId)`（ResultsRemote namespace）+ fetcher 契约改 `RpcResult<ResultEntry>`→throw-based `RemoteError`（adapt miss→undefined vs error→`ResultFetchError`）。delicate（result-cache error 语义）。
+
+**Phase-2（144，blocked by Plan B ADR-0002，本 session 已确认 grill=Plan B）**：client/runtime 131（删包）+ 4 presenter 13（`ui-semantic-layer` 7 + `ui-suggest-followups`/`ui-present-table`/`ui-present-decomposition` 各 2；按 Plan B 注册模式迁）。
+
+## 噪声（下 session 查）
+
+- `packages/data/audit/src` + `data/evidence-query/src` 有 untracked `.d.ts`/`.js`/`.map`（tsdown 输出?——pre-existing，非 connection fix 产；验 + gitignore/clean）。
+- `pnpm-lock.yaml` modified（pre-existing，非本 session）。
+
+## 下 session 起手
+
+1. **ui-settings-models**（D3+D1，PRODUCTION src，careful + QA）→ 187→~130。dispatch subagent 实现（按 Explore 详案：rename+D3+transport+casts）+ 主 session 重验 tsc + diff logic + D1 事实查（`listConfigurableProviders` 返 active 否）+ 浏览器 QA settings UI。
+2. **result-cache**（D3，careful）→ ~130→~126。
+3. **Phase-2**（blocked by Plan B）= 144，另 session（Plan B presenter 迁移 + 删 client/runtime）。
