@@ -37,7 +37,7 @@
  */
 
 import { LRUCache } from 'lru-cache'
-import type { RpcResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ResultEntry } from './types.ts'
 
 /** A host miss for one result id (business miss, not a transport fault). */
@@ -68,8 +68,8 @@ export const DEFAULT_RESULT_CACHE_CONFIG: ResultCacheConfig = {
   max: 64,
 }
 
-/** Fetch one result id, returning the RPC result (ok value or business error); may throw (transport). */
-export type ResultFetcher = (resultId: string, signal?: AbortSignal) => Promise<RpcResult<ResultEntry>>
+/** Fetch one result id, returning the Remote result (ok value or business error); may throw (transport). */
+export type ResultFetcher = (resultId: string, signal?: AbortSignal) => Promise<RemoteResult<ResultEntry>>
 
 /** Code used when the fetcher itself rejects (network/timeout/abort/parse) — not a host business error. */
 export const RESULT_FETCH_TRANSPORT = 'transport'
@@ -181,7 +181,7 @@ export function createResultCache(config: ResultCacheConfig, fetcher: ResultFetc
       inFlight.set(key, entry)
       const pending = (async (): Promise<ResultEntry | undefined> => {
         try {
-          let result: RpcResult<ResultEntry>
+          let result: RemoteResult<ResultEntry>
           try {
             result = await fetcher(resultId, signal)
           } catch (error) {

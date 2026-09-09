@@ -10,7 +10,9 @@
 
 import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
+// Type-only: pulls the ctx.remote merge (the `result/get` endpoint is dispatched
+// through the api-remotes assembly) and the forwarded-event key face.
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import { DEFAULT_RESULT_CACHE_CONFIG } from './cache.ts'
 import { ResultServiceImpl } from './service.ts'
 import type { ResultService, ResultServiceConfig } from './service.ts'
@@ -33,8 +35,8 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Required service: the wire handle (its `api` is the `result.get` seam). */
-export const inject = ['connection']
+/** Required service: the Client Remote face (its `result.get` is the wire seam). */
+export const inject = ['remote']
 
 /**
  * Plugin config: the cache bounds, each optional (the host declares overrides;
@@ -67,16 +69,15 @@ export const Config: z<Config> = z.object({
  * @param config - optional bound overrides (defaults fill the rest).
  */
 export function apply(ctx: Context, config: Config = {}): void {
-  const connection = ctx.get('connection') as ConnectionHandle
   ctx.plugin(ResultServiceImpl, {
-    api: connection.api,
     maxEntrySize: config.maxEntrySize ?? DEFAULT_RESULT_CACHE_CONFIG.maxEntrySize,
     maxSize: config.maxSize ?? DEFAULT_RESULT_CACHE_CONFIG.maxSize,
     max: config.max ?? DEFAULT_RESULT_CACHE_CONFIG.max,
   } satisfies ResultServiceConfig)
   // Reconnect resyncs the host's session store; treat every cached entry as
   // stale and repull (the runtime's connection/reset event is the sanctioned
-  // "wire-derived caches must treat their state as stale" signal).
+  // "wire-derived caches must treat their state as stale" signal, delivered on
+  // the plain cordis event bus — no `connection` service inject required).
   ctx.effect(
     () => ctx.on('connection/reset', () => { ctx.get('results')?.invalidateAll() }),
     'result-cache: connection/reset flush',
