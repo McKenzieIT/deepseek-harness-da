@@ -32,14 +32,12 @@ import type {
   AgentResponder,
   AgentRespondOpts,
   AgentResponse,
-  QueryExecutor,
-  QueryResult,
   JudgeExecutor,
   JudgeResult,
   Collaborators,
   SqlSemanticJudge,
 } from '@deepseek-ai/dsh-eval-runner'
-import { LlmSqlSemanticJudge } from '@deepseek-ai/dsh-eval-runner'
+import { LlmSqlSemanticJudge, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
 
 /** BootOptions */
 export interface BootOptions {
@@ -65,6 +63,16 @@ export interface BootOptions {
 export interface BootResult {
   readonly ctx: Context
   readonly collaborators: Collaborators
+  /**
+   * Which executor was mounted — the resolved sidecar path, or absent when no
+   * query provider was. The run config records it because `--with-query` alone
+   * cannot distinguish a real warehouse from the throwaway stand-in sidecar
+   * that is the default, which left historical "real execution" baselines
+   * unattributable after the fact.
+   */
+  readonly executorIdentity?: string
+  /** Seconds the warehouse was given to answer synchronously, when a query provider was mounted. */
+  readonly queryWaitSeconds?: number
 }
 
 // ── ctx.llm → engine Llm (forked from eval-runner-service) ──────────────
@@ -219,28 +227,6 @@ class CtxOdpsAdapter implements OdpsExecutor {
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
     const out = (await q.attach(instanceId)) as ProviderQueryOutcome
     return toEngineOutcome(out)
-  }
-}
-
-// ── ctx.query → eval-runner QueryExecutor (forked from eval-runner-service) ──
-
-class CtxQueryExecutor implements QueryExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: string) {}
-
-  async execute(sql: string): Promise<QueryResult> {
-    const q = this.ctx.get('query') as { execute(req: unknown): Promise<unknown> } | undefined
-    if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
-    let out: Record<string, unknown>
-    try {
-      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }) as Record<string, unknown>
-    } catch (err) {
-      return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
-    }
-    if (out.state === 'done' || out.state === 'completed') {
-      const rows = (out.rows ?? []) as Record<string, unknown>[]
-      return { success: true, rows, row_count: rows.length, error: null }
-    }
-    return { success: false, rows: [], row_count: 0, error: (out.error as string | undefined) ?? 'query failed' }
   }
 }
 
@@ -720,6 +706,10 @@ class Nl2sqlAgentResponder implements AgentResponder {
  * @returns the result
  */
 export async function boot(opts: BootOptions): Promise<BootResult> {
+  /** Set when a query provider is mounted, so the run can record which executor ran the SQL. */
+  let executorIdentity: string | undefined
+  /** Set alongside it: the wait window that decides result vs `environment-blocked`. */
+  let queryWaitSeconds: number | undefined
   // D3ii: no default pointer — explicit scopeId is required. Fail-loud here
   // rather than silently falling back to a hardcoded scope. The BootOptions
   // field is optional on the type so existing callers fail at boot (not at
@@ -778,6 +768,8 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     const maxcWaitSeconds = Number(process.env.MAXC_WAIT_SECONDS ?? 60)
     const toolCallTimeoutMs = ((Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60) + 60) * 1000
     const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath, toolCallTimeoutMs })
+    executorIdentity = sidecarPath
+    queryWaitSeconds = Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }
@@ -834,5 +826,10 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     }, judgePromptOverride)
   }
 
-  return { ctx, collaborators: { agent, judge, executor, sqlJudge } }
+  return {
+    ctx,
+    collaborators: { agent, judge, executor, sqlJudge },
+    ...(executorIdentity === undefined ? {} : { executorIdentity }),
+    ...(queryWaitSeconds === undefined ? {} : { queryWaitSeconds }),
+  }
 }

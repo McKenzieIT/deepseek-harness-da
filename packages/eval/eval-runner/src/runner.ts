@@ -9,8 +9,8 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { loadCases, checkResultMatch as coreCheckResultMatch, JUDGE_PASS_THRESHOLD } from '@deepseek-ai/dsh-eval'
-import type { EvalCase } from '@deepseek-ai/dsh-eval'
+import { loadCases, executeAndNormalize, gradeExecution, resolveComparatorPolicy, JUDGE_PASS_THRESHOLD } from '@deepseek-ai/dsh-eval'
+import type { ComparatorPolicy, EvalCase, ExecutionArtifact, ExecutionOutcome } from '@deepseek-ai/dsh-eval'
 import type { Collaborators } from './collaborators.ts'
 import type {
   BatchRunOptions,
@@ -31,8 +31,13 @@ const DEFAULT_PASS_K = 3
 /** Default max infra retries per attempt. */
 const DEFAULT_MAX_INFRA_RETRIES = 2
 
-/** Threshold for SQL semantic judge to pass (3/5 dimensions = 0.6). */
-const SQL_JUDGE_PASS_THRESHOLD = 0.6
+/**
+ * Rows an execution artifact stores when the caller names no policy. The
+ * digests always cover the full result, so this bounds artifact size without
+ * making a verdict unreproducible — unlike the previous 5-row evidence cut,
+ * which could not re-derive a `row_count_range` decision.
+ */
+const DEFAULT_MAX_STORED_ROWS = 200
 
 /**
  * Run a batch of eval cases.
@@ -54,6 +59,14 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
   const outputPath = options?.output_path ?? null
   const concurrency = options?.concurrency ?? 1
   const onProgress = options?.on_progress ?? null
+  // Resolved once per batch, so every case in it is graded under one policy and
+  // the run records which. The run config is the single source: the same object
+  // is persisted, so the policy graded under and the policy reported cannot
+  // disagree. A batch never mixes two.
+  const policy = resolveComparatorPolicy({
+    columnSemantics: options?.config?.column_semantics ?? 'by-name',
+    maxStoredRows: options?.config?.max_stored_rows ?? DEFAULT_MAX_STORED_ROWS,
+  })
 
   // Health gate pre-flight
   if (!skipHealthGate) {
@@ -78,14 +91,14 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
     for (let i = 0; i < cases.length; i++) {
       const evalCase = cases[i]
       if (!evalCase) continue
-      const caseVerdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries)
+      const caseVerdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries, policy)
       verdicts.push(caseVerdict)
       if (onProgress) {
         onProgress(i + 1, cases.length, evalCase.case_id)
       }
     }
   } else {
-    verdicts = await runConcurrent(cases, collaborators, passK, maxInfraRetries, concurrency, onProgress)
+    verdicts = await runConcurrent(cases, collaborators, passK, maxInfraRetries, concurrency, policy, onProgress)
   }
 
   // Compute summary
@@ -122,6 +135,7 @@ async function runConcurrent(
   passK: number,
   maxInfraRetries: number,
   concurrency: number,
+  policy: ComparatorPolicy,
   onProgress: ((completed: number, total: number, case_id: string) => void) | null,
 ): Promise<CaseVerdict[]> {
   const results: (CaseVerdict | undefined)[] = new Array<CaseVerdict | undefined>(cases.length)
@@ -134,7 +148,7 @@ async function runConcurrent(
       if (idx >= cases.length) return
       const evalCase = cases[idx]
       if (!evalCase) continue
-      const verdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries)
+      const verdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries, policy)
       results[idx] = verdict
       completed++
       if (onProgress) {
@@ -153,12 +167,13 @@ async function runSingleCase(
   collaborators: Collaborators,
   passK: number,
   maxInfraRetries: number,
+  policy: ComparatorPolicy,
 ): Promise<CaseVerdict> {
   const started = Date.now()
   const attempts: AttemptResult[] = []
 
   for (let k = 1; k <= passK; k++) {
-    const attempt = await runOneAttempt(evalCase, collaborators, k, maxInfraRetries)
+    const attempt = await runOneAttempt(evalCase, collaborators, k, maxInfraRetries, policy)
     attempts.push(attempt)
   }
 
@@ -182,19 +197,21 @@ async function runOneAttempt(
   collaborators: Collaborators,
   attemptK: number,
   maxInfraRetries: number,
+  policy: ComparatorPolicy,
 ): Promise<AttemptResult> {
   try {
     const { result } = await withInfraRetry(
-      () => executeAttempt(evalCase, collaborators),
+      () => executeAttempt(evalCase, collaborators, policy),
       maxInfraRetries,
     )
     return {
       attempt_k: attemptK,
-      execution_match: result.executionMatch,
+      execution_outcome: result.executionOutcome,
+      execution_detail: result.executionDetail,
+      ...(result.executionArtifact === undefined ? {} : { execution_artifact: result.executionArtifact }),
       delivery_match: result.deliveryMatch,
       sql_judge: result.sqlJudge,
       generated_sql: result.generatedSql,
-      query_result: result.queryResult,
       expected_result: result.expectedResult,
     }
   } catch (err) {
@@ -206,7 +223,7 @@ async function runOneAttempt(
     }
     return {
       attempt_k: attemptK,
-      execution_match: false,
+      execution_outcome: 'fail',
       delivery_match: false,
       error: err instanceof Error ? err.message : String(err),
     }
@@ -215,10 +232,11 @@ async function runOneAttempt(
 
 /** Result from executing one attempt (before wrapping in AttemptResult). */
 interface AttemptExecution {
-  executionMatch: boolean
+  executionOutcome: ExecutionOutcome
+  executionDetail: string
+  executionArtifact: ExecutionArtifact | undefined
   deliveryMatch: boolean
   generatedSql: string | null
-  queryResult: unknown[] | null
   expectedResult: unknown
   sqlJudge?: { score: number; rationale: string; dimensions: Record<string, 0 | 1> } | undefined
 }
@@ -227,10 +245,13 @@ interface AttemptExecution {
  * Execute a single attempt: ask the agent, optionally run the SQL, judge.
  *
  * Dual-score policy: when both executor and sqlJudge are available, run both
- * independently. execution_match reflects real query result comparison;
- * sql_judge records the LLM semantic verdict. Neither overrides the other.
+ * independently. The execution outcome reflects the real query result
+ * comparison; `sql_judge` records the LLM semantic verdict alongside it. The
+ * judge never writes the execution outcome — an LLM reading SQL text is not a
+ * weaker form of executing it, and letting it stand in produced a pass rate
+ * 56.4pp above the same cases under real execution.
  */
-async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators): Promise<AttemptExecution> {
+async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators, policy: ComparatorPolicy): Promise<AttemptExecution> {
   const question = evalCase.input.question
 
   // Ask the agent
@@ -240,64 +261,37 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
 
   // Collect diagnostics
   const generatedSql = agentResponse.generated_sql ?? null
-  let queryResult: unknown[] | null = null
   const expectedResult = evalCase.expected.result_value ?? null
   let sqlJudge: AttemptExecution['sqlJudge'] = undefined
+  let executionArtifact: ExecutionArtifact | undefined = undefined
 
-  // Determine execution match
-  let executionMatch = true
-  if (evalCase.expected.result_value !== null && evalCase.expected.match_mode !== null) {
-    if (agentResponse.generated_sql && collaborators.executor) {
-      // Execute the SQL against the real warehouse
-      const execResult = await collaborators.executor.execute(agentResponse.generated_sql)
-      if (!execResult.success) {
-        executionMatch = false
-        queryResult = [{ _error: execResult.error ?? 'execution failed' }]
-      } else {
-        queryResult = execResult.rows.slice(0, 5)
-        const matchMode = evalCase.expected.match_mode
-        const expectedRv = evalCase.expected.result_value
-        executionMatch = checkResultMatch(execResult.rows, expectedRv, matchMode)
-      }
+  // Determine the execution outcome. A case declaring no EXECUTION expectation
+  // is `not-measured`, not a silent pass: the previous initial value of `true`
+  // meant 25 DELIVERY-only cases reported an execution match that never ran.
+  let executionOutcome: ExecutionOutcome = 'not-measured'
+  let executionDetail = 'case declares no EXECUTION expectation'
+  if (evalCase.expected.result_value !== null || evalCase.expected.match_mode !== null) {
+    if (agentResponse.generated_sql !== null && collaborators.executor !== null && collaborators.executor !== undefined) {
+      executionArtifact = await executeAndNormalize(collaborators.executor, agentResponse.generated_sql, policy)
+      const verdict = gradeExecution(executionArtifact, evalCase.expected, policy)
+      executionOutcome = verdict.outcome
+      executionDetail = verdict.detail
 
-      // Dual-score: also run sql_judge if available (independent of execution_match)
+      // Dual-score: also run sql_judge if available (reported, never folded in)
       if (collaborators.sqlJudge) {
-        const schemaContext = agentResponse.schema_context ?? extractSchemaContext(agentResponse.transcript)
-        const judgeResult = await collaborators.sqlJudge.judgeSql({
-          question,
-          generated_sql: agentResponse.generated_sql,
-          schema_context: schemaContext,
-        })
-        sqlJudge = toSqlJudgeVerdict(
-          judgeResult.score,
-          judgeResult.rationale || judgeResult.error || '',
-          judgeResult.dimensions ?? {},
-        )
+        sqlJudge = await runSqlJudge(collaborators.sqlJudge, question, agentResponse)
       }
-    } else if (agentResponse.generated_sql && !collaborators.executor) {
-      // SQL-only mode: use sql_judge as the sole signal for execution_match
-      if (collaborators.sqlJudge) {
-        const schemaContext = agentResponse.schema_context ?? extractSchemaContext(agentResponse.transcript)
-        const judgeResult = await collaborators.sqlJudge.judgeSql({
-          question,
-          generated_sql: agentResponse.generated_sql,
-          schema_context: schemaContext,
-        })
-        executionMatch = judgeResult.score >= SQL_JUDGE_PASS_THRESHOLD
-        sqlJudge = toSqlJudgeVerdict(
-          judgeResult.score,
-          judgeResult.rationale || judgeResult.error || '',
-          judgeResult.dimensions ?? {},
-        )
-      } else {
-        // No executor AND no sqlJudge: the generated SQL cannot be verified
-        // against the expected result. An unverifiable execution must NOT count
-        // as matched — otherwise passKVerdict's all-must-pass rule would silently
-        // count it as passed, inflating the recorded pass_rate.
-        executionMatch = false
-      }
+    } else if (agentResponse.generated_sql !== null && collaborators.sqlJudge) {
+      // SQL-only mode: the judge reports, but execution stays unmeasured.
+      sqlJudge = await runSqlJudge(collaborators.sqlJudge, question, agentResponse)
+      executionOutcome = 'not-measured'
+      executionDetail = 'no executor mounted; sql_judge reported separately'
+    } else if (agentResponse.generated_sql === null) {
+      executionOutcome = 'fail'
+      executionDetail = 'agent produced no SQL'
     } else {
-      executionMatch = false
+      executionOutcome = 'not-measured'
+      executionDetail = 'no executor mounted'
     }
   }
 
@@ -319,7 +313,32 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators):
     }
   }
 
-  return { executionMatch, deliveryMatch, generatedSql, queryResult, expectedResult, sqlJudge }
+  return { executionOutcome, executionDetail, executionArtifact, deliveryMatch, generatedSql, expectedResult, sqlJudge }
+}
+
+/**
+ * Run the SQL semantic judge for one attempt.
+ * @param sqlJudge - the injected SQL semantic judge.
+ * @param question - the case question.
+ * @param agentResponse - the agent's response, whose `generated_sql` is judged.
+ * @returns the judge verdict.
+ */
+async function runSqlJudge(
+  sqlJudge: NonNullable<Collaborators['sqlJudge']>,
+  question: string,
+  agentResponse: { generated_sql: string | null; schema_context?: string; transcript?: unknown[] },
+): Promise<SqlJudgeVerdict> {
+  const schemaContext = agentResponse.schema_context ?? extractSchemaContext(agentResponse.transcript)
+  const judgeResult = await sqlJudge.judgeSql({
+    question,
+    generated_sql: agentResponse.generated_sql ?? '',
+    schema_context: schemaContext,
+  })
+  return toSqlJudgeVerdict(
+    judgeResult.score,
+    judgeResult.rationale || judgeResult.error || '',
+    judgeResult.dimensions ?? {},
+  )
 }
 
 /**
@@ -351,47 +370,40 @@ function extractSchemaContext(transcript: unknown[] | undefined): string {
 }
 
 /**
- * Value-only result match: compare scalar values from the first actual row against expected
- * values, ignoring column names (aliases vary between models/SQL dialects). Uses 1:1
- * consumption to prevent the same actual value from satisfying multiple expected values.
- */
-function checkResultMatch(actualRows: unknown[], expected: Record<string, unknown>, matchMode?: string): boolean {
-  if (!matchMode) return actualRows.length > 0
-  const normalizedRows = actualRows.map((r) => {
-    if (Array.isArray(r)) {
-      const obj: Record<string, unknown> = {}
-      for (let i = 0; i < r.length; i++) obj[`col${i}`] = r[i]
-      return obj
-    }
-    return r as Record<string, unknown>
-  })
-  const result = coreCheckResultMatch(expected, normalizedRows, matchMode)
-  return result.status === 'pass'
-}
-
-/**
  * pass^k verdict (anti-flakiness): ALL k attempts must pass for 'correct'.
  * A case that passes once but fails otherwise is NOT correct — pass^k exists
  * to surface exactly that flakiness, which best-of-k would hide.
- * All infra failures → 'infra_failure'; any wrong → 'wrong'; else 'unjudged'.
+ *
+ * The three excluded outcomes are checked before `wrong` so that neither a
+ * broken environment nor a broken case is charged to the model:
+ * `case_defect` first (it must be fixed, and rerunning cannot help), then
+ * `infra_failure`, then `unjudged` for a case execution never measured.
  */
 function passKVerdict(attempts: AttemptResult[]): RunnerVerdict {
-  const allCorrect = attempts.every(a =>
-    a.infra_error === undefined && a.execution_match !== false && a.delivery_match !== false,
-  )
-  if (allCorrect) return 'correct'
+  if (attempts.some(a => a.execution_outcome === 'case-defect')) return 'case_defect'
 
-  const allInfra = attempts.every(a => a.infra_error !== undefined)
+  const allInfra = attempts.every(a => a.infra_error !== undefined || a.execution_outcome === 'environment-blocked')
   if (allInfra) return 'infra_failure'
 
-  const hasWrong = attempts.some(a => a.execution_match === false || a.delivery_match === false)
+  const allCorrect = attempts.every(a =>
+    a.infra_error === undefined && a.execution_outcome !== 'fail' && a.delivery_match !== false,
+  )
+  if (allCorrect) {
+    // Nothing was measured and nothing was judged: not a pass.
+    const measured = attempts.some(a => a.execution_outcome === 'pass' || a.delivery_match === true)
+    return measured ? 'correct' : 'unjudged'
+  }
+
+  const hasWrong = attempts.some(a => a.execution_outcome === 'fail' || a.delivery_match === false)
   if (hasWrong) return 'wrong'
 
   return 'unjudged'
 }
 
 /**
- * Compute summary statistics from case verdicts.
+ * Compute summary statistics from case verdicts. `pass_rate` divides by the
+ * cases that actually measured the model: a broken environment or a broken case
+ * leaves the denominator rather than counting against it.
  */
 function computeSummary(verdicts: CaseVerdict[]): RunSummary {
   const total = verdicts.length
@@ -400,6 +412,7 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
   const declined = 0
   let unjudged = 0
   let infraFailure = 0
+  let caseDefect = 0
 
   for (const v of verdicts) {
     switch (v.verdict) {
@@ -408,9 +421,11 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
       case 'declined': break
       case 'unjudged': unjudged++; break
       case 'infra_failure': infraFailure++; break
+      case 'case_defect': caseDefect++; break
     }
   }
 
+  const attributable = total - infraFailure - caseDefect
   return {
     total,
     correct,
@@ -418,6 +433,7 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
     declined,
     unjudged,
     infra_failure: infraFailure,
-    pass_rate: total > 0 ? correct / total : 0,
+    case_defect: caseDefect,
+    pass_rate: attributable > 0 ? correct / attributable : 0,
   }
 }

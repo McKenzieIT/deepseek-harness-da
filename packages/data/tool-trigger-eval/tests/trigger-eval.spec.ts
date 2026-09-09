@@ -16,6 +16,7 @@ describe('trigger_eval tool', () => {
           declined: 5,
           unjudged: 3,
           infra_failure: 3,
+          case_defect: 0,
           pass_rate: 0.8075,
         },
         delta: null,
@@ -43,6 +44,7 @@ describe('trigger_eval tool', () => {
           declined: 5,
           unjudged: 3,
           infra_failure: 3,
+          case_defect: 0,
           pass_rate: 0.8385,
         },
         delta: {
@@ -118,6 +120,7 @@ describe('trigger_eval tool', () => {
           declined: 0,
           unjudged: 0,
           infra_failure: 0,
+          case_defect: 0,
           pass_rate: 0.9,
         },
         delta: {
@@ -143,7 +146,7 @@ describe('trigger_eval tool', () => {
           run_id: 'test-run',
           timestamp: '2026-08-25T00:00:00Z',
           cases: [],
-          summary: { total: 0, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 0 },
+          summary: { total: 0, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 0 },
         } satisfies RunResult),
         getLastRun: vi.fn().mockReturnValue(null),
         computeDelta: vi.fn().mockReturnValue({

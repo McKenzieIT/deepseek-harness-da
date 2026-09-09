@@ -195,19 +195,13 @@ export async function executeAndNormalize(
   return normalizeOutcome(outcome, { policy, durationMs: Date.now() - startedAt })
 }
 
-/** A provider outcome plus the optional fields evaluation reads off it. */
-type ProviderOutcome = QueryOutcomeView & {
-  readonly sql?: string
-  readonly executionMeta?: { readonly instanceId?: string; readonly durationMs?: number }
-}
-
 /**
  * Normalize a provider `QueryOutcome` into a persistable artifact.
  * @param outcome - the provider's raw outcome.
  * @param ctx - the policy plus the caller's measured elapsed time.
  * @returns the artifact to persist and grade.
  */
-export function normalizeOutcome(outcome: ProviderOutcome, ctx: NormalizeContext): ExecutionArtifact {
+export function normalizeOutcome(outcome: QueryOutcomeView, ctx: NormalizeContext): ExecutionArtifact {
   const { policy, durationMs } = ctx
   const sql = outcome.sql ?? null
   const rawDigest = digest({
