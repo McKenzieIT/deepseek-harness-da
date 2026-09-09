@@ -23,6 +23,23 @@ upstream 把 apiproxy（HTTP/JSON-RPC fetch-carrier）替换成 **Typert Remote*
 
 **大 sprint**——18 包，多 session。建议后续 session 分批认领（按 domain 分片）。
 
+## Reframe finding（2026-09-10 — main session 重验，subagent Explore 调研）
+
+**Ticket 前提被 on-disk 状态证伪**。原 Question 假设"18 包缺 `src/remote.ts` → 无 declaration-merge → `ClientRemote` 缺 X → ~81 error"。**重验（铁律，主 session 6 条断言全过）**：
+
+- 18 包**已有生成的** `lib/typert.remote-client.d.ts`（`@deepseek-ai/dsh-typert-generator` 发；session-controller 67L/5532B、commands 29L/1624B、evidence-query 36L/2284B），声明 `interface TypertRemoteNamespaceMap { '<ns>': TypertRemoteNamespace$… }`，augment `TypertClientRemote extends TypertRemoteNamespaceMap`（`packages/typert/protocol/src/types.ts:307`）。→ `ctx.remote.<ns>.Y()` **已 resolve**。
+- `tsc -b tsconfig.client.json` `TS2307`（cannot-find-module）= **0**。35 TS2339 全 transport 层（`$dispatch`/`ConnectionHandle.api`/`ConnectionSinks.onHostEnvelope`/`agentPreset` on SessionSummary 等），零 `remote.<ns>` 失败。
+- 67 TS2305 在 **consumer 包**（`packages/client/runtime` 47、`ui-settings-models` 9、`connection` 8、`result-cache` 3），**非 18 provider**（provider 0 TS2305）。driver = (a) **ghost transport 类型**（`IApiclient`/`MuxFrame`/`HostFrame`/`RpcReceipt`/`ClientResponse`/`SessionModels`——apiproxy 删除残留，fork src 无定义；`RpcError`→`RemoteError` 改名，`RemoteError` 在 `packages/typert/protocol/src/remote-error.ts`）；(b) **错位 view 类型**（`ToolEventView`/`SubagentAddress`/`JobView`/`DirectoryEntry`/`DirectoryListing`/`SessionMaybeProvideInfo`/`TodoItem`——存于其它包，consumer 从错 barrel import，需 barrel re-export 或修 import 路径）。
+- 故 18 包 `src/remote.ts` = **结构提取重构**（gateway 已 inline 在 `src/index.ts`，仅搬到 `src/remote.ts`），**~0 直接 error drop**。UM-APIPROXY-REMOVAL-CLIENT-TYPE-ANALYSIS 的"~122 adaptive（B/C/G 18 包 ~81）"归因**有误**——18 包注册不清 error。
+
+**217 真路径（B）= consumer 包改造**：ghost 类型改用 Typert 新类型（`RemoteError` 非 `RpcError`；Typert transport 类型替 ghost）+ 错位 view 类型 barrel re-export / 修 import + transport 类型补全（`$dispatch`/`.api`/`onHostEnvelope`）。UM10 typecheck-green（217→0）的**直接路径**，上游忠实（采新 Typert 类型），最利 data-agent（解锁 UM10→UM11→push）。
+
+**18 包 `src/remote.ts`（A）**：上游忠实结构工作，~0 error drop，不解 UM10；是 B 部分 consumer 重写的前置（barrel re-export `XRemote` interface）。可作独立低优 ticket 或 B 之后。
+
+**开放决策（用户，下一 session 拍板）**：(A) 保 18 包结构 / (B) 重 scope 到 217 真路径 / (A-then-B)。**主 session 荐 B**（直接解 UM10、上游忠实、最利 data-agent）。本 session 不决，handoff 见 `prompts/next-session-2026-09-10-follow-on-3-reframe.md`。
+
+**已验证事实**（下一 session 免重导）：见上 + `/tmp/dsh-um10-fo2-force.log`（217 全量 log）+ `packages/data/result-cache/src/remote.ts`（template，host gateway 源）+ 18 包 `lib/typert.remote-client.d.ts` 已生成 + consumer TS2305 分布（runtime 47/ui-settings-models 9/connection 8/result-cache 3）。
+
 ## Resolution
 
 (open)
