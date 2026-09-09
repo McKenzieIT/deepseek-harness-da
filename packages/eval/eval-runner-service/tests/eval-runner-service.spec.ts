@@ -26,7 +26,7 @@ function makeRun(runId: string, cases: Array<{ case_id: string; verdict: RunnerV
       verdict: c.verdict,
       latency_ms: 100,
     })),
-    summary: { total: cases.length, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 0 },
+    summary: { total: cases.length, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 0 },
   }
 }
 

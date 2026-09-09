@@ -29,3 +29,7 @@ Promote the five adapters (plus the `toEngineOutcome` state-mapping helper) into
 ## Risks
 
 Public API: `dsh-eval-runner` gains exported adapters (a new public surface) — acceptable, it is already the eval-runtime home. Behavior: none (the fork is reconciled to the fixed original). Dependency: `eval-cli` already depends on `dsh-eval-runner`; the move adds no edge.
+
+## 2026-09-09 status (T1 landed one of the five)
+
+T1 promoted only `CtxQueryExecutor` — the adapter the execution grader calls — into `packages/eval/eval-runner/src/ctx_query_executor.ts` and deleted its two host forks. `CtxLlmAdapter`, `CtxOdpsAdapter`, `LlmJudgeExecutor`, and `Nl2sqlAgentResponder` still exist verbatim in both `eval-cli/src/context.ts` and `eval-runner-service/src/index.ts`. Those four, plus `eval-cli`'s direct `@deepseek-ai/dsh-query-maxcompute` dependency (`package.json:64`), remain this note's open scope. [T12](../../../../wayfinder/evaluation/tickets/T12-eval-package-consolidation.md) does not own them — it is package-boundary only and blocked by G10.

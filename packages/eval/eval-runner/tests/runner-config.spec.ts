@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { runBatch } from '../src/runner.ts'
 import { writeRunResult, readRunResult } from '../src/persistence.ts'
 import { buildCollaborators } from '../src/collaborators.ts'
+import { COMPARATOR_POLICY_VERSION } from '@deepseek-ai/dsh-eval'
 import { StubAgentResponder, StubQueryExecutor, StubJudgeExecutor } from '../src/stubs.ts'
 import type { RunConfig, RunResult } from '../src/types.ts'
 import { tmpdir } from 'node:os'
@@ -42,6 +43,11 @@ const SAMPLE_CONFIG: RunConfig = {
   today: '20260903',
   query_expansion: true,
   with_query: true,
+  executor_identity: 'packages/query/query-maxcompute/dev/maxc-sidecar.mjs',
+  query_wait_seconds: 300,
+  comparator_policy_version: COMPARATOR_POLICY_VERSION,
+  column_semantics: 'by-name',
+  max_stored_rows: 200,
   skip_health_gate: false,
 }
 
@@ -49,7 +55,7 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
   it('records the supplied config on the run result', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 
@@ -69,7 +75,7 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
   it('the config records every protocol+semantics field needed to detect mis-attribution', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 
@@ -104,7 +110,7 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
   it('writeRunResult persists config to the JSON artifact (detectable post-hoc)', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 
@@ -136,7 +142,7 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
   it('omits config gracefully when none is supplied (additive — does not break legacy callers)', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 

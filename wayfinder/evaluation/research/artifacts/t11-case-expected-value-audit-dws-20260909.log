@@ -1,0 +1,49 @@
+auditing 21 cases (data_source=dws) from /Users/mckenzie/workspace/deepseek-harness-da/.worktrees/t1-exec-grader/packages/eval/eval/cases/rbi-10000251-exec
+maxc=/Users/mckenzie/Library/Python/3.13/bin/maxc config=/Users/mckenzie/.maxc/config_ieu_cdm.yaml wait=300s conc=3
+
+[037] live=4336 expected=4336 rows=1
+[036] live=4563 expected=4563 rows=1
+[039] live=24099 expected=24099 rows=1
+[040] live=259 expected=259 rows=1
+[038] live=552 expected=552 rows=1
+[041] live=58 expected=58 rows=1
+[042] live=0.11624691358024691 expected=0.11624691358024691 rows=1
+[044] live=1 expected=1 rows=1
+[045] live="10623" expected=[{"server_id":"10606","dau":469},{"server_id":"10605","dau":263},{"server_id":"10604","dau":199},{"server_id":"10603","dau":148},{"server_id":"10602","dau":91}] rows=5
+[046] live=67.81415370005114 expected=67.81415370005114 rows=1
+[043] live=24.55348148148148 expected=24.55348148148148 rows=1
+[049] live=1 expected=[{"pay_type":1,"order_count":384,"total_yuan":7735},{"pay_type":2,"order_count":157,"total_yuan":2641},{"pay_type":3,"order_count":279,"total_yuan":2909}] rows=3
+[048] live=679 expected=679 rows=1
+[050] live="20260730" expected=[{"ds":"20260714","new_roles":512},{"ds":"20260715","new_roles":536},{"ds":"20260716","new_roles":638},{"ds":"20260717","new_roles":698},{"ds":"20260718","new_roles":835}] rows=7
+[051] live=4563 expected=[{"active_roles":4347,"paying_roles":199,"conversion_rate":0.045778697952611}] rows=1
+[052] live="10740639552234" expected=[{"user_id":"10740639552234","total_pay_yuan":297283},{"user_id":"10738491993655","total_pay_yuan":294457},{"user_id":"10851236029653","total_pay_yuan":210203},{"user_id":"11071353506973","total_pay_yuan":196248},{"user_id":"11150810432413","total_pay_yuan":173165}] rows=10
+[053] live=0 expected=[{"level_band":0,"role_count":708922},{"level_band":10,"role_count":240462},{"level_band":20,"role_count":316248},{"level_band":30,"role_count":91369},{"level_band":40,"role_count":62960}] rows=11
+[059] live="0-10元" expected=[{"pay_band":"0-10元","paying_roles":139,"total_yuan":885},{"pay_band":"10-100元","paying_roles":92,"total_yuan":5478},{"pay_band":"100-1000元","paying_roles":4,"total_yuan":1372}] rows=4
+[055] live=211.21835174171622 expected=211.21835174171622 rows=1
+[060] live=10125 expected=10125 rows=1
+[054] live="20260730" expected=[{"cohort_ds":"20260714","new_roles":512,"d1_retained":195,"d1_retention":0.380859375},{"cohort_ds":"20260715","new_roles":536,"d1_retained":191,"d1_retention":0.35634328358208955},{"cohort_ds":"20260716","new_roles":638,"d1_retained":217,"d1_retention":0.3401253918495298},{"cohort_ds":"20260717","new_roles":698,"d1_retained":264,"d1_retention":0.37822349570200575},{"cohort_ds":"20260718","new_roles":835,"d1_retained":335,"d1_retention":0.40119760479041916}] rows=7
+
+=== audit ===
+MATCH                036 expected=4563 live=4563  昨天日活跃角色数是多少？
+MATCH                037 expected=4336 live=4336  昨天日活跃账号数是多少？
+MATCH                038 expected=552 live=552  昨天新增了多少个角色？
+MATCH                039 expected=24099 live=24099  昨天付费总金额（真实付费）是多少？
+MATCH                040 expected=259 live=259  昨天有多少个角色完成了付费？
+MATCH                041 expected=58 live=58  昨天有多少个角色完成了首次付费？
+MATCH                042 expected=0.11624691358024691 live=0.11624691358024691  最近7天的日均付费率是多少？
+MATCH                043 expected=24.55348148148148 live=24.55348148148148  最近7天活跃角色的ARPU是多少？
+MATCH                044 expected=1 live=1  7月14日新增角色的次日留存率是多少？
+SKIPPED(multi-row/non-numeric) 045 expected=[{"server_id":"10606","dau":469},{"server_id":"10605","dau":263},{"server_id":"10604","dau":199},{"server_id":"10603","dau":148},{"server_id":"10602","dau":91}] live="10623"  昨天各区服的活跃角色数分布？Top5区服是哪些？
+MATCH                046 expected=67.81415370005114 live=67.81415370005114  昨天活跃角色的平均在线时长是多少分钟？
+MATCH                048 expected=679 live=679  7月1日至7月7日新增账号中，7月8日至7月14日有多少仍然活跃？
+SKIPPED(multi-row/non-numeric) 049 expected=[{"pay_type":1,"order_count":384,"total_yuan":7735},{"pay_type":2,"order_count":157,"total_yuan":2641},{"pay_type":3,"order_count":279,"total_yuan":2909}] live=1  昨天各付费类型（真实付费/付费代金券/免费代金券）的订单数和总金额？
+SKIPPED(multi-row/non-numeric) 050 expected=[{"ds":"20260714","new_roles":512},{"ds":"20260715","new_roles":536},{"ds":"20260716","new_roles":638},{"ds":"20260717","new_roles":698},{"ds":"20260718","new_roles":835}] live="20260730"  最近7天每天的新增角色数趋势？
+SKIPPED(multi-row/non-numeric) 051 expected=[{"active_roles":4347,"paying_roles":199,"conversion_rate":0.045778697952611}] live=4563  昨天活跃角色中有多少完成了付费？付费转化率是多少？
+SKIPPED(multi-row/non-numeric) 052 expected=[{"user_id":"10740639552234","total_pay_yuan":297283},{"user_id":"10738491993655","total_pay_yuan":294457},{"user_id":"10851236029653","total_pay_yuan":210203},{"user_id":"11071353506973","total_pay_yuan":196248},{"user_id":"11150810432413","total_pay_yuan":173165}] live="10740639552234"  累计付费金额最高的10个角色分别付了多少？
+SKIPPED(multi-row/non-numeric) 053 expected=[{"level_band":0,"role_count":708922},{"level_band":10,"role_count":240462},{"level_band":20,"role_count":316248},{"level_band":30,"role_count":91369},{"level_band":40,"role_count":62960}] live=0  当前各等级段的角色数分布（10级一档）？
+SKIPPED(multi-row/non-numeric) 054 expected=[{"cohort_ds":"20260714","new_roles":512,"d1_retained":195,"d1_retention":0.380859375},{"cohort_ds":"20260715","new_roles":536,"d1_retained":191,"d1_retention":0.35634328358208955},{"cohort_ds":"20260716","new_roles":638,"d1_retained":217,"d1_retention":0.3401253918495298},{"cohort_ds":"20260717","new_roles":698,"d1_retained":264,"d1_retention":0.37822349570200575},{"cohort_ds":"20260718","new_roles":835,"d1_retained":335,"d1_retention":0.40119760479041916}] live="20260730"  最近7天每天新增角色数及其次日留存率？
+MATCH                055 expected=211.21835174171622 live=211.21835174171622  最近7天的ARPPU（付费用户人均付费额）是多少？
+SKIPPED(multi-row/non-numeric) 059 expected=[{"pay_band":"0-10元","paying_roles":139,"total_yuan":885},{"pay_band":"10-100元","paying_roles":92,"total_yuan":5478},{"pay_band":"100-1000元","paying_roles":4,"total_yuan":1372}] live="0-10元"  昨天各付费金额段（0-10元/10-100元/100-1000元/1000元以上）的付费人数？
+MATCH                060 expected=10125 live=10125  最近一周的WAU（周活跃角色数）是多少？
+
+MATCH=13  STALE_EXPECTED=0  SKIPPED=8  (of 21)

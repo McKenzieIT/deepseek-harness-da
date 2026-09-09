@@ -18,7 +18,8 @@ A **pure library**: it registers nothing on a Cordis context and takes its colla
 - **`judgeWithProvider(provider, prompt, opts?)` / `classifyError(err)`** — the DELIVERY LLM-judge with retry/backoff (SPEC §5.5) + `AuthenticationAbort`.
 - **`checkResultMatch(expected, actualRows, matchMode)`** — the 5 EXECUTION match modes (1:1 rbi mirror).
 - **`turnMatchesExpectation(actual, expected)`** (derailment, rbi `≥0.35`) / **`deliveryFuzzyMatch(actual, expected, opts?)`** (DELIVERY; short expected → token-containment — hardens the `gameX` vs `gameA` false-positive).
-- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema (zod) + YAML/JSON loader.
+- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema (zod) + YAML/JSON loader. Structural positions reject unrecognized keys; `meta` and `dimensions` keep undeclared per-case provenance.
+- **`resolveReferenceSql(case)`** — bind a case's `expected.sql` template placeholders (`{{ds_yesterday}}`, `{{ds_7d_ago}}`) to its own `meta.anchor_ds`; refuses an unknown placeholder, a missing anchor, or a malformed anchor rather than emitting SQL that runs and answers wrongly.
 
 ## Determinism
 

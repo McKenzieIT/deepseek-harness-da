@@ -5,7 +5,7 @@
 **Status**: open（题面需在 G10 解后重定）
 **Blocked by**: T1-exec-grader-impl（先完成 [G1](G1-exec-grader-seam.md) D2 的去分叉）+ G10-harness-bhe-split（它会重新切同一批包）
 **Blocks**: 无
-**证据**: [R24 — eval 包级合并可行性](../research/eval-package-consolidation.md)；两篇先行 Agent Note：[delete-unused-eval-core-runtime-stack](../../../.agents/notes/proposed/simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md)（core 死编排该删）、[promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)（两份 adapter fork 该退役）——二者描述的删除已归 [G1](G1-exec-grader-seam.md) D2 的 T1 验收项，本票只管**包边界**。
+**证据**: [R24 — eval 包级合并可行性](../research/eval-package-consolidation.md)；两篇先行 Agent Note：[delete-unused-eval-core-runtime-stack](../../../.agents/notes/proposed/simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md)（core 死编排该删）、[promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)（两份 adapter fork 该退役）。这两篇描述的删除属 [G1](G1-exec-grader-seam.md) D2 的“一能力一实现”去分叉；**T1（2026-09-09）只完成了其中一部分**（`CtxQueryExecutor` 收一份、比较器包装器/`QueryResult`/失败分类/audit 路径），**剩余删除（`eval/src` 死 runBatch/health gate、其余 4 个 adapter、`eval-cli` 去 provider 直连）仍留在那两篇 `proposed` 笔记里**。本票（T12）**不承接这些删除**，只管包边界。
 
 ---
 

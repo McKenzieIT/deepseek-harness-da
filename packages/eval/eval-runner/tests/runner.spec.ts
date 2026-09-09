@@ -29,7 +29,7 @@ describe('runBatch', () => {
 
     // Agent returns SQL that the executor will produce matching results for
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
 
     const collaborators = buildCollaborators(agent, executor, judge)
@@ -51,7 +51,7 @@ describe('runBatch', () => {
     const { agent, executor, judge } = makeStubs()
 
     agent.setDefaultReply({ reply: 'wrong answer', generated_sql: 'SELECT 999 AS total' })
-    executor.setResult('SELECT 999 AS total', { success: true, rows: [{ total: 999 }], row_count: 1, error: null })
+    executor.setResult('SELECT 999 AS total', { state: 'completed', columns: ['total'], rows: [[999]], rowCount: 1 })
     judge.setScore(0.0, 'no match')
 
     const collaborators = buildCollaborators(agent, executor, judge)
@@ -79,8 +79,8 @@ describe('runBatch', () => {
       return { reply: '1000', generated_sql: 'SELECT 1000 AS total' }
     }
 
-    executor.setResult('SELECT 0 AS total', { success: true, rows: [{ total: 0 }], row_count: 1, error: null })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 0 AS total', { state: 'completed', columns: ['total'], rows: [[0]], rowCount: 1 })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
 
     const collaborators = buildCollaborators(agent, executor, judge)
@@ -138,7 +138,7 @@ describe('runBatch', () => {
     for (const a of c.pass_k_results) {
       expect(a.infra_error).toBeUndefined()
       expect(a.error).toBeDefined()
-      expect(a.execution_match).toBe(false)
+      expect(a.execution_outcome).toBe('fail')
     }
     // The run-level summary must NOT count this as infra_failure
     expect(result.summary.infra_failure).toBe(0)
@@ -158,8 +158,8 @@ describe('runBatch', () => {
       return { reply: 'The average order value is 50 dollars', generated_sql: null }
     }
 
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
-    executor.setResult('SELECT 42 AS count', { success: true, rows: [{ count: 42 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
+    executor.setResult('SELECT 42 AS count', { state: 'completed', columns: ['count'], rows: [[42]], rowCount: 1 })
     judge.setScore(1.0)
 
     const collaborators = buildCollaborators(agent, executor, judge)
@@ -257,7 +257,7 @@ describe('delta comparison', () => {
       verdict: c.verdict,
       latency_ms: 100,
     })),
-    summary: { total: cases.length, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 0 },
+    summary: { total: cases.length, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 0 },
   })
 
   it('detects improved cases', () => {
@@ -362,11 +362,11 @@ describe('persistence', () => {
       timestamp: '2026-01-01T00:00:00.000Z',
       cases: [{
         case_id: 'c1',
-        pass_k_results: [{ attempt_k: 1, execution_match: true, delivery_match: true }],
+        pass_k_results: [{ attempt_k: 1, execution_outcome: 'pass', delivery_match: true }],
         verdict: 'correct',
         latency_ms: 150,
       }],
-      summary: { total: 1, correct: 1, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 1 },
+      summary: { total: 1, correct: 1, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 1 },
     }
 
     writeRunResult(original, outputPath)

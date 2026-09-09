@@ -108,6 +108,10 @@ export interface QueryOutcomeView {
   readonly error?: string
   readonly failureKind?: string
   readonly instanceId?: string
+  /** The SQL the provider reports it executed, which a replayable grade records. */
+  readonly sql?: string
+  /** Provider execution metadata. Its `durationMs` is not trusted — evaluation times the call itself. */
+  readonly executionMeta?: { readonly instanceId?: string; readonly durationMs?: number }
 }
 
 /** One question put to the agent. Carries the identifiers a real adapter needs (session affinity, scope routing). */

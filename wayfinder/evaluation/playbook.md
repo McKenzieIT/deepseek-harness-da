@@ -13,14 +13,29 @@
 | R1-R11(认读分析论文) | ✅ 本环境(AFK) | Phase 1 | 读论文产 `research/<slug>-papers.md`,喂 grilling |
 | G1-G12(grilling，含 G1b) | ✅ 本环境(HITL) | Phase 1 | 你 grill 定 A/B/C 方向,产决策 |
 | P1(prototype) | ✅ 本环境(HITL)* | Phase 1 | 新 seam 先验原型(*见 §6 假设) |
-| T1-T10(impl/实现票) | ❌ 不直接 | Phase 2→3→4 | 走 SPEC→instruction+rubric→另一环境执行 |
-| R12-R23(experiment/实验票) | ❌ 不直接 | Phase 2→3→4 | 同上 |
+| T1-T10(impl/实现票) | **按领域分**（见 §1.1） | 后端方向本地直接做；ML-eval 方向走 Phase 2→3→4 | 见 §1.1 |
+| R12-R23(experiment/实验票) | **按领域分**（见 §1.1） | 同上；跟踪“另环境/凭证”真正落点在跟 eval 测量模型的实验票 | 见 §1.1 |
 
 历史票(`P11*`/`R3`/`G2`/`GA-EVAL-*`/`GA-EXP*`/`GA-GRILL*`)在 `wayfinder/data-agent/tickets/`,不在本流程(已 resolved/或既有 open,各自管)。
 
 ---
 
+## 1.1 按领域分流（2026-09-09 加，修订 §1 的「T/R-experiment 一律另环境」）
+
+上表「T/R-experiment ❌ 不直接」的原意被收窄：**只有 ML-evaluation 方向的票才考虑 Phase 2-4 的另环境/rubric 流程；后端方向的 impl 票本地直接做**（起 worktree、写码、跑测、跑 eval、更新票与 audit-log），不生成 SPEC/rubric 包。
+
+判据是票的核心决策需要「后端工程」还是「ML/统计/评测方法学」：
+
+- **后端方向（本地直接做）**：方向 1（执行级评分/loader/comparator：R1/G1/G1b/**T11/T1/R23**）、方向 9（FailureClassifier：R9/G9/T8）、方向 10 的**架构拆分半**（G10/T9 的 B/H/E 包重切）。这些是 TS 后端工程（schema/adapter/纯函数/持久化/去分叉/包重组），本地做且能跑本仓真门（typecheck/coverage/真数仓对账）。
+- **ML-eval 方向（Phase 2-4 或按需凭证）**：方向 2/3/5/6/7/8/11 全部，方向 4（显著性方法学），方向 10 的 **Goodhart 审计半**（R21）。真正咬住「另环境/凭证」的是这些方向里**跟评测、测量模型行为的 R-experiment 票**（R13-R22）与**训模型的票**（R12 的 ORM）；其中的 impl 票（T2/T3/T4b/T7/T10）本身仍是后端 TS 编码，只是服务于 ML-eval 方向。
+
+§2-§5 的 SPEC→rubric→另环境流程**只适用于 ML-eval 方向**；后端方向忽略之，按常规本地 wayfinder 执行（改码→测试→更新票 Resolution + map + audit-log）。
+
+---
+
 ## 2. 端到端流程(4 阶段)
+
+> **适用范围（2026-09-09）**：本节 Phase 2-4（SPEC→rubric→另环境）**只对 ML-eval 方向**。后端方向（1/9/10-拆分）跳过本节，本地直接实现，见 §1.1。
 
 ### Phase 1 — 本环境:G + R 认读(直接做)
 - R1-R11(AFK):认读分析论文,产 `research/<slug>-papers.md`(核心方法 + 对本仓映射 + 验证状态)。
@@ -76,7 +91,7 @@
 ## 4. 方向顺序(推荐)
 
 ### 顺序原则
-1. 先做 **linchpin 链**(方向 1):R1、G1 已 resolved。**下一步 = R10 认读**(不是 T1)——G1 把包边界与 case schema 归属移交 G10,而 G10 的论文前置(AgentCompass B/H/E)未做;T1 若先落地,grader 位置会被 G10 重切。之后 R10→G10→[攒批:T11+T1(+T9)SPEC→rubric 包→另一环境]→R23→GA-EVAL-EXPAND。另有两条与 T1 并行的阻塞:**T11**(loader 丢弃 reference SQL,blocks T1 验收面)与 **GA-EVAL-CASESET-EVENT-ANCHOR**(event 锚点不冻结,blocks T1 的 re-baseline 有意义)。
+1. 先做 **linchpin 链**(方向 1,后端·本地直接做):R1、G1 已 resolved。**下一步 = 本地实现 T11→T1**（同批，T11 先全部验收再 T1）。硬前置只有 T11；~~R10/G10~~ 已不再阻塞 T1——D2 定下 T1 不动包名与 exports（包重组另开 T12，blocked by T1+G10），新代码落 `dsh-eval`，G10 之后随 T12 搬。GA-EVAL-CASESET-EVENT-ANCHOR blocks 的是 event 数字的**解读**、不是实现：本批以复现 39-case MATCH/STALE 计数为验收。之后 T1→R23→GA-EVAL-EXPAND。
 2. 并行做**独立于 T1**的方向(本环境 Phase 1 部分):方向 4(R4→G4)、方向 6(R6→G6)、方向 8(R8→R20→G8)。
 3. T1 完成后,做**依赖 T1** 的方向:3(R14→G3→T3)、5(R17→G5)、7(R7→G7→R19)、9(G9→T8)、10(G10→T9→R21)。
 4. 最后做 scope 扩展:方向 6 的 prototype/benchmark(P1→T6→R18)。
@@ -95,9 +110,9 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 
 **G 与 R-认读:不攒批。** 一方向 G 定了就往下走,不等其他方向——它们本环境直接做,没有打包成本。
 
-**T(impl):攒批**(2026-09-07 改,取代原「一律不攒批」)。单张 T 票往往撑不满一个完整 SPEC + `instruction.md` + `attachment/repo/` + `quality.toml`(7-10 项 rubric)的包——实测 T11 只有 ~76 KB 源码半径 / 约 20k tokens 全读,占 400k 窗口 15-20%,仪式成本会超过工作本身。**攒到实施任务足够大再落包。**
+**T(impl):后端方向本地直接做，不进 rubric 包（2026-09-09 修订）。** 方向 1/9/10-拆分的 impl（T11/T1/T8/T9）在本仓起 worktree 直接实现、跑本仓真门，无需 SPEC/`instruction.md`/`attachment/repo/`/`quality.toml`。（原“T-攒批成 rubric 包”只对 ML-eval 方向的 impl 仍成立：单张撑不满一个包时攒批。）
 
-判据是「一个包能把另一环境的一个 session 用满」,**不是**「票齐了」。当前批:**T11 + T1**(T11 blocks T1);G10 定完架构后可并入 **T9-bhe-split**。
+判据是「一个包能把另一环境的一个 session 用满」,**不是**「票齐了」。（仅对 ML-eval 方向的 rubric 包；方向 1 的 T11+T1 是后端，本地同批实现，T11 先验收再 T1，不落 rubric 包。）
 
 ### T 票必须伴随 eval 执行(2026-09-07 加)
 
@@ -127,6 +142,8 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 
 (Phase 1 = 本环境直接做;Phase 2-4 = SPEC→rubric 包→另一环境。详见 map.md §3。)
 
+> **2026-09-09 修订**：上表右列“Phase2-4 另一环境”**只对 ML-eval 方向**。后端方向的 impl 本地直接做（见 §1.1）：方向 1 的 **T11/T1/R23**、方向 9 的 **T8**、方向 10 的 **T9**（B/H/E 拆分）均为本地；同行的 R12(ORM 训练)/R21(Goodhart) 仍属 ML-eval。
+
 ---
 
 ## 6. 假设(待纠正)
@@ -142,4 +159,4 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 - 更新 `map.md` Notes 加交叉引用 → 本 playbook(流程不写进 map,只引)。
 - 更新 `tickets/README.md` 加 T/R-experiment 不直接做的提示 → 本 playbook。
 - commit(playbook + 两个交叉引用)。
-- 下一 session prompt:**认领 R10-harness-goodhart-papers**(方向 10 认读,AFK,本环境)。G1 已 resolved 并把包边界/case schema 归属移交 G10,所以 R10 是 linchpin 链的当前瓶颈。T11 已 unblocked 但按 §4 T-攒批规则不单独落。也可并行走 cheap-first(R20/R14)。
+- 下一 session prompt:**本地实现 T11→T1**（方向 1，后端，本地直接做，不走另环境）——本仓有数仓凭证可跑真对账；T11 先全部验收再起 T1。R10/G10 不再阻塞 T1（D2 冻结包边界，包重组归 T12）。也可并行走 cheap-first（R20/R14，方向 8/3 的 AFK 认读/分析）。

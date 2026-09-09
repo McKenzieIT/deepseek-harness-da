@@ -48,3 +48,7 @@ Behavior: changing `pass_k` to pass^k LOWERS the recorded pass_rate (a case with
 所以验收项「One `pass_k` semantics, named honestly」**已满足** —— 指标名与实现 现在一致（都是 pass^k），且 CLI 默认 `--pass-k 3` 与 SPEC §6.5 / D9 Q2 对齐。
 
 **仍然有效的部分**：删除 `verdict_mapper.ts`、移除 `eval/eval/src/` 里未被调用的 `runMultiTurnCase`/`runBatch`/`computeDelta` 运行时函数（`passKVerdict` 现已是活语义， 但 `eval/eval` 里那份仍是与 `eval-runner` 并存的第二实现——**并存本身仍是本 note 要 消除的重复**）、以及 `OUTCOME_RANK`/`VERDICT_SEVERITY` 这对互相矛盾且无调用者的排序。
+
+## 2026-09-09 现状（T1 未动本 note 的删除）
+
+T1 把 execution grader 落在 `dsh-eval-runner`（新增 `ctx_query_executor.ts` + `execution_grade.ts`），但**未**删 `eval/src/runner.ts` 的 `runBatch` 与 `eval/src/health-gate.ts`——第二份 runBatch / health gate 仍与 `eval-runner` 并存。本 note 要消除的重复 **仍未完成**，是 [T1](../../../../wayfinder/evaluation/tickets/T1-exec-grader-impl.md) 显式转出的待办（纯删除，与 T1 的判分语义变更分开做以保持可归因）。[T12](../../../../wayfinder/evaluation/tickets/T12-eval-package-consolidation.md) 不承接（它只管包边界、blocked by G10）。
