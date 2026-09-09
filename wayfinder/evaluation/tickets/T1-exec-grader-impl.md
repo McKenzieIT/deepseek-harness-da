@@ -1,6 +1,6 @@
 # T1 — Execution grader 实现
 
-**Type**: task  ·  **Status**: open
+**Type**: task  ·  **Status**: **implemented 2026-09-09（核心已落地，三项转出，见 Resolution）**
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: [G1](G1-exec-grader-seam.md)（resolved 2026-09-08，v1 六条 + v3 D1–D6 已合并）、[T11](T11-loader-provenance-strip.md)（同批前置，须先全部验收）
 **软前置**（未解也可开工，见 §前置）: [G1b](G1b-ground-truth-lifecycle.md)、[G10](G10-harness-bhe-split.md)、GA-EVAL-CASESET-EVENT-ANCHOR
@@ -100,3 +100,67 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 - comparator 默认值与容差（[R23](R23-comparator-policy-mutation-baseline.md) 提供 mutation 证据后再定）。
 - loader 保住 provenance 与模板解析（[T11](T11-loader-provenance-strip.md)，同批但独立验收）。
 - judge 侧的任何改动（方向 2/3/8）—— 本票只切断 judge 对 execution 维度的写入，不动 judge 自身。
+
+---
+
+## Resolution（2026-09-09）
+
+分支 `feat/T1-exec-grader-impl`。T11 先全部验收通过（同分支前三个 commit）后才开工。
+
+### 11 条属性的逐条交代
+
+| # | 属性 | 状态 | 落地处 |
+| ---: | --- | --- | --- |
+| 1 | 三事实分离 | ✅ | `execution_outcome` / `sql_judge` / `infra_error` 各自独立字段 |
+| 2 | execution 主裁决，judge 不覆盖 | ✅ | 删除 `runner.ts` 的 judge 顶替；SQL-only 模式记 `not-measured` |
+| 3 | reference SQL 执行失败 = 基础设施失败 | ✅ | `gradeExecution` 把环境类 failure class 归 `environment-blocked` |
+| 4 | 单一端口 `{ execute, attach? }` 返回原始 `QueryOutcome` | ✅ | `ExecutionPort`（`dsh-eval`）+ 单份 `CtxQueryExecutor`（`dsh-eval-runner`） |
+| 5 | provenance 由 grader 装配 | ✅ | `ExecutionArtifact` 只存 executor 真观测到的；policy/锚点由 run config + case 组装 |
+| 6 | 截断与耗时自己观测 | ⚠ **部分** | 耗时已在调用两端量 wall-clock；`providerTruncated` 按 `rowCount !== rows.length` 测算。**但“两者会不会分叉”仍未实测**——本批 39 case 均为少量行，无一命中；超大结果集物料未备。转出为待办项（见下） |
+| 7 | 结局五成员闭合联合 | ✅ | `EXECUTION_OUTCOMES`，消费端逐成员处理 |
+| 8 | `not-measured` 是显式成员 | ✅ | 初值即 `not-measured`，不再继承 `true`；DELIVERY-only case 归此 |
+| 9 | 模式与 policy version 随 run 落盘 + `compare.ts` 拒渲染 | ✅ | `RunConfig` 新增 `executor_identity`/`query_wait_seconds`/`comparator_policy_version`/`column_semantics`/`max_stored_rows`；`checkRenderable` + `describeExecutionMode` |
+| 10 | 两个纯函数 + 可落盘 artifact + 配置化行数上限 | ✅ | `normalizeOutcome` / `gradeExecution`；`--max-stored-rows`；raw + normalized digest |
+| 11 | 一能力一实现 | ⚠ **部分** | 见下表 |
+
+### 第 11 条去分叉的逐项状态
+
+| 去分叉项 | 状态 |
+| --- | --- |
+| 两套 adapter（`eval-cli` / `eval-runner-service`） | ✅ 收为 `dsh-eval-runner` 的单份 `CtxQueryExecutor`；`eval-cli` 侧的 reasoning 提取/event-def 预取/query expansion 均保留（在 responder 层，不在 adapter） |
+| 结果比较器私有包装器 | ✅ 删除；其位置 key 行为升为 `columnSemantics: 'positional'` policy 值 |
+| `QueryResult` | ✅ 退役 |
+| 失败分类接入判分 | ✅ `gradeExecution` 调 `classifyExecutionFailure` + `ENVIRONMENTAL_FAILURE_CLASSES` |
+| audit 脚本第三条执行路径 | ✅ 改走同一端口 |
+| 两份 `runBatch` | ❌ **未做** —— `eval/src/runner.ts` 的那份仍在 |
+| 两份 health gate | ❌ **未做** —— `eval/src/health-gate.ts` 仍在 |
+| `eval-cli` 去掉 `dsh-query-maxcompute` 直连 | ❌ **未做** —— `context.ts` 仍动态 import 并挂载 `MaxComputeQueryEngine` |
+
+三项未做的理由：它们都是**纯删除/移位**，与已做的“改判分语义”正交；本批已携带三处行为变更（judge 不再写 execution、pending → environment-blocked、pass_rate 换分母），再叠包结构改动会使“数字异动归因到哪一件”不可分辨——而这正是 D2 “不让 T1 同时背两件事”的理由。转入 [T12](T12-eval-package-consolidation.md)（包级重组）与下列待办。
+
+### 闸门结果
+
+真 `maxc-sidecar.mjs`（非 stand-in）、`config_ieu_cdm.yaml`、`MAXC_WAIT_SECONDS=300`、`CONC=3`：
+
+```
+data_source=event : MATCH=2  STALE_EXPECTED=14  SKIPPED=2  (of 18)
+data_source=dws   : MATCH=13 STALE_EXPECTED=0   SKIPPED=8  (of 21)
+```
+
+**MATCH 计数全部复现**（event 2、dws 13）；dws 侧 21/21 逐 case 值也一致。
+
+- **列语义翻面清单：空（0 个）**。可解释：本对账取首行首格，两种 addressing 保序所以首格必相同；会翻面的 `multi_scalar_exact`/`set_equal` 在活跃语料里 0 使用。**不是“风险已消除”**；取值仍归 [R23](R23-comparator-policy-mutation-baseline.md)。
+- **`environment-blocked` 计数：2**（event `123`、`126`，均为 `query pending` + instanceId）。即使 wait=300 仍超窗；旧路径把它们误记为“语料陈旧”。
+- 另有 `057`/`138` 两例 live 值从 `null` 变为真值（verdict 未变），是 event 分区不冻结的跑间方差。
+
+数据、逐 case 对账表与 fidelity caveat 入库 [experiment-audit-log §2026-09-09 T1](../research/experiment-audit-log.md)，原始输出 `research/artifacts/t1-port-reconciliation-{event,dws}-20260909.log`。
+
+### 覆盖面得失（本票要求不得含糊）
+
+真执行判分覆盖 **57 个 `scalar_exact` case**。**86 个 `row_count_range` 仍只查行数**，待 [G1b](G1b-ground-truth-lifecycle.md) 重建；**25 个 DELIVERY-only 记 `not-measured`**。本票未使“143 个 case 被执行级评分”成立，也未重建任何 pass_rate 基线（本批跑的是 reference SQL 对账，不经模型）。
+
+### 待办（从本票转出）
+
+1. **截断信号实测**（v1 锁定第 6 条的待验假设）—— 需一个能触发截断的超大结果集；不分叉则按约定“回落透传 + 开 provider 缺陷票”。
+2. **两份 `runBatch` / 两份 health gate 的去分叉**，以及 `eval-cli` 改为外部注入 provider。
+3. **回归集 R1 §6 清单**：已覆盖 NULL/字符串数字（`match_modes` 既有单测）、列排列（`columnSemantics` 两值均有测）、超时/gold failure/pending（`execution_grade.spec`）；**未覆盖**：重复行、浮点边界、多个 accepted result、单快照假阳性——前三项需 R23 先定容差与行集语义，最后一项需 G1b 的多快照语料。
