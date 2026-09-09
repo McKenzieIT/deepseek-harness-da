@@ -1,0 +1,44 @@
+auditing 18 cases (data_source=event) from /Users/mckenzie/workspace/deepseek-harness-da/.worktrees/t1-exec-grader/packages/eval/eval/cases/rbi-10000251-exec
+maxc=/Users/mckenzie/Library/Python/3.13/bin/maxc config=/Users/mckenzie/.maxc/config_ieu_cdm.yaml wait=300s conc=3
+
+[119] live=552 expected=510 rows=1
+[120] live=4530 expected=4314 rows=1
+[056] live=0 expected=0 rows=1
+[122] live=4095 expected=3708 rows=1
+[121] live=46306 expected=33503 rows=1
+[057] live=null expected=773500 rows=?
+[124] live=129189 expected=110362 rows=1
+[123] live=38098 expected=33571 rows=1
+[125] live=4545 expected=4327 rows=1
+[128] live=285137 expected=231133 rows=1
+[127] live=45845 expected=33564 rows=1
+[129] live=8183 expected=6901 rows=1
+[130] live=0 expected=0 rows=1
+[126] live=3413512 expected=2774223 rows=1
+[135] live=2409900 expected=773500 rows=1
+[136] live=482 expected=432 rows=1
+[137] live=259 expected=288 rows=1
+[138] live=null expected=48 rows=?
+
+=== audit ===
+MATCH                056 expected=0 live=0  昨天的登录账号UV是多少？
+STALE_EXPECTED       057 expected=773500 live=null  昨天充值总金额是多少（事件级，排除沙盒）？
+STALE_EXPECTED       119 expected=510 live=552  昨天创角的新增角色数是多少？
+STALE_EXPECTED       120 expected=4314 live=4530  昨天登录的独立角色数是多少？
+STALE_EXPECTED       121 expected=33503 live=46306  昨天抽卡事件触发了多少次？
+STALE_EXPECTED       122 expected=3708 live=4095  昨天开始PVE副本挑战的独立角色数是多少？
+STALE_EXPECTED       123 expected=33571 live=38098  昨天PVP对战发起的次数是多少？
+STALE_EXPECTED       124 expected=110362 live=129189  昨天资源恢复事件触发了多少次？
+STALE_EXPECTED       125 expected=4327 live=4545  昨天货币变动涉及的独立角色数是多少？
+STALE_EXPECTED       126 expected=2774223 live=3413512  昨天道具变动事件的总记录数是多少？
+STALE_EXPECTED       127 expected=33564 live=45845  昨天武将升级事件触发了多少次？
+STALE_EXPECTED       128 expected=231133 live=285137  昨天抽卡总共抽取了多少次？
+STALE_EXPECTED       129 expected=6901 live=8183  昨天抽卡获得的SSR卡总数是多少？
+MATCH                130 expected=0 live=0  昨天付费抽卡（非免费）的次数是多少？
+STALE_EXPECTED       135 expected=773500 live=2409900  昨天现金充值（真实营收）的总金额是多少？
+STALE_EXPECTED       136 expected=432 live=482  昨天用现金券充值的次数是多少？
+STALE_EXPECTED       137 expected=288 live=259  昨天付费的角色有多少个？
+STALE_EXPECTED       138 expected=48 live=null  昨天新增且当天就充值的角色有多少个？
+
+MATCH=2  STALE_EXPECTED=16  SKIPPED=0  (of 18)
+EVENT_EXIT=0
