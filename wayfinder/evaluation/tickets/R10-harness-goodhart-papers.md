@@ -2,7 +2,7 @@
 
 **Type**: research  ·  **Status**: **Resolved (2026-09-09)**
 **Assignee**: McKenzieIT  ·  **Claimed**: 2026-09-09
-**产物**: [`../research/harness-goodhart-papers.md`](../research/harness-goodhart-papers.md)
+**产物**: [`../research/harness-goodhart-papers.md`](../research/harness-goodhart-papers.md)；[G10 学习指南](../research/g10-learning-guide.md)；[2026 follow-up 侦察](../research/g10-2026-followup-papers.md)
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无
 **Blocks**: [G10 — Harness B/H/E 拆分](G10-harness-bhe-split.md)
@@ -84,4 +84,4 @@ Goodhart 审计需同时维护公开 train、受控 heldout、冻结后采集的
 
 认读同时纠正 map 原有表述：LED 研究的是标准 `pass@n`（n 次中至少一次成功），不是本仓 strict `pass^k`（k 次全部成功）；它支持审计探索能力退化，但不能直接作为本仓 `pass^k` 的实证依据。
 
-本票未产生新 ticket；[G10 — Harness Benchmark/Harness/Environment 拆分](G10-harness-bhe-split.md) 已解锁。
+后续侦察把 adapter parity、interface censoring 与 run isolation 收束为 [R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读](R10b-harness-measurement-validity.md)，并将污染、judge、统计、多轮和动态 benchmark 证据分流到各自 ticket。G10 在 R10b 完成后锁接口。
