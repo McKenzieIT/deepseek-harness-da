@@ -9,7 +9,7 @@
  */
 
 import z from '@deepseek-ai/schemastery'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { DEFAULT_RESULT_CACHE_CONFIG } from './cache.ts'
 import { ResultServiceImpl } from './service.ts'
@@ -66,7 +66,7 @@ export const Config: z<Config> = z.object({
  * @param ctx - client cordis context carrying the connection handle.
  * @param config - optional bound overrides (defaults fill the rest).
  */
-export function apply(ctx: ClientContext, config: Config = {}): void {
+export function apply(ctx: Context, config: Config = {}): void {
   const connection = ctx.get('connection') as ConnectionHandle
   ctx.plugin(ResultServiceImpl, {
     api: connection.api,

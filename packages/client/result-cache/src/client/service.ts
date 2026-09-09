@@ -21,7 +21,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { IApiClient, RpcResult } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls the ctx.sessions Context merge so `ctx.get('sessions')` is
 // typed, and ISessions/SessionId for the scope-addressed calls.
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
 import { createResultCache } from './cache.ts'
 import type { ResultCache, ResultCacheConfig } from './cache.ts'
 import type { ResultEntry } from './types.ts'
