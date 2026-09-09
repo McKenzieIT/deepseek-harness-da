@@ -1,6 +1,8 @@
 # R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读
 
-**Type**: research  ·  **Status**: open
+**Type**: research  ·  **Status**: **Resolved (2026-09-09)**
+**Assignee**: McKenzieIT  ·  **Claimed**: 2026-09-09
+**产物**: [`../research/harness-goodhart-papers.md`](../research/harness-goodhart-papers.md)
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无
 **Blocks**: [G10 — Harness B/H/E 拆分](G10-harness-bhe-split.md)
@@ -17,8 +19,8 @@ AgentCompass 的 Benchmark/Harness/Environment 三拆、HELM 与 BIG-bench 的 h
 
 - **AgentCompass(2607.13705)** ✅ 已 spot-check 真实 —— B/H/E 三拆，**本票主线**
 - HELM(2211.09110)、BIG-bench(2206.04615) —— harness 分层、scenario 与 metric 分离
-- Arena-Hard / MT-Bench(2306.05685)、WildBench(2406.04770) —— separability、style control、95% CI
-- LED(2602.01698) —— GRPO 抬 pass@1 却塌 pass@n，即 **pass^k 上的 Goodhart**（本仓 verdict 语义正是 pass^k）
+- MT-Bench(2306.05685)、Arena-Hard(2406.11939)、WildBench(2406.04770) —— judge bias、separability、style control、CI
+- LED(2602.01698) —— post-training 抬 pass@1 但采样探索塌缩；其标准 `pass@n`（至少一次成功）**不等于**本仓 strict `pass^k`（全部成功）
 - Data Laundering(2412.15255)、MMLU-CF(2412.15194)、LLMs-Get-Lost(2505.06120)
 
 ## 本仓已知的纠缠事实（G1 2026-09-07 实测，认读时直接映射，不必重新发现）
@@ -71,3 +73,15 @@ case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@de
 - 实际做出架构决策（[G10](G10-harness-bhe-split.md)）或实施重构（T9-bhe-split-impl）。
 - 引用未验证论文。map §⚠ 验证 TODO 的「待核」项须先 primary-fetch `arxiv.org` 才能进产物；本环境曾 403，换网络或人工核。
 - subagent 的输出未经自己机械复核不得进产物（CLAUDE.md 引证纪律 2）。
+
+## Resolution comment (2026-09-09)
+
+认读产物见 [`../research/harness-goodhart-papers.md`](../research/harness-goodhart-papers.md)。来源事实把三类职责钉死：Benchmark 拥有 case、ground truth、grader/comparator policy 与最终评分语义；Harness 只拥有模型交互、agent loop、重试和 trajectory；Environment 只拥有隔离执行、资源、安全与清理。论文不决定本仓 npm 包名，但排除了 Harness 判对、Environment 持有 benchmark 内容、以及 loader 静默丢字段三种设计。
+
+对 G10 的三个问题，来源支持的最小答案是：benchmark pack 拥有作者态 case schema 与 policy 选择；共享库可以实现通用 comparator 与 canonical runtime protocol；`k11-v2` 与 `rbi-10000251-exec` 可保留不同 source schema，但必须无损、显式、版本化地编译到同一 canonical case envelope，不能靠宽松 loader 假装合流。具体包名、导出、迁移方式和 comparator 默认值仍由 G10/R23 决定。
+
+Goodhart 审计需同时维护公开 train、受控 heldout、冻结后采集的 fresh slice，并记录跨 slice delta、bootstrap 95% CI、raw/style-controlled judge 分数、provenance 与训练/蒸馏谱系、重叠与变换探针、canary/dye sentinel、盲评解封和人工抽查。Arena-Hard 论文写 95% CI，但本次固定提交的官方代码取 5%/95% 分位数（中央 90%），复现时必须显式声明区间定义。
+
+认读同时纠正 map 原有表述：LED 研究的是标准 `pass@n`（n 次中至少一次成功），不是本仓 strict `pass^k`（k 次全部成功）；它支持审计探索能力退化，但不能直接作为本仓 `pass^k` 的实证依据。
+
+本票未产生新 ticket；[G10 — Harness Benchmark/Harness/Environment 拆分](G10-harness-bhe-split.md) 已解锁。
