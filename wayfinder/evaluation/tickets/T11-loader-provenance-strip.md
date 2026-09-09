@@ -1,12 +1,13 @@
 # T11 — case loader 静默丢弃 reference SQL 与 snapshot 锚点
 
-**Type**: task  ·  **Status**: open
+**Type**: task  ·  **Status**: **resolved 2026-09-09**
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无
 **Blocks**: T1-exec-grader-impl、[G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)
 **Mode**: AFK（后端方向，**本地直接做**，不走另环境/rubric；见 [playbook](../playbook.md) §1.1）
 **Batch**: 与 [T1](T1-exec-grader-impl.md) 同批，**T11 先完成全部验收再起 T1**（T1 的证据面建在 loader 输出上，loader 语义中途再变会使 T1 的测试重写）
 **Surfaced by**: [G1 — Execution grader seam](G1-exec-grader-seam.md)（2026-09-07 发现 ④）
+**Branch**: `feat/T1-exec-grader-impl`
 
 ## Question
 
@@ -107,3 +108,37 @@ G1 已在 2026-09-08 完成 v3 独立重做并与 v1 决议合并，两条直接
 ## 工作面
 
 核心三个文件：`packages/eval/eval/src/eval_case.ts`（schema）、`packages/eval/eval/src/case_loader.ts`（loader）、`packages/eval/eval-cli/dev/case-expected-value-audit.mjs`（端到端验收的载体）。新增一处共享的模板解析实现及其测试。牵连面是 `packages/eval/eval/tests/eval_case.spec.ts`、`case_loader.spec.ts`，以及任何断言 `EvalCase` 形状的测试。
+
+## Resolution（2026-09-09）
+
+### 做了什么
+
+**loader 侧**（`packages/eval/eval/src/eval_case.ts`）—— rbi 字段声明为 optional，两套 case set 过同一个 schema；`schema_version`、`expected.sql`、`expected.behavior`、`meta.anchor_ds`、`meta.tier`、`meta.provenance` 均存活，逐字段有 fixture 往返测试。`case_loader.ts` 本体未动——丢弃发生在 schema，不在 loader。
+
+**未知键的取舍（本票要求写明理由）** —— 按位置分开定，而非全仓一刀切：
+
+- **结构位置（顶层、`input`、`expected`）用 `strictObject`：未知键报错。** 理由是这些位置的键名有固定含义，写错一个（`expected.sqll`）旧行为是静默丢弃后拿默认值打分——正是本票 §“通用缺陷”指的那类无信号失效。**代价**：新增一个真正的结构字段（比如第二段 reference SQL）必须先改 schema，不能先在 case 里写上。接受，因为那次修改正是它的类型与含义应该落地的地方。
+- **`meta` 用 `looseObject`：未声明键保留。** 与 `dimensions` 已有的 record 形状对称。grader 要读的三个（`anchor_ds`/`tier`/`provenance`）声明并定型，其余 provenance（`roles`、`needs_repin`、`business_context` …）原样存活。**代价**：这些字段无类型。接受，因为它们是语料元数据而非判分输入；且本票验收要的“今后加字段不再被静默忽略”在这两个位置得到满足。
+- **全仓 `passthrough` 被否决**：它保住字段但全部无类型，且写错的结构键仍然无信号——把本票要消除的静默又买了回来。
+- **全仓 `strict` 被否决**：会把 `meta` 下每个未列举的 provenance 变成加载错误，使语料无处放自由形式溯源。
+
+**模板解析侧**（新增 `packages/eval/eval/src/reference_sql.ts`）—— `resolveReferenceSql(case)` 按 case 自己的 `meta.anchor_ds` 代入，封闭占位符集合 `{ds_yesterday, ds_7d_ago}` 由测试枚举。四成员返回值：`resolved` / `absent`（k11-v2 无 reference SQL，不是错）/ `unresolvable`（`missing-anchor` / `unknown-placeholder` / `malformed-anchor`）。选返回判别联合而非抛异常，是为了让 T1 能把拒绝映成 `case-defect` 而不必在判分路径上 try/catch。UTC 日期运算，主机时区不能挪动分区。
+
+**本票要求核对的一项（§验收）**：不带模板的 2 个 case（`044`、`048`）与不带 `anchor_ds` 的 2 个**是同一批**。所以不存在“含占位符却缺锚点”的 case；该分支仍有单测覆盖。
+
+**对账脚本**（`case-expected-value-audit.mjs` → `.ts`）—— 改走 `loadCase` + `resolveReferenceSql`；删自带 `yaml.load` 与 `shiftDays`；删硬编码 `TODAY`、跨 worktree 默认路径、写死的 `maxc` 路径与 `config_ieu_cdm.yaml`；`MAXC_CONFIG` 改为**必填**（它选择数仓项目，默认值会静默对错数据），`MAXC_BIN` 可选，`--wait` 改读 `MAXC_WAIT_SECONDS`；更正 not-git-tracked 注释；无法解析的 case 列为 `UNRESOLVABLE` 而不被未代入就执行。
+
+### 闸门结果（真 sidecar，非 stand-in）
+
+```
+data_source=event : MATCH=2  STALE_EXPECTED=16  SKIPPED=0  (of 18)
+data_source=dws   : MATCH=13 STALE_EXPECTED=0   SKIPPED=8  (of 21)
+```
+
+与 2026-09-06 记录**逐位相同**，且逐 case 值也相同；两个 event MATCH 均为 `0 == 0`。数据与 fidelity caveat 入库 [experiment-audit-log §2026-09-09](../research/experiment-audit-log.md)，原始输出在 `research/artifacts/t11-case-expected-value-audit-{event,dws}-20260909.log`。
+
+### 留给后续的
+
+- 对账脚本仍 `spawn maxc`（仍是第三条执行路径）——收口属 [T1](T1-exec-grader-impl.md)。
+- `057`/`138` 的 `live=null` 实为“无行返回”而非“期望值陈旧”，但为复现保留了旧判定；口径属 GA-EVAL-CASESET-EVENT-ANCHOR。
+- 两套 case schema 的合流仍归 R10 → G10；本票只让它们共存。
