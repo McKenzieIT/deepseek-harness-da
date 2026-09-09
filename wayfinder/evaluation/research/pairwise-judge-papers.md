@@ -135,3 +135,267 @@
 ---
 
 <!-- §3-§6 论文层，逐条引文经作者 grep 回核 -->
+
+> **回核记录**：本文引用的论文原文片段共 **83 条**，全部由作者用 `grep -nF` 对 `.tmp/r8/<id>.txt` 逐条机械回核，行号一并核对。两条初次未命中的已查明原因并确认属实：Table 2 的 `Gemma-3-27B 395.3` 行（subagent 转写时把单空格排版成多空格，**数字逐个相符**）、摘要句「the ordering of the criteria itself shifts」（原文跨行断开，非不存在）。**0 条实质性引证失败。**
+
+## 3. RADAR（2608.01810）：方法是干预式的，所以不能跑在既有数据上
+
+### 3.1 三阶段算法（来源事实）
+
+RADAR「takes a rubric as input and, without human-labelled data, returns a directional coupling matrix over its criteria in three stages」（L175-176 + L116-119）：
+
+1. **Stage 1 — criterion-conditioned 合成干预**。对每个 (task `t`, criterion `Ci`, direction `d ∈ {+,−}`) 抽 `N` 个 probe。prompt **只提目标准则**并要求不要动别的：「The prompt names only the targeted criterion Ci」（L143）、「The generator sees only the target criterion C and a」/「direction d ∈ {+, −}; all other criteria are hidden.」（L518-519）。
+2. **Stage 2 — verifier 逐准则打分**。「The verifier is queried n times per probe, indepen-」/「dently per criterion」（L166-167），返回「an integer score Si (x) ∈ {0, 1, 2, 3, 4}」（L169），归一为 `pi = Si/4`。单独调用是刻意的：「Separate calls remove within-」/「prompt ordering and self-consistency effects」（L170-171）。
+3. **Stage 3 — 耦合统计**。
+
+| 量 | 定义 | 出处 |
+|---|---|---|
+| `SelfEffect(Ci)` | `p̄i(i,+) − p̄i(i,−) ∈ [−1,1]` | Eq.1，L201 |
+| `GenCoupling(Ci→Cj)` | `p̄j(i,+) − p̄j(i,−)` | L213 |
+| **`Leakage(Ci→Cj)`** | `GenCoupling(Ci→Cj) / SelfEffect(Ci)` | Eq.2，L217-219 |
+| `SymCoupling` | `½(ℓij + ℓji)` | Eq.3，L185 |
+| `Asymmetry` | `ℓij − ℓji` | Eq.4，L191 |
+| 跨 task 聚合 | `ℓ̄ij`（均值）、`σij`（标准差） | Eq.5/6，L210/L214 |
+
+**方向性来自哪里**：分子读在 `Cj` 上，分母却用**源**准则 `Ci` 自己的 self-effect 归一，且 probe 集是瞄准 `Ci` 的那一批——所以 `ℓij ≠ ℓji`，二者来自不同 probe 集与不同分母。
+
+### 3.2 审计信号，与唯一的那个数值阈值
+
+- **冗余**＝高 Sym + 低 Asym：「Bidirectional clusters (high symmetric coupling, low asymmetry) mark criteria that move as one latent axis」，例 HelpSteer2 helpfulness/correctness `Sym=0.92, Asym=0.21`（L272-275）。
+- **层级**＝高 Asym：HelpSteer2 `coherence → correctness (0.78 vs. 0.22)`（L284）。
+- **分布敏感**＝高 `ℓ̄` + 高 `σ`（L216-220）。
+- **推不动本身是发现**：「a criterion the generator cannot move and the verifier cannot read (a low self-effect) is too ill-defined to score reliably」（L327-329）。
+
+**全文唯一的数值门是 `τ = 0.40`，而它是可靠性门、不是冗余判据**：「We mark Ci → Cj unreliable when SelfEffect(Ci ) < τ (τ = 0.40, a 1.6-point gap on the 0 to 4 scale」（L229-231）。冗余的阈值原文明确交给使用方：「teams set a policy threshold, inspect coupled pairs above it」（L335）、「Finally, RADAR deliberately stops at diagnosis」（L405）。**所以任何 `Sym > x ⇒ 冗余` 的规则是我们自己的政策，不能挂到论文名下。**
+
+### 3.3 成本
+
+「For a K-criterion rubric, one generator-verifier cell issues 5·K·2·N generation calls and K times as many verifier calls, i.e. 10KN (1+K) model calls in total」（L684-686，其中 `|T|=5` 被硬编码）。降预算：「audit can be run at N = 5 (≈ 1,500 / 1,000 calls) or even N = 1 (≈ 300 / 200 calls)」（L692-693）。K=5、N=5 ⇒ `10·5·5·6 = 1500` 次调用/cell。
+
+### 3.4 「Pearson ≥ 0.84」是二阶相关，且依赖 generator 选择
+
+验证比的是**准则对层面**的两个向量：「we compare RADAR's symmetric coupling SymCoupling(Ci , Cj ) against the human inter-criterion Pearson correlations on the off-diagonal pairs」（L247-249）。HelpSteer2 只有 10 个准则对、SummEval/SumPubMed 各 6 个——所以 `r ≥ 0.84`（L253）是说**RADAR 的耦合值在 6~10 个点上与人类相关结构同序同尺度**，不是说它能预测任何单条人类评分。且该 headline 取自单个 cell（GPT-5.5-R → Sonnet-4.6），Table 9 里最差 cell 低到 `r = −0.04`（L727）。
+
+论文自己承认这个参照系不干净：「Human inter-criterion correlation is an imperfect external reference: it mixes genuine dependence, annotator noise, and dataset-specific co-occurrence」（L384-387）。
+
+### 3.5 三条硬不兼容（映射本仓）
+
+> 前两条是**来源事实的直接比对**，第三条是论文明写的禁止。
+
+| | RADAR 要求 | 本仓现状（§2） | 后果 |
+|---|---|---|---|
+| **量表** | 整数 0-4，归一 `S/4`（L169、L493-494）；`τ=0.40` 定义为「0-4 上 1.6 分的差距」（L230） | **二值 0/1**（§2.2） | `SelfEffect` 在二值上只能取少数几个值，`τ` 门的语义必须重定义；不能直接照搬 0.40 |
+| **调用结构** | **逐准则单独调用**，且刻意如此以消除 prompt 内顺序效应（L166-171） | 五维**一次**调用（§2.8） | 照搬 RADAR 会测到一个**不是生产判官**的判官 |
+| **数据** | 新生成的 ±方向配对 probe；每个量都是 `d=+` 与 `d=−` 两个 probe 集之差 | 1495 条**被动观测**向量（§2.4） | 算不出 `Leakage` |
+
+第三条不是我们的推断，是论文的核心主张：「Correlation in observed scores cannot separate criteria the judge treats as one dimension from criteria that merely co-occur in the data; isolating the former requires probing how a judge acts on a rubric under intervention, not just how it scores in aggregate.」（L78-83）；针对用已打分数据的先前工作再说一次：「measure it observationally on already-scored data, which cannot separate criteria a judge treats as one dimension from criteria that merely co-vary」（L141-146）。定性差别也写明：「Varying one criterion and measuring shifts in the others makes this a synthetic intervention rather than passive co-variation.」（L157-159）
+
+### 3.6 因此本仓的观察相关矩阵**不能**当冗余证据（对 §2.5 的自我降级）
+
+在 1495 条向量上算 pairwise φ 相关是可以的，结果如下——但**必须标为降级估计**：
+
+| | table | field | filter | agg | overall |
+|---|---|---|---|---|---|
+| **table_selection** | 1.000 | 0.634 | 0.396 | 0.281 | 0.552 |
+| **field_selection** | 0.634 | 1.000 | 0.379 | 0.490 | 0.632 |
+| **filter_conditions** | 0.396 | 0.379 | 1.000 | 0.368 | **0.771** |
+| **aggregation_logic** | 0.281 | 0.490 | 0.368 | 1.000 | 0.539 |
+| **overall_semantics** | 0.552 | 0.632 | **0.771** | 0.539 | 1.000 |
+
+**为什么它是降级的**：这个矩阵正是 RADAR 用来当对照的 passive baseline——「Synthetic correlation scores unconditioned generations on every criterion and correlates the score columns, the co-variation a rubric shows without any intervention」（L271-273），其 probe「prompt, with no target criterion and no direction」（L651）。而该 baseline 在 Table 2 里的表现是 **HelpSteer2 +0.671 / SummEval −0.111 / SumPubMed +0.765**（L305/L309/L312），对应 RADAR 的 +0.957/+0.842/+0.872——**在 SummEval 上连符号都是反的**。
+
+再加两条本仓特有的削弱：① 83.4% 的向量是全 1（§2.5），φ 完全由那 16.6% 的少数派驱动；② 1495 条池化了 19 次 run，其中 1120 条连执行模式都不可知（§2.7）。
+
+**所以 `filter_conditions ↔ overall_semantics = 0.771` 这个最高耦合值，只能当作「值得用干预探针去验的假设」，不能当作冗余的证据。** 而 §2.6 的读出算术不受此影响——它不是耦合估计，是决策规则的事实。
+
+## 4. 参考答案与顺序：两条直接对撞本仓判官的一手结果
+
+### 4.1 `2608.17938`：参考答案承担几乎全部工作，去掉它分数就通胀
+
+**设计**：语料是 164 个考卷 bundle / 7,121 题，由 frontier 模型在 ingestion 时抽出「每题 + 答案格式 + 逐准则评分标准」（L114-115）；从中抽 24 题，6 个 config 写答案、同 6 个 config 当判官、每张卷判 3 次 ⇒ 「3,456 verdicts, all complete」（L140）。**全程没有人类评分员**：「No human marker scored these answers: valid here means anchored and consistent, and says nothing about agreement with a human examiner」（L497-498）。
+
+**方差分解**（ICC(2,1)，基于三次平均分，L290）：「which answer is being graded explains 95.6 % of score variance. Which judge is grading explains 0.2 %」（L258-259）。
+
+**两个 ablation**（L184-190），这是本方向最有用的一段：
+
+| 臂 | 改了什么 | 结果 |
+|---|---|---|
+| Arm 1 | 去掉准则与等级，**保留官方答案** | 「Reliability is unchanged: ICC 0.880 with the full rubric, 0.888 with the official answer alone」；判官略松 `+0.016`（L364-365）。原文裁定：「Given the official answer, the elaborate criteria are redundant.」（L366-367） |
+| Arm 2 | **连官方答案也去掉** | 「Reliability falls to 0.628」、「Scores inflate by 0.074 of full marks」、判别力中位数掉到 68%、**「The questions whose answers can only be checked against the key collapse to 30–36 %」**（L368-373） |
+
+机制句：「The rubric is what decouples grading from judge intelligence: without it, grading turns back into answering, and capability matters again.」（L400-402）
+
+> **引用纪律（一处必须小心的误读）**：摘要写的 `ICC 0.888 to 0.628` 是 **key-only → 什么都没有**，不是 **full-rubric → 什么都没有**。同一批 12 题的 full-rubric ICC 是 **0.880**（L364）。把 0.888→0.628 说成「有 rubric 到没 rubric」的落差是错的。
+
+**长度偏好这条也值得记**：题内长度-分数秩相关 `+0.60~+0.74` 看着像长度溢价，但跨 writer family 的均值是 `0.875` vs `0.868`（长度差 2.3×，L416-419）——Simpson 反转，「What a rubric-anchored judge pays for is the criteria an answer covers」（L428-429）。
+
+**范围限制**（原文自陈，L495-497）：24 题全部来自台湾地区的三项升学考试（GSAT / AST / TVE，L105-108）、以繁体中文批改；最好的 writer 均分 0.934 已接近天花板；无人类评分员。
+
+**映射本仓**：`SqlJudgeInput` 无参考答案（§2.1）⇒ **本仓判官就跑在 Arm 2 上**——唯一被直接测过的「无参考」代价是 ICC 0.888→0.628 与 `+0.074` 的分数通胀。而语料里 39 个 case **本来就带** `expected.sql`，被 loader 静默丢弃（§2.9、T11）。所以「把参考答案给判官」不是加功能，是**停止丢弃已有资产**。
+
+### 4.2 `2602.02219`：准则顺序本身在移动分数，而二值量表是偏置最高的档
+
+本仓判官对应该文的 **setting 2**：多准则一次 prompt、模型自行在区间内给分、**且无参考答案**（「the HANNA and SummEval datasets do not include a reference answer in the prompt」，L657-659）。
+
+**轴 1（评分档位置）**：χ² 拟合 + Cramér's V。最极端 cell 是 Gemma-3-27B on SummEval：Pos1 `11.5%` vs Pos5 `31.4%`（均匀基线 20%，L381）——**2.7× 的比值纯来自排版顺序**。方向是模型属性且不可先验预测：「GPT-OSS-20B is more first-biased; Gemma-3-27B and Qwen3.5-27B are more last-biased」（L295-299）。
+
+**对本仓最直接的一条**：Cramér's V 按 rubric 分辨率分解（Table 4，L442-447）后，原文写下「coarser binary rubric therefore tends to increase bias; 3- or 5-point is the lower-bias regime」（L451-452）。**本仓正是 `n=2`。**
+
+**轴 2（准则顺序）**：「The bias is pervasive: 56 of 60 (judge, criterion) Friedman tests are significant (all 24 SummEval cells, 32/36 HANNA cells), and the most extreme cell (Qwen3.5-9B on SummEval) shifts a criterion's mean by up to 0.80 points.」（L468-472）——1-5 量表上 0.80 分 = 20% 的量程。Mean Δ 跨 12 个 (judge, dataset) cell 为 0.21–0.53。**连位置偏置近零的 GPT-OSS-120B 也受影响。**
+
+**下游后果**（这是该文最该被本仓听见的一段）：「Across all 18 cells the per-prompt Kendall τ between the two rankings is only 0.67–0.85, and the top-1 candidate flips on 16–39% of prompts. Crucially this is not confined to high-bias judges: GPT-OSS-120B, the lowest-bias judge by χ2 , still shows 17.5–31.2% top-1 reversal」（L522-532）。
+
+**缓解**：balanced 排列与随机排列统计上无差别，「roughly two-thirds of the K=1 → 10 improvement is reached by K=3 and about 85% by K=5」（L386-388）；但「'removing the bias' is mechanical, but 'improving human correlation' is conditional. Permutation helps human agreement only when the judge is strongly biased to begin with.」（L397-400）
+
+**范围限制**：六个判官全是开权重 ≤120B；「Owing to budget constraints, our experiments were not conducted on the most recent closed-source LLMs.」（L532-534）——所以本仓的 qwen3.7-max 上的偏置**必须自己测，不能从它的表里推**。
+
+**映射本仓**：两份 prompt 副本的准则顺序完全一致、`overall_semantics` **恒在末位**，且从未被扰动过（§2.8）。而 §2.6 已证明 `overall_semantics` 是唯一起约束作用的维度。**于是「唯一起约束作用的那一维恒处末位」成了一个从未被测量、却可能移动全部历史数字的自由度。**
+
+## 5. 单-pass 多准则干扰（`2608.14684`）：本仓正好是被指控的那一侧
+
+> map 把这篇记作「SARA」。真标题是 *Mitigating Rubric Interference in LLM Judges via On-Policy Self-Distillation*（§1 修正 1）。对本仓有用的**不是 SARA 本体**（要全参数微调），是它的**测量框架**。
+
+### 5.1 干预定义与不变量
+
+「rubric interference: the verdict on one rubric shifts depending on which other rubrics are co-present」（L33-36）。被违反的不变量是 Eq.1：`M(c, R)[r] = M(c, R′ )[r]  ∀ R, R′ ∋ r`（L201）——同一条准则的判决不应随同场准则集变化。
+
+**不是采样噪声**：「This reflects systematic interference rather than generation noise: all models achieve ≥0.98 self-agreement across repeated evaluations with different random seeds.」（L90-93）
+
+论文把两种模式命名为 **isolation**（一准则一次调用）与 **joint**（全准则一次 pass）。**本仓是 joint。**
+
+### 5.2 四个受控操作（Table 1，L150-153）——可直接照抄的测量协议
+
+| 操作 | 变什么 | 比什么 |
+|---|---|---|
+| Expansion | 集合规模 1 → n | isolation 判决 vs joint 判决 |
+| Subsetting | 集合规模 m → n | 同一准则在小集合 vs 大集合 |
+| **Reordering** | 准则顺序 | 同一准则跨排列 |
+| Noise | 加入无关准则 | 加噪前 vs 加噪后 |
+
+统计量对全部四项相同：rubric-level agreement、Cohen's κ、sample-level exact match (EM)。协议参数：准则上限 10/样本、shuffle 测试平均 5 个随机排列、贪心解码（L330-336）。**Subsetting 只有定义没有结果**（全文四处提及、无对应表），照抄时可跳过。
+
+### 5.3 与本仓最可比的那一列数字
+
+摘要的「只有 1/3 样本完全一致」出自 HealthBench，而 HealthBench **平均 11.5 条 rubric/样本**（L301）——本仓只有 5 条，**不可照搬**。诚实的类比是 Consistency-at-K 表里的 **K=4** 列（HealthBench，二值格式，与本仓同类），未训练基线（Table 9，L850-856）：
+
+| 判官 | K=2 (Agr/κ/EM) | **K=4 (Agr/κ/EM)** | K=8 (Agr/κ/EM) |
+|---|---|---|---|
+| Qwen3-8B | .871 / .722 / .754 | **.844 / .672 / .515** | .843 / .675 / .266 |
+| Qwen3-14B | .901 / .802 / .806 | **.890 / .779 / .635** | .874 / .746 / .355 |
+| Qwen3-32B | .895 / .789 / .796 | **.882 / .763 / .600** | .884 / .768 / .350 |
+| Llama-3.1-8B | .797 / .594 / .627 | **.749 / .498 / .309** | .733 / .469 / .094 |
+
+读法：**K=4 时，样本级 EM 只有 .309–.635**——即仅仅因为「同场还有其他准则」，1/3 到 2/3 的样本里至少有一条准则的判决翻转。且干扰是**分散的**而非集中在少数难准则：「baseline interference is not concentrated on a few hard rubrics but scattered across many—a single flipped rubric per sample suffices to break exact match」（L381-384）。
+
+**对本仓 0.6 阈值的直接后果**：单条准则翻转就能让样本跨过 3-of-5 阈值（真值恰为 3 时 pass→fail，恰为 2 时 fail→pass）。**论文不研究阈值化聚合，所以「翻转跨阈率」是我们自己要测的量**，但它的输入（逐准则翻转率）正是这张表测的。
+
+### 5.4 SARA 本体不适用，测量框架适用
+
+SARA 要全参数微调（EMA decay 0.999、symmetric JSD、KL preservation，L325-329）+ 8×H20（L337-339）。本仓调用托管模型，不训判官 ⇒ **SARA 本体出局**。但原文明确把框架单列：「The measurement framework itself can also serve as a diagnostic protocol for any multi-rubric judge before deployment.」（L550-553）
+
+### 5.5 一条必须一起搬的限制
+
+「SARA treats isolation verdicts as interference-free anchors. This assumption is supported by the high self-agreement of isolation judgments (≥0.98 across all models), but isolation is not infallible. In some cases, co-evaluating related rubrics may surface useful context that improves judgment quality. Our framework does not distinguish beneficial context from harmful interference.」（L572-583）
+
+**所以 joint-vs-isolation 的差只测「不稳定」，不测「谁对」。** 要判方向必须有真值——在本仓即执行事实，也就是 T1。这条决定了 R20 的探针不能单独给出「该改成哪样」的结论。
+
+## 6. 组合、读出，与 pointwise/pairwise 不一致
+
+### 6.1 GSR（`2608.12097`）：gate 不是早退，且从未与 unweighted mean 比过
+
+**gate 的语义**是对**已算出**的判断施加 cap/mask/veto——「factuality and completeness can be reduced before a safety flag gates the result, preventing later positive evidence from overriding the cap」（L164-166）。**它不跳过下游准则**：「After the criterion-level judgments are available, operators run in a topological order of G.」（L327），且每个准则节点必须可达 sink（L286-287）。⇒ **gating 省不了判官 token**；任何「gate 失败就跳过其余准则以省钱」的论证在这篇里没有依据。
+
+**成本**：pointwise 每候选 k 个 judgment、pairwise 2k（L31-33、L384-385）；但论文**不给 LLM 调用数**，且明确允许候选联合评：「The candidate-aligned vector can be produced by evaluating candidates separately or jointly」（L322-324）。所以 GSR 既不承诺保住本仓的单调用预算，也不禁止它。
+
+**效应量必须分清两个 baseline**：
+
+| 对照 | Exact Agreement 增益 | 出处 |
+|---|---|---|
+| vs Prometheus-style（**整体式**打分） | **+0.62 ~ +6.75 pp** | 摘要 L33-35 |
+| vs flat **weighted** 聚合（**同一批 criterion trace**） | **+0.36 ~ +5.79 pp** | L531-535 |
+
+第二行才是「组合方式」的干净对照——「Because the latter comparison reuses the same criterion-level traces, these differences isolate composition and Readout rather than criterion elicitation」（L533-535）。而且 flat 规则**没有被压倒**：「The flat weighted variant still has better Within-1 Accuracy on BiGGen and HelpSteer2, a marginally lower MAE on HelpSteer2, and sometimes stronger correlation」（L539-541）。六次运行的 Exact Agreement 标准差是 0.45–0.84pp，所以 +0.36 / +0.99 这类边际本身在 1–2σ 内。
+
+**两项 NOT IN PAPER**（对本仓恰好都是要紧的）：① 从未测 **unweighted** mean（被测的是 flat *weighted* 规则）；② 从未测**阈值化**聚合，全部 pointwise 目标是 1-5 序数。**所以「flat mean 是坏聚合器」在本仓配置下是方向性支持、定量未证。**
+
+不过有一条定性论证干净地迁移：非补偿性。一个 veto 型准则在任何均值下都可以被其他准则投票推翻——这正是 §2.6 实测到的 128 条（8.56%）。**这条论证来自准则语义，不来自 GSR 的效应量。**
+
+另：GSR 不修准则层判断本身（「it does not replace or correct the semantic judgments produced at criterion nodes」，L616-620），且效应非 backbone 不变（同处）。
+
+### 6.2 TrustJudge（`2509.21117`）：修正 map 的转述，并读出对本仓最重的一条
+
+map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**：
+
+1. **CR 的定义含三个析取项**（Def. 2.1 / Eq.1，L173-176）：`(Sx > Sy ∧ C ≤ 0) ∨ (Sx < Sy ∧ C ≥ 0) ∨ (Sx = Sy ∧ C ≠ 0)`。后两类里有**平局不匹配**，不是偏好反转。所以「不一致」不等于「打分与两两比较打架」。
+2. **条件**：judge = Llama-3.1-70B-Instruct、**1-5 raw scale**（L367）、作者自建的 10.8k pair 数据集（MT-Bench 80 题 + ArenaHard 500 题，L329-330），且**刻意做成每个评分档均匀分布**：「ensuring uniform score distributions across every rating level」（L350）——不是自然分布。
+3. **同一个 23.32% 在 Appendix G 里是另一个实验**：「CR drops from 23.32% to 20.63% with distribution-sensitive scoring」（L1154，24 个 category×judge cell 的均值、判官为 7B/8B/9B 级）。引用时必须指明是 Table 1 的 14.89% 还是 Appendix G 的 20.63%。
+4. 摘要的 `15.22% → 4.40%` 是 **NTR@k=5**，不是 k=4（Table 1 同行，L450）。
+
+**对本仓最重的一条不是那个百分数，而是论文的中心论点**：粗量表丢信息。「increasing the scoring scale from 5 to 100 points consistently reduces the Conflict Ratios」（L524）。**本仓是二值——比它批评的 5 级还粗一档，而论文从未测过二值**（score set 一律是 1-5 / 10 / 100）。
+
+**两个机制都不能直接用**：distribution-sensitive scoring 与 likelihood-aware aggregation 都要 token 级 logprob（实验用 vLLM「providing the top 20 log probabilities for each generated token」，L991）。托管 API 只回文本时，两者都无法实现。
+
+**另一条与本仓 5 维直接相关**：Appendix F 把判官扩到 factuality / coherence / helpfulness 三个子维度时，**每个子维度用各自的 prompt 独立评、指标各自算再平均指标**（L1001-1005、L1015-1018）；per-dimension 的 CR 基线是 **45.7–52.2%**（Table 5，L1104-1108：Gemma-2-27b-it 49.43 / Qwen2.5-32B 45.73 / Llama-3.1-70B 52.20），远高于单一综合分的 23–37%。而**全文没有任何把多维分数合成一个综合分的规则**（NOT IN PAPER）。⇒ 这一文献里没人背书「把逐维分数塌成一个综合分再卡阈值」，那正是本仓在做的事。
+
+---
+
+## 7. 交付：G8 要裁什么，R20 要跑什么
+
+### 7.1 论文已经替 G8 裁掉的（不必再 grill）
+
+1. **「五维 flat mean + 0.6」不是可辩护的读出。** 但**理由不是论文**——GSR 从未测 unweighted mean、也从未测阈值化聚合（§6.1）。理由是本仓 §2.6 的实测：1495 条向量里 `overall_semantics == 1` 却被判 FAIL 的有 **0 条**，`== 0` 却被判 PASS 的有 **128 条（8.56%）**，且 `P(四机械维全 1 | overall=1) = 0.9984`。四个机械维度在决策上只充当推翻票。**G8 可以把这条当既成事实接受。**
+2. **判官必须拿到参考答案。** `2608.17938` 的 Arm 2 是唯一直接测过「无参考」代价的实验：ICC `0.888 → 0.628`、分数通胀 `+0.074`、只能靠答案核对的题判别力掉到 `30–36%`（§4.1）。而本仓 39 个 case 的 `expected.sql` 正被 loader 丢弃 ⇒ **这与 T11 是同一块工作，不是新方向。**
+3. **二值量表是错的方向。** 两条互相独立的证据同向：`2602.02219` Table 4 的「coarser binary rubric therefore tends to increase bias」（L451-452），与 TrustJudge 的 5→100 分持续降低 CR（L524）。
+4. **pairwise 不是免费替代。** 换成 pairwise 会引入 transitivity 与 tie 两类**新**不一致（TrustJudge Def. 2.2），而 GSR 的 pairwise「最高」优势（+0.77 / +0.28）落在 1σ（0.30 / 0.51）内。方向 8 名字里的 pairwise，**在一手证据上是本方向最弱的一条支线**。
+
+### 7.2 G8 真正要裁的（论文管不了，须本仓自定）
+
+1. **读出形状**：`overall_semantics` 单闸门（四维降级为诊断信息、不进读出）还是 GSR 式 typed graph（gate / reduce / readout）？§2.6 显示「四维不进读出」在当前数据上是**零损失**变更（0/1495 反例）——但判官一旦拿到参考答案，四维行为会变，所以顺序很重要。
+2. **参考答案的形态**：`expected.sql` 文本、执行结果集，还是两者？与 G1b 的 provenance 决议耦合。
+3. **量表**：换 0-4（RADAR/SARA 兼容）还是保留二值 + gating？换量表会让 1495 条历史向量不可比——**但那批已因 D4/D6 全体失效，所以现在是免费的换锚时机**。
+4. **准则顺序与调用结构**：维持五维一次调用，还是逐准则单独调用（RADAR 与 SARA-isolation 的做法）？后者 ×5 成本，且改变被测对象本身。
+5. **证据落盘** — 建议**不由 G8 裁**：判官的 `schema_context`、prompt 变体、量表版本是否入 artifact（§2.7 现为 0/80）。这与 G1 D3 的 artifact 决议同类，应并入 **T1 的 artifact schema**，否则 judge 侧会重演一次「模式不可恢复」。
+
+### 7.3 R20 的可执行规格（本票主要交付）
+
+> **map 对 R20 的描述有三处不成立**：「RADAR 跑现 5 维 / 既有数据分析 / quick win」。
+> (a) RADAR **不能**跑既有数据——它的每个量都是 `d=+` 与 `d=−` 两个 probe 集之差，论文明写观察相关无法识别耦合（§3.5）；用既有数据能算的恰是它要打败的 passive baseline，而该 baseline 在 SummEval 上**符号都是反的**（§3.6）。
+> (b) RADAR 的量表是 0-4，本仓是二值。
+> (c) RADAR 的 verifier **逐准则单独调用**，本仓单调用——照搬会测到一个不是生产判官的判官。
+
+因此 R20 拆成四个探针，按性价比排序，**前三个互不依赖**：
+
+| 探针 | 做什么 | LLM 调用成本 | 前置 |
+|---|---|---|---|
+| **R20a 读出算术复核** | 已完成于本票 §2.6 | **0** | 无 |
+| **R20b 顺序扰动** | 同一批 SQL、同一判官，K=3~5 个准则顺序排列，报逐维边际漂移 + Agr/κ/EM | `(K−1)×N` | 无 |
+| **R20c isolation-vs-joint** | 五维各自单调用 vs 现行单调用，报 Agr、Cohen's κ、sample-level EM | `5N`（joint 侧已有） | 无 |
+| **R20d 真 RADAR** | 生成 ±方向 probe、逐准则打分、算 Leakage 矩阵 | `10KN(1+K)`；K=5,N=5 ⇒ **≈1500/cell** | 须先改量表 + 改调用结构 |
+
+**R20a**：结论已在手，建议直接把 §2.6 写进 R20 的 resolution，**不再另跑**；剩下的唯一工作是把脚本固化进仓（`packages/eval/eval-cli/dev/judge-readout-audit.mjs`）以便回归时复算。
+
+**R20b**：这是**唯一能测「`overall_semantics` 恒在末位」这个自由度**的探针（§2.8 + §4.2）。K 取 3~5 有一手依据：balanced 与 random 统计上无差别，K=3 拿到约 2/3 收益、K=5 约 85%（L386-388）。判据是逐维边际的移动量 + 跨排列 EM，**不是单一阈值**。
+
+**R20c**：与 SARA Table 9 的 **K=4 列**（Agr .749–.890 / EM .309–.635，§5.3）对照。它同时是 R20d 的前置——RADAR Stage 2 本来就是逐准则单调用，所以 R20c 的 isolation 侧**就是** RADAR 所需的判官形态。注意 §5.5 的限制：joint-vs-isolation 的差只测不稳定性、不测谁对，**要判方向必须等 T1 的执行真值**。
+
+**R20d**：只有在量表改 0-4、判官改逐准则调用之后才有意义。另有一处**必须自己承担的偏离**：论文排除 generator=verifier 自配对以避开 self-preference（L254-255），而本仓只有一个可用模型 ⇒ 自配对不可避免，须在结论里标注。
+
+**样本从哪来（这是三个探针便宜的真正原因）**：1495 条向量对应的 `generated_sql` 已落盘在 attempt 记录里（§2.7 的键表含 `generated_sql`），所以**不必重跑 agent，只重跑判官**。
+
+**阈值纪律**：论文没给任何冗余阈值（L335、L405），全文唯一数值门 `τ=0.40` 是可靠性门。任何 `Sym > x ⇒ 冗余` 的规则**是我们自定的政策，必须在产物里标明**。
+
+### 7.4 与方向 2 / 3 的边界（避免 G2 / G3 / G8 各裁一次同一件事）
+
+- **「给判官参考答案」属方向 2（blind-solve-then-score）的核心，但 `2608.17938` 把它讲得更强**：不需要 blind-solve，**只要有官方答案**；blind-solve 是「没有答案时制造一个」。所以二者的正确关系是——**有 `expected.sql` 的 case 走 reference-anchored（便宜、已被直接测过）；没有的才走 blind-solve（贵、未验证）**。这条应写进 G2 的题面，否则 G2 会把 R8 已确立的事重新论证一遍。
+- **「逐维 TPR/FPR 校准」属方向 3 / R14**。§2.11：唯一能做配对分析的文件只有 `eventdef-realexec.json`，n=95 / 35 case，且其真值受 event anchor 污染（16/18 期望值失效）。⇒ **R14 的规格应改为「T11 之后、在重建的 EXECUTION 语料上做」**，否则算出的逐维 FPR 是对坏真值的 FPR。
+- **归属建议**：读出形状与量表 → G8；参考答案的形态 → G1b（与 provenance 同票）；artifact 落盘 → T1；逐维校准 → R14（改前置）。
+
+---
+
+## 8. 对 map 的具体修改建议
+
+1. **§Frontier directions 方向 8 的论文行**改两处标题：`2608.14684` 真标题为 *Mitigating Rubric Interference in LLM Judges via On-Policy Self-Distillation*（SARA 是方法名）；`2602.02219` 的内容是**rubric-based 评测的位置偏置**，不是 pointwise/pairwise 之争。
+2. **方向 8 的「Quick win」表述要改**：RADAR 不能跑既有数据（§3.5）。quick win 是 §2.6 的读出算术（已完成）+ R20b/R20c 两个便宜探针；真 RADAR 是有前置的贵探针。
+3. **TrustJudge 的 gist 收紧**为「Llama-3.1-70B-Instruct、1-5 raw scale、自建 10.8k pair 均匀分布数据集上的 Score-Comparison Conflict Ratio 23.32%（含平局不匹配）」。
+4. **§⚠ 验证 TODO**：方向 8 的 6 篇已由本票 primary-fetch（arXiv API 元数据 + PDF 全文）确认，可从「primary-URL-confirmed」升级为「元数据+全文已认读」。
+5. **§Not yet specified 第 2 条（BM25 当 schema context）可以收紧**：§2.9 查出它有两条路径（CLI 路径含真实列清单、runner 兜底只有 id + relevance），而**结果文件不记录走了哪条**（§2.7）。所以「它在假通过里占多少」在 artifact 补齐之前**结构上无法回答**，不只是缺 R14 的分维分解。
