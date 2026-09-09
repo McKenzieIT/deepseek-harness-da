@@ -21,10 +21,12 @@
  * of the drifted values (119: 552, 136: 482) are numbers an earlier session had
  * recorded as the AGENT's wrong answers.
  *
- * Cases load through `loadCase`, and reference SQL resolves through
- * `resolveReferenceSql`, so this reconciliation and the grader read the corpus
- * the same way: each case's placeholders bind to its own `meta.anchor_ds`, and a
- * template that cannot be resolved is reported rather than executed unresolved.
+ * Cases load through `loadCase`, reference SQL resolves through
+ * `resolveReferenceSql`, and execution goes through the same `ctx.query`
+ * capability and executor port the grader uses — so this reconciliation and a
+ * graded run read the corpus and reach the warehouse the same way. Each case's
+ * placeholders bind to its own `meta.anchor_ds`, and a template that cannot be
+ * resolved is reported rather than executed unresolved.
  *
  * Scope: only `match_mode: scalar_exact` cases with a numeric expected value are
  * checked; multi-row/array expectations are reported SKIPPED rather than guessed
@@ -35,60 +37,45 @@
  *     node --import tsx/esm packages/eval/eval-cli/dev/case-expected-value-audit.ts [caseDir]
  *
  * `MAXC_CONFIG` is required (it selects the warehouse project, so defaulting it
- * would silently reconcile against the wrong data). `MAXC_BIN` overrides the
- * `maxc` executable, otherwise it resolves from `PATH`.
+ * would silently reconcile against the wrong data). `--sidecar`'s equivalent is
+ * `MAXC_SIDECAR`: it must point at the real `maxc-sidecar.mjs`, because the
+ * boot default is a throwaway stand-in that owns no warehouse.
  */
 import { readdirSync } from 'node:fs'
-import { spawn } from 'node:child_process'
 import { join } from 'node:path'
-import { loadCase, resolveReferenceSql } from '@deepseek-ai/dsh-eval'
+import { loadCase, resolveReferenceSql, executeAndNormalize, resolveComparatorPolicy } from '@deepseek-ai/dsh-eval'
+import { boot } from '../src/context.ts'
 
 const CASE_DIR = process.argv[2] ?? join(import.meta.dirname, '../../eval/cases/rbi-10000251-exec')
-const MAXC = process.env.MAXC_BIN ?? 'maxc'
-const CONFIG = requireMaxcConfig()
 const ONLY = process.env.ONLY_DS ?? 'event'   // 'event' | 'dws' | 'all'
 const CONC = Number(process.env.CONC ?? 3)
-const WAIT_SECONDS = Number(process.env.MAXC_WAIT_SECONDS ?? 300)
+const SCOPE_ID = process.env.EVAL_SCOPE_ID ?? '10000251'
 
-/**
- * Read `MAXC_CONFIG`, refusing to run without it: the config selects the
- * warehouse project, so a default would reconcile against the wrong data.
- * @returns the config path.
- */
-function requireMaxcConfig(): string {
-  const configPath = process.env.MAXC_CONFIG
-  if (configPath === undefined || configPath === '') {
-    throw new Error('MAXC_CONFIG must name a maxc config file (it selects the warehouse project)')
-  }
-  return configPath
+if ((process.env.MAXC_CONFIG ?? '') === '') {
+  throw new Error('MAXC_CONFIG must name a maxc config file (it selects the warehouse project)')
+}
+const SIDECAR = process.env.MAXC_SIDECAR
+if (SIDECAR === undefined || SIDECAR === '') {
+  throw new Error('MAXC_SIDECAR must point at query-maxcompute/dev/maxc-sidecar.mjs; the boot default is a stand-in that owns no warehouse')
 }
 
-/** One `maxc query run --json` envelope, or a local failure to invoke it. */
-type MaxcEnvelope = {
-  data?: { result?: { rows?: unknown[] }; rows?: unknown[] }
-  error?: { message?: string }
-  _error?: string
-}
+// Row cap and column semantics do not affect this reconciliation — it reads the
+// first cell of the first row — but the policy is a required, explicit input.
+const policy = resolveComparatorPolicy({ columnSemantics: 'by-name', maxStoredRows: 200 })
 
-/**
- * Run one SQL statement through the `maxc` CLI.
- * @param sql - executable SQL (placeholders already resolved).
- * @returns the parsed envelope, or `{ _error }` when maxc could not be invoked or its output was not JSON.
- */
-function runSql(sql: string): Promise<MaxcEnvelope> {
-  return new Promise((resolve) => {
-    const child = spawn(MAXC, ['--config', CONFIG, 'query', 'run', '--wait', String(WAIT_SECONDS), '--stdin', '--json'])
-    let out = ''
-    child.stdout.on('data', (d: Buffer) => { out += d })
-    child.stderr.on('data', () => {})
-    child.on('error', (e: Error) => resolve({ _error: e.message }))
-    child.on('close', () => {
-      try { resolve(JSON.parse(out) as MaxcEnvelope) } catch { resolve({ _error: out.slice(0, 200) }) }
-    })
-    child.stdin.write(sql)
-    child.stdin.end()
-  })
-}
+const { collaborators, executorIdentity } = await boot({
+  schemaDir: join(import.meta.dirname, '../../../../examples/k11-semantic-layer'),
+  provider: 'dashscope',
+  model: 'qwen3.7-max',
+  today: new Date().toISOString().slice(0, 10).replaceAll('-', ''),
+  withQuery: true,
+  noSqlJudge: true,
+  queryExpansion: false,
+  scopeId: SCOPE_ID,
+  sidecarPath: SIDECAR,
+})
+const executor = collaborators.executor
+if (executor === null || executor === undefined) throw new Error('boot mounted no query executor')
 
 /** A case queued for reconciliation, with its reference SQL already resolved. */
 type AuditCase = {
@@ -125,7 +112,7 @@ for (const f of readdirSync(CASE_DIR).filter(n => n.endsWith('.yaml')).sort()) {
 }
 
 console.log(`auditing ${cases.length} cases (data_source=${ONLY}) from ${CASE_DIR}`)
-console.log(`maxc=${MAXC} config=${CONFIG} wait=${WAIT_SECONDS}s conc=${CONC}\n`)
+console.log(`executor=${executorIdentity ?? 'none'} config=${process.env.MAXC_CONFIG} wait=${process.env.MAXC_WAIT_SECONDS ?? '60'}s conc=${CONC}\n`)
 if (unresolvable.length > 0) console.log(`UNRESOLVABLE (${unresolvable.length}):\n  ${unresolvable.join('\n  ')}\n`)
 
 /** One reconciled case: its recorded expectation beside what its reference SQL returns now. */
@@ -138,12 +125,12 @@ await Promise.all(Array.from({ length: CONC }, async () => {
     const i = cursor++
     const c = cases[i]
     if (c === undefined) return
-    const env = await runSql(c.sql)
-    const rows = env.data?.result?.rows ?? env.data?.rows ?? null
-    const err = env._error ?? env.error?.message ?? null
-    const first = Array.isArray(rows) && rows.length > 0 ? Object.values(rows[0] as Record<string, unknown>)[0] : null
-    results.push({ ...c, live: first, rowCount: Array.isArray(rows) ? rows.length : null, err })
-    console.log(`[${c.id}] live=${JSON.stringify(first)} expected=${JSON.stringify(c.expected)} rows=${Array.isArray(rows) ? rows.length : '?'}${err === null ? '' : ' ERR=' + err.slice(0, 90)}`)
+    const artifact = await executeAndNormalize(executor, c.sql, policy)
+    const rows = artifact.kind === 'completed' ? artifact.rows : null
+    const err = artifact.kind === 'completed' ? null : artifact.error
+    const first = rows !== null && rows.length > 0 ? Object.values(rows[0]!)[0] : null
+    results.push({ ...c, live: first, rowCount: rows === null ? null : artifact.rowCount, err })
+    console.log(`[${c.id}] live=${JSON.stringify(first)} expected=${JSON.stringify(c.expected)} rows=${rows === null ? '?' : rows.length}${err === null ? '' : ' ERR=' + err.slice(0, 90)}`)
   }
 }))
 
@@ -161,3 +148,5 @@ for (const r of results) {
 }
 console.log(`\nMATCH=${ok}  STALE_EXPECTED=${mismatch}  SKIPPED=${unknown}  (of ${results.length})`)
 if (unresolvable.length > 0) console.log(`UNRESOLVABLE=${unresolvable.length}`)
+// The mounted sidecar is a live subprocess; exit rather than waiting on it.
+process.exit(0)

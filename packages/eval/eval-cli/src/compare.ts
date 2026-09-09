@@ -41,7 +41,64 @@ interface RunResult {
   config?: {
     pass_k?: number
     verdict_semantics?: string
+    with_query?: boolean
+    executor_identity?: string
+    comparator_policy_version?: number
+    column_semantics?: string
   } | null
+}
+
+/** Whether a run may be rendered, and whether its numbers may be cited as a baseline. */
+export interface Renderability {
+  readonly ok: boolean
+  /** Why the run was refused, when it was. */
+  readonly reason?: string
+  /** True when the run predates run configs, so its mode is unrecoverable and it is not a citable baseline. */
+  readonly unattributable?: boolean
+}
+
+/**
+ * Decide whether a run states enough about itself to be compared.
+ *
+ * A run that records a config but omits how it graded, or claims real execution
+ * without naming the executor, is refused: those fields decide what its numbers
+ * mean, and the build that produced it knows them. `with_query` alone is not
+ * enough, because the default sidecar is a throwaway stand-in — the historical
+ * 5.1% "real execution" baseline cannot be confirmed to have touched a
+ * warehouse at all.
+ *
+ * A run with no config predates the field entirely. Those stay renderable so
+ * historical results remain diffable, but they are flagged unattributable and
+ * must not be cited as a baseline.
+ * @param run - the run to check.
+ * @returns whether it may be rendered, and why not when it may not.
+ */
+export function checkRenderable(run: RunResult): Renderability {
+  const config = run.config
+  if (config === undefined || config === null) return { ok: true, unattributable: true }
+
+  const missing: string[] = []
+  if (config.comparator_policy_version === undefined) missing.push('comparator_policy_version')
+  if (config.column_semantics === undefined) missing.push('column_semantics')
+  if (config.with_query === true && config.executor_identity === undefined) missing.push('executor_identity')
+  if (missing.length > 0) {
+    return { ok: false, reason: `run ${run.run_id} records a config but omits ${missing.join(', ')}; its numbers cannot be interpreted` }
+  }
+  return { ok: true }
+}
+
+/**
+ * Human-readable execution mode: what executed the SQL and how results were
+ * compared. Two runs that differ here are not comparable — judge-only versus
+ * real execution measured 61.5% against 5.1% on the same cases and model.
+ * @param run - the run to describe.
+ * @returns the mode tag, or `null` when the run records no config.
+ */
+export function describeExecutionMode(run: RunResult): string | null {
+  const config = run.config
+  if (config === undefined || config === null) return null
+  const executor = config.with_query === true ? config.executor_identity ?? 'unnamed-executor' : 'no-executor'
+  return `exec=${executor} policy=v${config.comparator_policy_version ?? '?'}/${config.column_semantics ?? '?'}`
 }
 
 /** Human-readable protocol tag, or null when the run predates `config`. */
@@ -65,6 +122,30 @@ function describeProtocol(run: RunResult): string | null {
  * (merely unverifiable) so historical baselines stay diffable.
  */
 function checkProtocolMatch(runA: RunResult, runB: RunResult): void {
+  for (const run of [runA, runB]) {
+    const renderable = checkRenderable(run)
+    if (!renderable.ok) {
+      console.error(`\n  ✗ UNRENDERABLE — ${renderable.reason}`)
+      console.error('    Re-run it on a build that records its grading policy.\n')
+      process.exit(2)
+    }
+    if (renderable.unattributable === true) {
+      console.log(`\n  ⚠ run ${run.run_id} records no config: its execution mode is unrecoverable.`)
+      console.log('    Renderable for reference, but not citable as a baseline.')
+    }
+  }
+
+  const modeA = describeExecutionMode(runA)
+  const modeB = describeExecutionMode(runB)
+  if (modeA !== null && modeB !== null && modeA !== modeB) {
+    console.error('\n  ✗ EXECUTION MODE MISMATCH — these runs are not comparable')
+    console.error(`      A (${runA.run_id}): ${modeA}`)
+    console.error(`      B (${runB.run_id}): ${modeB}`)
+    console.error('    Judge-only against real execution measured 61.5% vs 5.1% on the')
+    console.error('    same cases and model; column semantics flip aliased results.\n')
+    if (!process.argv.includes('--allow-protocol-mismatch')) process.exit(2)
+  }
+
   const a = describeProtocol(runA)
   const b = describeProtocol(runB)
 
