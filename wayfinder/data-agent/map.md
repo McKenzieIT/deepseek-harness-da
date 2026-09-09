@@ -26,6 +26,8 @@
 
 <!-- 一行一 closed 决策的 gist；详情在 research/ 笔记或后续 ticket -->
 
+- **UM-CONNECTION-FIXTURE-DEAD-APICLIENT (task, resolved 2026-09-10)**：fixture apiproxy→Typert 适配收尾（41/41 fixture error 清，tsc client 287→284，`--force` 权威确认 + lefthook oxlint/whitespace 全绿）。删死 `FixtureApiClient` 子类（`ac6c8c6c2b`，38/41）+ 迁 `workspaceApi` 两个旧 `IApiclient`-style 残留 arm：`results`→`ClientConnectionRpc.call` switch 新增 `case 'result/get'` 返 `sessionErr` `result-not-found`（镜像 host `ResultsRemoteGateway.get` 契约，复用现成 `sessionErr` 无新 helper）；`downloads`→删（session.export 浏览器接管、死代码，删 results 后新发 TS2353）。fixture 豁免 Follow-on 3（非 18 包、无 remote.ts）→ switch 永久形态、非 throwaway。A=上游忠实最佳重构（upstream `4f00a8b82a` apiproxy→Typert，UM14 resync 继承）。commit `63659a22d4` on resync。〔tickets/phase-upstream-merge/UM-CONNECTION-FIXTURE-DEAD-APICLIENT.md〕
+
 - **GA-CORDIS-CATALOG-FIX (task, resolved 2026-09-04)**：test-final.txt 20 失败 triage（3 fork-own + 7 stale + 5 upstream + 5 env）；修 result-cache-memory 测试（重复注册→单注册双执行）+ cordis-catalog typert `metadata→Json` + 6 道 masked catalog gate（events JSDoc @mode / type-link / scope-page、services JSDoc / type-link、partition）+ 重生成 11 工件；修 7 newly-revealed（wiring `useStoreStub` ×5、eval stub `provider`/`model` ×2）。subagent 并行 code review（clean）+ full suite 0 failures（16118 pass / 251s）。〔tickets/phase-misc/GA-CORDIS-CATALOG-FIX.md〕
 
 - **P11d LLM Judge SQL 语义 (task, resolved 2026-08-27)**：eval-runner 引入 5 维度 LLM-as-Judge（table/field/filter/aggregation/overall）。(1) `AttemptResult` 新增 `sql_judge` 字段持久化完整 verdict；(2) dual-score policy（executor 在时 execution_match + sql_judge 两列独立）；(3) 4 个 few-shot examples 校准 prompt；(4) calibration run：65% pass rate（目标 60-80%），维度分布 59-70% 无退化。额外修复 eval-cli judge LLM 调用绕过 SQL 偏好适配器。〔tickets/phase-4/P11d-eval-llm-judge-sql-semantics.md〕
