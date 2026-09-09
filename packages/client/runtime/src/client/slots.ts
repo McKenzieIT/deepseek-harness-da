@@ -22,26 +22,6 @@ import type {
   SlotScope, SlotSpec, StoreDecl, StoreFactory, StoredEntry, StoreInstanceLike,
 } from '@deepseek-ai/dsh-client-ui-slots'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
-  interface SlotMap {
-    /**
-     * The built-in render-tree root hole (seeded by SlotCore): the one slot the
-     * shell itself renders, and the ancestor of every other seat. OCCUPIED by
-     * ui-layout's AppFrame, which declares the sidebar, conversation, details,
-     * and shell.overlay seats inside it.
-     *
-     * DO NOT register here. This is a single slot, so a second entry does not
-     * sit beside the frame — it shadows it, and a dynamically registered entry
-     * is assigned a lower priority than the shipped one, which makes it the
-     * winner: the page would render your component alone, with every seat the
-     * frame declares gone. For a surface of your own that floats over the whole
-     * app, register into `shell.overlay` instead (a list slot: additive, and
-     * click-through until your entry opts into pointer events).
-     */
-    'root': { kind: 'single'; scope: 'root'; owner: RootOwnerProps }
-  }
-}
-
 /** Root owner share: the shell supplies nothing — the frame is inject-assembled. */
 export interface RootOwnerProps { children?: never }
 
