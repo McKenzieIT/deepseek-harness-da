@@ -17,10 +17,21 @@
  */
 export type ResultId = string
 
+/**
+ * A Typert-safe arbitrary-JSON value. `unknown[][]` in {@link ResultEntry.rows}
+ * carries an `unknown` element that the Typert analyzer rejects at a
+ * `@Remote` boundary ("Remote boundary contains unconstrained unknown data");
+ * this recursive JSON union is constrained (no `unknown`/`any`) yet
+ * permissive enough to carry every cell value a query or compute result
+ * produces (strings, numbers, booleans, null, nested arrays/objects).
+ * Mirrors the `Json` type in `@deepseek-ai/dsh-schema-gateway`.
+ */
+export type Json = string | number | boolean | null | readonly Json[] | { readonly [key: string]: Json }
+
 /** One cached query or compute result. */
 export interface ResultEntry {
   readonly columns: string[]
-  readonly rows: unknown[][]
+  readonly rows: readonly (readonly Json[])[]
   readonly metadata?: ResultMetadata
 }
 
