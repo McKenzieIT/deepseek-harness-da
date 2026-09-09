@@ -21,6 +21,25 @@ export type { MatchMode } from './match_modes.ts'
 export { charNgrams, turnMatchesExpectation, deliveryFuzzyMatch } from './text_sim.ts'
 export type { DeliveryFuzzyOpts } from './text_sim.ts'
 export { classifyExecutionFailure, mapQueryOutcome, ENVIRONMENTAL_FAILURE_CLASSES, PATIENCE_ABANDONED_MARKER } from './classify_failure.ts'
+export {
+  normalizeOutcome,
+  gradeExecution,
+  executeAndNormalize,
+  resolveComparatorPolicy,
+  EXECUTION_OUTCOMES,
+  COMPARATOR_POLICY_VERSION,
+} from './execution_grade.ts'
+export type {
+  ExecutionOutcome,
+  ExecutionArtifact,
+  ExecutionVerdict,
+  ExecutionExpectation,
+  ExecutionPort,
+  ComparatorPolicy,
+  ComparatorPolicyRequest,
+  ColumnSemantics,
+  NormalizeContext,
+} from './execution_grade.ts'
 export { judgeWithProvider, classifyError, AuthenticationAbort, JUDGE_MAX_RETRIES, BACKOFF_MS, JUDGE_PASS_THRESHOLD } from './judge.ts'
 export type { ErrorClass, JudgeOpts } from './judge.ts'
 export { EvalCaseSchema, isMultiTurn } from './eval_case.ts'
