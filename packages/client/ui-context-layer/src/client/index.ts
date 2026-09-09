@@ -4,8 +4,9 @@
  *  - ctx.contextLayer service (open/close/focusNode)
  *  - shell.overlay fullscreen entry (ContextLayerOverlay)
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { ContextLayerService, type IContextLayer } from './service.ts'
 import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
 import { buildGraphDataClient } from './graphDataBridge.ts'
@@ -120,12 +121,12 @@ declare module '@deepseek-ai/cordis' {
 export const name = 'ui-context-layer'
 export const inject = ['slots']
 
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: Context): void {
   const service = new ContextLayerService()
 
   ctx.effect(() => ctx.reflect.provide('contextLayer', service), 'ui-context-layer: service')
 
-  ctx.inject(['remote'], (scope: ClientContext) => {
+  ctx.inject(['remote'], (scope: Context) => {
     const remoteNs = (scope as unknown as { remote?: { schemaGateway?: unknown } }).remote
     const graphClient = remoteNs?.schemaGateway
       ? buildGraphDataClient(remoteNs.schemaGateway as never)
