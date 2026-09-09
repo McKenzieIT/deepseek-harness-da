@@ -410,6 +410,7 @@
     { "path": "./packages/lsp/lsp-stdio" },
     { "path": "./packages/lsp/tool-lsp" },
     { "path": "./packages/examples/agent-spine-demo" },
+    { "path": "./packages/examples/jsonrpc-demo" },
     { "path": "./apps/cli" },
     { "path": "./apps/desktop-host" },
     { "path": "./apps/desktop" }
