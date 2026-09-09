@@ -3728,23 +3728,6 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       return sessionOk({ archivedSessionIds: [...archivedSessionIds] })
     },
-    // The fixture hosts no result store: every result_id answers
-    // result-not-found, so ?fixture/demo/dev paths exercise the cache's
-    // miss → not-found → undefined path the same way a live host without a
-    // result-cache provider would (a graceful business miss, never a throw).
-    results: {
-      get: request => err(request, {
-        code: 'result-not-found',
-        message: `fixture has no result store for ${request.payload.resultId}`,
-        details: { resultId: request.payload.resultId },
-      }),
-    },
-    // Satisfies the ApiProxy contract type only: the browser export button
-    // hands GET /api/session.export to the native download manager, so this
-    // stub is never reached through the fixture's dispatch.
-    downloads: {
-      sessionLog: () => Promise.resolve(new Response('fixture mode does not serve session export', { status: 404 })),
-    },
   }
 
   const rpc: ClientConnectionRpc = {
@@ -3937,6 +3920,19 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           request as WorkspaceInsertSessionBeforeRequest,
         )
         case 'workspace/archiveSession': return workspaceApi.archiveSession(request as WorkspaceArchiveSessionRequest)
+        case 'result/get': {
+          // The fixture hosts no result store: every result_id answers
+          // result-not-found, so ?fixture/demo/dev paths exercise the cache's
+          // miss → not-found → undefined path the same way a live host without a
+          // result-cache provider would (mirrors the host ResultsRemoteGateway
+          // contract; a graceful business miss, never a throw).
+          const resultId = (request as { readonly resultId?: string }).resultId
+          return sessionErr({
+            code: 'result-not-found',
+            message: `fixture has no result store for ${resultId}`,
+            details: { resultId },
+          })
+        }
         default:
           return Promise.reject(new Error(`fixture connection RPC endpoint ${JSON.stringify(endpoint)} is unavailable`))
       }
