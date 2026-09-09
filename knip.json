@@ -411,9 +411,6 @@
       "project": [
         "src/**/*.ts",
         "tests/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "@deepseek-ai/dsh-eval"
       ]
     },
     "packages/goal/goal-eval-policy": {
