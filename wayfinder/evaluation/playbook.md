@@ -137,7 +137,7 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 | 7 | Step-level PRM | R7, G7 | R19 |
 | 8 | Pairwise/rubric judge | R8, G8(+R20) | T7 |
 | 9 | Error taxonomy | R9, G9 | T8 |
-| 10 | Harness B/H/E+Goodhart | R10, G10 | T9, R21 |
+| 10 | Harness B/H/E+Goodhart | R10, R10b, G10 | T9, R21 |
 | 11 | Robustness+active sampling | R11, G11 | T10, R22 |
 
 (Phase 1 = 本环境直接做;Phase 2-4 = SPEC→rubric 包→另一环境。详见 map.md §3。)

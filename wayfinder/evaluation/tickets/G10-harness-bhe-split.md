@@ -2,7 +2,7 @@
 
 **Type**: grilling  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: 无（[R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读](R10-harness-goodhart-papers.md) 已于 2026-09-09 resolved）
+**Blocked by**: [R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读](R10b-harness-measurement-validity.md)（[R10](R10-harness-goodhart-papers.md) 已 resolved）
 **Blocks**: T9-bhe-split-impl；并解 [G1](G1-exec-grader-seam.md) 移交的三条；[T1](T1-exec-grader-impl.md) 的落点
 **Mode**: HITL
 **Branch**: `grilling/G10-harness-bhe-split`
@@ -26,7 +26,20 @@
 - **Goodhart Δ** —— `compare.ts` 输出 K11-train vs heldout vs fresh 的差值；Arena-Hard 式 style control + separability + 95% CI；dye-pack sentinel。当前**既无 heldout 也无 fresh slice**（见 R10 事实 ⑥）。
 - **重构编排顺序** —— map §Not yet specified 的第一块 fog：已确定该删的（core 死编排 + 两份 adapter fork）与包重切，是「先删再切」还是「切的时候一并删」。
 
-## 已知约束（R10 会带来论文依据，但这些是本仓实测事实）
+## 2026 follow-up 要补进决策的硬约束
+
+完整侦察见 [`g10-2026-followup-papers.md`](../research/g10-2026-followup-papers.md)，学习导读见 [`g10-learning-guide.md`](../research/g10-learning-guide.md)。R10b 全文认读完成前，本票不锁接口。
+
+- **Benchmark Adapter 是正式模块**：legacy source schema 通过具名、版本化 adapter 编译到 canonical task material；每个 adapter 需要 upstream parity、oracle/reference validation 与 provenance-preservation 证据。
+- **Task material 与 run evidence 分 schema**：Benchmark 拥有 instruction、hidden expected/reference、environment requirements 与 grader policy；Harness 运行结果拥有 model/harness/adapter/environment identity、raw→parsed→executed→observed stages、finality 与 isolation。
+- **Interface preflight**：chat template、parser、tool schema 和 provider envelope 的组合不兼容时必须在跑批前失败，不能静默产出零 tool call。
+- **Environment finality**：agent 停止输出不等于结果最终；pending side effect、namespace/reset/cleanup 和 cross-run separation 必须进入接口与证据。
+- **双 provenance**：benchmark provenance 描述 case 来源与派生；run provenance 描述本次 model、Harness、Environment、elicitation budget、memory、tool/network access 与运行中反馈。
+- **统计协议显式化**：Benchmark Pack 为结果声明 estimand、aggregation、tie/invalid/abstention、sampling/cluster unit 与 CI 定义；standard `pass@n` 和 strict `pass^k` 分开。
+- **Judge 双向验证**：对语义等价变换保持 invariance，对最小实质错误具备 construct sensitivity；style control 不能替代 correctness sensitivity。
+- **持久多轮状态**：`MultiTurnSession` 的评测证据包含 workspace/environment lineage、累计 verifier、artifact changes、regression 与 fail-stop outcome，而不只是 transcript。
+
+## 已知约束（R10/R10b 提供论文依据，但这些是本仓实测事实）
 
 - **不能简单合并 `dsh-eval` 与 `dsh-eval-runner`** —— 包外消费者在区分两者（`packages/data/tool-trigger-eval/src/index.ts:17` 取 runner 的 `RunResult`；`scripts/live-verify-w1-w5.ts:19` 取 core 的 `loadCases`）。
 - **benchmark 内容当前住在纯库包内** —— `packages/eval/eval/cases/`，与 case schema 同包。这是最直接的 B/H/E 违例。
@@ -35,7 +48,11 @@
 
 ## 验收
 
-- 三条移交问题各有明确裁定 + 理由，且注明哪些依据来自 R10 的论文、哪些是本仓自主选择。
+- 三条移交问题各有明确裁定 + 理由，且注明哪些依据来自 R10/R10b、哪些是本仓自主选择。
+- 明确 Benchmark Pack、Benchmark Adapter、共享 eval protocol、Harness、Environment Adapter 与 composition root 的接口和所有权。
+- 为 `k11-v2` 与 RBI 迁移定义 adapter parity、oracle validation、hidden-material isolation 与 schema-preservation 验收。
+- 为运行定义 interface preflight、stage provenance、run identity、outcome finality 与 cross-run separation。
+- 为 Goodhart audit 定义 benchmark/run 双 provenance、train/heldout/fresh 生命周期、estimand/cluster unit、standard `pass@n` 与 strict `pass^k`。
 - 与 GA-GT4 的调和结论写明（supersede 哪些面、保留哪些）。
 - 产出或更新一篇 `.agents/notes/proposed/architecture/` Agent Note。
 - 明确 T9-bhe-split-impl 的验收面，以及它与 [T1](T1-exec-grader-impl.md)、[T11](T11-loader-provenance-strip.md) 的落包顺序。
