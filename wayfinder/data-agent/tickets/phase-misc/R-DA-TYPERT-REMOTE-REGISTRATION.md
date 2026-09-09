@@ -40,6 +40,11 @@ upstream 把 apiproxy（HTTP/JSON-RPC fetch-carrier）替换成 **Typert Remote*
 
 **已验证事实**（下一 session 免重导）：见上 + `/tmp/dsh-um10-fo2-force.log`（217 全量 log）+ `packages/data/result-cache/src/remote.ts`（template，host gateway 源）+ 18 包 `lib/typert.remote-client.d.ts` 已生成 + consumer TS2305 分布（runtime 47/ui-settings-models 9/connection 8/result-cache 3）。
 
+## Session progress
+
+- **2026-09-10（主 session）**：Follow-on 1 fixture（`63659a22d4`，287→217 combined with Follow-on 2）+ Follow-on 2 config（`5ee128214d`）+ connection fake-api（`2504169487`，217→187）。三 fix 全 clean/mechanical（type-only / test-fake，无 logic 改）。
+- **2026-09-11（主 session — 本 shard）**：ui-settings-models 39 → 0（tsc client 187 → 148，`--force` 权威 + lefthook 绿）。commit `03e865a148` on resync `[Follow-on-3-B] ui-settings-models: strip ghost types + D3 migration`。三类 driver 全触及：ghost `IApiClient`/`CredentialView`/`ConfigurableProviderView`/`DiscoveredModelView` → `ClientRemote`/`CredentialInfo`/`LlmConfigurableProvider`/`LlmDiscoveredModel`（`@deepseek-ai/dsh-api-remotes/client`）；D3 positional args（`settings.mutate(ns,ops,rev)`/`credentials.describe(refs)`/`credentials.set(ref,val)`/`credentials.unset(ref)`/`llm.discoverModels(ns,req,signal?)`/`llm.providers({})` → `llm.listConfigurableProviders()`）；`RemoteResult<T>` 无 `.result` wrapper（`.ok/value/error` 直接）；`.value.{providers,credentials,models}` sub-key gone；event `'credentials/updated'` → `'credentials/reference-updated'`；test bench `new TestRemote(ctx).emit(event, args)` 替 `$dispatch`。**D1（`LlmConfigurableProvider` 无 `active` field）**：cross-ref `ctx.remote.llm.listProviders()` 折 `row.active` 上 `ProviderRow`（hard-fail on either half，mirror listConfigurableProviders 失败处理；文档理由 in store.ts:156-158）。`providerUsable`/`onboardingReadiness` 读 `row.active`。stale README 提 `ConfigurableProviderView`（EN+ZH）= 文档 drift，非阻塞 tsc，follow-up。
+
 ## Resolution
 
-(open)
+(open — B shard 2 of 4 done. Remaining B: result-cache 4 (D3, next shard) + Phase-2 blocked by Plan B ADR-0002 = client/runtime 131 delete + 4 presenter 13 migration.)
