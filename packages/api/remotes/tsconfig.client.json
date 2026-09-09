@@ -78,6 +78,18 @@
       "path": "../workspace-controller/tsconfig.client.json"
     },
     {
+      "path": "../../data/semantic-layer"
+    },
+    {
+      "path": "../../data/evidence-query"
+    },
+    {
+      "path": "../../data/audit"
+    },
+    {
+      "path": "../../identity/identity"
+    },
+    {
       "path": "../../typert/protocol"
     }
   ]
