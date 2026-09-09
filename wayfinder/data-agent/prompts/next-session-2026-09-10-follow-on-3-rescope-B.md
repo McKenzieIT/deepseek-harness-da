@@ -9,6 +9,21 @@ Follow-on 3（R-DA-TYPERT-REMOTE-REGISTRATION）re-scope = **B**（用户 2026-0
 - 非 A-then-B。
 - **B = 直接攻 217 真路径（consumer 包改造）** → UM10 typecheck-green（217→0）→ UM11 PR（resync→master）→ UM12 GA-FORK-CI re-sweep → push（方案 D，node 24，pre-push `build:lib:host`）。直接服务核心需求 #1（sync upstream）+ #2（适配性改造采新 Typert 类型）。
 
+## ⚠️ Second-order reframe（2026-09-10，shard-1 subagent 调研 + 主 session 重验后——修正下方"217 真路径 / B 执行计划"的不完整框架）
+
+shard-1（client/runtime 131，B 最大 shard）调研 + 重验发现：**client/runtime 是 fork 重引入的 zombie**——upstream `be531688f3`（"refactor(client): migrate consumers and remove Runtime"，200 files / 2148 deletions，全文件删）**删了 client/runtime 包**；fork 经 `8112743d69` merge 重引入 + 正退役。**fork 方向 = RETIRE（非 keep+migrate）**，见 `wayfinder/data-agent/tickets/phase-misc/R-DA-CLIENT-RUNTIME-DECOMMISSION.md`（Type: refactor, Status: open, Priority: HIGH，标题即"retire the fork-local client/runtime zombie; migrate consumers to upstream's public modular seams"）：
+
+- **Phase-1（AFK-safe unblock，可并行批）**：迁 3 个 trivial consumer OFF zombie（`result-cache`/`ui-context-layer`/`ui-settings-models`：`ClientContext`→cordis `Context`、`SnapshotStore`/`createSnapshotStore`→`@deepseek-ai/dsh-client-store`、`SessionId`→`@deepseek-ai/dsh-client-connection`、`SettingsScope`→新家候选 `api-session-controller`/store 相关）+ 删 zombie 冗余 `'root'` slot 声明（`client/runtime/src/client/slots.ts:41`，真 owner=`packages/client/ui-slots`、真 occupant=`packages/client/ui-layout`，非改名避触 ~40 test 夹具）+ 删死 apiproxy tsconfig ref（`client/runtime/tsconfig.json:20`，清 9 TS6053/TS5083 + unblock `gen-client-catalog` root-slot 门）。zombie 包**保留**（4 presenter 仍依赖）。
+- **Phase-2（adaptive full migration，blocked by R-DA-UI-PRESENTER-COMPOSITION = Plan B ADR-0002，本 session 已确认 grill=Plan B）**：迁 4 个 needs-logic-change presenter（`ui-present-table`/`ui-present-decomposition`/`ui-suggest-followups`/`ui-semantic-layer`）按 Plan B 注册模式 + 重分布 boot wiring（`SessionRuntime`/`SlotRegistry`/`ConversationViewRegistry`/`ConversationNodeAssembler`→各新拥有者包）+ **删 `packages/client/runtime` 本体** + 清 tsconfig/`pnpm-workspace.yaml` → 清 client/runtime 的 131。
+
+**故 B 的 client/runtime shard = decommission（退役 zombie），非下方"217 真路径"的 in-place fix（ghost→Typert / misplaced→barrel / transport→complete）**——那三类框架只适用于 **NON-zombie consumer 的非 zombie 错误**（client/runtime 整包 Phase-2 删，其 131 自消；但 `ui-settings-models`/`ui-semantic-layer` 等的非 zombie ghost/misplaced/transport 错误仍需 in-place fix per 三类 driver）。
+
+**修正后 B = (1) R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-1（AFK-safe，next 可做）+ Phase-2（blocked by Plan B）+ (2) non-zombie consumer 的 in-place fix（三类 driver，下方框架）**。217 清于合力（zombie 删清 131 + consumer 迁移/fix 清余 86）。
+
+**per #3**：上游驱动（upstream `be531688f3` 删 client/runtime；fork 重引入 zombie；retire = align upstream 删除）。retire 是上游忠实最佳（对齐 upstream 模块化架构、卸 fork-only zombie 负担、利未来 upstream sync）+ 最利 data-agent。master 决策**非 open**（fork 已定 retire，decommission ticket）。
+
+**消费者基线（decommission ticket 已核，2026-09-09 subagent survey）**：7 包 / 29 文件 grep `@deepseek-ai/dsh-client-runtime` 得——TRIVIAL 3（result-cache/ui-context-layer/ui-settings-models，9 文件）→ Phase-1；NEEDS-LOGIC-CHANGE 4（ui-present-table/ui-present-decomposition/ui-suggest-followups/ui-semantic-layer，20 文件）→ Phase-2。原"45"已修正为 7/29。
+
 ## 前置（本 session 已完成，已 commit）
 
 - **Follow-on 1 UM-CONNECTION-FIXTURE-DEAD-APICLIENT** resolved：fixture apiproxy→Typert 适配收尾（删死 `FixtureApiClient` 子类 `ac6c8c6c2b` 38/41 + 迁 results/downloads arms → `ClientConnectionRpc.call` switch 新增 `case 'result/get'` 返 `sessionErr` `result-not-found` 镜像 host `ResultsRemoteGateway.get` 契约）。resync `63659a22d4`，master `b399e3aee8`。
