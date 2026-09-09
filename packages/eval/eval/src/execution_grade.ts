@@ -305,7 +305,10 @@ export function gradeExecution(artifact: ExecutionArtifact, expected: ExecutionE
     }
   }
 
-  const result: AssertionResult = checkResultMatch(expected.result_value ?? {}, artifact.rows, expected.match_mode ?? '')
+  // `expectationDefect` already rejected a null `result_value` or `match_mode`,
+  // so both are present here.
+  const expectedValue = expected.result_value as Record<string, unknown>
+  const result: AssertionResult = checkResultMatch(expectedValue, artifact.rows, expected.match_mode as string)
   return { outcome: result.status === 'pass' ? 'pass' : 'fail', detail: result.detail, failureClass: null, ...stamp }
 }
 
