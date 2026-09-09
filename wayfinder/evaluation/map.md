@@ -150,7 +150,7 @@
 
 **效果（在真数仓上验证，非假设）**：39-case 对账在真 maxc 上复现旧结论（event 命中 2、dws 命中 13，dws 21/21 逐条一致），证明换通路没引入语义偏移；**列名 vs 列位 的判分翻面 0 个**（可解释：活跃语料用不到会翻面的模式）；**2 个 event 查询超时被正确归为"环境挡住"**而非"模型答错"（旧路径会错记成"语料陈旧"）。上线真执行判分覆盖 **57 个 scalar_exact case**；86 个只数行数的 case 待 G1b 重建语料，25 个 DELIVERY-only 记"没测"——**没有**"143 个 case 已被执行级评分"这种说法。
 
-**留下的尾巴**（已在 [T1 票](tickets/T1-exec-grader-impl.md) Resolution 逐条记录，转出而非遗漏）：两份 `runBatch`/两份 health gate 的删除、`eval-cli` 去掉对 provider 的直连（纯删除，与本批的判分语义变更叠加会让"数字动了是哪件事引起"说不清，故转 [T12](tickets/T12-eval-package-consolidation.md)）；截断信号仍缺一个超大结果集来实测。
+**留下的尾巴**（已在 [T1 票](tickets/T1-exec-grader-impl.md) Resolution 逐条记录，转出而非遗漏）：`eval/src` 里的第二份 `runBatch`/health gate 删除、剩余 4 个还在两个 host 各一份的 adapter（`CtxLlmAdapter`/`CtxOdpsAdapter`/`LlmJudgeExecutor`/`Nl2sqlAgentResponder`）、`eval-cli` 去掉对 provider 的直连——均为纯删除，与本批的判分语义变更叠加会让“数字动了是哪件事”说不清。**承接方是两篇既有 `proposed` 简化笔记**（delete-unused-eval-core-runtime-stack + promote-eval-cli-adapters，已按本批实情更新），**不是 T12**（T12 只管包边界、blocked by G10）。另：截断信号仍缺一个超大结果集来实测。
 
 ---
 

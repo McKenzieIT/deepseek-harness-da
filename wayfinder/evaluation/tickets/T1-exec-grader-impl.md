@@ -127,16 +127,18 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 
 | 去分叉项 | 状态 |
 | --- | --- |
-| 两套 adapter（`eval-cli` / `eval-runner-service`） | ✅ 收为 `dsh-eval-runner` 的单份 `CtxQueryExecutor`；`eval-cli` 侧的 reasoning 提取/event-def 预取/query expansion 均保留（在 responder 层，不在 adapter） |
+| adapter 四件套（`eval-cli` / `eval-runner-service`） | ⚠ **部分** —— 只把判分路径用到的 `CtxQueryExecutor` 收为 `dsh-eval-runner` 单份；`CtxLlmAdapter`/`CtxOdpsAdapter`/`LlmJudgeExecutor`/`Nl2sqlAgentResponder` **仍在两个 host 各一份**（[promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md) 的剩余面） |
 | 结果比较器私有包装器 | ✅ 删除；其位置 key 行为升为 `columnSemantics: 'positional'` policy 值 |
 | `QueryResult` | ✅ 退役 |
 | 失败分类接入判分 | ✅ `gradeExecution` 调 `classifyExecutionFailure` + `ENVIRONMENTAL_FAILURE_CLASSES` |
 | audit 脚本第三条执行路径 | ✅ 改走同一端口 |
-| 两份 `runBatch` | ❌ **未做** —— `eval/src/runner.ts` 的那份仍在 |
-| 两份 health gate | ❌ **未做** —— `eval/src/health-gate.ts` 仍在 |
-| `eval-cli` 去掉 `dsh-query-maxcompute` 直连 | ❌ **未做** —— `context.ts` 仍动态 import 并挂载 `MaxComputeQueryEngine` |
+| 两份 `runBatch` | ❌ **未做** —— `eval/src/runner.ts` 的那份仍在（[delete-unused-eval-core-runtime-stack](../../../.agents/notes/proposed/simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md) 的面） |
+| 两份 health gate | ❌ **未做** —— `eval/src/health-gate.ts` 仍在（同上笔记） |
+| `eval-cli` 去掉 `dsh-query-maxcompute` 直连 | ❌ **未做** —— `context.ts` 仍动态 import 并挂载 `MaxComputeQueryEngine`（`package.json:64` 依赖未去） |
 
-三项未做的理由：它们都是**纯删除/移位**，与已做的“改判分语义”正交；本批已携带三处行为变更（judge 不再写 execution、pending → environment-blocked、pass_rate 换分母），再叠包结构改动会使“数字异动归因到哪一件”不可分辨——而这正是 D2 “不让 T1 同时背两件事”的理由。转入 [T12](T12-eval-package-consolidation.md)（包级重组）与下列待办。
+**未做项的归属（修正）**：它们都是**纯删除/移位**，与已做的“改判分语义”正交；本批已携带三处行为变更（judge 不再写 execution、pending → environment-blocked、pass_rate 换分母），再叠包结构改动会使“数字异动归因到哪一件”不可分辨——这正是 D2 “不让 T1 同时背两件事”的理由。
+
+**承接方（不是 T12）**：这些删除已有两篇 `proposed` 简化笔记作为久久归属——[delete-unused-eval-core-runtime-stack](../../../.agents/notes/proposed/simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md)（删 `eval/src` 死编排 runBatch/health gate）与 [promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)（剩余 4 个 adapter）。**[T12](T12-eval-package-consolidation.md) 不承接这些**（它只管包边界、且 blocked by G10）；`eval-cli` 去 provider 直连也归 promote-eval-cli-adapters 的同一类解耦。两篇笔记已按本批实情更新。
 
 ### 闸门结果
 
