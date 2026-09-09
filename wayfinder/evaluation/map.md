@@ -20,7 +20,7 @@
 - **域**: evaluation 框架(`packages/eval/`)的可信化与扩展。data-agent 的 eval 子流,独立成 wayfinder effort(同 `semantic-layer` 先例)。
 - **职责**: evaluation 拥有 ground-truth provenance、snapshot identity、result normalization、comparator policy、评分与 evidence 语义；SQL 提交、scope routing、credentials、provider error 和 backend lifecycle 复用 dsh-data-agent 的 `@deepseek-ai/dsh-query` capability（`ctx.query.execute`），不在 evaluation 重建 warehouse executor。Rationale 见 [Evaluation 通过 query capability 执行 SQL](../../.agents/notes/proposed/testing/2026-09-07-evaluation-query-capability-boundary.md)。
 - **每会话应查 skills**:`research`(认读论文/调查)、`grilling`+`domain-modeling`(决策)、`prototype`(新 seam 原型)、`tdd`(impl)。
-- **执行流程**: T/R-experiment(impl/experiment)不在本环境直接做——走 SPEC→instruction+rubric→另一环境执行;G/R认读/P 在本环境直接做。见 [`playbook.md`](playbook.md)(流程不写进本 map,只引)。
+- **执行流程**（按领域分流，2026-09-09）：**后端方向（1/9/10-拆分）的 impl 本地直接做**（起 worktree→改码→跑本仓真门→更新票/map/audit-log）；**只有 ML-eval 方向（2/3/4/5/6/7/8/11 + 10-Goodhart）的跟-eval 实验票才考虑 SPEC→rubric→另环境**。G/R认读/P 一律本环境。详见 [`playbook.md`](playbook.md) §1.1（流程权威，不写进本 map）。
 - **常设原则**:
   - **每方向先 R 票认读分析论文**(产 `research/<slug>-papers.md`,持久化关键 claim + 对本仓映射)→ 再 grilling → impl → experiment R。grilling 必须有论文分析在手。
   - **引用只引已验证论文**(见 §验证 TODO);进 ticket 前待核项须 primary-fetch arxiv.org(本环境 403,换网络/人工核)。subagent 输出 = 凭记忆断言,未验证前不进产物。
@@ -154,7 +154,7 @@
 4. **R20-radar-redundancy**(quick win,可能直接定位 0.6 通胀根因)→ 喂 G8
 5. **R4-significance-papers**、**R8-pairwise-judge-papers**(认读分析,独立,便宜)
 
-**[T11](tickets/T11-loader-provenance-strip.md) 与 T1 同批落包** —— T11 是 T1 唯一的硬前置，且它自己的源码面撑不满一个 rubric 包；按 [playbook §4](playbook.md) 的 T-攒批规则与 T1 同批，包内顺序为 **T11 全部验收 → T1**。
+**[T11](tickets/T11-loader-provenance-strip.md) 与 T1 同批本地实现** —— T11 是 T1 唯一硬前置；方向 1 是**后端方向**，不走另环境/rubric（见 [playbook §1.1](playbook.md)），在本仓起 worktree 直接做，包内顺序 **T11 全部验收 → T1**。本仓有数仓凭证，39-case 真对账可就地跑。
 
 **HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
 

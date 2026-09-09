@@ -5,7 +5,7 @@
 **Blocked by**: [G1](G1-exec-grader-seam.md)（resolved 2026-09-08，v1 六条 + v3 D1–D6 已合并）、[T11](T11-loader-provenance-strip.md)（同批前置，须先全部验收）
 **软前置**（未解也可开工，见 §前置）: [G1b](G1b-ground-truth-lifecycle.md)、[G10](G10-harness-bhe-split.md)、GA-EVAL-CASESET-EVENT-ANCHOR
 **Blocks**: [R23](R23-comparator-policy-mutation-baseline.md) → GA-EVAL-EXPAND → {R12 / R17 / G9}
-**Mode**: AFK（**攒批落包：T11 + T1**；见 [playbook](../playbook.md) §4 T-攒批规则）
+**Mode**: AFK（后端方向，**本地直接做**，不走另环境/rubric；与 T11 同批，T11 先验收再起 T1；见 [playbook](../playbook.md) §1.1）
 **Branch**: `feat/T1-exec-grader-impl`
 
 ## Question
