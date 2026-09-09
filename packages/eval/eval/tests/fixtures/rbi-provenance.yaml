@@ -1,0 +1,23 @@
+schema_version: 3
+case_id: rbi-provenance
+input:
+  question: 昨天日活跃角色数是多少？
+  scope_id: '10000251'
+expected:
+  sql: |-
+    SELECT COUNT(DISTINCT user_id) AS dau
+    FROM ieu_cdm.dws_10000251_univ_role_act_di
+    WHERE ds = '{{ds_yesterday}}'
+  result_value:
+    value: 4563
+  behavior: direct_answer
+  match_mode: scalar_exact
+dimensions:
+  data_source: dws
+meta:
+  anchor_ds: '20260806'
+  tier: verified
+  provenance: migrated
+  roles:
+    - eval
+  retired: false
