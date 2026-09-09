@@ -4,7 +4,7 @@
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无
 **Blocks**: T1-exec-grader-impl、[G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)
-**Mode**: AFK（走 SPEC → rubric → 另一环境，见 [playbook](../playbook.md)）
+**Mode**: AFK（后端方向，**本地直接做**，不走另环境/rubric；见 [playbook](../playbook.md) §1.1）
 **Batch**: 与 [T1](T1-exec-grader-impl.md) 同批，**T11 先完成全部验收再起 T1**（T1 的证据面建在 loader 输出上，loader 语义中途再变会使 T1 的测试重写）
 **Surfaced by**: [G1 — Execution grader seam](G1-exec-grader-seam.md)（2026-09-07 发现 ④）
 
