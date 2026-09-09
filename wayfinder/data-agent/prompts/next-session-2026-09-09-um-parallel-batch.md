@@ -41,7 +41,7 @@ destination = `deepseek-harness-da` → `deepseek-harness-data-agent`。本 flow
 8. **R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-2 认领**（后续 session）—— grill 定稿后另开 session 执行 4 packge 迁移。**不放本 session**（太大、认领太重、需 QA）。
 
 **PR 分开处理**：
-- **R-DA-admin**：本 session 开头就开 PR（上 session 验收 5 PASS，vitest 16/16，独立干净）——`gh pr create --head refactor/rda-admin-lazy-webserver-2026-09-08`。
+- **R-DA-admin**：**推迟到 UM16 landed 之后再 push**（用户 2026-09-09 决定）。上 session 尝试 push 撞 lefthook pre-push tsdown 挂在 upstream 共享的根 entry breakage（`[@deepseek-ai/dsh-root] Cannot find entry: lib/types/{index,invariant,startup}.js`），不是 R-DA-admin 引入。**不 --no-verify**（系统警告不绕 safety gate）。等本 session 任务 4（UM16）完成后同 session 内 push R-DA-admin 分支（分支和 commit `9ba8638eac` 在 `../dsh-rda-admin` worktree 完好保留）。
 - **UM-ARCH**：任务 1（regen-from-synced）落 commit 后开 PR。
 - **R-DA Phase-1 / UM-CORDIS-REGEN / UM16**：Phase C 才 PR（UM11 批量走），本 session 内不 PR。
 
