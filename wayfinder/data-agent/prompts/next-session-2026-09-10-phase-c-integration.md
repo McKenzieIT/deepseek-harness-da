@@ -1,3 +1,44 @@
+# 📌 Session 进度（2026-09-10 实际完成）—— 优先读此节，再读下方原 plan
+
+## 已完成
+
+- **Phase-C step 1**：lint fix `a99d206835` FF-merge 进 master（master @ `1ce197b873`，ahead origin/master 8，未 push master）。
+- **Phase-C step 2**：4 worktree 分支 merge 进 resync `upstream/resync-2026-09-08`（tip `ac6c8c6c2b`）：UM-ARCH（FF）+ UM-CORDIS（`--no-ff` `d4f2752c15`）+ R-DA-P1（`--no-ff` `e67ecc6541`，2 overlap commits git 识别为已应用）+ UM16（`--no-ff` `5cae53421f`，冲突解决）。
+- **UM16 冲突解决**（`result-cache/src/types.ts` + `result-cache-memory/src/index.ts`）：取 UM16 本地 `Json` type + `readonly (readonly Json[])[]` rows，弃 CORDIS subtask 1 的 `JsonValue[][]`。决定性：`result-cache/src/index.ts`（auto-merged）`export type { Json, ... } from './types.ts'` re-export `Json` → 必须留 UM16 的 Json 定义。删 CORDIS 的 now-unused `JsonValue` import。tool-compute auto-merged 成混合态（CORDIS `as JsonValue[][]` cast + UM16 `CodeJsonValue[][]` return），留不动——build:lib:host + UM10 双绿证 typecheck 通过（`JsonValue`↔`Json` 结构兼容）。
+- **拓扑已验**：master **pre-sync**（不含 synced base `8112743d69`/resync tip `2ec25f74f1`）→ 非 push 目标；resync 是 synced 线；4 分支都从 resync tip `2ec25f74f1` 分出；R-DA-admin 在更老 `merge-2026-09-07`（`558e6f4f66`）base。synced base = `8112743d69`（UM14），resync tip `2ec25f74f1` = synced base + 2 UM14 doc commit。
+- **build:lib:host 绿**（pre-push gate）：`PATH="/usr/local/bin:$PATH" pnpm run build:lib:host` exit 0（`tsc -b tsconfig.host.json` + tsdown 全 host 包；PLUGIN_TIMINGS 是 perf hint 非错误）。
+- **UM10 typecheck**：`tsc -b tsconfig.client.json` = **325 errors**（与 UM16 基线一致；4 merge + UM16 resolution 净增 0）。UM16 解决的 3 文件（`data/result-cache/types.ts`、`data/result-cache-memory/index.ts`、`data/tool-compute/index.ts`）= 0 error（client-verified，铁律满足）。注：`tsc -b` exit 0 despite 325（errors 全在 `*.client.spec.ts(x)` 测试文件，build-mode emit 不因测试 type error 失败）→ `build:lib:client` tsc 步"过"但 UM10 跟 325→0 才算真绿（`build:official` 未绿）。
+- **Follow-on 1（UM-CONNECTION-FIXTURE-DEAD-APICLIENT）部分**：删死 `FixtureApiClient extends AbstractApiClient` subclass（`fixture.ts:3963-4105`，commit `ac6c8c6c2b`）→ 325→**287**（删 38）。pre-check 无外部 SOURCE ref（仅 stale `lib/.../fixture.d.ts` build artifact，rebuild 重生）。
+
+## node 环境（handoff 陈旧，必读）
+
+nvm 只装 v20+v25（**无 v24**）；`nvm use system` 报 v24.15.0 但被 nvm v25 bin shadow（PATH 顺序问题）。用 `/usr/local/bin/node` v24.15.0 直接：`PATH="/usr/local/bin:$PATH" node ...`（push/需 v24 时同此）。如要 nvm-managed v24：`nvm install 24`。
+
+## Follow-on 1 剩余（3 error，pre-existing，非删除引入）
+
+`fixture.ts:3735-3736` 新 api 对象的 `results` handler：`results: { get: request => err(request, {code:'result-not-found', message:..., details:{resultId}}) }`
+- (a) `results` 不在 `FixtureWorkspaceApi`（错位/类型不含；同对象的 `downloads` 没报错 → FixtureWorkspaceApi 含 downloads 不含 results）。
+- (b) `request` 隐式 any（需类型）。
+- (c) `err` 未定义（file 无 def；`:2140` 有 `sessionErr<T>(error: ConnectionRpcFailure)` 但 session-typed）。
+需 `result.get` 契约（result-cache types.ts：`'result-not-found': {resultId}` failure）+ api 对象结构 + error-helper 调查。BEFORE log `/tmp/dsh-um10-client-tsc.log`（325）含此 3 error（确认 pre-existing）。
+
+## 未做（下 session 优先级）
+
+1. **Follow-on 1 剩余 3 error**（results handler，见上）。
+2. **Follow-on 2 UM-CLIENT-CONFIG-CLEANUP**（surface D+E ~58，纯 config）：D(44) `api/remotes/tsconfig.client.json` rootDir=`api/remotes/src` 但 project-ref 拉 `data/semantic-layer`/`evidence-query`/`audit`/`identity` src（rootDir 不匹配 → TS6059/6307，改 composite `references` 各自 rootDir 或 path maps 指 built `lib/`）；E(14) `@types/node` 缺（`data/audit` `node:crypto`、`evidence-query` `node:fs`/`node:path`、`audit/store.ts` `NodeJS`、`semantic-layer` `node:sqlite` → TS2591/2503，tsconfig `types`/`lib` 加 `@types/node`）。
+3. **Follow-on 3 R-DA-TYPERT-REMOTE-REGISTRATION**（adaptive B+C+G ~81，18 包，大 sprint 多 session）：每 domain 声明 `src/remote.ts`（`@Remote('method')` marker + `XRemote` interface + `XRemoteGateway`）扩 `ClientRemote`，模板 `packages/data/result-cache/src/remote.ts:73`。fork data-agent 包（evidence-query、schema-gateway）须声明 remote 加入 `ClientRemote`。按 domain 分片。
+4. **UM11 post-merge + UM12**（GA-FORK-CI re-sweep）——UM10 绿（325→0 via follow-ons）后。
+5. **push（方案 D 缓）**：不发布 sync（325 client 未绿）；UM10 绿后 UM11 PR（resync→master）。**master pre-sync（非 push 目标）**；resync 是 synced 线。R-DA-admin 在更老 `merge-2026-09-07` base（未并入 resync，cross-base rebase 风险）。
+6. **worktree 清理**：维持现状（不清）；收尾时清 4 个已并进 resync 的 + dsh-arch(旧) + dsh-upstream-merge(R-DA-admin rebase 后)。
+
+## 关键 git 状态
+
+- master `1ce197b873`（ahead origin/master 8，未 push）。
+- resync `ac6c8c6c2b`（4 Phase-C merge + dead-class 删除）；dsh-resync worktree = resync 工作分支（UM10/follow-ons 在此跑，用 `PATH="/usr/local/bin:$PATH"` + v24）。
+- 4 worktree 分支已并入 resync（dsh-arch-regen/dsh-cordis/dsh-rda-p1/dsh-um16）；dsh-rda-admin 未并入（更老 base）。
+
+---
+
 # Next-session prompt — Phase-C 集成 + push + 3 follow-on 票启动
 
 **Session 起始日期**：2026-09-10（或用户认领当日）
