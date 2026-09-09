@@ -2,8 +2,9 @@
 
 **Type**: grilling  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [R1 — 执行级评分与非循环 ground truth 论文认读](R1-exec-grader-papers.md)（resolved）
-**Blocks**: T1-exec-grader-impl
+**Blocked by**: [R1 — 执行级评分与非循环 ground truth 论文认读](R1-exec-grader-papers.md)（resolved）、[T11 — case loader 静默丢弃 reference SQL 与 snapshot 锚点](T11-loader-provenance-strip.md)（39 个 case 的 provenance 在 eval 路径上不可达，本票的 lifecycle 设计在 T11 之前无法落地验证——见下 §⚠ 前提修正 第 2 条）
+**软 blocks**（2026-09-09 降级，原写 hard-blocks T1）: [T1 — Execution grader 实现](T1-exec-grader-impl.md) —— T1 **未解本票也可开工**，边界是它只把 case 自带的 provenance **原样记录**，不解释 `anchor_ds` 是否有效锚点、不回填 expected；一旦要解释 provenance 或派生 expected 就越界。T1 的硬前置只剩 T11（依据 [G1](G1-exec-grader-seam.md) D2 与 [map §推荐认领顺序](../map.md)）。
+**Blocks**（硬）: GA-EVAL-EXPAND 的语料重建（143 个 EXEC case 的 expected 派生；D6 裁定）
 **Mode**: HITL
 **Branch**: `grilling/G1b-ground-truth-lifecycle`
 
