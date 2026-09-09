@@ -2,7 +2,7 @@
 
 **Type**: chore
 **Phase**: upstream-merge
-**Status**: open
+**Status**: archived (2026-09-09 triage)
 **Assignee**: unclaimed
 **Blocked by**: UM4, UM5（knip 死指针须先知 apiproxy/sqlite 去留）
 **Related**: d5 line 55（config additive KEEP）；fork `knip.json`/`CHANGELOG.md`（fork-only，upstream 无）
@@ -21,4 +21,10 @@
 6. **CHANGELOG.md**：fork-only，保（upstream 无 CHANGELOG，用 `.agents/notes/implemented/` 替代——fork 双轨）。
 
 ## Resolution
+
+**[2026-09-09 triage] → Status: archived (superseded).** `knip.json` fork-only preserved（upstream `c389f96bf3` 无 top-level `knip.json`）；无 apiproxy dead-pointer（`packages/host/apiproxy/src/api/results.{ts,schema.ts}` 仍 tracked = "used" until UM4 re-homes——是 UM4 follow-on，非 UM8）；无 `session-persistence-sqlite` dead-pointer（UM5 resolved）；`tsconfig.{base,host,client}.json` 无 apiproxy ref（re-sync reconciled path-mappings）；`lefthook.yml:55` 保留 fork-only `verify-no-production-src-on-master`；config-divergence mission complete。详 `.tmp/next-5-triage.md`。
+
+---
+
+### (original pre-triage)
 （待落地后填：knip 死指针清理 + tsconfig 对账 + churn 回退清单）

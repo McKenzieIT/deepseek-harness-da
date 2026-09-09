@@ -2,7 +2,7 @@
 
 **Type**: refactor
 **Phase**: upstream-merge
-**Status**: open
+**Status**: archived (2026-09-09 triage)
 **Assignee**: unclaimed
 **Blocked by**: UM3, UM4（3 logic-change 文件先归 UM3/UM4）
 **Blocks**: UM10
@@ -21,4 +21,10 @@ d5 把 68 个 fork-modified upstream `.ts`/`.tsx` 分四桶：**LEGITIMATE-EXTEN
 5. UNNECESSARY-DIVERGENCE 顺势回退（d5 12 churn 文件）。
 
 ## Resolution
+
+**[2026-09-09 triage] → Status: archived (superseded).** 68-file d5 bucketing reconciled by `c389f96bf3` merge：scopeId dormant KEEP-bucket survived（`runtime-types.ts:38,46,48`、`tool-calls.ts:71-83`、`tools/src/index.ts:326-331,1393`）；3 upstream-logic-change files split to UM3（id-less cluster）+ UM4（apiproxy presetSwitches）；~8 DATA-AGENT-COUPLED zombie-bucket re-validation moved to **R-DA-CLIENT-RUNTIME-DECOMMISSION**（7 包/29 文件，非 45）；~12 UNNECESSARY-DIVERGENCE churn reverted by re-sync。详 `.tmp/next-5-triage.md`。
+
+---
+
+### (original pre-triage)
 （待落地后填：每桶处置结果 + KEEP 文件编译验证 + REVERT 文件清单）

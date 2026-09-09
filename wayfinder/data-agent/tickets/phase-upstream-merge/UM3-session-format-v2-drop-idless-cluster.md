@@ -2,7 +2,7 @@
 
 **Type**: refactor
 **Phase**: upstream-merge
-**Status**: open
+**Status**: archived (2026-09-09 triage)
 **Assignee**: unclaimed
 **Blocked by**: UM1
 **Blocks**: UM4（results-RPC 触 session）、UM5、UM6、UM7
@@ -30,4 +30,10 @@ d5 审计 A5 记 fork 做了 id-less 容忍簇：`packages/core/session/src/inde
 6. `legacy-empty-callid` × 2 分支（`fix/legacy-empty-callid`、`fix/legacy-empty-callid-pr`）tied to A5，UM3 解决后 UM11 删。
 
 ## Resolution
+
+**[2026-09-09 triage] → Status: archived (resolved-by-upstream).** `a1271a4`（streamed tool-call identity）+ `f99b06e`（format-v2 assistant streams）均 ancestor of synced-base HEAD；`assembler.ts:72` `partial.toolCallId = chunk.id` unconditional（fork `:71 if` guard + `:78-84` backfill dropped）；session `:347-348` strict rejection（fork `:336-346` relaxation dropped）。详 `.tmp/next-5-triage.md`。
+
+---
+
+### (original pre-triage)
 （待落地后填：接受的 upstream 文件 + data-agent adapter callId 发射验证）

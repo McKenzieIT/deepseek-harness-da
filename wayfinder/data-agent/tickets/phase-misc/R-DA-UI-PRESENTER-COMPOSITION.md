@@ -1,6 +1,6 @@
 # R-DA-UI-PRESENTER-COMPOSITION — data-agent UI presenters vs new ui-conversation view-registry architecture
 
-**Type**: grilling (design) · **Phase**: refactor (post-merge) · **Status**: open · **Assignee**: unclaimed · **Priority**: **HIGH**（升级自 MEDIUM——见下方 "priority 升级理由"）
+**Type**: grilling (design) · **Phase**: refactor (post-merge) · **Status**: resolved (Plan B confirmed 2026-09-09) · **Assignee**: unclaimed · **Priority**: **HIGH**（升级自 MEDIUM——见下方 "priority 升级理由"）
 **Blocked by**: [UM-ARCH](../phase-upstream-merge/UM-ARCH-architecture-diagrams-depmap.md) regen-from-synced（要看到 view-registry seam 在 synced latest 的权威结构）· [UM-ADAPT](../phase-upstream-merge/UM-ADAPT-per-shift-adaptive-analysis.md) seam-4 manifest 集中化分析 + view-registry seam adaptive 判定
 **Blocks**: [R-DA-CLIENT-RUNTIME-DECOMMISSION](R-DA-CLIENT-RUNTIME-DECOMMISSION.md) **Phase-2**（4 presenter 包迁移的注册模式决策；zombie 本体删除依赖此完成）· UM10（typecheck 全绿）· UM16（build:official 绿的一部分——4 presenter 迁完前 tsc 有残留错）
 **Related**: UM14（synced base 提供权威 view-registry API 表面）· UM-ADAPT § 移位清单「seam 3/4」· map § Context Layer · design-research 2026-09-08
@@ -66,5 +66,23 @@ fork 的 data-agent UI presenters（`ui-present-table`, `ui-present-decompositio
 - **B-DA1** (already tracked, task #10): preset-autojoin's `agent/created` fire-and-forget race — real fix = move preset-join to the awaited setup path (session-controller `@Remote('prompt')`/`@Remote('create')`), retire `preset-autojoin`.
 
 ## Resolution
+
+**[2026-09-09] Plan B confirmed — keep-standalone (not Plan A).**
+
+接地翻转 ticket 原本「预期 A」。三条铁证（主 session bash grep 重验 + research subagent，16 file:line 引用）foreclose Plan A：
+
+1. **`tool.call.toolview` 是 upstream slot**（`ui-tool/src/client/contract/slots.ts:26`，`git ls-tree c389f96bf3` 确认在 upstream）——upstream 自己就注册 ask-question/bash/read/search/web/todo 等 toolview 在此；fork 4 presenter 是 peer，非 fork workaround（UM-ADAPT 判据 4 ✓，contra ticket 的「marginal 违反风险」担忧）。
+2. **4 presenter 是 tool-name-keyed sub-view，由 `ToolCallTree`（`ui-tool/src/client/tool/ToolCallTree.tsx`）在 `tool-call` node 内部渲染**——非 view-tab（`conversation.view` slot）/node-kind（`conversation.chat.node` slot）。Plan A 的 `ctx.uiConversation.views.register`/`events.register` 架构错位（那俩是给 per-TARGET builder / node-kind 的）。
+3. **`projectBlock`（`ui-chat/src/client/conversation-nodes/tool.ts`）不计算 `isLatestTurn`/`blockText`**——Plan A「builder 内建、helpers 消失」前提对 synced base 为假。两 helper 是 fork-only（zombie `runtime/src/client/cards.ts:16,33`）。
+
+**Plan B 执行体**：保留 `tool.call.toolview` + repoint type imports（`ClientContext`→cordis `Context`、`SessionId`/`ISessions`→`dsh-session`/`api-session-controller`、`ConversationSnapshot`/`ToolCallBlock`→`ui-conversation`）+ re-home `blockText`（5 行纯函数）+ 解 `isLatestTurn` snapshot-access gap。**镜像 upstream toolview**（`ui-tool/src/client/tool/toolviews/read-row.tsx`：同 `tool.call.toolview` slot、同 `ctx.slots.inject/register` 模式、imports 从 cordis/ui-slots/ui-tool 自有 contract，不从 zombie）——Plan B = upstream 自己 toolview 的做法。
+
+**`isLatestTurn` gap（Phase-2 执行细节，留 Phase-2 session 定）**：`tool.call.toolview` entries 只拿 `useConversation`（target-neutral），拿不到 `useChat`（chat-specific，仅经 `CHAT_NODE_INJECT` 注入 `conversation.chat.node`——`ui-chat/apply.ts:104`）；`ToolCallOwnerProps`（`ui-tool/contract/slots.ts:55`）无 snapshot hook。4 选项：① 给 `ToolCallOwnerProps` 加 `isLatestTurn: boolean` 由 `ToolCallTree` 算好传下（主 session 倾向）；② 传 `useChat` hook；③ 用 `useConversation` 重算（跨 target 边界）；④ 改成 `conversation.chat.node` renderer（架构错）。fork 特有需求（upstream 的 read toolview 不需 isLatestTurn）。
+
+**Blocks**：R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-2（4 presenter 迁移按 Plan B 执行）+ zombie 包删除 + UM10 typecheck 全绿。
+
+---
+
+### Pre-confirmation note (original)
 
 (open；建议 UM-ADAPT 出完 seam-4 + view-registry seam 分析后，本票 grill A/B——预期 A（真适配性改造），但决策要 UM-ADAPT 判据为证)

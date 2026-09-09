@@ -27,4 +27,10 @@ fork 的 `packages/host/apiproxy/src/api-proxy.ts`（grep 确认 fork 仍有）�
 5. **knip.json**：清 `packages/host/apiproxy` 死指针（UM8 接力）。
 
 ## Resolution
+
+**[2026-09-09 triage] → Status: leave-open (R-DA/Phase-2).** synced base 仍 track `packages/host/apiproxy/src/api/results.{ts,schema.ts}`（2 fork-only 文件，results-RPC re-home 待 `packages/api/remotes/`）；upstream `c389f96bf3` 无 `packages/host/apiproxy`；presetSwitches race re-validation under new Remote arch = R-DA + Phase-2。详 `.tmp/next-5-triage.md`。
+
+---
+
+### (original pre-triage)
 （待落地后填：results-RPC 重落户后的 remotes 路径 + A6 race 在新架构下的处置）
