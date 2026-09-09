@@ -78,7 +78,7 @@
 ### 1. 执行级评分 + 非循环 GT 溯源(linchpin)
 做什:EX grader 通过 evaluation adapter 复用 `ctx.query.execute` 并归一结果集；evaluation 只拥有评分、ground truth、policy 与 evidence。为 143 个 EXEC cases 派生非-LLM expected result(human-reviewed `expected.sql`+snapshot identity)，25 个 DELIVERY cases 保持非 execution，退役 34 手挑圆整数，接受多种显式声明的等价结果。
 论文:Spider(1809.08887,**原文明写不提供 Execution Accuracy**)、**distilled test-suite(2010.02840,Zhong/Yu/Klein EMNLP 2020——test-suite accuracy 属这篇独立论文,不是 Spider 1.0 的一部分**)、BIRD(2305.03111)、Spider 2.0(2411.07763)、Northcutt(2103.14749)、GradeSQL ORM(2606.30851 ✅验,真标题 *Test-Time Verification for Text-to-SQL via Outcome Reward Models*——GradeSQL 是其框架名;**执行报错的候选被丢弃而非记答错**)。全部经 R1 primary-fetch(arXiv API 元数据 + PDF 全文)确认。
-票链:[**R1 — 执行级评分与非循环 ground truth 论文认读**](tickets/R1-exec-grader-papers.md)（resolved）→ 并行 [**G1 — Execution grader seam**](tickets/G1-exec-grader-seam.md)+[**G1b — Ground-truth lifecycle**](tickets/G1b-ground-truth-lifecycle.md)→ **T1-exec-grader-impl**（blocked by G1+G1b）→ [**R23 — Comparator-policy mutation baseline**](tickets/R23-comparator-policy-mutation-baseline.md)→ [**GA-EVAL-EXPAND**](../data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md)→ 条件 **G12-exec-orm-verifier**+**R12-exec-orm-baseline**（用执行结果训 ORM 替代 judge）。
+票链:[**R1 — 执行级评分与非循环 ground truth 论文认读**](tickets/R1-exec-grader-papers.md)（resolved）→ 并行 [**G1 — Execution grader seam**](tickets/G1-exec-grader-seam.md)（resolved）+[**G1b — Ground-truth lifecycle**](tickets/G1b-ground-truth-lifecycle.md)→ [**T11**](tickets/T11-loader-provenance-strip.md)（**resolved 09-09**）+[**T1-exec-grader-impl**](tickets/T1-exec-grader-impl.md)（**implemented 09-09，核心已落、剩余项已分流**）→ [**R23 — Comparator-policy mutation baseline**](tickets/R23-comparator-policy-mutation-baseline.md)→ [**GA-EVAL-EXPAND**](../data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md)→ 条件 **G12-exec-orm-verifier**+**R12-exec-orm-baseline**（用执行结果训 ORM 替代 judge）。
 
 ### 2. Judge 重写:blind-solve-then-score(根因)
 做什:两阶段——judge 先独立推导+提交 expected 维度再看候选;候选对已提交 reference 比对而非自评 plausibility;目标 false-pass 35.9pp→<10pp。
@@ -149,28 +149,43 @@
 
 ## 推荐认领顺序
 
-**linchpin 仍是 T1(EX grader)**——它是 R14/G3/R17/G9/R21 与 G13 的校准 oracle 和客观 GT 来源。**2026-09-09 修正前置判定**（依据：G1 已在 09-08 完成 v3 重做并合并，D2 把包边界移出 T1）：
+### 本批已完成（2026-09-09）：T11 + T1 同批落地
 
-**硬前置只剩一个** —— **[T11](tickets/T11-loader-provenance-strip.md)**（AFK impl）：loader 丢弃 39 个 case 已有的 reference SQL 与快照锚点，T1 的「可重放证据」与「gold 失败=benchmark infra failure」两条验收面在此之前无法成立。二者**同批落包，T11 先完成全部验收再起 T1**。
+**一句话**：让评测能"真的把候选 SQL 跑出来跟答案比"，而不是让另一个大模型读 SQL 文本猜对错，并且把"模型答错"跟"数仓没答/case 本身坏了"三件事分开记。
+
+**为什么要做**：改之前有三处会误导结论——(1) 没接数仓时，评测用"大模型看 SQL 打分"顶替真执行，同一批 case 同一模型下这样测出来的通过率比真执行**虚高 56.4 个百分点**；(2) 数仓连不上、超时、或 case 期望值本身写错，都被记成"模型答错"，冤枉模型、污染分母；(3) 判分证据只存前 5 行，事后无法复算，尤其占多数的"只数行数"类 case。
+
+**做了什么**：把执行判分收敛成一条正规通路——单一执行端口（复用 `ctx.query`，不重写执行引擎）+ 归一/判分两个纯函数 + 可落盘的证据 artifact（带 digest 与配置化行数上限，供 R23 离线重打分）；结局从"对/错"两分改成**五分**（对/错/环境挡住/case 坏了/没测），后两类不进模型分母；judge 分数只并排报告、永不填执行维度；每次 run 把"用了哪个执行器、什么判分策略"写进结果文件，`compare.ts` 拒绝渲染说不清自己怎么测的 run。同时把重复的适配器/比较器/`QueryResult` 收成一份，loader 也不再静默丢掉 39 个 case 自带的参考 SQL 与快照锚点。
+
+**效果（在真数仓上验证，非假设）**：39-case 对账在真 maxc 上复现旧结论（event 命中 2、dws 命中 13，dws 21/21 逐条一致），证明换通路没引入语义偏移；**列名 vs 列位 的判分翻面 0 个**（可解释：活跃语料用不到会翻面的模式）；**2 个 event 查询超时被正确归为"环境挡住"**而非"模型答错"（旧路径会错记成"语料陈旧"）。上线真执行判分覆盖 **57 个 scalar_exact case**；86 个只数行数的 case 待 G1b 重建语料，25 个 DELIVERY-only 记"没测"——**没有**"143 个 case 已被执行级评分"这种说法。
+
+**留下的尾巴**（已在 [T1 票](tickets/T1-exec-grader-impl.md) Resolution 逐条记录，转出而非遗漏）：两份 `runBatch`/两份 health gate 的删除、`eval-cli` 去掉对 provider 的直连（纯删除，与本批的判分语义变更叠加会让"数字动了是哪件事引起"说不清，故转 [T12](tickets/T12-eval-package-consolidation.md)）；截断信号仍缺一个超大结果集来实测。
+
+---
+
+**T1 execution grader 已落地**，现在为 R14/G3/R17/G9/R21 与 G13 提供校准 oracle 和客观 GT。
+
+**T11/T1 前置已完成** —— [T11](tickets/T11-loader-provenance-strip.md) 于 2026-09-09 resolved，T1 随后完成核心 execution-grader 实现与真数据闸门。G10 主实施链现在推进到 [T13 — Production Context Projection capability](tickets/T13-context-projection-service.md)。
 
 **原列的另两个前置降为软前置**：
 
 - ~~R10 → G10 定包边界~~——D2 定下 **T1 不动包名与 exports**，因此 T1 仍不必等 G10；G10 D20–D25 已把后续重组改为 [T13](tickets/T13-context-projection-service.md) → [T9](tickets/T9-evaluation-foundations.md) → [T14](tickets/T14-data-analysis-extension-pack-migration.md) → [T15](tickets/T15-evaluation-controller-cli.md) → [T12](tickets/T12-eval-package-consolidation.md)，最终 cutover 再删除旧包。
 - GA-EVAL-CASESET-EVENT-ANCHOR——它 blocks 的是数字的**解读**，不是实现：本批以「复现 39-case 的 MATCH/STALE 计数」为验收，不以 pass 率为验收；任何 pass 率解读须标注「event 口径未定」。
 
-**现在 unblocked(AFK 可自跑,先开,为 grilling 做数据/论文前置)**:
-1. **T11 + T1 同批**（impl；**推荐的下一步**）——T11 是唯一硬前置且已 unblocked，两票同批即可开工
-2. **R14-judge-falsepass-by-dim** ——**前置已改,不再是「便宜的既有数据分析」**:R8 查出唯一带逐维+`execution_match` 配对的文件只有 `eventdef-realexec.json`(n=95/35 case),且其真值受 event anchor 污染(16/18 失效)⇒ 须等 T11 + 语料重建
-3. [**R20 探针 b + c**](tickets/R20-judge-readout-probes.md)(**真正的 quick win**:只重跑判官、不重跑 agent;测准则顺序与 isolation-vs-joint)→ 喂 [G8](tickets/G8-judge-readout-scale.md)
-4. [**R8c**](tickets/R8c-reference-anchor-papers.md)(认读,**紧迫**)——它改 T11 的下游语义:恢复出的 `expected.sql` **不能直接当真值**,须先过锚可信度门;而 T11+T1 是推荐的下一步
-5. [**R8b**](tickets/R8b-judge-readout-papers.md)(认读)→ 喂 G8 的决策 1/3/4,并为 R20 探针 b/c 定指标口径
-6. [**R4**](tickets/R4-significance-papers.md)(认读分析,独立,便宜);~~R8~~ 已 resolved(2026-09-10)
+**现在 unblocked / 下一步**:
+1. **[T13 — Production Context Projection capability](tickets/T13-context-projection-service.md)**（G10 主实施链下一票）——建立正常 data-agent 与 Evaluation 共用的唯一 production Context Projection seam；T11/T1 前置已满足。
+2. **[R23 — Comparator-policy mutation baseline](tickets/R23-comparator-policy-mutation-baseline.md)**（可并行）——直接使用 T1 已落盘的 artifact 与 raw/normalized digest 离线重打分。
+3. **R14-judge-falsepass-by-dim** ——仍须等待 G1b 重建 EXECUTION 语料；T11 完成只解决了字段可达性。
+4. [**R20 探针 b + c**](tickets/R20-judge-readout-probes.md)——只重跑判官、不重跑 agent；测准则顺序与 isolation-vs-joint。
+5. [**R8c**](tickets/R8c-reference-anchor-papers.md) 与 [**R8b**](tickets/R8b-judge-readout-papers.md)——分别约束可信参考锚和 G8 的读出/量表决策。
 
-**[T11](tickets/T11-loader-provenance-strip.md) 与 T1 同批本地实现** —— T11 是 T1 唯一硬前置；方向 1 是**后端方向**，不走另环境/rubric（见 [playbook §1.1](playbook.md)），在本仓起 worktree 直接做，包内顺序 **T11 全部验收 → T1**。本仓有数仓凭证，39-case 真对账可就地跑。
+**[T11](tickets/T11-loader-provenance-strip.md) 与 [T1](tickets/T1-exec-grader-impl.md) 已按同批顺序完成**：T11 先验收 loader/provenance，再落 T1 execution grading。
+
+
 
 **HITL grilling**:[G10](tickets/G10-harness-bhe-split.md) 已 resolved；[G13](tickets/G13-context-evaluation-protocol.md) 等 [T1](tickets/T1-exec-grader-impl.md)+[T13](tickets/T13-context-projection-service.md)，[G14](tickets/G14-adaptive-context-holdout-policy.md) 等 G13+[G5](tickets/G5-dynamic-case-pipeline.md)，[G15](tickets/G15-dynamic-evaluation-lifecycle.md) 等 G5。其他独立 grilling 仍按各方向 frontier 领取。
 
-**AFK 级联**:**[T11](tickets/T11-loader-provenance-strip.md) → [T1](tickets/T1-exec-grader-impl.md) → [T13](tickets/T13-context-projection-service.md) → [T9](tickets/T9-evaluation-foundations.md) → [T14](tickets/T14-data-analysis-extension-pack-migration.md) → [T15](tickets/T15-evaluation-controller-cli.md) → [T12](tickets/T12-eval-package-consolidation.md) → [R25](tickets/R25-evaluation-rebaseline.md)**；G13→R26，G13+G14→R27，G15+R25+T5/T5b→R21。方向 1 的 T11/T1 仍可在 G10 收尾前先做，后续新票均等待 G10 resolved。
+**AFK 级联**:~~[T11](tickets/T11-loader-provenance-strip.md) → [T1](tickets/T1-exec-grader-impl.md)~~（已完成）→ **[T13](tickets/T13-context-projection-service.md)（下一步）** → [T9](tickets/T9-evaluation-foundations.md) → [T14](tickets/T14-data-analysis-extension-pack-migration.md) → [T15](tickets/T15-evaluation-controller-cli.md) → [T12](tickets/T12-eval-package-consolidation.md) → [R25](tickets/R25-evaluation-rebaseline.md)；[R23](tickets/R23-comparator-policy-mutation-baseline.md) 可与 T13 并行。G13→R26，G13+G14→R27，G15+R25+T5/T5b→R21。
 
 ## Not yet specified(fog)
 
