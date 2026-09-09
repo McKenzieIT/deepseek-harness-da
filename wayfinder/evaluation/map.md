@@ -73,7 +73,7 @@
 ### 1. 执行级评分 + 非循环 GT 溯源(linchpin)
 做什:EX grader 通过 evaluation adapter 复用 `ctx.query.execute` 并归一结果集；evaluation 只拥有评分、ground truth、policy 与 evidence。为 143 个 EXEC cases 派生非-LLM expected result(human-reviewed `expected.sql`+snapshot identity)，25 个 DELIVERY cases 保持非 execution，退役 34 手挑圆整数，接受多种显式声明的等价结果。
 论文:Spider(1809.08887,**原文明写不提供 Execution Accuracy**)、**distilled test-suite(2010.02840,Zhong/Yu/Klein EMNLP 2020——test-suite accuracy 属这篇独立论文,不是 Spider 1.0 的一部分**)、BIRD(2305.03111)、Spider 2.0(2411.07763)、Northcutt(2103.14749)、GradeSQL ORM(2606.30851 ✅验,真标题 *Test-Time Verification for Text-to-SQL via Outcome Reward Models*——GradeSQL 是其框架名;**执行报错的候选被丢弃而非记答错**)。全部经 R1 primary-fetch(arXiv API 元数据 + PDF 全文)确认。
-票链:[**R1 — 执行级评分与非循环 ground truth 论文认读**](tickets/R1-exec-grader-papers.md)（resolved）→ 并行 [**G1 — Execution grader seam**](tickets/G1-exec-grader-seam.md)+[**G1b — Ground-truth lifecycle**](tickets/G1b-ground-truth-lifecycle.md)→ **T1-exec-grader-impl**（blocked by G1+G1b）→ [**R23 — Comparator-policy mutation baseline**](tickets/R23-comparator-policy-mutation-baseline.md)→ [**GA-EVAL-EXPAND**](../data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md)→ 条件 **G12-exec-orm-verifier**+**R12-exec-orm-baseline**（用执行结果训 ORM 替代 judge）。
+票链:[**R1 — 执行级评分与非循环 ground truth 论文认读**](tickets/R1-exec-grader-papers.md)（resolved）→ 并行 [**G1 — Execution grader seam**](tickets/G1-exec-grader-seam.md)（resolved）+[**G1b — Ground-truth lifecycle**](tickets/G1b-ground-truth-lifecycle.md)→ [**T11**](tickets/T11-loader-provenance-strip.md)（**resolved 09-09**）+[**T1-exec-grader-impl**](tickets/T1-exec-grader-impl.md)（**implemented 09-09，核心已落、三项转 T12**）→ [**R23 — Comparator-policy mutation baseline**](tickets/R23-comparator-policy-mutation-baseline.md)（**下一步**）→ [**GA-EVAL-EXPAND**](../data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md)→ 条件 **G12-exec-orm-verifier**+**R12-exec-orm-baseline**（用执行结果训 ORM 替代 judge）。
 
 ### 2. Judge 重写:blind-solve-then-score(根因)
 做什:两阶段——judge 先独立推导+提交 expected 维度再看候选;候选对已提交 reference 比对而非自评 plausibility;目标 false-pass 35.9pp→<10pp。
@@ -140,9 +140,23 @@
 
 ## 推荐认领顺序
 
+### 本批已完成（2026-09-09）：T11 + T1 同批落地
+
+**一句话**：让评测能"真的把候选 SQL 跑出来跟答案比"，而不是让另一个大模型读 SQL 文本猜对错，并且把"模型答错"跟"数仓没答/case 本身坏了"三件事分开记。
+
+**为什么要做**：改之前有三处会误导结论——(1) 没接数仓时，评测用"大模型看 SQL 打分"顶替真执行，同一批 case 同一模型下这样测出来的通过率比真执行**虚高 56.4 个百分点**；(2) 数仓连不上、超时、或 case 期望值本身写错，都被记成"模型答错"，冤枉模型、污染分母；(3) 判分证据只存前 5 行，事后无法复算，尤其占多数的"只数行数"类 case。
+
+**做了什么**：把执行判分收敛成一条正规通路——单一执行端口（复用 `ctx.query`，不重写执行引擎）+ 归一/判分两个纯函数 + 可落盘的证据 artifact（带 digest 与配置化行数上限，供 R23 离线重打分）；结局从"对/错"两分改成**五分**（对/错/环境挡住/case 坏了/没测），后两类不进模型分母；judge 分数只并排报告、永不填执行维度；每次 run 把"用了哪个执行器、什么判分策略"写进结果文件，`compare.ts` 拒绝渲染说不清自己怎么测的 run。同时把重复的适配器/比较器/`QueryResult` 收成一份，loader 也不再静默丢掉 39 个 case 自带的参考 SQL 与快照锚点。
+
+**效果（在真数仓上验证，非假设）**：39-case 对账在真 maxc 上复现旧结论（event 命中 2、dws 命中 13，dws 21/21 逐条一致），证明换通路没引入语义偏移；**列名 vs 列位 的判分翻面 0 个**（可解释：活跃语料用不到会翻面的模式）；**2 个 event 查询超时被正确归为"环境挡住"**而非"模型答错"（旧路径会错记成"语料陈旧"）。上线真执行判分覆盖 **57 个 scalar_exact case**；86 个只数行数的 case 待 G1b 重建语料，25 个 DELIVERY-only 记"没测"——**没有**"143 个 case 已被执行级评分"这种说法。
+
+**留下的尾巴**（已在 [T1 票](tickets/T1-exec-grader-impl.md) Resolution 逐条记录，转出而非遗漏）：两份 `runBatch`/两份 health gate 的删除、`eval-cli` 去掉对 provider 的直连（纯删除，与本批的判分语义变更叠加会让"数字动了是哪件事引起"说不清，故转 [T12](tickets/T12-eval-package-consolidation.md)）；截断信号仍缺一个超大结果集来实测。
+
+---
+
 **linchpin 仍是 T1(EX grader)**——它是 R14/G3/R17/G9/G10/R21 的校准 oracle 与客观 GT 来源。**2026-09-09 修正前置判定**（依据：G1 已在 09-08 完成 v3 重做并合并，D2 把包边界移出 T1）：
 
-**硬前置只剩一个** —— **[T11](tickets/T11-loader-provenance-strip.md)**（AFK impl）：loader 丢弃 39 个 case 已有的 reference SQL 与快照锚点，T1 的「可重放证据」与「gold 失败=benchmark infra failure」两条验收面在此之前无法成立。二者**同批落包，T11 先完成全部验收再起 T1**。
+**硬前置只剩一个** —— **[T11](tickets/T11-loader-provenance-strip.md)**（AFK impl，**2026-09-09 已 resolved**）：loader 丢弃 39 个 case 已有的 reference SQL 与快照锚点，T1 的「可重放证据」与「gold 失败=benchmark infra failure」两条验收面在此之前无法成立。二者**同批落包，T11 先完成全部验收再起 T1**（已按此顺序完成）。
 
 **原列的另两个前置降为软前置**：
 
@@ -150,7 +164,7 @@
 - GA-EVAL-CASESET-EVENT-ANCHOR——它 blocks 的是数字的**解读**，不是实现：本批以「复现 39-case 的 MATCH/STALE 计数」为验收，不以 pass 率为验收；任何 pass 率解读须标注「event 口径未定」。
 
 **现在 unblocked(AFK 可自跑,先开,为 grilling 做数据/论文前置)**:
-1. **T11 + T1 同批**（impl；**推荐的下一步**）——T11 是唯一硬前置且已 unblocked，两票同批即可开工
+1. ~~**T11 + T1 同批**~~（**2026-09-09 已完成**；下一步推荐 R23）——T1 的可落盘 artifact + raw/normalized digest 已就位，R23 可直接用存量 artifact 离线重打分
 2. **R10-harness-goodhart-papers**(认读)——解 G10（case schema 归属与 B/H/E 切分）；**已不再阻塞 T1**，但它 blocks T9/T12
 3. **R14-judge-falsepass-by-dim**(既有数据分析,便宜)→ 喂 G3
 4. **R20-radar-redundancy**(quick win,可能直接定位 0.6 通胀根因)→ 喂 G8
@@ -160,7 +174,7 @@
 
 **HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
 
-**AFK 级联**(各 G 解后):**T11→T1**（同批，T11 先验收）;**R10→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G11→T10。
+**AFK 级联**(各 G 解后):~~**T11→T1**~~（**2026-09-09 已完成**）;**R10→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;**T1→R23→GA-EVAL-EXPAND→{R12/R17/G9}**（现以 R23 为首）;T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G11→T10。
 
 ## Not yet specified(fog)
 
