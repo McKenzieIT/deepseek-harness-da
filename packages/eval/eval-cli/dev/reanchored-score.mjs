@@ -5,7 +5,7 @@
  *
  * Needed because 16/18 event cases' recorded values no longer match their own
  * reference SQL — the raw event ODS view's historical partition is not a frozen
- * anchor, while the DWS tables are (see `case-expected-value-audit.mjs` and
+ * anchor, while the DWS tables are (see `case-expected-value-audit.ts` and
  * GA-EVAL-CASESET-EVENT-ANCHOR). As shipped, an agent that computes the exactly
  * correct number still scores `wrong`, so the as-shipped pass_rate cannot say
  * whether event-case SQL got better. The re-anchored number can.
