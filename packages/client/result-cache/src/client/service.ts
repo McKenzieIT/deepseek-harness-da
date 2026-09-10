@@ -44,11 +44,20 @@ export interface ResultService {
    * Resolve one result id for the caller's session. Hit returns the cached
    * reference (no clone); miss calls `result.get` and caches the entry.
    * `result-not-found` resolves to `undefined`; other failures reject.
+   * @param resultId - opaque lookup token (`qr_<…>` for query results, `cr_<…>` for compute-derived ones).
+   * @param signal - forwarded to the `result.get` fetcher on a miss; a hit resolves without consulting it.
+   * @returns the cached entry, or `undefined` when the host has no such id.
    */
   get(resultId: string, signal?: AbortSignal): Promise<ResultEntry | undefined>
-  /** Drop the caller's session's entry for one id (fresh-`query_data` invalidation). */
+  /**
+   * Drop the caller's session's entry for one id (fresh-`query_data` invalidation).
+   * @param resultId - opaque lookup token whose entry is dropped for the caller's session.
+   */
   invalidate(resultId: string): void
-  /** Drop every entry for one session (session teardown / resync). */
+  /**
+   * Drop every entry for one session (session teardown / resync).
+   * @param sessionId - the session whose entries are dropped; taken explicitly so teardown paths need no scope.
+   */
   invalidateSession(sessionId: SessionId): void
   /** Drop every entry across all sessions (reconnect flush). */
   invalidateAll(): void

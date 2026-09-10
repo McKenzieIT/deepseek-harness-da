@@ -7,7 +7,12 @@
  */
 
 export interface IContextLayer {
+  /**
+   * Show the fullscreen graph overlay.
+   * @param focusNode - optional node id to focus once the overlay is open; omitted leaves focus unset.
+   */
   open(focusNode?: string): void
+  /** Hide the overlay and clear the focused node; a no-op when already closed. */
   close(): void
   readonly isOpen: boolean
   readonly focusNode: string | undefined
