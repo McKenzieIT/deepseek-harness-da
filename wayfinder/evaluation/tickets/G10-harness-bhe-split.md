@@ -1,9 +1,9 @@
 # G10 — Harness Benchmark/Harness/Environment 拆分
 
-**Type**: grilling  ·  **Status**: open
+**Type**: grilling  ·  **Status**: open · **Research readiness**: ready（2026-09-10）
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无（[R10](R10-harness-goodhart-papers.md)、[R10b](R10b-harness-measurement-validity.md) 与 [R10c](R10c-context-layer-evaluation.md) 已 resolved）
-**Blocks**: T9-bhe-split-impl；并解 [G1](G1-exec-grader-seam.md) 移交的三条；[T1](T1-exec-grader-impl.md) 的落点
+**Blocks**: T9-bhe-split-impl、[T12](T12-eval-package-consolidation.md) 题面重定；为 [R21](R21-goodhart-audit.md) 提供 run/slice identity；并解 [G1](G1-exec-grader-seam.md) 移交的三条
 **Mode**: HITL
 **Branch**: `grilling/G10-harness-bhe-split`
 **Supersedes**: GA-GT4 的架构面（`wayfinder/data-agent/tickets/phase-misc/`，须先调和）
@@ -42,6 +42,31 @@
 - **Context ownership**：Benchmark 拥有 `ContextRequirement`、oracle/counterfactual 声明与 private ground truth；Context capability 拥有 semantic snapshot、ontology/relations、terminology、retriever/ranker 与 projection policy；Harness 只拥有请求时机和模型注入。
 - **Context attribution**：run identity 增加 `contextIdentity`；component/counterfactual/perturbation/end-to-end 四层分别测 grounding、relation/composition、provenance、model utilization 与最终 outcome。
 - **Context leakage**：gold-derived oracle projection 与 production score 隔离；动态 enrichment 写回形成新 snapshot，只对后续预声明 cohort 生效。
+
+## Research readiness audit（2026-09-10）
+
+**判定：G10 已有充分研究支撑，可以直接开始 HITL grilling；没有新的 blocking research。** 当前输入覆盖了 G10 的全部决策类型：
+
+| 输入 | 已回答的问题 | G10 使用方式 |
+| --- | --- | --- |
+| [R10](../research/harness-goodhart-papers.md) | Benchmark/Harness/Environment 所有权、schema 合流与 Goodhart | 约束角色与 train/heldout/fresh 语义 |
+| [R10b](../research/harness-measurement-validity-papers.md) | adapter parity、五阶段 evidence、preflight、finality/separation、frozen run identity | 约束 runtime protocol 与迁移验收 |
+| [R10c](../research/context-layer-evaluation-role.md) | Context capability 的位置、`contextIdentity`、四层 attribution 与 leakage | 约束 Context seam，不把 context 收益误报给 model/Harness |
+| [R24](../research/eval-package-consolidation.md) | 四个 eval 包的重复、依赖与合并爆炸半径 | 约束包重切与 T12 顺序 |
+| [G1](G1-exec-grader-seam.md) | 六条架构无关 execution 决策与三条移交 | G10 只裁位置，不重开 execution semantics |
+| [GA-GT4](../../data-agent/tickets/phase-misc/GA-GT4-eval-de-k11.md) | 当前 K11 hardcode 与旧 de-K11 scope | grilling 中调和：保留通用化问题，替换旧包边界答案 |
+
+2026-09-10 代码复核确认 GA-GT4 的核心 hardcode 仍在：`eval-runner-service` 仍默认 K11 caseDir/today 并使用 `^k11_\d+\.yaml$`，bundle 仍声明 K11 `semanticRoot`/`caseDir`，`compare.ts` 仍按 `k11v2_*` 名称分桶。R24 后 `packages/eval/` 只有一次测试 lint 删除，没有包边界或依赖变化，因此 R24 的仓库取证仍可作为 grilling 输入。GA-GT4 唯一过期项是“失败分类无人调用”：`multi_turn.ts` 已调用 `classifyExecutionFailure`，但多引擎 taxonomy 仍属方向 9/G9/T8，不能由 G10 顺手实现。
+
+Grilling 前不需要先实现 heldout/fresh、跑新 baseline、完成 T1/T11 或执行 Context counterfactual；这些需要 G10 先锁接口。Grilling 会话应先读本节六项输入，再逐项裁定：owner/interfaces → canonical schemas/views → run/context identity → package topology → migration order → GA-GT4 supersession。
+
+### 非阻塞研究候选
+
+以下方向可能增强后续 protocol，但不改变当前 seam 决策，因此不阻塞 G10：
+
+- **ClaimReceipt**（`2609.01992`，仅完成 arXiv metadata/abstract 核验）：committed experiment universe / evidence sufficiency/coverage receipt，适合在 T9 的 persistence/evidence 设计发生争议时再全文认读；
+- **The Double Measurement Confound in Agent Benchmarks**（`2609.09218`，仅完成 arXiv metadata/abstract 核验）：scaffolding level / execution-critical decision ownership，G10 可先把 decision ownership 写入 run manifest，是否形成独立研究票取决于 grilling 是否仍有争议；
+- Context counterfactual、perturbation/leakage 与 adaptive-ontology holdout：问题已由 R10c 识别，但准确 ticket 切分依赖 G10 的 Context projection seam 和 T1 execution grader，暂留 map fog。
 
 ## 已知约束（R10/R10b/R10c 提供论文依据，但这些是本仓实测事实）
 
