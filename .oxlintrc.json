@@ -26,6 +26,7 @@
     "native/**", // The imported landlock-run subtree has its own gates; see native/README.md.
     "**/*.js",
     "**/*.mjs",
+    "packages/*/*/src/**/*.d.ts", // Emitted declarations, never hand-written sources. An ad-hoc `tsc` whose outDir resolved to the package's own src/ instead of lib/types has dropped these into packages/data/* and packages/identity/* three times; the last occurrence inflated `pnpm run lint` from 93 to 1980. Kept OUT of .gitignore deliberately, so `git status` still reports a recurrence — hiding it there is what let the two earlier occurrences go unnoticed.
     "**/*.config.ts", // Tool and app configs are outside the repository TypeScript programs.
     "packages/client/tsdown.client.ts" // Shared client build preset, also outside a TypeScript program.
   ],
