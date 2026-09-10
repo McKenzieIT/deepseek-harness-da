@@ -124,3 +124,33 @@ durable 方法须含一道**纯 git plumbing 的 merge 完整性 gate**,与「ga
 **7 项 grilling 现状（无变化，4 仍 open）**：#1 staleness 跑哪（c 先 local）/ #2 cadence 阈值（150 commits/14days）/ #5 SEAM_MANIFEST seam-6（a 本票带）/ #8 impact report 落哪。#3/#4/#6 已收口。⚠ §2 manifest 把 verify-third-party-notices 列"pending blind spot"豁免，与 Decision 6a"enroll 两者"有张力——落 §2 时读其豁免理由再定。
 
 **落 §4 前须知**：§4 subagent 代码 tsc/oxlint/vitest **未跑**（§7.2 第 10 条）；git 层是 1426 行未验证代码，apply 后须跑 tsc/oxlint/vitest + 单独跑 `pnpm run upstream-status`。
+
+### [2026-09-16 第四轮] §2/§3/§4 全落 resync + 4 项 grilling 全收口 + §5/PR 待续
+
+**§2/§3/§4 全部落地 resync（4 commit，tsc+oxlint+vitest+gate/report exit 全过）**：
+
+| 节 | commit | 关键 |
+|---|---|---|
+| §2 gate-coverage | `2eb5b4a850` | meta-gate + 20 豁免 manifest + spec；接线 ciSharedStaticGates + hygieneLeafGates；顺手修 `c579b809d2` 留下的 stale doc-sync 断言（c579b809d2 enroll architecture-graph 后没更新 doc-sync spec 断言；§2 deliverable 在 `12d02c7687` 写，未预见 c579b809d2）|
+| §3 generator-inputs | `5536afc99f` | 17 生成器 manifest + spec；修 3 deliverable bug（`$` meta 键会崩 spec、`null ?? ''` 让 toBeNull 失败、`**/*.md` 全仓 glob 改 `<counterpart-files>` sentinel）|
+| §4 stage 1 | `cd1e9c37cd` | `upstream-sync-record.ts`（804 行，awk 直抽 deliverable 无转录错）+ `upstream-sync.json`（仓根，阈值 14/150 按 #2）+ `verify-upstream-sync-record` 门 + 接线；修 2 未验证代码 bug（collectWaiverFailures 去重键未闭合模板 `${direction}`→`${direction}:${path}`；historyRaw_length `unknown[]`→`unknown`+Array.isArray 守卫）；**门 exit 0**（记录与 Git 一致；note：upstream ref stale + 1 pending waiver `ui-settings-models/` revert-fork）|
+| §4 stage 2 | `3bc809c3ba` | `upstream-status.ts` 报告（永不失败 exit 0）；RefState fresh/stale/unknown；拒绝从 stale ref 推落后计数（防假绿）；thresholds 从 record 读（14/150）；`--no-fetch` 用 ls-remote；impact report 写 `upstream-sync/upstream-impact-<BASE>..<NEW>-<date>.md`（#8）；**read-only subagent 写**（代码到 /tmp，主 session cp+验证；subagent 代码干净零主修）offload context；**report exit 0**（ref stale local `5dda764ed3` ≠ remote `c291e7961a` → behind-count withheld；2 days < 14；1 pending waiver；impact report 写盘）|
+
+**4 项 HITL grilling 全收口（决策锁定）**：
+
+| # | 决策 | 定值 |
+|---|---|---|
+| 1 | staleness 跑哪 | (c) local 先（+ lefthook pre-push 每次 merge 自报）+ cron 后（UM12 绿基线后加 `schedule:`，UM12 票挂 follow-up）|
+| 2 | cadence | 每周查 + 批量 sync session（人）+ threshold **150 commits OR 14 天 OR seam>0** 任一硬触发（以下信息性）|
+| 5 | SEAM_MANIFEST seam-6 | (a) 本票带修（§5）：mode pending→seam + implementations→[包短名] + note；regen architecture-graph + 审 diff。seam-6 现状已核：`gen-architecture-graph.ts:89-93` = `mode:'pending'`+`implementations:[]`+note 说"workspace-files dir absent"——但 `packages/api/workspace-files` **现已存在**（UM14 re-sync 回归），故 stale，须修 |
+| 8 | impact report 落哪 | `upstream-sync/upstream-impact-<BASE>..<NEW>-<date>.md`（独立顶层目录，不捆绑 wayfinder，无翻译义务——research/ 无 .i18n.yaml 先例；`tickets/README.md` 是 paired 须避误触）；每次 sync 一份 dated |
+
+#3/#4/#6 此前已收口。**7 项 grilling 全收口**（UM15 首片 grilling 阶段完）。
+
+**§4 deliverable 订正**：revert-fork HEAD 残余"7 非 6"是**纯文档错**（§4.0 表说 7）——代码（Gate ③ `findings.push({path, direction:'revert-fork'})` 动态计算）跑门实测正确（6），无须改代码。
+
+**`check:ci:static` 36/11**（gate-coverage 在 ci-static + hygiene 都绿 = +2 passed；11 failed 正是 known A/B/C 集，零新增红）。
+
+**未落（下 session）**：§5 SEAM_MANIFEST seam-6 修（#5）+ lefthook pre-push 挂 staleness 门（#1 local）→ PR（B 类 2 绿 + 2 known-red，描述写明 ui-settings 回退 + known-red 理由 + 大原则 + §2-§5 是 UM15 首片，**不擅自 push**）。
+
+**resync tip `3bc809c3ba`，9 commit unpushed**（`e17f0fa16c`/`d4596863a6`/`12d02c7687`/`b3a516fe98`/`c579b809d2`/`2eb5b4a850`/`5536afc99f`/`cd1e9c37cd`/`3bc809c3ba`）。
