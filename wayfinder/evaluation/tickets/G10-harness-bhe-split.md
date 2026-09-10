@@ -60,6 +60,12 @@ Evaluation Core 只拥有 evidence identity、run/attempt/task correlation、pro
 
 Core 只标准化 outcome、duration、cost、finality、artifact changes 与 failure attribution 等跨领域 projection。未知 required evidence 使读取失败；只有生产者显式标记为 ignorable 的扩展 evidence 可以跳过。首版完整实现 data-analysis payload，data-engineering 与 data-science 各用一个轻量 conformance fixture 证明扩展与 persistence 路径。
 
+### D8 — Core 同时拥有 lifecycle 与通用 measurement metadata
+
+Evaluation Core 在 lifecycle envelope 之外定义独立的 `MetricObservation` 与 `AggregateMeasurement`：统一记录 metric identity、measured subject/population/partition、direction、raw value、replicate、grader provenance、estimand、aggregation、input observations 与 uncertainty。具体 metric 公式、threshold、rubric、有效性证据与领域 payload 仍由 Benchmark 和子领域 extension 拥有。
+
+Evidence 不必产生 metric，metric 也不得压缩为无类型 `score`。不同 metric 默认不可比较；只有 metric identity 与 run compatibility key 均满足声明规则时才允许计算 delta。Aggregate 必须可追溯到 raw observations，并区分 standard `pass@n`、strict `pass^k`、best-of-k 与 final submission。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
