@@ -4,7 +4,8 @@
 **Phase**: upstream-merge
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: UM1, UM3（results-RPC 触 session，须先定 session format）
+**Blocked by**: ~~UM1, UM3~~ → **已解除（2026-09-10 重评）**：UM1/UM3 均 archived（done via re-sync `8112743d69`），R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-1+2 亦已 resolved。**本票现 unblocked。**
+> **重评注（2026-09-10，UM10 线 A）**：UM10 实测发现本票的 results-RPC re-home **留了尾巴**——`packages/bundle/data-agent/cordis.patch.yml` mount 了 `@deepseek-ai/dsh-result-cache/src/remote.ts`（result-cache-gateway，本票从 apiproxy re-home 的产物），但 ① bundle `package.json` 只声明 `dsh-result-cache-memory`、缺 `@deepseek-ai/dsh-result-cache`；② `tsconfig.base.json` 缺 `@deepseek-ai/dsh-result-cache/src/*` 映射。这是 `verify-cordis-config` 红的根因，`git blame` 该 mount 行 → `6b7610d45a`（upstream-merge commit），属本票域而非 Phase-2。**注意包名易混**：`packages/data/result-cache` = `@deepseek-ai/dsh-result-cache`；`packages/client/result-cache` = `@deepseek-ai/dsh-client-result-cache`。
 **Blocks**: UM6, UM7, UM8（knip 死指针依赖此）
 **Related**: d5 A6（`.tmp/audit/d5-upstream-impact.md` line 14）；[T8-result-get-rpc](../../../interpretation-client-rendering/tickets/T8-result-get-rpc.md) + [T9](../../../interpretation-client-rendering/tickets/T9-result-cache-package-impl.md)/[T10](../../../interpretation-client-rendering/tickets/T10-consumer-fetchResult-wiring.md)/[T11](../../../interpretation-client-rendering/tickets/T11-connection-fixture-results-arm.md)/[T12](../../../interpretation-client-rendering/tickets/T12-harden-result-cache-per-review.md)/[T13](../../../interpretation-client-rendering/tickets/T13-runtime-fakeapiclient-results-arm.md) 簇、[B-DA1](../phase-misc/B-DA1-preset-switch-tool-interrupt-race.md)、[harness-package-removal research](../../research/harness-package-removal.md)；upstream `4f00a8b refactor(api): remove ApiProxy package` + Remote controllers 迁移链
 

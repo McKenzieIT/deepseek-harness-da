@@ -4,7 +4,7 @@
 **Phase**: upstream-merge
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: UM3, UM4, UM5（src 落定后重生成 cordis-surface docs）
+**Blocked by**: ~~UM3, UM5~~（archived/done via re-sync）+ **UM4（仍开）** → 2026-09-10 重评：仅剩 UM4 一个前置
 **Related**: d5 line 54（generated doc sync KEEP）；fork `docs/subsystems/data-agent.{md,zh.md,i18n.yaml}`
 
 ## 背景

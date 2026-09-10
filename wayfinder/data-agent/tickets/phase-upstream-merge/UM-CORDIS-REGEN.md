@@ -1,6 +1,6 @@
 # UM-CORDIS-REGEN — regen cordis catalog + api on synced base（typert surface fix + regen）
 
-**Type**: task · **Phase**: upstream-merge · **Status**: open · **Assignee**: unclaimed
+**Type**: task · **Phase**: upstream-merge · **Status**: resolved-partial（子任务 1+2 done 2026-09-09；子任务 3 deferred）· **Assignee**: unclaimed
 **Blocked by (api half)**: UM14（synced base 8112743d69——`api-catalog.ts` regen 需对 synced latest 跑）
 **Blocked by (client half)**: [R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-1](../phase-misc/R-DA-CLIENT-RUNTIME-DECOMMISSION.md#phase-1--afk-safe-unblockcan-放入下一-session-并行批)（删掉 zombie 里 `'root'` 冗余声明后 `gen-client-catalog` 才能跑）
 **Blocks**: UM10（typecheck 全绿依赖 regen'd catalog）· 60× TS2339 `ClientRemote namespace-missing` 的一部分（catalog 出后 `TypertRemoteNamespaceMap` 填充）
@@ -45,4 +45,8 @@
 
 ## Resolution
 
-(open；三个子任务应分别 verify + 落 commit)
+**[2026-09-09] RESOLVED-PARTIAL** — 子任务 1+2 落地：commits `cc6d9e714e`（typert surface fix）+ `193b018827`（`gen-cordis-api` regen），worktree `../dsh-cordis`，branch `task/um-cordis-regen-2026-09-09`。**子任务 3 deferred**——blocked by `RootOwnerProps` homing。
+
+**[2026-09-10 补记（UM10 线 A）]** prompt 曾判「Phase-2 未触发新 regen 需求」——**这个判断是错的**。Phase-2 删包后 `gen-client-catalog` 产物 `slot-catalog.ts:1220` 残留死引用 `packages/client/runtime/src/client/slots.ts`，导致 `verify-client-catalog` + `verify-package-paths` 双红。UM10 已 regen 修复（`ecaa56c848`）。另 `gen-module-graph` / `gen-tool-catalog` 也 stale（但那是 449-commit re-sync 造成，非 Phase-2）。
+
+**残留**：`check:ci:static` 仍有 4 门 catalog 类红（`cordis catalog` / `Cordis inspect catalog` / `config catalog` / `doc graphs`），归 [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 逐门处置；其中 `config catalog` 的 `ctx.results.get` 缺 `@param` 已核为 pre-existing JSDoc 遗漏（非 Phase-2 引入）。

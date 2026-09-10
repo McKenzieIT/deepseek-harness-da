@@ -427,6 +427,8 @@ merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）
 - [UM12 GA-FORK-CI re-sweep](tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) — **当前 frontier**（UM10 交来 22 门已分类 residual；其 header 原写 `Blocked by: UM11` 与 UM11 构成环，以 flow doc 的 UM10→UM12→UM11 为准）。
 - [UM11 PR + merge](tickets/phase-upstream-merge/UM11-pr-merge-post-cleanup.md) — **仍 blocked**（`UM10 + UM12`，UM12 未完）→ **本轮不 push**。resync tip `ecaa56c848`、master tip `216a9661e1`（ahead origin 28），均 unpushed。
 - 新毕业：[UM-LINT-TYPEAWARE-CORDIS](tickets/phase-upstream-merge/UM-LINT-TYPEAWARE-CORDIS-false-positives.md)（93 条 `error`-typed 假阳性怎么算过 gate）+ [UM-DATA-SRC-DTS-POLLUTION](tickets/phase-upstream-merge/UM-DATA-SRC-DTS-POLLUTION.md)（84 个生成物写进 `packages/data/*/src/`，把 lint 93 抬到 1980；需定位产出者而非只加 gitignore）。
+- **票据状态订正（2026-09-10）**：UM13/UM14/UM-ARCH/UM-CORDIS-REGEN 的进展此前只活在 flow doc + prompt 里，票据本体仍写 `open`——已按证据订正为 resolved / resolved-partial（违反了「决策只活在它自己的票里」，本轮修掉）。
+- **重评解除的 blocking**：**UM4 unblocked**（UM1/UM3 archived + R-DA 完成；且 UM10 发现其 results-RPC re-home 留尾 = `verify-cordis-config` 红的根因）；**UM6** 仅剩 UM4 一个前置；**A23（worktree/branch 收尾）unblocked**——原阻塞的 9 个并行 session worktree 实测现存 **0**，16 worktree / 19 分支的逐条处置判据已落 [UM11](tickets/phase-upstream-merge/UM11-pr-merge-post-cleanup.md)。⚠ 5 个 `refactor/p2-*` 分支**不可按 ancestry 判删**（Phase-2 是按内容收编，非 merge）。
 
 ## Audit actions 2026-09-07（24 PR 合并，21 fork-own action 已修）
 
