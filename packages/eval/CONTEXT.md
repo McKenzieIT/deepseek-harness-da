@@ -23,3 +23,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Aggregate Measurement**: A measurement derived from identified observations under an explicit estimand, aggregation rule, and uncertainty method. _Avoid_: Summary score, pass-k when the aggregation semantics are not stated
 
 **Environment Assurance**: The evidence-backed level of control an evaluation run has over environment state, finality, and cross-run separation: managed, attached snapshot, or observational. It describes proven guarantees rather than deployment location. _Avoid_: Environment type, local versus remote
+
+**Evaluation Subject**: The explicitly identified product composition or module interface whose behavior an evaluation claim describes. Product-composition and component subjects cannot be silently substituted or aggregated. _Avoid_: Target, agent when the measured subject is narrower or broader
+
+**Evaluation Operation**: The declared operation performed on a subject or its evidence, such as controlled run, shadow observation, rescore, reproject, model rerun, or environment re-execution. _Avoid_: Replay as an umbrella for operations with different external effects
