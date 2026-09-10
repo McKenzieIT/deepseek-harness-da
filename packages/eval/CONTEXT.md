@@ -31,3 +31,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Evaluation Environment**: The evaluation lifecycle module that verifies a resolved Cordis provider composition, opens an attempt lease, and proves finality, separation, assurance, and cleanup. It does not execute domain actions or select business providers. _Avoid_: Database adapter, action gateway, capability container
 
 **Environment Lease**: The owned lifecycle handle for one evaluation attempt's resolved environment resources and completion evidence. _Avoid_: Connection, session when the identity or cleanup ownership would be ambiguous
+
+**Evaluation Observer**: A scope-local, effect-owned reader that records evaluation evidence without changing model-visible input, agent control flow, capability behavior, or product policy. _Avoid_: Evaluator when the role can intervene
+
+**Evaluation Intervention**: An explicit change to the evaluated Harness composition, including prompt, Context, tools, model route, approval, retry, feedback, phase, or stopping behavior. It always produces a distinct Harness identity. _Avoid_: Observer, transparent evaluation

@@ -84,6 +84,12 @@ Evaluation Environment 形成完整的 Cordis Definition / Provider / Consumer s
 
 Environment 不实现 query、filesystem、shell、workflow 或 notebook action，不选择具体业务 Provider，不拥有 DataScope、Context 或 grading semantics，也不要求生产 Provider 依赖 evaluation package。Agent 继续通过生产 `ctx.query`、`ctx.fs`、`ctx.workflow` 等 Service Definition 工作；Environment 只观察和管理本次 attempt 的已解析 Cordis Provider 图。该 Service 只由显式 evaluation composition 挂载，普通 data-agent 不依赖或感知它。
 
+### D12 — Observer 与 Intervention 严格分离
+
+Evaluation Observer 必须 scope-local、effect-owned 且只读，只能记录 session/capability/environment facts、artifact references 与 measurement inputs；它不得修改 model-visible input、waterfall 结果、Agent control flow、tool/provider behavior、approval、retry、steering、stopping 或 product policy。Observer identity 与 Harness identity 分开记录，并用 deterministic paired calibration 证明安装 Observer 前后的 model-visible events、requests、tool actions 与 terminal state 一致；观测开销单独留痕。
+
+任何 prompt、Context、tool、model route、approval、retry、phase、feedback 或 stopping 变化都是显式 Intervention，并形成新的 Harness identity，不能继续声明 production-equivalent。运行前 required observer 不可用时 preflight 失败；运行中 observer/evidence sink 失败时 Agent 可正常结束，但 evaluation 标记 `invalid | evidence-incomplete`，不得归因为模型失败或产生正式 measurement。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
