@@ -21,11 +21,25 @@
 | **c** isolation-vs-joint | 五维同场同评，各维判决被同场准则移动多少？ | `5N`（joint 侧已有） | 无 |
 | **d** 真 RADAR | 准则间的**方向性**耦合矩阵长什么样？ | `10KN(1+K)`；K=5,N=5 ⇒ ≈1500/cell | 量表改 0-4 + 判官改逐准则调用（G8 决策 3、4） |
 
-## 探针 a —— 已答，只剩固化
+## 探针 a —— 已答并已固化（**done**）
 
-R8 在 1495 条已落盘逐维向量上测得：`overall_semantics == 1` 却被 `mean>=0.6` 判 FAIL **0 条**；`== 0` 却判 PASS **128 条（8.56%）**；`P(四机械维全 1 | overall=1) = 0.9984` vs `| overall=0) = 0.0325`。结论见 [R8 Resolution](R8-pairwise-judge-papers.md) §2。
+R8 在 1495 条已落盘逐维向量上测得：`overall_semantics == 1` 却被 `mean>=0.6` 判 FAIL **0 条**；`== 0` 却判 PASS **128 条（8.56%）**；`P(四机械维全 1 | overall=1) = 0.9984` vs `| overall=0) = 0.0325`。结论见 [R8 Resolution](R8-pairwise-judge-papers.md) §2，数据入 [`../research/experiment-audit-log.md`](../research/experiment-audit-log.md)。
 
-**本票剩下的唯一工作**：把一次性脚本固化成 `packages/eval/eval-cli/dev/judge-readout-audit.mjs`，使任何读出变更后能一条命令复算这四个数。**不必重跑任何 LLM。**
+**已固化为 `packages/eval/eval-cli/dev/judge-readout-audit.mjs`（2026-09-10）** —— 零 LLM 调用、零 agent 调用，纯确定性重聚合，已验证逐数复现 audit-log 的基线：
+
+```bash
+# 报告模式
+node packages/eval/eval-cli/dev/judge-readout-audit.mjs [resultsDir]
+
+# 门模式：读出改完后，若仍有 decision=0 却 PASS 的样本则 exit 1
+EXPECT_NO_LEAK=1 node packages/eval/eval-cli/dev/judge-readout-audit.mjs
+```
+
+`DECISION_DIM` / `THRESHOLD` 可用 env 覆盖，且维度清单从数据里发现而非硬编码——所以 **G8 改了维度数、阈值或哪一维当闸门之后，这个脚本不用改就能继续用**。基线数字钉在脚本头部注释里（含日期与 commit），漂移可被发现。
+
+**⇒ 探针 a 完成。本票剩余工作是 b/c（以及 G8 决议后的 d）。**
+
+**这个脚本的定位**（不要读过头）：它是**仪器自检**，不是有效性检验。它只回答「读出规则有没有真的在用它的输入」；「哪个读出更接近事实」需要执行真值，归 T1。
 
 ## 探针 b —— 准则顺序扰动
 

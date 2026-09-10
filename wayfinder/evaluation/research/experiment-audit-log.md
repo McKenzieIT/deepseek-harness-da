@@ -95,6 +95,15 @@ per-run all-ones share: 64.9%–100% across 19 files (14 files with n>=70 fall i
 6. **fidelity caveat**：1495 条池化了 19 次 run、1120 条模式不可知、且 80 份结果文件 **0 份**记录判官据以打分的 `schema_context`（judge 证据基础从未落盘）。所以这四个数是对「读出规则」的可靠陈述，**不是**对任何一次具体 run 质量的陈述。
 7. **下一步**：把一次性脚本固化为 `packages/eval/eval-cli/dev/judge-readout-audit.mjs`（R20 探针 a 的剩余工作），使任何读出变更后可一条命令复算。
 
+### 复算方式（2026-09-10 已固化）
+
+```bash
+node packages/eval/eval-cli/dev/judge-readout-audit.mjs          # 报告
+EXPECT_NO_LEAK=1 node packages/eval/eval-cli/dev/judge-readout-audit.mjs   # 门：仍有漏则 exit 1
+```
+
+脚本已验证**逐数复现**本条 Data 段的全部数字（含 5 个 leak 模式的计数与 per-run 分层）。维度清单从数据发现、`DECISION_DIM`/`THRESHOLD` 可 env 覆盖，所以 G8 改维度数/阈值/闸门维度后无需改脚本。**注意其输出的模式元组按 prompt 顺序**（`table, field, filter, agg, overall`）排列，与本条 Data 段一致——脚本内部刻意不按字母序，否则同一批数据看起来像变了。
+
 ### Ticket Pointer
 Resolves: [R8 — 判官读出 / 量表 / 顺序论文认读](../tickets/R8-pairwise-judge-papers.md)（探针 a 部分）
 Feeds: [R20 — 判官读出与准则探针](../tickets/R20-judge-readout-probes.md)、[G8 — 判官读出与量表](../tickets/G8-judge-readout-scale.md)
