@@ -271,3 +271,21 @@ comm -23 baseline after  →  doc graphs / Cordis inspect catalog / config catal
 - **B 类 4 真回归 = 全修再 PR**（用户指令，不走 tracked-shortcut）：`package invariants` / `agent note format`(L9) / `markdown links`(L7) / `type equivalence` **全须 PR 前绿**。这把 UM12 的 B 类子集提升为 UM11 的硬阻塞（不只是「待修 residual」）。估算到 PR merge ≈ 6-9 session（B 类 ~3-5 + 收尾/PR ~2-3 + quick fix ~1）。
 
 **当前 13 门红**（tsconfig-paths 已绿）：A 类 `runtime closure`/`constraints`/`export jsdoc`(3)/`translation pairing`；B 类 `package invariants`/`agent note format`/`markdown links`/`type equivalence`；C 类 `client UI i18n`(98)/`package dependencies`(74)/`application entrypoints`(10)/`subsystem pages`(5)/`documentation standard tests`。**B 类 4 门是 PR 前必须修干净的真回归**；A/C 可作 known-red。
+
+### [2026-09-15 第三轮] B 类 4 门逐门查证：2 绿、2 需决策（大原则：upstream 不改，其他按需重构）
+
+3 commit（resync tip `12d02c7687`），`check:ci:static` **32/13 → 34/11**，comm 零新增：
+
+| commit | 门 | 结果 |
+|---|---|---|
+| `e17f0fa16c` | markdown-links 9/14 重指向（note 归档、包移动、anchor 拆分、slot-contract 段删） | translation-pairing 33→28（0 引入、消 4 预存 link-locale） |
+| `d4596863a6` | agent-note-format 15→0（M2 把 15 篇 fork note 搬 rejected/ 未改 Status，搬回 proposed/） | **GREEN** ✅ |
+| `12d02c7687` | dsh-plugin-development skill 重建（upstream retire examples/+demo:acp/+conv-node cookbook，skill 重指上游新拓扑） | **markdown-links GREEN** ✅ |
+
+**B 类 4 门收口状态**：
+- **markdown-links** ✅ GREEN（14→0）。
+- **agent-note-format** ✅ GREEN（15→0）。⚠ M2 那次搬移对 `git log -- <path>` 不可见（`--diff-filter=D` 空），仅 `--diff-merges=first-parent/-m` 可见 = **第四类 merge 丢失**（merge 侧擅动 upstream 未触及的 fork 自有内容），已喂 UM15 三道门之外。
+- **type-equivalence** ⏳ 3 DRIFT 全是「fork 加字段到 upstream core 类型」（additive-only 违反）：`AgentOptions.scopeId`+`ToolExecutionInput.scopeId`（write-never，upstream 零 scopeId 确证）+ `SubagentResult.costs`（LIVE G3 Qoder Credits，upstream 零 costs 确证）。删 scopeId 修 2/3 但触发 3-generator regen cascade（cordis+config+doc-graphs，doc-graphs 有 zh churn 风险）且 costs 未解→门仍红→cascade 代价>收益，**已回退**。**costs 决策**（用户 d1，2026-09-15）：Qoder-as-subagent「可以不要了」→ 退 Qoder 比 augmentation 更优，单开 [UM-QODER-SUBAGENT-RETIRE](UM-QODER-SUBAGENT-RETIRE.md)（删 subagent-qoder + SubagentCosts + costs + audit Credits feed，dissolves costs DRIFT + 恢复 upstream）；本票前 type-equiv costs 作 known-red。**scopeId×2 待定**（退 Qoder 后是否一并删 scopeId + 摆平 3-gen cascade，还是留 known-red——下个问题）。
+- **package invariants** ⏳ **查证非回归**：74 违规 = 67×空 invariant companion + 7×误作 peerDep（7 是 67 子集），遍及 ~70 fork 自有包。两条规则均 upstream 引入且 pre-merge 不存在（`15f2997bcb`+`de256e8bc1`，后者同 commit 也引入 C 类 package-dependencies 门）。pre-merge 绿只因规则没生。属「fork 自有包适配 upstream 新规则」（=其他按需重构），**非 merge 回归、非真 PR 硬阻塞**。与 i18n(98)/deps(74) 同类。**决策 b（2026-09-15）**：作 known-red，单开 [UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md)（删 67 companion + 清 exports + 清 7 peerDep，先判占名机制再动手）专门做，不阻塞 PR。
+
+**当前 11 门红**：A 类 `runtime closure`/`constraints`/`export jsdoc`/`translation pairing`；B 类 `package invariants`/`type equivalence`；C 类 `client UI i18n`(98)/`package dependencies`(74)/`application entrypoints`(10)/`subsystem pages`(5)/`documentation standard tests`。markdown-links + agent-note-format 已绿。

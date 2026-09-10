@@ -103,3 +103,24 @@ durable 方法须含一道**纯 git plumbing 的 merge 完整性 gate**,与「ga
 | 8 | impact report 落哪 | 仍 open;且与上面第 2 条 durable-method 输入同源（生成文档的翻译义务） |
 
 **→ 本票状态:首片实现方案已交但主体代码丢失待补;Decision 4 收口;新增两条 durable-method 输入待并回首片设计;7 项 grilling 收口 1 项、推进 2 项、余 4 项仍 open。仍 open。**
+
+### [2026-09-15 第三轮] 首片重派 4 subagent 全成 + §1/enroll 已落 resync
+
+**subagent 环境瞬态故障恢复**：前 5 次（S1' + §1/§2/§3/§4）全死于同一 `API Error: socket connection closed unexpectedly`（22min/85 calls 起步，产出零）。改结构：**逐节派、增量写盘（先骨架后填充）、给已验证锚点减探查调用**。重派 4 个（§1/§2/§3/§4）全成（probe 先验存活）：
+
+| 节 | 交付文件 | 行数 | 关键 |
+|---|---|---|---|
+| §1 | `research/um15-slice-s1-run-gates-2026-09-15.md` | 613 | 15 锚点全核；3 patch（MODES tuple+isMode+parseMode+exhaustive default）+2 spec patch |
+| §2 | `research/um15-slice-s2-gate-coverage-2026-09-15.md` | 638 | 差集 21/65 未登记（UM12 盲区实测版）；20 豁免；⚠ 设计偏差：改文本提取（pnpmInvocation 在 pnpm 外 throw） |
+| §3 | `research/um15-slice-s3-generator-inputs-2026-09-15.md` | 508 | 17 生成器输入面全实测；manifest+spec；§6 复核 +2 新发现 |
+| §4 | `research/um15-slice-s4-upstream-sync-record-2026-09-15.md` | 1426 | git 层+三道门+upstream-sync.json（waivers 覆盖 129 条 M1 finding）；订正 revert-fork HEAD 残余 6（非 7） |
+
+**已落 resync（2 commit，tsc+vitest+oxlint 全过）**：
+- `b3a516fe98` §1：run-gates `MODES` readonly tuple 作单一真源 + `isMode` + `parseMode` + `gatesForMode` exhaustive `default: const _exhaustive: never`（oxlint switch-exhaustiveness-check）。spec `it.each(MODES)`。纯重构，86 vitest 全绿。
+- `c579b809d2` §5.2(c) enroll `verify-architecture-graph` 进 `docSyncLeafGates`（Decision 6a；该门 GREEN 但此前未 enrolled，现 enroll 使 §2 meta-gate 不判它未覆盖）。
+
+**未落（在盘 ready，下个 session 主 session apply）**：§2（gate-coverage meta-gate + manifest + spec + 接线；不需 grilling，但 §2 subagent 设计偏差待验）→ §3（generator-inputs manifest+spec；不需 grilling）→ §4（upstream-sync-record git 层 + upstream-sync.json + 2 脚本 + 接线；**需 HITL grilling #2 阈值 / #8 报告路径**）。§5 SEAM_MANIFEST（#5）+ cron（#1）在后。
+
+**7 项 grilling 现状（无变化，4 仍 open）**：#1 staleness 跑哪（c 先 local）/ #2 cadence 阈值（150 commits/14days）/ #5 SEAM_MANIFEST seam-6（a 本票带）/ #8 impact report 落哪。#3/#4/#6 已收口。⚠ §2 manifest 把 verify-third-party-notices 列"pending blind spot"豁免，与 Decision 6a"enroll 两者"有张力——落 §2 时读其豁免理由再定。
+
+**落 §4 前须知**：§4 subagent 代码 tsc/oxlint/vitest **未跑**（§7.2 第 10 条）；git 层是 1426 行未验证代码，apply 后须跑 tsc/oxlint/vitest + 单独跑 `pnpm run upstream-status`。

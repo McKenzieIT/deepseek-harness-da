@@ -65,3 +65,20 @@
 
 ## Resolution
 （待落地后填：PR #N、merge sha、清理的分支清单）
+
+### [2026-09-15 第三轮] B 类 4 门收口：2 绿 + 2 known-red（各有专属票）；PR 可推进
+
+本 session resync 5 commit（tip `c579b809d2`，unpushed），`check:ci:static` 32/13 → **34/11**，comm 零新增。B 类 4 真回归逐门查证后收口：
+
+| 门 | 状态 | commit / 票 |
+|---|---|---|
+| markdown-links | ✅ GREEN（14→0） | `e17f0fa16c`（9/14 重指向）+ `12d02c7687`（dsh-plugin-development skill 重建，按 upstream 新拓扑重指 examples retire/demo:acp 删/conv-node cookbook 删） |
+| agent-note-format | ✅ GREEN（15→0） | `d4596863a6`（M2 把 15 篇 fork note 搬 rejected/ 未改 Status，搬回 proposed/；该搬移对 `git log -- <path>` 不可见，仅 `--diff-merges` 可见 = **第四类 merge 丢失**，已喂 UM15 三道门之外） |
+| type-equivalence | 🅿 known-red | 全 3 DRIFT 归 [UM-QODER-SUBAGENT-RETIRE](UM-QODER-SUBAGENT-RETIRE.md)：costs（fork 加在 upstream `SubagentResult` 上的活特性 G3，退 Qoder 即删）+ scopeId×2（write-never，搭车同 regen pass）。删 scopeId 触发 3-generator cascade（cordis+config+doc-graphs，doc-graphs 有 zh churn），且 costs 未解门仍红→cascade 代价>收益，已回退。本票完成前 type-equiv 全作 known-red。 |
+| package-invariants | 🅿 known-red | [UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md)：74 违规（67 空 companion+7 误 peerDep）非回归（两条规则均 upstream 引入、pre-merge 不存在），与 i18n(98)/deps(74) 同类作 known-red。 |
+
+**关键原则（用户 2026-09-15 确立）**：**upstream 的内容不改，上游最新是什么就用什么；其他（fork 自有）按需重构**。据此：① skill 重建按 upstream 新拓扑（不自己复述）② costs/scopeId 是 fork 加在 upstream core 上的 drift（additive-only 违反），退 Qoder + 删 scopeId = 恢复 upstream ③ package-invariants 是 fork 自有包适配 upstream 新规则。
+
+**PR 状态**：B 类 2 绿 + 2 known-red（type-equiv 待 QODER-RETIRE、package-invariants 非回归），按用户决策 PR 可推进（known-red 进清单）。⚠ PR 描述须写明：① ui-settings-models 整包被 M1 回退（~30 文件，`tsc` 全绿、`--cc` 看不见，见 UM-MERGE-INTEGRITY）② type-equiv/package-invariants 作 known-red 的理由 + 各自专属票。resync tip `c579b809d2`、master tip 仍 ahead origin，均 unpushed。
+
+**UM15 首片**（线 B）：§1（`b3a516fe98` MODES 重构）+ §5.2(c) enroll（`c579b809d2`）已落；§2/§3/§4 由 4 subagent 生成在盘 ready（subagent 环境瞬态故障已恢复），下个 session 主 session apply（详见 [UM15](UM15-durable-upstream-sync-method.md) 2026-09-15 update）。
