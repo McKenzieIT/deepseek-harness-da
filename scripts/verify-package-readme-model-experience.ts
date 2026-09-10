@@ -81,7 +81,6 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/client/connection': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/result-cache': { kind: 'indirect', reason: 'Pure browser-side result-cache operation; model integration lives in @deepseek-ai/dsh-nl2sql-engine\'s LLM adapter.' },
   'packages/api/remotes': { kind: 'none', reason: 'The Remote BFF selects business methods and forwarded events; selected services own any model-visible effect.' },
-  'packages/client/runtime': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/file-upload': { kind: 'none', reason: 'Browser-side request-body transport; registers nothing model-facing.' },
   'packages/experimental/agent-team-web-profile': { kind: 'indirect', reason: 'The private Web layer delegates model composition to the Host-side Agent Teams profile.' },
   'packages/experimental/client-ui-agent-team': { kind: 'none', reason: 'The browser projection and task controls register no model-facing input.' },

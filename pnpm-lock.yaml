@@ -6712,131 +6712,6 @@ importers:
         specifier: ^22.20.0
         version: 22.20.0
 
-  packages/examples/agent-spine-demo:
-    dependencies:
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: workspace:^
-        version: link:../../../vendor/cordis
-      '@deepseek-ai/cordis-plugin-timer':
-        specifier: workspace:^
-        version: link:../../../vendor/timer
-      '@deepseek-ai/dsh-agent':
-        specifier: workspace:^
-        version: link:../../core/agent
-      '@deepseek-ai/dsh-agent-instructions':
-        specifier: workspace:^
-        version: link:../../context/agent-instructions
-      '@deepseek-ai/dsh-agent-loop':
-        specifier: workspace:^
-        version: link:../../core/agent-loop
-      '@deepseek-ai/dsh-bash-local':
-        specifier: workspace:^
-        version: link:../../shell/bash-local
-      '@deepseek-ai/dsh-bash-sandbox':
-        specifier: workspace:^
-        version: link:../../shell/bash-sandbox
-      '@deepseek-ai/dsh-fs-local':
-        specifier: workspace:^
-        version: link:../../fs/fs-local
-      '@deepseek-ai/dsh-fs-observation-policy':
-        specifier: workspace:^
-        version: link:../../fs/fs-observation-policy
-      '@deepseek-ai/dsh-fs-sandbox':
-        specifier: workspace:^
-        version: link:../../fs/fs-sandbox
-      '@deepseek-ai/dsh-goal':
-        specifier: workspace:^
-        version: link:../../goal/goal
-      '@deepseek-ai/dsh-goal-round-driver':
-        specifier: workspace:^
-        version: link:../../goal/goal-round-driver
-      '@deepseek-ai/dsh-home-paths':
-        specifier: workspace:^
-        version: link:../../util/home-paths
-      '@deepseek-ai/dsh-invariants':
-        specifier: workspace:^
-        version: link:../../runtime-diagnostics/invariants
-      '@deepseek-ai/dsh-jobs':
-        specifier: workspace:^
-        version: link:../../jobs/jobs
-      '@deepseek-ai/dsh-jobs-local':
-        specifier: workspace:^
-        version: link:../../jobs/jobs-local
-      '@deepseek-ai/dsh-llm':
-        specifier: workspace:^
-        version: link:../../llm/llm
-      '@deepseek-ai/dsh-llm-retry':
-        specifier: workspace:^
-        version: link:../../llm/llm-retry
-      '@deepseek-ai/dsh-sandbox-local':
-        specifier: workspace:^
-        version: link:../../sandbox/sandbox-local
-      '@deepseek-ai/dsh-sandbox-policy':
-        specifier: workspace:^
-        version: link:../../sandbox/sandbox-policy
-      '@deepseek-ai/dsh-scope':
-        specifier: workspace:^
-        version: link:../../core/scope
-      '@deepseek-ai/dsh-session':
-        specifier: workspace:^
-        version: link:../../core/session
-      '@deepseek-ai/dsh-session-title':
-        specifier: workspace:^
-        version: link:../../session/session-title
-      '@deepseek-ai/dsh-shell-env':
-        specifier: workspace:^
-        version: link:../../shell/shell-env
-      '@deepseek-ai/dsh-skill':
-        specifier: workspace:^
-        version: link:../../skill/skill
-      '@deepseek-ai/dsh-skill-filesystem':
-        specifier: workspace:^
-        version: link:../../skill/skill-filesystem
-      '@deepseek-ai/dsh-subprocess-local':
-        specifier: workspace:^
-        version: link:../../subprocess/subprocess-local
-      '@deepseek-ai/dsh-system-prompt':
-        specifier: workspace:^
-        version: link:../../core/system-prompt
-      '@deepseek-ai/dsh-tool-bash':
-        specifier: workspace:^
-        version: link:../../shell/tool-bash
-      '@deepseek-ai/dsh-tool-fs':
-        specifier: workspace:^
-        version: link:../../fs/tool-fs
-      '@deepseek-ai/dsh-tool-goal':
-        specifier: workspace:^
-        version: link:../../goal/tool-goal
-      '@deepseek-ai/dsh-tool-jobs':
-        specifier: workspace:^
-        version: link:../../jobs/tool-jobs
-      '@deepseek-ai/dsh-tool-skill':
-        specifier: workspace:^
-        version: link:../../skill/tool-skill
-      '@deepseek-ai/dsh-tools':
-        specifier: workspace:^
-        version: link:../../core/tools
-      '@deepseek-ai/node-addon-landlock-run':
-        specifier: workspace:^
-        version: link:../../../native/landlock-run/packages/entry
-
-  packages/examples/jsonrpc-demo:
-    dependencies:
-      '@deepseek-ai/dsh-app-boot':
-        specifier: workspace:^
-        version: link:../../boot/app-boot
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: workspace:^
-        version: link:../../../vendor/cordis
-      '@deepseek-ai/dsh-invariants':
-        specifier: workspace:^
-        version: link:../../runtime-diagnostics/invariants
-
   packages/experimental/agent-team:
     dependencies:
       '@deepseek-ai/dsh-brand':
@@ -12474,9 +12349,6 @@ importers:
       '@deepseek-ai/dsh-agent-loop':
         specifier: workspace:^
         version: link:../../packages/core/agent-loop
-      '@deepseek-ai/dsh-agent-spine-demo':
-        specifier: workspace:^
-        version: link:../../packages/examples/agent-spine-demo
       '@deepseek-ai/dsh-agent-tool-presentation':
         specifier: workspace:^
         version: link:../../packages/core/agent-tool-presentation
@@ -12660,9 +12532,6 @@ importers:
       '@deepseek-ai/dsh-scope':
         specifier: workspace:^
         version: link:../../packages/core/scope
-      '@deepseek-ai/dsh-sdk-jsonrpc-demo':
-        specifier: workspace:^
-        version: link:../../packages/examples/jsonrpc-demo
       '@deepseek-ai/dsh-sdk-jsonrpc-server':
         specifier: workspace:^
         version: link:../../packages/sdk/server

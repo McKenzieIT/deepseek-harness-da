@@ -384,10 +384,6 @@ flowchart TB
       pkg_compaction_basic["compaction-basic"]
       pkg_compaction_tool_result_pruner["compaction-tool-result-pruner"]
     end
-    subgraph hgroup_examples["packages/examples"]
-      pkg_agent_spine_demo["agent-spine-demo"]
-      pkg_sdk_jsonrpc_demo["sdk-jsonrpc-demo"]
-    end
     subgraph hgroup_webhook["packages/webhook"]
       pkg_webhook["webhook"]
       pkg_webhook_github["webhook-github"]
@@ -520,7 +516,6 @@ flowchart TB
   pkg_lsp --> pkg_brand
   pkg_lsp --> pkg_llm
   pkg_subprocess --> pkg_http_proxy
-  pkg_sdk_jsonrpc_demo --> pkg_invariants
   pkg_attachment_local --> pkg_attachment
   pkg_attachment_local --> pkg_home_paths
   pkg_session --> pkg_scope
@@ -1290,28 +1285,6 @@ flowchart TB
   pkg_compaction_basic --> pkg_llm
   pkg_compaction_basic --> pkg_session
   pkg_compaction_basic --> pkg_token_meter
-  pkg_agent_spine_demo --> pkg_agent
-  pkg_agent_spine_demo --> pkg_agent_instructions
-  pkg_agent_spine_demo --> pkg_agent_loop
-  pkg_agent_spine_demo --> pkg_goal
-  pkg_agent_spine_demo --> pkg_goal_round_driver
-  pkg_agent_spine_demo --> pkg_home_paths
-  pkg_agent_spine_demo --> pkg_invariants
-  pkg_agent_spine_demo --> pkg_jobs_local
-  pkg_agent_spine_demo --> pkg_llm
-  pkg_agent_spine_demo --> pkg_llm_retry
-  pkg_agent_spine_demo --> pkg_scope
-  pkg_agent_spine_demo --> pkg_session
-  pkg_agent_spine_demo --> pkg_session_title
-  pkg_agent_spine_demo --> pkg_shell_env
-  pkg_agent_spine_demo --> pkg_skill
-  pkg_agent_spine_demo --> pkg_skill_filesystem
-  pkg_agent_spine_demo --> pkg_system_prompt
-  pkg_agent_spine_demo --> pkg_tool_bash
-  pkg_agent_spine_demo --> pkg_tool_goal
-  pkg_agent_spine_demo --> pkg_tool_jobs
-  pkg_agent_spine_demo --> pkg_tool_skill
-  pkg_agent_spine_demo --> pkg_tools
   pkg_webhook_github --> pkg_credentials
   pkg_webhook_github --> pkg_host_webserver
   pkg_webhook_github --> pkg_session
@@ -1709,7 +1682,6 @@ flowchart TB
 | [`client-ui-suggest-followups`](../packages/client/ui-suggest-followups) | `client` | Client | [`client-locale`](../packages/client/locale), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-tool`](../packages/client/ui-tool), [`invariants`](../packages/runtime-diagnostics/invariants) | — | — | — |
 | [`lsp`](../packages/lsp/lsp) | `lsp` | Host | [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm) | [`brand`](../packages/util/brand) *, [`llm`](../packages/llm/llm) | — | — |
 | [`subprocess`](../packages/subprocess/subprocess) | `subprocess` | Host | [`http-proxy`](../packages/util/http-proxy) | [`http-proxy`](../packages/util/http-proxy) | — | — |
-| [`sdk-jsonrpc-demo`](../packages/examples/jsonrpc-demo) | `examples` | Host | [`invariants`](../packages/runtime-diagnostics/invariants) | [`app-boot`](../packages/boot/app-boot), [`invariants`](../packages/runtime-diagnostics/invariants) * | — | — |
 | [`attachment-local`](../packages/attachment/attachment-local) | `attachment` | Host | [`attachment`](../packages/attachment/attachment), [`home-paths`](../packages/util/home-paths) | [`attachment`](../packages/attachment/attachment), [`attachment`](../packages/attachment/attachment) *, [`home-paths`](../packages/util/home-paths) | — | — |
 | [`session`](../packages/core/session) | `core` | Host | [`scope`](../packages/core/scope) | [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants) *, [`llm`](../packages/llm/llm) *, [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`scope`](../packages/core/scope) *, [`typert-protocol`](../packages/typert/protocol) *, [`util-values`](../packages/util/values) *, [`util-values`](../packages/util/values) | — | — |
 | [`system-prompt`](../packages/core/system-prompt) | `core` | Host | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope) | [`invariants`](../packages/runtime-diagnostics/invariants) *, [`llm`](../packages/llm/llm) *, [`scope`](../packages/core/scope), [`scope`](../packages/core/scope) * | — | — |
@@ -1885,7 +1857,6 @@ flowchart TB
 | [`tool-update-table-config`](../packages/data/tool-update-table-config) | `data` | Host | [`audit`](../packages/data/audit), [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) | [`identity`](../packages/identity/identity) *, [`invariants`](../packages/runtime-diagnostics/invariants) *, [`semantic-layer`](../packages/data/semantic-layer), [`semantic-layer`](../packages/data/semantic-layer) *, [`tools`](../packages/core/tools), [`tools`](../packages/core/tools) * | — | — |
 | [`session-reference`](../packages/context/session-reference) | `context` | Host | [`agent`](../packages/core/agent), [`compaction`](../packages/compaction/compaction), [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`session-projection-cache`](../packages/session/session-projection-cache), [`session-query`](../packages/session-query/session-query), [`session-title`](../packages/session/session-title), [`spill`](../packages/spill/spill), [`system-prompt`](../packages/core/system-prompt), [`typert-protocol`](../packages/typert/protocol) | [`agent`](../packages/core/agent) *, [`brand`](../packages/util/brand), [`compaction`](../packages/compaction/compaction), [`llm`](../packages/llm/llm) *, [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`session`](../packages/core/session) *, [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection) *, [`session-projection-cache`](../packages/session/session-projection-cache) *, [`session-query`](../packages/session-query/session-query) *, [`session-title`](../packages/session/session-title) *, [`spill`](../packages/spill/spill) *, [`system-prompt`](../packages/core/system-prompt) *, [`typert-protocol`](../packages/typert/protocol), [`util-values`](../packages/util/values) | seam-2 | — |
 | [`compaction-basic`](../packages/compaction/compaction-basic) | `compaction` | Host | [`agent`](../packages/core/agent), [`commands`](../packages/interaction/commands), [`compaction`](../packages/compaction/compaction), [`compaction-tool-result-pruner`](../packages/compaction/compaction-tool-result-pruner), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`token-meter`](../packages/llm/token-meter) | [`agent`](../packages/core/agent) *, [`commands`](../packages/interaction/commands) *, [`compaction`](../packages/compaction/compaction), [`compaction`](../packages/compaction/compaction) *, [`compaction-tool-result-pruner`](../packages/compaction/compaction-tool-result-pruner) *, [`llm`](../packages/llm/llm) *, [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session`](../packages/core/session) *, [`token-meter`](../packages/llm/token-meter) *, [`util-values`](../packages/util/values) | — | — |
-| [`agent-spine-demo`](../packages/examples/agent-spine-demo) | `examples` | Host | [`agent`](../packages/core/agent), [`agent-instructions`](../packages/context/agent-instructions), [`agent-loop`](../packages/core/agent-loop), [`goal`](../packages/goal/goal), [`goal-round-driver`](../packages/goal/goal-round-driver), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`jobs-local`](../packages/jobs/jobs-local), [`llm`](../packages/llm/llm), [`llm-retry`](../packages/llm/llm-retry), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-title`](../packages/session/session-title), [`shell-env`](../packages/shell/shell-env), [`skill`](../packages/skill/skill), [`skill-filesystem`](../packages/skill/skill-filesystem), [`system-prompt`](../packages/core/system-prompt), [`tool-bash`](../packages/shell/tool-bash), [`tool-goal`](../packages/goal/tool-goal), [`tool-jobs`](../packages/jobs/tool-jobs), [`tool-skill`](../packages/skill/tool-skill), [`tools`](../packages/core/tools) | [`agent`](../packages/core/agent), [`agent-instructions`](../packages/context/agent-instructions), [`agent-loop`](../packages/core/agent-loop), [`goal`](../packages/goal/goal), [`goal-round-driver`](../packages/goal/goal-round-driver), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`invariants`](../packages/runtime-diagnostics/invariants) *, [`jobs-local`](../packages/jobs/jobs-local), [`llm`](../packages/llm/llm), [`llm-retry`](../packages/llm/llm-retry), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-title`](../packages/session/session-title), [`shell-env`](../packages/shell/shell-env), [`skill`](../packages/skill/skill), [`skill-filesystem`](../packages/skill/skill-filesystem), [`system-prompt`](../packages/core/system-prompt), [`tool-bash`](../packages/shell/tool-bash), [`tool-goal`](../packages/goal/tool-goal), [`tool-jobs`](../packages/jobs/tool-jobs), [`tool-skill`](../packages/skill/tool-skill), [`tools`](../packages/core/tools) | — | — |
 | [`webhook-github`](../packages/webhook/webhook-github) | `webhook` | Host | [`credentials`](../packages/credentials/credentials), [`host-webserver`](../packages/host/webserver), [`session`](../packages/core/session), [`webhook`](../packages/webhook/webhook) | [`credentials`](../packages/credentials/credentials) *, [`credentials`](../packages/credentials/credentials), [`host-webserver`](../packages/host/webserver) *, [`util-values`](../packages/util/values) *, [`util-values`](../packages/util/values), [`webhook`](../packages/webhook/webhook) | — | — |
 | [`goal-eval-context`](../packages/goal/goal-eval-context) | `goal` | Host | [`evidence-query`](../packages/data/evidence-query), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`system-prompt`](../packages/core/system-prompt) | [`evidence-query`](../packages/data/evidence-query) *, [`goal`](../packages/goal/goal) *, [`invariants`](../packages/runtime-diagnostics/invariants) *, [`system-prompt`](../packages/core/system-prompt) * | — | — |
 | [`goal-eval-policy`](../packages/goal/goal-eval-policy) | `goal` | Host | [`eval-runner`](../packages/eval/eval-runner), [`evidence-query`](../packages/data/evidence-query), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session) | [`evidence-query`](../packages/data/evidence-query) *, [`goal`](../packages/goal/goal) *, [`invariants`](../packages/runtime-diagnostics/invariants) *, [`session`](../packages/core/session) * | — | — |

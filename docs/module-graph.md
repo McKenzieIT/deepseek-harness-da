@@ -278,10 +278,6 @@ flowchart TD
     pkg_eval_runner_service["eval-runner-service"]
     pkg_retrieval_experiment["retrieval-experiment"]
   end
-  subgraph group_examples["packages/examples"]
-    pkg_agent_spine_demo["agent-spine-demo"]
-    pkg_sdk_jsonrpc_demo["sdk-jsonrpc-demo"]
-  end
   subgraph group_experimental["packages/experimental"]
     pkg_experimental_agent_team["experimental-agent-team"]
     pkg_experimental_agent_team_profile["experimental-agent-team-profile"]
@@ -481,7 +477,6 @@ flowchart TD
   pkg_eval_cli --> pkg_invariants
   pkg_eval_runner --> pkg_invariants
   pkg_retrieval_experiment --> pkg_invariants
-  pkg_sdk_jsonrpc_demo --> pkg_invariants
   pkg_experimental_code_runtime_python --> pkg_code_runtime
   pkg_experimental_code_runtime_python --> pkg_timeout
   pkg_experimental_code_runtime_python --> pkg_util_values
@@ -1278,28 +1273,6 @@ flowchart TD
   pkg_tool_update_table_config --> pkg_invariants
   pkg_tool_update_table_config --> pkg_semantic_layer
   pkg_tool_update_table_config --> pkg_tools
-  pkg_agent_spine_demo --> pkg_agent
-  pkg_agent_spine_demo --> pkg_agent_instructions
-  pkg_agent_spine_demo --> pkg_agent_loop
-  pkg_agent_spine_demo --> pkg_goal
-  pkg_agent_spine_demo --> pkg_goal_round_driver
-  pkg_agent_spine_demo --> pkg_home_paths
-  pkg_agent_spine_demo --> pkg_invariants
-  pkg_agent_spine_demo --> pkg_jobs_local
-  pkg_agent_spine_demo --> pkg_llm
-  pkg_agent_spine_demo --> pkg_llm_retry
-  pkg_agent_spine_demo --> pkg_scope
-  pkg_agent_spine_demo --> pkg_session
-  pkg_agent_spine_demo --> pkg_session_title
-  pkg_agent_spine_demo --> pkg_shell_env
-  pkg_agent_spine_demo --> pkg_skill
-  pkg_agent_spine_demo --> pkg_skill_filesystem
-  pkg_agent_spine_demo --> pkg_system_prompt
-  pkg_agent_spine_demo --> pkg_tool_bash
-  pkg_agent_spine_demo --> pkg_tool_goal
-  pkg_agent_spine_demo --> pkg_tool_jobs
-  pkg_agent_spine_demo --> pkg_tool_skill
-  pkg_agent_spine_demo --> pkg_tools
   pkg_webhook_github --> pkg_credentials
   pkg_webhook_github --> pkg_host_webserver
   pkg_webhook_github --> pkg_session
@@ -1631,7 +1604,6 @@ flowchart TD
 | [`eval-cli`](../packages/eval/eval-cli) | `eval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`eval-runner`](../packages/eval/eval-runner) | `eval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`retrieval-experiment`](../packages/eval/retrieval-experiment) | `eval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`sdk-jsonrpc-demo`](../packages/examples/jsonrpc-demo) | `examples` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`experimental-code-runtime-python`](../packages/experimental/code-runtime-python) | `experimental` | [`code-runtime`](../packages/code-runtime/code-runtime), [`timeout`](../packages/util/timeout), [`util-values`](../packages/util/values) |
 | [`experimental-inspector`](../packages/experimental/inspector) | `experimental` | [`client-modules`](../packages/client/modules), [`host-webserver`](../packages/host/webserver) |
 | [`experimental-webworker-runtime`](../packages/experimental/webworker-runtime) | `experimental` | [`client-connection`](../packages/client/connection), [`client-modules`](../packages/client/modules), [`host-webserver`](../packages/host/webserver) |
@@ -1821,7 +1793,6 @@ flowchart TD
 | [`tool-revert-edit`](../packages/data/tool-revert-edit) | `data` | [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
 | [`tool-search-schema`](../packages/data/tool-search-schema) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
 | [`tool-update-table-config`](../packages/data/tool-update-table-config) | `data` | [`audit`](../packages/data/audit), [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`agent-spine-demo`](../packages/examples/agent-spine-demo) | `examples` | [`agent`](../packages/core/agent), [`agent-instructions`](../packages/context/agent-instructions), [`agent-loop`](../packages/core/agent-loop), [`goal`](../packages/goal/goal), [`goal-round-driver`](../packages/goal/goal-round-driver), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`jobs-local`](../packages/jobs/jobs-local), [`llm`](../packages/llm/llm), [`llm-retry`](../packages/llm/llm-retry), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-title`](../packages/session/session-title), [`shell-env`](../packages/shell/shell-env), [`skill`](../packages/skill/skill), [`skill-filesystem`](../packages/skill/skill-filesystem), [`system-prompt`](../packages/core/system-prompt), [`tool-bash`](../packages/shell/tool-bash), [`tool-goal`](../packages/goal/tool-goal), [`tool-jobs`](../packages/jobs/tool-jobs), [`tool-skill`](../packages/skill/tool-skill), [`tools`](../packages/core/tools) |
 | [`webhook-github`](../packages/webhook/webhook-github) | `webhook` | [`credentials`](../packages/credentials/credentials), [`host-webserver`](../packages/host/webserver), [`session`](../packages/core/session), [`webhook`](../packages/webhook/webhook) |
 | [`goal-eval-context`](../packages/goal/goal-eval-context) | `goal` | [`evidence-query`](../packages/data/evidence-query), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`system-prompt`](../packages/core/system-prompt) |
 | [`goal-eval-policy`](../packages/goal/goal-eval-policy) | `goal` | [`eval-runner`](../packages/eval/eval-runner), [`evidence-query`](../packages/data/evidence-query), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session) |
