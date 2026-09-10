@@ -87,9 +87,9 @@ const SEAM_MANIFEST: SeamEntry[] = [
     note: 'platform-neutral Host Remote contributions mounted in packages/api/remotes/src/client/index.ts; assembly imports scanned dynamically.',
   },
   {
-    key: 'seam-6', title: 'remote-workspace-files', mode: 'pending',
-    implementations: [],
-    note: 'NEW seam, pending UM14 re-sync (workspace-files dir absent; only dsh-workspace exists today).',
+    key: 'seam-6', title: 'remote-workspace-files', mode: 'seam',
+    implementations: ['api-workspace-files'],
+    note: 'workspace-files restored via UM14 re-sync; previously pending.',
   },
 ]
 
