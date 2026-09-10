@@ -27,3 +27,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Evaluation Subject**: The explicitly identified product composition or module interface whose behavior an evaluation claim describes. Product-composition and component subjects cannot be silently substituted or aggregated. _Avoid_: Target, agent when the measured subject is narrower or broader
 
 **Evaluation Operation**: The declared operation performed on a subject or its evidence, such as controlled run, shadow observation, rescore, reproject, model rerun, or environment re-execution. _Avoid_: Replay as an umbrella for operations with different external effects
+
+**Evaluation Environment**: The evaluation lifecycle module that verifies a resolved Cordis provider composition, opens an attempt lease, and proves finality, separation, assurance, and cleanup. It does not execute domain actions or select business providers. _Avoid_: Database adapter, action gateway, capability container
+
+**Environment Lease**: The owned lifecycle handle for one evaluation attempt's resolved environment resources and completion evidence. _Avoid_: Connection, session when the identity or cleanup ownership would be ambiguous
