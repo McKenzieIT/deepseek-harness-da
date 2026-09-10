@@ -78,6 +78,12 @@ Evaluation protocol 将被测对象显式区分为 `product-composition | compon
 
 Component Evaluation 可以直接调用 engine、retriever、comparator、grader 或 adapter，并使用 synthetic dependencies，但只能支持对应 module/interface 的结论。两类 subject 共用 Benchmark、Evidence、Artifact、Grading 与 Measurement protocol，结果不得默认聚合或直接比较。`controlled-run | shadow-observation | rescore | reproject | model-rerun | environment-reexecution` 是独立的 operation identity，不得统称 replay。
 
+### D11 — Environment 是独立 Cordis evaluation lifecycle Service
+
+Evaluation Environment 形成完整的 Cordis Definition / Provider / Consumer seam。其外部 interface 只负责把 Benchmark requirement 与 deployment binding 解析为 `ResolvedEnvironmentPlan`，并为 attempt 打开 `EnvironmentLease`；lease 隐藏跨 Provider 的 resource correlation、finality、separation、assurance 与 cleanup，向 Consumer 暴露完成和清理结果。Evaluation Controller 是 Consumer，warehouse、pipeline 与 data-science lifecycle adapter 是 Provider。
+
+Environment 不实现 query、filesystem、shell、workflow 或 notebook action，不选择具体业务 Provider，不拥有 DataScope、Context 或 grading semantics，也不要求生产 Provider 依赖 evaluation package。Agent 继续通过生产 `ctx.query`、`ctx.fs`、`ctx.workflow` 等 Service Definition 工作；Environment 只观察和管理本次 attempt 的已解析 Cordis Provider 图。该 Service 只由显式 evaluation composition 挂载，普通 data-agent 不依赖或感知它。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
