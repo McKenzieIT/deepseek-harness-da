@@ -421,6 +421,13 @@ merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）
 
 跨域违反票据：[interpretation-client-rendering T8–T13 簇](../interpretation-client-rendering/map.md)（results-RPC 落 apiproxy，已删；re-home → UM4）、[repo-infra T6](../repo-infra/tickets/T6-ci-checkout-issue-policy.md)（#52 re-violated；→ UM2）、[task-orchestration-dag G10](../task-orchestration-dag/tickets/G10-subagent-tree-upstream-integration.md)（subagent upstream sync 触发）。
 
+**Phase C 进度（2026-09-10 线 A）**：
+- [UM10 verify（typecheck/lint/check:ci:*）](tickets/phase-upstream-merge/UM10-verify-typecheck-lint-ci-gates.md) — **resolved**：full-gate sweep 实跑。client tsc 实为 **1** 而非 Phase-2 记录的 0（`eb9e4cf05c` 自己引入 `evidenceQueryBridge.client.spec.ts:29` 的 `satisfies` 挂错层级），修后 0；`check:ci:static` 19/26 → **23 passed/22 failed**（regen 5 个 stale 生成物，其中 architecture-graph + slot-catalog 的 stale 是 Phase-2 删包造成的真回归）；full lint 93 errors 判 pre-existing（oxlint typeAware 解不出 Cordis service handle，tsc = 0 反证）。commit `ecaa56c848`。
+- [UM16 build green on synced base](tickets/phase-upstream-merge/UM16-build-green-on-synced-base.md) — **resolved**（由 UM10 线 A 收口）：`build:official` **GREEN**；原记的 325 apiproxy-removal errors 已被 Phase-2 全部消化，唯一残留是上面那 1 个 spec 错误。
+- [UM12 GA-FORK-CI re-sweep](tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) — **当前 frontier**（UM10 交来 22 门已分类 residual；其 header 原写 `Blocked by: UM11` 与 UM11 构成环，以 flow doc 的 UM10→UM12→UM11 为准）。
+- [UM11 PR + merge](tickets/phase-upstream-merge/UM11-pr-merge-post-cleanup.md) — **仍 blocked**（`UM10 + UM12`，UM12 未完）→ **本轮不 push**。resync tip `ecaa56c848`、master tip `216a9661e1`（ahead origin 28），均 unpushed。
+- 新毕业：[UM-LINT-TYPEAWARE-CORDIS](tickets/phase-upstream-merge/UM-LINT-TYPEAWARE-CORDIS-false-positives.md)（93 条 `error`-typed 假阳性怎么算过 gate）+ [UM-DATA-SRC-DTS-POLLUTION](tickets/phase-upstream-merge/UM-DATA-SRC-DTS-POLLUTION.md)（84 个生成物写进 `packages/data/*/src/`，把 lint 93 抬到 1980；需定位产出者而非只加 gitignore）。
+
 ## Audit actions 2026-09-07（24 PR 合并，21 fork-own action 已修）
 
 本 session 对抗审计 27 个 action（`.tmp/audit/ACTION-LIST.json`）的去向：

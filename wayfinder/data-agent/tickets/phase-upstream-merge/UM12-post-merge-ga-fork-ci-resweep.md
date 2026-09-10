@@ -30,5 +30,38 @@ UM10（verify）只验非回归，**不主动修 residual red**。本票补这�
 3. **与 a-series 协调**：若 a-series session merge 后仍活，其 T7–T12 patch re-base 到 merged master；UM12 owns umbrella，a-series owns per-ticket 执行。
 4. **目标**：GA-FORK-CI 至少**非回归**（6/7 绿，translation-pairing 本红不算——归 parallel-dev-cleanup/R1）；理想吸收 upstream hardening 把更多 gate 推绿。
 
+## 2026-09-10 update — UM10 线 A 交来的 pre-merge red set（本票的实际起点）
+
+[UM10](UM10-verify-typecheck-lint-ci-gates.md) 线 A 在 resync base（tip `ecaa56c848`）上实跑了 `check:ci:static` 全 45 门 + full lint + `build:official`。**本票原设计是「merge 落 master 后重基线」，但现在已经有一份 pre-merge 实测红集**——先在 resync 分支上收掉大头，比等 merge 后再扫更省事（merge 只会让归因更难）。
+
+**Blocked by 修订**：原写「UM11（merge 落 master 后启动）」。但 UM-flow 的实际顺序是 **UM10 → UM12 → UM11**（见 `UM-flow-2026-09-08.md` 的 mermaid + Phase C 叙述），本票 header 的 `Blocked by: UM11` 是旧框残留、且与 UM11 的 `Blocked by: UM10 + UM12` 构成环。**以 flow doc 为准：本票现已 unblocked（UM10 resolved），是 Phase C 的当前 frontier。**
+
+### 已翻绿（UM10 线 A，commit `ecaa56c848`）
+
+`19 passed/26 failed → 23 passed/22 failed`，无新增失败。修法均为 regen stale 生成物：`verify-client-catalog` / `verify-module-graph` / `verify-tool-catalog` / `verify-package-paths`（+ 组外 `verify-architecture-graph`）。其中 architecture-graph 与 slot-catalog 的 stale 是 **Phase-2 删 `packages/client/runtime` 造成的真回归**；module-graph/tool-catalog 的 stale 来自 449-commit re-sync。
+
+### 剩余 22 门（UM10 已分类，本票逐门处置）
+
+| 类别 | gate | UM10 判定 |
+|---|---|---|
+| GA-FORK-CI known master-red | `runtime closure` | `dsh-python-runtime-closure -> @deepseek-ai/dsh-phase-gate -> @deepseek-ai/dsh-scope-registry`——即票里原文「python/sdk-runtime deps」 |
+| 同上 | `constraints` | `packages/bundle/data-agent/package.json` version 须匹配 root |
+| 同上 | `export jsdoc` | 3 violations（原记 `fadeIn` @param） |
+| 同上 | `translation pairing` | 归 parallel-dev-cleanup/R1，6/7 里「本红」那一门 |
+| **merge-era（`6b7610d45a`），非 Phase-2** | `Cordis config` | `cordis.patch.yml` mount 了 `@deepseek-ai/dsh-result-cache/src/remote.ts`（UM4 从 apiproxy re-home 的 result-cache-gateway），但 bundle `package.json` 只声明 `dsh-result-cache-memory`，且 `tsconfig.base.json` 缺 `@deepseek-ai/dsh-result-cache/src/*` 映射。**注意包名易混**：`packages/data/result-cache` = `@deepseek-ai/dsh-result-cache`；`packages/client/result-cache` = `@deepseek-ai/dsh-client-result-cache`。另 `apps/cli/tests/profiles/acp/cordis.yml: root must be a Loader entry array` |
+| 体量即证 pre-existing 债 | `client UI i18n` | 98 hard-coded UI strings |
+| 同上 | `package dependencies` | 74 violations |
+| 同上 | `package invariants` | peerDependency 政策（`dsh-invariants` 不得作 peerDep）+ empty install function（result-cache / ui-context-layer / ui-present-decomposition / bundle-data-agent） |
+| 同上 | `type equivalence` | `docs/subsystems/tools.md:179` 的 `ToolExecutionInput` 少 `readonly scopeId?: string`（源已加，doc 未跟） |
+| 待逐门归因 | `application entrypoints`、`cordis catalog`、`Cordis inspect catalog`、`config catalog`（含 `ctx.results.get` 缺 @param resultId/signal——JSDoc 文本 pre-existing，Phase-2 只是让 catalog 生成器能读到该文件了）、`doc graphs`、`markdown links`、`subsystem pages`、`tsconfig paths`（`dsh-sdk-jsonrpc-demo` 缺 alias）、`package README model experience`、`agent note format`、`doc budgets`、`documentation standard tests`、`documentation site checks` | — |
+
+### lint 门另开票
+
+`check:ci:lint:contracts-ready` 的 93 errors 不在上表——已毕业为 [UM-LINT-TYPEAWARE-CORDIS](UM-LINT-TYPEAWARE-CORDIS-false-positives.md)（oxlint typeAware 解不出 Cordis service handle 的假阳性，tsc = 0 反证）+ [UM-DATA-SRC-DTS-POLLUTION](UM-DATA-SRC-DTS-POLLUTION.md)（84 个生成物污染 src/，把 93 抬到 1980）。
+
+### 诚实边界（继承 UM10）
+
+上述 pre-existing 判定基于 `git blame` + touched/untouched 比对 + GA-FORK-CI 已记红项，**未**在 pre-merge 基点复跑同一 matrix 建立严格 baseline。本票若要逐门归因到「谁弄红的」，需先补这个 baseline。
+
 ## Resolution
-（待 post-merge 落地后填：post-merge red set diff + re-base/重做的 a-series patch + fork 专属红修复 + 终态 6/7 or 7/7）
+（待落地后填：post-merge red set diff + re-base/重做的 a-series patch + fork 专属红修复 + 终态 6/7 or 7/7）
