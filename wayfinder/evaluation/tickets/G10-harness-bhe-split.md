@@ -72,6 +72,12 @@ Evaluation Core 允许受控和外部数据环境，但每个 run 必须声明�
 
 三类环境都可以产生 evidence 与带限定的 case observation；只有 `managed` 和具备 separation 证明的 `attached-snapshot` 可以进入正式独立-trial measurement，且不同 assurance 或不兼容 environment identity 不得合并。`observational` 只进入 production monitoring 与诊断，不进入 benchmark headline 或独立样本 CI。
 
+### D10 — Product composition 与 component 是不同 Evaluation Subject
+
+Evaluation protocol 将被测对象显式区分为 `product-composition | component`。Product Evaluation 必须加载并驱动真实 production profile、bundle、preset、DataScope 与 Provider composition，通过正常 Agent/SDK 入口经过 session、prompt、tools、approval、hooks、guards、workflow 和 persistence；Evaluation overlay 默认不得改变 model-visible input 或 control flow。任何 prompt、tool、approval、retry、hook、steering 或 stopping 差异都形成新的 Harness identity。
+
+Component Evaluation 可以直接调用 engine、retriever、comparator、grader 或 adapter，并使用 synthetic dependencies，但只能支持对应 module/interface 的结论。两类 subject 共用 Benchmark、Evidence、Artifact、Grading 与 Measurement protocol，结果不得默认聚合或直接比较。`controlled-run | shadow-observation | rescore | reproject | model-rerun | environment-reexecution` 是独立的 operation identity，不得统称 replay。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
