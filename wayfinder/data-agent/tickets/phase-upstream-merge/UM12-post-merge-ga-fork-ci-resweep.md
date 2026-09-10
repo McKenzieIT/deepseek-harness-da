@@ -159,5 +159,106 @@ Phase-2（`eb9e4cf05c`）删了 `packages/client/runtime` 并从 manifest 摘了
 - 上述 red set 仍是**本地测量**。lockfile 修好后 CI 才第一次可能真正跑起来 —— **CI 上的真实 red set 至今无人见过**。
 - 「pre-existing vs 谁弄红的」这条：只有 `documentation standard tests` 一门做到了**正面确证**（断言在 fork parent `558e6f4f66` 里已存在）。其余的 pre-existing 判定基于 blame 日期早于 2026-09-07 + offender 包不在 `upstream/master`，**没有在 pre-merge 基点复跑同一 matrix**。本票原有的这条边界仍然开着。
 
+## 2026-09-14 第二轮 Phase C：pre-merge 基线终于建立，本票最老的「诚实边界」被关掉——而它推翻了本票自己的多条结论
+
+### ⚠ 先修正基点：本票（与两份 prompt）把 `558e6f4f66` 记作 "fork parent"，它不是
+
+实测（`git merge-base --is-ancestor 6b7610d45a 558e6f4f66` = **YES**，`6b7610d45a` 的 parents = `65bf3cddc9 d347e70390`）：
+
+```
+65bf3cddc9  (2026-09-07 19:16)  ← 真正的 fork pre-merge tip
+6b7610d45a  = M1 = merge(65bf3cddc9, d347e70390)
+   ↓ c28b928fa9
+558e6f4f66  (2026-09-08 19:06)  ← **M1 的后代**（本票误记为 fork parent）
+8112743d69  = M2 = merge(558e6f4f66, c389f96bf3)
+   ↓ ... → a469c899bd
+```
+
+`558e6f4f66` 是 **post-M1 / pre-M2** 的中间点。在那里测量只能排除 M2，**不能排除 M1** —— 而 UM-MERGE-INTEGRITY 归咎的正是 M1。
+
+### pre-merge 实测基线（S3 subagent，独立 worktree `dsh-premerge-baseline` @ `65bf3cddc9`）
+
+```
+run-gates: ci-static running 37 gate(s)
+run-gates: 28 passed, 9 failed, 0 skipped in 159.23s.
+```
+
+9 门红：`runtime closure`、`constraints`(3)、`cordis catalog`、`export jsdoc`(**7**)、`config catalog`、`doc graphs`、`translation pairing`(**33**)、`module graph`、`knip`。
+
+**`pnpm install --frozen-lockfile` 在 pre-merge 基点是干净的**（EXIT=0, 16.3s）。这是一条承重发现：本票记的「CI install 本来就挂」（Phase-2 删 `client/runtime` 未重生成 lockfile，`40449bfa93` 才修）**起点在 merge，不在 merge 之前** —— fork 自己的 CI install 在 `65bf3cddc9` 是健康的。
+
+### 门集合差异：37 → 45
+
+- **新增 9 门，全部在 M1 首次出现**（M2 没加门），且它们的后端脚本在 `65bf3cddc9` **全部不存在**：`application-entrypoints`、`package-dependencies`、`client-ui-i18n`、`no-bare-dispatcher`、`cordis-inspect-catalog`、`session-format-catalog`、`subsystem-pages`、`tsconfig-paths`、`doc-standard-tests`。
+- **减少 1 门**：`knip` —— upstream 把它从 `run-gates.ts` 和 `package.json` 里一并删除。
+- **零改名**（36 门共有的 id 与 label 全部不变）。⚠ 一个陷阱：`documentation standard tests`（`doc-standard-tests`）**不是** pre-merge 的 `documentation site checks`（`docs-site-projection`）改名 —— 后者 pre-merge 就存在且**通过**，今天仍是独立的一门。
+
+37 − 1 + 9 = **45** ✅ 与本票的 27+18 自洽。
+
+### 三方对照表（本票原设计的二分类不够——第三类此前无人记录）
+
+| 分类 | 判据 | 门数 |
+|---|---|---|
+| **A 真 pre-existing** | 门在 `65bf3cddc9` 存在且红 | **6** |
+| **B merge 期引入（回归）** | 门在 `65bf3cddc9` 存在且绿，现在红 | **5** |
+| **C 随 upstream 一起来的** | 门在 `65bf3cddc9` **不存在** | **7** |
+
+- **A（6）**：`runtime closure`、`constraints`、`export jsdoc`、`translation pairing`、`config catalog`、`doc graphs`
+- **B（5）**：`package invariants`\*、`package README model experience`、`agent note format`(clean)、`markdown links`(clean)、`type equivalence`\*
+- **C（7）**：`client UI i18n`、`package dependencies`、`tsconfig paths`、`application entrypoints`、`subsystem pages`、`documentation standard tests`、`Cordis inspect catalog`
+
+`*` = 绿→红但**检查器本身也改了**，属「内容回归 + 检查器收紧」混合体，**不得报成纯回归**：`package-invariants` 的逻辑模块 `scripts/package-invariants.ts` **+93 −37** 且新增了三条规则；`type-equivalence` 的 `verify-type-equiv.ts` **+73 −3** 新增整个 module-augmentation 合并特性。
+
+两条**干净**的 B 回归（检查器逻辑未变或更弱，却从绿变红）：
+- `agent note format`：`verify-agent-note-format.ts` 与其唯一 helper `scripts/agent-note-tree.ts` **逐字节相同**，pre-merge 13.76s 通过。**无争议的内容回归。**
+- `markdown links`：`verify-md-links.ts` **+0 −2**，唯一逻辑变化是**移除** `'examples/**/*.md'` 扫描模式 —— 检查器变**窄**了还红，是真回归。
+
+### 本票三条自记结论被推翻
+
+1. **「只有 `documentation standard tests` 做到了正面确证 pre-existing」→ 证伪。** `scripts/doc-standard.spec.ts` 在 `65bf3cddc9` **根本不存在**（全树无 `doc.?standard` 匹配，不在那 58 个 `scripts/**/*.spec.ts` 里），由 upstream `0b5eba0c8d`（2026-08-25）加入，在 fork 里首见于 M1。它是 **Category C**。本票唯一声称"正面确证"的那一门，确证方法本身建立在错误基点上。
+2. **「体量即证 pre-existing」→ 三门全部证伪。** `package dependencies`(74) 与 `client UI i18n`(98) 的门与脚本 pre-merge **都不存在**（分别由 upstream `de256e8bc1`/`3c10f5d2d3` 加入）→ 该论证**不可证伪**，归 C。`package invariants` pre-merge **GREEN（0 violations, 7.21s PASS）**→ **硬证伪**，归 B\*。
+3. **`config catalog` 的 RC-Z 归因 → 作为「致红原因」被证伪。** 该门在 `65bf3cddc9` **已经红**，且 pre-merge 的 staleness 是 fork 自有 `packages/data/semantic-layer/src/index.ts:223→225` 的**单条行号漂移**，**零僵尸参与**（S3 跑了 `gen-config-catalog` 取证后 `git restore`）。僵尸可能叠加了 offender，但这门不是因 merge 才红的 → Category **A**。
+
+反向的一条：`export jsdoc` 的检查器 **+0 −10** 全是注释删除（逻辑等价），而计数从 **7 → 3** —— merge 期工作实际修好了 4 条，剩 3 条是真 fork 债。
+
+### 两门 pre-merge 红、现在绿（本票从未记录）
+
+`cordis catalog` 与 `module graph` 在 `65bf3cddc9` 都是红的，现在绿 —— **merge 期工作修好了两门 pre-existing gate**。加上 `knip`（门被 upstream 删除，现不可测），9 门 pre-merge 红 = 6 仍红(A) + 2 已修 + 1 门被删 ✅ 自洽。
+
+### 本轮落地：`27 passed/18 failed` → **`31 passed/14 failed`**，`comm` 比对**零新增失败**
+
+```
+comm -13 baseline after  →  空集（零新增）
+comm -23 baseline after  →  doc graphs / Cordis inspect catalog / config catalog /
+                            package README model experience（4 门翻绿）
+```
+
+3 个 commit，每门单独 verify 后单独 commit：
+
+| commit | 门 | 关键点 |
+|---|---|---|
+| `4b7e15e920` | **`doc graphs`** → GREEN | L8。`SERVICE_ROLES` 补 `resultGateway`（UM4 re-home 的 Host Remote gateway，源 `packages/data/result-cache/src/remote.ts:48`）。**throw 掩盖的 staleness 远超预期**：`assertServiceRolesComplete` 在渲染前抛，导致整个文档集冻结——regen 补进 **13 个已在 `SERVICE_ROLES` 里却从未出现在已发布文档中的 data-agent 服务**（`ctx.audit`/`embedder`/`identity`/`nl2sql`/`schema`/`scopes`/`query`/`resultCache`/`resultGateway`/`criticCtx`/`evidenceQuery`/`managementSession`/`patrol`）+ 完全陈旧的事件矩阵 |
+| `4d6bb8be8b` | **`Cordis inspect catalog`** → GREEN | L4。**实测 7 条违规，本票记 5**。且本票把文件归错：offender 是 `packages/**client**/result-cache`（`dsh-client-result-cache`），不是 `packages/data/result-cache` —— 本票自己警告过这两个包名易混，然后混了。改动纯注释。同样第三次出现「预检 throw 掩盖 staleness」：修完 JSDoc 后生成器才跑到底，报出 `cordis-client-runner/src/client/api-catalog.ts` stale |
+| `bcf4776f1d` | **`config catalog`** → GREEN；**`package README model experience`** → GREEN；`application entrypoints` 13→10；`subsystem pages` 6→5 | 删两个僵尸包（见 [UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md)）+ 删 `verify-package-readme-model-experience.ts:84` 的 `packages/client/runtime` 陈旧 allowlist（RC-P2） |
+
+### ⚠ 新发现的两个陷阱
+
+1. **`tsconfig paths` 门推荐的修法会破坏 `tsconfig.base.json`。** 删僵尸后该门降级为「stale；run `pnpm run gen-tsconfig-paths`」，而实跑该命令产出**无效 JSON**（用 TypeScript 自己的 `ts.parseConfigFileTextToJson` 复核：regen 前 `OK, 418 path aliases`，regen 后 `ERROR: ',' expected.`）。生成器把最后一条 alias 写成不带尾逗号，而 fork 在 `// END generated package aliases` 之后还有一整块 `"@deepseek-ai/dsh-*"` 通配 fallback。已 restore，未提交。**「fork 保留通配 vs 采纳 upstream 的 ~120 条显式 alias」是设计取舍 → 需决策，不是本票能机械修的。**
+2. **`markdown links` 实测 14 条断链，本票记「L1 后剩 1 条」。** 完整清单见下（其中 4 条指向 upstream 已删的 `examples/`，2 条指向 merge 丢掉的 `slot-contract.ts`）：`result-get-rpc.md:11`、`credentials-keychain/README{,.zh}.md:38`(anchor)、`code-runtime-data-python/README{,.zh}.md:5`、`ui-settings-models/README{,.zh}.md:37`、`ui-settings-models/README{,.zh}.md:89`、`dsh-plugin-development/MODES.md:{33,58,60,61}`、`dsh-plugin-development/SKILL.md:35`。
+
+### 本轮新增的已知债（有意记录而非掩盖）
+
+`translation pairing` 增加 2 条 sub-failure：`docs/capability-seams.md` 与 `docs/event-producer-consumer.md` 与其 `.i18n.yaml` 配对记录失配。因为 `gen-doc-graphs` **只写英文侧**，而 `.zh.md` 是人工评审译文。门本来就红（Category A），门计数未变，但 sub-failure 集合长了 2 条。**拒绝用 `--write` 重录哈希** —— 那会断言一个不存在的一致性（zh 侧缺全部 13 条服务行 + ~17 条事件行）。
+
+对比之下 `gen-module-graph` **会同时写 `.md`/`.zh.md`/`.i18n.yaml` 三件**（本轮实测 "3 artifact(s) written"），所以删僵尸的 regen 没造成配对债。**同一仓里两个生成器对翻译义务的处理不一致** —— 这条喂给 UM15。
+
+### 诚实边界（收窄后仍开着的）
+
+- **M1 vs M2 的归因，对 5 条 Category-B 回归仍 inconclusive**，只有 `package README model experience` 靠 manifest 丢失机制钉到了 M1（pre-merge 的 `verify-package-readme-model-experience.ts` 第 102/165 行**有**两个僵尸包的条目，`a469c899bd` 上为 0 —— upstream 随包删条目、包却活着，正好 = 报告的 2/3）。要劈开 M1/M2 必须再烧一棵树在 `6b7610d45a` 上跑 matrix。
+- **Category-A 里有 4 门检查器也漂移了**（`translation-pairing` +83−25、`doc-graphs` +151−91、`runtime-closure` +2−1、`constraints` +78−29）。红→红的结论安全，但**offender 计数不可跨版本相比** —— 特别是 S3 测到的 `translation pairing = 33` **不得**与今天的任何数字相减。
+- **CI 上的真实 red set 至今无人见过**。lockfile 在 `40449bfa93` 修好后 CI 才第一次可能真正跑起来，但从未跑过。
+- `knip` 门被删后，其底层债（`packages/eval/eval` 的 `knip.json ignoreDependencies`）**是否仍存在未测**。
+- S3 的基线用 `--ignore-scripts`（跳过 `postinstall`/lefthook）。无 `ci-static` 门消费 postinstall 产物，且 28 门通过，判环境有效。
+
 ## Resolution
-（未 resolved。本轮把 22 → 19 且零新增，13 门全部归因，但 ① CI 从未真正跑过这套 gate ② [UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) 硬阻塞 UM11 ③ 尚有 6 门有精确 patch 未落地。）
+（未 resolved。本轮 `27/18 → 31/14` 零新增，4 门翻绿；**本票最老的「诚实边界」已关闭** —— pre-merge 基线建立，18 门红分成 A6/B5/C7，并推翻本票三条自记结论。仍开的原因：① **CI 从未真正跑过这套 gate** ② 14 门红里 5 条 B 类回归的 M1/M2 归因仍需在 `6b7610d45a` 上跑一次 matrix ③ `tsconfig paths` 的通配 vs 显式 alias 需决策 ④ L6/L7/L9 三门有精确 patch 未落地。）
