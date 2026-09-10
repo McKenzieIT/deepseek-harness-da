@@ -103,10 +103,13 @@ Core 只标准化 outcome、duration、cost、finality、artifact changes 与 fa
 | [R24](../research/eval-package-consolidation.md) | 四个 eval 包的重复、依赖与合并爆炸半径 | 约束包重切与 T12 顺序 |
 | [G1](G1-exec-grader-seam.md) | 六条架构无关 execution 决策与三条移交 | G10 只裁位置，不重开 execution semantics |
 | [GA-GT4](../../data-agent/tickets/phase-misc/GA-GT4-eval-de-k11.md) | 当前 K11 hardcode 与旧 de-K11 scope | grilling 中调和：保留通用化问题，替换旧包边界答案 |
+| [`data-engineering-evaluation-frontier.md`](../research/data-engineering-evaluation-frontier.md) | pipeline、schema migration、data quality、lineage、batch/stream state 与 artifact finality | 约束 data-engineering extension，并用无 SQL fixture 反证首个 data-analysis 实现泄漏进 Core |
+| [`data-science-evaluation-frontier.md`](../research/data-science-evaluation-frontier.md) | dataset/split identity、experiment plan、notebook/model artifact、replicate 与 leakage | 约束跨子领域 measurement metadata 和 data-science conformance fixture |
+| [`data-evaluation-frameworks-community.md`](../research/data-evaluation-frameworks-community.md) | 主流框架的 manifest、scorer、evidence、artifact、Environment 与 extension 机制 | 交叉验证稳定 envelope、子领域 payload、独立 artifact store 和完整 run identity |
 
 2026-09-10 代码复核确认 GA-GT4 的核心 hardcode 仍在：`eval-runner-service` 仍默认 K11 caseDir/today 并使用 `^k11_\d+\.yaml$`，bundle 仍声明 K11 `semanticRoot`/`caseDir`，`compare.ts` 仍按 `k11v2_*` 名称分桶。R24 后 `packages/eval/` 只有一次测试 lint 删除，没有包边界或依赖变化，因此 R24 的仓库取证仍可作为 grilling 输入。GA-GT4 唯一过期项是“失败分类无人调用”：`multi_turn.ts` 已调用 `classifyExecutionFailure`，但多引擎 taxonomy 仍属方向 9/G9/T8，不能由 G10 顺手实现。
 
-Grilling 前不需要先实现 heldout/fresh、跑新 baseline、完成 T1/T11 或执行 Context counterfactual；这些需要 G10 先锁接口。Grilling 会话应先读本节六项输入，再逐项裁定：owner/interfaces → canonical schemas/views → run/context identity → package topology → migration order → GA-GT4 supersession。
+Grilling 前不需要先实现 heldout/fresh、跑新 baseline、完成 T1/T11 或执行 Context counterfactual；这些需要 G10 先锁接口。Grilling 会话应先读本节输入，再逐项裁定：owner/interfaces → canonical schemas/views → run/context identity → package topology → migration order → GA-GT4 supersession。
 
 ### 非阻塞研究候选
 
