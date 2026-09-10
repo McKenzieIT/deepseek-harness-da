@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, fireEvent } from '@testing-library/react'
 import { FollowupChips } from '../src/client/FollowupChips.tsx'
-import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-ui-conversation/client'
 
 afterEach(cleanup)
 
@@ -24,26 +24,27 @@ const t = (key: string): string => {
 
 function makeSnapshot(opts: { latestTurnStart?: number } = {}): ConversationSnapshot {
   const turnStart = opts.latestTurnStart ?? NOW - 5000
+  const chat = {
+    timeline: { turnOrder: [1], turns: new Map() },
+    order: [],
+    nodes: { get: () => undefined, values: () => [] },
+    locations: { getTurn: () => [], getStep: () => [] },
+    legacy: { nodes: [], turnTimings: new Map([[1, { startTime: turnStart }]]), turnEnds: new Map(), partial: null, runningCalls: [] },
+  }
   return {
-    chat: {
-      timeline: { turnOrder: [1], turns: new Map() },
-      order: [],
-      nodes: { get: () => undefined, values: () => [] },
-      locations: { getTurn: () => [], getStep: () => [] },
-      legacy: { nodes: [], turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
-    },
-    turnTimings: new Map([[1, { startTime: turnStart }]]),
+    turnTimings: new Map(),
     turnEnds: new Map(),
     nodes: [],
     partial: null,
     runningCalls: [],
     pending: [],
     queue: [],
-    views: { get: () => undefined },
+    views: { get: () => chat },
+    chat,
   } as unknown as ConversationSnapshot
 }
 
-function makeUseSession(snapshot: ConversationSnapshot) {
+function makeUseConversation(snapshot: ConversationSnapshot) {
   return <S,>(sel: (s: ConversationSnapshot) => S) => sel(snapshot)
 }
 
@@ -55,7 +56,6 @@ function makeRunningBlock(): ToolCallBlock {
     turn: 1,
     step: 1,
     time: NOW,
-    callView: null,
     subCalls: [],
   }
 }
@@ -70,8 +70,6 @@ function makeSettledBlock(argsRaw: string, content = '', isError = false): ToolC
     callTime: NOW - 1000,
     content: [{ type: 'text', text: content }],
     isError,
-    callView: null,
-    resultView: null,
     subCalls: [],
   } as unknown as ToolCallBlock
 }
@@ -86,8 +84,6 @@ function makeNullCallBlock(content: string): ToolCallBlock {
     callTime: null,
     content: [{ type: 'text', text: content }],
     isError: false,
-    callView: null,
-    resultView: null,
     subCalls: [],
   } as unknown as ToolCallBlock
 }
@@ -102,7 +98,7 @@ const VALID_ARGS = JSON.stringify({
 
 function renderList(block: ToolCallBlock, snapshot: ConversationSnapshot, submit = () => {}) {
   return render(
-    <FollowupChips block={block} useSession={makeUseSession(snapshot)} submit={submit} t={t} />,
+    <FollowupChips block={block} useConversation={makeUseConversation(snapshot)} submit={submit} t={t} />,
   )
 }
 
@@ -238,12 +234,17 @@ describe('FollowupChips', () => {
   })
 
   it('shows rows when turnOrder is empty', () => {
+    const chat = {
+      timeline: { turnOrder: [], turns: new Map() },
+      order: [],
+      nodes: { get: () => undefined, values: () => [] },
+      locations: { getTurn: () => [], getStep: () => [] },
+      legacy: { nodes: [], turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
+    }
     const snapshot = {
       ...makeSnapshot(),
-      chat: {
-        ...makeSnapshot().chat,
-        timeline: { turnOrder: [], turns: new Map() },
-      },
+      chat,
+      views: { get: () => chat },
     } as unknown as ConversationSnapshot
     const { getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
     expect(getByText('按地区细分')).toBeDefined()
@@ -251,7 +252,7 @@ describe('FollowupChips', () => {
 
   it('shows rows when turnTimings has no entry for latest turn', () => {
     const snapshot = makeSnapshot()
-    ;(snapshot.turnTimings as Map<number, unknown>).clear()
+    ;((snapshot as unknown as { chat: { legacy: { turnTimings: Map<number, unknown> } } }).chat.legacy.turnTimings).clear()
     const { getByText } = renderList(makeSettledBlock(VALID_ARGS), snapshot)
     expect(getByText('按地区细分')).toBeDefined()
   })
@@ -267,8 +268,6 @@ describe('FollowupChips', () => {
       callTime: null,
       content: [{ type: 'image', source: 'data:...' }],
       isError: false,
-      callView: null,
-      resultView: null,
       subCalls: [],
     } as unknown as ToolCallBlock
     const { container } = renderList(block, snapshot)

@@ -1,10 +1,21 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
-import { blockText } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { TableKey } from './locales.ts'
 import { parseNumericCell } from './numeric.ts'
 import css from './TableCard.module.css'
+
+/** The concatenated render text of a settled tool block (trimmed). Empty for
+ *  running blocks that have not yet settled (no `kind`); a trailing newline
+ *  from the render pipeline does not surface as a blank fallback line. Re-homed
+ *  from the decommissioned dsh-client-runtime cards helper so this presenter
+ *  carries no fork-only type reference (the other three presenters replicate
+ *  this local-helper move). */
+function blockText(block: ToolCallBlock): string {
+  if (!('kind' in block)) return ''
+  return (block.content as readonly { text?: string }[]).map(c => c.text ?? '').join('\n').trim()
+}
 
 const ChartView = lazy(() => import('./ChartView.tsx'))
 
@@ -64,7 +75,7 @@ export interface TableCardInjected {
 
 export interface TableCardProps {
   block: ToolCallBlock
-  useSession: <T>(selector: (s: ConversationSnapshot) => T, eq?: (a: T, b: T) => boolean) => T
+  useConversation: <T>(selector: (s: ConversationSnapshot) => T, eq?: (a: T, b: T) => boolean) => T
   /** Primary row source over the result-store hot cache; absent → TSV fallback. */
   fetchResult?: TableCardInjected['fetchResult']
   /** Drops a stale entry so a fresh `query_data` re-fetches (R5 fresh-vs-folded). */
@@ -200,7 +211,7 @@ export interface QueryCandidate {
 
 function collectQueryCandidates(snapshot: ConversationSnapshot, blockSeq: number): QueryCandidate[] {
   const out: QueryCandidate[] = []
-  const nodes = snapshot.nodes
+  const nodes = snapshot.views.get('chat')?.legacy.nodes ?? []
   for (let i = nodes.length - 1; i >= 0 && out.length < MAX_CANDIDATES; i--) {
     const node = nodes[i] as (typeof nodes)[number]
     if (node.kind !== 'tool-result') continue
@@ -678,7 +689,7 @@ function ChartSection({ chart, headers, rows, colKinds, t }: ChartSectionProps) 
   )
 }
 
-export function TableCard({ block, useSession, fetchResult, invalidateResult, t }: TableCardProps) {
+export function TableCard({ block, useConversation, fetchResult, invalidateResult, t }: TableCardProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   if (!('kind' in block)) {
@@ -704,7 +715,7 @@ export function TableCard({ block, useSession, fetchResult, invalidateResult, t 
   const seq = ('seq' in block) ? (block as { seq: number }).seq : /* v8 ignore next -- defensive: only settled blocks reach here */ 0
   return (
     <TableCardInner
-      block={block} blockSeq={seq} args={args} useSession={useSession}
+      block={block} blockSeq={seq} args={args} useConversation={useConversation}
       fetchResult={fetchResult} invalidateResult={invalidateResult}
       collapsed={collapsed} setCollapsed={setCollapsed} t={t}
     />
@@ -715,7 +726,7 @@ interface TableCardInnerProps {
   block: ToolCallBlock
   blockSeq: number
   args: PresentTableArgs
-  useSession: TableCardProps['useSession']
+  useConversation: TableCardProps['useConversation']
   fetchResult?: TableCardProps['fetchResult']
   invalidateResult?: TableCardProps['invalidateResult']
   collapsed: boolean
@@ -858,9 +869,9 @@ function decideTable(
 }
 
 function TableCardInner({
-  block, blockSeq, args, useSession, fetchResult, invalidateResult, collapsed, setCollapsed, t,
+  block, blockSeq, args, useConversation, fetchResult, invalidateResult, collapsed, setCollapsed, t,
 }: TableCardInnerProps) {
-  const candidates = useSession(s => collectQueryCandidates(s, blockSeq), candidatesEqual)
+  const candidates = useConversation(s => collectQueryCandidates(s, blockSeq), candidatesEqual)
   const bound = useMemo(() => bindQuery(candidates, args.result_id), [candidates, args.result_id])
 
   const isBound = bound !== null && bound !== 'mismatch'

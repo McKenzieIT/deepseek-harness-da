@@ -16,12 +16,12 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { apply } from '../src/client/index.ts'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 
-/** A minimal ClientContext mock: ctx.effect/plugin are no-ops; ctx.inject
+/** A minimal Context mock: ctx.effect/plugin are no-ops; ctx.inject
  *  invokes its callback immediately with a stub scope whose slots.inject
  *  captures every registered slot config (so we can read `inject: injected`). */
-function mockCtx(): { ctx: ClientContext; captured: Array<Record<string, unknown>> } {
+function mockCtx(): { ctx: Context; captured: Array<Record<string, unknown>> } {
   const captured: Array<Record<string, unknown>> = []
   const scope = {
     sessions: {
@@ -31,13 +31,16 @@ function mockCtx(): { ctx: ClientContext; captured: Array<Record<string, unknown
       },
     },
     workspaces: { startSession: vi.fn() },
-    get: vi.fn((key: string) => {
-      if (key === 'connection') {
-        return { api: { agentPresets: { select: vi.fn(async () => ({ result: { ok: false } })) } } }
-      }
-      return undefined
-    }),
-    remote: { $on: vi.fn() },
+    get: vi.fn(() => undefined),
+    remote: {
+      $on: vi.fn(),
+      agentPresets: {
+        select: vi.fn(async () => ({
+          ok: false,
+          error: { code: 'gateway/internal', message: 'mock', details: {} },
+        })),
+      },
+    },
     on: vi.fn(),
     slots: {
       inject: vi.fn((_slot: string, fn: () => unknown) => {
@@ -51,7 +54,7 @@ function mockCtx(): { ctx: ClientContext; captured: Array<Record<string, unknown
     effect: vi.fn(),
     plugin: vi.fn(),
     inject: vi.fn((_deps: string[], cb: (s: typeof scope) => unknown) => cb(scope)),
-  } as unknown as ClientContext
+  } as unknown as Context
   return { ctx, captured }
 }
 

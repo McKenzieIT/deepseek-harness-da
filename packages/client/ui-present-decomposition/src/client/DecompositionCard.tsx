@@ -1,9 +1,36 @@
 import { useState, type ReactElement } from 'react'
-import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
-import { isLatestTurn, blockText } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import clsx from 'clsx'
 import css from './DecompositionCard.module.css'
 import type { DecompositionKey } from './locales.ts'
+
+/** Whether the block belongs to the turn the conversation is still on.
+ *
+ *  Re-homed from the decommissioned dsh-client-runtime cards helper; the
+ *  thin-shell ConversationSnapshot carries no top-level chat/turnTimings, so
+ *  the latest-turn check routes through the chat view's legacy compat slice
+ *  (ChatSnapshot.legacy.turnTimings + ChatSnapshot.timeline.turnOrder, both
+ *  preserved upstream for fork-presenters migrating off the runtime). */
+function isLatestTurn(block: ToolCallBlock, snapshot: ConversationSnapshot): boolean {
+  if (!('kind' in block)) return true
+  const chat = snapshot.views.get('chat')
+  const turnOrder = chat?.timeline.turnOrder ?? []
+  if (turnOrder.length === 0) return true
+  const latestTurn = turnOrder[turnOrder.length - 1] as number
+  const timing = chat?.legacy.turnTimings.get(latestTurn)
+  if (!timing) return true
+  return block.time >= timing.startTime
+}
+
+/** The concatenated render text of a settled tool block (trimmed). Empty for
+ *  running blocks that have not yet settled (no `kind`). A trailing newline
+ *  from the render pipeline does not surface as a blank fallback line.
+ *  Re-homed from the decommissioned dsh-client-runtime cards helper. */
+function blockText(block: ToolCallBlock): string {
+  if (!('kind' in block)) return ''
+  return (block.content as readonly { text?: string }[]).map(c => c.text ?? '').join('\n').trim()
+}
 
 export interface Metric {
   name: string
@@ -23,7 +50,7 @@ export interface PresentDecompositionArgs {
 
 export interface DecompositionCardProps {
   block: ToolCallBlock
-  useSession: <S>(sel: (s: ConversationSnapshot) => S, eq?: (a: S, b: S) => boolean) => S
+  useConversation: <S>(sel: (s: ConversationSnapshot) => S, eq?: (a: S, b: S) => boolean) => S
   t: (key: DecompositionKey) => string
 }
 
@@ -167,11 +194,11 @@ function MiniLine({ args }: { args: PresentDecompositionArgs }) {
  * filters, source on one line) → metrics grid with calibers always visible
  * in auto-filling columns → trust band (low-confidence warning, error row).
  */
-export function DecompositionCard({ block, useSession, t }: DecompositionCardProps) {
+export function DecompositionCard({ block, useConversation, t }: DecompositionCardProps) {
   // Toggled state wins once the user interacts; until then the card collapses
   // itself on turns the conversation has moved past (P1 Phase 2).
   const [toggled, setToggled] = useState<boolean | null>(null)
-  const isLatest = useSession(snapshot => isLatestTurn(block, snapshot))
+  const isLatest = useConversation(snapshot => isLatestTurn(block, snapshot))
   const collapsed = toggled ?? !isLatest
 
   if (!('kind' in block)) {

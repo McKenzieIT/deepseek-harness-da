@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-present-decomposition/client'
 
 interface StoredEntry {
@@ -16,7 +16,7 @@ interface LocaleRegistration {
 async function bench() {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
-  const slots = ctx.get('slots') as SlotRegistry
+  const slots = ctx.get('slots') as unknown as SlotRegistry
   slots.register(
     { name: 'root', children: { 'conversation.chat.node': { kind: 'keyed', scope: 'session' } } } as never,
     () => null,

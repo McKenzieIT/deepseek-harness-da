@@ -62,6 +62,8 @@ async function bench(options: {
     llm: llmFace,
   })
   // The ui-settings apply also provides the settingsSchema service.
+  remote.$host.isLoopback = options.isLoopback ?? true
+  remote.$host.isLoopback = options.isLoopback ?? true
   ctx.provide('connection', { isLoopback: options.isLoopback ?? true } as never)
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
   return { ctx, slots: ctx.get('slots') as unknown as SlotRegistry, locale, remote }
@@ -99,7 +101,9 @@ describe('ui-settings-models apply', () => {
     expect(injected.t('deleteTitle')).toBe('删除 {provider}？')
     expect(typeof injected.controller.load).toBe('function')
     expect(injected.hooks.snapshot).toBe(injected.controller.store)
-    expect(injected.ctx).toBe(before.ctx)
+    // apply captures its own fiber ctx (a child of the root), so identity
+    // against before.ctx fails; the component resolves the shared remote.
+    expect(injected.ctx.remote).toBe(before.ctx.remote)
     const onboarding = before.slots.entries('settings.onboarding')
     expect(onboarding).toHaveLength(2)
     expect(onboarding.find(entry => entry.options.id === 'welcome-notice')).toMatchObject({
@@ -113,7 +117,7 @@ describe('ui-settings-models apply', () => {
       deepSeek.inject as unknown as () => import('../src/client/DeepSeekOnboardingDialog.tsx').DeepSeekOnboardingInjected
     )()
     expect(deepSeekInjected.hooks.models).toBe(injected.controller.store)
-    expect(deepSeekInjected.ctx).toBe(before.ctx)
+    expect(deepSeekInjected.ctx.remote).toBe(before.ctx.remote)
 
     const after = await bench()
     await after.ctx.plugin({ inject: [...inject], apply }).await()
@@ -133,7 +137,9 @@ describe('ui-settings-models apply', () => {
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     b.locale.setLocale('en')
     expect(resolveSlotLabel(b.slots.entries('settings.section')[0]!.options.label)).toBe('Models')
-    const injected = b.slots.entries('settings.section')[0]!.inject as unknown as () => import('../src/client/ModelsSection.tsx').ModelsSectionInjected
+    const injected =
+      b.slots.entries('settings.section')[0]!.inject as unknown as
+      () => import('../src/client/ModelsSection.tsx').ModelsSectionInjected
     expect(injected().t('deleteTitle')).toBe('Delete {provider}?')
     b.locale.setLocale('zh')
     expect(resolveSlotLabel(b.slots.entries('settings.section')[0]!.options.label)).toBe('模型')

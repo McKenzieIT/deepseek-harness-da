@@ -16,7 +16,9 @@ import { en } from '../src/client/locales.ts'
 import { settingsSchema } from './settings-schema.client.ts'
 
 // Every fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
-const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
+const useResource = (() => ({
+  status: 'none' as const, value: undefined, failure: undefined, reload: () => {},
+})) as GlobalStandardProps['useResource']
 // Attention hook stub: the onboarding step never reads it, so the fixture
 // returns an empty attention snapshot to the selector.
 const useSessionPendingInteraction = ((selector: (state: Map<string, unknown>) => unknown) =>

@@ -1,5 +1,5 @@
 import { IconSearchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import css from './presenters.module.css'
 import { kindBadgeClass } from './kindBadge.ts'
 

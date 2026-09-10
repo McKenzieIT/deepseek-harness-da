@@ -235,8 +235,6 @@
       "@deepseek-ai/dsh-client-hmr": ["./packages/client/hmr/src"],
       "@deepseek-ai/dsh-client-modules": ["./packages/client/modules/src"],
       "@deepseek-ai/dsh-client-result-cache": ["./packages/client/result-cache/src"],
-      "@deepseek-ai/dsh-client-runtime": ["./packages/client/runtime/src"],
-      "@deepseek-ai/dsh-client-runtime/client": ["./packages/client/runtime/src/client"],
       "@deepseek-ai/dsh-cordis-client-runner": ["./packages/extensions/cordis-client-runner/src"],
       "@deepseek-ai/dsh-cordis-client-runner/client": ["./packages/extensions/cordis-client-runner/src/client"],
       "@deepseek-ai/dsh-client-ui-cordis": ["./packages/extensions/ui-cordis/src"],

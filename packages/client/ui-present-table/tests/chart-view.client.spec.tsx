@@ -281,7 +281,9 @@ describe('ChartView chart types (R4 expansion)', () => {
     const missing = render(
       <ChartView chart={{ type: 'bubble', x_column: 1, y_columns: [2] }} headers={['d', 'x', 'y']} rows={[['a', '1', '2']]} />,
     )
-    const missingData = JSON.parse(missing.container.querySelector('[data-testid="bubble-chart"]')!.getAttribute('data-datasets')!) as [{ data: unknown[] }]
+    const missingData = JSON.parse(
+      missing.container.querySelector('[data-testid="bubble-chart"]')!.getAttribute('data-datasets')!,
+    ) as [{ data: unknown[] }]
     expect(missingData[0].data).toEqual([{ x: 1, y: 2, r: 0 }])
     const nonNumeric = render(
       <ChartView
@@ -290,7 +292,9 @@ describe('ChartView chart types (R4 expansion)', () => {
         rows={[['notnum', '1', '2']]}
       />,
     )
-    const nonNumData = JSON.parse(nonNumeric.container.querySelector('[data-testid="bubble-chart"]')!.getAttribute('data-datasets')!) as [{ data: unknown[] }]
+    const nonNumData = JSON.parse(
+      nonNumeric.container.querySelector('[data-testid="bubble-chart"]')!.getAttribute('data-datasets')!,
+    ) as [{ data: unknown[] }]
     expect(nonNumData[0].data).toEqual([{ x: 1, y: 2, r: 0 }])
   })
 })

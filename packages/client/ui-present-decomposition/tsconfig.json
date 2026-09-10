@@ -24,7 +24,13 @@
       "path": "../ui-tool"
     },
     {
-      "path": "../runtime"
+      "path": "../ui-conversation"
+    },
+    {
+      "path": "../ui-renderer"
+    },
+    {
+      "path": "../ui-chat"
     },
     {
       "path": "../../runtime-diagnostics/invariants"

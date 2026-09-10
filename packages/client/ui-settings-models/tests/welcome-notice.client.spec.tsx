@@ -2,14 +2,17 @@
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import { Context } from '@deepseek-ai/cordis'
 import { SettingsSchemaService } from '@deepseek-ai/dsh-client-ui-settings/src/client/schema.ts'
+import type { RemoteErrorCode, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { SettingsScopeController } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-scope.ts'
 
 // Every fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
-const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
+const useResource = (() => ({
+  status: 'none' as const, value: undefined, failure: undefined, reload: () => {},
+})) as GlobalStandardProps['useResource']
 // Attention hook stub: the welcome notice never reads it, so the fixture
 // returns an empty attention snapshot to the selector.
 const useSessionPendingInteraction = ((selector: (state: Map<string, unknown>) => unknown) =>
@@ -32,8 +35,8 @@ afterEach(() => {
   document.getElementById('root')?.remove()
 })
 
-function response<T>(value: T) {
-  return { rpcId: 'welcome-rpc' as never, result: { ok: true as const, value } }
+function response<T>(value: T): RemoteResult<T> {
+  return { ok: true as const, value }
 }
 
 function welcomeView(value: unknown, revision = 0) {
@@ -68,9 +71,10 @@ function mount(
       mutate,
     },
   }
-  const mirror = new SettingsDescribeMirror(api as never)
+  const ctx = { remote: api } as never
+  const mirror = new SettingsDescribeMirror(ctx)
   const scope = new SettingsScopeController<WelcomeSection>(
-    api as never,
+    ctx,
     { namespace: WELCOME_NOTICE_SETTINGS_NAMESPACE, decode: decodeWelcomeSection },
     mirror,
     'host',
@@ -99,7 +103,12 @@ describe('WelcomeNotice', () => {
   it('uses the exact owner copy in both GUI locales', () => {
     expect(WELCOME_NOTICE_COPY.en).toEqual({
       title: 'Internal Testing Notice',
-      body: "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.",
+      body: 'DeepSeek Harness 0.1 remains in testing for Harness developers. ' +
+        'Many areas need further improvement, and we welcome feedback from the developer community. ' +
+        "DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\n" +
+        'We look forward to exploring the limits of intelligence with developers around the world, ' +
+        'building on open-source, open, reusable, and composable infrastructure. ' +
+        'We welcome Harness developers everywhere to join the DSH plugin ecosystem.',
       continueLabel: 'Continue',
     })
     expect(en.welcomeBody).toBe(WELCOME_NOTICE_COPY.en.body)
@@ -152,15 +161,8 @@ describe('WelcomeNotice', () => {
     fireEvent.click(action)
     expect(action.disabled).toBe(true)
     resolveWrite({
-      rpcId: 'welcome-refused' as never,
-      result: {
-        ok: false,
-        error: {
-          code: 'settings-rejected',
-          message: 'read only',
-          details: { ns: WELCOME_NOTICE_SETTINGS_NAMESPACE },
-        },
-      },
+      ok: false as const,
+      error: new RemoteError('settings-rejected' as RemoteErrorCode, 'read only', { ns: WELCOME_NOTICE_SETTINGS_NAMESPACE }) as never,
     })
     expect((await screen.findByRole('alert')).textContent).toBe(zh.welcomeError)
     expect(h.complete).not.toHaveBeenCalled()

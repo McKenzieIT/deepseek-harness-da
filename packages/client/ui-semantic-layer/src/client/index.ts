@@ -18,10 +18,14 @@
  *    pass live `evalRunCount`/`evalPassRates` + the client itself to
  *    EvidenceSidebar (coverage, gap, delta, health).
  */
-import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-agent-presets/types'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import z from '@deepseek-ai/schemastery'
 import { SemanticLayerShell, type SemanticLayerShellProps } from './SemanticLayerShell.tsx'
 import { en, zh } from './locales.ts'
@@ -82,7 +86,7 @@ export const Config: z<Config> = z.object({
   autoFlipThreshold: z.number().default(3),
 })
 
-export function apply(ctx: ClientContext, config: Config = {}): void {
+export function apply(ctx: Context, config: Config = {}): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-semantic-layer: dictionaries')
   ctx.plugin(semanticLayerPresenters)
 
@@ -95,10 +99,8 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
   // instance while sessions stay isolated.
   const selectionStore = createSelectionStore()
 
-  ctx.inject(['sessions', 'workspaces', 'connection', 'remote'], (scope: ClientContext) => {
+  ctx.inject(['sessions', 'uiWorkspace', 'remote'], (scope: Context) => {
     const sessions = scope.sessions
-    const workspaces = scope.workspaces
-    const { api } = scope.get('connection') as ConnectionHandle
     const layout = scope.get('layout') as { openDetails(): void } | undefined
     let staged: string | undefined
 
@@ -109,14 +111,13 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
       if (!current) return
       const summary = state.byId[current]
       if (summary === undefined) return
-      if (summary.agentPreset === staged) { staged = undefined; return }
+      if (summary.projectionValues?.agentPreset === staged) { staged = undefined; return }
       const presetId = staged
       staged = undefined
-      void api.agentPresets.select({ sessionId: current, agentPreset: presetId }).then((response) => {
-        if (response.result.ok) {
-          sessions.noteAgentPreset(current, response.result.value.agentPreset)
-        }
-      }).catch((e: unknown) => {
+      // The host appends `agent-preset/selected` on a committed swap; the
+      // session projection picks it up, so no manual client-side recording
+      // (the zombie's `sessions.noteAgentPreset` had no migrated equivalent).
+      void scope.remote.agentPresets.select(current, presetId).catch((e: unknown) => {
         // ui-semantic-layer-7: a rejecting RPC (transport error, disposed scope)
         // is an unhandled rejection + silently swallowed preset apply. The staged
         // preset is already cleared above; surface nothing to the model.
@@ -162,14 +163,14 @@ export function apply(ctx: ClientContext, config: Config = {}): void {
     const openOrCreateSession = (): void => {
       const state = sessions.list.getSnapshot()
       for (const id of state.ids) {
-        if (state.byId[id]?.agentPreset === PRESET_ID) {
+        if (state.byId[id]?.projectionValues?.agentPreset === PRESET_ID) {
           sessions.open(id)
           layout?.openDetails()
           return
         }
       }
       staged = PRESET_ID
-      workspaces.startSession()
+      scope.uiWorkspace.startSession()
       layout?.openDetails()
     }
 
