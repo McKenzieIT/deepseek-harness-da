@@ -1,0 +1,83 @@
+{
+  "current": {
+    "upstreamSha": "c389f96bf3a9b6807cb71ed6bdad5849be0df6d8",
+    "upstreamCommittedAt": "2026-09-08T00:46:19+08:00",
+    "mergeCommit": "8112743d6934fecbcf679e6ec438041da4a48a4e",
+    "syncedAt": "2026-09-08T21:16:45+08:00"
+  },
+  "history": [
+    {
+      "upstreamSha": "d347e703908d0406b7a7ef80e3a0e594d86b2215",
+      "upstreamCommittedAt": "2026-09-04T17:16:23+08:00",
+      "mergeCommit": "6b7610d45af89b86bbc677cedf66e28e164274c0",
+      "syncedAt": "2026-09-08T15:52:07+08:00",
+      "upstreamTag": "dsh-v0.1.3-alpha.1"
+    }
+  ],
+  "thresholds": {
+    "daysSinceSync": 14,
+    "commitsBehind": 150
+  },
+  "waivers": [
+    {
+      "path": "packages/client/runtime/",
+      "direction": "keep-fork",
+      "decision": "drop",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/examples/jsonrpc-demo/",
+      "direction": "keep-fork",
+      "decision": "drop",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/examples/agent-spine-demo/",
+      "direction": "keep-fork",
+      "decision": "drop",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "knip.json",
+      "direction": "keep-fork",
+      "decision": "drop",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/client/connection/tests/fake-api.client.ts",
+      "direction": "keep-fork",
+      "decision": "drop",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/client/ui-settings-models/src/invariant.ts",
+      "direction": "keep-fork",
+      "decision": "keep",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/client/ui-settings-models/tests/invariant.client.spec.ts",
+      "direction": "keep-fork",
+      "decision": "keep",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/client/ui-settings-models/src/client/operations.ts",
+      "direction": "drop-fork",
+      "decision": "drop",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/client/ui-settings-models/src/client/slot-contract.ts",
+      "direction": "drop-fork",
+      "decision": "drop",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/client/ui-settings-models/",
+      "direction": "revert-fork",
+      "decision": "pending",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    }
+  ]
+}

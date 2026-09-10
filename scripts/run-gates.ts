@@ -314,6 +314,7 @@ function ciSharedStaticGates(): Gate[] {
     pnpmScript('no-bare-dispatcher', 'verify-no-bare-dispatcher', { label: 'proxy-aware dispatchers' }),
     pnpmScript('issue-management', 'test:issue-management', { label: 'Issue management policy' }),
     pnpmScript('gate-coverage', 'verify-gate-coverage'),
+    pnpmScript('upstream-sync-record', 'verify-upstream-sync-record'),
   ]
 }
 
@@ -710,6 +711,7 @@ function hygieneLeafGates(options: { artifactNeeds?: string[] } = {}): Gate[] {
     pnpmScript('client-ui-i18n', 'verify-client-ui-i18n', { label: 'client UI i18n' }),
     pnpmScript('no-bare-dispatcher', 'verify-no-bare-dispatcher', { label: 'proxy-aware dispatchers' }),
     pnpmScript('gate-coverage', 'verify-gate-coverage'),
+    pnpmScript('upstream-sync-record', 'verify-upstream-sync-record'),
   ]
 }
 
