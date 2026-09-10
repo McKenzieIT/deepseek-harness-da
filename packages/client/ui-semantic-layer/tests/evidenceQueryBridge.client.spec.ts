@@ -26,8 +26,8 @@ function makeRemoteStub() {
     assetHealth: vi.fn().mockResolvedValue(ok(null)),
     beforeAfterDelta: vi.fn().mockResolvedValue(ok({
       runIdA: 'r1', runIdB: 'r2', flipped: [],
-      summary: { improved: 0, regressed: 0, unchanged: 5 } satisfies EvalDeltaReport,
-    })),
+      summary: { improved: 0, regressed: 0, unchanged: 5 },
+    } satisfies EvalDeltaReport)),
     getEvalRunCount: vi.fn().mockResolvedValue(ok(7)),
     getRecentPassRates: vi.fn().mockResolvedValue(ok([0.8, 0.9, 1.0])),
   }
