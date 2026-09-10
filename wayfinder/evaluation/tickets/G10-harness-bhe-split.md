@@ -2,7 +2,7 @@
 
 **Type**: grilling  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读](R10b-harness-measurement-validity.md)（[R10](R10-harness-goodhart-papers.md) 已 resolved）
+**Blocked by**: 无（[R10](R10-harness-goodhart-papers.md) 与 [R10b](R10b-harness-measurement-validity.md) 已 resolved）
 **Blocks**: T9-bhe-split-impl；并解 [G1](G1-exec-grader-seam.md) 移交的三条；[T1](T1-exec-grader-impl.md) 的落点
 **Mode**: HITL
 **Branch**: `grilling/G10-harness-bhe-split`
@@ -28,7 +28,7 @@
 
 ## 2026 follow-up 要补进决策的硬约束
 
-完整侦察见 [`g10-2026-followup-papers.md`](../research/g10-2026-followup-papers.md)，学习导读见 [`g10-learning-guide.md`](../research/g10-learning-guide.md)。R10b 全文认读完成前，本票不锁接口。
+完整一手认读见 [`harness-measurement-validity-papers.md`](../research/harness-measurement-validity-papers.md)，前置侦察见 [`g10-2026-followup-papers.md`](../research/g10-2026-followup-papers.md)，学习导读见 [`g10-learning-guide.md`](../research/g10-learning-guide.md)。本票锁接口时必须逐项吸收 R10b 的跨 benchmark 约束，并把 benchmark-specific choices 留给 pack policy。
 
 - **Benchmark Adapter 是正式模块**：legacy source schema 通过具名、版本化 adapter 编译到 canonical task material；每个 adapter 需要 upstream parity、oracle/reference validation 与 provenance-preservation 证据。
 - **Task material 与 run evidence 分 schema**：Benchmark 拥有 instruction、hidden expected/reference、environment requirements 与 grader policy；Harness 运行结果拥有 model/harness/adapter/environment identity、raw→parsed→executed→observed stages、finality 与 isolation。
@@ -50,8 +50,10 @@
 
 - 三条移交问题各有明确裁定 + 理由，且注明哪些依据来自 R10/R10b、哪些是本仓自主选择。
 - 明确 Benchmark Pack、Benchmark Adapter、共享 eval protocol、Harness、Environment Adapter 与 composition root 的接口和所有权。
-- 为 `k11-v2` 与 RBI 迁移定义 adapter parity、oracle validation、hidden-material isolation 与 schema-preservation 验收。
-- 为运行定义 interface preflight、stage provenance、run identity、outcome finality 与 cross-run separation。
+- 为 `k11-v2` 与 RBI 迁移定义 `validated | parity_unresolved | invalid` 状态；验收同时覆盖 oracle/reference validation、matched original-vs-adapted parity、逐 case evidence、hidden-material isolation 与 schema preservation。
+- 为运行定义 raw emission → parsed action → execution → observation → grader evidence 的可关联持久化，以及 `preflight_failed | interface_incompatible | auto_inconclusive` 的评分前失败语义。
+- Environment interface 分别证明 outcome finality 与 cross-run separation：pending effect、namespace/stream、settle/cancel/finalize、verified reset/cleanup 和 `unresolved` 均有显式表示。
+- Run identity 固定 Benchmark/Adapter/Harness digest、runtime model revision、template/parser/tool schema、Environment image/config 与 grader policy；heldout transfer 不跨 Harness commit 或 identity component 拼接。
 - 为 Goodhart audit 定义 benchmark/run 双 provenance、train/heldout/fresh 生命周期、estimand/cluster unit、standard `pass@n` 与 strict `pass^k`。
 - 与 GA-GT4 的调和结论写明（supersede 哪些面、保留哪些）。
 - 产出或更新一篇 `.agents/notes/proposed/architecture/` Agent Note。
