@@ -165,6 +165,7 @@
     "verify-scoped-events": "tsx scripts/gen-scoped-events.ts --check",
     "verify-module-graph": "tsx scripts/gen-module-graph.ts --check",
     "verify-architecture-graph": "tsx scripts/gen-architecture-graph.ts --check",
+    "verify-gate-coverage": "tsx scripts/verify-gate-coverage.ts",
     "constraints": "tsx scripts/check-workspace-constraints.ts",
     "doc-sync": "tsx scripts/run-gates.ts doc-sync",
     "hygiene": "tsx scripts/run-gates.ts hygiene",
