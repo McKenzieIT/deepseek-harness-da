@@ -289,3 +289,7 @@ comm -23 baseline after  →  doc graphs / Cordis inspect catalog / config catal
 - **package invariants** ⏳ **查证非回归**：74 违规 = 67×空 invariant companion + 7×误作 peerDep（7 是 67 子集），遍及 ~70 fork 自有包。两条规则均 upstream 引入且 pre-merge 不存在（`15f2997bcb`+`de256e8bc1`，后者同 commit 也引入 C 类 package-dependencies 门）。pre-merge 绿只因规则没生。属「fork 自有包适配 upstream 新规则」（=其他按需重构），**非 merge 回归、非真 PR 硬阻塞**。与 i18n(98)/deps(74) 同类。**决策 b（2026-09-15）**：作 known-red，单开 [UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md)（删 67 companion + 清 exports + 清 7 peerDep，先判占名机制再动手）专门做，不阻塞 PR。
 
 **当前 11 门红**：A 类 `runtime closure`/`constraints`/`export jsdoc`/`translation pairing`；B 类 `package invariants`/`type equivalence`；C 类 `client UI i18n`(98)/`package dependencies`(74)/`application entrypoints`(10)/`subsystem pages`(5)/`documentation standard tests`。markdown-links + agent-note-format 已绿。
+
+### [2026-09-17 follow-up] UM15 Decision #1 cron 半——绿基线后加 `schedule:` workflow
+
+UM15 Decision #1（staleness detector 跑哪 = (c) local 先 + cron 后）的 **cron 半挂在本票**：local 半已落（lefthook pre-push 挂 `verify-upstream-sync-record` 门，[UM15 §5b](UM15-durable-upstream-sync-method.md) commit `0301586bed`，2026-09-17）。cron 半 = 当本票达绿基线（11 门红 resolved 或全 known-red 落定、`check:ci:static` 稳定绿）后，加一个 `schedule:` GitHub workflow 定期跑 `pnpm run upstream-status`（写 impact report + 告 staleness），实现周期性 upstream 漂移检测。**先决条件 = 本票绿基线**——勿在 36/11 时加 `schedule:`（会持续告 known-red 噪声）。本 follow-up 防拖。

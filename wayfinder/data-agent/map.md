@@ -459,6 +459,12 @@ merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）
 - **4 项 HITL grilling 全收口（7 项 grilling 阶段完）**：#1 staleness = local 先 + lefthook pre-push + cron 后（UM12 follow-up）；#2 cadence = 每周 + 批量 session + threshold 150 commits/14 天/seam>0 任一硬触发；#5 seam-6 = 本票带修（§5，seam-6 现 stale——`packages/api/workspace-files` 已随 UM14 re-sync 回归）；#8 report = `upstream-sync/upstream-impact-<BASE>..<NEW>-<date>.md`（独立目录不捆绑 wayfinder，无翻译义务）。
 - **PR 状态**：B 类 2 绿 + 2 known-red，PR 可推进（§5 落后）。resync `3bc809c3ba`、master ahead origin，均 unpushed。到 PR merge ≈ 1-3 session（§5 seam-6+lefthook + PR 描述 + push）。
 
+**Phase C 进度（2026-09-17 第五轮：UM15 §5 落 + PR 待推）**：
+- resync +2 commit（tip `0301586bed` unpushed，共 11 unpushed），`check:ci:static` 仍 **36/11**（零新增红；§5 不触 gate 矩阵）。
+- **[UM15](tickets/phase-upstream-merge/UM15-durable-upstream-sync-method.md) §5 全落**（§ 2026-09-17 第五轮）：§5a seam-6（`f8c0e3abca`）SEAM_MANIFEST pending→seam + implementations=['api-workspace-files']（短名 = package.json name 减 scope 前缀，自核 `package-graph.ts` 派生 + 读 manifest 实测）+ regen diff **恰好 1 行**（api-workspace-files seam-role `seam-2`→`seam-6, seam-2`；mode/note/title 渲染器不读故无他 churn；无 zh 触）；§5b lefthook pre-push（`0301586bed`）挂 `verify-upstream-sync-record` 门（门非 report，只读不脏树，跑前跑后 status 一致）+ `lefthook run pre-push` 三 job 全绿（no-prod/typecheck/record）。**§四复核**：基线先验 GREEN、不信「可能大 diff」警告（实测 1 行）、不信「门只读」（前后 status 对比）。
+- **UM15 首片（§1-§5 + lefthook）durable method 实现完**：staleness（local pre-push 门 + `upstream-status` report）+ regen 清单（§3 generator-inputs manifest）+ meta-gate（§2 gate-coverage）+ 三道完整性门（§4 upstream-sync-record）+ impact report（§4 stage 2）。7 项 grilling 全收口；cron 半归 [UM12](tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) follow-up。
+- **PR 状态**：B 类 2 绿 + 2 known-red，PR 可推（**不擅自 push——等用户指示**，§六）。PR 描述须写明 4 点：① ui-settings-models 整包 M1 回退（~30 文件，`tsc` 全绿、`--cc` 看不见，见 [UM-MERGE-INTEGRITY](tickets/phase-upstream-merge/UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) 三道门 ③）；② type-equiv/package-invariants known-red 理由 + 专属票（[UM-QODER-SUBAGENT-RETIRE](tickets/phase-upstream-merge/UM-QODER-SUBAGENT-RETIRE.md) / [UM-INVARIANT-COMPANION-CLEANUP](tickets/phase-upstream-merge/UM-INVARIANT-COMPANION-CLEANUP.md)）；③ 大原则（upstream 内容不改）；④ §2-§5 是 UM15 首片 durable upstream-sync method 落地。resync `0301586bed`、master ahead origin，均 unpushed。到 PR merge ≈ 1-2 session（PR 描述 + push）。
+
 ## Audit actions 2026-09-07（24 PR 合并，21 fork-own action 已修）
 
 本 session 对抗审计 27 个 action（`.tmp/audit/ACTION-LIST.json`）的去向：

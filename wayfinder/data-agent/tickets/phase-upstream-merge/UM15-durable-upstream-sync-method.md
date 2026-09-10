@@ -154,3 +154,20 @@ durable 方法须含一道**纯 git plumbing 的 merge 完整性 gate**,与「ga
 **未落（下 session）**：§5 SEAM_MANIFEST seam-6 修（#5）+ lefthook pre-push 挂 staleness 门（#1 local）→ PR（B 类 2 绿 + 2 known-red，描述写明 ui-settings 回退 + known-red 理由 + 大原则 + §2-§5 是 UM15 首片，**不擅自 push**）。
 
 **resync tip `3bc809c3ba`，9 commit unpushed**（`e17f0fa16c`/`d4596863a6`/`12d02c7687`/`b3a516fe98`/`c579b809d2`/`2eb5b4a850`/`5536afc99f`/`cd1e9c37cd`/`3bc809c3ba`）。
+
+### [2026-09-17 第五轮] §5 全落 resync（seam-6 + lefthook pre-push）+ PR 待用户推
+
+**§5 全部落地 resync（2 commit，tsc+oxlint+verify-architecture-graph+verify-upstream-sync-record 全过）**：
+
+| 节 | commit | 关键 |
+|---|---|---|
+| §5a seam-6 | `f8c0e3abca` | SEAM_MANIFEST seam-6：mode pending→seam、implementations []→['api-workspace-files']、note 更新。短名 = `package.json` name 减 `@deepseek-ai/dsh-` 前缀（自核 `scripts/package-graph.ts` `short: json.name.slice(SCOPE.length)` 派生 + 读 `packages/api/workspace-files/package.json` 实测 = `@deepseek-ai/dsh-api-workspace-files`，交叉核 `api-remotes`）。regen `docs/architecture-graph.md` diff **恰好 1 行**——api-workspace-files 行 seam-role 列 `seam-2`→`seam-6, seam-2`（SEAM_MANIFEST 循环在 emitter 循环前，故 seam-6 排前）。mode/note/title 渲染器不读（仅 `entry.implementations` 在 `buildSeamByPkg` line 274 被读），故无其他 churn；无 .zh.md/.i18n.yaml 触（gen-architecture-graph 只写英文，§3 manifest 证）|
+| §5b lefthook pre-push | `0301586bed` | pre-push += 'upstream-sync record consistency' job 跑 `pnpm run verify-upstream-sync-record`（**门非 report**——report 写 impact 文件脏树，门只读，实测跑前跑后 `git status` 一致）。接既有 `no-production-src-on-master`+`typecheck` 后。`lefthook run pre-push` exit 0（三 job 全绿：no-prod 3.17s / typecheck 30.21s / record 6.08s）；lib/+dist/ gitignored 故 build:lib:host 不脏树|
+
+**§四方法论复核（不信记的，自重跑）**：① 不信 prompt 记的「likely `api-workspace-files`」——自读 `package-graph.ts` 确认 `short` 派生 + 读 manifest 实测短名（与推测同，但走核而非信）；② 不信「gen-architecture-graph 重写全文可能大 diff」警告——基线先验 `verify-architecture-graph` GREEN（doc current）再编辑再 regen，diff 实测 1 行（基线 doc 已 current + 仅一 manifest entry 变）；③ 不信「门只读」——跑 `verify-upstream-sync-record` 前后 `git status` 对比证零写；④ pre-commit `lint(staged)` oxlint --fix + whitespace + vendor-manifest 全绿（两 commit 各跑一次）。
+
+**cron follow-up**：Decision #1 cron 半（`schedule:` workflow 跑 `upstream-status`）归 UM12 绿基线后——已在 [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 记 follow-up 防拖。
+
+**UM15 首片（§1-§5 + lefthook）durable method 实现完**：staleness（local pre-push 门 + `upstream-status` report）+ regen 清单（§3 generator-inputs manifest）+ meta-gate（§2 gate-coverage）+ 三道完整性门（§4 upstream-sync-record）+ impact report（§4 stage 2）。7 项 grilling 全收口。**本票仅剩 PR 推送（用户指示后）+ 未来自动化 slice（impact analyzer 全自动化 / ticket-gen workflow）——后者非首片 scope，毕业另开。**
+
+**PR 状态**：resync +2 commit（tip `0301586bed`，共 11 unpushed），B 类 2 绿 + 2 known-red，PR 可推。PR 描述待写明 4 点（ui-settings 整包 M1 回退 ~30 文件 / type-equiv+package-invariants known-red 理由 + 专属票 / 大原则 upstream 不改 / §2-§5 是 UM15 首片 durable method）。**不擅自 push——等用户明确指示**（§六）。resync `0301586bed`、master ahead origin，均 unpushed。
