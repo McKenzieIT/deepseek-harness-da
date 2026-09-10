@@ -32,10 +32,6 @@ The add flow is a card carrying the dormant-directory provider select — a bare
 
 After the versioned notice step completes, the DeepSeek step projects first-run readiness from the same joined snapshot. ANY provider the user can already reach ends it without rendering; only a user with none is asked for the official DeepSeek key. Configure later completes only this coordinator pass, and an absent adapter, inactive route, failed join, read-only deployment, or unusable capability completes the step without rendering — Models remains the diagnostic surface.
 
-### Extension slots
-
-The section declares two seats for plugins distributed outside this repository, typed in [`src/client/slot-contract.ts`](src/client/slot-contract.ts) and exported from `./client`. `settings.models.provider-card` (keyed) renders inside every card that shows a directory row — a saved row's card, its first-run setup posture, and the add-provider draft — dispatched with `entryKey = settingsNs` and owner props carrying the row's `ConfigurableProviderView`, its configured state, and its confirmed api-key credential state, so one registration under an adapter family's namespace receives every card of that family, hand-declared routes included; the hand-declared draft card has no directory row yet and dispatches nothing until saved. `settings.models.footer` (list) renders after the rows and the add controls. A registrant activates through `ctx.slots.inject` with a type-only import of this package's `/client` entry; without registrants both seats render nothing.
-
 -----
 
 <a id="understand-the-implementation"></a>
@@ -86,7 +82,7 @@ None; this package neither assembles nor sends a provider request.
 
 ## Known Limitations and Deferred Work
 
-- **Only the API key and curated fold fields are editable on the card** — the hand-written editor traded schema-generic field coverage for the mockup layout ([Agent Note](../../../.agents/notes/implemented/architecture/2026-07-30-web-config-plane.md)). Both families expose `baseURL` and model `id`/`name`/`contextWindow`/`maxTokens`; a hand-declared pi-ai route also exposes `displayName` and `api`. Retry policy, timeouts, DeepSeek model descriptions, and other advanced fields remain in `settings.yaml`; existing model fields the editor does not show are preserved. A profile schema without the conventional fields renders the hint alone, and the two curated layouts key on the `llm-deepseek`/`llm-pi-ai` namespaces by name.
+- **Only the API key and curated fold fields are editable on the card** — the hand-written editor traded schema-generic field coverage for the mockup layout ([Agent Note](../../../.agents/notes/archived/architecture/2026-07-30-web-config-plane.md)). Both families expose `baseURL` and model `id`/`name`/`contextWindow`/`maxTokens`; a hand-declared pi-ai route also exposes `displayName` and `api`. Retry policy, timeouts, DeepSeek model descriptions, and other advanced fields remain in `settings.yaml`; existing model fields the editor does not show are preserved. A profile schema without the conventional fields renders the hint alone, and the two curated layouts key on the `llm-deepseek`/`llm-pi-ai` namespaces by name.
 - **Credential cleanup is intentionally narrow** — deleting a row removes the configured, writable credential only when its reference is the exact `<ROUTE>_API_KEY` target this page derives. Custom references, environment credentials, and unidentifiable targets are retained because the row cannot prove ownership of them.
 - **Only pi-ai routes can be hand-declared** — the custom-provider card writes into `llm-pi-ai`, the one namespace whose profiles describe a whole provider. A `llm-deepseek` route is a composition fact, not something this page can create.
 - **Interrogation covers OpenAI-compatible endpoints** — the adapter reads only that model-list response format, so a gateway speaking another protocol reports that it cannot be asked and its models are entered by hand.
