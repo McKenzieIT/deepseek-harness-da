@@ -4,7 +4,7 @@
 **Phase**: upstream-merge
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: ~~UM10~~（resolved 2026-09-10）+ **UM12（仍开，22 门 residual）** → 本票**仍 blocked**，不 push
+**Blocked by**: ~~UM10~~（resolved）+ **UM12（仍开，14 门 residual；本 session 27/18→31/14）** + **[UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md)（已量化：双向有损已穷举、2 组僵尸已删；但 ui-settings-models 整包回退须入 PR 描述）** → 本票**仍 blocked**，不 push
 **Related**: session-prompt 收尾（Lead integration boundary）；CLAUDE.md "并行 session 分支纪律" + "提交与引证纪律"
 
 ## Findings (2026-09-08 reframe)
@@ -53,6 +53,14 @@
 - `fix/cb1b-pwsh-pty-evaluation`（ahead 2）— **活工作，勿删**：UM12 记为 Windows pwsh/console 红门的 fork 专属修法。
 - `fix/lint-noop-assertion-unused-disable`（ahead 53）— 疑与 [UM-LINT-TYPEAWARE-CORDIS](UM-LINT-TYPEAWARE-CORDIS-false-positives.md) 同域，**认领那票前先看这条分支**，可能已有半成品。
 - Scope 5 原写「删 3 弃分支」：`fix/legacy-empty-callid`、`fix/legacy-empty-callid-pr`、`docs/cleanup-map-update` — **实测这 3 个已不存在**，该子步已自动完成。
+
+## 2026-09-14 update
+
+- **resync tip `a469c899bd` → `bcf4776f1d`**（本 session 3 commit：L8 doc graphs / L4 cordis inspect catalog / 僵尸包删除）。`check:ci:static` **27/18 → 31/14**，零新增失败。
+- **UM12 residual 22 → 14 门**（4 翻绿）。三分类（pre-merge 基线 `65bf3cddc9` 实测 28/9）：A6 真 pre-existing / B5 merge 回归 / C7 upstream 新增门。
+- **[UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) 已量化**：双向有损已穷举，2 组僵尸包已删。但发现 **ui-settings-models 整包被 M1 回退到 merge-base（~30 文件）**——`tsc` 全绿、`git diff-tree --cc` 看不见。**PR 描述必须写明这条**，否则仍是在有损 merge 上声称非回归。re-port 单开 [UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md)（task，不阻塞 PR，可后补）。
+- **worktree 16 个**（本 session 移除了临时的 `dsh-premerge-baseline`）。上表 2026-09-10 实况盘点仍准确；A23 unblocked。
+- **仍未 push**：resync `bcf4776f1d`、master `7f4b25d1ad` 均未 push。
 
 ## Resolution
 （待落地后填：PR #N、merge sha、清理的分支清单）
