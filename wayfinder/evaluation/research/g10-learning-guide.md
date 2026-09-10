@@ -1,12 +1,12 @@
 # G10 学习指南：可信 evaluation 的 Benchmark / Harness / Environment 拆分
 
-日期：2026-09-09
+日期：2026-09-10
 
-本文面向准备参与 [G10 — Harness Benchmark/Harness/Environment 拆分](../tickets/G10-harness-bhe-split.md) 决策的人，解释 G10 要解决的问题、术语、数据流、失败模式和决策检查表。论文依据见 [R10 认读](harness-goodhart-papers.md)，2026 年后续文献见 [follow-up scout](g10-2026-followup-papers.md)。本文是教程，不替代 G10 的最终决议。
+本文面向准备参与 [G10 — Harness Benchmark/Harness/Environment 拆分](../tickets/G10-harness-bhe-split.md) 决策的人，解释 G10 要解决的问题、术语、数据流、失败模式和决策检查表。论文依据见 [R10 认读](harness-goodhart-papers.md) 与 [R10b 一手认读](harness-measurement-validity-papers.md)，2026 年后续文献路由见 [follow-up scout](g10-2026-followup-papers.md)。本文是教程，不替代 G10 的最终决议。
 
 ## 1. R10 与 G10 的区别
 
-R10 回答“已有论文和官方实现证明了什么”；G10 回答“本仓据此选择什么包、接口、schema 和迁移顺序”；T9/T12 才执行代码与包重组。R10 提供约束，G10承担取舍。
+R10 回答 Benchmark / Harness / Environment 的职责与 Goodhart 审计依据；R10b 补齐 adapter parity、interface censoring、outcome finality、cross-run separation 和 frozen Harness identity；G10 回答“本仓据此选择什么包、接口、schema 和迁移顺序”；T9/T12 才执行代码与包重组。R10/R10b 提供约束，G10 承担取舍。
 
 ## 2. 用考试系统理解三个角色
 
@@ -93,6 +93,10 @@ RBI v3 source ───RBI adapter─┘
 
 `expected.sql` 和 comparator policy 属于 evaluator-side Benchmark material。`anchor_ds` 的语义要求属于 case；怎样连接并读取对应 snapshot 属于 Environment binding。两者应显式连接，不能由 runner 读字符串后隐式猜测。
 
+Oracle validation 与 adapter parity 是两条不同证据。Oracle validation 证明已知正确产物能被新 verifier 接受；matched parity 证明相同 agent、model、prompt/template、tool、sampling、execution configuration 和 task set 在原实现与 adapter 上产生相容结果。前者不能替代后者。
+
+Adapter 应暴露 `validated | parity_unresolved | invalid` 状态。Parity record 至少保存 source/adapter revisions、task ids、oracle 结果、逐 trial 与逐 case verdict、不确定性、missing/invalid cases、已知偏差和 artifact links；不能用“能加载”或单侧 smoke test 标记 validated。
+
 ## 7. 一个候选的深模块结构
 
 以下是帮助讨论的候选，不是 G10 已完成的决议：
@@ -151,17 +155,41 @@ raw emission
 → grader evidence
 ```
 
-G10 应要求 interface preflight 在批量运行前检查 template/parser/tool schema 组合，而不是用昂贵 run 发现整个批次的 action 都被静默吞掉。
+G10 应要求 interface preflight 在批量运行前检查真实的 model/provider、serving stack、template、serializer、parser、tool schema 和 tool-choice policy 组合，而不是用昂贵 run 发现整个批次的 action 都被静默吞掉。
+
+Preflight 至少区分三个结果：
+
+- `preflight_failed`：transport、response、tool name、arguments、dispatch 或 observation 链路失败；
+- `interface_incompatible`：raw emission 中存在合规调用，但 parser 没有产生 action；
+- `auto_inconclusive`：`required` positive control 通过，但 `auto` 下模型没有产生可识别调用。
+
+前两者使整组 configuration invalid，不能生成模型能力分。`auto_inconclusive` 是否阻塞由 Benchmark policy 决定。正式 run 还应把 grader evidence 接到阶段链末端，并用关联 id 保留每层输入输出。
 
 ## 9. Environment 何时才算结束
 
 Agent 停止输出不代表环境达到最终状态。SQL、后台进程、文件写入、异步服务或缓存可能继续变化。
 
-Outcome finality 表示后续事件不会再改变当前结果；cross-run separation 表示前一个 run 不会影响下一个 run。Environment interface 因而需要表达 `pending | final | indeterminate`，并提供 namespace、reset、cleanup 与资源释放证据。
+Outcome finality 表示后续事件不会再改变当前结果；cross-run separation 表示前一个 run 不会影响下一个 run。两者需要独立证据：等待完成可能建立 finality，却把结果留给下一 run；namespacing 可以建立 separation，却不能让当前 pending effect 自动定案。
 
-一次 pending SQL 不应被提前记作模型失败；一个未清理 workspace 也不应被下一 case 继承。
+Environment interface 应记录 outcome observation period、system scope、analysis-unit/stream identity，以及每个 open effect 的 initiating event、resource/controller、stable handle、status、possible transitions 和 cross-run route。`settle`、`cancel`、`finalize`、`reset` 与 `cleanup` 必须返回 authority-backed verification，不是一个未解释的 Boolean。
 
-## 10. Goodhart 的六条路径
+一次 pending SQL 不应被提前记作模型失败；一个未清理 workspace 也不应被下一 case 继承。无法证明 finality 时结果是 `unresolved`；无法证明 separation 时相连 runs 不得按独立 attempts 聚合。
+
+## 10. Run identity 与 frozen transfer
+
+一个可比较 run 的 identity 必须覆盖整个被测系统，而不只是 model 与 benchmark 名称：
+
+- Benchmark pack、source revision、case revision、split 与 content digest；
+- Benchmark Adapter version、content digest 与 parity evidence；
+- frozen Harness artifact 的 version、commit 与 content digest；
+- runtime model 的 provider、精确 revision、sampling 与 seed；
+- serving stack、template、serializer、parser、tool schema 与 tool policy；
+- Environment image/config、resource/network policy、namespace/stream；
+- grader、comparator、judge、rubric policy 与 trial identity。
+
+Heldout transfer 必须比较同一个 frozen Harness artifact。Feedback、heldout 和 fixed-runtime 三类结果只要 Harness commit 或其他 identity component 不同，就不能拼成同一个 transfer 结论。
+
+## 11. Goodhart 的六条路径
 
 ### Case overfitting
 
@@ -187,7 +215,7 @@ Outcome finality 表示后续事件不会再改变当前结果；cross-run separ
 
 选择有利的聚合、丢弃 invalid、使用错误 bootstrap unit、只报均值或只报单次 pass，制造不存在的提升。
 
-## 11. Train、Heldout 与 Fresh
+## 12. Train、Heldout 与 Fresh
 
 `train` 用于开发、调 prompt、调 comparator 和逐题分析，可以公开并反复运行，但不能作为唯一 headline。
 
@@ -197,7 +225,7 @@ Outcome finality 表示后续事件不会再改变当前结果；cross-run separ
 
 三个 slice 必须使用相同 canonical envelope 和显式评分 policy，同时分别报告构成、难度、来源和环境条件。否则 slice 差异可能只是分布差异。
 
-## 12. 怎样读取 Goodhart delta
+## 13. 怎样读取 Goodhart delta
 
 假设 baseline 是：
 
@@ -219,7 +247,7 @@ fresh 52
 
 报告至少包含每个 slice 的 execution score、judge score、两者 gap、失败结构、样本数与 CI，并输出 `Δ_train-heldout`、`Δ_heldout-fresh` 及其相对上一冻结 baseline 的变化。
 
-## 13. pass@1、pass@n 与 strict pass^k
+## 14. pass@1、pass@n 与 strict pass^k
 
 `pass@1` 是一次调用的成功率。标准 `pass@n` 表示 n 次中至少一次成功，测探索与多样性。Strict `pass^k` 表示 k 次必须全部成功，测重复可靠性。
 
@@ -232,7 +260,7 @@ pass^3 = fail
 
 结果必须保存逐次 attempt vector，才能重算探索、稳定性、方差和相关性。两种聚合不能继续混名为 `pass_k`。
 
-## 14. Judge 需要双向验证
+## 15. Judge 需要双向验证
 
 Judge reliability 至少包括两个方向：
 
@@ -241,7 +269,7 @@ Judge reliability 至少包括两个方向：
 
 一个 judge 可以高度稳定，却对真正错误不敏感。Judge validation 因而不能只看 self-consistency、human correlation 或 style control。
 
-## 15. CI 之前先声明 estimand
+## 16. CI 之前先声明 estimand
 
 “95% CI”只有在下列内容固定后才有意义：
 
@@ -253,23 +281,23 @@ Judge reliability 至少包括两个方向：
 
 同一 case 的多次 attempt、多个 rubric dimension、多个 judge 与位置交换结果通常相关，不能全部当成独立样本做普通 bootstrap。
 
-## 16. 多轮评测不仅是多条消息
+## 17. 多轮评测不仅是多条消息
 
 真实多轮 agent 评测还包括 workspace 与 environment state 延续、旧需求继续成立、verifier 累计、artifact lineage 和 regression。`MultiTurnSession` 若只保存 transcript，会把真实持久任务退化为聊天测试。
 
 需要记录 workspace identity、environment identity、state lineage、每轮 verifier version、累计 requirements、artifact changes、round success、regression 和 fail-stop outcome。
 
-## 17. G10 的最终决策检查表
+## 18. G10 的最终决策检查表
 
 1. Benchmark Pack 是否拥有 case、hidden material、policy、provenance 和 aggregation？
 2. Harness 是否只拥有 agent execution，而看不到 hidden ground truth？
 3. Environment 是否只返回执行事实，不决定 benchmark verdict？
 4. Source schema 是否通过具名 adapter 无损编译到 canonical protocol？
-5. 每个 adapter 是否有 parity、oracle 和 provenance-preservation 证据？
-6. Run identity 是否固定 benchmark、adapter、harness、model、environment、policy 和 seed？
-7. raw→parsed→executed→observed 是否逐阶段记录？
-8. Interface mismatch 是否在批量运行前失败？
-9. Outcome finality 与 cross-run separation 是否有系统证据？
+5. 每个 adapter 是否分别完成 oracle/reference validation 与 matched original-vs-adapted parity，并输出 `validated | parity_unresolved | invalid`？
+6. Run identity 是否固定 benchmark、adapter、frozen Harness、runtime model、完整 interface stack、Environment、grader policy 和 seed？
+7. raw→parsed→executed→observed→graded 是否逐阶段记录并可关联重放？
+8. Interface preflight 是否区分 `preflight_failed | interface_incompatible | auto_inconclusive`，并防止配置失败进入能力分母？
+9. Outcome finality 与 cross-run separation 是否分别有 open-effect、verified reset 和 analysis-unit 证据？
 10. `train | heldout | fresh` 是否具有独立版本、时间和访问规则？
 11. Benchmark provenance 与 run provenance 是否分开？
 12. Judge 是否有 invariance 与 sensitivity 双向探针？
@@ -277,6 +305,12 @@ Judge reliability 至少包括两个方向：
 14. 标准 `pass@n` 与 strict `pass^k` 是否分别保存和报告？
 15. 多轮结果是否包含 state/verifier/artifact lineage？
 
-## 18. G10 不负责的内容
+## 19. 来源强度与采用限制
+
+Harbor、Harbor-Index、Interface Censoring 和 ECP 有可检查的官方实现 artifact；Outcome Finality 没有配套代码；HarnessDev 项目页未提供代码与逐 run artifact；DAREBench 论文给出的仓库在 2026-09-10 尚无可读取 refs。G10 可以直接采用前两组来源已经验证的机制，后几组只采用论文能够支持的定义和观察，不把未发布实现当作既成标准。
+
+ECP 仍是 Experimental proposal。它可以启发 JSON-RPC envelope、manifest digest 和 audit fields，但不能替代 adapter parity、private-material isolation、五阶段 evidence、outcome finality 或 cross-run separation。
+
+## 20. G10 不负责的内容
 
 G10 不决定具体 comparator 默认值，不决定 event case 最终评分口径，不实现污染 detector，不负责 fresh case 生产，也不执行 T9/T12 重构。它负责给这些后续工作提供正确的模块所有权、协议字段和生命周期接口。
