@@ -747,6 +747,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Abstract get/put/has cache for idempotent tool results; a memory backend registers as ctx.resultCache so deterministic tools short-circuit repeat calls.',
   },
   {
+    key: 'resultGateway',
+    pkg: 'result-cache',
+    title: 'Host Remote gateway for cached results',
+    mode: 'core',
+    note: 'Owns the `result/get` Remote endpoint over the optional `ctx.resultCache` store seam, so the Client\'s scope-addressed `ctx.results` resolves one result_id per RPC. Reads the store through `ctx.get(\'resultCache\')`, never `ctx.resultCache`, so the seam stays an optional injection: a missing id answers `result-not-found` (a business miss), a composition without a result-cache provider answers `internal`.',
+  },
+  {
     key: 'criticCtx',
     pkg: 'phase-gate',
     title: 'Per-agent critic guard context',
