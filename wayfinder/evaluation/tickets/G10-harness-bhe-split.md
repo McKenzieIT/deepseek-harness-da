@@ -42,6 +42,12 @@ Benchmark Pack 定义可复用、具名且版本化的 grader policy、Environme
 
 Compiler 在运行前解析引用、拒绝缺失或不兼容组合，并生成带 profile revision 与 content digest 的 `ResolvedGradingPlan`、`ResolvedEnvironmentRequirement` 和 `ResolvedContextRequirement`；run identity 保存这些 resolved identities。
 
+### D5 — Benchmark 声明 requirement，composition root 解析 deployment binding
+
+`CaseManifest` 只显式引用 Benchmark 拥有的 Environment/Context requirement profile，不保存 provider、project、credentials、目录或服务实例。Deployment profile 提供可用 Environment 与 Context binding，composition root 在 Harness 启动前完成唯一匹配、兼容性验证和 preflight，并冻结 `ResolvedEnvironmentPlan` 与 `ResolvedContextPlan`；binding 中只保存 credential reference，不保存 secret。
+
+不得使用 case、Pack、CLI、环境变量和硬编码值之间的通用覆盖顺序；无匹配、歧义或冲突均使 configuration invalid，且不创建模型错误记录。Run provenance 同时保存 requirement identity、binding identity、实现与内容 digest 以及运行中实际观察到的资源 identity。`scopeId`、`defaultProject` 与 `semanticRoot` 分别归入 Environment 或 Context binding，不再是 Harness 的平铺配置。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
