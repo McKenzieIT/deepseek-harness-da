@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-get-coverage
 
+English | [中文](README.zh.md)
+
 Model-facing get_coverage tool: semantic layer coverage statistics (total assets by kind, domain breakdown, confirmation status)
 
 ## Model Experience

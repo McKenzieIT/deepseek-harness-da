@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-present-clarification
 
+English | [中文](README.zh.md)
+
 Model-facing present_clarification tool: present a clarifying question to the user and HALT the turn awaiting their answer (self-evolution #2a; callable in any phase)
 
 ## Model Experience

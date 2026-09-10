@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-discover-alt-labels
 
+English | [中文](README.zh.md)
+
 Model-facing discover_alt_labels tool: AI-native SKOS alias discovery over the semantic layer (CL-1 Phase 3 enrichment), for the management agent's enrichment phase
 
 ## Model Experience

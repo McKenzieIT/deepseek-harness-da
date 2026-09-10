@@ -1,10 +1,30 @@
 # R1-exec-grader-papers — 认读执行级评分与非循环 GT 溯源的一手文献
 
-**Type**: research（AFK，认读分析）  ·  **Direction**: 1（执行级评分 + 非循环 GT 溯源，linchpin）  ·  **Status**: Resolved (2026-09-07)
-**Branch**: `research/R1-exec-grader-papers`（worktree `../dsh-R1`，base `master` @ `47ef19a26f`）
+**Type**: research（AFK，认读分析）  ·  **Direction**: 1（执行级评分 + 非循环 GT 溯源，linchpin）  ·  **Status**: **Resolved v3 (2026-09-08)**；v1 Resolved 2026-09-07
+**Branch**: `grilling/R1-G1-v3-independent`（主工作区）；v1 在 `research/R1-exec-grader-papers`，v2 在 `grilling/G1-exec-grader-seam-redo`
+
+> **为何有 v3**：v1 与 v2 都在网络/API 不稳定的环境下完成——v1 的 pod 对 arxiv.org 返回 403，v2 全程网络阻断（自述 arXiv 元数据未验证），且 v2 机械复核推翻了 v1 的仓库层结论。本环境实测可直连 arxiv.org、export.arxiv.org API 与 raw.githubusercontent.com，并有 `pdftotext`，故做**第三次独立重做**：不读 v1/v2 产物，全部结论从一手来源重新推导，再与 v1/v2 三方对账，只保留可复现的结论。
 **Blocked by**: 无
 **Blocks**: [G1-exec-grader-seam](G1-exec-grader-seam.md)（grilling 需论文分析在手）→ T1-exec-grader-impl
-**产物**: [`../research/R1-exec-grader-papers.md`](../research/R1-exec-grader-papers.md)
+**产物**: [`../research/exec-grader-papers-v3.md`](../research/exec-grader-papers-v3.md)（v3，现行）；v1 [`../research/exec-grader-papers.md`](../research/exec-grader-papers.md)；v2 `exec-grader-papers-v2.md`（仅在 `grilling/G1-exec-grader-seam-redo`）
+
+## Resolution v3 (2026-09-08)
+
+产物：[`../research/exec-grader-papers-v3.md`](../research/exec-grader-papers-v3.md)（含 §7 三方对账）。本轮在写完 §1-§6 并提交（`8a97b3812b`）后才读 v1/v2，独立性可由 git 历史核对。
+
+**本轮才具备的验证条件**：arxiv.org / export.arxiv.org API / raw.githubusercontent.com 均可直达，`pdftotext` 可用。v1 的 pod 对 arxiv.org 403，v2 全程断网且自述编号未证。
+
+**三方独立收敛（G1 可直接依赖）**：168 case = 143 EXECUTION + 25 DELIVERY（交集 0）；143 个只用 `row_count_range` 86 + `scalar_exact` 57，其余三模式 **0 使用**；`k11-v2` 带 reference SQL = 0；loader 静默 strip `expected.sql`；生产判分路径是 `eval-runner`，库里的失败分类与 `pending → patience` 不在其上；仓库 `pending` 落为 verdict `wrong`；`query_result` 只存前 5 行。
+
+**v3 独有**：6 个 arXiv 编号经权威 API 全部确认真实（解除 v2 对 `2606.30851` 的“编号存疑”）；该文真标题为 *Test-Time Verification for Text-to-SQL via Outcome Reward Models*（GradeSQL 是框架名）；Spider 1.0 逐字写明不提供 Execution Accuracy，test-suite accuracy 归 2010.02840；GradeSQL **丢弃**执行报错的候选而非记为答错（“执行失败≠答错”的已发表先例）；四套评测器中唯 Spider 2.0 定了浮点容差 `abs_tol=1e-2`。
+
+**采信 v2 的独有发现**：A 栈失败分类（infrastructure/timeout/patience）与环境性失败不计分；`match_modes.ts` 内部三种相等语义冲突；**拼错 `match_mode` 会被记成模型答错**；`row_count_range` 靠 `rows.length` 判定故存 5 行无法重算。
+
+**本轮自我修正三处**：单测确实约束 CLI 分数（私有包装器转调库实现）；“run 级可由 `RunConfig.with_query` 恢复”只对 4 个批量 run 成立——其余 35 个（含全部 168-case run）连 `config` 都没有，**从未有完整 168-case run 真连过数仓**；同条件对比为 judge-only 61.5% vs real-exec 5.1%（**56.4pp**）。
+
+**v1 处置**：论文层留用（两条头条经 PDF 原文证实）；仓内层的 comparator 分析退役（集中在零使用的 `set_equal`/`ordered_subset`），其“建议 comparator 默认档”不作为 G1 起点；**但 v1 的 G1 决议反过来修正了 v3**（provider 的 `truncated`/`durationMs` 是硬编码常量，不可当证据；双栈的成因考古）——详见 G1 决议里与 v1 的对账。
+
+**对 map 的修正项**：方向 1 论文行需把 test-suite 从 Spider 1.0 拆出并补 2010.02840；`2606.30851` 改用真标题；待核清单中本方向 6 篇可移入已验证。
 
 ---
 
@@ -40,7 +60,7 @@
 
 ## Resolution (2026-09-07)
 
-产物：[`../research/R1-exec-grader-papers.md`](../research/R1-exec-grader-papers.md)。
+产物：[`../research/exec-grader-papers.md`](../research/exec-grader-papers.md)。
 
 **六条对 G1 有直接后果的结论：**
 
@@ -59,3 +79,7 @@
 **顺带纠正两个数字**（详见 note §7）：Northcutt 是 **"at least 3.3%"** 非 3.4%；BIRD 的 v3 PDF 摘要头条是 **GPT-4 54.89%**，arXiv 元数据摘要（ChatGPT 40.08%）已过期。
 
 **新增 fog（已在 note §8 列出，待 G1 决定是否成票）**：EX grader 与 [GA-EVAL-CASESET-EVENT-ANCHOR](../../data-agent/tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)（grilling, open）在归一化规则与 provenance 上**重叠**，G1 必须处理二者关系（先例：map 里 G5 supersedes GA-GT4）。
+
+## K11-v2 case 状态（from earlier stub 1396a8b89c, preserved for no-loss merge）
+
+168 个 K11-v2 case 当前没有 reference SQL；143 个已有 `result_value` 也缺 snapshot、执行 SQL 和可重放 provenance。后续 ground truth 必须由领域人员编写并复核的 reference SQL 在不可变数据库快照上实际执行派生，保存 raw/normalized artifacts、digest 与 policy version；被测模型或同源 LLM 不得成为 gold 的作者或最终裁决者。25 个 delivery-only case 保持非 execution case，不伪造 expected result。

@@ -1,5 +1,7 @@
 # Domain docs
 
+English | [中文](domain.zh.md)
+
 工程技能在探索代码前，按本文件读取本 Fork 的 Data Agent 领域文档。
 
 ## 读取顺序

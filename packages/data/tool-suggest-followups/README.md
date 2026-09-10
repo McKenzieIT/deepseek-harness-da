@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-tool-suggest-followups`
 
+English | [中文](README.zh.md)
+
 Model-facing `suggest_followups`: **suggest follow-up questions the user might ask next** for the data agent's `INTERPRETATION` phase. The agent calls it after presenting results to offer actionable next steps — drill-downs, comparisons, time shifts, or related queries the user can click to continue the conversation.
 
 This is a **pure presentation tool** (`inject=['tools']` only): it records the suggestions and returns them for the UI to display as clickable chips. It has NO service dependency and does not probe `ctx.schema` / `ctx.audit` / `ctx.identity`. The phase-gate's `captureToolData` detects the call via `tools/post-execute`.

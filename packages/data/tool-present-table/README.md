@@ -1,5 +1,7 @@
 # `@deepseek-ai/dsh-tool-present-table`
 
+English | [中文](README.zh.md)
+
 Model-facing `present_table`: **present a query result table with display metadata** (title, columns, sort, KPI aggregations, chart config) for the data agent's `INTERPRETATION` phase. The agent calls it to instruct the UI how to render the executed query result — which columns to show, how to sort, what summary KPI cards to display above the table, and whether to include a chart visualization.
 
 This is a **pure presentation tool** (`inject=['tools']` only): it records the table presentation intent and returns it for the UI to render. It has NO service dependency and does not probe `ctx.schema` / `ctx.audit` / `ctx.identity`. The phase-gate's `captureToolData` detects the call via `tools/post-execute`.

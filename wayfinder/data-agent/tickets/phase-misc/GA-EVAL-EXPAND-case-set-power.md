@@ -2,7 +2,7 @@
 
 **Type**: task  ·  **Phase**: misc  ·  **Status**: Open
 **Source**: [GA-MODEL1 功效分析](../../research/model1-baseline-analysis.md)（2026-09-03）· Kind 1 grilling session
-**Blocked by**: 无（但排在 GA-GT3 数据丢失修复之后）
+**Blocked by**: [R23 — Comparator-policy mutation baseline](../../../evaluation/tickets/R23-comparator-policy-mutation-baseline.md)
 **Blocks**: [GA-EXP5](GA-EXP5-language-correlation.md)
 **先例**: [P11e](../phase-4/P11e-eval-case-set-v2-realistic.md)（realistic case set 方法论，resolved 2026-08-26）
 **关联**: [GA-EVAL-CLEAN-RERUN](GA-EVAL-CLEAN-RERUN-uniform-clean-and-executor-baseline.md)（Phase 2 实证 executor 在 k11-v2 上不可行——本票承接该缺口）· [GA-EVAL-REBASELINE](GA-EVAL-REBASELINE-passk-semantics.md)
@@ -93,7 +93,7 @@ P11e 当初解决的正是作弊问题——原 161 个 case 的问法是**表�
 >
 > 这意味着 **k11-v2 的 61.9% judge-only 基线很可能被大幅高估**（case set 不同不能直接外推，但量级警示成立）。**这是本票「expected 值必须真实执行推导」从「方法论洁癖」升级为「基线可信度问题」的决定性证据**——judge-only 不只是 upper bound，而是一个偏差可能达数十 pp 的 upper bound。
 >
-> 本票的「量化 judge 放过率」目标因此**已在 RBI case set 上部分达成**；本票剩余增量 = 在 k11-v3 上取得同口径数字，使其与 168-case 历史谱系可比。
+> 本票的「量化 judge 放过率」目标因此**已在 RBI case set 上部分达成**；本票剩余增量 = 在按 G1b lifecycle 发布的迁移后版本上取得同口径数字，使其与 168-case 历史谱系可解释地对照。
 
 **按 match_mode 的精确影响面**（勿笼统说「k11-v2 不能接 executor」）：
 
@@ -105,20 +105,20 @@ P11e 当初解决的正是作弊问题——原 161 个 case 的问法是**表�
 
 **且对本票的核心目标有反作用**：配对比较中「两臂都必挂」的 case 贡献 **0 个不一致对**，所以在 k11-v2 上接 executor 会把有效样本从 168 压到约 111（86+25），**n_d 下降 → 功效下降**。这正是必须修期望值、而不是绕开 executor 的原因。
 
-- [ ] **新 case 全部带 `expected.sql`（人工确定的参考 SQL）+ 真实执行取 expected 值**，使扩集天然可执行验证并可追溯
-- [ ] **同时修复旧 57 个 `scalar_exact` 的期望值**（重新推导为真实执行结果 + 补 `expected.sql`），使 168 + 扩集**整体**可执行验证
-- [ ] 修复后跑一次 `--with-query`，取得 **k11-v3 上的 judge 放过率**（与 168-case 历史谱系同口径可比；RBI case set 上已测得 35.9pp，见上）
+- [ ] **每个新 EXEC case 带 `expected.sql`（人工确定的参考 SQL）+ 真实执行取 expected 值**，使 execution case 可验证并可追溯；DELIVERY case 保持非 execution case
+- [ ] **同时修复旧 57 个 `scalar_exact` 的期望值**（重新推导为真实执行结果 + 补 `expected.sql`），使旧集与扩集中所有 EXEC case 可执行验证
+- [ ] 修复后跑一次 `--with-query`，取得**迁移后 benchmark version 的 judge 放过率**（版本命名与发布规则由 G1b 决定；RBI case set 上已测得 35.9pp，见上）
 
 > **⚠ 循环性风险，必须人工把关**：派生 expected 值要求先写出「正确 SQL」，而「业务问题的正确 SQL 是什么」**恰是 eval 本身要测的东西**。参考 SQL 必须由**人工**确定（这是 ground truth，合法）；**若交给 LLM 生成，会把系统当前的错误固化为「正确答案」**，eval 从此测不出那类错误。这是 57 个 case 修复工作量大的根本原因——不是机械劳动。
 >
-> **⚠ 与 [GA-EVAL-REAL-EXEC](GA-EVAL-REAL-EXEC-real-execution-baseline.md) 重叠**：该票 §1 的「备选」项正是本节内容，且它**因工量大而降级**（「优先 RBI eval」）。该票走的是**换 case set** 路线（RBI `eval_10000251_*` 已 real-exec-derived）——更便宜更快，但 case set 不同，无法与 k11-v2 的 61.9% 基线对比。**该票已于 2026-09-04 resolved**（走「换 case set」路线，测出 judge false-pass 35.9pp）——所以「首次拿到 judge 放过率」这一目的**已达成**。本票的剩余理由收窄为两条：① `k11-v3` 与 168-case **历史谱系的可比性**（RBI case set 无法与 61.9% 对比）；② **GA-EXP5 的功效前置**（n_d≥85）。勿重复劳动。
+> **⚠ 与 [GA-EVAL-REAL-EXEC](GA-EVAL-REAL-EXEC-real-execution-baseline.md) 重叠**：该票 §1 的「备选」项正是本节内容，且它**因工量大而降级**（「优先 RBI eval」）。该票走的是**换 case set** 路线（RBI `eval_10000251_*` 已 real-exec-derived）——更便宜更快，但 case set 不同，无法与 k11-v2 的 61.9% 基线对比。**该票已于 2026-09-04 resolved**（走「换 case set」路线，测出 judge false-pass 35.9pp）——所以「首次拿到 judge 放过率」这一目的**已达成**。本票的剩余理由收窄为两条：①迁移后 benchmark version 与 168-case **历史谱系的可解释对照**（RBI case set 无法与 61.9% 对比）；② **GA-EXP5 的功效前置**（n_d≥85）。勿重复劳动。
 
 ### 1. 生成（两阶段，但不筛 case）
 
 - [ ] 从 321 张表 + concepts/events/domains 生成业务问法候选，覆盖现有 intent × complexity 分布
 - [ ] 刻意补齐 **L4 配比**——P11e 设计 10%，现有 168 个只有 11 个 L4（6.5%），欠配
-- [ ] 参考 SQL 用**模板**写（**非** LLM 生成——那会把系统当前错误固化为「正确答案」），执行后取实际结果为 expected
-- [ ] `match_mode` 混用：`scalar_exact` 现在可信（有真实执行背书），`row_count_range` 仍适用于排行/分布类结构断言
+- [ ] EXEC case 的参考 SQL 用**模板**写（**非** LLM 生成——那会把系统当前错误固化为「正确答案」），执行后取实际结果为 expected
+- [ ] comparator policy 采用 R23 的实证 profile，并逐 case 显式记录例外；DELIVERY case 按 G1b lifecycle 保持非 execution
 
 ### 2. 效度检验（检验生成器，不筛 case）
 
@@ -129,9 +129,9 @@ P11e 当初解决的正是作弊问题——原 161 个 case 的问法是**表�
 
 ### 3. 集合分工（勿混用）
 
-- [ ] **原 168 个保持不动**，作为**可比历史基线**——与全部历史 run 同口径，供 [GA-EVAL-REBASELINE](GA-EVAL-REBASELINE-passk-semantics.md) 用
+- [ ] 不覆盖原 168-case artifact 与关联 run evidence；是否继续发布为历史基线、如何标记可信度和何时退役，按 G1b lifecycle 决议执行
 - [ ] 扩出来的作为**高功效实验集**，供 [GA-EXP5](GA-EXP5-language-correlation.md) 用
-- [ ] 两者分别报告。**不要**用 LLM 生成的 case 去改写绝对质量基线
+- [ ] legacy 与迁移后结果分别报告。**不要**用 LLM 生成的 case 去改写绝对质量基线
 
 ## 新证据（2026-09-06，来自 [GA-EVAL-EVENTDEF-PREFETCH](GA-EVAL-EVENTDEF-PREFETCH-engine-responder.md)）：real-exec pass_rate 在 n=39 上是抽奖
 
@@ -155,21 +155,17 @@ P11e 当初解决的正是作弊问题——原 161 个 case 的问法是**表�
 1. **n_d ≥ 85**（pass^k 口径），而非仅 N ≥ 360
 2. 新集 r ≥ 0.20（接近现有 0.238；显著更低即生成器效度不足）
 3. 新 case 全部通过 P11e 四条反作弊验收标准
-4. **全部 case（168 修复后 + 扩集）带 `expected.sql` 且 expected 值由真实执行推导** ← 硬要求
+4. **旧集修复后与扩集中的全部 EXEC case 带 `expected.sql`，且 expected 值由真实执行推导**；DELIVERY case 不伪造 execution expectation
 5. **judge 放过率被量化**（首次）
 6. pass rate 落在 P11e 的 50–75% 区间（pass^k 口径）
 7. 效度局限（无真实提问日志）写入产出文档
 
-## 与 GA-EVAL-REBASELINE 的集合分工（已调整）
+## 与 GA-EVAL-REBASELINE 的集合分工
 
-原计划「原 168 集零改动以保历史可比性」。**本票的期望值修复与之冲突**，取舍如下：
+修复期望值会使迁移后集合的绝对数字与历史 run 不可比，因为 61.9% 等基线来自 legacy expectation。本票保留原始 evidence，不覆盖既有 benchmark artifact；新版本的命名、组成、legacy 状态、发布与退役规则全部服从 G1b 的 ground-truth lifecycle 决议。
 
-- 修期望值会使 168 集的**绝对数字与历史 run 不可比**（61.9% 等基线是在虚构期望值下测得的）
-- 但历史可比性建立在一个**已知错误的基准**上，保它意义有限
-- **决定**：修复后的 168 集打新版本号（如 `k11-v3`），**保留 `k11-v2` 原样归档**供历史对照。历史基线数字继续引用 `k11-v2`，新基线在 `k11-v3` 上重建
-
-因此本票**新增一项产出**：`k11-v3` = 修复期望值的 168 + 扩集，`k11-v2` 冻结归档。
+本票的新增产出是一个按 G1b lifecycle 发布的迁移后 benchmark version：旧 EXEC cases 修复后与扩集进入新版本，DELIVERY cases 的去留和分类按 lifecycle 执行。旧版本是否继续作为历史对照、如何标记其 expectation 可信度，也由 G1b 决议，不在本票预先锁定。
 
 ## 备注
 
-ODPS executor 接线为本票**前置**（修期望值需真实执行）。[GA-EVAL-CLEAN-RERUN](GA-EVAL-CLEAN-RERUN-uniform-clean-and-executor-baseline.md) 已修好 `--with-query` boot bug（`context.ts` credentials-seam 回归）并 smoke 验证真实执行通路可用（`query_result=[[26770]]`），本票可直接复用。
+真实 SQL 执行是本票前置能力，但由 dsh-data-agent 的 `@deepseek-ai/dsh-query` capability 拥有；本票只经 evaluation adapter 复用 `ctx.query.execute`，不建立 provider、credentials 或 backend lifecycle。[GA-EVAL-CLEAN-RERUN](GA-EVAL-CLEAN-RERUN-uniform-clean-and-executor-baseline.md) 已修好 `--with-query` boot bug（`context.ts` credentials-seam 回归）并 smoke 验证真实执行通路可用（`query_result=[[26770]]`）。

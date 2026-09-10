@@ -1,5 +1,7 @@
 # @deepseek-ai/dsh-tool-get-definition
 
+English | [中文](README.zh.md)
+
 Model-facing get_definition tool: load a unified data asset definition (table, event, or metric) by name from the semantic layer
 
 ## Model Experience

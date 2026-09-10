@@ -2,7 +2,7 @@
 
 **Type**: fix
 **Phase**: upstream-merge
-**Status**: open
+**Status**: folded→UM12 (2026-09-09 triage)
 **Assignee**: unclaimed
 **Blocked by**: UM1（需 staged merge）
 **Blocks**: UM10（verify）
@@ -22,10 +22,11 @@ fork 的 #48（删 6 死 serial-* master-push job + sandbox macos 腿）是改**
 4. **评估 3 新 workflow**（`build-preview-cloudflare.yml`/`release-publish.yml`/`release-vendor-publish.yml`）：是否引用 fork 没有的 Cloudflare/发布密钥/runner → 若红，加 owner 守卫或 skip。
 5. GA-FORK-CI 非回归：6/7 绿（translation-pairing 本就红，不 regress 即可）。
 
-## Merge outcome (2026-09-07)
+## Resolution
 
-2 textual conflicts：`.github/workflows/ci.yml`(UU) + `issue-lifecycle.yml`(UU)。`issue-policy.yml` **auto-merged**（无 textual conflict）——但须人工核：fork #52 的 `if: github.repository_owner` skip + upstream `a33ed4d` gray-check 守卫**是否都在合并结果里**（auto-merge 不保证 semantic 正确）。重落 #48（缺资源 job 跳过）针对新 `ci-master.yml`+`ci.yml` 结构；#52 owner 守卫重加 issue-policy/lifecycle。
+**[2026-09-09 triage] → Status: folded→UM12.** #48/#52 reland done via re-sync（`issue-policy.yml:19` `repository_owner == 'deepseek-ai'` owner guard + `ci.yml` `vars.DSH_CI_FAILOVER`-driven runs-on）；residual 3-new-workflow guard eval = UM12（post-merge GA-FORK-CI re-sweep）。详 `.tmp/next-5-triage.md`。
 
-## Resolution (2026-09-08)
+---
 
-`ci.yml`(UU) resolved: upstream `ci-master.yml` split + fork #48 vars-driven (15 `vars.DSH_CI_FAILOVER`; `dsh-windows-2025-16core`→`windows-latest`). `issue-lifecycle.yml`(UU): #52 owner guard + `a33ed4d` gray-check. `issue-policy.yml`: #52 + `a33ed4d` (auto-merged). `build-preview-cloudflare.yml`: owner guard. `release-publish`/`release-vendor-publish`/`no-production-src`: left as-is. **Deviation**: `ci-master.yml` used owner-guard skips (not vars-driven) for 4 fork-lacking-runner jobs (vars-driven doesn't fit skip-only jobs). GA-FORK-CI real-run deferred to UM10/UM12.
+### (original pre-triage)
+（待落地后填：重落的 workflow 文件 + GA-FORK-CI 实跑结果）

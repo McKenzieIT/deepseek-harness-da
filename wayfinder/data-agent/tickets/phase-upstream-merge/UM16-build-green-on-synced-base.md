@@ -1,6 +1,6 @@
 # UM16 — synced base 上 fix build:official 根 entry 阻塞
 
-**Type**: task · **Status**: open · **Phase**: upstream-merge
+**Type**: task · **Status**: resolved（2026-09-10，UM10 线 A）· **Phase**: upstream-merge
 **Blocking**: UM14（synced base）
 **Flow**: 见 `UM-flow-2026-09-08.md`（Phase B）
 **= task #1 re-scoped/formalized**（resync-then-fix，不 churn——fix 是 Phase B 最后一步，不跟 re-sync 抢 tsconfig）
@@ -29,8 +29,12 @@ build:official green on synced base。
 
 ## Resolution
 
-(open；resync-then-fix——fix 在 UM14 之后，不 churn)
-## Session A finding (2026-09-08)
+**[2026-09-10] RESOLVED — `pnpm run build:official` GREEN on synced base（exit 0）。**
 
-tsdown fail（on synced base `8112743d69`）：`[@deepseek-ai/dsh-root] Cannot find entry: ["lib/types/{index,invariant,startup}.js"]`（tsdown 0.22.2 resolveEntry）— root entry 是 upstream-shared breakage。Host tsc green；client tsc（`tsc -b tsconfig.client.json`）~50 errors（见 UM-flow Session A outcome — 多疑 stale typert/catalog 工件下游，CORDIS regen 后解；zombie tsconfig=R-DA）。UM16 应在 CORDIS regen + R-DA 后做 build green。
+2026-09-09 本票记为 resolved-partial：`build:lib:host` green on node 24，但 `build:official` 仍报 **325 apiproxy-removal errors**，划为「独立 workstream」。[UM10](UM10-verify-typecheck-lint-ci-gates.md) 线 A（2026-09-10）实测：那 325 条已被 Phase-2（`eb9e4cf05c`）+ Follow-on-3-B 全部消化，**唯一残留阻塞是 1 个 spec 类型错误**——`evidenceQueryBridge.client.spec.ts:29` 的 `satisfies EvalDeltaReport` 挂错层级（挂在内层 `summary` 上）。修掉后 `build:official` 直接 green。
 
+- 修复 commit：`ecaa56c848`（resync branch `upstream/resync-2026-09-08`）。
+- node v24.15.0 强制（v25 crashes tsdown/rolldown——本票原 critical finding，仍成立）。
+- 根 entry 阻塞（本票原根因，upstream 共享 breakage）由 2026-09-09 的 3 个 `[UM16]` commits 解决，本次未再触。
+
+**Deliver 达成**：build:official green on synced base。本票关闭；`build:official` 已可作为 UM11/UM12 的构建前提。

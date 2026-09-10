@@ -4,7 +4,7 @@
 **Phase**: upstream-merge
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: UM3, UM4, UM5（src 落定后重生成 cordis-surface docs）
+**Blocked by**: ~~UM3, UM5~~（archived/done via re-sync）+ **UM4（仍开）** → 2026-09-10 重评：仅剩 UM4 一个前置
 **Related**: d5 line 54（generated doc sync KEEP）；fork `docs/subsystems/data-agent.{md,zh.md,i18n.yaml}`
 
 ## 背景
@@ -18,12 +18,11 @@ upstream 无 data-agent 子系统文档（grep 命中 0）→ fork 的 `docs/sub
 3. UM3–UM5 src 改动落定后，**重生成 fork 的 cordis-surface docs**（data-agent surface 反映新 src——apiproxy 删除/results-RPC 重落户/sqlite 删除后的签名位移）。
 4. 跑 `doc-sync` 门，保 fork data-agent docs 与 src 一致。
 
-## Merge outcome (2026-09-07)
+## Resolution
 
-~44 docs conflicts：`docs/` 35（capability-seams/config-catalog/event-producer-consumer/module-graph/tool-catalog 各 .md/.zh.md/.i18n.yaml + `docs/subsystems/{README,core,credentials,session,subagent,tools,typert}`）+ `packages/{,bundle/,subagent/}README.{md,zh.md,i18n.yaml}` 9。
+**[2026-09-09 triage] → Status: leave-open (blocked-on-R-DA).** `docs/subsystems/data-agent.{md,zh.md,i18n.yaml}` preserved through re-sync（fork-only，upstream 无）；`data-agent.md` 带 `Source:` refs to `packages/data/*`（cordis-surface generated doc intact）；residual cordis-surface REGENERATION（反映 post-re-sync src：apiproxy 删/results-RPC re-home/sqlite 删/R-DA presenter 迁移）blocked by UM4 + R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-2；doc-sync gate green-check folds into UM10。详 `.tmp/next-5-triage.md`。
 
-⚠️ **translation-pairing driver 跑不了**：fresh worktree 无 node_modules → `merge-translation-pairing` custom driver 失败，`.i18n.yaml` 留 ordinary text conflict。**解法**：`pnpm install && pnpm run resolve-translation-pairing-conflicts`（install 后 driver 可跑）。保 fork `docs/subsystems/data-agent.{md,zh.md,i18n.yaml}`（fork-only，无 upstream 对应——确认未在 conflict 列表 ✓）。
+---
 
-## Resolution (2026-09-08)
-
-44 docs accept-upstream (`--theirs`). verify-translation-pairing run via tsx (bypassing broken `pnpm install`) — confirmed paired + clean. cordis-surface regen (`gen-doc-graphs`/`gen-tool-catalog`/`gen-cordis-catalog`) + doc-sync deferred to Final (after UM3–UM5 src landed). fork's `docs/subsystems/data-agent.{md,zh.md,i18n.yaml}` kept (fork-only, no upstream conflict).
+### (original pre-triage)
+（待落地后填：data-agent docs 保留确认 + cordis-surface 重生成结果 + doc-sync 绿）

@@ -1,5 +1,7 @@
 # Issue tracker: GitHub Fork
 
+English | [中文](issue-tracker.zh.md)
+
 Data Agent 的 issue 与 spec 记录在 `McKenzieIT/deepseek-harness-da` 的 GitHub Issues 中。使用 `gh` CLI 操作；不得把 Fork 内部工作项创建到 `deepseek-ai/deepseek-harness` upstream 仓库。
 
 ## Conventions

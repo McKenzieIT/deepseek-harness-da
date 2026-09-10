@@ -1,6 +1,6 @@
 # GA-FORK-CI: verify-translation-pairing debt (the 1 remaining red node-24 gate)
 
-Branch: fix/ga-fork-ci-translation-pairing (claimed 2026-09-07 session 2; worktree ../dsh-translation-pairing, off master @ 356d0c9b3a). LOCAL — not pushed (gate red, push/PR decision pending). Prior dsh-ga-i18n worktree's 26 .zh.md + manifest excludes + Class B were uncommitted+removed = LOST; session 2 re-derived + re-applied. Progress + OOS drift analysis + next-session plan: `.tmp/audit/fix-translation-session2-status.md` (main tree).
+Branch: fix/ga-fork-ci-translation-pairing (sessions 3-6; off origin/master @ `5ef3872533` = PR #107 tracker-s5). **PR #102 (session 3) + PR #104 (session 4) + PR #106 (session 5) + PR #108 (session 6) MERGED to master** (admin-merge Option B). Session 6 landed the final 6 (packages/goal 2 + packages/query 1 + docs/agents 3) + recorded; corpus debt 6→0 (0 OOS) — **CLEARED**. Local worktree + branches cleaned up after each session. Progress + method: `.tmp/audit/fix-translation-session6-status.md` (main tree). Earlier records: `.tmp/audit/fix-translation-session5-status.md`, `.tmp/audit/fix-translation-session4-status.md`, `.tmp/audit/fix-translation-session3-status.md`, `.tmp/audit/fix-translation-session2-status.md`.
 
 ## Question
 
@@ -8,34 +8,41 @@ Branch: fix/ga-fork-ci-translation-pairing (claimed 2026-09-07 session 2; worktr
 
 ## Context
 
-- 本 session（2026-09-07）尝试：5 个 subagent 翻译 26 个 .zh.md + 28 个内部文档排除（manifest）+ Class B byte-align。结果：26 个 .zh.md 有 structural parity bug（heading 深度 / list / switcher / code-block 不一致，已回退）+ 并行 session 又新增 24 篇待译 + Class B 未完全解决。
-- **本质问题**：moving-target——并行 session 持续新增文档（比翻译快），且 subagent 翻译难保证严格 structural parity（byte-identical code blocks + heading/list/table 对齐）。审计 d4 已记：U+FFFD 是历史 read-modify-write 静默损坏的同类问题。
-- 54 篇缺失配对（28 内部 + 26 用户可见）：内部（`.agents/notes` 22 + `wayfinder` 3 + `docs/superpowers/plans` 3）应排除（不是用户可见）；用户可见（`docs/da-*` 5 + `packages/*/README` 21+）需翻译。
-- 本 session 已验证：28 内部排除到 `scripts/translation-pairing.manifest.json` excluded[] 是 safe-auto（manifest 9→35；不能用 blanket glob——每个子目录已有配对文件会触发"excluded source must not have a counterpart"，需逐路径）；Class B byte-align（`docs/tool-catalog.zh.md:~2905` 的 `chart_type` description 对齐 EN）已修但 re-verify 未完全通过。
+- **本质问题**：moving-target（并行 session 持续新增文档）+ subagent 翻译难保严格 structural parity（byte-identical code blocks + heading/list/table 对齐）。审计 d4 已记：U+FFFD 是历史 read-modify-write 静默损坏的同类问题。
+- **sessions 3+4 验证了可行 method**（batch-by-batch，无需并行暂停）：并行 subagent（1/doc）+ verify-translation-pairing 工具门（非自报——session 1 的 26 篇翻车即因信自报）+ --write re-record + 显式路径 commit + md-wrap 一行一段。**0 structural divergence 首轮**（session 3 + 4 各 12 篇）。admin-merge Option B 容忍 corpus 红门逐批落地。
+- 历史范围（session 2 baseline）：54 篇缺失配对（28 内部 + 26 用户可见）。28 内部已排除到 `scripts/translation-pairing.manifest.json` excluded[]（逐路径，非 blanket glob——每个子目录已有配对文件会触发 "excluded source must not have a counterpart"；manifest 9→35）。Class B byte-align 已修。
 
-## Path to green（需要专门一轮，并行 session 暂停）
+## Progress（sessions 3+4+5+6）
 
-1. **并行 session 暂停**（让 master 停止新增文档）——否则 moving-target 永远追不上。
-2. 排除 28 内部文档到 manifest `excluded[]`（22 `.agents/notes` 逐路径 + 3 `wayfinder` 逐路径 + `docs/superpowers/plans/` 目录排除——本 session 已验证）。
-3. Class B byte-align：`docs/tool-catalog.zh.md:~2905` 的 `chart_type` description 对齐 EN，re-verify。
-4. 逐篇翻译用户可见 .zh.md，**严格 structural parity**：相同 heading 深度/顺序、list kind/计数、table 行列、link target、**byte-identical code blocks（info string + content）**、switcher `[English](<name>.md) | 中文` 在 H1 后。每篇翻译后 `verify-translation-pairing` 检查 parity，逐个修（subagent 翻译易在 heading 深度/list 计数/code-block 上出错）。
-5. `verify-translation-pairing --write --all` re-record 全部 pair。
-6. `verify-translation-pairing` → exit 0 → PR + merge。
+- Session 3（PR #102，merged 2026-09-07T10:49:58Z）：12 篇（packages/client 6 + packages/data 6）+ 5 OOS 全修（2 手写 minimal-patch + 3 auto-gen patch 直用，53 hunk 0 reject）+ md-wrap 修复。50→33。
+- Session 4（PR #104，merged 2026-09-07T12:34:30Z）：12 篇（packages/data 12）。0 OOS（PR #103 无新增 in-scope 文档、无 regen drift）。33→21。
+- Session 5（PR #106，merged 2026-09-07T15:07:51Z；merge `a095d66908`）：15 篇（packages/data 11 + packages/eval 4）。0 OOS（无 regen drift）。14/15 首轮 clean + 1 link-order byte-fix（tool-reachability-delta）。21→6。
+- Session 6（PR #108，merged 2026-09-07T16:30:44Z；merge `49964f786e`）：最后 6 篇（packages/goal 2 + packages/query 1 + docs/agents 3）+ recorded；单波 6/6 首 clean（0 byte-fix）；0 OOS（无 regen drift）。6→0。
+- **全部完成（0 剩余）。corpus GREEN — 1069 pairs，0 missing，0 OOS，exit 0。GA-FORK-CI translation-pairing debt CLEARED。**
 
-## Why not this session
+## Path to green（batch-by-batch，已验证）
 
-- 并行 session 未暂停 → master 持续新增文档（24 篇新）。
-- subagent 翻译 parity 质量不稳（26 个 .zh.md 多有 heading/list/switcher bug，已回退）。
-- 在并发环境里是 losing battle；需要专门一轮 + 并行暂停 + 逐篇精修 parity。
+1. 每 session 开头 **re-verify**（master 持续涨——session 5 期间 dsh-G1 从 5d970f8743 涨到 65a94689bc；origin/master 经 #106 涨到 a095d66908；别信上 session 数字）取当前 missing + OOS。
+2. 翻译一批用户可见 .zh.md（~12-15），**严格 structural parity**（heading 深度/顺序、list kind/计数、table 行列、link target、byte-identical code blocks、switcher 双侧 [authored reciprocate, generated omit]），用并行 subagent + verify-translation-pairing 工具门（非自报）+ --write re-record + 显式路径 commit（绝不 -A）。
+3. 若有新 OOS（auto-gen regen drift：config-catalog/module-graph/event-producer-consumer）：`git cat-file -p <recorded-EN-blob> > /tmp/old.md; diff -u /tmp/old.md <current EN> > /tmp/en.patch; patch <name>.zh.md /tmp/en.patch`（0 reject，drift 在字节相同 code/table/mermaid 区域）+ rm .orig + --write re-record。手写 OOS = minimal-patch（合约 line 18，非重译）。
+4. PR + admin-merge（Option B）。corpus 门在 6 篇全完成前保持红。
+5. 全部 6 完成后：`verify-translation-pairing` → exit 0 → 绿 → GA-FORK-CI debt CLEARED。 **✓ DONE（PR #108，2026-09-07；corpus 1069 pairs，0 missing，0 OOS）。**
+
+## Status: RESOLVED（2026-09-07，PR #108）
+
+- **Debt CLEARED** — corpus 全配对一致（1069 pairs，0 missing，0 OOS，exit 0）；`verify-translation-pairing` 门绿。
+- sessions 3+4+5+6 证明 batch-by-batch admin-merge 能追 moving-target（origin/master 经 #106→`a095d66908`、#107→`5ef3872533`、#108→`49964f786e`；session 6 期间 origin/master 静止于 5ef3872533，无新增 in-scope 文档，无 regen drift）。
 
 ## Options
 
-- **A（推荐）**：专门一轮 session（并行暂停）+ 逐篇精修 + re-record → green。前置：先确认无其他 session 在跑，或协调暂停。
-- B：admin-merge 容忍该门红（它是 i18n 文档债，不反映代码质量；GA-GT3 数据丢失修复已通过别的 PR 落地）。
-- C：排除全部 fork 新增文档（pragmatic，fork 不维护新增文档中文化）——但用户选了"翻译用户可见"。
+- **A（done，sessions 3+4+5+6 完成）**：batch-by-batch 翻译 + admin-merge Option B。每 session 一批 + 一 PR。method 可靠（0 divergence 首轮；session 6 单波 6/6）。**Debt CLEARED。**
+- B：admin-merge 容忍该门红（i18n 文档债，不反映代码质量；GA-GT3 数据丢失修复已通过别的 PR 落地）——即 A 的每批机制。
+- C：排除全部 fork 新增文档（pragmatic，fork 不维护新增文档中文化）——用户选了"翻译用户可见"，不用。
 
 ## Ticket Pointer
 
 - 上游契约：[docs/i18n/README.md](../../../docs/i18n/README.md)
-- 本 session 审计：`.tmp/audit/gate-translation-pairing.md`（54 篇详情 + Class B）
+- session 6 交接（final）：`.tmp/audit/fix-translation-session6-status.md`（main tree）
+- session 5 交接：`.tmp/audit/fix-translation-session5-status.md`（main tree）
+- session 4 交接：`.tmp/audit/fix-translation-session4-status.md`（main tree）
 - map 索引：[wayfinder/data-agent/map.md § GA-FORK-CI](../map.md#ga-fork-ci-node-24-meta-gates-2026-09-07)
