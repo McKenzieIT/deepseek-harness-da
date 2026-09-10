@@ -125,6 +125,8 @@
 论文:AgentCompass(2607.13705 ✅验,B/H/E 拆分)、HELM(2211.09110)、BIG-bench(2206.04615)、MT-Bench(2306.05685)、Arena-Hard(2406.11939)、WildBench(2406.04770)、LED(2602.01698,post-training 升 pass@1 但采样探索塌缩；标准 `pass@n` ≠ 本仓 strict `pass^k`)、Data Laundering(2412.15255)、MMLU-CF(2412.15194)、LLMs-Get-Lost(2505.06120)。
 票链:[**R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读**](tickets/R10-harness-goodhart-papers.md)（resolved；[认读产物](research/harness-goodhart-papers.md)）→ [**R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读**](tickets/R10b-harness-measurement-validity.md)（resolved；[认读产物](research/harness-measurement-validity-papers.md)）→ [**R10c — Context Layer evaluation 作用与位置**](tickets/R10c-context-layer-evaluation.md)（resolved；[认读产物](research/context-layer-evaluation-role.md)）→ [**G10 — Harness B/H/E 拆分**](tickets/G10-harness-bhe-split.md)(grilling,**现已解锁**,supersedes GA-GT4 架构面;**持有 G1 移交的包边界/case schema 归属**)→ **T9-bhe-split-impl** + [**R21 — 跨 slice 与跨时间 Goodhart audit**](tickets/R21-goodhart-audit.md)(experiment,by T1+G5)。
 
+**Readiness（2026-09-10）**：G10 已 research-ready，R10/R10b/R10c/R24/G1 覆盖角色、measurement validity、Context attribution、包依赖与 execution 移交；GA-GT4 的 K11 hardcode 经当前代码复核仍在，作为 grilling 调和输入而非 research blocker。没有新的 blocking R 票。
+
 ### 11. Robustness/perturbation(consistency@k)+ IRT active sampling(新维度+power 解)
 做什:自动产 paraphrase + schema-perturbed 变体测 consistency@k(第 6 维);LaRT/IRT CAT 主动采样——cheap probe 估 per-case discordance p̂,预算砸 near-boundary(p̂≈0.5)→ ~40 case×3 run 出 n_d≥85,比 168 flat 更少 run 更高 n_d。
 论文:Prompt Perturbation/Comparison Graphs(2606.17634)、What Predicts Correctness in Text-to-SQL(2607.06799,self-consistency 0.675 AUROC,ensemble 0.82,abstention 27%@24%risk)、LaRT(2512.07019,IRT+CAT)。⚠ secondary-only 不引:Spider-SYN/DK/ADVETA/Dr.Spider、IRT-safety-bench(2606.20626)。
@@ -164,7 +166,7 @@
 
 **[T11](tickets/T11-loader-provenance-strip.md) 与 T1 同批本地实现** —— T11 是 T1 唯一硬前置；方向 1 是**后端方向**，不走另环境/rubric（见 [playbook §1.1](playbook.md)），在本仓起 worktree 直接做，包内顺序 **T11 全部验收 → T1**。本仓有数仓凭证，39-case 真对账可就地跑。
 
-**HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);[G10 — Harness B/H/E 拆分](tickets/G10-harness-bhe-split.md) 已吸收 R10/R10b/R10c，现已 unblocked;**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
+**HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);[G10 — Harness B/H/E 拆分](tickets/G10-harness-bhe-split.md) 已吸收 R10/R10b/R10c，现已 **research-ready，可直接 grilling**;**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
 
 **AFK 级联**(各 G 解后):**T11→T1**（同批，T11 先验收）;**~~R10→R10b→R10c~~→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;**R20(b,c)→G8→T7**（G8 决议后才解锁 R20 探针 d）;G11→T10。
 

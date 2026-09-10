@@ -15,3 +15,16 @@
 
 **Blocked by**: 无  ·  **关联**: GA-GT2（engine 失败模式）、CL2（compare.ts k11v2 分桶）、CL13（generate-k11.mjs）
 **Key files**: packages/eval/eval-runner-service/src/index.ts:379,391,418; packages/bundle/data-agent/cordis.patch.yml:162,178; packages/eval/eval-cli/src/{context.ts:405,413,compare.ts:76}; packages/eval/eval/src/classify_failure.ts:56; packages/eval/eval-runner/src/verdict_mapper.ts:94
+
+## 2026-09-10 readiness refresh
+
+本票的 de-K11 问题仍存在，但架构所有权已移交 [G10 — Harness B/H/E + Context capability 拆分](../../../evaluation/tickets/G10-harness-bhe-split.md)。G10 已完成 R10/R10b/R10c 前置研究并达到 research-ready；本票不再独立决定包边界。
+
+当前代码复核：
+
+- `packages/eval/eval-runner-service/src/index.ts:383,390,397` 仍默认 `packages/eval/eval/cases/k11-v2`、固定 `today`，并用 `^k11_\d+\.yaml$` 过滤；
+- `packages/bundle/data-agent/cordis.patch.yml:178,199` 仍声明 K11 semantic root 与 case directory；
+- `packages/eval/eval-cli/src/compare.ts:5-7` 仍按 `k11v2_*` 名称推断分类；
+- “`classifyExecutionFailure` 无人调用”已过期：`packages/eval/eval/src/multi_turn.ts:151` 已调用它。多引擎 failure taxonomy 仍未解决，但归方向 9/G9/T8；G10 只决定它在目标包结构中的位置和依赖方向。
+
+调和规则：G10 保留本票的部署配置 fail-loud、通用 case discovery、维度驱动 compare 和 de-K11 目标；以 R10/R10b/R10c 的 Benchmark/Adapter/Context/Environment 所有权替代本票原先未展开的包边界假设。G10 resolved 后，本票按其决议拆给 T9/G9 或关闭。

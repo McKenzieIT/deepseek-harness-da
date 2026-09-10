@@ -25,7 +25,7 @@
 | 7 | Step-level PRM | R7 | G7 | — | R19 |
 | 8 | Judge 读出/量表/顺序 | **R8**(resolved)、**R8b**、**R8c** | **G8** | T7 | **R20** |
 | 9 | Error taxonomy | R9 | G9 | T8 | — |
-| 10 | Harness B/H/E+Goodhart | R10/[R10b](R10b-harness-measurement-validity.md)/[R10c](R10c-context-layer-evaluation.md) | G10 | T9 | [R21](R21-goodhart-audit.md) |
+| 10 | Harness B/H/E+Goodhart | R10/[R10b](R10b-harness-measurement-validity.md)/[R10c](R10c-context-layer-evaluation.md)（均 resolved） | [G10](G10-harness-bhe-split.md)（research-ready） | T9 | [R21](R21-goodhart-audit.md) |
 | 11 | Robustness+active sampling | R11 | G11 | T10 | [R22](R22-consistency-at-k.md) |
 
 **已建票文件**（其余仅在 map 点名,问题尚未 sharp,不预先切割 fog）:[R1](R1-exec-grader-papers.md)（resolved v3）、[R3](R3-judge-calibration-papers.md)、[R4](R4-significance-papers.md)、[R5](R5-contamination-papers.md)、[R6](R6-trajectory-papers.md)、[**R8**](R8-pairwise-judge-papers.md)（**resolved**）、[**R8b**](R8b-judge-readout-papers.md)、[**R8c**](R8c-reference-anchor-papers.md)、[R10](R10-harness-goodhart-papers.md)（resolved）、[R10b](R10b-harness-measurement-validity.md)（resolved）、[R10c](R10c-context-layer-evaluation.md)（resolved）、[R17](R17-contamination-audit.md)、[**R20**](R20-judge-readout-probes.md)（原 `R20-radar-redundancy`）、[R21](R21-goodhart-audit.md)、[R22](R22-consistency-at-k.md)、[R23](R23-comparator-policy-mutation-baseline.md)、[R24](R24-eval-package-consolidation.md)（resolved）、[G1](G1-exec-grader-seam.md)（resolved）、[G1b](G1b-ground-truth-lifecycle.md)、[G5](G5-dynamic-case-pipeline.md)、[**G8**](G8-judge-readout-scale.md)（原 `G8-pairwise-judge`）、[G10](G10-harness-bhe-split.md)、[T1](T1-exec-grader-impl.md)、[T11](T11-loader-provenance-strip.md)、[T12](T12-eval-package-consolidation.md)。

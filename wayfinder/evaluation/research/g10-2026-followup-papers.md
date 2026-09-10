@@ -178,3 +178,15 @@ G10 增量：benchmark provenance 与 run provenance 分开；run 记录 evaluat
 4. G5 决定 fresh pack 生命周期，R21 再执行 chronological Goodhart 测量。
 5. R3/R8/R4 分别锁定 judge validity、pairwise evidence 与统计协议。
 6. R6 研究 persistent multi-turn，R22 测 repeated reliability。
+
+## 七、research-ready 后的非阻塞候选（2026-09-10）
+
+G10 的 R10/R10b/R10c 前置已覆盖角色、measurement validity、Context attribution 与包边界取证，可以开始 grilling。以下论文已通过 arXiv 官方 metadata/abstract 核验，但本 effort 尚未全文认读；它们只在对应接口发生争议时毕业为新 research 票，不阻塞 G10。
+
+### The Double Measurement Confound in Agent Benchmarks — [arXiv:2609.09218](https://arxiv.org/abs/2609.09218)
+
+候选问题：run manifest 是否需要显式记录 scaffolding level 与 execution-critical decision ownership，以区分 model 自主完成的决策和固定 Harness 代做的决策。R10b/HarnessDev 已足以支持 model+Harness identity；只有 G10 对更细粒度 ownership 仍有争议时才需全文认读。
+
+### ClaimReceipt — [arXiv:2609.01992](https://arxiv.org/abs/2609.01992)
+
+候选问题：现有 evidence 能否重算 claim（sufficiency）与记录是否覆盖预先承诺的完整 experiment universe（coverage）是两个问题。R10b 已定义逐 run evidence；若 T9 persistence 需要防止失败 run 被遗漏或选择性删除，再开全文 research 票设计 committed manifest/terminal receipt。
