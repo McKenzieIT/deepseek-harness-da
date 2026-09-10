@@ -12,6 +12,14 @@
 
 `packages/eval/` 应如何切分为 Benchmark（评测内容）/ Harness（运行时）/ Environment（仓库适配），并由 composition root 装配独立版本化的 Context capability，使 benchmark 内容可版本化、harness 与具体 benchmark 无关、context 改进可归因、且 Goodhart 漂移可被 train/heldout/fresh 的对比检出？
 
+## 决议（逐轮追加）
+
+### D1 — 正确性语义归 Benchmark，grader/comparator 机制共享
+
+Benchmark Pack 拥有并版本化 reference/oracle、comparator policy、grader policy 与 aggregation semantics；共享 evaluation library 只实现 normalization、comparator 与 grader 的通用机制，且不得在 `run()` 或 comparator 内隐藏 benchmark 默认值。
+
+受控 grading entry point 读取 private grading material 与 run evidence，调用 Benchmark 显式解析的 policy 后产出 verdict；Harness 只接收 public task material，不读取 private material，也不决定正确性；Environment 只返回执行事实。此决定采用 R10/R10b 的 Benchmark ownership 与 private-material isolation 约束，并以本仓“一能力一实现”和显式 package-boundary resolution 作为落地选择。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
