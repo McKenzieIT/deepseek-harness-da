@@ -2,7 +2,7 @@
 
 **Type**: grilling  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: 无（[R10](R10-harness-goodhart-papers.md) 与 [R10b](R10b-harness-measurement-validity.md) 已 resolved）
+**Blocked by**: 无（[R10](R10-harness-goodhart-papers.md)、[R10b](R10b-harness-measurement-validity.md) 与 [R10c](R10c-context-layer-evaluation.md) 已 resolved）
 **Blocks**: T9-bhe-split-impl；并解 [G1](G1-exec-grader-seam.md) 移交的三条；[T1](T1-exec-grader-impl.md) 的落点
 **Mode**: HITL
 **Branch**: `grilling/G10-harness-bhe-split`
@@ -10,7 +10,7 @@
 
 ## Question
 
-`packages/eval/` 应如何切分为 Benchmark（评测内容）/ Harness（运行时）/ Environment（仓库适配），使 benchmark 内容可版本化、harness 与具体 benchmark 无关、且 Goodhart 漂移可被 train/heldout/fresh 的对比检出？
+`packages/eval/` 应如何切分为 Benchmark（评测内容）/ Harness（运行时）/ Environment（仓库适配），并由 composition root 装配独立版本化的 Context capability，使 benchmark 内容可版本化、harness 与具体 benchmark 无关、context 改进可归因、且 Goodhart 漂移可被 train/heldout/fresh 的对比检出？
 
 ## G1 移交的三条（本票必须裁定）
 
@@ -28,7 +28,7 @@
 
 ## 2026 follow-up 要补进决策的硬约束
 
-完整一手认读见 [`harness-measurement-validity-papers.md`](../research/harness-measurement-validity-papers.md)，前置侦察见 [`g10-2026-followup-papers.md`](../research/g10-2026-followup-papers.md)，学习导读见 [`g10-learning-guide.md`](../research/g10-learning-guide.md)。本票锁接口时必须逐项吸收 R10b 的跨 benchmark 约束，并把 benchmark-specific choices 留给 pack policy。
+完整一手认读见 [`harness-measurement-validity-papers.md`](../research/harness-measurement-validity-papers.md) 与 [`context-layer-evaluation-role.md`](../research/context-layer-evaluation-role.md)，前置侦察见 [`g10-2026-followup-papers.md`](../research/g10-2026-followup-papers.md)，学习导读见 [`g10-learning-guide.md`](../research/g10-learning-guide.md)。本票锁接口时必须逐项吸收 R10b 的 measurement-validity 约束与 R10c 的 Context ownership/attribution 约束，并把 benchmark-specific choices 留给 pack policy。
 
 - **Benchmark Adapter 是正式模块**：legacy source schema 通过具名、版本化 adapter 编译到 canonical task material；每个 adapter 需要 upstream parity、oracle/reference validation 与 provenance-preservation 证据。
 - **Task material 与 run evidence 分 schema**：Benchmark 拥有 instruction、hidden expected/reference、environment requirements 与 grader policy；Harness 运行结果拥有 model/harness/adapter/environment identity、raw→parsed→executed→observed stages、finality 与 isolation。
@@ -38,8 +38,12 @@
 - **统计协议显式化**：Benchmark Pack 为结果声明 estimand、aggregation、tie/invalid/abstention、sampling/cluster unit 与 CI 定义；standard `pass@n` 和 strict `pass^k` 分开。
 - **Judge 双向验证**：对语义等价变换保持 invariance，对最小实质错误具备 construct sensitivity；style control 不能替代 correctness sensitivity。
 - **持久多轮状态**：`MultiTurnSession` 的评测证据包含 workspace/environment lineage、累计 verifier、artifact changes、regression 与 fail-stop outcome，而不只是 transcript。
+- **Context 是独立 capability，不是第四 peer**：composition root 装配版本化 `ContextProvider`/projection；Benchmark、Harness 与 Environment 不各自复制 retrieval/projection。
+- **Context ownership**：Benchmark 拥有 `ContextRequirement`、oracle/counterfactual 声明与 private ground truth；Context capability 拥有 semantic snapshot、ontology/relations、terminology、retriever/ranker 与 projection policy；Harness 只拥有请求时机和模型注入。
+- **Context attribution**：run identity 增加 `contextIdentity`；component/counterfactual/perturbation/end-to-end 四层分别测 grounding、relation/composition、provenance、model utilization 与最终 outcome。
+- **Context leakage**：gold-derived oracle projection 与 production score 隔离；动态 enrichment 写回形成新 snapshot，只对后续预声明 cohort 生效。
 
-## 已知约束（R10/R10b 提供论文依据，但这些是本仓实测事实）
+## 已知约束（R10/R10b/R10c 提供论文依据，但这些是本仓实测事实）
 
 - **不能简单合并 `dsh-eval` 与 `dsh-eval-runner`** —— 包外消费者在区分两者（`packages/data/tool-trigger-eval/src/index.ts:17` 取 runner 的 `RunResult`；`scripts/live-verify-w1-w5.ts:19` 取 core 的 `loadCases`）。
 - **benchmark 内容当前住在纯库包内** —— `packages/eval/eval/cases/`，与 case schema 同包。这是最直接的 B/H/E 违例。
@@ -48,12 +52,14 @@
 
 ## 验收
 
-- 三条移交问题各有明确裁定 + 理由，且注明哪些依据来自 R10/R10b、哪些是本仓自主选择。
-- 明确 Benchmark Pack、Benchmark Adapter、共享 eval protocol、Harness、Environment Adapter 与 composition root 的接口和所有权。
+- 三条移交问题各有明确裁定 + 理由，且注明哪些依据来自 R10/R10b/R10c、哪些是本仓自主选择。
+- 明确 Benchmark Pack、Benchmark Adapter、共享 eval protocol、Harness、Environment Adapter、Context capability 与 composition root 的接口和所有权。
 - 为 `k11-v2` 与 RBI 迁移定义 `validated | parity_unresolved | invalid` 状态；验收同时覆盖 oracle/reference validation、matched original-vs-adapted parity、逐 case evidence、hidden-material isolation 与 schema preservation。
 - 为运行定义 raw emission → parsed action → execution → observation → grader evidence 的可关联持久化，以及 `preflight_failed | interface_incompatible | auto_inconclusive` 的评分前失败语义。
 - Environment interface 分别证明 outcome finality 与 cross-run separation：pending effect、namespace/stream、settle/cancel/finalize、verified reset/cleanup 和 `unresolved` 均有显式表示。
 - Run identity 固定 Benchmark/Adapter/Harness digest、runtime model revision、template/parser/tool schema、Environment image/config 与 grader policy；heldout transfer 不跨 Harness commit 或 identity component 拼接。
+- Context Layer 作为独立版本化 capability 装配；接口明确 `ContextRequirement`、typed projection、`contextIdentity` 与 request/projection evidence，且不允许 Harness/Environment 内联第二份 retrieval。
+- Context evaluation 同时定义 component、no/schema/relations/production/oracle counterfactual、semantic-preserving perturbation 与 production end-to-end；oracle context 不进入 headline，动态写回不污染当前 heldout/fresh cohort。
 - 为 Goodhart audit 定义 benchmark/run 双 provenance、train/heldout/fresh 生命周期、estimand/cluster unit、standard `pass@n` 与 strict `pass^k`。
 - 与 GA-GT4 的调和结论写明（supersede 哪些面、保留哪些）。
 - 产出或更新一篇 `.agents/notes/proposed/architecture/` Agent Note。

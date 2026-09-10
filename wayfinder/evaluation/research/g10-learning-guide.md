@@ -2,11 +2,11 @@
 
 日期：2026-09-10
 
-本文面向准备参与 [G10 — Harness Benchmark/Harness/Environment 拆分](../tickets/G10-harness-bhe-split.md) 决策的人，解释 G10 要解决的问题、术语、数据流、失败模式和决策检查表。论文依据见 [R10 认读](harness-goodhart-papers.md) 与 [R10b 一手认读](harness-measurement-validity-papers.md)，2026 年后续文献路由见 [follow-up scout](g10-2026-followup-papers.md)。本文是教程，不替代 G10 的最终决议。
+本文面向准备参与 [G10 — Harness Benchmark/Harness/Environment 拆分](../tickets/G10-harness-bhe-split.md) 决策的人，解释 G10 要解决的问题、术语、数据流、失败模式和决策检查表。论文依据见 [R10 认读](harness-goodhart-papers.md)、[R10b 一手认读](harness-measurement-validity-papers.md) 与 [R10c Context Layer 认读](context-layer-evaluation-role.md)，2026 年后续文献路由见 [follow-up scout](g10-2026-followup-papers.md)。本文是教程，不替代 G10 的最终决议。
 
 ## 1. R10 与 G10 的区别
 
-R10 回答 Benchmark / Harness / Environment 的职责与 Goodhart 审计依据；R10b 补齐 adapter parity、interface censoring、outcome finality、cross-run separation 和 frozen Harness identity；G10 回答“本仓据此选择什么包、接口、schema 和迁移顺序”；T9/T12 才执行代码与包重组。R10/R10b 提供约束，G10 承担取舍。
+R10 回答 Benchmark / Harness / Environment 的职责与 Goodhart 审计依据；R10b 补齐 adapter parity、interface censoring、outcome finality、cross-run separation 和 frozen Harness identity；R10c 说明 Context Layer 怎样作为独立 capability 进入评测与归因；G10 回答“本仓据此选择什么包、接口、schema 和迁移顺序”；T9/T12 才执行代码与包重组。R10/R10b/R10c 提供约束，G10 承担取舍。
 
 ## 2. 用考试系统理解三个角色
 
@@ -26,17 +26,24 @@ Environment 提供数据库、进程、沙箱、文件、网络、资源、超�
 
 ### Protocol：密封交接单
 
-Protocol 让三类模块独立演化。它定义公开任务材料、运行证据与评分结果的传递方式，但不拥有题目、agent loop 或数据库。
+Protocol 让三类模块独立演化。它定义公开任务材料、Context 投影、运行证据与评分结果的传递方式，但不拥有题目、agent loop、语义知识或数据库。
+
+### Context Capability：受治理知识与投影
+
+Context Layer 不应成为与 Benchmark、Harness、Environment 并列的第四种执行角色。它是独立版本化的 capability：保存 semantic snapshot、ontology/schema、关系、术语、policy 与 provenance，并通过显式 projection interface 运行 retriever、ranker、子图选择、序列化和 token budget。
+
+Benchmark 声明本题需要什么 context 和怎样评价；Harness 决定何时请求、向哪个模型步骤注入；Environment 提供数据库、文件和服务的权威状态；Context capability 负责把受治理知识投射成 typed evidence。任何一方都不应私自实现第二套 retrieval/projection。
 
 ```text
-Benchmark ──compile──> PreparedTask ──> Harness
-    │                                      │
-    │ hidden evaluation material           │ tool/action
-    │                                      ▼
-    └─────────────────────────────── Environment
-                                           │ evidence
-                                           ▼
-                                      Benchmark grader
+Benchmark Pack ── public task + ContextRequirement ──> Harness
+       │                                                   │
+       │ private grading material                          │ Context request
+       │                                                   ▼
+       │                                           Context Capability
+       │                                          snapshot + projection
+       │                                                   │
+       │                                                   ▼
+       └──────────────────────────> Grader <── evidence ─ Environment
 ```
 
 ## 3. 一个 SQL case 的完整生命周期
@@ -189,7 +196,28 @@ Environment interface 应记录 outcome observation period、system scope、anal
 
 Heldout transfer 必须比较同一个 frozen Harness artifact。Feedback、heldout 和 fixed-runtime 三类结果只要 Harness commit 或其他 identity component 不同，就不能拼成同一个 transfer 结论。
 
-## 11. Goodhart 的六条路径
+## 11. Context Layer 怎样进入 evaluation
+
+Context Layer 在 evaluation 中同时有三种身份，必须分开：
+
+1. **被测对象**：比较不同 semantic snapshot、ontology、retriever、ranker 或 projection policy 时，Context 是唯一变化的 treatment。
+2. **运行输入**：做端到端 agent evaluation 时，Context projection 是 solver configuration 的一部分，必须进入 run identity，不能把收益只归给 model 或 Harness。
+3. **测量辅助**：ontology 可以声明 required concepts、relations、answer path、provenance 和 policy constraint，但 private oracle 必须由 Benchmark 持有，不能回流生产 Context Layer。
+
+因此每次 run 还需要独立的 `contextIdentity`：semantic snapshot/content digest、ontology/relation/terminology version、retriever与 embedding/index digest、ranker、projection policy、context budget、serialization、grounding instruction、consumer、injection timing，以及实际 selected item/path/provenance 和 model-visible hash。`contextEnabled: true` 不足以重建实验。
+
+Context Layer 的效果应分四层测量：
+
+- **Component**：concept grounding、relation/composition retrieval、answer-path recall、provenance completeness、policy filtering 和 token/latency；
+- **Counterfactual**：固定其他 identity，只比较 no-context、schema-only、relations-only、production projection 与 oracle projection；
+- **Perturbation**：测试 synonym/restructure、distractor、wrong/stale edge、alias collision、context truncation 和 ordering；
+- **End-to-end**：联合报告 execution correctness、task pass、trajectory change、traceability、leakage、cost 和 latency。
+
+最终 accuracy 不足以评价 Context Layer。必要事实可能根本没有到达模型；答案可能存在但关系路径不可达；ontology 可能不提高答案正确率，却显著提高 provenance 和审计性；增加 alias/edge coverage 也可能因 collision 或候选挤出降低 recall。详细依据与本仓实验交叉核对见 [R10c Context Layer 认读](context-layer-evaluation-role.md)。
+
+动态 enrichment 只能使用 train/development evidence。Semantic snapshot、retriever/ranker 和 projection policy 必须在 heldout/fresh 揭盲前冻结；写回形成新的 snapshot，只能对后续预声明 cohort 生效。Gold SQL、hidden expected、grader rationale 或由它们反推的 answer path 不得进入生产 Context Layer。
+
+## 12. Goodhart 的七条路径
 
 ### Case overfitting
 
@@ -201,7 +229,11 @@ Heldout transfer 必须比较同一个 frozen Harness artifact。Feedback、held
 
 ### Harness gaming
 
-增加 retry、工具、token budget、检索或反馈后得分上涨，但上涨来自 Harness，不应全部归因于模型。
+增加 retry、工具或交互预算后得分上涨，但上涨来自 Harness，不应全部归因于模型。
+
+### Context gaming
+
+增加 ontology、alias、retrieval budget、gold-derived path、反馈写回或特制投影后得分上涨，但上涨来自 Context capability，甚至可能来自 hidden material 泄漏。结果必须声明 Context profile，并用冻结的 paired counterfactual 归因。
 
 ### Environment leakage
 
@@ -215,7 +247,7 @@ Heldout transfer 必须比较同一个 frozen Harness artifact。Feedback、held
 
 选择有利的聚合、丢弃 invalid、使用错误 bootstrap unit、只报均值或只报单次 pass，制造不存在的提升。
 
-## 12. Train、Heldout 与 Fresh
+## 13. Train、Heldout 与 Fresh
 
 `train` 用于开发、调 prompt、调 comparator 和逐题分析，可以公开并反复运行，但不能作为唯一 headline。
 
@@ -225,7 +257,7 @@ Heldout transfer 必须比较同一个 frozen Harness artifact。Feedback、held
 
 三个 slice 必须使用相同 canonical envelope 和显式评分 policy，同时分别报告构成、难度、来源和环境条件。否则 slice 差异可能只是分布差异。
 
-## 13. 怎样读取 Goodhart delta
+## 14. 怎样读取 Goodhart delta
 
 假设 baseline 是：
 
@@ -247,7 +279,7 @@ fresh 52
 
 报告至少包含每个 slice 的 execution score、judge score、两者 gap、失败结构、样本数与 CI，并输出 `Δ_train-heldout`、`Δ_heldout-fresh` 及其相对上一冻结 baseline 的变化。
 
-## 14. pass@1、pass@n 与 strict pass^k
+## 15. pass@1、pass@n 与 strict pass^k
 
 `pass@1` 是一次调用的成功率。标准 `pass@n` 表示 n 次中至少一次成功，测探索与多样性。Strict `pass^k` 表示 k 次必须全部成功，测重复可靠性。
 
@@ -260,7 +292,7 @@ pass^3 = fail
 
 结果必须保存逐次 attempt vector，才能重算探索、稳定性、方差和相关性。两种聚合不能继续混名为 `pass_k`。
 
-## 15. Judge 需要双向验证
+## 16. Judge 需要双向验证
 
 Judge reliability 至少包括两个方向：
 
@@ -269,7 +301,7 @@ Judge reliability 至少包括两个方向：
 
 一个 judge 可以高度稳定，却对真正错误不敏感。Judge validation 因而不能只看 self-consistency、human correlation 或 style control。
 
-## 16. CI 之前先声明 estimand
+## 17. CI 之前先声明 estimand
 
 “95% CI”只有在下列内容固定后才有意义：
 
@@ -281,13 +313,13 @@ Judge reliability 至少包括两个方向：
 
 同一 case 的多次 attempt、多个 rubric dimension、多个 judge 与位置交换结果通常相关，不能全部当成独立样本做普通 bootstrap。
 
-## 17. 多轮评测不仅是多条消息
+## 18. 多轮评测不仅是多条消息
 
 真实多轮 agent 评测还包括 workspace 与 environment state 延续、旧需求继续成立、verifier 累计、artifact lineage 和 regression。`MultiTurnSession` 若只保存 transcript，会把真实持久任务退化为聊天测试。
 
 需要记录 workspace identity、environment identity、state lineage、每轮 verifier version、累计 requirements、artifact changes、round success、regression 和 fail-stop outcome。
 
-## 18. G10 的最终决策检查表
+## 19. G10 的最终决策检查表
 
 1. Benchmark Pack 是否拥有 case、hidden material、policy、provenance 和 aggregation？
 2. Harness 是否只拥有 agent execution，而看不到 hidden ground truth？
@@ -298,19 +330,22 @@ Judge reliability 至少包括两个方向：
 7. raw→parsed→executed→observed→graded 是否逐阶段记录并可关联重放？
 8. Interface preflight 是否区分 `preflight_failed | interface_incompatible | auto_inconclusive`，并防止配置失败进入能力分母？
 9. Outcome finality 与 cross-run separation 是否分别有 open-effect、verified reset 和 analysis-unit 证据？
-10. `train | heldout | fresh` 是否具有独立版本、时间和访问规则？
-11. Benchmark provenance 与 run provenance 是否分开？
-12. Judge 是否有 invariance 与 sensitivity 双向探针？
-13. 统计协议是否声明 estimand、cluster unit、abstention 和 CI 定义？
-14. 标准 `pass@n` 与 strict `pass^k` 是否分别保存和报告？
-15. 多轮结果是否包含 state/verifier/artifact lineage？
+10. Context Layer 是否作为独立版本化 capability 装配，而不是被 Benchmark、Harness 或 Environment 私有复制？
+11. `contextIdentity` 是否固定 snapshot、ontology、retrieval/ranking、projection、budget、serialization 和注入时机？
+12. Context 是否有 component、counterfactual、perturbation 与 end-to-end 四层评测，且 oracle context 与 production score 隔离？
+13. `train | heldout | fresh` 是否具有独立版本、时间和访问规则？
+14. Benchmark provenance 与 run provenance 是否分开？
+15. Judge 是否有 invariance 与 sensitivity 双向探针？
+16. 统计协议是否声明 estimand、cluster unit、abstention 和 CI 定义？
+17. 标准 `pass@n` 与 strict `pass^k` 是否分别保存和报告？
+18. 多轮结果是否包含 state/verifier/artifact lineage？
 
-## 19. 来源强度与采用限制
+## 20. 来源强度与采用限制
 
 Harbor、Harbor-Index、Interface Censoring 和 ECP 有可检查的官方实现 artifact；Outcome Finality 没有配套代码；HarnessDev 项目页未提供代码与逐 run artifact；DAREBench 论文给出的仓库在 2026-09-10 尚无可读取 refs。G10 可以直接采用前两组来源已经验证的机制，后几组只采用论文能够支持的定义和观察，不把未发布实现当作既成标准。
 
-ECP 仍是 Experimental proposal。它可以启发 JSON-RPC envelope、manifest digest 和 audit fields，但不能替代 adapter parity、private-material isolation、五阶段 evidence、outcome finality 或 cross-run separation。
+ECP 仍是 Experimental proposal。它可以启发 JSON-RPC envelope、manifest digest 和 audit fields，但不能替代 adapter parity、private-material isolation、五阶段 evidence、outcome finality 或 cross-run separation。R10c 使用的 2026 ontology/context 论文多数仍是近期 preprint；其中 OntologyBench、OntoKG-EQ 等适合约束评测分解，不能直接把单域结果外推成通用产品收益。
 
-## 20. G10 不负责的内容
+## 21. G10 不负责的内容
 
-G10 不决定具体 comparator 默认值，不决定 event case 最终评分口径，不实现污染 detector，不负责 fresh case 生产，也不执行 T9/T12 重构。它负责给这些后续工作提供正确的模块所有权、协议字段和生命周期接口。
+G10 不决定具体 comparator 默认值，不决定 event case 最终评分口径，不实现污染 detector，不负责 fresh case 生产，也不选择 semantic retrieval/ranking 算法或执行 T9/T12 重构。它负责给这些后续工作提供正确的模块所有权、协议字段、Context projection seam 和生命周期接口。
