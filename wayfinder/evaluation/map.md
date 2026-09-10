@@ -118,7 +118,7 @@
 票链:**R9-error-taxonomy-papers** → **G9-failure-classifier**(grilling,supersedes GA-GT4)→ **T8-failure-classifier-impl**(扩 classify_failure/verdict_mapper)。
 
 ### 10. Harness Benchmark/Harness/Environment 拆分 + Context capability + Goodhart 审计(de-K11 架构答案)
-做什:AgentCompass 三件套拆 eval-cli，并由 composition root 装配独立版本化 Context capability——K11-v2 移出版本化 benchmark-pack;eval-runner+MultiTurnSession benchmark-agnostic;加 LiveK11 pack;compare.ts 出 Goodhart Δ(K11-train vs heldout vs fresh);Arena-Hard 式 style control+separability+95%CI;dye-pack sentinel。
+做什:把 eval-cli 拆为面向数据工程、数据分析与数据科学的 Benchmark/Harness/Environment 协议，并由 composition root 装配独立版本化 Context capability；data analysis 是首个完整 extension，K11-v2 与 RBI 只作迁移/parity fixtures，通用 core 不含具体 DataScope、SQL backend 或 semantic-layer 默认；compare.ts 按显式 split/identity 输出 Goodhart Δ，配套 style control、separability、95% CI 与 sentinel。
 论文:AgentCompass(2607.13705 ✅验,B/H/E 拆分)、HELM(2211.09110)、BIG-bench(2206.04615)、MT-Bench(2306.05685)、Arena-Hard(2406.11939)、WildBench(2406.04770)、LED(2602.01698,post-training 升 pass@1 但采样探索塌缩；标准 `pass@n` ≠ 本仓 strict `pass^k`)、Data Laundering(2412.15255)、MMLU-CF(2412.15194)、LLMs-Get-Lost(2505.06120)。
 票链:[**R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读**](tickets/R10-harness-goodhart-papers.md)（resolved；[认读产物](research/harness-goodhart-papers.md)）→ [**R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读**](tickets/R10b-harness-measurement-validity.md)（resolved；[认读产物](research/harness-measurement-validity-papers.md)）→ [**R10c — Context Layer evaluation 作用与位置**](tickets/R10c-context-layer-evaluation.md)（resolved；[认读产物](research/context-layer-evaluation-role.md)）→ [**G10 — Harness B/H/E 拆分**](tickets/G10-harness-bhe-split.md)(grilling,unblocked,supersedes GA-GT4 架构面;**持有 G1 移交的包边界/case schema 归属**)→ **T9-bhe-split-impl** + [**R21 — 跨 slice 与跨时间 Goodhart audit**](tickets/R21-goodhart-audit.md)(experiment,by T1+G5)。
 
@@ -173,6 +173,8 @@
 - **Context attribution 后续票怎样切分**。R10c 已确定需要 component protocol、none/schema/relations/production/oracle counterfactual、perturbation/leakage audit 与 adaptive-ontology holdout policy；但它们是一个 G10 后的统一 protocol 票加若干 experiment，还是分别归 evaluation 与 semantic-layer 两张 map，要等 G10 固定 `ContextProvider`/projection/evidence seam、T1 重建 execution grader 后才问得 sharp。
 - **judge 用 BM25 候选当 schema context,是否是 73.7% 假通过的一个独立机制**(而非单纯 judge-leniency)。GA-EVAL-EVENTDEF-PREFETCH 记录的案例:case 135 pre-(a) 用 DWS 表时 judge 给 1.0×3 判 correct,post-(a) 用与 reference 同构的 event SQL 时 judge 给 0.4/0.2/0.2 判 wrong,原话「使用了 Schema 上下文之外的 ODS 底层表」——**仪表此前一直在奖励取错源的答案**。缺陷本身已修(`0f7b9234a2`),但它在 35.9pp 里占多少未知,须 R14 分维分解后才能问 sharp。喂 G3/G8。
 - **三套失败词表的对齐**。eval `FailureClass` 5 类(`packages/eval/eval/src/types.ts:28`)、engine `FailureKind` frozen 6 类(`packages/data/nl2sql-engine/src/types.ts:96-103`,配 `RECOVERABLE_FAILURES` `:109-112` / `UNRECOVERABLE_FAILURES` `:115-120`)、provider `classifyMaxcError` 5 值(`packages/query/query-maxcompute/src/index.ts:179-181`,另有 `transport`/`retryable`/`remote` 走别的分支)——**三套互不重叠,且无 adapter 在其间翻译**。属方向 9(R9→G9)地盘,但 G1 锁定的三事实分离一落地就会先撞上它:`failureClass` 要进 `AttemptResult`,就得决定它与上游两套的映射。
+
+- **动态数据评测 lifecycle**。原 `LiveK11` 没有定义，不能驱动通用协议；production canary、rolling benchmark 与周期冻结的 fresh cohort 是否需要统一 lifecycle，要等 G10 固定 DataScope、run identity 与 package topology 后再决定。
 
 ## ⚠ 验证 TODO(2026 引用,进 ticket 前必 primary-fetch arxiv.org)
 

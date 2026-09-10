@@ -48,6 +48,12 @@ Compiler 在运行前解析引用、拒绝缺失或不兼容组合，并生成�
 
 不得使用 case、Pack、CLI、环境变量和硬编码值之间的通用覆盖顺序；无匹配、歧义或冲突均使 configuration invalid，且不创建模型错误记录。Run provenance 同时保存 requirement identity、binding identity、实现与内容 digest 以及运行中实际观察到的资源 identity。`scopeId`、`defaultProject` 与 `semanticRoot` 分别归入 Environment 或 Context binding，不再是 Harness 的平铺配置。
 
+### D6 — Evaluation Core 面向数据领域，DataScope 是逻辑数据项目
+
+Evaluation Core 的首版范围覆盖数据工程、数据分析与数据科学共享的 Benchmark、Case、identity、lifecycle、evidence、grading、Environment 和 Context 协议，不预先适配 code、medicine、Web 等非数据领域。Data analysis 是首个完整 production extension；data engineering 与 data science 各提供一个轻量 conformance fixture，用于拒绝 SQL、rows、MaxCompute 或 semantic-layer 成为 core 的隐含前提。
+
+`DataScope` 是逻辑数据项目 manifest，拥有 branded identity、tenant/display metadata，以及允许的 Environment binding、Context binding、dataset catalog 与 governance reference；它不拥有 credentials、物理路径、运行时默认选择，也不等于 `@deepseek-ai/dsh-scope` 的 Cordis registration scope 或 MaxCompute `project`。K11 仅是一个 legacy `DataScope` 实例和迁移/parity fixture，不再作为通用示例或架构术语。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
@@ -58,7 +64,7 @@ Compiler 在运行前解析引用、拒绝缺失或不兼容组合，并生成�
 
 ## 本票同时要处理的
 
-- **de-K11 架构答案** —— K11-v2 移出成版本化 benchmark-pack；`eval-runner` + `MultiTurnSession` 变 benchmark-agnostic；加 LiveK11 pack。此项 supersede GA-GT4 的架构面，**须先与 GA-GT4 调和**再动。
+- **de-K11 架构答案** —— 建立 data-domain Evaluation Core，使 `eval-runner` + `MultiTurnSession` 不依赖具体 DataScope 或 benchmark；K11-v2 与 RBI 只作为迁移/parity fixtures。未定义的 `LiveK11` 不构成架构要求；dynamic/fresh/canary lifecycle 在核心 identity 固定后另行裁定。此项 supersede GA-GT4 的架构面，**须先与 GA-GT4 调和**再动。
 - **Goodhart Δ** —— `compare.ts` 输出 K11-train vs heldout vs fresh 的差值；Arena-Hard 式 style control + separability + 95% CI；dye-pack sentinel。当前**既无 heldout 也无 fresh slice**（见 R10 事实 ⑥）。
 - **重构编排顺序** —— map §Not yet specified 的第一块 fog：已确定该删的（core 死编排 + 两份 adapter fork）与包重切，是「先删再切」还是「切的时候一并删」。
 
