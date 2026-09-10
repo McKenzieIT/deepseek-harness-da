@@ -132,11 +132,27 @@ Phase-2（`eb9e4cf05c`）删了 `packages/client/runtime` 并从 manifest 摘了
 
 另 `verify-npm-install-layout` 是**半个洞**：只在 `.github/workflows/release.yml:87` 跑，PR 上永不跑。其余 3 个（`verify-third-party-notices`、`verify-doc-site-fragments`、`verify-no-production-src-on-master`）有别处覆盖，属有意的组外。
 
-### 本 session 未落地的 13 门待办（S3 已给出精确 patch，按 value÷risk 排序）
+### 本 session 未落地的待办（S3 已给精确 patch，按 value÷risk 排序）
 
-`documentation site checks`（**1 行**，`docs/subsystems/README.zh.md` 缺一行表格行，英文侧 `README.md:24` 有、中文侧没有；`wc -l` 64 vs 63 正好差一行）→ `Cordis inspect catalog`（5 处 JSDoc，2 文件）→ `doc graphs`（`gen-doc-graphs.ts` 的 `SERVICE_ROLES` 缺 `resultGateway`，源在 `packages/data/result-cache/src/remote.ts:48`，同为 `6b7610d45a` 的 UM4 re-home 产物）→ `application entrypoints`（12 条 allowlist，**必须在僵尸包删除之后**，否则会把 3 条僵尸行错误地 allowlist 掉）→ `markdown links`（14 条链接，8 文件，其中 2 条依赖 UM-MERGE-INTEGRITY 的结论）→ `agent note format`（19 个文件 `git mv` 回 `proposed/`，但 `proposed:` 语法额外要求 `## Proposal`/`## Acceptance criteria`/`## Risks` 三个标题，未核，可能触发第二波）。
+**[2026-09-10 更新：L1 已落，余 5 门 + 2 笔]** 本 session 落完 L1(`documentation site checks` → green)后,6 门短list剩 5 门未落,均带精确 patch 但判**下 session 做**:
 
-`subsystem pages`(5/6) 与 `documentation standard tests` 判 `big-debt`，另开票。
+| id | 门 | 改动 | 为何下 session |
+|---|---|---|---|
+| L8 | `doc graphs` | `gen-doc-graphs.ts` 的 `SERVICE_ROLES` 加 `resultGateway`(~8 行)+ regen | 需 regen `gen-doc-graphs`(写操作),源在 `packages/data/result-cache/src/remote.ts:48`(同为 `6b7610d45a` 的 UM4 re-home 产物),需与 UM4 线协调 |
+| L4 | `Cordis inspect catalog` | 5 处 JSDoc,2 文件(~14 行) | 纯写,中等量;`result-cache`/`ui-context-layer` |
+| L6 | `application entrypoints` | 12 条 allowlist,1 文件 | **必须等僵尸包删除后**(`UM-MERGE-INTEGRITY`),否则会把 3 条僵尸行错误 allowlist 掉 |
+| L7 | `markdown links` | 14 条→**L1 后剩 1 条** | 唯一剩的 1 条是 `ui-settings-models/README:37 → src/client/slot-contract.ts`,而该文件被 merge 丢了 → 依赖 `UM-MERGE-INTEGRITY` 的结论 |
+| L9 | `agent note format` | **S3 记 19,实测 15** | **订正**:实际 `rejected/simplification/2026-09-03-*.md` 是 15 个;`proposed/simplification/` 目录已不存在 → `git mv` 目标需先重建目录;且 `proposed:` 语法额外要求 `## Proposal`/`## Acceptance criteria`/`## Risks` 三标题,未核,可能触发第二波。风险比 S3 估的高 |
+
+`subsystem pages`(5/6)与 `documentation standard tests` 判 `big-debt`,另开票(D3/D4)。
+
+**Round 3 cherry-pick(a99d206835)未做** —— `fix/lint-noop-assertion-unused-disable` 那 2 行 lint fix 仍在 resync HEAD(`tool-update-table-config/src/index.ts:250` 多余 assertion + `eval-cli/tests/compare.spec.ts:1` unused disable)。可独立 cherry-pick,但属 `UM-LINT-TYPEAWARE-CORDIS`(grilling,等 93 基线清完再和人过 A/B/C),不归 UM12,留作下 session。
+
+### 本 session 终态（已核）
+
+- `check:ci:static`: **23 passed/22 failed → 27 passed/18 failed**(两轮独立复核,`comm` 比对零新增失败)。4 门翻绿:`Cordis config`、`cordis catalog`、`doc budgets`、`documentation site checks`。
+- resync 工作树 `git status` **完全干净(0 行)** —— 此前多 session 一直带 84 个 untracked,本 session 首次清掉。
+- 6 个 commit 在 resync:`40449bfa93`/`025db697ab`/`8487091704`/`68e6ea6562`/`6514ade8fc`/`a469c899bd`。
 
 ### 诚实边界（继承并收窄）
 
