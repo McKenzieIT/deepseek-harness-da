@@ -26,7 +26,7 @@
   - **每方向先 R 票认读分析论文**(产 `research/<slug>-papers.md`,持久化关键 claim + 对本仓映射)→ 再 grilling → impl → experiment R。grilling 必须有论文分析在手。
   - **引用只引已验证论文**(见 §验证 TODO);进 ticket 前待核项须 primary-fetch arxiv.org(本环境 403,换网络/人工核)。subagent 输出 = 凭记忆断言,未验证前不进产物。
   - **实验数字入 `research/experiment-audit-log.md`**(本 effort 独立 log;历史 eval 实验在 `wayfinder/data-agent/research/experiment-audit-log.md`,本 map 引用)。
-  - **允许重构**(2026-09-07 起,取代原 additive-only):eval 模块的历史包袱可以丢。两栈并存是撞车产物而非设计([G1](tickets/G1-exec-grader-seam.md) 发现 ①),重复的编排层该删。约束不是"不许改",而是三条:①任何行为变化必须带一次记录在案的 re-baseline;②包边界重切归 R10→R10b→G10,不在单票内顺手做;③已测且论文对齐的部分不重写(如 `classify_failure` 的 infra/model 分离,四套基准一致同意)。
+  - **允许重构**(2026-09-07 起,取代原 additive-only):eval 模块的历史包袱可以丢。两栈并存是撞车产物而非设计([G1](tickets/G1-exec-grader-seam.md) 发现 ①),重复的编排层该删。约束不是"不许改",而是三条:①任何行为变化必须带一次记录在案的 re-baseline;②包边界重切归 R10→R10b→G10，Context ownership 补充归 R10c→G10，不在单票内顺手做;③已测且论文对齐的部分不重写(如 `classify_failure` 的 infra/model 分离,四套基准一致同意)。
   - **反循环**:expected 值须真实执行推导或人写,禁止 LLM 生成"正确 SQL"作 ground truth(会把系统当前错误固化为答案)。
   - 一票一 session+worktree;ticket 头声明 `Branch: <type>/<id>-<slug>`;改完逻辑单元立即 commit、绝不 `git add -A`。
 
@@ -53,7 +53,8 @@
 | [R24 — eval 包级合并可行性](tickets/R24-eval-package-consolidation.md) (evaluation) | research | 2026-09-08 | 一套 eval 引擎存两份（两份 `runBatch`、两份 health gate、两份比较器、两份已分叉的 adapter）；合并**无循环依赖**且为 benchmark-agnostic 铺路，但包边界移动触及仓外 5 处消费者 → 去重归 T1、包重组归 T12 |
 | [R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读](tickets/R10-harness-goodhart-papers.md) (evaluation) | research | 2026-09-09 | Benchmark 拥有 case 与评分语义，Harness 拥有 rollout，Environment 拥有隔离执行；历史 schema 应无损编译到 canonical envelope。Goodhart 审计需 train/heldout/fresh、provenance、CI 与 style control；LED 的 `pass@n` 不等于本仓 strict `pass^k` |
 | [R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读](tickets/R10b-harness-measurement-validity.md) (evaluation) | research | 2026-09-10 | Adapter parity 需 oracle/reference + matched 原/新运行与逐 case evidence；run 保存 raw→parsed→executed→observed→graded，preflight 失败不计模型分；Environment 分别证明 finality/separation，完整 B/A/H/model/interface/environment/grader identity 才能比较 |
-| [G1 — Execution grader seam](tickets/G1-exec-grader-seam.md) (evaluation) | grilling | 2026-09-07 | 锁 6 条架构无关决策(三事实分离/execution 主裁决/gold 失败=benchmark infra/端口一函数/provenance 由 grader 装配/截断与耗时自己观测);包边界与 case schema 归属移交 R10→R10b→G10。查出:两栈并存是撞车非设计、`mapQueryOutcome` 从未被调用、infra 失败被计为模型失败、**loader 静默丢弃 39 个 case 已有的 reference SQL 与快照锚点**(→ T11) |
+| [R10c — Semantic/ontology context layer 在 evaluation 中的作用与位置](tickets/R10c-context-layer-evaluation.md) (evaluation) | research | 2026-09-10 | Context 不是 B/H/E 第四 peer，而是 composition root 装配的独立版本化 capability；Benchmark 声明 requirement/private oracle，Harness 只注入 projection，Environment 提供世界状态。评测需 component/counterfactual/perturbation/end-to-end 四层与独立 `contextIdentity` |
+| [G1 — Execution grader seam](tickets/G1-exec-grader-seam.md) (evaluation) | grilling | 2026-09-07 | 锁 6 条架构无关决策(三事实分离/execution 主裁决/gold 失败=benchmark infra/端口一函数/provenance 由 grader 装配/截断与耗时自己观测);包边界与 case schema 归属移交 R10→R10b→G10；R10c 后续补充 Context ownership。查出:两栈并存是撞车非设计、`mapQueryOutcome` 从未被调用、infra 失败被计为模型失败、**loader 静默丢弃 39 个 case 已有的 reference SQL 与快照锚点**(→ T11) |
 | ↑ **同票 v3 重做并合并** | grilling | **2026-09-08** | D1 结局四分 + `not-measured`（pass/fail/environment-blocked/case-defect）;D2 一能力一实现（包边界不动→T12）;D3 seam = `normalizeOutcome` + `gradeExecution` 两纯函数 + 可落盘 artifact（R23 需离线重打分）;D4 **judge 永不填 execution**、模式必须落盘（测出 56.4pp）;D5 G1 管机器/G1b 管语料;D6 **当前 EXECUTION 语料不合格、需重建**。合并裁定：归一位置取 v3、端口纪律取 v1；v1 修正 v3 两处（provider 声明不可当证据、provenance 由 grader 装配） |
 
 ## Open frontier(未解,票在 `wayfinder/data-agent/tickets/`)
@@ -116,10 +117,10 @@
 论文:SAL(2607.22572)、SQL-of-Thought(2509.00581)、Heterogeneous-Enterprise-DBs(2606.31041)、Text-to-SQL Survey(2408.05109)。⚠ secondary-only 不引:NL2SQL-BUGs。
 票链:**R9-error-taxonomy-papers** → **G9-failure-classifier**(grilling,supersedes GA-GT4)→ **T8-failure-classifier-impl**(扩 classify_failure/verdict_mapper)。
 
-### 10. Harness Benchmark/Harness/Environment 拆分 + Goodhart 审计(de-K11 架构答案)
-做什:AgentCompass 三件套拆 eval-cli——K11-v2 移出版本化 benchmark-pack;eval-runner+MultiTurnSession benchmark-agnostic;加 LiveK11 pack;compare.ts 出 Goodhart Δ(K11-train vs heldout vs fresh);Arena-Hard 式 style control+separability+95%CI;dye-pack sentinel。
+### 10. Harness Benchmark/Harness/Environment 拆分 + Context capability + Goodhart 审计(de-K11 架构答案)
+做什:AgentCompass 三件套拆 eval-cli，并由 composition root 装配独立版本化 Context capability——K11-v2 移出版本化 benchmark-pack;eval-runner+MultiTurnSession benchmark-agnostic;加 LiveK11 pack;compare.ts 出 Goodhart Δ(K11-train vs heldout vs fresh);Arena-Hard 式 style control+separability+95%CI;dye-pack sentinel。
 论文:AgentCompass(2607.13705 ✅验,B/H/E 拆分)、HELM(2211.09110)、BIG-bench(2206.04615)、MT-Bench(2306.05685)、Arena-Hard(2406.11939)、WildBench(2406.04770)、LED(2602.01698,post-training 升 pass@1 但采样探索塌缩；标准 `pass@n` ≠ 本仓 strict `pass^k`)、Data Laundering(2412.15255)、MMLU-CF(2412.15194)、LLMs-Get-Lost(2505.06120)。
-票链:[**R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读**](tickets/R10-harness-goodhart-papers.md)（resolved；[认读产物](research/harness-goodhart-papers.md)）→ [**R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读**](tickets/R10b-harness-measurement-validity.md)（resolved；[认读产物](research/harness-measurement-validity-papers.md)）→ [**G10 — Harness B/H/E 拆分**](tickets/G10-harness-bhe-split.md)(grilling,unblocked,supersedes GA-GT4 架构面;**持有 G1 移交的包边界/case schema 归属**)→ **T9-bhe-split-impl** + [**R21 — 跨 slice 与跨时间 Goodhart audit**](tickets/R21-goodhart-audit.md)(experiment,by T1+G5)。
+票链:[**R10 — Harness/Benchmark/Environment 拆分与 Goodhart 审计论文认读**](tickets/R10-harness-goodhart-papers.md)（resolved；[认读产物](research/harness-goodhart-papers.md)）→ [**R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读**](tickets/R10b-harness-measurement-validity.md)（resolved；[认读产物](research/harness-measurement-validity-papers.md)）→ [**R10c — Context Layer evaluation 作用与位置**](tickets/R10c-context-layer-evaluation.md)（resolved；[认读产物](research/context-layer-evaluation-role.md)）→ [**G10 — Harness B/H/E 拆分**](tickets/G10-harness-bhe-split.md)(grilling,unblocked,supersedes GA-GT4 架构面;**持有 G1 移交的包边界/case schema 归属**)→ **T9-bhe-split-impl** + [**R21 — 跨 slice 与跨时间 Goodhart audit**](tickets/R21-goodhart-audit.md)(experiment,by T1+G5)。
 
 ### 11. Robustness/perturbation(consistency@k)+ IRT active sampling(新维度+power 解)
 做什:自动产 paraphrase + schema-perturbed 变体测 consistency@k(第 6 维);LaRT/IRT CAT 主动采样——cheap probe 估 per-case discordance p̂,预算砸 near-boundary(p̂≈0.5)→ ~40 case×3 run 出 n_d≥85,比 168 flat 更少 run 更高 n_d。
@@ -131,13 +132,13 @@
 **Historical(在 `wayfinder/data-agent/tickets/`)**:见 §Decisions so far + §Open frontier。
 
 **新票(在 `wayfinder/evaluation/tickets/`,本 effort R/G/T/P 命名空间)**:
-- **R(认读分析论文,AFK,产 research note)**:[R1](tickets/R1-exec-grader-papers.md)(resolved v3)、R2-judge-blind-papers、[R3](tickets/R3-judge-calibration-papers.md)、[R4](tickets/R4-significance-papers.md)、[R5](tickets/R5-contamination-papers.md)、[R6](tickets/R6-trajectory-papers.md)、R7-step-prm-papers、[R8](tickets/R8-pairwise-judge-papers.md)、R9-error-taxonomy-papers、[R10](tickets/R10-harness-goodhart-papers.md)(resolved)、[R10b](tickets/R10b-harness-measurement-validity.md)(resolved)、R11-robustness-sampling-papers、[R24](tickets/R24-eval-package-consolidation.md)(resolved,仓库取证)。
+- **R(认读分析论文,AFK,产 research note)**:[R1](tickets/R1-exec-grader-papers.md)(resolved v3)、R2-judge-blind-papers、[R3](tickets/R3-judge-calibration-papers.md)、[R4](tickets/R4-significance-papers.md)、[R5](tickets/R5-contamination-papers.md)、[R6](tickets/R6-trajectory-papers.md)、R7-step-prm-papers、[R8](tickets/R8-pairwise-judge-papers.md)、R9-error-taxonomy-papers、[R10](tickets/R10-harness-goodhart-papers.md)(resolved)、[R10b](tickets/R10b-harness-measurement-validity.md)(resolved)、[R10c](tickets/R10c-context-layer-evaluation.md)(resolved)、R11-robustness-sampling-papers、[R24](tickets/R24-eval-package-consolidation.md)(resolved,仓库取证)。
 - **R(experiment,AFK,数字入 audit-log)**:R12-exec-orm-baseline、R13-judge-blind-baseline、R14-judge-falsepass-by-dim、R15-calibrated-rebaseline、R16-significance-rerun、[R17](tickets/R17-contamination-audit.md)、R18-trajectory-baseline、R19-step-prm-divergence、R20-radar-redundancy、[R21](tickets/R21-goodhart-audit.md)、[R22](tickets/R22-consistency-at-k.md)、[R23](tickets/R23-comparator-policy-mutation-baseline.md)。
 - **G(grilling,HITL)**:[G1](tickets/G1-exec-grader-seam.md)(resolved)、[G1b](tickets/G1b-ground-truth-lifecycle.md)、G2-judge-blind-rewrite、G3-judge-calibration、G4-significance-contract、[G5](tickets/G5-dynamic-case-pipeline.md)、G6-trajectory-scoring、G7-step-prm、G8-pairwise-judge、G9-failure-classifier、[G10](tickets/G10-harness-bhe-split.md)、G11-irt-sampler、(+G12-exec-orm-verifier 条件)。
 - **T(impl,AFK TDD)**:[T1](tickets/T1-exec-grader-impl.md)、T2-judge-blind-impl、T3-calibration-impl、T4-sample-planner-impl+T4b-significance-impl、T5-dynamic-cases-impl+T5b-evolving-slice-impl、T6-multiturn-cases、T7-pairwise-judge-impl、T8-failure-classifier-impl、T9-bhe-split-impl、T10-active-sampler-impl、[T11-loader-provenance-strip](tickets/T11-loader-provenance-strip.md)(G1 产出,**阻塞 T1 与 G1b**)、[T12-eval-package-consolidation](tickets/T12-eval-package-consolidation.md)(G1 D2 产出,blocked by T1+G10)。
 - **P(prototype,HITL)**:P1-trajectory-prototype。
 
-> **已建票文件 20 张**:R1、R3、R4、R5、R6、R8、R10、R10b、R17、R21、R22、R23、**R24**、G1、G1b、G5、G10、T1、T11、**T12**。新增票来自 2026 follow-up 侦察，问题已 sharp；其余仍只在 map 点名。
+> **已建票文件 21 张**:R1、R3、R4、R5、R6、R8、R10、R10b、R10c、R17、R21、R22、R23、**R24**、G1、G1b、G5、G10、T1、T11、**T12**。新增票来自 2026 follow-up 侦察，问题已 sharp；其余仍只在 map 点名。
 
 ## 推荐认领顺序
 
@@ -158,15 +159,16 @@
 
 **[T11](tickets/T11-loader-provenance-strip.md) 与 T1 同批本地实现** —— T11 是 T1 唯一硬前置；方向 1 是**后端方向**，不走另环境/rubric（见 [playbook §1.1](playbook.md)），在本仓起 worktree 直接做，包内顺序 **T11 全部验收 → T1**。本仓有数仓凭证，39-case 真对账可就地跑。
 
-**HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);[G10 — Harness B/H/E 拆分](tickets/G10-harness-bhe-split.md) 已吸收 R10/R10b，现已 unblocked;**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
+**HITL grilling(你,先开)**:~~[G1 — Execution grader seam](tickets/G1-exec-grader-seam.md)~~ 已 resolved(2026-09-07);[G10 — Harness B/H/E 拆分](tickets/G10-harness-bhe-split.md) 已吸收 R10/R10b/R10c，现已 unblocked;**GA-EVAL-CASESET-EVENT-ANCHOR 优先**(它 blocks 一切 event-case 的 real-exec 测量);[G1b — Ground-truth lifecycle](tickets/G1b-ground-truth-lifecycle.md) 已由 R1 解锁,但须先吸收 G1 发现 ④——**provenance schema 已存在**(`rbi-10000251-exec` 39/39 带 `expected.sql`+`meta.anchor_ds`,rbi `schema_version: 3`),所以迁移分类的起点是「保留既有 schema 还是与 k11-v2 合流」,不是从零设计;G4/G2/G6 独立可开。
 
-**AFK 级联**(各 G 解后):**T11→T1**（同批，T11 先验收）;**~~R10~~→~~R10b~~→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G11→T10。
+**AFK 级联**(各 G 解后):**T11→T1**（同批，T11 先验收）;**~~R10~~→~~R10b~~→~~R10c~~→G10→T9+R21**（G10 仍持有 case schema 归属与 B/H/E 切分，但**不再阻塞 T1**）;T1→R23→GA-EVAL-EXPAND→{R12/R17/G9};T1+G10→T12;G3→T3→R15;G4→T4+T4b→R16;G5→T5+T5b;G6→P1→T6+R18;G8→T7;G11→T10。
 
 ## Not yet specified(fog)
 
 > 已知在 scope 内,但还问不出足够 sharp 的问题,所以不开票。frontier 推进后毕业成票。**"能不能现在精确陈述这个问题"是判据,不是"能不能现在回答它"。**
 
 - **`match_modes` 5 枚举 → policy object 的迁移归属**。它是否与 k11-v2 / rbi 两套 case schema 的合流同属一票，要等 G10 定下 benchmark / harness / environment 的切分后才问得 sharp。（原本这条雾还包含“去重与包重切的编排顺序”与“重构期间两条基线如何保持可比”，**二者已毕业**：前者拆成 [G1](tickets/G1-exec-grader-seam.md) D2 的去重验收项（T1）与 [T12](tickets/T12-eval-package-consolidation.md) 的包重组（blocked by T1+G10，证据在 [R24](tickets/R24-eval-package-consolidation.md)）；后者已由 D4/D6 裁定——**不可比，重新起锚**，见 §Destination 的失效警示。）
+- **Context attribution 后续票怎样切分**。R10c 已确定需要 component protocol、none/schema/relations/production/oracle counterfactual、perturbation/leakage audit 与 adaptive-ontology holdout policy；但它们是一个 G10 后的统一 protocol 票加若干 experiment，还是分别归 evaluation 与 semantic-layer 两张 map，要等 G10 固定 `ContextProvider`/projection/evidence seam、T1 重建 execution grader 后才问得 sharp。
 - **judge 用 BM25 候选当 schema context,是否是 73.7% 假通过的一个独立机制**(而非单纯 judge-leniency)。GA-EVAL-EVENTDEF-PREFETCH 记录的案例:case 135 pre-(a) 用 DWS 表时 judge 给 1.0×3 判 correct,post-(a) 用与 reference 同构的 event SQL 时 judge 给 0.4/0.2/0.2 判 wrong,原话「使用了 Schema 上下文之外的 ODS 底层表」——**仪表此前一直在奖励取错源的答案**。缺陷本身已修(`0f7b9234a2`),但它在 35.9pp 里占多少未知,须 R14 分维分解后才能问 sharp。喂 G3/G8。
 - **三套失败词表的对齐**。eval `FailureClass` 5 类(`packages/eval/eval/src/types.ts:28`)、engine `FailureKind` frozen 6 类(`packages/data/nl2sql-engine/src/types.ts:96-103`,配 `RECOVERABLE_FAILURES` `:109-112` / `UNRECOVERABLE_FAILURES` `:115-120`)、provider `classifyMaxcError` 5 值(`packages/query/query-maxcompute/src/index.ts:179-181`,另有 `transport`/`retryable`/`remote` 走别的分支)——**三套互不重叠,且无 adapter 在其间翻译**。属方向 9(R9→G9)地盘,但 G1 锁定的三事实分离一落地就会先撞上它:`failureClass` 要进 `AttemptResult`,就得决定它与上游两套的映射。
 
