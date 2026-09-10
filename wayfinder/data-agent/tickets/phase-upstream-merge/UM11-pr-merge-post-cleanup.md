@@ -60,7 +60,8 @@
 - **UM12 residual 22 → 14 门**（4 翻绿）。三分类（pre-merge 基线 `65bf3cddc9` 实测 28/9）：A6 真 pre-existing / B5 merge 回归 / C7 upstream 新增门。
 - **[UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) 已量化**：双向有损已穷举，2 组僵尸包已删。但发现 **ui-settings-models 整包被 M1 回退到 merge-base（~30 文件）**——`tsc` 全绿、`git diff-tree --cc` 看不见。**PR 描述必须写明这条**，否则仍是在有损 merge 上声称非回归。re-port 单开 [UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md)（task，不阻塞 PR，可后补）。
 - **worktree 16 个**（本 session 移除了临时的 `dsh-premerge-baseline`）。上表 2026-09-10 实况盘点仍准确；A23 unblocked。
-- **仍未 push**：resync `bcf4776f1d`、master `7f4b25d1ad` 均未 push。
+- **仍未 push**：resync `10941436b5`、master `7f4b25d1ad` 均未 push。
+- **本 session grilling 3 决策（用户 2026-09-14 拍板）**：① tsconfig = 采纳 upstream 显式 alias（**已落地** `10941436b5`，`verify-tsconfig-paths` GREEN）② 生成文档翻译 = 生成器带上 zh（决策定，实现下 session）③ **B 类 4 真回归 = 全修再 PR**（不走 tracked-shortcut；`package invariants`/`agent note format` L9/`markdown links` L7/`type equivalence` 全须 PR 前绿）→ 本票阻塞于 UM12 的 B 类子集。
 
 ## Resolution
 （待落地后填：PR #N、merge sha、清理的分支清单）

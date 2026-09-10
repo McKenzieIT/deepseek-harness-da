@@ -262,3 +262,12 @@ comm -23 baseline after  →  doc graphs / Cordis inspect catalog / config catal
 
 ## Resolution
 （未 resolved。本轮 `27/18 → 31/14` 零新增，4 门翻绿；**本票最老的「诚实边界」已关闭** —— pre-merge 基线建立，18 门红分成 A6/B5/C7，并推翻本票三条自记结论。仍开的原因：① **CI 从未真正跑过这套 gate** ② 14 门红里 5 条 B 类回归的 M1/M2 归因仍需在 `6b7610d45a` 上跑一次 matrix ③ `tsconfig paths` 的通配 vs 显式 alias 需决策 ④ L6/L7/L9 三门有精确 patch 未落地。）
+
+### [2026-09-14 grilling 后续] tsconfig-paths 门已 GREEN（C 类 -1）；B 类「全修再 PR」是用户指令
+
+**本 session grilling 3 决策**（用户 2026-09-14 拍板，见 [UM11](UM11-pr-merge-post-cleanup.md) 2026-09-14 update）：
+- **tsconfig paths = 采纳 upstream 显式 alias** → **已落地** commit `10941436b5`（resync）：删 fork 通配 fallback 块 + regen，`verify-tsconfig-paths` **GREEN**，537 显式 alias，`tsc -b tsconfig.client.json` 0 错。**C 类 14→13 门**。详见 [UM-TSCONFIG-PATHS-POLICY](UM-TSCONFIG-PATHS-POLICY.md) Resolution（resolved）。
+- **生成文档翻译 = 生成器带上 zh** → 决策定，实现下 session（给 `gen-doc-graphs` 加 zh 渲染 + 配对哈希）。详见 [UM-GEN-DOC-TRANSLATION-OBLIGATION](UM-GEN-DOC-TRANSLATION-OBLIGATION.md) Resolution（resolved-decision）。
+- **B 类 4 真回归 = 全修再 PR**（用户指令，不走 tracked-shortcut）：`package invariants` / `agent note format`(L9) / `markdown links`(L7) / `type equivalence` **全须 PR 前绿**。这把 UM12 的 B 类子集提升为 UM11 的硬阻塞（不只是「待修 residual」）。估算到 PR merge ≈ 6-9 session（B 类 ~3-5 + 收尾/PR ~2-3 + quick fix ~1）。
+
+**当前 13 门红**（tsconfig-paths 已绿）：A 类 `runtime closure`/`constraints`/`export jsdoc`(3)/`translation pairing`；B 类 `package invariants`/`agent note format`/`markdown links`/`type equivalence`；C 类 `client UI i18n`(98)/`package dependencies`(74)/`application entrypoints`(10)/`subsystem pages`(5)/`documentation standard tests`。**B 类 4 门是 PR 前必须修干净的真回归**；A/C 可作 known-red。

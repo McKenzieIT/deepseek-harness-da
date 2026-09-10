@@ -13,6 +13,12 @@
 7. ⚠ **`pnpm run gen-tsconfig-paths` 会把 `tsconfig.base.json` 写成无效 JSON**（fork 的 `"@deepseek-ai/dsh-*"` 通配块在生成区之后，生成器不写尾逗号；TS 自己的 parser 复核：regen 后 `',' expected.`）。**别盲目跑它**。要修 `tsconfig paths` 门先读 [`UM12`](../tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) 的「新发现的两个陷阱」。
 8. **split-brain 警告**：`mcp__local__*` 工具跑在用户 Mac 上，**够不着 runner 侧 `/tmp/claude-*/.../tasks/*.output` transcript**。派 subagent 持久化长交付时，让 subagent 自己用 `mcp__local__write_file` 直接写盘（它自己上下文里有 verbatim 内容），**别让 subagent 去读 runner transcript**——会失败并拒绝编造。
 
+## 本 session grilling 决策（用户 2026-09-14 已拍板）
+
+1. **tsconfig = 采纳 upstream 显式 alias** → ✅ **已落地** commit `10941436b5`（resync）：删 fork 通配 fallback + regen，`verify-tsconfig-paths` GREEN，537 显式 alias，tsc 0 错。C 类 14→13。详见 [UM-TSCONFIG-PATHS-POLICY](../tickets/phase-upstream-merge/UM-TSCONFIG-PATHS-POLICY.md)（resolved）。
+2. **生成文档翻译 = 生成器带上 zh** → 决策定，**实现下 session**：给 `gen-doc-graphs` 6 产物加 zh 渲染 + `.i18n.yaml`。先读 `gen-module-graph.ts:112-151` 的 zh 机制。详见 [UM-GEN-DOC-TRANSLATION-OBLIGATION](../tickets/phase-upstream-merge/UM-GEN-DOC-TRANSLATION-OBLIGATION.md)（resolved-decision）。
+3. **B 类 4 真回归 = 全修再 PR**（不走 tracked-shortcut）：`package invariants` / `agent note format`(L9) / `markdown links`(L7) / `type equivalence` **全须 PR 前绿**。→ UM12 的 B 类子集 = UM11 硬阻塞。
+
 ## 三条线的现状
 
 ### ① UM-MERGE-INTEGRITY — 两方向已穷举；方向 B 已落；方向 A = 改文档；⚠ 整包回退是新发现
@@ -22,13 +28,13 @@
 - **硬阻塞 UM11**：可解除到「已知且已量化」，但 **PR 描述必须写明整包回退**，否则仍是在有损 merge 上声称非回归。
 - **下 session 该做**：① 落地 `knip.json` + `fake-api.client.ts` 的独立 commit（需改 `scripts/rescope-fork.ts:263-264` + `rescope-fork.spec.ts:132-137`）② 新票：`ui-settings-models` 包 re-port（真特性 merge）。
 
-### ② UM12 — pre-merge 基线已建；31/14；余 L6/L7/L9 + 2 决策
+### ② UM12 — pre-merge 基线已建；32/13；余 L6/L7/L9 + B 类全修
 
 - **基线**：`65bf3cddc9`（真 fork parent）实测 **28/9**。18 门红 = **A6 真 pre-existing / B5 merge 期回归 / C7 随 upstream 新增的门**。推翻本票三条自记结论（`documentation standard tests` 是 C 不是 A；`package invariants` pre-merge 绿；`config catalog` 非 RC-Z 致红）。
 - **L6 `application entrypoints`（10 条，1 文件 allowlist）**：删僵尸后已**解锁**（原 13→10，3 条僵尸消失，余 10 全 fork 自有）。UM12 有精确 patch。**本 session 可做**。
 - **L7 `markdown links`（14 条，非 1）**：S1 只完整诊断了 `slot-contract.ts` 那条（= 删 `ui-settings-models/README{,.zh}.md:37` 的 "Extension slots" 段，保 i18n 配对）。余 13 条需逐条 triage（多数指向 upstream 已删的 `examples/`、已删 note、或 anchor 缺失）。
 - **L9 `agent note format`（15 条）**：**风险最高，UM12 已建议 defer**——`proposed/simplification/` 目录已不存在（需重建），`proposed:` 语法额外要求 `## Proposal`/`## Acceptance criteria`/`## Risks` 三标题，未核，可能触发第二波。
-- **2 决策**：① `tsconfig paths`：fork 保留 `"@deepseek-ai/dsh-*"` 通配 vs 采纳 upstream ~120 条显式 alias（且 gen-tsconfig-paths 无论选哪个都得先修不写尾逗号的 bug）。② 生成文档的翻译义务：补译 / 让生成器带上 zh / 把生成文档从配对哈希豁免。
+- **2 决策**：~~① tsconfig paths 通配 vs 显式~~（**已决策+落地** `10941436b5`，GREEN）~~② 生成文档翻译义务~~（**已决策** = 生成器带 zh，实现下 session）。两决策已清——见上方「本 session grilling 决策」。**剩 B 类 4 门全修**（用户指令，PR 前必绿）：`package invariants`/`agent note format`(L9)/`markdown links`(L7)/`type equivalence`。
 
 ### ③ UM15 — 首片方案已交但主体代码丢失；Decision 4 收口；7 grilling 收口 1
 
@@ -42,11 +48,11 @@
 1. **UM15 首片落地**（主线）：重派 S2（或新 subagent）只补丢失的 §1/§2/§3/§4.1–4.4。给它 [`research/um15-first-slice-implementation-2026-09-14.md`](../research/um15-first-slice-implementation-2026-09-14.md) + 设计草案 + UM15 票 + UM-MERGE-INTEGRITY Resolution（喂 `upstream-sync.json` 的 waivers 真值：M1=`6b7610d45a`/`d347e70390`、M2=`8112743d69`/`c389f96bf3`、HEAD=`bcf4776f1d`、5 组发现里 pending 的几条）。§6 让它别走 (a) 弯路；§7.2 的 11 条让它落地前逐条验。然后按 §8 顺序落：§1 → enroll `verify-architecture-graph`（已绿）→ §2 → §3（并行）→ §4（最后，单独跑 `upstream-status`）。**落地后必须跑 tsc/oxlint/vitest**（§7.2 第 10 条——S2 没跑过）。
 2. **UM12 L6**（可与 UM15 并行，主 session 直接做）：`application entrypoints` 10 条 allowlist，1 文件。删僵尸后安全。
 3. **UM12 L7**（主 session）：14 条断链逐条 triage；`slot-contract.ts` 那条按 S1 删 "Extension slots" 段。
-4. **2 决策**（grilling，需人）：`tsconfig paths` 通配 vs 显式；生成文档翻译义务。
+4. **B 类 4 真回归全修**（用户指令「全修再 PR」，不走 tracked-shortcut）：`package invariants` / `agent note format`(L9,最高风险) / `markdown links`(L7,14条) / `type equivalence`——PR 前必绿。tsconfig paths 已不用决策（落地了）；生成文档翻译义务已决策（下 session 实现 gen-doc-graphs 带 zh）。
 
 ## 不要做
 
 - **L9 `agent note format`**：风险最高，defer 到 L6/L7 落完、且 `proposed/simplification/` 目录重建方案定了之后。
-- **盲目跑 `gen-tsconfig-paths`**：会 corrupt `tsconfig.base.json`。
+- ~~**盲目跑 `gen-tsconfig-paths`**~~：**已解**——本 session 删了 fork 通配块（`10941436b5`），生成器现在正确（region 是 paths 最后一项，不写尾逗号也对），`gen-tsconfig-paths` 可安全跑。原 trap 记录在 [UM12](../tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md)。
 - **恢复 `ui-settings-models` 的 `slot-contract.ts`/`operations.ts`**：不是 2 文件恢复，是真特性 merge → 新票，不在此 session。
 - **派 subagent 去读 runner 侧 transcript**：split-brain，会失败。
