@@ -14,6 +14,10 @@
 
 ## 决议（逐轮追加）
 
+### 裁决口径 — 以一手研究支持的目标架构为准
+
+本票以已核验的一手研究、measurement validity 与本仓 capability 约束设计目标结构；现有 package、schema、runner、配置和结果格式只作为迁移输入与失效证据，不构成兼容边界。可以重构或删除不再合适的实现，但必须保留可审计的 provenance、parity evidence、失败语义与重新起锚要求；“更新”本身不构成采用理由。
+
 ### D1 — 正确性语义归 Benchmark，grader/comparator 机制共享
 
 Benchmark Pack 拥有并版本化 reference/oracle、comparator policy、grader policy 与 aggregation semantics；共享 evaluation library 只实现 normalization、comparator 与 grader 的通用机制，且不得在 `run()` 或 comparator 内隐藏 benchmark 默认值。
@@ -25,6 +29,12 @@ Composition root 必须在运行前把 Benchmark 的 authoring policy 显式解�
 Canonical protocol 分别定义 `PublicPreparedTask` 与 `GradingMaterialRef`；Harness 只能接收 public task 与不可解引用的 private-material reference，只有受控 grader provider 可以读取 reference SQL、expected、hidden tests、solution 与 grading secret。普通 run evidence、日志和错误不得展开 private material。
 
 隔离部署按风险分级：开发与公开 train 可以使用同进程 provider，但不得声称秘密隔离；heldout/fresh 默认由同机独立 grader 进程解析 private material；Harness 或模型工具可执行不可信代码时，grader 与 private material 必须进入无共享私有挂载的 OS sandbox。远端机器不是协议要求，部署方式不得改变 public task、reference 或 grading result schema。
+
+### D3 — Canonical case 以浅层 manifest 为聚合根
+
+永久 case model 以 `CaseManifest` 为唯一 identity，引用独立的 public material、private material、grader policy、Environment requirement 与 Context requirement；引用携带 branded id、revision 与 content digest，且不得形成任意递归图。Pack 级定义承载可复用 policy 和 requirements，compiler 将 manifest 解析为 `PublicPreparedTask`、`GradingMaterialRef` 与冻结的 resolved plans；run evidence 使用独立 schema，不写回 case。
+
+`k11-v2` 与 `rbi-10000251-exec` 都是仓内生成的 legacy migration input，不保留为永久 authoring/runtime schema。迁移须证明字段保存、oracle/reference validation、matched parity 与逐 case 状态，完成后正常运行路径拒绝旧格式；面向真正外部 benchmark 的 adapter 仍是一等、具名且版本化的模块。
 
 ## G1 移交的三条（本票必须裁定）
 
