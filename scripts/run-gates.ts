@@ -20,25 +20,44 @@ import {
 } from './coverage-partitions.ts'
 import { pnpmInvocation } from './pnpm-invocation.ts'
 
+/**
+ * The canonical, ordered list of every named aggregate the gate runner exposes.
+ * This readonly tuple is the single source of truth: {@link Mode} is derived
+ * from it, {@link isMode} validates membership against it, and {@link parseMode}
+ * rejects CLI input that is not in it. Test parameterization reads from it
+ * directly so the suite cannot drift from the union.
+ */
+export const MODES = [
+  'ci-primary',
+  'ci-linux-primary',
+  'ci-static',
+  'ci-lint-contracts-ready',
+  'ci-coverage',
+  'ci-bench',
+  'ci-snapshot',
+  'ci-artifacts',
+  'ci-consumers',
+  'ci-windows-blocking',
+  'ci-windows-complete',
+  'ci-windows-observational',
+  'node-compat',
+  'check-all',
+  'hygiene',
+  'doc-sync',
+  'doc-quick',
+] as const
+
 /** A named aggregate exposed by the gate runner. */
-export type Mode =
-  | 'ci-primary'
-  | 'ci-linux-primary'
-  | 'ci-static'
-  | 'ci-lint-contracts-ready'
-  | 'ci-coverage'
-  | 'ci-bench'
-  | 'ci-snapshot'
-  | 'ci-artifacts'
-  | 'ci-consumers'
-  | 'ci-windows-blocking'
-  | 'ci-windows-complete'
-  | 'ci-windows-observational'
-  | 'node-compat'
-  | 'check-all'
-  | 'hygiene'
-  | 'doc-sync'
-  | 'doc-quick'
+export type Mode = (typeof MODES)[number]
+
+/**
+ * Test whether a string is a valid gate-runner {@link Mode}.
+ * @param value - the string to test.
+ * @returns `true` when `value` names a mode in {@link MODES}.
+ */
+export function isMode(value: string): value is Mode {
+  return (MODES as readonly string[]).includes(value)
+}
 
 type GateResultStatus = 'passed' | 'failed' | 'skipped'
 type GateState = 'pending' | 'running' | GateResultStatus
@@ -132,30 +151,10 @@ export function cliGateOptions(failFast: boolean): RunGatesOptions {
 }
 
 function parseMode(raw: string | undefined): Mode {
-  switch (raw) {
-    case 'ci-primary':
-    case 'ci-linux-primary':
-    case 'ci-static':
-    case 'ci-lint-contracts-ready':
-    case 'ci-coverage':
-    case 'ci-bench':
-    case 'ci-snapshot':
-    case 'ci-artifacts':
-    case 'ci-consumers':
-    case 'ci-windows-blocking':
-    case 'ci-windows-complete':
-    case 'ci-windows-observational':
-    case 'node-compat':
-    case 'check-all':
-    case 'hygiene':
-    case 'doc-sync':
-    case 'doc-quick':
-      return raw
-    default:
-      throw new Error(
-        `run-gates: expected mode ci-primary | ci-linux-primary | ci-static | ci-lint-contracts-ready | ci-coverage | ci-bench | ci-snapshot | ci-artifacts | ci-consumers | ci-windows-blocking | ci-windows-complete | ci-windows-observational | node-compat | check-all | hygiene | doc-sync | doc-quick, got ${JSON.stringify(raw)}.`,
-      )
-  }
+  if (raw !== undefined && isMode(raw)) return raw
+  throw new Error(
+    `run-gates: expected one of ${MODES.join(' | ')}, got ${JSON.stringify(raw)}.`,
+  )
 }
 
 /**
@@ -291,6 +290,10 @@ export function gatesForMode(selected: Mode): Gate[] {
       return docSyncLeafGates()
     case 'doc-quick':
       return docQuickLeafGates()
+    default: {
+      const _exhaustive: never = selected
+      throw new Error(`run-gates: unhandled mode ${JSON.stringify(_exhaustive)}.`)
+    }
   }
 }
 

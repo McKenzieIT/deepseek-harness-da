@@ -5,6 +5,7 @@ import {
   defaultConcurrency,
   formatGateResultReason,
   gatesForMode,
+  MODES,
   parsePidPpidLines,
   runGate,
   runGates,
@@ -135,25 +136,7 @@ function withEnv<T>(name: string, value: string | undefined, action: () => T): T
 }
 
 describe('gate graph validation', () => {
-  it.each([
-    'ci-primary',
-    'ci-linux-primary',
-    'ci-static',
-    'ci-lint-contracts-ready',
-    'ci-coverage',
-    'ci-bench',
-    'ci-snapshot',
-    'ci-artifacts',
-    'ci-consumers',
-    'ci-windows-blocking',
-    'ci-windows-complete',
-    'ci-windows-observational',
-    'node-compat',
-    'check-all',
-    'hygiene',
-    'doc-sync',
-    'doc-quick',
-  ] as const)('constructs and executes preflight for a valid non-empty %s graph', async (mode) => {
+  it.each(MODES)('constructs and executes preflight for a valid non-empty %s graph', async (mode) => {
     const subject = withPnpmEntrypoint(() => gatesForMode(mode))
     const execute = vi.fn(async (item: Gate) => resultFor(item))
 
