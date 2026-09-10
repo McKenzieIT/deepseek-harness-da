@@ -118,6 +118,9 @@ Evaluation Core 允许受控和外部数据环境，但每个 run 必须声明�
 | [`data-engineering-evaluation-frontier.md`](../research/data-engineering-evaluation-frontier.md) | pipeline、schema migration、data quality、lineage、batch/stream state 与 artifact finality | 约束 data-engineering extension，并用无 SQL fixture 反证首个 data-analysis 实现泄漏进 Core |
 | [`data-science-evaluation-frontier.md`](../research/data-science-evaluation-frontier.md) | dataset/split identity、experiment plan、notebook/model artifact、replicate 与 leakage | 约束跨子领域 measurement metadata 和 data-science conformance fixture |
 | [`data-evaluation-frameworks-community.md`](../research/data-evaluation-frameworks-community.md) | 主流框架的 manifest、scorer、evidence、artifact、Environment 与 extension 机制 | 交叉验证稳定 envelope、子领域 payload、独立 artifact store 和完整 run identity |
+| [`dsh-evaluation-integration-constraints.md`](../research/dsh-evaluation-integration-constraints.md) | DSH/Cordis plugin tree、service injection、scope、effects、events、session、tools 与 lifecycle | 约束 Evaluation 复用真实 DSH composition，不创建第二套 agent loop、Provider 系统或 transcript |
+| [`data-agent-runtime-preservation.md`](../research/data-agent-runtime-preservation.md) | 当前 data-agent 产品路径、默认 bundle、DataScope、Context、query、interaction 与 persistence | 约束 Evaluation opt-in、scope-local、行为不变，并识别默认 bundle 中 eval 控制逻辑的产品污染风险 |
+| [`non-invasive-agent-evaluation-patterns.md`](../research/non-invasive-agent-evaluation-patterns.md) | shadow、trace replay/rescore、独立 evaluator 与 production composition under evaluation host | 约束 controlled、observational 与 replay 三种模式共用协议，但不向普通 Agent 注入 eval-only 行为 |
 
 2026-09-10 代码复核确认 GA-GT4 的核心 hardcode 仍在：`eval-runner-service` 仍默认 K11 caseDir/today 并使用 `^k11_\d+\.yaml$`，bundle 仍声明 K11 `semanticRoot`/`caseDir`，`compare.ts` 仍按 `k11v2_*` 名称分桶。R24 后 `packages/eval/` 只有一次测试 lint 删除，没有包边界或依赖变化，因此 R24 的仓库取证仍可作为 grilling 输入。GA-GT4 唯一过期项是“失败分类无人调用”：`multi_turn.ts` 已调用 `classifyExecutionFailure`，但多引擎 taxonomy 仍属方向 9/G9/T8，不能由 G10 顺手实现。
 
