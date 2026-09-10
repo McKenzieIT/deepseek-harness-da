@@ -20,6 +20,12 @@ Benchmark Pack 拥有并版本化 reference/oracle、comparator policy、grader 
 
 Composition root 必须在运行前把 Benchmark 的 authoring policy 显式解析为不可变、带 digest 的 `ResolvedGradingPlan`；grader 运行时只能消费该 plan，不得再次查配置、补默认值或动态选择 comparator。受控 grading entry point 读取 private grading material 与 run evidence 后产出 verdict；Harness 只接收 public task material，不读取 private material，也不决定正确性；Environment 只返回执行事实。此决定采用 R10/R10b 的 Benchmark ownership、frozen run identity 与 private-material isolation 约束，并以本仓“一能力一实现”和显式 resolution 作为落地选择。
 
+### D2 — Public task 与 private grading material 以 opaque reference 隔离
+
+Canonical protocol 分别定义 `PublicPreparedTask` 与 `GradingMaterialRef`；Harness 只能接收 public task 与不可解引用的 private-material reference，只有受控 grader provider 可以读取 reference SQL、expected、hidden tests、solution 与 grading secret。普通 run evidence、日志和错误不得展开 private material。
+
+隔离部署按风险分级：开发与公开 train 可以使用同进程 provider，但不得声称秘密隔离；heldout/fresh 默认由同机独立 grader 进程解析 private material；Harness 或模型工具可执行不可信代码时，grader 与 private material 必须进入无共享私有挂载的 OS sandbox。远端机器不是协议要求，部署方式不得改变 public task、reference 或 grading result schema。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
