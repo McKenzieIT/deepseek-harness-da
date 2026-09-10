@@ -36,6 +36,12 @@ Canonical protocol 分别定义 `PublicPreparedTask` 与 `GradingMaterialRef`；
 
 `k11-v2` 与 `rbi-10000251-exec` 都是仓内生成的 legacy migration input，不保留为永久 authoring/runtime schema。迁移须证明字段保存、oracle/reference validation、matched parity 与逐 case 状态，完成后正常运行路径拒绝旧格式；面向真正外部 benchmark 的 adapter 仍是一等、具名且版本化的模块。
 
+### D4 — Case 显式引用 Pack 内具名 policy 与 requirement profile
+
+Benchmark Pack 定义可复用、具名且版本化的 grader policy、Environment requirement 与 Context requirement profile；每个 `CaseManifest` 必须显式引用其使用的 profile，不得通过字段缺失继承影响 correctness、model-visible input、Environment 状态或 Context 内容的 Pack 默认值。作者工具可以提供生成期 shorthand，但提交的 manifest 必须包含明确引用。
+
+Compiler 在运行前解析引用、拒绝缺失或不兼容组合，并生成带 profile revision 与 content digest 的 `ResolvedGradingPlan`、`ResolvedEnvironmentRequirement` 和 `ResolvedContextRequirement`；run identity 保存这些 resolved identities。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
