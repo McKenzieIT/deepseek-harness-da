@@ -192,8 +192,6 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   retrieval: 'abstract retrieval seam: implemented by providers (e.g. retrieval-inproc); packages/retrieval/retrieval/README.md owns the seam',
   evalRunner: 'optional eval-runner seam (EvalRunnerService | undefined) the host composition mounts at boot — packages/data/tool-trigger-eval/src/index.ts owns the seam contract',
   results: 'client-side interface-typed browser service — packages/client/result-cache/README.md owns the API',
-  conversationEvents: 'client-side conversation event registry declared in the fork-local client runtime zombie (R-DA decommission target) — packages/client/runtime/README.md owns the API',
-  conversationViews: 'client-side conversation view registry declared in the fork-local client runtime zombie (R-DA decommission target) — packages/client/runtime/README.md owns the API',
   contextLayer: 'client-side interface-typed browser service — packages/client/ui-context-layer/src/client/index.ts owns the API',
   resources: 'client-side resource model (protocol providers, pins, live sources) — packages/client/resources/README.md owns the API',
   sidebarRight: 'client-side right-Sidebar navigation face — packages/client/ui-sidebar-right/README.md owns the API',
