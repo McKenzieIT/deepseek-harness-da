@@ -66,6 +66,12 @@ Evaluation Core 在 lifecycle envelope 之外定义独立的 `MetricObservation`
 
 Evidence 不必产生 metric，metric 也不得压缩为无类型 `score`。不同 metric 默认不可比较；只有 metric identity 与 run compatibility key 均满足声明规则时才允许计算 delta。Aggregate 必须可追溯到 raw observations，并区分 standard `pass@n`、strict `pass^k`、best-of-k 与 final submission。
 
+### D9 — Environment assurance 区分 managed、attached-snapshot 与 observational
+
+Evaluation Core 允许受控和外部数据环境，但每个 run 必须声明并证明 `managed | attached-snapshot | observational` assurance。`managed` 保存 provisioned state、reset 与 isolation receipt；`attached-snapshot` 保存权威 snapshot、namespace、finality 与 separation receipt；`observational` 明确记录无法证明的限制。运行位置是同机、容器或远端不决定 assurance。
+
+三类环境都可以产生 evidence 与带限定的 case observation；只有 `managed` 和具备 separation 证明的 `attached-snapshot` 可以进入正式独立-trial measurement，且不同 assurance 或不兼容 environment identity 不得合并。`observational` 只进入 production monitoring 与诊断，不进入 benchmark headline 或独立样本 CI。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
