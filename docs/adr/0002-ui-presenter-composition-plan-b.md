@@ -40,3 +40,21 @@ Plan B's one real sub-problem: the presenters need the chat-specific `isLatestTu
 ### Blocks
 
 R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-2 (4-presenter migration executes Plan B), zombie package deletion, UM10 typecheck-green.
+
+## Addendum: Snapshot-access via `ChatSnapshot.legacy` (2026-09-12, Phase-2 execution)
+
+Phase-2 execution surfaced a gap the Decision's 4 `isLatestTurn` options didn't anticipate. Upstream's `ConversationSnapshot` (`ui-conversation/contract/snapshot.ts`) is a **thin shell** `{ views, activeTargets }` — no top-level `nodes`/`chat`/`turnTimings`. The zombie's was a monolith (`runtime/src/client/sessions/conversation.ts`); its `nodes` was a "Legacy top-level compatibility field mirrored from the registered Chat Definitions" that upstream removed when it split the monolith.
+
+**Resolution (does not change the Decision — fills an unanticipated detail)**: option **③'** — a path rewrite via `ChatSnapshot.legacy`, an intentional compat slice upstream preserved inside the chat view's snapshot (`ui-chat/contract/snapshot.ts`), accessible via `snapshot.views.get('chat')` (chat target registered in `ui-chat/apply.ts`, `ConversationViewSnapshotMap` augmented `chat: ChatSnapshot` in `ui-chat/contract/snapshot.ts`):
+
+- `snapshot.nodes` → `snapshot.views.get('chat')?.legacy.nodes ?? []`
+- `snapshot.turnTimings` → `snapshot.views.get('chat')?.legacy.turnTimings ?? new Map()`
+- `snapshot.chat.timeline` → `snapshot.views.get('chat')?.timeline`
+
+Consumers load the `ConversationViewSnapshotMap.chat` augmentation via a tsconfig ref to `../ui-chat` + a type-only side-effect `import type {} from '@deepseek-ai/dsh-client-ui-chat/client'`.
+
+This is consistent with Plan B (consume upstream's public contract, presenter-local, no fork workaround): `ChatSnapshot.legacy` is upstream's intentional replacement for the removed compat fields, not a fork invention. Options ① (insufficient — solves `isLatestTurn` not `snapshot.nodes`), ② (fights carrier-neutral `ToolCallOwnerProps`), ④ (Plan A re-eval — unnecessary; presenters remain tool-name-keyed sub-views) remain rejected.
+
+`agentPresets`/Typert-registration is NOT a blocker: the `TypertRemoteNamespaceMap` augmentation loads transitively in full `tsc -b`; a bounded-`-p` residual a subagent reported was a false positive (R-DA-TYPERT-REMOTE-REGISTRATION's domain).
+
+Validated: `tsc -b tsconfig.client.json --force` = 0 errors (144→0); vitest all green; boot (`pnpm --filter @deepseek-ai/dsh-web-app bundle`) OK — upstream packages `api-session-controller`/`ui-renderer`/`ui-conversation` mounted in `cordis.patch.yml`接管 `ctx.sessions`/`ctx.slots`/`ctx.conversationViews` (zombie `apply()` was fork-only dead code; deletion = no-op for boot wiring). See R-DA-UI-PRESENTER-COMPOSITION Resolution addendum + R-DA-CLIENT-RUNTIME-DECOMMISSION Resolution.

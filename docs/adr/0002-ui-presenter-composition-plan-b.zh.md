@@ -40,3 +40,21 @@ Plan B 唯一真子问题：presenter 需 chat-specific `isLatestTurn` 信号，
 ### Blocks
 
 R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-2（4 presenter 迁移按 Plan B 执行）、zombie 包删除、UM10 typecheck 全绿。
+
+## 补充：snapshot-access via `ChatSnapshot.legacy`（2026-09-12，Phase-2 执行）
+
+Phase-2 执行暴露了原 Decision 的 4 个 `isLatestTurn` 选项未 anticipated 的 gap：upstream `ConversationSnapshot`（`ui-conversation/contract/snapshot.ts`）是 **thin shell** `{ views, activeTargets }`——无顶层 `nodes`/`chat`/`turnTimings`（zombie 的是 monolith；其 `nodes` 是 "Legacy top-level compatibility field mirrored from the registered Chat Definitions"，upstream 拆 monolith 时删了此 legacy compat 字段）。
+
+**解法（不改 Decision——填未 anticipated 细节）**：option **③'**——经 `ChatSnapshot.legacy` 的 path rewrite。`ChatSnapshot`（chat view 的 snapshot，经 `snapshot.views.get('chat')` 取——chat target 在 `ui-chat/apply.ts` 注册，`ConversationViewSnapshotMap` 在 `ui-chat/contract/snapshot.ts` augmented `chat: ChatSnapshot`）有 `legacy: LegacyConversationSlice`（`ui-chat/contract/snapshot.ts`）——upstream **有意保留**的 compat bridge（注释："Compatibility projection backing StatsLine and the legacy top-level snapshot fields"），含 `nodes: readonly ConversationNode[]` + `turnTimings` + `turnEnds` + `partial` + `runningCalls`。
+
+- `snapshot.nodes` → `snapshot.views.get('chat')?.legacy.nodes ?? []`
+- `snapshot.turnTimings` → `snapshot.views.get('chat')?.legacy.turnTimings ?? new Map()`
+- `snapshot.chat.timeline` → `snapshot.views.get('chat')?.timeline`
+
+消费者经 tsconfig ref 加 `../ui-chat` + 文件顶 `import type {} from '@deepseek-ai/dsh-client-ui-chat/client'`（load `declare module` augmentation，使 `views.get('chat')` typecheck 为 `ChatSnapshot`）。
+
+此与 Plan B 一致（消费 upstream public 契约，presenter-local，非 fork workaround）：`ChatSnapshot.legacy` 是 upstream 对已删 compat 字段的有意替代，非 fork 新造。option ①（不充分——只解 isLatestTurn 不解 `snapshot.nodes`）、②（fights carrier-neutral `ToolCallOwnerProps`）、④（Plan A 重评——不必）仍拒。
+
+`agentPresets`/Typert 注册 **非 blocker**：`TypertRemoteNamespaceMap` augmentation 在 full `tsc -b` transitively loads；subagent 报的 bounded-`-p` 残留是假阳性（R-DA-TYPERT-REMOTE-REGISTRATION 的域）。
+
+验证：`tsc -b tsconfig.client.json --force` = 0 errors（144→0）；vitest 全绿；boot（`tsc -b tsconfig.host.json`）OK——upstream 包 `api-session-controller`/`ui-renderer`/`ui-conversation` 在 `cordis.patch.yml` mount 接管 `ctx.sessions`/`ctx.slots`/`ctx.conversationViews`（zombie `apply()` 是 fork-only 死代码，删 = no-op for boot wiring）。见 R-DA-UI-PRESENTER-COMPOSITION Resolution 补充 + R-DA-CLIENT-RUNTIME-DECOMMISSION Resolution。
