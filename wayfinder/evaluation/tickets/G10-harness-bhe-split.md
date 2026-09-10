@@ -1,6 +1,6 @@
 # G10 — Harness Benchmark/Harness/Environment 拆分
 
-**Type**: grilling  ·  **Status**: open · **Research readiness**: ready（2026-09-10）
+**Type**: grilling  ·  **Status**: claimed · **Research readiness**: ready（2026-09-10）
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无（[R10](R10-harness-goodhart-papers.md)、[R10b](R10b-harness-measurement-validity.md) 与 [R10c](R10c-context-layer-evaluation.md) 已 resolved）
 **Blocks**: T9-bhe-split-impl、[T12](T12-eval-package-consolidation.md) 题面重定；为 [R21](R21-goodhart-audit.md) 提供 run/slice identity；并解 [G1](G1-exec-grader-seam.md) 移交的三条
