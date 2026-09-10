@@ -54,6 +54,12 @@ Evaluation Core 的首版范围覆盖数据工程、数据分析与数据科学�
 
 `DataScope` 是逻辑数据项目 manifest，拥有 branded identity、tenant/display metadata，以及允许的 Environment binding、Context binding、dataset catalog 与 governance reference；它不拥有 credentials、物理路径、运行时默认选择，也不等于 `@deepseek-ai/dsh-scope` 的 Cordis registration scope 或 MaxCompute `project`。K11 仅是一个 legacy `DataScope` 实例和迁移/parity fixture，不再作为通用示例或架构术语。
 
+### D7 — Core 固定 evidence envelope，数据子领域注册 payload
+
+Evaluation Core 只拥有 evidence identity、run/attempt/task correlation、producer identity、schema version、artifact references、durability 与 access classification，并通过 merge-extensible `EvaluationEvidenceMap` 接受命名空间化、独立版本的 payload。Data analysis、data engineering 与 data science extension 分别拥有 query、pipeline、data-quality、dataset、experiment、model 和 metric 等领域 evidence；Core 不建立 SQL 或假想的全数据领域 closed union。
+
+Core 只标准化 outcome、duration、cost、finality、artifact changes 与 failure attribution 等跨领域 projection。未知 required evidence 使读取失败；只有生产者显式标记为 ignorable 的扩展 evidence 可以跳过。首版完整实现 data-analysis payload，data-engineering 与 data-science 各用一个轻量 conformance fixture 证明扩展与 persistence 路径。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：

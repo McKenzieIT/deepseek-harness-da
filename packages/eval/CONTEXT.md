@@ -27,3 +27,7 @@ _Avoid_: Expected fields, answer payload
 **Resolved Grading Plan**:
 The immutable, content-identified grading mechanism and Benchmark policy produced before a run. A grader consumes this plan without resolving defaults or selecting a comparator during grading.
 _Avoid_: Grader config, match mode
+
+**Evidence Envelope**:
+The shared identity, correlation, provenance, lifecycle, and artifact-reference fields around one versioned extension-owned evidence payload.
+_Avoid_: Universal evidence object, SQL result when referring to the shared concept
