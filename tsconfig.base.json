@@ -130,6 +130,7 @@
       "@deepseek-ai/dsh-embedder/src/*": ["./packages/embedder/embedder/src/*"],
       "@deepseek-ai/dsh-retrieval/src/*": ["./packages/retrieval/retrieval/src/*"],
       "@deepseek-ai/dsh-semantic-layer/src/*": ["./packages/data/semantic-layer/src/*"],
+      "@deepseek-ai/dsh-result-cache/src/*": ["./packages/data/result-cache/src/*"],
       "@deepseek-ai/dsh-*/invariant": [
         "./packages/core/*/src/invariant.ts",
         "./packages/data/*/src/invariant.ts",

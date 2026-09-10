@@ -1656,6 +1656,9 @@ importers:
       '@deepseek-ai/dsh-query-tool':
         specifier: workspace:^
         version: link:../../query/query-tool
+      '@deepseek-ai/dsh-result-cache':
+        specifier: workspace:^
+        version: link:../../data/result-cache
       '@deepseek-ai/dsh-result-cache-memory':
         specifier: workspace:^
         version: link:../../data/result-cache-memory

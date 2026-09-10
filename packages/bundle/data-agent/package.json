@@ -54,6 +54,7 @@
     "@deepseek-ai/dsh-phase-gate": "workspace:^",
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^",
+    "@deepseek-ai/dsh-result-cache": "workspace:^",
     "@deepseek-ai/dsh-result-cache-memory": "workspace:^",
     "@deepseek-ai/dsh-query-tool": "workspace:^",
     "@deepseek-ai/dsh-schema-gateway": "workspace:^",
