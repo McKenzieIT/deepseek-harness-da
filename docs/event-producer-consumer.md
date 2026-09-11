@@ -5,6 +5,8 @@
 
 This matrix shows which packages dispatch each harness-owned event and which packages listen to it. Events are many-to-many, so the dense relation data is presented as a table rather than one large graph. Receiver and event-name types also cover contained dispatch sites that deliberately bypass `ctx.emit`, such as subagent lifecycle containment.
 
+<!-- BEGIN GENERATED event-producer-consumer (gen-doc-graphs.ts) — do not edit between markers -->
+
 | Event | Mode | Declared in | Dispatchers | Listeners |
 | --- | --- | --- | --- | --- |
 | `admin/pat-miss` | `emit` | [`packages/data/admin/src/index.ts:533`](../packages/data/admin/src/index.ts) | [`admin`](../packages/data/admin) (`emit`) | - |
@@ -100,5 +102,7 @@ This matrix shows which packages dispatch each harness-owned event and which pac
 | `internal/plugin` | - | `inspector`, `loader`, [`lsp-stdio`](../packages/lsp/lsp-stdio), `modules` |
 | `internal/service` | - | [`agent-presets`](../packages/preset/agent-presets), `gateway` |
 | `internal/status` | - | [`agent`](../packages/core/agent), `inspector` |
+
+<!-- END GENERATED event-producer-consumer -->
 
 Maintenance mode: generated: Cordis event declarations and producer/listener edges are resolved from the repository TypeScript Program.

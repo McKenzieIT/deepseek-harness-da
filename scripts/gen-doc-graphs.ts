@@ -9,7 +9,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import ts from 'typescript'
 import { projectCordisCatalog } from '@deepseek-ai/dsh-typert-generator'
-import { CORDIS_CATALOG_POLICY } from './gen-cordis-catalog.ts'
+import { CORDIS_CATALOG_POLICY, localizePageRegion, maybeRecordPair, spliceRegion } from './gen-cordis-catalog.ts'
+import { partitionGeneratedRegions } from './translation-pairing.ts'
 import type { EventEntry, ServiceEntry } from '@deepseek-ai/dsh-typert-generator'
 import {
   collectPackageGraph,
@@ -862,6 +863,8 @@ function renderCapabilitySeams(pkgs: Pkg[], services: readonly ServiceEntry[]): 
   lines.push(
     'A service can be a core spine service, a swappable capability seam, or a bundle/composition point. The graph shows the package that owns the service declaration, known implementation packages, and packages that consume the service directly.',
     '',
+    generatedBegin('capability-seams'),
+    '',
     '```mermaid',
     'flowchart LR',
   )
@@ -889,7 +892,7 @@ function renderCapabilitySeams(pkgs: Pkg[], services: readonly ServiceEntry[]): 
   for (const role of SERVICE_ROLES) {
     lines.push(`| \`ctx.${role.key}\` | \`${role.mode}\` | ${pkgLink(pkgsByShort.get(role.pkg), role.pkg)} | ${pkgList(role.implementations, pkgsByShort)} | ${pkgList(role.consumers, pkgsByShort)} | ${pkgList(role.companions, pkgsByShort)} | ${tableCell(role.note)} |`)
   }
-  lines.push('', ...maintenanceFooter(maintenance))
+  lines.push('', generatedEnd('capability-seams'), '', ...maintenanceFooter(maintenance))
   return lines.join('\n')
 }
 
@@ -1372,6 +1375,8 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
   lines.push(
     'This matrix shows which packages dispatch each harness-owned event and which packages listen to it. Events are many-to-many, so the dense relation data is presented as a table rather than one large graph. Receiver and event-name types also cover contained dispatch sites that deliberately bypass `ctx.emit`, such as subagent lifecycle containment.',
     '',
+    generatedBegin('event-producer-consumer'),
+    '',
     '| Event | Mode | Declared in | Dispatchers | Listeners |',
     '| --- | --- | --- | --- | --- |',
   )
@@ -1407,7 +1412,7 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
       lines.push(`| \`${event}\` | ${relationPackages(relation.dispatchers, pkgsByShort)} | ${listenerPackages(relation.listeners, pkgsByShort)} |`)
     }
   }
-  lines.push('', ...maintenanceFooter(maintenance))
+  lines.push('', generatedEnd('event-producer-consumer'), '', ...maintenanceFooter(maintenance))
   return lines.join('\n')
 }
 
@@ -1416,6 +1421,8 @@ function renderLifecycle(): string {
   return [
     ...generatedHeader('Agent Turn And Step Lifecycle'),
     'This sequence is the visual companion to [architecture.md](architecture.md#turn-flow). It keeps durable replay facts on `session/event` and live control/status on `agent/*`.',
+    '',
+    generatedBegin('agent-lifecycle'),
     '',
     '```mermaid',
     'sequenceDiagram',
@@ -1485,6 +1492,8 @@ function renderLifecycle(): string {
     `  Driver-->>SDK: ${mermaidCode('agent/status')} idle`,
     '```',
     '',
+    generatedEnd('agent-lifecycle'),
+    '',
     'The `assistant/message` event records every successful provider call, including content-less and `max-tokens` finishes, and embeds the exact compact timed stream. Empty content stays out of derived history. A failed, retried, cancelled, or stream-error attempt that reaches settlement without a surface message records its stream as `assistant/attempt`. Live `agent/assistant-stream` chunk frames are transient; replay reads either durable settlement, and a hard process loss before settlement leaves no durable attempt stream.',
     '',
     '`dsh-compaction-basic` uses `agent/pre-step` for pressure before request derivation and `agent/request-error` only for canonical context overflow. Once either trigger qualifies, optional tool-result pruning runs before summary selection. Recovery works between the closed failed step and failed turn close, and opens a fresh retry turn only when pruning or summarization advances the surface replacement generation; otherwise the original request error remains authoritative.',
@@ -1502,6 +1511,8 @@ function renderToolPipeline(): string {
   return [
     ...generatedHeader('Tool Execution Pipeline'),
     'This graph shows where policy, hooks, sandboxing, filesystem guards, result rewriting, final-outcome observation, and UI rendering run without changing the loop. The `tools/pre-execute` waterfall runs first, monotonic guards run next, and the `tools/execute` and `tools/post-execute` waterfalls follow; the three waterfalls may transform a call. Definition-owned `finalizeContent` and `tools/result` run afterward.',
+    '',
+    generatedBegin('tool-execution-pipeline'),
     '',
     '```mermaid',
     'flowchart TD',
@@ -1555,6 +1566,8 @@ function renderToolPipeline(): string {
     '  allResults --> context',
     '```',
     '',
+    generatedEnd('tool-execution-pipeline'),
+    '',
     'Filesystem read-before-edit checks stay below `tool-fs` on `fs/*` events. Generic pre/post waterfalls host hooks and approval policy; `ctx.approval` resolves asks before monotonic guards, and owner policy that must not be reordered remains a registered guard. Around-dispatch concerns such as timeouts wrap `tools/execute`. The registry losslessly snapshots the candidate result and normalizes a snapshot failure before the visible definition\'s snapshotted `finalizeContent` callback enforces its synchronous content-only invariant. `tools/result` then observes the immutable, lossless-JSON outcome. This lets hooks span tool families without coupling the tools to one policy service. PTC mode sends both the reserved `run_code` transport and its serialized sub-calls through the pipeline; sub-calls carry the parent token, log `tool/code-dispatch`, return denials as binding rejections, and omit `additionalContexts` to preserve call/result adjacency.',
     '',
     ...maintenanceFooter(maintenance),
@@ -1605,14 +1618,37 @@ function renderIndex(docs: GraphDoc[]): string {
     '',
     'The process decision behind this index is recorded in [the documentation graph Agent Note](../.agents/notes/archived/process/2026-07-03-documentation-graph-atlas.md).',
     '',
+    generatedBegin('graph-atlas'),
+    '',
     '| Graph | Mode |',
     '| --- | --- |',
     ...rows,
+    '',
+    generatedEnd('graph-atlas'),
     '',
     'Regenerate with `pnpm run gen-doc-graphs`; verify freshness with `pnpm run verify-doc-graphs`.',
     '',
     ...maintenanceFooter(maintenance),
   ].join('\n')
+}
+
+/** Paired graph docs: the rendered region is also spliced into the reviewed `.zh.md`. */
+const PAIRED_DOCS: ReadonlySet<string> = new Set([
+  'docs/capability-seams.md',
+  'docs/event-producer-consumer.md',
+  'docs/agent-lifecycle.md',
+  'docs/tool-execution-pipeline.md',
+  'docs/graph-atlas.md',
+])
+
+/** This generator's opening region marker for one paired doc's slug. */
+function generatedBegin(slug: string): string {
+  return `<!-- BEGIN GENERATED ${slug} (gen-doc-graphs.ts) — do not edit between markers -->`
+}
+
+/** This generator's closing region marker for one paired doc's slug. */
+function generatedEnd(slug: string): string {
+  return `<!-- END GENERATED ${slug} -->`
 }
 
 function main(): void {
@@ -1632,11 +1668,40 @@ function main(): void {
     process.exit(1)
   }
 
+  // Pair records are region-aware, so capture both sides BEFORE writing: that is
+  // what lets `maybeRecordPair` prove the write left the reviewed prose untouched.
+  const zhOf = (rel: string): string => rel.replace(/\.md$/, '.zh.md')
+  const before = new Map<string, Buffer>()
+  for (const doc of docs) {
+    for (const rel of PAIRED_DOCS.has(doc.rel) ? [doc.rel, zhOf(doc.rel)] : [doc.rel]) {
+      const abs = resolve(root, rel)
+      if (existsSync(abs)) before.set(rel, readFileSync(abs))
+    }
+  }
+
+  let splicedCount = 0
+  let recorded = 0
   for (const doc of docs) {
     mkdirSync(dirname(resolve(root, doc.rel)), { recursive: true })
     writeFileSync(resolve(root, doc.rel), doc.content)
+    if (!PAIRED_DOCS.has(doc.rel)) continue
+    const zhRel = zhOf(doc.rel)
+    const zhAbs = resolve(root, zhRel)
+    // Both pair sides must exist before a region can be injected; the pairing
+    // gate owns pair completeness, this generator names the miss.
+    if (!existsSync(zhAbs)) throw new Error(`gen-doc-graphs: ${doc.rel} is paired but ${zhRel} does not exist.`)
+    const slug = (doc.rel.split('/').at(-1) ?? doc.rel).replace(/\.md$/, '')
+    const region = partitionGeneratedRegions(doc.content).regions[0]
+    if (!region) throw new Error(`gen-doc-graphs: ${doc.rel} is paired but rendered no generated region; its render function must fence the structured block.`)
+    const zhBefore = readFileSync(zhAbs, 'utf8')
+    const zhNext = spliceRegion(zhBefore, localizePageRegion(region, zhRel), generatedBegin(slug), generatedEnd(slug))
+    if (zhNext !== zhBefore) {
+      writeFileSync(zhAbs, zhNext)
+      splicedCount++
+    }
+    if (maybeRecordPair(doc.rel, before)) recorded++
   }
-  console.log(`gen-doc-graphs: wrote ${docs.length} graph doc(s).`)
+  console.log(`gen-doc-graphs: wrote ${docs.length} graph doc(s), spliced ${splicedCount} translated region(s), refreshed ${recorded} pair record(s).`)
 }
 
 if (process.argv[1] && import.meta.filename === resolve(process.argv[1])) {

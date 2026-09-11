@@ -7,6 +7,8 @@ These diagrams show relationships that the generated catalogs do not. Use them t
 
 The process decision behind this index is recorded in [the documentation graph Agent Note](../.agents/notes/archived/process/2026-07-03-documentation-graph-atlas.md).
 
+<!-- BEGIN GENERATED graph-atlas (gen-doc-graphs.ts) — do not edit between markers -->
+
 | Graph | Mode |
 | --- | --- |
 | [module dependency graph](module-graph.md) | `generated` |
@@ -16,6 +18,8 @@ The process decision behind this index is recorded in [the documentation graph A
 | [event producer/consumer matrix](event-producer-consumer.md) | `hybrid generated` |
 | [agent turn and step lifecycle](agent-lifecycle.md) | `curated` |
 | [tool execution pipeline](tool-execution-pipeline.md) | `curated` |
+
+<!-- END GENERATED graph-atlas -->
 
 Regenerate with `pnpm run gen-doc-graphs`; verify freshness with `pnpm run verify-doc-graphs`.
 
