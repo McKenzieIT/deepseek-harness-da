@@ -132,6 +132,12 @@ Core Safety Floor 不可由 plan 放宽：EvidenceCut/GradeRecord 有效性、me
 
 ComparisonPlan 针对稳定 component identities 与声明字段，不读取任意 Provider config。Core 提供确定性的 `materializeRunIdentity()` 生成自包含 JSON Artifact，供 CLI、审阅、归档与传输；materialized manifest 只是 graph projection，不是第二份可独立修改的权威身份。缺失、循环、digest mismatch 或未知 required identity descriptor 使 Run invalid。
 
+### D20 — Evaluation Protocol 与 Controller 分包
+
+共享 protocol 与 runtime orchestration 属于独立 package role。Evaluation Protocol 只拥有跨角色、跨进程或持久化所需的 branded identities、manifests、requirements/bindings、evidence、artifact/resource references、measurement、ComparisonPlan、GradeRecord、PublicationEligibility 与 schema/versioning；它不依赖 Agent、Environment、Context、Controller 或具体 data-domain extension。
+
+Evaluation Controller 依赖 Protocol 和各 capability Definition，负责 resolve、open Run、drive Attempt、seal、invoke grading、cleanup、cancel 与 publish，但不拥有 Benchmark content、Context retrieval、业务 Provider、specific grader、Artifact storage 或 host rendering。Benchmark Packs、Environment、Context Projection、Grader、Artifact Store 与 SDK 只需依赖 Protocol；CLI/SDK Host 依赖 Controller。现有 `dsh-eval` 不作为聚合所有职责的 monolith 保留，T12 据此不再执行简单的 runner-to-eval 合并。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：

@@ -69,3 +69,5 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Run Identity Graph**: The immutable acyclic graph of Component Identities referenced by one Evaluation Run root manifest and digest. _Avoid_: Run config, flat metadata bag
 
 **Materialized Run Manifest**: A deterministic self-contained export of a Run Identity Graph for inspection, archival, or transfer; it is not an independently mutable authority. _Avoid_: Run Identity when referring to the canonical graph
+
+**Evaluation Protocol**: The versioned cross-role and persistence vocabulary for evaluation identities, manifests, evidence, measurements, grading records, and publication eligibility. It contains no orchestration or domain execution. _Avoid_: Evaluation Core when referring to runtime behavior
