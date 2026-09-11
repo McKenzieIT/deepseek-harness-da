@@ -202,6 +202,9 @@ EvidenceCut sealing 必须先写入并验证所有 required Artifacts，再写 e
 | [`evidence-cut-rescore-papers.md`](../research/evidence-cut-rescore-papers.md) | durable eval log、offline rescore、scorer input completeness 与 live-grade 边界 | 支持正式结果绑定 persisted sealed cut，但不把强制磁盘回读冒充论文要求 |
 | [`durable-trace-replay-semantics.md`](../research/durable-trace-replay-semantics.md) | event history、checkpoint、OTel、content digest 与 replay/re-execution 区分 | 约束 Session/Evaluation cut 分离、stable read + digest，以及 model/environment rerun 使用新 Attempt |
 | [`evaluation-publication-finality.md`](../research/evaluation-publication-finality.md) | finality、coverage、grading、cleanup、separation 与 publication 的偏序 | 约束 computed grade 与 publishability/independent-trial eligibility 分离，不强造固定全序 |
+| [`dsh-benchmark-pack-integration.md`](../research/dsh-benchmark-pack-integration.md) | Cordis plugin、profile/bundle、package assets、repository Provider 与 private graph | 约束 Cordis 管运行能力，Pack 内容由 repository 解析并以 digest 固定身份 |
+| [`benchmark-packaging-frameworks.md`](../research/benchmark-packaging-frameworks.md) | Harbor、Inspect、HELM、AgentCompass、OpenAI、MLflow、HF 的内容/代码/镜像分发 | 证明框架实践同时存在耦合与分离，hybrid 是 DSH 选择而非外部统一标准 |
+| [`benchmark-pack-topology-options.md`](../research/benchmark-pack-topology-options.md) | 本仓 release family、asset policy、case publication、private isolation 与首版成本 | 约束首版只做 local repository/provider，不预建远端 registry 或每 Pack package |
 
 2026-09-10 代码复核确认 GA-GT4 的核心 hardcode 仍在：`eval-runner-service` 仍默认 K11 caseDir/today 并使用 `^k11_\d+\.yaml$`，bundle 仍声明 K11 `semanticRoot`/`caseDir`，`compare.ts` 仍按 `k11v2_*` 名称分桶。R24 后 `packages/eval/` 只有一次测试 lint 删除，没有包边界或依赖变化，因此 R24 的仓库取证仍可作为 grilling 输入。GA-GT4 唯一过期项是“失败分类无人调用”：`multi_turn.ts` 已调用 `classifyExecutionFailure`，但多引擎 taxonomy 仍属方向 9/G9/T8，不能由 G10 顺手实现。
 
