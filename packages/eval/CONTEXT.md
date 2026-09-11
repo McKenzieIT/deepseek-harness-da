@@ -55,3 +55,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Context Projection**: A typed, content-identified selection of governed data context produced by the normal product Context Projection capability for a declared consumer, phase, requirement, and budget. _Avoid_: Context prompt, semantic root
 
 **Context Projection Evidence**: The request, candidates, selected facts and relations, scores, provenance, budget, serialization identity, and model-visible digest that explain one Context Projection. _Avoid_: Retrieval log when later projection stages are omitted
+
+**Evaluation Controller**: The single runtime module that resolves an Evaluation Run, drives the selected subject, seals evidence, invokes grading, and evaluates publication eligibility. _Avoid_: Runner when the term omits ownership and lifecycle
+
+**Evaluation Host**: A process-level entry point that boots or connects to a DSH composition and invokes the Evaluation Controller. The first release provides CLI/SDK hosts rather than an always-mounted product service. _Avoid_: Harness

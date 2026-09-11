@@ -114,6 +114,12 @@ Data-agent 新增生产级 `ContextProjectionService` Definition / Provider / Co
 
 Evaluation 只声明 `ContextRequirement`、解析 Provider/profile identity 并观察正常 projection evidence，不重建 retrieval 或 Context prompt。No-context、schema-only、relations-only、production 与 oracle 是显式 Provider/config/Harness variants；hidden-derived oracle projection 不进入 production headline。该 seam 是产品重构，应有独立 implementation/parity 验收并在 T9 接线，而不是作为 eval-cli 私有 helper 落地。
 
+### D17 — 首版只有外部 CLI/SDK Host，共享唯一 Evaluation Controller
+
+首版由外部 CLI/SDK Host 启动并驱动完整 production DSH composition，所有 controlled runs 共用唯一 `EvaluationController` runtime；CLI 只负责参数、boot、输出和 process lifecycle。当前 `eval-cli` 与 `eval-runner-service` 内重复的 Query/LLM/Context adapters、responder、batch orchestration、K11 defaults 和 persistence translation 必须删除，不保留两套实现。
+
+首版不发布或默认挂载 Cordis Evaluation Service Host；当前 `eval-runner-service` 由新 Controller/CLI 路径取代，`trigger_eval` 与 `goal-eval-*` 从普通 data-agent composition 移出。若未来 Web、scheduler、management 或 shadow evaluation 形成真实需求，再新增仅提供 run/get/cancel handles 的薄 Service Consumer，并只在专用 profile 挂载；它不得重新拥有 runtime、Context、Provider adapters 或 grading semantics。T12 的旧“eval-runner 并回 dsh-eval”题面据此重写为唯一 Controller 与薄 host 的 package 重组。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
