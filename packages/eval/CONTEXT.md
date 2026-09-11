@@ -35,3 +35,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Evaluation Observer**: A scope-local, effect-owned reader that records evaluation evidence without changing model-visible input, agent control flow, capability behavior, or product policy. _Avoid_: Evaluator when the role can intervene
 
 **Evaluation Intervention**: An explicit change to the evaluated Harness composition, including prompt, Context, tools, model route, approval, retry, feedback, phase, or stopping behavior. It always produces a distinct Harness identity. _Avoid_: Observer, transparent evaluation
+
+**Evaluation Run**: One frozen resolved DSH composition and root runtime under which compatible attempts are executed and compared. _Avoid_: Batch when composition identity and lifecycle ownership are not explicit
+
+**Evaluation Attempt**: One case trial with its own Agent, Session, Environment Lease, evidence, artifacts, and measurement observations inside an Evaluation Run. _Avoid_: Run when referring to a single trial
