@@ -513,12 +513,37 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 
 第四路补搜（12 候选 / 11 grade-A；5 个新 ID 验真全部真实）。
 
-**① 直接对应物存在，但不是 2026 年的，而且只此一次**
+**① 直接对应物存在，但不是 2026 年的，而且只此一次** ✅ **已于 2026-09-11 由本文作者从 PDF 全文重导——本条已升到全文层**
 
-`2409.19014`（**FLEX: Expert-level False-Less EXecution Metric for Reliable Text-to-SQL Benchmark**，2024-09-24，5 作者）把 judge 与专家共识的一致度从 EX 的 62 提到 **Cohen's κ 87.04**（摘要原文「from 62 to 87.04 in Cohen's kappa」，已由元数据确认）。其 Table 5 的 ablation 里，**把 ground-truth query 与结果从判官输入中去掉，κ 掉到 29.36**（accuracy 64.0 / EQ 72 / NEQ 56）——**是它所有 ablation 里退化最大的一项**，形状与 `2608.17938` 的考卷崩塌（ICC 0.888→0.628）完全一致。
+`2409.19014`（**FLEX: Expert-level False-Less EXecution Metric for Reliable Text-to-SQL Benchmark**，2024-09-24，5 作者）把 judge 与专家共识的一致度从 EX 的 62 提到 **Cohen's κ 87.04**。
 
-⇒ 所以「无人研究」的答案是 **否——但只研究过一次**：n=200 条 BIRD pair，标注者是该文自己的三位作者，**至今无人复现**。
-⇒ **⚠ 数字须重导**：subagent 自报在一处二手片段里见到 GPT-4o 的 κ 是 78.17，而它取到的全文是 87.04。**`87.04 → 29.36` 进任何 ticket 前必须从 PDF 自行重导。**
+**Table 5 全表（`pdftotext` L411-415 逐字重导）**，基线为最优上下文 `C_FLEX`（Table 4 首行 87.04 / 93.5 / 88 / 99）：
+
+| Ablation Settings | Kappa | Acc | EQ | NEQ |
+|---|---|---|---|---|
+| w/o Question | 80.10 | 90.0 | 84 | 96 |
+| w/o Knowledge | 79.09 | 89.5 | 82 | 97 |
+| w/o Criteria | 74.08 | 87.0 | 81 | 93 |
+| **w/o Ground Truth** | **29.36** | **64.0** | **72** | **56** |
+
+**拿掉问题 / 知识 / 评分准则，κ 只掉 7–13 分；拿掉 ground truth，掉 58 分。** 原文结论逐字（L436-438）：「Removing **the ground truth query and results** is the most significant factor, causing a substantial performance drop across all metrics. **This underscores the importance of a reliable reference point in LLM-based text-to-SQL evaluations.**」
+
+**「w/o Ground Truth」的确切含义**（L344 上下文定义）：`C_FLEX` 含 question x、generated query `Qgen(x)`、**ground truth query `Qgt(x)`**、execution result；该 ablation 把 **gold query 与其结果两者**一并移除。
+
+**最要紧的是最后两列，而不是 κ。** `EQ` = 等价集准确率（生成 SQL **本来就对**），`NEQ` = 非等价集准确率（生成 SQL **本来就错**）（L226 原文定义）：
+
+```
+                EQ（确认对的）   NEQ（识别错的）
+完整上下文            88              99
+w/o Ground Truth      72              56      ← 几乎退到抛硬币
+```
+
+⇒ **没有 gold，判官「确认对的」只掉 16 分，「识别错的」掉 43 分。** 这正是假通过的机制被直接测出来——**不对称地丧失拒绝能力**，与本仓 judge-only 61.5% vs real-exec 5.1% 的形状同类。**这是目前对本仓 56.4pp 最贴近的一手解释。**
+
+**样本与标注**（L265-274 重导，**修正此前转述**）：n=200 条，**均分**为 Equivalent / Not-equivalent 两半（**刻意平衡，非自然分布**——与 TrustJudge 自建集同一类保留意见）；**三位有 3 年以上经验的 SQL 专家**独立评定、分歧经共识解决，标注者间 **Fleiss' κ = 79.32**。⚠ 此前本文据 subagent 转述写作「标注者是该文自己的三位作者」——**该处所读段落并未如此陈述**，已更正为上述原文表述。
+
+⇒ 所以「无人研究」的答案是 **否——但只研究过一次，且至今无人复现**。
+⇒ **`78.17` 这个疑似冲突的数，在全文中一次都没有出现**（`grep -n "78.17"` 零命中）——subagent 自报在二手片段里见到的那个数**不属于本篇**。原「须重导」的警示**已解除**。
 
 **② 2026 年这条线全部绕过了这个问题**
 
@@ -545,4 +570,4 @@ map 方向 11 现记 `2607.06799` 为「self-consistency 0.675 AUROC，ensemble 
 
 **⑥ 第五次「方法名 ≠ 标题」**：`2604.28049` 被叫作 "STEF"，真标题是 *Agent-Agnostic Evaluation of SQL Accuracy in Production Text-to-SQL Systems*。累计：GradeSQL / SARA / RRD / RULERS / STEF —— **五次全部由二手来源供名时发生**，见 map §⚠ 验证 TODO。另：`2503.11984`（NL2SQL-BUGs）此前在 map §验证 TODO 里列为「secondary-only 不引」，**现已 ID + 标题验真**，可升级。
 
-> **证据等级**：本节为 **abs 页 / 元数据 + subagent 取到的全文片段**。FLEX 的 `87.04 → 29.36`、CIDR '26 的 52.8%/66.1%、SpotIt 的结论**均未由本文作者亲自从 PDF 重导** ⇒ **不得进 ticket，须由 R8b 复核**。
+> **证据等级**：**FLEX（`2409.19014`）已于 2026-09-11 升至全文层**——Table 4/5、上下文定义、EQ/NEQ 定义、样本与标注流程均由本文作者从 `pdftotext` 全文逐字重导（见 ① 顶部标记）。**本节其余仍为 abs 页 / 元数据 / subagent 片段**：CIDR '26 的 52.8%/66.1%、SpotIt 的结论、`2607.06799` 的 schema-vs-evidence 数字**均未重导** ⇒ **不得进 ticket，须由 [R8c](../tickets/R8c-reference-anchor-papers.md) 复核**（其一手源已下载至 `.tmp/r8c/`，不入 git）。
