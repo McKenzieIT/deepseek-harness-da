@@ -74,3 +74,11 @@ type-equiv 门 3 条 DRIFT 之一是 `SubagentResult.costs`（源码有 costs、
 - **regen 级联是 5 个 generator 不是 3**：除 `api-cordis-catalog`/`config-catalog`/`doc-graphs`，还有 `docs/module-graph.{md,zh.md}` 与 `docs/architecture-graph.md`；另 `extensions/tool-cordis/src/api-catalog.ts:6422-6423`/`:6463` 存 `SubagentCosts`、`:565` 存 `qoder_call` 描述。
 - `verify-type-equiv` 实测恰好 3 条 DRIFT，与本票所列一致：`docs/subsystems/tools.md:179`（`ToolExecutionInput.scopeId`）、`docs/subsystems/subagent.md:290`（`SubagentResult.costs`）、`docs/subsystems/core.md:195`（`AgentOptions.scopeId`）。
 - **估算**：Qoder+costs 半（已拍板、AFK）~1 session；scopeId 半（需重新拍板 + 改 live 代码 + 5-generator regen + 双语文档扫）~1-2 session。
+
+### [2026-09-11] subagent-qoder 的 invariant companion 已在 UM-INVARIANT 退休
+
+[UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md) **resolved**（source `7ad3242d97` on resync，未 push）。本包 `packages/subagent/subagent-qoder/` 的 `src/invariant.ts` + `package.json` 的 invariant 三件套 + tsconfig ref + `tests/subagent-qoder.spec.ts` 的 companion 测试已 retire（spec 的 stale `import '../src/invariant.ts'` + companion-registration test 已删，其余测试保留）。
+
+→ **与本票 Scope A item 1「删整个 subagent-qoder 包」是 subsume 关系**：若本票删整包，UM-INVARIANT 对该包的 invariant retirement 是冗余 no-op（companion 随包消失）。**顺序**：UM-INVARIANT 先（已 done），本票后删整包（subsume）。**不冲突**——UM-INVARIANT 未碰本票 Scope A 的其他 5 处（`run.ts` 的 `qoderCosts()` / audit schema / admin export / bundle）。
+
+**仍 pending**：本票 2026-09-11 复核的 scopeId 半前提证伪（3 writer `tool-calls.ts:83`/`ptc.ts:476`/`tools/index.ts:1393` + 6 live reader `tool-retrieve:327`/`tool-search-data-sources:727,731,750,751,755`，非 write-never，删它破 tsc 且移除 per-tenant linker 隔离 tenant-leak #19）→ 建议拆独立票重新 grilling（**未做**）。

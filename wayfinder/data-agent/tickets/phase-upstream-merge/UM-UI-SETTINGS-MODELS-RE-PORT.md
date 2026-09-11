@@ -59,3 +59,12 @@ upstream 在 B1 之后对这个包做了 2026-08-26 / 2026-08-28 的重构（`85
 #### 工具
 
 已备 workflow：**[`wayfinder/data-agent/workflows/um-ui-settings-models-report.wf.js`](../../workflows/um-ui-settings-models-report.wf.js)**（analyze-only：分桶 → 每个 diverged 文件出合并提案 → 独立评审员**默认判 refuted**；上面这些 coupling 与拓扑序已内置进 agent 提示词，并在返回值里给出 `applyOrder`）。
+
+### [2026-09-11] UM-INVARIANT 已落 → 本票 apply 拓扑序 step 1 满足
+
+[UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md) **resolved**（source `7ad3242d97` on resync，未 push）。本包 `packages/client/ui-settings-models/` 的：
+- `src/invariant.ts` + `tests/invariant.client.spec.ts` 已 retire（**ModelsSection 测试已迁到 `tests/models-section.client.spec.ts`**——本票 step 6 改 `ModelsSection.tsx` 时勿漏这个新 spec）；
+- `package.json` 的 invariant 三件套（`exports["./invariant"]` + `files[] "lib/invariant.js"` + tsconfig ref）+ `dsh-invariants` peerDep 已清；
+- `tsdown.config.ts` 已去 `lib/types/invariant.js` bundling（site-5，build 用）。
+
+→ **本票 apply 拓扑序 step 1「UM-INVARIANT先落」已满足**，可从 step 2（`src/client/store.ts` 补 `ProviderDirectoryEntry`）起推进。本票仍拥有：`README{,.zh}.md` 的 `### Extension slots` 段恢复（step 4）+ upstream 对 peerDeps 的其他改动（去 `dsh-client-ui-renderer`/`dsh-client-connection` + 加 `dsh-util-values` devDep）——这些键与 UM-INVARIANT 清的 `dsh-invariants` 不冲突。
