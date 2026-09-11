@@ -423,7 +423,6 @@ describe('Typert contract preparation', () => {
     })
     for (const [id, script] of [
       ['typecheck', 'typecheck:contracts-ready'],
-      ['lint', 'lint:contracts-ready'],
       ['doc-typecheck', 'doc-typecheck:contracts-ready'],
     ] as const) {
       expect(subject.find(item => item.id === id)).toMatchObject({
@@ -432,6 +431,13 @@ describe('Typert contract preparation', () => {
         needs: ['typert-contracts'],
       })
     }
+    // Oxlint type-aware consumes referenced projects' emitted declarations, so it chains
+    // behind the Client contract pass instead of running beside it.
+    expect(subject.find(item => item.id === 'lint')).toMatchObject({
+      displayCommand: 'pnpm run lint:contracts-ready',
+      args: ['/private/pnpm.cjs', 'run', 'lint:contracts-ready'],
+      needs: ['typecheck'],
+    })
     expect(subject.find(item => item.id === 'build')?.needs).toEqual([
       'typecheck',
       'lint',

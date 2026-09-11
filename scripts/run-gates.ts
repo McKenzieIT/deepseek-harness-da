@@ -323,7 +323,11 @@ function ciPrimaryGates(): Gate[] {
     ...ciSharedStaticGates(),
     typertContractsGate(),
     pnpmScript('typecheck', 'typecheck:contracts-ready', { needs: ['typert-contracts'] }),
-    lintGate({ needs: ['typert-contracts'] }),
+    // Oxlint type-aware reads referenced projects' emitted declarations (client face sets
+    // disableSourceOfProjectReferenceRedirect), so it needs the Client contract pass too --
+    // typecheck is what emits it. typert-contracts alone leaves every client cross-package
+    // import unresolved and cascades bogus no-unsafe-* diagnostics.
+    lintGate({ needs: ['typecheck'] }),
     pnpmScript('duplication', 'duplication'),
     ...coverageGates(),
     ...nodeCompatSmokeGates(),

@@ -20,10 +20,15 @@ import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls the ctx.remote merge (the `result/get` Remote endpoint is
-// resolved through the api-remotes assembly) and the ctx.sessions Context
-// merge so `ctx.get('sessions')` is typed, plus SessionId for the
-// scope-addressed calls.
+// resolved through the api-remotes assembly).
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: pulls the ctx.sessions Context merge. The api-remotes client
+// assembly only re-exports session-controller's `/remote` and `/types` faces,
+// so it never carried the `interface Context { sessions: ISessions }` merge —
+// that lives in this entry alone. Without it `ctx.get('sessions')` falls to
+// cordis's `get(name: string): any` overload and `scopeOf` below leaks `any`.
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+// SessionId for the scope-addressed calls.
 import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
 import { createResultCache } from './cache.ts'
 import type { ResultCache, ResultCacheConfig } from './cache.ts'

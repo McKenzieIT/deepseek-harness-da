@@ -218,7 +218,9 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
           if (!isENOENT(error)) throw error
           text = undefined
         }
-        const current: CredentialsDocument = text === undefined ? { refs: new Map(), records: new Map() } : parseCredentialsDocument(text, filename)
+        const current: CredentialsDocument = text === undefined
+          ? { refs: new Map(), records: new Map() }
+          : parseCredentialsDocument(text, filename)
         if (!current.refs.has(ref)) {
           cache = current
           return

@@ -4,6 +4,13 @@
   // node types (packages that need them override locally).
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    // tsgolint (oxlint type-aware) hard-codes UseSourceOfProjectReference, so without this it
+    // resolves `paths` into referenced projects' src/ and drags the HOST cordis Context
+    // augmentations into the client program, colliding with the client ones (TS2717 on
+    // `sessions`/`cordisInspect`/`dynamicCordisRunner`) and cascading 81 bogus no-unsafe-*.
+    // Forcing declaration consumption restores the `tsc -b` face separation the root solution
+    // file protects. Client face only -- the host tree never needed it.
+    "disableSourceOfProjectReferenceRedirect": true,
     "jsx": "react-jsx",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "typeRoots": ["./scripts/types", "./node_modules/@types"],

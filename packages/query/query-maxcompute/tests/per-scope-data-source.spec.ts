@@ -69,7 +69,9 @@ class PerScopeMemoryCredentials extends CredentialProvider {
   override async unset(): Promise<void> { /* not exercised */ }
   // Records are not exercised by this test provider (ref-only, scope-aware).
   override readRecord(_key: CredentialKey): Promise<CredentialRecord | undefined> { return Promise.resolve(undefined) }
-  override describeRecord(_key: CredentialKey): Promise<CredentialRecordInfo> { return Promise.resolve({ configured: false, writable: false }) }
+  override describeRecord(_key: CredentialKey): Promise<CredentialRecordInfo> {
+    return Promise.resolve({ configured: false, writable: false })
+  }
   override listRecords(): Promise<readonly CredentialRecordEntry[]> { return Promise.resolve([]) }
   override modifyRecord(_key: CredentialKey, _mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>): Promise<CredentialRecord | undefined> { return Promise.reject(new Error('PerScopeMemoryCredentials: records not supported')) }
   override deleteRecord(_key: CredentialKey): Promise<void> { return Promise.resolve() }

@@ -136,6 +136,20 @@ function pkgRelOf(rel: string): string | undefined {
   return undefined
 }
 
+/** `references[].path` strings of a tsconfig payload. `ts.readConfigFile` types
+ *  its `config` as `any`, so the shape is validated here (parameter typed
+ *  `unknown`) instead of being asserted — a reference without a string `path`
+ *  is skipped rather than crashing on `.replace`. Mirrors the weak-shape
+ *  posture of `ProjectReferenceConfig` in `project-reference-faces.ts`. */
+function configReferencePaths(config: unknown): string[] {
+  if (typeof config !== 'object' || config === null || !('references' in config)) return []
+  const refs = config.references
+  if (!Array.isArray(refs)) return []
+  const pathOf = (ref: unknown): string | undefined =>
+    typeof ref === 'object' && ref !== null && 'path' in ref && typeof ref.path === 'string' ? ref.path : undefined
+  return refs.map(pathOf).filter(path => path !== undefined)
+}
+
 /** Declared Host/Client face membership from tsconfig references (no Program).
  *  `ts.readConfigFile` strips JSONC comments (the face tsconfigs use `//`
  *  annotations) without enumerating `include` files or resolving `extends`.
@@ -144,11 +158,11 @@ function pkgRelOf(rel: string): string | undefined {
 function collectFaceMembership(projectRoot: string, pkgsByRel: Map<string, Pkg>): { host: Set<string>; client: Set<string> } {
   const extract = (face: 'host' | 'client'): Set<string> => {
     const cfgPath = resolve(projectRoot, `tsconfig.${face}.json`)
-    const { config, error } = ts.readConfigFile(cfgPath, ts.sys.readFile)
-    if (error) throw new Error(`gen-architecture-graph: cannot read ${cfgPath}: ${ts.flattenDiagnosticMessageText(error.messageText, '\n')}`)
+    const read = ts.readConfigFile(cfgPath, path => ts.sys.readFile(path))
+    if (read.error) throw new Error(`gen-architecture-graph: cannot read ${cfgPath}: ${ts.flattenDiagnosticMessageText(read.error.messageText, '\n')}`)
     const set = new Set<string>()
-    for (const ref of (config?.references ?? []) as { path: string }[]) {
-      const rel = ref.path.replace(/^\.\//, '')
+    for (const refPath of configReferencePaths(read.config)) {
+      const rel = refPath.replace(/^\.\//, '')
       const segs = rel.split('/')
       if (segs[0] !== 'packages' || segs.length < 3) continue
       const pkgRel = `${segs[0]}/${segs[1]}/${segs[2]}`
@@ -189,7 +203,7 @@ function collectImportEdges(
         const specifier = ts.isStringLiteral(spec) ? spec.text : ''
         const imported = resolveDshSpecifier(specifier)
         if (imported && imported !== importer && pkgsByShort.has(imported)) {
-          const typeOnly = node.importClause?.isTypeOnly === true
+          const typeOnly = node.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword
           const key = `${importer}->${imported}:${typeOnly ? 't' : 'v'}`
           if (!seen.has(key)) {
             seen.add(key)
@@ -250,7 +264,7 @@ function collectDeclaredDeps(pkgs: readonly Pkg[]): Map<string, Set<string>> {
       devDependencies?: Record<string, string>
     }
     const set = new Set<string>()
-    for (const field of [json.peerDependencies, json.dependencies, json.devDependencies] as Record<string, string>[]) {
+    for (const field of [json.peerDependencies, json.dependencies, json.devDependencies]) {
       for (const dep of Object.keys(field ?? {})) {
         if (dep.startsWith(SCOPE)) set.add(dep.slice(SCOPE.length))
       }

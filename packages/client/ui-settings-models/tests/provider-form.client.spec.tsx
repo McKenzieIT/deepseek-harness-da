@@ -152,7 +152,7 @@ async function mountSection(options: Parameters<typeof scriptedFace>[0] = {}) {
   const injected: ModelsSectionProps = {
     controller,
     useSnapshot: bindSnapshotSelector(controller.store),
-    ctx: ctx as never,
+    ctx,
     schema: settingsSchema,
     t,
   }
