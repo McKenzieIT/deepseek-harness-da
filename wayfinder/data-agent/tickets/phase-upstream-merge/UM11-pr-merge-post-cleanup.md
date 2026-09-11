@@ -100,3 +100,20 @@
 **Deferred（后续）**：① **master sync**——并行 eval session 在本 session 期间把 master 从 `1ef40edaee` 推到 `f3e46b3f20`（evaluation R20 probe commit "when to wire EXPECT_NO_LEAK into CI"），与 origin/master `607868e6a0` 分叉（master ahead 1 / behind 2773），`git merge --ff-only origin/master` abort（"Not possible to fast-forward"）；按 §六 未介入 eval session（无 index.lock 时查 + 不碰）——eval session 自行后续把 `f3e46b3f20` 与 origin/master 合并/rebase（local master 46 commit 已着陆，`f3e46b3f20` 是 eval session 独立的第 47 commit，非 PR #115 scope）。② **p2-* worktree cleanup**（本票 Scope 4-6）——5 个 `refactor/p2-*`（`dsh-p2-present-table`/`dsh-p2-present-decomp`/`dsh-p2-suggest-followups`/`dsh-p2-uism-layer`/`dsh-p2-uism-vitest`）须逐内容审（Phase-2 是内容收编非 merge，`merge-base --is-ancestor` 一律 false → 不可按 ancestry 判删），单独 session。③ evaluation worktree（`.worktrees/r10-harness-goodhart`/`.worktrees/t1-exec-grader`）+ master eval session index.lock 警惕——未碰。
 
 **本票状态**：PR merged 是核心；p2-* 后清 + master sync 未完 → **仍 open**。merge commit `7a20c4cb0a`（resync）+ `607868e6a0`（origin/master PR merge）的 message 已是持久记录（含 topology correction + 验证细节）。
+
+
+## Session progress — 2026-09-11（S-p2 + S-master 分析完，apply gated on eval session）
+
+- **S-p2**（`/tmp/sp2-analysis.md` 若持久）：5 `refactor/p2-*-2026-09-12` 分支 vs `eb9e4cf05c`（Phase-2 收编 commit）逐内容判（**非 ancestry 判**——Phase-2 是 cherry-pick/squash 收编，`git merge-base --is-ancestor <branch> eb9e4cf05c` 一律 false 即使 fully-absorbed；用 `git diff eb9e4cf05c <branch> -- <file>` 字节比对，empty = fully absorbed）：
+  - **del 3**（fully absorbed，全文件字节一致 with `eb9e4cf05c`）：`refactor/p2-present-decomp-2026-09-12`（5/5）、`refactor/p2-suggest-followups-2026-09-12`（5/5）、`refactor/p2-uism-layer-2026-09-12`（10/10）。
+  - **keep 2**（residual content not in `eb9e4cf05c`）：`refactor/p2-present-table-2026-09-12`（4/5 absorbed，residual `table-card.client.spec.tsx` 加 `callView: null` field 到 `makeRunningBlock()` helper——minor 但真分歧）；`refactor/p2-uism-vitest-2026-09-12`（1/6 absorbed，5 test files `apply`/`components`/`provider-form`/`store`/`welcome-notice.client.spec.*` 残留——不同 mock 模式 + `RemoteError`/`ModelsSettingsStore` 直接构造 + cordis/dsh-api-remotes type imports + fixture shapes；ui-settings-models vitest-debt clearance **未收编**，`eb9e4cf05c` scope 只含 4 presenter Plan-B migration）。
+  - 关键 finding：`eb9e4cf05c` 的 4-presenter Plan-B migration scope 精确匹配 3 fully-absorbed + 1 mostly-absorbed 分支；ui-settings-models vitest work（branch 5）outside that scope，un-absorbed → 落 `R-DA-UI-SETTINGS-MODELS-VITEST-DEBT` follow-up。
+  - **del apply = eval session 收定后**逐个 `git branch -D <ref>`（⚠ 先 re-confirm absorption——master tip 可能因 eval 推进已动；不可批量；per-branch commit）。
+- **S-master**（`/tmp/smaster-plan.md` 若持久）：
+  - merge-base = `1ef40edaee`（wayfinder 09-18 next-session doc，divergence point，在两侧）。
+  - master 2 ahead = `f3e46b3f20`（eval R20 probe，1 file `wayfinder/evaluation/tickets/R20-judge-readout-probes.md` +4——**非 prompt 猜的 `…/research/harness-measurement-validity-papers.md`**）+ `fc917a55d4`（map/UM11/UM-flow record，3 files 纯插入 +23，msg body 交叉引用 `f3e46b3f20` hash——hash-stability 重要）。
+  - behind 2773 = origin/master PR #115 merge `607868e6a0`（Merge `e064933dc8`+`7a20c4cb0a`；resync `7a20c4cb0a` parents `0301586bed`+`1ef40edaee`）。
+  - **clean**（`git merge-tree --write-tree origin/master master` exit 0，tree `0d5480e86764…`，无冲突输出——**证伪 prompt 的 "map.md conflict" 假设**：master 4 ahead files 皆 0 touches by origin/master since merge-base；origin 21-doc take-theirs 覆盖的是 *其他* wayfinder docs，非此 4；两 ahead commits 皆纯插入 on byte-identical-to-merge-base → trivial clean 3-way）。
+  - **推荐 MERGE** `origin/master` into master（merge commit，no FF since divergent；保 `f3e46b3f20`/`fc917a55d4` hash——commit msg 交叉引用，rebase 会 rewrite stale；robust to eval session 再推——no to-replay re-selection；fork integration-branch 模式 consistent with `607868e6a0` being a merge）。
+  - apply = eval session 收定后：re-run `git merge-tree --write-tree origin/master master` re-confirm clean → `git merge origin/master` → 若 eval 改图景，wayfinder doc 冲突 take-theirs（09-09..09-17 local newer win）+ code auto-merge。**push 须用户明确指示**（§六）。
+- handoff：`wayfinder/data-agent/prompts/next-session-2026-09-11-post-subagent-sweep.md` §五C/§五D（commit `e1a1d6049a` on master）。

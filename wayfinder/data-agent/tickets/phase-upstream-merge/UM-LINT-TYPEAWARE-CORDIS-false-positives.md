@@ -27,3 +27,13 @@
 ## 判据
 
 `typeAware: false` 的 `.oxlintrc.staged.json`（lefthook staged gate）**不受影响**——staged lint 实测 0 errors 0 warnings。所以这纯粹是 full/CI 门的问题，不阻塞日常提交。
+
+
+## Session progress — 2026-09-11（S-LINT wrong-tree；92 reproduce on resync，re-triage on resync 待做）
+
+- **⚠ S-LINT 的 "0 on master" 是 wrong-tree artifact**：S-LINT 跑 `node node_modules/oxlint/bin/oxlint . --type-aware` on **master** `fc917a55d4`（pre-merge，ahead 3/behind 2773，不含 post-merge 内容）→ 0 findings。但 UM-LINT 的 93 是在 **post-merge 树**（resync/origin）测的。S-LINT 亦可能 config-less（未用 repo `run-oxlint.ts` wrapper）。
+- **resync 重测 = 92 errors**：`pnpm run lint:contracts-ready`（= `tsx scripts/run-oxlint.ts .` w/ repo 真 config `.oxlintrc.json`）on resync = **"Found 0 warnings and 92 errors"**（exit 1，34.8s on 3813 files / 90 rules）。≈ ticket 的 93（1 差可能 zombie-deletion `bcf4776f1d` 清掉一条）。
+- **option-A 未在 resync 落地**：`ctx as never` 仍在 `packages/client/ui-settings-models/tests/components.client.spec.tsx:203:9` + `provider-form.client.spec.tsx:155:9`（store→EngineStoreHandle migration 没把 type-aware resolution 修好——S-LINT 说 master 上 "migration appears to have landed" 是 master 不同代码的误读）。
+- **dominant rules**（从 ticket + resync 92 推算）：`no-unsafe-call`~35 / `no-unsafe-member-access`~23 / `no-unsafe-assignment`~15 / `no-unsafe-argument`~6 / `no-unnecessary-type-assertion`~5 / `no-unsafe-return`~4 / `@stylistic/max-len`~2 / `unbound-method`/`no-unnecessary-condition`/`no-deprecated` 各 1。85/92 是 Cordis `no-unsafe-*` family（type-aware，inject'd service-handle types）。
+- **S-LINT `/tmp/slint-triage.md` 提供**（若 /tmp 持久）：disable-directive form `// eslint-disable-next-line typescript/<rule> -- <reason>`（repo 认 `packages/host/apiproxy/src/api-proxy.ts:3364`；file-level `/* eslint-disable */` for clustered）+ dominant rules。但 **无 valid per-finding triage**（S-LINT saw 0 wrong-tree）。S-LINT 亦证 `pnpm run lint` = `build:lib:host && lint:contracts-ready`（build 写 lib/.tsbuildinfo = read-only 违规），且 build **非 load-bearing**——`tsconfig.base.json` paths 指 `./src`（如 `@deepseek-ai/cordis`→`./vendor/cordis/src`），oxlint 从源码解析类型，不从 built lib。
+- **re-triage plan**：重派 subagent on resync：`cd /Users/mckenzie/workspace/dsh-resync && pnpm run lint:contracts-ready > /tmp/lint.txt 2>&1` 拿 92，逐条 FP/real（FP 给 disable-directive 精确行+理由，real 归修复票）。⚠ `ctx as never`（`no-unnecessary-type-assertion`）= **语义改动，勿 auto-strip**（ticket 警告）；`max-len` 机械 wrap；`no-deprecated` 需 API migration。主 session apply disable-directives（resync，typecheck/lint 复验，commit `[wayfinder] UM-LINT-TYPEAWARE-CORDIS: triage 92 findings`）。

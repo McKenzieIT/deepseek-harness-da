@@ -202,3 +202,13 @@ B1 = 141eb6fef8  = merge-base(65bf3cddc9, d347e70390)   (2026-08-19, upstream rc
 
 **→ 本票状态：Scope 1/2/3 完成，Scope 4 完成方向 B 的主体（2 组落地、2 组有意 defer、1 组 keep），Scope 5 已喂给 UM15 并升级为三道门。**
 **仍 open 的原因**：整包回退（`ui-settings-models`）是本票发现但不属本票的工作，需新票；`tsconfig paths` 的生成器/通配冲突需决策。**对 UM11 的硬阻塞可以解除到「已知且已量化」的程度，但 PR 描述必须写明整包回退这条**，否则仍是在一次有损 merge 上声称非回归。
+
+
+## Session progress — 2026-09-11（线D 收 knip/fake-api zombies §方向B）
+
+- **knip.json + `packages/client/connection/tests/fake-api.client.ts` zombies 清掉**（线D，commit `c2623c84eb` on resync `upstream/resync-2026-09-08`）：二者皆 upstream 删过（knip `907c6334c1`、fake-api `e14d354e83`）→ M1 复活 → 一直未 drop（本 ticket §方向B line 134/135 "drop（未落）"）。本 session 落地：
+  - `knip.json`：resync 上 0 消费者——knip gate/script/devDep 已被上游 merge 删（`git grep knip` on resync 仅命中 `rescope-fork.ts:263-264` + `rescope-fork.spec.ts:132-137`，皆随 线D 删）。无 package.json/lefthook/CI 伴随编辑。
+  - `connection/tests/fake-api.client.ts`：resync 上 **0 importer**（`grep -rEn 'fake-api\.client' packages/` on resync 仅命中 `api/session-controller/tests/*.client.spec.ts` 7 个，皆 import `./fake-api.client.ts`——live 文件未动）。⚠ master 上该文件非 0-importer（`connection.client.spec.ts:13` 仍 import）——再一次证 apply on resync 非 master。
+  - `rescope-fork.ts` 删 `knip-ignore-dependencies-pattern` transform（targets 已删 knip.json，`expect:4` 会 runtime fail）+ `rescope-fork.spec.ts` 删对应 `it()` block lockstep。
+- **三道完整性门仍持**（M1 复活 100/丢 2/回退 27 ui-settings 整包；M2 全 0；waivers 录 `upstream-sync.json`）——线D 不触 integrity gates（只删 zombie config + fixture + 加 allowlist，非 merge 内容）。
+- UM-MERGE-INTEGRITY 近 done（knip/fake-api cleanup 本 session 线D 收；剩未来 resync→origin PR 落地 + waivers 维护）。
