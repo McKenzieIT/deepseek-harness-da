@@ -506,3 +506,41 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 - **`2608.25869` 被挂错标题**：subagent 的条目标题写作 *References Improve LLM Alignment in Non-Verifiable Domains*，而该标题实属 **`2602.16802`**（Kejian Shi / Yixin Liu / … / Arman Cohan）。`2608.25869` 的真标题是 *Anchoring Bias in LLM-as-a-Judge Systems: Prior Scores Compromise Evaluation Independence*。**内容描述与真标题吻合，所以是「ID 对、标题张冠李戴」**——正是本仓引证纪律要拦的那一类。
 - **`2601.08654` 被二手来源叫作 "RULERS"**，真标题是 *From Rubrics to Reliable Scores: Evidence-Grounded Text Evaluation with LLM Judges*。**这是本 effort 第四次撞上「方法名 ≠ 标题」**（GradeSQL / SARA / RRD / RULERS）——该 subagent 把它标为 grade C 并写明「未见过页面、勿直接引用」，**标得对**。
 - 本 session 引证核验累计 **118 次**（R8 六篇全文引文 83 + 补搜 ID 元数据 35），其中实质错误 1 处、称法偏差若干、**0 处臆造 ID**。
+
+### 9.9 参考锚定的 SQL 判官：实验**只做过一次**，而且锚本身是烂的
+
+第四路补搜（12 候选 / 11 grade-A；5 个新 ID 验真全部真实）。
+
+**① 直接对应物存在，但不是 2026 年的，而且只此一次**
+
+`2409.19014`（**FLEX: Expert-level False-Less EXecution Metric for Reliable Text-to-SQL Benchmark**，2024-09-24，5 作者）把 judge 与专家共识的一致度从 EX 的 62 提到 **Cohen's κ 87.04**（摘要原文「from 62 to 87.04 in Cohen's kappa」，已由元数据确认）。其 Table 5 的 ablation 里，**把 ground-truth query 与结果从判官输入中去掉，κ 掉到 29.36**（accuracy 64.0 / EQ 72 / NEQ 56）——**是它所有 ablation 里退化最大的一项**，形状与 `2608.17938` 的考卷崩塌（ICC 0.888→0.628）完全一致。
+
+⇒ 所以「无人研究」的答案是 **否——但只研究过一次**：n=200 条 BIRD pair，标注者是该文自己的三位作者，**至今无人复现**。
+⇒ **⚠ 数字须重导**：subagent 自报在一处二手片段里见到 GPT-4o 的 κ 是 78.17，而它取到的全文是 87.04。**`87.04 → 29.36` 进任何 ticket 前必须从 PDF 自行重导。**
+
+**② 2026 年这条线全部绕过了这个问题**
+
+reference-free 路线有一致且难看的天花板——`2608.17795`（*TraceSQL: Traceable Answerability Estimation for Reference-Free Text-to-SQL Verification*，BIRD 上 ROC-AUC 64.48）、`2607.06799`（*What Predicts Correctness in Text-to-SQL? A Selective-Prediction Study*）、`2503.11984`（*NL2SQL-BUGs*，检测准确率 75.16%）、`2604.28049`（*Agent-Agnostic Evaluation of SQL Accuracy in Production Text-to-SQL Systems*，无一致度数字）——**这独立佐证了本仓的 56.4pp 落差**。但**每一篇都是拿 reference-free 跟另一个 reference-free 比，从不把 gold 喂给判官**。最锐利的例子是 `2607.06799`：它分别 ablate 了 question / schema / evidence，**却只把 gold query 用于制造标签，一次都没交给判官**。⇒ **gold-conditioned 这一臂在该领域最强的论文里是缺的，不是因为试过失败，而是没人想到要跑。**
+
+**③ 但锚本身是烂的——这条外部证据与本仓的 anchor 事故是同一回事**
+
+- CIDR '26 测出 gold 标注错误率 **52.8%（BIRD Mini-Dev）/ 66.1%（Spider 2.0-Snow）**；
+- SpotIt（ICLR 2026）发现当预测与 gold 不一致时，**「往往是 gold SQL 错了」**；
+- FLEX 自己的 Appendix C 就展示了它的判官**为一条有缺陷的 gold 背书**。
+
+⇒ **conditioning on gold 会把 gold 的错误一起引进来。** 这不是抽象风险：本仓 `rbi-10000251-exec` 的 event case **16/18 期望值已与自身 reference SQL 不符**（GA-EVAL-CASESET-EVENT-ANCHOR）。**所以「gold 腐坏」在本仓不是局部事故，而是这个领域的普遍状况。**
+⇒ **对 §7.1 第 2 条的必要修饰**：「判官必须拿到参考答案」要加上「**——参考答案必须是你真的核过的那一个**」。落地形态上应对标 SpotIt 式的**有界验证**，而不是拿 raw gold / raw EX 当锚。**这条把 R8 的建议与 T11 的耦合又收紧一层**：T11 恢复的 `expected.sql` 不能直接当真值用，要先过 anchor 核对。
+
+**④ 意外收获：schema 那一半看起来比 reference 那一半更糟**
+
+`2607.06799` 测出给 reference-free 判官**加 schema**：`0.692 → 0.688`（**毫无帮助**）；而加 **evidence**：`→ 0.724`。Arize 的实践文独立报告**全量 schema 有害、只给被引用表的 schema 有益**（grade C，实践文非论文）。
+
+⇒ 与本文 §2.9 对上了：本仓判官的 schema context 有两条路径（CLI 含完整列清单 / runner 兜底只有 id+relevance），而**结果文件不记录走了哪条**。现在多了一条外部提示：**「更多 schema」可能根本不是改进方向**，「更相关的 evidence」才是。这对 G8 的第 2 决策（参考答案的形态）是实质输入——**它暗示该给的不是更大的 schema，而是核过的 reference**。
+
+**⑤ 一处待澄清的数字冲突（留给 R11，勿混引）**
+
+map 方向 11 现记 `2607.06799` 为「self-consistency 0.675 AUROC，ensemble 0.82」；本轮 subagent 报「0.776 single-judge / 0.822 ensemble」。二者**可能是同一篇里不同的预测器**（self-consistency ≠ single-judge），但**未核**。R11 认读时须分清，不可混引。
+
+**⑥ 第五次「方法名 ≠ 标题」**：`2604.28049` 被叫作 "STEF"，真标题是 *Agent-Agnostic Evaluation of SQL Accuracy in Production Text-to-SQL Systems*。累计：GradeSQL / SARA / RRD / RULERS / STEF —— **五次全部由二手来源供名时发生**，见 map §⚠ 验证 TODO。另：`2503.11984`（NL2SQL-BUGs）此前在 map §验证 TODO 里列为「secondary-only 不引」，**现已 ID + 标题验真**，可升级。
+
+> **证据等级**：本节为 **abs 页 / 元数据 + subagent 取到的全文片段**。FLEX 的 `87.04 → 29.36`、CIDR '26 的 52.8%/66.1%、SpotIt 的结论**均未由本文作者亲自从 PDF 重导** ⇒ **不得进 ticket，须由 R8b 复核**。
