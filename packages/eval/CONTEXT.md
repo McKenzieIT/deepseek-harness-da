@@ -59,3 +59,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Evaluation Controller**: The single runtime module that resolves an Evaluation Run, drives the selected subject, seals evidence, invokes grading, and evaluates publication eligibility. _Avoid_: Runner when the term omits ownership and lifecycle
 
 **Evaluation Host**: A process-level entry point that boots or connects to a DSH composition and invokes the Evaluation Controller. The first release provides CLI/SDK hosts rather than an always-mounted product service. _Avoid_: Harness
+
+**Comparison Plan**: A versioned experiment artifact that declares the estimand, treatment and controlled identity factors, matching unit, inclusion policy, aggregation, and uncertainty for comparing runs. _Avoid_: Compare config, implicit delta
+
+**Comparison Safety Floor**: The non-waivable evidence, metric, analysis-unit, publication, hidden-material, and coverage constraints that every Comparison Plan must satisfy. _Avoid_: Default comparison policy

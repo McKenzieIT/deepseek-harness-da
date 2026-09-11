@@ -120,6 +120,12 @@ Evaluation 只声明 `ContextRequirement`、解析 Provider/profile identity 并
 
 首版不发布或默认挂载 Cordis Evaluation Service Host；当前 `eval-runner-service` 由新 Controller/CLI 路径取代，`trigger_eval` 与 `goal-eval-*` 从普通 data-agent composition 移出。若未来 Web、scheduler、management 或 shadow evaluation 形成真实需求，再新增仅提供 run/get/cancel handles 的薄 Service Consumer，并只在专用 profile 挂载；它不得重新拥有 runtime、Context、Provider adapters 或 grading semantics。T12 的旧“eval-runner 并回 dsh-eval”题面据此重写为唯一 Controller 与薄 host 的 package 重组。
 
+### D18 — Comparison Plan 显式声明 treatment，Core 保留不可关闭的安全底线
+
+任何跨 Run delta、transfer 或 attribution 必须提供版本化 `ComparisonPlan`，显式声明 estimand、treatment factors、controlled factors、matching unit、inclusion/missing policy、aggregation 与 uncertainty；Core 依据完整 identity 拒绝 treatment 之外的意外漂移。没有 Comparison Plan 时只允许相同 Run identity 下的重复聚合，不从 case 名称或配置差异猜测实验意图。CLI 可以用经过验证的 model/context/harness/adapter/time-cohort template 生成 plan，但保存的是展开后的显式 artifact。
+
+Core Safety Floor 不可由 plan 放宽：EvidenceCut/GradeRecord 有效性、metric semantics、analysis-unit compatibility、PublicationEligibility、hidden-material isolation 和 case/split coverage 必须满足。Oracle arm 不进入 production headline，observational run 不能被 plan 提升为独立 trial，不同 case set 不能伪装成 paired delta。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
