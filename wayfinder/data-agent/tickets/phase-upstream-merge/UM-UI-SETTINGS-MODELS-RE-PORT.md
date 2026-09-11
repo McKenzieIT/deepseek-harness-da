@@ -1,7 +1,7 @@
 # UM-UI-SETTINGS-MODELS-RE-PORT — re-port upstream 的 ui-settings-models 重构（M1 静默回退了整包）
 
 **Type**: task · **Status**: open · **Phase**: upstream-merge
-**Assignee**: unclaimed
+**Assignee**: wayfinder-session-2026-09-12 (claimed; apply in progress — backbone restore steps 2-4)
 **Blocked by**: —（可立即认领；**不阻塞 UM11 PR**——PR 可带「已知 package-revert」说明先 merge，re-port 落地后再补）
 **Graduated from**: [UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) 2026-09-14（blob 级枚举发现 M1 把整个包回退到 merge-base）
 
@@ -112,3 +112,26 @@ upstream 在 B1 之后对这个包做了 2026-08-26 / 2026-08-28 的重构（`85
 **apply 后验**：tsc -b tsconfig.client.json + lint:contracts-ready 0/0 + gen-doc-graphs --check + 恢复 README Extension-slots 段（`e17f0fa16c` 删过）+ 双语 .zh.md + .i18n.yaml pair + docs/subsystems/slots{,.zh}.md:126-127 决策（删或成真）。
 
 **估算**：~2-3 session（apply 21 三方合并 + 2 restore + 5 adopt + 12 已等 + 验）。
+
+### [2026-09-12] apply LANDED (workflow-driven) — dsh-resync db0be3c426 + 74f5886d2e (unpushed)
+
+Apply workflow `um-ui-settings-models-apply` (10 disjoint-batch agents + 1 crosscheck, ~407K subagent tokens, ~27min): wrote 24 files (2 restore + 5 adopt + 17 three-way that needed changes; 3 skipped as byte-identical to HEAD — truthfully: welcome-notice.client.spec.tsx was NOT actually at target, see fix #2). Façade 5 consumers atomic; 3 traps embedded in agent prompts; crosscheck confirmed all 8 invariants (operations.ts/slot-contract.ts created, store.ts ProviderDirectoryEntry 5>0, no `ctx as never`, no Loader-inert re-add, façade coherent, package.json version/peerDeps/devDeps correct, README Extension-slots restored).
+
+Main-session gates (all green, serially, on fully-applied tree):
+- `tsc -b tsconfig.client.json` — 0 errors (after 2 fixes below).
+- `lint:contracts-ready` — 0 warnings 0 errors.
+- `vitest packages/client/ui-settings-models` — 222/222 passed (10 spec files: components 81, provider-form 82, apply 13, onboarding-dialog 9, welcome-notice 5, models-section 1, store 11, welcome-store 8, readiness 7, styles 5).
+- `gen-doc-graphs --check` — 6 graph docs up to date.
+- `verify-md-links` — 1730 files, all resolve.
+
+2 tsc errors caught + fixed (root-cause, not papered):
+1. `tests/models-section.client.spec.ts` (UM-INVARIANT-relocated, owned-elsewhere, untouched by workflow): `ModelsSection({})` failed tsc because `renderSlot` is now required by `ModelsSectionProps` (façade). The null-guard (`if controller|useSnapshot|operations|schema|t === undefined) return null`) still returns null at runtime -> cast the empty-props arg through `unknown`.
+2. `tests/welcome-notice.client.spec.tsx` (workflow wrongly skipped as "byte-identical to HEAD"): imported `WELCOME_NOTICE_COPY` from `onboarding-copy.ts`, but the `adopt` batch took `onboarding-copy.ts` upstream-verbatim (UP moved the copy out into `locales.ts` `en`/`zh` keys). The analyze proposal was STALE — it predated the adopt decision. Fix: rebuild `WELCOME_NOTICE_COPY` as a local const from `locales.ts` keys (matching UP's structure); keep the fork's type-rigor additions (`RemoteErrorCode`/`RemoteResult`, `response<T>`, the `as const`/`as RemoteErrorCode` assertions).
+
+Commits (dsh-resync `upstream/resync-2026-09-08`, no push):
+- `db0be3c426` — refactor(ui-settings-models): re-port upstream ctx->operations façade. 26 files (+1171/-669); operations.ts + slot-contract.ts created; lefthook pre-commit hooks green (lint staged, third-party notices, whitespace, vendor manifest).
+- `74f5886d2e` — chore(ui-settings-models): regenerate README.i18n.yaml translation pairing (scoped `verify-translation-pairing --write`, never --all): README.md a9eb5ad9->d59b38a7, README.zh.md dc9608e6->d907db55.
+
+Remaining (this ticket stays OPEN):
+- **slot-catalog.ts (cordis-client-runner, cross-package)**: the 2 slots (`settings.models.provider-card`/`footer`) are now declared package-locally in `slot-contract.ts` + advertised in `docs/subsystems/slots.md:126-127`, but the GLOBAL runtime catalog `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts` still lacks them (HEAD had neither; UP has both). Latent runtime gap (no current extension registers against them; no tsc/lint/gen-doc red). **Scoping decision pending**: UM-UI-SETTINGS owns the cross-package restore, or a sibling ticket. Lean: sibling (scope hygiene — one package per ticket). Concrete enough to ticket -> graduate next session.
+- **PR push** (UM11/PR workflow, gated): `db0be3c426` + `74f5886d2e` unpushed on resync. Iron rule: no push without user instruction. PR body must note the ui-settings-models re-port (M1 silent revert undone) per the durable PR-description requirement.
