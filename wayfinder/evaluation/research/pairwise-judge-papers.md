@@ -335,7 +335,9 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 
 **两个机制都不能直接用**：distribution-sensitive scoring 与 likelihood-aware aggregation 都要 token 级 logprob（实验用 vLLM「providing the top 20 log probabilities for each generated token」，L991）。托管 API 只回文本时，两者都无法实现。
 
-**另一条与本仓 5 维直接相关**：Appendix F 把判官扩到 factuality / coherence / helpfulness 三个子维度时，**每个子维度用各自的 prompt 独立评、指标各自算再平均指标**（L1001-1005、L1015-1018）；per-dimension 的 CR 基线是 **45.7–52.2%**（Table 5，L1104-1108：Gemma-2-27b-it 49.43 / Qwen2.5-32B 45.73 / Llama-3.1-70B 52.20），远高于单一综合分的 23–37%。而**全文没有任何把多维分数合成一个综合分的规则**（NOT IN PAPER）。⇒ 这一文献里没人背书「把逐维分数塌成一个综合分再卡阈值」，那正是本仓在做的事。
+**另一条与本仓 5 维直接相关**：Appendix F 把判官扩到 factuality / coherence / helpfulness 三个子维度时，**每个子维度用各自的 prompt 独立评、指标各自算再平均指标**（L1001-1005、L1015-1018）；per-dimension 的 CR 基线是 **45.7–52.2%**（Table 5，L1104-1108：Gemma-2-27b-it 49.43 / Qwen2.5-32B 45.73 / Llama-3.1-70B 52.20），远高于单一综合分的 23–37%。而**全文没有任何把多维分数合成一个综合分的规则**（NOT IN PAPER）。
+
+> ⚠ **本节初稿在这里多写了一句「这一整片文献里没人背书把逐维分数塌成综合分再卡阈值」，该句已于 2026-09-11 被证伪并删除——见 [§9](#9-2026-09-11-文献补搜r8-的一处负空间结论被证伪)。** 对 TrustJudge 这一篇的陈述（它自己不给合成规则）不受影响。
 
 ---
 
@@ -399,3 +401,45 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 3. **TrustJudge 的 gist 收紧**为「Llama-3.1-70B-Instruct、1-5 raw scale、自建 10.8k pair 均匀分布数据集上的 Score-Comparison Conflict Ratio 23.32%（含平局不匹配）」。
 4. **§⚠ 验证 TODO**：方向 8 的 6 篇已由本票 primary-fetch（arXiv API 元数据 + PDF 全文）确认，可从「primary-URL-confirmed」升级为「元数据+全文已认读」。
 5. **§Not yet specified 第 2 条（BM25 当 schema context）可以收紧**：§2.9 查出它有两条路径（CLI 路径含真实列清单、runner 兜底只有 id + relevance），而**结果文件不记录走了哪条**（§2.7）。所以「它在假通过里占多少」在 artifact 补齐之前**结构上无法回答**，不只是缺 R14 的分维分解。
+
+---
+
+## 9. 2026-09-11 文献补搜：R8 的一处负空间结论被证伪
+
+> **为什么补搜**：R8 的六篇是沿 map 方向 8 原有的论文行读的。一篇都不研究「二值准则 + 阈值化聚合」是事实，但由此推出「**整片文献**无人研究」是一次**从样本到全称的跳跃**，而那六篇的取样并非为回答这个问题而设计。补搜正是为了检验这一跳跃。结论：**跳错了。**
+
+### 9.1 身份核验（本轮新增）
+
+第二轮批量查 `export.arxiv.org`，`totalResults=8`，**8/8 真实，且 8/8 标题与检索所报逐字一致**：`2510.11822`、`2603.28005`、`2505.08775`、`2406.12624`、`2607.29252`、`2606.27226`、`2606.30931`、`2603.25133`。种子批另有 8/8 真实（`2606.00093`、`2606.03361`、`2603.00077`、`2602.05125`、`2605.30568`、`2606.08625`、`2606.29920`、`2412.05579`）。
+
+**本轮撞到「元数据标题 ≠ 渲染标题」**：`2606.00093` 元数据为 *Agreement Metrics for LLM-as-Judge Evaluation*，`arxiv.org/html/` 渲染为 *Agreement Measurement for Rubric-based LLM Judges*，同作者同摘要。作者一度据「元数据权威」误判二手来源写错标题——**是自己判错了**。已写入 map §⚠ 验证 TODO。同时复核了另两条同型修正：`2606.30851` 渲染标题确实不含 “GradeSQL”、`2608.14684` 确实不含 “SARA”，R1 v3 与 R8 §1 的修正**成立**。
+
+### 9.2 被证伪的部分
+
+**[GEAR（2606.03361）](https://arxiv.org/abs/2606.03361) 直接做了我们声称无人做的事**（摘要层，全文认读归 R8b）：
+
+- 每个准则是隐 **Bernoulli** 事件——**全程二值**；
+- baseline 就是 **flat 聚合 vs 确定性 gating** 的头对头（HealthBench / WritingBench / PLawBench，两 backbone）；
+- 把我们叫「漏」的量就叫 **leakage**，把失效模式命名为 **False Credit Propagation**：「flat scalarization ... allow[s] reward or penalty to be counted even when the condition that licenses it is absent」；
+- 报告 GEAR 相对 flat 提升最多 15.5%、leakage 削减 **96.5%**，且「preserving more licensed downstream utility than **deterministic gating**」——**连 gating 的代价也测了**，正是对「改成单维闸门」的第一个反驳。
+
+另两条削弱：`2510.11822` 优化 **minority-veto** 并测出判官 TPR 96% / **TNR < 25%**、多数投票不足；`2606.00093` 命名 **item-level aggregation** 走「rubric 的权重与 **decision rule**」，并测出仅换池化口径就把准确率从 **0.551 推到 0.899**。
+
+### 9.3 仍然站得住的部分（更窄）
+
+- **层级不同**：GEAR 聚合的是 **RL 奖励**且需要人写的 prerequisite 图；`2510.11822` 与 `2606.30931` 投票是跨**判官**、不是跨**准则**；`2606.00093` 命名了 decision rule 但测在**序数 1-4** 数据上，且它谈的是**报告**一致性、不是**裁决**通过与否。
+- **二值 rubric 实际怎么打分的两个参照点都没有阈值**：HealthBench（`2505.08775`）是加权点数归一化、**根本没有 pass/fail 阈值**；Autorubric（`2603.00077`）跨准则是加权和、clamp 到 [0,1]、**无阈值，且四条投票规则从不跨准则用、也从未头对头比较**（其 majority/unanimous/any-vote 是**判官之间**对**同一条准则**投票——补搜推翻了检索摘要对这篇的转述）。
+  ⇒ **「单次 prompt 内二值准则的固定 k-of-n 截断」在文献里没有依据：没被辩护，也没被攻击。**
+- `2603.28005` 是唯一 holistic vs 原子分解的头对头：**holistic 在三个基准里两个胜出**，优势集中于「不完整性检测」——本仓论点的经验背书。但它把两者当**独立条件**比，从未让一个去推翻另一个。
+
+### 9.4 结论：重构，不是撤退
+
+**删除**「无人研究二值 + 阈值化聚合」。**改为**：
+
+> 没有人测量过「**单个判官 prompt 内，holistic 准则被同场机械子准则投票推翻**」，更没有人在**生产落盘的判决**上测过。本仓的 **8.56pp 漏**与「holistic 判否时仍有 **52.03%** 通过」是自有贡献；**GEAR 的 leakage 指标是表达它的现成量纲**，`2606.00093` 提供「item-level aggregation / decision rule」的词汇。
+
+对 G8 的净影响是**变好不是变坏**：先前 G8 要在无先例的情况下自定政策；现在 GEAR 提供了一个**已发表的、量化过 gating 收益与代价**的对照，`2510.11822` 提供 veto 的优化形态。**G8 的第 1 决策（读出形状）从「自己发明」降级为「在已知方案中选并说明差异」。**
+
+### 9.5 未尽（→ R8b）
+
+摘要层证据不进决策。GEAR / `2606.00093` / `2510.11822` / `2603.28005` 四篇需按本文 §0 的标准全文认读，重点两问：① GEAR 的 leakage 形式定义能否**逐字套用**在本仓 1495 条判决上；② 其 prerequisite 图是必须人写还是可归纳——若必须人写，本仓 5 维的图就是 G8 要裁的东西之一。
