@@ -303,3 +303,40 @@ UM15 Decision #1（staleness detector 跑哪 = (c) local 先 + cron 后）的 **
 - **11 门红状态**（36/11，零新增——线D 清 entrypoints 10→0）：剩 A4（runtime-closure/constraints/export-jsdoc/translation-pairing）+ B2 known-red（type-equiv→UM-QODER-RETIRE / package-invariants→UM-INVARIANT-CLEANUP）+ C5（i18n 98/deps 74/subsystem-pages 5/doc-standard；entrypoints 已清）。
 - **deferred**（见各专属票）：UM-LINT re-triage on resync（92 errors，见 UM-LINT-TYPEAWARE-CORDIS）；translation-zh apply（Cordis region-splice 用户锁定，见 UM-GEN-DOC-TRANSLATION-OBLIGATION）；p2-* del + master-sync MERGE（gated on eval session，见 UM11）。
 - handoff：`wayfinder/data-agent/prompts/next-session-2026-09-11-post-subagent-sweep.md`（commit `e1a1d6049a` on master）。
+
+### [2026-09-11 实测重基线] `check:ci:static` = **37 passed / 11 failed**；红集**构成变了**
+
+在 resync `5fe9b32e44` 完整跑 `pnpm run check:ci:static`（221.86s，48 门）。**票里的「36/11」需重基线**，且红集成员与票记不同：
+
+| 门 | 规模（实测） | 类 | 归属 |
+|---|---|---|---|
+| runtime closure | 1 条链（`dsh-python-runtime-closure → dsh-phase-gate → dsh-scope-registry`） | A | GA-FORK-CI-green / parallel-dev-cleanup |
+| constraints | **71**（67 条 `version must match root version 0.1.3-alpha.2` + 3 条 `files must be` + 1 条 dep） | A | 同上 |
+| export jsdoc | **3** | A | 同上 |
+| translation pairing | **29** 子项 | A | parallel-dev-cleanup/R1 |
+| package invariants | **74**（67 companion + 7 peerDep） | B known-red | [UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md) |
+| type equivalence | **3** DRIFT | B known-red | [UM-QODER-SUBAGENT-RETIRE](UM-QODER-SUBAGENT-RETIRE.md) |
+| client UI i18n | **98** | C | **无主票** |
+| package dependencies | **75**（票记 74，已 +1） | C | **无主票** |
+| subsystem pages | **5** | C | → [UM6](UM6-docs-subsystems-keep-data-agent.md)（全是 fork data-agent 包组） |
+| documentation standard tests | **2/12** 测试挂（`packageReadmeStructureErrors`） | C | **无主票** |
+| **config catalog** | `docs/config-catalog.md` stale（实测 regen 仅差 **1 行**；但有 `.zh.md` + `.i18n.yaml` 配对，须连带 zh 并 `--write` 重记） | **新入账** | **无主票** |
+
+**两处相对票记的变化**：
+1. **`application entrypoints` 已转绿**（线D `c2623c84eb` 把 10 条清零）—— 票里 C 类列的「application entrypoints (10)」应移出红集。
+2. **`config catalog` 是红的，而票的 11 条里没有它** —— 净额仍是 11，但成员换了一个。
+
+**已转绿并复验过的门**（不只是声称）：`application-entrypoints`、`markdown-links`(1730)、`doc-graphs`(6)、`architecture-graph`、`cordis-catalog`(99)、`cordis-inspect-catalog`、`doc-refs`(3089)、`agent-note-format`、`tsconfig-paths`。
+
+**⚠ 并发读数陷阱（记录以免重犯）**：本次复核期间有 subagent 报 `config-catalog` 为绿——那是因为它的采样窗口正好落在主 session 为估算而临时 `gen-config-catalog` 又还原的那几十秒内。**在同一棵树上并行跑门时，任何单点读数都可能是别人半路状态的快照**；权威读数取完整 `check:ci:static` 的那一次。
+
+**其它已过期条目**：
+- 「`lint:contracts-ready` 93 / 1980 / 92 errors」与「UM-LINT re-triage on resync（92 errors）deferred」→ **`5fe9b32e44` 上该门 0 errors / 0 warnings**（见 [UM-LINT-A-OXLINT-RESOLUTION](UM-LINT-A-OXLINT-RESOLUTION.md)）。
+- `export jsdoc` 的归因不对：3 条实为 `createFixtureConnectionRpc`（`packages/client/connection/src/client/fixture.ts:3959`，无 JSDoc）+ `parseNumericCell` ×2（`packages/client/ui-present-table/src/client/numeric.ts:8`，缺 `@param raw`/`@returns`）；**`fadeIn` 不在其中**（它在 `graph-animations.ts:62`，票记 `:58`，且已通过）。
+- 「Round 3 cherry-pick(`a99d206835`) 未做」→ **已 moot**（那两处已不存在，且 `fix/lint-noop-assertion-unused-disable` 分支 ahead=0）。
+- 「knip 门底层债是否仍存在未测」→ **已 moot**（`knip.json` 已删，root 与 `eval-cli` 清单里无 knip 引用）。
+- `translation pairing` 里由 gen-doc-graphs 引起的 2 条（`docs/capability-seams.md`/`docs/event-producer-consumer.md`）**已消**（`4d4f725748` 补了 zh + i18n.yaml）；但**冒出同类的新一条**：`docs/architecture-graph.md` 完全没有 `.zh.md`（`gen-architecture-graph` 只发英文）—— 这是 [UM-GEN-DOC-TRANSLATION-OBLIGATION](UM-GEN-DOC-TRANSLATION-OBLIGATION.md) 已为 `gen-doc-graphs` 解决过的同一个 bug，换了一个 generator 又出现。
+
+**C 类无主是真实缺口**：票里写「另开票（D3/D4）」，但 **D3/D4 从未创建**。已补：[UM-C-GATES-UPSTREAM-NEW](UM-C-GATES-UPSTREAM-NEW.md)。
+
+**估算**：伞票本体 **1-2 session**（重基线到 11 的新构成、读 PR #115 的 CI checks、把 M1/M2 归因项明确 kill 或跑 `6b7610d45a` 矩阵、基线裁决落定后接 cron workflow）。**若要求「真绿」则 5-7**，但那部分质量在各专属票里，**别在本票重复计**。

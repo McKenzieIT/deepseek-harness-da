@@ -42,3 +42,26 @@
 - **占名机制**：空 companion 的 `install = () => {}` + `ctx.invariants.register(PACKAGE_NAME, install)` 原意是"占名"——让 `invariants` service 记下该包的所有权，使第二次 mount 同名包失败 loud。删空 companion 前，须判这 67 个包里有没有"真靠这个占名、删了会静默重复 mount"的。若有，需一个更轻的占名方式（或 upstream 已有别的机制）替代。这张票的价值之一就是把占名机制判清楚，而非赶时间机械删——对 data-agent 后续每加新包更稳。
 - 与 [UM-QODER-SUBAGENT-RETIRE](UM-QODER-SUBAGENT-RETIRE.md) 同模式：非回归 fork drift，拆出单走，不阻塞 PR。两票可并行做（不耦合）。
 - 本票前 `package-invariants` 门作 known-red 进 PR 的 known-red 清单（与 i18n/deps 同等）。
+
+### [2026-09-11 复核] Scope 被低估：每包 **4 处**编辑而非 2 处 → 约 **268 处**编辑
+
+实跑 `verify-package-invariants` 得**恰好 74 条**违规（与票记一致）：67 条 `empty install function is unnecessary` + 7 条 `must not be a peerDependency`（后者是前者的真子集，全在 `client/`：`result-cache`、`ui-context-layer`、`ui-present-decomposition`、`ui-present-table`、`ui-semantic-layer`、`ui-settings-models`、`ui-suggest-followups`）。67 条分布：`data` 37、`client` 7、`eval` 5、`query` 4、`embedder` 3、`retrieval` 2、`goal` 2、`credentials` 2，`subagent`/`llm`/`identity`/`code-runtime`/`bundle` 各 1。
+
+**但每个包要动 4 处，不是票里写的 2 处**：
+1. 删 `src/invariant.ts`
+2. 去掉 `package.json` 的 `exports["./invariant"]`
+3. **去掉 `package.json` 的 `files[]` 里的 `"lib/invariant.js"`** —— 门有配对规则（`scripts/package-invariants.ts:120-126`「files must omit lib/invariant.js when src/invariant.ts is absent」），漏了它会换一条红
+4. **去掉 `tsconfig.json` 对 invariants 的 project reference**
+
+67 × 4 = **268 处编辑**，另加 7 处 peerDep 删除 + 4 个 `tests/invariant*` spec 删除。
+
+**⚠ 切勿批量 strip peerDep**：全仓 **103** 个包声明 `dsh-invariants` 为 peerDep，只有 **7** 个是违规——该规则以 `usesFlattenedPackageDependencies` 为条件，其余 96 个是**策略正确**的（`must be a workspace:^ peerDependency`）。
+
+**票里「占名机制该不该判清」这个判断题现在有决定性的 upstream 先例**：upstream `c389f96bf3` 只有 **39** 个 `src/invariant.ts`，fork 有 **106**；且 upstream **根本没有** `packages/client/ui-settings-models/src/invariant.ts`（及其 `tests/invariant.client.spec.ts`）——即 upstream 是**直接删掉**这些 companion，而非替换占名机制。agent 可据此自行推进并把该发现报回。
+
+**记账修正**：票里「违规包分布：data/ 37、client/ 14 …」是**违规条数**分布（client 14 = 7 companion + 7 peerDep），不是包数分布；算术自洽（74），标签误导。
+
+**与 [UM-QODER-SUBAGENT-RETIRE](UM-QODER-SUBAGENT-RETIRE.md) 的耦合**：`packages/subagent/subagent-qoder/src/invariant.ts` 是 67 之一 → 谁后做，看到的是 66 companion / 73 违规，本票 Acceptance「74→0」需相应改写。
+**与 [UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md) 的耦合**：`ui-settings-models` 的 `src/invariant.ts` + `tests/invariant.client.spec.ts` 同时是那张票的「upstream 已删、fork 仍停在 merge-base」文件 → **本票先做**，否则那张票会重新论证甚至错误地把它们恢复回来。
+
+**估算**：1-2 session（机械但量大，268 处 + 一轮 build/门复验可能溢出）。

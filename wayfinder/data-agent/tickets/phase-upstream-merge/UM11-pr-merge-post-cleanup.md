@@ -117,3 +117,30 @@
   - **推荐 MERGE** `origin/master` into master（merge commit，no FF since divergent；保 `f3e46b3f20`/`fc917a55d4` hash——commit msg 交叉引用，rebase 会 rewrite stale；robust to eval session 再推——no to-replay re-selection；fork integration-branch 模式 consistent with `607868e6a0` being a merge）。
   - apply = eval session 收定后：re-run `git merge-tree --write-tree origin/master master` re-confirm clean → `git merge origin/master` → 若 eval 改图景，wayfinder doc 冲突 take-theirs（09-09..09-17 local newer win）+ code auto-merge。**push 须用户明确指示**（§六）。
 - handoff：`wayfinder/data-agent/prompts/next-session-2026-09-11-post-subagent-sweep.md` §五C/§五D（commit `e1a1d6049a` on master）。
+
+### [2026-09-11 实测复核] 后清范围比票记的大：**16 个 worktree 一个都没删**；并且**多出一次 landing**
+
+在 master 树实测（`git worktree list` + 逐分支 `git merge-base --is-ancestor <tip> origin/master`）：
+
+**① 已并入 `origin/master`、可安全删（worktree + 分支）——5 个**
+`chore/um-arch-regen-2026-09-09`（dsh-arch-regen）· `task/um-cordis-regen-2026-09-09`（dsh-cordis）· `refactor/rda-client-runtime-phase1-2026-09-09`（dsh-rda-p1）· `task/um16-root-entry-2026-09-09`（dsh-um16）· `upstream/merge-2026-09-07`（dsh-upstream-merge）。
+这些是纯 ancestry 判定（`--is-ancestor` 通过），无需逐文件核 absorption。
+
+**② 未并入、需逐文件核 absorption——7 个**（ancestry 一律 false，因 Phase-2 是 cherry-pick/squash 收编）
+- `refactor/p2-present-decomp-2026-09-12`(ahead 1)、`refactor/p2-suggest-followups-2026-09-12`(1)、`refactor/p2-uism-layer-2026-09-12`(1) → **本票 S-p2 已逐文件核实 0 residual，属 del-3**
+- `refactor/p2-present-table-2026-09-12`(ahead 2) → keep（1 residual）· `refactor/p2-uism-vitest-2026-09-12`(1) → keep（5 residual）→ 归 `R-DA-UI-SETTINGS-MODELS-VITEST-DEBT`
+- `chore/um-arch-impl-2026-09-08` → **ahead 6**（票记「ahead 27」**已过期**），需 rescue/abandon 决定
+- `refactor/rda-admin-lazy-webserver-2026-09-08`(ahead 1) → ⚠ **真·未合入工作**：`9ba8638eac`「refactor(admin): lazy webServer carrier (mirror seam 3)」相对 `origin/master` 仍差 **+102/−16**（`packages/data/admin/src/index.ts` + `tests/admin.spec.ts`）。resync 里 `packages/data/admin/src/index.ts:141` 仍是 `export const inject = ['storageDomain','credentials','webServer']`、`:238` 仍同步 `ctx.webServer.register`，`tests/admin.spec.ts:48` 仍断言 `toContain('webServer')`。
+  → 这意味着 [UM-ADAPT](UM-ADAPT-per-shift-adaptive-analysis.md) 说的「seam 3/4 已落地移位」在**分支层面为假**：分析与实现都写了，但**没有合进任何主线**。若 UM-ADAPT 要以「seam 3/4 done」收口，必须先决定这条分支是落还是改写成「已分析，实现未合入」。
+
+**③ 本票未记的一项：需要第二次 landing。**
+`upstream/resync-2026-09-08` 相对 `origin/master` = **3 ahead / 1 behind**，且**远端 resync 分支已在 merge 时删除**。3 个未推提交：`c2623c84eb`（线D）· `4d4f725748`（gen-doc-graphs zh）· `5fe9b32e44`（UM-LINT-A）。本票 Resolution 停在「留本地 resync 树给 Scope 4-6」，没有覆盖这批新增内容 → **需要一次新的 push + PR（或搭 master merge 的车）**。
+⚠ 这一步同时是 [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 最后一个大 open 项（「CI 上的真实 red set 至今无人见过」）的唯一解锁方式——**一次动作服务两张票**。
+
+**④ master sync 现状**：master **ahead 20 / behind 2773** 于 `origin/master`（票记「ahead 1」已过期——eval session 期间又推了若干）。重跑 `git merge-tree --write-tree origin/master master` → **exit 0，干净**。所以推荐的 MERGE 仍是 trivially clean，但它是**在 eval 独占的 worktree 上做 git 写**，仍按 §六 gated。
+
+**⑤ 其它可删项**（ahead=0 vs `origin/master`，票未列）：`fix/lint-noop-assertion-unused-disable`、`backup/master-pre-sync-2026-09-08`（其「合并前回滚点」用途随 PR #115 merged 而解除）。
+
+**⑥ 过期项**：header 仍写「本票仍 blocked，不 push」（挂 UM12 + UM-MERGE-INTEGRITY）—— PR 已推已并，UM12 的 B 类硬阻塞也已解除（2 绿 + 2 known-red）。worktree 表里 `.worktrees/r10-harness-goodhart` 现在的分支是 `grilling/G10-harness-bhe-split`（非 `research/R10-...`），另有 `research/R10b-…`/`R10c-…` 两个 eval 分支——**仍勿动**。
+
+**估算**：**2-3 session** —— 1 个 AFK session 做 del-3 + 上面①的 5 个已并入 worktree/分支清扫 + 备好 rda-admin/arch-impl 的 rescue 决定；1 个 gated session 做 master MERGE + push + 那 3 个 resync 提交的后续 PR；若 rda-admin 变成真代码工作再 +1。
