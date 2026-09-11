@@ -1,6 +1,6 @@
 # R8c — 参考锚定与 judge artifact：全文认读（FLEX / SpotIt / schema-vs-evidence / Inspect AI）
 
-**Type**: research（认读分析论文 + 一手源码）  ·  **Status**: open
+**Type**: research（认读分析论文 + 一手源码）  ·  **Status**: **in-progress**（claim 于 2026-09-11）
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无（[R8](R8-pairwise-judge-papers.md) 已 resolved 并交付候选清单）
 **Blocks**: [G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)（参考答案的形态）；[T1](T1-exec-grader-impl.md) 的 artifact schema；**修改 [T11](T11-loader-provenance-strip.md) 的下游语义**（见下「紧迫性」）
