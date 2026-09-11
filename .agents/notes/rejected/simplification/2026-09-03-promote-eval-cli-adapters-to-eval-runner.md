@@ -1,6 +1,6 @@
 # Agent Note: Promote the eval-cli ctx adapters to dsh-eval-runner and delete the fork
 
-Status: proposed
+Status: rejected — G10 deletes the old runner/service adapter ownership and replaces it with one Evaluation Controller plus production capability seams
 
 ## Problem
 

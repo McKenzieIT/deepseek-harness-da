@@ -165,7 +165,7 @@
 
 ### T1 验收面
 
-- 单一 executor 端口 `(sql) => Promise<ExecutionResult>`；`QueryResult` 与 eval-cli / eval-runner-service 两份 fork 退役（两份 fork 的退役已由 [promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md) 独立提出）。
+- 单一 executor 端口 `(sql) => Promise<ExecutionResult>`；`QueryResult` 与 eval-cli / eval-runner-service 两份 fork 退役（两份 fork 的退役已由 [Data-domain Evaluation Core](../../../.agents/notes/proposed/architecture/2026-09-11-data-domain-evaluation-core.md) 独立提出）。
 - 产物 JSON 中三事实可分辨；infra 失败**不进** `wrong` 分母。
 - 比较失败原因不得压成 boolean——现 `runner.ts:368-369` 丢掉了核心比较器返回的 `AssertionResult.detail`。
 - 一次评分可重放：记录实际执行的 SQL、snapshot id、policy version、raw/normalized digest；`AttemptResult.query_result` 的 5 行截断（`runner.ts:257`）不足以重放。

@@ -20,7 +20,7 @@ Evaluation 依赖 query Service Definition，而非 `MaxComputeQueryEngine` 或�
 
 G1 决定窄 adapter interface、`QueryOutcome` mapping，以及 execution verdict、judge diagnosis 与 infrastructure failure 的分离方式。G1b 决定 reference authoring 与 review、snapshot identity、artifact provenance、benchmark versioning，以及 legacy 和 delivery-only cases 的处理。R23 在任何默认值成为权威前测量 comparator profile 与例外。本提案只约束职责归属。
 
-既有的 [eval adapter 合并提案](../simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)处理重复的 adapter implementation。本提案既不取代该 simplification，也不在 G1 解决 interface 与 ownership 前决定 adapter 的 package 归属。
+既有的 [eval adapter 合并提案](../../rejected/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)处理重复的 adapter implementation。本提案既不取代该 simplification，也不在 G1 解决 interface 与 ownership 前决定 adapter 的 package 归属。
 
 ## 考虑过的替代方案
 
