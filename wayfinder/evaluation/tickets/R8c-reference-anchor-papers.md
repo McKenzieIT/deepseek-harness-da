@@ -1,6 +1,6 @@
 # R8c — 参考锚定与 judge artifact：全文认读（FLEX / SpotIt / schema-vs-evidence / Inspect AI）
 
-**Type**: research（认读分析论文 + 一手源码）  ·  **Status**: **in-progress**（claim 于 2026-09-11）
+**Type**: research（认读分析论文 + 一手源码）  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无（[R8](R8-pairwise-judge-papers.md) 已 resolved 并交付候选清单）
 **Blocks**: [G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)（参考答案的形态）；[T1](T1-exec-grader-impl.md) 的 artifact schema；**修改 [T11](T11-loader-provenance-strip.md) 的下游语义**（见下「紧迫性」）
@@ -20,7 +20,9 @@
 
 ## Question
 
-1. **gold 给判官带来多少？** FLEX Table 5 的 `w/o Ground Truth` 到底去掉了什么（query？结果集？两者？）、κ 87.04 → 29.36 的完整条件是什么？**这个数字必须自行从 PDF 重导**——subagent 自报在一处片段见到 GPT-4o 为 **78.17**，可能是不同表行（plain judge vs FLEX-with-criteria），也可能不是。
+1. ~~**gold 给判官带来多少？**~~ ✅ **已答（2026-09-11，全文重导，见 [note §9.9 ①](../research/pairwise-judge-papers.md)）**：`w/o Ground Truth` = 移除 **gold query 与其执行结果两者**；κ **87.04 → 29.36**，是四项 ablation 里唯一的断崖（其余仅掉 7–13 分）。`78.17` **全文零命中**，该疑虑解除。
+   **真正的发现在 EQ/NEQ 两列，而不是 κ**：`EQ`（确认本来就对的）**88 → 72**，`NEQ`（识别本来就错的）**99 → 56**。⇒ **没有 gold，判官不对称地丧失「拒绝」能力**——这是目前对本仓 56.4pp 最贴近的一手解释。
+   **⇒ 本票剩余的 FLEX 工作只有一项**：Appendix C 那个「判官为缺陷 gold 背书」的案例（它是「锚是烂的」这条的自证据）。
 2. **锚烂到什么程度、怎么办？** CIDR '26 的 52.8% / 66.1% 是怎么测的（哪种错误算错）？SpotIt 的**形式验证**方法能否用于本仓——它需要什么输入，MaxCompute 方言下可行吗？
 3. **该给判官什么证据：更大的 schema，还是核过的 reference？** `2607.06799` 测出给 reference-free 判官加 **schema**：`0.692 → 0.688`（**毫无帮助**），加 **evidence**：`→ 0.724`。这与本仓 §2.9 的两条 schema-context 路径（CLI 含完整列清单 / runner 兜底只有 id+relevance）直接相关。**若「更多 schema」不是方向，本仓那条 CLI 路径的价值需要重估。**
 4. **判官证据该落盘什么？** 文献里**没有人写下过要求**（[note §9.6](../research/pairwise-judge-papers.md)）。唯一真先例是 **Inspect AI 的代码**。它的三段式（`--no-score` / `inspect score --scorer` / `action="append"`）具体字段是什么，缺的那一半（**换聚合政策重算无需任何模型调用**）该怎么补？
@@ -30,7 +32,7 @@
 
 | 序 | 来源 | 抽什么 |
 |---|---|---|
-| 1 | `2409.19014` **FLEX** | Table 5 全表逐行；`w/o Ground Truth` 的确切含义；**κ 87.04 → 29.36 自行重导**并解释 78.17 的出处；n=200 BIRD pair 的标注流程与作者自标的偏倚披露；**Appendix C 判官为缺陷 gold 背书的案例** |
+| 1 | `2409.19014` **FLEX** | ✅ 主体已完成（Table 4/5、上下文定义、EQ/NEQ 定义、样本与标注流程均已重导入 note §9.9 ①；**修正**：标注者是「三位 3 年以上经验的 SQL 专家、共识裁定、Fleiss' κ=79.32」，此前转述的「该文作者自标」于所读段落无据；样本为 100/100 **刻意平衡**，非自然分布）。**剩余**：Appendix C「判官为缺陷 gold 背书」的案例 |
 | 2 | `2510.26840` **SpotIt** | 形式验证的输入需求与覆盖边界；「往往是 gold 错了」的原文与量化；**能否在 MaxCompute 方言 / 本仓快照语义下落地**；venue（subagent 称 ICLR 2026，**未核**） |
 | 3 | CIDR '26 `p5-jin.pdf` | **非 arXiv，须本地 fetch**（`vldb.org/cidrdb/papers/2026/p5-jin.pdf`）。52.8% / 66.1% 的测法与「错」的判据；与本仓 16/18 的可比性 |
 | 4 | `2607.06799` | schema `0.692→0.688` vs evidence `→0.724` 的实验设置；**「evidence」在该文里具体指什么**（这决定本仓该给判官什么）；⚠ **数字冲突待澄清**：map 方向 11 现记「self-consistency 0.675 AUROC / ensemble 0.82」，subagent 报「0.776 single-judge / 0.822 ensemble」——**可能是同一篇里不同的预测器，须分清后回填 map**（该条也归 R11，先到先改） |
@@ -53,7 +55,8 @@
 
 **本票额外两条**：
 - **CIDR '26 与 Inspect AI 都不是 arXiv**。前者须本地 fetch PDF；后者文档站 403，**读仓库 `.qmd` 源**而非渲染页。两者的引证格式须能让后来人跳过去核。
-- **FLEX 的 `87.04 → 29.36` 在重导成功前，不得进任何 ticket 或 map**。现状已在 [note §9.9](../research/pairwise-judge-papers.md) 明确标注为未重导。
+- ~~FLEX 的 `87.04 → 29.36` 在重导成功前不得进 ticket~~ ✅ **已于 2026-09-11 重导通过**，该数与 EQ/NEQ 两列现已达全文层，可引用。**其余数字（CIDR '26 的 52.8%/66.1%、SpotIt 的结论、`2607.06799` 的 schema-vs-evidence）仍未重导，维持禁令。**
+- **一手源已在本地**：`.tmp/r8c/`（6 份 PDF + `pdftotext` 文本 + Inspect AI 三份 `.qmd` 源；**不入 git**，`.tmp/` 已被 `.gitignore`）。接手时不必重新下载，但**须自行重导引文**，不得沿用本票转述。
 
 ## 不在本票范围
 
