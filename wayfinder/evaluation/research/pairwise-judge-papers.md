@@ -466,3 +466,43 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 ⇒ **对 T1 的直接后果**：judge 侧 artifact schema 不必从零设计，可照 Inspect AI 的 `--no-score` / `score --scorer` / `action=append` 三段式取形；但要补上它也没有的那一半——**把逐准则判决与读出政策分开落盘，使「换政策重算」不需要任何模型调用**。这正是本仓 [R20 探针 a](../tickets/R20-judge-readout-probes.md) 已经在 1495 条向量上做到的事（零 LLM 调用重算读出），所以本仓其实**已经有了那一半的工作实例**，缺的是把它写进 artifact 契约。
 
 > **证据等级**：本节为 **abs 页 + 一手文档源**（Inspect AI 文档站 403，改读仓库内 `docs/scoring-workflow.qmd` 等 `.qmd` 源）。**未达全文认读标准**，进 T1 设计前须复核 `2606.00093` 与 Inspect 的实际字段。
+
+### 9.7 顺序与分解：一个洞坐实、一个洞有风险、外加一条改变 G8 的机制
+
+同轮第三路补搜（12 候选 / 9 grade-A）。**6 个新 ID 经元数据验真全部真实**，并抓到 **1 处实质引证错误**（见 9.8）。
+
+**① 洞 A（有参考答案时的准则顺序偏置）坐实，但不是「应该会被抑制」**
+
+最接近的 `2602.16802`（*References Improve LLM Alignment in Non-Verifiable Domains*）加参考答案确有收益（79.1% vs 72.3% reference-free；判官间一致 76.6%→81.4%），**但它在交换顺序上取平均**——把位置偏置**控制掉了而不是测量它**。而 `2601.07506`（*Judging Against the Reference: Uncovering Knowledge-Driven Failures in LLM-Judges on QA Evaluation*）与 `2609.02942`（rubric artifacts：仅用 rubric 文本训的分类器能非平凡地预测判官输出；反转响应**或反转准则**时判官常不更新）两篇独立显示：**判官经常并不真的以交给它的参考/准则为条件**。
+
+⇒ 诚实的表述不是「grounding 应该抑制顺序偏置」，而是「**没人查过，而且有具体证据显示答案可能是否**」。**并由此得到一条对本仓的设计要求：给判官参考答案的实验必须自带「操纵检查」，证明判官真的在用它**——否则测不出是 grounding 无效还是根本没生效。
+
+**② 洞 B（一次调用 vs N 次调用的质量+成本联合定价）有真风险，不要假设它还开着**
+
+- `2606.29920`（EMNLP 2026，RuVerBench）**已明写** "batched verification presents a trade-off between accuracy and efficiency"，且带 **2,458 条人工标注**、在前沿判官上；
+- `2511.21662`（Multi-Crit，CVPR 2026）比较 **K 次单准则推理 vs 联合判断**，并把机制命名为 **correlation leakage**——一次 pass 里自回归生成多个准则判决会诱发准则间依赖、把判官推向同一偏好方向（**与 `2608.14684` 的 "interference" 是同一现象的两次独立命名**）；
+- `2603.00077`(Autorubric) **可能已含 prefix-caching 下成本次线性的论证**（该条为 grade C 片段，未证）——**若成立，N 次调用不等于 N 倍成本，本仓「×5 成本」的假设就要重算**，问题会收窄到只剩质量。
+
+⇒ **R20 探针 c 的成本估算（`5N`）在读完 `2606.29920` 与 `2603.00077` 全文前不能当定论。**
+
+**③ 一条机制，直接改变 G8 第 4 决策的预期**
+
+`2608.25869`（*Anchoring Bias in LLM-as-a-Judge Systems: Prior Scores Compromise Evaluation Independence*）：**192,000 次尝试 / 185,271 次成功评测**；上下文里先出现的分数会把后一次判断拖向它，峰值 **|Cohen's d| = 0.71**，8 个模型里 **7 个**的 bootstrap 区间整体低于零；带人工标注的第二项研究里，锚定元数据**阻止了 48% 的纠错**、并把 **10.18%** 本来正确的判决翻成错的。**CoT 无效，明确写「请忽略该元数据」也无效。** token 概率探测显示效应是**阈值式而非渐变式**——加不加锚定信息影响大，锚定值取多少影响小。
+
+**这正是本仓 prompt 的结构**：五维在同一次调用里**顺序**输出一个 JSON，准则 1 的分数在准则 2 被打分前已进入上下文，一路到准则 5，而顺序从未被扰动过（§2.8）。
+
+⇒ **可检验的预测：对准则干扰做 prompt 层面的修补（换顺序、加"独立判断"指令、加 CoT）预计无效。** 若成立，G8 第 4 决策（调用结构）就不是「二选一」而是「**只有拆调用是真修复**」。这条预测便宜且可证伪——**R20 探针 b 的价值因此改变**：b 不再是「找出更好的顺序」，而是「**检验 prompt 层面能不能修**」。
+⇒ 另一条派生预测（源自阈值式效应）：**先前分数的「有无」比其「取值」重要得多**——所以 b 应当把「五维同调用（有先前分数） vs 逐维单调用（无）」当主对比，而非在多个排列之间比较。
+
+**④ 一处必须改的框架表述，外加一条指标警告**
+
+- **不要再说「前沿判官未被测试」。** `2606.19544`（*Reliability without Validity*，**21 个判官 / 9 个供应商 / 118 次 run / 约 541,000 条判决**，明确覆盖「April 2026 frontier」）与 `2604.24074`（28,812 条判决，判官固定为 Claude Sonnet 4-6）都测了。**可辩护的表述收窄为：没人在前沿判官上测过*准则顺序***，要引的具体限制是 `2602.02219` 的 ≤120B 开权重上限。
+- **`2606.19544` 的「一致性–偏置悖论」替我们挡掉最便宜的反驳**：两个**生产部署**的判官上，test-retest 可靠性 **>0.95** 与位置偏置 **>0.10** 并存。⇒「我们重跑了一遍结果一样，所以它是稳的」**不成立**——重测一致性与置换稳健性是两种不同性质。
+- **指标警告**：同篇测出 exact-match 与 Cohen's κ 之间的 κ 通缩在 MT-Bench 上普遍达 **33–41pp**，原文称 exact-match「systematically overstates discriminative ability」。⇒ **R20 探针 b/c 不能只报原始 exact-match 一致率**，须同时报 κ（这与 §9.6 的 `2606.00093` 要求一致）。
+- **文献自相矛盾一处，引用时必须分清构造**：`2604.23178` 报位置偏置 **≤0.04**，`2606.19544` 报生产判官 **>0.10**。前者测的是**响应位置**、后者是别的口径，**都不是准则顺序**——三者不可混引。
+
+### 9.8 本轮抓到的引证错误（保留记录）
+
+- **`2608.25869` 被挂错标题**：subagent 的条目标题写作 *References Improve LLM Alignment in Non-Verifiable Domains*，而该标题实属 **`2602.16802`**（Kejian Shi / Yixin Liu / … / Arman Cohan）。`2608.25869` 的真标题是 *Anchoring Bias in LLM-as-a-Judge Systems: Prior Scores Compromise Evaluation Independence*。**内容描述与真标题吻合，所以是「ID 对、标题张冠李戴」**——正是本仓引证纪律要拦的那一类。
+- **`2601.08654` 被二手来源叫作 "RULERS"**，真标题是 *From Rubrics to Reliable Scores: Evidence-Grounded Text Evaluation with LLM Judges*。**这是本 effort 第四次撞上「方法名 ≠ 标题」**（GradeSQL / SARA / RRD / RULERS）——该 subagent 把它标为 grade C 并写明「未见过页面、勿直接引用」，**标得对**。
+- 本 session 引证核验累计 **118 次**（R8 六篇全文引文 83 + 补搜 ID 元数据 35），其中实质错误 1 处、称法偏差若干、**0 处臆造 ID**。
