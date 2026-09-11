@@ -83,6 +83,23 @@ fork 的 data-agent UI presenters（`ui-present-table`, `ui-present-decompositio
 
 ---
 
+### Snapshot-access addendum (2026-09-12, Phase-2 execution)
+
+Phase-2 execution surfaced a gap the ADR's 4 `isLatestTurn` options didn't anticipate: upstream's `ConversationSnapshot` (`ui-conversation/contract/snapshot.ts:6-10`) is a **thin shell** `{ views: ConversationViewSnapshotStore; activeTargets: ReadonlySet<string> }` — no top-level `nodes`/`chat`/`turnTimings` (the zombie's was a monolith at `runtime/src/client/sessions/conversation.ts:434`; its `nodes` was a "Legacy top-level compatibility field mirrored from the registered Chat Definitions" that upstream removed).
+
+**Resolution = option ③' (a path rewrite, not a logic rewrite) via `ChatSnapshot.legacy` compat slice**: `ChatSnapshot` (the chat view's snapshot, accessed via `snapshot.views.get('chat')` — chat target registered at `ui-chat/apply.ts:61`, `ConversationViewSnapshotMap` augmented `chat: ChatSnapshot` at `ui-chat/contract/snapshot.ts:102`) carries a `legacy: LegacyConversationSlice` field (`ui-chat/contract/snapshot.ts:92-98`) — upstream's **intentional** compat bridge (comment: "Compatibility projection backing StatsLine and the legacy top-level snapshot fields"), preserving `nodes: readonly ConversationNode[]` + `turnTimings` + `turnEnds` + `partial` + `runningCalls`.
+
+- `snapshot.nodes` → `snapshot.views.get('chat')?.legacy.nodes ?? []` (records-level, identical shape — `collectQueryCandidates` logic unchanged).
+- `snapshot.turnTimings` → `snapshot.views.get('chat')?.legacy.turnTimings ?? new Map()`.
+- `snapshot.chat.timeline` → `snapshot.views.get('chat')?.timeline`.
+- **Augmentation loading (required, mirrors the ui-tool precedent)**: tsconfig `references` add `{ "path": "../ui-chat" }` + file-top `import type {} from '@deepseek-ai/dsh-client-ui-chat/client'` (loads the `declare module` augmentation so `views.get('chat')` typechecks as `ChatSnapshot`). No package.json dep needed (tsconfig.base.json paths map to src).
+
+This is the upstream-faithful-best (UM-ADAPT 3/4/5 ✓): consumes the public thin-shell API + uses upstream's **intentional** compat slice (not a fork workaround against carrier-neutral) + presenter-local (no shared ui-tool edit). Options ① (extend `ToolCallOwnerProps` with `isLatestTurn: boolean` — solves isLatestTurn only, NOT `snapshot.nodes` — insufficient), ② (thread `useChat` via ui-tool edit — fights upstream's carrier-neutral `ToolCallOwnerProps` design), ④ (re-eval Plan A — unnecessary; presenters remain tool-name-keyed sub-views in `tool.call.toolview`, ADR finding #2 holds) all rejected with evidence.
+
+**`agentPresets` is NOT a blocker** (despite a bounded-`-p` false positive subagent 6 reported): the `TypertRemoteNamespaceMap` augmentation (`packages/preset/agent-presets/lib/typert.remote-client.d.ts:24`, exported `./remote`) loads transitively in full `tsc -b` → `scope.remote.agentPresets` typechecks. R-DA-TYPERT-REMOTE-REGISTRATION's domain, not this shard's.
+
+Plan B holds; this addendum fills the snapshot-access detail the original ADR didn't anticipate. Validated: `tsc -b tsconfig.client.json --force` = 0 errors; vitest all green.
+
 ### Pre-confirmation note (original)
 
 (open；建议 UM-ADAPT 出完 seam-4 + view-registry seam 分析后，本票 grill A/B——预期 A（真适配性改造），但决策要 UM-ADAPT 判据为证)

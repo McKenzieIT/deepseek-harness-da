@@ -99,27 +99,41 @@ Follow-on 3 ticket 原假设"18 包缺 `src/remote.ts` → `ClientRemote` 缺 X 
 3. 主 session 重验 → 决策（若需，按 #3 grill）→ 实现 → tsc 验 → 记。
 4. 推进 shard 2-4 到 70% 切 session。
 
-## Session progress（2026-09-10 end — 主 session 重验，铁律）
+## Session progress（2026-09-10 → 2026-09-11 累进）
 
-**tsc client 287→187（-100）**。3 fix 全 clean/mechanical（type-only / test-fake，无 logic 改）：
+**tsc client 287→148（-139，累进）**。4 fix 全 clean/mechanical：
+
 - Follow-on 1 fixture（resync `63659a22d4`）+ Follow-on 2 config（`5ee128214d`）→ 287→217。
-- **connection fake-api**（resync `[Follow-on-3-B]`，本 session）→ 217→187。`packages/client/connection/tests/fake-api.client.ts`：strip `implements IApiClient` + 12 `IApiClient['X']` 注解 + repoint 4 misplaced 到 `@deepseek-ai/dsh-api-remotes/client` barrel + 3 ghost（HostFrame/MuxFrame/SessionModels）→`unknown` + 22 payload `:unknown`（D4-a 最小，test fake 上游忠实）。30→0，无新增。
+- connection fake-api（resync `2504169487`）→ 217→187。`packages/client/connection/tests/fake-api.client.ts`：strip `implements IApiClient` + 12 `IApiClient['X']` 注解 + repoint 4 misplaced 到 `@deepseek-ai/dsh-api-remotes/client` barrel + 3 ghost（HostFrame/MuxFrame/SessionModels）→`unknown` + 22 payload `:unknown`。30→0。
+- **ui-settings-models**（resync `03e865a148`，2026-09-11 主 session）→ 187→148。三类 driver 全触及：ghost `IApiClient`/`CredentialView`/`ConfigurableProviderView`/`DiscoveredModelView` → `ClientRemote`/`CredentialInfo`/`LlmConfigurableProvider`/`LlmDiscoveredModel`；D3 positional args（`settings.mutate(ns,ops,rev)`/`credentials.describe(refs)`/`credentials.set(ref,val)`/`credentials.unset(ref)`/`llm.discoverModels(ns,req,signal?)`/`llm.providers({})` → `llm.listConfigurableProviders()`）；`RemoteResult<T>` 无 `.result` wrapper（`.ok/value/error` 直接）；`.value.{providers,credentials,models}` sub-key gone；event `'credentials/updated'`→`'credentials/reference-updated'`；test bench `new TestRemote(ctx).emit(event, args)` 替 `$dispatch`。**D1（`LlmConfigurableProvider` 无 `active` field）**：cross-ref `ctx.remote.llm.listProviders()` 折 `row.active` 上 `ProviderRow`（hard-fail on either half，mirror listConfigurableProviders 失败处理）；`providerUsable`/`onboardingReadiness` 读 `row.active`。stale README 提 `ConfigurableProviderView`（EN+ZH）= 文档 drift，非阻塞 tsc，follow-up。13 files changed, 303 ins / 226 del. Lefthook oxlint 0/0 + whitespace + vendor manifest guard 全绿。
 
-## 剩余 B（187→0）
+## 剩余 B（148→0）
 
 **actionable 非 Phase-2（D3 方法签名迁移，PRODUCTION src，delicate，需 QA）**：
-- **ui-settings-models（39 visible + ~15-20 D3 masked）**：`IApiClient`→`ClientRemote`（6 site）+ `CredentialView`→`CredentialInfo`（3）+ `DiscoveredModelView`→`LlmDiscoveredModel` + `ConfigurableProviderView`→`LlmConfigurableProvider`（unmask D3）+ `.api`→`ctx.remote`（3）+ `$dispatch`→`emit`（6 test）+ event 名 `'credentials/updated'`→`'credentials/reference-updated'` + JsonValue cast（12）+ shorthand（2）+ double cast（1）。**D3**：`api.llm.providers()`→`ctx.remote.llm.listConfigurableProviders()`、`response.result.ok/value`→`response.ok/value`（RemoteResult 无 `.result` wrapper）、positional args——按已迁移 `ui-settings`/`ui-settings-plugins` 模式。**D1 决策**：`LlmConfigurableProvider` 无 `active` field（旧 `ConfigurableProviderView` 有，code 用 `row.entry.active`）——(a) cross-ref `ctx.remote.llm.listProviders()` 定 active / (b) 若 `listConfigurableProviders` 只返 active 则删 check（**事实，先查 settings-controller/llm Host impl**）/ (c) fork 加 `active`（非上游忠实，排除）。
-- **result-cache（4 visible + D3）**：`IApiClient`→`ClientRemote`（3）+ `.api`→`ctx.remote`（1）unmask D3——`api.results.get({resultId})`→`ctx.remote.result.get(resultId)`（ResultsRemote namespace）+ fetcher 契约改 `RpcResult<ResultEntry>`→throw-based `RemoteError`（adapt miss→undefined vs error→`ResultFetchError`）。delicate（result-cache error 语义）。
+- **result-cache（4 visible + D3 masked）**（**next shard**）：`IApiClient`→`ClientRemote`（3 in `src/client/service.ts`）+ `.api`→`ctx.remote`（1）unmask D3——`api.results.get({resultId})`→`ctx.remote.result.get(resultId)`（`ResultsRemote` namespace，注意单数 `result` 非 `results` —— **验证** template `packages/data/result-cache/src/remote.ts` 的 `@Remote('get')`）+ fetcher 契约改 `RpcResult<ResultEntry>` → throw-based `RemoteError`（adapt miss→undefined vs error→`ResultFetchError`）。delicate（result-cache error 语义 —— missing-result 是 `sessionErr('result-not-found')` per `ClientConnectionRpc` fixture 迁移契约，见 UM-CONNECTION-FIXTURE-DEAD-APICLIENT resolution 2026-09-10）。tests 用同 test-fake pattern（`FakeApiClient` 已删；见 apply/result-service specs 现状）。
 
-**Phase-2（144，blocked by Plan B ADR-0002，本 session 已确认 grill=Plan B）**：client/runtime 131（删包）+ 4 presenter 13（`ui-semantic-layer` 7 + `ui-suggest-followups`/`ui-present-table`/`ui-present-decomposition` 各 2；按 Plan B 注册模式迁）。
+**Phase-2（144，blocked by Plan B ADR-0002，2026-09-10 主 session 已确认 grill=Plan B）**：client/runtime 131（删包）+ 4 presenter 13（`ui-semantic-layer` 7 + `ui-suggest-followups`/`ui-present-table`/`ui-present-decomposition` 各 2；按 Plan B 注册模式迁）。见 [R-DA-CLIENT-RUNTIME-DECOMMISSION](../tickets/phase-misc/R-DA-CLIENT-RUNTIME-DECOMMISSION.md) Phase-2 + [R-DA-UI-PRESENTER-COMPOSITION](../tickets/phase-misc/R-DA-UI-PRESENTER-COMPOSITION.md)。
 
 ## 噪声（下 session 查）
 
-- `packages/data/audit/src` + `data/evidence-query/src` 有 untracked `.d.ts`/`.js`/`.map`（tsdown 输出?——pre-existing，非 connection fix 产；验 + gitignore/clean）。
-- `pnpm-lock.yaml` modified（pre-existing，非本 session）。
+- `packages/data/audit/src` + `data/evidence-query/src` + `data/semantic-layer/src` 有 untracked `.d.ts`/`.js`/`.map`（tsdown 输出?——pre-existing，非本 session 产；验 + gitignore/clean）。
+- `pnpm-lock.yaml` modified 18/18（pre-existing，非本 session）。
+- ui-settings-models `README.md` + `README.zh.md` line 37 仍写"owner props carrying the row's `ConfigurableProviderView`" —— 文档 drift，doc-sync gate 会红，follow-up。
 
 ## 下 session 起手
 
-1. **ui-settings-models**（D3+D1，PRODUCTION src，careful + QA）→ 187→~130。dispatch subagent 实现（按 Explore 详案：rename+D3+transport+casts）+ 主 session 重验 tsc + diff logic + D1 事实查（`listConfigurableProviders` 返 active 否）+ 浏览器 QA settings UI。
-2. **result-cache**（D3，careful）→ ~130→~126。
-3. **Phase-2**（blocked by Plan B）= 144，另 session（Plan B presenter 迁移 + 删 client/runtime）。
+1. **result-cache**（D3，careful）→ 148→144。
+   - dispatch Explore subagent 调研 4 error + `src/client/service.ts` 全文 + `packages/data/result-cache/src/remote.ts` template + `packages/client/connection/tests/fake-api.client.ts:105+ 'result/get' case` 契约。
+   - 主 session 重验（铁律，至少 1 关键断言）—— e.g. grep `ResultsRemote` namespace method 名（`get` singular 非 `results.get`）+ `RemoteError` throw-based vs `RpcResult` result-shape。
+   - 决策：错误语义 map（miss vs describe-failure vs transport-failure）——按 UM-CONNECTION-FIXTURE-DEAD-APICLIENT `case 'result/get'` 契约（`sessionErr('result-not-found')`）。
+   - 实现（小改主 session 直接，大改 dispatch subagent）→ tsc 验（bounded 先，`--force` 权威后）→ commit `[Follow-on-3-B]` on resync + `[wayfinder(um-flow)]` on master。
+2. **Phase-2**（blocked by Plan B）= 144 → 0，另 session（Plan B presenter 迁移 + 删 client/runtime）。见 R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-2 + R-DA-UI-PRESENTER-COMPOSITION。
+
+**关键上下文（勿再重导）**：
+- api-remotes barrel = `packages/api/remotes/src/client/index.ts`（曾被验证：exports `ClientRemote`/`CredentialInfo`/`LlmConfigurableProvider`/`LlmDiscoveredModel`/`SettingsNamespaceView`；不 exports `IApiClient`/`CredentialView`/`ConfigurableProviderView`/`DiscoveredModelView`）。
+- `RemoteResult<T>` = `{ ok: true; value: T } | { ok: false; error: RemoteFailure }`（`packages/typert/protocol/src/types.ts:74`）。
+- `LlmConfigurableProvider` 无 `active` 字段（`packages/llm/llm/src/types.ts:218`）；`listConfigurableProviders()` 返 registered+dormant（`packages/llm/llm/src/index.ts:538`）；`listProviders()` 返 `LlmProviderInfo[]` `{id,name}` 仅当前 registered。
+- `TestRemote.emit(event, args)` = `packages/test-support/client-runtime/src/remote.ts:60`；引用 spec `packages/client/ui-settings-plugins/tests/apply.client.spec.ts`。
+- reference migrations: `ui-settings/src/client/settings-scope.ts`（`settings.mutate` positional）+ `settings-mirror.ts:180-192`（`settings.describe` unwrap）+ `ui-settings-plugins/src/client/web-search-card-controller.ts:128-172`（`credentials.describe/set` positional）。
+- worktrees: `/Users/mckenzie/workspace/dsh-resync`（branch `upstream/resync-2026-09-08`，tip `03e865a148`）；master `/Users/mckenzie/workspace/deepseek-harness-da`（tip 需查 —— 本 session 会 append 一 wayfinder commit）。
+- node v24：`PATH="/usr/local/bin:$PATH"`（nvm 无 v24；build:official/tsc 需 v24）。

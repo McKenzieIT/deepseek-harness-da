@@ -1,6 +1,6 @@
 # UM-ARCH — dsh + data-agent 架构图 + 依赖图 + gen/verify/update 机制
 
-**Type**: task · **Status**: open · **Phase**: upstream-merge
+**Type**: task · **Status**: resolved（2026-09-09 regen-from-synced；2026-09-10 UM10 补一次 regen）· **Phase**: upstream-merge
 **Blocking**: UM14（权威 dsh 图基于 synced latest）
 **Foundational for**: UM15（impact analyzer 在图上推理）、UM-ADAPT（adaptive 守门用依赖图的"对齐状态"）
 **Flow**: 见 `UM-flow-2026-09-08.md`（Phase B）
@@ -23,4 +23,8 @@
 
 ## Resolution
 
-(open；gen 脚本设计→从代码生成→替换手画 v1；包名准确来自 tsconfig refs，wiring 需 gen 脚本从跨包 import 权威化)
+**[2026-09-09] RESOLVED** — regen-from-synced 落地：commit `038d8b51ce`（worktree `../dsh-arch-regen`，branch `chore/um-arch-regen-2026-09-09`），`verify-architecture-graph` green，`docs/architecture-graph.md` 成为权威 dsh 图，workspace-files 已 authoritative。手画 v1 草图已被 gen 脚本产物替换。
+
+**[2026-09-10] 补记（UM10 线 A）** — Phase-2（`eb9e4cf05c`）删除 `packages/client/runtime` 后，本票产出的 `docs/architecture-graph.md` **变 stale**（仍把 `client-runtime` 列为包，且列为 `client-result-cache`/`client-ui-context-layer`/`client-ui-present-decomposition` 的依赖）。UM10 已重跑 `gen-architecture-graph` 修复（commit `ecaa56c848`，删除的 -64 行全是 `pkg_client_runtime` 的 mermaid 节点与边）。
+
+**教训（喂给 UM15）**：架构图是**删包操作的下游产物**，任何包增删都必须触发 regen；`verify-architecture-graph` 不在 `check:ci:static` 组内，所以 static sweep 抓不到它 stale——UM15 的 durable 方法应把它纳入删包 checklist。
