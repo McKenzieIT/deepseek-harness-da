@@ -407,6 +407,8 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 ## 9. 2026-09-11 文献补搜：R8 的一处负空间结论被证伪
 
 > **为什么补搜**：R8 的六篇是沿 map 方向 8 原有的论文行读的。一篇都不研究「二值准则 + 阈值化聚合」是事实，但由此推出「**整片文献**无人研究」是一次**从样本到全称的跳跃**，而那六篇的取样并非为回答这个问题而设计。补搜正是为了检验这一跳跃。结论：**跳错了。**
+>
+> **候选清单在 [`lit-gap-2026-09-11.md`](lit-gap-2026-09-11.md)**：50 个已验真 ID（按四个洞分组，含元数据原文标题、日期、subagent 自报证据等级）、四条裁决、两条空结果、R8b 的读序建议。本节只写结论与对产物的影响，**不重复那份清单**。
 
 ### 9.1 身份核验（本轮新增）
 
@@ -525,7 +527,7 @@ reference-free 路线有一致且难看的天花板——`2608.17795`（*TraceSQ
 **③ 但锚本身是烂的——这条外部证据与本仓的 anchor 事故是同一回事**
 
 - CIDR '26 测出 gold 标注错误率 **52.8%（BIRD Mini-Dev）/ 66.1%（Spider 2.0-Snow）**；
-- SpotIt（ICLR 2026）发现当预测与 gold 不一致时，**「往往是 gold SQL 错了」**；
+- SpotIt（`2510.26840`，*SpotIt: Evaluating Text-to-SQL Evaluation with Formal Verification*，2025-10-30，6 作者；**venue 未核**——subagent 称 ICLR 2026，本文未确认）发现当预测与 gold 不一致时，**「往往是 gold SQL 错了」**；
 - FLEX 自己的 Appendix C 就展示了它的判官**为一条有缺陷的 gold 背书**。
 
 ⇒ **conditioning on gold 会把 gold 的错误一起引进来。** 这不是抽象风险：本仓 `rbi-10000251-exec` 的 event case **16/18 期望值已与自身 reference SQL 不符**（GA-EVAL-CASESET-EVENT-ANCHOR）。**所以「gold 腐坏」在本仓不是局部事故，而是这个领域的普遍状况。**
