@@ -150,6 +150,12 @@ Evaluation Store 保存 Run/Attempt state、EvidenceEnvelope、EvidenceCut manif
 
 EvidenceCut sealing 必须先写入并验证所有 required Artifacts，再写 evidence records、构造完整 manifest，并由 Evaluation Store 原子提交 sealed cut record；提交前状态为 `sealing`，不得生成正式 GradeRecord。失败上传形成未被 cut 引用的 orphan，可通过 grace period 和 reachability GC 清理；missing/corrupt required artifact 使 cut `incomplete | invalid`。Private grading artifacts 可以使用受限 Artifact Store Provider；External Resource 不被伪装成 Artifact，其 snapshot/observation receipt 作为 immutable Artifact 进入 cut。
 
+### D23 — Benchmark Pack 是 sealed content artifact，由 Cordis Repository capability 解析
+
+Benchmark Pack 的 canonical form 是不执行代码、content-addressed、sealed 的数据 bundle；其 manifest closure 包含 case manifests、public task artifacts、具名 policy/requirement declarations、provenance、split/cohort 与 opaque private-material references。Pack identity 来自 canonical content root digest，不来自 locator、npm package version、Loader row 或 plugin identity；修改任一 required child 产生新 Pack identity。
+
+`BenchmarkRepository` 是负责 locator resolution、schema/closure validation、sealing、digest verification、caching 与 public/private view 的 Cordis Definition / Provider / Consumer seam。首版只实现 explicit local-directory/Artifact-Store-backed Provider，由外部 CLI 传入 `--benchmark` locator；不建设远端 registry、implicit discovery、mutable latest、Pack HMR 或每 Pack 一个 plugin。Grading Mechanism、legacy importer、generator、custom validator/compiler 和 Environment fixture 等可执行行为由 optional companion Cordis plugins 提供。公开 npm package可以携带 public Pack assets作为分发适配器，但正式 identity仍是 Pack digest；private grading material只由 grader-only repository/service graph访问，不与 Harness-visible package或mount共同安装。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
