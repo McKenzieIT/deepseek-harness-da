@@ -102,6 +102,12 @@ Run 开始后 plugin tree、Provider、preset/config、hooks、guards 与 packag
 
 Product subject 分别封闭权威 DSH `SessionEvidenceCut` 与模型不可见的 `EvaluationEvidenceCut`，后者引用 Environment completion、artifacts、Observer evidence 和 measurement inputs；component subject 使用自己的 cut，不伪造 Session。Model rerun 与 Environment re-execution 必须创建新 Attempt。Environment finality 决定 correctness label 是否 final，cleanup/reset 与 separation 决定 independent-trial eligibility；grade computation 与 cleanup 在 cut sealed 后可以并行，但 formal publication 必须等待 grading、coverage、finality 和所声明 assurance。Cleanup failure 保留已计算 grade，并按影响阻塞相应 publication claim。
 
+### D15 — Immutable Artifact、External Resource 与 Snapshot Receipt 分离
+
+Evaluation Core 分别定义 `ArtifactRef`、`ResourceRef` 与 `ResourceSnapshotReceipt`。Artifact 表示已冻结、可重新读取且 content-addressed 的 bytes，`contentDigest` 必填并由可替换 Artifact Store Provider 持久化；Resource 表示由外部 Provider 拥有、可能继续变化的 table、database、job、service、registry entry 或 path，本身不证明内容冻结。Snapshot Receipt 由 Environment/Provider evidence 声明某次 observation 的 snapshot identity、assurance 与适用 claim。
+
+Sealed EvidenceCut 可以引用 Artifact 和 Resource Snapshot Receipt，但不得把裸 ResourceRef 当作完整评分证据。Rescore 只能读取 cut 中的 Artifact/observation evidence，不重新访问外部 Resource；任何 model rerun 或 Environment re-execution 都创建新 Attempt。Provider-specific snapshot 字段留在 receipt payload，不进入 Core 的通用 `version: string`；cut 中的 Artifact 与 receipt 不可覆写。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
