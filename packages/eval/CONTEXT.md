@@ -51,3 +51,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **External Resource**: A provider-owned table, database, job, service, registry entry, or path whose address does not prove stable content. _Avoid_: Artifact
 
 **Resource Snapshot Receipt**: Provider evidence that identifies and qualifies the state observed from an External Resource for a declared evaluation claim. _Avoid_: Version string, resource address
+
+**Context Projection**: A typed, content-identified selection of governed data context produced by the normal product Context Projection capability for a declared consumer, phase, requirement, and budget. _Avoid_: Context prompt, semantic root
+
+**Context Projection Evidence**: The request, candidates, selected facts and relations, scores, provenance, budget, serialization identity, and model-visible digest that explain one Context Projection. _Avoid_: Retrieval log when later projection stages are omitted
