@@ -75,3 +75,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Grading Runtime**: The isolated runtime that validates sealed evidence, resolves authorized private material and a frozen grading plan, invokes a registered domain mechanism, and creates append-only Grade Records. _Avoid_: Grader when referring to one domain mechanism
 
 **Grading Mechanism**: A namespaced, versioned domain implementation that interprets declared evidence and private material under a Resolved Grading Plan. _Avoid_: Grading Runtime
+
+**Evaluation Store**: The structured record store for evaluation runs, attempts, evidence manifests, grades, measurements, comparison plans, and publication eligibility. It does not own artifact bytes or product session history. _Avoid_: Results directory
+
+**Artifact Store**: A replaceable capability that persists, retrieves, verifies, and governs immutable content-addressed artifact bytes. _Avoid_: Evaluation Store, external resource registry

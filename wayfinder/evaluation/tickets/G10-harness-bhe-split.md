@@ -144,6 +144,12 @@ Evaluation Controller 依赖 Protocol 和各 capability Definition，负责 reso
 
 数据分析、数据工程与数据科学 extension 通过 namespaced、versioned registry 提供 SQL/result、report rubric、pipeline verifier、data-quality、dataset/model/metric 等具体 Grading Mechanism；Benchmark 显式选择 policy。Grading Runtime 可以提供 exact/set/bag/numeric/rubric composition 等领域无关 primitives，但不得包含 SQL normalization、pipeline semantics、Notebook/model metric、Benchmark defaults 或 hidden Context。Controller 只提交 grade request 并接收 GradeRecord/failure，不解释 correctness。
 
+### D22 — Evaluation Store 与 Artifact Store 是独立 capability
+
+Evaluation Store 保存 Run/Attempt state、EvidenceEnvelope、EvidenceCut manifest、GradeRecord、Measurement、PublicationEligibility、ComparisonPlan 与 identity references；Artifact Store 保存 immutable、content-addressed bytes，并负责 streaming I/O、digest verification、deduplication、retention 与 access policy。Session Store 继续独立拥有产品 session facts。三者通过引用和 sealed manifest 建立一致性，不要求跨 backend 原子事务。
+
+EvidenceCut sealing 必须先写入并验证所有 required Artifacts，再写 evidence records、构造完整 manifest，并由 Evaluation Store 原子提交 sealed cut record；提交前状态为 `sealing`，不得生成正式 GradeRecord。失败上传形成未被 cut 引用的 orphan，可通过 grace period 和 reachability GC 清理；missing/corrupt required artifact 使 cut `incomplete | invalid`。Private grading artifacts 可以使用受限 Artifact Store Provider；External Resource 不被伪装成 Artifact，其 snapshot/observation receipt 作为 immutable Artifact 进入 cut。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
