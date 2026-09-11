@@ -70,7 +70,7 @@ case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@de
 
 ## 不在本票范围
 
-- 实际做出架构决策（[G10](G10-harness-bhe-split.md)）或实施重构（T9-bhe-split-impl）。
+- 实际做出架构决策（[G10](G10-harness-bhe-split.md)）或实施 foundation-first stack（[T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md)）。
 - 引用未验证论文。map §⚠ 验证 TODO 的「待核」项须先 primary-fetch `arxiv.org` 才能进产物；本环境曾 403，换网络或人工核。
 - subagent 的输出未经自己机械复核不得进产物（CLAUDE.md 引证纪律 2）。
 

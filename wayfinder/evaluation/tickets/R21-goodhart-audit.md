@@ -2,7 +2,7 @@
 
 **Type**: research  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: T1-exec-grader-impl；T9-bhe-split-impl；T5-dynamic-cases-impl；T5b-evolving-slice-impl；[G10 — Harness B/H/E 拆分](G10-harness-bhe-split.md)；[G5 — Dynamic case pipeline](G5-dynamic-case-pipeline.md)
+**Blocked by**: [R25 — New Evaluation stack baseline re-anchor](R25-evaluation-rebaseline.md)、[G15 — Dynamic data evaluation lifecycle](G15-dynamic-evaluation-lifecycle.md)、T5-dynamic-cases-impl、T5b-evolving-slice-impl
 **Mode**: ML-eval experiment（按 [playbook](../playbook.md) 走 SPEC→rubric→另一环境）
 **Branch**: `research/R21-goodhart-audit`
 
@@ -14,10 +14,10 @@
 
 - 每个 slice 的 execution、judge、gap、失败结构、样本数和 CI。
 - `Δ_train-heldout` 与 `Δ_heldout-fresh` 相对冻结 baseline 的变化。
-- Benchmark provenance 与 run provenance。
-- Model/Harness/Environment/adapter/policy/seed identity。
+- Benchmark provenance、run provenance、Comparison Plan、PublicationEligibility 与 coverage accounting。
+- 完整 Run Identity Graph：Benchmark、Harness、model/interface、DataScope、Environment assurance、Context、grading、Observer、operation 与 seed。
 - Chronological fresh replay 中首次表现、反馈后表现和下一 fresh batch 表现。
 - Tool、network、memory、retry 与 elicitation budget 的消融。
-- Standard `pass@n` 与 strict `pass^k`。
+- Standard `pass@n` 与 strict `pass^k`；observational、unresolved、invalid 与 cleanup/separation failure 不得混入独立-trial headline。
 
 每次完整运行写入 `../research/experiment-audit-log.md`。
