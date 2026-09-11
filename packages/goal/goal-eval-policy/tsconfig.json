@@ -9,7 +9,6 @@
     { "path": "../goal" },
     { "path": "../../core/session" },
     { "path": "../../data/evidence-query" },
-    { "path": "../../eval/eval-runner" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    { "path": "../../eval/eval-runner" }
   ]
 }

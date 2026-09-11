@@ -16,9 +16,6 @@
     },
     {
       "path": "../connection/tsconfig.client.json"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

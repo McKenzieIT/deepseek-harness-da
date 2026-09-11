@@ -14,7 +14,6 @@
     { "path": "../../data/nl2sql-engine" },
     { "path": "../../data/evidence-query" },
     { "path": "../../query/query" },
-    { "path": "../../query/query-maxcompute" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    { "path": "../../query/query-maxcompute" }
   ]
 }

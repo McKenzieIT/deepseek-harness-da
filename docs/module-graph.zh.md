@@ -457,17 +457,13 @@ flowchart TD
   pkg_client_ui_context_layer --> pkg_client_locale
   pkg_client_ui_context_layer --> pkg_client_ui_layout
   pkg_client_ui_context_layer --> pkg_client_ui_renderer
-  pkg_client_ui_context_layer --> pkg_invariants
   pkg_client_ui_present_decomposition --> pkg_client_locale
   pkg_client_ui_present_decomposition --> pkg_client_ui_tool
-  pkg_client_ui_present_decomposition --> pkg_invariants
   pkg_client_ui_present_table --> pkg_client_locale
   pkg_client_ui_present_table --> pkg_client_ui_tool
-  pkg_client_ui_present_table --> pkg_invariants
   pkg_client_ui_suggest_followups --> pkg_client_locale
   pkg_client_ui_suggest_followups --> pkg_client_ui_conversation
   pkg_client_ui_suggest_followups --> pkg_client_ui_tool
-  pkg_client_ui_suggest_followups --> pkg_invariants
   pkg_credentials --> pkg_invariants
   pkg_result_cache --> pkg_invariants
   pkg_result_cache --> pkg_typert_protocol
@@ -1423,7 +1419,6 @@ flowchart TD
   pkg_subagent_spawn_in_process --> pkg_subagent_in_process_driver
   pkg_client_result_cache --> pkg_api_remotes
   pkg_client_result_cache --> pkg_client_connection
-  pkg_client_result_cache --> pkg_invariants
   pkg_client_ui_semantic_layer --> pkg_agent_presets
   pkg_client_ui_semantic_layer --> pkg_api_remotes
   pkg_client_ui_semantic_layer --> pkg_api_session_controller
@@ -1437,13 +1432,11 @@ flowchart TD
   pkg_client_ui_semantic_layer --> pkg_client_ui_tool
   pkg_client_ui_semantic_layer --> pkg_client_ui_workspace
   pkg_client_ui_semantic_layer --> pkg_goal
-  pkg_client_ui_semantic_layer --> pkg_invariants
   pkg_client_ui_settings_models --> pkg_api_remotes
   pkg_client_ui_settings_models --> pkg_client_connection
   pkg_client_ui_settings_models --> pkg_client_locale
   pkg_client_ui_settings_models --> pkg_client_ui_renderer
   pkg_client_ui_settings_models --> pkg_client_ui_settings
-  pkg_client_ui_settings_models --> pkg_invariants
   pkg_experimental_client_ui_agent_team --> pkg_api_remotes
   pkg_experimental_client_ui_agent_team --> pkg_api_session_controller
   pkg_experimental_client_ui_agent_team --> pkg_client_locale
@@ -1593,10 +1586,10 @@ flowchart TD
 | [`web`](../packages/web/web) | `web` | [`llm`](../packages/llm/llm) |
 | [`attachment`](../packages/attachment/attachment) | `attachment` | [`brand`](../packages/util/brand) |
 | [`data-agent`](../packages/bundle/data-agent) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-ui-context-layer`](../packages/client/ui-context-layer) | `client` | [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-ui-layout`](../packages/client/ui-layout), [`client-ui-renderer`](../packages/client/ui-renderer), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-ui-present-decomposition`](../packages/client/ui-present-decomposition) | `client` | [`client-locale`](../packages/client/locale), [`client-ui-tool`](../packages/client/ui-tool), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-ui-present-table`](../packages/client/ui-present-table) | `client` | [`client-locale`](../packages/client/locale), [`client-ui-tool`](../packages/client/ui-tool), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-ui-suggest-followups`](../packages/client/ui-suggest-followups) | `client` | [`client-locale`](../packages/client/locale), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-tool`](../packages/client/ui-tool), [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`client-ui-context-layer`](../packages/client/ui-context-layer) | `client` | [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-ui-layout`](../packages/client/ui-layout), [`client-ui-renderer`](../packages/client/ui-renderer) |
+| [`client-ui-present-decomposition`](../packages/client/ui-present-decomposition) | `client` | [`client-locale`](../packages/client/locale), [`client-ui-tool`](../packages/client/ui-tool) |
+| [`client-ui-present-table`](../packages/client/ui-present-table) | `client` | [`client-locale`](../packages/client/locale), [`client-ui-tool`](../packages/client/ui-tool) |
+| [`client-ui-suggest-followups`](../packages/client/ui-suggest-followups) | `client` | [`client-locale`](../packages/client/locale), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-tool`](../packages/client/ui-tool) |
 | [`credentials`](../packages/credentials/credentials) | `credentials` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`result-cache`](../packages/data/result-cache) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`typert-protocol`](../packages/typert/protocol) |
 | [`scope-registry`](../packages/data/scope-registry) | `data` | [`atomic-write`](../packages/util/atomic-write), [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1816,9 +1809,9 @@ flowchart TD
 | [`workflow-worker-thread`](../packages/workflow/workflow-worker-thread) | `workflow` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent), [`tools`](../packages/core/tools), [`workflow`](../packages/workflow/workflow) |
 | [`subagent-fork-in-process`](../packages/subagent/subagent-fork-in-process) | `subagent` | [`agent`](../packages/core/agent), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) |
 | [`subagent-spawn-in-process`](../packages/subagent/subagent-spawn-in-process) | `subagent` | [`subagent`](../packages/subagent/subagent), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) |
-| [`client-result-cache`](../packages/client/result-cache) | `client` | [`api-remotes`](../packages/api/remotes), [`client-connection`](../packages/client/connection), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-ui-semantic-layer`](../packages/client/ui-semantic-layer) | `client` | [`agent-presets`](../packages/preset/agent-presets), [`api-remotes`](../packages/api/remotes), [`api-session-controller`](../packages/api/session-controller), [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-store`](../packages/client/store), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-layout`](../packages/client/ui-layout), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-sidebar`](../packages/client/ui-sidebar), [`client-ui-tool`](../packages/client/ui-tool), [`client-ui-workspace`](../packages/client/ui-workspace), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`client-ui-settings-models`](../packages/client/ui-settings-models) | `client` | [`api-remotes`](../packages/api/remotes), [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-settings`](../packages/client/ui-settings), [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`client-result-cache`](../packages/client/result-cache) | `client` | [`api-remotes`](../packages/api/remotes), [`client-connection`](../packages/client/connection) |
+| [`client-ui-semantic-layer`](../packages/client/ui-semantic-layer) | `client` | [`agent-presets`](../packages/preset/agent-presets), [`api-remotes`](../packages/api/remotes), [`api-session-controller`](../packages/api/session-controller), [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-store`](../packages/client/store), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-layout`](../packages/client/ui-layout), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-sidebar`](../packages/client/ui-sidebar), [`client-ui-tool`](../packages/client/ui-tool), [`client-ui-workspace`](../packages/client/ui-workspace), [`goal`](../packages/goal/goal) |
+| [`client-ui-settings-models`](../packages/client/ui-settings-models) | `client` | [`api-remotes`](../packages/api/remotes), [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-settings`](../packages/client/ui-settings) |
 | [`experimental-client-ui-agent-team`](../packages/experimental/client-ui-agent-team) | `experimental` | [`api-remotes`](../packages/api/remotes), [`api-session-controller`](../packages/api/session-controller), [`client-locale`](../packages/client/locale), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-primitives`](../packages/client/ui-primitives), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-session`](../packages/client/ui-session), [`client-ui-slots`](../packages/client/ui-slots), [`experimental-agent-team`](../packages/experimental/agent-team), [`session`](../packages/core/session), [`typert-protocol`](../packages/typert/protocol) |
 | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | `experimental` | [`agent`](../packages/core/agent), [`experimental-agent-team`](../packages/experimental/agent-team), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`sdk-client`](../packages/sdk/client) | `sdk` | [`llm`](../packages/llm/llm), [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session) |

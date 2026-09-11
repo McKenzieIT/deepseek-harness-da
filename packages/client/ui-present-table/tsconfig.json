@@ -28,9 +28,6 @@
     },
     {
       "path": "../ui-chat"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }
