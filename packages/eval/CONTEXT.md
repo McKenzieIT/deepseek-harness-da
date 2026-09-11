@@ -45,3 +45,9 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Grade Record**: An immutable derived result that identifies its Evidence Cut, Resolved Grading Plan, grader, and grading outcome without modifying the execution evidence. _Avoid_: Score
 
 **Publication Eligibility**: The explicit claims and aggregation uses that a grade may support after evidence completeness, coverage, finality, assurance, cleanup, and separation are evaluated. _Avoid_: Published as a synonym for written to storage
+
+**Artifact**: Immutable, content-addressed bytes retained by an Artifact Store and safe to reread without contacting the producing external system. _Avoid_: Resource, attachment when immutability is not established
+
+**External Resource**: A provider-owned table, database, job, service, registry entry, or path whose address does not prove stable content. _Avoid_: Artifact
+
+**Resource Snapshot Receipt**: Provider evidence that identifies and qualifies the state observed from an External Resource for a declared evaluation claim. _Avoid_: Version string, resource address
