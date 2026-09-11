@@ -90,6 +90,12 @@ Evaluation Observer 必须 scope-local、effect-owned 且只读，只能记录 s
 
 任何 prompt、Context、tool、model route、approval、retry、phase、feedback 或 stopping 变化都是显式 Intervention，并形成新的 Harness identity，不能继续声明 production-equivalent。运行前 required observer 不可用时 preflight 失败；运行中 observer/evidence sink 失败时 Agent 可正常结束，但 evaluation 标记 `invalid | evidence-incomplete`，不得归因为模型失败或产生正式 measurement。
 
+### D13 — 一个 Evaluation Run 拥有一个冻结 DSH root
+
+`EvaluationRun` 固定一套 resolved production composition 和一个 DSH root runtime，并包含零到多个 attempt-scoped Agent/session/Environment lease。首版同一 Run 内默认串行执行 Attempts；只有 Provider 与 Environment participant 证明 per-attempt namespace、scope-safe routing、credential/resource separation 和 cleanup ownership 后才允许并行。需要完整进程隔离时，一个 Run 只包含一个 Attempt，再为下一次尝试创建新 Run。
+
+Run 开始后 plugin tree、Provider、preset/config、hooks、guards 与 package/source identity 不得静默变化；Loader/HMR 或 replacement 使 Run `invalidated`、停止创建新 Attempt，并禁止跨变化聚合。Run 完成必须等待 Agent owned work、session/evidence flush、Environment finality/cleanup、Evaluation overlay disposal 与 root quiescence，不能以 Agent idle 或模型停止输出代替。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
