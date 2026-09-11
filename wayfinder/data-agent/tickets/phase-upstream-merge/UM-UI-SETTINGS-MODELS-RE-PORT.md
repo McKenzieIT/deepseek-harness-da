@@ -68,3 +68,47 @@ upstream 在 B1 之后对这个包做了 2026-08-26 / 2026-08-28 的重构（`85
 - `tsdown.config.ts` 已去 `lib/types/invariant.js` bundling（site-5，build 用）。
 
 → **本票 apply 拓扑序 step 1「UM-INVARIANT先落」已满足**，可从 step 2（`src/client/store.ts` 补 `ProviderDirectoryEntry`）起推进。本票仍拥有：`README{,.zh}.md` 的 `### Extension slots` 段恢复（step 4）+ upstream 对 peerDeps 的其他改动（去 `dsh-client-ui-renderer`/`dsh-client-connection` + 加 `dsh-util-values` devDep）——这些键与 UM-INVARIANT 清的 `dsh-invariants` 不冲突。
+
+### [2026-09-12] re-port workflow 完成（analyze-only）— 43 文件分类 + 21 提案 + apply 拓扑序
+
+`um-ui-settings-models-report.wf.js` 跑完（43 agent，analyze-only，提案在 `/tmp/um-uism/`，分类在 `/tmp/um-uism-classification.md`）。revisions: M1=`141eb6fef8` / UP=`c389f96bf3` / HEAD=`7ad3242d97`。
+
+**分类（43 文件）**：
+- already-equal=12（HEAD==UP，无需工作；含 WelcomeNotice.tsx/tsdown.config.ts 已独立 sync 到 UP）
+- adopt-upstream=5（HEAD==M1，UP 移了——直接取 UP：EditorFooter.tsx、ModelsSection.module.css、locales.ts、onboarding-copy.ts、styles.client.spec.ts）
+- **three-way-merge=21**（与 M1+UP 都偏离——真语义合并，提案在 `/tmp/um-uism/`）
+- restore=2（UP 有 HEAD 无——`operations.ts` + `slot-contract.ts`，中心轴 façade）
+- delete=0（invariant.ts + invariant.client.spec.ts upstream 已删 + UM-INVARIANT 已在 HEAD 删 → 无 delete 动作）✓ step 1 满足
+- owned-elsewhere=3（UM-INVARIANT 的 invariant.ts + invariant.client.spec.ts + models-section.client.spec.ts 迁移 + package.json invariant 三件套——均已在 HEAD 清）
+
+**中心轴**：upstream 用 `createModelsOperations`（`operations.ts`）取代 ctx-threading。façade consumers：ModelsSection.tsx（HEAD ctx-prop 10 → UP operations 18）、CustomProviderCard.tsx（ctx 2 → operations 7）、DeepSeekOnboardingDialog.tsx（ctx 2 → operations 6）、ProviderEditor.tsx（ctx.remote.credentials.describe → operations.describeCredential）+ EditorFooter.tsx（adopt）+ index.ts（three-way）。**façade 一次定，同改动推到所有 consumer。**
+
+**apply 拓扑序（confirmed）**：
+1. ~~UM-INVARIANT 先落~~ ✓ DONE（PR #116）
+2. `store.ts` — 须先补 `ProviderDirectoryEntry`（HEAD 0 个，UP 4 个；slot-contract.ts import 它）
+3. `operations.ts` + `slot-contract.ts`（两个 restore，UP blob）
+4. `README.md` + `README.zh.md` — **同 commit**（UP README:46-48 链 slot-contract.ts；split 会让 verify-md-links 红）
+5. `index.ts` — import createModelsOperations + re-export slot-contract types；inject 5→8
+6. façade consumers 一起：ModelsSection/CustomProviderCard/DeepSeekOnboardingDialog/ModelListEditor/ProviderEditor
+7. specs，含 `tests/apply.client.spec.ts:87` inject 5→8
+8. 机械桶（adopt-upstream/restore/delete）随时
+9. `README.i18n.yaml` 最后（scoped `verify-translation-pairing --write` 对 reviewed 对，禁 --all）
+
+**耦合（6，confirmed）**：
+- UM-INVARIANT 三件套（invariant.ts/spec/models-section/package.json invariant trio）——已在 HEAD 清（PR #116）✓
+- `slot-catalog.ts`（`packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`，**跨包**）：UP 声明 `settings.models.provider-card`(line 1637) + `settings.models.footer`(line 1591)，HEAD **两个都无**。docs/subsystems/slots{,.zh}.md:126-127 HEAD 已广告两 slot（与将 restore 的 slot-contract.ts 一致），但全局 runtime catalog 缺——**catalog delta 在 cordis-client-runner（跨包；确认本票还是 sibling 管）**。
+- package.json：re-port 去 `dsh-client-ui-renderer`+`dsh-client-connection` peerDeps + 加 `dsh-util-values` devDep + **保 fork 版本 0.1.0-rc.8**（不采 UP 0.1.3-alpha.2）。⚠ UP peerDeps 实为只 {cordis}（全砍 peer）——context 指定 re-port scope 是 renderer+connection，更宽的 UP 砍作 merge-detail 解决。
+- `tests/apply.client.spec.ts` **双主**：re-port（inject 5→8 + ctx→operations）+ UM-INVARIANT（UP `15f2997bcb` 加 Loader-inert test，但 fork 迁到 `models-section.client.spec.ts`——HEAD 的 apply.client.spec.ts **无** Loader-inert test，merge **不得**在此重加，否则与 fork 迁移重复）。
+- `README.i18n.yaml` 最后（recorded sha1 pair，禁手 merge）。
+- `ProviderEditor.tsx`：M1 唯一按 ours 解（fork 侧刻意）。M1..HEAD=33+/23-，UP..HEAD=54+/41-。动前读两个 diff。
+
+**陷阱（3）**：
+1. **UM-LINT-A cast 移除**（`5fe9b32e44`）：`tests/components.client.spec.tsx`(~line 200) + `tests/provider-form.client.spec.tsx`(~line 152) 的 `ctx: ctx as never,` → `ctx,` 已删（cast 为绕开已根治的 Context 冲突）。UP **不**带此 cast。三方 churn 重（components UP..HEAD 230+/314-，provider-form 81+/157-）易诱 resolver 拉 pre-UM-LINT-A hunk 复活 cast。两文件 three-way-merge；**保 HEAD cast-free ModelsSectionProps injection**。
+2. `tests/apply.client.spec.ts` 双主（见上）。
+3. `ProviderEditor.tsx` ours（见上）。
+
+**提案 + 评审**：21 个 three-way-merge 提案在 `/tmp/um-uism/`（per-file：`packages-*` 提案内容 + `analysis-notes.md`/`MERGE_RATIONALE.txt` rationale）。challenge verdicts（clean/blocked）在 workflow return（通知截断 240K；proposals + rationales 在 /tmp 可 review）。apply 前逐个读 clean 提案；blocked 的需人裁决，非 retry。
+
+**apply 后验**：tsc -b tsconfig.client.json + lint:contracts-ready 0/0 + gen-doc-graphs --check + 恢复 README Extension-slots 段（`e17f0fa16c` 删过）+ 双语 .zh.md + .i18n.yaml pair + docs/subsystems/slots{,.zh}.md:126-127 决策（删或成真）。
+
+**估算**：~2-3 session（apply 21 三方合并 + 2 restore + 5 adopt + 12 已等 + 验）。

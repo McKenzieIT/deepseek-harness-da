@@ -23,6 +23,7 @@
 
 - UM-INVARIANT（step 1）已落（PR #116）→ UM-UI-SETTINGS 从 step 2 起。
 - workflow `um-ui-settings-models-report.wf.js`（analyze-only）已跑：Classify → Propose → Challenge。结果在 `/tmp/um-uism-classification.md` + `/tmp/um-uism/<file>` 提案 + workflow return（applyOrder + clean/blocked merges）。
+- **分类（43 文件）**：12 already-equal / 5 adopt-upstream / **21 three-way-merge** / 2 restore[operations.ts+slot-contract.ts] / 0 delete[UM-INVARIANT done] / 3 owned-elsewhere；3 陷阱（UM-LINT-A `ctx as never` cast / apply.client.spec 双主 / ProviderEditor ours）；详见 [UM-UI-SETTINGS 票 2026-09-12](../tickets/phase-upstream-merge/UM-UI-SETTINGS-MODELS-RE-PORT.md)。
 - apply 拓扑序：2 store.ts(`ProviderDirectoryEntry`) → 3 operations.ts+slot-contract.ts(restore) → 4 README{,.zh}.md(同 commit) → 5 index.ts → 6 façade consumers(`ModelsSection`/`CustomProviderCard`/`DeepSeekOnboardingDialog`/`ModelListEditor`/`ProviderEditor`) → 7 specs(inject 5→8) → 8 机械桶 → 9 README.i18n.yaml(scoped --write)。
 - apply 后：tsc -b client + lint:contracts-ready 0/0 + gen-doc-graphs --check + 恢复 README Extension-slots 段 + docs/subsystems/slots{,.zh}.md:126-127 决策。
 - ~2-3 session。
