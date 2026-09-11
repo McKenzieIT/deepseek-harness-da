@@ -443,3 +443,26 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 ### 9.5 未尽（→ R8b）
 
 摘要层证据不进决策。GEAR / `2606.00093` / `2510.11822` / `2603.28005` 四篇需按本文 §0 的标准全文认读，重点两问：① GEAR 的 leakage 形式定义能否**逐字套用**在本仓 1495 条判决上；② 其 prerequisite 图是必须人写还是可归纳——若必须人写，本仓 5 维的图就是 G8 要裁的东西之一。
+
+### 9.6 判官证据落盘（§2.7 的 0/80）：**需求是民间传说，唯一真先例是代码不是论文**
+
+同轮另一路补搜（12 候选全 grade A，10/10 ID 经元数据验真、标题逐字一致）的裁决：**没有人写下过「一次 LLM-judge 评测必须持久化什么才算可审计」**。2026 的文献分三堆，每堆都差一步：
+
+| 堆 | 代表 | 差在哪 |
+|---|---|---|
+| card / schema | `2606.09809`(Evaluation Cards, 48 作者)、`2606.14516`(Every Eval Ever, 48 作者)、`2604.03244` | 标准化的是**配置与 item 级响应**；`2606.14516` 把 per-instance 输出列为**可选**，且 judge prompt / rubric / grader 元数据**根本不是字段** |
+| judge 质量 | `2606.15610`(Judge Datasheet)、`2607.08535` | 把**判官当仪器**来刻画，不把**这次运行当记录** |
+| 漂移 | `2606.15474`、`2606.29719` | 证明问题真实（端点钉死的 GPT-4o 结论**约 6 周后自我反转**；静默版本升级被判为 judge drift 60/60），但把保留需求框成**统计需要**而非审计需要 |
+
+**最接近的一篇仍是 `2606.00093`**：它的核心结果直接指控「只存分数」——**仅仅改变协议口径就把报告准确率从 0.551 推到 0.899、并让 Cohen's κ 跨过零，「without altering a single verdict」**。这个结果**只有在逐准则判决被持久化的前提下才算得出来**，且其附件确实发布了逐准则判决表与重扫脚本。但它把这件事论证成**测量效度**，把离线重聚合当作**演示**而非**要求**。`2607.08535` 是唯一把 "protocol audit trails" 写进判官报告建议的，只有一句、未展开。
+
+**真正的先例是工程**：Inspect AI（UK AISI）已经把 elicitation 与 scoring 拆成一等公民——`inspect eval --no-score` 产出未打分的 log，`inspect score <log>.eval --scorer` 事后用**另一个** scorer 打分，`action="append"` 保留新旧两套结果；grader panel 的**个体投票记录在 `Score.metadata` 的 `panel` 下**。
+
+**但即使在那里，我们的洞仍以更锐利的形式存在**（这两条是本仓要自己承担的）：
+
+1. 用 `model_graded_qa` 重打分**仍会重新调用 grader**——log 让**候选 rollout** 可重放，不是让**过去的判官判决**可重放。只有当逐准则判决已经在 `Score.metadata` 里时，才算「不调模型就能按新政策重算」。
+2. append 模式的指标由新 scorer 独立计算（"the original eval's metric configuration is not applied to the appended scorer"）——**聚合政策本身不是一个被版本化、可重新施加的 artifact**。
+
+⇒ **对 T1 的直接后果**：judge 侧 artifact schema 不必从零设计，可照 Inspect AI 的 `--no-score` / `score --scorer` / `action=append` 三段式取形；但要补上它也没有的那一半——**把逐准则判决与读出政策分开落盘，使「换政策重算」不需要任何模型调用**。这正是本仓 [R20 探针 a](../tickets/R20-judge-readout-probes.md) 已经在 1495 条向量上做到的事（零 LLM 调用重算读出），所以本仓其实**已经有了那一半的工作实例**，缺的是把它写进 artifact 契约。
+
+> **证据等级**：本节为 **abs 页 + 一手文档源**（Inspect AI 文档站 403，改读仓库内 `docs/scoring-workflow.qmd` 等 `.qmd` 源）。**未达全文认读标准**，进 T1 设计前须复核 `2606.00093` 与 Inspect 的实际字段。
