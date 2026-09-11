@@ -79,3 +79,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Evaluation Store**: The structured record store for evaluation runs, attempts, evidence manifests, grades, measurements, comparison plans, and publication eligibility. It does not own artifact bytes or product session history. _Avoid_: Results directory
 
 **Artifact Store**: A replaceable capability that persists, retrieves, verifies, and governs immutable content-addressed artifact bytes. _Avoid_: Evaluation Store, external resource registry
+
+**Benchmark Repository**: The Cordis capability that resolves a Benchmark locator, validates and seals its complete content closure, and returns an exact content-addressed Benchmark Pack identity and views. _Avoid_: Case loader, benchmark registry when identity or sealing is omitted
+
+**Companion Plugin**: An optional Cordis plugin that supplies executable behavior referenced by Benchmark content, such as a grading mechanism, importer, generator, validator, or Environment fixture. _Avoid_: Benchmark Pack
