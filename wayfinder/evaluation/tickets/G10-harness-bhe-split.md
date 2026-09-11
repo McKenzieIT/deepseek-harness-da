@@ -108,6 +108,12 @@ Evaluation Core 分别定义 `ArtifactRef`、`ResourceRef` 与 `ResourceSnapshot
 
 Sealed EvidenceCut 可以引用 Artifact 和 Resource Snapshot Receipt，但不得把裸 ResourceRef 当作完整评分证据。Rescore 只能读取 cut 中的 Artifact/observation evidence，不重新访问外部 Resource；任何 model rerun 或 Environment re-execution 都创建新 Attempt。Provider-specific snapshot 字段留在 receipt payload，不进入 Core 的通用 `version: string`；cut 中的 Artifact 与 receipt 不可覆写。
 
+### D16 — Context projection 是生产级 Cordis capability
+
+Data-agent 新增生产级 `ContextProjectionService` Definition / Provider / Consumer seam；正常 Agent 与 Product Evaluation 必须共用同一 `project(ContextProjectionRequest) -> ContextProjection + ContextProjectionEvidence` 路径。Service 在内部消费现有 schema、retrieval、ontology/relations、terminology、ranking、budget 与 serialization capabilities，拥有 snapshot/projection identity、selection provenance 和 model-visible hash，但不拥有 schema authoring、DataScope registry、Benchmark requirement、private grading material、Environment execution、prompt assembly 或 grader policy。
+
+Evaluation 只声明 `ContextRequirement`、解析 Provider/profile identity 并观察正常 projection evidence，不重建 retrieval 或 Context prompt。No-context、schema-only、relations-only、production 与 oracle 是显式 Provider/config/Harness variants；hidden-derived oracle projection 不进入 production headline。该 seam 是产品重构，应有独立 implementation/parity 验收并在 T9 接线，而不是作为 eval-cli 私有 helper 落地。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
