@@ -124,3 +124,26 @@ house rule 2/3 原文是「subagent 不跑 build/gen/commit/改 repo——只读
 4. 其余按 [map](../map.md) 的 2026-09-11 重盘条目走。
 
 整期估算（分两档，避免同一份质量重复计）：**档一「已落地 + 基线成文」≈ 6-11 session**；**档二「全门真绿 + 所有票关闭」≈ 17-29 session**。唯一真被环境卡住的只有 master-sync 与 push，且两者**共用一个 gated session**。
+
+---
+
+## 七、上一次 workflow 运行本身的两条教训(已回灌进脚本)
+
+2026-09-11 跑过一次 `um-ticket-workflow-inputs`(8 agent / 925k subagent token / 45 分钟)来给这些脚本备输入。它成功证伪了脚本 2 的一个假设(见下),但也暴露两个**工具层面的坑**,两条都已内置进三个脚本:
+
+### 1. discovery 的 schema 要小,别让一个 agent 扛全部细节
+
+那次有一个 agent **失败**:`agent({schema}): subagent completed without calling StructuredOutput (after 2 in-conversation nudges)`。原因是它被要求在**一个**结构化回答里给出 67 个包 × 4 个 flag,预算烧光了还没来得及调 StructuredOutput。
+
+→ 修法(已落 `um-invariant-companion-sweep.wf.js`):**Discover 只回包目录名**(便宜的一遍 grep),那 4 项 per-file 检查**下沉到各批次 agent**——它们本来就要打开那些文件去改。**通用原则:discovery 回"有哪些",item agent 回"这一个怎么做"。**
+
+### 2. workflow 的产出必须放在 return 值里,不能只留在 transcript
+
+那次运行的完整结果(143k 字符)写在 pod 侧的 `/tmp/claude-1001/.../tasks/<id>.output`,而 `mcp__local__*` 映射的是**用户机器**,built-in Read 又被 BLOCK ——**主 session 读不到自己 workflow 的完整输出**,只能拿到通知里被截断的那一段。UM11 与 UM-C-GATES 两份清单、以及脚本形状评审就此丢了。
+
+→ 所以:**凡是主 session 事后要用的东西,必须走 workflow 的 `return` 值,或者由 agent 用 `mcp__local__write_file` 写到用户机器的 `/tmp`**(三个脚本都要求 agent 把 deliverable 写 `/tmp/um-*.md`,正是为此)。**别指望能回头读 transcript。**
+
+### 它证伪的那个假设
+
+我原以为 UI-SETTINGS 的 31 个文件可以逐文件独立扇出。**错了**:`store.ts` 必须先补上 `ProviderDirectoryEntry`,`slot-contract.ts` 才能恢复(后者 import 前者);`README.md` 的 Extension-slots 段必须与 `slot-contract.ts` **同 commit**(否则 `verify-md-links` 红);`index.ts` 要等 `operations.ts` + `slot-contract.ts`。
+→ 提案仍可并行(只写 /tmp),但 **apply 有拓扑序**;脚本 2 现在把 coupling 喂给每个 proposer,并在返回值里给出 `applyOrder`。完整清单见 [UM-UI-SETTINGS-MODELS-RE-PORT](../tickets/phase-upstream-merge/UM-UI-SETTINGS-MODELS-RE-PORT.md) 的 2026-09-11 节。

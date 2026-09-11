@@ -42,22 +42,14 @@ const PLAN = {
   additionalProperties: false,
   required: ['packages', 'peerDepOffenders', 'peerDepDeclarersTotal', 'specFiles', 'reproducedViolations'],
   properties: {
+    // Deliberately just the dirs. An earlier run of this workflow FAILED here: one agent tried to
+    // determine four flags for 67 packages in a single structured answer, burned its budget, and returned
+    // without calling StructuredOutput at all. The four per-file checks are now the batch agent job --
+    // it is already reading those files to edit them.
     packages: {
       type: 'array',
-      description: 'one entry per package carrying an empty invariant companion',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['dir', 'hasInvariantSrc', 'hasExportsEntry', 'hasFilesEntry', 'hasTsconfigRef', 'specFile'],
-        properties: {
-          dir: { type: 'string', description: 'repo-relative package dir, e.g. packages/data/audit' },
-          hasInvariantSrc: { type: 'boolean' },
-          hasExportsEntry: { type: 'boolean', description: 'package.json exports["./invariant"] present' },
-          hasFilesEntry: { type: 'boolean', description: 'package.json files[] contains lib/invariant.js' },
-          hasTsconfigRef: { type: 'boolean', description: 'tsconfig.json references the invariants project' },
-          specFile: { type: 'string', description: 'tests/invariant* path, or empty string' },
-        },
-      },
+      description: 'repo-relative dirs of packages carrying an EMPTY invariant companion, e.g. packages/data/audit',
+      items: { type: 'string' },
     },
     peerDepOffenders: { type: 'array', items: { type: 'string' }, description: 'the packages whose dsh-invariants peerDependency the gate rejects' },
     peerDepDeclarersTotal: { type: 'integer', description: 'how many packages declare it at all -- the conditional-rule denominator' },
@@ -96,13 +88,11 @@ first to learn exactly what the rule considers empty, and what its paired rules 
 rule around lines 120-126 ("files must omit lib/invariant.js when src/invariant.ts is absent"), because that
 is why deleting the companion without also fixing package.json files[] just swaps one red for another.
 
-For EACH such package report, by checking rather than assuming:
-  - dir
-  - hasInvariantSrc
-  - hasExportsEntry     (package.json exports has a "./invariant" key)
-  - hasFilesEntry       (package.json files[] contains "lib/invariant.js")
-  - hasTsconfigRef      (that package tsconfig.json references the invariants project)
-  - specFile            (a tests/invariant* file, or "")
+Return ONLY the list of package dirs. Do NOT try to determine the four per-file edit sites for each package --
+a previous run of this workflow died exactly there, trying to answer four flags x 67 packages in one structured
+reply and running out of budget before it could call StructuredOutput. The batch agents work those out
+themselves, since they are already opening those files to edit them. Keep this phase cheap: one grep-driven
+pass for src/invariant.ts, then read each to decide whether its install function is empty.
 
 THE TRAP YOU MUST QUANTIFY: the peerDependency rule is CONDITIONAL on usesFlattenedPackageDependencies.
 Roughly 103 packages declare @deepseek-ai/dsh-invariants as a peerDependency and only ~7 are violations, so a
@@ -129,15 +119,17 @@ ${mode === 'apply'
   ? 'APPLY: make the edits on disk. Every package below lives in its own directory, so no other agent touches your files -- but do not stray outside them.'
   : 'ANALYZE: make NO edit. Write the exact intended change per file to /tmp/um-invariant-patch-' + (idx + 1) + '.md (old text -> new text, verbatim), so a human can read the plan before it lands.'}
 
-Your packages (touch NOTHING else):
-${JSON.stringify(batch, null, 1)}
+Your packages (touch NOTHING else, and nothing outside these directories):
+${batch.map(d => '  ' + d).join('\n')}
 
-Per package, the four edits -- apply only the ones the flags say are present:
-  1. delete src/invariant.ts
-  2. remove the "./invariant" key from package.json exports
-  3. remove "lib/invariant.js" from package.json files[]
-  4. remove the invariants project reference from tsconfig.json
-  plus: delete the tests/invariant* spec if specFile is non-empty.
+For EACH package, first CHECK which of these four sites exist, then act on the ones that do:
+  1. src/invariant.ts                                  -> delete
+  2. package.json exports["./invariant"]               -> remove the key
+  3. package.json files[] entry "lib/invariant.js"     -> remove the entry
+  4. tsconfig.json reference to the invariants project -> remove the reference
+  plus: a tests/invariant* spec, if one exists         -> delete
+Site 3 is the one people miss, and skipping it just swaps one gate red for another (paired rule at
+scripts/package-invariants.ts:120-126).
 
 DISCIPLINE:
   - Edit JSON by parsing and re-serialising ONLY if you preserve the exact existing formatting; otherwise prefer

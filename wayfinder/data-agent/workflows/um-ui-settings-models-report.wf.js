@@ -33,6 +33,23 @@ const IRON = [
   'If it fails or node is not v24.x, STOP and return: NO_MCP_LOCAL_ACCESS_OR_BAD_NODE plus what you saw.',
 ].join('\n')
 
+// Verified 2026-09-11 by the um-ticket-workflow-inputs run: the fan-out is NOT fully independent.
+// Proposals can still be produced in parallel (they only write /tmp), but APPLY has a topological order,
+// and every proposer must know these couplings or it will propose something incoherent.
+const COUPLINGS = [
+  'store.ts BEFORE slot-contract.ts: HEAD store.ts has NO ProviderDirectoryEntry, and upstream slot-contract.ts imports it (import type { ProviderDirectoryEntry } from ./store.ts). Restoring slot-contract.ts first does not compile.',
+  'README.md Extension-slots section MUST land in the SAME commit as the slot-contract.ts restore -- it links to that file, so verify-md-links goes red if they split.',
+  'index.ts AFTER operations.ts and slot-contract.ts: upstream index.ts imports createModelsOperations from ./operations.ts and re-exports types from ./slot-contract.ts.',
+  'README.i18n.yaml LAST: its whole delta is the recorded sha1 pair. Never hand-merge it -- regenerate after BOTH READMEs land, via an explicit scoped verify-translation-pairing --write on the pair you actually reviewed. Never --all.',
+  'package.json: the exports[./invariant] + files[lib/invariant.js] + peerDependencies[dsh-invariants] trio is UM-INVARIANT-COMPANION-CLEANUP scope, NOT this ticket. Re-port-owned here: upstream drops dsh-client-ui-renderer and dsh-client-connection from peerDependencies and adds dsh-util-values to devDependencies (the restored operations.ts needs it). KEEP the fork version 0.1.0-rc.8 -- do NOT adopt upstream 0.1.3-alpha.2, versions are release-managed.',
+  'tests/apply.client.spec.ts is DOUBLE-OWNED: upstream 15f2997bcb added the host-Loader-inert assertion here as the landing site for the deleted invariant spec (UM-INVARIANT work), while its inject list must separately grow 5 -> 8 entries (re-port work).',
+  'src/client/ProviderEditor.tsx is the one file M1 resolved as ours, so its fork side is deliberate rather than an artifact of the package-wide revert. Read both diffs before touching it.',
+]
+
+// The central semantic axis upstream introduced: it replaced ctx-threading with an operations facade.
+// Every injected-props file below is a consumer of that one decision, so they must move together or not at all.
+const AXIS = 'Upstream swapped `ctx` for an `operations` facade (createModelsOperations in src/client/operations.ts): ModelsSectionInjected, DeepSeekOnboardingInjected and CustomProviderCard all receive `operations` upstream where HEAD receives `ctx`. Adopting it piecemeal leaves the package internally inconsistent -- decide the facade once, then apply it across every consumer in the same change.'
+
 const PKG = 'packages/client/ui-settings-models'
 const BASE = '141eb6fef8'   // merge-base: the fork point this package was reverted to by M1
 const UP = 'c389f96bf3'     // upstream revision the fork is re-porting against
@@ -118,6 +135,11 @@ TRAP -- do not silently revert fork work that landed after the ticket was writte
   Cordis Context collision that has since been fixed at the root. A naive three-way merge against upstream can
   reintroduce those casts. Flag both files explicitly in notes.
 
+ALREADY-VERIFIED COUPLINGS -- confirm each still holds and bucket accordingly, do not re-derive from scratch:
+${COUPLINGS.map(c => '  - ' + c).join('\n')}
+
+THE CENTRAL AXIS: ${AXIS}
+
 Also settle and quote in notes: do docs/subsystems/slots.md and slots.zh.md around line 126-127 still advertise
 'settings.models.provider-card' and 'settings.models.footer', and does slot-catalog.ts actually declare either?
 
@@ -142,6 +164,11 @@ Why it is here: ${f.evidence}
 Read all three versions: 'git show ${BASE}:${f.path}', 'git show ${UP}:${f.path}', and HEAD on disk.
 Then write the proposed merged content to /tmp/um-uism/<flattened-path> using mcp__local__write_file.
 Create the directory first if needed. **Do not touch the repo file.**
+
+THE CENTRAL AXIS you are merging against: ${AXIS}
+
+COUPLINGS that constrain your proposal (do not propose something that violates one):
+${COUPLINGS.map(c => '  - ' + c).join('\n')}
 
 What a good merge does here: keep the fork behaviour that was added after ${BASE}, adopt the upstream
 refactor, and do not quietly drop either. Name both sides explicitly in your answer -- if you cannot say what
@@ -185,6 +212,20 @@ return {
   mechanical: (cls.files || []).filter(f => ['adopt-upstream', 'restore', 'delete'].indexOf(f.bucket) !== -1),
   ownedElsewhere: (cls.files || []).filter(f => f.bucket === 'owned-elsewhere'),
   merges: { clean, blocked },
+  couplings: COUPLINGS,
+  axis: AXIS,
+  // Proposals are produced in parallel, but APPLY is ordered. This is the order, derived from COUPLINGS.
+  applyOrder: [
+    '1. UM-INVARIANT-COMPANION-CLEANUP lands first (it owns src/invariant.ts, tests/invariant.client.spec.ts and the package.json invariant trio here).',
+    '2. store.ts -- must gain ProviderDirectoryEntry before anything can import it.',
+    '3. operations.ts (restore) + slot-contract.ts (restore) -- slot-contract.ts imports ProviderDirectoryEntry from step 2.',
+    '4. README.md + README.zh.md, in the SAME commit as step 3, because the Extension-slots section links to slot-contract.ts.',
+    '5. index.ts -- imports createModelsOperations and re-exports slot-contract types, so it needs steps 2-3.',
+    '6. the operations-facade consumers together: ModelsSection.tsx, CustomProviderCard.tsx, DeepSeekOnboardingDialog.tsx, ModelListEditor.tsx, ProviderEditor.tsx.',
+    '7. the specs, including the 5 -> 8 inject-list growth in tests/apply.client.spec.ts.',
+    '8. the mechanical bucket (adopt-upstream / restore / delete) may go any time; it needs no judgement.',
+    '9. README.i18n.yaml LAST: regenerate the recorded pair, scoped to the pair you reviewed. Never --all.',
+  ],
   mainSessionMustDo: [
     'Land UM-INVARIANT-COMPANION-CLEANUP first if it owns src/invariant.ts here -- otherwise this re-port re-litigates it.',
     'Apply the mechanical bucket (adopt-upstream / restore / delete) directly; it needs no judgement.',
