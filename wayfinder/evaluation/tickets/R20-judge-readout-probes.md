@@ -41,6 +41,10 @@ EXPECT_NO_LEAK=1 node packages/eval/eval-cli/dev/judge-readout-audit.mjs
 
 **这个脚本的定位**（不要读过头）：它是**仪器自检**，不是有效性检验。它只回答「读出规则有没有真的在用它的输入」；「哪个读出更接近事实」需要执行真值，归 T1。
 
+**何时接 CI**：**现在不要接**——漏当下真实存在（128 条），接上只会常红。正确顺序：G8/T7 改完读出 → 用新读出重跑一批 → `EXPECT_NO_LEAK=1` 过 → 那时再接（T7 的验收面顺手带上）。gate 模式对「0 向量」也 fail（exit 2）：schema 改名导致门变瞎时会报警而不是假绿。
+
+**唯一的长期维护点**：脚本耦合的只有持久化字段路径 `sql_judge.dimensions`；T7/T12 若改 artifact schema，改一处 walker 即可（改坏了 gate 会因 0 向量报警）。读出变更落地后，把脚本头部注释里钉的基线数字更新一次（带日期与 commit）。
+
 ## 探针 b —— 准则顺序扰动
 
 **做什么**：取已落盘的 `generated_sql`（**不重跑 agent**），用 K 个准则顺序排列重跑判官，其余 prompt 逐字不变。
