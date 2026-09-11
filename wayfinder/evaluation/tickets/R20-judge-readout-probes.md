@@ -49,8 +49,14 @@ EXPECT_NO_LEAK=1 node packages/eval/eval-cli/dev/judge-readout-audit.mjs
 
 **做什么**：取已落盘的 `generated_sql`（**不重跑 agent**），用 K 个准则顺序排列重跑判官，其余 prompt 逐字不变。
 
+> **⚠ 2026-09-11 补搜改变了本探针的目的**（依据 [note §9.7](../research/pairwise-judge-papers.md)）。
+> `2608.25869`（*Anchoring Bias in LLM-as-a-Judge Systems: Prior Scores Compromise Evaluation Independence*，192,000 次尝试 / 185,271 次成功评测）测出：**上下文里先出现的分数会把后一次判断拖向它**，峰值 `|Cohen's d| = 0.71`；带人工标注的研究里锚定信息**阻止 48% 的纠错**、把 **10.18%** 本来正确的判决翻错；**CoT 无效，写明「请忽略」也无效**。本仓五维在同一次调用里**顺序**输出一个 JSON——**结构上就是这个设置**。
+> ⇒ **b 不再是「找出更好的顺序」，而是「检验 prompt 层面到底能不能修」。** 若锚定机制成立，预期**修不了**——那 G8 第 4 决策就不是二选一，而是「**只有拆调用是真修复**」。这是一条便宜且可证伪的预测。
+> ⇒ 该效应**阈值式而非渐变式**（先前分数的**有无**远比**取值**重要）⇒ **b 的主对比应是「五维同调用（有先前分数）vs 逐维单调用（无）」，而非多个排列互比**。**这使 b 与 c 合并成同一次实验更划算**，G8 可据此省一轮。
+
 - **K 的依据**：`2602.02219` 测出 balanced 与 random 排列统计上无差别，且「roughly two-thirds of the K=1 → 10 improvement is reached by K=3 and about 85% by K=5」（L386-388）⇒ **K=5，随机排列即可，不必构造 balanced cyclic**。
 - **报什么**：① 逐维边际通过率跨排列的漂移；② `overall_semantics` 在首位 vs 末位的边际差；③ 跨排列的 Agr / Cohen's κ / sample-level EM（`2608.14684` 的 Reordering 操作，L152）；④ **跨阈翻转率** —— 有多少 case 因换顺序而跨过 0.6（论文不研究阈值化聚合，这个量只能自己测）。
+- **⚠ 指标纪律（b 与 c 共用）**：**不得只报原始 exact-match 一致率**。`2606.19544`（21 判官 / 9 供应商 / ~541k 判决）测出 exact-match 与 Cohen's κ 的通缩在 MT-Bench 上普遍达 **33–41pp**，称 exact-match「systematically overstates discriminative ability」；`2606.00093` 同样要求声明池化口径。⇒ **Agr 与 κ 并列报，并声明是 micro / macro / item-level 哪一级。**
 - **判据**：点估计 + CI，**不是单一阈值**。
 
 ## 探针 c —— isolation vs joint
@@ -59,7 +65,9 @@ EXPECT_NO_LEAK=1 node packages/eval/eval-cli/dev/judge-readout-audit.mjs
 
 - **报什么**：rubric-level Agr、Cohen's κ、sample-level EM（`2608.14684` Table 1 的 Expansion 操作 + §Appendix A 的度量定义）。
 - **对照基准**：该文 HealthBench（二值格式，与本仓同类）Consistency-at-K 的 **K=4 列**，未训练基线 Agr `.749–.890` / EM `.309–.635`（Table 9，L850-856）。本仓 5 维最接近 K=4。
+- **⚠ 成本 `5N` 未定论**（2026-09-11）：`2603.00077`(Autorubric) **可能**含 prefix-caching 下成本次线性的论证（grade C 片段，未证）——若成立，**N 次调用 ≠ N 倍成本**；且 `2606.29920`（EMNLP 2026，RuVerBench，2,458 条人工标注、前沿判官）**已明写** batched verification 是 accuracy/efficiency 的取舍。⇒ **读完这两篇全文前，`5N` 只是上界估计**，且「本洞是否还开着」本身存疑（见 [note §9.7](../research/pairwise-judge-papers.md) 洞 B）。
 - **它同时是 d 的前置**：RADAR Stage 2 本就是逐准则单调用，所以 c 的 isolation 侧**就是** d 所需的判官形态。
+- **同现象的独立命名**：`2511.21662`（Multi-Crit，CVPR 2026）比较 K 次单准则推理 vs 联合判断，把机制命名为 **correlation leakage**——与 `2608.14684` 的 "interference" 是同一现象的两次独立命名。
 - **必须一起记的限制**：`2608.14684` 自陈「isolation is not infallible. In some cases, co-evaluating related rubrics may surface useful context... Our framework does not distinguish beneficial context from harmful interference.」（L572-583）⇒ **c 只测不稳定性，不测谁对。判方向须等 T1 的执行真值。**
 
 ## 探针 d —— 真 RADAR（条件）
