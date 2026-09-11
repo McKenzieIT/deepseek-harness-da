@@ -39,3 +39,9 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Evaluation Run**: One frozen resolved DSH composition and root runtime under which compatible attempts are executed and compared. _Avoid_: Batch when composition identity and lifecycle ownership are not explicit
 
 **Evaluation Attempt**: One case trial with its own Agent, Session, Environment Lease, evidence, artifacts, and measurement observations inside an Evaluation Run. _Avoid_: Run when referring to a single trial
+
+**Evidence Cut**: An immutable, persisted, content-identified manifest of the complete evidence required for a declared evaluation claim. _Avoid_: Trace, log snapshot when completeness and external evidence are not established
+
+**Grade Record**: An immutable derived result that identifies its Evidence Cut, Resolved Grading Plan, grader, and grading outcome without modifying the execution evidence. _Avoid_: Score
+
+**Publication Eligibility**: The explicit claims and aggregation uses that a grade may support after evidence completeness, coverage, finality, assurance, cleanup, and separation are evaluated. _Avoid_: Published as a synonym for written to storage

@@ -96,6 +96,12 @@ Evaluation Observer 必须 scope-local、effect-owned 且只读，只能记录 s
 
 Run 开始后 plugin tree、Provider、preset/config、hooks、guards 与 package/source identity 不得静默变化；Loader/HMR 或 replacement 使 Run `invalidated`、停止创建新 Attempt，并禁止跨变化聚合。Run 完成必须等待 Agent owned work、session/evidence flush、Environment finality/cleanup、Evaluation overlay disposal 与 root quiescence，不能以 Agent idle 或模型停止输出代替。
 
+### D14 — 正式 grade 绑定 persisted sealed EvidenceCut，发布遵循偏序条件
+
+正式 `GradeRecord` 必须引用已成功持久化、sealed、内容可识别且 completeness 已验证的 immutable `EvidenceCut`；grader 不得读取 live Agent、可继续变化的 Environment 或未封口的 event stream。默认 grader 从 store 解引用 cut；同进程实现可以消费与 persisted cut 具有相同 canonical digest 的 sealed in-memory view，但 persistence 或 digest verification 失败时结果只能是 provisional diagnostic。原 evidence cut 不可覆写，每次 rescore 产生新的派生 GradeRecord。
+
+Product subject 分别封闭权威 DSH `SessionEvidenceCut` 与模型不可见的 `EvaluationEvidenceCut`，后者引用 Environment completion、artifacts、Observer evidence 和 measurement inputs；component subject 使用自己的 cut，不伪造 Session。Model rerun 与 Environment re-execution 必须创建新 Attempt。Environment finality 决定 correctness label 是否 final，cleanup/reset 与 separation 决定 independent-trial eligibility；grade computation 与 cleanup 在 cut sealed 后可以并行，但 formal publication 必须等待 grading、coverage、finality 和所声明 assurance。Cleanup failure 保留已计算 grade，并按影响阻塞相应 publication claim。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
