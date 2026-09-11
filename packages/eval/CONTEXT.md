@@ -63,3 +63,9 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Comparison Plan**: A versioned experiment artifact that declares the estimand, treatment and controlled identity factors, matching unit, inclusion policy, aggregation, and uncertainty for comparing runs. _Avoid_: Compare config, implicit delta
 
 **Comparison Safety Floor**: The non-waivable evidence, metric, analysis-unit, publication, hidden-material, and coverage constraints that every Comparison Plan must satisfy. _Avoid_: Default comparison policy
+
+**Component Identity**: A versioned, content-addressed descriptor owned by one evaluation-relevant module and limited to fields that affect its semantics. _Avoid_: Raw provider config
+
+**Run Identity Graph**: The immutable acyclic graph of Component Identities referenced by one Evaluation Run root manifest and digest. _Avoid_: Run config, flat metadata bag
+
+**Materialized Run Manifest**: A deterministic self-contained export of a Run Identity Graph for inspection, archival, or transfer; it is not an independently mutable authority. _Avoid_: Run Identity when referring to the canonical graph
