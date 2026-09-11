@@ -57,3 +57,13 @@
 
 1. **disable-directive 形式**：prompt 说 `// eslint-disable-next-line typescript/<rule>`、并引 `packages/host/apiproxy/src/api-proxy.ts:3364` 为先例。该路径在 resync 树**不存在**（已按 UM4 rehome），是 stale 引用；仓库 9 处既有 directive 全是 `@typescript-eslint/<rule> -- <reason>` 形式。（此条现已无关紧要——(B) 不做了——但记下以免下次又被同一 stale 事实误导。）
 2. 92 条里的 **7 REAL + 2 BORDERLINE 与 (A)/(C) 的选择无关**，不该被本票挡住；已单列进 UM-LINT-A-OXLINT-RESOLUTION「独立于本票的 REAL 修复」。
+
+### [2026-09-11 后记] (A) 成功，(C) **未启用**，(B) 也没落
+
+[UM-LINT-A-OXLINT-RESOLUTION](UM-LINT-A-OXLINT-RESOLUTION.md) 查明：根因**不是** Cordis DI 解析失败，而是 tsgolint 不实现 project-reference 输出重定向，把 host 与 client 两侧的 `Context` augmentation 合并进同一 program，触发 `TS2717`（仅 `sessions` / `cordisInspect` / `dynamicCordisRunner` 三个双面同名属性），冲突属性退化为 `error` 类型后级联。
+
+**一行 tsconfig 根治**（`tsconfig.base.client.json` 的 `disableSourceOfProjectReferenceRedirect: true`），无需移除任何规则 —— 所以本票 Resolution 里"若撞上游能力边界则执行 (C)"的前置**不成立**，(C) 作废。full gate 已 **0 errors / 0 warnings**。
+
+两处记账更正（详见 UM-LINT-A）：
+- 假阳性是 **81** 条不是 83；独立真实项是 **11** 条不是 9（本票把 2 条**真** `any` 误算进 FP —— 判据是诊断文字：`error`-typed 才是冲突，`any`-typed 是真问题）。
+- 本票「已知的 5 条 `no-unnecessary-type-assertion`……移除 `as never` 是语义改动，需谨慎，不要顺手改」——**该判断在实际的 4 处均不成立**，已逐条查证并全部安全删除（其中 `ui-user-questions:61` 的 `as ISessions` 本来就是为绕开本 bug 才写的；`tool-compute:170` 的 `as JsonValue[][]` 是 auto-merge 残留，仓库自己的笔记有记）。
