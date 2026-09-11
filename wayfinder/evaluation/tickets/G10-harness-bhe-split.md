@@ -156,6 +156,12 @@ Benchmark Pack 的 canonical form 是不执行代码、content-addressed、seale
 
 `BenchmarkRepository` 是负责 locator resolution、schema/closure validation、sealing、digest verification、caching 与 public/private view 的 Cordis Definition / Provider / Consumer seam。首版只实现 explicit local-directory/Artifact-Store-backed Provider，由外部 CLI 传入 `--benchmark` locator；不建设远端 registry、implicit discovery、mutable latest、Pack HMR 或每 Pack 一个 plugin。Grading Mechanism、legacy importer、generator、custom validator/compiler 和 Environment fixture 等可执行行为由 optional companion Cordis plugins 提供。公开 npm package可以携带 public Pack assets作为分发适配器，但正式 identity仍是 Pack digest；private grading material只由 grader-only repository/service graph访问，不与 Harness-visible package或mount共同安装。
 
+### D24 — 首版按独立 capability role 分包
+
+首版 package topology 按真实可替换 seam 拆分，而不是建立新的 eval monolith：Evaluation Protocol、Controller、Grading Runtime、Environment Definition、BenchmarkRepository Definition/local Provider、EvaluationStore Definition/local Provider、ArtifactStore Definition/local Provider、data-analysis extension 与 CLI Host 各有独立 package role；生产级 Context Projection 位于 data-agent 产品能力区域。首版不预建 remote/private network Providers、data-engineering/science extension package 或 Cordis Service Host。
+
+Definition packages 必须拥有完整 interface、failure/lifecycle semantics、invariants 与 Provider registration，不得成为 re-export-only 浅包；local Providers 必须隐藏 path/security、stable read、sealing/digest、storage transaction、diagnostics 等实现复杂度。现有 `eval` 不原样保留，`eval-runner` 迁移/删除，`eval-runner-service` 删除，`eval-cli` 重写为薄 Host，`retrieval-experiment` 另行判断归入 Context/component evaluation。R24/T12 的旧 package merge 题面失效并需重定。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
