@@ -55,7 +55,7 @@ evaluation **没有**自建 SQL 执行引擎，执行能力一律来自 dsh-data
 
 ## 验收面
 
-- 单一 executor 端口；`QueryResult` 与两份 adapter fork 退役（退役已由 [promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md) 独立提出）。
+- 单一 executor 端口；`QueryResult` 与两份 adapter fork 退役（退役已由 [Data-domain Evaluation Core](../../../.agents/notes/proposed/architecture/2026-09-11-data-domain-evaluation-core.md) 独立提出）。
 - 落盘中五种结局可分辨；**`environment-blocked` 与 `case-defect` 不进 `wrong` 分母**。
 - 未知 `match_mode` 归 `case-defect`（现 `packages/eval/eval/src/match_modes.ts:62` 返回 `{status:'fail'}`，即拼错模式名被记成模型答错）。
 - 比较失败原因不再压成 boolean —— 现 `runner.ts:368-369` 丢掉核心比较器返回的 `AssertionResult.detail`。

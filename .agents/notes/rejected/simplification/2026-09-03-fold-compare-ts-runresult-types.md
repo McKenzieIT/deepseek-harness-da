@@ -1,6 +1,6 @@
 # Agent Note: Fold compare.ts's drifted RunResult/CaseVerdict types into eval-runner's
 
-Status: proposed
+Status: rejected — G10 replaces the old run-result/compare path with Evaluation Protocol, Run Identity Graph, ComparisonPlan, and the new Controller
 
 ## Problem
 

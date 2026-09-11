@@ -1,6 +1,6 @@
 # G10 — Harness Benchmark/Harness/Environment 拆分
 
-**Type**: grilling  ·  **Status**: claimed · **Research readiness**: ready（2026-09-10）
+**Type**: grilling  ·  **Status**: resolved（2026-09-11） · **Research readiness**: complete
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无（[R10](R10-harness-goodhart-papers.md)、[R10b](R10b-harness-measurement-validity.md) 与 [R10c](R10c-context-layer-evaluation.md) 已 resolved）
 **Blocks**: [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md)；并解 [G13](G13-context-evaluation-protocol.md)、[G15](G15-dynamic-evaluation-lifecycle.md)、[R21](R21-goodhart-audit.md) 与 [G1](G1-exec-grader-seam.md) 移交的三条
@@ -205,9 +205,9 @@ GA-GT4 关闭的原因不是 hardcode 已实现修复，而是其全部 survivin
 - **Context attribution**：run identity 增加 `contextIdentity`；component/counterfactual/perturbation/end-to-end 四层分别测 grounding、relation/composition、provenance、model utilization 与最终 outcome。
 - **Context leakage**：gold-derived oracle projection 与 production score 隔离；动态 enrichment 写回形成新 snapshot，只对后续预声明 cohort 生效。
 
-## Research readiness audit（2026-09-10）
+## Research inputs and readiness（2026-09-10—11）
 
-**判定：G10 已有充分研究支撑，可以直接开始 HITL grilling；没有新的 blocking research。** 当前输入覆盖了 G10 的全部决策类型：
+**判定：G10 的研究输入已覆盖并支撑最终决议；没有遗留 blocking research。** 下列输入分别约束角色、measurement validity、DSH/Cordis integration、Context、package topology、durability 与迁移：
 
 | 输入 | 已回答的问题 | G10 使用方式 |
 | --- | --- | --- |
@@ -232,15 +232,15 @@ GA-GT4 关闭的原因不是 hardcode 已实现修复，而是其全部 survivin
 
 2026-09-10 代码复核确认 GA-GT4 的核心 hardcode 仍在：`eval-runner-service` 仍默认 K11 caseDir/today 并使用 `^k11_\d+\.yaml$`，bundle 仍声明 K11 `semanticRoot`/`caseDir`，`compare.ts` 仍按 `k11v2_*` 名称分桶。R24 后 `packages/eval/` 只有一次测试 lint 删除，没有包边界或依赖变化，因此 R24 的仓库取证仍可作为 grilling 输入。GA-GT4 唯一过期项是“失败分类无人调用”：`multi_turn.ts` 已调用 `classifyExecutionFailure`，但多引擎 taxonomy 仍属方向 9/G9/T8，不能由 G10 顺手实现。
 
-Grilling 前不需要先实现 heldout/fresh、跑新 baseline、完成 T1/T11 或执行 Context counterfactual；这些需要 G10 先锁接口。Grilling 会话应先读本节输入，再逐项裁定：owner/interfaces → canonical schemas/views → run/context identity → package topology → migration order → GA-GT4 supersession。
+G10 不要求先实现 heldout/fresh、运行新 baseline、完成 T1/T11 或执行 Context counterfactual；这些工作已由 downstream tickets 承接。
 
 ### 非阻塞研究候选
 
 以下方向可能增强后续 protocol，但不改变当前 seam 决策，因此不阻塞 G10：
 
-- **ClaimReceipt**（`2609.01992`，仅完成 arXiv metadata/abstract 核验）：committed experiment universe / evidence sufficiency/coverage receipt，适合在 T9 的 persistence/evidence 设计发生争议时再全文认读；
+- **ClaimReceipt**（`2609.01992`）：全文结论已吸收进 EvidenceCut、coverage 与 PublicationEligibility 决议，详见 [`evaluation-publication-finality.md`](../research/evaluation-publication-finality.md)；
 - **The Double Measurement Confound in Agent Benchmarks**（`2609.09218`，仅完成 arXiv metadata/abstract 核验）：scaffolding level / execution-critical decision ownership，G10 可先把 decision ownership 写入 run manifest，是否形成独立研究票取决于 grilling 是否仍有争议；
-- Context counterfactual、perturbation/leakage 与 adaptive-ontology holdout：问题已由 R10c 识别，但准确 ticket 切分依赖 G10 的 Context projection seam 和 T1 execution grader，暂留 map fog。
+- Context counterfactual、perturbation/leakage 与 adaptive holdout 已分别路由到 [G13](G13-context-evaluation-protocol.md)、[G14](G14-adaptive-context-holdout-policy.md)、[R26](R26-context-counterfactual-matrix.md) 与 [R27](R27-context-perturbation-leakage-audit.md)。
 
 ## 已知约束（R10/R10b/R10c 提供论文依据，但这些是本仓实测事实）
 
@@ -249,24 +249,51 @@ Grilling 前不需要先实现 heldout/fresh、跑新 baseline、完成 T1/T11 �
 - **`dsh-eval-runner-service` 是 bundle 实际挂载的那个**（`packages/bundle/data-agent/cordis.patch.yml:197`），重切不能把它落下。
 - **基线不可比** —— 61.9% pass^k 测在 `k11-v2`，12.8% 真执行测在 `rbi-10000251-exec`，后者 event 期望值 16/18 已失效。本票若移动 case set，须**明确宣布旧基线不可比并重新起锚**，而不是假装可比（map §⚠ 可复现性风险）。
 
+## Answer
+
+G10 establishes a Data-domain Evaluation Core for data engineering、data analysis and data science. Product Evaluation drives a frozen production DSH composition through the normal Agent/Session/tool/Provider path; component evaluation remains separately identified. Benchmark content is a sealed content artifact resolved by a Cordis repository, while executable graders、Environment lifecycle、Context Projection、stores and the Controller remain independently replaceable capabilities.
+
+The architecture is recorded in [Data-domain evaluation core over production DSH compositions](../../../.agents/notes/proposed/architecture/2026-09-11-data-domain-evaluation-core.md). Implementation follows [T11](T11-loader-provenance-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md). Context、dynamic lifecycle and failure taxonomy details have independent owners and do not remain implicit G10 scope.
+
 ## 验收
 
-- 三条移交问题各有明确裁定 + 理由，且注明哪些依据来自 R10/R10b/R10c、哪些是本仓自主选择。
-- 明确 Benchmark Pack、Benchmark Adapter、共享 eval protocol、Harness、Environment Adapter、Context capability 与 composition root 的接口和所有权。
-- 为 `k11-v2` 与 RBI 迁移定义 `validated | parity_unresolved | invalid` 状态；验收同时覆盖 oracle/reference validation、matched original-vs-adapted parity、逐 case evidence、hidden-material isolation 与 schema preservation。
-- 为运行定义 raw emission → parsed action → execution → observation → grader evidence 的可关联持久化，以及 `preflight_failed | interface_incompatible | auto_inconclusive` 的评分前失败语义。
-- Environment interface 分别证明 outcome finality 与 cross-run separation：pending effect、namespace/stream、settle/cancel/finalize、verified reset/cleanup 和 `unresolved` 均有显式表示。
-- Run identity 固定 Benchmark/Adapter/Harness digest、runtime model revision、template/parser/tool schema、Environment image/config 与 grader policy；heldout transfer 不跨 Harness commit 或 identity component 拼接。
-- Context Layer 作为独立版本化 capability 装配；接口明确 `ContextRequirement`、typed projection、`contextIdentity` 与 request/projection evidence，且不允许 Harness/Environment 内联第二份 retrieval。
-- Context evaluation 同时定义 component、no/schema/relations/production/oracle counterfactual、semantic-preserving perturbation 与 production end-to-end；oracle context 不进入 headline，动态写回不污染当前 heldout/fresh cohort。
-- 为 Goodhart audit 定义 benchmark/run 双 provenance、train/heldout/fresh 生命周期、estimand/cluster unit、standard `pass@n` 与 strict `pass^k`。
-- 与 GA-GT4 的调和结论写明（supersede 哪些面、保留哪些）。
-- 产出或更新一篇 `.agents/notes/proposed/architecture/` Agent Note。
-- 明确 [T11](T11-loader-provenance-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md) 的验收与交接。
+### Architecture and ownership
+
+- [x] Benchmark、Harness、Evaluation Environment、Context Projection、Grading Runtime、Evaluation Controller and stores have distinct owners and dependency directions.
+- [x] Product-composition and component subjects、Observer and Intervention、Run and Attempt、Artifact and Resource are distinct protocol concepts.
+- [x] Evaluation reuses production Agent、Session、tools、approval、hooks、guards、workflow、Context and business Providers; the first release has no always-mounted Evaluation Service Host.
+
+### Benchmark、grading and private material
+
+- [x] Canonical CaseManifest、explicit policy/requirement profiles、Public Task Material and opaque GradingMaterialRef are defined.
+- [x] Benchmark Pack is a sealed content artifact resolved by BenchmarkRepository; executable behavior is supplied by companion plugins.
+- [x] ResolvedGradingPlan、independent Grading Runtime、append-only GradeRecord and grader-only private material access are defined.
+- [x] Legacy K11/RBI migration uses `validated | parity_unresolved | invalid`, oracle/reference validation、matched parity、per-case evidence and a new baseline.
+
+### Evidence、measurement and comparison
+
+- [x] EvidenceEnvelope with extension payloads、MetricObservation/AggregateMeasurement、Session/Evaluation EvidenceCuts and PublicationEligibility are defined.
+- [x] Formal grades bind persisted sealed evidence; live output is provisional and rerun/re-execution creates a new Attempt.
+- [x] Environment finality、separation、cleanup and `managed | attached-snapshot | observational` assurance have explicit semantics.
+- [x] Run Identity Graph、ComparisonPlan and a non-waivable comparison safety floor prevent unplanned component drift and invalid aggregation.
+
+### DSH/Cordis and package topology
+
+- [x] Context Projection and Evaluation Environment are production/evaluation Cordis capability seams rather than eval-private glue or duplicate business Providers.
+- [x] Protocol、Controller、Grading、Environment、BenchmarkRepository、EvaluationStore、ArtifactStore、data-analysis extension and CLI Host have independent first-release package roles.
+- [x] Current CLI/service adapter forks、old runner/service ownership and default product evaluation controls are assigned to final cutover deletion rather than compatibility shims.
+
+### Handoffs and scope
+
+- [x] GA-GT4 is closed with every surviving obligation routed to an 实体 ticket.
+- [x] Context protocol and experiments are owned by [G13](G13-context-evaluation-protocol.md)、[G14](G14-adaptive-context-holdout-policy.md)、[R26](R26-context-counterfactual-matrix.md) and [R27](R27-context-perturbation-leakage-audit.md).
+- [x] Dynamic canary/rolling/fresh lifecycle and Goodhart audit are owned by [G15](G15-dynamic-evaluation-lifecycle.md) and [R21](R21-goodhart-audit.md).
+- [x] Failure taxonomy is owned by [R9](R9-error-taxonomy-papers.md) → [G9](G9-failure-classifier.md) → [T8](T8-failure-classifier-impl.md).
+- [x] Implementation、cutover and rebaseline are owned by the foundation-first ticket chain; no G10-specific fog remains.
 
 ## 不在本票范围
 
-- 实施重构（T13/T9/T14/T15/T12）。
-- 重开 G1 已锁的 6 条架构无关决策。
-- comparator 默认值（[R23](R23-comparator-policy-mutation-baseline.md) 提供 mutation 证据）。
-- event case 评分口径（GA-EVAL-CASESET-EVENT-ANCHOR）。
+- 实施 T11/T1/T13/T9/T14/T15/T12 或执行 R25。
+- G9 的具体 failure taxonomy、G13/G14 的 Context evaluation/holdout protocol、G15 的 dynamic lifecycle。
+- Comparator 默认值、event-case 评分口径、Context experiments、baseline 数字与 Goodhart 结果。
+- Canonical encoding、digest algorithm、archive layout、signing、remote repositories and other implementation details already owned by downstream tickets.
