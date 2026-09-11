@@ -1,6 +1,6 @@
 # UM-GEN-DOC-TRANSLATION-OBLIGATION — 生成文档的翻译义务：带上 zh 生成 vs 从配对哈希豁免
 
-**Type**: grilling · **Status**: resolved (2026-09-14, decision; 实现待落地) · **Phase**: upstream-merge
+**Type**: grilling · **Status**: resolved (decision) + **实现已落地 2026-09-11**（resync `4d4f725748`，全绿，未 push） · **Phase**: upstream-merge
 **Assignee**: unclaimed
 **Blocked by**: —
 **Blocks**: [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 的 `translation pairing` 门（A 类 pre-existing）长期可解 + 喂 [UM15](UM15-durable-upstream-sync-method.md)（regen 清单的翻译义务形式化）
@@ -62,3 +62,41 @@ grilling 定 (a)/(b)/(c)。产出：一个决策 + `gen-doc-graphs` 或 `verify-
 - **⚠ bootstrap 待验**：**先读 `spliceRegion`（`scripts/gen-cordis-catalog.ts:920`，非 S-3 说的 :747）** body 确认 insert-if-absent（首 regen 进 fence-less zh 文件——5 个现有 `.zh.md` 是从 fence-less 英文人工翻的，首 regen 须 INSERT fence；gen-cordis-catalog 曾同样 bootstrap）。若只 replace existing fenced pairs → 需 one-time migration helper 先 insert fences 进 5 个 `.zh.md`。
 - regen `pnpm run gen-doc-graphs`（8 md + 5 zh-splice + 5 i18n = 18 touches）+ `pnpm run verify-translation-pairing`（structured-only regen → **GREEN**——maybeRecordPair 见 prose 字节不变 → 一次刷新两侧 hash；prose change → **RED** by design，人工翻译后 `--write`）+ `verify-md-links`。commit on resync `[wayfinder] 线3: gen-doc-graphs zh emission (Cordis region-splice, UM-QODER-RETIRE 前置)`。**不半做**——partial（3a/3c 无 3b）= `verify-translation-pairing` RED（English 无 fence → regions 空 → maybeRecordPair 见整文件 prose 变 → 不 refresh → stale）。
 - follow-on（out of scope）：`gen-architecture-graph.ts`（只英文 `docs/architecture-graph.md`，无 zh）若 in-corpus 需同处理或 one-time .i18n.yaml；`renderIndex` 死 label `examples/cordis-agent/composition.md`（APP_EXAMPLES 不含）应 prune。
+
+
+## 实现已落地 — 2026-09-11（resync `4d4f725748`）
+
+决策 (a)「生成器带上 zh」按用户锁定的 **Cordis region-splice** 路线**实现完成并全绿**，提交在 resync 树 `4d4f725748`（17 files, +342/−128；未 push）。
+
+**改了什么**
+
+- `scripts/gen-cordis-catalog.ts`：`spliceRegion(content, region, beginMarker?, endMarker?)`，默认仍为 cordis-surface 两常量。原 JSDoc 的不变量（「只匹配本生成器的精确 marker，不用通用 grammar，好让别人的 region 大声失败而不是被静默覆盖」）**保留**——参数化后仍是精确匹配，marker 由调用方提供。既有 call site（:1102）不传额外参数 → **cordis 目录字节不变**（`verify-cordis-catalog`: 99 generated file(s)/region(s) up to date）。
+- `scripts/gen-doc-graphs.ts`：5 个 render fn 把结构化块包进 `BEGIN/END GENERATED <slug>`；新增 `PAIRED_DOCS` / `generatedBegin` / `generatedEnd`；`main()` 写英文后把 region 经 `localizePageRegion` 注入 `.zh.md`，再 `maybeRecordPair`。zh 缺失或 render 无 region 一律 fail-closed。
+- `docs/*.{md,zh.md,i18n.yaml}` ×5 重生成。
+
+**5 slug**：capability-seams / event-producer-consumer / agent-lifecycle / tool-execution-pipeline / graph-atlas。`apps/cli/composition.md` 不配对（无 `.zh.md`），符合 S-3 的判定。
+
+### 本次实现纠正的 4 处前置错误
+
+1. **`spliceRegion` slug 硬编码**（S-3 的 SURPRISE，已证实）：它比的是 `line === REGION_BEGIN`，那是 `cordis-surface` 字面量，不匹配 gen-doc-graphs 的 5 个 slug → companion 改动**非可选**。已按 generalize 路线做（而非在 gen-doc-graphs 里另写一份本地 splice），因 default 参数让 cordis 侧字节不变，代价最小。
+2. **交接 prompt 的 3a import 清单漏了 locale 改写**：`renderIndex` 的表格链接指向 `docs/*.md`，若不改写，每次 regen 都把 zh 侧索引链接打回 `.md`。已复用**已 export 的 `localizePageRegion`**（`gen-cordis-catalog.ts:956`），不必直接 import `rewriteTranslationLinkLocales`。实测：`module-graph.zh.md` 等配对目标→`.zh.md`，`../apps/cli/composition.md`（无 zh 对）保持 `.md`，`verify-md-links` 1730 文件全绿。
+3. **prompt 说「structured-only regen → GREEN」——对首轮是错的**。`maybeRecordPair` 要求 recorded hash == 写前字节（`gen-cordis-catalog.ts:1145`）**且**两侧 stripped 不变（`:1147-49`）；而「引入 fence」本身就把内容从 unfenced prose 移进 fenced region → **两侧 stripped 都变** → 首轮必然 decline。实测首轮 `refreshed 0`，**必须一次 `--write`**。第二次 regen = `spliced 0, refreshed 5` → **稳态自洽已实证**，此后 regen 不再打破配对（这正是 (a) 想要的）。
+4. **不可用裸 `--write`**：脚本自带守卫（`translation-pairing.ts:293-295`：「recording pairs you did not review blesses unconfirmed content」）要求显式 pair 路径或 `--all`。只对这 5 对显式 `--write`；corpus 里 `config-catalog` / `subsystems/README` / `tool-catalog` / `adr/0002` 等 stale 属既有真实翻译债（A 类 pre-existing，归 parallel-dev-cleanup/R1），**不能**被 `--all` 顺手抹掉。
+
+### 这次 `--write` 为什么是诚实的（已逐行核）
+
+原本 stale 的 2 对（`capability-seams` recorded md `a47ec285` vs 实际 `c87a3991`；`event-producer-consumer` `88413a45` vs `a2cab381`——正是本票记的 2 条 sub-failure）的 drift **全部落在结构化块内**：前者全是 mermaid 节点行（fork 新增的 `ctx.audit`/`ctx.embedder`/`ctx.nl2sql` 等 data 包），后者全是矩阵表行。**无 prose drift** → fence 化后两侧 prose 与人工复核过的状态逐字节一致，重新记账不是掩盖债务，而是让这 2 条 pre-existing RED **合法转绿**。另 3 对（agent-lifecycle / tool-execution-pipeline / graph-atlas）本就同步。
+
+### 代价（既定 doctrine，非本次新引入）
+
+fence 内是英文，只有配对文档链接按 locale 改写。依据是仓库自述原则（gen-cordis-catalog 生成的那句 "the language sides differ only in locale-specific paired document paths"）+ 先例 `docs/subsystems/agent-team.zh.md` 的 cordis-surface region 即英文。具体损失：`graph-atlas.zh.md` 的 7 行译名（`| 图 | 模式 |`、`模块依赖图`、`能力 seam 与核心服务`、`agent（智能体）轮次与步骤生命周期` …）变英文；`agent-lifecycle.zh.md` / `tool-execution-pipeline.zh.md` 的 mermaid **本来就是全英文**（participant / Note over / alt 标签皆英文），几乎无损失。译者从此只拥有 fence 外的 prose。
+
+### 门禁
+
+`verify-doc-graphs` ✔ / `verify-md-links`(1730) ✔ / `verify-cordis-catalog`(99) ✔ / scoped `verify-translation-pairing`(5 pairs consistent) ✔ / `tsc -b tsconfig.host.json` exit 0 ✔ / pre-commit hooks（translation pairing staged records、lint staged、whitespace、vendor manifest guard）全 ✔ / 构建零 untracked 污染。
+
+### 仍未做（follow-on，不在本次范围）
+
+- `gen-architecture-graph.ts` 只写英文 `docs/architecture-graph.md`、无 zh 对——是否 in-corpus、是否欠配对，仍未核（本票 honesty boundary 的第 3 条至今未清）。
+- `renderIndex` 的死 label `examples/cordis-agent/composition.md`（`APP_EXAMPLES` 不含）应 prune。
+- corpus 级 `verify-translation-pairing` 仍红，但**全部是既有的 A 类 pre-existing**（config-catalog / subsystems-README / tool-catalog / adr-0002 incomplete pair + 一批 wrong-locale link），与 gen-doc-graphs 无关；本票负责的 gen-doc-graphs sub-failure **已清零**。
