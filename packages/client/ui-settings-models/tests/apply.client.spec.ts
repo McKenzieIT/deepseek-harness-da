@@ -63,7 +63,6 @@ async function bench(options: {
   })
   // The ui-settings apply also provides the settingsSchema service.
   remote.$host.isLoopback = options.isLoopback ?? true
-  remote.$host.isLoopback = options.isLoopback ?? true
   ctx.provide('connection', { isLoopback: options.isLoopback ?? true } as never)
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
   return { ctx, slots: ctx.get('slots') as unknown as SlotRegistry, locale, remote }
@@ -84,7 +83,10 @@ function declare(slots: SlotRegistry): () => void {
 
 describe('ui-settings-models apply', () => {
   it('declares the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'remote', 'settingsScope', 'settingsSchema'])
+    expect(inject).toEqual([
+      'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings',
+      'settingsScope', 'settingsSchema',
+    ])
   })
 
   it('registers the models nav entry for declarations before or after apply', async () => {
@@ -94,6 +96,9 @@ describe('ui-settings-models apply', () => {
     const entry = before.slots.entries('settings.section')[0]!
     expect(entry.component).toBe(ModelsSection)
     expect(entry.options).toMatchObject({ id: 'models', order: 10 })
+    // The section claims its two extension seats in the same registration.
+    expect(before.slots.spec('settings.models.provider-card')).toMatchObject({ kind: 'keyed', scope: 'root' })
+    expect(before.slots.spec('settings.models.footer')).toMatchObject({ kind: 'list', scope: 'root' })
     // The nav label is a locale-following thunk; owners resolve at read time.
     expect(resolveSlotLabel(entry.options.label)).toBe('模型')
     const injected = (entry.inject as unknown as () => import('../src/client/ModelsSection.tsx').ModelsSectionInjected)()
@@ -101,9 +106,7 @@ describe('ui-settings-models apply', () => {
     expect(injected.t('deleteTitle')).toBe('删除 {provider}？')
     expect(typeof injected.controller.load).toBe('function')
     expect(injected.hooks.snapshot).toBe(injected.controller.store)
-    // apply captures its own fiber ctx (a child of the root), so identity
-    // against before.ctx fails; the component resolves the shared remote.
-    expect(injected.ctx.remote).toBe(before.ctx.remote)
+    expect(typeof injected.operations.writeSettings).toBe('function')
     const onboarding = before.slots.entries('settings.onboarding')
     expect(onboarding).toHaveLength(2)
     expect(onboarding.find(entry => entry.options.id === 'welcome-notice')).toMatchObject({
@@ -117,7 +120,7 @@ describe('ui-settings-models apply', () => {
       deepSeek.inject as unknown as () => import('../src/client/DeepSeekOnboardingDialog.tsx').DeepSeekOnboardingInjected
     )()
     expect(deepSeekInjected.hooks.models).toBe(injected.controller.store)
-    expect(deepSeekInjected.ctx.remote).toBe(before.ctx.remote)
+    expect(typeof deepSeekInjected.operations.storeCredential).toBe('function')
 
     const after = await bench()
     await after.ctx.plugin({ inject: [...inject], apply }).await()
@@ -172,6 +175,28 @@ describe('ui-settings-models apply', () => {
     b.locale.setLocale('en')
     expect(resolveSlotLabel(b.slots.entries('settings.section')[0]!.options.label)).toBe('Models')
     b.locale.setLocale('zh')
+  })
+
+  it('accepts extension entries under the declared seats and cascades them with the declarer', async () => {
+    const b = await bench()
+    declare(b.slots)
+    const fiber = b.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    // A keyed card extension and a footer entry register through the ordinary
+    // ledger once the section's registration declared the seats.
+    const disposeCard = b.slots.register(
+      { name: 'settings.models.provider-card', key: 'llm-pi-ai' } as never,
+      () => null,
+    )
+    b.slots.register({ name: 'settings.models.footer', id: 'extra', order: 0 } as never, () => null)
+    expect(b.slots.entries('settings.models.provider-card')).toHaveLength(1)
+    expect(b.slots.entries('settings.models.footer')).toHaveLength(1)
+    // Extension-side HMR safety: its own disposer removes the entry.
+    disposeCard()
+    expect(b.slots.entries('settings.models.provider-card')).toHaveLength(0)
+    // Declarer unload cascades whatever extension entries remain.
+    await fiber.dispose()
+    expect(b.slots.entries('settings.models.footer')).toHaveLength(0)
   })
 
   it('registers the zh/en nav dictionaries and disposes everything with the fiber', async () => {

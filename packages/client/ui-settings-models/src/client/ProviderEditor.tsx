@@ -1,7 +1,7 @@
 /**
  * One provider's editor card, hand-written per adapter family: the primary
  * field is a single write-only **API key** input (the page never asks for an
- * environment-variable name — a typed key stores through `credentials.set`
+ * environment-variable name — a typed key stores through `credentials/set`
  * under the profile's reference, deriving `<ROUTE>_API_KEY` when the profile
  * has none. The pi-ai profile records that derivation as `apiKeyEnv` only when
  * a key is entered; a blank key materializes a reference-free profile for
@@ -23,10 +23,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Context } from '@deepseek-ai/cordis'
-import type { CredentialInfo, SettingsNamespaceView, SettingsPathOpView } from '@deepseek-ai/dsh-api-remotes/client'
-// Type-only: pulls the ctx.remote merge into this program.
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {
+  CredentialInfo, SettingsNamespaceView, SettingsPathOpView,
+} from '@deepseek-ai/dsh-api-remotes/client'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import {
   DeepSeekModelsEditor, modelDrafts, validateDeepSeekModels,
@@ -35,6 +34,7 @@ import { apiKeyFailure } from './apiKey.ts'
 import { EditorFooter } from './EditorFooter.tsx'
 import { ModelListEditor } from './ModelListEditor.tsx'
 import { deriveKeyRef, messageOf, protocolChoices } from './store.ts'
+import type { ModelsOperations } from './operations.ts'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
@@ -70,8 +70,8 @@ export interface ProviderEditorProps {
   schema: SettingsSchemaOperations
   /** Path from the section root to this provider's profile. */
   settingsPath: readonly string[]
-  /** Plugin context; `ctx.remote` carries the settings/credentials/llm namespaces. */
-  ctx: Context
+  /** The Host operations this card writes and interrogates through. */
+  operations: ModelsOperations
   /** Section copy. */
   t: (key: keyof typeof en) => string
   /** Disable writes (read-only settings provider). */
@@ -83,11 +83,11 @@ export interface ProviderEditorProps {
   /** Give the credential field initial focus when this editor mounts. */
   autoFocusCredential?: boolean
   /** Override the dismiss action copy. */
-  cancelLabel?: keyof typeof en
+  cancelLabelKey?: keyof typeof en
   /** Override the idle commit action copy. */
-  submitLabel?: keyof typeof en
+  submitLabelKey?: keyof typeof en
   /** Override the in-flight commit action copy. */
-  submitBusyLabel?: keyof typeof en
+  submitBusyLabelKey?: keyof typeof en
   /** Close the editor; `changed` reports whether an Apply committed. */
   onClose: (changed: boolean) => void
 }
@@ -160,7 +160,7 @@ function refFor(
  * @returns the editor card.
  */
 export function ProviderEditor(props: ProviderEditorProps): ReactNode {
-  const { namespace, schema, settingsPath, ctx, t } = props
+  const { namespace, schema, settingsPath, operations, t } = props
   const [draft, setDraft] = useState<Record<string, unknown>>(() => draftAt(schema, namespace, settingsPath))
   const [keyDraft, setKeyDraft] = useState('')
   const [keyState, setKeyState] = useState<CredentialInfo | undefined>(undefined)
@@ -195,15 +195,15 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
     // neither a business rejection nor a transport failure may reach the
     // browser as an unhandled rejection, so the card simply renders without
     // the "already configured" hint.
-    void ctx.remote.credentials.describe([keyRef]).then(
-      (response) => {
-        if (stale || !response.ok) return
-        setKeyState(response.value[keyRef])
+    void operations.describeCredential(keyRef).then(
+      (described) => {
+        if (stale) return
+        setKeyState(described)
       },
       () => undefined,
     )
     return () => { stale = true }
-  }, [ctx, keyRef])
+  }, [operations, keyRef])
 
   const stringAt = (source: unknown, key: string): string | undefined => {
     const value = schema.getPath(source, [key])
@@ -287,19 +287,15 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
         ? [{ op: 'set', path: [...settingsPath], value: {} }]
         : pathOps(settingsPath, committedOriginal, next)
     if (ops.length > 0) {
-      const response = await ctx.remote.settings.mutate(ns, ops, expectedRevision)
-      if (!response.ok) {
-        return response.error.code === 'settings/conflict'
-          ? t('conflict')
-          : response.error.message
-      }
-      setCommittedOriginal(schema.getPath(response.value.user, settingsPath))
-      setExpectedRevision(response.value.revision)
+      const written = await operations.writeSettings(ns, ops, expectedRevision)
+      if (written.kind !== 'written') return written.kind === 'conflict' ? t('conflict') : written.message
+      setCommittedOriginal(schema.getPath(written.view.user, settingsPath))
+      setExpectedRevision(written.view.revision)
       setDraft(next)
     }
     if (keyValue.length > 0) {
-      const stored = await ctx.remote.credentials.set(keyRef, keyValue)
-      if (!stored.ok) return stored.error.message
+      const stored = await operations.storeCredential(keyRef, keyValue)
+      if (stored !== undefined) return stored
     }
     setKeyDraft('')
     return undefined
@@ -328,7 +324,7 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
   if (node === undefined) {
     // A directory entry addressing a position its schema cannot resolve is a
     // host-side inconsistency; showing it beats a blank card.
-    return <p className={styles['error']}>{`${props.provider}: unresolvable settings path`}</p>
+    return <p className={styles['error']}>{props.provider}: {props.t('settingsPathUnresolvable')}</p>
   }
 
   const keyLocked = keyState?.writable === false
@@ -481,7 +477,14 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
                   defaultMaxTokens={typeof defaultMaxTokens === 'number' ? defaultMaxTokens : undefined}
                 />
               )
-              : <ModelListEditor {...catalogProps} probe={probe} probeBlocked={keyFailure} ctx={ctx} />}
+              : (
+                <ModelListEditor
+                  {...catalogProps}
+                  probe={probe}
+                  probeBlocked={keyFailure}
+                  operations={operations}
+                />
+              )}
           </div>
         </details>}
       </>
@@ -518,9 +521,9 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
           || (props.credentialOnly !== true && modelFailure !== undefined)
           || shownKeyFailure !== undefined
           || (props.credentialRequired === true && keyValue.length === 0)}
-        submitLabel={props.submitLabel ?? 'apply'}
-        submitBusyLabel={props.submitBusyLabel ?? 'applying'}
-        {...props.cancelLabel === undefined ? {} : { cancelLabel: props.cancelLabel }}
+        submitLabelKey={props.submitLabelKey ?? 'apply'}
+        submitBusyLabelKey={props.submitBusyLabelKey ?? 'applying'}
+        {...props.cancelLabelKey === undefined ? {} : { cancelLabelKey: props.cancelLabelKey }}
         onCancel={() => { props.onClose(false) }}
         onSubmit={() => { void apply() }}
       />
