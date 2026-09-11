@@ -260,13 +260,6 @@ function exactEdits(target: string): ExactEdit[] {
       expect: 1,
     },
     {
-      id: 'knip-ignore-dependencies-pattern',
-      file: 'knip.json',
-      find: `"@${from.slice(1)}/.+"`,
-      replace: `"@${to.slice(1)}/.+"`,
-      expect: 4,
-    },
-    {
       id: 'agents-convention-line',
       file: 'AGENTS.md',
       find: `- Every npm package is \`${from}/dsh-<name>\``,

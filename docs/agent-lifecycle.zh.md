@@ -7,6 +7,8 @@
 
 此时序图是 [architecture.md](architecture.zh.md#turn-flow) 的配套图示。持久的回放事实保存在 `session/event` 中，实时控制与状态则保存在 `agent/*` 中。
 
+<!-- BEGIN GENERATED agent-lifecycle (gen-doc-graphs.ts) — do not edit between markers -->
+
 ```mermaid
 sequenceDiagram
   participant User
@@ -74,6 +76,8 @@ sequenceDiagram
   Driver->>Session: <code>turn/end</code>
   Driver-->>SDK: <code>agent/status</code> idle
 ```
+
+<!-- END GENERATED agent-lifecycle -->
 
 `assistant/message` 事件会记录每次成功的提供方调用，包括返回空内容或以 `max-tokens` 结束的调用，并嵌入精确的紧凑带时间 stream。空内容不会进入派生历史。失败、重试、取消或 stream error attempt 到达 settlement 时，如果没有 surface message，就会把 stream 记录为 `assistant/attempt`。实时 `agent/assistant-stream` chunk frame 是瞬态数据；回放读取任一种持久 settlement，如果进程在 settlement 前硬中断，则不会留下持久 attempt stream。
 

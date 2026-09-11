@@ -6,7 +6,6 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../management-session" },
     { "path": "../audit" },
-    { "path": "../evidence-query" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    { "path": "../evidence-query" }
   ]
 }

@@ -129,14 +129,6 @@ describe('rescope-fork', () => {
       expect(re.replace).not.toContain('my-org')
     })
 
-    it('knip ignoreDependencies expect=4', () => {
-      const edits = exactEdits('@my-org')
-      const knip = edits.find(e => e.id === 'knip-ignore-dependencies-pattern')!
-      expect(knip.expect).toBe(4)
-      expect(knip.find).toBe('"@deepseek-ai/.+"')
-      expect(knip.replace).toBe('"@my-org/.+"')
-    })
-
     it('AGENTS convention line + file-tree placeholder prose', () => {
       const edits = exactEdits('@my-org')
       const conv = edits.find(e => e.id === 'agents-convention-line')!

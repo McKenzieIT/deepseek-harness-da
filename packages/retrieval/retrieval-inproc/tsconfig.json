@@ -22,9 +22,6 @@
     },
     {
       "path": "../../embedder/embedder"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

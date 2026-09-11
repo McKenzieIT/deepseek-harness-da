@@ -22,9 +22,6 @@
     },
     {
       "path": "../../data/semantic-layer"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

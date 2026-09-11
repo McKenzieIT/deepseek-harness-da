@@ -27,9 +27,6 @@
       "path": "../../experimental/code-runtime-python"
     },
     {
-      "path": "../../runtime-diagnostics/invariants"
-    },
-    {
       "path": "../../util/timeout"
     }
   ]

@@ -19,9 +19,6 @@
     },
     {
       "path": "../../preset/agent-presets"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

@@ -5,6 +5,8 @@
 
 This sequence is the visual companion to [architecture.md](architecture.md#turn-flow). It keeps durable replay facts on `session/event` and live control/status on `agent/*`.
 
+<!-- BEGIN GENERATED agent-lifecycle (gen-doc-graphs.ts) — do not edit between markers -->
+
 ```mermaid
 sequenceDiagram
   participant User
@@ -72,6 +74,8 @@ sequenceDiagram
   Driver->>Session: <code>turn/end</code>
   Driver-->>SDK: <code>agent/status</code> idle
 ```
+
+<!-- END GENERATED agent-lifecycle -->
 
 The `assistant/message` event records every successful provider call, including content-less and `max-tokens` finishes, and embeds the exact compact timed stream. Empty content stays out of derived history. A failed, retried, cancelled, or stream-error attempt that reaches settlement without a surface message records its stream as `assistant/attempt`. Live `agent/assistant-stream` chunk frames are transient; replay reads either durable settlement, and a hard process loss before settlement leaves no durable attempt stream.
 

@@ -5,6 +5,8 @@
 
 A service can be a core spine service, a swappable capability seam, or a bundle/composition point. The graph shows the package that owns the service declaration, known implementation packages, and packages that consume the service directly.
 
+<!-- BEGIN GENERATED capability-seams (gen-doc-graphs.ts) — do not edit between markers -->
+
 ```mermaid
 flowchart LR
   pkg_attachment["attachment"]
@@ -630,5 +632,7 @@ flowchart LR
 | `ctx.evidenceQuery` | `core` | [`evidence-query`](../packages/data/evidence-query) | - | [`tool-reachability-delta`](../packages/data/tool-reachability-delta) | - | Owns the ctx.evidenceQuery seam: loads and refreshes per-scope eval-result records and answers reachability/coverage queries against them. |
 | `ctx.managementSession` | `core` | [`management-session`](../packages/data/management-session) | - | [`patrol-mode`](../packages/data/patrol-mode), [`tool-scope-routing`](../packages/data/tool-scope-routing) | - | Owns the management session used by patrol and scope-routing tools to act on the managed tenant session. |
 | `ctx.patrol` | `core` | [`patrol-mode`](../packages/data/patrol-mode) | - | [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | - | Owns the patrol state machine and drives trigger-eval runs on a schedule; the trigger-eval tool consumes the live patrol context. |
+
+<!-- END GENERATED capability-seams -->
 
 Maintenance mode: hybrid: services are discovered from Cordis declarations; interface/implementation/consumer roles are classified in `scripts/gen-doc-graphs.ts` with a completeness guard.

@@ -910,23 +910,27 @@ export const CORDIS_CATALOG_POLICY: CordisCatalogPolicy = {
  * The page must contain exactly one `cordis-surface` marker region (the markers are
  * part of the hand-owned page skeleton once, then owned by the generator);
  * zero or several is a partition error the caller reports with the page path.
- * The match is on THIS generator's exact markers, not the generic region
- * grammar, so a page carrying only some other generator's region fails loud
- * instead of having that region overwritten.
+ * The match is on the CALLER's exact markers (this generator's `cordis-surface`
+ * pair by default), not the generic region grammar, so a page carrying only
+ * some other generator's region fails loud instead of having that region
+ * overwritten. Another generator that owns its own slug passes its own marker
+ * pair and gets the same exact-match, fail-loud contract.
  * @param content - the page's current full Markdown text.
  * @param region - the freshly rendered marker-delimited region.
+ * @param beginMarker - the exact opening marker line to replace from.
+ * @param endMarker - the exact closing marker line to replace through.
  * @returns the page text with the region replaced.
  */
-export function spliceRegion(content: string, region: string): string {
+export function spliceRegion(content: string, region: string, beginMarker: string = REGION_BEGIN, endMarker: string = REGION_END): string {
   const lines = content.split('\n')
-  const begins = lines.flatMap((line, index) => (line === REGION_BEGIN ? [index] : []))
-  const ends = lines.flatMap((line, index) => (line === REGION_END ? [index] : []))
+  const begins = lines.flatMap((line, index) => (line === beginMarker ? [index] : []))
+  const ends = lines.flatMap((line, index) => (line === endMarker ? [index] : []))
   if (begins.length !== 1 || ends.length !== 1) {
-    throw new Error(`expected exactly 1 cordis-surface region, found ${begins.length} BEGIN/${ends.length} END; add the BEGIN/END cordis-surface markers once`)
+    throw new Error(`expected exactly 1 ${beginMarker === REGION_BEGIN ? 'cordis-surface' : 'generated'} region, found ${begins.length} BEGIN/${ends.length} END; add the BEGIN/END markers once`)
   }
   const begin = begins[0] ?? -1
   const end = ends[0] ?? -1
-  if (end < begin) throw new Error('cordis-surface END marker precedes its BEGIN')
+  if (end < begin) throw new Error('generated region END marker precedes its BEGIN')
   return [...lines.slice(0, begin), ...region.split('\n'), ...lines.slice(end + 1)].join('\n')
 }
 

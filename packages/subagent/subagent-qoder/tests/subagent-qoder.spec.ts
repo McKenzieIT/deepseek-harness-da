@@ -8,8 +8,6 @@ import LocalCredentialProvider from '@deepseek-ai/dsh-credentials-local'
 import { IdentityService } from '@deepseek-ai/dsh-identity'
 import { userId } from '@deepseek-ai/dsh-credentials'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-import * as invariant from '../src/invariant.ts'
 import { QODER_PERSONAL_ACCESS_TOKEN } from '../src/index.ts'
 import * as subagentQoder from '../src/index.ts'
 import {
@@ -200,17 +198,6 @@ describe('task admission and package contracts', () => {
     expect(subagentQoder.inject).toEqual(['subagents', 'credentials', 'identity'])
   })
 
-  it('registers the package-owned empty invariant companion', async () => {
-    const dispose = vi.fn()
-    const register = vi.fn((_packageName: string, _installer: InvariantInstaller) => dispose)
-    const ctx = { invariants: { register } } as unknown as Context
-    await expect(invariant.apply(ctx)).resolves.toBe(dispose)
-    expect(register).toHaveBeenCalledWith('@deepseek-ai/dsh-subagent-qoder', expect.any(Function))
-    const install = register.mock.calls[0]![1]
-    await install(new Context(), (message: string) => { throw new Error(message) })
-    expect(invariant.name).toBe('subagent-qoder-invariant')
-    expect(invariant.inject).toEqual(['invariants'])
-  })
 })
 
 describe('query options and result mapping', () => {

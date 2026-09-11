@@ -9,15 +9,19 @@
 
 本索引背后的流程决策记录在[文档图 Agent Note](../.agents/notes/archived/process/2026-07-03-documentation-graph-atlas.md)中。
 
-| 图 | 模式 |
+<!-- BEGIN GENERATED graph-atlas (gen-doc-graphs.ts) — do not edit between markers -->
+
+| Graph | Mode |
 | --- | --- |
-| [模块依赖图](module-graph.zh.md) | `generated` |
-| [工具 schema 目录与包映射](tool-catalog.zh.md) | `generated` |
-| [能力 seam 与核心服务](capability-seams.zh.md) | `hybrid generated` |
-| [dsh 共享基础组合](../apps/cli/composition.md) | `hybrid generated` |
-| [事件生产方／消费方矩阵](event-producer-consumer.zh.md) | `hybrid generated` |
-| [agent（智能体）轮次与步骤生命周期](agent-lifecycle.zh.md) | `curated` |
-| [工具执行流水线](tool-execution-pipeline.zh.md) | `curated` |
+| [module dependency graph](module-graph.zh.md) | `generated` |
+| [tool schema catalog and package map](tool-catalog.zh.md) | `generated` |
+| [capability seams and core services](capability-seams.zh.md) | `hybrid generated` |
+| [dsh shared base composition](../apps/cli/composition.md) | `hybrid generated` |
+| [event producer/consumer matrix](event-producer-consumer.zh.md) | `hybrid generated` |
+| [agent turn and step lifecycle](agent-lifecycle.zh.md) | `curated` |
+| [tool execution pipeline](tool-execution-pipeline.zh.md) | `curated` |
+
+<!-- END GENERATED graph-atlas -->
 
 运行 `pnpm run gen-doc-graphs` 可重新生成英文源文件；运行 `pnpm run verify-doc-graphs` 可验证英文源的新鲜度，中文对侧则通过双语配对维护。
 

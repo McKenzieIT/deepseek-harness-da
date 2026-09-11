@@ -27,6 +27,7 @@ interface DemoPolicy {
 const MANIFEST_BIN_ALLOWLIST = new Map<string, ManifestBin>([
   ['apps/cli/package.json', { dsh: 'lib/bin.js' }],
   ['packages/experimental/webworker-packer/package.json', { 'dsh-pack-vfs-image': './bin.js' }],
+  ['packages/eval/eval-cli/package.json', { 'dsh-eval': './lib/bin.js' }],
 ])
 
 /** Every JavaScript executable in an application or packaging workspace has one explicit role. */
@@ -45,6 +46,15 @@ const EXECUTABLE_SOURCE_ALLOWLIST = new Map<string, string>([
   ['packages/test-support/loader-smoke/tests/fixtures/headless-driver.ts', 'test-only subprocess driver'],
   ['packages/test-support/llm-mock-server/src/bin.ts', 'test-only model server'],
   ['python/sdk-runtime/runtime-bootstrap.mjs', 'private packaging-only runtime dispatcher'],
+  ['packages/eval/eval-cli/bin/compare.ts', 'eval-only comparison tool'],
+  ['packages/eval/eval-cli/bin/probe-triage.ts', 'eval-only triage tool'],
+  ['packages/eval/eval-cli/src/bin.ts', 'eval CLI launcher'],
+  ['packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs', 'dev-only maxcompute sidecar'],
+  ['packages/query/query-maxcompute/dev/maxc-sidecar.mjs', 'dev-only maxcompute sidecar'],
+  ['packages/query/query-maxcompute/dev/maxc-smoke.mjs', 'dev-only maxcompute smoke script'],
+  ['packages/query/query-maxcompute/dev/scenarios.ts', 'dev-only maxcompute scenario generator'],
+  ['packages/query/query-maxcompute/dev/standin-sidecar.mjs', 'dev-only maxcompute stand-in sidecar'],
+  ['packages/query/query-tool/dev/query-tool-smoke.ts', 'dev-only query-tool smoke script'],
 ])
 
 /** Root demos are application wrappers and therefore must visibly select dsh. */

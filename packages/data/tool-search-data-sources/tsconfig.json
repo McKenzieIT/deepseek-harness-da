@@ -28,9 +28,6 @@
     },
     {
       "path": "../../retrieval/retrieval"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }
