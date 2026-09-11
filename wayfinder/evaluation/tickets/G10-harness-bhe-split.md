@@ -126,6 +126,12 @@ Evaluation 只声明 `ContextRequirement`、解析 Provider/profile identity 并
 
 Core Safety Floor 不可由 plan 放宽：EvidenceCut/GradeRecord 有效性、metric semantics、analysis-unit compatibility、PublicationEligibility、hidden-material isolation 和 case/split coverage 必须满足。Oracle arm 不进入 production headline，observational run 不能被 plan 提升为独立 trial，不同 case set 不能伪装成 paired delta。
 
+### D19 — Run identity 使用 content-addressed component graph
+
+权威 `RunIdentity` 是无环的 content-addressed component identity graph；Benchmark、Harness、model/interface、DataScope、Environment、Context、grading、Observer、operation 与 extension 分别拥有 namespaced、versioned descriptor，root manifest 以稳定顺序引用并计算 root digest。Identity Provider 只输出影响语义且可审计的字段与非秘密 config digest；credential value、运行 observation 和可变状态不得进入 descriptor。Run sealing 后 identity 不可修改，Loader/HMR 或 component replacement 产生新 identity 并使当前 Run invalidated。
+
+ComparisonPlan 针对稳定 component identities 与声明字段，不读取任意 Provider config。Core 提供确定性的 `materializeRunIdentity()` 生成自包含 JSON Artifact，供 CLI、审阅、归档与传输；materialized manifest 只是 graph projection，不是第二份可独立修改的权威身份。缺失、循环、digest mismatch 或未知 required identity descriptor 使 Run invalid。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
