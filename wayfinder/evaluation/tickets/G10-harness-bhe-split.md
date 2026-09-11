@@ -145,6 +145,9 @@ Run 开始后 plugin tree、Provider、preset/config、hooks、guards 与 packag
 | [`dsh-evaluation-integration-constraints.md`](../research/dsh-evaluation-integration-constraints.md) | DSH/Cordis plugin tree、service injection、scope、effects、events、session、tools 与 lifecycle | 约束 Evaluation 复用真实 DSH composition，不创建第二套 agent loop、Provider 系统或 transcript |
 | [`data-agent-runtime-preservation.md`](../research/data-agent-runtime-preservation.md) | 当前 data-agent 产品路径、默认 bundle、DataScope、Context、query、interaction 与 persistence | 约束 Evaluation opt-in、scope-local、行为不变，并识别默认 bundle 中 eval 控制逻辑的产品污染风险 |
 | [`non-invasive-agent-evaluation-patterns.md`](../research/non-invasive-agent-evaluation-patterns.md) | shadow、trace replay/rescore、独立 evaluator 与 production composition under evaluation host | 约束 controlled、observational 与 replay 三种模式共用协议，但不向普通 Agent 注入 eval-only 行为 |
+| [`evidence-cut-rescore-papers.md`](../research/evidence-cut-rescore-papers.md) | durable eval log、offline rescore、scorer input completeness 与 live-grade 边界 | 支持正式结果绑定 persisted sealed cut，但不把强制磁盘回读冒充论文要求 |
+| [`durable-trace-replay-semantics.md`](../research/durable-trace-replay-semantics.md) | event history、checkpoint、OTel、content digest 与 replay/re-execution 区分 | 约束 Session/Evaluation cut 分离、stable read + digest，以及 model/environment rerun 使用新 Attempt |
+| [`evaluation-publication-finality.md`](../research/evaluation-publication-finality.md) | finality、coverage、grading、cleanup、separation 与 publication 的偏序 | 约束 computed grade 与 publishability/independent-trial eligibility 分离，不强造固定全序 |
 
 2026-09-10 代码复核确认 GA-GT4 的核心 hardcode 仍在：`eval-runner-service` 仍默认 K11 caseDir/today 并使用 `^k11_\d+\.yaml$`，bundle 仍声明 K11 `semanticRoot`/`caseDir`，`compare.ts` 仍按 `k11v2_*` 名称分桶。R24 后 `packages/eval/` 只有一次测试 lint 删除，没有包边界或依赖变化，因此 R24 的仓库取证仍可作为 grilling 输入。GA-GT4 唯一过期项是“失败分类无人调用”：`multi_turn.ts` 已调用 `classifyExecutionFailure`，但多引擎 taxonomy 仍属方向 9/G9/T8，不能由 G10 顺手实现。
 
