@@ -2,7 +2,7 @@
 
 日期：2026-09-10  ·  票：[R10b — Benchmark adapter parity、interface censoring 与 run isolation 认读](../tickets/R10b-harness-measurement-validity.md)  ·  分支：`research/R10b-harness-measurement-validity`
 
-本文回答 R10b 的六个“必须回答”问题，并给 [G10 — Harness Benchmark/Harness/Environment 拆分](../tickets/G10-harness-bhe-split.md)、T9 和 [T12 — eval 包级重组](../tickets/T12-eval-package-consolidation.md) 提供新增或修订验收。全文把论文与官方实现直接支持的内容放在“来源事实”，把 DSH 应如何设计放在“本仓设计推论”；外部来源没有规定的 npm 包名、字段拼写、Cordis 插件边界和迁移顺序不冒充论文结论。
+本文回答 R10b 的六个“必须回答”问题，并给 [G10 — Data-domain Evaluation Core](../tickets/G10-harness-bhe-split.md) 及其 downstream implementation tickets 提供验收约束。全文把论文与官方实现直接支持的内容放在“来源事实”，把 DSH 应如何设计放在“本仓设计推论”；外部来源没有规定的 npm 包名、字段拼写、Cordis 插件边界和迁移顺序不冒充论文结论。
 
 ## 核验方法与版本
 
@@ -223,9 +223,23 @@ Heldout transfer 必须比较**同一 frozen Harness artifact**，且 heldout �
 4. ECP 是 early proposal：论文明确缺少受控 empirical validation，官方规范仍为 Experimental，独立实现互操作、sealed manifests、signed evidence 与稳定 versioning 尚属 future work；不能把它当成成熟 cross-benchmark standard。
 5. Harbor 论文的 Harbor-Index 1.0 是 82 tasks，而固定 commit 的 README/`ADAPTATIONS.md` 是移除两个 SWE-Lancer Manager tasks 后的 80 tasks；任何采用都必须绑定 release tag 和 content/image digests，不能只写浮动名称 `Harbor-Index`。Harbor Atom 作者元数据与 PDF v2 作者块也不一致。
 
-## 给 G10、T9、T12 的新增/修订验收清单
+## G10 决议后的最终承接关系
 
-### G10 必须新增或修订
+这些 measurement-validity 要求由 foundation-first implementation chain 分别承接。下表给出最终 owner；后续实施以 owner ticket 为准，不按旧 package 名或旧 runner 边界分配责任。
+
+| 要求 | 最终 owner |
+| --- | --- |
+| Legacy loader 保留 reference/provenance，未知字段 fail loud | [T11 — Loader provenance strip](../tickets/T11-loader-provenance-strip.md) |
+| Execution artifact、grader facts 与 model/infra/case failure 分离 | [T1 — Execution grader implementation](../tickets/T1-exec-grader-impl.md) |
+| Protocol identities、public/private views、Environment finality/separation、repositories 与 stores | [T9 — Evaluation foundations](../tickets/T9-evaluation-foundations.md) |
+| K11/RBI canonical Pack migration、oracle/reference validation、matched parity 与逐 case diagnostics | [T14 — Data-analysis extension 与 canonical Pack migration](../tickets/T14-data-analysis-extension-pack-migration.md) |
+| 真实 production composition、interface-stack preflight、五阶段 evidence 与完整 Run Identity Graph | [T15 — Product Evaluation Controller 与 external CLI](../tickets/T15-evaluation-controller-cli.md) |
+| Private-material reachability gate、最终 package graph、consumer migration 与 legacy deletion | [T12 — Final Evaluation package graph 与 legacy cutover](../tickets/T12-eval-package-consolidation.md) |
+| 新协议下的完整 baseline、coverage accounting 与历史结果不可比声明 | [R25 — New Evaluation stack baseline re-anchor](../tickets/R25-evaluation-rebaseline.md) |
+
+## 验收清单
+
+### Cross-ticket design obligations
 
 - [ ] 定义 versioned canonical task-material protocol；public execution material 与 private grading material 有不同类型、不同依赖入口和运行时访问权限，unknown grading field 或 lossy conversion fail loud。
 - [ ] Benchmark 明确拥有 source provenance、split、reference/oracle、hidden tests/solution、grader/comparator policy 和 aggregation；Harness 不读取或推断这些内容，Environment 不取得 correctness ownership。
@@ -238,16 +252,16 @@ Heldout transfer 必须比较**同一 frozen Harness artifact**，且 heldout �
 - [ ] 定义 heldout/fresh 的访问边界和冻结顺序；feedback、heldout、fixed-runtime transfer 结果不得跨 Harness commit 或 identity component 拼接。
 - [ ] 明确 ECP 仅可参考 wire envelope 与 audit fields；其 draft reset 和不完整 phase/finality evidence 不得成为本仓协议的替代品。
 
-### T9 实施验收必须新增或修订
+### Downstream implementation 必须承载
 
-- [ ] `k11-v2` 与 `rbi-10000251-exec` 先保留各自 source schema/provenance，再无损编译到 canonical envelope；`expected.sql`、`meta.anchor_ds`、`tier`、split 与 policy 各有 round-trip 或拒绝丢失测试。
-- [ ] Benchmark adapter 具有 oracle/reference validation 与 original-vs-adapted parity fixture/runner；没有 parity evidence 的 pack 不得标 `validated`，差异只能标 `parity_unresolved` 或带审计说明的 accepted deviation。
-- [ ] 持久化 raw emission、parsed action、execution、observation、grader evidence 及关联 ids；测试覆盖合法调用被 parser 丢弃、wrong tool、argument schema failure、未 dispatch、observation loss 与 judge unsupported positive。
-- [ ] Batch 前运行真实 model/provider/template/parser/schema/Environment 组合 preflight；失败使整组 configuration invalid，且不会创建 case incorrect 记录。
-- [ ] Environment tests 覆盖 delayed effect、timeout 后 descendant、namespaced isolation、verified reset、cleanup failure、external resource route 与 intentional persistent stream；证明 unresolved/connected runs 不进入 independent pass 指标。
-- [ ] 每个输出携带完整 run identity；同 case 的不同 Harness commit、model revision、template/parser、Environment digest 或 grader policy 不会被错误 merge、cache-hit 或 aggregate。
-- [ ] 重建 baseline；不得把新 protocol 的结果与已经宣布失效的旧 168-case / 39-case 百分数声称直接可比。
-- [ ] 若实现改变 model-visible transcript 或 product-user-visible output，同 PR 更新真实 runnable example、keyless snapshot，并按仓库规则同步 TypeScript/Python SDK projection。
+- [ ] **T14**：`k11-v2` 与 `rbi-10000251-exec` 先保留各自 source schema/provenance，再无损编译到 canonical envelope；`expected.sql`、`meta.anchor_ds`、`tier`、split 与 policy 各有 round-trip 或拒绝丢失测试。
+- [ ] **T14**：Benchmark adapter 具有 oracle/reference validation 与 original-vs-adapted parity fixture/runner；没有 parity evidence 的 pack 不得标 `validated`，差异只能标 `parity_unresolved` 或带审计说明的 accepted deviation。
+- [ ] **T15**：持久化 raw emission、parsed action、execution、observation、grader evidence 及关联 ids；测试覆盖合法调用被 parser 丢弃、wrong tool、argument schema failure、未 dispatch、observation loss 与 judge unsupported positive。
+- [ ] **T15**：Batch 前运行真实 model/provider/template/parser/schema/Environment 组合 preflight；失败使整组 configuration invalid，且不会创建 case incorrect 记录。
+- [ ] **T9/T15**：Environment tests 覆盖 delayed effect、timeout 后 descendant、namespaced isolation、verified reset、cleanup failure、external resource route 与 intentional persistent stream；证明 unresolved/connected runs 不进入 independent pass 指标。
+- [ ] **T15**：每个输出携带完整 run identity；同 case 的不同 Harness commit、model revision、template/parser、Environment digest 或 grader policy 不会被错误 merge、cache-hit 或 aggregate。
+- [ ] **R25**：重建 baseline；不得把新 protocol 的结果与已经宣布失效的旧 168-case / 39-case 百分数声称直接可比。
+- [ ] **T15/T12**：若实现改变 model-visible transcript 或 product-user-visible output，同 PR 更新真实 runnable example、keyless snapshot，并按仓库规则同步 TypeScript/Python SDK projection。
 
 ### T12 重定后的包级验收必须新增或修订
 

@@ -47,3 +47,9 @@ Benchmark pack 拥有 task material、reference/oracle、hidden tests/solution�
 Environment 必须分别证明 outcome finality 与 cross-run separation：pending effect 未终结或未被足够收窄时结果为 unresolved；跨 run route 未隔离时不得把 runs 当独立 trials。Run identity 至少固定 Benchmark、Adapter、Harness artifact、runtime model、interface stack、Environment 和 grader policy。heldout transfer 只能比较同一 frozen Harness artifact，且开发反馈、heldout 与 fixed-runtime 各腿不可跨 commit 或 identity 拼接。
 
 这些是 G10/T9/T12 的跨 benchmark 约束；parity 重复次数与统计量、具体 oracle 形式、finality observation window、namespace 技术、parser repair 和 heldout 规模仍由各 benchmark 或 G10 裁定。ECP 仅作为 experimental wire/audit 旁证，不能替代 parity、finality 或 isolation 证明。
+
+## Canonical artifact and downstream ownership
+
+The tracked research note is the authoritative R10b artifact. A concurrent draft contains no unique normalized source URL or acceptance obligation: the canonical note retains all 25 shared source targets, adds the pinned ECP README, retains or strengthens all 23 draft checklist items, and adds the final package provenance criterion.
+
+G10 subsequently assigned the requirements across T11、T1、T9、T14、T15、T12 and R25. The owner table in the research note is authoritative for implementation routing; the resolved R10b ticket remains the research owner rather than an implementation catch-all.

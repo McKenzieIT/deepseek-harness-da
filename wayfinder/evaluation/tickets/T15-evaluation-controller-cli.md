@@ -17,6 +17,8 @@
 - Product-composition and component subjects, plus operation identities for controlled run、shadow observation、rescore、reproject、model rerun and Environment re-execution.
 - Explicit `--profile` + `--benchmark` resolution through production app-boot and BenchmarkRepository; no host case glob or private material parsing.
 - Real `ctx.agents.create()`/public SDK path through session、prompt、tools、approval、hooks、guards、workflow、persistence and production Context Projection.
+- Pre-run interface-stack preflight over the resolved model/provider、template、serializer、parser、tool schema、tool-choice policy and disposable Environment dispatch path, with `preflight_failed | interface_incompatible | auto_inconclusive` outcomes.
+- Durable correlation of raw emission → parsed action → execution → observation → grader evidence; a missing required stage makes the affected conclusion unverifiable rather than a model failure.
 - Scope-local behavior-preserving Observer, Environment Lease, EvidenceCut sealing, Grading Runtime call, cleanup and PublicationEligibility.
 - CLI output/reporting and SDK-facing run handle sufficient for cancel, flush and completion without a permanent Cordis Service Host.
 - ComparisonPlan templates、Core Safety Floor validation、identity compatibility rejection and generic delta/report projection; no case-id/filename category inference.
@@ -26,6 +28,7 @@
 - Product-level path does not import agent-loop implementation, concrete Query Providers, NL2SQL engine internals or concrete Context Provider.
 - Deterministic paired test proves Observer installation leaves model-visible events, request headers, tool actions and terminal state unchanged.
 - Evidence/observer failure is not model failure; live output is provisional and formal grade binds a persisted sealed cut.
+- `preflight_failed` and `interface_incompatible` invalidate the resolved configuration before scored Attempts; they never create case-level incorrect records.
 - HMR/provider replacement invalidates the Run; Run Identity Graph and materialized manifest are complete and secret-safe.
 - Managed、attached-snapshot and observational assurance enforce publication/aggregation eligibility.
 - Data-analysis vertical slice and data-engineering/data-science conformance fixtures execute through the same Controller interface.

@@ -13,9 +13,9 @@
 
 ## Required scope
 
-- Evaluation Protocol：identities、manifests、requirements/bindings、EvidenceEnvelope、Artifact/Resource refs、MetricObservation/AggregateMeasurement、ComparisonPlan、GradeRecord 与 PublicationEligibility。
+- Evaluation Protocol：identities、manifests、requirements/bindings、EvidenceEnvelope、Artifact/Resource refs、MetricObservation/AggregateMeasurement、ComparisonPlan、GradeRecord 与 PublicationEligibility；EvidenceEnvelope 可关联 raw emission、parsed action、execution、observation 与 grader evidence，并显式表示缺失或 unverifiable 阶段。
 - Grading Runtime：sealed cut validation、private-material authorization、mechanism registry、grader lifecycle 与 append-only rescore。
-- Evaluation Environment Definition：resolve/open/EnvironmentLease、assurance、finality、separation 与 cleanup protocol。
+- Evaluation Environment Definition：resolve/open/EnvironmentLease、assurance、open-effect records、`final | unresolved | invalid`、cross-run separation、verified reset/cleanup 与 persistent-stream analysis-unit protocol。
 - BenchmarkRepository Definition + local Provider：authoring directory validation、stable read、closure sealing、digest 与 public/private view。
 - EvaluationStore Definition + local Provider：Run/Attempt state、evidence manifests、grades、measurements 与 publication records。
 - ArtifactStore Definition + local CAS Provider：streaming bytes、digest verification、dedup、retention metadata 与 access classification。
@@ -26,6 +26,8 @@
 - Package roles and dependencies match G10 D20–D24; Protocol imports no runtime/controller/domain implementation.
 - Every capability seam has Definition, at least one Provider, one Consumer/test harness, config validation, effect-owned registration, invariants, README and focused tests.
 - Unknown required evidence/identity types fail loud; ignorable extension records remain readable through standard projections.
+- Public Benchmark views cannot resolve private grading material; only an authorized Grading Runtime path can dereference it.
+- Environment tests distinguish current-run finality from next-run separation and cover delayed effects、unverified reset、cross-run routes and persistent analysis units.
 - Benchmark local Provider rejects symlink/path escape, mutable read races, missing closure members and digest mismatch.
 - Evaluation/Artifact Stores implement the sealing order and do not treat orphan bytes as a sealed cut.
 - The two conformance fixtures prove Core has no SQL rows, MaxCompute, K11 or semantic-layer default.
