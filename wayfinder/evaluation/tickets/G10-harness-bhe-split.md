@@ -6,7 +6,7 @@
 **Blocks**: [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md)；并解 [G13](G13-context-evaluation-protocol.md)、[G15](G15-dynamic-evaluation-lifecycle.md)、[R21](R21-goodhart-audit.md) 与 [G1](G1-exec-grader-seam.md) 移交的三条
 **Mode**: HITL
 **Branch**: `grilling/G10-harness-bhe-split`
-**Supersedes**: GA-GT4 的架构面（`wayfinder/data-agent/tickets/phase-misc/`，须先调和）
+**Supersedes**: [GA-GT4 — eval 框架去 K11](../../data-agent/tickets/phase-misc/GA-GT4-eval-de-k11.md)（2026-09-11 已完成调和并关闭）
 
 ## Question
 
@@ -167,6 +167,12 @@ Definition packages 必须拥有完整 interface、failure/lifecycle semantics�
 实施顺序固定为 `[T11](T11-loader-provenance-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md)`。每一层分别验证 loader/ground truth、execution semantics、production Context、shared foundations、data-analysis migration、真实 Product Evaluation、最终 package cutover 与新 baseline；不得用 package move、Context 变化或 case migration 混淆前一层的验收。
 
 分阶段只服务 review、归因和 rollback，不形成发布后的兼容承诺。最终 cutover 必须删除 old runners、service、adapter forks、caseDir/glob、旧 exports、default bundle eval controls 与 legacy runtime formats；不留 compatibility shim。T9 改为 foundation 实现票，T12 重定为 final package graph/external consumer migration/legacy deletion；Context attribution 与 dynamic lifecycle 从 fog 毕业为独立 G/R tickets。
+
+### D26 — GA-GT4 关闭，目标保留而旧解法被 supersede
+
+GA-GT4 关闭的原因不是 hardcode 已实现修复，而是其全部 surviving obligations 已迁移到单一 owner ticket graph；继续保留会让旧的 case/config fallback、filesystem glob、flat runner config、ambient `today`、service-runner 扩展和单 classifier 重新成为并列架构 authority。保留目标包括无 DataScope/Benchmark hardcode、fail-loud resolution、dimension/identity-driven comparison、Provider portability 与 failure facts 不漂移。
+
+承接关系为：Context→[T13](T13-context-projection-service.md)；Benchmark discovery/migration→[T14](T14-data-analysis-extension-pack-migration.md)；Environment/binding/foundations→[T9](T9-evaluation-foundations.md)+[T15](T15-evaluation-controller-cli.md)；legacy deletion→[T12](T12-eval-package-consolidation.md)；failure taxonomy→[R9](R9-error-taxonomy-papers.md)→[G9](G9-failure-classifier.md)→[T8](T8-failure-classifier-impl.md)；comparison/baseline/Goodhart→[R25](R25-evaluation-rebaseline.md)+[R21](R21-goodhart-audit.md)；dynamic time/fresh semantics→[G15](G15-dynamic-evaluation-lifecycle.md)。
 
 ## G1 移交的三条（本票必须裁定）
 

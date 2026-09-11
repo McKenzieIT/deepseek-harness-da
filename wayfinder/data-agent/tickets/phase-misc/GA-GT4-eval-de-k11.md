@@ -1,6 +1,6 @@
 # GA-GT4 — eval 框架去 K11
 
-**Type**: grilling  ·  **Phase**: misc  ·  **Status**: Open
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: resolved — architecture superseded by G10; surviving obligations routed
 **Source**: [audit report](../../research/generalization-audit-2026-08-31.md) · [tickets doc](../../research/generalization-audit-tickets-2026-08-31.md) — H5+H8 / arch G6 · **high**
 
 **Problem**: eval runner + bundle 硬编码 K11（`scopeId='k11'`、case 正则 `/^k11_\d+\.yaml$/` 连自家 `k11v2_*` 都不匹配→`runBatch` 抛 "no cases found"、caseDir/defaultProject/semanticRoot 指向 K11）；`classifyExecutionFailure` 只认 ODPS 错误码+中文 marker，`verdict_mapper` 却只认英文 → PG/Snowflake/BigQuery 真实 SQL 缺陷静默不评分。
@@ -35,7 +35,11 @@
 - `scopeId`/project/provider binding、fail-loud preflight 与 product run → [T9 — Evaluation foundations](../../../evaluation/tickets/T9-evaluation-foundations.md) + [T15 — Product Evaluation Controller 与 external CLI](../../../evaluation/tickets/T15-evaluation-controller-cli.md)。
 - `semanticRoot` 与 duplicated Context assembly → [T13 — Production Context Projection capability](../../../evaluation/tickets/T13-context-projection-service.md)。
 - `compare.ts` 的 dimension/identity/Goodhart 语义 → T15 + [R25 — New Evaluation stack baseline](../../../evaluation/tickets/R25-evaluation-rebaseline.md) + [R21 — Goodhart audit](../../../evaluation/tickets/R21-goodhart-audit.md)。
-- Provider-specific failure taxonomy → G9/T8，保持本票原分流。
+- Provider-specific failure taxonomy → [R9](../../../evaluation/tickets/R9-error-taxonomy-papers.md) → [G9](../../../evaluation/tickets/G9-failure-classifier.md) → [T8](../../../evaluation/tickets/T8-failure-classifier-impl.md)。
 - 旧 package/runtime/default bundle rows 的删除 → [T12 — Final Evaluation package graph 与 legacy cutover](../../../evaluation/tickets/T12-eval-package-consolidation.md)。
 
-本节仅记录已开票路由；G10 尚未 resolved，本票暂不关闭。
+## Resolution
+
+本票关闭，因为它识别的 K11 coupling 已全部由更精确的 owner、interfaces 与 implementation tickets 承接；继续保留独立 implementation authority 会允许旧的 flat config、glob、ambient date、service-runner 和单 classifier 解法与 G10 并存。关闭不表示 hardcode 已修复，只表示问题已从审计入口迁移到可执行 ticket graph。
+
+保留的目标是 shared runtime 无具体 DataScope/Benchmark hardcode、配置 fail loud、discovery 不依赖 filename、comparison 不依赖 case-id naming、Provider portability 与 failure facts 不漂移。被 supersede 的解法是 case/config fallback precedence、broad glob、flat runner config、ambient `today`、继续扩展 `eval-runner-service`，以及把 Environment classification 和 correctness verdict 合成一个 classifier。上列 T13/T9/T14/T15/T12、R9/G9/T8、R25/R21 与 G15 是全部 surviving obligations 的 owner。

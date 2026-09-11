@@ -19,6 +19,7 @@
 - Real `ctx.agents.create()`/public SDK path through session、prompt、tools、approval、hooks、guards、workflow、persistence and production Context Projection.
 - Scope-local behavior-preserving Observer, Environment Lease, EvidenceCut sealing, Grading Runtime call, cleanup and PublicationEligibility.
 - CLI output/reporting and SDK-facing run handle sufficient for cancel, flush and completion without a permanent Cordis Service Host.
+- ComparisonPlan templates、Core Safety Floor validation、identity compatibility rejection and generic delta/report projection; no case-id/filename category inference.
 
 ## Success criteria
 
