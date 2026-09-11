@@ -2,8 +2,8 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open (2026-09-15 拆出，用户决策 b：非回归，作 known-red 单开票)
-**Assignee**: unclaimed
+**Status**: resolved（2026-09-11 · commit 7ad3242d97 on upstream/resync-2026-09-08, resync tree, not pushed）
+**Assignee**: —（已收口 2026-09-11）
 **Blocked by**: 无（不阻塞 UM11 PR；本门作 known-red 进 PR 清单）
 **Blocks**: 无
 **Related**: [UM12](UM12-post-merge-ga-fork-ci-resweep.md)（package-invariants 门的归因票）、[UM-QODER-SUBAGENT-RETIRE](UM-QODER-SUBAGENT-RETIRE.md)（同模式：非回归 fork drift 单开票）
@@ -65,3 +65,63 @@
 **与 [UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md) 的耦合**：`ui-settings-models` 的 `src/invariant.ts` + `tests/invariant.client.spec.ts` 同时是那张票的「upstream 已删、fork 仍停在 merge-base」文件 → **本票先做**，否则那张票会重新论证甚至错误地把它们恢复回来。
 
 **估算**：1-2 session（机械但量大，268 处 + 一轮 build/门复验可能溢出）。
+
+### [2026-09-11 复核2] workflow 的 4-site plan 漏 site 5/6：gate 的 !hasCompanion 分支查 6 处不是 4 处
+
+独立读 `scripts/package-invariants.ts` + 全量 survey（与 gate 的 67/106 计数一致）发现 workflow 与原 复核 的「每包 4 处」都少算了 2 处。gate 删 companion 后（hasCompanion=false）切到 `!hasCompanion` 分支，查：
+
+- **Site 5（`tsdown.config.ts`）**：若仍 bundle `lib/types/invariant.js` → 新违规 `package build override must omit lib/types/invariant.js when src/invariant.ts is absent`。**12 包**受影响（7 client peerDep offender + `code-runtime/code-runtime-data-python`、`eval/eval-cli`、`query/query-maxcompute`、`query/query-postgres`、`query/query`）。两形态：`clientBundle(name, [...])` 删数组元素 vs `defineConfig([{entry:[...]}, ...])` 删整个 entry 对象。
+- **Site 6（`README.md`）**：须含 `No ... companion is published` 句（gate regex `OMITTED_COMPANION_REASON`），否则 `omitted companion requires a README ... reason sentence`。**全 67 个都缺**（0 已有，0 无 README）。规范短句 = `No companion is published.`（224 既有 README 中 99 个用此）。
+- **peerDep 7 条**：gate 的 peerDep 检查在 `hasCompanion` 分支、`!hasCompanion` 早 return 之后 → 删 companion 后 7 条违规**自动消失**（非 workflow 估的「74→7」）。但 7 offender 的 peerDep 语义上仍错（flattened policy `usesFlattenedPackageDependencies`）→ 应删；已确认 7 包 `src` 在 `invariant.ts` 之外**零** dsh-invariants import → 删 peerDep 安全，devDep 留。
+
+**净效果**：workflow 4-site apply 单跑 = **74→79**（67 README + 12 tsdown 新红；7 peerDep 自动消）= 回归。补 site5/6 + 删 7 peerDep 后 = **74→0**（达票 Acceptance）。
+
+**决策（执行）**：workflow 只做 4-site companion retirement（268 处，其强项，disjoint 包目录）；site 5/6/peerDep 由主 session 做——site6 用确定性 node 脚本 `/tmp/um-site6-readme.mjs --write`（67 append），site5 12 文件按形态逐个，peerDep 7 文件。然后主 session 串行 verify（verify-package-invariants 期望 74→0）。流程边界未变：判断留人，体量进 workflow+脚本，门/commit 归主 session 串行。
+
+### [2026-09-11 复核3] 修正 复核2 的 gate 分析：4-site apply 单跑即 74→0（非 74→79）
+
+workflow analyze 跑完（14 agent / 499k subagent token / ~35min），crosscheck 独立复核**纠正了 复核2 的一个关键误读**：
+
+**复核2 误以为**删 companion 后 gate 的 `!hasCompanion` 分支会查 site 5/6 → 74→79 回归。**错。** gate 的 owner 发现 `packageInvariantPackages` 以 `exports["./invariant"] !== undefined || existsSync(src/invariant.ts)` 为准——workflow 的 4-site apply **同时**删 `src/invariant.ts` **和** 去 `exports["./invariant"]`，两条件皆假 → 包**退出 owner 集** → `checkManifest`/`checkBuild`/`checkOmissionReason` **全不跑**。故 **verify-package-invariants 单跑 4-site apply 即 74→0**（非 79，非 7）。
+
+**但 site 5/6/peerDep/C 仍要做，只是理由变了**（gate 不再是理由）：
+
+- **site 5（tsdown）**：非 gate 红，是**真 build 断**——删 `src/invariant.ts` 后 `tsc -b` 不再产 `lib/types/invariant.js`，`tsdown` 在缺失 entry 上**崩**。12 包（7 client offender + `code-runtime-data-python`/`eval-cli`/`query-maxcompute`/`query-postgres`/`query`）。`/tmp/um-site5-tsdown.mjs`（dry-run 12/12 0 err）处理。crosscheck 确认 11 个 batch 自报漏了它（prompt 没要求），batch 9 发现了但 skip。
+- **site 6（README）**：非 gate 红，仅一致性。67 包全缺句子；`/tmp/um-site6-readme.mjs`（dry-run 67/0/0）处理（hygiene）。
+- **peerDep 7**：非 gate 红（owner 退出后 gate 不查 peerDep），但语义对——flattened policy 下 7 offender 的 peerDep 本就不该有；已确认 7 包 src 在 `invariant.ts` 外**零** dsh-invariants import。`/tmp/um-peerdep-strip.mjs`（dry-run 7/7 0 err，devDep 留，JSON 验）处理。
+- **concern C（crosscheck 新发现）**：`packages/client/ui-settings-models/tests/invariant.client.spec.ts` 捆了 1 个**实质测试** `ModelsSection({}).toBeNull()`（测客户端组件，非 companion）；workflow 删该 spec 会丢它 → **apply 前迁到** `tests/models-section.client.spec.ts`。另 3 个 spec（`ui-present-decomposition`/`ui-present-table`/`ui-suggest-followups`）只捆 obsolete companion 测试，删之安全（ui-suggest-followups 已读确认）。
+- **无 barrel/module 重导出本地 companion**（`grep "from [.]+/invariant" packages/*/src packages/*/*/src` 排除 `invariant.ts`，0 命中）→ 删 `src/invariant.ts` 不破任何 kept src；crosscheck 同证 git 干净。
+
+**crosscheck 另点名的耦合**（awareness，不阻本票）：`ui-settings-models` 同时归 UM-UI-SETTINGS-MODELS-RE-PORT（5 文件含 tsdown，RE-PORT 后跑需对账）；`subagent-qoder` 同时归 UM-QODER-SUBAGENT-RETIRE（若 RETIRE 删整包则本票对它 3 文件是冗余 no-op，顺序：本票先）。
+
+**净结论**：4-site apply → gate 74→0；补 site5（build）+ peerDep（语义）+ site6（hygiene）+ 迁 ModelsSection test → build/test 绿。流程边界不变（判断留人，体量进 workflow/脚本，门/commit 归主 session 串行）。
+
+### Resolution (2026-09-11)
+
+**Landed** — commit `7ad3242d97` on `upstream/resync-2026-09-08` (resync tree `/Users/mckenzie/workspace/dsh-resync`, NOT pushed):
+- 4-site retirement of 67 empty invariant companions (workflow `um-invariant-companion-sweep.wf.js`, apply mode): deleted `src/invariant.ts`; removed `exports["./invariant"]` + `files[] "lib/invariant.js"` + the tsconfig `runtime-diagnostics/invariants` project reference; deleted 4 obsolete `tests/invariant.client.spec.ts`.
+- Site 5 (build): omitted `lib/types/invariant.js` from 12 `tsdown.config.ts` (7 client `clientBundle` A/B + `code-runtime-data-python` A/B + 4 `defineConfig` C) — else `tsdown` breaks on the missing entry after `src` deletion.
+- peerDep (correctness): removed the 7 stale `@deepseek-ai/dsh-invariants` peerDependencies from the 7 client offenders (devDep retained; confirmed zero runtime imports of dsh-invariants outside the deleted companion).
+- Spec fixes: relocated the one substantive `ModelsSection` test to `tests/models-section.client.spec.ts`; dropped the stale `import '../src/invariant.ts'` + companion-registration tests (and the now-unused `vi`/`InvariantInstaller` imports) from `identity.spec.ts` and `subagent-qoder.spec.ts`.
+- Regen: `docs/architecture-graph.md` + `docs/module-graph.{md,zh.md,i18n.yaml}` (the retirement stale'd them).
+
+**Gates (all green, main session serial)**:
+- `verify-package-invariants`: 74 → 0 (39 hand-owned companions conform; retired packages exit the owner set once `src`+`exports` both gone, so `checkManifest`/`checkBuild`/`checkOmissionReason` no longer run for them).
+- `verify-built-package-invariants`: 0 (39 compiled companions pass Loader checks).
+- `tsc -b tsconfig.host.json` + `tsconfig.client.json`: exit 0.
+- `lint:contracts-ready`: 0 warnings / 0 errors.
+- `gen-architecture-graph` / `gen-module-graph` / `gen-cordis-catalog` / `gen-doc-graphs` `--check`: up to date.
+- `verify-md-links`: 1730 files, all resolve.
+
+**Not my regression**: `gen-config-catalog --check` is red (stale) but PRE-EXISTING — red at session start per the status section; my work touched no `dsh` config block, and `docs/config-catalog.md` is unmodified in this commit. Left for the config/zh-pairing concern that owns it.
+
+**Coupling** (awareness for co-owned tickets, not blocking):
+- `packages/client/ui-settings-models` (companion + spec + tsdown + peerDep retired here) is ALSO owned by UM-UI-SETTINGS-MODELS-RE-PORT — that ticket's change count + merge expectations must account for these landings (incl. the new `tests/models-section.client.spec.ts`).
+- `packages/subagent/subagent-qoder` (companion + tsconfig retired; spec's companion-test dropped) is ALSO owned by UM-QODER-SUBAGENT-RETIRE.
+
+**Apply notes (env lessons, for future workflow use in this repo)**:
+1. `resumeFromRunId` + changed `args` → cached no-op (resume only supports script edits, not args changes).
+2. `scriptPath` + `args` → ran 14 agents for ~49 min in **analyze** mode (`args` did not propagate via `scriptPath`; `mode` defaulted to `'analyze'`). Both were pure no-ops (tree verified clean).
+3. Hardcoding `const mode = 'apply'` **inline** (no `args` dependence) → landed (272 edits, 67 packages).
+The MCP runner also dropped mid-apply (sustained `runner_gone`); a session-only cron retried the probe every ~17 min until reconnected, then verification + commit ran in the main session.
+**Lesson**: in this env, hardcode mode inline and don't rely on `args` via `scriptPath`/`resumeFromRunId`; tolerate transient runner drops via a retry cron.

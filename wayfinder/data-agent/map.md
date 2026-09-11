@@ -23,6 +23,7 @@
 - **实验结果审计**（`research/experiment-audit-log.md`）：任何用实验/探针支撑决策的（probe / 召回-歧义测量 / A-B），须把 setup + 数据（verbatim）+ verdict + fidelity caveat + ticket 指针持久化到此审计日志——不仅在 ticket / 探针输出里（见 AGENTS.md「Decision-informing experiments are audited」规则）。已 seed D2c/D2d/D2e retrieval-quality 测量。
 
 ## Decisions so far
+- [UM-INVARIANT-COMPANION-CLEANUP](tickets/phase-upstream-merge/UM-INVARIANT-COMPANION-CLEANUP.md): retired 67 empty invariant companions + 7 stale peerDeps — 4-site apply (workflow) makes packages exit the owner set, so verify-package-invariants 74→0; plus site-5 (12 tsdown, build), peerDep (7, correctness), relocated ModelsSection test, regen arch/module graphs; tsc/lint/gen/md-links all green; commit 7ad3242d97 on resync (not pushed).
 
 <!-- 一行一 closed 决策的 gist；详情在 research/ 笔记或后续 ticket -->
 
