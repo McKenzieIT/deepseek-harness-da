@@ -60,7 +60,21 @@
 - **在**（workflow 完 + /tmp 持久）→ 读 + 按 §B apply（translation-zh + UM-LINT triage on resync）。
 - **不在**（workflow 未完或 /tmp 清）→ 重跑 `Workflow({scriptPath: "wayfinder/data-agent/workflows/um-resync-parallel-sweep.wf.js"})`（§A）再 apply。
 
-workflow 结果（spliceRange verdict + UM-LINT 92 rule 分布）见 task-notification 或 /tmp 文件本身。
+workflow `wra5epycb` 完（2026-09-11，agent 连通 mcp__local__——机制验证 OK）。结果（详见 /tmp）：
+
+**translation-zh `/tmp/s3-apply-prep.md`（591 行）—— 2 blocker（非 S-3 假设的 1）**：
+1. `spliceRegion`@`gen-cordis-catalog.ts:920`（非 :747）= **replace-only**（缺 fence → throw `expected exactly 1 cordis-surface region, found 0`）→ 5 `.zh.md` 需 one-time migration helper INSERT `BEGIN/END GENERATED <slug>`（seed empty fenced spans，regen 填）。
+2. **`spliceRegion` slug-hardcoded `cordis-surface`**（`line === REGION_BEGIN` 常量 = `<!-- BEGIN GENERATED cordis-surface … -->`）→ 不匹配 5 gen-doc-graphs slugs → **须 companion 改 `gen-cordis-catalog.ts`**：generalize `spliceRegion(content, region, beginMarker?, endMarker?)` cordis-surface 默认（:1102 call site byte-unchanged）gen-doc-graphs 传 per-doc markers；OR gen-doc-graphs 本地 slug-aware splice（task 说 import，故 generalize 优先）。
+3. 3a import 补 `rewriteTranslationLinkLocales`（`renderIndex` table `docs/*.md` links 须 zh 侧 `.zh.md`）。
+4. scope 更正：event-producer-consumer = **matrix table ONLY（无 mermaid，task hint 错）**；agent-lifecycle = sequenceDiagram mermaid ONLY（4 prose 不 fence）；products = **6 非 8**（5 docs/* + 1 `apps/cli` composition，APP_EXAMPLES 单 `dsh_base`）。
+5 slugs：capability-seams / event-producer-consumer / agent-lifecycle / tool-execution-pipeline / graph-atlas。
+
+**UM-LINT `/tmp/slint2-summary.md` + `/tmp/slint2-pairs.txt`（92 findings）+ `/tmp/lint-resync-wf.txt`（764 行 raw）**：
+- 92 errors on resync（exit 1，17 unique files）。per-rule：no-unsafe-call 35 / no-unsafe-member-access 23 / no-unsafe-assignment 15 / no-unsafe-argument 6 / no-unsafe-return 4 / no-unnecessary-type-assertion 4 / max-len 2 / unbound-method 1 / no-unnecessary-condition 1 / no-deprecated 1。
+- **FP=83/92（90%，no-unsafe-* family，Cordis type-aware inject-d ctx→error-typed binding，集中 `packages/client/ui-*/src/client/`：ui-semantic-layer 18/ui-chat-apply 18/ui-model-selection 12）→ clustered file-level `/* eslint-disable */` 候选**。
+- REAL=7（`no-unnecessary-type-assertion` 4 [含 `ctx as never` **勿 auto-strip** + `rows as JsonValue[][]` variance] / `max-len` 2 [mechanical wrap] / `no-deprecated` 1 [`isTypeOnly`→`phaseModifier` migration]）+ BORDERLINE=2（`unbound-method` + `no-unnecessary-condition`，`scripts/gen-architecture-graph.ts`）。
+- **disable form 更正**：`// eslint-disable-next-line @typescript-eslint/<rule> -- <reason>`（**非 `typescript/<rule>`**——`apiproxy/api-proxy.ts:3364` stale UM4-rehome 不存于 resync；repo 9 directives 皆 `@typescript-eslint/`；`reportUnusedDisableDirectives: "warn"` on → 须精确落地）。
+- per-finding triage 用 `/tmp/slint2-pairs.txt`（92 `file:line:col|rule message`）。
 
 ## 五、目标 + 估算
 
