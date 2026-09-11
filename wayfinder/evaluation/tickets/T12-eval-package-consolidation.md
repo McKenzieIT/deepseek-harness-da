@@ -38,6 +38,8 @@ Final names may differ only when the same ownership and dependency directions re
 - Every surviving consumer imports the owning Definition/Protocol package and uses the unique Controller/CLI path; consumer-owned duck-typed service declarations disappear.
 - Normal data-agent product tests prove prompts、tools、phase behavior、Provider calls and session output are unchanged when Evaluation is absent.
 - Built package artifacts contain the intended runtime code and public assets only; private grading material is unreachable from the Harness graph.
+- An executed static gate rejects a deliberate Harness import/re-export/deep-import of hidden tests、reference、solution、oracle artifacts or private scorer internals.
+- Final package artifacts preserve Benchmark/Adapter/Harness provenance and content digests; old import paths are deleted rather than retained as compatibility shims.
 - Source/artifact-plane checks、focused package tests、required snapshots、typecheck/build/hygiene and documentation gates pass.
 - The final tree contains no old package exports, compatibility re-exports, obsolete config rows or undocumented temporary migration path.
 
