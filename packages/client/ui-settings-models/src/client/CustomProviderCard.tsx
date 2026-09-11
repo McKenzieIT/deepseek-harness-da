@@ -23,7 +23,10 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Context } from '@deepseek-ai/cordis'
+// Type-only: pulls the ctx.remote merge into this program.
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { apiKeyFailure } from './apiKey.ts'
 import { EditorFooter } from './EditorFooter.tsx'
 import { validateDeepSeekModels } from './DeepSeekModelsEditor.tsx'
@@ -58,8 +61,8 @@ export interface CustomProviderCardProps {
    * than a silent overwrite of its whole profile.
    */
   revision: number
-  /** Wire faces for the write and for interrogating the endpoint. */
-  api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>
+  /** Plugin context; `ctx.remote` carries the settings/credentials/llm namespaces. */
+  ctx: Context
   /** Section copy. */
   t: (key: keyof typeof en) => string
   /** Disable writes (read-only settings provider). */
@@ -74,7 +77,7 @@ export interface CustomProviderCardProps {
  * @returns the creation card.
  */
 export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
-  const { taken, protocols, api, t } = props
+  const { taken, protocols, ctx, t } = props
   // Captured at mount, like the editor's: the write must be judged against the
   // section this card was drafted over, not whatever it grew into meanwhile.
   const [openedAt] = useState(() => props.revision)
@@ -144,15 +147,18 @@ export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
         baseURL,
         models: models.map(model => ({ ...model })),
       }
-      const response = await api.settings.mutate({
-        ns: NS,
-        ops: [{ op: 'set', path: ['providers', route], value: profile }],
+      const response = await ctx.remote.settings.mutate(
+        NS,
+        // The runtime shape is JSON — this card owns the profile it builds —
+        // but its fields are typed `unknown`/optional for extensibility, so a
+        // cast is required to satisfy the wire's strict `JsonValue`.
+        [{ op: 'set', path: ['providers', route], value: profile as unknown as JsonValue }],
         // `taken` is a snapshot too, so the id check alone cannot see a route
         // declared after this card opened; the revision makes that race a
         // `settings-conflict` instead of a write over the other profile.
-        expectedRevision: openedAt,
-      })
-      if (!response.result.ok) return response.result.error.message
+        openedAt,
+      )
+      if (!response.ok) return response.error.message
       // The provider now exists. A retry after the key write below fails must
       // not re-run this mutate: the revision it holds is the one this write
       // just superseded, so the Host would answer `settings-conflict` and the
@@ -160,10 +166,10 @@ export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
       setCommitted(true)
     }
     if (storesKey) {
-      const stored = await api.credentials.set({ ref: keyRef, value: keyValue })
+      const stored = await ctx.remote.credentials.set(keyRef, keyValue)
       // The profile landed; saying the key did not is the only honest report,
       // and the retry above now goes straight back to this write.
-      if (!stored.result.ok) return stored.result.error.message
+      if (!stored.ok) return stored.error.message
     }
     return undefined
   }
@@ -274,7 +280,7 @@ export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
           ...keyValue.length === 0 ? {} : { apiKey: keyValue },
         }}
         probeBlocked={keyFailure === 'keyBlank' ? 'keyBlankNew' : keyFailure}
-        api={api}
+        ctx={ctx}
         t={t}
         disabled={profileDisabled}
       />

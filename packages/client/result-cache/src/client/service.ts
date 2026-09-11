@@ -18,19 +18,19 @@
 
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import type { IApiClient, RpcResult } from '@deepseek-ai/dsh-api-remotes/client'
-// Type-only: pulls the ctx.sessions Context merge so `ctx.get('sessions')` is
-// typed, and ISessions/SessionId for the scope-addressed calls.
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: pulls the ctx.remote merge (the `result/get` Remote endpoint is
+// resolved through the api-remotes assembly) and the ctx.sessions Context
+// merge so `ctx.get('sessions')` is typed, plus SessionId for the
+// scope-addressed calls.
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
 import { createResultCache } from './cache.ts'
 import type { ResultCache, ResultCacheConfig } from './cache.ts'
 import type { ResultEntry } from './types.ts'
 
-/** Construction config: the wire client plus the tunable cache bounds. */
-export interface ResultServiceConfig extends ResultCacheConfig {
-  /** The shared API client (the `result.get` RPC seam; `ctx.connection.api`). */
-  readonly api: IApiClient
-}
+/** Construction config: the tunable cache bounds (the wire is `ctx.remote.result.get`). */
+export type ResultServiceConfig = ResultCacheConfig
 
 /**
  * The outward `ctx.results` face: a session-aware hot cache over the
@@ -44,11 +44,20 @@ export interface ResultService {
    * Resolve one result id for the caller's session. Hit returns the cached
    * reference (no clone); miss calls `result.get` and caches the entry.
    * `result-not-found` resolves to `undefined`; other failures reject.
+   * @param resultId - opaque lookup token (`qr_<…>` for query results, `cr_<…>` for compute-derived ones).
+   * @param signal - forwarded to the `result.get` fetcher on a miss; a hit resolves without consulting it.
+   * @returns the cached entry, or `undefined` when the host has no such id.
    */
   get(resultId: string, signal?: AbortSignal): Promise<ResultEntry | undefined>
-  /** Drop the caller's session's entry for one id (fresh-`query_data` invalidation). */
+  /**
+   * Drop the caller's session's entry for one id (fresh-`query_data` invalidation).
+   * @param resultId - opaque lookup token whose entry is dropped for the caller's session.
+   */
   invalidate(resultId: string): void
-  /** Drop every entry for one session (session teardown / resync). */
+  /**
+   * Drop every entry for one session (session teardown / resync).
+   * @param sessionId - the session whose entries are dropped; taken explicitly so teardown paths need no scope.
+   */
   invalidateSession(sessionId: SessionId): void
   /** Drop every entry across all sessions (reconnect flush). */
   invalidateAll(): void
@@ -59,22 +68,28 @@ export interface ResultService {
  */
 export class ResultServiceImpl extends Service implements ResultService {
   private readonly cache: ResultCache
-  private readonly api: IApiClient
 
   /**
    * @param ctx - owning root context (the Service tracker rebinds it on scoped access).
-   * @param config - the wire client plus the tunable bounds.
+   * @param config - the tunable cache bounds.
    */
   constructor(ctx: Context, config: ResultServiceConfig) {
     super(ctx, 'results')
-    this.api = config.api
     this.cache = createResultCache(config, (resultId, signal) => this.fetch(resultId, signal))
   }
 
-  /** The `result.get` fetcher: unwrap the RPC response to its result. */
-  private async fetch(resultId: string, signal?: AbortSignal): Promise<RpcResult<ResultEntry>> {
-    const response = await this.api.results.get({ resultId }, signal)
-    return response.result
+  /**
+   * The `result.get` fetcher: call the Typert Remote endpoint. The generated
+   * client signature is `(resultId) => Promise<RemoteResult<ResultEntry>>` —
+   * the carrier folds miss / host / transport failures into `{ok:false}`, so
+   * the cache branches on it directly (only assembly faults would reject,
+   * and those bubble up as the transport branch in `createResultCache`). The
+   * signal argument is retained on the fetcher contract for the in-flight
+   * epoch guard but the wire signature takes no signal, so it is intentionally
+   * unused here.
+   */
+  private async fetch(resultId: string, _signal?: AbortSignal): Promise<RemoteResult<ResultEntry>> {
+    return this.ctx.remote.result.get(resultId)
   }
 
   /**

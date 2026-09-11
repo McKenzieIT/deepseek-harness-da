@@ -9,7 +9,7 @@
  * see the file header of `index.ts` for that constraint.
  *
  * Management-session gate: read REACTIVELY inside the component via
- * `useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)`, NOT in the
+ * `useSessions(s => s.byId[sessionId]?.projectionValues?.agentPreset === PRESET_ID)`, NOT in the
  * inject factory. The framework memoizes each inject-factory result per
  * `SessionProvideInfo` identity, which is stable across `agentPreset` changes
  * (it re-materializes only on a provider-roster change, not on `noteAgentPreset`
@@ -19,6 +19,11 @@
  * `index.ts` apply(), `useEvidenceMetrics` derives live evalRunCount/evalPassRates.
  */
 import { type FC } from 'react'
+// Type-only: pulls the `agentPreset` SessionProjectionMap merge so the
+// management-session gate reads the preset from the projection, not a
+// summary field (the zombie's SessionSummary.agentPreset has no migrated
+// equivalent on the split session-controller's SessionSummary).
+import type {} from '@deepseek-ai/dsh-agent-presets/types'
 // Type-only: pulls the `goal` SessionProjectionMap merge + the GoalProjection
 // type from the goal domain (the same source ui-goal's GoalDock adapter reads).
 import type { GoalProjection } from '@deepseek-ai/dsh-goal/client'
@@ -67,7 +72,7 @@ export type SemanticLayerGoalDockProps =
  * sparkline) only in management agent sessions.
  */
 export const SemanticLayerGoalDock: FC<SemanticLayerGoalDockProps> = ({ useProjection, useSessions, sessionId, t, evidenceClient }) => {
-  const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
+  const active = useSessions(s => s.byId[sessionId]?.projectionValues?.agentPreset === PRESET_ID)
   const projection = useProjection('goal')
   const { evalPassRates } = useEvidenceMetrics(evidenceClient ?? null)
   if (!active) return null
@@ -92,7 +97,7 @@ export type SemanticLayerEvidenceProps =
 export const SemanticLayerEvidence: FC<SemanticLayerEvidenceProps> = ({
   useProjection, useSessions, sessionId, t, evidenceClient, useStore,
 }) => {
-  const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
+  const active = useSessions(s => s.byId[sessionId]?.projectionValues?.agentPreset === PRESET_ID)
   const projection = useProjection('goal')
   const selectedAsset = useStore((s: SelectionState) => s.selectedAsset)
   const { evalRunCount, evalPassRates } = useEvidenceMetrics(evidenceClient ?? null)
@@ -128,7 +133,7 @@ export type SemanticLayerSchemaExplorerProps =
 export const SemanticLayerSchemaExplorer: FC<SemanticLayerSchemaExplorerProps> = ({
   useSessions, sessionId, t, schemaClient, onNavigateToGraph, useStore, actions,
 }) => {
-  const active = useSessions(s => s.byId[sessionId]?.agentPreset === PRESET_ID)
+  const active = useSessions(s => s.byId[sessionId]?.projectionValues?.agentPreset === PRESET_ID)
   if (!active) return null
   const tAny = t as unknown as (key: string, params?: Record<string, unknown>) => string
   return (

@@ -32,7 +32,7 @@ Read these in order before writing plugin code:
 
 Decide lifetime first: an experiment belongs in a dynamic package or scratch overlay, and neither is promoted automatically — keeping it means reimplementing it as a repository package. Decide audience second: only repository packages reach other consumers through releases. When the request names a capability rather than packaging — a tool, service, event, settings card, conversation node, or LLM adapter — pick the contribution shape from the cookbooks below, then the mode that hosts it.
 
-Contribution-shape cookbooks: [tool](../../../docs/cookbook/adding-a-tool.md), [conversation node](../../../docs/cookbook/adding-a-conversation-node.md), [settings card](../../../docs/cookbook/adding-a-settings-card.md), [LLM adapter](../../../docs/cookbook/adding-an-llm-adapter.md), [vendored package](../../../docs/cookbook/adding-a-vendored-package.md).
+Contribution-shape cookbooks: [tool](../../../docs/cookbook/adding-a-tool.md), [settings card](../../../docs/cookbook/adding-a-settings-card.md), [LLM adapter](../../../docs/cookbook/adding-an-llm-adapter.md), [vendored package](../../../docs/cookbook/adding-a-vendored-package.md). Conversation assembly is documented as [architecture](../../../docs/subsystems/conversation.md), not a cookbook.
 
 ## Workflow
 

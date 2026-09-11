@@ -1,6 +1,6 @@
 # UM14 — re-sync 到 upstream 最新版（执行）
 
-**Type**: task (multi-session) · **Status**: open · **Phase**: upstream-merge
+**Type**: task (multi-session) · **Status**: resolved（2026-09-08/09，synced base `8112743d69`）· **Phase**: upstream-merge
 **Blocking**: 无（UM13 research 已完成，可直接启动）
 **Flow**: 见 `UM-flow-2026-09-08.md`（Phase A）
 
@@ -27,4 +27,6 @@ synced 分支（build **仍不绿**——根 entry 是 upstream 共享 breakage�
 
 ## Resolution
 
-(open — multi-session task；按子步 1-4 推进；每子步 commit 落 `upstream/merge-2026-09-07` 或 re-sync 专用分支)
+**RESOLVED（2026-09-08/09）** — re-merge upstream `c389f96bf3` 完成，synced base `8112743d69`，50 conflict 全解 + seam 3/4 break 迁移 + workspace-files 采纳。落 branch `upstream/resync-2026-09-08`（worktree `../dsh-resync`）。
+
+后续该分支上的 fork-own 工作（Follow-on-3-B → Phase-2 → UM10）已把 tip 推进到 `ecaa56c848`。**仍 unpushed**——push 归 [UM11](UM11-pr-merge-post-cleanup.md)。

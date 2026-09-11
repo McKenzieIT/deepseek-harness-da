@@ -204,7 +204,7 @@ async function e2eHarness(
   const adapter = new ScriptedAdapter(script)
   ctx.llm.registerAdapter(['mock'], adapter)
 
-  const agent = ctx.agentLoop.create(SessionId(`e2e-loop-${Math.random()}`), {
+  const agent = await ctx.agentLoop.create(SessionId(`e2e-loop-${Math.random()}`), {
     provider: 'mock',
     model: 'mock',
   })
@@ -255,7 +255,7 @@ describe('autonomous self-calibration loop end-to-end', () => {
     expect(requestText(test.adapter.requests[1]!)).toContain('Round: 2/2')
 
     // Session events confirm admitted goal rounds (round > 0)
-    const admittedRounds = test.agent.session.events
+    const admittedRounds = test.agent.session.snapshotEvents()
       .filter(e => e.type === 'user/message' && e.data.source.kind === 'goal' && (e.data.source as unknown as { round: number }).round > 0)
       .map(e => e.type === 'user/message' ? (e.data.source as unknown as { round: number }).round : 0)
     expect(admittedRounds).toEqual([1, 2])

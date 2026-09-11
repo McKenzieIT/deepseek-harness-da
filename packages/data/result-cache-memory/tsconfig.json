@@ -16,6 +16,9 @@
       "path": "../result-cache"
     },
     {
+      "path": "../../util/values"
+    },
+    {
       "path": "../../core/tools"
     },
     {

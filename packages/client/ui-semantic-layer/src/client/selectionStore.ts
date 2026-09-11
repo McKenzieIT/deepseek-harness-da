@@ -36,7 +36,7 @@
  * table-prefix hypothesis is disproven — tables have bare ids — but the
  * event/metric search-hit prefixes are a real, separate mismatch.)
  */
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
 import type { PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { AssetKind } from './hooks/useSchemaGateway.ts'
 

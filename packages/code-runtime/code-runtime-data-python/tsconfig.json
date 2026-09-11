@@ -24,7 +24,7 @@
       "path": "../code-runtime"
     },
     {
-      "path": "../code-runtime-python"
+      "path": "../../experimental/code-runtime-python"
     },
     {
       "path": "../../runtime-diagnostics/invariants"

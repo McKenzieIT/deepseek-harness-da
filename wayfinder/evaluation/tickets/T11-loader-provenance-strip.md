@@ -4,7 +4,8 @@
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无
 **Blocks**: T1-exec-grader-impl、[G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)
-**Mode**: AFK（走 SPEC → rubric → 另一环境，见 [playbook](../playbook.md)）
+**Mode**: AFK（后端方向，**本地直接做**，不走另环境/rubric；见 [playbook](../playbook.md) §1.1）
+**Batch**: 与 [T1](T1-exec-grader-impl.md) 同批，**T11 先完成全部验收再起 T1**（T1 的证据面建在 loader 输出上，loader 语义中途再变会使 T1 的测试重写）
 **Surfaced by**: [G1 — Execution grader seam](G1-exec-grader-seam.md)（2026-09-07 发现 ④）
 
 ## Question
@@ -59,6 +60,15 @@ meta present     : false   schema_version: false
 
 同一个脚本还带另外两处**已过期**的痕迹：`:39` 默认路径指向另一个 worktree(`/Users/mckenzie/workspace/dsh-eventdef/...`)，`:31` 的注释仍称 case set「not git-tracked」——两者都已不成立（2026-09-07 `git ls-files` 核实已追踪）。
 
+**2026-09-09 复核**：`git ls-files packages/eval/eval/cases/rbi-10000251-exec` 返回 39 个文件，case set 确已被 git 追踪。脚本另有两处硬编码环境假设：`:40` 把 `maxc` 可执行路径写死为 `~/Library/Python/3.13/bin/maxc`、`:41` 把配置写死为 `~/.maxc/config_ieu_cdm.yaml`；`:55` 自带 `--wait 300`，与 sidecar 默认的 60 不一致。
+
+## 与合并后 G1 的关系（2026-09-09）
+
+G1 已在 2026-09-08 完成 v3 独立重做并与 v1 决议合并，两条直接落到本票：
+
+- **D5 把「loader 不得静默吐掉未知 `expected.*` 字段」划归 G1 所有权**（理由是 fail-loud 与 provenance 内容无关）。本票是这条决议的**实现票**。
+- **D6 定下当前 143 个 EXECUTION case 的 expected 不合格、需重建**，而 `rbi-10000251-exec` 的 39 个（人写 `expected.sql` + `tier: verified` + `anchor_ds`）是仓内**唯一合格的模板**。本票因此从卫生项升为语料重建的前置：模板读不到，重建就无从对照。
+
 ## 验收
 
 **loader 侧**
@@ -88,6 +98,12 @@ meta present     : false   schema_version: false
 - event case 的评分口径（GA-EVAL-CASESET-EVENT-ANCHOR）。
 - 让 audit 脚本改走 `ctx.query`（它现在 `:55` 直接 spawn `maxc`，是第三条执行路径）——属 T1 的 grader 接线，本票只换 YAML 解析与模板来源，不动执行方式。
 
-## 规模
+## 前置（开工前需就位）
 
-约 76 KB 源码半径（核心 6 文件 21 KB + 可能牵连的下游 55 KB），估 ~20k tokens 全读；实际 session 落点 50-80k。单 session 可完成，无需 subagent。
+- **warehouse 凭证与 `maxc` 可用**：端到端验收要真跑 39 条 reference SQL。改造后路径与配置走 `MAXC_CONFIG`（eval-cli 已用该 env，`packages/eval/eval-cli/src/context.ts:767`），不再写死 home 路径。
+- **39 个 case 在工作树内**：已 git 追踪，无需外部拷贝。
+- **不用等 G1b**：本票只让字段可达、模板可解，不解释 `anchor_ds` 是否有效锚点，也不回填 expected。
+
+## 工作面
+
+核心三个文件：`packages/eval/eval/src/eval_case.ts`（schema）、`packages/eval/eval/src/case_loader.ts`（loader）、`packages/eval/eval-cli/dev/case-expected-value-audit.mjs`（端到端验收的载体）。新增一处共享的模板解析实现及其测试。牵连面是 `packages/eval/eval/tests/eval_case.spec.ts`、`case_loader.spec.ts`，以及任何断言 `EvalCase` 形状的测试。

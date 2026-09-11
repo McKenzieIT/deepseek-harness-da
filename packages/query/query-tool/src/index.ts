@@ -31,7 +31,8 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
+import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { InstanceId, QueryEngine, QueryOutcome, QueryState } from '@deepseek-ai/dsh-query'
 
 export const name = 'query-tool'

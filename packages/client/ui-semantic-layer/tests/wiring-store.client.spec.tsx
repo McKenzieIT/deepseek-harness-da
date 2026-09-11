@@ -23,7 +23,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
-import { SemanticLayerEvidence, SemanticLayerSchemaExplorer, PRESET_ID, type SemanticLayerEvidenceProps, type SemanticLayerSchemaExplorerProps } from '../src/client/wiring.tsx'
+import {
+  SemanticLayerEvidence,
+  SemanticLayerSchemaExplorer,
+  PRESET_ID,
+  type SemanticLayerEvidenceProps,
+  type SemanticLayerSchemaExplorerProps,
+} from '../src/client/wiring.tsx'
 import { SchemaExplorer } from '../src/client/SchemaExplorer.tsx'
 import {
   createSelectionStore,
@@ -105,8 +111,8 @@ function mockSchemaClient(opts: { domains: DomainEntry[]; tables: TableSummary[]
 
 /** `useSessions` stub that reports the given session as the management preset. */
 function activeUseSessions(sessionId: string): unknown {
-  return (sel: (s: { byId: Record<string, { agentPreset: string }> }) => unknown) =>
-    sel({ byId: { [sessionId]: { agentPreset: PRESET_ID } } })
+  return (sel: (s: { byId: Record<string, { projectionValues: { agentPreset: string } }> }) => unknown) =>
+    sel({ byId: { [sessionId]: { projectionValues: { agentPreset: PRESET_ID } } } })
 }
 
 const noopT = (key: string): string => key
@@ -150,7 +156,8 @@ function schemaAdapterProps(
 }
 
 describe('GA-WIRING: session-scoped selection store', () => {
-  it('shares selection across the two sibling adapters: actions.select drives EvidenceSidebar fetches with the asset id (acceptance #3)', async () => {
+  it('shares selection across the two sibling adapters: actions.select drives ' +
+    'EvidenceSidebar fetches with the asset id (acceptance #3)', async () => {
     const { client: evidenceClient, gapAnalysis, evalResultQuery } = mockEvidenceClient()
     // One handle, one per-session instance — exactly what the framework
     // produces for two `details.aux` entries on the same handle in one session.

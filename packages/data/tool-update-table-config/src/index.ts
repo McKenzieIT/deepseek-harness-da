@@ -247,7 +247,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     // `ctx.schema.semanticRoot` is unavailable to derive the on-disk table
     // YAML `path`, and the value carries no before/after text for `FileDiff`).
     presentCall(args): GenericCallView {
-      const { table_name, project } = args as { table_name: string; project: string }
+      const { table_name, project } = args
       return {
         card: 'generic',
         title: `Update table config: ${table_name} → ${project}`,

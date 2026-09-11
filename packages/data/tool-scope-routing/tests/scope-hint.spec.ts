@@ -76,7 +76,7 @@ function sessionContext(session: { tenant?: string; messages?: Array<{ role: str
 
 /** Direct-construct the SystemPrompt service (avoids ctx.plugin's invariant-host proxy). */
 function mountSystemPrompt(ctx: Context): void {
-  new SystemPrompt(ctx, { persona: 'test' })
+  new SystemPrompt(ctx, { personaPrefix: 'test' })
 }
 
 /** Extract one section's resolved text from an assembly (empty string when absent). */

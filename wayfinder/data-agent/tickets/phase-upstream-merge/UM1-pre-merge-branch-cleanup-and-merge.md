@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open
+**Status**: archived (2026-09-09 triage)
 **Assignee**: unclaimed
 **Blocked by**: 无（入口）
 **Blocks**: UM2, UM3, UM9（冲突解决需先有 staged merge）
@@ -25,4 +25,10 @@ upstream `deepseek-ai/deepseek-harness` 自 merge-base `141eb6f`（PR #2783, dsh
 4. **禁止直推 master**——所有提交落 `upstream/merge-2026-09-07`。
 
 ## Resolution
+
+**[2026-09-09 triage] → Status: archived (done).** merge 已 commit（synced base `8112743d69` re-sync + master `6b7610d45a` Phase-0）；stale branches 已清；`backup/master-pre-sync-2026-09-08` 保留作 safety。详 `.tmp/next-5-triage.md`。
+
+---
+
+### (original pre-triage)
 （待 merge session 落地后填：merge worktree sha、staged 冲突数、初筛分桶）

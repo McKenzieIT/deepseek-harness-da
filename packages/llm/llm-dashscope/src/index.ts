@@ -22,7 +22,8 @@ import { assertUsableApiKey, LlmError, resolveRetryPolicy, RetryPolicySchema } f
 import type { LlmDiscoveredModel, LlmModelDiscoveryRequest, RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
-import { deepEqualJson, installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
+import type {} from '@deepseek-ai/dsh-settings'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { getOrCreateAnonymousUserId, type AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
 import {
@@ -46,7 +47,7 @@ export type * from './types.ts'
 export const name = 'llm-dashscope'
 export const inject = ['llm']
 
-const NS = settingsNamespace('llm-dashscope')
+const NS = 'llm-dashscope'
 const DEFAULT_API_KEY_ENV = 'DASHSCOPE_API_KEY'
 /** The single provider route this plugin owns. */
 const PROVIDER = 'aga'
@@ -190,7 +191,7 @@ export function resolveAdapterOptions(config: Config, environment?: LaunchEnviro
  * request carries the endpoint + one-shot credential directly (a provider being added has no
  * route to name); the origin is derived from the supplied generation `baseURL`.
  */
-async function discoverModels(request: LlmModelDiscoveryRequest): Promise<LlmDiscoveredModel[]> {
+async function discoverModels(request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]> {
   if ((request.baseURL ?? '').length === 0) {
     throw new LlmError('DashScope model discovery needs a baseURL', 'INVALID_DISCOVERY')
   }
@@ -204,7 +205,7 @@ async function discoverModels(request: LlmModelDiscoveryRequest): Promise<LlmDis
   try {
     response = await fetch(`${origin}/api/v1/models`, {
       headers: { Authorization: `Bearer ${request.apiKey ?? ''}` },
-      signal: request.signal ?? null,
+      signal: signal ?? null,
     })
   } catch (error: unknown) {
     throw new LlmError(`DashScope /models request to ${origin} failed`, 'TRANSPORT', { cause: error })
@@ -285,10 +286,12 @@ export function apply(ctx: Context, config: Config): void {
     registeredPolicy = policy
   }
 
-  installSettingsSection(ctx, NS, Config, config, {
-    setSource: (source) => {
-      current = source
-    },
-    onChange: ensureRegistrationFacts,
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, NS, Config, config, {
+      setSource: (source) => {
+        current = source
+      },
+      onChange: ensureRegistrationFacts,
+    })
   })
 }

@@ -2,9 +2,9 @@
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
+import { RemoteError, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { apply, inject, refreshIfLoaded } from '@deepseek-ai/dsh-client-ui-settings-models/client'
 import {
@@ -18,24 +18,55 @@ import { WelcomeNotice } from '../src/client/WelcomeNotice.tsx'
 // so browser-language detection never runs and a fresh LocaleRuntime opens on
 // FALLBACK_LOCALE (en); bench stages zh explicitly on the locale instead.
 
-async function bench(isLoopback = true, settings?: object, services: object = {}) {
+/**
+ * Build a bench context wired to a TestRemote whose namespace stubs the plugin
+ * uses (settings, credentials, llm). Callers may override each namespace with
+ * their own scripted face; missing namespaces default to no-op stubs that
+ * reject or return empty answers, matching production's "no provider" story.
+ */
+async function bench(options: {
+  isLoopback?: boolean
+  settings?: Record<string, unknown>
+  llm?: Record<string, unknown>
+  credentials?: Record<string, unknown>
+} = {}) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
   locale.setLocale('zh')
   ctx.provide('locale', locale)
-  // The plugins inject `remote`; forwarded events reach them through the
-  // same `$dispatch` handoff the connection sink makes.
-  new TestRemote(ctx)
-  // Without a settings face the mirror's reads fail and stay contained; the
-  // Models join itself never fetches until a section actually loads. The real
-  // ui-settings apply also provides the settingsSchema service.
-  ctx.provide('connection', {
-    api: settings === undefined ? services : { ...services, settings },
-    isLoopback,
-  } as never)
+  const settingsFace = {
+    describe: () => Promise.resolve({
+      ok: false as const, error: new RemoteError('gateway/internal', 'no provider', {}),
+    }),
+    mutate: vi.fn(),
+    ...options.settings,
+  }
+  const credentialsFace = {
+    describe: () => Promise.resolve({
+      ok: false as const, error: new RemoteError('gateway/internal', 'no provider', {}),
+    }),
+    set: vi.fn(),
+    unset: vi.fn(),
+    ...options.credentials,
+  }
+  const llmFace = {
+    listConfigurableProviders: () => Promise.resolve({ ok: true as const, value: [] }),
+    listProviders: () => Promise.resolve({ ok: true as const, value: [] }),
+    discoverModels: () => Promise.resolve({ ok: true as const, value: [] }),
+    ...options.llm,
+  }
+  const remote = new TestRemote(ctx, {
+    settings: settingsFace,
+    credentials: credentialsFace,
+    llm: llmFace,
+  })
+  // The ui-settings apply also provides the settingsSchema service.
+  remote.$host.isLoopback = options.isLoopback ?? true
+  remote.$host.isLoopback = options.isLoopback ?? true
+  ctx.provide('connection', { isLoopback: options.isLoopback ?? true } as never)
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
-  return { ctx, slots: ctx.get('slots') as SlotRegistry, locale }
+  return { ctx, slots: ctx.get('slots') as unknown as SlotRegistry, locale, remote }
 }
 
 function declare(slots: SlotRegistry): () => void {
@@ -53,7 +84,7 @@ function declare(slots: SlotRegistry): () => void {
 
 describe('ui-settings-models apply', () => {
   it('declares the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'settingsScope', 'settingsSchema'])
+    expect(inject).toEqual(['slots', 'locale', 'remote', 'settingsScope', 'settingsSchema'])
   })
 
   it('registers the models nav entry for declarations before or after apply', async () => {
@@ -70,7 +101,9 @@ describe('ui-settings-models apply', () => {
     expect(injected.t('deleteTitle')).toBe('删除 {provider}？')
     expect(typeof injected.controller.load).toBe('function')
     expect(injected.hooks.snapshot).toBe(injected.controller.store)
-    expect(injected.api).toBeDefined()
+    // apply captures its own fiber ctx (a child of the root), so identity
+    // against before.ctx fails; the component resolves the shared remote.
+    expect(injected.ctx.remote).toBe(before.ctx.remote)
     const onboarding = before.slots.entries('settings.onboarding')
     expect(onboarding).toHaveLength(2)
     expect(onboarding.find(entry => entry.options.id === 'welcome-notice')).toMatchObject({
@@ -84,7 +117,7 @@ describe('ui-settings-models apply', () => {
       deepSeek.inject as unknown as () => import('../src/client/DeepSeekOnboardingDialog.tsx').DeepSeekOnboardingInjected
     )()
     expect(deepSeekInjected.hooks.models).toBe(injected.controller.store)
-    expect(deepSeekInjected.api).toBeDefined()
+    expect(deepSeekInjected.ctx.remote).toBe(before.ctx.remote)
 
     const after = await bench()
     await after.ctx.plugin({ inject: [...inject], apply }).await()
@@ -104,7 +137,9 @@ describe('ui-settings-models apply', () => {
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     b.locale.setLocale('en')
     expect(resolveSlotLabel(b.slots.entries('settings.section')[0]!.options.label)).toBe('Models')
-    const injected = b.slots.entries('settings.section')[0]!.inject as unknown as () => import('../src/client/ModelsSection.tsx').ModelsSectionInjected
+    const injected =
+      b.slots.entries('settings.section')[0]!.inject as unknown as
+      () => import('../src/client/ModelsSection.tsx').ModelsSectionInjected
     expect(injected().t('deleteTitle')).toBe('Delete {provider}?')
     b.locale.setLocale('zh')
     expect(resolveSlotLabel(b.slots.entries('settings.section')[0]!.options.label)).toBe('模型')
@@ -154,7 +189,7 @@ describe('ui-settings-models apply', () => {
   })
 
   it('keeps remote-browser acknowledgement in process memory', async () => {
-    const b = await bench(false)
+    const b = await bench({ isLoopback: false })
     declare(b.slots)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const entry = b.slots.entries('settings.onboarding')
@@ -176,9 +211,9 @@ describe('pushed invalidations', () => {
     declare(b.slots)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     // The fake wire face has no methods: a fetch attempt would throw.
-    b.ctx.remote.$dispatch('settings/document-updated', ['llm-pi-ai', 1])
-    b.ctx.remote.$dispatch('credentials/updated', ['OPENAI_API_KEY'])
-    b.ctx.remote.$dispatch('llm/adapters-updated', [])
+    b.remote.emit('settings/document-updated', ['llm-pi-ai', 1])
+    b.remote.emit('credentials/reference-updated', ['OPENAI_API_KEY'])
+    b.remote.emit('llm/adapters-updated', [])
     b.ctx.emit('connection/reset')
   })
 
@@ -210,7 +245,7 @@ describe('pushed invalidations', () => {
     )()
     injected.controller.store.update((state) => { state.status = 'ready' })
     const load = vi.spyOn(injected.controller, 'load').mockResolvedValue()
-    b.ctx.remote.$dispatch('credentials/updated', ['DEEPSEEK_API_KEY'])
+    b.remote.emit('credentials/reference-updated', ['DEEPSEEK_API_KEY'])
     expect(load).toHaveBeenCalledTimes(1)
   })
 
@@ -218,27 +253,22 @@ describe('pushed invalidations', () => {
     // The welcome notice derives from its settings scope: a document commit
     // reaches it through the mirror's one refresh, with no routing here.
     const acknowledgement = { current: undefined as string | undefined }
-    const settings = {
-      describe: vi.fn(() => Promise.resolve({
-        rpcId: 'apply-welcome' as never,
-        result: {
-          ok: true as const,
-          value: {
-            writable: true,
-            hasDocument: false,
-            namespaces: [{
-              ns: WELCOME_NOTICE_SETTINGS_NAMESPACE,
-              schema: {},
-              value: acknowledgement.current === undefined ? {} : { [WELCOME_NOTICE_ACK_FIELD]: acknowledgement.current },
-              applies: 'live' as const,
-              secrets: [],
-              revision: 0,
-            }],
-          },
-        },
-      })),
-    }
-    const b = await bench(true, settings)
+    const describe = vi.fn(() => Promise.resolve({
+      ok: true as const,
+      value: {
+        writable: true,
+        hasDocument: false,
+        namespaces: [{
+          ns: WELCOME_NOTICE_SETTINGS_NAMESPACE,
+          schema: {},
+          value: acknowledgement.current === undefined ? {} : { [WELCOME_NOTICE_ACK_FIELD]: acknowledgement.current },
+          applies: 'live' as const,
+          secrets: [],
+          revision: 0,
+        }],
+      },
+    }))
+    const b = await bench({ settings: { describe } })
     declare(b.slots)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const entry = b.slots.entries('settings.onboarding')
@@ -252,7 +282,7 @@ describe('pushed invalidations', () => {
       expect(injected.hooks.welcome.getSnapshot()).toMatchObject({ status: 'ready', acknowledged: false })
     })
     acknowledgement.current = WELCOME_NOTICE_VERSION
-    b.ctx.remote.$dispatch('settings/document-updated', ['ui-onboarding', 1])
+    b.remote.emit('settings/document-updated', ['ui-onboarding', 1])
     await vi.waitFor(() => {
       expect(injected.hooks.welcome.getSnapshot()).toMatchObject({ status: 'ready', acknowledged: true })
     })
@@ -261,28 +291,28 @@ describe('pushed invalidations', () => {
   it('joins the refreshed mirror view on a settings invalidation', async () => {
     let revision = 1
     const describe = vi.fn(() => Promise.resolve({
-      rpcId: `apply-models-${revision}` as never,
-      result: {
-        ok: true as const,
-        value: {
-          writable: true,
-          hasDocument: false,
-          namespaces: [{
-            ns: 'llm-test',
-            schema: {},
-            value: {},
-            applies: 'live' as const,
-            secrets: [],
-            revision,
-          }],
-        },
+      ok: true as const,
+      value: {
+        writable: true,
+        hasDocument: false,
+        namespaces: [{
+          ns: 'llm-test',
+          schema: {},
+          value: {},
+          applies: 'live' as const,
+          secrets: [],
+          revision,
+        }],
       },
     }))
-    const providers = vi.fn(() => Promise.resolve({
-      rpcId: 'apply-models-providers' as never,
-      result: { ok: true as const, value: { providers: [] } },
+    const listConfigurableProviders = vi.fn(() => Promise.resolve({
+      ok: true as const, value: [],
     }))
-    const b = await bench(true, { describe }, { llm: { providers } })
+    const listProviders = vi.fn(() => Promise.resolve({ ok: true as const, value: [] }))
+    const b = await bench({
+      settings: { describe },
+      llm: { listConfigurableProviders, listProviders },
+    })
     declare(b.slots)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const entry = b.slots.entries('settings.section')
@@ -295,7 +325,7 @@ describe('pushed invalidations', () => {
     expect(injected.hooks.snapshot.getSnapshot().namespaces.get('llm-test')?.revision).toBe(1)
 
     revision = 2
-    b.ctx.remote.$dispatch('settings/document-updated', ['llm-test', revision])
+    b.remote.emit('settings/document-updated', ['llm-test', revision])
 
     await vi.waitFor(() => {
       expect(injected.hooks.snapshot.getSnapshot().namespaces.get('llm-test')?.revision).toBe(2)

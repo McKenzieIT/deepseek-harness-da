@@ -13,7 +13,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { CallId, createMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { ToolCallId, createMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { Message, ToolSchema } from '@deepseek-ai/dsh-llm'
 import * as LlmDashScope from '@deepseek-ai/dsh-llm-dashscope'
 import type { Config } from '@deepseek-ai/dsh-llm-dashscope'
@@ -133,7 +133,7 @@ describe.skipIf(!process.env.DASHSCOPE_API_KEY)('llm-dashscope e2e (real AGA gat
         ...ask('What is the weather in Paris? Use the get_weather tool.'),
         createMessage({ role: 'assistant', content: first.message.content, source: { kind: 'plugin', plugin: 'test' } }),
         createUserMessage({
-          content: [{ type: 'tool-result', toolCallId: CallId(call.id), content: [{ type: 'text', text: 'Sunny, 22°C' }] }],
+          content: [{ type: 'tool-result', toolCallId: ToolCallId(call.id), content: [{ type: 'text', text: 'Sunny, 22°C' }] }],
           source: { kind: 'plugin', plugin: 'test' },
         }),
       ],

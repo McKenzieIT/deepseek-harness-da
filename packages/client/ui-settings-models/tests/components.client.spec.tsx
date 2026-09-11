@@ -3,8 +3,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import { bindSnapshotSelector, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import type { RemoteErrorCode, RemoteFailure, RemoteResult, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import {
   ModelsSection, needsSetup, providerCopy, providerTargetLabel, removeProviderProfile,
 } from '../src/client/ModelsSection.tsx'
@@ -89,7 +90,7 @@ function wireNamespaces(): SettingsNamespaceView[] {
   return [
     {
       ns: 'llm-deepseek',
-      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as JsonValue,
       value: {
         apiKeyEnv: 'DEEPSEEK_API_KEY',
         baseURL: 'https://base',
@@ -107,7 +108,7 @@ function wireNamespaces(): SettingsNamespaceView[] {
       ns: 'llm-plain',
       schema: JSON.parse(JSON.stringify(Schema.object({
         profiles: Schema.dict(Schema.object({ note: Schema.string() })),
-      }).toJSON())) as unknown,
+      }).toJSON())) as JsonValue,
       value: {},
       applies: 'live',
       secrets: [],
@@ -115,7 +116,7 @@ function wireNamespaces(): SettingsNamespaceView[] {
     },
     {
       ns: 'llm-pi-ai',
-      schema: JSON.parse(JSON.stringify(PiAiConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(PiAiConfig.toJSON())) as JsonValue,
       value: { providers: { openai: { apiKeyEnv: 'OPENAI_API_KEY', baseURL: 'https://proxy', headers: { 'X-Team': 'a' } }, zombie: {} } },
       user: { providers: { openai: { apiKeyEnv: 'OPENAI_API_KEY', baseURL: 'https://proxy', headers: { 'X-Team': 'a' } }, zombie: {} } },
       applies: 'live',
@@ -125,15 +126,19 @@ function wireNamespaces(): SettingsNamespaceView[] {
   ]
 }
 
-let nextRpc = 0
-function ok<T>(value: T): RpcResponse<T> {
-  return { rpcId: `r-${nextRpc++}` as never, result: { ok: true, value } }
+function ok<T>(value: T): RemoteResult<T> {
+  return { ok: true, value }
 }
-function fail<T>(message: string, code = 'settings-rejected'): RpcResponse<T> {
-  return {
-    rpcId: `r-${nextRpc++}` as never,
-    result: { ok: false, error: { code, message, details: { ns: 'x' } } as never },
-  }
+function fail<T>(message: string, code = 'settings-rejected'): RemoteResult<T> {
+  return { ok: false, error: new RemoteError(code as RemoteErrorCode, message, { ns: 'x' }) as unknown as RemoteFailure }
+}
+
+/** The first recorded settings write, reconstructed from Typert's positional
+ *  mutate(ns, ops, expectedRevision) into the object shape assertions read. */
+function firstMutate(mutate: ReturnType<typeof vi.fn>): { ns: string; ops: unknown[]; expectedRevision: number | undefined } {
+  const call = mutate.mock.calls[0] as [string, unknown[], number | undefined] | undefined
+  if (call === undefined) throw new Error('no settings write was recorded')
+  return { ns: call[0], ops: call[1], expectedRevision: call[2] }
 }
 
 function scriptedFace(overrides: {
@@ -148,18 +153,19 @@ function scriptedFace(overrides: {
   const mutate = overrides.mutate ?? vi.fn(() => Promise.resolve(ok(wireNamespaces()[2])))
   const set = overrides.set ?? vi.fn(() => Promise.resolve(ok({})))
   const unset = overrides.unset ?? vi.fn(() => Promise.resolve(ok({})))
+  const directory = [
+    { provider: 'deepseek-official', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: [], active: true },
+    { provider: 'openai', displayName: 'openai', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'], active: true },
+    { provider: 'anthropic', displayName: 'anthropic', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'anthropic'], active: false },
+    { provider: 'zombie', displayName: 'zombie', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'zombie'], active: false },
+    { provider: 'broken', displayName: 'broken', settingsNs: 'llm-pi-ai', settingsPath: ['nope', 'x'], active: false },
+    { provider: 'plain', displayName: 'plain', settingsNs: 'llm-plain', settingsPath: ['profiles', 'plain'], active: false },
+  ]
+  const activeProviders = directory.filter(entry => entry.active).map(entry => ({ id: entry.provider }))
   const face = {
     llm: {
-      providers: vi.fn(() => Promise.resolve(ok({
-        providers: [
-          { provider: 'deepseek-official', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: [], active: true },
-          { provider: 'openai', displayName: 'openai', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'], active: true },
-          { provider: 'anthropic', displayName: 'anthropic', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'anthropic'], active: false },
-          { provider: 'zombie', displayName: 'zombie', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'zombie'], active: false },
-          { provider: 'broken', displayName: 'broken', settingsNs: 'llm-pi-ai', settingsPath: ['nope', 'x'], active: false },
-          { provider: 'plain', displayName: 'plain', settingsNs: 'llm-plain', settingsPath: ['profiles', 'plain'], active: false },
-        ],
-      }))),
+      listConfigurableProviders: vi.fn(() => Promise.resolve(ok(directory))),
+      listProviders: vi.fn(() => Promise.resolve(ok(activeProviders))),
       models: vi.fn(() => Promise.resolve(ok({ groups: [], failures: [] }))),
     },
     settings: {
@@ -169,13 +175,13 @@ function scriptedFace(overrides: {
       mutate,
     },
     credentials: {
-      describe: vi.fn((payload: { refs: string[] }) => Promise.resolve(ok({
-        credentials: Object.fromEntries(payload.refs.map(ref => [ref, {
+      describe: vi.fn((refs: string[]) => Promise.resolve(ok(
+        Object.fromEntries(refs.map(ref => [ref, {
           configured: ref === 'OPENAI_API_KEY',
           ...ref === 'OPENAI_API_KEY' ? { source: 'file' } : {},
           writable: true,
         }])),
-      }))),
+      ))),
       set,
       unset,
     },
@@ -187,13 +193,14 @@ type WireFace = ConstructorParameters<typeof ModelsSettingsStore>[0]
 
 async function mountFace(scripted: ReturnType<typeof scriptedFace>) {
   const { face, update, replace, mutate, set, unset } = scripted
-  const mirror = new SettingsDescribeMirror(face as never)
-  const controller = new ModelsSettingsStore(face as unknown as WireFace, settingsSchema, mirror)
+  const ctx = { remote: face } as unknown as WireFace
+  const mirror = new SettingsDescribeMirror(ctx)
+  const controller = new ModelsSettingsStore(ctx, settingsSchema, mirror)
   await controller.load()
   const injected: ModelsSectionProps = {
     controller,
     useSnapshot: bindSnapshotSelector(controller.store),
-    api: face as never,
+    ctx: ctx as never,
     schema: settingsSchema,
     t,
   }
@@ -211,10 +218,10 @@ async function mountSection(overrides: Parameters<typeof scriptedFace>[0] = {}) 
  */
 async function mountFirstRun(overrides: Parameters<typeof scriptedFace>[0] = {}) {
   const scripted = scriptedFace(overrides)
-  scripted.face.credentials.describe.mockImplementation((payload: { refs: string[] }) =>
-    Promise.resolve(ok({
-      credentials: Object.fromEntries(payload.refs.map(ref => [ref, { configured: false, writable: true }])),
-    })))
+  scripted.face.credentials.describe.mockImplementation((refs: string[]) =>
+    Promise.resolve(ok(
+      Object.fromEntries(refs.map(ref => [ref, { configured: false, writable: true }])),
+    )))
   return mountFace(scripted)
 }
 
@@ -266,15 +273,19 @@ describe('ModelsSection', () => {
 
   it('marks only a confirmed missing reference and leaves native or unavailable state unmarked', async () => {
     const { face } = scriptedFace()
-    face.credentials.describe.mockImplementation((payload: { refs: string[] }) => Promise.resolve(ok({
-      credentials: Object.fromEntries(payload.refs.map(ref => [ref, { configured: false, writable: true }])),
-    })))
-    const controller = new ModelsSettingsStore(face as unknown as WireFace, settingsSchema, new SettingsDescribeMirror(face as never))
+    face.credentials.describe.mockImplementation((refs: string[]) => Promise.resolve(ok(
+      Object.fromEntries(refs.map(ref => [ref, { configured: false, writable: true }])),
+    )))
+    const controller = new ModelsSettingsStore(
+      { remote: face } as unknown as WireFace,
+      settingsSchema,
+      new SettingsDescribeMirror({ remote: face } as never),
+    )
     await controller.load()
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={{ remote: face } as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -289,16 +300,20 @@ describe('ModelsSection', () => {
 
   it('turns the setup card into a row once the credential reports configured', async () => {
     const { face } = await mountFirstRun()
-    face.credentials.describe.mockImplementation((payload: { refs: string[] }) => Promise.resolve(ok({
-      credentials: Object.fromEntries(payload.refs.map(ref => [ref, { configured: true, writable: true }])),
-    })))
-    const controller = new ModelsSettingsStore(face as unknown as WireFace, settingsSchema, new SettingsDescribeMirror(face as never))
+    face.credentials.describe.mockImplementation((refs: string[]) => Promise.resolve(ok(
+      Object.fromEntries(refs.map(ref => [ref, { configured: true, writable: true }])),
+    )))
+    const controller = new ModelsSettingsStore(
+      { remote: face } as unknown as WireFace,
+      settingsSchema,
+      new SettingsDescribeMirror({ remote: face } as never),
+    )
     await controller.load()
     cleanup()
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={{ remote: face } as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -308,9 +323,10 @@ describe('ModelsSection', () => {
   })
 
   it('decides setup need from the joined credential state and the first-run posture', () => {
-    const entry = { provider: 'p', displayName: 'p', settingsNs: 'llm-deepseek', settingsPath: [], active: true }
+    const entry = { provider: 'p', displayName: 'p', settingsNs: 'llm-deepseek', settingsPath: [] }
     const row = (credential: ProviderRow['credential']): ProviderRow => ({
       entry,
+      active: true,
       configured: true,
       removable: false,
       apiKeyEnv: 'X',
@@ -351,11 +367,11 @@ describe('ModelsSection', () => {
     const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
     fireEvent.change(key, { target: { value: '  sk-live  ' } })
     fireEvent.click(screen.getByText(en.apply))
-    await waitFor(() => { expect(set).toHaveBeenCalledWith({ ref: 'DEEPSEEK_API_KEY', value: 'sk-live' }) })
+    await waitFor(() => { expect(set).toHaveBeenCalledWith('DEEPSEEK_API_KEY', 'sk-live') })
     expect(update).not.toHaveBeenCalled()
     // The saved key re-loads the join; the settings answer rides the shared
     // mirror, so the reload shows as a directory read rather than a describe.
-    await waitFor(() => { expect(face.llm.providers.mock.calls.length).toBeGreaterThan(1) })
+    await waitFor(() => { expect(face.llm.listConfigurableProviders.mock.calls.length).toBeGreaterThan(1) })
     expect((await screen.findByRole('status')).textContent).toBe(
       providerCopy(en.savedProvider, { provider: 'deepseek-official', displayName: 'DeepSeek' }),
     )
@@ -364,8 +380,8 @@ describe('ModelsSection', () => {
   })
 
   it('reuses the provider editor as a required credential-only onboarding form', async () => {
-    let finishSet: ((response: RpcResponse<Record<string, never>>) => void) | undefined
-    const set = vi.fn(() => new Promise<RpcResponse<Record<string, never>>>((resolve) => {
+    let finishSet: ((response: RemoteResult<Record<string, never>>) => void) | undefined
+    const set = vi.fn(() => new Promise<RemoteResult<Record<string, never>>>((resolve) => {
       finishSet = resolve
     }))
     const { face, mutate } = scriptedFace({ set })
@@ -379,7 +395,7 @@ describe('ModelsSection', () => {
       namespace={wireNamespaces()[0]!}
       schema={settingsSchema}
       settingsPath={[]}
-      api={face as never}
+      ctx={{ remote: face } as never}
       t={t}
       readOnly={false}
       credentialOnly
@@ -411,7 +427,7 @@ describe('ModelsSection', () => {
     fireEvent.click(save)
 
     expect(await screen.findByText(en.onboardingSaving)).toBeTruthy()
-    expect(set).toHaveBeenCalledWith({ ref: 'DEEPSEEK_API_KEY', value: 'sk-onboarding' })
+    expect(set).toHaveBeenCalledWith('DEEPSEEK_API_KEY', 'sk-onboarding')
     expect(mutate).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
 
@@ -437,7 +453,7 @@ describe('ModelsSection', () => {
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     // Only the field that actually changed: reasoningEffort was already
     // 'high' in the loaded profile, so it produces no op.
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-deepseek',
       ops: [{ op: 'set', path: ['baseURL'], value: 'https://next2' }],
       expectedRevision: 0,
@@ -464,7 +480,7 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByText(en.apply))
 
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-deepseek',
       ops: [{
         op: 'set',
@@ -574,7 +590,7 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByText(en.apply))
 
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-deepseek',
       ops: [{
         op: 'set',
@@ -617,7 +633,7 @@ describe('ModelsSection', () => {
     const stored = { models: [{ id: 'user-only-model', name: 'User Only' }] }
     const overridden: SettingsNamespaceView = {
       ns: 'llm-deepseek',
-      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as JsonValue,
       value: { ...stored, defaultContextWindow: 1_000_000 },
       ...base === undefined ? {} : { base },
       user: stored,
@@ -632,7 +648,7 @@ describe('ModelsSection', () => {
       namespace={overridden}
       schema={settingsSchema}
       settingsPath={[]}
-      api={face as never}
+      ctx={{ remote: face } as never}
       t={t}
       readOnly={false}
       onClose={() => {}}
@@ -746,7 +762,7 @@ describe('ModelsSection', () => {
 
     fireEvent.click(screen.getByText(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-deepseek',
       ops: [{
         op: 'set',
@@ -813,7 +829,7 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByText(en.apply))
 
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-deepseek',
       ops: [{
         op: 'set',
@@ -838,7 +854,7 @@ describe('ModelsSection', () => {
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(replace).not.toHaveBeenCalled()
     expect(update).not.toHaveBeenCalled()
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-deepseek',
       ops: [{ op: 'unset', path: ['baseURL'] }],
       expectedRevision: 0,
@@ -849,7 +865,7 @@ describe('ModelsSection', () => {
     const { face } = scriptedFace()
     const bare: SettingsNamespaceView = {
       ns: 'llm-deepseek',
-      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as unknown,
+      schema: JSON.parse(JSON.stringify(DeepSeekConfig.toJSON())) as JsonValue,
       value: {},
       applies: 'live',
       secrets: [],
@@ -862,7 +878,7 @@ describe('ModelsSection', () => {
       namespace={bare}
       schema={settingsSchema}
       settingsPath={[]}
-      api={face as never}
+      ctx={{ remote: face } as never}
       t={t}
       readOnly={false}
       onClose={() => {}}
@@ -901,7 +917,7 @@ describe('ModelsSection', () => {
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     // Only the edited field travels: apiKeyEnv and headers were already stored
     // with these values, so no op restates them.
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-pi-ai',
       ops: [{ op: 'set', path: ['providers', 'openai', 'baseURL'], value: 'https://proxy/v2' }],
       expectedRevision: 0,
@@ -923,12 +939,12 @@ describe('ModelsSection', () => {
     fireEvent.change(addKey, { target: { value: 'sk-ant' } })
     fireEvent.click(screen.getByText(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-pi-ai',
       ops: [{ op: 'set', path: ['providers', 'anthropic', 'apiKeyEnv'], value: 'ANTHROPIC_API_KEY' }],
       expectedRevision: 0,
     })
-    await waitFor(() => { expect(set).toHaveBeenCalledWith({ ref: 'ANTHROPIC_API_KEY', value: 'sk-ant' }) })
+    await waitFor(() => { expect(set).toHaveBeenCalledWith('ANTHROPIC_API_KEY', 'sk-ant') })
   })
 
   it('keeps pi-ai provider-native authentication when no key is entered', async () => {
@@ -937,7 +953,7 @@ describe('ModelsSection', () => {
     await screen.findByLabelText(en.provider)
     fireEvent.click(screen.getByText(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledOnce() })
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-pi-ai',
       ops: [{ op: 'set', path: ['providers', 'anthropic'], value: {} }],
       expectedRevision: 0,
@@ -985,7 +1001,7 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByText(en.apply))
     await waitFor(() => { expect(set).toHaveBeenCalledTimes(2) })
     expect(mutate).toHaveBeenCalledOnce()
-    expect(set).toHaveBeenLastCalledWith({ ref: 'ANTHROPIC_API_KEY', value: 'sk-ant' })
+    expect(set).toHaveBeenLastCalledWith('ANTHROPIC_API_KEY', 'sk-ant')
   })
 
   it('switches the add card target and degrades unknown or broken targets loudly', async () => {
@@ -1023,12 +1039,16 @@ describe('ModelsSection', () => {
     const unhandled = vi.fn()
     process.on('unhandledRejection', unhandled)
     try {
-      const controller = new ModelsSettingsStore(face as unknown as WireFace, settingsSchema, new SettingsDescribeMirror(face as never))
+      const controller = new ModelsSettingsStore(
+        { remote: face } as unknown as WireFace,
+        settingsSchema,
+        new SettingsDescribeMirror({ remote: face } as never),
+      )
       await controller.load()
       render(<ModelsSection
         controller={controller}
         useSnapshot={bindSnapshotSelector(controller.store)}
-        api={face as never}
+        ctx={{ remote: face } as never}
         schema={settingsSchema}
         t={t}
       />)
@@ -1045,7 +1065,7 @@ describe('ModelsSection', () => {
     // The stale-draft overwrite: two tabs open the same card, the other saves,
     // and this one must be refused rather than replay its opening snapshot.
     const { set } = await mountDeepSeekCard({
-      mutate: vi.fn(() => Promise.resolve(fail('changed since it was read', 'settings-conflict'))),
+      mutate: vi.fn(() => Promise.resolve(fail('changed since it was read', 'settings/conflict'))),
     })
     fireEvent.click(screen.getByText(en.customized))
     fireEvent.change(screen.getByLabelText<HTMLInputElement>(en.baseUrl), { target: { value: 'https://mine' } })
@@ -1069,7 +1089,10 @@ describe('ModelsSection', () => {
 
   it('surfaces a shadowed credential write on the card', async () => {
     await mountFirstRun({
-      set: vi.fn(() => Promise.resolve(fail('credentials: DEEPSEEK_API_KEY is shadowed by the read-only environment', 'credential-rejected'))),
+      set: vi.fn(() => Promise.resolve(fail(
+        'credentials: DEEPSEEK_API_KEY is shadowed by the read-only environment',
+        'credential-rejected',
+      ))),
     })
     const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
     fireEvent.change(key, { target: { value: 'sk-live' } })
@@ -1080,11 +1103,11 @@ describe('ModelsSection', () => {
 
   it('locks the key input when the launch environment provides the credential', async () => {
     const { face } = await mountSection()
-    face.credentials.describe.mockImplementation((payload: { refs: string[] }) => Promise.resolve(ok({
-      credentials: Object.fromEntries(payload.refs.map(ref => [ref, {
+    face.credentials.describe.mockImplementation((refs: string[]) => Promise.resolve(ok(
+      Object.fromEntries(refs.map(ref => [ref, {
         configured: ref === 'OPENAI_API_KEY', source: 'env', writable: false,
       }])),
-    })))
+    )))
     fireEvent.click(screen.getByRole('button', { name: openaiCopy(en.editProvider) }))
     const editorKey = await screen.findByLabelText<HTMLInputElement>(en.keyInput)
     await waitFor(() => { expect(editorKey.placeholder).toBe(en.keyEnvLocked) })
@@ -1123,20 +1146,20 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: openaiCopy(en.removeProvider) }))
     fireEvent.click(within(screen.getByRole('dialog', { name: openaiCopy(en.deleteTitle) }))
       .getByRole('button', { name: openaiCopy(en.deleteConfirm) }))
-    await waitFor(() => { expect(unset).toHaveBeenCalledWith({ ref: 'OPENAI_API_KEY' }) })
+    await waitFor(() => { expect(unset).toHaveBeenCalledWith('OPENAI_API_KEY') })
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(unset.mock.invocationCallOrder[0]).toBeLessThan(mutate.mock.invocationCallOrder[0] as number)
     expect(screen.queryByRole('dialog', { name: openaiCopy(en.deleteTitle) })).toBeNull()
     expect(replace).not.toHaveBeenCalled()
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-pi-ai',
       ops: [{ op: 'unset', path: ['providers', 'openai'] }],
     })
   })
 
   it('blocks duplicate deletion while the confirmed removal is pending', async () => {
-    let resolveRemoval!: (response: RpcResponse<SettingsNamespaceView>) => void
-    const mutate = vi.fn(() => new Promise<RpcResponse<SettingsNamespaceView>>((resolve) => {
+    let resolveRemoval!: (response: RemoteResult<SettingsNamespaceView>) => void
+    const mutate = vi.fn(() => new Promise<RemoteResult<SettingsNamespaceView>>((resolve) => {
       resolveRemoval = resolve
     }))
     await mountSection({ mutate })
@@ -1160,14 +1183,14 @@ describe('ModelsSection', () => {
 
   it('renders the load failure with a retry control', async () => {
     const face = scriptedFace()
-    face.face.llm.providers = vi.fn(() => Promise.resolve(fail('directory down', 'internal'))) as never
+    face.face.llm.listConfigurableProviders = vi.fn(() => Promise.resolve(fail('directory down', 'internal'))) as never
     const controller = new ModelsSettingsStore(
-      face.face as unknown as WireFace, settingsSchema, new SettingsDescribeMirror(face.face as never))
+      { remote: face.face } as unknown as WireFace, settingsSchema, new SettingsDescribeMirror({ remote: face.face } as never))
     await controller.load()
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face.face as never}
+      ctx={{ remote: face.face } as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -1183,13 +1206,17 @@ describe('ModelsSection', () => {
       hasDocument: false,
       namespaces: wireNamespaces(),
     })))
-    const controller = new ModelsSettingsStore(face as unknown as WireFace, settingsSchema, new SettingsDescribeMirror(face as never))
+    const controller = new ModelsSettingsStore(
+      { remote: face } as unknown as WireFace,
+      settingsSchema,
+      new SettingsDescribeMirror({ remote: face } as never),
+    )
     await controller.load()
     cleanup()
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={{ remote: face } as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -1246,11 +1273,15 @@ describe('ModelsSection', () => {
 
   it('loads on first render of an idle controller', async () => {
     const { face } = scriptedFace()
-    const controller = new ModelsSettingsStore(face as unknown as WireFace, settingsSchema, new SettingsDescribeMirror(face as never))
+    const controller = new ModelsSettingsStore(
+      { remote: face } as unknown as WireFace,
+      settingsSchema,
+      new SettingsDescribeMirror({ remote: face } as never),
+    )
     render(<ModelsSection
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
-      api={face as never}
+      ctx={{ remote: face } as never}
       schema={settingsSchema}
       t={t}
     />)
@@ -1262,11 +1293,11 @@ describe('ModelsSection', () => {
     // would widen the write for no benefit.
     const { face, mutate, replace, controller } = await mountSection()
     await removeProviderProfile(
-      face as unknown as Parameters<typeof removeProviderProfile>[0],
+      { remote: face } as unknown as Parameters<typeof removeProviderProfile>[0],
       controller,
       { settingsNs: 'llm-plain', settingsPath: ['ghost-profile'] },
     )
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-plain',
       ops: [{ op: 'unset', path: ['ghost-profile'] }],
     })
@@ -1279,7 +1310,7 @@ describe('ModelsSection', () => {
     })
     const before = controller.store.getSnapshot().rows
     const failure = await removeProviderProfile(
-      face as unknown as Parameters<typeof removeProviderProfile>[0],
+      { remote: face } as unknown as Parameters<typeof removeProviderProfile>[0],
       controller,
       { settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'] },
     )
@@ -1318,7 +1349,7 @@ describe('ModelsSection', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: providerCopy(en.deleteConfirm, target) }))
     await waitFor(() => { expect(mutate).toHaveBeenCalledOnce() })
     expect(unset).not.toHaveBeenCalled()
-    expect(mutate.mock.calls[0]?.[0]).toEqual({
+    expect(firstMutate(mutate)).toEqual({
       ns: 'llm-pi-ai',
       ops: [{ op: 'unset', path: ['providers', 'zombie'] }],
     })
@@ -1329,7 +1360,7 @@ describe('ModelsSection', () => {
       unset: vi.fn(() => Promise.resolve(fail('credential is read-only', 'credential-rejected'))),
     })
     const failure = await removeProviderProfile(
-      face as unknown as Parameters<typeof removeProviderProfile>[0],
+      { remote: face } as unknown as Parameters<typeof removeProviderProfile>[0],
       controller,
       {
         settingsNs: 'llm-pi-ai',
@@ -1346,7 +1377,7 @@ describe('ModelsSection', () => {
       mutate: vi.fn(() => Promise.reject(new Error('connection lost'))),
     })
     const failure = await removeProviderProfile(
-      face as unknown as Parameters<typeof removeProviderProfile>[0],
+      { remote: face } as unknown as Parameters<typeof removeProviderProfile>[0],
       controller,
       { settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'] },
     )

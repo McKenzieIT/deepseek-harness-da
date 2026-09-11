@@ -63,3 +63,10 @@ typert 自 8/25（`metadata` 变 `unknown` 那次 commit `2ebc0000191`）起在 
 ## 并发注记
 
 仓库本 session 期间多了 5 个新 commit（用户 wayfinder/CB-1/T10 工作，`469fd8967b`…`60740d5197`）。中途一次 git 操作（stash/restore）把未提交的 `types.ts`/`api-remotes`/`result-cache` 改动**还原回 HEAD** 过一次（lib 已带 fix、src 回退成 `unknown`，typert 又挂）；重新应用后粘住。提交时注意别漏这些文件，且别在 agent 改文件时跑 stash/restore。
+## Session A finding (2026-09-08) — CORDIS re-scope
+
+UM14 re-sync 后 `slot-catalog.ts`+`api-catalog.ts` 取 fork（`--ours`）让 merge commit 落；regen 阻塞：
+- `gen-client-catalog`：2 contract violation — `packages/client/runtime/src/client/slots.ts:41` slot `'root'` owner props `RootOwnerProps` 未 export + 与 `ui-renderer/src/client/registry.ts:43` 重复（**R-DA** decommission 先解）。
+- `gen-cordis-api`：typert `packages/data/result-cache/src/remote.ts:74:28` "Remote boundary contains unconstrained unknown data"（449 更严 analyzer）—— surface fix：约束该 `@Remote('get')` 的 JSON type（resultId/ResultEntry boundary）。
+CORDIS regen 后 client tsc 的 `ClientRemote` namespace 缺失（commands/goals/agentPresets/...）应解（待验证：`TypertRemoteNamespaceMap` 靠 declare module + 可能 generated 工件填充）。
+

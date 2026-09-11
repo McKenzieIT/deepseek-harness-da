@@ -440,7 +440,7 @@ export class HarnessAgentResponder implements AgentResponder {
       )
 
       // Extract results from session events
-      const events = handle.agent.session.events
+      const events = handle.agent.session.snapshotEvents()
       const finalText = extractFinalText(events)
       const generatedSql = extractSqlFromEvents(events)
       const declined = detectDecline(variant, finalText, events)
@@ -459,7 +459,7 @@ export class HarnessAgentResponder implements AgentResponder {
     } catch (err) {
       console.error(`[HarnessAgentResponder] case error: ${err instanceof Error ? err.message : String(err)}`)
       // On timeout or error, still try to extract what we can
-      const events = handle.agent.session.events
+      const events = handle.agent.session.snapshotEvents()
       const generatedSql = extractSqlFromEvents(events)
       return {
         reply: `Error: ${err instanceof Error ? err.message : String(err)}`,

@@ -11,7 +11,13 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { ResultEntry } from './types.ts'
 
-export type { ResultEntry } from './types.ts'
+export type { Json, ResultEntry, ResultId, ResultMetadata } from './types.ts'
+// Host-half Remote gateway over the optional `ctx.resultCache` store seam;
+// re-exported from the package main so Host composition can register it
+// (`host.plugin(ResultsRemoteGateway)`) and the Typert generator's source
+// discovery reaches the `@Remote('get')` marker through the main module graph.
+export { ResultsRemoteGateway } from './remote.ts'
+export type { ResultsRemote } from './remote.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

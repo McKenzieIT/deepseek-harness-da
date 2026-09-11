@@ -2,10 +2,10 @@
 // data source on a real clock; behavior tests need per-case responses and
 // deferred-controlled timing). Streams are hand pumps: pushMux/pushHost.
 import type {
-  HostFrame, IApiClient, ModelSelection, MuxFrame,
-  RpcRequest, RpcResponse, SessionId, SessionModels, SessionSearchItem, SkillEntry, WorkspaceId,
+  RpcRequest, RpcResponse, SessionId,
 } from '../src/client/api.ts'
 import { RpcId } from '../src/client/api.ts'
+import type { ModelSelection, SessionSearchItem, SkillEntry, WorkspaceId } from '@deepseek-ai/dsh-api-remotes/client'
 
 export interface Deferred<T> {
   promise: Promise<T>
@@ -37,7 +37,7 @@ interface StreamConn<F> {
   feed(item: StreamItem<F>): void
 }
 
-export class FakeApiClient implements IApiClient {
+export class FakeApiClient {
   /** Chronological call record: [method, payload]. */
   readonly calls: { method: string; payload: unknown }[] = []
 
@@ -56,7 +56,7 @@ export class FakeApiClient implements IApiClient {
       modelSelection: { provider: 'deepseek-official', model: 'deepseek-chat' },
     }))
 
-  onModels: (payload: unknown) => Promise<RpcResponse<SessionModels>> = () => Promise.resolve(ok({
+  onModels: (payload: unknown) => Promise<RpcResponse<unknown>> = () => Promise.resolve(ok({
     current: { provider: 'deepseek-official', model: 'deepseek-chat' },
     routable: true,
     groups: [],
@@ -97,14 +97,14 @@ export class FakeApiClient implements IApiClient {
   onCreateDirectory: (payload: unknown) => Promise<RpcResponse<{ path: string }>> =
     () => Promise.resolve(ok({ path: '/home/fake/new' }))
 
-  private readonly muxConns: StreamConn<MuxFrame>[] = []
-  private readonly hostConns: StreamConn<HostFrame>[] = []
+  private readonly muxConns: StreamConn<unknown>[] = []
+  private readonly hostConns: StreamConn<unknown>[] = []
   lastSearchSignal: AbortSignal | undefined
 
   // Parameter annotations below are local structural types on purpose: the CI
   // lint lane runs without built artifacts, where IApiClient's wire types
   // (apiproxy subpath) resolve to any and inferred params trip no-unsafe-argument.
-  readonly sessions: IApiClient['sessions'] = {
+  readonly sessions = {
     list: (payload: unknown) => this.record('session.list', payload, this.onList(payload)),
     search: (payload: unknown, signal?: AbortSignal) => {
       this.lastSearchSignal = signal
@@ -124,7 +124,7 @@ export class FakeApiClient implements IApiClient {
     cancel: (payload: unknown) => this.record('session.cancel', payload, this.onCancel(payload)),
   }
 
-  readonly subagents: IApiClient['subagents'] = {
+  readonly subagents = {
     list: (payload: unknown) => this.record('subagent.list', payload, Promise.resolve(ok({
       entries: [],
       parentAvailable: true,
@@ -141,15 +141,15 @@ export class FakeApiClient implements IApiClient {
     }))),
   }
 
-  readonly host: IApiClient['host'] = {
-    describe: payload => this.record('host.describe', payload, this.onDescribe(payload)),
-    pickDirectory: payload => this.record('host.pickDirectory', payload, this.onPickDirectory(payload)),
-    listDirectory: payload => this.record('host.listDirectory', payload, this.onListDirectory(payload)),
-    createDirectory: payload => this.record('host.createDirectory', payload, this.onCreateDirectory(payload)),
-    openPath: payload => this.record('host.openPath', payload, this.onOpenPath(payload)),
+  readonly host = {
+    describe: (payload: unknown) => this.record('host.describe', payload, this.onDescribe(payload)),
+    pickDirectory: (payload: unknown) => this.record('host.pickDirectory', payload, this.onPickDirectory(payload)),
+    listDirectory: (payload: unknown) => this.record('host.listDirectory', payload, this.onListDirectory(payload)),
+    createDirectory: (payload: unknown) => this.record('host.createDirectory', payload, this.onCreateDirectory(payload)),
+    openPath: (payload: unknown) => this.record('host.openPath', payload, this.onOpenPath(payload)),
   }
 
-  readonly workspace: IApiClient['workspace'] = {
+  readonly workspace = {
     list: (payload: unknown) => this.record('workspace.list', payload, Promise.resolve(ok({ items: [], archivedSessionIds: [] }))),
     create: (payload: unknown) => this.record('workspace.create', payload, Promise.resolve(ok({
       workspace: { workspaceId: 'fk-ws' as never, path: '/f/ws', title: 'ws', sessionIds: [], createdAt: '0', updatedAt: '0' },
@@ -176,7 +176,7 @@ export class FakeApiClient implements IApiClient {
     = () => Promise.resolve(ok({ skills: [] }))
 
 
-  readonly agentPresets: IApiClient['agentPresets'] = {
+  readonly agentPresets = {
     list: (payload: unknown) => this.record('agentPreset.list', payload, Promise.resolve(ok({ presets: [], authorable: false, hasDocument: false }))),
     select: (payload: { agentPreset: string }) =>
       this.record('agentPreset.select', payload, Promise.resolve(ok({ agentPreset: payload.agentPreset }))),
@@ -192,42 +192,42 @@ export class FakeApiClient implements IApiClient {
       this.record('agentPreset.remove', payload, Promise.resolve(ok({}))),
   }
 
-  readonly skills: IApiClient['skills'] = {
+  readonly skills = {
     list: (payload: unknown) => this.record('skill.list', payload, this.onSkillList(payload)),
   }
 
-  readonly goals: IApiClient['goals'] = {
-    create: payload => this.record('goal.create', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
-    edit: payload => this.record('goal.edit', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
-    pause: payload => this.record('goal.pause', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
-    resume: payload => this.record('goal.resume', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
-    complete: payload => this.record('goal.complete', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
-    clear: payload => this.record('goal.clear', payload, Promise.resolve(ok({ cleared: true as const }))),
+  readonly goals = {
+    create: (payload: unknown) => this.record('goal.create', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
+    edit: (payload: unknown) => this.record('goal.edit', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
+    pause: (payload: unknown) => this.record('goal.pause', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
+    resume: (payload: unknown) => this.record('goal.resume', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
+    complete: (payload: unknown) => this.record('goal.complete', payload, Promise.resolve(ok({ ref: { id: 'fake-goal' as never, revision: 1 } }))),
+    clear: (payload: unknown) => this.record('goal.clear', payload, Promise.resolve(ok({ cleared: true as const }))),
   }
 
-  readonly settings: IApiClient['settings'] = {
-    describe: payload => this.record('settings.describe', payload, Promise.resolve(ok({ writable: true, hasDocument: false, namespaces: [] }))),
-    openDocument: payload => this.record('settings.openDocument', payload, Promise.resolve(ok({ opened: true as const }))),
-    update: payload => this.record('settings.update', payload, Promise.resolve(ok({ ns: 'fake', schema: {}, value: {}, applies: 'live' as const, secrets: [], revision: 0 }))),
-    replace: payload => this.record('settings.replace', payload, Promise.resolve(ok({ ns: 'fake', schema: {}, value: {}, applies: 'live' as const, secrets: [], revision: 0 }))),
-    mutate: payload => this.record('settings.mutate', payload, Promise.resolve(ok({ ns: 'fake', schema: {}, value: {}, applies: 'live' as const, secrets: [], revision: 0 }))),
+  readonly settings = {
+    describe: (payload: unknown) => this.record('settings.describe', payload, Promise.resolve(ok({ writable: true, hasDocument: false, namespaces: [] }))),
+    openDocument: (payload: unknown) => this.record('settings.openDocument', payload, Promise.resolve(ok({ opened: true as const }))),
+    update: (payload: unknown) => this.record('settings.update', payload, Promise.resolve(ok({ ns: 'fake', schema: {}, value: {}, applies: 'live' as const, secrets: [], revision: 0 }))),
+    replace: (payload: unknown) => this.record('settings.replace', payload, Promise.resolve(ok({ ns: 'fake', schema: {}, value: {}, applies: 'live' as const, secrets: [], revision: 0 }))),
+    mutate: (payload: unknown) => this.record('settings.mutate', payload, Promise.resolve(ok({ ns: 'fake', schema: {}, value: {}, applies: 'live' as const, secrets: [], revision: 0 }))),
   }
 
-  readonly credentials: IApiClient['credentials'] = {
-    describe: payload => this.record('credentials.describe', payload, Promise.resolve(ok({ credentials: {} }))),
-    set: payload => this.record('credentials.set', payload, Promise.resolve(ok({}))),
-    unset: payload => this.record('credentials.unset', payload, Promise.resolve(ok({}))),
+  readonly credentials = {
+    describe: (payload: unknown) => this.record('credentials.describe', payload, Promise.resolve(ok({ credentials: {} }))),
+    set: (payload: unknown) => this.record('credentials.set', payload, Promise.resolve(ok({}))),
+    unset: (payload: unknown) => this.record('credentials.unset', payload, Promise.resolve(ok({}))),
   }
 
-  readonly llm: IApiClient['llm'] = {
-    providers: payload => this.record('llm.providers', payload, Promise.resolve(ok({ providers: [] }))),
-    models: payload => this.record('llm.models', payload, Promise.resolve(ok({ groups: [], failures: [] }))),
-    discoverModels: payload => this.record('llm.discoverModels', payload, Promise.resolve(ok({ models: [] }))),
+  readonly llm = {
+    providers: (payload: unknown) => this.record('llm.providers', payload, Promise.resolve(ok({ providers: [] }))),
+    models: (payload: unknown) => this.record('llm.models', payload, Promise.resolve(ok({ groups: [], failures: [] }))),
+    discoverModels: (payload: unknown) => this.record('llm.discoverModels', payload, Promise.resolve(ok({ models: [] }))),
   }
 
   // No result store behind this fake: every result_id answers result-not-found
   // (a graceful business miss — the cache resolves it to undefined, never throws).
-  readonly results: IApiClient['results'] = {
+  readonly results = {
     get: (payload: unknown) => this.record('result.get', payload, Promise.resolve({
       rpcId: RpcId(`fake-${nextRpc++}`),
       result: {
@@ -255,7 +255,7 @@ export class FakeApiClient implements IApiClient {
     for (const fire of held) fire()
   }
 
-  readonly events: IApiClient['events'] = {
+  readonly events = {
     mux: (_payload: unknown, signal: AbortSignal, onOpen?: () => void) =>
       this.openStream(this.muxConns, signal, onOpen),
     host: (_payload: unknown, signal: AbortSignal, onOpen?: () => void) =>
@@ -267,11 +267,11 @@ export class FakeApiClient implements IApiClient {
   }
 
   /** Push one mux frame to every open mux stream (rpcId minted unless pinned by the case). */
-  pushMux(frame: MuxFrame, rpcId?: string): void {
+  pushMux(frame: unknown, rpcId?: string): void {
     for (const conn of [...this.muxConns]) conn.feed({ kind: 'frame', envelope: { rpcId: RpcId(rpcId ?? `push-${nextRpc++}`), payload: frame } })
   }
 
-  pushHost(frame: HostFrame, rpcId?: string): void {
+  pushHost(frame: unknown, rpcId?: string): void {
     for (const conn of [...this.hostConns]) conn.feed({ kind: 'frame', envelope: { rpcId: RpcId(rpcId ?? `push-${nextRpc++}`), payload: frame } })
   }
 

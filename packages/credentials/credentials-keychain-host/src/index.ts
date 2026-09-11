@@ -38,6 +38,7 @@ import {
 } from '@deepseek-ai/dsh-credentials-keychain'
 import {
   assertOwnerOnly,
+  type CredentialsDocument,
   parseCredentialsDocument,
   renderDocument,
   resolveSpec as resolveLocalSpec,
@@ -134,9 +135,9 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
     ...(config.credentialsPath !== undefined ? { path: config.credentialsPath } : {}),
     ...(config.credentialsDshHome !== undefined ? { dshHome: config.credentialsDshHome } : {}),
   }).filename
-  let cache: Map<string, string> | undefined
+  let cache: CredentialsDocument | undefined
 
-  async function load(): Promise<Map<string, string>> {
+  async function load(): Promise<CredentialsDocument> {
     if (cache !== undefined) return cache
     // Reject a group/other-readable .credentials.yaml before serving any secret (mirror
     // credentials-local's mode guard; assertOwnerOnly no-ops on an absent file).
@@ -146,7 +147,7 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
       cache = parseCredentialsDocument(text, filename)
     } catch (error) {
       if (!isENOENT(error)) throw error
-      cache = new Map()
+      cache = { refs: new Map(), records: new Map() }
     }
     return cache
   }
@@ -155,7 +156,7 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
     async resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined> {
       const env = launchEnvironmentOf(ctx).getFrom(ref, ['process'])
       if (env !== undefined && env.value.length > 0) return { value: env.value, source: 'env' }
-      const stored = (await load()).get(ref)
+      const stored = (await load()).refs.get(ref)
       if (stored !== undefined) return { value: stored, source: 'file' }
       const dotenv = launchEnvironmentOf(ctx).getFrom(ref, ['project-env', 'user-env'])
       if (dotenv !== undefined && dotenv.value.length > 0) return { value: dotenv.value, source: dotenv.source }
@@ -164,7 +165,7 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
     async describe(ref: CredentialRef): Promise<CredentialInfo> {
       const env = launchEnvironmentOf(ctx).getFrom(ref, ['process'])
       if (env !== undefined && env.value.length > 0) return { configured: true, source: 'env', writable: false }
-      const stored = (await load()).get(ref)
+      const stored = (await load()).refs.get(ref)
       if (stored !== undefined) return { configured: true, source: 'file', writable: true }
       const dotenv = launchEnvironmentOf(ctx).getFrom(ref, ['project-env', 'user-env'])
       if (dotenv !== undefined && dotenv.value.length > 0) return { configured: true, source: dotenv.source, writable: true }
@@ -217,8 +218,8 @@ function makeFileFallback(ctx: Context, config: HostConfig): KeychainFallback {
           if (!isENOENT(error)) throw error
           text = undefined
         }
-        const current = text === undefined ? new Map<string, string>() : parseCredentialsDocument(text, filename)
-        if (!current.has(ref)) {
+        const current: CredentialsDocument = text === undefined ? { refs: new Map(), records: new Map() } : parseCredentialsDocument(text, filename)
+        if (!current.refs.has(ref)) {
           cache = current
           return
         }

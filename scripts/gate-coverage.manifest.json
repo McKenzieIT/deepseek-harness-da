@@ -1,0 +1,104 @@
+{
+  "exemptions": [
+    {
+      "script": "gen-architecture-graph",
+      "reason": "generator (write operation, not a gate); its --check variant verify-architecture-graph is enrolled in docSyncLeafGates",
+      "coveredBy": "verify-architecture-graph gate (docSyncLeafGates)"
+    },
+    {
+      "script": "gen-client-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-client-catalog is enrolled",
+      "coveredBy": "verify-client-catalog gate"
+    },
+    {
+      "script": "gen-config-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-config-catalog is enrolled",
+      "coveredBy": "verify-config-catalog gate"
+    },
+    {
+      "script": "gen-cordis-api",
+      "reason": "generator (write operation, not a gate); its --check variant verify-cordis-api is an uncovered blind spot — see verify-cordis-api exemption below",
+      "coveredBy": "none (--check variant also uncovered)"
+    },
+    {
+      "script": "gen-cordis-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-cordis-catalog is enrolled",
+      "coveredBy": "verify-cordis-catalog gate"
+    },
+    {
+      "script": "gen-cordis-inspect-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-cordis-inspect-catalog is enrolled",
+      "coveredBy": "verify-cordis-inspect-catalog gate"
+    },
+    {
+      "script": "gen-doc-graphs",
+      "reason": "generator (write operation, not a gate); its --check variant verify-doc-graphs is enrolled",
+      "coveredBy": "verify-doc-graphs gate"
+    },
+    {
+      "script": "gen-module-graph",
+      "reason": "generator (write operation, not a gate); its --check variant verify-module-graph is enrolled",
+      "coveredBy": "verify-module-graph gate"
+    },
+    {
+      "script": "gen-persistence-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-persistence-catalog is enrolled",
+      "coveredBy": "verify-persistence-catalog gate"
+    },
+    {
+      "script": "gen-scoped-events",
+      "reason": "generator (write operation, not a gate); its --check variant verify-scoped-events is enrolled",
+      "coveredBy": "verify-scoped-events gate"
+    },
+    {
+      "script": "gen-session-format-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-session-format-catalog is enrolled",
+      "coveredBy": "verify-session-format-catalog gate"
+    },
+    {
+      "script": "gen-third-party-notices",
+      "reason": "generator (write operation, not a gate); its --check variant verify-third-party-notices is uncovered — see verify-third-party-notices exemption below",
+      "coveredBy": "none (--check variant also uncovered)"
+    },
+    {
+      "script": "gen-tool-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-tool-catalog is enrolled",
+      "coveredBy": "verify-tool-catalog gate"
+    },
+    {
+      "script": "gen-translation-brief",
+      "reason": "generator (write operation, not a gate); no --check variant exists; authoring aid run in translation workflow",
+      "coveredBy": "none (not a freshness gate)"
+    },
+    {
+      "script": "gen-tsconfig-paths",
+      "reason": "generator (write operation, not a gate); its --check variant verify-tsconfig-paths is enrolled",
+      "coveredBy": "verify-tsconfig-paths gate"
+    },
+    {
+      "script": "verify-cordis-api",
+      "reason": "blind spot (UM12): cordis-api string absent from run-gates.ts despite documented invariant (.agents/notes/archived/process/2026-07-21-doc-sync-through-gate-scheduler.md:16 asserts docSyncLeafGates includes verify-cordis-api); enrollment pending separate fix",
+      "coveredBy": "none (regressed documented invariant)"
+    },
+    {
+      "script": "verify-doc-site-fragments",
+      "reason": "intentionally out-of-group (UM12 disposition); covered by the docs:build site-fragment pipeline",
+      "coveredBy": "docs:build pipeline"
+    },
+    {
+      "script": "verify-no-production-src-on-master",
+      "reason": "intentionally out-of-group; runs in a dedicated GitHub workflow and lefthook, not in run-gates.ts",
+      "coveredBy": ".github/workflows/no-production-src-on-master.yml + lefthook.yml"
+    },
+    {
+      "script": "verify-npm-install-layout",
+      "reason": "release-only (half-hole per UM12); runs in .github/workflows/release.yml:87, never in PR CI",
+      "coveredBy": ".github/workflows/release.yml:87"
+    },
+    {
+      "script": "verify-third-party-notices",
+      "reason": "blind spot (UM12 §6.2: No — not in any aggregate, workflow, or hook); enrollment pending Decision 6(a) follow-up",
+      "coveredBy": "none (uncovered)"
+    }
+  ]
+}

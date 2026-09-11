@@ -1,6 +1,6 @@
 # UM13 — 同步 upstream 最新版调查 + 持续 merge 协助机制
 
-**Type**: research (AFK) · **Status**: open · **Phase**: upstream-merge
+**Type**: research (AFK) · **Status**: resolved（2026-09-08 research 完成；sequencing 已由 UM14 落定）· **Phase**: upstream-merge
 **Surfaced**: 2026-09-08，由 build:official 根 entry 阻塞的根因调查触发（发现 fork merge 的 upstream `d347e703` 已落后最新 449 commit）。
 
 ## Question
@@ -90,4 +90,6 @@ build-blocker 根 entry 阻塞：upstream-shared（base + latest 都有，449 �
 
 ## Resolution
 
-(research DONE 2026-09-08：conflict landscape + 449 impact + sequencing recommendation 均已核实并写入本票。下一步 = 用户定 sequencing：decouple UM11 PR now + resync-then-fix as separate effort，或别的。durable mechanism design 仍 fog。)
+**RESOLVED** — research DONE 2026-09-08：conflict landscape + 449 impact + sequencing recommendation 均已核实并写入本票。
+
+**[2026-09-10 补记]** 「下一步 = 用户定 sequencing」已落定：选的是 **resync-then-fix**，由 [UM14](UM14-resync-to-upstream-latest.md) 执行（synced base `8112743d69`），而非 decouple-UM11-PR-now。本票作为 UM14/UM15/UM-ARCH/UM-ADAPT 的 basis 已履行完毕。durable mechanism design 不在本票——是 [UM15](UM15-durable-upstream-sync-method.md)。

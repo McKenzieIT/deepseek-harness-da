@@ -2,7 +2,7 @@
 
 **Type**: refactor
 **Phase**: upstream-merge
-**Status**: open
+**Status**: archived (2026-09-09 triage)
 **Assignee**: unclaimed
 **Blocked by**: UM1, UM3
 **Related**: upstream `4553c9d refactor(session)!: remove SQLite persistence backend`、`bec6805 refactor(session-persistence)!: handle-based seam with a lifecycle-owned write path`、`fcd109d feat(storage): version read compatibility and backup-and-skip salvage`、`feat(session-persistence-jsonl): cross-process write-ownership lease`
@@ -19,4 +19,10 @@ upstream `4553c9d` 删 SQLite 后端 → handle-based jsonl + 跨进程写所有
 4. knip.json 清 `session-persistence-sqlite` 死指针（UM8 接力）。
 
 ## Resolution
+
+**[2026-09-09 triage] → Status: archived (resolved-by-upstream).** `4553c9d`（remove SQLite persistence）+ `bec6805`（handle-based seam）均 ancestor of synced-base HEAD；无 `packages/session/session-persistence-sqlite` dir（仅 `session-persistence`+`session-persistence-jsonl`+6 新 `session-format*`）；无 code ref to `session-persistence-sqlite`；handle-based jsonl + cross-process write-ownership lease accepted。详 `.tmp/next-5-triage.md`。
+
+---
+
+### (original pre-triage)
 （待落地后填：SQLite 硬依赖核查结果 + 持久化迁移落点）

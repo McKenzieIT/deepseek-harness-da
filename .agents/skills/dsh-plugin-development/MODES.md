@@ -4,7 +4,7 @@ Each mode below states its trigger, the authoring path, and how it verifies. The
 
 ## 1. Dynamic in-process package
 
-For an agent already running inside a live DSH session with the Cordis toolset mounted (`pnpm run demo:cordis` composition): define a package with `cordis_define` (host half `code`, optional browser half `client` — plain JavaScript function bodies, no TypeScript or JSX), activate with `cordis_run`, dispose with `cordis_stop`, and read live services and events first through `cordis_inspect`. Packages live in process memory only: no file is created, nothing survives a restart, and `cordis_define` never writes to the repository. Keeping an experiment means reimplementing it below as a repository package or scratch overlay. Contracts: [tool-cordis README](../../../packages/extensions/tool-cordis/README.md).
+For an agent already running inside a live DSH session with the Cordis toolset mounted (`pnpm dsh web --patch ./apps/cli/config/examples/cordis/cordis.yml` composition): define a package with `cordis_define` (host half `code`, optional browser half `client` — plain JavaScript function bodies, no TypeScript or JSX), activate with `cordis_run`, dispose with `cordis_stop`, and read live services and events first through `cordis_inspect`. Packages live in process memory only: no file is created, nothing survives a restart, and `cordis_define` never writes to the repository. Keeping an experiment means reimplementing it below as a repository package or scratch overlay. Contracts: [tool-cordis README](../../../packages/extensions/tool-cordis/README.md).
 
 ## 2. Scratch overlay
 
@@ -30,7 +30,7 @@ Loading: repository plugins mount through compositions — a bundle patch row, a
 
 ## 4. Example bundle
 
-A runnable demo composition under `examples/` wiring shipped packages, governed by [examples/AGENTS.md](../../../examples/AGENTS.md). The leaf holds `cordis.yml` wiring, demo artifacts, and e2e/snapshot scenarios; reusable logic belongs in `packages/` instead. Every example carries both a keyless smoke (boots the real `cordis.yml` through the Loader, asserts output and clean exit) and a with-key scenario (self-skips without `DEEPSEEK_API_KEY`). A config naming packages must declare them in root `tsconfig.json` references and `examples/package.json`.
+A runnable demo composition wiring shipped packages. Upstream retired the top-level `examples/` workspace member (`4125514a08`); runnable compositions now live in two places, each with its own governance: user-facing opt-in overlays under [`apps/cli/config/examples/`](../../../apps/cli/config/examples/) (each with a published guide under `docs/user/`), and cross-package profile integration tests under [`apps/cli/tests/profiles/`](../../../apps/cli/tests/profiles/AGENTS.md). The fork's top-level `examples/` holds semantic-layer fixtures (the data-agent's `k11-`/`x63-` corpora), not compositions. Reusable logic belongs in `packages/`; a composition leaf holds only `cordis.yml` wiring, demo artifacts, and e2e/snapshot scenarios.
 
 ## 5. Installable bundle
 
@@ -55,7 +55,7 @@ Forward Claude Code or Codex lifecycle hooks into DSH, or speak the hook wire pr
 
 Drive or extend DSH from outside the Node process.
 
-- **TypeScript JSON-RPC:** [`@deepseek-ai/dsh-sdk`](../../../packages/sdk/README.md) projects the agent loop over JSON-RPC; a runnable consumer is [examples/jsonrpc-agent](../../../examples/jsonrpc-agent/README.md).
-- **Python:** the [Python SDK and bundled runtime](../../../python/README.md) project the same loop.
-- **ACP automation:** an Agent Client Protocol server for editor and automation integration, run via `pnpm run demo:acp`; see [examples/acp-agent](../../../examples/acp-agent/README.md).
-- **MCP:** expose DSH state to MCP clients or consume MCP servers. MCP-sourced tools register as raw JSON-Schema `ToolDefinition`s on `ctx.tools` directly ([extension cookbook](../../../docs/cookbook/extension-cookbook.md)); an MCP server over DSH memory is [examples/mcp-memory](../../../examples/mcp-memory/README.md).
+- **TypeScript JSON-RPC:** [`@deepseek-ai/dsh-sdk`](../../../packages/sdk/README.md) projects the agent loop over JSON-RPC.
+- **Python:** the [Python SDK and bundled runtime](../../../python/README.md) project the same loop; its profile integration test lives under [`apps/cli/tests/profiles/sdk/`](../../../apps/cli/tests/profiles/sdk/).
+- **ACP automation:** an Agent Client Protocol server for editor and automation integration, started with `pnpm dsh --profile acp`; see [`@deepseek-ai/dsh-acp-app`](../../../packages/bundle/acp-app/README.md) and [`@deepseek-ai/dsh-acp`](../../../packages/acp/acp/README.md).
+- **MCP:** expose DSH state to MCP clients or consume MCP servers. MCP-sourced tools register as raw JSON-Schema `ToolDefinition`s on `ctx.tools` directly ([extension cookbook](../../../docs/cookbook/extension-cookbook.md)); connecting a third-party memory server is covered in [the MCP guide](../../../docs/user/guide/mcp-memory.md).

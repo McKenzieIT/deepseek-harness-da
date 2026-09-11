@@ -1,10 +1,10 @@
 /** Pure first-run readiness projection over the shared Models join. */
 import { describe, expect, it } from 'vitest'
-import type { CredentialView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { CredentialInfo } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ModelsSettingsState, ProviderRow } from '../src/client/store.ts'
 import { onboardingReadiness, providerUsable } from '../src/client/store.ts'
 
-const missingCredential: CredentialView = { configured: false, writable: true }
+const missingCredential: CredentialInfo = { configured: false, writable: true }
 
 function row(overrides: Partial<ProviderRow> = {}): ProviderRow {
   return {
@@ -13,8 +13,8 @@ function row(overrides: Partial<ProviderRow> = {}): ProviderRow {
       displayName: 'DeepSeek',
       settingsNs: 'llm-deepseek',
       settingsPath: [],
-      active: true,
     },
+    active: true,
     configured: true,
     removable: false,
     apiKeyEnv: 'DEEPSEEK_API_KEY',
@@ -31,8 +31,8 @@ function otherRow(overrides: Partial<ProviderRow> = {}): ProviderRow {
       displayName: 'HFAI',
       settingsNs: 'llm-pi-ai',
       settingsPath: ['providers', 'hfai'],
-      active: true,
     },
+    active: true,
     configured: true,
     removable: true,
     apiKeyEnv: 'HFAI_API_KEY',
@@ -56,7 +56,7 @@ function state(overrides: Partial<ModelsSettingsState> = {}): ModelsSettingsStat
 describe('providerUsable', () => {
   it('requires a registered route and a stored key for every named reference', () => {
     expect(providerUsable(otherRow())).toBe(true)
-    expect(providerUsable(otherRow({ entry: { ...otherRow().entry, active: false } }))).toBe(false)
+    expect(providerUsable(otherRow({ active: false }))).toBe(false)
     expect(providerUsable(otherRow({ credential: missingCredential }))).toBe(false)
     expect(providerUsable(otherRow({ credential: undefined }))).toBe(false)
   })
@@ -108,7 +108,7 @@ describe('onboardingReadiness', () => {
       reason: 'load-failed',
     })
     expect(onboardingReadiness(state({
-      rows: [row({ entry: { ...row().entry, active: false } })],
+      rows: [row({ active: false })],
     }))).toEqual({ kind: 'unavailable', reason: 'provider-inactive' })
     expect(onboardingReadiness(state({
       credentialError: 'credentials service is absent',

@@ -1,9 +1,46 @@
 import type { KeyboardEvent } from 'react'
-import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
-import { isLatestTurn, blockText } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: loads the ChatSnapshot `declare module` augmentation of
+// ConversationViewSnapshotMap so `snapshot.views.get('chat')` typechecks as
+// ChatSnapshot (carrying .timeline + .legacy) — the chat view is registered
+// by ui-chat and absent from the fork-only runtime's removed top-level fields.
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { FollowupChipsInjected } from './index.ts'
 import type { FollowupKey } from './locales.ts'
 import css from './FollowupChips.module.css'
+
+/** The concatenated render text of a settled tool block (trimmed). Empty for
+ *  running blocks that have not yet settled (no `kind`); a trailing newline
+ *  from the render pipeline does not surface as a blank fallback line. Re-homed
+ *  from the decommissioned dsh-client-runtime cards helper so this presenter
+ *  carries no fork-only type reference (the other presenters replicate this
+ *  local-helper move). */
+function blockText(block: ToolCallBlock): string {
+  if (!('kind' in block)) return ''
+  return (block.content as readonly { text?: string }[]).map(c => c.text ?? '').join('\n').trim()
+}
+
+/** Whether the block belongs to the turn the conversation is still on.
+ *
+ *  A running block (no `kind`) is treated as latest (its turn has not ended).
+ *  When the snapshot's latest turn has no recorded start time the block is
+ *  also treated as latest (defensive: the timing map may lag the timeline).
+ *  Otherwise the block is latest when it settled at or after the latest
+ *  turn's start. Re-homed from the decommissioned dsh-client-runtime cards
+ *  helper; access path rewritten to the thin-shell ConversationSnapshot's
+ *  chat view (ChatSnapshot.legacy.turnTimings + .timeline.turnOrder, reached
+ *  via views.get('chat') — the ChatSnapshot augmentation is loaded by the
+ *  type-only import above). */
+function isLatestTurn(block: ToolCallBlock, snapshot: ConversationSnapshot): boolean {
+  if (!('kind' in block)) return true
+  const chat = snapshot.views.get('chat')
+  const turnOrder = chat?.timeline.turnOrder ?? []
+  if (turnOrder.length === 0) return true
+  const latestTurn = turnOrder[turnOrder.length - 1] as number
+  const timing = chat?.legacy.turnTimings.get(latestTurn)
+  if (!timing) return true
+  return block.time >= timing.startTime
+}
 
 export interface Suggestion {
   label: string
@@ -12,7 +49,7 @@ export interface Suggestion {
 
 export interface FollowupChipsProps {
   block: ToolCallBlock
-  useSession: <S>(sel: (s: ConversationSnapshot) => S, eq?: (a: S, b: S) => boolean) => S
+  useConversation: <S>(sel: (s: ConversationSnapshot) => S, eq?: (a: S, b: S) => boolean) => S
   submit: FollowupChipsInjected['submit']
   t: (key: FollowupKey) => string
 }
@@ -90,8 +127,8 @@ function handleListKeyDown(e: KeyboardEvent<HTMLElement>): void {
  * transcript as disabled rows instead of vanishing; a failed tool call renders
  * an error box instead of silently showing stale chips.
  */
-export function FollowupChips({ block, useSession, submit, t }: FollowupChipsProps) {
-  const current = useSession(snapshot => isLatestTurn(block, snapshot))
+export function FollowupChips({ block, useConversation, submit, t }: FollowupChipsProps) {
+  const current = useConversation(snapshot => isLatestTurn(block, snapshot))
 
   if (!('kind' in block)) {
     return <SkeletonState />

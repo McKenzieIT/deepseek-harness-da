@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-unsafe-call, typescript/no-unsafe-assignment -- node:fs not resolved by oxlint here (tsc passes). */
 import { describe, expect, it, beforeAll, afterAll } from 'vitest'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'

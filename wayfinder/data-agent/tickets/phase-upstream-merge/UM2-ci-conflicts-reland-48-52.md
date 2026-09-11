@@ -2,7 +2,7 @@
 
 **Type**: fix
 **Phase**: upstream-merge
-**Status**: open
+**Status**: folded→UM12 (2026-09-09 triage)
 **Assignee**: unclaimed
 **Blocked by**: UM1（需 staged merge）
 **Blocks**: UM10（verify）
@@ -23,4 +23,10 @@ fork 的 #48（删 6 死 serial-* master-push job + sandbox macos 腿）是改**
 5. GA-FORK-CI 非回归：6/7 绿（translation-pairing 本就红，不 regress 即可）。
 
 ## Resolution
+
+**[2026-09-09 triage] → Status: folded→UM12.** #48/#52 reland done via re-sync（`issue-policy.yml:19` `repository_owner == 'deepseek-ai'` owner guard + `ci.yml` `vars.DSH_CI_FAILOVER`-driven runs-on）；residual 3-new-workflow guard eval = UM12（post-merge GA-FORK-CI re-sweep）。详 `.tmp/next-5-triage.md`。
+
+---
+
+### (original pre-triage)
 （待落地后填：重落的 workflow 文件 + GA-FORK-CI 实跑结果）
