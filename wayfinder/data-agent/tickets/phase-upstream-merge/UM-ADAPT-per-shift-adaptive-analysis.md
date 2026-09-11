@@ -57,3 +57,16 @@ lefthook lint。详见
 - **关联**：45-pkg client-runtime decommission
   （`R-DA-CLIENT-RUNTIME-DECOMMISSION`）是 R-DA 另一子票，blocked-by UM14，
   本 session 未触碰。本票保持 **open**（UM15 自动化模板）。
+
+### [2026-09-12] dsh-rda-admin 内容分析（workflow）+ land/rewrite 决策点
+
+`refactor/rda-admin-lazy-webserver-2026-09-08`（`9ba8638eac`，+102/-16）是**完整、健全的 UM-ADAPT seam 3（lazy webServer carrier）实现**，**未合入**（不在 HEAD `7ad3242d97` 也不在 `origin/master` `be447fc1d0`）。单 commit，`packages/data/admin/src/index.ts` ±35 + `tests/admin.spec.ts` +83 test：
+- drops `webServer` from inject array（只剩 `['storageDomain','credentials']` eager）。
+- `/admin/api` 路由注册移进嵌套 `ctx.inject(['webServer'], webCtx => webCtx.effect(() => registerRoutes(webCtx, domain, identityService, defaultTenantId), 'admin: routes'))`（domain-open effect 内），路由仅在 async domain open 后 + 有 webServer 时注册（fail-closed 保）。
+- domain/identityService 提为 const-in-effect（外层 let 在 dispose 时 reset 破坏 TS narrowing）。
+- 路由 disposal 绑 webServer carrier fiber（Cordis LIFO 保 routes-then-domain 顺序）。
+- 行为保持（data-agent 总有 webServer，路由仍注册）+ 允许 no-webServer 优雅加载。tests 验 inject 不含 webServer + 无 webServer 也能 open domain + 有则注册 `/admin/api`。scope 仅 admin（45-pkg client-runtime decommission 是 UM14-blocked 另票）。
+
+**CONFIRMED**：HEAD `packages/data/admin/src/index.ts:141` 仍 `inject = ['storageDomain','credentials','webServer']`（eager）→ **本票「seam 3/4 已落地」在分支层面为假，确认仍成立**。
+
+→ **决策点**（UM-ADAPT 产品决策）：① **land 这条分支**（rescue-as-is，merge `9ba8638eac` 进 resync + tsc/test 验 → 使本票 seam 3 真"已落地"）；或 ② **改写本票为"已分析、实现未合入"**（若决定不 land lazy-webServer）。分支实现健全，倾向 ①。

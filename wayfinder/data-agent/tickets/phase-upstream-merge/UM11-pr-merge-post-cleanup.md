@@ -144,3 +144,15 @@
 **⑥ 过期项**：header 仍写「本票仍 blocked，不 push」（挂 UM12 + UM-MERGE-INTEGRITY）—— PR 已推已并，UM12 的 B 类硬阻塞也已解除（2 绿 + 2 known-red）。worktree 表里 `.worktrees/r10-harness-goodhart` 现在的分支是 `grilling/G10-harness-bhe-split`（非 `research/R10-...`），另有 `research/R10b-…`/`R10c-…` 两个 eval 分支——**仍勿动**。
 
 **估算**：**2-3 session** —— 1 个 AFK session 做 del-3 + 上面①的 5 个已并入 worktree/分支清扫 + 备好 rda-admin/arch-impl 的 rescue 决定；1 个 gated session 做 master MERGE + push + 那 3 个 resync 提交的后续 PR；若 rda-admin 变成真代码工作再 +1。
+
+### [2026-09-12] worktree 清理 + 剩余分析
+
+**删 10**：①5（`dsh-arch-regen`/`dsh-cordis`/`dsh-rda-p1`/`dsh-um16`/`dsh-upstream-merge`，is-ancestor origin/master YES）+ ③2（`fix/lint-noop-assertion-unused-disable`/`backup/master-pre-sync-2026-09-08`，ahead=0）+ ②3 del-3（`p2-present-decomp`/`p2-suggest-followups`/`p2-uism-layer`，workflow re-confirm 0 residual vs `eb9e4cf05c`[PR #116 已 in origin/master] + worktree 仅 T/pnpm-lock 无手写，force-delete）。
+
+**剩 8**：master + 2 eval（`.worktrees/r10`/`t1`，不碰）+ `dsh-resync`（PR 主体，保留）+ 4 需决定/keep：
+- `dsh-arch`[chore/um-arch-impl-2026-09-08，ahead 6]：**代码 absorbed** via arch-regen(`038d8b51ce` in origin/master)；3 处 doc/manifest 残留→定向 rescue 后删（见 UM-ARCH ticket 2026-09-12）。
+- `dsh-rda-admin`[refactor/rda-admin-lazy-webserver-2026-09-08，`9ba8638eac`]：完整 UM-ADAPT seam 3 实现，未合入→UM-ADAPT land/rewrite 决策（见 UM-ADAPT ticket 2026-09-12）。
+- `dsh-p2-present-table`：1 residual（`callView:null`）→ keep（R-DA-UI-SETTINGS-MODELS-VITEST-DEBT）。
+- `dsh-p2-uism-vitest`：5 test residual→ keep（同上）。
+
+PR #115/#116 都 merged；p2-* 后清基本完成（剩 4 需决定/keep）。master sync 仍 gated。
