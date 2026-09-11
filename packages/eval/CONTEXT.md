@@ -71,3 +71,7 @@ Data Evaluation defines the shared evaluation language for data engineering, dat
 **Materialized Run Manifest**: A deterministic self-contained export of a Run Identity Graph for inspection, archival, or transfer; it is not an independently mutable authority. _Avoid_: Run Identity when referring to the canonical graph
 
 **Evaluation Protocol**: The versioned cross-role and persistence vocabulary for evaluation identities, manifests, evidence, measurements, grading records, and publication eligibility. It contains no orchestration or domain execution. _Avoid_: Evaluation Core when referring to runtime behavior
+
+**Grading Runtime**: The isolated runtime that validates sealed evidence, resolves authorized private material and a frozen grading plan, invokes a registered domain mechanism, and creates append-only Grade Records. _Avoid_: Grader when referring to one domain mechanism
+
+**Grading Mechanism**: A namespaced, versioned domain implementation that interprets declared evidence and private material under a Resolved Grading Plan. _Avoid_: Grading Runtime

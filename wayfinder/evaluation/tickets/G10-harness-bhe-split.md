@@ -138,6 +138,12 @@ ComparisonPlan 针对稳定 component identities 与声明字段，不读取任�
 
 Evaluation Controller 依赖 Protocol 和各 capability Definition，负责 resolve、open Run、drive Attempt、seal、invoke grading、cleanup、cancel 与 publish，但不拥有 Benchmark content、Context retrieval、业务 Provider、specific grader、Artifact storage 或 host rendering。Benchmark Packs、Environment、Context Projection、Grader、Artifact Store 与 SDK 只需依赖 Protocol；CLI/SDK Host 依赖 Controller。现有 `dsh-eval` 不作为聚合所有职责的 monolith 保留，T12 据此不再执行简单的 runner-to-eval 合并。
 
+### D21 — Grading Runtime 独立于 Protocol、Controller 与领域 Mechanism
+
+独立 Grading Runtime 负责验证 EvidenceCut、授权并解析 GradingMaterialRef、校验 ResolvedGradingPlan/mechanism identity、执行 grader lifecycle、分类 grader failure、生成 immutable GradeRecord，以及以 append-only provenance 支持 offline rescore。它不依赖 Agent、Controller、Context 或业务 Provider，并可在同进程、独立进程或 sandbox 中运行而不改变 protocol。
+
+数据分析、数据工程与数据科学 extension 通过 namespaced、versioned registry 提供 SQL/result、report rubric、pipeline verifier、data-quality、dataset/model/metric 等具体 Grading Mechanism；Benchmark 显式选择 policy。Grading Runtime 可以提供 exact/set/bag/numeric/rubric composition 等领域无关 primitives，但不得包含 SQL normalization、pipeline semantics、Notebook/model metric、Benchmark defaults 或 hidden Context。Controller 只提交 grade request 并接收 GradeRecord/failure，不解释 correctness。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
