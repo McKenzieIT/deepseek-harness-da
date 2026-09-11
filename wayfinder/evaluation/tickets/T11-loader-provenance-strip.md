@@ -94,7 +94,7 @@ G1 已在 2026-09-08 完成 v3 独立重做并与 v1 决议合并，两条直接
 - **`anchor_ds` 是否算合法的 snapshot identity**。本票只让它可达、可用于模板解析；它**是不是冻结锚点是另一回事**——GA-EVAL-CASESET-EVENT-ANCHOR 已实测 event 数据的历史分区不冻结，所以对 event case 而言 `anchor_ds` 恰恰**不是**有效锚点。本票不得暗示它是。
 - 用 reference SQL 实际执行来重新派生 expected 值（[G1b](G1b-ground-truth-lifecycle.md)）——本票只对账，不回填。
 - comparator policy object 的设计（R1 §4.2 → [R23](R23-comparator-policy-mutation-baseline.md)）。
-- 两套 case schema 的合流与包边界（R10 → G10）。
+- Legacy case 到 canonical Pack 的迁移与包边界（[G10](G10-harness-bhe-split.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T12](T12-eval-package-consolidation.md)）。
 - event case 的评分口径（GA-EVAL-CASESET-EVENT-ANCHOR）。
 - 让 audit 脚本改走 `ctx.query`（它现在 `:55` 直接 spawn `maxc`，是第三条执行路径）——属 T1 的 grader 接线，本票只换 YAML 解析与模板来源，不动执行方式。
 

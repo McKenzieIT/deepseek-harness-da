@@ -3,14 +3,14 @@
 **Type**: grilling  ·  **Status**: claimed · **Research readiness**: ready（2026-09-10）
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无（[R10](R10-harness-goodhart-papers.md)、[R10b](R10b-harness-measurement-validity.md) 与 [R10c](R10c-context-layer-evaluation.md) 已 resolved）
-**Blocks**: T9-bhe-split-impl、[T12](T12-eval-package-consolidation.md) 题面重定；为 [R21](R21-goodhart-audit.md) 提供 run/slice identity；并解 [G1](G1-exec-grader-seam.md) 移交的三条
+**Blocks**: [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md)；并解 [G13](G13-context-evaluation-protocol.md)、[G15](G15-dynamic-evaluation-lifecycle.md)、[R21](R21-goodhart-audit.md) 与 [G1](G1-exec-grader-seam.md) 移交的三条
 **Mode**: HITL
 **Branch**: `grilling/G10-harness-bhe-split`
 **Supersedes**: GA-GT4 的架构面（`wayfinder/data-agent/tickets/phase-misc/`，须先调和）
 
 ## Question
 
-`packages/eval/` 应如何切分为 Benchmark（评测内容）/ Harness（运行时）/ Environment（仓库适配），并由 composition root 装配独立版本化的 Context capability，使 benchmark 内容可版本化、harness 与具体 benchmark 无关、context 改进可归因、且 Goodhart 漂移可被 train/heldout/fresh 的对比检出？
+`packages/eval/` 与相关 data-agent capabilities 应如何切分为 Benchmark（评测内容）/ Harness（产品 composition）/ Environment（运行生命周期与 assurance），并由 composition root 装配独立版本化的 Context Projection，使 Benchmark 内容可版本化、真实 product Agent 可被非侵入式评测、Context 改进可归因、且 Goodhart 漂移可被 train/heldout/fresh 的对比检出？
 
 ## 决议（逐轮追加）
 
@@ -162,6 +162,12 @@ Benchmark Pack 的 canonical form 是不执行代码、content-addressed、seale
 
 Definition packages 必须拥有完整 interface、failure/lifecycle semantics、invariants 与 Provider registration，不得成为 re-export-only 浅包；local Providers 必须隐藏 path/security、stable read、sealing/digest、storage transaction、diagnostics 等实现复杂度。现有 `eval` 不原样保留，`eval-runner` 迁移/删除，`eval-runner-service` 删除，`eval-cli` 重写为薄 Host，`retrieval-experiment` 另行判断归入 Context/component evaluation。R24/T12 的旧 package merge 题面失效并需重定。
 
+### D25 — 采用 foundation-first 官方 stack，最终 cutover 不留兼容路径
+
+实施顺序固定为 `[T11](T11-loader-provenance-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md)`。每一层分别验证 loader/ground truth、execution semantics、production Context、shared foundations、data-analysis migration、真实 Product Evaluation、最终 package cutover 与新 baseline；不得用 package move、Context 变化或 case migration 混淆前一层的验收。
+
+分阶段只服务 review、归因和 rollback，不形成发布后的兼容承诺。最终 cutover 必须删除 old runners、service、adapter forks、caseDir/glob、旧 exports、default bundle eval controls 与 legacy runtime formats；不留 compatibility shim。T9 改为 foundation 实现票，T12 重定为 final package graph/external consumer migration/legacy deletion；Context attribution 与 dynamic lifecycle 从 fog 毕业为独立 G/R tickets。
+
 ## G1 移交的三条（本票必须裁定）
 
 [G1](G1-exec-grader-seam.md) 于 2026-09-07 锁定了 6 条**架构无关**的 execution grader 决策，并把以下三条**架构相关**的移交本票——G1 明确不裁，以免 T1 落地后被本票重切：
@@ -173,7 +179,7 @@ Definition packages 必须拥有完整 interface、failure/lifecycle semantics�
 ## 本票同时要处理的
 
 - **de-K11 架构答案** —— 建立 data-domain Evaluation Core，使 `eval-runner` + `MultiTurnSession` 不依赖具体 DataScope 或 benchmark；K11-v2 与 RBI 只作为迁移/parity fixtures。未定义的 `LiveK11` 不构成架构要求；dynamic/fresh/canary lifecycle 在核心 identity 固定后另行裁定。此项 supersede GA-GT4 的架构面，**须先与 GA-GT4 调和**再动。
-- **Goodhart Δ** —— `compare.ts` 输出 K11-train vs heldout vs fresh 的差值；Arena-Hard 式 style control + separability + 95% CI；dye-pack sentinel。当前**既无 heldout 也无 fresh slice**（见 R10 事实 ⑥）。
+- **Goodhart Δ** —— Comparison Plan 输出显式 Benchmark/DataScope 的 train vs heldout vs fresh 差值；Arena-Hard 式 style control + separability + 95% CI；sentinel。当前**既无 heldout 也无 fresh slice**（见 R10 事实 ⑥），其 lifecycle 由 [G15](G15-dynamic-evaluation-lifecycle.md) 裁定。
 - **重构编排顺序** —— map §Not yet specified 的第一块 fog：已确定该删的（core 死编排 + 两份 adapter fork）与包重切，是「先删再切」还是「切的时候一并删」。
 
 ## 2026 follow-up 要补进决策的硬约束
@@ -250,11 +256,11 @@ Grilling 前不需要先实现 heldout/fresh、跑新 baseline、完成 T1/T11 �
 - 为 Goodhart audit 定义 benchmark/run 双 provenance、train/heldout/fresh 生命周期、estimand/cluster unit、standard `pass@n` 与 strict `pass^k`。
 - 与 GA-GT4 的调和结论写明（supersede 哪些面、保留哪些）。
 - 产出或更新一篇 `.agents/notes/proposed/architecture/` Agent Note。
-- 明确 T9-bhe-split-impl 的验收面，以及它与 [T1](T1-exec-grader-impl.md)、[T11](T11-loader-provenance-strip.md) 的落包顺序。
+- 明确 [T11](T11-loader-provenance-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md) 的验收与交接。
 
 ## 不在本票范围
 
-- 实施重构（T9-bhe-split-impl）。
+- 实施重构（T13/T9/T14/T15/T12）。
 - 重开 G1 已锁的 6 条架构无关决策。
 - comparator 默认值（[R23](R23-comparator-policy-mutation-baseline.md) 提供 mutation 证据）。
 - event case 评分口径（GA-EVAL-CASESET-EVENT-ANCHOR）。

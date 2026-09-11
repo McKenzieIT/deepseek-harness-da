@@ -28,3 +28,14 @@
 - “`classifyExecutionFailure` 无人调用”已过期：`packages/eval/eval/src/multi_turn.ts:151` 已调用它。多引擎 failure taxonomy 仍未解决，但归方向 9/G9/T8；G10 只决定它在目标包结构中的位置和依赖方向。
 
 调和规则：G10 保留本票的部署配置 fail-loud、通用 case discovery、维度驱动 compare 和 de-K11 目标；以 R10/R10b/R10c 的 Benchmark/Adapter/Context/Environment 所有权替代本票原先未展开的包边界假设。G10 resolved 后，本票按其决议拆给 T9/G9 或关闭。
+
+## 2026-09-11 G10 routing preview
+
+- K11/RBI 内容与 filename discovery → [T14 — Data-analysis extension 与 canonical Pack migration](../../../evaluation/tickets/T14-data-analysis-extension-pack-migration.md)；正式路径由 BenchmarkRepository 解析 sealed Pack，不再 glob caseDir。
+- `scopeId`/project/provider binding、fail-loud preflight 与 product run → [T9 — Evaluation foundations](../../../evaluation/tickets/T9-evaluation-foundations.md) + [T15 — Product Evaluation Controller 与 external CLI](../../../evaluation/tickets/T15-evaluation-controller-cli.md)。
+- `semanticRoot` 与 duplicated Context assembly → [T13 — Production Context Projection capability](../../../evaluation/tickets/T13-context-projection-service.md)。
+- `compare.ts` 的 dimension/identity/Goodhart 语义 → T15 + [R25 — New Evaluation stack baseline](../../../evaluation/tickets/R25-evaluation-rebaseline.md) + [R21 — Goodhart audit](../../../evaluation/tickets/R21-goodhart-audit.md)。
+- Provider-specific failure taxonomy → G9/T8，保持本票原分流。
+- 旧 package/runtime/default bundle rows 的删除 → [T12 — Final Evaluation package graph 与 legacy cutover](../../../evaluation/tickets/T12-eval-package-consolidation.md)。
+
+本节仅记录已开票路由；G10 尚未 resolved，本票暂不关闭。
