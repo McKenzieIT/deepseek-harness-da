@@ -8,10 +8,10 @@ Cordis Service wiring the `ctx.evalRunner` seam: drives the real NL2SQL engine +
 
 A function plugin (`apply(ctx, config)`) that mounts the `EvalRunnerService` (a Cordis `Service`) onto `ctx.evalRunner`. The Service:
 
-- discovers `k11_<number>.yaml` case files under the configured `caseDir`,
+- discovers numbered YAML/JSON case files such as `k11v2_001.yaml` under the configured `caseDir`,
 - builds collaborators from the live ctx seams (`ctx.llm`, `ctx.query`, `ctx.nl2sql`, `ctx.schema`),
 - runs `runBatch` (pass_k attempts per case) through the real `Nl2sqlEngine`,
-- persists one versioned JSONL file per batch with run configuration, attempt evidence, and case provenance for evidence-query and offline rescoring,
+- persists one versioned JSONL file per batch with the runner-owned run configuration, attempt evidence, preflight result, and case provenance for evidence-query and offline rescoring,
 - emits `evidence/eval-run-completed`, and
 - tracks `lastRun` / `lastTwoRuns` for delta (`computeDelta`) and `trigger_eval` report_last.
 

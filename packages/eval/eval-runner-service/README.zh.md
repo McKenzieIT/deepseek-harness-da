@@ -8,10 +8,10 @@
 
 一个函数插件（`apply(ctx, config)`），把 `EvalRunnerService`（一个 Cordis `Service`）挂载到 `ctx.evalRunner`。该 Service：
 
-- 发现配置 `caseDir` 下匹配 `k11_<number>.yaml` 的用例文件，
+- 发现配置 `caseDir` 下如 `k11v2_001.yaml` 的带编号 YAML/JSON 用例文件，
 - 从实时 ctx seam（`ctx.llm`、`ctx.query`、`ctx.nl2sql`、`ctx.schema`）构建协作者，
 - 通过真实 `Nl2sqlEngine` 运行 `runBatch`（每用例 pass_k 次尝试），
-- 每批持久化一个带版本的 JSONL 文件，保存 run 配置、attempt evidence 与 case provenance，供 evidence-query 和离线重评分使用，
+- 每批持久化一个带版本的 JSONL 文件，保存由 runner 组装的 run 配置、attempt evidence、preflight 结果与 case provenance，供 evidence-query 和离线重评分使用，
 - 发出 `evidence/eval-run-completed`，并
 - 跟踪 `lastRun` / `lastTwoRuns` 以做差量（`computeDelta`）与 `trigger_eval` 的 report_last。
 

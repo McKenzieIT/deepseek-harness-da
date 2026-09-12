@@ -52,7 +52,7 @@ describe('formatReport', () => {
     const report = formatReport(result, cases)
     expect(report).toContain('total: 4')
     expect(report).toContain('pass_rate: 50.0%')
-    expect(report).toContain('correct: 2')
+    expect(report).toContain('correct: 2/4')
     expect(report).toContain('wrong: 1')
     expect(report).toContain('declined: 1')
   })
@@ -101,6 +101,8 @@ describe('formatReport', () => {
 
     expect(report).toContain('unjudged: 1')
     expect(report).toContain('case_defect: 1')
+    expect(report).toContain('correct: 0/0')
+    expect(report).toContain('excluded: 2')
     expect(report).toContain('c1  [unjudged]')
     expect(report).toContain('c2  [case_defect]')
   })

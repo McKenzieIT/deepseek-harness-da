@@ -31,7 +31,7 @@ declare module '@deepseek-ai/cordis' {
 }
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { runBatch, compareDelta, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
-import { COMPARATOR_POLICY_VERSION, loadCases, resolveReferenceSql } from '@deepseek-ai/dsh-eval'
+import { COMPARATOR_POLICY_VERSION } from '@deepseek-ai/dsh-eval'
 import type {
   AgentResponder,
   AgentRespondOpts,
@@ -45,6 +45,7 @@ import type {
   RunnerVerdict,
   AttemptResult,
   CaseVerdict,
+  CaseProvenance,
 } from '@deepseek-ai/dsh-eval-runner'
 import { Nl2sqlEngine, Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
 import type {
@@ -56,7 +57,6 @@ import type {
   RelationGraphLike,
   EngineConventions,
 } from '@deepseek-ai/dsh-nl2sql-engine'
-import type { EvalCase, ReferenceSqlResolution } from '@deepseek-ai/dsh-eval'
 import type { QueryEngine, ScopeId, QueryOutcome } from '@deepseek-ai/dsh-query'
 import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -72,6 +72,10 @@ export interface Config {
   readonly resultsDir?: string
   /** pass_k attempts per case. */
   readonly passK: number
+  /** Maximum cases evaluated concurrently. */
+  readonly concurrency: number
+  /** Maximum infrastructure retries for one SQL execution within an attempt. */
+  readonly maxInfraRetries: number
   /** LLM provider for SQL generation + judging + answering. */
   readonly provider: string
   /** LLM model name for SQL generation + judging + answering. */
@@ -98,6 +102,8 @@ export const Config = z.object({
   caseDir: z.string().min(1).required(),
   resultsDir: z.string().min(1).default('.tmp/eval-results'),
   passK: z.natural().min(1).required(),
+  concurrency: z.natural().min(1).required(),
+  maxInfraRetries: z.natural().required(),
   provider: z.string().pattern(/\S/).required(),
   model: z.string().pattern(/\S/).required(),
   today: z.string().pattern(/^\d{8}$/).required(),
@@ -157,7 +163,15 @@ class CtxLlmAdapter implements Llm {
 
 /** Bridges the engine's `OdpsExecutor` (used in the NL2SQL self-correction loop) to `ctx.query`. */
 class CtxOdpsAdapter implements OdpsExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
+  private readonly executor: CtxQueryExecutor
+
+  constructor(
+    private readonly ctx: Context,
+    scopeId: ScopeId,
+    private readonly queryWaitSeconds: number | undefined,
+  ) {
+    this.executor = new CtxQueryExecutor(ctx, scopeId, queryWaitSeconds)
+  }
 
   private engine(): QueryEngine | undefined {
     return this.ctx.get('query')
@@ -166,15 +180,28 @@ class CtxOdpsAdapter implements OdpsExecutor {
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql }
-    const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)
-    return this.toEngineOutcome(out)
+    return this.toEngineOutcome(await this.executor.execute(sql, opts?.signal) as QueryOutcome)
   }
 
   async attach(instanceId: string): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
-    const out = await q.attach(instanceId)
-    return this.toEngineOutcome(out)
+    if (this.queryWaitSeconds === undefined) return this.toEngineOutcome(await q.attach(instanceId))
+    const queryWaitSeconds = this.queryWaitSeconds
+    const timeoutReason = new Error(`query attach timed out after configured ${queryWaitSeconds}s wait window`)
+    timeoutReason.name = 'TimeoutError'
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<EngineQueryOutcome>((resolveTimeout) => {
+      timer = setTimeout(() => {
+        resolveTimeout({ state: 'failed', failureKind: 'timeout', error: timeoutReason.message, sql: '' })
+      }, queryWaitSeconds * 1000)
+      timer.unref()
+    })
+    try {
+      return await Promise.race([q.attach(instanceId).then(out => this.toEngineOutcome(out)), timeout])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
   }
 
   /** Map a dsh-query QueryOutcome ('completed'|'pending'|'failed', rows
@@ -260,13 +287,14 @@ class Nl2sqlAgentResponder implements AgentResponder {
     private readonly today: string,
     provider: string,
     model: string,
+    private readonly queryWaitSeconds?: number,
   ) {
     this.llm = new CtxLlmAdapter(ctx, provider, model)
   }
 
   async respond(question: string, opts?: AgentRespondOpts): Promise<AgentResponse> {
     const scopeId = opts?.scope_id ?? this.scopeId
-    const odps = new CtxOdpsAdapter(this.ctx, scopeId)
+    const odps = new CtxOdpsAdapter(this.ctx, scopeId, this.queryWaitSeconds)
     const schema = this.ctx.get('schema') as
       | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(scopeId?: string): RelationGraphLike }
       | undefined
@@ -313,20 +341,9 @@ class Nl2sqlAgentResponder implements AgentResponder {
 
 // ── JSONL persistence bridge (RunResult → evidence-query record format) ─────
 
-/** Case material copied into each version-2 record for audit and offline rescoring. */
-interface PersistedCaseProvenance {
-  readonly sourcePath: string
-  readonly schemaVersion: number | null
-  readonly scopeId: string | null
-  readonly expected: Pick<EvalCase['expected'], 'result_value' | 'match_mode' | 'sql' | 'behavior'>
-  readonly meta: EvalCase['meta'] | null
-  readonly referenceSql: ReferenceSqlResolution
-}
-
-/** A loaded case paired with the source path whose contents were graded. */
-interface PersistedCaseSource {
-  readonly path: string
-  readonly evalCase: EvalCase
+/** Preserve every runner verdict without collapsing environment and corpus failures. */
+function verdictToOutcome(verdict: RunnerVerdict): RunnerVerdict {
+  return verdict
 }
 
 /** One version-2 JSONL line consumed by `FileBackedEvalResultStore`. */
@@ -345,42 +362,7 @@ interface PersistedCaseRecord {
   readonly runConfig: RunConfig
   readonly attempts: readonly AttemptResult[]
   readonly preflight: NonNullable<CaseVerdict['preflight']>
-  readonly caseProvenance: PersistedCaseProvenance
-}
-
-/** Preserve every runner verdict without collapsing environment and corpus failures. */
-function verdictToOutcome(verdict: RunnerVerdict): RunnerVerdict {
-  switch (verdict) {
-    case 'correct': return 'correct'
-    case 'declined': return 'declined'
-    case 'wrong': return 'wrong'
-    case 'unjudged': return 'unjudged'
-    case 'infra_failure': return 'infra_failure'
-    case 'case_defect': return 'case_defect'
-    default: return assertNeverRunnerVerdict(verdict)
-  }
-}
-
-/** Reject a runner verdict added without persistence semantics. */
-function assertNeverRunnerVerdict(value: never): never {
-  throw new Error(`eval-runner-service persistence: unhandled verdict ${JSON.stringify(value)}`)
-}
-
-/** Build the case-owned facts needed to audit or replay a persisted grade. */
-function buildCaseProvenance(source: PersistedCaseSource): PersistedCaseProvenance {
-  return {
-    sourcePath: source.path,
-    schemaVersion: source.evalCase.schema_version ?? null,
-    scopeId: source.evalCase.input.scope_id,
-    expected: {
-      result_value: source.evalCase.expected.result_value,
-      match_mode: source.evalCase.expected.match_mode,
-      ...(source.evalCase.expected.sql === undefined ? {} : { sql: source.evalCase.expected.sql }),
-      ...(source.evalCase.expected.behavior === undefined ? {} : { behavior: source.evalCase.expected.behavior }),
-    },
-    meta: source.evalCase.meta ?? null,
-    referenceSql: resolveReferenceSql(source.evalCase),
-  }
+  readonly caseProvenance: CaseProvenance
 }
 
 /** Persist a run through the versioned service → evidence-query JSONL bridge. */
@@ -388,7 +370,6 @@ function persistRunResultJsonl(
   result: RunResult,
   dir: string,
   passK: number,
-  caseSources: readonly PersistedCaseSource[],
 ): string {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   const safeTimestamp = result.timestamp.replace(/[:.]/g, '-')
@@ -397,15 +378,14 @@ function persistRunResultJsonl(
   if (runConfig === undefined) {
     throw new Error(`eval-runner-service persistence: run ${result.run_id} has no resolved config`)
   }
-  const sourcesById = new Map(caseSources.map(source => [source.evalCase.case_id, source]))
   const lines = result.cases.map((c): PersistedCaseRecord => {
-    const source = sourcesById.get(c.case_id)
-    if (source === undefined) {
-      throw new Error(`eval-runner-service persistence: no loaded case provenance for ${c.case_id}`)
-    }
     const preflight = c.preflight
+    const caseProvenance = c.caseProvenance
     if (preflight === undefined) {
       throw new Error(`eval-runner-service persistence: case ${c.case_id} has no preflight evidence`)
+    }
+    if (caseProvenance === undefined) {
+      throw new Error(`eval-runner-service persistence: case ${c.case_id} has no case provenance`)
     }
     return {
       recordVersion: 2,
@@ -422,7 +402,7 @@ function persistRunResultJsonl(
       runConfig,
       attempts: c.pass_k_results,
       preflight,
-      caseProvenance: buildCaseProvenance(source),
+      caseProvenance,
     }
   })
   writeFileSync(path, lines.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf8')
@@ -441,6 +421,8 @@ export class EvalRunnerService extends Service {
   private readonly caseDir: string
   private readonly resultsDir: string
   private readonly passK: number
+  private readonly concurrency: number
+  private readonly maxInfraRetries: number
   private readonly provider: string
   private readonly model: string
   private readonly today: string
@@ -456,6 +438,8 @@ export class EvalRunnerService extends Service {
     this.caseDir = resolved.caseDir
     this.resultsDir = resolved.resultsDir
     this.passK = resolved.passK
+    this.concurrency = resolved.concurrency
+    this.maxInfraRetries = resolved.maxInfraRetries
     this.provider = resolved.provider
     this.model = resolved.model
     this.today = resolved.today
@@ -469,7 +453,7 @@ export class EvalRunnerService extends Service {
   private casePaths(): string[] {
     if (!existsSync(this.caseDir)) return []
     return readdirSync(this.caseDir)
-      .filter(f => /^k11_\d+\.yaml$/.test(f))
+      .filter(f => /^[a-z0-9]+(?:_[a-z0-9]+)*_\d+\.(?:yaml|yml|json)$/i.test(f))
       .sort()
       .map(f => resolve(this.caseDir, f))
   }
@@ -497,7 +481,7 @@ export class EvalRunnerService extends Service {
     // ignore scopeId, but the wiring is in place for a future per-scope engine
     // mapping without a service rebuild).
     const conventions = (this.ctx.get('nl2sql') as { getConventions?(scopeId?: string): EngineConventions } | undefined)?.getConventions?.(scopeId) ?? null
-    const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model)
+    const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model, this.queryWaitSeconds)
     const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId, this.queryWaitSeconds) : null
     const judge = new LlmJudgeExecutor(new CtxLlmAdapter(this.ctx, this.provider, this.model))
     return { agent, executor, judge }
@@ -539,12 +523,6 @@ export class EvalRunnerService extends Service {
       }
       executorConfig = { executor_identity: executorIdentity, query_wait_seconds: queryWaitSeconds }
     }
-    const loadedCases = loadCases(paths)
-    const caseSources = loadedCases.map((evalCase, index) => {
-      const path = paths[index]
-      if (path === undefined) throw new Error(`eval-runner-service: no source path for loaded case ${evalCase.case_id}`)
-      return { path, evalCase }
-    })
     const { agent, executor, judge } = this.buildCollaborators(scopeId)
     // GA-EVAL-REBASELINE item 4: stamp the run's protocol/semantics/concurrency/
     // model onto the artifact so a contaminated/mis-attributed run is detectable
@@ -556,7 +534,8 @@ export class EvalRunnerService extends Service {
       provider: this.provider,
       model: this.model,
       pass_k: this.passK,
-      concurrency: 1,
+      max_infra_retries: this.maxInfraRetries,
+      concurrency: this.concurrency,
       sql_judge: false,
       verdict_semantics: 'pass^k',
       responder: 'engine',
@@ -572,12 +551,14 @@ export class EvalRunnerService extends Service {
     }
     const result = await runBatch(paths, { agent, executor, judge }, {
       pass_k: this.passK,
+      max_infra_retries: this.maxInfraRetries,
+      concurrency: this.concurrency,
       skip_health_gate: skipHealthGate,
       ...(options.runId !== undefined ? { run_id: options.runId } : {}),
       config: runConfig,
     })
     // Persist JSONL (the W3→W4 bridge) so evidence-query + goal-eval-policy read it.
-    persistRunResultJsonl(result, this.resultsDir, this.passK, caseSources)
+    persistRunResultJsonl(result, this.resultsDir, this.passK)
     this.ctx.emit('evidence/eval-run-completed')
     this.lastRun = result
     return result

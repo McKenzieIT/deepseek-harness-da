@@ -65,6 +65,7 @@ function runWith(overrides: Record<string, unknown> | null) {
     query_wait_seconds: 300,
     provider: 'test-provider',
     model: 'test-model',
+    max_infra_retries: 2,
     concurrency: 1,
     sql_judge: false,
     responder: 'engine',
@@ -122,10 +123,10 @@ describe('checkRenderable', () => {
     expect(checkRenderable(runWith({ with_query: false, executor_identity: undefined })).ok).toBe(true)
   })
 
-  it('marks a run with no config at all as unattributable rather than refusing it', () => {
+  it('refuses a run with no config because its mode and policy are unknown', () => {
     const v = checkRenderable(runWith(null))
-    expect(v.ok).toBe(true)
-    expect(v.unattributable).toBe(true)
+    expect(v.ok).toBe(false)
+    expect(v.reason).toMatch(/mode and policy cannot be confirmed/)
   })
 })
 

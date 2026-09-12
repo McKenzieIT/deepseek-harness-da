@@ -11,6 +11,7 @@ const CONFIG: RunConfig = {
   model: 'snapshot-model',
   pass_k: 1,
   concurrency: 1,
+  max_infra_retries: 2,
   sql_judge: false,
   verdict_semantics: 'pass^k',
   responder: 'engine',

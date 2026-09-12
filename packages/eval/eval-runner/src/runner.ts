@@ -32,13 +32,12 @@ import type {
   SqlJudgeVerdict,
   CasePreflightEvidence,
   ReferenceSqlPreflightEvidence,
+  CaseProvenance,
+  AgentResponse,
 } from './types.ts'
 import { runHealthGate } from './health_gate.ts'
 import { withInfraRetry, classifyInfraFailure, isInfraError } from './infra_retry.ts'
 import { writeRunResult } from './persistence.ts'
-
-/** Default max infra retries per attempt. */
-const DEFAULT_MAX_INFRA_RETRIES = 2
 
 type SelfDescribingRunResult = RunResult & { readonly config: BatchRunOptions['config'] }
 
@@ -60,9 +59,8 @@ export async function runBatch(
   options: BatchRunOptions,
 ): Promise<SelfDescribingRunResult> {
   const resolved = resolveRunSettings(collaborators, options)
-  const { passK, concurrency, skipHealthGate, policy, config } = resolved
+  const { passK, maxInfraRetries, concurrency, skipHealthGate, policy, config } = resolved
   const runId = options.run_id ?? randomUUID()
-  const maxInfraRetries = options.max_infra_retries ?? DEFAULT_MAX_INFRA_RETRIES
   const outputPath = options.output_path ?? null
   const onProgress = options.on_progress ?? null
 
@@ -80,16 +78,21 @@ export async function runBatch(
   }
 
   // Load cases
-  const cases = loadCases(casePaths)
+  const cases = loadCases(casePaths).map((evalCase, index) => {
+    const sourcePath = casePaths[index]
+    if (sourcePath === undefined) throw new Error(`eval runner: no source path for loaded case ${evalCase.case_id}`)
+    return { evalCase, sourcePath }
+  })
 
   // Drive each case (serial when concurrency=1, parallel otherwise)
   let verdicts: CaseVerdict[]
   if (concurrency <= 1) {
     verdicts = []
     for (let i = 0; i < cases.length; i++) {
-      const evalCase = cases[i]
-      if (!evalCase) continue
-      const caseVerdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries, policy)
+      const loaded = cases[i]
+      if (!loaded) continue
+      const { evalCase, sourcePath } = loaded
+      const caseVerdict = await runSingleCase(evalCase, sourcePath, collaborators, passK, maxInfraRetries, policy)
       verdicts.push(caseVerdict)
       if (onProgress) {
         onProgress(i + 1, cases.length, evalCase.case_id)
@@ -121,6 +124,7 @@ export async function runBatch(
 interface ResolvedRunSettings {
   readonly passK: number
   readonly concurrency: number
+  readonly maxInfraRetries: number
   readonly skipHealthGate: boolean
   readonly policy: ComparatorPolicy
   readonly config: BatchRunOptions['config']
@@ -133,13 +137,16 @@ function resolveRunSettings(collaborators: Collaborators, options: BatchRunOptio
   const requested = options.config
   const passK = options.pass_k ?? requested.pass_k
   const concurrency = options.concurrency ?? requested.concurrency
+  const maxInfraRetries = options.max_infra_retries ?? requested.max_infra_retries
   const skipHealthGate = options.skip_health_gate ?? requested.skip_health_gate
 
   assertRecordedSetting('pass_k', passK, requested.pass_k)
   assertRecordedSetting('concurrency', concurrency, requested.concurrency)
+  assertRecordedSetting('max_infra_retries', maxInfraRetries, requested.max_infra_retries)
   assertRecordedSetting('skip_health_gate', skipHealthGate, requested.skip_health_gate)
   if (!Number.isInteger(passK) || passK < 1) throw new Error(`eval runner: pass_k must be a positive integer (got ${passK})`)
   if (!Number.isInteger(concurrency) || concurrency < 1) throw new Error(`eval runner: concurrency must be a positive integer (got ${concurrency})`)
+  if (!Number.isInteger(maxInfraRetries) || maxInfraRetries < 0) throw new Error(`eval runner: max_infra_retries must be a non-negative integer (got ${maxInfraRetries})`)
 
   const hasExecutor = collaborators.executor !== null && collaborators.executor !== undefined
   const hasSqlJudge = collaborators.sqlJudge !== null && collaborators.sqlJudge !== undefined
@@ -165,12 +172,14 @@ function resolveRunSettings(collaborators: Collaborators, options: BatchRunOptio
   return {
     passK,
     concurrency,
+    maxInfraRetries,
     skipHealthGate,
     policy,
     config: {
       ...requested,
       pass_k: passK,
       concurrency,
+      max_infra_retries: maxInfraRetries,
       skip_health_gate: skipHealthGate,
       comparator_policy_version: policy.version,
       column_semantics: policy.columnSemantics,
@@ -188,8 +197,13 @@ function assertRecordedSetting(name: string, actual: boolean | number, recorded:
 /**
  * Run cases concurrently with a bounded semaphore.
  */
+interface LoadedCase {
+  readonly evalCase: EvalCase
+  readonly sourcePath: string
+}
+
 async function runConcurrent(
-  cases: EvalCase[],
+  cases: LoadedCase[],
   collaborators: Collaborators,
   passK: number,
   maxInfraRetries: number,
@@ -205,9 +219,10 @@ async function runConcurrent(
     while (true) {
       const idx = nextIdx++
       if (idx >= cases.length) return
-      const evalCase = cases[idx]
-      if (!evalCase) continue
-      const verdict = await runSingleCase(evalCase, collaborators, passK, maxInfraRetries, policy)
+      const loaded = cases[idx]
+      if (!loaded) continue
+      const { evalCase, sourcePath } = loaded
+      const verdict = await runSingleCase(evalCase, sourcePath, collaborators, passK, maxInfraRetries, policy)
       results[idx] = verdict
       completed++
       if (onProgress) {
@@ -223,24 +238,26 @@ async function runConcurrent(
 
 async function runSingleCase(
   evalCase: EvalCase,
+  sourcePath: string,
   collaborators: Collaborators,
   passK: number,
   maxInfraRetries: number,
   policy: ComparatorPolicy,
 ): Promise<CaseVerdict> {
   const started = Date.now()
+  const caseProvenance = buildCaseProvenance(evalCase, sourcePath)
   const content = preflightEvalCaseContent(evalCase)
   if (content.status === 'case-defect') {
-    return preflightFailure(evalCase.case_id, started, 'case_defect', { content })
+    return preflightFailure(evalCase.case_id, started, 'case_defect', caseProvenance, { content })
   }
 
   const referenceSql = await preflightReferenceSql(evalCase, collaborators, policy)
   const preflight: CasePreflightEvidence = { content, reference_sql: referenceSql }
   if (referenceSql.status === 'case-defect') {
-    return preflightFailure(evalCase.case_id, started, 'case_defect', preflight)
+    return preflightFailure(evalCase.case_id, started, 'case_defect', caseProvenance, preflight)
   }
   if (referenceSql.status === 'environment-blocked') {
-    return preflightFailure(evalCase.case_id, started, 'infra_failure', preflight)
+    return preflightFailure(evalCase.case_id, started, 'infra_failure', caseProvenance, preflight)
   }
 
   const attempts: AttemptResult[] = []
@@ -258,6 +275,7 @@ async function runSingleCase(
     pass_k_results: attempts,
     verdict,
     latency_ms: latencyMs,
+    caseProvenance,
     preflight,
   }
 }
@@ -267,6 +285,7 @@ function preflightFailure(
   caseId: string,
   started: number,
   verdict: 'case_defect' | 'infra_failure',
+  caseProvenance: CaseProvenance,
   preflight: CasePreflightEvidence,
 ): CaseVerdict {
   return {
@@ -274,7 +293,26 @@ function preflightFailure(
     pass_k_results: [],
     verdict,
     latency_ms: Date.now() - started,
+    caseProvenance,
     preflight,
+  }
+}
+
+
+/** Assemble the case-owned evidence once, next to the runner that loaded it. */
+function buildCaseProvenance(evalCase: EvalCase, sourcePath: string): CaseProvenance {
+  return {
+    sourcePath,
+    schemaVersion: evalCase.schema_version ?? null,
+    scopeId: evalCase.input.scope_id,
+    expected: {
+      result_value: evalCase.expected.result_value,
+      match_mode: evalCase.expected.match_mode,
+      ...(evalCase.expected.sql === undefined ? {} : { sql: evalCase.expected.sql }),
+      ...(evalCase.expected.behavior === undefined ? {} : { behavior: evalCase.expected.behavior }),
+    },
+    meta: evalCase.meta ?? null,
+    referenceSql: resolveReferenceSql(evalCase),
   }
 }
 
@@ -409,7 +447,7 @@ function assertNever(value: never, subject: string): never {
 }
 
 /**
- * Run one pass_k attempt with infra retry wrapping.
+ * Run one pass_k attempt. The model is sampled once; only SQL execution retries.
  */
 async function runOneAttempt(
   evalCase: EvalCase,
@@ -419,12 +457,10 @@ async function runOneAttempt(
   policy: ComparatorPolicy,
 ): Promise<AttemptResult> {
   try {
-    const { result } = await withInfraRetry(
-      () => executeAttempt(evalCase, collaborators, policy),
-      maxInfraRetries,
-      undefined,
-      classifyReturnedInfraFailure,
-    )
+    const agentResponse = await collaborators.agent.respond(evalCase.input.question, {
+      scope_id: evalCase.input.scope_id,
+    })
+    const result = await executeAttempt(evalCase, agentResponse, collaborators, maxInfraRetries, policy)
     return {
       attempt_k: attemptK,
       execution_outcome: result.executionOutcome,
@@ -436,10 +472,10 @@ async function runOneAttempt(
       expected_result: result.expectedResult,
     }
   } catch (err) {
-    if (isInfraError(err)) {
+    if (isInfraError(err) || classifyInfraFailure(err) !== null) {
       return {
         attempt_k: attemptK,
-        infra_error: err.message,
+        infra_error: err instanceof Error ? err.message : String(err),
       }
     }
     return {
@@ -472,13 +508,14 @@ interface AttemptExecution {
  * weaker form of executing it, and letting it stand in produced a pass rate
  * 56.4pp above the same cases under real execution.
  */
-async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators, policy: ComparatorPolicy): Promise<AttemptExecution> {
+async function executeAttempt(
+  evalCase: EvalCase,
+  agentResponse: AgentResponse,
+  collaborators: Collaborators,
+  maxInfraRetries: number,
+  policy: ComparatorPolicy,
+): Promise<AttemptExecution> {
   const question = evalCase.input.question
-
-  // Ask the agent
-  const agentResponse = await collaborators.agent.respond(question, {
-    scope_id: evalCase.input.scope_id,
-  })
 
   // Collect diagnostics
   const generatedSql = agentResponse.generated_sql ?? null
@@ -493,7 +530,15 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators, 
   let executionDetail = 'case declares no EXECUTION expectation'
   if (evalCase.expected.result_value !== null || evalCase.expected.match_mode !== null) {
     if (agentResponse.generated_sql !== null && collaborators.executor !== null && collaborators.executor !== undefined) {
-      executionArtifact = await executeAndNormalize(collaborators.executor, agentResponse.generated_sql, policy)
+      const sql = agentResponse.generated_sql
+      const executor = collaborators.executor
+      const { result } = await withInfraRetry(
+        () => executeAndNormalize(executor, sql, policy),
+        maxInfraRetries,
+        undefined,
+        classifyReturnedExecutionInfraFailure,
+      )
+      executionArtifact = result
       const verdict = gradeExecution(executionArtifact, evalCase.expected, policy)
       executionOutcome = verdict.outcome
       executionDetail = verdict.detail
@@ -632,7 +677,7 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
   const total = verdicts.length
   let correct = 0
   let wrong = 0
-  const declined = 0
+  let declined = 0
   let unjudged = 0
   let infraFailure = 0
   let caseDefect = 0
@@ -641,7 +686,7 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
     switch (v.verdict) {
       case 'correct': correct++; break
       case 'wrong': wrong++; break
-      case 'declined': break
+      case 'declined': declined++; break
       case 'unjudged': unjudged++; break
       case 'infra_failure': infraFailure++; break
       case 'case_defect': caseDefect++; break
@@ -661,11 +706,11 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
   }
 }
 
-function classifyReturnedInfraFailure(result: AttemptExecution): { kind: 'connectivity' | 'timeout' | 'rate_limit' | 'transient'; error: string } | null {
-  if (result.executionArtifact === undefined || result.executionArtifact.kind === 'completed') return null
-  const artifact = result.executionArtifact
+function classifyReturnedExecutionInfraFailure(result: ExecutionArtifact): { kind: 'connectivity' | 'timeout' | 'rate_limit' | 'transient'; error: string } | null {
+  if (result.kind === 'completed') return null
+  const artifact = result
   const failureKind = artifact.failureKind?.toLowerCase() ?? ''
-  const error = artifact.error ?? result.executionDetail
+  const error = artifact.error ?? 'query execution returned an infrastructure failure'
 
   if (failureKind === 'transport' || failureKind === 'connectivity') return { kind: 'connectivity', error }
   if (failureKind === 'timeout') return { kind: 'timeout', error }
@@ -674,7 +719,7 @@ function classifyReturnedInfraFailure(result: AttemptExecution): { kind: 'connec
   }
   if (failureKind === 'retryable' || failureKind === 'transient') return { kind: 'transient', error }
 
-  if (result.executionOutcome !== 'environment-blocked') return null
+  if (artifact.kind !== 'pending' && artifact.failureClass !== 'infrastructure' && artifact.failureClass !== 'timeout' && artifact.failureClass !== 'patience') return null
   const inferred = classifyInfraFailure(error)
   return inferred === null ? null : { kind: inferred, error }
 }

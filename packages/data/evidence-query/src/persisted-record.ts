@@ -25,6 +25,7 @@ const RunConfigSchema = z.strictObject({
   model: z.string().min(1),
   pass_k: z.number().int().positive(),
   concurrency: z.number().int().positive(),
+  max_infra_retries: z.number().int().nonnegative(),
   sql_judge: z.boolean(),
   verdict_semantics: z.literal('pass^k'),
   responder: z.enum(['engine', 'harness']),

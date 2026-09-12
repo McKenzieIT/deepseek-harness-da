@@ -58,6 +58,40 @@ describe('runBatch', () => {
     expect(agent.calls).toHaveLength(0)
   })
 
+  it('records source and grading provenance in the returned and persisted run', async () => {
+    const agent = new StubAgentResponder()
+    const collaborators = buildCollaborators(agent, null, null)
+    const path = writeCase('provenance', {
+      result_value: { value: 1 },
+      match_mode: 'scalar_exact',
+      sql: 'SELECT {{ds_yesterday}} AS value',
+      behavior: 'returns one scalar',
+    }, { anchor_ds: '20260912', provenance: 'human-reference' })
+    const outputPath = join(mkdtempSync(join(tmpdir(), 'eval-runner-output-')), 'run.json')
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators, { output_path: outputPath }))
+
+    expect(result.cases[0]!.caseProvenance).toEqual({
+      sourcePath: path,
+      schemaVersion: null,
+      scopeId: null,
+      expected: {
+        result_value: { value: 1 },
+        match_mode: 'scalar_exact',
+        sql: 'SELECT {{ds_yesterday}} AS value',
+        behavior: 'returns one scalar',
+      },
+      meta: { anchor_ds: '20260912', provenance: 'human-reference' },
+      referenceSql: {
+        kind: 'resolved',
+        sql: 'SELECT 20260911 AS value',
+        anchorDs: '20260912',
+        substitutions: { ds_yesterday: '20260911' },
+      },
+    })
+    expect(readRunResult(outputPath).cases[0]!.caseProvenance).toEqual(result.cases[0]!.caseProvenance)
+  })
+
   it('keeps running valid cases when another case has defective grading content', async () => {
     const agent = new StubAgentResponder()
     agent.setDefaultReply({ reply: 'The average order value is 50 dollars', generated_sql: null })
@@ -492,6 +526,7 @@ describe('runBatch', () => {
         const result = await pending
 
         expect(executions).toBe(2)
+        expect(agent.calls).toHaveLength(1)
         expect(result.cases[0]!.verdict).toBe('correct')
       } finally {
         vi.useRealTimers()

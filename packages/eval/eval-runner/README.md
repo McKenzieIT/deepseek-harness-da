@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 Eval evidence engine: batch runner with strict pass^k, case/reference-SQL preflight, typed infrastructure retry, replayable execution artifacts, compatibility-checked run configuration, result persistence, before/after delta comparison, and a health gate for the data-agent evaluation harness.
 
-Before the candidate Agent runs, each structurally valid case is checked for usable grading content. A resolvable reference SQL is executed when an executor is available: environment failures become `infra_failure`, invalid reference SQL or disagreement with the declared expected result becomes `case_defect`, and neither enters the model-error denominator. Every returned `CaseVerdict` carries the preflight evidence.
+Before the candidate Agent runs, each structurally valid case is checked for usable grading content. A resolvable reference SQL is executed when an executor is available: environment failures become `infra_failure`, invalid reference SQL or disagreement with the declared expected result becomes `case_defect`, and neither enters the model-error denominator. Every returned `CaseVerdict` carries the preflight evidence and the source path, schema version, scope, expected fields, metadata, and resolved reference SQL needed for offline rescoring. Infrastructure retry applies only to SQL execution after one model response has been sampled, so one `pass_k` attempt never silently becomes multiple model samples.
 
 ## Model Experience
 

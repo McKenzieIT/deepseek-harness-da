@@ -14,6 +14,8 @@ import type {
   ExecutionPort,
   MultiTurnCaseResult,
   ReferencePlaceholder,
+  EvalCase,
+  ReferenceSqlResolution,
 } from '@deepseek-ai/dsh-eval'
 
 // ─── Verdict Mapping ───────────────────────────────────────────────────────────
@@ -105,6 +107,21 @@ export interface AttemptResult {
 /**
  * The verdict for one eval case within a batch run.
  */
+export interface CaseProvenance {
+  /** Exact case file consumed by the runner. */
+  readonly sourcePath: string
+  /** Case schema version, or null for legacy cases. */
+  readonly schemaVersion: number | null
+  /** Scope declared by the case. */
+  readonly scopeId: string | null
+  /** Grading inputs required for offline rescoring. */
+  readonly expected: Pick<EvalCase['expected'], 'result_value' | 'match_mode' | 'sql' | 'behavior'>
+  /** Case-authored provenance metadata, preserved without interpretation. */
+  readonly meta: EvalCase['meta'] | null
+  /** Resolved reference SQL and substitutions, or the typed reason it could not resolve. */
+  readonly referenceSql: ReferenceSqlResolution
+}
+
 export interface CaseVerdict {
   /** The case's unique identifier. */
   readonly case_id: string
@@ -114,6 +131,8 @@ export interface CaseVerdict {
   readonly verdict: RunnerVerdict
   /** Latency in milliseconds for the entire case (all pass_k attempts). */
   readonly latency_ms: number
+  /** Case/source evidence required to audit and rescore this verdict without reloading the corpus. */
+  readonly caseProvenance?: CaseProvenance
   /** Checks completed before any candidate-agent call. */
   readonly preflight?: CasePreflightEvidence
   /** The raw MultiTurnCaseResult from the eval core (for detailed inspection). */
@@ -152,6 +171,8 @@ export interface RunConfig {
   readonly pass_k: number
   /** Concurrency limit for parallel case execution (runtime semantics). */
   readonly concurrency: number
+  /** Maximum infrastructure retries for query execution within one model attempt. */
+  readonly max_infra_retries: number
   /** Whether the SQL semantic judge was enabled (!noSqlJudge). */
   readonly sql_judge: boolean
   /** Live verdict semantics (passKVerdict; best-of-k was removed). */

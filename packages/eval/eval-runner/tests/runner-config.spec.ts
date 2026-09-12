@@ -35,6 +35,7 @@ const SAMPLE_CONFIG: RunConfig = {
   provider: 'aga',
   model: 'qwen3.7-max',
   pass_k: 3,
+  max_infra_retries: 2,
   concurrency: 4,
   sql_judge: false,
   verdict_semantics: 'pass^k',
@@ -61,6 +62,7 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
 
     const result = await runBatch([caseA], collaborators, {
       pass_k: SAMPLE_CONFIG.pass_k,
+      max_infra_retries: 2,
       concurrency: SAMPLE_CONFIG.concurrency,
       skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
       config: SAMPLE_CONFIG,

@@ -37,6 +37,8 @@ function makeRun(runId: string, cases: Array<{ case_id: string; verdict: RunnerV
 const REQUIRED_CONFIG: Config = {
   caseDir: 'packages/eval/eval/cases/k11-v2',
   passK: 3,
+  concurrency: 2,
+  maxInfraRetries: 2,
   provider: 'stub-provider',
   model: 'stub-model',
   today: '20260912',
@@ -82,13 +84,20 @@ describe('EvalRunnerService — mechanics', () => {
       resultsDir: '.tmp/eval-results',
       caseDir: 'packages/eval/eval/cases/k11-v2',
       passK: 3,
+      concurrency: 2,
+      maxInfraRetries: 2,
       today: '20260912',
       columnSemantics: 'by-name',
       maxStoredRows: 200,
     })
   })
 
-  it('getCaseCount discovers K11 cases when caseDir points at the real set', () => {
+  it('getCaseCount discovers the shipped k11-v2 naming convention', () => {
+    const svc = new EvalRunnerService(new Context(), serviceConfig())
+    expect(svc.getCaseCount()).toBe(168)
+  })
+
+  it('getCaseCount discovers archived K11 cases when caseDir points at that set', () => {
     // Cases were archived to _archived/k11-v1 during the k11→k11-v2 migration;
     // the v1 files still match the Service's `/^k11_\d+\.yaml$/` filter (161 of
     // them; the 162nd entry, coverage-matrix.yaml, is excluded by the regex).

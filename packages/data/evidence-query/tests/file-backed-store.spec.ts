@@ -53,6 +53,7 @@ function versionedRecord(overrides: Record<string, unknown> = {}): Record<string
       model: 'stub-model',
       pass_k: 1,
       concurrency: 1,
+      max_infra_retries: 2,
       sql_judge: false,
       verdict_semantics: 'pass^k',
       responder: 'engine',
@@ -353,6 +354,18 @@ describe('FileBackedEvalResultStore', () => {
     store.refresh()
     expect(store.query({}).total).toBe(6)
   })
+
+  it('keeps the previous snapshot when refresh encounters a malformed file', () => {
+    const dir = makeTmpDir()
+    writeJsonl(dir, 'valid.jsonl', [versionedRecord()])
+    const store = new FileBackedEvalResultStore(dir)
+    expect(store.query({}).total).toBe(1)
+
+    writeFileSync(join(dir, 'broken.jsonl'), '{not json}\n')
+    expect(() => store.refresh()).toThrow()
+    expect(store.query({}).results.map(record => record.id)).toEqual(['run-v2:c0'])
+  })
+
 
   it('applies caseAssetResolver', () => {
     const dir = makeTmpDir()

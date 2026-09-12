@@ -193,25 +193,9 @@
       name: '@deepseek-ai/dsh-client-ui-context-layer'
     - id: ui-semantic-layer   # W5: semantic layer management UI (client plugin)
       name: '@deepseek-ai/dsh-client-ui-semantic-layer'
-    - id: eval-runner-service # W6a-gap: wire ctx.evalRunner for trigger_eval full_run and the goal-eval-policy backstop. The run fails before grading when required LLM or query attribution is missing; it never converts missing infrastructure into model failures.
-      name: '@deepseek-ai/dsh-eval-runner-service'
-      config:
-        caseDir: ./packages/eval/eval/cases/k11-v2
-        resultsDir: .tmp/eval-results
-        passK: 3
-        # R8 (PB-COMPLY): eval LLM gateway — explicit, no silent vendor default
-        # (runBatch fails loud if omitted). Deployment overlays can override.
-        provider: aga
-        model: qwen3.7-max
-        # Resolve the run's reference date at profile load and persist the exact
-        # value in every artifact, rather than hiding a stale package default.
-        today: !!js new Date().toISOString().slice(0, 10).replaceAll('-', '')
-        # This composition mounts query-maxcompute over maxc-sidecar.mjs above.
-        executorIdentity: '@deepseek-ai/dsh-query-maxcompute:maxc-sidecar'
-        # Keep the eval deadline aligned with query-engine.toolCallTimeoutMs.
-        queryWaitSeconds: 300
-        columnSemantics: by-name
-        maxStoredRows: 200
+    # Evaluation runs are hosted externally (for example by dsh-eval). The
+    # product profile does not mount eval-runner-service or depend on unpublished
+    # benchmark files inside @deepseek-ai/dsh-eval.
     - id: goal-eval-policy   # W6a: no-progress backstop — counts rounds, triggers eval every K=3, blocks after N=3 consecutive no-improvement
       name: '@deepseek-ai/dsh-goal-eval-policy'
       config:

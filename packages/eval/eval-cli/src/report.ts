@@ -32,11 +32,11 @@ export function formatReport(result: RunResult, cases: readonly EvalCase[]): str
   const intentBreakdown = buildIntentBreakdown(result.cases, cases)
   if (intentBreakdown.length > 0) {
     lines.push('  Per-Intent Breakdown:')
-    lines.push('  ' + pad('intent', 20) + pad('total', 7) + pad('correct', 9) + pad('wrong', 7) + pad('rate', 8))
-    lines.push('  ' + '─'.repeat(51))
+    lines.push('  ' + pad('intent', 20) + pad('total', 7) + pad('attrib', 7) + pad('correct', 9) + pad('wrong', 7) + pad('rate', 8))
+    lines.push('  ' + '─'.repeat(58))
     for (const row of intentBreakdown) {
-      const rate = row.total > 0 ? (row.correct / row.total * 100).toFixed(1) + '%' : '—'
-      lines.push('  ' + pad(row.intent, 20) + pad(String(row.total), 7) + pad(String(row.correct), 9) + pad(String(row.wrong), 7) + pad(rate, 8))
+      const rate = row.attributable > 0 ? (row.correct / row.attributable * 100).toFixed(1) + '%' : '—'
+      lines.push('  ' + pad(row.intent, 20) + pad(String(row.total), 7) + pad(String(row.attributable), 7) + pad(String(row.correct), 9) + pad(String(row.wrong), 7) + pad(rate, 8))
     }
     lines.push('')
   }
@@ -78,12 +78,16 @@ interface SummaryStats {
 }
 
 function formatSummaryTable(s: SummaryStats): string {
+  const attributable = s.correct + s.wrong + s.declined
+  const excluded = s.unjudged + s.infra_failure + s.case_defect
   const rate = (s.pass_rate * 100).toFixed(1)
   const lines = [
     '  ┌─────────────────────────────────────┐',
-    `  │  total: ${pad(String(s.total), 5)}  pass_rate: ${pad(rate + '%', 7)} │`,
-    `  │  correct: ${pad(String(s.correct), 4)}  wrong: ${pad(String(s.wrong), 4)}       │`,
-    `  │  declined: ${pad(String(s.declined), 3)}  infra_failure: ${pad(String(s.infra_failure), 3)}│`,
+    `  │  total: ${pad(String(s.total), 5)}  attributable: ${pad(String(attributable), 4)} │`,
+    `  │  correct: ${pad(`${s.correct}/${attributable}`, 8)} pass_rate: ${pad(rate + '%', 7)} │`,
+    `  │  excluded: ${pad(String(excluded), 2)}                       │`,
+    `  │  wrong: ${pad(String(s.wrong), 4)}  declined: ${pad(String(s.declined), 4)}      │`,
+    `  │  infra_failure: ${pad(String(s.infra_failure), 3)}              │`,
     `  │  unjudged: ${pad(String(s.unjudged), 3)}  case_defect: ${pad(String(s.case_defect), 4)}│`,
     '  └─────────────────────────────────────┘',
   ]
@@ -93,22 +97,24 @@ function formatSummaryTable(s: SummaryStats): string {
 interface IntentRow {
   intent: string
   total: number
+  attributable: number
   correct: number
   wrong: number
 }
 
 function buildIntentBreakdown(verdicts: readonly CaseVerdict[], cases: readonly EvalCase[]): IntentRow[] {
   const caseMap = new Map(cases.map(c => [c.case_id, c]))
-  const intentMap = new Map<string, { total: number; correct: number; wrong: number }>()
+  const intentMap = new Map<string, { total: number; attributable: number; correct: number; wrong: number }>()
 
   for (const v of verdicts) {
     const evalCase = caseMap.get(v.case_id)
     const rawIntent = evalCase?.dimensions.query_intent
     const intent = typeof rawIntent === 'string' ? rawIntent : 'unknown'
-    const entry = intentMap.get(intent) ?? { total: 0, correct: 0, wrong: 0 }
+    const entry = intentMap.get(intent) ?? { total: 0, attributable: 0, correct: 0, wrong: 0 }
     entry.total++
     if (v.verdict === 'correct') entry.correct++
     if (v.verdict === 'wrong') entry.wrong++
+    if (v.verdict === 'correct' || v.verdict === 'wrong' || v.verdict === 'declined') entry.attributable++
     intentMap.set(intent, entry)
   }
 

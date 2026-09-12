@@ -239,13 +239,15 @@ export class FileBackedEvalResultStore extends EvalResultStore {
   }
 
   /**
-   * Re-read all persistence files from the directory.
-   * Not atomic — assumes single-threaded access (no concurrent queries
-   * during refresh). Safe in Node.js single-event-loop usage.
+   * Re-read and validate every persistence file before replacing the visible
+   * snapshot. A malformed new file leaves the previous records intact.
    */
   refresh(): void {
+    const staged = new EvalResultStore()
+    staged.loadFromDirectory(this.dir, this.resolver)
+    const records = staged.query({}).results
     this.clear()
-    this.loadFromDirectory(this.dir, this.resolver)
+    for (const record of records) this.add(record)
   }
 }
 

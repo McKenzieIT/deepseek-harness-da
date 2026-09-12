@@ -12,6 +12,7 @@ export function makeTestRunConfig(
     provider: 'test-provider',
     model: 'test-model',
     pass_k: 1,
+    max_infra_retries: 2,
     concurrency: 1,
     sql_judge: collaborators.sqlJudge !== null && collaborators.sqlJudge !== undefined,
     verdict_semantics: 'pass^k',
@@ -37,15 +38,18 @@ export function makeTestRunOptions(
 ): BatchRunOptions {
   const passK = overrides.pass_k ?? 1
   const concurrency = overrides.concurrency ?? 1
+  const maxInfraRetries = overrides.max_infra_retries ?? 2
   const skipHealthGate = overrides.skip_health_gate ?? true
   return {
     ...overrides,
     pass_k: passK,
     concurrency,
+    max_infra_retries: maxInfraRetries,
     skip_health_gate: skipHealthGate,
     config: makeTestRunConfig(collaborators, {
       pass_k: passK,
       concurrency,
+      max_infra_retries: maxInfraRetries,
       skip_health_gate: skipHealthGate,
     }),
   }

@@ -25,11 +25,10 @@ function findRepoRoot(): string {
 }
 
 const REPO_ROOT = findRepoRoot()
-import { loadCases } from '@deepseek-ai/dsh-eval'
-import { COMPARATOR_POLICY_VERSION } from '@deepseek-ai/dsh-eval'
+import { COMPARATOR_POLICY_VERSION, loadCases } from '@deepseek-ai/dsh-eval'
 import { runBatch, writeRunResult, defaultOutputPath } from '@deepseek-ai/dsh-eval-runner'
 import type { RunConfig } from '@deepseek-ai/dsh-eval-runner'
-import { boot } from './context.ts'
+import { boot, resolveQueryWaitSeconds } from './context.ts'
 import { formatReport } from './report.ts'
 
 interface CliArgs {
@@ -303,12 +302,14 @@ export async function main(): Promise<void> {
     const { HarnessAgentResponder } = await import('./harness-responder.ts')
     const { LlmSqlSemanticJudge } = await import('@deepseek-ai/dsh-eval-runner')
     const variant = args.variant as 'A' | 'B' | 'C' | 'D'
+    const harnessQueryWaitSeconds = args.withQuery ? resolveQueryWaitSeconds() : undefined
     const agent = new HarnessAgentResponder({
       schemaDir: args.schema,
       provider: args.provider,
       model: args.model,
       variant,
       withQuery: args.withQuery,
+      ...(harnessQueryWaitSeconds === undefined ? {} : { queryWaitSeconds: harnessQueryWaitSeconds }),
       ...(args.sidecarPath !== null ? { sidecarPath: args.sidecarPath } : {}),
       today: args.today,
       scopeId: args.scopeId,
@@ -356,7 +357,10 @@ export async function main(): Promise<void> {
       })
     }
 
-    collaborators = { agent, sqlJudge }
+    const executor = agent.createQueryExecutor()
+    collaborators = { agent, executor, sqlJudge }
+    executorIdentity = agent.executorIdentity
+    queryWaitSeconds = agent.queryWaitSeconds
   } else {
     // Default: NL2SQL engine pipeline (existing behavior)
     const booted = await boot({
@@ -387,6 +391,7 @@ export async function main(): Promise<void> {
     provider: args.provider,
     model: args.model,
     pass_k: args.passK,
+    max_infra_retries: 2,
     concurrency: args.concurrency,
     sql_judge: !args.noSqlJudge,
     verdict_semantics: 'pass^k',

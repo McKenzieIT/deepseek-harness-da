@@ -27,7 +27,7 @@ describe('trigger_eval tool', () => {
 
       const text = formatTriggerEval(result)
       expect(text).toContain('Eval run completed: run-123')
-      expect(text).toContain('130/161 correct')
+      expect(text).toContain('130/155 attributable correct')
       expect(text).toContain('80.8% pass rate')
       expect(text).toContain('Wrong: 20')
       expect(text).toContain('Unjudged: 3')

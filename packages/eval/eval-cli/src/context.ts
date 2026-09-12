@@ -39,6 +39,16 @@ import type {
 } from '@deepseek-ai/dsh-eval-runner'
 import { LlmSqlSemanticJudge, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
 
+
+/** Resolve the MaxCompute synchronous wait window used by both query execution paths. */
+export function resolveQueryWaitSeconds(value = process.env.MAXC_WAIT_SECONDS): number {
+  const seconds = Number(value ?? 60)
+  if (!Number.isInteger(seconds) || seconds <= 0) {
+    throw new Error(`eval-cli: MAXC_WAIT_SECONDS must be a positive integer (got ${JSON.stringify(value)})`)
+  }
+  return seconds
+}
+
 /** BootOptions */
 export interface BootOptions {
   readonly schemaDir: string
@@ -209,7 +219,15 @@ function toEngineOutcome(out: ProviderQueryOutcome): EngineQueryOutcome {
 }
 
 class CtxOdpsAdapter implements OdpsExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: string) {}
+  private readonly executor: CtxQueryExecutor
+
+  constructor(
+    private readonly ctx: Context,
+    scopeId: string,
+    private readonly queryWaitSeconds?: number,
+  ) {
+    this.executor = new CtxQueryExecutor(ctx, scopeId, queryWaitSeconds)
+  }
 
   private engine(): { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined {
     return this.ctx.get('query')
@@ -218,15 +236,26 @@ class CtxOdpsAdapter implements OdpsExecutor {
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql }
-    const out = (await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)) as ProviderQueryOutcome
-    return toEngineOutcome(out)
+    return toEngineOutcome(await this.executor.execute(sql, opts?.signal))
   }
 
   async attach(instanceId: string): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
-    const out = (await q.attach(instanceId)) as ProviderQueryOutcome
-    return toEngineOutcome(out)
+    if (this.queryWaitSeconds === undefined) return toEngineOutcome((await q.attach(instanceId)) as ProviderQueryOutcome)
+    const queryWaitSeconds = this.queryWaitSeconds
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<EngineQueryOutcome>((resolveTimeout) => {
+      timer = setTimeout(() => {
+        resolveTimeout({ state: 'failed', failureKind: 'timeout', error: `query attach timed out after configured ${queryWaitSeconds}s wait window`, sql: '' })
+      }, queryWaitSeconds * 1000)
+      timer.unref()
+    })
+    try {
+      return await Promise.race([q.attach(instanceId).then(out => toEngineOutcome(out as ProviderQueryOutcome)), timeout])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
   }
 }
 
@@ -435,9 +464,10 @@ class Nl2sqlAgentResponder implements AgentResponder {
     withQuery: boolean,
     private readonly scopeId: string,
     queryExpansion: boolean = true,
+    queryWaitSeconds?: number,
   ) {
     this.llm = new CtxLlmAdapter(ctx, provider, model)
-    this.odps = withQuery ? new CtxOdpsAdapter(ctx, this.scopeId) : new StandInOdps()
+    this.odps = withQuery ? new CtxOdpsAdapter(ctx, this.scopeId, queryWaitSeconds) : new StandInOdps()
     this.queryExpansionEnabled = queryExpansion
   }
 
@@ -765,8 +795,8 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     // practice: `COUNT(DISTINCT role_id)` over ieu_ods.ods_10000251_all_view
     // measured 68s, against a few seconds for the pre-aggregated DWS tables the
     // earlier baselines hit — so (a)'s own SQL was being scored infra_failure.
-    const maxcWaitSeconds = Number(process.env.MAXC_WAIT_SECONDS ?? 60)
-    const toolCallTimeoutMs = ((Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60) + 60) * 1000
+    const maxcWaitSeconds = resolveQueryWaitSeconds()
+    const toolCallTimeoutMs = (maxcWaitSeconds + 60) * 1000
     const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath, toolCallTimeoutMs })
     executorIdentity = sidecarPath
     queryWaitSeconds = Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60
@@ -790,9 +820,10 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     opts.withQuery,
     opts.scopeId,
     opts.queryExpansion !== false,
+    queryWaitSeconds,
   )
   const judge = new LlmJudgeExecutor(llmAdapter)
-  const executor = opts.withQuery ? new CtxQueryExecutor(ctx, opts.scopeId) : null
+  const executor = opts.withQuery ? new CtxQueryExecutor(ctx, opts.scopeId, queryWaitSeconds) : null
 
   // 6. SQL Semantic Judge (enabled by default when no executor)
   let sqlJudge: SqlSemanticJudge | null = null

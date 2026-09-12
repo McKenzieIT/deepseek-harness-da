@@ -43,6 +43,7 @@ interface RunResult {
     model?: string
     pass_k?: number
     concurrency?: number
+    max_infra_retries?: number
     sql_judge?: boolean
     verdict_semantics?: string
     responder?: string
@@ -64,8 +65,6 @@ export interface Renderability {
   readonly ok: boolean
   /** Why the run was refused, when it was. */
   readonly reason?: string
-  /** True when the run predates run configs, so its mode is unrecoverable and it is not a citable baseline. */
-  readonly unattributable?: boolean
 }
 
 /**
@@ -78,21 +77,23 @@ export interface Renderability {
  * 5.1% "real execution" baseline cannot be confirmed to have touched a
  * warehouse at all.
  *
- * A run with no config predates the field entirely. Those stay renderable so
- * historical results remain diffable, but they are flagged unattributable and
- * must not be cited as a baseline.
+ * A run with no config is refused because its grading mode and policy cannot
+ * be established from the artifact.
  * @param run - the run to check.
  * @returns whether it may be rendered, and why not when it may not.
  */
 export function checkRenderable(run: RunResult): Renderability {
   const config = run.config
-  if (config === undefined || config === null) return { ok: true, unattributable: true }
+  if (config === undefined || config === null) {
+    return { ok: false, reason: `run ${run.run_id} has no config; grading mode and policy cannot be confirmed` }
+  }
 
   const required = [
     'provider',
     'model',
     'pass_k',
     'concurrency',
+    'max_infra_retries',
     'sql_judge',
     'verdict_semantics',
     'responder',
@@ -142,6 +143,7 @@ export function describeRunProtocol(run: RunResult): string | null {
     `model=${config.model ?? '?'}`,
     `pass_k=${config.pass_k ?? '?'}`,
     `concurrency=${config.concurrency ?? '?'}`,
+    `max_infra_retries=${config.max_infra_retries ?? '?'}`,
     `sql_judge=${config.sql_judge ?? '?'}`,
     `verdict=${config.verdict_semantics ?? '?'}`,
     `responder=${config.responder ?? '?'}`,
@@ -172,10 +174,6 @@ function checkProtocolMatch(runA: RunResult, runB: RunResult): void {
       console.error('    Re-run it on a build that records its grading policy.\n')
       process.exit(2)
     }
-    if (renderable.unattributable === true) {
-      console.log(`\n  ⚠ run ${run.run_id} records no config: its execution mode is unrecoverable.`)
-      console.log('    Renderable for reference, but not citable as a baseline.')
-    }
   }
 
   const modeA = describeExecutionMode(runA)
@@ -201,14 +199,6 @@ function checkProtocolMatch(runA: RunResult, runB: RunResult): void {
     console.error('    Re-run one side under the other\'s protocol, or pass')
     console.error('    --allow-protocol-mismatch if you know what you are doing.\n')
     if (!process.argv.includes('--allow-protocol-mismatch')) process.exit(2)
-  } else if (a === null || b === null) {
-    const which = a === null && b === null
-      ? 'neither run records'
-      : `${a === null ? 'A' : 'B'} does not record`
-    console.log(`\n  ⚠ protocol unverified: ${which} its run config (pre-2026-09-04).`)
-    console.log(`      A: ${a ?? 'unknown'}    B: ${b ?? 'unknown'}`)
-    console.log('    If one is k=1 and the other k=3 pass^k, the delta below is')
-    console.log('    ~12pp of protocol artifact. Check the run\'s provenance.')
   }
 }
 
@@ -307,7 +297,7 @@ function validateConfig(data: unknown, path: string): void {
   for (const key of ['provider', 'model', 'verdict_semantics', 'responder', 'scope_id', 'today', 'executor_identity', 'column_semantics'] as const) {
     if (config[key] !== undefined) requireString(config[key], `${path}.${key}`)
   }
-  for (const key of ['pass_k', 'concurrency', 'query_wait_seconds', 'comparator_policy_version', 'max_stored_rows'] as const) {
+  for (const key of ['pass_k', 'concurrency', 'max_infra_retries', 'query_wait_seconds', 'comparator_policy_version', 'max_stored_rows'] as const) {
     if (config[key] !== undefined) requireNumber(config[key], `${path}.${key}`)
   }
   for (const key of ['sql_judge', 'query_expansion', 'with_query', 'skip_health_gate'] as const) {
@@ -355,6 +345,8 @@ interface CategoryStats {
   total: number
   correct: number
   wrong: number
+  declined: number
+  excluded: number
 }
 
 function buildCategoryBreakdown(
@@ -364,18 +356,21 @@ function buildCategoryBreakdown(
   const map = new Map<Category, CategoryStats>()
   for (const c of cases) {
     const cat = classifyCase(c.case_id, deliveryIds)
-    const stats = map.get(cat) ?? { total: 0, correct: 0, wrong: 0 }
+    const stats = map.get(cat) ?? { total: 0, correct: 0, wrong: 0, declined: 0, excluded: 0 }
     stats.total++
     if (c.verdict === 'correct') stats.correct++
     if (c.verdict === 'wrong') stats.wrong++
+    if (c.verdict === 'declined') stats.declined++
+    if (c.verdict === 'unjudged' || c.verdict === 'infra_failure' || c.verdict === 'case_defect') stats.excluded++
     map.set(cat, stats)
   }
   return map
 }
 
 function rate(stats: CategoryStats): string {
-  if (stats.total === 0) return '—'
-  return (stats.correct / stats.total * 100).toFixed(1) + '%'
+  const attributable = stats.correct + stats.wrong + stats.declined
+  if (attributable === 0) return '—'
+  return (stats.correct / attributable * 100).toFixed(1) + '%'
 }
 
 function pad(s: string, w: number): string {
@@ -436,16 +431,18 @@ export function compareRuns(runIdA: string, runIdB: string, dir: string): void {
   console.log('  ' + pad('Category', 18) + rpad('A', 16) + rpad('B', 16) + rpad('Delta', 10))
   console.log('  ' + '─'.repeat(60))
   for (const cat of allCats) {
-    const a = breakdownA.get(cat) ?? { total: 0, correct: 0, wrong: 0 }
-    const b = breakdownB.get(cat) ?? { total: 0, correct: 0, wrong: 0 }
+    const a = breakdownA.get(cat) ?? { total: 0, correct: 0, wrong: 0, declined: 0, excluded: 0 }
+    const b = breakdownB.get(cat) ?? { total: 0, correct: 0, wrong: 0, declined: 0, excluded: 0 }
     const rA = rate(a)
     const rB = rate(b)
-    const pctA = a.total > 0 ? a.correct / a.total * 100 : 0
-    const pctB = b.total > 0 ? b.correct / b.total * 100 : 0
+    const attributableA = a.correct + a.wrong + a.declined
+    const attributableB = b.correct + b.wrong + b.declined
+    const pctA = attributableA > 0 ? a.correct / attributableA * 100 : 0
+    const pctB = attributableB > 0 ? b.correct / attributableB * 100 : 0
     const d = (pctB - pctA).toFixed(1)
     const ds = Number(d) >= 0 ? '+' : ''
-    const label = `${rA} (${a.correct}/${a.total})`
-    const labelB = `${rB} (${b.correct}/${b.total})`
+    const label = `${rA} (${a.correct}/${attributableA}; ${a.excluded} excl)`
+    const labelB = `${rB} (${b.correct}/${attributableB}; ${b.excluded} excl)`
     console.log('  ' + pad(cat, 18) + rpad(label, 16) + rpad(labelB, 16) + rpad(`${ds}${d}pp`, 10))
   }
   console.log()
