@@ -23,7 +23,7 @@
 | 5 | 污染+动态 pipeline | [R5](R5-contamination-papers.md) | [G5](G5-dynamic-case-pipeline.md) | T5/T5b | [R17](R17-contamination-audit.md) |
 | 6 | 轨迹+多轮基准 | [R6](R6-trajectory-papers.md) | G6 | P1/T6 | R18 |
 | 7 | Step-level PRM | R7 | G7 | — | R19 |
-| 8 | Judge 读出/量表/顺序 | **R8**(resolved)、**R8b**、**R8c** | **G8** | T7 | **R20** |
+| 8 | Judge 读出/量表/顺序 | [R8](R8-pairwise-judge-papers.md)(resolved)、[R8b](R8b-judge-readout-papers.md)、[R8c](R8c-reference-anchor-papers.md) | [G8](G8-judge-readout-scale.md) | T7 | [R20](R20-judge-readout-probes.md) |
 | 9 | Error taxonomy | [R9](R9-error-taxonomy-papers.md) | [G9](G9-failure-classifier.md) | [T8](T8-failure-classifier-impl.md) | — |
 | 10 | Data-domain Evaluation Core + Context + Goodhart | R10/[R10b](R10b-harness-measurement-validity.md)/[R10c](R10c-context-layer-evaluation.md)（均 resolved） | [G10](G10-harness-bhe-split.md)（resolved）→ [G13](G13-context-evaluation-protocol.md)/[G14](G14-adaptive-context-holdout-policy.md)/[G15](G15-dynamic-evaluation-lifecycle.md) | [T13](T13-context-projection-service.md)→[T9](T9-evaluation-foundations.md)→[T14](T14-data-analysis-extension-pack-migration.md)→[T15](T15-evaluation-controller-cli.md)→[T12](T12-eval-package-consolidation.md) | [R25](R25-evaluation-rebaseline.md)→[R26](R26-context-counterfactual-matrix.md)/[R27](R27-context-perturbation-leakage-audit.md)/[R21](R21-goodhart-audit.md) |
 | 11 | Robustness+active sampling | R11 | G11 | T10 | [R22](R22-consistency-at-k.md) |

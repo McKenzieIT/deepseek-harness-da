@@ -54,3 +54,37 @@ type-equiv 门 3 条 DRIFT 之一是 `SubagentResult.costs`（源码有 costs、
 - 本票与 [UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md) 同类（都是 fork 加在 upstream 上的 drift），但方向相反：那张是 re-port 真特性 merge，本张是退掉不要的特性。
 - 不阻塞 UM11 PR（type-equiv costs 作 known-red 进 PR 的 known-red 清单）。
 - 退 Qoder 后，`packages/subagent/` 下仍留 `subagent-claude-code`/`subagent-codex`/`subagent-acp`/`subagent-dsh-sdk`/`subagent-in-process-driver` 等其它 provider——本票只退 qoder 那一个。
+
+### [2026-09-11 复核] ⚠ 本票 scopeId 半的核心前提**被证伪**——落地前必须重新拍板
+
+本票 Scope 写 `scopeId` 是「**write-never 死字段**（upstream 零 scopeId 确证，全仓无 setter，dormant reader 仅 TODO 注释），删它无产品影响」，并把 item 11 的 `tool-retrieve`/`tool-search-data-sources` 提及标为「（可选）stale 提及（TODO 注释，非代码，不破 tsc）」。**这两条都不成立**（2026-09-11 在 resync `5fe9b32e44` 逐处核实）：
+
+- **有 3 个 writer**：`core/agent-loop/src/tool-calls.ts:83`、`core/tools/src/ptc.ts:476`、`core/tools/src/index.ts:1393`。
+- **有 6 处 live reader（是代码，不是注释）**：`data/tool-retrieve/src/index.ts:327` `getEnrichedLinker(schema, exec.scopeId)`；`data/tool-search-data-sources/src/index.ts:727` `probeRelationGraph(ctx, exec.scopeId)`、`:750` `getEnrichedLinker(schema, exec.scopeId)`、`:731`/`:751`/`:755` `applyGraphExpansionAndJoins(…, exec.scopeId)`。
+- 删 `ToolExecutionInput.scopeId` **会破 tsc**，并且**会移除 fork 的 GA-GT1 Phase-5b per-tenant linker 隔离**——相邻注释直指 tenant-leak「#19」。这是产品能力回退，不是清理死码。
+- 另有 **4 个专门的 scopeId 测试**未列入 Scope：`core/agent-loop/tests/tool-calls.spec.ts:771-813`（2 个 `it`）、`core/tools/tests/ptc.spec.ts:1880-1931`（2 个 `it`）。
+
+**建议：把 scopeId 半拆成独立票并重新 grilling。** 原来「搭车 Qoder 退场免二次级联」的理由已不成立——单 `costs` 就会触发同样的 generator 级联，所以拆开不多付代价，却避免在一张 task 票里悄悄做掉一个产品决策。
+
+### [2026-09-11 复核] 其余 Scope 缺口与已解除的阻塞
+
+- **两个阻塞都已死**：① `Blocked by: UM11（PR merge 后再做）` → PR #115 已 merged（`origin/master` = `607868e6a0`）；② translation-zh 前置 → zh emission 已于 2026-09-11 落 resync `4d4f725748`，`verify-doc-graphs` 6 docs 绿。**但本票 Scope §B 与 Acceptance 两处仍写着 zh 依赖**，需删。
+- **Scope 漏项**：`data/audit/src/store.ts:572`（按 `TAG.QODER_CALL` 汇总 cost/credits 的 SQL）+ `:629`（`correctedStats` 分支）；`tool-subagent/src/index.ts:223` 第三处 costs 站点。
+- **实际足迹是 38 个文件**（Scope 未列全）：含 `data/audit/README.{md,zh.md}`、`identity/identity/src/index.ts` + README 双语、`data/phase-gate/src/domain.ts`、`credentials-keychain{,-host}/tests/*.spec.ts`、以及 12 个 `docs/` 文件（含 `da-architecture`/`da-plugin-development-guidelines`/`subsystems/data-agent`/`da-upstream-debt` 的手写双语对）→ **真实 translation-pairing 暴露面**。
+- **regen 级联是 5 个 generator 不是 3**：除 `api-cordis-catalog`/`config-catalog`/`doc-graphs`，还有 `docs/module-graph.{md,zh.md}` 与 `docs/architecture-graph.md`；另 `extensions/tool-cordis/src/api-catalog.ts:6422-6423`/`:6463` 存 `SubagentCosts`、`:565` 存 `qoder_call` 描述。
+- `verify-type-equiv` 实测恰好 3 条 DRIFT，与本票所列一致：`docs/subsystems/tools.md:179`（`ToolExecutionInput.scopeId`）、`docs/subsystems/subagent.md:290`（`SubagentResult.costs`）、`docs/subsystems/core.md:195`（`AgentOptions.scopeId`）。
+- **估算**：Qoder+costs 半（已拍板、AFK）~1 session；scopeId 半（需重新拍板 + 改 live 代码 + 5-generator regen + 双语文档扫）~1-2 session。
+
+### [2026-09-11] subagent-qoder 的 invariant companion 已在 UM-INVARIANT 退休
+
+[UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md) **resolved**（source `7ad3242d97` on resync，未 push）。本包 `packages/subagent/subagent-qoder/` 的 `src/invariant.ts` + `package.json` 的 invariant 三件套 + tsconfig ref + `tests/subagent-qoder.spec.ts` 的 companion 测试已 retire（spec 的 stale `import '../src/invariant.ts'` + companion-registration test 已删，其余测试保留）。
+
+→ **与本票 Scope A item 1「删整个 subagent-qoder 包」是 subsume 关系**：若本票删整包，UM-INVARIANT 对该包的 invariant retirement 是冗余 no-op（companion 随包消失）。**顺序**：UM-INVARIANT 先（已 done），本票后删整包（subsume）。**不冲突**——UM-INVARIANT 未碰本票 Scope A 的其他 5 处（`run.ts` 的 `qoderCosts()` / audit schema / admin export / bundle）。
+
+**仍 pending**：本票 2026-09-11 复核的 scopeId 半前提证伪（3 writer `tool-calls.ts:83`/`ptc.ts:476`/`tools/index.ts:1393` + 6 live reader `tool-retrieve:327`/`tool-search-data-sources:727,731,750,751,755`，非 write-never，删它破 tsc 且移除 per-tenant linker 隔离 tenant-leak #19）→ 建议拆独立票重新 grilling（**未做**）。
+
+### [2026-09-12] blocker 已释放（`Blocked by: UM11` 的理由已满足）
+
+票头写 `Blocked by: UM11（PR merge 后再做，避免与 PR-blocker 扫除混 scope）`。**PR merge 已发生**：#116（`be447fc1d0`）+ #117（`c174c9a784`）均 merged，PR-blocker 扫除阶段结束。UM11 本身仍 open（剩 worktree/branch 后清 + master-sync，后者被 evaluation 分叉外部阻塞，见 UM11 2026-09-12 节），但**本票被阻塞的那个理由已不复存在** → **本票现可立即认领**，且 scope 不会再与 PR 扫除混淆。
+
+认领时注意票内已记的**前提证伪**：scopeId 不是「write-never 死字段」——有 3 个 writer + 6 处 live reader（`tool-retrieve:327`、`tool-search-data-sources:727/731/750/751/755`），删它破 tsc 且移除 fork 的 per-tenant linker 隔离（注释直指 tenant-leak #19）。故原「搭车 costs 免二次级联」的理由不成立（单 costs 就触发同样级联）→ **建议拆成 costs（退 Qoder subagent）与 scopeId（per-tenant 隔离，需 re-grilling）两张票单走**。本票解则 `type-equivalence` 门 3 DRIFT 全绿（11 红 → 10）。

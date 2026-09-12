@@ -82,3 +82,90 @@
 **PR 状态**：B 类 2 绿 + 2 known-red（type-equiv 待 QODER-RETIRE、package-invariants 非回归），按用户决策 PR 可推进（known-red 进清单）。⚠ PR 描述须写明：① ui-settings-models 整包被 M1 回退（~30 文件，`tsc` 全绿、`--cc` 看不见，见 UM-MERGE-INTEGRITY）② type-equiv/package-invariants 作 known-red 的理由 + 各自专属票。resync tip `c579b809d2`、master tip 仍 ahead origin，均 unpushed。
 
 **UM15 首片**（线 B）：§1（`b3a516fe98` MODES 重构）+ §5.2(c) enroll（`c579b809d2`）已落；§2/§3/§4 由 4 subagent 生成在盘 ready（subagent 环境瞬态故障已恢复），下个 session 主 session apply（详见 [UM15](UM15-durable-upstream-sync-method.md) 2026-09-15 update）。
+
+### [2026-09-18] PR #115 MERGED via comprehensive resync merge；§五 topology corrected；p2-* + master sync deferred
+
+**Topology re-verification (§4: 不轻信已 verified，自重跑)**：prompt §五 前提过时——local master 是 origin/master 的**严格后代**（`merge-base(origin/master, HEAD)` = `e064933dc8` = origin/master 本身；`HEAD..origin/master` = 0；甚至在 prompt 自述 tip `f0038f63e4` 处 origin/master 就已是祖先）。故 "merge origin/master → local master、5 冲突" = **空操作**（`merge-tree` 干净，结果树 = `HEAD^{tree}`）；"push local master 清 PR" = **反效果**（`merge-tree` resync→local HEAD = ~20 冲突，比当前 5 更多）。真 PR #115 冲突 = origin/master(`e064933dc8`) vs resync(`0301586bed`)，merge-base `65bf3cddc9`，5 wayfinder doc（`map.md` content + `UM-ADAPT`/`UM-flow-2026-09-08`/`UM14`/`UM16` add/add）。resync 不含 origin/master 的 evaluation（`is-ancestor` exit 1）。**须在 resync 分支上解，非 local master。**
+
+**决策（用户 2026-09-18 选「全面 via subagent」）**：merge local master(`1ef40edaee`) 进 resync(`0301586bed`)，~21 wayfinder doc 取 theirs（local 09-09..09-17 更新更全；resync 09-08 旧快照已 supersede）。代码零冲突（仅 wayfinder doc 冲突）。
+
+**Phase A（read-only subagent，27 calls/123K tokens/~12min，无瞬态故障）**：21/21 take-theirs，0 take-ours，0 combine，0 byte-splice。关键（§4 UM15 警告已核）：UM15 §1-§5 **代码**（scripts，commits `b3a516fe98`..`0301586bed`）在 resync git 史（auto-merge 保留，非冲突——代码零冲突）；§1-§5 **文档**（UM15 票 + map 条目）在 local 的 `>` 行（take-theirs 保留）——双保留。分析在 `/tmp/um11-conflict-analysis.md`（session 内）。
+
+**Phase B（主 session 写，串行，可逆）**：resync 树 fetch local master → `git merge` → 21 冲突全 `wayfinder/data-agent/`（零代码冲突）→ `git checkout --theirs` + `git add`（byte-safe，map.md 13 U+FFFD 未触，无 edit_file）→ §4 验 staged == local(`1ef40edaee`) 4 关键文件（map/UM15/UM11/UM-flow）0 diff → `verify-architecture-graph` GREEN（up to date，零写）→ commit `7a20c4cb0a`（pre-commit hooks 全绿: translation-pairing/lint/whitespace/vendor-manifest）。
+
+**PR-clearing 拓扑验证**：merge commit `7a20c4cb0a` parents = `0301586bed` + `1ef40edaee`。`is-ancestor(e064933dc8, 7a20c4cb0a)` exit 0 → origin/master 是新 resync tip 祖先 → push 后 PR #115 base 是 head 祖先 → **PR 干净可 fast-forward**。`is-ancestor(0301586bed, 7a20c4cb0a)` exit 0 → **push = fast-forward，非 force**。§4 验：`scripts/upstream-sync-record.ts` 在（§5 代码保留）；UM15.md 14 行 §5 标记（§5 文档保留）；lefthook.yml 2 处 upstream-sync record（§5b 门保留）。
+
+**Outward（§六，用户授权 option 1「Push + merge PR + 轻后清」）**：① push resync `0301586bed..7a20c4cb0a` → origin/upstream/resync-2026-09-08（FF，pre-push 三门再次全绿: no-prod 3.79s / typecheck 37.21s / upstream-sync-record 10.44s）② PR #115 poll→MERGEABLE→`gh pr merge 115 --merge` → **origin/master = `607868e6a0`（merge commit，parents `e064933dc8`+`7a20c4cb0a`，state=MERGED，2026-09-11T01:59:47Z）**，local master 46 commit 经 PR 着陆 ③ resync remote branch 删 ✓（`- [deleted]`，留本地 resync 树给 Scope 4-6）。
+
+**Deferred（后续）**：① **master sync**——并行 eval session 在本 session 期间把 master 从 `1ef40edaee` 推到 `f3e46b3f20`（evaluation R20 probe commit "when to wire EXPECT_NO_LEAK into CI"），与 origin/master `607868e6a0` 分叉（master ahead 1 / behind 2773），`git merge --ff-only origin/master` abort（"Not possible to fast-forward"）；按 §六 未介入 eval session（无 index.lock 时查 + 不碰）——eval session 自行后续把 `f3e46b3f20` 与 origin/master 合并/rebase（local master 46 commit 已着陆，`f3e46b3f20` 是 eval session 独立的第 47 commit，非 PR #115 scope）。② **p2-* worktree cleanup**（本票 Scope 4-6）——5 个 `refactor/p2-*`（`dsh-p2-present-table`/`dsh-p2-present-decomp`/`dsh-p2-suggest-followups`/`dsh-p2-uism-layer`/`dsh-p2-uism-vitest`）须逐内容审（Phase-2 是内容收编非 merge，`merge-base --is-ancestor` 一律 false → 不可按 ancestry 判删），单独 session。③ evaluation worktree（`.worktrees/r10-harness-goodhart`/`.worktrees/t1-exec-grader`）+ master eval session index.lock 警惕——未碰。
+
+**本票状态**：PR merged 是核心；p2-* 后清 + master sync 未完 → **仍 open**。merge commit `7a20c4cb0a`（resync）+ `607868e6a0`（origin/master PR merge）的 message 已是持久记录（含 topology correction + 验证细节）。
+
+
+## Session progress — 2026-09-11（S-p2 + S-master 分析完，apply gated on eval session）
+
+- **S-p2**（`/tmp/sp2-analysis.md` 若持久）：5 `refactor/p2-*-2026-09-12` 分支 vs `eb9e4cf05c`（Phase-2 收编 commit）逐内容判（**非 ancestry 判**——Phase-2 是 cherry-pick/squash 收编，`git merge-base --is-ancestor <branch> eb9e4cf05c` 一律 false 即使 fully-absorbed；用 `git diff eb9e4cf05c <branch> -- <file>` 字节比对，empty = fully absorbed）：
+  - **del 3**（fully absorbed，全文件字节一致 with `eb9e4cf05c`）：`refactor/p2-present-decomp-2026-09-12`（5/5）、`refactor/p2-suggest-followups-2026-09-12`（5/5）、`refactor/p2-uism-layer-2026-09-12`（10/10）。
+  - **keep 2**（residual content not in `eb9e4cf05c`）：`refactor/p2-present-table-2026-09-12`（4/5 absorbed，residual `table-card.client.spec.tsx` 加 `callView: null` field 到 `makeRunningBlock()` helper——minor 但真分歧）；`refactor/p2-uism-vitest-2026-09-12`（1/6 absorbed，5 test files `apply`/`components`/`provider-form`/`store`/`welcome-notice.client.spec.*` 残留——不同 mock 模式 + `RemoteError`/`ModelsSettingsStore` 直接构造 + cordis/dsh-api-remotes type imports + fixture shapes；ui-settings-models vitest-debt clearance **未收编**，`eb9e4cf05c` scope 只含 4 presenter Plan-B migration）。
+  - 关键 finding：`eb9e4cf05c` 的 4-presenter Plan-B migration scope 精确匹配 3 fully-absorbed + 1 mostly-absorbed 分支；ui-settings-models vitest work（branch 5）outside that scope，un-absorbed → 落 `R-DA-UI-SETTINGS-MODELS-VITEST-DEBT` follow-up。
+  - **del apply = eval session 收定后**逐个 `git branch -D <ref>`（⚠ 先 re-confirm absorption——master tip 可能因 eval 推进已动；不可批量；per-branch commit）。
+- **S-master**（`/tmp/smaster-plan.md` 若持久）：
+  - merge-base = `1ef40edaee`（wayfinder 09-18 next-session doc，divergence point，在两侧）。
+  - master 2 ahead = `f3e46b3f20`（eval R20 probe，1 file `wayfinder/evaluation/tickets/R20-judge-readout-probes.md` +4——**非 prompt 猜的 `…/research/harness-measurement-validity-papers.md`**）+ `fc917a55d4`（map/UM11/UM-flow record，3 files 纯插入 +23，msg body 交叉引用 `f3e46b3f20` hash——hash-stability 重要）。
+  - behind 2773 = origin/master PR #115 merge `607868e6a0`（Merge `e064933dc8`+`7a20c4cb0a`；resync `7a20c4cb0a` parents `0301586bed`+`1ef40edaee`）。
+  - **clean**（`git merge-tree --write-tree origin/master master` exit 0，tree `0d5480e86764…`，无冲突输出——**证伪 prompt 的 "map.md conflict" 假设**：master 4 ahead files 皆 0 touches by origin/master since merge-base；origin 21-doc take-theirs 覆盖的是 *其他* wayfinder docs，非此 4；两 ahead commits 皆纯插入 on byte-identical-to-merge-base → trivial clean 3-way）。
+  - **推荐 MERGE** `origin/master` into master（merge commit，no FF since divergent；保 `f3e46b3f20`/`fc917a55d4` hash——commit msg 交叉引用，rebase 会 rewrite stale；robust to eval session 再推——no to-replay re-selection；fork integration-branch 模式 consistent with `607868e6a0` being a merge）。
+  - apply = eval session 收定后：re-run `git merge-tree --write-tree origin/master master` re-confirm clean → `git merge origin/master` → 若 eval 改图景，wayfinder doc 冲突 take-theirs（09-09..09-17 local newer win）+ code auto-merge。**push 须用户明确指示**（§六）。
+- handoff：`wayfinder/data-agent/prompts/next-session-2026-09-11-post-subagent-sweep.md` §五C/§五D（commit `e1a1d6049a` on master）。
+
+### [2026-09-11 实测复核] 后清范围比票记的大：**16 个 worktree 一个都没删**；并且**多出一次 landing**
+
+在 master 树实测（`git worktree list` + 逐分支 `git merge-base --is-ancestor <tip> origin/master`）：
+
+**① 已并入 `origin/master`、可安全删（worktree + 分支）——5 个**
+`chore/um-arch-regen-2026-09-09`（dsh-arch-regen）· `task/um-cordis-regen-2026-09-09`（dsh-cordis）· `refactor/rda-client-runtime-phase1-2026-09-09`（dsh-rda-p1）· `task/um16-root-entry-2026-09-09`（dsh-um16）· `upstream/merge-2026-09-07`（dsh-upstream-merge）。
+这些是纯 ancestry 判定（`--is-ancestor` 通过），无需逐文件核 absorption。
+
+**② 未并入、需逐文件核 absorption——7 个**（ancestry 一律 false，因 Phase-2 是 cherry-pick/squash 收编）
+- `refactor/p2-present-decomp-2026-09-12`(ahead 1)、`refactor/p2-suggest-followups-2026-09-12`(1)、`refactor/p2-uism-layer-2026-09-12`(1) → **本票 S-p2 已逐文件核实 0 residual，属 del-3**
+- `refactor/p2-present-table-2026-09-12`(ahead 2) → keep（1 residual）· `refactor/p2-uism-vitest-2026-09-12`(1) → keep（5 residual）→ 归 `R-DA-UI-SETTINGS-MODELS-VITEST-DEBT`
+- `chore/um-arch-impl-2026-09-08` → **ahead 6**（票记「ahead 27」**已过期**），需 rescue/abandon 决定
+- `refactor/rda-admin-lazy-webserver-2026-09-08`(ahead 1) → ⚠ **真·未合入工作**：`9ba8638eac`「refactor(admin): lazy webServer carrier (mirror seam 3)」相对 `origin/master` 仍差 **+102/−16**（`packages/data/admin/src/index.ts` + `tests/admin.spec.ts`）。resync 里 `packages/data/admin/src/index.ts:141` 仍是 `export const inject = ['storageDomain','credentials','webServer']`、`:238` 仍同步 `ctx.webServer.register`，`tests/admin.spec.ts:48` 仍断言 `toContain('webServer')`。
+  → 这意味着 [UM-ADAPT](UM-ADAPT-per-shift-adaptive-analysis.md) 说的「seam 3/4 已落地移位」在**分支层面为假**：分析与实现都写了，但**没有合进任何主线**。若 UM-ADAPT 要以「seam 3/4 done」收口，必须先决定这条分支是落还是改写成「已分析，实现未合入」。
+
+**③ 本票未记的一项：需要第二次 landing。**
+`upstream/resync-2026-09-08` 相对 `origin/master` = **3 ahead / 1 behind**，且**远端 resync 分支已在 merge 时删除**。3 个未推提交：`c2623c84eb`（线D）· `4d4f725748`（gen-doc-graphs zh）· `5fe9b32e44`（UM-LINT-A）。本票 Resolution 停在「留本地 resync 树给 Scope 4-6」，没有覆盖这批新增内容 → **需要一次新的 push + PR（或搭 master merge 的车）**。
+⚠ 这一步同时是 [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 最后一个大 open 项（「CI 上的真实 red set 至今无人见过」）的唯一解锁方式——**一次动作服务两张票**。
+
+**④ master sync 现状**：master **ahead 20 / behind 2773** 于 `origin/master`（票记「ahead 1」已过期——eval session 期间又推了若干）。重跑 `git merge-tree --write-tree origin/master master` → **exit 0，干净**。所以推荐的 MERGE 仍是 trivially clean，但它是**在 eval 独占的 worktree 上做 git 写**，仍按 §六 gated。
+
+**⑤ 其它可删项**（ahead=0 vs `origin/master`，票未列）：`fix/lint-noop-assertion-unused-disable`、`backup/master-pre-sync-2026-09-08`（其「合并前回滚点」用途随 PR #115 merged 而解除）。
+
+**⑥ 过期项**：header 仍写「本票仍 blocked，不 push」（挂 UM12 + UM-MERGE-INTEGRITY）—— PR 已推已并，UM12 的 B 类硬阻塞也已解除（2 绿 + 2 known-red）。worktree 表里 `.worktrees/r10-harness-goodhart` 现在的分支是 `grilling/G10-harness-bhe-split`（非 `research/R10-...`），另有 `research/R10b-…`/`R10c-…` 两个 eval 分支——**仍勿动**。
+
+**估算**：**2-3 session** —— 1 个 AFK session 做 del-3 + 上面①的 5 个已并入 worktree/分支清扫 + 备好 rda-admin/arch-impl 的 rescue 决定；1 个 gated session 做 master MERGE + push + 那 3 个 resync 提交的后续 PR；若 rda-admin 变成真代码工作再 +1。
+
+### [2026-09-12] worktree 清理 + 剩余分析
+
+**删 10**：①5（`dsh-arch-regen`/`dsh-cordis`/`dsh-rda-p1`/`dsh-um16`/`dsh-upstream-merge`，is-ancestor origin/master YES）+ ③2（`fix/lint-noop-assertion-unused-disable`/`backup/master-pre-sync-2026-09-08`，ahead=0）+ ②3 del-3（`p2-present-decomp`/`p2-suggest-followups`/`p2-uism-layer`，workflow re-confirm 0 residual vs `eb9e4cf05c`[PR #116 已 in origin/master] + worktree 仅 T/pnpm-lock 无手写，force-delete）。
+
+**剩 8**：master + 2 eval（`.worktrees/r10`/`t1`，不碰）+ `dsh-resync`（PR 主体，保留）+ 4 需决定/keep：
+- `dsh-arch`[chore/um-arch-impl-2026-09-08，ahead 6]：**代码 absorbed** via arch-regen(`038d8b51ce` in origin/master)；3 处 doc/manifest 残留→定向 rescue 后删（见 UM-ARCH ticket 2026-09-12）。
+- `dsh-rda-admin`[refactor/rda-admin-lazy-webserver-2026-09-08，`9ba8638eac`]：完整 UM-ADAPT seam 3 实现，未合入→UM-ADAPT land/rewrite 决策（见 UM-ADAPT ticket 2026-09-12）。
+- `dsh-p2-present-table`：1 residual（`callView:null`）→ keep（R-DA-UI-SETTINGS-MODELS-VITEST-DEBT）。
+- `dsh-p2-uism-vitest`：5 test residual→ keep（同上）。
+
+PR #115/#116 都 merged；p2-* 后清基本完成（剩 4 需决定/keep）。master sync 仍 gated。
+
+### [2026-09-12] PR 部分已完 + 后清进展 + master-sync 阻塞根因（重要订正）
+
+**PR 部分收口**：#116 merged（`be447fc1d0`）→ #117 merged（`c174c9a784`，7 commit = ui-settings re-port 4 + seam-3 `9ba8638eac` + merge `bdecd11840` + doc-regen `83be9786e1`）。远端 `refs/heads/upstream/resync-2026-09-08` 这次**未被自动删**，仍在 `83be9786e1` → **后续 resync 工作直接续用该分支**，不必新建（与 #115/#116 merge 后被删的情形不同，动手前 `git ls-remote` 自证）。
+
+**worktree 后清**：`refactor/rda-admin-lazy-webserver-2026-09-08` + worktree `../dsh-rda-admin` 现**可按 ancestry 安全删** —— `git merge-base --is-ancestor 9ba8638eac origin/master` = **YES**（真 merge 入 `c174c9a784`）。这与本票警告的 5 个 `refactor/p2-*` 不同：那些是**按内容收编**，ancestry 判定不适用，仍须逐文件核 residual。删掉后存活 worktree 从 7 降到 **6** = master + 2 个 evaluation（`.worktrees/r10-harness-goodhart` / `.worktrees/t1-exec-grader`，**不碰**）+ `dsh-resync` + 2 个 p2-keep（`dsh-p2-present-table` / `dsh-p2-uism-vitest`）。
+
+**master-sync 阻塞根因订正（此前记为「evaluation 文件冲突」，过于笼统，实测更严重）**：
+- 拓扑（2026-09-12 fetch 后实测）：local master `08d0f44286` vs `origin/master` `c174c9a784` = **origin-only 2802 / local-only 80**，merge-base `1ef40edaee`；`origin/master` **不是** local master 的祖先 → **plain push 必被拒（non-FF）**。
+- `git merge-tree origin/master master` → exit 1，冲突**恰好 2 文件**：`wayfinder/evaluation/map.md`（2 hunk）+ `wayfinder/evaluation/tickets/README.md`（1 hunk）。其余全部 auto-merge 干净。
+- **根因不是「谁比谁新」，是 evaluation effort 的同一批工作在两条线上各做了一遍**：同 5 条 commit subject 在两侧以不同 sha 存在（`00c047956d`/`b7039860ce`/`be3c370693`/`bdc27fe572`/`259d509134` vs `bb44531577`/`219d815e75`/`30224f1942`/`d462e637d1`/`92acfcab77`），local 侧另有 4 条（G10 stack / GA-GT4 close / data scope boundary 等）。
+- ⚠ **两侧都有对方没有的真内容，取任一侧都会丢东西**（已逐行核，且**排除了「只是标点全宽/半宽差异」**这一可能——标点归一化后仍差）：`origin/master` 独有 `tickets/README.md` 矩阵里的 **T12**、若干 **票链** 行、GA-GT4 行；local 独有 **R10/G10** 相关行与**重写过的「领域职责」段**（origin 版写 "evaluation 票只设计/实现 ground truth、normalization、comparator policy…"，local 版写 "evaluation effort 设计/实现 Benchmark、identity、evidence、grading、measurement 与 evaluation lifecycle…"）。
+- **结论：master-sync 不是 UM11 能单方面做的 git 操作，而是需要 evaluation 域知识的 reconcile。** 本 map 的铁律「不碰 `wayfinder/evaluation/`」在此不只是纪律问题——盲选一侧会静默删除对方 effort 的票据内容。**须由 evaluation effort（或一次专门的、经用户授权的 cross-effort reconcile 任务）合并这两份，然后 master 才能 push。**

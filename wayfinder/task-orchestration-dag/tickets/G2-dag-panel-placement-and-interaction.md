@@ -2,6 +2,7 @@
 
 **Type**: prototype
 **Status**: resolved 2026-09-02(D 融合方案,用户确认)
+**Current standing**: interaction goals and prototype evidence remain; placement is superseded by [G15 Current client placement](G15-current-client-placement.md), which uses current public DSH client contracts.
 **Blocked by**: [R2 G6 dagre layout feasibility](R2-g6-dagre-layout-feasibility.md) ✅, [G1 DAG data model decision](G1-dag-data-model-decision.md) ✅
 **Blocks**: [G4 animation and edge design](G4-animation-and-edge-design.md)
 

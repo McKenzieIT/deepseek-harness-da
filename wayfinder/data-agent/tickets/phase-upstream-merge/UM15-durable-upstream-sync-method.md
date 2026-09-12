@@ -171,3 +171,8 @@ durable 方法须含一道**纯 git plumbing 的 merge 完整性 gate**,与「ga
 **UM15 首片（§1-§5 + lefthook）durable method 实现完**：staleness（local pre-push 门 + `upstream-status` report）+ regen 清单（§3 generator-inputs manifest）+ meta-gate（§2 gate-coverage）+ 三道完整性门（§4 upstream-sync-record）+ impact report（§4 stage 2）。7 项 grilling 全收口。**本票仅剩 PR 推送（用户指示后）+ 未来自动化 slice（impact analyzer 全自动化 / ticket-gen workflow）——后者非首片 scope，毕业另开。**
 
 **PR 状态**：resync +2 commit（tip `0301586bed`，共 11 unpushed），B 类 2 绿 + 2 known-red，PR 可推。PR 描述待写明 4 点（ui-settings 整包 M1 回退 ~30 文件 / type-equiv+package-invariants known-red 理由 + 专属票 / 大原则 upstream 不改 / §2-§5 是 UM15 首片 durable method）。**不擅自 push——等用户明确指示**（§六）。resync `0301586bed`、master ahead origin，均 unpushed。
+
+### [2026-09-12] 两条现成输入（来自 UM-ADAPT session）
+
+1. **Decision 5「seam-6 stale」的票面文字已过期，可关那行** —— 本票 §Decision 5 记 seam-6 为 stale/pending，但 §5a（`f8c0e3abca`）早已修掉：`scripts/gen-architecture-graph.ts:90-92` 现读 `mode: 'seam'` + `implementations: ['api-workspace-files']`（`packages/api/workspace-files` 已随 UM14 re-sync 回归）。这是**票面未更新**而非第二个缺陷（read-only 复核确认）。
+2. **cadence 触发器已响：上游又前进了** —— push 时 `verify-upstream-sync-record` 报 `upstream tracking ref points at c291e7961a51, but record.current.upstreamSha is c389f96bf3a9 — ref may be stale or record may be behind`。按本票收口的 cadence 决策（**每周 + 批量 session + threshold「150 commits / 14 天 / seam>0 任一硬触发」**），下一步是**量一下 `c389f96bf3a9..c291e7961a51` 的 commit 数与 seam 触及数**，判是否达阈值、启下一轮 re-sync（若达阈值，这就是 UM13/UM14 之后的第三轮）。注意本票 §1 的 MODES 重构 + §3 generator-inputs manifest + §4 三道完整性门都已就位，第三轮应当能直接用上，这也是首次真实检验 durable method 的机会。
