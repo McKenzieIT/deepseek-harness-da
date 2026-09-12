@@ -15,9 +15,6 @@
       "path": "../../../vendor/cordis"
     },
     {
-      "path": "../../runtime-diagnostics/invariants"
-    },
-    {
       "path": "../ui-slots"
     },
     {
@@ -25,9 +22,6 @@
     },
     {
       "path": "../connection/tsconfig.client.json"
-    },
-    {
-      "path": "../runtime"
     },
     {
       "path": "../ui-sidebar"

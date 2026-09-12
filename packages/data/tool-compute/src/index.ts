@@ -25,7 +25,7 @@ function computeResultId(code: string, sourceResultId: string): string {
   return `cr_${hash.slice(0, 12)}`
 }
 
-function validateComputeOutput(value: CodeJsonValue | undefined): { columns: string[]; rows: unknown[][] } {
+function validateComputeOutput(value: CodeJsonValue | undefined): { columns: string[]; rows: CodeJsonValue[][] } {
   if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(
       'compute: code must return an object with {columns: string[], rows: any[][]}. '
@@ -53,7 +53,7 @@ function validateComputeOutput(value: CodeJsonValue | undefined): { columns: str
       `compute: returned rows must each have ${columns.length} cells (columns.length); a jagged payload is rejected.`,
     )
   }
-  return { columns: obj.columns, rows: obj.rows }
+  return { columns: obj.columns, rows: obj.rows as CodeJsonValue[][] }
 }
 
 function formatResult(value: ComputeResult): string {
@@ -164,6 +164,9 @@ export function apply(ctx: Context, _config: Config = {}): void {
 
       const output = validateComputeOutput(runResult.value)
       const newResultId = computeResultId(code, resultId)
+      // The code-runtime result is JSON-serializable (CodeJsonValue), which is
+      // structurally the constrained `Json` cell union ResultEntry.rows carries,
+      // so the validated array-of-arrays shape crosses the Remote boundary as is.
       const entry: ResultEntry = { columns: output.columns, rows: output.rows }
       ctx.resultCache.put(newResultId, entry)
 

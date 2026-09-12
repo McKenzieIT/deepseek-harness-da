@@ -4,7 +4,8 @@
 // service's scopeOf path runs against production resolution (no local tag probe).
 import { describe, expect, it, vi } from 'vitest'
 import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
-import type { IApiClient, RpcResult } from '@deepseek-ai/dsh-api-remotes/client'
+import { RemoteError, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
+import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { DEFAULT_RESULT_CACHE_CONFIG, ResultFetchError } from '../src/client/cache.ts'
 import { ResultServiceImpl } from '../src/client/service.ts'
 import type { ResultService } from '../src/client/service.ts'
@@ -16,20 +17,21 @@ const ENTRY: ResultEntry = {
   metadata: { sql: 'select 1', row_count: 1 },
 }
 
-/** Build a mock IApiClient whose only live surface is `results.get`. */
-function makeApi(getImpl: (rid: string) => Promise<RpcResult<ResultEntry>>): { api: IApiClient; get: ReturnType<typeof vi.fn> } {
-  const get = vi.fn(async (payload: { resultId: string }) => ({
-    rpcId: 'rpc-1' as never,
-    result: await getImpl(payload.resultId),
-  }))
-  return { api: { results: { get } } as unknown as IApiClient, get }
+/** Build a TestRemote whose only scripted namespace is `result.get`. */
+function makeRemote(
+  ctx: SlotTestRuntime['ctx'],
+  getImpl: (rid: string) => Promise<RemoteResult<ResultEntry>>,
+): { remote: TestRemote; get: ReturnType<typeof vi.fn> } {
+  const get = vi.fn(async (resultId: string) => getImpl(resultId))
+  const remote = new TestRemote(ctx, { result: { get } })
+  return { remote, get }
 }
 
 /** Assemble the service on a real runtime with two sessions scoped. */
-async function bench(getImpl: (rid: string) => Promise<RpcResult<ResultEntry>>) {
+async function bench(getImpl: (rid: string) => Promise<RemoteResult<ResultEntry>>) {
   const runtime = await SlotTestRuntime.create()
-  const { api, get } = makeApi(getImpl)
-  const fiber = runtime.ctx.plugin(ResultServiceImpl, { api, ...DEFAULT_RESULT_CACHE_CONFIG })
+  const { get } = makeRemote(runtime.ctx, getImpl)
+  const fiber = runtime.ctx.plugin(ResultServiceImpl, { ...DEFAULT_RESULT_CACHE_CONFIG })
   await fiber.await()
   const sessionStub = {
     prompt: vi.fn(async () => ({ ok: true as const, value: { accepted: true as const } })),
@@ -50,7 +52,7 @@ describe('ResultService (scope-addressed)', () => {
     const b = await bench(async () => ({ ok: true as const, value: ENTRY }))
     const e1 = await b.scoped1.get('qr_1')
     expect(e1).toEqual(ENTRY)
-    expect(b.get).toHaveBeenCalledWith({ resultId: 'qr_1' }, undefined)
+    expect(b.get).toHaveBeenCalledWith('qr_1')
     const e2 = await b.scoped1.get('qr_1')
     expect(e2).toBe(e1)
     expect(b.get).toHaveBeenCalledTimes(1)
@@ -68,7 +70,7 @@ describe('ResultService (scope-addressed)', () => {
   it('resolves a host result-not-found to undefined', async () => {
     const b = await bench(async rid => ({
       ok: false as const,
-      error: { code: 'result-not-found', message: 'miss', details: { resultId: rid } },
+      error: new RemoteError('result-not-found', 'miss', { resultId: rid }),
     }))
     expect(await b.scoped1.get('qr_x')).toBeUndefined()
     await b.runtime.dispose()
@@ -77,7 +79,7 @@ describe('ResultService (scope-addressed)', () => {
   it('propagates a non-not-found error as a ResultFetchError', async () => {
     const b = await bench(async () => ({
       ok: false as const,
-      error: { code: 'internal', message: 'boom', details: {} },
+      error: new RemoteError('gateway/internal', 'boom', {}),
     }))
     await expect(b.scoped1.get('qr_1')).rejects.toBeInstanceOf(ResultFetchError)
     await b.runtime.dispose()

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Mock } from 'vitest'
+import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ResultFetcher } from '../src/client/cache.ts'
 import {
   DEFAULT_RESULT_CACHE_CONFIG,
@@ -33,7 +34,7 @@ function ok(result: ResultEntry): Mock<ResultFetcher> {
 function notFound(): Mock<ResultFetcher> {
   return vi.fn(async (resultId: string) => ({
     ok: false as const,
-    error: { code: RESULT_NOT_FOUND, message: 'miss', details: { resultId } },
+    error: new RemoteError(RESULT_NOT_FOUND, 'miss', { resultId }),
   }))
 }
 
@@ -41,7 +42,7 @@ function notFound(): Mock<ResultFetcher> {
 function serviceError(): Mock<ResultFetcher> {
   return vi.fn(async () => ({
     ok: false as const,
-    error: { code: 'internal' as const, message: 'boom', details: {} },
+    error: new RemoteError('gateway/internal', 'boom', {}),
   }))
 }
 

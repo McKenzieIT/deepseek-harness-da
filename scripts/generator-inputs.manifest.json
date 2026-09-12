@@ -1,0 +1,273 @@
+{
+  "gen-architecture-graph": {
+    "inputs": [
+      "packages/*/*/package.json",
+      "tsconfig.host.json",
+      "tsconfig.client.json",
+      "packages/*/*/src/**/*.ts",
+      "packages/api/remotes/src/client/index.ts"
+    ],
+    "outputs": [
+      "docs/architecture-graph.md"
+    ],
+    "script": "gen-architecture-graph",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "collectDeclaredDeps(pkgs) at ~:248 captures module-level root, not a parameter — the --rev trap (§6). collectGraphData() takes no scanRoot."
+  },
+
+  "gen-client-catalog": {
+    "inputs": [
+      "packages/*/*/src/**/*.ts",
+      "packages/*/*/src/**/*.tsx"
+    ],
+    "outputs": [
+      "packages/extensions/cordis-client-runner/src/client/slot-catalog.ts"
+    ],
+    "script": "gen-client-catalog",
+    "parameterizedScanRoot": true,
+    "writesI18nTriple": false,
+    "notes": "collectSlotEntries(scanRoot) at :148 has scanRoot but NO default value (caller must pass). Lexical scan via slot-walk.ts, no TS checker."
+  },
+
+  "gen-config-catalog": {
+    "inputs": [
+      "packages/*/*/package.json",
+      "packages/*/*/src/index.ts",
+      "packages/*/*/src/**/*.ts"
+    ],
+    "outputs": [
+      "docs/config-catalog.md"
+    ],
+    "script": "gen-config-catalog",
+    "parameterizedScanRoot": true,
+    "writesI18nTriple": false,
+    "notes": "collectConfigCatalog(scanRoot=root) at :616. AST-only (ts.createSourceFile, no checker). Follows relative imports + workspace re-export chains."
+  },
+
+  "gen-cordis-api": {
+    "inputs": [],
+    "outputs": [],
+    "script": "gen-cordis-api",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "9-line shim: import { main } from './gen-cordis-catalog.ts' and calls it. Input/output face = gen-cordis-catalog's face."
+  },
+
+  "gen-cordis-catalog": {
+    "inputs": [
+      "tsconfig.host.json",
+      "packages/*/*/src/**/*.ts",
+      "packages/*/*/src/**/*.tsx",
+      "scripts/translation-pairing.manifest.json",
+      "docs/subsystems/*.md",
+      "docs/subsystems/*.zh.md"
+    ],
+    "outputs": [
+      "docs/cordis-api/inherited.md",
+      "packages/extensions/tool-cordis/src/api-catalog.ts",
+      "docs/subsystems/*.md",
+      "docs/subsystems/*.zh.md",
+      "docs/subsystems/*.i18n.yaml"
+    ],
+    "script": "gen-cordis-catalog",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": true,
+    "notes": "computeOutputs() at :1048 takes no scanRoot; localizePageRegion(:956) and maybeRecordPair(:1124) have scanRoot=root. Writes .md+.zh.md+.i18n.yaml per subsystem page. Exports CORDIS_CATALOG_POLICY consumed by 3 other generators."
+  },
+
+  "gen-cordis-inspect-catalog": {
+    "inputs": [
+      "tsconfig.host.json",
+      "packages/*/*/src/**/*.ts"
+    ],
+    "outputs": [
+      "packages/extensions/cordis-client-runner/src/client/api-catalog.ts"
+    ],
+    "script": "gen-cordis-inspect-catalog",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "projectCordisCatalog(root, CORDIS_CATALOG_POLICY, 'client') at :62. root module-level. Imports CORDIS_CATALOG_POLICY from gen-cordis-catalog.ts."
+  },
+
+  "gen-doc-graphs": {
+    "inputs": [
+      "packages/*/*/package.json",
+      "tsconfig.host.json",
+      "packages/*/*/src/**/*.ts"
+    ],
+    "outputs": [
+      "docs/graph-atlas.md",
+      "docs/capability-seams.md",
+      "docs/event-producer-consumer.md",
+      "docs/agent-lifecycle.md",
+      "docs/tool-execution-pipeline.md",
+      "apps/cli/composition.md"
+    ],
+    "script": "gen-doc-graphs",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "No scanRoot param. Uses collectPackageGraph + projectCordisCatalog + TypeScriptProject. Only writes English side (§6 confirmed). Imports CORDIS_CATALOG_POLICY from gen-cordis-catalog.ts."
+  },
+
+  "gen-evidence-query-typert": {
+    "inputs": [
+      "tsconfig.host.json",
+      "packages/data/evidence-query/src/**/*.ts"
+    ],
+    "outputs": [
+      "packages/data/evidence-query/lib/typert.*.js",
+      "packages/data/evidence-query/lib/typert.*.d.ts",
+      "packages/data/evidence-query/lib/typert.remote-client.js",
+      "packages/data/evidence-query/lib/typert.remote-client.d.ts",
+      "packages/data/evidence-query/lib/typert.remote-client.d.ts.map"
+    ],
+    "script": null,
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "NOT in package.json scripts. WorkspaceTypertGenerator(REPO_ROOT).generate([TARGET_PKG], ['host']) at :17-18. REPO_ROOT hardcoded. Writes to lib/ (generated artifacts, .gitignored)."
+  },
+
+  "gen-module-graph": {
+    "inputs": [
+      "packages/*/*/package.json"
+    ],
+    "outputs": [
+      "docs/module-graph.md",
+      "docs/module-graph.zh.md",
+      "docs/module-graph.i18n.yaml"
+    ],
+    "script": "gen-module-graph",
+    "parameterizedScanRoot": true,
+    "writesI18nTriple": true,
+    "notes": "computeModuleGraphOutputs(scanRoot=root) at :105, writeModuleGraph(scanRoot=root) at :119. main() at :155 passes module-level root. Writes .md+.zh.md+.i18n.yaml three files via translationPairPaths."
+  },
+
+  "gen-persistence-catalog": {
+    "inputs": [
+      "packages/*/*/src/**/*.ts",
+      "packages/*/*/package.json"
+    ],
+    "outputs": [
+      "docs/persistence-catalog.md",
+      "packages/core/session/src/known-event-types.ts"
+    ],
+    "script": "gen-persistence-catalog",
+    "parameterizedScanRoot": true,
+    "writesI18nTriple": false,
+    "notes": "collectLogEvents(scanRoot=root) at :176, collectEventEnvelopeTypes(scanRoot=root) at :232, collectSurfaceEventTypes(scanRoot=root) at :284. AST-only (ts.createSourceFile, no checker)."
+  },
+
+  "gen-schema-gateway-typert": {
+    "inputs": [
+      "tsconfig.host.json",
+      "packages/data/schema-gateway/src/**/*.ts"
+    ],
+    "outputs": [
+      "packages/data/schema-gateway/lib/typert.*.js",
+      "packages/data/schema-gateway/lib/typert.*.d.ts",
+      "packages/data/schema-gateway/lib/typert.remote-client.js",
+      "packages/data/schema-gateway/lib/typert.remote-client.d.ts",
+      "packages/data/schema-gateway/lib/typert.remote-client.d.ts.map"
+    ],
+    "script": null,
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "NOT in package.json scripts. WorkspaceTypertGenerator(REPO_ROOT).generate([TARGET_PKG], ['host']) at :17-18. REPO_ROOT hardcoded. Writes to lib/ (generated artifacts, .gitignored)."
+  },
+
+  "gen-scoped-events": {
+    "inputs": [
+      "tsconfig.host.json",
+      "packages/*/*/src/**/*.ts",
+      "packages/core/scope/src/index.ts"
+    ],
+    "outputs": [
+      "packages/core/scope/src/scoped-events.generated.ts"
+    ],
+    "script": "gen-scoped-events",
+    "parameterizedScanRoot": true,
+    "writesI18nTriple": false,
+    "notes": "renderScopedEvents(projectRoot=root) at :361. TypeScriptProject(root,'host') builds full Program. main() uses default root."
+  },
+
+  "gen-session-format-catalog": {
+    "inputs": [
+      "packages/core/session/src/types.ts",
+      "packages/session/session-format-v*-to-v*/package.json",
+      "packages/session/session-format-catalog/package.json"
+    ],
+    "outputs": [
+      "packages/session/session-format-catalog/src/generated.ts"
+    ],
+    "script": "gen-session-format-catalog",
+    "parameterizedScanRoot": true,
+    "writesI18nTriple": false,
+    "notes": "readCurrentSessionFormatVersion(scanRoot=root) at :51, collectSessionFormatMigrations(scanRoot=root) at :65. main() at :189 uses default root."
+  },
+
+  "gen-third-party-notices": {
+    "inputs": [
+      "packages/*/*/package.json",
+      "pnpm-workspace.yaml",
+      "vendor/README.md",
+      "vendor/*",
+      "python/*/pyproject.toml",
+      "node_modules/**/package.json"
+    ],
+    "outputs": [
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "script": "gen-third-party-notices",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "Requires pnpm install (reads node_modules tree). No scanRoot param. root hardcoded at :17."
+  },
+
+  "gen-tool-catalog": {
+    "inputs": [
+      "packages/*/tool-*/package.json",
+      "packages/*/tool-*/src/**/*.ts"
+    ],
+    "outputs": [
+      "docs/tool-catalog.md"
+    ],
+    "script": "gen-tool-catalog",
+    "parameterizedScanRoot": true,
+    "writesI18nTriple": false,
+    "notes": "RUNTIME BOOT generator: collectToolCatalog() at :1000 imports and boots each tool plugin on a fresh Context to harvest schemas — not a static file scan. assertManifestComplete(scanRoot=root) at :959 only checks on-disk coverage. Input face is effectively the entire compiled package graph + node_modules."
+  },
+
+  "gen-translation-brief": {
+    "inputs": [
+      "scripts/translation-pairing.manifest.json",
+      "docs/i18n/terminology.md",
+      "**/*.i18n.yaml",
+      "**/*.md",
+      "**/*.zh.md"
+    ],
+    "outputs": [
+      "<stdout>",
+      "<counterpart-files>"
+    ],
+    "script": "gen-translation-brief",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": true,
+    "notes": "Discovers out-of-sync pairs via globSync('**/*.i18n.yaml'). stdout = briefing text; --apply writes counterpart .md/.zh.md files for translation pairs (paths are pair-dependent, not a fixed glob — represented as <counterpart-files>). Uses git cat-file/diff (spawnSync). root module-level at :38."
+  },
+
+  "gen-tsconfig-paths": {
+    "inputs": [
+      "tsconfig.base.json",
+      "packages/*/*/package.json",
+      "packages/*/*/src/invariant.ts"
+    ],
+    "outputs": [
+      "tsconfig.base.json"
+    ],
+    "script": "gen-tsconfig-paths",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "ROOT = fileURLToPath(new URL('..', import.meta.url)) at :27. workspacePackages() readdirSync + readFileSync. Writes to marked BEGIN/END region of tsconfig.base.json."
+  }
+}

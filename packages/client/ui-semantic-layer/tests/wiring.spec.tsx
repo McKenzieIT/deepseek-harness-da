@@ -43,7 +43,7 @@ function makeProjection(over: Partial<GoalProjection> = {}): GoalProjection {
 // with those four (useSessions is a plain selector-evaluating stub) and casts
 // around the unused framework seats.
 const sessionsSnapshotFor = (agentPreset: string | undefined) => ({
-  byId: { s1: { agentPreset } },
+  byId: { s1: { projectionValues: { agentPreset } } },
 })
 const useSessionsStub = <S,>(snapshot: unknown) =>
   (selector: (s: unknown) => S): S => selector(snapshot)

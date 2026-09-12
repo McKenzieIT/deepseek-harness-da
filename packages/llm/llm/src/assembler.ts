@@ -6,8 +6,9 @@
  * @module @deepseek-ai/dsh-llm/assembler
  */
 
-import { CallId } from './brand.ts'
-import { assertNever } from './never.ts'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import { assertNever } from '@deepseek-ai/dsh-util-values'
+import type { ToolCallId } from './brand.ts'
 import { createMessage } from './message.ts'
 import type { Message, MessageSource } from './message.ts'
 import type { ContentBlock, FinishReason, ReplayEnvelope, StreamChunk, TokenUsage } from './types.ts'
@@ -15,7 +16,7 @@ import type { ContentBlock, FinishReason, ReplayEnvelope, StreamChunk, TokenUsag
 interface PartialBlock {
   blockType: string
   text: string
-  toolCallId?: CallId
+  toolCallId?: ToolCallId
   toolCallName?: string
   toolCallArguments: string
   /** Set by `block-end` — authoritative, and freezes the partial. */
@@ -68,7 +69,7 @@ export class BlockAssembler {
       case 'tool-call-delta': {
         const partial = this.ensure(chunk.index, 'tool-call')
         if (partial.block) return // closed by block-end; ignore stragglers
-        if (chunk.id) partial.toolCallId = chunk.id
+        partial.toolCallId = chunk.id
         if (chunk.name) partial.toolCallName = chunk.name
         partial.toolCallArguments += chunk.argumentsDelta
         return
@@ -78,11 +79,7 @@ export class BlockAssembler {
         // First close wins; ignoring re-close stragglers keeps streamed output
         // and the final assembled block in agreement.
         if (partial.block) return
-        if (chunk.block.type === 'tool-call' && !chunk.block.id && partial.toolCallId) {
-          partial.block = { ...chunk.block, id: partial.toolCallId }
-        } else {
-          partial.block = chunk.block
-        }
+        partial.block = chunk.block
         return
       }
       case 'usage': {
@@ -115,7 +112,7 @@ export class BlockAssembler {
       case 'reasoning': return { type: 'reasoning', text: partial.text }
       case 'tool-call': return {
         type: 'tool-call',
-        id: partial.toolCallId ?? CallId(`call-${index}`),
+        id: partial.toolCallId ?? brandString<ToolCallId>(`call-${index}`),
         name: partial.toolCallName ?? '',
         arguments: partial.toolCallArguments,
       }

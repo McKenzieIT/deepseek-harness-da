@@ -21,6 +21,11 @@ export interface ResultMetadata {
 /** One cached query or compute result (the value held in the LRU). */
 export interface ResultEntry {
   readonly columns: string[]
-  readonly rows: unknown[][]
+  // Readonly-tightened so the canonical `RemoteResult<CanonicalResultEntry>`
+  // (rows: readonly (readonly Json[])[]) travelling through `ctx.remote.result.get`
+  // assigns to this local mirror without a cast. Also aligns the type with the
+  // module's own contract ("hits return the cached reference; entries are
+  // treated as immutable read-only views").
+  readonly rows: readonly (readonly unknown[])[]
   readonly metadata?: ResultMetadata
 }

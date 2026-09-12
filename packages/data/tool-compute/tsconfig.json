@@ -24,13 +24,13 @@
       "path": "../../core/tools"
     },
     {
-      "path": "../../runtime-diagnostics/invariants"
-    },
-    {
       "path": "../../code-runtime/code-runtime"
     },
     {
       "path": "../result-cache"
+    },
+    {
+      "path": "../../util/values"
     }
   ]
 }

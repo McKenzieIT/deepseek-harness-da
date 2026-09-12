@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildSchemaGatewayClient, type DomainEntry, type TableSummary, type EventSummary, type MetricSummary, type SchemaSearchHit } from '../src/client/schemaGatewayBridge.ts'
+import {
+  buildSchemaGatewayClient,
+  type DomainEntry,
+  type TableSummary,
+  type EventSummary,
+  type MetricSummary,
+  type SchemaSearchHit,
+} from '../src/client/schemaGatewayBridge.ts'
 
 function ok<T>(value: T) { return { ok: true, value } }
 function fail(error: string) { return { ok: false, error } }

@@ -61,9 +61,9 @@ Product Evaluation 加载生产 profile、bundle、preset、DataScope、Context 
 
 迁移按已审查的 stack 进行：[T11](../../../../wayfinder/evaluation/tickets/T11-loader-provenance-strip.md) → [T1](../../../../wayfinder/evaluation/tickets/T1-exec-grader-impl.md) → [T13](../../../../wayfinder/evaluation/tickets/T13-context-projection-service.md) → [T9](../../../../wayfinder/evaluation/tickets/T9-evaluation-foundations.md) → [T14](../../../../wayfinder/evaluation/tickets/T14-data-analysis-extension-pack-migration.md) → [T15](../../../../wayfinder/evaluation/tickets/T15-evaluation-controller-cli.md) → [T12](../../../../wayfinder/evaluation/tickets/T12-eval-package-consolidation.md) → [R25](../../../../wayfinder/evaluation/tickets/R25-evaluation-rebaseline.md)。分阶段只服务 review 与归因，不形成兼容承诺。最终 cutover 删除旧 package、export、bundle row、glob、default 和 format，不保留 shim。
 
-### 与 active Agent Note 的关系
+### 与 active 决策及 Agent Note 的关系
 
-[Execution grader seam](../../proposed/testing/2026-09-07-execution-grader-seam.md) 与 [query capability ownership](../../proposed/testing/2026-09-07-evaluation-query-capability-boundary.md) 继续分别约束 execution normalization 与 SQL submission。[Dead eval-core runtime](../simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md) 和 [dead NL2SQL eval subpackage](../simplification/2026-09-03-remove-nl2sql-engine-eval-subpackage.md) 提案保留独立删除证据，本 Note 拥有它们的目标架构。旧的 adapter fork 提升至 `dsh-eval-runner`、把 `compare.ts` 折入该 runner，以及保留 eval-cli repo-root discovery 的提案被拒绝，因为目标是删除这些 runtime 与 Host ownership，而不是原地整合。
+[Execution grader 决策](../../../../wayfinder/evaluation/tickets/G1-exec-grader-seam.md) 与 [query capability ownership](../../proposed/testing/2026-09-07-evaluation-query-capability-boundary.zh.md) 继续分别约束 execution normalization 与 SQL submission。[Dead eval-core runtime](../simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md) 和 [dead NL2SQL eval subpackage](../simplification/2026-09-03-remove-nl2sql-engine-eval-subpackage.md) 提案保留独立删除证据，本 Note 拥有它们的目标架构。旧的 adapter fork 提升至 `dsh-eval-runner`、把 `compare.ts` 折入该 runner，以及保留 eval-cli repo-root discovery 的提案被拒绝，因为目标是删除这些 runtime 与 Host ownership，而不是原地整合。
 
 ## 考虑过的替代方案
 

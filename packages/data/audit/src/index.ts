@@ -38,7 +38,8 @@
 import { randomUUID } from 'node:crypto'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { JsonValue, Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 // Type-only: loads the `tools/*` Events augmentation so `ctx.on('tools/post-execute', …)`
 // is typed (signature, PostToolDecision return). The seam stays runtime-optional.
 import type {} from '@deepseek-ai/dsh-tools'

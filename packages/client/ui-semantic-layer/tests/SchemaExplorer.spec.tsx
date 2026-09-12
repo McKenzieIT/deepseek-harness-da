@@ -3,7 +3,14 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, fireEvent, waitFor, act } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
 import { SchemaExplorer } from '../src/client/SchemaExplorer.tsx'
-import type { SchemaGatewayClient, DomainEntry, TableSummary, EventSummary, MetricSummary, SchemaSearchHit } from '../src/client/schemaGatewayBridge.ts'
+import type {
+  SchemaGatewayClient,
+  DomainEntry,
+  TableSummary,
+  EventSummary,
+  MetricSummary,
+  SchemaSearchHit,
+} from '../src/client/schemaGatewayBridge.ts'
 import { createSelectionStore, type SelectionState, type SelectionStoreProps } from '../src/client/selectionStore.ts'
 
 const t = (key: string): string => key

@@ -18,15 +18,10 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./invariant": {
-      "types": "./lib/types/invariant.d.ts",
-      "default": "./lib/invariant.js"
-    },
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
-    "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
@@ -35,7 +30,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-code-runtime": "workspace:^",
-    "@deepseek-ai/dsh-code-runtime-python": "workspace:^",
+    "@deepseek-ai/dsh-experimental-code-runtime-python": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
     "@deepseek-ai/dsh-timeout": "workspace:^",
@@ -43,7 +38,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/dsh-code-runtime": "workspace:^",
-    "@deepseek-ai/dsh-code-runtime-python": "workspace:^",
+    "@deepseek-ai/dsh-experimental-code-runtime-python": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
     "@deepseek-ai/dsh-timeout": "workspace:^",

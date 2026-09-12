@@ -48,7 +48,7 @@ import { TableCard, parseQueryData, candidatesEqual, validateChartType } from '.
 import type { QueryCandidate, FetchResultEntry } from '../src/client/TableCard.tsx'
 import { zh } from '../src/client/locales.ts'
 import type { TableKey } from '../src/client/locales.ts'
-import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ToolCallBlock, ConversationSnapshot } from '@deepseek-ai/dsh-client-ui-conversation/client'
 
 const t = (key: TableKey): string => zh[key]
 
@@ -74,7 +74,6 @@ function makeRunningBlock(): ToolCallBlock {
     turn: 1,
     step: 1,
     time: Date.now(),
-    callView: null,
     subCalls: [],
   }
 }
@@ -134,6 +133,13 @@ function makeUseSession(queryNodes: QueryNodeSpec[] = []) {
       resultView: null,
       subCalls: [],
     }))
+    const chat = {
+      order: [],
+      nodes: { get: () => undefined, values: () => [] },
+      locations: { getTurn: () => [], getStep: () => [] },
+      timeline: { turnOrder: [], turns: new Map() },
+      legacy: { nodes, turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
+    }
     return selector({
       nodes,
       turnTimings: new Map(),
@@ -147,14 +153,8 @@ function makeUseSession(queryNodes: QueryNodeSpec[] = []) {
       composerPhase: 'idle',
       removed: false,
       sessionId: 'session-1',
-      views: { get: () => undefined },
-      chat: {
-        order: [],
-        nodes: { get: () => undefined, values: () => [] },
-        locations: { getTurn: () => [], getStep: () => [] },
-        timeline: { turnOrder: [], turns: new Map() },
-        legacy: { nodes: [], turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
-      },
+      views: { get: () => chat },
+      chat,
     } as unknown as ConversationSnapshot)
   }
 }
@@ -263,7 +263,7 @@ describe('candidatesEqual', () => {
 describe('TableCard states', () => {
   it('renders skeleton when block is a RunningToolCall', () => {
     const { container } = render(
-      <TableCard block={makeRunningBlock()} useSession={makeUseSession()} t={t} />,
+      <TableCard block={makeRunningBlock()} useConversation={makeUseSession()} t={t} />,
     )
     expect(container.querySelectorAll('[class*="skeletonLine"]')).toHaveLength(4)
     expect(container.querySelector('[class*="skeletonKpiRow"]')!.children).toHaveLength(3)
@@ -272,7 +272,7 @@ describe('TableCard states', () => {
   it('renders fallback text when block.call is null', () => {
     const block = makeNullCallBlock('Table: 收入统计 (result: r1)')
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession()} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession()} t={t} />,
     )
     const pre = container.querySelector('pre')
     expect(pre).not.toBeNull()
@@ -282,7 +282,7 @@ describe('TableCard states', () => {
   it('renders an error banner when the tool call failed', () => {
     const block = makeSettledBlock(VALID_ARGS, 'present_table: chart.type must be "line" or "bar"', 10, true)
     const { getByText, queryByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(getByText(zh.error)).toBeDefined()
     expect(queryByText('收入统计')).toBeNull()
@@ -291,7 +291,7 @@ describe('TableCard states', () => {
   it('renders fallback when argsRaw is invalid JSON', () => {
     const block = makeSettledBlock('not json', 'fallback text')
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession()} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession()} t={t} />,
     )
     expect(container.querySelector('pre')!.textContent).toBe('fallback text')
   })
@@ -299,7 +299,7 @@ describe('TableCard states', () => {
   it('renders fallback when argsRaw is missing required fields', () => {
     const block = makeSettledBlock(JSON.stringify({ wrong: true }), 'raw output')
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession()} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession()} t={t} />,
     )
     expect(container.querySelector('pre')).not.toBeNull()
   })
@@ -307,7 +307,7 @@ describe('TableCard states', () => {
   it('renders expired banner when no query_data is available', () => {
     const block = makeSettledBlock(VALID_ARGS, 'text fallback')
     const { getByText, container } = render(
-      <TableCard block={block} useSession={makeUseSession()} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession()} t={t} />,
     )
     expect(getByText(zh.expired)).toBeDefined()
     expect(container.querySelector('pre')!.textContent).toBe('text fallback')
@@ -318,28 +318,36 @@ describe('TableCard states', () => {
       JSON.stringify({ result_id: 'qr_other', title: '别的结果' }), 'text fallback', 10,
     )
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(getByText(zh.mismatch)).toBeDefined()
     expect(getByText(zh.mismatchHint)).toBeDefined()
   })
 
   it('shows expired when query_data content is non-text only', () => {
-    const useSession = <T,>(selector: (s: ConversationSnapshot) => T): T => {
+    const useConversation = <T,>(selector: (s: ConversationSnapshot) => T): T => {
+      const nodes = [{
+        kind: 'tool-result',
+        seq: 5,
+        time: Date.now() - 2000,
+        callId: 'call-query',
+        call: { name: 'query_data', argsRaw: '{}' },
+        callTime: Date.now() - 3000,
+        content: [{ type: 'image', source: { data: '' } }],
+        isError: false,
+        callView: null,
+        resultView: null,
+        subCalls: [],
+      }]
+      const chat = {
+        order: [],
+        nodes: { get: () => undefined, values: () => [] },
+        locations: { getTurn: () => [], getStep: () => [] },
+        timeline: { turnOrder: [], turns: new Map() },
+        legacy: { nodes, turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
+      }
       return selector({
-        nodes: [{
-          kind: 'tool-result',
-          seq: 5,
-          time: Date.now() - 2000,
-          callId: 'call-query',
-          call: { name: 'query_data', argsRaw: '{}' },
-          callTime: Date.now() - 3000,
-          content: [{ type: 'image', source: { data: '' } }],
-          isError: false,
-          callView: null,
-          resultView: null,
-          subCalls: [],
-        }],
+        nodes,
         turnTimings: new Map(),
         turnEnds: new Map(),
         partial: null,
@@ -351,19 +359,13 @@ describe('TableCard states', () => {
         composerPhase: 'idle',
         removed: false,
         sessionId: 'session-1',
-        views: { get: () => undefined },
-        chat: {
-          order: [],
-          nodes: { get: () => undefined, values: () => [] },
-          locations: { getTurn: () => [], getStep: () => [] },
-          timeline: { turnOrder: [], turns: new Map() },
-          legacy: { nodes: [], turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
-        },
+        views: { get: () => chat },
+        chat,
       } as unknown as ConversationSnapshot)
     }
     const block = makeSettledBlock(VALID_ARGS, 'fallback', 10)
     const { getByText } = render(
-      <TableCard block={block} useSession={useSession} t={t} />,
+      <TableCard block={block} useConversation={useConversation} t={t} />,
     )
     expect(getByText(zh.expired)).toBeDefined()
   })
@@ -377,7 +379,7 @@ describe('TableCard data binding', () => {
     const { getByText, queryByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 3, text: earlier }, { seq: 5, text: later }])}
+        useConversation={makeUseSession([{ seq: 3, text: earlier }, { seq: 5, text: later }])}
         t={t}
       />,
     )
@@ -391,7 +393,7 @@ describe('TableCard data binding', () => {
     const { getByText, queryByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 3, text: older }, { seq: 5, text: LEGACY_TSV }])}
+        useConversation={makeUseSession([{ seq: 3, text: older }, { seq: 5, text: LEGACY_TSV }])}
         t={t}
       />,
     )
@@ -406,7 +408,7 @@ describe('TableCard data binding', () => {
     const { getByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 3, text: idNode }, { seq: 5, text: legacyRecent }])}
+        useConversation={makeUseSession([{ seq: 3, text: idNode }, { seq: 5, text: legacyRecent }])}
         t={t}
       />,
     )
@@ -423,7 +425,7 @@ describe('TableCard data binding', () => {
     const { getByText, queryByText } = render(
       <TableCard
         block={makeSettledBlock(JSON.stringify({ result_id: 'qr_1', title: 'cap 扫描' }), '', 10)}
-        useSession={makeUseSession(nodes)}
+        useConversation={makeUseSession(nodes)}
         t={t}
       />,
     )
@@ -436,7 +438,7 @@ describe('TableCard data binding', () => {
     const { getByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([
+        useConversation={makeUseSession([
           { seq: 3, text: LEGACY_TSV },
           { seq: 4, text: 'not query data', name: 'bash' },
         ])}
@@ -451,7 +453,7 @@ describe('TableCard rendering', () => {
   it('renders the full table with real-format data, columns override, and row count', () => {
     const block = makeSettledBlock(VALID_ARGS)
     const { getByText, getByRole, container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(getByRole('button', { expanded: true })).toBeDefined()
     expect(getByText('收入统计')).toBeDefined()
@@ -464,7 +466,7 @@ describe('TableCard rendering', () => {
   it('shows shown/total row count when the result is truncated', () => {
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_big', title: '截断' }))
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: TRUNCATED_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: TRUNCATED_TSV }])} t={t} />,
     )
     expect(getByText(`2 / 60 ${zh.rows}`)).toBeDefined()
   })
@@ -472,7 +474,7 @@ describe('TableCard rendering', () => {
   it('uses raw TSV headers when args.columns is not provided', () => {
     const block = makeSettledBlock(ARGS_NO_COLUMNS)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(getByText('date')).toBeDefined()
     expect(getByText('revenue')).toBeDefined()
@@ -486,7 +488,7 @@ describe('TableCard rendering', () => {
     })
     const block = makeSettledBlock(args)
     const { getByRole, queryByText, getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(queryByText('2026-08-01')).not.toBeNull()
     fireEvent.click(getByRole('button', { expanded: true }))
@@ -509,7 +511,7 @@ describe('TableCard sorting', () => {
       sort_column: 1,
     }))
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(revenueCells(container)).toEqual(['200', '100'])
     expect(container.querySelector('th[aria-sort="descending"]')).not.toBeNull()
@@ -522,7 +524,7 @@ describe('TableCard sorting', () => {
       sort_column: 9,
     }))
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(revenueCells(container)).toEqual(['100', '200'])
     expect(container.querySelector('th[aria-sort]')!.getAttribute('aria-sort')).toBe('none')
@@ -535,7 +537,7 @@ describe('TableCard sorting', () => {
       sort_column: -1,
     }))
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(revenueCells(container)).toEqual(['100', '200'])
     expect(container.querySelector('th[aria-sort]')!.getAttribute('aria-sort')).toBe('none')
@@ -544,7 +546,7 @@ describe('TableCard sorting', () => {
   it('cycles asc → desc → none on header click with numeric compare', () => {
     const block = makeSettledBlock(ARGS_NO_COLUMNS)
     const { container, getAllByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     const revenueHeader = getAllByRole('button', { name: zh.sortAria })[1]!
     fireEvent.click(revenueHeader)
@@ -566,7 +568,7 @@ describe('TableCard sorting', () => {
       column_types: ['string', 'number'],
     }))
     const { container, getAllByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     const valueHeader = getAllByRole('button', { name: zh.sortAria })[1]!
     fireEvent.click(valueHeader)
@@ -582,7 +584,7 @@ describe('TableCard sorting', () => {
       column_types: ['date', 'number'],
     }))
     const { container, getAllByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     fireEvent.click(getAllByRole('button', { name: zh.sortAria })[0]!)
     const dateCells = Array.from(container.querySelectorAll('tbody td:nth-child(1)')).map(el => el.textContent)
@@ -597,7 +599,7 @@ describe('TableCard sorting', () => {
       column_types: ['date', 'number'],
     }))
     const { container, getAllByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     fireEvent.click(getAllByRole('button', { name: zh.sortAria })[0]!)
     const dateCells = Array.from(container.querySelectorAll('tbody td:nth-child(1)')).map(el => el.textContent)
@@ -607,7 +609,7 @@ describe('TableCard sorting', () => {
   it('aligns numeric columns right via the num class', () => {
     const block = makeSettledBlock(VALID_ARGS)
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(container.querySelectorAll('th[class*="num"]')).toHaveLength(2)
     expect(container.querySelectorAll('td[class*="num"]')).toHaveLength(4)
@@ -617,7 +619,7 @@ describe('TableCard sorting', () => {
     const tsv = 'result_id: qr_e\na\tb\nx\t\ny\t\n(2 rows)'
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_e', title: '空列' }))
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(getByText('x')).toBeDefined()
   })
@@ -636,7 +638,7 @@ describe('TableCard KPI cards', () => {
     })
     const block = makeSettledBlock(args)
     const { getByText, container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(getByText('总收入')).toBeDefined()
     const kpiValues = Array.from(container.querySelectorAll('[class*="kpiValue"]')).map(el => el.textContent)
@@ -652,7 +654,7 @@ describe('TableCard KPI cards', () => {
     })
     const block = makeSettledBlock(args)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: TRUNCATED_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: TRUNCATED_TSV }])} t={t} />,
     )
     expect(getByText(zh.kpiSampleNote)).toBeDefined()
   })
@@ -669,7 +671,7 @@ describe('TableCard KPI cards', () => {
     })
     const block = makeSettledBlock(args)
     const { getAllByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: LEGACY_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: LEGACY_TSV }])} t={t} />,
     )
     expect(getAllByText('—')).toHaveLength(3)
   })
@@ -686,7 +688,7 @@ describe('TableCard KPI cards', () => {
     })
     const block = makeSettledBlock(args)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(getByText('18.8%')).toBeDefined()
     expect(getByText('10,135.80')).toBeDefined()
@@ -703,7 +705,7 @@ describe('TableCard KPI cards', () => {
     })
     const block = makeSettledBlock(args)
     const { getAllByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(getAllByText('—')).toHaveLength(1)
   })
@@ -712,7 +714,7 @@ describe('TableCard KPI cards', () => {
     const args = JSON.stringify({ result_id: 'qr_test01', title: 'test', kpi_columns: [] })
     const block = makeSettledBlock(args)
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(container.querySelector('[class*="kpiRow"]')).toBeNull()
   })
@@ -724,7 +726,7 @@ describe('TableCard SQL transparency', () => {
     const { getByText, container } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 5, text: REAL_TSV, argsRaw: JSON.stringify({ sql: 'SELECT 1' }) }])}
+        useConversation={makeUseSession([{ seq: 5, text: REAL_TSV, argsRaw: JSON.stringify({ sql: 'SELECT 1' }) }])}
         t={t}
       />,
     )
@@ -738,7 +740,7 @@ describe('TableCard SQL transparency', () => {
       const { queryByText } = render(
         <TableCard
           block={block}
-          useSession={makeUseSession([{ seq: 5, text: REAL_TSV, argsRaw }])}
+          useConversation={makeUseSession([{ seq: 5, text: REAL_TSV, argsRaw }])}
           t={t}
         />,
       )
@@ -766,7 +768,7 @@ describe('TableCard actions', () => {
       return document.createElementNS('http://www.w3.org/1999/xhtml', tag)
     })
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     fireEvent.click(getByText(zh.downloadCsv))
     // ui-present-misc-11: revoke is deferred (setTimeout 1000ms for Safari lazy blob read)
@@ -796,7 +798,7 @@ describe('TableCard actions', () => {
       return document.createElementNS('http://www.w3.org/1999/xhtml', tag)
     })
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     fireEvent.click(getByText(zh.downloadCsv))
     expect(createUrl).toHaveBeenCalled()
@@ -810,7 +812,7 @@ describe('TableCard actions', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     const block = makeSettledBlock(VALID_ARGS)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     fireEvent.click(getByText(zh.copyMd))
     await vi.advanceTimersByTimeAsync(0)
@@ -828,7 +830,7 @@ describe('TableCard actions', () => {
     vi.stubGlobal('navigator', {})
     const block = makeSettledBlock(VALID_ARGS)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     fireEvent.click(getByText(zh.copyMd))
     expect(getByText(zh.copyMd)).toBeDefined()
@@ -844,7 +846,7 @@ describe('TableCard virtual table', () => {
   it('renders the grid virtual table with table semantics for >100 rows', () => {
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_many', title: '大表' }))
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: makeWideTsv(150) }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: makeWideTsv(150) }])} t={t} />,
     )
     const grid = container.querySelector('[role="table"]')
     expect(grid).not.toBeNull()
@@ -856,7 +858,7 @@ describe('TableCard virtual table', () => {
   it('sorts through the grid virtual table header buttons', () => {
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_many', title: '大表排序' }))
     const { container, getAllByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: makeWideTsv(150) }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: makeWideTsv(150) }])} t={t} />,
     )
     const numHeader = getAllByRole('button', { name: zh.sortAria })[1]!
     fireEvent.click(numHeader)
@@ -866,7 +868,7 @@ describe('TableCard virtual table', () => {
   it('renders the plain table for <=100 rows', () => {
     const block = makeSettledBlock(VALID_ARGS)
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(container.querySelector('[class*="gridHead"]')).toBeNull()
     expect(container.querySelector('tbody')).not.toBeNull()
@@ -877,7 +879,7 @@ describe('TableCard virtual table', () => {
     const tsv = `result_id: qr_huge\nk\tv\n${body}\n(10001 rows)`
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_huge', title: '巨表' }))
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(getByText(`10000 / 10001 ${zh.rows}`)).toBeDefined()
   })
@@ -893,7 +895,7 @@ describe('TableCard chart section', () => {
   it('lazy-renders the default chart type inside Suspense', async () => {
     const block = makeSettledBlock(chartArgs)
     const { findByTestId, getByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(getByRole('group', { name: zh.chartGroup })).toBeDefined()
     const chart = await findByTestId('line-chart')
@@ -903,7 +905,7 @@ describe('TableCard chart section', () => {
   it('switches chart type through the toolbar and hides the chart', async () => {
     const block = makeSettledBlock(chartArgs)
     const { findByTestId, getByRole, queryByTestId } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     await findByTestId('line-chart')
     fireEvent.click(getByRole('button', { name: zh.chartBar }))
@@ -918,7 +920,7 @@ describe('TableCard chart section', () => {
   it('toggles 显示数值 and passes showLabels to the chart as valueLabels.display', async () => {
     const block = makeSettledBlock(chartArgs)
     const { findByTestId, getByRole, container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     await findByTestId('line-chart')
     const before = JSON.parse(
@@ -942,7 +944,7 @@ describe('TableCard chart section', () => {
     })
     const block = makeSettledBlock(scatterArgs)
     const { findByTestId, findByText, queryByTestId } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(await findByText(zh.degradeScatter)).toBeDefined()
     expect(await findByTestId('bar-chart')).toBeDefined()
@@ -959,7 +961,7 @@ describe('TableCard chart section', () => {
     const tsv = 'result_id: qr_test01\tx\ty\n10\t100\n20\t200\n(2 rows)'
     const block = makeSettledBlock(scatterArgs)
     const { findByTestId, queryByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(await findByTestId('scatter-chart')).toBeDefined()
     expect(queryByText(zh.degradeScatter)).toBeNull()
@@ -968,7 +970,7 @@ describe('TableCard chart section', () => {
   it('does not show chart when collapsed', () => {
     const block = makeSettledBlock(chartArgs)
     const { getByRole, queryByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     fireEvent.click(getByRole('button', { expanded: true }))
     expect(queryByRole('group', { name: zh.chartGroup })).toBeNull()
@@ -991,7 +993,7 @@ describe('TableCard fallback content blocks', () => {
       subCalls: [],
     } as unknown as ToolCallBlock
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession()} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession()} t={t} />,
     )
     expect(container.querySelector('pre')!.textContent).toBe('')
   })
@@ -1009,7 +1011,7 @@ describe('TableCard coverage completions', () => {
     })
     const block = makeSettledBlock(args)
     const { container } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     const kpiValues = Array.from(container.querySelectorAll('[class*="kpiValue"]')).map(el => el.textContent)
     expect(kpiValues).toContain('100')
@@ -1025,7 +1027,7 @@ describe('TableCard coverage completions', () => {
     })
     const block = makeSettledBlock(args)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(getByText('1.5')).toBeDefined()
   })
@@ -1039,7 +1041,7 @@ describe('TableCard coverage completions', () => {
     })
     const block = makeSettledBlock(args)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(getByText('300')).toBeDefined()
   })
@@ -1049,7 +1051,7 @@ describe('TableCard coverage completions', () => {
     const { queryByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 5, text: REAL_TSV, argsRaw: null }])}
+        useConversation={makeUseSession([{ seq: 5, text: REAL_TSV, argsRaw: null }])}
         t={t}
       />,
     )
@@ -1057,24 +1059,32 @@ describe('TableCard coverage completions', () => {
   })
 
   it('skips non-tool-result nodes during the backward scan', () => {
-    const useSession = <T,>(selector: (s: ConversationSnapshot) => T): T => {
+    const useConversation = <T,>(selector: (s: ConversationSnapshot) => T): T => {
+      const nodes = [
+        { kind: 'user-message', seq: 7, time: Date.now() - 5000, content: [{ type: 'text', text: 'hello' }] },
+        {
+          kind: 'tool-result' as const,
+          seq: 5,
+          time: Date.now() - 2000,
+          callId: 'call-query',
+          call: { name: 'query_data', argsRaw: '{}' },
+          callTime: Date.now() - 3000,
+          content: [{ type: 'text' as const, text: LEGACY_TSV }],
+          isError: false,
+          callView: null,
+          resultView: null,
+          subCalls: [],
+        },
+      ]
+      const chat = {
+        order: [],
+        nodes: { get: () => undefined, values: () => [] },
+        locations: { getTurn: () => [], getStep: () => [] },
+        timeline: { turnOrder: [], turns: new Map() },
+        legacy: { nodes, turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
+      }
       return selector({
-        nodes: [
-          { kind: 'user-message', seq: 7, time: Date.now() - 5000, content: [{ type: 'text', text: 'hello' }] },
-          {
-            kind: 'tool-result' as const,
-            seq: 5,
-            time: Date.now() - 2000,
-            callId: 'call-query',
-            call: { name: 'query_data', argsRaw: '{}' },
-            callTime: Date.now() - 3000,
-            content: [{ type: 'text' as const, text: LEGACY_TSV }],
-            isError: false,
-            callView: null,
-            resultView: null,
-            subCalls: [],
-          },
-        ],
+        nodes,
         turnTimings: new Map(),
         turnEnds: new Map(),
         partial: null,
@@ -1086,19 +1096,13 @@ describe('TableCard coverage completions', () => {
         composerPhase: 'idle',
         removed: false,
         sessionId: 'session-1',
-        views: { get: () => undefined },
-        chat: {
-          order: [],
-          nodes: { get: () => undefined, values: () => [] },
-          locations: { getTurn: () => [], getStep: () => [] },
-          timeline: { turnOrder: [], turns: new Map() },
-          legacy: { nodes: [], turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
-        },
+        views: { get: () => chat },
+        chat,
       } as unknown as ConversationSnapshot)
     }
     const block = makeSettledBlock(ARGS_NO_COLUMNS)
     const { getByText } = render(
-      <TableCard block={block} useSession={useSession} t={t} />,
+      <TableCard block={block} useConversation={useConversation} t={t} />,
     )
     expect(getByText('Alice')).toBeDefined()
   })
@@ -1108,7 +1112,7 @@ describe('TableCard coverage completions', () => {
     const { getByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 3, text: '(0 rows)' }, { seq: 5, text: LEGACY_TSV }])}
+        useConversation={makeUseSession([{ seq: 3, text: '(0 rows)' }, { seq: 5, text: LEGACY_TSV }])}
         t={t}
       />,
     )
@@ -1118,7 +1122,7 @@ describe('TableCard coverage completions', () => {
   it('sorts sniffed string columns lexicographically', () => {
     const block = makeSettledBlock(ARGS_NO_COLUMNS)
     const { container, getAllByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: LEGACY_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: LEGACY_TSV }])} t={t} />,
     )
     fireEvent.click(getAllByRole('button', { name: zh.sortAria })[0]!)
     const nameCells = Array.from(container.querySelectorAll('tbody td:nth-child(1)')).map(el => el.textContent)
@@ -1129,7 +1133,7 @@ describe('TableCard coverage completions', () => {
     const tsv = 'result_id: qr_rag\na\tb\nfull\t1\nshort\nshort2\nmid\t3\n(4 rows)'
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_rag', title: '缺列' }))
     const { container, getByText, getAllByRole } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: tsv }])} t={t} />,
     )
     expect(getByText('short')).toBeDefined()
     const shortRow = Array.from(container.querySelectorAll('tbody tr'))[1]!
@@ -1148,7 +1152,7 @@ describe('TableCard coverage completions', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     const block = makeSettledBlock(VALID_ARGS)
     const { getByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     fireEvent.click(getByText(zh.copyMd))
     await vi.advanceTimersByTimeAsync(0)
@@ -1190,7 +1194,7 @@ describe('TableCard fetchResult wiring', () => {
     const { findByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])}
         fetchResult={fetchResult}
         t={t}
       />,
@@ -1206,7 +1210,7 @@ describe('TableCard fetchResult wiring', () => {
     const { findByText, queryByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])}
         fetchResult={fetchResult}
         t={t}
       />,
@@ -1222,7 +1226,7 @@ describe('TableCard fetchResult wiring', () => {
     const { findByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession()}
+        useConversation={makeUseSession()}
         fetchResult={fetchResult}
         t={t}
       />,
@@ -1237,7 +1241,7 @@ describe('TableCard fetchResult wiring', () => {
     const { findByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])}
         fetchResult={fetchResult}
         t={t}
       />,
@@ -1249,7 +1253,7 @@ describe('TableCard fetchResult wiring', () => {
   it('falls back to the TSV when no fetchResult face is provided (result-cache absent)', () => {
     const block = makeSettledBlock(VALID_ARGS)
     const { getByText, queryByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} t={t} />,
     )
     expect(getByText('2026-08-01')).toBeDefined()
     expect(queryByText('2026-08-03')).toBeNull()
@@ -1262,7 +1266,7 @@ describe('TableCard fetchResult wiring', () => {
     const { findByText, getByText } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])}
         fetchResult={fetchResult}
         invalidateResult={vi.fn()}
         t={t}
@@ -1279,12 +1283,12 @@ describe('TableCard fetchResult wiring', () => {
     const fetchResult = vi.fn().mockResolvedValue(ENTRY_FULL)
     const invalidateResult = vi.fn()
     const block = makeSettledBlock(VALID_ARGS)
-    const useSession5 = makeUseSession([{ seq: 5, text: REAL_TSV }])
-    const useSession8 = makeUseSession([{ seq: 8, text: REAL_TSV }])
+    const useConversation5 = makeUseSession([{ seq: 5, text: REAL_TSV }])
+    const useConversation8 = makeUseSession([{ seq: 8, text: REAL_TSV }])
     const { rerender, findByText } = render(
       <TableCard
         block={block}
-        useSession={useSession5}
+        useConversation={useConversation5}
         fetchResult={fetchResult}
         invalidateResult={invalidateResult}
         t={t}
@@ -1298,7 +1302,7 @@ describe('TableCard fetchResult wiring', () => {
     rerender(
       <TableCard
         block={block}
-        useSession={useSession8}
+        useConversation={useConversation8}
         fetchResult={fetchResult}
         invalidateResult={invalidateResult}
         t={t}
@@ -1315,7 +1319,7 @@ describe('TableCard fetchResult wiring', () => {
     const { findByText, getByRole } = render(
       <TableCard
         block={block}
-        useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])}
+        useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])}
         fetchResult={fetchResult}
         t={t}
       />,
@@ -1332,7 +1336,7 @@ describe('TableCard fetchResult wiring', () => {
     const fetchResult = vi.fn().mockResolvedValue(ENTRY_NULL_CELLS)
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_test01', title: '空单元' }))
     const { findByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
     )
     // 'z' and '42' (number coerced to string) render; the null/undefined cells
     // become empty strings (no crash, no "null" text).
@@ -1344,7 +1348,7 @@ describe('TableCard fetchResult wiring', () => {
     const fetchResult = vi.fn().mockResolvedValue(ENTRY_TRUNCATED)
     const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_test01', title: '截断条目' }))
     const { findByText } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
     )
     expect(await findByText(`2 / 60 ${zh.rows}`)).toBeDefined()
   })
@@ -1354,7 +1358,7 @@ describe('TableCard fetchResult wiring', () => {
     const fetchResult = vi.fn(() => new Promise<FetchResultEntry | undefined>((r) => { resolveFetch = r }))
     const block = makeSettledBlock(VALID_ARGS)
     const { unmount } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
     )
     expect(fetchResult).toHaveBeenCalledTimes(1)
     unmount()
@@ -1368,7 +1372,7 @@ describe('TableCard fetchResult wiring', () => {
     const fetchResult = vi.fn(() => new Promise<never>((_, rej) => { rejectFetch = rej }))
     const block = makeSettledBlock(VALID_ARGS)
     const { unmount } = render(
-      <TableCard block={block} useSession={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
     )
     unmount()
     rejectFetch(new Error('network'))

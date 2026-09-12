@@ -31,8 +31,12 @@ import { MaxComputeQueryEngine, type Config } from '../src/index.ts'
 import {
   CredentialProvider,
   credentialRef,
-  type CredentialRef,
   type CredentialAddress,
+  type CredentialKey,
+  type CredentialRecord,
+  type CredentialRecordEntry,
+  type CredentialRecordInfo,
+  type CredentialRef,
   type ResolvedCredential,
 } from '@deepseek-ai/dsh-credentials'
 
@@ -63,6 +67,14 @@ class PerScopeMemoryCredentials extends CredentialProvider {
   override async describe(): Promise<{ configured: boolean; writable: boolean }> { return { configured: false, writable: true } }
   override async set(): Promise<void> { /* not exercised */ }
   override async unset(): Promise<void> { /* not exercised */ }
+  // Records are not exercised by this test provider (ref-only, scope-aware).
+  override readRecord(_key: CredentialKey): Promise<CredentialRecord | undefined> { return Promise.resolve(undefined) }
+  override describeRecord(_key: CredentialKey): Promise<CredentialRecordInfo> {
+    return Promise.resolve({ configured: false, writable: false })
+  }
+  override listRecords(): Promise<readonly CredentialRecordEntry[]> { return Promise.resolve([]) }
+  override modifyRecord(_key: CredentialKey, _mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>): Promise<CredentialRecord | undefined> { return Promise.reject(new Error('PerScopeMemoryCredentials: records not supported')) }
+  override deleteRecord(_key: CredentialKey): Promise<void> { return Promise.resolve() }
 }
 
 /**

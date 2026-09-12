@@ -136,7 +136,8 @@ describe('GoalDock', () => {
   })
 
   it('sets title attribute on objective for full text access', () => {
-    const longObjective = 'This is a very long objective that should be truncated in the UI but accessible via title attribute for accessibility purposes'
+    const longObjective =
+      'This is a very long objective that should be truncated in the UI but accessible via title attribute for accessibility purposes'
     const goalData = makeGoalData({
       goal: {
         objective: longObjective,

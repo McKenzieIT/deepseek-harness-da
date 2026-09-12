@@ -32,9 +32,6 @@
     },
     {
       "path": "../../identity/identity"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
     }
   ]
 }

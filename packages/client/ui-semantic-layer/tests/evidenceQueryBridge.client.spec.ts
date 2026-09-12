@@ -19,10 +19,15 @@ function makeRemoteStub() {
   return {
     coverageQuery: vi.fn().mockResolvedValue(ok(coverage)),
     gapAnalysis: vi.fn().mockResolvedValue(ok({ sourceAssetId: 'a1', gaps: [] } satisfies GapAnalysisResult)),
-    reachabilityDelta: vi.fn().mockResolvedValue(ok({ proposedRelation: { sourceId: 's', targetId: 't', type: 'joins' as const }, newlyReachable: [] })),
+    reachabilityDelta: vi.fn().mockResolvedValue(ok({
+      proposedRelation: { sourceId: 's', targetId: 't', type: 'joins' as const }, newlyReachable: [],
+    })),
     evalResultQuery: vi.fn().mockResolvedValue(ok({ results: [], total: 0 })),
     assetHealth: vi.fn().mockResolvedValue(ok(null)),
-    beforeAfterDelta: vi.fn().mockResolvedValue(ok({ runIdA: 'r1', runIdB: 'r2', flipped: [], summary: { improved: 0, regressed: 0, unchanged: 5 } } satisfies EvalDeltaReport)),
+    beforeAfterDelta: vi.fn().mockResolvedValue(ok({
+      runIdA: 'r1', runIdB: 'r2', flipped: [],
+      summary: { improved: 0, regressed: 0, unchanged: 5 },
+    } satisfies EvalDeltaReport)),
     getEvalRunCount: vi.fn().mockResolvedValue(ok(7)),
     getRecentPassRates: vi.fn().mockResolvedValue(ok([0.8, 0.9, 1.0])),
   }

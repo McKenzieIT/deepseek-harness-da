@@ -30,7 +30,6 @@
     { "path": "../../code-runtime/code-runtime-worker-thread" },
     { "path": "../../session/session-projection" },
     { "path": "../../goal/goal" },
-    { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../../vendor/loader" },
     { "path": "../../../vendor/group" }
   ]

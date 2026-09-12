@@ -55,3 +55,9 @@ pre-push:
       run: pnpm run verify-no-production-src-on-master
     - name: typecheck
       run: pnpm run typecheck
+    # Self-report upstream-sync record consistency on every push (UM15 §5,
+    # Decision #1 local-first staleness). Read-only — unlike `upstream-status`
+    # it writes no impact report, so it cannot dirty the tree mid-push. A
+    # stale upstream ref or pending waiver is reported, not failed.
+    - name: upstream-sync record consistency
+      run: pnpm run verify-upstream-sync-record

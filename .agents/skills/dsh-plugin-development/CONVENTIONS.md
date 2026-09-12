@@ -56,13 +56,13 @@ Testing policy and the snapshot obligation live in [docs/testing.md](../../../do
 Observing real behavior beats asserting it. From the repository root, after `pnpm install`:
 
 ```sh
-pnpm dsh web --patch ./scratch-plugin/cordis.yml   # Web UI with a scratch overlay
-pnpm run demo:cordis                               # Web UI with the self-referential Cordis toolset
-pnpm run demo:acp                                  # ACP automation server
-pnpm dsh --profile headless "task"                 # one-shot task run
+pnpm dsh web --patch ./scratch-plugin/cordis.yml                       # Web UI with a scratch overlay
+pnpm dsh web --patch ./apps/cli/config/examples/cordis/cordis.yml       # Web UI with the self-referential Cordis toolset
+pnpm dsh --profile acp                                                  # ACP automation server
+pnpm dsh --profile headless "task"                                      # one-shot task run
 ```
 
-`demo:cordis`, `demo:acp`, and `dsh --profile` need `DEEPSEEK_API_KEY`. The Cordis tutorial runs keylessly from a scratch directory with `node --import tsx ../../vendor/cordis/bin.js` ([setup](../../../docs/cordis-tutorial/index.md#setup)); its chapters double as smoke tests for framework-level plugins. For Web UI changes, refresh the served URL after rebuilding affected artifacts — only client-plugin bundles hot-reload without a refresh.
+`dsh web --patch` (cordis), `dsh --profile acp`, and `dsh --profile headless` need `DEEPSEEK_API_KEY`. The Cordis tutorial runs keylessly from a scratch directory with `node --import tsx ../../vendor/cordis/bin.js` ([setup](../../../docs/cordis-tutorial/index.md#setup)); its chapters double as smoke tests for framework-level plugins. For Web UI changes, refresh the served URL after rebuilding affected artifacts — only client-plugin bundles hot-reload without a refresh.
 
 ## Common failure map
 

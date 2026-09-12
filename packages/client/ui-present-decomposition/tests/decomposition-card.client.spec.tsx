@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, fireEvent } from '@testing-library/react'
 import { DecompositionCard } from '../src/client/DecompositionCard.tsx'
 import type { DecompositionKey } from '../src/client/locales.ts'
-import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 
 afterEach(cleanup)
 
@@ -29,14 +30,18 @@ const t = (key: DecompositionKey): string => {
 
 function makeSnapshot(opts: { latestTurnStart?: number } = {}): ConversationSnapshot {
   const turnStart = opts.latestTurnStart ?? NOW - 5000
+  // Route the chat-specific data (turnOrder + turnTimings) through the chat
+  // view's legacy slice, mirroring the re-homed isLatestTurn access path
+  // (snapshot.views.get('chat').legacy.turnTimings + .timeline.turnOrder).
+  const chat = {
+    timeline: { turnOrder: [1], turns: new Map() },
+    order: [],
+    nodes: { get: () => undefined, values: () => [] },
+    locations: { getTurn: () => [], getStep: () => [] },
+    legacy: { nodes: [], turnTimings: new Map([[1, { startTime: turnStart }]]), turnEnds: new Map(), partial: null, runningCalls: [] },
+  }
   return {
-    chat: {
-      timeline: { turnOrder: [1], turns: new Map() },
-      order: [],
-      nodes: { get: () => undefined, values: () => [] },
-      locations: { getTurn: () => [], getStep: () => [] },
-      legacy: { nodes: [], turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
-    },
+    chat,
     turnTimings: new Map([[1, { startTime: turnStart }]]),
     turnEnds: new Map(),
     nodes: [],
@@ -44,7 +49,7 @@ function makeSnapshot(opts: { latestTurnStart?: number } = {}): ConversationSnap
     runningCalls: [],
     pending: [],
     queue: [],
-    views: { get: () => undefined },
+    views: { get: () => chat },
   } as unknown as ConversationSnapshot
 }
 
@@ -67,7 +72,7 @@ function makeRunningBlock(): ToolCallBlock {
     time: NOW,
     callView: null,
     subCalls: [],
-  }
+  } as unknown as ToolCallBlock
 }
 
 function makeSettledBlock(argsRaw: string, content = '', isError = false): ToolCallBlock {
@@ -123,8 +128,8 @@ const LOW_CONFIDENCE_ARGS = JSON.stringify({
   confidence: 0.5,
 })
 
-function renderCard(block: ToolCallBlock, useSession = latest) {
-  return render(<DecompositionCard block={block} useSession={useSession} t={t} />)
+function renderCard(block: ToolCallBlock, useConversation = latest) {
+  return render(<DecompositionCard block={block} useConversation={useConversation} t={t} />)
 }
 
 describe('DecompositionCard states', () => {
@@ -409,14 +414,14 @@ describe('DecompositionCard collapsing', () => {
 
   it('treats empty turnOrder as latest turn', () => {
     const snapshot = makeSnapshot()
-    ;(snapshot.chat.timeline as unknown as { turnOrder: number[] }).turnOrder = []
+    ;(snapshot.views.get('chat')!.timeline as unknown as { turnOrder: number[] }).turnOrder = []
     const { getByRole } = renderCard(makeSettledBlock(VALID_ARGS), makeUseSession(snapshot))
     expect(getByRole('button', { expanded: true })).toBeDefined()
   })
 
   it('treats a missing latest-turn timing as latest turn', () => {
     const snapshot = makeSnapshot()
-    ;(snapshot.turnTimings as Map<number, unknown>).clear()
+    ;(snapshot.views.get('chat')!.legacy.turnTimings as unknown as Map<number, unknown>).clear()
     const { getByRole } = renderCard(makeSettledBlock(VALID_ARGS), makeUseSession(snapshot))
     expect(getByRole('button', { expanded: true })).toBeDefined()
   })

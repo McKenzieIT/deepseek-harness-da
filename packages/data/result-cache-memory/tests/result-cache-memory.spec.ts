@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { ResultEntry } from '@deepseek-ai/dsh-result-cache'
 import { apply, generateQueryResultId, MemoryResultCache } from '@deepseek-ai/dsh-result-cache-memory'
 
@@ -152,7 +153,7 @@ describe('tools/post-execute hook', () => {
 
     const result = await ctx.tools.execute({
       signal: testSignal,
-      callId: CallId('c1'),
+      callId: ToolCallId('c1'),
       name: 'query_data',
       arguments: { sql: 'SELECT x FROM t WHERE ds=1', scope_id: 'game-1' },
     })
@@ -194,13 +195,13 @@ describe('tools/post-execute hook', () => {
         return { state: 'completed', sql, columns: ['x'], rows, rowCount: 1 }
       },
     }))
-    const r1 = await ctx.tools.execute({ signal: testSignal, callId: CallId('re-1'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
+    const r1 = await ctx.tools.execute({ signal: testSignal, callId: ToolCallId('re-1'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
     expect(r1.isError).toBe(false)
     const id1 = (r1.value as Record<string, unknown>).result_id as string
     expect(ctx.resultCache.get(id1)?.rows).toEqual([[42]])
 
     // second run, SAME sql, DIFFERENT rows (data changed)
-    const r2 = await ctx.tools.execute({ signal: testSignal, callId: CallId('re-2'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
+    const r2 = await ctx.tools.execute({ signal: testSignal, callId: ToolCallId('re-2'), name: 'query_data', arguments: { sql, scope_id: 'game-1' } })
     expect(r2.isError).toBe(false)               // D8-2: must NOT error
     const id2 = (r2.value as Record<string, unknown>).result_id as string
     expect(id2).toBe(id1)                          // same SQL -> same qr_ id
@@ -218,7 +219,7 @@ describe('tools/post-execute hook', () => {
 
     const result = await ctx.tools.execute({
       signal: testSignal,
-      callId: CallId('c2'),
+      callId: ToolCallId('c2'),
       name: 'query_data',
       arguments: { sql: 'SELECT bad', scope_id: 'game-1' },
     })
@@ -238,7 +239,7 @@ describe('tools/post-execute hook', () => {
 
     const result = await ctx.tools.execute({
       signal: testSignal,
-      callId: CallId('c3'),
+      callId: ToolCallId('c3'),
       name: 'query_data',
       arguments: { sql: 'SELECT slow', scope_id: 'game-1' },
     })
@@ -263,7 +264,7 @@ describe('tools/post-execute hook', () => {
 
     const result = await ctx.tools.execute({
       signal: testSignal,
-      callId: CallId('c4'),
+      callId: ToolCallId('c4'),
       name: 'other_tool',
       arguments: {},
     })
@@ -285,7 +286,7 @@ describe('tools/post-execute hook', () => {
 
     const result = await ctx.tools.execute({
       signal: testSignal,
-      callId: CallId('c5'),
+      callId: ToolCallId('c5'),
       name: 'query_data',
       arguments: { sql: 'SELECT * FROM big_table', scope_id: 'game-1' },
     })
@@ -329,7 +330,7 @@ describe('query_data → resultCache → compute integration', () => {
 
     const queryResult = await ctx.tools.execute({
       signal: testSignal,
-      callId: CallId('int-1'),
+      callId: ToolCallId('int-1'),
       name: 'query_data',
       arguments: { sql, scope_id: 'game-1' },
     })
@@ -362,7 +363,7 @@ describe('query_data → resultCache → compute integration', () => {
 
     const r1 = await ctx.tools.execute({
       signal: testSignal,
-      callId: CallId('det-1'),
+      callId: ToolCallId('det-1'),
       name: 'query_data',
       arguments: { sql, scope_id: 'game-1' },
     })

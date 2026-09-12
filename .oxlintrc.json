@@ -26,6 +26,7 @@
     "native/**", // The imported landlock-run subtree has its own gates; see native/README.md.
     "**/*.js",
     "**/*.mjs",
+    "packages/*/*/src/**/*.d.ts", // Emitted declarations, never hand-written sources. An ad-hoc `tsc` whose outDir resolved to the package's own src/ instead of lib/types has dropped these into packages/data/* and packages/identity/* three times; the last occurrence inflated `pnpm run lint` from 93 to 1980. Kept OUT of .gitignore deliberately, so `git status` still reports a recurrence — hiding it there is what let the two earlier occurrences go unnoticed.
     "**/*.config.ts", // Tool and app configs are outside the repository TypeScript programs.
     "packages/client/tsdown.client.ts" // Shared client build preset, also outside a TypeScript program.
   ],
@@ -57,6 +58,14 @@
           }
         ],
         "no-useless-constructor": "error",
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "browsers withhold crypto.randomUUID outside secure contexts (plain-HTTP LAN pages); mint through @deepseek-ai/dsh-util-crypto instead"
+          }
+        ],
         "typescript/await-thenable": "error",
         "typescript/ban-ts-comment": [
           "error",
@@ -316,6 +325,21 @@
       "rules": {
         "@stylistic/quotes": "off"
       }
+    },
+    {
+      "files": [
+        "packages/experimental/webworker-runtime/src/node/**/*.ts",
+        "packages/experimental/webworker-runtime/src/storage/memory.ts",
+        "packages/experimental/webworker-runtime/src/module-system/module-loader.ts",
+        "packages/experimental/webworker-runtime/src/transport/synthetic-http.ts"
+      ],
+      "rules": {
+        "typescript/require-await": "off", // Async faces Node and Cordis define (fs promises, the module seam) reject rather than throw; the VFS beneath them never awaits.
+        "typescript/no-extraneous-class": "off" // Node constructs these (`new Script()`, `new Worker()`), so a stub that refuses must still be a class.
+      },
+      "plugins": [
+        "typescript"
+      ]
     }
   ]
 }

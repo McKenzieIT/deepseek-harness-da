@@ -16,10 +16,10 @@
       "path": "../result-cache"
     },
     {
-      "path": "../../core/tools"
+      "path": "../../util/values"
     },
     {
-      "path": "../../runtime-diagnostics/invariants"
+      "path": "../../core/tools"
     }
   ]
 }
