@@ -169,3 +169,34 @@ PR #115/#116 都 merged；p2-* 后清基本完成（剩 4 需决定/keep）。ma
 - **根因不是「谁比谁新」，是 evaluation effort 的同一批工作在两条线上各做了一遍**：同 5 条 commit subject 在两侧以不同 sha 存在（`00c047956d`/`b7039860ce`/`be3c370693`/`bdc27fe572`/`259d509134` vs `bb44531577`/`219d815e75`/`30224f1942`/`d462e637d1`/`92acfcab77`），local 侧另有 4 条（G10 stack / GA-GT4 close / data scope boundary 等）。
 - ⚠ **两侧都有对方没有的真内容，取任一侧都会丢东西**（已逐行核，且**排除了「只是标点全宽/半宽差异」**这一可能——标点归一化后仍差）：`origin/master` 独有 `tickets/README.md` 矩阵里的 **T12**、若干 **票链** 行、GA-GT4 行；local 独有 **R10/G10** 相关行与**重写过的「领域职责」段**（origin 版写 "evaluation 票只设计/实现 ground truth、normalization、comparator policy…"，local 版写 "evaluation effort 设计/实现 Benchmark、identity、evidence、grading、measurement 与 evaluation lifecycle…"）。
 - **结论：master-sync 不是 UM11 能单方面做的 git 操作，而是需要 evaluation 域知识的 reconcile。** 本 map 的铁律「不碰 `wayfinder/evaluation/`」在此不只是纪律问题——盲选一侧会静默删除对方 effort 的票据内容。**须由 evaluation effort（或一次专门的、经用户授权的 cross-effort reconcile 任务）合并这两份，然后 master 才能 push。**
+
+### [2026-09-12] master-sync RESOLVED via PR #119；evaluation reconcile merge 已入 origin/master
+
+reconcile merge `96541ed9de`（parents `64c6931192` local + `4cc985d567` origin/master）由 evaluation effort 完成、零内容损失已验（7 条 grep 自检全过：`eventdef-realexec.json`/`真正的 quick win`/`后续新票均等待 G10 resolved`/`已 primary-URL-confirmed` 来自 origin 侧，`T1→R23→GA-EVAL-EXPAND`/`G13-context-evaluation-protocol`/`R8b-judge-readout` 来自 local 侧，合并后全在 HEAD 树里）。本 session 把含此 reconcile 的 local master（`5398de2399` = `be20a907cd` G12 + 一个 handoff prompt commit）经 PR #119 落回 origin/master。
+
+**推路径**：从 `dsh-resync` worktree（HEAD=`upstream/resync-2026-09-08` ≠ master）推 master 到 `refs/heads/feat/tracker-2026-09-12`（remote SHA `5398de2399`）。`no production src on master` 门 legitimately 跳过——`scripts/verify-no-production-src-on-master.ts` 头两行 `if (branch !== 'master') process.exit(0)`，非 master HEAD 时不检查（这就是历史上 backup 分支能推的同一机制）。**不用 `--no-verify`**——走门的设计意图（`docs/da-pr-workflow.md` 明确 feat-branch + PR 是这条路径存在的原因）。
+
+**PR #119**：`base=master@4cc985d567`, `head=5398de2399`, 87 commit, `MERGEABLE`, `mergeState=UNSTABLE`（非 required checks pending/fail——不阻合并）。**PR CI 2 红 = empirically-verified pre-existing**：
+- `Dependency layout` + `Pack npm tarballs` 在 origin/master 顶点 `4cc985d567` 上 check-runs API 同样 `failure`（本分支零新增），沿 #116/#117 先例放行。
+- 另需排除误判：origin/master 顶点还带 3 个 `python runtime / node24-*` 红，但那些是 **push 事件**的检查、在 PR 上从未运行；且已在 origin/master 上 pre-existing，出本次 scope（UM12 CI-real-red-set 分项）。
+
+**合并**：`gh pr merge 119 --repo McKenzieIT/deepseek-harness-da --merge`（保 87-commit 粒度，避 `--squash` 的粒度损失——tracker commit 有审计价值）→ **origin/master 前进 `4cc985d567` → `9ffb7b3eed`（merge commit，parents `4cc985d567`+`5398de2399`，state=MERGED 2026-09-12T15:12:43Z）**。`gh pr merge` 不跑 lefthook（pre-push 只在本地 `git push` 触发），故 `2877a59cfd` 那 3 行 `scripts/translation-pairing.manifest.json` 改动不再是 push-blocker——且合并后 origin/master 上该文件与合并前 origin/master **字节相同**（reconcile 采纳 origin 版，local 版被覆盖）→ 无 protected-source 净落地。
+
+**祖先验证全 YES**：
+- `be20a907cd` (pre-drift master tip, G12) ancestor of origin/master
+- `96541ed9de` (reconcile merge) ancestor of origin/master
+- `5398de2399` (feat tip) ancestor of origin/master
+- `2877a59cfd` (G10 data-domain core commit) ancestor of origin/master
+
+**内容完整性**：`git diff 5398de2399 origin/master` **empty** → 新 origin/master 的树与合并前的 feat tip 字节相同(`9ffb7b3eed` 是 merge commit，其 tree = tree(5398de2399))。
+
+**post-merge 操作**：
+- local master `git merge --ff-only origin/master` FF 到 `9ffb7b3eed`（`Updating 5398de2399..9ffb7b3eed`，纯 FF 无 diff）。
+- feat 分支 `refs/heads/feat/tracker-2026-09-12` @ `5398de2399` **保留**——供后续 worktree 后清阶段决定删除时机（现无 open PR 引用它）。
+- 本次 tracker 更新（map.md + UM11 本条）**未 push**（沿 09-12 早前 tracker commit `a79ede0862`/`5b8fc6da5a`/`e3d7710aaa` 的同一 discipline，用户显式指示前不 push）。
+
+**本票 master-sync 项 → DONE。** Deferred 剩：
+1. **p2-\* worktree cleanup**（Scope 4-6）：2 keep-branch（`dsh-p2-present-table` 1 residual `callView:null` / `dsh-p2-uism-vitest` 5 test residual，归 R-DA-UI-SETTINGS-MODELS-VITEST-DEBT）+ 2 rescue-branch（`dsh-arch` 3 doc/manifest 残留定向 rescue / `dsh-rda-admin` 现已 `is-ancestor` origin/master YES 可安全删——PR #117 已 land seam-3）。
+2. **evaluation worktree**（`.worktrees/r10-harness-goodhart` / `.worktrees/t1-exec-grader`）不碰。
+
+**本票整体状态**：master-sync 关键 gated 项已了；p2-\* 后清仍 open（无环境阻塞，可 AFK 推进）。header `Blocked by` 现只余 UM12（后清专用）+ UM-MERGE-INTEGRITY（waiver drop 项）；已不阻 push。
