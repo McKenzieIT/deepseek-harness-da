@@ -12,6 +12,7 @@ import {
 
 const schemaService = new SettingsSchemaService(new Context())
 
+/** The settings namespace answers over the Remote carrier, which has no envelope. */
 function ok<T>(value: T): RemoteResult<T> {
   return { ok: true, value }
 }

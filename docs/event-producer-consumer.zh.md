@@ -11,7 +11,7 @@
 
 | Event | Mode | Declared in | Dispatchers | Listeners |
 | --- | --- | --- | --- | --- |
-| `admin/pat-miss` | `emit` | [`packages/data/admin/src/index.ts:533`](../packages/data/admin/src/index.ts) | [`admin`](../packages/data/admin) (`emit`) | - |
+| `admin/pat-miss` | `emit` | [`packages/data/admin/src/index.ts:542`](../packages/data/admin/src/index.ts) | [`admin`](../packages/data/admin) (`emit`) | - |
 | `agent-loop/config-start-failed` | `emit` | [`packages/core/agent-loop/src/index.ts:246`](../packages/core/agent-loop/src/index.ts) | [`agent-loop`](../packages/core/agent-loop) (`events.dispatch`) | - |
 | `agent-preset/selected` | `emit` | [`packages/preset/agent-presets/src/types.ts:80`](../packages/preset/agent-presets/src/types.ts) | [`agent-presets`](../packages/preset/agent-presets) (`emit`) | `remotes` |
 | `agent/assistant-stream` | `emit` | [`packages/core/agent/src/runtime-types.ts:383`](../packages/core/agent/src/runtime-types.ts) | [`agent-loop`](../packages/core/agent-loop) (`emit`) | [`headless`](../packages/bundle/headless), `session-controller` |

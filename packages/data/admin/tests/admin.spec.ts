@@ -10,9 +10,13 @@
  *
  * Run: `pnpm vitest run packages/data/admin`
  */
-import { test, expect, describe } from 'vitest'
+import { test, expect, describe, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import Storage, { storageBackendServiceKey } from '@deepseek-ai/dsh-storage'
+import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
+import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { AdminDomain, notifyPatMiss, name, inject, apply } from '../src/index.ts'
+import { MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 
 // ── Domain spec ─────────────────────────────────────────────────────────────
 
@@ -42,10 +46,13 @@ describe('plugin exports', () => {
     expect(name).toBe('admin')
   })
 
-  test('injects storageDomain, credentials, webServer', () => {
+  test('injects storageDomain and credentials; webServer is lazy, not eager', () => {
     expect(inject).toContain('storageDomain')
     expect(inject).toContain('credentials')
-    expect(inject).toContain('webServer')
+    // webServer is demoted to an optional, lazily-injected carrier (mirrors
+    // seam 3, connection): admin loads without a hard webServer dependency
+    // and mounts /admin/api routes only when a webServer is present.
+    expect(inject).not.toContain('webServer')
   })
 
   test('apply is a function', () => {
@@ -135,5 +142,75 @@ describe('domain schema validation', () => {
       createdAt: '2026-01-01T00:00:00Z',
     })
     expect(result.success).toBe(true)
+  })
+})
+
+// ── Lazy webServer carrier (seam 3 mirror) ─────────────────────────────────
+//
+// webServer is demoted from an eager inject dependency to an optional,
+// lazily-injected carrier (mirrors seam 3, packages/client/connection):
+// admin loads without a webServer and mounts /admin/api only when one is
+// present. These two tests verify the named deliverables — graceful
+// no-webServer load, and behavior-unchanged-when-webServer-present.
+
+async function adminHarness(opts: { withWebServer?: boolean } = {}): Promise<{
+  ctx: Context
+  registeredRoutes: WebRoute[]
+  cleanup: () => Promise<void>
+}> {
+  const ctx = new Context()
+  await ctx.plugin(Storage)
+  const backend = new MemoryStorageBackend()
+  ctx.storage.backend.register('memory', backend)
+  ctx.provide(storageBackendServiceKey('memory'), backend)
+  await ctx.plugin(StorageDomain, { backend: 'memory' })
+  // admin injects 'credentials' but no route handler runs in these tests, so
+  // a no-op service satisfies the inject without spinning up file-backed I/O.
+  ctx.provide('credentials', {
+    resolve: async () => undefined,
+    describe: async () => ({ configured: false, writable: true }),
+    set: async () => {},
+    unset: async () => {},
+  } as never)
+  const registeredRoutes: WebRoute[] = []
+  if (opts.withWebServer) {
+    ctx.provide('webServer', {
+      register: (route: WebRoute) => {
+        registeredRoutes.push(route)
+        return () => {}
+      },
+    } as never)
+  }
+  return { ctx, registeredRoutes, cleanup: async () => { await ctx.fiber.dispose() } }
+}
+
+describe('admin plugin: lazy webServer carrier (seam 3 mirror)', () => {
+  test('loads and opens its domain without a webServer (graceful no-webServer load)', async () => {
+    const { ctx, cleanup } = await adminHarness() // no webServer present
+    try {
+      const AdminPlugin = await import('../src/index.ts')
+      await ctx.plugin(AdminPlugin, {})
+      // admin activated: it opened its AdminDomain through storageDomain.
+      await vi.waitFor(() => {
+        expect(ctx.storageDomain.get(AdminDomain.name)).toBeDefined()
+      })
+      // ...and mounted no routes, because no webServer carrier is present.
+      expect(ctx.get('webServer')).toBeUndefined()
+    } finally {
+      await cleanup()
+    }
+  })
+
+  test('registers the /admin/api prefix route when a webServer is present (behavior unchanged)', async () => {
+    const { ctx, registeredRoutes, cleanup } = await adminHarness({ withWebServer: true })
+    try {
+      const AdminPlugin = await import('../src/index.ts')
+      await ctx.plugin(AdminPlugin, {})
+      await vi.waitFor(() => {
+        expect(registeredRoutes.some(r => r.path === '/admin/api' && r.kind === 'prefix')).toBe(true)
+      })
+    } finally {
+      await cleanup()
+    }
   })
 })
