@@ -1,47 +1,12 @@
-# G10 — subagent tree integration (upstream sync)
+# G10 — Subagent execution adapter
 
-**Type**: task
+**Type**: grilling
 **Status**: open
-**Blocked by**: [G6 infra contracts for dynamic workflows](G6-infra-contracts-for-dynamic-workflows.md)
-**Blocks**: —
+**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md), [G17 Executor adapters](G17-native-source-adapters.md)
+**Blocks**: [G22 Cross-session and multi-agent scheduling](G22-cross-session-multi-agent-scheduling.md)
 
 ## Question
 
-Enrich the subagent nodes in the DAG with full tree structure from session lineage, and integrate any upstream improvements to subagent event persistence.
+How does an Attempt dispatch and observe a subagent while reusing native run identity, parent-owned catalog, descendant listing, descriptor, timing, cancellation, and result semantics?
 
-### Current state (from R3 + G5 D2 refinement)
-- `subagent/start` and `subagent/end` are **ephemeral** Cordis events (not persisted in parent session)
-- `subagent/descriptor` is persisted in the **child** session only
-- Parent→child linkage: `SessionHeader.parentSession` (child side)
-- G1's `dag/subagent-linked` event bridges the gap by persisting correlation in the parent session
-- G5 D2 将关联机制从 G1 的"时间启发式"升级为"task ownership"——`tools/pre-execute` 拦截器找到当前 Agent 拥有的 in_progress task（而非最近一次 tool call），关联准确性是硬需求（DAG 是执行基底，Agent 依据 DAG 做决策）
-
-### What full tree integration means
-- Recursive subagent trees: agent A spawns B, B spawns C → tree visualization A→B→C
-- Cross-session lineage queries via `SessionHeader.parentSession`
-- Subagent node enrichment: label, provider, mode (one-shot/continuable) from `subagent/descriptor`
-
-### Trigger condition
-Monitor upstream for:
-- `subagent/start` becoming a persisted event (parent session)
-- `SubagentStartRequest` gaining a `taskId` or `contextId` field
-- New session projection for subagent child listing
-- Changes to `subagent/descriptor` schema
-
-### If upstream adds native task↔subagent linkage
-- Our `tools/pre-execute` correlation mechanism (G5 D2 task ownership heuristic) becomes redundant
-- Switch to upstream's native linkage, remove our interception
-- The `dag/subagent-linked` event remains for backward compatibility (older sessions), but `correlationSource` field (if adopted from G6) changes from `'pre-execute-heuristic'` to `'native'`
-
-## Upstream sync risk
-
-**High** — subagent event persistence is a known gap that upstream is likely to address. When they do:
-- If they persist `subagent/start` in parent session → simplifies our event consumption
-- If they add `taskId` to `SubagentStartRequest` → our correlation mechanism becomes unnecessary (but still works as fallback)
-- If they add a session projection for child listing → can replace cross-session queries
-
-Track upstream changes on each merge and re-evaluate.
-
-## Upstream merge 2026-09-07（upstream sync 触发）
-
-本票专为 upstream sync 设计（"Monitor upstream...re-evaluate each merge"）。upstream 已动 subagent：`feat(subagent): authorize selectable child models`、`refactor(subagent): retain identity projection state`、`feat(subagent): unify adjacent agent delivery on steer`、`feat(subagent): migrate browser control to Remote`（后两条触及本票的 subagent 事件/Remote 迁移）。**评估**：upstream 是否 persist `subagent/start` 于 parent session / `SubagentStartRequest` 加 `taskId`/`contextId` / 新 session projection for child listing——若是，本票 G5 D2 task-ownership heuristic（`tools/pre-execute` 拦截）可被 upstream 原生 linkage 取代，`correlationSource` 从 `'pre-execute-heuristic'` → `'native'`。merge session 落地后更新。
+Decide correlation for one-shot, continuable, nested, remote, and no-local-Session runs; what is recorded before and after dispatch; interruption and missing terminal settlement; and partial UI facts.

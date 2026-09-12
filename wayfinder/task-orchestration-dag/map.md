@@ -1,99 +1,71 @@
 # wayfinder:map — task-orchestration-dag
 
-> local markdown tracker (wayfinder skill default). Sub-tickets in `tickets/`, research notes in `research/`. This map is an **index**, not storage — decision details live in their ticket / research note.
+> Local Markdown tracker. Tickets live in `tickets/`; research notes live in `research/`. This map indexes decisions and does not restate their detail.
 
 ## Destination
 
-A DAG-based task orchestration visualization system that upgrades the current flat `TodoItem` list into a rich, interactive graph. The system:
+An implementation-ready specification for a community-installable DSH Cordis plugin suite that gives data-agent a writable, durable Plan DAG. The LLM can create and revise tasks and dependencies; an outer-loop policy advances ready work through the current Agent, skills, subagents, workflows, or tools; verification controls completion; and a UI shows current, subsequent, blocked, failed, and completed work.
 
-1. **Replaces the flat TodoPanel** with a collapsible sidebar DAG graph showing task nodes, their dependencies, and execution flow with animated flowing dashed lines between nodes.
-2. **Integrates subagent and workflow nodes** into the same DAG — when subagents are spawned or new tasks are added mid-session, their nodes animate into the graph in real time.
-3. **Works across all presets** — available wherever task orchestration is composed (standard, code, cordis, data-agent variants B/C, and future presets).
-4. **Builds as a terminal state plugin** — disables `tool-todo` and replaces it with structured `dag_task_*` tools that provide IDs, dependencies, and multi-agent-ready fields, following the DSH plugin development patterns to avoid upstream merge conflicts.
-5. **Prepares infrastructure** for dynamic multi-agent workflows — the DAG model and visualization provide the substrate on which future workflow DAGs, multi-agent coordination graphs, and dsh-data-agent's phase-aware planning can render.
-
-The map is done when: every architectural decision is locked (data model, UI placement, rendering approach, preset integration, infra contracts), a spec exists for each component, and the work is ready to hand off to implementation sessions.
+The suite must mount beside upstream packages, use documented DSH services, events, projections, Remotes, and UI slots, and require no upstream source modification or replacement of `agent-loop`. The map is complete when the domain model, attempts and correlation, loop policy, persistence, tools and presets, executor adapters, UI, renderer, community package and bundle topology, compatibility policy, and first-release evaluation are specified for implementation, and every deliberately deferred full-version capability has a named follow-up ticket.
 
 ## Notes
 
-- **Domain**: DSH plugin architecture (Cordis services, tools, session projections, slot-based UI)
-- **Skills to consult**: `/dsh-plugin-development`, `/domain-modeling`, `/grilling`, `/prototype`
-- **Upstream merge constraint**: DSH is in developer preview; frequent upstream merges expected. All work must follow dsh-plugin-development patterns — zero upstream package modifications, compose via bundle patch layers and presets.
-- **Key packages (upstream, read-only)**:
-  - `packages/todo/tool-todo/` — current flat todo system (`TodoItem { content, status }`) — **disabled by our plugin, not modified**
-  - `packages/experimental/agent-team/` — DAG backend (`TeamTaskBoard`, `TeamTaskSnapshot` with `blockedBy[]`) — **reference only, not depended on**
-  - `packages/client/ui-context-layer/` — existing G6 v5 graph component with animations
-  - `packages/client/ui-conversation/src/client/skeleton/TodoPanel.tsx` — current flat TodoPanel/TodoDock — **loses data source when tool-todo is disabled**
-  - `packages/client/ui-workflow-run/` — current workflow run panel (linear list, not DAG)
-  - `packages/client/ui-layout/src/client/AppFrame.tsx` — three-column layout with sidebar/center/details
-  - `packages/client/ui-slots/` — slot registry framework
-  - `packages/preset/agent-presets/` — preset discovery and composition
-  - `packages/subagent/subagent/` — `ctx.subagents` service with `listDescendants()`
-  - `packages/workflow/workflow/` — `ctx.workflowEngine` service with lifecycle events
-- **Key packages (new, our plugin)**:
-  - `packages/dag/tool-dag-task/` — server-side tool plugin (dag_task_create/update/get/list + event listeners)
-  - `packages/client/ui-task-dag/` — client-side DagModelService (Cordis) + `useDagModel()` Hook + G6 v5 dagre sidebar renderer
-- **Standing principles**:
-  - The DAG is **execution infrastructure**, not just a visualization layer — dsh-data-agent will use it as an orchestration substrate. Accuracy of task-agent relationships is a hard requirement.
-  - The DAG data model is maintained by a **Cordis service (`DagModelService`)** with synchronous command API + event persistence. Read-write consistency is guaranteed within a session.
-  - The DAG visualization is a **sidebar rendering concern** driven by `useDagModel()` React Hook — it does NOT use ConversationNodeDefinition.
-  - **Zero upstream modifications** — extend via documented Cordis extension points only.
-  - New session events must carry `ignorable: true` for persistence compatibility.
-  - G6 v5 is already a project dependency with proven animation support — strongly prefer it over introducing a new graph library.
-  - The user wants the panel to be **sidebar-positioned, click-to-expand/collapse** (not inline in the conversation or in the details column).
-  - DAG state is **session-scoped** (consistent with Goal scope). UUID ids + sessionId fields pre-reserve cross-session extensibility.
+- **Domain**: writable task planning, bounded outer-loop control, DSH plugin composition, session persistence and projections, executor adapters, and graph presentation.
+- **Skills**: `/dsh-plugin-development`, `/domain-modeling`, `/grilling`, `/prototype`, and `/research`.
+- **Planning only**: this map resolves decisions and produces implementation specifications; it does not implement product packages.
+- **Upstream baseline**: `upstream/master@c291e7961a515f6d7af9304e7fd1d257929aef26` and `dsh-v0.1.5-rc.2@fb2c4b9e698e30edb738bca4cf0618587db7d203`, dated 2026-09-10.
+- **Writable Plan DAG is required**: the feature is not a read-only graph. It owns Plan Runs, tasks, hard dependencies, revisions, readiness, task state, replanning, attempts, verification, budgets, holds, stop records, and explicit execution correlations.
+- **Executor ownership remains separate**: workflow, subagent, skill, tool, phase, Goal, and trace capabilities retain their internal lifecycles. Adapters link them to task attempts without copying their state machines.
+- **Cordis-only integration**: no upstream package source changes, no imports from `agent-loop` implementation files, and no fork UI/core patch retained solely for this feature. Contributions use reversible effects and public services, events, projections, Remotes, bundle or preset composition, and UI slots.
+- **One outer-loop owner**: task-graph driver, goal-round-driver, and phase-gate cannot independently schedule continuation for the same Agent. Composition must choose an owner and define inner policies explicitly.
+- **Host/Client ownership**: Host services own validation, events, replay, verification, budgets, and projections. React owns only presentation state and renderer lifecycle.
+- **Concurrency is preserved**: the plugin does not impose a fixed subagent or workflow limit. Concurrent tasks and explicit same-task Attempt Groups are admitted when dependencies, claims, policy, resources, and installed DSH providers permit them.
+- **Commitment policy**: a Plan may cover the full objective, while execution admits one task or one explicit bounded group at a time. Local retry or affected-subgraph repair precedes global replanning.
+- **Completion requires evidence**: model self-report is a completion proposal. Completion assurance distinguishes `verified` from `attested`; hard dependencies require `verified` by default.
+- **Community distribution**: packages depend only on published DSH contracts and install through the normal DSH bundle/profile workflow. Experimental upstream capabilities remain behind optional adapters.
+- **No forgotten full version**: a minimal first-release decision names the fuller capability it defers and links a follow-up ticket. Follow-ups cover advanced verification, multi-agent scheduling, recovery, routing and parallelism, phase and Goal integration, capability extraction, history inspection, typed dataflow ports, and richer plan relations.
+- **Retained UX**: compact progress near the conversation input, an on-demand graph, node detail, dependency highlighting, clear active/blocked/completed states, and reduced-motion behavior.
 
 ## Ticket frontier
 
-```
-[✓] R1 agent-team maturity audit ──────┐
-[✓] R3 subagent/workflow event surface ─┤
-                                        ├──▶ [✓] G1 DAG data model decision ──┬──▶ [✓] G2 panel placement ──▶ G4 animation & edges ──▶ G8 Z enhancement
-                                        │                                      │
-[✓] R2 G6 dagre layout feasibility ────┘                                      ├──▶ [✓] G3 preset universality
-                                                                               │
-                                                                               └──▶ [✓] G5 dynamic insertion ──▶ [✓] G6 infra contracts ──┬──▶ G7 writeScopes detection
-                                                                                                                │                          ├──▶ G9 team-task integration
-                                                                                                                │                          └──▶ G10 subagent tree integration
-                                                                                                                │
-                                                                                                                └──▶ G11 view simplification strategies
+```text
+[✓] R6 Agent orchestration and loop-engineering research ─┐
+[✓] R7 DSH Cordis plugin adaptation ─────────────────────┼──▶ [✓] G12 Plan DAG ownership boundary
+                                                        └──▶ G13 ExecutionAttempt and correlation protocol
+                                                               └──▶ G19 Cordis outer-loop driver
+                                                                      ├──▶ G14 Durable events and projection
+                                                                      ├──▶ G16 Model tools and preset composition
+                                                                      ├──▶ G17 Executor adapters
+                                                                      └──▶ G7 writeScopes conflict semantics
 ```
 
-**Frontier (unblocked, open):** G4 (grilling+prototype), G7 (task), G9 (task), G10 (task), G11 (task)
-**Blocked:** G8 (by G4)
-**Next tickets to resolve:** G4 (animation & edge design — 继承 G2 原型的动效/理解层基线), G7/G9/G10/G11
+**Frontier:** [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md).
+
+**Next session rule:** resolve one frontier ticket per session unless the user explicitly requests an exception.
 
 ## Decisions so far
 
-- [R1 agent-team maturity audit](research/R1-agent-team-maturity-audit.md) — package is architecturally solid (CAS, cycle detection, persistence); gaps for visualization (no node type, no timestamps, no display metadata) are solvable via `TeamTaskView` enrichment pattern; graduation requires accepting 4 event types as stable contracts.
-- [R2 G6 dagre layout feasibility](research/R2-g6-dagre-layout-feasibility.md) — G6 v5.1.1 natively supports `antv-dagre` layout, `lineDashOffset` animation, and incremental layout via preset mechanism; no reason to build separate SVG+dagre stack.
-- [R3 subagent/workflow event surface](research/R3-subagent-workflow-event-surface.md) — workflow events are well-persisted (4 `tool-workflow/*` types); subagent events are ephemeral in parent; **no task↔subagent linkage exists** — primary gap requiring a new correlation mechanism.
-- [G1 DAG data model decision](tickets/G1-dag-data-model-decision.md) — **Option B-prime: terminal state plugin with composite projection**. Disables `tool-todo`, registers `dag_task_*` tools with structured DagTask model (id, revision, subject, status, blockedBy with cycle detection, ownerId, writeScopes). 5 node types (task, team-task, workflow-run, workflow-agent, subagent), 4 edge types (dependency, sequence, containment, spawning). Solves task↔subagent gap via `tools/pre-execute` interception. State display: Option Y (node+edge animation) now, Z as enhancement. Zero upstream modifications — all new code in plugin packages.
-- [G3 preset universality strategy](tickets/G3-preset-universality-strategy.md) — **新建独立 Bundle（`packages/bundle/dag/`）+ 无条件注册 + 自然降级**。Bundle 的 `cordis.patch.yml` disable `tool-todo` + insert `tool-dag-task`；`ctx.tools.restrict()` 屏蔽 preset 级 `todo_write` 重挂。所有 preset 均可用 DAG 工具，节点类型随可用服务缩减（非禁用）。Phase-gate 集成（UNIVERSAL 白名单 + session events）归入 data-agent map [PG1](../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)。不创建新 preset，不 patch 现有 preset — profile 添加 bundle 即可。
-- [G5 dynamic node insertion design](tickets/G5-dynamic-node-insertion-design.md) — **8 项决策 resolved。** DAG 定位为执行基底（D2）；DagModelService Cordis 服务 + React Hook（D1）；同步命令式 API + 事件持久化保证读写一致性（D3）；节点永久保留 + `viewFilter` 管道（D4）；rAF 合并突发事件（D5）；全量 dagre + `prevGraph` 排序稳定 + 结构/状态变更分离（D6）；V1 不设规模硬上限（D7）；session-scoped 持久性与 Goal 一致（D8）。新增 G11（视图简化策略）。
-- [G6 infra contracts for dynamic workflows](tickets/G6-infra-contracts-for-dynamic-workflows.md) — **5 项基础设施契约 resolved。** 事件三层稳定性模型（稳定/半稳定/内部 + payload version 字段）（D1）；工具 API "只增不删不改名"、V1 不暴露 revision 和 action（D2）；多 Agent 不新建机制，靠数据模型预留 + Cordis 原生事件监听（D3）；DagModelService 暴露为 `ctx.dagModel` Cordis 服务契约（5 方法），工具 API 是薄壳（D4）；节点类型硬编码 5 种 + `DagNode.type` 为 string + 渲染 fallback，不建注册表（D5）。
-- [G2 DAG panel placement and interaction](tickets/G2-dag-panel-placement-and-interaction.md) — **D 融合方案（用户确认 2026-09-02）**：dock 摘要条（`conversation.input.dock`，TodoPanel 后继，点名当前任务）+ 侧栏「任务编排」分区（迷你条 ⇄ 420 限高一瞥）+ ⛶ 弹出大视图（`shell.overlay`）三层结构；节点点击 → 容器内底部详情卡（点空白收起），hover → 上下游链路高亮。**否 details.aux**（aux 无页签机制、改上游有 merge 风险）。动效基线（WAAPI——`update*Data` 不重绘；节奏恒定 流动 2/1 cyc/s、呼吸、脉冲、完成路径转绿）与字号基线（134×38/13px）移交 G4。原型 + 像素级自验：[prototype/](prototype/)（commit 512b5e104b、bafa5414a8）；顺带发现上游两 bug → data-agent [W12](../data-agent/tickets/phase-misc/W12-contextlayer-node-click-dead.md)/[W13](../data-agent/tickets/phase-misc/W13-contextlayer-animations-no-repaint.md)。
+- [R1 Agent Teams maturity audit](research/R1-agent-team-maturity-audit.md): Agent Teams supplied strong task-DAG prior art; its published experimental API is an optional adapter candidate, not the Plan DAG's permanent public contract.
+- [R2 G6 dagre layout feasibility](research/R2-g6-dagre-layout-feasibility.md): G6 5.1.1 can render expected graph sizes; renderer-specific APIs still require an adapter.
+- [R3 Subagent and workflow event surface](research/R3-subagent-workflow-event-surface.md): task-to-executor causality remains a gap, while current upstream subagent catalogs and workflow records own more lifecycle facts than the original research observed.
+- [G1 DAG data model decision](tickets/G1-dag-data-model-decision.md): explicit task identity and relation semantics remain useful; terminal Todo replacement, all-ignorable events, client-owned replay, and heuristic task correlation are superseded.
+- [G2 DAG panel placement and interaction](tickets/G2-dag-panel-placement-and-interaction.md): the accepted interaction goals and prototype evidence remain; current right-sidebar and global-panel contracts replace the original container decision.
+- [G3 Preset universality strategy](tickets/G3-preset-universality-strategy.md): independent opt-in composition remains plausible; host-level `tools.restrict()` cannot implement task-tool replacement.
+- [G5 Dynamic node insertion and real-time DAG updates](tickets/G5-dynamic-node-insertion-design.md): batching, stable layout, and view filtering remain inputs; Client state is not the durable authority.
+- [G6 Infrastructure contracts for dynamic workflows](tickets/G6-infra-contracts-for-dynamic-workflows.md): explicit stable APIs remain necessary; event requiredness, task/attempt ownership, CAS, and loop policy are superseded by the current route.
+- [R4 Upstream 0.1.5 architecture rebaseline](research/R4-upstream-0.1.5-architecture-rebaseline.md): current DSH projections, Agent Teams, subagent catalogs, workflow records, and UI seats supersede several historical assumptions; its tentative read-model preference is corrected by the restored product purpose.
+- [R6 Agent orchestration and loop-engineering research](research/R6-agent-orchestration-and-loop-engineering.md): the feature requires a writable Plan DAG, separate attempts, evidence-based completion, bounded continuation, and local repair before global replanning.
+- [R7 DSH Cordis plugin adaptation](research/R7-dsh-cordis-plugin-adaptation.md): the first release can use public Cordis extension points without changing `agent-loop`; capability, tools, driver, adapters, client, and installable bundle remain separate roles.
+- [G12 Plan DAG ownership boundary](tickets/G12-task-graph-authority.md): the Plan DAG owns Plan Runs, Tasks, attempts, verification, execution references, holds, budgets, and stop records while executor internals remain separate; stable identities, layered revisions, hard dependencies, explicit concurrency, and evidence-based completion define the later protocol.
 
 ## Not yet specified
 
-- **Data-agent phase-gate integration**: The data-agent's four-phase pipeline (`dsh-phase-gate`) is an implicit DAG (Understanding → Generation → Execution → Interpretation). G3 grilling 发现 phase-gate 当前零 session events（移植遗留），无法作为 DAG 数据源。已在 data-agent map 开票：[PG1 Phase-gate session events 改造](../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)（grilling）+ [调研 note](../data-agent/research/phase-gate-session-events.md)。**本 map 中任何 phase 节点渲染工作依赖 PG1 resolved。** UNIVERSAL 工具白名单 `todo` → `dag_task_*` 也归入 PG1。
-- **Goal-round-driver integration**: Goals have a linear phase state machine. Whether goal progression should appear in the DAG, and how, depends on the node taxonomy decision.
-- **Cross-session DAG persistence**: G5 D8 confirmed DAG state is session-scoped (consistent with Goal, which is also session-scoped — verified from code). UUID ids + sessionId fields pre-reserve cross-session extensibility. G6 D2 决定 V1 不向 LLM 暴露 `expectedRevision`（单 Agent 无并发冲突），但 `revision` 字段保留在数据模型和事件中（G6 D1 稳定层），供未来多 Agent CAS 使用。Goal does NOT currently span sessions (`goal-round-driver` is same-session only).
-- **dsh-data-agent DAG-aware planning**: G3 ✅ + G6 ✅ 现已解锁。data-agent 可通过 `ctx.dagModel.addTask()` 程序化 API（G6 D4）批量创建有依赖的任务链，不必走工具 API。具体的 data-agent 规划器集成设计归入 data-agent map——本 map 已提供所需的全部基础设施契约。
-- **Multi-agent communication/mailbox**: Agent-to-agent messaging for coordination is a separate concern from the task DAG model. May require its own service when multi-agent arrives.
-
-## Upstream merge 2026-09-07
-
-upstream 已动 subagent（`feat(subagent): authorize selectable child models`、`refactor(subagent): retain identity projection state`、`feat(subagent): unify adjacent agent delivery on steer`、`feat(subagent): migrate browser control to Remote`）。
-
-**upstream sync 触发的本域票据**：
-- [G10-subagent-tree-upstream-integration](tickets/G10-subagent-tree-upstream-integration.md) — 专为 upstream sync 设计。merge 时评估：upstream 是否 persist `subagent/start` 于 parent session / `SubagentStartRequest` 加 `taskId`/`contextId` / 新 session projection for child listing → 若是，G5 D2 task-ownership heuristic（`tools/pre-execute` 拦截）被 upstream 原生 linkage 取代，`correlationSource` `'pre-execute-heuristic'` → `'native'`。
-
-Status 维持 open，merge session 落地后更新。
+None. The currently visible first-release exclusions have been promoted to follow-up tickets; new fog discovered by later decisions returns here until its question becomes precise.
 
 ## Out of scope
 
-- **Implementing the full multi-agent coordination protocol** — this map delivers the DAG visualization and data model infrastructure; the actual multi-agent negotiation, consensus, and dynamic workflow execution are future work that builds on what this map produces.
-- **Rewriting the workflow engine** — the imperative `parallel()`/`pipeline()` JS script model stays; we add DAG visualization of its execution, not a declarative DAG-first workflow engine.
-- **Mobile / responsive layout** — the three-column AppFrame's existing concession chain handles narrow viewports; the DAG panel follows the same rules, but mobile-specific optimization is out of scope.
-- **Modifying upstream DSH packages** — all work is additive via plugin packages and bundle patch layers.
+- Modifying upstream DSH package source or replacing the default agent loop.
+- Rewriting workflow as a declarative DAG engine.
+- Owning workflow, subagent, skill, tool, phase, Goal, or trace internal lifecycles.
+- Treating every tool call as a task node.
+- Requiring cross-session scheduling, unrestricted multi-agent work stealing, a complete trace explorer, or a global progress-wavefront effect before the first useful release. These remain follow-up work, not discarded capabilities.
