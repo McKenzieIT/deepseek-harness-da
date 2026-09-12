@@ -16,18 +16,18 @@ describe('AuditRecord schema (zod mirror of RBI pydantic)', () => {
       log_id: 'abc12345',
       timestamp: '2026-08-20T00:00:00Z',
       user_id: 'alice',
-      auto_tags: ['qoder_call'],
+      auto_tags: ['tool_call'],
       review_status: 'pending',
-      tool_name: 'subagent-qoder',
+      tool_name: 'some-tool',
       args_hash: 'h',
-      credits: { total_cost_usd: 0.1 },
+      result_summary: 'ok',
     })
     expect(rec.log_id).toBe('abc12345')
     expect(rec.user_id).toBe('alice')
-    expect(rec.auto_tags).toEqual(['qoder_call'])
-    expect((rec.extra).tool_name).toBe('subagent-qoder')
+    expect(rec.auto_tags).toEqual(['tool_call'])
+    expect((rec.extra).tool_name).toBe('some-tool')
     const wire = toPayload(rec)
-    expect(wire.tool_name).toBe('subagent-qoder') // extra flattened back to top level
+    expect(wire.tool_name).toBe('some-tool') // extra flattened back to top level
     expect(wire.user_id).toBe('alice')
   })
 })
@@ -44,12 +44,13 @@ describe('SQLiteAuditStore', () => {
       log_id: 'r1',
       timestamp: '2026-08-20T00:00:00Z',
       scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice',
-      auto_tags: ['qoder_call'],
-      extra: { credits: { total_cost_usd: 0.1042, total_credits: 42 } },
+      auto_tags: ['tool_call'],
+      extra: { tool_name: 'lookup', result_summary: 'ok' },
     }))
     expect(logId).toBe('r1')
     const rec = s.get('r1', alice)
-    expect(rec?.extra.credits).toMatchObject({ total_cost_usd: 0.1042, total_credits: 42 })
+    expect(rec?.extra.tool_name).toBe('lookup')
+    expect(rec?.extra.result_summary).toBe('ok')
   })
 
   it('update_review_status is visible on read (no split-brain: column re-injected like auto_tags)', () => {
@@ -58,7 +59,7 @@ describe('SQLiteAuditStore', () => {
     // get()/query() return the insert-time status and a compliance flip to
     // 'flagged' is invisible.
     s.append(fromPayload({
-      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'],
     }))
     expect(s.get('r1', alice)?.review_status).toBe('pending')
     expect(s.update_review_status('r1', 'flagged', alice)).toBe(true)
@@ -76,37 +77,37 @@ describe('SQLiteAuditStore', () => {
   })
 
   it('cross-scope per-user query via the user_id index (single DB, no per-scope federation)', () => {
-    s.append(fromPayload({ log_id: 'a1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1 } } }))
-    s.append(fromPayload({ log_id: 'a2', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.07 } } }))
-    const aliceQoder = s.query({ tags: ['qoder_call'], user_id: 'alice' }, admin)
-    expect(aliceQoder).toHaveLength(2)
-    expect(aliceQoder.map(r => r.scope_id).sort()).toEqual(['game-1', 'game-2'])
+    s.append(fromPayload({ log_id: 'a1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'], extra: { tool_name: 'lookup' } }))
+    s.append(fromPayload({ log_id: 'a2', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'], extra: { tool_name: 'lookup' } }))
+    const aliceCalls = s.query({ tags: ['tool_call'], user_id: 'alice' }, admin)
+    expect(aliceCalls).toHaveLength(2)
+    expect(aliceCalls.map(r => r.scope_id).sort()).toEqual(['game-1', 'game-2'])
   })
 
   it('P8b①a: patch is verdict-only — identity fields throw, verdict fields append an override (original immutable)', () => {
     s.append(fromPayload({
-      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
-      extra: { credits: { total_cost_usd: 0.1042 } },
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'],
+      extra: { tool_name: 'lookup', result_summary: 'ok' },
     }))
     // Identity fields refuse (contract violation — fail loud)
     expect(() => s.patch('r1', 'user_id', 'mallory', {}, admin)).toThrow(/identity/)
     expect(() => s.patch('r1', 'scope_id', 'game-x', {}, admin)).toThrow(/identity/)
     expect(() => s.patch('r1', 'tenant_id', 'other', {}, admin)).toThrow(/identity/)
     // Verdict field patches (original NEVER mutated; read view corrected)
-    expect(s.patch('r1', 'credits.total_cost_usd', 0.05, { by: 'compliance', reason: 'reconciliation' }, admin)).toBe(true)
+    expect(s.patch('r1', 'result_summary', 'corrected', { by: 'compliance', reason: 'reconciliation' }, admin)).toBe(true)
     const raw = s.rawPayload('r1') as Record<string, unknown>
-    expect((raw.credits as { total_cost_usd: number }).total_cost_usd).toBe(0.1042) // immutable
+    expect(raw.result_summary).toBe('ok') // immutable
     const rec = s.get('r1', admin)
-    expect((rec?.extra.credits as { total_cost_usd: number }).total_cost_usd).toBe(0.05) // read view corrected
+    expect(rec?.extra.result_summary).toBe('corrected') // read view corrected
     const hist = s.get_with_history('r1', admin)
     expect(hist?.overrides).toHaveLength(1)
-    expect(hist?.overrides[0]?.field).toBe('credits.total_cost_usd')
+    expect(hist?.overrides[0]?.field).toBe('result_summary')
   })
 
   it('P8b①a: appendCorrection corrects misattribution by appending a new record (original immutable, index-consistent)', () => {
     s.append(fromPayload({
-      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
-      extra: { credits: { total_cost_usd: 0.1042 } },
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'],
+      extra: { tool_name: 'lookup' },
     }))
     const newId = s.appendCorrection('r1', { user_id: 'carol' }, { by: 'compliance', reason: 'misattribution' }, admin)
     expect(newId).not.toBeNull()
@@ -123,68 +124,39 @@ describe('SQLiteAuditStore', () => {
     expect(s.appendCorrection('r1', { user_id: 'x' }, {}, bob)).toBeNull()
   })
 
-  it('P8b②c: stats = immutable original; correctedStats = override-applied (corrected totals)', () => {
-    s.append(fromPayload({ log_id: 'a', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1042, total_credits: 42 } } }))
-    s.append(fromPayload({ log_id: 'b', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.07, total_credits: 25 } } }))
-    s.patch('a', 'credits.total_cost_usd', 0.05, { by: 'c', reason: 'recon' }, admin)
-    const immutable = s.stats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
+  it('P8b②c: stats and correctedStats return the same shape over the immutable/override-applied views', () => {
+    // Since auto_tags is not patchable and total counts rows (not payload
+    // fields), no verdict override can shift these numbers → the two methods
+    // return numerically identical output. The distinct method preserves the
+    // seam for future extensions.
+    s.append(fromPayload({ log_id: 'a', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'], extra: { tool_name: 'lookup' } }))
+    s.append(fromPayload({ log_id: 'b', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'], extra: { tool_name: 'lookup' } }))
+    const immutable = s.stats({ tags: ['tool_call'], user_id: 'alice' }, admin)
+    const corrected = s.correctedStats({ tags: ['tool_call'], user_id: 'alice' }, admin)
     expect(immutable.total).toBe(2)
-    expect(immutable.qoder_cost_usd).toBeCloseTo(0.1742, 4) // 0.1042 + 0.07 (immutable original)
-    expect(immutable.qoder_credits).toBe(67) // 42 + 25
-    const corrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
-    expect(corrected.total).toBe(2)
-    expect(corrected.qoder_cost_usd).toBeCloseTo(0.12, 4) // 0.05 + 0.07 (override applied)
-    expect(corrected.qoder_credits).toBe(67) // credits not overridden → same
-  })
-
-  it('P8b①a+②c interaction: correctedStats dedups superseded-original COST only; total/by_tag match stats (A11)', () => {
-    s.append(fromPayload({ log_id: 'a', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1042, total_credits: 42 } } }))
-    s.append(fromPayload({ log_id: 'b', scope_id: 'game-2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.07, total_credits: 25 } } }))
-    s.appendCorrection('a', { user_id: 'carol' }, { by: 'compliance', reason: 'misattribution' }, admin)
-    // correctedStats(alice): a is superseded → skip a's COST only; total counts a+b (matches stats); cost = b only.
-    const aliceCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
-    const aliceStats = s.stats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
-    expect(aliceCorrected.total).toBe(2) // a + b (superseded original still counted in total)
-    expect(aliceCorrected.total).toBe(aliceStats.total)
-    expect(aliceCorrected.by_tag).toEqual(aliceStats.by_tag) // by_tag matches stats (a counted too)
-    expect(aliceCorrected.qoder_cost_usd).toBeCloseTo(0.07, 4) // a's cost skipped (correction carries it under carol)
-    // correctedStats(carol): the correction record (0.1042) — the call's cost attributed to carol.
-    const carolCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'carol' }, admin)
-    const carolStats = s.stats({ tags: ['qoder_call'], user_id: 'carol' }, admin)
-    expect(carolCorrected.total).toBe(1)
-    expect(carolCorrected.total).toBe(carolStats.total)
-    expect(carolCorrected.by_tag).toEqual(carolStats.by_tag)
-    expect(carolCorrected.qoder_cost_usd).toBeCloseTo(0.1042, 4)
-    // correctedStats(admin, no user filter): total = all 3 (matches stats); cost deduped (a skipped, b + correction).
-    const allCorrected = s.correctedStats({ tags: ['qoder_call'] }, admin)
-    const allStats = s.stats({ tags: ['qoder_call'] }, admin)
-    expect(allCorrected.total).toBe(3) // a + b + correction (all counted in total)
-    expect(allCorrected.total).toBe(allStats.total)
-    expect(allCorrected.by_tag).toEqual(allStats.by_tag) // {qoder_call: 3, attribution_correction: 1}
-    expect(allCorrected.qoder_cost_usd).toBeCloseTo(0.1742, 4) // a's cost skipped; b (0.07) + correction (0.1042)
-    // stats (immutable original) counts all 3 recorded rows — the "recorded at the time" baseline.
-    expect(allStats.total).toBe(3)
-    expect(allStats.qoder_cost_usd).toBeCloseTo(0.1042 + 0.1042 + 0.07, 4)
+    expect(immutable.by_tag).toEqual({ tool_call: 2 })
+    expect(corrected.total).toBe(immutable.total)
+    expect(corrected.by_tag).toEqual(immutable.by_tag)
   })
 
   it('A11: correctedStats total/by_tag are consistent with stats() across a corrections scenario', () => {
-    // Setup: alice x2, bob x1 (all qoder_call) + 1 correction of alice's first call → carol.
-    s.append(fromPayload({ log_id: 'a1', scope_id: 'g1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.1, total_credits: 10 } } }))
-    s.append(fromPayload({ log_id: 'a2', scope_id: 'g2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.2, total_credits: 20 } } }))
-    s.append(fromPayload({ log_id: 'b1', scope_id: 'g3', tenant_id: 'acme', user_id: 'bob', auto_tags: ['qoder_call'], extra: { credits: { total_cost_usd: 0.3, total_credits: 30 } } }))
+    // Setup: alice x2, bob x1 (all tool_call) + 1 correction of alice's first call → carol.
+    s.append(fromPayload({ log_id: 'a1', scope_id: 'g1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'], extra: { tool_name: 'lookup' } }))
+    s.append(fromPayload({ log_id: 'a2', scope_id: 'g2', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'], extra: { tool_name: 'lookup' } }))
+    s.append(fromPayload({ log_id: 'b1', scope_id: 'g3', tenant_id: 'acme', user_id: 'bob', auto_tags: ['tool_call'], extra: { tool_name: 'lookup' } }))
     s.appendCorrection('a1', { user_id: 'carol' }, { by: 'compliance', reason: 'misattribution' }, admin)
 
     // For every filter scope, correctedStats.total === stats().total AND
     // correctedStats.by_tag deep-equals stats().by_tag (superseded originals
-    // are counted in total/by_tag — only cost is deduped).
+    // are counted in total/by_tag — the correction appends a real new row).
     const scopes: AuditQueryFilter[] = [
       {}, // all (admin)
       { user_id: 'alice' },
       { user_id: 'bob' },
       { user_id: 'carol' },
-      { tags: ['qoder_call'] },
+      { tags: ['tool_call'] },
       { tags: ['attribution_correction'] },
-      { tags: ['qoder_call'], user_id: 'alice' },
+      { tags: ['tool_call'], user_id: 'alice' },
     ]
     for (const f of scopes) {
       const st = s.stats(f, admin)
@@ -193,20 +165,13 @@ describe('SQLiteAuditStore', () => {
       expect(cs.by_tag, `by_tag mismatch for filter ${JSON.stringify(f)}`).toEqual(st.by_tag)
     }
 
-    // Cost dedup is the ONLY divergence from stats().
-    const aliceCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'alice' }, admin)
-    expect(aliceCorrected.total).toBe(2) // a1 + a2 (a1 superseded but still counted)
-    expect(aliceCorrected.qoder_cost_usd).toBeCloseTo(0.2, 4) // a1 cost skipped (correction carries it under carol); a2 = 0.2
-    const carolCorrected = s.correctedStats({ tags: ['qoder_call'], user_id: 'carol' }, admin)
-    expect(carolCorrected.total).toBe(1)
-    expect(carolCorrected.qoder_cost_usd).toBeCloseTo(0.1, 4) // the correction record (a1's cost, 0.1)
-    const allCorrected = s.correctedStats({ tags: ['qoder_call'] }, admin)
-    expect(allCorrected.total).toBe(4) // a1 + a2 + b1 + correction (all counted in total)
-    expect(allCorrected.qoder_cost_usd).toBeCloseTo(0.6, 4) // a1 skipped; a2 (0.2) + b1 (0.3) + correction (0.1)
-    // stats (immutable original) sums all 4 recorded rows (no dedup).
-    const allStats = s.stats({ tags: ['qoder_call'] }, admin)
-    expect(allStats.total).toBe(4)
-    expect(allStats.qoder_cost_usd).toBeCloseTo(0.1 + 0.2 + 0.3 + 0.1, 4)
+    // Spot-checks on the recorded row counts.
+    const aliceStats = s.stats({ tags: ['tool_call'], user_id: 'alice' }, admin)
+    expect(aliceStats.total).toBe(2) // a1 + a2 (a1's original row remains — appendCorrection appends, does not mutate)
+    const carolStats = s.stats({ tags: ['tool_call'], user_id: 'carol' }, admin)
+    expect(carolStats.total).toBe(1) // the correction record
+    const allStats = s.stats({ tags: ['tool_call'] }, admin)
+    expect(allStats.total).toBe(4) // a1 + a2 + b1 + correction
   })
 
   it('tier-2 hashBody: hash not body (intranet-security-first)', () => {
@@ -222,7 +187,7 @@ describe('SQLiteAuditStore', () => {
     // only denies IDENTITY_FIELDS + auto_tags, so the prototype-pollution
     // guard lives in setDotted (the materialization path) — fail loud.
     s.append(fromPayload({
-      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'],
     }))
     // patch admits the dangerous field (not an identity field) and stores
     // the override row — the guard fires on the next read (setDotted).
@@ -233,7 +198,7 @@ describe('SQLiteAuditStore', () => {
 
   it('A4: setDotted rejects constructor/prototype segments — no Object.prototype pollution on read', () => {
     s.append(fromPayload({
-      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['qoder_call'],
+      log_id: 'r1', scope_id: 'game-1', tenant_id: 'acme', user_id: 'alice', auto_tags: ['tool_call'],
     }))
     expect(s.patch('r1', 'constructor.prototype.polluted', 'pwned', { by: 'compliance', reason: 'A4' }, admin)).toBe(true)
     expect(() => s.get('r1', admin)).toThrow(/refuses segment "constructor"/) // first dangerous segment
@@ -252,22 +217,21 @@ describe('Audit service (ctx.audit) wiring', () => {
     await ctx.fiber.dispose()
   })
 
-  it('tools/post-execute captures a qoder_call + Credits from result.value.costs (observe-only, calls next())', async () => {
-    const exec = { name: 'subagent', arguments: { prompt: 'top 10 payers', model: 'qoder-max' } }
+  it('tools/post-execute captures a tool_call (observe-only, calls next())', async () => {
+    const exec = { name: 'lookup', arguments: { query: 'top 10 payers', model: 'aga' } }
     const result = {
       isError: false,
-      value: { kind: 'foreground', runId: 'r', output: [], costs: { total_cost_usd: 0.1042, total_credits: 42, usage: { input: 1200 }, modelUsage: { 'qoder-max': { input: 1200 } } } },
-      content: [],
+      value: { kind: 'foreground', runId: 'r', output: [] },
+      content: [{ type: 'text', text: 'ok' }],
     }
     const decision = await ctx.waterfall(ctx as never, 'tools/post-execute', exec as never, result as never, () => Promise.resolve({ kind: 'accept' as const }))
     expect(decision.kind).toBe('accept') // observe-only: delegated to next()
-    const recs = ctx.audit.store.query({ tags: ['qoder_call'] }, admin)
+    const recs = ctx.audit.store.query({ tags: ['tool_call'] }, admin)
     expect(recs).toHaveLength(1)
-    expect(recs[0]!.auto_tags).toContain(TAG.QODER_CALL)
-    expect((recs[0]!.extra).credits).toMatchObject({ total_cost_usd: 0.1042, total_credits: 42 })
-    expect((recs[0]!.extra).tool_name).toBe('subagent')
+    expect(recs[0]!.auto_tags).toContain('tool_call')
+    expect((recs[0]!.extra).tool_name).toBe('lookup')
     expect((recs[0]!.extra).is_error).toBe(false)
-    expect(recs[0]!.model).toBe('qoder-max')
+    expect(recs[0]!.model).toBe('aga')
   })
 
   it('tools/post-execute captures a denied call as isError with the deny reason (no decision param; distinct guard_deny via explicit record)', async () => {
@@ -296,17 +260,17 @@ describe('Audit service (ctx.audit) wiring', () => {
     expect(JSON.stringify(rec!.extra)).not.toContain('pay_amt') // body NOT in audit
   })
 
-  it('attributes per-user identity from ctx.identity (G3 stable opportunistic, decision 6)', async () => {
+  it('attributes per-user identity from ctx.identity (stable opportunistic, decision 6)', async () => {
     const ctx2 = new Context()
     class FixedIdentity extends IdentityService {
       override current() { return { userId: userId('alice'), tenantId: 'acme', scopeId: scopeId('game-1') } }
     }
     await ctx2.plugin(FixedIdentity)
     await ctx2.plugin(Audit, { path: ':memory:' })
-    const exec = { name: 'subagent', arguments: { prompt: 'p', model: 'qoder-max' } }
-    const result = { isError: false, value: { kind: 'foreground', runId: 'r', output: [], costs: { total_cost_usd: 0.1 } }, content: [] }
+    const exec = { name: 'lookup', arguments: { query: 'p', model: 'aga' } }
+    const result = { isError: false, value: { kind: 'foreground', runId: 'r', output: [] }, content: [{ type: 'text', text: 'ok' }] }
     await ctx2.waterfall(ctx2 as never, 'tools/post-execute', exec as never, result as never, () => Promise.resolve({ kind: 'accept' as const }))
-    const recs = ctx2.audit.store.query({ tags: ['qoder_call'] }, admin)
+    const recs = ctx2.audit.store.query({ tags: ['tool_call'] }, admin)
     expect(recs).toHaveLength(1)
     expect(recs[0]!.user_id).toBe('alice')
     expect(recs[0]!.scope_id).toBe('game-1')
@@ -413,7 +377,7 @@ describe('definition_snapshot (W11 S1)', () => {
     }
   })
 
-  it('A11: migration from v2 adds corrects/is_correction columns + index + backfills from payload', async () => {
+  it('migration from v2 adds corrects/is_correction columns + index + backfills from payload', async () => {
     const { mkdtempSync, rmSync } = await import('node:fs')
     // oxlint-disable-next-line typescript/unbound-method
     const { join } = await import('node:path')
@@ -461,17 +425,17 @@ describe('definition_snapshot (W11 S1)', () => {
       const insertEvent = db.prepare(
         'INSERT INTO audit_event (log_id, ts, scope_id, tenant_id, user_id, review_status, payload, ingested_at) VALUES (?,?,?,?,?,?,?,?)',
       )
-      insertEvent.run('r0', '2026-09-07T00:00:00Z', 'g1', 'acme', 'alice', 'pending', JSON.stringify({ log_id: 'r0', credits: { total_cost_usd: 0.1, total_credits: 10 } }), '2026-09-07T00:00:00Z')
-      insertEvent.run('c0', '2026-09-07T00:00:01Z', 'g1', 'acme', 'carol', 'pending', JSON.stringify({ log_id: 'c0', corrects: 'r0', credits: { total_cost_usd: 0.1, total_credits: 10 } }), '2026-09-07T00:00:01Z')
-      insertEvent.run('p1', '2026-09-07T00:00:02Z', 'g2', 'acme', 'alice', 'pending', JSON.stringify({ log_id: 'p1', credits: { total_cost_usd: 0.2, total_credits: 20 } }), '2026-09-07T00:00:02Z')
+      insertEvent.run('r0', '2026-09-07T00:00:00Z', 'g1', 'acme', 'alice', 'pending', JSON.stringify({ log_id: 'r0', tool_name: 'lookup' }), '2026-09-07T00:00:00Z')
+      insertEvent.run('c0', '2026-09-07T00:00:01Z', 'g1', 'acme', 'carol', 'pending', JSON.stringify({ log_id: 'c0', corrects: 'r0', tool_name: 'lookup' }), '2026-09-07T00:00:01Z')
+      insertEvent.run('p1', '2026-09-07T00:00:02Z', 'g2', 'acme', 'alice', 'pending', JSON.stringify({ log_id: 'p1', tool_name: 'lookup' }), '2026-09-07T00:00:02Z')
       const insertTag = db.prepare('INSERT OR IGNORE INTO audit_tag (event_id, tag) VALUES (?, ?)')
       const r0Id = (db.prepare('SELECT id FROM audit_event WHERE log_id=?').get('r0') as { id: number }).id
       const c0Id = (db.prepare('SELECT id FROM audit_event WHERE log_id=?').get('c0') as { id: number }).id
       const p1Id = (db.prepare('SELECT id FROM audit_event WHERE log_id=?').get('p1') as { id: number }).id
-      insertTag.run(r0Id, 'qoder_call')
-      insertTag.run(c0Id, 'qoder_call')
+      insertTag.run(r0Id, 'tool_call')
+      insertTag.run(c0Id, 'tool_call')
       insertTag.run(c0Id, 'attribution_correction')
-      insertTag.run(p1Id, 'qoder_call')
+      insertTag.run(p1Id, 'tool_call')
       db.exec('PRAGMA user_version = 2')
       db.close()
 
@@ -505,14 +469,12 @@ describe('definition_snapshot (W11 S1)', () => {
       expect(p1Row.corrects).toBeNull()
       expect(p1Row.is_correction).toBe(0)
 
-      // correctedStats reads the denormalized column (no json_extract) and dedups
-      // r0's cost (superseded by c0): total=3 (all rows), cost = c0 (0.1) + p1 (0.2) = 0.3.
-      const cs = store2.correctedStats({ tags: ['qoder_call'] }, admin)
-      expect(cs.total).toBe(3) // r0 + c0 + p1 (all counted; total matches stats)
-      expect(cs.qoder_cost_usd).toBeCloseTo(0.3, 4) // r0 superseded → cost skipped; c0 (0.1) + p1 (0.2)
-      const st = store2.stats({ tags: ['qoder_call'] }, admin)
+      // stats/correctedStats return the same shape (numerically identical since
+      // auto_tags is not patchable and total counts rows).
+      const cs = store2.correctedStats({ tags: ['tool_call'] }, admin)
+      const st = store2.stats({ tags: ['tool_call'] }, admin)
       expect(cs.total).toBe(st.total)
-      expect(cs.by_tag).toEqual(st.by_tag) // {qoder_call: 3, attribution_correction: 1}
+      expect(cs.by_tag).toEqual(st.by_tag) // {tool_call: 3, attribution_correction: 1 subset}
 
       // Re-opening is idempotent (migration is a no-op on a v3 DB).
       db2.close()

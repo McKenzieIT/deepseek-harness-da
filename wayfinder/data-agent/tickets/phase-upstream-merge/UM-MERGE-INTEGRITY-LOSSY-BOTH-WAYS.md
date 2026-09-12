@@ -217,3 +217,21 @@ B1 = 141eb6fef8  = merge-base(65bf3cddc9, d347e70390)   (2026-08-19, upstream rc
 
 1. **`packages/data/result-cache` 的 `"./client"` 是死导出** —— `package.json` 声明 `"./client": "./src/client/index.ts"`，但**无 `dsh.client` 声明、无 `tsdown.config.ts`**，且唯一引用是它自己的模块文档 `src/client/index.ts:10`。因为没有 `dsh.client`，它落在上游门 `scripts/verify-client-packages.ts:12` 的 glob **之外**，所以门抓不到它。归本票的 knip/dead-export 清理（与 seam 4 正交——[UM-ADAPT](UM-ADAPT-per-shift-adaptive-analysis.md) 已判 seam 4 本身 already-aligned）。
 2. **`packages/client/ui-settings-models/` 的 `revert-fork` waiver 已 stale，应 drop** —— push 时 `verify-upstream-sync-record` 报：`1 waiver(s) still pending a keep-or-drop decision: packages/client/ui-settings-models/ (revert-fork) — UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS`。该 waiver 记的是 M1 把整包回退到 merge-base 这件事，而 **re-port 已随 PR #117 merged 进 `origin/master` `c174c9a784`**（[UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md) resolved）→ 回退已被撤销，waiver 无对象。**drop 它**（连同核 `upstream-sync.json` 里是否还有其他同类 stale waiver）。这是本票「三道完整性门」台账的直接后续。
+
+### [2026-09-13] Cluster B partial resolution — item 1 done; item 2 premise falsified, deferred
+
+**Item 1 (result-cache dead `./client` export drop) — APPLIED cleanly.**
+
+Dropped `"./client": "./src/client/index.ts"` from `packages/data/result-cache/package.json`. Grep-verified no external consumers (`grep -rEn '"./client"|result-cache/src/client|result-cache/client'` matches only the file's own module JSDoc at `src/client/index.ts:10`). Verifications passed: `verify-upstream-sync-record` clean, `verify-client-packages` 57/57 satisfy rules, result-cache local tsc 0 errors, `build:official` unaffected. `src/client/index.ts` file preserved (minimal-change; no `dsh.client` declaration means the source file itself is orphan-tolerant).
+
+**Item 2 (ui-settings-models revert-fork waiver drop) — FALSIFIED PREMISE, reverted, deferred.**
+
+The 2026-09-12 note's premise ("waiver 无对象") was empirically falsified. Dropping the `packages/client/ui-settings-models/` (revert-fork) waiver row from `upstream-sync.json` caused `verify-upstream-sync-record` to surface **many previously-suppressed per-file findings** of the form `history[0]: revert-fork finding at packages/client/ui-settings-models/tests/<name>.client.spec.tsx has no waiver — merge did not apply upstream content for this path` — 10+ child test files each producing a distinct violation. The parent-directory waiver was serving as an **umbrella** covering divergent child paths (test files whose upstream versions M1 did not adopt when ui-settings-models re-port landed).
+
+Reverted the `upstream-sync.json` edit to baseline. Baseline state: `verify-upstream-sync-record` exit 0 with informational notes `[note] 1 waiver(s) still pending a keep-or-drop decision: packages/client/ui-settings-models/ (revert-fork) — UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS`. This does **not** cause the gate to fail; it is a persistent informational marker.
+
+**Sibling waivers grep (Scope §B.3):** `grep -En 'revert-fork|regression|M1' upstream-sync.json` returned exactly 1 hit (the one we tried to drop). No other stale `revert-fork` waivers exist.
+
+**Deferred followup** — either (i) drop the parent waiver AND enumerate the child-path per-file waivers (each with explicit keep/drop decision per divergent test file), or (ii) leave the parent waiver in place until PR #117's ui-settings-models re-port is verified byte-consistent with upstream tests (requires reading M1's conflict resolution for each test file). Both paths need per-file scope decisions; this ticket's parent-waiver drop shortcut is unavailable.
+
+**Ticket status:** partial resolution. Item 1 landed. Item 2 spawned back to ticket-scope work (needs upstream vs re-port test-file byte comparison + per-file keep/drop). Not closing UM-MERGE-INTEGRITY — the deeper items (Phase C 2026-09-14 integrity findings + ui-settings-models 整包回退 re-port aftercare) remain, and this cluster's contribution is bounded.

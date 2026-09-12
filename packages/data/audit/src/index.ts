@@ -6,10 +6,7 @@
  *     calls — a deny shows up as `result.isError === true` with the deny reason
  *     in `result.error.message`; there is no `decision` param in the real
  *     Cordis signature, unlike the P8 prototype's stand-in). Captures tool_name,
- *     args_hash, outcome, and — for a `qoder_call` — the G3 Credits
- *     (`total_cost_usd`/`total_credits?`/`usage`/`modelUsage`) read from the
- *     delegating tool's canonical `result.value.costs` (surfaced additively by
- *     the P3 `subagent-qoder` change; execution-local, never persisted).
+ *     args_hash, outcome.
  *   - session-event: observe `session/event` (emit; `(session, event)` —
  *     `event.type` + `event.data`).
  *   - tier-2 write: `recordTier2Write` helper (hash NOT body, fail-silent).
@@ -23,7 +20,7 @@
  * anonymous install id); `session_id` is read from the calling agent's session
  * / the session-event subject. P9's `@deepseek-ai/dsh-admin` will populate the
  * per-user login-state ctx that `resolveIdentity` reads (a small additive wire
- * then). This mirrors P3's MVP (resolves the PAT with no `{userId}` address).
+ * then).
  *
  * The store opens synchronously in the constructor (one-time `mkdirSync` +
  * `openSync`) so `ctx.audit.store` is available immediately after the service
@@ -164,12 +161,12 @@ export class Audit extends Service {
    * Resolve the per-request caller identity (user/scope/tenant). T1 fallback:
    * returns empty (→ NULL columns) because the harness has no per-user
    * login-state seam yet. P9's `@deepseek-ai/dsh-admin` will populate the
-   * login-state ctx this reads — a small additive wire then (same ctx P3's
-   * `resolve(ref, {userId})` will read). `session_id` is read separately
-   * (from the calling agent's session / the session-event subject), not here.
+   * login-state ctx this reads — a small additive wire then. `session_id` is
+   * read separately (from the calling agent's session / the session-event
+   * subject), not here.
    */
   protected resolveIdentity(): AuditIdentity {
-    // G3 stable opportunistic per-user threading (decision 6): read the current
+    // Stable opportunistic per-user threading (decision 6): read the current
     // caller's identity from the ctx.identity seam (P9 populates it). Today the
     // stub returns `undefined` (T1 fallback) -> `{}` -> NULL user columns, the
     // same T1 fallback the audit recorded before. P9b populates `current()` and
@@ -185,39 +182,30 @@ export class Audit extends Service {
 
   /**
    * Record one tool call from `tools/post-execute` (allowed or denied). A
-   * `qoder_call` tag is emitted when the delegating tool surfaced G3 Credits
-   * (`result.value.costs`); a denied call is captured as `isError` with the
-   * deny reason in `result.error.message` (the real API has no `decision`
-   * param, so a distinct `guard_deny` tag is not auto-emitted here — record
-   * one explicitly via {@link record} from the P10 intranet tool-gate).
+   * denied call is captured as `isError` with the deny reason in
+   * `result.error.message` (the real API has no `decision` param, so a
+   * distinct `guard_deny` tag is not auto-emitted here — record one
+   * explicitly via {@link record} from the P10 intranet tool-gate).
    *
    * @param exec - the post-execute tool view (name, arguments, calling agent's session id).
    * @param result - the tool result view (isError, value/content, error); a deny surfaces as `isError` with the reason in `error.message`.
    */
   recordTool(exec: ToolExecView, result: ToolResultView): void {
     const identity = this.resolveIdentity()
-    const costs = extractCosts(result)
     const extra: Record<string, unknown> = {
       tool_name: exec.name,
       args_hash: this._store.hashBody(JSON.stringify(exec.arguments ?? {})),
     }
-    let tags: readonly string[]
     if (result.isError) {
       extra.is_error = true
       extra.error = result.error?.message ?? null
       if (result.error?.info !== undefined) extra.error_info = result.error.info
-      tags = ['tool_call']
     } else {
       extra.is_error = false
       const summary = summarizeSuccess(result)
       if (summary !== null) extra.result_summary = summary
-      if (costs !== undefined) {
-        extra.credits = costs
-        tags = [TAG.QODER_CALL]
-      } else {
-        tags = ['tool_call']
-      }
     }
+    const tags: readonly string[] = ['tool_call']
     const args = exec.arguments as { model?: string } | undefined
     const sessionId = exec.agent?.session?.id
     const rec = fromPayload({
@@ -308,21 +296,6 @@ export class Audit extends Service {
   record(rec: AuditRecord | Record<string, unknown>): string {
     return this._store.append(rec)
   }
-}
-
-/**
- * Extract G3 Credits from a foreground subagent tool result's canonical value
- * (`{ kind:'foreground', …, costs? }`). The costs object is the
- * `SubagentCosts` surfaced additively by the P3 `subagent-qoder` change;
- * absent for providers that do not report costs (claude-code today).
- */
-function extractCosts(result: { readonly isError: boolean; readonly value?: JsonValue }): unknown {
-  if (result.isError) return undefined
-  const value = result.value
-  if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) return undefined
-  const costs = (value as Record<string, unknown>).costs
-  if (costs === undefined || costs === null || typeof costs !== 'object' || Array.isArray(costs)) return undefined
-  return costs
 }
 
 /** Best-effort short text summary of a successful tool result's content. */

@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open (2026-09-15 拆出，用户决策 d1：本 session 不动，单开票)
+**Status**: resolved (2026-09-13 §A costs half complete; §B scopeId spawned to independent ticket UM-SCOPEID-RETIRE-REGRILL)
 **Assignee**: unclaimed
 **Blocked by**: ~~UM11~~（2026-09-12 释放：#115/#116/#117/#119 已 merged，PR-blocker 扫除阶段结束——见文末 2026-09-12 blocker 已释放节；注意 scopeId 半前提证伪，见 2026-09-11 复核节，落地前需拆票重新 grilling）
 **Blocks**: 无（type-equiv 的 costs DRIFT 在本票完成前作 known-red）
@@ -82,6 +82,37 @@ type-equiv 门 3 条 DRIFT 之一是 `SubagentResult.costs`（源码有 costs、
 → **与本票 Scope A item 1「删整个 subagent-qoder 包」是 subsume 关系**：若本票删整包，UM-INVARIANT 对该包的 invariant retirement 是冗余 no-op（companion 随包消失）。**顺序**：UM-INVARIANT 先（已 done），本票后删整包（subsume）。**不冲突**——UM-INVARIANT 未碰本票 Scope A 的其他 5 处（`run.ts` 的 `qoderCosts()` / audit schema / admin export / bundle）。
 
 **仍 pending**：本票 2026-09-11 复核的 scopeId 半前提证伪（3 writer `tool-calls.ts:83`/`ptc.ts:476`/`tools/index.ts:1393` + 6 live reader `tool-retrieve:327`/`tool-search-data-sources:727,731,750,751,755`，非 write-never，删它破 tsc 且移除 per-tenant linker 隔离 tenant-leak #19）→ 建议拆独立票重新 grilling（**未做**）。
+
+### [2026-09-13] Resolution — §A Qoder + costs 半 completed; §B scopeId 半 spawned to independent ticket
+
+**Applied (§A, all 9 site-groups per Scope + 2026-09-11 复核 补漏):**
+
+1. **Deleted `packages/subagent/subagent-qoder/` package** (~487 lines src + tests + README + i18n) — the sole producer of `qoderCosts()`.
+2. **`tsconfig.host.json`** — dropped project reference at line 373. **`tsconfig.base.json`** — regenerated via `pnpm run gen-tsconfig-paths` (removes the 2 path mappings automatically).
+3. **`packages/subagent/subagent/src/types.ts`** — deleted `SubagentCosts` interface + JSDoc; dropped `SubagentResult.costs` field + JSDoc; removed unused `JsonValue` import.
+4. **`packages/subagent/subagent/src/index.ts:89`** — dropped `SubagentCosts` from re-export block.
+5. **`packages/subagent/tool-subagent/src/index.ts`** — dropped `SubagentCosts` import, `readonly costs?: SubagentCosts` field on `ForegroundToolResult`, `...(result.costs !== undefined ? { costs: result.costs } : {})` spread.
+6. **`packages/data/audit/src/schema.ts`** — dropped `TAG.QODER_CALL: 'qoder_call'` from tag vocabulary; scrubbed `qoder_call` from `auto_tags` inline comment + JSDoc paragraph about G3 Credits.
+7. **`packages/data/audit/src/index.ts`** — dropped `extractCosts()` function; simplified `recordTool()` to always tag `tool_call` (no cost extraction, no `extra.credits = costs` branch); scrubbed class-level JSDoc mentions of qoder_call / Credits / P3 / SubagentCosts.
+8. **`packages/data/audit/src/store.ts`** — dropped `AuditStats.qoder_cost_usd` + `qoder_credits` fields; dropped cost SQL block from `stats()`; simplified `correctedStats()` (dropped `superseded` set + `isSupersededOriginal` check + cost accumulation loop, kept method returning `{total, by_tag}` as override-applied re-aggregation seam); scrubbed method + file-level JSDoc. Kept `corrects`/`is_correction` columns + v3 migration + `appendCorrection` (general misattribution correction, not qoder-specific).
+9. **`packages/data/audit/tests/audit.spec.ts`** — mechanical rewrite: `'qoder_call'` → `'tool_call'` (22 sites); dropped cost-assertion tests (P8b②c cost divergence test simplified to shape-consistency); rewrote `tools/post-execute` test without `costs` mock; rewrote v2→v3 migration test using `tool_call` instead of `qoder_call`.
+10. **`packages/data/admin/src/index.ts`** — scrubbed `notifyPatMiss` JSDoc mention of P3/subagent-qoder (function + event kept — tested general PAT-miss helper, no production caller after Qoder retire).
+11. **`packages/bundle/data-agent/cordis.patch.yml`** — removed `- id: subagent-qoder` row (:224-228) + adjacent comment; updated deployment-choice list to `embedder, retrieval` (was `embedder, retrieval, subagent-qoder`).
+12. **Prose scrub with zh mirrors** — `packages/bundle/data-agent/README.{md,zh.md}` (:5, :11, :19) + `packages/identity/identity/README.{md,zh.md}` (:13) — 4 pair records refreshed via `verify-translation-pairing --write`.
+13. **5-generator regen** all green (`gen-cordis-catalog` + `gen-config-catalog` + `gen-doc-graphs` + `gen-module-graph` + `gen-architecture-graph`) — auto-fixed `packages/extensions/tool-cordis/src/api-catalog.ts` (removed `SubagentCosts` type entry + updated `SubagentResult` declaration + rewrote `recordTool` description) and 6 doc-graph outputs.
+
+**Deferred (§B scopeId half, per 2026-09-11 复核):** 5 site-groups (3 writer + 6 live reader + 4 spec tests) — spawned to independent ticket [UM-SCOPEID-RETIRE-REGRILL](UM-SCOPEID-RETIRE-REGRILL.md) (stub). The 2026-09-11 复核 falsified the "write-never" premise — deletion breaks tsc AND removes fork's per-tenant linker isolation (tenant-leak #19). Needs independent grilling before code changes.
+
+**Acceptance verification:**
+- `grep -rEn 'SubagentCosts|\.costs\b|subagent-qoder|qoder_call|QODER_CALL' packages/ apps/ scripts/ --include=*.ts --include=*.tsx --include=*.js --include=*.yml --include=*.yaml --include=*.json --include=*.md --exclude=*.zh.md --exclude-dir=node_modules --exclude-dir=lib` returns **0** (verified post-regen).
+- `verify-type-equiv`: 3 DRIFTs → **2 DRIFTs** (`SubagentResult.costs` GONE; 2 scopeId DRIFTs remain per §B deferral).
+- `pnpm exec vitest run packages/data/audit/tests/audit.spec.ts`: **22/22 GREEN**.
+- `tsc -b tsconfig.host.json`: 0 errors after removing unused `JsonValue` import in `subagent/src/types.ts`.
+- `verify-translation-pairing`: 24/24 baseline maintained (不恶化 verified via stash-baseline count comparison).
+- `check:ci:static`: 37 passed / 11 failed → 37 passed / 10 failed after re-running `gen-architecture-graph` once (all 10 remaining failures are pre-existing baseline; error messages cite files/packages I did not touch — session-controller/workspace-controller/ui-permission-presets/ui-settings/ui-workspace/client-ui-agent-team/embedder/eval/query/retrieval/tool-subagent-report). type-equivalence: 3→2 DRIFT reduction (improvement, not regression).
+- `pnpm exec vitest run` on subagent + tool-subagent + audit + admin: 472/473 tests pass (1 failing test `tool-subagent.spec.ts:701 persona/toolFilter/maxDepth` confirmed pre-existing via stash-baseline replay).
+
+**Commit + scope discipline:** All 37 touched files within ticket Scope §A + prose scrub surface. G13-task-work-correlation.md incidentally touched by doc-graphs regen (Status open→claimed) was reverted (out of scope). Not pushed (tracker discipline).
 
 ### [2026-09-12] blocker 已释放（`Blocked by: UM11` 的理由已满足）
 

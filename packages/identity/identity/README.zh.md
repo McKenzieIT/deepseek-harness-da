@@ -10,7 +10,7 @@ DeepSeek Harness 的按用户调用方身份接缝（`ctx.identity`）。
 
 harness 目前没有按用户登录状态（唯一身份是匿名安装 id，非按用户），所以 `current()` 当前返回 `undefined`。这使 G3 stable 的 **opportunistic threading** 当前为 no-op：
 
-- **P3 `subagent-qoder`** 调用 `resolve(QODER_PERSONAL_ACCESS_TOKEN, { userId: ctx.identity.current()?.userId })`。`userId` 缺失时，keychain provider 解析 T1 全局 PAT（无 `userId`/fallback 路径）——与 MVP 行为无异。
+
 - **P8b `audit`** `resolveIdentity()` 读 `ctx.identity.current()` → `{}` → NULL 用户列——即 T1 fallback 已记录的值。
 
 P9 的 `@deepseek-ai/dsh-admin` 落地真正的按用户登录并填充此接缝（override `current()` 返回已登录调用方 + access-link 解析的 scope）；届时相同 `current()` 调用即归属按用户。P3/P8b 无需因此修改——接缝即契约。

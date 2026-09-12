@@ -22,7 +22,7 @@ import {
   parentAgentOptionsForDelegation,
   settleRun,
 } from '@deepseek-ai/dsh-subagent'
-import type { SubagentCosts, SubagentProvider, SubagentResult, SubagentRun } from '@deepseek-ai/dsh-subagent'
+import type { SubagentProvider, SubagentResult, SubagentRun } from '@deepseek-ai/dsh-subagent'
 import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
 import {
   assertAllowedModelSelection,
@@ -197,8 +197,6 @@ type ForegroundToolResult = {
   readonly kind: 'foreground'
   readonly runId: SubagentRun['id']
   readonly output: JsonValue[]
-  /** Optional provider-reported cost telemetry surfaced for audit (G3 driver). */
-  readonly costs?: SubagentCosts
 }
 
 /**
@@ -220,7 +218,6 @@ async function settleForegroundRun(run: SubagentRun): Promise<ForegroundToolResu
         // Content blocks already cross durable JSON boundaries elsewhere;
         // the registry performs the authoritative lossless snapshot here.
         output: result.output as unknown as JsonValue[],
-        ...(result.costs !== undefined ? { costs: result.costs } : {}),
       }
     }),
   ])

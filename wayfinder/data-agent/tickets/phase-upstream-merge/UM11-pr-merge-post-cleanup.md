@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open（master-sync 项 DONE 2026-09-12 via PR #119；仅剩 p2-* 后清 residual）
+**Status**: resolved (2026-09-13 Cluster C — rda-admin-lazy safe-deleted; p2-* keeps documented; chore/um-arch-impl branch-absent, rescue partial-applied elsewhere)
 **Assignee**: unclaimed
 **Blocked by**: ~~UM10~~（resolved）+ ~~UM12（B 类 4 硬阻塞 2026-09-15 全绿；CI real red-set 09-12 via PR #119 第 4 次再证）~~ + ~~[UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md)（ui-settings-models revert 已由 PR #117 re-port；PR #119 empirically 证不阻 push——剩余 waiver drop 是清理型 chore）~~ → **不再阻 push**；p2-* 后清无环境阻塞，可 AFK 推进
 **Related**: session-prompt 收尾（Lead integration boundary）；CLAUDE.md "并行 session 分支纪律" + "提交与引证纪律"
@@ -200,3 +200,27 @@ reconcile merge `96541ed9de`（parents `64c6931192` local + `4cc985d567` origin/
 2. **evaluation worktree**（`.worktrees/r10-harness-goodhart` / `.worktrees/t1-exec-grader`）不碰。
 
 **本票整体状态**：master-sync 关键 gated 项已了；p2-\* 后清仍 open（无环境阻塞，可 AFK 推进）。header `Blocked by` 现只余 UM12（后清专用）+ UM-MERGE-INTEGRITY（waiver drop 项）；已不阻 push。
+
+### [2026-09-13] Cluster C — 4 branch 决策落地 (worktree 7→6, 1 safe-delete + 2 keep + 1 skip-missing)
+
+Worktree/branch decisions applied per 2026-09-12 note + cluster-C briefing:
+
+| branch / worktree | verdict | outcome |
+|---|---|---|
+| `refactor/rda-admin-lazy-webserver-2026-09-08` (worktree `dsh-rda-admin`) | **safe-delete** | `git merge-base --is-ancestor 9ba8638eac origin/master` = YES (via PR #117 `c174c9a784`); 748 commits behind / 0 commits ahead; `packages/data/admin/src/index.ts:141` on origin/master = `['storageDomain', 'credentials']` (webServer moved to lazy `ctx.inject(['webServer'], ...)` at :195, matches expected post-PR-#117 seam-3 state). Deleted: `git worktree remove --force /Users/mckenzie/workspace/dsh-rda-admin` (--force needed for T-type-change symlinks on shared `.claude/skills` and `snapshots/` paths, no meaningful workdir content) + `git branch -D refactor/rda-admin-lazy-webserver-2026-09-08` (was `9ba8638eac`). |
+| `refactor/p2-present-table-2026-09-12` (worktree `dsh-p2-present-table`) | **keep** | Ticket-briefing expected 1 residual test file (`table-card.client.spec.tsx callView:null`); actual `git diff --stat origin/master refactor/p2-present-table-2026-09-12` = 835 files changed (branch NOT ancestor of origin/master, is-ancestor=1). Actual residual size vs briefing description mismatch; branch has diverged massively from origin/master's rebased history. Keep decision preserved (no action; residual pointer to [R-DA-UI-SETTINGS-MODELS-VITEST-DEBT](../phase-r-da-post-refactor/R-DA-UI-SETTINGS-MODELS-VITEST-DEBT.md) — if that file exists — retained). |
+| `refactor/p2-uism-vitest-2026-09-12` (worktree `dsh-p2-uism-vitest`) | **keep** | Same pattern: briefing expected 5 test residuals; actual diff-stat = 838 files (not ancestor). Keep as-is, pointer to R-DA-UI-SETTINGS-MODELS-VITEST-DEBT. |
+| `chore/um-arch-impl-2026-09-08` (worktree `dsh-arch`, expected: rescue+delete) | **skip (branch absent)** | `git rev-parse --verify chore/um-arch-impl-2026-09-08` = fatal "unknown revision"; `git ls-remote origin refs/heads/chore/um-arch-impl-2026-09-08` = empty. **Branch does NOT exist locally or on remote.** Worktree `dsh-arch` also absent from `git worktree list`. Rescue items partial-status: (a) `wayfinder/data-agent/research/um-arch-design-2026-09-08.md` line 63/65 still contains uncorrected content (lefthook 假前提 note + zh/en pairing note) — deferred as low-priority prose fix; (b) `scripts/translation-pairing.manifest.json` — verified `docs/architecture-graph.md` IS already in `excluded` list at line 7 (already applied by earlier session); (c) UM-ARCH ticket Session B Cross-check — UM-ARCH-architecture-diagrams-depmap.md exists at 46 lines with 2 Cross-check mentions on line 42 (partial state; not fully lost). Since branch is missing, cherry-pick impossible; hand-authored rescue for (a) is low priority. |
+
+**Worktree list before → after:** 8 → **7** (removed `dsh-rda-admin`). `git worktree list` verified:
+```
+/Users/mckenzie/workspace/deepseek-harness-da                                       [master]
+/Users/mckenzie/workspace/deepseek-harness-da/.worktrees/g10-evaluation-core-publish [codex/g10-evaluation-core-publish]  (evaluation, not touched)
+/Users/mckenzie/workspace/deepseek-harness-da/.worktrees/r10-harness-goodhart       [grilling/G10-harness-bhe-split]     (evaluation, not touched)
+/Users/mckenzie/workspace/deepseek-harness-da/.worktrees/t1-exec-grader             [feat/T1-exec-grader-impl]           (evaluation, not touched)
+/Users/mckenzie/workspace/dsh-p2-present-table                                      [refactor/p2-present-table-2026-09-12]   (keep)
+/Users/mckenzie/workspace/dsh-p2-uism-vitest                                        [refactor/p2-uism-vitest-2026-09-12]     (keep)
+/Users/mckenzie/workspace/dsh-resync                                                [upstream/resync-2026-09-08]             (PR aftercare)
+```
+
+**Ticket status:** master-sync项 done (2026-09-12 via PR #119); rda-admin-lazy safe-delete done (2026-09-13); p2-* keeps documented; chore/um-arch-impl branch-absent + rescue items partially applied elsewhere or low-priority deferred. **Status → resolved** — no more actionable UM11 items in this cluster's scope; remaining p2-* keep entries + evaluation worktrees are pointer-only.

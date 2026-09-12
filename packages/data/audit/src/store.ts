@@ -284,12 +284,10 @@ export interface AuditIdentity {
   readonly chat_session_id?: number | null
 }
 
-/** Aggregated audit counts + Qoder cost/credits reconciliation (G3 driver). */
+/** Aggregated audit counts. */
 export interface AuditStats {
   readonly total: number
   readonly by_tag: Record<string, number>
-  readonly qoder_cost_usd: number
-  readonly qoder_credits: number
 }
 
 /** A record with its full override chain attached (mirror RBI get_with_history). */
@@ -552,11 +550,11 @@ export class SQLiteAuditStore {
    * IMMUTABLE payload column. Overrides (applied on read) do NOT flow into
    * SQL-level aggregates — this answers "what was recorded at the time" (the
    * compliance baseline, matches {@link rawPayload}). Use {@link correctedStats}
-   * for the override-applied reconciliation view.
+   * for the override-applied re-aggregation view.
    *
    * @param f - the query filter scoping the aggregation (identity, tags, time window).
    * @param caller - the caller identity for the ownership guard (privileged bypasses it).
-   * @returns the aggregated counts + Qoder cost/credits reconciliation over the immutable payloads.
+   * @returns the aggregated counts over the immutable payloads.
    */
   stats(f: AuditQueryFilter = {}, caller: AuditCaller = {}): AuditStats {
     const { where, params } = this._where(f, caller)
@@ -564,78 +562,32 @@ export class SQLiteAuditStore {
     const byTag = (this.db.prepare(
       `SELECT tag, COUNT(*) c FROM audit_tag WHERE event_id IN (SELECT id FROM audit_event WHERE ${where}) GROUP BY tag`,
     ).all(...params) as Array<{ tag: string; c: number }>).reduce< Record<string, number>>((a, r) => { a[r.tag] = r.c; return a }, {})
-    const costWhere = `${where} AND EXISTS (SELECT 1 FROM audit_tag t WHERE t.event_id=audit_event.id AND t.tag=?)`
-    const cost = this.db.prepare(
-      `SELECT COALESCE(SUM(json_extract(payload,'$.credits.total_cost_usd')),0) cost_usd,
-              COALESCE(SUM(json_extract(payload,'$.credits.total_credits')),0) credits
-       FROM audit_event WHERE ${costWhere}`,
-    ).get(...params, TAG.QODER_CALL) as { cost_usd: number; credits: number }
-    return { total, by_tag: byTag, qoder_cost_usd: cost.cost_usd, qoder_credits: cost.credits }
+    return { total, by_tag: byTag }
   }
 
   /**
-   * Override-applied + correction-deduped aggregation (P8b tension② decision
-   * (c)): O(n) re-aggregation over the materialized view (overrides applied
-   * per record). Answers "what is the corrected/current cost" for compliance
-   * reconciliation against Qoder billing.
-   *
-   * total/by_tag count EVERY matched row (including superseded originals) so
-   * they are consistent with {@link stats} (the immutable recorded baseline):
-   * tags are not patchable, identity is corrected via appendCorrection, and the
-   * original row is still a recorded event that exists at the time of the
-   * query. Only the cost/credits are deduped — a superseded original's cost is
-   * skipped (the correction record carries the same cost under the corrected
-   * identity, so counting both would double-count). No LIMIT: reconciliation
-   * aggregates the full filtered set (the accepted O(n) cost for an infrequent
-   * compliance query — not a hot path).
-   *
-   * Correction links are read from the denormalized `corrects`/`is_correction`
-   * columns (v3 schema, index-backed) — NOT via `json_extract(payload,
-   * '$.corrects')` which scanned the full append-only `audit_event` table.
+   * Override-applied re-aggregation (P8b tension② decision (c)): O(n)
+   * re-aggregation over the materialized view (overrides applied per record).
+   * Numerically identical to {@link stats} today because `auto_tags` is not
+   * patchable and `total` counts rows (not payload fields), so no verdict
+   * override can shift these numbers. The distinct method preserves the
+   * seam for future extensions.
    *
    * @param f - the query filter scoping the aggregation (identity, tags, time window).
    * @param caller - the caller identity for the ownership guard (privileged bypasses it).
-   * @returns the override-applied counts + corrected Qoder cost/credits reconciliation.
+   * @returns the override-applied counts.
    */
   correctedStats(f: AuditQueryFilter = {}, caller: AuditCaller = {}): AuditStats {
     const { where, params } = this._where(f, caller)
     const rows = this.db.prepare(`SELECT * FROM audit_event WHERE ${where} ORDER BY ts DESC`).all(...params) as unknown as AuditEventRow[]
     const recs = rows.map(r => this._materialize(r))
-    const matchedIds = new Set(recs.map(r => r.log_id))
-    // P8b①a + ②c interaction: an appendCorrection supersedes its original, so
-    // the corrected COST view dedups — it skips superseded originals for
-    // cost/credits only (the correction record carries the corrected identity +
-    // the same cost, counted once in its own right). total/by_tag are NOT
-    // deduped: they count every matched row, matching stats() (the immutable
-    // recorded baseline). Corrections may sit OUTSIDE this filter (a different
-    // user_id), so look across the whole table via the denormalized `corrects`
-    // column (index-backed `is_correction` — no json_extract full-table scan).
-    const superseded = new Set<string>()
-    const corrections = this.db.prepare(
-      'SELECT corrects AS original FROM audit_event WHERE is_correction = 1',
-    ).all() as Array<{ original: string | null }>
-    for (const c of corrections) {
-      if (c.original !== null && matchedIds.has(c.original)) superseded.add(c.original)
-    }
-    let costUsd = 0
-    let credits = 0
     let counted = 0
     const byTag: Record<string, number> = {}
     for (const rec of recs) {
-      const isSupersededOriginal = superseded.has(rec.log_id)
-      counted += 1 // total: every matched row counts (matches stats)
-      for (const t of rec.auto_tags) byTag[t] = (byTag[t] ?? 0) + 1 // by_tag: every matched row's tags (matches stats)
-      if (isSupersededOriginal) continue // cost/credits: skip superseded originals (correction carries the cost)
-      if (rec.auto_tags.includes(TAG.QODER_CALL)) {
-        const c = rec.extra.credits
-        if (c !== null && c !== undefined && typeof c === 'object') {
-          const cc = c as { total_cost_usd?: number; total_credits?: number }
-          costUsd += cc.total_cost_usd ?? 0
-          credits += cc.total_credits ?? 0
-        }
-      }
+      counted += 1
+      for (const t of rec.auto_tags) byTag[t] = (byTag[t] ?? 0) + 1
     }
-    return { total: counted, by_tag: byTag, qoder_cost_usd: costUsd, qoder_credits: credits }
+    return { total: counted, by_tag: byTag }
   }
 
   /**

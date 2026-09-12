@@ -23,11 +23,10 @@ Per-user audit service. Owns a SQLiteAuditStore (opened synchronously in the con
 ```ts cordis-catalog
 /**
  * Record one tool call from `tools/post-execute` (allowed or denied). A
- * `qoder_call` tag is emitted when the delegating tool surfaced G3 Credits
- * (`result.value.costs`); a denied call is captured as `isError` with the
- * deny reason in `result.error.message` (the real API has no `decision`
- * param, so a distinct `guard_deny` tag is not auto-emitted here — record
- * one explicitly via {@link record} from the P10 intranet tool-gate).
+ * denied call is captured as `isError` with the deny reason in
+ * `result.error.message` (the real API has no `decision` param, so a
+ * distinct `guard_deny` tag is not auto-emitted here — record one
+ * explicitly via {@link record} from the P10 intranet tool-gate).
  *
  * @param exec - the post-execute tool view (name, arguments, calling agent's session id).
  * @param result - the tool result view (isError, value/content, error); a deny surfaces as `isError` with the reason in `error.message`.
