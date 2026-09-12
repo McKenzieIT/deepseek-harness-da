@@ -37,7 +37,7 @@ Source: [`packages/acp/acp/src/index.ts:75`](../packages/acp/acp/src/index.ts)
 
 ## `@deepseek-ai/dsh-admin`
 
-Requires: `storageDomain` · `credentials` · `webServer`
+Requires: `storageDomain` · `credentials`
 
 ```ts config-catalog
 /** Config */
@@ -334,7 +334,7 @@ export interface AuditConfig {
 }
 ```
 
-Source: [`packages/data/audit/src/index.ts:68`](../packages/data/audit/src/index.ts)
+Source: [`packages/data/audit/src/index.ts:65`](../packages/data/audit/src/index.ts)
 
 <a id="deepseek-aidsh-bash-local"></a>
 
@@ -3067,28 +3067,6 @@ export interface Config {
 
 Source: [`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-qoder"></a>
-
-## `@deepseek-ai/dsh-subagent-qoder`
-
-Requires: `subagents` · `credentials` · `identity`
-
-```ts config-catalog
-/** Deployment-owned model selection and process-release bound. */
-export interface Config {
-  /**
-   * Qoder platform model id forwarded to the SDK as `options.model` (e.g.
-   * `'auto'`, `'performance'`, or a named model). Omit to let Qoder choose.
-   * Consumes the PAT holder's Qoder Credits.
-   */
-  readonly model?: string
-  /** Grace in milliseconds for Qoder query teardown. */
-  readonly disposeGraceMs?: number
-}
-```
-
-Source: [`packages/subagent/subagent-qoder/src/index.ts:70`](../packages/subagent/subagent-qoder/src/index.ts)
-
 <a id="deepseek-aidsh-subagent-spawn-in-process"></a>
 
 ## `@deepseek-ai/dsh-subagent-spawn-in-process`
@@ -3299,7 +3277,7 @@ Requires: `tools` · `codeRuntime` · `resultCache`
 export interface Config {}
 ```
 
-Source: [`packages/data/tool-compute/src/index.ts:13`](../packages/data/tool-compute/src/index.ts)
+Source: [`packages/data/tool-compute/src/index.ts:12`](../packages/data/tool-compute/src/index.ts)
 
 <a id="deepseek-aidsh-tool-critique-sql"></a>
 

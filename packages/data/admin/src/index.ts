@@ -544,9 +544,9 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /**
- * Exported for P3/subagent-qoder to call when a per-user credential resolve
- * returns `undefined`. The emitted event carries a user-facing message that
- * the client UI can surface as a notification/toast.
+ * Emit a PAT-miss event for a per-user credential resolve that returned
+ * `undefined`. The emitted event carries a user-facing message that the
+ * client UI can surface as a notification/toast.
  * @param ctx - ctx
  * @param userId - userId
  * @param ref - ref

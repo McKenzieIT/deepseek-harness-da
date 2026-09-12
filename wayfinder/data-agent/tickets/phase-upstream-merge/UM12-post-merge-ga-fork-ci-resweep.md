@@ -349,3 +349,13 @@ PR #117（merged `c174c9a784`）跑了两轮 CI，真实 red set 现已观测到
 - **CI red set ⊊ 本地 red set**：本地全量 `check:ci:static` = **37 passed / 11 failed**，CI 只暴露其中 2 个。原因是 `ci-static` 这个 gate 集**并未全部接到 GitHub workflow 上**——A 类 4（runtime-closure/constraints/export-jsdoc/translation-pairing）、type-equivalence、client-ui-i18n、config-catalog、subsystem-pages、doc-standard、tsconfig-paths 在 CI 上**没有对应 job**。**这本身是一条发现**：本票的「门账」若只看 CI 会系统性低估 9 个红；反之 CI 绿不等于门绿。是否要把这些 gate 接上 CI（以及接哪些）是本票或 [UM15](UM15-durable-upstream-sync-method.md) §2 gate-coverage meta-gate 的后续裁决点。
 - **两红均已确证非本次 landing 引入**：PR 改 34 文件、**零 `"version"` 行改动**（证 `Pack npm tarballs` 无关）、依赖净 **−1** 行（删 `dsh-client-connection`+`dsh-client-ui-renderer`，加 `dsh-util-values`，方向与 `Dependency layout` 一致）；且 PR #116 带同一对红 MERGED 有先例。
 - **cron follow-up 仍 open**（本票 2026-09-15 加的那条）：staleness 的 local 先 / lefthook pre-push 已落（UM15 §5b），**cron 后**这一半仍未做。
+
+### [2026-09-12] PR #119 第 4 次一致确证 CI real red-set
+
+PR #119（wayfinder tracker 2026-09-12 + evaluation reconcile merge，87 commit）再一次跑同一对红：`Dependency layout` + `Pack npm tarballs`。合并前经 GitHub check-runs API 对 `origin/master` 顶点 `4cc985d567` 复核，**同一 2 门 empirically `failure`**——本分支零新增。
+
+**PR 观测系列（4 次一致）**：#115（首 merged 后 CI）/ #116（首 CI post-merge）/ #117（`c174c9a784` 两轮 CI）/ #119（`9ffb7b3eed` 合并前 CI）。**CI 真实 red set 稳定 = {`Dependency layout`, `Pack npm tarballs`}**（4 数据点，无漂移）。
+
+**本项即上文「最后一个大 open 项 已可关」的第 4 次确证** → 建议随 [UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 决策一起收口（A 类 4 + C 类 4 是否接 CI = [UM15](UM15-durable-upstream-sync-method.md) §2 gate-coverage meta-gate 的裁决点）；单独收口不划算，因为决策路径一致。
+
+**附注**：origin/master 顶点还带 3 个 `python runtime / node24-*` 红，那是 push 事件的检查、不在 PR 上跑（在 `4cc985d567` 上 pre-existing）。这是「CI 有多少 job」的正交问题——归 UM15 §2 gate-coverage meta-gate 处理，与本项收口无关。

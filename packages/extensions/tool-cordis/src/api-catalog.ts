@@ -562,7 +562,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     methods: [
       {
         signature: 'recordTool(exec: ToolExecView, result: ToolResultView): void',
-        description: 'Record one tool call from `tools/post-execute` (allowed or denied). A `qoder_call` tag is emitted when the delegating tool surfaced G3 Credits (`result.value.costs`); a denied call is captured as `isError` with the deny reason in `result.error.message` (the real API has no `decision` param, so a distinct `guard_deny` tag is not auto-emitted here — record one explicitly via record from the P10 intranet tool-gate).',
+        description: 'Record one tool call from `tools/post-execute` (allowed or denied). A denied call is captured as `isError` with the deny reason in `result.error.message` (the real API has no `decision` param, so a distinct `guard_deny` tag is not auto-emitted here — record one explicitly via record from the P10 intranet tool-gate).',
         parameters: [{ name: 'exec', description: 'the post-execute tool view (name, arguments, calling agent\'s session id).' }, { name: 'result', description: 'the tool result view (isError, value/content, error); a deny surfaces as `isError` with the reason in `error.message`.' }],
       },
       {
@@ -6419,10 +6419,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SubagentCatalog {\n    readonly entries: readonly SubagentListEntry[];\n    readonly parentAvailable: boolean;\n}',
   },
   {
-    name: 'SubagentCosts',
-    declaration: 'export interface SubagentCosts {\n    readonly total_cost_usd: number;\n    readonly total_credits?: number | null;\n    readonly usage?: JsonValue;\n    readonly modelUsage?: JsonValue;\n    readonly [key: string]: JsonValue;\n}',
-  },
-  {
     name: 'SubagentDescendantListEntry',
     declaration: 'export type SubagentDescendantListEntry = SubagentListEntry & {\n    readonly parentId: SessionId;\n    readonly depth: number;\n};',
   },
@@ -6460,7 +6456,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SubagentResult',
-    declaration: 'export interface SubagentResult {\n    readonly output: ContentBlock[];\n    readonly structured?: unknown;\n    readonly diagnostic?: string;\n    readonly stopReason: SubagentStopReason;\n    readonly costs?: SubagentCosts;\n}',
+    declaration: 'export interface SubagentResult {\n    readonly output: ContentBlock[];\n    readonly structured?: unknown;\n    readonly diagnostic?: string;\n    readonly stopReason: SubagentStopReason;\n}',
   },
   {
     name: 'SubagentRun',

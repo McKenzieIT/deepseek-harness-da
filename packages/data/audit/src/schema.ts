@@ -11,10 +11,10 @@
  *
  * NET-NEW (G3/P12 delta): `user_id` first-class field — RBI has NO per-user
  * dimension (caller_id is explicitly NOT identity; ownership guard checks
- * tenant+scope only). da's per-user Qoder PAT/Credits attribution needs
- * user_id as a first-class indexed column (P8 D3).
+ * tenant+scope only). da's per-user attribution needs user_id as a first-class
+ * indexed column (P8 D3).
  *
- * Kind-specific payload (tool_name/args_hash/outcome/credits for tool-audit;
+ * Kind-specific payload (tool_name/args_hash/outcome for tool-audit;
  * event_type for session-event; tier/tool_name/payload_hash for tier-2;
  * deny_reason/error for denials; corrects for attribution correction) lives in
  * `extra` — mirrors RBI's `extra` catch-all (extra="ignore" + from_payload
@@ -39,10 +39,10 @@ export const AuditRecord = z.object({
   chat_session_id: z.number().int().nullable().default(null),
   scope_id: z.string().nullable().default(null),   // per-game scope (RBI scope_id)
   tenant_id: z.string().nullable().default(null),
-  user_id: z.string().nullable().default(null),    // NET-NEW (G3 per-business-user Qoder PAT; RBI no analogue)
+  user_id: z.string().nullable().default(null),    // NET-NEW (G3 per-business-user attribution; RBI no analogue)
   model: z.string().nullable().default(null),      // LLM model name (RBI's only cost-adjacent field; +Credits in extra)
   // ── Tags (single source of truth = audit_tag table, NOT payload; mirror RBI) ──
-  auto_tags: z.array(z.string()).default([]),     // qoder_call / tool_write / guard_deny / session_event / attribution_correction
+  auto_tags: z.array(z.string()).default([]),     // tool_call / tool_write / guard_deny / session_event / attribution_correction
   // ── Review status (RBI's ONE in-place mutable column; general audit-status marker) ──
   review_status: z.string().default('pending'),
   // ── Extensibility: undeclared payload keys survive round-trips (mirror RBI `extra`) ──
@@ -93,13 +93,11 @@ export function toPayload(rec: unknown): Record<string, unknown> {
 }
 
 /**
- * Audit tag vocabulary. `qoder_call` is the G3 feed (per-user Qoder PAT +
- * Credits). `attribution_correction` marks a misattribution correction record
- * (P8b tension① decision (a): identity cannot be patched, only corrected by
- * appending a new record).
+ * Audit tag vocabulary. `attribution_correction` marks a misattribution
+ * correction record (P8b tension① decision (a): identity cannot be patched,
+ * only corrected by appending a new record).
  */
 export const TAG = {
-  QODER_CALL: 'qoder_call', // subagent-qoder tool call (G3 feed — per-user PAT + Credits)
   TOOL_WRITE: 'tool_write', // tier-2 persistent write (recordTier2Write; P6 semantic-layer calls)
   GUARD_DENY: 'guard_deny', // a denied tool call (intranet tool-gate; security-relevant)
   SESSION_EVENT: 'session_event', // session/* + agent/* lifecycle

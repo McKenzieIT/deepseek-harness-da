@@ -19,7 +19,6 @@
       "default": "./lib/index.js"
     },
     "./types": "./src/types.ts",
-    "./client": "./src/client/index.ts",
     "./typert": {
       "types": "./lib/typert.host.d.ts",
       "default": "./lib/typert.host.js"

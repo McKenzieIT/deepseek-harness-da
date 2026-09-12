@@ -4,9 +4,9 @@
 # re-mount it) and mounts the data capability plugins this profile ships
 # (P4-P11). The placeholder-only era is over: the packages below have
 # shipped, so their insert rows are LIVE. Only opt-in / deployment-choice
-# rows (embedder, retrieval, subagent-qoder) stay commented — uncomment
-# + mount a provider to activate those seams; a bare specifier to a
-# not-yet-shipped package still breaks pnpm install and verify-cordis-config.
+# rows (embedder, retrieval) stay commented — uncomment + mount a provider
+# to activate those seams; a bare specifier to a not-yet-shipped package
+# still breaks pnpm install and verify-cordis-config.
 #
 # A patch targets a row by id and replaces its whole `config`; `disabled` is
 # an entry flag, so `- id: <row> disabled: true` deactivates a base row
@@ -221,11 +221,9 @@
     - id: admin              # per-user login + identity + PAT self-service + authz gate
       name: '@deepseek-ai/dsh-admin'
 #     # ── LLM (phase-1) — MOVED to deployment layer ─────────────────────────
-#     # llm-dashscope and subagent-qoder are deployment choices, not product
-#     # capabilities. Mount them via `dsh plugin --profile <name> add <pkg>`.
+#     # llm-dashscope is a deployment choice, not a product capability.
+#     # Mount it via `dsh plugin --profile <name> add <pkg>`.
 #     # See scripts/setup-da-profile.sh.
-#     - id: subagent-qoder     # Qoder as a harness subagent (query() delegation; PAT auth via credentials seam)
-#       name: '@deepseek-ai/dsh-subagent-qoder' # name TBD - P3
 
 # ── transform execution (TODO, P7 four-phase + report/Excel) ───────────────
 # code-runtime runs pandas transforms (incl. Excel/report generation via
