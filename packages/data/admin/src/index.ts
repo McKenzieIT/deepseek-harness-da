@@ -138,7 +138,7 @@ function extractBearerToken(req: IncomingMessage): string | undefined {
 // ── Plugin ──────────────────────────────────────────────────────────────────
 
 export const name = 'admin'
-export const inject = ['storageDomain', 'credentials', 'webServer']
+export const inject = ['storageDomain', 'credentials']
 
 /** Default tenant id when neither a request body nor `Config.defaultTenantId` names one. */
 const DEFAULT_TENANT_ID = 'default'
@@ -160,16 +160,13 @@ export interface Config {
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
-  let domain: AdminDomainHandle | undefined
-  let identityService: AdminIdentityService | undefined
-
   // Explicit default-tenant resolve step (CONVENTIONS: no hidden `?? default`
   // inside handlers). `config.defaultTenantId` is overridable from cordis.yml;
   // the fallback keeps the historic `'default'` value for back-compat.
   const defaultTenantId = config.defaultTenantId ?? DEFAULT_TENANT_ID
 
   ctx.effect(async () => {
-    domain = await ctx.storageDomain.open(AdminDomain)
+    const domain = await ctx.storageDomain.open(AdminDomain)
 
     // Seed admin user on first boot (empty users table).
     if (domain.table('users').size === 0 && config.seedAdminId && config.seedAdminPassword) {
@@ -183,17 +180,29 @@ export function apply(ctx: Context, config: Config = {}): void {
     }
 
     // Mount real identity service (overrides the G3b stub).
-    identityService = new AdminIdentityService(ctx, domain)
+    const identityService = new AdminIdentityService(ctx, domain)
 
-    // Register admin routes.
-    const disposeRoutes = registerRoutes(ctx, domain, identityService, defaultTenantId)
+    // Mount admin routes lazily under the optional webServer carrier,
+    // mirroring seam 3 (packages/client/connection): the plugin loads without
+    // a hard webServer dependency and registers /admin/api only when a
+    // webServer is present. The data-agent always runs with a webServer, so
+    // this is behavior-preserving; it additionally allows graceful
+    // no-webServer loads and aligns admin with the upstream carrier-neutral
+    // convention (seam 4's conditional variant is N/A here — admin has no
+    // non-HTTP carrier). Route disposal is tied to the webServer carrier
+    // fiber (webCtx.effect), which Cordis disposes before this effect's
+    // domain.close() — the same routes-then-domain order as before.
+    ctx.inject(['webServer'], (webCtx) => {
+      webCtx.effect(
+        () => registerRoutes(webCtx, domain, identityService, defaultTenantId),
+        'admin: routes',
+      )
+    })
 
     return () => {
-      disposeRoutes()
-      void domain?.close()
-      domain = undefined
+      void domain.close()
     }
-  }, 'admin: domain + identity + routes')
+  }, 'admin: domain + identity')
 }
 
 // ── Real IdentityService ────────────────────────────────────────────────────
