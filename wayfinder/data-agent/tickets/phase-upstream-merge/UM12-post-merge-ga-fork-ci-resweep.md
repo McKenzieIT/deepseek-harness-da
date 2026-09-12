@@ -359,3 +359,19 @@ PR #119（wayfinder tracker 2026-09-12 + evaluation reconcile merge，87 commit�
 **本项即上文「最后一个大 open 项 已可关」的第 4 次确证** → 建议随 [UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 决策一起收口（A 类 4 + C 类 4 是否接 CI = [UM15](UM15-durable-upstream-sync-method.md) §2 gate-coverage meta-gate 的裁决点）；单独收口不划算，因为决策路径一致。
 
 **附注**：origin/master 顶点还带 3 个 `python runtime / node24-*` 红，那是 push 事件的检查、不在 PR 上跑（在 `4cc985d567` 上 pre-existing）。这是「CI 有多少 job」的正交问题——归 UM15 §2 gate-coverage meta-gate 处理，与本项收口无关。
+
+### [2026-09-13] UM-C-GATES grilling closed — UM12 收口 shape confirmed hybrid
+
+[UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 的 4 门（+ `verify-config-catalog` 新入账）3-judge panel + slice-first-decide 完成，决策 doc 落其 Resolution 节。UM12 收口 shape 为 **hybrid**：
+
+- **FIX + wire CI** (2): `verify-config-catalog` (1-line regen + pair record) · `docs/architecture-graph.md` zh emission (reuse `gen-doc-graphs` region-splice pattern)
+- **WAIVE (架构 pattern)** (2): `documentation standard tests` (fork 特化包 README kinds) · `verify-package-dependencies` (fork-plugin peer+dev pattern，87% 同类)
+- **KNOWN-RED permanent** (1): `verify-client-ui-i18n` (data-agent client UI 内网中文用户，无 i18n 用户)
+
+**CI real red-set** = {`Dependency layout`, `Pack npm tarballs`} 第 4 次一致 (PR #115/#116/#117/#119) — 归 UM-C-GATES 的 `verify-package-dependencies` **WAIVE 决策后**这两条 CI 红转为**架构 pattern 豁免的 CI 表现形式**（CI 上的 Release workflow 仍会跑 `verify-package-dependencies`，红是因架构分歧，属预期），不属新增回归。
+
+**PR-blocker 影响**：本票的「最后一个大 open 项 CI 上真实 red set 无人见过」= 已可关（PR #119 第 4 次一致确证）+ UM-C-GATES 的 `verify-package-dependencies` WAIVE 决策一并把它转到 "expected pattern-based CI red" 状态。
+
+**收口条件**：用户接受 UM-C-GATES synthesis 后，本票 → resolved（附本节 + UM15 §2 meta-gate manifest 已接住 3 判定）。
+
+**Status suggestion**: `open` → **`open (awaiting UM-C-GATES sign-off, then resolved)`**。若用户批 hybrid：UM12 与 UM-C-GATES 同时 resolved。
