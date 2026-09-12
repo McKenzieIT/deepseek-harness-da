@@ -340,3 +340,12 @@ UM15 Decision #1（staleness detector 跑哪 = (c) local 先 + cron 后）的 **
 **C 类无主是真实缺口**：票里写「另开票（D3/D4）」，但 **D3/D4 从未创建**。已补：[UM-C-GATES-UPSTREAM-NEW](UM-C-GATES-UPSTREAM-NEW.md)。
 
 **估算**：伞票本体 **1-2 session**（重基线到 11 的新构成、读 PR #115 的 CI checks、把 M1/M2 归因项明确 kill 或跑 `6b7610d45a` 矩阵、基线裁决落定后接 cron workflow）。**若要求「真绿」则 5-7**，但那部分质量在各专属票里，**别在本票重复计**。
+
+### [2026-09-12] 最后一个大 open 项「CI 上真实 red set 无人见过」——**已可关**
+
+PR #117（merged `c174c9a784`）跑了两轮 CI，真实 red set 现已观测到，与本地 `check:ci:static` 的关系也清楚了：
+
+- **CI 上只有 2 个红**：`Dependency layout`（Release (dsh) workflow → `verify-package-dependencies`）+ `Pack npm tarballs`（Release (dsh) → `release:verify` 版本分裂）。其余全绿或 skip：Landlock Matrix / darwin degradation-proof / linux-arm64 / linux-x64 / Release (vendor) 的 Pack npm tarballs 全 SUCCESS；cloudflare pages preview 与 Issue lifecycle/policy 为 SKIPPED。
+- **CI red set ⊊ 本地 red set**：本地全量 `check:ci:static` = **37 passed / 11 failed**，CI 只暴露其中 2 个。原因是 `ci-static` 这个 gate 集**并未全部接到 GitHub workflow 上**——A 类 4（runtime-closure/constraints/export-jsdoc/translation-pairing）、type-equivalence、client-ui-i18n、config-catalog、subsystem-pages、doc-standard、tsconfig-paths 在 CI 上**没有对应 job**。**这本身是一条发现**：本票的「门账」若只看 CI 会系统性低估 9 个红；反之 CI 绿不等于门绿。是否要把这些 gate 接上 CI（以及接哪些）是本票或 [UM15](UM15-durable-upstream-sync-method.md) §2 gate-coverage meta-gate 的后续裁决点。
+- **两红均已确证非本次 landing 引入**：PR 改 34 文件、**零 `"version"` 行改动**（证 `Pack npm tarballs` 无关）、依赖净 **−1** 行（删 `dsh-client-connection`+`dsh-client-ui-renderer`，加 `dsh-util-values`，方向与 `Dependency layout` 一致）；且 PR #116 带同一对红 MERGED 有先例。
+- **cron follow-up 仍 open**（本票 2026-09-15 加的那条）：staleness 的 local 先 / lefthook pre-push 已落（UM15 §5b），**cron 后**这一半仍未做。

@@ -156,3 +156,16 @@
 - `dsh-p2-uism-vitest`：5 test residual→ keep（同上）。
 
 PR #115/#116 都 merged；p2-* 后清基本完成（剩 4 需决定/keep）。master sync 仍 gated。
+
+### [2026-09-12] PR 部分已完 + 后清进展 + master-sync 阻塞根因（重要订正）
+
+**PR 部分收口**：#116 merged（`be447fc1d0`）→ #117 merged（`c174c9a784`，7 commit = ui-settings re-port 4 + seam-3 `9ba8638eac` + merge `bdecd11840` + doc-regen `83be9786e1`）。远端 `refs/heads/upstream/resync-2026-09-08` 这次**未被自动删**，仍在 `83be9786e1` → **后续 resync 工作直接续用该分支**，不必新建（与 #115/#116 merge 后被删的情形不同，动手前 `git ls-remote` 自证）。
+
+**worktree 后清**：`refactor/rda-admin-lazy-webserver-2026-09-08` + worktree `../dsh-rda-admin` 现**可按 ancestry 安全删** —— `git merge-base --is-ancestor 9ba8638eac origin/master` = **YES**（真 merge 入 `c174c9a784`）。这与本票警告的 5 个 `refactor/p2-*` 不同：那些是**按内容收编**，ancestry 判定不适用，仍须逐文件核 residual。删掉后存活 worktree 从 7 降到 **6** = master + 2 个 evaluation（`.worktrees/r10-harness-goodhart` / `.worktrees/t1-exec-grader`，**不碰**）+ `dsh-resync` + 2 个 p2-keep（`dsh-p2-present-table` / `dsh-p2-uism-vitest`）。
+
+**master-sync 阻塞根因订正（此前记为「evaluation 文件冲突」，过于笼统，实测更严重）**：
+- 拓扑（2026-09-12 fetch 后实测）：local master `08d0f44286` vs `origin/master` `c174c9a784` = **origin-only 2802 / local-only 80**，merge-base `1ef40edaee`；`origin/master` **不是** local master 的祖先 → **plain push 必被拒（non-FF）**。
+- `git merge-tree origin/master master` → exit 1，冲突**恰好 2 文件**：`wayfinder/evaluation/map.md`（2 hunk）+ `wayfinder/evaluation/tickets/README.md`（1 hunk）。其余全部 auto-merge 干净。
+- **根因不是「谁比谁新」，是 evaluation effort 的同一批工作在两条线上各做了一遍**：同 5 条 commit subject 在两侧以不同 sha 存在（`00c047956d`/`b7039860ce`/`be3c370693`/`bdc27fe572`/`259d509134` vs `bb44531577`/`219d815e75`/`30224f1942`/`d462e637d1`/`92acfcab77`），local 侧另有 4 条（G10 stack / GA-GT4 close / data scope boundary 等）。
+- ⚠ **两侧都有对方没有的真内容，取任一侧都会丢东西**（已逐行核，且**排除了「只是标点全宽/半宽差异」**这一可能——标点归一化后仍差）：`origin/master` 独有 `tickets/README.md` 矩阵里的 **T12**、若干 **票链** 行、GA-GT4 行；local 独有 **R10/G10** 相关行与**重写过的「领域职责」段**（origin 版写 "evaluation 票只设计/实现 ground truth、normalization、comparator policy…"，local 版写 "evaluation effort 设计/实现 Benchmark、identity、evidence、grading、measurement 与 evaluation lifecycle…"）。
+- **结论：master-sync 不是 UM11 能单方面做的 git 操作，而是需要 evaluation 域知识的 reconcile。** 本 map 的铁律「不碰 `wayfinder/evaluation/`」在此不只是纪律问题——盲选一侧会静默删除对方 effort 的票据内容。**须由 evaluation effort（或一次专门的、经用户授权的 cross-effort reconcile 任务）合并这两份，然后 master 才能 push。**

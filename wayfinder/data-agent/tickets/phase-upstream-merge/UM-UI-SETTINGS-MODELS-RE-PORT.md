@@ -1,6 +1,6 @@
 # UM-UI-SETTINGS-MODELS-RE-PORT — re-port upstream 的 ui-settings-models 重构（M1 静默回退了整包）
 
-**Type**: task · **Status**: open · **Phase**: upstream-merge
+**Type**: task · **Status**: **resolved**（2026-09-12；PR #117 merged `c174c9a784`，无剩余项——slot-catalog 跨包项判 MOOT[generated artifact]、PR 推送+merge 已落地）· **Phase**: upstream-merge
 **Assignee**: wayfinder-session-2026-09-12 (claimed; apply in progress — backbone restore steps 2-4)
 **Blocked by**: —（可立即认领；**不阻塞 UM11 PR**——PR 可带「已知 package-revert」说明先 merge，re-port 落地后再补）
 **Graduated from**: [UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) 2026-09-14（blob 级枚举发现 M1 把整个包回退到 merge-base）
@@ -146,3 +146,18 @@ Remaining (this ticket stays OPEN):
 4. **方法论**：apply 后须跑全量 `check:ci:static` 或至少 architecture/module/cordis/config-catalog --check，不只 gen-doc-graphs。analyze 提案会 stale（welcome-notice 未预 onboarding-copy.ts adopt）+ 交叉核验「字节同 HEAD」自报也可能误判（welcome-notice 被错跳，后 tsc 抓到）。
 
 resync 现 3 commit unpushed（`db0be3c426` + `74f5886d2e` + `4c34ceabb1`）。票仍 OPEN（PR 推送 gated；tsconfig-paths 非本票）。
+
+---
+
+## Resolution（2026-09-12 · RESOLVED）
+
+**PR #117 MERGED** → `origin/master` = `c174c9a784`。本票全部 scope 已落地，无剩余项。
+
+- **source re-port**：26 文件 ctx→operations façade（`db0be3c426`）——restore `operations.ts`+`slot-contract.ts`、`store.ts` ProviderDirectoryEntry、`index.ts` inject 5→8、5 consumers 原子切换、specs cast-free、adopt EditorFooter/locales/onboarding-copy/styles、package.json peerDeps。
+- **doc/生成物**：`README.i18n.yaml` regen（`74f5886d2e`）+ module/architecture graph + slot-catalog regen（`4c34ceabb1`）。
+- **原「剩余」两项均已消**：① slot-catalog.ts 跨包 2 slot 注册 —— 判 **MOOT**，它是 `gen-client-catalog` 的 generated artifact，随 regen 自动带上，不是 sibling 票；② PR 推送+merge —— 已随 #117 落地（7 commit，含搭车的 UM-ADAPT seam 3）。
+- **门**：最终树 `83be9786e1` 全量 `check:ci:static` **37 passed / 11 failed，零新增红**；ui-settings-models vitest **222/222**；`tsc -b tsconfig.client.json` 0；`lint:contracts-ready` 0/0。
+- **CI**：PR 上仅 `Dependency layout` + `Pack npm tarballs` 红 = 与 PR #116 同一对 pre-existing；实测本 PR **零 `"version"` 行改动**、依赖净 **−1** 行，故两红均非本 PR 引入。
+- **遗留一条不属本票的指针**：`verify-upstream-sync-record` 仍把 `packages/client/ui-settings-models/` 记为 `revert-fork` waiver 且 pending keep-or-drop——re-port 既已 merged，该 waiver **应 drop** → 归 [UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md)（waiver 台账是它的 territory，非本票）。
+
+**Status → resolved（2026-09-12）**

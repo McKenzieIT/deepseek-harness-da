@@ -212,3 +212,8 @@ B1 = 141eb6fef8  = merge-base(65bf3cddc9, d347e70390)   (2026-08-19, upstream rc
   - `rescope-fork.ts` 删 `knip-ignore-dependencies-pattern` transform（targets 已删 knip.json，`expect:4` 会 runtime fail）+ `rescope-fork.spec.ts` 删对应 `it()` block lockstep。
 - **三道完整性门仍持**（M1 复活 100/丢 2/回退 27 ui-settings 整包；M2 全 0；waivers 录 `upstream-sync.json`）——线D 不触 integrity gates（只删 zombie config + fixture + 加 allowlist，非 merge 内容）。
 - UM-MERGE-INTEGRITY 近 done（knip/fake-api cleanup 本 session 线D 收；剩未来 resync→origin PR 落地 + waivers 维护）。
+
+### [2026-09-12] 收口前新增两条待办（来自 UM-ADAPT session 的实测副产品）
+
+1. **`packages/data/result-cache` 的 `"./client"` 是死导出** —— `package.json` 声明 `"./client": "./src/client/index.ts"`，但**无 `dsh.client` 声明、无 `tsdown.config.ts`**，且唯一引用是它自己的模块文档 `src/client/index.ts:10`。因为没有 `dsh.client`，它落在上游门 `scripts/verify-client-packages.ts:12` 的 glob **之外**，所以门抓不到它。归本票的 knip/dead-export 清理（与 seam 4 正交——[UM-ADAPT](UM-ADAPT-per-shift-adaptive-analysis.md) 已判 seam 4 本身 already-aligned）。
+2. **`packages/client/ui-settings-models/` 的 `revert-fork` waiver 已 stale，应 drop** —— push 时 `verify-upstream-sync-record` 报：`1 waiver(s) still pending a keep-or-drop decision: packages/client/ui-settings-models/ (revert-fork) — UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS`。该 waiver 记的是 M1 把整包回退到 merge-base 这件事，而 **re-port 已随 PR #117 merged 进 `origin/master` `c174c9a784`**（[UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md) resolved）→ 回退已被撤销，waiver 无对象。**drop 它**（连同核 `upstream-sync.json` 里是否还有其他同类 stale waiver）。这是本票「三道完整性门」台账的直接后续。
