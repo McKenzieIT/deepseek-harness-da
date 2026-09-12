@@ -135,3 +135,14 @@ Commits (dsh-resync `upstream/resync-2026-09-08`, no push):
 Remaining (this ticket stays OPEN):
 - **slot-catalog.ts (cordis-client-runner, cross-package)**: the 2 slots (`settings.models.provider-card`/`footer`) are now declared package-locally in `slot-contract.ts` + advertised in `docs/subsystems/slots.md:126-127`, but the GLOBAL runtime catalog `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts` still lacks them (HEAD had neither; UP has both). Latent runtime gap (no current extension registers against them; no tsc/lint/gen-doc red). **Scoping decision pending**: UM-UI-SETTINGS owns the cross-package restore, or a sibling ticket. Lean: sibling (scope hygiene — one package per ticket). Concrete enough to ticket -> graduate next session.
 - **PR push** (UM11/PR workflow, gated): `db0be3c426` + `74f5886d2e` unpushed on resync. Iron rule: no push without user instruction. PR body must note the ui-settings-models re-port (M1 silent revert undone) per the durable PR-description requirement.
+
+### [2026-09-12] post-apply 全量重盘修正
+
+上条 apply LANDED 写「gates 全绿」**不完整** + 「slot-catalog.ts 跨包 graduate next session」**已 MOOT**——修正：
+
+1. **gates 不全绿**：只跑了 5 道针对门（tsc/lint/vitest/gen-doc-graphs --check/verify-md-links）。全量 `check:ci:static`（287s）抓到 **3 新红，皆 doc-regen 缺口，已在 `4c34ceabb1` 修**：module-graph + architecture-graph stale（regen）+ client-catalog stale（gen-client-catalog）。修正后回 ~11 pre-existing known-red。
+2. **slot-catalog.ts 跨包已 DONE**：`gen-client-catalog` 把 2 slot 写进 `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`（它是 generated artifact，非 sibling 票——deferred 决策 MOOT）。verify-client-catalog 复核 GREEN。
+3. **tsconfig-paths RED = pre-existing**（非本 apply）：UM-INVARIANT retire 了 `src/invariant.ts` 但留 stale `dsh-*/invariant` aliases 在 tsconfig.base.json。gen-tsconfig-paths 想删它们但输出的 JSONC 有效性在 post-10941436b5 explicit-alias 下未验（strict JSON.parse 报错但 tsconfig 是 JSONC 有注释，本就报——须用 tsc parser 验）。归 UM-INVARIANT trailing cleanup 或 UM-TSCONFIG-PATHS follow-up，非本票。
+4. **方法论**：apply 后须跑全量 `check:ci:static` 或至少 architecture/module/cordis/config-catalog --check，不只 gen-doc-graphs。analyze 提案会 stale（welcome-notice 未预 onboarding-copy.ts adopt）+ 交叉核验「字节同 HEAD」自报也可能误判（welcome-notice 被错跳，后 tsc 抓到）。
+
+resync 现 3 commit unpushed（`db0be3c426` + `74f5886d2e` + `4c34ceabb1`）。票仍 OPEN（PR 推送 gated；tsconfig-paths 非本票）。
