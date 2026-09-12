@@ -41,6 +41,55 @@ export const MATCH_MODES: readonly MatchMode[] = [
   'ordered_subset',
 ]
 
+
+/**
+ * Validate the expected-value envelope for one known match mode.
+ * @param expected - the declared `result_value` object.
+ * @param matchMode - the validated match mode.
+ * @returns a defect description, or `null` when the envelope is usable.
+ */
+export function matchExpectationDefect(expected: Record<string, unknown>, matchMode: MatchMode): string | null {
+  switch (matchMode) {
+    case 'scalar_exact':
+      return Object.values(expected)[0] === undefined ? 'empty result_value for scalar_exact' : null
+    case 'multi_scalar_exact': {
+      const rawFields = 'fields' in expected ? expected.fields : expected
+      if (Array.isArray(rawFields)) {
+        if (rawFields.length === 0) return 'fields list is empty'
+        if (rawFields.length !== 1 || !isRecord(rawFields[0])) {
+          return 'fields must be an object or single-element array of objects'
+        }
+        return Object.keys(rawFields[0]).length === 0 ? 'fields object is empty' : null
+      }
+      if (!isRecord(rawFields)) return 'fields must be an object or single-element array of objects'
+      return Object.keys(rawFields).length === 0 ? 'fields object is empty' : null
+    }
+    case 'row_count_range': {
+      const lo = expected.min ?? expected.min_rows
+      const hi = expected.max ?? expected.max_rows
+      if (!Number.isInteger(lo) || !Number.isInteger(hi)) {
+        return `malformed result_value for row_count_range: need integer min/max or min_rows/max_rows (got ${JSON.stringify(expected)})`
+      }
+      return (lo as number) > (hi as number) ? 'malformed result_value for row_count_range: min must not exceed max' : null
+    }
+    case 'set_equal':
+    case 'ordered_subset': {
+      const rows = expectedRowsOf(expected)
+      if (rows === undefined) return `malformed result_value for ${matchMode}: no array found`
+      if (rows.length === 0) return null
+      const allScalars = rows.every(value => typeof value === 'string' || typeof value === 'number')
+      const allRecords = rows.every(isRecord)
+      return allScalars || allRecords ? null : `malformed result_value for ${matchMode}: rows must contain either scalars or objects`
+    }
+    default:
+      return assertNeverMatchMode(matchMode)
+  }
+}
+
+function assertNeverMatchMode(value: never): never {
+  throw new Error(`unhandled match mode: ${String(value)}`)
+}
+
 /**
  * Compare `actualRows` against `expected` per `matchMode`.
  * @param expected - the `expected.result_value` envelope (shape per mode).
@@ -63,6 +112,15 @@ export function checkResultMatch(
     case 'ordered_subset': return orderedSubset(expected, actualRows)
     default: return { status: 'fail', detail: `unknown match_mode: ${matchMode}` }
   }
+}
+
+function expectedRowsOf(expected: Record<string, unknown>): unknown[] | undefined {
+  if ('rows' in expected && Array.isArray(expected.rows)) return Array.from(expected.rows as readonly unknown[])
+  return Object.values(expected).find(value => Array.isArray(value)) as unknown[] | undefined
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function scalarExact(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {

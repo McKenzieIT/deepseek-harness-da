@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EvalCaseSchema, isMultiTurn } from '../src/eval_case.ts'
+import { EvalCaseSchema, isMultiTurn, preflightEvalCaseContent } from '../src/eval_case.ts'
 
 const base = { case_id: 'x', input: { question: 'q' }, expected: { answer: 42 } }
 
@@ -48,24 +48,59 @@ describe('EvalCaseSchema (da-fresh zod; file-boundary validation)', () => {
     expect(() => EvalCaseSchema.parse({ ...base, input: { question: 'q', turns: [{ role: 'assistant', content: 'c' }] } })).toThrow()
   })
 
-  it('rejects result_value without match_mode (both-or-neither)', () => {
-    expect(() => EvalCaseSchema.parse({ case_id: 'x', input: { question: 'q' }, expected: { result_value: { value: 1 } } })).toThrow()
+  it('loads result_value without match_mode, then reports a grading-content defect', () => {
+    const c = EvalCaseSchema.parse({ case_id: 'x', input: { question: 'q' }, expected: { result_value: { value: 1 } } })
+    expect(preflightEvalCaseContent(c)).toEqual({
+      status: 'case-defect',
+      detail: 'case declares result_value without match_mode',
+    })
   })
 
-  it('rejects match_mode without result_value (both-or-neither)', () => {
-    expect(() => EvalCaseSchema.parse({ case_id: 'x', input: { question: 'q' }, expected: { match_mode: 'scalar_exact' } })).toThrow()
+  it('loads match_mode without result_value, then reports a grading-content defect', () => {
+    const c = EvalCaseSchema.parse({ case_id: 'x', input: { question: 'q' }, expected: { match_mode: 'scalar_exact' } })
+    expect(preflightEvalCaseContent(c)).toEqual({
+      status: 'case-defect',
+      detail: 'case declares match_mode scalar_exact without result_value',
+    })
   })
 
-  it('rejects an unknown match_mode', () => {
-    expect(() => EvalCaseSchema.parse({ case_id: 'x', input: { question: 'q' }, expected: { result_value: { value: 1 }, match_mode: 'no_such' } })).toThrow()
+  it('loads an unknown match_mode, then reports a grading-content defect', () => {
+    const c = EvalCaseSchema.parse({
+      case_id: 'x',
+      input: { question: 'q' },
+      expected: { result_value: { value: 1 }, match_mode: 'scalar_exactt' },
+    })
+    expect(preflightEvalCaseContent(c).status).toBe('case-defect')
+    expect(preflightEvalCaseContent(c).detail).toMatch(/unknown match_mode: scalar_exactt/)
+  })
+
+  it.each([
+    ['scalar_exact', {}, /empty result_value/],
+    ['multi_scalar_exact', { fields: [] }, /fields list is empty/],
+    ['row_count_range', { min: 2, max: 1 }, /min must not exceed max/],
+    ['set_equal', { rows: [null] }, /rows must contain either scalars or objects/],
+    ['ordered_subset', { total: 1 }, /no array found/],
+  ] as const)('loads malformed %s content, then reports a grading-content defect', (matchMode, resultValue, detail) => {
+    const c = EvalCaseSchema.parse({
+      case_id: 'x',
+      input: { question: 'q' },
+      expected: { result_value: resultValue, match_mode: matchMode },
+    })
+    const preflight = preflightEvalCaseContent(c)
+    expect(preflight.status).toBe('case-defect')
+    if (preflight.status === 'case-defect') expect(preflight.detail).toMatch(detail)
   })
 
   it('rejects an unknown delivery_match', () => {
     expect(() => EvalCaseSchema.parse({ ...base, expected: { answer: 1, delivery_match: 'no_such' } })).toThrow()
   })
 
-  it('rejects a case declaring neither EXECUTION nor DELIVERY', () => {
-    expect(() => EvalCaseSchema.parse({ case_id: 'x', input: { question: 'q' }, expected: {} })).toThrow()
+  it('loads a case with neither EXECUTION nor DELIVERY, then reports a grading-content defect', () => {
+    const c = EvalCaseSchema.parse({ case_id: 'x', input: { question: 'q' }, expected: {} })
+    expect(preflightEvalCaseContent(c)).toEqual({
+      status: 'case-defect',
+      detail: 'case declares neither EXECUTION nor DELIVERY expectation',
+    })
   })
 
   it('rejects an unknown top-level key instead of dropping it', () => {

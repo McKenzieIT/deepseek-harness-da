@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { CtxQueryExecutor } from '../src/ctx_query_executor.ts'
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 /** Provide a stubbed `query` seam the adapter reads via `ctx.get`. */
 function provideQuery(ctx: Context, query: unknown): void {
@@ -99,6 +103,44 @@ describe('CtxQueryExecutor', () => {
     const ctx = new Context()
     provideQuery(ctx, { execute: () => Promise.reject(new Error('ECONNREFUSED')) })
     await expect(new CtxQueryExecutor(ctx, 's').execute('SELECT 1')).rejects.toThrow('ECONNREFUSED')
+  })
+
+  it('enforces the configured query wait even when the provider ignores abort', async () => {
+    vi.useFakeTimers()
+    const ctx = new Context()
+    let receivedSignal: AbortSignal | undefined
+    provideQuery(ctx, {
+      execute: (_request: unknown, signal?: AbortSignal) => {
+        receivedSignal = signal
+        return new Promise(() => {})
+      },
+    })
+
+    const resultPromise = new CtxQueryExecutor(ctx, 's', 1).execute('SELECT 1')
+    await vi.advanceTimersByTimeAsync(1_000)
+
+    await expect(resultPromise).resolves.toMatchObject({
+      state: 'failed',
+      failureKind: 'timeout',
+      error: 'query timed out after configured 1s wait window',
+    })
+    expect(receivedSignal?.aborted).toBe(true)
+  })
+
+  it('preserves an upstream abort instead of relabeling it as the query wait timeout', async () => {
+    const ctx = new Context()
+    provideQuery(ctx, {
+      execute: (_request: unknown, signal?: AbortSignal) => new Promise((_resolve, reject) => {
+        signal?.addEventListener('abort', () => { reject(reason) }, { once: true })
+      }),
+    })
+    const controller = new AbortController()
+    const reason = new Error('caller cancelled')
+    const resultPromise = new CtxQueryExecutor(ctx, 's', 60).execute('SELECT 1', controller.signal)
+
+    controller.abort(reason)
+
+    await expect(resultPromise).rejects.toBe(reason)
   })
 
   it('reports a provider that cannot attach rather than pretending it did', async () => {

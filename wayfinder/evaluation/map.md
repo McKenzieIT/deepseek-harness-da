@@ -58,7 +58,7 @@
 | [G10 — Data-domain Evaluation Core](tickets/G10-harness-bhe-split.md) (evaluation) | grilling | 2026-09-11 | 生产 DSH composition 是 product-level subject；Benchmark content、Context、Environment、grading、evidence、identity、stores 与 package roles 分离，按 T11→T1→T13→T9→T14→T15→T12→R25 落地 |
 | ↑ **同票 v3 重做并合并** | grilling | **2026-09-08** | D1 结局四分 + `not-measured`（pass/fail/environment-blocked/case-defect）;D2 一能力一实现（包边界不动→T12）;D3 seam = `normalizeOutcome` + `gradeExecution` 两纯函数 + 可落盘 artifact（R23 需离线重打分）;D4 **judge 永不填 execution**、模式必须落盘（测出 56.4pp）;D5 G1 管机器/G1b 管语料;D6 **当前 EXECUTION 语料不合格、需重建**。合并裁定：归一位置取 v3、端口纪律取 v1；v1 修正 v3 两处（provider 声明不可当证据、provenance 由 grader 装配） |
 | [T11 — loader provenance strip](tickets/T11-loader-provenance-strip.md) (evaluation) | task | **2026-09-09** | loader 保全 `expected.sql`/`meta.anchor_ds`/`tier`/`provenance`/`schema_version`；结构位置改 `strictObject`（未知键报错）而 `meta`/`dimensions` 保留自由形式溯源；新增 `resolveReferenceSql` 按 case 自己的 `anchor_ds` 解析模板（封闭占位符集 + 三种显式拒绝）。**不带模板的 2 个 case 与不带 `anchor_ds` 的 2 个是同一批**。闸门：真 maxc 重跑 39-case 对账，event MATCH=2/STALE=16、dws 13/0，与 2026-09-06 逐位相同 |
-| [T1 — Execution grader 实现](tickets/T1-exec-grader-impl.md) (evaluation) | task | **2026-09-09（部分）** | 11 条属性中 9 条完成：单一 `ExecutionPort`、结局五分、`normalizeOutcome`/`gradeExecution` 两纯函数 + artifact（raw/normalized digest + 配置化行数上限）、judge 不再写 execution、`environment-blocked`/`case_defect` 出模型分母、执行器身份+policy 随 run 落盘、`compare.ts` 拒渲染、adapter/比较器/`QueryResult`/audit 执行路径去分叉。**未完 3 项**：两份 `runBatch`、两份 health gate、`eval-cli` 去 provider 直连（纯删除，与本批三处行为变更叠加会使归因不可分辨）+ 截断信号仍未实测。闸门：MATCH 复现（event 2 / dws 13，dws 21/21 逐 case 值一致）；**列语义翻面 0 个**（可解释：取首行首格，名键模式 0 使用）；**`environment-blocked` 2 个**（event 123/126，wait=300 仍超窗）。覆盖面仅 **57 个 `scalar_exact`** |
+| [T1 — Execution grader 实现](tickets/T1-exec-grader-impl.md) (evaluation) | task | **resolved 2026-09-12** | 单一 `ExecutionPort`、五分结局、候选前 case/reference-SQL preflight、可重评分 artifact、完整 run config、typed infra retry 与 durable evidence 已落地并经独立 review；旧 runner/health-gate/provider glue 的最终删除归 T12，真实 provider 截断信号实测归 [T16](tickets/T16-execution-artifact-truncation-validation.md)。闸门仍是 39-case 真 maxc MATCH 复现；不发布新 pass-rate 基线 |
 | [R8 — 判官读出 / 量表 / 顺序论文认读](tickets/R8-pairwise-judge-papers.md) (evaluation) | research | 2026-09-10 | 6/6 论文经 arXiv 元数据 + PDF 全文认读、83 条引文机械回核（两处称法修正：`2608.14684` 的 SARA 是**方法名**非标题；`2602.02219` 主题是**位置偏置**非 pointwise/pairwise 之争）。**决定性结果在本仓、不在论文**：五维 flat-mean 读出实测 = `overall_semantics` 单闸门 + **8.56pp 的漏**（`overall=1` 判 FAIL **0/1495**、`overall=0` 判 PASS **128**；判官说「答不了」的 246 次里 **52.03%** 仍通过）。RADAR 是**干预式**、跑不了既有数据 → R20 重切为四探针（a 已完成 / b、c 便宜 / d 有前置）；「给判官参考答案」与 **T11 是同一块工作**，并改了方向 2 的题面 |
 
 ## Open frontier(未解,票在 `wayfinder/data-agent/tickets/`)
@@ -159,7 +159,7 @@
 
 **效果（在真数仓上验证，非假设）**：39-case 对账在真 maxc 上复现旧结论（event 命中 2、dws 命中 13，dws 21/21 逐条一致），证明换通路没引入语义偏移；**列名 vs 列位 的判分翻面 0 个**（可解释：活跃语料用不到会翻面的模式）；**2 个 event 查询超时被正确归为"环境挡住"**而非"模型答错"（旧路径会错记成"语料陈旧"）。上线真执行判分覆盖 **57 个 scalar_exact case**；86 个只数行数的 case 待 G1b 重建语料，25 个 DELIVERY-only 记"没测"——**没有**"143 个 case 已被执行级评分"这种说法。
 
-**留下的尾巴**（已在 [T1 票](tickets/T1-exec-grader-impl.md) Resolution 逐条记录，转出而非遗漏）：两份 `runBatch`/两份 health gate 的删除、`eval-cli` 去掉对 provider 的直连（纯删除，与本批的判分语义变更叠加会让"数字动了是哪件事引起"说不清，故转 [T12](tickets/T12-eval-package-consolidation.md)）；截断信号仍缺一个超大结果集来实测。
+**留下的尾巴**（已在 [T1 票](tickets/T1-exec-grader-impl.md) Resolution 逐条记录，转出而非遗漏）：两份 `runBatch`/两份 health gate 的删除、`eval-cli` 去掉对 provider 的直连（纯删除，与本批的判分语义变更叠加会让"数字动了是哪件事引起"说不清，故转 [T12](tickets/T12-eval-package-consolidation.md)）；真实 provider 截断信号的超大结果集实测由 [T16](tickets/T16-execution-artifact-truncation-validation.md) 承接。
 
 ---
 
@@ -175,9 +175,10 @@
 **现在 unblocked / 下一步**:
 1. **[T13 — Production Context Projection capability](tickets/T13-context-projection-service.md)**（G10 主实施链下一票）——建立正常 data-agent 与 Evaluation 共用的唯一 production Context Projection seam；T11/T1 前置已满足。
 2. **[R23 — Comparator-policy mutation baseline](tickets/R23-comparator-policy-mutation-baseline.md)**（可并行）——直接使用 T1 已落盘的 artifact 与 raw/normalized digest 离线重打分。
-3. **R14-judge-falsepass-by-dim** ——仍须等待 G1b 重建 EXECUTION 语料；T11 完成只解决了字段可达性。
-4. [**R20 探针 b + c**](tickets/R20-judge-readout-probes.md)——只重跑判官、不重跑 agent；测准则顺序与 isolation-vs-joint。
-5. [**R8c**](tickets/R8c-reference-anchor-papers.md) 与 [**R8b**](tickets/R8b-judge-readout-papers.md)——分别约束可信参考锚和 G8 的读出/量表决策。
+3. **[T16 — Execution artifact 截断信号实测](tickets/T16-execution-artifact-truncation-validation.md)**（可并行，R25 前完成）——验证真实 provider 的 `rowCount`/rows 截断信号与不可重放状态。
+4. **R14-judge-falsepass-by-dim** ——仍须等待 G1b 重建 EXECUTION 语料；T11 完成只解决了字段可达性。
+5. [**R20 探针 b + c**](tickets/R20-judge-readout-probes.md)——只重跑判官、不重跑 agent；测准则顺序与 isolation-vs-joint。
+6. [**R8c**](tickets/R8c-reference-anchor-papers.md) 与 [**R8b**](tickets/R8b-judge-readout-papers.md)——分别约束可信参考锚和 G8 的读出/量表决策。
 
 **[T11](tickets/T11-loader-provenance-strip.md) 与 [T1](tickets/T1-exec-grader-impl.md) 已按同批顺序完成**：T11 先验收 loader/provenance，再落 T1 execution grading。
 

@@ -2,7 +2,9 @@
 
 English | [中文](README.zh.md)
 
-Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness
+Eval evidence engine: batch runner with strict pass^k, case/reference-SQL preflight, typed infrastructure retry, replayable execution artifacts, compatibility-checked run configuration, result persistence, before/after delta comparison, and a health gate for the data-agent evaluation harness.
+
+Before the candidate Agent runs, each structurally valid case is checked for usable grading content. A resolvable reference SQL is executed when an executor is available: environment failures become `infra_failure`, invalid reference SQL or disagreement with the declared expected result becomes `case_defect`, and neither enters the model-error denominator. Every returned `CaseVerdict` carries the preflight evidence.
 
 ## Model Experience
 
@@ -16,4 +18,5 @@ The package registers nothing model-facing, so no KV-cache prefix is extended or
 
 - `pass_k` verdict semantics only — there is no best-of-k fallback here.
 - The health-gate is pre-flight only; there is no mid-run re-check.
-- Infra-retry is bounded by `MAX_FEEDBACK_RETRIES`.
+- Infra-retry is bounded by the run option `max_infra_retries`; both thrown infrastructure errors and typed retryable outcomes use the same bound.
+- A persisted artifact whose row cap omitted data needed by a comparator returns `not-measured` during offline regrading; a Provider that did not materialize its full result returns `environment-blocked`.

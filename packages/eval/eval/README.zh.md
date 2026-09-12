@@ -16,7 +16,9 @@ Data-agent eval harness：da-fresh TypeScript 镜像 `reverse-bi` 的 `rbi-eval`
 - **`buildAgentResponder(harness)` / `extractReply(runResult)` / `validateRunResult(runResult)`** — `DeepSeekHarness` → `Responder` 适配器（H1 缓解：断言每个 run interval 恰好一条 `assistant/message`）。
 - **`classifyExecutionFailure(error)` / `mapQueryOutcome(outcome)`** — 环境故障分类（镜像 rbi `l1.classify_execution_failure`）+ `QueryOutcome` → `ExecutionResult` 映射（pending → `patience` refuse）。
 - **`judgeWithProvider(provider, prompt, opts?)` / `classifyError(err)`** — DELIVERY LLM-judge 含 retry/backoff（SPEC §5.5）+ `AuthenticationAbort`。
-- **`checkResultMatch(expected, actualRows, matchMode)`** — 5 种 EXECUTION 匹配模式（1:1 rbi 镜像）。
+- **`checkResultMatch(expected, actualRows, matchMode, actualRowCount?)`** — 5 种 EXECUTION 匹配模式；行数断言使用 Provider 返回的计数，而不是持久化预览的长度。
+- **`preflightEvalCaseContent(case)`** — 在严格结构解析后把评分内容错误归为逐 case 缺陷，而不是中止整个 batch。
+- **`ExecutionPort` / `executeAndNormalize(...)` / `gradeExecution(...)`** — 当前执行评分原语。在线评分即使持久化行受限也使用完整 live result；持久化证据不足时显式返回未测或环境阻塞，不记为模型错误。
 - **`turnMatchesExpectation(actual, expected)`**（derailment，rbi `≥0.35`）/ **`deliveryFuzzyMatch(actual, expected, opts?)`**（DELIVERY；短 expected → token-containment — 强化 `gameX` vs `gameA` 误报）。
 - **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema（zod）+ YAML/JSON loader。结构位置拒绝未声明的键；`meta` 与 `dimensions` 保留 case 自带的未声明 provenance。
 - **`resolveReferenceSql(case)`** — 把 case 的 `expected.sql` 模板占位符（`{{ds_yesterday}}`、`{{ds_7d_ago}}`）绑定到它自己的 `meta.anchor_ds`；遇未知占位符、缺锚点或锚点格式错时拒绝，而不是产出一段能跑但答错的 SQL。
@@ -30,12 +32,12 @@ Data-agent eval harness：da-fresh TypeScript 镜像 `reverse-bi` 的 `rbi-eval`
 Host 连线真实协作者并注入：
 
 - **Agent** — `new DeepSeekHarness({ launch: { command, args, env: { DSH_SNAPSHOT_FILE: '…', …scrubbedParentEnv() } }, … })`；`responder = buildAgentResponder({ run: (msg, sid) => harness.run(msg, { sessionId: sid }) })`。运行时 `cordis.yml` 加载 `dsh-llm-replay`。`harness.close()` / `await using` 回收子进程；`onTimeout` 执行 close+respawn。
-- **Execution** — `executeSql = async (sql) => mapQueryOutcome(await ctx.query.execute({ sql, scopeId }))`（host 可 `attach`+poll 以先解析 `pending`；`mapQueryOutcome` 对未解析的 pending 健壮 → `patience` refuse）。
+- **Execution** — 当前 `dsh-eval-runner` host 注入唯一 `ExecutionPort`；共享 `CtxQueryExecutor` 调用 `ctx.query`、施加配置的墙钟截止时间，并为 `executeAndNormalize` 保留原始 outcome。旧 `CaseSqlExecutor` / `mapQueryOutcome` 路径只留在等待 T12 删除的 legacy runtime 中。
 - **Judge** — `provider = async (prompt) => { const { stream } = await ctx.llm.stream({ provider: 'dashscope', model, messages: [judgeSystemPrompt, …] }); …parse JSON → { score, rationale } }`（host 拥有 judge prompt + JSON parsing + `llm-dashscope` route；`judgeWithProvider` 添加 retry/backoff + `classifyError` + `AuthenticationAbort`）。
 
-## Batch Runner + Persistence (W3 — P11c)
+## 等待 T12 删除的 legacy core runner
 
-证据引擎(随 W3 发布)在核心之上添加批量执行、持久化与 delta 分析:
+本包仍保留下面列出的 W3 之前 batch runner 与 persistence API。生产路径使用 `@deepseek-ai/dsh-eval-runner`；分阶段迁移完成后的重复 runtime 删除由 T12 负责。
 
 - **`runBatch(cases, { runId, responder, executeSql?, provider?, passK?, maxInfraRetries?, onCaseComplete? })`** — 顺序驱动全量 case 集。每个 case 跑 `passK` 次。基础设施故障(所有尝试 errored、非超时)重试至 `maxInfraRetries`(默认 2)——这些不计入 pass_k(属基础设施故障,非模型表现)。
 - **`classifyCaseOutcome(result)`** — 将 `MultiTurnCaseResult` 映射为 `correct` | `declined` | `wrong` | `unjudged` 之一(与 evidence-query 中的 `EvalResultRecord` 对齐)。
@@ -74,8 +76,6 @@ const curr = loadRunRecords(path)
 const delta = computeDelta(prev, curr)
 console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regressed`)
 ```
-
-## Host wiring (the seams this library does not own)
 
 ## Model Experience
 

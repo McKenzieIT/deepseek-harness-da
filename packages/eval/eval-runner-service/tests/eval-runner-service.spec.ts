@@ -9,7 +9,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { EvalRunnerService } from '../src/index.ts'
+import { Config as ConfigSchema, EvalRunnerService } from '../src/index.ts'
+import type { Config } from '../src/index.ts'
 import { FileBackedEvalResultStore } from '../../../data/evidence-query/src/index.ts'
 import type { RunResult, RunnerVerdict } from '@deepseek-ai/dsh-eval-runner'
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, readdirSync, copyFileSync } from 'node:fs'
@@ -33,6 +34,21 @@ function makeRun(runId: string, cases: Array<{ case_id: string; verdict: RunnerV
 
 /** A stub LLM whose stream yields one text block "SELECT 1 AS total" for any
  *  prompt. Shared by the runBatch integration + D3ii explicit-scopeId specs. */
+const REQUIRED_CONFIG: Config = {
+  caseDir: 'packages/eval/eval/cases/k11-v2',
+  passK: 3,
+  provider: 'stub-provider',
+  model: 'stub-model',
+  today: '20260912',
+  columnSemantics: 'by-name',
+  maxStoredRows: 200,
+}
+
+/** Build a complete service config while letting one test override the relevant field. */
+function serviceConfig(overrides: Partial<Config> = {}): Config {
+  return Object.assign({}, REQUIRED_CONFIG, overrides)
+}
+
 function makeStubLlm() {
   const stream = async function* () {
     yield { type: 'block-start' as const, index: 0, blockType: 'text' as const }
@@ -57,27 +73,42 @@ function makeStubQuery(capturedScopeIds?: string[]) {
 }
 
 describe('EvalRunnerService — mechanics', () => {
+  it('validates required run policy through the Cordis Config schema', () => {
+    expect(() => ConfigSchema(Object.assign({}, REQUIRED_CONFIG, { today: undefined }) as unknown as Config)).toThrow(/today/)
+    expect(() => ConfigSchema(serviceConfig({ today: '2026-09-12' }))).toThrow(/today/)
+    expect(() => ConfigSchema(serviceConfig({ columnSemantics: 'unknown' as never }))).toThrow(/columnSemantics/)
+    expect(() => ConfigSchema(serviceConfig({ maxStoredRows: 0 }))).toThrow(/maxStoredRows/)
+    expect(ConfigSchema(serviceConfig())).toMatchObject({
+      resultsDir: '.tmp/eval-results',
+      caseDir: 'packages/eval/eval/cases/k11-v2',
+      passK: 3,
+      today: '20260912',
+      columnSemantics: 'by-name',
+      maxStoredRows: 200,
+    })
+  })
+
   it('getCaseCount discovers K11 cases when caseDir points at the real set', () => {
     // Cases were archived to _archived/k11-v1 during the k11→k11-v2 migration;
     // the v1 files still match the Service's `/^k11_\d+\.yaml$/` filter (161 of
     // them; the 162nd entry, coverage-matrix.yaml, is excluded by the regex).
-    const svc = new EvalRunnerService(new Context(), { caseDir: 'packages/eval/eval/cases/_archived/k11-v1' })
+    const svc = new EvalRunnerService(new Context(), serviceConfig({ caseDir: 'packages/eval/eval/cases/_archived/k11-v1' }))
     expect(svc.getCaseCount()).toBe(161)
   })
 
   it('rejects invalid executor attribution config at construction', () => {
-    expect(() => new EvalRunnerService(new Context(), { executorIdentity: '   ' })).toThrow(
-      'executorIdentity must be a non-empty string',
+    expect(() => new EvalRunnerService(new Context(), serviceConfig({ executorIdentity: '   ' }))).toThrow(
+      /executorIdentity/,
     )
-    expect(() => new EvalRunnerService(new Context(), { queryWaitSeconds: 0 })).toThrow(
-      'queryWaitSeconds must be a positive integer',
+    expect(() => new EvalRunnerService(new Context(), serviceConfig({ queryWaitSeconds: 0 }))).toThrow(
+      /queryWaitSeconds/,
     )
   })
 
   it('getResultsDir returns the configured dir', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'ers-'))
     try {
-      const svc = new EvalRunnerService(new Context(), { resultsDir: tmp })
+      const svc = new EvalRunnerService(new Context(), serviceConfig({ resultsDir: tmp }))
       expect(svc.getResultsDir()).toBe(tmp)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
@@ -85,7 +116,7 @@ describe('EvalRunnerService — mechanics', () => {
   })
 
   it('computeDelta delegates to compareDelta', () => {
-    const svc = new EvalRunnerService(new Context())
+    const svc = new EvalRunnerService(new Context(), serviceConfig())
     const a = makeRun('run-a', [{ case_id: 'c1', verdict: 'wrong' }])
     const b = makeRun('run-b', [{ case_id: 'c1', verdict: 'correct' }])
     const d = svc.computeDelta(a, b)
@@ -99,7 +130,7 @@ describe('EvalRunnerService — mechanics', () => {
     // runBatch with no cases throws — so point at a tiny temp fixture. But the
     // real engine needs ctx.llm; that path is integration-tested below. Here
     // we only assert the initial state.
-    const svc = new EvalRunnerService(new Context())
+    const svc = new EvalRunnerService(new Context(), serviceConfig())
     expect(svc.getLastRun()).toBeNull()
   })
 })
@@ -138,7 +169,7 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
         '  provenance: human-reference',
         '',
       ].join('\n'))
-      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model', executorIdentity: 'query-provider:test', queryWaitSeconds: 60 })
+      const svc = new EvalRunnerService(ctx, serviceConfig({ caseDir: tmpCases, resultsDir, passK: 1, executorIdentity: 'query-provider:test', queryWaitSeconds: 60, columnSemantics: 'positional', maxStoredRows: 17 }))
       const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'scope-a' })
       expect(result.cases.length).toBe(1)
       expect(result.summary.total).toBe(1)
@@ -154,10 +185,22 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
       expect(rec).toHaveProperty('caseId')
       expect(rec).toHaveProperty('outcome')
       expect(rec).toHaveProperty('passed')
+      expect(rec).toMatchObject({
+        runConfig: {
+          today: '20260912',
+          column_semantics: 'positional',
+          max_stored_rows: 17,
+          query_wait_seconds: 60,
+        },
+      })
       expect(rec).toHaveProperty('passK')
       expect(rec).toMatchObject({
         recordVersion: 2,
         runConfig: { executor_identity: 'query-provider:test' },
+        preflight: {
+          content: { status: 'passed' },
+          reference_sql: { status: 'passed', stage: 'comparison' },
+        },
         attempts: [{
           execution_outcome: 'pass',
           execution_artifact: { kind: 'completed' },
@@ -180,6 +223,7 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
         recordVersion: 2,
         runConfig: { executor_identity: 'query-provider:test' },
         attempts: [{ execution_artifact: { kind: 'completed' } }],
+        preflight: { content: { status: 'passed' }, reference_sql: { status: 'passed' } },
         caseProvenance: { meta: { provenance: 'human-reference' } },
       })
       expect(JSON.stringify(stored.metadata)).toContain('normalizedDigest')
@@ -191,6 +235,104 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
       // when non-empty, every captured scopeId must equal the explicit scope
       // passed to runBatch (no silent fallback to a different/hardcoded scope).
       expect(capturedScopeIds.every(id => id === 'scope-a')).toBe(true)
+    } finally {
+      rmSync(tmpCases, { recursive: true, force: true })
+      rmSync(resultsDir, { recursive: true, force: true })
+    }
+  }, 60_000)
+  it('persists preflight diagnostics when failures stop before candidate attempts', async () => {
+    const resultsDir = mkdtempSync(join(tmpdir(), 'ers-preflight-results-'))
+    const tmpCases = mkdtempSync(join(tmpdir(), 'ers-preflight-cases-'))
+    const ctx = new Context()
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', {
+      execute: async () => ({
+        state: 'failed' as const,
+        error: 'warehouse connection reset',
+        failureKind: 'transport',
+      }),
+    })
+
+    try {
+      writeFileSync(join(tmpCases, 'k11_001.yaml'), [
+        'case_id: k11_001',
+        'input: { question: Broken case, scope_id: scope-a, turns: [] }',
+        'expected:',
+        '  result_value: { value: 1 }',
+        '  match_mode: null',
+        '  answer: null',
+        '  delivery_match: null',
+        'dimensions: {}',
+        '',
+      ].join('\n'))
+      writeFileSync(join(tmpCases, 'k11_002.yaml'), [
+        'case_id: k11_002',
+        'input: { question: Blocked reference, scope_id: scope-a, turns: [] }',
+        'expected:',
+        '  sql: SELECT 1 AS value',
+        '  result_value: { value: 1 }',
+        '  match_mode: scalar_exact',
+        '  answer: null',
+        '  delivery_match: null',
+        'dimensions: {}',
+        '',
+      ].join('\n'))
+      const svc = new EvalRunnerService(ctx, serviceConfig({
+        caseDir: tmpCases,
+        resultsDir,
+        passK: 1,
+        executorIdentity: 'query-provider:test',
+        queryWaitSeconds: 60,
+      }))
+
+      const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'scope-a' })
+      expect(result.cases).toMatchObject([
+        {
+          case_id: 'k11_001',
+          verdict: 'case_defect',
+          pass_k_results: [],
+          preflight: { content: { status: 'case-defect' } },
+        },
+        {
+          case_id: 'k11_002',
+          verdict: 'infra_failure',
+          pass_k_results: [],
+          preflight: {
+            content: { status: 'passed' },
+            reference_sql: {
+              status: 'environment-blocked',
+              stage: 'execution',
+              execution_artifact: { kind: 'failed', failureKind: 'transport' },
+            },
+          },
+        },
+      ])
+
+      const file = readdirSync(resultsDir).find(name => name.endsWith('.jsonl'))
+      expect(file).toBeDefined()
+      const persisted = readFileSync(join(resultsDir, file!), 'utf8').trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>)
+      expect(persisted).toMatchObject([
+        {
+          caseId: 'k11_001',
+          verdict: 'case_defect',
+          attemptsCount: 0,
+          attempts: [],
+          preflight: { content: { status: 'case-defect' } },
+        },
+        {
+          caseId: 'k11_002',
+          verdict: 'infra_failure',
+          attemptsCount: 0,
+          attempts: [],
+          preflight: { reference_sql: { status: 'environment-blocked', execution_artifact: { failureKind: 'transport' } } },
+        },
+      ])
+
+      const stored = new FileBackedEvalResultStore(resultsDir).query({}).results
+      expect(stored.map(record => record.metadata)).toMatchObject([
+        { preflight: { content: { status: 'case-defect' } }, attempts: [] },
+        { preflight: { reference_sql: { status: 'environment-blocked' } }, attempts: [] },
+      ])
     } finally {
       rmSync(tmpCases, { recursive: true, force: true })
       rmSync(resultsDir, { recursive: true, force: true })
@@ -208,7 +350,7 @@ describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () 
       for (const p of realCases) {
         copyFileSync(p, join(tmpCases, p.split('/').pop()!))
       }
-      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, passK: 1 })
+      const svc = new EvalRunnerService(ctx, serviceConfig({ caseDir: tmpCases, passK: 1 }))
       // No scopeId → D3ii fail-loud (no silent 'k11' fallback).
       await expect(svc.runBatch({ skipHealthGate: true })).rejects.toThrow(
         'eval-runner-service runBatch: explicit scopeId required (D3ii: no default pointer)',
@@ -227,12 +369,10 @@ describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () 
     const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-executor-id-'))
     try {
       copyFileSync('packages/eval/eval/cases/_archived/k11-v1/k11_001.yaml', join(tmpCases, 'k11_001.yaml'))
-      const svc = new EvalRunnerService(ctx, {
+      const svc = new EvalRunnerService(ctx, serviceConfig({
         caseDir: tmpCases,
         passK: 1,
-        provider: 'stub-provider',
-        model: 'stub-model',
-      })
+      }))
 
       await expect(svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })).rejects.toThrow(
         'executorIdentity is required when ctx.query is mounted',
@@ -249,13 +389,11 @@ describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () 
     const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-query-wait-'))
     try {
       copyFileSync('packages/eval/eval/cases/_archived/k11-v1/k11_001.yaml', join(tmpCases, 'k11_001.yaml'))
-      const svc = new EvalRunnerService(ctx, {
+      const svc = new EvalRunnerService(ctx, serviceConfig({
         caseDir: tmpCases,
         passK: 1,
-        provider: 'stub-provider',
-        model: 'stub-model',
         executorIdentity: 'query-provider:test',
-      })
+      }))
 
       await expect(svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })).rejects.toThrow(
         'queryWaitSeconds is required when ctx.query is mounted',
@@ -285,7 +423,7 @@ describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () 
       for (const p of realCases) {
         copyFileSync(p, join(tmpCases, p.split('/').pop()!))
       }
-      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model', executorIdentity: 'query-provider:test', queryWaitSeconds: 60 })
+      const svc = new EvalRunnerService(ctx, serviceConfig({ caseDir: tmpCases, resultsDir, passK: 1, executorIdentity: 'query-provider:test', queryWaitSeconds: 60 }))
       const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })
       expect(result.cases.length).toBe(1)
       expect(svc.getLastRun()).toBe(result)

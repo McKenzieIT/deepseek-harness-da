@@ -54,7 +54,7 @@ export interface TriggerEvalResult {
   readonly summary: RunSummary | null
   readonly delta: DeltaReport | null
   readonly caseCount: number
-  readonly message: string | undefined
+  readonly message?: string
   readonly previousRunId: string | null
 }
 
@@ -249,7 +249,6 @@ export function apply(ctx: Context, _config: Config = {}): void {
           summary: result.summary,
           delta,
           caseCount: result.cases.length,
-          message: undefined,
           previousRunId: previousRun?.run_id ?? null,
         } as unknown as TriggerEvalToolValue
       }

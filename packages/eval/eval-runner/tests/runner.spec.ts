@@ -10,7 +10,7 @@ import { StubAgentResponder, StubQueryExecutor, StubJudgeExecutor, FailingAgentR
 import type { RunResult, RunnerVerdict } from '../src/types.ts'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 
 const fixtureDir = import.meta.dirname
 const caseA = `${fixtureDir}/fixtures/case-a.yaml`
@@ -24,7 +24,250 @@ function makeStubs() {
   return { agent, executor, judge }
 }
 
+function writeCase(name: string, expected: Record<string, unknown>, meta?: Record<string, unknown>): string {
+  const dir = mkdtempSync(join(tmpdir(), 'eval-runner-case-'))
+  const path = join(dir, `${name}.json`)
+  writeFileSync(path, JSON.stringify({
+    case_id: name,
+    input: { question: `question for ${name}` },
+    expected,
+    ...(meta === undefined ? {} : { meta }),
+  }))
+  return path
+}
+
 describe('runBatch', () => {
+
+  it.each([
+    ['unknown match mode', { result_value: { value: 1 }, match_mode: 'scalar_exactt' }, /unknown match_mode/],
+    ['mismatched expected fields', { result_value: { value: 1 } }, /without match_mode/],
+    ['no declared assertions', {}, /neither EXECUTION nor DELIVERY/],
+  ] as const)('loads %s as a per-case defect without calling the agent', async (_name, expected, detail) => {
+    const agent = new StubAgentResponder()
+    const collaborators = buildCollaborators(agent, null, null)
+    const path = writeCase('content-defect', expected)
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'case_defect',
+      pass_k_results: [],
+      preflight: { content: { status: 'case-defect' } },
+    })
+    expect(result.cases[0]!.preflight?.content.detail).toMatch(detail)
+    expect(agent.calls).toHaveLength(0)
+  })
+
+  it('keeps running valid cases when another case has defective grading content', async () => {
+    const agent = new StubAgentResponder()
+    agent.setDefaultReply({ reply: 'The average order value is 50 dollars', generated_sql: null })
+    const collaborators = buildCollaborators(agent, null, null)
+    const invalid = writeCase('content-defect-in-batch', {
+      result_value: { value: 1 },
+      match_mode: 'unknown-mode',
+    })
+
+    const result = await runBatch([invalid, caseC], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases.map(item => item.verdict)).toEqual(['case_defect', 'correct'])
+    expect(agent.calls.map(call => call.question)).toEqual(['What is the average order value?'])
+  })
+
+  it.each([
+    ['template', 'SELECT {{unknown_anchor}}', undefined, /unknown placeholder/i],
+    ['anchor', 'SELECT {{ds_yesterday}}', { anchor_ds: '20260230' }, /not yyyymmdd/i],
+  ] as const)('records an unresolvable reference SQL %s as a case defect before calling the agent', async (_name, sql, meta, detail) => {
+    const agent = new StubAgentResponder()
+    const collaborators = buildCollaborators(agent, null, null)
+    const path = writeCase('bad-reference-resolution', {
+      result_value: { value: 1 },
+      match_mode: 'scalar_exact',
+      sql,
+    }, meta)
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'case_defect',
+      pass_k_results: [],
+      preflight: {
+        content: { status: 'passed' },
+        reference_sql: {
+          status: 'case-defect',
+          stage: 'resolution',
+        },
+      },
+    })
+    expect(result.cases[0]!.preflight?.reference_sql?.detail).toMatch(detail)
+    expect(agent.calls).toHaveLength(0)
+  })
+
+  it('records a reference infrastructure failure and does not call the agent', async () => {
+    const agent = new StubAgentResponder()
+    const executor = new StubQueryExecutor()
+    executor.setResult('SELECT 1 AS value', {
+      state: 'failed',
+      failureKind: 'transport',
+      error: 'connection reset by warehouse',
+    })
+    const collaborators = buildCollaborators(agent, executor, null)
+    const path = writeCase('reference-infra', {
+      result_value: { value: 1 },
+      match_mode: 'scalar_exact',
+      sql: 'SELECT 1 AS value',
+    })
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'infra_failure',
+      pass_k_results: [],
+      preflight: {
+        reference_sql: {
+          status: 'environment-blocked',
+          stage: 'execution',
+          sql: 'SELECT 1 AS value',
+          execution_artifact: { kind: 'failed', failureKind: 'transport' },
+        },
+      },
+    })
+    expect(agent.calls).toHaveLength(0)
+  })
+
+  it.each([
+    ['syntax failure', 'syntax error near FROM', undefined],
+    ['guard failure', 'guard rejected: required predicate missing', undefined],
+    ['missing corpus object', 'Table not found: missing_reference_table', 'not_found'],
+  ] as const)('records a reference %s as a case defect before calling the agent', async (_name, error, failureKind) => {
+    const agent = new StubAgentResponder()
+    const executor = new StubQueryExecutor()
+    executor.setResult('SELECT invalid', {
+      state: 'failed',
+      error,
+      ...(failureKind === undefined ? {} : { failureKind }),
+    })
+    const collaborators = buildCollaborators(agent, executor, null)
+    const path = writeCase('reference-invalid', {
+      result_value: { value: 1 },
+      match_mode: 'scalar_exact',
+      sql: 'SELECT invalid',
+    })
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'case_defect',
+      pass_k_results: [],
+      preflight: {
+        reference_sql: {
+          status: 'case-defect',
+          stage: 'execution',
+          execution_artifact: { kind: 'failed' },
+        },
+      },
+    })
+    expect(agent.calls).toHaveLength(0)
+  })
+
+  it('records a reference-result mismatch as a case defect before calling the agent', async () => {
+    const agent = new StubAgentResponder()
+    const executor = new StubQueryExecutor()
+    executor.setResult('SELECT 2 AS value', {
+      state: 'completed',
+      columns: ['value'],
+      rows: [[2]],
+      rowCount: 1,
+    })
+    const collaborators = buildCollaborators(agent, executor, null)
+    const path = writeCase('reference-mismatch', {
+      result_value: { value: 1 },
+      match_mode: 'scalar_exact',
+      sql: 'SELECT 2 AS value',
+    })
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'case_defect',
+      pass_k_results: [],
+      preflight: {
+        reference_sql: {
+          status: 'case-defect',
+          stage: 'comparison',
+          execution_artifact: { kind: 'completed' },
+        },
+      },
+    })
+    expect(result.cases[0]!.preflight?.reference_sql?.detail).toMatch(/declared expected/i)
+    expect(agent.calls).toHaveLength(0)
+  })
+
+  it('runs a resolved reference SQL before the candidate and records typed evidence', async () => {
+    const agent = new StubAgentResponder()
+    agent.setDefaultReply({ reply: '1', generated_sql: 'SELECT candidate' })
+    const executor = new StubQueryExecutor()
+    executor.setResult('SELECT 1 AS value', {
+      state: 'completed',
+      columns: ['value'],
+      rows: [[1]],
+      rowCount: 1,
+    })
+    executor.setResult('SELECT candidate', {
+      state: 'completed',
+      columns: ['value'],
+      rows: [[1]],
+      rowCount: 1,
+    })
+    const collaborators = buildCollaborators(agent, executor, null)
+    const path = writeCase('reference-pass', {
+      result_value: { value: 1 },
+      match_mode: 'scalar_exact',
+      sql: 'SELECT 1 AS value',
+    })
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(executor.calls).toEqual(['SELECT 1 AS value', 'SELECT candidate'])
+    expect(agent.calls).toHaveLength(1)
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'correct',
+      preflight: {
+        reference_sql: {
+          status: 'passed',
+          stage: 'comparison',
+          sql: 'SELECT 1 AS value',
+          substitutions: {},
+          execution_artifact: { kind: 'completed' },
+        },
+      },
+    })
+  })
+
+  it('only resolves reference SQL when no executor is mounted', async () => {
+    const agent = new StubAgentResponder()
+    agent.setDefaultReply({ reply: '1', generated_sql: 'SELECT candidate' })
+    const collaborators = buildCollaborators(agent, null, null)
+    const path = writeCase('reference-static-only', {
+      result_value: { value: 1 },
+      match_mode: 'scalar_exact',
+      sql: 'SELECT {{ds_yesterday}} AS ds',
+    }, { anchor_ds: '20260912' })
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(agent.calls).toHaveLength(1)
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'unjudged',
+      preflight: {
+        reference_sql: {
+          status: 'resolved-not-executed',
+          sql: 'SELECT 20260911 AS ds',
+          anchor_ds: '20260912',
+          substitutions: { ds_yesterday: '20260911' },
+        },
+      },
+    })
+  })
   it('produces correct verdicts with stub collaborators', async () => {
     const { agent, executor, judge } = makeStubs()
 
@@ -46,6 +289,61 @@ describe('runBatch', () => {
     expect(result.summary.total).toBe(1)
     expect(result.summary.correct).toBe(1)
     expect(result.summary.pass_rate).toBe(1)
+  })
+
+  it('classifies incomplete provider results as infrastructure rather than model error', async () => {
+    const agent = new StubAgentResponder()
+    agent.setDefaultReply({ reply: 'values', generated_sql: 'SELECT value FROM source' })
+    const executor = new StubQueryExecutor()
+    executor.setResult('SELECT value FROM source', {
+      state: 'completed',
+      columns: ['value'],
+      rows: [[1]],
+      rowCount: 2,
+    })
+    const collaborators = buildCollaborators(agent, executor, null)
+    const path = writeCase('candidate-provider-truncated', {
+      result_value: { rows: [1, 2] },
+      match_mode: 'set_equal',
+    })
+
+    const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'infra_failure',
+      pass_k_results: [{ execution_outcome: 'environment-blocked' }],
+    })
+    expect(result.cases[0]!.pass_k_results[0]!.execution_detail).toMatch(/incomplete result/i)
+  })
+
+  it('grades complete live rows even when persistence stores only a preview', async () => {
+    const agent = new StubAgentResponder()
+    agent.setDefaultReply({ reply: 'values', generated_sql: 'SELECT value FROM source' })
+    const executor = new StubQueryExecutor()
+    executor.setResult('SELECT value FROM source', {
+      state: 'completed',
+      columns: ['value'],
+      rows: [[1], [2]],
+      rowCount: 2,
+    })
+    const collaborators = buildCollaborators(agent, executor, null)
+    const path = writeCase('candidate-storage-truncated', {
+      result_value: { rows: [1, 2] },
+      match_mode: 'set_equal',
+    })
+    const options = makeTestRunOptions(collaborators)
+    const result = await runBatch([path], collaborators, {
+      ...options,
+      config: { ...options.config, max_stored_rows: 1 },
+    })
+
+    expect(result.cases[0]).toMatchObject({
+      verdict: 'correct',
+      pass_k_results: [{
+        execution_outcome: 'pass',
+        execution_artifact: { rowsStored: 1, storageTruncated: true },
+      }],
+    })
   })
 
   it('marks case as wrong when execution does not match', async () => {

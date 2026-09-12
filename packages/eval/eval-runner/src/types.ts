@@ -7,7 +7,14 @@
  * @module @deepseek-ai/dsh-eval-runner/types
  */
 
-import type { ExecutionArtifact, ExecutionOutcome, ExecutionPort, MultiTurnCaseResult } from '@deepseek-ai/dsh-eval'
+import type {
+  EvalCaseContentPreflight,
+  ExecutionArtifact,
+  ExecutionOutcome,
+  ExecutionPort,
+  MultiTurnCaseResult,
+  ReferencePlaceholder,
+} from '@deepseek-ai/dsh-eval'
 
 // ─── Verdict Mapping ───────────────────────────────────────────────────────────
 
@@ -38,9 +45,34 @@ export interface SqlJudgeVerdict {
   readonly dimensions: Record<string, 0 | 1>
 }
 
-/**
- * Result of a single pass_k attempt within a case run.
- */
+/** Reference SQL that resolved successfully, including replay inputs. */
+interface ResolvedReferenceSqlEvidence {
+  /** Executable SQL after template substitution. */
+  readonly sql: string
+  /** Snapshot anchor used to resolve the template, when one was required. */
+  readonly anchor_ds?: string
+  /** Placeholder substitutions applied to the reference SQL. */
+  readonly substitutions: Partial<Record<ReferencePlaceholder, string>>
+}
+
+/** Typed evidence produced before candidate-agent execution. */
+export type ReferenceSqlPreflightEvidence =
+  | { readonly status: 'absent'; readonly detail: string }
+  | ({ readonly status: 'resolved-not-executed'; readonly stage: 'resolution'; readonly detail: string } & ResolvedReferenceSqlEvidence)
+  | ({ readonly status: 'passed'; readonly stage: 'comparison'; readonly detail: string; readonly execution_artifact: ExecutionArtifact } & ResolvedReferenceSqlEvidence)
+  | { readonly status: 'case-defect'; readonly stage: 'resolution'; readonly detail: string }
+  | ({ readonly status: 'case-defect'; readonly stage: 'execution' | 'comparison'; readonly detail: string; readonly execution_artifact?: ExecutionArtifact } & ResolvedReferenceSqlEvidence)
+  | ({ readonly status: 'environment-blocked'; readonly stage: 'execution' | 'comparison'; readonly detail: string; readonly execution_artifact?: ExecutionArtifact } & ResolvedReferenceSqlEvidence)
+
+/** Structural/content and reference-SQL checks completed before candidate execution. */
+export interface CasePreflightEvidence {
+  /** Grading-content validation after strict structural parsing. */
+  readonly content: EvalCaseContentPreflight
+  /** Reference-SQL resolution/execution evidence; absent when content validation stopped the case first. */
+  readonly reference_sql?: ReferenceSqlPreflightEvidence
+}
+
+/** Result of a single pass_k attempt within a case run. */
 export interface AttemptResult {
   /** 1-based attempt number within the pass_k sequence. */
   readonly attempt_k: number
@@ -76,12 +108,14 @@ export interface AttemptResult {
 export interface CaseVerdict {
   /** The case's unique identifier. */
   readonly case_id: string
-  /** Per-attempt results for the pass_k run. */
+  /** Per-attempt results, empty when preflight stops the case before the agent runs. */
   readonly pass_k_results: AttemptResult[]
   /** The overall verdict for this case. */
   readonly verdict: RunnerVerdict
   /** Latency in milliseconds for the entire case (all pass_k attempts). */
   readonly latency_ms: number
+  /** Checks completed before any candidate-agent call. */
+  readonly preflight?: CasePreflightEvidence
   /** The raw MultiTurnCaseResult from the eval core (for detailed inspection). */
   readonly raw?: MultiTurnCaseResult
 }
@@ -150,10 +184,11 @@ export interface RunConfig {
   /** Rows an execution artifact stores; digests still cover the full result. */
   readonly max_stored_rows: number
   /**
-   * Seconds the warehouse was given to answer synchronously. It bounds both the
-   * sidecar's wait window and the derived tool-call timeout, so it decides
-   * whether a slow query lands as a result or as `environment-blocked` — which
-   * changes the denominator, and therefore may not vary within one batch.
+   * Maximum wall-clock seconds the host allows one query call. A host may
+   * enforce it in the adapter, configure the provider with the same value, or
+   * both; a provider may still return `pending` before the deadline. Because the
+   * value changes whether a slow query is measured, it may not vary within one
+   * batch.
    */
   readonly query_wait_seconds?: number
   /** Whether the health gate pre-flight was skipped. */

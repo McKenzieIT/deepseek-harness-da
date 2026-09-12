@@ -201,6 +201,16 @@ describe('gradeExecution', () => {
     expect(v.outcome).toBe('case-defect')
   })
 
+  it('calls a malformed expected-value envelope a case defect', () => {
+    const v = gradeExecution(
+      artifactOf([[7]]),
+      { result_value: { min: 2, max: 1 }, match_mode: 'row_count_range' },
+      policy,
+    )
+    expect(v.outcome).toBe('case-defect')
+    expect(v.detail).toContain('min must not exceed max')
+  })
+
   it('calls an expectation that declares neither field a case defect', () => {
     const v = gradeExecution(artifactOf([[7]]), { result_value: null, match_mode: null }, policy)
     expect(v.outcome).toBe('case-defect')
@@ -228,11 +238,13 @@ describe('gradeExecution', () => {
     expect(v.columnSemantics).toBe('positional')
   })
 
-  it('refuses a policy-changing re-grade when a legacy artifact retained no raw cells', () => {
+  it('marks a policy-changing re-grade not-measured when a legacy artifact retained no raw cells', () => {
     const stored = JSON.parse(JSON.stringify(artifactOf([[7]], ['dau']))) as ExecutionArtifact & { rawRows?: unknown }
     delete stored.rawRows
     const byPos = resolveComparatorPolicy({ columnSemantics: 'positional', maxStoredRows: 100 })
-    expect(() => gradeExecution(stored, { result_value: { col0: 7 }, match_mode: 'multi_scalar_exact' }, byPos)).toThrow(/raw row evidence/i)
+    const verdict = gradeExecution(stored, { result_value: { col0: 7 }, match_mode: 'multi_scalar_exact' }, byPos)
+    expect(verdict.outcome).toBe('not-measured')
+    expect(verdict.detail).toMatch(/raw row evidence/i)
   })
 
   it('uses authoritative rowCount when persisted rows are capped', () => {
@@ -269,16 +281,31 @@ describe('gradeExecution', () => {
   })
 
   it.each(['set_equal', 'ordered_subset'] as const)(
-    'refuses persisted truncated evidence for %s',
+    'marks persisted truncated evidence not-measured for %s',
     (matchMode) => {
       const capped = resolveComparatorPolicy({ columnSemantics: 'by-name', maxStoredRows: 1 })
       const live = normalizeOutcome(completed([[1], [2]], ['n']), { policy: capped, durationMs: 0 })
       const stored: ExecutionArtifact = JSON.parse(JSON.stringify(live)) as ExecutionArtifact
-      expect(() => gradeExecution(
-        stored,
-        { result_value: { rows: [1, 2] }, match_mode: matchMode },
-        capped,
-      )).toThrow(/insufficient.*evidence/i)
+      const first = gradeExecution(stored, { result_value: { rows: [1, 2] }, match_mode: matchMode }, capped)
+      const second = gradeExecution(stored, { result_value: { rows: [1, 2] }, match_mode: matchMode }, capped)
+      expect(first.outcome).toBe('not-measured')
+      expect(first.detail).toMatch(/persisted execution evidence/i)
+      expect(second).toEqual(first)
+    },
+  )
+
+  it.each(['set_equal', 'ordered_subset'] as const)(
+    'marks provider-truncated evidence environment-blocked for %s',
+    (matchMode) => {
+      const artifact = normalizeOutcome({
+        state: 'completed',
+        columns: ['n'],
+        rows: [[1]],
+        rowCount: 2,
+      }, { policy, durationMs: 0 })
+      const verdict = gradeExecution(artifact, { result_value: { rows: [1, 2] }, match_mode: matchMode }, policy)
+      expect(verdict.outcome).toBe('environment-blocked')
+      expect(verdict.detail).toMatch(/incomplete result.*rowCount=2/i)
     },
   )
 

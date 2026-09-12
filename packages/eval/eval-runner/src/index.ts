@@ -14,6 +14,8 @@ export { CtxQueryExecutor } from './ctx_query_executor.ts'
 export type {
   RunnerVerdict,
   SqlJudgeVerdict,
+  ReferenceSqlPreflightEvidence,
+  CasePreflightEvidence,
   AttemptResult,
   CaseVerdict,
   RunResult,

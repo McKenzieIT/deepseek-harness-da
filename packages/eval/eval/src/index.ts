@@ -16,7 +16,7 @@
  */
 
 export type * from './types.ts'
-export { checkResultMatch, MATCH_MODES } from './match_modes.ts'
+export { checkResultMatch, matchExpectationDefect, MATCH_MODES } from './match_modes.ts'
 export type { MatchMode } from './match_modes.ts'
 export { charNgrams, turnMatchesExpectation, deliveryFuzzyMatch } from './text_sim.ts'
 export type { DeliveryFuzzyOpts } from './text_sim.ts'
@@ -42,8 +42,8 @@ export type {
 } from './execution_grade.ts'
 export { judgeWithProvider, classifyError, AuthenticationAbort, JUDGE_MAX_RETRIES, BACKOFF_MS, JUDGE_PASS_THRESHOLD } from './judge.ts'
 export type { ErrorClass, JudgeOpts } from './judge.ts'
-export { EvalCaseSchema, isMultiTurn } from './eval_case.ts'
-export type { EvalCase, CaseExpected, CaseMeta, DeliveryMatch } from './eval_case.ts'
+export { EvalCaseSchema, executionExpectationDefect, preflightEvalCaseContent, isMultiTurn } from './eval_case.ts'
+export type { EvalCase, CaseExpected, CaseMeta, DeliveryMatch, EvalCaseContentPreflight } from './eval_case.ts'
 export { loadCase, loadCases } from './case_loader.ts'
 export { resolveReferenceSql, REFERENCE_PLACEHOLDERS } from './reference_sql.ts'
 export type { ReferenceSqlResolution, ReferenceSqlRefusal, ReferencePlaceholder } from './reference_sql.ts'

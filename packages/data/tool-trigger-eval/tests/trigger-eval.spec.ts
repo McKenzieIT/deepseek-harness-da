@@ -22,7 +22,6 @@ describe('trigger_eval tool', () => {
         },
         delta: null,
         caseCount: 161,
-        message: undefined,
         previousRunId: null,
       }
 
@@ -51,7 +50,6 @@ describe('trigger_eval tool', () => {
         },
         delta: null,
         caseCount: 12,
-        message: undefined,
         previousRunId: null,
       }
       const expected = readFileSync(new URL('./expected/summary-with-unmeasured.expected.txt', import.meta.url), 'utf8').trimEnd()
@@ -84,7 +82,6 @@ describe('trigger_eval tool', () => {
           summary: { improved: 7, regressed: 2, unchanged: 152 },
         },
         caseCount: 161,
-        message: undefined,
         previousRunId: 'run-123',
       }
 
@@ -162,7 +159,6 @@ describe('trigger_eval tool', () => {
           summary: { improved: 15, regressed: 0, unchanged: 85 },
         },
         caseCount: 100,
-        message: undefined,
         previousRunId: 'run-prev',
       }
 

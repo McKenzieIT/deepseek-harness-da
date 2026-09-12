@@ -46,5 +46,8 @@
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
     "@deepseek-ai/dsh-query": "workspace:^"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "workspace:^"
   }
 }

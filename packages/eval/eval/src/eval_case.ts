@@ -22,9 +22,11 @@
  */
 
 import { z } from 'zod'
+import { MATCH_MODES, matchExpectationDefect } from './match_modes.ts'
+import type { MatchMode } from './match_modes.ts'
 
-/** The 5 EXECUTION match modes (mirrors `match_modes.ts`; the schema is the file-boundary source of truth). */
-const MATCH_MODE_ENUM = z.enum(['scalar_exact', 'multi_scalar_exact', 'row_count_range', 'set_equal', 'ordered_subset'])
+/** EXECUTION mode text. Supported values are checked by grading-content preflight, not structural parsing. */
+const MATCH_MODE_SCHEMA = z.string()
 
 /** da-fresh DELIVERY layer hint (explicit per-case wins over auto-route by answer type). */
 const DELIVERY_MATCH_ENUM = z.enum(['scalar_exact', 'fuzzy', 'llm_judge'])
@@ -47,7 +49,7 @@ const CaseInputSchema = z.strictObject({
 })
 
 /**
- * Case expected: EXECUTION (`result_value`+`match_mode`, both-or-neither)
+ * Case expected: EXECUTION (`result_value`+`match_mode`, required together by preflight)
  * and/or DELIVERY (`answer` + optional `delivery_match` hint), plus the rbi
  * provenance a grader needs to replay the case — `sql` is the human-written
  * reference SQL (a template; resolve it through `reference_sql.ts`) and
@@ -55,7 +57,7 @@ const CaseInputSchema = z.strictObject({
  */
 const CaseExpectedSchema = z.strictObject({
   result_value: z.record(z.string(), z.unknown()).nullable().default(null),
-  match_mode: MATCH_MODE_ENUM.nullable().default(null),
+  match_mode: MATCH_MODE_SCHEMA.nullable().default(null),
   answer: z.unknown().default(null),
   delivery_match: DELIVERY_MATCH_ENUM.nullable().default(null),
   sql: z.string().optional(),
@@ -79,9 +81,9 @@ const CaseMetaSchema = z.looseObject({
 })
 
 /**
- * The da-fresh EvalCase schema, with cross-field validation (turns must be
- * drivable; result_value+match_mode both-or-neither; at least one of
- * EXECUTION/DELIVERY declared).
+ * The da-fresh EvalCase structural schema. Unknown object keys and malformed
+ * field types fail at the file boundary; scoring-content defects are retained
+ * for {@link preflightEvalCaseContent} to classify per case.
  */
 export const EvalCaseSchema = z.strictObject({
   case_id: z.string(),
@@ -95,17 +97,9 @@ export const EvalCaseSchema = z.strictObject({
   if (turns.length > 0 && !turns.some(t => t.role === 'user')) {
     ctx.addIssue({ code: 'custom', message: `case ${c.case_id} non-empty script must have ≥1 user turn` })
   }
-  const hasRv = c.expected.result_value !== null
-  const hasMm = c.expected.match_mode !== null
-  if (hasRv !== hasMm) {
-    ctx.addIssue({ code: 'custom', message: `case ${c.case_id} expected.result_value + match_mode must both be present or both absent` })
-  }
-  if (!hasRv && c.expected.answer === null) {
-    ctx.addIssue({ code: 'custom', message: `case ${c.case_id} must declare at least one of EXECUTION (result_value+match_mode) or DELIVERY (answer)` })
-  }
 })
 
-/** A validated da-fresh eval case. */
+/** A structurally validated da-fresh eval case; grading content still requires preflight. */
 export type EvalCase = z.infer<typeof EvalCaseSchema>
 
 /** The expected portion of an {@link EvalCase}. */
@@ -116,6 +110,50 @@ export type CaseMeta = NonNullable<EvalCase['meta']>
 
 /** The DELIVERY match modes. */
 export type DeliveryMatch = z.infer<typeof DELIVERY_MATCH_ENUM>
+
+/** Result of validating the grading content of one structurally valid case. */
+export type EvalCaseContentPreflight =
+  | { readonly status: 'passed' }
+  | { readonly status: 'case-defect'; readonly detail: string }
+
+/**
+ * Find an unusable EXECUTION expectation without rejecting the case file.
+ * @param expected - the case's EXECUTION fields.
+ * @returns the defect description, or `null` when the fields are usable or both absent.
+ */
+export function executionExpectationDefect(
+  expected: Pick<CaseExpected, 'result_value' | 'match_mode'>,
+): string | null {
+  const { result_value: value, match_mode: mode } = expected
+  if (mode === null && value === null) return null
+  if (mode === null) return 'case declares result_value without match_mode'
+  if (value === null) return `case declares match_mode ${mode} without result_value`
+  if (!(MATCH_MODES as readonly string[]).includes(mode)) {
+    return `unknown match_mode: ${mode} (supported: ${MATCH_MODES.join(', ')})`
+  }
+  return matchExpectationDefect(value, mode as MatchMode)
+}
+
+/**
+ * Validate grading content after structural file parsing, so a malformed case
+ * becomes a per-case verdict instead of aborting the batch.
+ * @param c - a structurally valid case.
+ * @returns whether its declared assertions can be graded.
+ */
+export function preflightEvalCaseContent(c: EvalCase): EvalCaseContentPreflight {
+  const executionDefect = executionExpectationDefect(c.expected)
+  if (executionDefect !== null) return { status: 'case-defect', detail: executionDefect }
+
+  const hasExecution = c.expected.result_value !== null && c.expected.match_mode !== null
+  const hasDelivery = c.expected.answer !== null
+  if (!hasExecution && !hasDelivery) {
+    return { status: 'case-defect', detail: 'case declares neither EXECUTION nor DELIVERY expectation' }
+  }
+  if (c.expected.sql !== undefined && c.expected.sql !== '' && !hasExecution) {
+    return { status: 'case-defect', detail: 'case declares reference SQL without an EXECUTION expectation' }
+  }
+  return { status: 'passed' }
+}
 
 /**
  * Whether a case carries a scripted conversation (rbi `is_multi_turn`). A

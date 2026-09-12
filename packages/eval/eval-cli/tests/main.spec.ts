@@ -1,6 +1,8 @@
 /// <reference types="node" />
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const BIN = join(__dirname, '..', 'src', 'bin.ts')
@@ -44,18 +46,27 @@ describe('CLI arg parsing', () => {
 })
 
 describe('CLI case loading', () => {
-  it('loads and runs with fake key (dry-run to LLM boundary)', () => {
-    const { stdout, status } = run([
-      '--cases', 'packages/eval/eval/cases/k11-v2/',
-      '--schema', 'examples/k11-semantic-layer/',
-      '--pass-k', '1',
-      '--case', 'k11v2_059',
-      '--skip-health-gate',
-    ], { DASHSCOPE_API_KEY: 'fake-for-test', EVAL_LLM_PROVIDER: 'aga', EVAL_LLM_MODEL: 'qwen3.7-max' })
-    expect(status).toBe(0)
-    expect(stdout).toContain('Loading 1 case(s)')
-    expect(stdout).toContain('k11v2_059')
-    expect(stdout).toContain('Completed in')
+  it('loads and runs with a fake key in the credential seam (dry-run to LLM boundary)', () => {
+    const home = mkdtempSync(join(tmpdir(), 'dsh-eval-cli-home-'))
+    try {
+      const credentialDir = join(home, '.dsh')
+      mkdirSync(credentialDir)
+      writeFileSync(join(credentialDir, '.credentials.yaml'), 'DASHSCOPE_API_KEY: fake-for-test\n', { mode: 0o600 })
+
+      const { stdout, status } = run([
+        '--cases', 'packages/eval/eval/cases/k11-v2/',
+        '--schema', 'examples/k11-semantic-layer/',
+        '--pass-k', '1',
+        '--case', 'k11v2_059',
+        '--skip-health-gate',
+      ], { HOME: home, EVAL_LLM_PROVIDER: 'aga', EVAL_LLM_MODEL: 'qwen3.7-max' })
+      expect(status).toBe(0)
+      expect(stdout).toContain('Loading 1 case(s)')
+      expect(stdout).toContain('k11v2_059')
+      expect(stdout).toContain('Completed in')
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
   }, 60_000)
 
   it('--case filter with no match exits 1', () => {

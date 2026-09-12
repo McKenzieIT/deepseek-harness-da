@@ -9,7 +9,17 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { loadCases, executeAndNormalize, gradeExecution, resolveComparatorPolicy, JUDGE_PASS_THRESHOLD } from '@deepseek-ai/dsh-eval'
+import {
+  ENVIRONMENTAL_FAILURE_CLASSES,
+  JUDGE_PASS_THRESHOLD,
+  classifyExecutionFailure,
+  executeAndNormalize,
+  gradeExecution,
+  loadCases,
+  preflightEvalCaseContent,
+  resolveComparatorPolicy,
+  resolveReferenceSql,
+} from '@deepseek-ai/dsh-eval'
 import type { ComparatorPolicy, EvalCase, ExecutionArtifact, ExecutionOutcome } from '@deepseek-ai/dsh-eval'
 import type { Collaborators } from './collaborators.ts'
 import type {
@@ -20,6 +30,8 @@ import type {
   RunnerVerdict,
   AttemptResult,
   SqlJudgeVerdict,
+  CasePreflightEvidence,
+  ReferenceSqlPreflightEvidence,
 } from './types.ts'
 import { runHealthGate } from './health_gate.ts'
 import { withInfraRetry, classifyInfraFailure, isInfraError } from './infra_retry.ts'
@@ -217,8 +229,21 @@ async function runSingleCase(
   policy: ComparatorPolicy,
 ): Promise<CaseVerdict> {
   const started = Date.now()
-  const attempts: AttemptResult[] = []
+  const content = preflightEvalCaseContent(evalCase)
+  if (content.status === 'case-defect') {
+    return preflightFailure(evalCase.case_id, started, 'case_defect', { content })
+  }
 
+  const referenceSql = await preflightReferenceSql(evalCase, collaborators, policy)
+  const preflight: CasePreflightEvidence = { content, reference_sql: referenceSql }
+  if (referenceSql.status === 'case-defect') {
+    return preflightFailure(evalCase.case_id, started, 'case_defect', preflight)
+  }
+  if (referenceSql.status === 'environment-blocked') {
+    return preflightFailure(evalCase.case_id, started, 'infra_failure', preflight)
+  }
+
+  const attempts: AttemptResult[] = []
   for (let k = 1; k <= passK; k++) {
     const attempt = await runOneAttempt(evalCase, collaborators, k, maxInfraRetries, policy)
     attempts.push(attempt)
@@ -233,7 +258,154 @@ async function runSingleCase(
     pass_k_results: attempts,
     verdict,
     latency_ms: latencyMs,
+    preflight,
   }
+}
+
+/** Build a case verdict for a preflight failure without fabricating an agent attempt. */
+function preflightFailure(
+  caseId: string,
+  started: number,
+  verdict: 'case_defect' | 'infra_failure',
+  preflight: CasePreflightEvidence,
+): CaseVerdict {
+  return {
+    case_id: caseId,
+    pass_k_results: [],
+    verdict,
+    latency_ms: Date.now() - started,
+    preflight,
+  }
+}
+
+/** Resolve and, when possible, execute the case's own reference SQL before candidate execution. */
+async function preflightReferenceSql(
+  evalCase: EvalCase,
+  collaborators: Collaborators,
+  policy: ComparatorPolicy,
+): Promise<ReferenceSqlPreflightEvidence> {
+  const resolution = resolveReferenceSql(evalCase)
+  if (resolution.kind === 'absent') {
+    return { status: 'absent', detail: 'case declares no reference SQL' }
+  }
+  if (resolution.kind === 'unresolvable') {
+    return { status: 'case-defect', stage: 'resolution', detail: resolution.detail }
+  }
+
+  const resolved = {
+    sql: resolution.sql,
+    ...(resolution.anchorDs === undefined ? {} : { anchor_ds: resolution.anchorDs }),
+    substitutions: resolution.substitutions,
+  }
+  const executor = collaborators.executor
+  if (executor === null || executor === undefined) {
+    return {
+      status: 'resolved-not-executed',
+      stage: 'resolution',
+      detail: 'reference SQL resolved; no executor mounted, so only static preflight ran',
+      ...resolved,
+    }
+  }
+
+  let artifact: ExecutionArtifact
+  try {
+    artifact = await executeAndNormalize(executor, resolution.sql, policy)
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    const failureClass = classifyExecutionFailure(detail)
+    const isCaseDefect = failureClass === 'syntax_error' || failureClass === 'guard_rejected' || referenceObjectMissing(detail)
+    return {
+      status: isCaseDefect ? 'case-defect' : 'environment-blocked',
+      stage: 'execution',
+      detail: `reference SQL execution threw: ${detail}`,
+      ...resolved,
+    }
+  }
+
+  if (artifact.kind !== 'completed') {
+    const environmentBlocked = isReferenceEnvironmentFailure(artifact)
+    return {
+      status: environmentBlocked ? 'environment-blocked' : 'case-defect',
+      stage: 'execution',
+      detail: `reference SQL did not execute: ${artifact.error ?? 'no error detail'}`,
+      execution_artifact: artifact,
+      ...resolved,
+    }
+  }
+
+  const comparison = gradeExecution(artifact, evalCase.expected, policy)
+  switch (comparison.outcome) {
+    case 'pass':
+      return {
+        status: 'passed',
+        stage: 'comparison',
+        detail: 'reference SQL matched the declared expected result',
+        execution_artifact: artifact,
+        ...resolved,
+      }
+    case 'fail':
+      return {
+        status: 'case-defect',
+        stage: 'comparison',
+        detail: `reference SQL result disagrees with declared expected: ${comparison.detail || 'comparison failed'}`,
+        execution_artifact: artifact,
+        ...resolved,
+      }
+    case 'case-defect':
+      return {
+        status: 'case-defect',
+        stage: 'comparison',
+        detail: comparison.detail,
+        execution_artifact: artifact,
+        ...resolved,
+      }
+    case 'environment-blocked':
+    case 'not-measured':
+      return {
+        status: 'environment-blocked',
+        stage: 'comparison',
+        detail: comparison.detail,
+        execution_artifact: artifact,
+        ...resolved,
+      }
+    default:
+      return assertNever(comparison.outcome, 'reference SQL comparison outcome')
+  }
+}
+
+/** Classify a returned reference-SQL failure without charging it to the candidate model. */
+function isReferenceEnvironmentFailure(artifact: ExecutionArtifact): boolean {
+  if (artifact.kind === 'pending') return true
+  const failureKind = artifact.failureKind?.toLowerCase() ?? ''
+  if (['syntax', 'syntax_error', 'invalid_sql', 'semantic', 'guard', 'guard_rejected', 'not_found'].includes(failureKind)) {
+    return false
+  }
+  if ([
+    'transport',
+    'connectivity',
+    'timeout',
+    'throttling',
+    'throttled',
+    'rate_limit',
+    'retryable',
+    'transient',
+    'permission',
+    'permission_denied',
+  ].includes(failureKind)) {
+    return true
+  }
+  if (referenceObjectMissing(artifact.error ?? '')) return false
+  return artifact.failureClass !== null && ENVIRONMENTAL_FAILURE_CLASSES.has(artifact.failureClass)
+}
+
+/** Whether an execution error says the case's referenced table or column is absent. */
+function referenceObjectMissing(detail: string): boolean {
+  return /(?:table|column|field)\b[^\n]*\bnot found\b|cannot be resolved/i.test(detail)
+}
+
+/** Reject a future member of a closed union until its policy is defined. */
+function assertNever(value: never, subject: string): never {
+  throw new Error(`unhandled ${subject}: ${String(value)}`)
 }
 
 /**

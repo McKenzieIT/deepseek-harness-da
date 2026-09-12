@@ -41,8 +41,9 @@
 
 import { createHash } from 'node:crypto'
 import { classifyExecutionFailure, ENVIRONMENTAL_FAILURE_CLASSES } from './classify_failure.ts'
-import { checkResultMatch, MATCH_MODES } from './match_modes.ts'
+import { checkResultMatch } from './match_modes.ts'
 import type { MatchMode } from './match_modes.ts'
+import { executionExpectationDefect } from './eval_case.ts'
 import type { AssertionResult, FailureClass, QueryOutcomeView } from './types.ts'
 
 /**
@@ -306,7 +307,15 @@ export interface ExecutionVerdict {
 export function gradeExecution(artifact: ExecutionArtifact, expected: ExecutionExpectation, policy: ComparatorPolicy): ExecutionVerdict {
   const stamp = { policyVersion: policy.version, columnSemantics: policy.columnSemantics }
 
-  const defect = expectationDefect(expected)
+  if (expected.result_value === null && expected.match_mode === null) {
+    return {
+      outcome: 'case-defect',
+      detail: 'case declares no EXECUTION expectation (no result_value, no match_mode)',
+      failureClass: null,
+      ...stamp,
+    }
+  }
+  const defect = executionExpectationDefect(expected)
   if (defect !== null) return { outcome: 'case-defect', detail: defect, failureClass: null, ...stamp }
 
   if (artifact.kind !== 'completed') {
@@ -326,68 +335,74 @@ export function gradeExecution(artifact: ExecutionArtifact, expected: ExecutionE
   // so both are present here.
   const expectedValue = expected.result_value as Record<string, unknown>
   const matchMode = expected.match_mode as MatchMode
-  const rows = rowsForGrading(artifact, matchMode, policy.columnSemantics)
-  const result: AssertionResult = checkResultMatch(expectedValue, rows, matchMode, artifact.rowCount)
+  const gradingRows = rowsForGrading(artifact, matchMode, policy.columnSemantics)
+  if (gradingRows.status !== 'available') {
+    return { outcome: gradingRows.outcome, detail: gradingRows.detail, failureClass: null, ...stamp }
+  }
+  const result: AssertionResult = checkResultMatch(expectedValue, gradingRows.rows, matchMode, artifact.rowCount)
   return { outcome: result.status === 'pass' ? 'pass' : 'fail', detail: result.detail, failureClass: null, ...stamp }
 }
 
 /** Match modes that require every returned row rather than only the first row or row count. */
 const COMPLETE_ROW_MATCH_MODES: ReadonlySet<MatchMode> = new Set(['set_equal', 'ordered_subset'])
 
+type GradingRows =
+  | { readonly status: 'available'; readonly rows: readonly Record<string, unknown>[] }
+  | { readonly status: 'unavailable'; readonly outcome: 'environment-blocked' | 'not-measured'; readonly detail: string }
+
 /**
- * Recover rows under the requested column semantics without mistaking a stored
- * preview for the complete query result.
+ * Recover rows under the requested column semantics without mistaking missing
+ * evidence for a model error.
  * @param artifact - the execution evidence to read.
  * @param matchMode - the comparator that will consume the rows.
  * @param semantics - the requested column addressing policy.
- * @returns rows suitable for the comparator.
+ * @returns rows or an explicit unmeasured/environmental outcome.
  */
 function rowsForGrading(
   artifact: ExecutionArtifact,
   matchMode: MatchMode,
   semantics: ColumnSemantics,
-): readonly Record<string, unknown>[] {
-  if (matchMode === 'row_count_range') return artifact.rows
+): GradingRows {
+  if (matchMode === 'row_count_range') return { status: 'available', rows: artifact.rows }
 
   const needsCompleteRows = COMPLETE_ROW_MATCH_MODES.has(matchMode)
   if (needsCompleteRows && artifact.providerTruncated) {
-    throw new Error(`insufficient execution evidence for ${matchMode}: provider reported ${artifact.rowCount} rows but did not return them all`)
+    return {
+      status: 'unavailable',
+      outcome: 'environment-blocked',
+      detail: `provider returned an incomplete result for ${matchMode}: rowCount=${artifact.rowCount} but not all rows were materialized`,
+    }
   }
 
   const liveRawRows = (artifact as LiveExecutionArtifact)[LIVE_RAW_ROWS]
   if (liveRawRows !== undefined) {
-    return liveRawRows.map(row => addressRow(artifact.columns, row, semantics))
+    return { status: 'available', rows: liveRawRows.map(row => addressRow(artifact.columns, row, semantics)) }
   }
 
   if (needsCompleteRows && artifact.storageTruncated) {
-    throw new Error(`insufficient persisted execution evidence for ${matchMode}: artifact stores ${artifact.rowsStored} of ${artifact.rowCount} rows`)
+    return {
+      status: 'unavailable',
+      outcome: 'not-measured',
+      detail: `insufficient persisted execution evidence for ${matchMode}: artifact stores ${artifact.rowsStored} of ${artifact.rowCount} rows`,
+    }
   }
 
-  if (semantics === artifact.columnSemantics) return artifact.rows
+  if (semantics === artifact.columnSemantics) return { status: 'available', rows: artifact.rows }
   if (artifact.rawRows === undefined) {
-    throw new Error(`cannot re-grade from ${artifact.columnSemantics} to ${semantics}: artifact has no raw row evidence`)
+    return {
+      status: 'unavailable',
+      outcome: 'not-measured',
+      detail: `cannot re-grade from ${artifact.columnSemantics} to ${semantics}: artifact has no raw row evidence`,
+    }
   }
   if (artifact.rawRows.length === 0 && artifact.rowCount > 0) {
-    throw new Error(`cannot re-grade from ${artifact.columnSemantics} to ${semantics}: artifact has no retained raw cells`)
+    return {
+      status: 'unavailable',
+      outcome: 'not-measured',
+      detail: `cannot re-grade from ${artifact.columnSemantics} to ${semantics}: artifact has no retained raw cells`,
+    }
   }
-  return artifact.rawRows.map(row => addressRow(artifact.columns, row, semantics))
-}
-
-/**
- * Whether an expectation is unusable, making the case rather than the model at
- * fault. A misspelled `match_mode` used to read as the model answering wrongly.
- * @param expected - the case's EXECUTION expectation.
- * @returns the defect description, or `null` when the expectation is usable.
- */
-function expectationDefect(expected: ExecutionExpectation): string | null {
-  const { result_value: value, match_mode: mode } = expected
-  if (mode === null && value === null) return 'case declares no EXECUTION expectation (no result_value, no match_mode)'
-  if (mode === null) return 'case declares result_value without match_mode'
-  if (value === null) return `case declares match_mode ${mode} without result_value`
-  if (!(MATCH_MODES as readonly string[]).includes(mode)) {
-    return `unknown match_mode: ${mode} (supported: ${MATCH_MODES.join(', ')})`
-  }
-  return null
+  return { status: 'available', rows: artifact.rawRows.map(row => addressRow(artifact.columns, row, semantics)) }
 }
 
 /**

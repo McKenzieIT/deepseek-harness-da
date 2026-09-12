@@ -44,7 +44,15 @@ interface QueryCapability {
  * what made that retry path unreachable.
  */
 export class CtxQueryExecutor implements QueryExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: string) {}
+  constructor(
+    private readonly ctx: Context,
+    private readonly scopeId: string,
+    private readonly queryWaitSeconds?: number,
+  ) {
+    if (queryWaitSeconds !== undefined && (!Number.isInteger(queryWaitSeconds) || queryWaitSeconds <= 0)) {
+      throw new Error(`CtxQueryExecutor: queryWaitSeconds must be a positive integer (got ${JSON.stringify(queryWaitSeconds)})`)
+    }
+  }
 
   /**
    * Execute one SQL statement through `ctx.query`.
@@ -55,7 +63,31 @@ export class CtxQueryExecutor implements QueryExecutor {
   async execute(sql: string, signal?: AbortSignal): Promise<QueryOutcomeView> {
     const query = this.capability()
     if (query === undefined) return { state: 'failed', error: 'no query provider mounted', failureKind: 'permission_denied' }
-    return toOutcomeView(await query.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, signal), sql)
+    if (this.queryWaitSeconds === undefined) {
+      return toOutcomeView(await query.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, signal), sql)
+    }
+
+    const timeoutReason = new Error(`query timed out after configured ${this.queryWaitSeconds}s wait window`)
+    timeoutReason.name = 'TimeoutError'
+    const timeout = new AbortController()
+    const timer = setTimeout(() => { timeout.abort(timeoutReason) }, this.queryWaitSeconds * 1000)
+    timer.unref()
+    const executionSignal = signal === undefined ? timeout.signal : AbortSignal.any([signal, timeout.signal])
+    try {
+      executionSignal.throwIfAborted()
+      const raw = await settleOnAbort(
+        query.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, executionSignal),
+        executionSignal,
+      )
+      return toOutcomeView(raw, sql)
+    } catch (error) {
+      if (executionSignal.reason === timeoutReason) {
+        return { state: 'failed', sql, error: timeoutReason.message, failureKind: 'timeout' }
+      }
+      throw error
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   /**
@@ -73,6 +105,35 @@ export class CtxQueryExecutor implements QueryExecutor {
   private capability(): QueryCapability | undefined {
     return this.ctx.get('query') as QueryCapability | undefined
   }
+}
+
+
+/**
+ * Settle with an operation or its cancellation, whichever happens first.
+ * Providers still receive the same signal so a capable implementation can
+ * stop its own work; the race also bounds providers that ignore cancellation.
+ */
+function settleOnAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(toAbortError(signal.reason))
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => { reject(toAbortError(signal.reason)) }
+    signal.addEventListener('abort', onAbort, { once: true })
+    operation.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(toAbortError(error))
+      },
+    )
+  })
+}
+
+/** Convert an arbitrary abort reason into the Error shape Promise rejection requires. */
+function toAbortError(reason: unknown): Error {
+  return reason instanceof Error ? reason : new Error('query execution aborted', { cause: reason })
 }
 
 /**

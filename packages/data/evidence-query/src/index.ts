@@ -30,6 +30,8 @@ import {
 import { RelationGraph } from '@deepseek-ai/dsh-semantic-layer/src/relation-graph'
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { parsePersistedCaseRecord } from './persisted-record.ts'
+import type { PersistedCaseRecord } from './persisted-record.ts'
 import type {
   EnrichedCoverageStats,
   GapAnalysisResult,
@@ -190,16 +192,9 @@ export class EvalResultStore {
       const path = join(dir, entry.name)
       const text = readFileSync(path, 'utf8')
       const lines = text.trim().split('\n').filter(Boolean)
-      for (const line of lines) {
-        // data-infra-9: a malformed line must not abort the whole load
-        // (refresh clears first, so a mid-load throw would leave the store
-        // empty until the next successful refresh). Log + skip the bad line.
-        try {
-          const raw = JSON.parse(line) as PersistedCaseRecordRaw
-          this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver))
-        } catch (e) {
-          console.warn(`evidence-query: skipping malformed record line in ${path}: ${(e as Error).message}`)
-        }
+      for (const [index, line] of lines.entries()) {
+        const raw = parsePersistedCaseRecord(line, `${path}:${index + 1}`)
+        this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver))
       }
     }
 
@@ -213,16 +208,9 @@ export class EvalResultStore {
         const path = join(scopeDir, file)
         const text = readFileSync(path, 'utf8')
         const lines = text.trim().split('\n').filter(Boolean)
-        for (const line of lines) {
-          // data-infra-9: a malformed line must not abort the whole load
-          // (refresh clears first, so a mid-load throw would leave the store
-          // empty until the next successful refresh). Log + skip the bad line.
-          try {
-            const raw = JSON.parse(line) as PersistedCaseRecordRaw
-            this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver, scopeId))
-          } catch (e) {
-            console.warn(`evidence-query: skipping malformed record line in ${path} (scope ${scopeId}): ${(e as Error).message}`)
-          }
+        for (const [index, line] of lines.entries()) {
+          const raw = parsePersistedCaseRecord(line, `${path}:${index + 1}`)
+          this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver, scopeId))
         }
       }
     }
@@ -264,24 +252,6 @@ export class FileBackedEvalResultStore extends EvalResultStore {
 /** Runner verdicts persisted by eval-runner-service record version 2. */
 type PersistedRunnerVerdict = 'correct' | 'declined' | 'wrong' | 'unjudged' | 'infra_failure' | 'case_defect'
 
-/** Raw JSONL line written by eval-runner-service; legacy unversioned fields remain readable. */
-interface PersistedCaseRecordRaw {
-  readonly recordVersion?: number
-  readonly runId: string
-  readonly timestamp: string
-  readonly caseId: string
-  readonly outcome: string
-  readonly verdict: string | null
-  readonly passed: boolean
-  readonly passK: number
-  readonly latencyMs: number
-  readonly attemptsCount: number
-  readonly errorsCount: number
-  readonly runConfig?: Json
-  readonly attempts?: readonly Json[]
-  readonly caseProvenance?: Json
-}
-
 /** Whether a persistence value is one of the runner's closed verdicts. */
 function isRunnerVerdict(value: string | null): value is PersistedRunnerVerdict {
   return value === 'correct'
@@ -311,15 +281,19 @@ function assertNever(value: never): never {
 }
 
 /** Map a versioned verdict, or a legacy outcome when the old verdict was not a runner verdict. */
-function mapOutcomeToStatus(raw: PersistedCaseRecordRaw): EvalResultRecord['status'] {
+function mapOutcomeToStatus(raw: PersistedCaseRecord): EvalResultRecord['status'] {
   if (isRunnerVerdict(raw.verdict)) return mapRunnerVerdictToStatus(raw.verdict)
-  if (isRunnerVerdict(raw.outcome)) return mapRunnerVerdictToStatus(raw.outcome)
-  return 'pending'
+  return mapRunnerVerdictToStatus(raw.outcome)
+}
+
+/** Re-type a value already accepted by the durable JSON schema for API metadata. */
+function validatedJson(value: unknown): Json {
+  return value as Json
 }
 
 /** Map a persisted case record to an EvalResultRecord. */
 function mapPersistedToEvalRecord(
-  raw: PersistedCaseRecordRaw,
+  raw: PersistedCaseRecord,
   resolver?: (caseId: string) => string,
   scopeId?: string,
 ): EvalResultRecord {
@@ -340,9 +314,10 @@ function mapPersistedToEvalRecord(
       attemptsCount: raw.attemptsCount,
       errorsCount: raw.errorsCount,
       ...(raw.recordVersion === undefined ? {} : { recordVersion: raw.recordVersion }),
-      ...(raw.runConfig === undefined ? {} : { runConfig: raw.runConfig }),
-      ...(raw.attempts === undefined ? {} : { attempts: raw.attempts }),
-      ...(raw.caseProvenance === undefined ? {} : { caseProvenance: raw.caseProvenance }),
+      ...(raw.runConfig === undefined ? {} : { runConfig: validatedJson(raw.runConfig) }),
+      ...(raw.attempts === undefined ? {} : { attempts: validatedJson(raw.attempts) }),
+      ...(raw.preflight === undefined ? {} : { preflight: validatedJson(raw.preflight) }),
+      ...(raw.caseProvenance === undefined ? {} : { caseProvenance: validatedJson(raw.caseProvenance) }),
     },
     // GA-GT1 Phase 3b (D5.2): tag the scopeId onto the record when loaded from
     // a per-scope subdirectory. Flat-layout records omit the key entirely

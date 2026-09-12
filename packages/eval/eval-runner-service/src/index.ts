@@ -21,6 +21,7 @@
  */
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
@@ -43,6 +44,7 @@ import type {
   DeltaReport,
   RunnerVerdict,
   AttemptResult,
+  CaseVerdict,
 } from '@deepseek-ai/dsh-eval-runner'
 import { Nl2sqlEngine, Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
 import type {
@@ -62,25 +64,48 @@ import { join, resolve } from 'node:path'
 export const name = 'eval-runner-service'
 export const inject = ['llm']
 
-/** Config */
+/** Loader input for one eval-runner-service deployment. */
 export interface Config {
-  /** Directory holding the eval case YAMLs (default: the K11 case set). */
-  readonly caseDir?: string
+  /** Directory holding the eval case YAMLs. */
+  readonly caseDir: string
   /** Directory where JSONL run results are persisted (evidence-query reads it). */
   readonly resultsDir?: string
-  /** pass_k attempts per case (default 3). */
-  readonly passK?: number
-  /** LLM provider for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
-  readonly provider?: string
-  /** LLM model name for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
-  readonly model?: string
-  /** Reference date YYYYMMDD for time-param extraction (eval reproducibility). */
-  readonly today?: string
+  /** pass_k attempts per case. */
+  readonly passK: number
+  /** LLM provider for SQL generation + judging + answering. */
+  readonly provider: string
+  /** LLM model name for SQL generation + judging + answering. */
+  readonly model: string
+  /** Reference date YYYYMMDD for time-param extraction. */
+  readonly today: string
   /** Stable identity of the mounted query executor, required whenever ctx.query is available. */
   readonly executorIdentity?: string
-  /** Seconds allowed for a query result, required whenever ctx.query is available. */
+  /** Maximum seconds allowed for one `ctx.query.execute` call. */
   readonly queryWaitSeconds?: number
+  /** How result cells are addressed during execution grading. */
+  readonly columnSemantics: 'by-name' | 'positional'
+  /** Maximum rows retained in each persisted execution artifact. */
+  readonly maxStoredRows: number
 }
+
+/** Config after the schema has applied the package's operational defaults. */
+interface ResolvedConfig extends Config {
+  readonly resultsDir: string
+}
+
+/** Runtime schema applied by Cordis and by direct service construction in tests. */
+export const Config = z.object({
+  caseDir: z.string().min(1).required(),
+  resultsDir: z.string().min(1).default('.tmp/eval-results'),
+  passK: z.natural().min(1).required(),
+  provider: z.string().pattern(/\S/).required(),
+  model: z.string().pattern(/\S/).required(),
+  today: z.string().pattern(/^\d{8}$/).required(),
+  executorIdentity: z.string().pattern(/\S/),
+  queryWaitSeconds: z.natural().min(1),
+  columnSemantics: z.union(['by-name', 'positional'] as const).required(),
+  maxStoredRows: z.natural().min(1).required(),
+}) as unknown as z<Config, ResolvedConfig>
 
 // ── ctx.llm → engine Llm ────────────────────────────────────────────────────
 
@@ -319,6 +344,7 @@ interface PersistedCaseRecord {
   readonly errorsCount: number
   readonly runConfig: RunConfig
   readonly attempts: readonly AttemptResult[]
+  readonly preflight: NonNullable<CaseVerdict['preflight']>
   readonly caseProvenance: PersistedCaseProvenance
 }
 
@@ -377,6 +403,10 @@ function persistRunResultJsonl(
     if (source === undefined) {
       throw new Error(`eval-runner-service persistence: no loaded case provenance for ${c.case_id}`)
     }
+    const preflight = c.preflight
+    if (preflight === undefined) {
+      throw new Error(`eval-runner-service persistence: case ${c.case_id} has no preflight evidence`)
+    }
     return {
       recordVersion: 2,
       runId: result.run_id,
@@ -391,6 +421,7 @@ function persistRunResultJsonl(
       errorsCount: c.pass_k_results.filter(a => a.infra_error !== undefined || a.error !== undefined).length,
       runConfig,
       attempts: c.pass_k_results,
+      preflight,
       caseProvenance: buildCaseProvenance(source),
     }
   })
@@ -415,32 +446,23 @@ export class EvalRunnerService extends Service {
   private readonly today: string
   private readonly executorIdentity: string | undefined
   private readonly queryWaitSeconds: number | undefined
+  private readonly columnSemantics: Config['columnSemantics']
+  private readonly maxStoredRows: number
   private lastRun: RunResult | null = null
 
-  constructor(ctx: Context, config: Config = {}) {
+  constructor(ctx: Context, config: Config) {
     super(ctx, 'evalRunner')
-    this.caseDir = config.caseDir ?? 'packages/eval/eval/cases/k11-v2'
-    this.resultsDir = config.resultsDir ?? '.tmp/eval-results'
-    this.passK = config.passK ?? 3
-    // R8 (PB-COMPLY): no silent vendor default — '' is a non-runnable sentinel;
-    // runBatch fails loud if provider/model were not explicitly configured.
-    this.provider = config.provider ?? ''
-    this.model = config.model ?? ''
-    this.today = config.today ?? '20260825'
-    const executorIdentity = config.executorIdentity as unknown
-    if (executorIdentity !== undefined && (typeof executorIdentity !== 'string' || executorIdentity.trim().length === 0)) {
-      throw new Error('eval-runner-service: executorIdentity must be a non-empty string when configured')
-    }
-    this.executorIdentity = typeof executorIdentity === 'string' ? executorIdentity.trim() : undefined
-    const queryWaitSeconds = config.queryWaitSeconds as unknown
-    if (queryWaitSeconds !== undefined) {
-      if (typeof queryWaitSeconds !== 'number' || !Number.isFinite(queryWaitSeconds) || !Number.isInteger(queryWaitSeconds) || queryWaitSeconds <= 0) {
-        throw new Error('eval-runner-service: queryWaitSeconds must be a positive integer when configured')
-      }
-      this.queryWaitSeconds = queryWaitSeconds
-    } else {
-      this.queryWaitSeconds = undefined
-    }
+    const resolved = Config(config)
+    this.caseDir = resolved.caseDir
+    this.resultsDir = resolved.resultsDir
+    this.passK = resolved.passK
+    this.provider = resolved.provider
+    this.model = resolved.model
+    this.today = resolved.today
+    this.executorIdentity = resolved.executorIdentity?.trim()
+    this.queryWaitSeconds = resolved.queryWaitSeconds
+    this.columnSemantics = resolved.columnSemantics
+    this.maxStoredRows = resolved.maxStoredRows
   }
 
   /** Case file paths (sorted) under the configured case dir. */
@@ -476,7 +498,7 @@ export class EvalRunnerService extends Service {
     // mapping without a service rebuild).
     const conventions = (this.ctx.get('nl2sql') as { getConventions?(scopeId?: string): EngineConventions } | undefined)?.getConventions?.(scopeId) ?? null
     const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model)
-    const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId) : null
+    const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId, this.queryWaitSeconds) : null
     const judge = new LlmJudgeExecutor(new CtxLlmAdapter(this.ctx, this.provider, this.model))
     return { agent, executor, judge }
   }
@@ -544,8 +566,8 @@ export class EvalRunnerService extends Service {
       with_query: withQuery,
       ...executorConfig,
       comparator_policy_version: COMPARATOR_POLICY_VERSION,
-      column_semantics: 'by-name',
-      max_stored_rows: 200,
+      column_semantics: this.columnSemantics,
+      max_stored_rows: this.maxStoredRows,
       skip_health_gate: skipHealthGate,
     }
     const result = await runBatch(paths, { agent, executor, judge }, {
@@ -581,6 +603,6 @@ export class EvalRunnerService extends Service {
 }
 
 /** Plugin apply: mount the Service onto ctx.evalRunner. */
-export function apply(ctx: Context, config: Config = {}): void {
+export function apply(ctx: Context, config: Config): void {
   new EvalRunnerService(ctx, config)
 }

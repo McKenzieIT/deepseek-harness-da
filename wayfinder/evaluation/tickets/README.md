@@ -16,7 +16,7 @@
 ## 方向与票链(见 `../map.md` §Frontier directions)
 | # | 方向 | 认读 R | grilling G | impl T/P | experiment R |
 |---|---|---|---|---|---|
-| 1 | 执行级评分+非循环 GT | R1、**R24** | G1/G1b | T1、**T11** | R23/R12 |
+| 1 | 执行级评分+非循环 GT | R1、**R24** | G1/G1b | T1、**T11**、[T16](T16-execution-artifact-truncation-validation.md) | R23/R12 |
 | 2 | Judge blind-rewrite | R2 | G2 | T2 | R13 |
 | 3 | Judge 校准+gated | [R3](R3-judge-calibration-papers.md) | G3 | T3 | R14/R15 |
 | 4 | Power-aware+显著性 | [R4](R4-significance-papers.md) | G4 | T4/T4b | R16 |
@@ -28,6 +28,6 @@
 | 10 | Data-domain Evaluation Core + Context + Goodhart | R10/[R10b](R10b-harness-measurement-validity.md)/[R10c](R10c-context-layer-evaluation.md)（均 resolved） | [G10](G10-harness-bhe-split.md)（resolved）→ [G13](G13-context-evaluation-protocol.md)/[G14](G14-adaptive-context-holdout-policy.md)/[G15](G15-dynamic-evaluation-lifecycle.md) | [T13](T13-context-projection-service.md)→[T9](T9-evaluation-foundations.md)→[T14](T14-data-analysis-extension-pack-migration.md)→[T15](T15-evaluation-controller-cli.md)→[T12](T12-eval-package-consolidation.md) | [R25](R25-evaluation-rebaseline.md)→[R26](R26-context-counterfactual-matrix.md)/[R27](R27-context-perturbation-leakage-audit.md)/[R21](R21-goodhart-audit.md) |
 | 11 | Robustness+active sampling | R11 | G11 | T10 | [R22](R22-consistency-at-k.md) |
 
-**已建票文件**（其余仅在 map 点名，问题尚未 sharp 时不预先切割 fog）：R1、R3、R4、R5、R6、R8、R8b、R8c、R9、R10、R10b、R10c、R17、R20、R21、R22、R23、R24、R25、R26、R27、G1、G1b、G5、G8、G9、G10、G13、G14、G15、T1、T8、T9、T11、T12、T13、T14、T15。
+**已建票文件**（其余仅在 map 点名，问题尚未 sharp 时不预先切割 fog）：R1、R3、R4、R5、R6、R8、R8b、R8c、R9、R10、R10b、R10c、R17、R20、R21、R22、R23、R24、R25、R26、R27、G1、G1b、G5、G8、G9、G10、G13、G14、G15、T1、T8、T9、T11、T12、T13、T14、T15、T16。
 
 (问题已 sharp 时可在 charting 阶段创建票文件;claim 只改变占用状态。本 README 是 index,map.md 是权威状态。)

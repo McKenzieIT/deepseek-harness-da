@@ -12,7 +12,7 @@
 - 当仅有 results 目录存在历史 run 时，报告最后一次 run id（降级模式，不产生新 run）。
 - 当两者都不可用时，返回 `not_configured` 状态，描述 host 必须接入的内容。
 
-工具结果以文本形式渲染给模型（`formatTriggerEval`），其 meta 被投影（`projectMeta`）以便持久化/展示。
+工具结果以文本形式渲染给模型（`formatTriggerEval`），其 meta 被投影（`projectMeta`）以便持久化/展示。摘要分别报告 `wrong`、`declined`、`unjudged`、基础设施失败和 case 缺陷；通过率只使用可归因 verdict 作为分母。
 
 ## 验证
 

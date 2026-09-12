@@ -6,6 +6,8 @@ English | [中文](README.zh.md)
 
 The package has no runtime API; the profile composer resolves the patch through the `dsh.bundle.patch` manifest field, never through code. Inspect the composed tree with `dsh --profile headless --patch ./packages/bundle/data-agent/cordis.patch.yml --dump-config`. A standalone `data-agent` profile is created out-of-tree through `dsh plugin --profile data-agent add @deepseek-ai/dsh-data-agent` once the four-phase preset and its driver land; this bundle deliberately touches no shared boot glue, preserving the upstream upgrade path.
 
+The mounted eval service explicitly identifies the `query-maxcompute` / maxc-sidecar composition, applies the same 300-second wall-clock deadline as the provider's `toolCallTimeoutMs`, resolves `today` from the UTC date when the profile loads, and records `by-name` column semantics with a 200-row artifact cap. Missing required infrastructure or attribution fails before grading instead of being counted as a model failure.
+
 ## Model Experience
 
 Indirectly, through the rows it disables and mounts: this bundle contributes no model-visible text of its own. It mounts `llm-dashscope` (P2) as the profile's direct LLM, and the shipped data capability plugins (P4-P11: `query-maxcompute`, `semantic-layer`, `nl2sql-engine`, `schema-gateway`, `evidence-query`, `audit`, `admin`, `result-cache-memory`, `preset-autojoin`, the goal/eval pair, and `code-runtime-data-python`) contribute their own model-visible schemas, prompts, and tool definitions to the composed tree. The deployment-choice rows (`embedder`, `retrieval`, `subagent-qoder`) mount nothing until a provider is supplied.

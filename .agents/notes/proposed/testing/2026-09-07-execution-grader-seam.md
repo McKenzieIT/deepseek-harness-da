@@ -2,7 +2,7 @@
 
 Status: proposed
 
-The seam below shipped on 2026-09-09; three de-forking items did not, which is why this stays `proposed` rather than `implemented`. See [As implemented](#as-implemented-2026-09-09).
+The execution semantics below shipped and were hardened through independent review on 2026-09-12. Final legacy runtime deletion remains owned by T12, so this note stays `proposed` until that cutover. Provider truncation behavior is tracked by T16. See [As implemented](#as-implemented-2026-09-09).
 
 ## Problem
 
@@ -74,7 +74,7 @@ Behaviour: both changes under "What we give up" move recorded pass rates, and th
 
 ## As implemented (2026-09-09)
 
-Properties 1–5 and 7–10 shipped. `normalizeOutcome` and `gradeExecution` live in `packages/eval/eval/src/execution_grade.ts` with `ExecutionPort`; the one `ctx.query` adapter is `packages/eval/eval-runner/src/ctx_query_executor.ts`; `compare.ts` gained `checkRenderable` and `describeExecutionMode`. The loader prerequisite landed first as `eval_case.ts` provenance plus `reference_sql.ts`.
+Properties 1–5 and 7–10 shipped. `normalizeOutcome` and `gradeExecution` live in `packages/eval/eval/src/execution_grade.ts` with `ExecutionPort`; the one `ctx.query` adapter is `packages/eval/eval-runner/src/ctx_query_executor.ts`; `compare.ts` gained strict persisted-input validation, compatibility checks, `checkRenderable`, and `describeExecutionMode`. The loader prerequisite landed first as `eval_case.ts` provenance plus `reference_sql.ts`. The runner now separates strict structural parsing from grading-content preflight, resolves and checks reference SQL before calling the candidate Agent, preserves preflight evidence, retries typed infrastructure outcomes, and never converts missing replay evidence into a model failure.
 
 Three resolutions worth recording, because each was a choice the proposal left open:
 
@@ -82,6 +82,6 @@ Three resolutions worth recording, because each was a choice the proposal left o
 - **Truncation is measured but still unvalidated.** `providerTruncated` compares the provider's `rowCount` against the rows it returned, never its hardcoded `truncated`. The hypothesis that the two ever diverge remains untested: no case in the 39-case reconciliation returned enough rows to reach it. It is a named gap, not a verified property.
 - **`done` is an explicit member of the completed-state allowlist.** The two host adapters disagreed on whether `state === 'done'` was success. Converging them silently on the narrower list would have turned those results into `environment-blocked` with no error to explain it, so the allowlist is declared and tested.
 
-Not shipped, and why: the second `runBatch`, the second health gate, and `eval-cli`'s direct `dsh-query-maxcompute` dependency are untouched. They are pure deletions orthogonal to the grading change, and this change already moves three recorded behaviours (the judge no longer writes execution, `pending` becomes `environment-blocked`, `pass_rate` changes denominator). Landing structural moves alongside them would make a number's movement unattributable, which is the reason the split was staged in the first place.
+Not shipped, and why: the second `runBatch`, the second health gate, and `eval-cli`'s direct `dsh-query-maxcompute` dependency are untouched and assigned to T12. They are pure deletions orthogonal to the grading change, and this change already moves three recorded behaviours (the judge no longer writes execution, `pending` becomes `environment-blocked`, `pass_rate` changes denominator). Landing structural moves alongside them would make a number's movement unattributable, which is the reason the split was staged in the first place.
 
 Measured on real execution, same day and same cases as the pre-change baseline: the MATCH counts reproduce (event 2, DWS 13) and all 21 DWS cases match per-case. Two event cases became `environment-blocked` — `query pending` past a 300s wait window — where the old path recorded them as stale expected values. The column-semantics flip list is empty, which is explainable rather than reassuring: the reconciliation reads the first cell of the first row, and both addressings preserve cell order, so only the name-keyed match modes could flip and those have zero usage in the active corpus.
