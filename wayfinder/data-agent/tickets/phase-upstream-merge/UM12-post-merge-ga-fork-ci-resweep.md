@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open
+**Status**: **resolved** (2026-09-13 Cluster D hybrid apply landed via UM-C-GATES; 5 gates 收口——2 FIX + 2 KNOWN-RED + 1 moot; CI real red-set 归属明确)
 **Assignee**: unclaimed
 **Blocked by**: ~~UM11~~ → **UM10（已 resolved 2026-09-10）**。原写 `UM11` 与 UM11 的 `Blocked by: UM10 + UM12` 互锁成环；以 `UM-flow-2026-09-08.md` 的 `UM10 → UM12 → UM11` 为准 → **本票现 unblocked，是 Phase C 当前 frontier**
 **Blocks**: —
@@ -375,3 +375,14 @@ PR #119（wayfinder tracker 2026-09-12 + evaluation reconcile merge，87 commit�
 **收口条件**：用户接受 UM-C-GATES synthesis 后，本票 → resolved（附本节 + UM15 §2 meta-gate manifest 已接住 3 判定）。
 
 **Status suggestion**: `open` → **`open (awaiting UM-C-GATES sign-off, then resolved)`**。若用户批 hybrid：UM12 与 UM-C-GATES 同时 resolved。
+
+### [2026-09-13 apply] Cluster D hybrid landed → 本票 resolved
+
+[UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 的 Cluster D 5-gate hybrid apply 完成（详见其 Resolution 2026-09-13 apply 节）。UM12「CI real red-set 无人见过」项：
+- **Gate 4 `verify-package-dependencies` (65 violations) 已 FIX**（用户订正决策：fork 短期不发布，peer 收敛到 upstream）→ CI 的 `Dependency layout` 门本次 apply 后应转绿
+- **Gate 5 `verify-client-ui-i18n` (83) KNOWN-RED permanent**（用户拍板：短期不国际化）
+- **Gate 3 `documentation standard tests` KNOWN-RED permanent**（scope 订正后 65 fork 包 retrofit 归 [UM-FORK-README-SKELETON-RETROFIT](UM-FORK-README-SKELETON-RETROFIT.md) 单票）
+- **Gate 1 `verify-config-catalog` FIX**（1-line regen）
+- **Gate 2 architecture-graph zh 缺口** 订正为 **moot**（已 in excluded manifest）
+
+**UM12 status**: open → **resolved**（Cluster D hybrid apply 收口；剩下 KNOWN-RED 挂账已 documented，permanent 或有专属 follow-up 票）。

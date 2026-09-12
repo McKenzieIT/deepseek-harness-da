@@ -1,6 +1,6 @@
 # UM-C-GATES-UPSTREAM-NEW — C 类「upstream 新门，fork 从未满足」的 4 门无主红：修、豁免、还是判 known-red
 
-**Type**: grilling · **Status**: open (awaiting user sign-off on 2026-09-13 synthesis; decision doc in Resolution section; if hybrid batched, apply → resolved) · **Phase**: upstream-merge
+**Type**: grilling · **Status**: **resolved** (2026-09-13 user 按推荐批准 hybrid + 用户拍板 fork 短期不发布→ Gate 4 从 WAIVE 改 FIX；apply session 完成 5 门收口，见 [2026-09-13 apply] 节) · **Phase**: upstream-merge
 **Assignee**: unclaimed
 **Blocked by**: —（可立即认领；证据已备齐，主要待拍板）
 **Blocks**: [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 的收口裁决（「A4 + C4 + 2 known-red 是否算可接受基线」）+ [UM15](UM15-durable-upstream-sync-method.md) Decision #1 的 cron 半（其先决条件是绿基线，否则 `schedule:` 会持续告 known-red 噪声）
@@ -177,3 +177,50 @@ regen 只差 1 行，但 `docs/config-catalog.{md,zh.md}` + `docs/config-catalog
 ### [2026-09-13] Cluster D grilling — Status transition
 
 Status: `open` → **`open (awaiting user sign-off on synthesis)`**。**不动 CI wiring yaml、不接门**，待用户拍板；决策 doc 已就位供 paste 进 UM12 + UM15 §2 + UM-LINT-B 的 Resolution 节。若用户批 hybrid（fix 2 + waive 2 + known-red 1），则触发下一 apply session。
+
+### [2026-09-13 apply] 5 门 hybrid 收口——含关键订正 2 处
+
+**用户批准（2026-09-13）**："按推荐批准" + 关键澄清 2 条：
+1. **fork data-agent 相关包短期不 npm 独立发布，1.0 后再考虑** → **Gate 4 从 WAIVE 改为 FIX（收敛 peer to upstream levels）**
+2. **data-agent 短期不国际化，保持 dsh 已有语言切换** → 确认 Gate 5 KNOWN-RED
+
+**Apply 期间发现的 2 处 grilling 数据订正**：
+
+**订正 A（Gate 2 moot）**：`docs/architecture-graph.md` 已在 `scripts/translation-pairing.manifest.json` excluded 列表 (line 7)——先前 session（推测 Cluster A 5-generator regen cascade 或 UM11 后清）已应用；实测 `verify-translation-pairing` **0 hits on architecture-graph**。Gate 2 「zh 缺口」的 grilling 前提**已 stale**，不需要新 fix。
+
+**订正 B（Gate 3 scope 大幅扩张）**：Cluster D grilling 说 "2 test fails, ~10 min WAIVE"。Apply 实测：failing tests 的 `packageReadmes()` 迭代**在首个失败包处 short-circuit**，我原以为的 "1 file offender"（data-agent bundle）实际上是**alphabetical-first offender**——真实 scope 是 **65 个 fork 包**缺 YAML frontmatter + skeleton headings（`packages/*/*/README.md`）。原估 "~10 min WAIVE" 严重低估；真实 mass retrofit 是 65 × 2 = 130 file edits，达 ~1-2 session mechanical work。
+
+**订正 B 应对**：Gate 3 apply 决策从 WAIVE 改为 **KNOWN-RED permanent**（同 Gate 5 机制）。data-agent bundle README 已作 correct skeleton 示例落地；剩余 64 fork 包 retrofit 归**新票 [UM-FORK-README-SKELETON-RETROFIT](UM-FORK-README-SKELETON-RETROFIT.md)** 单开跟踪。
+
+#### 5 门实际 apply 结果
+
+| # | Gate | 决策 | 实际动作 | 验证 |
+|---|---|---|---|---|
+| 1 | `verify-config-catalog` | FIX | `pnpm run gen-config-catalog` → `docs/config-catalog.md` up-to-date（1-line delta） | ✅ `verify-config-catalog` GREEN |
+| 2 | `docs/architecture-graph.md` zh | **moot（订正 A）** | 无——已在 excluded manifest（line 7） | ✅ `verify-translation-pairing` 0 hits on this file |
+| 3 | `documentation standard tests` | **KNOWN-RED（订正 B）** | 部分 fix：data-agent bundle README 补 frontmatter + Summary/TOC/Dev Note 作示例；剩余 64 包归 UM-FORK-README-SKELETON-RETROFIT 单票 | ❌ `doc-standard.spec.ts` 仍 2/12 failing——per ticket permanent 状态 |
+| 4 | `verify-package-dependencies` (65) | **FIX（订正决策）** | `pnpm run verify-package-dependencies --fix` 自动修复 8 manifests + `pnpm-lock.yaml` refreshed + 3 module-graph artifacts auto-regen；peer 收敛到 upstream 一致 | ✅ 65 → **0 violations**，`66 package(s) match the published dependency policy` |
+| 5 | `verify-client-ui-i18n` (83) | KNOWN-RED permanent | 无 code change——rationale 内联 ticket，脚本仍 enrolled 在 run-gates（Meta-gate `verify-gate-coverage` 只查 coverage 不查 pass/fail） | ❌ `verify-client-ui-i18n` 仍 83 violations——per user 决策 permanent |
+
+#### 落地文件（Cluster D apply）
+
+- **Gate 1**: `docs/config-catalog.md` regen（1 line）
+- **Gate 3 partial fix**: `packages/bundle/data-agent/README.md` + `.zh.md` 补 frontmatter + Summary + TOC + Dev Note skeleton；pair record 刷新
+- **Gate 4**: `packages/api/remotes/package.json` + 7 个 client 包 package.json 收敛 peer；`pnpm-lock.yaml` 重生成；`docs/module-graph.{md,zh.md,i18n.yaml}` auto-regen
+- **新票**: `wayfinder/data-agent/tickets/phase-upstream-merge/UM-FORK-README-SKELETON-RETROFIT.md`
+
+#### 关键决策 rationale trail
+
+1. **Gate 4 决策 FIX 优于 WAIVE** 因为：fork 短期不发布 → peer 扩展（"发布 ready"）非必要 → 收敛到 upstream 一致更简单，无需 waiver 长期挂账 + 结构性防线（未来 upstream 加/改规则时无 fork drift 债）
+2. **Gate 3 决策 KNOWN-RED 优于 mass FIX** 因为：65 包 × 2 = 130 files 手工/自动 retrofit 是 ~1-2 session 工作量，与 Cluster D "grilling + apply 单 session" 目标不匹配 → 单开票跟踪
+3. **保留 data-agent README skeleton** 因为：作 correct skeleton 示例 + 减 1 后续 retrofit 目标 + 无 drift 引入
+4. **Gate 2 moot 而非 FIX** 因为：`architecture-graph.md` 已 excluded → 加 zh emission 是超范围工作（若某天想真"接 zh"，是独立票工作）
+
+#### 门统计变化
+
+`check:ci:static` 门总 48：
+- 前（Cluster A/B/C 后基线）: 37 passed / 10 failed
+- 后（Cluster D apply）: **38 passed / 9 failed**（Gate 4 `verify-package-dependencies` 从红→绿；其他 Cluster D 门本已知红 & 状态未变）
+- CI real red-set (Release workflow): {`Dependency layout`, `Pack npm tarballs`}——**`Dependency layout` 变化预期**（本 apply 后应转绿；`Pack npm tarballs` 是 version-split issue，不受本 apply 影响）
+
+**票转移**：本票 open → **resolved**；UM12 open → **resolved**（Cluster D 收口）；UM-FORK-README-SKELETON-RETROFIT 新建 open。ledger delta: -2 open + 1 open + 2 resolved = **34 → 35（7 open + 21 resolved + 6 archived + 1 folded）**。
