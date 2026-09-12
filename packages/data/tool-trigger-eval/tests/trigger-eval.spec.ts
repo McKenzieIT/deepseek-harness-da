@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { formatTriggerEval, type TriggerEvalResult, type EvalRunnerService } from '../src/index.ts'
+import { formatTriggerEval, projectMeta, type TriggerEvalResult, type EvalRunnerService } from '../src/index.ts'
 import type { RunResult, DeltaReport } from '@deepseek-ai/dsh-eval-runner'
+import { readFileSync } from 'node:fs'
 
 describe('trigger_eval tool', () => {
   describe('formatTriggerEval', () => {
@@ -30,6 +31,32 @@ describe('trigger_eval tool', () => {
       expect(text).toContain('130/161 correct')
       expect(text).toContain('80.8% pass rate')
       expect(text).toContain('Wrong: 20')
+      expect(text).toContain('Unjudged: 3')
+    })
+
+    it('matches the keyless expected output for unmeasured and defective cases', () => {
+      const result: TriggerEvalResult = {
+        ok: true,
+        mode: 'full_run',
+        runId: 'run-quality',
+        summary: {
+          total: 12,
+          correct: 7,
+          wrong: 1,
+          declined: 1,
+          unjudged: 1,
+          infra_failure: 1,
+          case_defect: 1,
+          pass_rate: 7 / 9,
+        },
+        delta: null,
+        caseCount: 12,
+        message: undefined,
+        previousRunId: null,
+      }
+      const expected = readFileSync(new URL('./expected/summary-with-unmeasured.expected.txt', import.meta.url), 'utf8').trimEnd()
+
+      expect(formatTriggerEval(result)).toBe(expected)
     })
 
     it('formats a run with delta', () => {
@@ -44,7 +71,7 @@ describe('trigger_eval tool', () => {
           declined: 5,
           unjudged: 3,
           infra_failure: 3,
-          case_defect: 0,
+          case_defect: 2,
           pass_rate: 0.8385,
         },
         delta: {
@@ -68,6 +95,11 @@ describe('trigger_eval tool', () => {
       expect(text).toContain('Regressed: 2')
       expect(text).toContain('⬆ case-1: wrong → correct')
       expect(text).toContain('⬇ case-2: correct → wrong')
+      expect(text).toContain('Unjudged: 3')
+      expect(text).toContain('Case defects: 2')
+      expect(projectMeta(result)).toMatchObject({
+        summary: { unjudged: 3, case_defect: 2 },
+      })
     })
 
     it('formats not_configured mode', () => {

@@ -219,12 +219,68 @@ describe('gradeExecution', () => {
   })
 
   it('re-grades a stored artifact under a different policy without touching the warehouse', () => {
-    const stored = artifactOf([[7]], ['dau'])
+    const stored: ExecutionArtifact = JSON.parse(JSON.stringify(artifactOf([[7]], ['dau']))) as ExecutionArtifact
     const byPos = resolveComparatorPolicy({ columnSemantics: 'positional', maxStoredRows: 100 })
-    const v = gradeExecution(stored, { result_value: { dau: 7 }, match_mode: 'multi_scalar_exact' }, byPos)
+    const v = gradeExecution(stored, { result_value: { col0: 7 }, match_mode: 'multi_scalar_exact' }, byPos)
+    expect(v.outcome).toBe('pass')
+    expect(gradeExecution(stored, { result_value: { dau: 7 }, match_mode: 'multi_scalar_exact' }, byPos).outcome).toBe('fail')
     expect(v.policyVersion).toBe(COMPARATOR_POLICY_VERSION)
     expect(v.columnSemantics).toBe('positional')
   })
+
+  it('refuses a policy-changing re-grade when a legacy artifact retained no raw cells', () => {
+    const stored = JSON.parse(JSON.stringify(artifactOf([[7]], ['dau']))) as ExecutionArtifact & { rawRows?: unknown }
+    delete stored.rawRows
+    const byPos = resolveComparatorPolicy({ columnSemantics: 'positional', maxStoredRows: 100 })
+    expect(() => gradeExecution(stored, { result_value: { col0: 7 }, match_mode: 'multi_scalar_exact' }, byPos)).toThrow(/raw row evidence/i)
+  })
+
+  it('uses authoritative rowCount when persisted rows are capped', () => {
+    const capped = resolveComparatorPolicy({ columnSemantics: 'by-name', maxStoredRows: 2 })
+    const live = normalizeOutcome(completed([[1], [2], [3], [4]], ['n']), { policy: capped, durationMs: 0 })
+    const stored: ExecutionArtifact = JSON.parse(JSON.stringify(live)) as ExecutionArtifact
+    const verdict = gradeExecution(stored, { result_value: { min: 4, max: 4 }, match_mode: 'row_count_range' }, capped)
+    expect(verdict.outcome).toBe('pass')
+  })
+
+  it('grades set_equal from the full live result before persistence truncation', () => {
+    const capped = resolveComparatorPolicy({ columnSemantics: 'by-name', maxStoredRows: 2 })
+    const artifact = normalizeOutcome(completed([[1], [2], [3], [4]], ['n']), { policy: capped, durationMs: 0 })
+    const verdict = gradeExecution(artifact, { result_value: { rows: [1, 2, 3, 4] }, match_mode: 'set_equal' }, capped)
+    expect(verdict.outcome).toBe('pass')
+  })
+
+  it('grades ordered_subset from rows beyond the persistence cap', () => {
+    const capped = resolveComparatorPolicy({ columnSemantics: 'by-name', maxStoredRows: 2 })
+    const artifact = normalizeOutcome(completed([[1], [2], [3], [4]], ['n']), { policy: capped, durationMs: 0 })
+    const verdict = gradeExecution(artifact, { result_value: { rows: [3, 4] }, match_mode: 'ordered_subset' }, capped)
+    expect(verdict.outcome).toBe('pass')
+  })
+
+  it('re-normalizes the full live result when policy changes before persistence', () => {
+    const capped = resolveComparatorPolicy({ columnSemantics: 'by-name', maxStoredRows: 1 })
+    const artifact = normalizeOutcome(completed([[1], [2], [3]], ['n']), { policy: capped, durationMs: 0 })
+    const byPos = resolveComparatorPolicy({ columnSemantics: 'positional', maxStoredRows: 1 })
+    const verdict = gradeExecution(artifact, {
+      result_value: { rows: [{ col0: 1 }, { col0: 2 }, { col0: 3 }] },
+      match_mode: 'set_equal',
+    }, byPos)
+    expect(verdict.outcome).toBe('pass')
+  })
+
+  it.each(['set_equal', 'ordered_subset'] as const)(
+    'refuses persisted truncated evidence for %s',
+    (matchMode) => {
+      const capped = resolveComparatorPolicy({ columnSemantics: 'by-name', maxStoredRows: 1 })
+      const live = normalizeOutcome(completed([[1], [2]], ['n']), { policy: capped, durationMs: 0 })
+      const stored: ExecutionArtifact = JSON.parse(JSON.stringify(live)) as ExecutionArtifact
+      expect(() => gradeExecution(
+        stored,
+        { result_value: { rows: [1, 2] }, match_mode: matchMode },
+        capped,
+      )).toThrow(/insufficient.*evidence/i)
+    },
+  )
 
   it('enumerates the five closed outcomes', () => {
     expect([...EXECUTION_OUTCOMES]).toEqual(['pass', 'fail', 'environment-blocked', 'case-defect', 'not-measured'])

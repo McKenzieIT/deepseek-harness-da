@@ -76,6 +76,18 @@ describe('resolveReferenceSql', () => {
     expect(r.detail).toContain('ds_tomorrow')
   })
 
+  it.each([
+    "ds='{{ ds_yesterday }}'",
+    "ds='{{ds-tomorrow}}'",
+    "ds='{{ds_yesterday'",
+    "ds='ds_yesterday}}'",
+  ])('refuses malformed or leftover template delimiters in %s', (sql) => {
+    const r = resolveReferenceSql(caseWith(sql, '20260806'))
+    expect(r.kind).toBe('unresolvable')
+    if (r.kind !== 'unresolvable') return
+    expect(r.reason).toBe('malformed-template')
+  })
+
   it('names a repeated unknown placeholder once', () => {
     const r = resolveReferenceSql(caseWith("a='{{ds_tomorrow}}' OR b='{{ds_tomorrow}}'", '20260806'))
     expect(r.kind).toBe('unresolvable')
@@ -88,6 +100,18 @@ describe('resolveReferenceSql', () => {
     expect(r.kind).toBe('unresolvable')
     if (r.kind !== 'unresolvable') return
     expect(r.reason).toBe('malformed-anchor')
+  })
+
+  it.each(['20260229', '20260231', '20261301', '20260001'])('refuses impossible anchor_ds %s', (anchorDs) => {
+    const r = resolveReferenceSql(caseWith("ds='{{ds_yesterday}}'", anchorDs))
+    expect(r.kind).toBe('unresolvable')
+    if (r.kind !== 'unresolvable') return
+    expect(r.reason).toBe('malformed-anchor')
+  })
+
+  it('accepts a real leap day anchor', () => {
+    const r = resolveReferenceSql(caseWith("ds='{{ds_yesterday}}'", '20240229'))
+    expect(r.kind === 'resolved' && r.sql).toBe("ds='20240228'")
   })
 
   it('enumerates the closed placeholder set', () => {

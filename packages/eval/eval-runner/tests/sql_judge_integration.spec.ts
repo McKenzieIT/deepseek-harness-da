@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { runBatch } from '../src/runner.ts'
+import { makeTestRunOptions } from './test_config.ts'
 import { buildCollaborators } from '../src/collaborators.ts'
 import { StubAgentResponder, StubQueryExecutor, StubJudgeExecutor } from '../src/stubs.ts'
 import type { SqlSemanticJudge, SqlJudgeInput, SqlJudgeResult } from '../src/sql_semantic_judge.ts'
@@ -40,10 +41,10 @@ describe('sql_judge verdict persistence', () => {
 
     const collaborators = buildCollaborators(agent, null, null, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeDefined()
@@ -70,10 +71,10 @@ describe('sql_judge verdict persistence', () => {
     // No sqlJudge provided, and executor exists — old behavior would skip judge entirely
     const collaborators = buildCollaborators(agent, executor, judge, null)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeUndefined()
@@ -99,10 +100,10 @@ describe('sql_judge verdict persistence', () => {
 
     const collaborators = buildCollaborators(agent, null, null, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeDefined()
@@ -139,10 +140,10 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     // Both scores present
@@ -178,10 +179,10 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     // Execution doesn't match (value mismatch)
@@ -215,10 +216,10 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     // Execution passes (result matches)
@@ -240,10 +241,10 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeUndefined()
@@ -275,10 +276,10 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     // Verdict is determined by the execution outcome, not sql_judge
     expect(result.cases[0]!.verdict).toBe('correct')

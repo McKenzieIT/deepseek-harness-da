@@ -51,6 +51,51 @@ describe('EvalResultStore.loadFromDirectory', () => {
     expect(result.results[2]!.status).toBe('error') // unjudged → error
   })
 
+  it('maps every runner verdict explicitly and retains versioned replay evidence', () => {
+    const dir = makeTmpDir()
+    const verdicts = ['correct', 'wrong', 'declined', 'unjudged', 'infra_failure', 'case_defect'] as const
+    writeJsonl(dir, '2026-09-12T00-00-00-000Z_run-v2.jsonl', verdicts.map((verdict, index) => ({
+      recordVersion: 2,
+      runId: 'run-v2',
+      timestamp: '2026-09-12T00:00:00.000Z',
+      caseId: `c${index}`,
+      outcome: verdict,
+      verdict,
+      passed: verdict === 'correct',
+      passK: 1,
+      latencyMs: 10,
+      attemptsCount: 1,
+      errorsCount: 0,
+      runConfig: { executor_identity: 'query-provider:test' },
+      attempts: [{
+        attempt_k: 1,
+        execution_outcome: verdict === 'case_defect' ? 'case-defect' : 'not-measured',
+        execution_detail: verdict,
+        execution_artifact: { kind: 'completed', normalizedDigest: 'digest' },
+      }],
+      caseProvenance: {
+        sourcePath: `/cases/c${index}.yaml`,
+        schemaVersion: 3,
+        scopeId: 'scope-a',
+        expected: { result_value: { value: 1 }, match_mode: 'scalar_exact' },
+        meta: { tier: 'verified', provenance: 'human-reference' },
+        referenceSql: { kind: 'absent' },
+      },
+    })))
+
+    const store = new FileBackedEvalResultStore(dir)
+    const records = store.query({}).results
+
+    expect(records.map(record => record.status)).toEqual(['pass', 'fail', 'fail', 'error', 'error', 'error'])
+    expect(records[5]!.metadata).toMatchObject({
+      recordVersion: 2,
+      verdict: 'case_defect',
+      runConfig: { executor_identity: 'query-provider:test' },
+      attempts: [{ execution_outcome: 'case-defect', execution_artifact: { normalizedDigest: 'digest' } }],
+      caseProvenance: { schemaVersion: 3, meta: { provenance: 'human-reference' } },
+    })
+  })
+
   it('uses caseAssetResolver to map caseId → assetId', () => {
     const dir = makeTmpDir()
     writeJsonl(dir, '2026-08-24T10-00-00-000Z_run-a.jsonl', runARecords)

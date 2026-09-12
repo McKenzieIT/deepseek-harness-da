@@ -43,6 +43,7 @@ import type {
   EvalCaseFlip,
   EvalDeltaReport,
   AssetHealthReport,
+  Json,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -260,8 +261,12 @@ export class FileBackedEvalResultStore extends EvalResultStore {
   }
 }
 
-/** Raw shape of a line in W3 JSONL persistence (from `@deepseek-ai/dsh-eval/persistence`). */
+/** Runner verdicts persisted by eval-runner-service record version 2. */
+type PersistedRunnerVerdict = 'correct' | 'declined' | 'wrong' | 'unjudged' | 'infra_failure' | 'case_defect'
+
+/** Raw JSONL line written by eval-runner-service; legacy unversioned fields remain readable. */
 interface PersistedCaseRecordRaw {
+  readonly recordVersion?: number
   readonly runId: string
   readonly timestamp: string
   readonly caseId: string
@@ -272,26 +277,44 @@ interface PersistedCaseRecordRaw {
   readonly latencyMs: number
   readonly attemptsCount: number
   readonly errorsCount: number
+  readonly runConfig?: Json
+  readonly attempts?: readonly Json[]
+  readonly caseProvenance?: Json
 }
 
-/**
- * Map W3 outcome → evidence-query status.
- * The eval runner uses a 4-bucket outcome (correct/wrong/declined/unjudged)
- * while evidence-query uses (pass/fail/error/pending). Mapping:
- *   correct → pass (all attempts passed)
- *   wrong → fail (scored and failed)
- *   declined → fail (agent refused = gradeable failure from evidence perspective)
- *   unjudged → error (infra fault, not scoreable)
- * See also: `packages/eval/eval/src/runner.ts` classifyCaseOutcome.
- */
-function mapOutcomeToStatus(outcome: string): EvalResultRecord['status'] {
-  switch (outcome) {
+/** Whether a persistence value is one of the runner's closed verdicts. */
+function isRunnerVerdict(value: string | null): value is PersistedRunnerVerdict {
+  return value === 'correct'
+    || value === 'declined'
+    || value === 'wrong'
+    || value === 'unjudged'
+    || value === 'infra_failure'
+    || value === 'case_defect'
+}
+
+/** Map every runner verdict to evidence-query's coarser status vocabulary. */
+function mapRunnerVerdictToStatus(verdict: PersistedRunnerVerdict): EvalResultRecord['status'] {
+  switch (verdict) {
     case 'correct': return 'pass'
     case 'wrong': return 'fail'
     case 'declined': return 'fail'
     case 'unjudged': return 'error'
-    default: return 'pending'
+    case 'infra_failure': return 'error'
+    case 'case_defect': return 'error'
+    default: return assertNever(verdict)
   }
+}
+
+/** Reject a runner verdict added without an explicit evidence-query mapping. */
+function assertNever(value: never): never {
+  throw new Error(`evidence-query: unhandled runner verdict ${JSON.stringify(value)}`)
+}
+
+/** Map a versioned verdict, or a legacy outcome when the old verdict was not a runner verdict. */
+function mapOutcomeToStatus(raw: PersistedCaseRecordRaw): EvalResultRecord['status'] {
+  if (isRunnerVerdict(raw.verdict)) return mapRunnerVerdictToStatus(raw.verdict)
+  if (isRunnerVerdict(raw.outcome)) return mapRunnerVerdictToStatus(raw.outcome)
+  return 'pending'
 }
 
 /** Map a persisted case record to an EvalResultRecord. */
@@ -305,7 +328,7 @@ function mapPersistedToEvalRecord(
     id: `${raw.runId}:${raw.caseId}`,
     assetId,
     caseId: raw.caseId,
-    status: mapOutcomeToStatus(raw.outcome),
+    status: mapOutcomeToStatus(raw),
     score: raw.passed ? 1.0 : 0.0,
     timestamp: raw.timestamp,
     metadata: {
@@ -316,6 +339,10 @@ function mapPersistedToEvalRecord(
       latencyMs: raw.latencyMs,
       attemptsCount: raw.attemptsCount,
       errorsCount: raw.errorsCount,
+      ...(raw.recordVersion === undefined ? {} : { recordVersion: raw.recordVersion }),
+      ...(raw.runConfig === undefined ? {} : { runConfig: raw.runConfig }),
+      ...(raw.attempts === undefined ? {} : { attempts: raw.attempts }),
+      ...(raw.caseProvenance === undefined ? {} : { caseProvenance: raw.caseProvenance }),
     },
     // GA-GT1 Phase 3b (D5.2): tag the scopeId onto the record when loaded from
     // a per-scope subdirectory. Flat-layout records omit the key entirely

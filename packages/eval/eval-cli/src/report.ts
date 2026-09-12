@@ -2,7 +2,7 @@
  * Stdout summary formatter for eval run results.
  *
  * Outputs:
- *  1. Overall summary table (total/correct/wrong/declined/infra_failure/pass_rate)
+ *  1. Overall summary table (all runner verdict counts plus pass_rate)
  *  2. Per-intent breakdown (from case dimensions.query_intent)
  *  3. Top 5 failures (case_id + question excerpt)
  */
@@ -42,7 +42,12 @@ export function formatReport(result: RunResult, cases: readonly EvalCase[]): str
   }
 
   // ── Top 5 failures ──
-  const failures = result.cases.filter(c => c.verdict === 'wrong' || c.verdict === 'infra_failure')
+  const failures = result.cases.filter(c =>
+    c.verdict === 'wrong'
+    || c.verdict === 'unjudged'
+    || c.verdict === 'infra_failure'
+    || c.verdict === 'case_defect',
+  )
   if (failures.length > 0) {
     lines.push('  Top Failures:')
     const top = failures.slice(0, 5)
@@ -68,6 +73,7 @@ interface SummaryStats {
   declined: number
   unjudged: number
   infra_failure: number
+  case_defect: number
   pass_rate: number
 }
 
@@ -78,6 +84,7 @@ function formatSummaryTable(s: SummaryStats): string {
     `  │  total: ${pad(String(s.total), 5)}  pass_rate: ${pad(rate + '%', 7)} │`,
     `  │  correct: ${pad(String(s.correct), 4)}  wrong: ${pad(String(s.wrong), 4)}       │`,
     `  │  declined: ${pad(String(s.declined), 3)}  infra_failure: ${pad(String(s.infra_failure), 3)}│`,
+    `  │  unjudged: ${pad(String(s.unjudged), 3)}  case_defect: ${pad(String(s.case_defect), 4)}│`,
     '  └─────────────────────────────────────┘',
   ]
   return lines.join('\n')

@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 Unified evidence-query backend layer — coverage, gap analysis, reachability, eval results, and asset health for both sidebar and dashboard consumption.
 
+`FileBackedEvalResultStore` reads both legacy unversioned eval JSONL and version-2 records. Version-2 metadata retains runner verdicts, run configuration, attempt execution evidence, and case provenance; all six runner verdicts map explicitly, with `unjudged`, `infra_failure`, and `case_defect` represented as `error` rather than unfinished `pending` work.
+
 ## Model Experience
 
 Indirectly, through @deepseek-ai/dsh-nl2sql-engine's LLM adapter.

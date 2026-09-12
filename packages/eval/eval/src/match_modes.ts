@@ -46,17 +46,19 @@ export const MATCH_MODES: readonly MatchMode[] = [
  * @param expected - the `expected.result_value` envelope (shape per mode).
  * @param actualRows - dict rows from the injected `CaseSqlExecutor` (the `QueryOutcome.rows` zipped with `columns`).
  * @param matchMode - one of {@link MatchMode}.
+ * @param actualRowCount - authoritative provider row count, when it differs from the retained rows.
  * @returns `{status, detail}` — `pass` or `fail` with a short reason.
  */
 export function checkResultMatch(
   expected: Record<string, unknown>,
   actualRows: readonly Record<string, unknown>[],
   matchMode: string,
+  actualRowCount: number = actualRows.length,
 ): AssertionResult {
   switch (matchMode) {
     case 'scalar_exact': return scalarExact(expected, actualRows)
     case 'multi_scalar_exact': return multiScalarExact(expected, actualRows)
-    case 'row_count_range': return rowCountRange(expected, actualRows)
+    case 'row_count_range': return rowCountRange(expected, actualRowCount)
     case 'set_equal': return setEqual(expected, actualRows)
     case 'ordered_subset': return orderedSubset(expected, actualRows)
     default: return { status: 'fail', detail: `unknown match_mode: ${matchMode}` }
@@ -99,14 +101,13 @@ function multiScalarExact(expected: Record<string, unknown>, actualRows: readonl
   return { status: 'pass', detail: '' }
 }
 
-function rowCountRange(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {
+function rowCountRange(expected: Record<string, unknown>, actualRowCount: number): AssertionResult {
   // Accept both envelope format ({min:, max:}) and case format ({min_rows:, max_rows:})
   const lo = expected.min ?? expected.min_rows
   const hi = expected.max ?? expected.max_rows
   if (typeof lo !== 'number' || typeof hi !== 'number') return { status: 'fail', detail: `malformed result_value for row_count_range: need min/max or min_rows/max_rows (got ${JSON.stringify(expected)})` }
-  const count = actualRows.length
-  if (lo <= count && count <= hi) return { status: 'pass', detail: '' }
-  return { status: 'fail', detail: `row_count ${count} not in [${lo}, ${hi}]` }
+  if (lo <= actualRowCount && actualRowCount <= hi) return { status: 'pass', detail: '' }
+  return { status: 'fail', detail: `row_count ${actualRowCount} not in [${lo}, ${hi}]` }
 }
 
 function setEqual(expected: Record<string, unknown>, actualRows: readonly Record<string, unknown>[]): AssertionResult {

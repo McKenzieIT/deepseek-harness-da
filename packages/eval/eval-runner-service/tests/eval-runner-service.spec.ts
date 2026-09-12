@@ -10,8 +10,9 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { EvalRunnerService } from '../src/index.ts'
+import { FileBackedEvalResultStore } from '../../../data/evidence-query/src/index.ts'
 import type { RunResult, RunnerVerdict } from '@deepseek-ai/dsh-eval-runner'
-import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync, copyFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, readdirSync, copyFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -42,16 +43,18 @@ function makeStubLlm() {
   return { stream }
 }
 
-describe('EvalRunnerService — JSONL bridge (W3→W4 format)', () => {
-  it('persistRunResultJsonl writes records FileBackedEvalResultStore can read', () => {
-    // Access the module-private bridge via runBatch is heavy; exercise it by
-    // calling the Service's runBatch is integration-tested below. Here we
-    // validate the persisted shape by running a Service with stubbed collaborators
-    // is overkill — instead assert the format via the integration test below.
-    // Placeholder: the integration test below asserts the JSONL lines parse.
-    expect(true).toBe(true)
-  })
-})
+/** Build a stub query provider and optionally capture routed scope ids. */
+function makeStubQuery(capturedScopeIds?: string[]) {
+  return {
+    execute: async (req?: unknown) => {
+      if (capturedScopeIds !== undefined && req !== undefined && typeof req === 'object' && 'scopeId' in (req as Record<string, unknown>)) {
+        capturedScopeIds.push((req as { scopeId: string }).scopeId)
+      }
+      return { state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }
+    },
+    attach: async () => ({ state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }),
+  }
+}
 
 describe('EvalRunnerService — mechanics', () => {
   it('getCaseCount discovers K11 cases when caseDir points at the real set', () => {
@@ -60,6 +63,15 @@ describe('EvalRunnerService — mechanics', () => {
     // them; the 162nd entry, coverage-matrix.yaml, is excluded by the regex).
     const svc = new EvalRunnerService(new Context(), { caseDir: 'packages/eval/eval/cases/_archived/k11-v1' })
     expect(svc.getCaseCount()).toBe(161)
+  })
+
+  it('rejects invalid executor attribution config at construction', () => {
+    expect(() => new EvalRunnerService(new Context(), { executorIdentity: '   ' })).toThrow(
+      'executorIdentity must be a non-empty string',
+    )
+    expect(() => new EvalRunnerService(new Context(), { queryWaitSeconds: 0 })).toThrow(
+      'queryWaitSeconds must be a positive integer',
+    )
   })
 
   it('getResultsDir returns the configured dir', () => {
@@ -93,23 +105,7 @@ describe('EvalRunnerService — mechanics', () => {
 })
 
 describe('EvalRunnerService — runBatch integration (stubbed seams, real engine)', () => {
-  function makeStubQuery(capturedScopeIds?: string[]) {
-    return {
-      execute: async (req?: unknown) => {
-        // Capture the scopeId threaded through from CtxOdpsAdapter/CtxQueryExecutor
-        // (Phase 5d D3ii: explicit scopeId propagation). Best-effort: the engine
-        // may decline without executing (empty corpus → no candidates), so the
-        // array may stay empty; when non-empty, every entry must equal the scope.
-        if (capturedScopeIds !== undefined && req !== undefined && typeof req === 'object' && 'scopeId' in (req as Record<string, unknown>)) {
-          capturedScopeIds.push((req as { scopeId: string }).scopeId)
-        }
-        return { state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }
-      },
-      attach: async () => ({ state: 'completed' as const, columns: ['total'], rows: [[1]], rowCount: 1, sql: '' }),
-    }
-  }
-
-  it('runs a batch against real cases, persists JSONL, tracks last/last-two', async () => {
+  it('runs a provenance-bearing case through service persistence and the file-backed store', async () => {
     const resultsDir = mkdtempSync(join(tmpdir(), 'ers-results-'))
     const ctx = new Context()
     const capturedScopeIds: string[] = []
@@ -117,40 +113,84 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
     ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
     ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', makeStubQuery(capturedScopeIds))
 
-    // Point caseDir at a 2-case temp dir (symlinks to real K11 cases) so the
-    // batch is fast. The Service registers ctx.evalRunner on construction.
+    // A tiny provenance-bearing case keeps this integration focused on the
+    // service → JSONL → FileBackedEvalResultStore path.
     const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-'))
     try {
-      const realCases = ['k11_001.yaml', 'k11_002.yaml'].map(f => `packages/eval/eval/cases/_archived/k11-v1/${f}`)
-      for (const p of realCases) {
-        const dest = join(tmpCases, p.split('/').pop()!)
-        copyFileSync(p, dest)
-      }
-      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model' })
-      const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })
-      expect(result.cases.length).toBe(2)
-      expect(result.summary.total).toBe(2)
+      writeFileSync(join(tmpCases, 'k11_001.yaml'), [
+        'schema_version: 3',
+        'case_id: k11_001',
+        'input:',
+        '  question: How many?',
+        '  scope_id: scope-a',
+        '  turns: []',
+        'expected:',
+        "  sql: SELECT 1 WHERE ds = '{{ds_yesterday}}'",
+        '  result_value: { value: 1 }',
+        '  match_mode: scalar_exact',
+        '  answer: null',
+        '  delivery_match: null',
+        'dimensions:',
+        '  query_intent: metric_lookup',
+        'meta:',
+        '  anchor_ds: "20260912"',
+        '  tier: verified',
+        '  provenance: human-reference',
+        '',
+      ].join('\n'))
+      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model', executorIdentity: 'query-provider:test', queryWaitSeconds: 60 })
+      const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'scope-a' })
+      expect(result.cases.length).toBe(1)
+      expect(result.summary.total).toBe(1)
       expect(svc.getLastRun()).toBe(result)
 
       // JSONL persisted in the FileBackedEvalResultStore record format
       const jsonlFiles = existsSync(resultsDir) ? readdirSync(resultsDir).filter((f: string) => f.endsWith('.jsonl')) : []
       expect(jsonlFiles.length).toBe(1)
       const lines = readFileSync(join(resultsDir, jsonlFiles[0] as string), 'utf8').trim().split('\n')
-      expect(lines.length).toBe(2)
+      expect(lines.length).toBe(1)
       const rec = JSON.parse(lines[0]!) as Record<string, unknown>
       expect(rec).toHaveProperty('runId')
       expect(rec).toHaveProperty('caseId')
       expect(rec).toHaveProperty('outcome')
       expect(rec).toHaveProperty('passed')
       expect(rec).toHaveProperty('passK')
+      expect(rec).toMatchObject({
+        recordVersion: 2,
+        runConfig: { executor_identity: 'query-provider:test' },
+        attempts: [{
+          execution_outcome: 'pass',
+          execution_artifact: { kind: 'completed' },
+        }],
+        caseProvenance: {
+          schemaVersion: 3,
+          scopeId: 'scope-a',
+          expected: { match_mode: 'scalar_exact' },
+          meta: { anchor_ds: '20260912', tier: 'verified', provenance: 'human-reference' },
+          referenceSql: {
+            kind: 'resolved',
+            sql: "SELECT 1 WHERE ds = '20260911'",
+            substitutions: { ds_yesterday: '20260911' },
+          },
+        },
+      })
+
+      const stored = new FileBackedEvalResultStore(resultsDir).query({}).results[0]!
+      expect(stored.metadata).toMatchObject({
+        recordVersion: 2,
+        runConfig: { executor_identity: 'query-provider:test' },
+        attempts: [{ execution_artifact: { kind: 'completed' } }],
+        caseProvenance: { meta: { provenance: 'human-reference' } },
+      })
+      expect(JSON.stringify(stored.metadata)).toContain('normalizedDigest')
 
       // Phase 5d (D3ii): scopeId propagated from runBatch → buildCollaborators
       // → CtxOdpsAdapter/CtxQueryExecutor → ctx.query.execute({scopeId}).
       // Best-effort: the engine may decline without executing SQL (empty
       // corpus → no candidate tables), so capturedScopeIds may be empty;
-      // when non-empty, every captured scopeId must equal the 'k11' passed
-      // to runBatch (no silent fallback to a different/hardcoded scope).
-      expect(capturedScopeIds.every(id => id === 'k11')).toBe(true)
+      // when non-empty, every captured scopeId must equal the explicit scope
+      // passed to runBatch (no silent fallback to a different/hardcoded scope).
+      expect(capturedScopeIds.every(id => id === 'scope-a')).toBe(true)
     } finally {
       rmSync(tmpCases, { recursive: true, force: true })
       rmSync(resultsDir, { recursive: true, force: true })
@@ -180,6 +220,51 @@ describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () 
     }
   })
 
+  it('fails loud when a real query provider has no configured executor identity', async () => {
+    const ctx = new Context()
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', makeStubQuery())
+    const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-executor-id-'))
+    try {
+      copyFileSync('packages/eval/eval/cases/_archived/k11-v1/k11_001.yaml', join(tmpCases, 'k11_001.yaml'))
+      const svc = new EvalRunnerService(ctx, {
+        caseDir: tmpCases,
+        passK: 1,
+        provider: 'stub-provider',
+        model: 'stub-model',
+      })
+
+      await expect(svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })).rejects.toThrow(
+        'executorIdentity is required when ctx.query is mounted',
+      )
+    } finally {
+      rmSync(tmpCases, { recursive: true, force: true })
+    }
+  })
+
+  it('fails loud when a real query provider has no configured query wait', async () => {
+    const ctx = new Context()
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
+    ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', makeStubQuery())
+    const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-query-wait-'))
+    try {
+      copyFileSync('packages/eval/eval/cases/_archived/k11-v1/k11_001.yaml', join(tmpCases, 'k11_001.yaml'))
+      const svc = new EvalRunnerService(ctx, {
+        caseDir: tmpCases,
+        passK: 1,
+        provider: 'stub-provider',
+        model: 'stub-model',
+        executorIdentity: 'query-provider:test',
+      })
+
+      await expect(svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })).rejects.toThrow(
+        'queryWaitSeconds is required when ctx.query is mounted',
+      )
+    } finally {
+      rmSync(tmpCases, { recursive: true, force: true })
+    }
+  })
+
   it('runBatch with explicit scopeId succeeds (no silent fallback, no throw)', async () => {
     const ctx = new Context()
     const capturedScopeIds: string[] = []
@@ -200,7 +285,7 @@ describe('EvalRunnerService — Phase 5d (D3ii): runBatch explicit scopeId', () 
       for (const p of realCases) {
         copyFileSync(p, join(tmpCases, p.split('/').pop()!))
       }
-      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model' })
+      const svc = new EvalRunnerService(ctx, { caseDir: tmpCases, resultsDir, passK: 1, provider: 'stub-provider', model: 'stub-model', executorIdentity: 'query-provider:test', queryWaitSeconds: 60 })
       const result = await svc.runBatch({ skipHealthGate: true, scopeId: 'k11' })
       expect(result.cases.length).toBe(1)
       expect(svc.getLastRun()).toBe(result)

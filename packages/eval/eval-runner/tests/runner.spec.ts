@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { runBatch } from '../src/runner.ts'
+import { makeTestRunOptions } from './test_config.ts'
 import { compareDelta, regressions, improvements } from '../src/delta.ts'
 import { runHealthGate } from '../src/health_gate.ts'
 import { withInfraRetry, classifyInfraFailure, isInfraError } from '../src/infra_retry.ts'
@@ -34,10 +35,10 @@ describe('runBatch', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     expect(result.cases).toHaveLength(1)
     expect(result.cases[0]!.case_id).toBe('case-a')
@@ -56,10 +57,10 @@ describe('runBatch', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     expect(result.cases[0]!.verdict).toBe('wrong')
   })
@@ -85,10 +86,10 @@ describe('runBatch', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 2,
       skip_health_gate: true,
-    })
+    }))
 
     // pass^k (eval-core-1 / re-baseline): ALL attempts must pass — a single
     // failing attempt makes the case 'wrong'. The prior best-of-k ('any pass =
@@ -98,6 +99,108 @@ describe('runBatch', () => {
     expect(result.cases[0]!.pass_k_results).toHaveLength(2)
   })
 
+  it('does not pass a case when one execution attempt is environment-blocked', async () => {
+    const agent = new StubAgentResponder()
+    const judge = new StubJudgeExecutor()
+    let executions = 0
+    const executor = {
+      execute: async () => {
+        executions++
+        if (executions === 1) {
+          return { state: 'completed' as const, columns: ['total'], rows: [[1000]], rowCount: 1 }
+        }
+        return { state: 'pending' as const, instanceId: 'query-2' }
+      },
+    }
+    agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
+    const collaborators = buildCollaborators(agent, executor, judge)
+
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
+      pass_k: 2,
+      max_infra_retries: 0,
+    }))
+
+    expect(result.cases[0]!.pass_k_results.map(a => a.execution_outcome)).toEqual(['pass', 'environment-blocked'])
+    expect(result.cases[0]!.verdict).toBe('infra_failure')
+    expect(result.summary.pass_rate).toBe(0)
+  })
+
+  it('does not pass a case when one required execution attempt is not measured', async () => {
+    const agent = new StubAgentResponder()
+    const judge = new StubJudgeExecutor()
+    const collaborators: {
+      agent: StubAgentResponder
+      executor: { execute(sql: string): Promise<{ state: 'completed'; columns: string[]; rows: number[][]; rowCount: number }> } | null
+      judge: StubJudgeExecutor
+    } = {
+      agent,
+      executor: null,
+      judge,
+    }
+    collaborators.executor = {
+      execute: async () => {
+        collaborators.executor = null
+        return { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 }
+      },
+    }
+    agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
+
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, { pass_k: 2 }))
+
+    expect(result.cases[0]!.pass_k_results.map(a => a.execution_outcome)).toEqual(['pass', 'not-measured'])
+    expect(result.cases[0]!.verdict).toBe('unjudged')
+    expect(result.summary.pass_rate).toBe(0)
+  })
+
+  it('excludes unjudged cases from the pass-rate denominator', async () => {
+    const agent = new StubAgentResponder()
+    agent.respond = async question => question.includes('average order value')
+      ? { reply: 'The average order value is 50 dollars', generated_sql: null }
+      : { reply: '1000', generated_sql: 'SELECT 1000 AS total' }
+    const collaborators = buildCollaborators(agent, null, null)
+
+    const result = await runBatch([caseC, caseA], collaborators, makeTestRunOptions(collaborators))
+
+    expect(result.cases.map(c => c.verdict)).toEqual(['correct', 'unjudged'])
+    expect(result.summary.correct).toBe(1)
+    expect(result.summary.unjudged).toBe(1)
+    expect(result.summary.pass_rate).toBe(1)
+  })
+
+  it.each(['retryable', 'transport', 'throttling', 'timeout'])(
+    'retries a returned %s query outcome before grading it',
+    async (failureKind) => {
+      vi.useFakeTimers()
+      try {
+        const agent = new StubAgentResponder()
+        const judge = new StubJudgeExecutor()
+        let executions = 0
+        const executor = {
+          execute: async () => {
+            executions++
+            if (executions === 1) {
+              return { state: 'failed' as const, failureKind, error: 'syntax error reported in a retryable provider envelope' }
+            }
+            return { state: 'completed' as const, columns: ['total'], rows: [[1000]], rowCount: 1 }
+          },
+        }
+        agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
+        const collaborators = buildCollaborators(agent, executor, judge)
+
+        const pending = runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
+          max_infra_retries: 1,
+        }))
+        await vi.runAllTimersAsync()
+        const result = await pending
+
+        expect(executions).toBe(2)
+        expect(result.cases[0]!.verdict).toBe('correct')
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
   it('labels infra_failure when all attempts fail due to infra', async () => {
     const agent = new FailingAgentResponder(new Error('ECONNREFUSED: agent unreachable'))
     const executor = new StubQueryExecutor()
@@ -105,11 +208,11 @@ describe('runBatch', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       max_infra_retries: 1,
       skip_health_gate: true,
-    })
+    }))
 
     expect(result.cases[0]!.verdict).toBe('infra_failure')
     expect(result.cases[0]!.pass_k_results[0]!.infra_error).toBeDefined()
@@ -126,11 +229,11 @@ describe('runBatch', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 2,
       max_infra_retries: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const c = result.cases[0]!
     expect(c.verdict).toBe('wrong')
@@ -164,10 +267,10 @@ describe('runBatch', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge)
 
-    const result = await runBatch([caseA, caseB, caseC], collaborators, {
+    const result = await runBatch([caseA, caseB, caseC], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     expect(result.summary.total).toBe(3)
     expect(result.summary.correct).toBe(3)
@@ -367,6 +470,7 @@ describe('persistence', () => {
         latency_ms: 150,
       }],
       summary: { total: 1, correct: 1, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 1 },
+      config: makeTestRunOptions(buildCollaborators(new StubAgentResponder(), null, null)).config,
     }
 
     writeRunResult(original, outputPath)

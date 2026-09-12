@@ -2,7 +2,13 @@ import { describe, expect, it, beforeAll, afterAll } from 'vitest'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { resolveRunFile, checkRenderable, describeExecutionMode } from '../src/compare.ts'
+import {
+  resolveRunFile,
+  checkRenderable,
+  describeExecutionMode,
+  describeRunProtocol,
+  parseRunResult,
+} from '../src/compare.ts'
 
 let dir: string
 
@@ -55,6 +61,17 @@ function runWith(overrides: Record<string, unknown> | null) {
     executor_identity: 'dev/maxc-sidecar.mjs',
     comparator_policy_version: 1,
     column_semantics: 'by-name',
+    max_stored_rows: 200,
+    query_wait_seconds: 300,
+    provider: 'test-provider',
+    model: 'test-model',
+    concurrency: 1,
+    sql_judge: false,
+    responder: 'engine',
+    scope_id: 'test-scope',
+    today: '20260912',
+    query_expansion: false,
+    skip_health_gate: false,
     ...overrides,
   }
   return { run_id: 'r', timestamp: '', cases: [], summary: { total: 0, correct: 0, wrong: 0, pass_rate: 0 }, ...(config === undefined ? {} : { config }) }
@@ -89,6 +106,18 @@ describe('checkRenderable', () => {
     expect(v.reason).toMatch(/executor_identity/)
   })
 
+  it('refuses a run whose config omits the stored-row policy', () => {
+    const v = checkRenderable(runWith({ max_stored_rows: undefined }))
+    expect(v.ok).toBe(false)
+    expect(v.reason).toMatch(/max_stored_rows/)
+  })
+
+  it('refuses a real-execution run that omits its query wait window', () => {
+    const v = checkRenderable(runWith({ query_wait_seconds: undefined }))
+    expect(v.ok).toBe(false)
+    expect(v.reason).toMatch(/query_wait_seconds/)
+  })
+
   it('accepts a judge-only run with no executor identity, since none executed', () => {
     expect(checkRenderable(runWith({ with_query: false, executor_identity: undefined })).ok).toBe(true)
   })
@@ -117,7 +146,44 @@ describe('describeExecutionMode', () => {
     expect(describeExecutionMode(runWith({}))).not.toBe(describeExecutionMode(runWith({ column_semantics: 'positional' })))
   })
 
+  it('distinguishes row caps and query wait windows that can change outcomes', () => {
+    expect(describeExecutionMode(runWith({}))).not.toBe(describeExecutionMode(runWith({ max_stored_rows: 10 })))
+    expect(describeExecutionMode(runWith({}))).not.toBe(describeExecutionMode(runWith({ query_wait_seconds: 60 })))
+  })
+
   it('is null for a run that records no config', () => {
     expect(describeExecutionMode(runWith(null))).toBeNull()
+  })
+
+  it('renders a judge-only wait window as not applicable', () => {
+    expect(describeExecutionMode(runWith({ with_query: false, executor_identity: undefined, query_wait_seconds: undefined })))
+      .toContain('wait=n/a ')
+  })
+})
+
+describe('describeRunProtocol', () => {
+  it.each([
+    ['provider', 'other-provider'],
+    ['model', 'other-model'],
+    ['concurrency', 4],
+    ['sql_judge', true],
+    ['responder', 'harness'],
+    ['scope_id', 'other-scope'],
+    ['today', '20260913'],
+    ['query_expansion', true],
+    ['skip_health_gate', true],
+  ])('distinguishes the outcome-relevant %s field', (field, value) => {
+    expect(describeRunProtocol(runWith({}))).not.toBe(describeRunProtocol(runWith({ [field]: value })))
+  })
+})
+
+describe('parseRunResult', () => {
+  it('rejects malformed durable JSON instead of casting it to a run', () => {
+    expect(() => parseRunResult({ run_id: 'r', timestamp: '', cases: 'not-an-array', summary: {} }, 'bad.json'))
+      .toThrow(/bad\.json.*cases/i)
+  })
+
+  it('accepts a structurally valid legacy run without config', () => {
+    expect(parseRunResult(runWith(null), 'legacy.json').run_id).toBe('r')
   })
 })

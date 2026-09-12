@@ -22,22 +22,13 @@ import type {
   SqlJudgeVerdict,
 } from './types.ts'
 import { runHealthGate } from './health_gate.ts'
-import { withInfraRetry, isInfraError } from './infra_retry.ts'
+import { withInfraRetry, classifyInfraFailure, isInfraError } from './infra_retry.ts'
 import { writeRunResult } from './persistence.ts'
-
-/** Default pass_k: number of attempts per case. */
-const DEFAULT_PASS_K = 3
 
 /** Default max infra retries per attempt. */
 const DEFAULT_MAX_INFRA_RETRIES = 2
 
-/**
- * Rows an execution artifact stores when the caller names no policy. The
- * digests always cover the full result, so this bounds artifact size without
- * making a verdict unreproducible — unlike the previous 5-row evidence cut,
- * which could not re-derive a `row_count_range` decision.
- */
-const DEFAULT_MAX_STORED_ROWS = 200
+type SelfDescribingRunResult = RunResult & { readonly config: BatchRunOptions['config'] }
 
 /**
  * Run a batch of eval cases.
@@ -51,22 +42,17 @@ const DEFAULT_MAX_STORED_ROWS = 200
  * @param options - batch run options.
  * @returns the full run result.
  */
-export async function runBatch(casePaths: string[], collaborators: Collaborators, options?: BatchRunOptions): Promise<RunResult> {
-  const runId = options?.run_id ?? randomUUID()
-  const passK = options?.pass_k ?? DEFAULT_PASS_K
-  const maxInfraRetries = options?.max_infra_retries ?? DEFAULT_MAX_INFRA_RETRIES
-  const skipHealthGate = options?.skip_health_gate ?? false
-  const outputPath = options?.output_path ?? null
-  const concurrency = options?.concurrency ?? 1
-  const onProgress = options?.on_progress ?? null
-  // Resolved once per batch, so every case in it is graded under one policy and
-  // the run records which. The run config is the single source: the same object
-  // is persisted, so the policy graded under and the policy reported cannot
-  // disagree. A batch never mixes two.
-  const policy = resolveComparatorPolicy({
-    columnSemantics: options?.config?.column_semantics ?? 'by-name',
-    maxStoredRows: options?.config?.max_stored_rows ?? DEFAULT_MAX_STORED_ROWS,
-  })
+export async function runBatch(
+  casePaths: string[],
+  collaborators: Collaborators,
+  options: BatchRunOptions,
+): Promise<SelfDescribingRunResult> {
+  const resolved = resolveRunSettings(collaborators, options)
+  const { passK, concurrency, skipHealthGate, policy, config } = resolved
+  const runId = options.run_id ?? randomUUID()
+  const maxInfraRetries = options.max_infra_retries ?? DEFAULT_MAX_INFRA_RETRIES
+  const outputPath = options.output_path ?? null
+  const onProgress = options.on_progress ?? null
 
   // Health gate pre-flight
   if (!skipHealthGate) {
@@ -104,18 +90,12 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
   // Compute summary
   const summary = computeSummary(verdicts)
 
-  const result: RunResult = {
+  const result: SelfDescribingRunResult = {
     run_id: runId,
     timestamp: new Date().toISOString(),
     cases: verdicts,
     summary,
-    // GA-EVAL-REBASELINE item 4: stamp the run's protocol/semantics/concurrency/
-    // model onto the artifact so a contaminated/mis-attributed run is detectable
-    // from its JSON alone. Optional — legacy callers without a config leave this
-    // undefined (the artifact is then non-self-describing, matching pre-item-4
-    // behavior). `writeRunResult` JSON.stringifies the whole RunResult, so this
-    // persists automatically.
-    ...(options?.config !== undefined ? { config: options.config } : {}),
+    config,
   }
 
   // Persist if output path given
@@ -124,6 +104,73 @@ export async function runBatch(casePaths: string[], collaborators: Collaborators
   }
 
   return result
+}
+
+interface ResolvedRunSettings {
+  readonly passK: number
+  readonly concurrency: number
+  readonly skipHealthGate: boolean
+  readonly policy: ComparatorPolicy
+  readonly config: BatchRunOptions['config']
+}
+
+function resolveRunSettings(collaborators: Collaborators, options: BatchRunOptions | undefined): ResolvedRunSettings {
+  if (options?.config === undefined) {
+    throw new Error('eval runner: config is required so every new run is self-describing')
+  }
+  const requested = options.config
+  const passK = options.pass_k ?? requested.pass_k
+  const concurrency = options.concurrency ?? requested.concurrency
+  const skipHealthGate = options.skip_health_gate ?? requested.skip_health_gate
+
+  assertRecordedSetting('pass_k', passK, requested.pass_k)
+  assertRecordedSetting('concurrency', concurrency, requested.concurrency)
+  assertRecordedSetting('skip_health_gate', skipHealthGate, requested.skip_health_gate)
+  if (!Number.isInteger(passK) || passK < 1) throw new Error(`eval runner: pass_k must be a positive integer (got ${passK})`)
+  if (!Number.isInteger(concurrency) || concurrency < 1) throw new Error(`eval runner: concurrency must be a positive integer (got ${concurrency})`)
+
+  const hasExecutor = collaborators.executor !== null && collaborators.executor !== undefined
+  const hasSqlJudge = collaborators.sqlJudge !== null && collaborators.sqlJudge !== undefined
+  const queryWaitSeconds = requested.query_wait_seconds
+  assertRecordedSetting('with_query', hasExecutor, requested.with_query)
+  assertRecordedSetting('sql_judge', hasSqlJudge, requested.sql_judge)
+  if (hasExecutor && (requested.executor_identity === undefined || requested.executor_identity.length === 0)) {
+    throw new Error('eval runner: executor_identity is required when with_query is true')
+  }
+  if (hasExecutor && queryWaitSeconds === undefined) {
+    throw new Error('eval runner: query_wait_seconds is required when with_query is true')
+  }
+  if (hasExecutor && queryWaitSeconds !== undefined && (!Number.isFinite(queryWaitSeconds) || queryWaitSeconds <= 0)) {
+    throw new Error(`eval runner: query_wait_seconds must be positive (got ${queryWaitSeconds})`)
+  }
+
+  const policy = resolveComparatorPolicy({
+    columnSemantics: requested.column_semantics,
+    maxStoredRows: requested.max_stored_rows,
+  })
+  assertRecordedSetting('comparator_policy_version', policy.version, requested.comparator_policy_version)
+
+  return {
+    passK,
+    concurrency,
+    skipHealthGate,
+    policy,
+    config: {
+      ...requested,
+      pass_k: passK,
+      concurrency,
+      skip_health_gate: skipHealthGate,
+      comparator_policy_version: policy.version,
+      column_semantics: policy.columnSemantics,
+      max_stored_rows: policy.maxStoredRows,
+    },
+  }
+}
+
+function assertRecordedSetting(name: string, actual: boolean | number, recorded: boolean | number): void {
+  if (actual !== recorded) {
+    throw new Error(`eval runner: ${name}=${JSON.stringify(recorded)} in config does not match resolved value ${JSON.stringify(actual)}`)
+  }
 }
 
 /**
@@ -178,7 +225,7 @@ async function runSingleCase(
   }
 
   // pass^k: ALL k attempts must pass (execution + delivery) for the case to be correct
-  const verdict = passKVerdict(attempts)
+  const verdict = passKVerdict(evalCase, attempts)
   const latencyMs = Date.now() - started
 
   return {
@@ -203,13 +250,15 @@ async function runOneAttempt(
     const { result } = await withInfraRetry(
       () => executeAttempt(evalCase, collaborators, policy),
       maxInfraRetries,
+      undefined,
+      classifyReturnedInfraFailure,
     )
     return {
       attempt_k: attemptK,
       execution_outcome: result.executionOutcome,
       execution_detail: result.executionDetail,
       ...(result.executionArtifact === undefined ? {} : { execution_artifact: result.executionArtifact }),
-      delivery_match: result.deliveryMatch,
+      ...(result.deliveryMatch === undefined ? {} : { delivery_match: result.deliveryMatch }),
       sql_judge: result.sqlJudge,
       generated_sql: result.generatedSql,
       expected_result: result.expectedResult,
@@ -235,7 +284,7 @@ interface AttemptExecution {
   executionOutcome: ExecutionOutcome
   executionDetail: string
   executionArtifact: ExecutionArtifact | undefined
-  deliveryMatch: boolean
+  deliveryMatch: boolean | undefined
   generatedSql: string | null
   expectedResult: unknown
   sqlJudge?: { score: number; rationale: string; dimensions: Record<string, 0 | 1> } | undefined
@@ -296,7 +345,7 @@ async function executeAttempt(evalCase: EvalCase, collaborators: Collaborators, 
   }
 
   // Determine delivery match
-  let deliveryMatch = true
+  let deliveryMatch: boolean | undefined = undefined
   if (evalCase.expected.answer !== null) {
     if (collaborators.judge) {
       const judgeResult = await collaborators.judge.judge(
@@ -379,25 +428,27 @@ function extractSchemaContext(transcript: unknown[] | undefined): string {
  * `case_defect` first (it must be fixed, and rerunning cannot help), then
  * `infra_failure`, then `unjudged` for a case execution never measured.
  */
-function passKVerdict(attempts: AttemptResult[]): RunnerVerdict {
+function passKVerdict(evalCase: EvalCase, attempts: AttemptResult[]): RunnerVerdict {
   if (attempts.some(a => a.execution_outcome === 'case-defect')) return 'case_defect'
 
-  const allInfra = attempts.every(a => a.infra_error !== undefined || a.execution_outcome === 'environment-blocked')
-  if (allInfra) return 'infra_failure'
-
-  const allCorrect = attempts.every(a =>
-    a.infra_error === undefined && a.execution_outcome !== 'fail' && a.delivery_match !== false,
-  )
-  if (allCorrect) {
-    // Nothing was measured and nothing was judged: not a pass.
-    const measured = attempts.some(a => a.execution_outcome === 'pass' || a.delivery_match === true)
-    return measured ? 'correct' : 'unjudged'
+  const requiresExecution = evalCase.expected.result_value !== null && evalCase.expected.match_mode !== null
+  const requiresDelivery = evalCase.expected.answer !== null
+  if (attempts.some(a => a.infra_error !== undefined || (requiresExecution && a.execution_outcome === 'environment-blocked'))) {
+    return 'infra_failure'
   }
 
-  const hasWrong = attempts.some(a => a.execution_outcome === 'fail' || a.delivery_match === false)
-  if (hasWrong) return 'wrong'
+  if (attempts.some(a =>
+    (requiresExecution && (a.execution_outcome === undefined || a.execution_outcome === 'not-measured')) ||
+    (requiresDelivery && a.delivery_match === undefined),
+  )) {
+    return 'unjudged'
+  }
 
-  return 'unjudged'
+  const allCorrect = attempts.every(a =>
+    (!requiresExecution || a.execution_outcome === 'pass') &&
+    (!requiresDelivery || a.delivery_match === true),
+  )
+  return allCorrect ? 'correct' : 'wrong'
 }
 
 /**
@@ -425,7 +476,7 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
     }
   }
 
-  const attributable = total - infraFailure - caseDefect
+  const attributable = correct + wrong + declined
   return {
     total,
     correct,
@@ -436,4 +487,22 @@ function computeSummary(verdicts: CaseVerdict[]): RunSummary {
     case_defect: caseDefect,
     pass_rate: attributable > 0 ? correct / attributable : 0,
   }
+}
+
+function classifyReturnedInfraFailure(result: AttemptExecution): { kind: 'connectivity' | 'timeout' | 'rate_limit' | 'transient'; error: string } | null {
+  if (result.executionArtifact === undefined || result.executionArtifact.kind === 'completed') return null
+  const artifact = result.executionArtifact
+  const failureKind = artifact.failureKind?.toLowerCase() ?? ''
+  const error = artifact.error ?? result.executionDetail
+
+  if (failureKind === 'transport' || failureKind === 'connectivity') return { kind: 'connectivity', error }
+  if (failureKind === 'timeout') return { kind: 'timeout', error }
+  if (failureKind === 'throttling' || failureKind === 'throttled' || failureKind === 'rate_limit') {
+    return { kind: 'rate_limit', error }
+  }
+  if (failureKind === 'retryable' || failureKind === 'transient') return { kind: 'transient', error }
+
+  if (result.executionOutcome !== 'environment-blocked') return null
+  const inferred = classifyInfraFailure(error)
+  return inferred === null ? null : { kind: inferred, error }
 }

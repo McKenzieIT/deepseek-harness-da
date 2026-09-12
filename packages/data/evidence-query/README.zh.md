@@ -4,6 +4,8 @@
 
 统一的 evidence-query 后端层：提供覆盖率、缺口分析、可达性、评估结果与资产健康度，供侧边栏与看板消费。
 
+`FileBackedEvalResultStore` 同时读取旧的无版本 eval JSONL 与 version-2 记录。Version-2 metadata 保留 runner verdict、run 配置、attempt execution evidence 与 case provenance；六种 runner verdict 均显式映射，其中 `unjudged`、`infra_failure` 与 `case_defect` 表示为 `error`，不会被误记为尚未完成的 `pending`。
+
 ## 模型体验
 
 间接方式，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。

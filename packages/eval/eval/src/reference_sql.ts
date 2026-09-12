@@ -38,7 +38,7 @@ const PLACEHOLDER_OFFSET_DAYS: Record<ReferencePlaceholder, number> = {
 }
 
 /** Why a reference SQL template could not be resolved to executable SQL. */
-export type ReferenceSqlRefusal = 'missing-anchor' | 'unknown-placeholder' | 'malformed-anchor'
+export type ReferenceSqlRefusal = 'missing-anchor' | 'unknown-placeholder' | 'malformed-template' | 'malformed-anchor'
 
 /**
  * The outcome of resolving one case's reference SQL. `absent` is not a failure:
@@ -57,8 +57,11 @@ export type ReferenceSqlResolution =
   | { kind: 'absent' }
   | { kind: 'unresolvable'; reason: ReferenceSqlRefusal; detail: string }
 
-/** Matches `{{name}}` placeholders. */
-const PLACEHOLDER_RE = /\{\{(\w+)\}\}/g
+/** Matches complete `{{...}}` placeholder-like segments so malformed names cannot pass through. */
+const PLACEHOLDER_RE = /\{\{([^{}]*)\}\}/g
+
+/** A syntactically valid placeholder name. */
+const PLACEHOLDER_NAME_RE = /^\w+$/
 
 /** An 8-digit `yyyymmdd` partition date. */
 const DS_RE = /^\d{8}$/
@@ -76,11 +79,18 @@ export function resolveReferenceSql(c: EvalCase): ReferenceSqlResolution {
   const unknown: string[] = []
   // `PLACEHOLDER_RE` has one mandatory capture group, so every match carries a name.
   for (const [, name] of template.matchAll(PLACEHOLDER_RE) as Iterable<[string, string]>) {
+    if (!PLACEHOLDER_NAME_RE.test(name)) {
+      return { kind: 'unresolvable', reason: 'malformed-template', detail: `case ${c.case_id} reference SQL contains malformed placeholder ${JSON.stringify(`{{${name}}}`)}` }
+    }
     if (isReferencePlaceholder(name)) {
       if (!used.includes(name)) used.push(name)
     } else if (!unknown.includes(name)) {
       unknown.push(name)
     }
+  }
+  const unmatchedDelimiters = template.replace(PLACEHOLDER_RE, '')
+  if (unmatchedDelimiters.includes('{{') || unmatchedDelimiters.includes('}}')) {
+    return { kind: 'unresolvable', reason: 'malformed-template', detail: `case ${c.case_id} reference SQL contains an unmatched template delimiter` }
   }
   if (unknown.length > 0) {
     return { kind: 'unresolvable', reason: 'unknown-placeholder', detail: `case ${c.case_id} reference SQL uses unknown placeholder(s) ${unknown.join(', ')}; supported: ${REFERENCE_PLACEHOLDERS.join(', ')}` }
@@ -92,11 +102,12 @@ export function resolveReferenceSql(c: EvalCase): ReferenceSqlResolution {
   if (anchorDs === undefined) {
     return { kind: 'unresolvable', reason: 'missing-anchor', detail: `case ${c.case_id} reference SQL uses ${used.join(', ')} but declares no meta.anchor_ds` }
   }
-  if (!DS_RE.test(anchorDs)) {
+  const anchorDate = parseDs(anchorDs)
+  if (anchorDate === null) {
     return { kind: 'unresolvable', reason: 'malformed-anchor', detail: `case ${c.case_id} meta.anchor_ds ${JSON.stringify(anchorDs)} is not yyyymmdd` }
   }
 
-  const pairs = used.map(name => [name, shiftDs(anchorDs, PLACEHOLDER_OFFSET_DAYS[name])] as const)
+  const pairs = used.map(name => [name, shiftDate(anchorDate, PLACEHOLDER_OFFSET_DAYS[name])] as const)
   let sql = template
   for (const [name, ds] of pairs) sql = sql.replaceAll(`{{${name}}}`, ds)
   return { kind: 'resolved', sql, anchorDs, substitutions: Object.fromEntries(pairs) }
@@ -108,14 +119,32 @@ function isReferencePlaceholder(name: string): name is ReferencePlaceholder {
 }
 
 /**
- * Shift a `yyyymmdd` partition date by whole days, in UTC so the host timezone
+ * Parse a real `yyyymmdd` calendar date without allowing JavaScript rollover.
+ * @param ds - the candidate partition date.
+ * @returns the UTC date, or `null` when the components do not round-trip.
+ */
+function parseDs(ds: string): Date | null {
+  if (!DS_RE.test(ds)) return null
+  const year = Number(ds.slice(0, 4))
+  const month = Number(ds.slice(4, 6))
+  const day = Number(ds.slice(6, 8))
+  const date = new Date(0)
+  date.setUTCHours(0, 0, 0, 0)
+  date.setUTCFullYear(year, month - 1, day)
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null
+  return date
+}
+
+/**
+ * Shift a partition date by whole days, in UTC so the host timezone
  * cannot move a partition.
- * @param ds - the `yyyymmdd` date.
+ * @param date - the validated UTC date.
  * @param deltaDays - days to add (negative to go back).
  * @returns the shifted `yyyymmdd` date.
  */
-function shiftDs(ds: string, deltaDays: number): string {
-  const dt = new Date(Date.UTC(Number(ds.slice(0, 4)), Number(ds.slice(4, 6)) - 1, Number(ds.slice(6, 8)) + deltaDays))
+function shiftDate(date: Date, deltaDays: number): string {
+  const dt = new Date(date)
+  dt.setUTCDate(dt.getUTCDate() + deltaDays)
   const month = String(dt.getUTCMonth() + 1).padStart(2, '0')
   const day = String(dt.getUTCDate()).padStart(2, '0')
   return `${dt.getUTCFullYear()}${month}${day}`

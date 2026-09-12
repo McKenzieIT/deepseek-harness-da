@@ -2,10 +2,12 @@
  * Execution grading: normalize one provider `QueryOutcome` into a persistable
  * artifact, then grade that artifact against a case's expectation. The two
  * steps are separate pure functions with the artifact between them, so a stored
- * artifact can be re-graded offline under a different comparator policy without
- * returning to the warehouse (R23 needs exactly that, across dozens of policy
- * variants, and needs both a raw and a normalized digest — which exist only
- * because normalization is its own persisted step).
+ * artifact can be re-graded offline under a different comparator policy when
+ * it retained enough raw rows. A truncated persisted preview is refused for
+ * whole-result comparators rather than treated as the complete query result.
+ * R23 needs that distinction across dozens of policy variants, plus both a raw
+ * and a normalized digest, which exist only because normalization is its own
+ * persisted step.
  *
  * An attempt's execution outcome is a five-member closed union. `pass`/`fail`
  * are statements about the model. `environment-blocked` means the warehouse did
@@ -40,6 +42,7 @@
 import { createHash } from 'node:crypto'
 import { classifyExecutionFailure, ENVIRONMENTAL_FAILURE_CLASSES } from './classify_failure.ts'
 import { checkResultMatch, MATCH_MODES } from './match_modes.ts'
+import type { MatchMode } from './match_modes.ts'
 import type { AssertionResult, FailureClass, QueryOutcomeView } from './types.ts'
 
 /**
@@ -56,7 +59,13 @@ export type ExecutionOutcome = typeof EXECUTION_OUTCOMES[number]
  * recorded verdict states how it was produced and two runs graded under
  * different rules are never averaged together.
  */
-export const COMPARATOR_POLICY_VERSION = 1
+export const COMPARATOR_POLICY_VERSION = 2
+
+/** Full provider rows retained only on the live artifact used for immediate grading. */
+const LIVE_RAW_ROWS = Symbol('dsh.eval.liveRawRows')
+
+/** An artifact that may still carry the non-persisted rows from its execution call. */
+type LiveExecutionArtifact = ExecutionArtifact & { readonly [LIVE_RAW_ROWS]?: readonly unknown[] }
 
 /**
  * How a result row's cells are addressed when comparing against an expectation.
@@ -113,6 +122,8 @@ export interface ExecutionArtifact {
   readonly columns: readonly string[]
   /** Rows addressed per the policy's column semantics, capped at `maxStoredRows`. */
   readonly rows: readonly Record<string, unknown>[]
+  /** Raw provider rows retained up to `maxStoredRows`, for policy-changing offline re-grades. */
+  readonly rawRows?: readonly unknown[]
   /** The provider's own row count, which may exceed the rows it returned. */
   readonly rowCount: number
   /** How many rows this artifact stores. */
@@ -222,14 +233,17 @@ export function normalizeOutcome(outcome: QueryOutcomeView, ctx: NormalizeContex
 
   if (outcome.state === 'completed') {
     const columns = outcome.columns ?? []
-    const allRows = (outcome.rows ?? []).map(row => addressRow(columns, row, policy.columnSemantics))
+    const sourceRows = (outcome.rows ?? []).map(copyRawRow)
+    const allRows = sourceRows.map(row => addressRow(columns, row, policy.columnSemantics))
     const rows = allRows.slice(0, policy.maxStoredRows)
+    const rawRows = sourceRows.slice(0, policy.maxStoredRows)
     const rowCount = outcome.rowCount ?? allRows.length
-    return {
+    const artifact: ExecutionArtifact = {
       ...base,
       kind: 'completed',
       columns,
       rows,
+      rawRows,
       rowCount,
       rowsStored: rows.length,
       providerTruncated: rowCount > allRows.length,
@@ -238,6 +252,8 @@ export function normalizeOutcome(outcome: QueryOutcomeView, ctx: NormalizeContex
       error: null,
       normalizedDigest: digest({ semantics: policy.columnSemantics, rows: allRows }),
     }
+    Object.defineProperty(artifact, LIVE_RAW_ROWS, { value: sourceRows })
+    return artifact
   }
 
   const error = outcome.state === 'pending'
@@ -248,6 +264,7 @@ export function normalizeOutcome(outcome: QueryOutcomeView, ctx: NormalizeContex
     kind: outcome.state,
     columns: [],
     rows: [],
+    rawRows: [],
     rowCount: 0,
     rowsStored: 0,
     providerTruncated: false,
@@ -308,8 +325,52 @@ export function gradeExecution(artifact: ExecutionArtifact, expected: ExecutionE
   // `expectationDefect` already rejected a null `result_value` or `match_mode`,
   // so both are present here.
   const expectedValue = expected.result_value as Record<string, unknown>
-  const result: AssertionResult = checkResultMatch(expectedValue, artifact.rows, expected.match_mode as string)
+  const matchMode = expected.match_mode as MatchMode
+  const rows = rowsForGrading(artifact, matchMode, policy.columnSemantics)
+  const result: AssertionResult = checkResultMatch(expectedValue, rows, matchMode, artifact.rowCount)
   return { outcome: result.status === 'pass' ? 'pass' : 'fail', detail: result.detail, failureClass: null, ...stamp }
+}
+
+/** Match modes that require every returned row rather than only the first row or row count. */
+const COMPLETE_ROW_MATCH_MODES: ReadonlySet<MatchMode> = new Set(['set_equal', 'ordered_subset'])
+
+/**
+ * Recover rows under the requested column semantics without mistaking a stored
+ * preview for the complete query result.
+ * @param artifact - the execution evidence to read.
+ * @param matchMode - the comparator that will consume the rows.
+ * @param semantics - the requested column addressing policy.
+ * @returns rows suitable for the comparator.
+ */
+function rowsForGrading(
+  artifact: ExecutionArtifact,
+  matchMode: MatchMode,
+  semantics: ColumnSemantics,
+): readonly Record<string, unknown>[] {
+  if (matchMode === 'row_count_range') return artifact.rows
+
+  const needsCompleteRows = COMPLETE_ROW_MATCH_MODES.has(matchMode)
+  if (needsCompleteRows && artifact.providerTruncated) {
+    throw new Error(`insufficient execution evidence for ${matchMode}: provider reported ${artifact.rowCount} rows but did not return them all`)
+  }
+
+  const liveRawRows = (artifact as LiveExecutionArtifact)[LIVE_RAW_ROWS]
+  if (liveRawRows !== undefined) {
+    return liveRawRows.map(row => addressRow(artifact.columns, row, semantics))
+  }
+
+  if (needsCompleteRows && artifact.storageTruncated) {
+    throw new Error(`insufficient persisted execution evidence for ${matchMode}: artifact stores ${artifact.rowsStored} of ${artifact.rowCount} rows`)
+  }
+
+  if (semantics === artifact.columnSemantics) return artifact.rows
+  if (artifact.rawRows === undefined) {
+    throw new Error(`cannot re-grade from ${artifact.columnSemantics} to ${semantics}: artifact has no raw row evidence`)
+  }
+  if (artifact.rawRows.length === 0 && artifact.rowCount > 0) {
+    throw new Error(`cannot re-grade from ${artifact.columnSemantics} to ${semantics}: artifact has no retained raw cells`)
+  }
+  return artifact.rawRows.map(row => addressRow(artifact.columns, row, semantics))
 }
 
 /**
@@ -345,6 +406,13 @@ function addressRow(columns: readonly string[], row: unknown, semantics: ColumnS
   }
   if (!Array.isArray(row)) return row as Record<string, unknown>
   return Object.fromEntries(cells.map((cell, i) => [columns[i] ?? `col${i}`, cell]))
+}
+
+/** Copy a provider row before retaining it as grading evidence. */
+function copyRawRow(row: unknown): unknown {
+  if (Array.isArray(row)) return Array.from(row as readonly unknown[])
+  if (row !== null && typeof row === 'object') return { ...row as Record<string, unknown> }
+  return row
 }
 
 /** Digest a value stably: a short sha256 over its JSON, used to compare full results an artifact may not store. */

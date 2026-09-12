@@ -54,7 +54,7 @@ export interface AttemptResult {
   readonly execution_detail?: string
   /** The normalized, re-gradable record of the SQL execution. */
   readonly execution_artifact?: ExecutionArtifact
-  /** Whether the delivery assertion passed. */
+  /** Whether the delivery assertion passed; absent when the case declares no DELIVERY assertion. */
   readonly delivery_match?: boolean
   /** LLM SQL semantic judge verdict (present when sqlJudge was invoked); reported, never folded into the execution outcome. */
   readonly sql_judge?: SqlJudgeVerdict | undefined
@@ -106,8 +106,8 @@ export interface CaseVerdict {
  *  - `pass_k`/`concurrency`: runtime semantics that affect flakiness and ordering.
  *  - `query_expansion`/`with_query`/`skip_health_gate`: feature flags that affect results.
  *
- * Optional on `RunResult` (additive — legacy artifacts and callers without a
- * config are not broken); presence is the self-describing guarantee.
+ * Required on every newly produced `RunResult`. Compatibility readers may
+ * still accept historical artifacts that predate this field.
  */
 export interface RunConfig {
   /** LLM provider route that was actually used for the responder (+ judge). */
@@ -174,19 +174,14 @@ export interface RunResult {
   readonly cases: CaseVerdict[]
   /** Summary statistics. */
   readonly summary: RunSummary
-  /**
-   * The protocol/semantics/concurrency/model under which this run executed.
-   * Optional (additive — legacy artifacts omit it); when present it makes a
-   * contaminated or mis-attributed run detectable from its JSON alone.
-   */
+  /** The resolved run config; absent only on historical artifacts loaded from disk. */
   readonly config?: RunConfig
 }
 
 /**
- * Summary statistics for a run. `wrong` is the model's denominator; the two
- * excluded categories are counted separately because neither is evidence about
- * the model — `infra_failure` means the environment did not answer,
- * `case_defect` means the corpus is broken.
+ * Summary statistics for a run. `correct`, `wrong`, and `declined` are the
+ * attributable denominator. `unjudged`, `infra_failure`, and `case_defect` are
+ * counted separately because none is evidence about model correctness.
  */
 export interface RunSummary {
   readonly total: number
@@ -310,25 +305,25 @@ export interface HealthGateResult {
 export interface BatchRunOptions {
   /** Unique run ID. If not provided, a UUID is generated. */
   readonly run_id?: string
-  /** Number of pass_k attempts per case (default: 3). */
+  /** Number of pass_k attempts per case; when omitted, `config.pass_k` is authoritative. */
   readonly pass_k?: number
   /** Maximum infra retries per case (default: 2). */
   readonly max_infra_retries?: number
   /** Output path for the result JSON file. */
   readonly output_path?: string
-  /** Whether to skip the health gate. */
+  /** Whether to skip the health gate; when omitted, `config.skip_health_gate` is authoritative. */
   readonly skip_health_gate?: boolean
   /** Wall-clock timeout per attempt in ms (default: null = no timeout). */
   readonly timeout_ms?: number | null
-  /** Concurrency limit for parallel case execution (default: 1 = serial). */
+  /** Concurrency limit; when omitted, `config.concurrency` is authoritative. */
   readonly concurrency?: number
   /**
    * Run protocol/semantics/concurrency/model to stamp onto the `RunResult.config`
    * field so the artifact self-describes (GA-EVAL-REBASELINE item 4). The
-   * caller (eval-cli) builds this from its known args; when omitted, the
-   * result's `config` is undefined (legacy/non-self-describing artifact).
+   * caller builds this from its known inputs. New runs may not omit it; only
+   * historical artifacts read by compatibility tooling can lack a config.
    */
-  readonly config?: RunConfig
+  readonly config: RunConfig
   /** Progress callback. */
   readonly on_progress?: (completed: number, total: number, case_id: string) => void
 }

@@ -84,13 +84,20 @@ export function formatTriggerEval(value: TriggerEvalResult): string {
       lines.push(`Results: ${s.correct}/${s.total} correct (${(s.pass_rate * 100).toFixed(1)}% pass rate)`)
       if (s.wrong > 0) lines.push(`  Wrong: ${s.wrong}`)
       if (s.declined > 0) lines.push(`  Declined: ${s.declined}`)
+      if (s.unjudged > 0) lines.push(`  Unjudged: ${s.unjudged}`)
       if (s.infra_failure > 0) lines.push(`  Infra failures: ${s.infra_failure}`)
+      if (s.case_defect > 0) lines.push(`  Case defects: ${s.case_defect}`)
     }
   } else if (value.mode === 'report_last') {
     lines.push(`Last eval run: ${value.runId}`)
     if (value.summary) {
       const s = value.summary
       lines.push(`Results: ${s.correct}/${s.total} correct (${(s.pass_rate * 100).toFixed(1)}% pass rate)`)
+      if (s.wrong > 0) lines.push(`  Wrong: ${s.wrong}`)
+      if (s.declined > 0) lines.push(`  Declined: ${s.declined}`)
+      if (s.unjudged > 0) lines.push(`  Unjudged: ${s.unjudged}`)
+      if (s.infra_failure > 0) lines.push(`  Infra failures: ${s.infra_failure}`)
+      if (s.case_defect > 0) lines.push(`  Case defects: ${s.case_defect}`)
     }
     // data-tools-present-eval-3: surface the configuration guidance message
     // (mirror not_configured) — without it the model gets a bare run id.
@@ -141,6 +148,7 @@ export function projectMeta(v: TriggerEvalResult): { [key: string]: JsonValue } 
       declined: v.summary.declined,
       unjudged: v.summary.unjudged,
       infra_failure: v.summary.infra_failure,
+      case_defect: v.summary.case_defect,
       pass_rate: v.summary.pass_rate,
     }
   } else {
@@ -300,6 +308,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
 
       const passPct = (summary.pass_rate * 100).toFixed(0)
       let title = `${passPct}% pass rate · ${summary.correct}/${summary.total} correct`
+      if (summary.unjudged > 0) title += ` · ${summary.unjudged} unjudged`
+      if (summary.case_defect > 0) title += ` · ${summary.case_defect} case defects`
 
       const delta = meta.delta as DeltaReport | null | undefined
       if (delta) {
