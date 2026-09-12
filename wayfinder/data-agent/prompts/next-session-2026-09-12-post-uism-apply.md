@@ -34,3 +34,26 @@
 - master 上 `git add` 只显式路径；不碰 .worktrees/ + wayfinder/evaluation/；不 push（除指示）；commit 前核 `[ -f .git/index.lock ]`（eval）。
 - **改源码核 gen 文档：跑全量 `check:ci:static` 或至少 architecture/module/cordis/config-catalog --check，不只 gen-doc-graphs**（本 session 教训：5 道针对门绿 ≠ 全量绿，漏了 3 doc-regen stale）。
 - analyze 提案会 stale（跨批 adopt 决定后）+ 交叉核验「字节同 HEAD」自报可能误判 -> apply 后用 tsc/vitest/全量 sweep 复核，勿信自报。
+
+---
+
+## 五、本 session 末尾 push 状态（2026-09-12；supersedes 上面 section 一 的「unpushed」）
+
+- **resync 已 PUSHED**：`upstream/resync-2026-09-08` 远端分支重建于 `4c34ceabb1`（lefthook pre-push 三门 no-prod/typecheck/upstream-sync-record 全绿）。
+- **PR #117 已开**：https://github.com/McKenzieIT/deepseek-harness-da/pull/117（base master，head resync，4 commit；body 含 ui-settings M1-revert 注 + gates + known-reds）。**未 merge**——用户说「push」未说「merge」；master 无分支保护、known-reds 不阻塞（PR #116 先例），可 merge，待用户指示或 CI。
+- **master-sync + push：BLOCKED 不可做**：fetch 后 origin/master=`be417fc1d0` vs local master=`af7c91c142`——origin-only **2794** / local-only 77（fork 近期 upstream sync 2794 commit，local 未同步）+ `git merge-tree` **有冲突**：`wayfinder/evaluation/map.md` + `wayfinder/evaluation/tickets/README.md`（**evaluation effort 的文件**，铁律「不碰 wayfinder/evaluation/」——非本 map 决策）。故 master-sync 须 evaluation effort 先 reconcile 其文件、或协调 sync；本 session 不擅自解（会动 evaluation 的 tracker）。push master 亦 non-FF（origin ahead 2794）→ 须先 master-sync。注：交接 prompt 的「master-sync trivial clean」**已 stale**（evaluation 推进了 wayfinder/evaluation/）。
+
+## 六、workflow 提速（安全情况下尽可能用）
+
+剩余 10 张 open 票里，**analysis/sweep 型可 workflow 提速**（disjoint-batch agent 编辑/分析，main session gate+commit；apply 后跑全量 `check:ci:static`，勿信交叉核验自报 + analyze 提案会 stale）：
+
+- **UM-QODER-SUBAGENT-RETIRE**（scopeId re-grilling）：workflow fan-out 枚举 3 writer + 6 live reader（`tool-retrieve:327` / `tool-search-data-sources:727/731/750/751/755`）+ 评估 per-tenant linker 隔离（注释指 tenant-leak #19）→ 决策 retire vs keep vs 拆。**analysis workflow**。
+- **UM-C-GATES-UPSTREAM-NEW**（C 类 4 门裁决）：one agent per gate（i18n 98 / deps 68 / config-catalog / doc-standard 2）分析 red set + 提 fix。**analysis workflow**。
+- **UM-MERGE-INTEGRITY**（近 done，knip/fake-api cleanup）：disjoint-batch sweep（镜像 UM-INVARIANT-COMPANION-CLEANUP 的 apply 范式）。**apply workflow**。
+- **UM11**（worktree/branch 后清）：one agent per worktree/branch 评估删除安全（⚠ 5 个 refactor/p2-* 不可按 ancestry 判删，须内容审）。**analysis workflow**。
+- **UM12**（11 门 re-baseline + cron follow-up）：one agent per gate re-baseline。**analysis workflow**。
+- **UM-LINT-B**（unmatched programs）：analysis fan-out。**analysis workflow**。
+- **UM-ADAPT**（dsh-rda-admin land/rewrite）：land 是 git op（非 workflow）；rewrite 是 doc edit（非 workflow）。**需用户拍板**（倾向 land），非 workflow 提速点。
+- **tsconfig-paths fix**（去 stale `dsh-*/invariant` aliases）：small hand-edit（非 workflow；须验 `gen-tsconfig-paths` 输出 JSONC 有效性，用 tsc parser 非 strict JSON.parse）。
+
+**workflow 铁律**（本 session 沉淀，复用 `um-ui-settings-models-apply.wf.js` + `um-invariant-companion-sweep.wf.js` 范式）：mode 硬编码 inline（`args` 不经 scriptPath/resumeFromRunId 传播）；MCP runner 会掉线（探活 `echo PROBE_ALIVE; node -v` 先，清半成品 `git checkout --` + `rm` + fresh run）；agent 只编辑/分析 disjoint 文件、永不 git 写/跑 gate；main session 串行 gate+commit；analyze 提案会 stale（跨批 adopt 决定后，如 welcome-notice）+ 交叉核验「字节同 HEAD」自报可能误判（welcome-notice 被错跳）→ apply 后 tsc/vitest/**全量 `check:ci:static`** 复核，勿信自报。
