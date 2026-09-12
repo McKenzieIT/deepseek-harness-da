@@ -176,3 +176,19 @@ durable 方法须含一道**纯 git plumbing 的 merge 完整性 gate**,与「ga
 
 1. **Decision 5「seam-6 stale」的票面文字已过期，可关那行** —— 本票 §Decision 5 记 seam-6 为 stale/pending，但 §5a（`f8c0e3abca`）早已修掉：`scripts/gen-architecture-graph.ts:90-92` 现读 `mode: 'seam'` + `implementations: ['api-workspace-files']`（`packages/api/workspace-files` 已随 UM14 re-sync 回归）。这是**票面未更新**而非第二个缺陷（read-only 复核确认）。
 2. **cadence 触发器已响：上游又前进了** —— push 时 `verify-upstream-sync-record` 报 `upstream tracking ref points at c291e7961a51, but record.current.upstreamSha is c389f96bf3a9 — ref may be stale or record may be behind`。按本票收口的 cadence 决策（**每周 + 批量 session + threshold「150 commits / 14 天 / seam>0 任一硬触发」**），下一步是**量一下 `c389f96bf3a9..c291e7961a51` 的 commit 数与 seam 触及数**，判是否达阈值、启下一轮 re-sync（若达阈值，这就是 UM13/UM14 之后的第三轮）。注意本票 §1 的 MODES 重构 + §3 generator-inputs manifest + §4 三道完整性门都已就位，第三轮应当能直接用上，这也是首次真实检验 durable method 的机会。
+
+### [2026-09-13] UM-C-GATES synthesis 消费 §2 meta-gate — 5 决策就位待接入
+
+[UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 的 Cluster D grilling 完成，5 门决策（含 `verify-config-catalog` 新入账）通过 §2 meta-gate 消费：
+
+| 门 | 决策 | §2 manifest 表现 |
+|---|---|---|
+| `verify-config-catalog` | FIX + wire CI | GREEN post-apply，不入 exemption |
+| `docs/architecture-graph.md` zh emission | FIX + wire CI | GREEN post-apply |
+| `documentation standard tests` (2 fails) | WAIVE (fork 特化包 README kinds) | `upstream-sync.json` waiver 引用 → §2 识别不入 exemption |
+| `verify-package-dependencies` (75, 87% 同类 pattern) | WAIVE (fork-plugin peer+dev pattern) | `upstream-sync.json` pattern waiver → §2 识别不入 exemption |
+| `verify-client-ui-i18n` (83) | KNOWN-RED permanent | §2 manifest permanent-known-red 列表登记，rationale 内联 |
+
+**§2 gate-coverage 已实现（`2eb5b4a850`）足够承载此 5 决策**——不需要重建 contract 草案；orphan-gate 结构性防线已生效。C-class 4 门 2026-09-07 → 2026-09-11 orphan 4 天的模式不会重演。
+
+**§2 后续 CI wiring 首片**：UM-C-GATES 用户批 hybrid 后，触发下一 apply session：（a）FIX 2 门代码工作 → （b）§2 manifest 更新（3 门 WAIVE/KNOWN-RED 登记）→（c）`gen-config-catalog`/`gen-architecture-graph` 的 CI wiring 若已在 `ciSharedStaticGates` 则无变；若未在则 by-decision-add。

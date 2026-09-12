@@ -88,3 +88,16 @@ packages/typert/generator/tests/fixtures/remote-model/typert-protocol.d.ts
 - `packages/eval/eval-cli` 是 **eval 机器本身**的一部分，而 master 树上 eval **永续运行**。改它的 tsconfig / 源码要与 eval 协调，不能想改就改。诊断（read-only 复现）在 resync 树完全安全。
 - 本票**不是** UM-LINT-A 的遗留：UM-LINT-A 的 81 条冲突级联已由 `disableSourceOfProjectReferenceRedirect` 根治，与本票的 program 认领问题机制不同、互不影响。
 - 归属存疑：本票是 lint 门的覆盖率问题，严格说更像 repo-infra 而非 upstream-merge。放在本 map 是因为 UM-LINT-A 与 UM12 的门都在这里。若要迁到 [`wayfinder/repo-infra/map.md`](../../../repo-infra/map.md) 也合理（那边的 T6/T10/T11 已是同类门/CI 票），但 repo-infra 的 Destination 写的是 worktree-build + theme token，未覆盖 lint program 覆盖率。
+
+### [2026-09-13] Alignment with UM-C-GATES synthesis (Cluster D)
+
+[UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 的 Cluster D grilling 建立了 **slice-first-decide 框架**（先按违规类型分桶数据，再判 fix/waive/known-red），并落 `verify-package-dependencies` 的 87% 同类 pattern → WAIVE (架构 pattern 豁免) 决策为典型样本。本票的 **56 unmatched programs** 是同类问题（upstream 新规则，fork tsconfig 归属 glob 未覆盖），适用同一框架：
+
+**下一步 slice 分析（本票独立 session）**：
+- Bucket (i): fork 包缺 tsconfig owner → **FIX** by adding tsconfig（估算：eval-cli 的 6 个 + typert fixture 的 1 个属 A 类；upstream-side glob-owned 的属这一 bucket 可修）
+- Bucket (ii): fork 包故意在 tsconfig 图之外（如 test-support scaffolds / benchmarks / snapshots）→ **WAIVE** with per-glob rationale
+- Bucket (iii): B 类 49 个（默认规则 only，漏检面小）→ 单独裁决保留 vs 展开 type-aware 覆盖
+
+**§2 gate-coverage meta-gate**（[UM15](UM15-durable-upstream-sync-method.md) `2eb5b4a850` 已实现）承载：slice 结果落定后，本票的 3 buckets 各自 → §2 manifest（FIX-tracked / WAIVE / KNOWN-RED）。
+
+**Durable 防线**（本票原提议）：加一道 gate 断言「`OXC_LOG=debug` 报的 unmatched 列表里，不得出现落在严格 type-aware override 内的文件」——这道防线在 slice 落定后作为 §2 manifest 之外的**回归防止层**，防止 A 类无声无息重新长出来。
