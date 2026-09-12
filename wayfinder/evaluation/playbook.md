@@ -91,9 +91,9 @@
 ## 4. 方向顺序(推荐)
 
 ### 顺序原则
-1. 先做 **linchpin 链**(方向 1,后端·本地直接做):R1、G1 已 resolved。**下一步 = 本地实现 T11→T1**（同批，T11 先全部验收再 T1）。硬前置只有 T11；~~R10/G10~~ 已不再阻塞 T1——D2 定下 T1 不动包名与 exports（包重组另开 T12，blocked by T1+G10），新代码落 `dsh-eval`，G10 之后随 T12 搬。GA-EVAL-CASESET-EVENT-ANCHOR blocks 的是 event 数字的**解读**、不是实现：本批以复现 39-case MATCH/STALE 计数为验收。之后 T1→R23→GA-EVAL-EXPAND。
+1. 先做 **linchpin 链**(方向 1,后端·本地直接做):R1、G1 已 resolved。**下一步 = 本地实现 T11→T1**（同批，T11 先全部验收再 T1）。硬前置只有 T11；~~R10/G10~~ 已不再阻塞 T1——D2 定下 T1 不动包名与 exports，新代码暂落 `dsh-eval`；G10 后按 T13→T9→T14→T15→T12 的 foundation-first stack 迁移并最终删除旧包。GA-EVAL-CASESET-EVENT-ANCHOR blocks 的是 event 数字的**解读**、不是实现：本批以复现 39-case MATCH/STALE 计数为验收。之后 T1→R23→GA-EVAL-EXPAND。
 2. 并行做**独立于 T1**的方向(本环境 Phase 1 部分):方向 4(R4→G4)、方向 6(R6→G6)、方向 8(R8→R20→G8)。
-3. T1 完成后,做**依赖 T1** 的方向:3(R14→G3→T3)、5(R17→G5)、7(R7→G7→R19)、9(G9→T8)、10(G10→T9→R21)。
+3. T1 完成后,做**依赖 T1** 的方向:3(R14→G3→T3)、5(R17→G5)、7(R7→G7→R19)、9(G9→T8)，以及方向 10 的 T9/R21。方向 10 的 G10 不依赖 T1：R10/R10b/R10c 前置均 resolved，已 research-ready，可在 T1 之前并行完成 grilling；只有 T9/R21 的数字与实施等待对应前置。
 4. 最后做 scope 扩展:方向 6 的 prototype/benchmark(P1→T6→R18)。
 5. 方向 11(R11→R22→G11→T10)与方向 4 配对收尾(都攻 power/active sampling)。
 
@@ -137,7 +137,7 @@ R 认读(Phase 1)→ G grilling(Phase 1)→ T/R-experiment 的 SPEC(Phase 2)→ 
 | 7 | Step-level PRM | R7, G7 | R19 |
 | 8 | Pairwise/rubric judge | R8, G8(+R20) | T7 |
 | 9 | Error taxonomy | R9, G9 | T8 |
-| 10 | Harness B/H/E+Goodhart | R10, G10 | T9, R21 |
+| 10 | Harness B/H/E+Context+Goodhart | R10, R10b, R10c, G10 | T9, R21 |
 | 11 | Robustness+active sampling | R11, G11 | T10, R22 |
 
 (Phase 1 = 本环境直接做;Phase 2-4 = SPEC→rubric 包→另一环境。详见 map.md §3。)

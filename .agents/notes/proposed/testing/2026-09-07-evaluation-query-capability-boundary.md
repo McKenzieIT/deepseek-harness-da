@@ -20,7 +20,7 @@ Evaluation depends on the query Service Definition rather than `MaxComputeQueryE
 
 G1 decides the narrow adapter interface, `QueryOutcome` mapping, and the separation among execution verdicts, judge diagnosis, and infrastructure failures. G1b decides reference authorship and review, snapshot identity, artifact provenance, benchmark versioning, and treatment of legacy and delivery-only cases. R23 measures comparator profiles and exceptions before any default becomes authoritative. This proposal constrains ownership only.
 
-The existing [eval adapter consolidation proposal](../simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md) addresses duplicated adapter implementations. This proposal neither supersedes that simplification nor chooses the adapter's package before G1 resolves its interface and ownership.
+The existing [eval adapter consolidation proposal](../../rejected/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md) addresses duplicated adapter implementations. This proposal neither supersedes that simplification nor chooses the adapter's package before G1 resolves its interface and ownership.
 
 ## Alternatives considered
 

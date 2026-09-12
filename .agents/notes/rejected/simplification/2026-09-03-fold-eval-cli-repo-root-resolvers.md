@@ -1,6 +1,6 @@
 # Agent Note: Fold the four drifted repo-root resolvers in eval-cli
 
-Status: proposed
+Status: rejected — G10 makes the CLI a thin external Host with explicit profile and Benchmark locator, so old repo-root discovery is deleted rather than consolidated
 
 ## Problem
 

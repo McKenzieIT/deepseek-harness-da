@@ -55,7 +55,7 @@ evaluation **没有**自建 SQL 执行引擎，执行能力一律来自 dsh-data
 
 ## 验收面
 
-- 单一 executor 端口；`QueryResult` 与两份 adapter fork 退役（退役已由 [promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md) 独立提出）。
+- 单一 executor 端口；`QueryResult` 与两份 adapter fork 退役（退役已由 [Data-domain Evaluation Core](../../../.agents/notes/proposed/architecture/2026-09-11-data-domain-evaluation-core.md) 独立提出）。
 - 落盘中五种结局可分辨；**`environment-blocked` 与 `case-defect` 不进 `wrong` 分母**。
 - 未知 `match_mode` 归 `case-defect`（现 `packages/eval/eval/src/match_modes.ts:62` 返回 `{status:'fail'}`，即拼错模式名被记成模型答错）。
 - 比较失败原因不再压成 boolean —— 现 `runner.ts:368-369` 丢掉核心比较器返回的 `AssertionResult.detail`。
@@ -96,7 +96,7 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 ## 不在本票范围
 
 - case migration 与 expected 值重新派生（[G1b](G1b-ground-truth-lifecycle.md)）。
-- 包边界重切（[G10](G10-harness-bhe-split.md) → T9-bhe-split-impl；本批不动包边界，重组见 [T12](T12-eval-package-consolidation.md)）。
+- 目标 Evaluation foundations 与包边界重切（[G10](G10-harness-bhe-split.md) → [T9](T9-evaluation-foundations.md)；本批不动包边界，最终 cutover 见 [T12](T12-eval-package-consolidation.md)）。
 - comparator 默认值与容差（[R23](R23-comparator-policy-mutation-baseline.md) 提供 mutation 证据后再定）。
 - loader 保住 provenance 与模板解析（[T11](T11-loader-provenance-strip.md)，同批但独立验收）。
 - judge 侧的任何改动（方向 2/3/8）—— 本票只切断 judge 对 execution 维度的写入，不动 judge 自身。

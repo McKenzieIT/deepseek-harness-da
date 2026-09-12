@@ -1,28 +1,50 @@
-# T12 — eval 包级重组（eval-runner 并回 dsh-eval）
+# T12 — Final Evaluation package graph 与 legacy cutover
 
-**Type**: task（impl，AFK；走 SPEC→instruction+rubric→另一环境，见 [playbook](../playbook.md)）  ·  **Direction**: 1
+**Type**: task（impl，AFK）  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Status**: open（题面需在 G10 解后重定）
-**Blocked by**: T1-exec-grader-impl（先完成 [G1](G1-exec-grader-seam.md) D2 的去分叉）+ G10-harness-bhe-split（它会重新切同一批包）
-**Blocks**: 无
-**证据**: [R24 — eval 包级合并可行性](../research/eval-package-consolidation.md)；两篇先行 Agent Note：[delete-unused-eval-core-runtime-stack](../../../.agents/notes/proposed/simplification/2026-09-03-delete-unused-eval-core-runtime-stack.md)（core 死编排该删）、[promote-eval-cli-adapters](../../../.agents/notes/proposed/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)（两份 adapter fork 该退役）——二者描述的删除已归 [G1](G1-exec-grader-seam.md) D2 的 T1 验收项，本票只管**包边界**。
-
----
+**Blocked by**: [T1 — Execution grader implementation](T1-exec-grader-impl.md)、[T15 — Product Evaluation Controller 与 external CLI](T15-evaluation-controller-cli.md)
+**Blocks**: [R25 — New Evaluation stack baseline re-anchor](R25-evaluation-rebaseline.md)
+**Mode**: AFK（后端方向，本地直接做；按 [playbook](../playbook.md) §1.1）
+**Branch**: `task/T12-evaluation-package-cutover`
+**Supersedes**: 本票原“eval-runner 并回 dsh-eval”题面；G10 D20–D25 已否定单一 `dsh-eval` monolith 与首版 Cordis Service Host
+**Evidence**: [R24 — eval 包级合并可行性](../research/eval-package-consolidation.md)、[DSH/Cordis 集成约束](../research/dsh-evaluation-integration-constraints.md)、[Benchmark Pack 拓扑](../research/benchmark-pack-topology-options.md)
 
 ## Question
 
-在 T1 完成"一能力一实现"的去分叉、且 G10 定下 benchmark / harness / environment 的切分之后，`packages/eval/` 的**包边界**是否应重组——具体是把 `dsh-eval-runner` 并回 `dsh-eval`、让 CLI 与 Cordis service 成为共享同一 runtime 的两个薄 host。
+在 [T15](T15-evaluation-controller-cli.md) 已证明新 Product Evaluation path 后，如何把仓库切到最终 capability-oriented package graph，迁移所有外部 consumers，并删除 current `dsh-eval`/`dsh-eval-runner`/`dsh-eval-runner-service`/`dsh-eval-cli` 的旧 runtime、exports、bundle rows、case discovery 和 eval-only product hooks，使 master 只保留一条正式 Evaluation 路径？
 
-**本票开出时的已知结论**（R24）：合并**有条件可行**，无循环依赖，且与 benchmark-agnostic 目标一致而非冲突（`eval-runner` 的 `runBatch` 已只接受通用 `Collaborators`）。
+## Target package roles
 
-**为何 blocked 而非现在做**：G10 会把 case set 移出 runner、使其与具体 benchmark 解耦，这会重新划定同一批包的边界。先合并再被 G10 重切等于 churn 两遍，且两票可能互相推翻。**T12 的题面必须在 G10 解后重定，届时"是否还需要合并"本身可能已改变答案。**
+- Evaluation Protocol、Controller、Grading Runtime、Environment Definition。
+- BenchmarkRepository Definition/local Provider。
+- EvaluationStore Definition/local Provider。
+- ArtifactStore Definition/local Provider。
+- Data-analysis extension 与 external CLI Host。
+- Production Context Projection packages live with data-agent capabilities, not under an eval-private implementation.
 
-## 若执行，必须同步更新的面（R24 已定位）
+Final names may differ only when the same ownership and dependency directions remain mechanically enforced.
 
-- 仓外消费者：`packages/data/tool-trigger-eval`（`src/index.ts:17` 类型导入 + `tests/trigger-eval.spec.ts:3` + `package.json`）、`packages/goal/goal-eval-policy`（`package.json`；运行时 `ctx.get('evalRunner')` duck-typing）、`packages/data/patrol-mode`（依赖 `dsh-eval-runner-service`）、`python/sdk-runtime/package.json:149`、`scripts/live-verify-w1-w5.ts:19-21`。
-- 工程面：各包 `package.json` 的 `exports`、各 `tsconfig.json` 的 project references、`tsconfig.base.json:301` 的路径映射、`knip.json:395-418`、`tsdown.config.ts:19`。
-- 覆盖率门：当前"因无人调用而无测试"的代码并入在用包后会进入 per-file 100% 统计范围。
+## Required consumer migration
 
-## 成功标准（待 G10 后重定）
+- `packages/data/tool-trigger-eval`、`packages/goal/goal-eval-policy`、`packages/goal/goal-eval-context`、`packages/data/patrol-mode`。
+- `python/sdk-runtime`、TypeScript/Python SDK projections where the new public protocol requires them。
+- `scripts/live-verify-w1-w5.ts` and any examples/snapshots importing old packages or paths。
+- `tsconfig.base.json` paths、project references、`knip.json`、`tsdown.config.ts`、workspace/package constraints、bundle manifests and generated catalogs。
 
-包数减少必须换来可陈述的收益（少一层 re-export、少一处 exports 面、host 共享同一 runtime），而非仅仅目录变少；仓外 5 处消费者全部可编译且测试通过；`pnpm run hygiene` 与 `test:coverage` 全绿。
+## Success criteria
+
+- Old duplicate runners、persistence、health gates、CLI/service adapter forks、K11 caseDir/glob/defaults and direct engine responder paths are deleted, not retained behind compatibility shims.
+- Current `eval-runner-service` and eval control rows are removed from the default data-agent bundle; the first release has no always-mounted `ctx.evalRunner` or model-facing benchmark trigger.
+- Every surviving consumer imports the owning Definition/Protocol package and uses the unique Controller/CLI path; consumer-owned duck-typed service declarations disappear.
+- Normal data-agent product tests prove prompts、tools、phase behavior、Provider calls and session output are unchanged when Evaluation is absent.
+- Built package artifacts contain the intended runtime code and public assets only; private grading material is unreachable from the Harness graph.
+- An executed static gate rejects a deliberate Harness import/re-export/deep-import of hidden tests、reference、solution、oracle artifacts or private scorer internals.
+- Final package artifacts preserve Benchmark/Adapter/Harness provenance and content digests; old import paths are deleted rather than retained as compatibility shims.
+- Source/artifact-plane checks、focused package tests、required snapshots、typecheck/build/hygiene and documentation gates pass.
+- The final tree contains no old package exports, compatibility re-exports, obsolete config rows or undocumented temporary migration path.
+
+## Out of scope
+
+- Establishing the first new baseline ([R25](R25-evaluation-rebaseline.md)).
+- Remote Benchmark/Artifact repositories or a permanent Evaluation Service Host.
+- Dynamic/fresh lifecycle policy ([G15](G15-dynamic-evaluation-lifecycle.md)).

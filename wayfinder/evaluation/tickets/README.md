@@ -3,7 +3,7 @@
 > 按 direction 组织。每 ticket 一个文件(多 session 并行 claim 不冲突)，状态与 blocking 以各票文件为准。已 resolved 的决策见 `../map.md` 的 Decisions so far;研究笔记在 `../research/`。
 > **命名**:`<type><n>-<slug>.md`,type ∈ {R research,G grilling,T task,P prototype}。本 effort 命名空间,**独立于 data-agent 的 R/G/T**(同号不同 dir,路径区分)。
 > **执行流程**（按领域分流）: **后端方向（1/9/10-拆分）的 impl 本地直接做**；**只有 ML-eval 方向的跟-eval 实验票才走 SPEC→rubric→另环境**。G/R认读/P 本环境直接做。见 [`../playbook.md`](../playbook.md) §1.1。
-> **领域职责**: evaluation 票只设计/实现 ground truth、normalization、comparator policy、评分和 evidence；SQL execution 通过 adapter 复用 dsh-data-agent 的 `@deepseek-ai/dsh-query` / `ctx.query.execute`，不另建 provider 或 warehouse lifecycle。
+> **领域职责**: evaluation effort 设计/实现 Benchmark、identity、evidence、grading、measurement 与 evaluation lifecycle；业务执行继续复用 data-agent capabilities，不另建 query/fs/workflow Provider。跨到正常产品路径的 [Context Projection](T13-context-projection-service.md) 仍是 data-agent capability，Evaluation 只消费和观察。
 > **历史 eval 票**(`P11*`/`R3`/`G2`/`GA-EVAL-*`/`GA-EXP*`/`GA-GRILL*`)在 `../../data-agent/tickets/`(phase-4 + phase-misc),**不在本目录**——本 effort 仅放 2026-09-06 起的新方向票。
 
 ## 取票流程(多 session 并行)
@@ -16,18 +16,18 @@
 ## 方向与票链(见 `../map.md` §Frontier directions)
 | # | 方向 | 认读 R | grilling G | impl T/P | experiment R |
 |---|---|---|---|---|---|
-| 1 | 执行级评分+非循环 GT | R1、**R24** | G1/G1b | T1、**T11**、**T12** | R23/R12 |
+| 1 | 执行级评分+非循环 GT | R1、**R24** | G1/G1b | T1、**T11** | R23/R12 |
 | 2 | Judge blind-rewrite | R2 | G2 | T2 | R13 |
-| 3 | Judge 校准+gated | R3 | G3 | T3 | R14/R15 |
-| 4 | Power-aware+显著性 | R4 | G4 | T4/T4b | R16 |
-| 5 | 污染+动态 pipeline | R5 | G5 | T5/T5b | R17 |
-| 6 | 轨迹+多轮基准 | R6 | G6 | P1/T6 | R18 |
+| 3 | Judge 校准+gated | [R3](R3-judge-calibration-papers.md) | G3 | T3 | R14/R15 |
+| 4 | Power-aware+显著性 | [R4](R4-significance-papers.md) | G4 | T4/T4b | R16 |
+| 5 | 污染+动态 pipeline | [R5](R5-contamination-papers.md) | [G5](G5-dynamic-case-pipeline.md) | T5/T5b | [R17](R17-contamination-audit.md) |
+| 6 | 轨迹+多轮基准 | [R6](R6-trajectory-papers.md) | G6 | P1/T6 | R18 |
 | 7 | Step-level PRM | R7 | G7 | — | R19 |
 | 8 | Judge 读出/量表/顺序 | **R8**(resolved)、**R8b**、**R8c** | **G8** | T7 | **R20** |
-| 9 | Error taxonomy | R9 | G9 | T8 | — |
-| 10 | Harness B/H/E+Goodhart | R10 | G10 | T9 | R21 |
-| 11 | Robustness+active sampling | R11 | G11 | T10 | R22 |
+| 9 | Error taxonomy | [R9](R9-error-taxonomy-papers.md) | [G9](G9-failure-classifier.md) | [T8](T8-failure-classifier-impl.md) | — |
+| 10 | Data-domain Evaluation Core + Context + Goodhart | R10/[R10b](R10b-harness-measurement-validity.md)/[R10c](R10c-context-layer-evaluation.md)（均 resolved） | [G10](G10-harness-bhe-split.md)（resolved）→ [G13](G13-context-evaluation-protocol.md)/[G14](G14-adaptive-context-holdout-policy.md)/[G15](G15-dynamic-evaluation-lifecycle.md) | [T13](T13-context-projection-service.md)→[T9](T9-evaluation-foundations.md)→[T14](T14-data-analysis-extension-pack-migration.md)→[T15](T15-evaluation-controller-cli.md)→[T12](T12-eval-package-consolidation.md) | [R25](R25-evaluation-rebaseline.md)→[R26](R26-context-counterfactual-matrix.md)/[R27](R27-context-perturbation-leakage-audit.md)/[R21](R21-goodhart-audit.md) |
+| 11 | Robustness+active sampling | R11 | G11 | T10 | [R22](R22-consistency-at-k.md) |
 
-**已建票文件**（其余仅在 map 点名,问题尚未 sharp,不预先切割 fog）:[R1](R1-exec-grader-papers.md)（resolved v3）、[**R8**](R8-pairwise-judge-papers.md)（**resolved**）、[**R8b**](R8b-judge-readout-papers.md)、[**R8c**](R8c-reference-anchor-papers.md)、[R10](R10-harness-goodhart-papers.md)、[**R20**](R20-judge-readout-probes.md)（原 `R20-radar-redundancy`）、[R23](R23-comparator-policy-mutation-baseline.md)、[R24](R24-eval-package-consolidation.md)（resolved）、[G1](G1-exec-grader-seam.md)（resolved）、[G1b](G1b-ground-truth-lifecycle.md)、[**G8**](G8-judge-readout-scale.md)（原 `G8-pairwise-judge`）、[G10](G10-harness-bhe-split.md)、[T1](T1-exec-grader-impl.md)、[T11](T11-loader-provenance-strip.md)、[T12](T12-eval-package-consolidation.md)。
+**已建票文件**（其余仅在 map 点名，问题尚未 sharp 时不预先切割 fog）：R1、R3、R4、R5、R6、R8、R8b、R8c、R9、R10、R10b、R10c、R17、R20、R21、R22、R23、R24、R25、R26、R27、G1、G1b、G5、G8、G9、G10、G13、G14、G15、T1、T8、T9、T11、T12、T13、T14、T15。
 
 (问题已 sharp 时可在 charting 阶段创建票文件;claim 只改变占用状态。本 README 是 index,map.md 是权威状态。)
