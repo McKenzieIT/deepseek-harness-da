@@ -43,3 +43,16 @@
 
 analysis/sweep 型可 workflow 或并行 subagent 提速：**UM-QODER**（scopeId 3 writer/6 reader 枚举 + per-tenant linker 隔离评估）· **UM-C-GATES**（one agent per gate）· **UM-MERGE-INTEGRITY**（disjoint-batch apply sweep）· **UM11**（one agent per worktree/branch，⚠ p2-* 须内容审）· **UM12**（one agent per gate re-baseline）· **UM-LINT-B**。
 **范式**（本 session 用 4 个并行 read-only Explore agent 收 UM-ADAPT 的 4 个 shift，27-40 tool call/agent、无瞬态故障）：mode 硬编码 inline（`args` 不经 scriptPath/resumeFromRunId 传播）；agent 只**读/分析** disjoint 文件、永不 git 写、永不跑门（门要 4-7 分钟）；main session 串行 gate+commit；**明确要求「负面结论是合法且宝贵的发现」**——本 session 4 个 agent 全是清白负面，正是这条指令换来的可信度（前有 session 把 `gen-architecture-graph` 存在于 upstream 当前提结果被证伪）；apply 后跑全量 sweep 复核，勿信 agent 自报。
+
+---
+
+## 六、二次收口增量（2026-09-12 晚；**supersedes 上面 §一 的票账与 §三 的第 1 项**）
+
+- **票账订正**：33 = **9 open** + **17 resolved** + 6 archived + 1 folded。**UM-UI-SETTINGS-MODELS-RE-PORT 已 resolved**（§三 第 1 项已做掉，勿重做）——两项「剩余」均消：slot-catalog 跨包判 MOOT（generated artifact）+ PR 已 merge。
+- **frontier（open + unblocked + unclaimed）= 7 张，可立即取**：UM12（blocker UM10 已 resolved）· UM-C-GATES-UPSTREAM-NEW（证据备齐待拍板）· UM-LINT-B（证据备齐待决策）· UM-MERGE-INTEGRITY（近 done，3 件小事）· UM15（cadence 触发器已响）· UM4（blocker 2026-09-10 已解除）· **UM-QODER（本轮新解锁**——票头 `Blocked by: UM11` 的理由「PR merge 后再做」已随 #117 满足）。**blocked = 2 张**：UM6（仅剩 UM4 前置）· UM11（UM12 + UM-MERGE-INTEGRITY，且其 master-sync 部分被 evaluation 分叉外部阻塞）。
+- **UM12 的「CI 真实 red set」已可关**，并**新增一条结构性发现**：**CI red set ⊊ 本地 red set**——本地 `check:ci:static` 11 红里，有 **9 个在 GitHub workflow 上没有对应 job**（A 类 4 + type-equivalence + client-ui-i18n + config-catalog + subsystem-pages + doc-standard + tsconfig-paths）。**只看 CI 会系统性低估 9 个红；CI 绿 ≠ 门绿。** 是否接上 CI = UM12 / UM15 §2 gate-coverage 的裁决点。
+- **master 现在有两个独立的不可推原因（都不是我们的票造成的，都源自 evaluation effort 的提交）**：
+  1. **non-FF 分叉**：`origin/master` `c174c9a784` 不是 local master 的祖先（origin-only **2802** / local-only **81**）；`merge-tree` 冲突恰好 2 文件（`wayfinder/evaluation/map.md` + `evaluation/tickets/README.md`）。**两侧都有对方没有的真内容**（origin 独有 README 矩阵的 T12 + 票链行；local 独有 R10/G10 行 + 重写的「领域职责」段），且**已排除「只是标点全宽/半宽」**（归一化后仍差）→ 需 evaluation 域知识的 cross-effort reconcile，盲选一侧会静默删内容。
+  2. **lefthook pre-push 门 `no production src on master` 拒推**：`scripts/verify-no-production-src-on-master.ts` 报唯一违规提交 = **`2877a59cfd wayfinder(evaluation): resolve G10 data-domain core`**，因它碰了 `scripts/translation-pairing.manifest.json`（`PROD_SRC_PATTERN` 的 `scripts/` 分支）。按仓库自己的规则（CLAUDE.md / `docs/da-pr-workflow.md`）该提交须移到 feat/ 分支走 PR。**注意该门 key 在「当前 checkout 的分支名」**（`if (branch !== 'master') process.exit(0)`），所以在 master worktree 里推**任何** ref 都会被拦；从别的 worktree 推非 master 的 ref 则合法跳过。**另记一条张力**：`scripts/` 全树受保护，而 `scripts/translation-pairing.manifest.json` 恰恰是「纯 wayfinder 文档工作」新增文档对时必须更新的文件 → 「wayfinder 文档可直推 master」与「scripts/ 受保护」在此互相打架，值得单独裁决（归 parallel-dev-cleanup 的 R4-ci-red-gate-policy 或 UM12）。
+- **已推的备份**：`backup/master-tracker-2026-09-12` = master 全线（tip `928199659a`，81 commit），从 `dsh-resync` worktree 推（HEAD≠master 故门合法跳过；**并未推 master、未动任何 PR**）。work 已不只在本机。**注意它只是备份分支，不是 PR**——真要落 `origin/master` 仍须先解上面两条。
+- **不要试图 cherry-pick 本轮 tracker 提交到 `origin/master`**：已实测 `origin/master` 的 `wayfinder/data-agent/map.md` 是**过时快照**（缺 [2026-09-12] PR #116 与 UM-ADAPT 两条 bullet），把新 bullet 摘过去会得到一份缺中间内容的错 map。

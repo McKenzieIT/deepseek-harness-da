@@ -82,3 +82,9 @@ type-equiv 门 3 条 DRIFT 之一是 `SubagentResult.costs`（源码有 costs、
 → **与本票 Scope A item 1「删整个 subagent-qoder 包」是 subsume 关系**：若本票删整包，UM-INVARIANT 对该包的 invariant retirement 是冗余 no-op（companion 随包消失）。**顺序**：UM-INVARIANT 先（已 done），本票后删整包（subsume）。**不冲突**——UM-INVARIANT 未碰本票 Scope A 的其他 5 处（`run.ts` 的 `qoderCosts()` / audit schema / admin export / bundle）。
 
 **仍 pending**：本票 2026-09-11 复核的 scopeId 半前提证伪（3 writer `tool-calls.ts:83`/`ptc.ts:476`/`tools/index.ts:1393` + 6 live reader `tool-retrieve:327`/`tool-search-data-sources:727,731,750,751,755`，非 write-never，删它破 tsc 且移除 per-tenant linker 隔离 tenant-leak #19）→ 建议拆独立票重新 grilling（**未做**）。
+
+### [2026-09-12] blocker 已释放（`Blocked by: UM11` 的理由已满足）
+
+票头写 `Blocked by: UM11（PR merge 后再做，避免与 PR-blocker 扫除混 scope）`。**PR merge 已发生**：#116（`be447fc1d0`）+ #117（`c174c9a784`）均 merged，PR-blocker 扫除阶段结束。UM11 本身仍 open（剩 worktree/branch 后清 + master-sync，后者被 evaluation 分叉外部阻塞，见 UM11 2026-09-12 节），但**本票被阻塞的那个理由已不复存在** → **本票现可立即认领**，且 scope 不会再与 PR 扫除混淆。
+
+认领时注意票内已记的**前提证伪**：scopeId 不是「write-never 死字段」——有 3 个 writer + 6 处 live reader（`tool-retrieve:327`、`tool-search-data-sources:727/731/750/751/755`），删它破 tsc 且移除 fork 的 per-tenant linker 隔离（注释直指 tenant-leak #19）。故原「搭车 costs 免二次级联」的理由不成立（单 costs 就触发同样级联）→ **建议拆成 costs（退 Qoder subagent）与 scopeId（per-tenant 隔离，需 re-grilling）两张票单走**。本票解则 `type-equivalence` 门 3 DRIFT 全绿（11 红 → 10）。
