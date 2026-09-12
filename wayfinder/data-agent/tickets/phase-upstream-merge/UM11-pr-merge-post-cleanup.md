@@ -2,9 +2,9 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open
+**Status**: open（master-sync 项 DONE 2026-09-12 via PR #119；仅剩 p2-* 后清 residual）
 **Assignee**: unclaimed
-**Blocked by**: ~~UM10~~（resolved）+ **UM12（仍开，14 门 residual；本 session 27/18→31/14）** + **[UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md)（已量化：双向有损已穷举、2 组僵尸已删；但 ui-settings-models 整包回退须入 PR 描述）** → 本票**仍 blocked**，不 push
+**Blocked by**: ~~UM10~~（resolved）+ ~~UM12（B 类 4 硬阻塞 2026-09-15 全绿；CI real red-set 09-12 via PR #119 第 4 次再证）~~ + ~~[UM-MERGE-INTEGRITY](UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md)（ui-settings-models revert 已由 PR #117 re-port；PR #119 empirically 证不阻 push——剩余 waiver drop 是清理型 chore）~~ → **不再阻 push**；p2-* 后清无环境阻塞，可 AFK 推进
 **Related**: session-prompt 收尾（Lead integration boundary）；CLAUDE.md "并行 session 分支纪律" + "提交与引证纪律"
 
 ## Findings (2026-09-08 reframe)

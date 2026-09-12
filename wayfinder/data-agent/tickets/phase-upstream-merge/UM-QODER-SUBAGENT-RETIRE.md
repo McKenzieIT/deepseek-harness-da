@@ -4,7 +4,7 @@
 **Phase**: upstream-merge
 **Status**: open (2026-09-15 拆出，用户决策 d1：本 session 不动，单开票)
 **Assignee**: unclaimed
-**Blocked by**: UM11（PR merge 后再做，避免与 PR-blocker 扫除混 scope）
+**Blocked by**: ~~UM11~~（2026-09-12 释放：#115/#116/#117/#119 已 merged，PR-blocker 扫除阶段结束——见文末 2026-09-12 blocker 已释放节；注意 scopeId 半前提证伪，见 2026-09-11 复核节，落地前需拆票重新 grilling）
 **Blocks**: 无（type-equiv 的 costs DRIFT 在本票完成前作 known-red）
 **Related**: [UM12](UM12-post-merge-ga-fork-ci-resweep.md)（type-equiv costs DRIFT 的归因票）、[UM11](UM11-pr-merge-post-cleanup.md)
 

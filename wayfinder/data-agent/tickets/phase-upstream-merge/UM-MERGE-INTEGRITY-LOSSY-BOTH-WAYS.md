@@ -3,7 +3,7 @@
 **Type**: research · **Status**: open · **Phase**: upstream-merge
 **Assignee**: unclaimed
 **Blocked by**: —（可立即认领）
-**Blocks**: [UM11](UM11-pr-merge-post-cleanup.md)（**硬阻塞**：不能在一次双向有损的 merge 上开 PR 并声称「非回归」）、[UM12](UM12-post-merge-ga-fork-ci-resweep.md)（5 门红的根因在本票）
+**Blocks**: ~~[UM11](UM11-pr-merge-post-cleanup.md)（原写硬阻塞——2026-09-12 via PR #119 empirically 反驳：M1 整包回退已由 PR #117 re-port，剩余 2 条 waiver-drop 是清理型 chore，PR #119 已 merged 证不阻 push）~~、[UM12](UM12-post-merge-ga-fork-ci-resweep.md)（5 门红的根因在本票；方向 B 已落地，config-catalog/README-model-experience/application-entrypoints/subsystem-pages 4 门已翻绿）
 **Graduated from**: [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 2026-09-10 Phase C 并行分诊（S3 subagent 发现，主 session 独立复核）
 
 ## Question
