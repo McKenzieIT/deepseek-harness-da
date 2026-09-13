@@ -1,9 +1,9 @@
 # UM-LINT-B-UNMATCHED-PROGRAMS — 56 个文件不被任何 tsconfig 认领，落进 tsgolint 的无配置 inferred program（type-aware 门静默漏检）
 
-**Type**: grilling · **Status**: partial (2026-09-13 eval-independent slice landed 56→55 unmatched; eval-cli ×6 + Bucket ii/iii + durable gate deferred per [Phase-6 decision-doc](#2026-09-13-phase-1-research--phase-6-decision-doc-hybrid-resolution-eval-independent-slice-landed-remainder-deferred) below) · **Phase**: upstream-merge
+**Type**: grilling · **Status**: **resolved (eval-independent 全部落完)** —— 2026-09-14 落定 Bucket ii WAIVE 34 + Bucket iii KEEP 15 + durable 防线 + contract 断言（见 [2026-09-14 节](#2026-09-14-eval-independent-remainder-landed-bucket-iiiii-dispositions--durable-fence)）；Bucket i 的 eval-cli ×6 拆出 [UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS](UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS.md)，等 eval 团队确认 3 问 · **Phase**: upstream-merge
 **Assignee**: unclaimed
-**Blocked by**: —（可立即认领；诊断证据已备齐，主要待决策）
-**Blocks**: GA-FORK-CI 总账里「`check:ci:lint:contracts-ready` 是否真的在检查它声称检查的文件」这一条
+**Blocked by**: —（本票剩余部分已全部落地；唯一未收口项已拆票，阻塞在 eval 团队确认，不在本票）
+**Blocks**: GA-FORK-CI 总账里「`check:ci:lint:contracts-ready` 是否真的在检查它声称检查的文件」这一条 —— 2026-09-14 起由 `scripts/run-oxlint.ts` 的 program-coverage 防线机器回答，不再靠人复核
 **Graduated from**: [UM-LINT-A-OXLINT-RESOLUTION](UM-LINT-A-OXLINT-RESOLUTION.md) Resolution（2026-09-11，诊断副产物；与 UM-LINT-A 的 Cordis Context 冲突**无关**，是独立缺陷）
 
 ## Question
@@ -126,7 +126,7 @@ Source: `wayfinder/data-agent/research/next-session-2026-09-14/lint-b.json` (hig
 
 Fork code that lives INTENTIONALLY outside the repo tsconfig graph AND outside the strict override glob: prototype/research scaffolds, benchmarks, snapshots, throwaway dev/bin harness scripts, .d.mts build-config declarations. Only default rules apply (correctness `off` in `.oxlintrc`), so leak surface is genuinely small. Correct disposition is a per-glob WAIVE with rationale in the gate-coverage/upstream-sync waiver layer, NOT adding tsconfigs (would open the 'prototypes are compiled' precedent).
 
-Breakdown (34 files): `wayfinder/data-agent/prototypes` 12, `packages/eval/retrieval-experiment/scripts` 9, `snapshots/**` 5, `wayfinder/data-agent/research` 3, `eval-cli bin+dev` 3, `prototypes/d2c-retrieve-baseline` 2, `query-maxcompute dev` 3 (incl 1 `.d.mts`), `query-tool/dev` 1, `util/deque/benchmarks` 1, `eval-results/p11d-calibration` 1. (`.d.mts` and `.cjs` files here aren't matched by the override's `*.{ts,tsx}` globs anyway.)
+Breakdown (34 files) — **corrected 2026-09-14**, the original line below enumerated 40 files' worth of categories because it attributed `snapshots/**` (5) and `eval-results/p11d-calibration` (1) to bucket ii; the 34/15 counts only add up with those two in bucket iii, and the reproduced 55-file list confirms that attribution: `wayfinder/data-agent/prototypes` 12, `packages/eval/retrieval-experiment/scripts` 9, `wayfinder/data-agent/research` 3, `eval-cli bin+dev` 3, `query-maxcompute dev` 3 (incl 1 `.d.mts`), `prototypes/d2c-retrieve-baseline` 2, `query-tool/dev` 1, `util/deque/benchmarks` 1. (`.d.mts` and `.cjs` files here aren't matched by the override's `*.{ts,tsx}` globs anyway.)
 
 ### DEFERRED — Bucket (iii) 15 KEEP-as-default-only (support/build tooling)
 
@@ -146,3 +146,81 @@ After Bucket (i) FIX lands (both the typert fixture, DONE, and the eval-cli ×6,
 
 - `pnpm exec vitest run scripts/oxlint-contract.spec.ts` → 13/13 pass
 - `OXC_LOG=debug oxlint . | grep 'Unmatched files:'` → 55 (was 56; drop is exactly the one typert fixture now ignored)
+
+---
+
+## [2026-09-14] eval-independent remainder LANDED (Bucket ii/iii dispositions + durable fence)
+
+Source: `wayfinder/data-agent/research/next-session-2026-09-18/lint-b.json`. 用户拍板：**eval-independent 余量全部落地，Bucket i 按住拆票**。
+
+### 复现与算术（自证，未沿用上一节数字）
+
+```sh
+export PATH="/usr/local/bin:$PATH"; cd /Users/mckenzie/workspace/deepseek-harness-da
+OXC_LOG=debug node node_modules/oxlint/bin/oxlint . 2>/tmp/log
+grep -ac 'Unmatched file:' /tmp/log          # -> 55
+grep -a 'Unmatched files:' /tmp/log | tail -1
+# 2026/09/14 03:47:10 Done assigning files to programs. Total programs: 344. Unmatched files: 55
+```
+
+在 `2886e5b8e5` 上 **55** 与上一节一致。分桶算术**逐文件核过**（不是抄的）：**34 (ii) + 15 (iii) + 6 (i) = 55，精确**。前提是 `snapshots/**` (5) 与 `eval-results/p11d-calibration` (1) 记在 **iii**；这也是上面 Bucket (ii) 那行 breakdown 已订正的点（原文枚举了 40 个文件的类别，与它自己的「34 files」标题矛盾）。
+
+**严格 override 交集（防线绿不绿的命门）**：55 个里**只有** eval-cli 的 6 个 spec 落在 `.oxlintrc.json` `overrides[0].files` 内，与 recon 一致，没有第 7 个。除逐 glob 机器比对外，另用探针**实测了 oxlint 的 override glob 语义**（这是判断的前提，不能只靠读文档）：写一个 `export var probeValue = 1` 到 6 个位置，只有 `scripts/` 下的那个报 `no-var`：
+
+| 探针位置 | `no-var` 是否触发 | 结论 |
+|---|---|---|
+| `scripts/` | ✅ 触发 | `scripts/**` 命中 |
+| `packages/eval/eval-cli/tests/` | ✅ 触发 | `packages/*/*/tests/**` 命中 |
+| `packages/eval/retrieval-experiment/scripts/` | ❌ 不触发 | **override glob 锚定在配置文件目录**，嵌套 `scripts/` 不算 |
+| `packages/eval/eval-cli/bin/` | ❌ 不触发 | bin/ 不在 override |
+| `wayfinder/data-agent/prototypes/*/src/` | ❌ 不触发 | `packages/` 前缀是字面量 |
+| `snapshots/`、`packages/util/deque/benchmarks/` | ❌ 不触发 | 顶层目录不在 override |
+
+第 3 行是关键：如果 oxlint 是「路径里任意位置匹配」，`retrieval-experiment/scripts` 的 9 个文件就会变成 9 个新的 A 类违规，防线落地即红。实测证明它不是。防线的 `strictOverrideGlobToRegex` 因此两端锚定 `^…$`，与实测语义一致。
+
+### 落地内容（逐文件）
+
+- **`scripts/run-oxlint.ts`** —— 防线本体，折进既有 oxlint 调用（decision-doc 的 option 1，不新起 gate 进程）：
+  - `STRICT_OVERRIDE_GLOBS`（导出）：`.oxlintrc.json` `overrides[0].files` 的 7 条 glob 副本。
+  - `EVAL_CLI_PENDING_FIX`（导出）：eval-cli 6 个 spec 的 **KNOWN-RED allowlist**。有它，防线**现在就绿**；没它，防线落地即红且不可落。
+  - `UNMATCHED_DISPOSITIONS`（导出）：**Bucket ii 8 条 WAIVE + Bucket iii 5 条 KEEP 的 per-glob 裁决 + 逐条 rationale**，即本票要求的 waiver 层。每条带一个 `sample`（取自复现清单的真实路径），由 contract test 断言**不落在严格 override 内** —— 这条断言才是裁决的依据：这些文件不是「漏检」，是「严格规则从未管过它们」。
+  - `strictOverrideGlobToRegex` / `matchesStrictOverrideGlob`：手写 matcher（`minimatch`/`picomatch` 在本 pnpm-strict 工作区都不可直接 resolve），只认 `*`、descendant wildcard、`{ts,tsx}` 三种形态；遇到更复杂的 glob **抛错而不是静默少匹配**。
+  - `assertNoStrictOverrideUnmatched`：CI-only、**lint 绿之后**再跑一趟 `OXC_LOG=debug`（stderr 走临时文件，debug 流约 1.8 MB，不能塞管道），解析 `Unmatched file:`，减掉 allowlist 后若与严格 override 有交集则 `exitCode = 1`。
+- **`scripts/oxlint-contract.spec.ts`** —— 新增 3 个断言（13 → 16 tests，全绿）：把 `STRICT_OVERRIDE_GLOBS` 钉到 `.oxlintrc.json` `overrides[0].files`（**含 index 0 是严格 override 本身的交叉校验**，防止有人在前面插一个 override 把防线悄悄缩成空集）；matcher 的正反例单测（含上表第 3 行那个嵌套 `scripts/` 反例）；13 条裁决的 sample 全部落在严格 override 之外 + 34/15/6 计数。
+- **`scripts/run-gates.ts`** —— `lintGate()` 上方加注释，说明这道门同时承载 program-coverage 防线，以及为什么它不是独立的 `verify-*` 脚本。**无功能改动。**
+- **`.oxlintrc.json`** —— **未改**。`overrides[0].files` 就是防线要钉住的现状，改它才会让防线失真。
+
+### enrollment：为什么 manifest 不加条目
+
+防线随 `lint:contracts-ready`（= `tsx scripts/run-oxlint.ts .`）走，而该脚本已由 `lintGate()`（`scripts/run-gates.ts:587`）在 `ci-lint-contracts-ready`（:241）与 `ci-primary`（:330）两个 mode 里 enrolled。`verify-gate-coverage` 只审 `verify-*` / `gen-*` **package script 名**（`GATE_SCRIPT_PATTERN`），`lint:contracts-ready` 本就不在它的辖区 —— 所以**不需要**加 manifest 条目；更要紧的是**不能**加：manifest 的 Check 2 要求每条 exemption 指向一个真实存在的 `verify-*`/`gen-*` script，硬塞一条会把 meta-gate 弄红。实测 `verify-gate-coverage` 绿。
+
+### 防线实证（绿过、也咬过）
+
+只断言「它是绿的」不算验证。**注入一个真实的第 7 个违规**（`packages/eval/eval-cli/tests/um-lint-b-fence-probe.spec.ts`，正是无人认领的那个目录）后：
+
+```
+=== CI=true ===
+Found 0 warnings and 0 errors.                 <- lint 自己说绿，这正是危险的那一格
+run-oxlint: 1 file(s) match .oxlintrc.json overrides[0].files, so the full type-aware rule set ran
+over them, but no TypeScript program claims them — tsgolint resolved their types through an
+option-less inferred program, so the type-aware half of this gate reported green without checking them:
+  packages/eval/eval-cli/tests/um-lint-b-fence-probe.spec.ts
+EXIT=1
+
+=== CI 未设置 ===
+Found 0 warnings and 0 errors.
+EXIT=0                                         <- 本地跑不付这趟 debug pass 的钱
+```
+
+删掉探针后 `EXIT=0`。另外在 lint 红的全仓跑上，防线正确**跳过**（36.7s ≈ 单趟 33.9s，没有第二趟），不会掩盖真实 diagnostics。
+
+### openQuestions 逐条收口
+
+| # | 结论 |
+|---|---|
+| 1 | `snapshots` + `eval-results` 记 **iii（KEEP-as-default-only）**，已按此落 `UNMATCHED_DISPOSITIONS` 并订正上面的 breakdown 行 |
+| 2 | 手写 matcher 已有正反例单测（`packages/eval/eval-cli/tests/main.spec.ts` → 命中；`…/bin/compare.ts`、嵌套 `scripts/` → 不命中）；glob 变复杂时 matcher 抛错 |
+| 3 | **带 allowlist 现在落**（用户已拍板）。防线现绿，第 7 个立刻红；allowlist 随拆出的票删除 |
+| 4 | eval-cli tsconfig 形状 → 拆出的 [UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS](UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS.md)，3 问逐字承接 |
+| 5 | 两趟方案已落（CI-only + 仅 lint 绿时）。实测本仓单趟 33.9s / 全绿时约翻倍 |
+| 6 | **答案是「不绿」**：master 上 `lint:contracts-ready` 现有 **725 errors**（全在 client/api 包），根因是 `typecheck:contracts-ready`（`tsc -b tsconfig.client.json`）自带 16 条 TS 报错、client declaration 没能 emit，`no-unsafe-*` 因此级联；`build:lib:host` 的 tsdown 步也因根 `lib/` 缺失而失败。**这意味着防线在 lint 转绿之前是 inert 的** —— 它不是被这次改动弄坏的，是本来就红。要让防线真正在 CI 上生效，得先有人把 lint 弄绿（不属本票）。 |
