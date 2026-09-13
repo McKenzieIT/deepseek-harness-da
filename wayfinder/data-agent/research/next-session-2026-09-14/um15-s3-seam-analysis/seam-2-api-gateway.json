@@ -1,0 +1,181 @@
+{
+  "seamKey": "seam-2-api-gateway",
+  "seamPaths": [
+    "packages/api/gateway",
+    "packages/api/remotes"
+  ],
+  "seamCommitCount": 23,
+  "upstreamShift": {
+    "summary": "Two decoupled themes hit seam-2 in BASE..NEW. (1) `refactor(agent): make runtime identity explicit` — TypertGatewayService.startRemoteEvent no longer routes through `typert.contexts.identifyHost` to derive the Agent identity; instead it reads `source.context.agentId` directly (added as a required field on `TypertRemoteEventContext` in src/types.ts). Delegation-to-Host on unavailable Contexts is DROPPED (test 'delegates unavailable Contexts' becomes 'rejects malformed scoped invocations and delegates a released Context'; `pendingInvocation` fixture signature grows an `identity` param). (2) `packages/api/remotes` client assembly gains a new upstream contribution `sessionFeedbackRemote` from `@deepseek-ai/dsh-command-feedback/remote` — added to imports, type re-exports, mount loop, package.json devDeps + tsconfig.client composite ref (`../../feedback/command-feedback`). Also: `goal/activation-changed` added to `API_REMOTE_FORWARDED_EVENTS`; `goal/goal` composite ref added to tsconfig.host. Plus: `carrierFailure` + `cancelledFailure` become exported (were private) in gateway src/client/index.ts (surface expansion). Version bump 0.1.3-alpha.2 -> 0.1.5-rc.2 in both package.json. gateway-stream.host.spec.ts loses 70 net lines as identifyHost-registration boilerplate disappears. No adds/deletes — all 19 files are Modified.",
+    "addedFiles": [],
+    "deletedFiles": [],
+    "modifiedFiles": [
+      "packages/api/gateway/README.i18n.yaml",
+      "packages/api/gateway/README.md",
+      "packages/api/gateway/README.zh.md",
+      "packages/api/gateway/package.json",
+      "packages/api/gateway/src/client/index.ts",
+      "packages/api/gateway/src/index.ts",
+      "packages/api/gateway/src/types.ts",
+      "packages/api/gateway/tests/gateway-stream.host.spec.ts",
+      "packages/api/gateway/tests/gateway.host.spec.ts",
+      "packages/api/remotes/README.i18n.yaml",
+      "packages/api/remotes/README.md",
+      "packages/api/remotes/README.zh.md",
+      "packages/api/remotes/package.json",
+      "packages/api/remotes/src/client/index.ts",
+      "packages/api/remotes/src/index.ts",
+      "packages/api/remotes/src/remote-events.ts",
+      "packages/api/remotes/tests/remote-events.host.spec.ts",
+      "packages/api/remotes/tsconfig.client.json",
+      "packages/api/remotes/tsconfig.host.json"
+    ],
+    "keyRefactors": [
+      "src/types.ts: `TypertRemoteEventContext` grows `readonly agentId: string` field; doc for `value` reframed from 'live Host Context identified by the registered Host adapters' to 'live Agent Context that owns cancellation of the forwarded waterfall'.",
+      "src/index.ts:457-505 (TypertGatewayService.startRemoteEvent): drops `this.ctx.typert.contexts.identifyHost(source.context.value)` lookup + associated `if (context === undefined) resolve({kind:'next'})` delegate-back path; replaces `context.kind`/`context.identity` reads with direct `source.context.agentId`; the 'released' cancel message loses its context.kind JSON echo.",
+      "src/client/index.ts:728+: `carrierFailure` and `cancelledFailure` become exported (surface expansion; former private helpers now part of gateway/client public API).",
+      "packages/api/remotes/src/client/index.ts: `sessionFeedbackRemote` added to imports, type re-exports, and inserted between `messageFeedbackRemote` and `fileUploadsRemote` in the mount-loop array (line 152-155).",
+      "packages/api/remotes/src/remote-events.ts: `goal/activation-changed` added to `API_REMOTE_FORWARDED_EVENTS` in an alphabetically-adjacent slot (after `credentials/reference-updated`, before `cordis/request-run`).",
+      "packages/api/remotes/tsconfig.client.json: 1 composite ref added (`../../feedback/command-feedback`) at end of references array.",
+      "packages/api/remotes/tsconfig.host.json: 1 composite ref added (`../../goal/goal`) after `llm/llm`.",
+      "packages/api/remotes/package.json: version bump; +1 devDep `@deepseek-ai/dsh-agent`; +1 devDep `@deepseek-ai/dsh-command-feedback`.",
+      "packages/api/gateway/tests/gateway-stream.host.spec.ts: -70 net lines. `pendingInvocation` fixture grows an `identity` parameter, and all the `ctx.typert.contexts.registerHost('agent', {...})` calls in test scenarios collapse into that param. Test title 'delegates unavailable Contexts and rejects malformed scoped invocations' → 'rejects malformed scoped invocations and delegates a released Context'.",
+      "packages/api/remotes/tests/remote-events.host.spec.ts: adds a `goal/activation-changed` emit assertion pair; the 'user-questions/request' scenario now asserts agent object carries `id: 'agent-1'` (aligns to the direct-identity refactor).",
+      "packages/api/gateway/tests/gateway.host.spec.ts: 1-line trim (-1)."
+    ],
+    "breakingChanges": [
+      "`TypertRemoteEventContext.agentId: string` becomes required — any callsite that constructs this shape (only 1 producer is the gateway itself + test fixtures) must supply it or fail typecheck.",
+      "Removal of `identifyHost`-based delegate-to-Host path in startRemoteEvent means: an invocation with no live Agent no longer returns `{kind:'next'}` (delegation) — it now raises `TypeError('typert gateway: scoped Remote events require a non-empty Agent identity')`. Any fork or plug-in relying on the delegation-to-Host fallback path is silently broken.",
+      "`carrierFailure` / `cancelledFailure` becoming exported is additive (safe) but is now a versioned API surface."
+    ]
+  },
+  "collisionPoints": [
+    {
+      "file": "packages/api/remotes/src/client/index.ts",
+      "collisionKind": "both-added-related — both sides add imports + type re-exports + push new contributions into the same `apply()` mount-loop array in the same file region",
+      "severity": "high",
+      "rationale": "Upstream inserts `sessionFeedbackRemote` between `messageFeedbackRemote` and `fileUploadsRemote` (mount-loop line 152-155); fork inserts `schemaGatewayRemote, evidenceQueryRemote, resultCacheRemote` between `workspaceRemote` and `workspaceFilesRemote` (line 160-163). Different anchor lines so a 3-way merge should resolve line-wise, but both add lines to imports (lines 9-20 area) and to `export type {} from '@deepseek-ai/dsh-*/remote'` blocks, which git's default merge will interleave. Semantic correctness confirmed: order of registration in the mount-loop is not load-bearing (each is `await ctx.remote.$mount(contribution)`). Recommend keep-both — insertions are additive."
+    },
+    {
+      "file": "packages/api/remotes/package.json",
+      "collisionKind": "both-added-related — both sides edit devDependencies (add packages), one side (fork) deletes `@deepseek-ai/dsh-session` from `dependencies` and reorders",
+      "severity": "high",
+      "rationale": "Upstream: adds `@deepseek-ai/dsh-agent` and `@deepseek-ai/dsh-command-feedback` to devDependencies + version 0.1.3-alpha.2→0.1.5-rc.2. Fork: adds `@deepseek-ai/dsh-agent`, `@deepseek-ai/dsh-invariants`, `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-session-persistence`, `@deepseek-ai/dsh-typert-registry` to devDependencies AND `@deepseek-ai/dsh-schema-gateway`, `@deepseek-ai/dsh-evidence-query`, `@deepseek-ai/dsh-result-cache` at the end, AND removes `@deepseek-ai/dsh-session` from `dependencies`, AND massively reorders the devDependencies alphabetically. The alphabetical reorder is the real hazard — line-based conflict resolution will corrupt the JSON. Recommend semantic 3-way: manually merge union of devDeps, then have the human re-canonicalize order once. Both sides added `@deepseek-ai/dsh-agent` (same key, same value) — safe intersection."
+    },
+    {
+      "file": "packages/api/remotes/src/remote-events.ts",
+      "collisionKind": "both-added-related — both sides add new event entries + fork adds top-of-file import + module augmentation",
+      "severity": "medium",
+      "rationale": "Upstream: `+  { event: 'goal/activation-changed', mode: 'emit' },` between `credentials/reference-updated` and `cordis/request-run`. Fork: adds `import type {} from '@deepseek-ai/dsh-evidence-query'` at line 12 (with 6-line comment) AND `+  { event: 'evidence/eval-run-completed', mode: 'emit' },` between `cordis/inspect-query-resolved` and `llm/adapters-updated`. Different array slots; different top-of-file additions. Union of both is trivially correct semantically. Recommend keep-both."
+    },
+    {
+      "file": "packages/api/remotes/tsconfig.client.json",
+      "collisionKind": "both-added-related — both sides append composite project references near end of references array",
+      "severity": "medium",
+      "rationale": "Upstream adds `{ 'path': '../../feedback/command-feedback' }` after `../../typert/protocol`. Fork adds 4 refs (`../../data/semantic-layer`, `../../data/evidence-query`, `../../data/audit`, `../../identity/identity`) before `../../typert/protocol`. Different anchors; both are trailing-comma-sensitive. Recommend keep-both — union union of references list; verify JSON commas post-merge."
+    },
+    {
+      "file": "packages/api/remotes/tsconfig.host.json",
+      "collisionKind": "both-added-related — both sides insert one composite ref in the references array",
+      "severity": "medium",
+      "rationale": "Upstream inserts `../../goal/goal` after `../../llm/llm`. Fork inserts `../../data/evidence-query` before `../../typert/protocol`. Different slots — union is correct."
+    },
+    {
+      "file": "packages/api/remotes/src/types.ts",
+      "collisionKind": "upstream-untouched-fork-modified — upstream is silent, fork appended a `declare module '@deepseek-ai/cordis'` augmenting Events with `evidence/eval-run-completed`",
+      "severity": "low",
+      "rationale": "Upstream did NOT touch this file. Fork added `declare module '@deepseek-ai/cordis' { interface Events { 'evidence/eval-run-completed'(): void } }` at end. Safe: fork content stays."
+    },
+    {
+      "file": "packages/api/remotes/tests/remote-events.host.spec.ts",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Upstream adds a `goal/activation-changed` emit assertion + threads `id: 'agent-1'` through the user-questions/request scenario (aligns to gateway's direct-identity refactor). Fork did not touch this file. Take upstream wholesale. Follow-up (nice-to-have): consider adding a similar fork-owned assertion for `evidence/eval-run-completed`, but that's OUT-OF-SCOPE for this seam merge — track separately."
+    },
+    {
+      "file": "packages/api/remotes/tests/built-lib.e2e.ts",
+      "collisionKind": "upstream-untouched-fork-modified",
+      "severity": "low",
+      "rationale": "Fork added W20 changes (staticModules registration, .css load hook, client/web/lib artifact). Upstream silent. Fork content stays; but the W20 stub table must be re-audited against the new `sessionFeedbackRemote` external if the built LIB test loads it."
+    },
+    {
+      "file": "packages/api/gateway/src/index.ts",
+      "collisionKind": "upstream-modified-fork-untouched (BUT breaking shape change to shared type)",
+      "severity": "high",
+      "rationale": "Fork did NOT touch this file, so line-level merge is clean. HOWEVER the upstream refactor makes `TypertRemoteEventContext.agentId` required and removes the identifyHost delegate-back path. Anything downstream in the fork that reads/writes this context shape (search for `TypertRemoteEventContext`, `source.context.agentId`, `context.identity`, `context.kind`) will fail typecheck OR lose its delegation fallback. Fork-owned Remote contributions (schemaGatewayRemote/evidenceQueryRemote/resultCacheRemote) don't construct this shape (they only consume via ctx.remote), so they should be unaffected in practice, but grep to confirm."
+    },
+    {
+      "file": "packages/api/gateway/src/types.ts",
+      "collisionKind": "upstream-modified-fork-untouched (shared-type shape change)",
+      "severity": "high",
+      "rationale": "Fork silent. Upstream adds required `agentId: string` to `TypertRemoteEventContext`. Any fork-owned fixture / stand-in that constructs this shape must be updated. Run tsc over fork-owned packages that import from `@deepseek-ai/dsh-api-gateway/types` after the merge."
+    },
+    {
+      "file": "packages/api/gateway/src/client/index.ts",
+      "collisionKind": "upstream-modified-fork-untouched (surface expansion, additive)",
+      "severity": "low",
+      "rationale": "Fork silent. Upstream exports `carrierFailure` and `cancelledFailure` (previously private helpers). Additive — no breakage."
+    },
+    {
+      "file": "packages/api/gateway/tests/gateway-stream.host.spec.ts",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "-70 net lines. Fork didn't touch. Take upstream wholesale; if this touches an assertion pattern used elsewhere in the fork, update alignedly."
+    }
+  ],
+  "forkOwnership": {
+    "forkTouchedFiles": [
+      "packages/api/remotes/package.json",
+      "packages/api/remotes/src/client/index.ts",
+      "packages/api/remotes/src/remote-events.ts",
+      "packages/api/remotes/src/types.ts",
+      "packages/api/remotes/tests/built-lib.e2e.ts",
+      "packages/api/remotes/tests/evidence-query-remote.client.spec.ts",
+      "packages/api/remotes/tsconfig.client.json",
+      "packages/api/remotes/tsconfig.host.json"
+    ],
+    "forkAdditiveShapes": [
+      "schemaGatewayRemote (import from @deepseek-ai/dsh-schema-gateway/remote; mounted in api/remotes client assembly)",
+      "evidenceQueryRemote (import from @deepseek-ai/dsh-evidence-query/remote; mounted; unit-tested in evidence-query-remote.client.spec.ts W16)",
+      "resultCacheRemote (import from @deepseek-ai/dsh-result-cache/remote; mounted)",
+      "cordis Events augmentation 'evidence/eval-run-completed' declared in packages/api/remotes/src/types.ts",
+      "API_REMOTE_FORWARDED_EVENTS entry { event: 'evidence/eval-run-completed', mode: 'emit' }",
+      "tsconfig composite refs: data/semantic-layer, data/evidence-query, data/audit, identity/identity (client); data/evidence-query (host)",
+      "devDependencies: @deepseek-ai/dsh-schema-gateway, @deepseek-ai/dsh-evidence-query, @deepseek-ai/dsh-result-cache, @deepseek-ai/dsh-invariants, @deepseek-ai/dsh-session, @deepseek-ai/dsh-session-persistence, @deepseek-ai/dsh-typert-registry",
+      "W20 built-lib.e2e.ts staticModules integration (single-source shell module table)",
+      "W16 evidence-query-remote.client.spec.ts (zod-mock stub + real apply() mount assertion)",
+      "Fork removed @deepseek-ai/dsh-session from `dependencies` (present in upstream; fork moved it to devDependencies or dropped it — verify against build)"
+    ],
+    "knownWaivers": []
+  },
+  "conflictSeverity": {
+    "rating": "medium",
+    "estimateSessions": "0.5-1 session",
+    "rationale": "Textual collisions are concentrated in 3 files (api/remotes: src/client/index.ts, package.json, tsconfig.client.json) and are additive-in-different-slots — a semantic 3-way merge (union of contributions, union of tsconfig refs, union of devDeps) will resolve them without algorithmic work. The medium (not low) rating is driven by the api-gateway typing refactor (agentId now required on TypertRemoteEventContext + drop of the identifyHost delegation path). Fork itself does not touch gateway/src/**, so line-merge is trivial, but the SHAPE change propagates to any fork-owned code that constructs or consumes `TypertRemoteEventContext` (e.g. test fixtures, adapters). Estimated 0.5-1 session: 20-30min for the mechanical merges (3 additive-collision files), 15-30min for tsc over fork-owned packages that touch the gateway types, 10-15min to re-run the W16/W20 tests and confirm the new sessionFeedbackRemote wiring doesn't clash with fork's built-lib static-module table. No new fork tickets expected — this is a pattern-repeat of UM14's workspaceFilesRemote adoption (adopt sessionFeedbackRemote same way)."
+  },
+  "priorityRank": 3,
+  "recommendedApproach": "Semantic 3-way manual merge with a mechanical union pattern for the 3 hot files, then a targeted tsc sweep for the gateway type shape change.\n\nStep-by-step:\n1. Take upstream wholesale for `packages/api/gateway/**` — fork has zero commits touching this half. Special watchpoint: `TypertRemoteEventContext.agentId` becoming required, and removal of the `identifyHost(source.context.value)` delegate-back path in `TypertGatewayService.startRemoteEvent`. After the merge, grep fork-owned code for `TypertRemoteEventContext`, `.context.value`, `context.identity`, `context.kind` (excluding gateway itself) and update any construction sites.\n2. `packages/api/remotes/src/client/index.ts`: union merge. Both sides insert into different slots — take upstream's sessionFeedbackRemote AND keep fork's schemaGateway/evidenceQuery/resultCache. Final mount-loop should have all 4 additions.\n3. `packages/api/remotes/package.json`: union devDependencies (both sides added `@deepseek-ai/dsh-agent` — keep once), keep upstream's version bump 0.1.5-rc.2, keep fork's removal of `@deepseek-ai/dsh-session` from `dependencies` (fork intent) OR restore if upstream re-adds it — verify. Then re-alphabetize once for cleanliness.\n4. `packages/api/remotes/src/remote-events.ts`: take upstream's `goal/activation-changed` entry AND keep fork's top-of-file `import type {} from '@deepseek-ai/dsh-evidence-query'` + the 6-line comment + fork's `evidence/eval-run-completed` entry.\n5. Both tsconfigs (client & host): union of composite refs. Take upstream's `command-feedback` and `goal/goal`, keep fork's 5 data/identity refs.\n6. `packages/api/remotes/src/types.ts`: fork content stays (upstream silent).\n7. `packages/api/remotes/tests/remote-events.host.spec.ts`: take upstream wholesale (fork didn't touch); consider follow-up ticket to add a matching test for `evidence/eval-run-completed`.\n8. `packages/api/remotes/tests/built-lib.e2e.ts`: fork content stays; verify the W20 static-module table needs a `dsh-command-feedback` entry (since it's now in the api-remotes bundle externals).\n9. Take all README + package.json version bumps from upstream.\n10. This is a PATTERN REPEAT of UM14's workspaceFilesRemote adoption — treat sessionFeedbackRemote the same way.",
+  "testHotspots": [
+    "packages/api/gateway/tests/gateway-stream.host.spec.ts (upstream rewrote this — must pass with new pendingInvocation identity param)",
+    "packages/api/gateway/tests/gateway.host.spec.ts (minor 1-line trim)",
+    "packages/api/remotes/tests/remote-events.host.spec.ts (upstream added goal/activation-changed emit assertion + Agent id assertions)",
+    "packages/api/remotes/tests/evidence-query-remote.client.spec.ts (fork-owned W16; verify still resolves with new sessionFeedbackRemote in the mount loop)",
+    "packages/api/remotes/tests/built-lib.e2e.ts (fork-owned W20; verify staticModules table covers dsh-command-feedback external now that sessionFeedbackRemote is in the bundle)",
+    "pnpm tsc over @deepseek-ai/dsh-api-remotes host + client faces (composite ref additions + gateway types change)",
+    "pnpm tsc over any fork-owned package that consumes `@deepseek-ai/dsh-api-gateway/types` — grep for `TypertRemoteEventContext`, `TypertRemoteEventFrame`, `TypertRemoteEventInvocation`",
+    "pnpm vitest run --dir packages/api/gateway",
+    "pnpm vitest run --dir packages/api/remotes",
+    "scripts/verify-package-dependencies.spec.ts (new devDeps in api/remotes/package.json)",
+    "scripts/verify-client-packages.spec.ts (client bundle purity re: new upstream sessionFeedbackRemote path)"
+  ],
+  "historicalNote": "Seam-2 was NOT one of UM14's break sites (only seam-3 client-connection had recorded pain per §16). UM14 §16 records the adoption pattern that applies exactly here: 'adopt new seam: packages/api/workspace-files + workspaceFilesRemote (dep + tsconfig alias + mount into api-remotes client assembly mount-loop).' This 3rd re-sync round brings the SAME pattern for a new upstream contribution (`sessionFeedbackRemote` from `@deepseek-ai/dsh-command-feedback/remote`): dep + tsconfig ref + append to mount-loop. Precedent is clean and mechanical. The one novel wrinkle vs UM14 is the concurrent `refactor(agent): make runtime identity explicit` — this changes `TypertRemoteEventContext` shape (adds required agentId) and removes the identifyHost delegation fallback path in startRemoteEvent. Fork's remote contributions (schemaGatewayRemote/evidenceQueryRemote/resultCacheRemote) are pure consumers of ctx.remote and don't construct this context, so they should ride through cleanly, but a tsc sweep after the merge is required to prove it. No UM14 waivers apply.",
+  "openQuestions": [
+    "Fork removed `@deepseek-ai/dsh-session` from `dependencies` in packages/api/remotes/package.json — is that removal intentional & durable (fork moved session usage elsewhere), or a merge artifact from an earlier resync? Verify against fork's session import graph before final merge.",
+    "Does the fork's W20 built-lib.e2e.ts staticModules table need `@deepseek-ai/dsh-command-feedback` added as an external? The upstream bundle now includes sessionFeedbackRemote, which will show up as a required external in the api-remotes lib output.",
+    "Should a mirror test for `evidence/eval-run-completed` be added to remote-events.host.spec.ts alongside the upstream-added `goal/activation-changed` assertion? Nice-to-have; not blocker for seam-2 merge.",
+    "The `identifyHost`-based delegate-to-Host path in TypertGatewayService.startRemoteEvent is GONE. Does any fork plugin (typert.contexts.registerHost callers) rely on that fallback for graceful degradation when the Agent context is stale? Grep `registerHost` in fork-owned packages before merge.",
+    "Upstream also added a merged 'release/dsh-0.1.5' branch and 'issue-1424-goal-resume-activation' work — verify the goal/activation-changed event is the only user-visible surface for that thread that reaches seam-2 (rest presumably lives in goal/goal + core packages).",
+    "unverified: the C-D historical notes referenced by 'UM-C-GATES + UM12 resolved' commit e195bcdfd1 may include prior seam-2 gate-clearing intel; not opened here (may be worth reading before the merge)."
+  ],
+  "confidence": "high"
+}

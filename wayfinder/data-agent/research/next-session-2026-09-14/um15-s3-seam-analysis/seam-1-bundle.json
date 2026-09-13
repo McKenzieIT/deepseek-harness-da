@@ -1,0 +1,183 @@
+{
+  "seamKey": "seam-1-bundle",
+  "seamPaths": [
+    "packages/bundle"
+  ],
+  "seamCommitCount": 40,
+  "upstreamShift": {
+    "summary": "Upstream 0.1.5-rc.2 rollup (BASE->NEW verified locally). Themes: (1) sdk-minimal shrinks — removes fs-local + tool-str-replace-editor rows (refactor: remove str_replace_editor from minimal), reworded bash description (network-access wording); (2) web-app cordis.patch.yml renames ui-sidebar-textpreview -> ui-sidebar-documentpreview (immutable file deliveries + document preview rename), expands ui-message-feedback comment to cover the new /feedback dialog + toast + sessionFeedback Remote; (3) base/cordis.patch.yml swaps default model deepseek-v4-flash -> deepseek-flash (feat(llm): default Chat Completions to DeepSeek V41 Flash); (4) base/package.json adds @deepseek-ai/dsh-tool-present dep; (5) headless/tests/headless.spec.ts adopts new AgentSetup signature (ownerCtx, agent); headless/src/index.ts adds oxlint-disable comment for deprecated session history read; (6) all bundle package.json bumped 0.1.3-alpha.2 -> 0.1.5-rc.2; (7) i18n README churn — README.i18n.yaml hash resyncs + README.zh.md bilingual proofreading pass across every bundle sub-package.",
+    "modifiedFiles": [
+      "packages/bundle/README.i18n.yaml",
+      "packages/bundle/README.zh.md",
+      "packages/bundle/acp-app/README.i18n.yaml",
+      "packages/bundle/acp-app/README.zh.md",
+      "packages/bundle/acp-app/package.json",
+      "packages/bundle/base/README.i18n.yaml",
+      "packages/bundle/base/README.md",
+      "packages/bundle/base/README.zh.md",
+      "packages/bundle/base/cordis.patch.yml",
+      "packages/bundle/base/package.json",
+      "packages/bundle/headless/README.i18n.yaml",
+      "packages/bundle/headless/README.zh.md",
+      "packages/bundle/headless/package.json",
+      "packages/bundle/headless/src/index.ts",
+      "packages/bundle/headless/tests/headless.spec.ts",
+      "packages/bundle/sdk-app/README.i18n.yaml",
+      "packages/bundle/sdk-app/README.zh.md",
+      "packages/bundle/sdk-app/package.json",
+      "packages/bundle/sdk-minimal/README.i18n.yaml",
+      "packages/bundle/sdk-minimal/README.md",
+      "packages/bundle/sdk-minimal/README.zh.md",
+      "packages/bundle/sdk-minimal/cordis.patch.yml",
+      "packages/bundle/sdk-minimal/package.json",
+      "packages/bundle/sdk-minimal/tests/sdk-minimal.spec.ts",
+      "packages/bundle/web-app/README.i18n.yaml",
+      "packages/bundle/web-app/README.md",
+      "packages/bundle/web-app/README.zh.md",
+      "packages/bundle/web-app/cordis.patch.yml",
+      "packages/bundle/web-app/package.json",
+      "packages/bundle/web-app/src/index.ts"
+    ],
+    "addedFiles": [],
+    "deletedFiles": [],
+    "keyRefactors": [
+      "AgentSetup type signature change in packages/core/agent/src/index.ts: (agentCtx) -> (agentCtx, agent) — cross-seam refactor, headless.spec.ts is a downstream caller (line 119)",
+      "web-app cordis.patch.yml: ui-sidebar-textpreview row RENAMED to ui-sidebar-documentpreview (id + name + comment); dep rename in web-app/package.json in lockstep",
+      "sdk-minimal cordis.patch.yml: rows removed — fs-local (@deepseek-ai/dsh-fs-local block) and str-replace-editor (@deepseek-ai/dsh-tool-str-replace-editor block); test rows table shrinks correspondingly",
+      "web-app src/index.ts: launchedThroughSsh() extracted to @deepseek-ai/dsh-launch-environment (imported instead of local), call-site changes to pass launchEnvironmentOf(ctx) not ctx",
+      "base/cordis.patch.yml: agent-default-model config.model deepseek-v4-flash -> deepseek-flash (single-line value swap)",
+      "base/package.json: adds @deepseek-ai/dsh-tool-present dependency (one-line insertion)",
+      "headless.spec.ts: bench() harness rewritten around new AgentSetup calling convention — no longer builds agentCtx internally, delegates to setup(ownerCtx, agent)"
+    ],
+    "breakingChanges": [
+      "AgentSetup arity change (1->2 args) breaks any fork-owned caller that hasn't migrated; fork's own bench harnesses in api/session-controller/tests/*.host.spec.ts and packages/webhook/webhook/tests/*.spec.ts still use single-arg shape and will fail typecheck once upstream lands",
+      "ui-sidebar-textpreview package @deepseek-ai/dsh-client-ui-sidebar-textpreview is renamed to ui-sidebar-documentpreview — any fork bundle patch that references the old id/package will fail verify-cordis-config",
+      "@deepseek-ai/dsh-fs-local + @deepseek-ai/dsh-tool-str-replace-editor removal from sdk-minimal — if the fork depends on this profile mounting an editor row, tools regress"
+    ]
+  },
+  "collisionPoints": [
+    {
+      "file": "packages/bundle/web-app/cordis.patch.yml",
+      "collisionKind": "upstream-modified-fork-modified-adjacent",
+      "severity": "high",
+      "rationale": "Fork adds 4 additive insert rows (result-cache, ui-present-decomposition, ui-present-table, ui-suggest-followups) at the SAME hunk region upstream is editing. Fork additive rows must survive; upstream rename ui-sidebar-textpreview->ui-sidebar-documentpreview + ui-message-feedback comment expansion must land. Three-way merge will produce a text-conflict cluster around lines ~225-370. Editor must preserve fork-added rows in same relative position (they sit AFTER the sidebar/message-feedback rows upstream is touching)."
+    },
+    {
+      "file": "packages/bundle/web-app/package.json",
+      "collisionKind": "upstream-modified-fork-modified-adjacent",
+      "severity": "high",
+      "rationale": "Fork adds 6 workspace deps (result-cache, ui-present-decomposition, ui-present-table, ui-semantic-layer, session-projection-cache, storage, storage-domain, storage-json + peerDep invariants) and drops none. Upstream renames ui-sidebar-textpreview->ui-sidebar-documentpreview in the same dependencies block. Alphabetical ordering forces intermixed edits — merger must (a) preserve every fork-additive dep, (b) apply the rename, (c) match version bump 0.1.3-alpha.2 -> 0.1.5-rc.2. Peer/devDep block also touched — fork-added dsh-invariants must be preserved in both peer and dev sections."
+    },
+    {
+      "file": "packages/bundle/web-app/src/index.ts",
+      "collisionKind": "upstream-refactored-fork-touched",
+      "severity": "medium",
+      "rationale": "Fork has NOT touched this file in BASE..FORK for the affected hunks (fork touched other file paths in web-app in prior UM commits). Upstream extracts launchedThroughSsh() to a shared module and changes call-site signature from launchedThroughSsh(ctx) to launchedThroughSsh(launchEnvironmentOf(ctx)). Likely clean-apply IF fork has no local override; verify no fork-added SSH-detection sibling exists near the deleted local function."
+    },
+    {
+      "file": "packages/bundle/sdk-minimal/cordis.patch.yml",
+      "collisionKind": "upstream-deleted-fork-preserved",
+      "severity": "medium",
+      "rationale": "Upstream deletes fs-local row block AND str-replace-editor row block (str_replace_editor purge — the second attempt after Revert 8d06ebb5ac). Fork must accept the deletions (there is no fork additive shape here). Confirm no fork code depends on sdk-minimal shipping str-replace-editor or fs-local, otherwise the removal cascades. Fork's own removal-history of str_replace_editor via UM tickets should already be aligned."
+    },
+    {
+      "file": "packages/bundle/sdk-minimal/package.json",
+      "collisionKind": "upstream-deleted-fork-preserved",
+      "severity": "low",
+      "rationale": "Upstream drops @deepseek-ai/dsh-fs-local + @deepseek-ai/dsh-tool-str-replace-editor from dependencies, updates description to omit 'editor'. Fork has no additive dep here (only version-string collision). Likely take-upstream-wholesale."
+    },
+    {
+      "file": "packages/bundle/sdk-minimal/tests/sdk-minimal.spec.ts",
+      "collisionKind": "upstream-modified-fork-preserved",
+      "severity": "low",
+      "rationale": "Upstream removes ['fs-local', ...] and ['str-replace-editor', ...] rows from expected-rows table. Fork does not appear to touch this file (git diff shows no fork commits touch it explicitly). Should be clean."
+    },
+    {
+      "file": "packages/bundle/base/cordis.patch.yml",
+      "collisionKind": "upstream-modified-fork-preserved",
+      "severity": "low",
+      "rationale": "Single-line model value swap deepseek-v4-flash -> deepseek-flash. Fork has NOT touched this line in BASE..FORK (no fork commit rewrites the agent-default-model row). Trivial three-way — the mid-file addition at line 76-78 is only a value change."
+    },
+    {
+      "file": "packages/bundle/base/package.json",
+      "collisionKind": "both-added-related",
+      "severity": "medium",
+      "rationale": "Upstream adds @deepseek-ai/dsh-tool-present dep between tool-bash and tool-fs (alphabetical). Verify the fork's own base/package.json dependencies list still merges cleanly — fork's version-line bumps and any additive fork deps in this file may raise incidental conflicts, but the tool-present insertion should be an additive apply."
+    },
+    {
+      "file": "packages/bundle/headless/tests/headless.spec.ts",
+      "collisionKind": "upstream-refactored-fork-preserved",
+      "severity": "high",
+      "rationale": "AgentSetup type in packages/core/agent/src/index.ts (owned by seam OUTSIDE seam-1-bundle, likely seam-4/core) grew from (agentCtx) to (agentCtx, agent). bench() harness rewritten to setup(ownerCtx, agent) and delete agentCtx build-out. Fork has NOT migrated (fork still calls options.setup?.(agentCtx) at line 119). Applying this hunk WILL succeed textually if fork doesn't own conflicting local changes here, but the TYPE change lives in a different seam and will make fork's api/session-controller/tests/session-{presets,fork}.host.spec.ts + webhook/webhook/tests/{runtime,session}.spec.ts red until they also migrate. Ripple effect: fork owns 4+ single-arg AgentSetup call-sites that must switch signature in the same landing session as seam-1 merge, or type-check will fail globally."
+    },
+    {
+      "file": "packages/bundle/headless/src/index.ts",
+      "collisionKind": "upstream-modified-fork-preserved",
+      "severity": "low",
+      "rationale": "Upstream adds a one-line oxlint-disable comment for typescript/no-deprecated (session history read migration). Fork has NOT touched the surrounding lines. Trivial apply."
+    },
+    {
+      "file": "packages/bundle/data-agent/",
+      "collisionKind": "fork-only",
+      "severity": "medium",
+      "rationale": "Entire packages/bundle/data-agent/ tree is fork-additive (BASE..FORK: 7 new files, no upstream counterpart). Merge must preserve verbatim. RISK: data-agent/cordis.patch.yml comments reference the client-side `result-cache` id from web-app; if the web-app rename cascade also touches result-cache namespaces, fork data-agent bundle needs mirroring — audit lines 232-238 (result-cache-memory, result-cache-gateway) reference to `@deepseek-ai/dsh-result-cache` which is fork-added and must survive."
+    },
+    {
+      "file": "packages/bundle/*/README.i18n.yaml + README.zh.md",
+      "collisionKind": "upstream-modified-fork-modified-adjacent",
+      "severity": "medium",
+      "rationale": "Upstream ran a bilingual proofreading pass (commits 8e8fb2fc62, 267e8b933b) across every bundle README.zh.md + i18n.yaml pair. Fork also has an i18n record-pairing commit (2d67ab15de 'chore(dsh-data-agent): re-record i18n pairing for bundle + code-runtime READMEs'). Likely produces mechanical conflicts in hash lines of README.i18n.yaml — resolve by taking upstream text + re-running fork's i18n pairing regenerator (scripts/gen-*-i18n or similar) after merge to update hashes."
+    }
+  ],
+  "forkOwnership": {
+    "forkTouchedFiles": [
+      "packages/bundle/web-app/cordis.patch.yml",
+      "packages/bundle/web-app/package.json",
+      "packages/bundle/base/package.json (version bumps + additive deps)",
+      "packages/bundle/data-agent/README.i18n.yaml (ADDED by fork)",
+      "packages/bundle/data-agent/README.md (ADDED by fork)",
+      "packages/bundle/data-agent/README.zh.md (ADDED by fork)",
+      "packages/bundle/data-agent/cordis.patch.yml (ADDED by fork)",
+      "packages/bundle/data-agent/package.json (ADDED by fork)",
+      "packages/bundle/data-agent/src/index.ts (ADDED by fork)",
+      "packages/bundle/data-agent/tsconfig.json (ADDED by fork)"
+    ],
+    "forkAdditiveShapes": [
+      "packages/bundle/data-agent/ (entire fork-additive bundle sub-package — 7 files, referenced only from fork)",
+      "web-app cordis.patch.yml additive rows: result-cache, ui-present-decomposition, ui-present-table, ui-suggest-followups",
+      "web-app/package.json additive deps: dsh-client-result-cache, dsh-client-ui-present-decomposition, dsh-client-ui-present-table, dsh-client-ui-semantic-layer, dsh-session-projection-cache, dsh-storage, dsh-storage-domain, dsh-storage-json, dsh-invariants (peer/dev)",
+      "data-agent/cordis.patch.yml references result-cache-memory + result-cache-gateway (fork-owned insert rows)",
+      "scopeId identifier: only referenced in packages/bundle/data-agent/cordis.patch.yml line 156 as a comment; NOT structurally load-bearing in seam-1 bundle patches themselves"
+    ],
+    "knownWaivers": []
+  },
+  "conflictSeverity": {
+    "rating": "medium",
+    "estimateSessions": "1 session (0.5 if AgentSetup type change is handled in its owning seam)",
+    "rationale": "Bundle-local conflicts are concentrated and well-shaped: (1) two files with genuine three-way merge work — web-app/cordis.patch.yml and web-app/package.json — where fork-additive rows/deps must survive alongside upstream rename and version bumps; (2) two low-risk deletions (sdk-minimal editor+fs-local drops) that align with fork's own str_replace_editor removal history; (3) one cross-seam refactor (AgentSetup arity) that ripples OUT of seam-1 into 4+ other test files owned by fork — this is not a seam-1 blocker but MUST be resolved in the same landing session or global typecheck breaks; (4) i18n README churn is mechanical, regenerator can absorb after human-resolves upstream Chinese text. Historical note: seam-1 has never previously been flagged as breaking (UM11-UM14 seam-1 sailed clean). Bundle patches remain a stable seam; the ripple risk (AgentSetup type) is what elevates this from low->medium."
+  },
+  "priorityRank": 4,
+  "recommendedApproach": "Three-way-manual for web-app/cordis.patch.yml and web-app/package.json (the two high-severity files carrying fork-additive shapes that must survive). Take-upstream-wholesale for sdk-minimal/{cordis.patch.yml,package.json,tests/sdk-minimal.spec.ts} (fork has no shape to defend there; upstream is deleting rows fork also wants gone per its own str_replace_editor removal work). Take-upstream-wholesale for base/cordis.patch.yml (single-value model swap) and base/package.json (additive tool-present dep). Take-upstream for headless/src/index.ts (one comment) and headless/tests/headless.spec.ts BUT gate the merge behind fixing AgentSetup callers in api/session-controller/tests/session-{presets,fork}.host.spec.ts and webhook/webhook/tests/{runtime,session}.spec.ts within the same landing commit — otherwise typecheck fails globally. Preserve packages/bundle/data-agent/* verbatim (fork-only). For i18n *.zh.md + *.i18n.yaml, take-upstream then re-run the fork's i18n pairing regenerator to refresh hashes.\n\nSuggested sequence: (a) merge NEW into a working branch, resolve conflicts file-by-file in the order web-app/cordis.patch.yml -> web-app/package.json -> sdk-minimal/* (take-upstream) -> base/* (take-upstream) -> headless/* (take-upstream); (b) BEFORE landing, migrate the 4 out-of-seam AgentSetup call-sites to the (ownerCtx, agent) shape; (c) re-run i18n regenerator; (d) run testHotspots below; (e) verify-cordis-config gate must pass on all 5 bundles.",
+  "testHotspots": [
+    "packages/bundle/sdk-minimal/tests/sdk-minimal.spec.ts — asserts full row table of sdk-minimal bundle; will break if merge fails to drop fs-local + str-replace-editor rows",
+    "packages/bundle/headless/tests/headless.spec.ts — bench() harness; will break if fork keeps single-arg options.setup while upstream signature is (ownerCtx, agent)",
+    "packages/api/session-controller/tests/session-presets.host.spec.ts (line ~71) — out-of-seam AgentSetup caller, must migrate in same landing session",
+    "packages/api/session-controller/tests/session-fork.host.spec.ts (line ~42) — out-of-seam AgentSetup caller",
+    "packages/webhook/webhook/tests/runtime.spec.ts (line ~245) — out-of-seam AgentSetup caller",
+    "packages/webhook/webhook/tests/session.spec.ts (line ~119) — out-of-seam AgentSetup caller",
+    "scripts/verify-cordis-config on all 5 published bundle patches (base, headless, sdk-app, sdk-minimal, web-app, acp-app) — catches package-id drift after rename",
+    "pnpm install (workspace resolution) — catches missing @deepseek-ai/dsh-tool-present workspace package after base/package.json adds the dep; verify tool-present package actually exists in fork tree",
+    "pnpm --filter '@deepseek-ai/dsh-web-app' build — catches launchedThroughSsh import mismatch if fork owns a local override",
+    "verify-third-party-notices — bundle READMEs re-hashed",
+    "scripts/gen-architecture-graph (regen check) — seam-1 bundle enumeration reads packages/bundle/*; new data-agent bundle should already be enrolled but re-check after merge"
+  ],
+  "historicalNote": "seam-1-bundle has never previously been flagged as breaking (UM11-UM14 landed cleanly). SEAM_MANIFEST entry at scripts/gen-architecture-graph.ts:64 has mode:'seam', implementations:[] (bundles enumerated dynamically from packages/bundle/*), note explaining cordis.patch.yml row-list overlay semantics. Fork has continuously extended packages/bundle with data-agent/ (added 93e5ec2680 'scaffold dsh-data-agent bundle') and with web-app additive rows for INTERPRETATION toolviews (result-cache, ui-present-*, ui-suggest-followups added by commits 4104471fb1, 461d6a960e, 825a539c74, 278f9caa6a, 9ab8189b0b, 6f2217f730). Prior re-syncs preserved these shapes without incident. The novelty in this round is the cross-seam AgentSetup type change spilling into seam-1 headless.spec.ts — the risk is not in seam-1 itself but in landing seam-1 without simultaneously fixing the 4 out-of-seam AgentSetup callers.",
+  "openQuestions": [
+    "Does the fork have a local packaging of the extracted launchedThroughSsh() in @deepseek-ai/dsh-launch-environment? If yes, verify the exported function accepts a LaunchEnvironment (not a Context) — the upstream call-site signature launchedThroughSsh(launchEnvironmentOf(ctx)) requires an environment, not a context. If fork ships a differing signature, web-app/src/index.ts hunk needs manual arbitration.",
+    "Is @deepseek-ai/dsh-tool-present a workspace package that exists in the fork tree, or does upstream ship its source too? If shipped-by-upstream, it should merge in cleanly; if fork must adopt it as a new package addition, ensure other seams (likely seam-4 client-modules or a tool-* seam) carry the source.",
+    "Fork's data-agent/cordis.patch.yml comment at line 232 mentions `result-cache-memory` id chosen deliberately to NOT collide with base's web-app bundle `result-cache` id. Confirm upstream rename cascade (ui-sidebar-textpreview -> documentpreview) does not touch anything named 'result-cache' — quick grep in NEW under packages/client/ would settle this.",
+    "SEAM_MANIFEST.seam-1 currently has implementations:[] (enumerated dynamically from packages/bundle/*). Fork's new data-agent bundle is picked up automatically by the enumeration — confirm no hardcoded bundle list in analyzer needs a manual bump.",
+    "Does UM15 §3 workflow expect a per-seam pre-flight for the AgentSetup ripple, or is that expected to fall under seam-4 (client-modules)/core-agent seam analysis? The type lives outside packages/bundle, so it is technically not seam-1 — but its ripple lands here."
+  ],
+  "confidence": "high"
+}

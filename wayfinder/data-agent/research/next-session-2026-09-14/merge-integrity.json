@@ -1,0 +1,97 @@
+{
+  "blobWalkMethod": "git ls-tree <ref> -- <path> per (ref x file) to extract the object (blob) SHA, then byte-equality by SHA comparison across the three refs. Union of test-file paths built from `git ls-tree -r --name-only {F,B,U} -- <pkg>/tests/ | sort -u` (12 union paths). Classification buckets: F==B==U (untouched), F==B & U!=B (upstream changed / fork stale-or-reverted), F!=B & U==B (fork-only), F!=B & U!=B & F==U (converged: fork adopted upstream), F!=B & U!=B & F!=U (both diverged). Cross-checked against the LIVE Gate 3 (revert-fork) algorithm in scripts/upstream-sync-record.ts (lines 695-746): reproduced its set via `comm -23` of (upstream M/T-status paths on B..U) minus (fork-touched B..FORK) minus (merge-changed B..MERGE) on the M1 window. CRITICAL: Gate 3 is computed on the HISTORICAL M1 merge tree (window.merge=6b7610d45a), NOT on HEAD — so re-port at HEAD does not clear the findings.",
+  "budgetEstimate": "Plan feared 80-100K tokens; ACTUAL is far smaller. The blob-SHA walk itself (81 ls-tree lookups across 27 files x 3 refs) is a few KB (~3.5K tokens; full 3-ref file lists = 14,003 bytes). Reading full diff content: whole-package U..HEAD diff = 81,729 bytes (~20.4K tokens); 9 Gate-3 test files U..HEAD = 27,343 bytes (~6.8K tokens); the 5 DIVERGED (keep-set) test files = the same 27,343 bytes (~6.8K tokens, converged files have zero diff). So an APPLY blob walk scoped to per-file classification costs ~4-7K tokens; only if it re-reads every full source diff does it approach ~20K — still 4-5x under the 80-100K fear. The 80-100K estimate conflated the ~30-file whole-package re-port merge (2-3 sessions of three-way merges, +1171/-669 lines) with the far cheaper integrity blob walk. Recommend budgeting ~10K tokens for the blob walk + per-file waiver adjudication; reserve larger budget only for actual re-port work (which is DONE via PR #117).",
+  "blobWalkMethod2": "",
+  "confidence": "high",
+  "refs": {
+    "base": "141eb6fef83422698aef7a981029e843e8161534 (B1 = merge-base(65bf3cddc9, d347e70390), 2026-08-19 upstream rc.8 — the revert target)",
+    "fork": "8310c46514bb322a2f33ca524e2a25356fe13542 (F = HEAD == origin/master, post-PR#117 re-port; operations.ts + slot-contract.ts present)",
+    "upstream": "c389f96bf3a9b6807cb71ed6bdad5849be0df6d8 (U = M2 upstream parent / recorded current.upstreamSha; upstream sync tip 2026-09-08)"
+  },
+  "divergentFiles": [
+    {
+      "file": "tests/apply.client.spec.ts",
+      "classification": "F!=B & U!=B & F!=U (both diverged); Gate-3 revert-fork finding in M1 window",
+      "keepOrDrop": "KEEP",
+      "rationale": "HEAD (blob 4dd5393) still diverges from U (84a760e); +68/-46 vs U. Intentional fork work per re-port ticket: inject list 5->8, double-master apply.spec (RemoteError stubs, isLoopback rework, `as unknown as SlotRegistry` cast, no hostApply Loader-inert re-add). Deliberate fork divergence, not lost upstream content."
+    },
+    {
+      "file": "tests/onboarding-dialog.client.spec.tsx",
+      "classification": "F!=B & U!=B & F!=U (both diverged); Gate-3 revert-fork",
+      "keepOrDrop": "KEEP",
+      "rationale": "HEAD 5e82ab5 vs U 9f10184, +52/-40. Fork-side re-port divergence (façade operations wiring in test harness). Intentional."
+    },
+    {
+      "file": "tests/provider-form.client.spec.tsx",
+      "classification": "F!=B & U!=B & F!=U (both diverged); Gate-3 revert-fork",
+      "keepOrDrop": "KEEP",
+      "rationale": "HEAD f917661 vs U 1fb8424, only +1/-1: fork adds `hasDocument: false` to the settings.describe stub (fork-specific remote shape). Deliberate; keep."
+    },
+    {
+      "file": "tests/welcome-notice.client.spec.tsx",
+      "classification": "F!=B & U!=B & F!=U (both diverged); Gate-3 revert-fork",
+      "keepOrDrop": "KEEP",
+      "rationale": "HEAD f315e27 vs U 59b2b7a, +22/-12. Fork rebuilt WELCOME_NOTICE_COPY as local const from locales.ts (upstream moved copy into locales en/zh) + kept fork type-rigor (RemoteErrorCode/RemoteResult, `as const`/`as RemoteErrorCode`). Intentional per re-port fix #2."
+    },
+    {
+      "file": "tests/welcome-store.client.spec.ts",
+      "classification": "F!=B & U!=B & F!=U (both diverged); Gate-3 revert-fork",
+      "keepOrDrop": "KEEP",
+      "rationale": "HEAD 178b138 vs U cca9125, +12/-15. Fork-side divergence from re-port. Intentional; keep."
+    },
+    {
+      "file": "tests/components.client.spec.tsx",
+      "classification": "F!=B & U!=B & F==U (CONVERGED); Gate-3 revert-fork finding still fires on M1 tree",
+      "keepOrDrop": "DROP (divergence cured)",
+      "rationale": "HEAD 6d100d8 == U 6d100d8 byte-identical: re-port brought it fully to upstream. No live divergence; the fork has no divergence to keep. But the historical M1 revert-fork finding still fires (Gate 3 reads the M1 merge tree), so it still needs waiver COVERAGE — a per-file waiver with decision=drop (revert cured, remediation landed via PR#117)."
+    },
+    {
+      "file": "tests/readiness.client.spec.ts",
+      "classification": "F!=B & U!=B & F==U (CONVERGED); Gate-3 revert-fork on M1 tree",
+      "keepOrDrop": "DROP (divergence cured)",
+      "rationale": "HEAD 3bea0c0 == U 3bea0c0. Re-port adopted upstream verbatim. No fork divergence; historical M1 finding still needs coverage (decision=drop)."
+    },
+    {
+      "file": "tests/store.client.spec.ts",
+      "classification": "F!=B & U!=B & F==U (CONVERGED); Gate-3 revert-fork on M1 tree",
+      "keepOrDrop": "DROP (divergence cured)",
+      "rationale": "HEAD 7757cf3 == U 7757cf3. Adopted upstream. Historical finding needs coverage (decision=drop)."
+    },
+    {
+      "file": "tests/styles.client.spec.ts",
+      "classification": "F!=B & U!=B & F==U (CONVERGED); Gate-3 revert-fork on M1 tree",
+      "keepOrDrop": "DROP (divergence cured)",
+      "rationale": "HEAD 16a698d == U 16a698d. Adopted upstream (adopt-upstream bucket per re-port). Historical finding needs coverage (decision=drop)."
+    },
+    {
+      "file": "tests/invariant.client.spec.ts",
+      "classification": "B1=blob, F=ABSENT, U=ABSENT: fork AND upstream both deleted (F==U, both absent, != B)",
+      "keepOrDrop": "DROP (not a revert-fork finding)",
+      "rationale": "Present at B1 (ceb0b1f), absent at both F and U. Upstream deleted it (15f2997bcb) and fork retired it via UM-INVARIANT (PR#116). NOT in the Gate-3 set (Gate 3 only fires on upstream M/T, not D). Already covered by the two keep-fork invariant.* waivers (decision=keep) in upstream-sync.json. No action."
+    },
+    {
+      "file": "tests/models-section.client.spec.ts",
+      "classification": "F!=B & U==B... actually B=ABSENT, U=ABSENT, F=blob 4398953: fork-only NEW file",
+      "keepOrDrop": "KEEP (fork-only, not a Gate finding)",
+      "rationale": "Exists only at HEAD (UM-INVARIANT-relocated ModelsSection spec). Absent at B1 and U, so produces NO integrity finding (not upstream-added, not upstream-deleted, not upstream-modified). Owned-elsewhere (UM-INVARIANT); no waiver needed."
+    },
+    {
+      "file": "tests/settings-schema.client.ts",
+      "classification": "F==B==U (untouched all, blob ea35222)",
+      "keepOrDrop": "n/a (no finding)",
+      "rationale": "Byte-identical across all three refs; never touched by fork or upstream. Not a divergence; no waiver, no decision."
+    }
+  ],
+  "pathRecommend": {
+    "chosen": "Path-2",
+    "path1Desc": "Path-1 = drop the parent umbrella waiver `packages/client/ui-settings-models/` (revert-fork, pending) and replace it with per-file revert-fork waivers. VERIFIED COST: this requires 27 waiver rows, NOT 9 — the Gate-3 revert-fork set is the WHOLE-PACKAGE 27 files (9 tests + 18 non-test src/README/config), because Gate 3 is computed on the historical M1 merge tree (window.merge=6b7610d45a), not HEAD. All 27 currently prefix-match the umbrella (verified 27/27). Dropping the parent without all 27 replacements makes the gate FAIL (matchWaiver returns undefined -> unmatched-finding failure), exactly as the 2026-09-13 attempt observed. Of the 27: 14 still DIVERGED at HEAD (decision=keep, intentional fork re-port), 13 CONVERGED (decision=drop, revert cured by PR#117).",
+    "path2Desc": "Path-2 = leave the parent umbrella waiver in place; flip its decision `pending`->`keep` (the re-port at PR#117 IS the fork's adjudicated, intentional final shape) and append a byte-verify note recording the per-file F-vs-U result (9 test files: 4 converged / 5 diverged; whole package 13/14). The gate already passes at exit 0 with the parent present; `decision` is inert for pass/fail (adjudicate() suppresses on ANY match regardless of decision), so flipping to `keep` only removes the persistent informational `[note] ...pending a keep-or-drop decision` and stops it appearing as owed remediation.",
+    "rationale": "Path-2 is materially cheaper (one field edit + one note vs 27 new waiver rows) and equally correct for the GATE. The umbrella already covers all 27 M1-tree findings; the decision value does not change pass/fail. The re-port (PR#117, merged origin/master c174c9a784) is the fork's deliberate final adjudication, so `keep` is the honest decision label. Path-1's supposed benefit (per-file granularity) is illusory here: the findings are frozen M1-tree facts, and 13 of 27 are byte-converged-to-upstream so a per-file revert-fork waiver on them is semantically vacuous (nothing diverges). Path-1 also risks re-triggering the exact gate failure the 2026-09-13 session hit if the enumeration is incomplete. Only adopt Path-1 if the durable method explicitly wants per-file provenance in the ledger; even then it should be 27 rows with mixed keep(14)/drop(13) decisions, and must be applied atomically."
+  },
+  "section24bis": {
+    "inScope": false,
+    "rationale": "DEFER. §2.4.bis (and its promoted three-gate form in UM15 §4) is ALREADY IMPLEMENTED and landed on the resync branch — scripts/upstream-sync-record.ts (28,705 bytes) implements all three gates: Gate 1 keep-fork (upstream deleted / merge kept), Gate 2 drop-fork (upstream added / merge dropped), Gate 3 revert-fork (upstream modified & fork untouched & merge held base). The `verify-upstream-sync-record` gate is wired (CI + lefthook pre-push) and passes at exit 0. This ticket (UM-MERGE-INTEGRITY) is a CONSUMER of that gate, not its owner — UM15 owns §2.4.bis design/build. The only cross-over is the waiver ledger (upstream-sync.json), which is this ticket's territory. So the §2.4.bis SPEC/implementation is out of scope for this ticket; only the waiver-row adjudication (Path-1 vs Path-2) is in scope. No spec change to §2.4.bis is needed — the mechanics (prefix-match umbrella waivers, decision-inert pass/fail) already support Path-2 with zero code change.",
+    "spec": "§2.4.bis = pure-git-plumbing merge-integrity gate, orthogonal to whether any build/lint gate turns red, catching the 3 loss classes tsc cannot see: (1) upstream-deletion-not-applied [keep-fork], (2) upstream-addition-dropped [drop-fork], (3) upstream-modification-reverted-to-base [revert-fork]. Per resolved path in the sync window: assert deletion applied / addition retained / modification adopted (M==U) unless an explicit waiver row (with keep|drop|pending decision + ticket) covers it. Windows are the recorded merges (M1: B=141eb6fef8,fork=65bf3cddc9,up=d347e70390,merge=6b7610d45a; M2: B=d347e70390,fork=558e6f4f66,up=c389f96bf3,merge=8112743d69). Waiver matching: prefix when path ends with '/', else exact; direction must equal finding direction. decision only drives informational notes (pendingWaivers) + owed-remediation (owedWaivers), NOT gate pass/fail."
+  },
+  "recommendation": "Adopt Path-2. Concretely: (a) KEEP the single parent umbrella waiver `packages/client/ui-settings-models/` (direction=revert-fork) in upstream-sync.json — it prefix-covers all 27 M1-window Gate-3 findings (verified 27/27), so removing it would fail the gate; (b) flip its decision from `pending` to `keep`, because PR#117's re-port IS the fork's deliberate, adjudicated final shape (revert undone) — this clears the persistent `[note] 1 waiver(s) still pending` informational marker and keeps the gate green (decision is inert for pass/fail); (c) append a byte-verify note recording the per-file HEAD-vs-U result. Per-file blob facts (the ticket's core ask): of the 9 divergent ui-settings-models TEST files in the Gate-3 set — 4 CONVERGED to upstream (components, readiness, store, styles → divergence cured by re-port, semantically DROP) and 5 remain DIVERGED (apply +68/-46, onboarding-dialog +52/-40, provider-form +1/-1, welcome-notice +22/-12, welcome-store +12/-15 → intentional fork re-port work, KEEP). Two adjacent files are NOT Gate-3 findings: invariant.client.spec.ts (fork+upstream both deleted; covered by existing keep-fork invariant waivers) and models-section.client.spec.ts (fork-only new file, no finding). Do NOT take the Path-1 'drop parent + per-file waivers' shortcut unless the durable ledger explicitly wants per-file provenance — and if so it MUST be 27 rows (not 9, not 14), applied atomically, else the gate fails exactly as the 2026-09-13 attempt did. Whole-package: 13 converged / 14 diverged of 27. Ownership note: §2.4.bis itself is already built and owned by UM15; this ticket only owns the waiver ledger, so no §2.4.bis spec/code work is in scope. NUMBER MISMATCHES vs plan/ticket: (i) ticket text says '10+ child test files' / '~30 files整体回退' — ACTUAL Gate-3 test-file findings = exactly 9; whole-package = exactly 27 (matches the blob-level 27 figure, not the ~30 file-existence figure which included ProviderEditor.tsx-as-ours); (ii) revert-fork HEAD residual is documented as '6 (非 7)' in S4 — that count refers to a different residual measure and is a doc-vs-code footnote, not the 27 M1-tree findings; (iii) apply blob-walk budget feared 80-100K — ACTUAL ~4-20K."
+}

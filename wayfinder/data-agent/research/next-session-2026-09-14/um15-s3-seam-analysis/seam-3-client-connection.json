@@ -1,0 +1,121 @@
+{
+  "seamKey": "seam-3-client-connection",
+  "seamPaths": [
+    "packages/client/connection"
+  ],
+  "seamCommitCount": 27,
+  "upstreamShift": {
+    "summary": "Small surgical upstream churn in this seam, dominated by fixture.ts changes: (a) transport-hooks contract gains an optional pre-decoded `rpc?: ClientConnectionRpc` short-circuit path in `src/client/index.ts` (bypasses HTTP `fetch`/`openStream` when a test mock/in-process host plugs directly into `__DSH_TRANSPORT__.rpc`); (b) fixture gains a rendered system prompt as surface node 0 (`FIXTURE_SYSTEM_PROMPT`, `createSystemMessage`, `type: 'system/message'` events wired into `buildAlphaLog` at turn 0), a new context breakdown that prices system tokens separately from message tokens (`systemTokens`/`messageTokens` split, `contextBreakdownOf` rewrite), a `goalActivations` Map<SessionId,'armed'|'disarmed'> with a `setGoalActivation` publisher that emits `goal/activation-changed` remote events, a new `goalRemotes.get(id)` RPC method wired through `goalView(id, projection)`, and the `case 'goals/get'` switch arm at approximately line 3847; (c) PTC vocabulary rename in the fx-alpha history script — `tool/code-dispatch-start`/`tool/code-dispatch` events renamed to `tool/ptc-dispatch-start`/`tool/ptc-dispatch` with `:code:` → `:ptc:` sub-call-id prefix; (d) commands list gets `definitionId` fields (goal/permission/plan) using `brandString<CommandDefinitionId>(…)` and `CommandDefinitionId` is added to the type import from `@deepseek-ai/dsh-commands/brand`; (e) package.json bumps 0.1.3-alpha.2 → 0.1.5-rc.2; (f) README.zh.md + README.i18n.yaml trivial proofreading; (g) tests updated for the `rpc?`-carrier hook path and the new `systemTokens` breakdown assertion + `goals/get`/`disarmOnlyGoal` timing hook. NO deletions in this seam. NO new source files. NO renames within packages/client/connection.",
+    "modifiedFiles": [
+      "packages/client/connection/README.i18n.yaml",
+      "packages/client/connection/README.zh.md",
+      "packages/client/connection/package.json",
+      "packages/client/connection/src/client/fixture.ts",
+      "packages/client/connection/src/client/index.ts",
+      "packages/client/connection/tests/client-apply.client.spec.ts",
+      "packages/client/connection/tests/fixture.client.spec.ts"
+    ],
+    "addedFiles": [],
+    "deletedFiles": [],
+    "keyRefactors": [
+      "src/client/index.ts:78-91 — `ClientTransportHooks` gains optional `rpc?: ClientConnectionRpc`, and `fetch`/`openStream` become optional; line 191 wiring reorders to `fixtureRpc ?? transport?.rpc ?? createWebConnectionRpc(...)`, making in-process host injection first-class",
+      "src/client/fixture.ts — system prompt as surface node zero: `FIXTURE_SYSTEM_PROMPT` const (~:690), `createSystemMessage(...)` seeded into fx-alpha turn 0 (~:727-732), `system/message` type added to `projectionFramesOf` accept-set (~:1445)",
+      "src/client/fixture.ts:1266-1298 — `contextBreakdownOf(log)` rewritten to split system-role messages out of the message-token total; `systemTokens` now derives from the seeded system message instead of `header.system`",
+      "src/client/fixture.ts:1857 + :2216-2233 + :2338 + :2626-2632 + :2650 + :2689 + :2717-2731 — `goalActivations: Map<SessionId,'armed'|'disarmed'>` and `setGoalActivation(id, activation)` publisher; `goalView(id, projection)` now consults `goalActivations`; new `goalRemotes.get(id)` accessor; goal create/clear/edit paths emit `goal/activation-changed`",
+      "src/client/fixture.ts (~:858-876) — fx-alpha PTC event rename: `tool/code-dispatch{,-start}` → `tool/ptc-dispatch{,-start}`, `:code:` → `:ptc:` in sub-call-ids",
+      "src/client/fixture.ts (~:2265-2270) — commands list adds `definitionId: brandString<CommandDefinitionId>('@deepseek-ai/dsh-command-goal' | '@deepseek-ai/dsh-permission-presets' | '@deepseek-ai/dsh-plan-mode')` on goal/permission/plan"
+    ],
+    "breakingChanges": [
+      "`ClientTransportHooks.fetch` becomes OPTIONAL (was required). Any fork/test code that types `fetch: RpcFetch` as required will still compile (widening), but code that destructures `{ fetch }` expecting non-null will need a null check. Upstream test `client-apply.client.spec.ts:508` already switched to `vi.fn<RpcFetch>()` typing.",
+      "`FixtureContextBreakdownProjection.systemTokens` semantics change: it is now sourced from the seeded system/message surface node, not from `header.system`. Downstream fixture consumers reading `systemTokens === 0` as 'no system prompt' will now see > 0 for fx-alpha.",
+      "fx-alpha tool-dispatch event vocabulary renamed (`code-dispatch` → `ptc-dispatch`). Any snapshot test or event-name assertion in downstream packages that pattern-matches on the old strings will break.",
+      "`goalView` signature changes from `(projection) => FxGoalView` to `(id, projection) => FxGoalView`. Internal to fixture.ts; only affects callers that spelunk this file directly."
+    ]
+  },
+  "collisionPoints": [
+    {
+      "file": "packages/client/connection/src/client/fixture.ts",
+      "collisionKind": "upstream-refactored-fork-touched-same-file-different-region",
+      "severity": "medium",
+      "rationale": "Both sides modify this 3966→~4042 line file. Fork adds only a 13-line island (case 'result/get' block after `case 'workspace/archiveSession'` at line 3923, plus deletion of a JSDoc header for createFixtureConnectionRpc). Upstream churns +94/-16 across many distant regions (imports, buildAlphaLog turn 0, contextBreakdownOf, projectionFramesOf, goalActivations Map, commands list, goalRemotes.get, goalView signature). Textual conflict in the switch is UNLIKELY because upstream did not add `case 'result/get'` at all (verified via grep on upstream NEW ref) — but the JSDoc deletion for createFixtureConnectionRpc lands at fork commit 63659a22d4 while upstream's fixture also modifies neighbouring anchors, so a git-3way merge may flag adjacent-hunk noise. Also the `FixtureWorkspaceApi` block near line 3910 is quiet in upstream, so the switch tail is stable."
+    },
+    {
+      "file": "packages/client/connection/src/client/fixture.ts",
+      "collisionKind": "fork-additive-must-survive",
+      "severity": "medium",
+      "rationale": "Fork's `case 'result/get'` block (13 lines, seeded by `63659a22d4 [UM-CONNECTION-FIXTURE-DEAD-APICLIENT] migrate results/downloads arms into ClientConnectionRpc result/get case`) has NO upstream counterpart at either BASE or NEW. This is fork-additive and semantically load-bearing: it mirrors the host-side `ResultsRemoteGateway.get` contract (result-not-found on missing) and unblocks UM10's fixture typecheck. If a naïve merge drops it or the merger picks upstream wholesale here, we regress UM-CONNECTION-FIXTURE-DEAD-APICLIENT and re-open UM10's 41 fixture errors."
+    },
+    {
+      "file": "packages/client/connection/src/client/index.ts",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Fork did not touch this file in BASE..HEAD (verified: `git diff --name-status c389f96..8310c46 -- packages/client/connection/src/client/index.ts` empty). Upstream's changes (optional `rpc?` transport hook, wire priority) are additive and forward-compatible. Take-upstream-wholesale."
+    },
+    {
+      "file": "packages/client/connection/tests/client-apply.client.spec.ts",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Fork untouched. Upstream adds one new test ('uses an already decoded rpc carrier ...') and switches `vi.fn()` typing to `vi.fn<RpcFetch>()`. Take-upstream-wholesale."
+    },
+    {
+      "file": "packages/client/connection/tests/fixture.client.spec.ts",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Fork untouched. Upstream adds `disarmOnlyGoal()` timing hook + `goals/get` armed/disarmed assertion + `systemTokens > 0` assertion. Take-upstream-wholesale, but re-run this test first after merging because it is the tightest guard on the fixture surface."
+    },
+    {
+      "file": "packages/client/connection/package.json",
+      "collisionKind": "upstream-version-bump-fork-untouched",
+      "severity": "low",
+      "rationale": "0.1.3-alpha.2 → 0.1.5-rc.2 bump. Fork does not manage version here; accept upstream."
+    },
+    {
+      "file": "packages/client/connection/README.zh.md",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Trivial i18n proofreading; fork untouched. Accept upstream."
+    },
+    {
+      "file": "packages/client/connection/README.i18n.yaml",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Trivial (metadata line). Accept upstream."
+    }
+  ],
+  "forkOwnership": {
+    "forkTouchedFiles": [
+      "packages/client/connection/src/client/fixture.ts"
+    ],
+    "forkAdditiveShapes": [
+      "case 'result/get' arm in the fixture ClientConnectionRpc.call switch (fixture.ts ~:3923-3936) — mirrors host ResultsRemoteGateway.get contract; returns sessionErr({code:'result-not-found', message, details:{resultId}})",
+      "Deleted JSDoc header block for createFixtureConnectionRpc (fixture.ts ~:3946-3949) — cosmetic; ok to accept upstream re-restoration if it comes back",
+      "No scopeId or similar fork-owned identifier in this seam (verified via grep) — scopeId is a seam-6 / api-workspace-files fork-additive shape, not seam-3"
+    ],
+    "knownWaivers": [
+      "packages/client/connection/tests/fake-api.client.ts — waived direction: keep-fork, decision: drop (UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS). File is NOT in upstream NEW's diff surface, so waiver is inert this round."
+    ]
+  },
+  "conflictSeverity": {
+    "rating": "low",
+    "estimateSessions": "0.5 session",
+    "rationale": "Only ONE file is touched on both sides (fixture.ts), and the fork's touch is a 13-line island (case 'result/get' block) with NO textual overlap with upstream's changes (upstream never added that case name — verified). The other six files in the seam are upstream-only and take-upstream-wholesale. The one merge-time chore is confirming the fork-additive `case 'result/get'` survives (add to a merge-preserving test if needed) and re-running the fixture tests, which upstream itself expanded with `goals/get` + `systemTokens > 0` assertions. The historical UM14 break (ConnectionConfig→ConnectionRecoveryConfig + inject reduction) is NOT recurring in this round — no such rename/inject changes appear in BASE..NEW. This is the calmest of the six seams despite the historical scar."
+  },
+  "priorityRank": 4,
+  "recommendedApproach": "Take-upstream-wholesale for 6 of 7 files (README.i18n.yaml, README.zh.md, package.json, src/client/index.ts, tests/client-apply.client.spec.ts, tests/fixture.client.spec.ts) and three-way-manual for fixture.ts to preserve the fork-additive `case 'result/get'` block. Concrete recipe for fixture.ts: (a) start from upstream NEW's fixture.ts as base; (b) re-insert the 13-line `case 'result/get'` arm immediately after `case 'workspace/archiveSession'` (which upstream preserves — verified at NEW line 3998); (c) confirm the JSDoc for createFixtureConnectionRpc — upstream keeps it, fork deleted it; accept upstream's re-inclusion (cosmetic); (d) verify `sessionErr` is still in scope (upstream did not remove it); (e) run `pnpm --filter @deepseek-ai/dsh-client-connection test` to confirm both the new `goals/get`+`disarmOnlyGoal`+`systemTokens>0` assertions AND the older 'result/get returns result-not-found' assertion (grep upstream test to confirm the fork-added test coverage for the result/get arm still lives) pass. Do NOT try to reconcile the JSDoc deletion — it's noise. Do NOT delete or refactor the `case 'result/get'` block — it is a permanent fixture posture per UM-CONNECTION-FIXTURE-DEAD-APICLIENT Resolution.",
+  "testHotspots": [
+    "packages/client/connection/tests/fixture.client.spec.ts — the tightest guard; run first. Upstream added `systemTokens > 0` assertion (~:966) + `goals/get` armed/disarmed round-trip + `disarmOnlyGoal()` timing hook (~:1681-1690). Fork's `case 'result/get'` result-not-found path should already have coverage here or in fake-api tests — verify.",
+    "packages/client/connection/tests/client-apply.client.spec.ts — new test 'uses an already decoded rpc carrier ...' (~:488) exercises the `transport?.rpc` short-circuit added in index.ts; run second.",
+    "pnpm exec tsc -p packages/client/connection/tsconfig.json (or workspace tsconfig.client.json) — UM-CONNECTION-FIXTURE-DEAD-APICLIENT closed 41 fixture errors; verify count stays 0 in this seam after merge.",
+    "packages/client/connection/tests/fake-api.client.ts (waived keep-fork/drop) — inert this round but re-check post-merge that it still typechecks; the fake-api touch history (Follow-on-3-B `2504169487`) tracks IApiClient/ClientConnectionRpc alignment.",
+    "Any consumer package that imports `ClientTransportHooks.fetch` as required — grep the workspace after merge; upstream widened it to optional."
+  ],
+  "historicalNote": "Seam-3 BROKE during UM14 sync — SEAM_MANIFEST note at scripts/gen-architecture-graph.ts:75 flags it as the historical hot spot. Root cause was TWO upstream refactors landing simultaneously in this seam: (1) `ConnectionConfig → ConnectionRecoveryConfig` type rename, and (2) `inject ['webServer','credentials'] → ['credentials']` with webServer moving to lazy/carrier-neutral resolution. Fork's `packages/client/connection` had a co-owned config type and an inject dependency that both had to be repointed in the merge; the diff was invisible to a naïve textual 3-way and required manual re-wiring. Repair was tracked in UM14-resync-to-upstream-latest.md:14 as 'seam 3 BREAK'. Follow-on fixture stabilization (UM-CONNECTION-FIXTURE-DEAD-APICLIENT, resolved 2026-09-10) closed 41 remaining fixture errors by (a) deleting the dead `FixtureApiClient extends AbstractApiClient` subclass at fixture.ts:3963-4105 (commit `ac6c8c6c2b`), and (b) migrating the results/downloads arms into the `ClientConnectionRpc.call` switch as `case 'result/get'` (commit `63659a22d4`) — the same arm that is now fork-additive and must survive UM15 §3. Mitigation for this round: neither rename nor inject-list change recurs in BASE..NEW (verified: no such churn in the 27 commits touching this seam), so the UM14 break is NOT re-armed. The single fork-additive posture that could regress is `case 'result/get'`, and it lives in a switch region upstream did not touch (upstream's fixture churn concentrates on buildAlphaLog / contextBreakdownOf / goalActivations / commands-list, far from `workspace/archiveSession` and the switch tail).",
+  "openQuestions": [
+    "Is there a fork-owned test that asserts the `case 'result/get'` result-not-found response? If yes, we can rely on it to catch a regression; if no, add a one-shot assertion to fixture.client.spec.ts before the merge to lock the fork-additive posture.",
+    "Does the fork consume `FixtureContextBreakdownProjection.systemTokens` anywhere that expects the old semantics (header.system-derived, previously often 0 for fx-alpha)? A workspace grep of `systemTokens` outside packages/client/connection would confirm.",
+    "The task prompt says SEAM_MANIFEST is in `scripts/upstream-sync-record.ts` but it actually lives at `scripts/gen-architecture-graph.ts:62-98`. Confirm with the parent whether this is a doc drift or whether `upstream-sync-record.ts` was renamed.",
+    "Fork-additive tests/fake-api.client.ts is waived (keep-fork/drop) — worth reconfirming after merge whether it still needs the fake-api client, or whether upstream's `transport?.rpc` short-circuit (index.ts:187) subsumes it (letting the test rely on a direct RPC injection instead of a fake HTTP client).",
+    "Does the fx-alpha `code-dispatch` → `ptc-dispatch` rename ripple into any consumer (session/persistence, event-log tooling, TelemetryProbe)? If so, downstream tests may fail post-merge on event-name pattern matching."
+  ],
+  "confidence": "high"
+}

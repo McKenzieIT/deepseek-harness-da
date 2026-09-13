@@ -1,0 +1,112 @@
+{
+  "recommendation": "keep-with-waiver",
+  "confidence": "high",
+  "rationale": "The ticket's original UM-QODER premise (\"scopeId is a write-never dead field, delete to restore upstream\") is falsified and, on inspection, UNDER-stated: the field is not merely read in 6 places across 2 files — it has 3 writers and 9 live code readers across 5 data-tool packages, one of which (tool-trigger-eval) is a HARD fail-closed dependency (`if (exec.scopeId === undefined) return not_configured` then passes `scopeId: exec.scopeId` into `EvalRunnerService.runBatch` which itself throws 'explicit scopeId required'). `ToolExecutionInput.scopeId` / `AgentOptions.scopeId` are the session-bound carrier that threads GA-GT1 Phase-5b per-tenant linker isolation end-to-end (the getEnrichedLinker root-check that closes the #19/#22 cross-tenant leak). Retiring the field is a product-capability regression, not a cleanup. Keep-with-waiver is cheap and low-risk: the ONLY cost is 2 doc type-equiv blocks (tools.md:179, core.md:195) that must be edited to include the additive `scopeId?: string` field so verify-type-equiv turns GREEN — i.e. document the fork field rather than suppress it. Note the mechanism is NOT an upstream-sync.json waiver (verify-type-equiv.ts does not read upstream-sync waivers; that array only holds UM-MERGE-INTEGRITY keep-fork/drop-fork path decisions). The \"keep-with-waiver\" label from the ticket really means: adopt-the-doc-blocks-to-source + type-equiv manifest already maps both symbols, so the 2 DRIFT clear with a documentation edit and no source change. This contradicts the 2026-09-15 'restore upstream for additive violations' principle only superficially — that principle targets write-never dead fields (costs), whereas scopeId is a live, load-bearing seam.",
+  "waiverState": "upstream-sync.json (repo root) has ZERO scopeId waiver. Its `waivers` array holds exactly 10 entries, ALL ticketed to UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS, covering packages/client/runtime/, packages/examples/jsonrpc-demo/, packages/examples/agent-spine-demo/, knip.json, packages/client/connection/tests/fake-api.client.ts, and 5 packages/client/ui-settings-models/* paths (directions: keep-fork/drop-fork/revert-fork; decisions: drop/keep/pending). Waiver schema = {path, direction, decision, ticket} with NO drift-tolerance / type-equiv field. Critically, scripts/verify-type-equiv.ts does NOT read upstream-sync.json at all — the 2 scopeId DRIFT are tracked purely as type-equivalence known-red (per map.md:456, 472, 522), not as a registered waiver. So there is currently no 'scopeId waiver entry' to point to; the keep path CREATES the resolution by editing the 2 doc blocks (type-equiv.manifest.json already maps ToolExecutionInput@line811 and AgentOptions@line1961 to their sources).",
+  "scopeIdUsageSites": [
+    {
+      "file": "packages/core/agent/src/runtime-types.ts",
+      "lines": "48 (decl), JSDoc 30-47",
+      "role": "WRITER-SOURCE: AgentOptions.scopeId?: string field decl — the session-bound origin field. Fork additive field on upstream core (type-equiv DRIFT source #2)."
+    },
+    {
+      "file": "packages/core/tools/src/index.ts",
+      "lines": "331 (decl), JSDoc 320-330; 1393 (write)",
+      "role": "WRITER + FIELD DECL: ToolExecutionInput.scopeId?: string decl (DRIFT source #1); line 1393 base-spread `...exec.scopeId !== undefined ? {scopeId: exec.scopeId} : {}` propagates into ToolRunContext (createExecution)."
+    },
+    {
+      "file": "packages/core/agent-loop/src/tool-calls.ts",
+      "lines": "83 (write), 71-74 (comment)",
+      "role": "WRITER: executeToolCalls reads agent.options.scopeId and writes it onto each PlannedCall.exec (ToolExecutionInput)."
+    },
+    {
+      "file": "packages/core/tools/src/ptc.ts",
+      "lines": "476 (write)",
+      "role": "WRITER: run_code sub-dispatch mirrors parent exec.scopeId onto child ToolExecutionInput (`...exec.scopeId !== undefined ? {scopeId: exec.scopeId} : {}`)."
+    },
+    {
+      "file": "packages/data/tool-retrieve/src/index.ts",
+      "lines": "327 (read); getEnrichedLinker 202-222; JSDoc 124-199",
+      "role": "LIVE READER: `retrieve(getEnrichedLinker(schema, exec.scopeId), ...)` — Phase-5b per-scope linker cache w/ root-check (#19 leak guard)."
+    },
+    {
+      "file": "packages/data/tool-search-data-sources/src/index.ts",
+      "lines": "727,731,750,751,755 (reads); getEnrichedLinker 470-490; probeRelationGraph 511-516; applyGraphExpansionAndJoins 540-542",
+      "role": "LIVE READER x5: probeRelationGraph(ctx, exec.scopeId); applyGraphExpansionAndJoins(...,exec.scopeId) x3; getEnrichedLinker(schema, exec.scopeId). Per-scope relation-graph + linker isolation."
+    },
+    {
+      "file": "packages/data/tool-trigger-eval/src/index.ts",
+      "lines": "211 (guard), 229 (write)",
+      "role": "LIVE READER — HARD FAIL-CLOSED DEPENDENCY (ticket missed this): `if (exec.scopeId===undefined) return not_configured`, then `runBatch({scopeId: exec.scopeId})` where EvalRunnerService throws 'explicit scopeId required' (D3ii). Deleting the field is NOT a no-op here."
+    },
+    {
+      "file": "packages/data/tool-resolve-term/src/index.ts",
+      "lines": "112 (read)",
+      "role": "LIVE READER (ticket missed this): `probeGraph(ctx, exec.scopeId)` — per-scope alias/term graph resolution."
+    },
+    {
+      "file": "packages/data/tool-search-schema/src/index.ts",
+      "lines": "258 (read); JSDoc 82-97",
+      "role": "LIVE READER (ticket missed this): `searchSchema(schema, query, topK, exec.scopeId)` — Phase-5b per-scope schema search w/ root-check (#19 guard)."
+    },
+    {
+      "file": "docs/subsystems/tools.md",
+      "lines": "179 (fence), block 185-208 (ToolExecutionInput type-equiv)",
+      "role": "DRIFT SITE #1: doc block omits scopeId → verify-type-equiv DRIFT. Keep-with-waiver edits this block to add the field."
+    },
+    {
+      "file": "docs/subsystems/core.md",
+      "lines": "195 (fence), block 197-206 (AgentOptions type-equiv)",
+      "role": "DRIFT SITE #2: doc block omits scopeId → verify-type-equiv DRIFT. Keep-with-waiver edits this block to add the field."
+    },
+    {
+      "file": "scripts/type-equiv.manifest.json",
+      "lines": "~811 (ToolExecutionInput), ~1961 (AgentOptions)",
+      "role": "MANIFEST: already maps both symbols to their source files; no manifest change needed for keep path."
+    },
+    {
+      "file": "packages/core/agent-loop/tests/tool-calls.spec.ts",
+      "lines": "771-833 (describe), it@772, it@800",
+      "role": "DEDICATED TEST x2: forwards AgentOptions.scopeId→exec.scopeId; leaves undefined when unset (dormant)."
+    },
+    {
+      "file": "packages/core/tools/tests/ptc.spec.ts",
+      "lines": "1880 (describe), it@1900, it@1923",
+      "role": "DEDICATED TEST x2: run_code propagates parent scopeId to child; leaves child undefined (no active-scope leak)."
+    }
+  ],
+  "keepWithWaiver": {
+    "applyCost": "~15-30 min, ZERO source change, ZERO tsc/test impact. Edit exactly 2 doc type-equiv blocks: (1) docs/subsystems/tools.md block at fence line 179 — insert the `readonly scopeId?: string` field WITH its full source JSDoc between `agent?: Agent` and `parent?: ToolExecutionToken`; (2) docs/subsystems/core.md block at fence line 195 — insert `scopeId?: string` WITH source JSDoc after `maxTokens?: number`. If a .zh.md sibling exists it is byte-identical-checked and must mirror. Then re-run `npx tsx scripts/verify-type-equiv.ts` → 2 DRIFT clear to 0. type-equiv.manifest.json needs no change (both symbols already mapped). NOT an upstream-sync.json waiver edit — verify-type-equiv does not consult that file. Optionally register a note in the ticket / GA-FORK-CI that these 2 blocks are permanent fork-additive documentation.",
+    "risk": "Very low. (a) Documents a genuinely-live fork seam rather than hiding it — self-consistent with 'fork self-owned code refactor as needed'. (b) The ONLY residual friction: on each upstream resync of tools/index.ts or agent/runtime-types.ts, a merge may reintroduce the upstream (no-scopeId) shape and the doc block must be re-reconciled — but that is inherent to ANY additive core field and already handled by the type-equiv gate catching it. (c) Meta-gate question for UM-C-GATES/UM15: whether a permanently-adopted-to-source doc block for a fork-additive field is acceptable gate policy (it is the same pattern the fork already uses elsewhere). No product regression, no tenant-leak exposure, no generator churn."
+  },
+  "retire": {
+    "tscBreakSites": [
+      "packages/core/tools/src/index.ts:1393 (base spread reads exec.scopeId)",
+      "packages/core/tools/src/ptc.ts:476 (sub-dispatch spread reads exec.scopeId)",
+      "packages/core/agent-loop/src/tool-calls.ts:83 (reads agent.options.scopeId)",
+      "packages/data/tool-retrieve/src/index.ts:327 (getEnrichedLinker(schema, exec.scopeId))",
+      "packages/data/tool-search-data-sources/src/index.ts:727 (probeRelationGraph)",
+      "packages/data/tool-search-data-sources/src/index.ts:731 (applyGraphExpansionAndJoins)",
+      "packages/data/tool-search-data-sources/src/index.ts:750 (getEnrichedLinker)",
+      "packages/data/tool-search-data-sources/src/index.ts:751 (applyGraphExpansionAndJoins)",
+      "packages/data/tool-search-data-sources/src/index.ts:755 (applyGraphExpansionAndJoins)",
+      "packages/data/tool-trigger-eval/src/index.ts:211 (exec.scopeId===undefined guard)",
+      "packages/data/tool-trigger-eval/src/index.ts:229 (runBatch scopeId: exec.scopeId)",
+      "packages/data/tool-resolve-term/src/index.ts:112 (probeGraph(ctx, exec.scopeId))",
+      "packages/data/tool-search-schema/src/index.ts:258 (searchSchema(..., exec.scopeId))"
+    ],
+    "tenantLeakRegressionRisk": "HIGH / product-capability regression. exec.scopeId is the carrier that threads GA-GT1 Phase-5b per-tenant isolation: getEnrichedLinker/probeRelationGraph/searchSchema use it as the per-scope cache key WITH a root-check that closes the cross-tenant linker-reuse leak explicitly labeled #19 (and carry-forward #22) in tool-retrieve/tool-search-data-sources/tool-search-schema comments. Today the field is dormant (no prod caller sets AgentOptions.scopeId → undefined → ACTIVE_SENTINEL), but it is the DESIGNED activation seam for 5d eval/CLI per-scope isolation. Deleting it forces per-tenant isolation to be re-plumbed through a different seam (map.md GA-GT1 Phase-5b lists this as the sanctioned mechanism), and removes tool-trigger-eval's fail-closed scope guard — a scoped eval could silently run against the wrong/global scope. This is the exact '撤 per-tenant linker 隔离' regression the 2026-09-11 resync flagged.",
+    "regenCascade": [
+      "NONE of the 5 predicted generators regenerate the two RETIRED fields specifically. Verified: api-catalog.ts scopeId refs (lines 964-996,1504) are getConventions/coverageQuery/gapAnalysis/reachabilityDelta/assetHealth — SEPARATE GA-GT1 Phase-3b/6 methods, not ToolExecutionInput/AgentOptions.",
+      "config-catalog.md scopeId refs (lines 1982,2380) are PhaseGateConfig.scopeId and SemanticLayerConfig.scopeId — SEPARATE config fields.",
+      "doc-graphs / module-graph / architecture-graph: no scopeId text tied to the two core fields.",
+      "=> The ticket's '~5 generator regen cascade' figure is INHERITED from the UM-QODER costs half and does NOT apply to scopeId-core-field retirement; actual regen for these 2 fields ≈ 0 generators. (The broad scopeId ecosystem — 554 src refs across 47 files, 35 test files — is untouched by retiring only the 2 core carrier fields, but those 13 tsc sites above still break and must be re-plumbed.)"
+    ]
+  },
+  "openQuestions": [
+    "Ticket INSPECT list is stale: it cites '6 live readers across 2 files' but actual is 9 code reads across 5 packages (adds tool-trigger-eval:211/229, tool-resolve-term:112, tool-search-schema:258). tool-trigger-eval is a fail-closed HARD dependency, not dormant — should the ticket be corrected before any apply decision?",
+    "The 'keep-with-waiver' label is a misnomer: the fix is a doc type-equiv block edit (adopt-to-source), NOT an upstream-sync.json waiver, because verify-type-equiv.ts never reads that file. Confirm with UM-C-GATES/UM15 whether a permanently-adopted doc block for a fork-additive core field is the sanctioned gate policy (meta-gate coverage question).",
+    "The ticket's '5-generator regen cascade' cost is inherited from the costs half and does not match scopeId-core-field scope (verified ~0 generators regen the 2 fields). Should the retire cost estimate in the ticket be revised down on generators but UP on tsc break sites (6→13) and tenant-leak risk?",
+    "If keep is chosen, do the 2 doc blocks need .zh.md mirror edits? (byte-identical .zh.md siblings are checked against the manifest-backed sibling — verify whether tools.zh.md/core.zh.md exist for these blocks.)"
+  ]
+}

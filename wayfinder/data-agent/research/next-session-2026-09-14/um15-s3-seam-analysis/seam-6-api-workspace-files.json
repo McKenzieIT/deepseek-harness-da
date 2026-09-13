@@ -1,0 +1,138 @@
+{
+  "seamKey": "seam-6-api-workspace-files",
+  "seamPaths": [
+    "packages/api/workspace-files"
+  ],
+  "seamCommitCount": 16,
+  "upstreamShift": {
+    "summary": "Semantic pivot from 'confined workspace file service (Agent-bound)' to 'read-only file preview surface with header-derived scope (Session-bound)'. Reads follow filesystem access even outside the workspace root; workspace containment is retained only for directory listing and change observation. Two new Remote methods (readAll, readRelated) are added for full-file previews and same-dir relative reads. The wire parameter changes from `Agent` to a new `WorkspaceFileScope` derived from a `typert.lookups.register('workspaceFileScope', ...)` registered against `sessions` and `sessionPersistence` at construction. A new `maxFileBytes` config cap is added. Deps drop `@deepseek-ai/dsh-agent` and `@deepseek-ai/dsh-api-session-controller`; add `@deepseek-ai/dsh-session-persistence` and `@deepseek-ai/dsh-session/types`. `static inject` changes: adds `'sessions'`, drops none but no longer relies on Agent. Client provider: `SessionLookup` and `WorkspaceFileResource` (with `changed` flag + `restat` notice) are removed; provider now yields `WorkspaceFileStat` directly and `absolute` addresses are unsupported (were 'read through current Session'). Version bump 0.1.3-alpha.2 -> 0.1.5-rc.2. New test files: read-all.spec.ts (+113), scope.spec.ts (+75). READMEs (en+zh) rewritten with corresponding narrative.",
+    "modifiedFiles": [
+      "packages/api/workspace-files/README.i18n.yaml",
+      "packages/api/workspace-files/README.md",
+      "packages/api/workspace-files/README.zh.md",
+      "packages/api/workspace-files/package.json",
+      "packages/api/workspace-files/src/changes.ts",
+      "packages/api/workspace-files/src/client/change-feed.ts",
+      "packages/api/workspace-files/src/client/index.ts",
+      "packages/api/workspace-files/src/client/provider.ts",
+      "packages/api/workspace-files/src/client/types.ts",
+      "packages/api/workspace-files/src/index.ts",
+      "packages/api/workspace-files/src/types.ts",
+      "packages/api/workspace-files/tests/apply.client.spec.ts",
+      "packages/api/workspace-files/tests/change-feed.client.spec.ts",
+      "packages/api/workspace-files/tests/changes.spec.ts",
+      "packages/api/workspace-files/tests/harness.ts",
+      "packages/api/workspace-files/tests/host-path.client.spec.ts",
+      "packages/api/workspace-files/tests/list.spec.ts",
+      "packages/api/workspace-files/tests/provider.client.spec.ts",
+      "packages/api/workspace-files/tests/read-bytes.spec.ts",
+      "packages/api/workspace-files/tests/read.spec.ts",
+      "packages/api/workspace-files/tests/stat.spec.ts",
+      "packages/api/workspace-files/tsconfig.client.json",
+      "packages/api/workspace-files/tsconfig.host.json"
+    ],
+    "addedFiles": [
+      "packages/api/workspace-files/tests/read-all.spec.ts",
+      "packages/api/workspace-files/tests/scope.spec.ts"
+    ],
+    "deletedFiles": [],
+    "keyRefactors": [
+      "src/index.ts: replace `agent: Agent` parameter with `workspaceFileScope: WorkspaceFileScope` on read/readBytes/stat/list/changes (5 Remote methods).",
+      "src/index.ts: add Remote methods `readAll(scope, path, signal)` and `readRelated(scope, path, relativePath, signal)` (posix/win32 join, NUL/URL guard).",
+      "src/index.ts: register `typert.lookups` entry `workspaceFileScope` (wire=`workspaceFileScopeId`, hostTypeSymbol `@deepseek-ai/dsh-api-workspace-files#WorkspaceFileScope`, wireTypeSymbol `@deepseek-ai/dsh-session/types#SessionId`) in constructor via `ctx.inject(['sessions','typert'], ...)`.",
+      "src/index.ts: `static inject` gains `'sessions'`; drops the requirement for `Agent`. Uses `scope.sessions.get(sessionId)?.header` with `sessionPersistence.stat` fallback; workspaceRoot = `header.cwd ?? sandboxPolicy.workspaceRoot`.",
+      "src/index.ts: `locateFile` no longer routes through `confine()` — uses `ctx.fs.resolve(path, { cwd: workspaceRoot })` directly (containment relaxed for file reads).",
+      "src/index.ts: adds `maxFileBytes` config (default 32 MiB) with `workspace-file/too-large` gate in `readAll`.",
+      "src/index.ts: removes private `workspaceRootOf(agent)` helper.",
+      "src/types.ts: `workspace-file/outside-workspace` scope narrows to directory listings only.",
+      "src/client/provider.ts: removes `SessionLookup`, `sessions` argument, and `absolute` scope wired-through-Session behavior; `absolute` addresses now yield `workspace-file/unknown-workspace`.",
+      "src/client/types.ts: removes `WorkspaceFileResource` type entirely — resource protocol map `file` becomes `WorkspaceFileStat`. Removes `restat` notice kind.",
+      "src/client/change-feed.ts: simplified (51-line delta); loses ~a third of code, aligned with removal of `restat`/`WorkspaceFileResource`.",
+      "package.json: version 0.1.3-alpha.2 -> 0.1.5-rc.2; drops `@deepseek-ai/dsh-agent`, `@deepseek-ai/dsh-api-session-controller` from client inject + devDeps; adds `@deepseek-ai/dsh-session-persistence`."
+    ],
+    "breakingChanges": [
+      "Remote wire ABI: 5 methods change parameter shape (Agent -> WorkspaceFileScope with distinct wire lookup id) and 2 new methods appear. Any caller that still calls `remote.workspaceFiles.read(agent, path, ...)` or `remote.workspaceFiles.list(sessionId, path, ...)` compiles differently. Callers found: `packages/client/ui-sidebar-files/src/client/face.ts:55`, `packages/client/ui-sidebar-textpreview/src/client/rpc.ts:85` (fork uses `sessionId` positionally; upstream now expects a lookup-registered scope shape).",
+      "Client-side type `WorkspaceFileResource` is removed. Fork consumer `packages/client/ui-sidebar-textpreview/tests/fixtures.client.ts` imports it (lines 16, 48-49, 88, 113). Will fail to compile after seam-6 take-upstream.",
+      "`createFileResourceProvider(remote, changes, sessions)` becomes `createFileResourceProvider(remote, changes)` — SessionLookup positional argument removed. Fork clients in `src/client/index.ts:28-32` (this same seam) already updated in upstream.",
+      "`workspace-file/outside-workspace` is now emitted only from `list`, not `read`. Any test asserting outside-workspace on file reads must be rewritten (upstream deletes those assertions).",
+      "`static inject = ['fs', 'sandboxPolicy', 'sessions', 'typert']` — bundle wiring that used to inject `Agent` must instead expose `sessions` and register the `workspaceFileScope` lookup.",
+      "New devDep `@deepseek-ai/dsh-session-persistence` needed at workspace root."
+    ]
+  },
+  "collisionPoints": [
+    {
+      "file": "packages/api/workspace-files/**",
+      "collisionKind": "upstream-refactored-fork-untouched",
+      "severity": "low",
+      "rationale": "`git log c389f96..8310c465 -- packages/api/workspace-files` returns EMPTY. Fork has zero commits touching this seam since BASE. All 16 upstream commits land on unmodified fork territory — pure take-upstream is safe inside the seam itself."
+    },
+    {
+      "file": "packages/client/ui-sidebar-textpreview/tests/fixtures.client.ts",
+      "collisionKind": "upstream-deleted-fork-still-imports",
+      "severity": "high",
+      "rationale": "Fork consumer imports the now-removed `WorkspaceFileResource` type at lines 16, 48-49, 88, 113. After seam-6 take-upstream this file will fail typecheck. Must be co-updated (rewrite around `WorkspaceFileStat` or the resource-model equivalent) OR the change lands as part of seam-6 as an unavoidable co-refactor. Outside the seam path but blocking the seam."
+    },
+    {
+      "file": "packages/client/ui-sidebar-files/src/client/face.ts",
+      "collisionKind": "upstream-changed-signature-fork-caller",
+      "severity": "high",
+      "rationale": "Line 55: `remote.workspaceFiles.list(sessionId, path, signal)` — fork passes `sessionId: SessionId`. Upstream now expects a `WorkspaceFileScope` on the wire (via typert lookup registration `workspaceFileScope` -> id `workspaceFileScopeId`). Wire ABI shift. In practice the typert layer may auto-resolve SessionId -> WorkspaceFileScope via the lookup registration on the host side — verify at runtime, but caller signatures/types will churn."
+    },
+    {
+      "file": "packages/client/ui-sidebar-textpreview/src/client/rpc.ts",
+      "collisionKind": "upstream-changed-signature-fork-caller",
+      "severity": "high",
+      "rationale": "Line 85: `remote.workspaceFiles.read(sessionId, path, { offset }, signal)` — same signature-shift issue as ui-sidebar-files/face.ts."
+    },
+    {
+      "file": "packages/api/remotes/src/client/index.ts",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Line 20 imports `@deepseek-ai/dsh-api-workspace-files/remote`; assembly point. No breaking API from that entrypoint alone — but bundle-time cordis wiring likely needs `sessions` injected wherever WorkspaceFiles is mounted."
+    },
+    {
+      "file": "packages/bundle/web-app/*",
+      "collisionKind": "upstream-inject-shape-change-fork-may-not-provide",
+      "severity": "medium",
+      "rationale": "New `static inject = ['fs', 'sandboxPolicy', 'sessions', 'typert']` requires `sessions` service to be mounted before WorkspaceFiles. Bundle assembly must be checked — sessions is normally present, but confirm the mount order and that `sessionPersistence` is available for the fallback path."
+    },
+    {
+      "file": "packages/api/workspace-files/README.md / README.zh.md / README.i18n.yaml",
+      "collisionKind": "upstream-rewrote-doc-fork-untouched",
+      "severity": "low",
+      "rationale": "Doc narrative rewritten (session-scope + read-outside-workspace semantics). Fork has no touch here — take-upstream. Cross-check that fork-owned skeleton generators (`gen-package-readme-skeleton.ts` per Ticket E in parent task list) don't overwrite the upstream-authored README on regen."
+    }
+  ],
+  "forkOwnership": {
+    "forkTouchedFiles": [],
+    "forkAdditiveShapes": [],
+    "knownWaivers": []
+  },
+  "conflictSeverity": {
+    "rating": "medium",
+    "estimateSessions": "0.5-1 session",
+    "rationale": "Inside the seam path itself: fork touches ZERO files — pure take-upstream. Outside the seam path but caused by it: 2 client consumers (ui-sidebar-files, ui-sidebar-textpreview) and 1 client test fixture (ui-sidebar-textpreview/tests/fixtures.client.ts) hold `WorkspaceFileResource` / old-signature call sites. These are the real work. Because the fork is otherwise clean on this seam, the merge itself is trivial; the co-adaptation (adjust client consumers to the new scope-based Remote parameter and the retired `WorkspaceFileResource` type) is the effort. Upstream already updated its own internal client/provider callers in the same seam, so the pattern to copy is in `packages/api/workspace-files/src/client/index.ts` post-merge."
+  },
+  "priorityRank": 3,
+  "recommendedApproach": "Take upstream wholesale inside `packages/api/workspace-files/`. Fork has zero seam-local touches — no three-way merge decisions to make on this seam's files. Sequence:\n1. `git checkout c291e796 -- packages/api/workspace-files/` (or equivalent merge-strategy=theirs on this path).\n2. Immediately co-adapt 3 out-of-seam call sites in the same commit or an adjacent commit:\n   - `packages/client/ui-sidebar-files/src/client/face.ts:55` — verify typert lookup auto-resolves `SessionId -> WorkspaceFileScope`, keep positional `sessionId` if the wire lookup handles it; otherwise adjust.\n   - `packages/client/ui-sidebar-textpreview/src/client/rpc.ts:85` — same check.\n   - `packages/client/ui-sidebar-textpreview/tests/fixtures.client.ts` — port off `WorkspaceFileResource` type (retired) to `WorkspaceFileStat`; drop `changed` flag; drop `bytes` if the successor type has it under a different name.\n3. Confirm bundle wiring: `packages/bundle/web-app/cordis.patch.yml` and `packages/api/remotes/src/client/index.ts` — ensure `sessions` and `typert` are injectable when WorkspaceFiles mounts.\n4. Add `@deepseek-ai/dsh-session-persistence` to workspace catalog if not present (verify `pnpm-lock.yaml` gets the new dep).\n5. Run testHotspots (below) before broadening scope. Note the `absolute` address scope is now unsupported — if any fork feature relied on Session-current fallback for absolute URLs, plan a follow-up ticket (out of scope for the seam itself).",
+  "testHotspots": [
+    "packages/api/workspace-files/tests/read-all.spec.ts (new — verifies readAll cap semantics)",
+    "packages/api/workspace-files/tests/scope.spec.ts (new — verifies WorkspaceFileScope lookup registration + workspaceRoot fallback)",
+    "packages/api/workspace-files/tests/provider.client.spec.ts (rewritten — 181 -/+ churn; verifies SessionLookup removal and absolute-address behavior change)",
+    "packages/api/workspace-files/tests/host-path.client.spec.ts (rewritten — 81 -/+ churn; provider no longer sees SessionLookup)",
+    "packages/api/workspace-files/tests/read.spec.ts, read-bytes.spec.ts, list.spec.ts, stat.spec.ts (all touched; assertions on `outside-workspace` for read paths must be gone — verify none linger)",
+    "packages/client/ui-sidebar-textpreview/tests/fixtures.client.ts + downstream tests using it (fixture uses retired WorkspaceFileResource)",
+    "packages/client/ui-sidebar-files/tests/face.client.spec.ts (imports `WorkspaceDirectoryListing` from the same package; likely fine but re-run)",
+    "packages/client/ui-sidebar-textpreview/tests/face.client.spec.ts",
+    "typecheck across workspace (the change to Remote parameter shape is compile-time)"
+  ],
+  "historicalNote": "Not seam-3 — no direct UM14 seam-3 history applies. Seam-6 specifically was recorded as `mode: 'pending'` (workspace-files absent) before UM14; UM14 restored `packages/api/workspace-files/` and UM15 §5a (commit `f8c0e3abca`, 2026-09-17) updated `scripts/gen-architecture-graph.ts:89-93` to `mode: 'seam'` + `implementations: ['api-workspace-files']` + note 'workspace-files restored via UM14 re-sync; previously pending.' Verified live: same three fields present at seam-6 today. UM15 §5 also observed the seam-role column emit `seam-2` first then `seam-6, seam-2` — no follow-up churn expected from this pre-analysis pass. The historical fragility here is that `WorkspaceFileResource` was a fork-visible surface exposed to `ui-sidebar-textpreview`; that surface is now retired upstream, so any fork snapshot that added members to `WorkspaceFileResource` would be lost. In practice fork did not add members (grep shows only test-fixture consumers hold references), so risk is compile-time not semantic. Mitigation: co-adapt in the same PR to avoid a red main between seam-6 merge and the client-facet fixup.",
+  "openQuestions": [
+    "Does the fork's typert wiring auto-hydrate `SessionId` positional args into the registered `workspaceFileScope` lookup, so calls like `remote.workspaceFiles.list(sessionId, ...)` still typecheck? Or does the fork need to hand-thread a scope object at those two client call sites (ui-sidebar-files/face.ts, ui-sidebar-textpreview/rpc.ts)?",
+    "Does `packages/bundle/web-app/` mount `sessions` before WorkspaceFiles today? (upstream requires it via `static inject` addition).",
+    "Is `sessionPersistence` optional at bundle time? Upstream uses `scope.get('sessionPersistence')?.stat(...)` — the optional chain suggests yes, but the fork should verify no bundle assumes it's always present.",
+    "Does anything downstream still rely on the `absolute` address wired-through-Session behavior that upstream removed? A grep for `dsh-resource://file/absolute` in the fork should confirm before merging.",
+    "Should the co-adaptation of `packages/client/ui-sidebar-textpreview/tests/fixtures.client.ts` land in the seam-6 commit (keep atomic) or as a follow-up? Recommendation: atomic — otherwise typecheck goes red between commits."
+  ],
+  "confidence": "high"
+}

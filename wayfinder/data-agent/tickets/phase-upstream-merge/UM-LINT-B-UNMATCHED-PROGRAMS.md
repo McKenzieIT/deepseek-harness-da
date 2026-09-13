@@ -101,3 +101,48 @@ packages/typert/generator/tests/fixtures/remote-model/typert-protocol.d.ts
 **§2 gate-coverage meta-gate**（[UM15](UM15-durable-upstream-sync-method.md) `2eb5b4a850` 已实现）承载：slice 结果落定后，本票的 3 buckets 各自 → §2 manifest（FIX-tracked / WAIVE / KNOWN-RED）。
 
 **Durable 防线**（本票原提议）：加一道 gate 断言「`OXC_LOG=debug` 报的 unmatched 列表里，不得出现落在严格 type-aware override 内的文件」——这道防线在 slice 落定后作为 §2 manifest 之外的**回归防止层**，防止 A 类无声无息重新长出来。
+
+---
+
+## [2026-09-13] Phase-1 research → Phase-6 decision-doc (HYBRID resolution; eval-independent slice LANDED, remainder DEFERRED)
+
+Source: `wayfinder/data-agent/research/next-session-2026-09-14/lint-b.json` (high-confidence read-only research). unmatchedTotal VERIFIED at exactly 56 (plan exact; reproduced via `OXC_LOG=debug oxlint . | grep -c 'Unmatched file:'`). Stable across ~40 commits of drift and orthogonal to UM-LINT-A (the `disableSourceOfProjectReferenceRedirect` fix is now landed in `tsconfig.base.client.json:13`, yet count is still 56).
+
+### LANDED this session (commit `5d0005b9f7`, eval-independent slice)
+
+- **Bucket (i) typert fixture ×1 — FIX**: widened `.oxlintrc.json` ignorePatterns `packages/typert/generator/tests/fixtures/type-model/**` → `packages/typert/generator/tests/fixtures/**`, aligning oxlintrc with `tsconfig.host.json:129` (which already excludes the whole `fixtures/**` tree). This fixes the tsconfig/oxlintrc disagreement that left `packages/typert/generator/tests/fixtures/remote-model/typert-protocol.d.ts` unmatched. Updated `scripts/oxlint-contract.spec.ts:168` to match the new literal. All 13 oxlint-contract tests pass. Unmatched count: 56 → 55.
+
+### DEFERRED — Bucket (i) eval-cli ×6 (gated on eval-team coordination)
+
+`packages/eval/eval-cli` is the perpetually-running eval machine; changing its tsconfig/build shape must be coordinated with the eval team BEFORE apply (cannot self-serve). The 6 unmatched test files: `tests/main.spec.ts`, `tests/compare.spec.ts`, `tests/cli-llm-config.spec.ts`, `tests/harness-responder.spec.ts`, `tests/report.spec.ts`, `tests/scope-id.spec.ts`.
+
+**Root cause (two-sided non-ownership)**: `tsconfig.host.json:109` includes `packages/*/*/tests/**/*.ts` (so other pkgs' tests resolve — sanity-checked llm/llm/tests → host, ui-conversation tests → client) BUT `tsconfig.host.json:131` excludes the whole package `packages/eval/eval-cli/**`, while `packages/eval/eval-cli/tsconfig.json` only `include: ["src"]`. Neither side owns tests → `<none>`.
+
+**Recommended apply (sub-option b)**: add `packages/eval/eval-cli/tsconfig.tests.json` referenced from the root solution — CLEANEST, follows the EXISTING per-package two-face pattern (VERIFIED 9 `tsconfig.host.json` + 9 `tsconfig.client.json` in packages/), no new precedent, gives real type-aware coverage on the 6 silently-unchecked spec files. Sub-option (a) drop the package from `tsconfig.host.json:131` exclude is minimal-diff but risky (must first learn WHY the whole package was excluded — likely deliberate, tied to eval machine build). Sub-option (c) add to `.oxlintrc` ignorePatterns honestly stops checking but forfeits type-aware on 6 files. Sub-option (d) `tsconfig.json include:["src","tests"]` opens 'package owns its own tests' precedent (VERIFIED: no package currently does this).
+
+**Coordination ask**: coordinate at the START of any A-class eval-cli apply session (before touching tsconfig), NOT during. The typert-fixture fix (landed), the durable gate (below), and ALL Bucket ii/iii dispositions are eval-independent and proceeded without coordination.
+
+### DEFERRED — Bucket (ii) 34 WAIVE (intentional out-of-graph scaffolds)
+
+Fork code that lives INTENTIONALLY outside the repo tsconfig graph AND outside the strict override glob: prototype/research scaffolds, benchmarks, snapshots, throwaway dev/bin harness scripts, .d.mts build-config declarations. Only default rules apply (correctness `off` in `.oxlintrc`), so leak surface is genuinely small. Correct disposition is a per-glob WAIVE with rationale in the gate-coverage/upstream-sync waiver layer, NOT adding tsconfigs (would open the 'prototypes are compiled' precedent).
+
+Breakdown (34 files): `wayfinder/data-agent/prototypes` 12, `packages/eval/retrieval-experiment/scripts` 9, `snapshots/**` 5, `wayfinder/data-agent/research` 3, `eval-cli bin+dev` 3, `prototypes/d2c-retrieve-baseline` 2, `query-maxcompute dev` 3 (incl 1 `.d.mts`), `query-tool/dev` 1, `util/deque/benchmarks` 1, `eval-results/p11d-calibration` 1. (`.d.mts` and `.cjs` files here aren't matched by the override's `*.{ts,tsx}` globs anyway.)
+
+### DEFERRED — Bucket (iii) 15 KEEP-as-default-only (support/build tooling)
+
+The remainder of the B-class 49 that are NOT clearly throwaway: `apps/desktop` build/release harness (7, all `.d.mts` + scripts), repo-root shared harness (`vitest.shared.ts`), coverage tooling (`scripts/coverage-uncovered-locations.cjs`), and misc snapshot/support `.ts`. Only eat default rules today (correctness off). Verdict: KEEP as default-only (do not expand type-aware coverage) — near-zero real-bug ROI, and pulling them into a program would drag build-config `.d.mts` and scaffolds into strict programs. Note `.d.mts` (8) and `.cjs` (1) are structurally outside the override's `*.{ts,tsx}` globs regardless. NOTE: buckets (ii)+(iii) together = the 49 B-class files; the split is a judgment line (intentional-scaffold vs support-tooling), both dispositions are non-FIX.
+
+### DEFERRED — Durable regression gate (highest-value output of this ticket)
+
+A-class already grew silently once (56 unmatched). Install a durable gate asserting: **'no file matching the strict type-aware override globs may appear in the OXC_LOG unmatched list.'** Implementation home is READY in the main tree: `scripts/verify-gate-coverage.ts` + `scripts/gate-coverage.manifest.json` + `scripts/verify-gate-coverage.spec.ts` already exist (UM15 §2 meta-gate landed via `2eb5b4a850`).
+
+Two viable wirings (pick in a follow-up):
+1. **RECOMMENDED**: extend `scripts/run-oxlint.ts` (98 lines, already spawnSync's the oxlint CLI) to run one `OXC_LOG=debug` pass, parse `Unmatched file:` lines, and fail if any intersects the strict-override globs — folded into the single existing oxlint invocation + enrolled in the gate-coverage manifest so the meta-gate tracks it.
+2. Alternative: add a dedicated `verify-oxlint-program-coverage` gate enrolled alongside `verify-gate-coverage`.
+
+After Bucket (i) FIX lands (both the typert fixture, DONE, and the eval-cli ×6, DEFERRED), the assertion is GREEN and stays green. The honest interim protection is Cluster D's manifest coverage combined with this ticket's documented buckets.
+
+### Verification (landed slice)
+
+- `pnpm exec vitest run scripts/oxlint-contract.spec.ts` → 13/13 pass
+- `OXC_LOG=debug oxlint . | grep 'Unmatched files:'` → 55 (was 56; drop is exactly the one typert fixture now ignored)
