@@ -1,6 +1,30 @@
+---
+description: "Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context
+
+## Table of Contents
+
+- [API](#api)
+- [Determinism](#determinism)
+- [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
+- [Batch Runner + Persistence (W3 — P11c)](#batch-runner--persistence-w3--p11c)
+- [Host wiring — complete integration pattern](#host-wiring--complete-integration-pattern)
+- [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 The data-agent eval harness: a da-fresh TypeScript mirror of `reverse-bi`'s `rbi-eval` orchestration **design** (not its Python code) — `MultiTurnSession` (fixed-script multi-turn state machine) + pass_k (`run_multi_turn_case`, must pass every attempt) + da (ii) scoring (**DELIVERY** final-answer comparison + **EXECUTION** result-set comparison via the 5 `match_mode`, no sqlglot) over **injected** collaborators.
 
@@ -75,6 +99,10 @@ console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regr
 ```
 
 ## Host wiring (the seams this library does not own)
+
+## Dev Note
+
+None.
 
 
 ## Model Experience

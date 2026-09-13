@@ -1,6 +1,28 @@
+---
+description: "Model-facing query_data tool: executes SQL via ctx.query and returns rows for the data agent's EXECUTION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-query-tool`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing query_data tool: executes SQL via ctx.query and returns rows for the data agent's EXECUTION phase
+
+## Table of Contents
+
+- [Status: maxc-backed EXECUTION (P4c)](#status-maxc-backed-execution-p4c)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `query_data` tool: **real SQL execution via `ctx.query`** for the data agent's `EXECUTION` phase. The agent calls it with SQL + a per-game scope to run that SQL via the query engine and get back rows — the agent running its OWN SQL, not the eval harness re-running a canned statement.
 
@@ -62,6 +84,11 @@ node --import tsx/esm packages/query/query-tool/dev/query-tool-smoke.ts  # tool 
 ```
 
 The smoke boots a cordis ctx + fake credentials + the query provider (maxc-sidecar), captures the `query_data` tool def the plugin registers, and calls its `execute` with RBI case `eval_10000251_037`'s expected SQL, asserting the result reproduces `expected.result_value` (dau=4336) — through the tool path, not a direct sidecar call. The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-query-data`) is uncommented now that this package ships; the phase-gate guard's EXECUTION whitelist already names `query_data`, so registering it makes it callable in that phase.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

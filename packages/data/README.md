@@ -1,3 +1,8 @@
+---
+description: "Data-agent data capability family: query, retrieval/vectorization, semantic layer, audit, and admin packages"
+kind: "package-group"
+---
+
 # data/ — data-agent capability family
 
 English | [中文](README.zh.md)

@@ -1,6 +1,27 @@
+---
+description: "CPython subprocess CodeRuntime Provider for the data-agent (pandas/numpy, containment-only trust)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-code-runtime-data-python
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+CPython subprocess CodeRuntime Provider for the data-agent (pandas/numpy, containment-only trust)
+
+## Table of Contents
+
+- [Config](#config)
+- [Design](#design)
+- [Failure kinds](#failure-kinds)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 CPython-subprocess implementation of the [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.md) seam for the data-agent. `DataPythonCodeRuntime` runs each program in ONE fresh `python3` subprocess with pandas/numpy available, talks the existing fd-3 JSON-lines wire protocol owned by [`@deepseek-ai/dsh-code-runtime-python`](../../experimental/code-runtime-python/README.md), and returns `{ value, logs, error? }`. **Containment, not a security boundary**: the trust posture is binding-only I/O plus resource limits — the same posture as the [`worker-thread`](../code-runtime-worker-thread/README.md) backend, traded from a Node isolate to a fresh CPython process so model code is Python instead of TypeScript.
 
@@ -35,6 +56,11 @@ Every field is validated and defaulted; `cpuSeconds`, `addressSpaceBytes`, and `
 ## Failure kinds
 
 A `CodeRunResult.error.kind` is one of: `worker-exit` (spawn error or the process exited before a `done`), `timeout` (wall-clock ceiling), `abort` (caller signal or runtime disposal), `output-limit` (completion value over `maxValueBytes`), `exception` (program or binding-error traceback, or a bootstrap crash), `invalid-output` (completion is not lossless JSON).
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

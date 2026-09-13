@@ -1,9 +1,30 @@
+---
+description: "TODO: translate: Toolview card for the present_table INTERPRETATION tool: data table with KPI cards, virtual scrolling, and optional chart visualization"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-present-table
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Toolview card for the present_table INTERPRETATION tool: data table with KPI cards, virtual scrolling, and optional chart visualization
+
+## 目录
+
+- [渲染](#rendering)
+- [测试](#tests)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
+
+
 `present_table` INTERPRETATION 工具的工具视图卡片。将查询结果渲染为富数据表格，提供 KPI 汇总卡片、排序、虚拟滚动、SQL 透明展示与可选的 Chart.js 可视化。
 
+<a id="rendering"></a>
 ## 渲染
 
 当模型调用 `present_table` 时，本插件用一张富卡片替换通用工具行，展示：
@@ -23,10 +44,18 @@
 
 本地化：卡片向 slot 注册 `present.table` locale 命名空间（zh/en），所有文案经 `t` 处理。
 
+<a id="tests"></a>
 ## 测试
 
 4 个 spec 文件共 141 个测试；fixture（测试前置数据）使用真实的 `renderCompleted` 输出格式（result_id 行、省略标记、行数尾注），因此解析器约定不会与 `dsh-query-tool` 静默漂移，fetchResult 布线 spec 覆盖结果存储主路径、TSV 缓存未命中兜底、fresh-vs-folded 失效以及重试 = 重新拉取。R4 图表 spec 覆盖全部 9 种原生类型、`valueLabelsPlugin` 的绘制分支、校验器的降级为 bar 规则以及工具栏开关。
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -35,6 +64,7 @@
 
 本包不扩展或失效 agent loop（智能体循环）的可复用请求前缀。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延期工作
 
 - **TSV 缓存未命中兜底是不完整的。** 当结果缓存插件缺失（无 `fetchResult` 面）或宿主返回 `result-not-found` 时，卡片兜底到同一轮次 `query_data` 的 TSV 扫描，只渲染工具结果文本携带的行——`renderCompleted` 格式在远低于 10,000 行完整结果上限处就显示截断（省略标记）。完整数据需要结果缓存（[R5](../../../wayfinder/interpretation-client-rendering/tickets/R5-object-layer-result-cache.md)/[T9](../../../wayfinder/interpretation-client-rendering/tickets/T9-result-cache-package-impl.md)）。

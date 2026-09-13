@@ -1,3 +1,8 @@
+---
+description: "TODO: translate: Data-agent data capability family: query, retrieval/vectorization, semantic layer, audit, and admin packages"
+kind: "package-group"
+---
+
 # data/ — data-agent 能力族
 
 [English](README.md) | 中文

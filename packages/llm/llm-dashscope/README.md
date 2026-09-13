@@ -1,6 +1,26 @@
+---
+description: "[data-agent] DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-llm-dashscope
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+[data-agent] DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 [data-agent] DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam (`ctx.llm`). Implements the DashScope native wire protocol (NOT OpenAI-compatible) over the Alibaba internal AGA gateway.
 
@@ -21,6 +41,11 @@ tsc -b packages/llm/llm-dashscope/tsconfig.json   # typecheck
 pnpm vitest run packages/llm/llm-dashscope         # 64 unit specs
 DSH_KEYCHAIN_LIVE=1 DASHSCOPE_API_KEY=... pnpm vitest run packages/llm/llm-dashscope/tests/adapter.e2e.ts  # key-gated live e2e
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

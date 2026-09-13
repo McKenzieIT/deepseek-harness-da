@@ -1,6 +1,28 @@
+---
+description: "Model-facing load_event_definition tool: load a validated event (埋点) definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-load-event-definition`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing load_event_definition tool: load a validated event (埋点) definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase
+
+## Table of Contents
+
+- [Status: registered + callable; ctx.schema wired](#status-registered--callable-ctxschema-wired)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `load_event_definition` tool: **load a validated event (埋点) definition from the semantic-layer substrate** for the data agent's `UNDERSTANDING`/`GENERATION` phase. The agent calls it to ground SQL in the real event schema (params_fields, metrics, disambiguation, external dimension references) before writing or critiquing a query over an event ODS table.
 
@@ -52,6 +74,11 @@ pnpm verify-cordis-config
 ```
 
 The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-load-event-definition`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING`/`GENERATION` whitelist already names `load_event_definition`, so registering it makes it callable in those phases.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

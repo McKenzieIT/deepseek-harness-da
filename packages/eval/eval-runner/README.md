@@ -1,8 +1,31 @@
+---
+description: "Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval-runner
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

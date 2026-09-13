@@ -1,6 +1,27 @@
+---
+description: "TODO: translate: Models settings and shared product-onboarding dialogs over existing settings and credential joins"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-settings-models
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Models settings and shared product-onboarding dialogs over existing settings and credential joins
+
+## 目录
+
+- [模型列表与端点询问](#model-list-and-endpoint-interrogation)
+- [理解实现](#understand-the-implementation)
+- [进一步探索](#further-exploration)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与暂缓事项](#known-limitations-and-deferred-work)
+
 
 模型设置与产品引导插件。同一个 client Cordis 插件会注册 Models 页面和两个有序的首次使用弹窗：版本化内测声明，以及按条件显示的 DeepSeek 官方凭据步骤。两个步骤共用同一套弹窗组件，并继续由 `settings.onboarding` 排序。Models 平面把三个协议领域汇聚为一个共享快照：`llm.providers`（可配置提供方目录，含每条路由的存活／休眠状态）、`settings.describe`（序列化 schema、分层脱敏值、secret slot）与 `credentials.describe`（不含值的 configured/source/writable 徽标）；页面据此渲染提供方行，一次只展开一张编辑卡片，且不把路由存活状态呈现为提供方状态。
 
@@ -12,6 +33,7 @@
 
 每一次编辑都以 `settings.mutate` 的路径 op 落到已存分节上——每个变更字段一条 set、每个清空字段一条 unset、删除提供方行则是单独一条 unset。页面自始至终只持有**脱敏后**的 descriptor，因此它只修改自己看得见的字段，而不重建分节。DeepSeek 的 `models` 是一个按值整体替换的数组：编辑器会显示继承而来的生效模型行，直到第一次模型编辑将完整数组具化到用户层；重置则会取消该覆盖。每个模型行承载模型 ID 与显示名称，其上下文窗口与最大输出 token 数则收在该行自己的折叠区里，使用与 pi-ai 提供方表单相同的字段。两项容量都按数值键入，可带十进制的 `K` 或 `M` 后缀（`256K`、`1M`；`1M` 即 1000K），存储为纯数值，回显时写成能够往返的最短形式。空 ID、重复 ID、显式填写的空名称，以及无法读取、非正数或非整数的容量都会在写入前失败。键入的 API 密钥同样在它自己的字段上被判定：trim 之后必须非空，且每个字符都是可打印 ASCII（`[\x21-\x7E]`）——这正是 HTTP 标头值所能承载的范围，是 `@deepseek-ai/dsh-llm` 中 `normalizeApiKey` 的孪生体，因源码平面分割禁止直接引入而在此镜像。与整行粘贴的 `NAME=value` 环境变量匹配或首尾成对引号包裹的值，会以同一条格式失败被拒绝；这项粘贴行检查只在浏览器中运行，因为 resolver 中的一次误判会连带让环境变量这条路也拒绝该密钥。只含空白的输入框会失败而不是被静默丢弃；留空则完全不是失败：在编辑卡片上意味着保持已存储的密钥，在新建卡片上则意味着以其他方式鉴权。被拒绝的密钥会同时拦截写入与端点探测，因此页面不会白花一次往返去换取字段上已经写明的答案。每次 settings 写入都携带卡片当前的 `revision`，因此来自另一个标签页或对 `settings.yaml` 的外部编辑所产生的并发写入会以 `settings/conflict` 被拒绝；settings 提交成功后，卡片会在存储凭据前采用响应返回的脱敏用户子树与 revision，因此凭据阶段失败时，重试只会重复该阶段。删除操作只会在 profile 指向页面派生的 `<ROUTE>_API_KEY` 目标时清除已配置且可写的凭据，随后取消设置 profile；两项操作都具备幂等性，部分失败会停留在点名目标的确认对话框中供重试。环境凭据、自定义引用和无法识别目标的凭据保持不变。页面加载完成后会直接订阅转发的 owner 事件 `settings/document-updated`、`credentials/reference-updated`、`llm/adapters-updated`，以及本地 `connection/reset`，因此外部的 `settings.yaml` 编辑、第二个标签页或 settings 新生的路由都无需轮询即可收敛。
 
+<a id="model-list-and-endpoint-interrogation"></a>
 ## 模型列表与端点询问
 
 pi-ai profile 的 `models` 列表就在卡片上编辑：一行一个模型，行上显示 id 与显示名称，上下文窗口与输出上限收在该行的展开区内，右侧是两个无文字的操作——展开与删除。空列表意味着「使用该路由的内置 catalog」，因此每一行都只会被刻意添加；清空容量会丢弃它，而不是存入一个 schema 会拒绝的值，配置留空的部分由适配器的路由级回退值定尺寸——留空的容量以这些回退值的量级作为占位符，那只是提示而非镜像：该字段按 1000 计 `K`，且部署可以覆盖这些回退值。不是正整数的容量根本不会被存下。
@@ -76,6 +98,14 @@ pi-ai profile 的 `models` 列表就在卡片上编辑：一行一个模型，�
 -----
 
 <a id="model-experience"></a>
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 无。该分区渲染浏览器配置 UI；这里没有任何内容进入模型请求。
@@ -84,6 +114,7 @@ pi-ai profile 的 `models` 列表就在卡片上编辑：一行一个模型，�
 
 无；该包既不组装也不发送提供方请求。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与暂缓事项
 
 - **卡片上可编辑的只有 API 密钥与精选折叠区字段**：手写编辑器用 schema 通用的字段覆盖面换来了设计稿上的布局（[Agent Note](../../../.agents/notes/archived/architecture/2026-07-30-web-config-plane.md)）。两个家族都公开 `baseURL` 与模型的 `id`/`name`/`contextWindow`/`maxTokens`；手工声明的 pi-ai 路由还公开 `displayName` 与 `api`。重试策略、超时、DeepSeek 模型说明及其他进阶字段仍留在 `settings.yaml` 中；编辑器未展示的现有模型字段会予以保留。不带这些约定字段的 profile schema 只渲染该提示，两套精选布局则以 `llm-deepseek`/`llm-pi-ai` 这两个 namespace 的名字为键。

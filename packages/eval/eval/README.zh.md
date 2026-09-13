@@ -1,11 +1,36 @@
+---
+description: "TODO: translate: Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context
+
+## 目录
+
+- [API](#api)
+- [确定性](#determinism)
+- [Host 连线（本库不拥有的 seams）](#host-wiring-the-seams-this-library-does-not-own)
+- [Batch Runner + Persistence (W3 — P11c)](#batch-runner--persistence-w3--p11c)
+- [Host wiring — complete integration pattern](#host-wiring--complete-integration-pattern)
+- [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Data-agent eval harness：da-fresh TypeScript 镜像 `reverse-bi` 的 `rbi-eval` 编排 **设计**（非其 Python 代码）— `MultiTurnSession`（固定脚本多轮状态机）+ pass_k（`run_multi_turn_case`，必须每次尝试通过）+ da (ii) 评分（**DELIVERY** 最终答案比对 + **EXECUTION** 结果集比对经 5 种 `match_mode`，无 sqlglot）基于 **注入的** 协作者。
 
 **纯库**：不在 Cordis context 上注册任何内容，其协作者 — `Responder`（封装 `DeepSeekHarness.run()`）、`CaseSqlExecutor`（封装 `ctx.query.execute`）、`JudgeProvider`（封装 `llm-dashscope`/`ctx.llm`）— **注入**（D9：evaluator 从不构造被测 agent；host 拥有运行时生命周期，包括 wall-clock timeout 时的 close/respawn）。零 seam peerDependencies：库既不导入 `dsh-sdk-client`、`dsh-query`、`dsh-llm`，也不导入 `cordis`；它定义最小结构化"视图"接口（`RunResultView`、`QueryOutcomeView`），真实运行时形状满足这些接口。
 
+<a id="api"></a>
 ## API
 
 - **`runMultiTurnCase(case_, { runId, responder, passK?, executeSql?, provider?, deliveryOpts?, timeoutMs?, onTimeout? })`** — 驱动一个 case `pass_k` 次 + 应用 pass_k（verdict 是第一个未通过尝试的，非最后一个 — anti-flakiness）。
@@ -20,10 +45,12 @@ Data-agent eval harness：da-fresh TypeScript 镜像 `reverse-bi` 的 `rbi-eval`
 - **`turnMatchesExpectation(actual, expected)`**（derailment，rbi `≥0.35`）/ **`deliveryFuzzyMatch(actual, expected, opts?)`**（DELIVERY；短 expected → token-containment — 强化 `gameX` vs `gameA` 误报）。
 - **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema（zod）+ YAML/JSON loader。
 
+<a id="determinism"></a>
 ## 确定性
 
 `@deepseek-ai/dsh-llm-replay`（运行时 `cordis.yml` 插件，`DSH_SNAPSHOT_FILE` env）冻结 **agent** LLM — 被测系统 — 使 agent 的响应比特可复现。**judge** 是独立的 eval 侧 LLM 调用（`JudgeProvider`，连线到 `llm-dashscope`/`ctx.llm`），不受 agent replay 覆盖。按 P11b 决策 1，judge **接受方差**（temp 0 + `JUDGE_MAX_RETRIES=2` + exponential backoff）；完全比特可复现的 judge（独立 judge snapshot）延期。`pass_k=3` 是 anti-flakiness 机制；回归模式（agent 被 replay）下 judge 方差可能混淆 judge/agent 的不稳定性 — 已记录的已知权衡。
 
+<a id="host-wiring-the-seams-this-library-does-not-own"></a>
 ## Host 连线（本库不拥有的 seams）
 
 Host 连线真实协作者并注入：
@@ -32,6 +59,7 @@ Host 连线真实协作者并注入：
 - **Execution** — `executeSql = async (sql) => mapQueryOutcome(await ctx.query.execute({ sql, scopeId }))`（host 可 `attach`+poll 以先解析 `pending`；`mapQueryOutcome` 对未解析的 pending 健壮 → `patience` refuse）。
 - **Judge** — `provider = async (prompt) => { const { stream } = await ctx.llm.stream({ provider: 'dashscope', model, messages: [judgeSystemPrompt, …] }); …parse JSON → { score, rationale } }`（host 拥有 judge prompt + JSON parsing + `llm-dashscope` route；`judgeWithProvider` 添加 retry/backoff + `classifyError` + `AuthenticationAbort`）。
 
+<a id="batch-runner--persistence-w3--p11c"></a>
 ## Batch Runner + Persistence (W3 — P11c)
 
 证据引擎(随 W3 发布)在核心之上添加批量执行、持久化与 delta 分析:
@@ -44,6 +72,7 @@ Host 连线真实协作者并注入：
 - **`passAtK(records)`** — 全部 k 次尝试都通过的 case 占比。
 - **`runHealthCheck({ responder?, executeSql?, timeoutMs? })`** — 预运行闸门,在消耗 eval 预算前对连通性或凭证问题快速失败(G1 Q9)。健康检查失败则中止运行且不产生结果。
 
+<a id="host-wiring--complete-integration-pattern"></a>
 ## Host wiring — complete integration pattern
 
 ```typescript
@@ -74,8 +103,16 @@ const delta = computeDelta(prev, curr)
 console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regressed`)
 ```
 
+<a id="host-wiring-the-seams-this-library-does-not-own"></a>
 ## Host wiring (the seams this library does not own)
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 无 — 这是测试 harness 库；它既不组装也不发送 provider 请求。模型在 spawned runtime（agent）或 eval 侧 judge LLM 中运行，两者都由 host 连线拥有。
@@ -84,6 +121,7 @@ console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regr
 
 无直接影响；agent 运行时和注入的 judge LLM 拥有所有模型可见请求。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **已移除 SQL-hygiene 断言** — rbi L1 的 sqlglot 绑定 `field_coverage`/`limit_reasonable`/`partition_compliant` 已移除（G2 权衡）：结果集正确但 SQL "不整洁"（SELECT *、缺 LIMIT、缺分区谓词）的 agent 通过 da (ii)。

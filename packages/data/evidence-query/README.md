@@ -1,8 +1,31 @@
+---
+description: "Unified evidence-query backend layer — coverage, gap analysis, reachability, eval results, and asset health for both sidebar and dashboard consumption."
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-evidence-query
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Unified evidence-query backend layer — coverage, gap analysis, reachability, eval results, and asset health for both sidebar and dashboard consumption.
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Unified evidence-query backend layer — coverage, gap analysis, reachability, eval results, and asset health for both sidebar and dashboard consumption.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

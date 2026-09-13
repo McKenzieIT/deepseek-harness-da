@@ -76,6 +76,11 @@
       "coveredBy": "verify-tsconfig-paths gate"
     },
     {
+      "script": "gen-package-readme-skeleton",
+      "reason": "generator (write operation, not a gate); its --check variant verify-package-readme-skeleton is enrolled",
+      "coveredBy": "verify-package-readme-skeleton gate"
+    },
+    {
       "script": "verify-cordis-api",
       "reason": "blind spot (UM12): cordis-api string absent from run-gates.ts despite documented invariant (.agents/notes/archived/process/2026-07-21-doc-sync-through-gate-scheduler.md:16 asserts docSyncLeafGates includes verify-cordis-api); enrollment pending separate fix",
       "coveredBy": "none (regressed documented invariant)"

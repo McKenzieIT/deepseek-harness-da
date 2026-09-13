@@ -1,12 +1,36 @@
+---
+description: "External OpenAI-compatible HTTP embedder provider (InfinityEmbedder) + InfinityReranker peer for the data agent's retrieval (P5b heavy tier; user self-deployed, T2: AGA-embeddings NO)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-embedder-http
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+External OpenAI-compatible HTTP embedder provider (InfinityEmbedder) + InfinityReranker peer for the data agent's retrieval (P5b heavy tier; user self-deployed, T2: AGA-embeddings NO)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 External OpenAI-compatible HTTP embedder provider (InfinityEmbedder) + InfinityReranker peer for the data agent's retrieval pipeline (P5b heavy tier; user-self-deployed).
 
 ## Overview
 
 Provides `InfinityEmbedder` — an embedder provider that calls an external OpenAI-compatible `POST /v1/embeddings` endpoint, and `InfinityReranker` calling `POST /rerank`. Configurable via `url`, `model`, and `timeout`. Designed for user-self-deployed inference services (T2 scenario: AGA-embeddings probe negative). Uses injectable `fetch` for testing without a live endpoint.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

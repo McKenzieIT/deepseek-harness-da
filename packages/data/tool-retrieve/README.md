@@ -1,6 +1,29 @@
+---
+description: "Model-facing retrieve tool: on-demand retrieval escape-hatch over the data-source corpus for the data agent (BM25-only soft-fallback; additive, dormant until mounted)"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-retrieve`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing retrieve tool: on-demand retrieval escape-hatch over the data-source corpus for the data agent (BM25-only soft-fallback; additive, dormant until mounted)
+
+## Table of Contents
+
+- [Status: shipped but DORMANT (opt-in, dormant-until-mount)](#status-shipped-but-dormant-opt-in-dormant-until-mount)
+- [Soft-fallback chain (mirrors `search_data_sources`)](#soft-fallback-chain-mirrors-search_data_sources)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `retrieve` tool: **the on-demand retrieval escape-hatch** for the data agent. The pipeline prefetches data-source candidates in the `UNDERSTANDING` phase (`search_data_sources`); `retrieve` is the additive escape-hatch the agent calls when it detects the prefetch missed (an ambiguous question, or a business synonym the prefetch did not bridge). It returns ranked candidate data sources with `id`, `score`, and `description`.
 
@@ -80,6 +103,11 @@ pnpm vitest run packages/data/tool-retrieve
 ```
 
 12 specs (R1–R12) cover BM25 linking, the `top_k` cap, the empty thin-default, registration, the `ctx.retrieval` soft-fallback (R8), the `ctx.schema` enriched soft-fallback (R9), the abort guard (R10), the config `topK` default (R11), and the D2h 5→20 default raise (R12) — mirroring `tool-search-data-sources`'s S1–S9 + three retrieve-specific tests.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

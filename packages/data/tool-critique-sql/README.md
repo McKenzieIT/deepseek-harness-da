@@ -1,6 +1,29 @@
+---
+description: "Model-facing critique_sql_tool: folded-regex SQL critic (sqlSyntaxGate) over the phase-gate's per-agent critic context for the data agent's GENERATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-critique-sql`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing critique_sql_tool: folded-regex SQL critic (sqlSyntaxGate) over the phase-gate's per-agent critic context for the data agent's GENERATION phase
+
+## Table of Contents
+
+- [Status: registered + callable](#status-registered--callable)
+- [The criticCtx injection design](#the-criticctx-injection-design)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `critique_sql_tool`: **folded-regex SQL critic (sqlSyntaxGate) over the phase-gate's per-agent critic context** for the data agent's `GENERATION` phase. The agent calls it to critique a SQL candidate (table in candidates / ds partition required / no SELECT * / GET_JSON_OBJECT field in event_params) before calling `query_data`.
 
@@ -54,6 +77,11 @@ tsc -b packages/data/tool-critique-sql/tsconfig.json
 pnpm vitest run packages/data/tool-critique-sql
 pnpm verify-cordis-config
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

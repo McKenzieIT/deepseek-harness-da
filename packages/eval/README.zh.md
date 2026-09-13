@@ -1,3 +1,8 @@
+---
+description: "TODO: translate: Data-agent eval harness group: dsh-eval mirrors reverse-bi rbi-eval orchestration design as a da-fresh TypeScript pure library"
+kind: "package-group"
+---
+
 # eval
 
 [English](README.md) | 中文
@@ -6,6 +11,6 @@ Data-agent eval harness 组：`dsh-eval` 包镜像 reverse-bi `rbi-eval` 编排�
 
 | 包 | ctx-key | 职责 |
 |---|---|---|
-| [`eval/`](eval/README.md) | —（无；纯库） | `MultiTurnSession` + pass_k + DELIVERY/EXECUTION 评分 + 注入的 responder/executor/judge |
+| [`eval/`](eval/README.zh.md) | —（无；纯库） | `MultiTurnSession` + pass_k + DELIVERY/EXECUTION 评分 + 注入的 responder/executor/judge |
 
 规则：[package](../AGENTS.md)，[root](../../AGENTS.md#conventions)。

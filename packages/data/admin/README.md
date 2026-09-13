@@ -1,8 +1,31 @@
+---
+description: "Admin + access isolation: per-user login, identity, scope resolution, PAT self-service, fail-closed authz"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-admin
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Admin + access isolation: per-user login, identity, scope resolution, PAT self-service, fail-closed authz
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Admin + access isolation: per-user login, identity, scope resolution, PAT self-service, fail-closed authz
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

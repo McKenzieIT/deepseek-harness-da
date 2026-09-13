@@ -1,6 +1,27 @@
+---
+description: "Per-user audit store (ctx.audit) for the DeepSeek Harness: relational node:sqlite for tool/session/guard audit + G3 per-user Qoder Credits reconciliation"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-audit
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Per-user audit store (ctx.audit) for the DeepSeek Harness: relational node:sqlite for tool/session/guard audit + G3 per-user Qoder Credits reconciliation
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key design decisions](#key-design-decisions)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Per-user audit store (`ctx.audit`) for the DeepSeek Harness: relational `node:sqlite` for tool/session/guard audit events + G3 per-user Qoder Credits reconciliation. P8b production hardening (ports the throwaway `prototypes/p8-audit/`).
 
@@ -22,6 +43,11 @@ tsc -b packages/data/audit/tsconfig.json   # typecheck
 pnpm vitest run packages/data/audit         # 12 specs
 pnpm verify-cordis-config                   # bundle mount resolves
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

@@ -1,6 +1,27 @@
+---
+description: "Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run."
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval-runner-service
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key design decisions](#key-design-decisions)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Cordis Service wiring the `ctx.evalRunner` seam: drives the real NL2SQL engine + `ctx.query` + `ctx.llm` collaborators against the eval case set, persists JSONL in the format `FileBackedEvalResultStore` reads, and tracks last / last-two runs for delta. Activates the autonomous goal loop's no-progress backstop (`dsh-goal-eval-policy`) and `trigger_eval` full_run (`dsh-tool-trigger-eval`).
 
@@ -27,6 +48,11 @@ A function plugin (`apply(ctx, config)`) that mounts the `EvalRunnerService` (a 
 tsc -b packages/eval/eval-runner-service/tsconfig.json   # typecheck
 pnpm vitest run packages/eval/eval-runner-service          # mechanics + runBatch integration
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 
