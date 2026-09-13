@@ -6,6 +6,13 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { describe, expect, it } from 'vitest'
+import {
+  EVAL_CLI_PENDING_FIX,
+  matchesStrictOverrideGlob,
+  STRICT_OVERRIDE_GLOBS,
+  UNMATCHED_DISPOSITIONS,
+  type UnmatchedDisposition,
+} from './run-oxlint.ts'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const oxlintCli = fileURLToPath(new URL('../node_modules/oxlint/bin/oxlint', import.meta.url))
@@ -194,6 +201,68 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
     expect(typeGraphOverride).toMatchObject({
       rules: { '@stylistic/quotes': 'off' },
     })
+  })
+
+  it('pins the program-coverage fence to the strict type-aware override', async () => {
+    const oxlintPath = join(repositoryRoot, '.oxlintrc.json')
+    const result = parseConfigFileTextToJson(oxlintPath, await readFile(oxlintPath, 'utf8'))
+    if (result.error !== undefined) {
+      throw new Error(flattenDiagnosticMessageText(result.error.messageText, '\n'))
+    }
+    const parsed = result.config as unknown
+    if (!isRecord(parsed) || !isUnknownArray(parsed.overrides)) {
+      throw new Error('.oxlintrc.json must contain an overrides array')
+    }
+    const strictOverride = parsed.overrides[0]
+    if (!isRecord(strictOverride) || !isRecord(strictOverride.rules)) {
+      throw new Error('.oxlintrc.json overrides[0] must be the strict type-aware override')
+    }
+    // The index is load-bearing: run-oxlint.ts copies exactly this entry's globs,
+    // so an override inserted ahead of it has to fail here rather than shrink the
+    // UM-LINT-B fence to a list of globs nothing uses.
+    expect(strictOverride.rules).toHaveProperty('typescript/no-floating-promises')
+    expect(strictOverride.files).toEqual([...STRICT_OVERRIDE_GLOBS])
+  })
+
+  it('resolves the strict override globs against the repository root only', () => {
+    expect(matchesStrictOverrideGlob('packages/eval/eval-cli/tests/main.spec.ts')).toBe(true)
+    expect(matchesStrictOverrideGlob('packages/fs/fs-observation-policy/src/nested/deep.tsx')).toBe(true)
+    expect(matchesStrictOverrideGlob('apps/cli/tests/profiles/headless/tests/probe.ts')).toBe(true)
+    expect(matchesStrictOverrideGlob('scripts/run-oxlint.ts')).toBe(true)
+    expect(matchesStrictOverrideGlob('website/docs.ts')).toBe(true)
+    // A nested scripts/ directory is a different tree, matching the Oxlint CLI:
+    // a `var` probe reports no-var under the repository's scripts/, and reports
+    // nothing under packages/eval/retrieval-experiment/scripts/.
+    expect(matchesStrictOverrideGlob('packages/eval/retrieval-experiment/scripts/run-baseline.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('packages/eval/eval-cli/bin/compare.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('packages/util/deque/benchmarks/drain.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('snapshots/acp/acp.snapshot.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('vitest.shared.ts')).toBe(false)
+    // Extensions the override never claims, whatever directory they sit in.
+    expect(matchesStrictOverrideGlob('scripts/coverage-uncovered-locations.cjs')).toBe(false)
+    expect(matchesStrictOverrideGlob('apps/desktop/scripts/desktop-build-paths.d.mts')).toBe(false)
+  })
+
+  it('adjudicates every program-less file the strict override does not claim', () => {
+    function counted(kind: UnmatchedDisposition['disposition']): number {
+      return UNMATCHED_DISPOSITIONS
+        .filter(disposition => disposition.disposition === kind)
+        .reduce((total, disposition) => total + disposition.count, 0)
+    }
+
+    for (const disposition of UNMATCHED_DISPOSITIONS) {
+      // The whole basis of waiving these: the strict rules were never applied to
+      // them, so an option-less inferred program under-checks nothing.
+      expect(matchesStrictOverrideGlob(disposition.sample), disposition.glob).toBe(false)
+      expect(disposition.count, disposition.glob).toBeGreaterThan(0)
+      expect(disposition.rationale, disposition.glob).not.toBe('')
+    }
+    // 34 waived + 15 default-only + the 6 the override does claim = the 55 files
+    // `OXC_LOG=debug oxlint .` reported unmatched on 2886e5b8e5.
+    expect(counted('waive')).toBe(34)
+    expect(counted('keep')).toBe(15)
+    expect(EVAL_CLI_PENDING_FIX).toHaveLength(6)
+    for (const path of EVAL_CLI_PENDING_FIX) expect(matchesStrictOverrideGlob(path), path).toBe(true)
   })
 
   it('checks preserved TypeGraph syntax without type-aware analysis', () => {
