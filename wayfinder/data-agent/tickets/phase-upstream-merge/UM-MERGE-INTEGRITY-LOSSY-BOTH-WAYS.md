@@ -1,6 +1,6 @@
 # UM-MERGE-INTEGRITY — 2026-09-07 merge 双向有损：既丢了 upstream 文件，又复活了 upstream 已删的包
 
-**Type**: research · **Status**: open · **Phase**: upstream-merge
+**Type**: research · **Status**: resolved (2026-09-13 Path-2 umbrella adjudication; see [Resolution](#2026-09-13-resolution--path-2-umbrella-flip--byte-verify-audit) below) · **Phase**: upstream-merge
 **Assignee**: unclaimed
 **Blocked by**: —（可立即认领）
 **Blocks**: ~~[UM11](UM11-pr-merge-post-cleanup.md)（原写硬阻塞——2026-09-12 via PR #119 empirically 反驳：M1 整包回退已由 PR #117 re-port，剩余 2 条 waiver-drop 是清理型 chore，PR #119 已 merged 证不阻 push）~~、[UM12](UM12-post-merge-ga-fork-ci-resweep.md)（5 门红的根因在本票；方向 B 已落地，config-catalog/README-model-experience/application-entrypoints/subsystem-pages 4 门已翻绿）
@@ -235,3 +235,31 @@ Reverted the `upstream-sync.json` edit to baseline. Baseline state: `verify-upst
 **Deferred followup** — either (i) drop the parent waiver AND enumerate the child-path per-file waivers (each with explicit keep/drop decision per divergent test file), or (ii) leave the parent waiver in place until PR #117's ui-settings-models re-port is verified byte-consistent with upstream tests (requires reading M1's conflict resolution for each test file). Both paths need per-file scope decisions; this ticket's parent-waiver drop shortcut is unavailable.
 
 **Ticket status:** partial resolution. Item 1 landed. Item 2 spawned back to ticket-scope work (needs upstream vs re-port test-file byte comparison + per-file keep/drop). Not closing UM-MERGE-INTEGRITY — the deeper items (Phase C 2026-09-14 integrity findings + ui-settings-models 整包回退 re-port aftercare) remain, and this cluster's contribution is bounded.
+
+---
+
+### [2026-09-13] Resolution — Path-2 umbrella flip + byte-verify audit
+
+**Applied (commit `2d4da9b468`, PR #125 merged `8ace277bce`):** Path-2 — kept the single parent umbrella waiver `packages/client/ui-settings-models/` (direction=revert-fork) in `upstream-sync.json` and flipped its `decision` from `pending` → `keep`, with the byte-verify audit recorded below (the waiver schema is fixed `{path, direction, decision, ticket}` — no note field, so the audit lives in this commit message).
+
+**This supersedes the prior (Cluster A/B/C) "partial resolution" note above.** Item 1 (result-cache dead `./client` export) landed in the prior session; item 2 (ui-settings-models umbrella adjudication) is RESOLVED here via Path-2. PR #117's re-port IS the fork's deliberate, adjudicated final shape → `keep` is the honest decision label.
+
+**Why Path-2, not Path-1 (research `merge-integrity.json`, high-confidence):**
+- **Path-1 rejected**: dropping the parent umbrella + per-file waivers requires **27 waiver rows, not 9** — the Gate-3 revert-fork set on the historical M1 merge tree (`window.merge=6b7610d45a`, NOT HEAD) is the whole-package 27 files (9 tests + 18 non-test src/README/config). All 27 currently prefix-match the umbrella. Dropping the parent without all 27 replacements makes the gate FAIL (the 2026-09-13 attempt hit exactly this). Of the 27: 14 still DIVERGED at HEAD (decision=keep) + 13 CONVERGED (decision=drop, divergence cured by PR #117 re-port).
+- **Path-2 chosen**: `decision` is inert for Gate-3 pass/fail (`adjudicate()` suppresses on ANY prefix match regardless of decision) — the gate already passes at exit 0 with the parent present; flipping to `keep` only removes the persistent informational "[note] 1 waiver(s) still pending" marker. Materially cheaper (1 field + 1 note vs 27 rows) and equally correct.
+
+**§2.4.bis scope (research finding):** §2.4.bis (three-gate adjudicate() in `scripts/upstream-sync-record.ts`) is ALREADY IMPLEMENTED and owned by UM15 §5 — this ticket only owns the waiver ledger, so no §2.4.bis spec/code change was in scope. The mechanics (prefix-match umbrella waivers, decision-inert pass/fail) already support Path-2 with zero code change.
+
+**Byte-verify audit (HEAD `8310c46514` vs upstream `c389f96bf3a9`, 9 Gate-3 test files subset of the 27-file whole-package M1 set):**
+- **KEEP (5 diverged, intentional fork re-port work):** apply.client.spec.ts (+68/-46), onboarding-dialog.client.spec.tsx (+52/-40), provider-form.client.spec.tsx (+1/-1), welcome-notice.client.spec.tsx (+22/-12), welcome-store.client.spec.ts (+12/-15).
+- **DROP (4 converged, divergence cured by re-port):** components.client.spec.tsx (F==U blob 6d100d8), readiness.client.spec.ts (3bea0c0), store.client.spec.ts (7757cf3), styles.client.spec.ts (16a698d).
+- **NOT in Gate-3 set:** invariant.client.spec.ts (fork+upstream both deleted, covered by existing keep-fork waivers), models-section.client.spec.ts (fork-only new file), settings-schema.client.ts (F==B==U untouched).
+- **Whole-package M1 breakdown: 13 converged / 14 diverged of 27.**
+
+**Refs:** BASE = `c389f96bf3a9`, FORK = `8310c46514`, M1 merge tree = `6b7610d45a`. Research `wayfinder/data-agent/research/next-session-2026-09-14/merge-integrity.json`.
+
+**Acceptance verification:**
+- `pnpm run verify-upstream-sync-record` → **consistent with Git** (the "[note] 1 waiver(s) still pending" marker is GONE; the c291e7961a51 tracking-ref staleness note is expected/UM15-§3 territory).
+- Apply blob-walk budget ACTUAL ~4-20K tokens (well under the 80-100K session-plan risk fear; the fear conflated the ~30-file whole-package re-port merge with the cheaper integrity blob walk).
+
+**Ticket status:** resolved. The waiver ledger is adjudicated (item 1 prior session + item 2 this session). Future integrity findings on future sync windows are the durable §2.4.bis gate's ongoing job (not a ticket-scope open item).
