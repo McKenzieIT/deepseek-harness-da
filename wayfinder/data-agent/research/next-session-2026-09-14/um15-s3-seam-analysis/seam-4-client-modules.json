@@ -1,0 +1,96 @@
+{
+  "seamKey": "seam-4-client-modules",
+  "seamPaths": [
+    "packages/client/modules"
+  ],
+  "seamCommitCount": 10,
+  "upstreamShift": {
+    "summary": "10 commits in BASE..NEW touch packages/client/modules, but 8 of them are release tags (0.1.5-alpha.1/alpha.2/rc.1/rc.2), release merges, or bilingual README proofreading. Only 2 are substantive: (a) 48d83eca66 refactor(client) — moves the two package-manifest helpers exactPackageSpecifier + parseDshClient out of packages/client/modules/src/index.ts and into packages/client/modules/src/client/manifest.ts, then re-exports them from src/client/index.ts, so both the node-half loader and the roster generator read dsh.client through one shared validator; also tightens exactPackageSpecifier to reject scheme-qualified specifiers (cordis:, node:, URLs). (b) 8e8fb2fc62 + 0718711886 docs-only i18n proofreading of README.md/README.zh.md/README.i18n.yaml. Net code change: +66/-53 across 7 files. Zero API deletions from the seam's export surface; parseBootManifest/stripClientSuffix/optionalStringArray all still exported. Additive: exactPackageSpecifier + parseDshClient are now publicly re-exported from ./client subpath.",
+    "keyRefactors": [
+      "48d83eca66: hoist exactPackageSpecifier() + parseDshClient() from src/index.ts (private) → src/client/manifest.ts (public, exported)",
+      "48d83eca66: add exactPackageSpecifier + parseDshClient to src/client/index.ts re-export list, so consumers can import them from @deepseek-ai/dsh-client-modules/client",
+      "48d83eca66: strengthen exactPackageSpecifier — bare unscoped specifier must now also NOT contain ':' (rejects cordis:builtin, node:fs, url schemes)",
+      "48d83eca66: src/index.ts loses ~35 lines (both helper defs gone); gains 2-line import of the now-shared helpers",
+      "package.json version bump 0.1.4-alpha* → 0.1.5-rc.2 (chain of alpha/rc releases)",
+      "README.md/README.zh.md/README.i18n.yaml: bilingual proofreading only, no semantic change"
+    ],
+    "addedFiles": [],
+    "deletedFiles": [],
+    "modifiedFiles": [
+      "packages/client/modules/README.i18n.yaml",
+      "packages/client/modules/README.md",
+      "packages/client/modules/README.zh.md",
+      "packages/client/modules/package.json",
+      "packages/client/modules/src/client/index.ts",
+      "packages/client/modules/src/client/manifest.ts",
+      "packages/client/modules/src/index.ts"
+    ],
+    "breakingChanges": []
+  },
+  "collisionPoints": [
+    {
+      "file": "packages/client/modules/src/index.ts",
+      "collisionKind": "upstream-refactored-fork-unchanged",
+      "severity": "low",
+      "rationale": "Fork blob c823657be5... (base) === fork HEAD tree blob c823657be5... — zero fork drift. Upstream deletes the two helper functions and their DshClientManifest import; fork has no local edits in this file, so a straight upstream take applies cleanly with no textual conflict."
+    },
+    {
+      "file": "packages/client/modules/src/client/manifest.ts",
+      "collisionKind": "upstream-added-fork-unchanged",
+      "severity": "low",
+      "rationale": "Fork blob e8feb2ee15... === base. Upstream adds two exported functions + one import at the top. No fork edits in this file — apply upstream wholesale."
+    },
+    {
+      "file": "packages/client/modules/src/client/index.ts",
+      "collisionKind": "upstream-modified-fork-unchanged",
+      "severity": "low",
+      "rationale": "Fork blob c2c6a604c8... === base. Upstream only widens the re-export list. No fork edits."
+    },
+    {
+      "file": "packages/client/modules/package.json",
+      "collisionKind": "upstream-version-bump-fork-unchanged",
+      "severity": "low",
+      "rationale": "Version-only edit in upstream. Fork blob 27eddaa12b... === base (fork does not gate on this package's version, and there are no fork-additive dependencies here)."
+    },
+    {
+      "file": "packages/client/modules/README.md, README.zh.md, README.i18n.yaml",
+      "collisionKind": "upstream-i18n-proofread-fork-unchanged",
+      "severity": "low",
+      "rationale": "Bilingual proofreading; fork blobs identical to BASE."
+    },
+    {
+      "file": "packages/client/tsdown.client.ts (OUTSIDE seam-4)",
+      "collisionKind": "downstream-consumer-unchanged-still-valid",
+      "severity": "low",
+      "rationale": "This fork-owned build script imports optionalStringArray from ./modules/src/client/manifest.ts. optionalStringArray remains exported after the upstream refactor (only exactPackageSpecifier/parseDshClient got promoted; optionalStringArray was already public). So the seam-3-adjacent consumer keeps compiling."
+    }
+  ],
+  "forkOwnership": {
+    "forkTouchedFiles": [],
+    "forkAdditiveShapes": [],
+    "knownWaivers": []
+  },
+  "conflictSeverity": {
+    "rating": "low",
+    "rationale": "Zero fork drift on this seam prefix (git rev-list --count BASE..FORK == 0 and every blob SHA in HEAD's tree for packages/client/modules matches BASE). Upstream is 10 commits — 8 releases/docs-only, 2 code (one refactor 48d83eca66 + one dep-graph type import). No fork-additive shapes (no scopeId or similar) live under this path. No upstream-sync.json waiver prefix-matches this seam. UM13 flagged a DshClientDeclaration→DshClientManifest rename risk, but that migration was already absorbed in UM14 (fork's current src/index.ts:36 already imports DshClientManifest from @deepseek-ai/dsh-package-manifest). This is a fast-forward apply.",
+    "estimateSessions": "0.25 session (15-20 minutes end-to-end including a repo build + tests)"
+  },
+  "priorityRank": 6,
+  "recommendedApproach": "take-upstream-wholesale. Since fork tree == BASE tree byte-for-byte across the entire seam prefix, apply the 10 upstream commits' effect on packages/client/modules unchanged (or equivalently: after the merge, keep the upstream side entirely). No three-way logic needed; no fork-preserving cherry-picks. Landing order: schedule this seam LAST in the merge sequence (or in parallel with any other zero-drift seam) — it is a near-guaranteed clean apply and can serve as the smoke-test that the merge pipeline is healthy. After applying, verify (a) src/client/manifest.ts exports 4 helpers (optionalStringArray, stripClientSuffix, parseDshClient, exactPackageSpecifier); (b) src/client/index.ts re-exports all four; (c) src/index.ts no longer redefines parseDshClient/exactPackageSpecifier locally; (d) packages/client/tsdown.client.ts still imports optionalStringArray cleanly (this is the one fork consumer outside seam-4). No architectural decisions required from a human. Do NOT bundle this seam into a shared commit with seam-3 (client-connection) or seam-5 (remote-assembly) — keep it atomic so bisect is trivial.",
+  "testHotspots": [
+    "packages/client/modules/tests/node-half.client.spec.ts (loader-side helper behavior; verifies exactPackageSpecifier's new scheme rejection and parseDshClient parity)",
+    "packages/client/modules/tests/loader.client.spec.ts (boot-graph normalization path)",
+    "scripts/verify-client-packages.ts (uses PARSER_PRELOAD_SOURCE = packages/client/modules/src/index.ts — confirms the import surface of src/index.ts still compiles)",
+    "scripts/verify-client-packages.spec.ts (line 164 expects packages/client/modules/src/index.ts as the parser-preload source; upstream did not move this file, so should stay green)",
+    "packages/client/tsdown.client.ts (fork-side build script — smoke-test the DA client bundle build after apply; imports optionalStringArray from the refactored manifest.ts)",
+    "gen-architecture-graph seam scan (SEAM_MANIFEST[3] declares seam-4 uses implementations: ['client-modules'] with consumers: ['ui-*']; regenerate the graph and diff for unexpected edges)",
+    "type-equiv check via scripts/gen-cordis-catalog.ts (scripts/type-equiv.manifest.json currently references packages/client/modules/src/client/manifest.ts multiple times; regen and confirm the type identities still match)"
+  ],
+  "historicalNote": "Seam-4 has NO recorded UM14 breakage — the UM14 hazard was on seam-3 (client-connection). What did happen historically: UM13 flagged seam-4 as MEDIUM-HIGH severity for a DshClientDeclaration→DshClientManifest rename plus an inject list narrowing (['webServer','loader']→['loader']) from upstream commit 4d56cbc3d3. That migration was fully absorbed during UM14; the current fork's packages/client/modules/src/index.ts:36 already imports DshClientManifest from @deepseek-ai/dsh-package-manifest, and packages/util/package-manifest/src/types.ts:44 declares it as the single-source-of-truth interface. UM-flow-2026-09-08.md line 175 records seam-4 as 'diverged→Plan B' during UM14 with 'Session A seam-3/4 admin slice landed (commit 9ba8638eac)'. That divergence is now zero: git diff --stat BASE..FORK -- packages/client/modules returns empty. Nothing in the UM14 seam-4 slice needs to be preserved manually in this round because upstream never rolled back or diverged from the shape UM14 aligned to — upstream just did a further refactor within the seam (helper hoisting), and fork has no competing edits. Historically this is the lowest-risk seam in the UM ladder; UM15 §3 does not change that.",
+  "openQuestions": [
+    "Confirm no OTHER fork consumer outside packages/client/modules imports the two hoisted helpers by their OLD path (packages/client/modules/src/index.ts). Grep already found only optionalStringArray in packages/client/tsdown.client.ts — that is safe. If a fork bundle-generator anywhere imports exactPackageSpecifier or parseDshClient specifically from src/index.ts (rather than src/client/manifest.ts), it will need a one-line import path update.",
+    "Verify the version-string bump in packages/client/modules/package.json (0.1.4-alpha* → 0.1.5-rc.2) does not violate any fork-side pin. The 'sync deferred' pipeline sometimes gates on a version-lock file — search dsh.bundle.patch and cordis.patch.yml overlays for a hard version match on @deepseek-ai/dsh-client-modules before the merge.",
+    "The gen-cordis-catalog.ts entry (scripts/gen-cordis-catalog.ts:184) states packages/client/modules/README.md 'owns the API' — since upstream widened the public export surface (added exactPackageSpecifier + parseDshClient to ./client), confirm README.md was updated to document them. If not, this is a lightweight docs follow-up (not a merge blocker)."
+  ],
+  "confidence": "high"
+}

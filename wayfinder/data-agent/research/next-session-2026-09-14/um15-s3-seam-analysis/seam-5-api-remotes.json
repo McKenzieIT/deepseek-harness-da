@@ -1,0 +1,152 @@
+{
+  "seamKey": "seam-5-api-remotes",
+  "seamPaths": [
+    "packages/api/remotes"
+  ],
+  "seamCommitCount": 19,
+  "upstreamShift": {
+    "summary": "Two coordinated feature edges land in this seam over BASE..NEW: (1) an Agent-identity refactor that changes the scoped-waterfall contract in src/index.ts to require request.agent (rejects mismatched or absent agent) instead of deriving Context via carrierKeyOf(this) + Reflect.get; (2) two additive extensions — a new sessionFeedbackRemote mount in src/client/index.ts (from dsh-command-feedback) and a new goal/activation-changed emit entry in src/remote-events.ts. Version bumps 0.1.3-alpha.2 → 0.1.5-rc.2. tsconfig.host.json gains goal/goal reference (feeding the new dsh-goal/types import in src/index.ts). tsconfig.client.json gains feedback/command-feedback ref. Tests grow (remote-events.host.spec.ts) to cover the new goal event and the 'must carry its Agent directly' error path with id: 'agent-1' shape. README.md + README.zh.md + README.i18n.yaml receive substantive polish clarifying the request.agent contract and the waterfall-replay-only-on-reconnect wording. Underlying commits: ebce3a5f04 refactor(agent) — the identity contract change; f2f9700de2 feat(feedback) — sessionFeedbackRemote wire; e26fc35d4b fix(goal) + upstream Goal work — the activation-changed event. Merges/release bumps (a305303422, 1ef9c1fa9a, dd393c1820, 2faa751be9, 59f2e3be33) drive version churn.",
+    "modifiedFiles": [
+      "packages/api/remotes/README.i18n.yaml",
+      "packages/api/remotes/README.md",
+      "packages/api/remotes/README.zh.md",
+      "packages/api/remotes/package.json",
+      "packages/api/remotes/src/client/index.ts",
+      "packages/api/remotes/src/index.ts",
+      "packages/api/remotes/src/remote-events.ts",
+      "packages/api/remotes/tests/remote-events.host.spec.ts",
+      "packages/api/remotes/tsconfig.client.json",
+      "packages/api/remotes/tsconfig.host.json"
+    ],
+    "addedFiles": [],
+    "deletedFiles": [],
+    "keyRefactors": [
+      "src/index.ts remoteEventSource: scoped waterfall now requires request.agent === carrierKeyOf(this); dispatch context shape becomes { value: agent.ctx, subject: agent, agentId: agent.id } instead of { value, subject }. Fork does not touch this function — clean overlay expected.",
+      "src/index.ts imports: new `import type { Agent } from '@deepseek-ai/dsh-agent'` + new `import type {} from '@deepseek-ai/dsh-goal/types'` in the type-only reflection block.",
+      "src/client/index.ts: sessionFeedbackRemote from '@deepseek-ai/dsh-command-feedback/remote' added to imports, mount list, and type re-exports.",
+      "src/remote-events.ts: `goal/activation-changed` entry added to API_REMOTE_FORWARDED_EVENTS.",
+      "tsconfig.host.json: adds `{ path: '../../goal/goal' }` reference to satisfy the new dsh-goal/types type-only import.",
+      "tsconfig.client.json: adds `{ path: '../../feedback/command-feedback' }` reference for sessionFeedbackRemote.",
+      "package.json: version bump 0.1.3-alpha.2 → 0.1.5-rc.2, `@deepseek-ai/dsh-agent` and `@deepseek-ai/dsh-command-feedback` added to devDependencies."
+    ],
+    "breakingChanges": [
+      "Scoped waterfall contract change: any Client that emits a scoped-waterfall Remote event without setting `request.agent` (matching the routed carrier) will now throw TypeError('...must carry its Agent directly'). Fork's dsh-schema-gateway/dsh-evidence-query/dsh-result-cache waterfalls (if any) must be audited for this shape.",
+      "Dispatch payload shape change: TypertRemoteEventInvocation['context'] now includes `agentId: agent.id`; downstream consumers reading the third field of `context` see an extra key. Test harness fixtures in fork's tests/evidence-query-remote.client.spec.ts must construct agents with an `id` property."
+    ]
+  },
+  "collisionPoints": [
+    {
+      "file": "packages/api/remotes/src/index.ts",
+      "collisionKind": "upstream-refactored-fork-untouched",
+      "severity": "low",
+      "rationale": "Upstream refactors `remoteEventSource` closure body (approx lines 56-77) and adds two `type` imports. Fork has ZERO commits touching this file since BASE (git log c389f96...FORK -- src/index.ts is empty). Textual conflict likely at the two type-import lines (dsh-agent + dsh-goal/types insert into an alphabetized import block); resolution is trivial take-upstream. The refactor itself needs zero fork-side follow-up in this file."
+    },
+    {
+      "file": "packages/api/remotes/src/client/index.ts",
+      "collisionKind": "both-added-related",
+      "severity": "high",
+      "rationale": "Upstream adds one import (sessionFeedbackRemote from dsh-command-feedback/remote) + one export type + one entry to the `[agentPresetsRemote, commandsRemote, ...]` mount array. Fork adds THREE imports (schemaGatewayRemote, evidenceQueryRemote, resultCacheRemote) + three export types + three mount entries + three data-types re-exports in the same list bracket regions (lines 12-14, 40-42, 58-60, 152). All are additive but land on the SAME line spans → guaranteed textual conflict at 4 hunks. Semantically resolvable by including all seven mount entries in the array; requires disciplined merge to keep every side's contribution."
+    },
+    {
+      "file": "packages/api/remotes/src/remote-events.ts",
+      "collisionKind": "both-added-related",
+      "severity": "medium",
+      "rationale": "Upstream adds one entry (`goal/activation-changed`) at the alphabetized position after credentials/reference-updated. Fork adds a different entry (`evidence/eval-run-completed`) after cordis/inspect-query-resolved AND an `import type {} from '@deepseek-ai/dsh-evidence-query'` at the top. Both edits land on the same const-array block. Additive, small line count, but git may still flag as adjacent-hunk conflict. Both entries must survive the merge."
+    },
+    {
+      "file": "packages/api/remotes/src/types.ts",
+      "collisionKind": "upstream-untouched-fork-added",
+      "severity": "low",
+      "rationale": "Upstream does NOT modify src/types.ts in BASE..NEW. Fork adds a `declare module '@deepseek-ai/cordis' { interface Events { 'evidence/eval-run-completed'(): void } }` block. Clean keep-fork. No conflict."
+    },
+    {
+      "file": "packages/api/remotes/package.json",
+      "collisionKind": "both-added-related",
+      "severity": "high",
+      "rationale": "Upstream: version 0.1.3-alpha.2 → 0.1.5-rc.2; adds dsh-agent + dsh-command-feedback to devDependencies (with dsh-command-feedback also appended to end after zod). Fork: adds ~10 devDeps + moves dsh-session from dependencies to devDependencies + appends dsh-schema-gateway, dsh-evidence-query, dsh-result-cache after zod (SAME end-of-list slot upstream's dsh-command-feedback lands). Version conflict + end-of-list append conflict + alphabetization drift = high textual conflict. Semantically all additive; resolution is union merge with careful version pick (take upstream 0.1.5-rc.2) and de-dup."
+    },
+    {
+      "file": "packages/api/remotes/tsconfig.host.json",
+      "collisionKind": "both-added-related",
+      "severity": "medium",
+      "rationale": "Upstream adds `{ path: '../../goal/goal' }` reference (unblocks new dsh-goal/types type-only import in src/index.ts). Fork adds `{ path: '../../data/evidence-query' }` reference. Both additions land in the same `references` array in different positions but likely adjacent-hunk in git's eyes. Additive; both must survive."
+    },
+    {
+      "file": "packages/api/remotes/tsconfig.client.json",
+      "collisionKind": "both-added-related",
+      "severity": "medium",
+      "rationale": "Upstream adds `{ path: '../../feedback/command-feedback' }`. Fork adds four refs: `data/semantic-layer`, `data/evidence-query`, `data/audit`, `identity/identity`. All 5 additions target the same references array tail. Adjacent-hunk conflict likely; union merge required."
+    },
+    {
+      "file": "packages/api/remotes/tests/remote-events.host.spec.ts",
+      "collisionKind": "upstream-modified-fork-untouched",
+      "severity": "low",
+      "rationale": "Upstream adds a goal/activation-changed emit test (lines 104-124) + a mismatched-agent-identity waterfall rejection test (lines 173-183) + updates existing waterfall fixture `agent = { ctx: agentCtx }` → `agent = { id: 'agent-1', ctx: agentCtx }` and asserts `context.agentId: 'agent-1'`. Fork does NOT touch this file. Clean take-upstream. If fork tests elsewhere (evidence-query-remote.client.spec.ts) build Agent-shaped objects, they must include `id` under the new contract."
+    },
+    {
+      "file": "packages/api/remotes/tests/built-lib.e2e.ts",
+      "collisionKind": "fork-added-upstream-untouched",
+      "severity": "low",
+      "rationale": "Fork adds W20 static-modules table stub + register hook for .css imports (30 lines added). Upstream does NOT touch this file. Clean keep-fork. No conflict."
+    },
+    {
+      "file": "packages/api/remotes/tests/evidence-query-remote.client.spec.ts",
+      "collisionKind": "fork-only-file",
+      "severity": "low",
+      "rationale": "Fork-only new file (56 lines). No upstream counterpart. Zero conflict. IMPORTANT: audit whether the fixtures inside construct agent objects with an `id` property — if not, the new upstream Agent-identity check may bite when scoped waterfalls run in this test."
+    },
+    {
+      "file": "packages/api/remotes/README.md, README.zh.md, README.i18n.yaml",
+      "collisionKind": "upstream-refined-fork-untouched",
+      "severity": "low",
+      "rationale": "Upstream refines wording (api → API, adds sentence about request.agent contract, tightens waterfall-replay wording). Fork does not touch. Clean take-upstream in all three files; the i18n.yaml checksum will update."
+    }
+  ],
+  "forkOwnership": {
+    "forkTouchedFiles": [
+      "packages/api/remotes/package.json",
+      "packages/api/remotes/src/client/index.ts",
+      "packages/api/remotes/src/remote-events.ts",
+      "packages/api/remotes/src/types.ts",
+      "packages/api/remotes/tests/built-lib.e2e.ts",
+      "packages/api/remotes/tests/evidence-query-remote.client.spec.ts",
+      "packages/api/remotes/tsconfig.client.json",
+      "packages/api/remotes/tsconfig.host.json"
+    ],
+    "forkAdditiveShapes": [
+      "Three mounted /remote contributions: schemaGatewayRemote (from dsh-schema-gateway), evidenceQueryRemote (dsh-evidence-query), resultCacheRemote (dsh-result-cache) — all imported and pushed onto the ctx.remote.$mount() loop in src/client/index.ts.",
+      "One forwarded event: `evidence/eval-run-completed` (mode: emit) — added to remote-events.ts allowlist and its cordis Events signature `(): void` declared in src/types.ts (declare module '@deepseek-ai/cordis').",
+      "src/remote-events.ts side-import: `import type {} from '@deepseek-ai/dsh-evidence-query'` — pulls the event signature into the compiler face (see comment block explaining why the package main is imported instead of ./types).",
+      "package.json: fork moves `@deepseek-ai/dsh-session` from `dependencies` to `devDependencies` AND appends three fork-specific data-plane packages (dsh-schema-gateway, dsh-evidence-query, dsh-result-cache) plus 8 other reordered devDeps. Fork also adds dsh-invariants, dsh-session-persistence, dsh-typert-registry, dsh-client-connection, dsh-client-file-upload, dsh-scope, dsh-api-session-controller, dsh-typert-protocol to devDependencies (many of which upstream also has, so the union will be idempotent).",
+      "tsconfig.client.json: 4 fork data-plane project refs (semantic-layer, evidence-query, audit, identity).",
+      "tsconfig.host.json: 1 fork ref (data/evidence-query).",
+      "tests/built-lib.e2e.ts: W20 static-modules stub reuses getStaticModules() from packages/client/web/lib/index.js and a .css-loader stub via module.register — 30 lines fork-only, no upstream analog.",
+      "tests/evidence-query-remote.client.spec.ts (56 lines): fork-only, no upstream analog. Not touched by upstream, no naming collision."
+    ],
+    "knownWaivers": []
+  },
+  "conflictSeverity": {
+    "rating": "medium",
+    "estimateSessions": "0.5-1 session",
+    "rationale": "All collisions are additive-additive or upstream-refactor-in-clean-zone; no semantic contradiction. The medium rating is driven by: (a) src/client/index.ts has 4 hunks where upstream inserts one mount/import and fork inserts three-in-different-places on the same-line spans, requiring careful union — but the semantics are clean (both sides just want more contributions in the array); (b) package.json has version-bump + end-of-list-append conflict where BOTH sides appended after zod, requiring the merger to keep upstream's 0.1.5-rc.2 version + both sides' dep sets; (c) the Agent-identity refactor in src/index.ts (upstream-only) may impose a contract on fork's evidence-query/schema-gateway/result-cache scoped waterfalls: if those emitters currently invoke waterfalls without `request.agent`, upstream's new TypeError will bite the first time an Agent-scoped call hits them. Audit needed but likely a non-issue since ordinary emit contributions bypass the check. Once seam-2 (which owns Agent-shape decisions in the emitter packages) is settled, seam-5 is a mechanical union merge plus 3 test-hotspot regressions to confirm."
+  },
+  "priorityRank": 4,
+  "recommendedApproach": "three-way-manual (dominant strategy) with a strong fork-preserves-additive-only overlay. Concrete plan: (1) For src/index.ts, README.md, README.zh.md, README.i18n.yaml, tests/remote-events.host.spec.ts — take upstream wholesale (fork unmodified). (2) For src/client/index.ts, src/remote-events.ts, tsconfig.host.json, tsconfig.client.json — union merge additive entries (all 4 upstream entries + all fork entries must survive). (3) For package.json — take upstream version bump (0.1.5-rc.2) + union of devDependencies + verify dsh-session correctly appears in devDependencies (fork's move from deps). (4) For src/types.ts, tests/built-lib.e2e.ts, tests/evidence-query-remote.client.spec.ts — keep fork wholesale (upstream untouched). (5) Post-merge audit: grep fork's emitter packages (schema-gateway, evidence-query, result-cache) for scoped-waterfall listeners; confirm each emit path attaches `request.agent` before ctx.emit or that they only use ordinary emit mode. Runbook: settle seam-2 (remote-api emitter changes) FIRST, then seam-5 as its consumer downstream.\"",
+  "testHotspots": [
+    "packages/api/remotes/tests/remote-events.host.spec.ts — upstream added 2 new test cases (goal/activation-changed emit, mismatched-Agent waterfall rejection) + reshaped fixture agent to `{ id, ctx }`. Run FIRST to prove the Agent-identity refactor lands cleanly.",
+    "packages/api/remotes/tests/built-lib.e2e.ts — fork's W20 staticModules stub touches this file; verify the module-register + getStaticModules path still runs after any package.json dep churn.",
+    "packages/api/remotes/tests/evidence-query-remote.client.spec.ts — fork-only file; audit its fixture agents for the new `.id` requirement before running to catch upstream contract mismatch early.",
+    "Root repo: pnpm build -F @deepseek-ai/dsh-api-remotes (both tsconfig faces) — the tsconfig references union is the highest structural risk; a missed ref will surface as TS build error not a runtime one.",
+    "scripts/verify-package-dependencies.spec.ts — because package.json changed heaviest, run the workspace-constraints and dependency-policy gates before test suites.",
+    "scripts/gen-architecture-graph.ts + docs/architecture-graph.md diff — seam-5 references packages/api/remotes/src/client/index.ts explicitly; the graph will regen with new @Remote emitter edges. Confirm the seam-5 assembly line lists all 3 fork emitters + all upstream emitters."
+  ],
+  "historicalNote": "Not seam-3 — no direct UM14 breakage note applies. However, per wayfinder/data-agent/research/um14-merge-dryrun-2026-09-08.md the same file set (api/remotes: package.json + src/client/index.ts) was flagged in the previous re-sync as needing 3 hunks, and the previous round successfully absorbed the dsh-schema-gateway + dsh-evidence-query + dsh-result-cache mounts (see fork commits 531d82dbfc, df495b2edf, 065ed76174 landed post-BASE). SEAM_MANIFEST cross-check (scripts/gen-architecture-graph.ts lines 85-89): seam-5 = 'remote-assembly', implementations=['api-remotes'], note says 'platform-neutral Host Remote contributions mounted in packages/api/remotes/src/client/index.ts; assembly imports scanned dynamically' — the same file that has the heaviest collision. The graph regen will pick up any additions naturally. Seam-2 note (line 71) explicitly cross-refs seam-5 as its assembly, confirming the seam-2 → seam-5 ordering discipline.",
+  "openQuestions": [
+    "Do fork's schema-gateway / evidence-query / result-cache emitter packages currently emit any scoped-waterfall events without setting `request.agent`? If yes, upstream's new TypeError('must carry its Agent directly') will bite at first run. Requires a seam-2 pre-check before seam-5 merge.",
+    "Fork's tests/evidence-query-remote.client.spec.ts fixture: does it construct an Agent-shaped test double with an `id` property? If it constructs `{ ctx }` only (matching the old contract), it must be updated after upstream's shape shift.",
+    "The seam-2 (remote-api) analysis will reveal whether fork's evidence/eval-run-completed event ever routes through scopeTarget()/waterfall path or is strictly ordinary emit — if the latter, the Agent-identity contract does not apply and this seam's merge is nearly trivial.",
+    "Does the fork's version-bump preference clash with the upstream 0.1.5-rc.2 bump? Fork's currently at 0.1.3-alpha.2 (unchanged since BASE); merge should take upstream's bump verbatim.",
+    "Fork moves `@deepseek-ai/dsh-session` from `dependencies` to `devDependencies`. Upstream keeps it out of `dependencies` entirely (only in devDependencies via ordering). Confirm which is authoritative: fork's dependency-policy gate (scripts/verify-package-dependencies.spec.ts) may enforce this."
+  ],
+  "confidence": "high"
+}

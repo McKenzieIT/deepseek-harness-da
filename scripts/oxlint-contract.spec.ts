@@ -165,7 +165,7 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
       throw new Error('.oxlintrc.json must contain an overrides array')
     }
     expect(parsed.ignorePatterns).toEqual(expect.arrayContaining([
-      'packages/typert/generator/tests/fixtures/type-model/**',
+      'packages/typert/generator/tests/fixtures/**',
     ]))
     const stylisticOverride = parsed.overrides.find((value: unknown) =>
       isRecord(value) && isRecord(value.rules) && '@stylistic/max-len' in value.rules)

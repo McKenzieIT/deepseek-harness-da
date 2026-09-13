@@ -13,4 +13,6 @@ The data-agent's data capability packages: query, retrieval/vectorization, seman
 | `audit/` *(planned, P8)* | guard/session-event + `tool-audit` + `ctx.storage` (SQLite) | — |
 | `admin/` *(planned, P9)* | The harness app: per-game scope/credential/access-link + system config | — |
 
+Related documentation: [Data Agent subsystem](../../docs/subsystems/data-agent.md) — the generated Cordis-surface contract for the data-agent overlay this group's packages compose into.
+
 Rules: [package](../AGENTS.md), [root](../../AGENTS.md#conventions). New packages join this group as their owning tickets (P4-P11) ship them.

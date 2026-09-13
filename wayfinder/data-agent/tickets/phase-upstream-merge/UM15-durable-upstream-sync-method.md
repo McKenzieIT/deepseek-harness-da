@@ -192,3 +192,73 @@ durable 方法须含一道**纯 git plumbing 的 merge 完整性 gate**,与「ga
 **§2 gate-coverage 已实现（`2eb5b4a850`）足够承载此 5 决策**——不需要重建 contract 草案；orphan-gate 结构性防线已生效。C-class 4 门 2026-09-07 → 2026-09-11 orphan 4 天的模式不会重演。
 
 **§2 后续 CI wiring 首片**：UM-C-GATES 用户批 hybrid 后，触发下一 apply session：（a）FIX 2 门代码工作 → （b）§2 manifest 更新（3 门 WAIVE/KNOWN-RED 登记）→（c）`gen-config-catalog`/`gen-architecture-graph` 的 CI wiring 若已在 `ciSharedStaticGates` 则无变；若未在则 by-decision-add。
+
+---
+
+## [2026-09-13] Phase-1 research → Phase-6 decision-doc (§3 GO + §2 structural gap + §4 DEFERRED)
+
+Source: `wayfinder/data-agent/research/next-session-2026-09-14/um15.json` (high-confidence read-only research). This is the FIRST real-world exercise of the durable method UM15 §1-§5 built (MODES tuple, generator-inputs manifest, three integrity gates, seam-6 fix, lefthook pre-push staleness gate).
+
+### §3 cadence — third-round re-sync trigger: DECISIVE GO
+
+All three thresholds tripped, two enormously:
+
+- **commitCount: 852** (`git rev-list --count c389f96bf3a9..c291e7961a51`) — 5.7× the 150-commitsBehind threshold.
+- **seamTouchCount: 79** distinct seam-touching commits; ALL 6 seams > 0 (seam-1 bundle=40, seam-2 api/gateway+remotes=23, seam-3 client/connection=27, seam-4 client/modules=10, seam-5 api/remotes=19, seam-6 api/workspace-files=16). The seam>0 hard-stop fires on all six, including seam-3 (client/connection) at 27 — the exact seam that broke during the last (UM14) sync per SEAM_MANIFEST note + design doc :166.
+- **calendarDays: 2** (or 2.90 wall-clock) — below the 14-day threshold, but the formula is OR not AND, so two independent hard-trips already mandate the round.
+
+The 852 commits is far larger than the 449 that motivated the whole staleness detector. A re-sync round is unambiguously warranted.
+
+### Refs (the re-sync window)
+
+- BASE (upstream recorded sync tip) = `c389f96bf3a9b6807cb71ed6bdad5849be0df6d8` (2026-09-08 00:46:19+08:00, = current recorded `upstream-sync.json current.upstreamSha`)
+- NEW (upstream tracking ref, target) = `c291e7961a515f6d7af9304e7fd1d257929aef26` (2026-09-10 22:17:09+08:00, = upstream tracking ref that tripped `verify-upstream-sync-record`)
+- c389 confirmed ancestor of c291 (`git merge-base --is-ancestor` YES).
+
+### §3 handling this session: COMBAT MAP handoff (bonus workflow), NOT in-session merge
+
+The 3rd re-sync round is a multi-session stateful workload (UM14's 449-commit window was multi-session; this is 1.9×). It is NOT feasible in this session alongside the 5-ticket apply. Handling:
+
+- The GO decision + refs + 6-seam touch evidence is recorded here (this decision-doc).
+- A bonus 6-agent read-only seam pre-analysis workflow was dispatched to produce a per-seam combat map (`wayfinder/data-agent/research/next-session-2026-09-14/um15-s3-seam-analysis/`) characterizing each seam's upstream shift, fork collision points, conflict severity, and recommended merge approach. [STATUS NOTE: the workflow's writer agent failed on a schema-call issue; if the per-seam JSON files landed, consume them; if not, the next session re-runs the cheap read-only fan-out — the 6 seam agents are independently recoverable.]
+- The next session starts the actual `git merge` round with this map. The first-live-test framing: this round exercises the durable method end-to-end for the first time.
+
+### §2 — NO manifest edits; the REAL finding is a structural gap
+
+The ticket implied §2 = patch `scripts/gate-coverage.manifest.json` with 5 Cluster D entries. The research found this is UNNECESSARY and the real §2 finding is a structural gap:
+
+- 4 of the 5 Cluster D gates are already ENROLLED in `scripts/run-gates.ts` (config-catalog `:751`, package-dependencies `:305`/`:702`, client-ui-i18n `:313`/`:715`, architecture-graph `:739`). Enrolled+GREEN = fully accounted; adding exemptions would trip Check 3 ('exempted but is now enrolled').
+- The 5th (doc-standard-tests) is invoked via `pnpmExec('doc-standard-tests', ['vitest','run','scripts/doc-standard.spec.ts'])` at `run-gates.ts:767` — NOT `pnpmScript`, and NOT a `verify-*`/`gen-*` package.json script — so `verify-gate-coverage.ts` (which only scans `PNPM_SCRIPT_CALL_PATTERN` over `verify-*`/`gen-*` script names) never sees it at all. It is neither coverage-tracked nor known-red-trackable today.
+- The generators already carry `coveredBy` exemptions (20 total, unchanged).
+
+**THE STRUCTURAL GAP (the load-bearing §2 finding to record)**: `verify-gate-coverage.ts` is a COVERAGE meta-gate only (enrolled-OR-exempted); it does NOT and CANNOT track KNOWN-RED or WAIVE pass/fail state. The UM-C-GATES/UM15 narrative claim that `verify-client-ui-i18n` was 'registered in a permanent-known-red list' and that WAIVE gates were 'identified via upstream-sync.json waiver cross-reference' describes a schema that was NEVER BUILT. `verify-gate-coverage.ts` has no `knownRed[]` array and no `upstream-sync.json` cross-reference.
+
+Concretely:
+- `verify-client-ui-i18n` (83 KNOWN-RED permanent, Cluster D Gate 5, intranet Chinese users) is ENROLLED so the meta-gate considers it 'covered' regardless of pass/fail — its permanent KNOWN-RED status is untrackable by the meta-gate today.
+- `doc-standard-tests` (2 KNOWN-RED permanent, the 65-package README skeleton gap, graduated to UM-FORK-README-SKELETON-RETROFIT) is invoked via `pnpmExec` so the meta-gate never sees it at all.
+
+Recording these KNOWN-RED statuses structurally needs a §2 schema extension: add a `knownRed: [{script, rationale, ticket, expiry?}]` array to the manifest + add a Check 4 to `verify-gate-coverage.ts` asserting every known-red entry names an enrolled gate. Draft entry for the FUTURE schema:
+```json
+{"script":"verify-client-ui-i18n","state":"known-red","rationale":"data-agent client UI targets enterprise intranet Chinese users; i18n extraction is future product-internationalization debt, zero current user value","ticket":"UM-C-GATES-UPSTREAM-NEW","reopenTrigger":"product internationalization"}
+```
+Until that schema+code lands, the client-ui-i18n + doc-standard KNOWN-RED decisions live in ticket prose + the GA-FORK-CI ledger, NOT in `gate-coverage.manifest.json`.
+
+### §4 — DEFERRED (waiver + known-red expiry; needs schema change + human calibration)
+
+Policy sketch for the THREE integrity-gate waiver kinds in `upstream-sync.json` (keep-fork / drop-fork / revert-fork) plus a parallel known-red-expiry for the §2 meta-gate:
+
+1. **Integrity waivers**: add an optional `expiresAfterSyncs` (int) or `expiresOn` (ISO date) field to the `Waiver` interface in `scripts/upstream-sync-record.ts`. `collectGitFailures` already tracks per-waiver hit counts and already emits a 'matched no finding … stale' NOTE for zero-hit waivers — extend that: a waiver with `decision:'keep'` and expiry set becomes a FAILURE (not a note) once expired OR once it goes zero-hit for N consecutive recorded syncs, forcing re-adjudication. `decision:'drop'` waivers (remediation owed) carry a hard expiry tied to their ticket. `decision:'pending'` waivers get the shortest fuse (pending must not survive >1 sync round without a keep/drop decision).
+2. **Known-red expiry** (for the future §2 `knownRed[]` array): each known-red carries a `reopenTrigger` (semantic, e.g. 'product internationalization') and optionally a review-by date; on expiry the meta-gate flips the entry from silently-accepted to must-re-justify. This is the structural cure for the exact orphan pattern UM-C-GATES fixed reactively (C-class 4 gates orphaned 2026-09-07→2026-09-11).
+
+**Defer reason**: §4 requires (a) a SCHEMA CHANGE to two shipped files — the `Waiver` interface in `scripts/upstream-sync-record.ts` (804-line git-layer module) and the gate-coverage manifest — and adding an expiry field changes `collectGitFailures` failure semantics (note→failure), which needs its own grilling + spec + test round; (b) the meta-gate half is BLOCKED on the §2 `knownRed[]` extension (itself deferred above) — 'known-red expiry' has nothing to expire until that lands; (c) the policy calibration (N-syncs, expiry windows) is a human judgment call. Expiry is a durability refinement, not a correctness gate — the three integrity checks are already sound without it.
+
+**Recommended pairing**: scope §4 TOGETHER with the §2 `knownRed[]` schema extension as ONE grilling round, kept off the AFK re-sync path.
+
+### PR #122 UM-C-GATES soft-lock — VERIFIED merged
+
+`git log --all --grep '#122'` shows merge commit `2f4398b20b` 'Merge pull request #122 from McKenzieIT/feat/tracker-2026-09-13-apply' on master + origin/master. Its child `e195bcdfd1` = 'Cluster D apply — 5-gate hybrid + 2 scope订正 → UM-C-GATES + UM12 resolved' is the UM-C-GATES soft-lock apply. (CAVEAT: a second unrelated commit `2610fddfc7` also matches '#122' — different fork numbering; the Cluster-D one is unambiguously `2f4398b20b`.)
+
+### Split proposal (what this session does vs defers)
+
+- **THIS SESSION (lands as decision-doc, not code)**: §3 cadence measurement (DONE, hard GO) + §2 finding (NO manifest edits; record the structural gap) + PR #122 verified.
+- **DEFERS to follow-up sessions**: the actual §3 re-sync merge (multi-session, stateful) + §2 schema extension (`knownRed[]` + Check 4) + §4 waiver/known-red expiry (paired with §2 schema extension).
