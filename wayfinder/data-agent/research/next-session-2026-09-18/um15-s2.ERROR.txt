@@ -1,0 +1,1 @@
+agent({schema}): subagent completed without calling StructuredOutput (after 2 in-conversation nudges)
