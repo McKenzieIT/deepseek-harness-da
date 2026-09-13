@@ -127,3 +127,33 @@ Recommended: F1 (rename ZH 概述 → Overview) — it's the generator's natural
 - `package.json` / `scripts/run-gates.ts` reverted to master (no wiring) — so `verify-gate-coverage` stays green (scaffold invisible, no `package.json` entry).
 - 130-file run reverted — `verify-translation-pairing` baseline restored to 21 pre-existing violations (no regressions from this ticket).
 - `doc-standard.spec.ts` unchanged at 2 failed / 10 passed (the pre-existing baseline).
+
+---
+
+### [2026-09-14] apply 95% done — F1 implemented, commit 卡 lefthook, 改动 stash@{0}
+
+**状态**：F1 apply 跑了（subagent + 主 session 修），generator fix + 130 README + wiring + depth-3 residual 全 done，verify 全 GREEN，但 **commit 卡在 lefthook pre-commit 3 项** → 改动 stash@{0}（`README-apply-95pct + G13`），master working tree clean。下 session `git stash pop` + 修 3 项 + commit + push。
+
+**已 done（详见 prompts/next-session-2026-09-18-...-um.md 的 [2026-09-14] handoff 节）：**
+- F1 5 generator diffs（extractPairPlan overviewCollisionIndices + retrofitPair rename+re-derive + ZH staging + 2 JSDoc）。
+- 主 session 修 subagent 的 quality gap：删 dead code（stripSkeleton/stripAnchors，eslint no-unused-vars）+ 加 `MODEL_EXPERIENCE_VARIANTS` 常量（`['Model Experience', '模型体验', '模型经验']`，修 subagent 漏 eval-cli ZH `## 模型经验` 变体 → 90 diverges resolved）+ fix 5 wrong-locale links + 删 eval-cli 孤儿 anchor（changelog code block `<a id="yyyy-mm-dd">` + 错位 `<a id="model-experience">`）。
+- wiring（package.json 2 scripts + run-gates.ts:759 enroll + gate-coverage.manifest.json gen- exemption + 删 generator UNWIRED/KNOWN-BUG note）。
+- 130 README run（65 EN + 65 ZH）+ 70 i18n re-record + 4 depth-3 group frontmatter（data/eval × {md,zh.md}，kind:package-group）。
+- subagent 额外 fix：Dev Note 位置（insertSkeleton 放 Dev Note 在 Model Experience 前，满足 verify-package-readme-model-experience 的 "final two H2" 规则）+ graft console.warn。
+
+**verify 全 GREEN（commit 前）：** doc-standard 10/12→**12/12** ✓ + corpus pairing 21→**20**（-1 wrong-locale fix）✓ + idempotent（2nd run "0 current"）✓ + --check gate exit 0 ✓ + 64/65 README pairs consistent（eval-cli 1 pre-existing content gap，已删 anchor fix）✓ + verify-package-readme-limitations 329 conform ✓ + verify-gate-coverage green ✓。
+
+**commit 卡 lefthook 3 项（下 session 修）：**
+1. **lint `typescript(no-unnecessary-condition)`**：`MODEL_EXPERIENCE_VARIANTS.includes(heading)` 类型 narrow（heading:string vs readonly string[]，TS 推断 always-true）。修：`MODEL_EXPERIENCE_VARIANTS.indexOf(heading) >= 0` 或 `(MODEL_EXPERIENCE_VARIANTS as readonly string[]).includes(heading)` cast。
+2. **eval-cli i18n.yaml out-of-sync**：删 anchor 后 content 变了，hash stale。修：`pnpm run verify-translation-pairing --write packages/eval/eval-cli/README.md`（re-record）。
+3. **docs i18n.yaml hook 副作**：lefthook pre-commit 的 translation pairing hook re-record 了 `docs/config-catalog.i18n.yaml` + `docs/subsystems/README.i18n.yaml` + `docs/tool-catalog.i18n.yaml`（staged 触发 corpus 检查 → config-catalog/tool-catalog pre-existing structural diverge → hook fail）。修：unstage docs i18n（`git reset HEAD docs/{config-catalog,subsystems/README,tool-catalog}.i18n.yaml`，不 commit hook 副作）—— 它们是 corpus re-record 副作用，非 README apply。
+
+**已知 quality issue（非 commit 阻塞，下 session generator polish）：**
+- Dev Note 顺序 bug：generator 把 TOC 放 Summary 前（EN+ZH 都这样，pairing consistent 但阅读体验差）。
+- anchor threading：eval-cli 孤儿 anchor 已删，但 generator `insertAnchorsBeforeHeadings` ZH flow order 可能对其他包有 latent bug（corpus 20 显示只 eval-cli 受影响）。
+
+**蓝图（committed master `485caad34a`）：** `research/next-session-2026-09-18/readme-fix-F1.json`（winner 5 diffs + runPlan 11 步 + applyRisk）+ `readme-fix-judge.json`（verdict）。
+
+**stash**：`git stash list` → `stash@{0}: On master: README-apply-95pct + G13 (lint-1err + eval-cli-re-record pending)`。
+
+下 session：`git stash pop` → 修 3 项 → `git add`（generator + 130 README + wiring + 4 group + sidecars，**排除** docs i18n.yaml + G13）→ commit → push A-path（从 dsh-resync）→ PR → merge。然后 Step 2-4（LINT-B + §2 + §4）。

@@ -8,7 +8,7 @@
 
 ## 0. 拓扑事实（session 头 30 秒核验，勿重跑）
 
-- **origin/master** = `8ace277bce`（PR #125 merge）。**local master ahead 2**：`0a37e537a9`（4 ticket status sync）+ `5cf164fa05`（RISK-MAP.md + notes）— **unpushed tracker commits**，Phase 0 先推。
+- **origin/master** = `8ace277bce`（PR #125 merge）。**local master ahead 5**：`0a37e537a9`（status sync）+ `5cf164fa05`（RISK-MAP）+ `6695ed150e`（本 prompt 初版）+ `485caad34a`（Phase-1 design + §3 dry-run + README judge research）+ `3bcbbb6b72`（本 prompt handoff 节）— **unpushed tracker**，Phase 0 先推。+ **stash@{0}** = README apply 95% + G13（2026-09-14 session-3 产，下 session `git stash pop`）。
 - **票账**：35 = **4 open** + 24 resolved + 6 archived + 1 folded
 - **4 open**（全有 decision-doc 就位，见 §1）：UM4 · UM15 · UM-LINT-B(partial) · UM-FORK-README
 - **worktree count**：7（`.worktrees/{r10-harness-goodhart,t1-exec-grader,g10-evaluation-core-publish}` + `dsh-resync` + `dsh-p2-present-table` + `dsh-p2-uism-vitest` + 主树）
@@ -22,7 +22,7 @@
 | # | 票 | 类型 | 可并行? | single-session? | decision-doc |
 |---|---|---|---|---|---|
 | 1 | **UM4** Scope 3 | task (observer-fix) | ⚠ partial（core impl 串行；5 fixtures 可并行） | ❌（JSONL capture 前置 + impl + tests，多 session） | ticket body (137L) |
-| 2 | **UM-FORK-README** | task (zh-bug fix + wire + run) | ✅ **3 fix options 并行 judge panel** | ✅ Y（fix 选定后 wire+run ~40K） | ticket body (129L) + scaffold `scripts/gen-package-readme-skeleton.ts` (571L, UNWIRED, KNOWN-BUG) |
+| 2 | **UM-FORK-README** | task (zh-bug fix + wire + run) | ⚠️ **95% apply in stash@{0}**（F1 winner 已 impl + 主 session 修，commit 卡 lefthook 3 项） | ✅ Y（修 3 项 + commit ~15K） | ticket body (159L) + research `readme-fix-{F1,judge}.json` |
 | 3 | **UM-LINT-B** remainder | task (waivers + durable gate) | ✅ Bucket ii/iii 并行 + gate 独立 | ✅ Y（**eval-cli ×6 仍 blocked on eval-team coord**） | ticket body (148L) |
 | 4 | **UM15** §2+§4 | design+code (knownRed[] schema + expiry) | ⚠ paired（§4 blocked on §2） | ✅ Y（§2 schema ext + §4 policy 1 session） | ticket body (264L) |
 | 5 | **UM15** §3 | task (3rd re-sync merge) | ❌ **串行**（git merge stateful，单工作树） | ❌（多 session；per-seam 解析已并行完成 = RISK-MAP.md） | ticket body §3 节 + RISK-MAP.md |
