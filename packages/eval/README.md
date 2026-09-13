@@ -1,3 +1,8 @@
+---
+description: "Data-agent eval harness group: dsh-eval mirrors reverse-bi rbi-eval orchestration design as a da-fresh TypeScript pure library"
+kind: "package-group"
+---
+
 # eval
 
 English | [中文](README.zh.md)

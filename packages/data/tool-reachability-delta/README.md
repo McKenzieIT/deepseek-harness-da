@@ -1,6 +1,28 @@
+---
+description: "Model-facing reachability_delta tool: compute how many new asset pairs become newly reachable via joins if a proposed relation is added to the knowledge graph"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-reachability-delta`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing reachability_delta tool: compute how many new asset pairs become newly reachable via joins if a proposed relation is added to the knowledge graph
+
+## Table of Contents
+
+- [Status: registered + callable; ctx.evidenceQuery optional](#status-registered--callable-ctxevidencequery-optional)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `reachability_delta` tool: **compute how many new asset pairs become newly reachable via joins if a proposed relation is added to the knowledge graph**. The agent calls it to assess the impact of adding a new relation before committing the edit.
 
@@ -51,6 +73,11 @@ tsc -b packages/data/tool-reachability-delta/tsconfig.json
 pnpm vitest run packages/data/tool-reachability-delta
 pnpm verify-cordis-config
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

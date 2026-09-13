@@ -1,12 +1,36 @@
+---
+description: "In-process hybrid retrieval provider (BM25 + vector + RRF k=60, in-mem cosine, ctx.embedder; InferenceError -> BM25-only degradation) for the data agent (P5b default tier)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-retrieval-inproc
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+In-process hybrid retrieval provider (BM25 + vector + RRF k=60, in-mem cosine, ctx.embedder; InferenceError -> BM25-only degradation) for the data agent (P5b default tier)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 In-process hybrid retrieval provider (BM25 + vector + RRF k=60, in-memory cosine similarity, `ctx.embedder` dependency; InferenceError triggers BM25-only degradation) for the data agent (P5b default tier).
 
 ## Overview
 
 Implements the `ctx.retrieval` contract with a `HybridRetriever` that fuses BM25 (Okapi BM25, k1=1.5, b=0.75) and vector similarity (in-memory cosine over `ctx.embedder` vectors) via Reciprocal Rank Fusion (RRF, k=60, rank 1-indexed). On `InferenceError` from the embedder, degrades gracefully to BM25-only results. Includes `buildCorpus` for document indexing and reranker post-RRF noise-floor filtering (RERANKER_NOISE_FLOOR=0.1). Field weights: `{id:3, description:1, metric:4}`.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

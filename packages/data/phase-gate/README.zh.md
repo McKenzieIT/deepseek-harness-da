@@ -1,10 +1,32 @@
+---
+description: "TODO: translate: Four-phase phase-gate orchestration plugin (ctx.on guard + turn-stopping + post-execute + assemble + llm-stream + pre-step) for the DeepSeek Harness data agent: reverse-bi DataAgentPipeline re-expressed on harness event seams, additive-only"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-phase-gate
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Four-phase phase-gate orchestration plugin (ctx.on guard + turn-stopping + post-execute + assemble + llm-stream + pre-step) for the DeepSeek Harness data agent: reverse-bi DataAgentPipeline re-expressed on harness event seams, additive-only
+
+## 目录
+
+- [Overview](#overview)
+- [关键设计决策](#key-design-decisions)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 DeepSeek Harness data agent 的四阶段 phase-gate 编排插件。实现 RBI `DataAgentPipeline`（UNDERSTANDING -> GENERATION -> EXECUTION -> INTERPRETATION），在 harness Cordis 事件接缝上重新表达（additive-only，无 core 变更）。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 一个 function plugin（`apply(ctx, config)`），在 agent 事件系统上注册 7 个 hooks：
 
@@ -16,6 +38,7 @@ DeepSeek Harness data agent 的四阶段 phase-gate 编排插件。实现 RBI `D
 - `llm/stream` — LLM 调用计数（F5）
 - `agent/pre-step` — 步骤计数 + max_steps 执行（F6）
 
+<a id="key-design-decisions"></a>
 ## 关键设计决策
 
 - **Critic 委托给 `@deepseek-ai/dsh-nl2sql-engine`** — `sqlSyntaxGate` + `extractSqlCandidate` 来自 nl2sql-engine 包（P13b Q2 边界：critic 在 nl2sql-engine，phase-gate 委托，单向无环）。
@@ -23,6 +46,7 @@ DeepSeek Harness data agent 的四阶段 phase-gate 编排插件。实现 RBI `D
 - **F2 SQL 同源** — GENERATION `extractSqlCandidate` 捕获到 `last_sql`；EXECUTION `query_data` post-execute 验证 `sql === last_sql`。
 - **F4 question-start** — `agent/status` idle->running 重置 question-scoped 计数器（非 `turn/start`，后者会破坏跨多 turn kick 的预算）。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -31,6 +55,13 @@ pnpm vitest run packages/data/phase-gate         # 14 specs
 pnpm verify-cordis-config                        # preset mount resolves
 ```
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 ### System prompt assembly
@@ -95,6 +126,7 @@ effort 拨盘改变每次调用的 reasoning-token 预算；不改变可见的 p
 
 注入的 user 消息仅追加；阶段推进时的任何缓存失效来自同时发生的 `phase-instruction` 重写，而非追加的消息。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **F1 forced_load 粒度** — `ctx.tools.execute` 程序化分发检索工具在 UNDERSTANDING 完成时（候选为空时）触发；更细的自动连线启发式延期。

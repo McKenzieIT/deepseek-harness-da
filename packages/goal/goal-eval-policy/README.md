@@ -1,6 +1,27 @@
+---
+description: "Policy plugin: no-progress backstop for goal-eval loop — triggers eval every K rounds, blocks goal after N consecutive no-improvement evals"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-goal-eval-policy
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Policy plugin: no-progress backstop for goal-eval loop — triggers eval every K rounds, blocks goal after N consecutive no-improvement evals
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Configuration](#configuration)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 No-progress backstop for the autonomous goal loop. A function plugin (`apply(ctx, config)`) that counts admitted goal rounds, triggers an eval run every `goalEvalIntervalRounds` rounds (default 3), and force-blocks a goal with code `'no-progress'` after `noProgressThreshold` consecutive eval runs show zero improvement (0 cases flipped to correct).
 
@@ -33,6 +54,11 @@ Tunables are validated schemastery `Config` fields, changeable from `cordis.yml`
 tsc -b packages/goal/goal-eval-policy/tsconfig.json   # typecheck
 pnpm vitest run packages/goal/goal-eval-policy          # unit + integration
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

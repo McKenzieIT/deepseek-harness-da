@@ -1,6 +1,26 @@
+---
+description: "Model-facing compute tool: execute LLM-generated pandas code against query results in the INTERPRETATION phase"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-tool-compute
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing compute tool: execute LLM-generated pandas code against query results in the INTERPRETATION phase
+
+## Table of Contents
+
+- [Services](#services)
+- [Bundle](#bundle)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `compute` tool for the data-agent INTERPRETATION phase. Executes LLM-generated Python/pandas code against cached query results via `ctx.codeRuntime`, stores derived results via `ctx.resultCache` with `cr_` prefix, and returns a `result_id` for downstream `present_table` rendering.
 
@@ -17,6 +37,11 @@ Model-facing `compute` tool for the data-agent INTERPRETATION phase. Executes LL
 Preset row: `tool-compute` → `@deepseek-ai/dsh-tool-compute`
 
 Phase-gate: `INTERPRETATION_TOOLS` already includes `'compute'`.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

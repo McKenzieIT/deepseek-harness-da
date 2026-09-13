@@ -1,6 +1,27 @@
+---
+description: "Four-phase phase-gate orchestration plugin (ctx.on guard + turn-stopping + post-execute + assemble + llm-stream + pre-step) for the DeepSeek Harness data agent: reverse-bi DataAgentPipeline re-expressed on harness event seams, additive-only"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-phase-gate
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Four-phase phase-gate orchestration plugin (ctx.on guard + turn-stopping + post-execute + assemble + llm-stream + pre-step) for the DeepSeek Harness data agent: reverse-bi DataAgentPipeline re-expressed on harness event seams, additive-only
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key design decisions](#key-design-decisions)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Four-phase phase-gate orchestration plugin for the DeepSeek Harness data agent. Implements the RBI `DataAgentPipeline` (UNDERSTANDING -> GENERATION -> EXECUTION -> INTERPRETATION) re-expressed on harness Cordis event seams (additive-only, no core changes).
 
@@ -30,6 +51,11 @@ tsc -b packages/data/phase-gate/tsconfig.json   # typecheck
 pnpm vitest run packages/data/phase-gate         # 14 specs
 pnpm verify-cordis-config                        # preset mount resolves
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

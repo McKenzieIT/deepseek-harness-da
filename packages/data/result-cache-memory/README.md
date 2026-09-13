@@ -1,6 +1,26 @@
+---
+description: "In-memory session-scoped implementation of the DeepSeek Harness result-cache seam (auto-captures query_data results)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-result-cache-memory
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+In-memory session-scoped implementation of the DeepSeek Harness result-cache seam (auto-captures query_data results)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 In-memory, session-scoped implementation of the `ctx.resultCache` storage seam from `@deepseek-ai/dsh-result-cache`. Stores entries in a `Map` keyed by `result_id` and hooks `tools/post-execute` to capture `query_data` completed results automatically, so the model can reference a query's rows by id in subsequent `present_table` / `compute` calls.
 
@@ -19,6 +39,11 @@ Result id prefixes:
 tsc -b packages/data/result-cache-memory/tsconfig.json   # typecheck
 pnpm vitest run packages/data/result-cache-memory         # unit specs
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

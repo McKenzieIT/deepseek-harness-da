@@ -138,6 +138,8 @@
     "verify-client-domain-graph": "tsx scripts/verify-client-domain-graph.ts",
     "gen-tsconfig-paths": "tsx scripts/gen-tsconfig-paths.ts",
     "verify-tsconfig-paths": "tsx scripts/gen-tsconfig-paths.ts --check",
+    "gen-package-readme-skeleton": "tsx scripts/gen-package-readme-skeleton.ts",
+    "verify-package-readme-skeleton": "tsx scripts/gen-package-readme-skeleton.ts --check",
     "gen-cordis-catalog": "tsx scripts/gen-cordis-catalog.ts",
     "verify-cordis-catalog": "tsx scripts/gen-cordis-catalog.ts --check",
     "gen-cordis-api": "tsx scripts/gen-cordis-api.ts",

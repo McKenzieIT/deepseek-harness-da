@@ -1,11 +1,34 @@
+---
+description: "TODO: translate: Model-facing search_data_sources tool: BM25 schema-linking over the semantic layer for the data agent's UNDERSTANDING phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-search-data-sources`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing search_data_sources tool: BM25 schema-linking over the semantic layer for the data agent's UNDERSTANDING phase
+
+## 目录
+
+- [状态：soft-fallback retrieval](#status-soft-fallback-retrieval)
+- [注册形态](#registration-shape)
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `search_data_sources` tool：data agent `UNDERSTANDING` 阶段的 **BM25 schema-linking over semantic layer**。agent 调用它来查找哪些数据源（DWS 表 / event ODS 表）匹配自然语言问题，然后再写 SQL。
 
 这是 **P13b 延期子项** — data-agent 工作中的第一个 model-facing tool 注册 — 因此也为之后所有 data-agent tool（`load_table_definition` / `load_event_definition` / `query_data` / `critique_sql` / `evaluate_sql_quality` / `present_*`）grounded 了 [`@deepseek-ai/dsh-tools`](../../core/tools) tool-registration API（`defineTool` + `ctx.tools.register`）。
 
+<a id="status-soft-fallback-retrieval"></a>
 ## 状态：soft-fallback retrieval
 
 按 **P13b grilling Q1**，base linker 是 [`@deepseek-ai/dsh-nl2sql-engine`](../nl2sql-engine) 导出的本地 `Bm25Linker` — 与 engine 使用的相同构建块。`ctx.nl2sql` 仅暴露 `getConventions`（无 retrieval 方法），因此该 tool 直接调用 `Bm25Linker` 作为 Q1 thin default。已发布的 `execute` soft-probe 四个 additive swap 路径（均为 additive，均不改变本 tool 契约）：
@@ -17,6 +40,7 @@ Model-facing `search_data_sources` tool：data agent `UNDERSTANDING` 阶段的 *
 
 未挂载 `ctx.schema`/`ctx.retrieval` provider 时，语料库为空 Q1 thin default；空语料库返回无候选，这是诚实的"可调用但未连线"状态，不是挂载错误（preset 自身注释：未注册的白名单 tool 只是不可调用）。
 
+<a id="registration-shape"></a>
 ## 注册形态
 
 镜像 [`@deepseek-ai/dsh-tool-bash`](../../shell/tool-bash)（生产级 tool 示例）：
@@ -43,8 +67,9 @@ export function apply(ctx: Context, config: Config = {}): void {
 }
 ```
 
-注册是基于 effect 的（disposing plugin fiber 即注销 tool）；schema 自动流入 system-prompt assembly。`execute` 返回一个规范 JSON 值（`{ candidates: [...] }`）；`output.render` 将其转为 model-facing 文本。参见 [`docs/cookbook/adding-a-tool.md`](../../../docs/cookbook/adding-a-tool.md)。
+注册是基于 effect 的（disposing plugin fiber 即注销 tool）；schema 自动流入 system-prompt assembly。`execute` 返回一个规范 JSON 值（`{ candidates: [...] }`）；`output.render` 将其转为 model-facing 文本。参见 [`docs/cookbook/adding-a-tool.zh.md`](../../../docs/cookbook/adding-a-tool.zh.md)。
 
+<a id="config"></a>
 ## 配置
 
 | 字段                | 类型      | 默认值       | 说明                                                          |
@@ -56,6 +81,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
 数据源语料库 **不是** 配置字段：未挂载 `ctx.schema`/`ctx.retrieval` provider 时为空 Q1 thin default，挂载时从 `ctx.schema`（D2e enriched corpus）或 `ctx.retrieval`（P5b）获取。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -66,6 +92,13 @@ pnpm verify-cordis-config                                      # preset mount re
 
 Preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`，`tool-search-data-sources`）在本包发布后取消注释；phase-gate guard 的 `UNDERSTANDING` 白名单已命名 `search_data_sources`，注册后即可在该阶段调用。
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 ### The `search_data_sources` tool call
@@ -82,6 +115,7 @@ tool 结果中渲染的 `candidates` 文本是此 tool 唯一的逐调用 token 
 
 Tool 结果仅追加：`candidates` 文本跟随可复用请求前缀，不使先前缓存条目失效。tool schema 是跨 turn 稳定 system-prompt 前缀的一部分，故注册或调用此 tool 不添加前缀抖动。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **无 provider 挂载时空语料库（Q1 thin default）** — 未挂载 `ctx.schema`（D2e）或 `ctx.retrieval`（P5b）时，base `Bm25Linker` 语料库为空；空语料库返回无候选（诚实的"可调用但未连线"状态）。挂载任一 provider 即填充语料库。

@@ -1,12 +1,36 @@
+---
+description: "Abstract query-engine seam (ctx.query): NL->SQL execution over swappable engines (MaxCompute first)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-query
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Abstract query-engine seam (ctx.query): NL->SQL execution over swappable engines (MaxCompute first)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Abstract query-engine seam (`ctx.query`): Service Definition for NL-to-SQL execution over swappable engine providers (MaxCompute first).
 
 ## Overview
 
 Defines the abstract `QueryEngine extends Service` contract with four abstract methods: `execute`, `attach`, `cancel`, `getProgress`, plus the `getConventions()` seam method and the 3-state `QueryOutcome` vocabulary (Completed / Pending / Failed). `getConventions()` returns the loaded `EngineConventions` for prompt dialect grounding (key_differences / functions / cast_map / sql_templates); the default throws `'QueryEngine.getConventions: not implemented; override in a concrete provider subclass'`, and concrete providers like `MaxComputeQueryEngine` override it to return their loaded convention set. `estimate_cost` is CostGuard-internal and does not appear on the seam's public surface. The per-engine conventions type surface (`EngineConventions`/`ConventionFunction`/`ConventionCast`/`ConventionTemplate` in `src/conventions.ts`) lives in this package so consumers import engine convention types from the abstract seam, not a concrete provider. This package is the Def half of the query-trio (Def + Provider + Consumer); the Provider is `query-maxcompute`, the Consumer `tool-query` is deferred.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

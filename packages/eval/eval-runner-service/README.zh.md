@@ -1,10 +1,32 @@
+---
+description: "TODO: translate: Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run."
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval-runner-service
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run.
+
+## 目录
+
+- [Overview](#overview)
+- [关键设计决策](#key-design-decisions)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与待办](#known-limitations-and-deferred-work)
+
+
 连接 `ctx.evalRunner` seam 的 Cordis Service：驱动真实 NL2SQL 引擎、`ctx.query`、`ctx.llm` 协作者对 eval 用例集运行，以 `FileBackedEvalResultStore` 读取的格式持久化 JSONL，并跟踪 last / last-two 运行以做差量。激活自主 goal loop 的无进展兜底（`dsh-goal-eval-policy`）与 `trigger_eval` 的 full_run（`dsh-tool-trigger-eval`）。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 一个函数插件（`apply(ctx, config)`），把 `EvalRunnerService`（一个 Cordis `Service`）挂载到 `ctx.evalRunner`。该 Service：
 
@@ -15,12 +37,14 @@
 - 发出 `evidence/eval-run-completed`，并
 - 跟踪 `lastRun` / `lastTwoRuns` 以做差量（`computeDelta`）与 `trigger_eval` 的 report_last。
 
+<a id="key-design-decisions"></a>
 ## 关键设计决策
 
 - **适配器优于重新实现**：`CtxLlmAdapter` / `CtxOdpsAdapter` / `CtxQueryExecutor` 把引擎的 `Llm` / `OdpsExecutor` 与 eval-runner 的 `QueryExecutor` / `JudgeExecutor` 约定桥接到 `ctx.llm` / `ctx.query`，使 eval 复用与生产相同的逻辑模块。
 - **W3→W4 格式桥接**：`persistRunResultJsonl` 把 eval-runner `RunResult` 映射为 `FileBackedEvalResultStore` 解析的 `PersistedCaseRecord` 形状（二者字段命名 / 大小写不同）。
 - **结果词表映射**：`CtxOdpsAdapter.toEngineOutcome` 把 dsh-query 的 `QueryOutcome` 状态（`completed` / `pending` / `failed`）映射为引擎的（`done` / `running` / `failed`），使已完成的查询不再落入 failed / decline 路径。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -28,6 +52,13 @@ tsc -b packages/eval/eval-runner-service/tsconfig.json   # typecheck
 pnpm vitest run packages/eval/eval-runner-service          # mechanics + runBatch integration
 ```
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -36,6 +67,7 @@ pnpm vitest run packages/eval/eval-runner-service          # mechanics + runBatc
 
 eval-run LLM 调用走独立调用路径，不会延伸或失效 agent loop（智能体循环）的可复用请求前缀。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与待办
 
 - **中止 signal 未贯穿**：`EvalRunnerService.runBatch` 接受 `{ runId?, skipHealthGate? }`，没有 `signal` 字段，且 `CtxLlmAdapter.complete` 构造 `ctx.llm.stream` 选项时未传入 `options.signal`。工具超时或用户 / 工具中止会触发 `AbortController.abort()`，但该 signal 在 `runBatch` seam 处被丢弃（该缺口横跨 `dsh-tool-trigger-eval` 的 `trigger_eval` 与本 Service）。因此一次进行中的 eval run 会运行到结束，无法在批执行中途取消。通过该 seam 贯穿 `signal?: AbortSignal` 属于待办（跨包修复）。

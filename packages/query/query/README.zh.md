@@ -1,13 +1,40 @@
+---
+description: "TODO: translate: Abstract query-engine seam (ctx.query): NL->SQL execution over swappable engines (MaxCompute first)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-query
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Abstract query-engine seam (ctx.query): NL->SQL execution over swappable engines (MaxCompute first)
+
+## 目录
+
+- [Overview](#overview)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 抽象查询引擎接缝（`ctx.query`）：用于可替换引擎提供方上执行 NL-to-SQL 的 Service Definition（MaxCompute 优先）。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 定义抽象 `QueryEngine extends Service` 契约，包含四个抽象方法：`execute`、`attach`、`cancel`、`getProgress`，以及三态 `QueryOutcome` 词汇（Completed / Pending / Failed）。`estimate_cost` 为 CostGuard 内部使用，不出现在接缝公开面上。本包是 query-trio 的 Def 半部分（Def + Provider + Consumer）；Provider 为 `query-maxcompute`，Consumer `tool-query` 延后。
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 间接，通过延后的 tool-query Consumer：它将 `ctx.query.execute` 结果作为模型可见的 tool 面暴露，本抽象接缝自身不注册任何 prompt、tool 或 session 事件。
@@ -16,6 +43,7 @@
 
 无直接影响；本接缝不拥有任何前缀，查询结果仅作为消费方 tool 的结果内容进入对话。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **tool-query Consumer 未实现** — 将 `ctx.query.execute` 以会话门（G1 采样 / G5 COUNT / 预算 / 近似去重 / 终止 / 缓存 / required_predicates）暴露给模型的工具延后。与 engine-wrapper guard chain 合并，构成 query-trio 剩余生产工作。

@@ -1,10 +1,31 @@
+---
+description: "TODO: translate: Model-facing trigger_eval tool: triggers a semantic layer eval run, reports results and before/after delta"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-tool-trigger-eval
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing trigger_eval tool: triggers a semantic layer eval run, reports results and before/after delta
+
+## 目录
+
+- [Overview](#overview)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与推迟工作](#known-limitations-and-deferred-work)
+
+
 面向 DeepSeek Harness data agent 的、面向模型的 `trigger_eval` 工具。针对 data agent 的 case set 触发一次 eval run，持久化结果，并报告 before/after delta。一个函数插件（`apply(ctx, config)`），通过 `ctx.tools.register` 注册单个工具。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 `trigger_eval` 是一个可由模型调用的工具。调用时：
 
@@ -14,6 +35,7 @@
 
 工具结果以文本形式渲染给模型（`formatTriggerEval`），其 meta 被投影（`projectMeta`）以便持久化/展示。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -21,6 +43,13 @@ tsc -b packages/data/tool-trigger-eval/tsconfig.json   # typecheck
 pnpm vitest run packages/data/tool-trigger-eval         # unit specs
 ```
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -29,6 +58,7 @@ pnpm vitest run packages/data/tool-trigger-eval         # unit specs
 
 本包的贡献对可复用的请求前缀是仅追加的，不会使既有 cache 条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与推迟工作
 
 - **取消 seam 依赖下游 runner**：`trigger_eval` 将 `exec.signal` 传入 `EvalRunnerService.runBatch({ ..., signal })`，并在入口处重新检查 `exec.signal.aborted`。完整的运行中取消还要求 eval runner service 将该 signal 穿透到其 `ctx.llm.stream` / judge / answer 路径；该下游接线由 `@deepseek-ai/dsh-eval-runner-service` 负责，并已在那里 flag。

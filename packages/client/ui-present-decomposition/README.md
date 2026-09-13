@@ -1,8 +1,31 @@
+---
+description: "Toolview card for the present_decomposition INTERPRETATION tool: query-contract card with focal summary, lineage chips, always-visible metric calibers, and a trust band"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-present-decomposition
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Toolview card for the present_decomposition INTERPRETATION tool: query-contract card with focal summary, lineage chips, always-visible metric calibers, and a trust band
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 Toolview card for the `present_decomposition` INTERPRETATION tool. The card is the **query's contract, not a result card**: it shows what the agent understood, at what caliber, and with how much confidence — three layers plus a trust band (wayfinder: interpretation-client-rendering R9 audit + P1 prototype verdict).
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

@@ -1,6 +1,26 @@
+---
+description: "Model-facing present_table tool: present a table result with optional KPI aggregations and chart config for the INTERPRETATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-present-table`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing present_table tool: present a table result with optional KPI aggregations and chart config for the INTERPRETATION phase
+
+## Table of Contents
+
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `present_table`: **present a query result table with display metadata** (title, columns, sort, KPI aggregations, chart config) for the data agent's `INTERPRETATION` phase. The agent calls it to instruct the UI how to render the executed query result — which columns to show, how to sort, what summary KPI cards to display above the table, and whether to include a chart visualization.
 
@@ -17,6 +37,11 @@ tsc -b packages/data/tool-present-table/tsconfig.json
 pnpm vitest run packages/data/tool-present-table
 pnpm verify-cordis-config
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

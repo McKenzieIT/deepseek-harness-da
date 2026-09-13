@@ -1,11 +1,34 @@
+---
+description: "TODO: translate: Model-facing load_table_definition tool: load a validated table definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-load-table-definition`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing load_table_definition tool: load a validated table definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase
+
+## 目录
+
+- [状态：已注册 + 可调；ctx.schema 已接通](#status-registered--callable-ctxschema-wired)
+- [注册形态](#registration-shape)
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与待办](#known-limitations-and-deferred-work)
+
 
 面向模型的 `load_table_definition` 工具：从语义层 substrate **加载已校验的表定义**，用于 data agent 的 `UNDERSTANDING`/`GENERATION` 阶段。agent 在写 SQL 或评审查询前调用它，以真实 schema（列、分区、主键、指标、维度引用）作为 SQL 落地依据。
 
 这是 **P6b deferred follow-up**（"load_* 接入"）—— [`ctx.schema`](../semantic-layer) `loadTableDefinition` substrate（P6b ship，commit 88524504f8）的面向模型封装。它镜像 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)（首个 model-facing tool，P13b commit 0e1a0fdf25）的 [`@deepseek-ai/dsh-tools`](../../core/tools) 注册形态（`defineTool` + `ctx.tools.register`）。
 
+<a id="status-registered--callable-ctxschema-wired"></a>
 ## 状态：已注册 + 可调；ctx.schema 已接通
 
 本工具由 data-agent preset（`tool-load-table-definition` 行，已解注释）注册，并列入 phase-gate `UNDERSTANDING`/`GENERATION` 白名单，故模型可在对应阶段调用。探 `ctx.get('schema')`：`@deepseek-ai/dsh-semantic-layer` service 挂载时命中即返回投影定义；未挂载 provider 时（无该 service 的 profile，或单测）返回诚实的 `found: false` "not mounted" 结果——callable but unwired，非 broken mount（与 `tool-search-data-sources` 在 retrieval provider 挂载前的薄默认态相同）。
@@ -14,6 +37,7 @@
 
 `table_name` 参数为模型输入（不可信）。P6b code-review #5 将 definition-name 路径穿越守卫 deferred 到 "load_* 接入"；本工具在边界校验 name（拒 `/`、`\`、`..`、NUL），落实 intranet-security-first 纵深防御。
 
+<a id="registration-shape"></a>
 ## 注册形态
 
 镜像 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) 与 [`@deepseek-ai/dsh-tool-bash`](../../shell/tool-bash)：
@@ -37,12 +61,14 @@ export function apply(ctx: Context, _config: Config = {}): void {
 }
 ```
 
-注册基于 effect（dispose plugin fiber 即注销工具）；schema 自动汇入 system-prompt 装配。`execute` 返回单一规范 JSON 值（`{ found, table?, message? }`）；`output.render` 投影为面向模型的文本。见 [`docs/cookbook/adding-a-tool.md`](../../../docs/cookbook/adding-a-tool.md)。
+注册基于 effect（dispose plugin fiber 即注销工具）；schema 自动汇入 system-prompt 装配。`execute` 返回单一规范 JSON 值（`{ found, table?, message? }`）；`output.render` 投影为面向模型的文本。见 [`docs/cookbook/adding-a-tool.zh.md`](../../../docs/cookbook/adding-a-tool.zh.md)。
 
+<a id="config"></a>
 ## 配置
 
 无旋钮。substrate 拥有数据（`semanticRoot` + scope 配在 `ctx.schema` service mount 上，不在本工具）。路径穿越 name 守卫无条件生效。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -53,6 +79,13 @@ pnpm verify-cordis-config
 
 本包 ship 后解注释 preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml` 的 `tool-load-table-definition`）；phase-gate guard 的 `UNDERSTANDING`/`GENERATION` 白名单已含 `load_table_definition`，注册即在对应阶段可调。
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 ### `load_table_definition` 工具调用
@@ -69,6 +102,7 @@ pnpm verify-cordis-config
 
 工具结果为 append-only：定义文本跟随可复用请求前缀，不使既有缓存条目失效。工具 schema 是跨 turn 稳定 system-prompt 前缀的一部分，故注册或调用不引入前缀抖动。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与待办
 
 - **ctx.schema bundle mount wired（已解）** —— bundle 的 `semantic-layer` service 行已解注释 + 加 `dsh-semantic-layer` dep（lockfile 经 `pnpm install` 同步）；`ctx.schema` 已挂载，故本工具已接通真 substrate（不再 "callable but unwired" 默认）。preset 行 + phase-gate 白名单本已就位。已验证：`verify-cordis-config` + `dsh --dump-config`（service 在）+ 真 `semanticRoot` smoke（`found:true` 投影 `partitions`）。

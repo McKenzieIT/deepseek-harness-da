@@ -1,6 +1,26 @@
+---
+description: "Model-facing trigger_eval tool: triggers a semantic layer eval run, reports results and before/after delta"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-tool-trigger-eval
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing trigger_eval tool: triggers a semantic layer eval run, reports results and before/after delta
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `trigger_eval` tool for the DeepSeek Harness data agent. Triggers a semantic layer eval run against the data agent's case set, persists results, and reports a before/after delta. A function plugin (`apply(ctx, config)`) that registers a single tool via `ctx.tools.register`.
 
@@ -20,6 +40,11 @@ The tool result is rendered to the model as text (`formatTriggerEval`) and its m
 tsc -b packages/data/tool-trigger-eval/tsconfig.json   # typecheck
 pnpm vitest run packages/data/tool-trigger-eval         # unit specs
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

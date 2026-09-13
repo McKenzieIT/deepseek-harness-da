@@ -1,13 +1,36 @@
+---
+description: "TODO: translate: Per-user audit store (ctx.audit) for the DeepSeek Harness: relational node:sqlite for tool/session/guard audit + G3 per-user Qoder Credits reconciliation"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-audit
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Per-user audit store (ctx.audit) for the DeepSeek Harness: relational node:sqlite for tool/session/guard audit + G3 per-user Qoder Credits reconciliation
+
+## 目录
+
+- [Overview](#overview)
+- [关键设计决策](#key-design-decisions)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 DeepSeek Harness 的按用户审计存储（`ctx.audit`）：关系型 `node:sqlite` 用于 tool/session/guard 审计事件 + G3 按用户 Qoder Credits 对账。P8b 生产硬化（移植一次性 `prototypes/p8-audit/`）。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 一个 additive Cordis `Service`，观察 `tools/post-execute` 和 `session/event` waterfalls，将结构化审计事件（tool 调用、session 生命周期、guard 决策、Credits）记录到不可变追加式 SQLite 存储中，支持按用户所有权隔离。
 
+<a id="key-design-decisions"></a>
 ## 关键设计决策
 
 - **自有 SQLite**（`ctx.audit`，非 `ctx.storageDomain`）— 关系型 3 表 schema（audit_event / audit_override / audit_tag）需要二级索引、跨表事务和多段键，`storage-domain` KV 无法提供。
@@ -15,6 +38,7 @@ DeepSeek Harness 的按用户审计存储（`ctx.audit`）：关系型 `node:sql
 - **`stats` vs `correctedStats`** — `stats` 聚合不可变原始记录（快速，始终与 `rawPayload` 一致）；`correctedStats` 应用纠正供合规对账（O(n)，按需）。
 - **Tier-2 hash-not-body** — `recordTier2Write` 存储内容哈希而非完整 payload，用于 semantic-layer 写审计。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -23,6 +47,13 @@ pnpm vitest run packages/data/audit         # 12 specs
 pnpm verify-cordis-config                   # bundle mount resolves
 ```
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 无，因为该服务将 tool 调用和 session 事件记录到不可变 SQLite 审计存储中以供合规，从不将记录呈现到模型上下文中。
@@ -31,6 +62,7 @@ pnpm verify-cordis-config                   # bundle mount resolves
 
 无影响；审计记录仅持久化在 SQLite 存储中，从不进入模型 prompt。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **userId 按用户维度** — 当前为 NULL（T1 fallback）；需要 P9 `@deepseek-ai/dsh-admin` 落地并连线 `resolveIdentity()`（小的 additive 变更）。

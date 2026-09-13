@@ -1,8 +1,31 @@
+---
+description: "Model-facing edit_definition tool: apply partial patches to semantic layer asset definitions with audit trail"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-tool-edit-definition
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Model-facing edit_definition tool: apply partial patches to semantic layer asset definitions with audit trail
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Model-facing edit_definition tool: apply partial patches to semantic layer asset definitions with audit trail
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

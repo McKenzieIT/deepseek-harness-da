@@ -1,6 +1,28 @@
+---
+description: "Model-facing search_data_sources tool: BM25 schema-linking over the semantic layer for the data agent's UNDERSTANDING phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-search-data-sources`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing search_data_sources tool: BM25 schema-linking over the semantic layer for the data agent's UNDERSTANDING phase
+
+## Table of Contents
+
+- [Status: soft-fallback retrieval](#status-soft-fallback-retrieval)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `search_data_sources` tool: **BM25 schema-linking over the semantic layer** for the data agent's `UNDERSTANDING` phase. The agent calls it to find which data sources (DWS tables / event ODS tables) match a natural-language question before it writes SQL.
 
@@ -65,6 +87,11 @@ pnpm verify-cordis-config                                      # preset mount re
 ```
 
 The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-search-data-sources`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING` whitelist already names `search_data_sources`, so registering it makes it callable in that phase.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

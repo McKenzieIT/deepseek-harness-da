@@ -1,6 +1,28 @@
+---
+description: "Model-facing load_table_definition tool: load a validated table definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-load-table-definition`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing load_table_definition tool: load a validated table definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase
+
+## Table of Contents
+
+- [Status: registered + callable; ctx.schema wired](#status-registered--callable-ctxschema-wired)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `load_table_definition` tool: **load a validated table definition from the semantic-layer substrate** for the data agent's `UNDERSTANDING`/`GENERATION` phase. The agent calls it to ground SQL in the real schema (columns, partitions, primary key, metrics, dimension references) before writing or critiquing a query.
 
@@ -52,6 +74,11 @@ pnpm verify-cordis-config
 ```
 
 The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-load-table-definition`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING`/`GENERATION` whitelist already names `load_table_definition`, so registering it makes it callable in those phases.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

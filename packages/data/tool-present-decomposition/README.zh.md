@@ -1,15 +1,37 @@
+---
+description: "TODO: translate: Model-facing present_decomposition tool: present a structured query decomposition (summary, metrics, dimensions, time range) for the INTERPRETATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-present-decomposition`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing present_decomposition tool: present a structured query decomposition (summary, metrics, dimensions, time range) for the INTERPRETATION phase
+
+## 目录
+
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与待办事项](#known-limitations-and-deferred-work)
+
 
 面向模型的 `present_decomposition`：为数据 agent（智能体）的 `INTERPRETATION` 阶段**呈现结构化的查询分解**（摘要、指标、维度、时间范围）。在继续执行之前，agent 调用它向用户展示其自然语言问题是如何被理解的，即将计算哪些指标、按哪些维度、对应什么时间范围。
 
 这是一个**纯展示工具**（仅 `inject=['tools']`）：它记录分解结果并返回给 UI 展示。它没有服务依赖，也不会探查 `ctx.schema` / `ctx.audit` / `ctx.identity`。phase-gate 的 `captureToolData` 通过 `tools/post-execute` 检测该调用。
 
+<a id="config"></a>
 ## 配置
 
 无任何开关。纯展示。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -18,6 +40,13 @@ pnpm vitest run packages/data/tool-present-decomposition
 pnpm verify-cordis-config
 ```
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -26,6 +55,7 @@ pnpm verify-cordis-config
 
 本包的贡献对可复用的请求前缀是仅追加的，不会使既有缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与待办事项
 
 - 仅记录意图：无下游副作用或服务交互。

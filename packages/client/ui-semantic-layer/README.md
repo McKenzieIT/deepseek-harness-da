@@ -1,6 +1,26 @@
+---
+description: "Semantic layer management: sidebar trigger that opens or creates the management agent session"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-semantic-layer
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Semantic layer management: sidebar trigger that opens or creates the management agent session
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Services consumed](#services-consumed)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 The semantic layer management UI plugin (browser half). Registers:
 
@@ -31,6 +51,11 @@ The plugin has no host-side behavior (`src/index.ts` is an empty apply). All log
 | `layout` | dsh-client-ui-layout | `openDetails()` (optional) |
 | `slots` | dsh-client-ui-slots | Slot registration |
 | `locale` | dsh-client-locale | i18n dictionaries |
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 
