@@ -257,3 +257,57 @@ ls wayfinder/data-agent/research/next-session-2026-09-14/um15-s3-seam-analysis/R
 - **README-retrofit scaffold**：`scripts/gen-package-readme-skeleton.ts`（571L, UNWIRED, KNOWN-BUG note at top）
 - **上 session plan**（本 session 消费的）：`wayfinder/data-agent/prompts/next-session-2026-09-14-parallel-7-tickets.md`
 - **map.md session-2 snapshot**：`wayfinder/data-agent/map.md` [2026-09-13] session-2 entry（line ~534）
+
+---
+
+## [2026-09-14] Phase 3 Step 1 (README apply) 进展 handoff — 95% done, commit 卡 lefthook
+
+**状态**：UM-FORK-README-SKELETON-RETROFIT 的 F1 apply 跑了（subagent + 主 session 修），generator fix + 130 README + wiring + depth-3 residual 全 done，verify 全 GREEN，但 **commit 卡在 lefthook pre-commit**（lint 1 error + eval-cli out-of-sync + docs i18n hook 副作）。改动在 `git stash`（`README-apply-95pct + G13`），master working tree clean。
+
+**下 session 接手**：`git stash pop`（恢复 README apply + G13 到 working tree）→ 修下方 3 项 → commit → push A-path → 继续 Step 2-4（LINT-B + §2 + §4）。
+
+### 已 done（subagent + 主 session 修）
+
+- **F1 generator fix**：5 diffs applied（extractPairPlan overviewCollisionIndices + retrofitPair rename+re-derive + ZH staging + 2 JSDoc）。F1 = rename zh `## 概述` (Overview) → `## Overview` + insert Summary `## 概述` + rebuild TOC + re-thread anchors。
+- **主 session 修复（subagent generator fix 的 quality gap）**：
+  - 删 dead code（`stripSkeleton` + `stripAnchors` unused，eslint no-unused-vars）。
+  - 加 `MODEL_EXPERIENCE_VARIANTS` 常量（`['Model Experience', '模型体验', '模型经验']`）+ 3 处 match 改用它。**根因**：subagent 的 `ZH_HEADINGS.modelExperience='模型体验'` 漏了 eval-cli ZH 的 `## 模型经验` 变体（全 repo 1 个）→ eval-cli ZH Dev Note 落末尾 → 101 diverges。加 `模型经验` 变体后 90 diverges resolved（117→27）。
+  - fix 5 wrong-locale links（`adding-a-tool.md`→`.zh.md` × 4 + `eval/README.md`→`.zh.md` × 1，pre-existing）。
+  - 删 eval-cli/README.zh.md 的 changelog code block 内 `<a id="yyyy-mm-dd">` anchor（pre-existing content gap，EN 无）+ 孤儿 `<a id="model-experience">` anchor（subagent anchor threading bug，错位在 Dev Note 前）。
+- **wiring**（clone gen-tsconfig-paths）：package.json（2 scripts）+ run-gates.ts:759（enroll verify-）+ gate-coverage.manifest.json（gen- exemption）+ 删 generator 的 UNWIRED/KNOWN-BUG note。
+- **130 README run**（65 EN + 65 ZH）+ 70 i18n re-record + depth-3 residual（data/eval README frontmatter kind:package-group × 4）+ graft console.warn。
+- **subagent 额外 fix**（F1.json 之外）：Dev Note 位置（insertSkeleton 把 Dev Note 放 Model Experience 前，满足 verify-package-readme-model-experience 的 "final two H2 = Model Experience + Known Limitations" 规则）。
+
+### verify（全 GREEN，commit 前）
+
+- `doc-standard.spec.ts` → **12/12**（was 10/12）✓
+- `verify-package-readme-skeleton --check` → exit 0 ✓
+- idempotency（2nd run）→ "0 README files are current" ✓
+- corpus pairing → **20 violations**（baseline 21→20，-1 wrong-locale fix）✓
+- `verify-package-readme-limitations` → 329 conform ✓
+- `verify-gate-coverage` → green ✓
+- README target 65: 64/65 consistent（eval-cli 1 diverge，pre-existing changelog content gap，已删 anchor fix）
+
+### 待修（commit 卡 lefthook 的 3 项）
+
+1. **lint 1 error**：`typescript(no-unnecessary-condition): This condition will always return the same value since the types have no overlap.` in `scripts/gen-package-readme-skeleton.ts`（主 session 加的 `MODEL_EXPERIENCE_VARIANTS.includes(heading)` —— typescript 推断 `heading: string` vs readonly string[] 类型 narrow）。修：cast 或改 match 写法（如 `MODEL_EXPERIENCE_VARIANTS.indexOf(heading) >= 0` 或 `(MODEL_EXPERIENCE_VARIANTS as readonly string[]).includes(heading)`）。
+2. **eval-cli i18n.yaml out-of-sync**：删 anchor 后 content 变了，i18n.yaml hash stale。修：`pnpm run verify-translation-pairing --write packages/eval/eval-cli/README.md`（re-record）。
+3. **docs i18n.yaml hook 副作**：lefthook pre-commit 的 translation pairing hook re-record 了 `docs/config-catalog.i18n.yaml` + `docs/subsystems/README.i18n.yaml` + `docs/tool-catalog.i18n.yaml`（staged 触发 corpus 检查 → config-catalog/tool-catalog pre-existing structural diverge → hook fail）。修：unstage docs i18n.yaml（不 commit hook 副作，它们是 corpus pairing re-record 副作用，非 README apply）—— `git reset HEAD docs/config-catalog.i18n.yaml docs/subsystems/README.i18n.yaml docs/tool-catalog.i18n.yaml`，让 hook 不检查这些 docs/ pair。或 fix docs structural（pre-existing，归 docs content 票，out of scope）。
+
+### 已知 quality issue（下 session generator polish，非 commit 阻塞）
+
+- **Dev Note 顺序 bug**：generator 把 TOC 放 Summary 前（EN+ZH 都这样，pairing consistent 但阅读体验差）。归 generator insert 顺序逻辑，不影响 pairing/doc-standard。
+- **anchor threading**：eval-cli 孤儿 anchor（已删），但 generator 的 `insertAnchorsBeforeHeadings` ZH flow order 可能对其他包有 latent bug（corpus 20 显示只 eval-cli 受影响，其他 OK）。
+
+### stash
+
+`git stash list` → `stash@{0}: On master: README-apply-95pct + G13 (lint-1err + eval-cli-re-record pending)`
+
+下 session：`git stash pop` → 修 3 项 → `git add`（generator + 130 README + wiring + 4 group + sidecars，**排除** docs i18n.yaml hook 副作 + G13）→ commit → push A-path（从 dsh-resync）→ PR → merge。然后 Step 2-4（LINT-B + §2 + §4）。
+
+### 蓝图（research，已 commit 485caad34a 到 master）
+
+- `wayfinder/data-agent/research/next-session-2026-09-18/readme-fix-F1.json` — winner 5 generator diffs + runPlan 11 步 + applyRisk 4 residuals。
+- `wayfinder/data-agent/research/next-session-2026-09-18/readme-fix-judge.json` — judge verdict（winner F1，high confidence）。
+- `wayfinder/data-agent/research/next-session-2026-09-18/um15-s3-dry-run-report.md` — §3 merge dry-run（37 漏的冲突 + 4-pass workstream）。
+- `wayfinder/data-agent/research/next-session-2026-09-18/{um4,lint-b,readme-fix,um15-s4}.json` — Phase-1 design（4 成功，um15-s2 ERROR 但 design 在 UM15 ticket decision-doc）。
