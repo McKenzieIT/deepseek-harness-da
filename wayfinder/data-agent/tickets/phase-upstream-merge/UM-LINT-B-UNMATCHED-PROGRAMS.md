@@ -1,6 +1,6 @@
 # UM-LINT-B-UNMATCHED-PROGRAMS — 56 个文件不被任何 tsconfig 认领，落进 tsgolint 的无配置 inferred program（type-aware 门静默漏检）
 
-**Type**: grilling · **Status**: open · **Phase**: upstream-merge
+**Type**: grilling · **Status**: partial (2026-09-13 eval-independent slice landed 56→55 unmatched; eval-cli ×6 + Bucket ii/iii + durable gate deferred per [Phase-6 decision-doc](#2026-09-13-phase-1-research--phase-6-decision-doc-hybrid-resolution-eval-independent-slice-landed-remainder-deferred) below) · **Phase**: upstream-merge
 **Assignee**: unclaimed
 **Blocked by**: —（可立即认领；诊断证据已备齐，主要待决策）
 **Blocks**: GA-FORK-CI 总账里「`check:ci:lint:contracts-ready` 是否真的在检查它声称检查的文件」这一条
