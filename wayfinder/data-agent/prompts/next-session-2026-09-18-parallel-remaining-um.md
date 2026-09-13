@@ -87,7 +87,7 @@ worktree 触面：
 - **NOT single-session** — 可能只 land accessor + guard + 2-3 fixtures，余 defer
 
 **Worktree M — A/B/D 串行（manifest + run-gates collision，单 worktree）**
-- Step 1: **UM-FORK-README**（若用户 Phase 2 选 F1 直接 → impl fix + wire + run 130 files + verify；若选 judge panel → 跑 §7 nested 3-option workflow 选 winner 再 wire+run）
+- Step 1: **UM-FORK-README** — ✅ 95% done in `stash@{0}`（2026-09-14 judge panel 选 F1 + apply + 主 session 修，commit 卡 lefthook 3 项）。下 session：`git stash pop` → 修 3 项（见 [2026-09-14] handoff 节：lint cast + eval-cli `--write` re-record + unstage docs i18n hook 副作）→ commit → push A-path。详见下方 [2026-09-14] Phase 3 Step 1 handoff 节。
 - Step 2: **UM-LINT-B**（Bucket ii 34 WAIVE globs + Bucket iii 15 KEEP notes + durable gate extend `run-oxlint.ts`）— manifest 编辑接 Step 1
 - Step 3: **UM15 §2**（knownRed[] schema ext + Check 4 + 2 knownRed entries）— manifest 编辑接 Step 2
 - Step 4: **UM15 §4**（waiver-expiry policy，paired with §2）— `upstream-sync-record.ts` Waiver interface ext
