@@ -76,7 +76,7 @@
     {
       "path": "packages/client/ui-settings-models/",
       "direction": "revert-fork",
-      "decision": "pending",
+      "decision": "keep",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     }
   ]
