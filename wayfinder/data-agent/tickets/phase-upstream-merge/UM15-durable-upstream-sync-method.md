@@ -430,3 +430,64 @@ upstream 新增了一个**全新的包** `packages/util/chunked-list`，它依�
 - `pnpm dsh` = `node --import tsx/esm apps/cli/src/bin.ts`（tsx 才能解 `/src/*.ts` mount）
 - `~/.dsh/profiles/node_modules/@deepseek-ai/dsh-tool-resolve-term` 需 symlink（或加依赖声明后 `pnpm install`）
 - capture 读回命令用 `zstd -dc` + `data.reason.reason.kind`（票里那条跑不通）
+
+---
+
+## [2026-09-20] §4 calibration Q1-Q4 收口（Q5 待答）
+
+**用户 2026-09-20 定死 4 项校准值**：
+
+| Q | 决策 | 值 | 实现 |
+|---|---|---|---|
+| Q1 | zero-hit note→failure | 做，只对 `keep` 生效 | `21a5f496c7`：`waiver.decision === 'keep'` → `failures.push` |
+| Q2 | 计数基准 | (a) all-history 聚合 + 日历 expiry | **不改 schema**，不回填历史。Q1 已覆盖 zero-hit 语义 |
+| Q3 | `drop` expiry | (a) 不加日历 expiry，只加 report 可见性 | **未实现**（report 输出改进留给 AFK session）|
+| Q4 | `pending` fuse | 1 轮，直接 FAILURE | `10c5167779`：`pending` + zero-hit → `failures.push` |
+
+**当前 zero-hit 行为总结**（`scripts/upstream-sync-record.ts:212-228`）：
+
+| `decision` | zero-hit 行为 | 理由 |
+|---|---|---|
+| `keep` | **FAILURE**（门红，拦 push）| 永久接受的分歧可能已不存在，强制重新裁决 |
+| `pending` | **FAILURE**（门红，拦 push）| 未决不得存活 >1 轮 sync |
+| `drop` | NOTE（信息性，不阻塞）| 有 ticket 追踪 remediation 进度 |
+
+**Gate 现状**：10 条 waiver（keep 3 / drop 7 / pending 0），全部 keep+pending 命中 → gate 仍 exit 0。
+
+**Q5（known-red expiry 给未来 §2）待答**。
+
+### Q3 report 可见性改进（未实现，留给 AFK session）
+
+Q3 选了 (a)：`drop` 不加硬 expiry，改为门每次把 7 条 `drop` 连同其 ticket 列进 report 输出。具体实现：在 `upstream-status.ts` report 里加一节 "Owed remediation (drop waivers)"，列出每条 drop 的 path + direction + ticket。不阻塞 push，但每次 pre-push 都看到。
+
+### Q5 known-red expiry（给未来 §2 `knownRed[]`）= (b)
+
+**`reopenTrigger`（语义字符串，必填）+ `reviewBy`（ISO 日期，可选）**。
+
+- `reopenTrigger` 是一等字段：`verify-client-ui-i18n` 的 reopen 条件是 "product internationalization"（产品事件，非日期）
+- `reviewBy` 是结构性防线：到期 → meta-gate 翻 must-re-justify，防 orphan（UM-C-GATES C 类 4 门 orphan 4 天的模式）
+- 两者都加，不互斥
+
+**Draft entry**（§2 schema 扩展实现时使用）：
+```json
+{
+  "script": "verify-client-ui-i18n",
+  "state": "known-red",
+  "rationale": "data-agent client UI targets enterprise intranet Chinese users; i18n extraction is future product-internationalization debt, zero current user value",
+  "ticket": "UM-C-GATES-UPSTREAM-NEW",
+  "reopenTrigger": "product internationalization",
+  "reviewBy": "2027-03-14"
+}
+```
+
+### §4 calibration 完整总结（给 AFK session）
+
+| Q | 决策 | 状态 |
+|---|---|---|
+| Q1 | zero-hit `keep` → failure | ✅ 已落地 `21a5f496c7` |
+| Q2 | (a) all-history + 日历 expiry | ✅ 不改 schema |
+| Q3 | (a) `drop` 无硬 expiry，只加 report 可见性 | ⏳ 未实现，留给 AFK |
+| Q4 | `pending` 1 轮直接 failure | ✅ 已落地 `10c5167779` |
+| Q5 | (b) `reopenTrigger` + 可选 `reviewBy` | ⏳ 设计锁定，§2 实现时用 |
+
+**§4 代码实现完成度**：核心行为变更（Q1 + Q4）已落地。Q3 report 可见性改进 + Q2 日历 expiry 字段 + §2 schema 扩展留给 AFK session。
