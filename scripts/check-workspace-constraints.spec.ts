@@ -142,4 +142,16 @@ describe('package payload constraints', () => {
       'lib/types/**/*.d.ts',
     ])
   })
+
+  it('publishes bundle-owned data-agent presets with its profile patch', () => {
+    expect(expectedDshPackageFiles({
+      name: '@deepseek-ai/dsh-data-agent',
+      dsh: { bundle: { patch: './cordis.patch.yml' } },
+    })).toEqual([
+      'lib/index.js',
+      'cordis.patch.yml',
+      'presets/**/*.yml',
+      'lib/types/**/*.d.ts',
+    ])
+  })
 })

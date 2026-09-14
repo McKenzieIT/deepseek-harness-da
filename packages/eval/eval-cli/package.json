@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-eval-cli",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.5-rc.2",
   "description": "Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.",
   "publishConfig": {
     "access": "public"

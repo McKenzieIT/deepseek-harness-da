@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-context-layer",
   "description": "Context layer graph — G6 v5 interactive relation graph with semantic zoom and domain filtering",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },
