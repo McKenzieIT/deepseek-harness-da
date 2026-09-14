@@ -1,7 +1,7 @@
 # UM-DEFECT-PRESET-ROOTS — 无任何 bundle/profile 配置 agent-presets.roots，da preset 无根可扫
 
-**Type**: defect · **Status**: open · **Phase**: upstream-merge
-**Discovered**: 2026-09-20 human-gates session
+**Type**: defect · **Status**: resolved（2026-09-14） · **Phase**: upstream-merge
+**Discovered**: 2026-09-14 human-gates session
 **Blocks**: same as [UM-DEFECT-PRESET-DEPS](UM-DEFECT-PRESET-DEPS.md) — session creation via the profile mount path
 
 ## Question / Symptom
@@ -30,7 +30,7 @@ The da presets live at `apps/cli/config/agent-presets/`. This directory is **not
 
 **Confirmed no programmatic injection**: `grep -rn 'agent-presets\|agentPresets\|config/agent-presets' apps/cli/src/*.ts` → zero hits. The CLI does not inject this dir as a root at runtime.
 
-## Session workaround (2026-09-20, NOT a repo change)
+## Session workaround (2026-09-14, NOT a repo change)
 
 Overlay at `/tmp/dsh-disable-present-table.patch.yml` now sets roots on the `agent-presets` row:
 
@@ -69,10 +69,10 @@ Alternatively, fix it at the profile level: add a `roots` entry in `~/.dsh/profi
 - **Severity**: HIGH. Same as UM-DEFECT-PRESET-DEPS: web UI blocks, headless silently runs bare.
 - **Affected profiles**: `web` (picker shows only 4 built-in; `data-agent` invisible), `headless` (same, but silently bare — see UM-DEFECT-PRESET-DEPS for the silent-failure mode).
 
-## [2026-09-21] Repo fix 落地（master）
+## [2026-09-14] RESOLVED — preset 由 data-agent bundle 拥有并按安装位置解析
 
-commit `dd6dd43df7` `[UM-DEFECT-PRESET-ROOTS] add roots config to data-agent bundle agent-presets override`。`packages/bundle/data-agent/cordis.patch.yml` 的 `agent-presets` override 加 `roots: [{ path: config/agent-presets, trust: system }]`（与既有 `default: data-agent` 并列）。pre-commit hooks 绿。
+初版修复只把 `roots: [{ path: config/agent-presets, trust: system }]` 写入最终配置；真实 Web 启动证明该相对路径由 `path.resolve()` 按进程 cwd 解析，preset picker 仍只显示 standard/PTC/minimal/cordis，因此该验证不足。
 
-**未验证**：未跑 `--dump-config` 看输出带 roots（需 dsh-resync + build）。下 session 核。临时 workaround（overlay 加 roots）可删。
+最终修复把 `data-agent` 与 `semantic-layer-management` 两个目录移到 `packages/bundle/data-agent/presets/`，将它们加入 bundle 的 published `files`，并让 patch 通过 profile 可解析的 `@deepseek-ai/dsh-data-agent/package.json` 计算绝对 preset root。eval-cli 同样从已安装 bundle 解析 variant preset，不再扫描仓库相对路径。
 
-**Status: repo fix 落地，verified-dump-config deferred。** Push blocked by pre-existing dsh-root。
+验证：新增安装型 profile e2e 先稳定复现 roster 仅有 4 个上游 preset，修复后可发现两个 bundle-owned preset 且 `data-agent` 无 broken 状态；package tarball 含 patch 与全部 7 个 preset YAML；真实 PR Web 服务的 picker 显示“取数模式”。

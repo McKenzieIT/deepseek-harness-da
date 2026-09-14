@@ -1,5 +1,6 @@
 import { IconSearchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SemanticLayerTranslate } from '../locales.ts'
 import css from './presenters.module.css'
 import { kindBadgeClass } from './kindBadge.ts'
 
@@ -12,15 +13,16 @@ interface SearchSchemaMeta {
 export interface SearchSchemaRowProps {
   block: ToolCallBlock
   inspect?: (() => void) | undefined
+  t: SemanticLayerTranslate
 }
 
-export function SearchSchemaRow({ block, inspect }: SearchSchemaRowProps) {
+export function SearchSchemaRow({ block, inspect, t }: SearchSchemaRowProps) {
   if (!('kind' in block)) {
     return (
       <div className={css.row} onClick={inspect}>
         <IconSearchOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Searching schema...</span>
-        <span className={css.running}>running</span>
+        <span className={css.title}>{t('presenter.search.loading')}</span>
+        <span className={css.running}>{t('presenter.running')}</span>
       </div>
     )
   }
@@ -30,8 +32,8 @@ export function SearchSchemaRow({ block, inspect }: SearchSchemaRowProps) {
     return (
       <div className={css.row} onClick={inspect}>
         <IconSearchOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Search Schema</span>
-        <span className={css.summary}>{meta?.message ?? 'failed'}</span>
+        <span className={css.title}>{t('presenter.search.title')}</span>
+        <span className={css.summary}>{meta?.message ?? t('presenter.failed')}</span>
       </div>
     )
   }
@@ -43,8 +45,8 @@ export function SearchSchemaRow({ block, inspect }: SearchSchemaRowProps) {
     <div>
       <div className={css.row} onClick={inspect}>
         <IconSearchOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Search Schema</span>
-        <span className={css.summary}>{hits.length} asset{hits.length !== 1 ? 's' : ''}</span>
+        <span className={css.title}>{t('presenter.search.title')}</span>
+        <span className={css.summary}>{t('presenter.search.hits', { count: hits.length })}</span>
       </div>
       {shown.length > 0 && (
         <div className={css.hitList}>
@@ -64,7 +66,7 @@ export function SearchSchemaRow({ block, inspect }: SearchSchemaRowProps) {
           ))}
           {hits.length > 5 && (
             <div className={css.hitItem}>
-              <span className={css.hitDomain}>+{hits.length - 5} more</span>
+              <span className={css.hitDomain}>{t('presenter.more', { count: hits.length - 5 })}</span>
             </div>
           )}
         </div>

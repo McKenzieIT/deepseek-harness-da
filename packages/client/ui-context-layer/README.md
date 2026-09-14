@@ -22,6 +22,8 @@ Context layer graph — G6 v5 interactive relation graph with semantic zoom and 
 
 Context layer graph — G6 v5 interactive relation graph with semantic zoom and domain filtering
 
+Localization: the plugin registers the typed `contextLayer` namespace in English and Simplified Chinese; slot-rendered components receive `t`, and exported presentation components require the same translator.
+
 ## Dev Note
 
 None.

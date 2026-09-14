@@ -7,6 +7,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | Page | Owns |
 |---|---|
 | [core.md](core.md) | how `packages/core` controls the agent loop: the package-by-package loop description, agent creation and ownership (`AgentHandle`), the `Agent` handle's delivery/cancellation/interception contracts, and the repo-wide type patterns (`…Map → derived-union`, branded ids) |
+| [data-agent.md](data-agent.md) | the data-agent overlay: semantic, query, retrieval, audit, management, and evaluation services and their generated Cordis API |
 | [llm-streaming.md](llm-streaming.md) | the `packages/llm` conversation types — `Message`/`ContentBlock`, the assembled model request, the `StreamChunk` wire protocol and adapter contract, `BlockAssembler`, and the `LlmAdapter` provider contract |
 | [token-meter.md](token-meter.md) | immutable scalar and positional replay measurements with consumed-log revisions |
 | [scope.md](scope.md) | scoped registration identity, dispatch carriers, and the owned `Scope` context |
@@ -21,7 +22,6 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [credentials.md](credentials.md) | the credential seam: `CredentialRef` references (never values) in configuration, per-operation resolution, UI-safe `CredentialInfo`, provider source layers |
 | [session-query.md](session-query.md) | logical records, bounded exact-event reads, relationship traces, semantic filters/documents, and full-text result pages |
 | [feedback.md](feedback.md) | lifecycle-bound per-message feedback records, optimistic versions, sidecar persistence, and the Host Remote contract |
-| [data-agent.md](data-agent.md) | the data-agent overlay's five Cordis services: ctx.audit (append-only audit store), ctx.embedder (embedding/rerank seam), ctx.identity (caller identity), ctx.nl2sql (NL to SQL engine), and ctx.schema (semantic layer discover/describe/sample) |
 | [session-title.md](session-title.md) | durable title snapshots, cited source-message seqs, and the asynchronous provider contract |
 | [session-reference.md](session-reference.md) | structured cross-session references: `SessionReferenceInput`/`Candidate`, prepared message contexts, the stable error taxonomy |
 | [system-prompt.md](system-prompt.md) | per-assembly context, tool-provider results, prompt sections, and cooperative assembly |

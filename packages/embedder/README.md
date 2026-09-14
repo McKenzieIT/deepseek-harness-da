@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `embedder/` group owns the data agent's embedding and rerank capability. The core `embedder` package defines the abstract `EmbedderService` (`ctx.embedder`) contract — `dim`, `modelId`, async `embed(texts) → float[][]` — plus the Reranker peer protocol (injected post-RRF) and the `InferenceError` taxonomy (unavailable / timeout / not_ready / dim_mismatch) that triggers BM25-only degradation in retrieval providers. Two providers ship: `embedder-fakehash` is the zero-dependency default (deterministic sha256 vectors, retrieval works out of the box), and `embedder-http` calls an external OpenAI-compatible endpoint (InfinityEmbedder, user-self-deployed heavy tier). All are **product** packages built in P5b; each README owns its per-package contract. Activation of the heavy tier is gated on D2c keep/regress evaluation.
+The `embedder/` group owns embedding and reranking for data-agent retrieval. `embedder` defines `ctx.embedder`, the vector and reranker contracts, and classified inference failures. `embedder-fakehash` provides deterministic zero-dependency vectors for the default tier; `embedder-http` connects to an external OpenAI-compatible service. Retrieval providers consume this seam and may degrade to BM25 when inference is unavailable. Heavy providers remain opt-in pending retrieval-quality evaluation.
 
 ## Table of Contents
 

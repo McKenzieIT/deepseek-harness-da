@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-goal-eval-policy",
   "description": "Policy plugin: no-progress backstop for goal-eval loop — triggers eval every K rounds, blocks goal after N consecutive no-improvement evals",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },

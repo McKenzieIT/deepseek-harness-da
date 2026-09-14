@@ -22,7 +22,7 @@
 - `packages/data/nl2sql-engine/src/metric-engine.ts` — delete `buildExecutableSQL`; `routeMetric` returns `'level-2' | null` only
 - `packages/data/phase-gate/src/phase-gate.ts` — delete `execute_metric` from UNDERSTANDING prompt (METRIC SHORTCUT)
 - `packages/data/phase-gate/src/types.ts` — delete `'execute_metric'` from `UNDERSTANDING_TOOLS`
-- `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` — delete `tool-execute-metric` row (lines 104-105)
+- `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` — delete `tool-execute-metric` row (lines 104-105)
 - `apps/cli/package.json` — drop `@deepseek-ai/dsh-tool-execute-metric` dep (if present)
 - `packages/data/semantic-layer/src/index.ts` exports — drop `metricKindPlugin`, keep `MetricDefinition`/`MetricDefinitionSchema` from types.ts
 
@@ -435,7 +435,7 @@ git commit -m "refactor(nl2sql-engine): delete Level 2.5 deterministic path (M1b
 
 **Files:**
 - Delete: `packages/data/tool-execute-metric/` (entire package)
-- Modify: `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` (lines 104-105)
+- Modify: `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` (lines 104-105)
 - Modify: `packages/data/phase-gate/src/types.ts` (line 160)
 - Modify: `packages/data/phase-gate/src/phase-gate.ts` (lines 86, 91)
 - Modify: `apps/cli/package.json` (drop dep if present)
@@ -449,7 +449,7 @@ rm -rf packages/data/tool-execute-metric/
 
 - [ ] **Step 2: Delete preset row**
 
-In `apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, delete lines 104-105:
+In `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, delete lines 104-105:
 ```yaml
 - id: tool-execute-metric        # UNDERSTANDING (P4: deterministic Level 2.5 metric query; called after search_data_sources returns metric hit)
   name: '@deepseek-ai/dsh-tool-execute-metric'

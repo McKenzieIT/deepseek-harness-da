@@ -204,6 +204,7 @@ describe('the real workspace surface', () => {
       expect(entry.summary, `${entry.key} has no summary`).not.toBe('')
       expect(['single', 'list', 'keyed', 'chain']).toContain(entry.kind)
       expect(['root', 'session', 'session-maybe']).toContain(entry.scope)
+      expect(entry.standardProps).toEqual([...new Set(entry.standardProps)])
     }
     // The frame root is the canonical trap: occupied by the shipped app frame,
     // so a dynamic package registering there replaces the whole UI.

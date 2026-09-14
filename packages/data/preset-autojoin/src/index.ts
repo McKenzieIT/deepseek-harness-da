@@ -90,6 +90,7 @@ export const inject = ['agentPresets'] as const
  * report is filtered) and then re-throws so the agent runs bare, exactly as
  * it does without this wrapper.
  * @param presets - the preset roster service (or a structural mock).
+ * @param logger - optional diagnostic sink for the switch-state observation.
  * @returns an `agent/created` listener.
  */
 export function createAutojoinListener(

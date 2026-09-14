@@ -2,6 +2,8 @@
 
 Status: proposed
 
+English | [中文](2026-09-07-execution-grader-seam.zh.md)
+
 ## Problem
 
 `packages/eval/` carries two parallel execution-grading stacks, and the one that draws the distinction the eval most needs is dead code.

@@ -1,8 +1,8 @@
-# UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS — eval-cli 的 6 个 spec 无 tsconfig 归属：待 eval 团队确认 3 问后加 `tsconfig.tests.json`
+# UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS — eval-cli 的 6 个 spec 由独立 tests tsconfig 认领
 
-**Type**: apply（方案已定，卡在组织协调） · **Status**: **blocked**（等 eval 团队回答下面 3 问；技术方案与证据已备齐，无需重新诊断） · **Phase**: upstream-merge
-**Assignee**: unclaimed
-**Blocked by**: **eval 团队确认**（本票唯一阻塞项；read-only agent 无法代替 —— 见 [待确认的 3 问](#待确认的-3-问逐字承接-lint-bjsonevalcliackstatushowtoobtain)）
+**Type**: apply · **Status**: **resolved**（2026-09-14） · **Phase**: upstream-merge
+**Assignee**: resolved
+**Blocked by**: —
 **Blocks**: `scripts/run-oxlint.ts` 里 `EVAL_CLI_PENDING_FIX` allowlist 的删除 —— 删掉它，UM-LINT-B 的 program-coverage 防线才是**无豁免全绿**
 **Graduated from**: [UM-LINT-B](UM-LINT-B-UNMATCHED-PROGRAMS.md) —— 2026-09-14 落地 eval-independent 余量（Bucket ii WAIVE 34 + Bucket iii KEEP 15 + durable gate）时，Bucket i 的 eval-cli ×6 因需 eval 团队协调而拆出本票
 
@@ -84,7 +84,7 @@ OXC_LOG=debug node node_modules/oxlint/bin/oxlint . 2>&1 | grep -a 'Unmatched fi
 
 ---
 
-## [2026-09-20] RESOLVED — sub-option b 落地，防线转无豁免全绿
+## [2026-09-14] RESOLVED — sub-option b 落地，防线转无豁免全绿
 
 **Status: closed**
 

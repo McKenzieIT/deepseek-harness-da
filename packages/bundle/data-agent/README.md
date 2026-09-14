@@ -9,9 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-[data-agent] The data-agent bundle: an additive patch layer over [`dsh-base`](../base/README.md) for the `data-agent` profile. [`cordis.patch.yml`](cordis.patch.yml) disables the code-agent surface — the `tool-str-replace-editor` and `tool-ralph` rows, plus Code Mode off via `tools.mode: native` — disable-only, never delete, so an upstream `dsh-base` reorder cannot re-mount it. It mounts the phase-1 `llm-dashscope` provider (P2) — an `- insert:` row with its package `name:` plus an `agent-default-model` row setting the profile default to `aga`/`qwen3.7-max` — and mounts the shipped data capability plugins LIVE (P4-P11): `query-maxcompute`, `scope-registry`, `semantic-layer` (plus its `llm-wiring-plugin`), `schema-gateway`, `evidence-query` (plus `gateway`), `client-ui-semantic-layer`, `eval-runner-service`, `goal-eval-policy`, `goal-eval-context`, `audit`, `nl2sql-engine`, `admin`, `result-cache-memory`, `code-runtime-data-python`, and `preset-autojoin`. Only opt-in / deployment-choice rows — `embedder`, `retrieval` — stay commented: uncomment and mount a concrete provider to activate those seams; a bare specifier to a not-yet-shipped package still breaks `pnpm install` and `verify-cordis-config`. The data agent's persona is not set here — it belongs to the four-phase preset (P7). `tool-bash` and `code-runtime` are execution backends the data agent itself uses (map Q9); they stay enabled here and are gated from business users at the P10 intranet tool-gate, not in this bundle.
-
-The package has no runtime API; the profile composer resolves the patch through the `dsh.bundle.patch` manifest field, never through code. Inspect the composed tree with `dsh --profile headless --patch ./packages/bundle/data-agent/cordis.patch.yml --dump-config`. A standalone `data-agent` profile is created out-of-tree through `dsh plugin --profile data-agent add @deepseek-ai/dsh-data-agent` once the four-phase preset and its driver land; this bundle deliberately touches no shared boot glue, preserving the upstream upgrade path.
+The data-agent bundle is an additive layer over `dsh-base`. It selects DashScope as the default model route, exposes the data-agent preset, and mounts the shipped query, semantic-layer, evaluation, audit, administration, result-cache, and Python execution packages. It disables code-agent-only rows without deleting upstream configuration, while embedder and retrieval providers remain opt-in. The bundle owns composition only; each mounted package owns its runtime and model-visible behavior.
 
 ## Table of Contents
 
@@ -22,7 +20,7 @@ The package has no runtime API; the profile composer resolves the patch through 
 <a id="dev-note"></a>
 ## Dev Note
 
-The bundle carries no code — the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, which contains every mount and disable. Changes belong in that YAML, never in TypeScript. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.
+The bundle carries no runtime code: the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, while `presets/` owns the two data-agent preset directories published with the package. The patch resolves that directory from the installed bundle manifest, so preset discovery does not depend on the process working directory. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.
 
 -----
 

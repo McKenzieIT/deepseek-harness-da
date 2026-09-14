@@ -86,7 +86,7 @@ Phase 1 完成后（W6c 和 W6b 分别解阻 W6d 和 W6e），**并行实现** W
 规格：`wayfinder/semantic-layer/tickets/W6e-management-agent-persona-evolution.md`
 
 要点：
-- 更新 `apps/cli/config/agent-presets/semantic-layer-management/agent.cordis.yml`
+- 更新 `packages/bundle/data-agent/presets/semantic-layer-management/agent.cordis.yml`
 - Persona text 增加：eval evidence 解读指引 + 自驱行为规范
 - 新建 `packages/data/tool-edit-definition/`（Phase 0 确认的规格）
 - 在 preset 中激活 edit_definition

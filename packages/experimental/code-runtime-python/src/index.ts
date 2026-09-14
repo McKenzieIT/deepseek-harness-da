@@ -5,8 +5,8 @@
  * boundary: model code has bash-equivalent trust, contained by a tempdir-only environment,
  * RLIMIT_CPU + RLIMIT_AS, wall-clock timeout, and SIGTERM→grace→SIGKILL on the process group.
  *
- * The package also owns the versionless fd-3 wire protocol itself; its host-side codec and
- * hostile-frame validators are re-exported so every consumer of the wire shares one vocabulary.
+ * The released protocol package owns the versionless fd-3 wire vocabulary, host-side codec,
+ * and hostile-frame validators. This package re-exports its existing protocol names for compatibility.
  * @module @deepseek-ai/dsh-experimental-code-runtime-python
  */
 
@@ -23,12 +23,11 @@ import { CodeRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_G
 import type { CodeBindingErrorClass, CodeBindingFunction, CodeJsonValue, CodeRunFailure, CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
 import { snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import type { BootMessage, ChildToHost, ReplyMessage } from './protocol.ts'
-import { checkDoneValue, encodeJsonPlain, hasUnsafeIntegerToken, logTruncationMarker, validateChildFrame } from './protocol.ts'
+import type { BootMessage, ChildToHost, ReplyMessage } from '@deepseek-ai/dsh-code-runtime-python-protocol'
+import { checkDoneValue, encodeJsonPlain, hasUnsafeIntegerToken, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-code-runtime-python-protocol'
 
-// Re-export the fd-3 wire vocabulary so the runtime and its tests share one
-// import surface; the protocol layer owns the definitions.
-export type { BootMessage, ChildToHost, ReplyMessage } from './protocol.ts'
+// Preserve the experimental package's existing root exports while the released protocol package owns their implementation.
+export type { BootMessage, ChildToHost, ReplyMessage } from '@deepseek-ai/dsh-code-runtime-python-protocol'
 export {
   checkDoneValue,
   encodeJsonPlain,
@@ -37,7 +36,7 @@ export {
   jsonStringBytesUpTo,
   logTruncationMarker,
   validateChildFrame,
-} from './protocol.ts'
+} from '@deepseek-ai/dsh-code-runtime-python-protocol'
 
 /** Plugin config: every cap, changeable from `cordis.yml` (no hardcoded tunables). */
 export interface Config {

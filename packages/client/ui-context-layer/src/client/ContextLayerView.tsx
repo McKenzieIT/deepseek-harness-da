@@ -11,6 +11,7 @@ import { OverlayToggle } from './OverlayToggle.tsx'
 import { useOverlayMode, useGraphAnimations } from './graph-animations.ts'
 import type { GraphData, GraphNode } from './types.ts'
 import type { SessionEventSource, GraphUpdate } from './narration-gate.ts'
+import type { ContextLayerTranslate } from './locales.ts'
 
 export interface ContextLayerViewProps {
   data: GraphData | null
@@ -19,6 +20,8 @@ export interface ContextLayerViewProps {
   isStreaming?: boolean
   eventSource?: SessionEventSource | null
   onInsertReference?: (assetName: string) => void
+  /** Localized copy shared by the graph controls and management chat. */
+  t: ContextLayerTranslate
 }
 
 export const ContextLayerView: FC<ContextLayerViewProps> = ({
@@ -28,6 +31,7 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
   isStreaming = false,
   eventSource = null,
   onInsertReference,
+  t,
 }) => {
   const [graphInstance, setGraphInstance] = useState<Graph | null>(null)
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
@@ -103,6 +107,7 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
                 node={selectedNode}
                 onClose={handleCloseDetail}
                 allDomains={allDomains}
+                t={t}
                 {...(onInsertReference ? { onInsertReference } : {})}
               />
             </div>
@@ -127,9 +132,9 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
             zIndex: 5,
           }}
         >
-          <SearchBar data={data} graph={graphInstance} onNodeSelect={handleNodeSelect} />
+          <SearchBar data={data} graph={graphInstance} onNodeSelect={handleNodeSelect} t={t} />
           <DomainFilterToolbar data={data} activeDomains={activeDomains} onDomainFilterChange={setActiveDomains} />
-          <OverlayToggle mode={overlayMode} onModeChange={setOverlayMode} />
+          <OverlayToggle mode={overlayMode} onModeChange={setOverlayMode} t={t} />
         </div>
       </div>
 
@@ -142,6 +147,7 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
         isStreaming={isStreaming}
         eventSource={eventSource}
         onNarrationRelease={handleNarrationRelease}
+        t={t}
       />
     </div>
   )

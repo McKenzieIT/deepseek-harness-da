@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-embedder-fakehash",
   "description": "Zero-dependency FakeHash embedder provider (deterministic sha256 hash vectors) + FakeReranker peer for the data agent's retrieval (P5b default tier)",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },

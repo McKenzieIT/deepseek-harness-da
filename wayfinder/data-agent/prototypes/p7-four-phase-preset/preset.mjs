@@ -1,6 +1,6 @@
 // P7 preset overlay — the agent.cordis.yml structure (agent-plane composition).
 // This is the PROTOTYPE representation of the four-phase preset; the real preset ships as
-// apps/cli/config/agent-presets/data-agent/agent.cordis.yml (or out-of-tree) in P7b hardening.
+// packages/bundle/data-agent/presets/data-agent/agent.cordis.yml (or out-of-tree) in P7b hardening.
 //
 // P7 decisions encoded here:
 //  • persona = base static section, order 0 (option C — "base 留 P7 内"; _PHASE_INSTRUCTIONS

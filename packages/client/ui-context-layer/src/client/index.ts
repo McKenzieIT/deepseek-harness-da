@@ -5,11 +5,14 @@
  *  - shell.overlay fullscreen entry (ContextLayerOverlay)
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { ContextLayerService, type IContextLayer } from './service.ts'
 import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
 import { buildGraphDataClient } from './graphDataBridge.ts'
+import { en, zh, type ContextLayerKey } from './locales.ts'
 
 export {
   ContextLayerGraph,
@@ -112,6 +115,13 @@ export {
   type GraphDataClient,
 } from './graphDataBridge.ts'
 
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    /** The context-layer graph overlay, node details, controls, and management chat copy. */
+    'contextLayer': ContextLayerKey
+  }
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     contextLayer: IContextLayer
@@ -119,9 +129,11 @@ declare module '@deepseek-ai/cordis' {
 }
 
 export const name = 'ui-context-layer'
-export const inject = ['slots']
+const NS = 'contextLayer'
+export const inject = ['slots', 'locale'] as const
 
 export function apply(ctx: Context): void {
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-context-layer: dictionaries')
   const service = new ContextLayerService()
 
   ctx.effect(() => ctx.reflect.provide('contextLayer', service), 'ui-context-layer: service')
@@ -136,6 +148,7 @@ export function apply(ctx: Context): void {
       name: 'shell.overlay',
       id: 'context-layer-fullscreen',
       order: 1000,
+      locale: NS,
       inject: () => ({ service, graphClient }),
     }, ContextLayerOverlay)
 

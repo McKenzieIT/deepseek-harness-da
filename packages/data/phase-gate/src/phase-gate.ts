@@ -228,6 +228,7 @@ export class PhaseGate {
   // contributes no text blocks. Only `text` blocks are captured — `tool_use`
   // and `reasoning` blocks are not the phase deliverable.
   private capturePhaseOutput(agent: Agent, s: PhaseGateState): void {
+    // oxlint-disable-next-line typescript/no-deprecated -- Existing turn-output read; projection migration is deferred.
     const events = agent.session.snapshotEvents()
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i]

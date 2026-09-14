@@ -19,7 +19,7 @@ code review subagent `aa744f6e74e81b1db` + map follow-up（Not-yet-specified 末
 
 **test gap（补，揭 B1/B2 掩盖）**：#1 onAssemble 真实 stub `{agent:{id:'s1'}, scope:{id:'s1'} as Agent}`（揭 B2）；#2 phase_output 真实捕获路径不手 set（揭 B1）；#3 stall fire（vi.useFakeTimers+advanceTimersByTime(300s)→honest_decline+cancel）；#4 llm/stream count+sessionId filter；#5 pre-step/request reasoningEffort；#6 fallback 耗尽→decline；#7 honest_decline no-fallback phase（UNDERSTANDING/INTERPRETATION）；#8 F2 whitespace 变体；#9 EXECUTION running/done；#10 forcedLoad re-entrant post-execute 填 candidate_tables；#11 B8；#12 B9。
 
-**Question**: 把 P7 validated 的四阶段 preset + phase-gate 编排硬化为生产：真 `packages/phase-gate/`（TS、Schemastery、真实 Cordis `ctx.on`/`ctx.tools.guard`/`ctx.systemPrompt.assemble`/`ctx.agents`/`installAgentLlmTarget`）+ 真 `apps/cli/config/agent-presets/data-agent/agent.cordis.yml`（或 out-of-tree）+ 解注释 `packages/bundle/data-agent/cordis.patch.yml` 的 phase-gate insert 行；解 P7 surfaced 的 6 finding（F1-F6）。
+**Question**: 把 P7 validated 的四阶段 preset + phase-gate 编排硬化为生产：真 `packages/phase-gate/`（TS、Schemastery、真实 Cordis `ctx.on`/`ctx.tools.guard`/`ctx.systemPrompt.assemble`/`ctx.agents`/`installAgentLlmTarget`）+ 真 `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`（或 out-of-tree）+ 解注释 `packages/bundle/data-agent/cordis.patch.yml` 的 phase-gate insert 行；解 P7 surfaced 的 6 finding（F1-F6）。
 
 **From P7（resolved 2026-08-20）**：8 决策（D1-D8）+ prototype `../prototypes/p7-four-phase-preset/` 8 场景全绿 + 6 finding（F1-F6）见 `../tickets/phase-3/P7-four-phase-preset.md` Finding/Design。生产形态草图见 `../research/p7-four-phase-fit-to-da.md` §4（preset overlay 行 + phase-gate 插件 6 hooks + per-agent 状态）。
 
@@ -41,7 +41,7 @@ code review subagent `aa744f6e74e81b1db` + map follow-up（Not-yet-specified 末
 
 **4 决策（grilling）**：
 - **Critic fold**：内置 `packages/phase-gate/src/critic.ts`（P13 方案 1 薄 regex + 方案 4 轻量 JSON path，替 P7 sqlglot stub，挂 `agent/turn-stopping` `sql_syntax_gate` 槽返 `GateResult`）。P13b 未 ship（不能依赖未发包）；P6/P5 已 ship 但 critic 数据从 `tools/post-execute`-captured state（`candidate_tables`/`event_params`/`partition_cols`）拿→自含无 P6 依赖；P13b 以后可抽离。
-- **Preset 位置**：in-tree `apps/cli/config/agent-presets/data-agent/agent.cordis.yml`（mirror `standard`，§5.1 shipped 目录，verify-cordis-config 可验）；phase-gate 作 `cordis:group`+`isolate:phaseGate` realm 行。
+- **Preset 位置**：in-tree `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`（mirror `standard`，§5.1 shipped 目录，verify-cordis-config 可验）；phase-gate 作 `cordis:group`+`isolate:phaseGate` realm 行。
 - **Persona**：phase-gate 全管（经 `ctx.systemPrompt.section` 注册 base persona `PERSONA_SECTION` 影 deployment + `system-prompt/assemble` waterfall 动态注 `_PHASE_INSTRUCTIONS` 按 `current_phase`，option C，无 `complete:true`）；不另建 `dsh-data-persona`（D2 留口，defer 抽离）。
 - **F4 question-start**：`agent/status` emit `idle→running`（kick-start=新用户问题）重置 question-scoped 计数器。原选「next-turn inbox insert」核验后**改**——`agent/inbox/inserted` payload 仅 `{message}` 无 FIFO target，无法区分 followup vs steer；fallback 到 `agent/status` idle→running（steer mid-kick 不经 idle）。
 
@@ -63,7 +63,7 @@ code review subagent `aa744f6e74e81b1db` + map follow-up（Not-yet-specified 末
 
 **Surfaced（→Not-yet-specified / follow-up）**：7 type-aware oxlint finding（polish）；honest_decline 用户面交付消息（model phase 指令覆盖常见；inject-decline 延后）；forced_load auto-wire 细化（现接 UNDERSTANDING 完成，候选空时）；ctx.tools.execute 签名验（已验存在+经 guard）。
 
-**Assets**：`packages/data/phase-gate/`（src/{types,critic,phase-gate,index,invariant}.ts + tests/phase-gate.spec.ts + package.json + tsconfig.json）+ `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` + `tsconfig.host.json`(+ref) + `packages/bundle/{data-agent,web-app}/package.json`(+llm-dashscope dep, P2 遗留修) + `pnpm-lock.yaml`。真 critic 生产接线 fold 此处；P13b（NL→SQL 引擎生产 `packages/nl2sql-engine/`）仍 unblocked，其 critic 可从此抽离或共用。G1（Pipeline vs goal/todo）随 P7 已解锁。
+**Assets**：`packages/data/phase-gate/`（src/{types,critic,phase-gate,index,invariant}.ts + tests/phase-gate.spec.ts + package.json + tsconfig.json）+ `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` + `tsconfig.host.json`(+ref) + `packages/bundle/{data-agent,web-app}/package.json`(+llm-dashscope dep, P2 遗留修) + `pnpm-lock.yaml`。真 critic 生产接线 fold 此处；P13b（NL→SQL 引擎生产 `packages/nl2sql-engine/`）仍 unblocked，其 critic 可从此抽离或共用。G1（Pipeline vs goal/todo）随 P7 已解锁。
 
 
 ## Finding / Design (re-open resolution 2026-08-20)

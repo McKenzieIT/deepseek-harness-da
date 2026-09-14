@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 概述
 
-`retrieval/` 组拥有数据代理的 schema-linking 与上下文获取检索能力。核心 `retrieval` 包定义抽象 `ctx.retrieval` 约定——`retrieve(query, {topK, mode}) → readonly RetrievalHit[]`——即提供方实现的接缝半部分，由 `search_data_sources` 以软回退方式消费（探测 `ctx.get('retrieval')`；缺失时降级到同步 `Bm25Linker`）。`retrieval-inproc` 是默认的进程内提供方：BM25 + 基于 `ctx.embedder` 的内存向量余弦 + RRF（k=60），在 `InferenceError` 时降级为纯 BM25。均为 **product** 包，于 P5b 建设；每个 README 负责各自的包级约定。混合提供方为 opt-in，取决于 D2c keep/regress 评估。本组依赖 `embedder/` 接缝（`ctx.embedder`）。
+`retrieval/` 组拥有 data agent 的 schema linking 与上下文检索能力。`retrieval` 定义 `ctx.retrieval` 与结果词汇；`retrieval-inproc` 组合 BM25、经 `ctx.embedder` 取得的向量余弦，以及 reciprocal-rank fusion，并在推理不可用时降级为 BM25。混合 provider 在检索质量评测完成前保持 opt-in，各包 README 负责详细行为。
 
 ## 目录
 

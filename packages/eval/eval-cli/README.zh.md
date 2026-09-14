@@ -164,7 +164,7 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 
 | Variable | 必填 | 说明 |
 |---|---|---|
-| `DASHSCOPE_API_KEY` | 是 | 必须位于 `~/.dsh/.credentials.yaml`（文件权限 0600），**不是** `process.env`——`llm-dashscope` 每次请求通过 `ctx.credentials` 解析（内网安全优先）。CLI 预检该文件，若密钥缺失则退出。 |
+| `DASHSCOPE_API_KEY` | 是 | 必须位于 `$DSH_HOME/.credentials.yaml`（默认 `~/.dsh/.credentials.yaml`，文件权限 0600），**不是** `process.env`——`llm-dashscope` 每次请求通过 `ctx.credentials` 解析（内网安全优先）。CLI 预检该文件，若密钥缺失则退出。 |
 | `EVAL_LLM_PROVIDER` | 是 | responder + SQL judge provider。无静默 vendor fallback——未设置时 fail-loud。被 `--provider` 覆盖。 |
 | `EVAL_LLM_MODEL` | 是 | responder + SQL judge 模型。无静默 vendor fallback——未设置时 fail-loud。被 `--model` 覆盖。 |
 | `MAXC_CONFIG` | 随 `--with-query` | maxc config yaml 路径（例如 `~/.maxc/config_ieu_cdm.yaml`——K11 在 `ieu_cdm` 项目中）。**必填**：默认的 `~/.maxc/config.yaml` 是海外（hdyl_data_sg_dev）。还需传 `--sidecar packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs`（默认的 `standin-sidecar.mjs` 是 mock；`maxc-sidecar-k11.mjs` → 真实 `maxc` CLI）。需要 PATH 上有 `maxc` CLI。 |

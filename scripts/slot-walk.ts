@@ -228,10 +228,10 @@ export function slotRegistrations(file: ScannedFile): SlotRegistration[] {
  * a slot component receives for free from the framework at a given scope.
  * @param files - scanned files to search.
  * @param interfaceName - `GlobalStandardProps`, `SessionStandardProps`, or `SessionMaybeStandardProps`.
- * @returns `member: type` texts in declaration order, merged across declaring files.
+ * @returns Unique `member: type` texts in declaration order, merged across declaring files.
  */
 export function standardKitMembers(files: readonly ScannedFile[], interfaceName: string): string[] {
-  const out: string[] = []
+  const out = new Set<string>()
   for (const file of files) {
     for (const body of slotModuleBodies(file.sf)) {
       for (const statement of body.statements) {
@@ -239,12 +239,12 @@ export function standardKitMembers(files: readonly ScannedFile[], interfaceName:
         for (const member of statement.members) {
           if (!ts.isPropertySignature(member)) continue
           const type = member.type === undefined ? 'unknown' : member.type.getText(file.sf)
-          out.push(`${member.name.getText(file.sf)}${member.questionToken === undefined ? '' : '?'}: ${collapse(type)}`)
+          out.add(`${member.name.getText(file.sf)}${member.questionToken === undefined ? '' : '?'}: ${collapse(type)}`)
         }
       }
     }
   }
-  return out
+  return [...out]
 }
 
 /**

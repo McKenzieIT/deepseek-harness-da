@@ -83,7 +83,7 @@ pnpm verify-cordis-config                            # preset + bundle mounts re
 node --import tsx/esm packages/query/query-tool/dev/query-tool-smoke.ts  # tool -> real engine (4336)
 ```
 
-The smoke boots a cordis ctx + fake credentials + the query provider (maxc-sidecar), captures the `query_data` tool def the plugin registers, and calls its `execute` with RBI case `eval_10000251_037`'s expected SQL, asserting the result reproduces `expected.result_value` (dau=4336) — through the tool path, not a direct sidecar call. The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-query-data`) is uncommented now that this package ships; the phase-gate guard's EXECUTION whitelist already names `query_data`, so registering it makes it callable in that phase.
+The smoke boots a cordis ctx + fake credentials + the query provider (maxc-sidecar), captures the `query_data` tool def the plugin registers, and calls its `execute` with RBI case `eval_10000251_037`'s expected SQL, asserting the result reproduces `expected.result_value` (dau=4336) — through the tool path, not a direct sidecar call. The preset row (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-query-data`) is uncommented now that this package ships; the phase-gate guard's EXECUTION whitelist already names `query_data`, so registering it makes it callable in that phase.
 
 ## Dev Note
 

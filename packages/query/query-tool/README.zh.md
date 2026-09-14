@@ -87,7 +87,7 @@ pnpm verify-cordis-config                            # preset + bundle mounts re
 node --import tsx/esm packages/query/query-tool/dev/query-tool-smoke.ts  # tool -> real engine (4336)
 ```
 
-smoke boot 一个 cordis ctx + fake credentials + query provider（maxc-sidecar），捕获插件注册的 `query_data` tool def，调其 `execute`（传 RBI case `eval_10000251_037` 的 expected SQL），断言结果重现 `expected.result_value`（dau=4336）——经 tool 路径，非直 sidecar 调用。preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`，`tool-query-data`）随本包 ship 已解注释；phase-gate guard 的 EXECUTION 白名单已含 `query_data`，故注册即在相可调。
+smoke boot 一个 cordis ctx + fake credentials + query provider（maxc-sidecar），捕获插件注册的 `query_data` tool def，调其 `execute`（传 RBI case `eval_10000251_037` 的 expected SQL），断言结果重现 `expected.result_value`（dau=4336）——经 tool 路径，非直 sidecar 调用。preset 行（`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`，`tool-query-data`）随本包 ship 已解注释；phase-gate guard 的 EXECUTION 白名单已含 `query_data`，故注册即在相可调。
 
 <a id="dev-note"></a>
 ## 开发备注

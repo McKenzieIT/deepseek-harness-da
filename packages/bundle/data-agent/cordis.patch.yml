@@ -77,13 +77,14 @@
   disabled: true
 
 # ── agent presets: config override (select data-agent as default preset).
-# web-app and base may already mount agent-presets; this override only sets
-# the default without re-inserting the row (avoids duplicate id on composition).
+# web-app and base may already mount agent-presets; this override sets the
+# default and resolves the bundle-owned preset assets from the installed package,
+# independent of the process working directory, without re-inserting the row.
 - id: agent-presets
   config:
     default: data-agent
     roots:
-      - path: config/agent-presets
+      - path: !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(ctx.baseUrl).resolve('@deepseek-ai/dsh-data-agent/package.json')), 'presets')
         trust: system
 
 # ── preset-autojoin (§4.2 da wrapper): hooks agent/created → joins the

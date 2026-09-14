@@ -21,6 +21,9 @@
       "path": "../../code-runtime/code-runtime"
     },
     {
+      "path": "../../code-runtime/code-runtime-python-protocol"
+    },
+    {
       "path": "../../util/timeout"
     },
     {

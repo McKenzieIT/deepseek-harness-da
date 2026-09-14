@@ -86,7 +86,7 @@ pnpm vitest run packages/data/tool-search-data-sources         # spec
 pnpm verify-cordis-config                                      # preset mount resolves
 ```
 
-The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-search-data-sources`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING` whitelist already names `search_data_sources`, so registering it makes it callable in that phase.
+The preset row (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-search-data-sources`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING` whitelist already names `search_data_sources`, so registering it makes it callable in that phase.
 
 ## Dev Note
 

@@ -73,7 +73,7 @@ pnpm vitest run packages/data/tool-load-event-definition
 pnpm verify-cordis-config
 ```
 
-The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-load-event-definition`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING`/`GENERATION` whitelist already names `load_event_definition`, so registering it makes it callable in those phases.
+The preset row (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-load-event-definition`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING`/`GENERATION` whitelist already names `load_event_definition`, so registering it makes it callable in those phases.
 
 ## Dev Note
 

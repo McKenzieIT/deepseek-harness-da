@@ -1,10 +1,27 @@
 /// <reference types="node" />
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const BIN = join(__dirname, '..', 'src', 'bin.ts')
 const ROOT = join(__dirname, '..', '..', '..', '..')
+const homes: string[] = []
+
+function dshHome(apiKey?: string): string {
+  const home = mkdtempSync(join(tmpdir(), 'dsh-eval-cli-'))
+  homes.push(home)
+  if (apiKey !== undefined) {
+    mkdirSync(home, { recursive: true })
+    writeFileSync(join(home, '.credentials.yaml'), `version: 1\nrefs:\n  DASHSCOPE_API_KEY: ${apiKey}\n`, { mode: 0o600 })
+  }
+  return home
+}
+
+afterEach(() => {
+  for (const home of homes.splice(0)) rmSync(home, { recursive: true, force: true })
+})
 
 function run(args: string[], env: Record<string, string> = {}): { stdout: string; status: number } {
   try {
@@ -31,13 +48,13 @@ describe('CLI arg parsing', () => {
   })
 
   it('missing --cases exits 1', () => {
-    const { status } = run([], { DASHSCOPE_API_KEY: 'fake' })
+    const { status } = run([], { DSH_HOME: dshHome('fake') })
     expect(status).toBe(1)
   })
 
   it('missing DASHSCOPE_API_KEY exits 1', () => {
     const { status } = run(['--cases', 'packages/eval/eval/cases/k11-v2/', '--case', 'k11v2_059'], {
-      DASHSCOPE_API_KEY: '',
+      DSH_HOME: dshHome(),
     })
     expect(status).toBe(1)
   })
@@ -51,7 +68,7 @@ describe('CLI case loading', () => {
       '--pass-k', '1',
       '--case', 'k11v2_059',
       '--skip-health-gate',
-    ], { DASHSCOPE_API_KEY: 'fake-for-test', EVAL_LLM_PROVIDER: 'aga', EVAL_LLM_MODEL: 'qwen3.7-max' })
+    ], { DSH_HOME: dshHome('fake-for-test'), EVAL_LLM_PROVIDER: 'aga', EVAL_LLM_MODEL: 'qwen3.7-max' })
     expect(status).toBe(0)
     expect(stdout).toContain('Loading 1 case(s)')
     expect(stdout).toContain('k11v2_059')
@@ -63,7 +80,7 @@ describe('CLI case loading', () => {
       '--cases', 'packages/eval/eval/cases/k11-v2/',
       '--case', 'nonexistent_case_xyz',
       '--skip-health-gate',
-    ], { DASHSCOPE_API_KEY: 'fake' })
+    ], { DSH_HOME: dshHome('fake') })
     expect(status).toBe(1)
   })
 })

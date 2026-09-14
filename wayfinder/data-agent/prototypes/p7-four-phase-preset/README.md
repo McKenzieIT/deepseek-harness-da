@@ -1,6 +1,6 @@
 # P7 four-phase preset + phase-gate — PROTOTYPE (throwaway)
 
-> ⚠️ **THROWAWAY PROTOTYPE.** 非 shipped 包、非生产代码。validated 形态将重新实现为真实 `packages/phase-gate/`（TS、Schemastery、真实 Cordis `ctx.on`/`ctx.tools.guard`/`ctx.systemPrompt`/`ctx.agents`）+ 真 `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` + 解注释 `packages/bundle/data-agent/cordis.patch.yml` 的 phase-gate insert 行——那是生产步骤（**P7b**），非本原型。本目录是 wayfinder ticket **P7** 的 primary-source artifact；勿 promote。见 `../../tickets/phase-3/P7-four-phase-preset.md`。
+> ⚠️ **THROWAWAY PROTOTYPE.** 非 shipped 包、非生产代码。validated 形态将重新实现为真实 `packages/phase-gate/`（TS、Schemastery、真实 Cordis `ctx.on`/`ctx.tools.guard`/`ctx.systemPrompt`/`ctx.agents`）+ 真 `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` + 解注释 `packages/bundle/data-agent/cordis.patch.yml` 的 phase-gate insert 行——那是生产步骤（**P7b**），非本原型。本目录是 wayfinder ticket **P7** 的 primary-source artifact；勿 promote。见 `../../tickets/phase-3/P7-four-phase-preset.md`。
 
 ## The question it answers
 

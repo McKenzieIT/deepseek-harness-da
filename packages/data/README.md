@@ -7,6 +7,18 @@ kind: "package-group"
 
 English | [中文](README.zh.md)
 
+## Summary
+
+The `data/` group contains the data-agent product capabilities: semantic definitions, scope routing, query orchestration, auditing, result storage, management sessions, and model-facing data tools. The data-agent bundle mounts these packages, while each package README owns its service or tool contract.
+
+## Table of Contents
+
+- [Packages](#packages)
+- [Related documentation](#related-documentation)
+- [Dev Note](#dev-note)
+
+## Packages
+
 The data-agent's data capability packages: query, retrieval/vectorization, semantic layer, audit, and admin — the capabilities the [`dsh-data-agent`](../bundle/data-agent/README.md) bundle mounts (as commented placeholders until each ships) and the four-phase preset composes per session. All are **product** packages, built across P4-P11; none ship yet, so the table below lists planned packages with names resolved by their owning ticket.
 
 | Package | Role | ctx key |
@@ -18,6 +30,10 @@ The data-agent's data capability packages: query, retrieval/vectorization, seman
 | `audit/` *(planned, P8)* | guard/session-event + `tool-audit` + `ctx.storage` (SQLite) | — |
 | `admin/` *(planned, P9)* | The harness app: per-game scope/credential/access-link + system config | — |
 
-Related documentation: [Data Agent subsystem](../../docs/subsystems/data-agent.md) — the generated Cordis-surface contract for the data-agent overlay this group's packages compose into.
+## Related documentation
+
+- [Data Agent subsystem](../../docs/subsystems/data-agent.md) — the generated Cordis-surface contract for the data-agent overlay this group's packages compose into.
+
+## Dev Note
 
 Rules: [package](../AGENTS.md), [root](../../AGENTS.md#conventions). New packages join this group as their owning tickets (P4-P11) ship them.

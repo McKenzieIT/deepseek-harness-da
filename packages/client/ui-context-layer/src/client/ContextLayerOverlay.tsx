@@ -3,13 +3,16 @@ import type { ContextLayerService } from './service.ts'
 import type { GraphDataClient } from './graphDataBridge.ts'
 import { ContextLayerView } from './ContextLayerView.tsx'
 import type { GraphData } from './types.ts'
+import type { ContextLayerTranslate } from './locales.ts'
 
 export interface ContextLayerOverlayProps {
   service: ContextLayerService
   graphClient?: GraphDataClient | null
+  /** Localized copy for the overlay and its component tree. */
+  t: ContextLayerTranslate
 }
 
-export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, graphClient }) => {
+export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, graphClient, t }) => {
   const snapshot = useSyncExternalStore(service.subscribe, service.getSnapshot)
   const [data, setData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -50,12 +53,12 @@ export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, gra
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 12px', borderBottom: '1px solid var(--border-subtle, rgba(0,0,0,0.08))' }}>
-        {loading && <span style={{ marginRight: 'auto', opacity: 0.6, fontSize: 13 }}>Loading graph…</span>}
+        {loading && <span style={{ marginRight: 'auto', opacity: 0.6, fontSize: 13 }}>{t('overlay.loading')}</span>}
         <button
           type="button"
           onClick={handleClose}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px' }}
-          aria-label="Close"
+          aria-label={t('action.close')}
         >
           ✕
         </button>
@@ -64,6 +67,7 @@ export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, gra
         <ContextLayerView
           data={data}
           messages={[]}
+          t={t}
         />
       </div>
     </div>

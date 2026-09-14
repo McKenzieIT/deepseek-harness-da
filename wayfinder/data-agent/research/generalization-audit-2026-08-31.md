@@ -168,7 +168,7 @@
   - 建议: Default scopeId to a neutral value ('default'/'primary') or make it required; update the docstring to a domain-neutral example.
 
 - **M7 [CL] B (free-ReAct+planning) preset ships 'per-game analytics platform' persona text by default**
-  - 文件: apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24
+  - 文件: packages/bundle/data-agent/presets/data-agent/b-free-react-planning.cordis.yml:24
   - 影响: A non-game deployment that selects the B variant inherits the wrong 'per-game' persona until an operator notices and overrides the text field; the model is mis-framed until then.
   - 建议: Replace the shipped persona text with a domain-neutral template parameterized by a {{domain}} prompt variable (resolved from scope/deployment config), or document that deployments must override `text`.
 
@@ -299,7 +299,7 @@ Seven systematic architecture defects couple the dsh-data-agent semantic layer t
 - packages/data/phase-gate/src/phase-gate.ts:93 - PHASE_INSTRUCTIONS bake ods_*/dws_*/game.role.online/DAU/MAU/pay_amt; not config-driven
 - packages/data/nl2sql-engine/src/prompt.ts:84 - persona '你是游戏埋点数据分析 Agent'; :112 rule 2 bakes character->role_id, account->account_id dedup
 - packages/data/tool-search-data-sources/src/expand-query.ts:12 - EXPANSION_SYSTEM_PROMPT 'GAME data-warehouse search query expander' with game few-shot examples (ARPPU/PVP/钻石/大R)
-- apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24 - B variant ships same game persona (config-supplied, overridable, wrong-by-default)
+- packages/bundle/data-agent/presets/data-agent/b-free-react-planning.cordis.yml:24 - B variant ships same game persona (config-supplied, overridable, wrong-by-default)
 
 **推荐**: Add a personaText (or basePersona) field to PhaseGateConfig/Config defaulting to a domain-neutral value, and read it at register() instead of the const BASE_PERSONA; alternatively drop phase-gate's persona ownership and mount a dsh-persona row (text config-supplied) in agent.cordis.yml. Add a domainPersona parameter to BuildPromptArgs sourced from the active semantic-layer scope metadata, defaulting to a neutral '你是数据分析 Agent'. Make the expansion system prompt and few-shot examples scope/config-driven (domain-neutral with per-scope examples injected from the semantic layer) rather than a game literal. Derive table-prefix/event-name conventions from the semantic-layer schema rather than hardcoded literals in PHASE_INSTRUCTIONS.
 
@@ -779,7 +779,7 @@ The eval CORE is portable (case schema is dialect-agnostic: result_value + match
   - 影响: For a non-ODPS engine (Snowflake/BigQuery/Postgres) the persona teaches the wrong SQL dialect and partition predicate syntax, and for a non-game domain the ods_*/dws_*/game.role.online naming conventions do not match the schema — the model silently follows wrong conventions producing bad or non-executable SQL.
   - 修复: Drive SQL conventions from an engine profile (engineType -> dialect/partition-syntax map) sourced from the query provider, and make table-prefix/event-name conventions data-driven from the semantic-layer schema rather than hardcoded literals in PHASE_INSTRUCTIONS.
 
-- **apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24 [medium/degraded]** The B variant persona row ships config.text = 'You are a data agent for a per-game analytics platform...' (the same game-domain identity as the A/C hardcoded persona). Unlike A/C this IS config-supplied and overridable, but the shipped value is K11/game-specific, so a deployment copying this preset inherits the wrong persona unless it edits the text.
+- **packages/bundle/data-agent/presets/data-agent/b-free-react-planning.cordis.yml:24 [medium/degraded]** The B variant persona row ships config.text = 'You are a data agent for a per-game analytics platform...' (the same game-domain identity as the A/C hardcoded persona). Unlike A/C this IS config-supplied and overridable, but the shipped value is K11/game-specific, so a deployment copying this preset inherits the wrong persona unless it edits the text.
   - 影响: A non-game deployment that selects the B (free-ReAct + planning) variant gets a 'per-game analytics platform' persona by default; the model is mis-framed until an operator notices and overrides the text field.
   - 修复: Replace the shipped persona text with a domain-neutral template parameterized by a {{domain}} prompt variable (resolved from scope/deployment config), or document that deployments must override `text`.
 

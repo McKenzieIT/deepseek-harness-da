@@ -90,7 +90,7 @@ pnpm vitest run packages/data/tool-search-data-sources         # spec
 pnpm verify-cordis-config                                      # preset mount resolves
 ```
 
-Preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`，`tool-search-data-sources`）在本包发布后取消注释；phase-gate guard 的 `UNDERSTANDING` 白名单已命名 `search_data_sources`，注册后即可在该阶段调用。
+Preset 行（`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`，`tool-search-data-sources`）在本包发布后取消注释；phase-gate guard 的 `UNDERSTANDING` 白名单已命名 `search_data_sources`，注册后即可在该阶段调用。
 
 <a id="dev-note"></a>
 ## 开发备注

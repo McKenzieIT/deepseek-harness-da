@@ -161,7 +161,7 @@ Run `--help` for the full flag list (`--sidecar`, `--scope-id`, `--no-query-expa
 
 | Variable | Required | Description |
 |---|---|---|
-| `DASHSCOPE_API_KEY` | yes | Must live in `~/.dsh/.credentials.yaml` (file mode 0600), **not** `process.env` — `llm-dashscope` resolves it per-request via `ctx.credentials` (intranet-security-first). The CLI pre-flights the file and exits if the key is absent. |
+| `DASHSCOPE_API_KEY` | yes | Must live in `$DSH_HOME/.credentials.yaml` (default `~/.dsh/.credentials.yaml`, file mode 0600), **not** `process.env` — `llm-dashscope` resolves it per-request via `ctx.credentials` (intranet-security-first). The CLI pre-flights the file and exits if the key is absent. |
 | `EVAL_LLM_PROVIDER` | yes | Responder + SQL judge provider. No silent vendor fallback — fail-loud when unset. Overridden by `--provider`. |
 | `EVAL_LLM_MODEL` | yes | Responder + SQL judge model. No silent vendor fallback — fail-loud when unset. Overridden by `--model`. |
 | `MAXC_CONFIG` | with `--with-query` | Path to the maxc config yaml (e.g. `~/.maxc/config_ieu_cdm.yaml` — K11 lives in the `ieu_cdm` project). **Required**: the default `~/.maxc/config.yaml` is overseas (hdyl_data_sg_dev). Also pass `--sidecar packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs` (the default `standin-sidecar.mjs` is a mock; `maxc-sidecar-k11.mjs` -> real `maxc` CLI). Requires the `maxc` CLI on PATH. |

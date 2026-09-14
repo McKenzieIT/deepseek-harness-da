@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-evidence-query",
   "description": "Unified evidence-query backend layer — coverage, gap analysis, reachability, eval results, and asset health for both sidebar and dashboard consumption.",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },

@@ -1,5 +1,5 @@
 ---
-description: "TODO: translate: CPython subprocess CodeRuntime Provider for the data-agent (pandas/numpy, containment-only trust)"
+description: "面向 data-agent 的 CPython 子进程 CodeRuntime 提供方，提供 pandas/numpy 与仅遏制级信任。"
 kind: "package-reference"
 ---
 
@@ -9,9 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-TODO: 填写概述——占位内容来自 package.json 的 description 字段。
-
-TODO: translate: CPython subprocess CodeRuntime Provider for the data-agent (pandas/numpy, containment-only trust)
+`dsh-code-runtime-data-python` 在全新 CPython 子进程中运行每个 data-agent Python 程序，并提供 pandas 与 numpy。它使用正式 fd-3 协议包完成宿主侧帧类型、无损 JSON 编码、字节计量与敌意帧校验。Binding-only I/O 与进程资源限制提供遏制而非安全边界；每次运行返回其值、有界日志与可选的分类失败。
 
 ## 目录
 
@@ -23,7 +21,7 @@ TODO: translate: CPython subprocess CodeRuntime Provider for the data-agent (pan
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
 
-面向 data-agent 的 CPython 子进程版 [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.zh.md) 接缝实现。`DataPythonCodeRuntime` 在一个全新的 `python3` 子进程中运行每个程序，提供 pandas/numpy，使用由 [`@deepseek-ai/dsh-code-runtime-python`](../../experimental/code-runtime-python/README.zh.md) 拥有的现有 fd-3 JSON-lines 线协议，并返回 `{ value, logs, error? }`。**遏制，而非安全边界**：信任姿态是 binding-only I/O 加资源限制——与 [`worker-thread`](../code-runtime-worker-thread/README.zh.md) 后端相同，只是把 Node 隔离体换成一个全新的 CPython 进程，让模型代码用 Python 而非 TypeScript 编写。
+面向 data-agent 的 CPython 子进程版 [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.zh.md) 接缝实现。`DataPythonCodeRuntime` 在一个全新的 `python3` 子进程中运行每个程序，提供 pandas/numpy，使用由 [`@deepseek-ai/dsh-code-runtime-python-protocol`](../code-runtime-python-protocol/README.zh.md) 拥有的 fd-3 JSON-lines wire 协议，并返回 `{ value, logs, error? }`。**遏制，而非安全边界**：信任姿态是 binding-only I/O 加资源限制——与 [`worker-thread`](../code-runtime-worker-thread/README.zh.md) 后端相同，只是把 Node 隔离体换成一个全新的 CPython 进程，让模型代码用 Python 而非 TypeScript 编写。
 
 <a id="config"></a>
 ## Config

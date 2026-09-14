@@ -32,7 +32,7 @@ Model-facing `retrieve` tool：data agent 的**按需检索 escape-hatch**。pip
 <a id="status-shipped-but-dormant-opt-in-dormant-until-mount"></a>
 ## 状态：已发布但 DORMANT（opt-in，dormant-until-mount）
 
-该 tool **package** 已发布（挂载时通过 `defineTool` + `ctx.tools.register` 注册 `retrieve`），但挂载它的 preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`，`tool-retrieve`）被**注释** — 因此默认启动 NOT mount 它，`retrieve` tool 未注册，agent 以**pipeline-only**运行（当前状态，无回归）。这镜像 D2e dormant-until-mount + P5b opt-in-seam 模式。
+该 tool **package** 已发布（挂载时通过 `defineTool` + `ctx.tools.register` 注册 `retrieve`），但挂载它的 preset 行（`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`，`tool-retrieve`）被**注释** — 因此默认启动 NOT mount 它，`retrieve` tool 未注册，agent 以**pipeline-only**运行（当前状态，无回归）。这镜像 D2e dormant-until-mount + P5b opt-in-seam 模式。
 
 Activation（一个独立的、后续的 gate — P7b / follow-up）是三个协调步骤：
 

@@ -21,12 +21,13 @@
 import { randomUUID } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
-import { homedir } from 'node:os'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
@@ -213,22 +214,17 @@ export class HarnessAgentResponder implements AgentResponder {
   }
 
   private resolvePresetDir(): string {
-    // Resolve relative to this file → repo root → apps/cli/config/agent-presets/data-agent
-    let dir = dirname(new URL(import.meta.url).pathname)
-    for (let i = 0; i < 10; i++) {
-      const candidate = join(dir, 'apps/cli/config/agent-presets/data-agent')
-      if (existsSync(candidate)) return candidate
-      const parent = dirname(dir)
-      if (parent === dir) break
-      dir = parent
+    let manifest: string
+    try {
+      manifest = createRequire(import.meta.url).resolve('@deepseek-ai/dsh-data-agent/package.json')
+    } catch (cause) {
+      throw new Error(
+        'HarnessAgentResponder: cannot resolve the installed @deepseek-ai/dsh-data-agent preset bundle. '
+        + 'Install the bundle or pass presetDir explicitly.',
+        { cause },
+      )
     }
-    // Try CWD
-    const cwdCandidate = resolve('apps/cli/config/agent-presets/data-agent')
-    if (existsSync(cwdCandidate)) return cwdCandidate
-    throw new Error(
-      'HarnessAgentResponder: cannot resolve preset directory. '
-      + 'Pass presetDir explicitly or run from the repo root.',
-    )
+    return join(dirname(manifest), 'presets', 'data-agent')
   }
 
   /** Boot the Cordis context (lazy, singleton). */
@@ -272,6 +268,7 @@ export class HarnessAgentResponder implements AgentResponder {
     const { default: Group } = await import('@deepseek-ai/cordis-plugin-group')
     // Set baseUrl to repo root so package specifiers resolve correctly
     const repoRoot = this.resolveRepoRoot()
+    const dshHome = resolveDshHome()
     ctx.baseUrl = pathToFileURL(repoRoot).href + '/'
     await ctx.plugin(Loader)
     ctx.loader.builtins.group = Group
@@ -279,11 +276,11 @@ export class HarnessAgentResponder implements AgentResponder {
     // ── 2. LlmRuntime → ctx.llm ────────────────────────────────────────────
     await ctx.plugin(LlmRuntime)
 
-    // ── 2b. Credential seam: LocalCredentialProvider reads ~/.dsh/.credentials.yaml
+    // ── 2b. Credential seam: LocalCredentialProvider reads $DSH_HOME/.credentials.yaml
     // so llm-dashscope resolves DASHSCOPE_API_KEY via ctx.credentials (not process.env).
     await ctx.plugin(LocalCredentialProvider, {
-      path: join(homedir(), '.dsh', '.credentials.yaml'),
-      dshHome: join(homedir(), '.dsh'),
+      path: join(dshHome, '.credentials.yaml'),
+      dshHome,
     })
 
     // ── 3. llm-dashscope → registers 'aga' provider on ctx.llm ─────────────
@@ -440,6 +437,7 @@ export class HarnessAgentResponder implements AgentResponder {
       )
 
       // Extract results from session events
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing full-history eval read; asynchronous storage migration is deferred.
       const events = handle.agent.session.snapshotEvents()
       const finalText = extractFinalText(events)
       const generatedSql = extractSqlFromEvents(events)
@@ -459,6 +457,7 @@ export class HarnessAgentResponder implements AgentResponder {
     } catch (err) {
       console.error(`[HarnessAgentResponder] case error: ${err instanceof Error ? err.message : String(err)}`)
       // On timeout or error, still try to extract what we can
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing full-history eval read; asynchronous storage migration is deferred.
       const events = handle.agent.session.snapshotEvents()
       const generatedSql = extractSqlFromEvents(events)
       return {

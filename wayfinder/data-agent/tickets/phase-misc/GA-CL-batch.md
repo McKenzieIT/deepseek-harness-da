@@ -13,7 +13,7 @@
 | ✅ CL4 | nl2sql-engine/src/bm25-linking.ts:72; tool-search-data-sources/src/index.ts:303 | tokenizer 丢日文 kana | CJK regex 加 hiragana/katakana |
 | CL5 | semantic-layer/src/enrichment.ts:118 | mergeRefs '确定性' 前缀判定 | 加结构化 source 字段 |
 | ✅ CL6 | phase-gate/src/index.ts:70 | scopeId 默认 'game-1' | 默认中性或必填 |
-| ~~CL7~~ | ~~apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24~~ | ~~B preset 默认 'per-game' persona~~ | ~~→ absorbed by [GA-GT5](GA-GT5-domain-injection-seam.md) (ctx.domain seam)~~ |
+| ~~CL7~~ | ~~packages/bundle/data-agent/presets/data-agent/b-free-react-planning.cordis.yml:24~~ | ~~B preset 默认 'per-game' persona~~ | ~~→ absorbed by [GA-GT5](GA-GT5-domain-injection-seam.md) (ctx.domain seam)~~ |
 | ✅ CL8 | llm-wiring-plugin.ts:36; expand-query.ts:27; eval-cli/main.ts:65 | LLM 默认 Qwen/DashScope 无 fail-loud | 集中部署 config + fail-loud |
 | CL9 | nl2sql-engine/src/conventions.ts:33 | renderConventionsPrompt 中文段头 | 段头抽 locale bundle |
 | ✅ CL10 | tool-suggest-followups/src/index.ts:63 | '≤8 中文字符' 约束 | locale-neutral '≤~20 chars' |

@@ -1,5 +1,6 @@
 import { IconBrowseOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SemanticLayerTranslate } from '../locales.ts'
 import css from './presenters.module.css'
 import { kindBadgeClass } from './kindBadge.ts'
 
@@ -19,15 +20,16 @@ interface DefinitionMeta {
 export interface GetDefinitionRowProps {
   block: ToolCallBlock
   inspect?: (() => void) | undefined
+  t: SemanticLayerTranslate
 }
 
-export function GetDefinitionRow({ block, inspect }: GetDefinitionRowProps) {
+export function GetDefinitionRow({ block, inspect, t }: GetDefinitionRowProps) {
   if (!('kind' in block)) {
     return (
       <div className={css.row} onClick={inspect}>
         <IconBrowseOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Loading definition...</span>
-        <span className={css.running}>running</span>
+        <span className={css.title}>{t('presenter.definition.loading')}</span>
+        <span className={css.running}>{t('presenter.running')}</span>
       </div>
     )
   }
@@ -37,8 +39,8 @@ export function GetDefinitionRow({ block, inspect }: GetDefinitionRowProps) {
     return (
       <div className={css.row} onClick={inspect}>
         <IconBrowseOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Not Found</span>
-        <span className={css.summary}>{meta?.message ?? 'asset not found'}</span>
+        <span className={css.title}>{t('presenter.definition.notFound')}</span>
+        <span className={css.summary}>{meta?.message ?? t('presenter.definition.notFound')}</span>
       </div>
     )
   }
@@ -49,7 +51,7 @@ export function GetDefinitionRow({ block, inspect }: GetDefinitionRowProps) {
     <div>
       <div className={css.row} onClick={inspect}>
         <IconBrowseOutline16 size={14} className={css.icon} />
-        <span className={css.title}>{meta.name ?? 'Asset'}</span>
+        <span className={css.title}>{meta.name ?? t('presenter.definition.asset')}</span>
         {meta.kind !== undefined && (
           <span className={`${css.badge} ${kindBadgeClass(meta.kind)}`}>{meta.kind}</span>
         )}
@@ -61,22 +63,22 @@ export function GetDefinitionRow({ block, inspect }: GetDefinitionRowProps) {
         <div className={css.defMeta}>
           {meta.domains !== undefined && meta.domains.length > 0 && (
             <span className={css.defField}>
-              domains: <span className={css.defFieldValue}>{meta.domains.join(', ')}</span>
+              {t('presenter.definition.domainsLabel')}: <span className={css.defFieldValue}>{meta.domains.join(', ')}</span>
             </span>
           )}
           {meta.columns !== undefined && (
             <span className={css.defField}>
-              columns: <span className={css.defFieldValue}>{meta.columns}</span>
+              {t('presenter.definition.columnsLabel')}: <span className={css.defFieldValue}>{meta.columns}</span>
             </span>
           )}
           {meta.metrics !== undefined && meta.metrics > 0 && (
             <span className={css.defField}>
-              metrics: <span className={css.defFieldValue}>{meta.metrics}</span>
+              {t('presenter.definition.metricsLabel')}: <span className={css.defFieldValue}>{meta.metrics}</span>
             </span>
           )}
           {relations.length > 0 && (
             <span className={css.defField}>
-              relations: <span className={css.defFieldValue}>{relations.length}</span>
+              {t('presenter.definition.relationsLabel')}: <span className={css.defFieldValue}>{relations.length}</span>
             </span>
           )}
         </div>

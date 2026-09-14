@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-suggest-followups",
   "description": "Toolview card for the suggest_followups INTERPRETATION tool: two-line follow-up list with the full query visible",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },

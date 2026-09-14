@@ -194,7 +194,7 @@ da 的 Consumer 注入 `'addressedCredentials'`；upstream 的 `ctx.credentials`
 | da LLM | `packages/llm/llm-dashscope` | DashScope adapter（README 标 [data-agent]）|
 | da 子代理 | `packages/subagent/subagent-qoder` | Qoder provider（README 标 [data-agent]）|
 | da bundle | `packages/bundle/data-agent/` | bundle patch |
-| da preset | `apps/cli/config/agent-presets/data-agent/` | agent composition |
+| da preset | `packages/bundle/data-agent/presets/data-agent/` | agent composition |
 
 跨界包（在 dsh group 中的 da-owned 包）通过 README 首行 `[data-agent]` 标记和 package.json `description` 前缀标识。
 

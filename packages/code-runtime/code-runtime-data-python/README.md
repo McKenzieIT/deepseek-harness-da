@@ -9,9 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-TODO: fill in Summary — placeholder seeded from package.json description.
-
-CPython subprocess CodeRuntime Provider for the data-agent (pandas/numpy, containment-only trust)
+`dsh-code-runtime-data-python` runs each data-agent Python program in a fresh CPython subprocess with pandas and numpy available. It uses the released fd-3 protocol package for host-side frame typing, lossless JSON encoding, byte metering, and hostile-frame validation. Binding-only I/O and process resource limits provide containment rather than a security boundary; each run returns its value, bounded logs, and an optional classified failure.
 
 ## Table of Contents
 
@@ -23,7 +21,7 @@ CPython subprocess CodeRuntime Provider for the data-agent (pandas/numpy, contai
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
 
-CPython-subprocess implementation of the [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.md) seam for the data-agent. `DataPythonCodeRuntime` runs each program in ONE fresh `python3` subprocess with pandas/numpy available, talks the existing fd-3 JSON-lines wire protocol owned by [`@deepseek-ai/dsh-code-runtime-python`](../../experimental/code-runtime-python/README.md), and returns `{ value, logs, error? }`. **Containment, not a security boundary**: the trust posture is binding-only I/O plus resource limits — the same posture as the [`worker-thread`](../code-runtime-worker-thread/README.md) backend, traded from a Node isolate to a fresh CPython process so model code is Python instead of TypeScript.
+CPython-subprocess implementation of the [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.md) seam for the data-agent. `DataPythonCodeRuntime` runs each program in ONE fresh `python3` subprocess with pandas/numpy available, talks the fd-3 JSON-lines wire protocol owned by [`@deepseek-ai/dsh-code-runtime-python-protocol`](../code-runtime-python-protocol/README.md), and returns `{ value, logs, error? }`. **Containment, not a security boundary**: the trust posture is binding-only I/O plus resource limits — the same posture as the [`worker-thread`](../code-runtime-worker-thread/README.md) backend, traded from a Node isolate to a fresh CPython process so model code is Python instead of TypeScript.
 
 ## Config
 

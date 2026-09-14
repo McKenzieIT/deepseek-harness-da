@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-revert-edit",
   "description": "Model-facing revert_edit tool: roll back a semantic layer asset to a prior definition snapshot",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -22,7 +22,7 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "lib/*.js",
+    "lib/index.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

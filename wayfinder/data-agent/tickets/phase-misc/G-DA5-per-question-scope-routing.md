@@ -87,7 +87,7 @@
 2. **无自动路由**：`cordis.patch.yml:143` 注释明确："per-query/per-tenant scope selection is a process-global active-scope switch today — **not automatic per question**"。
 3. **K11 硬编码回退**：
    - `packages/bundle/data-agent/cordis.patch.yml:162` — `semanticRoot: ./examples/k11-semantic-layer`
-   - `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` phase-gate config — `scopeId: game-1`
+   - `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` phase-gate config — `scopeId: game-1`
    - `packages/data/phase-gate/src/types.ts:315` — `freshPhaseGateState(scopeId = 'game-1')` 默认值
 4. **scope-registry 运行时**：`~/.dsh/data/scopes.yaml` 存储注册的 scopes + active id。
 5. **phase-gate state 的 scope_id**：dead field（逻辑不消费），保留为 informational。

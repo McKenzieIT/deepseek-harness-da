@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `retrieval/` group owns the data agent's schema-linking and context-fetch retrieval capability. The core `retrieval` package defines the abstract `ctx.retrieval` contract — `retrieve(query, {topK, mode}) → readonly RetrievalHit[]` — the seam half that providers implement, consumed with a soft fallback by `search_data_sources` (probes `ctx.get('retrieval')`; degrades to the synchronous `Bm25Linker` when absent). `retrieval-inproc` is the default in-process provider: BM25 + in-memory vector cosine over `ctx.embedder` + RRF (k=60), degrading to BM25-only on `InferenceError`. All are **product** packages built in P5b; each README owns its per-package contract. The hybrid provider is opt-in, gated on D2c keep/regress evaluation. This group depends on the `embedder/` seam (`ctx.embedder`).
+The `retrieval/` group owns schema-linking and context retrieval for the data agent. `retrieval` defines the `ctx.retrieval` contract and result vocabulary. `retrieval-inproc` combines BM25, vector cosine through `ctx.embedder`, and reciprocal-rank fusion, degrading to BM25 when inference is unavailable. The hybrid provider remains opt-in pending retrieval-quality evaluation; each package README owns its detailed behavior.
 
 ## Table of Contents
 

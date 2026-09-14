@@ -157,7 +157,7 @@ export async function enrichAllEvents(
 
 ## B3. llmCall 接线（生产）
 
-当前 `setLlmCall` 注释说"Production wires this to ctx.llm"但 bundle 未接线。在 `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` 或对应 bundle 装配处，挂载后调用：
+当前 `setLlmCall` 注释说"Production wires this to ctx.llm"但 bundle 未接线。在 `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` 或对应 bundle 装配处，挂载后调用：
 ```ts
 ctx.schema.setLlmCall((prompt) => ctx.llm.text(prompt))  // 适配真实 ctx.llm 的 BlockAssembler 接口
 ```

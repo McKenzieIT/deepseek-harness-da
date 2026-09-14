@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-[data-agent additive scaffold](2026-08-19-data-agent-additive-scaffold.md) 预留了一个 `llm-dashscope` 挂载点作为 profile 的直连 LLM，但发包前须先定 wire 契约。R1（wayfinder ticket）假设 DashScope 以公网 OpenAI 兼容端点可达，提议把 `rbi-llm` 的 `DashScopeProvider` 移植成 harness adapter、镜像 `llm-deepseek` 的 OpenAI 兼容 wire。live 探针（`wayfinder/data-agent/research/p2-dashscope-wire.md`）证伪了这点：DashScope 经**阿里内网 AGA（AI Gateway）** 走 **DashScope 原生 text-generation 协议**，非 OpenAI chat completions。故该包须从零做 native adapter，问题随之变成：native AGA wire 契约到底是什么，以及如何在无稳定发布 spec 可依时把它钉死，使网关日后漂移表现为 spec 失败而非静默回归。
+[data-agent additive scaffold](2026-08-19-data-agent-additive-scaffold.zh.md) 预留了一个 `llm-dashscope` 挂载点作为 profile 的直连 LLM，但发包前须先定 wire 契约。R1（wayfinder ticket）假设 DashScope 以公网 OpenAI 兼容端点可达，提议把 `rbi-llm` 的 `DashScopeProvider` 移植成 harness adapter、镜像 `llm-deepseek` 的 OpenAI 兼容 wire。live 探针（`wayfinder/data-agent/research/p2-dashscope-wire.md`）证伪了这点：DashScope 经**阿里内网 AGA（AI Gateway）** 走 **DashScope 原生 text-generation 协议**，非 OpenAI chat completions。故该包须从零做 native adapter，问题随之变成：native AGA wire 契约到底是什么，以及如何在无稳定发布 spec 可依时把它钉死，使网关日后漂移表现为 spec 失败而非静默回归。
 
 ## 决策
 
@@ -19,7 +19,7 @@ Status: implemented
 - `usage` 是 DISJOINT：native `input_tokens`/`output_tokens`/`total_tokens` 加 `prompt_tokens_details.cached_tokens` 与 `output_tokens_details.reasoning_tokens`。adapter 投影 `inputTokens = input_tokens - cached_tokens`（缓存输入不被双重计数）、`cacheReadTokens = cached_tokens`。
 - adapter **不引入** `enable_thinking`、`thinking_budget`、`tool_stream`、`include_usage`——均非 native AGA 字段。思考靠选模型：`resolveModel` 不暴露 reasoning efforts，调用方设 `reasoningEffort` 被拒（`UNSUPPORTED_REASONING_EFFORT`）；思考经模型选择（qwen3.6-plus 等）。
 
-身份：provider `dashscope`；默认 `PUBLIC_BASE_URL=https://pre-aga-ai-gateway.alibaba-inc.com/api/v1/services/aigc/text-generation/generation`；env `DASHSCOPE_API_KEY`/`DASHSCOPE_BASE_URL`；catalog {qwen-flash, qwen-plus, qwen3.7-max, qwen3.6-plus}；归因头 `x-dashscope-harness-*`；可选 `discoverModels` 打 `GET /api/v1/models`。图片输入 phase-1 不做（text-only，`assertTextOnly`）；限流排队不返 429，故 `streamIdleTimeoutMs` 放宽（300s）以容忍首字节前排队窗口。[data-agent bundle](2026-08-19-data-agent-additive-scaffold.md) 的 `cordis.patch.yml` 经 active `- insert:` 行挂载该包、并把 `agent-default-model` 设为 `dashscope`/`qwen-plus`；其余 base provider 保持挂载且可配。
+身份：provider `dashscope`；默认 `PUBLIC_BASE_URL=https://pre-aga-ai-gateway.alibaba-inc.com/api/v1/services/aigc/text-generation/generation`；env `DASHSCOPE_API_KEY`/`DASHSCOPE_BASE_URL`；catalog {qwen-flash, qwen-plus, qwen3.7-max, qwen3.6-plus}；归因头 `x-dashscope-harness-*`；可选 `discoverModels` 打 `GET /api/v1/models`。图片输入 phase-1 不做（text-only，`assertTextOnly`）；限流排队不返 429，故 `streamIdleTimeoutMs` 放宽（300s）以容忍首字节前排队窗口。[data-agent bundle](2026-08-19-data-agent-additive-scaffold.zh.md) 的 `cordis.patch.yml` 经 active `- insert:` 行挂载该包、并把 `agent-default-model` 设为 `dashscope`/`qwen-plus`；其余 base provider 保持挂载且可配。
 
 ## 验证
 

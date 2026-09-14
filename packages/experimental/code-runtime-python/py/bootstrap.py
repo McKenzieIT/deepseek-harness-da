@@ -77,7 +77,7 @@ _FALLBACK_DONE_FRAME = b'{"type":"done","error":{"kind":"exception","message":"<
 # real class name is touched.
 _MAX_FALLBACK_NAME_CHARS = 200
 
-# Mirror of the host's output-budget/address-space gate (src/index.ts's
+# Mirror of the provider host's output-budget/address-space gate (src/index.ts's
 # OUTPUT_BUDGET_WORST_CASE_ADDRESS_SPACE_MULTIPLE and INTERPRETER_BASELINE_BYTES),
 # re-applied against the EFFECTIVE RLIMIT_AS after inheritance clamping. An astral
 # character is one character but ~4 bytes of str storage and ~4 UTF-8 bytes, and
@@ -1530,7 +1530,7 @@ def _encode_json_plain(value: Any) -> str:
     ``RecursionError`` a few thousand levels deep, but the seam's
     ``CodeJsonValue`` has no depth limit — a valid deeply nested completion or
     call argument below the byte budget must cross intact (the host uses the
-    same iterative idiom in ``protocol.ts``). Accepts what the callers already
+    same iterative idiom in the released protocol package). Accepts what the callers already
     validated or constructed: ``None``/``bool``/``int``/finite ``float``/
     ``str``, exact ``list``/``tuple``, and exact ``dict`` with ``str`` keys.
     Scalar encoding delegates to ``json.dumps`` (string escaping, float repr)

@@ -77,7 +77,7 @@ pnpm vitest run packages/data/tool-load-event-definition
 pnpm verify-cordis-config
 ```
 
-本包 ship 后解注释 preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml` 的 `tool-load-event-definition`）；phase-gate guard 的 `UNDERSTANDING`/`GENERATION` 白名单已含 `load_event_definition`，注册即在对应阶段可调。
+本包 ship 后解注释 preset 行（`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` 的 `tool-load-event-definition`）；phase-gate guard 的 `UNDERSTANDING`/`GENERATION` 白名单已含 `load_event_definition`，注册即在对应阶段可调。
 
 <a id="dev-note"></a>
 ## 开发备注

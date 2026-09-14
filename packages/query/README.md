@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `query/` group owns the data agent's SQL-execution capability. The core `query` package defines the abstract `QueryEngine` (`ctx.query`) contract — the four seam operations `execute` / `attach` / `cancel` / `getProgress`, the `getConventions()` dialect-grounding seam, and the 3-state `QueryOutcome` vocabulary (Completed / Pending / Failed) — and is the Def half of the query-trio. `query-maxcompute` is the first Provider (raw MCP SDK client over a stdio sidecar), `query-postgres` a second engine, and `query-tool` the model-facing consumer surface. NL-to-SQL translation is deliberately out of scope (C1: the seam accepts strict SQL; NL→SQL lives in the semantic layer). All are **product** packages built across P4; each README owns its per-package contract.
+The `query/` group owns SQL execution for the data agent. `query` defines the `ctx.query` contract, dialect conventions, and completed, pending, or failed outcomes. `query-maxcompute` and `query-postgres` provide engines; `query-tool` exposes execution to the model. Natural-language translation remains in the semantic layer, while this family accepts explicit SQL and owns execution, cancellation, attachment, progress, and dialect grounding.
 
 ## Table of Contents
 
