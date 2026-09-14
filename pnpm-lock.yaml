@@ -2829,6 +2829,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-renderer':
         specifier: workspace:^
         version: link:../ui-renderer
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:^
+        version: link:../ui-slots
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
@@ -5059,6 +5062,9 @@ importers:
 
   packages/code-runtime/code-runtime-data-python:
     dependencies:
+      '@deepseek-ai/dsh-code-runtime-python-protocol':
+        specifier: workspace:^
+        version: link:../code-runtime-python-protocol
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
@@ -5069,9 +5075,6 @@ importers:
       '@deepseek-ai/dsh-code-runtime':
         specifier: workspace:^
         version: link:../code-runtime
-      '@deepseek-ai/dsh-experimental-code-runtime-python':
-        specifier: workspace:^
-        version: link:../../experimental/code-runtime-python
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
@@ -5081,6 +5084,12 @@ importers:
       '@deepseek-ai/dsh-timeout':
         specifier: workspace:^
         version: link:../../util/timeout
+
+  packages/code-runtime/code-runtime-python-protocol:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
 
   packages/code-runtime/code-runtime-worker-thread:
     dependencies:
@@ -7049,6 +7058,9 @@ importers:
 
   packages/experimental/code-runtime-python:
     dependencies:
+      '@deepseek-ai/dsh-code-runtime-python-protocol':
+        specifier: workspace:^
+        version: link:../../code-runtime/code-runtime-python-protocol
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
