@@ -264,6 +264,11 @@
 - **Human-gates session (2026-09-20)** — web UI repro for UM4 gate ① hit 3 real defects, each a gate coverage gap: [UM-DEFECT-PRESENT-TABLE-SPLIT](tickets/phase-upstream-merge/UM-DEFECT-PRESENT-TABLE-SPLIT.md) (client bundle code-split vs module table, 52 pkgs 中唯一), [UM-DEFECT-PRESET-ROOTS](tickets/phase-upstream-merge/UM-DEFECT-PRESET-ROOTS.md) (da preset 无根可扫), [UM-DEFECT-PRESET-DEPS](tickets/phase-upstream-merge/UM-DEFECT-PRESET-DEPS.md) (bundle 漏声明 11 个 tool-* deps, verify-cordis-config 只查 bundle mount 不查 preset 行). 临时修在 `--patch` overlay + node_modules symlink，**仓库零改动**。Gate ① capture 结果 `completed`（race 未复现，UM4 Scope 3 仍 defer）。UM15 §2/§4 calibration 6 问已提，用户未答。[UM4](tickets/phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md) [UM15](tickets/phase-upstream-merge/UM15-durable-upstream-sync-method.md) 各追加 resolution note。
 
 
+<!-- 2026-09-20 session close: gate ② 关闭 + gate ③ §4 calibration 全收口 -->
+
+- **[UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS](tickets/phase-upstream-merge/UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS.md) closed** — eval-team ack 后落地 sub-option b：sibling `tsconfig.tests.json`（composite declaration-only emit, outDir `lib/tests/types`）+ `tsconfig.host.json:251` reference + 删 `EVAL_CLI_PENDING_FIX` allowlist。验证：oxlint unmatched 55→49，6 spec 全部 `Got tsconfig: tsconfig.tests.json`，`tsc -b` 全绿，oxlint-contract.spec 16/16。UM-LINT-B 防线现为**无豁免全绿**。`caf18cfd28`。
+- **[UM15](tickets/phase-upstream-merge/UM15-durable-upstream-sync-method.md) §4 calibration Q1-Q5 全收口** — Q1: zero-hit `keep` → failure (`21a5f496c7`)；Q2: (a) all-history + 日历 expiry 不改 schema；Q3: (a) `drop` 无硬 expiry 只加 report 可见性（未实现）；Q4: `pending` 1 轮直接 failure (`10c5167779`)；Q5: (b) `reopenTrigger` + 可选 `reviewBy`（设计锁定，§2 实现时用）。核心行为变更已落地，余下留给 AFK session。`e84c34e934`。
+
 ## Next wave: 语义层/Ontology 管理 + 知识图谱可视化（2026-08-27 规划）
 
 <!-- 新方向：P11d 收尾 + M1 follow-up + 管理 UI infra + 知识图谱可视化 -->
