@@ -59,4 +59,4 @@ management persona 应归谁持有、如何让非游戏部署覆盖？
 
 ## Key files
 
-packages/data/phase-gate/src/{phase-gate.ts:85,93,index.ts}; packages/preset/persona/src/index.ts; apps/cli/config/agent-presets/data-agent/{b-free-react-planning,d-bare-react}.cordis.yml; packages/data/nl2sql-engine/src/prompt.ts; packages/data/tool-search-data-sources/src/expand-query.ts:11; packages/data/scope-registry/src/index.ts (ScopeDefinition.semanticRoot)
+packages/data/phase-gate/src/{phase-gate.ts:85,93,index.ts}; packages/preset/persona/src/index.ts; packages/bundle/data-agent/presets/data-agent/{b-free-react-planning,d-bare-react}.cordis.yml; packages/data/nl2sql-engine/src/prompt.ts; packages/data/tool-search-data-sources/src/expand-query.ts:11; packages/data/scope-registry/src/index.ts (ScopeDefinition.semanticRoot)

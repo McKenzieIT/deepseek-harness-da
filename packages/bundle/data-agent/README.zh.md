@@ -20,7 +20,7 @@ data-agent bundle 是叠加在 `dsh-base` 上的 additive 层。它选择 DashSc
 <a id="dev-note"></a>
 ## 开发备注
 
-本 bundle 无代码——`package.json` 的 `dsh.bundle.patch` 字段将 profile composer 指向 `cordis.patch.yml`，一切挂载与禁用皆在该 YAML。改动归 YAML，绝不写 TypeScript。data-agent 阶段决策见 `wayfinder/data-agent/map.md`，各插件的实现历史见 `wayfinder/data-agent/tickets/`。
+本 bundle 不含运行时代码：`package.json` 的 `dsh.bundle.patch` 字段将 profile composer 指向 `cordis.patch.yml`，`presets/` 则拥有随包发布的两个 data-agent preset 目录。patch 从已安装 bundle 的 manifest 解析该目录，因此 preset 发现不依赖进程工作目录。data-agent 阶段决策见 `wayfinder/data-agent/map.md`，各插件的实现历史见 `wayfinder/data-agent/tickets/`。
 
 -----
 

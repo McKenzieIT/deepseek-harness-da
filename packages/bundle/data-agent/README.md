@@ -20,7 +20,7 @@ The data-agent bundle is an additive layer over `dsh-base`. It selects DashScope
 <a id="dev-note"></a>
 ## Dev Note
 
-The bundle carries no code — the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, which contains every mount and disable. Changes belong in that YAML, never in TypeScript. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.
+The bundle carries no runtime code: the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, while `presets/` owns the two data-agent preset directories published with the package. The patch resolves that directory from the installed bundle manifest, so preset discovery does not depend on the process working directory. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.
 
 -----
 

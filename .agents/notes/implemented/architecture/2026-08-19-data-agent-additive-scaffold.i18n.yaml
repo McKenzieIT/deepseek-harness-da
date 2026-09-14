@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-19-data-agent-additive-scaffold.md
-2026-08-19-data-agent-additive-scaffold.md: d9a43bb82337f2a517e62b7ba187c9cea18c8c9e
-2026-08-19-data-agent-additive-scaffold.zh.md: 588762e7018bba709deb7a47576268ad31f9de16
+2026-08-19-data-agent-additive-scaffold.md: 7a24422a75921886f40b71dd268646557f226b02
+2026-08-19-data-agent-additive-scaffold.zh.md: eb6d8284f5c912ab903c6d39930a77de34f74333

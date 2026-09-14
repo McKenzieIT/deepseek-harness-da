@@ -31,7 +31,7 @@ This is the **D2c-impl** ship — the escape-hatch the D2c "keep (b)" decision c
 
 ## Status: shipped but DORMANT (opt-in, dormant-until-mount)
 
-The tool **package** is shipped (registers `retrieve` via `defineTool` + `ctx.tools.register` when mounted), but the preset row that mounts it (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-retrieve`) is **commented** — so default boot does NOT mount it, the `retrieve` tool is not registered, and the agent runs **pipeline-only** (the current state, no regression). This mirrors the D2e dormant-until-mount + P5b opt-in-seam pattern.
+The tool **package** is shipped (registers `retrieve` via `defineTool` + `ctx.tools.register` when mounted), but the preset row that mounts it (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-retrieve`) is **commented** — so default boot does NOT mount it, the `retrieve` tool is not registered, and the agent runs **pipeline-only** (the current state, no regression). This mirrors the D2e dormant-until-mount + P5b opt-in-seam pattern.
 
 Activation (a separate, later gate — P7b / a follow-up) is three coordinated steps:
 1. **Uncomment** the `tool-retrieve` preset row.

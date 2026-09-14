@@ -58,7 +58,7 @@
 - `packages/data/tool-scope-routing/` (new package)
 - `packages/bundle/data-agent/cordis.patch.yml`
 - `packages/bundle/data-agent/package.json`
-- `apps/cli/config/agent-presets/data-agent/agent.cordis.yml`
+- `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`
 - `packages/data/phase-gate/src/domain.ts`
 - `packages/data/phase-gate/tests/phase-gate.spec.ts`
 - `packages/query/query-maxcompute/src/index.ts`

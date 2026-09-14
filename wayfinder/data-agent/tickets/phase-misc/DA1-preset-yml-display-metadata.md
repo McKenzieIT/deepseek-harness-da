@@ -7,7 +7,7 @@
 
 ## Question
 
-data-agent preset（`apps/cli/config/agent-presets/data-agent/`）缺 `preset.yml`，导致模式选择器里只显示裸目录名 `data-agent`、无 `name`/`description`/`order`（standard 显示「标准模式」、code 显示「PTC 模式」）。补这个文件即可。
+data-agent preset（`packages/bundle/data-agent/presets/data-agent/`）缺 `preset.yml`，导致模式选择器里只显示裸目录名 `data-agent`、无 `name`/`description`/`order`（standard 显示「标准模式」、code 显示「PTC 模式」）。补这个文件即可。
 
 ## 根因（已诊断，见 research）
 
@@ -18,7 +18,7 @@ data-agent preset（`apps/cli/config/agent-presets/data-agent/`）缺 `preset.ym
 
 ## 要做的（task，非决策）
 
-新增 `apps/cli/config/agent-presets/data-agent/preset.yml`：
+新增 `packages/bundle/data-agent/presets/data-agent/preset.yml`：
 ```yaml
 name: 数据模式            # 或「数据取数模式」，正式名随 map Destination 待定
 description: 自然语言取数 Agent：经语义层 NL→SQL→执行→结构化交付的四阶段管道，回答标准看板覆盖不到的个性化数据问题。
@@ -37,7 +37,7 @@ order: 3                  # standard=1, code=2
 
 ## Resolution
 
-已新增 `apps/cli/config/agent-presets/data-agent/preset.yml`，内容如下：
+已新增 `packages/bundle/data-agent/presets/data-agent/preset.yml`，内容如下：
 
 ```yaml
 name: 取数模式

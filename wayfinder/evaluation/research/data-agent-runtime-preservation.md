@@ -38,7 +38,7 @@ The bundle README is not fully synchronized with the current patch: it says the 
 
 The production path is agent-loop-driven. `Nl2sqlEngine.run()` is explicitly described as eval-only, while production SQL generation is composed from the normal model request, model-facing tools, and phase-gate hooks. Sources: `packages/data/nl2sql-engine/src/index.ts:1-24`.
 
-The `data-agent` preset mounts the phase gate and its critic consumers inside an isolated realm, then registers the data tools on the agent plane. The host retains registries, persistence, sandbox and approval policy, and model routing. Sources: `apps/cli/config/agent-presets/data-agent/agent.cordis.yml:1-31`, `apps/cli/config/agent-presets/data-agent/agent.cordis.yml:44-99`.
+The `data-agent` preset mounts the phase gate and its critic consumers inside an isolated realm, then registers the data tools on the agent plane. The host retains registries, persistence, sandbox and approval policy, and model routing. Sources: `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml:1-31`, `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml:44-99`.
 
 The phase gate does not replace the shared agent loop. It composes behavior through Cordis extension points: `agent/turn-stopping` for ordered transitions, `agent/request` for request configuration, `system-prompt/assemble` for phase instructions, `tools/post-execute` for result-dependent state, `agent/pre-step` for admission, `llm/stream` for accounting, and `agent/status` for question boundaries. Sources: `packages/data/phase-gate/src/phase-gate.ts:1-18`, `packages/data/phase-gate/src/phase-gate.ts:977-1017`, `docs/event-producer-consumer.md:19-24`, `docs/event-producer-consumer.md:69-75`.
 
@@ -46,7 +46,7 @@ Phase state is per agent and spans a user question. It records the current phase
 
 The phase gate changes real model behavior. It filters tool schemas, rejects out-of-phase calls, changes reasoning effort, assembles phase-specific instructions, injects model-visible continuation messages, waits for clarification, and can cancel a stalled turn. Sources: `packages/data/phase-gate/README.md:34-96`, `packages/data/phase-gate/src/phase-gate.ts:580-718`, `packages/data/phase-gate/src/phase-gate.ts:888-909`.
 
-Alternative A/B/C/D data-agent presets already demonstrate that orchestration and planning policy are independent experimental factors. The product cannot be represented faithfully by a single direct NL2SQL function because the selected preset changes prompt sections, available tools, and control flow. Sources: `apps/cli/config/agent-presets/data-agent/agent.cordis.yml:1-42`, `apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:1-40`, `apps/cli/config/agent-presets/data-agent/c-hybrid.cordis.yml:1-59`, `apps/cli/config/agent-presets/data-agent/d-bare-react.cordis.yml:1-25`.
+Alternative A/B/C/D data-agent presets already demonstrate that orchestration and planning policy are independent experimental factors. The product cannot be represented faithfully by a single direct NL2SQL function because the selected preset changes prompt sections, available tools, and control flow. Sources: `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml:1-42`, `packages/bundle/data-agent/presets/data-agent/b-free-react-planning.cordis.yml:1-40`, `packages/bundle/data-agent/presets/data-agent/c-hybrid.cordis.yml:1-59`, `packages/bundle/data-agent/presets/data-agent/d-bare-react.cordis.yml:1-25`.
 
 ### 3. DataScope routing is distinct from Cordis registration scope
 
@@ -145,7 +145,7 @@ The mapping follows the repository's use of services, events, scopes, and effect
 
 The default bundle mounts `eval-runner-service`, `goal-eval-policy`, and `goal-eval-context`. The goal policy listens to durable goal-round messages, triggers a batch, computes deltas, and can block the live goal. The context plugin registers model-visible `<eval_evidence>` and behavioral advice. This is active intervention in the agent's control and prompt planes, not passive evaluation. Sources: `packages/bundle/data-agent/cordis.patch.yml:183-212`, `packages/goal/goal-eval-policy/src/index.ts:87-153`, `packages/goal/goal-eval-policy/src/index.ts:156-226`, `packages/goal/goal-eval-context/src/index.ts:98-129`, `packages/goal/goal-eval-context/src/index.ts:168-210`.
 
-The `trigger_eval` tool itself is mounted in the dedicated `semantic-layer-management` preset rather than the ordinary data-query preset, which is the correct product separation. The host-level eval services undermine that separation because they remain present even when the data-query preset does not expose the tool. Sources: `apps/cli/config/agent-presets/semantic-layer-management/agent.cordis.yml:23-68`, `apps/cli/config/agent-presets/semantic-layer-management/agent.cordis.yml:92-100`, `apps/cli/config/agent-presets/data-agent/agent.cordis.yml:91-130`.
+The `trigger_eval` tool itself is mounted in the dedicated `semantic-layer-management` preset rather than the ordinary data-query preset, which is the correct product separation. The host-level eval services undermine that separation because they remain present even when the data-query preset does not expose the tool. Sources: `packages/bundle/data-agent/presets/semantic-layer-management/agent.cordis.yml:23-68`, `packages/bundle/data-agent/presets/semantic-layer-management/agent.cordis.yml:92-100`, `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml:91-130`.
 
 ### 2. The active evaluator does not run the production conversation
 
@@ -380,7 +380,7 @@ This makes Environment a deep module only if it hides heterogeneous preflight, r
 ## Source set reviewed
 
 - Product and architecture: `docs/da-product-brief.md`, `docs/da-architecture.md`, `docs/architecture.md`, `docs/cordis-primer.md`, `docs/subsystems/{core,session,persistence,scope,tools}.md`.
-- Composition: `packages/bundle/data-agent/`, `apps/cli/config/agent-presets/data-agent/`, `apps/cli/config/agent-presets/semantic-layer-management/`, `packages/preset/agent-presets/`, `packages/data/preset-autojoin/`.
+- Composition: `packages/bundle/data-agent/`, `packages/bundle/data-agent/presets/data-agent/`, `packages/bundle/data-agent/presets/semantic-layer-management/`, `packages/preset/agent-presets/`, `packages/data/preset-autojoin/`.
 - Data runtime: `packages/data/phase-gate/`, `packages/data/scope-registry/`, `packages/data/semantic-layer/`, data tools, result cache, audit, management session, evidence query, and patrol mode.
 - Providers: `packages/query/`, `packages/retrieval/`, `packages/embedder/`.
 - Evaluation: `packages/eval/`, `packages/data/tool-trigger-eval/`, `packages/goal/goal-eval-policy/`, `packages/goal/goal-eval-context/`.

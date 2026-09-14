@@ -20,7 +20,7 @@ SessionCreateError: session create failed: agent-preset/invalid:
 
 **`~/.dsh/profiles/node_modules/@deepseek-ai/`** is the shared fallback populated by `healProfilesModuleFallback` doing a **BFS over declared `dependencies`/`peerDependencies`** from `apps/cli/package.json`. If a package is not in that dependency graph, the BFS never reaches it → no symlink → preset mount fails.
 
-**Concrete defect**: `packages/bundle/data-agent/package.json` declares **12** `tool-*` dependencies but **does NOT declare `@deepseek-ai/dsh-tool-resolve-term`**. The package exists at `packages/data/tool-resolve-term`, is built (`lib/index.js` present), and is a LIVE (uncommented) row in `apps/cli/config/agent-presets/data-agent/agent.cordis.yml:113-114`. But because it is undeclared, it is absent from the fallback node_modules → mount fails.
+**Concrete defect**: `packages/bundle/data-agent/package.json` declares **12** `tool-*` dependencies but **does NOT declare `@deepseek-ai/dsh-tool-resolve-term`**. The package exists at `packages/data/tool-resolve-term`, is built (`lib/index.js` present), and is a LIVE (uncommented) row in `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml:113-114`. But because it is undeclared, it is absent from the fallback node_modules → mount fails.
 
 **Wider**: the `semantic-layer-management` preset (same dir, also da-owned) reports **10 more undeclared** tool packages, all existing, all built:
 `tool-search-schema` / `tool-get-definition` / `tool-list-domains` / `tool-get-coverage` / `tool-discover-relations` / `tool-discover-alt-labels` / `tool-trigger-eval` / `tool-reachability-delta` / `tool-edit-definition` / `tool-revert-edit`.

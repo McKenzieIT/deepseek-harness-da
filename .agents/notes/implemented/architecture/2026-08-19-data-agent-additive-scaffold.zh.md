@@ -10,11 +10,13 @@ Status: implemented
 
 ## 决策
 
-新增 patch-only bundle `@deepseek-ai/dsh-data-agent`，直接叠在 `dsh-base` 之上，镜像 `dsh-base` 的包形态：一份由 `dsh.bundle.patch` manifest 字段声明的 `cordis.patch.yml`、一个无运行时 API 的 `src/index.ts`、一个 noop 的 `src/invariant.ts` companion。它所扩展的 bundle/profile 组合机制归 [profile plugin bundles](2026-08-05-profile-plugin-bundles.md) 决策所有。其 patch 对 code-agent 面是**仅 disable**、对 data 插件是**注释占位**，故即便尚无任何 data 包，该 bundle 今天即可 install 与 load。
+新增 patch-only bundle `@deepseek-ai/dsh-data-agent`，直接叠在 `dsh-base` 之上，镜像 `dsh-base` 的包形态：一份由 `dsh.bundle.patch` manifest 字段声明的 `cordis.patch.yml`、一个无运行时 API 的 `src/index.ts`、一个 noop 的 `src/invariant.ts` companion。它所扩展的 bundle/profile 组合机制归 [profile plugin bundles](2026-08-05-profile-plugin-bundles.zh.md) 决策所有。其 patch 对 code-agent 面是**仅 disable**、对 data 插件是**注释占位**，故即便尚无任何 data 包，该 bundle 今天即可 install 与 load。
 
 `cordis.patch.yml` 按 id 禁用三行 base 行：`tool-str-replace-editor` 与 `tool-ralph`（均 `disabled: true`）、以及 `tools` 行的 `mode: native`（关 Code Mode）——data agent 用不到的编码代理工具。disable 而非 delete，无论 `dsh-base` 日后行序如何重排都成立，与 `dsh-web-app` 把工具移到 preset 背后时用的同一纪律。`tool-pwsh` 不重述：`dsh-base` 自带 `disabled: !!js process.platform !== 'win32'` 已在 POSIX 上 gate off。`tool-bash` 与 `code-runtime` 刻意**不**在此禁用——它们是 data agent 自用的执行后端（shell、pandas 变换），而让业务用户触达不到它们是**内网暴露面**的关注，归后续 ticket，不在此 profile 层。data 插件行是一块注释的 `- insert:`，列出每个计划插件、其 ctx-key、交付它的 ticket；指向未发布包的 active `name:` specifier 会炸 `pnpm install` 与 `verify-cordis-config`，故每行在包发布前保持 inert。data-agent persona 不在此设——归按会话组合的四阶段 preset。
 
 新增 `packages/data/` group 承载随发布而来的 data 能力包。group 注册是 `tsconfig.base.json` 源码路径映射对一个新 group 所需的叠加编辑：`./packages/data/*/src` 加入 `@deepseek-ai/dsh-*` wildcard、`./packages/data/*/src/invariant.ts` 加入 `@deepseek-ai/dsh-*/invariant` wildcard（把包名映射到其源码的通用 wildcard；已有 group 内加包无需编辑，新 group 需要）。新 bundle 加入 `tsconfig.host.json` 的显式 `references`——TS project references 无 wildcard 形式。`packages/README.md` 与 `packages/bundle/README.md` 的表加上其所需的 `data/` 与 `data-agent/` 行；`packages/data/README.md` 列计划包（TBD 名 + ctx key，各标其所属 ticket）。**不**加 `dsh-app-boot` profile 模板：`dsh --profile data-agent` 经 out-of-tree `dsh plugin --profile data-agent add @deepseek-ai/dsh-data-agent` 创建（待四阶段 preset 及其驱动就绪后），故不碰任何 shared boot glue。该 bundle 自身 `package.json` 不声明 `dependencies`（patch 尚不挂载任何东西），仅其 invariant companion 所 import 的 `cordis` 与 `dsh-invariants` peer。
+
+bundle 在 `packages/bundle/data-agent/presets/` 下拥有 data-agent preset 资产，并与 patch 一起发布。`agent-presets.roots` 行从已安装的 `@deepseek-ai/dsh-data-agent/package.json` 解析该目录，而非从 `process.cwd()` 解析，因此源码启动和安装后的 profile 在任意工作区都会发现同一组 preset。
 
 ## 验证
 

@@ -220,7 +220,7 @@ A 是唯一符合 additive-only 原则的方案。`shell.overlay` 的 z-index: 2
 
 W11 D6 决策列出 `reachabilityDelta` 为管理工具。经验证：
 - `packages/data/tool-reachability-delta/` 已完整实现（model-facing tool，8+ tests）
-- `apps/cli/config/agent-presets/semantic-layer-management/agent.cordis.yml` 已注册（`- id: tool-reachability-delta`）
+- `packages/bundle/data-agent/presets/semantic-layer-management/agent.cordis.yml` 已注册（`- id: tool-reachability-delta`）
 - 它是 **agent tool**（非纯 client RPC）——接受 ProposedRelation，返回 ReachabilityDeltaResult，供 agent 在提议添加关系前评估影响
 - 无需额外操作，preset 已就位
 
