@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 概述
 
-`embedder/` 组拥有数据代理的嵌入与重排能力。核心 `embedder` 包定义抽象 `EmbedderService`（`ctx.embedder`）约定——`dim`、`modelId`、异步 `embed(texts) → float[][]`——以及 Reranker 对等协议（RRF 后注入）和触发检索提供方降级为纯 BM25 的 `InferenceError` 分类（unavailable / timeout / not_ready / dim_mismatch）。两个提供方交付：`embedder-fakehash` 是零依赖默认档（确定性 sha256 向量，检索开箱即用），`embedder-http` 调用外部 OpenAI 兼容端点（InfinityEmbedder，用户自部署重档）。均为 **product** 包，于 P5b 建设；每个 README 负责各自的包级约定。重档激活取决于 D2c keep/regress 评估。
+`embedder/` 组拥有 data agent 检索所需的嵌入与重排能力。`embedder` 定义 `ctx.embedder`、向量与 reranker 约定，以及分类后的推理失败。`embedder-fakehash` 提供默认的确定性零依赖向量；`embedder-http` 连接外部 OpenAI-compatible 服务。检索 provider 消费此 seam，并可在推理不可用时降级到 BM25。重型 provider 在检索质量评测完成前保持 opt-in。
 
 ## 目录
 

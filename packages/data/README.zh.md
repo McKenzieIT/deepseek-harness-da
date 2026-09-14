@@ -7,6 +7,19 @@ kind: "package-group"
 
 [English](README.md) | 中文
 
+## 概述
+
+`data/` 组包含 data agent 的产品能力：语义定义、scope 路由、查询编排、审计、结果存储、管理会话，以及面向模型的数据工具。data-agent bundle 负责挂载这些包，各包 README 负责其服务或工具约定。
+
+## 目录
+
+- [包](#packages)
+- [相关文档](#related-documentation)
+- [开发备注](#dev-note)
+
+<a id="packages"></a>
+## 包
+
 data-agent 的 data 能力包：query、retrieval/向量化、semantic layer、audit、admin——[`dsh-data-agent`](../bundle/data-agent/README.zh.md) bundle 挂载（各包就绪前为注释占位）、四阶段 preset 按会话组合的能力。均为 **product** 包，跨 P4-P11 建设；当前均未发布，下表列计划包，名字由所属 ticket 定。
 
 | Package | Role | ctx key |
@@ -18,6 +31,12 @@ data-agent 的 data 能力包：query、retrieval/向量化、semantic layer、a
 | `audit/` *（计划，P8）* | guard/session-event + `tool-audit` + `ctx.storage`（SQLite） | — |
 | `admin/` *（计划，P9）* | harness app：per-game scope/credential/access-link + 系统配置 | — |
 
-相关文档：[数据代理子系统](../../docs/subsystems/data-agent.zh.md)——本组各包组合成的 data-agent overlay 所生成的 Cordis-surface 约定。
+<a id="related-documentation"></a>
+## 相关文档
+
+- [数据代理子系统](../../docs/subsystems/data-agent.zh.md)——本组各包组合成的 data-agent overlay 所生成的 Cordis-surface 约定。
+
+<a id="dev-note"></a>
+## 开发备注
 
 规则：[package](../AGENTS.md)、[root](../../AGENTS.md#conventions)。新包随所属 ticket（P4-P11）发包加入本 group。

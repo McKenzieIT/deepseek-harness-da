@@ -7,6 +7,7 @@
 | 页面 | 负责内容 |
 |---|---|
 | [core.md](core.zh.md) | `packages/core` 如何控制 agent loop（智能体循环）：逐包的循环说明、agent 创建与所有权（`AgentHandle`）、`Agent` 句柄的投递/取消/拦截约定，以及全仓通用类型模式（`…Map → derived-union`、品牌化 id） |
+| [data-agent.md](data-agent.zh.md) | data-agent 叠加层：语义、查询、检索、审计、管理与评测服务及其生成的 Cordis API |
 | [llm-streaming.md](llm-streaming.zh.md) | `packages/llm` 的对话类型——`Message`/`ContentBlock`、组装完成的模型请求、`StreamChunk` wire protocol 和适配器约定（adapter contract）、`BlockAssembler`，以及 `LlmAdapter` 提供方约定 |
 | [token-meter.md](token-meter.zh.md) | 不可变的标量与位置回放度量，附带已消费日志修订号 |
 | [scope.md](scope.zh.md) | 作用域注册标识、dispatch 载体，以及拥有的 `Scope` 上下文 |
