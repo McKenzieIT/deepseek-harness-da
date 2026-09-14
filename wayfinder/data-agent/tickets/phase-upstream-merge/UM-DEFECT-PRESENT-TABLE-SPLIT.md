@@ -74,6 +74,6 @@ Option 1 is likely cheapest. Option 2 is architecturally correct but high-risk.
 
 ## [2026-09-14] RESOLVED — 使用 Rolldown `outputOptions.codeSplitting` 并完成 clean build 验证
 
-初版 `splitting: false` 不属于 tsdown 0.22 的有效顶层选项，会被静默忽略。最终 commit `4375f9c3ff` 在 `packages/client/ui-present-table/tsdown.config.ts` 对 Client 配置设置 `outputOptions.codeSplitting: false`，同时保留已有 output options。回归测试 `scripts/ui-present-table-tsdown-config.spec.ts` 固定这一配置。
+初版 `splitting: false` 不属于 tsdown 0.22 的有效顶层选项，会被静默忽略。最终 commit `4375f9c3ff` 在 `packages/client/ui-present-table/tsdown.config.ts` 对 Client 配置设置 `outputOptions.codeSplitting: false`，同时保留已有 output options。回归测试 `scripts/ui-present-table-tsdown-config.client.spec.ts` 固定这一配置。
 
 `pnpm run build:lib:client` 于 2026-09-14 通过；`packages/client/ui-present-table/lib/` 只有 `client.js`、source map、Host 入口和 tsbuildinfo，顶层 sibling `.cjs` 数量为 0，`client.js` 也不再引用 `ChartView-*.cjs` 或 `numeric-*.cjs`。临时 disable overlay 不再需要。
