@@ -546,3 +546,7 @@ Client aggregate 随后暴露真实 merge residual：`ui-layout` 丢了 `Session
 先前的 `dsh-root` 诊断已更正：失败来自已删除 `packages/client/runtime/` 下的 ignored `node_modules` residue，`pnpm run clean` 后 typecheck 恢复，无需修改 Typert bootstrap。§2 的 `knownRed[]` 与 enrolled-gate 校验、§3 的 re-sync merge、§4 Q3 的 drop-waiver 可见性均已落地。当前静态检查只剩既有 `constraints`、Client UI i18n 与 translation-pairing 红项；本分支引入的 architecture/catalog/pairing drift 已修复。真实 Web 验证还发现相对 preset root 按进程 cwd 解析，最终改为 bundle-owned presets 与 package-relative 绝对路径；安装型 profile e2e、tarball 内容和 UI picker 均已验证。
 
 本票剩余关闭条件只有：推送最终 head、确认 CI 只保留已授权的两个 release known-red、合并 PR #130，并记录分支清理结果。定时运行 `upstream-status` 的通知语义另行决策；该命令当前固定 exit 0，直接添加 schedule 不会产生有效失败告警。
+
+## Post-merge follow-up
+
+After PR #130 merges and this ticket closes, [UM17 — post-merge latest-upstream dependency and scheduled-monitor validation](UM17-post-merge-latest-upstream-and-monitor-validation.md) starts from a clean merged checkout. It re-fetches both remotes, proves ancestry against the then-current upstream head, and validates a real scheduled monitor path. The current `upstream-status` command remains an always-zero report and no scheduled workflow exists as of 2026-09-14, so UM17 must not treat the present script alone as a working alert.
