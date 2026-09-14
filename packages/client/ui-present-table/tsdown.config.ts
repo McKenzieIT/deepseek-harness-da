@@ -3,7 +3,7 @@ import type { UserConfig } from 'tsdown'
 
 const build = clientBundle('@deepseek-ai/dsh-client-ui-present-table', ['lib/types/index.js'])
 
-// Disable code-splitting: tsdown/rolldown chunks large inlined deps
+// Disable code-splitting through Rolldown's output option: large inlined deps
 // (@tanstack/react-virtual, chart.js, react-chartjs-2) into sibling .cjs
 // files that the module table cannot serve — the client module table
 // registers exactly one bundle per package row (lib/client.js), so a
@@ -13,4 +13,8 @@ const build = clientBundle('@deepseek-ai/dsh-client-ui-present-table', ['lib/typ
 // (the other 51 have smaller deps); disabling it here is the complete
 // fix. See UM-DEFECT-PRESENT-TABLE-SPLIT.
 export default (inlineConfig: Pick<UserConfig, 'env'>): UserConfig[] =>
-  build(inlineConfig).map(config => ({ ...config, splitting: false }))
+  build(inlineConfig).map((config) => {
+    if (config.name !== '@deepseek-ai/dsh-client-ui-present-table/client') return config
+    const outputOptions = typeof config.outputOptions === 'object' ? config.outputOptions : {}
+    return { ...config, outputOptions: { ...outputOptions, codeSplitting: false } }
+  })
