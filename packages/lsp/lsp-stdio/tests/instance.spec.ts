@@ -190,7 +190,7 @@ describe('LspInstance query and abort', () => {
     // Wait until the definition request is in-flight so the abort lands in raceAbort's cancel-grace
     // path, not during the (slower on a `node -e` server) initialize handshake — an abort during the
     // handshake intentionally tears the instance down, which would falsely fail this grace test.
-    await waitForFile(defMarker)
+    await waitForFile(defMarker, 5_000, controller.signal)
     controller.abort(new Error('mid-flight'))
     await expect(pending).rejects.toThrow(/mid-flight/)
     // The server acknowledged cancellation within grace, so the instance was not force-killed.
