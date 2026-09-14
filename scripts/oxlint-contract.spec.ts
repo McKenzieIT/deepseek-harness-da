@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { describe, expect, it } from 'vitest'
 import {
-  EVAL_CLI_PENDING_FIX,
   matchesStrictOverrideGlob,
   STRICT_OVERRIDE_GLOBS,
   UNMATCHED_DISPOSITIONS,
@@ -257,12 +256,10 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
       expect(disposition.count, disposition.glob).toBeGreaterThan(0)
       expect(disposition.rationale, disposition.glob).not.toBe('')
     }
-    // 34 waived + 15 default-only + the 6 the override does claim = the 55 files
-    // `OXC_LOG=debug oxlint .` reported unmatched on 2886e5b8e5.
+    // 34 waived + 15 default-only = the 49 files still unmatched after the
+    // 6 eval-cli tests were claimed by tsconfig.tests.json (was 55 on 2886e5b8e5).
     expect(counted('waive')).toBe(34)
     expect(counted('keep')).toBe(15)
-    expect(EVAL_CLI_PENDING_FIX).toHaveLength(6)
-    for (const path of EVAL_CLI_PENDING_FIX) expect(matchesStrictOverrideGlob(path), path).toBe(true)
   })
 
   it('checks preserved TypeGraph syntax without type-aware analysis', () => {
