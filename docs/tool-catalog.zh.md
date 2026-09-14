@@ -2299,6 +2299,7 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 来源：[`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。
+
 <a id="deepseek-aidsh-tool-search-data-sources"></a>
 
 ## `@deepseek-ai/dsh-tool-search-data-sources`
