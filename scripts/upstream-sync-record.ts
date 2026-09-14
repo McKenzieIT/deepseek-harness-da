@@ -214,11 +214,13 @@ export function collectGitFailures(
       const message =
         `waiver ${waiver.path} (${waiver.direction}/${waiver.decision}) matched no finding in any recorded window`
         + ' — stale, or its window is not verifiable here'
-      if (waiver.decision === 'keep') {
-        // A 'keep' waiver that never matched means the divergence it accepted
-        // may no longer exist — force re-adjudication by failing the gate.
-        // 'drop' and 'pending' have their own tracking mechanisms (ticket and
-        // fuse respectively), so zero-hit stays informational for them.
+      if (waiver.decision === 'keep' || waiver.decision === 'pending') {
+        // 'keep' zero-hit: the divergence it accepted may no longer exist —
+        // force re-adjudication by failing the gate.
+        // 'pending' zero-hit: nobody decided in this sync round — process
+        // leak, must not survive >1 round without a keep/drop decision.
+        // 'drop' has its own tracking (ticket + report visibility), so
+        // zero-hit stays informational for it.
         report.failures.push(message)
       } else {
         report.notes.push(message)
