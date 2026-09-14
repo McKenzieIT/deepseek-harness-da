@@ -22,6 +22,8 @@ TODO: translate: Context layer graph — G6 v5 interactive relation graph with s
 
 上下文层关系图：基于 G6 v5 的交互式关系图，支持语义缩放与领域过滤
 
+本地化：插件注册英语和简体中文的类型化 `contextLayer` 命名空间；slot 渲染的组件接收 `t`，导出的展示组件也要求传入同一翻译函数。
+
 <a id="dev-note"></a>
 ## 开发备注
 

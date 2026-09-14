@@ -1,6 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
+import { en, type TableTranslate } from '../src/client/locales.ts'
+
+const t: TableTranslate = (key, params) => {
+  let value = en[key]
+  for (const [name, replacement] of Object.entries(params ?? {})) {
+    value = value.replaceAll(`{${name}}`, String(replacement))
+  }
+  return value
+}
 
 vi.mock('react-chartjs-2', () => {
   const make = (testid: string) =>
@@ -64,7 +73,7 @@ describe('ChartView', () => {
   it('renders a line chart when type is line', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { getByTestId } = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'line', x_column: 0, y_columns: [1] }}
         headers={['month', 'revenue']}
         rows={[['Jan', '100'], ['Feb', '200'], ['Mar', '300']]}
@@ -77,7 +86,7 @@ describe('ChartView', () => {
   it('renders a bar chart when type is bar', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { getByTestId } = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'bar', x_column: 0, y_columns: [1, 2] }}
         headers={['category', 'sales', 'profit']}
         rows={[['A', '50', '10'], ['B', '80', '20']]}
@@ -89,7 +98,7 @@ describe('ChartView', () => {
   it('maps missing and non-numeric cells to null gaps instead of 0', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'line', x_column: 0, y_columns: [1] }}
         headers={['x', 'y']}
         rows={[['a', '10'], ['b', 'not-a-number'], ['c'], ['d', '']]}
@@ -102,7 +111,7 @@ describe('ChartView', () => {
   it('uses fallback text and grid colors when theme tokens are absent', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'bar', x_column: 0, y_columns: [1] }}
         headers={['x', 'y']}
         rows={[['a', '1']]}
@@ -124,7 +133,7 @@ describe('ChartView', () => {
     window.getComputedStyle = spy
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'line', x_column: 0, y_columns: [1] }}
         headers={['x', 'y']}
         rows={[['a', '1']]}
@@ -142,7 +151,7 @@ describe('ChartView', () => {
   it('uses fallback series label when y_column index exceeds headers', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { getByTestId } = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'line', x_column: 0, y_columns: [5] }}
         headers={['x', 'y']}
         rows={[['a', '1'], ['b', '2']]}
@@ -154,7 +163,7 @@ describe('ChartView', () => {
   it('uses fallback x label and null y value when row is shorter than column index', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'bar', x_column: 3, y_columns: [4] }}
         headers={['a', 'b', 'c', 'd', 'e']}
         rows={[['1'], ['2', '3']]}
@@ -175,7 +184,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders area as a filled line (dataset.fill true)', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'area', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
+      <ChartView t={t} chart={{ type: 'area', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
     )
     const datasets = capturedDatasets('line-chart', container)
     expect(datasets[0]!.fill).toBe(true)
@@ -184,7 +193,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders hbar as a bar with indexAxis y', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'hbar', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
+      <ChartView t={t} chart={{ type: 'hbar', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
     )
     const options = capturedOptions('bar-chart', container)
     expect(options.indexAxis).toBe('y')
@@ -193,7 +202,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders scatter with {x,y} points from x_column + y_columns[0]', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'scatter', x_column: 1, y_columns: [2] }} headers={headers} rows={rows} />,
+      <ChartView t={t} chart={{ type: 'scatter', x_column: 1, y_columns: [2] }} headers={headers} rows={rows} />,
     )
     const datasets = capturedDatasets('scatter-chart', container)
     expect(datasets[0]!.data).toEqual([{ x: 100, y: 88 }, { x: 200, y: 91 }])
@@ -202,7 +211,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders bubble with {x,y,r} points from x_column + y_columns[0] + r_column', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'bubble', x_column: 1, y_columns: [2], r_column: 3 }} headers={headers} rows={rows} />,
+      <ChartView t={t} chart={{ type: 'bubble', x_column: 1, y_columns: [2], r_column: 3 }} headers={headers} rows={rows} />,
     )
     const datasets = capturedDatasets('bubble-chart', container)
     expect(datasets[0]!.data).toEqual([{ x: 100, y: 88, r: 1.1 }, { x: 200, y: 91, r: 2.2 }])
@@ -211,7 +220,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders doughnut with a cutout option', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container, getByTestId } = render(
-      <ChartView chart={{ type: 'doughnut', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
+      <ChartView t={t} chart={{ type: 'doughnut', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
     )
     expect(getByTestId('doughnut-chart')).toBeDefined()
     const options = capturedOptions('doughnut-chart', container)
@@ -221,7 +230,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders radar with a radial r scale', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'radar', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
+      <ChartView t={t} chart={{ type: 'radar', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
     )
     const options = capturedOptions('radar-chart', container) as { scales: Record<string, unknown> }
     expect(options.scales.r).toBeDefined()
@@ -230,24 +239,29 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders polarArea with a radial r scale', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'polarArea', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
+      <ChartView t={t} chart={{ type: 'polarArea', x_column: 0, y_columns: [1] }} headers={headers} rows={rows} />,
     )
     const options = capturedOptions('polararea-chart', container) as { scales: Record<string, unknown> }
     expect(options.scales.r).toBeDefined()
   })
 
-  it('renders bar with a fallback series label when y_column exceeds headers', async () => {
+  it('renders bar with a localized fallback series label when y_column exceeds headers', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
-    const { getByTestId } = render(
-      <ChartView chart={{ type: 'bar', x_column: 0, y_columns: [5] }} headers={['x', 'y']} rows={[['a', '1']]} />,
+    const localizedT: TableTranslate = (key, params) => key === 'chartSeriesIndexed' ? `Localized series ${String(params?.index)}` : key
+    const { container } = render(
+      <ChartView t={localizedT}
+        chart={{ type: 'bar', x_column: 0, y_columns: [5] }}
+        headers={['x', 'y']}
+        rows={[['a', '1']]}
+      />,
     )
-    expect(getByTestId('bar-chart')).toBeDefined()
+    expect(capturedDatasets('bar-chart', container)[0]?.label).toBe('Localized series 1')
   })
 
   it('renders scatter with fallback axis labels when headers are short', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { getByTestId } = render(
-      <ChartView chart={{ type: 'scatter', x_column: 3, y_columns: [4] }} headers={['x', 'y']} rows={[['1', '2']]} />,
+      <ChartView t={t} chart={{ type: 'scatter', x_column: 3, y_columns: [4] }} headers={['x', 'y']} rows={[['1', '2']]} />,
     )
     expect(getByTestId('scatter-chart')).toBeDefined()
   })
@@ -255,7 +269,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders doughnut using x_column as the value column when y_columns is empty', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { getByTestId } = render(
-      <ChartView chart={{ type: 'doughnut', x_column: 0, y_columns: [] }} headers={['k', 'v']} rows={[['a', '1'], ['b', '2']]} />,
+      <ChartView t={t} chart={{ type: 'doughnut', x_column: 0, y_columns: [] }} headers={['k', 'v']} rows={[['a', '1'], ['b', '2']]} />,
     )
     expect(getByTestId('doughnut-chart')).toBeDefined()
   })
@@ -263,7 +277,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders doughnut with a fallback label when yCol exceeds headers', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { getByTestId } = render(
-      <ChartView chart={{ type: 'doughnut', x_column: 0, y_columns: [5] }} headers={['k']} rows={[['a', '1']]} />,
+      <ChartView t={t} chart={{ type: 'doughnut', x_column: 0, y_columns: [5] }} headers={['k']} rows={[['a', '1']]} />,
     )
     expect(getByTestId('doughnut-chart')).toBeDefined()
   })
@@ -271,7 +285,7 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders radar with a fallback label when yCol exceeds headers', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { getByTestId } = render(
-      <ChartView chart={{ type: 'radar', x_column: 0, y_columns: [5] }} headers={['k']} rows={[['a', '1']]} />,
+      <ChartView t={t} chart={{ type: 'radar', x_column: 0, y_columns: [5] }} headers={['k']} rows={[['a', '1']]} />,
     )
     expect(getByTestId('radar-chart')).toBeDefined()
   })
@@ -279,14 +293,14 @@ describe('ChartView chart types (R4 expansion)', () => {
   it('renders bubble with r=0 when r_column is missing or non-numeric', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const missing = render(
-      <ChartView chart={{ type: 'bubble', x_column: 1, y_columns: [2] }} headers={['d', 'x', 'y']} rows={[['a', '1', '2']]} />,
+      <ChartView t={t} chart={{ type: 'bubble', x_column: 1, y_columns: [2] }} headers={['d', 'x', 'y']} rows={[['a', '1', '2']]} />,
     )
     const missingData = JSON.parse(
       missing.container.querySelector('[data-testid="bubble-chart"]')!.getAttribute('data-datasets')!,
     ) as [{ data: unknown[] }]
     expect(missingData[0].data).toEqual([{ x: 1, y: 2, r: 0 }])
     const nonNumeric = render(
-      <ChartView
+      <ChartView t={t}
         chart={{ type: 'bubble', x_column: 1, y_columns: [2], r_column: 0 }}
         headers={['d', 'x', 'y']}
         rows={[['notnum', '1', '2']]}
@@ -303,7 +317,7 @@ describe('ChartView valueLabels toggle (valueLabelsPlugin options)', () => {
   it('sets plugins.valueLabels.display true when showLabels is set', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'bar', x_column: 0, y_columns: [1] }} headers={['x', 'y']} rows={[['a', '1']]} showLabels />,
+      <ChartView t={t} chart={{ type: 'bar', x_column: 0, y_columns: [1] }} headers={['x', 'y']} rows={[['a', '1']]} showLabels />,
     )
     const options = capturedOptions('bar-chart', container) as { plugins: { valueLabels: { display: boolean } } }
     expect(options.plugins.valueLabels.display).toBe(true)
@@ -312,7 +326,7 @@ describe('ChartView valueLabels toggle (valueLabelsPlugin options)', () => {
   it('defaults plugins.valueLabels.display false when showLabels is absent', async () => {
     const { default: ChartView } = await import('../src/client/ChartView.tsx')
     const { container } = render(
-      <ChartView chart={{ type: 'bar', x_column: 0, y_columns: [1] }} headers={['x', 'y']} rows={[['a', '1']]} />,
+      <ChartView t={t} chart={{ type: 'bar', x_column: 0, y_columns: [1] }} headers={['x', 'y']} rows={[['a', '1']]} />,
     )
     const options = capturedOptions('bar-chart', container) as { plugins: { valueLabels: { display: boolean } } }
     expect(options.plugins.valueLabels.display).toBe(false)

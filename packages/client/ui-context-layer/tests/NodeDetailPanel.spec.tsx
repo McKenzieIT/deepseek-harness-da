@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import { NodeDetailPanel } from '../src/client/NodeDetailPanel.tsx'
 import type { GraphNode } from '../src/client/types.ts'
+import { en, type ContextLayerKey } from '../src/client/locales.ts'
+
+const t = (key: ContextLayerKey): string => en[key]
 
 const node: GraphNode = {
   id: 'n1',
@@ -23,7 +26,7 @@ const allDomains = ['alpha', 'beta', 'gamma']
 describe('NodeDetailPanel — domain chip color (ucl-7)', () => {
   it('colors chips by the global sorted domain index, not the local index', () => {
     // Local-only render (no allDomains): prior behavior — beta=local0, alpha=local1.
-    const local = render(<NodeDetailPanel node={node} onClose={() => {}} />)
+    const local = render(<NodeDetailPanel t={t} node={node} onClose={() => {}} />)
     const localBetaBg = local.getByText('beta').style.background
     const localAlphaBg = local.getByText('alpha').style.background
     expect(localBetaBg).not.toBe(localAlphaBg) // distinct local colors
@@ -31,7 +34,7 @@ describe('NodeDetailPanel — domain chip color (ucl-7)', () => {
 
     // Global render (allDomains supplied): beta=global1, alpha=global0 — swapped.
     const global = render(
-      <NodeDetailPanel node={node} onClose={() => {}} allDomains={allDomains} />,
+      <NodeDetailPanel t={t} node={node} onClose={() => {}} allDomains={allDomains} />,
     )
     const globalBetaBg = global.getByText('beta').style.background
     const globalAlphaBg = global.getByText('alpha').style.background

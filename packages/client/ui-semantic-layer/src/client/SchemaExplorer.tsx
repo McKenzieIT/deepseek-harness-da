@@ -4,6 +4,10 @@ import { useSchemaGateway, type AssetKind, type SchemaGatewayClient } from './ho
 import { AssetDetail } from './AssetDetail.tsx'
 import type { SelectionState, SelectionStoreProps } from './selectionStore.ts'
 import styles from './SchemaExplorer.module.css'
+import type { SemanticLayerTranslate } from './locales.ts'
+
+const DOMAIN_COUNT_MARKERS = { tables: 'T', events: 'E', metrics: 'M' } as const
+const ASSET_KIND_TOKENS = { event: 'event', metric: 'metric' } as const
 
 type ViewState =
   | { mode: 'domains' }
@@ -12,7 +16,7 @@ type ViewState =
 
 export type SchemaExplorerProps = SelectionStoreProps & {
   client: SchemaGatewayClient | null
-  t: (key: string, params?: Record<string, unknown>) => string
+  t: SemanticLayerTranslate
   onNavigateToGraph?: ((assetId: string) => void) | undefined
 }
 
@@ -129,6 +133,7 @@ export const SchemaExplorer: FC<SchemaExplorerProps> = ({ client, t, onNavigateT
           <SearchResults
             results={state.searchResults}
             onSelect={handleAssetClick}
+            t={t}
           />
         )}
       </div>
@@ -155,9 +160,9 @@ const DomainList: FC<{ domains: DomainEntry[]; onSelect: (d: DomainEntry) => voi
         <div key={d.name} className={styles.domainCard} onClick={() =>{  onSelect(d) }}>
           <span className={styles.domainName}>{d.name}</span>
           <span className={styles.domainCounts}>
-            <span>{d.table_count} T</span>
-            <span>{d.event_count} E</span>
-            <span>{d.metric_count} M</span>
+            <span>{d.table_count} {DOMAIN_COUNT_MARKERS.tables}</span>
+            <span>{d.event_count} {DOMAIN_COUNT_MARKERS.events}</span>
+            <span>{d.metric_count} {DOMAIN_COUNT_MARKERS.metrics}</span>
           </span>
         </div>
       ))}
@@ -190,7 +195,7 @@ const EventList: FC<AssetListProps<EventSummary>> = ({ items: events, selected, 
         className={`${styles.assetRow} ${selected === e.name ? styles.assetRowSelected : ''}`}
         onClick={() =>{  onSelect(e.name) }}
       >
-        <span className={`${styles.badge} ${styles.badgeEvent}`}>event</span>
+        <span className={`${styles.badge} ${styles.badgeEvent}`}>{ASSET_KIND_TOKENS.event}</span>
         <span>{e.name}</span>
       </div>
     ))}
@@ -205,15 +210,21 @@ const MetricList: FC<AssetListProps<MetricSummary>> = ({ items: metrics, selecte
         className={`${styles.assetRow} ${selected === m.name ? styles.assetRowSelected : ''}`}
         onClick={() =>{  onSelect(m.name) }}
       >
-        <span className={`${styles.badge} ${styles.badgeMetric}`}>metric</span>
+        <span className={`${styles.badge} ${styles.badgeMetric}`}>{ASSET_KIND_TOKENS.metric}</span>
         <span>{m.name}</span>
       </div>
     ))}
   </div>
 )
 
-const SearchResults: FC<{ results: SchemaSearchHit[]; onSelect: (name: string, kind: AssetKind) => void }> = ({ results, onSelect }) => {
-  if (!results.length) return <div className={styles.empty}>No results</div>
+interface SearchResultsProps {
+  results: SchemaSearchHit[]
+  onSelect: (name: string, kind: AssetKind) => void
+  t: SemanticLayerTranslate
+}
+
+const SearchResults: FC<SearchResultsProps> = ({ results, onSelect, t }) => {
+  if (!results.length) return <div className={styles.empty}>{t('schema.search.noResults')}</div>
   return (
     <div className={styles.assetList}>
       {results.map((hit) => {

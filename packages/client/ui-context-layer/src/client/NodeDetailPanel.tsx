@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import type { GraphNode } from './types.ts'
 import { KIND_COLORS, DOMAIN_PALETTE, DOMAIN_BORDER_PALETTE, evalBorderColor } from './graph-styles.ts'
+import type { ContextLayerTranslate } from './locales.ts'
+
+const CLOSE_GLYPH = '×'
 
 export interface NodeDetailPanelProps {
   /** The currently selected node (null = panel hidden). */
@@ -17,9 +20,11 @@ export interface NodeDetailPanelProps {
    * local index within this node's domains (prior behavior). (ucl-7)
    */
   allDomains?: readonly string[]
+  /** Localized node-detail copy. */
+  t: ContextLayerTranslate
 }
 
-export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onInsertReference, allDomains }) => {
+export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onInsertReference, allDomains, t }) => {
   if (!node) return null
 
   const kindColor = KIND_COLORS[node.kind]
@@ -65,15 +70,15 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
             lineHeight: 1,
             color: '#666',
           }}
-          aria-label="Close panel"
+          aria-label={t('node.close')}
         >
-          &times;
+          {CLOSE_GLYPH}
         </button>
       </div>
 
       {/* Domains */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>Domains</div>
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>{t('node.domains')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {node.domains.map((domain, i) => {
             // ucl-7: key the palette off the GLOBAL sorted domain index (when the
@@ -106,7 +111,7 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
       {/* Eval pass rate */}
       {node.evalPassRate !== undefined && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>Eval Pass Rate</div>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>{t('node.evalPassRate')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span
               style={{
@@ -147,7 +152,7 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
           }}
         >
           <span>💬</span>
-          <span>Insert chat reference</span>
+          <span>{t('node.insertReference')}</span>
         </button>
       )}
     </div>

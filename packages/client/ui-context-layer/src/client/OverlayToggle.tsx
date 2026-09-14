@@ -1,17 +1,20 @@
 import type { OverlayMode } from './graph-animations.ts'
+import type { ContextLayerKey, ContextLayerTranslate } from './locales.ts'
 
 export interface OverlayToggleProps {
   mode: OverlayMode
   onModeChange: (mode: OverlayMode) => void
+  /** Localized labels for each overlay mode. */
+  t: ContextLayerTranslate
 }
 
-const modes: { value: OverlayMode; label: string }[] = [
-  { value: 'off', label: 'Off' },
-  { value: 'coverage', label: 'Coverage' },
-  { value: 'heatmap', label: 'Heatmap' },
+const modes: { value: OverlayMode; labelKey: ContextLayerKey }[] = [
+  { value: 'off', labelKey: 'overlay.off' },
+  { value: 'coverage', labelKey: 'overlay.coverage' },
+  { value: 'heatmap', labelKey: 'overlay.heatmap' },
 ]
 
-export function OverlayToggle({ mode, onModeChange }: OverlayToggleProps) {
+export function OverlayToggle({ mode, onModeChange, t }: OverlayToggleProps) {
   return (
     <div
       style={{
@@ -22,7 +25,7 @@ export function OverlayToggle({ mode, onModeChange }: OverlayToggleProps) {
         border: '1px solid #d1d5db',
       }}
     >
-      {modes.map(({ value, label }, index) => {
+      {modes.map(({ value, labelKey }, index) => {
         const isActive = mode === value
         return (
           <button
@@ -43,7 +46,7 @@ export function OverlayToggle({ mode, onModeChange }: OverlayToggleProps) {
               lineHeight: 1.4,
             }}
           >
-            {label}
+            {t(labelKey)}
           </button>
         )
       })}

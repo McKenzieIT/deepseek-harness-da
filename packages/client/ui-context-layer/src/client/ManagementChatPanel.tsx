@@ -2,6 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { FC } from 'react'
 import { useNarrationGate } from './narration-gate.ts'
 import type { SessionEventSource, GraphUpdate } from './narration-gate.ts'
+import type { ContextLayerTranslate } from './locales.ts'
+
+const PULSE_KEYFRAMES = [
+  '@keyframes pulse {',
+  '0%, 100% { opacity: 1; }',
+  '50% { opacity: 0.3; }',
+  '}',
+].join(' ')
 
 export interface ChatMessage {
   id: string
@@ -27,6 +35,8 @@ export interface ManagementChatPanelProps {
   eventSource?: SessionEventSource | null
   /** Callback with released graph updates from the narration gate. */
   onNarrationRelease?: (released: readonly GraphUpdate[]) => void
+  /** Localized management-chat copy. */
+  t: ContextLayerTranslate
 }
 
 export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
@@ -37,6 +47,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
   isStreaming = false,
   eventSource = null,
   onNarrationRelease,
+  t,
 }) => {
   const [inputValue, setInputValue] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -106,7 +117,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
             letterSpacing: '0.5px',
           }}
         >
-          Chat
+          {t('chat.title')}
         </span>
       </div>
     )
@@ -137,7 +148,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
         }}
       >
         <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>
-          Management Agent
+          {t('chat.agent')}
         </span>
         {isStreaming && (
           <span
@@ -161,7 +172,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
             borderRadius: 4,
             color: '#666',
           }}
-          aria-label="Collapse panel"
+          aria-label={t('chat.collapse')}
         >
           &#9654;
         </button>
@@ -178,7 +189,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
             borderBottom: '1px solid #f0f0f0',
           }}
         >
-          Updating graph...
+          {t('chat.updatingGraph')}
         </div>
       )}
 
@@ -244,7 +255,7 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
           value={inputValue}
           onChange={(e) =>{  setInputValue(e.target.value) }}
           onKeyDown={handleKeyDown}
-          placeholder={onSendMessage ? 'Type a message...' : 'Management session not available'}
+          placeholder={onSendMessage ? t('chat.messagePlaceholder') : t('chat.unavailablePlaceholder')}
           disabled={isStreaming || !onSendMessage}
           style={{
             flex: 1,
@@ -272,17 +283,12 @@ export const ManagementChatPanel: FC<ManagementChatPanelProps> = ({
               !inputValue.trim() || isStreaming ? 'not-allowed' : 'pointer',
           }}
         >
-          Send
+          {t('chat.send')}
         </button>
       </div>
 
       {/* Inline keyframes for the pulsing dot */}
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
+      <style>{PULSE_KEYFRAMES}</style>
     </div>
   )
 }
