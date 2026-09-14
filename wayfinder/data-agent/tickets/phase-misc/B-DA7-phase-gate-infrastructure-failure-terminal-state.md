@@ -1,10 +1,14 @@
-# UM18 — phase-gate has no terminal state for infrastructure failures
+# B-DA7 — phase-gate has no terminal state for infrastructure failures
 
-**Type**: task · **Status**: open · **Phase**: spun out of upstream-merge, **owned by data-agent phase-gate**
+**Type**: bug · **Status**: open · **Phase**: misc
+**Severity**: medium（不影响正确性，但每次基础设施故障白烧 2 轮模型往返；且终止决策在 transcript 里不可见，误导诊断）
 **Blocked by**: nothing
 **Serves**: stop burning model rounds re-generating SQL that a missing binary can never fix, and make the terminal decision observable
+**Related**: [B-DA1](B-DA1-preset-switch-tool-interrupt-race.md)（同为 data-agent 运行时行为缺陷，同样以 JSONL `turn/end` 判据收口）；发现于 [UM17](../phase-upstream-merge/UM17-post-merge-latest-upstream-and-monitor-validation.md) 的恢复循环定性
 
-> **Ownership note**: this ticket is **not** upstream-merge work. It was found while classifying the recovery loop recorded for PR #130's final-head GUI evidence, and the classification proved the behavior predates the merge (see Attribution). It sits in `phase-upstream-merge/` only for traceability from PR #130's body, which names UM18. The destination of the upstream-merge effort does not include it; do not treat it as blocking any UM* ticket.
+> **Provenance and namespace correction (2026-09-15)**: first written as `UM18` under `tickets/phase-upstream-merge/`, which was wrong twice over — the finding is not upstream-merge work (the Attribution section below proves it predates the merge), and keeping it on that phase's frontier meant the merge specialty could never converge. Per the wayfinder rule, work past a phase's boundary comes off that phase's frontier and lives in the owning namespace; `B-DA*` is this repo's existing namespace for data-agent behaviour bugs, so it moved here. This is a **phase-boundary** re-homing, not a map-level out-of-scope ruling: the defect is still inside the data-agent map's destination, so the map records it in the upstream-merge section's 2026-09-15 audit entry (with a pointer here) rather than in `## Out of scope`. PR #130's body, which named UM18, was updated to this id.
+>
+> **Dedupe check before keeping it as a new ticket**: `pendingSwitch`/`honest_decline`/`failureKind`/`max_fallbacks` were grepped across all 200+ data-agent tickets. The only hits were [M3](M3-self-evolution-blockers.md), [P-DA2](P-DA2-relax-generation-gate.md), [M4](M4-update-table-config-persistence.md) and [GA-EVAL-RETRY-FEEDBACK](GA-EVAL-RETRY-FEEDBACK-wiring-gap.md) — all **resolved**, and all about other concerns (self-evolution prerequisites, the GENERATION gate relaxation, `update_table_config` persistence, eval retry feedback). None owns "an infrastructure-class execution failure has no terminal branch", so this genuinely had no existing home.
 
 ## Question
 

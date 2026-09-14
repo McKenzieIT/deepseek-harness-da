@@ -2,7 +2,7 @@
 
 **Type**: refactor
 **Phase**: upstream-merge
-**Status**: open
+**Status**: **closed (2026-09-15) —— 对 upstream-merge 目标域判 out-of-scope**；merge 域内的工作已全部完成，剩余的 observer 竞态残留**交回** [B-DA1](../phase-misc/B-DA1-preset-switch-tool-interrupt-race.md)（见文末「[2026-09-15] 归属订正」）。注意这是 **phase 边界**判定，不是 map 级 out-of-scope——该残留仍在 data-agent map 的 destination 内，只是不属 upstream-merge 这一 phase。**这不是重新论证 2026-09-14 的 DEFER 决定**——DEFER 依然成立，只是它不再挂在 upstream-merge 的前沿上。
 **Assignee**: unclaimed
 **Blocked by**: ~~UM1, UM3~~ → **已解除（2026-09-10 重评）**：UM1/UM3 均 archived（done via re-sync `8112743d69`），R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-1+2 亦已 resolved。**本票现 unblocked。**
 > **重评注（2026-09-10，UM10 线 A）**：UM10 实测发现本票的 results-RPC re-home **留了尾巴**——`packages/bundle/data-agent/cordis.patch.yml` mount 了 `@deepseek-ai/dsh-result-cache/src/remote.ts`（result-cache-gateway，本票从 apiproxy re-home 的产物），但 ① bundle `package.json` 只声明 `dsh-result-cache-memory`、缺 `@deepseek-ai/dsh-result-cache`；② `tsconfig.base.json` 缺 `@deepseek-ai/dsh-result-cache/src/*` 映射。这是 `verify-cordis-config` 红的根因，`git blame` 该 mount 行 → `6b7610d45a`（upstream-merge commit），属本票域而非 Phase-2。**注意包名易混**：`packages/data/result-cache` = `@deepseek-ai/dsh-result-cache`；`packages/client/result-cache` = `@deepseek-ai/dsh-client-result-cache`。
@@ -313,3 +313,15 @@ commit `75da97a139` `[UM4 Scope 3] add pendingSwitch accessor + preset-autojoin 
 ## [2026-09-14] Upstream merge 收口边界
 
 **Status 保持 `open`，但不阻塞 PR #130。** Scope 2 已完成，Scope 3 instrumentation 已落地；两次历史 HITL capture 均以 `completed` 结束，尚未复现竞态。下一次有用户在场的真实 web/model 流程只需读取 `preset-autojoin: pendingSwitch=in-flight|settled` 与 `turn/end` reason。若仍为 `completed` 且 instrumentation 显示 `settled`，继续 defer observer fix；只有捕获到 `disposed`、`error` 或缺失事件时才进入根因修复。
+
+## [2026-09-15] 归属订正 —— 判 out of scope + 残留交回 B-DA1
+
+**做的是 scoping，不是翻案。** 2026-09-14 的「整票 DEFER」维持不变；本节只回答一个记账问题：这张票该不该继续占着 upstream-merge 的前沿。答案是不该。
+
+**merge 目标域内的工作已完成**（本票自己记的）：Scope 2 完成；results-RPC re-home 与 `presetSwitches → data-agent` 落地；Scope 3 instrumentation 已落地并随 PR #130 进 master（`75da97a139` — pendingSwitch accessor + `preset-autojoin` debug log，已核为 `origin/master` 祖先）。本票记的 **Blocks: UM6, UM7, UM8** 现已全部消解（UM6 resolved 2026-09-13；UM7/UM8 archived 2026-09-09），故关票不阻塞任何活票。
+
+**残留是什么、为什么不归本票**：剩下的是 observer-fix 本体（pre-step guard await `pendingSwitch` + scope observer rebind-hardening + 5 fixture），它 ① 是 data-agent 运行时行为缺陷，与 upstream 合并无关；② 门控在一次**真人在场**的 web/model capture 上，不是可 AFK 推进的合并工作。
+
+**承接票 = [B-DA1](../phase-misc/B-DA1-preset-switch-tool-interrupt-race.md)，而且这是「交回」而非新指派。** B-DA1 的 `## Upstream merge 2026-09-07（supersession）` 一节自己写明：它的 partial-fix 原先落在 apiproxy `swapPreset` 序列化上，upstream `4f00a8b` 删掉了整个 apiproxy 包，因此该竞态（若真实）要改到 **data-agent observer rebind-safe** 或 Remote 层重做，**「追踪 → UM4」**。也就是说 UM4 只是在合并期间代持它，因为修复点随合并搬了家。两票的收口判据本来就是同一条：B-DA1 要求「reproduce 后查 JSONL 确认 `turn/end.reason.reason.kind === 'disposed'` 还是 LLM error」，UM4 写的是「只有捕获到 `disposed`、`error` 或缺失事件时才进入根因修复」。B-DA1 状态仍是 `partially-resolved`（未关），修复点也已由它自己指明。
+
+**交接内容**：下一次真人在场的真实 web/model 流程，读 `preset-autojoin: pendingSwitch=in-flight|settled` 与 `turn/end` reason 即可判定；instrumentation 已在 master 上，不需要再改代码就能取证。若判定为 `settled` + `completed`，继续 defer；若捕获 `disposed`/`error`/缺失，则在 B-DA1 下做根因修复。

@@ -184,3 +184,11 @@ Partially resolved: the mechanism is clarified (recompose itself is safe; the ab
 ## Upstream merge 2026-09-07（supersession）
 
 partial-fix 含 apiproxy `swapPreset` 序列化（d5 A6 / `packages/host/apiproxy/src/api-proxy.ts:2397,:3024`）——upstream `4f00a8b` 删了 apiproxy 整包。race（若真实）改在 **data-agent observer rebind-safe** 或 **Remote 层** 重做。追踪 → [UM4](../phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md)。Status 维持 partially-resolved，re-evaluate 后以 UM4 为准。
+
+## [2026-09-15] 交回本票（UM4 判 out of scope）
+
+本票 2026-09-07 把该竞态「追踪 → UM4」，理由是 upstream 删了 apiproxy 包、修复点必须搬到 data-agent observer 或 Remote 层。**upstream 合并已于 2026-09-14 完成**（PR #130，merge `d1ef7dc6d6f0e3b1b7ed27e12abd6658133398ff`），[UM4](../phase-upstream-merge/UM4-apiproxy-rehome-results-rpc-remote.md) 的 merge 目标域工作全部完成并判 out-of-scope 关票，**该竞态残留因此交回本票**，状态维持 `partially-resolved`。
+
+**已经替本票落地的取证设施**（在 `origin/master` 上，commit `75da97a139`，随 PR #130 进入）：`pendingSwitch` accessor + `preset-autojoin` debug instrumentation。因此下一次复现**不需要再改任何代码**：跑一次真人在场的真实 web/model 流程，读 `preset-autojoin: pendingSwitch=in-flight|settled` 与 `turn/end` 的 reason 即可，判据与本票原先写的完全一致（`reason.reason.kind === 'disposed'` vs LLM error vs 事件缺失）。
+
+**为什么至今没收口**：两次历史 HITL capture 均以 `completed` 结束、竞态未复现（详见 UM4 的 `[2026-09-14] Gate ① capture — INCONCLUSIVE`）。修复本体（pre-step guard await `pendingSwitch` + scope observer rebind-hardening + 5 fixture）已设计好但按用户决定 defer，只在捕获到 `disposed`/`error`/缺失事件后才动手。**本票现在是这条线唯一的 owner**，不再需要跨 phase 追踪。
