@@ -12853,6 +12853,9 @@ importers:
       '@deepseek-ai/dsh-scope':
         specifier: workspace:^
         version: link:../../packages/core/scope
+      '@deepseek-ai/dsh-scope-registry':
+        specifier: workspace:^
+        version: link:../../packages/data/scope-registry
       '@deepseek-ai/dsh-sdk-jsonrpc-server':
         specifier: workspace:^
         version: link:../../packages/sdk/server

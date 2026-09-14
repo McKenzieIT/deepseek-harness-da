@@ -234,6 +234,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['when the preset is unknown or its composition is unusable.'],
       },
       {
+        signature: 'pendingSwitch(sessionId: string): Promise<unknown> | undefined',
+        description: 'Read the in-flight switch guard for one session.',
+        parameters: [{ name: 'sessionId', description: 'session whose serialized preset switch is queried.' }],
+        returns: 'the current guard, or undefined when no switch is in flight.',
+      },
+      {
         signature: '@Remote(\'select\') async select(agent: Agent, agentPreset: string): Promise<string>',
         description: 'Compose a blank session\'s agent from a different preset and record it.',
         parameters: [{ name: 'agent', description: 'the session\'s live agent, resolved from the wire identity.' }, { name: 'agentPreset', description: 'the preset to compose the agent from instead.' }],
@@ -4878,10 +4884,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    tools?: ToolSchema[];\n}',
   },
   {
-    name: 'FeedbackCategory',
-    declaration: 'export type FeedbackCategory = \'task-result\' | \'instruction-following\' | \'product-interaction\' | \'service-stability\' | \'resource-cost\' | \'security-privacy-permission\' | \'other\';',
-  },
-  {
     name: 'EvalResultStore',
     declaration: 'export class EvalResultStore {\n    add(record: EvalResultRecord): void;\n    query(filters: EvalResultFilters): EvalResultQueryResult;\n    hasResultsFor(assetId: string, scopeId?: string): boolean;\n    getByRunId(runId: string): EvalResultRecord[];\n    getRunIds(): string[];\n    loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void;\n    clear(): void;\n}',
   },
@@ -4892,6 +4894,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'EventDefinition',
     declaration: 'export type EventDefinition = z.infer<typeof EventDefinitionSchema>;',
+  },
+  {
+    name: 'FeedbackCategory',
+    declaration: 'export type FeedbackCategory = \'task-result\' | \'instruction-following\' | \'product-interaction\' | \'service-stability\' | \'resource-cost\' | \'security-privacy-permission\' | \'other\';',
   },
   {
     name: 'FiberState',
@@ -6643,7 +6649,8 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'TableDefinition',
-    declaration: 'export type TableDefinition = z.infer<typeof TableDefinitionSchema>;'  },
+    declaration: 'export type TableDefinition = z.infer<typeof TableDefinitionSchema>;',
+  },
   {
     name: 'TableKeyOf',
     declaration: 'export type TableKeyOf<S extends DomainSpec, N extends keyof S[\'tables\']> = S[\'tables\'][N] extends DomainTableSpec<infer K> ? K : never;',
