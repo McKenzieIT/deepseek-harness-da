@@ -6638,10 +6638,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export class SystemPrompt extends Service {\n    static Config: z<Config>;\n    constructor(ctx: Context, config: Config);\n    section(section: PromptSection): () => void;\n    getSectionOrder(name: PromptSectionOrderName): number;\n    getContextOrder(name: PromptContextOrderName): number;\n    context(context: PromptContext): () => void;\n    suppressRuntimeContext(): () => void;\n    tools(provider: (context: AssembleContext) => ToolProviderResult): () => void;\n    variable(name: string, provider: (context: AssembleContext) => string | undefined): () => void;\n    async assemble(context: AssembleContext = {}): Promise<PromptAssembly>;\n}',
   },
   {
-    name: 'TableDefinition',
-    declaration: 'export type TableDefinition = z.infer<typeof TableDefinitionSchema>;',
     name: 'SystemPromptUpdate',
-    declaration: 'export type SystemPromptUpdate = \'in-history\';'  },
+    declaration: 'export type SystemPromptUpdate = \'in-history\';',
+  },
+  {
+    name: 'TableDefinition',
+    declaration: 'export type TableDefinition = z.infer<typeof TableDefinitionSchema>;'  },
   {
     name: 'TableKeyOf',
     declaration: 'export type TableKeyOf<S extends DomainSpec, N extends keyof S[\'tables\']> = S[\'tables\'][N] extends DomainTableSpec<infer K> ? K : never;',
