@@ -1,7 +1,7 @@
 # UM15 — durable upstream-sync 工程方法
 
-**Type**: grilling→prototype · **Status**: open · **Phase**: upstream-merge
-**Blocking**: PR #130 final push, CI confirmation, merge, and branch cleanup
+**Type**: grilling→prototype · **Status**: **resolved (2026-09-15)** · **Phase**: upstream-merge
+**Was blocking**: PR #130 final push, CI confirmation, merge, and branch cleanup — all four satisfied, see 收口 (2026-09-15)
 **Serves**: demand ③——后续每次 upstream 更新快速定位"哪里要变"+ 生成新票
 **Flow**: 见 `UM-flow-2026-09-08.md`（Phase C，可与验证/PR 并行）
 
@@ -550,3 +550,18 @@ Client aggregate 随后暴露真实 merge residual：`ui-layout` 丢了 `Session
 ## Post-merge follow-up
 
 After PR #130 merges and this ticket closes, [UM17 — post-merge latest-upstream dependency and scheduled-monitor validation](UM17-post-merge-latest-upstream-and-monitor-validation.md) starts from a clean merged checkout. It re-fetches both remotes, proves ancestry against the then-current upstream head, and validates a real scheduled monitor path. The current `upstream-status` command remains an always-zero report and no scheduled workflow exists as of 2026-09-14, so UM17 must not treat the present script alone as a working alert.
+
+## 收口 (2026-09-15) — 四个关闭条件全部满足，本票 resolved
+
+1. **推送最终 head**：`1c6185d6f462fc59b8983986249428879912334e`（上一 session 完成）。
+2. **CI 确认**：该 head 上 `gh pr checks 130` = **8 pass / 3 skipping / 0 red**（`Dependency layout`、`Matrix`、两个 `Pack npm tarballs`、四个原生平台 job、`weighted approval publisher`）。此前记的两个 release known-red 已在该 head 上消失，无需再带红合并。
+3. **合并 PR #130**：MERGED 2026-09-14T17:16:41Z，merge commit **`d1ef7dc6d6f0e3b1b7ed27e12abd6658133398ff`**，合并前复核 head 仍为 `1c6185d6f4`、`mergeStateStatus=CLEAN`；合并后 `--is-ancestor` 对 `origin/master` exit 0。
+4. **分支清理结果**：
+   - worktree `/Users/mckenzie/workspace/dsh-s3-resync` 已 `git worktree remove`（移除前确认除交接 prompt 外全干净，且 `1c6185d6f4` 已是 `origin/master` 祖先）。移除前先把该 prompt 落库到 `wayfinder/data-agent/prompts/next-session-upstream-merge-finalize-and-monitor.md`，并把 final-head 证据（GIF + 六帧 + 原始 webm + DAU 那次 session 的 `.jsonl.zstd` + 采集脚本）转存到 `/Users/mckenzie/workspace/dsh-pr130-evidence/`；该目录**不含**任何凭据文件（capture 的 `home/.credentials.yaml` 未被复制）。
+   - 远端分支 `upstream/resync-2026-09-18` 已删除（PR #130 已合并、无任务依赖）。
+   - 顺带删除已随 PR #132 合并的 `codex/um17-upstream-monitor`，以及失败路径演练用的 `codex/um17-monitor-failure-drill`（本地 + 远端，绝不可合并）。
+   - **保留**：用户主 worktree（`feat/data-agent-afk-2026-09-14`，未被触碰）、`.worktrees/{g10-evaluation-core-publish,r10-harness-goodhart,t1-exec-grader}`、`dsh-p2-present-table`、`dsh-p2-uism-vitest`，以及**上一轮**的 `dsh-resync`（`upstream/resync-2026-09-08`）——它不属本轮完成的 worktree，是否清理另行判定。
+
+**此前 defer 的「定时运行 `upstream-status` 的通知语义」已由 [UM17](UM17-post-merge-latest-upstream-and-monitor-validation.md) 落地并证伪原方案**：直接给该报告加 `schedule` 不产生有效告警（它按约定固定 exit 0，本 session 用两种模式实测均 exit 0）。落地形态是**另立退出码门禁** `scripts/upstream-monitor.ts` + `.github/workflows/upstream-monitor.yml`（PR #132，merge `a3a305d95cb7d7478cfe210e5b56dc5b5a6b1bb2`），失败的定时运行本身即通知，构件在失败运行上同样留存；真机已验证 fresh 路径（run `34879636874`，success）与失败路径（run `34879958861`，门禁步骤 exit 3、构件仍留存）。UM15 的方法论到此闭环，剩下的唯一外部等待（首次真实 cron 触发）挂在 UM17。
+
+**另修掉 §3 方法论里一处会长期骗人的缺陷**：`upstream-status` 的 `probeRef` 原先在 fetch **之前**读本地 `upstream/master`，再与 fetch **之后**的远端 sha 比较，于是**每次上游已前进的运行都会被判 `stale` 并拒绝给出落后提交数**——恰好在最需要这个数字时压掉它，正是本票 §3 要防的 false-green 反模式。现改为先探远端再读引用；报告语义（永远 exit 0、输出字段）不变，回归测试钉住顺序。
