@@ -26,7 +26,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
-import { homedir } from 'node:os'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
@@ -272,6 +272,7 @@ export class HarnessAgentResponder implements AgentResponder {
     const { default: Group } = await import('@deepseek-ai/cordis-plugin-group')
     // Set baseUrl to repo root so package specifiers resolve correctly
     const repoRoot = this.resolveRepoRoot()
+    const dshHome = resolveDshHome()
     ctx.baseUrl = pathToFileURL(repoRoot).href + '/'
     await ctx.plugin(Loader)
     ctx.loader.builtins.group = Group
@@ -279,11 +280,11 @@ export class HarnessAgentResponder implements AgentResponder {
     // ── 2. LlmRuntime → ctx.llm ────────────────────────────────────────────
     await ctx.plugin(LlmRuntime)
 
-    // ── 2b. Credential seam: LocalCredentialProvider reads ~/.dsh/.credentials.yaml
+    // ── 2b. Credential seam: LocalCredentialProvider reads $DSH_HOME/.credentials.yaml
     // so llm-dashscope resolves DASHSCOPE_API_KEY via ctx.credentials (not process.env).
     await ctx.plugin(LocalCredentialProvider, {
-      path: join(homedir(), '.dsh', '.credentials.yaml'),
-      dshHome: join(homedir(), '.dsh'),
+      path: join(dshHome, '.credentials.yaml'),
+      dshHome,
     })
 
     // ── 3. llm-dashscope → registers 'aga' provider on ctx.llm ─────────────

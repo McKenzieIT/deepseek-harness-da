@@ -14,6 +14,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs, type EventDefinitionLite } from '@deepseek-ai/dsh-nl2sql-engine'
 import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition/src/index.ts'
@@ -728,15 +729,16 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     throw new Error('eval-cli boot: explicit scopeId required (D3ii: no default pointer)')
   }
   const ctx = new Context()
+  const dshHome = resolveDshHome()
 
   // 1. Mount LlmRuntime → provides ctx.llm
   await ctx.plugin(LlmRuntime)
 
-  // 1b. Credential seam: LocalCredentialProvider reads ~/.dsh/.credentials.yaml so
+  // 1b. Credential seam: LocalCredentialProvider reads $DSH_HOME/.credentials.yaml so
   // llm-dashscope resolves DASHSCOPE_API_KEY via ctx.credentials (not process.env).
   await ctx.plugin(LocalCredentialProvider, {
-    path: join(homedir(), '.dsh', '.credentials.yaml'),
-    dshHome: join(homedir(), '.dsh'),
+    path: join(dshHome, '.credentials.yaml'),
+    dshHome,
   })
 
   // 2. Mount llm-dashscope → registers the 'aga' provider route on ctx.llm

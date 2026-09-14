@@ -15,6 +15,7 @@
     { "path": "../../data/nl2sql-engine" },
     { "path": "../../data/semantic-layer" },
     { "path": "../../data/result-cache-memory" },
+    { "path": "../../util/home-paths" },
     { "path": "../../credentials/credentials" },
     { "path": "../../credentials/credentials-local" },
     { "path": "../../query/query-maxcompute" },
