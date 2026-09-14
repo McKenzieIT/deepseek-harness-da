@@ -1,7 +1,7 @@
 # UM15 — durable upstream-sync 工程方法
 
 **Type**: grilling→prototype · **Status**: open · **Phase**: upstream-merge
-**Blocking**: UM-ARCH（impact analyzer 在图上推理）+ UM-ADAPT（自动化它的 process）
+**Blocking**: PR #130 final push, CI confirmation, merge, and branch cleanup
 **Serves**: demand ③——后续每次 upstream 更新快速定位"哪里要变"+ 生成新票
 **Flow**: 见 `UM-flow-2026-09-08.md`（Phase C，可与验证/PR 并行）
 
@@ -380,7 +380,7 @@ upstream 新增了一个**全新的包** `packages/util/chunked-list`，它依�
 
 ---
 
-## [2026-09-20] human-gates session：发现 3 个 gate coverage gap + §2/§4 校准待答
+## [2026-09-14] human-gates session：发现 3 个 gate coverage gap + §2/§4 校准待答
 
 **Status 保持 `open`。§2/§4 校准值仍未收口。**
 
@@ -433,9 +433,9 @@ upstream 新增了一个**全新的包** `packages/util/chunked-list`，它依�
 
 ---
 
-## [2026-09-20] §4 calibration Q1-Q4 收口（Q5 待答）
+## [2026-09-14] §4 calibration Q1-Q4 收口（Q5 待答）
 
-**用户 2026-09-20 定死 4 项校准值**：
+**用户 2026-09-14 定死 4 项校准值**：
 
 | Q | 决策 | 值 | 实现 |
 |---|---|---|---|
@@ -486,13 +486,13 @@ Q3 选了 (a)：`drop` 不加硬 expiry，改为门每次把 7 条 `drop` 连同
 |---|---|---|
 | Q1 | zero-hit `keep` → failure | ✅ 已落地 `21a5f496c7` |
 | Q2 | (a) all-history + 日历 expiry | ✅ 不改 schema |
-| Q3 | (a) `drop` 无硬 expiry，只加 report 可见性 | ⏳ 未实现，留给 AFK |
+| Q3 | (a) `drop` 无硬 expiry，只加 report 可见性 | ✅ 已落地 `746c4d1fd1` |
 | Q4 | `pending` 1 轮直接 failure | ✅ 已落地 `10c5167779` |
-| Q5 | (b) `reopenTrigger` + 可选 `reviewBy` | ⏳ 设计锁定，§2 实现时用 |
+| Q5 | (b) `reopenTrigger` + 可选 `reviewBy` | ✅ 已随 §2 schema 落地 `c85f496027` |
 
-**§4 代码实现完成度**：核心行为变更（Q1 + Q4）已落地。Q3 report 可见性改进 + Q2 日历 expiry 字段 + §2 schema 扩展留给 AFK session。
+**§4 代码实现完成度**：Q1、Q3、Q4 已落地；Q2 明确不新增 schema；Q5 已随 §2 的 `knownRed[]` schema 与 enrolled-gate 校验落地。
 
-## [2026-09-21] AFK execution session: §3 第三轮 re-sync merge 落定 + push blocked by pre-existing dsh-root
+## [2026-09-14] AFK execution session: §3 第三轮 re-sync merge 落定 + push blocked by pre-existing dsh-root
 
 **Status 保持 `open`。** 本节记 §3 merge 的最终落定 + build 验证 + push 阻塞。
 
@@ -538,3 +538,11 @@ Client aggregate 随后暴露真实 merge residual：`ui-layout` 丢了 `Session
 所谓 client seam-6 signature residual 不成立：generated Remote client 的 lookup parameter wire type 是 `SessionId`，Host gateway 再通过 `workspaceFileScope` lookup 解析 `WorkspaceFileScope`。`ui-sidebar-files` 与 document-preview 继续传 `sessionId` 正是生成 API。`build:lib:client`、workspace-files/read-all/scope/provider、sidebar-files、document-preview、layout 和 catalog focused tests 全绿。
 
 `upstream/resync-2026-09-18` 已推并开 PR #130；因其 merge base 是 `6695ed150e`，而 origin/master 已前进，PR 初始为 conflicting。16 个 master-side commits 已按 production-source policy 发布到 feature branch PR #131；先 landing #131，再把新 origin/master merge-forward 到 resync branch 后更新 #130。
+
+## [2026-09-14] 最终 PR 前收口状态
+
+**Status 保持 `open`，直到 PR #130 合并并完成分支清理。** `upstream-sync.json.current` 已记录 upstream `c291e7961a515f6d7af9304e7fd1d257929aef26` 与 merge `1f731901a76109fefa168fc9bbd785dbfdefc889`；`verify-upstream-sync-record`、`verify-runtime-closure`、`verify-package-dependencies` 与 `verify-cordis-config` 均通过。
+
+先前的 `dsh-root` 诊断已更正：失败来自已删除 `packages/client/runtime/` 下的 ignored `node_modules` residue，`pnpm run clean` 后 typecheck 恢复，无需修改 Typert bootstrap。§2 的 `knownRed[]` 与 enrolled-gate 校验、§3 的 re-sync merge、§4 Q3 的 drop-waiver 可见性均已落地。当前静态检查只剩既有 `constraints`、Client UI i18n 与 translation-pairing 红项；本分支引入的 architecture/catalog/pairing drift 已修复。
+
+本票剩余关闭条件只有：推送最终 head、确认 CI 只保留已授权的两个 release known-red、合并 PR #130，并记录分支清理结果。定时运行 `upstream-status` 的通知语义另行决策；该命令当前固定 exit 0，直接添加 schedule 不会产生有效失败告警。

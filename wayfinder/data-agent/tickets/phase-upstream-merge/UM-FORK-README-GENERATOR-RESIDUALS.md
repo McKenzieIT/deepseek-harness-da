@@ -112,7 +112,7 @@ mv /tmp/0002-ui-presenter-composition-plan-b.i18n.yaml docs/adr/ && pnpm run ver
 
 ~0.5 session（项 1 ~15 min 手改一对 README + re-record；项 2 ~2-3h 含 fence-aware 扫描器 + fixture 回归测试）。两项可同 session 落，但**项 2 先落**——否则为项 1 全量 regen 会把项 2 的 bug 写进盘。
 
-## [2026-09-21] Item 1 落地（master）
+## [2026-09-14] Item 1 落地（master）
 
 **Item 1 — `verify-package-readme-model-experience` gate GREEN。** commit `aebc1f9126` `[UM-FORK-README-GENERATOR-RESIDUALS] fix data-agent README model-experience gate (item 1)`。两处问题：
 

@@ -201,7 +201,7 @@ Not single-session feasible (the stub prompt itself scopes UM4 at ~2-3 sessions 
 
 ---
 
-## [2026-09-20] Gate ① capture — INCONCLUSIVE（race 未复现，turn completed 正常）
+## [2026-09-14] Gate ① capture — INCONCLUSIVE（race 未复现，turn completed 正常）
 
 **Status 保持 `open`。Scope 3 仍未启动。**
 
@@ -295,9 +295,9 @@ B-DA1 race 是概率性的 —— 在给定 session 里 race window 可能被错
 
 本 session 未实现 observer-fix、未加 5 个 fixture、未加 `pendingSwitch` accessor。Scope 3 完整 defer。
 
-## [2026-09-21] Scope 3 instrumentation 落地（accessor + debug log），capture 仍 defer
+## [2026-09-14] Scope 3 instrumentation 落地（accessor + debug log），capture 仍 defer
 
-**Status 保持 `open`。** AFK session 按 [2026-09-20] 节推荐的 ① 加 instrumentation。
+**Status 保持 `open`。** AFK session 按 [2026-09-14] 节推荐的 ① 加 instrumentation。
 
 commit `75da97a139` `[UM4 Scope 3] add pendingSwitch accessor + preset-autojoin debug instrumentation`（master，additive，2 files +22/-2）：
 
@@ -309,3 +309,7 @@ commit `75da97a139` `[UM4 Scope 3] add pendingSwitch accessor + preset-autojoin 
 **capture 仍 defer**：本 session 是 AFK，无人驱动交互式 DSH 会话。accessor + log 已就位，下个 HITL session 跑 web UI repro 时 session log 能看到 switch 有没有尝试过——即使 race 不复现（前两次 capture 都 `completed`），instrumentation 也能区分"race 没发生"vs"switch 没被触发"。
 
 **未做**：observer-fix 本体（pre-step guard await pendingSwitch + scope observer rebind-hardening + 5 fixture）仍 defer，等 capture 出 `disposed` / `error` / 缺失三种结果之一再定（见 [2026-09-13] decision-doc §Implementation sketch 第 4 步 PREREQUISITE）。
+
+## [2026-09-14] Upstream merge 收口边界
+
+**Status 保持 `open`，但不阻塞 PR #130。** Scope 2 已完成，Scope 3 instrumentation 已落地；两次历史 HITL capture 均以 `completed` 结束，尚未复现竞态。下一次有用户在场的真实 web/model 流程只需读取 `preset-autojoin: pendingSwitch=in-flight|settled` 与 `turn/end` reason。若仍为 `completed` 且 instrumentation 显示 `settled`，继续 defer observer fix；只有捕获到 `disposed`、`error` 或缺失事件时才进入根因修复。

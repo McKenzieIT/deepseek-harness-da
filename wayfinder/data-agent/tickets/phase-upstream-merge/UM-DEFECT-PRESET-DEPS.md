@@ -1,7 +1,7 @@
 # UM-DEFECT-PRESET-DEPS — bundle/data-agent 漏声明 11 个 tool-* 依赖，preset mount 失败
 
-**Type**: defect · **Status**: open · **Phase**: upstream-merge
-**Discovered**: 2026-09-20 human-gates session (web UI repro for UM4 gate ①)
+**Type**: defect · **Status**: resolved（2026-09-14） · **Phase**: upstream-merge
+**Discovered**: 2026-09-14 human-gates session (web UI repro for UM4 gate ①)
 **Blocks**: any session that creates a data-agent preset through the profile's preset-mount path (web UI session create, and any other code that `await`s `presets.mount`)
 
 ## Question / Symptom
@@ -27,7 +27,7 @@ SessionCreateError: session create failed: agent-preset/invalid:
 
 **Total: 11 undeclared packages across 2 da presets.**
 
-## Session workaround (2026-09-20, NOT a repo change)
+## Session workaround (2026-09-14, NOT a repo change)
 
 One symlink created in user config:
 ```
@@ -58,10 +58,8 @@ Existing `verify-cordis-config` checks bundle `cordis.patch.yml` mount rows. It 
 - **Affected profiles**: `web` (hard block), `headless` (silent bare-agent fallback).
 - **Related**: UM4 Scope 2 (`025db697ab`) fixed the same class of bug (`bundlePluginDependencyErrors` reads only `manifest.dependencies`) but for bundle **mount** rows in `cordis.patch.yml`, not preset rows in `agent.cordis.yml`. This ticket extends that finding to the preset path.
 
-## [2026-09-21] Repo fix 落地（master）
+## [2026-09-14] RESOLVED — bundle 声明 preset 的完整运行时依赖
 
-commit `36e0a0136e` `[UM-DEFECT-PRESET-DEPS] add 11 missing tool-* workspace deps to bundle/data-agent`。`packages/bundle/data-agent/package.json` dependencies 加 11 个 `@deepseek-ai/dsh-tool-*` 全 `workspace:^`（tool-resolve-term + 10 个 semantic-layer-management preset 的：search-schema/get-definition/list-domains/get-coverage/discover-relations/discover-alt-labels/trigger-eval/reachability-delta/edit-definition/revert-edit），全 23 个 tool-* deps 按字母序排。pre-commit hooks 绿。
+commit `36e0a0136e` 为 `packages/bundle/data-agent/package.json` 补齐所有 live preset row 使用的 11 个 `tool-*` workspace package；合并后的依赖清单包含全部 23 个工具包并保持字母序。
 
-**未验证**：未 `pnpm install` 后核 `healProfilesModuleFallback` BFS reach 全 11 → symlinks 出现在 `~/.dsh/profiles/node_modules/@deepseek-ai/`（需在 profile 目录跑 install）。下 session 核。临时 workaround（`~/.dsh/profiles/node_modules/` symlink）可删。
-
-**Status: repo fix 落地，verified-symlinks deferred。** Push blocked by pre-existing dsh-root。**另开 follow-up 票** `verify-preset-rows-resolvable` gate（§2 meta-gate 扩展方向，见 UM15 [2026-09-20] 节第 3 条）。
+`verify-cordis-config`（149 个配置文件）、`verify-package-dependencies`（66 个 package）与 `verify-runtime-closure`（4 个 preset、172 个 workspace package）均通过，证明安装闭包和 bundle 解析闭合；临时 profile symlink workaround 不再需要。`verify-preset-rows-resolvable` 仍作为 UM15 meta-gate 的独立增强方向，不阻塞本缺陷关闭。

@@ -1,7 +1,7 @@
 # UM-DEFECT-PRESET-ROOTS — 无任何 bundle/profile 配置 agent-presets.roots，da preset 无根可扫
 
-**Type**: defect · **Status**: open · **Phase**: upstream-merge
-**Discovered**: 2026-09-20 human-gates session
+**Type**: defect · **Status**: resolved（2026-09-14） · **Phase**: upstream-merge
+**Discovered**: 2026-09-14 human-gates session
 **Blocks**: same as [UM-DEFECT-PRESET-DEPS](UM-DEFECT-PRESET-DEPS.md) — session creation via the profile mount path
 
 ## Question / Symptom
@@ -30,7 +30,7 @@ The da presets live at `apps/cli/config/agent-presets/`. This directory is **not
 
 **Confirmed no programmatic injection**: `grep -rn 'agent-presets\|agentPresets\|config/agent-presets' apps/cli/src/*.ts` → zero hits. The CLI does not inject this dir as a root at runtime.
 
-## Session workaround (2026-09-20, NOT a repo change)
+## Session workaround (2026-09-14, NOT a repo change)
 
 Overlay at `/tmp/dsh-disable-present-table.patch.yml` now sets roots on the `agent-presets` row:
 
@@ -69,10 +69,8 @@ Alternatively, fix it at the profile level: add a `roots` entry in `~/.dsh/profi
 - **Severity**: HIGH. Same as UM-DEFECT-PRESET-DEPS: web UI blocks, headless silently runs bare.
 - **Affected profiles**: `web` (picker shows only 4 built-in; `data-agent` invisible), `headless` (same, but silently bare — see UM-DEFECT-PRESET-DEPS for the silent-failure mode).
 
-## [2026-09-21] Repo fix 落地（master）
+## [2026-09-14] RESOLVED — data-agent preset root 进入最终配置
 
-commit `dd6dd43df7` `[UM-DEFECT-PRESET-ROOTS] add roots config to data-agent bundle agent-presets override`。`packages/bundle/data-agent/cordis.patch.yml` 的 `agent-presets` override 加 `roots: [{ path: config/agent-presets, trust: system }]`（与既有 `default: data-agent` 并列）。pre-commit hooks 绿。
+commit `dd6dd43df7` 在 `packages/bundle/data-agent/cordis.patch.yml` 的 `agent-presets` override 中保留 `default: data-agent`，并加入 `roots: [{ path: config/agent-presets, trust: system }]`。
 
-**未验证**：未跑 `--dump-config` 看输出带 roots（需 dsh-resync + build）。下 session 核。临时 workaround（overlay 加 roots）可删。
-
-**Status: repo fix 落地，verified-dump-config deferred。** Push blocked by pre-existing dsh-root。
+2026-09-14 在临时 `DSH_HOME` 下展开 web profile，最终配置明确包含该 default 与 root；命令只报告 patch 中两个与本缺陷无关的缺失基础行告警。`verify-cordis-config` 同时通过，临时 roots overlay 不再需要。
