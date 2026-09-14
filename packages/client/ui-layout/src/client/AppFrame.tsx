@@ -124,6 +124,7 @@ export function AppFrame({
   usePanelInfo,
   actions,
   renderSlot,
+  SessionProvider,
   t,
 }: AppFrameProps) {
   const layoutInfo = useStore(state => state.layoutInfo)
@@ -227,8 +228,8 @@ export function AppFrame({
           {/* Strict session entry: with no session there is no surface, and the
               column is an empty zero-width track. The occupant receives the
               panel width it should draw at; the track is the frame's business. */}
+          {renderSlot('rightbar', { width: normal.rightbar, viewportWidth: viewport, canShow: normal.rightbar > 0 })}
           <SessionProvider>
-            {renderSlot('rightbar', { width: normal.rightbar, viewportWidth: viewport, canShow: normal.rightbar > 0 })}
             {renderSlot('details.aux', {})}
           </SessionProvider>
         </RightbarColumn>

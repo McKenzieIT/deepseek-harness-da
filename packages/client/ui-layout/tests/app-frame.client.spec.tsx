@@ -96,6 +96,7 @@ function mountFrame(windowWidth = frameWidth) {
       useStore={useStore}
       actions={instance.actions}
       renderSlot={renderSlot}
+      SessionProvider={({ children }) => selectedSession === undefined ? null : children}
       useSessions={useSessions}
       usePanelInfo={usePanelInfo}
       useSessionPendingInteraction={useSessionPendingInteraction}
@@ -207,10 +208,11 @@ describe('AppFrame', () => {
 
   it('renders the main, sidebar, and root-scoped rightbar outlets without a current Session', () => {
     selectedSession = undefined
-    const { frame, getByTestId } = mountFrame()
+    const { frame, getByTestId, queryByTestId } = mountFrame()
     expect(getByTestId('main-content').getAttribute('data-entry-key')).toBe('conversation')
     expect(getByTestId('sidebar-content')).toBeTruthy()
     expect(getByTestId('rightbar-content')).toBeTruthy()
+    expect(queryByTestId('details.aux-content')).toBeNull()
     expect(tracks(frame)).toEqual([280, 0])
   })
 
