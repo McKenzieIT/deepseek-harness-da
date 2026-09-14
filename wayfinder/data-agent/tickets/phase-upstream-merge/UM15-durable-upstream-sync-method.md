@@ -377,3 +377,56 @@ upstream 新增了一个**全新的包** `packages/util/chunked-list`，它依�
 
 - **cadence + staleness 半边有效**：阈值判定（852 commits / 6 seam 全触）正确触发了这一轮；`verify-upstream-sync-record` 的 stale-ref note 是最初的告警源。
 - **impact 预测半边有系统性盲区**：RISK-MAP 只看 seam，于是**漏掉了 37 个 out-of-seam 冲突（占总数 95%）**，还错判了 seam-4 的导出面（发现③）与 seam-6 的难度（发现④）。dry-run 补上了 37 这个数字并被本轮**精确验证**，但连 dry-run 也漏了 `tsconfig.base.json` 的门效应（①）和强制 `pnpm install`（②）。**这两条应当喂回 §2 change-impact analyzer 的设计**：analyzer 不能只沿 seam 推理，必须 ① 把"解析器/配置类文件（`tsconfig.base.json`、`pnpm-lock.yaml`）冲突"标记为 blocking-all-verification 级别，② 检测 upstream 新增包并强制 install 步骤。
+
+---
+
+## [2026-09-20] human-gates session：发现 3 个 gate coverage gap + §2/§4 校准待答
+
+**Status 保持 `open`。§2/§4 校准值仍未收口。**
+
+### 发现的 3 个缺陷（gate coverage gap）
+
+本 session 在启动 web UI 做 UM4 gate ① capture 时遇到 3 个 blocker，都是现有 gate 的盲区：
+
+| # | 缺陷 | 票 | 现有 gate 为什么漏 |
+|---|---|---|---|
+| 1 | `ui-present-table` client bundle code-split，module table 不兼容（52 包里唯一）| [UM-DEFECT-PRESENT-TABLE-SPLIT](UM-DEFECT-PRESENT-TABLE-SPLIT.md) | 无 gate 验证 client bundle 是单文件 |
+| 2 | 无任何 bundle/profile 配 `agent-presets.roots`，da 两个 preset 无根可扫 | [UM-DEFECT-PRESET-ROOTS](UM-DEFECT-PRESET-ROOTS.md) | 无 gate 验证 default preset 在 roster 中 |
+| 3 | bundle/data-agent/package.json 漏声明 11 个 tool-* 依赖 | [UM-DEFECT-PRESET-DEPS](UM-DEFECT-PRESET-DEPS.md) | `verify-cordis-config` 只查 `cordis.patch.yml` mount，不查 preset `agent.cordis.yml` 行 |
+
+**第 3 条尤其重要**：`verify-cordis-config` 验证 bundle mount 的 `name:` 能否从 bundle 解析。但 preset 的 `agent.cordis.yml` 里每行也是 `name:` + 包名，用的是不同的解析路径（profile baseUrl walk，不是 bundle baseUrl）。**现有 gate 不覆盖后者**。这正是 §2 meta-gate 那条线该扩展的方向：需要一个 `verify-preset-rows-resolvable` 门，断言每个 preset 的每个 live 行的包名可从 profile 的安装闭包中解析。
+
+### §2 knownRed[] schema 扩展（已设计未实现）
+
+2026-09-13 decision-doc 已设计好 schema 和 Check 4，本 session 确认 manifest 现状：
+
+- `scripts/gate-coverage.manifest.json`：109 行，**只有** `exemptions` 一个 top-level key（21 条，**不是**之前票记的 20）
+- `scripts/verify-gate-coverage.ts`：129 行，Check 1/2/3 已实现
+- **`knownRed` 不存在**于 `scripts/` 任何文件（`grep -rn 'knownRed' scripts/` 零命中）
+- 扩展需要：manifest 加 `knownRed: [{script, rationale, ticket, expiry?, reopenTrigger}]` 数组 + `verify-gate-coverage.ts` 加 Check 4 断言每条 known-red 指向一个已 enrolled 的门
+- Draft entry（已在本票 [2026-09-13] decision-doc §2 节）：
+  ```json
+  {"script":"verify-client-ui-i18n","state":"known-red","rationale":"data-agent client UI targets enterprise intranet Chinese users; i18n extraction is future product-internationalization debt, zero current user value","ticket":"UM-C-GATES-UPSTREAM-NEW","reopenTrigger":"product internationalization"}
+  ```
+
+### §4 calibration（用户仍未答 Q1-Q6）
+
+本 session grilling 已提出 6 问（Q1 note→failure 语义变更 / Q2 all-history vs per-sync 持久化 / Q3 drop expiry 窗口 / Q4 pending fuse / Q5 known-red 过期模型 / Q6 capture 若返回 interrupted）。用户未答，留待下一 HITL session。
+
+**3 条实测背景改变题目形状**（grilling 时已陈述）：
+
+1. `upstream-sync.json` 现有 **10 条 waiver**：`pending` **0** / `drop` **7** / `keep` **3**
+2. `history.length = 1`（历史上只有 2 次 recorded sync）
+3. 现行 zero-hit note 语义是 **"matched no finding in *any recorded window*"**（`:212-215`，跨全历史聚合），**不是**"连续 N 轮"——per-sync 命中数只活在函数局部 `hits` Map，**从不落盘**
+
+第 3 条意味着票里说的"连续 N 轮 zero-hit"**不是调阈值，而是换计数模型**——选 (b) 方案需新增持久化字段。
+
+**建议（待用户定）**：做 note→failure，但只对 `decision:'keep'` 生效；计数选 (a) all-history + 日历 expiry，不要 (b) per-sync 持久化（2 次 sync 攒不满有意义的 N）。
+
+### 给 AFK session 的 gotcha 清单
+
+- `pnpm dsh web` 必须在 `dsh-resync` 跑（主树 0/58 client 包有 `lib/client.js`）
+- 需要 `--patch /tmp/dsh-disable-present-table.patch.yml` 修 3 个启动 blocker
+- `pnpm dsh` = `node --import tsx/esm apps/cli/src/bin.ts`（tsx 才能解 `/src/*.ts` mount）
+- `~/.dsh/profiles/node_modules/@deepseek-ai/dsh-tool-resolve-term` 需 symlink（或加依赖声明后 `pnpm install`）
+- capture 读回命令用 `zstd -dc` + `data.reason.reason.kind`（票里那条跑不通）

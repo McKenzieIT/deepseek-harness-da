@@ -198,3 +198,99 @@ Not single-session feasible (the stub prompt itself scopes UM4 at ~2-3 sessions 
 ### 下 session 的形态
 
 一个**专项 session，且必须有用户在场**做第 3 步的交互。开场第一件事就是 capture；capture 不出结果就**停下问用户**，不要转而去写实现。
+
+---
+
+## [2026-09-20] Gate ① capture — INCONCLUSIVE（race 未复现，turn completed 正常）
+
+**Status 保持 `open`。Scope 3 仍未启动。**
+
+### Capture 结果
+
+用户在 web UI 新建会话 → 选取数模式 → 发"查询DAU"。结果：
+
+```
+session: ~/.dsh/sessions/--Users-mckenzie-avatar-X63--/session-9c886b6a-c7d3-4245-a87e-744438e862de/
+turn 1 | outer: completed | nested: (none)
+```
+
+**Race 未复现**：turn 正常完成，UI 未显示 `Interrupted: interrupted`，无 `disposed` abort，无 `error`。
+
+### 含义
+
+B-DA1 race 是概率性的 —— 在给定 session 里 race window 可能被错过。本次 capture **既不能确认也不能证伪** observer-fix 根因。对照历史基线（272 个 turn/end）：`completed` 205 / `error` 38 / `aborted` 14（全 nested `user`）/ `interrupted` 9 / `blocked` 5 / `max-tokens` 1 —— `completed` 是**最常见**的结果，不代表 race 不存在。
+
+### 按票内纪律
+
+票明写「capture 出不来结果就停下问用户，不要转而去写实现」。本 session 选择：**defer Scope 3**，把"race 未复现"这个事实记进票，不实现 observer-fix。
+
+### 启动环境的 3 个真实缺陷（本 session 修好，但都不是 repo fix）
+
+启动 web UI 遇到 3 个 blocker，逐个解决后 capture 才能跑：
+
+| # | 缺陷 | 票 | 临时修法 |
+|---|---|---|---|
+| 1 | `ui-present-table` client bundle code-split，module table 不兼容（52 包里唯一）| [UM-DEFECT-PRESENT-TABLE-SPLIT](UM-DEFECT-PRESENT-TABLE-SPLIT.md) | `--patch` overlay disable 该行 |
+| 2 | 无任何 bundle/profile 配 `agent-presets.roots`，da 两个 preset 无根可扫 | [UM-DEFECT-PRESET-ROOTS](UM-DEFECT-PRESET-ROOTS.md) | overlay 加 roots 配置 |
+| 3 | bundle/data-agent/package.json 漏声明 `dsh-tool-resolve-term`（共 11 个 undeclared）| [UM-DEFECT-PRESET-DEPS](UM-DEFECT-PRESET-DEPS.md) | `~/.dsh/profiles/node_modules/` 建 symlink |
+
+三处都是用户配置 / node_modules symlink，**仓库零改动**。
+
+### 一个需要更正的判断
+
+本 session 早期跑了 `pnpm dsh --profile headless "Reply with exactly: OK"` 并宣称「definitive validation」。这是**错的**。`packages/data/preset-autojoin` 对 `agent/created` 用 `void listener(event).catch(...)` fire-and-forget 派发，mount 失败被默默吞掉，agent **不带 persona** 也能跑完。headless exit 0 是假阴性。子 agent 实测：摘掉 symlink 后 headless 仍然 exit 0 无任何错误。
+
+### 给下一个 session 的指引
+
+- 本 capture 结果不足以决定 Scope 3 走向。下一个 HITL session 应**多试几次**（B-DA1 race 是非确定性的）或加 instrumentation。
+- 启动 web UI 必须跑 `pnpm dsh --profile web --patch /tmp/dsh-disable-present-table.patch.yml`（overlay 修了 3 个 blocker）。`pnpm dsh` = `node --import tsx/esm apps/cli/src/bin.ts`（tsx 才能解 bundle 里 `/src/*.ts` mount）。
+- 跑在 `dsh-resync`（`upstream/resync-2026-09-08`, `83be9786e1`），不是主树。主树 0/58 client 包有 `lib/client.js`，`pnpm dsh web` 直接 `MissingClientBundleError`。Race 相关代码两树逐字节相同。
+- capture 读回命令（票里那条路径/格式/字段三处都错，跑不通）：
+  ```sh
+  export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+  D=$(ls -td ~/.dsh/sessions/*/*/ | head -1); echo "session: $D"
+  zstd -dc "$D/session.jsonl.zstd" | node -e '
+  let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+  for(const l of s.split("\n")){if(!l.trim())continue;let o;try{o=JSON.parse(l)}catch{continue}
+  if(o.type!=="turn/end")continue
+  console.log("turn",o.data?.turn,"| outer:",o.data?.reason?.kind,"| nested:",o.data?.reason?.reason?.kind??"(none)")}})'
+  ```
+- 历史基线：272 个 turn/end，`disposed` **从未出现过**。若 capture 出现 `disposed`，那是第一次，强信号。
+- `zstd` 在 `/opt/homebrew/bin`（不在 `/usr/local/bin`），PATH 要加。
+- `turn/end` 字段路径是 `data.reason.reason.kind`（不是 `reason.reason.kind`，`data.` 是事件 envelope）。
+
+### 本 session 未做的事
+
+- ❌ 未加 `pendingSwitch` accessor
+- ❌ 未加 `preset-autojoin` pre-step guard
+- ❌ 未做 scope observer rebind-hardening
+- ❌ 未加 5 个 fixture 中的任何一个
+- ✔ Scope 2（results-RPC 重落户）仍 resolved（`025db697ab`），本次未触
+
+### 第二次 capture（更激烈触发）— 仍未复现
+
+用户试了更激烈的触发方式：**先切到创造模式，立刻切回取数模式，然后发消息"查询DAU"**。目的是制造两次 switch 扩大 race window。
+
+结果：turn 仍然 `completed`。agent 正常工作 —— 定位到数据源（DAU = game.role.online 事件，hdyl_data_sg.ods_10000334_all_view 表），返回 `route:proceed` 并正常停止。
+
+**两次 capture 总结**：
+
+| # | 触发方式 | 结果 |
+|---|---|---|
+| 1 | 新建会话 → 选取数模式 → 发消息 | `completed`，race 未复现 |
+| 2 | 切到创造模式 → 立刻切回取数模式 → 发消息 | `completed`，agent 正常工作 |
+
+### 决定：defer 到 AFK session
+
+两次不复现 ≠ race 不存在，但**不值得为了复现再花一个 session**。当前取数模式能用（第二次 capture 证明 agent 能正常定位数据源）。
+
+**AFK session 的 UM4 Scope 3 指引**：
+
+> 两次 HITL capture 都未复现（`completed`）。架构 trace 仍指向 `commands.ts:294` 不等 `pendingSwitch`，但上游可能已在后续 commit 补了。AFK session 选择：
+> ① 先加 instrumentation（在 `preset-autojoin` 的 `agent/pre-step` 打印 `pendingSwitch` 状态到 session log）再让下一个 HITL session 试；
+> ② 按现有 trace 直接实现 observer-fix（承担"给未确认根因造测试"的风险）；
+> ③ defer 到下次 upstream sync 再看。
+>
+> **推荐 ①**。
+
+本 session 未实现 observer-fix、未加 5 个 fixture、未加 `pendingSwitch` accessor。Scope 3 完整 defer。
