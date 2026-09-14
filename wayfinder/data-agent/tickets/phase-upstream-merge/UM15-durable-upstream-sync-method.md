@@ -491,3 +491,39 @@ Q3 选了 (a)：`drop` 不加硬 expiry，改为门每次把 7 条 `drop` 连同
 | Q5 | (b) `reopenTrigger` + 可选 `reviewBy` | ⏳ 设计锁定，§2 实现时用 |
 
 **§4 代码实现完成度**：核心行为变更（Q1 + Q4）已落地。Q3 report 可见性改进 + Q2 日历 expiry 字段 + §2 schema 扩展留给 AFK session。
+
+## [2026-09-21] AFK execution session: §3 第三轮 re-sync merge 落定 + push blocked by pre-existing dsh-root
+
+**Status 保持 `open`。** 本节记 §3 merge 的最终落定 + build 验证 + push 阻塞。
+
+### §3 merge — 36 out-of-seam 冲突全解，3 commit on `upstream/resync-2026-09-18`
+
+承接 [2026-09-14] §3 第三轮开工节（mid-merge，36 unmerged，0 commit）。本 session 把 36 冲突全解 + 落定 merge commit：
+
+- `1f731901a7` — merge commit。4 通道逐个解：tsconfig.base.json（前 session 已解）/ pnpm-lock.yaml（accept upstream + pnpm install regen）/ 13 docs translation-pairing（take upstream wholesale；3 generated EN docs capability-seams/subsystems-README/tool-catalog 跟 ZH 对齐再 re-record sidecar）/ 4 manifest/misc（union：.gitignore + ci-master.yml + apps-cli + python package.json）/ 7 regenerated-artifact（analyzer.ts take upstream；gen-cordis-catalog + gen-doc-graphs + api-catalog + slot-catalog + gen-tool-catalog.spec + verify-package-readme-model-experience union）/ 9 genuine three-way（ui-layout AppFrame.tsx+index.ts merge fork+upstream 保 details.aux slot + upstream main rename；ui-settings-models 7 files + scoped-tool-subagent + harness.ts take upstream）。
+- `3847ec98d6` — fix 2 个 union-merge 产生的 TS1117 duplicate-object errors（api-catalog.ts 的 TableDefinition+SystemPromptUpdate 被合进一个 object → 拆成两个独立 entry；verify-package-readme-model-experience.ts 的 agent-team-web-profile 重复 key → 取 upstream 措辞）+ pnpm-lock.yaml regen。
+- `50ef1d6f5e` — fix lsp-stdio test waitForFile 1-arg call → 3-arg（auto-merge 保留了 fork 的 1-arg call + upstream 的 3-arg 定义，不一致）。
+
+### Build 验证 — host tsc green
+
+`node ./node_modules/typescript/bin/tsc -b tsconfig.host.json` **exit 0**。3 个 merge-caused error 全修。发现②的 TS2322 on `remote-events.ts(32,5)` 确认是 phantom（chunked-list 装好后消失，如本票 [2026-09-14] 节预测）。seam-2/seam-4 前 session 已落；余 4 seam（5/1/3/6）host-side source 全编译通过——RISK-MAP 担心的 call-site co-adaptation 在 host 层面是空集或已被 merge 解掉。client-side seam-6（`ui-sidebar-files/face.ts:55` 仍用旧 `sessionId` signature vs upstream `WorkspaceFileScope`）deferred——不阻 host tsc，client build 才暴露。
+
+### ⚠️ Push BLOCKED — pre-existing dsh-root typecheck breakage
+
+pre-push `typecheck` hook = `pnpm run typecheck` = `build:lib:host`（`tsc -b` ✅ + `tsdown --env.DSH_BUILD_FACE host` ❌）。根 `tsdown.config.ts` entry `lib/types/{index,invariant,startup}.js` 在 fresh worktree 不存在；typert plugin 在 tsdown writeBundle 期间生成它们，但 tsdown entry 解析发生在 plugin 之前（chicken-and-egg bootstrapping bug）。**merge 未改此项**（`git diff c389f96bf3a9..HEAD -- tsdown.config.ts` 空；BASE 同 entry line）。dsh-resync（`upstream/resync-2026-09-08`）也无 `lib/types/`，故铁律 4「从 dsh-resync 推」workaround 失效。另 2 个 pre-push job 绿（no-prod-src-on-master / verify-upstream-sync-record）。**13 个 master commit（7 既有 unpushed + 6 本 session）+ 3 个 merge commit 全 ready 但 unpushable**，直到 dsh-root 修（UM12/UM16 tracked）。
+
+push 实测：`git push origin upstream/resync-2026-09-18` → lefthook pre-push → typecheck 🥊 6.55s → `[@deepseek-ai/dsh-root] Cannot find entry: ["lib/types/{index,invariant,startup}.js"]` → `error: failed to push some refs` exit 1。
+
+### 本 session 未做（明示）
+
+- ❌ 未 push（pre-push typecheck 阻塞，dsh-root UM12/UM16）
+- ❌ 未做 client-side seam-6 co-adaptation（face.ts:55 WorkspaceFileScope）—— deferred
+- ❌ 未做 UM-FORK-README-GENERATOR-RESIDUALS item 2（generator fence-aware scanner）—— time-permitting deferred
+- ❌ 未做 PR / merge
+
+### 下 session 形态
+
+1. **先修 dsh-root**（unblock push）：根 `tsdown.config.ts` 的 entry `lib/types/{index,invariant,startup}.js` 需在 tsdown 前生成。typert plugin 的 writeBundle 生成它们，但 entry 解析在前。修法方向：要么让 typert plugin 在 `buildStart`/`config` hook 生成 lib/types/（在 entry 解析后、build 前），要么加一个前置 gen 步骤。这是 UM12/UM16 域，不在 UM15 scope，但 unblock 所有 push。
+2. 修完 dsh-root → push 13 master + 3 merge commit → PR → merge。
+3. client-side seam-6 co-adaptation（face.ts:55 + ui-sidebar-textpreview/rpc.ts:85，WorkspaceFileScope lookup wiring）。
+4. UM-FORK-README item 2（generator fence-aware scanner + 幂等 slug + fixture 回归测试）。

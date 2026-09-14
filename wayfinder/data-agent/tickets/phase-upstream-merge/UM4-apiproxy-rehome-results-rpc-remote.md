@@ -294,3 +294,18 @@ B-DA1 race 是概率性的 —— 在给定 session 里 race window 可能被错
 > **推荐 ①**。
 
 本 session 未实现 observer-fix、未加 5 个 fixture、未加 `pendingSwitch` accessor。Scope 3 完整 defer。
+
+## [2026-09-21] Scope 3 instrumentation 落地（accessor + debug log），capture 仍 defer
+
+**Status 保持 `open`。** AFK session 按 [2026-09-20] 节推荐的 ① 加 instrumentation。
+
+commit `75da97a139` `[UM4 Scope 3] add pendingSwitch accessor + preset-autojoin debug instrumentation`（master，additive，2 files +22/-2）：
+
+1. `packages/preset/agent-presets/src/index.ts` — 加 narrow read-only accessor `pendingSwitch(sessionId): Promise<unknown> | undefined { return this.switches.get(sessionId) }`。不动 `@Remote('select')`、不动 private `switches` Map 语义。
+2. `packages/data/preset-autojoin/src/index.ts` — `createAutojoinListener` 接受可选 `logger`，listener 体首行加 debug log：`preset-autojoin: pendingSwitch=%s for session %s`（in-flight / settled）。sessionId 防御性解 `agent.ctx.session?.id ?? agent.id ?? 'unknown'`。全 optional chaining，degrade gracefully。
+
+`tsc --noEmit` 两包 green。pre-commit hooks 绿。
+
+**capture 仍 defer**：本 session 是 AFK，无人驱动交互式 DSH 会话。accessor + log 已就位，下个 HITL session 跑 web UI repro 时 session log 能看到 switch 有没有尝试过——即使 race 不复现（前两次 capture 都 `completed`），instrumentation 也能区分"race 没发生"vs"switch 没被触发"。
+
+**未做**：observer-fix 本体（pre-step guard await pendingSwitch + scope observer rebind-hardening + 5 fixture）仍 defer，等 capture 出 `disposed` / `error` / 缺失三种结果之一再定（见 [2026-09-13] decision-doc §Implementation sketch 第 4 步 PREREQUISITE）。

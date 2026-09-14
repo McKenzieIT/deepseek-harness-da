@@ -68,3 +68,11 @@ Alternatively, fix it at the profile level: add a `roots` entry in `~/.dsh/profi
 
 - **Severity**: HIGH. Same as UM-DEFECT-PRESET-DEPS: web UI blocks, headless silently runs bare.
 - **Affected profiles**: `web` (picker shows only 4 built-in; `data-agent` invisible), `headless` (same, but silently bare — see UM-DEFECT-PRESET-DEPS for the silent-failure mode).
+
+## [2026-09-21] Repo fix 落地（master）
+
+commit `dd6dd43df7` `[UM-DEFECT-PRESET-ROOTS] add roots config to data-agent bundle agent-presets override`。`packages/bundle/data-agent/cordis.patch.yml` 的 `agent-presets` override 加 `roots: [{ path: config/agent-presets, trust: system }]`（与既有 `default: data-agent` 并列）。pre-commit hooks 绿。
+
+**未验证**：未跑 `--dump-config` 看输出带 roots（需 dsh-resync + build）。下 session 核。临时 workaround（overlay 加 roots）可删。
+
+**Status: repo fix 落地，verified-dump-config deferred。** Push blocked by pre-existing dsh-root。

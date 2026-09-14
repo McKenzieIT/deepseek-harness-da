@@ -57,3 +57,11 @@ Existing `verify-cordis-config` checks bundle `cordis.patch.yml` mount rows. It 
 - **Severity**: HIGH. The web UI cannot create any session using the data-agent preset (which is the default preset). The headless profile silently **swallows** the mount failure (fire-and-forget dispatch in `preset-autojoin` catches the error), so headless runs with the agent bare — no persona, no data tools — and reports no error. This is a silent data-loss mode for the headless path.
 - **Affected profiles**: `web` (hard block), `headless` (silent bare-agent fallback).
 - **Related**: UM4 Scope 2 (`025db697ab`) fixed the same class of bug (`bundlePluginDependencyErrors` reads only `manifest.dependencies`) but for bundle **mount** rows in `cordis.patch.yml`, not preset rows in `agent.cordis.yml`. This ticket extends that finding to the preset path.
+
+## [2026-09-21] Repo fix 落地（master）
+
+commit `36e0a0136e` `[UM-DEFECT-PRESET-DEPS] add 11 missing tool-* workspace deps to bundle/data-agent`。`packages/bundle/data-agent/package.json` dependencies 加 11 个 `@deepseek-ai/dsh-tool-*` 全 `workspace:^`（tool-resolve-term + 10 个 semantic-layer-management preset 的：search-schema/get-definition/list-domains/get-coverage/discover-relations/discover-alt-labels/trigger-eval/reachability-delta/edit-definition/revert-edit），全 23 个 tool-* deps 按字母序排。pre-commit hooks 绿。
+
+**未验证**：未 `pnpm install` 后核 `healProfilesModuleFallback` BFS reach 全 11 → symlinks 出现在 `~/.dsh/profiles/node_modules/@deepseek-ai/`（需在 profile 目录跑 install）。下 session 核。临时 workaround（`~/.dsh/profiles/node_modules/` symlink）可删。
+
+**Status: repo fix 落地，verified-symlinks deferred。** Push blocked by pre-existing dsh-root。**另开 follow-up 票** `verify-preset-rows-resolvable` gate（§2 meta-gate 扩展方向，见 UM15 [2026-09-20] 节第 3 条）。

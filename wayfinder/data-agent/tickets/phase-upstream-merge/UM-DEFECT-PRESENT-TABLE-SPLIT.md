@@ -71,3 +71,11 @@ Option 1 is likely cheapest. Option 2 is architecturally correct but high-risk.
 
 - **Severity**: HIGH. The web UI cannot boot at all — not just the table component, the whole UI fails to load because one plugin row aborts the composition.
 - **Affected profiles**: `web` only. `headless` and `tui` do not load client bundles.
+
+## [2026-09-21] Repo fix 落地（master），临时 workaround 可删
+
+commit `ddc644d95f` `[UM-DEFECT-PRESENT-TABLE-SPLIT] fix tsdown config to prevent code-splitting in ui-present-table`。`packages/client/ui-present-table/tsdown.config.ts` 给 clientBundle() 产出的每个 config 加 `splitting: false`，阻止 `@tanstack/react-virtual`/`chart.js`/`react-chartjs-2` 被拆成 sibling `.cjs` chunk。pre-commit hooks 绿。
+
+**未验证**：未 rebuild 看 `lib/` 是否只剩 `client.js`（需 dsh-resync 树 + build，本 session 在 dsh-s3-resync 做 merge 未跑 client build）。下 session rebuild 后核 `lib/` 无 sibling `.cjs`。临时 workaround（`/tmp/dsh-disable-present-table.patch.yml` overlay disable 该行）可删。
+
+**Status: repo fix 落地，verified-rebuild deferred。** Push blocked by pre-existing dsh-root（见 UM15 [2026-09-21] 节）。
