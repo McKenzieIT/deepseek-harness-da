@@ -994,12 +994,13 @@ describe('the data-agent bundle preset root', () => {
     await writeFile(settingsFile, '{}\n')
     const presetOverride = loadOverlayPatches('dsh-test', DATA_AGENT_PATCH)
       .find(row => row.id === 'agent-presets')
-    if (presetOverride === undefined || typeof presetOverride.config !== 'object' || presetOverride.config === null) {
+    const presetConfig: unknown = presetOverride?.config
+    if (presetOverride === undefined || typeof presetConfig !== 'object' || presetConfig === null) {
       throw new Error('data-agent bundle must override the agent-presets row')
     }
     dataAgentCtx = await bootWeb(settingsFile, [{
       ...presetOverride,
-      config: { ...presetOverride.config, includeUserRoot: false },
+      config: { ...presetConfig, includeUserRoot: false },
     }], [DATA_AGENT_BUNDLE_DIR])
   }, 120_000)
 
