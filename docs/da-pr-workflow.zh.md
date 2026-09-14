@@ -28,7 +28,7 @@ main ─────────────────────────
 
 ## Session-prompt 分支契约
 
-每个 `wayfinder/*/prompts/*-session-prompt.md` 必须在开头实例化分支契约——session 启动第一步就是建 worktree 和分支,而不是直接在 master 上工作。模板见 [`wayfinder/_templates/session-prompt.md`](../wayfinder/_templates/session-prompt.md);根因与完整方案见 [面向并行工作的 per-session 分支与 worktree 隔离](../.agents/notes/proposed/process/2026-09-04-parallel-session-branching-policy.md)。
+每个 `wayfinder/*/prompts/*-session-prompt.md` 必须在开头实例化分支契约——session 启动第一步就是建 worktree 和分支,而不是直接在 master 上工作。模板见 [`wayfinder/_templates/session-prompt.md`](../wayfinder/_templates/session-prompt.md);根因与完整方案见 [面向并行工作的 per-session 分支与 worktree 隔离](../.agents/notes/proposed/process/2026-09-04-parallel-session-branching-policy.zh.md)。
 
 要点:
 

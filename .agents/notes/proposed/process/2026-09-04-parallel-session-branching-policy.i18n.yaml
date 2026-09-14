@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/process/2026-09-04-parallel-session-branching-policy.md
 2026-09-04-parallel-session-branching-policy.md: 2f1122fd675a855beb7dae33e144139dde01564b
-2026-09-04-parallel-session-branching-policy.zh.md: c53d2a2a69761822a42d2bd643ee78dfabc23ed5
+2026-09-04-parallel-session-branching-policy.zh.md: b3c3fde3e5311d3c9d63f94be71bca3be034ccab

@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/da-pr-workflow.md
 da-pr-workflow.md: a925d3caef7691cd1c4e128084290d3fb69a8fb3
-da-pr-workflow.zh.md: 56375a1f7dcc6dac7a1524d69a7e7e87fa241bae
+da-pr-workflow.zh.md: 134e1ae520eae9d9ff763b22c0aa8212326e2beb
