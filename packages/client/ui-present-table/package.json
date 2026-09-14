@@ -59,7 +59,6 @@
   "files": [
     "lib/index.js",
     "lib/client.js",
-    "lib/*.cjs",
     "lib/types/**/*.d.ts"
   ]
 }
