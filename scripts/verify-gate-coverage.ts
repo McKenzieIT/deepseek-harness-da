@@ -17,6 +17,12 @@ const ROOT = resolve(import.meta.dirname, '..')
  *  param) are intentionally skipped. */
 const PNPM_SCRIPT_CALL_PATTERN = /pnpmScript\(\s*'[^']*',\s*'([^']*)'/g
 
+/** Matches a `pnpmExec('gateId', […], …)` call, capturing the first argument
+ *  (the gate identifier). Gates enrolled via `pnpmExec` do not correspond to
+ *  package.json script names, but their identifier is still an enrolled gate
+ *  for the purposes of Check 4 (knownRed enrolled-gate assertion). */
+const PNPM_EXEC_CALL_PATTERN = /pnpmExec\(\s*'([^']*)'/g
+
 /** Package script names this gate accounts for. Generators (`gen-*`) are
  *  write operations, not gates; they are exempted with their `--check`
  *  variant as `coveredBy`. */
@@ -28,23 +34,39 @@ interface GateCoverageExemption {
   readonly coveredBy: string
 }
 
+interface KnownRedEntry {
+  readonly script: string
+  readonly state: string
+  readonly rationale: string
+  readonly ticket: string
+  readonly reopenTrigger: string
+  readonly reviewBy: string
+}
+
 interface GateCoverageManifest {
   readonly exemptions: readonly GateCoverageExemption[]
+  readonly knownRed?: readonly KnownRedEntry[]
 }
 
 /**
- * Extract the set of package.json script names enrolled via `pnpmScript` in
- * `run-gates.ts`. Every `verify-*` / `gen-*` enrollment is a literal
- * second argument (no variable indirection), so this textual extraction is
- * equivalent to iterating `gatesForMode(mode)` for every mode.
+ * Extract the set of gate identifiers and package.json script names enrolled
+ * in `run-gates.ts`. `pnpmScript` contributes its second argument (the
+ * package.json script name); `pnpmExec` contributes its first argument (the
+ * gate identifier). The union is the set Check 4 tests knownRed entries
+ * against, and Checks 1–3 use the pnpmScript subset (gate scripts never
+ * collide with pnpmExec identifiers, so the union is safe for all checks).
  * @param runGatesSource - the full text of `scripts/run-gates.ts`.
- * @returns the set of enrolled script names.
+ * @returns the set of enrolled script names and gate identifiers.
  */
 function collectEnrolledScriptNames(runGatesSource: string): Set<string> {
   const enrolled = new Set<string>()
   for (const match of runGatesSource.matchAll(PNPM_SCRIPT_CALL_PATTERN)) {
     const script = match[1]
     if (typeof script === 'string') enrolled.add(script)
+  }
+  for (const match of runGatesSource.matchAll(PNPM_EXEC_CALL_PATTERN)) {
+    const id = match[1]
+    if (typeof id === 'string') enrolled.add(id)
   }
   return enrolled
 }
@@ -109,6 +131,17 @@ export function collectGateCoverageViolations(root: string): string[] {
     failures.push(
       `${entry.script}: exempted in scripts/gate-coverage.manifest.json but is now enrolled in run-gates.ts`
         + ' — remove the stale exemption.',
+    )
+  }
+
+  // Check 4 — every knownRed entry must name an enrolled gate (pnpmScript or pnpmExec).
+  const knownRed = manifest.knownRed ?? []
+  for (const entry of knownRed) {
+    if (enrolled.has(entry.script)) continue
+    failures.push(
+      `${entry.script}: listed in knownRed[] but not enrolled in run-gates.ts`
+        + ' (not found as a pnpmScript script name or pnpmExec gate identifier)'
+        + ' — remove the stale knownRed entry or enroll the gate.',
     )
   }
 

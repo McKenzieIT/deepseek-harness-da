@@ -16,6 +16,8 @@ function scaffold(
     scripts: Record<string, string>
     enrolled: readonly string[]
     exemptions: readonly { script: string; reason: string; coveredBy: string }[]
+    execEnrolled?: readonly string[]
+    knownRed?: readonly { script: string; state: string; rationale: string; ticket: string; reopenTrigger: string; reviewBy: string }[]
   },
 ): void {
   mkdirSync(join(root, 'scripts'), { recursive: true })
@@ -23,13 +25,21 @@ function scaffold(
   const runGatesLines = options.enrolled
     .map(name => `    pnpmScript('gate-${name}', '${name}', { label: '${name}' }),`)
     .join('\n')
+  const execLines = (options.execEnrolled ?? [])
+    .map(id => `    pnpmExec('${id}', ['vitest', 'run', 'some.spec.ts'], { label: '${id}' }),`)
+    .join('\n')
+  const allLines = [runGatesLines, execLines].filter(Boolean).join('\n')
   writeFileSync(
     join(root, 'scripts/run-gates.ts'),
-    `function gates(): Gate[] {\n  return [\n${runGatesLines}\n  ]\n}`,
+    `function gates(): Gate[] {\n  return [\n${allLines}\n  ]\n}`,
   )
+  const manifestObject: Record<string, unknown> = { exemptions: options.exemptions }
+  if (options.knownRed !== undefined) {
+    manifestObject['knownRed'] = options.knownRed
+  }
   writeFileSync(
     join(root, 'scripts/gate-coverage.manifest.json'),
-    JSON.stringify({ exemptions: options.exemptions }),
+    JSON.stringify(manifestObject),
   )
 }
 
@@ -100,5 +110,62 @@ describe('gate coverage meta-gate', () => {
     expect(failures).toHaveLength(1)
     expect(failures[0] ?? '').toContain('verify-now-enrolled')
     expect(failures[0] ?? '').toContain('now enrolled')
+  })
+
+  it('fails when a knownRed entry names a script not enrolled via pnpmScript or pnpmExec', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-gate-coverage-knownred-stale-'))
+    roots.push(root)
+    scaffold(root, {
+      scripts: { 'verify-enrolled': 'tsx enrolled.ts' },
+      enrolled: ['verify-enrolled'],
+      exemptions: [],
+      knownRed: [
+        {
+          script: 'non-existent-gate',
+          state: 'known-red',
+          rationale: 'test rationale',
+          ticket: 'TEST-TICKET',
+          reopenTrigger: 'test trigger',
+          reviewBy: '2027-03-14',
+        },
+      ],
+    })
+
+    const failures = collectGateCoverageViolations(root)
+    expect(failures).toHaveLength(1)
+    expect(failures[0] ?? '').toContain('non-existent-gate')
+    expect(failures[0] ?? '').toContain('knownRed')
+    expect(failures[0] ?? '').toContain('not enrolled')
+  })
+
+  it('passes when knownRed entries name gates enrolled via pnpmScript or pnpmExec', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-gate-coverage-knownred-ok-'))
+    roots.push(root)
+    scaffold(root, {
+      scripts: { 'verify-enrolled': 'tsx enrolled.ts' },
+      enrolled: ['verify-enrolled'],
+      exemptions: [],
+      execEnrolled: ['doc-standard-tests'],
+      knownRed: [
+        {
+          script: 'verify-enrolled',
+          state: 'known-red',
+          rationale: 'pnpmScript-enrolled gate',
+          ticket: 'TEST-1',
+          reopenTrigger: 'trigger',
+          reviewBy: '2027-03-14',
+        },
+        {
+          script: 'doc-standard-tests',
+          state: 'known-red',
+          rationale: 'pnpmExec-enrolled gate',
+          ticket: 'TEST-2',
+          reopenTrigger: 'trigger',
+          reviewBy: '2027-03-14',
+        },
+      ],
+    })
+
+    expect(collectGateCoverageViolations(root)).toEqual([])
   })
 })
