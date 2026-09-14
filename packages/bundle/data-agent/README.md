@@ -19,25 +19,26 @@ The package has no runtime API; the profile composer resolves the patch through 
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+<a id="dev-note"></a>
+## Dev Note
+
+The bundle carries no code — the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, which contains every mount and disable. Changes belong in that YAML, never in TypeScript. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.
+
 -----
 
 <a id="model-experience"></a>
 ## Model Experience
 
-Indirectly, through the rows it disables and mounts: this bundle contributes no model-visible text of its own. It mounts `llm-dashscope` (P2) as the profile's direct LLM, and the shipped data capability plugins (P4-P11: `query-maxcompute`, `semantic-layer`, `nl2sql-engine`, `schema-gateway`, `evidence-query`, `audit`, `admin`, `result-cache-memory`, `preset-autojoin`, the goal/eval pair, and `code-runtime-data-python`) contribute their own model-visible schemas, prompts, and tool definitions to the composed tree. The deployment-choice rows (`embedder`, `retrieval`) mount nothing until a provider is supplied.
+Indirectly, through the rows it disables and mounts: this bundle contributes no model-visible text of its own, mounting `llm-dashscope` (P2) as the profile's direct LLM and the shipped data capability plugins (P4-P11) which each contribute their own model-visible schemas, prompts, and tool definitions to the composed tree, while the deployment-choice rows (`embedder`, `retrieval`) mount nothing until a provider is supplied.
 
 #### KV Cache effect
 
 None directly; disabling a row removes its schema and prompt section from the composed tree, and the deployment-choice-commented rows mount nothing until a provider is supplied.
 
-<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
+
+<a id="known-limitations-and-deferred-work"></a>
 
 - **Embedder / retrieval are deployment choices** — these two seams stay commented in the patch; uncomment and mount a concrete provider (e.g. `embedder-fakehash`/`embedder-http`, `retrieval-inproc`) to activate them. All other data capability plugins (P4-P11) ship and mount LIVE.
 - **No persona** — the data-agent persona is owned by the four-phase preset (P7), not this bundle.
 - **No driver** — a patch-only layer; runnability comes from composing it with a driver bundle or the P7 preset, not from a `data-agent` profile template (none is added to `dsh-app-boot`).
-
-<a id="dev-note"></a>
-## Dev Note
-
-The bundle carries no code — the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, which contains every mount and disable. Changes belong in that YAML, never in TypeScript. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.

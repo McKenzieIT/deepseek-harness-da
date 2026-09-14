@@ -76,28 +76,6 @@ export const STRICT_OVERRIDE_GLOBS = [
 ] as const
 
 /**
- * The strict-override files no TypeScript program claims yet — KNOWN-RED.
- *
- * `tsconfig.host.json` includes every package's `tests` tree but then excludes
- * the whole `packages/eval/eval-cli` package, and that package's own
- * `tsconfig.json` includes only its `src`, so neither side owns its tests. The
- * fix is a sibling `tsconfig.tests.json`, which has to be agreed with the eval
- * team first because that package is the perpetually running eval machine — see
- * `wayfinder/data-agent/tickets/phase-upstream-merge/UM-LINT-B-EVAL-CLI-TSCONFIG-TESTS.md`.
- * Delete this allowlist together with that ticket. A seventh unclaimed
- * strict-override file still fails the fence, which is the regrowth it exists to
- * stop: this list grew silently once already.
- */
-export const EVAL_CLI_PENDING_FIX: readonly string[] = [
-  'packages/eval/eval-cli/tests/cli-llm-config.spec.ts',
-  'packages/eval/eval-cli/tests/compare.spec.ts',
-  'packages/eval/eval-cli/tests/harness-responder.spec.ts',
-  'packages/eval/eval-cli/tests/main.spec.ts',
-  'packages/eval/eval-cli/tests/report.spec.ts',
-  'packages/eval/eval-cli/tests/scope-id.spec.ts',
-]
-
-/**
  * How one glob of program-less files was adjudicated (UM-LINT-B buckets ii, iii).
  *
  * `glob` is prose for a human reader. `sample` is the machine-checked half: one
@@ -124,8 +102,8 @@ export interface UnmatchedDisposition {
 /**
  * Every program-less file that is NOT in the strict type-aware override, and why
  * it stays that way. Reproduced 2026-09-14 on `2886e5b8e5`: 55 unmatched files
- * total — 34 waived, 15 kept default-only, plus the 6 in
- * {@link EVAL_CLI_PENDING_FIX}, which are the only ones the override claims.
+ * total — 34 waived, 15 kept default-only. The 6 eval-cli tests that previously
+ * leaked here are now claimed by `packages/eval/eval-cli/tsconfig.tests.json`.
  *
  * `waive` means the file is intentionally outside the repository tsconfig graph:
  * a prototype, a research one-off, a benchmark, a throwaway probe. Adding a
@@ -314,7 +292,7 @@ function assertNoStrictOverrideUnmatched(invocation: OxlintInvocation): void {
       unmatched.push(relative(repositoryRoot, captured.trim()).replaceAll('\\', '/'))
     }
     const violations = unmatched.filter(path =>
-      !EVAL_CLI_PENDING_FIX.includes(path) && matchesStrictOverrideGlob(path))
+      matchesStrictOverrideGlob(path))
     if (violations.length === 0) return
     process.stderr.write(
       `run-oxlint: ${violations.length} file(s) match .oxlintrc.json overrides[0].files, so the full type-aware rule`

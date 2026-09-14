@@ -377,3 +377,164 @@ upstream 新增了一个**全新的包** `packages/util/chunked-list`，它依�
 
 - **cadence + staleness 半边有效**：阈值判定（852 commits / 6 seam 全触）正确触发了这一轮；`verify-upstream-sync-record` 的 stale-ref note 是最初的告警源。
 - **impact 预测半边有系统性盲区**：RISK-MAP 只看 seam，于是**漏掉了 37 个 out-of-seam 冲突（占总数 95%）**，还错判了 seam-4 的导出面（发现③）与 seam-6 的难度（发现④）。dry-run 补上了 37 这个数字并被本轮**精确验证**，但连 dry-run 也漏了 `tsconfig.base.json` 的门效应（①）和强制 `pnpm install`（②）。**这两条应当喂回 §2 change-impact analyzer 的设计**：analyzer 不能只沿 seam 推理，必须 ① 把"解析器/配置类文件（`tsconfig.base.json`、`pnpm-lock.yaml`）冲突"标记为 blocking-all-verification 级别，② 检测 upstream 新增包并强制 install 步骤。
+
+---
+
+## [2026-09-20] human-gates session：发现 3 个 gate coverage gap + §2/§4 校准待答
+
+**Status 保持 `open`。§2/§4 校准值仍未收口。**
+
+### 发现的 3 个缺陷（gate coverage gap）
+
+本 session 在启动 web UI 做 UM4 gate ① capture 时遇到 3 个 blocker，都是现有 gate 的盲区：
+
+| # | 缺陷 | 票 | 现有 gate 为什么漏 |
+|---|---|---|---|
+| 1 | `ui-present-table` client bundle code-split，module table 不兼容（52 包里唯一）| [UM-DEFECT-PRESENT-TABLE-SPLIT](UM-DEFECT-PRESENT-TABLE-SPLIT.md) | 无 gate 验证 client bundle 是单文件 |
+| 2 | 无任何 bundle/profile 配 `agent-presets.roots`，da 两个 preset 无根可扫 | [UM-DEFECT-PRESET-ROOTS](UM-DEFECT-PRESET-ROOTS.md) | 无 gate 验证 default preset 在 roster 中 |
+| 3 | bundle/data-agent/package.json 漏声明 11 个 tool-* 依赖 | [UM-DEFECT-PRESET-DEPS](UM-DEFECT-PRESET-DEPS.md) | `verify-cordis-config` 只查 `cordis.patch.yml` mount，不查 preset `agent.cordis.yml` 行 |
+
+**第 3 条尤其重要**：`verify-cordis-config` 验证 bundle mount 的 `name:` 能否从 bundle 解析。但 preset 的 `agent.cordis.yml` 里每行也是 `name:` + 包名，用的是不同的解析路径（profile baseUrl walk，不是 bundle baseUrl）。**现有 gate 不覆盖后者**。这正是 §2 meta-gate 那条线该扩展的方向：需要一个 `verify-preset-rows-resolvable` 门，断言每个 preset 的每个 live 行的包名可从 profile 的安装闭包中解析。
+
+### §2 knownRed[] schema 扩展（已设计未实现）
+
+2026-09-13 decision-doc 已设计好 schema 和 Check 4，本 session 确认 manifest 现状：
+
+- `scripts/gate-coverage.manifest.json`：109 行，**只有** `exemptions` 一个 top-level key（21 条，**不是**之前票记的 20）
+- `scripts/verify-gate-coverage.ts`：129 行，Check 1/2/3 已实现
+- **`knownRed` 不存在**于 `scripts/` 任何文件（`grep -rn 'knownRed' scripts/` 零命中）
+- 扩展需要：manifest 加 `knownRed: [{script, rationale, ticket, expiry?, reopenTrigger}]` 数组 + `verify-gate-coverage.ts` 加 Check 4 断言每条 known-red 指向一个已 enrolled 的门
+- Draft entry（已在本票 [2026-09-13] decision-doc §2 节）：
+  ```json
+  {"script":"verify-client-ui-i18n","state":"known-red","rationale":"data-agent client UI targets enterprise intranet Chinese users; i18n extraction is future product-internationalization debt, zero current user value","ticket":"UM-C-GATES-UPSTREAM-NEW","reopenTrigger":"product internationalization"}
+  ```
+
+### §4 calibration（用户仍未答 Q1-Q6）
+
+本 session grilling 已提出 6 问（Q1 note→failure 语义变更 / Q2 all-history vs per-sync 持久化 / Q3 drop expiry 窗口 / Q4 pending fuse / Q5 known-red 过期模型 / Q6 capture 若返回 interrupted）。用户未答，留待下一 HITL session。
+
+**3 条实测背景改变题目形状**（grilling 时已陈述）：
+
+1. `upstream-sync.json` 现有 **10 条 waiver**：`pending` **0** / `drop` **7** / `keep` **3**
+2. `history.length = 1`（历史上只有 2 次 recorded sync）
+3. 现行 zero-hit note 语义是 **"matched no finding in *any recorded window*"**（`:212-215`，跨全历史聚合），**不是**"连续 N 轮"——per-sync 命中数只活在函数局部 `hits` Map，**从不落盘**
+
+第 3 条意味着票里说的"连续 N 轮 zero-hit"**不是调阈值，而是换计数模型**——选 (b) 方案需新增持久化字段。
+
+**建议（待用户定）**：做 note→failure，但只对 `decision:'keep'` 生效；计数选 (a) all-history + 日历 expiry，不要 (b) per-sync 持久化（2 次 sync 攒不满有意义的 N）。
+
+### 给 AFK session 的 gotcha 清单
+
+- `pnpm dsh web` 必须在 `dsh-resync` 跑（主树 0/58 client 包有 `lib/client.js`）
+- 需要 `--patch /tmp/dsh-disable-present-table.patch.yml` 修 3 个启动 blocker
+- `pnpm dsh` = `node --import tsx/esm apps/cli/src/bin.ts`（tsx 才能解 `/src/*.ts` mount）
+- `~/.dsh/profiles/node_modules/@deepseek-ai/dsh-tool-resolve-term` 需 symlink（或加依赖声明后 `pnpm install`）
+- capture 读回命令用 `zstd -dc` + `data.reason.reason.kind`（票里那条跑不通）
+
+---
+
+## [2026-09-20] §4 calibration Q1-Q4 收口（Q5 待答）
+
+**用户 2026-09-20 定死 4 项校准值**：
+
+| Q | 决策 | 值 | 实现 |
+|---|---|---|---|
+| Q1 | zero-hit note→failure | 做，只对 `keep` 生效 | `21a5f496c7`：`waiver.decision === 'keep'` → `failures.push` |
+| Q2 | 计数基准 | (a) all-history 聚合 + 日历 expiry | **不改 schema**，不回填历史。Q1 已覆盖 zero-hit 语义 |
+| Q3 | `drop` expiry | (a) 不加日历 expiry，只加 report 可见性 | **未实现**（report 输出改进留给 AFK session）|
+| Q4 | `pending` fuse | 1 轮，直接 FAILURE | `10c5167779`：`pending` + zero-hit → `failures.push` |
+
+**当前 zero-hit 行为总结**（`scripts/upstream-sync-record.ts:212-228`）：
+
+| `decision` | zero-hit 行为 | 理由 |
+|---|---|---|
+| `keep` | **FAILURE**（门红，拦 push）| 永久接受的分歧可能已不存在，强制重新裁决 |
+| `pending` | **FAILURE**（门红，拦 push）| 未决不得存活 >1 轮 sync |
+| `drop` | NOTE（信息性，不阻塞）| 有 ticket 追踪 remediation 进度 |
+
+**Gate 现状**：10 条 waiver（keep 3 / drop 7 / pending 0），全部 keep+pending 命中 → gate 仍 exit 0。
+
+**Q5（known-red expiry 给未来 §2）待答**。
+
+### Q3 report 可见性改进（未实现，留给 AFK session）
+
+Q3 选了 (a)：`drop` 不加硬 expiry，改为门每次把 7 条 `drop` 连同其 ticket 列进 report 输出。具体实现：在 `upstream-status.ts` report 里加一节 "Owed remediation (drop waivers)"，列出每条 drop 的 path + direction + ticket。不阻塞 push，但每次 pre-push 都看到。
+
+### Q5 known-red expiry（给未来 §2 `knownRed[]`）= (b)
+
+**`reopenTrigger`（语义字符串，必填）+ `reviewBy`（ISO 日期，可选）**。
+
+- `reopenTrigger` 是一等字段：`verify-client-ui-i18n` 的 reopen 条件是 "product internationalization"（产品事件，非日期）
+- `reviewBy` 是结构性防线：到期 → meta-gate 翻 must-re-justify，防 orphan（UM-C-GATES C 类 4 门 orphan 4 天的模式）
+- 两者都加，不互斥
+
+**Draft entry**（§2 schema 扩展实现时使用）：
+```json
+{
+  "script": "verify-client-ui-i18n",
+  "state": "known-red",
+  "rationale": "data-agent client UI targets enterprise intranet Chinese users; i18n extraction is future product-internationalization debt, zero current user value",
+  "ticket": "UM-C-GATES-UPSTREAM-NEW",
+  "reopenTrigger": "product internationalization",
+  "reviewBy": "2027-03-14"
+}
+```
+
+### §4 calibration 完整总结（给 AFK session）
+
+| Q | 决策 | 状态 |
+|---|---|---|
+| Q1 | zero-hit `keep` → failure | ✅ 已落地 `21a5f496c7` |
+| Q2 | (a) all-history + 日历 expiry | ✅ 不改 schema |
+| Q3 | (a) `drop` 无硬 expiry，只加 report 可见性 | ⏳ 未实现，留给 AFK |
+| Q4 | `pending` 1 轮直接 failure | ✅ 已落地 `10c5167779` |
+| Q5 | (b) `reopenTrigger` + 可选 `reviewBy` | ⏳ 设计锁定，§2 实现时用 |
+
+**§4 代码实现完成度**：核心行为变更（Q1 + Q4）已落地。Q3 report 可见性改进 + Q2 日历 expiry 字段 + §2 schema 扩展留给 AFK session。
+
+## [2026-09-21] AFK execution session: §3 第三轮 re-sync merge 落定 + push blocked by pre-existing dsh-root
+
+**Status 保持 `open`。** 本节记 §3 merge 的最终落定 + build 验证 + push 阻塞。
+
+### §3 merge — 36 out-of-seam 冲突全解，3 commit on `upstream/resync-2026-09-18`
+
+承接 [2026-09-14] §3 第三轮开工节（mid-merge，36 unmerged，0 commit）。本 session 把 36 冲突全解 + 落定 merge commit：
+
+- `1f731901a7` — merge commit。4 通道逐个解：tsconfig.base.json（前 session 已解）/ pnpm-lock.yaml（accept upstream + pnpm install regen）/ 13 docs translation-pairing（take upstream wholesale；3 generated EN docs capability-seams/subsystems-README/tool-catalog 跟 ZH 对齐再 re-record sidecar）/ 4 manifest/misc（union：.gitignore + ci-master.yml + apps-cli + python package.json）/ 7 regenerated-artifact（analyzer.ts take upstream；gen-cordis-catalog + gen-doc-graphs + api-catalog + slot-catalog + gen-tool-catalog.spec + verify-package-readme-model-experience union）/ 9 genuine three-way（ui-layout AppFrame.tsx+index.ts merge fork+upstream 保 details.aux slot + upstream main rename；ui-settings-models 7 files + scoped-tool-subagent + harness.ts take upstream）。
+- `3847ec98d6` — fix 2 个 union-merge 产生的 TS1117 duplicate-object errors（api-catalog.ts 的 TableDefinition+SystemPromptUpdate 被合进一个 object → 拆成两个独立 entry；verify-package-readme-model-experience.ts 的 agent-team-web-profile 重复 key → 取 upstream 措辞）+ pnpm-lock.yaml regen。
+- `50ef1d6f5e` — fix lsp-stdio test waitForFile 1-arg call → 3-arg（auto-merge 保留了 fork 的 1-arg call + upstream 的 3-arg 定义，不一致）。
+
+### Build 验证 — host tsc green
+
+`node ./node_modules/typescript/bin/tsc -b tsconfig.host.json` **exit 0**。3 个 merge-caused error 全修。发现②的 TS2322 on `remote-events.ts(32,5)` 确认是 phantom（chunked-list 装好后消失，如本票 [2026-09-14] 节预测）。seam-2/seam-4 前 session 已落；余 4 seam（5/1/3/6）host-side source 全编译通过——RISK-MAP 担心的 call-site co-adaptation 在 host 层面是空集或已被 merge 解掉。client-side seam-6（`ui-sidebar-files/face.ts:55` 仍用旧 `sessionId` signature vs upstream `WorkspaceFileScope`）deferred——不阻 host tsc，client build 才暴露。
+
+### ⚠️ Push BLOCKED — pre-existing dsh-root typecheck breakage
+
+pre-push `typecheck` hook = `pnpm run typecheck` = `build:lib:host`（`tsc -b` ✅ + `tsdown --env.DSH_BUILD_FACE host` ❌）。根 `tsdown.config.ts` entry `lib/types/{index,invariant,startup}.js` 在 fresh worktree 不存在；typert plugin 在 tsdown writeBundle 期间生成它们，但 tsdown entry 解析发生在 plugin 之前（chicken-and-egg bootstrapping bug）。**merge 未改此项**（`git diff c389f96bf3a9..HEAD -- tsdown.config.ts` 空；BASE 同 entry line）。dsh-resync（`upstream/resync-2026-09-08`）也无 `lib/types/`，故铁律 4「从 dsh-resync 推」workaround 失效。另 2 个 pre-push job 绿（no-prod-src-on-master / verify-upstream-sync-record）。**13 个 master commit（7 既有 unpushed + 6 本 session）+ 3 个 merge commit 全 ready 但 unpushable**，直到 dsh-root 修（UM12/UM16 tracked）。
+
+push 实测：`git push origin upstream/resync-2026-09-18` → lefthook pre-push → typecheck 🥊 6.55s → `[@deepseek-ai/dsh-root] Cannot find entry: ["lib/types/{index,invariant,startup}.js"]` → `error: failed to push some refs` exit 1。
+
+### 本 session 未做（明示）
+
+- ❌ 未 push（pre-push typecheck 阻塞，dsh-root UM12/UM16）
+- ❌ 未做 client-side seam-6 co-adaptation（face.ts:55 WorkspaceFileScope）—— deferred
+- ❌ 未做 UM-FORK-README-GENERATOR-RESIDUALS item 2（generator fence-aware scanner）—— time-permitting deferred
+- ❌ 未做 PR / merge
+
+### 下 session 形态
+
+1. **先修 dsh-root**（unblock push）：根 `tsdown.config.ts` 的 entry `lib/types/{index,invariant,startup}.js` 需在 tsdown 前生成。typert plugin 的 writeBundle 生成它们，但 entry 解析在前。修法方向：要么让 typert plugin 在 `buildStart`/`config` hook 生成 lib/types/（在 entry 解析后、build 前），要么加一个前置 gen 步骤。这是 UM12/UM16 域，不在 UM15 scope，但 unblock 所有 push。
+2. 修完 dsh-root → push 13 master + 3 merge commit → PR → merge。
+3. client-side seam-6 co-adaptation（face.ts:55 + ui-sidebar-textpreview/rpc.ts:85，WorkspaceFileScope lookup wiring）。
+4. UM-FORK-README item 2（generator fence-aware scanner + 幂等 slug + fixture 回归测试）。
+
+
+## [2026-09-14] Push unblock and client completion correction
+
+`[@deepseek-ai/dsh-root] Cannot find entry` 不是 Typert bootstrap ordering。失败配置来自已删除 package 的 ignored residue：`packages/client/runtime/` 只剩 `node_modules/`，tsdown workspace glob 仍把该目录当 package，向上找到 root manifest 后以 `dsh-root` 名义报告缺 entry。仓库自带 `pnpm run clean` 删除 manifest-less safe residue；root 删除 355 paths、resync 删除 350 paths 后，两边 `pnpm run typecheck` 均通过，无需生成虚假 root entries 或改 Typert hook。
+
+Client aggregate 随后暴露真实 merge residual：`ui-layout` 丢了 `SessionProvider` prop 且把 root-scoped rightbar 错包进 Session area；修为 rightbar 常驻、仅 `details.aux` 受 SessionProvider 约束。client slot catalog 同时含 merge 生成的重复 object fields，并把 declaration-merged `useWorkspaces` 投影两次；生成器现在按首次出现顺序去重 standard props，再重新生成 catalog。commit `86ad658ff0`。
+
+所谓 client seam-6 signature residual 不成立：generated Remote client 的 lookup parameter wire type 是 `SessionId`，Host gateway 再通过 `workspaceFileScope` lookup 解析 `WorkspaceFileScope`。`ui-sidebar-files` 与 document-preview 继续传 `sessionId` 正是生成 API。`build:lib:client`、workspace-files/read-all/scope/provider、sidebar-files、document-preview、layout 和 catalog focused tests 全绿。
+
+`upstream/resync-2026-09-18` 已推并开 PR #130；因其 merge base 是 `6695ed150e`，而 origin/master 已前进，PR 初始为 conflicting。16 个 master-side commits 已按 production-source policy 发布到 feature branch PR #131；先 landing #131，再把新 origin/master merge-forward 到 resync branch 后更新 #130。

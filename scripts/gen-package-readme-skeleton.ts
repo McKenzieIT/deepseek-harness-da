@@ -207,13 +207,43 @@ function afterHeader(body: string): { header: string; rest: string } {
   return { header, rest }
 }
 
-/** Every H2 heading in a body, in source order, as rendered text. */
-function h2Headings(body: string): string[] {
+interface MarkdownLine {
+  readonly text: string
+  /** True for opening/closing fence delimiters and every line between them. */
+  readonly fenced: boolean
+}
+
+/** Split Markdown into lines while tracking backtick and tilde fenced blocks. */
+function markdownLines(source: string): MarkdownLine[] {
+  let fence: { readonly character: '`' | '~'; readonly length: number } | undefined
+  return source.split('\n').map((text) => {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(text)?.[1]
+    if (fence === undefined) {
+      if (marker !== undefined) {
+        fence = { character: marker[0] as '`' | '~', length: marker.length }
+        return { text, fenced: true }
+      }
+      return { text, fenced: false }
+    }
+
+    const fenced = true
+    if (marker !== undefined
+      && marker[0] === fence.character
+      && marker.length >= fence.length
+      && text.slice(text.indexOf(marker) + marker.length).trim() === '') {
+      fence = undefined
+    }
+    return { text, fenced }
+  })
+}
+
+/** Every rendered H2 heading outside fenced code blocks, in source order. */
+export function h2Headings(body: string): string[] {
   const headings: string[] = []
-  const pattern = /^## (.+)$/gm
-  let match: RegExpExecArray | null
-  while ((match = pattern.exec(body)) !== null) {
-    if (match[1] !== undefined) headings.push(match[1].trim())
+  for (const line of markdownLines(body)) {
+    if (line.fenced) continue
+    const match = /^## (.+)$/.exec(line.text)
+    if (match?.[1] !== undefined) headings.push(match[1].trim())
   }
   return headings
 }
@@ -299,14 +329,15 @@ function frontmatterDescription(source: string): string | undefined {
  * heading is not found.
  */
 function stripSection(rest: string, headingWord: string): string {
-  const lines = rest.split('\n')
+  const scanned = markdownLines(rest)
+  const lines = scanned.map(line => line.text)
   let headingIdx = -1
   let anchorIdx = -1
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line === undefined) continue
-    const match = /^#{2,3} (.+)$/.exec(line)
+  for (let i = 0; i < scanned.length; i++) {
+    const line = scanned[i]
+    if (line === undefined || line.fenced) continue
+    const match = /^#{2,3} (.+)$/.exec(line.text)
     if (match !== null && match[1]?.trim() === headingWord) {
       headingIdx = i
       let j = i - 1
@@ -326,8 +357,9 @@ function stripSection(rest: string, headingWord: string): string {
   if (headingIdx === -1) return rest
 
   let sectionEnd = lines.length
-  for (let k = headingIdx + 1; k < lines.length; k++) {
-    if (/^#{2,3} /.test(lines[k] ?? '')) {
+  for (let k = headingIdx + 1; k < scanned.length; k++) {
+    const line = scanned[k]
+    if (line !== undefined && !line.fenced && /^#{2,3} /.test(line.text)) {
       sectionEnd = k
       break
     }
@@ -382,19 +414,22 @@ interface Retrofit {
  * here — fed the re-derived pair, the existing positional walk threads
  * correctly.
  */
-function insertAnchorsBeforeHeadings(
+export function insertAnchorsBeforeHeadings(
   body: string,
   headings: readonly string[],
   slugs: readonly string[],
 ): string {
   if (headings.length === 0) return body
-  const lines = body.split('\n')
+  const scanned = markdownLines(body)
   const anchoredLines: string[] = []
+  const existingSlugs = new Set(scanned.flatMap(({ text, fenced }) => {
+    if (fenced) return []
+    const match = /^\s*<a id="([^"]+)">\s*<\/a>\s*$/.exec(text)
+    return match?.[1] === undefined ? [] : [match[1]]
+  }))
   let headingCursor = 0
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line === undefined) continue
-    const headingMatch = /^## (.+)$/.exec(line)
+  for (const { text: line, fenced } of scanned) {
+    const headingMatch = fenced ? null : /^## (.+)$/.exec(line)
     if (headingMatch !== null && headingCursor < headings.length) {
       const expected = headings[headingCursor]
       const rendered = headingMatch[1]?.trim()
@@ -409,6 +444,7 @@ function insertAnchorsBeforeHeadings(
               anchoredLines.push('')
             }
             anchoredLines.push(`<a id="${slug}"></a>`)
+            existingSlugs.add(slug)
           }
         }
         headingCursor += 1
@@ -446,7 +482,7 @@ interface PairPlan {
  * 概述/Overview collision indices so the caller can rename the ZH Overview
  * before re-deriving the final plan (F1).
  */
-function extractPairPlan(enBody: string, zhBody: string): PairPlan {
+export function extractPairPlan(enBody: string, zhBody: string): PairPlan {
   const enH2s = h2Headings(enBody)
   const zhH2s = zhBody === '' ? [] : h2Headings(zhBody)
   const slugs = enH2s.map(heading => githubSlug(heading))
@@ -471,12 +507,13 @@ function renameOverviewCollisions(
 ): string {
   if (collisionIndices.length === 0) return rest
   const collisionSet = new Set(collisionIndices)
-  const lines = rest.split('\n')
+  const scanned = markdownLines(rest)
+  const lines = scanned.map(line => line.text)
   let headingCursor = 0
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line === undefined) continue
-    const headingMatch = /^## (.+)$/.exec(line)
+  for (let i = 0; i < scanned.length; i++) {
+    const line = scanned[i]
+    if (line === undefined || line.fenced) continue
+    const headingMatch = /^## (.+)$/.exec(line.text)
     if (headingMatch !== null) {
       const rendered = headingMatch[1]?.trim()
       if (rendered === ZH_HEADINGS.summary && collisionSet.has(headingCursor)) {
@@ -486,6 +523,22 @@ function renameOverviewCollisions(
     }
   }
   return lines.join('\n')
+}
+
+/** Insert one generated H2 section after an existing rendered H2 section. */
+function insertAfterH2Section(body: string, headingWord: string, block: string): string {
+  const scanned = markdownLines(body)
+  const headingIndex = scanned.findIndex(({ text, fenced }) =>
+    !fenced && /^## (.+)$/.exec(text)?.[1]?.trim() === headingWord)
+  if (headingIndex < 0) return body
+  const nextHeadingIndex = scanned.findIndex(({ text, fenced }, index) =>
+    index > headingIndex && !fenced && /^## /.test(text))
+  const insertionIndex = nextHeadingIndex < 0 ? scanned.length : nextHeadingIndex
+  const before = scanned.slice(0, insertionIndex).map(line => line.text)
+  const after = scanned.slice(insertionIndex).map(line => line.text)
+  while (before.at(-1) === '') before.pop()
+  while (after[0] === '') after.shift()
+  return [...before, '', block.trimEnd(), '', ...after].join('\n')
 }
 
 interface SkeletonInsertion {
@@ -521,18 +574,18 @@ interface SkeletonInsertion {
  * (UM-FORK-README-SKELETON-RETROFIT). No logic change required here — the
  * rename upstream is the fix; this comment documents the contract.
  */
-function insertSkeleton(source: string, insertion: SkeletonInsertion): string {
+export function insertSkeleton(source: string, insertion: SkeletonInsertion): string {
   const { frontmatter, body } = splitFrontmatter(source)
   const { header, rest } = afterHeader(body)
   const { words, description, existingHeadingSlugs } = insertion
 
-  const hasSummary = new RegExp(`^## ${escapeRegExp(words.summary)}$`, 'm').test(rest)
-  const hasToc = new RegExp(`^## ${escapeRegExp(words.toc)}$`, 'm').test(rest)
-  const hasDevNote = new RegExp(`^#{2,3} ${escapeRegExp(words.devNote)}$`, 'm').test(rest)
+  const existingHeadings = h2Headings(rest)
+  const hasSummary = existingHeadings.includes(words.summary)
+  const hasToc = existingHeadings.includes(words.toc)
+  const hasDevNote = existingHeadings.includes(words.devNote)
 
   // Build the TOC entries: display text uses the language's rendered heading;
   // link target uses the English slug (same for both languages).
-  const existingHeadings = h2Headings(rest)
   const tocPairs: (readonly [string, string])[] = []
   let devNoteTocInserted = false
   for (let i = 0; i < existingHeadings.length; i++) {
@@ -554,13 +607,17 @@ function insertSkeleton(source: string, insertion: SkeletonInsertion): string {
     tocPairs.push([words.devNote, insertion.devNoteSlug])
   }
 
-  // Build the Summary + TOC block just after header, before the rest.
+  // Build the Summary + TOC block just after header. If Summary already
+  // exists, place a missing TOC after its section instead of before it.
   const insertions: string[] = []
+  let tail = rest
   if (!hasSummary) {
     insertions.push(`## ${words.summary}\n\n${words.summaryPlaceholder}\n\n${description}\n`)
   }
   if (!hasToc) {
-    insertions.push(`## ${words.toc}\n\n${renderTableOfContents(tocPairs)}\n`)
+    const tocBlock = `## ${words.toc}\n\n${renderTableOfContents(tocPairs)}\n`
+    if (hasSummary) tail = insertAfterH2Section(tail, words.summary, tocBlock)
+    else insertions.push(tocBlock)
   }
 
   const headerWithInsertions = insertions.length > 0
@@ -573,7 +630,6 @@ function insertSkeleton(source: string, insertion: SkeletonInsertion): string {
   // Language-aware: matches both the EN `## Model Experience` and the ZH
   // rendering `## 模型体验`, so ZH packages whose Model Experience heading
   // is the Chinese rendering get the Dev Note before it (not at the end).
-  let tail = rest
   if (!hasDevNote) {
     const devNoteBlock = insertion.language === 'zh'
       ? `\n\n<a id="${insertion.devNoteSlug}"></a>\n## ${words.devNote}\n\n${words.devNoteBody}\n`

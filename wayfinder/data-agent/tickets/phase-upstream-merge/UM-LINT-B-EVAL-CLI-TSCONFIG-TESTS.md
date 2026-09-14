@@ -81,3 +81,36 @@ OXC_LOG=debug node node_modules/oxlint/bin/oxlint . 2>&1 | grep -a 'Unmatched fi
 
 - **eval 机器永续运行**：诊断（read-only 复现）在任何树上安全；**apply 必须先协调**。
 - 本票拆出前，UM-LINT-B 的 durable gate 已带 `EVAL_CLI_PENDING_FIX` allowlist 落地（KNOWN-RED 记账）：防线**现在就是绿的**，并且第 7 个未认领的严格 override 文件会立刻让它红。也就是说 —— 本票拖着不做**不会**让 A 类无声重新长出来，但会一直留着这 6 个文件的 type-aware 空洞。
+
+---
+
+## [2026-09-20] RESOLVED — sub-option b 落地，防线转无豁免全绿
+
+**Status: closed**
+
+### Eval-team ack 内容（来自另一 session）
+
+1. **Q1**（保留整包 exclude + 加 sibling）：✅ 安全。历史表明 exclude 是临时 typecheck 绿灯措施（`b63dfe6826` 2026-08-31 + `ec7ee34f07` 2026-09-04），不是 eval 运行时隔离。TypeScript exclude 只影响当前项目文件发现，不过滤显式 references。
+2. **Q2**（emit vs noEmit）：**必须 composite declaration-only emit**。TS6310 禁止 referenced project 用 noEmit。outDir 用 `lib/tests/types`（满足 `clean.ts:135-144` 的 outDir 末段必须是 `types` 的约束）。`rewriteRelativeImportExtensions: false` 避免 TS2878。
+3. **Q3**（扰动 eval 机器）：不会改变运行路径。只给 Host build/typecheck 增加一个独立、增量、声明输出的测试检查节点。
+
+### 落地
+
+| 改动 | 文件 |
+|---|---|
+| 新建 `tsconfig.tests.json` | `packages/eval/eval-cli/tsconfig.tests.json`（extends base, rootDir tests, outDir lib/tests/types, emitDeclarationOnly, rewriteRelativeImportExtensions false, include tests, references src + 24 deps）|
+| 加 reference | `tsconfig.host.json:251`（紧接 eval-cli src reference）|
+| 删 EVAL_CLI_PENDING_FIX | `scripts/run-oxlint.ts`：删 export + JSDoc + filter |
+| 删对应断言 | `scripts/oxlint-contract.spec.ts`：删 import + toHaveLength(6) + for-of assertion |
+
+### 验证
+
+- `OXC_LOG=debug oxlint .` unmatched: **55 → 49**（6 eval-cli tests 不再 unmatched）
+- 6 spec 文件全部 `Got tsconfig for file ...: tsconfig.tests.json`（不再是 `<none>`）
+- `tsc -b packages/eval/eval-cli/tsconfig.tests.json` exit 0（产物 `lib/tests/types/` + `tsconfig.tests.tsbuildinfo`）
+- `tsc -b tsconfig.host.json` exit 0（整体 host build 无回归）
+- `oxlint-contract.spec.ts` 16/16 pass（updated counts: waive 34 + keep 15 = 49 unmatched）
+
+### 意义
+
+UM-LINT-B 的 `EVAL_CLI_PENDING_FIX` allowlist 是**唯一的豁免**。删掉它后，`assertNoStrictOverrideUnmatched` 防线变为**无豁免全绿**：任何新增的严格 override 下未归属文件会立刻让门红，不再有任何 allowlist 可以藏。

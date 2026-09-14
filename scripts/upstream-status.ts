@@ -30,6 +30,7 @@ import {
   UPSTREAM_SYNC_RECORD,
   REPOSITORY_ROOT,
   daysSinceSync,
+  owedWaivers,
   pendingWaivers,
   readUpstreamSyncRecord,
   type UpstreamSyncRecord,
@@ -209,6 +210,15 @@ function safePendingCount(record: UpstreamSyncRecord): number {
   }
 }
 
+/** Drop waivers (owed remediation), or `[]` when the record is malformed. */
+function safeOwedWaivers(record: UpstreamSyncRecord): { path: string; direction: string; ticket: string }[] {
+  try {
+    return owedWaivers(record).map(w => ({ path: w.path, direction: w.direction, ticket: w.ticket }))
+  } catch {
+    return []
+  }
+}
+
 /** Staleness thresholds from the record, or `undefined` when malformed. */
 function safeThresholds(record: UpstreamSyncRecord): {
   days: number | undefined
@@ -345,6 +355,13 @@ function reportUpstreamStatus(root: string, noFetch: boolean): string[] {
   // Pending waivers.
   const pending = safePendingCount(record)
   lines.push(`upstream-status: pending waivers: ${pending}`)
+
+  // Owed remediation (drop waivers).
+  const owed = safeOwedWaivers(record)
+  lines.push(`upstream-status: owed remediation (drop waivers): ${owed.length}`)
+  for (const waiver of owed) {
+    lines.push(`upstream-status:   ${waiver.path} (${waiver.direction}) — ${waiver.ticket}`)
+  }
 
   // Impact report file (staleness summary without the meta line).
   const impactPath = writeImpactReport(root, shortSha(currentSha), remoteShort, todayIsoDate(), lines.join('\n'))

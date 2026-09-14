@@ -7,23 +7,21 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-## 目录
-
-- [标准评测模式：SQL 语义判定器](#standard-eval-mode-sql-semantic-judge)
-- [用法](#usage)
-- [记录结果](#recording-results)
-- [YYYY-MM-DD: <ticket/change description>](#yyyy-mm-dd-ticketchange-description)
-- [开发备注](#dev-note)
-- [模型经验](#model-experience)
-- [已知限制与延期工作](#known-limitations-and-deferred-work)
-
-
 <a id="summary"></a>
 ## 概述
 
 TODO: 填写概述——占位内容来自 package.json 的 description 字段。
 
 TODO: translate: Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.
+
+## 目录
+
+- [标准评测模式：SQL 语义判定器](#standard-eval-mode-sql-semantic-judge)
+- [用法](#usage)
+- [记录结果](#recording-results)
+- [开发备注](#dev-note)
+- [模型经验](#model-experience)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
 
 <a id="standard-eval-mode-sql-semantic-judge"></a>
 ## 标准评测模式：SQL 语义判定器

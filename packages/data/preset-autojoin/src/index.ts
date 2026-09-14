@@ -92,8 +92,23 @@ export const inject = ['agentPresets'] as const
  * @param presets - the preset roster service (or a structural mock).
  * @returns an `agent/created` listener.
  */
-export function createAutojoinListener(presets: AutojoinPresetService): (arg: { agent: { ctx: Context } }) => Promise<void> {
+export function createAutojoinListener(
+  presets: AutojoinPresetService,
+  logger?: { debug?: (...args: unknown[]) => void },
+): (arg: { agent: { ctx: Context } }) => Promise<void> {
   return async ({ agent }: { agent: { ctx: Context } }): Promise<void> => {
+    // [UM4 Scope 3] Instrumentation: observe whether pendingSwitch is in-flight
+    // at agent creation time, so the next HITL session can detect the race
+    // between preset switching and first-turn prompt dispatch.
+    const _sessionId = (agent.ctx as Context & { session?: { id?: string } }).session?.id
+      ?? (agent as unknown as { id?: string }).id
+      ?? 'unknown'
+    logger?.debug?.(
+      'preset-autojoin: pendingSwitch=%s for session %s',
+      (presets as unknown as { pendingSwitch?: (id: string) => Promise<unknown> | undefined })
+        .pendingSwitch?.(_sessionId) ? 'in-flight' : 'settled',
+      _sessionId,
+    )
     // Idempotent: an agent whose setup already joined a preset (the api-proxy
     // host path) is left alone — this wrapper must not re-parent a scope the
     // roster already bound, and `mount` would throw on a second bind.
@@ -145,7 +160,7 @@ export function createAutojoinListener(presets: AutojoinPresetService): (arg: { 
  * @param ctx - plugin context carrying the resolved `agentPresets` service.
  */
 export function apply(ctx: Context): void {
-  const listener = createAutojoinListener(ctx.agentPresets)
+  const listener = createAutojoinListener(ctx.agentPresets, ctx.logger)
   ctx.on('agent/created', (event) => {
     // agent/created is a fire-and-forget dispatch (it does not await
     // listeners). The listener logs mount failures at ERROR before

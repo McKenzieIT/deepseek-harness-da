@@ -7,22 +7,20 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
-## Table of Contents
-
-- [Standard Eval Mode: SQL Semantic Judge](#standard-eval-mode-sql-semantic-judge)
-- [Usage](#usage)
-- [Recording Results](#recording-results)
-- [YYYY-MM-DD: <ticket/change description>](#yyyy-mm-dd-ticketchange-description)
-- [Dev Note](#dev-note)
-- [Model Experience](#model-experience)
-- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
-
-
 ## Summary
 
 TODO: fill in Summary — placeholder seeded from package.json description.
 
 Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.
+
+## Table of Contents
+
+- [Standard Eval Mode: SQL Semantic Judge](#standard-eval-mode-sql-semantic-judge)
+- [Usage](#usage)
+- [Recording Results](#recording-results)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
 ## Standard Eval Mode: SQL Semantic Judge
 
