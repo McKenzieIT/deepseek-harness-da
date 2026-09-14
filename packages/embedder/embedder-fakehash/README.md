@@ -1,12 +1,36 @@
+---
+description: "Zero-dependency FakeHash embedder provider (deterministic sha256 hash vectors) + FakeReranker peer for the data agent's retrieval (P5b default tier)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-embedder-fakehash
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Zero-dependency FakeHash embedder provider (deterministic sha256 hash vectors) + FakeReranker peer for the data agent's retrieval (P5b default tier)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Zero-dependency FakeHash embedder provider (deterministic sha256 hash vectors) + FakeReranker peer for the data agent's retrieval pipeline (P5b default tier).
 
 ## Overview
 
 Provides `FakeHashEmbedder` — a zero-dependency provider that generates deterministic vectors from sha256 hashes of input text. Paired with `FakeReranker` as the default reranker peer. This is the boot-time default: retrieval works out of the box without an external embedding service, at the cost of semantic quality.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

@@ -1,10 +1,4 @@
 /**
- * ⚠️ UNWIRED SCAFFOLD — NOT enrolled in package.json scripts, run-gates.ts,
- *    or gate-coverage.manifest.json. Do NOT wire until the KNOWN BUG below
- *    is fixed; running the generator as-is regresses bilingual pairing on
- *    16 of 65 target packages. See the decision-doc in
- *    wayfinder/data-agent/tickets/phase-upstream-merge/UM-FORK-README-SKELETON-RETROFIT.md.
- *
  * Retrofit every package README onto the standard skeleton: a two-field
  * frontmatter block (`description`, `kind`), a `## Summary` (or `## 概述`)
  * seeded from the package manifest description, a `## Table of Contents`
@@ -32,25 +26,12 @@
  * preceding `<a id="english-slug"></a>` so the target resolves. This
  * mirrors the reference example `session-persistence-jsonl`.
  *
- * 🔴 KNOWN BUG (blocks wiring — 2026-09-13 apply attempt): the `hasSummary`
- *    idempotency check (see `insertSkeleton`) tests the ZH body for
- *    `^## 概述$`. 16 of 65 target packages already carry `## 概述` as their
- *    existing *Overview* heading (the ZH rendering of the EN `## Overview`).
- *    For those 16, the check matches and the generator SKIPS inserting the
- *    Summary `## 概述` — but the EN side inserts `## Summary` (because EN's
- *    existing `## Overview` ≠ `Summary`). The asymmetry leaves ZH one H2
- *    short of EN and drops the Overview entry from the ZH TOC, regressing
- *    `verify-translation-pairing` on 16 previously-green pairs.
- *
- *    The EN logic is sound (49/65 pairs retrofit cleanly). The fix is ZH-only
- *    and is a design decision, not a one-line patch: when an existing ZH
- *    `## 概述` is the Overview, the generator must (a) rename it to
- *    `## Overview` so a separate Summary `## 概述` can coexist, (b) rebuild
- *    the TOC to include the renamed Overview, and (c) re-thread the
- *    positionally-paired `<a id>` anchors — OR adopt a different Summary
- *    heading word for ZH that cannot collide. The rename changes authored
- *    ZH heading text (概述 → Overview) and needs a grilling call before
- *    the generator is wired and the 130-file run lands.
+ * F1 (UM-FORK-README-SKELETON-RETROFIT): 16 of 65 target packages carry
+ * an existing ZH `## 概述` that renders the EN `## Overview` (NOT a Summary).
+ * The `extractPairPlan` detector reports these as `overviewCollisionIndices`;
+ * `retrofitPair` renames the collision `## 概述` → `## Overview` before
+ * staging so a separate Summary `## 概述` can coexist, then re-derives the
+ * pair. This prevents recurrence on new packages with the same shape.
  *
  * @module scripts/gen-package-readme-skeleton
  */
@@ -226,13 +207,43 @@ function afterHeader(body: string): { header: string; rest: string } {
   return { header, rest }
 }
 
-/** Every H2 heading in a body, in source order, as rendered text. */
-function h2Headings(body: string): string[] {
+interface MarkdownLine {
+  readonly text: string
+  /** True for opening/closing fence delimiters and every line between them. */
+  readonly fenced: boolean
+}
+
+/** Split Markdown into lines while tracking backtick and tilde fenced blocks. */
+function markdownLines(source: string): MarkdownLine[] {
+  let fence: { readonly character: '`' | '~'; readonly length: number } | undefined
+  return source.split('\n').map((text) => {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(text)?.[1]
+    if (fence === undefined) {
+      if (marker !== undefined) {
+        fence = { character: marker[0] as '`' | '~', length: marker.length }
+        return { text, fenced: true }
+      }
+      return { text, fenced: false }
+    }
+
+    const fenced = true
+    if (marker !== undefined
+      && marker[0] === fence.character
+      && marker.length >= fence.length
+      && text.slice(text.indexOf(marker) + marker.length).trim() === '') {
+      fence = undefined
+    }
+    return { text, fenced }
+  })
+}
+
+/** Every rendered H2 heading outside fenced code blocks, in source order. */
+export function h2Headings(body: string): string[] {
   const headings: string[] = []
-  const pattern = /^## (.+)$/gm
-  let match: RegExpExecArray | null
-  while ((match = pattern.exec(body)) !== null) {
-    if (match[1] !== undefined) headings.push(match[1].trim())
+  for (const line of markdownLines(body)) {
+    if (line.fenced) continue
+    const match = /^## (.+)$/.exec(line.text)
+    if (match?.[1] !== undefined) headings.push(match[1].trim())
   }
   return headings
 }
@@ -241,6 +252,7 @@ interface HeadingWords {
   readonly summary: string
   readonly toc: string
   readonly devNote: string
+  readonly modelExperience: string
   readonly summaryPlaceholder: string
   readonly devNoteBody: string
 }
@@ -249,6 +261,7 @@ const EN_HEADINGS: HeadingWords = {
   summary: 'Summary',
   toc: 'Table of Contents',
   devNote: 'Dev Note',
+  modelExperience: 'Model Experience',
   summaryPlaceholder: 'TODO: fill in Summary — placeholder seeded from package.json description.',
   devNoteBody: 'None.',
 }
@@ -257,9 +270,24 @@ const ZH_HEADINGS: HeadingWords = {
   summary: '概述',
   toc: '目录',
   devNote: '开发备注',
+  modelExperience: '模型体验',
   summaryPlaceholder: 'TODO: 填写概述——占位内容来自 package.json 的 description 字段。',
   devNoteBody: '无。',
 }
+
+/**
+ * All known Model Experience heading renderings: EN `## Model Experience`,
+ * the ZH standard `## 模型体验`, and the ZH alt `## 模型经验` (one package,
+ * packages/eval/eval-cli, uses this non-standard rendering). The Dev Note
+ * position logic (TOC insertion + tail-insertion + isDevNoteMisaligned)
+ * matches any of these so the Dev Note lands before Model Experience on
+ * both EN and ZH regardless of which rendering a package uses.
+ */
+const MODEL_EXPERIENCE_VARIANTS: readonly string[] = [
+  EN_HEADINGS.modelExperience,
+  ZH_HEADINGS.modelExperience,
+  '模型经验',
+]
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -291,6 +319,79 @@ function frontmatterDescription(source: string): string | undefined {
   return value
 }
 
+/**
+ * Remove a section (heading + body + optional preceding `<a id>` anchor)
+ * from a rest string. The section starts at the given heading word (## or
+ * ###) and runs to the next ## or ### heading or end of file. If an
+ * `<a id="...">` line immediately precedes the heading (with optional
+ * blank line), it is also removed. Surrounding blank lines are collapsed
+ * so the excision point stays clean. Returns the original rest if the
+ * heading is not found.
+ */
+function stripSection(rest: string, headingWord: string): string {
+  const scanned = markdownLines(rest)
+  const lines = scanned.map(line => line.text)
+  let headingIdx = -1
+  let anchorIdx = -1
+
+  for (let i = 0; i < scanned.length; i++) {
+    const line = scanned[i]
+    if (line === undefined || line.fenced) continue
+    const match = /^#{2,3} (.+)$/.exec(line.text)
+    if (match !== null && match[1]?.trim() === headingWord) {
+      headingIdx = i
+      let j = i - 1
+      while (j >= 0) {
+        const prev = lines[j]
+        if (prev === undefined) break
+        if (prev === '') { j--; continue }
+        if (/^\s*<a id="[^"]*">\s*<\/a>\s*$/.test(prev)) {
+          anchorIdx = j
+        }
+        break
+      }
+      break
+    }
+  }
+
+  if (headingIdx === -1) return rest
+
+  let sectionEnd = lines.length
+  for (let k = headingIdx + 1; k < scanned.length; k++) {
+    const line = scanned[k]
+    if (line !== undefined && !line.fenced && /^#{2,3} /.test(line.text)) {
+      sectionEnd = k
+      break
+    }
+  }
+
+  const exciseStart = anchorIdx >= 0 ? anchorIdx : headingIdx
+  const before = lines.slice(0, exciseStart)
+  const after = lines.slice(sectionEnd)
+
+  while (before.length > 0 && before[before.length - 1] === '') before.pop()
+  while (after.length > 0 && after[0] === '') after.shift()
+
+  if (before.length === 0 && after.length === 0) return ''
+  if (before.length === 0) return after.join('\n')
+  if (after.length === 0) return before.join('\n')
+  return [...before, '', ...after].join('\n')
+}
+
+/**
+ * Strip the TOC and Dev Note sections (but NOT Summary — Summary content
+ * may be author-authored and is always at the correct position) from a
+ * rest string, so the pair is computed from Summary + content headings
+ * only and insertSkeleton re-inserts the TOC and Dev Note at the correct
+ * positions. Idempotent: a rest with no TOC/Dev Note is returned unchanged.
+ */
+function stripTocAndDevNote(rest: string, words: HeadingWords): string {
+  let result = rest
+  result = stripSection(result, words.toc)
+  result = stripSection(result, words.devNote)
+  return result
+}
+
 interface Retrofit {
   readonly file: string
   readonly current: string
@@ -303,20 +404,32 @@ interface Retrofit {
  * per heading; leaves existing anchors untouched. Slugs come from the EN
  * heading at the same position so ZH link targets match EN link targets
  * across the pair.
+ *
+ * F1 invariant: retrofitPair passes the RE-DERIVED pair plan (after the
+ * 概述→Overview rename), so `headings` carries `Overview` (not 概述) at
+ * collision positions and the anchor threads before the renamed heading.
+ * The redundant `<a id="overview">` is harmless: GitHub's native
+ * `## Overview`→#overview slug already resolves the target, and html
+ * nodes are invisible to the pairing signature. No logic change required
+ * here — fed the re-derived pair, the existing positional walk threads
+ * correctly.
  */
-function insertAnchorsBeforeHeadings(
+export function insertAnchorsBeforeHeadings(
   body: string,
   headings: readonly string[],
   slugs: readonly string[],
 ): string {
   if (headings.length === 0) return body
-  const lines = body.split('\n')
+  const scanned = markdownLines(body)
   const anchoredLines: string[] = []
+  const existingSlugs = new Set(scanned.flatMap(({ text, fenced }) => {
+    if (fenced) return []
+    const match = /^\s*<a id="([^"]+)">\s*<\/a>\s*$/.exec(text)
+    return match?.[1] === undefined ? [] : [match[1]]
+  }))
   let headingCursor = 0
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line === undefined) continue
-    const headingMatch = /^## (.+)$/.exec(line)
+  for (const { text: line, fenced } of scanned) {
+    const headingMatch = fenced ? null : /^## (.+)$/.exec(line)
     if (headingMatch !== null && headingCursor < headings.length) {
       const expected = headings[headingCursor]
       const rendered = headingMatch[1]?.trim()
@@ -331,6 +444,7 @@ function insertAnchorsBeforeHeadings(
               anchoredLines.push('')
             }
             anchoredLines.push(`<a id="${slug}"></a>`)
+            existingSlugs.add(slug)
           }
         }
         headingCursor += 1
@@ -341,24 +455,90 @@ function insertAnchorsBeforeHeadings(
   return anchoredLines.join('\n')
 }
 
+/** EN authored Overview heading text; the ZH 概述 collision renames to this. */
+const EN_OVERVIEW_HEADING = 'Overview'
+
 interface PairPlan {
   readonly enHeadings: readonly string[]
   readonly zhHeadings: readonly string[]
   /** English slugs, one per EN heading; the same slugs anchor the ZH pair. */
   readonly slugs: readonly string[]
+  /**
+   * Positional indices where a ZH `## 概述` renders the EN sibling's
+   * `## Overview` — the 概述/Overview collision (16 of 65 target packages).
+   * At these positions the ZH 概述 is the Overview, NOT a Summary, so the
+   * caller (retrofitPair) must rename it to `## Overview` before re-deriving
+   * the final plan so a separate Summary `## 概述` can coexist. See
+   * UM-FORK-README-SKELETON-RETROFIT (F1).
+   */
+  readonly overviewCollisionIndices: readonly number[]
 }
 
 /**
  * Extract the existing EN/ZH heading pair from the two bodies (after H1 +
  * switcher). Positional pairing: the nth `## ` in EN maps to the nth `## `
  * in ZH. Slugs derive from the EN heading (or from a pre-existing `<a id>`
- * anchor already before the ZH heading, if any).
+ * anchor already before the ZH heading, if any). Also reports the
+ * 概述/Overview collision indices so the caller can rename the ZH Overview
+ * before re-deriving the final plan (F1).
  */
-function extractPairPlan(enBody: string, zhBody: string): PairPlan {
+export function extractPairPlan(enBody: string, zhBody: string): PairPlan {
   const enH2s = h2Headings(enBody)
   const zhH2s = zhBody === '' ? [] : h2Headings(zhBody)
   const slugs = enH2s.map(heading => githubSlug(heading))
-  return { enHeadings: enH2s, zhHeadings: zhH2s, slugs }
+  const overviewCollisionIndices = zhH2s
+    .map((zh, i) => (zh === ZH_HEADINGS.summary && enH2s[i] === EN_OVERVIEW_HEADING ? i : -1))
+    .filter(i => i >= 0)
+  return { enHeadings: enH2s, zhHeadings: zhH2s, slugs, overviewCollisionIndices }
+}
+
+/**
+ * Rename the positionally-paired ZH `## 概述` (Overview) headings to
+ * `## Overview` so a separate Summary `## 概述` can coexist without a
+ * duplicate `#概述` slug. `collisionIndices` are the positional H2 indices
+ * from `extractPairPlan.overviewCollisionIndices`; the rename rewrites only
+ * those occurrences in document order, mirroring
+ * `insertAnchorsBeforeHeadings`'s heading-cursor walk. Idempotent: a second
+ * pass sees `## Overview` (not `## 概述`) so the collision set is empty.
+ */
+function renameOverviewCollisions(
+  rest: string,
+  collisionIndices: readonly number[],
+): string {
+  if (collisionIndices.length === 0) return rest
+  const collisionSet = new Set(collisionIndices)
+  const scanned = markdownLines(rest)
+  const lines = scanned.map(line => line.text)
+  let headingCursor = 0
+  for (let i = 0; i < scanned.length; i++) {
+    const line = scanned[i]
+    if (line === undefined || line.fenced) continue
+    const headingMatch = /^## (.+)$/.exec(line.text)
+    if (headingMatch !== null) {
+      const rendered = headingMatch[1]?.trim()
+      if (rendered === ZH_HEADINGS.summary && collisionSet.has(headingCursor)) {
+        lines[i] = `## ${EN_OVERVIEW_HEADING}`
+      }
+      headingCursor += 1
+    }
+  }
+  return lines.join('\n')
+}
+
+/** Insert one generated H2 section after an existing rendered H2 section. */
+function insertAfterH2Section(body: string, headingWord: string, block: string): string {
+  const scanned = markdownLines(body)
+  const headingIndex = scanned.findIndex(({ text, fenced }) =>
+    !fenced && /^## (.+)$/.exec(text)?.[1]?.trim() === headingWord)
+  if (headingIndex < 0) return body
+  const nextHeadingIndex = scanned.findIndex(({ text, fenced }, index) =>
+    index > headingIndex && !fenced && /^## /.test(text))
+  const insertionIndex = nextHeadingIndex < 0 ? scanned.length : nextHeadingIndex
+  const before = scanned.slice(0, insertionIndex).map(line => line.text)
+  const after = scanned.slice(insertionIndex).map(line => line.text)
+  while (before.at(-1) === '') before.pop()
+  while (after[0] === '') after.shift()
+  return [...before, '', block.trimEnd(), '', ...after].join('\n')
 }
 
 interface SkeletonInsertion {
@@ -385,56 +565,113 @@ interface SkeletonInsertion {
  * ZH heading; here we insert one `<a id="dev-note"></a>` before the new
  * Dev Note heading itself (Summary and TOC do not need anchors — they are
  * not TOC entries).
+ *
+ * F1 invariant: retrofitPair renames any ZH `## 概述` that renders the EN
+ * `## Overview` to `## Overview` BEFORE staging, so the `hasSummary`
+ * (`^## 概述$`) check below sees no pre-existing 概述 and inserts the
+ * Summary. Without that upstream rename the check would match the Overview
+ * and skip the Summary, leaving ZH one H2 short of EN
+ * (UM-FORK-README-SKELETON-RETROFIT). No logic change required here — the
+ * rename upstream is the fix; this comment documents the contract.
  */
-function insertSkeleton(source: string, insertion: SkeletonInsertion): string {
+export function insertSkeleton(source: string, insertion: SkeletonInsertion): string {
   const { frontmatter, body } = splitFrontmatter(source)
   const { header, rest } = afterHeader(body)
   const { words, description, existingHeadingSlugs } = insertion
 
-  const hasSummary = new RegExp(`^## ${escapeRegExp(words.summary)}$`, 'm').test(rest)
-  const hasToc = new RegExp(`^## ${escapeRegExp(words.toc)}$`, 'm').test(rest)
-  const hasDevNote = new RegExp(`^#{2,3} ${escapeRegExp(words.devNote)}$`, 'm').test(rest)
+  const existingHeadings = h2Headings(rest)
+  const hasSummary = existingHeadings.includes(words.summary)
+  const hasToc = existingHeadings.includes(words.toc)
+  const hasDevNote = existingHeadings.includes(words.devNote)
 
   // Build the TOC entries: display text uses the language's rendered heading;
   // link target uses the English slug (same for both languages).
-  const existingHeadings = h2Headings(rest)
   const tocPairs: (readonly [string, string])[] = []
+  let devNoteTocInserted = false
   for (let i = 0; i < existingHeadings.length; i++) {
     const heading = existingHeadings[i]
     const slug = existingHeadingSlugs[i]
     if (heading === undefined || slug === undefined) continue
     if (heading === words.summary || heading === words.toc || heading === words.devNote) continue
+    // Insert Dev Note before Model Experience so Model Experience +
+    // Known Limitations stay the final two H2s (model-experience gate).
+    // Language-aware: matches both the EN `## Model Experience` (used by EN
+    // and some ZH files) and the ZH rendering `## 模型体验`.
+    if (!devNoteTocInserted && MODEL_EXPERIENCE_VARIANTS.includes(heading)) {
+      tocPairs.push([words.devNote, insertion.devNoteSlug])
+      devNoteTocInserted = true
+    }
     tocPairs.push([heading, slug])
   }
-  tocPairs.push([words.devNote, insertion.devNoteSlug])
+  if (!devNoteTocInserted) {
+    tocPairs.push([words.devNote, insertion.devNoteSlug])
+  }
 
-  // Build the Summary + TOC block just after header, before the rest.
+  // Build the Summary + TOC block just after header. If Summary already
+  // exists, place a missing TOC after its section instead of before it.
   const insertions: string[] = []
+  let tail = rest
   if (!hasSummary) {
     insertions.push(`## ${words.summary}\n\n${words.summaryPlaceholder}\n\n${description}\n`)
   }
   if (!hasToc) {
-    insertions.push(`## ${words.toc}\n\n${renderTableOfContents(tocPairs)}\n`)
+    const tocBlock = `## ${words.toc}\n\n${renderTableOfContents(tocPairs)}\n`
+    if (hasSummary) tail = insertAfterH2Section(tail, words.summary, tocBlock)
+    else insertions.push(tocBlock)
   }
 
   const headerWithInsertions = insertions.length > 0
     ? `${header}\n\n${insertions.join('\n')}`
     : header
 
-  // Dev Note at the end, with an explicit `<a id>` for the ZH side so the
-  // link target `#dev-note` resolves. (Optional on the EN side, but
-  // symmetrical for the pairing structure signature.)
-  let tail = rest
+  // Dev Note before ## Model Experience so Model Experience + Known
+  // Limitations remain the final two H2s (verify-package-readme-model-
+  // experience gate). Falls back to the end when Model Experience is absent.
+  // Language-aware: matches both the EN `## Model Experience` and the ZH
+  // rendering `## 模型体验`, so ZH packages whose Model Experience heading
+  // is the Chinese rendering get the Dev Note before it (not at the end).
   if (!hasDevNote) {
-    const trimmedTail = tail.replace(/\s+$/u, '')
-    const anchor = insertion.language === 'zh'
+    const devNoteBlock = insertion.language === 'zh'
       ? `\n\n<a id="${insertion.devNoteSlug}"></a>\n## ${words.devNote}\n\n${words.devNoteBody}\n`
       : `\n\n## ${words.devNote}\n\n${words.devNoteBody}\n`
-    tail = `${trimmedTail}${anchor}`
+    const modelExpPattern = MODEL_EXPERIENCE_VARIANTS
+      .map(escapeRegExp)
+      .join('|')
+    const modelExpMatch = new RegExp(`^## (?:${modelExpPattern})$`, 'm').exec(tail)
+    if (modelExpMatch !== null) {
+      const before = tail.slice(0, modelExpMatch.index).replace(/\s+$/u, '')
+      const after = tail.slice(modelExpMatch.index)
+      tail = `${before}${devNoteBlock}\n\n${after}`
+    } else {
+      const trimmedTail = tail.replace(/\s+$/u, '')
+      tail = `${trimmedTail}${devNoteBlock}`
+    }
   }
 
   const rebuiltBody = `${headerWithInsertions}\n${tail}`
   return `${frontmatter}${rebuiltBody}`
+}
+
+/**
+ * Detect whether the Dev Note's position relative to Model Experience
+ * differs between EN and ZH. This happens when a previous generator run
+ * had EN-only Model Experience heading detection: ZH files whose Model
+ * Experience heading is `## 模型体验` (Chinese rendering) had the Dev Note
+ * fall to the end instead of before Model Experience, shifting the ZH H2
+ * sequence out of sync with EN. When misaligned, retrofitPair strips the
+ * TOC + Dev Note from both sides and re-derives the pair; when aligned,
+ * the file is left untouched (idempotent).
+ */
+function isDevNoteMisaligned(pair: PairPlan, hasZh: boolean): boolean {
+  if (!hasZh) return false
+  const enDevNoteIdx = pair.enHeadings.findIndex(h => h === EN_HEADINGS.devNote)
+  const zhDevNoteIdx = pair.zhHeadings.findIndex(h => h === ZH_HEADINGS.devNote)
+  const enModelExpIdx = pair.enHeadings.findIndex(h => h === EN_HEADINGS.modelExperience)
+  const zhModelExpIdx = pair.zhHeadings.findIndex(
+    h => MODEL_EXPERIENCE_VARIANTS.includes(h),
+  )
+  if (enDevNoteIdx < 0 || zhDevNoteIdx < 0 || enModelExpIdx < 0 || zhModelExpIdx < 0) return false
+  return (enDevNoteIdx < enModelExpIdx) !== (zhDevNoteIdx < zhModelExpIdx)
 }
 
 /**
@@ -465,29 +702,82 @@ function retrofitPair(enFile: string): Retrofit[] {
   const hasZh = existsSync(zhAbs)
   const zhCurrent = hasZh ? readFileSync(zhAbs, 'utf8') : ''
 
-  // Compute the H2 pair BEFORE mutating either side, so slug pairing is
-  // driven by the pre-existing (author-authored) heading structure.
+  // Compute the H2 pair from the pre-existing (author-authored + any
+  // previously-generated skeleton) heading structure, to validate count.
   const enBodyPreexisting = splitFrontmatter(enCurrent).body
   const zhBodyPreexisting = splitFrontmatter(zhCurrent).body
-  const enRestPre = afterHeader(enBodyPreexisting).rest
-  const zhRestPre = afterHeader(zhBodyPreexisting).rest
-  const pair = extractPairPlan(enRestPre, zhRestPre)
+  const { header: enHeaderPre, rest: enRestPre } = afterHeader(enBodyPreexisting)
+  const { header: zhHeaderPre, rest: zhRestPre } = afterHeader(zhBodyPreexisting)
+  const initialPair = extractPairPlan(enRestPre, zhRestPre)
 
-  if (hasZh && pair.enHeadings.length !== pair.zhHeadings.length) {
+  if (hasZh && initialPair.enHeadings.length !== initialPair.zhHeadings.length) {
     throw new Error(
-      `gen-package-readme-skeleton: ${enFile} and its ZH sibling have ${pair.enHeadings.length} vs ${pair.zhHeadings.length} `
+      `gen-package-readme-skeleton: ${enFile} and its ZH sibling have ${initialPair.enHeadings.length} vs ${initialPair.zhHeadings.length} `
       + '## headings; cannot positionally anchor. Fix the pair manually first.',
     )
+  }
+
+  // Detect Dev Note position misalignment (EN has Dev Note before Model
+  // Experience, ZH has it after — or vice versa). When misaligned, strip
+  // the TOC + Dev Note (NOT Summary — authored content must be preserved)
+  // from both sides and re-derive the pair from Summary + content headings.
+  // insertSkeleton then re-inserts the TOC and Dev Note at the correct
+  // positions. When aligned, the file is left untouched — insertSkeleton
+  // sees the existing skeleton and is a no-op (idempotent), avoiding
+  // unnecessary churn on the ~500 files that are already correct.
+  const needsStrip = isDevNoteMisaligned(initialPair, hasZh)
+
+  // Always strip the skeleton (TOC + Dev Note) for pair computation so
+  // insertAnchorsBeforeHeadings and existingHeadingSlugs align with
+  // Summary + content headings only.
+  const enRestForPair = stripTocAndDevNote(enRestPre, EN_HEADINGS)
+  const zhRestForPair = stripTocAndDevNote(zhRestPre, ZH_HEADINGS)
+
+  // F1 (UM-FORK-README-SKELETON-RETROFIT): 16 of 65 target packages carry
+  // an existing ZH `## 概述` that renders the EN `## Overview` (NOT a
+  // Summary). Rename the collision `## 概述` → `## Overview` on the ZH
+  // body BEFORE staging so a separate Summary `## 概述` can coexist, then
+  // RE-DERIVE the pair. Idempotent: once renamed, the detector sees
+  // `## Overview` (not 概述) → empty collision set → no-op.
+  const contentPair = extractPairPlan(enRestForPair, zhRestForPair)
+  let zhRestFinal = zhRestForPair
+  let pair = contentPair
+  if (hasZh && contentPair.overviewCollisionIndices.length > 0) {
+    console.warn(
+      `gen-package-readme-skeleton: ${enFile} — renamed ZH ## 概述 → ## Overview at position(s) ${contentPair.overviewCollisionIndices.join(', ')} (概述/Overview collision, F1 auto-fix)`,
+    )
+    zhRestFinal = renameOverviewCollisions(zhRestForPair, contentPair.overviewCollisionIndices)
+    pair = extractPairPlan(enRestForPair, zhRestFinal)
+  }
+
+  // Always apply the F1 概述→Overview rename to the ZH source content when
+  // a collision is detected, regardless of needsStrip. Without this, ZH
+  // files whose authored Overview heading is `## 概述` would have
+  // hasSummary match the Overview (not the Summary), skipping Summary
+  // insertion and leaving ZH one H2 short of EN.
+  let enRestForInsert = enRestPre
+  let zhRestForInsert = zhRestPre
+  if (hasZh && contentPair.overviewCollisionIndices.length > 0) {
+    zhRestForInsert = renameOverviewCollisions(zhRestForInsert, contentPair.overviewCollisionIndices)
+  }
+  if (needsStrip) {
+    enRestForInsert = stripTocAndDevNote(enRestForInsert, EN_HEADINGS)
+    zhRestForInsert = stripTocAndDevNote(zhRestForInsert, ZH_HEADINGS)
   }
 
   const devNoteSlug = githubSlug(EN_HEADINGS.devNote)
   const summarySlug = githubSlug(EN_HEADINGS.summary)
   const tocSlug = githubSlug(EN_HEADINGS.toc)
 
-  // EN side: only insert frontmatter + Summary/TOC/Dev Note. No `<a id>`
-  // anchors before existing headings — the EN slug resolves directly from
-  // GitHub's own heading slug rendering.
-  const enWithFrontmatter = insertFrontmatter(enCurrent, description, kind)
+  // EN side: when needsStrip, the stripped rest is used so insertSkeleton
+  // re-inserts the TOC and Dev Note. When !needsStrip, the original rest
+  // (with F1 rename for ZH) is used — insertSkeleton sees the existing
+  // skeleton and is a no-op. For new files (no frontmatter), the rest has
+  // no skeleton, so insertSkeleton inserts everything.
+  const enSource = needsStrip
+    ? `${splitFrontmatter(enCurrent).frontmatter}${enHeaderPre ? `${enHeaderPre}\n${enRestForInsert}` : enRestForInsert}`
+    : enCurrent
+  const enWithFrontmatter = insertFrontmatter(enSource, description, kind)
   const enNext = insertSkeleton(enWithFrontmatter, {
     words: EN_HEADINGS,
     description,
@@ -503,17 +793,20 @@ function retrofitPair(enFile: string): Retrofit[] {
   if (hasZh) {
     const existingZhDescription = frontmatterDescription(zhCurrent)
     const zhDescription = existingZhDescription ?? `TODO: translate: ${description}`
-    let zhStaged = insertFrontmatter(zhCurrent, zhDescription, kind)
+    // When needsStrip or F1 rename, use the modified rest; otherwise the
+    // original file content (no-op).
+    const zhUseModified = needsStrip || contentPair.overviewCollisionIndices.length > 0
+    const zhSource = zhUseModified
+      ? `${splitFrontmatter(zhCurrent).frontmatter}${zhHeaderPre ? `${zhHeaderPre}\n${zhRestForInsert}` : zhRestForInsert}`
+      : zhCurrent
+    const zhStaged = insertFrontmatter(zhSource, zhDescription, kind)
 
-    // Inject the EN-slug anchor before each existing ZH heading, so the ZH
-    // TOC's English-slug link targets resolve. Do this AFTER frontmatter
-    // insertion so the header search sees the H1 in a consistent position.
-    const { frontmatter: zhFm, body: zhBody } = splitFrontmatter(zhStaged)
-    const { header: zhHeader, rest: zhRestForAnchor } = afterHeader(zhBody)
-    const zhRestWithAnchors = insertAnchorsBeforeHeadings(zhRestForAnchor, pair.zhHeadings, pair.slugs)
-    zhStaged = `${zhFm}${zhHeader}\n${zhRestWithAnchors}`
-
-    const zhNext = insertSkeleton(zhStaged, {
+    // Insert the skeleton (Summary/TOC/Dev Note) BEFORE threading the
+    // EN-slug anchors, so the Dev Note lands before Model Experience and
+    // the <a id="model-experience"> anchor then threads immediately before
+    // ## 模型体验. pair.zhHeadings is Summary + content (TOC/Dev Note
+    // stripped), so skeleton headings are skipped by the cursor walk.
+    const zhWithSkeleton = insertSkeleton(zhStaged, {
       words: ZH_HEADINGS,
       description: zhDescription,
       language: 'zh',
@@ -522,6 +815,11 @@ function retrofitPair(enFile: string): Retrofit[] {
       devNoteSlug,
       existingHeadingSlugs: pair.slugs,
     })
+
+    const { frontmatter: zhFm, body: zhBody } = splitFrontmatter(zhWithSkeleton)
+    const { header: zhHeader, rest: zhRestForAnchor } = afterHeader(zhBody)
+    const zhRestWithAnchors = insertAnchorsBeforeHeadings(zhRestForAnchor, pair.zhHeadings, pair.slugs)
+    const zhNext = `${zhFm}${zhHeader}\n${zhRestWithAnchors}`
     results.push({ file: zhFile, current: zhCurrent, next: zhNext })
   }
 
@@ -529,18 +827,44 @@ function retrofitPair(enFile: string): Retrofit[] {
 }
 
 /**
- * Retrofit every EN README that needs it (i.e. currently has no frontmatter);
- * mirror the change to the ZH sibling when one exists. READMEs that already
- * carry frontmatter are left alone as an idempotency guarantee.
+ * Retrofit (or re-retrofit) every package-reference EN README and its ZH
+ * sibling. Two triggers:
+ * 1. No frontmatter — first-run retrofit (insert frontmatter + skeleton).
+ * 2. Dev Note misaligned between EN and ZH — re-retrofit the skeleton
+ *    (strip TOC + Dev Note, re-insert at correct positions).
+ * Files with frontmatter AND aligned Dev Note are skipped (idempotent).
+ * Files with pre-existing H2 count mismatches are skipped (can't
+ * positionally anchor). Non-reference packages are skipped via the kind
+ * check.
  */
 export function planRetrofits(): Retrofit[] {
   const files = packageReadmes()
   const enTargets = files.filter(file => file.endsWith('/README.md') && !file.endsWith('.zh.md'))
   const retrofits: Retrofit[] = []
   for (const enFile of enTargets) {
+    if (expectedKind(enFile) !== 'package-reference') continue
     const currentEn = readFileSync(resolve(ROOT, enFile), 'utf8')
-    if (hasFrontmatter(currentEn)) continue
-    retrofits.push(...retrofitPair(enFile))
+    const hasFm = hasFrontmatter(currentEn)
+    if (hasFm) {
+      // Already retrofitted — only re-process if the Dev Note is misaligned.
+      const zhFile = enFile.replace(/README\.md$/, 'README.zh.md')
+      const zhAbs = resolve(ROOT, zhFile)
+      const hasZh = existsSync(zhAbs)
+      if (!hasZh) continue
+      const zhCurrent = readFileSync(zhAbs, 'utf8')
+      const enRest = afterHeader(splitFrontmatter(currentEn).body).rest
+      const zhRest = afterHeader(splitFrontmatter(zhCurrent).body).rest
+      const pair = extractPairPlan(enRest, zhRest)
+      if (!isDevNoteMisaligned(pair, true)) continue
+    }
+    try {
+      retrofits.push(...retrofitPair(enFile))
+    } catch (e) {
+      // Skip files with pre-existing H2 count mismatches — the generator
+      // cannot positionally anchor without a matched heading list.
+      if (e instanceof Error && e.message.includes('cannot positionally anchor')) continue
+      throw e
+    }
   }
   return retrofits
 }

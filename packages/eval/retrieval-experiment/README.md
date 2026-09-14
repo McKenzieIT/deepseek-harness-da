@@ -1,8 +1,31 @@
+---
+description: "Retrieval strategy gradient experiment infrastructure: Level 0-3 graph snapshots, blending function variants, precision@K/recall@K harness"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-retrieval-experiment
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Retrieval strategy gradient experiment infrastructure: Level 0-3 graph snapshots, blending function variants, precision@K/recall@K harness
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Retrieval strategy gradient experiment infrastructure: Level 0-3 graph snapshots, blending function variants, precision@K/recall@K harness
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

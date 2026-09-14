@@ -1,9 +1,29 @@
+---
+description: "TODO: translate: Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout."
+kind: "package-reference"
+---
+
 # dsh-eval-cli
 
 [English](README.md) | 中文
 
-dsh-data-agent NL2SQL 流水线的独立 eval CLI。驱动 eval 用例对真实引擎执行，将结果以 JSON 持久化，并向 stdout 报告。
+<a id="summary"></a>
+## 概述
 
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.
+
+## 目录
+
+- [标准评测模式：SQL 语义判定器](#standard-eval-mode-sql-semantic-judge)
+- [用法](#usage)
+- [记录结果](#recording-results)
+- [开发备注](#dev-note)
+- [模型经验](#model-experience)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
+
+<a id="standard-eval-mode-sql-semantic-judge"></a>
 ## 标准评测模式：SQL 语义判定器
 
 **SQL 语义判定器是标准评测模式**（自 CL-10 起默认启用）。它使用一个 LLM 评估生成的 SQL 在语义上是否正确——检查表选择、字段选择、过滤条件、聚合逻辑以及整体语义。
@@ -88,6 +108,7 @@ dsh-data-agent NL2SQL 流水线的独立 eval CLI。驱动 eval 用例对真实�
 - **Voice EXEC**：30 个期望 SQL 执行结果的语音风格问题（scalar_exact / row_count_range）
 - **Voice DELIVERY**：18 个正确响应是澄清或拒绝的用例（llm_judge 评分）
 
+<a id="usage"></a>
 ## 用法
 
 ### 运行 eval（标准，启用 sql-judge）
@@ -149,6 +170,7 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 | `MAXC_CONFIG` | 随 `--with-query` | maxc config yaml 路径（例如 `~/.maxc/config_ieu_cdm.yaml`——K11 在 `ieu_cdm` 项目中）。**必填**：默认的 `~/.maxc/config.yaml` 是海外（hdyl_data_sg_dev）。还需传 `--sidecar packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs`（默认的 `standin-sidecar.mjs` 是 mock；`maxc-sidecar-k11.mjs` → 真实 `maxc` CLI）。需要 PATH 上有 `maxc` CLI。 |
 | `EXP2_ARM` | 否 | prompt 语言实验 arm（`B` = 全英文结构化 prompt，`E` = 英文 judge）。留空以使用标准中文 prompt。 |
 
+<a id="recording-results"></a>
 ## 记录结果
 
 结果 JSON 记录 `run_id`、`timestamp`、`summary`、按用例的判决，以及——自 2026-09-03（GA-EVAL-REBASELINE item 4）起——一个 **`config` 字段**（`provider`/`model`/`pass_k`/`concurrency`/`sql_judge`/`verdict_semantics`/`responder`/`scope_id`/`today`/`query_expansion`/`with_query`/`skip_health_gate`），使一次运行的协议+语义可从产物本身检测。**token 用量尚未记录**（后续——需要一个 LLM-stream 拦截器；见 GA-EVAL-REBASELINE）。在 audit log 中记录仍是强制的——`config` 捕获协议，但 audit log 捕获叙述 + 污染/纠正历史。（`config` 字段由 GA-EVAL-REBASELINE item 4 添加。）
@@ -179,6 +201,13 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 Resolves: [<ticket>](link)
 ```
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型经验
 
 间接地，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM adapter。
@@ -187,6 +216,7 @@ Resolves: [<ticket>](link)
 
 eval 运行的 LLM 调用在一条独立的调用路径上执行，不会延长或失效 agent loop 的可复用请求前缀。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延期工作
 
 - eval 产物被 gitignore 且短暂——对消失基线的 `compare.ts` 当前无法执行（见 2026-09-06 说明）。

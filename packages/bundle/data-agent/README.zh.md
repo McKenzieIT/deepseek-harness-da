@@ -19,6 +19,11 @@ data-agent bundle：叠在 [`dsh-base`](../base/README.zh.md) 之上的 additive
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+<a id="dev-note"></a>
+## 开发备注
+
+本 bundle 无代码——`package.json` 的 `dsh.bundle.patch` 字段将 profile composer 指向 `cordis.patch.yml`，一切挂载与禁用皆在该 YAML。改动归 YAML，绝不写 TypeScript。data-agent 阶段决策见 `wayfinder/data-agent/map.md`，各插件的实现历史见 `wayfinder/data-agent/tickets/`。
+
 -----
 
 <a id="model-experience"></a>
@@ -30,14 +35,10 @@ data-agent bundle：叠在 [`dsh-base`](../base/README.zh.md) 之上的 additive
 
 无直接影响；禁用一行会从组合树移除其 schema 与 prompt section，部署选择注释行在挂载 provider 前不挂任何东西。
 
-<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
+
+<a id="known-limitations-and-deferred-work"></a>
 
 - **embedder / retrieval 为部署选择**——此两 seam 在 patch 中保持注释；取消注释并挂载具体 provider（如 `embedder-fakehash`/`embedder-http`、`retrieval-inproc`）即可激活。其余 data 能力插件（P4-P11）均已发布并 LIVE 挂载。
 - **无 persona**——data-agent persona 归四阶段 preset（P7），不在本 bundle。
 - **无驱动**——patch-only 层；运行性来自与 driver bundle 或 P7 preset 组合，而非 `data-agent` profile template（未给 `dsh-app-boot` 加 template）。
-
-<a id="dev-note"></a>
-## 开发备注
-
-本 bundle 无代码——`package.json` 的 `dsh.bundle.patch` 字段将 profile composer 指向 `cordis.patch.yml`，一切挂载与禁用皆在该 YAML。改动归 YAML，绝不写 TypeScript。data-agent 阶段决策见 `wayfinder/data-agent/map.md`，各插件的实现历史见 `wayfinder/data-agent/tickets/`。

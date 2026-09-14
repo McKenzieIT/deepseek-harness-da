@@ -1,6 +1,29 @@
+---
+description: "Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening."
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-semantic-layer`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening.
+
+## Table of Contents
+
+- [P6b grilling (5 decisions, all = A)](#p6b-grilling-5-decisions-all--a)
+- [Structure](#structure)
+- [`ctx.schema` seam](#ctxschema-seam)
+- [P13b swap](#p13b-swap)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Semantic-layer **substrate** for the data agent: zod-mirrored RBI pydantic `EventDefinition` / `TableDefinition` + reader/writer + `BasicIndex` + write-tiers + the `ctx.schema` seam. P6b production hardening (ports the throwaway `prototypes/p6-semantic-layer/`).
 
@@ -48,6 +71,11 @@ pnpm verify-cordis-config                            # bundle/preset mount resol
 ```
 
 Bundle wiring (the `semantic-layer` row in `packages/bundle/data-agent/cordis.patch.yml`) is a follow-up with the live-engine provider + the `load_*` tool packages.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

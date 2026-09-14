@@ -1,8 +1,31 @@
+---
+description: "Context layer graph — G6 v5 interactive relation graph with semantic zoom and domain filtering"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-context-layer
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Context layer graph — G6 v5 interactive relation graph with semantic zoom and domain filtering
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Context layer graph — G6 v5 interactive relation graph with semantic zoom and domain filtering
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

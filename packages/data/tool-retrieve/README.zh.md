@@ -1,11 +1,35 @@
+---
+description: "TODO: translate: Model-facing retrieve tool: on-demand retrieval escape-hatch over the data-source corpus for the data agent (BM25-only soft-fallback; additive, dormant until mounted)"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-retrieve`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing retrieve tool: on-demand retrieval escape-hatch over the data-source corpus for the data agent (BM25-only soft-fallback; additive, dormant until mounted)
+
+## 目录
+
+- [状态：已发布但 DORMANT（opt-in，dormant-until-mount）](#status-shipped-but-dormant-opt-in-dormant-until-mount)
+- [Soft-fallback 链（镜像 `search_data_sources`）](#soft-fallback-chain-mirrors-search_data_sources)
+- [注册形态](#registration-shape)
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `retrieve` tool：data agent 的**按需检索 escape-hatch**。pipeline 在 `UNDERSTANDING` 阶段预取数据源候选（`search_data_sources`）；`retrieve` 是当 agent 检测到预取遗漏（一个歧义问题，或预取未桥接的业务同义词）时调用的 additive escape-hatch。返回带 `id`、`score` 和 `description` 的排序数据源候选。
 
 这是 **D2c-impl** 发布 — D2c "keep (b)" 决策所承诺的 escape-hatch（按 retrieval-consumer-model 处方 (c) *guided-agentic-hybrid*：(a) 确定性预取是默认路径；(b) `retrieve` 是 additive escape-hatch 插件，NOT a parallel default）。它镜像 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)（第一个 model-facing tool，P13b）的 [`@deepseek-ai/dsh-tools`](../../core/tools) 注册形态（`defineTool` + `ctx.tools.register`）+ D2e schema soft-fallback + 缓存的 enriched `Bm25Linker`。
 
+<a id="status-shipped-but-dormant-opt-in-dormant-until-mount"></a>
 ## 状态：已发布但 DORMANT（opt-in，dormant-until-mount）
 
 该 tool **package** 已发布（挂载时通过 `defineTool` + `ctx.tools.register` 注册 `retrieve`），但挂载它的 preset 行（`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`，`tool-retrieve`）被**注释** — 因此默认启动 NOT mount 它，`retrieve` tool 未注册，agent 以**pipeline-only**运行（当前状态，无回归）。这镜像 D2e dormant-until-mount + P5b opt-in-seam 模式。
@@ -18,6 +42,7 @@ Activation（一个独立的、后续的 gate — P7b / follow-up）是三个协
 
 发布是**additive/reversible**（D2c 不对称论证 — keep 便宜 + 可逆；regress 需 ≥85-90% strict + <15% ambiguity，只有真实 embedder 才能达到）：若 [D2c-revisit](../../../wayfinder/data-agent/tickets/phase-misc/D2c-revisit-regress-reeval.md) 回归则 unmount / unship。
 
+<a id="soft-fallback-chain-mirrors-search_data_sources"></a>
 ## Soft-fallback 链（镜像 `search_data_sources`）
 
 `retrieve` 使用与 `search_data_sources` **相同**的 soft-fallback 链，因此其 recall == `search_data_sources` 的 recall（相同 linker，相同语料库）：
@@ -28,6 +53,7 @@ Activation（一个独立的、后续的 gate — P7b / follow-up）是三个协
 
 **无 FakeHash，无默认 FakeReranker**（D2d 约束）：soft-fallback 保持默认 BM25-only（~41.9% 真实默认；挂载 FakeHash 会回归 prefetch 41.9%→32.3%，自找的 — D2d re-frame）。reranker peer 保持可注入，供用户自部署的真实 cross-encoder。hybrid plane 等待真实 embedder（D2c-revisit）。
 
+<a id="registration-shape"></a>
 ## 注册形态
 
 镜像 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)：
@@ -67,12 +93,14 @@ export function apply(ctx: Context, config: Config = {}): void {
 
 注册基于 effect（disposing plugin fiber 即注销 tool）。`execute` 返回一个规范 JSON 值（`{ candidates: [...] }`）；`output.render` 将其转为 model-facing 文本（排序列表，或 `No matching data sources found.`）。
 
+<a id="config"></a>
 ## 配置
 
 | 选项 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `topK` | `number` | `20` | 调用省略 `top_k` 时的默认候选数量（与 `search_data_sources` 对齐；D2h 由 5 提升至 20）。agent 在重新搜索 gap 时可传更高的 `top_k`。 |
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -82,6 +110,13 @@ pnpm vitest run packages/data/tool-retrieve
 
 12 specs (R1–R12) 覆盖 BM25 linking、`top_k` cap、空 thin-default、注册、`ctx.retrieval` soft-fallback (R8)、`ctx.schema` enriched soft-fallback (R9)、abort guard (R10)、config `topK` default (R11)，以及 D2h 5→20 默认提升 (R12) — 镜像 `tool-search-data-sources` 的 S1–S9 + 三个 retrieve-specific 测试。
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 ### The `retrieve` tool call
@@ -98,6 +133,7 @@ tool 结果中渲染的 `candidates` 文本是此 tool 唯一的逐调用 token 
 
 Tool 结果仅追加：`candidates` 文本跟随可复用请求前缀，不使先前缓存条目失效。tool schema 是跨 turn 稳定 system-prompt 前缀的一部分，故注册或调用此 tool 不添加前缀抖动。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **挂载前 Dormant** — preset `tool-retrieve` 行被注释；默认启动不注册该 tool（pipeline-only，无回归）。Activation = 取消注释 preset 行 + 将 `retrieve` 加入 phase-gate 白名单 + 落地教何时调用它的 P7b persona（见 Status）。该 package + 其测试 + typecheck 现已发布；activation gate 是后续工作。

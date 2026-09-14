@@ -1,6 +1,26 @@
+---
+description: "Browser-side hot cache for INTERPRETATION query/compute results: a session-scoped, byte-bounded LRU over the result.get RPC, wired as the ctx.results service"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-result-cache
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Browser-side hot cache for INTERPRETATION query/compute results: a session-scoped, byte-bounded LRU over the result.get RPC, wired as the ctx.results service
+
+## Table of Contents
+
+- [Configuration](#configuration)
+- [Tests](#tests)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Browser-side hot cache for INTERPRETATION query/compute results: a session-scoped, byte-bounded LRU over the `result.get` RPC, wired as the `ctx.results` Cordis service. The cache memoizes result rows so folding and expanding a rendered table never re-RPCs the host, while a fresh `query_data` re-run invalidates the stale entry so the next render re-fetches.
 
@@ -30,6 +50,11 @@ The size unit is the JSON-serialized UTF-16 code-unit length of the entry — a 
 ## Tests
 
 Pure cache-core specs (`result-cache.client.spec.ts`) anchor the byte-bounded LRU semantics: miss→fetch→cache hit (no clone, no second fetch), single-flight coalescing of concurrent gets for the same key, the in-flight invalidation (epoch) guard, transport-throw folding into `ResultFetchError`, session-key isolation (a `encodeURIComponent`-ed composite key), `maxEntrySize` admission, byte-budget (`maxSize`) eviction, the `max` count backstop, read-recency (no TTL — `lru-cache` refreshes recency on read regardless), the `result-not-found`/error paths, and the `invalidate`/`invalidateScope`/ `invalidateAll` API. The service spec (`result-service.client.spec.ts`) drives the scope-addressed `ctx.results` through the real `createScope` tag, asserting session isolation, miss→`result.get`→cache, not-found/error, and scoped invalidation. The apply spec (`apply.client.spec.ts`) mounts `apply()`, asserting `ctx.results` provision, the `connection/reset` → `invalidateAll` flush, and the `Config` bound merge. 29 tests total.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

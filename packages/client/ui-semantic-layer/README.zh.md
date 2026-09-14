@@ -1,6 +1,26 @@
+---
+description: "TODO: translate: Semantic layer management: sidebar trigger that opens or creates the management agent session"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-semantic-layer
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Semantic layer management: sidebar trigger that opens or creates the management agent session
+
+## 目录
+
+- [架构](#architecture)
+- [消费的服务](#services-consumed)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延后工作](#known-limitations-and-deferred-work)
+
 
 语义层管理 UI 插件（浏览器侧）。注册：
 
@@ -10,6 +30,7 @@
 - `EvidenceSidebar` 注册到 `details.aux`：覆盖率、eval 轨迹、delta、gap 分析（仅管理会话）
 - `SchemaExplorer` 注册到 `details.aux`：带领域导航的资产浏览器（仅管理会话）
 
+<a id="architecture"></a>
 ## 架构
 
 该插件没有宿主侧行为（`src/index.ts` 是一个空的 apply）。所有逻辑都在浏览器侧（`src/client/`）：
@@ -19,6 +40,7 @@
 - **presenters/**：每个管理 tool 的 keyed `tool.call.toolview` 渲染器。
 - **hooks/**：`useEvidenceQuery`、`useEvidenceMetrics`、`useSchemaGateway`、`useLayoutMode`。
 
+<a id="services-consumed"></a>
 ## 消费的服务
 
 | 服务 | 来源 | 用途 |
@@ -32,6 +54,13 @@
 | `slots` | dsh-client-ui-slots | slot 注册 |
 | `locale` | dsh-client-locale | i18n 词典 |
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -40,6 +69,7 @@
 
 该包不扩展或失效 agent loop（智能体循环）的可复用请求前缀。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
 - **Evidence 推送订阅**：当前 v1 在挂载时抓取 + 手动刷新；通过 Typert 事件转发（`$on`）的实时推送已延后。

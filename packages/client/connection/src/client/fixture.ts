@@ -4032,6 +4032,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   return { rpc }
 }
 
+/**
+ * Create the browser fixture RPC selected by the current location query.
+ * @returns a deterministic in-process Client connection RPC.
+ */
 export function createFixtureConnectionRpc(): ClientConnectionRpc {
   return createFixtureWorld(fixtureOptionsFromLocation()).rpc
 }

@@ -1,6 +1,27 @@
+---
+description: "Model-facing evaluate_sql_quality tool: 0-100 SQL quality score over the folded-regex critic findings + basic heuristics for the data agent's GENERATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-evaluate-sql-quality`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing evaluate_sql_quality tool: 0-100 SQL quality score over the folded-regex critic findings + basic heuristics for the data agent's GENERATION phase
+
+## Table of Contents
+
+- [Status: registered + callable](#status-registered--callable)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `evaluate_sql_quality`: **0-100 SQL quality score over the folded-regex critic findings + basic heuristics** for the data agent's `GENERATION` phase. The agent calls it alongside `critique_sql_tool` to score a SQL candidate. The phase-gate's `captureToolData` captures `last_quality` from the returned `score`; the GENERATION gate (P-DA2, re-tightened when `critic_tools_registered`) requires `last_quality >= 60` (`PipelineConfig.quality_score_floor`) to advance to EXECUTION.
 
@@ -25,6 +46,11 @@ tsc -b packages/data/tool-evaluate-sql-quality/tsconfig.json
 pnpm vitest run packages/data/tool-evaluate-sql-quality
 pnpm verify-cordis-config
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

@@ -1,8 +1,26 @@
+---
+description: "Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout."
+kind: "package-reference"
+---
+
 # dsh-eval-cli
 
 English | [中文](README.zh.md)
 
-Standalone eval CLI for the dsh-data-agent NL2SQL pipeline. Drives eval cases against the real engine, persists results as JSON, and reports to stdout.
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.
+
+## Table of Contents
+
+- [Standard Eval Mode: SQL Semantic Judge](#standard-eval-mode-sql-semantic-judge)
+- [Usage](#usage)
+- [Recording Results](#recording-results)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
 ## Standard Eval Mode: SQL Semantic Judge
 
@@ -178,6 +196,11 @@ After each eval run, record the results in `wayfinder/data-agent/research/experi
 
 Resolves: [<ticket>](link)
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

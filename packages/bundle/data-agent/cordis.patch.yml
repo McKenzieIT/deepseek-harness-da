@@ -82,6 +82,9 @@
 - id: agent-presets
   config:
     default: data-agent
+    roots:
+      - path: config/agent-presets
+        trust: system
 
 # ── preset-autojoin (§4.2 da wrapper): hooks agent/created → joins the
 # default preset (data-agent) to ANY published agent, so the headless

@@ -579,6 +579,13 @@ function typertContractsGate(): Gate {
   return pnpmScript('typert-contracts', 'build:lib:host', { label: 'Typert contracts' })
 }
 
+// This gate also carries the UM-LINT-B program-coverage fence: on a green lint
+// under CI, scripts/run-oxlint.ts re-runs Oxlint with OXC_LOG=debug and fails if
+// a file the strict type-aware override claims turned out to belong to no
+// TypeScript program. It rides here rather than as its own verify-* script
+// because it needs the same invocation, and one enrollment cannot drift from the
+// other. verify-gate-coverage audits verify-*/gen-* script names only, so it has
+// nothing to say about a fence folded into this script.
 function lintGate(options: { needs?: string[] } = {}): Gate {
   const raw = process.env.DSH_OXLINT_THREADS
   const script = 'lint:contracts-ready'
@@ -760,6 +767,7 @@ function docSyncLeafGates(options: {
     pnpmScript('subsystem-pages', 'verify-subsystem-pages', { label: 'subsystem pages' }),
     pnpmScript('package-paths', 'verify-package-paths', { label: 'package paths' }),
     pnpmScript('tsconfig-paths', 'verify-tsconfig-paths', { label: 'tsconfig paths' }),
+    pnpmScript('package-readme-skeleton', 'verify-package-readme-skeleton', { label: 'package README skeleton', quick: true }),
     pnpmScript('config-source-ownership', 'verify-config-source-ownership', { label: 'config source ownership' }),
     pnpmScript('package-readme-summaries', 'verify-package-readme-summaries', { label: 'package README Summaries', quick: true }),
     pnpmScript('package-readme-model-experience', 'verify-package-readme-model-experience', { label: 'package README model experience', quick: true }),

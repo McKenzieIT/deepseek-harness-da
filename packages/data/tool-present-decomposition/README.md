@@ -1,6 +1,26 @@
+---
+description: "Model-facing present_decomposition tool: present a structured query decomposition (summary, metrics, dimensions, time range) for the INTERPRETATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-present-decomposition`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing present_decomposition tool: present a structured query decomposition (summary, metrics, dimensions, time range) for the INTERPRETATION phase
+
+## Table of Contents
+
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `present_decomposition`: **present a structured query decomposition** (summary, metrics, dimensions, time range) for the data agent's `INTERPRETATION` phase. The agent calls it to show the user how their natural-language question was understood — which metrics will be computed, over which dimensions, for what time range — before execution proceeds.
 
@@ -17,6 +37,11 @@ tsc -b packages/data/tool-present-decomposition/tsconfig.json
 pnpm vitest run packages/data/tool-present-decomposition
 pnpm verify-cordis-config
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

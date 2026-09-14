@@ -1,8 +1,31 @@
+---
+description: "Model-facing get_definition tool: load a unified data asset definition (table, event, or metric) by name from the semantic layer"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-tool-get-definition
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Model-facing get_definition tool: load a unified data asset definition (table, event, or metric) by name from the semantic layer
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Model-facing get_definition tool: load a unified data asset definition (table, event, or metric) by name from the semantic layer
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

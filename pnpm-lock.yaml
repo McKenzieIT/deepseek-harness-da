@@ -1718,9 +1718,27 @@ importers:
       '@deepseek-ai/dsh-tool-critique-sql':
         specifier: workspace:^
         version: link:../../data/tool-critique-sql
+      '@deepseek-ai/dsh-tool-discover-alt-labels':
+        specifier: workspace:^
+        version: link:../../data/tool-discover-alt-labels
+      '@deepseek-ai/dsh-tool-discover-relations':
+        specifier: workspace:^
+        version: link:../../data/tool-discover-relations
+      '@deepseek-ai/dsh-tool-edit-definition':
+        specifier: workspace:^
+        version: link:../../data/tool-edit-definition
       '@deepseek-ai/dsh-tool-evaluate-sql-quality':
         specifier: workspace:^
         version: link:../../data/tool-evaluate-sql-quality
+      '@deepseek-ai/dsh-tool-get-coverage':
+        specifier: workspace:^
+        version: link:../../data/tool-get-coverage
+      '@deepseek-ai/dsh-tool-get-definition':
+        specifier: workspace:^
+        version: link:../../data/tool-get-definition
+      '@deepseek-ai/dsh-tool-list-domains':
+        specifier: workspace:^
+        version: link:../../data/tool-list-domains
       '@deepseek-ai/dsh-tool-load-event-definition':
         specifier: workspace:^
         version: link:../../data/tool-load-event-definition
@@ -1736,15 +1754,30 @@ importers:
       '@deepseek-ai/dsh-tool-present-table':
         specifier: workspace:^
         version: link:../../data/tool-present-table
+      '@deepseek-ai/dsh-tool-reachability-delta':
+        specifier: workspace:^
+        version: link:../../data/tool-reachability-delta
+      '@deepseek-ai/dsh-tool-resolve-term':
+        specifier: workspace:^
+        version: link:../../data/tool-resolve-term
+      '@deepseek-ai/dsh-tool-revert-edit':
+        specifier: workspace:^
+        version: link:../../data/tool-revert-edit
       '@deepseek-ai/dsh-tool-scope-routing':
         specifier: workspace:^
         version: link:../../data/tool-scope-routing
       '@deepseek-ai/dsh-tool-search-data-sources':
         specifier: workspace:^
         version: link:../../data/tool-search-data-sources
+      '@deepseek-ai/dsh-tool-search-schema':
+        specifier: workspace:^
+        version: link:../../data/tool-search-schema
       '@deepseek-ai/dsh-tool-suggest-followups':
         specifier: workspace:^
         version: link:../../data/tool-suggest-followups
+      '@deepseek-ai/dsh-tool-trigger-eval':
+        specifier: workspace:^
+        version: link:../../data/tool-trigger-eval
       '@deepseek-ai/dsh-tool-update-table-config':
         specifier: workspace:^
         version: link:../../data/tool-update-table-config

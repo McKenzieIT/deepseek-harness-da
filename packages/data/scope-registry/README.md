@@ -1,6 +1,29 @@
+---
+description: "Per-scope namespace registry for the data agent: runtime-mutable scope definitions (id → semanticRoot + metadata) with active-scope switching, persisted to a YAML file on disk."
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-scope-registry`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Per-scope namespace registry for the data agent: runtime-mutable scope definitions (id → semanticRoot + metadata) with active-scope switching, persisted to a YAML file on disk.
+
+## Table of Contents
+
+- [Status: registered + callable; configured at bundle mount](#status-registered--callable-configured-at-bundle-mount)
+- [Design](#design)
+- [Config](#config)
+- [Cordis seam](#cordis-seam)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Per-scope namespace registry (`ctx.scopes`): a runtime-mutable store of scope definitions for the data agent. Each scope maps an id to a filesystem `semanticRoot` path plus optional metadata (active provider, project name, engine type, etc.). The registry is persisted to a YAML file on disk; the Cordis static config tells the service WHERE the file lives (`registryPath`), while the file itself is the runtime-mutable state that CLI / API / Web UI can read and write.
 
@@ -56,6 +79,11 @@ tsc -b packages/data/scope-registry/tsconfig.json
 pnpm vitest run packages/data/scope-registry
 pnpm verify-cordis-config
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

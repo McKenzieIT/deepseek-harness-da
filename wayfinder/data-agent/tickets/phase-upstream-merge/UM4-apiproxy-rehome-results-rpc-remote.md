@@ -135,3 +135,177 @@ Not single-session feasible (the stub prompt itself scopes UM4 at ~2-3 sessions 
 
 - Scope 2 (DONE): results-RPC → `packages/data/result-cache/src/remote.ts` as a Typert `@Remote` gateway, registered via `packages/api/remotes/src/client/index.ts`.
 - Scope 3 (OPEN): presetSwitches SELECT-half already lives in the upstream-generic `packages/preset/agent-presets`. The remaining observer-fix / prompt-serialization work should land in the DATA-AGENT-SCOPED wrapper `packages/data/preset-autojoin` (the da §4.2 wrapper that hooks `agent/created`) OR in the dsh-scope observer layer — NOT back in the generic agent-presets `@Remote` handler. Both agent-presets and preset-autojoin are already data-agent bundle deps (`package.json:37` and `:50`).
+
+---
+
+## [2026-09-14] 整票 DEFER —— 用户明确决定。**下一个 session 不要重新论证这件事。**
+
+**Status 保持 `open`。本 session 零代码落地，这是有意的，不是没做完。**
+
+### 决定
+
+用户在 2026-09-14 session 明确指示：**UM4 整票 defer 到一个专项 session**，本 session 不启动 Scope 3 的任何实现。
+
+### 为什么（唯一理由，不是预算问题）
+
+上面 [2026-09-13] decision-doc 的 §Implementation sketch 第 4 步把 **JSONL capture 定为 PREREQUISITE（do FIRST）**，而这条前置**只能由人执行，agent 结构上做不到**：
+
+它要求驱动一次**交互式 DSH 会话** —— 开新会话 → 在 UI 里选「取数模式」preset → 发一条消息 → 然后去读落盘的 session transcript。这不是一条能在 shell 里跑的命令，也不是能靠读代码替代的东西：它要的是一条**真实运行时轨迹**。agent 手上只有 `mcp__local__*`（文件读写 + bash），没有办法点 UI、没有办法驱动一个交互式 harness 会话。
+
+而按本票**自己的** Risk-3 mitigation（见上一版 prompt §6 Risk 3 与本票 decision-doc 的 §Fixture list 末条）：**capture 不到 `'disposed'`，observer-fix 的根因就是未验证的**。当前 `raceStillReproduces: TRUE` 只是**架构 trace 结论**，不是捕获到的轨迹。两种可能后果完全不同：
+
+| capture 结果 | 含义 | 后续 |
+|---|---|---|
+| `'disposed'` | observer-fix 的根因假设成立 | 按 decision-doc §Implementation sketch 1-3 步实现 + 5 fixtures |
+| `'error'` | 是**正交**的 Hypothesis B（DashScope/LLM wiring），不是 fiber-lifecycle disposal | observer-fix **修错了东西**；UM4 scope 膨胀，需先修 LLM wiring |
+| 字段缺失 | 既不证实也不证伪 | 需要换 repro 路径或加 instrumentation |
+
+在没有 capture 的情况下写 accessor + guard + 4 处 fixture，是在给一个未确认的根因造 5 个测试。**所以本 session 选择什么都不落，而不是落"大概对"的一半。** 这与 decision-doc 自己的 `singleSessionFeasible: FALSE` 判定一致。
+
+### 解锁本票所需的精确 capture 协议（照做即可，勿再设计）
+
+由**人**执行，agent 只能在 capture 落盘后接手分析：
+
+1. 启动 DSH（data-agent bundle），**新建一个会话**（new conversation —— 必须是新会话，300s stall watchdog 那条 abort 源在首条消息上不可能触发，这是排除干扰项的关键）。
+2. 在 preset 选择器里选 **取数模式**。
+3. **立刻**发一条消息（重点是让 `@Remote('select')` 的 switch 与首个 turn 的 prompt 竞争 —— 这就是 B-DA1 的 race window；等 switch settle 完再发就复现不出来）。
+4. 观察 UI 是否出现 `Interrupted: interrupted`（B-DA1 的现场症状）。
+5. 读 transcript：
+
+   ```sh
+   ls -t ~/.dsh/storages/sessions/*.jsonl | head -1        # 最新会话
+   ```
+
+   在该 `<id>.jsonl` 里找 **`turn/end`** 事件，取字段 **`reason.reason.kind`**（注意是**双层** `reason.reason`，不是 `reason.kind`）。
+
+   ```sh
+   grep -a 'turn/end' ~/.dsh/storages/sessions/<id>.jsonl | tail -1
+   ```
+
+6. 把该 `kind` 的字面值贴回本票。**`'disposed'` / `'error'` / 缺失** 三种走上表三条不同路径。
+
+**捕获到之后**，实现路径已经完全写好、不需要再设计：见上面 [2026-09-13] decision-doc 的 §Implementation sketch（1. `pendingSwitch(sessionId)` additive accessor on `packages/preset/agent-presets/src/index.ts` → 2. `packages/data/preset-autojoin` 的 `agent/pre-step` guard → 3. `packages/core/scope` observer rebind-hardening）+ §Fixture list（5 个 fixture，全部带 file path）+ §Architectural recommendation（observer-fix vs Remote-serialization 的四条取舍，已决 observer-fix）。
+
+### 本 session 未做的事（明示，避免下 session 误以为做过）
+
+- ❌ 未跑 JSONL capture（结构上做不到，见上）
+- ❌ 未加 `pendingSwitch` accessor
+- ❌ 未加 `preset-autojoin` pre-step guard
+- ❌ 未做 scope observer rebind-hardening
+- ❌ 未加 5 个 fixture 中的任何一个
+- ✔ Scope 2（results-RPC 重落户）仍 resolved（`025db697ab`，见上），本次未触
+
+### 下 session 的形态
+
+一个**专项 session，且必须有用户在场**做第 3 步的交互。开场第一件事就是 capture；capture 不出结果就**停下问用户**，不要转而去写实现。
+
+---
+
+## [2026-09-20] Gate ① capture — INCONCLUSIVE（race 未复现，turn completed 正常）
+
+**Status 保持 `open`。Scope 3 仍未启动。**
+
+### Capture 结果
+
+用户在 web UI 新建会话 → 选取数模式 → 发"查询DAU"。结果：
+
+```
+session: ~/.dsh/sessions/--Users-mckenzie-avatar-X63--/session-9c886b6a-c7d3-4245-a87e-744438e862de/
+turn 1 | outer: completed | nested: (none)
+```
+
+**Race 未复现**：turn 正常完成，UI 未显示 `Interrupted: interrupted`，无 `disposed` abort，无 `error`。
+
+### 含义
+
+B-DA1 race 是概率性的 —— 在给定 session 里 race window 可能被错过。本次 capture **既不能确认也不能证伪** observer-fix 根因。对照历史基线（272 个 turn/end）：`completed` 205 / `error` 38 / `aborted` 14（全 nested `user`）/ `interrupted` 9 / `blocked` 5 / `max-tokens` 1 —— `completed` 是**最常见**的结果，不代表 race 不存在。
+
+### 按票内纪律
+
+票明写「capture 出不来结果就停下问用户，不要转而去写实现」。本 session 选择：**defer Scope 3**，把"race 未复现"这个事实记进票，不实现 observer-fix。
+
+### 启动环境的 3 个真实缺陷（本 session 修好，但都不是 repo fix）
+
+启动 web UI 遇到 3 个 blocker，逐个解决后 capture 才能跑：
+
+| # | 缺陷 | 票 | 临时修法 |
+|---|---|---|---|
+| 1 | `ui-present-table` client bundle code-split，module table 不兼容（52 包里唯一）| [UM-DEFECT-PRESENT-TABLE-SPLIT](UM-DEFECT-PRESENT-TABLE-SPLIT.md) | `--patch` overlay disable 该行 |
+| 2 | 无任何 bundle/profile 配 `agent-presets.roots`，da 两个 preset 无根可扫 | [UM-DEFECT-PRESET-ROOTS](UM-DEFECT-PRESET-ROOTS.md) | overlay 加 roots 配置 |
+| 3 | bundle/data-agent/package.json 漏声明 `dsh-tool-resolve-term`（共 11 个 undeclared）| [UM-DEFECT-PRESET-DEPS](UM-DEFECT-PRESET-DEPS.md) | `~/.dsh/profiles/node_modules/` 建 symlink |
+
+三处都是用户配置 / node_modules symlink，**仓库零改动**。
+
+### 一个需要更正的判断
+
+本 session 早期跑了 `pnpm dsh --profile headless "Reply with exactly: OK"` 并宣称「definitive validation」。这是**错的**。`packages/data/preset-autojoin` 对 `agent/created` 用 `void listener(event).catch(...)` fire-and-forget 派发，mount 失败被默默吞掉，agent **不带 persona** 也能跑完。headless exit 0 是假阴性。子 agent 实测：摘掉 symlink 后 headless 仍然 exit 0 无任何错误。
+
+### 给下一个 session 的指引
+
+- 本 capture 结果不足以决定 Scope 3 走向。下一个 HITL session 应**多试几次**（B-DA1 race 是非确定性的）或加 instrumentation。
+- 启动 web UI 必须跑 `pnpm dsh --profile web --patch /tmp/dsh-disable-present-table.patch.yml`（overlay 修了 3 个 blocker）。`pnpm dsh` = `node --import tsx/esm apps/cli/src/bin.ts`（tsx 才能解 bundle 里 `/src/*.ts` mount）。
+- 跑在 `dsh-resync`（`upstream/resync-2026-09-08`, `83be9786e1`），不是主树。主树 0/58 client 包有 `lib/client.js`，`pnpm dsh web` 直接 `MissingClientBundleError`。Race 相关代码两树逐字节相同。
+- capture 读回命令（票里那条路径/格式/字段三处都错，跑不通）：
+  ```sh
+  export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+  D=$(ls -td ~/.dsh/sessions/*/*/ | head -1); echo "session: $D"
+  zstd -dc "$D/session.jsonl.zstd" | node -e '
+  let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+  for(const l of s.split("\n")){if(!l.trim())continue;let o;try{o=JSON.parse(l)}catch{continue}
+  if(o.type!=="turn/end")continue
+  console.log("turn",o.data?.turn,"| outer:",o.data?.reason?.kind,"| nested:",o.data?.reason?.reason?.kind??"(none)")}})'
+  ```
+- 历史基线：272 个 turn/end，`disposed` **从未出现过**。若 capture 出现 `disposed`，那是第一次，强信号。
+- `zstd` 在 `/opt/homebrew/bin`（不在 `/usr/local/bin`），PATH 要加。
+- `turn/end` 字段路径是 `data.reason.reason.kind`（不是 `reason.reason.kind`，`data.` 是事件 envelope）。
+
+### 本 session 未做的事
+
+- ❌ 未加 `pendingSwitch` accessor
+- ❌ 未加 `preset-autojoin` pre-step guard
+- ❌ 未做 scope observer rebind-hardening
+- ❌ 未加 5 个 fixture 中的任何一个
+- ✔ Scope 2（results-RPC 重落户）仍 resolved（`025db697ab`），本次未触
+
+### 第二次 capture（更激烈触发）— 仍未复现
+
+用户试了更激烈的触发方式：**先切到创造模式，立刻切回取数模式，然后发消息"查询DAU"**。目的是制造两次 switch 扩大 race window。
+
+结果：turn 仍然 `completed`。agent 正常工作 —— 定位到数据源（DAU = game.role.online 事件，hdyl_data_sg.ods_10000334_all_view 表），返回 `route:proceed` 并正常停止。
+
+**两次 capture 总结**：
+
+| # | 触发方式 | 结果 |
+|---|---|---|
+| 1 | 新建会话 → 选取数模式 → 发消息 | `completed`，race 未复现 |
+| 2 | 切到创造模式 → 立刻切回取数模式 → 发消息 | `completed`，agent 正常工作 |
+
+### 决定：defer 到 AFK session
+
+两次不复现 ≠ race 不存在，但**不值得为了复现再花一个 session**。当前取数模式能用（第二次 capture 证明 agent 能正常定位数据源）。
+
+**AFK session 的 UM4 Scope 3 指引**：
+
+> 两次 HITL capture 都未复现（`completed`）。架构 trace 仍指向 `commands.ts:294` 不等 `pendingSwitch`，但上游可能已在后续 commit 补了。AFK session 选择：
+> ① 先加 instrumentation（在 `preset-autojoin` 的 `agent/pre-step` 打印 `pendingSwitch` 状态到 session log）再让下一个 HITL session 试；
+> ② 按现有 trace 直接实现 observer-fix（承担"给未确认根因造测试"的风险）；
+> ③ defer 到下次 upstream sync 再看。
+>
+> **推荐 ①**。
+
+本 session 未实现 observer-fix、未加 5 个 fixture、未加 `pendingSwitch` accessor。Scope 3 完整 defer。
+
+## [2026-09-21] Scope 3 instrumentation 落地（accessor + debug log），capture 仍 defer
+
+**Status 保持 `open`。** AFK session 按 [2026-09-20] 节推荐的 ① 加 instrumentation。
+
+commit `75da97a139` `[UM4 Scope 3] add pendingSwitch accessor + preset-autojoin debug instrumentation`（master，additive，2 files +22/-2）：
+
+1. `packages/preset/agent-presets/src/index.ts` — 加 narrow read-only accessor `pendingSwitch(sessionId): Promise<unknown> | undefined { return this.switches.get(sessionId) }`。不动 `@Remote('select')`、不动 private `switches` Map 语义。
+2. `packages/data/preset-autojoin/src/index.ts` — `createAutojoinListener` 接受可选 `logger`，listener 体首行加 debug log：`preset-autojoin: pendingSwitch=%s for session %s`（in-flight / settled）。sessionId 防御性解 `agent.ctx.session?.id ?? agent.id ?? 'unknown'`。全 optional chaining，degrade gracefully。
+
+`tsc --noEmit` 两包 green。pre-commit hooks 绿。
+
+**capture 仍 defer**：本 session 是 AFK，无人驱动交互式 DSH 会话。accessor + log 已就位，下个 HITL session 跑 web UI repro 时 session log 能看到 switch 有没有尝试过——即使 race 不复现（前两次 capture 都 `completed`），instrumentation 也能区分"race 没发生"vs"switch 没被触发"。
+
+**未做**：observer-fix 本体（pre-step guard await pendingSwitch + scope observer rebind-hardening + 5 fixture）仍 defer，等 capture 出 `disposed` / `error` / 缺失三种结果之一再定（见 [2026-09-13] decision-doc §Implementation sketch 第 4 步 PREREQUISITE）。

@@ -1,6 +1,28 @@
+---
+description: "Autonomous patrol loop for the semantic layer management agent — iteratively finds weakest assets, diagnoses, proposes fixes with user confirmation, and triggers eval (W11 D7+S3)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-patrol-mode
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Autonomous patrol loop for the semantic layer management agent — iteratively finds weakest assets, diagnoses, proposes fixes with user confirmation, and triggers eval (W11 D7+S3)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Configuration](#configuration)
+- [Events](#events)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Autonomous patrol loop for the DeepSeek Harness data agent's semantic layer. Iteratively finds the weakest assets (via `evidenceQuery` health/gap analysis), diagnoses each, proposes a fix, requests explicit user confirmation, and triggers an eval batch after each round's confirmed edits.
 
@@ -51,6 +73,11 @@ tsc -b packages/data/patrol-mode/tsconfig.json   # typecheck
 pnpm vitest run packages/data/patrol-mode        # specs
 pnpm verify-package-invariants                   # invariant companion resolves
 ```
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

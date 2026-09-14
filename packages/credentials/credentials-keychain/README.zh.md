@@ -1,6 +1,27 @@
+---
+description: "TODO: translate: [data-agent] macOS Keychain credentials provider (per-user PAT, at-rest + locked-keychain hardening) for the DeepSeek Harness"
+kind: "package-reference"
+---
+
 # dsh-credentials-keychain
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: [data-agent] macOS Keychain credentials provider (per-user PAT, at-rest + locked-keychain hardening) for the DeepSeek Harness
+
+## 目录
+
+- [配置](#config)
+- [钥匙串条目](#the-keychain-items)
+- [安全边界](#security-boundary)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与暂缓事项](#known-limitations-and-deferred-work)
+
 
 macOS 钥匙串[凭据](../credentials/README.zh.md)提供方：per-user PAT 存于独立（非 login）钥匙串，按 `account=userId` 寻址，带可注入的全局/共享 fallback 承接 G3 分期 fallback（per-user 未命中回落到早期全局 T1 PAT）。
 
@@ -11,6 +32,7 @@ macOS 钥匙串[凭据](../credentials/README.zh.md)提供方：per-user PAT 存
 
 钥匙串数据库盘上加密，因此从磁盘直接读该文件（`cat`/`grep`）只能看到密文，看不到 PAT。独立钥匙串 + 短 auto-lock + lock-on-sleep，并在 harness 自身 teardown 时再次上锁，收窄运行时外泄窗口：钥匙串锁定时，任何进程——harness 或 `bash`——都读不到条目，除非有解锁密码。
 
+<a id="config"></a>
 ## 配置
 
 | 字段 | 默认值 | 含义 |
@@ -25,12 +47,14 @@ macOS 钥匙串[凭据](../credentials/README.zh.md)提供方：per-user PAT 存
 
 提供方以编程方式接收配置（不经 `cordis.yml`）：`runner` 与 `fallback` 是注入缝，`unlockPassword` 是不该进组合文件的密钥。默认值由显式的 `resolveSpec` 步骤给出，绝无内联 `??`。
 
+<a id="the-keychain-items"></a>
 ## 钥匙串条目
 
 每个 `(service=ref, account=userId)` 一条 generic-password 条目。`set` 写 `security add-generic-password -U -a <userId> -s <ref> -w <value>`；`resolve` 读 `security find-generic-password -a <userId> -s <ref> -w`；`unset` 删除。per-user 未命中、或无 `userId` 的解析，回落到 `fallback`（G3 分期：无 per-user PAT → 全局 T1）。无 `userId` 的 `set`/`unset` 不归钥匙串管——全局槽是 fallback 提供方。
 
 <a id="security-boundary"></a>
 
+<a id="security-boundary"></a>
 ## 安全边界
 
 两条红线，此处只兑现第一条：
@@ -42,6 +66,13 @@ macOS 钥匙串[凭据](../credentials/README.zh.md)提供方：per-user PAT 存
 
 `unlockPassword` 本身是新的待保护密钥：启动时交互输入是安全的；存到 `bash` 可读之处（环境变量、文件）则把锁弱化为便利——因同一 spawner 不可区分性意味着 harness 能解锁的，`bash` 也能解。
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 经由消费它的 LLM 适配器间接生效：存储的值为适配器向提供方发出的请求授权，所有模型可见内容均由适配器负责。harness 绝不把解析后的 PAT 载入 `process.env`。
@@ -50,6 +81,7 @@ macOS 钥匙串[凭据](../credentials/README.zh.md)提供方：per-user PAT 存
 
 无直接失效；凭据绝不进入请求前缀。`set`/`unset` 发布 `credentials/updated(ref, address?)`，使 per-operation 重新解析无需重启即可取到变更。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与暂缓事项
 
 - **运行时外泄 ACL = over-spec（P12c dropped）**——见[安全边界](#security-boundary)：per-item Touch-ID ACL + harness code-signing 经评估 dropped 为 over-spec（破坏开箱即用 + 非硬边 + 威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖）。本 `security`-CLI-only、additive 包即最终态。

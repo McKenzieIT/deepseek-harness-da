@@ -1,6 +1,26 @@
+---
+description: "TODO: translate: Browser-side hot cache for INTERPRETATION query/compute results: a session-scoped, byte-bounded LRU over the result.get RPC, wired as the ctx.results service"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-result-cache
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Browser-side hot cache for INTERPRETATION query/compute results: a session-scoped, byte-bounded LRU over the result.get RPC, wired as the ctx.results service
+
+## 目录
+
+- [配置](#configuration)
+- [测试](#tests)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与推迟工作](#known-limitations-and-deferred-work)
+
 
 INTERPRETATION 查询/计算结果的浏览器端热缓存：一个会话级 scope、字节有界的 LRU，架在 `result.get` RPC 之上，作为 `ctx.results` Cordis 服务接入。该缓存对结果行做记忆化，因此折叠与展开已渲染的表格不会再向宿主发起 RPC，而一次新的 `query_data` 重跑会使陈旧条目失效，下次渲染重新拉取。
 
@@ -15,6 +35,7 @@ inject: (sessionId) => ({
 
 宿主以 `result-not-found` 应答的未命中解析为 `undefined`；任何其他失败（宿主业务错误，或抛出的 fetcher，传输层：网络/超时/中止/解析）以 `ResultFetchError` 拒绝（该值从 `/client` barrel 导出，以便消费方 `instanceof` 收窄；`error.code` 为宿主代码或 `'transport'`）。
 
+<a id="configuration"></a>
 ## 配置
 
 缓存边界是一个 schemastery `Config`（R5 的「Config fields from `cordis.yml`」），可从 `cordis.yml` 覆盖；`apply(ctx, config = {})` 将宿主配置合并到 `DEFAULT_RESULT_CACHE_CONFIG` 之上：
@@ -27,10 +48,18 @@ inject: (sessionId) => ({
 
 尺寸单位是条目 JSON 序列化后的 UTF-16 码元长度，即常驻内存的代理量，选择它是为了让准入与淘汰基于与堆中相同的数据形态做推理。尺寸在每次拉取时计算一次并传给 `lru.set`，从而 `sizeCalculation` 不会在存入时再次调用。
 
+<a id="tests"></a>
 ## 测试
 
 纯缓存核心规格（`result-cache.client.spec.ts`）锚定字节有界 LRU 语义：未命中→拉取→缓存命中（无克隆、无第二次拉取）、同一 key 并发 get 的 single-flight 合并、在途失效（epoch）守卫、传输层抛出折叠为 `ResultFetchError`、会话 key 隔离（一个 `encodeURIComponent` 编码的复合 key）、`maxEntrySize` 准入、字节预算（`maxSize`）淘汰、`max` 计数兜底、读时 recency（无 TTL，`lru-cache` 都会在读时刷新 recency）、`result-not-found`/错误路径，以及 `invalidate`/`invalidateScope`/ `invalidateAll` API。服务规格（`result-service.client.spec.ts`）通过真实的 `createScope` tag 驱动 scope 寻址的 `ctx.results`，断言会话隔离、未命中→`result.get`→缓存、未找到/错误，以及 scoped 失效。apply 规格（`apply.client.spec.ts`）挂载 `apply()`，断言 `ctx.results` 的提供、`connection/reset` → `invalidateAll` 清空，以及 `Config` 边界合并。共 29 个测试。
 
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接地，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -39,6 +68,7 @@ inject: (sessionId) => ({
 
 该包不扩展或失效 agent loop（智能体循环）的可复用请求前缀。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与推迟工作
 
 - **在途失效有守卫；错失事件的残留仍在。** 一次落在拉取进行中的 `invalidate*` 将其标记为 `aborted`，从而其迟到的 `lru.set` 被跳过，不会为该会话存入陈旧快照。R5 推迟的残留：一次在失效之后、但在途拉取解析之前开始的 `get` 会合并到它上面并（一次性地）收到旧值（一个完整的代际 token，即每次观察到完成时 `qr_R#genN` key 轮换，会阻断它；本系统的事件投递是可靠的，故竞态很窄，且升级局限于缓存内部，不破坏 API）。
