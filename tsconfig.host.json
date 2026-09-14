@@ -311,6 +311,7 @@
     { "path": "./packages/terminal/tool-terminal" },
     { "path": "./packages/code-runtime/code-runtime" },
     { "path": "./packages/code-runtime/code-runtime-data-python" },
+    { "path": "./packages/code-runtime/code-runtime-python-protocol" },
     { "path": "./packages/experimental/code-runtime-python" },
     { "path": "./packages/code-runtime/code-runtime-worker-thread" },
     { "path": "./packages/llm/llm-deepseek" },

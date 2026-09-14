@@ -24,7 +24,7 @@
       "path": "../code-runtime"
     },
     {
-      "path": "../../experimental/code-runtime-python"
+      "path": "../code-runtime-python-protocol"
     },
     {
       "path": "../../util/timeout"

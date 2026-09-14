@@ -3,15 +3,15 @@
  * travel on the child's fd 3 (one JSON object per line), leaving stdout/stderr free for the
  * program's own output. Host treats every inbound frame as hostile because model code can post
  * anything through the same fd; the Python bootstrap trusts host replies.
- * @module @deepseek-ai/dsh-experimental-code-runtime-python/src/protocol
+ * @module @deepseek-ai/dsh-code-runtime-python-protocol
  */
 
 /**
  * The framed-JSON channel's file descriptor from the child's perspective. The
  * host pins it positionally when it spawns the child (`stdio` index 3, i.e.
- * `['pipe','pipe','pipe','pipe']`), and the Python bootstrap reads the same
- * number from its own `protocol.py`. Exported as the single TS-side source of
- * truth: the host wiring uses it, and the cross-language mirror test asserts the
+ * `['pipe','pipe','pipe','pipe']`), and each Python bootstrap uses the same
+ * number directly or through its provider-owned `protocol.py` mirror.
+ * Exported as the single TS-side source of truth: the host wiring uses it, and the cross-language mirror test asserts the
  * Python constant equals it, so a drift on either side breaks the boot channel
  * loudly rather than silently.
  */

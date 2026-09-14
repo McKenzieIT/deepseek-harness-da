@@ -339,6 +339,7 @@
       "@deepseek-ai/dsh-cmdline": ["./packages/boot/cmdline/src"],
       "@deepseek-ai/dsh-code-runtime": ["./packages/code-runtime/code-runtime/src"],
       "@deepseek-ai/dsh-code-runtime-data-python": ["./packages/code-runtime/code-runtime-data-python/src"],
+      "@deepseek-ai/dsh-code-runtime-python-protocol": ["./packages/code-runtime/code-runtime-python-protocol/src"],
       "@deepseek-ai/dsh-code-runtime-worker-thread": ["./packages/code-runtime/code-runtime-worker-thread/src"],
       "@deepseek-ai/dsh-command-compact": ["./packages/compaction/command-compact/src"],
       "@deepseek-ai/dsh-command-feedback": ["./packages/feedback/command-feedback/src"],

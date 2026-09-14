@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-14-code-runtime-python-protocol-ownership.md
+2026-09-14-code-runtime-python-protocol-ownership.md: 3aaedfa7f33463119a8d5e476317fb921f7b3b9b
+2026-09-14-code-runtime-python-protocol-ownership.zh.md: 471603e62e71c3c28708166ce99d54c0658fd6cd

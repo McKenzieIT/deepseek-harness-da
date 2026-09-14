@@ -15,8 +15,8 @@ import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { CodeRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@deepseek-ai/dsh-code-runtime'
 import type { CodeBindingNamespace, CodeJsonValue, CodeRunFailure, CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
-import { checkDoneValue, encodeJsonPlain, hasNonLosslessNumber, hasUnsafeIntegerToken, jsonStringBytesUpTo, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-experimental-code-runtime-python'
-import type { BootMessage, ReplyMessage } from '@deepseek-ai/dsh-experimental-code-runtime-python'
+import { checkDoneValue, encodeJsonPlain, hasNonLosslessNumber, hasUnsafeIntegerToken, jsonStringBytesUpTo, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-code-runtime-python-protocol'
+import type { BootMessage, ReplyMessage } from '@deepseek-ai/dsh-code-runtime-python-protocol'
 import { snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
 
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
@@ -65,7 +65,7 @@ function messageOf(error: unknown): string {
  * cap is forged junk and is dropped wholesale — never buffered in full nor
  * passed to the caller (which runs an O(n) integer scan and `JSON.parse` on the
  * value). This is the host-side cap on inbound fd-3 frame size owned by the
- * runtime that reads the channel (protocol.ts `checkDoneValue` JSDoc).
+ * runtime that reads the channel (the protocol package documents `checkDoneValue`).
  */
 function createCappedLineReader(
   input: NodeJS.ReadableStream,
@@ -295,7 +295,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
       }
 
       // Read fd-3 frames from the child, with an inbound frame-size cap before
-      // JSON.parse runs (protocol.ts checkDoneValue JSDoc: the runtime that
+      // JSON.parse runs (the protocol package documents that the runtime
       // reads the channel owns this cap). A line over maxFrameBytes is forged
       // junk and is dropped, never buffered whole or parsed.
       const maxFrameBytes = this.config.maxValueBytes + this.config.maxLogBytes + 4096

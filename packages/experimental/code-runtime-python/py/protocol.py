@@ -1,6 +1,6 @@
 """Wire protocol vocabulary for the Python side of dsh-code-runtime-python.
 
-Mirrors ``src/protocol.ts``. Frames travel on fd 3 as JSON-lines (one JSON
+Mirrors ``@deepseek-ai/dsh-code-runtime-python-protocol``. Frames travel on fd 3 as JSON-lines (one JSON
 object per line). The host validates every inbound frame; this side trusts
 host replies.
 

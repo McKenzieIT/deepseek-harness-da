@@ -3,10 +3,10 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
-import { logTruncationMarker, PROTOCOL_FD, WIRE_FRAME_FIELDS } from '../src/protocol.ts'
+import { logTruncationMarker, PROTOCOL_FD, WIRE_FRAME_FIELDS } from '@deepseek-ai/dsh-code-runtime-python-protocol'
 
 /**
- * Cross-language mirror check between `src/protocol.ts` and `py/protocol.py`,
+ * Cross-language mirror check between the released TypeScript protocol package and `py/protocol.py`,
  * spawning a real `python3` to read the Python side. Two things are asserted:
  * the runtime surfaces both sides EXECUTE against — `PROTOCOL_FD` and the log
  * truncation marker text, where a drift silently corrupts a live run — and the
@@ -14,8 +14,8 @@ import { logTruncationMarker, PROTOCOL_FD, WIRE_FRAME_FIELDS } from '../src/prot
  * turns the otherwise review-only shape mirror into an executable check that
  * catches the round-12 kind of drift (a renamed/dropped field, or one side
  * making a field optional the other requires). Self-skips when no `python3` is
- * on PATH — CI provides one; the pure-TS `protocol.spec.ts` covers the host
- * codec unconditionally.
+ * on PATH — CI provides one; the released protocol package's pure-TS tests
+ * cover the host codec unconditionally.
  */
 
 const execFileAsync = promisify(execFile)
@@ -35,7 +35,7 @@ async function hasPython3(): Promise<boolean> {
 
 const python3Available = await hasPython3()
 
-describe.skipIf(!python3Available)('protocol.py mirrors protocol.ts at runtime', () => {
+describe.skipIf(!python3Available)('protocol.py mirrors the released protocol package at runtime', () => {
   it('agrees on PROTOCOL_FD and the log truncation marker across byte budgets', async () => {
     const budgets = [1, 65536, 1048576]
     const probe = [
@@ -62,7 +62,7 @@ describe.skipIf(!python3Available)('protocol.py mirrors protocol.ts at runtime',
     // __required_keys__) and assert both the frame roster and each frame's
     // required/optional key sets against WIRE_FRAME_FIELDS — projected from the
     // WIRE_FRAME_FIELD_ROLES map that `satisfies` binds exhaustively to the
-    // frame interfaces in protocol.ts. Together this catches drift on EITHER
+    // frame interfaces in the released protocol package. Together this catches drift on EITHER
     // side of the wire: a TS-side field add, remove, rename, or optionality flip
     // fails typecheck at the roles map; a Python frame added, removed, or with a
     // changed field set fails this comparison. `global` is the reserved-keyword

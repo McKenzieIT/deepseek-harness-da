@@ -1,5 +1,5 @@
 ---
-description: "CPython-subprocess code runtime: the dsh-code-runtime seam implementation for Python model code, with the fd-3 wire protocol it speaks."
+description: "Private CPython-subprocess code-runtime provider with compatibility exports for the released fd-3 protocol package."
 kind: "package-reference"
 ---
 
@@ -29,7 +29,7 @@ Choose this private experimental package only in an explicit source-checkout com
 
 ### What you get
 
-The package's default export is the `PythonCodeRuntime` plugin. Its public surface also re-exports the host-side protocol vocabulary: `validateChildFrame` (rebuilds every inbound frame), the lossless-JSON codec and meters (`encodeJsonPlain`, `checkDoneValue`, `hasUnsafeIntegerToken`, `hasNonLosslessNumber`), `logTruncationMarker` (the shared truncation-marker text), plus `resolvePythonBin` (interpreter lookup against the current `PATH`), `readProcessStart` (process-start statistics for tests), `detachResidual` (a test seam for the settled run's resource cleanup), and `hostFrameParseCeiling` (the heap-derived frame parse cap a given heap limit admits). Every cap is a validated `Config` field with a default: `cpuSeconds` (60), `maxWallMs` (600000), `addressSpaceMb` (512, not applied on Darwin), `maxLogBytes` (65536), `maxValueBytes` (32768), `graceMs` (3000), and `pythonBin` (`python3`, resolved, executable-checked, version-probed under a five-second force-kill deadline, and frozen at load). Each child receives only `TMPDIR`; ambient credentials, `PATH`, `HOME`, and other host state stay unavailable.
+The package's default export is the `PythonCodeRuntime` plugin. For compatibility, its root entry also re-exports the host-side vocabulary owned by [`@deepseek-ai/dsh-code-runtime-python-protocol`](../../code-runtime/code-runtime-python-protocol/README.md): `validateChildFrame` (rebuilds every inbound frame), the lossless-JSON codec and meters (`encodeJsonPlain`, `checkDoneValue`, `hasUnsafeIntegerToken`, `hasNonLosslessNumber`), `logTruncationMarker` (the shared truncation-marker text), plus `resolvePythonBin` (interpreter lookup against the current `PATH`), `readProcessStart` (process-start statistics for tests), `detachResidual` (a test seam for the settled run's resource cleanup), and `hostFrameParseCeiling` (the heap-derived frame parse cap a given heap limit admits). Every cap is a validated `Config` field with a default: `cpuSeconds` (60), `maxWallMs` (600000), `addressSpaceMb` (512, not applied on Darwin), `maxLogBytes` (65536), `maxValueBytes` (32768), `graceMs` (3000), and `pythonBin` (`python3`, resolved, executable-checked, version-probed under a five-second force-kill deadline, and frozen at load). Each child receives only `TMPDIR`; ambient credentials, `PATH`, `HOME`, and other host state stay unavailable.
 
 ### The wire
 
@@ -59,18 +59,18 @@ The frames are `boot` / `run` (host → child) and `boot-ack` / `call` / `log` /
 
 ### Lossless JSON crossing
 
-Completion values and binding arguments cross as exact JSON: values serialize without recursion, so a deep payload below the byte budget survives instead of dying on `JSON.stringify`'s stack limit, and integral doubles beyond the safe range cross as exact digits rather than silently rounded tokens; the meters in `src/protocol.ts` enforce byte budgets and number losslessness before anything else reads the payload.
+Completion values and binding arguments cross as exact JSON: values serialize without recursion, so a deep payload below the byte budget survives instead of dying on `JSON.stringify`'s stack limit, and integral doubles beyond the safe range cross as exact digits rather than silently rounded tokens; the meters in the released protocol package enforce byte budgets and number losslessness before anything else reads the payload.
 
 ### Mirror alignment
 
-`tests/protocol-mirror.e2e.ts` spawns a real `python3` and asserts, against `src/protocol.ts`, both `PROTOCOL_FD` / the truncation-marker text and each `TypedDict`'s required/optional wire field set in `py/protocol.py`, so a renamed or dropped field — or one side making a field optional the other requires — fails the test. Field *types* are not compared across the language boundary; that residue stays with review plus the backend's real-subprocess suite (`tests/runtime.spec.ts`).
+`tests/protocol-mirror.e2e.ts` spawns a real `python3` and asserts, against the released protocol package, both `PROTOCOL_FD` / the truncation-marker text and each `TypedDict`'s required/optional wire field set in `py/protocol.py`, so a renamed or dropped field — or one side making a field optional the other requires — fails the test. Field *types* are not compared across the language boundary; that residue stays with review plus the backend's real-subprocess suite (`tests/runtime.spec.ts`).
 
 ### Source map
 
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `PythonCodeRuntime` — spawn, frame pump, budgets, containment, teardown; re-exports the protocol vocabulary |
-| [`src/protocol.ts`](src/protocol.ts) | Host side: frame codec, hostile-frame validators, lossless-JSON meters, shared marker text |
+| [`code-runtime-python-protocol`](../../code-runtime/code-runtime-python-protocol/README.md) | Released host side: frame types, codec, hostile-frame validators, lossless-JSON meters, shared marker text |
 | [`py/bootstrap.py`](py/bootstrap.py) | Child side: fd-3 channel, program execution, binding dispatch, ledger and settlement |
 | [`py/protocol.py`](py/protocol.py) | Python side: `PROTOCOL_FD`, `TypedDict` frame mirrors, `log_truncation_marker` |
 | [`tests/runtime.spec.ts`](tests/runtime.spec.ts) | Real-subprocess suite: budgets, containment, hostile frames, name rebinding |
@@ -87,6 +87,7 @@ Completion values and binding arguments cross as exact JSON: values serialize wi
 Read these when the runtime contract is not enough. They move from the seam definition to the design record and the companion backend.
 
 - [Code runtime seam](../../code-runtime/code-runtime/README.md) — the abstract contract this backend implements.
+- [Released Python protocol](../../code-runtime/code-runtime-python-protocol/README.md) — the shared TypeScript fd-3 vocabulary re-exported by this package.
 - [fd-3 protocol Agent Note](../../../.agents/notes/implemented/architecture/2026-07-31-code-runtime-python-fd3-protocol.md) — design rationale and wire contract.
 - [Settlement-fixes Agent Note](../../../.agents/notes/archived/bug-fix/2026-07-31-code-runtime-python-settlement-fixes.md) — settlement, metering, and containment fixes and their regression cases.
 - [Worker-thread backend](../../code-runtime/code-runtime-worker-thread/README.md) — the released TypeScript sibling.

@@ -6,7 +6,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { PythonCodeRuntime, hostFrameParseCeiling, readProcessStart, resolvePythonBin } from '../src/index.ts'
-import { logTruncationMarker } from '../src/protocol.ts'
+import { logTruncationMarker } from '@deepseek-ai/dsh-code-runtime-python-protocol'
 import type { Config } from '../src/index.ts'
 
 // Absolute supported interpreter path for shell wrappers. The runtime gives a

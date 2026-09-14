@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `code-runtime/` group lets a model write one program that calls host-provided functions as ordinary async calls, then returns only the program's printed output and return value. Choose the TypeScript backend for execution in an isolated Node worker, or the experimental Python backend when a CPython process is required. Each run starts without state from earlier programs. Failures are returned as results so callers can diagnose them or provide them to the model.
+The `code-runtime/` group lets a model write one program that calls host-provided functions as ordinary async calls, then returns only the program's printed output and return value. Choose the TypeScript backend for execution in an isolated Node worker, the released data Python backend for pandas/numpy workloads, or the private experimental Python backend for source-checkout testing. Both Python providers share one released fd-3 protocol library, and every run starts without state from earlier programs.
 
 ## Table of Contents
 
@@ -22,13 +22,15 @@ The `code-runtime/` group lets a model write one program that calls host-provide
 <a id="packages"></a>
 ## Packages
 
-These three packages together provide program execution; each README describes what its part does.
+These five packages provide the code-runtime definition, shared protocol, and execution backends; each README describes what its part does.
 
 | Package | Role | ctx key |
 |---|---|---|
 | [`code-runtime/`](code-runtime/README.md) | Defines what a code runtime does: run one program against host-provided bindings and report what it printed and returned | `ctx.codeRuntime` |
+| [`code-runtime-python-protocol/`](code-runtime-python-protocol/README.md) | Owns the released fd-3 frame types, lossless JSON codec, byte meters, and hostile-frame validators shared by CPython providers | — |
 | [`code-runtime-worker-thread/`](code-runtime-worker-thread/README.md) | Executes TypeScript programs, each in a fresh Node worker thread | registers `ctx.codeRuntime` |
-| [`experimental/code-runtime-python/`](../experimental/code-runtime-python/README.md) | The experimental Python backend: owns the fd-3 wire protocol between a Node host and a CPython subprocess and the CPython runtime implementation | — |
+| [`code-runtime-data-python/`](code-runtime-data-python/README.md) | Executes data-agent Python programs with pandas/numpy in a fresh CPython subprocess | registers `ctx.codeRuntime` |
+| [`experimental/code-runtime-python/`](../experimental/code-runtime-python/README.md) | Private source-checkout CPython backend with stricter interpreter probing, process-group teardown, and protocol compatibility re-exports | registers `ctx.codeRuntime` |
 
 -----
 
