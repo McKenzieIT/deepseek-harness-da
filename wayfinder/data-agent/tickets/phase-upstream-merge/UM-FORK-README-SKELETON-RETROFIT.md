@@ -2,7 +2,8 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open (2026-09-13 从 [UM-C-GATES Cluster D apply](UM-C-GATES-UPSTREAM-NEW.md) 拆出——scope 订正后 Gate 3 从"~10 min WAIVE"变"~1-2 session mass retrofit"，本票承接)
+**Status**: **resolved**（2026-09-14 · F1 落地 via **PR #127** / commit `1d39160a09`，205 文件 +4061/-219；`doc-standard.spec.ts` 2/12 → **12/12**。见文末 [2026-09-14 Resolution](#2026-09-14-resolution--f1-landed-via-pr-127--1d39160a09-doc-standard-1212) 节。2 项 carried-forward defect 拆出 [UM-FORK-README-GENERATOR-RESIDUALS](UM-FORK-README-GENERATOR-RESIDUALS.md)）
+> **原开票语境**（2026-09-13 从 [UM-C-GATES Cluster D apply](UM-C-GATES-UPSTREAM-NEW.md) 拆出——scope 订正后 Gate 3 从"~10 min WAIVE"变"~1-2 session mass retrofit"，本票承接）
 **Assignee**: unclaimed
 **Blocked by**: —
 **Blocks**: [UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 的 `documentation standard tests` KNOWN-RED 转为 GREEN
@@ -157,3 +158,55 @@ Recommended: F1 (rename ZH 概述 → Overview) — it's the generator's natural
 **stash**：`git stash list` → `stash@{0}: On master: README-apply-95pct + G13 (lint-1err + eval-cli-re-record pending)`。
 
 下 session：`git stash pop` → 修 3 项 → `git add`（generator + 130 README + wiring + 4 group + sidecars，**排除** docs i18n.yaml + G13）→ commit → push A-path（从 dsh-resync）→ PR → merge。然后 Step 2-4（LINT-B + §2 + §4）。
+
+---
+
+## [2026-09-14] Resolution — F1 LANDED via PR #127 / `1d39160a09`, doc-standard 12/12
+
+**本票收口。** 上一节记的 "95% done, commit 卡 lefthook 3 项 + 改动在 `stash@{0}`" 已全部消化：3 个 blocker 修完、改动 commit、PR #127 merged。
+
+### 落地事实
+
+| 项 | 值 |
+|---|---|
+| commit | `1d39160a09` `wayfinder(upstream-merge): UM-FORK-README-SKELETON-RETROFIT — F1 apply: wire gate + retrofit 67 README pairs` |
+| PR | **#127**（`d8d55f7149` → `2886e5b8e5`，A 路径从 `dsh-resync` 推 `feat/tracker-2026-09-18-um-fork-readme` → `gh pr merge --merge`） |
+| 规模 | **205 文件，+4061 / -219** |
+| 方案 | **F1**（rename ZH `## 概述`[Overview] → `## Overview` + insert Summary `## 概述` + rebuild TOC + re-thread anchors）——judge panel 2026-09-13 已判 winner，本 session 无需重跑 |
+
+### 3 个 lefthook blocker 的真实处置（**两条上一节的诊断是错的，按实测订正**）
+
+| # | 上一节的诊断 | 实测 | 处置 |
+|---|---|---|---|
+| 1 | lint `no-unnecessary-condition` 在 `MODEL_EXPERIENCE_VARIANTS.includes(heading)`，需 `as readonly string[]` cast | ❌ **诊断错**。`MODEL_EXPERIENCE_VARIANTS` 本来就已经是 `readonly string[]`，该行 lint 干净。真正报错的是 **`scripts/gen-package-readme-skeleton.ts:585` 的 `modelExpMatch.index !== undefined`** —— `RegExpExecArray.index` 的类型是 `number`，**永不为 `undefined`**，故该合项恒真 | 删掉那个恒真合项（不是加 cast） |
+| 2 | eval-cli `README.i18n.yaml` 删 anchor 后 hash stale | ✔ 确认 | `verify-translation-pairing --write packages/eval/eval-cli/README.md` re-record |
+| 3 | docs i18n hook 副作 = **2** 个文件（`config-catalog` + `tool-catalog`） | ❌ **计数错，是 3 个**。`docs/subsystems/README.i18n.yaml` **也在 stash 里** —— 上一节的枚举用了一个 `grep -v README` 过滤，把它藏掉了 | 3 个全部 `git checkout` 回 HEAD，**不 commit**（它们是 corpus re-record 副作用，非 README apply 的一部分） |
+
+**教训（写给下一个人）**：`no-unnecessary-condition` 这类 type-aware 规则**只在完整 `lint` 里跑，不在 `.oxlintrc.staged.json` 的 pre-commit pass 里跑** —— 所以 pre-commit 绿不代表 `lint` 绿，反之 pre-commit 报的 type-aware error 定位需要在完整 `lint` 下复核，不能照抄 hook 输出的行号猜测。
+
+**stash 语境订正**：`stash@{0}` 是用 `-u` 创建的，所以它同时携带了 **4 个 untracked 文件**，含 3 个 **HANDS-OFF** 的 `wayfinder/task-orchestration-dag/research/G13-*.md`。`git add` 时必须用显式路径逐个加，**绝不 `git add -A`**。工作已 commit 后 `stash@{0}` **仍故意保留**作安全网。
+
+### Verify（commit 后实测，全绿）
+
+| 门 | 结果 |
+|---|---|
+| `pnpm exec vitest run scripts/doc-standard.spec.ts` | 2/12 → **12/12** ✓（Acceptance 达成） |
+| `verify-package-readme-skeleton --check` | **exit 0** ✓ |
+| 幂等性（第 2 次 write run） | **字节完全相同的树** ✓ |
+| corpus `verify-translation-pairing` | **17**（baseline 22，见下方订正） ✓ |
+| `verify-package-readme-limitations` | **329 conform** ✓ |
+| `verify-gate-coverage` | **green** ✓（`verify-package-readme-skeleton` 已入账，gate 数 48 → **49**） |
+
+### Baseline 订正 2 处（勿沿用旧数字）
+
+1. **corpus pairing baseline 是 22，不是 21。** 上一节和上一版 prompt 都写 21。PR #126 落了 `docs/adr/0002-ui-presenter-composition-plan-b.md`（**未配 sidecar**），把 baseline 抬到 22。所以本次 retrofit 修的是 **22 → 17 = 5 条** wrong-locale link，**不是 1 条**。
+2. **⚠ 本地测 17 会测出 16 —— 差 1 是 untracked sidecar 造成的假象。** `docs/adr/0002-ui-presenter-composition-plan-b.i18n.yaml` 是**故意 untracked** 的工作树文件；它在盘上就足以让 verifier 认为该 pair 已 record，于是本地少报 1 条。实测：把它临时移走再跑 → **17**；移回 → **16**。**CI / fresh checkout 上的真值是 17。** 任何"corpus 数字对不上"的复核都要先看这个文件在不在盘上。
+
+### 结转的 2 个缺陷 → 拆票 [UM-FORK-README-GENERATOR-RESIDUALS](UM-FORK-README-GENERATOR-RESIDUALS.md)
+
+本票的 Acceptance 全部达成，但本 session 实测发现 2 项**不属于本票 scope、且不能只写在一张 resolved 票的正文里**的缺陷，故拆独立 open 票承接（理由：一张 resolved 票的正文不会有人再读，而其中一项是 master 上**当前就红**的门 —— 正是 UM-C-GATES 反应式修掉的 orphan-gate 模式）：
+
+1. **`verify-package-readme-model-experience` 在 master 上红，且非本次引入。** 实测 exit 1：`packages/bundle/data-agent/README.md: ## Model Experience and ## Known Limitations and Deferred Work must be the final two H2 sections, in that order`。讽刺点：这个包的 README 正是 2026-09-13 Cluster D 手写的 "correct skeleton 示例"。该门在 [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 的 `bcf4776f1d` 记录里曾经 GREEN → 之后无人承接地转红。
+2. **generator 的 anchor threading bug 未修，只是当前 inert。** 对 `packages/eval/eval-cli/README.zh.md` 重跑 generator 会 ① 在**围栏代码块内部**吐一个 `<a id>` anchor，② 多吐一个重复的 `model-experience` anchor。当前盘上那个文件是干净的（实测 7 个 anchor、`model-experience` 恰 1 个、代码块内 0 个）—— 因为它已被手工修过，而 `planRetrofits` **跳过已 retrofit 的文件**，所以 bug 摸不到它。**一旦该文件被重新 retrofit（新 heading、新包、或 generator 逻辑变更触发重跑），bug 立刻复活。**
+
+顺带结转的 quality issue（非缺陷、无门）：generator 把 `## Table of Contents` 插在 `## Summary` **之前**（EN + ZH 一致，故 pairing/doc-standard 都绿，只是阅读顺序反了）。同归上述新票。

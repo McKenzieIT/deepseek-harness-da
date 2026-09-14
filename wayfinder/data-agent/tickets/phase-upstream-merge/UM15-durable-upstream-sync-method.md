@@ -262,3 +262,118 @@ Policy sketch for the THREE integrity-gate waiver kinds in `upstream-sync.json` 
 
 - **THIS SESSION (lands as decision-doc, not code)**: §3 cadence measurement (DONE, hard GO) + §2 finding (NO manifest edits; record the structural gap) + PR #122 verified.
 - **DEFERS to follow-up sessions**: the actual §3 re-sync merge (multi-session, stateful) + §2 schema extension (`knownRed[]` + Check 4) + §4 waiver/known-red expiry (paired with §2 schema extension).
+
+---
+
+## [2026-09-14] §3 第三轮 re-sync 开工：2/6 seam 落定、**未 commit（mid-merge，有意）**；§2/§4 按本票 Split proposal 继续 defer
+
+**Status 保持 `open`。** 本节记三件事：①§2/§4 的 defer 决定与理由；②§3 第三轮的实际进展 + **5 条 dry-run/RISK-MAP 都没有的发现**（本轮最有价值的输出）；③精确到命令的 resume 序列。
+
+### 一、§2 + §4 —— 用户决定继续 defer，且这次是**遵从本票自己的判断**
+
+上一版 prompt 的 Phase 3 把 §2（`knownRed[]` schema 扩展）+ §4（waiver expiry）排进了本 session 的 Step 3/4。**用户 2026-09-14 决定不做**，理由是本票 [2026-09-13] decision-doc 末尾的 **§Split proposal** 已经把它们判为 "DEFERS to follow-up sessions"，而那个判断的依据一条也没变：
+
+- §4 要改 **`scripts/upstream-sync-record.ts`（804 行 git-layer 模块）** 的 `Waiver` interface，并且加 expiry 字段会**改变 `collectGitFailures` 的失败语义（note → failure）**。改一道已上线完整性门的失败语义，需要它自己的 grilling + spec + test 轮，不能搭在别的 apply 尾巴上。
+- §4 的校准值（**N 次连续 zero-hit 后过期、各 decision kind 的 expiry window**）是**人的判断题**，不是能从代码里读出来的。
+- §4 的 known-red 半边**阻塞在 §2 的 `knownRed[]` 扩展上** —— 在那个数组存在之前，"known-red expiry" 没有东西可以 expire。
+- 本票 decision-doc 的 **Recommended pairing** 就是把 §4 与 §2 的 schema 扩展**作为一轮 grilling 一起做，并且明确要求 kept off the AFK re-sync path**。本 session 主体正是 re-sync（§3），把 §2/§4 塞进来恰好违反这条。
+
+**→ §2/§4 状态不变**：§2 = 需 schema 扩展（`knownRed: [{script, rationale, ticket, expiry?, reopenTrigger}]` + Check 4 断言每条 known-red 指向一个已 enrolled 的门）；§4 = 需 grilling + spec + test 轮。两者成对，另开专项 session。**下 session 不要把它们排进 re-sync 路径。**
+
+> 附注（本 session 的一个省钱观察）：上一版 prompt 的 Phase-1 里 `um15-s2` 那个 design agent 曾因 StructuredOutput 失败而无产出，prompt 因此把它排了重跑。**不需要重跑** —— §2 的完整设计（`knownRed[]` schema、Check 4、以及 `verify-client-ui-i18n` 的 draft entry JSON）本来就已经逐字写在本票 [2026-09-13] decision-doc 的 §2 节里。
+
+### 二、§3 第三轮 re-sync —— **2/6 seam 落定，工作树停在 mid-merge**
+
+#### 2.1 精确的可恢复状态（**下 session 的起点，逐字核对**）
+
+| 项 | 值 |
+|---|---|
+| worktree | `/Users/mckenzie/workspace/dsh-s3-resync`（新建；worktree 总数 7 → **8**） |
+| branch | `upstream/resync-2026-09-18` |
+| HEAD | `6695ed150e` |
+| **`MERGE_HEAD`** | **`c291e7961a51`** |
+| **unmerged paths** | **36** |
+| commit 数 | **0** —— 本轮什么都没 commit |
+
+**为什么 0 commit，且这是对的**：git **禁止**在有 unmerged path 时创建 merge commit，也**禁止**在 merge 进行中做 pathspec commit（`git commit <paths>` 在 mid-merge 下被拒）。所以在 36 个 out-of-seam 冲突解完之前，结构上无法 commit。**这就是预期的可恢复状态，不是失败。** 下 session 直接在这个树上继续解冲突即可，**不要 `git merge --abort`**、**不要 reset**。
+
+> **`dsh-s3-resync` 必须原样保留。** 本 session 的所有 tracker 文档工作都在主树 `master` 上做，与它零交集。
+
+#### 2.2 窗口与可复现性
+
+- BASE = `6695ed150e`（fork 侧 re-sync 分支起点）× upstream = `c291e7961a51`
+- git 自算的三方 merge-base = **`c389f96bf3a9`**（= 本票记录的上一次 synced upstream tip，与 `upstream-sync.json` 一致）
+- dry-run 报告的 `git merge-tree` 结果 SHA **`9820baebad1c`** 本轮**逐位复现**（bit-for-bit）→ dry-run 与实际 merge 是同一棵树，dry-run 的结论可信。
+
+#### 2.3 dry-run 的 37-漏冲突预测 **精确命中**
+
+冲突总数 **39 = 2 in-seam + 37 out-of-seam**。dry-run 报告的 "RISK-MAP 漏了 37 个 fork-divergent 冲突" **一个不差**。且**零** modify/delete、零 rename/rename、零 add/add —— 全部是普通 content conflict，这对 resume 是好消息（没有需要人判"这个文件到底还该不该存在"的那一类）。
+
+#### 2.4 落定的 2 个 seam
+
+| seam | 范围 | severity | 冲突 | 结果 |
+|---|---|---|---|---|
+| **seam-4** | `packages/client/modules` | LOW | **0** | 自动应用 **+66/-53 across 7 files**；13 个文件全部与 upstream **字节相同**（take-upstream-wholesale 如 RISK-MAP 所料）。**94/94 tests pass** |
+| **seam-2** | `packages/api/gateway` + `packages/api/remotes` | MEDIUM | 恰 **2**，每个 1 个 hunk | `packages/api/remotes/src/client/index.ts`（L164-172）+ `packages/api/remotes/package.json`（L91-97），均 **union-resolve**。**292/292 tests pass** |
+
+**seam-2 不需要 co-adaptation**：`grep -rn 'identifyHost' packages apps scripts` → **0 hits**。upstream 删掉的那个 delegate API 在 fork 侧**没有任何依赖方**，所以 RISK-MAP 担心的 call-site 改造是空集。
+
+**关键状态判断**：**6 个 seam path 现在全部零冲突文件。** 剩下的 36 个冲突**一个都不在 seam 内**。这改变了剩余工作的性质 —— 余下 4 个 seam（5/1/3/6）的工作**不是 merge 冲突解决**，而是 **build-time co-adaptation**（upstream 改了 API，fork 的调用点要跟着改，但 git 层面没有冲突标记指给你）。
+
+#### 2.5 **5 条 dry-run 与 RISK-MAP 都没有的发现（本轮最有价值的输出）**
+
+**① `tsconfig.base.json` 是**所有**验证的硬门，不是普通 Category B 文件。**
+它带着冲突标记时，`vite-tsconfig-paths` 解析失败 → 全局 `setupFiles` 里的一个条目 oxc transform 失败 → **全仓每一次 vitest run 都以 0 tests 直接 abort**。症状是"测试一个都不跑"，而不是"某个测试红"，极易误诊成环境坏了。
+**→ 每一轮、每一次，第一个解的文件必须是 `tsconfig.base.json`。** 本 session 已作为前置解掉：**2 个纯 additive union hunk，共 484 条 path entry**。
+
+**② merge 后 `pnpm install` 是强制步骤 —— dry-run 报告完全没提这件事。**
+upstream 新增了一个**全新的包** `packages/util/chunked-list`，它依赖 `zod`，而这个包在 fork 树上**没有 `node_modules`**。这一条未解析的依赖会让 **`tsc -b` 的 build graph 直接 abort**，级联出 **~28 个幻影 `TS2307` / `TS2339` / `TS2322`** —— 全是假错，改代码只会越改越错。
+**→ 这把冲突中的 `pnpm-lock.yaml` 顶到了所有 typecheck 验证的关键路径上**（不是"顺手解一下的 manifest"）。
+
+**③ RISK-MAP seam-4 有一处事实错误（无害，但会误导核对）**：它写 `client/index.ts` 重新导出全部**四个** helper。实测 upstream 重新导出的是**三个 + `parseBootManifest`**；**`optionalStringArray` 并没有从 `./client` 子路径导出**。按 RISK-MAP 的说法去核"4 个都在"会得出错误结论。
+
+**④ seam-6 变简单了：它的 `[high]` `WorkspaceFileResource` co-adaptation 已经 moot。**
+`grep -rn 'WorkspaceFileResource' packages` → post-merge **0 hits**。原因：upstream 自己的 rename 带来了它自己的 `fixtures.client.ts`，那个类型名整体消失了。RISK-MAP 把 seam-6 排最难，主要就是因为它的 6 个 breaking + out-of-seam co-adapt；这一条直接划掉。
+
+**⑤ seam-6 的另一个 `[high]` 确认**仍然待做**（别因为 ④ 就以为 seam-6 空了）**：`packages/client/ui-sidebar-files/src/client/face.ts:55` 仍然是 `remote.workspaceFiles.list(sessionId, path, signal)`，与 BASE **字节未变**。这是真正需要 co-adapt 的那一处。
+
+#### 2.6 Category 计数订正（dry-run 报告的分类表）
+
+- **Category E = 1 个文件（`.gitignore`），不是 2**
+- **Category C = 13 个，不是 11**
+- 合计仍然**对得上 37**（分类内部搬家，总数不变）
+
+#### 2.7 一项标记为**待 build 后重验**、不判 benign
+
+`packages/api/remotes/src/remote-events.ts(32,5) TS2322` on `'goal/activation-changed'`。**最可能**的原因是缺一个已 build 的 `lib/` 出口，而不是缺 tsconfig reference —— 但本 session **没有**证实这一点，所以**不宣布它无害**。等 ② 的 `pnpm install` + build 跑通之后再看它是否自行消失；若不消失，它是真错。
+
+#### 2.8 测试环境的两个坑（记下来省下一轮的时间）
+
+- **`vitest run --dir <pkg>` 会忽略 `projects` 配置，转而跑全仓 suite** —— 十几分钟、还会遗留 orphan worker 进程。**用显式 spec 路径**，不要用 `--dir`。
+- **`--reporter=basic` 在 vitest 4 里不存在**（会报未知 reporter）。
+
+### 三、Resume 序列（**严格按序，前 5 步不可调换**）
+
+在 `/Users/mckenzie/workspace/dsh-s3-resync`（branch `upstream/resync-2026-09-18`，mid-merge，36 unmerged）上继续：
+
+1. **`tsconfig.base.json` —— 先解这一个，别的都别碰。** 见发现①：它红着，全仓 vitest 一个测试都跑不起来，你会误诊一整轮。（本 session 已解过一次，若树上仍带标记则重做：2 个纯 additive union hunk / 484 path entries。）
+2. **`pnpm install --no-frozen-lockfile`** —— 见发现②：`packages/util/chunked-list` 是全新包且依赖 `zod`，无 `node_modules` 会让 `tsc -b` 的 build graph abort 并级联 ~28 个幻影 TS 错。**冲突中的 `pnpm-lock.yaml` 属于这一步的前置，不是 manifest 顺手活。**
+3. **translation-pairing 配对 pass（16 个文件）** —— `docs/**` 的 `.md` / `.zh.md` / `.i18n.yaml` 三件套。机械活，但必须三件同步解，否则 pairing 门红。
+4. **manifest / misc union pass（4 个文件）** —— 纯 union，无语义判断。
+5. **regenerated-artifact pass —— `packages/typert/generator/src/analyzer.ts` 必须第一个**，它**阻塞后面所有 spec**。其余 regen artifact（`packages/extensions/tool-cordis/src/api-catalog.ts` 等）按 dry-run 的 reframe 处理：**take upstream generators + 重跑 fork regen**，不要做三方合并。
+6. **genuine three-way pass** —— 剩下真正需要读语义的那些（`packages/client/ui-layout/src/client/{AppFrame.tsx,index.ts}`、`ui-settings-models` 的 tests、`session-snapshot/src/harness.ts` 等）。
+7. **build 完成后回头重验 seam-2 的 client face** —— 见 2.7 的 `remote-events.ts(32,5) TS2322`。它没被判 benign。
+8. **然后按 RISK-MAP 顺序推剩余 4 个 seam：seam-5 → seam-1 → seam-3 → seam-6。**
+   - seam-5 紧跟 seam-2（同一包路径 `packages/api/remotes`，是 seam-2 的 consumer 下游；要审 fork 侧 emitter 是否都带了 `request.agent`）
+   - seam-1（bundle）要过 4 处 AgentSetup caller 迁移这道关
+   - seam-3 本轮判 LOW（27 个 commit 以 `fixture.ts` 的 surgical 改动为主，**不是** UM14 那次的 dual-refactor）；保住 `case 'result/get'` 块
+   - seam-6 最后：④ 已消掉它的 `WorkspaceFileResource` 那半，⑤ 的 `ui-sidebar-files/src/client/face.ts:55` 仍要改
+
+**每个 seam 解完就跑该 seam 的 testHotspots（RISK-MAP 每 seam 都列了），用显式 spec 路径、不要 `--dir`、不要 `--reporter=basic`。**
+
+### 四、本轮对 durable method 本身的评价
+
+这是 UM15 §1-§5 建成后的**首次真实端到端检验**，两条结论：
+
+- **cadence + staleness 半边有效**：阈值判定（852 commits / 6 seam 全触）正确触发了这一轮；`verify-upstream-sync-record` 的 stale-ref note 是最初的告警源。
+- **impact 预测半边有系统性盲区**：RISK-MAP 只看 seam，于是**漏掉了 37 个 out-of-seam 冲突（占总数 95%）**，还错判了 seam-4 的导出面（发现③）与 seam-6 的难度（发现④）。dry-run 补上了 37 这个数字并被本轮**精确验证**，但连 dry-run 也漏了 `tsconfig.base.json` 的门效应（①）和强制 `pnpm install`（②）。**这两条应当喂回 §2 change-impact analyzer 的设计**：analyzer 不能只沿 seam 推理，必须 ① 把"解析器/配置类文件（`tsconfig.base.json`、`pnpm-lock.yaml`）冲突"标记为 blocking-all-verification 级别，② 检测 upstream 新增包并强制 install 步骤。
