@@ -683,6 +683,11 @@ export class AgentPresets extends TypertRemoteService {
    */
   private readonly switches = new Map<string, Promise<unknown>>()
 
+  /** Read-only accessor for the in-flight switch guard of a session, if any. */
+  pendingSwitch(sessionId: string): Promise<unknown> | undefined {
+    return this.switches.get(sessionId)
+  }
+
   /**
    * Compose a blank session's agent from a different preset and record it.
    * @param agent - the session's live agent, resolved from the wire identity.
