@@ -45,6 +45,30 @@
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
+| `@deepseek-ai/dsh-tool-search-data-sources` | `search_data_sources` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | `search_data_sources` 是 UNDERSTANDING 阶段进入 BM25 schema linking 的入口：agent 在编写 SQL 前用它判断哪些数据源（DWS 表／事件 ODS 表）匹配自然语言问题。Q1 的精简默认实现对空语料运行本地 `Bm25Linker`（可调用，但在 `ctx.schema` 交付前未接线），因此返回空候选；注册 `ctx.retrieval` 后由 P5b 切换到该服务，P6b 则从 `ctx.schema.discover` 提供语料，两种路径保持同一工具约定。 |
+| `@deepseek-ai/dsh-tool-critique-sql` | `critique_sql_tool` | `ctx.tools` | `tool/call`, `tool/result` | - | `critique_sql_tool` 是 GENERATION 阶段的 SQL critic，使用折叠正则检查表 grounding、ds 分区、`SELECT *` 与 JSON path 字段。它通过 `ctx.get` 延迟探测 `ctx.criticCtx` 和 `ctx.schema`，schema harvest 无需挂载 provider；空 critic context 会 fail-open，使工具在未挂载 phase-gate 或语义层时仍可注册 schema。 |
+| `@deepseek-ai/dsh-tool-discover-relations` | `discover_relations` | `ctx.tools` | `tool/call`, `DWS table dimension_refs enrichment`, `tool/result` | - | `discover_relations` 是 ENRICHMENT 阶段的 AI-native DWS→DIM join 发现入口。它委托给 `ctx.schema.discoverRelations`，并通过 `ctx.get` 延迟探测；schema harvest 无需 schema provider（工具可调用，但在 `ctx.schema` 交付前未接线）。 |
+| `@deepseek-ai/dsh-tool-edit-definition` | `edit_definition` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `semantic-layer definition patch (Tier-2 audited)`, `tool/result` | - | `edit_definition` 对 table 或 event 定义应用局部 patch（浅合并；columns 按 name 合并），记录 Tier-2 审计写入，并把资产标记为 unreviewed。Metric 是虚拟资产，不能直接编辑。schema harvest 挂载惰性的 `ctx.schema` 与 `ctx.audit` provider，使 Tier-2 inject 可解析。 |
+| `@deepseek-ai/dsh-tool-evaluate-sql-quality` | `evaluate_sql_quality` | `ctx.tools` | `tool/call`, `tool/result` | - | `evaluate_sql_quality` 根据折叠正则 critic 的发现为候选 SQL 评出 0–100 分。它延迟探测 `ctx.criticCtx`；schema harvest 无需 provider，空 critic context 会 fail-open。 |
+| `@deepseek-ai/dsh-tool-get-coverage` | `get_coverage` | `ctx.tools` | `tool/call`, `tool/result` | - | `get_coverage` 报告语义层覆盖统计，包括按种类、确认状态和 domain 聚合的资产数量。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。 |
+| `@deepseek-ai/dsh-tool-get-definition` | `get_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | `get_definition` 按名称加载统一的数据资产定义（table、event 或 metric）。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。 |
+| `@deepseek-ai/dsh-tool-list-domains` | `list_domains` | `ctx.tools` | `tool/call`, `tool/result` | - | `list_domains` 枚举语义层 domain，并给出各类资产（tables、events、metrics）的数量。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。 |
+| `@deepseek-ai/dsh-tool-load-event-definition` | `load_event_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | `load_event_definition` 加载已验证的事件定义，包括 `params_fields`、metrics、消歧信息和外部维度引用。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线（空 `semanticRoot` 返回 not-found，不会崩溃）。 |
+| `@deepseek-ai/dsh-tool-load-table-definition` | `load_table_definition` | `ctx.tools` | `tool/call`, `tool/result` | - | `load_table_definition` 加载已验证的表定义，包括 columns、partitions、primary key、metrics 与 dimension refs。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线（空 `semanticRoot` 返回 not-found，不会崩溃）。 |
+| `@deepseek-ai/dsh-tool-present-clarification` | `present_clarification` | `ctx.tools` | `tool/call`, `awaiting_clarification (phase-gate HALT)`, `tool/result` | - | `present_clarification` 是纯展示工具：它为 UI 记录一个澄清问题，并依赖 phase-gate 停止当前 turn。除 `ctx.tools` 外没有服务依赖；真正执行 HALT 的是 phase-gate，而不是工具本身。 |
+| `@deepseek-ai/dsh-tool-retrieve` | `retrieve` | `ctx.tools` | `tool/call`, `tool/result ranked data-source candidates` | - | `retrieve` 是预取 UNDERSTANDING 上下文明显缺失时使用的按需检索 escape hatch。它延迟探测 `ctx.retrieval` 与 `ctx.schema`；Q1 的精简默认实现是空语料 `Bm25Linker`（可调用但未接线）。该工具以 additive、dormant 方式交付，必须由 preset 挂载。 |
+| `@deepseek-ai/dsh-tool-search-schema` | `search_schema` | `ctx.tools` | `tool/call`, `tool/result ranked asset matches` | - | `search_schema` 是管理 agent 使用的语义层 BM25 搜索，返回带 kind 与 domain 元数据的资产匹配。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。 |
+| `@deepseek-ai/dsh-tool-trigger-eval` | `trigger_eval` | `ctx.tools` | `tool/call`, `eval run + persisted results`, `tool/result` | - | `trigger_eval` 触发语义层 eval 并报告前后差异。它延迟探测 `ctx.evalRunner` 与 `ctx.evidenceQuery`；未挂载 runner 时返回 `not_configured`，Host composition 必须接入协作者。 |
+| `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | `update_table_config` 把每表 ODPS project override 写入表定义（self-evolution #3b），使后续 `qualifyTable` 重试解析为 `&lt;project&gt;.&lt;table&gt;`。仅管理员可用（RBAC stub 读取 `ctx.identity`），并通过 `ctx.audit` 做 Tier-2 审计。schema harvest 挂载惰性的 `ctx.schema`、`ctx.audit` 与 `ctx.identity` provider，使 Tier-2 inject 可解析。 |
+| `@deepseek-ai/dsh-tool-compute` | `compute` | `ctx.tools`, `ctx.codeRuntime`, `ctx.resultCache` | `tool/call`, `cr_ derived result via ctx.resultCache`, `tool/result` | - | `compute` 针对源 `result_id` 运行 code binding，并通过 `ctx.resultCache` 用 `cr_` 前缀保存派生结果。schema harvest 挂载惰性的 codeRuntime 与 resultCache provider，使 inject 可解析；工具仅在执行时读取它们。 |
+| `@deepseek-ai/dsh-tool-discover-alt-labels` | `discover_alt_labels` | `ctx.tools` | `tool/call`, `tool/result alt-label candidates` | - | `discover_alt_labels` 与 `discover_relations` 对称：它为 table／column 提供替代标签（aliases）以扩大召回。它延迟探测 `ctx.schema`；schema harvest 无需 schema provider（工具可调用，但在 `ctx.schema` 交付前未接线）。 |
+| `@deepseek-ai/dsh-tool-present-decomposition` | `present_decomposition` | `ctx.tools` | `tool/call`, `tool/result decomposition cards` | - | `present_decomposition` 是纯展示工具，为 UI 渲染查询拆解。除 `ctx.tools` 外没有服务依赖。 |
+| `@deepseek-ai/dsh-tool-present-table` | `present_table` | `ctx.tools` | `tool/call`, `tool/result rendered table/chart` | - | `present_table` 为 UI 渲染 table 或 chart 结果。除 `ctx.tools` 外没有服务依赖；`chart.type` 在 tool args 边界执行 fail-loud 校验。 |
+| `@deepseek-ai/dsh-tool-reachability-delta` | `reachability_delta` | `ctx.tools` | `tool/call`, `tool/result reachability delta` | - | `reachability_delta` 报告两个资产之间 join 可达性的变化。它延迟探测 `ctx.schema`；schema harvest 无需 schema provider。 |
+| `@deepseek-ai/dsh-tool-resolve-term` | `resolve_term` | `ctx.tools` | `tool/call`, `tool/result resolved asset` | - | `resolve_term` 把自然语言术语映射到数据资产（table／event／metric）。它延迟探测 `ctx.schema`；schema harvest 无需 schema provider。 |
+| `@deepseek-ai/dsh-tool-revert-edit` | `revert_edit` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `Tier-2 audit revert event`, `tool/result` | - | `revert_edit` 回滚语义层编辑（concept／table／event），并通过 `ctx.audit` 记录 Tier-2 审计。schema harvest 挂载惰性的 schema 与 audit provider，使 inject 可解析；execute 时才读取它们。 |
+| `@deepseek-ai/dsh-tool-scope-routing` | `list_scopes`, `switch_scope` | `ctx.tools`, `ctx.systemPrompt` | `tool/call`, `active-scope switch`, `tool/result` | - | `scope_routing` 是每 scope 路由入口，包括 `list_scopes`、`switch_scope` 与 alias-hint system-prompt contribution。harvest base 挂载 `systemPrompt`，工具延迟读取 active scope。 |
+| `@deepseek-ai/dsh-tool-suggest-followups` | `suggest_followups` | `ctx.tools` | `tool/call`, `tool/result follow-up chips` | - | `suggest_followups` 在结果后展示后续问题 chips。除 `ctx.tools` 外没有服务依赖。 |
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -2275,3 +2299,896 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 来源：[`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。
+<a id="deepseek-aidsh-tool-search-data-sources"></a>
+
+## `@deepseek-ai/dsh-tool-search-data-sources`
+
+### `search_data_sources`
+
+通过语义层上的 BM25 schema linking，查找与自然语言问题相关的数据源（DWS 表／事件 ODS 表）。在 UNDERSTANDING 阶段、编写 SQL 之前调用，以确认哪些表和事件能够回答问题。返回按相关度排序、带 id、score 与 description 的候选数据源。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "The natural-language data question to link against the data-source corpus."
+    },
+    "top_k": {
+      "type": "number",
+      "description": "Maximum number of candidate data sources to return. Defaults to 20."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/data/tool-search-data-sources/src/index.ts`](../packages/data/tool-search-data-sources/src/index.ts)
+
+`search_data_sources` 是 UNDERSTANDING 阶段进入 BM25 schema linking 的入口：agent 在编写 SQL 前用它判断哪些数据源（DWS 表／事件 ODS 表）匹配自然语言问题。Q1 的精简默认实现对空语料运行本地 `Bm25Linker`（可调用，但在 `ctx.schema` 交付前未接线），因此返回空候选；注册 `ctx.retrieval` 后由 P5b 切换到该服务，P6b 则从 `ctx.schema.discover` 提供语料，两种路径保持同一工具约定。
+
+<a id="deepseek-aidsh-tool-critique-sql"></a>
+
+## `@deepseek-ai/dsh-tool-critique-sql`
+
+### `critique_sql_tool`
+
+使用折叠正则 SQL critic 检查候选 SQL（表必须属于候选集、必须包含 ds 分区、禁止 `SELECT *`、`GET_JSON_OBJECT` 字段必须属于 `event_params`）。在 GENERATION 阶段、调用 `query_data` 前使用；停止当前 turn 的 phase gate 要求 confidence ≥ 0.6 才能进入 EXECUTION。遇到 `TABLE_NOT_FOUND` 或执行错误后，先修正 SQL，再重新调用 `critique_sql_tool`，然后才能再次调用 `query_data`；gate 的 F2 同源检查要求执行 SQL 与已评审 SQL 一致。返回 confidence、findings 与规范化 SQL。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sql": {
+      "type": "string",
+      "description": "The SQL to critique (raw SQL or a ```sql fenced block)."
+    },
+    "question": {
+      "type": "string",
+      "description": "The natural-language question the SQL answers (context for the critic)."
+    }
+  },
+  "required": [
+    "sql"
+  ]
+}
+```
+
+来源：[`packages/data/tool-critique-sql/src/index.ts`](../packages/data/tool-critique-sql/src/index.ts)
+
+`critique_sql_tool` 是 GENERATION 阶段的 SQL critic，使用折叠正则检查表 grounding、ds 分区、`SELECT *` 与 JSON path 字段。它通过 `ctx.get` 延迟探测 `ctx.criticCtx` 和 `ctx.schema`，schema harvest 无需挂载 provider；空 critic context 会 fail-open，使工具在未挂载 phase-gate 或语义层时仍可注册 schema。
+
+<a id="deepseek-aidsh-tool-discover-relations"></a>
+
+## `@deepseek-ai/dsh-tool-discover-relations`
+
+### `discover_relations`
+
+通过语义层发现 DWS→DIM 的维度 join 关系（G3 AI-native enrichment：确定性的主键名称轮次，加可选的 LLM 语义轮次），并把发现的 `dimension_refs` 写回各 DWS 表。在 ENRICHMENT 阶段调用，以初始化或刷新某个 scope 的关系图；可用 `tables` 限定目标集合，省略时处理当前 scope 的全部 DWS 表。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "tables": {
+      "type": "array",
+      "description": "Optional list of table_name values to limit enrichment to. Omit to enrich all DWS tables in the active scope.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+来源：[`packages/data/tool-discover-relations/src/index.ts`](../packages/data/tool-discover-relations/src/index.ts)
+
+`discover_relations` 是 ENRICHMENT 阶段的 AI-native DWS→DIM join 发现入口。它委托给 `ctx.schema.discoverRelations`，并通过 `ctx.get` 延迟探测；schema harvest 无需 schema provider（工具可调用，但在 `ctx.schema` 交付前未接线）。
+
+<a id="deepseek-aidsh-tool-edit-definition"></a>
+
+## `@deepseek-ai/dsh-tool-edit-definition`
+
+### `edit_definition`
+
+通过应用局部 patch 编辑数据资产定义（table、event 或 concept）。patch 在顶层浅合并；`columns` 与 `dimension_refs` 分别按 identity 字段 `name`／`dim_table` 合并；`domains` 与 `alt_labels` 做去重并集。所有 table/event 编辑都会标记为 “unreviewed” 并写入审计。Metric 是虚拟资产，不能直接编辑，应改其宿主资产。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "asset_name": {
+      "type": "string",
+      "description": "The asset to edit (table_name or event name)."
+    },
+    "patch": {
+      "type": "object",
+      "description": "Partial definition fields to merge. Supports: description, columns (array merged by name), dimension_refs (array merged by dim_table), domains (unioned with dedup), granularity, metrics, etc.",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "asset_name",
+    "patch"
+  ]
+}
+```
+
+来源：[`packages/data/tool-edit-definition/src/index.ts`](../packages/data/tool-edit-definition/src/index.ts)
+
+`edit_definition` 对 table 或 event 定义应用局部 patch（浅合并；columns 按 name 合并），记录 Tier-2 审计写入，并把资产标记为 unreviewed。Metric 是虚拟资产，不能直接编辑。schema harvest 挂载惰性的 `ctx.schema` 与 `ctx.audit` provider，使 Tier-2 inject 可解析。
+
+<a id="deepseek-aidsh-tool-evaluate-sql-quality"></a>
+
+## `@deepseek-ai/dsh-tool-evaluate-sql-quality`
+
+### `evaluate_sql_quality`
+
+根据折叠正则 critic 的发现（表 grounding、ds 分区、`SELECT *`、JSON path 字段）为候选 SQL 评出 0–100 分。在 GENERATION 阶段与 `critique_sql_tool` 一起、且在 `query_data` 之前调用；停止当前 turn 的 gate 要求 score ≥ 60 才能进入 EXECUTION。返回质量分数。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sql": {
+      "type": "string",
+      "description": "The SQL to score (raw SQL or a ```sql fenced block)."
+    }
+  },
+  "required": [
+    "sql"
+  ]
+}
+```
+
+来源：[`packages/data/tool-evaluate-sql-quality/src/index.ts`](../packages/data/tool-evaluate-sql-quality/src/index.ts)
+
+`evaluate_sql_quality` 根据折叠正则 critic 的发现为候选 SQL 评出 0–100 分。它延迟探测 `ctx.criticCtx`；schema harvest 无需 provider，空 critic context 会 fail-open。
+
+<a id="deepseek-aidsh-tool-get-coverage"></a>
+
+## `@deepseek-ai/dsh-tool-get-coverage`
+
+### `get_coverage`
+
+获取语义层覆盖统计：按种类统计资产总数（tables、events、metrics）、确认状态分布（confirmed 与 draft），以及每个 domain 的资产数。可按一个 domain（concept）过滤。用于评估语义层的整体健康度与完整性。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "Optional domain name to scope statistics to (only assets belonging to this domain are counted)."
+    }
+  }
+}
+```
+
+来源：[`packages/data/tool-get-coverage/src/index.ts`](../packages/data/tool-get-coverage/src/index.ts)
+
+`get_coverage` 报告语义层覆盖统计，包括按种类、确认状态和 domain 聚合的资产数量。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。
+
+<a id="deepseek-aidsh-tool-get-definition"></a>
+
+## `@deepseek-ai/dsh-tool-get-definition`
+
+### `get_definition`
+
+按名称加载数据资产（table、event、metric 或 concept）的完整定义。返回字段、关系、domain、metric 与确认状态等完整内容。应在 `search_schema` 找到待检查资产后调用。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The asset name (table_name, event name, or metric name) to look up."
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
+```
+
+来源：[`packages/data/tool-get-definition/src/index.ts`](../packages/data/tool-get-definition/src/index.ts)
+
+`get_definition` 按名称加载统一的数据资产定义（table、event 或 metric）。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。
+
+<a id="deepseek-aidsh-tool-list-domains"></a>
+
+## `@deepseek-ai/dsh-tool-list-domains`
+
+### `list_domains`
+
+列出语义层中的全部 domain（concept），包括描述、alias，以及每类资产（tables、events、metrics）的数量。用于理解 domain 结构并确定需要关注的区域。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/data/tool-list-domains/src/index.ts`](../packages/data/tool-list-domains/src/index.ts)
+
+`list_domains` 枚举语义层 domain，并给出各类资产（tables、events、metrics）的数量。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。
+
+<a id="deepseek-aidsh-tool-load-event-definition"></a>
+
+## `@deepseek-ai/dsh-tool-load-event-definition`
+
+### `load_event_definition`
+
+从语义层加载已验证的埋点事件定义，包括 `params_fields`、metrics、消歧信息和外部维度引用。在 UNDERSTANDING／GENERATION 阶段、针对事件 ODS 表编写或评审 SQL 前调用，以真实事件 schema 进行 grounding。找到时返回投影后的事件定义，否则返回未找到或未挂载信息。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "event_name": {
+      "type": "string",
+      "description": "The event name (its `name` key in the semantic layer) to load."
+    }
+  },
+  "required": [
+    "event_name"
+  ]
+}
+```
+
+来源：[`packages/data/tool-load-event-definition/src/index.ts`](../packages/data/tool-load-event-definition/src/index.ts)
+
+`load_event_definition` 加载已验证的事件定义，包括 `params_fields`、metrics、消歧信息和外部维度引用。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线（空 `semanticRoot` 返回 not-found，不会崩溃）。
+
+<a id="deepseek-aidsh-tool-load-table-definition"></a>
+
+## `@deepseek-ai/dsh-tool-load-table-definition`
+
+### `load_table_definition`
+
+从语义层加载已验证的表定义，包括 columns、partitions、primary key、metrics 与 dimension references。在 UNDERSTANDING／GENERATION 阶段编写或评审 SQL 前调用，以真实 schema 进行 grounding。找到时返回投影后的表定义，否则返回未找到或未挂载信息。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "table_name": {
+      "type": "string",
+      "description": "The table name (its `table_name` key in the semantic layer) to load."
+    }
+  },
+  "required": [
+    "table_name"
+  ]
+}
+```
+
+来源：[`packages/data/tool-load-table-definition/src/index.ts`](../packages/data/tool-load-table-definition/src/index.ts)
+
+`load_table_definition` 加载已验证的表定义，包括 columns、partitions、primary key、metrics 与 dimension refs。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线（空 `semanticRoot` 返回 not-found，不会崩溃）。
+
+<a id="deepseek-aidsh-tool-present-clarification"></a>
+
+## `@deepseek-ai/dsh-tool-present-clarification`
+
+### `present_clarification`
+
+向用户提出澄清问题并停止当前 turn，等待回答。当真实歧义或缺失知识（例如表属于哪个 engine project）阻塞进展时使用。只发出一个具体问题；该调用会让 gate 在任意阶段 HALT。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "One specific clarifying question for the user."
+    },
+    "options": {
+      "type": "array",
+      "description": "Optional multiple-choice options.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "question"
+  ]
+}
+```
+
+来源：[`packages/data/tool-present-clarification/src/index.ts`](../packages/data/tool-present-clarification/src/index.ts)
+
+`present_clarification` 是纯展示工具：它为 UI 记录一个澄清问题，并依赖 phase-gate 停止当前 turn。除 `ctx.tools` 外没有服务依赖；真正执行 HALT 的是 phase-gate，而不是工具本身。
+
+<a id="deepseek-aidsh-tool-retrieve"></a>
+
+## `@deepseek-ai/dsh-tool-retrieve`
+
+### `retrieve`
+
+按需检索相关数据源上下文；当预取的 UNDERSTANDING 上下文明显缺失时（问题有歧义，或预取未覆盖业务同义词）作为 escape hatch 使用。优先使用 `search_data_sources` 已提供的上下文；只有缺口明确时才用更精确的 query 调用。返回按相关度排序、带 id、score 与 description 的候选数据源。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "The natural-language query to retrieve data-source context for. Refine the prefetch query when it missed (a synonym, a more specific phrasing)."
+    },
+    "top_k": {
+      "type": "number",
+      "description": "Maximum number of candidate data sources to return. Defaults to 20."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/data/tool-retrieve/src/index.ts`](../packages/data/tool-retrieve/src/index.ts)
+
+`retrieve` 是预取 UNDERSTANDING 上下文明显缺失时使用的按需检索 escape hatch。它延迟探测 `ctx.retrieval` 与 `ctx.schema`；Q1 的精简默认实现是空语料 `Bm25Linker`（可调用但未接线）。该工具以 additive、dormant 方式交付，必须由 preset 挂载。
+
+<a id="deepseek-aidsh-tool-search-schema"></a>
+
+## `@deepseek-ai/dsh-tool-search-schema`
+
+### `search_schema`
+
+在语义层中搜索匹配自然语言 query 的数据资产（tables、events、metrics），返回带 kind 与 domain 元数据的排序结果。用于先发现现有资产，再通过 `get_definition` 检查详情。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Natural-language search query describing the assets to find."
+    },
+    "top_k": {
+      "type": "number",
+      "description": "Maximum number of results to return. Defaults to 20."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/data/tool-search-schema/src/index.ts`](../packages/data/tool-search-schema/src/index.ts)
+
+`search_schema` 是管理 agent 使用的语义层 BM25 搜索，返回带 kind 与 domain 元数据的资产匹配。它延迟探测 `ctx.schema`；在 `ctx.schema` 挂载前可调用但未接线。
+
+<a id="deepseek-aidsh-tool-trigger-eval"></a>
+
+## `@deepseek-ai/dsh-tool-trigger-eval`
+
+### `trigger_eval`
+
+触发一次语义层 eval，度量 data agent 质量。运行完整 case 集、报告通过率，并与上一次运行比较，给出哪些 case 改善或退化的前后差异。修改后用它评估影响。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "skip_health_gate": {
+      "type": "boolean",
+      "description": "Skip the pre-flight health check (use when debugging connectivity issues)"
+    }
+  }
+}
+```
+
+来源：[`packages/data/tool-trigger-eval/src/index.ts`](../packages/data/tool-trigger-eval/src/index.ts)
+
+`trigger_eval` 触发语义层 eval 并报告前后差异。它延迟探测 `ctx.evalRunner` 与 `ctx.evidenceQuery`；未挂载 runner 时返回 `not_configured`，Host composition 必须接入协作者。
+
+<a id="deepseek-aidsh-tool-update-table-config"></a>
+
+## `@deepseek-ai/dsh-tool-update-table-config`
+
+### `update_table_config`
+
+把每表 engine project override 写入表定义；在向用户确认表所在的 engine project 后持久化该值，使后续 `qualifyTable` 重试解析为 `&lt;project&gt;.&lt;table&gt;` 并让 engine 找到表。仅管理员可用。成功返回 `{ ok, qualified_name }`；调用者不是管理员、名称无效或表不在磁盘时返回 `{ ok: false, error }`。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "table_name": {
+      "type": "string",
+      "description": "The table name (its `table_name` key in the semantic layer) to override."
+    },
+    "project": {
+      "type": "string",
+      "description": "The engine project the table lives in (written as the per-table `project` override)."
+    }
+  },
+  "required": [
+    "table_name",
+    "project"
+  ]
+}
+```
+
+来源：[`packages/data/tool-update-table-config/src/index.ts`](../packages/data/tool-update-table-config/src/index.ts)
+
+`update_table_config` 把每表 ODPS project override 写入表定义（self-evolution #3b），使后续 `qualifyTable` 重试解析为 `&lt;project&gt;.&lt;table&gt;`。仅管理员可用（RBAC stub 读取 `ctx.identity`），并通过 `ctx.audit` 做 Tier-2 审计。schema harvest 挂载惰性的 `ctx.schema`、`ctx.audit` 与 `ctx.identity` provider，使 Tier-2 inject 可解析。
+
+<a id="deepseek-aidsh-tool-compute"></a>
+
+## `@deepseek-ai/dsh-tool-compute`
+
+### `compute`
+
+针对查询结果执行 Python／pandas 代码以派生新数据。代码作为 async function body 运行，并可使用 pandas 与 numpy。通过 `await data.load_result({"result_id": "qr_..."})` 读取源数据，返回 `{ "columns": [...], "rows": [...] }`；代码也必须返回相同结构。在 INTERPRETATION 阶段用于处理 SQL 未覆盖的计算，例如比率、累计值、透视与统计检验。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "result_id": {
+      "type": "string",
+      "description": "The result_id of the source data to compute against (from query_data execution)."
+    },
+    "code": {
+      "type": "string",
+      "description": "Python code to execute. Has pandas (pd) and numpy (np) available. Load data with `await data.load_result({\"result_id\": \"...\"})`. Must return {\"columns\": [...], \"rows\": [...]}."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this computation produces."
+    }
+  },
+  "required": [
+    "result_id",
+    "code",
+    "description"
+  ]
+}
+```
+
+来源：[`packages/data/tool-compute/src/index.ts`](../packages/data/tool-compute/src/index.ts)
+
+`compute` 针对源 `result_id` 运行 code binding，并通过 `ctx.resultCache` 用 `cr_` 前缀保存派生结果。schema harvest 挂载惰性的 codeRuntime 与 resultCache provider，使 inject 可解析；工具仅在执行时读取它们。
+
+<a id="deepseek-aidsh-tool-discover-alt-labels"></a>
+
+## `@deepseek-ai/dsh-tool-discover-alt-labels`
+
+### `discover_alt_labels`
+
+为语义层定义发现替代搜索标签（`alt_labels`／SKOS aliases）。CL-1 AI-native enrichment 包含从 description、columns、domains 确定性提取的轮次，以及可选的 LLM 语义轮次；发现的标签会写回定义。调用它可通过同义词、缩写和中英文变体提高搜索召回。可用 `tables` 和／或 `events` 限定集合；两者均省略时处理全部定义。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "tables": {
+      "type": "array",
+      "description": "Optional list of table_name values to limit enrichment to.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "Optional list of event name values to limit enrichment to.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+来源：[`packages/data/tool-discover-alt-labels/src/index.ts`](../packages/data/tool-discover-alt-labels/src/index.ts)
+
+`discover_alt_labels` 与 `discover_relations` 对称：它为 table／column 提供替代标签（aliases）以扩大召回。它延迟探测 `ctx.schema`；schema harvest 无需 schema provider（工具可调用，但在 `ctx.schema` 交付前未接线）。
+
+<a id="deepseek-aidsh-tool-present-decomposition"></a>
+
+## `@deepseek-ai/dsh-tool-present-decomposition`
+
+### `present_decomposition`
+
+向用户展示结构化查询拆解：从原问题中提取的理解摘要、metrics、dimensions 与时间范围。在 INTERPRETATION 阶段使用，以便执行前展示系统如何理解自然语言问题。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "A natural-language summary of the interpreted query intent."
+    },
+    "metrics": {
+      "type": "array",
+      "description": "The metrics (measures) identified in the query.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Metric name."
+          },
+          "value": {
+            "type": "string",
+            "description": "Metric expression or description."
+          },
+          "unit": {
+            "type": "string",
+            "description": "Optional unit of measurement."
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ]
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "description": "The dimensions (group-by axes) identified in the query.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "time_range": {
+      "type": "string",
+      "description": "The time range the query covers (e.g. \"last 7 days\", \"2024-01 to 2024-03\")."
+    },
+    "source": {
+      "type": "string",
+      "description": "The primary data source or table used."
+    },
+    "filters": {
+      "type": "array",
+      "description": "Filter conditions applied to the query.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Confidence score between 0 and 1 for the interpretation."
+    }
+  },
+  "required": [
+    "summary",
+    "metrics",
+    "dimensions",
+    "time_range"
+  ]
+}
+```
+
+来源：[`packages/data/tool-present-decomposition/src/index.ts`](../packages/data/tool-present-decomposition/src/index.ts)
+
+`present_decomposition` 是纯展示工具，为 UI 渲染查询拆解。除 `ctx.tools` 外没有服务依赖。
+
+<a id="deepseek-aidsh-tool-present-table"></a>
+
+## `@deepseek-ai/dsh-tool-present-table`
+
+### `present_table`
+
+向用户展示带显示元数据的查询结果表，包括标题、列布局、排序、KPI 聚合与可选图表配置。在 INTERPRETATION 阶段使用，告诉 UI 如何渲染已执行查询的结果。图表类型按 metric × dimension × grain 选择：metric + 时间 grain（ds）→ line（累计值 → area）；metric + 类别 dimension → bar（长标签 → hbar）；2 个 metrics（相关性）→ scatter；3 个 metrics → bubble（x、y、r）；metric + 不超过 8 个取值的 dimension + 占比 → doughnut；单实体 × N metrics → radar／polarArea。客户端 validator 会把不可行的选择降级为 bar，例如 numeric columns 少于 2 个的 scatter、类别多于 8 个的 doughnut，或 x 轴不是日期／序数的 line／area。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "result_id": {
+      "type": "string",
+      "description": "The ID of the query result to present (from query_data execution)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for the table display."
+    },
+    "columns": {
+      "type": "array",
+      "description": "Column names for display (overrides raw result headers).",
+      "items": {
+        "type": "string"
+      }
+    },
+    "column_types": {
+      "type": "array",
+      "description": "Semantic type per column (e.g. \"number\", \"date\", \"string\").",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sort_column": {
+      "type": "number",
+      "description": "Index of the column to sort by (-1 for no sort)."
+    },
+    "kpi_columns": {
+      "type": "array",
+      "description": "Columns to display as KPI summary cards above the table.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "type": "number",
+            "description": "Column index."
+          },
+          "aggregation": {
+            "type": "string",
+            "description": "Aggregation function (sum, avg, max, min, count)."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label for the KPI."
+          },
+          "format": {
+            "type": "string",
+            "description": "Optional format string (e.g. \",.2f\", \"%\")."
+          }
+        },
+        "required": [
+          "column",
+          "aggregation",
+          "label"
+        ]
+      }
+    },
+    "chart": {
+      "type": "object",
+      "description": "Optional chart visualization config.",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Chart type. Pick by metric×dimension×grain (see the tool heuristic); the client degrades infeasible choices to bar.",
+          "enum": [
+            "line",
+            "bar",
+            "area",
+            "hbar",
+            "scatter",
+            "doughnut",
+            "bubble",
+            "radar",
+            "polarArea"
+          ]
+        },
+        "x_column": {
+          "type": "number",
+          "description": "Column index for the x-axis (category for bar/doughnut/radar; numeric x for scatter/bubble)."
+        },
+        "y_columns": {
+          "type": "array",
+          "description": "Column indices for y-axis series (scatter/bubble use the first as y).",
+          "items": {
+            "type": "number"
+          }
+        },
+        "r_column": {
+          "type": "number",
+          "description": "Column index for the bubble radius (3rd numeric metric; bubble only)."
+        }
+      },
+      "required": [
+        "type",
+        "x_column",
+        "y_columns"
+      ]
+    }
+  },
+  "required": [
+    "result_id",
+    "title"
+  ]
+}
+```
+
+来源：[`packages/data/tool-present-table/src/index.ts`](../packages/data/tool-present-table/src/index.ts)
+
+`present_table` 为 UI 渲染 table 或 chart 结果。除 `ctx.tools` 外没有服务依赖；`chart.type` 在 tool args 边界执行 fail-loud 校验。
+
+<a id="deepseek-aidsh-tool-reachability-delta"></a>
+
+## `@deepseek-ai/dsh-tool-reachability-delta`
+
+### `reachability_delta`
+
+计算 reachability delta：若新增一条关系，哪些资产对会通过 join 新增可达路径？用于评估向知识图谱添加关系的影响。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "description": "Source asset ID for the proposed relation"
+    },
+    "target_id": {
+      "type": "string",
+      "description": "Target asset ID for the proposed relation"
+    },
+    "type": {
+      "type": "string",
+      "description": "Relation type (joins | derived_from | related_to)",
+      "enum": [
+        "joins",
+        "derived_from",
+        "related_to"
+      ]
+    },
+    "on": {
+      "type": "string",
+      "description": "Join condition expression (for joins type)"
+    }
+  },
+  "required": [
+    "source_id",
+    "target_id",
+    "type"
+  ]
+}
+```
+
+来源：[`packages/data/tool-reachability-delta/src/index.ts`](../packages/data/tool-reachability-delta/src/index.ts)
+
+`reachability_delta` 报告两个资产之间 join 可达性的变化。它延迟探测 `ctx.schema`；schema harvest 无需 schema provider。
+
+<a id="deepseek-aidsh-tool-resolve-term"></a>
+
+## `@deepseek-ai/dsh-tool-resolve-term`
+
+### `resolve_term`
+
+将业务术语精确解析为数据资产（匹配 `alt_labels`／`pref_label`），返回命中节点及图上下文。用于消歧：当你不确定一个业务概念对应哪些表、事件或指标时调用。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "term": {
+      "type": "string",
+      "description": "要解析的业务术语（如 \"DAU\"、\"付费用户\"、\"活跃\"）"
+    }
+  },
+  "required": [
+    "term"
+  ]
+}
+```
+
+来源：[`packages/data/tool-resolve-term/src/index.ts`](../packages/data/tool-resolve-term/src/index.ts)
+
+`resolve_term` 把自然语言术语映射到数据资产（table／event／metric）。它延迟探测 `ctx.schema`；schema harvest 无需 schema provider。
+
+<a id="deepseek-aidsh-tool-revert-edit"></a>
+
+## `@deepseek-ai/dsh-tool-revert-edit`
+
+### `revert_edit`
+
+把数据资产定义（table 或 event）回滚到旧快照。每次 `edit_definition` 调用都会保存修改前快照，并按资产递增版本号。指定版本即可撤销编辑；回滚前也会保存当前状态，因此回滚本身仍可撤销。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "asset_name": {
+      "type": "string",
+      "description": "The asset to revert (table_name or event name)."
+    },
+    "to_version": {
+      "type": "integer",
+      "description": "The snapshot version to restore (must be >= 1). Use list mode (omit to_version and set list_versions=true) to see available versions, or specify a version number to revert to that snapshot."
+    },
+    "list_versions": {
+      "type": "boolean",
+      "description": "If true, list available snapshot versions for the asset instead of reverting. Returns version metadata without modifying anything."
+    }
+  },
+  "required": [
+    "asset_name"
+  ]
+}
+```
+
+来源：[`packages/data/tool-revert-edit/src/index.ts`](../packages/data/tool-revert-edit/src/index.ts)
+
+`revert_edit` 回滚语义层编辑（concept／table／event），并通过 `ctx.audit` 记录 Tier-2 审计。schema harvest 挂载惰性的 schema 与 audit provider，使 inject 可解析；execute 时才读取它们。
+
+<a id="deepseek-aidsh-tool-scope-routing"></a>
+
+## `@deepseek-ai/dsh-tool-scope-routing`
+
+### `list_scopes`
+
+列出全部可用数据 scope（游戏／产品）及其描述。用于查看可切换的 scope；每个 scope 都有自己的语义层、事件定义与查询约定。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/data/tool-scope-routing/src/index.ts`](../packages/data/tool-scope-routing/src/index.ts)
+
+### `switch_scope`
+
+切换当前数据 scope 到另一个游戏／产品。切换后，后续数据操作（搜索、加载定义、生成 SQL、执行查询）都会使用新 scope 的语义层与约定。不确定目标时先调用 `list_scopes`。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scope_id": {
+      "type": "string",
+      "description": "The scope id to switch to (from list_scopes)."
+    }
+  },
+  "required": [
+    "scope_id"
+  ]
+}
+```
+
+来源：[`packages/data/tool-scope-routing/src/index.ts`](../packages/data/tool-scope-routing/src/index.ts)
+
+`scope_routing` 是每 scope 路由入口，包括 `list_scopes`、`switch_scope` 与 alias-hint system-prompt contribution。harvest base 挂载 `systemPrompt`，工具延迟读取 active scope。
+
+<a id="deepseek-aidsh-tool-suggest-followups"></a>
+
+## `@deepseek-ai/dsh-tool-suggest-followups`
+
+### `suggest_followups`
+
+根据当前查询结果建议用户接下来可问的问题。在 INTERPRETATION 阶段提供可执行的下一步，例如下钻、对比和时间偏移。提供 1–5 条建议，每条包含完整 query value，以及不重复 value、最多约 20 个字符／4 个词的 label；UI 第一行展示 label，下一行展示完整 value，因此 label 是短标签而不是内容预览。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "suggestions": {
+      "type": "array",
+      "description": "Array of 1-5 follow-up suggestions, each with a label and value.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Short tag for the row (≤ ~20 characters / ≤ 4 words). Never repeat the value — the UI shows the full value under the label."
+          },
+          "value": {
+            "type": "string",
+            "description": "The full follow-up question/query to execute if the user selects this."
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "suggestions"
+  ]
+}
+```
+
+来源：[`packages/data/tool-suggest-followups/src/index.ts`](../packages/data/tool-suggest-followups/src/index.ts)
+
+`suggest_followups` 在结果后展示后续问题 chips。除 `ctx.tools` 外没有服务依赖。
