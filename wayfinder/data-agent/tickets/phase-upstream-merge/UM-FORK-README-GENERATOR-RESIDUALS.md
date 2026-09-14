@@ -1,6 +1,6 @@
 # UM-FORK-README-GENERATOR-RESIDUALS — README 门残留 2 项：`model-experience` 门当前红 + generator anchor threading latent bug
 
-**Type**: task · **Status**: **open**（2026-09-14 从 [UM-FORK-README-SKELETON-RETROFIT](UM-FORK-README-SKELETON-RETROFIT.md) Resolution 拆出） · **Phase**: upstream-merge
+**Type**: task · **Status**: **resolved**（2026-09-14） · **Phase**: upstream-merge
 **Assignee**: unclaimed
 **Blocked by**: —（两项都是自足的本地工作，无组织协调、无 eval 依赖）
 **Blocks**: README 门族全绿（`verify-package-readme-{skeleton,limitations,model-experience}` 三门齐绿）
@@ -112,7 +112,7 @@ mv /tmp/0002-ui-presenter-composition-plan-b.i18n.yaml docs/adr/ && pnpm run ver
 
 ~0.5 session（项 1 ~15 min 手改一对 README + re-record；项 2 ~2-3h 含 fence-aware 扫描器 + fixture 回归测试）。两项可同 session 落，但**项 2 先落**——否则为项 1 全量 regen 会把项 2 的 bug 写进盘。
 
-## [2026-09-21] Item 1 落地（master），item 2 仍 open
+## [2026-09-21] Item 1 落地（master）
 
 **Item 1 — `verify-package-readme-model-experience` gate GREEN。** commit `aebc1f9126` `[UM-FORK-README-GENERATOR-RESIDUALS] fix data-agent README model-experience gate (item 1)`。两处问题：
 
@@ -121,6 +121,14 @@ mv /tmp/0002-ui-presenter-composition-plan-b.i18n.yaml docs/adr/ && pnpm run ver
 
 验证：`verify-package-readme-model-experience` exit 0（329 READMEs checked）；`verify-package-readme-skeleton --check` exit 0；`doc-standard.spec.ts` 12/12；data-agent README pairing re-recorded in sync。
 
-**Item 2 — generator anchor threading latent bug 仍 open。** 未做（2-3h：fence-aware scanner + 幂等 slug + fixture 回归测试 + TOC/Summary 顺序）。time-permitting deferred 本 session。
+**Item 2 — generator anchor threading latent bug** 后续于实际日期 2026-09-14 收口，见下节。
 
-**Status: item 1 resolved，item 2 仍 open。** Push blocked by pre-existing dsh-root。
+**Status at that handoff: item 1 resolved，item 2 remained open。**
+
+## [2026-09-14] Item 2 resolved
+
+`gen-package-readme-skeleton` 现在用同一条 backtick/tilde fence-aware 行扫描处理 H2 提取、section 定位、Overview collision 重命名和 ZH anchor threading；围栏内的 `## ` 不再进入位置配对，也不会接收 anchor。anchor threading 先收集全文围栏外已有的显式 slug，因此同一 `model-experience` slug 只保留一份，第二次运行字节不变。缺失 TOC 且 Summary 已存在时，TOC 插在 Summary section 之后，不再抢到 Summary 前面。
+
+回归测试 `scripts/gen-package-readme-skeleton.spec.ts` 覆盖 ``` 与 ~~~ 两种围栏、围栏内伪 H2、既有 `model-experience` anchor、二次运行幂等，以及 Summary → TOC 顺序。对真实 `packages/eval/eval-cli/README.{md,zh.md}` 的强制纯函数检查得到 EN/ZH 各 8 个真实 H2、围栏内 anchor 0、`model-experience` anchor 1、二次 threading 字节相同。
+
+验证：`verify-package-readme-skeleton --check` exit 0（0 drift）；`doc-standard.spec.ts` + 新 spec 15/15；`verify-translation-pairing` 仍为该工作树已记录的 16 条 pre-existing violation，未新增。

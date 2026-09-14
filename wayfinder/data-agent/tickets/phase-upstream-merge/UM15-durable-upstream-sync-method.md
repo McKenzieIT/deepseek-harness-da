@@ -527,3 +527,14 @@ push 实测：`git push origin upstream/resync-2026-09-18` → lefthook pre-push
 2. 修完 dsh-root → push 13 master + 3 merge commit → PR → merge。
 3. client-side seam-6 co-adaptation（face.ts:55 + ui-sidebar-textpreview/rpc.ts:85，WorkspaceFileScope lookup wiring）。
 4. UM-FORK-README item 2（generator fence-aware scanner + 幂等 slug + fixture 回归测试）。
+
+
+## [2026-09-14] Push unblock and client completion correction
+
+`[@deepseek-ai/dsh-root] Cannot find entry` 不是 Typert bootstrap ordering。失败配置来自已删除 package 的 ignored residue：`packages/client/runtime/` 只剩 `node_modules/`，tsdown workspace glob 仍把该目录当 package，向上找到 root manifest 后以 `dsh-root` 名义报告缺 entry。仓库自带 `pnpm run clean` 删除 manifest-less safe residue；root 删除 355 paths、resync 删除 350 paths 后，两边 `pnpm run typecheck` 均通过，无需生成虚假 root entries 或改 Typert hook。
+
+Client aggregate 随后暴露真实 merge residual：`ui-layout` 丢了 `SessionProvider` prop 且把 root-scoped rightbar 错包进 Session area；修为 rightbar 常驻、仅 `details.aux` 受 SessionProvider 约束。client slot catalog 同时含 merge 生成的重复 object fields，并把 declaration-merged `useWorkspaces` 投影两次；生成器现在按首次出现顺序去重 standard props，再重新生成 catalog。commit `86ad658ff0`。
+
+所谓 client seam-6 signature residual 不成立：generated Remote client 的 lookup parameter wire type 是 `SessionId`，Host gateway 再通过 `workspaceFileScope` lookup 解析 `WorkspaceFileScope`。`ui-sidebar-files` 与 document-preview 继续传 `sessionId` 正是生成 API。`build:lib:client`、workspace-files/read-all/scope/provider、sidebar-files、document-preview、layout 和 catalog focused tests 全绿。
+
+`upstream/resync-2026-09-18` 已推并开 PR #130；因其 merge base 是 `6695ed150e`，而 origin/master 已前进，PR 初始为 conflicting。16 个 master-side commits 已按 production-source policy 发布到 feature branch PR #131；先 landing #131，再把新 origin/master merge-forward 到 resync branch 后更新 #130。
