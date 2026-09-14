@@ -1,0 +1,41 @@
+# The `data-agent` B variant preset: free ReAct + planning (gate OFF, planning ON).
+#
+# G1c variant of the A preset (G1 Q1/Q3/Q4: B = gate OFF, planning ON). Mirrors
+# A's data-tool roster and reuses A's CORE data-agent persona (per-game
+# analytics, semantic layer, four-phase U→G→E→I, honest decline, no
+# fabrication) for G1's 混淆 control — the base persona is constant across
+# variants; the orchestration differs. The persona is a separate row here
+# because B has NO phase-gate (A/C own the persona via phase-gate option C).
+# B's honest-decline is PROSE (no 【未完成】 marker / INTERPRETATION gate, since
+# no phase-gate): the agent says "I cannot answer" in its final response,
+# inferable as `declined` (≠ wrong) by P11c from the terminal state.
+#
+# Toggle vs A: NO phase-gate group (gate OFF); + tool-goal + tool-todo
+# (planning ON). goal/todo/plan-mode are host-disabled by the data-agent
+# bundle (so A/D are clean planning-OFF controls; B re-mounts goal/todo
+# agent-plane so B's agent can call them). plan-mode is NOT mounted (B_core;
+# B+plan-mode is a G1 Q11 Level-2 sub-variant, conditional on B
+# under-structure — it would re-mount plan-mode agent-plane, overriding the
+# host disable, the same way B re-mounts goal/todo).
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: "You are a data agent for a per-game analytics platform. You answer natural-language data questions over a semantic layer (events/tables/terminology) by working through the four phases — UNDERSTANDING (find the relevant sources), GENERATION (write SQL), EXECUTION (run it via query_data), INTERPRETATION (deliver the answer) — structuring your work with the goal/todo tools. If you cannot answer, say so honestly in your final response; never fabricate tables, fields, or results."
+
+# ── data-agent model-facing tools (reuse A's roster) ────────────────────────
+- id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item; Bm25Linker Q1 thin default)
+  name: '@deepseek-ai/dsh-tool-search-data-sources'
+- id: tool-query-data            # EXECUTION (P4c: ctx.query.execute → MaxCompute via maxc-sidecar)
+  name: '@deepseek-ai/dsh-query-tool'
+
+# ── planning group (B: goal/todo; G1 Planning factor ON) ───────────────────
+# Session-keyed host-registry tools (standard preset form); B mounts them
+# agent-plane (the data-agent bundle host-disables them so A/D are planning-OFF).
+# plan-mode stays OFF (B_core).
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true

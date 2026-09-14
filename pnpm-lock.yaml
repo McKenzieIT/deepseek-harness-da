@@ -6775,6 +6775,9 @@ importers:
       '@deepseek-ai/dsh-credentials-local':
         specifier: workspace:^
         version: link:../../credentials/credentials-local
+      '@deepseek-ai/dsh-data-agent':
+        specifier: workspace:^
+        version: link:../../bundle/data-agent
       '@deepseek-ai/dsh-eval':
         specifier: workspace:^
         version: link:../eval

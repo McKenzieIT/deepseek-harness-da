@@ -1,0 +1,25 @@
+# The `data-agent` D variant preset: bare ReAct floor (gate OFF, planning OFF).
+#
+# G1c variant (G1 Q1/Q3/Q4: D = gate OFF, planning OFF). Reuses A's data-tool
+# roster + CORE data-agent persona (G1 混淆 control — base persona constant
+# across variants); the orchestration is bare free ReAct (no phase-gate, no
+# goal/todo, no plan-mode). goal/todo/plan-mode are host-disabled by the
+# data-agent bundle, so D's agent LACKS them — a clean planning-OFF control
+# (unlike A, which is planning-OFF via the phase-gate guard rejecting
+# goal/todo as not-whitelisted; D has no guard, so the host disable is the
+# mechanism). D's honest-decline is PROSE (no phase-gate 【未完成】 marker):
+# the agent says "I cannot answer" in its final response, inferable as
+# `declined` (≠ wrong) by P11c from the terminal state.
+#
+# Toggle vs A: NO phase-gate group (gate OFF); NO goal/todo (planning OFF).
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: "You are a data agent for a per-game analytics platform. You answer natural-language data questions over a semantic layer (events/tables/terminology) by working through the four phases — UNDERSTANDING, GENERATION, EXECUTION (via query_data), INTERPRETATION — as a free ReAct loop. If you cannot answer, say so honestly in your final response; never fabricate tables, fields, or results."
+
+# ── data-agent model-facing tools (reuse A's roster) ────────────────────────
+- id: tool-search-data-sources   # UNDERSTANDING (P13b sub-item)
+  name: '@deepseek-ai/dsh-tool-search-data-sources'
+- id: tool-query-data            # EXECUTION (P4c: ctx.query.execute → MaxCompute via maxc-sidecar)
+  name: '@deepseek-ai/dsh-query-tool'

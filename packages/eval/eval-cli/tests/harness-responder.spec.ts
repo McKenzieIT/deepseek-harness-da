@@ -30,7 +30,7 @@ import { HarnessAgentResponder } from '../src/harness-responder.ts'
 
 // Repo root (tests/ → eval-cli/ → eval/ → packages/ → repo root).
 const ROOT = join(__dirname, '..', '..', '..', '..')
-const PRESET_DIR = join(ROOT, 'apps/cli/config/agent-presets/data-agent')
+const PRESET_DIR = join(ROOT, 'packages/bundle/data-agent/presets/data-agent')
 
 /**
  * Test-only subclass that exposes the protected semanticLayerConfig() seam so
@@ -45,6 +45,17 @@ class ExposedHarnessResponder extends HarnessAgentResponder {
 }
 
 describe('Carry-forward #37 (D3ii) — harness-responder explicit scopeId', () => {
+  it('resolves variant compositions from the installed data-agent bundle by default', () => {
+    expect(() => new ExposedHarnessResponder({
+      schemaDir: 'examples/k11-semantic-layer',
+      provider: 'aga',
+      model: 'qwen3.7-max',
+      variant: 'A',
+      today: '20260902',
+      scopeId: 'custom-scope-42',
+    })).not.toThrow()
+  })
+
   it('positive: semanticLayerConfig() returns the explicit scopeId (not the old hardcoded k11)', () => {
     // Construct with an explicit non-k11 scopeId. The constructor only checks
     // the preset file exists (no ctx.plugin), so this is safe without the

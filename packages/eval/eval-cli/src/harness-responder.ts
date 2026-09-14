@@ -21,6 +21,7 @@
 import { randomUUID } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -213,22 +214,17 @@ export class HarnessAgentResponder implements AgentResponder {
   }
 
   private resolvePresetDir(): string {
-    // Resolve relative to this file → repo root → apps/cli/config/agent-presets/data-agent
-    let dir = dirname(new URL(import.meta.url).pathname)
-    for (let i = 0; i < 10; i++) {
-      const candidate = join(dir, 'apps/cli/config/agent-presets/data-agent')
-      if (existsSync(candidate)) return candidate
-      const parent = dirname(dir)
-      if (parent === dir) break
-      dir = parent
+    let manifest: string
+    try {
+      manifest = createRequire(import.meta.url).resolve('@deepseek-ai/dsh-data-agent/package.json')
+    } catch (cause) {
+      throw new Error(
+        'HarnessAgentResponder: cannot resolve the installed @deepseek-ai/dsh-data-agent preset bundle. '
+        + 'Install the bundle or pass presetDir explicitly.',
+        { cause },
+      )
     }
-    // Try CWD
-    const cwdCandidate = resolve('apps/cli/config/agent-presets/data-agent')
-    if (existsSync(cwdCandidate)) return cwdCandidate
-    throw new Error(
-      'HarnessAgentResponder: cannot resolve preset directory. '
-      + 'Pass presetDir explicitly or run from the repo root.',
-    )
+    return join(dirname(manifest), 'presets', 'data-agent')
   }
 
   /** Boot the Cordis context (lazy, singleton). */

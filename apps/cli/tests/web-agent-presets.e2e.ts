@@ -25,6 +25,8 @@ const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 /** The shipped Web surface: the dsh-base and dsh-web-app bundle patches over an empty preset root. */
 const BASE_PATCH = join(REPO_ROOT, 'packages/bundle/base/cordis.patch.yml')
 const WEB_PATCH = join(REPO_ROOT, 'packages/bundle/web-app/cordis.patch.yml')
+const DATA_AGENT_PATCH = join(REPO_ROOT, 'packages/bundle/data-agent/cordis.patch.yml')
+const DATA_AGENT_BUNDLE_DIR = join(REPO_ROOT, 'packages/bundle/data-agent')
 const CODEX_PACKAGE_DIR = join(REPO_ROOT, 'packages/subagent/subagent-codex')
 const CLAUDE_CODE_PACKAGE_DIR = join(REPO_ROOT, 'packages/subagent/subagent-claude-code')
 /** The installation anchor whose dependency surface the preset module fallback mirrors. */
@@ -979,5 +981,40 @@ describe('a composition that configures its own preset roots', () => {
     } finally {
       await handle.dispose()
     }
+  })
+})
+
+
+describe('the data-agent bundle preset root', () => {
+  let dataAgentCtx: Context
+
+  beforeAll(async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-data-agent-preset-root-'))
+    const settingsFile = join(home, 'settings.yaml')
+    await writeFile(settingsFile, '{}\n')
+    const presetOverride = loadOverlayPatches('dsh-test', DATA_AGENT_PATCH)
+      .find(row => row.id === 'agent-presets')
+    if (presetOverride === undefined || typeof presetOverride.config !== 'object' || presetOverride.config === null) {
+      throw new Error('data-agent bundle must override the agent-presets row')
+    }
+    dataAgentCtx = await bootWeb(settingsFile, [{
+      ...presetOverride,
+      config: { ...presetOverride.config, includeUserRoot: false },
+    }], [DATA_AGENT_BUNDLE_DIR])
+  }, 120_000)
+
+  afterAll(async () => {
+    await dataAgentCtx.fiber.dispose()
+  })
+
+  it('discovers the bundle-owned data-agent presets from an installed profile', async () => {
+    const listed = await dataAgentCtx.agentPresets.list()
+
+    expect(listed.map(preset => preset.id)).toEqual(expect.arrayContaining([
+      'data-agent',
+      'semantic-layer-management',
+    ]))
+    expect(listed.find(preset => preset.id === 'data-agent')?.broken).toBeUndefined()
+    expect(dataAgentCtx.agentPresets.defaultId).toBe('data-agent')
   })
 })
