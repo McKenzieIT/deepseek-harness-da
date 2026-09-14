@@ -441,6 +441,7 @@ export class HarnessAgentResponder implements AgentResponder {
       )
 
       // Extract results from session events
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing full-history eval read; asynchronous storage migration is deferred.
       const events = handle.agent.session.snapshotEvents()
       const finalText = extractFinalText(events)
       const generatedSql = extractSqlFromEvents(events)
@@ -460,6 +461,7 @@ export class HarnessAgentResponder implements AgentResponder {
     } catch (err) {
       console.error(`[HarnessAgentResponder] case error: ${err instanceof Error ? err.message : String(err)}`)
       // On timeout or error, still try to extract what we can
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing full-history eval read; asynchronous storage migration is deferred.
       const events = handle.agent.session.snapshotEvents()
       const generatedSql = extractSqlFromEvents(events)
       return {
