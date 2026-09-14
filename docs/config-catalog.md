@@ -848,7 +848,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/experimental/code-runtime-python/src/index.ts:43`](../packages/experimental/code-runtime-python/src/index.ts)
+Source: [`packages/experimental/code-runtime-python/src/index.ts:42`](../packages/experimental/code-runtime-python/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-inspector"></a>
 
@@ -4457,6 +4457,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-client-ui-slots` ([`packages/client/ui-slots/src/index.ts`](../packages/client/ui-slots/src/index.ts))
 - `@deepseek-ai/dsh-client-web` ([`packages/client/web/src/index.ts`](../packages/client/web/src/index.ts))
 - `@deepseek-ai/dsh-cmdline` ([`packages/boot/cmdline/src/index.ts`](../packages/boot/cmdline/src/index.ts))
+- `@deepseek-ai/dsh-code-runtime-python-protocol` ([`packages/code-runtime/code-runtime-python-protocol/src/index.ts`](../packages/code-runtime/code-runtime-python-protocol/src/index.ts))
 - `@deepseek-ai/dsh-credentials-keychain` ([`packages/credentials/credentials-keychain/src/index.ts`](../packages/credentials/credentials-keychain/src/index.ts))
 - `@deepseek-ai/dsh-data-agent` ([`packages/bundle/data-agent/src/index.ts`](../packages/bundle/data-agent/src/index.ts))
 - `@deepseek-ai/dsh-deque` ([`packages/util/deque/src/index.ts`](../packages/util/deque/src/index.ts))

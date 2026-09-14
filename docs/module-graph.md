@@ -200,6 +200,7 @@ flowchart TD
   subgraph group_code_runtime["packages/code-runtime"]
     pkg_code_runtime["code-runtime"]
     pkg_code_runtime_data_python["code-runtime-data-python"]
+    pkg_code_runtime_python_protocol["code-runtime-python-protocol"]
     pkg_code_runtime_worker_thread["code-runtime-worker-thread"]
   end
   subgraph group_compaction["packages/compaction"]
@@ -547,7 +548,6 @@ flowchart TD
   pkg_app_boot --> pkg_launch_environment
   pkg_app_boot --> pkg_system_prompt
   pkg_code_runtime_data_python --> pkg_code_runtime
-  pkg_code_runtime_data_python --> pkg_experimental_code_runtime_python
   pkg_code_runtime_data_python --> pkg_invariants
   pkg_code_runtime_data_python --> pkg_session
   pkg_code_runtime_data_python --> pkg_timeout
@@ -1529,6 +1529,7 @@ flowchart TD
 | [`client-ui-workspace`](../packages/client/ui-workspace) | `client` | — |
 | [`client-web`](../packages/client/web) | `client` | — |
 | [`code-runtime`](../packages/code-runtime/code-runtime) | `code-runtime` | — |
+| [`code-runtime-python-protocol`](../packages/code-runtime/code-runtime-python-protocol) | `code-runtime` | — |
 | [`experimental-agent-team-profile`](../packages/experimental/agent-team-profile) | `experimental` | — |
 | [`experimental-agent-team-web-profile`](../packages/experimental/agent-team-web-profile) | `experimental` | — |
 | [`experimental-webworker-packer`](../packages/experimental/webworker-packer) | `experimental` | — |
@@ -1602,7 +1603,7 @@ flowchart TD
 | [`skill-badge`](../packages/skill/skill-badge) | `skill` | [`skill`](../packages/skill/skill) |
 | [`spill`](../packages/spill/spill) | `spill` | [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm), [`session`](../packages/core/session) |
 | [`app-boot`](../packages/boot/app-boot) | `boot` | [`home-paths`](../packages/util/home-paths), [`launch-environment`](../packages/util/launch-environment), [`system-prompt`](../packages/core/system-prompt) |
-| [`code-runtime-data-python`](../packages/code-runtime/code-runtime-data-python) | `code-runtime` | [`code-runtime`](../packages/code-runtime/code-runtime), [`experimental-code-runtime-python`](../packages/experimental/code-runtime-python), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`timeout`](../packages/util/timeout) |
+| [`code-runtime-data-python`](../packages/code-runtime/code-runtime-data-python) | `code-runtime` | [`code-runtime`](../packages/code-runtime/code-runtime), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`timeout`](../packages/util/timeout) |
 | [`code-runtime-worker-thread`](../packages/code-runtime/code-runtime-worker-thread) | `code-runtime` | [`code-runtime`](../packages/code-runtime/code-runtime), [`session`](../packages/core/session), [`timeout`](../packages/util/timeout) |
 | [`credentials-keychain-host`](../packages/credentials/credentials-keychain-host) | `credentials` | [`atomic-write`](../packages/util/atomic-write), [`credentials`](../packages/credentials/credentials), [`credentials-keychain`](../packages/credentials/credentials-keychain), [`credentials-local`](../packages/credentials/credentials-local), [`invariants`](../packages/runtime-diagnostics/invariants), [`launch-environment`](../packages/util/launch-environment) |
 | [`admin`](../packages/data/admin) | `data` | [`credentials`](../packages/credentials/credentials), [`host-webserver`](../packages/host/webserver), [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`storage-domain`](../packages/storage/storage-domain) |
