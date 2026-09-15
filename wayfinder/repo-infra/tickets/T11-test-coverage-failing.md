@@ -17,3 +17,9 @@ dominant error：`renderSlot('root') before any 'root' registration (boot order)
 ## Scope
 
 从 coverage log（CI job 101598597808，~17.6k lines）定位 failing test files（grep `Test Files` context、`renderSlot('root')` context、`❯ packages/`、`Failed Suites`/`Failed Tests` header -A context），判定 real regression vs flake，修 OR 标 flake，验 `pnpm run test:coverage` 绿。先 verify on current master。
+
+## 2026-09-15 deterministic expectation batch
+
+在 `origin/master` `ac19aca80333aa7cd6526e23af07f16234cc6c1f` 上复现并修正 6 组稳定漂移：CI workflow 的 supersession、runner 与 owner 条件；Cloudflare preview owner/runner；删除已由显式 alias 取代的 invariant wildcard；补登 `gen-package-readme-skeleton`；同步 duplicate-safe package 清单；将 tool catalog 预期同步到实际发布的 88 个 schema。focused run 为 6 files / 106 tests 全绿，`check:ci:static` 51/51。
+
+`package-invariants.spec.ts` 另暴露了一项独立政策实现缺口：若按现有 Agent Note 扫描所有 package，会立即发现 65 个 README 缺 package-specific omission reason。该项不混入本批机械 expectation 修正，保持本票 open，由独立 README/invariant 批次承接。
