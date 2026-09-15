@@ -1,6 +1,6 @@
 # UM17 — post-merge latest-upstream dependency and scheduled-monitor validation
 
-**Type**: task · **Status**: open — every acceptance item recorded except one external wait (the first real `schedule` trigger) · **Phase**: upstream-merge follow-up
+**Type**: task · **Status**: **resolved (2026-09-15)** — every acceptance item met, including a real scheduled cron run on the default branch · **Phase**: upstream-merge follow-up
 **Was blocked by**: PR #130 merged to `master`, the merge commit fetched locally, and UM15 branch cleanup complete — all three satisfied 2026-09-14/15, see Resolution progress
 **Serves**: prove the completed fork still contains the latest upstream commit and that the upstream-update monitor produces an actionable scheduled signal
 
@@ -72,9 +72,14 @@ Checkpoint reconfirmed before implementing: no `.github/workflows/*` declared `s
 
 ### 7. Upstream did not advance — no new effort opened
 
-### Remaining pending condition (the only one)
+### Scheduled cron path — proven (2026-09-15), ticket closed
 
-**Manual dispatch verified; first scheduled trigger pending.** The cron path is proven only by a real scheduled run. With the original weekly cron that meant waiting until 2026-09-21T21:17Z; the schedule was changed to daily on 2026-09-15, so the first scheduled run is expected at **2026-09-15T21:17Z (= 2026-09-16 05:17 Asia/Shanghai)**, subject to GitHub's usual scheduled-run delay. A quiet heartbeat checks `gh run list --workflow upstream-monitor.yml --event schedule` and reports only when a scheduled run appears, fails, or needs action. Close this ticket when that run is recorded (id, conclusion, artifact).
+The last pending condition was a real scheduled run on the default branch. It already happened, earlier than this session first estimated:
+
+- **Run <https://github.com/McKenzieIT/deepseek-harness-da/actions/runs/34910850105>** — `event: schedule`, `branch: master`, headSha `793df1c610ff34ec586192be95e220688e73abf4`, created 2026-09-14T23:53:29Z, conclusion **success**. All nine steps succeeded, including *Configure the upstream remote*, *Report upstream staleness*, *Gate on upstream staleness*, and *Retain the staleness report*.
+- Artifact `upstream-monitor-34910850105` (935 bytes, not expired), downloaded and read: `recorded upstream c291e7961a is an ancestor of HEAD` / `ref state = fresh` / `behind-count = 0` / `days since sync = 0` / `verdict = fresh (exit 0)`.
+
+**Correction to this session's own estimate.** The prior note said the first trigger could not occur before 2026-09-21T21:17Z ("first Monday after the workflow reached the default branch"). That was a day-of-week miscount: **2026-09-14 was itself a Monday**, and PR #132 merged the workflow — carrying the weekly `17 21 * * 1` cron — at 2026-09-14T18:14:37Z, before 21:17Z that same evening, so the weekly cron fired that night (GitHub delayed it to 23:53Z). The cron path was therefore proven on the weekly schedule *before* it was later changed to daily. The daily change (PR #135) still stands on its own latency rationale — a weekly probe can sit on a breach for up to 7 days — but it was not required to close this ticket. The quiet heartbeat is cancelled.
 
 Note for whoever closes it: GitHub disables scheduled workflows after 60 days without repository activity, and a `workflow_dispatch` run re-enables them.
 

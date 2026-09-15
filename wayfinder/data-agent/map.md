@@ -575,6 +575,11 @@ merge upstream `d347e70`（dsh-v0.1.3-alpha.1，base `141eb6f` dsh-0.1.0-rc.8）
   - **教训**：把「票面自己都写明不属本域」的工作留在本域前沿并加一句免责声明，等于让专项永远不收敛。wayfinder 的规则是**出界即关票 + 一行指针交接**，而不是挂着 open 装作还在路线上。
 
 
+- **[2026-09-15] UM17 resolved → upstream-merge 专项前沿清零**：最后一个待决条件（默认分支上的一次真实 cron 运行）已满足，且比本 session 先前的估计更早。**run [`34910850105`](https://github.com/McKenzieIT/deepseek-harness-da/actions/runs/34910850105)**：`event: schedule`、`branch: master`、headSha `793df1c610`、2026-09-14T23:53:29Z、**success**，9 步全绿；构件 `upstream-monitor-34910850105`（935 B）内容 `verdict = fresh (exit 0)`。**订正本 session 自己的估计**：先前记「首次触发不早于 2026-09-21」是把星期数错——**2026-09-14 本身就是周一**，PR #132（带 weekly `17 21 * * 1` cron）在当天 18:14Z 合入、早于 21:17Z，故 weekly cron 当晚即触发（GitHub 延迟到 23:53Z）。cron 路径其实在改成每日**之前**就已由 weekly 证明；改每日（PR #135）仍有其延迟理由（周探测可能把越界搁置最多 7 天），但并非关 UM17 的必要条件。静默 heartbeat 已撤。
+  - **专项终局账目**：41 票 = **0 open** + 34 resolved/closed + 6 archived + 1 folded（另 2 份非票文档）。UM17 是最后一张 open；它一关，**upstream-merge 专项的前沿为空**。此前判出 phase 边界的两张（UM4 关票交回 [B-DA1](tickets/phase-misc/B-DA1-preset-switch-tool-interrupt-race.md)、UM18→[B-DA7](tickets/phase-misc/B-DA7-phase-gate-infrastructure-failure-terminal-state.md)）已不在本专项计。
+  - **CI 审计副产物（归 repo-infra，不在本专项）**：由 UM17 收口发现的 CI startup_failure（`ci.yml` 重复 `concurrency` 键 + `ci-master.yml` 两处缩进/折叠标量破损）已修并合入 PR #135（merge `0eb1af29ac`）——**这个 fork 的 `check:ci:static` 51 门第一次在 CI 里真跑并全绿**；由此暴露的 `verify-upstream-sync-record` 两处浅-checkout 环境脆弱性（unfetched tag + 未解析 window 的 waiver 0 命中判定）已修并合入 PR #135/#136（merge `5093a2e608`）；其余 pre-existing 红（duplication 89 clones、publint、node-next types、coverage 两 suite、doc-typecheck 剩 2 fence）已映射到 repo-infra 的 [T16](../repo-infra/tickets/T16-duplication-gate-89-clones.md)/[T10]/[T11]/[T15](../repo-infra/tickets/T15-doc-typecheck-plan-sketches.md)/[T14](../repo-infra/tickets/T14-ci-workflow-startup-failure.md)，逐条核为非本轮引入。
+
+
 ## Audit actions 2026-09-07（24 PR 合并，21 fork-own action 已修）
 
 本 session 对抗审计 27 个 action（`.tmp/audit/ACTION-LIST.json`）的去向：
