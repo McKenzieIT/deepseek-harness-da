@@ -28,10 +28,10 @@
 - [T8: package-README 内容门历史红门](tickets/T8-readme-gates.md) — model-experience 与 limitations 检查均已在 current `origin/master` 通过。
 - [T9: built-package-invariants 历史红门](tickets/T9-built-package-invariants.md) — 完整 build 后 39 个 compiled companion 通过 plain-Node Loader 检查。
 - [T15: doc-typecheck 语料与示例漂移](tickets/T15-doc-typecheck-plan-sketches.md) — 两个真实 fence 已修复，并将两个自足示例纳入编译以维持 opt-out 比率；`doc-typecheck` 为 86 compiled / 85 ignored，exit 0。
+- [T10: publint 发布视图](tickets/T10-publint.md) — 源码平面 glob 保持提示级；`result-cache` 发布编译后的 types，两个动态加载 semantic-layer 的工具生成自足入口，完整 build 后 publint exit 0。
 
 ## Open tickets
 
-- [T10: publint gate 红](tickets/T10-publint.md) — `./src/*` 无文件 + `./client` CJS/ESM 扩展（**frontier — 含决策点**）
 - [T11: test:coverage 红](tickets/T11-test-coverage-failing.md) — 2 failed suites + 1 failed test（`renderSlot('root')` boot order）（**frontier — 需定位 failing test**）
 - [T12: windows native complete CI 红](tickets/T12-windows-native-complete.md) — investigate（疑 downstream of T7–T10 + T4/T5 + windows-specific）（**frontier — research**）
 

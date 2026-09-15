@@ -2416,7 +2416,7 @@ export interface SemanticLayerConfig {
 export type CorpusVariant = 'params+term' | 'term-only'
 ```
 
-来源：[`packages/data/semantic-layer/src/index.ts:225`](../packages/data/semantic-layer/src/index.ts)
+来源：[`packages/data/semantic-layer/src/index.ts:226`](../packages/data/semantic-layer/src/index.ts)
 
 <a id="deepseek-aidsh-session-log-deepseek"></a>
 
