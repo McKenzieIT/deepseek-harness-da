@@ -671,7 +671,7 @@ describe('dsh-tool-subagent', () => {
   })
 
   it('passes persona/toolFilter/maxDepth config through to the start request', async () => {
-    let seen: { persona?: string; toolFilter?: unknown; maxDepth?: number } | undefined
+    let seen: { personaPrefix?: string; toolFilter?: unknown; maxDepth?: number } | undefined
     const ctx = await projectedContext()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
@@ -698,7 +698,7 @@ describe('dsh-tool-subagent', () => {
     })
 
     await callSubagent(ctx, { description: 'd', prompt: 'p' })
-    expect(seen?.persona).toBe('You are the child.')
+    expect(seen?.personaPrefix).toBe('You are the child.')
     expect(seen?.toolFilter).toMatchObject({ deny: ['subagent'] })
     expect(seen?.maxDepth).toBe(2)
   })
