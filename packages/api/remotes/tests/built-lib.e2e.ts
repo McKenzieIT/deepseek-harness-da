@@ -224,6 +224,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       const scopedResult = await agentContext.remote.goals.create({ objective: 'scoped goal', maxGoalRounds: 3 })
       const result = {
         invalidRejected,
+        evidenceQueryMounted: typeof client.remote.evidenceQuery === 'object',
         rootResult: rootResult.value,
         rootEdit: rootEdit.value,
         scopedResult: scopedResult.value,
@@ -246,6 +247,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
     expect(result.exitCode, `stderr:\n${result.stderr}`).toBe(0)
     const output = JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}') as {
       invalidRejected: boolean
+      evidenceQueryMounted: boolean
       rootResult: { ref: { id: string; revision: number } }
       rootEdit: { objective: string; revision: number }
       scopedResult: { ref: { id: string; revision: number } }
@@ -256,6 +258,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
     }
     expect(output).toMatchObject({
       invalidRejected: true,
+      evidenceQueryMounted: true,
       rootResult: { ref: { revision: 1 } },
       rootEdit: { objective: 'edited root goal', revision: 2 },
       scopedResult: { ref: { revision: 1 } },

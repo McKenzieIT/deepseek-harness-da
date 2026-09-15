@@ -43,3 +43,7 @@ DeepSeek defaults 用例在收到主请求后仅保活固定 180 ms，却断言�
 ## 2026-09-15 coverage Python environment batch
 
 Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data runtime 明示承诺的 pandas/numpy；对应两项用例均以 `ModuleNotFoundError` 失败。两个 coverage job 统一安装 Python 3.10 及固定版本 `numpy==2.2.6`、`pandas==2.3.3`。由于 runtime 有意使用 `env: {}` 隔离模型代码，裸 `python3` 不会继承 setup-python 注入的 PATH；coverage step 通过 `DSH_TEST_PYTHON_PATH` 把 action 输出的绝对解释器路径交给测试 fixture，workflow spec 锁定安装与传递两段配置。
+
+## 2026-09-15 generated Remote artifact-plane batch
+
+`evidence-query-remote.client.spec.ts` 在 zero-build coverage 中直接加载 `api-remotes` 的完整 Client assembly，而该 assembly 依赖多个仅由 build 生成的 `./remote` 导出，因此 clean checkout 在首个 `agent-presets/remote` 上加载失败。该断言迁入既有 `built-lib.e2e.ts`：plain Node 在完整 build 后加载真实 `api-remotes` bundle，并显式确认 `remote.evidenceQuery` namespace 已挂载；source-plane coverage 不再读取 `lib/`。
