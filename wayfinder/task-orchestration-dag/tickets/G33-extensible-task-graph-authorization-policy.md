@@ -12,3 +12,7 @@ When should the first-release closed actor-command matrix become an extensible T
 Trigger this ticket only when a second independently evolving permission model appears, such as cross-organization remote workers, an external control plane, multi-tenant delegated administration, or enterprise reviewer/operator separation that the core `user`, `orchestrator`, `worker`, `executor-adapter`, `verifier`, and `driver` roles cannot express. Adding another implementation under an existing role does not trigger it.
 
 Define principal and actor identity, command capability vocabulary, resource scope, audience, delegation versus impersonation, expiry, revocation or introspection, policy composition, default-deny behavior, audit records, secret handling, Session compatibility, and migration from the closed matrix without allowing plugins to silently expand core write authority.
+
+## Inputs from the G13 checkpoint
+
+The first release uses a closed Host-enforced command matrix for `user`, `orchestrator`, `worker`, `executor-adapter`, `verifier`, and `driver`; roles are per-command context, identifiers are not credentials, and unknown actors or commands fail closed. This ticket must preserve those defaults and is triggered only by a second independently evolving authorization model, not by another implementation of an existing worker, adapter, or verifier role.
