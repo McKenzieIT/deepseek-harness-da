@@ -10,3 +10,5 @@
 Which public DSH client slots should host the compact summary, normal graph, and larger inspection view?
 
 Prototype `conversation.input.dock` with a session-owned right-sidebar tab/fullscreen view, a global sidebar/main panel, and a deliberate hybrid. Retain G2 interaction goals without patching upstream layout or using a root overlay as a window system. Verify session ownership, focus, keyboard behavior, narrow layouts, remount recovery, and explanation of ready, blocked, attempts, verification, and replan states.
+
+The first release is current-state only: current Tasks, Attempts, Holds, portable budgets, verification, and the latest RunStopRecord. It does not build Plan/replan/stop history navigation or a trace explorer; those remain in G28 even though the Session log retains the facts. Human controls reuse existing Queue/Steer/Cancel UI, and explicit BTW may ship only by reusing an existing one-shot fork with empty tool authority rather than adding a new Session subsystem.

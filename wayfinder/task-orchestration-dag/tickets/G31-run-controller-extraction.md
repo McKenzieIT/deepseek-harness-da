@@ -10,3 +10,5 @@
 When should Plan Run budgets, holds, Stop Reasons, and continuation policy be extracted into a reusable Run Controller capability?
 
 Require a second consumer or independently evolving policy/provider family. If triggered, define transaction ownership, durable usage and stop history, policy-version changes, Plan consistency, recovery, API stability, and migration without splitting one scheduling decision across two authorities.
+
+A reusable RecoveryPolicy provider family or persistent cross-Run Progress Vector belongs here only after a second real policy/consumer exists. The first release keeps deterministic failure-key recovery as an internal pure module rather than publishing a hypothetical capability seam.
