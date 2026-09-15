@@ -37,3 +37,5 @@ Native subagent lineage and workflow membership do not prove Task causality. A h
 - 2026-09-15：用户确认一个当前 Agent turn 只绑定一个 Attempt。Task DAG driver 使用专有 `task-attempt` MessageSource 和 MessageId 建立唯一 AgentTurnBinding；该 turn 内工具、skill、subagent 与 workflow 各自建立 Binding 并继承同一 Attempt 上下文。系统级并发由其他 executor lane 提供，多 Attempt batch turn 仅在实测 token/延迟收益成立时进入高级路由 Follow-up。
 
 - 2026-09-15：用户确认采用闭合的核心角色—命令矩阵。`user`、`orchestrator`、`worker`、`executor-adapter`、`verifier` 和 `driver` 只能提交各自允许的 typed commands，Task Graph Service 是唯一状态提交者；角色按命令上下文授予，不是 Agent 的永久属性，也不是 bearer credential。未知角色、未知命令和越权调用 fail closed。
+
+- 2026-09-15：用户确认采用一等 `ExternalEffect`。外部语义操作拥有跨 Attempt 稳定的 `ExternalEffectId`，每次具体派发仍由单一 Attempt 的 `ExecutionBinding` 拥有；相同 target、canonical request digest、write scope、approval scope 与 provider idempotency scope 才能复用 effect identity，参数变化创建新 effect。首版记录 `pending | confirmed | rejected | unknown` 并在 unknown 时阻止重试，自动核对与补偿留给恢复 Follow-up。
