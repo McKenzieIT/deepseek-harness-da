@@ -214,11 +214,11 @@ export function apply(ctx: Context, _config: Config = {}): void {
           // kind === 'concept' — raw write to concepts/<name>.yaml, mirroring
           // edit-definition (no substrate writeConceptYaml helper exists yet).
           const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
-          const { join } = await import('node:path')
+          const path = await import('node:path')
           const { mkdirSync } = await import('node:fs')
-          const conceptsDir = join(schema.semanticRoot, 'concepts')
+          const conceptsDir = path.join(schema.semanticRoot, 'concepts')
           mkdirSync(conceptsDir, { recursive: true })
-          await writeFileAtomic(join(conceptsDir, `${validated}.yaml`), snapshot.content, { mode: 0o644 })
+          await writeFileAtomic(path.join(conceptsDir, `${validated}.yaml`), snapshot.content, { mode: 0o644 })
         }
       } catch (e) {
         return {

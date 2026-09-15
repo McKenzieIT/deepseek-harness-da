@@ -1,5 +1,5 @@
-import type { RelationGraph } from '@deepseek-ai/dsh-semantic-layer/src/relation-graph.ts'
-import type { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
+import type { RelationGraph } from '@deepseek-ai/dsh-semantic-layer'
+import type { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
 
 /** ConceptDef */
 export interface ConceptDef {

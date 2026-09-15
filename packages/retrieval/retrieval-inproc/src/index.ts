@@ -23,12 +23,12 @@
  * @module @deepseek-ai/dsh-retrieval-inproc
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { RetrievalService, type RetrievalHit, type RetrievalQuery } from '@deepseek-ai/dsh-retrieval/src/index.ts'
-import { type Reranker } from '@deepseek-ai/dsh-embedder/src/index.ts'
+import { RetrievalService, type RetrievalHit, type RetrievalQuery } from '@deepseek-ai/dsh-retrieval'
+import { type Reranker } from '@deepseek-ai/dsh-embedder'
 import { HybridRetriever, type RetrievalCorpusItem, type EmbedderLike, DEFAULT_TOP_K } from './hybrid.ts'
 
 export * from './hybrid.ts'
-export type { RetrievalHit, RetrievalQuery } from '@deepseek-ai/dsh-retrieval/src/index.ts'
+export type { RetrievalHit, RetrievalQuery } from '@deepseek-ai/dsh-retrieval'
 
 /** Configuration for the in-process retrieval provider. */
 export interface InProcRetrievalConfig {

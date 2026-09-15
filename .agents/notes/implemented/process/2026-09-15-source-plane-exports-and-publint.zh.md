@@ -14,6 +14,8 @@ Status: implemented
 
 采用精确产物清单的包必须生成自足入口。`tool-edit-definition` 与 `tool-revert-edit` 禁用 code splitting，其 semantic-layer import 使用包根入口。semantic-layer 根入口导出这两个工具动态加载的操作。
 
+发布的 declaration 使用包根或已发布产物子路径 import。NodeNext consumer 检查会拒绝引用 `@deepseek-ai/dsh-*/src/*.ts` 的 declaration；源码平面路径只在工作区执行中有效。
+
 ## 考虑过的替代方案
 
 - 发布所有包的 `src/` 树：否决，因为 DSH 发布载荷只包含产物，release verifier 会排除源码。
@@ -23,4 +25,4 @@ Status: implemented
 
 ## 后果
 
-源码平面 import 在仓库执行中保持可用，但不构成已安装包 API。publint 可以打印已知的源码 glob 未匹配诊断而不失败。精确产物清单保持确定性，发布闭包检查会拒绝任何新的未列入清单的 split chunk。
+源码平面 import 在仓库执行中保持可用，但不构成已安装包 API。publint 可以打印已知的源码 glob 未匹配诊断而不失败。精确产物清单保持确定性，发布闭包检查会拒绝任何新的未列入清单的 split chunk。外部 TypeScript consumer 只解析一个构建包身份，不会通过公开 declaration 加载工作区源码。

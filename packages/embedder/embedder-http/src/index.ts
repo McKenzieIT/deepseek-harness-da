@@ -31,7 +31,7 @@
  */
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { EmbedderService, InferenceError, type Reranker, type EmbedResult } from '@deepseek-ai/dsh-embedder/src/index.ts'
+import { EmbedderService, InferenceError, type Reranker, type EmbedResult } from '@deepseek-ai/dsh-embedder'
 
 /** Minimal fetch shape the helpers depend on (decoupled from the full Response type). */
 export interface FetchLike {

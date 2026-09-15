@@ -14,6 +14,8 @@ The repository keeps `./src/*` exports for source-plane execution and treats pub
 
 Packages with exact artifact lists must emit self-contained entry files. `tool-edit-definition` and `tool-revert-edit` disable code splitting, and their semantic-layer imports use the package root. The semantic-layer root exports the operations those tools load dynamically.
 
+Published declarations use package-root or published artifact subpath imports. The NodeNext consumer check rejects a declaration that references `@deepseek-ai/dsh-*/src/*.ts`; source-plane paths remain valid only inside workspace execution.
+
 ## Alternatives considered
 
 - Publish every package's `src/` tree: rejected because DSH release payloads are artifact-only and the release verifier excludes source.
@@ -23,4 +25,4 @@ Packages with exact artifact lists must emit self-contained entry files. `tool-e
 
 ## Consequences
 
-Source-plane imports remain available in repository execution but are not an installed-package API. Publint may print the known unmatched source-glob diagnostic without failing. Exact artifact manifests remain deterministic, and the publication-closure check rejects any new unlisted split chunk.
+Source-plane imports remain available in repository execution but are not an installed-package API. Publint may print the known unmatched source-glob diagnostic without failing. Exact artifact manifests remain deterministic, and the publication-closure check rejects any new unlisted split chunk. External TypeScript consumers resolve one built package identity instead of loading workspace sources through public declarations.

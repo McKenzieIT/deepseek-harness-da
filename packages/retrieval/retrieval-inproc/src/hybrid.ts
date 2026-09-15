@@ -20,9 +20,9 @@
  *
  * @module @deepseek-ai/dsh-retrieval-inproc/src/hybrid
  */
-import { InferenceError, type Reranker } from '@deepseek-ai/dsh-embedder/src/index.ts'
-import { tokenize } from '@deepseek-ai/dsh-embedder/src/tokenize.ts'
-import type { RetrievalHit } from '@deepseek-ai/dsh-retrieval/src/index.ts'
+import { InferenceError, type Reranker } from '@deepseek-ai/dsh-embedder'
+import { tokenize } from '@deepseek-ai/dsh-embedder'
+import type { RetrievalHit } from '@deepseek-ai/dsh-retrieval'
 
 /** RRF damping constant (Cormack et al. 2009); mirrors rbi `constants.RRF_K`. */
 export const RRF_K = 60
