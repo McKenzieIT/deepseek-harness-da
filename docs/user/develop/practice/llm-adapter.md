@@ -117,7 +117,14 @@ Override `resolveModel(provider, model, signal?)` to return exact provider/model
 
 ## Register an adapter
 
-```ts ignore-check
+```ts
+interface LlmRegistry {
+  registerAdapter(providers: readonly string[], adapter: unknown): void
+}
+
+declare const ctx: { llm: LlmRegistry }
+declare const adapter: unknown
+
 ctx.llm.registerAdapter(['my-provider'], adapter)
 ```
 
