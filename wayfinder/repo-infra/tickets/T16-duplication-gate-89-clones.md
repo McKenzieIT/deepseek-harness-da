@@ -2,8 +2,8 @@
 
 **Type**: grilling（含决策点：降噪 vs 真去重）→ 之后才是 task
 **Phase**: post-discovery
-**Status**: open（frontier —— 无阻塞，但需先拍板口径）
-**Assignee**: unclaimed
+**Status**: resolved 2026-09-15
+**Assignee**: Codex
 **Severity**: medium —— 门本身不改行为，但它 fail-fast，**后面 7 道门一条都跑不到**
 **Related**: [T14](T14-ci-workflow-startup-failure.md)（CI 首次真跑后才可见，清单见其「首次真实 CI 运行的完整清单」一节）；[T10](T10-publint.md) / [T11](T11-test-coverage-failing.md)（同批 pre-existing 红门）
 
@@ -46,3 +46,21 @@ Found 89 clones.   exit 1
 - 按答复执行：改配置 / 加局部 ignore / 真去重，任一路径都要让 `pnpm run duplication` exit 0。
 - `node 24 / snapshots and artifacts` 不再因本门 fail-fast，被它掩盖的 5 道门（含 `doc-typecheck:contracts-ready` → [T15](T15-doc-typecheck-plan-sketches.md)、`node-next types`）暴露出各自真实状态并各自归票。
 - **不接受**把 `exitCode` 改成 0 或直接删门——那只是把红变成隐形。
+
+## Resolution
+
+采用“排除测试语料 + 保留生产语料 + 既有比例棘轮”的门禁口径。根级 `*.spec.ts` / `*.spec.tsx` 与 `tests/` 下测试一致排除；生产类型声明和 TSX 组件样板继续计入，不做宽泛豁免。排除 spec 后的 `origin/master` 基线为 87 clones、1,364 duplicated lines / 404,202 lines，即 0.337455%；`.jscpd.json` 使用原生 `threshold: 0.338`，并移除会让任意 clone 直接失败的 `exitCode`。
+
+这不是把既有 clone 判定为合理，而是恢复一个可执行的增量门禁。正常基线执行必须 exit 0；加入一对满足现有 `minLines: 6` / `minTokens: 60` 的生产 TypeScript clone 后必须 exit 1。既有 clone 继续完整输出，后续真实去重应同步下调 threshold。若仓库增长造成比例稀释并能隐藏新 clone，再以精确 clone 基线比较器替换原生百分比阈值；在出现该证据前不预建自有扫描器。
+
+### 口径答复
+
+1. **Spec 不进入语料。** `**/tests/**` 已表达测试代码排除意图；补齐 `**/*.spec.ts` 与 `**/*.spec.tsx`，避免目录布局改变门禁语义。
+2. **类型和契约声明继续算债。** 不按文件类别排除；跨包重复类型可能意味着所有权漂移，个别必须平行的实现使用已有的局部 ignore 标记并写明原因。
+3. **组件样板继续算债。** TSX 保持在语料中；共享 primitive 或局部豁免由组件所有者逐项判断，不在本门禁修复中跨域重构。
+
+### Verification
+
+- `pnpm run duplication`：87 clones、0.337455%，exit 0。
+- 负向控制：临时加入一对满足当前最小规模的生产 `.ts` clone 后，同一命令超过 0.338% 并 exit 1；夹具随后删除。
+- `.agents/notes/implemented/process/2026-09-15-ratchet-duplication-gate.md` 记录长期口径和取舍。
