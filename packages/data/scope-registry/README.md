@@ -43,7 +43,7 @@ The service is registered by the data-agent bundle patch (`packages/bundle/data-
 
 ## Config
 
-```ts ignore-check
+```ts
 export interface ScopeRegistryConfig {
   /** Path to the scopes.yaml registry file. Empty = service is inert (no scopes). */
   readonly registryPath: string

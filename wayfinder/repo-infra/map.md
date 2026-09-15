@@ -24,12 +24,13 @@
 - [T4: docs/tool-catalog.zh.md 翻译滞后](tickets/T4-zh-translation-lag.md) — fixed 2026-09-07 via PR #73（merge `2c8d796a5`）：synced 2 divergent JSON schema blocks（#82 present_table chart + #83 propose_relation）verbatim EN→ZH（language-neutral，mechanical sync 非翻译）；re-recorded pairing；gate 对 tool-catalog 零 divergence（78 其他文件 = [T5](tickets/T5-readme-bilingual-gaps.md) HITL 债，非 T4）。via subagent。
 - [T5: README 双语缺口](tickets/T5-readme-bilingual-gaps.md) — resolved 2026-09-07 via sessions 2-6（PR #100/#102/#104/#106/#108）：全部 ~56 in-scope 文件已配对双语，corpus green（1069 pairs，0 missing，0 OOS，exit 0），gate 绿。
 - [T13: pnpm -r run build 在 eval-runner-service 失败](tickets/T13-eval-runner-service-build-failure.md) — fixed 2026-09-07 via PR #80（merge `2802f3679`）：根因 = eval-runner-service 的 stray `build=tsdown`（无 per-package config → root config 向上解析 → fail），非 typert/generator（no-build-script **intentional** bootstrap-self-contained，`tsc -b` 经 project references 建 `lib/types/`）。fix = 2a（drop stray build script；eval-runner-service 经 `build:lib:host` 构建）+ doc（T1 worktree-setup `pnpm -r run build`→`pnpm run build:official`，sanctioned 全量 build）。CI 不 gate `pnpm -r run build`；fresh-worktree 体验修复。via subagent + research-gated。**注**：ticket 原 T7，rename T13 避免与并发 GA-FORK-CI 系列的 [T7-verify-export-jsdoc](tickets/T7-verify-export-jsdoc.md) 编号冲突。
+- [T7: verify-export-jsdoc 历史红门](tickets/T7-verify-export-jsdoc.md) — current `origin/master` 的 `check:ci:static` 已验证 `export jsdoc` 通过，历史失败已由后续提交消除。
+- [T8: package-README 内容门历史红门](tickets/T8-readme-gates.md) — model-experience 与 limitations 检查均已在 current `origin/master` 通过。
+- [T9: built-package-invariants 历史红门](tickets/T9-built-package-invariants.md) — 完整 build 后 39 个 compiled companion 通过 plain-Node Loader 检查。
+- [T15: doc-typecheck 语料与示例漂移](tickets/T15-doc-typecheck-plan-sketches.md) — 两个真实 fence 已修复，并将两个自足示例纳入编译以维持 opt-out 比率；`doc-typecheck` 为 86 compiled / 85 ignored，exit 0。
 
 ## Open tickets
 
-- [T7: verify-export-jsdoc 402 JSDoc 违规](tickets/T7-verify-export-jsdoc.md) — exported API 缺 `@param`/`@returns`/JSDoc（concurrent GA-FORK-CI；PR #67 可能已 fix — verify 仍红 on current master）（**frontier — 无阻塞**）
-- [T8: package-README gates 红](tickets/T8-readme-gates.md) — model-experience + limitations（~30 + 4 packages）（**frontier — 无阻塞**）
-- [T9: built-package-invariants](tickets/T9-built-package-invariants.md) — `./lib/invariant.js` 未作 `./invariant` 发布（~13+ packages）（concurrent；PR #68 可能已 fix — verify）
 - [T10: publint gate 红](tickets/T10-publint.md) — `./src/*` 无文件 + `./client` CJS/ESM 扩展（**frontier — 含决策点**）
 - [T11: test:coverage 红](tickets/T11-test-coverage-failing.md) — 2 failed suites + 1 failed test（`renderSlot('root')` boot order）（**frontier — 需定位 failing test**）
 - [T12: windows native complete CI 红](tickets/T12-windows-native-complete.md) — investigate（疑 downstream of T7–T10 + T4/T5 + windows-specific）（**frontier — research**）
@@ -37,7 +38,6 @@
 - [T14: ci.yml / ci-master.yml startup_failure](tickets/T14-ci-workflow-startup-failure.md) — **fix 已落地（2026-09-15），等首个真实 PR 运行确认**。三处 workflow 语法破损（`ci.yml` 重复顶层 `concurrency` 键；`ci-master.yml` 两个 job 级 `if:` 顶格 + 两处 `timeout-minutes` 粘在折叠标量末尾）让两个 workflow 长期 **0 秒 startup_failure**，`jobs: []` ⇒ **fork 的 `check:ci:static` / `check:ci:coverage` / Windows 门在 CI 里一次都没跑过**（此前所有「CI 绿」只覆盖 Release / Node Addon / Matrix 这几条独立 workflow）。actionlint 已零 syntax 报错。**预期修复后立刻暴露一批既有红门——那是第一次看见真相，不是回归**。
 - **CI 首次真实运行的门清单（2026-09-15，run 34918859164）**：17 job = 12 success / 5 failure；`node 24 / static` **51 门全绿**。红的全部核为 pre-existing 并已映射到票——coverage 两 suite → [T11](tickets/T11-test-coverage-failing.md)、`publint` → [T10](tickets/T10-publint.md)、`doc-typecheck:contracts-ready` → [T15](tickets/T15-doc-typecheck-plan-sketches.md)；**尚无票的两条**（`duplication` 89 clones、`verify-upstream-sync-record` 浅 checkout 下 waiver 0 命中判定）连同证据与修法方向记在 [T14](tickets/T14-ci-workflow-startup-failure.md) 的「首次真实 CI 运行的完整清单」一节。
 - [T16: duplication 门 89 clones](tickets/T16-duplication-gate-89-clones.md) — resolved 2026-09-15：排除所有 `*.spec.ts` / `*.spec.tsx`，生产 TypeScript、类型声明和 TSX 组件继续纳入；以排除 spec 后实测 0.337455% 为基线，将 jscpd 原生 threshold 设为 0.338%，保留完整报告与非零阻断，并用最小 clone 负向控制证明门禁仍会变红。
-- [T15: doc-typecheck 长期红](tickets/T15-doc-typecheck-plan-sketches.md) — **partially fixed（2026-09-15），门仍红**。`docs/superpowers/plans/` 的 plan 草图被当 API 示例编译（一份文件 363 条诊断），已按 `verify-translation-pairing` 的同目录先例排除；排掉噪声后露出 **2 个真实 fence** 编译失败（`docs/da-plugin-development-guidelines.md:148` 缺 import、`packages/client/result-cache/README.md:29` 的 `sessions` 未定义），诊断 363 → 9。**不能用 `ignore-check` 逃避**：真实语料的 opt-out 比率恰好贴着 50% 阈值（85/171 = 49.7%，标 1 对就 50.9% 红）——票内有实测算术表。
 
 > T7–T12 均 pre-existing GA-FORK-CI gates on master（concurrent session 驱动，PR #67/#68/#69/#79 等逐步 fix；fix 前先 verify 仍红 on current master）。T2/T4/T5/T6/T13 已 closed（见 Decisions so far）。T14/T15 由 data-agent 的 upstream-merge 收口审计（UM17）发现后按域移交本 effort——**它们不是 data-agent 的票**。
 

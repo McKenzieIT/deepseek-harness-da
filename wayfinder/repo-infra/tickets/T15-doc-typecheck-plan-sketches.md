@@ -2,7 +2,7 @@
 
 **Type**: bug（gate corpus 口径 + 两处真实文档漂移）
 **Phase**: post-discovery
-**Status**: **partially fixed 2026-09-15** —— 草图污染已修（与本票同一 PR）；剩 2 个 fence 真实编译失败，**门仍红**
+**Status**: **resolved 2026-09-15** —— 草图排除与真实示例修复均已完成，`doc-typecheck` 全绿
 **Assignee**: unclaimed（剩余项）
 **Severity**: medium —— 单门，但它让 `doc-sync` 长期差一门，从而掩盖真实回归
 **Related**: [T14](T14-ci-workflow-startup-failure.md)（同一 session 发现，同属「门在骗人」这一类）；发现于 data-agent [UM17](../../data-agent/tickets/phase-upstream-merge/UM17-post-merge-latest-upstream-and-monitor-validation.md) 的 `doc-sync` 验证
@@ -58,3 +58,7 @@ pnpm run doc-typecheck   # exit 1，诊断从 363 条降到 9 条，全部集中
 - 上述 2 个 fence 能真的编译（补 import / 定义 `sessions`），双语两侧同步；`pnpm run doc-typecheck` exit 0、`doc-sync` 36/36。
 - 排除范围仍严格限于 `docs/superpowers/plans/`，`docs/` 其余部分照旧编译。
 - 若将来有人想让 plan 草图也参与编译，需连带处理 opt-out 比率债，并 revert 本票的排除。
+
+## Resolution
+
+两个真实示例已改为自足、可编译的 TypeScript：wrapper 示例补齐 Cordis 与 credentials 类型 import；result-cache 示例声明最小结构类型并显式标注参数。当前语料另比票据快照多出 2 个 opt-out，因此同时将 `scope-registry` 的独立配置类型和 LLM adapter 注册示例改为可编译 fence；最终 `pnpm run doc-typecheck:contracts-ready` 报告 86 compiled / 85 ignored（49.7%），exit 0。双语代码块保持一致，排除范围仍只包含 `docs/superpowers/plans/`。

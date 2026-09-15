@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: post-discovery
-**Status**: open
+**Status**: closed (verified 2026-09-15)
 **Assignee**: unclaimed
 **Related**: PR #44 CI `node 24 / static`（job 101598597553，run 34074751506，2026-09-07 02:00）。pre-existing（latent，非 W20）。**verify on current master cf813c18c0 before fixing。**
 
@@ -18,3 +18,7 @@
 ## Scope
 
 为每个违规 package README 补 `## Model Experience`（含 3 H4 字段）/ `## Known Limitations and Deferred Work` 节（或加 `NO_LIMITATIONS`），验两 gate 绿。CI log: job 101598597553（grep `verify-package-readme-model-experience` / `verify-package-readme-limitations`）。先 verify on current master。与 [T5](T5-readme-bilingual-gaps.md)（README 双语缺口）同属 README-gate 族，但 gate/requirement 不同——保持独立。
+
+## Resolution
+
+`origin/master` `ac3e162d961b8a48c10aad5b750679184f87a0e9` 上 `package README model experience` 与 `package README limitations` 均通过；`pnpm run check:ci:static` 整组结果为 51 passed / 0 failed。该历史失败已被后续提交消除，本票不再需要代码修改。

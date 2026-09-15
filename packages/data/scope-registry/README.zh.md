@@ -46,7 +46,7 @@ TODO: translate: Per-scope namespace registry for the data agent: runtime-mutabl
 <a id="config"></a>
 ## 配置
 
-```ts ignore-check
+```ts
 export interface ScopeRegistryConfig {
   /** Path to the scopes.yaml registry file. Empty = service is inert (no scopes). */
   readonly registryPath: string

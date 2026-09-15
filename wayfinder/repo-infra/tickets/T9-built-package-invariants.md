@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: post-discovery
-**Status**: open
+**Status**: closed (verified 2026-09-15)
 **Assignee**: unclaimed
 **Related**: PR #44 CI `node 24 / snapshots and artifacts` 失败 step "Run compatibility, snapshot, and artifact gates"（job 101598597835，run 34074751506，2026-09-07 02:00）。pre-existing（latent，非 W20）。**verify on current master cf813c18c0 before fixing。**
 
@@ -19,3 +19,7 @@
 ## Scope
 
 每个违规 package.json 的 `files` + `exports` 加 `./invariant` → `./lib/invariant.js`（mirror 已 compliant 的 package，如 client/web 的 `./invariant` export），验 `pnpm run verify-built-package-invariants` 绿。CI log: job 101598597835（grep `== FAILED built package invariants` -A15）。先 verify on current master。
+
+## Resolution
+
+`origin/master` `ac3e162d961b8a48c10aad5b750679184f87a0e9` 完成 `pnpm run build` 后，`pnpm run verify-built-package-invariants` 报告 39 compiled companions passed。该历史失败已被后续提交消除，本票不再需要代码修改。
