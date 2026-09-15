@@ -77,6 +77,7 @@ export * from './types.ts'
 export { DefinitionSnapshot, captureSnapshot, clearSnapshotCache, getSnapshotCacheSize, SNAPSHOT_CACHE_MAX } from './snapshot.ts'
 export {
   dumpYaml,
+  invalidateCaches,
   resolveSemanticLayer,
   loadConfig,
   loadDomains,
