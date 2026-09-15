@@ -31,3 +31,7 @@ dominant error：`renderSlot('root') before any 'root' registration (boot order)
 ## 2026-09-15 client visual-token batch
 
 `ui-theme` 的两项 repository-wide CSS 检查稳定复现 24 个 neutral-token `1px` border 与 3 个未配对的 full-round radius。受影响组件统一使用 `0.5px` neutral border，并在满圆角声明旁加入 `corner-shape: round`；focused run 为 2 files / 11 tests 全绿。
+
+## 2026-09-15 consumers snapshot batch
+
+`tool-subagent` 的工具输出 schema 遗留已退场的 `costs` 字段，使 30 个 recorded-session system-prompt 快照稳定漂移；该字段无生产者、无消费者，并违反 `UM-QODER-SUBAGENT-RETIRE` 的零匹配验收。删除遗留 schema 字段后，以 `ptc-turn` 为代表的 focused replay 转绿。剩余 `cordis-inspect-jsdoc` 漂移来自已决定保留的 `ToolExecutionInput.scopeId`，已按当前 API 刷新对应 V3 fixture；全量 headless replay 为 95 passed / 2 platform-skipped。`test:expected` 的 30 秒失败仅在 11 个 consumers gate 并发时出现，同一用例单独运行 17 秒通过，作为独立可靠性根因继续处理。
