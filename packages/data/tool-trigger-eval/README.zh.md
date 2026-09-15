@@ -43,6 +43,8 @@ tsc -b packages/data/tool-trigger-eval/tsconfig.json   # typecheck
 pnpm vitest run packages/data/tool-trigger-eval         # unit specs
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-trigger-eval` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

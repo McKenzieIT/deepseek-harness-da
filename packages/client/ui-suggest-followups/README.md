@@ -27,6 +27,8 @@ Toolview card for the `suggest_followups` INTERPRETATION tool. Renders follow-up
 
 The chip styles this package shipped with referenced six `--dsw-bg-*` / `--dsw-text-*` / `--dsw-border-*` custom properties that do not exist in the theme, so backgrounds and borders silently resolved to nothing. The list restyle consumes `--dsw-alias-*` tokens only.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-suggest-followups` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

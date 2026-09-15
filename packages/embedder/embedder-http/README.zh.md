@@ -28,6 +28,8 @@ TODO: translate: External OpenAI-compatible HTTP embedder provider (InfinityEmbe
 
 提供 `InfinityEmbedder`——调用外部 OpenAI 兼容 `POST /v1/embeddings` 端点的嵌入器提供方，及调用 `POST /rerank` 的 `InfinityReranker`。可通过 `url`、`model`、`timeout` 配置。设计用于用户自部署的推理服务（T2 场景：AGA-embeddings 探测为否定）。使用可注入的 `fetch` 以便在无活跃端点时进行测试。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-embedder-http` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

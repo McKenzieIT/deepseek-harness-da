@@ -22,6 +22,8 @@ Eval evidence engine: batch runner with pass_k, result persistence, before/after
 
 Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-eval-runner` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

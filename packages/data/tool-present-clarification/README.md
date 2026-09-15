@@ -22,6 +22,8 @@ Model-facing present_clarification tool: present a clarifying question to the us
 
 Model-facing present_clarification tool: present a clarifying question to the user and HALT the turn awaiting their answer (self-evolution #2a; callable in any phase)
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-present-clarification` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

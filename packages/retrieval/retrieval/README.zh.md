@@ -28,6 +28,8 @@ TODO: translate: Abstract retrieval seam (ctx.retrieval): hybrid BM25+vector+RRF
 
 定义检索 Service Definition：`ctx.retrieval.retrieve(query, {topK, mode}) → readonly RetrievalHit[]`，`RetrievalHit{id, score, payload, mode}`。本包为接缝半部分——声明提供方（如 `retrieval-inproc`）实现的契约。`search_data_sources` 工具执行软回退：`ctx.get('retrieval')` 探测——若已注册则 await 真实混合提供方；若缺失则回退到同步 `Bm25Linker`（P13b 现状）。接缝为异步（`Promise<readonly RetrievalHit[]>`）以支持基于 HTTP 的嵌入器。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-retrieval` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

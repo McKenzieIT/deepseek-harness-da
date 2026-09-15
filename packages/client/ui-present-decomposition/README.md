@@ -22,6 +22,8 @@ Toolview card for the present_decomposition INTERPRETATION tool: query-contract 
 
 Toolview card for the `present_decomposition` INTERPRETATION tool. The card is the **query's contract, not a result card**: it shows what the agent understood, at what caliber, and with how much confidence — three layers plus a trust band (wayfinder: interpretation-client-rendering R9 audit + P1 prototype verdict).
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-present-decomposition` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

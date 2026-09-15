@@ -52,6 +52,8 @@ The plugin has no host-side behavior (`src/index.ts` is an empty apply). All log
 | `slots` | dsh-client-ui-slots | Slot registration |
 | `locale` | dsh-client-locale | i18n dictionaries |
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-semantic-layer` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

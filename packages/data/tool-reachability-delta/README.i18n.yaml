@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/tool-reachability-delta/README.md
-README.md: c0962de0f48ac88d8e2597c1cda2e79206cfc378
-README.zh.md: 2d47e9c8784d62668dc2ff96e49c49b0c6f0e087
+README.md: 04eb4f23241c438606f104b786324c3beff6ff2c
+README.zh.md: 5265e5353876abcb4733eb95451f01e031273dbf

@@ -110,6 +110,8 @@ pnpm vitest run packages/data/tool-retrieve
 
 12 specs (R1–R12) 覆盖 BM25 linking、`top_k` cap、空 thin-default、注册、`ctx.retrieval` soft-fallback (R8)、`ctx.schema` enriched soft-fallback (R9)、abort guard (R10)、config `topK` default (R11)，以及 D2h 5→20 默认提升 (R12) — 镜像 `tool-search-data-sources` 的 S1–S9 + 三个 retrieve-specific 测试。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-retrieve` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

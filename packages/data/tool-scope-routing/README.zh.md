@@ -22,6 +22,8 @@ TODO: translate: Scope-routing tools for the data agent: list_scopes, switch_sco
 
 面向 data agent 的 scope 路由工具：list_scopes、switch_scope，以及系统提示词中基于 alias 的提示，用于自动检测 scope。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-scope-routing` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

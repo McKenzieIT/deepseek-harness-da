@@ -22,6 +22,8 @@ TODO: translate: Model-facing resolve_term tool: exact alias resolution from SKO
 
 面向模型的 resolve_term 工具：通过关系图的反向索引，从 SKOS pref_label/alt_labels 进行精确别名解析。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-resolve-term` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

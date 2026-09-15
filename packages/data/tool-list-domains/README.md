@@ -22,6 +22,8 @@ Model-facing list_domains tool: enumerate semantic layer domains with asset coun
 
 Model-facing list_domains tool: enumerate semantic layer domains with asset counts per kind
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-list-domains` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

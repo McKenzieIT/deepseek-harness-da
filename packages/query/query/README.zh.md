@@ -28,6 +28,8 @@ TODO: translate: Abstract query-engine seam (ctx.query): NL->SQL execution over 
 
 定义抽象 `QueryEngine extends Service` 契约，包含四个抽象方法：`execute`、`attach`、`cancel`、`getProgress`，以及三态 `QueryOutcome` 词汇（Completed / Pending / Failed）。`estimate_cost` 为 CostGuard 内部使用，不出现在接缝公开面上。本包是 query-trio 的 Def 半部分（Def + Provider + Consumer）；Provider 为 `query-maxcompute`，Consumer `tool-query` 延后。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-query` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

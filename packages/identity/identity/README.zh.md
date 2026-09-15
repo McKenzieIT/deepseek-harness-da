@@ -41,6 +41,8 @@ P9 的 `@deepseek-ai/dsh-admin` 落地真正的按用户登录并填充此接缝
 
 `userId`（Qoder 认证）与 `scopeId`（数据隔离）是独立维度。keychain provider 仅服务 `userId` 维度；按 scope 隔离在 query sidecar 的 `set_credentials`/`scope_id` 与 `OdpsConfig` 区域——当前不经由本接缝的 `scopeId` on `ctx.credentials`。`scopeId` 是前向兼容字段，目前经 `ctx.credentials` 未使用。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-identity` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

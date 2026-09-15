@@ -92,6 +92,8 @@ pnpm verify-cordis-config                                      # preset mount re
 
 Preset 行（`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`，`tool-search-data-sources`）在本包发布后取消注释；phase-gate guard 的 `UNDERSTANDING` 白名单已命名 `search_data_sources`，注册后即可在该阶段调用。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-search-data-sources` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

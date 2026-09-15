@@ -104,6 +104,8 @@ pnpm vitest run packages/data/tool-retrieve
 
 12 specs (R1–R12) cover BM25 linking, the `top_k` cap, the empty thin-default, registration, the `ctx.retrieval` soft-fallback (R8), the `ctx.schema` enriched soft-fallback (R9), the abort guard (R10), the config `topK` default (R11), and the D2h 5→20 default raise (R12) — mirroring `tool-search-data-sources`'s S1–S9 + three retrieve-specific tests.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-retrieve` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

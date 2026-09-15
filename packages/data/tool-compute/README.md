@@ -38,6 +38,8 @@ Preset row: `tool-compute` → `@deepseek-ai/dsh-tool-compute`
 
 Phase-gate: `INTERPRETATION_TOOLS` already includes `'compute'`.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-compute` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

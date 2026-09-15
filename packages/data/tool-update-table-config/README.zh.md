@@ -22,6 +22,8 @@ TODO: translate: Model-facing update_table_config tool: write a per-table ODPS p
 
 面向模型的 update_table_config 工具：向语义层 substrate 写入按表的 ODPS 项目覆盖，用于 data agent 的自我进化循环（仅管理员；Tier-2 审计）
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-update-table-config` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

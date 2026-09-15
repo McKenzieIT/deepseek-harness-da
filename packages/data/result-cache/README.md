@@ -22,6 +22,8 @@ Abstract result-cache seam (ctx.resultCache) for the DeepSeek Harness — store 
 
 Abstract result-cache seam (ctx.resultCache) for the DeepSeek Harness — store and retrieve query/compute results by result_id
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-result-cache` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

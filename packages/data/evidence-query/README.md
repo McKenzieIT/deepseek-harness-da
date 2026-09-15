@@ -22,6 +22,8 @@ Unified evidence-query backend layer — coverage, gap analysis, reachability, e
 
 Unified evidence-query backend layer — coverage, gap analysis, reachability, eval results, and asset health for both sidebar and dashboard consumption.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-evidence-query` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

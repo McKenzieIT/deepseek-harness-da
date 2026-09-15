@@ -58,6 +58,8 @@ kind: "package-reference"
 
 `CodeRunResult.error.kind` 取值为：`worker-exit`（spawn 错误或进程在 `done` 前退出）、`timeout`（挂钟上限）、`abort`（调用方信号或运行时销毁）、`output-limit`（完成值超过 `maxValueBytes`）、`exception`（程序或绑定错误回溯，或 bootstrap 崩溃）、`invalid-output`（完成值非无损 JSON）。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-code-runtime-data-python` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

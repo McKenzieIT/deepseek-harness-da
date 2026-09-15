@@ -27,6 +27,8 @@ External OpenAI-compatible HTTP embedder provider (InfinityEmbedder) + InfinityR
 
 Provides `InfinityEmbedder` — an embedder provider that calls an external OpenAI-compatible `POST /v1/embeddings` endpoint, and `InfinityReranker` calling `POST /rerank`. Configurable via `url`, `model`, and `timeout`. Designed for user-self-deployed inference services (T2 scenario: AGA-embeddings probe negative). Uses injectable `fetch` for testing without a live endpoint.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-embedder-http` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

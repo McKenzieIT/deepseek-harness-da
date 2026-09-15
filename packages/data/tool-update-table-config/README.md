@@ -22,6 +22,8 @@ Model-facing update_table_config tool: write a per-table ODPS project override t
 
 Model-facing update_table_config tool: write a per-table ODPS project override to the semantic-layer substrate for the data agent's self-evolution loop (admin-only; Tier-2 audited)
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-update-table-config` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

@@ -22,6 +22,8 @@ Postgres query-engine provider (ctx.query): GA-GT2-D4 second-engine stub proving
 
 Postgres query-engine provider (ctx.query): GA-GT2-D4 second-engine stub proving the engine-neutral abstraction — getConventions loads a Postgres dialect; execute/attach/cancel/getProgress throw not-implemented (seam proof, not a real PG executor)
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-query-postgres` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

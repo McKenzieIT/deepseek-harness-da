@@ -197,6 +197,8 @@ After each eval run, record the results in `wayfinder/data-agent/research/experi
 Resolves: [<ticket>](link)
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-eval-cli` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

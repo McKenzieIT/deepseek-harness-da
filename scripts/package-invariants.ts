@@ -35,18 +35,13 @@ export interface PackageInvariantViolation {
   readonly message: string
 }
 
-/**
- * Discover every invariant owner under the repository package tree. A package
- * is an owner when it declares the `./invariant` publication export or owns a
- * `src/invariant.ts` companion; feature packages that publish neither are not
- * owners and must not be gated for invariants they never claimed to provide.
- */
+/** Discover every package that publishes an invariant companion. */
 export function packageInvariantOwners(root: string): PackageInvariantOwner[] {
   return packageInvariantPackages(root)
     .filter(owner => existsSync(resolve(root, owner.sourcePath)))
 }
 
-/** Discover every package under the repository package tree. */
+/** Discover every release package governed by the invariant policy. */
 function packageInvariantPackages(root: string): PackageInvariantOwner[] {
   return globSync('packages/*/*/package.json', { cwd: root })
     .map(path => path.split(sep).join('/'))
@@ -57,9 +52,6 @@ function packageInvariantPackages(root: string): PackageInvariantOwner[] {
       const sourcePath = `${dir}/src/invariant.ts`
       return { manifestPath, manifest, dir, sourcePath }
     })
-    .filter(({ manifest, sourcePath }) =>
-      manifest.exports?.['./invariant'] !== undefined
-      || existsSync(resolve(root, sourcePath)))
     .map(({ manifestPath, manifest, dir, sourcePath }) => {
       if (manifest.name === undefined || manifest.name === '') {
         throw new Error(`${manifestPath}: package invariant owner must declare a package name`)

@@ -63,6 +63,8 @@ Per-item Touch-ID ACL (reads restricted to the harness binary, excluding `bash`/
 
 The `unlockPassword` is itself a new secret-to-protect: interactive entry at startup is secure; a password stored where `bash` can read it (an env var, a file) weakens the lock to convenience, because the same-spawner indistinguishability means anything the harness can unlock, `bash` can unlock too.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-credentials-keychain` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

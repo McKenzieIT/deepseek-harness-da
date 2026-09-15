@@ -22,6 +22,8 @@ TODO: translate: Eval evidence engine: batch runner with pass_k, result persiste
 
 Eval 证据引擎：面向 da eval harness 的批量执行器，支持 pass_k、结果持久化、前后差异对比、健康门禁与基础设施重试。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-eval-runner` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

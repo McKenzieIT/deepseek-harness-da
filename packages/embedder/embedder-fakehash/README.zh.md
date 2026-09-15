@@ -28,6 +28,8 @@ TODO: translate: Zero-dependency FakeHash embedder provider (deterministic sha25
 
 提供 `FakeHashEmbedder`——一个零依赖提供方，根据输入文本的 sha256 哈希生成确定性向量。配合 `FakeReranker` 作为默认重排对等方。这是启动时的默认配置：无需外部嵌入服务即可使检索正常工作，但以语义质量为代价。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-embedder-fakehash` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

@@ -22,6 +22,8 @@ Model-facing revert_edit tool: roll back a semantic layer asset to a prior defin
 
 Model-facing revert_edit tool: roll back a semantic layer asset to a prior definition snapshot
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-revert-edit` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

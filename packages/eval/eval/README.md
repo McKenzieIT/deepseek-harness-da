@@ -100,6 +100,8 @@ console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regr
 
 ## Host wiring (the seams this library does not own)
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-eval` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

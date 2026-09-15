@@ -22,6 +22,8 @@ Model-facing get_definition tool: load a unified data asset definition (table, e
 
 Model-facing get_definition tool: load a unified data asset definition (table, event, or metric) by name from the semantic layer
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-get-definition` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

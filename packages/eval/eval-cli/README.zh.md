@@ -201,6 +201,8 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 Resolves: [<ticket>](link)
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-eval-cli` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

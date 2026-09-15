@@ -22,6 +22,8 @@ Model-facing discover_relations tool: AI-native DWS→DIM relation discovery ove
 
 Model-facing discover_relations tool: AI-native DWS→DIM relation discovery over the semantic layer (G3 enrichment), for the data agent's enrichment phase
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-discover-relations` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

@@ -27,6 +27,8 @@ Abstract query-engine seam (`ctx.query`): Service Definition for NL-to-SQL execu
 
 Defines the abstract `QueryEngine extends Service` contract with four abstract methods: `execute`, `attach`, `cancel`, `getProgress`, plus the `getConventions()` seam method and the 3-state `QueryOutcome` vocabulary (Completed / Pending / Failed). `getConventions()` returns the loaded `EngineConventions` for prompt dialect grounding (key_differences / functions / cast_map / sql_templates); the default throws `'QueryEngine.getConventions: not implemented; override in a concrete provider subclass'`, and concrete providers like `MaxComputeQueryEngine` override it to return their loaded convention set. `estimate_cost` is CostGuard-internal and does not appear on the seam's public surface. The per-engine conventions type surface (`EngineConventions`/`ConventionFunction`/`ConventionCast`/`ConventionTemplate` in `src/conventions.ts`) lives in this package so consumers import engine convention types from the abstract seam, not a concrete provider. This package is the Def half of the query-trio (Def + Provider + Consumer); the Provider is `query-maxcompute`, the Consumer `tool-query` is deferred.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-query` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.
