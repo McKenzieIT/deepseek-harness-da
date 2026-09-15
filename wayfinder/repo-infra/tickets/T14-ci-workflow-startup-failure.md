@@ -102,10 +102,10 @@ history[0]: upstreamTag "dsh-v0.1.3-alpha.1" does not point at d347e703908d; git
 
 **逐条已核为 pre-existing、非本 PR 引入**：`duplication` 在 `origin/master`（`793df1c610`）上用同一命令实测同样 **89 clones / exit 1**，且 clone 报告里**没有本分支新增的任何文件**；coverage 两个 suite 与 T11 记载吻合；`publint` / `node-next types` 早于本轮。
 
-### 两条尚无票的红（认领时再建票，不预先堆票）
+### 那两条红的后续（2026-09-15 当日结掉）
 
-1. **`duplication`（jscpd 89 clones）** —— 报告里最大的一条是 `scripts/oxlint-contract.spec.ts` 自身 10 行 / 87 token 的重复。需先判「降噪（调阈值或加 ignore）还是真去重」，属决策点。
-2. **`verify-upstream-sync-record` 在浅 checkout 下仍红** —— 与本票已修的 tag 问题**同一缺陷类**：3 个 `keep` 决定的 waiver 命中数为 0 时被判 failure，而它自己的报错文本就写着「stale, **or its window is not verifiable here**」。Windows lane 是浅 checkout，`history[0]`/`history[1]` 的对象全不在（同一次输出里就有 4 条 `[skipped] … not in this checkout`），此时 0 命中**无法**证明 waiver 陈旧。修法与 tag 那条对称：**本 checkout 里若有任何 window 未能解析，0 命中的 waiver 记 `skipped` 而非 `failed`**；只有全部 window 都解析成功时，0 命中才等于陈旧。Linux static lane 用 `fetch-depth: 0` 所以已绿——这恰好证明它是环境脆弱性而非记录问题。
+1. **`duplication`（jscpd 89 clones）→ 已建票 [T16](T16-duplication-gate-89-clones.md)**（含三个待拍板的口径问题：spec 是否进语料、类型声明重复是否算债、组件样板是否该抽；并记录它 fail-fast 掩盖了 5 道门）。
+2. **`verify-upstream-sync-record` 在浅 checkout 下仍红 → 已修**（同日，与 tag 那条同一缺陷类；见下方修法，已有测试钉住两个方向，浅 clone 复现从 3 failures 降到 0） —— 与本票已修的 tag 问题**同一缺陷类**：3 个 `keep` 决定的 waiver 命中数为 0 时被判 failure，而它自己的报错文本就写着「stale, **or its window is not verifiable here**」。Windows lane 是浅 checkout，`history[0]`/`history[1]` 的对象全不在（同一次输出里就有 4 条 `[skipped] … not in this checkout`），此时 0 命中**无法**证明 waiver 陈旧。修法与 tag 那条对称：**本 checkout 里若有任何 window 未能解析，0 命中的 waiver 记 `skipped` 而非 `failed`**；只有全部 window 都解析成功时，0 命中才等于陈旧。Linux static lane 用 `fetch-depth: 0` 所以已绿——这恰好证明它是环境脆弱性而非记录问题。
 
 ## Acceptance
 
