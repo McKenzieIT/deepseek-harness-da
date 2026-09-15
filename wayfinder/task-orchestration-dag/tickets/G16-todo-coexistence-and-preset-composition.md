@@ -12,3 +12,5 @@ What model-facing task tools and Cordis composition give data-agent a writable P
 Decide proposal, approval, query, Task/Attempt update, completion-proposal, and replan operations; which transitions remain service-owned; how Plan, Task, and Attempt revisions appear to each actor role; tool visibility before and during a committed Plan; and aligned prompt guidance.
 
 Inspect each data-agent preset's actual Agent scope. Standard DSH presets remain unaffected unless a user installs and composes the community bundle.
+
+Define the DSH-native tool-policy contribution contract for future tools without changing upstream `ToolDefinition`: ordinary Cordis tool registration remains on `ctx.tools`, while an optional Task-DAG companion contribution declares its L0–L2 effect class, resource and cost reservation, read/write scopes, external-effect and retry safety, cancellation/reconciliation coverage, and output/evidence mapping through a typed registry. Contributions use `inject + register + effect`; Host policy may only tighten them, and an unclassified tool fails loud only when used through a Plan-DAG Attempt.
