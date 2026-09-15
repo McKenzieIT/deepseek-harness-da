@@ -24,3 +24,7 @@ Treat the approved [G19 cumulative ROI audit](../research/G19-outer-loop-cumulat
 ## Inputs from the G13 resolution
 
 First-release evaluation must cover the [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) invariants: model-supplied IDs do not authorize work; one Agent turn and one primary Binding map to one Attempt; stale Claim generations and revisions reject commands; command replay is idempotent; no native dispatch precedes its durability barrier; native retry does not create a semantic Attempt; non-Plan activity and ExecutionObservations cannot complete Tasks; OutputRefs remain distinct from EvidenceRecords; cancellation and native settlement races follow Host commit order; late results do not reopen terminal state; and an unknown ExternalEffect prevents automatic replay. Cost-saving multi-Attempt turns, shared causal executions, and automated effect reconciliation are follow-up hypotheses, not first-release success criteria.
+
+## Inputs from the G19 resolution
+
+The first-release evaluation must cover semantic-grounding precedence and configurable automatic replanning: a unique or declared-default metric definition proceeds without clarification; multiple viable meanings with no selected default create a correlated Hold; absent grounding declines; default `hold` adds no replan call; configured `replan` runs only after a durable premise change, consumes budget, changes the affected subgraph, and returns to Hold when ineffective.
