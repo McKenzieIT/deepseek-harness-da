@@ -23,3 +23,7 @@ dominant error：`renderSlot('root') before any 'root' registration (boot order)
 在 `origin/master` `ac19aca80333aa7cd6526e23af07f16234cc6c1f` 上复现并修正 6 组稳定漂移：CI workflow 的 supersession、runner 与 owner 条件；Cloudflare preview owner/runner；删除已由显式 alias 取代的 invariant wildcard；补登 `gen-package-readme-skeleton`；同步 duplicate-safe package 清单；将 tool catalog 预期同步到实际发布的 88 个 schema。focused run 为 6 files / 106 tests 全绿，`check:ci:static` 51/51。
 
 `package-invariants.spec.ts` 另暴露了一项独立政策实现缺口：若按现有 Agent Note 扫描所有 package，会立即发现 65 个 README 缺 package-specific omission reason。该项不混入本批机械 expectation 修正，保持本票 open，由独立 README/invariant 批次承接。
+
+## 2026-09-15 runtime fixture and generated-remote dependency batch
+
+四项稳定失败已按当前契约修复：credentials fixture 使用 version 1 `refs` 文档；subagent 断言 `personaPrefix`；client bundle 断言 `zod` 属外部依赖；`schema-gateway`、`evidence-query` 与 `result-cache` 声明 generated remote 实际 import 的 `zod` runtime dependency。focused run 为 4 files / 94 tests 全绿，`verify-package-dependencies` 与 `verify-runtime-closure` 均通过。

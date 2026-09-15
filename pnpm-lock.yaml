@@ -5892,6 +5892,10 @@ importers:
         version: link:../../core/tools
 
   packages/data/evidence-query:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -6020,6 +6024,10 @@ importers:
         version: link:../../runtime-diagnostics/invariants
 
   packages/data/result-cache:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -6047,6 +6055,10 @@ importers:
         version: link:../../core/tools
 
   packages/data/schema-gateway:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
