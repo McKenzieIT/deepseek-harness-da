@@ -335,6 +335,37 @@ describe('upstream monitoring', { timeout: 180_000 }, () => {
     expect(report.failures.join('\n')).toContain('does not point at')
   })
 
+  it('blames a zero-hit keep waiver only when every recorded window resolved', () => {
+    const context = fixture(1)
+    const base = record(context)
+    const waiver = { path: 'packages/nothing/here.ts', direction: 'keep-fork' as const, decision: 'keep' as const, ticket: 'T-TEST' }
+    writeRecord(context, { ...base, waivers: [waiver] })
+
+    const report = collectGitFailures(readUpstreamSyncRecord(context.root), context.root)
+
+    expect(report.failures.join('\n')).toContain('matched no finding')
+  })
+
+  it('does not blame a zero-hit waiver when a recorded window is unverifiable here', () => {
+    const context = fixture(1)
+    const base = record(context)
+    // A shallow CI checkout cannot resolve older windows, so a waiver's zero
+    // hits prove nothing about staleness.
+    const unverifiable = {
+      upstreamSha: 'a'.repeat(40),
+      upstreamCommittedAt: base.current.upstreamCommittedAt,
+      mergeCommit: 'b'.repeat(40),
+      syncedAt: base.current.syncedAt,
+    }
+    const waiver = { path: 'packages/nothing/here.ts', direction: 'keep-fork' as const, decision: 'keep' as const, ticket: 'T-TEST' }
+    writeRecord(context, { ...base, history: [unverifiable], waivers: [waiver] })
+
+    const report = collectGitFailures(readUpstreamSyncRecord(context.root), context.root)
+
+    expect(report.failures.join('\n')).not.toContain('matched no finding')
+    expect(report.skipped.join('\n')).toContain('not verifiable in this checkout')
+  })
+
   it('writes the verdict to a report file even when the monitor fails', () => {
     const context = fixture(40)
     writeRecord(context, record(context))

@@ -188,6 +188,10 @@ export function collectGitFailures(
     { sync: record.current, label: 'current' },
   ]
 
+  // Windows this checkout could not open produce no findings at all, so a
+  // waiver's zero hits below cannot be read as staleness.
+  let unresolvedWindows = 0
+
   for (const { sync, label } of syncs) {
     verifyCommitTimestamps(root, sync, label, report)
     verifyTag(root, sync, label, report)
@@ -196,9 +200,11 @@ export function collectGitFailures(
     switch (resolution.kind) {
       case 'failed':
         report.failures.push(resolution.reason)
+        unresolvedWindows += 1
         break
       case 'skipped':
         report.skipped.push(resolution.reason)
+        unresolvedWindows += 1
         break
       case 'window':
         adjudicate(collectIntegrityFindings(root, resolution.window, label), record, label, hits, report)
@@ -214,6 +220,16 @@ export function collectGitFailures(
       const message =
         `waiver ${waiver.path} (${waiver.direction}/${waiver.decision}) matched no finding in any recorded window`
         + ' — stale, or its window is not verifiable here'
+      if (unresolvedWindows > 0) {
+        // Shallow checkouts (`actions/checkout` without full history) resolve
+        // no older window, so zero hits are unprovable rather than stale. Only
+        // a checkout that opened every window can convict a waiver.
+        report.skipped.push(
+          `waiver ${waiver.path} (${waiver.direction}/${waiver.decision}) matched no finding, but `
+          + `${unresolvedWindows} recorded window(s) are not verifiable in this checkout — staleness not judged`,
+        )
+        continue
+      }
       if (waiver.decision === 'keep' || waiver.decision === 'pending') {
         // 'keep' zero-hit: the divergence it accepted may no longer exist —
         // force re-adjudication by failing the gate.
