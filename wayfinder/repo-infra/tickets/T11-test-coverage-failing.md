@@ -51,3 +51,7 @@ Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data 
 ## 2026-09-15 invariant omission documentation batch
 
 `package-invariants.spec.ts` 已钉住 Agent Note 的现行规则，但 gate 的 package discovery 仍只扫描声明过 companion 的包，导致删除空 companion 后的包退出检查。discovery 改为覆盖 package tree 下全部 334 个包，39 个 hand-owned companion 保持完整校验；其余包必须在 README 记录 omission 原因。65 个缺口已补齐中英文句子并重录 sidecar，`verify-package-invariants` 与 902 对 pairing 均通过。
+
+## 2026-09-15 eval CLI network-fixture batch
+
+`loads and runs with fake key` 只替换了凭据，仍把四次 LLM 请求发往默认 AGA endpoint；独立运行受本机网络影响约 4 秒，coverage 争用时撞上测试内部 10 秒子进程上限。fixture 显式把 `DASHSCOPE_BASE_URL` 指到本机拒绝连接端口，使 transport failure 立即且确定地返回；不放宽 timeout，也不依赖外网。
