@@ -5147,13 +5147,17 @@ describe('PythonCodeRuntime — hostile peer', () => {
     // exception. Linux-only RLIMIT_AS repro; on macOS the value round-trips
     // either way, but the fixture stays within the address space so it is honest.
     //
-    // `maxWallMs` is 60s, not the 20s the memory assertion alone needs: the O(depth)
+    // `maxWallMs` is 80s, not the 20s the memory assertion alone needs: the O(depth)
     // cursor pulls 6M elements one at a time through Python-level frames, which costs
-    // ~11s on an idle machine and more under the coverage lane's V8 instrumentation
-    // with several workers sharing a box. This budget bounds the run without letting a
-    // loaded runner's scheduling latency read as a `timeout` — what this test asserts
-    // is the O(depth) memory shape, not a speed claim.
-    const { runtime } = await setup({ maxValueBytes: 20 * 1024 * 1024, addressSpaceMb: 384, maxWallMs: 60_000 })
+    // ~11s on an idle machine and more under a shared coverage runner. `cpuSeconds`
+    // is deliberately above that wall ceiling so the independent CPU containment
+    // cannot preempt this memory assertion. The 90s case budget bounds teardown.
+    const { runtime } = await setup({
+      cpuSeconds: 600,
+      maxValueBytes: 20 * 1024 * 1024,
+      addressSpaceMb: 384,
+      maxWallMs: 80_000,
+    })
     const result = await runtime.run({ program: 'return [0] * 6_000_000', bindings: [] })
     expect(result.error).toBeUndefined()
     expect(Array.isArray(result.value)).toBe(true)
@@ -5173,8 +5177,9 @@ describe('PythonCodeRuntime — hostile peer', () => {
     // Darwin skips RLIMIT_AS, so this case round-trips there either way.
     //
     // The binding echoes its argument's length back, so the assertion proves the
-    // call actually round-tripped rather than merely avoiding a crash.
-    const { runtime } = await setup({ addressSpaceMb: 384, maxWallMs: 60_000 })
+    // call actually round-tripped rather than merely avoiding a crash. As above,
+    // the wall and case budgets bound this memory test before its CPU ceiling.
+    const { runtime } = await setup({ cpuSeconds: 600, addressSpaceMb: 384, maxWallMs: 80_000 })
     const result = await runtime.run({
       program: 'return await tools.width([0] * 6_000_000)',
       bindings: [{

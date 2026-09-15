@@ -55,3 +55,7 @@ Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data 
 ## 2026-09-15 eval CLI network-fixture batch
 
 `loads and runs with fake key` 只替换了凭据，仍把四次 LLM 请求发往默认 AGA endpoint；独立运行受本机网络影响约 4 秒，coverage 争用时撞上测试内部 10 秒子进程上限。fixture 显式把 `DASHSCOPE_BASE_URL` 指到本机拒绝连接端口，使 transport failure 立即且确定地返回；不放宽 timeout，也不依赖外网。
+
+## 2026-09-15 Python wide-value memory-budget batch
+
+两个 600 万元素用例验证 Python completion 编码与 binding 参数校验保持 O(depth) 辅助空间，但沿用了 60 秒 CPU 上限，并把运行 wall budget 固定为 60 秒；共享 coverage runner 会先触发独立的 CPU 或 wall containment，使内存回归被误报为 timeout。用例保留 90 秒外层上限，将 wall budget 恢复为 80 秒，并把 CPU 上限置于 wall 上限之外，使测试仍有界且只由目标内存行为决定。focused run 为 2 passed / 249 skipped。
