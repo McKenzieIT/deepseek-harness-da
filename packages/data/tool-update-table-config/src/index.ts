@@ -18,7 +18,7 @@
  *    when `role !== 'admin'` (safe-by-default: an unmounted identity / undefined
  *    caller / role-less caller all refuse).
  *  - Tier-2 audit: the write routes through the substrate `updateTableMeta`
- *    (`@deepseek-ai/dsh-semantic-layer/src/io.ts`), which shallow-merges +
+ *    (`@deepseek-ai/dsh-semantic-layer`), which shallow-merges +
  *    validates + atomicWrites + invalidateCaches + records the write via
  *    `ctx.audit.recordTier2Write` (D5 non-disableable). The tool passes
  *    `ctx.audit` as the `recorder` and `ctx.schema.scopeId` as `scope_id`, so
@@ -44,8 +44,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
-import { updateTableMeta } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
-import type { Tier2Recorder } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
+import { updateTableMeta } from '@deepseek-ai/dsh-semantic-layer'
+import type { Tier2Recorder } from '@deepseek-ai/dsh-semantic-layer'
 import type { CallerIdentity } from '@deepseek-ai/dsh-identity'
 
 export const name = 'tool-update-table-config'

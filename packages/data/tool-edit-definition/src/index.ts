@@ -414,12 +414,12 @@ export function apply(ctx: Context, _config: Config = {}): void {
         } else if (kind === 'concept') {
           const { dumpYaml, invalidateCaches } = await import('@deepseek-ai/dsh-semantic-layer')
           const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
-          const { join } = await import('node:path')
+          const path = await import('node:path')
           const { mkdirSync } = await import('node:fs')
-          const conceptsDir = join(schema.semanticRoot, 'concepts')
+          const conceptsDir = path.join(schema.semanticRoot, 'concepts')
           mkdirSync(conceptsDir, { recursive: true })
           const yamlContent = dumpYaml(merged)
-          await writeFileAtomic(join(conceptsDir, `${result.asset_name}.yaml`), yamlContent, { mode: 0o644 })
+          await writeFileAtomic(path.join(conceptsDir, `${result.asset_name}.yaml`), yamlContent, { mode: 0o644 })
           // data-tools-discovery-3: bump the corpus-version signal so Bm25Linker
           // caches + the alias graph rebuild (mirrors writeTable/writeEventYaml
           // at io.ts:415/455 — a concept edit changes alt_labels/description).

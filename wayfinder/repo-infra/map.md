@@ -29,6 +29,7 @@
 - [T9: built-package-invariants 历史红门](tickets/T9-built-package-invariants.md) — 完整 build 后 39 个 compiled companion 通过 plain-Node Loader 检查。
 - [T15: doc-typecheck 语料与示例漂移](tickets/T15-doc-typecheck-plan-sketches.md) — 两个真实 fence 已修复，并将两个自足示例纳入编译以维持 opt-out 比率；`doc-typecheck` 为 86 compiled / 85 ignored，exit 0。
 - [T10: publint 发布视图](tickets/T10-publint.md) — 源码平面 glob 保持提示级；`result-cache` 发布编译后的 types，两个动态加载 semantic-layer 的工具生成自足入口，完整 build 后 publint exit 0。
+- [T17: NodeNext declarations 引用源码子路径](tickets/T17-node-next-types-source-subpaths.md) — 24 个公开 declaration import 改走 package root，并新增 built-declaration 守卫；343 个 workspace package declaration API 在 NodeNext consumer 下通过。
 
 ## Open tickets
 

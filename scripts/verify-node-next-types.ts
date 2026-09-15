@@ -44,10 +44,11 @@ function workspacePackages(): WorkspacePackage[] {
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
-const declarationSpecifierPattern = /(?:from\s*|import\s*\(\s*|import\s+|declare\s+module\s*)["'](\.{0,2}(?:\/[^"']*)?)["']/g
+const declarationSpecifierPattern = /(?:from\s*|import\s*\(\s*|import\s+|declare\s+module\s*)["']([^"']+)["']/g
 const hasExtension = /\.[^/.]+$/
+const workspaceSourceSpecifier = /^@deepseek-ai\/dsh-[^/]+\/src\/.+\.ts$/
 
-function relativeSpecifiersMissingExtensions(): string[] {
+function declarationSpecifierViolations(): string[] {
   const errors: string[] = []
   const files = [
     ...globSync('vendor/*/lib/types/**/*.d.ts', { cwd: root }),
@@ -60,7 +61,8 @@ function relativeSpecifiersMissingExtensions(): string[] {
       const specifier = match[1]
       if (!specifier) continue
       const isRelative = specifier === '.' || specifier.startsWith('./') || specifier.startsWith('../')
-      if (isRelative && !hasExtension.test(specifier)) errors.push(`${file}: ${specifier}`)
+      if (isRelative && !hasExtension.test(specifier)) errors.push(`${file}: relative specifier ${specifier}`)
+      if (workspaceSourceSpecifier.test(specifier)) errors.push(`${file}: source-plane specifier ${specifier}`)
     }
   }
 
@@ -88,9 +90,9 @@ function linkPackage(pkg: WorkspacePackage, nodeModules: string): void {
 }
 
 const packages = workspacePackages()
-const badSpecifiers = relativeSpecifiersMissingExtensions()
+const badSpecifiers = declarationSpecifierViolations()
 if (badSpecifiers.length > 0) {
-  console.error('verify-node-next-types: declaration files still contain relative specifiers without file extensions.')
+  console.error('verify-node-next-types: declaration files contain specifiers that external NodeNext consumers cannot resolve.')
   console.error(badSpecifiers.join('\n'))
   process.exit(1)
 }

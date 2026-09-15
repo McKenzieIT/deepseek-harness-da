@@ -19,7 +19,7 @@ import {
   TableDefinitionSchema,
   EventDefinitionSchema,
 } from '@deepseek-ai/dsh-semantic-layer'
-import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
+import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine'
 import type {
   TableSummary,
   EventSummary,
