@@ -71,6 +71,20 @@ actionlint 剩余提示只有自建 runner 标签未知（`vm-backup`、`dsh-win
 
 此前所有「CI 绿」的说法都只覆盖 Release / Node Addon / Matrix 这几条**独立** workflow；`check:ci:static`、`check:ci:coverage`、Windows 门在 CI 里**一次都没跑过**。修复后它们会第一次真实执行，**很可能立刻暴露一批既有红门**（本地全量 `check:ci:static` 的历史基线是 37 passed / 11 failed，2026-09-14 在 resync 树上是 51/51；两者都不是在 CI 环境里测的）。这不是回归，是第一次看见真相；逐条分诊归各自 effort，不要因此把本票重开。
 
+## 首个真实 CI 运行的结果（2026-09-15，PR #135）
+
+修复合入前，承载它的 PR 自身就成了验收证据：`ci.yml` 的 job 第一次真的出现——`node 24 / static`、`node 24 / coverage`、`node 24 / benchmarks`、`node 24 / snapshots and artifacts`、`node 22.19` / `24.9` / `26`、`windows node 24 / build|coverage|native tests|observational`、`python runtime / release-shaped matrix / *`、`python 3.10 / keyless SDK`。
+
+**第一条真实失败已就地分诊并修掉**：`node 24 / static` 在 `verify-upstream-sync-record` 上 fail-fast，报
+
+```
+history[0]: upstreamTag "dsh-v0.1.3-alpha.1" does not point at d347e703908d; git tags: (none)
+```
+
+根因不在记录里，而在门本身：`actions/checkout` **即使 `fetch-depth: 0` 也不拉 tag**，于是 `git tag --points-at` 返回空列表，而 `verifyTag` 把「本地没有这个 tag」和「tag 指向了别的提交」当成同一回事，前者本该像 sha 检查那样报 `skipped`（该门自己的设计原则就是「本 checkout 无法验证的记为 skipped 而非 failed」）。修法：先 `git rev-parse --verify refs/tags/<tag>`，不存在则 `skipped`。**tag 存在但指错**仍然是 failure（有测试钉住两个方向）。验证：owning suite 15/15；本地有 tag 时门仍 exit 0 并照常交叉核对；用 `git clone --no-tags` 复现 CI 条件时 failures 从 1 降到 0。
+
+这条确立了后续分诊的模式：**新暴露的红先判「门的环境假设错了」还是「代码/文档真的坏了」**，前者修门，后者归各自 effort。
+
 ## Acceptance
 
 - `actionlint` 对两个文件无 syntax 报错。（已满足）

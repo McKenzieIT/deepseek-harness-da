@@ -311,6 +311,30 @@ describe('upstream monitoring', { timeout: 180_000 }, () => {
     )
   })
 
+  it('treats an upstream tag absent from this checkout as unverifiable, not inconsistent', () => {
+    const context = fixture(1)
+    const base = record(context)
+    writeRecord(context, { ...base, current: { ...base.current, upstreamTag: 'dsh-v9.9.9-absent' } })
+
+    const report = collectGitFailures(readUpstreamSyncRecord(context.root), context.root)
+
+    // `actions/checkout` fetches no tags, so every CI run saw an empty tag list
+    // and reported a recorded tag as a hard inconsistency.
+    expect(report.failures.join('\n')).not.toContain('upstreamTag')
+    expect(report.skipped.join('\n')).toContain('dsh-v9.9.9-absent')
+  })
+
+  it('still reports an upstream tag that exists here but points at another commit', () => {
+    const context = fixture(1)
+    git(context.root, ['tag', 'dsh-v9.9.9-misplaced', context.base])
+    const base = record(context)
+    writeRecord(context, { ...base, current: { ...base.current, upstreamTag: 'dsh-v9.9.9-misplaced' } })
+
+    const report = collectGitFailures(readUpstreamSyncRecord(context.root), context.root)
+
+    expect(report.failures.join('\n')).toContain('does not point at')
+  })
+
   it('writes the verdict to a report file even when the monitor fails', () => {
     const context = fixture(40)
     writeRecord(context, record(context))
