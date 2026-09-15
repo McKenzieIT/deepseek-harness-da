@@ -114,6 +114,10 @@ type-equiv 门 3 条 DRIFT 之一是 `SubagentResult.costs`（源码有 costs、
 
 **Commit + scope discipline:** All 37 touched files within ticket Scope §A + prose scrub surface. G13-task-work-correlation.md incidentally touched by doc-graphs regen (Status open→claimed) was reverted (out of scope). Not pushed (tracker discipline).
 
+### [2026-09-15] Follow-up — 清除遗漏的工具输出 schema
+
+`packages/subagent/tool-subagent/src/index.ts` 的 `output.schema` 仍遗留可选 `costs` 字段，违反本票 Acceptance 的零匹配要求，并使模型可见工具结果类型继续出现已退场的遥测字段。T11 consumers 批次删除该字段；focused recorded-session replay 由包含 `costs?: JsonValue` 的稳定差异转绿。
+
 ### [2026-09-12] blocker 已释放（`Blocked by: UM11` 的理由已满足）
 
 票头写 `Blocked by: UM11（PR merge 后再做，避免与 PR-blocker 扫除混 scope）`。**PR merge 已发生**：#116（`be447fc1d0`）+ #117（`c174c9a784`）均 merged，PR-blocker 扫除阶段结束。UM11 本身仍 open（剩 worktree/branch 后清 + master-sync，后者被 evaluation 分叉外部阻塞，见 UM11 2026-09-12 节），但**本票被阻塞的那个理由已不复存在** → **本票现可立即认领**，且 scope 不会再与 PR 扫除混淆。

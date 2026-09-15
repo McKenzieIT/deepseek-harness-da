@@ -452,11 +452,6 @@ export function apply(ctx: Context, config: Config, session?: Session): void {
                   kind: { type: 'string', required: true, const: 'foreground' },
                   runId: { type: 'string', required: true },
                   output: { type: 'array', required: true, items: { type: 'json' } },
-                  // Optional provider-reported cost telemetry for audit (G3 driver);
-                  // not model-facing (output.schema is excluded from schemas())
-                  // and execution-local (never persisted). Omitted by providers that
-                  // do not report costs.
-                  costs: { type: 'json' },
                 },
               },
             ],
