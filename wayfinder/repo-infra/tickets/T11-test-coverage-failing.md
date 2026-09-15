@@ -39,3 +39,7 @@ dominant error：`renderSlot('root') before any 'root' registration (boot order)
 ## 2026-09-15 expected-output title-settlement batch
 
 DeepSeek defaults 用例在收到主请求后仅保活固定 180 ms，却断言后台标题请求一定已到达；PR #148 的真实 CI 以 1 个请求对 2 个请求稳定暴露竞态，而同一用例独立运行通过。该用例改用现有 `waitForTitleRequest` 条件：fixture 以收到 `max_tokens: 64` 请求为释放主响应的状态信号，不依赖调度时序。
+
+## 2026-09-15 coverage Python environment batch
+
+Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data runtime 明示承诺的 pandas/numpy；对应两项用例均以 `ModuleNotFoundError` 失败。两个 coverage job 统一安装 Python 3.10 及固定版本 `numpy==2.2.6`、`pandas==2.3.3`，workflow spec 锁定这两个平台的相同前置条件。
