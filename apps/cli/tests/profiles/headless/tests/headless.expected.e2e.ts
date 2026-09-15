@@ -45,6 +45,9 @@ const headlessOverlayPath = fileURLToPath(new URL('./fixtures/headless-profile.p
 const headlessSessionExpected = join(goldensDir, 'headless-profile', 'session.expected.jsonl')
 const headlessReasoningExpected = join(goldensDir, 'headless-profile', 'reasoning.stderr.expected.txt')
 const headlessFailureExpected = join(goldensDir, 'headless-profile', 'stderr.expected.txt')
+// This assembled route starts a model turn plus background title generation;
+// consumers-lane contention has exceeded the loader-smoke default without a product hang.
+const DEEPSEEK_DEFAULTS_PROCESS_TIMEOUT_MS = 60_000
 const refreshing = process.env.DSH_SNAPSHOT === 'refresh'
 
 interface JsonObject {
@@ -458,6 +461,7 @@ describe('headless stream-json snapshots', () => {
           'return the deterministic response',
         ],
         tsconfigPath,
+        processTimeoutMs: DEEPSEEK_DEFAULTS_PROCESS_TIMEOUT_MS,
         env: {
           // Configuration carries only the reference; the key rides the
           // launching environment, which is the whole credential plane here.
@@ -496,7 +500,7 @@ describe('headless stream-json snapshots', () => {
     } finally {
       await server.close()
     }
-  }, LOADER_SMOKE_TEST_TIMEOUT_MS)
+  }, DEEPSEEK_DEFAULTS_PROCESS_TIMEOUT_MS + 15_000)
 
   it('keeps the compatibility stream open until the title request arrives', async () => {
     const server = await deepseekDefaultsServer({ waitForTitleRequest: true })
