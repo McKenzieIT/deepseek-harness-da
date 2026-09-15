@@ -2,8 +2,8 @@
 
 **Type**: grilling
 **Status**: in progress 2026-09-14
-**Assignee**: Codex — proposed resolution complete; awaiting G13
-**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md)
+**Assignee**: Codex — proposed resolution complete; final consistency review pending
+**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅
 **Blocks**: [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md), [G16 Model tools and preset composition](G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](G17-native-source-adapters.md), [G7 writeScopes conflict semantics](G7-writescopes-conflict-detection.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
 
 ## Question
@@ -69,6 +69,6 @@ Research and audit basis:
 - [First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md) validates the ROI ceiling, deterministic scheduling, false-stop/wasted-compute trade-off, current-state UI, and explicit rejection of deferred capabilities.
 - Advanced Attempt Groups/routing/progress/fairness, full phase integration, Goal/Plan integration, history inspection, generic Run control, automatic input routing, and external-effect recovery remain in their named follow-ups.
 
-## Inputs from the G13 checkpoint
+## Inputs from the G13 resolution
 
-The accepted working decisions in [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) require the driver to admit a semantically fixed Attempt with one primary Binding, bind one current-Agent turn to at most one Attempt, inject rather than solicit the ExecutionTicket, and use Host-validated actor commands. Every dispatch must be covered by a durability barrier, semantic retry creates a new `attemptNo` and `retryOfAttemptId`, and unknown external effects block readmission through a reconciliation Hold. The driver may consume authoritative Bindings, OutputRefs, EvidenceRecords, and verdicts, but never ExecutionObservations or native success alone as completion authority.
+[G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) requires the driver to admit a semantically fixed Attempt with one primary Binding, bind one current-Agent turn to at most one Attempt, inject rather than solicit the `ExecutionTicket`, and use idempotent Host-validated commands. The driver atomically admits the Claim and `prepared` Attempt, creates the root Binding and changes the Attempt to `running`, enforces a durability barrier before dispatch, and requests settlement only after required Bindings, cancellation, outputs, evidence, external effects, Claim generation, and revisions pass a final recheck. Semantic retry creates a new `attemptNo` and `retryOfAttemptId`; cancellation freezes new work; unknown external effects block readmission through a reconciliation Hold. The driver may consume authoritative Bindings, OutputRefs, EvidenceRecords, and verdicts, but never ExecutionObservations, late results, or native success alone as completion authority.

@@ -13,6 +13,6 @@ Trigger this ticket only when a second independently evolving permission model a
 
 Define principal and actor identity, command capability vocabulary, resource scope, audience, delegation versus impersonation, expiry, revocation or introspection, policy composition, default-deny behavior, audit records, secret handling, Session compatibility, and migration from the closed matrix without allowing plugins to silently expand core write authority.
 
-## Inputs from the G13 checkpoint
+## Inputs from the G13 resolution
 
-The first release uses a closed Host-enforced command matrix for `user`, `orchestrator`, `worker`, `executor-adapter`, `verifier`, and `driver`; roles are per-command context, identifiers are not credentials, and unknown actors or commands fail closed. This ticket must preserve those defaults and is triggered only by a second independently evolving authorization model, not by another implementation of an existing worker, adapter, or verifier role.
+The first release uses a closed Host-enforced command matrix for `user`, `orchestrator`, `worker`, `executor-adapter`, `verifier`, and `driver`; roles are per-command context, identifiers and `ExecutionTicket` values are not credentials, and unknown actors or commands fail closed. Every retryable or cross-process command has a `TaskGraphCommandId`; replaying the same payload is idempotent, while reusing the identifier with different content fails. This ticket must preserve those defaults and is triggered only by a second independently evolving authorization model, not by another implementation of an existing worker, adapter, or verifier role.
