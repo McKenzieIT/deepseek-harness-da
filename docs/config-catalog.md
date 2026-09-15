@@ -2258,7 +2258,7 @@ export interface RetrievalCorpusItem {
 }
 ```
 
-Depends on: `Reranker` (`@deepseek-ai/dsh-embedder/src/index.ts`)
+Depends on: [`Reranker`](../packages/embedder/embedder/src/index.ts)
 
 Source: [`packages/retrieval/retrieval-inproc/src/index.ts:34`](../packages/retrieval/retrieval-inproc/src/index.ts)
 
@@ -2414,7 +2414,7 @@ export interface SemanticLayerConfig {
 export type CorpusVariant = 'params+term' | 'term-only'
 ```
 
-Source: [`packages/data/semantic-layer/src/index.ts:225`](../packages/data/semantic-layer/src/index.ts)
+Source: [`packages/data/semantic-layer/src/index.ts:227`](../packages/data/semantic-layer/src/index.ts)
 
 <a id="deepseek-aidsh-session-log-deepseek"></a>
 

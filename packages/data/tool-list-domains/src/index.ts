@@ -19,7 +19,7 @@ import {
   EventDefinitionSchema,
   ConceptDefinitionSchema,
 } from '@deepseek-ai/dsh-semantic-layer'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 
 export const name = 'tool-list-domains'
 export const inject = ['tools']

@@ -44,8 +44,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { Bm25Linker, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
-import { type RetrievalService as _RetrievalService } from '@deepseek-ai/dsh-retrieval/src/index.ts'
+import { Bm25Linker, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine'
+import { type RetrievalService as _RetrievalService } from '@deepseek-ai/dsh-retrieval'
 
 export const name = 'tool-retrieve'
 export const inject = ['tools']

@@ -143,6 +143,22 @@
     "notes": "computeModuleGraphOutputs(scanRoot=root) at :105, writeModuleGraph(scanRoot=root) at :119. main() at :155 passes module-level root. Writes .md+.zh.md+.i18n.yaml three files via translationPairPaths."
   },
 
+  "gen-package-readme-skeleton": {
+    "inputs": [
+      "packages/*/*/package.json",
+      "packages/*/*/README.md",
+      "packages/*/*/README.zh.md"
+    ],
+    "outputs": [
+      "packages/*/*/README.md",
+      "packages/*/*/README.zh.md"
+    ],
+    "script": "gen-package-readme-skeleton",
+    "parameterizedScanRoot": false,
+    "writesI18nTriple": false,
+    "notes": "ROOT is module-level. The generator reads every package README pair and package manifest, then rewrites the same README files with the required skeleton and aligned anchors. Translation sidecars remain owned by verify-translation-pairing."
+  },
+
   "gen-persistence-catalog": {
     "inputs": [
       "packages/*/*/src/**/*.ts",

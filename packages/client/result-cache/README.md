@@ -27,9 +27,28 @@ Browser-side hot cache for INTERPRETATION query/compute results: a session-scope
 Consumers reach the service through the inject face, addressed from a scoped ctx so `get`/`invalidate` resolve the caller's session:
 
 ```ts
-inject: (sessionId) => ({
-  fetchResult: (rid) => sessions.scope(sessionId)?.get('results')?.get(rid),
-  invalidateResult: (rid) => sessions.scope(sessionId)?.get('results')?.invalidate(rid),
+type SessionId = string
+
+interface ResultsFace {
+  get(rid: string): Promise<unknown>
+  invalidate(rid: string): void
+}
+
+interface SessionsFace {
+  scope(sessionId: SessionId): { get(name: 'results'): ResultsFace | undefined } | undefined
+}
+
+declare const sessions: SessionsFace
+
+const inject = (sessionId: SessionId) => ({
+  fetchResult: (rid: string) => {
+    const results = sessions.scope(sessionId)?.get('results') as ResultsFace | undefined
+    return results?.get(rid) ?? Promise.resolve(undefined)
+  },
+  invalidateResult: (rid: string) => {
+    const results = sessions.scope(sessionId)?.get('results') as ResultsFace | undefined
+    results?.invalidate(rid)
+  },
 })
 ```
 

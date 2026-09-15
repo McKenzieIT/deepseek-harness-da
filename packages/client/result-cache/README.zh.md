@@ -27,9 +27,28 @@ INTERPRETATION 查询/计算结果的浏览器端热缓存：一个会话级 sco
 消费方通过 inject 面访问该服务，从 scoped ctx 寻址，使 `get`/`invalidate` 解析到调用方的会话：
 
 ```ts
-inject: (sessionId) => ({
-  fetchResult: (rid) => sessions.scope(sessionId)?.get('results')?.get(rid),
-  invalidateResult: (rid) => sessions.scope(sessionId)?.get('results')?.invalidate(rid),
+type SessionId = string
+
+interface ResultsFace {
+  get(rid: string): Promise<unknown>
+  invalidate(rid: string): void
+}
+
+interface SessionsFace {
+  scope(sessionId: SessionId): { get(name: 'results'): ResultsFace | undefined } | undefined
+}
+
+declare const sessions: SessionsFace
+
+const inject = (sessionId: SessionId) => ({
+  fetchResult: (rid: string) => {
+    const results = sessions.scope(sessionId)?.get('results') as ResultsFace | undefined
+    return results?.get(rid) ?? Promise.resolve(undefined)
+  },
+  invalidateResult: (rid: string) => {
+    const results = sessions.scope(sessionId)?.get('results') as ResultsFace | undefined
+    results?.invalidate(rid)
+  },
 })
 ```
 

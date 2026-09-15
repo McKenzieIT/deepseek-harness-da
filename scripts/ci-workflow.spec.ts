@@ -9,12 +9,18 @@ const runnerPrivatePnpmDestination = /^\$\{\{ runner\.temp \}\}\/setup-pnpm-\$\{
 const nativeWindowsPnpmDestination = '${{ runner.temp }}/setup-pnpm-js-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}'
 
 describe('CI workflow', () => {
-  it.each(['ci.yml', 'ci-master.yml', 'e2e.yml', 'release.yml', 'release-vendor.yml'])(
-    '%s cancels superseded validation runs without crossing workflow or ref boundaries', (name) => {
+  it.each([
+    ['ci.yml', "${{ github.event_name != 'push' }}"],
+    ['ci-master.yml', true],
+    ['e2e.yml', true],
+    ['release.yml', true],
+    ['release-vendor.yml', true],
+  ] as const)(
+    '%s keeps supersession within workflow and ref boundaries', (name, cancelInProgress) => {
       const workflow = loadWorkflow('.github/workflows/' + name)
       expect(workflow.concurrency).toEqual({
         group: '${{ github.workflow }}-${{ github.ref }}',
-        'cancel-in-progress': true,
+        'cancel-in-progress': cancelInProgress,
       })
     },
   )
@@ -172,7 +178,7 @@ describe('CI workflow', () => {
       expect(job['runs-on'], `${jobName} runs-on must not use the Linux failover switch`).not.toContain('DSH_CI_FAILOVER_LINUX')
       expect(job['runs-on']).toContain('self-hosted')
       expect(job['runs-on']).toContain('dsh-win-ci')
-      expect(job['runs-on']).toContain('dsh-windows-2025-16core')
+      expect(job['runs-on']).toContain('"windows"')
       expect(job['runs-on']).toContain('blacksmith-16vcpu-windows-2025')
       expect(job.if).toBe("github.event_name == 'pull_request'")
     }
@@ -248,7 +254,7 @@ describe('CI workflow', () => {
     expect(windowsObservational['continue-on-error']).toBe(true)
 
     // serial-windows: master-only standby, self-hosted, non-blocking, lives in ci-master.
-    expect(serialWindows.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
+    expect(serialWindows.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository_owner == 'deepseek-ai'")
     expect(serialWindows['runs-on']).toEqual(['self-hosted', 'dsh-win-ci', 'windows'])
     expect(serialWindows.name).toBe('serial / windows (self-hosted standby)')
     // Its store must share the ReFS workspace volume for clone; the install
@@ -336,9 +342,9 @@ describe('CI workflow', () => {
       }, { timeout: 1000 })
     }
     for (const [name, selector, variable, pool, hosted] of [
-      ['linux gates', selectors.linux, 'DSH_CI_FAILOVER_LINUX', ['self-hosted', 'linux', 'x64', 'vm-backup'], 'dsh-ubuntu-24-04-16core'],
+      ['linux gates', selectors.linux, 'DSH_CI_FAILOVER_LINUX', ['self-hosted', 'linux', 'x64', 'vm-backup'], 'ubuntu-latest'],
       ['linux aggregate', selectors.linuxAggregate, 'DSH_CI_FAILOVER_LINUX', ['self-hosted', 'linux', 'x64', 'vm-backup'], 'ubuntu-latest'],
-      ['windows lanes', selectors.windows, 'DSH_CI_FAILOVER_WINDOWS', ['self-hosted', 'dsh-win-ci', 'windows'], 'dsh-windows-2025-16core'],
+      ['windows lanes', selectors.windows, 'DSH_CI_FAILOVER_WINDOWS', ['self-hosted', 'dsh-win-ci', 'windows'], 'windows-latest'],
     ] as const) {
       expect(evaluate(selector, { [variable]: 'blacksmith' }), `${name} blacksmith value`).toMatch(/^blacksmith-/)
       expect(evaluate(selector, { [variable]: 'selfhosted' }), `${name} selfhosted value`).toEqual(pool)
@@ -461,7 +467,10 @@ describe('CI workflow', () => {
       group: '${{ github.workflow }}-${{ github.ref }}',
       'cancel-in-progress': true,
     })
-    expect(prWorkflow.concurrency).toEqual(workflow.concurrency)
+    expect(prWorkflow.concurrency).toEqual({
+      group: '${{ github.workflow }}-${{ github.ref }}',
+      'cancel-in-progress': "${{ github.event_name != 'push' }}",
+    })
 
     // The exact event sets are what keep master-only jobs out of the PR check
     // panel: ci-master triggers only on push(master) + workflow_dispatch and
@@ -479,21 +488,17 @@ describe('CI workflow', () => {
       if (!isRecord(job)) throw new TypeError(`${name} must be defined`)
       expect(job.concurrency).toBeUndefined()
       // Standby drills remain post-merge work, but share run cancellation.
-      expect(job.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
+      expect(job.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository_owner == 'deepseek-ai'")
     }
 
     // Pin the post-merge runtime, Wine, and standby inventory.
-    const NOT_PUSH_REACHABLE = new Set([
-      "github.event_name == 'workflow_dispatch' && inputs.suite == 'larger-runner-benchmark'",
-      "github.event_name == 'workflow_dispatch' && inputs.suite == 'consolidated-runner-benchmark'",
-    ])
     const pushReachable = Object.entries(workflow.jobs)
       .filter(([, job]) => {
         if (!isRecord(job)) return false
         if (job.if === undefined) return true // unconditional: runs on every event
         if (job.if === false) return false // `if: false` parses as a boolean
         if (typeof job.if !== 'string') return true // unrecognized shape: surface it
-        return !NOT_PUSH_REACHABLE.has(job.if.trim())
+        return !job.if.trim().startsWith("github.event_name == 'workflow_dispatch'")
       })
       .map(([name]) => name)
       .sort()
@@ -940,13 +945,12 @@ describe('Issue lifecycle workflow', () => {
     const lifecycleJob = workflowJob(lifecycle, 'lifecycle')
     if (!Array.isArray(lifecycleJob.steps)) throw new TypeError('Issue lifecycle job must define steps')
 
-    // The job has no job-level `if`, so it is listed on every pull_request /
-    // pull_request_review event and reports success instead of a gray skip. The
-    // write-capable steps are gated at step level so approved/commented reviews
-    // never mint a Project/Issue App token nor touch the board.
+    // The upstream owner runs the job for PR events and changes-requested
+    // reviews; forks skip because they do not hold the issue-management App.
     expect(lifecycle.on).toHaveProperty('pull_request')
     expect(lifecycle.on).toHaveProperty('pull_request_review')
-    expect(lifecycleJob.if).toBeUndefined()
+    const upstreamLifecycle = "${{ github.repository_owner == 'deepseek-ai' && (github.event_name != 'pull_request_review' || (github.event.action == 'submitted' && github.event.review.state == 'changes_requested')) }}"
+    expect(lifecycleJob.if).toBe(upstreamLifecycle)
     // Keep the subscription-type gates: issue-lifecycle does not re-subscribe
     // ready_for_review (issue-policy owns that) and only reacts to submitted
     // review events.

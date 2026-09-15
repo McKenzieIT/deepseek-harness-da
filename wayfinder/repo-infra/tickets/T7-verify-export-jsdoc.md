@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: post-discovery
-**Status**: open
+**Status**: closed (verified 2026-09-15)
 **Assignee**: unclaimed
 **Related**: PR #44 CI `node 24 / static` 失败 step "Run static gates"（job 101598597553，run 34074751506，2026-09-07 02:00）。pre-existing on master（latent，非 W20 引入）。**verify 仍红 on current master cf813c18c0（CI run 34077728551）before fixing——concurrent PRs #45–#51 (GA-AUDIT1/GA-GT3 followup) 可能已 fix 部分。**
 
@@ -20,3 +20,7 @@
 ## Scope
 
 补全 402 处 exported API 的 JSDoc（`@param`/`@returns`/完整 JSDoc），验 `pnpm run verify-export-jsdoc` 绿。CI log: job 101598597553（grep `verify-export-jsdoc`）。先 verify 仍红 on current master。
+
+## Resolution
+
+`origin/master` `ac3e162d961b8a48c10aad5b750679184f87a0e9` 上 `pnpm run check:ci:static` 的 `export jsdoc` 通过；整组结果为 51 passed / 0 failed。该历史失败已被后续提交消除，本票不再需要代码修改。

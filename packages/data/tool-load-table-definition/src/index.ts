@@ -34,8 +34,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { TableDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { TableDefinition } from '@deepseek-ai/dsh-semantic-layer'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 
 export const name = 'tool-load-table-definition'
 export const inject = ['tools']

@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Status**: open
-**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md), [G17 Executor adapters](G17-native-source-adapters.md)
+**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅, [G17 Executor adapters](G17-native-source-adapters.md)
 **Blocks**: [G22 Cross-session and multi-agent scheduling](G22-cross-session-multi-agent-scheduling.md)
 
 ## Question

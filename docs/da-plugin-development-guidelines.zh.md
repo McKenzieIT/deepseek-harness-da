@@ -148,6 +148,9 @@ Events 解耦了 producer 和 consumer：tool registry 不 import audit 插件�
 ```ts
 // packages/data/credentials-addressed/src/index.ts
 // da-specific wrapper: adds per-user addressing over ctx.credentials
+import { Context, Service } from '@deepseek-ai/cordis'
+import type { CredentialAddress, CredentialRef } from '@deepseek-ai/dsh-credentials'
+
 export const inject = ['credentials'] as const
 
 export class AddressedCredentialProvider extends Service {
@@ -158,6 +161,8 @@ export class AddressedCredentialProvider extends Service {
   }
 }
 ```
+
+该路径仅用于说明模式；当前 workspace 不包含 `credentials-addressed` 包。
 
 da 的 Consumer 注入 `'addressedCredentials'`；upstream 的 `ctx.credentials` 不被修改。
 

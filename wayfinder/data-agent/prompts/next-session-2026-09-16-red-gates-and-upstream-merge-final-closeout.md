@@ -1,5 +1,16 @@
 # Next session — clear the now-visible CI red gates, then give upstream-merge a clean closeout
 
+## Update (2026-09-15 14:22 CST) — a concurrent session landed #139 / #140; T16 closed
+
+Read this section **before** the rest — it supersedes the dated facts below.
+
+- **`origin/master` is now `0b12b9221fcb1ac0abf59d400b974f5011566fd3`**, not `36412df46f`. Two commits landed after this prompt was written: `0b12b9221f` (#139, task-orchestration-dag bookkeeping — unrelated to this effort) and `5e5b09dd26` (#140, the duplication-gate ratchet below). Re-fetch and read `origin/master` yourself; this will already be stale again.
+- **T16 → resolved.** A concurrent session (PR #140) adopted the ratchet posture this ticket's grilling was asking for: `*.spec.ts` / `*.spec.tsx` now excluded (it was `**/tests/**` only), production types/TSX stay in the corpus, and `.jscpd.json` gained `threshold: 0.338` = the post-exclusion baseline (0.337455%, 87 clones). Verified: with the master config `pnpm run duplication` now **exit 0** (was `exit 1` / 89 clones). So the Phase-1 instruction to "answer T16's three scope questions first" is **done** — skip it. T16's own `## Resolution` recorded the answers.
+- **The fail-fast is gone, which changes the gate inventory.** Previously `duplication` failed inside `lint and duplication` and aborted `node 24 / snapshots and artifacts`, hiding five further gates. They are now runnable for the first time — their real state is **unknown until you run CI**. Do not assume they pass; do not assume they fail. When you open Phase 1's first real-CI PR, inspect `snapshots and artifacts` + `windows node 24 / observational` for: `test:expected`, `web browser snapshot`, `doc-typecheck:contracts-ready` (= T15, still partially-fixed), `node-next types` (still no ticket → T17), `built-bin smoke`. Each becomes its own triage if red.
+- **Closeout honesty note (Phase 4):** the ratchet means the duplication gate is *executable* again, not that the 87 baseline clones are gone. A closeout that says "CI green" must state "duplication gate passes on the ratchet baseline; 87 pre-existing clones remain as tracked debt in T16" — not "no duplication". Real dedup is still owed and should lower `threshold` over time per T16's plan.
+
+Everything else below (T10/T11/T12/T7/T8/T9, upstream currency, cleanup, the closeout phases) still applies as written — just re-verify the SHAs and ticket statuses, per rule 6.
+
 ## Invocation
 
 Use the `wayfinder` skill. Work from a **fresh isolated worktree created off freshly-fetched `origin/master`** (see Phase 0). This effort carries execution: fix the gates, verify the specialty, clean up, and seal it — do not stop after producing a plan.
