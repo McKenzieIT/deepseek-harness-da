@@ -33,7 +33,7 @@
 
 ## Open tickets
 
-- [T11: test:coverage 红](tickets/T11-test-coverage-failing.md) — 2 failed suites + 1 failed test（`renderSlot('root')` boot order）（**frontier — 需定位 failing test**）
+- [T11: test:coverage 红](tickets/T11-test-coverage-failing.md) — deterministic expectation batch 已修并 focused 106 tests 通过；剩余 package-invariant README 迁移、runtime fixture、UI token 与 CI reliability 根因继续收口（**frontier**）
 - [T12: windows native complete CI 红](tickets/T12-windows-native-complete.md) — investigate（疑 downstream of T7–T10 + T4/T5 + windows-specific）（**frontier — research**）
 
 - [T14: ci.yml / ci-master.yml startup_failure](tickets/T14-ci-workflow-startup-failure.md) — **fix 已落地（2026-09-15），等首个真实 PR 运行确认**。三处 workflow 语法破损（`ci.yml` 重复顶层 `concurrency` 键；`ci-master.yml` 两个 job 级 `if:` 顶格 + 两处 `timeout-minutes` 粘在折叠标量末尾）让两个 workflow 长期 **0 秒 startup_failure**，`jobs: []` ⇒ **fork 的 `check:ci:static` / `check:ci:coverage` / Windows 门在 CI 里一次都没跑过**（此前所有「CI 绿」只覆盖 Release / Node Addon / Matrix 这几条独立 workflow）。actionlint 已零 syntax 报错。**预期修复后立刻暴露一批既有红门——那是第一次看见真相，不是回归**。
