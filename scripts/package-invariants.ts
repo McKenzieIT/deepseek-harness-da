@@ -41,7 +41,7 @@ export function packageInvariantOwners(root: string): PackageInvariantOwner[] {
     .filter(owner => existsSync(resolve(root, owner.sourcePath)))
 }
 
-/** Discover every release package governed by the invariant policy. */
+/** Discover every package under the repository package tree. */
 function packageInvariantPackages(root: string): PackageInvariantOwner[] {
   return globSync('packages/*/*/package.json', { cwd: root })
     .map(path => path.split(sep).join('/'))
