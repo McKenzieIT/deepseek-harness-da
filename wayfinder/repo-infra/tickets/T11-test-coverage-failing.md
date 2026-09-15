@@ -27,3 +27,7 @@ dominant error：`renderSlot('root') before any 'root' registration (boot order)
 ## 2026-09-15 runtime fixture and generated-remote dependency batch
 
 四项稳定失败已按当前契约修复：credentials fixture 使用 version 1 `refs` 文档；subagent 断言 `personaPrefix`；client bundle 断言 `zod` 属外部依赖；`schema-gateway`、`evidence-query` 与 `result-cache` 声明 generated remote 实际 import 的 `zod` runtime dependency。focused run 为 4 files / 94 tests 全绿，`verify-package-dependencies` 与 `verify-runtime-closure` 均通过。
+
+## 2026-09-15 client visual-token batch
+
+`ui-theme` 的两项 repository-wide CSS 检查稳定复现 24 个 neutral-token `1px` border 与 3 个未配对的 full-round radius。受影响组件统一使用 `0.5px` neutral border，并在满圆角声明旁加入 `corner-shape: round`；focused run 为 2 files / 11 tests 全绿。
