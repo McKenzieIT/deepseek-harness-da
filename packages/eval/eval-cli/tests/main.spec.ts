@@ -68,7 +68,12 @@ describe('CLI case loading', () => {
       '--pass-k', '1',
       '--case', 'k11v2_059',
       '--skip-health-gate',
-    ], { DSH_HOME: dshHome('fake-for-test'), EVAL_LLM_PROVIDER: 'aga', EVAL_LLM_MODEL: 'qwen3.7-max' })
+    ], {
+      DSH_HOME: dshHome('fake-for-test'),
+      DASHSCOPE_BASE_URL: 'http://127.0.0.1:1',
+      EVAL_LLM_PROVIDER: 'aga',
+      EVAL_LLM_MODEL: 'qwen3.7-max',
+    })
     expect(status).toBe(0)
     expect(stdout).toContain('Loading 1 case(s)')
     expect(stdout).toContain('k11v2_059')
