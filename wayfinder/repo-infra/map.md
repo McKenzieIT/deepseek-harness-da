@@ -34,7 +34,10 @@
 - [T11: test:coverage 红](tickets/T11-test-coverage-failing.md) — 2 failed suites + 1 failed test（`renderSlot('root')` boot order）（**frontier — 需定位 failing test**）
 - [T12: windows native complete CI 红](tickets/T12-windows-native-complete.md) — investigate（疑 downstream of T7–T10 + T4/T5 + windows-specific）（**frontier — research**）
 
-> T7–T12 均 pre-existing GA-FORK-CI gates on master（concurrent session 驱动，PR #67/#68/#69/#79 等逐步 fix；fix 前先 verify 仍红 on current master）。T2/T4/T5/T6/T13 已 closed（见 Decisions so far）。
+- [T14: ci.yml / ci-master.yml startup_failure](tickets/T14-ci-workflow-startup-failure.md) — **fix 已落地（2026-09-15），等首个真实 PR 运行确认**。三处 workflow 语法破损（`ci.yml` 重复顶层 `concurrency` 键；`ci-master.yml` 两个 job 级 `if:` 顶格 + 两处 `timeout-minutes` 粘在折叠标量末尾）让两个 workflow 长期 **0 秒 startup_failure**，`jobs: []` ⇒ **fork 的 `check:ci:static` / `check:ci:coverage` / Windows 门在 CI 里一次都没跑过**（此前所有「CI 绿」只覆盖 Release / Node Addon / Matrix 这几条独立 workflow）。actionlint 已零 syntax 报错。**预期修复后立刻暴露一批既有红门——那是第一次看见真相，不是回归**。
+- [T15: doc-typecheck 长期红](tickets/T15-doc-typecheck-plan-sketches.md) — **partially fixed（2026-09-15），门仍红**。`docs/superpowers/plans/` 的 plan 草图被当 API 示例编译（一份文件 363 条诊断），已按 `verify-translation-pairing` 的同目录先例排除；排掉噪声后露出 **2 个真实 fence** 编译失败（`docs/da-plugin-development-guidelines.md:148` 缺 import、`packages/client/result-cache/README.md:29` 的 `sessions` 未定义），诊断 363 → 9。**不能用 `ignore-check` 逃避**：真实语料的 opt-out 比率恰好贴着 50% 阈值（85/171 = 49.7%，标 1 对就 50.9% 红）——票内有实测算术表。
+
+> T7–T12 均 pre-existing GA-FORK-CI gates on master（concurrent session 驱动，PR #67/#68/#69/#79 等逐步 fix；fix 前先 verify 仍红 on current master）。T2/T4/T5/T6/T13 已 closed（见 Decisions so far）。T14/T15 由 data-agent 的 upstream-merge 收口审计（UM17）发现后按域移交本 effort——**它们不是 data-agent 的票**。
 
 ## Not yet specified
 

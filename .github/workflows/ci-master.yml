@@ -280,7 +280,7 @@ jobs:
   # Manual, bounded comparison of the actual critical Linux and Windows lanes.
   # The named pools are restricted at the organization level to this repository.
   larger-runner-benchmark:
-if: github.event_name == 'workflow_dispatch' && inputs.suite == 'larger-runner-benchmark' && github.repository_owner == 'deepseek-ai'
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'larger-runner-benchmark' && github.repository_owner == 'deepseek-ai'
     # Default measures the repository's own fleet tiers; under the matching
     # platform's blacksmith failover value the tiers Blacksmith offers (up to
     # 32 vCPU) move onto their Blacksmith equivalents, while the 64/96-core
@@ -289,7 +289,8 @@ if: github.event_name == 'workflow_dispatch' && inputs.suite == 'larger-runner-b
       ${{ (matrix.platform == 'linux' && vars.DSH_CI_FAILOVER_LINUX == 'blacksmith'
             || matrix.platform == 'windows' && vars.DSH_CI_FAILOVER_WINDOWS == 'blacksmith')
           && matrix.blacksmith
-          || matrix.runner }}    timeout-minutes: 15
+          || matrix.runner }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       max-parallel: 12
@@ -390,7 +391,7 @@ if: github.event_name == 'workflow_dispatch' && inputs.suite == 'larger-runner-b
   # complete unsharded primary aggregate with bounded in-runner parallelism;
   # Windows runs both blocking build targets concurrently through run-gates.
   consolidated-runner-benchmark:
-if: github.event_name == 'workflow_dispatch' && inputs.suite == 'consolidated-runner-benchmark' && github.repository_owner == 'deepseek-ai'
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'consolidated-runner-benchmark' && github.repository_owner == 'deepseek-ai'
     # Default measures the repository's own fleet tiers; under the matching
     # platform's blacksmith failover value the tiers Blacksmith offers (up to
     # 32 vCPU) move onto their Blacksmith equivalents, while the 64/96-core
@@ -399,7 +400,8 @@ if: github.event_name == 'workflow_dispatch' && inputs.suite == 'consolidated-ru
       ${{ (matrix.platform == 'linux' && vars.DSH_CI_FAILOVER_LINUX == 'blacksmith'
             || matrix.platform == 'windows' && vars.DSH_CI_FAILOVER_WINDOWS == 'blacksmith')
           && matrix.blacksmith
-          || matrix.runner }}    timeout-minutes: 15
+          || matrix.runner }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       max-parallel: 12
