@@ -51,6 +51,8 @@ The suite must mount beside upstream packages, use documented DSH services, even
 
 **Frontier:** [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md).
 
+**Current checkpoint:** [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md) remains claimed. Its accepted working decisions are recorded through the single-primary-binding choice; the next session continues with exact identity/reference fields, cancellation and late-result handling, and final protocol synthesis.
+
 **Next session rule:** resolve one frontier ticket per session unless the user explicitly requests an exception.
 
 ## Decisions so far

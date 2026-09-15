@@ -20,3 +20,7 @@ The first release supports concurrency across independent Tasks but rejects same
 Ready-order coverage must prove deterministic `priority DESC, readySinceSeq ASC, taskId ASC` ordering, skip-not-fit behavior without head-of-line blocking, unchanged ordering after replay/resume, and no model call or duration estimate in the scheduling hot path.
 
 Treat the approved [G19 cumulative ROI audit](../research/G19-outer-loop-cumulative-roi-audit.md) as a first-release ceiling: no online human-input classifier, public AttemptPolicy/RecoveryPolicy/RunController seam, same-Task group execution, semantic progress judge, full phase runtime, or history explorer. Enforce only portable hard budgets; provider token/currency/scan metrics are observational unless a selected provider declares reliable enforcement.
+
+## Inputs from the G13 checkpoint
+
+First-release evaluation must cover the accepted [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) invariants: model-supplied IDs do not authorize work; one Agent turn and one primary Binding map to one Attempt; stale Claim generations and revisions reject late commands; native retry does not create a semantic Attempt; non-Plan activity and ExecutionObservations cannot complete Tasks; OutputRefs remain distinct from EvidenceRecords; and an unknown ExternalEffect prevents automatic replay. Cost-saving multi-Attempt turns, shared causal executions, and automated effect reconciliation are follow-up hypotheses, not first-release success criteria.

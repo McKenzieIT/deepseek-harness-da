@@ -39,3 +39,9 @@ Native subagent lineage and workflow membership do not prove Task causality. A h
 - 2026-09-15：用户确认采用闭合的核心角色—命令矩阵。`user`、`orchestrator`、`worker`、`executor-adapter`、`verifier` 和 `driver` 只能提交各自允许的 typed commands，Task Graph Service 是唯一状态提交者；角色按命令上下文授予，不是 Agent 的永久属性，也不是 bearer credential。未知角色、未知命令和越权调用 fail closed。
 
 - 2026-09-15：用户确认采用一等 `ExternalEffect`。外部语义操作拥有跨 Attempt 稳定的 `ExternalEffectId`，每次具体派发仍由单一 Attempt 的 `ExecutionBinding` 拥有；相同 target、canonical request digest、write scope、approval scope 与 provider idempotency scope 才能复用 effect identity，参数变化创建新 effect。首版记录 `pending | confirmed | rejected | unknown` 并在 unknown 时阻止重试，自动核对与补偿留给恢复 Follow-up。
+
+- 2026-09-15：用户确认采用 Host 注入执行上下文。`ExecutionTicket` 由 Host 从已提交的 Attempt、Claim 和 revisions 构造；当前 Agent 通过 `task-attempt` MessageSource 绑定，工具从执行管线上下文继承，跨进程请求由可信 adapter 显式序列化。模型只提交业务参数，模型生成或回显的 Attempt/Claim ID 不构成授权。
+
+- 2026-09-15：用户确认每个 Attempt 采用唯一根执行器。admission 确定 `executorKind`，dispatch 创建唯一 `primaryBindingId`；工具、subagent、workflow 和 external effect 通过 `parentBindingId` 成为明确子执行，skill 仅作为方法引用。子 Binding 不单独结算 Attempt，多根并行只由未来 Attempt Group 协议承载。
+
+- 2026-09-15 session checkpoint：G13 保持 claimed。下一会话从已确认决策继续，收敛 branded identity 与各 executor reference 的精确字段、取消与迟到结果规则、以及 admission/settlement 命令和状态转换表；不重新讨论以上选择，除非后续一致性检查发现矛盾。

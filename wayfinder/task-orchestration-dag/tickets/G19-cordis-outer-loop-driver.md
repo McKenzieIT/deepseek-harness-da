@@ -68,3 +68,7 @@ Research and audit basis:
 - [Community package and bundle topology](G18-community-package-and-bundle-topology.md) preserves the public-interface budget and installable Cordis composition.
 - [First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md) validates the ROI ceiling, deterministic scheduling, false-stop/wasted-compute trade-off, current-state UI, and explicit rejection of deferred capabilities.
 - Advanced Attempt Groups/routing/progress/fairness, full phase integration, Goal/Plan integration, history inspection, generic Run control, automatic input routing, and external-effect recovery remain in their named follow-ups.
+
+## Inputs from the G13 checkpoint
+
+The accepted working decisions in [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) require the driver to admit a semantically fixed Attempt with one primary Binding, bind one current-Agent turn to at most one Attempt, inject rather than solicit the ExecutionTicket, and use Host-validated actor commands. Every dispatch must be covered by a durability barrier, semantic retry creates a new `attemptNo` and `retryOfAttemptId`, and unknown external effects block readmission through a reconciliation Hold. The driver may consume authoritative Bindings, OutputRefs, EvidenceRecords, and verdicts, but never ExecutionObservations or native success alone as completion authority.
