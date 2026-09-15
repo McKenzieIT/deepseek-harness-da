@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Status**: open
-**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md), [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
+**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
 **Blocks**: [G15 Current client placement](G15-current-client-placement.md), [R5 G6 renderer adapter stability](R5-g6-renderer-adapter-stability.md), [G11 DAG view simplification strategies](G11-dag-view-simplification-strategies.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md)
 
 ## Question
@@ -15,6 +15,6 @@ React reads the normal projection and owns only selection, zoom, filters, disclo
 
 Holds remain the authoritative admission barriers and carry release condition, release authority, and automatic/explicit resume mode. The driver records each transition from runnable to quiescent as an append-only `RunStopRecord` with one core stop code plus references to every contributing Hold, Task, or Attempt; it does not create a second active blocker state. Resume appends a record linked to the stop record after all current blockers and revisions are rechecked. Define the minimal closed first-release stop-code taxonomy, projection of the current stop and history, client localization, and replay behavior without allowing plugin-specific opaque codes to bypass compatibility.
 
-## Inputs from the G13 checkpoint
+## Inputs from the G13 resolution
 
-[G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) remains open, but its accepted decisions constrain this ticket: the projection must keep `ExecutionAttempt`, authoritative `ExecutionBinding`, non-authoritative `ExecutionObservation`, `OutputRef`, `EvidenceRecord`, control requests, and `ExternalEffect` as distinguishable values. Authoritative state changes are Host-validated and covered by a durability barrier; observational data cannot authorize execution or settlement. Each ordinary Attempt has one primary Binding, and the projection must preserve Task-level `attemptNo`, `retryOfAttemptId`, `claimGeneration`, Plan mutation provenance, reserved Attempt Group identity, and Binding parentage without inventing a generic Attempt tree.
+[G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) requires the projection to keep `ExecutionAttempt`, authoritative `ExecutionBinding`, non-authoritative `ExecutionObservation`, `OutputRef`, `EvidenceRecord`, control requests, late results, and `ExternalEffect` as distinguishable values. Each ordinary Attempt has one primary Binding; Binding phase is `dispatching | running | settled`, while Attempt phase and outcome remain separate. The projection preserves branded identities, Task-level `attemptNo`, `retryOfAttemptId`, Claim generation, Plan mutation provenance, reserved Attempt Group identity, Binding parentage, typed native references, command idempotency, and durability watermarks. Attempt settlement atomically releases the Claim and creates completion or failure facts; observations and late results cannot authorize settlement, and external-effect certainty may converge after settlement without reopening terminal Task state.

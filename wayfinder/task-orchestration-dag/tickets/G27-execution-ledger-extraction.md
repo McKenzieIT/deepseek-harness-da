@@ -11,6 +11,6 @@ When should Attempt and evidence history be extracted from the Plan DAG into a s
 
 Require a second consumer, independent retention/query requirements, or projection scale. If triggered, define transaction ownership, consistency, event/projection migration, retention, indexing, API stability, and failure reconciliation without splitting one commit across two authorities.
 
-## Inputs from the G13 checkpoint
+## Inputs from the G13 resolution
 
-[G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) keeps Attempts, Bindings, Observations, OutputRefs, EvidenceRecords, and ExternalEffects inside the Plan DAG authority for the first release. Their identities and relations must remain usable if this ticket later extracts storage or query ownership, but extraction must not split admission or settlement across authorities. Flush batching is an internal optimization under the durability-barrier contract and does not by itself justify an Execution Ledger.
+[G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) keeps Attempts, Bindings, Observations, OutputRefs, EvidenceRecords, ExternalEffects, command idempotency, and late-result records inside the Plan DAG authority for the first release. Their identities and relations must remain usable if this ticket later extracts storage or query ownership, but extraction must not split atomic admission or Attempt settlement across authorities. Flush batching is an internal optimization under the durability-watermark requirement and does not by itself justify an Execution Ledger.

@@ -41,17 +41,17 @@ The suite must mount beside upstream packages, use documented DSH services, even
 ```text
 [✓] R6 Agent orchestration and loop-engineering research ─┐
 [✓] R7 DSH Cordis plugin adaptation ─────────────────────┼──▶ [✓] G12 Plan DAG ownership boundary
-                                                        └──▶ G13 ExecutionAttempt and correlation protocol
-                                                               └──▶ G19 Cordis outer-loop driver
+                                                        └──▶ [✓] G13 ExecutionAttempt and correlation protocol
+                                                               └──▶ [claimed] G19 Cordis outer-loop driver
                                                                       ├──▶ G14 Durable events and projection
                                                                       ├──▶ G16 Model tools and preset composition
                                                                       ├──▶ G17 Executor adapters
                                                                       └──▶ G7 writeScopes conflict semantics
 ```
 
-**Frontier:** [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md).
+**Frontier:** none unclaimed. [G19 Cordis outer-loop driver, verification, and budgets](tickets/G19-cordis-outer-loop-driver.md) is already claimed and is now the active unblocked ticket.
 
-**Current checkpoint:** [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md) remains claimed. Its accepted working decisions are recorded through the single-primary-binding choice; the next session continues with exact identity/reference fields, cancellation and late-result handling, and final protocol synthesis.
+**Current checkpoint:** [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md) is resolved. The next session should reconcile the proposed G19 resolution with the final correlation, cancellation, and settlement protocol before closing G19.
 
 **Next session rule:** resolve one frontier ticket per session unless the user explicitly requests an exception.
 
@@ -69,6 +69,7 @@ The suite must mount beside upstream packages, use documented DSH services, even
 - [R6 Agent orchestration and loop-engineering research](research/R6-agent-orchestration-and-loop-engineering.md): the feature requires a writable Plan DAG, separate attempts, evidence-based completion, bounded continuation, and local repair before global replanning.
 - [R7 DSH Cordis plugin adaptation](research/R7-dsh-cordis-plugin-adaptation.md): the first release can use public Cordis extension points without changing `agent-loop`; capability, tools, driver, adapters, client, and installable bundle remain separate roles.
 - [G12 Plan DAG ownership boundary](tickets/G12-task-graph-authority.md): the Plan DAG owns Plan Runs, Tasks, attempts, verification, execution references, holds, budgets, and stop records while executor internals remain separate; stable identities, layered revisions, hard dependencies, explicit concurrency, and evidence-based completion define the later protocol.
+- [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md): Host-issued execution context, one causal Binding owner, durable dispatch intents, idempotent fenced commands, independent output and evidence records, and immutable cancellation and late-result settlement define Task-to-executor correlation.
 
 ## Not yet specified
 
