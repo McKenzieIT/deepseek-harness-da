@@ -42,4 +42,4 @@ DeepSeek defaults 用例在收到主请求后仅保活固定 180 ms，却断言�
 
 ## 2026-09-15 coverage Python environment batch
 
-Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data runtime 明示承诺的 pandas/numpy；对应两项用例均以 `ModuleNotFoundError` 失败。两个 coverage job 统一安装 Python 3.10 及固定版本 `numpy==2.2.6`、`pandas==2.3.3`，workflow spec 锁定这两个平台的相同前置条件。
+Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data runtime 明示承诺的 pandas/numpy；对应两项用例均以 `ModuleNotFoundError` 失败。两个 coverage job 统一安装 Python 3.10 及固定版本 `numpy==2.2.6`、`pandas==2.3.3`。由于 runtime 有意使用 `env: {}` 隔离模型代码，裸 `python3` 不会继承 setup-python 注入的 PATH；coverage step 通过 `DSH_TEST_PYTHON_PATH` 把 action 输出的绝对解释器路径交给测试 fixture，workflow spec 锁定安装与传递两段配置。
