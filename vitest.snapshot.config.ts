@@ -60,7 +60,9 @@ export default defineConfig({
     // refresh write-back harvests volatile values from fixtures already on
     // disk, so concurrent writers would corrupt expected outputs.
     testTimeout: 120_000,
-    hookTimeout: 30_000,
+    // Scaffold setup and teardown launch the same built application processes
+    // as test bodies, so they receive the lane's full contention budget.
+    hookTimeout: 120_000,
     fileParallelism: (process.env.DSH_SNAPSHOT || 'replay') === 'replay' && snapshotMaxConcurrency > 1,
     maxConcurrency: snapshotMaxConcurrency,
   },
