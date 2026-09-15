@@ -614,6 +614,16 @@ function verifyTag(
     )
     return
   }
+  // A checkout that never fetched the tag cannot testify about where it points.
+  // `actions/checkout` fetches no tags even at fetch-depth 0, so treating an
+  // absent tag as a mismatch failed this gate on every CI run — the same
+  // "this checkout cannot verify it" case the sha checks report as skipped.
+  if (gitOptional(root, ['rev-parse', '--verify', '--quiet', `refs/tags/${sync.upstreamTag}`]) === undefined) {
+    report.skipped.push(
+      `${label}: upstreamTag ${JSON.stringify(sync.upstreamTag)} not present in this checkout — tag not cross-checked`,
+    )
+    return
+  }
   const tagList = tags.split('\n').map(t => t.trim()).filter(t => t !== '')
   if (!tagList.includes(sync.upstreamTag)) {
     report.failures.push(

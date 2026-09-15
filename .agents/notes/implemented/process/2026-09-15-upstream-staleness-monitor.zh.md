@@ -12,7 +12,7 @@ Status: implemented
 
 [`upstream-monitor`](../../../../scripts/upstream-monitor.ts) 是覆盖同一份记录与同一次引用探测的独立门禁。它在超出记录声明的阈值时以 1 退出，在记录不可读、违反自身形状约定或所记上游提交不是 `HEAD` 的祖先时以 2 退出，在无法探测远端时以 3 退出，在无法证明新鲜度时以 4 退出——陈旧的跟踪引用或缺失的计数永远不会被报告为成功。滞后判定不进入为拉取请求把关的 [`verify-upstream-sync-record`](../../../../scripts/verify-upstream-sync-record.ts)：上游的推进与任何拉取请求无关，把落后计数放在那里会让无关的改动失败，并在一周内被关掉。
 
-[`upstream-monitor.yml`](../../../../.github/workflows/upstream-monitor.yml) 在每周一 21:17 UTC（即周二 05:17 Asia/Shanghai）以及手动派发时运行这两条命令，权限为 `contents: read`，按引用与事件各保留一个不可取消的运行，并且在失败的运行上同样把报告留存为构件。失败的运行本身就是通知；不创建 Issue，因为自动建 Issue 首先要定义写权限、去重、更新与关闭行为。
+[`upstream-monitor.yml`](../../../../.github/workflows/upstream-monitor.yml) 在每天 21:17 UTC（即 05:17 Asia/Shanghai）以及手动派发时运行这两条命令，权限为 `contents: read`，按引用与事件各保留一个不可取消的运行，并且在失败的运行上同样把报告留存为构件。之所以按天而非按周：阈值是 14 天与 150 个提交，按周探测可能让一次越界搁置最多 7 天——把一半的天数阈值花在上报延迟上——而单次运行成本约一分钟。失败的运行本身就是通知；不创建 Issue，因为自动建 Issue 首先要定义写权限、去重、更新与关闭行为。
 
 `probeRef` 现在先探测远端再读取跟踪引用，这正是它自己的文档一直声称的约定。两条命令都接受 `--root <path>`，因此夹具套件针对带路径式 `upstream` 远端的临时仓库驱动陈旧、未知与记录畸形这几条分支，绝不触碰真实远端。
 

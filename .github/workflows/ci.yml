@@ -29,13 +29,12 @@ env:
   # into apps/cli/cordis.yml (AppCLIEntry disables the row when set).
   DSH_TELEMETRY_DISABLED: '1'
 
-# Cancel a superseded pull-request run on a new push so a fresh head does not
-# queue a second full 9-job run behind a stale one (paid enterprise runners
-# would otherwise stack with no auto-cancellation).
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
+# The superseded-run cancellation this comment described lived in a SECOND
+# top-level `concurrency:` block here. GitHub rejects a duplicated top-level
+# key outright, so every run of this workflow ended as a 0-second
+# startup_failure and none of its gates ever executed. The block above is the
+# one that survives: it keeps the same group and deliberately does NOT cancel
+# push runs, because those carry the self-hosted standby drills.
 jobs:
 
   # Three enterprise jobs isolate coverage, static analysis, and the

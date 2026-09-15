@@ -16,14 +16,16 @@ name: Upstream monitor
 # write permissions plus deduplication, update, and closure behavior, none of
 # which this workflow designs.
 #
-# Schedule: 21:17 UTC Monday, which is 05:17 Asia/Shanghai Tuesday. Weekly
-# probes twice inside the 14-day staleness threshold the record declares.
+# Schedule: 21:17 UTC daily, which is 05:17 Asia/Shanghai. Daily rather than
+# weekly because the record's own thresholds are 14 days and 150 commits: a
+# weekly probe can report a breach up to 7 days after it happens, which is
+# half the day-threshold spent on latency. One run costs about a minute.
 #
 # GitHub disables scheduled workflows after 60 days without repository
 # activity; a manual `workflow_dispatch` run re-enables them.
 on:
   schedule:
-    - cron: '17 21 * * 1'
+    - cron: '17 21 * * *'
   workflow_dispatch:
 
 permissions:
