@@ -80,6 +80,8 @@ pnpm vitest run packages/data/scope-registry
 pnpm verify-cordis-config
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-scope-registry` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

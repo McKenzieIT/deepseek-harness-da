@@ -22,6 +22,8 @@ Scope-routing tools for the data agent: list_scopes, switch_scope + alias-based 
 
 Scope-routing tools for the data agent: list_scopes, switch_scope + alias-based system-prompt hints for automatic scope detection
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-scope-routing` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

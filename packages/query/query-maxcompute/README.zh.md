@@ -28,6 +28,8 @@ MaxCompute 查询引擎提供方（`ctx.query`）：da 自持 raw MCP SDK Client
 
 实现 `MaxComputeQueryEngine extends QueryEngine`——一个自持 `@modelcontextprotocol/sdk` 原始 `Client` + `StdioClientTransport` 连接到 stdio sidecar 子进程的 Provider。所有 sidecar 工具（`execute`、`attach`、`cancel`、`get_progress`、`estimate_cost`、`set_credentials`、`invalidate_scope`）均通过 raw name 程序化调用，无一进入 `ctx.tools`（非模型可调用）。特性包括崩溃时懒重启（crash-loop 有界重试）、per-call 凭证推送经 `set_credentials`（幂等 drop）、出站取消经 `AbortSignal`。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-query-maxcompute` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

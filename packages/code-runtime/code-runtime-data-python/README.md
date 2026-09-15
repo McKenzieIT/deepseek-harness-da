@@ -55,6 +55,8 @@ Every field is validated and defaulted; `cpuSeconds`, `addressSpaceBytes`, and `
 
 A `CodeRunResult.error.kind` is one of: `worker-exit` (spawn error or the process exited before a `done`), `timeout` (wall-clock ceiling), `abort` (caller signal or runtime disposal), `output-limit` (completion value over `maxValueBytes`), `exception` (program or binding-error traceback, or a bootstrap crash), `invalid-output` (completion is not lossless JSON).
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-code-runtime-data-python` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

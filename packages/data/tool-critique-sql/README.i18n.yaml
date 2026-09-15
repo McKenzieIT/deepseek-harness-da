@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/tool-critique-sql/README.md
-README.md: c8fbed8f40fd8b1e5f8b5b75aec26a1011a7ef5d
-README.zh.md: 53d36a3bc1c30f1015174967a3d03ad73fc81b76
+README.md: 10b4824776c502b9186ca0232d266aba4905397b
+README.zh.md: e10df7483b2564e6d4c4abeaa82ba8989bce2f5b

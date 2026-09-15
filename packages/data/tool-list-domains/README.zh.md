@@ -22,6 +22,8 @@ TODO: translate: Model-facing list_domains tool: enumerate semantic layer domain
 
 面向模型的 list_domains 工具：枚举语义层域，并按种类给出资产数量
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-list-domains` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

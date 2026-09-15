@@ -22,6 +22,8 @@ TODO: translate: Model-facing search_schema tool: BM25 search over the semantic 
 
 面向模型的 search_schema 工具：在语义层上进行 BM25 检索，供管理 agent（智能体）通过自然语言查询发现资产。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-search-schema` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

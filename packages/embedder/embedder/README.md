@@ -27,6 +27,8 @@ Abstract embedder seam (`ctx.embedder`) + Reranker peer protocol + InferenceErro
 
 Defines the `EmbedderService extends Service` contract: `dim`, `modelId`, `embed(texts) → float[][]` async. Also declares the Reranker peer protocol (`modelId`, `rerank` async — injected post-RRF, not a top-level seam) and the `InferenceError` taxonomy (unavailable / timeout / not_ready / dim_mismatch) that triggers BM25-only degradation in retrieval providers.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-embedder` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

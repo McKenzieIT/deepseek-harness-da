@@ -22,6 +22,8 @@ Dedicated management agent session for the full-screen graph management UI — c
 
 Dedicated management agent session for the full-screen graph management UI — creates a scoped session under the semantic-layer-management preset with read-only parent context reference
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-management-session` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

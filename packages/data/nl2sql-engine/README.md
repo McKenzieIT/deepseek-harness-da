@@ -55,6 +55,8 @@ The 9 scenarios (S1–S9) validate BM25 linking + prompt + critic gate + JSON-pa
 
 #1 `hasPartitionFilter` greedy cross-statement/clause → scoped to the WHERE clause of each `;`-split statement. #2 `hasSelectStar` missed `t.*` + `SELECT a, *` → parses the select list. #3 `running` → continues via `attach` (check_query) up to 3×. #4 `FailureKind` normalized lower_snake. #5 `NearDupGate.hash` removes ALL whitespace. #6 `Bm25Linker` uses the hit's payload directly (no redundant re-find). #7 c07's dead `__never__` ODPS entry removed (`odps` optional).
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-nl2sql-engine` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

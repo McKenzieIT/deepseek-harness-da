@@ -62,6 +62,8 @@ data-agent bundle 禁用 base `credentials`（credentials-local）并挂载本 h
 
 runtime-exfil ACL（P12c：原生 Security-framework 绑定 + harness 代码签名）经评估为 **over-spec 并 dropped（2026-08-21）**——破坏 dsh 开箱即用（tsx/node 脚本无 binary 可签），且 runtime-exfil 威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖（业务用户 agent 禁 bash；admin 拮余解锁期窗口=可信操作者自风险）。故本 host 落地的是开箱即用下的最终态：静态加密 + locked-keychain + 按用户 CRUD + branding + 可写全局 fallback。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-credentials-keychain-host` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

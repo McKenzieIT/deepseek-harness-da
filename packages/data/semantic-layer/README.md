@@ -72,6 +72,8 @@ pnpm verify-cordis-config                            # bundle/preset mount resol
 
 Bundle wiring (the `semantic-layer` row in `packages/bundle/data-agent/cordis.patch.yml`) is a follow-up with the live-engine provider + the `load_*` tool packages.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-semantic-layer` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

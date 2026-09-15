@@ -22,6 +22,8 @@ TODO: translate: Postgres query-engine provider (ctx.query): GA-GT2-D4 second-en
 
 Postgres 查询引擎提供方（ctx.query）：GA-GT2-D4 第二引擎桩（stub），验证引擎无关的抽象——getConventions 加载 Postgres 方言；execute/attach/cancel/getProgress 抛出未实现（seam 验证，而非真实的 PG 执行器）
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-query-postgres` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

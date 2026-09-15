@@ -49,6 +49,8 @@ TODO: translate: Toolview card for the present_table INTERPRETATION tool: data t
 
 4 个 spec 文件共 141 个测试；fixture（测试前置数据）使用真实的 `renderCompleted` 输出格式（result_id 行、省略标记、行数尾注），因此解析器约定不会与 `dsh-query-tool` 静默漂移，fetchResult 布线 spec 覆盖结果存储主路径、TSV 缓存未命中兜底、fresh-vs-folded 失效以及重试 = 重新拉取。R4 图表 spec 覆盖全部 9 种原生类型、`valueLabelsPlugin` 的绘制分支、校验器的降级为 bar 规则以及工具栏开关。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-client-ui-present-table` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

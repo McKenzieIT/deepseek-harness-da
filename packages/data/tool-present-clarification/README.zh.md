@@ -22,6 +22,8 @@ TODO: translate: Model-facing present_clarification tool: present a clarifying q
 
 面向模型的 present_clarification 工具：向用户提出澄清问题并中止轮次，等待用户回答（self-evolution #2a；可在任意阶段调用）
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-present-clarification` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

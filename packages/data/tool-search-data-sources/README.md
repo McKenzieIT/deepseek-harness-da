@@ -88,6 +88,8 @@ pnpm verify-cordis-config                                      # preset mount re
 
 The preset row (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-search-data-sources`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING` whitelist already names `search_data_sources`, so registering it makes it callable in that phase.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-search-data-sources` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

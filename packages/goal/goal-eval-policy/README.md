@@ -55,6 +55,8 @@ tsc -b packages/goal/goal-eval-policy/tsconfig.json   # typecheck
 pnpm vitest run packages/goal/goal-eval-policy          # unit + integration
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-goal-eval-policy` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

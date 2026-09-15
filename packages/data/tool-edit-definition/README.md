@@ -22,6 +22,8 @@ Model-facing edit_definition tool: apply partial patches to semantic layer asset
 
 Model-facing edit_definition tool: apply partial patches to semantic layer asset definitions with audit trail
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-edit-definition` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

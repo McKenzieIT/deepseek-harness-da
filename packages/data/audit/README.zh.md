@@ -47,6 +47,8 @@ pnpm vitest run packages/data/audit         # 12 specs
 pnpm verify-cordis-config                   # bundle mount resolves
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-audit` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

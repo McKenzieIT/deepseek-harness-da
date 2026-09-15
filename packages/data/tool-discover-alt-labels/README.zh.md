@@ -22,6 +22,8 @@ TODO: translate: Model-facing discover_alt_labels tool: AI-native SKOS alias dis
 
 面向模型的 discover_alt_labels 工具：在语义层之上进行 AI 原生的 SKOS 别名发现（CL-1 Phase 3 富集），用于 management agent 的富集阶段。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-discover-alt-labels` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

@@ -22,6 +22,8 @@ TODO: translate: Admin + access isolation: per-user login, identity, scope resol
 
 管理 + 访问隔离：按用户登录、身份、scope 解析、PAT 自助、fail-closed 授权
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-admin` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

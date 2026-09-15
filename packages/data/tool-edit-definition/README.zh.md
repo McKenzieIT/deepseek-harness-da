@@ -22,6 +22,8 @@ TODO: translate: Model-facing edit_definition tool: apply partial patches to sem
 
 面向模型的 edit_definition 工具：对语义层资产定义应用部分补丁，并记录审计轨迹
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-edit-definition` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

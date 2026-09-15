@@ -52,6 +52,8 @@ tsc -b packages/eval/eval-runner-service/tsconfig.json   # typecheck
 pnpm vitest run packages/eval/eval-runner-service          # mechanics + runBatch integration
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-eval-runner-service` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

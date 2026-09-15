@@ -72,6 +72,8 @@ const inject = (sessionId: SessionId) => ({
 
 纯缓存核心规格（`result-cache.client.spec.ts`）锚定字节有界 LRU 语义：未命中→拉取→缓存命中（无克隆、无第二次拉取）、同一 key 并发 get 的 single-flight 合并、在途失效（epoch）守卫、传输层抛出折叠为 `ResultFetchError`、会话 key 隔离（一个 `encodeURIComponent` 编码的复合 key）、`maxEntrySize` 准入、字节预算（`maxSize`）淘汰、`max` 计数兜底、读时 recency（无 TTL，`lru-cache` 都会在读时刷新 recency）、`result-not-found`/错误路径，以及 `invalidate`/`invalidateScope`/ `invalidateAll` API。服务规格（`result-service.client.spec.ts`）通过真实的 `createScope` tag 驱动 scope 寻址的 `ctx.results`，断言会话隔离、未命中→`result.get`→缓存、未找到/错误，以及 scoped 失效。apply 规格（`apply.client.spec.ts`）挂载 `apply()`，断言 `ctx.results` 的提供、`connection/reset` → `invalidateAll` 清空，以及 `Config` 边界合并。共 29 个测试。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-client-result-cache` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

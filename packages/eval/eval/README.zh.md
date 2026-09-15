@@ -106,6 +106,8 @@ console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regr
 <a id="host-wiring-the-seams-this-library-does-not-own"></a>
 ## Host wiring (the seams this library does not own)
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-eval` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

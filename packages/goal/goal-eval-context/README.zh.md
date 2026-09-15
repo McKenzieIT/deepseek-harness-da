@@ -43,6 +43,8 @@ goal-eval-context:
   hintEscalationThreshold: 2 # default; the hint escalates one step before the goal policy blocks at N=3
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-goal-eval-context` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

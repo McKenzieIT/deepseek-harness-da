@@ -22,6 +22,8 @@ Retrieval strategy gradient experiment infrastructure: Level 0-3 graph snapshots
 
 Retrieval strategy gradient experiment infrastructure: Level 0-3 graph snapshots, blending function variants, precision@K/recall@K harness
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-retrieval-experiment` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

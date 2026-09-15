@@ -27,6 +27,8 @@ Zero-dependency FakeHash embedder provider (deterministic sha256 hash vectors) +
 
 Provides `FakeHashEmbedder` — a zero-dependency provider that generates deterministic vectors from sha256 hashes of input text. Paired with `FakeReranker` as the default reranker peer. This is the boot-time default: retrieval works out of the box without an external embedding service, at the cost of semantic quality.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-embedder-fakehash` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

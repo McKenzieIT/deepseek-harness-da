@@ -22,6 +22,8 @@ TODO: translate: Model-facing discover_relations tool: AI-native DWS→DIM relat
 
 面向模型的 discover_relations 工具：基于语义层（G3 enrichment）的 AI 原生 DWS→DIM 关系发现，用于 data agent 的 enrichment 阶段
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-discover-relations` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

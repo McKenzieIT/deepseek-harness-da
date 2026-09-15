@@ -22,6 +22,8 @@ TODO: translate: Dedicated management agent session for the full-screen graph ma
 
 全屏图谱管理 UI 专用的管理 agent（智能体）会话：在 semantic-layer-management preset 下创建限定作用域的会话，并持有只读的父上下文引用。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-management-session` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

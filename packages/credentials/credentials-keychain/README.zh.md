@@ -66,6 +66,8 @@ macOS 钥匙串[凭据](../credentials/README.zh.md)提供方：per-user PAT 存
 
 `unlockPassword` 本身是新的待保护密钥：启动时交互输入是安全的；存到 `bash` 可读之处（环境变量、文件）则把锁弱化为便利——因同一 spawner 不可区分性意味着 harness 能解锁的，`bash` 也能解。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-credentials-keychain` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

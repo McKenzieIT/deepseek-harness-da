@@ -22,6 +22,8 @@ Model-facing search_schema tool: BM25 search over the semantic layer for the man
 
 Model-facing search_schema tool: BM25 search over the semantic layer for the management agent to discover assets by natural-language query
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-search-schema` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

@@ -44,6 +44,8 @@ pnpm vitest run packages/data/audit         # 12 specs
 pnpm verify-cordis-config                   # bundle mount resolves
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-audit` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

@@ -77,6 +77,8 @@ pnpm verify-cordis-config                            # bundle/preset mount resol
 
 Bundle 连线（`packages/bundle/data-agent/cordis.patch.yml` 中的 `semantic-layer` 行）在 live-engine provider + `load_*` tool 包就绪后作为后续工作添加。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-semantic-layer` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

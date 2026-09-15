@@ -74,6 +74,8 @@ pnpm vitest run packages/data/patrol-mode        # specs
 pnpm verify-package-invariants                   # invariant companion resolves
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-patrol-mode` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

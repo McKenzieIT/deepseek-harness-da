@@ -79,6 +79,8 @@ pnpm verify-cordis-config
 
 本包 ship 后解注释 preset 行（`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` 的 `tool-load-event-definition`）；phase-gate guard 的 `UNDERSTANDING`/`GENERATION` 白名单已含 `load_event_definition`，注册即在对应阶段可调。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-load-event-definition` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

@@ -39,6 +39,8 @@ P9's `@deepseek-ai/dsh-admin` lands the real per-user login and populates this s
 
 `userId` (Qoder authn) and `scopeId` (data isolation) are independent dimensions. The keychain provider serves only the `userId` dimension; per-scope isolation lives at the query sidecar's `set_credentials`/`scope_id` and `OdpsConfig` region — not through this seam's `scopeId` on `ctx.credentials` today. `scopeId` is a forward-compat field, currently unused via `ctx.credentials`.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-identity` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

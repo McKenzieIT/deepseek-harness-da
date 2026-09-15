@@ -28,6 +28,8 @@ TODO: translate: In-process hybrid retrieval provider (BM25 + vector + RRF k=60,
 
 以 `HybridRetriever` 实现 `ctx.retrieval` 契约，融合 BM25（Okapi BM25，k1=1.5，b=0.75）与向量相似度（基于 `ctx.embedder` 向量的内存余弦）经 Reciprocal Rank Fusion（RRF，k=60，rank 从 1 开始）。嵌入器返回 `InferenceError` 时优雅降级为仅 BM25 结果。包含 `buildCorpus` 用于文档索引，以及重排器 post-RRF 噪声底板过滤（RERANKER_NOISE_FLOOR=0.1）。字段权重：`{id:3, description:1, metric:4}`。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-retrieval-inproc` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

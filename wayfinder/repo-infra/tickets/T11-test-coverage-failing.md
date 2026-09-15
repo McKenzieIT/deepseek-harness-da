@@ -47,3 +47,7 @@ Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data 
 ## 2026-09-15 generated Remote artifact-plane batch
 
 `evidence-query-remote.client.spec.ts` 在 zero-build coverage 中直接加载 `api-remotes` 的完整 Client assembly，而该 assembly 依赖多个仅由 build 生成的 `./remote` 导出，因此 clean checkout 在首个 `agent-presets/remote` 上加载失败。该断言迁入既有 `built-lib.e2e.ts`：plain Node 在完整 build 后加载真实 `api-remotes` bundle，并显式确认 `remote.evidenceQuery` namespace 已挂载；source-plane coverage 不再读取 `lib/`。
+
+## 2026-09-15 invariant omission documentation batch
+
+`package-invariants.spec.ts` 已钉住 Agent Note 的现行规则，但 gate 的 package discovery 仍只扫描声明过 companion 的包，导致删除空 companion 后的包退出检查。discovery 改为覆盖 package tree 下全部 334 个包，39 个 hand-owned companion 保持完整校验；其余包必须在 README 记录 omission 原因。65 个缺口已补齐中英文句子并重录 sidecar，`verify-package-invariants` 与 902 对 pairing 均通过。

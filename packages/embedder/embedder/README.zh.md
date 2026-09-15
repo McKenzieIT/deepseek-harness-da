@@ -28,6 +28,8 @@ TODO: translate: Abstract embedder seam (ctx.embedder) + Reranker peer protocol 
 
 定义 `EmbedderService extends Service` 契约：`dim`、`modelId`、`embed(texts) → float[][]` 异步方法。同时声明 Reranker 对等协议（`modelId`、`rerank` 异步——RRF 后注入，非顶层 seam）及 `InferenceError` 分类（unavailable / timeout / not_ready / dim_mismatch），在检索提供方中触发 BM25-only 降级。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-embedder` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 
