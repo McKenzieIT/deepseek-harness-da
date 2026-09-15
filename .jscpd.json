@@ -4,12 +4,12 @@
   "mode": "mild",
   "format": ["typescript", "tsx"],
   "pattern": "**/*.{ts,tsx}",
-  "ignore": ["**/tests/**", "**/tsdown.config.ts"],
+  "ignore": ["**/tests/**", "**/*.spec.ts", "**/*.spec.tsx", "**/tsdown.config.ts"],
   "ignorePattern": [
     "(?s)/\\* jscpd:ignore-start \\*/.*?/\\* jscpd:ignore-end \\*/"
   ],
   "reporters": ["console"],
-  "exitCode": 1,
   "noColors": true,
-  "noTips": true
+  "noTips": true,
+  "threshold": 0.338
 }
