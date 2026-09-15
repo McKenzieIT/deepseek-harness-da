@@ -85,6 +85,28 @@ history[0]: upstreamTag "dsh-v0.1.3-alpha.1" does not point at d347e703908d; git
 
 这条确立了后续分诊的模式：**新暴露的红先判「门的环境假设错了」还是「代码/文档真的坏了」**，前者修门，后者归各自 effort。
 
+## 首次真实 CI 运行的完整清单（run 34918859164，head `c000720b7a`）
+
+17 个 job：**12 success / 5 failure**。这是本 fork 第一次拿到 CI 的真实图景。
+
+| job | 结果 | 归属 |
+|---|---|---|
+| `node 24 / static` | **success —— 51 门全过** | 阻塞门，已绿 |
+| `node 22.19` / `node 24.9` / `node 26` / `node 24 / benchmarks` | success | — |
+| `windows node 24 / build` / `native tests` | success | — |
+| `python runtime / *`（4）+ `python 3.10 / keyless SDK` | success | — |
+| `node 24 / coverage`、`windows node 24 / coverage` | failure | **既有票 [T11](T11-test-coverage-failing.md)** —— `scripts/gen-tsconfig-paths.spec.ts` + `scripts/generator-inputs.manifest.spec.ts`，与 T11 记的「2 failed suites」吻合 |
+| `node 24 / snapshots and artifacts` | failure | **`duplication`（jscpd 89 clones）** fail-fast 掐掉后续门。**无票**，见下 |
+| `windows node 24 / observational` | failure | 非阻塞清单 lane，一次列全：`duplication` / `publint`（既有票 [T10](T10-publint.md)）/ `node-next types`（**无票**）/ `doc-typecheck:contracts-ready`（既有票 [T15](T15-doc-typecheck-plan-sketches.md)）/ `verify-upstream-sync-record`（**无票**，见下） |
+| `all checks passed` | failure | 汇总 job，随上面几条红 |
+
+**逐条已核为 pre-existing、非本 PR 引入**：`duplication` 在 `origin/master`（`793df1c610`）上用同一命令实测同样 **89 clones / exit 1**，且 clone 报告里**没有本分支新增的任何文件**；coverage 两个 suite 与 T11 记载吻合；`publint` / `node-next types` 早于本轮。
+
+### 两条尚无票的红（认领时再建票，不预先堆票）
+
+1. **`duplication`（jscpd 89 clones）** —— 报告里最大的一条是 `scripts/oxlint-contract.spec.ts` 自身 10 行 / 87 token 的重复。需先判「降噪（调阈值或加 ignore）还是真去重」，属决策点。
+2. **`verify-upstream-sync-record` 在浅 checkout 下仍红** —— 与本票已修的 tag 问题**同一缺陷类**：3 个 `keep` 决定的 waiver 命中数为 0 时被判 failure，而它自己的报错文本就写着「stale, **or its window is not verifiable here**」。Windows lane 是浅 checkout，`history[0]`/`history[1]` 的对象全不在（同一次输出里就有 4 条 `[skipped] … not in this checkout`），此时 0 命中**无法**证明 waiver 陈旧。修法与 tag 那条对称：**本 checkout 里若有任何 window 未能解析，0 命中的 waiver 记 `skipped` 而非 `failed`**；只有全部 window 都解析成功时，0 命中才等于陈旧。Linux static lane 用 `fetch-depth: 0` 所以已绿——这恰好证明它是环境脆弱性而非记录问题。
+
 ## Acceptance
 
 - `actionlint` 对两个文件无 syntax 报错。（已满足）
