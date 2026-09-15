@@ -34,4 +34,8 @@ dominant error：`renderSlot('root') before any 'root' registration (boot order)
 
 ## 2026-09-15 consumers snapshot batch
 
-`tool-subagent` 的工具输出 schema 遗留已退场的 `costs` 字段，使 30 个 recorded-session system-prompt 快照稳定漂移；该字段无生产者、无消费者，并违反 `UM-QODER-SUBAGENT-RETIRE` 的零匹配验收。删除遗留 schema 字段后，以 `ptc-turn` 为代表的 focused replay 转绿。剩余 `cordis-inspect-jsdoc` 漂移来自已决定保留的 `ToolExecutionInput.scopeId`，已按当前 API 刷新对应 V3 fixture；全量 headless replay 为 95 passed / 2 platform-skipped。`test:expected` 的 30 秒失败仅在 11 个 consumers gate 并发时出现，同一用例单独运行 17 秒通过，作为独立可靠性根因继续处理。
+`tool-subagent` 的工具输出 schema 遗留已退场的 `costs` 字段，使 30 个 recorded-session system-prompt 快照稳定漂移；该字段无生产者、无消费者，并违反 `UM-QODER-SUBAGENT-RETIRE` 的零匹配验收。删除遗留 schema 字段后，以 `ptc-turn` 为代表的 focused replay 转绿。剩余 `cordis-inspect-jsdoc` 漂移来自已决定保留的 `ToolExecutionInput.scopeId`，已按当前 API 刷新对应 V3 fixture；全量 headless replay 为 95 passed / 2 platform-skipped。
+
+## 2026-09-15 expected-output title-settlement batch
+
+DeepSeek defaults 用例在收到主请求后仅保活固定 180 ms，却断言后台标题请求一定已到达；PR #148 的真实 CI 以 1 个请求对 2 个请求稳定暴露竞态，而同一用例独立运行通过。该用例改用现有 `waitForTitleRequest` 条件：fixture 以收到 `max_tokens: 64` 请求为释放主响应的状态信号，不依赖调度时序。
