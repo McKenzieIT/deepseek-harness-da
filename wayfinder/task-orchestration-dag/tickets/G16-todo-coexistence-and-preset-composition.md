@@ -26,3 +26,7 @@ The Plan-DAG profile exposes configurable `onNoProgress: hold | replan` with `ho
 ## Inputs from the G14 resolution
 
 Model tools are DSH adapter Consumers that translate business inputs into Host-neutral Task DAG commands; they do not expose journal records, outbox fields, revisions, or Host Binding identities as model choices. Presets compose the independent core/store with Cordis Host, tool, executor, Remote, and Client adapters, and configure the plugin-owned SQLite path without modifying upstream bundles.
+
+## Inputs from the G15 resolution
+
+The current Task DAG Client reserves one concise additive row in the Session-scoped `conversation.input.dock`; the normal and fullscreen graph live in one right-Sidebar page tab. This ticket decides whether Task-DAG presets retain, suppress, or replace Todo content, but must not move the Task DAG summary or depend on Todo as its data source. Queue entries continue to coexist independently.

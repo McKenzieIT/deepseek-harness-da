@@ -64,15 +64,15 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 [✓] R7 DSH Cordis plugin adaptation ─────────────────────┼──▶ [✓] G12 Plan DAG ownership boundary
                                                         └──▶ [✓] G13 ExecutionAttempt and correlation protocol
                                                                └──▶ [✓] G19 Cordis outer-loop driver
-                                                                      ├──▶ [✓] G14 Durable storage and Host boundary ──▶ G15 Current client placement
+                                                                      ├──▶ [✓] G14 Durable storage and Host boundary ──▶ [✓] G15 Current client placement ──▶ R5 Renderer adapter stability
                                                                       ├──▶ G16 Model tools and preset composition
                                                                       ├──▶ G17 Executor adapters
                                                                       └──▶ G7 writeScopes conflict semantics
 ```
 
-**Frontier:** [G15 Current client placement](tickets/G15-current-client-placement.md), [G16 Model tools and preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](tickets/G17-native-source-adapters.md), and [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md) are open, unblocked, and unclaimed.
+**Frontier:** [R5 G6 renderer adapter stability](tickets/R5-g6-renderer-adapter-stability.md), [G16 Model tools and preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](tickets/G17-native-source-adapters.md), and [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md) are open, unblocked, and unclaimed.
 
-**Current checkpoint:** [G14 Durable events, projection, and Host/Client boundary](tickets/G14-task-graph-projection-boundary.md) is resolved. The next session should take [G15 Current client placement](tickets/G15-current-client-placement.md) unless another frontier ticket is named.
+**Current checkpoint:** [G15 Current client placement](tickets/G15-current-client-placement.md) is resolved. The next session should take [R5 G6 renderer adapter stability](tickets/R5-g6-renderer-adapter-stability.md) unless another frontier ticket is named.
 
 **Next session rule:** resolve one frontier ticket per session unless the user explicitly requests an exception.
 
@@ -93,6 +93,7 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 - [G13 ExecutionAttempt and correlation protocol](tickets/G13-task-work-correlation.md): one causal Binding owner, journaled intents, command receipts, outbox delivery, Host Bindings, fenced commands, separate output/evidence, and immutable cancellation or late-result settlement define Task-to-executor correlation.
 - [G19 Cordis outer-loop driver, verification, and budgets](tickets/G19-cordis-outer-loop-driver.md): one Host-neutral Task DAG service owns continuation policy; its DSH Cordis adapter supplies inbox, pre-step, tool, and checkpoint integration while semantic grounding, evidence, budgets, Holds, and bounded replan remain domain-owned.
 - [G14 Durable events, projection, and Host/Client boundary](tickets/G14-task-graph-projection-boundary.md): an independent SQLite journal, complete-value commits, projections, outbox, Host Bindings, dual-store correlation, and Task DAG snapshot/watch provide durability without upstream DSH changes; Cordis adapters own all DSH-specific delivery and native references.
+- [G15 Current client placement](tickets/G15-current-client-placement.md): one shared current-value source feeds a compact composer summary and one per-Session right-Sidebar tab; built-in fullscreen supplies large inspection while history and global aggregate views remain additive follow-ups.
 
 ## Not yet specified
 
