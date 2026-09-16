@@ -69,3 +69,11 @@ persistence 项的组合方式就是用例自己已持有的 `join(tmpDir, 'nest
 keychain 项的第一版修复把期望写成 `join('/custom/home', KEYCHAIN_FILENAME)`，被本分支自身的 CI 推翻——job 104633154572 报 `expected '\custom\home\credentials.keychain'`、`received 'D:\custom\home\credentials.keychain'`。根因是 `resolveSpec` 的组合不是单个 `join`，而是 `join(resolveDshHome(config.dshHome), KEYCHAIN_FILENAME)`，其中 `resolveDshHome` 以 `resolve(expandHomePath(selected))` 收尾（`packages/util/home-paths/src/index.ts:87`）：Windows 上 `resolve` 会把 root-relative 的 `/custom/home` 补成当前盘符下的 `D:\custom\home`，而 `join` 不会。期望改为经同一个 `resolveDshHome` 导出，覆盖组合的两段而不是只覆盖后半段——第一版只推导了后半段，这正是它仍然红的原因。
 
 同批修掉一处使该用例无法被审阅的缺陷：`keychain.spec.ts` 的 `FakeKeychain.key` 用一个**字面 NUL 字节**（而非 `\u0000` 转义）作复合键分隔符，git 因此把整个 spec 判为二进制文件，`git diff` / PR diff 只显示 `Binary files ... differ`。改为等价的 `\u0000` 转义后文件恢复为文本，键的语义不变。
+
+## 2026-09-16 expected-output pi-ai 请求语义批次
+
+pi-ai compatibility 用例沿用 PR #149 的 `waitForTitleRequest` 状态门，却仍断言 `server.requests` 总数为 2。该门以「收到 `max_tokens: 64` 请求」为释放主响应的信号，在这条路由上等于让主响应在标题请求到达前只发 SSE 注释；而 `llm-pi-ai` 与 `llm-deepseek` 不同，从不在注释上 `watchdog.pulse()`，注释保活对它无效——负载下标题请求晚于该路由 1000 ms 的 `streamIdleTimeoutMs`，主请求 idle 超时，agent-loop 按 `TIMEOUT` 重试，第三条请求就是逐字节相同的 agent 重试。CI job 104631963514（PR #156 head `71bf17d990`）以 `expected [ { …(8) }, { …(7) }, { …(8) } ] to have a length of 2 but got 3` 记下了这个形状：8 键（带 `tools`）的 agent 载荷、7 键的标题载荷、再一条 8 键 agent 载荷。
+
+断言改为按载荷命名请求：线上预算集合恰为 `{1024, 64}`（1024 是路由 `modelOverrides` 覆盖，64 是标题策略预算，后者就是 PR #149 要等的标题到达状态），去重后的载荷恰为 2 条（重试逐字节相同，因此与尝试次数无关），并逐条校验 DeepSeek 兼容形状：只用 `max_tokens` 而无 `max_completion_tokens`、`model` 与 `reasoning_effort` 为路由默认、`tools` 目录只挂在 agent 请求上。负控：把 fixture 的 `streamIdleTimeoutMs` 从 1000 降到 300 可逐字复现原断言文本并给出 `pi-ai stream idle timeout after 300ms` 的 `llm/retry`，改后同一负控三次全绿；预算写错（1024→2048）与标题缺席（idle 50 ms）都仍然失败。真实 1000 ms 配置在 10 核机上叠 24 个忙循环、6 路并发共 18 次运行始终只有 2 条请求，原失败未能本机复现，故本批证据是「负控可复现 + 断言不再依赖全量条数」，不是「竞态已被本机证伪」。
+
+同一文件在 PR #157（job 104648904893）与 PR #160（job 104659731495）失败的是另一个同胞用例 `keeps provider comments alive and sends DeepSeek defaults through the one-shot app`，形态为 60 s 进程未退出（`headless.expected.e2e.ts:453`），源自 `llm-deepseek` 侧 150 ms `streamIdleTimeoutMs` 反复 `DeepSeek stream idle timeout after 150ms` 重试；它不是请求条数断言，与本批无关。

@@ -11,9 +11,13 @@
 
 三项失败共享一个模式：断言依赖调度产物（请求条数、流式 frame 计数、并发到达顺序），而非语义状态。
 
-### 1. `headless.expected.e2e.ts:564` — pi-ai 请求条数
+### 1. `headless.expected.e2e.ts:564` — pi-ai 请求条数 — **resolved**
 
 「sends pi-ai DeepSeek compatibility through the one-shot app」期望 2 个请求，实到 3 个。与 PR #149 修掉的 title-settlement 竞态同族：那次是「等到 1 个、要求 2 个」，改为等待语义状态后又在高负载下得到 3 个。此处仍在断言偶然总数。
+
+**根因**：`waitForTitleRequest` 门让主响应在标题请求到达前只发 SSE 注释，而 `llm-pi-ai` 从不在注释上 `watchdog.pulse()`（只有 `llm-deepseek` 会），于是负载下标题晚于该路由 1000 ms 的 `streamIdleTimeoutMs`，主请求 idle 超时并被 agent-loop 按 `TIMEOUT` 重试——第三条就是逐字节相同的 agent 重试。job 104631963514 记下的 `[ { …(8) }, { …(7) }, { …(8) } ]` 依次是 agent（8 键带 `tools`）、标题（7 键）、agent 重试。job 104534944193 的 `test:expected` 实际是 PASS，该 job 红在「web browser snapshot」的另两条断言上；PR #157（job 104648904893）与 PR #160（job 104659731495）红的是同胞用例 `keeps provider comments alive and sends DeepSeek defaults through the one-shot app`，形态为 `headless.expected.e2e.ts:453` 的 60 s 进程未退出，不是本项。
+
+**修法**：断言线上预算集合恰为 `{1024, 64}`、去重载荷恰为 2 条，并逐条校验 `max_tokens`／无 `max_completion_tokens`／`model`／`reasoning_effort`／`tools` 归属；不再出现任何全量条数，也没有放宽超时或加 `retry`。负控：fixture `streamIdleTimeoutMs` 降到 300 ms 可逐字复现原断言文本，改后三次全绿；预算写错（1024→2048）与标题缺席（50 ms）仍失败。真实配置在本机加载不出原失败，详见 [T11](T11-test-coverage-failing.md) 的 `2026-09-16 expected-output pi-ai 请求语义批次`。
 
 ### 2. `chat-scroll-contract.e2e.ts:557` — history 与 streaming 并发
 
@@ -29,7 +33,7 @@
 
 按三项各自的根因分别处理，不合并成一次改动：
 
-1. pi-ai 项：断言语义状态（哪些请求存在、其载荷特征），不断言总数。
+1. pi-ai 项：断言语义状态（哪些请求存在、其载荷特征），不断言总数。**已完成**，见上。
 2. chat-scroll 项：改用显式 stream barrier 构造并发窗口；先证明现等待条件在 frame 耗尽时不可满足。
 3. present-svg 项：先取得可复现负控（并发文件、重复运行），再判定是 teardown 未静默还是共享资源争用。
 
