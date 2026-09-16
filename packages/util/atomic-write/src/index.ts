@@ -7,6 +7,8 @@
  * writers of one file through a `wx`-created `<file>.lock` sibling, so a
  * read-modify-write cycle can never resurrect a state another writer just
  * replaced; readers stay lock-free because the rename commit is atomic.
+ * `renameAtomicTemp` is the replacement step both use, published for
+ * file-backed stores that own their own temp write and fsync policy.
  * @module @deepseek-ai/dsh-atomic-write
  */
 
@@ -25,8 +27,23 @@ function isTransientWindowsRenameError(error: unknown): boolean {
   return WINDOWS_TRANSIENT_RENAME_ERRORS.has((error as NodeJS.ErrnoException | null)?.code ?? '')
 }
 
-/** Replace the target after bounded retries for transient Windows interference. */
-async function renameAtomicTemp(temp: string, filename: string): Promise<void> {
+/**
+ * Commit a complete temp sibling over `filename`, absorbing transient Windows
+ * interference. Windows can reject a replacement with `EACCES`, `EBUSY`, or
+ * `EPERM` while another system component holds the target; on win32 those three
+ * codes retry up to eight times with delays growing from 20 ms to 200 ms (at
+ * most ~1.1 s total) while the same fully written temp file stays the rename
+ * source. Every other code, and every failure off win32, rejects on the first
+ * attempt. Nothing here touches `filename` before the rename succeeds, so a
+ * reader observes either the old or the new complete content, and the caller
+ * still owns removing `temp` after a rejection. This is the replacement step
+ * every file-backed store shares; a store that also needs crash durability
+ * fsyncs around this call instead of using {@link writeFileAtomic}.
+ * @param temp - complete replacement file in the target's directory.
+ * @param filename - final path the replacement takes over.
+ * @returns resolution once the replacement is committed.
+ */
+export async function renameAtomicTemp(temp: string, filename: string): Promise<void> {
   let delay = WINDOWS_RENAME_RETRY_INITIAL_MS
   for (let retries = 0;; retries += 1) {
     try {
