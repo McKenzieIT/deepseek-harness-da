@@ -58,7 +58,7 @@ describe('persistBatchResult + loadRunRecords', () => {
   it('creates directory if it does not exist', () => {
     const nested = join(tmpDir, 'nested', 'deep')
     const path = persistBatchResult(makeBatchResult(), nested)
-    expect(path).toContain('nested/deep')
+    expect(path).toContain(nested)
     const records = loadRunRecords(path)
     expect(records).toHaveLength(2)
   })

@@ -59,3 +59,13 @@ Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data 
 ## 2026-09-15 Windows CLI-launch batch
 
 `upstream-monitor.spec.ts` 通过裸 `pnpm exec` 启动被测 CLI；Windows 上 `pnpm` 是 `.cmd` shim，`spawnSync` 无法在无 shell 下执行，三项用例因此得到 status=-1 与空 stdout。启动改为仓库已有的 `process.execPath` + tsx ESM hook 路径，与其他 script 套件一致；同时删除把 spawn 失败伪装成 status=-1 的包装层，使未启动或被信号终止的子进程报出真实诊断而不再伪装为退出码。focused run 为 17 passed。
+
+## 2026-09-15 Windows path-expectation batch
+
+`eval` 的 persistence 用例与 `credentials-keychain` 的 `resolveSpec` 用例都写死了 POSIX 正斜杠，而两项实现在 Windows 上组出的是反斜杠，因此 Windows coverage 稳定失败。两项的组合方式并不相同，必须分别推导。
+
+persistence 项的组合方式就是用例自己已持有的 `join(tmpDir, 'nested', 'deep')`，期望改为断言这一完整路径。该半已有真实 CI 证据：不含本修复的 PR #158（job 104635347170）仍报 `expected 'C:\Users\RUNNER~1\...\nested\deep\...' to contain 'nested/deep'`，本分支的 job 104633154572 已不再报该项。
+
+keychain 项的第一版修复把期望写成 `join('/custom/home', KEYCHAIN_FILENAME)`，被本分支自身的 CI 推翻——job 104633154572 报 `expected '\custom\home\credentials.keychain'`、`received 'D:\custom\home\credentials.keychain'`。根因是 `resolveSpec` 的组合不是单个 `join`，而是 `join(resolveDshHome(config.dshHome), KEYCHAIN_FILENAME)`，其中 `resolveDshHome` 以 `resolve(expandHomePath(selected))` 收尾（`packages/util/home-paths/src/index.ts:87`）：Windows 上 `resolve` 会把 root-relative 的 `/custom/home` 补成当前盘符下的 `D:\custom\home`，而 `join` 不会。期望改为经同一个 `resolveDshHome` 导出，覆盖组合的两段而不是只覆盖后半段——第一版只推导了后半段，这正是它仍然红的原因。
+
+同批修掉一处使该用例无法被审阅的缺陷：`keychain.spec.ts` 的 `FakeKeychain.key` 用一个**字面 NUL 字节**（而非 `\u0000` 转义）作复合键分隔符，git 因此把整个 spec 判为二进制文件，`git diff` / PR diff 只显示 `Binary files ... differ`。改为等价的 `\u0000` 转义后文件恢复为文本，键的语义不变。
