@@ -489,6 +489,7 @@ flowchart TD
   pkg_retrieval --> pkg_invariants
   pkg_storage_domain --> pkg_invariants
   pkg_storage_domain --> pkg_storage
+  pkg_storage_json --> pkg_atomic_write
   pkg_storage_json --> pkg_storage
   pkg_storage_sqlite --> pkg_storage
   pkg_subprocess --> pkg_http_proxy
@@ -1576,7 +1577,7 @@ flowchart TD
 | [`query`](../packages/query/query) | `query` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`retrieval`](../packages/retrieval/retrieval) | `retrieval` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`storage-domain`](../packages/storage/storage-domain) | `storage` | [`invariants`](../packages/runtime-diagnostics/invariants), [`storage`](../packages/storage/storage) |
-| [`storage-json`](../packages/storage/storage-json) | `storage` | [`storage`](../packages/storage/storage) |
+| [`storage-json`](../packages/storage/storage-json) | `storage` | [`atomic-write`](../packages/util/atomic-write), [`storage`](../packages/storage/storage) |
 | [`storage-sqlite`](../packages/storage/storage-sqlite) | `storage` | [`storage`](../packages/storage/storage) |
 | [`subprocess`](../packages/subprocess/subprocess) | `subprocess` | [`http-proxy`](../packages/util/http-proxy) |
 | [`typert-loader`](../packages/typert/loader) | `typert` | [`typert-registry`](../packages/typert/registry) |
