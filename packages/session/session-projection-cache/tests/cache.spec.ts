@@ -36,6 +36,7 @@ import {
 import SessionProjectionCache from '../src/index.ts'
 import { checkpointRecord, projectionCacheDomainSpec } from '../src/spec.ts'
 import type { CheckpointRecord } from '../src/spec.ts'
+import { watchDurableWrites } from './durable-write.ts'
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
@@ -189,18 +190,22 @@ afterEach(async () => {
 describe('SessionProjectionCache write policy', () => {
   it('writes a durable checkpoint at turn/end (mandatory point)', async () => {
     const { ctx, root } = await harness()
+    // Both writes below are fail-soft: a thrown one is reported only as a
+    // logger warning, which the poll cannot see. Race it so a failed write
+    // fails here with its errno instead of as a stale read-back.
+    const readBack = watchDurableWrites(ctx)
     const session = ctx.sessions.create(SessionId('turn-end'))
     mark(session, ['a'])
     // Creation already wrote the init cut; the mark is throttled, so the
     // stored row is still the creation-time cut (no marks folded).
-    await vi.waitFor(async () => {
+    await readBack(vi.waitFor(async () => {
       expect((await storedRows(root, session.id))?.['cache-test/marks']?.seq).toBe(-1)
-    }, { timeout: 5_000 })
+    }, { timeout: 5_000 }))
     const end = endTurn(session)
-    await vi.waitFor(async () => {
+    await readBack(vi.waitFor(async () => {
       expect((await storedRows(root, session.id))?.['cache-test/marks'])
         .toEqual({ ver: 1, seq: end.seq, val: { marks: ['a'] } })
-    }, { timeout: 5_000 })
+    }, { timeout: 5_000 }))
   })
 
   it('writes a checkpoint at session creation, capturing the seed-derived cut', async () => {
@@ -235,17 +240,20 @@ describe('SessionProjectionCache write policy', () => {
 
   it('flushes when the in-turn event count reaches the configured threshold', async () => {
     const { ctx, root } = await harness({ config: { writeEveryEvents: 3, writeIntervalMs: 60_000 } })
+    // Same fail-soft race as the turn/end case: name a thrown write here
+    // rather than letting the poll report the pre-threshold row.
+    const readBack = watchDurableWrites(ctx)
     const session = ctx.sessions.create(SessionId('count'))
     mark(session, ['1'])
     mark(session, ['2'])
-    await vi.waitFor(async () => {
+    await readBack(vi.waitFor(async () => {
       expect((await storedRows(root, session.id))?.['cache-test/marks'])
         .toEqual({ ver: 1, seq: -1, val: null }) // still the creation cut
-    }, { timeout: 5_000 })
+    }, { timeout: 5_000 }))
     mark(session, ['3'])
-    await vi.waitFor(async () => {
+    await readBack(vi.waitFor(async () => {
       expect((await storedRows(root, session.id))?.['cache-test/marks']?.val).toEqual({ marks: ['3'] })
-    }, { timeout: 5_000 })
+    }, { timeout: 5_000 }))
   })
 
   it('flushes on the configured interval when the count threshold is not reached', async () => {

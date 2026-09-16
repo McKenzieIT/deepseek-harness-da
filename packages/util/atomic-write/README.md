@@ -38,6 +38,20 @@ await writeFileAtomic('/home/u/.dsh/settings.yaml', text, { mode: 0o600 })
 
 Parent directories are created as needed, and readers observe either the old or the new complete content. On Windows, transient replacement interference reported as `EACCES`, `EBUSY`, or `EPERM` is retried for a bounded interval; any remaining failure removes the temporary file and leaves the target untouched.
 
+### Committing a temp file a store wrote itself
+
+A store whose own protocol renders and fsyncs the temp sibling — the JSON storage backend fsyncs both the file and its parent directory for crash durability, which `writeFileAtomic` deliberately does not — commits it through `renameAtomicTemp` instead, so the bounded Windows replacement retry stays one implementation:
+
+```ts
+import { renameAtomicTemp } from '@deepseek-ai/dsh-atomic-write'
+
+declare const temp: string
+declare const target: string
+await renameAtomicTemp(temp, target)
+```
+
+The caller owns creating and, after a rejection, removing `temp`. Nothing touches the target before the rename succeeds.
+
 ### Coordinating writers
 
 For a read-render-commit cycle that a bare atomic commit cannot make safe on its own, hold the writer lock around the operation:
@@ -74,7 +88,7 @@ The package is built on one separation: the atomic commit owns the swap, and the
 
 | File | Role |
 |---|---|
-| [`src/index.ts`](src/index.ts) | `writeFileAtomic` and `withFileLock`, the package's whole surface |
+| [`src/index.ts`](src/index.ts) | `writeFileAtomic`, `withFileLock`, and `renameAtomicTemp`, the package's whole surface |
 | — | No runtime invariant companion is published; this pure filesystem primitive owns no event stream or mutable runtime data; its replacement contract is enforced by unit tests. |
 
 ### Write path

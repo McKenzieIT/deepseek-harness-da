@@ -1,19 +1,23 @@
 /**
  * Atomic whole-file replacement for the JSON backend.
  *
- * Publish protocol: write a same-directory temp file, fsync it, then
- * `rename()` over the target. Rename is an atomic replace on POSIX and on
- * Windows (libuv maps it to `MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)`),
- * and replacement is the intended semantic here — unlike the session-log
- * backend's link()+unlink() no-clobber protocol, a unit file has exactly one
- * writer per process and last-write-wins is correct. After the rename the
+ * Publish protocol: write a same-directory temp file, fsync it, then replace
+ * the target through `renameAtomicTemp`. Replacement is the intended semantic
+ * here — unlike the session-log backend's link()+unlink() no-clobber protocol,
+ * a unit file has exactly one writer per process and last-write-wins is
+ * correct. The rename itself is an atomic replace on POSIX, and on Windows
+ * (where libuv maps it to `MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)`) it can
+ * transiently reject with `EACCES`, `EBUSY`, or `EPERM` while another component
+ * holds the target; `renameAtomicTemp` absorbs exactly that with its bounded
+ * retry, so a single held handle no longer drops a write. After the rename the
  * parent directory is fsynced on POSIX so the new entry is crash-durable.
  * @module @deepseek-ai/dsh-storage-json/src/atomic
  */
 
-import { open, rename, rm } from 'node:fs/promises'
+import { open, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { renameAtomicTemp } from '@deepseek-ai/dsh-atomic-write'
 
 /**
  * Durably replace `path` with `data`.
@@ -31,7 +35,7 @@ export async function writeAtomic(path: string, data: string): Promise<void> {
     } finally {
       await handle.close()
     }
-    await rename(tmp, path)
+    await renameAtomicTemp(tmp, path)
     await fsyncDirectory(dirname(path))
   } catch (error) {
     await rm(tmp, { force: true })

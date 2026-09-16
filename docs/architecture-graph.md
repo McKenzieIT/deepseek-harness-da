@@ -478,6 +478,7 @@ flowchart TB
   pkg_web --> pkg_llm
   pkg_storage_domain --> pkg_invariants
   pkg_storage_domain --> pkg_storage
+  pkg_storage_json --> pkg_atomic_write
   pkg_storage_json --> pkg_storage
   pkg_storage_sqlite --> pkg_storage
   pkg_result_cache --> pkg_invariants
@@ -1628,7 +1629,7 @@ flowchart TB
 | [`e2b`](../packages/e2b/e2b) | `e2b` | Host | [`http-proxy`](../packages/util/http-proxy) | [`http-proxy`](../packages/util/http-proxy) | — | — |
 | [`web`](../packages/web/web) | `web` | Host | [`llm`](../packages/llm/llm) | [`llm`](../packages/llm/llm) | — | — |
 | [`storage-domain`](../packages/storage/storage-domain) | `storage` | Host | [`invariants`](../packages/runtime-diagnostics/invariants), [`storage`](../packages/storage/storage) | [`invariants`](../packages/runtime-diagnostics/invariants) *, [`storage`](../packages/storage/storage), [`storage`](../packages/storage/storage) * | — | — |
-| [`storage-json`](../packages/storage/storage-json) | `storage` | Host | [`storage`](../packages/storage/storage) | [`storage`](../packages/storage/storage), [`storage`](../packages/storage/storage) * | — | — |
+| [`storage-json`](../packages/storage/storage-json) | `storage` | Host | [`atomic-write`](../packages/util/atomic-write), [`storage`](../packages/storage/storage) | [`atomic-write`](../packages/util/atomic-write), [`storage`](../packages/storage/storage), [`storage`](../packages/storage/storage) * | — | — |
 | [`storage-sqlite`](../packages/storage/storage-sqlite) | `storage` | Host | [`storage`](../packages/storage/storage) | [`storage`](../packages/storage/storage), [`storage`](../packages/storage/storage) * | — | — |
 | [`result-cache`](../packages/data/result-cache) | `data` | Host | [`invariants`](../packages/runtime-diagnostics/invariants), [`typert-protocol`](../packages/typert/protocol) | [`typert-protocol`](../packages/typert/protocol) | seam-2 | — |
 | [`scope-registry`](../packages/data/scope-registry) | `data` | Host | [`atomic-write`](../packages/util/atomic-write), [`invariants`](../packages/runtime-diagnostics/invariants) | [`atomic-write`](../packages/util/atomic-write) | — | — |
