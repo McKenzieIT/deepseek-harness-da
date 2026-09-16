@@ -55,3 +55,7 @@ Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data 
 ## 2026-09-15 eval CLI network-fixture batch
 
 `loads and runs with fake key` 只替换了凭据，仍把四次 LLM 请求发往默认 AGA endpoint；独立运行受本机网络影响约 4 秒，coverage 争用时撞上测试内部 10 秒子进程上限。fixture 显式把 `DASHSCOPE_BASE_URL` 指到本机拒绝连接端口，使 transport failure 立即且确定地返回；不放宽 timeout，也不依赖外网。
+
+## 2026-09-15 Windows CLI-launch batch
+
+`upstream-monitor.spec.ts` 通过裸 `pnpm exec` 启动被测 CLI；Windows 上 `pnpm` 是 `.cmd` shim，`spawnSync` 无法在无 shell 下执行，三项用例因此得到 status=-1 与空 stdout。启动改为仓库已有的 `process.execPath` + tsx ESM hook 路径，与其他 script 套件一致；同时删除把 spawn 失败伪装成 status=-1 的包装层，使未启动或被信号终止的子进程报出真实诊断而不再伪装为退出码。focused run 为 17 passed。
