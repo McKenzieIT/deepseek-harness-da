@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-code-runtime-python-protocol",
   "description": "Shared fd-3 JSON-lines protocol and hostile-frame validation for CPython code runtimes",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },

@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-JSON 存储后端用裸 `rename()` 发布每一份文档。在 Windows 上，当另一个组件持有目标文件时，该替换可能被拒绝并报出 `EACCES`、`EBUSY` 或 `EPERM`，而 `@deepseek-ai/dsh-atomic-write` 早已为自己的替换重试这三个错误码。`packages/storage/storage-json/src/atomic.ts` 从未收到那份重试：它只有一次提交（`1529be6fd4`，2026-07-24），早于重试在 `3e56eaaa0f`（2026-08-29）落地；后者的归档[重试决策记录](../../archived/bug-fix/2026-08-29-windows-atomic-replace-retry.md)写明 `writeFileAtomic` 拥有替换重试，因为每个文件型存储都需要同一条保证。JSON 后端正是一个从未迁移的文件型存储，于是两份原子替换实现在这一步上不一致，且没有任何记录说明原因。
+JSON 存储后端用裸 `rename()` 发布每一份文档。在 Windows 上，当另一个组件持有目标文件时，该替换可能被拒绝并报出 `EACCES`、`EBUSY` 或 `EPERM`，而 `@deepseek-ai/dsh-atomic-write` 早已为自己的替换重试这三个错误码。`packages/storage/storage-json/src/atomic.ts` 从未收到那份重试：它只有一次提交（2026-07-24），早于重试在 2026-08-29 落地；后者的归档[重试决策记录](../../archived/bug-fix/2026-08-29-windows-atomic-replace-retry.md)写明 `writeFileAtomic` 拥有替换重试，因为每个文件型存储都需要同一条保证。JSON 后端正是一个从未迁移的文件型存储，于是两份原子替换实现在这一步上不一致，且没有任何记录说明原因。
 
 `packages/session/session-projection-cache` 有四项断言只在 `windows node 24 / coverage` lane 上失败——job 104534944084（PR #155）与 job 104635347170（PR #158）——而同一提交的 Linux 全绿。单测耗时呈双峰分布：同一个 helper 的调用要么在 141–147 ms 完成，要么烧完整个 5000 ms `vi.waitFor` 预算，中间没有任何取值。仅仅迟到的写入会落在中间。每一例失败中，较早的写入已落盘而较晚的替换写入没有，磁盘上留下的是完整且格式正确的旧文档而非半截文件——这正是 `rename` 抛出后留下的状态，因为发布协议在 rename 之前从不触碰目标文件。每次 checkpoint 写入都经 `flushSoft` fire-and-forget，任何一层都不重试，所以一次拒绝即永久丢写。
 

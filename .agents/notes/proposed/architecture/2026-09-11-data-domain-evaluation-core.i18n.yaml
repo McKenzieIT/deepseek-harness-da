@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/architecture/2026-09-11-data-domain-evaluation-core.md
-2026-09-11-data-domain-evaluation-core.md: 00581c7f9b35085d830380bd609803865a508303
-2026-09-11-data-domain-evaluation-core.zh.md: 15fb0f2ef7176c15740c0dadbe2fa3b793bd7629
+2026-09-11-data-domain-evaluation-core.md: 047132a85d5919c9d13696ea1f40a234582cea6e
+2026-09-11-data-domain-evaluation-core.zh.md: fe7f584888ef46919985983a8eef859f98ab0049

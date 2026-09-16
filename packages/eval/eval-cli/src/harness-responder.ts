@@ -330,9 +330,9 @@ export class HarnessAgentResponder implements AgentResponder {
     const resultCacheMemory = await import('@deepseek-ai/dsh-result-cache-memory')
     await ctx.plugin(resultCacheMemory)
 
-    // ── 14. CodeRuntimeWorkerThread → ctx.codeRuntime (tool-compute needs it)
-    const { default: WorkerThreadCodeRuntime } = await import('@deepseek-ai/dsh-code-runtime-worker-thread')
-    await ctx.plugin(WorkerThreadCodeRuntime)
+    // ── 14. NodePtcRuntime → ctx.ptcRuntime (tool-compute needs it)
+    const { default: NodePtcRuntime } = await import('@deepseek-ai/dsh-ptc-runtime-node')
+    await ctx.plugin(NodePtcRuntime)
 
     // ── 15. SessionProjectionRegistry → ctx.sessionProjections (goal/todo need it)
     const { default: SessionProjectionRegistry } = await import('@deepseek-ai/dsh-session-projection')

@@ -1,5 +1,5 @@
 ---
-description: "面向 data-agent 的 CPython 子进程 CodeRuntime 提供方，提供 pandas/numpy 与仅遏制级信任。"
+description: "面向 data-agent 的 CPython 子进程 PtcRuntime 提供方，提供 pandas/numpy 与仅遏制级信任。"
 kind: "package-reference"
 ---
 
@@ -21,13 +21,13 @@ kind: "package-reference"
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
 
-面向 data-agent 的 CPython 子进程版 [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.zh.md) 接缝实现。`DataPythonCodeRuntime` 在一个全新的 `python3` 子进程中运行每个程序，提供 pandas/numpy，使用由 [`@deepseek-ai/dsh-code-runtime-python-protocol`](../code-runtime-python-protocol/README.zh.md) 拥有的 fd-3 JSON-lines wire 协议，并返回 `{ value, logs, error? }`。**遏制，而非安全边界**：信任姿态是 binding-only I/O 加资源限制——与 [`worker-thread`](../code-runtime-worker-thread/README.zh.md) 后端相同，只是把 Node 隔离体换成一个全新的 CPython 进程，让模型代码用 Python 而非 TypeScript 编写。
+面向 data-agent 的 CPython 子进程版 [`@deepseek-ai/dsh-ptc-runtime`](../../ptc-runtime/ptc-runtime/README.zh.md) 接缝实现。`DataPythonCodeRuntime` 在一个全新的 `python3` 子进程中运行每个程序，提供 pandas/numpy，使用由 [`@deepseek-ai/dsh-code-runtime-python-protocol`](../code-runtime-python-protocol/README.zh.md) 拥有的 fd-3 JSON-lines wire 协议，并返回 `{ value, logs, error? }`。**遏制，而非安全边界**：信任姿态是 binding-only I/O 加进程资源限制，因此模型代码是运行在全新 CPython 进程中的 Python，而不是运行在 Node 进程中的 TypeScript。
 
 <a id="config"></a>
 ## Config
 
 ```yaml
-- id: code-runtime
+- id: code-runtime-data-python
   name: '@deepseek-ai/dsh-code-runtime-data-python'
   config:
     cpuSeconds: 30                # RLIMIT_CPU seconds applied to the bootstrap before model code runs

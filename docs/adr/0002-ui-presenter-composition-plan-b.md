@@ -21,7 +21,7 @@ Upstream decommissioned the monolith `@deepseek-ai/dsh-client-runtime` ("zombie"
 
 Three verified findings foreclose Plan A (grounded in the synced base `upstream/resync-2026-09-08`):
 
-1. **`tool.call.toolview` is an upstream slot** (`ui-tool/src/client/contract/slots.ts:26`, confirmed in upstream `c389f96bf3` via `git ls-tree`). Upstream itself registers toolviews there (ask-question, bash, read, search, web, todo). The 4 fork presenters are peers — keeping the slot is not a fork workaround (UM-ADAPT criterion 4 ✓).
+1. **`tool.call.toolview` is an upstream slot** (`ui-tool/src/client/contract/slots.ts:26`, confirmed in the upstream source via `git ls-tree`). Upstream itself registers toolviews there (ask-question, bash, read, search, web, todo). The 4 fork presenters are peers — keeping the slot is not a fork workaround (UM-ADAPT criterion 4 ✓).
 2. **The presenters are tool-name-keyed sub-views rendered inside the `tool-call` node by `ToolCallTree`** (`ui-tool/src/client/tool/ToolCallTree.tsx`) — not view-tabs (`conversation.view` slot) or node-kinds (`conversation.chat.node` slot). Plan A's `views.register`/`events.register` is architecturally misplaced (those are for per-target builders / node-kinds).
 3. **`projectBlock` does not compute `isLatestTurn`/`blockText`** — so Plan A's "builder internalizes the helpers" premise is false for the synced base. The helpers are fork-only (zombie `runtime/src/client/cards.ts:16,33`).
 

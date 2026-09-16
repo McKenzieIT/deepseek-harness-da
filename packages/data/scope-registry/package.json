@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-scope-registry",
   "description": "Per-scope namespace registry for the data agent: runtime-mutable scope definitions (id → semanticRoot + metadata) with active-scope switching, persisted to a YAML file on disk.",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },

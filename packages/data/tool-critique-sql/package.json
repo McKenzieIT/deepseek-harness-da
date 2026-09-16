@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-critique-sql",
   "description": "Model-facing critique_sql_tool: folded-regex SQL critic (sqlSyntaxGate) over the phase-gate's per-agent critic context for the data agent's GENERATION phase",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },

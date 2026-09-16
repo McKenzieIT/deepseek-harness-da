@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-embedder",
   "description": "Abstract embedder seam (ctx.embedder) + Reranker peer protocol + InferenceError: embedding inference for the data agent's retrieval/vectorization (P5b)",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },

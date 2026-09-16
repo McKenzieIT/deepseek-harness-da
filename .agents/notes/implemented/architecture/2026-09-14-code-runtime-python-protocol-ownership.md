@@ -6,15 +6,15 @@ English | [中文](2026-09-14-code-runtime-python-protocol-ownership.zh.md)
 
 ## Problem
 
-The released `@deepseek-ai/dsh-code-runtime-data-python` provider and the private `@deepseek-ai/dsh-experimental-code-runtime-python` provider use the same fd-3 frame types, lossless JSON helpers, and hostile-frame validators. A release member cannot require the private provider excluded from the release family, and shared protocol behavior needs an owner independent of either provider.
+The released `@deepseek-ai/dsh-code-runtime-data-python` provider and the private `@deepseek-ai/dsh-experimental-ptc-runtime-python` provider implement the same fd-3 frame types, lossless JSON helpers, and hostile-frame validators. A release member cannot require the private provider excluded from the release family, and shared protocol behavior needs an owner independent of either provider.
 
 ## Decision
 
 [`@deepseek-ai/dsh-code-runtime-python-protocol`](../../../../packages/code-runtime/code-runtime-python-protocol/README.md) is the released TypeScript owner of the versionless fd-3 protocol. It contains the frame types and field metadata, `PROTOCOL_FD`, the lossless JSON encoder and byte meters, unsafe integer and non-lossless number detection, child-frame reconstruction, and the shared log-truncation marker. It has no runtime dependencies or mutable state, and the package dependency policy classifies independent installed copies as interchangeable.
 
-Both `@deepseek-ai/dsh-code-runtime-data-python` and `@deepseek-ai/dsh-experimental-code-runtime-python` depend directly on the released protocol package. The data provider has no dependency, optional dependency, peer dependency, or development dependency on the private provider. The experimental package preserves its existing root-level protocol types and helper exports by re-exporting them from the released package, so callers of its established entry point do not change imports.
+`@deepseek-ai/dsh-code-runtime-data-python` depends directly on the released protocol package, while `@deepseek-ai/dsh-experimental-ptc-runtime-python` carries its own protocol module. The data provider has no dependency, optional dependency, peer dependency, or development dependency on the private provider, so release packaging never reaches it.
 
-Providers continue to own process launch, raw-frame size caps before `JSON.parse`, resource budgets, Python bootstrap code, and teardown. The experimental provider also owns `py/protocol.py`, its Python declaration mirror; its real-Python mirror test compares that file with the released TypeScript package. The [fd-3 protocol decision](2026-07-31-code-runtime-python-fd3-protocol.md) remains the authority for wire semantics and hostile-input handling.
+Providers continue to own process launch, raw-frame size caps before `JSON.parse`, resource budgets, Python bootstrap code, and teardown. The data provider owns `py/bootstrap.py`, the Python side of its own runs. The [fd-3 protocol decision](2026-07-31-ptc-runtime-python-fd3-protocol.md) remains the authority for wire semantics and hostile-input handling.
 
 ## Alternatives considered
 
@@ -26,4 +26,4 @@ Providers continue to own process launch, raw-frame size caps before `JSON.parse
 
 ## Consequences
 
-Release packaging can install `@deepseek-ai/dsh-code-runtime-data-python` without any private experimental package. Protocol behavior has one public implementation and one pure TypeScript test suite, while each provider retains lifecycle and real-subprocess coverage. The experimental package adds a released runtime dependency but keeps its previous root exports as compatibility aliases. Changes to the frame vocabulary must update the released package, the affected Python mirror or bootstrap, both providers' tests, and the protocol documentation together.
+Release packaging can install `@deepseek-ai/dsh-code-runtime-data-python` without any private experimental package. Protocol behavior has one public implementation and one pure TypeScript test suite, while the provider retains lifecycle and real-subprocess coverage. Changes to the frame vocabulary must update the released package, the data provider's bootstrap, that provider's tests, and the protocol documentation together.

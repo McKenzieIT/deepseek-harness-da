@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-compute",
   "description": "Model-facing compute tool: execute LLM-generated pandas code against query results in the INTERPRETATION phase",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -31,7 +31,7 @@
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-code-runtime": "workspace:^",
+    "@deepseek-ai/dsh-ptc-runtime": "workspace:^",
     "@deepseek-ai/dsh-result-cache": "workspace:^"
   },
   "dependencies": {},
@@ -40,7 +40,7 @@
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-code-runtime": "workspace:^",
+    "@deepseek-ai/dsh-ptc-runtime": "workspace:^",
     "@deepseek-ai/dsh-result-cache": "workspace:^"
   }
 }

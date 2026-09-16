@@ -9,8 +9,8 @@
  * Refuses to print a behind-count derived from a stale or absent
  * `upstream/master` ref. An unfetched ref would under-report (the
  * false-green failure mode this report exists to prevent — at UM15
- * writing time `upstream/master` pointed at `5dda764ed3` while the true
- * remote HEAD was `2377c272a8`). Behind-count is printed only when the
+ * writing time the local `upstream/master` ref lagged the true remote
+ * HEAD by several commits). Behind-count is printed only when the
  * tracking ref is `fresh` (local `upstream/master` === remote HEAD).
  *
  * `RefState`, evaluated after the probe so a fetch that advances the ref

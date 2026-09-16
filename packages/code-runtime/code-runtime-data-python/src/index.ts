@@ -1,8 +1,8 @@
 /**
- * CPython subprocess CodeRuntime Provider for the data-agent. Spawns a fresh
+ * CPython subprocess PtcRuntime Provider for the data-agent. Spawns a fresh
  * CPython process per run with pandas/numpy available, communicates via the
  * existing fd-3 JSON-lines wire protocol, and provides containment (binding-only
- * I/O + resource limits) — the same trust posture as the worker-thread backend.
+ * I/O + process resource limits), not a security boundary.
  *
  * @module @deepseek-ai/dsh-code-runtime-data-python
  */
@@ -10,11 +10,12 @@
 import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isAbsolute } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { CodeRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@deepseek-ai/dsh-code-runtime'
-import type { CodeBindingNamespace, CodeJsonValue, CodeRunFailure, CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
+import { PtcRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@deepseek-ai/dsh-ptc-runtime'
+import type { PtcBindingNamespace, PtcJsonValue, PtcRunFailure, PtcRunRequest, PtcRunResult, PtcRunSpec } from '@deepseek-ai/dsh-ptc-runtime'
 import { checkDoneValue, encodeJsonPlain, hasNonLosslessNumber, hasUnsafeIntegerToken, jsonStringBytesUpTo, logTruncationMarker, validateChildFrame } from '@deepseek-ai/dsh-code-runtime-python-protocol'
 import type { BootMessage, ReplyMessage } from '@deepseek-ai/dsh-code-runtime-python-protocol'
 import { snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
@@ -51,7 +52,7 @@ type ResolvedConfig = Required<Config>
 
 interface LiveRun {
   child: ChildProcess
-  settle(failure: CodeRunFailure): void
+  settle(failure: PtcRunFailure): void
   finished: Promise<void>
 }
 
@@ -97,12 +98,12 @@ function createCappedLineReader(
 }
 
 /**
- * CPython subprocess {@link CodeRuntime} for the data-agent. Each run spawns a
+ * CPython subprocess {@link PtcRuntime} for the data-agent. Each run spawns a
  * fresh CPython process with pandas/numpy available, talks the fd-3 JSON-lines
  * wire protocol, and is contained by binding-only I/O plus rlimits — the same
  * trust posture as the worker-thread backend.
  */
-export class DataPythonCodeRuntime extends CodeRuntime {
+export class DataPythonCodeRuntime extends PtcRuntime {
   static Config: z<Config> = z.object({
     cpuSeconds: z.number().default(30),
     addressSpaceBytes: z.number().default(2_147_483_648),
@@ -155,7 +156,16 @@ export class DataPythonCodeRuntime extends CodeRuntime {
     await Promise.all(runs.map(run => run.finished))
   }
 
-  async run(request: CodeRunRequest): Promise<CodeRunResult> {
+  resolve(request: PtcRunRequest): PtcRunSpec {
+    if (request.sandboxPolicy !== undefined) throw new Error('dsh-code-runtime-data-python: sandbox policy is unsupported')
+    if (request.timeoutMs !== undefined) throw new Error('dsh-code-runtime-data-python: per-call timeout is unsupported')
+    const cwd = request.cwd ?? process.cwd()
+    if (!isAbsolute(cwd)) throw new Error('dsh-code-runtime-data-python: cwd must be absolute')
+    return { ...request, cwd, timeoutMs: this.config.maxWallMs }
+  }
+
+  async run(request: PtcRunSpec): Promise<PtcRunResult> {
+    if (request.sandboxPolicy !== undefined || request.timeoutMs !== this.config.maxWallMs) throw new Error('dsh-code-runtime-data-python: unsupported execution policy or timeout')
     if (this.disposed) throw new Error('dsh-code-runtime-data-python: run() after disposal')
     const bindings = this.validateBindings(request)
     if (request.signal?.aborted) {
@@ -164,8 +174,8 @@ export class DataPythonCodeRuntime extends CodeRuntime {
     return await this.execute(request, bindings)
   }
 
-  private validateBindings(request: CodeRunRequest): Map<string, CodeBindingNamespace> {
-    const bindings = new Map<string, CodeBindingNamespace>()
+  private validateBindings(request: PtcRunRequest): Map<string, PtcBindingNamespace> {
+    const bindings = new Map<string, PtcBindingNamespace>()
     for (const namespace of request.bindings) {
       if (!IDENTIFIER.test(namespace.global) || PORTABLE_RESERVED_WORDS.has(namespace.global)) {
         throw new Error(`dsh-code-runtime-data-python: binding global ${JSON.stringify(namespace.global)} is not a usable identifier`)
@@ -202,9 +212,9 @@ export class DataPythonCodeRuntime extends CodeRuntime {
   }
 
   private execute(
-    request: CodeRunRequest,
-    bindings: Map<string, CodeBindingNamespace>,
-  ): Promise<CodeRunResult> {
+    request: PtcRunSpec,
+    bindings: Map<string, PtcBindingNamespace>,
+  ): Promise<PtcRunResult> {
     const bootMessage: BootMessage = {
       type: 'boot',
       cpuSeconds: this.config.cpuSeconds,
@@ -219,6 +229,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
     }
 
     const child = spawn(this.config.pythonPath, [BOOTSTRAP_PATH], {
+      cwd: request.cwd,
       stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
       env: {},
     })
@@ -226,7 +237,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
     const fd3Write = child.stdio[3] as NodeJS.WritableStream
     const fd3Read = child.stdio[3] as NodeJS.ReadableStream
 
-    return new Promise<CodeRunResult>((resolve) => {
+    return new Promise<PtcRunResult>((resolve) => {
       let settled = false
       const answered = new Set<number>()
       const logs: string[] = []
@@ -269,7 +280,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
         child.once('error', onTerminal)
       })
 
-      const finish = (result: CodeRunResult): void => {
+      const finish = (result: PtcRunResult): void => {
         if (settled) return
         settled = true
         clearTimeout(wallTimer)
@@ -365,7 +376,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
           void (async () => {
             try {
               const resolved = await fn(frame.args)
-              let value: CodeJsonValue | undefined
+              let value: PtcJsonValue | undefined
               try {
                 value = snapshotJsonValue(resolved)
               } catch {
@@ -399,7 +410,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
               finish({ logs: [...logs, ...strayLogs], error: { kind: 'invalid-output', message: 'program completion must be lossless JSON' } })
             }
           } else {
-            finish({ logs: [...logs, ...strayLogs], value: frame.value as CodeJsonValue })
+            finish({ logs: [...logs, ...strayLogs], value: frame.value as PtcJsonValue })
           }
         } else {
           finish({ logs: [...logs, ...strayLogs] })
@@ -443,7 +454,7 @@ export class DataPythonCodeRuntime extends CodeRuntime {
       const live: LiveRun = {
         child,
         finished,
-        settle: (failure: CodeRunFailure) => { finish({ logs: [...logs, ...strayLogs], error: failure }) },
+        settle: (failure: PtcRunFailure) => { finish({ logs: [...logs, ...strayLogs], error: failure }) },
       }
       this.live.add(live)
 

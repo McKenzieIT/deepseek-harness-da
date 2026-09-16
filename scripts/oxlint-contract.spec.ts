@@ -257,7 +257,7 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
       expect(disposition.rationale, disposition.glob).not.toBe('')
     }
     // 34 waived + 15 default-only = the 49 files still unmatched after the
-    // 6 eval-cli tests were claimed by tsconfig.tests.json (was 55 on 2886e5b8e5).
+    // 6 eval-cli tests were claimed by tsconfig.tests.json (was 55 before that claim).
     expect(counted('waive')).toBe(34)
     expect(counted('keep')).toBe(15)
   })

@@ -83,7 +83,7 @@ function checkProtocolMatch(runA: RunResult, runB: RunResult): void {
     console.log(`\n  ⚠ protocol unverified: ${which} its run config (pre-2026-09-04).`)
     console.log(`      A: ${a ?? 'unknown'}    B: ${b ?? 'unknown'}`)
     console.log('    If one is k=1 and the other k=3 pass^k, the delta below is')
-    console.log('    ~12pp of protocol artifact. Check the run\'s provenance.')
+    console.log('    ~12pp of protocol artifact. Check what the run recorded.')
   }
 }
 

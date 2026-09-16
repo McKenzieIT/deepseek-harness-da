@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/testing/2026-09-07-execution-grader-seam.md
-2026-09-07-execution-grader-seam.md: 1264b6634293a0cfcca964fc034c8d5eb326dc68
-2026-09-07-execution-grader-seam.zh.md: c8e99793bdf6df5923dbc53613a8c2848c1f1a64
+2026-09-07-execution-grader-seam.md: 799132402bca04798d0ea01eaca7dcf210024bff
+2026-09-07-execution-grader-seam.zh.md: dfc64986c9035c0be2f45c3d174c4f6f42e4f44b

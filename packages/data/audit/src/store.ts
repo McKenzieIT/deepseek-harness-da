@@ -458,7 +458,7 @@ export class SQLiteAuditStore {
    * @param log_id - the 8-char hex audit log id of the record to patch.
    * @param field - the dotted-path field name to override (a non-identity verdict field).
    * @param value - the override value (JSON-encoded into `audit_override.value`).
-   * @param opts - optional `by` (patcher) and `reason` provenance fields.
+   * @param opts - optional `by` (patcher) and `reason` attribution fields.
    * @param caller - the caller identity for the ownership guard (privileged bypasses it).
    * @returns `true` if the override was appended; `false` on not-found / ownership mismatch; throws if `field` is an identity field.
    */
@@ -499,7 +499,7 @@ export class SQLiteAuditStore {
    *
    * @param originalLogId - the 8-char hex audit log id of the misattributed record.
    * @param correctIdentity - the corrected identity fields to stamp on the new record.
-   * @param opts - optional `by` (corrector) and `reason` provenance fields.
+   * @param opts - optional `by` (corrector) and `reason` attribution fields.
    * @param caller - the caller identity for the ownership guard on the original (privileged bypasses it).
    * @returns the new correction record's `log_id`, or `null` if the original is absent / not owned.
    */

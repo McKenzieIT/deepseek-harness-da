@@ -15,7 +15,7 @@ const manifest = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 ) as PackageManifest
 
-const EXPERIMENTAL_RUNTIME = '@deepseek-ai/dsh-experimental-code-runtime-python'
+const EXPERIMENTAL_RUNTIME = '@deepseek-ai/dsh-experimental-ptc-runtime-python'
 const PROTOCOL_PACKAGE = '@deepseek-ai/dsh-code-runtime-python-protocol'
 
 describe('data Python release dependencies', () => {

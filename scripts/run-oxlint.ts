@@ -101,7 +101,7 @@ export interface UnmatchedDisposition {
 
 /**
  * Every program-less file that is NOT in the strict type-aware override, and why
- * it stays that way. Reproduced 2026-09-14 on `2886e5b8e5`: 55 unmatched files
+ * it stays that way. Reproduced 2026-09-14: 55 unmatched files
  * total — 34 waived, 15 kept default-only. The 6 eval-cli tests that previously
  * leaked here are now claimed by `packages/eval/eval-cli/tsconfig.tests.json`.
  *

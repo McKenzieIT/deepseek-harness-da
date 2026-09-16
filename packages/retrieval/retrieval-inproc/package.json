@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-retrieval-inproc",
   "description": "In-process hybrid retrieval provider (BM25 + vector + RRF k=60, in-mem cosine, ctx.embedder; InferenceError -> BM25-only degradation) for the data agent (P5b default tier)",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },
