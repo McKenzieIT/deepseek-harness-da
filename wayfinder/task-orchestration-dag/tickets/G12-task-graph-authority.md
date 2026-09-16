@@ -2,6 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved 2026-09-12
+**Current standing**: the Task Graph, not the structural Plan DAG, owns runtime attempts, verification, Holds, budgets, and stop records. `PlanRunId` is independent of DSH Session identity; [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) stores this authority in a DSH-neutral journal and relates Hosts through generic Host Bindings.
 **Blocked by**: [R6 Agent orchestration and loop-engineering research](R6-agent-orchestration-and-loop-engineering.md) ✅, [R7 DSH Cordis plugin adaptation](R7-dsh-cordis-plugin-adaptation.md) ✅
 **Blocks**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md), [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md), [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
 

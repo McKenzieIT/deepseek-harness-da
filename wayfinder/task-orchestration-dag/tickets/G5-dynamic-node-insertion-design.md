@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved
-**Current standing**: batching, stable layout, and view filtering remain inputs. Client-owned durable state and raw-history replay are superseded by [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md).
+**Current standing**: the DAG remains execution infrastructure, and batching, stable layout, and view filtering remain presentation inputs. [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) supersedes direct `DagModelService` mutation, `dag/*` Session-event replay, Session-scoped authority, and heuristic execution correlation with a journal-backed core projection, Host Bindings, and explicit adapter correlation.
 **Blocked by**: [G1 DAG data model decision](G1-dag-data-model-decision.md) ✅
 **Blocks**: [G6 infra contracts for dynamic workflows](G6-infra-contracts-for-dynamic-workflows.md), [G11 view simplification strategies](G11-dag-view-simplification-strategies.md)
 

@@ -9,4 +9,8 @@
 
 Which renderer-neutral view transformations belong in the first release, and in what order are they composed?
 
-Consider structural aggregation, active/focus filtering, terminal-subgraph summaries, domain filtering, and visible-node fallback. Define `TaskGraphSnapshot → TaskGraphViewSnapshot`, stable identities, explainable omitted counts, and selection survival independently of G6.
+Consider structural aggregation, active/focus filtering, terminal-subgraph summaries, domain filtering, and visible-node fallback. Define `TaskGraphView → TaskGraphDisplayView`, stable identities, explainable omitted counts, and selection survival independently of G6.
+
+## Inputs from the G14 resolution
+
+Simplification begins from the ready variant of the journal-backed `TaskGraphView` and produces a separate display-only view. It preserves Task, relation, Attempt, Hold, assurance, and omitted-count identities, never mutates the Task DAG projection, and treats unavailable views as non-transformable.

@@ -28,3 +28,7 @@ First-release evaluation must cover the [G13 ExecutionAttempt and correlation pr
 ## Inputs from the G19 resolution
 
 The first-release evaluation must cover semantic-grounding precedence and configurable automatic replanning: a unique or declared-default metric definition proceeds without clarification; multiple viable meanings with no selected default create a correlated Hold; absent grounding declines; default `hold` adds no replan call; configured `replan` runs only after a durable premise change, consumes budget, changes the affected subgraph, and returns to Hold when ineffective.
+
+## Inputs from the G14 resolution
+
+Evaluation treats the Task DAG SQLite journal as plan and execution-control authority and the DSH Session as the exact model/tool transcript. It must cover the dual-store crash and correlation matrix, outbox CAS/generation fencing, claim/acknowledgement reordering, Session flush participation, unavailable Host Bindings, Remote baseline/gap repair, and independent Domain/SQLite/View/Host-adapter compatibility. Active-active multi-process workers and large-graph deltas are not first-release requirements.

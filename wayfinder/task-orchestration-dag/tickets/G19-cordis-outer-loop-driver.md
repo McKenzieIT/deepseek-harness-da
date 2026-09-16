@@ -2,6 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved 2026-09-15
+**Current standing**: deterministic admission, one continuation owner, evidence-gated completion, budgets, Holds, and bounded recovery remain authoritative. The outer-loop policy belongs to the DSH-independent Task DAG service; its Cordis Host adapter owns `agent/pre-step`, tool fencing, inbox delivery, and Session checkpoints, while SQLite commit is Task DAG durability and DSH flush covers only the Host delivery leg.
 **Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅
 **Blocks**: [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md), [G16 Model tools and preset composition](G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](G17-native-source-adapters.md), [G7 writeScopes conflict semantics](G7-writescopes-conflict-detection.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
 

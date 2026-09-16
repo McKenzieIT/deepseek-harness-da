@@ -20,3 +20,7 @@ Define a typed, versioned executor-adapter contribution registry so future query
 ## Inputs from the G19 resolution
 
 The data-agent adapter consumes the selected data scope, metric and concept definitions, labels, default caliber, and Ontology relations before reporting ambiguity. It records stable semantic references or definition digests with the Attempt's model-visible input, maps residual ambiguity to a Task-scoped clarification request, maps absent grounding to decline, and never transfers semantic-layer or phase lifecycle ownership into the Task DAG. The adapter also exposes enough structured failure and changed-premise facts for bounded local repair and configured affected-subgraph replan.
+
+## Inputs from the G14 resolution
+
+Executor adapters implement Host-neutral Task DAG ports. Core `ExecutionBinding` records contain `HostBindingId`, purpose, parentage, generation, and opaque adapter-owned native references rather than DSH identifier unions. Task DAG SQLite commit is the intent durability barrier; current-Agent delivery additionally uses the outbox, source-owned `deliveryId`, Session flush and correlation verification, acknowledgement, and pre-step fencing.

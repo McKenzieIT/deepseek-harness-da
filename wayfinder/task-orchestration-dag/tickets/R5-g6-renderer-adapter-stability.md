@@ -10,3 +10,7 @@
 What smallest renderer adapter isolates `@antv/g6` and `@antv/g` while supporting layout, updates, animation, cancellation, destruction, reduced motion, and upgrades?
 
 Verify public typed APIs for display lookup, animation, draw/render, layout ordering, events, and cleanup. Define renderer-neutral node, edge, Task, Attempt, assurance, hold, and replan inputs plus remount, resize, hidden-tab, scale, and reduced-motion tests.
+
+## Inputs from the G14 resolution
+
+The renderer consumes safe `TaskGraphView` values from the independent Task DAG Remote. Host and executor bindings arrive as renderer-neutral summaries; adapter-private native references, outbox payloads, credentials, transport cursors, and DSH Session events never enter the G6 adapter.
