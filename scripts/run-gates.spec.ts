@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi, type MockInstance } from 'vitest'
 import {
   cliGateOptions,
+  collectDescendants,
   defaultConcurrency,
   formatGateResultReason,
   gatesForMode,
@@ -916,6 +917,50 @@ describe('process-table parsing', () => {
 
   it('drops blank and malformed lines', () => {
     expect(parsePidPpidLines('  123   1\n\ncommand not found\n999 abc\n')).toEqual([[123, 1]])
+  })
+})
+
+describe('process-tree descendant walk', () => {
+  it('collects a whole subtree in breadth-first order', () => {
+    const rows: Array<[number, number]> = [[200, 100], [201, 100], [300, 200], [400, 300], [999, 1]]
+    expect(collectDescendants(100, rows)).toEqual([200, 201, 300, 400])
+  })
+
+  it('returns nothing for a pid with no children', () => {
+    expect(collectDescendants(100, [[200, 7], [201, 7]])).toEqual([])
+  })
+
+  it('terminates on a snapshot whose ppid chain cycles back to the root', () => {
+    // The OS recycles pids, so a dump can name a parent that sits below its own
+    // child. Before the walk tracked what it had queued, this two-row input grew
+    // the queue without end and died with `Maximum call stack size exceeded`.
+    expect(collectDescendants(100, [[200, 100], [100, 200]])).toEqual([200])
+  })
+
+  it('terminates on a cycle that does not include the root', () => {
+    const rows: Array<[number, number]> = [[200, 100], [300, 200], [200, 300]]
+    expect(collectDescendants(100, rows)).toEqual([200, 300])
+  })
+
+  it('terminates on a self-parenting row', () => {
+    expect(collectDescendants(100, [[200, 100], [200, 200]])).toEqual([200])
+  })
+
+  it('walks a fan-out wider than the engine argument limit', () => {
+    // The children were once spread into `push`, which passes one argument per
+    // element; a fan-out this wide exceeded the argument limit and threw.
+    const rows: Array<[number, number]> = [[100, 1]]
+    for (let pid = 200; pid < 200_000; pid += 1) rows.push([pid, 100])
+    expect(collectDescendants(1, rows)).toHaveLength(199_801)
+  })
+
+  it('leaves the caller-visible row order untouched for a repeated walk', () => {
+    // The queue used to alias the map's own child array, so one walk rewrote the
+    // snapshot the next one would read.
+    const rows: Array<[number, number]> = [[200, 100], [300, 200]]
+    expect(collectDescendants(100, rows)).toEqual([200, 300])
+    expect(collectDescendants(100, rows)).toEqual([200, 300])
+    expect(rows).toEqual([[200, 100], [300, 200]])
   })
 })
 
