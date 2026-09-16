@@ -2,6 +2,7 @@
 
 **Type**: research
 **Status**: resolved 2026-09-12
+**Current standing**: public Cordis Agent, Session, Tool, Remote, bundle, and slot APIs remain sufficient adapter points without changing `agent-loop` or upstream source. [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) supersedes required external Session events and a `taskGraph` SessionProjection with an independent SQLite journal/outbox/projection plus Host Bindings and DSH adapters.
 **Blocked by**: —
 **Blocks**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md), [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
 

@@ -2,6 +2,7 @@
 
 **Type**: research
 **Status**: resolved 2026-09-12
+**Current standing**: the writable graph, separate Attempts, evidence-based completion, bounded continuation, and local-repair conclusions remain authoritative for the DSH-independent Task DAG core. Data-agent consumes the core through Host Bindings and Cordis adapters rather than owning its persistence model.
 **Blocked by**: —
 **Blocks**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md), [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
 

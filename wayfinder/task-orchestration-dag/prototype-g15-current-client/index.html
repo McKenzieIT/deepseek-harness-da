@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>G15 Current Task DAG Client Placement Prototype</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="left-sidebar" aria-label="会话导航">
+      <div class="brand-row"><span class="brand-mark">D</span><strong>deepseek-harness-da</strong></div>
+      <button class="new-session" type="button">＋ 新会话</button>
+      <div class="search">搜索会话…</div>
+      <nav id="session-list" class="session-list"></nav>
+      <div class="left-footer"><span class="avatar">M</span><span>mckenzie</span><span class="spacer"></span><span>⚙</span></div>
+    </aside>
+
+    <main class="conversation" aria-label="当前会话">
+      <header class="conversation-header">
+        <button class="mobile-menu" id="mobile-menu" type="button" aria-label="打开会话导航">☰</button>
+        <div>
+          <strong id="conversation-title"></strong>
+          <span class="model-chip">data-agent</span>
+        </div>
+        <div class="connection" id="connection-label"><span class="online-dot"></span>Task DAG 已连接</div>
+      </header>
+
+      <section class="transcript" id="transcript"></section>
+
+      <section class="composer-zone">
+        <button id="task-summary" class="task-summary" type="button" aria-controls="task-rightbar" aria-expanded="false">
+          <span class="summary-icon">◇</span>
+          <span class="summary-copy">
+            <span class="summary-primary" id="summary-primary"></span>
+            <span class="summary-secondary" id="summary-secondary"></span>
+          </span>
+          <span class="summary-action" id="summary-action">在右侧查看</span>
+          <span aria-hidden>›</span>
+        </button>
+        <div class="composer-card">
+          <textarea aria-label="发送消息" placeholder="发送消息，⌘K 查看命令…"></textarea>
+          <div class="composer-tools"><span>＋</span><span>Plan</span><span class="spacer"></span><button type="button">发送</button></div>
+        </div>
+      </section>
+    </main>
+
+    <aside id="task-rightbar" class="rightbar" aria-label="任务编排" aria-hidden="true">
+      <div class="rightbar-tabs">
+        <div class="tab active"><span>◇</span><strong>任务编排</strong><span class="tab-dot" id="tab-dot"></span></div>
+        <button class="chrome-button" id="fullscreen-button" type="button" aria-label="进入全屏" title="进入全屏">⛶</button>
+        <button class="chrome-button" id="close-button" type="button" aria-label="关闭任务编排" title="关闭">×</button>
+      </div>
+      <div class="rightbar-body">
+        <section class="run-header">
+          <div>
+            <div class="eyebrow">CURRENT PLAN RUN</div>
+            <h1 id="run-title"></h1>
+            <p id="run-subtitle"></p>
+          </div>
+          <div class="run-health" id="run-health"></div>
+        </section>
+
+        <section class="metrics" id="metrics"></section>
+
+        <section class="graph-shell">
+          <div class="graph-toolbar">
+            <div class="legend" aria-label="状态图例">
+              <span><i class="legend-dot completed"></i>完成</span>
+              <span><i class="legend-dot running"></i>执行中</span>
+              <span><i class="legend-dot ready"></i>可执行</span>
+              <span><i class="legend-dot blocked"></i>受阻</span>
+            </div>
+            <button type="button" id="fit-button">适配视图</button>
+          </div>
+          <div class="graph-stage" id="graph-stage" tabindex="0" aria-label="当前任务依赖图">
+            <svg id="edge-layer" class="edge-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" /></marker>
+              </defs>
+            </svg>
+            <div id="node-layer" class="node-layer"></div>
+          </div>
+          <div class="graph-footer">
+            <span>当前状态 · 不含历史导航</span>
+            <span id="selection-hint">选择任务查看执行、证据与阻塞原因</span>
+          </div>
+        </section>
+
+        <section class="detail-panel" id="detail-panel" aria-live="polite"></section>
+        <section class="stop-record" id="stop-record"></section>
+      </div>
+    </aside>
+
+    <div class="reconnect" id="reconnect" role="status">正在重新连接 Task DAG Remote…</div>
+
+    <div class="prototype-controls" aria-label="原型控制">
+      <strong>G15 当前客户端原型</strong>
+      <span class="divider"></span>
+      <button id="advance-button" type="button">推进 watch</button>
+      <button id="restart-button" type="button">模拟 Client 重载</button>
+      <button id="narrow-button" type="button" aria-pressed="false">窄屏模拟</button>
+    </div>
+  </div>
+  <script src="./prototype.js"></script>
+</body>
+</html>

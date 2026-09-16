@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved
-**Current standing**: independent opt-in composition remains plausible; the host-level restriction mechanism is superseded by [G16 Model tools and preset composition](G16-todo-coexistence-and-preset-composition.md).
+**Current standing**: independent opt-in bundle composition remains valid. The bundle assembles DSH-independent core/store/projection packages with DSH Cordis adapters; plugin SQLite rather than Session events owns persistence, and [G16 Model tools and preset composition](G16-todo-coexistence-and-preset-composition.md) owns Todo coexistence and tool policy.
 **Blocked by**: [G1 DAG data model decision](G1-dag-data-model-decision.md) ✅
 **Blocks**: —
 

@@ -46,7 +46,7 @@ flowchart TD
 | Concurrent independent Tasks | Direct latency benefit for income, ads, FX, and quality queries | Medium: capacity ledger and adapters | Uses only work already requested | **Keep** |
 | Same-Task Attempt Groups | Speculation/voting/hedging benefit is unproven and duplicates model/query cost | High lifecycle, verifier, cancellation, recovery, UI | Potentially multiplies cost | **Deferred to G24** |
 | Stable priority/ready-age ordering | Predictable capacity allocation without a scheduler model call | Low | Zero model cost | **Keep** |
-| Independent admissions, one shared flush, post-flush recheck | Prevents unauthorized dispatch and reduces flush count | Medium but central to durable execution | No model cost | **Keep** |
+| Independent admissions, semantic durability barriers, and post-flush rechecks | Prevents unauthorized dispatch without fixing a batching strategy in the public protocol | Medium but central to durable execution | No model cost; batching can reduce persistence overhead later | **Keep barrier; defer batching to G24** |
 | Layered Task/claim/run-control revisions | Prevents unrelated Plan edits from cancelling expensive work | Medium and test-heavy | Reduces wasted execution | **Keep** |
 | Role-layered Attempt context | Keeps workers focused while preserving orchestrator awareness | Medium context builder | Reduces repeated Plan tokens | **Keep** |
 | Risk-tiered Plan mutation | Enables low-risk repair while protecting budgets, assurance, scope, and writes | Medium if limited to a closed host allowlist | No separate model role | **Keep, reduce policy surface** |
@@ -141,7 +141,7 @@ It explicitly rejects new first-release public seams for recovery, Attempt polic
 
 ## Deferred owners
 
-- Attempt Groups, critical-path/model routing, semantic progress, learned stopping, and advanced fairness: [G24](../tickets/G24-advanced-routing-and-parallelism.md)
+- Attempt Groups, durability-barrier batching, critical-path/model routing, semantic progress, learned stopping, and advanced fairness: [G24](../tickets/G24-advanced-routing-and-parallelism.md)
 - Full phase runtime integration: [G25](../tickets/G25-phase-gate-integration.md)
 - Goal/Plan lifecycle integration: [G26](../tickets/G26-goal-plan-dag-relationship.md)
 - Execution ledger extraction: [G27](../tickets/G27-execution-ledger-extraction.md)
