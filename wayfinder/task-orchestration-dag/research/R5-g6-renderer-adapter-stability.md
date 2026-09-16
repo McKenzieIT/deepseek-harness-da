@@ -88,7 +88,7 @@ export interface TaskGraphRenderer {
   destroy(): void
 }
 
-export type RenderDisposition = 'applied' | 'superseded' | 'cancelled'
+export type RenderDisposition = 'applied' | 'superseded' | 'deferred' | 'cancelled'
 
 export interface TaskGraphRendererCallbacks {
   onTaskActivate(taskId: string): void
@@ -102,7 +102,7 @@ export function createTaskGraphRenderer(
 ): TaskGraphRenderer
 ```
 
-`update` accepts a full immutable scene rather than renderer deltas. This matches G14's first-release whole-value transport, keeps reconnection and sequence-gap recovery simple, and lets the adapter choose the cheapest correct G6 operation. `resize`, environment changes, focus, and destruction are the only imperative concerns that cannot be represented by the scene itself.
+`update` accepts a full immutable scene rather than renderer deltas. This matches G14's first-release whole-value transport, keeps reconnection and sequence-gap recovery simple, and lets the adapter choose the cheapest correct G6 operation. `deferred` means the adapter accepted the scene as its latest desired value but did not draw because the container is hidden or has no usable size; `cancelled` means caller cancellation or destruction prevents that update from performing further work. `resize`, environment changes, focus, and destruction are the only imperative concerns that cannot be represented by the scene itself.
 
 ### Renderer-neutral scene
 
@@ -168,7 +168,7 @@ The adapter stores the latest scene, a destroyed flag, an incrementing generatio
 
 1. Validate that every relation endpoint exists and that renderer IDs are unique before touching G6.
 2. Increment the generation, attach the optional abort signal, and cancel adapter-owned animations from the previous generation.
-3. If the adapter is hidden or has no nonzero size, retain only the latest scene and return `cancelled` or leave the operation pending according to the caller contract; do not call G6.
+3. If the adapter is hidden or has no nonzero size, retain only the latest scene, mark it dirty, return `deferred`, and do not call G6.
 4. Compare the latest applied scene by stable IDs, endpoints, labels, node-size-affecting fields, and layout policy. For a topology/layout change, call `graph.setData(fullG6Data)` and `await graph.render()`.
 5. For a style-only change, call `graph.updateData(partialG6Data)` and `await graph.draw()`; do not call `layout()`.
 6. After each await, check the abort signal, generation, and destroyed flag. A stale operation returns `superseded` and installs no animations, focus, or callbacks.
