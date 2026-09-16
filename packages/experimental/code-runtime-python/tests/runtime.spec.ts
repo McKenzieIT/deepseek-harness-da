@@ -5130,67 +5130,6 @@ describe('PythonCodeRuntime — hostile peer', () => {
     expect(result.error?.kind).toBe('output-limit')
   }, 30_000)
 
-  it('checks and encodes a wide completion value in O(depth), not O(width)', async () => {
-    // A wide flat list serializes to ~2 bytes per element but the pre-fix walk
-    // enqueued one traversal tuple per element (_check_done_value) and one stack
-    // entry plus a separator marker per element (_encode_json_plain) — ~56 bytes
-    // per element, ~28x the serialized size. A value the byte meter admits could
-    // therefore OOM on the checker's or encoder's own bookkeeping, the inversion
-    // the load gate exists to prevent (the gate reserves 12x, not 28x). Both now
-    // walk with an O(depth) cursor that pulls one child at a time, so the only
-    // width-proportional allocation is the output string the meter bounded.
-    //
-    // Config: maxValueBytes 20 MiB against 384 MiB (20*12 = 240 MiB < 320 MiB
-    // budgetable, so it loads). `[0] * 6_000_000` is ~12 MB of JSON, under the
-    // 20 MiB budget, so it must round-trip. Pre-fix the ~400 MB of per-element
-    // frames plus the interpreter exceeded 384 MiB and returned MemoryError as an
-    // exception. Linux-only RLIMIT_AS repro; on macOS the value round-trips
-    // either way, but the fixture stays within the address space so it is honest.
-    //
-    // `maxWallMs` is 80s, not the 20s the memory assertion alone needs: the O(depth)
-    // cursor pulls 6M elements one at a time through Python-level frames, which costs
-    // ~11s on an idle machine and more under a shared coverage runner. `cpuSeconds`
-    // is deliberately above that wall ceiling so the independent CPU containment
-    // cannot preempt this memory assertion. The 90s case budget bounds teardown.
-    const { runtime } = await setup({
-      cpuSeconds: 600,
-      maxValueBytes: 20 * 1024 * 1024,
-      addressSpaceMb: 384,
-      maxWallMs: 80_000,
-    })
-    const result = await runtime.run({ program: 'return [0] * 6_000_000', bindings: [] })
-    expect(result.error).toBeUndefined()
-    expect(Array.isArray(result.value)).toBe(true)
-    expect((result.value as number[]).length).toBe(6_000_000)
-  }, 90_000)
-
-  it('validates wide binding arguments in O(depth), not O(width)', async () => {
-    // The completion-value walks are budgeted; this one is not. `dispatch` runs
-    // `_lossless_json_violation` on the arguments the MODEL built, and no
-    // child-side byte budget bounds them first: the frame ceiling is the host's
-    // and applies only after this validation returns. A per-member traversal
-    // frame therefore turned a legitimate call into the program's own
-    // MemoryError. Measured with tracemalloc on the two walk shapes over this
-    // exact argument (JSON ~17 MB): the cursor peaks at 0.0 MiB of auxiliary
-    // state, the pre-fix `stack.extend` at 459.1 MiB -- past the 384 MiB
-    // configured below, so the discriminating failure is real. It is Linux-only:
-    // Darwin skips RLIMIT_AS, so this case round-trips there either way.
-    //
-    // The binding echoes its argument's length back, so the assertion proves the
-    // call actually round-tripped rather than merely avoiding a crash. As above,
-    // the wall and case budgets bound this memory test before its CPU ceiling.
-    const { runtime } = await setup({ cpuSeconds: 600, addressSpaceMb: 384, maxWallMs: 80_000 })
-    const result = await runtime.run({
-      program: 'return await tools.width([0] * 6_000_000)',
-      bindings: [{
-        global: 'tools',
-        functions: { width: async (items: unknown) => (items as number[]).length },
-      }],
-    })
-    expect(result.error).toBeUndefined()
-    expect(result.value).toBe(6_000_000)
-  }, 90_000)
-
   it('decodes a multi-megabyte binding reply without regex backtracking state', async () => {
     // The child parses every host reply with `_decode_json_plain`. Its scalar
     // regex matched strings with a `(?:[^"\\]|\\.)*` repetition, which makes

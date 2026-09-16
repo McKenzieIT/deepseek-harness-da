@@ -44,6 +44,13 @@ export const coverageExemptHeavySuites: readonly CoverageExemptSuite[] = [
     filter: 'packages/experimental/webworker-runtime/tests/',
     exclude: 'packages/experimental/webworker-runtime/tests/**',
   },
+  // Multi-million-element Python subprocess fixtures verify RLIMIT_AS behavior.
+  // The ordinary runtime suite covers the host source; instrumentation only adds
+  // enough host-side frame-processing cost to consume the test's wall budget.
+  {
+    filter: 'packages/experimental/code-runtime-python/tests/wide-values.spec.ts',
+    exclude: 'packages/experimental/code-runtime-python/tests/wide-values.spec.ts',
+  },
   // Real child-process fixtures over scripts/ sources, which coverage never measures.
   { filter: 'scripts/install-lefthook.spec.ts', exclude: 'scripts/install-lefthook.spec.ts' },
   { filter: 'scripts/oxlint-contract.spec.ts', exclude: 'scripts/oxlint-contract.spec.ts' },

@@ -58,4 +58,4 @@ Linux 与 Windows coverage runner 都能启动系统 `python3`，但没有 data 
 
 ## 2026-09-15 Python wide-value memory-budget batch
 
-两个 600 万元素用例验证 Python completion 编码与 binding 参数校验保持 O(depth) 辅助空间，但沿用了 60 秒 CPU 上限，并把运行 wall budget 固定为 60 秒；共享 coverage runner 会先触发独立的 CPU 或 wall containment，使内存回归被误报为 timeout。用例保留 90 秒外层上限，将 wall budget 恢复为 80 秒，并把 CPU 上限置于 wall 上限之外，使测试仍有界且只由目标内存行为决定。focused run 为 2 passed / 249 skipped。
+两个 600 万元素用例验证 Python completion 编码与 binding 参数校验保持 O(depth) 辅助空间，但在 V8 coverage 中，host 端大型 frame 处理会先耗尽 60 秒 CPU 或 wall budget，使子进程内存回归被误报为 timeout。两项用例迁入既有 uninstrumented heavy 门禁；80 秒 wall、90 秒 case 上限继续约束运行，CPU 上限置于 wall 上限之外。普通 runtime suite 保留 host TypeScript 的覆盖率责任，focused heavy run 为 2 passed，coverage roster 测试为 8 passed。
