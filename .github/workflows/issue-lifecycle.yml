@@ -33,15 +33,16 @@ concurrency:
 jobs:
   lifecycle:
     name: Issue lifecycle
-    # Skip on non-upstream owners — the fork has no DSH issue GitHub App
-    # (DSH_ISSUE_APP_CLIENT_ID/PRIVATE_KEY) and does not run this automation.
-    # Runs on every pull_request_review event so the check reports success rather
-    # than a gray "skipped" segment. The token-creating and board-mutating steps
-    # are gated at step level (a skipped step does not gray the job): only a
-    # changes_requested review drives the Project board; approved/commented
-    # reviews never mint a write-capable App token. A pull_request edit that left
-    # the body unchanged is skipped (upstream metadata-only edit guard).
-    if: ${{ github.repository_owner == 'deepseek-ai' && (github.event_name != 'pull_request_review' || (github.event.action == 'submitted' && github.event.review.state == 'changes_requested')) && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.body != null) }}
+    # The owner gate keeps the check neutral on forks: only the upstream
+    # repository holds the DSH issue GitHub App
+    # (DSH_ISSUE_APP_CLIENT_ID/PRIVATE_KEY) this automation needs. The remaining
+    # conditions are upstream's board-relevance gates: only a changes_requested
+    # review drives the Project board, and a pull_request edit that left the body
+    # unchanged does nothing.
+    if: >-
+      github.repository_owner == 'deepseek-ai' &&
+      (github.event_name != 'pull_request_review' || github.event.review.state == 'changes_requested') &&
+      (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.body != null)
     runs-on: ubuntu-latest
     steps:
       - name: Check out trusted policy

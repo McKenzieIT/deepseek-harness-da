@@ -164,14 +164,14 @@ export class DataPythonCodeRuntime extends PtcRuntime {
     return { ...request, cwd, timeoutMs: this.config.maxWallMs }
   }
 
-  async run(request: PtcRunSpec): Promise<PtcRunResult> {
-    if (request.sandboxPolicy !== undefined || request.timeoutMs !== this.config.maxWallMs) throw new Error('dsh-code-runtime-data-python: unsupported execution policy or timeout')
+  async run(spec: PtcRunSpec): Promise<PtcRunResult> {
+    if (spec.sandboxPolicy !== undefined || spec.timeoutMs !== this.config.maxWallMs) throw new Error('dsh-code-runtime-data-python: unsupported execution policy or timeout')
     if (this.disposed) throw new Error('dsh-code-runtime-data-python: run() after disposal')
-    const bindings = this.validateBindings(request)
-    if (request.signal?.aborted) {
-      return { logs: [], error: { kind: 'abort', message: String(request.signal.reason) } }
+    const bindings = this.validateBindings(spec)
+    if (spec.signal?.aborted) {
+      return { logs: [], error: { kind: 'abort', message: String(spec.signal.reason) } }
     }
-    return await this.execute(request, bindings)
+    return await this.execute(spec, bindings)
   }
 
   private validateBindings(request: PtcRunRequest): Map<string, PtcBindingNamespace> {
