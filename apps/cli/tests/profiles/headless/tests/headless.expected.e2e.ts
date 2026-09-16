@@ -561,11 +561,31 @@ describe('headless stream-json snapshots', () => {
       })
 
       expect(result.stderr).toBe('')
-      expect(server.requests).toHaveLength(2)
+      // Requests are named by payload, not counted. The route's
+      // `maxTokens: 1024` override marks the agent request and the title
+      // policy's 64-token budget marks the background title request, so these
+      // two budgets are the whole set this composition puts on the wire — and
+      // requiring the 64 one is the title-arrival state the fixture gates on.
+      expect(new Set(server.requests.map(request => request.max_tokens))).toEqual(new Set([1024, 64]))
+      // The fixture holds the agent response open on provider comments until
+      // the title request lands, and llm-pi-ai — unlike llm-deepseek — never
+      // pulses its idle watchdog on a comment, so a loaded lane idles that
+      // attempt out and the loop retries the same request verbatim. Attempts of
+      // one logical request are byte-identical, so the distinct payloads stay
+      // two however many attempts the scheduler produced.
+      expect(new Set(server.requests.map(request => JSON.stringify(request))).size).toBe(2)
       const agentRequest = server.requests.find(request => request.max_tokens === 1024)
       const titleRequest = server.requests.find(request => request.max_tokens === 64)
+      // DeepSeek compatibility is the budget field itself: every request on
+      // this route carries `max_tokens`, never OpenAI's `max_completion_tokens`.
       expect(agentRequest).not.toHaveProperty('max_completion_tokens')
-      expect(titleRequest).toBeDefined()
+      expect(titleRequest).not.toHaveProperty('max_completion_tokens')
+      expect(agentRequest?.model).toBe('deepseek-v4-flash')
+      expect(agentRequest?.reasoning_effort).toBe('low')
+      // The tool catalog separates the agent request from the title policy's
+      // own call, so neither budget can stand in for the other.
+      expect(agentRequest?.tools).toBeInstanceOf(Array)
+      expect(titleRequest).not.toHaveProperty('tools')
       const header = (parseJsonl(result.stdout)
         .map(record => record.event)
         .find((event): event is JsonObject => (
