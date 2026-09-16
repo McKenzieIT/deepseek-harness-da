@@ -45,10 +45,33 @@ powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Set-Content -Literal
 
 **遗留（未纳入本次 focused 改动）**：37 秒的扫描成本本身没有变小。真正的深层修法是让 slot 扫描不必对每个文件建完整 SourceFile（或缓存/增量化），属独立票。
 
+### 3. 同根因的其它扫描型用例（原 T26 于 2026-09-16 并入本票）
+
+part 2 的模式不是孤例，因此不单开票：**收窄机制与修法范式与 part 2 完全相同，只是换了文件**。证据取自 `windows node 24 / coverage` job 104663283115（PR #160 head `393c5fbb4f`）——那一轮 `packages/typert/generator/tests/tools-catalog.spec.ts:20`（suite `model-driven dsh-tools generation`）的「round-trips the complete service and event structure through the runtime registry」报 `Test timed out in 30000ms`。它在 12 行把 `workspaceRoot` 解析成真实仓库根（`resolve(import.meta.dirname, '../../../..')`），再在 21-25 行对该根建 `WorkspaceAnalyzer` 并 `analyze()`：成本由编译吞吐决定，不由断言决定。
+
+覆盖规则本仓已有明文，就在 gate runner 自己的注释里（`scripts/run-gates.ts:613-615`）：
+
+> DSH_COVERAGE_TEST_TIMEOUT_MS raises Vitest's per-test, expect.poll, and hook defaults together for instrumented lanes whose scheduling overhead exceeds those defaults. **Explicit fixture timeouts remain authoritative.**
+
+**审计结果（逐个实读文件，非推测）。** 范围：仓库内低于 90000 的 per-case / per-describe 字面量，且用例确实扫真实 workspace。
+
+在范围内、应改的 **2 项**：
+
+1. `packages/typert/generator/tests/tools-catalog.spec.ts:20` — `{ timeout: 30_000 }`，对真实仓库根建 `WorkspaceAnalyzer`。
+2. `packages/test-support/remote-mock/tests/proxy-types.client.spec.ts:78` — `describe('RemoteMock proxy types', { timeout: 60_000 })`；11 行解析真实仓库根，29 行读真实 `tsconfig.base.client.json`，64 行每个用例建一个 `ts.createProgram`。它经 `vitest.config.ts:122` 进入 coverage lane（lane 预算确实适用），但编译的是入口受限的 probe 程序（`[probePath]`）而非整个 workspace 面，成本上界低于第 1 项——**先看 Windows coverage 实测再决定是否对齐，不要机械照搬**。
+
+已确认在范围外、无需改（实读）：`cordis-catalog.spec.ts:60/:88` 字面量已是 `480_000`（高于 lane）；`type-model.spec.ts` 与 `remote-model.spec.ts` 各处 60_000/180_000 走的是 `fixtures/` 固定根与临时目录，**不扫真实 workspace**；`cordis-catalog-contract.spec.ts:127` 整个 suite 处于 `describe.skip`。另备案一项类别不同、不并入的：`scripts/project-doc-site.spec.ts:771` 的 60_000 是遍历生成出的 mirror 树（`existsSync` 数量绑定），成本随文档量而非编译吞吐增长，值得单独观察。
+
+**一个正向对照**：`packages/test-support/llm-replay/tests/session-format-corpus.spec.ts` 同样把 `repoRoot` 解析成真实仓库根（9 行），但**不带任何 timeout 字面量**，因此自然取用 lane 预算——这正是其它扫描型用例应达到的状态。
+
 ## Scope
 
 1. codex 项：先把断言改成能自证的形状——分别断言 captured `arguments` 里的命令与实际写入路径，使失败直接指出不匹配的字段，再据此定 root cause。
-2. client-catalog 项：确认 30 秒字面量无独立理由后取用 lane 预算；若有理由则把理由写在旁边。
-3. 两项都不接受 `retry` 或跳过。
+2. client-catalog 项：确认 30 秒字面量无独立理由后取用 lane 预算；若有理由则把理由写在旁边。**已于 #162 `413b0681d5` 完成**（`gen-client-catalog.spec.ts` 的注释与 `describe` 取值即本票范式的成品，注释起于 203 行、取值在 210 行；更早的两处先例是 `scripts/translation-pairing-merge.spec.ts:272` 与 `scripts/install-lefthook.spec.ts:221`）。
+3. 扫描型预算项（原 T26）：`tools-catalog.spec.ts` 按上述范式把预算提到 `describe` 层取 90_000 并写明理由；`proxy-types.client.spec.ts` 先取实测再决定对齐或把 60_000 的理由写在旁边。两种结果都可接受，**没有理由的字面量不可接受**。
+4. **不能直接删掉字面量**：`vitest.config.ts` 与 `vitest.shared.ts` 都不设仓库级 `testTimeout`（已核实两文件均无该键），删掉会让用例在本地 `pnpm test` 和任何未设该 env 的 lane 上掉回 Vitest 内置的 5 秒，立刻变成回归。
+5. 三项都不接受 `retry`、不接受跳过、不接受把预算调到 lane 值以上。
 
-验收：`windows node 24 / coverage` 连续两次真实运行对这两项全绿。
+**注意 part 1 与 part 3 是不同类型的工作**：part 1（codex）是 research 且根因已定但只有单次观测；part 3 的收窄机制已确诊，属逐项按其自身理由落实的 task。
+
+验收：`windows node 24 / coverage` 与 `node 24 / coverage` 连续两次真实运行对上述各项全绿。
