@@ -14,3 +14,7 @@ Consider structural aggregation, active/focus filtering, terminal-subgraph summa
 ## Inputs from the G14 resolution
 
 Simplification begins from the ready variant of the journal-backed `TaskGraphView` and produces a separate display-only view. It preserves Task, relation, Attempt, Hold, assurance, and omitted-count identities, never mutates the Task DAG projection, and treats unavailable views as non-transformable.
+
+## Inputs from the R5 resolution
+
+[R5 G6 renderer adapter stability](R5-g6-renderer-adapter-stability.md) gives the renderer a complete immutable `TaskGraphScene` and keeps G6-specific diffing private. This ticket therefore decides pure `TaskGraphView → TaskGraphDisplayView` transformations before scene mapping, not renderer deltas. The first-release target is legibility through 30 Tasks; a 100-Task browser case records evidence for simplification or the later renderer-scaling ticket rather than silently changing domain semantics.

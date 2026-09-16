@@ -36,7 +36,7 @@ The core domain, store, projection, and execution ports must not import DSH or C
 - **Commitment policy**: a Plan may cover the full objective; each admission cycle selects a conflict-free set of independent ready Tasks, with at most one active Attempt per Task in the first release. Local retry or affected-subgraph repair precedes global replanning; same-Task groups are deferred.
 - **Completion requires evidence**: model self-report is a completion proposal. Completion assurance distinguishes `verified` from `attested`; hard dependencies require `verified` by default.
 - **Community distribution**: the independent core and storage providers can ship without DSH; DSH adapter packages depend only on published contracts and install through the normal bundle/profile workflow. Experimental upstream capabilities remain behind optional adapters.
-- **No forgotten full version**: a minimal first-release decision names the fuller capability it defers and links a follow-up ticket. Follow-ups cover advanced verification, multi-agent scheduling, recovery, routing and parallelism, phase and Goal integration, capability extraction, history inspection, typed dataflow ports, richer plan relations, risk-gated human-input auto-routing, and extensible Task Graph authorization.
+- **No forgotten full version**: a minimal first-release decision names the fuller capability it defers and links a follow-up ticket. Follow-ups cover advanced verification, multi-agent scheduling, recovery, routing and parallelism, phase and Goal integration, capability extraction, history inspection, typed dataflow ports, richer plan relations, risk-gated human-input auto-routing, extensible Task Graph authorization, and measured renderer scaling or replacement.
 - **Retained UX**: compact progress near the conversation input, an on-demand graph, node detail, dependency highlighting, clear active/blocked/completed states, and reduced-motion behavior.
 
 ## Architecture
@@ -64,15 +64,16 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 [✓] R7 DSH Cordis plugin adaptation ─────────────────────┼──▶ [✓] G12 Plan DAG ownership boundary
                                                         └──▶ [✓] G13 ExecutionAttempt and correlation protocol
                                                                └──▶ [✓] G19 Cordis outer-loop driver
-                                                                      ├──▶ [✓] G14 Durable storage and Host boundary ──▶ [✓] G15 Current client placement ──▶ R5 Renderer adapter stability
+                                                                      ├──▶ [✓] G14 Durable storage and Host boundary ──▶ [✓] G15 Current client placement ──▶ [✓] R5 Renderer adapter stability ─┬──▶ G4 Animation and edge design
+                                                                      │                                                                └──▶ G11 DAG view simplification
                                                                       ├──▶ G16 Model tools and preset composition
                                                                       ├──▶ G17 Executor adapters
                                                                       └──▶ G7 writeScopes conflict semantics
 ```
 
-**Frontier:** [R5 G6 renderer adapter stability](tickets/R5-g6-renderer-adapter-stability.md), [G16 Model tools and preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](tickets/G17-native-source-adapters.md), and [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md) are open, unblocked, and unclaimed.
+**Frontier:** [G4 Animation and edge design](tickets/G4-animation-and-edge-design.md), [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md), [G16 Model tools and preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](tickets/G17-native-source-adapters.md), and [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md) are open, unblocked, and unclaimed.
 
-**Current checkpoint:** [G15 Current client placement](tickets/G15-current-client-placement.md) is resolved. The next session should take [R5 G6 renderer adapter stability](tickets/R5-g6-renderer-adapter-stability.md) unless another frontier ticket is named.
+**Current checkpoint:** [R5 G6 renderer adapter stability](tickets/R5-g6-renderer-adapter-stability.md) is resolved. The next session should take [G4 Animation and edge design](tickets/G4-animation-and-edge-design.md) unless another frontier ticket is named.
 
 **Next session rule:** resolve one frontier ticket per session unless the user explicitly requests an exception.
 
@@ -94,6 +95,7 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 - [G19 Cordis outer-loop driver, verification, and budgets](tickets/G19-cordis-outer-loop-driver.md): one Host-neutral Task DAG service owns continuation policy; its DSH Cordis adapter supplies inbox, pre-step, tool, and checkpoint integration while semantic grounding, evidence, budgets, Holds, and bounded replan remain domain-owned.
 - [G14 Durable events, projection, and Host/Client boundary](tickets/G14-task-graph-projection-boundary.md): an independent SQLite journal, complete-value commits, projections, outbox, Host Bindings, dual-store correlation, and Task DAG snapshot/watch provide durability without upstream DSH changes; Cordis adapters own all DSH-specific delivery and native references.
 - [G15 Current client placement](tickets/G15-current-client-placement.md): one shared current-value source feeds a compact composer summary and one per-Session right-Sidebar tab; built-in fullscreen supplies large inspection while history and global aggregate views remain additive follow-ups.
+- [R5 G6 renderer adapter stability](research/R5-g6-renderer-adapter-stability.md): one private G6 adapter accepts complete renderer-neutral scenes, separates topology renders from style draws, owns cancellable direct animations, and guards hidden, reduced-motion, remount, and upgrade lifecycles.
 
 ## Not yet specified
 

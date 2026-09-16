@@ -16,3 +16,7 @@ The container and renderer API are not stable inputs. Current DSH has newer righ
 How should renderer-neutral Task, Attempt, assurance, hold, dependency, containment, execution, and unknown states be presented and animated after client placement and renderer contracts are fixed?
 
 Resolve insertion, execution, verification, completion, rejection, failure, cancellation, interruption, supersession, replan, Attempt Groups, reduced motion, animation cancellation, and whether containment is a group, edge, or view-dependent representation.
+
+## Inputs from the R5 resolution
+
+[R5 G6 renderer adapter stability](R5-g6-renderer-adapter-stability.md) fixes the motion ownership: G6-managed animation stays disabled in the first release, while the private renderer adapter owns approved semantic effects through cancellable `@antv/g` animation handles. Every state must remain legible without motion; hidden or reduced-motion views cancel effects; topology replacement reacquires display objects; and no G6 type or event escapes the adapter.
