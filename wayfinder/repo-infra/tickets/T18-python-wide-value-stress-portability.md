@@ -22,6 +22,12 @@ AssertionError: expected { kind: 'timeout', …(1) } to be undefined
 
 原因：`check:ci:coverage` 在**同一个 job** 内同时调度插桩分区与 `coverage-exempt-heavy`（`DSH_COVERAGE_PARTITIONS: 4`、`DSH_COVERAGE_MAX_WORKERS: 4`、`DSH_GATE_CONCURRENCY: 3`），所以去掉插桩后用例仍在同一台争用主机上。实测：空闲工作站约 19.5 秒，该 runner 超过 80 秒。
 
+## 失败依赖争用，并非每次必现
+
+同一天 PR #158（`fix/repo-infra-windows-cli-launch`，head `a386b9088c`，不含本 fixture 的任何改动）的 `node 24 / coverage` job 104635347140 **未**报这两个用例——该 job 唯一的红是 `terminal-bash`（见 [T22](T22-linux-pwsh-terminal-readiness.md)）。
+
+所以这不是「必然超预算」，而是「在该 lane 的争用峰值下会超预算」。这一点决定了验收标准：单次绿不足以判定修好，必须连续两次真实运行。
+
 ## 约束
 
 - 抬高数字这条路已封闭：lane 的 case 上限是 90 秒（`DSH_COVERAGE_TEST_TIMEOUT_MS: '90000'`），`maxWallMs` 已经是 80 秒。
