@@ -64,16 +64,16 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 [✓] R7 DSH Cordis plugin adaptation ─────────────────────┼──▶ [✓] G12 Plan DAG ownership boundary
                                                         └──▶ [✓] G13 ExecutionAttempt and correlation protocol
                                                                └──▶ [✓] G19 Cordis outer-loop driver
-                                                                      ├──▶ [✓] G14 Durable storage and Host boundary ──▶ [✓] G15 Current client placement ──▶ [✓] R5 Renderer adapter stability ─┬──▶ G4 Animation and edge design
+                                                                      ├──▶ [✓] G14 Durable storage and Host boundary ──▶ [✓] G15 Current client placement ──▶ [✓] R5 Renderer adapter stability ─┬──▶ [✓] G4 Animation and edge design ──▶ G8 Global progress wavefront
                                                                       │                                                                └──▶ G11 DAG view simplification
                                                                       ├──▶ G16 Model tools and preset composition
                                                                       ├──▶ G17 Executor adapters
                                                                       └──▶ G7 writeScopes conflict semantics
 ```
 
-**Frontier:** [G4 Animation and edge design](tickets/G4-animation-and-edge-design.md), [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md), [G16 Model tools and preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](tickets/G17-native-source-adapters.md), and [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md) are open, unblocked, and unclaimed.
+**Frontier:** [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md), [G16 Model tools and preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](tickets/G17-native-source-adapters.md), [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md), and [G8 Global progress wavefront](tickets/G8-z-enhancement-global-progress-wavefront.md) are open, unblocked, and unclaimed.
 
-**Current checkpoint:** [R5 G6 renderer adapter stability](tickets/R5-g6-renderer-adapter-stability.md) is resolved. The next session should take [G4 Animation and edge design](tickets/G4-animation-and-edge-design.md) unless another frontier ticket is named.
+**Current checkpoint:** [G4 Animation and edge design](tickets/G4-animation-and-edge-design.md) is resolved. The next session should take [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md) to continue the first-release path; G8 is an unblocked enhancement follow-up.
 
 **Next session rule:** resolve one frontier ticket per session unless the user explicitly requests an exception.
 
@@ -96,6 +96,7 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 - [G14 Durable events, projection, and Host/Client boundary](tickets/G14-task-graph-projection-boundary.md): an independent SQLite journal, complete-value commits, projections, outbox, Host Bindings, dual-store correlation, and Task DAG snapshot/watch provide durability without upstream DSH changes; Cordis adapters own all DSH-specific delivery and native references.
 - [G15 Current client placement](tickets/G15-current-client-placement.md): one shared current-value source feeds a compact composer summary and one per-Session right-Sidebar tab; built-in fullscreen supplies large inspection while history and global aggregate views remain additive follow-ups.
 - [R5 G6 renderer adapter stability](research/R5-g6-renderer-adapter-stability.md): one private G6 adapter accepts complete renderer-neutral scenes, separates topology renders from style draws, owns cancellable direct animations, and guards hidden, reduced-motion, remount, and upgrade lifecycles.
+- [G4 Animation and edge design](tickets/G4-animation-and-edge-design.md): a Task-only graph separates lifecycle, assurance, and attention; dependency edges show prerequisite satisfaction; local replan differences preserve context; and bounded one-shot motion explains committed changes without continuous flow.
 
 ## Not yet specified
 
