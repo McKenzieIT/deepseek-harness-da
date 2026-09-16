@@ -22,3 +22,7 @@ It also owns admission-throughput optimizations that batch multiple independent 
 ## Inputs from the G13 resolution
 
 [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) keeps the ordinary path deliberately singular: one Agent turn and one primary Binding per Attempt, one causal owner per native execution, and a new Attempt for every semantic retry. First-release admission preserves but rejects `AttemptGroupId`. This ticket owns any measured optimization that relaxes those rules through Attempt Groups, multi-Attempt batch execution, shared-execution deduplication, winner or quorum policy, loser cancellation, or cost-aware routing; each requires an evidence trigger and a deterministic single-Attempt fallback.
+
+## Inputs from the G7 resolution
+
+The first release admits immutable complete write-scope sets atomically and rejects runtime enlargement. This ticket owns runtime scope expansion, shared/read locking, predicate- or row-level scopes, lock preemption, contention-aware granularity, reservation batching, and specialized conflict indexes only when first-release evidence shows that conservative ancestor scopes or unbounded serialization cause material latency, starvation, or lost parallelism. Each extension must preserve replayable all-or-nothing admission, prevent partial-hold deadlock, and retain deterministic fallback to conservative ancestor or unbounded serialization.

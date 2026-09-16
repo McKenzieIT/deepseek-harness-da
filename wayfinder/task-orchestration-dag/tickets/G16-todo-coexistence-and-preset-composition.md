@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Status**: open
-**Blocked by**: [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
+**Blocked by**: [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md), [G7 writeScopes conflict semantics](G7-writescopes-conflict-detection.md) ✅
 **Blocks**: [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
 
 ## Question
@@ -30,3 +30,7 @@ Model tools are DSH adapter Consumers that translate business inputs into Host-n
 ## Inputs from the G15 resolution
 
 The current Task DAG Client reserves one concise additive row in the Session-scoped `conversation.input.dock`; the normal and fullscreen graph live in one right-Sidebar page tab. This ticket decides whether Task-DAG presets retain, suppress, or replace Todo content, but must not move the Task DAG summary or depend on Todo as its data source. Queue entries continue to coexist independently.
+
+## Inputs from the G7 resolution
+
+Plan-DAG tool-policy contributions must classify write intent as `read-only`, `scoped-write`, or `unbounded-write`, resolve complete versioned hierarchical scopes before admission, and fail loud when metadata is missing. Attempt-bound protected tools receive the Host-injected ExecutionTicket; actual targets outside its immutable admitted set are rejected before the external effect. Tool policy may report target validation or native enforcement but cannot weaken core admission isolation or imply protection from external writers.

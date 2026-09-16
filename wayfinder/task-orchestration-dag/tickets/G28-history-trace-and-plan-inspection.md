@@ -20,3 +20,7 @@ The first release stops at the current-state graph and latest RunStopRecord; the
 ## Inputs from the G15 resolution
 
 The current Task DAG page has one stable identity per DSH Session and follows that Session's active `PlanRunId`. History must not overload that page's parameters or replace its current value. Prototype a separate resource-addressed tab type whose content identity includes `PlanRunId`, or a later aggregate view when several Runs must be compared; both consume Task DAG history without turning the current page into a trace explorer.
+
+## Inputs from the G7 resolution
+
+The current projection exposes only present write intent, reservation state, safe scope summaries, waiting owners, quarantine, and protection level. This ticket owns historical reservation timelines, contention analysis, manual-resolution evidence, and links to executor-native lock or job detail without copying provider traces or exposing canonical credentials and native references.

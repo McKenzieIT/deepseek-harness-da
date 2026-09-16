@@ -14,3 +14,7 @@ Define shared authority, identity, leader and worker permissions, leases, worker
 ## Inputs from the G15 resolution
 
 The current graph remains one right-Sidebar page per DSH Session. If cross-Session scheduling requires a fleet or workspace view, add a root-scoped global `main` panel as an aggregate consumer; do not move or replace the per-Session current graph.
+
+## Inputs from the G7 resolution
+
+The first release serializes write admission inside one SQLite-backed TaskGraphStore scheduling domain. Any cross-Session, cross-Run, multi-worker, or cross-store scheduler must preserve all-or-nothing reservation sets, the unbounded-write barrier, quarantined conflicts, deterministic replay, and the rule that worker loss or lease expiry cannot release an uncertain external writer.

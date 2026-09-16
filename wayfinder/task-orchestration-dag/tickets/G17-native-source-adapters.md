@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Status**: open
-**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
+**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md), [G7 writeScopes conflict semantics](G7-writescopes-conflict-detection.md) ✅
 **Blocks**: [G9 Optional Agent Teams adapter](G9-team-task-upstream-integration.md), [G10 Subagent execution adapter](G10-subagent-tree-upstream-integration.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
 
 ## Question
@@ -11,7 +11,7 @@ How does an Attempt execute through the current Agent, a skill, subagent, workfl
 
 For each executor, define capability matching, concrete binding, native concurrency, Attempt Group participation, dispatch, causal correlation, cancellation, outcome settlement, named output and evidence mapping, recovery coverage, and missing-data behavior. Skills are execution methods, not Task instances. Native subagent catalogs and workflow events remain authoritative for their internal lifecycle.
 
-Define a typed, versioned executor-adapter contribution registry so future query engines, workflows, subagent providers, and data pipelines join through ordinary Cordis `inject + register + effect`, never driver `if/else` branches. Descriptors declare capacity keys, cancellation/reconciliation/resume support, reserved future Attempt Group support, output/evidence projection, failure classification, retry safety, and compatibility. A missing or incompatible adapter fails loud. The first release keeps phase/inner policy behind its concrete executor adapter rather than publishing a one-provider Attempt-policy seam; G25 may promote a shared interface after a second independently evolving policy exists. No inner policy may become a second outer-loop owner.
+Define a typed, versioned executor-adapter contribution interface so future query engines, workflows, subagent providers, and data pipelines join without driver `if/else` branches. This ticket must decide the smallest Cordis mechanism that satisfies that interface and prove registration ownership, disposal, scoped visibility, and failure behavior through an existing or minimal prototype; it must not assume `inject + register + effect` before that proof. Descriptors declare capacity keys, cancellation/reconciliation/resume support, reserved future Attempt Group support, output/evidence projection, failure classification, retry safety, and compatibility. A missing or incompatible adapter fails loud. The first release keeps phase/inner policy behind its concrete executor adapter rather than publishing a one-provider Attempt-policy seam; G25 may promote a shared interface after a second independently evolving policy exists. No inner policy may become a second outer-loop owner.
 
 ## Inputs from the G13 resolution
 
@@ -24,3 +24,7 @@ The data-agent adapter consumes the selected data scope, metric and concept defi
 ## Inputs from the G14 resolution
 
 Executor adapters implement Host-neutral Task DAG ports. Core `ExecutionBinding` records contain `HostBindingId`, purpose, parentage, generation, and opaque adapter-owned native references rather than DSH identifier unions. Task DAG SQLite commit is the intent durability barrier; current-Agent delivery additionally uses the outbox, source-owned `deliveryId`, Session flush and correlation verification, acknowledgement, and pre-step fencing.
+
+## Inputs from the G7 resolution
+
+Each write-capable executor adapter resolves one complete `read-only | scoped-write | unbounded-write` intent before admission. Scoped resources use versioned `scheme`, `authority`, hierarchical `segments`, and `exact | subtree`; the adapter owns provider normalization, safe labels, actual-target checks, and optional native enforcement. Every adapter consumes the immutable Attempt ExecutionTicket, child Bindings may only narrow its scopes, and unavailable required protection rejects dispatch rather than silently downgrading. The adapter reports `admission-only | target-validated | native-enforced` without changing the core overlap rule.
