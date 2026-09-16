@@ -178,6 +178,32 @@ describe('LocalPtySession readiness and output', () => {
     expect(session.motd).toBe('dsh> ')
   })
 
+  it('publishes prompt readiness only from the marker and its exact printable tail', async () => {
+    vi.useFakeTimers()
+    const terminal = new FakeTerminal()
+    const inspector = new FakeInspector()
+    const session = makeSession(terminal, inspector, config())
+    expect(session.promptReady).toBe(false)
+
+    const probed = session.startSend({ text: '', submit: false })
+    await Promise.resolve()
+    await Promise.resolve()
+    inspector.waiting = true
+    terminal.emitData("function prompt { 'dsh> ' }\n")
+    await vi.advanceTimersByTimeAsync(30)
+
+    // An exact stdin wait settles the send while carrying no prompt evidence:
+    // the echoed prompt literal has no marker in front of it.
+    expect((await probed.done).waitReason).toBe('stdin_read')
+    expect(session.promptReady).toBe(false)
+
+    const prompted = session.startSend({ text: '', submit: false })
+    terminal.emitData('\x1b]133;D;0\x07dsh> ')
+    await vi.advanceTimersByTimeAsync(10)
+    expect((await prompted.done).waitReason).toBe('stdin_read')
+    expect(session.promptReady).toBe(true)
+  })
+
   it('drains terminal replies before caller input and re-inspects after concurrent output', async () => {
     vi.useFakeTimers()
     const terminal = new FakeTerminal()

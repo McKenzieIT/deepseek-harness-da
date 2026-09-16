@@ -228,6 +228,20 @@ export class LocalPtySession implements TerminalBackendSession {
   }
 
   /**
+   * Whether the controlled prompt is verified for the current send: the private
+   * OSC `133;D;` marker arrived and the printable text after it is exactly
+   * `CONTROLLED_PROMPT`. Echoed input cannot forge this evidence, because the
+   * marker's ESC byte is written by the shell itself and never appears in the
+   * printable text a shell echoes back. A `stdin_read` settlement without it
+   * carries no prompt evidence: it can also come from the exact stdin-wait
+   * probe, which only observes that some process in the foreground group blocks
+   * on a terminal read.
+   */
+  get promptReady(): boolean {
+    return this.promptSeen && this.promptTextSeen
+  }
+
+  /**
    * Capture startup output through the same readiness contract as later sends.
    * @param signal - optional cancellation while the shell reaches its first prompt.
    * @returns Resolves after startup readiness; rejects on exit or readiness timeout.
@@ -489,7 +503,7 @@ export class LocalPtySession implements TerminalBackendSession {
       if (this.promptSeen && foreground !== undefined && this.shellPgid === undefined) {
         this.shellPgid = foreground.processGroupId
       }
-      if (this.promptSeen && this.promptTextSeen && idleFor >= this.config.pollIntervalMs
+      if (this.promptReady && idleFor >= this.config.pollIntervalMs
         && foreground?.processGroupId === this.shellPgid) {
         this.settleActive('stdin_read')
         return
