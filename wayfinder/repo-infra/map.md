@@ -30,6 +30,8 @@
 - [T15: doc-typecheck 语料与示例漂移](tickets/T15-doc-typecheck-plan-sketches.md) — 两个真实 fence 已修复，并将两个自足示例纳入编译以维持 opt-out 比率；`doc-typecheck` 为 86 compiled / 85 ignored，exit 0。
 - [T10: publint 发布视图](tickets/T10-publint.md) — 源码平面 glob 保持提示级；`result-cache` 发布编译后的 types，两个动态加载 semantic-layer 的工具生成自足入口，完整 build 后 publint exit 0。
 - [T17: NodeNext declarations 引用源码子路径](tickets/T17-node-next-types-source-subpaths.md) — 24 个公开 declaration import 改走 package root，并新增 built-declaration 守卫；343 个 workspace package declaration API 在 NodeNext consumer 下通过。
+- [T19: Windows session-projection-cache 读回失败](tickets/T19-windows-projection-cache-durability.md) — resolved 2026-09-16 via PR #160（merge `051519b169`）：root cause 判定为**写失败**而非可见性延迟，判据是单测耗时的双峰分布（四项失败 5332 / 5148 / 5162 / 5061 ms，而同文件内相同 helper 的兄弟用例 141 / 147 ms——迟到的写入会落在中间，只有「抛出后不再重试」才产生全有全无的分布；job 104534944084 与 104635347170）。缺陷是 `storage-json` 的 `writeAtomic` 用裸 `rename`，缺少 `dsh-atomic-write` 那套对 `EACCES`/`EBUSY`/`EPERM` 的有界重试；fix = 公开导出 `renameAtomicTemp` 并在 `writeAtomic` 中改用它，另补 fail-soft 写路径此前完全缺失的 `ctx.logger.warn` 可观测性。顺带推翻一条归档结论：`.agents/notes/archived/process/2026-08-31-windows-coverage-flaky-test-budgets.md` 曾把同一批用例诊断为「未在 40ms 内排空」并放宽到 5 秒宣布修好，它们在 **125 倍**预算下依然失败。**尚欠第二次确认运行**。
+- [T20 part 2: client-catalog 用例预算](tickets/T20-windows-codex-and-catalog-budget.md) — resolved 2026-09-16 via PR #162（merge `413b0681d5`）：`gen-client-catalog.spec.ts` 的 30 秒 case 字面量**主动收窄**了 lane 已授予的 `DSH_COVERAGE_TEST_TIMEOUT_MS: '90000'`（case 字面量覆盖而非让位于 `--testTimeout`，规则见 `scripts/run-gates.ts:613-615`「Explicit fixture timeouts remain authoritative」）。同时纠正本票两处原判：**不是 Windows-only**（Linux job 104542100296 报同一项，PR #155 的 Linux job 104534944130 是以 29536ms 擦线通过），且 **30 秒从来不是深思过的上限**（唯一引入提交 `a7d4cd8e1b "fix: ci"` 只是把它从 Vitest 默认 5 秒上调，当日 lane 仅授予 15 秒，此后从未复核）。实测成本 Linux 13.1–19.2s、Windows 24.3–37.4s，30 秒正好横穿该区间。fix = 按既有 idiom 把预算提到 `describe` 层并等于 lane 值。**part 1（codex 真实产品用例，8.3 短名路径嫌疑）仍未解决，票据保持 open**——见下方 Open tickets。同类收窄在别处复发，已另立 [T26](tickets/T26-workspace-scan-case-budgets.md)。
 
 ## Open tickets
 
@@ -38,19 +40,33 @@
 
 ### T11 拆出的剩余根因（2026-09-16）
 
-T11 已合并 12 个 focused PR（#142–#155）。剩下的四类根因彼此独立、且都需先定 root cause 才能下手，故拆为单独票据：
+T11 已合并 12 个 focused PR（#142–#155）。剩下的四类根因彼此独立、且都需先定 root cause 才能下手，故拆为单独票据。其中 **T19 与 T20 part 2 已于 2026-09-16 resolved**（证据见 Decisions so far），余下：
 
 - [T18: Python 宽值内存压力用例在 CI 上不可移植](tickets/T18-python-wide-value-stress-portability.md) — 「插桩税是根因」已被 draft PR #156 自身 CI 推翻；需按比例缩小 fixture 并重测 tracemalloc（**frontier**）
-- [T19: Windows session-projection-cache 读回失败](tickets/T19-windows-projection-cache-durability.md) — 首要嫌疑是 `storage-json` 的 `writeAtomic` 缺少与 `dsh-atomic-write` 对称的 Windows rename 重试（**research**）
-- [T20: Windows codex 真实产品用例与 client-catalog 预算](tickets/T20-windows-codex-and-catalog-budget.md) — codex 项待验证 8.3 短名路径嫌疑；catalog 项是 case 字面量收窄了 lane 预算（**research**）
+- [T20 part 1: Windows codex 真实产品用例](tickets/T20-windows-codex-and-catalog-budget.md) — **part 2（client-catalog 预算）已 resolved，part 1 仍 open**：codex 项待验证 8.3 短名路径嫌疑，且该项在 Windows 上表现为 flaky（**research**）
 - [T21: snapshots lane 调度型断言](tickets/T21-snapshot-lane-scheduling-assertions.md) — 请求计数与并发 frame 计数断言；chat-scroll 的等待条件可能本身不可满足
-- [T22: Linux pwsh terminal-bash motd 为空](tickets/T22-linux-pwsh-terminal-readiness.md) — 持久 pwsh 会话 `spawn` 未等提示符就绪就返回（**research**）
+- [T22: Linux pwsh terminal-bash motd 为空](tickets/T22-linux-pwsh-terminal-readiness.md) — **root cause 已确认、remedy 已被推翻**（2026-09-16）：确认是 readiness 竞态而非启动饿死（710ms 即失败，对 `timeoutMs: 8_000`，且无 readiness 诊断，job 104635347140），回归源 `4f3a47d792` 把跳出条件换成裸 `waitReason === 'stdin_read'`，而 `pollReadiness` 的两个 `stdin_read` 生产者只有一个带提示符证据、另一个是 Linux `/proc` 探针（故 Linux-only）。`holdCommand` 已证明不是成因（它在失败断言之后才被读到）。**PR #161（draft，head `cde9ef98c6`）的 remedy 被其自身 CI 推翻**：要求 `promptSeen && promptTextSeen` 后三个 pwsh 用例各烧满 8 秒 deadline 并牵连一个 120 秒组合用例（job 104659858116），即该证据在此 runner 上不可达。下一步的首要机制是 `startSend` 对每次发送无条件清空 readiness 证据（**research**）
 
 - [T14: ci.yml / ci-master.yml startup_failure](tickets/T14-ci-workflow-startup-failure.md) — **fix 已落地（2026-09-15），等首个真实 PR 运行确认**。三处 workflow 语法破损（`ci.yml` 重复顶层 `concurrency` 键；`ci-master.yml` 两个 job 级 `if:` 顶格 + 两处 `timeout-minutes` 粘在折叠标量末尾）让两个 workflow 长期 **0 秒 startup_failure**，`jobs: []` ⇒ **fork 的 `check:ci:static` / `check:ci:coverage` / Windows 门在 CI 里一次都没跑过**（此前所有「CI 绿」只覆盖 Release / Node Addon / Matrix 这几条独立 workflow）。actionlint 已零 syntax 报错。**预期修复后立刻暴露一批既有红门——那是第一次看见真相，不是回归**。
 - **CI 首次真实运行的门清单（2026-09-15，run 34918859164）**：17 job = 12 success / 5 failure；`node 24 / static` **51 门全绿**。红的全部核为 pre-existing 并已映射到票——coverage 两 suite → [T11](tickets/T11-test-coverage-failing.md)、`publint` → [T10](tickets/T10-publint.md)、`doc-typecheck:contracts-ready` → [T15](tickets/T15-doc-typecheck-plan-sketches.md)；**尚无票的两条**（`duplication` 89 clones、`verify-upstream-sync-record` 浅 checkout 下 waiver 0 命中判定）连同证据与修法方向记在 [T14](tickets/T14-ci-workflow-startup-failure.md) 的「首次真实 CI 运行的完整清单」一节。
 - [T16: duplication 门 89 clones](tickets/T16-duplication-gate-89-clones.md) — resolved 2026-09-15：排除所有 `*.spec.ts` / `*.spec.tsx`，生产 TypeScript、类型声明和 TSX 组件继续纳入；以排除 spec 后实测 0.337455% 为基线，将 jscpd 原生 threshold 设为 0.338%，保留完整报告与非零阻断，并用最小 clone 负向控制证明门禁仍会变红。
 
-- [T23: run-gates 进程树枚举溢出](tickets/T23-gate-descendant-walk-overflow.md) — resolved 2026-09-16（等真实 CI 确认）：`collectDescendants` 把进程表快照当成树，队列别名了父索引里的子数组、且用 `push(...spread)` 追加；pid 复用造成的环让队列指数增长，实参溢出被 V8 报成 `RangeError: Maximum call stack size exceeded`。**该缺陷把测试全绿的 `windows node 24 / coverage` 报成红**（job 104648904870 日志零 `FAIL`，死在 gate 清理回调）。改为拷贝起步 + `queued` 集合定界 + 逐个 append，并导出以补上此前完全缺失的用例覆盖。
+- [T23: run-gates 进程树枚举溢出](tickets/T23-gate-descendant-walk-overflow.md) — resolved 2026-09-16，**fix 已合并为 `d1f0fcad14`（PR #163）**，等真实 CI 确认：`collectDescendants` 把进程表快照当成树，队列别名了父索引里的子数组、且用 `push(...spread)` 追加；pid 复用造成的环让队列指数增长，实参溢出被 V8 报成 `RangeError: Maximum call stack size exceeded`。**该缺陷把测试全绿的 `windows node 24 / coverage` 报成红**（job 104648904870 日志零 `FAIL`，死在 gate 清理回调）。改为拷贝起步 + `queued` 集合定界 + 逐个 append，并导出以补上此前完全缺失的用例覆盖。
+
+### 本次会话新开的票（2026-09-16）
+
+- [T24: headless DeepSeek defaults 烧完 60 秒 smoke 预算](tickets/T24-headless-deepseek-idle-budget.md) — `node 24 / snapshots and artifacts` 的**第一项**失败，此前从未建票；fail-fast 下它遮蔽了后面 85+ 条 recorded-session replay。子进程始终不退出（60138ms / 60171ms，job 104648904893 与 104659731495），流内反复报 `DeepSeek stream idle timeout after 150ms` 并重试 5 次。需先判定 `streamIdleTimeoutMs: 150` 是刻意预算还是意外收窄——注意「让 comment 计为存活」这条产品修法**已经实现**，所以真正要解释的是它为何仍然 idle out（**research**）
+- [T25: `withFileLock` 把 delete-pending 的 EPERM 当成权限拒绝](tickets/T25-atomic-write-lock-eperm.md) — `windows node 24 / coverage` job 104633154572 上 `credentials-local` 并发写用例报锁文件 `EPERM`；`isLockContention` 对 `EPERM` 要求 `lstat` 成功才判为争用，而 Windows 的 delete-pending 状态同时让 `open` 得 `EPERM` 且让 `lstat` 失败。**与 T19 不共调用路径**（T19 是 `storage-json` 的 rename，本票是 `util/atomic-write` 的锁获取），故 #160 的绿不构成本票证据。**目前只有一次观测**（**research**）
+- [T26: 扫真实 workspace 的用例仍带低于 lane 预算的字面量](tickets/T26-workspace-scan-case-budgets.md) — T20 part 2 的模式在别处复发：`packages/typert/generator/tests/tools-catalog.spec.ts:20` 以 `{ timeout: 30_000 }` 对真实仓库根建 `WorkspaceAnalyzer`，在 job 104663283115 报 `Test timed out in 30000ms`。票内附本次实读的完整审计（含 `proxy-types.client.spec.ts:78` 一项待实测定夺，以及若干确认**不在**范围内的项）（**task**）
+
+### 当前真实红门清单（2026-09-16，供下一会话直接接手）
+
+记在这里是为了不必再从 CI 日志重新推导。**先看 T24：它决定了 snapshots lane 的清单可信度。**
+
+- **`node 24 / coverage`**：[T18](tickets/T18-python-wide-value-stress-portability.md)（`code-runtime-python` 两个宽值用例；另见 `packages/code-runtime/code-runtime-data-python` 的 bindings 用例在 90 秒 lane 预算上超时）、[T22](tickets/T22-linux-pwsh-terminal-readiness.md)（pwsh，两个 `holdCommand` 分支都可能报红，取决于调度运气）
+- **`windows node 24 / coverage`**：[T20 part 1](tickets/T20-windows-codex-and-catalog-budget.md)（codex，flaky）、[T25](tickets/T25-atomic-write-lock-eperm.md)（credentials-local 锁 EPERM）、[T26](tickets/T26-workspace-scan-case-budgets.md)（typert generator 扫描）、以及 T18 同族的 data-python 用例
+- **`node 24 / snapshots and artifacts`**：[T24](tickets/T24-headless-deepseek-idle-budget.md) **排在最前且遮蔽其余**；其后是 [T21](tickets/T21-snapshot-lane-scheduling-assertions.md) 的第 2、3 项（chat-scroll 并发锚点、present-svg 连接告警）；`replays persistent-pwsh-tool-turn` 在**干净树上的状态未知**——它只在 PR #161 那次越过 T24 的运行里被观测过一次，而该分支带着已被推翻的改动
+- **两项欠第二次确认运行**：T19 的四条断言与 T20 part 2 的那一项在 fix 后的运行里均**未再出现**，但**各只有一次确认运行**，第二次仍然欠着。按本域既定验收标准（连续两次真实运行），这两项尚不能算封板。
 
 > T7–T12 均 pre-existing GA-FORK-CI gates on master（concurrent session 驱动，PR #67/#68/#69/#79 等逐步 fix；fix 前先 verify 仍红 on current master）。T2/T4/T5/T6/T13 已 closed（见 Decisions so far）。T14/T15 由 data-agent 的 upstream-merge 收口审计（UM17）发现后按域移交本 effort——**它们不是 data-agent 的票**。
 
