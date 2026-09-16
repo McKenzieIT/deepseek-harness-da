@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -140,25 +140,31 @@ interface Invocation {
   readonly stderr: string
 }
 
-/** Run one repository CLI as a real process against a fixture root. */
+/**
+ * Run one repository CLI as a real process against a fixture root.
+ *
+ * Launched through `process.execPath` and tsx's ESM hook rather than `pnpm
+ * exec`: a bare `pnpm` is a `.cmd` shim on Windows, which `spawnSync` cannot
+ * execute without a shell, so every case degraded to a spawn failure instead of
+ * the CLI's own exit code.
+ */
 function invoke(script: string, args: string[]): Invocation {
-  const result = execFileSync('pnpm', ['--silent', 'exec', 'tsx', join(REPOSITORY_ROOT, 'scripts', script), ...args], {
+  const result = spawnSync(process.execPath, ['--import', 'tsx/esm', join(REPOSITORY_ROOT, 'scripts', script), ...args], {
     cwd: REPOSITORY_ROOT,
     encoding: 'utf8',
     env: { ...process.env, LANG: 'C', LC_ALL: 'C' },
     stdio: ['pipe', 'pipe', 'pipe'],
   })
-  return { status: 0, stdout: result, stderr: '' }
-}
-
-/** Same as `invoke`, tolerating a non-zero exit so the code can be asserted. */
-function invokeAllowingFailure(script: string, args: string[]): Invocation {
-  try {
-    return invoke(script, args)
-  } catch (cause) {
-    const failure = cause as { status?: number; stdout?: string; stderr?: string }
-    return { status: failure.status ?? -1, stdout: failure.stdout ?? '', stderr: failure.stderr ?? '' }
+  // A CLI that never started, or one a signal ended, carries no exit code to
+  // assert; reporting either as a status would read as the wrong verdict.
+  if (result.error !== undefined) throw result.error
+  if (result.signal !== null) {
+    throw new Error(`${script} was terminated by ${result.signal}; stderr:\n${result.stderr}`)
   }
+  if (result.status === null) {
+    throw new Error(`${script} produced no exit status; stderr:\n${result.stderr}`)
+  }
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
 describe('upstream monitoring', { timeout: 180_000 }, () => {
@@ -167,8 +173,8 @@ describe('upstream monitoring', { timeout: 180_000 }, () => {
     writeRecord(context, record(context))
     advanceRemote(context, 3)
 
-    const report = invokeAllowingFailure('upstream-status.ts', ['--root', context.root])
-    const monitor = invokeAllowingFailure('upstream-monitor.ts', ['--root', context.root])
+    const report = invoke('upstream-status.ts', ['--root', context.root])
+    const monitor = invoke('upstream-monitor.ts', ['--root', context.root])
 
     // The report is deliberately not a gate: a scheduled run of it can never fail.
     expect(report.status).toBe(0)
@@ -278,7 +284,7 @@ describe('upstream monitoring', { timeout: 180_000 }, () => {
     const advanced = advanceRemote(context, 2)
 
     const probe = probeRef(context.root, false)
-    const report = invokeAllowingFailure('upstream-status.ts', ['--root', context.root])
+    const report = invoke('upstream-status.ts', ['--root', context.root])
 
     // Reading the local ref before the fetch would report stale here and
     // withhold the behind-count on every run where upstream had moved.
@@ -371,7 +377,7 @@ describe('upstream monitoring', { timeout: 180_000 }, () => {
     writeRecord(context, record(context))
     const reportPath = join(context.container, 'reports', 'upstream-monitor.txt')
 
-    const monitor = invokeAllowingFailure('upstream-monitor.ts', ['--root', context.root, '--report', reportPath])
+    const monitor = invoke('upstream-monitor.ts', ['--root', context.root, '--report', reportPath])
 
     expect(monitor.status).toBe(1)
     expect(readFileSync(reportPath, 'utf8')).toContain('upstream-monitor: verdict = stale-threshold')
