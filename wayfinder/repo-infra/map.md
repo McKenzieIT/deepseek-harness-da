@@ -50,6 +50,8 @@ T11 已合并 12 个 focused PR（#142–#155）。剩下的四类根因彼此�
 - **CI 首次真实运行的门清单（2026-09-15，run 34918859164）**：17 job = 12 success / 5 failure；`node 24 / static` **51 门全绿**。红的全部核为 pre-existing 并已映射到票——coverage 两 suite → [T11](tickets/T11-test-coverage-failing.md)、`publint` → [T10](tickets/T10-publint.md)、`doc-typecheck:contracts-ready` → [T15](tickets/T15-doc-typecheck-plan-sketches.md)；**尚无票的两条**（`duplication` 89 clones、`verify-upstream-sync-record` 浅 checkout 下 waiver 0 命中判定）连同证据与修法方向记在 [T14](tickets/T14-ci-workflow-startup-failure.md) 的「首次真实 CI 运行的完整清单」一节。
 - [T16: duplication 门 89 clones](tickets/T16-duplication-gate-89-clones.md) — resolved 2026-09-15：排除所有 `*.spec.ts` / `*.spec.tsx`，生产 TypeScript、类型声明和 TSX 组件继续纳入；以排除 spec 后实测 0.337455% 为基线，将 jscpd 原生 threshold 设为 0.338%，保留完整报告与非零阻断，并用最小 clone 负向控制证明门禁仍会变红。
 
+- [T23: run-gates 进程树枚举溢出](tickets/T23-gate-descendant-walk-overflow.md) — resolved 2026-09-16（等真实 CI 确认）：`collectDescendants` 把进程表快照当成树，队列别名了父索引里的子数组、且用 `push(...spread)` 追加；pid 复用造成的环让队列指数增长，实参溢出被 V8 报成 `RangeError: Maximum call stack size exceeded`。**该缺陷把测试全绿的 `windows node 24 / coverage` 报成红**（job 104648904870 日志零 `FAIL`，死在 gate 清理回调）。改为拷贝起步 + `queued` 集合定界 + 逐个 append，并导出以补上此前完全缺失的用例覆盖。
+
 > T7–T12 均 pre-existing GA-FORK-CI gates on master（concurrent session 驱动，PR #67/#68/#69/#79 等逐步 fix；fix 前先 verify 仍红 on current master）。T2/T4/T5/T6/T13 已 closed（见 Decisions so far）。T14/T15 由 data-agent 的 upstream-merge 收口审计（UM17）发现后按域移交本 effort——**它们不是 data-agent 的票**。
 
 ## Not yet specified

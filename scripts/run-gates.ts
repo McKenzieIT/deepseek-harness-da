@@ -1526,8 +1526,25 @@ export function taskkillArgs(rootPid: number, descendants: number[]): string[][]
   return [rootPid, ...descendants].map(pid => ['/PID', String(pid), '/T', '/F'])
 }
 
-/** Breadth-first walk of the pid/ppid rows starting at `root`. */
-function collectDescendants(root: number, rows: Array<[number, number]>): number[] {
+/**
+ * Breadth-first walk of the pid/ppid rows starting at `root`.
+ *
+ * A process-table snapshot is not guaranteed to be a tree. The OS recycles
+ * pids, so a row can name a parent whose number was reused and now sits below
+ * it in the same dump, and `Get-CimInstance Win32_Process` reports such a row
+ * as readily as any other. The walk therefore remembers every pid it has
+ * queued and refuses to queue one twice, which bounds it by the row count
+ * instead of trusting the snapshot's shape; a cyclic dump yields each pid once
+ * rather than growing the queue without end. Children are appended one at a
+ * time because a spread passes one argument per element, so a single wide
+ * fan-out would exceed the engine's argument limit — and the queue starts as a
+ * copy, since `byParent` holds the live child arrays this walk is still
+ * reading.
+ * @param root - the pid whose descendants to collect.
+ * @param rows - the parsed `pid ppid` rows.
+ * @returns the descendant pids in breadth-first order, each appearing once.
+ */
+export function collectDescendants(root: number, rows: Array<[number, number]>): number[] {
   const byParent = new Map<number, number[]>()
   for (const [pid, ppid] of rows) {
     const children = byParent.get(ppid) ?? []
@@ -1535,12 +1552,21 @@ function collectDescendants(root: number, rows: Array<[number, number]>): number
     byParent.set(ppid, children)
   }
   const result: number[] = []
-  const queue = byParent.get(root) ?? []
+  const queued = new Set<number>([root])
+  const queue: number[] = []
+  const enqueue = (pids: readonly number[]): void => {
+    for (const pid of pids) {
+      if (queued.has(pid)) continue
+      queued.add(pid)
+      queue.push(pid)
+    }
+  }
+  enqueue(byParent.get(root) ?? [])
   for (let index = 0; index < queue.length; index += 1) {
     const pid = queue[index]
     if (pid === undefined) continue
     result.push(pid)
-    queue.push(...(byParent.get(pid) ?? []))
+    enqueue(byParent.get(pid) ?? [])
   }
   return result
 }
