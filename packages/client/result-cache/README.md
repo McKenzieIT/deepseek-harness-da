@@ -70,6 +70,8 @@ The size unit is the JSON-serialized UTF-16 code-unit length of the entry — a 
 
 Pure cache-core specs (`result-cache.client.spec.ts`) anchor the byte-bounded LRU semantics: miss→fetch→cache hit (no clone, no second fetch), single-flight coalescing of concurrent gets for the same key, the in-flight invalidation (epoch) guard, transport-throw folding into `ResultFetchError`, session-key isolation (a `encodeURIComponent`-ed composite key), `maxEntrySize` admission, byte-budget (`maxSize`) eviction, the `max` count backstop, read-recency (no TTL — `lru-cache` refreshes recency on read regardless), the `result-not-found`/error paths, and the `invalidate`/`invalidateScope`/ `invalidateAll` API. The service spec (`result-service.client.spec.ts`) drives the scope-addressed `ctx.results` through the real `createScope` tag, asserting session isolation, miss→`result.get`→cache, not-found/error, and scoped invalidation. The apply spec (`apply.client.spec.ts`) mounts `apply()`, asserting `ctx.results` provision, the `connection/reset` → `invalidateAll` flush, and the `Config` bound merge. 29 tests total.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-result-cache` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

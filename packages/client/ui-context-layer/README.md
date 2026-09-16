@@ -24,6 +24,8 @@ Context layer graph — G6 v5 interactive relation graph with semantic zoom and 
 
 Localization: the plugin registers the typed `contextLayer` namespace in English and Simplified Chinese; slot-rendered components receive `t`, and exported presentation components require the same translator.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-context-layer` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

@@ -22,6 +22,8 @@ TODO: translate: Model-facing get_definition tool: load a unified data asset def
 
 面向模型的 get_definition 工具：按名称从语义层加载统一的数据资产定义（表、事件或指标）
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-get-definition` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

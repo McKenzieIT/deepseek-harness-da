@@ -17,6 +17,8 @@ The data-agent bundle is an additive layer over `dsh-base`. It selects DashScope
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-data-agent` owns no independently observable relationship that can diverge from its runtime state.
+
 <a id="dev-note"></a>
 ## Dev Note
 

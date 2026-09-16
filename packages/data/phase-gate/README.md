@@ -52,6 +52,8 @@ pnpm vitest run packages/data/phase-gate         # 14 specs
 pnpm verify-cordis-config                        # preset mount resolves
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-phase-gate` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

@@ -47,6 +47,8 @@ Localization: the card registers the `present.table` locale namespace (zh/en) wi
 
 141 tests across 4 spec files; fixtures use the real `renderCompleted` output format (result_id line, elision markers, row-count trailer) so the parser contract cannot drift from `dsh-query-tool` silently, and the fetchResult wiring specs cover the result-store primary path, the TSV cache-miss fallback, fresh-vs-folded invalidation, and retry = refetch. The R4 chart specs cover all 9 native types, the `valueLabelsPlugin` draw branches, the validator's degrade-to-bar rules, and the toolbar toggles.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-present-table` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

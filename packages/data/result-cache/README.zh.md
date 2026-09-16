@@ -22,6 +22,8 @@ TODO: translate: Abstract result-cache seam (ctx.resultCache) for the DeepSeek H
 
 DeepSeek Harness 的抽象 result-cache seam（ctx.resultCache），按 result_id 存取查询/计算结果
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-result-cache` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

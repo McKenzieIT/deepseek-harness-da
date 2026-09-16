@@ -17,6 +17,8 @@ data-agent bundle 是叠加在 `dsh-base` 上的 additive 层。它选择 DashSc
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-data-agent` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

@@ -22,6 +22,8 @@ Model-facing resolve_term tool: exact alias resolution from SKOS pref_label/alt_
 
 Model-facing resolve_term tool: exact alias resolution from SKOS pref_label/alt_labels via the relation graph's reverse index
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-resolve-term` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

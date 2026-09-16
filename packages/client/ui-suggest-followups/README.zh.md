@@ -28,6 +28,8 @@ TODO: translate: Toolview card for the suggest_followups INTERPRETATION tool: tw
 
 本包自带的 chip 样式引用了六个 `--dsw-bg-*` / `--dsw-text-*` / `--dsw-border-*` 自定义属性，但这些属性在主题中并不存在，因此背景与边框静默解析为空。列表样式重构仅消费 `--dsw-alias-*` token。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-client-ui-suggest-followups` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

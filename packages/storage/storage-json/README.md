@@ -71,7 +71,7 @@ The two layouts share atomic publication but assign state ownership differently.
 
 - **`single` keeps memory authoritative.** Each write changes the in-memory unit, serializes its complete state, and atomically replaces `<unit>.json`. A failed publish restores the prior in-memory value.
 - **`per-record` keeps the directory authoritative.** Each put or delete changes one `<unit>/<table>/<key>.json` document, and `loadAll()` rereads the tree. Each document stamps the unit version and carries one record value.
-- **Publication is durable per call.** A write uses a temporary file, fsync, atomic `rename()` replacement, and a parent-directory fsync on POSIX. The domain layer's write chain supplies ordering across calls.
+- **Publication is durable per call.** A write uses a temporary file, fsync, the shared `renameAtomicTemp` replacement from `dsh-atomic-write`, and a parent-directory fsync on POSIX. The domain layer's write chain supplies ordering across calls. On Windows the replacement retries `EACCES`, `EBUSY`, and `EPERM` for at most ~1.1 s, so a component briefly holding the target delays the write instead of losing it.
 
 ### File formats
 
@@ -95,7 +95,7 @@ A `per-record` table document at `<root>/<unit>/<table>/<key>.json` has the form
 | [`src/single-unit.ts`](src/single-unit.ts) | One `single` unit: authoritative memory, write primitives, publish rollback |
 | [`src/per-record-unit.ts`](src/per-record-unit.ts) | One `per-record` unit: tree reads, path-safe records, and one-document writes |
 | [`src/format.ts`](src/format.ts) | Whole-unit and record serialization with version validation |
-| [`src/atomic.ts`](src/atomic.ts) | Atomic file replacement: temp write, fsync, rename, directory fsync |
+| [`src/atomic.ts`](src/atomic.ts) | Atomic file replacement: temp write, fsync, `renameAtomicTemp`, directory fsync |
 | — | No runtime invariant companion is published; correctness here is write-durability and publish-then-reparse equivalence, which require medium round-trip tests (the shared backend conformance suite); the backend exposes no continuously observable in-process relation. |
 
 </details>

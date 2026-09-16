@@ -38,6 +38,20 @@ await writeFileAtomic('/home/u/.dsh/settings.yaml', text, { mode: 0o600 })
 
 父目录会按需创建，读取方只会观察到旧内容或完整的新内容。在 Windows 上，报告为 `EACCES`、`EBUSY` 或 `EPERM` 的瞬时替换干扰会在有界时间内重试；任何剩余失败都会移除临时文件，并保持目标文件不变。
 
+### 提交存储自行写好的临时文件
+
+如果存储的自有协议已经渲染并 fsync 了临时兄弟文件——JSON 存储后端为崩溃持久性对文件与父目录都做 fsync，而 `writeFileAtomic` 刻意不做——则改用 `renameAtomicTemp` 提交，从而让有界的 Windows 替换重试只保留一份实现：
+
+```ts
+import { renameAtomicTemp } from '@deepseek-ai/dsh-atomic-write'
+
+declare const temp: string
+declare const target: string
+await renameAtomicTemp(temp, target)
+```
+
+创建 `temp`、以及在拒绝后移除 `temp`，都由调用方负责。rename 成功之前不会有任何操作触碰目标文件。
+
 ### 协调写入方
 
 对于单靠原子提交无法保证安全的读-渲染-提交循环，请在操作期间持有写锁：
@@ -74,7 +88,7 @@ await withFileLock('/home/u/.dsh/settings.yaml', async () => {
 
 | 文件 | 职责 |
 |---|---|
-| [`src/index.ts`](src/index.ts) | `writeFileAtomic` 与 `withFileLock`，即本包的全部接口 |
+| [`src/index.ts`](src/index.ts) | `writeFileAtomic`、`withFileLock` 与 `renameAtomicTemp`，即本包的全部接口 |
 | — | 不发布运行时不变式伴生入口；这个纯文件系统原语不维护事件流或可变运行时数据；其替换约定由单元测试覆盖。 |
 
 ### 写入路径

@@ -71,7 +71,7 @@ kind: "package-reference"
 
 - **`single` 以内存为权威状态。** 每次写入都会更改内存单元、序列化其完整状态，并以原子方式替换 `<unit>.json`。发布失败会恢复先前的内存值。
 - **`per-record` 以目录为权威状态。** 每次 put 或 delete 都会更改一个 `<unit>/<table>/<key>.json` 文档，`loadAll()` 则重新读取目录树。每份文档都带有单元版本戳与一条记录值。
-- **每次调用都持久发布。** 写入过程使用临时文件、fsync、原子 `rename()` 替换，并在 POSIX 上 fsync 父目录。领域层写入链负责安排跨调用的顺序。
+- **每次调用都持久发布。** 写入过程使用临时文件、fsync、来自 `dsh-atomic-write` 的共享 `renameAtomicTemp` 替换，并在 POSIX 上 fsync 父目录。领域层写入链负责安排跨调用的顺序。在 Windows 上该替换会对 `EACCES`、`EBUSY`、`EPERM` 重试至多约 1.1 秒，因此短暂持有目标的组件只会延迟写入，而不会丢失写入。
 
 ### 文件格式
 
@@ -95,7 +95,7 @@ kind: "package-reference"
 | [`src/single-unit.ts`](src/single-unit.ts) | 一个 `single` 单元：权威内存、写入原语与发布回滚 |
 | [`src/per-record-unit.ts`](src/per-record-unit.ts) | 一个 `per-record` 单元：目录树读取、路径安全记录与单文档写入 |
 | [`src/format.ts`](src/format.ts) | 带版本校验的整单元与记录序列化 |
-| [`src/atomic.ts`](src/atomic.ts) | 原子文件替换：临时文件写入、fsync、rename、目录 fsync |
+| [`src/atomic.ts`](src/atomic.ts) | 原子文件替换：临时文件写入、fsync、`renameAtomicTemp`、目录 fsync |
 | — | 不发布运行时不变式伴生入口；此处要求保证写入持久性及发布后重新解析的等价性，这两点需要通过介质往返测试（共享后端符合性测试套件）验证；本后端不公开任何可持续观察的进程内关系。 |
 
 </details>

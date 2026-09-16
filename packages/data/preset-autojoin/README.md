@@ -70,6 +70,8 @@ pnpm dsh --profile headless --patch packages/bundle/data-agent/cordis.patch.yml 
 
 > Note: the `agent/created` dispatch is synchronous and treats a listener's > returned promise as fire-and-forget (rejection reported, not awaited). For a > one-shot headless run whose only `followup` lands before the async > `presets.mount` settles, the join may arrive too late for the first prompt — > see the experiment report; the upstream fix (headless `setup` joins the > default) is the fallback.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-preset-autojoin` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

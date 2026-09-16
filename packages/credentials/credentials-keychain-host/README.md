@@ -58,6 +58,8 @@ The data-agent bundle disables base `credentials` (credentials-local) and mounts
 
 Runtime-exfil ACL (P12c: native Security-framework binding + harness code-signing) was evaluated as **over-spec and dropped (2026-08-21)** — it breaks dsh's out-of-the-box constraint (tsx/node scripts have no binary to sign) and the runtime-exfil threat is already covered by at-rest + locked-keychain + auto-lock + P10 tool-gating (business-user agents forbid `bash`; the admin residual unlock-window is trusted-operator self-risk). This host therefore lands the final state under out-of-the-box: at-rest + locked-keychain + per-user CRUD + branding + writable global fallback.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-credentials-keychain-host` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

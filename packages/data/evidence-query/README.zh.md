@@ -22,6 +22,8 @@ TODO: translate: Unified evidence-query backend layer — coverage, gap analysis
 
 统一的 evidence-query 后端层：提供覆盖率、缺口分析、可达性、评估结果与资产健康度，供侧边栏与看板消费。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-evidence-query` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

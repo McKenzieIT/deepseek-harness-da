@@ -59,6 +59,8 @@ pnpm typecheck                              # tsc -b (host)
 
 #1 `hasPartitionFilter` 贪婪跨语句/子句 → 限定到每个 `;` 分割语句的 WHERE 子句。#2 `hasSelectStar` 遗漏 `t.*` + `SELECT a, *` → 解析 select list。#3 `running` → 经 `attach`（check_query）最多重试 3 次。#4 `FailureKind` 归一化为 lower_snake。#5 `NearDupGate.hash` 移除所有空白。#6 `Bm25Linker` 直接使用命中项 payload（不做冗余 re-find）。#7 c07 的死 `__never__` ODPS 条目已移除（`odps` 为 optional）。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-nl2sql-engine` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

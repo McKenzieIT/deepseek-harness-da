@@ -75,6 +75,8 @@ pnpm verify-cordis-config
 
 The preset row (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-load-event-definition`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING`/`GENERATION` whitelist already names `load_event_definition`, so registering it makes it callable in those phases.
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-load-event-definition` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

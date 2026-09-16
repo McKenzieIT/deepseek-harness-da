@@ -50,6 +50,8 @@ pnpm vitest run packages/data/tool-evaluate-sql-quality
 pnpm verify-cordis-config
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-evaluate-sql-quality` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

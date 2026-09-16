@@ -22,6 +22,8 @@ TODO: translate: Model-facing get_coverage tool: semantic layer coverage statist
 
 面向模型的 get_coverage 工具：语义层覆盖率统计（各类型资产总数、领域分布、确认状态）
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-get-coverage` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

@@ -38,6 +38,8 @@ pnpm vitest run packages/data/tool-present-table
 pnpm verify-cordis-config
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-present-table` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

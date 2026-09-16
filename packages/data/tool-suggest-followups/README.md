@@ -38,6 +38,8 @@ pnpm vitest run packages/data/tool-suggest-followups
 pnpm verify-cordis-config
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-suggest-followups` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

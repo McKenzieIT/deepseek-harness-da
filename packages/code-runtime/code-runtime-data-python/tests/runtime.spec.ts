@@ -5,8 +5,12 @@ import type { Config } from '../src/index.ts'
 import type { CodeBindingFunction, CodeBindingNamespace } from '@deepseek-ai/dsh-code-runtime'
 
 async function setup(config: Config = {}) {
+  const ciPythonPath = config.pythonPath === undefined ? process.env.DSH_TEST_PYTHON_PATH : undefined
   const ctx = new Context()
-  await ctx.plugin(DataPythonCodeRuntime, config)
+  await ctx.plugin(DataPythonCodeRuntime, {
+    ...(ciPythonPath === undefined ? {} : { pythonPath: ciPythonPath }),
+    ...config,
+  })
   const runtime = ctx.codeRuntime as DataPythonCodeRuntime
   return { ctx, runtime }
 }

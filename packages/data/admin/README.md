@@ -22,6 +22,8 @@ Admin + access isolation: per-user login, identity, scope resolution, PAT self-s
 
 Admin + access isolation: per-user login, identity, scope resolution, PAT self-service, fail-closed authz
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-admin` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.

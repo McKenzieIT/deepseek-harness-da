@@ -44,6 +44,8 @@ pnpm vitest run packages/llm/llm-dashscope         # 64 unit specs
 DSH_KEYCHAIN_LIVE=1 DASHSCOPE_API_KEY=... pnpm vitest run packages/llm/llm-dashscope/tests/adapter.e2e.ts  # key-gated live e2e
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-llm-dashscope` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

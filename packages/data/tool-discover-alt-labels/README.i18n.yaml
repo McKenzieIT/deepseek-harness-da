@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/tool-discover-alt-labels/README.md
-README.md: 0ab920ebc081e6cdf6f18a1d7bb32320e767796f
-README.zh.md: 0b4bfa8edf0c3ddb02a146b20a83041a24df732a
+README.md: f9cffb57623ac22a93d643632cf9f0238cf8429b
+README.zh.md: 2a9a7b8d6edb4dca5e34646d53fe20d967a0a292

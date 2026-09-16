@@ -54,6 +54,8 @@ TODO: translate: Semantic layer management: sidebar trigger that opens or create
 | `slots` | dsh-client-ui-slots | slot 注册 |
 | `locale` | dsh-client-locale | i18n 词典 |
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-client-ui-semantic-layer` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

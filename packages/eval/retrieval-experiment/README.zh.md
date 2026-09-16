@@ -22,6 +22,8 @@ TODO: translate: Retrieval strategy gradient experiment infrastructure: Level 0-
 
 检索策略梯度实验基础设施：Level 0-3 图快照、混合函数变体、precision@K/recall@K harness
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-retrieval-experiment` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

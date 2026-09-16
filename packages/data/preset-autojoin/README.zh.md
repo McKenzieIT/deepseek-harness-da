@@ -75,6 +75,8 @@ pnpm dsh --profile headless --patch packages/bundle/data-agent/cordis.patch.yml 
 
 > 注：`agent/created` 派发是同步的，并将监听器返回的 promise 视为即发即弃（拒绝会被上报，但不被等待）。对于一次性 headless 运行，若其唯一的 `followup` 在异步 `presets.mount` 完成之前到达，则加入对首个提示词而言可能太迟（见实验报告）；上游修复（headless `setup` 加入默认 preset）是回退方案。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-preset-autojoin` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

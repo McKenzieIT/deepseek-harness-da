@@ -228,6 +228,24 @@ describe('CI workflow', () => {
       isRecord(step) && typeof step.run === 'string'
     ))
     expect(coverageCommands.map(step => step.run)).toContain('pnpm run check:ci:coverage')
+
+    for (const [jobName, job] of [['node-24-coverage', node24Coverage], ['windows-coverage', windowsCoverage]] as const) {
+      const steps = job.steps as unknown[]
+      expect(steps, `${jobName} must install the data Python runtime`).toContainEqual(expect.objectContaining({
+        id: 'data-python',
+        uses: 'actions/setup-python@v6.3.0',
+        with: { 'python-version': '3.10' },
+      }))
+      expect(steps, `${jobName} must install pandas and numpy`).toContainEqual(expect.objectContaining({
+        name: 'Install data Python runtime dependencies',
+        run: 'python -m pip install --disable-pip-version-check numpy==2.2.6 pandas==2.3.3',
+      }))
+      expect(steps, `${jobName} must select the provisioned interpreter`).toContainEqual(expect.objectContaining({
+        env: { DSH_TEST_PYTHON_PATH: '${{ steps.data-python.outputs.python-path }}' },
+        run: 'pnpm run check:ci:coverage',
+      }))
+    }
+
     // Windows coverage runs zero-build like the Linux lane: workspace imports
     // resolve to src through the tsconfig paths map, and the lib-consuming
     // suites (webworker-packer image-loadable, webworker-runtime

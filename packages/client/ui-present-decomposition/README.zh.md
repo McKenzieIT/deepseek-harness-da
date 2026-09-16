@@ -22,6 +22,8 @@ TODO: translate: Toolview card for the present_decomposition INTERPRETATION tool
 
 `present_decomposition` INTERPRETATION 工具的 Toolview 卡片。该卡片是**查询的约定，而非结果卡片**：它展示 agent（智能体）理解了什么、理解到何种水准、有多大置信度——三层结构加一条信任带（wayfinder: interpretation-client-rendering R9 审计 + P1 原型结论）。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-client-ui-present-decomposition` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
 <a id="dev-note"></a>
 ## 开发备注
 

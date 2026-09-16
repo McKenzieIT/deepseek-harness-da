@@ -40,6 +40,8 @@ tsc -b packages/data/result-cache-memory/tsconfig.json   # typecheck
 pnpm vitest run packages/data/result-cache-memory         # unit specs
 ```
 
+No runtime invariant companion is published because `@deepseek-ai/dsh-result-cache-memory` owns no independently observable relationship that can diverge from its runtime state.
+
 ## Dev Note
 
 None.
