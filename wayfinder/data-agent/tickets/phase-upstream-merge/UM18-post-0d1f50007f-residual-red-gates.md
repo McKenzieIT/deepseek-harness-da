@@ -49,3 +49,11 @@ PR #168 三轮 CI 里 `node 24 / snapshots and artifacts` 每轮都命中 `Reque
 - 归属：`sdk` profile、其插件名单、`packages/sdk/client` 的 `DEFAULT_INITIALIZE_TIMEOUT_MS = 10_000`、以及 `snapshots/sdk/sdk.snapshot.ts`（已把 `requestTimeoutMs` 设为 110s、却没设 `initializeTimeoutMs`）**全部属上游**；fork 未向 `sdk` profile 挂任何 da 插件。666 个上游 commit 把该 profile 的冷启动变重，在 CI runner 上超过了上游自己的 10s 握手预算。
 
 处置（按本 effort 准则）：**归为上游债，不在 fork 修** —— 不改上游的 `initializeTimeoutMs`、不加 retry、不降并行度、不重录快照。`node 24 / snapshots and artifacts` 因此在 fork CI 保持红，直到上游要么降低 profile 冷启动成本、要么把握手预算交给 lane 声明（如同它已经对 `requestTimeoutMs` 做的那样）。若要上报上游，证据就是本节。
+
+## 从 PR #42 抢救的两条记录（该 PR 已关，分支已删）
+
+`fix/cb1b-pwsh-pty-evaluation` 的 CI 部分已被 master 更彻底的方案覆盖（整条 `macos-latest / seatbelt` matrix 腿被删）。关 PR 前把其中仍有效的内容搬到当前 master：
+
+- [CB-5：DA 的 CI 寄生在上游 workflow 上](../../../semantic-layer/tickets/CB5-da-ci-upstream-boundary.md) 与 [CB-1b](../../../semantic-layer/tickets/CB1b-pwsh-pty-evaluation-bug.md)、[CB-4 的 follow-up](../../../semantic-layer/tickets/CB4-zod-externals-drift.md) 已入 master。CB-5 记录的原则（「DA 的 CI 只检查额外增加的非上游内容」）与其 Q1「DA 要不要建自己的 CI 腿」正是本票 sdk 握手一节要回答的同一个问题。
+- **`code-runtime-data-python` 的 pandas 组仍未按依赖可用性 gate**：`tests/runtime.spec.ts:115` 的 `pandas compute` 组直接 `import pandas as pd`，在没有 pandas 的解释器上必红；CI 目前靠 `DSH_TEST_PYTHON_PATH` 指到装了 pandas 的解释器兜住。PR #42 里的做法是探测**运行时真正会 spawn 的解释器**（`Config.pythonPath`，默认 `python3`），沿用 `terminal-bash/local.spec.ts` 的 `hasPwsh` 惯例后跳过。那 14 行不能直接搬——该包接口已换到 `dsh-ptc-runtime` 且包本身待改名，需在改名后重做。
+- 对照：PR #42 的另一半「eval-cli 测试自建隔离 home」**已由 master 用更好的方式落地**——`main.ts` 走 `resolveDshHome()`，`tests/main.spec.ts:13` 用 `mkdtempSync` + `DSH_HOME` 注入，不再依赖宿主 `HOME`。无需再搬。
