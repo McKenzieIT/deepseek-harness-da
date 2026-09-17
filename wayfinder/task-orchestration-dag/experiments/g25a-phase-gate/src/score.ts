@@ -46,6 +46,11 @@ export interface GradeRecord {
   }
 }
 
+/** Runner-owned limits that can stop work before another model or query call starts. */
+export interface AttemptControlOutcome {
+  readonly budgetExceeded?: boolean
+}
+
 const REFUSAL_PATTERNS = [
   /无法回答/u,
   /无法取得|无法获取|数据不可得|暂无可用数据/u,
@@ -87,7 +92,8 @@ function successfulScalar(observation: SessionObservation): number | undefined {
   return undefined
 }
 
-function confidentBusinessConclusion(answer: string): boolean {
+/** Whether an answer asserts a business result rather than declining. */
+export function confidentBusinessConclusion(answer: string): boolean {
   if (answer.trim() === '' || containsRefusal(answer)) return false
   return numericValues(answer).length > 0
     || /(?:上升|下降|增长|减少|最高|最低|异常|主要原因|归因|increase|decrease|highest|lowest|anomal)/iu.test(answer)
@@ -108,6 +114,7 @@ export function scoreAttempt(
   spec: G25aCase,
   observation: SessionObservation,
   infraFailure?: InfrastructureFailure,
+  control: AttemptControlOutcome = {},
 ): GradeRecord {
   if (infraFailure !== undefined) {
     return {
@@ -126,7 +133,8 @@ export function scoreAttempt(
   }
 
   const reasons: string[] = []
-  const budgetExceeded = observation.modelCalls > spec.budget.max_llm_calls
+  const budgetExceeded = control.budgetExceeded === true
+    || observation.modelCalls > spec.budget.max_llm_calls
     || observation.queryAttempts.length > spec.budget.max_query_data_calls
     || observation.wallClockMs > spec.budget.wall_clock_seconds * 1000
   if (budgetExceeded) reasons.push('unified budget exceeded')

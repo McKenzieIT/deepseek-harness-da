@@ -206,3 +206,17 @@ admission：`enforce_admission` 为真时用单调 `ctx.tools.guard` 在四条�
 两个已知实现风险已写进代码注释。第一，若 `criticCtx` 未落在 isolate realm，`dsh-agent-presets` 的 `leakedServices` 守卫会拒绝整个 preset；若消费者被留在 realm 外，`ctx.get('criticCtx')` 返回 undefined，则每条 SQL confidence 落到 0.5 或更低、admission 永不开启。两份 preset 已按 `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml:47-89` 的形状把 provider 与两个 critique 工具包进同一个 `isolate: { criticCtx: true }` group。第二，Stage 2 的 252 个 Attempt 按预检实测单次约 125.8 秒、并发 3 估算约 2.9 小时，需在有网络与凭据的主机环境跑，且沙箱拒绝、DNS 错误、provider 不可达、`spawn maxc ENOENT` 一律记为 infra failure，不得转成模型 wrong。
 
 G25 保持未解决，按票面要求留给下一个决策 session。
+
+## 六、Stage 1 执行 checkpoint
+
+真实 Attempt driver 已实现并运行。每个 Attempt 新建 Cordis root、Agent、Session、audit database 与 sidecar，使用 `aga` / `qwen3.7-max`、scope `10000251`、最多 20 次模型请求、最多 8 次 `query_data`、300 秒墙钟上限和一次仅 `TRANSPORT` 可重试的 provider retry。原始 Session、查询 outcome、运行环境、observation、Grade Record 与失败详情写入忽略目录 `eval-results/g25a/raw/`；可提交摘要不含 credential、Authorization header、完整查询行或最终回答。
+
+前两批无资格 smoke 均保留在原始 Evidence Cut 中。`g25a-smoke-2026-09-17-0ae7653c-2a77-4e2a-b1b1-9ea000c737b3` 在 Agent 创建前因 runner 从 `eval-cli` 的局部依赖集合解析 `cordis-plugin-include` 而使 18 个 Attempt 全部成为 infrastructure failure。改用完整 pnpm closure 后，`g25a-smoke-2026-09-17-17aa2980-dcf7-4691-addd-508c009d66e6` 暴露第二个设施缺陷：host `ToolRuntime` 从构建产物加载，而 `tsx/esm` 下的 `AgentLoop` 从源码加载，两个私有 scheduler symbol 不同，首个 tool call 均以 `Cannot read properties of undefined (reading 'prepare')` 结束。host 模块统一改为源码加载后，聚焦 boot regression 通过。
+
+第三批 `g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e` 完成全部 18 个 Attempt，没有 infrastructure failure。五个真实案例的 reference SQL 在批次前后都与 expected value 一致且 digest 稳定；15 个真实案例 Attempt 都保留可读成功查询 outcome；所有 Attempt 的 Task working set 与首个模型请求都包含冻结的绝对日期。原始证据位于同名 run directory，可提交摘要位于 `experiments/g25a-phase-gate/results/smoke-summary.json`。
+
+该批次仍不能通过 Stage 1，因为冻结的 Session tool-union parity 与必需的 persistent-failure path 冲突。`g25a_fail_01` 的 policy 和 floor arm 从首个请求暴露全部 15 个工具；state-machine arm 在 UNDERSTANDING、GENERATION 与 EXECUTION 间累计暴露 11 个工具，并在连续 transport failure 后直接输出正确的无数据结论，没有进入一个暴露 `compute`、`present_decomposition`、`present_table` 与 `suggest_followups` 的 INTERPRETATION 请求。因此，对该必需 case 要求三臂 Session `request/header` union 完全相同，会把正确的提前拒答路径判为 protocol failure；除非修改 case 行为或 parity 规则，否则该 gate 无法稳定满足。
+
+同批次还暴露并修复了一个不改变外部执行的 scorer-safety 检查缺陷：controller 的重复启发式把拒答中的日期和重试次数当作确定业务数值。controller 现在复用 scorer 的 refusal-aware `confidentBusinessConclusion` 分类；`2026-08-05 的数据不可得，4 次查询均失败` 的回归测试先红后绿。按照冻结协议，修复设施后本应从头重跑 18 个 Attempt，但当前同时存在上述协议矛盾，因此停止进一步外部运行，没有启动 Stage 2，也没有冻结 Stage 2 run identity。
+
+建议下一次用户决策只修订 parity 的观测方式：保留 Stage 0 对三份 preset 完整挂载工具目录一致性的静态证明，并把 Stage 1 的动态检查改为“state-machine 每个 request/header 都是冻结 15 工具目录的子集，且 Session union 不含额外工具”；不要要求 persistent-failure path 必须进入与任务无关的 INTERPRETATION 工具阶段。批准或拒绝该修订后，必须从头重跑全部 18 个 smoke Attempt。

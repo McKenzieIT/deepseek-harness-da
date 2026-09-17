@@ -145,6 +145,7 @@ src/session-observer.ts           # Session evidence and cost extraction
 src/score.ts                      # deterministic grading and grader input
 src/analyze.ts                    # pass^3, slices, cost, paired bootstrap
 fixtures/fault-sidecar.mjs        # repeatable transient/persistent query failure
+results/smoke-summary.json        # de-identified Stage 1 receipts and blocking verdict
 results/decision-summary.json     # de-identified observations, grades, aggregates
 report.md                         # conclusion, limits, and recommendation for G25
 tests/                            # Stage 0 facility tests
