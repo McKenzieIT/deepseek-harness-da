@@ -127,6 +127,8 @@ SQL judge 只诊断 SQL 语义，绝不替代真实执行结果，也不能单�
 
 确定性评分读取 Session 中的 `tool/call`、`tool/result`、`assistant/message` 和 usage。数值匹配、行数、查询成功、调用顺序、预算和证据存在性都使用确定性规则。自然语言是否受证据支持由冻结的 evidence-grounded grader prompt 判断；grader 只能看到问题、验收条件、去标识化的成功查询结果和最终答案，绝不能看到实验组名。每个 severe unsupported answer 候选和两个实验组评分不同的案例都要进行盲化人工复核，在揭示组名之前记录 verdict 和理由。
 
+decision runner 在调用专用、无工具的 grader context 前写入不可变 observation。grader prompt 与 response 保留在忽略的 Evidence Cut 中。人工复核 entry 使用带 salt 的 blind id，独立的忽略 reveal map 在记录 verdict 与理由之前保存 Attempt 和 arm 映射。
+
 ## 布局
 
 ```text

@@ -115,4 +115,21 @@ describe('analyzeAttempts', () => {
     const result = analyzeAttempts(attempts, { bootstrapIterations: 10, seed: 'fixed' })
     expect(result.cost.state_machine.wallClockMs).toEqual({ median: 200, p90: 1000, total: 1300 })
   })
+
+  it('reports Stage 4 slices as raw counts', () => {
+    const attempts = [
+      { ...record('a', 'state_machine', 0, true), sqlComplexity: 'L2', interactionComplexity: 'straightforward', toolCallCounts: { query_data: 1 }, queryFailureKinds: {} },
+      { ...record('a', 'state_machine', 1, true), sqlComplexity: 'L2', interactionComplexity: 'straightforward', toolCallCounts: { query_data: 2 }, queryFailureKinds: { transport: 1 } },
+      { ...record('a', 'state_machine', 2, true), sqlComplexity: 'L2', interactionComplexity: 'straightforward', toolCallCounts: { query_data: 1 }, queryFailureKinds: {} },
+      { ...record('a', 'policy', 0, true), sqlComplexity: 'L2', interactionComplexity: 'straightforward', toolCallCounts: { query_data: 1 }, queryFailureKinds: {} },
+      { ...record('a', 'policy', 1, false), sqlComplexity: 'L2', interactionComplexity: 'straightforward', toolCallCounts: { query_data: 1 }, queryFailureKinds: { syntax: 1 } },
+      { ...record('a', 'policy', 2, true), sqlComplexity: 'L2', interactionComplexity: 'straightforward', toolCallCounts: { query_data: 1 }, queryFailureKinds: {} },
+    ]
+    const result = analyzeAttempts(attempts, { bootstrapIterations: 10, seed: 'fixed' })
+    expect(result.robustness.bySqlComplexity.L2).toMatchObject({ attempts: 6, passed: 5 })
+    expect(result.robustness.toolCalls.state_machine.query_data).toBe(4)
+    expect(result.robustness.queryFailures.policy.syntax).toBe(1)
+    expect(result.robustness.success.state_machine).toEqual({ firstAttempt: 1, stableThree: 1, totalCases: 1 })
+    expect(result.robustness.success.policy).toEqual({ firstAttempt: 1, stableThree: 0, totalCases: 1 })
+  })
 })

@@ -26,7 +26,7 @@ flowchart LR
     C -->|await disposal| Q[Quiescent teardown]
 ```
 
-原始 Session 事件、查询行、运行时失败和每个 Attempt 的 launcher 保留在忽略的 `eval-results/g25a/raw/` 目录中。可提交摘要只保留 identity、digest、分类 grade、工具名、成本计数、reference-result digest 和 raw locator。每个 Agent handle 都先于 root context disposal，并且两个操作都被 await。
+原始 Session 事件、查询行、运行时失败、grader prompt 与 response、盲化复核 packet、reveal map 和每个 Attempt 的 launcher 保留在忽略的 `eval-results/g25a/raw/` 目录中。可提交摘要只保留 identity、digest、分类 grade、工具名、成本计数、reference-result digest 和 raw locator。runner 在调用无工具 grader 前封存每个 observation，使用与 Attempt id 独立的 salt 生成 blind id，并先 dispose 每个 Agent handle 再 dispose root context；所有 teardown 都被 await。
 
 Stage admission 与模型评分保持分离。Stage 1 前后都使用显式 `MAXC_CONFIG` 执行 reference SQL；digest 变化或 expected-value 不匹配都会停止实验。Stage 0 证明每个 preset 都挂载同一个完整工具目录。Stage admission 随后要求独立策略组与诊断下限组暴露该完整目录，并要求完整状态机组的每个 request catalogue 都是其子集；正确地在后续阶段之前结束的 case 不需要暴露该阶段工具。在 Stage 2 开始前，runner 还从封存的 Attempt 证据评估 Task parity、模型可见 Task、可读查询 outcome、scorer safety 和 infrastructure-failure rate。该规则补充[锁定协议预检](2026-09-17-locked-evaluation-protocol-preflight.zh.md)：后者在外部工作开始前拒绝内部矛盾的 manifest。
 

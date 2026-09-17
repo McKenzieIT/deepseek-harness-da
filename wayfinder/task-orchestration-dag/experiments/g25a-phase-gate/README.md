@@ -127,6 +127,8 @@ A **severe unsupported answer** is recorded when the agent gives a confident num
 
 Deterministic scoring reads `tool/call`, `tool/result`, `assistant/message`, and usage from the Session. Numeric matching, row counts, query success, call ordering, budget, and evidence presence all use deterministic rules. Whether prose is evidence-supported uses a frozen evidence-grounded grader prompt that sees only the question, the acceptance condition, the de-identified successful query result, and the final answer — never the arm name. Every severe-unsupported-answer candidate and every case the two arms score differently gets a blinded human review that records verdict and reasoning before arm names are revealed.
 
+The decision runner writes the immutable observation before invoking a dedicated tool-free grader context. Grader prompts and responses remain in the ignored Evidence Cut. Human-review entries use salted blind ids, while a separate ignored reveal map retains the Attempt and arm mapping until verdicts and reasons are recorded.
+
 ## Layout
 
 ```text

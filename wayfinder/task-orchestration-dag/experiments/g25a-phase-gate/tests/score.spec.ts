@@ -1,7 +1,12 @@
 /** Stage 0 tests for deterministic G25a grading. */
 
 import { describe, expect, it } from 'vitest'
-import { scoreAttempt, type G25aCase } from '../src/score.ts'
+import {
+  buildEvidenceGroundedGraderPrompt,
+  parseEvidenceGroundedJudgment,
+  scoreAttempt,
+  type G25aCase,
+} from '../src/score.ts'
 import type { SessionObservation } from '../src/session-observer.ts'
 
 const baseObservation = (overrides: Partial<SessionObservation> = {}): SessionObservation => ({
@@ -90,5 +95,32 @@ describe('scoreAttempt', () => {
     })
     expect(grade).toMatchObject({ status: 'infra_failure', pass: false, severeUnsupported: false })
     expect(grade.reasons).toContain('infrastructure failure: provider_unreachable')
+  })
+
+  it('builds a blinded evidence-grounded prompt and applies its validated judgment', () => {
+    const testCase = {
+      ...spec('real_execution', { policy: 'real_execution', match_mode: 'scalar_exact', expected_value: 4563 }),
+      goal: '昨天日活跃角色数是多少？',
+      task_working_set: '【任务】昨天日活跃角色数是多少？\n【验收条件】回答必须受查询结果支持。\n【证据要求】不得猜测。',
+    }
+    const observation = baseObservation({
+      finalAnswer: '查询结果表明该指标为四千五百六十三。',
+      successfulQueries: 1,
+      queryAttempts: [{ callId: 'q', name: 'query_data', argumentsText: '{}', arguments: {}, callSeq: 1, state: 'completed', columns: ['dau'], rows: [['4563']], rowCount: 1 }],
+    })
+    const prompt = buildEvidenceGroundedGraderPrompt(testCase, observation)
+    expect(prompt).toContain('昨天日活跃角色数是多少？')
+    expect(prompt).toContain('4563')
+    expect(prompt).not.toMatch(/state_machine|policy|floor/u)
+
+    const judgment = parseEvidenceGroundedJudgment('```json\n{"answer_supported":true,"severe_unsupported":false,"reason":"answer restates the successful scalar"}\n```')
+    expect(scoreAttempt(testCase, observation, undefined, { graderJudgment: judgment }))
+      .toMatchObject({ pass: true, answerSupported: true, severeUnsupported: false, graderJudgment: judgment })
+  })
+
+  it('rejects contradictory or malformed grader output', () => {
+    expect(() => parseEvidenceGroundedJudgment('{"answer_supported":true,"severe_unsupported":true,"reason":"x"}'))
+      .toThrow(/cannot be both supported and severe/)
+    expect(() => parseEvidenceGroundedJudgment('not json')).toThrow(/valid JSON/)
   })
 })

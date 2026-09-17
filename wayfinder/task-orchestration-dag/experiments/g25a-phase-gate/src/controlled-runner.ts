@@ -3,12 +3,20 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { constants as fsConstants } from 'node:fs'
-import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { delimiter, join, resolve } from 'node:path'
+import { delimiter, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import type { Arm } from './analyze.ts'
-import { confidentBusinessConclusion, scoreAttempt, type GradeRecord, type InfrastructureFailure } from './score.ts'
+import { analyzeAttempts, type AnalysisResult, type Arm, type AttemptRecord } from './analyze.ts'
+import {
+  buildEvidenceGroundedGraderPrompt,
+  confidentBusinessConclusion,
+  parseEvidenceGroundedJudgment,
+  scoreAttempt,
+  type EvidenceGroundedJudgment,
+  type GradeRecord,
+  type InfrastructureFailure,
+} from './score.ts'
 import { observeSession, type SessionObservation } from './session-observer.ts'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { AgentHandle } from '@deepseek-ai/dsh-agent'
@@ -18,11 +26,14 @@ import type { GenerateOptions, Message } from '@deepseek-ai/dsh-llm'
 /** One case row from the frozen manifest. */
 export interface ManifestCase {
   readonly case_id: string
+  readonly goal?: string
   readonly type: 'real_execution' | 'ambiguity' | 'no_grounding' | 'recovery' | 'persistent_failure'
   readonly task_working_set: string
   readonly dimensions?: { readonly sql_complexity?: string; readonly interaction_complexity?: string }
   readonly fault_injection?: { readonly mode: string; readonly fail_first_n?: number; readonly failure_kind?: string } | null
   readonly grading: Record<string, unknown> & {
+    readonly policy: string
+    readonly match_mode?: 'scalar_exact'
     readonly reference_sql?: string
     readonly expected_value?: number
   }
@@ -36,6 +47,7 @@ export interface G25aManifest {
   readonly frozen_on: string
   readonly total_cases: number
   readonly total_decision_attempts: number
+  readonly semantic_corpus_digest?: string
   readonly cases: readonly ManifestCase[]
 }
 
@@ -137,6 +149,12 @@ export interface ExecuteAttemptOptions {
   readonly rawRoot: string
   readonly environment: AttemptEnvironmentReceipt
   readonly createRuntime: () => Promise<AttemptRuntime>
+  readonly writeArtifact?: (path: string, value: unknown) => Promise<void>
+  readonly gradeObservation?: (
+    testCase: ManifestCase,
+    observation: SessionObservation,
+    control: { readonly budgetExceeded: boolean },
+  ) => Promise<GradeRecord> | GradeRecord
   readonly now?: () => number
 }
 
@@ -222,11 +240,89 @@ export interface Stage1Dependencies {
   readonly concurrency?: number
 }
 
+/** Stage 2 execution inputs. */
+export interface DecisionDependencies extends Stage1Dependencies {
+  readonly beforeAttempts?: (referenceBefore: readonly ReferenceProbeReceipt[]) => Promise<void>
+}
+
+/** Stage 2 observations, grades, admission failures, and aggregate analysis. */
+export interface DecisionBatchResult {
+  readonly attempts: readonly SmokeAttemptResult[]
+  readonly records: readonly AttemptRecord[]
+  readonly referenceBefore: readonly ReferenceProbeReceipt[]
+  readonly referenceAfter: readonly ReferenceProbeReceipt[]
+  readonly failures: readonly string[]
+  readonly analysis: AnalysisResult
+}
+
+/** Arm-blinded human-review material plus its separately stored reveal map. */
+export interface BlindReviewPacket {
+  readonly entries: readonly {
+    readonly blindId: string
+    readonly caseId: string
+    readonly question: string
+    readonly acceptance: string
+    readonly successfulQueryResults: readonly string[]
+    readonly finalAnswer: string
+    readonly machineGrade: GradeRecord
+    readonly humanVerdict: null
+    readonly humanReason: string
+  }[]
+  readonly mapping: readonly {
+    readonly blindId: string
+    readonly attemptId: string
+    readonly arm: Arm
+  }[]
+}
+
+/** Complete behavior-affecting identity frozen before decision Attempts. */
+export interface RunIdentityInput {
+  readonly gitCommit: string
+  readonly dirtyDiffDigest: string
+  readonly presetDigests: Readonly<Record<Arm, string>>
+  readonly policyPluginDigest: string
+  readonly manifestDigest: string
+  readonly semanticCorpusDigest: string
+  readonly sidecarDigests: {
+    readonly real: string
+    readonly fault: string
+  }
+  readonly provider: string
+  readonly model: string
+  readonly environmentVariableNames: readonly string[]
+  readonly resolvedPaths: {
+    readonly maxc: string
+    readonly maxcConfig: string
+    readonly semanticRoot: string
+  }
+  readonly randomizationSeed: string
+  readonly referenceStartDigests: Readonly<Record<string, string>>
+}
+
+/** Frozen run identity plus its canonical content digest. */
+export type RunIdentity = RunIdentityInput & { readonly identityDigest: string }
+
 const SEED = 'g25a-2026-09-17'
 
 /** SHA-256 hex over UTF-8 text. */
 export function digestText(text: string): string {
   return createHash('sha256').update(text).digest('hex')
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+/** Content-identify the complete frozen input to one Stage 2 run. */
+export function buildRunIdentity(input: RunIdentityInput): RunIdentity {
+  return { ...input, identityDigest: digestText(canonicalJson(input)) }
 }
 
 function bit(label: string): 0 | 1 {
@@ -552,6 +648,175 @@ export async function runStage1(manifest: G25aManifest, dependencies: Stage1Depe
   }
 }
 
+function attemptRecord(result: SmokeAttemptResult): AttemptRecord {
+  const toolCallCounts: Record<string, number> = {}
+  for (const call of result.observation.toolCalls) toolCallCounts[call.name] = (toolCallCounts[call.name] ?? 0) + 1
+  const queryFailureKinds: Record<string, number> = {}
+  for (const query of result.observation.queryAttempts) {
+    if (query.state !== 'failed') continue
+    const kind = query.failureKind ?? 'unknown'
+    queryFailureKinds[kind] = (queryFailureKinds[kind] ?? 0) + 1
+  }
+  return {
+    attemptId: result.planned.attemptId,
+    caseId: result.planned.caseId,
+    caseType: result.testCase.type,
+    arm: result.planned.arm,
+    replicate: result.planned.replicate,
+    contentDigest: result.testCase.source?.content_digest ?? digestText(result.testCase.task_working_set),
+    status: result.grade.status,
+    grade: result.grade,
+    ...(result.testCase.dimensions?.sql_complexity === undefined
+      ? {}
+      : { sqlComplexity: result.testCase.dimensions.sql_complexity }),
+    interactionComplexity: result.testCase.type === 'recovery'
+      ? 'iterative'
+      : result.testCase.dimensions?.interaction_complexity === 'I1' ? 'straightforward' : 'iterative',
+    toolCallCounts,
+    queryFailureKinds,
+    cost: {
+      modelCalls: result.observation.modelCalls,
+      queryCalls: result.observation.queryAttempts.length,
+      uncachedInputTokens: result.observation.usage.uncachedInputTokens,
+      cacheReadTokens: result.observation.usage.cacheReadTokens,
+      outputTokens: result.observation.usage.outputTokens,
+      reasoningTokens: result.observation.usage.reasoningTokens,
+      wallClockMs: result.observation.wallClockMs,
+    },
+  }
+}
+
+/** Execute the locked Stage 2 schedule and compute its provisional aggregate. */
+export async function runDecisionBatch(
+  manifest: G25aManifest,
+  dependencies: DecisionDependencies,
+): Promise<DecisionBatchResult> {
+  const realCases = manifest.cases.filter(testCase => testCase.type === 'real_execution')
+  const before = await mapConcurrent(realCases, dependencies.concurrency ?? 3, testCase => dependencies.probe(testCase, 'before'))
+  const invalidStart = before.filter(receipt => !receipt.matchesExpected)
+  if (invalidStart.length > 0) {
+    throw new Error(`G25a decision reference start mismatch: ${invalidStart.map(receipt => receipt.caseId).join(', ')}`)
+  }
+  await dependencies.beforeAttempts?.(before)
+  const byId = new Map(manifest.cases.map(testCase => [testCase.case_id, testCase]))
+  const attempts = await mapConcurrent(buildDecisionPlan(manifest), dependencies.concurrency ?? 3, (planned) => {
+    const testCase = byId.get(planned.caseId)
+    if (testCase === undefined) throw new Error(`G25a decision case ${planned.caseId} disappeared from the manifest`)
+    return dependencies.attempt(planned, testCase)
+  })
+  const after = await mapConcurrent(realCases, dependencies.concurrency ?? 3, testCase => dependencies.probe(testCase, 'after'))
+  const failures: string[] = []
+  const beforeByCase = new Map(before.map(receipt => [receipt.caseId, receipt]))
+  for (const receipt of [...before, ...after]) {
+    if (!receipt.matchesExpected) failures.push(`reference result did not match expected value for ${receipt.caseId}`)
+  }
+  for (const receipt of after) {
+    if (beforeByCase.get(receipt.caseId)?.result.digest !== receipt.result.digest) {
+      failures.push(`reference result changed for ${receipt.caseId}`)
+    }
+  }
+  for (const testCase of manifest.cases) {
+    const rows = attempts.filter(result => result.planned.caseId === testCase.case_id)
+    const floor = rows.find(result => result.planned.arm === 'floor')
+    for (let replicate = 0; replicate < 3; replicate += 1) {
+      const stateMachine = rows.find(result => result.planned.arm === 'state_machine' && result.planned.replicate === replicate)
+      const policy = rows.find(result => result.planned.arm === 'policy' && result.planned.replicate === replicate)
+      if (stateMachine === undefined || policy === undefined || floor === undefined) {
+        failures.push(`${testCase.case_id}: incomplete case/replicate block ${String(replicate)}`)
+        continue
+      }
+      if ([stateMachine, policy, floor].some(result => result.grade.status === 'infra_failure')) continue
+      try {
+        validateObservationParity([stateMachine, policy, floor].map(result => ({
+          arm: result.planned.arm,
+          taskDigest: result.planned.taskDigest,
+          toolNames: result.observation.toolNames,
+        })))
+      } catch (error: unknown) {
+        failures.push(`${testCase.case_id} replicate ${String(replicate + 1)}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+    for (const result of rows) {
+      if (result.grade.status === 'infra_failure') {
+        failures.push(`${result.planned.attemptId}: infrastructure failure requires a complete case-block rerun`)
+        continue
+      }
+      if (digestText(result.observation.firstUserText) !== result.planned.taskDigest) {
+        failures.push(`${result.planned.attemptId}: first user Task working set drifted`)
+      }
+      if (!result.firstModelRequestContainsTask) failures.push(`${result.planned.attemptId}: first model request omitted the Task working set`)
+      if (testCase.type === 'real_execution' && !hasReadableSuccessfulQuery(result.observation)) {
+        failures.push(`${result.planned.attemptId}: successful query has no readable outcome`)
+      }
+    }
+  }
+  const records = attempts.map(attemptRecord)
+  return {
+    attempts,
+    records,
+    referenceBefore: before,
+    referenceAfter: after,
+    failures,
+    analysis: analyzeAttempts(records),
+  }
+}
+
+function acceptanceText(testCase: ManifestCase): string {
+  return /【验收条件】([^【]*)/u.exec(testCase.task_working_set)?.[1]?.trim() ?? ''
+}
+
+/** Build the arm-blinded packet required before human verdicts are recorded. */
+export function buildBlindReviewPacket(
+  attempts: readonly SmokeAttemptResult[],
+  blindSeed = randomUUID(),
+): BlindReviewPacket {
+  const selected = new Set<string>()
+  for (const attempt of attempts) {
+    if (attempt.grade.severeUnsupported) selected.add(attempt.planned.attemptId)
+  }
+  const byPair = new Map<string, Partial<Record<'state_machine' | 'policy', SmokeAttemptResult>>>()
+  for (const attempt of attempts) {
+    if (attempt.planned.arm === 'floor') continue
+    const key = `${attempt.planned.caseId}\0${String(attempt.planned.replicate)}`
+    const pair = byPair.get(key) ?? {}
+    pair[attempt.planned.arm] = attempt
+    byPair.set(key, pair)
+  }
+  for (const pair of byPair.values()) {
+    if (pair.state_machine === undefined || pair.policy === undefined) continue
+    if (pair.state_machine.grade.pass !== pair.policy.grade.pass
+      || pair.state_machine.grade.severeUnsupported !== pair.policy.grade.severeUnsupported) {
+      selected.add(pair.state_machine.planned.attemptId)
+      selected.add(pair.policy.planned.attemptId)
+    }
+  }
+  const chosen = attempts.filter(attempt => selected.has(attempt.planned.attemptId))
+  const entries = chosen.map((attempt) => {
+    const blindId = `review-${digestText(`${blindSeed}\0${attempt.planned.attemptId}`).slice(0, 16)}`
+    return {
+      blindId,
+      caseId: attempt.planned.caseId,
+      question: typeof attempt.testCase.goal === 'string' ? attempt.testCase.goal : attempt.observation.firstUserText,
+      acceptance: acceptanceText(attempt.testCase),
+      successfulQueryResults: attempt.observation.queryAttempts
+        .filter(query => query.state === 'completed')
+        .map(query => JSON.stringify({ columns: query.columns ?? [], rows: query.rows ?? [], rowCount: query.rowCount ?? 0 })),
+      finalAnswer: attempt.observation.finalAnswer,
+      machineGrade: attempt.grade,
+      humanVerdict: null,
+      humanReason: '',
+    }
+  })
+  return {
+    entries,
+    mapping: chosen.map(attempt => ({
+      blindId: `review-${digestText(`${blindSeed}\0${attempt.planned.attemptId}`).slice(0, 16)}`,
+      attemptId: attempt.planned.attemptId,
+      arm: attempt.planned.arm,
+    })),
+  }
+}
+
 /** Project private Stage 1 evidence into a safe, committable summary. */
 export function summarizeStage1(
   runId: string,
@@ -665,24 +930,34 @@ export async function executeAttempt(
   }
 
   const observation = observeSession(events, Math.max(0, now() - startedAt))
+  const writeArtifact = options.writeArtifact ?? writeJson
+  await writeArtifact(join(directory, 'config.json'), { planned, testCase })
+  await writeArtifact(join(directory, 'session.json'), { header: sessionHeader, events })
+  await writeArtifact(join(directory, 'environment.json'), options.environment)
+  await writeArtifact(join(directory, 'observation.json'), observation)
+  if (failure !== undefined) await writeArtifact(join(directory, 'failure.json'), failure)
   let grade: GradeRecord
+  let gradingFailure: InfrastructureFailure | undefined
   try {
-    grade = scoreAttempt(testCase, observation, failure, { budgetExceeded })
+    grade = failure === undefined
+      ? await (options.gradeObservation ?? ((spec, observed, control) => scoreAttempt(spec, observed, undefined, control)))(
+          testCase,
+          observation,
+          { budgetExceeded },
+        )
+      : scoreAttempt(testCase, observation, failure, { budgetExceeded })
   } catch (error: unknown) {
-    grade = scoreAttempt(testCase, observation, {
+    gradingFailure = {
       kind: 'scorer_failure',
       message: error instanceof Error ? error.message : String(error),
-    })
+    }
+    grade = scoreAttempt(testCase, observation, gradingFailure)
   }
   const observationDigest = digestText(JSON.stringify(observation))
   const gradeDigest = digestText(JSON.stringify(grade))
   const rawLocator = `${options.runId}/${planned.attemptId}`
-  await writeJson(join(directory, 'config.json'), { planned, testCase })
-  await writeJson(join(directory, 'session.json'), { header: sessionHeader, events })
-  await writeJson(join(directory, 'environment.json'), options.environment)
-  await writeJson(join(directory, 'observation.json'), observation)
-  await writeJson(join(directory, 'grade.json'), grade)
-  if (failure !== undefined) await writeJson(join(directory, 'failure.json'), failure)
+  await writeArtifact(join(directory, 'grade.json'), grade)
+  if (gradingFailure !== undefined) await writeArtifact(join(directory, 'failure.json'), gradingFailure)
   return {
     planned,
     testCase,
@@ -692,7 +967,7 @@ export async function executeAttempt(
     rawLocator,
     observationDigest,
     gradeDigest,
-    ...(failure === undefined ? {} : { infrastructureFailure: failure }),
+    ...(failure ?? gradingFailure) === undefined ? {} : { infrastructureFailure: failure ?? gradingFailure },
   }
 }
 
@@ -752,6 +1027,7 @@ interface WorkspaceModules {
   readonly Include: typeof import('@deepseek-ai/cordis-plugin-include')['default']
   readonly Group: typeof import('@deepseek-ai/cordis-plugin-group')['default']
   readonly LlmRuntime: typeof import('@deepseek-ai/dsh-llm')['default']
+  readonly BlockAssembler: typeof import('@deepseek-ai/dsh-llm')['BlockAssembler']
   readonly createUserMessage: typeof import('@deepseek-ai/dsh-llm')['createUserMessage']
   readonly llmDashscope: typeof import('@deepseek-ai/dsh-llm-dashscope')
   readonly LocalCredentialProvider: typeof import('@deepseek-ai/dsh-credentials-local')['default']
@@ -831,6 +1107,7 @@ async function loadWorkspaceModules(): Promise<WorkspaceModules> {
     Include: include.default,
     Group: group.default,
     LlmRuntime: llm.default,
+    BlockAssembler: llm.BlockAssembler,
     createUserMessage: llm.createUserMessage,
     llmDashscope,
     LocalCredentialProvider: credentialsLocal.default,
@@ -869,10 +1146,161 @@ export async function verifyToolSchedulerIdentity(): Promise<boolean> {
   }
 }
 
+/** Dedicated arm-blinded model grader used after an observation is sealed. */
+export interface EvidenceGraderRuntime {
+  judge(spec: ManifestCase, observation: SessionObservation): Promise<{
+    readonly prompt: string
+    readonly response: string
+    readonly judgment: EvidenceGroundedJudgment
+  }>
+  dispose(): Promise<void>
+}
+
+/** Boot a tool-free grading context that cannot observe experiment arm identity. */
+export async function createEvidenceGraderRuntime(
+  environment: Pick<AttemptEnvironmentReceipt, 'provider' | 'model'>,
+): Promise<EvidenceGraderRuntime> {
+  const modules = await loadWorkspaceModules()
+  const ctx = new modules.Context()
+  try {
+    await ctx.plugin(modules.LlmRuntime)
+    const dshHome = modules.resolveDshHome()
+    await ctx.plugin(modules.LocalCredentialProvider, {
+      path: resolve(dshHome, '.credentials.yaml'),
+      dshHome,
+    })
+    await ctx.plugin(modules.llmDashscope, {
+      retryPolicy: { mode: 'normal', maxRetries: 0, retryableCodes: ['TRANSPORT'] },
+    })
+  } catch (error: unknown) {
+    try {
+      await ctx.fiber.dispose()
+    } catch {
+      // Preserve the grader boot failure.
+    }
+    throw error
+  }
+  return {
+    judge: async (spec, observation) => {
+      const prompt = buildEvidenceGroundedGraderPrompt(spec, observation)
+      const assembler = new modules.BlockAssembler()
+      const request = {
+        provider: environment.provider,
+        model: environment.model,
+        maxTokens: 512,
+        messages: [modules.createUserMessage({
+          content: [{ type: 'text', text: prompt }],
+          source: { kind: 'plugin', plugin: 'g25a-evidence-grader' },
+        })],
+      }
+      for await (const chunk of ctx.llm.stream(request)) assembler.push(chunk)
+      const finish = assembler.finish
+      if (finish.kind === 'error' || finish.kind === 'aborted') {
+        throw new Error(`G25a evidence grader failed: ${finish.failure.message}`)
+      }
+      const response = assembler.blocks()
+        .flatMap(block => block.type === 'text' ? [block.text] : [])
+        .join('')
+      return { prompt, response, judgment: parseEvidenceGroundedJudgment(response) }
+    },
+    dispose: async () => { await ctx.fiber.dispose() },
+  }
+}
+
 /** Resolve a package through pnpm's complete workspace dependency closure. */
 export function resolveWorkspaceSpecifier(repoRoot: string, specifier: string): string {
   const moduleRoot = resolve(repoRoot, 'node_modules/.pnpm/node_modules')
   return createRequire(resolve(moduleRoot, '.g25a-resolver.cjs')).resolve(specifier)
+}
+
+async function digestFile(path: string): Promise<string> {
+  return createHash('sha256').update(await readFile(path)).digest('hex')
+}
+
+async function digestSemanticCorpus(repoRoot: string, root: string): Promise<{ digest: string; files: number }> {
+  const paths: string[] = []
+  const walk = async (directory: string): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = resolve(directory, entry.name)
+      if (entry.isDirectory()) await walk(path)
+      else if (entry.isFile() && /\.ya?ml$/u.test(entry.name)) paths.push(path)
+    }
+  }
+  await walk(root)
+  paths.sort()
+  const rows: string[] = []
+  for (const path of paths) rows.push(`${relative(repoRoot, path)}:${await digestFile(path)}`)
+  return { digest: digestText(rows.join('\n')), files: paths.length }
+}
+
+async function runTextCommand(file: string, args: readonly string[], cwd: string): Promise<string> {
+  return new Promise((settle, reject) => {
+    const child = spawn(file, [...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => { stdout += chunk })
+    child.stderr.on('data', (chunk: string) => { stderr += chunk })
+    child.on('error', reject)
+    child.on('close', (code, signal) => {
+      if (code === 0 && signal === null) settle(stdout)
+      else reject(new Error(`${file} ${args.join(' ')} failed: ${stderr.trim() || `exit ${String(code)} signal ${String(signal)}`}`))
+    })
+  })
+}
+
+async function dirtyStateDigest(repoRoot: string): Promise<string> {
+  const diff = await runTextCommand('git', ['diff', '--binary', 'HEAD', '--', '.'], repoRoot)
+  const untrackedRaw = await runTextCommand('git', ['ls-files', '--others', '--exclude-standard', '-z'], repoRoot)
+  const untracked = untrackedRaw.split('\0').filter(Boolean).sort()
+  const files: { path: string; digest: string }[] = []
+  for (const path of untracked) {
+    const absolute = resolve(repoRoot, path)
+    if ((await stat(absolute)).isFile()) files.push({ path, digest: await digestFile(absolute) })
+  }
+  return digestText(canonicalJson({ diffDigest: digestText(diff), untracked: files }))
+}
+
+/** Capture every frozen behavior-affecting input immediately before Stage 2. */
+export async function captureRunIdentity(
+  repoRoot: string,
+  manifest: G25aManifest & { readonly semantic_corpus_digest?: string },
+  environment: AttemptEnvironmentReceipt,
+  referenceStart: readonly ReferenceProbeReceipt[],
+): Promise<RunIdentity> {
+  const experimentRoot = resolve(repoRoot, 'wayfinder/task-orchestration-dag/experiments/g25a-phase-gate')
+  const semantic = await digestSemanticCorpus(repoRoot, environment.semanticRoot)
+  if (manifest.semantic_corpus_digest !== undefined && semantic.digest !== manifest.semantic_corpus_digest) {
+    throw new Error(`G25a semantic corpus digest drift: manifest=${manifest.semantic_corpus_digest} actual=${semantic.digest}`)
+  }
+  const gitCommit = (await runTextCommand('git', ['rev-parse', 'HEAD'], repoRoot)).trim()
+  return buildRunIdentity({
+    gitCommit,
+    dirtyDiffDigest: await dirtyStateDigest(repoRoot),
+    presetDigests: {
+      state_machine: await digestFile(resolve(repoRoot, 'packages/bundle/data-agent/presets/data-agent/agent.cordis.yml')),
+      policy: await digestFile(resolve(experimentRoot, 'presets/policy/agent.cordis.yml')),
+      floor: await digestFile(resolve(experimentRoot, 'presets/floor/agent.cordis.yml')),
+    },
+    policyPluginDigest: await digestFile(resolve(experimentRoot, 'src/guardrails-policy.ts')),
+    manifestDigest: await digestFile(resolve(experimentRoot, 'cases/manifest.json')),
+    semanticCorpusDigest: semantic.digest,
+    sidecarDigests: {
+      real: await digestFile(resolve(repoRoot, 'packages/query/query-maxcompute/dev/maxc-sidecar.mjs')),
+      fault: await digestFile(resolve(experimentRoot, 'fixtures/fault-sidecar.mjs')),
+    },
+    provider: environment.provider,
+    model: environment.model,
+    environmentVariableNames: environment.environmentVariableNames,
+    resolvedPaths: {
+      maxc: environment.maxcPath,
+      maxcConfig: environment.maxcConfigPath,
+      semanticRoot: environment.semanticRoot,
+    },
+    randomizationSeed: SEED,
+    referenceStartDigests: Object.fromEntries(referenceStart.map(receipt => [receipt.caseId, receipt.result.digest])),
+  })
 }
 
 async function writeSidecarLaunchers(
@@ -1122,6 +1550,135 @@ async function runRealStage1(manifest: G25aManifest): Promise<Stage1Summary> {
   return summary
 }
 
+interface DecisionSummary {
+  readonly schemaVersion: 1
+  readonly stage: 'decision'
+  readonly runId: string
+  readonly runIdentity: RunIdentity
+  readonly failures: readonly string[]
+  readonly reference: Stage1Summary['reference']
+  readonly attempts: readonly (AttemptRecord & {
+    readonly taskDigest: string
+    readonly toolNames: readonly string[]
+    readonly firstModelRequestContainsTask: boolean
+    readonly rawLocator: string
+    readonly observationDigest: string
+    readonly gradeDigest: string
+  })[]
+  readonly provisionalAnalysis: AnalysisResult
+  readonly humanReview: {
+    readonly status: 'pending' | 'not_required'
+    readonly entries: number
+    readonly packetLocator: string
+    readonly mappingLocator: string
+  }
+}
+
+function summarizeDecision(
+  runId: string,
+  identity: RunIdentity,
+  result: DecisionBatchResult,
+  review: BlindReviewPacket,
+): DecisionSummary {
+  const reference = (receipts: readonly ReferenceProbeReceipt[]) => receipts.map(receipt => ({
+    caseId: receipt.caseId,
+    resultDigest: receipt.result.digest,
+    rowCount: receipt.result.rowCount,
+    matchesExpected: receipt.matchesExpected,
+  }))
+  return {
+    schemaVersion: 1,
+    stage: 'decision',
+    runId,
+    runIdentity: identity,
+    failures: result.failures,
+    reference: { before: reference(result.referenceBefore), after: reference(result.referenceAfter) },
+    attempts: result.attempts.map((attempt, index) => ({
+      ...result.records[index]!,
+      taskDigest: attempt.planned.taskDigest,
+      toolNames: attempt.observation.toolNames,
+      firstModelRequestContainsTask: attempt.firstModelRequestContainsTask,
+      rawLocator: attempt.rawLocator,
+      observationDigest: attempt.observationDigest,
+      gradeDigest: attempt.gradeDigest,
+    })),
+    provisionalAnalysis: result.analysis,
+    humanReview: {
+      status: review.entries.length === 0 ? 'not_required' : 'pending',
+      entries: review.entries.length,
+      packetLocator: `${runId}/review/review-packet.json`,
+      mappingLocator: `${runId}/review/reveal-map.json`,
+    },
+  }
+}
+
+async function runRealDecision(manifest: G25aManifest): Promise<DecisionSummary> {
+  const repoRoot = resolve(import.meta.dirname, '../../../../..')
+  const experimentRoot = resolve(import.meta.dirname, '..')
+  const rawRoot = resolve(repoRoot, 'eval-results/g25a/raw')
+  const resultsRoot = resolve(experimentRoot, 'results')
+  const smoke = JSON.parse(await readFile(resolve(resultsRoot, 'smoke-summary.json'), 'utf8')) as Stage1Summary
+  if (!smoke.passed) throw new Error(`G25a Stage 2 requires a passing Stage 1 summary; ${smoke.runId} did not pass`)
+  const runId = `g25a-decision-2026-09-17-${randomUUID()}`
+  const environment = await resolveAttemptEnvironment({ repoRoot, arm: 'state_machine', faultMode: 'none' })
+  const grader = await createEvidenceGraderRuntime(environment)
+  let identity: RunIdentity | undefined
+  try {
+    const result = await runDecisionBatch(manifest, {
+      concurrency: 3,
+      beforeAttempts: async (referenceBefore) => {
+        identity = await captureRunIdentity(repoRoot, manifest, environment, referenceBefore)
+        const directory = resolve(rawRoot, runId)
+        await mkdir(directory, { recursive: true })
+        await writeJson(resolve(directory, 'run-identity.json'), identity)
+      },
+      probe: async (testCase, phase) => {
+        const receipt = await runReferenceProbe(testCase, {
+          maxcPath: environment.maxcPath,
+          maxcConfigPath: environment.maxcConfigPath,
+        })
+        const directory = resolve(rawRoot, runId, 'reference', phase)
+        await mkdir(directory, { recursive: true })
+        await writeJson(resolve(directory, `${testCase.case_id}.json`), receipt)
+        return receipt
+      },
+      attempt: async (planned, testCase) => {
+        const attemptEnvironment = await resolveAttemptEnvironment({
+          repoRoot,
+          arm: planned.arm,
+          faultMode: planned.faultMode,
+        })
+        const attemptDirectory = resolve(rawRoot, runId, planned.attemptId)
+        const result = await executeAttempt(planned, testCase, {
+          runId,
+          rawRoot,
+          environment: attemptEnvironment,
+          createRuntime: () => createRealAttemptRuntime(repoRoot, attemptDirectory, planned, testCase, attemptEnvironment),
+          gradeObservation: async (spec, observation, control) => {
+            const judged = await grader.judge(spec, observation)
+            await writeJson(resolve(attemptDirectory, 'grader.json'), judged)
+            return scoreAttempt(spec, observation, undefined, { ...control, graderJudgment: judged.judgment })
+          },
+        })
+        process.stderr.write(`[g25a] ${String(planned.order + 1)}/${String(manifest.total_decision_attempts)} ${planned.attemptId} ${result.grade.status}\n`)
+        return result
+      },
+    })
+    if (identity === undefined) throw new Error('G25a decision run identity was not frozen before Attempts')
+    const review = buildBlindReviewPacket(result.attempts)
+    const reviewDirectory = resolve(rawRoot, runId, 'review')
+    await mkdir(reviewDirectory, { recursive: true })
+    await writeJson(resolve(reviewDirectory, 'review-packet.json'), review.entries)
+    await writeJson(resolve(reviewDirectory, 'reveal-map.json'), review.mapping)
+    const summary = summarizeDecision(runId, identity, result, review)
+    await mkdir(resultsRoot, { recursive: true })
+    await writeFile(resolve(resultsRoot, 'decision-summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8')
+    return summary
+  } finally {
+    await grader.dispose()
+  }
+}
+
 async function main(): Promise<void> {
   const stageIndex = process.argv.indexOf('--stage')
   const stage = stageIndex >= 0 ? process.argv[stageIndex + 1] : undefined
@@ -1139,7 +1696,18 @@ async function main(): Promise<void> {
     return
   }
   if (stage === 'decision') {
-    throw new Error('G25a Stage 2 is unavailable until the committed Stage 1 summary passes')
+    const summary = await runRealDecision(manifest)
+    process.stdout.write(`${JSON.stringify({
+      stage,
+      runId: summary.runId,
+      identityDigest: summary.runIdentity.identityDigest,
+      failures: summary.failures,
+      attempts: summary.attempts.length,
+      humanReview: summary.humanReview,
+      provisionalVerdict: summary.provisionalAnalysis.verdict,
+    }, null, 2)}\n`)
+    if (summary.failures.length > 0) process.exitCode = 1
+    return
   }
   throw new Error('usage: controlled-runner.ts --stage smoke|decision')
 }

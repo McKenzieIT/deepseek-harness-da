@@ -28,6 +28,10 @@ export interface AttemptRecord {
   readonly status: 'graded' | 'infra_failure'
   readonly grade: GradeRecord
   readonly cost: AttemptCost
+  readonly sqlComplexity?: string
+  readonly interactionComplexity?: 'straightforward' | 'iterative'
+  readonly toolCallCounts?: Readonly<Record<string, number>>
+  readonly queryFailureKinds?: Readonly<Record<string, number>>
 }
 
 interface DistributionSummary {
@@ -46,6 +50,13 @@ interface ArmRate {
   readonly count: number
   readonly total: number
   readonly rate: number
+}
+
+interface RawSliceSummary {
+  readonly attempts: number
+  readonly passed: number
+  readonly severeUnsupported: number
+  readonly infraFailures: number
 }
 
 /** Complete deterministic Stage 3/4 aggregate. */
@@ -70,6 +81,18 @@ export interface AnalysisResult {
     readonly bootstrap95: readonly [number | null, number | null]
   }
   readonly cost: Record<Arm, Record<keyof AttemptCost, DistributionSummary>>
+  readonly robustness: {
+    readonly bySqlComplexity: Readonly<Record<string, RawSliceSummary>>
+    readonly byInteractionComplexity: Readonly<Record<string, RawSliceSummary>>
+    readonly byCaseType: Readonly<Record<AttemptRecord['caseType'], RawSliceSummary>>
+    readonly toolCalls: Readonly<Record<Arm, Readonly<Record<string, number>>>>
+    readonly queryFailures: Readonly<Record<Arm, Readonly<Record<string, number>>>>
+    readonly success: Readonly<Record<Arm, {
+      readonly firstAttempt: number
+      readonly stableThree: number
+      readonly totalCases: number
+    }>>
+  }
   readonly verdict: {
     readonly status: 'retain' | 'do_not_enlarge' | 'insufficient'
     readonly primaryThresholdMet: boolean
@@ -108,6 +131,61 @@ function armCost(attempts: readonly AttemptRecord[], arm: Arm): Record<keyof Att
     'wallClockMs',
   ]
   return Object.fromEntries(keys.map(key => [key, distribution(rows.map(row => row.cost[key]))])) as Record<keyof AttemptCost, DistributionSummary>
+}
+
+function rawSlices(
+  attempts: readonly AttemptRecord[],
+  keyOf: (attempt: AttemptRecord) => string | undefined,
+): Record<string, RawSliceSummary> {
+  const grouped = new Map<string, AttemptRecord[]>()
+  for (const attempt of attempts) {
+    const key = keyOf(attempt)
+    if (key === undefined) continue
+    const rows = grouped.get(key) ?? []
+    rows.push(attempt)
+    grouped.set(key, rows)
+  }
+  return Object.fromEntries([...grouped].sort(([left], [right]) => left.localeCompare(right)).map(([key, rows]) => [key, {
+    attempts: rows.length,
+    passed: rows.filter(row => row.grade.pass).length,
+    severeUnsupported: rows.filter(row => row.grade.severeUnsupported).length,
+    infraFailures: rows.filter(row => row.status === 'infra_failure').length,
+  }]))
+}
+
+function sumNamedCounts(attempts: readonly AttemptRecord[], field: 'toolCallCounts' | 'queryFailureKinds'): Record<Arm, Record<string, number>> {
+  const result: Record<Arm, Record<string, number>> = { state_machine: {}, policy: {}, floor: {} }
+  for (const attempt of attempts) {
+    for (const [name, count] of Object.entries(attempt[field] ?? {})) {
+      result[attempt.arm][name] = (result[attempt.arm][name] ?? 0) + count
+    }
+  }
+  return result
+}
+
+function successCounts(attempts: readonly AttemptRecord[]): Record<Arm, { firstAttempt: number; stableThree: number; totalCases: number }> {
+  const result: Record<Arm, { firstAttempt: number; stableThree: number; totalCases: number }> = {
+    state_machine: { firstAttempt: 0, stableThree: 0, totalCases: 0 },
+    policy: { firstAttempt: 0, stableThree: 0, totalCases: 0 },
+    floor: { firstAttempt: 0, stableThree: 0, totalCases: 0 },
+  }
+  for (const arm of ['state_machine', 'policy', 'floor'] as const) {
+    const grouped = new Map<string, AttemptRecord[]>()
+    for (const attempt of attempts) {
+      if (attempt.arm !== arm || attempt.caseType !== 'real_execution' || attempt.status !== 'graded') continue
+      const rows = grouped.get(attempt.caseId) ?? []
+      rows.push(attempt)
+      grouped.set(attempt.caseId, rows)
+    }
+    result[arm].totalCases = grouped.size
+    result[arm].firstAttempt = [...grouped.values()].filter(rows => rows.find(row => row.replicate === 0)?.grade.pass === true).length
+    if (arm !== 'floor') {
+      result[arm].stableThree = [...grouped.values()].filter(rows => (
+        new Set(rows.map(row => row.replicate)).size === 3 && rows.every(row => row.grade.pass)
+      )).length
+    }
+  }
+  return result
 }
 
 function casePass3(attempts: readonly AttemptRecord[], arm: 'state_machine' | 'policy'): Map<string, boolean> {
@@ -269,6 +347,14 @@ export function analyzeAttempts(
       state_machine: armCost(graded, 'state_machine'),
       policy: armCost(graded, 'policy'),
       floor: armCost(graded, 'floor'),
+    },
+    robustness: {
+      bySqlComplexity: rawSlices(attempts, attempt => attempt.sqlComplexity),
+      byInteractionComplexity: rawSlices(attempts, attempt => attempt.interactionComplexity),
+      byCaseType: rawSlices(attempts, attempt => attempt.caseType) as Record<AttemptRecord['caseType'], RawSliceSummary>,
+      toolCalls: sumNamedCounts(attempts, 'toolCallCounts'),
+      queryFailures: sumNamedCounts(attempts, 'queryFailureKinds'),
+      success: successCounts(attempts),
     },
     verdict: {
       status: valid ? (primaryThresholdMet && confidenceExcludesZero ? 'retain' : 'do_not_enlarge') : 'insufficient',

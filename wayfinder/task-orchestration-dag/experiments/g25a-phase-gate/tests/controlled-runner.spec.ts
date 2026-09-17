@@ -3,17 +3,20 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { chmod, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildSmokePlan,
+  buildBlindReviewPacket,
+  buildRunIdentity,
   buildDecisionPlan,
   executeAttempt,
   parseReferenceResult,
   resolveAttemptEnvironment,
   resolveWorkspaceSpecifier,
   runReferenceProbe,
+  runDecisionBatch,
   runStage1,
   summarizeStage1,
   verifyToolSchedulerIdentity,
@@ -299,6 +302,96 @@ describe('Stage 1 controller', () => {
   })
 })
 
+describe('decision batch controller', () => {
+  it('content-identifies the complete frozen decision-run input', () => {
+    const input = {
+      gitCommit: 'abc', dirtyDiffDigest: 'dirty',
+      presetDigests: { state_machine: 's', policy: 'p', floor: 'f' },
+      policyPluginDigest: 'policy', manifestDigest: 'manifest', semanticCorpusDigest: 'semantic',
+      sidecarDigests: { real: 'real', fault: 'fault' }, provider: 'aga', model: 'qwen3.7-max',
+      environmentVariableNames: ['MAXC_CONFIG', 'PATH'],
+      resolvedPaths: { maxc: '/maxc', maxcConfig: '/config', semanticRoot: '/semantic' },
+      randomizationSeed: 'g25a-2026-09-17', referenceStartDigests: { a: 'one' },
+    } as const
+    const first = buildRunIdentity(input)
+    expect(buildRunIdentity(input)).toEqual(first)
+    expect(buildRunIdentity({ ...input, manifestDigest: 'changed' }).identityDigest).not.toBe(first.identityDigest)
+  })
+
+  it('runs the frozen 252 Attempts and all real-case stability probes', async () => {
+    const result = await runDecisionBatch(MANIFEST, {
+      probe: async testCase => ({
+        caseId: testCase.case_id,
+        maxcPath: '/maxc',
+        maxcConfigPath: '/config',
+        result: { columns: ['value'], rows: [['1']], rowCount: 1, scalar: 1, digest: `digest-${testCase.case_id}` },
+        matchesExpected: true,
+      }),
+      attempt: async (planned, testCase) => {
+        const queryEvidence = testCase.type === 'real_execution'
+          ? [{
+              callId: 'q1', name: 'query_data', argumentsText: '{}', arguments: {}, callSeq: 1,
+              state: 'completed' as const, columns: ['value'], rows: [['1']], rowCount: 1,
+            }]
+          : []
+        return {
+          planned,
+          testCase,
+          observation: {
+            finalAnswer: '数据不可得', firstUserText: planned.taskWorkingSet,
+            toolNames: ['a', 'b'], assistantMessages: ['数据不可得'], toolCalls: queryEvidence, queryAttempts: queryEvidence, clarifications: [],
+            modelCalls: 1, successfulQueries: queryEvidence.length,
+            usage: { uncachedInputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 1, reasoningTokens: 0 }, wallClockMs: 1,
+          },
+          grade: {
+            caseId: testCase.case_id, status: 'graded', pass: true,
+            executionCorrect: testCase.type === 'real_execution', answerSupported: true,
+            clarificationCorrect: testCase.type === 'ambiguity', appropriateDecline: testCase.type === 'no_grounding' || testCase.type === 'persistent_failure',
+            recoverySuccess: testCase.type === 'recovery', severeUnsupported: false, budgetExceeded: false, reasons: [],
+          },
+          firstModelRequestContainsTask: true,
+          rawLocator: `raw/${planned.attemptId}`,
+          observationDigest: `observation-${planned.attemptId}`,
+          gradeDigest: `grade-${planned.attemptId}`,
+        }
+      },
+      concurrency: 3,
+    })
+    expect(result.attempts).toHaveLength(252)
+    expect(result.referenceBefore).toHaveLength(12)
+    expect(result.referenceAfter).toHaveLength(12)
+    expect(result.failures).toEqual([])
+    expect(result.analysis.validity).toMatchObject({ gradedAttempts: 252, infraFailures: 0 })
+  })
+
+  it('creates a blinded review packet for severe candidates and decision-arm disagreements', () => {
+    const planned = buildDecisionPlan(MANIFEST)
+    const state = planned.find(row => row.arm === 'state_machine')!
+    const policy = planned.find(row => row.caseId === state.caseId && row.arm === 'policy' && row.replicate === state.replicate)!
+    const testCase = MANIFEST.cases.find(row => row.case_id === state.caseId)!
+    const result = (attempt: typeof state, pass: boolean, severeUnsupported: boolean): SmokeAttemptResult => ({
+      planned: attempt,
+      testCase,
+      observation: {
+        finalAnswer: pass ? 'supported' : 'unsupported', firstUserText: attempt.taskWorkingSet,
+        toolNames: ['a'], assistantMessages: [], toolCalls: [], queryAttempts: [], clarifications: [], modelCalls: 1,
+        successfulQueries: 0, usage: { uncachedInputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 1, reasoningTokens: 0 }, wallClockMs: 1,
+      },
+      grade: {
+        caseId: testCase.case_id, status: 'graded', pass, executionCorrect: pass, answerSupported: pass,
+        clarificationCorrect: false, appropriateDecline: false, recoverySuccess: false, severeUnsupported, budgetExceeded: false, reasons: [],
+      },
+      firstModelRequestContainsTask: true, rawLocator: `raw/${attempt.attemptId}`, observationDigest: 'o', gradeDigest: 'g',
+    })
+    const packet = buildBlindReviewPacket([result(state, false, true), result(policy, true, false)], 'secret-one')
+    const other = buildBlindReviewPacket([result(state, false, true), result(policy, true, false)], 'secret-two')
+    expect(packet.entries).toHaveLength(2)
+    expect(packet.mapping).toHaveLength(2)
+    expect(packet.entries[0]?.blindId).not.toBe(other.entries[0]?.blindId)
+    expect(JSON.stringify(packet.entries)).not.toMatch(/state_machine|policy|attemptId/u)
+  })
+})
+
 describe('Attempt lifecycle', () => {
   it('writes complete private evidence and waits for runtime disposal', async () => {
     const rawRoot = await mkdtemp(join(tmpdir(), 'g25a-attempt-'))
@@ -372,6 +465,36 @@ describe('Attempt lifecycle', () => {
     expect(result.grade).toMatchObject({ status: 'infra_failure', pass: false })
     expect(result.infrastructureFailure).toMatchObject({ kind: 'agent_failure', message: 'agent exploded' })
     expect(existsSync(join(rawRoot, result.rawLocator, 'failure.json'))).toBe(true)
+  })
+
+  it('seals the observation before invoking or writing the grader', async () => {
+    const rawRoot = await mkdtemp(join(tmpdir(), 'g25a-attempt-order-'))
+    const planned = buildSmokePlan(MANIFEST)[0]!
+    const testCase = MANIFEST.cases.find(row => row.case_id === planned.caseId)!
+    const order: string[] = []
+    await executeAttempt(planned, testCase, {
+      runId: 'test-run', rawRoot,
+      environment: {
+        provider: 'aga', model: 'qwen3.7-max', scopeId: '10000251', maxcomputeProject: 'ieu_cdm',
+        semanticRoot: '/repo/examples/k11-semantic-layer', presetPath: '/repo/preset.yml', sidecarPath: '/repo/sidecar.mjs',
+        maxcPath: '/opt/maxc/bin/maxc', maxcConfigPath: '/home/test/.maxc/config.yaml', environmentVariableNames: [],
+      },
+      createRuntime: async () => ({
+        run: async () => ({ sessionHeader: {}, events: [], firstModelRequestContainsTask: true, budgetExceeded: false }),
+        dispose: async () => {},
+      }),
+      writeArtifact: async (path) => { order.push(basename(path)) },
+      gradeObservation: () => {
+        order.push('grader')
+        return {
+          caseId: testCase.case_id, status: 'graded', pass: false, executionCorrect: false, answerSupported: false,
+          clarificationCorrect: false, appropriateDecline: false, recoverySuccess: false, severeUnsupported: false,
+          budgetExceeded: false, reasons: [],
+        }
+      },
+    })
+    expect(order.indexOf('observation.json')).toBeLessThan(order.indexOf('grader'))
+    expect(order.indexOf('grader')).toBeLessThan(order.indexOf('grade.json'))
   })
 })
 

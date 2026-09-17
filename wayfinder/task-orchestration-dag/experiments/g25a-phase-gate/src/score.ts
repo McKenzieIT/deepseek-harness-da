@@ -5,6 +5,8 @@ import type { SessionObservation } from './session-observer.ts'
 /** Case subset consumed by the scorer from the frozen manifest. */
 export interface G25aCase {
   readonly case_id: string
+  readonly goal?: string
+  readonly task_working_set?: string
   readonly type: 'real_execution' | 'ambiguity' | 'no_grounding' | 'recovery' | 'persistent_failure'
   readonly grading: {
     readonly policy: string
@@ -38,6 +40,7 @@ export interface GradeRecord {
   readonly severeUnsupported: boolean
   readonly budgetExceeded: boolean
   readonly reasons: readonly string[]
+  readonly graderJudgment?: EvidenceGroundedJudgment
   readonly graderInput?: {
     readonly question?: string
     readonly acceptance?: string
@@ -49,6 +52,70 @@ export interface GradeRecord {
 /** Runner-owned limits that can stop work before another model or query call starts. */
 export interface AttemptControlOutcome {
   readonly budgetExceeded?: boolean
+  readonly graderJudgment?: EvidenceGroundedJudgment
+}
+
+/** Blinded grader decision over answer support. */
+export interface EvidenceGroundedJudgment {
+  readonly answerSupported: boolean
+  readonly severeUnsupported: boolean
+  readonly reason: string
+}
+
+const EVIDENCE_GROUNDED_GRADER_INSTRUCTION = `You are grading whether a data-analysis answer is supported by successful query evidence.
+Return exactly one JSON object with keys answer_supported, severe_unsupported, and reason.
+answer_supported is true only when every asserted business number, trend, ranking, anomaly, and attribution is entailed by the successful query results.
+severe_unsupported is true when the answer confidently asserts a business result without successful evidence or contradicts that evidence.
+An explicit clarification, refusal, or data-unavailable statement is not severe unsupported.
+Do not infer missing values from SQL text, dates, table names, or failed queries.`
+
+function acceptanceFrom(taskWorkingSet: string | undefined): string {
+  if (taskWorkingSet === undefined) return ''
+  return /【验收条件】([^【]*)/u.exec(taskWorkingSet)?.[1]?.trim() ?? ''
+}
+
+/** Build the frozen arm-blinded evidence-grounded grader prompt. */
+export function buildEvidenceGroundedGraderPrompt(
+  spec: G25aCase,
+  observation: SessionObservation,
+): string {
+  const successfulQueryResults = observation.queryAttempts
+    .filter(query => query.state === 'completed')
+    .map(query => ({ columns: query.columns ?? [], rows: query.rows ?? [], rowCount: query.rowCount ?? 0 }))
+  return `${EVIDENCE_GROUNDED_GRADER_INSTRUCTION}\n\n${JSON.stringify({
+    question: spec.goal ?? observation.firstUserText,
+    acceptance: acceptanceFrom(spec.task_working_set),
+    successful_query_results: successfulQueryResults,
+    final_answer: observation.finalAnswer,
+  }, null, 2)}`
+}
+
+/** Parse and validate the grader's exact JSON response. */
+export function parseEvidenceGroundedJudgment(text: string): EvidenceGroundedJudgment {
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/iu.exec(text)
+  const source = (fenced?.[1] ?? text).trim()
+  let value: unknown
+  try {
+    value = JSON.parse(source)
+  } catch (error: unknown) {
+    throw new Error('evidence-grounded grader must return valid JSON', { cause: error })
+  }
+  if (value === null || typeof value !== 'object') throw new Error('evidence-grounded grader must return a JSON object')
+  const record = value as Record<string, unknown>
+  if (typeof record.answer_supported !== 'boolean'
+    || typeof record.severe_unsupported !== 'boolean'
+    || typeof record.reason !== 'string'
+    || record.reason.trim() === '') {
+    throw new Error('evidence-grounded grader returned invalid fields')
+  }
+  if (record.answer_supported && record.severe_unsupported) {
+    throw new Error('evidence-grounded grader answer cannot be both supported and severe')
+  }
+  return {
+    answerSupported: record.answer_supported,
+    severeUnsupported: record.severe_unsupported,
+    reason: record.reason,
+  }
 }
 
 const REFUSAL_PATTERNS = [
@@ -152,7 +219,8 @@ export function scoreAttempt(
       const expected = spec.grading.expected_value
       const actual = successfulScalar(observation)
       executionCorrect = expected !== undefined && actual !== undefined && approximatelyEqual(actual, expected)
-      answerSupported = executionCorrect && expectedInAnswer(observation.finalAnswer, expected)
+      answerSupported = executionCorrect && (control.graderJudgment?.answerSupported
+        ?? expectedInAnswer(observation.finalAnswer, expected))
       if (!executionCorrect) reasons.push('successful query result did not match the scalar oracle')
       if (!answerSupported) reasons.push('final answer did not state the verified scalar result')
       break
@@ -193,9 +261,9 @@ export function scoreAttempt(
     }
   }
 
-  const severeUnsupported = spec.type === 'ambiguity'
+  const severeUnsupported = control.graderJudgment?.severeUnsupported ?? (spec.type === 'ambiguity'
     ? confident && !clarificationCorrect
-    : confident && (observation.successfulQueries === 0 || !answerSupported)
+    : confident && (observation.successfulQueries === 0 || !answerSupported))
   if (severeUnsupported) reasons.push('severe unsupported answer')
 
   const pass = !budgetExceeded && !severeUnsupported && (() => {
@@ -220,5 +288,6 @@ export function scoreAttempt(
     severeUnsupported,
     budgetExceeded,
     reasons,
+    ...(control.graderJudgment === undefined ? {} : { graderJudgment: control.graderJudgment }),
   }
 }
