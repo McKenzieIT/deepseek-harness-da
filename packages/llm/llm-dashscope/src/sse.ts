@@ -12,6 +12,11 @@
  * @module dsh-llm-dashscope/sse
  */
 
+/* jscpd:ignore-start -- the structural overlap with llm-deepseek is deliberate: both packages
+   implement the same LlmAdapter seam, while this wire layer is native AGA and disjoint from
+   OpenAI chat-completions. See
+   .agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md. */
+
 import { EventSourceParserStream } from 'eventsource-parser/stream'
 
 /**
@@ -33,3 +38,4 @@ export async function* parseSse(
     if (data.length > 0) yield data
   }
 }
+/* jscpd:ignore-end */

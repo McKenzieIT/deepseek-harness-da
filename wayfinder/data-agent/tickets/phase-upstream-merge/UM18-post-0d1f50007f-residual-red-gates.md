@@ -28,11 +28,13 @@
 - 因此不是「跑一下生成器」就能收口：需要一次真正的双语补齐（`dsh-translate-docs` 只允许用户显式触发）。本轮已把误跑的英文重生成回滚，配对保持 1016 对一致。
 - 完成条件：英文重生成 + 中文对侧补齐 + `verify-translation-pairing --write` 重录 + `verify-config-catalog` 绿。
 
-### 3. `duplication` — 84 处 da 克隆（当前 0.32%，门槛 0.338%）
+### 3. `duplication` — 69 处 da 克隆（当前 0.26%，门槛 0.338%）
 
 - 上游已**取消比例门槛**、改为「有克隆即红」（`.jscpd.json` 去掉 `threshold`、加 `exitCode: 1`、且扫描 spec 文件）；fork 保留比例门槛，本轮把「按设计重复」的正式协议包用 `jscpd:ignore-start/end` 围栏后，比例从 0.49% 降到 0.32%，**门当前是绿的**。
 - 但 84 处克隆仍在，且随 da 代码增长会再次顶破门槛。主族：`ui-present-decomposition` ↔ `ui-present-table` ↔ `ui-suggest-followups` 的 card 组件、`ui-semantic-layer` 自身、`ui-semantic-layer` ↔ `schema-gateway`/`evidence-query` 的类型重复、`code-runtime-data-python` ↔ `ptc-runtime-node`/`ptc-runtime-python` 的运行时片段。
 - 完成条件：把类型重复抽到共享包、card 组件抽公共壳；比例回落后再把门槛调回上游语义（零容忍）或更紧的比例。
+- **2026-09-17：`llm-dashscope` 那 15 对已用围栏解掉**（用户裁定：该包适配阿里内网 AGA 网关，上游 `llm-deepseek` 只讲 OpenAI 兼容 wire，两者刻意独立演进；**否决抽公共基座** —— 那会把内网网关的演进耦合到上游 provider 上）。五个 `src/*.ts` 各加一处 `jscpd:ignore-start/end`，理由指向既有决策 [note](../../../../.agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md)（该 note 本就记着「镜像 llm-deepseek 的结构、wire 层不相交」并已否决 translate shim 方案）。**未上调 `.jscpd.json` 阈值。**
+- 实测：84 → 69 处，0.32% → 0.26%，余量从 0.018pp 拉开到 0.078pp。**没有达到当初预估的 0.1%** —— 那个预估把 280 行重复整个算进分子，实际重复行只从 1334 降到 1069。余量仍然薄，剩下 69 处（card 组件壳、`ui-semantic-layer` 自重复、类型重复）依然是顶破门槛的主要风险。
 
 ## 非目标
 

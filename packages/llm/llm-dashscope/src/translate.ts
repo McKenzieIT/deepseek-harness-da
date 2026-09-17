@@ -15,6 +15,11 @@
  * @module dsh-llm-dashscope/translate
  */
 
+/* jscpd:ignore-start -- the structural overlap with llm-deepseek is deliberate: both packages
+   implement the same LlmAdapter seam, while this wire layer is native AGA and disjoint from
+   OpenAI chat-completions. See
+   .agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md. */
+
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { EMPTY_RESPONSE_CODE, LlmError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, FinishReason, StreamChunk, TokenUsage, ToolCallId } from '@deepseek-ai/dsh-llm'
@@ -235,3 +240,4 @@ export async function* translate(payloads: AsyncIterable<string>): AsyncGenerato
   // parseSse yielded to EOF without a terminal finish_reason — truncation.
   throw new LlmError('SSE stream ended without a terminal finish_reason', 'STREAM_CLOSED')
 }
+/* jscpd:ignore-end */

@@ -16,6 +16,11 @@
  * @module @deepseek-ai/dsh-llm-dashscope
  */
 
+/* jscpd:ignore-start -- the structural overlap with llm-deepseek is deliberate: both packages
+   implement the same LlmAdapter seam, while this wire layer is native AGA and disjoint from
+   OpenAI chat-completions. See
+   .agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md. */
+
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { assertUsableApiKey, LlmError, resolveRetryPolicy, RetryPolicySchema } from '@deepseek-ai/dsh-llm'
@@ -295,3 +300,4 @@ export function apply(ctx: Context, config: Config): void {
     })
   })
 }
+/* jscpd:ignore-end */
