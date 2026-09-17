@@ -94,3 +94,23 @@ AssertionError: expected [ …(3) ] to have a length of 2 but got 3
 - **根因**：该步显式写成「拿不到 key 就红」而非自跳过 —— `if [ -z "${DEEPSEEK_API_KEY:-}" ]; then echo "::error::…cannot self-skip."`。上游仓库有 `DEEPSEEK_API_KEY_EXTERNAL` 这个 secret，**本 fork 没有**（`DEEPSEEK_API_KEY:` 在日志里是空值）。
 - **不是本轮引入**：`acd73b0356`（本 session 开工前的 master 头部）、`4000b3ae1f`、`311cd170e4`、`27e60646e5` 四次 `CI master` 运行里，同样是这三条腿、同样是这一步失败，逐字一致。§2.4 的改动只有 `docs/config-catalog.*` 与本票，不可能影响 python wheel 的 ARM64 构建。
 - **归属待判，属 CB-5 的问题域**：这是「DA 的 CI 寄生在上游 workflow 上」的又一处具体表现 —— 上游按「自己有 secret」写的门，fork 拿不到 secret 就只能常红。三条诚实的出路：① 给 fork 配一个可用的 key 作为仓库 secret；② fork 侧改这一步为「secret 缺失则跳过」（属刻意偏离，需在 PR 里写明理由）；③ 明确记为「上游门在 fork 不可达」并接受常红。**不要**的做法：删掉这条 job、或把 real API 测试改成假测试。按 CB-5 的 Q1（DA 要不要建自己的 CI 腿）一并决定。
+
+## 上游债留档：`config-catalog` 中文对侧的 9 处事实错误（**不修**）
+
+§2.4 收口时顺手审计了 `docs/config-catalog.zh.md` 的全部标注行与清单项（逐行对照生成侧英文，而不是数标签），查出 29 行漂移。**归属结论：29 行全属上游，fork 侧 0 行** —— `upstream/master:docs/config-catalog.zh.md` 逐字包含全部 29 行。因此按最高准则（上游内容不修、上游问题不管），**这些一律不动**，仅留档。
+
+其中 9 处是**事实错误**，中文对侧写着源码里不存在的服务名／类型名：
+
+| 上游中文对侧原文 | 源码实际 | 证据 |
+| --- | --- | --- |
+| `dsh-tool-ask-user` 需要 `userInteraction` | `userQuestions` | `inject = ['tools', 'userQuestions']` |
+| `dsh-credentials` 抽象 `Credentials` | `CredentialProvider` | `export abstract class CredentialProvider` |
+| `dsh-settings` 抽象 `Settings` | `SettingsProvider` | 同处声明 |
+| `dsh-command-compact` 需要 `compact` | `compaction` | `inject = ['commands', 'compaction']` |
+
+另有 4 处 `sessionProjections` 依赖一多一少地陈旧、`dsh-client-ui-deliverables` 漏 `workspaceFiles · fs · sandboxPolicy`，以及 20 处排版／标签问题（全角冒号后多空格、未译 `Requires:`、半角括号、`，需要 X 和 Y` 等）。
+
+- **为什么上游的门没抓到**：配对门只查结构（标题深度、清单项数、围栏、链接目标）与记录的 blob 哈希，**从不查行内内容** —— `docs/i18n/README.md` 自己写明了这条限度（绿门只表示「在这两份确切内容上确认过一致」，不表示那次确认是对的）。所以中文对侧可以长期命名不存在的服务而全门皆绿。
+- **本轮的处理**：曾误修过一次（`ddc27317d6`），发现归属后已整体回滚（`b1aadd426f`）。教训记在逐轮日志 Round 31。
+- **fork 侧真正该做的部分**：只有「因 fork 新增 da 包而必须补的 42 个包节 + 24 条清单项」，即 `dbb8682541` —— 那 42 个锚点在上游对侧中**一个都不存在**，属 fork 自有内容。
+- 若日后有渠道上报上游，本节就是证据；在此之前不作为 fork 的待办。
