@@ -567,11 +567,11 @@ async function mapConcurrent<T, R>(
   return output
 }
 
-function hasReadableSuccessfulQuery(observation: SessionObservation): boolean {
-  return observation.queryAttempts.some(query => query.state === 'completed'
-    && query.columns !== undefined
-    && query.rows !== undefined
-    && query.rowCount !== undefined)
+/** Reject a completed query whose model-visible result could not be reconstructed. */
+export function validateReadableQueryOutcomes(observation: SessionObservation): void {
+  const unreadable = observation.queryAttempts.find(query => query.state === 'completed'
+    && (query.columns === undefined || query.rows === undefined || query.rowCount === undefined))
+  if (unreadable !== undefined) throw new Error('successful query has no readable outcome')
 }
 
 /** Execute and gate the complete Stage 1 smoke without contributing to Stage 2 statistics. */
@@ -617,8 +617,10 @@ export async function runStage1(manifest: G25aManifest, dependencies: Stage1Depe
       if (!result.firstModelRequestContainsTask) {
         failures.push(`${result.planned.attemptId}: first model request omitted the Task working set`)
       }
-      if (testCase.type === 'real_execution' && !hasReadableSuccessfulQuery(result.observation)) {
-        failures.push(`${result.planned.attemptId}: successful query has no readable outcome`)
+      try {
+        validateReadableQueryOutcomes(result.observation)
+      } catch (error: unknown) {
+        failures.push(`${result.planned.attemptId}: ${error instanceof Error ? error.message : String(error)}`)
       }
       if (result.observation.successfulQueries === 0
         && result.grade.pass
@@ -745,8 +747,10 @@ export async function runDecisionBatch(
         failures.push(`${result.planned.attemptId}: first user Task working set drifted`)
       }
       if (!result.firstModelRequestContainsTask) failures.push(`${result.planned.attemptId}: first model request omitted the Task working set`)
-      if (testCase.type === 'real_execution' && !hasReadableSuccessfulQuery(result.observation)) {
-        failures.push(`${result.planned.attemptId}: successful query has no readable outcome`)
+      try {
+        validateReadableQueryOutcomes(result.observation)
+      } catch (error: unknown) {
+        failures.push(`${result.planned.attemptId}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
   }

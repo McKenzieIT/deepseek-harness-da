@@ -19,6 +19,7 @@ import {
   runDecisionBatch,
   runStage1,
   summarizeStage1,
+  validateReadableQueryOutcomes,
   verifyToolSchedulerIdentity,
   selectSmokeCases,
   validateObservationParity,
@@ -174,6 +175,21 @@ describe('reference probes', () => {
 })
 
 describe('Stage 1 controller', () => {
+  it('requires readability for completed queries without requiring a query to succeed', () => {
+    expect(() => validateReadableQueryOutcomes({
+      finalAnswer: '', firstUserText: '', toolNames: [], assistantMessages: [], toolCalls: [],
+      queryAttempts: [{ callId: 'q', name: 'query_data', argumentsText: '{}', arguments: {}, callSeq: 1, state: 'failed' }],
+      clarifications: [], modelCalls: 1, successfulQueries: 0,
+      usage: { uncachedInputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0, reasoningTokens: 0 }, wallClockMs: 1,
+    })).not.toThrow()
+    expect(() => validateReadableQueryOutcomes({
+      finalAnswer: '', firstUserText: '', toolNames: [], assistantMessages: [], toolCalls: [],
+      queryAttempts: [{ callId: 'q', name: 'query_data', argumentsText: '{}', arguments: {}, callSeq: 1, state: 'completed' }],
+      clarifications: [], modelCalls: 1, successfulQueries: 1,
+      usage: { uncachedInputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0, reasoningTokens: 0 }, wallClockMs: 1,
+    })).toThrow(/successful query has no readable outcome/)
+  })
+
   it('runs reference probes around the 18 Attempts with at most three in flight', async () => {
     let active = 0
     let maximumActive = 0
