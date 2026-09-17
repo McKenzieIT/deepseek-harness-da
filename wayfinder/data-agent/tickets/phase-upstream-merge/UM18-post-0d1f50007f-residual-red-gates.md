@@ -93,7 +93,8 @@ AssertionError: expected [ …(3) ] to have a length of 2 but got 3
 - **失败面**：`python runtime / macOS and Linux ARM64` 的 `node24-linux-arm64` / `node24-macos-arm64` / `node24-macos-x64` 三条腿，全部挂在同一步 `Preflight installed-wheel real API test (POSIX)`。
 - **根因**：该步显式写成「拿不到 key 就红」而非自跳过 —— `if [ -z "${DEEPSEEK_API_KEY:-}" ]; then echo "::error::…cannot self-skip."`。上游仓库有 `DEEPSEEK_API_KEY_EXTERNAL` 这个 secret，**本 fork 没有**（`DEEPSEEK_API_KEY:` 在日志里是空值）。
 - **不是本轮引入**：`acd73b0356`（本 session 开工前的 master 头部）、`4000b3ae1f`、`311cd170e4`、`27e60646e5` 四次 `CI master` 运行里，同样是这三条腿、同样是这一步失败，逐字一致。§2.4 的改动只有 `docs/config-catalog.*` 与本票，不可能影响 python wheel 的 ARM64 构建。
-- **归属待判，属 CB-5 的问题域**：这是「DA 的 CI 寄生在上游 workflow 上」的又一处具体表现 —— 上游按「自己有 secret」写的门，fork 拿不到 secret 就只能常红。三条诚实的出路：① 给 fork 配一个可用的 key 作为仓库 secret；② fork 侧改这一步为「secret 缺失则跳过」（属刻意偏离，需在 PR 里写明理由）；③ 明确记为「上游门在 fork 不可达」并接受常红。**不要**的做法：删掉这条 job、或把 real API 测试改成假测试。按 CB-5 的 Q1（DA 要不要建自己的 CI 腿）一并决定。
+- **归属已定：纯上游内容，fork 不动、不配 key、不管。** `.github/workflows/build-exe-for-python-sdk.yml` 与 `upstream/master` **逐字相同**（`git diff upstream/master master --` 输出为空）；这条门测的是**上游的** python SDK wheel（`scripts/smoke-python-runtime.py --scenario sdk-live --installed-wheel`：把构建出的 wheel 装进干净 venv、`env -u PYTHONPATH -u DSH_RUNTIME_MODE` 摘掉仓库影响，然后真打一次 `https://api.deepseek.com/anthropic`），用的是**上游的** secret 名。preflight 之所以写成「缺 key 就硬红」而不是跳过，是上游刻意不允许这条 real API 测试悄悄退化成空跑 —— 那是上游对**上游发布物**的要求。fork 不发布这个 wheel，所以哪一侧的债都不落在 fork。
+- 按最高准则（上游内容不修、上游问题不管、只合并上游最新 tag），本节只作**归属留档**：既不给 fork 配 `DEEPSEEK_API_KEY_EXTERNAL`，也不改这一步的跳过逻辑 —— 那两件都是动上游文件。它在 fork 的 master 推送上会一直红，这是「上游门在 fork 不可达」的自然结果，不是 fork 的待办。**唯一的行动价值**：盘残余红门时知道它在这儿且不必处理，以及原先的清单是按 PR checks 盘的，所以整条 master 推送工作流都被漏掉了。
 
 ## 上游债留档：`config-catalog` 中文对侧的 9 处事实错误（**不修**）
 
