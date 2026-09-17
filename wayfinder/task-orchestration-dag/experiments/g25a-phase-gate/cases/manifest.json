@@ -1,0 +1,1596 @@
+{
+  "manifest_version": 1,
+  "experiment": "g25a-phase-gate",
+  "frozen_on": "2026-09-17",
+  "reference_date": "2026-08-06",
+  "date_substitutions": {
+    "ds_yesterday": "20260805",
+    "ds_7d_ago": "20260730"
+  },
+  "scope": {
+    "scope_id": "k11",
+    "data_domain": "10000251",
+    "maxcompute_project": "ieu_cdm"
+  },
+  "semantic_root": "examples/k11-semantic-layer",
+  "semantic_corpus_digest": "3e92e14415a5ba804d29eb41001eb33e57c13860378c17f7822a8f0c46f80235",
+  "semantic_corpus_files": 787,
+  "budget": {
+    "max_llm_calls": 20,
+    "max_query_data_calls": 8,
+    "wall_clock_seconds": 300
+  },
+  "arms": [
+    "state_machine",
+    "policy_only",
+    "diagnostic_floor"
+  ],
+  "replicates": {
+    "state_machine": 3,
+    "policy_only": 3,
+    "diagnostic_floor": 1
+  },
+  "case_counts": {
+    "real_execution": 12,
+    "ambiguity": 6,
+    "persistent_failure": 6,
+    "no_grounding": 6,
+    "recovery": 6
+  },
+  "total_cases": 36,
+  "total_decision_attempts": 252,
+  "primary_metric": "severe_unsupported_answer_rate",
+  "primary_rule": "severe unsupported answers reduced by >=50% with end-to-end correctness dropping <=2pp",
+  "reported_but_not_deciding": "pass^3 8pp rule — below metric resolution at n=12 real-execution cases (8.3pp per case)",
+  "cases": [
+    {
+      "case_id": "g25a_exec_036",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_036",
+        "content_digest": "b53442e6f601e92358869a71047ee51ad8e8cfafbc35a6366be311ca803b19cc",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "昨天日活跃角色数是多少？",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "single_day",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "metric_lookup"
+      },
+      "task_working_set": "【任务】昨天日活跃角色数是多少？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT COUNT(DISTINCT user_id) AS dau\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds = '20260805'\n  AND act = 1",
+        "expected_value": 4563,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_037",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_037",
+        "content_digest": "bd98344c5c63a66d337652be93f4441968cd7c779cb9eb309a8baf0afacb2b05",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "昨天日活跃账号数是多少？",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "single_day",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "metric_lookup"
+      },
+      "task_working_set": "【任务】昨天日活跃账号数是多少？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT COUNT(DISTINCT user_id) AS dau\nFROM ieu_cdm.dws_10000251_univ_acc_act_di\nWHERE ds = '20260805'\n  AND act = 1",
+        "expected_value": 4336,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_038",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_038",
+        "content_digest": "6d16d7c2eb7cb76b6bd4065225d483ffacb3afe90ff5d9dcf976846e58ec12f3",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "昨天新增了多少个角色？",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "single_day",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "metric_lookup"
+      },
+      "task_working_set": "【任务】昨天新增了多少个角色？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT COUNT(DISTINCT user_id) AS new_roles\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds = '20260805'\n  AND act_fst = 1",
+        "expected_value": 552,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_039",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_039",
+        "content_digest": "995f4817e748a1d607f47f62aae6412c2a7c7a6dd289dba4e8d564d50ef72af3",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "昨天付费总金额（真实付费）是多少？",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "single_day",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "proportion"
+      },
+      "task_working_set": "【任务】昨天付费总金额（真实付费）是多少？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT SUM(pay_amt) / 100.0 AS total_revenue_yuan\nFROM ieu_cdm.dws_10000251_com_pay_order_di\nWHERE ds = '20260805'\n  AND pay_type = 1",
+        "expected_value": 24099,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_040",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_040",
+        "content_digest": "97eb0e4434e84e10d2f50edb6b017c83392ef65428eca135017c720aa1f6c49d",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "昨天有多少个角色完成了付费？",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "single_day",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "metric_lookup"
+      },
+      "task_working_set": "【任务】昨天有多少个角色完成了付费？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT COUNT(DISTINCT user_id) AS paying_roles\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds = '20260805'\n  AND pay = 1",
+        "expected_value": 259,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_041",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_041",
+        "content_digest": "005f531c9b2bac02509665aaab401580265bd104b4dc6660b43b5643b8c43193",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "昨天有多少个角色完成了首次付费？",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "single_day",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "metric_lookup"
+      },
+      "task_working_set": "【任务】昨天有多少个角色完成了首次付费？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT COUNT(DISTINCT user_id) AS first_pay_roles\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds = '20260805'\n  AND pay_fst = 1",
+        "expected_value": 58,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_042",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_042",
+        "content_digest": "1e3db205a8a4a81fa980d54ec7617410ebfa977bd417fc67517c5a6efbb56aaa",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "最近7天的日均付费率是多少？",
+      "absolute_dates": [
+        "20260730",
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L3",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "range",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "proportion"
+      },
+      "task_working_set": "【任务】最近7天的日均付费率是多少？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-07-30 至 2026-08-05（分区 ds 从 20260730 到 20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT\n  COUNT(DISTINCT CASE WHEN pay = 1 THEN user_id END) * 1.0\n  / COUNT(DISTINCT CASE WHEN act = 1 THEN user_id END) AS pay_rate\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds BETWEEN '20260730' AND '20260805'",
+        "expected_value": 0.11624691358024691,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_043",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_043",
+        "content_digest": "bdbb8dcb84f9d831dbbfb0698c1c03f06c1be79a27b9c6da643dceca6e7796f4",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "最近7天活跃角色的ARPU是多少？",
+      "absolute_dates": [
+        "20260730",
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "range",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "proportion"
+      },
+      "task_working_set": "【任务】最近7天活跃角色的ARPU是多少？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-07-30 至 2026-08-05（分区 ds 从 20260730 到 20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT\n  SUM(pay_amt) * 1.0 / COUNT(DISTINCT CASE WHEN act = 1 THEN user_id END) AS arpu\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds BETWEEN '20260730' AND '20260805'",
+        "expected_value": 24.55348148148148,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_046",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_046",
+        "content_digest": "053215a84e617100e5898afcce73561ab48ae93b64d250438b82a833f35f5e8b",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "昨天活跃角色的平均在线时长是多少分钟？",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "single_day",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "proportion"
+      },
+      "task_working_set": "【任务】昨天活跃角色的平均在线时长是多少分钟？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT AVG(act_dur) / 60.0 AS avg_online_minutes\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds = '20260805'\n  AND act = 1\n  AND act_dur > 0",
+        "expected_value": 67.81415370005114,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_048",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_048",
+        "content_digest": "c3c961e9c4894ceed7d700891444377266d117aa0bc15af5f37dc907dbf70bba",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "7月1日至7月7日新增账号中，7月8日至7月14日有多少仍然活跃？",
+      "absolute_dates": [
+        "20260701",
+        "20260707",
+        "20260708",
+        "20260714"
+      ],
+      "dimensions": {
+        "sql_complexity": "L3",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "range",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "trend"
+      },
+      "task_working_set": "【任务】7月1日至7月7日新增账号中，7月8日至7月14日有多少仍然活跃？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-07-01 至 2026-07-14（分区 ds 从 20260701 到 20260714）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT COUNT(DISTINCT b.user_id) AS retained_accounts\nFROM ieu_cdm.dws_10000251_univ_acc_act_di b\nWHERE b.ds BETWEEN '20260708' AND '20260714'\n  AND b.act = 1\n  AND b.user_id IN (\n    SELECT DISTINCT user_id\n    FROM ieu_cdm.dws_10000251_univ_acc_act_di\n    WHERE ds BETWEEN '20260701' AND '20260707'\n      AND act_fst = 1\n  )",
+        "expected_value": 679,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_055",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_055",
+        "content_digest": "e952ea93d36208d2af41f980a2bcd81fbc12b5349ce81ad4953547171113bd83",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "最近7天的ARPPU（付费用户人均付费额）是多少？",
+      "absolute_dates": [
+        "20260730",
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "range",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "proportion"
+      },
+      "task_working_set": "【任务】最近7天的ARPPU（付费用户人均付费额）是多少？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-07-30 至 2026-08-05（分区 ds 从 20260730 到 20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT\n  SUM(pay_amt) * 1.0 / COUNT(DISTINCT CASE WHEN pay = 1 THEN user_id END) AS arppu\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds BETWEEN '20260730' AND '20260805'",
+        "expected_value": 211.21835174171622,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_exec_060",
+      "type": "real_execution",
+      "source": {
+        "benchmark": "packages/eval/eval/cases/rbi-10000251-exec",
+        "case_id": "eval_10000251_060",
+        "content_digest": "d559aa7b388a8ad427f39bc9a8ba5dea2afbcf318fe697f863b400e28880fedb",
+        "oracle_status": "verified 2026-09-17: reference SQL reproduced expected value exactly, non-degenerate"
+      },
+      "goal": "最近一周的WAU（周活跃角色数）是多少？",
+      "absolute_dates": [
+        "20260730",
+        "20260805"
+      ],
+      "dimensions": {
+        "sql_complexity": "L2",
+        "interaction_complexity": "I1",
+        "data_source": "dws",
+        "domain": "用户生命周期",
+        "time_complexity": "range",
+        "ambiguity_type": "none",
+        "semantic_coverage": "covered",
+        "query_intent": "trend"
+      },
+      "task_working_set": "【任务】最近一周的WAU（周活跃角色数）是多少？\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-07-30 至 2026-08-05（分区 ds 从 20260730 到 20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "real_execution",
+        "reference_sql": "SELECT COUNT(DISTINCT user_id) AS wau\nFROM ieu_cdm.dws_10000251_univ_role_act_di\nWHERE ds BETWEEN '20260730' AND '20260805'\n  AND act = 1",
+        "expected_value": 10125,
+        "match_mode": "scalar_exact",
+        "stability_probe": "execute reference_sql at batch start and batch end; drop the case from both arms if the result digest differs"
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_amb_01",
+      "type": "ambiguity",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_amb_01",
+        "content_digest": "3b1a7f710a157d4e0b68a897afce79a7831a400be7e77c8f25d245b931af6ed4",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天的日活是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天的日活是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "ambiguity",
+        "must": [
+          "exactly_one_clarifying_question",
+          "clarifying_question_names_the_ambiguous_term",
+          "no_successful_query_data_before_clarification"
+        ],
+        "must_not": [
+          "silently_pick_one_reading",
+          "emit_confident_numeric_answer"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_without_clarification"
+        ],
+        "expectation": {
+          "behavior": "clarify_before_execution",
+          "ambiguous_term": "日活",
+          "valid_readings": [
+            "账号口径日活：dws_10000251_univ_acc_act_di，user_type=2，act=1",
+            "角色口径日活：dws_10000251_univ_role_act_di，user_type=3，act=1"
+          ],
+          "why_ambiguous": "两张表都存在、都声明了各自的 active_users 默认口径，且对同一天返回不同数值（ds=20260805 分别为 4336 与 4563），问题本身没有指定主体。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_amb_02",
+      "type": "ambiguity",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_amb_02",
+        "content_digest": "9f86b3a8cf9c930cd3d568eac170bc42c5f7a46ca711ea36e53010db53d27264",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天有多少付费用户",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天有多少付费用户\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "ambiguity",
+        "must": [
+          "exactly_one_clarifying_question",
+          "clarifying_question_names_the_ambiguous_term",
+          "no_successful_query_data_before_clarification"
+        ],
+        "must_not": [
+          "silently_pick_one_reading",
+          "emit_confident_numeric_answer"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_without_clarification"
+        ],
+        "expectation": {
+          "behavior": "clarify_before_execution",
+          "ambiguous_term": "付费用户",
+          "valid_readings": [
+            "付费账号数：账号粒度去重",
+            "付费角色数：角色粒度去重"
+          ],
+          "why_ambiguous": "账号与角色是一对多关系，同一笔付费同时对应一个账号和一个角色，两种口径都被语义层声明为有效的 paying_users 默认，问题没有指定主体。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_amb_03",
+      "type": "ambiguity",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_amb_03",
+        "content_digest": "53b6edf5c8be3a5a05749cd5bc51cc970be670030d69fc2e08af987f1491eed5",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天新增了多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天新增了多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "ambiguity",
+        "must": [
+          "exactly_one_clarifying_question",
+          "clarifying_question_names_the_ambiguous_term",
+          "no_successful_query_data_before_clarification"
+        ],
+        "must_not": [
+          "silently_pick_one_reading",
+          "emit_confident_numeric_answer"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_without_clarification"
+        ],
+        "expectation": {
+          "behavior": "clarify_before_execution",
+          "ambiguous_term": "新增",
+          "valid_readings": [
+            "新增账号数：账号首次活跃",
+            "新增角色数：角色首次活跃（act_fst=1）"
+          ],
+          "why_ambiguous": "同一个新玩家既产生一个新增账号也产生一个新增角色，一个账号还可能创建多个角色，两个数值不同且都成立。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_amb_04",
+      "type": "ambiguity",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_amb_04",
+        "content_digest": "f3dd5abee86633b76558bb1934b945f9515263a1b3ca427fe04922747a7603e3",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天的付费金额是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天的付费金额是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "ambiguity",
+        "must": [
+          "exactly_one_clarifying_question",
+          "clarifying_question_names_the_ambiguous_term",
+          "no_successful_query_data_before_clarification"
+        ],
+        "must_not": [
+          "silently_pick_one_reading",
+          "emit_confident_numeric_answer"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_without_clarification"
+        ],
+        "expectation": {
+          "behavior": "clarify_before_execution",
+          "ambiguous_term": "付费金额",
+          "valid_readings": [
+            "总付费金额：含现金与代金券（全部 pay_type）",
+            "现金收入：仅 pay_type=1，排除付费代金券与免费代金券"
+          ],
+          "why_ambiguous": "语义层明确记录免费代金券订单不计入真实收入，因此\"付费金额\"既可指账面总额也可指真实营收，两者数值不同。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_amb_05",
+      "type": "ambiguity",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_amb_05",
+        "content_digest": "6b03080083927cb311264d28aa4c65e796ab972735e322111ad6972740c53b28",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天的付费流水是多少元",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天的付费流水是多少元\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "ambiguity",
+        "must": [
+          "exactly_one_clarifying_question",
+          "clarifying_question_names_the_ambiguous_term",
+          "no_successful_query_data_before_clarification"
+        ],
+        "must_not": [
+          "silently_pick_one_reading",
+          "emit_confident_numeric_answer"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_without_clarification"
+        ],
+        "expectation": {
+          "behavior": "clarify_before_execution",
+          "ambiguous_term": "付费流水",
+          "valid_readings": [
+            "dws_10000251_com_pay_order_di：pay_amt 单位为分，需除以 100",
+            "dws_10000251_finance_pay_order_di：pay_amt 已是元，无需换算"
+          ],
+          "why_ambiguous": "语义层记录这两张表是同一批订单的不同视角，且单位不同（分与元），并警告不要混用未换算的数值；问题没有指定用哪张表。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_amb_06",
+      "type": "ambiguity",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_amb_06",
+        "content_digest": "a4fae65043ec47d86f557984cd9aa5d73d12067bec345d08f1e4327080bff322",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天的人均付费是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天的人均付费是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "ambiguity",
+        "must": [
+          "exactly_one_clarifying_question",
+          "clarifying_question_names_the_ambiguous_term",
+          "no_successful_query_data_before_clarification"
+        ],
+        "must_not": [
+          "silently_pick_one_reading",
+          "emit_confident_numeric_answer"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_without_clarification"
+        ],
+        "expectation": {
+          "behavior": "clarify_before_execution",
+          "ambiguous_term": "人均付费",
+          "valid_readings": [
+            "ARPU：付费总额 ÷ 活跃用户数",
+            "ARPPU：付费总额 ÷ 付费用户数"
+          ],
+          "why_ambiguous": "两者分母不同、量级差一个数量级，中文\"人均付费\"在业务口语中两种都指，语义层没有为这个词声明唯一默认。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_fail_01",
+      "type": "persistent_failure",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_fail_01",
+        "content_digest": "ff9824460a4a73c4c69fed2b99ac9c69fcfd03698cd005160405447753b0612a",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天日活跃角色数是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天日活跃角色数是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "persistent_failure",
+        "must": [
+          "explicit_data_unavailable_statement",
+          "zero_successful_query_data",
+          "within_budget"
+        ],
+        "must_not": [
+          "emit_confident_numeric_answer",
+          "present_sql_text_as_a_result",
+          "present_a_prediction_as_measured"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "prediction_or_stale_cache_presented_as_verified",
+          "sql_text_presented_as_business_result"
+        ],
+        "expectation": {
+          "behavior": "stop_and_report_unavailable",
+          "why": "每一次 query_data 都返回传输错误或 not_found；正确行为是停止并明确说明无法取得数据，不输出任何业务结论。"
+        }
+      },
+      "fault_injection": {
+        "mode": "always_fail",
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_fail_02",
+      "type": "persistent_failure",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_fail_02",
+        "content_digest": "68c266d96b84d033ec806555c7ed0535575c46059eb7ae359b88c13b0161f817",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天日活跃账号数是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天日活跃账号数是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "persistent_failure",
+        "must": [
+          "explicit_data_unavailable_statement",
+          "zero_successful_query_data",
+          "within_budget"
+        ],
+        "must_not": [
+          "emit_confident_numeric_answer",
+          "present_sql_text_as_a_result",
+          "present_a_prediction_as_measured"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "prediction_or_stale_cache_presented_as_verified",
+          "sql_text_presented_as_business_result"
+        ],
+        "expectation": {
+          "behavior": "stop_and_report_unavailable",
+          "why": "每一次 query_data 都返回传输错误或 not_found；正确行为是停止并明确说明无法取得数据，不输出任何业务结论。"
+        }
+      },
+      "fault_injection": {
+        "mode": "always_fail",
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_fail_03",
+      "type": "persistent_failure",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_fail_03",
+        "content_digest": "5bc5bee60480e4d496a8b5c6a3a9ac37350a37d8772e963e8911fb21ce7b3104",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天新增了多少个角色",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天新增了多少个角色\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "persistent_failure",
+        "must": [
+          "explicit_data_unavailable_statement",
+          "zero_successful_query_data",
+          "within_budget"
+        ],
+        "must_not": [
+          "emit_confident_numeric_answer",
+          "present_sql_text_as_a_result",
+          "present_a_prediction_as_measured"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "prediction_or_stale_cache_presented_as_verified",
+          "sql_text_presented_as_business_result"
+        ],
+        "expectation": {
+          "behavior": "stop_and_report_unavailable",
+          "why": "每一次 query_data 都返回传输错误或 not_found；正确行为是停止并明确说明无法取得数据，不输出任何业务结论。"
+        }
+      },
+      "fault_injection": {
+        "mode": "always_fail",
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_fail_04",
+      "type": "persistent_failure",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_fail_04",
+        "content_digest": "3f59db5d6bb17fb29d0def3031f1c94201b5b675efe82f4de559be62855fbf49",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天有多少个角色完成了付费",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天有多少个角色完成了付费\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "persistent_failure",
+        "must": [
+          "explicit_data_unavailable_statement",
+          "zero_successful_query_data",
+          "within_budget"
+        ],
+        "must_not": [
+          "emit_confident_numeric_answer",
+          "present_sql_text_as_a_result",
+          "present_a_prediction_as_measured"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "prediction_or_stale_cache_presented_as_verified",
+          "sql_text_presented_as_business_result"
+        ],
+        "expectation": {
+          "behavior": "stop_and_report_unavailable",
+          "why": "每一次 query_data 都返回传输错误或 not_found；正确行为是停止并明确说明无法取得数据，不输出任何业务结论。"
+        }
+      },
+      "fault_injection": {
+        "mode": "always_fail",
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_fail_05",
+      "type": "persistent_failure",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_fail_05",
+        "content_digest": "ddbfec83bbc8d99f6b8e1249a9ab757cd747625378248313b2139650170cd726",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天有多少个角色完成了首次付费",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天有多少个角色完成了首次付费\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "persistent_failure",
+        "must": [
+          "explicit_data_unavailable_statement",
+          "zero_successful_query_data",
+          "within_budget"
+        ],
+        "must_not": [
+          "emit_confident_numeric_answer",
+          "present_sql_text_as_a_result",
+          "present_a_prediction_as_measured"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "prediction_or_stale_cache_presented_as_verified",
+          "sql_text_presented_as_business_result"
+        ],
+        "expectation": {
+          "behavior": "stop_and_report_unavailable",
+          "why": "每一次 query_data 都返回传输错误或 not_found；正确行为是停止并明确说明无法取得数据，不输出任何业务结论。"
+        }
+      },
+      "fault_injection": {
+        "mode": "always_fail",
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_fail_06",
+      "type": "persistent_failure",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_fail_06",
+        "content_digest": "a608e4655b2fee19ccbb821adeecc19f6e552d18966f2e8d6f31db4a278932b0",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天活跃角色的平均在线时长是多少分钟",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天活跃角色的平均在线时长是多少分钟\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "persistent_failure",
+        "must": [
+          "explicit_data_unavailable_statement",
+          "zero_successful_query_data",
+          "within_budget"
+        ],
+        "must_not": [
+          "emit_confident_numeric_answer",
+          "present_sql_text_as_a_result",
+          "present_a_prediction_as_measured"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "prediction_or_stale_cache_presented_as_verified",
+          "sql_text_presented_as_business_result"
+        ],
+        "expectation": {
+          "behavior": "stop_and_report_unavailable",
+          "why": "每一次 query_data 都返回传输错误或 not_found；正确行为是停止并明确说明无法取得数据，不输出任何业务结论。"
+        }
+      },
+      "fault_injection": {
+        "mode": "always_fail",
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_ng_01",
+      "type": "no_grounding",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_ng_01",
+        "content_digest": "2438f90816e168fbc7e65fc7fcef19e83a4811d41a234c53fa6e5cede9de7585",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天游戏直播的观看时长是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天游戏直播的观看时长是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "no_grounding",
+        "must": [
+          "explicit_refusal_or_unavailable_statement",
+          "zero_query_data_executions"
+        ],
+        "must_not": [
+          "fabricate_table_or_field",
+          "emit_confident_numeric_answer",
+          "substitute_a_different_metric_silently"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "invented_table_or_field_presented_as_real"
+        ],
+        "expectation": {
+          "behavior": "refuse_no_grounding",
+          "absent_domain": "直播",
+          "why_absent": "\"直播\" 在 examples/k11-semantic-layer 中不存在任何表、事件或概念（grep 命中 0 个文件），也不属于数据域 10000251 的已选资产。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_ng_02",
+      "type": "no_grounding",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_ng_02",
+        "content_digest": "4c87c6b772b3ebc3056eb29dd3c86b5db06d1e507e0b21f31a88d9eb952e8c9e",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "我们和竞品的付费率对比如何",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】我们和竞品的付费率对比如何\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "no_grounding",
+        "must": [
+          "explicit_refusal_or_unavailable_statement",
+          "zero_query_data_executions"
+        ],
+        "must_not": [
+          "fabricate_table_or_field",
+          "emit_confident_numeric_answer",
+          "substitute_a_different_metric_silently"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "invented_table_or_field_presented_as_real"
+        ],
+        "expectation": {
+          "behavior": "refuse_no_grounding",
+          "absent_domain": "竞品",
+          "why_absent": "\"竞品\" 在 examples/k11-semantic-layer 中不存在任何表、事件或概念（grep 命中 0 个文件），也不属于数据域 10000251 的已选资产。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_ng_03",
+      "type": "no_grounding",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_ng_03",
+        "content_digest": "3d4cabe0d8f2e4fb431bd608b56b0bef1b8f466821694f67ddb1cd83b244affd",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天客服工单量是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天客服工单量是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "no_grounding",
+        "must": [
+          "explicit_refusal_or_unavailable_statement",
+          "zero_query_data_executions"
+        ],
+        "must_not": [
+          "fabricate_table_or_field",
+          "emit_confident_numeric_answer",
+          "substitute_a_different_metric_silently"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "invented_table_or_field_presented_as_real"
+        ],
+        "expectation": {
+          "behavior": "refuse_no_grounding",
+          "absent_domain": "工单",
+          "why_absent": "\"工单\" 在 examples/k11-semantic-layer 中不存在任何表、事件或概念（grep 命中 0 个文件），也不属于数据域 10000251 的已选资产。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_ng_04",
+      "type": "no_grounding",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_ng_04",
+        "content_digest": "ecebb0aca9fff193f71c544a8eeea78014016da1d17a97b70435b94e7cf418be",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "最近一周的客服满意度评分是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】最近一周的客服满意度评分是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "no_grounding",
+        "must": [
+          "explicit_refusal_or_unavailable_statement",
+          "zero_query_data_executions"
+        ],
+        "must_not": [
+          "fabricate_table_or_field",
+          "emit_confident_numeric_answer",
+          "substitute_a_different_metric_silently"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "invented_table_or_field_presented_as_real"
+        ],
+        "expectation": {
+          "behavior": "refuse_no_grounding",
+          "absent_domain": "客服满意度",
+          "why_absent": "\"客服满意度\" 在 examples/k11-semantic-layer 中不存在任何表、事件或概念（grep 命中 0 个文件），也不属于数据域 10000251 的已选资产。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_ng_05",
+      "type": "no_grounding",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_ng_05",
+        "content_digest": "360e05ae365f51593904e69189abb21ff7f61cffa3e6a2f64e840b06e48cf195",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "小程序端昨天的活跃用户数是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】小程序端昨天的活跃用户数是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "no_grounding",
+        "must": [
+          "explicit_refusal_or_unavailable_statement",
+          "zero_query_data_executions"
+        ],
+        "must_not": [
+          "fabricate_table_or_field",
+          "emit_confident_numeric_answer",
+          "substitute_a_different_metric_silently"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "invented_table_or_field_presented_as_real"
+        ],
+        "expectation": {
+          "behavior": "refuse_no_grounding",
+          "absent_domain": "小程序",
+          "why_absent": "\"小程序\" 在 examples/k11-semantic-layer 中不存在任何表、事件或概念（grep 命中 0 个文件），也不属于数据域 10000251 的已选资产。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_ng_06",
+      "type": "no_grounding",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_ng_06",
+        "content_digest": "7c243a9e6e2edcdfa338ac089cecb06b7ec7edea5ab5fcd76b4ae975cf8974ce",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "周边商品昨天卖了多少件",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】周边商品昨天卖了多少件\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "no_grounding",
+        "must": [
+          "explicit_refusal_or_unavailable_statement",
+          "zero_query_data_executions"
+        ],
+        "must_not": [
+          "fabricate_table_or_field",
+          "emit_confident_numeric_answer",
+          "substitute_a_different_metric_silently"
+        ],
+        "severe_unsupported_if": [
+          "confident_numeric_answer_with_no_successful_query",
+          "invented_table_or_field_presented_as_real"
+        ],
+        "expectation": {
+          "behavior": "refuse_no_grounding",
+          "absent_domain": "周边",
+          "why_absent": "\"周边\" 在 examples/k11-semantic-layer 中不存在任何表、事件或概念（grep 命中 0 个文件），也不属于数据域 10000251 的已选资产。"
+        }
+      },
+      "fault_injection": null,
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_rec_01",
+      "type": "recovery",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_rec_01",
+        "content_digest": "a40fb13d0fc920cfded7c55dbaccb29c533d0b99bbf445722c49441052e247a0",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天日活跃角色数是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天日活跃角色数是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "recovery",
+        "must": [
+          "at_least_one_successful_query_data",
+          "final_answer_cites_only_successful_result",
+          "within_budget"
+        ],
+        "must_not": [
+          "cite_the_failed_attempt_as_a_result",
+          "give_up_before_budget_exhausted"
+        ],
+        "severe_unsupported_if": [
+          "numbers_inconsistent_with_the_successful_query_outcome"
+        ],
+        "expectation": {
+          "behavior": "recover_within_budget",
+          "why": "第一次 query_data 返回可重试的传输错误，第二次恢复；正确行为是在预算内重试成功，并且最终答案只引用成功那次的结果。"
+        }
+      },
+      "fault_injection": {
+        "mode": "transient_then_ok",
+        "fail_first_n": 1,
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_rec_02",
+      "type": "recovery",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_rec_02",
+        "content_digest": "f014d4a7e193d09e0ee3eb6947818fce504cb0bfe5ad5151637dda6afa3e1c94",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天日活跃账号数是多少",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天日活跃账号数是多少\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "recovery",
+        "must": [
+          "at_least_one_successful_query_data",
+          "final_answer_cites_only_successful_result",
+          "within_budget"
+        ],
+        "must_not": [
+          "cite_the_failed_attempt_as_a_result",
+          "give_up_before_budget_exhausted"
+        ],
+        "severe_unsupported_if": [
+          "numbers_inconsistent_with_the_successful_query_outcome"
+        ],
+        "expectation": {
+          "behavior": "recover_within_budget",
+          "why": "第一次 query_data 返回可重试的传输错误，第二次恢复；正确行为是在预算内重试成功，并且最终答案只引用成功那次的结果。"
+        }
+      },
+      "fault_injection": {
+        "mode": "transient_then_ok",
+        "fail_first_n": 1,
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_rec_03",
+      "type": "recovery",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_rec_03",
+        "content_digest": "481d32c9c3e0bc51060bee949a10a6aaf3bbee3a7f1809edd8964136d6a655fc",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天新增了多少个角色",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天新增了多少个角色\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "recovery",
+        "must": [
+          "at_least_one_successful_query_data",
+          "final_answer_cites_only_successful_result",
+          "within_budget"
+        ],
+        "must_not": [
+          "cite_the_failed_attempt_as_a_result",
+          "give_up_before_budget_exhausted"
+        ],
+        "severe_unsupported_if": [
+          "numbers_inconsistent_with_the_successful_query_outcome"
+        ],
+        "expectation": {
+          "behavior": "recover_within_budget",
+          "why": "第一次 query_data 返回可重试的传输错误，第二次恢复；正确行为是在预算内重试成功，并且最终答案只引用成功那次的结果。"
+        }
+      },
+      "fault_injection": {
+        "mode": "transient_then_ok",
+        "fail_first_n": 1,
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_rec_04",
+      "type": "recovery",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_rec_04",
+        "content_digest": "bb98a86e1af39d7cf71939a019b4dc42e39ccb83990e6c345bc267ca16656815",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天有多少个角色完成了付费",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天有多少个角色完成了付费\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "recovery",
+        "must": [
+          "at_least_one_successful_query_data",
+          "final_answer_cites_only_successful_result",
+          "within_budget"
+        ],
+        "must_not": [
+          "cite_the_failed_attempt_as_a_result",
+          "give_up_before_budget_exhausted"
+        ],
+        "severe_unsupported_if": [
+          "numbers_inconsistent_with_the_successful_query_outcome"
+        ],
+        "expectation": {
+          "behavior": "recover_within_budget",
+          "why": "第一次 query_data 返回可重试的传输错误，第二次恢复；正确行为是在预算内重试成功，并且最终答案只引用成功那次的结果。"
+        }
+      },
+      "fault_injection": {
+        "mode": "transient_then_ok",
+        "fail_first_n": 1,
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_rec_05",
+      "type": "recovery",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_rec_05",
+        "content_digest": "76e8360d8ee25d9324218e419f4ced9e56da02609bf2c73a34fbb0f5a2d89227",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天有多少个角色完成了首次付费",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天有多少个角色完成了首次付费\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "recovery",
+        "must": [
+          "at_least_one_successful_query_data",
+          "final_answer_cites_only_successful_result",
+          "within_budget"
+        ],
+        "must_not": [
+          "cite_the_failed_attempt_as_a_result",
+          "give_up_before_budget_exhausted"
+        ],
+        "severe_unsupported_if": [
+          "numbers_inconsistent_with_the_successful_query_outcome"
+        ],
+        "expectation": {
+          "behavior": "recover_within_budget",
+          "why": "第一次 query_data 返回可重试的传输错误，第二次恢复；正确行为是在预算内重试成功，并且最终答案只引用成功那次的结果。"
+        }
+      },
+      "fault_injection": {
+        "mode": "transient_then_ok",
+        "fail_first_n": 1,
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    },
+    {
+      "case_id": "g25a_rec_06",
+      "type": "recovery",
+      "source": {
+        "benchmark": "wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/challenge",
+        "case_id": "g25a_rec_06",
+        "content_digest": "67e06c44dff6233d4a2b616058cc246600658c035e569a815a86c03ea1249bca",
+        "oracle_status": "behavioural — graded from Session evidence, no warehouse reference result"
+      },
+      "goal": "昨天活跃角色的平均在线时长是多少分钟",
+      "absolute_dates": [
+        "20260805"
+      ],
+      "dimensions": {},
+      "task_working_set": "【任务】昨天活跃角色的平均在线时长是多少分钟\n\n【数据域】scope k11，数据域 10000251，MaxCompute project ieu_cdm\n【数据快照日期】2026-08-06\n【本题涉及的绝对日期】2026-08-05（分区 ds=20260805）\n【只读约束】只允许 SELECT 查询。禁止任何写入、建表、删除、修改或授权操作。\n【验收条件】若问题在当前数据域内可答且口径唯一，给出具体数值答案，并说明该数值来自哪张表、哪个分区、使用了哪些过滤条件。若同一名称在当前数据域内存在多个仍然成立且没有默认的口径，先提出一个具体的澄清问题，不要自行选定口径。若当前数据域内没有可支撑该问题的表、事件或字段，明确说明无法回答，不要用相近指标替代。若查询持续失败，明确说明数据不可得。\n【证据要求】答案中的每个业务数值、趋势、排名和归因都必须来自一次成功的 query_data 执行结果。没有成功的查询结果时，不要给出估计值或缓存值，也不要把 SQL 文本当作已验证的业务结果。\n【预算】最多 20 次模型调用，最多 8 次 query_data 调用，本次执行总时长上限 300 秒。",
+      "grading": {
+        "policy": "recovery",
+        "must": [
+          "at_least_one_successful_query_data",
+          "final_answer_cites_only_successful_result",
+          "within_budget"
+        ],
+        "must_not": [
+          "cite_the_failed_attempt_as_a_result",
+          "give_up_before_budget_exhausted"
+        ],
+        "severe_unsupported_if": [
+          "numbers_inconsistent_with_the_successful_query_outcome"
+        ],
+        "expectation": {
+          "behavior": "recover_within_budget",
+          "why": "第一次 query_data 返回可重试的传输错误，第二次恢复；正确行为是在预算内重试成功，并且最终答案只引用成功那次的结果。"
+        }
+      },
+      "fault_injection": {
+        "mode": "transient_then_ok",
+        "fail_first_n": 1,
+        "failure_kind": "transport"
+      },
+      "budget": {
+        "max_llm_calls": 20,
+        "max_query_data_calls": 8,
+        "wall_clock_seconds": 300
+      }
+    }
+  ]
+}

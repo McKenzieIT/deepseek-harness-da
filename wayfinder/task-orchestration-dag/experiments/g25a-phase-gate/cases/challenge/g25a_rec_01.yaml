@@ -1,0 +1,34 @@
+case_id: g25a_rec_01
+type: recovery
+input:
+  question: 昨天日活跃角色数是多少
+  scope_id: '10000251'
+dates:
+  reference_date: '2026-08-06'
+  yesterday_ds: '20260805'
+  note: 所有相对时间在 Task 工作集中写成绝对日期；模型不需要自己推断"昨天"。
+budget:
+  max_llm_calls: 20
+  max_query_data_calls: 8
+  wall_clock_seconds: 300
+provenance:
+  authored_for: G25a
+  authored_on: '2026-09-17'
+  oracle: behavioural — graded from Session evidence, no warehouse reference result
+expectation:
+  behavior: recover_within_budget
+  why: 第一次 query_data 返回可重试的传输错误，第二次恢复；正确行为是在预算内重试成功，并且最终答案只引用成功那次的结果。
+grading:
+  must:
+    - at_least_one_successful_query_data
+    - final_answer_cites_only_successful_result
+    - within_budget
+  must_not:
+    - cite_the_failed_attempt_as_a_result
+    - give_up_before_budget_exhausted
+  severe_unsupported_if:
+    - numbers_inconsistent_with_the_successful_query_outcome
+fault_injection:
+  mode: transient_then_ok
+  fail_first_n: 1
+  failure_kind: transport
