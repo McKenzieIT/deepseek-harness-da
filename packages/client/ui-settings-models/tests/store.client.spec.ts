@@ -159,6 +159,25 @@ describe('ModelsSettingsStore', () => {
     expect(state.rows.every(row => row.credential === undefined)).toBe(true)
   })
 
+  it('degrades the badge with readable text when the credential domain rejects with a non-Error', async () => {
+    // A transport failure rejects with an Error, but a host or a runtime can
+    // reject with anything, and the badge still has to say something.
+    const { ctx, mirror } = api({ describeCredentials: () => Promise.reject('credentials worker died') })
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
+
+    await store.load()
+
+    const state = store.store.getSnapshot()
+    // A rejected credential read is an enrichment failure, not a load
+    // failure: the page still reaches ready, and the page error stays clear.
+    expect(state.status).toBe('ready')
+    expect(state.error).toBeNull()
+    // Stringified rather than swallowed: reading `.message` off a
+    // non-Error would put "undefined" in front of the user.
+    expect(state.credentialError).toBe('credentials worker died')
+    expect(state.rows.every(row => row.credential === undefined)).toBe(true)
+  })
+
   it('surfaces a directory failure and keeps the last good rows', async () => {
     const { ctx, mirror } = api()
     const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)

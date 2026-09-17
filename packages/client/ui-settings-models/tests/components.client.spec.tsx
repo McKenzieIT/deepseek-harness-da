@@ -631,6 +631,90 @@ describe('ModelsSection', () => {
     ])
   })
 
+  it('curates the dashscope family and pins its base-URL placeholder to the AGA gateway', async () => {
+    // dashscope edits the same rows as deepseek; what distinguishes it is the
+    // endpoint an operator is told an un-overridden route talks to.
+    const namespace: SettingsNamespaceView = {
+      ...wireNamespaces()[0]!,
+      ns: 'llm-dashscope',
+      value: { apiKeyEnv: 'DASHSCOPE_API_KEY', models: DEFAULT_DEEPSEEK_MODELS },
+      user: {},
+    }
+    const { face } = scriptedFace()
+    const { ProviderEditor } = await import('../src/client/ProviderEditor.tsx')
+
+    render(<ProviderEditor
+      provider="dashscope"
+      displayName="DashScope"
+      namespace={namespace}
+      schema={settingsSchema}
+      settingsPath={[]}
+      operations={operationsWith(face)}
+      t={t}
+      readOnly={false}
+      onClose={vi.fn()}
+    />)
+
+    // An unrecognised namespace gets the settings.yaml hint and a disabled
+    // submit instead of curated fields; dashscope must not land there.
+    expect(screen.queryByText(`${en.advancedHint} (llm-dashscope)`)).toBeNull()
+    expect(screen.getByText<HTMLButtonElement>(en.apply).disabled).toBe(false)
+    fireEvent.click(screen.getByText(en.customized))
+    expect(screen.getByLabelText<HTMLInputElement>(en.baseUrl).placeholder)
+      .toBe('https://pre-aga-ai-gateway.alibaba-inc.com/api/v1/services/aigc/text-generation/generation')
+  })
+
+  it('keeps the card editable when the credential probe rejects', async () => {
+    const { face, set } = scriptedFace()
+    // A rejection rather than a refusal. The probe only supplies a placeholder
+    // hint, so it may neither block editing nor reach the browser as an
+    // unhandled rejection.
+    face.credentials.describe = vi.fn(() => Promise.reject(new Error('credentials domain unreachable')))
+    const namespace = wireNamespaces().find(view => view.ns === 'llm-pi-ai')!
+    const { ProviderEditor } = await import('../src/client/ProviderEditor.tsx')
+
+    render(<ProviderEditor
+      provider="openai"
+      displayName="openai"
+      namespace={namespace}
+      schema={settingsSchema}
+      settingsPath={['providers', 'openai']}
+      operations={operationsWith(face)}
+      t={t}
+      readOnly={false}
+      onClose={vi.fn()}
+    />)
+
+    await waitFor(() => { expect(face.credentials.describe).toHaveBeenCalled() })
+    // A successful probe of this reference reports it configured and adds the
+    // replace hint; a failed probe leaves the hint out rather than guessing.
+    expect(screen.queryByText(en.keyStored)).toBeNull()
+    const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
+    expect(key.disabled).toBe(false)
+
+    // And the write still lands: the probe failure is contained to the hint.
+    fireEvent.change(key, { target: { value: 'sk-after-probe-failure' } })
+    fireEvent.click(screen.getByText(en.apply))
+    await waitFor(() => { expect(set).toHaveBeenCalledWith('OPENAI_API_KEY', 'sk-after-probe-failure') })
+  })
+
+  it('reports an apply whose write rejected instead of answering', async () => {
+    // A refusal answers `{ ok: false }`; a disconnect rejects. Without the
+    // catch the card would stay on `applying` with nothing shown.
+    await mountDeepSeekCard({
+      mutate: vi.fn(() => Promise.reject(new Error('the host connection dropped'))),
+    })
+    fireEvent.click(screen.getByText(en.customized))
+    fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://dropped' } })
+    fireEvent.click(screen.getByText(en.apply))
+
+    await screen.findByText('the host connection dropped')
+    // Busy cleared by the finally, and the card stayed open rather than
+    // reporting the rejected write as a success.
+    expect(screen.queryByText(en.applying)).toBeNull()
+    expect(screen.getByText(en.apply)).toBeTruthy()
+  })
+
   it('materializes inherited models and adds an arbitrary DeepSeek id', async () => {
     const { mutate } = await mountDeepSeekCard({
       mutate: vi.fn(() => Promise.resolve(remoteOk(wireNamespaces()[0]))),

@@ -1277,6 +1277,28 @@ describe('hand-declared providers', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('reports a create whose write rejected instead of answering', async () => {
+    // A refusal answers `{ ok: false }`; a disconnect, or a host that refuses
+    // the request outright, rejects instead. Without the catch the card would
+    // stay on `creating` forever with nothing shown.
+    const dropped = vi.fn(() => Promise.reject(new Error('the host connection dropped')))
+    const { onClose } = mountCard({ operations: operationsWith(scriptedFace({ mutate: dropped }).face) })
+
+    fireEvent.change(screen.getByLabelText(en.customRoute), { target: { value: 'acme' } })
+    fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://acme.test/v1' } })
+    fireEvent.click(screen.getByRole('button', { name: en.addModel }))
+    fireEvent.change(screen.getByLabelText(`${en.modelId} 1`), { target: { value: 'm' } })
+    fireEvent.click(screen.getByText(en.create))
+
+    // The rejection reaches the card as text rather than an unhandled
+    // rejection, and the write is not treated as a success.
+    await screen.findByText('the host connection dropped')
+    expect(onClose).not.toHaveBeenCalled()
+    // Busy cleared: the footer offers `create` again instead of `creating`.
+    await waitFor(() => { expect(buttonNamed(en.create).disabled).toBe(false) })
+    expect(screen.queryByText(en.creating)).toBeNull()
+  })
+
   it('translates a create refused by a newer namespace revision', async () => {
     const conflicting = vi.fn(() => Promise.resolve(remoteFail('changed since it was read', 'settings/conflict')))
     const { onClose } = mountCard({ operations: operationsWith(scriptedFace({ mutate: conflicting }).face) })
