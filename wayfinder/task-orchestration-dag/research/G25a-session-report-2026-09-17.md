@@ -228,3 +228,9 @@ G25 保持未解决，按票面要求留给下一个决策 session。
 修订后从头执行的完整 smoke run `g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5` 通过全部 Stage 1 gate，共 18 个 Attempt，三组 infrastructure failure 均为 0。五个真实案例的 reference SQL 在批次前后都匹配 expected value 且 digest 不变；15 个真实案例 Attempt 都有可读成功查询 outcome；每个首个模型请求都包含逐字节相同的冻结 Task working set 与绝对日期；scorer safety negative control 通过。Smoke 不进入 Stage 2 效果统计。
 
 当前没有冻结 Stage 2 run identity，也没有消耗 decision Attempt。下一步先完成 Stage 2–4 的执行、封存、评分、盲化复核包与报告生成路径；最终代码再次通过 Stage 0 和完整 Stage 1 后才能冻结并启动 252-Attempt decision batch。
+
+## 八、最终 pre-freeze smoke
+
+在 decision controller、evidence-grounded grader、blind review packet 和 Stage 4 raw-count analysis 完成后，完整 Stage 1 run `g25a-smoke-2026-09-17-b92082c9-c46b-4b7f-b275-733738643c9f` 在 commit `09e155a07f` 上通过全部 gate：18 个 Attempt，三组 infrastructure failure 均为 0，reference digest 前后稳定且匹配 expected value，每个 completed query 都有可读 outcome，每个首个模型请求都包含冻结 Task working set，并满足 path-sensitive tool parity。
+
+前一批 `g25a-smoke-2026-09-17-5aa2a7fd-5b44-4ab8-9f75-310828e8c3d6` 保留但无资格，因为 controller 把「每个成功查询都有可读 outcome」误实现为「每个真实案例 Attempt 必须有成功查询」。该缺陷经回归测试修复；最终 Stage 0 为 7 个 test file、73 个 test。当前可以在不再修改代码、prompt、case、threshold 或 scoring rule 的前提下冻结 Stage 2 run identity。

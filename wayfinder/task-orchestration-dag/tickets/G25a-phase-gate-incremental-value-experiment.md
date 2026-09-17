@@ -3,13 +3,13 @@
 **Type**: task
 **Status**: claimed
 **Assignee**: Codex implementation session, claimed 2026-09-17
-**Current standing**: the real Attempt driver creates and drains a fresh Cordis root, Agent, Session, audit database, and sidecar per Attempt; records private Session/query evidence plus de-identified summaries; enforces the frozen provider, model, scope, retry, query, model-call, and wall-clock limits; and runs reference SQL before and after Stage 1. The user approved Amendment 4 on 2026-09-17: static preset parity remains exact, while dynamic state-machine catalogues may omit tools from phases a case never reaches but may not add tools outside the frozen catalogue. The complete rerun `g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5` passed all Stage 1 gates with 18 Attempts and zero infrastructure failures. Stage 2 has not started and no decision Attempt has been spent.
+**Current standing**: the real Attempt driver creates and drains a fresh Cordis root, Agent, Session, audit database, and sidecar per Attempt; records private Session/query evidence plus de-identified summaries; enforces the frozen provider, model, scope, retry, query, model-call, and wall-clock limits; and runs reference SQL before and after Stage 1. The user approved Amendment 4 on 2026-09-17: static preset parity remains exact, while dynamic state-machine catalogues may omit tools from phases a case never reaches but may not add tools outside the frozen catalogue. The final pre-freeze rerun `g25a-smoke-2026-09-17-b92082c9-c46b-4b7f-b275-733738643c9f` passed all Stage 1 gates with 18 Attempts and zero infrastructure failures on commit `09e155a07f`. Stage 2 has not started and no decision Attempt has been spent.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
 
 ## Continuation entry point
 
-Complete the Stage 2–4 driver and grading workflow without changing the frozen Attempt behavior, prompts, cases, thresholds, or scoring rules. Rerun Stage 0 and the full 18-Attempt Stage 1 on the final pre-freeze code, then commit, record the Stage 2 run identity, and execute the locked 252-Attempt decision batch. Preserve complete case blocks for any infrastructure rerun and stop if a new admission gate fails.
+Commit the final passing Stage 1 evidence, then execute `controlled-runner.ts --stage decision`. The command must freeze the Stage 2 run identity before its first decision Attempt, execute the locked 252-Attempt schedule, retain any failed case block for a whole-block rerun, and emit the blinded human-review packet before arm identities are revealed. Do not change code, prompts, cases, thresholds, or scoring rules after the identity is written.
 
 ## Amended locked protocol (2026-09-17)
 
@@ -417,3 +417,7 @@ Three complete 18-Attempt smoke runs are preserved. The first two are invalid fa
 The user approved path-sensitive dynamic tool parity. Stage 0 remains the exact 15-tool mounted-catalogue proof. Stage 1 now requires policy and floor to expose the same full catalogue and every state-machine request catalogue to contain no tool outside it; a state-machine Session may omit tools from phases the case never reaches.
 
 The complete rerun `g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5` passed all Stage 1 gates across 18 Attempts. All five reference SQL results matched their expected values before and after the batch with unchanged digests; every real-case Attempt retained a readable successful query outcome; every first model request contained the byte-identical frozen Task working set and absolute dates; and every arm had zero infrastructure failures. Smoke remains excluded from Stage 2 effect statistics. No Stage 2 run identity has been frozen and no decision Attempt has been spent.
+
+### 2026-09-17 — Final pre-freeze smoke
+
+After the decision controller and Stage 4 raw-count analysis were implemented, the required full Stage 1 rerun `g25a-smoke-2026-09-17-b92082c9-c46b-4b7f-b275-733738643c9f` passed all gates on commit `09e155a07f`: 18 Attempts, zero infrastructure failures, stable matching reference digests, readable outcomes for every completed query, model-visible frozen Task material, and valid path-sensitive tool parity. The prior `g25a-smoke-2026-09-17-5aa2a7fd-5b44-4ab8-9f75-310828e8c3d6` run is retained but invalid because the controller incorrectly required every real-case Attempt to have a successful query instead of requiring every successful query to have a readable outcome. The focused Stage 0 suite now has 73 passing tests. No decision Attempt has been spent.
