@@ -131,9 +131,12 @@ Deterministic scoring reads `tool/call`, `tool/result`, `assistant/message`, and
 README.md                         # this file: frozen protocol, commands, environment, reproduction bounds
 cases/manifest.json               # 36 cases, provenance, type, absolute dates, grading policy
 cases/challenge/*.yaml            # the 24 behavioural cases
+cases/generate-challenge.mjs      # deterministic behavioural-case generator
 cases/generate-manifest.mjs       # deterministic manifest generator (re-run to verify digests)
-presets/policy/agent.cordis.yml   # policy-only arm composition
-presets/floor/agent.cordis.yml    # diagnostic floor arm composition
+presets/generate-presets.mjs      # emits both arm compositions with phase-gate's persona verbatim
+presets/policy/agent.cordis.yml   # policy-only arm composition (generated)
+presets/floor/agent.cordis.yml    # diagnostic floor arm composition (generated)
+vitest.config.ts                  # scoped test config; the root config does not reach wayfinder/
 src/controlled-runner.ts          # Task working set, unified budget, randomisation, Attempt lifecycle
 src/guardrails-policy.ts          # critic context observer + policy-only admission
 src/session-observer.ts           # Session evidence and cost extraction
@@ -163,8 +166,10 @@ Sandbox refusal, DNS errors, provider unreachability, and `spawn maxc ENOENT` ar
 ## Commands
 
 ```sh
-pnpm exec vitest run wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/tests
-node --import tsx/esm wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/generate-manifest.mjs
+pnpm exec vitest run --config wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/vitest.config.ts
+node wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/generate-challenge.mjs
+node wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/presets/generate-presets.mjs
+node wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/cases/generate-manifest.mjs
 node --import tsx/esm wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/src/controlled-runner.ts --stage smoke
 node --import tsx/esm wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/src/controlled-runner.ts --stage decision
 node --import tsx/esm wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/src/analyze.ts
