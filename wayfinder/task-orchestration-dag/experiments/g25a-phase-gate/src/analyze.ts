@@ -65,7 +65,9 @@ export interface AnalysisResult {
   readonly severeUnsupported: {
     readonly state_machine: ArmRate
     readonly policy: ArmRate
+    readonly absoluteDifference: number
     readonly reduction: number | null
+    readonly bootstrap95: readonly [number | null, number | null]
   }
   readonly cost: Record<Arm, Record<keyof AttemptCost, DistributionSummary>>
   readonly verdict: {
@@ -204,16 +206,37 @@ export function analyzeAttempts(
   })
 
   const behavioral = graded.filter(attempt => attempt.caseType !== 'real_execution')
-  const severeFor = (arm: 'state_machine' | 'policy'): ArmRate => {
-    const rows = behavioral.filter(attempt => attempt.arm === arm)
+  const behavioralByCase = new Map<string, Partial<Record<'state_machine' | 'policy', AttemptRecord[]>>>()
+  for (const attempt of behavioral) {
+    if (attempt.arm === 'floor') continue
+    const pair = behavioralByCase.get(attempt.caseId) ?? {}
+    const rows = pair[attempt.arm] ?? []
+    rows.push(attempt)
+    pair[attempt.arm] = rows
+    behavioralByCase.set(attempt.caseId, pair)
+  }
+  const pairedBehavior = [...behavioralByCase.values()].filter(pair => pair.state_machine !== undefined && pair.policy !== undefined)
+  const stateBehavior = pairedBehavior.flatMap(pair => pair.state_machine!)
+  const policyBehavior = pairedBehavior.flatMap(pair => pair.policy!)
+  const severeFor = (rows: readonly AttemptRecord[]): ArmRate => {
     const count = rows.filter(attempt => attempt.grade.severeUnsupported).length
     return { count, total: rows.length, rate: rate(count, rows.length) }
   }
-  const severeState = severeFor('state_machine')
-  const severePolicy = severeFor('policy')
-  const reduction = severePolicy.rate === 0
-    ? null
-    : (severePolicy.rate - severeState.rate) / severePolicy.rate
+  const severeState = severeFor(stateBehavior)
+  const severePolicy = severeFor(policyBehavior)
+  const severeDifferences = pairedBehavior.map((pair) => {
+    const policyRate = rate(pair.policy!.filter(attempt => attempt.grade.severeUnsupported).length, pair.policy!.length)
+    const stateRate = rate(pair.state_machine!.filter(attempt => attempt.grade.severeUnsupported).length, pair.state_machine!.length)
+    return policyRate - stateRate
+  })
+  const severeAbsoluteDifference = severePolicy.rate - severeState.rate
+  const severeBootstrap = pairedBootstrap(
+    severeDifferences,
+    options.bootstrapIterations ?? 10_000,
+    `${options.seed ?? 'g25a-2026-09-17'}\0severe`,
+  )
+  const reduction = severePolicy.rate === 0 ? null : severeAbsoluteDifference / severePolicy.rate
+  const confidenceExcludesZero = severeBootstrap[0] !== null && severeBootstrap[0] > 0
   const correctnessGuardRailMet = correctnessDelta >= -0.02
   const primaryThresholdMet = reduction !== null && reduction >= 0.5 && correctnessGuardRailMet
   const completeDecisionPairs = graded.filter(attempt => attempt.arm !== 'floor').length === completePairs.length * 2
@@ -223,8 +246,9 @@ export function analyzeAttempts(
   if (reduction === null) reasons.push('policy arm produced no severe unsupported answers, so relative reduction is undefined')
   else if (reduction < 0.5) reasons.push('severe unsupported answer reduction is below 50%')
   if (!correctnessGuardRailMet) reasons.push('case-level pass^3 correctness dropped by more than 2 percentage points')
+  if (!confidenceExcludesZero) reasons.push('paired case-cluster interval for severe unsupported answers spans zero')
 
-  const valid = infraFailures === 0 && completeDecisionPairs && completePairs.length > 0
+  const valid = infraFailures === 0 && completeDecisionPairs && completePairs.length > 0 && pairedBehavior.length > 0
   return {
     validity: { gradedAttempts: graded.length, infraFailures, pairedAttemptCount: completePairs.length },
     correctness: {
@@ -234,14 +258,20 @@ export function analyzeAttempts(
       replicateSlotDelta,
       bootstrap95: pairedBootstrap(differences, options.bootstrapIterations ?? 10_000, options.seed ?? 'g25a-2026-09-17'),
     },
-    severeUnsupported: { state_machine: severeState, policy: severePolicy, reduction },
+    severeUnsupported: {
+      state_machine: severeState,
+      policy: severePolicy,
+      absoluteDifference: severeAbsoluteDifference,
+      reduction,
+      bootstrap95: severeBootstrap,
+    },
     cost: {
       state_machine: armCost(graded, 'state_machine'),
       policy: armCost(graded, 'policy'),
       floor: armCost(graded, 'floor'),
     },
     verdict: {
-      status: valid ? (primaryThresholdMet ? 'retain' : 'do_not_enlarge') : 'insufficient',
+      status: valid ? (primaryThresholdMet && confidenceExcludesZero ? 'retain' : 'do_not_enlarge') : 'insufficient',
       primaryThresholdMet,
       correctnessGuardRailMet,
       reasons,

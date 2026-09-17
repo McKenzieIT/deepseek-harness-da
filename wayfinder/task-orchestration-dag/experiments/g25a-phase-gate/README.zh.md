@@ -109,7 +109,7 @@ Goal、Todo、plan-mode 和未来 Task DAG 模型工具不进入内部目录。�
 
 **Stage 0 — 评测设施自证。** 使用 mock LLM、受控 query sidecar 和固定 Session 事件，证明三个实验组的工具名集合一致、Task 工作集逐字节相同、独立策略组只有在四项条件全部满足时才准入 `query_data`、诊断下限组不会继承准入拒绝、observer 能提取真实 query outcome、最终答案、澄清、拒答、LLM 调用数、token、查询数和耗时、provider/sidecar/Agent/评分失败进入 `infra_failure` 而不是 wrong/declined/correct，以及原始结果不包含 credential、authorization header 或 MaxCompute 配置内容。
 
-**Stage 1 — 真实 smoke。** 六个案例，每组每例一次，共 18 个 Attempt。若组间工具集合或工作集摘要不一致、成功查询没有可读 outcome、绝对日期没有进入首个模型请求、参考 SQL 与案例预期不一致、任一组基础设施失败率超过 5%，或 scorer 能在没有成功查询时把确定业务结论判为正确，则在决策批次前停止。Smoke 只验证协议，不进入效果统计。
+**Stage 1 — 真实 smoke。** 六个已批准案例 `g25a_exec_037`、`g25a_exec_039`、`g25a_exec_046`、`g25a_exec_042`、`g25a_exec_048` 和 `g25a_fail_01`，每组每例一次，共 18 个 Attempt。这是已批准的 3×L2 + 2×L3 + 一个持续失败案例组合，覆盖已验证切片中实际存在的全部复杂度等级。若组间工具集合或工作集摘要不一致、成功查询没有可读 outcome、绝对日期没有进入首个模型请求、参考 SQL 与案例预期不一致、任一组基础设施失败率超过 5%，或 scorer 能在没有成功查询时把确定业务结论判为正确，则在决策批次前停止。Smoke 只验证协议，不进入效果统计。
 
 **Stage 2 — 锁定决策批次。** 两个决策组对全部 36 个案例各运行三次（216 个 Attempt）；诊断下限组对每个案例运行一次（36 个）。总计 252。开始前冻结并记录代码 commit、dirty diff 摘要、三份 preset 摘要、策略插件摘要、Case Manifest 摘要、语义语料摘要、sidecar 摘要、provider、model、环境变量名列表、解析后的非秘密路径和随机化种子。冻结后不得修改代码、提示词、案例、阈值或评分规则；必须修改时，整个批次作废并生成新的 run identity。
 

@@ -12,7 +12,7 @@ A controlled evaluation can spend model calls and mutate external systems before
 
 An Evaluation Controller validates every stage's case-selection requirements, arm counts, replicate counts, Task material identity, and tool-catalogue identity before it starts an external Attempt. A mismatch is a protocol error: the controller stops before network, provider, sidecar, or warehouse access and requires an explicit protocol amendment. Infrastructure failures remain separate immutable Attempt outcomes and never become `wrong`, `declined`, or `correct` grades.
 
-The [phase-gate incremental-value experiment](../../../../wayfinder/task-orchestration-dag/tickets/G25a-phase-gate-incremental-value-experiment.md) applies this rule. Its amended real-execution slice contains ten L2 cases and two L3 cases, while the retained Stage 1 clause requires L1 and L4 cases. The controlled runner rejects Stage 1 before consuming any of its 18 smoke Attempts or the 252 decision Attempts.
+The [phase-gate incremental-value experiment](../../../../wayfinder/task-orchestration-dag/tickets/G25a-phase-gate-incremental-value-experiment.md) applies this rule. Its amended real-execution slice contains ten L2 cases and two L3 cases. Stage 1 therefore uses the explicitly approved 3×L2 + 2×L3 + one persistent-failure mix; the controlled runner rejects any manifest that cannot supply those named cases before consuming a smoke or decision Attempt.
 
 Raw Session events and query rows remain in the ignored Evidence Cut. Committable observations retain identities, digests, counts, categorical outcomes, grades, and cost only. Session extraction, deterministic grading, paired analysis, and fault injection are pure or controlled facilities tested before a real run.
 
@@ -26,4 +26,4 @@ Raw Session events and query rows remain in the ignored Evidence Cut. Committabl
 
 ## Consequences
 
-Protocol contradictions stop progress earlier and may require a human amendment even when the implementation is otherwise ready. That delay buys a reproducible Comparison Plan, preserves all decision Attempts, and prevents infrastructure availability or operator substitutions from entering the causal estimate.
+Protocol preflight can require a human amendment even when the implementation is otherwise ready. That pause buys a reproducible Comparison Plan, preserves decision Attempts, and prevents infrastructure availability or operator substitutions from entering the causal estimate.

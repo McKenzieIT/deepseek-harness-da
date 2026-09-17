@@ -111,31 +111,28 @@ export function buildDecisionPlan(manifest: G25aManifest): PlannedAttempt[] {
   return planned
 }
 
+/** Approved Stage 1 sample: three L2, two L3, and one persistent failure. */
+const SMOKE_CASE_IDS = [
+  'g25a_exec_037',
+  'g25a_exec_039',
+  'g25a_exec_046',
+  'g25a_exec_042',
+  'g25a_exec_048',
+  'g25a_fail_01',
+] as const
+
 /**
- * Select the six locked Stage 1 smoke cases, rejecting a manifest that cannot
- * supply the approved 2×L1, 1×L2, 1×L3, 1×L4 plus persistent-failure mix.
+ * Select the six Stage 1 smoke cases approved on 2026-09-17.
  * @param manifest - frozen manifest.
- * @returns six cases in the approved complexity order.
+ * @returns three L2, two L3, and one persistent-failure case.
  */
 export function selectSmokeCases(manifest: G25aManifest): readonly ManifestCase[] {
-  const real = manifest.cases.filter(testCase => testCase.type === 'real_execution')
-  const byLevel = new Map<string, ManifestCase[]>()
-  for (const testCase of real) {
-    const level = testCase.dimensions?.sql_complexity ?? 'unclassified'
-    const rows = byLevel.get(level) ?? []
-    rows.push(testCase)
-    byLevel.set(level, rows)
-  }
-  const counts = ['L1', 'L2', 'L3', 'L4'].map(level => `${level}=${String(byLevel.get(level)?.length ?? 0)}`).join(', ')
-  if ((byLevel.get('L1')?.length ?? 0) < 2
-    || (byLevel.get('L2')?.length ?? 0) < 1
-    || (byLevel.get('L3')?.length ?? 0) < 1
-    || (byLevel.get('L4')?.length ?? 0) < 1) {
-    throw new Error(`G25a Stage 1 requires 2×L1, 1×L2, 1×L3, and 1×L4 real cases; amended manifest has ${counts}`)
-  }
-  const persistent = manifest.cases.find(testCase => testCase.type === 'persistent_failure')
-  if (persistent === undefined) throw new Error('G25a Stage 1 requires one persistent-failure case')
-  return [byLevel.get('L1')![0]!, byLevel.get('L1')![1]!, byLevel.get('L2')![0]!, byLevel.get('L3')![0]!, byLevel.get('L4')![0]!, persistent]
+  const byId = new Map(manifest.cases.map(testCase => [testCase.case_id, testCase]))
+  return SMOKE_CASE_IDS.map((caseId) => {
+    const found = byId.get(caseId)
+    if (found === undefined) throw new Error(`G25a approved smoke case ${caseId} is absent from the manifest`)
+    return found
+  })
 }
 
 /**

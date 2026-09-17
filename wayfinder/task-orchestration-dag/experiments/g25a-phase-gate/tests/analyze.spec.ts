@@ -74,6 +74,25 @@ describe('analyzeAttempts', () => {
     expect(result.severeUnsupported.policy.rate).toBeCloseTo(2 / 3)
     expect(result.severeUnsupported.reduction).toBeCloseTo(0.5)
     expect(result.verdict.primaryThresholdMet).toBe(true)
+    expect(result.severeUnsupported.bootstrap95[0]).toBe(0)
+    expect(result.verdict.status).toBe('do_not_enlarge')
+  })
+
+  it('requires the paired behavioural case interval to exclude zero before retaining', () => {
+    const attempts: AttemptRecord[] = []
+    for (let replicate = 0; replicate < 3; replicate += 1) {
+      attempts.push(record('real', 'state_machine', replicate, true))
+      attempts.push(record('real', 'policy', replicate, true))
+    }
+    for (let caseIndex = 0; caseIndex < 6; caseIndex += 1) {
+      for (let replicate = 0; replicate < 3; replicate += 1) {
+        attempts.push(record(`behavior-${String(caseIndex)}`, 'state_machine', replicate, true, false, 'persistent_failure'))
+        attempts.push(record(`behavior-${String(caseIndex)}`, 'policy', replicate, false, true, 'persistent_failure'))
+      }
+    }
+    const result = analyzeAttempts(attempts, { bootstrapIterations: 100, seed: 'fixed' })
+    expect(result.severeUnsupported.bootstrap95).toEqual([1, 1])
+    expect(result.verdict).toMatchObject({ status: 'retain', primaryThresholdMet: true })
   })
 
   it('excludes infrastructure failures from paired denominators and reports the mismatch', () => {

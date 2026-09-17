@@ -27,8 +27,15 @@ describe('controlled runner plan', () => {
     }
   })
 
-  it('fails loud because the amended manifest cannot satisfy the still-locked smoke complexity mix', () => {
-    expect(() => selectSmokeCases(MANIFEST)).toThrow(/requires 2×L1, 1×L2, 1×L3, and 1×L4.*has L1=0, L2=10, L3=2, L4=0/)
+  it('selects the approved amended smoke mix from verified cases', () => {
+    expect(selectSmokeCases(MANIFEST).map(testCase => testCase.case_id)).toEqual([
+      'g25a_exec_037',
+      'g25a_exec_039',
+      'g25a_exec_046',
+      'g25a_exec_042',
+      'g25a_exec_048',
+      'g25a_fail_01',
+    ])
   })
 
   it('rejects tool-catalogue or Task-working-set drift across arms', () => {

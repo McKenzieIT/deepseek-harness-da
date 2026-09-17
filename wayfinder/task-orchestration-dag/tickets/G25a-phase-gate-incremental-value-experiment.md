@@ -1,17 +1,17 @@
 # G25a — Phase-gate incremental-value experiment
 
 **Type**: task
-**Status**: claimed — blocked on a locked Stage 1 smoke-selection contradiction
+**Status**: claimed
 **Assignee**: Codex implementation session, claimed 2026-09-17
-**Current standing**: the oracle amendments are approved and frozen. The generated arm presets now mount under `tsx/esm`; the Session observer, deterministic scorer, paired analyser, fault sidecar, and locked 252-Attempt schedule/parity gate are implemented with 50 passing Stage 0 tests. Stage 1 cannot start because the amended real-execution slice has L1=0, L2=10, L3=2, L4=0 while the still-locked smoke composition requires 2×L1, 1×L2, 1×L3, and 1×L4 plus one persistent-failure case. No smoke or decision Attempt has been spent.
+**Current standing**: the oracle and Stage 1 smoke amendments are approved and frozen. The generated arm presets mount under `tsx/esm`; the Session observer, deterministic scorer, paired case-cluster analyser, fault sidecar, and locked 252-Attempt schedule/parity gate are implemented with 51 passing Stage 0 tests. The real Attempt driver, Stage 1–4 runs, decision evidence, and final report remain. No smoke or decision Attempt has been spent.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
 
 ## Continuation entry point
 
-Resolve the Stage 1 smoke-selection contradiction before implementing or running the real Attempt driver. The amended 12-case real-execution slice contains ten L2 cases and two L3 cases, so it cannot supply the still-locked 2×L1 + 1×L2 + 1×L3 + 1×L4 mix. The recommended amendment is 3×L2 + 2×L3 + one persistent-failure case, which exercises every complexity level the verified slice actually contains while preserving six cases and 18 smoke Attempts. Adding newly verified L1/L4 oracle cases is the alternative if the original mix must be retained.
+Implement the real Attempt path in `src/controlled-runner.ts`, then run the approved Stage 1 smoke cases `g25a_exec_037`, `g25a_exec_039`, `g25a_exec_046`, `g25a_exec_042`, `g25a_exec_048`, and `g25a_fail_01` once in each arm. The preset loader, Session observer, scorer, analyser, and fault sidecar are ready; the exact focused Stage 0 command passes 50 tests.
 
-After that decision, finish the execution path in `src/controlled-runner.ts`, run Stage 1, freeze the run identity, and only then spend the 252 Stage 2 Attempts. The preset loader, Session observer, scorer, analyser, and fault sidecar are ready; the exact focused Stage 0 command passes 50 tests.
+Treat the current corpus as sufficient only for the bounded decision this ticket asks: whether evidence justifies enlarging phase-gate for this model, scope, semantic corpus, and task family. It cannot establish equivalence, a 2pp population-level non-inferiority claim, cross-game generality, event-view behavior, multi-row correctness, or robustness across model families. Analyse the 24 behavioural cases as paired case clusters rather than 72 independent Attempts, require the paired severe-answer interval to exclude zero for a positive retention verdict, and report each six-case category as raw counts without generalising from it.
 
 ## Amended locked protocol (2026-09-17)
 
@@ -47,6 +47,12 @@ The behavioral case count grows from 8 to **24**, six per category across 口径
 
 The 30% cost-overhead clause, the material-degradation clause, the 不确定 clause, and every artifact and privacy boundary are unchanged.
 
+### Amendment 3 — Stage 1 smoke sample and evidence scope
+
+The user approved replacing the impossible L1/L4 smoke requirement with **3×L2 + 2×L3 + one persistent-failure case**, preserving six cases and 18 smoke Attempts. The frozen smoke cases are `g25a_exec_037`, `g25a_exec_039`, `g25a_exec_046`, `g25a_exec_042`, `g25a_exec_048`, and `g25a_fail_01`. They cover account activity, revenue, average duration, seven-day payment rate, cohort retention, single-day and range queries, and persistent transport failure across every complexity level present in the verified slice.
+
+The 36-case corpus is sufficient for a conservative, bounded architecture decision because the primary threshold asks for a large reduction in severe unsupported answers and uncertainty defaults to not enlarging phase-gate. Its external validity is deliberately limited: all 12 real cases use one game scope, one semantic corpus, `dws` data, scalar-exact results, one provider/model, and I1 interactions; each behavioural category contains only six authored cases; and all injected failures are transport failures. The analysis therefore treats the 24 behavioural cases as paired case clusters, applies the uncertainty interval to the primary severe-answer difference, reports six-case category slices as raw counts, and never claims equivalence or general product-wide superiority.
+
 ### Clauses below that this amendment supersedes
 
 The original text is kept verbatim as the historical record. Where the two disagree, this section wins:
@@ -59,7 +65,7 @@ The original text is kept verbatim as the historical record. Where the two disag
 | Case Manifest → iterative slice | `k11v2_057` `065` `073` `080` | re-marked on the 12-case slice when the manifest is generated |
 | Case Manifest → reference SQL re-execution | implied, no artifact existed | the 12 cases' own `expected.sql`, re-executed at batch start and end |
 | 锁定判定规则 → which rule decides | rule 1 (8pp) or rule 2 (50%) | rule 2 is primary; rule 1 is reported but is below metric resolution at n=12 |
-| Stage 1 → smoke composition | 6 cases, 18 Attempts | 6 cases, 18 Attempts, drawn from the amended slice |
+| Stage 1 → smoke composition | 6 cases, 18 Attempts | `037`, `039`, `046` (L2), `042`, `048` (L3), and `g25a_fail_01`; 18 Attempts |
 | Stage 2 → batch size | 32 cases, 224 Attempts | 36 cases, 252 Attempts |
 | Stage 3 → 主指标 | case-level `pass^3` | severe unsupported answer rate; `pass^3` becomes the ≤2pp guard rail |
 | 已知证据与缺口 items 1, 2, 7 | about the `g1b` `k11v2` slice | retained as history; the slice they describe is no longer used |
@@ -390,3 +396,7 @@ pnpm run doc-sync
 The prescribed preset-loader smoke first reproduced `cannot set property "g25aPolicy" without provide`: the policy plugin imported under `tsx/esm`, then failed during Cordis application because it wrote an undeclared context property. A failing subprocess regression now mounts both complete generated presets under the real loader path; removing that invalid write makes both mounts pass without changing arm semantics.
 
 Stage 0 now has 50 passing focused tests covering the existing policy/harvest parity plus preset loading, Session evidence and usage extraction, deterministic case grading, infrastructure-failure separation, `pass^3`, replicate-slot deltas, paired bootstrap, cost summaries, the 252-Attempt schedule, Task/tool parity gates, and transient/persistent fault injection. `node --import tsx/esm .../controlled-runner.ts --stage smoke` then fails before any external call with: `G25a Stage 1 requires 2×L1, 1×L2, 1×L3, and 1×L4 real cases; amended manifest has L1=0, L2=10, L3=2, L4=0`. This is a contradiction between two locked clauses, not an infrastructure failure or model result. Zero smoke and zero decision Attempts were consumed.
+
+### 2026-09-17 — Stage 1 amendment and case-adequacy decision
+
+The user approved the recommended 3×L2 + 2×L3 + one persistent-failure smoke mix. The runner now selects the six named cases deterministically. The corpus is accepted for the narrow "is there enough evidence to enlarge phase-gate here?" decision, not for equivalence or broad generalisation. The primary severe-answer analysis uses 24 paired case clusters, not 72 independent Attempts, and a positive retention verdict requires its paired interval to exclude zero under the already-locked uncertainty rule. The 12 real cases remain a conservative fixed-corpus correctness guard rail: one failed `pass^3` case moves the observed rate by 8.3pp, so they can detect a material whole-case regression but cannot estimate a population-level 2pp non-inferiority margin.
