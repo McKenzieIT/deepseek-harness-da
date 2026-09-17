@@ -80,7 +80,13 @@ AssertionError: expected [ …(3) ] to have a length of 2 but got 3
 - **归属：fork 自有 web 组成 + 一条未适配的上游测试，不是本 PR 引入的。** 证据：① `apps/web/tests/smoke-real.e2e.ts` 与 `upstream/master` 逐字相同，断言的是上游 `dsh web` 的 2 个插件批次；② PR #169 不碰任何 web/apps/client/bundle 文件；③ 批次数由该测试**自己 spawn 的那一个** `dsh web` 服务器的插件合并逻辑决定，与 `DSH_WEB_SNAPSHOT_WORKERS` 并发度正交；④ 本机（快、无争用）复跑同样失败，排除「CI 负载抖动」。
 - **机制**：`packages/bundle/web-app/cordis.patch.yml`（fork-diverged）往基座 web-app bundle 里挂了 da 的客户端 UI 插件（`ui-present-table`、`ui-present-decomposition`、`ui-suggest-followups`、`ui-semantic-layer` 等），这些多出来的 client 插件形成了第 3 个 `/plugins/??…` 批次；而上游那条 perf 提交 `perf(web): defer client combo assembly`（fork 所站的 5 个纯 perf 提交之一）改了 combo 切批方式。两者叠加 → 3 批次，上游测试仍期望 2 批次。
 - **为什么以前是绿的**：这条 gate 与 `test:snapshot` 同 job、`DSH_GATE_FAIL_FAST: '1'`。master 上 `test:snapshot` 先因握手超时挂掉、连带中止了 `web browser snapshot`，所以它从未在合并后跑到底 —— 这条失败一直在，只是没机会显形。master 最近三次 CI 该 job 全红即佐证。
-- **待决策（fork 自有，非上游债）**：正解是把 `smoke-real.e2e.ts` 的断言改成 fork 真实的批次组成（3 批，含 da UI 那一组），并按「改废弃行为要连同其测试一起改、并在 PR 里说明理由」的准则记账；这属于 fork 刻意偏离上游测试，需单独一处 web 组成的核对（哪些 da UI 插件应进基座 web-app、是否该并进既有 combo 而非单起一批）。**本轮未改**：改上游逐字测试的断言超出 sdk 握手任务「不动断言」的约束，且它有独立根因，值得单独一条。
+- **根因已查清（2026-09-17，只读核对）：这不是「该并进哪个 combo」的问题，而是上游自己的 URL 长度分片在按设计工作。**
+  `packages/client/modules/src/index.ts`（**与上游逐字相同**）的 `partitionComboRecords` 会在「投影出的 `.map` 形式 combo URL 」超过 `MAX_COMBO_URL_BYTES = 3 * 1024`（3072 字节）时切下一片；批次数 = bootstrap 分片数 + application 分片数。fork 在 `cordis.patch.yml` 里挂进基座 web-app 的 4 个 da 客户端插件（`result-cache`、`ui-present-decomposition`、`ui-present-table`、`ui-suggest-followups`）给该 URL 增加了 **228 字节**（4 个资源名 224 + 4 个逗号），于是 application 相位从 1 片变 2 片 → 总数 3 批。
+  **推论一：fork 的 3 批是正确行为**，代码恰恰是在遵守自己的协议上限，没有任何东西坏掉。
+  **推论二：上游 `toHaveLength(2)` 是一个绑定「上游自己插件集大小」的常数**，不是行为不变式 —— 该测试另外两条断言（一条多插件 combo 批 + 一条 `dsh-client-modules` 独立批）在 fork 里**依然成立**，只有数量对不上。
+  **推论三：原计划「把断言改成 fork 真实批次」在方向上就错了** —— 它们并不是「没并进 combo」，「并进去」恰恰是越界的原因；分片是贪心自动的，没有 per-plugin 的「选哪个 combo」旋钮。
+- **处置（与 ARM64 那条同族）：记为「上游门在 fork 不可达」，不动那条测试。** 能让它变绿的 fork 侧手段都不值得：① 把 4 个 da UI 插件从基座 bundle 摘掉 —— 那 da 的 toolview 就不会在 `dsh web` 里加载，等于取消功能；② 改短包名去抢那 228 字节 —— 为一个上游常数改已发布包名；③ 上调 `MAX_COMBO_URL_BYTES` —— 那是改上游源码且削弱其刻意留的协议余量。三者皆否决。
+- **附带观察（上游的脆弱，不是我们的债）**：既然加 228 字节就越界，说明**上游自己的 application combo 已在 3072 的 228 字节之内**，即上游再加一个插件就会跑不过自己这条测试。因此不要指望下次同步这条会自动变好 —— 它更可能变差。
 
 ## 新暴露：`CI master` 工作流的 real API preflight —— fork 缺 secret，与 CB-5 同族
 
