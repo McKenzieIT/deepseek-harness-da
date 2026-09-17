@@ -22,6 +22,42 @@
 - `scripts/coverage-exempt.ts` 与上游逐字相同、无任何 da 条目；用户已否决「把 da 包加进豁免名单」（会让今后所有 da 代码脱离覆盖率约定）。
 - 完成条件：按包逐个补测试；每补完一个包，`pnpm run test:coverage` 的该包不再出现在失败清单。
 
+#### 2026-09-17（第五棒）：前两个包已收口，并更正测量方法与三处数字
+
+**已收口两个包**（PR [#170](https://github.com/McKenzieIT/deepseek-harness-da/pull/170)，纯测试、无生产源码改动、无豁免名单条目）：
+
+| 包 | 补掉的位置 | 文件 |
+| --- | --- | --- |
+| `packages/preset/agent-presets` | 2 | `src/index.ts:720,721` |
+| `packages/client/ui-settings-models` | 9 | `src/client/store.ts:114,249`、`src/client/ProviderEditor.tsx:138,201,202,317,432`、`src/client/CustomProviderCard.tsx:200` |
+
+验收（按包 scoped、串行）：exit 0、22 个 spec / 435 条测试全绿、`Uncovered locations` **0 条**、逐文件阈值 `ERROR` **0 条**。
+
+**归属结论：11 处全是 fork 新增行，没有一处是上游债。** 上一棒把 4 处标为「上游文件待判定」，实测这 4 处（以及后来发现的另外 7 处）全部落在 fork 的 `+` 行上，因此都该覆盖，都不需要按「上游门在 fork 不可达」留档。
+
+**两条测量方法上的更正，比数字本身更重要：**
+
+1. **归属基线必须是 merge-base `0d1f50007f`，不是 `upstream/master`。** 上游已经比 merge-base 前进 **882 个提交**（现为 `ddefc45fbc`，release 0.1.6-alpha.2）。§1 那条硬性前置里写的 `git diff --quiet upstream/master master -- <path>` 是在两者还是同一个提交时写的；照字面跑，会把**上游自己那 882 个提交的改动**报成 fork 分叉，从而错误地放行「可以动这个上游文件」。这正是 Round 31 翻车那一类错误的反向版本。
+
+2. **`git blame` 在这里不可信，权威依据是 diff 新侧行号映射。** blame 会跟随 `packages/client/ui-models/` → `ui-settings-models/` 的改名，把 fork 搬过来的文本算给上游作者。blame 判定 `store.ts:114`、`:249` 属上游（作者 Yichen Jiang、2026-07-30，早于 merge-base）；而 `git diff -U0 <merge-base> master` 显示这两行都是 fork 的 `+` 行 —— fork 把 `load()` 的早退失败路径改成了 try/catch 并新增了 `messageOf`。**先跑 blame 会得到相反且错误的结论。**
+
+**三处数字更正：**
+
+- 上一棒交接文档写 `ui-settings-models` 有 **2** 处未覆盖，实测 **9** 处（另外 7 处在两个 `.tsx` 里，同样全是 fork 新增行）。**因此本节顶部那份「167 个文件」的按包分布是低估的，只能当下限看**，不能当作剩余工作量的依据。
+- 本机全量 `pnpm run test:coverage` **不能作为验收依据**：实测 1314 秒（22 分钟）、45 个测试文件 / 105 条用例失败（`lsp-stdio`、`browser-use-runtime` 等环境相关，与本改动无关）、且因失败**根本没输出 coverage 报告**（`Uncovered locations` 一行都没有）。
+- **可用的替代方法**：按包 scoped 覆盖率，约 4 分钟一批、结果干净：
+
+  ```sh
+  pnpm exec vitest run <pkg dirs> --coverage \
+    --coverage.include='<pkg>/src/**/*.ts' --coverage.include='<pkg>/src/**/*.tsx'
+  ```
+
+  注意其方向性：scoped 跑出「已覆盖」是确定的结论（覆盖只会叠加）；跑出「未覆盖」有可能是假缺口（该文件可能被别的包的测试覆盖）。本轮那两个包的 22 个 spec 全部在同一次里跑到，故结论成立。另：`--reporter=basic` 在 vitest 4 已移除，加了会以「找不到自定义 reporter」启动失败。
+
+**每条新用例都做了变异校验**（共 9 次变异：返回 `undefined`、忽略 `sessionId` 参数、去掉 `String(error)` 分支、吞掉 rejection、删掉 `llm-dashscope` 分支、把 dashscope placeholder 置空、删掉 rejection handler、`apply()` 吞错、`create()` 吞错），**9 次全部让对应用例变红**，改完即回滚源码。所以这批用例不是「只证明这行跑过」。
+
+**剩余**：按包 scoped 实测顺序继续，不要沿用旧的按包位置数排序。
+
 ### 2. `verify-config-catalog` — 重生成会新增 901 行 da `Config` 块
 
 - `pnpm run gen-config-catalog` 会把 `dsh-admin` 等 da 包的 `Config` 接口写进 `docs/config-catalog.md`（fork 从未重生成过）；其中文对侧 `docs/config-catalog.zh.md` 是手工维护面，配对门要求两侧同步。
@@ -39,6 +75,14 @@
 - 完成条件：把类型重复抽到共享包、card 组件抽公共壳；比例回落后再把门槛调回上游语义（零容忍）或更紧的比例。
 - **2026-09-17：`llm-dashscope` 那 15 对已用围栏解掉**（用户裁定：该包适配阿里内网 AGA 网关，上游 `llm-deepseek` 只讲 OpenAI 兼容 wire，两者刻意独立演进；**否决抽公共基座** —— 那会把内网网关的演进耦合到上游 provider 上）。五个 `src/*.ts` 各加一处 `jscpd:ignore-start/end`，理由指向既有决策 [note](../../../../.agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md)（该 note 本就记着「镜像 llm-deepseek 的结构、wire 层不相交」并已否决 translate shim 方案）。**未上调 `.jscpd.json` 阈值。**
 - 实测：84 → 69 处，0.32% → 0.26%，余量从 0.018pp 拉开到 0.078pp。**没有达到当初预估的 0.1%** —— 那个预估把 280 行重复整个算进分子，实际重复行只从 1334 降到 1069。余量仍然薄，剩下 69 处（card 组件壳、`ui-semantic-layer` 自重复、类型重复）依然是顶破门槛的主要风险。
+
+## 已裁定：不做「衍生内容漂移」的新门（2026-09-17，用户第五棒确认）
+
+此前的多选里勾选过「为衍生内容漂移加一个新门」，随后被建议撤掉但一直未表态。**用户已确认撤掉。**
+
+理由：`config-catalog` 的三个文件（`.md` / `.zh.md` / `.i18n.yaml`）、生成器 `scripts/gen-config-catalog.ts`、校验器 `scripts/verify-translation-pairing.ts` **全部属于上游**。一个检查它们**行内内容**的门，第一天就会因上游自己那 29 行既存缺陷变红 —— 其中 9 处是命名了源码里并不存在的服务与类型的真实事实错误（详见下面「四条查明后不追」里的对应条目）。那等于把上游的债接到 fork 头上，与本票最高准则「绝不修、也不管上游的任何问题」直接冲突。
+
+同时，fork 新增的那 42 个 da 包节的中文对侧，**本来就已被现有配对门的哈希机制覆盖**，新门的边际价值很小。若将来仍要做，唯一可接受的形态是「只校验这 42 个 fork 新增节的对侧行」，绝不扫上游既有的 29 行。
 
 ## 非目标
 
