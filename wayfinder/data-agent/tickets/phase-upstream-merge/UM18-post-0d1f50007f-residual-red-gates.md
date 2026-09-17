@@ -58,6 +58,47 @@
 
 **剩余**：按包 scoped 实测顺序继续，不要沿用旧的按包位置数排序。
 
+##### CI 对照证据（PR #170 已合，merge commit `bb1b8e7d7264`）
+
+不是推断，是两次 CI 的 coverage 门自身输出对比：
+
+| 指标 | PR #169（job `105086673918`） | PR #170 |
+| --- | --- | --- |
+| `Uncovered locations` | **6764** | **6753** |
+| `client/ui-settings-models/src` 出现次数 | 有 | **0** |
+| `preset/agent-presets/src` 出现次数 | 有 | **0** |
+
+差值 **−11**，与补掉的 11 处精确对应；Windows lane 同为 6753，两条腿一致。
+
+**本 PR 的合入标准据此定为「按包验收」而非「门变绿」**（用户 2026-09-17 裁定「按包分批合」）：门会一直红到 62 个包全部补完，所以每批的验收证据是 ①CI 未覆盖总数下降的**确切数值**与该批位置数吻合、②该包从 CI 未覆盖清单**完全消失**。62 个包压成一个巨型 PR 被否决 —— 中途没有任何可验证的中间态。
+
+`node 24 / static` 本轮**首次全绿**，验证了 §2 那条预期：config catalog 收口后 fail-fast 不再中止整条 lane。
+
+coverage job 里 5 条失败用例的归属：3 条（`app-boot` 的 group-apply 枚举、`excludes vendored sources and frozen Agent Notes`、`registers every non-spec gen-*.ts file`）在 PR #169 那次**同样红**，属原有；另 2 条见下面新增的「两条新暴露的上游预算门」一节。
+
+##### 第二批 6 个包已实测（尚未补测试）
+
+10 个 spec / 257 条测试全绿，实测 **16 处**（交接表合计 9 处，再次低估）：
+
+| 包 | 交接表 | 实测 | 位置 |
+| --- | --- | --- | --- |
+| `client/ui-present-decomposition` | 1 | **3** | `index.ts:1`（未覆盖函数 `apply`）、`client/DecompositionCard.tsx:18,31` |
+| `client/ui-present-table` | 1 | **5** | `index.ts:1`（同）、`client/TableCard.tsx:16,214,762` |
+| `code-runtime/code-runtime-python-protocol` | 1 | **1** | `index.ts:682` |
+| `data/tool-present-table` | 1 | **1** | `index.ts:103` |
+| `data/tool-compute` | 2 | **2** | `index.ts:51,52` |
+| `data/tool-retrieve` | 3 | **3** | `index.ts:95,111,282` |
+
+**归属已核：这 8 个文件在 merge-base 上根本不存在 —— 全是 fork 自有文件，16 处全部可覆盖，0 处属上游。**
+
+##### `packages/query/query`：是真缺口，不是假缺口（实测 5 处）
+
+该包 `tests/` 下**一个测试文件都没有**，所以先按「scoped 报未覆盖可能是假缺口」的方向性做了排除：把它的消费者 `query-tool` + `eval` 一起跑（27 个 spec / 324 条测试全绿），`src/index.ts` 仍然是 **lines/functions/statements 全 0%** —— 消费者只用它的类型，从不执行它的运行时代码。**所以是真缺口。**
+
+5 处全在 `src/index.ts`：`:38:3` 未覆盖函数 `constructor` + `:39:5`；`:125:3` 未覆盖函数 `getConventions` + `:126:5`、`:127:5`。`src/conventions.ts` 已全覆盖，`src/types.ts` 按 `packages/*/*/src/types.ts` 规则本就排除在覆盖率之外。
+
+`QueryEngine` 是抽象 Service 基类：`constructor` 只调 `super(ctx, 'query')`；`getConventions` 的默认实现直接 `throw new Error('QueryEngine.getConventions: not implemented; override in a concrete provider subclass')`。因此补法明确 —— 新建 `tests/`，在 cordis `Context` 里实例化一个最小具体子类（覆盖 constructor），再对**未覆写 `getConventions` 的子类**断言它抛出「not implemented」（覆盖那 3 处，且这条断言拒绝的是「抽象 seam 静默返回某个值」这一错误行为）。工作量属小包，不需要从零建整套。
+
 ### 2. `verify-config-catalog` — 重生成会新增 901 行 da `Config` 块
 
 - `pnpm run gen-config-catalog` 会把 `dsh-admin` 等 da 包的 `Config` 接口写进 `docs/config-catalog.md`（fork 从未重生成过）；其中文对侧 `docs/config-catalog.zh.md` 是手工维护面，配对门要求两侧同步。
@@ -75,6 +116,21 @@
 - 完成条件：把类型重复抽到共享包、card 组件抽公共壳；比例回落后再把门槛调回上游语义（零容忍）或更紧的比例。
 - **2026-09-17：`llm-dashscope` 那 15 对已用围栏解掉**（用户裁定：该包适配阿里内网 AGA 网关，上游 `llm-deepseek` 只讲 OpenAI 兼容 wire，两者刻意独立演进；**否决抽公共基座** —— 那会把内网网关的演进耦合到上游 provider 上）。五个 `src/*.ts` 各加一处 `jscpd:ignore-start/end`，理由指向既有决策 [note](../../../../.agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md)（该 note 本就记着「镜像 llm-deepseek 的结构、wire 层不相交」并已否决 translate shim 方案）。**未上调 `.jscpd.json` 阈值。**
 - 实测：84 → 69 处，0.32% → 0.26%，余量从 0.018pp 拉开到 0.078pp。**没有达到当初预估的 0.1%** —— 那个预估把 280 行重复整个算进分子，实际重复行只从 1334 降到 1069。余量仍然薄，剩下 69 处（card 组件壳、`ui-semantic-layer` 自重复、类型重复）依然是顶破门槛的主要风险。
+
+## 已查明归属、不追：两条新暴露的上游预算门（2026-09-17，用户第五棒确认按不可达留档）
+
+`static` lane 首次跑完后，PR #170 的 coverage job 比 PR #169 多出两条红：
+
+| 用例 | 文件 | 耗时 |
+| --- | --- | --- |
+| `checks and encodes a wide completion value in O(depth), not O(width)` | `packages/experimental/ptc-runtime-python/tests/runtime.spec.ts` | **60088ms**（撞 60s 超时） |
+| `signals a foreground command and kills a TERM-ignoring background descendant` | `packages/terminal/terminal-bash/tests/local.spec.ts` | 1729ms |
+
+**两个 spec 都与 merge-base 逐字相同、fork 侧 0 行分叉** → 上游测试、上游预算，与 `scripts/doc-standard.spec.ts:343` 同类。
+
+失败形态是**预算边缘**而非逻辑错：第一条紧邻的兄弟用例 `validates wide binding arguments in O(depth), not O(width)` 以 **48782ms** 通过 —— 同一族用例本就贴着 60s 预算跑；同一时刻 `packages/shell/pwsh-local/tests/executor.spec.ts` 花了 **30750ms**，整台机器被挤。与 sdk 握手超时是同一失败模式（4 vCPU + 上游按 16 核调的预算）。
+
+**处置：按「上游门在 fork 不可达」留档，不追。** 不改这两条测试的预算、不加 retry、不弱化断言。这也是 §2 早已预告过的「新暴露面」—— 看到新面属正常，不等于回归。若后续复现频率上升，唯一在范围内的手段仍是 fork 侧 `ci.yml` 并发（该文件已因 owner gate 与上游分叉），而不是碰测试。
 
 ## 已裁定：不做「衍生内容漂移」的新门（2026-09-17，用户第五棒确认）
 
