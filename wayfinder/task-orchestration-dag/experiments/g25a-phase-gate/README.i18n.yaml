@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write wayfinder/task-orchestration-dag/experiments/g25a-phase-gate/README.md
-README.md: 54d946019703e43d96e667dad62d47eeff81def1
-README.zh.md: 7c5128bbfce4a4d9d7501691d8e793c847cb5d3d
+README.md: 5abe40a565945159348996b0667383cb00bfc018
+README.zh.md: 10dc9573fed4966fad68983a347aa14165ea70ea

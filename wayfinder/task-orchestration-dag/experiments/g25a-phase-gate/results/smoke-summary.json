@@ -1,12 +1,72 @@
 {
   "schemaVersion": 1,
   "stage": "smoke",
-  "runId": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e",
-  "passed": false,
-  "failures": [
-    "g25a_fail_01: G25a tool catalogue drift across arms",
-    "g25a_fail_01-floor-r1: scorer accepted an unsupported business conclusion"
-  ],
+  "runId": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5",
+  "passed": true,
+  "failures": [],
+  "environment": {
+    "provider": "aga",
+    "model": "qwen3.7-max",
+    "scopeId": "10000251",
+    "maxcomputeProject": "ieu_cdm",
+    "semanticRoot": "/Users/mckenzie/workspace/deepseek-harness-da/.worktrees/task-orchestration-dag-baseline/examples/k11-semantic-layer",
+    "maxcPath": "/Users/mckenzie/Library/Python/3.13/bin/maxc",
+    "maxcConfigPath": "/Users/mckenzie/.maxc/config_ieu_cdm.yaml.bak",
+    "environmentVariableNames": [
+      "CODEX_APP_TOOLS_PIPE_PATH",
+      "CODEX_CI",
+      "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+      "CODEX_MCP_NODE_PATH",
+      "CODEX_PERMISSION_PROFILE",
+      "CODEX_SAGE_BACKFILL_TRACKER_TAB_REUSE",
+      "CODEX_SANDBOX_NETWORK_DISABLED",
+      "CODEX_SESSION_ID",
+      "CODEX_THREAD_ID",
+      "CODEX_VERSION",
+      "COLORTERM",
+      "COMMAND_MODE",
+      "FPATH",
+      "GH_PAGER",
+      "GIT_PAGER",
+      "HOME",
+      "HOMEBREW_API_DOMAIN",
+      "HOMEBREW_BOTTLE_DOMAIN",
+      "HOMEBREW_CELLAR",
+      "HOMEBREW_PIP_INDEX_URL",
+      "HOMEBREW_PREFIX",
+      "HOMEBREW_REPOSITORY",
+      "INFOPATH",
+      "LANG",
+      "LC_ALL",
+      "LC_CTYPE",
+      "LOGNAME",
+      "LOG_FORMAT",
+      "MAXC_CONFIG",
+      "MallocNanoZone",
+      "NODE_EXTRA_CA_CERTS",
+      "NODE_USE_SYSTEM_CA",
+      "NO_COLOR",
+      "OLDPWD",
+      "PAGER",
+      "PATH",
+      "PWD",
+      "QODERCN_EXPOSE_TOKEN_USAGE",
+      "QODER_EXPOSE_TOKEN_USAGE",
+      "QODER_WORKER_RUNTIME_PATH",
+      "QW_QODER_WORKER_RUNTIME_PATH",
+      "RUST_LOG",
+      "SHELL",
+      "SHLVL",
+      "SSH_AUTH_SOCK",
+      "TERM",
+      "TMPDIR",
+      "USER",
+      "XPC_FLAGS",
+      "XPC_SERVICE_NAME",
+      "_",
+      "__CF_USER_TEXT_ENCODING"
+    ]
+  },
   "reference": {
     "before": [
       {
@@ -99,13 +159,13 @@
         ]
       },
       "cost": {
-        "modelCalls": 8,
+        "modelCalls": 7,
         "queryCalls": 1,
-        "uncachedInputTokens": 16309,
-        "cacheReadTokens": 63360,
-        "outputTokens": 3971,
-        "reasoningTokens": 2778,
-        "wallClockMs": 64815
+        "uncachedInputTokens": 14619,
+        "cacheReadTokens": 39168,
+        "outputTokens": 2512,
+        "reasoningTokens": 1251,
+        "wallClockMs": 42214
       },
       "toolNames": [
         "compute",
@@ -125,8 +185,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_037-floor-r1",
-      "observationDigest": "47c8f61205484d14a7655f9adbc828127db428bc00824254cf16663f7e15fd9c",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_037-floor-r1",
+      "observationDigest": "49803b29bc26cae19a16417769a58005588c9ef30f31e4cfb68ed85c7d6f0553",
       "gradeDigest": "3bf1d262182d2b7cf541092b93920c8029a9cc567516fc61194973153c2ec443"
     },
     {
@@ -154,13 +214,13 @@
         ]
       },
       "cost": {
-        "modelCalls": 13,
-        "queryCalls": 2,
-        "uncachedInputTokens": 38939,
-        "cacheReadTokens": 55296,
-        "outputTokens": 4543,
-        "reasoningTokens": 2591,
-        "wallClockMs": 71857
+        "modelCalls": 9,
+        "queryCalls": 1,
+        "uncachedInputTokens": 33062,
+        "cacheReadTokens": 27648,
+        "outputTokens": 3720,
+        "reasoningTokens": 2259,
+        "wallClockMs": 58727
       },
       "toolNames": [
         "compute",
@@ -180,8 +240,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_037-state_machine-r1",
-      "observationDigest": "8efb1669264920dda0bc5610720225f2fe23422fdd6be61328b57d6ea5a57906",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_037-state_machine-r1",
+      "observationDigest": "58928f35e2440ac40d57d2bb31d3db42d50b728aaeea7ac5a09792318da2d338",
       "gradeDigest": "3bf1d262182d2b7cf541092b93920c8029a9cc567516fc61194973153c2ec443"
     },
     {
@@ -209,13 +269,13 @@
         ]
       },
       "cost": {
-        "modelCalls": 7,
+        "modelCalls": 8,
         "queryCalls": 1,
-        "uncachedInputTokens": 11701,
-        "cacheReadTokens": 41472,
-        "outputTokens": 2387,
-        "reasoningTokens": 1256,
-        "wallClockMs": 45300
+        "uncachedInputTokens": 15459,
+        "cacheReadTokens": 61056,
+        "outputTokens": 3301,
+        "reasoningTokens": 2265,
+        "wallClockMs": 57032
       },
       "toolNames": [
         "compute",
@@ -235,8 +295,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_037-policy-r1",
-      "observationDigest": "d1a9c63d2ce0f2d270917d2464eeba4e1f339703bdf4c2297db76f7c641d6575",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_037-policy-r1",
+      "observationDigest": "3192a527d9739d8e899979decf5d4690376bf621793d3b45acc4d770c762003e",
       "gradeDigest": "3bf1d262182d2b7cf541092b93920c8029a9cc567516fc61194973153c2ec443"
     },
     {
@@ -265,12 +325,12 @@
       },
       "cost": {
         "modelCalls": 10,
-        "queryCalls": 2,
-        "uncachedInputTokens": 44717,
-        "cacheReadTokens": 36864,
-        "outputTokens": 5494,
-        "reasoningTokens": 2968,
-        "wallClockMs": 85840
+        "queryCalls": 1,
+        "uncachedInputTokens": 51596,
+        "cacheReadTokens": 39168,
+        "outputTokens": 4468,
+        "reasoningTokens": 2378,
+        "wallClockMs": 77502
       },
       "toolNames": [
         "compute",
@@ -290,8 +350,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_039-state_machine-r1",
-      "observationDigest": "97f8e9a06b613f78e8afd01be5026c28c69db49bdc8d795b87cf70b301807d8a",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_039-state_machine-r1",
+      "observationDigest": "18ec92ae13b04360ff7786f4fdb40806f79d5a3296274c03c1709d101a527dac",
       "gradeDigest": "733e5bb46ff5c6dd275191df95b327274e9ae48c10e7f1fbc586b4856b29a6f3"
     },
     {
@@ -319,13 +379,13 @@
         ]
       },
       "cost": {
-        "modelCalls": 8,
+        "modelCalls": 7,
         "queryCalls": 1,
-        "uncachedInputTokens": 14414,
-        "cacheReadTokens": 66816,
-        "outputTokens": 2561,
-        "reasoningTokens": 1035,
-        "wallClockMs": 46487
+        "uncachedInputTokens": 14090,
+        "cacheReadTokens": 70272,
+        "outputTokens": 2946,
+        "reasoningTokens": 1244,
+        "wallClockMs": 48858
       },
       "toolNames": [
         "compute",
@@ -345,8 +405,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_039-policy-r1",
-      "observationDigest": "c79d1f8cc198ae0f33703f2d7e3217638015a6bf175f60e01f1217d9aa68002e",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_039-policy-r1",
+      "observationDigest": "fb2b2ac2a52d7180c27f1eb7602ea4a5e9380e7e85f330a25c6c2a56dc2218c8",
       "gradeDigest": "733e5bb46ff5c6dd275191df95b327274e9ae48c10e7f1fbc586b4856b29a6f3"
     },
     {
@@ -366,20 +426,21 @@
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": false,
+        "severeUnsupported": true,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "severe unsupported answer"
         ]
       },
       "cost": {
-        "modelCalls": 8,
+        "modelCalls": 7,
         "queryCalls": 1,
-        "uncachedInputTokens": 19819,
-        "cacheReadTokens": 78336,
-        "outputTokens": 2718,
-        "reasoningTokens": 1106,
-        "wallClockMs": 44580
+        "uncachedInputTokens": 20793,
+        "cacheReadTokens": 67968,
+        "outputTokens": 3147,
+        "reasoningTokens": 1496,
+        "wallClockMs": 53502
       },
       "toolNames": [
         "compute",
@@ -399,9 +460,9 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_039-floor-r1",
-      "observationDigest": "d8a2e374fe28ce3bbab117e1c6f8884c48bb697aac9132e520b82af70bc92e92",
-      "gradeDigest": "4ae2ee4852bbfda1a07d30458c6cb3906bb8ea26c487cfa72d323d80be66922b"
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_039-floor-r1",
+      "observationDigest": "f9be54c6690f678a255b2e40b46f902d2c4cd4ebe9da08d925424939f7c9e192",
+      "gradeDigest": "733e5bb46ff5c6dd275191df95b327274e9ae48c10e7f1fbc586b4856b29a6f3"
     },
     {
       "attemptId": "g25a_exec_046-state_machine-r1",
@@ -428,13 +489,13 @@
         ]
       },
       "cost": {
-        "modelCalls": 12,
-        "queryCalls": 2,
-        "uncachedInputTokens": 51278,
-        "cacheReadTokens": 85248,
-        "outputTokens": 4204,
+        "modelCalls": 9,
+        "queryCalls": 1,
+        "uncachedInputTokens": 48288,
+        "cacheReadTokens": 47232,
+        "outputTokens": 3589,
         "reasoningTokens": 2067,
-        "wallClockMs": 73413
+        "wallClockMs": 60926
       },
       "toolNames": [
         "compute",
@@ -454,8 +515,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_046-state_machine-r1",
-      "observationDigest": "c2c45037d5612efe3b75169b877bf19b7a896c76348d815bfd652f88807ad01d",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_046-state_machine-r1",
+      "observationDigest": "b3f904c0f3d11b760cc1f4b1d30eb54ad61fdd1c11490322f1fe282b1f4635eb",
       "gradeDigest": "4fcef6291a1b4969401231702bc25df74493ed22d86edb780de7c55a45316331"
     },
     {
@@ -482,11 +543,11 @@
       "cost": {
         "modelCalls": 7,
         "queryCalls": 1,
-        "uncachedInputTokens": 13368,
-        "cacheReadTokens": 57600,
-        "outputTokens": 3839,
-        "reasoningTokens": 2318,
-        "wallClockMs": 67128
+        "uncachedInputTokens": 12100,
+        "cacheReadTokens": 46080,
+        "outputTokens": 2740,
+        "reasoningTokens": 1302,
+        "wallClockMs": 48068
       },
       "toolNames": [
         "compute",
@@ -506,8 +567,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_046-policy-r1",
-      "observationDigest": "ddb34b9da31cd45918ae551f7551b44151f5ffb5d98ed74c361b0d2bd56c0654",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_046-policy-r1",
+      "observationDigest": "f864f335876b79d2d6e6c5288e2fdb7bc4caf5517cfcc2958df8a5b4d4ba93ea",
       "gradeDigest": "3176823199346da8326548f1cfeedbbd5073c634ac17a12f12ae78d933d0810c"
     },
     {
@@ -527,21 +588,20 @@
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": true,
+        "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result",
-          "severe unsupported answer"
+          "final answer did not state the verified scalar result"
         ]
       },
       "cost": {
         "modelCalls": 8,
         "queryCalls": 1,
-        "uncachedInputTokens": 13601,
-        "cacheReadTokens": 55296,
-        "outputTokens": 2339,
-        "reasoningTokens": 1122,
-        "wallClockMs": 44501
+        "uncachedInputTokens": 17024,
+        "cacheReadTokens": 84096,
+        "outputTokens": 3351,
+        "reasoningTokens": 1857,
+        "wallClockMs": 60924
       },
       "toolNames": [
         "compute",
@@ -561,9 +621,9 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_046-floor-r1",
-      "observationDigest": "88cdd7ca479409008500b4e17962f4b6b4991b1ac9459d40c1d9882faa5a2d36",
-      "gradeDigest": "4fcef6291a1b4969401231702bc25df74493ed22d86edb780de7c55a45316331"
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_046-floor-r1",
+      "observationDigest": "5b2b7f071fbdfadaf01d40fed82e1ca7b72c95265c34d4ee6dcc3a2a5b28ba8c",
+      "gradeDigest": "ec65f17d56294ea5ed27af1640fe51af51fda45b6af3e24d4b77e935bd1c71c4"
     },
     {
       "attemptId": "g25a_exec_042-floor-r1",
@@ -593,11 +653,11 @@
       "cost": {
         "modelCalls": 8,
         "queryCalls": 2,
-        "uncachedInputTokens": 12898,
-        "cacheReadTokens": 55296,
-        "outputTokens": 3876,
-        "reasoningTokens": 2020,
-        "wallClockMs": 66046
+        "uncachedInputTokens": 18565,
+        "cacheReadTokens": 87552,
+        "outputTokens": 3038,
+        "reasoningTokens": 1138,
+        "wallClockMs": 61986
       },
       "toolNames": [
         "compute",
@@ -617,8 +677,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_042-floor-r1",
-      "observationDigest": "9891df5a8829e7d0be94d2c9314907ab0c393cedf0c649943d39cb805f70e095",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_042-floor-r1",
+      "observationDigest": "403b09d5cf126f3c7079e9760c5cfd8dd9ba6469c6c8877d142040a55e224f47",
       "gradeDigest": "7cb8b9f27780d58b9f27c5862334d80557dd996de0b63cca158bb39cefb866af"
     },
     {
@@ -647,13 +707,13 @@
         ]
       },
       "cost": {
-        "modelCalls": 9,
-        "queryCalls": 1,
-        "uncachedInputTokens": 31071,
-        "cacheReadTokens": 21888,
-        "outputTokens": 5410,
-        "reasoningTokens": 3141,
-        "wallClockMs": 91848
+        "modelCalls": 15,
+        "queryCalls": 2,
+        "uncachedInputTokens": 143361,
+        "cacheReadTokens": 304128,
+        "outputTokens": 10817,
+        "reasoningTokens": 6497,
+        "wallClockMs": 151704
       },
       "toolNames": [
         "compute",
@@ -673,8 +733,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_042-state_machine-r1",
-      "observationDigest": "db4cb298b10e7c71a11ef54e2f62206ea3987be3378cf3b47802902c738b6483",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_042-state_machine-r1",
+      "observationDigest": "737a6de3fa2334a49588581681ddcaeb66f667c8d2731fce538a4e963bc90c10",
       "gradeDigest": "7cb8b9f27780d58b9f27c5862334d80557dd996de0b63cca158bb39cefb866af"
     },
     {
@@ -704,12 +764,12 @@
       },
       "cost": {
         "modelCalls": 11,
-        "queryCalls": 1,
-        "uncachedInputTokens": 28473,
-        "cacheReadTokens": 158976,
-        "outputTokens": 6310,
-        "reasoningTokens": 3294,
-        "wallClockMs": 88433
+        "queryCalls": 3,
+        "uncachedInputTokens": 16462,
+        "cacheReadTokens": 93312,
+        "outputTokens": 4937,
+        "reasoningTokens": 2389,
+        "wallClockMs": 83260
       },
       "toolNames": [
         "compute",
@@ -729,8 +789,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_042-policy-r1",
-      "observationDigest": "ff033749ba1ad749bed9a013206c9713c448b48b09310ad7e977e8ff0279a525",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_042-policy-r1",
+      "observationDigest": "bd9d9d8c1d0085500aee16cda0d3f9cb7b1845a21553b1b03fae9f9d1551a559",
       "gradeDigest": "7cb8b9f27780d58b9f27c5862334d80557dd996de0b63cca158bb39cefb866af"
     },
     {
@@ -750,23 +810,22 @@
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": true,
+        "severeUnsupported": false,
         "budgetExceeded": true,
         "reasons": [
           "unified budget exceeded",
           "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result",
-          "severe unsupported answer"
+          "final answer did not state the verified scalar result"
         ]
       },
       "cost": {
-        "modelCalls": 20,
-        "queryCalls": 8,
-        "uncachedInputTokens": 35587,
-        "cacheReadTokens": 222336,
-        "outputTokens": 5871,
-        "reasoningTokens": 2158,
-        "wallClockMs": 131116
+        "modelCalls": 19,
+        "queryCalls": 9,
+        "uncachedInputTokens": 27910,
+        "cacheReadTokens": 277632,
+        "outputTokens": 9707,
+        "reasoningTokens": 5311,
+        "wallClockMs": 205416
       },
       "toolNames": [
         "compute",
@@ -786,9 +845,9 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_048-policy-r1",
-      "observationDigest": "3de146914b75659b3355c98873bd076c80ad5a3aacbb0131868f8f10e88d4a55",
-      "gradeDigest": "8c54a9c70d0eebc73cfec58d404d204722f64e226a1cfe2dc4d78789d5812d63"
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_048-policy-r1",
+      "observationDigest": "edaea14c3e15d9bb2b2a080310615851e6a297a5524c8f494b579f0a29a62dff",
+      "gradeDigest": "a31ca1f2626df1f5fd767ab66c995c6cb2318d88e1f8796aee56c7c8fc2d7211"
     },
     {
       "attemptId": "g25a_exec_048-state_machine-r1",
@@ -816,13 +875,13 @@
         ]
       },
       "cost": {
-        "modelCalls": 14,
-        "queryCalls": 1,
-        "uncachedInputTokens": 43658,
-        "cacheReadTokens": 80640,
-        "outputTokens": 7181,
-        "reasoningTokens": 3801,
-        "wallClockMs": 97184
+        "modelCalls": 19,
+        "queryCalls": 6,
+        "uncachedInputTokens": 71826,
+        "cacheReadTokens": 158976,
+        "outputTokens": 12106,
+        "reasoningTokens": 6754,
+        "wallClockMs": 205996
       },
       "toolNames": [
         "compute",
@@ -842,8 +901,8 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_048-state_machine-r1",
-      "observationDigest": "421d568e05a76ae9041a08ccf9041ed6245b48eccc83e440a91b3a983d4180fd",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_048-state_machine-r1",
+      "observationDigest": "4750f46f8734a5510fbcd32f1a2a1d4f45787e23b7c6a1da52771f3fa82c1199",
       "gradeDigest": "d647db2c20ed96dbd2477be490b987ba0276c498010f3d0beb641549238fd235"
     },
     {
@@ -863,21 +922,22 @@
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": false,
+        "severeUnsupported": true,
         "budgetExceeded": false,
         "reasons": [
           "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "severe unsupported answer"
         ]
       },
       "cost": {
-        "modelCalls": 14,
-        "queryCalls": 7,
-        "uncachedInputTokens": 32465,
-        "cacheReadTokens": 245376,
-        "outputTokens": 8015,
-        "reasoningTokens": 3491,
-        "wallClockMs": 156646
+        "modelCalls": 10,
+        "queryCalls": 1,
+        "uncachedInputTokens": 23188,
+        "cacheReadTokens": 126720,
+        "outputTokens": 8099,
+        "reasoningTokens": 5119,
+        "wallClockMs": 104647
       },
       "toolNames": [
         "compute",
@@ -897,9 +957,9 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_exec_048-floor-r1",
-      "observationDigest": "8e690b65a530e20d350d7ac02f42dd566d637688dea87940cb44c0fb02e7166e",
-      "gradeDigest": "4417219f530146c0465721f9b79d29be166ec0591b98b80ba6ace823c89686b6"
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_exec_048-floor-r1",
+      "observationDigest": "557dcba27a80c6764e6a4134b8676aa18e71d1981669ad9d2b95edd0bbb23d49",
+      "gradeDigest": "d647db2c20ed96dbd2477be490b987ba0276c498010f3d0beb641549238fd235"
     },
     {
       "attemptId": "g25a_fail_01-policy-r1",
@@ -912,27 +972,24 @@
       "grade": {
         "caseId": "g25a_fail_01",
         "status": "graded",
-        "pass": false,
+        "pass": true,
         "executionCorrect": false,
-        "answerSupported": false,
+        "answerSupported": true,
         "clarificationCorrect": false,
-        "appropriateDecline": false,
+        "appropriateDecline": true,
         "recoverySuccess": false,
-        "severeUnsupported": true,
+        "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [
-          "persistent query failure was not reported as unavailable",
-          "severe unsupported answer"
-        ]
+        "reasons": []
       },
       "cost": {
-        "modelCalls": 16,
-        "queryCalls": 8,
-        "uncachedInputTokens": 18850,
-        "cacheReadTokens": 144000,
-        "outputTokens": 4623,
-        "reasoningTokens": 1965,
-        "wallClockMs": 70213
+        "modelCalls": 9,
+        "queryCalls": 4,
+        "uncachedInputTokens": 17353,
+        "cacheReadTokens": 64512,
+        "outputTokens": 3576,
+        "reasoningTokens": 2049,
+        "wallClockMs": 51369
       },
       "toolNames": [
         "compute",
@@ -952,9 +1009,9 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_fail_01-policy-r1",
-      "observationDigest": "b17f730dba0f65fd1000d0fc14aa427e32da8b6cb9848a05f41be82e47f4583e",
-      "gradeDigest": "8f2d2ea685879f987f076ad04f7341955ecb0e9b40d6e6eb24a5d98feed598a6"
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_fail_01-policy-r1",
+      "observationDigest": "efe198159fce24bfb00aa548054ace9d3b0c9652817725d77798fb5d6e3aa7de",
+      "gradeDigest": "3781544dd6614bb7473463417e211b815fad866e0154787826de4352962d7909"
     },
     {
       "attemptId": "g25a_fail_01-state_machine-r1",
@@ -967,44 +1024,38 @@
       "grade": {
         "caseId": "g25a_fail_01",
         "status": "graded",
-        "pass": false,
+        "pass": true,
         "executionCorrect": false,
         "answerSupported": true,
         "clarificationCorrect": false,
         "appropriateDecline": true,
         "recoverySuccess": false,
         "severeUnsupported": false,
-        "budgetExceeded": true,
-        "reasons": [
-          "unified budget exceeded"
-        ]
+        "budgetExceeded": false,
+        "reasons": []
       },
       "cost": {
-        "modelCalls": 20,
-        "queryCalls": 8,
-        "uncachedInputTokens": 45060,
-        "cacheReadTokens": 92160,
-        "outputTokens": 7811,
-        "reasoningTokens": 4067,
-        "wallClockMs": 122737
+        "modelCalls": 7,
+        "queryCalls": 0,
+        "uncachedInputTokens": 32141,
+        "cacheReadTokens": 6912,
+        "outputTokens": 4029,
+        "reasoningTokens": 2898,
+        "wallClockMs": 55257
       },
       "toolNames": [
-        "critique_sql_tool",
-        "evaluate_sql_quality",
         "list_scopes",
         "load_event_definition",
         "load_table_definition",
         "present_clarification",
-        "query_data",
         "resolve_term",
         "search_data_sources",
-        "switch_scope",
-        "update_table_config"
+        "switch_scope"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_fail_01-state_machine-r1",
-      "observationDigest": "a44b9a6989a58c0b66b9981f7c28ef5917d49da17cfcf148018b68517b989177",
-      "gradeDigest": "074f7a3faac5febd0a355937f9ae9b4ef4c1aefc74bde2ac76ce5b89e061af83"
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_fail_01-state_machine-r1",
+      "observationDigest": "7304e16ed820342f77619f2b69d2bd9605e05dcd2989c835258e9270a7dc8263",
+      "gradeDigest": "3781544dd6614bb7473463417e211b815fad866e0154787826de4352962d7909"
     },
     {
       "attemptId": "g25a_fail_01-floor-r1",
@@ -1028,13 +1079,13 @@
         "reasons": []
       },
       "cost": {
-        "modelCalls": 8,
-        "queryCalls": 4,
-        "uncachedInputTokens": 13590,
-        "cacheReadTokens": 46080,
-        "outputTokens": 1999,
-        "reasoningTokens": 821,
-        "wallClockMs": 31083
+        "modelCalls": 9,
+        "queryCalls": 5,
+        "uncachedInputTokens": 9571,
+        "cacheReadTokens": 66816,
+        "outputTokens": 2995,
+        "reasoningTokens": 1654,
+        "wallClockMs": 43616
       },
       "toolNames": [
         "compute",
@@ -1054,72 +1105,9 @@
         "update_table_config"
       ],
       "firstModelRequestContainsTask": true,
-      "rawLocator": "g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e/g25a_fail_01-floor-r1",
-      "observationDigest": "3c67621b0a409d71e1887d51b8f59b1e3661d135c281bcc9b9a59765aeb2dd1e",
+      "rawLocator": "g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5/g25a_fail_01-floor-r1",
+      "observationDigest": "b1fdd5c958e35ec526c5d2f1f6eaa029fe632e635c26395af2a4afaa31059d30",
       "gradeDigest": "3781544dd6614bb7473463417e211b815fad866e0154787826de4352962d7909"
     }
-  ],
-  "environment": {
-    "provider": "aga",
-    "model": "qwen3.7-max",
-    "scopeId": "10000251",
-    "maxcomputeProject": "ieu_cdm",
-    "semanticRoot": "/Users/mckenzie/workspace/deepseek-harness-da/.worktrees/task-orchestration-dag-baseline/examples/k11-semantic-layer",
-    "maxcPath": "/Users/mckenzie/Library/Python/3.13/bin/maxc",
-    "maxcConfigPath": "/Users/mckenzie/.maxc/config_ieu_cdm.yaml.bak",
-    "environmentVariableNames": [
-      "CODEX_APP_TOOLS_PIPE_PATH",
-      "CODEX_CI",
-      "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
-      "CODEX_MCP_NODE_PATH",
-      "CODEX_PERMISSION_PROFILE",
-      "CODEX_SAGE_BACKFILL_TRACKER_TAB_REUSE",
-      "CODEX_SANDBOX_NETWORK_DISABLED",
-      "CODEX_SESSION_ID",
-      "CODEX_THREAD_ID",
-      "CODEX_VERSION",
-      "COLORTERM",
-      "COMMAND_MODE",
-      "FPATH",
-      "GH_PAGER",
-      "GIT_PAGER",
-      "HOME",
-      "HOMEBREW_API_DOMAIN",
-      "HOMEBREW_BOTTLE_DOMAIN",
-      "HOMEBREW_CELLAR",
-      "HOMEBREW_PIP_INDEX_URL",
-      "HOMEBREW_PREFIX",
-      "HOMEBREW_REPOSITORY",
-      "INFOPATH",
-      "LANG",
-      "LC_ALL",
-      "LC_CTYPE",
-      "LOGNAME",
-      "LOG_FORMAT",
-      "MAXC_CONFIG",
-      "MallocNanoZone",
-      "NODE_EXTRA_CA_CERTS",
-      "NODE_USE_SYSTEM_CA",
-      "NO_COLOR",
-      "OLDPWD",
-      "PAGER",
-      "PATH",
-      "PWD",
-      "QODERCN_EXPOSE_TOKEN_USAGE",
-      "QODER_EXPOSE_TOKEN_USAGE",
-      "QODER_WORKER_RUNTIME_PATH",
-      "QW_QODER_WORKER_RUNTIME_PATH",
-      "RUST_LOG",
-      "SHELL",
-      "SHLVL",
-      "SSH_AUTH_SOCK",
-      "TERM",
-      "TMPDIR",
-      "USER",
-      "XPC_FLAGS",
-      "XPC_SERVICE_NAME",
-      "_",
-      "__CF_USER_TEXT_ENCODING"
-    ]
-  }
+  ]
 }

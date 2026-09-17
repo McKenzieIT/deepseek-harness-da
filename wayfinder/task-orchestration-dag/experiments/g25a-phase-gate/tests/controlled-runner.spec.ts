@@ -78,6 +78,27 @@ describe('controlled runner plan', () => {
       { arm: 'floor', taskDigest: 'a', toolNames: ['a'] },
     ])).toThrow(/Task working set drift/)
   })
+
+  it('allows the state-machine request union to omit unreachable later-phase tools', () => {
+    expect(() => validateObservationParity([
+      { arm: 'state_machine', taskDigest: 'same', toolNames: ['understand', 'generate', 'query'] },
+      { arm: 'policy', taskDigest: 'same', toolNames: ['understand', 'generate', 'query', 'present'] },
+      { arm: 'floor', taskDigest: 'same', toolNames: ['understand', 'generate', 'query', 'present'] },
+    ])).not.toThrow()
+  })
+
+  it('rejects extra state-machine tools and disagreement between the full-catalogue arms', () => {
+    expect(() => validateObservationParity([
+      { arm: 'state_machine', taskDigest: 'same', toolNames: ['a', 'unexpected'] },
+      { arm: 'policy', taskDigest: 'same', toolNames: ['a'] },
+      { arm: 'floor', taskDigest: 'same', toolNames: ['a'] },
+    ])).toThrow(/unexpected tool/)
+    expect(() => validateObservationParity([
+      { arm: 'state_machine', taskDigest: 'same', toolNames: ['a'] },
+      { arm: 'policy', taskDigest: 'same', toolNames: ['a', 'b'] },
+      { arm: 'floor', taskDigest: 'same', toolNames: ['a', 'c'] },
+    ])).toThrow(/full tool catalogue drift/)
+  })
 })
 
 describe('reference probes', () => {

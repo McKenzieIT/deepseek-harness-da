@@ -325,14 +325,33 @@ export function buildSmokePlan(manifest: G25aManifest): PlannedAttempt[] {
 }
 
 /**
- * Prove all three arms exposed byte-identical Task material and tool names.
+ * Prove Task identity, full-catalogue parity, and phase-scoped subset safety.
  * @param observations - one observation per arm for the same case/replicate block.
  */
 export function validateObservationParity(observations: readonly ParityObservation[]): void {
   const taskDigests = new Set(observations.map(observation => observation.taskDigest))
   if (taskDigests.size !== 1) throw new Error('G25a Task working set drift across arms')
-  const catalogues = new Set(observations.map(observation => JSON.stringify([...observation.toolNames].sort())))
-  if (catalogues.size !== 1) throw new Error('G25a tool catalogue drift across arms')
+  const byArm = new Map<Arm, ParityObservation>()
+  for (const observation of observations) {
+    if (byArm.has(observation.arm)) throw new Error(`G25a duplicate parity observation for ${observation.arm}`)
+    byArm.set(observation.arm, observation)
+  }
+  const stateMachine = byArm.get('state_machine')
+  const policy = byArm.get('policy')
+  const floor = byArm.get('floor')
+  if (stateMachine === undefined || policy === undefined || floor === undefined) {
+    throw new Error('G25a parity requires one observation for each arm')
+  }
+  const policyNames = [...policy.toolNames].sort()
+  const floorNames = [...floor.toolNames].sort()
+  if (JSON.stringify(policyNames) !== JSON.stringify(floorNames)) {
+    throw new Error('G25a full tool catalogue drift between policy and floor arms')
+  }
+  const fullCatalogue = new Set(policyNames)
+  const unexpected = stateMachine.toolNames.filter(name => !fullCatalogue.has(name))
+  if (unexpected.length > 0) {
+    throw new Error(`G25a state-machine request catalogue exposed unexpected tool(s): ${unexpected.sort().join(', ')}`)
+  }
 }
 
 function stringCell(value: unknown): string {

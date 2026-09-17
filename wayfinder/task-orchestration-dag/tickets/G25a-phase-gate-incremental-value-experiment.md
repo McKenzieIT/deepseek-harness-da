@@ -3,13 +3,13 @@
 **Type**: task
 **Status**: claimed
 **Assignee**: Codex implementation session, claimed 2026-09-17
-**Current standing**: the real Attempt driver now creates and drains a fresh Cordis root, Agent, Session, audit database, and sidecar per Attempt; records private Session/query evidence plus de-identified summaries; enforces the frozen provider, model, scope, retry, query, model-call, and wall-clock limits; and runs reference SQL before and after Stage 1. Three full 18-Attempt smoke batches are preserved. The latest batch has no infrastructure failures, stable matching reference results, readable query outcomes, and model-visible absolute-date Task material, but the required persistent-failure case exposes a frozen protocol conflict: the state-machine correctly declines from EXECUTION without opening an INTERPRETATION request, so its observed request-header tool union has 11 tools while policy and floor have all 15. Stage 2 has not started and no decision Attempt has been spent.
+**Current standing**: the real Attempt driver creates and drains a fresh Cordis root, Agent, Session, audit database, and sidecar per Attempt; records private Session/query evidence plus de-identified summaries; enforces the frozen provider, model, scope, retry, query, model-call, and wall-clock limits; and runs reference SQL before and after Stage 1. The user approved Amendment 4 on 2026-09-17: static preset parity remains exact, while dynamic state-machine catalogues may omit tools from phases a case never reaches but may not add tools outside the frozen catalogue. The complete rerun `g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5` passed all Stage 1 gates with 18 Attempts and zero infrastructure failures. Stage 2 has not started and no decision Attempt has been spent.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
 
 ## Continuation entry point
 
-Obtain an explicit user decision on the Stage 1 tool-parity conflict recorded in [the 2026-09-17 session report](../research/G25a-session-report-2026-09-17.md#六stage-1-执行-checkpoint). The recommended amendment keeps the Stage 0 static proof that all three presets mount the same complete 15-tool catalogue, then requires every state-machine `request/header` catalogue to be a subset of that frozen catalogue with no extra tool; it does not require a persistent-failure path to enter INTERPRETATION merely to expose four unused presentation tools. If approved, update the locked amendment section and rerun all 18 smoke Attempts from the beginning before freezing any Stage 2 run identity. Do not run Stage 2 under the current rule.
+Complete the Stage 2–4 driver and grading workflow without changing the frozen Attempt behavior, prompts, cases, thresholds, or scoring rules. Rerun Stage 0 and the full 18-Attempt Stage 1 on the final pre-freeze code, then commit, record the Stage 2 run identity, and execute the locked 252-Attempt decision batch. Preserve complete case blocks for any infrastructure rerun and stop if a new admission gate fails.
 
 ## Amended locked protocol (2026-09-17)
 
@@ -51,6 +51,12 @@ The user approved replacing the impossible L1/L4 smoke requirement with **3×L2 
 
 The 36-case corpus is sufficient for a conservative, bounded architecture decision because the primary threshold asks for a large reduction in severe unsupported answers and uncertainty defaults to not enlarging phase-gate. Its external validity is deliberately limited: all 12 real cases use one game scope, one semantic corpus, `dws` data, scalar-exact results, one provider/model, and I1 interactions; each behavioural category contains only six authored cases; and all injected failures are transport failures. The analysis therefore treats the 24 behavioural cases as paired case clusters, applies the uncertainty interval to the primary severe-answer difference, reports six-case category slices as raw counts, and never claims equivalence or general product-wide superiority.
 
+### Amendment 4 — path-sensitive Stage 1 tool parity
+
+The user approved replacing dynamic Session-union equality on 2026-09-17 after the required persistent-failure smoke proved that rule impossible without forcing an irrelevant phase transition. Stage 0 remains the authority that all three presets mount the same complete 15-tool catalogue. In Stage 1 and Stage 2, policy and floor must expose that same full catalogue, while every state-machine `request/header` catalogue must be a subset with no extra tool; its Session union may omit tools belonging only to phases the case never reaches.
+
+This amendment changes only how the existing catalogue-parity claim is observed. It does not change any arm, tool registration, case, Task material, threshold, metric, budget, or grading rule.
+
 ### Clauses below that this amendment supersedes
 
 The original text is kept verbatim as the historical record. Where the two disagree, this section wins:
@@ -64,6 +70,7 @@ The original text is kept verbatim as the historical record. Where the two disag
 | Case Manifest → reference SQL re-execution | implied, no artifact existed | the 12 cases' own `expected.sql`, re-executed at batch start and end |
 | 锁定判定规则 → which rule decides | rule 1 (8pp) or rule 2 (50%) | rule 2 is primary; rule 1 is reported but is below metric resolution at n=12 |
 | Stage 1 → smoke composition | 6 cases, 18 Attempts | `037`, `039`, `046` (L2), `042`, `048` (L3), and `g25a_fail_01`; 18 Attempts |
+| Stage 1 → dynamic tool parity | all three Session unions must be identical | policy/floor expose the same complete catalogue; every state-machine request catalogue is a subset with no extra tool |
 | Stage 2 → batch size | 32 cases, 224 Attempts | 36 cases, 252 Attempts |
 | Stage 3 → 主指标 | case-level `pass^3` | severe unsupported answer rate; `pass^3` becomes the ≤2pp guard rail |
 | 已知证据与缺口 items 1, 2, 7 | about the `g1b` `k11v2` slice | retained as history; the slice they describe is no longer used |
@@ -404,3 +411,9 @@ The user approved the recommended 3×L2 + 2×L3 + one persistent-failure smoke m
 The controlled runner now owns a fresh Cordis context, Agent, Session, audit database, and query sidecar per Attempt; resolves preset rows from the full pnpm module closure while loading host modules through the `tsx/esm` source runtime; enforces the frozen budgets and one-transport-retry policy; executes reference SQL before and after Stage 1; writes raw Session/query evidence under ignored `eval-results/g25a/raw/`; and writes a de-identified smoke summary. Stage 0 has 63 passing tests after two red-green fixes for package resolution and source/build scheduler-symbol identity.
 
 Three complete 18-Attempt smoke runs are preserved. The first two are invalid facility runs. The latest run, `g25a-smoke-2026-09-17-ce1745d4-945c-44fc-9384-e6b162b1c94e`, has zero infrastructure failures, stable matching reference digests, readable successful query outcomes for every real-case Attempt, and the frozen Task material in every first model request. It still fails the locked tool-union rule on `g25a_fail_01`: state-machine correctly declines after persistent transport failures without entering an INTERPRETATION request, so its observed union omits the four interpretation-only tools while policy and floor expose all 15 from the start. This is a path-dependent protocol contradiction, not a hidden catalogue difference. Stage 2 remains blocked pending an explicit amendment; see [the execution checkpoint](../research/G25a-session-report-2026-09-17.md#六stage-1-执行-checkpoint).
+
+### 2026-09-17 — Amendment 4 approved and Stage 1 passed
+
+The user approved path-sensitive dynamic tool parity. Stage 0 remains the exact 15-tool mounted-catalogue proof. Stage 1 now requires policy and floor to expose the same full catalogue and every state-machine request catalogue to contain no tool outside it; a state-machine Session may omit tools from phases the case never reaches.
+
+The complete rerun `g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5` passed all Stage 1 gates across 18 Attempts. All five reference SQL results matched their expected values before and after the batch with unchanged digests; every real-case Attempt retained a readable successful query outcome; every first model request contained the byte-identical frozen Task working set and absolute dates; and every arm had zero infrastructure failures. Smoke remains excluded from Stage 2 effect statistics. No Stage 2 run identity has been frozen and no decision Attempt has been spent.

@@ -220,3 +220,11 @@ G25 保持未解决，按票面要求留给下一个决策 session。
 同批次还暴露并修复了一个不改变外部执行的 scorer-safety 检查缺陷：controller 的重复启发式把拒答中的日期和重试次数当作确定业务数值。controller 现在复用 scorer 的 refusal-aware `confidentBusinessConclusion` 分类；`2026-08-05 的数据不可得，4 次查询均失败` 的回归测试先红后绿。按照冻结协议，修复设施后本应从头重跑 18 个 Attempt，但当前同时存在上述协议矛盾，因此停止进一步外部运行，没有启动 Stage 2，也没有冻结 Stage 2 run identity。
 
 建议下一次用户决策只修订 parity 的观测方式：保留 Stage 0 对三份 preset 完整挂载工具目录一致性的静态证明，并把 Stage 1 的动态检查改为“state-machine 每个 request/header 都是冻结 15 工具目录的子集，且 Session union 不含额外工具”；不要要求 persistent-failure path 必须进入与任务无关的 INTERPRETATION 工具阶段。批准或拒绝该修订后，必须从头重跑全部 18 个 smoke Attempt。
+
+## 七、Amendment 4 与通过的 Stage 1
+
+用户于 2026-09-17 批准 path-sensitive dynamic tool parity：Stage 0 继续证明三个 preset 的完整挂载目录都是同一组 15 个工具；Stage 1 与 Stage 2 要求独立策略组和诊断下限组暴露该完整目录，并要求完整状态机组的每个 `request/header` 目录都是其子集且没有额外工具。正确地在后续阶段之前结束的 case 不需要为了目录相等而进入无关阶段。
+
+修订后从头执行的完整 smoke run `g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5` 通过全部 Stage 1 gate，共 18 个 Attempt，三组 infrastructure failure 均为 0。五个真实案例的 reference SQL 在批次前后都匹配 expected value 且 digest 不变；15 个真实案例 Attempt 都有可读成功查询 outcome；每个首个模型请求都包含逐字节相同的冻结 Task working set 与绝对日期；scorer safety negative control 通过。Smoke 不进入 Stage 2 效果统计。
+
+当前没有冻结 Stage 2 run identity，也没有消耗 decision Attempt。下一步先完成 Stage 2–4 的执行、封存、评分、盲化复核包与报告生成路径；最终代码再次通过 Stage 0 和完整 Stage 1 后才能冻结并启动 252-Attempt decision batch。
