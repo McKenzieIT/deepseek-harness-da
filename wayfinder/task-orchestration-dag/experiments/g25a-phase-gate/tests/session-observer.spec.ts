@@ -38,8 +38,9 @@ function result(seq: number, callId: string, text: string, isError = false): Ses
 describe('observeSession', () => {
   it('pairs tool calls with outcomes and extracts final answer, clarification, usage, and query evidence', () => {
     const observed = observeSession([
-      event('request/header', 0, { header: { config: { provider: 'aga', model: 'qwen' }, tools: [{ name: 'query_data' }, { name: 'present_clarification' }] }, reason: 'initial' }),
+      event('request/header', 0, { header: { config: { provider: 'aga', model: 'qwen' }, tools: [{ name: 'present_clarification' }] }, reason: 'initial' }),
       event('user/message', 0, { id: 'u1', role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: 'TASK WORKING SET' }] }),
+      event('request/header', 1, { header: { config: { provider: 'aga', model: 'qwen' }, tools: [{ name: 'query_data' }] }, reason: 'change' }),
       call(1, 'clarify', 'present_clarification', { question: '账号还是角色口径？' }),
       result(2, 'clarify', '已向用户请求澄清'),
       assistant(3, '中间答复', { inputTokens: 10, outputTokens: 2, cacheReadTokens: 5, reasoningTokens: 1 }),
@@ -72,8 +73,9 @@ describe('observeSession', () => {
 
   it('classifies failed and pending query results without treating them as success', () => {
     const observed = observeSession([
-      event('request/header', 0, { header: { config: { provider: 'aga', model: 'qwen' }, tools: [{ name: 'query_data' }, { name: 'present_clarification' }] }, reason: 'initial' }),
+      event('request/header', 0, { header: { config: { provider: 'aga', model: 'qwen' }, tools: [{ name: 'present_clarification' }] }, reason: 'initial' }),
       event('user/message', 0, { id: 'u1', role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: 'TASK WORKING SET' }] }),
+      event('request/header', 1, { header: { config: { provider: 'aga', model: 'qwen' }, tools: [{ name: 'query_data' }] }, reason: 'change' }),
       call(1, 'q1', 'query_data', { sql: 'SELECT 1', scope_id: '10000251' }),
       result(2, 'q1', 'Query failed (transport): connection reset'),
       call(3, 'q2', 'query_data', { sql: 'SELECT 2', scope_id: '10000251' }),

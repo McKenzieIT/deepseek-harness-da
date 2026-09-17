@@ -143,13 +143,13 @@ export function observeSession(events: readonly SessionEvent[], wallClockMs: num
   let usage = zeroUsage()
   let modelCalls = 0
   let firstUserText = ''
-  let toolNames: string[] = []
+  const toolNameSet = new Set<string>()
   const calls = new Map<string, ObservedToolCall>()
   const order: string[] = []
 
   for (const event of events) {
-    if (event.type === 'request/header' && toolNames.length === 0) {
-      toolNames = (event.data.header.tools ?? []).map(tool => tool.name).sort()
+    if (event.type === 'request/header') {
+      for (const tool of event.data.header.tools ?? []) toolNameSet.add(tool.name)
       continue
     }
     if (event.type === 'user/message' && firstUserText === '') {
@@ -218,7 +218,7 @@ export function observeSession(events: readonly SessionEvent[], wallClockMs: num
   return {
     finalAnswer: assistants.at(-1) ?? '',
     firstUserText,
-    toolNames,
+    toolNames: [...toolNameSet].sort(),
     assistantMessages: assistants,
     toolCalls,
     queryAttempts,
