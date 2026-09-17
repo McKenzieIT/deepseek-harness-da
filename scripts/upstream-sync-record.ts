@@ -50,12 +50,17 @@ export type WaiverDirection = 'keep-fork' | 'drop-fork' | 'revert-fork'
 /**
  * Adjudication state of one divergence. The subject is the fork's divergence,
  * not the file: `keep` accepts it permanently, `drop` records it as wrong with
- * remediation owed through `ticket`, `pending` means nobody has decided yet.
+ * remediation owed through `ticket`, `settled` records a `drop` whose
+ * remediation landed, `pending` means nobody has decided yet.
+ *
+ * A settled waiver stays in the record rather than being deleted: the recorded
+ * window that produced its finding is permanent, so the entry is still needed to
+ * explain that finding. Only `drop` counts as owed remediation.
  */
-export type WaiverDecision = 'pending' | 'keep' | 'drop'
+export type WaiverDecision = 'pending' | 'keep' | 'drop' | 'settled'
 
 const WAIVER_DIRECTIONS = ['keep-fork', 'drop-fork', 'revert-fork'] as const
-const WAIVER_DECISIONS = ['pending', 'keep', 'drop'] as const
+const WAIVER_DECISIONS = ['pending', 'keep', 'drop', 'settled'] as const
 
 /** One adjudicated — or explicitly unadjudicated — merge-integrity divergence. */
 export interface Waiver {
@@ -235,8 +240,8 @@ export function collectGitFailures(
         // force re-adjudication by failing the gate.
         // 'pending' zero-hit: nobody decided in this sync round — process
         // leak, must not survive >1 round without a keep/drop decision.
-        // 'drop' has its own tracking (ticket + report visibility), so
-        // zero-hit stays informational for it.
+        // 'drop' and 'settled' have their own tracking (ticket + report
+        // visibility), so zero-hit stays informational for them.
         report.failures.push(message)
       } else {
         report.notes.push(message)
@@ -251,7 +256,7 @@ export function pendingWaivers(record: UpstreamSyncRecord): Waiver[] {
   return record.waivers.filter(waiver => waiver.decision === 'pending')
 }
 
-/** Waivers adjudicated as wrong, whose remediation has not landed. */
+/** Waivers adjudicated as wrong, whose remediation has not landed; `settled` ones are excluded. */
 export function owedWaivers(record: UpstreamSyncRecord): Waiver[] {
   return record.waivers.filter(waiver => waiver.decision === 'drop')
 }

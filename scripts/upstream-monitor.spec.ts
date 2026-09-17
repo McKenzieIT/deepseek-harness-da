@@ -6,7 +6,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { monitorUpstream } from './upstream-monitor.ts'
 import { probeRef } from './upstream-status.ts'
-import { collectGitFailures, readUpstreamSyncRecord, type UpstreamSyncRecord } from './upstream-sync-record.ts'
+import {
+  collectGitFailures,
+  collectShapeFailures,
+  owedWaivers,
+  readUpstreamSyncRecord,
+  type UpstreamSyncRecord,
+} from './upstream-sync-record.ts'
 
 /**
  * A fixture repository with a real path-based `upstream` remote, so ref
@@ -370,6 +376,31 @@ describe('upstream monitoring', { timeout: 180_000 }, () => {
 
     expect(report.failures.join('\n')).not.toContain('matched no finding')
     expect(report.skipped.join('\n')).toContain('not verifiable in this checkout')
+  })
+
+  it('rejects a waiver decision outside the recorded vocabulary', () => {
+    const context = fixture(1)
+    const waiver = { path: 'packages/nothing/here.ts', direction: 'keep-fork', decision: 'resolved', ticket: 'T-TEST' }
+
+    const failures = collectShapeFailures({ ...record(context), waivers: [waiver] })
+
+    expect(failures.join('\n')).toContain('decision must be one of pending, keep, drop, settled')
+  })
+
+  it('stops owing remediation for a settled waiver while keeping it in the record', () => {
+    const context = fixture(1)
+    const base = record(context)
+    const waiver = { path: 'packages/nothing/here.ts', direction: 'keep-fork' as const, decision: 'settled' as const, ticket: 'T-TEST' }
+    writeRecord(context, { ...base, waivers: [waiver] })
+
+    const parsed = readUpstreamSyncRecord(context.root)
+    const report = collectGitFailures(parsed, context.root)
+
+    expect(owedWaivers(parsed)).toHaveLength(0)
+    // A settled entry survives to explain the recorded window's finding, so its
+    // own zero hits report as a note rather than convicting the gate.
+    expect(report.failures.join('\n')).not.toContain('matched no finding')
+    expect(report.notes.join('\n')).toContain('matched no finding')
   })
 
   it('writes the verdict to a report file even when the monitor fails', () => {
