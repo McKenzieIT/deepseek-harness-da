@@ -57,3 +57,17 @@ PR #168 三轮 CI 里 `node 24 / snapshots and artifacts` 每轮都命中 `Reque
 - [CB-5：DA 的 CI 寄生在上游 workflow 上](../../../semantic-layer/tickets/CB5-da-ci-upstream-boundary.md) 与 [CB-1b](../../../semantic-layer/tickets/CB1b-pwsh-pty-evaluation-bug.md)、[CB-4 的 follow-up](../../../semantic-layer/tickets/CB4-zod-externals-drift.md) 已入 master。CB-5 记录的原则（「DA 的 CI 只检查额外增加的非上游内容」）与其 Q1「DA 要不要建自己的 CI 腿」正是本票 sdk 握手一节要回答的同一个问题。
 - **`code-runtime-data-python` 的 pandas 组仍未按依赖可用性 gate**：`tests/runtime.spec.ts:115` 的 `pandas compute` 组直接 `import pandas as pd`，在没有 pandas 的解释器上必红；CI 目前靠 `DSH_TEST_PYTHON_PATH` 指到装了 pandas 的解释器兜住。PR #42 里的做法是探测**运行时真正会 spawn 的解释器**（`Config.pythonPath`，默认 `python3`），沿用 `terminal-bash/local.spec.ts` 的 `hasPwsh` 惯例后跳过。那 14 行不能直接搬——该包接口已换到 `dsh-ptc-runtime` 且包本身待改名，需在改名后重做。
 - 对照：PR #42 的另一半「eval-cli 测试自建隔离 home」**已由 master 用更好的方式落地**——`main.ts` 走 `resolveDshHome()`，`tests/main.spec.ts:13` 用 `mkdtempSync` + `DSH_HOME` 注入，不再依赖宿主 `HOME`。无需再搬。
+
+## 新暴露：`snapshots and artifacts` 的 web keyless smoke 断言（握手修复后 fail-fast 顺序变了才露出来）
+
+把 sdk 握手超时修好后，PR #169 的 `snapshots and artifacts` job 继续往下跑，`web browser snapshot` gate 第一次跑到底，露出一条**此前被 fail-fast 掩盖**的失败：
+
+```
+apps/web/tests/smoke-real.e2e.ts:359
+AssertionError: expected [ …(3) ] to have a length of 2 but got 3
+```
+
+- **归属：fork 自有 web 组成 + 一条未适配的上游测试，不是本 PR 引入的。** 证据：① `apps/web/tests/smoke-real.e2e.ts` 与 `upstream/master` 逐字相同，断言的是上游 `dsh web` 的 2 个插件批次；② PR #169 不碰任何 web/apps/client/bundle 文件；③ 批次数由该测试**自己 spawn 的那一个** `dsh web` 服务器的插件合并逻辑决定，与 `DSH_WEB_SNAPSHOT_WORKERS` 并发度正交；④ 本机（快、无争用）复跑同样失败，排除「CI 负载抖动」。
+- **机制**：`packages/bundle/web-app/cordis.patch.yml`（fork-diverged）往基座 web-app bundle 里挂了 da 的客户端 UI 插件（`ui-present-table`、`ui-present-decomposition`、`ui-suggest-followups`、`ui-semantic-layer` 等），这些多出来的 client 插件形成了第 3 个 `/plugins/??…` 批次；而上游那条 perf 提交 `perf(web): defer client combo assembly`（fork 所站的 5 个纯 perf 提交之一）改了 combo 切批方式。两者叠加 → 3 批次，上游测试仍期望 2 批次。
+- **为什么以前是绿的**：这条 gate 与 `test:snapshot` 同 job、`DSH_GATE_FAIL_FAST: '1'`。master 上 `test:snapshot` 先因握手超时挂掉、连带中止了 `web browser snapshot`，所以它从未在合并后跑到底 —— 这条失败一直在，只是没机会显形。master 最近三次 CI 该 job 全红即佐证。
+- **待决策（fork 自有，非上游债）**：正解是把 `smoke-real.e2e.ts` 的断言改成 fork 真实的批次组成（3 批，含 da UI 那一组），并按「改废弃行为要连同其测试一起改、并在 PR 里说明理由」的准则记账；这属于 fork 刻意偏离上游测试，需单独一处 web 组成的核对（哪些 da UI 插件应进基座 web-app、是否该并进既有 combo 而非单起一批）。**本轮未改**：改上游逐字测试的断言超出 sdk 握手任务「不动断言」的约束，且它有独立根因，值得单独一条。
