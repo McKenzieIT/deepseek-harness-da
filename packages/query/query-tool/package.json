@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-query-tool",
   "description": "Model-facing query_data tool: executes SQL via ctx.query and returns rows for the data agent's EXECUTION phase",
-  "version": "0.1.6-alpha.1",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

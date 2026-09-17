@@ -16,7 +16,6 @@ const root = resolve(import.meta.dirname, '..')
  */
 export const GROUPS_WITHOUT_SUBSYSTEM_PAGE: Readonly<Record<string, string>> = {
   acp: 'Protocol transport entry point; the server package README owns its interoperability contract.',
-  boot: 'Shared application-bin boot library rather than a runtime subsystem.',
   bundle: 'Composition patch carriers whose mounted packages own all runtime contracts.',
   eval: 'Pure TypeScript evaluation-harness library that registers nothing on a Cordis context and consumes injected collaborators; the package README owns the eval-loop and scoring contract.',
   hooks: 'External hook-protocol bridges over existing interception points, not a new Harness service.',

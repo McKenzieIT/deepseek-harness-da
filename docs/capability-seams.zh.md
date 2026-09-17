@@ -9,6 +9,17 @@
 
 ```mermaid
 flowchart LR
+  pkg_hmr["hmr"]
+  svc_hmr["ctx.hmr<br/>Serialized module and configuration reloads"]
+  pkg_app_boot["app-boot"]
+  pkg_plugin_manager["plugin-manager"]
+  svc_pluginManager["ctx.pluginManager<br/>Current-profile plugin and bundle management"]
+  pkg_ui_settings_plugin_inventory["ui-settings-plugin-inventory"]
+  svc_profileContext["ctx.profileContext<br/>Launcher-owned profile data"]
+  pkg_client_connection["client-connection"]
+  svc_connection["ctx.connection<br/>Authenticated browser transport"]
+  pkg_api_gateway["api-gateway"]
+  pkg_host_frontend_static["host-frontend-static"]
   pkg_mcp_resources["mcp-resources"]
   svc_mcpResources["ctx.mcpResources<br/>Scoped MCP resource access"]
   pkg_mcp_client["mcp-client"]
@@ -21,6 +32,9 @@ flowchart LR
   svc_computerUse["ctx.computerUse<br/>Computer-use provider registration"]
   pkg_experimental_computer_use_cua_driver_mcp["experimental-computer-use-cua-driver-mcp"]
   pkg_experimental_computer_use_cua_driver_native["experimental-computer-use-cua-driver-native"]
+  pkg_office_to_pdf["office-to-pdf"]
+  svc_officeToPdf["ctx.officeToPdf<br/>Office to PDF conversion"]
+  pkg_client_ui_sidebar_documentpreview["client-ui-sidebar-documentpreview"]
   pkg_attachment["attachment"]
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
@@ -60,6 +74,8 @@ flowchart LR
   svc_settingsController["ctx.settingsController<br/>Host settings-surface Remote controller"]
   pkg_api_workspace_files["api-workspace-files"]
   svc_workspaceFiles["ctx.workspaceFiles<br/>Host workspace file Remote service"]
+  pkg_workspace_changes["workspace-changes"]
+  svc_workspaceChanges["ctx.workspaceChanges<br/>Host per-turn changed-file summaries"]
   pkg_api_terminal_controller["api-terminal-controller"]
   svc_terminalController["ctx.terminalController<br/>Session interactive terminal Remote controller"]
   pkg_api_workspace_controller["api-workspace-controller"]
@@ -70,7 +86,6 @@ flowchart LR
   pkg_typert_registry["typert-registry"]
   svc_typert["ctx.typert<br/>Runtime type registry"]
   pkg_typert_loader["typert-loader"]
-  pkg_api_gateway["api-gateway"]
   svc_typertGateway["ctx.typertGateway<br/>Typert Host invocation gateway"]
   svc_sessionPersistence["ctx.sessionPersistence<br/>Durable session persistence seam"]
   pkg_session_persistence_jsonl["session-persistence-jsonl"]
@@ -122,22 +137,6 @@ flowchart LR
   pkg_tool_cordis["tool-cordis"]
   pkg_tool_skill["tool-skill"]
   pkg_tool_todo["tool-todo"]
-  pkg_audit["audit"]
-  svc_audit["ctx.audit<br/>Append-only audit + tier-2-write store"]
-  pkg_embedder["embedder"]
-  svc_embedder["ctx.embedder<br/>Embedding + rerank seam"]
-  pkg_embedder_fakehash["embedder-fakehash"]
-  pkg_embedder_http["embedder-http"]
-  pkg_retrieval_inproc["retrieval-inproc"]
-  pkg_identity["identity"]
-  svc_identity["ctx.identity<br/>Caller identity seam"]
-  pkg_credentials_keychain["credentials-keychain"]
-  pkg_credentials_keychain_host["credentials-keychain-host"]
-  pkg_nl2sql_engine["nl2sql-engine"]
-  svc_nl2sql["ctx.nl2sql<br/>NL→SQL engine"]
-  pkg_tool_search_data_sources["tool-search-data-sources"]
-  pkg_semantic_layer["semantic-layer"]
-  svc_schema["ctx.schema<br/>Semantic layer: discover/describe/sample"]
   pkg_user_questions["user-questions"]
   svc_userQuestions["ctx.userQuestions<br/>Human question/answer seam"]
   pkg_plan_mode["plan-mode"]
@@ -155,6 +154,7 @@ flowchart LR
   svc_skills["ctx.skills<br/>Skill provider registry"]
   pkg_skill_badge["skill-badge"]
   pkg_skill_filesystem["skill-filesystem"]
+  pkg_skill_office["skill-office"]
   svc_agents["ctx.agents<br/>Agent service"]
   pkg_acp["acp"]
   pkg_agent_default_model["agent-default-model"]
@@ -241,7 +241,6 @@ flowchart LR
   pkg_host_directory_picker_browse["host-directory-picker-browse"]
   pkg_host_webserver["host-webserver"]
   svc_webServer["ctx.webServer<br/>HTTP route registration"]
-  pkg_client_connection["client-connection"]
   pkg_client_modules["client-modules"]
   pkg_client_hmr["client-hmr"]
   svc_clientModules["ctx.clientModules<br/>Client plugin graph host"]
@@ -257,29 +256,6 @@ flowchart LR
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
   svc_cordisInspect["ctx.cordisInspect<br/>Dynamic Cordis inspect registry"]
-  pkg_scope_registry["scope-registry"]
-  svc_scopes["ctx.scopes<br/>Multi-tenant scope registry"]
-  pkg_evidence_query["evidence-query"]
-  pkg_tool_scope_routing["tool-scope-routing"]
-  pkg_query["query"]
-  svc_query["ctx.query<br/>NL→SQL query engine"]
-  pkg_query_tool["query-tool"]
-  pkg_tool_trigger_eval["tool-trigger-eval"]
-  pkg_result_cache["result-cache"]
-  svc_resultCache["ctx.resultCache<br/>Tool result cache seam"]
-  pkg_result_cache_memory["result-cache-memory"]
-  pkg_tool_compute["tool-compute"]
-  svc_resultGateway["ctx.resultGateway<br/>Host Remote gateway for cached results"]
-  pkg_phase_gate["phase-gate"]
-  svc_criticCtx["ctx.criticCtx<br/>Per-agent critic guard context"]
-  pkg_tool_critique_sql["tool-critique-sql"]
-  pkg_tool_evaluate_sql_quality["tool-evaluate-sql-quality"]
-  svc_evidenceQuery["ctx.evidenceQuery<br/>Eval result evidence store"]
-  pkg_tool_reachability_delta["tool-reachability-delta"]
-  pkg_management_session["management-session"]
-  svc_managementSession["ctx.managementSession<br/>Management session service"]
-  pkg_patrol_mode["patrol-mode"]
-  svc_patrol["ctx.patrol<br/>Patrol mode service"]
   pkg_agent --> svc_agents
   pkg_agent_default_model --> svc_agentDefaultModel
   pkg_agent_loop --> svc_agentLoop
@@ -294,13 +270,14 @@ flowchart LR
   pkg_api_workspace_controller --> svc_directoryPickerController
   pkg_api_workspace_controller --> svc_workspaceController
   pkg_api_workspace_files --> svc_workspaceFiles
+  pkg_app_boot --> svc_profileContext
   pkg_attachment --> svc_attachments
   pkg_attachment_local --> svc_attachments
-  pkg_audit --> svc_audit
   pkg_authorization --> svc_authorization
   pkg_bash_local --> svc_shell
   pkg_bash_sandbox --> svc_shell
   pkg_browser_use --> svc_browserUse
+  pkg_client_connection --> svc_connection
   pkg_client_file_upload --> svc_fileUploads
   pkg_client_modules --> svc_clientModules
   pkg_command_feedback --> svc_sessionFeedback
@@ -314,10 +291,6 @@ flowchart LR
   pkg_credentials --> svc_credentials
   pkg_credentials_local --> svc_credentials
   pkg_deepseek_llm_api_extensions --> svc_deepseekLlmApiExtensions
-  pkg_embedder --> svc_embedder
-  pkg_embedder_fakehash --> svc_embedder
-  pkg_embedder_http --> svc_embedder
-  pkg_evidence_query --> svc_evidenceQuery
   pkg_experimental_agent_team --> svc_agentTeams
   pkg_experimental_browser_use_chrome_devtools_mcp --> svc_browserUse
   pkg_experimental_browser_use_playwright_mcp --> svc_browserUse
@@ -332,11 +305,11 @@ flowchart LR
   pkg_fs_sandbox --> svc_fs
   pkg_fs_ssh --> svc_fs
   pkg_goal --> svc_goals
+  pkg_hmr --> svc_hmr
   pkg_host_directory_picker --> svc_directoryPicker
   pkg_host_directory_picker_browse --> svc_directoryPicker
   pkg_host_directory_picker_native --> svc_directoryPicker
   pkg_host_webserver --> svc_webServer
-  pkg_identity --> svc_identity
   pkg_inspector --> svc_inspector
   pkg_invariants --> svc_invariants
   pkg_jobs --> svc_jobs
@@ -347,29 +320,21 @@ flowchart LR
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
-  pkg_management_session --> svc_managementSession
   pkg_mcp_client --> svc_mcpResources
   pkg_mcp_resources --> svc_mcpResources
   pkg_message_feedback --> svc_messageFeedback
-  pkg_nl2sql_engine --> svc_nl2sql
-  pkg_patrol_mode --> svc_patrol
+  pkg_office_to_pdf --> svc_officeToPdf
   pkg_permission_presets --> svc_permissionPresets
-  pkg_phase_gate --> svc_criticCtx
   pkg_plan_mode --> svc_planMode
+  pkg_plugin_manager --> svc_pluginManager
   pkg_plugin_package_inventory_deepseek --> svc_deepseekLlmApiExtensions
   pkg_ptc_runtime --> svc_ptcRuntime
   pkg_ptc_runtime_node --> svc_ptcRuntime
   pkg_pwsh_local --> svc_shell
-  pkg_query --> svc_query
-  pkg_result_cache --> svc_resultCache
-  pkg_result_cache --> svc_resultGateway
-  pkg_result_cache_memory --> svc_resultCache
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
   pkg_sandbox_ssh --> svc_sandbox
-  pkg_scope_registry --> svc_scopes
-  pkg_semantic_layer --> svc_schema
   pkg_session --> svc_sessions
   pkg_session_log_deepseek --> svc_deepseekLlmApiExtensions
   pkg_session_persistence --> svc_sessionPersistence
@@ -391,6 +356,7 @@ flowchart LR
   pkg_skill --> svc_skills
   pkg_skill_badge --> svc_skills
   pkg_skill_filesystem --> svc_skills
+  pkg_skill_office --> svc_skills
   pkg_spill --> svc_spillStore
   pkg_spill_local --> svc_spillStore
   pkg_ssh --> svc_ssh
@@ -426,6 +392,7 @@ flowchart LR
   pkg_workflow --> svc_workflowEngine
   pkg_workflow_ptc --> svc_workflowEngine
   pkg_workspace --> svc_workspaceRegistry
+  pkg_workspace_changes --> svc_workspaceChanges
   svc_agentDefaultModel --> pkg_api_session_controller
   svc_agentDefaultModel --> pkg_headless
   svc_agentLoop --> pkg_base
@@ -450,23 +417,19 @@ flowchart LR
   svc_compaction --> pkg_compaction_basic
   svc_computerUse --> pkg_experimental_computer_use_cua_driver_mcp
   svc_computerUse --> pkg_experimental_computer_use_cua_driver_native
+  svc_connection --> pkg_api_gateway
+  svc_connection --> pkg_host_frontend_static
   svc_cordisInspect --> pkg_tool_cordis
   svc_credentials --> pkg_api_settings_controller
   svc_credentials --> pkg_llm_deepseek
   svc_credentials --> pkg_llm_pi_ai
-  svc_criticCtx --> pkg_tool_critique_sql
-  svc_criticCtx --> pkg_tool_evaluate_sql_quality
   svc_deepseekLlmApiExtensions --> pkg_llm_deepseek
   svc_directoryPicker --> pkg_api_workspace_controller
   svc_dynamicCordisRunner --> pkg_tool_cordis
-  svc_embedder --> pkg_retrieval_inproc
-  svc_evidenceQuery --> pkg_tool_reachability_delta
   svc_fileReferences --> pkg_api_session_controller
   svc_fileUploads --> pkg_api_session_controller
   svc_fs --> pkg_tool_fs
-  svc_identity --> pkg_audit
-  svc_identity --> pkg_credentials_keychain
-  svc_identity --> pkg_credentials_keychain_host
+  svc_hmr --> pkg_app_boot
   svc_invariants --> pkg_agent
   svc_invariants --> pkg_agent_loop
   svc_invariants --> pkg_scope
@@ -478,27 +441,18 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
-  svc_managementSession --> pkg_patrol_mode
-  svc_managementSession --> pkg_tool_scope_routing
   svc_mcpResources --> pkg_mcp_resources
-  svc_nl2sql --> pkg_tool_search_data_sources
-  svc_patrol --> pkg_tool_trigger_eval
+  svc_officeToPdf --> pkg_client_ui_sidebar_documentpreview
+  svc_pluginManager --> pkg_plugin_manager
+  svc_pluginManager --> pkg_ui_settings_plugin_inventory
+  svc_profileContext --> pkg_plugin_manager
   svc_ptcRuntime --> pkg_tools
   svc_ptcRuntime --> pkg_workflow_ptc
-  svc_query --> pkg_nl2sql_engine
-  svc_query --> pkg_query_tool
-  svc_query --> pkg_tool_trigger_eval
-  svc_resultCache --> pkg_tool_compute
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
   svc_sandboxPolicy --> pkg_fs_sandbox
   svc_sandboxPolicy --> pkg_terminal_bash
-  svc_schema --> pkg_nl2sql_engine
-  svc_schema --> pkg_tool_search_data_sources
-  svc_scopes --> pkg_evidence_query
-  svc_scopes --> pkg_semantic_layer
-  svc_scopes --> pkg_tool_scope_routing
   svc_sessionPersistence --> pkg_agent_loop
   svc_sessionPersistence --> pkg_hooks_claude_code
   svc_sessionPersistence --> pkg_hooks_codex
@@ -585,9 +539,14 @@ flowchart LR
 
 | ctx 键 | 角色 | 所属包 | 实现 | 直接消费方 | 配套插件 | 说明 |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.hmr` | `core` | [`hmr`](../packages/boot/hmr) | - | [`app-boot`](../packages/boot/app-boot) | - | 负责模块和精确配置监听；应用修改共用其队列，自动重载等待应用文件锁。 |
+| `ctx.pluginManager` | `core` | [`plugin-manager`](../packages/boot/plugin-manager) | - | [`plugin-manager`](../packages/boot/plugin-manager), `ui-settings-plugin-inventory` | - | 与 CLI 共享 profile 包操作，并向 Web 和 Agent 调用方分别报告持久状态与运行状态。 |
+| `ctx.profileContext` | `core` | [`app-boot`](../packages/boot/app-boot) | - | [`plugin-manager`](../packages/boot/plugin-manager) | - | dsh launcher 提供纯数据形式的 profile 位置与组合输入；重载调度由 dsh-hmr 负责。 |
+| `ctx.connection` | `core` | [`client-connection`](../packages/client/connection) | - | [`api-gateway`](../packages/api/gateway), [`host-frontend-static`](../packages/host/frontend-static) | - | 负责浏览器认证与共享 HTTP 请求分发；API 适配器注册端点和流。 |
 | `ctx.mcpResources` | `seam` | [`mcp-resources`](../packages/mcp/mcp-resources) | [`mcp-client`](../packages/mcp/mcp-client) | [`mcp-resources`](../packages/mcp/mcp-resources) | - | 连接所有者提供的操作在调用 agent 的作用域内服务于共享资源工具。 |
 | `ctx.browserUse` | `seam` | [`browser-use`](../packages/browser-use/browser-use) | [`experimental-browser-use-playwright-mcp`](../packages/experimental/browser-use-playwright-mcp), [`experimental-browser-use-chrome-devtools-mcp`](../packages/experimental/browser-use-chrome-devtools-mcp), [`experimental-browser-use-stagehand-native`](../packages/experimental/browser-use-stagehand-native) | [`experimental-browser-use-playwright-mcp`](../packages/experimental/browser-use-playwright-mcp), [`experimental-browser-use-chrome-devtools-mcp`](../packages/experimental/browser-use-chrome-devtools-mcp), [`experimental-browser-use-stagehand-native`](../packages/experimental/browser-use-stagehand-native) | - | 每个服务实例注册一个提供方拥有的名称。提供方按实时 Session 拥有自己的工具与浏览器资源；共享服务不提供浏览器操作 API。 |
 | `ctx.computerUse` | `seam` | [`computer-use`](../packages/computer-use/computer-use) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | - | 每个服务实例只注册一个提供方自定的名称。各提供方也拥有自己的模型工具；服务不提供通用操作 API、运行时选择或 Session 流程锁。 |
+| `ctx.officeToPdf` | `core` | [`office-to-pdf`](../packages/document/office-to-pdf) | - | [`client-ui-sidebar-documentpreview`](../packages/client/ui-sidebar-documentpreview) | - | 已授权的 Office 字节在宿主上使用已声明的原生目标引擎转换；未声明原生目标时使用 Node WASM。 |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | 宿主会在会话事件之前提交已接受的图片；提供方适配器将已授权的持久引用解析为提供方原生内容。 |
 | `ctx.fileUploads` | `core` | [`client-file-upload`](../packages/client/file-upload) | - | [`api-session-controller`](../packages/api/session-controller) | - | 负责流式接收、持久存储和暂存回执生命周期；Session Controller 将回执绑定到已接受的提交。 |
 | `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic) | - | 适配器注册提供方实现；agent loop（智能体循环）与压缩功能调用提供方无关的流服务。 |
@@ -601,6 +560,7 @@ flowchart LR
 | `ctx.credentialsController` | `core` | [`api-settings-controller`](../packages/api/settings-controller) | - | - | - | 把凭据引用 seam 投影到生成的 Remote namespace：批量扇出、视图投影与拒绝映射都在这里，而不在 seam Definition 上。 |
 | `ctx.settingsController` | `core` | [`api-settings-controller`](../packages/api/settings-controller) | - | - | - | 把用户设置 seam 投影到生成的 Remote namespace：读取一律脱敏，所有拒绝在这里分类，而不在 seam Definition 上。 |
 | `ctx.workspaceFiles` | `core` | [`api-workspace-files`](../packages/api/workspace-files) | - | - | - | 为会话工作区根内的文件提供 stat、分页文本、字节窗口、目录列举与变更流，经 lstat、包含关系与 stat 重检限定。 |
+| `ctx.workspaceChanges` | `core` | [`workspace-changes`](../packages/deliverables/workspace-changes) | - | - | - | Serves the summary each workspace/changes event announced and each listed file's turn-start and turn-end comparison, by Session and event sequence, until that Session is disposed; the log carries only the turn. |
 | `ctx.terminalController` | `core` | [`api-terminal-controller`](../packages/api/terminal-controller) | - | - | - | 通过子进程提供方与类型化 Remote 传输管理用户终端进程、解析默认 shell，并恢复有界终端屏幕。 |
 | `ctx.workspaceController` | `core` | [`api-workspace-controller`](../packages/api/workspace-controller) | - | - | - | 通过生成的 Remote namespace 负责 Workspace 命令和可在重连后收敛的 Workspace 状态投递。 |
 | `ctx.directoryPickerController` | `core` | [`api-workspace-controller`](../packages/api/workspace-controller) | - | - | - | 把选目录 seam 送上线：能力门禁、取消传播，以及浏览器目录流程用于分支判断的 seam 错误码。 |
@@ -624,18 +584,13 @@ flowchart LR
 | `ctx.sessionTitle` | `seam` | [`session-title`](../packages/session/session-title) | [`session-title-first-prompt-llm`](../packages/session/session-title-first-prompt-llm), [`session-title-all-prompts-llm`](../packages/session/session-title-all-prompts-llm) | - | - | 负责确定性回退、最新标题折叠区，以及唯一的可选异步提供方注册。 |
 | `ctx.systemPrompt` | `core` | [`system-prompt`](../packages/core/system-prompt) | - | [`agent-loop`](../packages/core/agent-loop), [`tools`](../packages/core/tools), [`tool-fs`](../packages/fs/tool-fs), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-web`](../packages/web/tool-web) | - | 为每个步骤收集提示词各部分和面向模型的工具 schema。 |
 | `ctx.tools` | `core` | [`tools`](../packages/core/tools) | - | [`agent-loop`](../packages/core/agent-loop), [`tool-ask-user`](../packages/interaction/tool-ask-user), [`tool-bash`](../packages/shell/tool-bash), [`tool-cordis`](../packages/extensions/tool-cordis), [`tool-fs`](../packages/fs/tool-fs), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-skill`](../packages/skill/tool-skill), [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-todo`](../packages/todo/tool-todo), [`tool-web`](../packages/web/tool-web) | - | 注册能力，负责 PTC mode 传输，并让调用依次经过策略前处理、单调守卫、环绕分派、策略后处理和最终结果观测。 |
-| `ctx.audit` | `core` | [`audit`](../packages/data/audit) | - | - | - | Records tool calls, session events, and guard decisions into an immutable SQLite store for compliance; the service observes ctx.on hooks and is not called by other services. |
-| `ctx.embedder` | `seam` | [`embedder`](../packages/embedder/embedder) | [`embedder-fakehash`](../packages/embedder/embedder-fakehash), [`embedder-http`](../packages/embedder/embedder-http) | [`retrieval-inproc`](../packages/retrieval/retrieval-inproc) | - | The seam produces retrieval-similarity vectors and rerank scores; providers back the async retrieve path, with InferenceError degrading to BM25-only. |
-| `ctx.identity` | `seam` | [`identity`](../packages/identity/identity) | [`identity`](../packages/identity/identity) | [`credentials-keychain`](../packages/credentials/credentials-keychain), [`credentials-keychain-host`](../packages/credentials/credentials-keychain-host), [`audit`](../packages/data/audit) | - | Resolves the caller a request acts for (userId/scopeId); model-hidden metadata for auth, audit, and data isolation. |
-| `ctx.nl2sql` | `core` | [`nl2sql-engine`](../packages/data/nl2sql-engine) | - | [`tool-search-data-sources`](../packages/data/tool-search-data-sources) | - | Builds the NL→SQL prompt, calls the LLM, and runs the critic gate; the search tool consumes the engine conventions. |
-| `ctx.schema` | `seam` | [`semantic-layer`](../packages/data/semantic-layer) | [`semantic-layer`](../packages/data/semantic-layer) | [`nl2sql-engine`](../packages/data/nl2sql-engine), [`tool-search-data-sources`](../packages/data/tool-search-data-sources) | - | The data-source/table substrate that feeds the NL→SQL prompt as context; discover/describe/sample over the semantic layer. |
 | `ctx.userQuestions` | `seam` | [`user-questions`](../packages/interaction/user-questions) | - | [`tool-ask-user`](../packages/interaction/tool-ask-user) | - | UI 前端提供当前生效的人工回答提供方；tool-ask-user 在提供方无关的 ask() promise 上暂停工具调用。 |
 | `ctx.planMode` | `core` | [`plan-mode`](../packages/plan/plan-mode) | - | - | - | 折叠已记录的计划／模式状态，在轮次边界刷新用户选择，渲染由部署方拥有的指导信息，注册 /plan，并在状态转换期间保持计划退出 schema 稳定。 |
 | `ctx.agentPresets` | `core` | [`agent-presets`](../packages/preset/agent-presets) | - | - | - | 在受信任根目录与用户创作根目录上发现 preset 目录，并在创建期把一份 preset cordis.yml 挂载到 agent 作用域之下，拒绝始终未激活或向根服务 realm 发布服务的行。 |
 | `ctx.commands` | `core` | [`commands`](../packages/interaction/commands) | - | - | - | 插件注册直接面向人的命令，而不会把调用发送给模型。 |
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`api-session-controller`](../packages/api/session-controller), [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title) | - | 各领域注册由状态驱动的折叠单元；主动驱动过程维护每个会话的水位状态，Session controller 提供 baseline 并推送发生变化的值。 |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`api-session-controller`](../packages/api/session-controller), [`session-query`](../packages/session-query/session-query), [`session-reference`](../packages/context/session-reference), [`subagent`](../packages/subagent/subagent) | - | 按会话持久保存投影单元状态的检查点（节流检查点，以及轮次／结束／分离时的必选检查点），并提供冷读取阶梯：缓存行加持久化尾部回放，因此列表读取永远不需要加载完整日志。 |
-| `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | 合并提供方的 skill（技能）目录；tool-skill 渲染会话前缀目录，并加载完整的 skill 正文。 |
+| `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem), [`skill-office`](../packages/skill/skill-office) | [`tool-skill`](../packages/skill/tool-skill) | - | 合并提供方的 skill（技能）目录；tool-skill 渲染会话前缀目录，并加载完整的 skill 正文。 |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) | - | 拥有实时 Agent 句柄、创建／恢复工厂 seam，以及进程本地的发起方传播。 |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`api-session-controller`](../packages/api/session-controller), [`headless`](../packages/bundle/headless) | - | 通过 settings 分层默认 `ModelSelection`，让直接入口与 Host 支撑的 Agent 入口共享同一个状态所有者。 |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`base`](../packages/bundle/base), [`sdk-minimal`](../packages/bundle/sdk-minimal) | - | 唯一的具体循环插件；扩展包依赖 dsh-agent 的事件和服务，而不依赖此包。 |
@@ -666,13 +621,5 @@ flowchart LR
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | [`lsp-stdio`](../packages/lsp/lsp-stdio) | [`tool-lsp`](../packages/lsp/tool-lsp) | - | 提供方注册与选择，加上恰好四种操作的标准化查询执行；该 seam 不提供协议逃生口，后端必须转换为标准化请求和结果。 |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 拥有内存定义注册表、Host 半的 vm 沙箱和 request-run 往返流程；浏览器页面通过其 Remote 命名空间在线访问同一服务。 |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 注册 Host inspect 提供方、镜像 Client 提供方 manifest，并通过动态 Cordis 传输路由 Client 查询。 |
-| `ctx.scopes` | `seam` | [`scope-registry`](../packages/data/scope-registry) | - | [`evidence-query`](../packages/data/evidence-query), [`semantic-layer`](../packages/data/semantic-layer), [`tool-scope-routing`](../packages/data/tool-scope-routing) | - | Resolves scopeId→semantic-root mappings for per-request tenant routing; plugins register and remove scopes, and the active-scope event drives data-isolation boundaries. |
-| `ctx.query` | `core` | [`query`](../packages/query/query) | - | [`nl2sql-engine`](../packages/data/nl2sql-engine), [`query-tool`](../packages/query/query-tool), [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | - | Owns the per-scope QueryEngine: convention resolution, execution, and outcome reporting that the NL→SQL engine and the query tool drive. |
-| `ctx.resultCache` | `seam` | [`result-cache`](../packages/data/result-cache) | [`result-cache-memory`](../packages/data/result-cache-memory) | [`tool-compute`](../packages/data/tool-compute) | - | Abstract get/put/has cache for idempotent tool results; a memory backend registers as ctx.resultCache so deterministic tools short-circuit repeat calls. |
-| `ctx.resultGateway` | `core` | [`result-cache`](../packages/data/result-cache) | - | - | - | Owns the `result/get` Remote endpoint over the optional `ctx.resultCache` store seam, so the Client's scope-addressed `ctx.results` resolves one result_id per RPC. Reads the store through `ctx.get('resultCache')`, never `ctx.resultCache`, so the seam stays an optional injection: a missing id answers `result-not-found` (a business miss), a composition without a result-cache provider answers `internal`. |
-| `ctx.criticCtx` | `core` | [`phase-gate`](../packages/data/phase-gate) | - | [`tool-critique-sql`](../packages/data/tool-critique-sql), [`tool-evaluate-sql-quality`](../packages/data/tool-evaluate-sql-quality) | - | The phase-gate exposes candidate-table/event-param/partition-col guard context as an isolated realm service so critique tools probe the same agent phase without leaking to root. |
-| `ctx.evidenceQuery` | `core` | [`evidence-query`](../packages/data/evidence-query) | - | [`tool-reachability-delta`](../packages/data/tool-reachability-delta) | - | Owns the ctx.evidenceQuery seam: loads and refreshes per-scope eval-result records and answers reachability/coverage queries against them. |
-| `ctx.managementSession` | `core` | [`management-session`](../packages/data/management-session) | - | [`patrol-mode`](../packages/data/patrol-mode), [`tool-scope-routing`](../packages/data/tool-scope-routing) | - | Owns the management session used by patrol and scope-routing tools to act on the managed tenant session. |
-| `ctx.patrol` | `core` | [`patrol-mode`](../packages/data/patrol-mode) | - | [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | - | Owns the patrol state machine and drives trigger-eval runs on a schedule; the trigger-eval tool consumes the live patrol context. |
 
 维护模式：混合模式。服务从 Cordis 声明中发现；接口、实现和消费方角色在 `scripts/gen-doc-graphs.ts` 中分类，并设有完整性守卫。

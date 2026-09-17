@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-embedder-http",
   "description": "External OpenAI-compatible HTTP embedder provider (InfinityEmbedder) + InfinityReranker peer for the data agent's retrieval (P5b heavy tier; user self-deployed, T2: AGA-embeddings NO)",
-  "version": "0.1.6-alpha.1",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },
