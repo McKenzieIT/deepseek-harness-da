@@ -38,11 +38,21 @@ Every item below is a place where upstream's change met da-owned content. Sectio
 18. **`scripts/gate-coverage.manifest.json`** did not know upstream's two new generators (`gen-workflow-guest`, `gen-dependency-catalog`) → da's gate-coverage gate failed. Exempted with their verify counterparts as cover.
 19. **da docs pointed at moved siblings.** Rebased bilingually and re-recorded: the `code-runtime/` group README (now a two-package da family: data provider + released protocol), `code-runtime-data-python`, `code-runtime-python-protocol` (its "experimental provider consumes this package" claim is no longer true — upstream's provider carries its own protocol module), `tool-compute` (`ctx.ptcRuntime`), and the protocol-ownership Agent Note.
 
+### From the first CI run (fixed in the same branch)
+
+19a. **Upstream's issue automation asserted away the fork's owner gates.** `.github/issue-management/policy.test.mjs` gained two assertions: the `issue-policy.yml` policy job must carry no condition, and the `issue-lifecycle.yml` job's condition must be a folded scalar with upstream's two clauses. The fork gates both workflows on `github.repository_owner == 'deepseek-ai'` (no DSH issue App outside upstream). Resolution: the policy assertion now expects exactly that one condition, and the lifecycle job uses upstream's folded form with the owner gate first — **adopting upstream's review clause** and dropping the fork's extra `action == 'submitted'` guard.
+19b. **Doc-sync-only catalogs were stale** (never covered by `test:docs`): regenerated `module-graph` and `persistence-catalog` (with `persistence-schema.json`).
+19c. **`verify-package-paths`** flagged one da Agent Note citing the deleted `connection/src/client/fixture.ts`; it names the connection package's fixture transport instead.
+19d. **`verify-export-jsdoc`**: `DataPythonCodeRuntime.run` took `request` while the declaring `PtcRuntime.run(spec)` documents `spec`, so the inherited doc stopped matching. The override now takes `spec`.
+19e. **`gen-doc-graphs` mixed two designs.** Upstream generates the English graph pages and hand-maintains the Chinese ones; the fork's generator spliced a localized region into `BEGIN/END` markers that upstream's pages no longer carry. Resolution (your call): **adopt upstream's generator**, re-insert only da's 13 `SERVICE_ROLES` rows (its completeness guard needs them), regenerate the five English pages, and bring the Chinese pages along — the da rows' Chinese text came from the fork's own previous pages, and the event matrix's cells are language-neutral. `verify-doc-graphs` green, 1016 pairs consistent.
+19f. **`duplication`**: upstream retired the ratio threshold and now fails on any clone. Fencing the by-design twin — da's released protocol package — with `jscpd:ignore-start/end` (on the da side only) dropped the tree from 0.49% to **0.32%**, under the fork's existing 0.338% threshold, so **no threshold change was needed** and the gate is green.
+
 ## 4. Pre-existing fork debt this merge exposed
 
 20. **`rescope-vendor` was already red on `origin/master`.** Running it rewrote 5 da files wrongly: `'cordis/request-run'`-style **event ids** in wayfinder records, the `GROUP_ORDER` **directory** name in `scripts/gen-architecture-graph.ts`, and a bare-token example in `scripts/rescope-fork.ts`. Fixed by registering those files in the codemod's own skip mechanism (upstream already skips its equivalents) plus a spec case; the corrupted files were restored.
 21. **Two brand-new upstream prose gates** (`verify-repository-references`, `verify-concrete-terms` — neither script exists on `origin/master`) reported 1801 findings, **all in fork-authored text**. Resolution per your decision: da's records/data corpora are excluded (`wayfinder/`, the upstream-sync records, `docs/da-upstream-debt`, eval-case YAML where the term is a field name), and the 63 real wording violations were edited. Both gates are green.
 22. **Two dead disable rows removed from the data-agent patch** (`tool-str-replace-editor`, `identity`): no shipped composition mounts either row, at this base or at the merge base, so both were no-ops that produced boot warnings.
+22a. **Three gates stay red as fork content debt**, tracked in [UM18](../wayfinder/data-agent/tickets/phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md). The fork's CI on `master` failed in all five most recent runs, so these are the pre-merge baseline, not a regression: per-file coverage misses **167 da files**; `verify-config-catalog` needs a 901-line bilingual pass for da package `Config` blocks; `duplication` still carries **84 da clones** (green today only because the by-design twin is fenced).
 
 ## 5. Fork modifications to dsh that upstream's version replaced (report-only)
 
@@ -71,4 +81,8 @@ Every item below is a place where upstream's change met da-owned content. Sectio
 | `pnpm run verify-cordis-config` | green (189 files) |
 | `pnpm run constraints` | green after the version bump |
 | `gen-tool-catalog.spec`, `run-gates.spec`, `rescope-vendor.spec`, `patch-targets.spec` | green |
-| `pnpm run hygiene`, whole-suite `pnpm run test`, real CI | pending in this sync's remaining steps |
+| `pnpm run hygiene` (18 gates) | green |
+| Focused suites: `code-runtime`, `tool-compute`, `bundle/data-agent`, `api/remotes`, `ui-settings-models`, 5 gate specs | green (22 files, 555 tests) |
+| `pnpm run duplication`, `pnpm run test:issue-management`, `verify-doc-graphs`, `verify-export-jsdoc`, `verify-package-paths`, `verify-module-graph`, `verify-persistence-catalog` | green |
+| PR #168 CI | first run 20 pass / 5 fail → the merge-caused four fixed in `2fa038f6e6` and this commit; the rest is [UM18](../wayfinder/data-agent/tickets/phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md) |
+| Whole-suite `pnpm run test`, `test:snapshot`, real-API e2e, Windows lanes | CI owns them |
