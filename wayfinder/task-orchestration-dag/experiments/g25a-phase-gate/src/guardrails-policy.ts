@@ -384,9 +384,6 @@ export function apply(ctx: Context, config: Config): void {
   const policy = new GuardrailsPolicy(config)
   policy.register(ctx)
   new CriticCtxPolicyService(ctx, policy)
-  // Expose the instance so the controlled runner can snapshot per-Attempt
-  // evidence without reaching through the service's narrow read interface.
-  ;(ctx as unknown as { g25aPolicy?: GuardrailsPolicy }).g25aPolicy = policy
 }
 
 // ── harvest helpers, transcribed from phase-gate (pinned by tests) ────────────

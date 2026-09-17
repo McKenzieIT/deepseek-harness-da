@@ -1,10 +1,17 @@
 # G25a — Phase-gate incremental-value experiment
 
 **Type**: task
-**Status**: claimed — blocked on an oracle decision before Stage 0 can be built
-**Assignee**: Claude implementation session, claimed 2026-09-17
+**Status**: claimed — blocked on a locked Stage 1 smoke-selection contradiction
+**Assignee**: Codex implementation session, claimed 2026-09-17
+**Current standing**: the oracle amendments are approved and frozen. The generated arm presets now mount under `tsx/esm`; the Session observer, deterministic scorer, paired analyser, fault sidecar, and locked 252-Attempt schedule/parity gate are implemented with 50 passing Stage 0 tests. Stage 1 cannot start because the amended real-execution slice has L1=0, L2=10, L3=2, L4=0 while the still-locked smoke composition requires 2×L1, 1×L2, 1×L3, and 1×L4 plus one persistent-failure case. No smoke or decision Attempt has been spent.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
+
+## Continuation entry point
+
+Resolve the Stage 1 smoke-selection contradiction before implementing or running the real Attempt driver. The amended 12-case real-execution slice contains ten L2 cases and two L3 cases, so it cannot supply the still-locked 2×L1 + 1×L2 + 1×L3 + 1×L4 mix. The recommended amendment is 3×L2 + 2×L3 + one persistent-failure case, which exercises every complexity level the verified slice actually contains while preserving six cases and 18 smoke Attempts. Adding newly verified L1/L4 oracle cases is the alternative if the original mix must be retained.
+
+After that decision, finish the execution path in `src/controlled-runner.ts`, run Stage 1, freeze the run identity, and only then spend the 252 Stage 2 Attempts. The preset loader, Session observer, scorer, analyser, and fault sidecar are ready; the exact focused Stage 0 command passes 50 tests.
 
 ## Amended locked protocol (2026-09-17)
 
@@ -375,3 +382,11 @@ pnpm run doc-sync
 - 模型路由、缓存、关键路径调度或其他性能优化；
 - 使用 Goal/Todo/Plan-mode 代替固定 Task 工作集；
 - 根据 smoke 或中途结果调整判定门槛、案例集合或主指标。
+
+## Comments
+
+### 2026-09-17 — Codex Stage 0 checkpoint
+
+The prescribed preset-loader smoke first reproduced `cannot set property "g25aPolicy" without provide`: the policy plugin imported under `tsx/esm`, then failed during Cordis application because it wrote an undeclared context property. A failing subprocess regression now mounts both complete generated presets under the real loader path; removing that invalid write makes both mounts pass without changing arm semantics.
+
+Stage 0 now has 50 passing focused tests covering the existing policy/harvest parity plus preset loading, Session evidence and usage extraction, deterministic case grading, infrastructure-failure separation, `pass^3`, replicate-slot deltas, paired bootstrap, cost summaries, the 252-Attempt schedule, Task/tool parity gates, and transient/persistent fault injection. `node --import tsx/esm .../controlled-runner.ts --stage smoke` then fails before any external call with: `G25a Stage 1 requires 2×L1, 1×L2, 1×L3, and 1×L4 real cases; amended manifest has L1=0, L2=10, L3=2, L4=0`. This is a contradiction between two locked clauses, not an infrastructure failure or model result. Zero smoke and zero decision Attempts were consumed.

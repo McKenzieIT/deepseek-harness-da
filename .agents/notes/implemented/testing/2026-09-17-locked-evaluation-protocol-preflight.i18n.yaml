@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-09-17-locked-evaluation-protocol-preflight.md
+2026-09-17-locked-evaluation-protocol-preflight.md: d8d6bbaba2814bd8e3be66465f1c98b47cea554d
+2026-09-17-locked-evaluation-protocol-preflight.zh.md: ce2918e2d0078e8efc22da507618021303bda830

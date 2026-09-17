@@ -1,5 +1,7 @@
 # G25a — phase-gate incremental-value experiment
 
+English | [中文](README.zh.md)
+
 This directory holds the frozen protocol, the case manifest, the controlled runner, the scorer, the analyser, and the committable evidence for [G25a Phase-gate incremental-value experiment](../../tickets/G25a-phase-gate-incremental-value-experiment.md).
 
 The experiment answers one question: with a Task DAG already owning planning, cross-turn continuation, Attempts, Holds, budgets, replanning, and completion verification, does the full four-phase phase-gate still produce enough independent user benefit to cover its model cost, latency, runtime complexity, and maintenance cost?
