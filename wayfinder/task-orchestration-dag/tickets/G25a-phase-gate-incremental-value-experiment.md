@@ -3,13 +3,13 @@
 **Type**: task
 **Status**: claimed
 **Assignee**: Codex implementation session, claimed 2026-09-17
-**Current standing**: the real Attempt driver creates and drains a fresh Cordis root, Agent, Session, audit database, and sidecar per Attempt; records private Session/query evidence plus de-identified summaries; enforces the frozen provider, model, scope, retry, query, model-call, and wall-clock limits; and runs reference SQL before and after Stage 1. The user approved Amendment 4 on 2026-09-17: static preset parity remains exact, while dynamic state-machine catalogues may omit tools from phases a case never reaches but may not add tools outside the frozen catalogue. The final pre-freeze rerun `g25a-smoke-2026-09-17-b92082c9-c46b-4b7f-b275-733738643c9f` passed all Stage 1 gates with 18 Attempts and zero infrastructure failures on commit `09e155a07f`. Stage 2 has not started and no decision Attempt has been spent.
+**Current standing**: Stage 1 passed on the final pre-freeze code. Stage 2 run `g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514` froze identity `c1523bae0a10b9a4eb638c9a945b1596b45255242298f9afcaf0709ecf4931ce` at commit `d765318864`, completed all 252 Attempts, preserved matching start/end reference digests, and reported zero admission or infrastructure failures. Automated grading and Stage 4 raw-count slices are sealed in `results/decision-summary.json`. Fifty-two blinded review entries remain pending; no arm-to-entry mapping may be opened before a human records every verdict and reason. G25a remains claimed, and no final G25 recommendation has been issued.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
 
 ## Continuation entry point
 
-Commit the final passing Stage 1 evidence, then execute `controlled-runner.ts --stage decision`. The command must freeze the Stage 2 run identity before its first decision Attempt, execute the locked 252-Attempt schedule, retain any failed case block for a whole-block rerun, and emit the blinded human-review packet before arm identities are revealed. Do not change code, prompts, cases, thresholds, or scoring rules after the identity is written.
+Complete the blinded review in `eval-results/g25a/raw/g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/review/review-verdicts.json` using `review-packet.md`; do not open `reveal-map.json` until all 52 verdicts and reasons are recorded. Then apply the human verdicts, reveal arm identities, recompute the final analysis, generate `report.md`, and resolve this ticket only if the final evidence still satisfies every completion condition. Do not change code, prompts, cases, thresholds, or scoring rules for this run identity.
 
 ## Amended locked protocol (2026-09-17)
 
@@ -421,3 +421,9 @@ The complete rerun `g25a-smoke-2026-09-17-99ff461f-904e-47fb-8195-e192e9dca7f5` 
 ### 2026-09-17 — Final pre-freeze smoke
 
 After the decision controller and Stage 4 raw-count analysis were implemented, the required full Stage 1 rerun `g25a-smoke-2026-09-17-b92082c9-c46b-4b7f-b275-733738643c9f` passed all gates on commit `09e155a07f`: 18 Attempts, zero infrastructure failures, stable matching reference digests, readable outcomes for every completed query, model-visible frozen Task material, and valid path-sensitive tool parity. The prior `g25a-smoke-2026-09-17-5aa2a7fd-5b44-4ab8-9f75-310828e8c3d6` run is retained but invalid because the controller incorrectly required every real-case Attempt to have a successful query instead of requiring every successful query to have a readable outcome. The focused Stage 0 suite now has 73 passing tests. No decision Attempt has been spent.
+
+### 2026-09-17 — Stage 2 complete; blinded review pending
+
+Run `g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514` froze identity `c1523bae0a10b9a4eb638c9a945b1596b45255242298f9afcaf0709ecf4931ce` at commit `d765318864` before the first decision Attempt and completed the locked 252-Attempt schedule. All 12 reference SQL results matched expected values before and after the batch with unchanged digests; all 252 Attempts were graded; no infrastructure or admission failure occurred; and the state-machine/policy pairing set is complete. The ignored Evidence Cut contains every configuration, Session, environment receipt, observation, grader response, and Grade Record. The committable `results/decision-summary.json` contains no full query rows or final answers.
+
+The deterministic selection produced 52 blinded human-review entries covering every severe-answer candidate and every decision-arm disagreement. `review-packet.md` and the empty `review-verdicts.json` are ready under the run's ignored `review/` directory; `reveal-map.json` remains separate. Stage 3 cannot finish, the final report cannot be written, and the ticket cannot resolve until a human records all verdicts and reasons before opening the reveal map.

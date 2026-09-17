@@ -234,3 +234,11 @@ G25 保持未解决，按票面要求留给下一个决策 session。
 在 decision controller、evidence-grounded grader、blind review packet 和 Stage 4 raw-count analysis 完成后，完整 Stage 1 run `g25a-smoke-2026-09-17-b92082c9-c46b-4b7f-b275-733738643c9f` 在 commit `09e155a07f` 上通过全部 gate：18 个 Attempt，三组 infrastructure failure 均为 0，reference digest 前后稳定且匹配 expected value，每个 completed query 都有可读 outcome，每个首个模型请求都包含冻结 Task working set，并满足 path-sensitive tool parity。
 
 前一批 `g25a-smoke-2026-09-17-5aa2a7fd-5b44-4ab8-9f75-310828e8c3d6` 保留但无资格，因为 controller 把「每个成功查询都有可读 outcome」误实现为「每个真实案例 Attempt 必须有成功查询」。该缺陷经回归测试修复；最终 Stage 0 为 7 个 test file、73 个 test。当前可以在不再修改代码、prompt、case、threshold 或 scoring rule 的前提下冻结 Stage 2 run identity。
+
+## 九、Stage 2 完成，等待盲化人工复核
+
+Decision run `g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514` 在第一个 decision Attempt 前冻结 run identity `c1523bae0a10b9a4eb638c9a945b1596b45255242298f9afcaf0709ecf4931ce`，其 git commit 为 `d765318864`。该批次完成锁定的 252 个 Attempt，12 个真实案例的 reference SQL 在批次前后都匹配 expected value 且 digest 不变，252 个 Attempt 全部产生 Grade Record，infrastructure failure 和 admission failure 均为 0，两个决策组的 case/replicate 配对完整。
+
+可提交的 `experiments/g25a-phase-gate/results/decision-summary.json` 保存 run identity、去标识 Attempt records、provisional analysis 和 Stage 4 raw-count slices，不包含完整查询行或最终回答。原始 Evidence Cut 位于 `eval-results/g25a/raw/g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/`。
+
+冻结规则要求在揭示 arm 前人工复核每个 severe unsupported 候选和两个决策组评分不同的 case。当前共 52 个 blind entry；`review/review-packet.md` 提供不含 arm 的材料，`review/review-verdicts.json` 等待填写，`review/reveal-map.json` 必须在全部 verdict 与理由记录后才能打开。因此 Stage 3 与 Stage 4 的机器聚合仅为 provisional，尚不能生成最终 `report.md` 或 G25 推荐。
