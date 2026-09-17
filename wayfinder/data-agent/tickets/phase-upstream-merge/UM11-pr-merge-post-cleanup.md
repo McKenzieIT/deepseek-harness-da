@@ -235,5 +235,5 @@ Scope §5 的三条弃分支里 `fix/legacy-empty-callid` 本轮真删了，另�
 
 - **删 72 条已完全合入 `origin/master` 的分支**：逐条 `git branch -r --merged origin/master` 判定，且交叉核对 `gh pr list --state open` 确认无一条挂着 open PR（open 的只有 #167 与 #114，两者都未合入、都保留）。
 - **删 4 条陈旧未合入分支**：`upstream-merge-assets`（净内容为零）、`fix/cl23-toolcall-structured-decline`（残余为零，见 [CL-23](../../../semantic-layer/tickets/CL23-toolcall-detection-and-structured-decline.md) 文末）、`fix/legacy-empty-callid`（在持久化边界放宽上游校验，且三个改动文件全属上游）、`fix/cb1b-pwsh-pty-evaluation`（PR #42 已关，三份票先搬到 master，见 [UM18](UM18-post-0d1f50007f-residual-red-gates.md)）。
-- **保留 `fix/da-compliance-audit`**：12 个提交里 11 个 subject 在 master 上逐字存在，第 12 个（revert）的意图也已成立，唯一残余正是 master 后来主动删掉的 3916 个 metric YAML 与 terminology.yaml —— 建议删，但等用户拍定。
-- **新暴露的 10 条未合入 repo-infra 分支**（`fix/repo-infra-*-t11` 共 9 条 + `repo-infra-ui-token-assets`，2026-09-15/16，均无 PR）：**未动**。它们与已合入的 #143/#144/#145/#146 同名系列，需先判定是未落地的同批工作还是残留，再决定去向。
+- **删 `fix/da-compliance-audit`（用户 2026-09-17 拍定）**：12 个提交里 11 个 subject 在 master 上逐字存在，第 12 个（revert）的意图也已成立，唯一残余正是 master 后来主动删掉的 3916 个 metric YAML 与 terminology.yaml，外加误入库的 scope-registry 构建产物 —— 恢复其中任何一项都会推翻两次后来的主动决定。head `bdc9eeefab` 记在删除清单里可还原。
+- **新暴露的 10 条未合入 repo-infra 分支**（`fix/repo-infra-*-t11` 共 9 条 + `repo-infra-ui-token-assets`，2026-09-15/16，均无 PR）：**保留待下一 session 逐条读判**（用户 2026-09-17 裁定：先读再判，不一刀切删）。它们与已合入的 #143/#144/#145/#146 同名系列，需先比对与 master 的差异，判定是未落地的同批工作还是已被别的 PR 覆盖的残留。SHA 见删除清单的「Newly visible」节。
