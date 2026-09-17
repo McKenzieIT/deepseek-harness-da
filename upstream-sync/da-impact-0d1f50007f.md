@@ -46,6 +46,7 @@ Every item below is a place where upstream's change met da-owned content. Sectio
 19d. **`verify-export-jsdoc`**: `DataPythonCodeRuntime.run` took `request` while the declaring `PtcRuntime.run(spec)` documents `spec`, so the inherited doc stopped matching. The override now takes `spec`.
 19e. **`gen-doc-graphs` mixed two designs.** Upstream generates the English graph pages and hand-maintains the Chinese ones; the fork's generator spliced a localized region into `BEGIN/END` markers that upstream's pages no longer carry. Resolution (your call): **adopt upstream's generator**, re-insert only da's 13 `SERVICE_ROLES` rows (its completeness guard needs them), regenerate the five English pages, and bring the Chinese pages along — the da rows' Chinese text came from the fork's own previous pages, and the event matrix's cells are language-neutral. `verify-doc-graphs` green, 1016 pairs consistent.
 19f. **`duplication`**: upstream retired the ratio threshold and now fails on any clone. Fencing the by-design twin — da's released protocol package — with `jscpd:ignore-start/end` (on the da side only) dropped the tree from 0.49% to **0.32%**, under the fork's existing 0.338% threshold, so **no threshold change was needed** and the gate is green.
+19g. **`test:snapshot`**: upstream added `scopeId` to `ToolExecutionInput`, so the recorded `cordis-inspect-jsdoc` session no longer matched what the live inspect tool reports. `DSH_SNAPSHOT=refresh` replayed the scenario keylessly and rewrote exactly one recorded line; the whole corpus replays green (4 files). The same job also hit `initialize timed out after 10000ms waiting for dsh profile "sdk"` on a different scenario in each CI run while passing locally both alone and under the full suite — recorded in UM18 as CI-load sensitivity, not weakened or retried.
 
 ## 4. Pre-existing fork debt this merge exposed
 
@@ -84,5 +85,6 @@ Every item below is a place where upstream's change met da-owned content. Sectio
 | `pnpm run hygiene` (18 gates) | green |
 | Focused suites: `code-runtime`, `tool-compute`, `bundle/data-agent`, `api/remotes`, `ui-settings-models`, 5 gate specs | green (22 files, 555 tests) |
 | `pnpm run duplication`, `pnpm run test:issue-management`, `verify-doc-graphs`, `verify-export-jsdoc`, `verify-package-paths`, `verify-module-graph`, `verify-persistence-catalog` | green |
+| `pnpm run test:snapshot` (whole recorded corpus) | green (4 files, after the one-line fixture refresh) |
 | PR #168 CI | first run 20 pass / 5 fail → the merge-caused four fixed in `2fa038f6e6` and this commit; the rest is [UM18](../wayfinder/data-agent/tickets/phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md) |
-| Whole-suite `pnpm run test`, `test:snapshot`, real-API e2e, Windows lanes | CI owns them |
+| Whole-suite `pnpm run test`, real-API e2e, Windows lanes | CI owns them |
