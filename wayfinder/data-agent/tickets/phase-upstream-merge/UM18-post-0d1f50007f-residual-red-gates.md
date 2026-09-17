@@ -81,3 +81,16 @@ AssertionError: expected [ …(3) ] to have a length of 2 but got 3
 - **机制**：`packages/bundle/web-app/cordis.patch.yml`（fork-diverged）往基座 web-app bundle 里挂了 da 的客户端 UI 插件（`ui-present-table`、`ui-present-decomposition`、`ui-suggest-followups`、`ui-semantic-layer` 等），这些多出来的 client 插件形成了第 3 个 `/plugins/??…` 批次；而上游那条 perf 提交 `perf(web): defer client combo assembly`（fork 所站的 5 个纯 perf 提交之一）改了 combo 切批方式。两者叠加 → 3 批次，上游测试仍期望 2 批次。
 - **为什么以前是绿的**：这条 gate 与 `test:snapshot` 同 job、`DSH_GATE_FAIL_FAST: '1'`。master 上 `test:snapshot` 先因握手超时挂掉、连带中止了 `web browser snapshot`，所以它从未在合并后跑到底 —— 这条失败一直在，只是没机会显形。master 最近三次 CI 该 job 全红即佐证。
 - **待决策（fork 自有，非上游债）**：正解是把 `smoke-real.e2e.ts` 的断言改成 fork 真实的批次组成（3 批，含 da UI 那一组），并按「改废弃行为要连同其测试一起改、并在 PR 里说明理由」的准则记账；这属于 fork 刻意偏离上游测试，需单独一处 web 组成的核对（哪些 da UI 插件应进基座 web-app、是否该并进既有 combo 而非单起一批）。**本轮未改**：改上游逐字测试的断言超出 sdk 握手任务「不动断言」的约束，且它有独立根因，值得单独一条。
+
+## 新暴露：`CI master` 工作流的 real API preflight —— fork 缺 secret，与 CB-5 同族
+
+本票原先的残余红门清单是**按 PR 的 checks 盘的**，因此漏掉了只在 **master 推送**工作流（`CI master`）里跑的一条常红 job。2026-09-17 §2.4 收口时顺带发现：
+
+```
+##[error]DEEPSEEK_API_KEY_EXTERNAL is empty; the installed-wheel real API test cannot self-skip.
+```
+
+- **失败面**：`python runtime / macOS and Linux ARM64` 的 `node24-linux-arm64` / `node24-macos-arm64` / `node24-macos-x64` 三条腿，全部挂在同一步 `Preflight installed-wheel real API test (POSIX)`。
+- **根因**：该步显式写成「拿不到 key 就红」而非自跳过 —— `if [ -z "${DEEPSEEK_API_KEY:-}" ]; then echo "::error::…cannot self-skip."`。上游仓库有 `DEEPSEEK_API_KEY_EXTERNAL` 这个 secret，**本 fork 没有**（`DEEPSEEK_API_KEY:` 在日志里是空值）。
+- **不是本轮引入**：`acd73b0356`（本 session 开工前的 master 头部）、`4000b3ae1f`、`311cd170e4`、`27e60646e5` 四次 `CI master` 运行里，同样是这三条腿、同样是这一步失败，逐字一致。§2.4 的改动只有 `docs/config-catalog.*` 与本票，不可能影响 python wheel 的 ARM64 构建。
+- **归属待判，属 CB-5 的问题域**：这是「DA 的 CI 寄生在上游 workflow 上」的又一处具体表现 —— 上游按「自己有 secret」写的门，fork 拿不到 secret 就只能常红。三条诚实的出路：① 给 fork 配一个可用的 key 作为仓库 secret；② fork 侧改这一步为「secret 缺失则跳过」（属刻意偏离，需在 PR 里写明理由）；③ 明确记为「上游门在 fork 不可达」并接受常红。**不要**的做法：删掉这条 job、或把 real API 测试改成假测试。按 CB-5 的 Q1（DA 要不要建自己的 CI 腿）一并决定。
