@@ -39,8 +39,13 @@
 - 不修上游内容：上述三项的失败面全在 fork 自有文件内。
 - 不放宽门：不加 retry、不吞错、不把 da 包塞进豁免名单（用户已否决）。
 
-## 观察项：sdk 快照的 initialize 超时（CI 负载敏感，不是内容失配）
+## 观察项：sdk 快照的 initialize 超时（上游 profile 冷启动变慢，CI 硬件下越界）
 
-PR #168 两轮 CI 里 `node 24 / snapshots and artifacts` 各出现一次 `RequestTimeoutError: initialize timed out after 10000ms waiting for dsh profile "sdk"`，两次命中的场景不同（`subagent-continuable-inheritance`、`bash-tool`）。本机验证：`snapshots/sdk/sdk.snapshot.ts` 单跑 20/20 绿，`pnpm run test:snapshot` 全量 4/4 绿 —— 说明是 runner 负载下冷启动 `dsh --profile sdk` 超过 `packages/sdk/client` 固定的 10s initialize 超时，并非录制内容漂移。
+PR #168 三轮 CI 里 `node 24 / snapshots and artifacts` 每轮都命中 `RequestTimeoutError: initialize timed out after 10000ms waiting for dsh profile "sdk"`，且**每轮命中的场景不同**（`subagent-continuable-inheritance` / `bash-tool` / `inline-image-prompt` + `subagent-continuable-inheritance`）—— 典型的预算边缘特征，不是录制内容漂移。
 
-处置：**先只观察**，不加 retry、不放宽超时（合并本身也让 profile 多挂了插件，若持续复发应先量 boot 成本再谈超时语义）。若后续 CI 反复命中，按 `dsh-ci-test-reliability` 的判据先定位「在等什么」，再决定是分档超时还是缩减 sdk profile 的冷启动工作量。
+证据与归属：
+- 本机：`snapshots/sdk/sdk.snapshot.ts` 单跑 20/20 绿，`pnpm run test:snapshot` 全量 4/4 绿；单个场景（含启动 + 握手 + 回放 + 断言）耗时 1.3–6.0s，握手本身远低于 10s。
+- 对比：PR #167（基于合并前 master）同一 job 失败在 `test:expected`，**没有**这个握手超时 → 本现象是合并后才出现的。
+- 归属：`sdk` profile、其插件名单、`packages/sdk/client` 的 `DEFAULT_INITIALIZE_TIMEOUT_MS = 10_000`、以及 `snapshots/sdk/sdk.snapshot.ts`（已把 `requestTimeoutMs` 设为 110s、却没设 `initializeTimeoutMs`）**全部属上游**；fork 未向 `sdk` profile 挂任何 da 插件。666 个上游 commit 把该 profile 的冷启动变重，在 CI runner 上超过了上游自己的 10s 握手预算。
+
+处置（按本 effort 准则）：**归为上游债，不在 fork 修** —— 不改上游的 `initializeTimeoutMs`、不加 retry、不降并行度、不重录快照。`node 24 / snapshots and artifacts` 因此在 fork CI 保持红，直到上游要么降低 profile 冷启动成本、要么把握手预算交给 lane 声明（如同它已经对 `requestTimeoutMs` 做的那样）。若要上报上游，证据就是本节。
