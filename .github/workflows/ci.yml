@@ -272,18 +272,26 @@ jobs:
           && fromJSON('["self-hosted", "linux", "x64", "vm-backup"]')
           || 'ubuntu-latest' }}
     name: node 24 / snapshots and artifacts
+    # Every concurrency value below is scaled for this fork's runner, not
+    # upstream's: upstream schedules this lane on `dsh-ubuntu-24-04-16core` and
+    # this fork substitutes the 4-vCPU `ubuntu-latest`. Keeping upstream's
+    # 16-core numbers oversubscribed the box roughly eightfold, and the lane's
+    # snapshot cases spawn a real `dsh` profile each, whose `initialize`
+    # handshake budget is a fixed 10s — so the profile boots lost their CPU and
+    # the sdk snapshots timed out on a different scenario every run.
     env:
-      DSH_GATE_CONCURRENCY: '10'
+      DSH_GATE_CONCURRENCY: '4'
       DSH_NODE_COMPAT_SKIP_TYPECHECK: '1'
-      DSH_OXLINT_THREADS: '8'
-      DSH_PUBLINT_CONCURRENCY: '8'
-      DSH_WEB_SNAPSHOT_WORKERS: '6'
+      DSH_OXLINT_THREADS: '4'
+      DSH_PUBLINT_CONCURRENCY: '4'
+      DSH_WEB_SNAPSHOT_WORKERS: '2'
       # A failing gate aborts its running siblings: a failing build stops the
       # independent Node compatibility smoke, and a failing reader (e.g.
       # publint) stops the remaining artifact consumers.
       DSH_GATE_FAIL_FAST: '1'
-      # Failover halves snapshot concurrency for the shared 64-core VM.
-      DSH_SNAPSHOT_MAX_CONCURRENCY: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '12' || '8' }}
+      # The shared 64-core failover VM runs far more snapshot lanes than the
+      # 4-vCPU default runner can.
+      DSH_SNAPSHOT_MAX_CONCURRENCY: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '12' || '3' }}
     steps:
       # Runner cleanup owns tool caches and fixtures, including cancelled runs.
       - name: Use runner-owned temporary storage
