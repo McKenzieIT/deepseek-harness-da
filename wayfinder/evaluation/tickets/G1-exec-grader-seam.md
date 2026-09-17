@@ -190,7 +190,7 @@
 
 ### 产出
 
-- 新票 [T11 — case loader 静默丢弃 reference SQL 与 snapshot 锚点](T11-loader-provenance-strip.md)（发现 ④，阻塞 execution grading 与 G1b）。
+- 新票 [T11 — case loader 静默丢弃 reference SQL 与 snapshot 锚点](T11-loader-source-strip.md)（发现 ④，阻塞 execution grading 与 G1b）。
 - Agent Note [Execution grader seam: one executor port, grader-assembled provenance](../../../.agents/notes/proposed/testing/2026-09-07-execution-grader-seam.md)。
 - map 变更：`additive-only` 立场改为允许重构；登记 GA-EVAL-CASESET-EVENT-ANCHOR；修正 `rbi-10000251-exec` 未被追踪的过期声明；R10 提到 T1 之前。
 
@@ -224,4 +224,4 @@ v1 指出 **12.8% 真执行基线已被污染**（它测在那 39 个 case 上�
 
 ### 不重复开票
 
-v3 D5 的“loader 不得静默吐掉未知 `expected.*`”与 v1 开的 [T11](T11-loader-provenance-strip.md) 是同一件事，**归 T11**，本票不另开票。v1 的 T1 验收面与 open 风险全部保留，与 D2/D3 的验收信号合成 T1 的完整清单。GA-EVAL-CASESET-EVENT-ANCHOR 按 v1 裁定（不 supersede，正交并行），但 D6 使其口径决策更紧迫——它那 16/18 不符的期望值正是重建的第一批样本。
+v3 D5 的“loader 不得静默吐掉未知 `expected.*`”与 v1 开的 [T11](T11-loader-source-strip.md) 是同一件事，**归 T11**，本票不另开票。v1 的 T1 验收面与 open 风险全部保留，与 D2/D3 的验收信号合成 T1 的完整清单。GA-EVAL-CASESET-EVENT-ANCHOR 按 v1 裁定（不 supersede，正交并行），但 D6 使其口径决策更紧迫——它那 16/18 不符的期望值正是重建的第一批样本。

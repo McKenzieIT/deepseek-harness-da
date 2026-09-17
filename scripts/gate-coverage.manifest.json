@@ -31,6 +31,11 @@
       "coveredBy": "verify-cordis-inspect-catalog gate"
     },
     {
+      "script": "gen-dependency-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-dependency-catalog is enrolled in docSyncLeafGates",
+      "coveredBy": "verify-dependency-catalog gate (docSyncLeafGates)"
+    },
+    {
       "script": "gen-doc-graphs",
       "reason": "generator (write operation, not a gate); its --check variant verify-doc-graphs is enrolled",
       "coveredBy": "verify-doc-graphs gate"
@@ -74,6 +79,11 @@
       "script": "gen-tsconfig-paths",
       "reason": "generator (write operation, not a gate); its --check variant verify-tsconfig-paths is enrolled",
       "coveredBy": "verify-tsconfig-paths gate"
+    },
+    {
+      "script": "gen-workflow-guest",
+      "reason": "generator (write operation, not a gate); its --check variant verify-workflow-guest is enrolled in docSyncLeafGates",
+      "coveredBy": "verify-workflow-guest gate (docSyncLeafGates)"
     },
     {
       "script": "gen-package-readme-skeleton",

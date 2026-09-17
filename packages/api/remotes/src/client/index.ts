@@ -9,6 +9,7 @@ import llmRemote from '@deepseek-ai/dsh-llm/remote'
 import dynamicRemote from '@deepseek-ai/dsh-cordis-host-runner/remote'
 import pluginInventoryRemote from '@deepseek-ai/dsh-host-plugin-inventory/remote'
 import messageFeedbackRemote from '@deepseek-ai/dsh-message-feedback/remote'
+import permissionPresetsRemote from '@deepseek-ai/dsh-permission-presets/remote'
 import sessionFeedbackRemote from '@deepseek-ai/dsh-command-feedback/remote'
 import fileUploadsRemote from '@deepseek-ai/dsh-client-file-upload/remote'
 import sessionReferencesRemote from '@deepseek-ai/dsh-session-reference/remote'
@@ -18,6 +19,7 @@ import workspaceRemote from '@deepseek-ai/dsh-api-workspace-controller/remote'
 import schemaGatewayRemote from '@deepseek-ai/dsh-schema-gateway/remote'
 import evidenceQueryRemote from '@deepseek-ai/dsh-evidence-query/remote'
 import resultCacheRemote from '@deepseek-ai/dsh-result-cache/remote'
+import terminalRemote from '@deepseek-ai/dsh-api-terminal-controller/remote'
 import workspaceFilesRemote from '@deepseek-ai/dsh-api-workspace-files/remote'
 import type { ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
 
@@ -30,6 +32,7 @@ export type {} from '@deepseek-ai/dsh-goal/remote'
 export type {} from '@deepseek-ai/dsh-llm/remote'
 export type {} from '@deepseek-ai/dsh-host-plugin-inventory/remote'
 export type {} from '@deepseek-ai/dsh-message-feedback/remote'
+export type {} from '@deepseek-ai/dsh-permission-presets/remote'
 export type {} from '@deepseek-ai/dsh-command-feedback/remote'
 export type {} from '@deepseek-ai/dsh-client-file-upload/remote'
 export type {} from '@deepseek-ai/dsh-session-reference/remote'
@@ -41,6 +44,8 @@ export type {} from '@deepseek-ai/dsh-api-workspace-controller/remote'
 export type * from '@deepseek-ai/dsh-api-workspace-controller/types'
 export type {} from '@deepseek-ai/dsh-api-workspace-files/remote'
 export type * from '@deepseek-ai/dsh-api-workspace-files/types'
+export type {} from '@deepseek-ai/dsh-api-terminal-controller/remote'
+export type * from '@deepseek-ai/dsh-api-terminal-controller/types'
 export type { SessionJob as JobView } from '@deepseek-ai/dsh-api-session-controller/types'
 export type {} from '@deepseek-ai/dsh-schema-gateway/remote'
 export type {} from '@deepseek-ai/dsh-evidence-query/remote'
@@ -56,6 +61,7 @@ export type {} from '@deepseek-ai/dsh-cordis-host-runner/types'
 export type {} from '@deepseek-ai/dsh-credentials/types'
 export type {} from '@deepseek-ai/dsh-llm/types'
 export type {} from '@deepseek-ai/dsh-agent-presets/types'
+export type {} from '@deepseek-ai/dsh-permission-presets/types'
 export type {} from '@deepseek-ai/dsh-settings/types'
 export type {} from '@deepseek-ai/dsh-user-approval/types'
 export type {} from '@deepseek-ai/dsh-user-questions/types'
@@ -162,9 +168,9 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     for (const contribution of [
       agentPresetsRemote, commandsRemote, settingsControllerRemote, goalsRemote, llmRemote, dynamicRemote,
       pluginInventoryRemote, messageFeedbackRemote, sessionFeedbackRemote, fileUploadsRemote, sessionReferencesRemote,
-      subagentsRemote, sessionRemote, workspaceRemote,
+      permissionPresetsRemote, subagentsRemote, sessionRemote, workspaceRemote,
       schemaGatewayRemote, evidenceQueryRemote, resultCacheRemote,
-      workspaceFilesRemote,
+      workspaceFilesRemote, terminalRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }

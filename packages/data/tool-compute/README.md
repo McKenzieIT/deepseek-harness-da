@@ -22,14 +22,14 @@ Model-facing compute tool: execute LLM-generated pandas code against query resul
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
 
-Model-facing `compute` tool for the data-agent INTERPRETATION phase. Executes LLM-generated Python/pandas code against cached query results via `ctx.codeRuntime`, stores derived results via `ctx.resultCache` with `cr_` prefix, and returns a `result_id` for downstream `present_table` rendering.
+Model-facing `compute` tool for the data-agent INTERPRETATION phase. Executes LLM-generated Python/pandas code against cached query results via `ctx.ptcRuntime`, stores derived results via `ctx.resultCache` with `cr_` prefix, and returns a `result_id` for downstream `present_table` rendering.
 
 ## Services
 
 | Service | Role |
 |---------|------|
 | `ctx.tools` | Tool registration |
-| `ctx.codeRuntime` | Python execution (data-python Provider) |
+| `ctx.ptcRuntime` | Python execution (data-python Provider) |
 | `ctx.resultCache` | Load source data + store derived results |
 
 ## Bundle

@@ -4,7 +4,7 @@ Status: proposed
 
 ## Problem
 
-Surfaced by the GA-MODEL1 / Kind 1 grilling session (commits `4dc531f097`, `33639da9ef`, `b09d54d3c2`); this complements [Per-session branch and worktree isolation for parallel work](2026-09-04-parallel-session-branching-policy.md), which owns worktree/branch isolation, while this note owns commit cadence and citation verification.
+Surfaced by the GA-MODEL1 / Kind 1 grilling session; this complements [Per-session branch and worktree isolation for parallel work](2026-09-04-parallel-session-branching-policy.md), which owns worktree/branch isolation, while this note owns commit cadence and citation verification.
 
 This repository is routinely worked by several concurrent agent sessions sharing one checkout. Two failure modes recurred in one session.
 

@@ -229,7 +229,7 @@ Heldout transfer 必须比较**同一 frozen Harness artifact**，且 heldout �
 
 | 要求 | 最终 owner |
 | --- | --- |
-| Legacy loader 保留 reference/provenance，未知字段 fail loud | [T11 — Loader provenance strip](../tickets/T11-loader-provenance-strip.md) |
+| Legacy loader 保留 reference/provenance，未知字段 fail loud | [T11 — Loader provenance strip](../tickets/T11-loader-source-strip.md) |
 | Execution artifact、grader facts 与 model/infra/case failure 分离 | [T1 — Execution grader implementation](../tickets/T1-exec-grader-impl.md) |
 | Protocol identities、public/private views、Environment finality/separation、repositories 与 stores | [T9 — Evaluation foundations](../tickets/T9-evaluation-foundations.md) |
 | K11/RBI canonical Pack migration、oracle/reference validation、matched parity 与逐 case diagnostics | [T14 — Data-analysis extension 与 canonical Pack migration](../tickets/T14-data-analysis-extension-pack-migration.md) |

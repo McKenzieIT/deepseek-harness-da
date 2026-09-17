@@ -2,7 +2,7 @@
 
 **Type**: task  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [G1](G1-exec-grader-seam.md)（resolved 2026-09-08，v1 六条 + v3 D1–D6 已合并）、[T11](T11-loader-provenance-strip.md)（同批前置，须先全部验收）
+**Blocked by**: [G1](G1-exec-grader-seam.md)（resolved 2026-09-08，v1 六条 + v3 D1–D6 已合并）、[T11](T11-loader-source-strip.md)（同批前置，须先全部验收）
 **软前置**（未解也可开工，见 §前置）: [G1b](G1b-ground-truth-lifecycle.md)、[G10](G10-harness-bhe-split.md)、GA-EVAL-CASESET-EVENT-ANCHOR
 **Blocks**: [R23](R23-comparator-policy-mutation-baseline.md) → GA-EVAL-EXPAND → {R12 / R17 / G9}
 **Mode**: AFK（后端方向，**本地直接做**，不走另环境/rubric；与 T11 同批，T11 先验收再起 T1；见 [playbook](../playbook.md) §1.1）
@@ -82,7 +82,7 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 
 ## 前置（开工前需就位）
 
-- **[T11](T11-loader-provenance-strip.md) 全部验收通过**，含 39-case 对账复现。T1 读 reference SQL 与模板解析都依赖它。
+- **[T11](T11-loader-source-strip.md) 全部验收通过**，含 39-case 对账复现。T1 读 reference SQL 与模板解析都依赖它。
 - **warehouse 凭证与真 sidecar 可用**：`MAXC_CONFIG`（`context.ts:767`，默认 `~/.maxc/config.yaml`）；`--with-query` 时还需 `ODPS_ACCESS_ID`/`ODPS_ACCESS_KEY`/`ODPS_PROJECT`/`ODPS_ENDPOINT`（`main.ts:190-193`）；且必须 `--sidecar` 指向真 `maxc-sidecar.mjs`（默认是 throwaway stand-in）。
 - **LLM 侧凭证**：`DASHSCOPE_API_KEY`（走 credential seam / `~/.dsh/.credentials.yaml`，非 process.env）、`EVAL_LLM_PROVIDER`、`EVAL_LLM_MODEL`（三者必须显式设，无静默 fallback；既有基线用 `qwen3.7-max`，换模型即换基线）。
 - **`MAXC_WAIT_SECONDS` 取值已定**（见上一节），并作为 run config 的一部分落盘。
@@ -98,5 +98,5 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 - case migration 与 expected 值重新派生（[G1b](G1b-ground-truth-lifecycle.md)）。
 - 目标 Evaluation foundations 与包边界重切（[G10](G10-harness-bhe-split.md) → [T9](T9-evaluation-foundations.md)；本批不动包边界，最终 cutover 见 [T12](T12-eval-package-consolidation.md)）。
 - comparator 默认值与容差（[R23](R23-comparator-policy-mutation-baseline.md) 提供 mutation 证据后再定）。
-- loader 保住 provenance 与模板解析（[T11](T11-loader-provenance-strip.md)，同批但独立验收）。
+- loader 保住 provenance 与模板解析（[T11](T11-loader-source-strip.md)，同批但独立验收）。
 - judge 侧的任何改动（方向 2/3/8）—— 本票只切断 judge 对 execution 维度的写入，不动 judge 自身。

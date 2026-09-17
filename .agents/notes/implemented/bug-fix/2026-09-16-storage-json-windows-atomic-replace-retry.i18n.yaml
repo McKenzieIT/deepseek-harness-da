@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-16-storage-json-windows-atomic-replace-retry.md
-2026-09-16-storage-json-windows-atomic-replace-retry.md: e27743028756dff285752b4bbfb6ecba00bbec49
-2026-09-16-storage-json-windows-atomic-replace-retry.zh.md: 7a42cb8e7c3d97d7e0db6c12f70c4a31ab757192
+2026-09-16-storage-json-windows-atomic-replace-retry.md: df6acdf8cd8004b6c83b5f8545ac78744eca1db2
+2026-09-16-storage-json-windows-atomic-replace-retry.zh.md: 5513bc37cbf2d77a8ee9a259ddc7c77ee847b9ad

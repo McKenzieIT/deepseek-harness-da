@@ -23,7 +23,7 @@ export type CredentialRef = Branded<'CredentialRef'>
  * provider that does not distinguish a dimension ignores it.
  *
  * The slot keys are branded cross-boundary ids ({@link UserId}, {@link ScopeId});
- * their values stay opaque to this seam, with format and provenance in
+ * their values stay opaque to this seam, with format and origin in
  * the identity and access-isolation layers (the web-login `Tenant` and the
  * per-game `scope_id`).
  */

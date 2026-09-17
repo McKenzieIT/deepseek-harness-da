@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-data-agent",
   "description": "[data-agent] The data-agent bundle: an additive patch layer over dsh-base that reserves mounts for data capability plugins (P4-P11) and disables the code-agent surface",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -85,6 +85,7 @@
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-app-boot": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   }

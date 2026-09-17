@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/testing/2026-09-07-evaluation-query-capability-boundary.md
-2026-09-07-evaluation-query-capability-boundary.md: ae2768aafdfce1d964ff16f7252a5fedfa6e077a
-2026-09-07-evaluation-query-capability-boundary.zh.md: 23fd5ce735ac70d7d1204274c47d35f7f0ed4b6e
+2026-09-07-evaluation-query-capability-boundary.md: 2914138f1353e48d669978b4a5b866ca26de132d
+2026-09-07-evaluation-query-capability-boundary.zh.md: ad547996860181fe03c29b4aa859c3d7c2d507fa

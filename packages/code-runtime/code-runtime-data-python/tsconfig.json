@@ -21,7 +21,7 @@
       "path": "../../../vendor/schemastery"
     },
     {
-      "path": "../code-runtime"
+      "path": "../../ptc-runtime/ptc-runtime"
     },
     {
       "path": "../code-runtime-python-protocol"

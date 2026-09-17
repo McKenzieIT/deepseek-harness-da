@@ -30,7 +30,7 @@ Loading: repository plugins mount through compositions — a bundle patch row, a
 
 ## 4. Example bundle
 
-A runnable demo composition wiring shipped packages. Upstream retired the top-level `examples/` workspace member (`4125514a08`); runnable compositions now live in two places, each with its own governance: user-facing opt-in overlays under [`apps/cli/config/examples/`](../../../apps/cli/config/examples/) (each with a published guide under `docs/user/`), and cross-package profile integration tests under [`apps/cli/tests/profiles/`](../../../apps/cli/tests/profiles/AGENTS.md). The fork's top-level `examples/` holds semantic-layer fixtures (the data-agent's `k11-`/`x63-` corpora), not compositions. Reusable logic belongs in `packages/`; a composition leaf holds only `cordis.yml` wiring, demo artifacts, and e2e/snapshot scenarios.
+A runnable demo composition wiring shipped packages. Upstream retired the top-level `examples/` workspace member; runnable compositions now live in two places, each with its own governance: user-facing opt-in overlays under [`apps/cli/config/examples/`](../../../apps/cli/config/examples/) (each with a published guide under `docs/user/`), and cross-package profile integration tests under [`apps/cli/tests/profiles/`](../../../apps/cli/tests/profiles/AGENTS.md). The fork's top-level `examples/` holds semantic-layer fixtures (the data-agent's `k11-`/`x63-` corpora), not compositions. Reusable logic belongs in `packages/`; a composition leaf holds only `cordis.yml` wiring, demo artifacts, and e2e/snapshot scenarios.
 
 ## 5. Installable bundle
 

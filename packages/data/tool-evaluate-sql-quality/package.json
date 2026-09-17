@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-evaluate-sql-quality",
   "description": "Model-facing evaluate_sql_quality tool: 0-100 SQL quality score over the folded-regex critic findings + basic heuristics for the data agent's GENERATION phase",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },

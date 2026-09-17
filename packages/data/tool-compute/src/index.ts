@@ -2,11 +2,11 @@ import { createHash } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { CodeBindingFunction, CodeJsonValue, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
+import type { PtcBindingFunction, PtcJsonValue, PtcRunResult } from '@deepseek-ai/dsh-ptc-runtime'
 import type { ResultEntry } from '@deepseek-ai/dsh-result-cache'
 
 export const name = 'tool-compute'
-export const inject = ['tools', 'codeRuntime', 'resultCache']
+export const inject = ['tools', 'ptcRuntime', 'resultCache']
 
 /** Config */
 export interface Config {}
@@ -25,14 +25,14 @@ function computeResultId(code: string, sourceResultId: string): string {
   return `cr_${hash.slice(0, 12)}`
 }
 
-function validateComputeOutput(value: CodeJsonValue | undefined): { columns: string[]; rows: CodeJsonValue[][] } {
+function validateComputeOutput(value: PtcJsonValue | undefined): { columns: string[]; rows: PtcJsonValue[][] } {
   if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(
       'compute: code must return an object with {columns: string[], rows: any[][]}. '
       + 'Use: return {"columns": [...], "rows": [...]}',
     )
   }
-  const obj = value as Record<string, CodeJsonValue>
+  const obj = value as Record<string, PtcJsonValue>
   if (!Array.isArray(obj.columns) || !obj.columns.every((c: unknown) => typeof c === 'string')) {
     throw new Error(
       'compute: returned object must have a "columns" field as string[]. '
@@ -53,7 +53,7 @@ function validateComputeOutput(value: CodeJsonValue | undefined): { columns: str
       `compute: returned rows must each have ${columns.length} cells (columns.length); a jagged payload is rejected.`,
     )
   }
-  return { columns: obj.columns, rows: obj.rows as CodeJsonValue[][] }
+  return { columns: obj.columns, rows: obj.rows as PtcJsonValue[][] }
 }
 
 function formatResult(value: ComputeResult): string {
@@ -134,7 +134,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
         )
       }
 
-      const loadResult: CodeBindingFunction = (callArgs: unknown) => {
+      const loadResult: PtcBindingFunction = (callArgs: unknown) => {
         const parsed = callArgs as { result_id?: string } | null
         const rid = parsed?.result_id
         if (typeof rid !== 'string' || rid.trim() === '') {
@@ -144,17 +144,17 @@ export function apply(ctx: Context, _config: Config = {}): void {
         if (entry === undefined) {
           return Promise.reject(new Error(`load_result: result_id "${rid}" not found in cache`))
         }
-        return Promise.resolve({ columns: entry.columns, rows: entry.rows as CodeJsonValue[] })
+        return Promise.resolve({ columns: entry.columns, rows: entry.rows as PtcJsonValue[] })
       }
 
-      const runResult: CodeRunResult = await ctx.codeRuntime.run({
+      const runResult: PtcRunResult = await ctx.ptcRuntime.run(ctx.ptcRuntime.resolve({
         program: code,
         bindings: [{
           global: 'data',
           functions: { load_result: loadResult },
         }],
         signal: exec.signal,
-      })
+      }))
 
       if (runResult.error) {
         throw new Error(
@@ -164,7 +164,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
 
       const output = validateComputeOutput(runResult.value)
       const newResultId = computeResultId(code, resultId)
-      // The code-runtime result is JSON-serializable (CodeJsonValue), which is
+      // The code-runtime result is JSON-serializable (PtcJsonValue), which is
       // structurally the constrained `Json` cell union ResultEntry.rows carries,
       // so the validated array-of-arrays shape crosses the Remote boundary as is.
       const entry: ResultEntry = { columns: output.columns, rows: output.rows }

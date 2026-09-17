@@ -15,7 +15,7 @@
  * dimension list, or its threshold.
  *
  * Found by R8 (2026-09-10). Baseline on `eval-results/` at that date, on
- * master `5767e7c9a4`, decision dim `overall_semantics`, threshold 0.6:
+ * master, decision dim `overall_semantics`, threshold 0.6:
  *
  *   files: 80 total, 29 with sql_judge, 19 with non-empty dimensions
  *   vectors: 1495 (all 5 dims present, one key-set)

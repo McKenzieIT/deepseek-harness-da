@@ -18,10 +18,10 @@
 # what runs even though HEAD never moves.
 #
 # The 2026-09-04 attempt learned this the hard way: the driver pinned
-# `HEAD=5ddbc0f8e6` and reported it as provenance, but `critic.ts` (10:50) and
+# one `HEAD` and reported it as the run's source, but `critic.ts` (10:50) and
 # `prompt.ts` (11:00) had already been modified-and-uncommitted before run 1
 # launched at 11:01, and `query-maxcompute/lib/index.js` was rebuilt at 11:54
-# mid-run. The recorded HEAD was a FALSE provenance record and the run had to be
+# mid-run. The recorded HEAD was a FALSE source record and the run had to be
 # discarded as unattributable.
 #
 # So this script guards the working tree, not HEAD:
@@ -86,7 +86,7 @@ IS_WORKTREE="no"
 if [ -f .git ]; then IS_WORKTREE="yes"; fi
 if [ "$IS_WORKTREE" != "yes" ]; then
   echo "⚠ WARNING: not running in a dedicated git worktree." >&2
-  echo "  Concurrent sessions editing this tree WILL corrupt the run's provenance." >&2
+  echo "  Concurrent sessions editing this tree WILL corrupt the run's source record." >&2
   echo "  Recommended: git worktree add ../dsh-eval-baseline -b chore/eval-baseline <commit>" >&2
   echo "" >&2
 fi
@@ -96,7 +96,7 @@ fi
   echo "median-baseline driver"
   echo "  started      : $(date '+%F %T')"
   echo "  HEAD         : $HEAD_AT_START"
-  echo "  tree fp      : $FP_AT_START  (provenance: working tree, not HEAD)"
+  echo "  tree fp      : $FP_AT_START  (source: working tree, not HEAD)"
   echo "  worktree     : $IS_WORKTREE"
   echo "  runs to add  : $RUNS  (run #1 = rebaseline-passk-168-clean, 61.9%)"
   echo "  protocol     : pass_k=3 pass^k, conc=3, --today 20260903, sql-judge on"
@@ -119,7 +119,7 @@ for i in $(seq 1 "$RUNS"); do
     echo "      fingerprint now      : $FP_NOW"
     echo "    Runs on different code cannot be pooled into one median (CL-22)."
     echo "    Completed runs remain valid individually, but record the fingerprint"
-    echo "    with each — HEAD alone is NOT valid provenance (see header)."
+    echo "    with each — HEAD alone is NOT a valid source record (see header)."
     exit 3
   fi
   NOW="$(git rev-parse HEAD)"

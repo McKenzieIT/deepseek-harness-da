@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import type { CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
+import type { PtcRunRequest, PtcRunResult, PtcRunSpec } from '@deepseek-ai/dsh-ptc-runtime'
 import type { ResultEntry } from '@deepseek-ai/dsh-result-cache'
 import { apply, type ComputeResult } from '../src/index.ts'
 
@@ -29,13 +29,14 @@ interface MockResultCache {
   has(id: string): boolean
 }
 
-interface MockCodeRuntime {
-  lastRequest: CodeRunRequest | undefined
-  result: CodeRunResult
-  run(request: CodeRunRequest): Promise<CodeRunResult>
+interface MockPtcRuntime {
+  lastRequest: PtcRunSpec | undefined
+  result: PtcRunResult
+  resolve(request: PtcRunRequest): PtcRunSpec
+  run(request: PtcRunSpec): Promise<PtcRunResult>
 }
 
-function createMocks(): { cache: MockResultCache; runtime: MockCodeRuntime } {
+function createMocks(): { cache: MockResultCache; runtime: MockPtcRuntime } {
   const store = new Map<string, ResultEntry>()
   const cache: MockResultCache = {
     store,
@@ -43,9 +44,10 @@ function createMocks(): { cache: MockResultCache; runtime: MockCodeRuntime } {
     put: (id, entry) => { store.set(id, entry) },
     has: id => store.has(id),
   }
-  const runtime: MockCodeRuntime = {
+  const runtime: MockPtcRuntime = {
     lastRequest: undefined,
     result: { value: { columns: ['result'], rows: [[1]] }, logs: [] },
+    resolve: request => ({ ...request, cwd: '/', timeoutMs: null }),
     run: async (request) => {
       runtime.lastRequest = request
       return runtime.result
@@ -54,14 +56,14 @@ function createMocks(): { cache: MockResultCache; runtime: MockCodeRuntime } {
   return { cache, runtime }
 }
 
-function registerTool(cache: MockResultCache, runtime: MockCodeRuntime): ToolDef {
+function registerTool(cache: MockResultCache, runtime: MockPtcRuntime): ToolDef {
   let def: ToolDef | undefined
   const ctx = {
     tools: {
       register: (d: ToolDef) => { def = d },
     },
     resultCache: cache,
-    codeRuntime: runtime,
+    ptcRuntime: runtime,
   } as unknown as Context
   apply(ctx, {})
   if (def === undefined) throw new Error('apply did not register a tool')
@@ -125,7 +127,7 @@ test('execute stores result in cache with cr_ prefix', async () => {
   expect(stored.rows).toEqual([[1, 1], [2, 4], [3, 9]])
 })
 
-test('execute passes code to codeRuntime with data binding', async () => {
+test('execute passes code to ptcRuntime with data binding', async () => {
   const { cache, runtime } = createMocks()
   cache.store.set('qr_test', { columns: ['a'], rows: [[1]] })
   runtime.result = { value: { columns: ['a'], rows: [[2]] }, logs: [] }

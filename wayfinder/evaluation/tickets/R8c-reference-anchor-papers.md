@@ -3,14 +3,14 @@
 **Type**: research（认读分析论文 + 一手源码）  ·  **Status**: **in-progress**（claim 于 2026-09-11）
 **Part of**: [dsh-data-agent evaluation map](../map.md)
 **Blocked by**: 无（[R8](R8-pairwise-judge-papers.md) 已 resolved 并交付候选清单）
-**Blocks**: [G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)（参考答案的形态）；[T1](T1-exec-grader-impl.md) 的 artifact schema；**修改 [T11](T11-loader-provenance-strip.md) 的下游语义**（见下「紧迫性」）
+**Blocks**: [G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)（参考答案的形态）；[T1](T1-exec-grader-impl.md) 的 artifact schema；**修改 [T11](T11-loader-source-strip.md) 的下游语义**（见下「紧迫性」）
 **Mode**: AFK（本环境直接做，见 [playbook](../playbook.md) §1.1）
 **Branch**: `research/R8c-reference-anchor-papers`
 **依据**: [R8 Resolution 补记](R8-pairwise-judge-papers.md) + [`../research/lit-gap-2026-09-11.md`](../research/lit-gap-2026-09-11.md) §3.2、§3.4 + [`../research/pairwise-judge-papers.md`](../research/pairwise-judge-papers.md) §9.6、§9.9
 
 ## 紧迫性：它改的是 T11 的下游语义，而 T11 是 map 推荐的下一步
 
-[R8](R8-pairwise-judge-papers.md) 曾裁定「判官必须拿到参考答案」，并指出本仓 39 个 case 的 `expected.sql` 正被 loader 丢弃 ⇒ 与 [T11](T11-loader-provenance-strip.md) 是同一块工作。**补搜给这条加了一个必须的修饰**：
+[R8](R8-pairwise-judge-papers.md) 曾裁定「判官必须拿到参考答案」，并指出本仓 39 个 case 的 `expected.sql` 正被 loader 丢弃 ⇒ 与 [T11](T11-loader-source-strip.md) 是同一块工作。**补搜给这条加了一个必须的修饰**：
 
 - `2409.19014`(FLEX) 是唯一测过「给不给 gold」的实验（κ 87.04 → 29.36），**但只此一次、n=200、标注者是该文自己的三位作者、无人复现**；
 - **而 gold 锚本身是烂的**——CIDR '26 报 gold 标注错误率 **52.8%（BIRD Mini-Dev）/ 66.1%（Spider 2.0-Snow）**，SpotIt 报「当预测与 gold 不一致时，**往往是 gold 错了**」，FLEX 自己的 Appendix C 展示其判官**为一条有缺陷的 gold 背书**；
@@ -61,5 +61,5 @@
 ## 不在本票范围
 
 - 读出形状 / 聚合规则 / 量表 → [R8b](R8b-judge-readout-papers.md) 与 [G8](G8-judge-readout-scale.md)。
-- 实施 loader 修复（[T11](T11-loader-provenance-strip.md)）或 grader（[T1](T1-exec-grader-impl.md)）——本票只交付契约与字段草案。
+- 实施 loader 修复（[T11](T11-loader-source-strip.md)）或 grader（[T1](T1-exec-grader-impl.md)）——本票只交付契约与字段草案。
 - 真的去重建 EXECUTION 语料（G1b 的重建决议 + GA-EVAL-EXPAND）。

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-present-decomposition",
   "description": "Toolview card for the present_decomposition INTERPRETATION tool: query-contract card with focal summary, lineage chips, always-visible metric calibers, and a trust band",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },

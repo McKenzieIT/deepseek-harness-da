@@ -22,7 +22,7 @@ TODO: translate: Model-facing compute tool: execute LLM-generated pandas code ag
 - [已知限制与延后工作](#known-limitations-and-deferred-work)
 
 
-面向模型的 `compute` 工具，用于 data-agent 的 INTERPRETATION 阶段。通过 `ctx.codeRuntime` 对缓存的查询结果执行 LLM（大语言模型）生成的 Python/pandas 代码，经 `ctx.resultCache` 以 `cr_` 前缀存储派生结果，并返回 `result_id` 供下游 `present_table` 渲染。
+面向模型的 `compute` 工具，用于 data-agent 的 INTERPRETATION 阶段。通过 `ctx.ptcRuntime` 对缓存的查询结果执行 LLM（大语言模型）生成的 Python/pandas 代码，经 `ctx.resultCache` 以 `cr_` 前缀存储派生结果，并返回 `result_id` 供下游 `present_table` 渲染。
 
 <a id="services"></a>
 ## 服务
@@ -30,7 +30,7 @@ TODO: translate: Model-facing compute tool: execute LLM-generated pandas code ag
 | 服务 | 职责 |
 |---------|------|
 | `ctx.tools` | 工具注册 |
-| `ctx.codeRuntime` | Python 执行（data-python Provider） |
+| `ctx.ptcRuntime` | Python 执行（data-python Provider） |
 | `ctx.resultCache` | 加载源数据 + 存储派生结果 |
 
 <a id="bundle"></a>

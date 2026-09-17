@@ -15,8 +15,10 @@ This table connects model-visible tool names to the plugin package and service s
 
 | Tool package | Model-visible names | Requires | Writes / affects | Shipped aliases | Deployment note |
 | --- | --- | --- | --- | --- | --- |
+| `@deepseek-ai/dsh-mcp-resources` | `list_mcp_resource_templates`, `list_mcp_resources`, `read_mcp_resource` | `ctx.tools`, `ctx.mcpResources` | `tool/call`, `tool/result` | - | - |
+| `@deepseek-ai/dsh-experimental-browser-use-stagehand-native` | `stagehand_act`, `stagehand_extract`, `stagehand_navigate`, `stagehand_observe`, `stagehand_screenshot`, `stagehand_tabs` | `ctx.browserUse`, `ctx.agents`, `ctx.tools`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-ask-user` | `ask_user_question` | `ctx.tools`, `ctx.userQuestions` | `tool/call`, `tool/result after a UI/provider answers the question` | - | ask_user_question pauses the tool call until the active UI provider returns a human answer. |
-| `@deepseek-ai/dsh-tools` | `run_code` | `ctx.tools`, `ctx.codeRuntime (execution time)`, `ctx.systemPrompt` | `tool/call`, `one tool/ptc-dispatch-start + tool/ptc-dispatch pair per bridged sub-call`, `tool/result` | - | Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: ptc` / `mode: both` (see the PTC mode Agent Note). Under `ptc` it is the registry's only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime's language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result. |
+| `@deepseek-ai/dsh-tools` | `run_code` | `ctx.tools`, `ctx.ptcRuntime (execution time)`, `ctx.systemPrompt` | `tool/call`, `one tool/ptc-dispatch-start + tool/ptc-dispatch pair per bridged sub-call`, `tool/result` | - | Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: ptc` / `mode: both` (see the PTC mode Agent Note). Under `ptc` it is the registry's only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime's language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result. |
 | `@deepseek-ai/dsh-plan-mode` | `exit_plan_mode` | `ctx.tools`, `ctx.systemPrompt`, `ctx.userQuestions (execution time, opportunistic)` | `tool/call`, `plan/mode inactive on an approved review`, `tool/result` | - | exit_plan_mode stays in the model-facing schema while planning is inactive so transitions add no tool-catalog churn on top of the plan-policy change. Its execute path rejects calls outside plan mode; in plan mode it presents the plan over the user-questions seam (approve / keep planning with feedback), and approval logs plan mode inactive at the step boundary. |
 | `@deepseek-ai/dsh-tool-bash` | `bash` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@deepseek-ai/dsh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled. |
 | `@deepseek-ai/dsh-tool-present` | `present` | `ctx.tools`, `ctx.fs`, `ctx.sessionProjections` | `tool/call`, `deliverables/presented after a successful final result`, `tool/result` | - | Deliveries belong to the calling Session; Web ui-deliverables supplies source-file opening and cards. |
@@ -56,7 +58,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-search-schema` | `search_schema` | `ctx.tools` | `tool/call`, `tool/result ranked asset matches` | - | search_schema is BM25 search over the semantic layer for the management agent (returns asset matches with kind and domain metadata). It probes ctx.schema lazily; callable but unwired until ctx.schema mounts. |
 | `@deepseek-ai/dsh-tool-trigger-eval` | `trigger_eval` | `ctx.tools` | `tool/call`, `eval run + persisted results`, `tool/result` | - | trigger_eval triggers a semantic-layer eval run and reports a before/after delta. It probes ctx.evalRunner and ctx.evidenceQuery lazily; without a mounted runner it reports not_configured (the host composition must wire the collaborators). |
 | `@deepseek-ai/dsh-tool-update-table-config` | `update_table_config` | `ctx.tools`, `ctx.schema`, `ctx.audit`, `ctx.identity` | `tool/call`, `table YAML project override (Tier-2 audited)`, `tool/result` | - | update_table_config writes a per-table ODPS project override to the table definition (self-evolution #3b) so a future qualifyTable retry resolves &lt;project&gt;.&lt;table&gt;. Admin-only (RBAC stub reads ctx.identity). Tier-2 audited via ctx.audit. The schema harvest mounts inert ctx.schema + ctx.audit + ctx.identity providers so the Tier-2 inject resolves. |
-| `@deepseek-ai/dsh-tool-compute` | `compute` | `ctx.tools`, `ctx.codeRuntime`, `ctx.resultCache` | `tool/call`, `cr_ derived result via ctx.resultCache`, `tool/result` | - | compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute. |
+| `@deepseek-ai/dsh-tool-compute` | `compute` | `ctx.tools`, `ctx.ptcRuntime`, `ctx.resultCache` | `tool/call`, `cr_ derived result via ctx.resultCache`, `tool/result` | - | compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert ptcRuntime + resultCache providers so the inject resolves; the tool reads them only at execute. |
 | `@deepseek-ai/dsh-tool-discover-alt-labels` | `discover_alt_labels` | `ctx.tools` | `tool/call`, `tool/result alt-label candidates` | - | discover_alt_labels mirrors discover_relations: it surfaces alternative labels (aliases) for a table/column to broaden recall. It probes ctx.schema lazily; the schema harvest needs no schema provider (callable but unwired until ctx.schema ships). |
 | `@deepseek-ai/dsh-tool-present-decomposition` | `present_decomposition` | `ctx.tools` | `tool/call`, `tool/result decomposition cards` | - | present_decomposition is a pure presentation tool that renders a query decomposition (breakdown) for the UI. No service dependency beyond ctx.tools. |
 | `@deepseek-ai/dsh-tool-present-table` | `present_table` | `ctx.tools` | `tool/call`, `tool/result rendered table/chart` | - | present_table renders a table or chart result (line/bar) for the UI. No service dependency beyond ctx.tools; chart.type is fail-loud-validated at the tool-args boundary. |
@@ -65,6 +67,333 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-revert-edit` | `revert_edit` | `ctx.tools`, `ctx.schema`, `ctx.audit` | `tool/call`, `Tier-2 audit revert event`, `tool/result` | - | revert_edit reverts a semantic-layer edit (concept/table/event) and records the revert via ctx.audit (Tier-2). The schema harvest mounts inert schema + audit providers so the inject resolves; execute reads them lazily. |
 | `@deepseek-ai/dsh-tool-scope-routing` | `list_scopes`, `switch_scope` | `ctx.tools`, `ctx.systemPrompt` | `tool/call`, `active-scope switch`, `tool/result` | - | scope_routing is the per-scope routing surface: list_scopes + switch_scope + an alias-hint system-prompt contribution. systemPrompt is mounted by the harvest base; the tool reads the active scope lazily. |
 | `@deepseek-ai/dsh-tool-suggest-followups` | `suggest_followups` | `ctx.tools` | `tool/call`, `tool/result follow-up chips` | - | suggest_followups surfaces follow-up question chips after a result. No service dependency beyond ctx.tools. |
+
+<a id="deepseek-aidsh-mcp-resources"></a>
+
+## `@deepseek-ai/dsh-mcp-resources`
+
+### `list_mcp_resource_templates`
+
+List parameterized resource URI templates from an MCP server.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "string",
+      "description": "Configured MCP server name."
+    },
+    "cursor": {
+      "type": "string",
+      "description": "Continuation cursor returned by this server."
+    }
+  },
+  "required": [
+    "server"
+  ]
+}
+```
+
+Source: [`packages/mcp/mcp-resources/src/tools.ts`](../packages/mcp/mcp-resources/src/tools.ts)
+
+### `list_mcp_resources`
+
+List resources available from an MCP server.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "string",
+      "description": "Configured MCP server name."
+    },
+    "cursor": {
+      "type": "string",
+      "description": "Continuation cursor returned by this server."
+    }
+  },
+  "required": [
+    "server"
+  ]
+}
+```
+
+Source: [`packages/mcp/mcp-resources/src/tools.ts`](../packages/mcp/mcp-resources/src/tools.ts)
+
+### `read_mcp_resource`
+
+Read an MCP resource by URI from the named server. Use a listed URI or an expanded resource template.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "string",
+      "description": "Configured MCP server name."
+    },
+    "uri": {
+      "type": "string",
+      "description": "Resource URI to read."
+    }
+  },
+  "required": [
+    "server",
+    "uri"
+  ]
+}
+```
+
+Source: [`packages/mcp/mcp-resources/src/tools.ts`](../packages/mcp/mcp-resources/src/tools.ts)
+
+<a id="deepseek-aidsh-experimental-browser-use-stagehand-native"></a>
+
+## `@deepseek-ai/dsh-experimental-browser-use-stagehand-native`
+
+### `stagehand_act`
+
+Perform one natural-language browser action using the configured Stagehand model.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instruction": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "instruction"
+  ],
+  "additionalProperties": false
+}
+```
+
+Source: [`packages/experimental/browser-use-stagehand-native/src/index.ts`](../packages/experimental/browser-use-stagehand-native/src/index.ts)
+
+### `stagehand_extract`
+
+Extract page data using the configured Stagehand model and an optional JSON Schema.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instruction": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema0"
+      }
+    }
+  },
+  "required": [
+    "instruction"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/browser-use-stagehand-native/src/index.ts`](../packages/experimental/browser-use-stagehand-native/src/index.ts)
+
+### `stagehand_navigate`
+
+Navigate a Stagehand browser tab to a URL.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "url"
+  ],
+  "additionalProperties": false
+}
+```
+
+Source: [`packages/experimental/browser-use-stagehand-native/src/index.ts`](../packages/experimental/browser-use-stagehand-native/src/index.ts)
+
+### `stagehand_observe`
+
+Find browser actions matching an instruction using the configured Stagehand model.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instruction": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "instruction"
+  ],
+  "additionalProperties": false
+}
+```
+
+Source: [`packages/experimental/browser-use-stagehand-native/src/index.ts`](../packages/experimental/browser-use-stagehand-native/src/index.ts)
+
+### `stagehand_screenshot`
+
+Capture a Stagehand tab screenshot for visual inspection.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fullPage": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "fullPage"
+  ],
+  "additionalProperties": false
+}
+```
+
+Source: [`packages/experimental/browser-use-stagehand-native/src/index.ts`](../packages/experimental/browser-use-stagehand-native/src/index.ts)
+
+### `stagehand_tabs`
+
+List, create, select, or close a Stagehand browser tab.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "list"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "new"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "select",
+            "close"
+          ]
+        },
+        "pageId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "action",
+        "pageId"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "type": "object"
+}
+```
+
+Source: [`packages/experimental/browser-use-stagehand-native/src/index.ts`](../packages/experimental/browser-use-stagehand-native/src/index.ts)
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -159,6 +488,22 @@ Execute a TypeScript program against the available tools. Takes two required arg
     "description": {
       "type": "string",
       "description": "Clear, concise description of what this program does in active voice, 5-10 words (shown in the UI). Examples: \"Count TODO markers across packages\"; \"Read failing test and its fixture\"; \"Rename config key in every cordis.yml\"."
+    },
+    "timeoutMs": {
+      "type": "number",
+      "description": "Positive elapsed-time budget in milliseconds, capped by the deployment maximum."
+    },
+    "sandbox_permissions": {
+      "type": "string",
+      "description": "Wider sandbox mode for this complete program execution; requires justification and approval.",
+      "enum": [
+        "workspace-write",
+        "danger-full-access"
+      ]
+    },
+    "justification": {
+      "type": "string",
+      "description": "Reason this complete program needs wider access, shown to the user for approval."
     }
   },
   "required": [
@@ -2752,7 +3097,7 @@ Execute Python/pandas code against a query result to derive new data. The code r
 
 Source: [`packages/data/tool-compute/src/index.ts`](../packages/data/tool-compute/src/index.ts)
 
-compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert codeRuntime + resultCache providers so the inject resolves; the tool reads them only at execute.
+compute runs a code binding over a source result_id and stores the derived result under a cr_ prefix via ctx.resultCache. The schema harvest mounts inert ptcRuntime + resultCache providers so the inject resolves; the tool reads them only at execute.
 
 <a id="deepseek-aidsh-tool-discover-alt-labels"></a>
 

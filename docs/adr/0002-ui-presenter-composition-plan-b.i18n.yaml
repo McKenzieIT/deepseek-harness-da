@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/adr/0002-ui-presenter-composition-plan-b.md
-0002-ui-presenter-composition-plan-b.md: d2fe74b515a5346886352f076a693d4ff8d89dfb
-0002-ui-presenter-composition-plan-b.zh.md: 1ef33a5bc04bede13db74779020181d6d88aa594
+0002-ui-presenter-composition-plan-b.md: 7f30c613b8bb799cd96ff413b685c6d56523b2e5
+0002-ui-presenter-composition-plan-b.zh.md: 9a8776fcd09fed2da1f44f6687477028751a1990

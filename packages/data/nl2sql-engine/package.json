@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-nl2sql-engine",
   "description": "NL→SQL engine for the data agent: BM25 schema-linking + SQL-gen prompt (RBI v2-baseline staged SOP) + regex/JSON-path critic (sql_syntax_gate) + execution-feedback self-correction. Consumes ctx.query (agent-driven); local retrieval/substrate interfaces (P5/P6 production swap deferred via P13b grilling Q1)",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },

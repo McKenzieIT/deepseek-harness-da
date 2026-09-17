@@ -9,8 +9,6 @@
 
 本索引背后的流程决策记录在[文档图 Agent Note](../.agents/notes/archived/process/2026-07-03-documentation-graph-atlas.md)中。
 
-<!-- BEGIN GENERATED graph-atlas (gen-doc-graphs.ts) — do not edit between markers -->
-
 | Graph | Mode |
 | --- | --- |
 | [module dependency graph](module-graph.zh.md) | `generated` |
@@ -20,8 +18,6 @@
 | [event producer/consumer matrix](event-producer-consumer.zh.md) | `hybrid generated` |
 | [agent turn and step lifecycle](agent-lifecycle.zh.md) | `curated` |
 | [tool execution pipeline](tool-execution-pipeline.zh.md) | `curated` |
-
-<!-- END GENERATED graph-atlas -->
 
 运行 `pnpm run gen-doc-graphs` 可重新生成英文源文件；运行 `pnpm run verify-doc-graphs` 可验证英文源的新鲜度，中文对侧则通过双语配对维护。
 

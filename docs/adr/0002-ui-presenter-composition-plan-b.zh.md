@@ -21,7 +21,7 @@ upstream 把单体 `@deepseek-ai/dsh-client-runtime`（"zombie"）拆成专注�
 
 三条已验证铁证 foreclose Plan A（在 synced base `upstream/resync-2026-09-08` 上接地）：
 
-1. **`tool.call.toolview` 是 upstream slot**（`ui-tool/src/client/contract/slots.ts:26`，经 `git ls-tree` 确认在 upstream `c389f96bf3`）。upstream 自己就注册 toolview 在此（ask-question、bash、read、search、web、todo）。fork 4 presenter 是 peer——保留该 slot 非 fork workaround（UM-ADAPT 判据 4 ✓）。
+1. **`tool.call.toolview` 是 upstream slot**（`ui-tool/src/client/contract/slots.ts:26`，经 `git ls-tree` 在 upstream 源码中确认）。upstream 自己就注册 toolview 在此（ask-question、bash、read、search、web、todo）。fork 4 presenter 是 peer——保留该 slot 非 fork workaround（UM-ADAPT 判据 4 ✓）。
 2. **presenter 是 tool-name-keyed sub-view，由 `ToolCallTree`（`ui-tool/src/client/tool/ToolCallTree.tsx`）在 `tool-call` node 内部渲染**——非 view-tab（`conversation.view` slot）/node-kind（`conversation.chat.node` slot）。Plan A 的 `views.register`/`events.register` 架构错位（那俩是给 per-target builder / node-kind 的）。
 3. **`projectBlock` 不计算 `isLatestTurn`/`blockText`**——Plan A"builder 内建 helper"前提对 synced base 为假。两 helper 是 fork-only（zombie `runtime/src/client/cards.ts:16,33`）。
 

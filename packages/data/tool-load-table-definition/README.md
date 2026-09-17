@@ -26,7 +26,7 @@ Model-facing load_table_definition tool: load a validated table definition from 
 
 Model-facing `load_table_definition` tool: **load a validated table definition from the semantic-layer substrate** for the data agent's `UNDERSTANDING`/`GENERATION` phase. The agent calls it to ground SQL in the real schema (columns, partitions, primary key, metrics, dimension references) before writing or critiquing a query.
 
-This is the **P6b deferred follow-up** ("load_* 接入") — the model-facing wrapper over the [`ctx.schema`](../semantic-layer) `loadTableDefinition` substrate (shipped in P6b, commit 88524504f8). It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) (the first model-facing tool, P13b commit 0e1a0fdf25) for the [`@deepseek-ai/dsh-tools`](../../core/tools) registration shape (`defineTool` + `ctx.tools.register`).
+This is the **P6b deferred follow-up** ("load_* 接入") — the model-facing wrapper over the [`ctx.schema`](../semantic-layer) `loadTableDefinition` substrate (shipped in P6b). It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) (the first model-facing tool, P13b) for the [`@deepseek-ai/dsh-tools`](../../core/tools) registration shape (`defineTool` + `ctx.tools.register`).
 
 ## Status: registered + callable; ctx.schema wired
 

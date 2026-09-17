@@ -26,7 +26,7 @@ kind: "package-reference"
 
 当 Node host 使用 DSH CPython fd-3 协议时依赖本包。导入 `BootMessage`、`ChildToHost` 与 `ReplyMessage` 为帧提供类型；使用 `encodeJsonPlain` 输出无损 JSON，在读取不可信 child 帧前调用 `validateChildFrame`，在 `JSON.parse` 前调用 `hasUnsafeIntegerToken`，并在解析完成值后调用 `checkDoneValue`。`PROTOCOL_FD`、`WIRE_FRAME_FIELDS`、`jsonStringBytesUpTo`、`hasNonLosslessNumber` 与 `logTruncationMarker` 支持提供方接线、镜像检查与精确字节核算。
 
-本包不读取流，也不启动进程。提供方必须在解析前限制每个原始 fd-3 帧，按照 `validateChildFrame` 丢弃畸形帧，并应用自己的生命周期与资源策略。Python 侧仍归提供方所有，因为不同提供方的 bootstrap 行为、打包与进程约束不同；实验性提供方的真实 Python 镜像测试会把其 `py/protocol.py` 声明与本包对照。
+本包不读取流，也不启动进程。提供方必须在解析前限制每个原始 fd-3 帧，按照 `validateChildFrame` 丢弃畸形帧，并应用自己的生命周期与资源策略。Python 侧仍归提供方所有，因为不同提供方的 bootstrap 行为、打包与进程约束不同。
 
 -----
 
@@ -54,8 +54,7 @@ kind: "package-reference"
 ## 进一步探索
 
 - [Data Python 提供方](../code-runtime-data-python/README.zh.md)——供 data-agent Python 执行使用的正式 consumer。
-- [实验性 Python 提供方](../../experimental/code-runtime-python/README.zh.md)——保留兼容重导出的私有源码检出 consumer。
-- [fd-3 协议 Agent Note](../../../.agents/notes/implemented/architecture/2026-07-31-code-runtime-python-fd3-protocol.zh.md)——wire 语义与敌意输入 rationale。
+- [fd-3 协议 Agent Note](../../../.agents/notes/implemented/architecture/2026-07-31-ptc-runtime-python-fd3-protocol.zh.md)——wire 语义与敌意输入 rationale。
 - [协议所有权 Agent Note](../../../.agents/notes/implemented/architecture/2026-09-14-code-runtime-python-protocol-ownership.zh.md)——包所有权与兼容性决策。
 
 -----

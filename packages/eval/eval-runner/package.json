@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-eval-runner",
   "description": "Eval evidence engine: batch runner with pass_k, result persistence, before/after delta comparison, health-gate, and infra-retry for the da eval harness",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.1",
   "publishConfig": {
     "access": "public"
   },
