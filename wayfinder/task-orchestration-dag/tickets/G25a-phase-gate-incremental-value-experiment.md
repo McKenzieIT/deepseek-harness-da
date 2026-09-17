@@ -6,15 +6,56 @@
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
 
-## Preflight blocker (2026-09-17)
+## Amended locked protocol (2026-09-17)
 
-Host access is green: real `maxc` queries against `ieu_cdm` succeed, and the reference-date convention is confirmed against data ("今天" = `ds 20260827`, "昨天" = `ds 20260826`, from `k11v2_005`'s expected 3259 reproducing exactly).
+Preflight proved the originally locked case set ungradeable, and the user approved two amendments the same day. Everything not listed here is unchanged, and the numeric thresholds are unchanged verbatim.
 
-The blocker is upstream of Stage 0, in the benchmark oracle rather than the harness. The 24 named cases carry no reference SQL anywhere in the repository, and reconstructing the oracle by execution shows it cannot support the locked decision rules: of the 9 `scalar_exact` cases, 2 are correct, 3 reproduce only the naive whole-snapshot query on a `_df` full-snapshot table (so the semantically correct `ymd`-filtered answer is graded wrong), and 4 cannot be reproduced at all — `k11v2_022` is off by exactly 100× and `k11v2_024` by ~54×. 17 of 24 cases touch a `_df` snapshot table, and the bias runs against the arm under test, because the state-machine arm is the one forced to load the table definition that carries the snapshot warning.
+Host access is green: real `maxc` queries against `ieu_cdm` succeed under a read-only policy, and the resolved binary is `/Users/mckenzie/Library/Python/3.13/bin/maxc`.
 
-Full evidence, every number re-executed against real MaxCompute: [G25a preflight — the locked case oracle cannot grade the decision batch](../research/G25a-oracle-validity-preflight.md).
+### Why the original case set was replaced
 
-No decision-run budget was spent. Resolving this requires a scoping decision from the user, because re-deriving expected values now would re-author the locked oracle after seeing the data, which this ticket's Out-of-scope forbids.
+The 24 named `k11v2_*` cases carry no reference SQL anywhere in the repository, so grading rule 2 and the batch start/end stability probe both pointed at an artifact that does not exist. Reconstructing the oracle by execution showed that of the 9 `scalar_exact` cases, 2 are correct, 3 reproduce only the naive whole-snapshot query on a `_df` full-snapshot table, and 4 cannot be reproduced at all — `k11v2_022` is off by exactly 100× and `k11v2_024` by ~54×. 17 of the 24 cases touch a `_df` snapshot table, and the bias runs *against* the arm under test, because the state-machine arm is the one whose GENERATION gate forces it to load the table definition carrying the snapshot warning.
+
+Full evidence, every number executed against real MaxCompute: [G25a preflight — the locked case oracle cannot grade the decision batch](../research/G25a-oracle-validity-preflight.md).
+
+### Amendment 1 — real-execution slice
+
+The real-execution slice moves to `packages/eval/eval/cases/rbi-10000251-exec`, the only case set in the repository carrying reference SQL. Auditing all 39 of its oracles today leaves 12 that reproduce exactly on a non-degenerate value:
+
+```text
+036 037 038 039 040 041 042 043 046 048 055 060
+```
+
+Excluded: 16 stale scalars (`057` plus the whole `119`–`138` event family, which reads the continuously-accumulating `ieu_ods` view), 8 stale multi-row (`045` `049` `050` `051` `052` `053` `054` `059`, four of which also record only a 5-row prefix of a longer result), and 3 degenerate (`044`, whose self-join makes the expected `1.0` an artifact; `056` and `130`, whose expected `0` is indistinguishable from an agent finding no data).
+
+The reference date becomes **2026-08-06**, so `{{ds_yesterday}}` = `20260805` and `{{ds_7d_ago}}` = `20260730`. Absolute dates still go into the Task working set verbatim; the substitution is applied when the manifest is generated, never at model time.
+
+### Amendment 2 — which locked rule carries the decision
+
+On 12 cases, case-level `pass^3` moves in whole-case steps of 8.3pp, so retention rule 1's 8pp threshold sits below the metric's resolution and a 10,000-iteration paired bootstrap over 12 units straddles zero for any plausible effect. Rule 1 would therefore return 不确定 by construction rather than by measurement.
+
+Retention rule 2 becomes the primary axis: **severe unsupported answers reduced by at least 50%, with end-to-end correctness dropping no more than 2 percentage points.** Both numbers are the already-approved locked values. The 12 verified cases supply the correctness guard rail that rule 2 already names; the behavioral cases supply the anti-fabrication measurement and need no warehouse oracle, because they are graded deterministically from Session evidence on whether the agent clarified, declined, recovered, or fabricated.
+
+The behavioral case count grows from 8 to **24**, six per category across 口径歧义, 无可用 grounding, 执行恢复, and 持续失败. Total case count is **36**. Stage 2 becomes 36 cases × 3 replicates × 2 decision arms + 36 diagnostic-floor attempts = **252 Attempts**.
+
+The 30% cost-overhead clause, the material-degradation clause, the 不确定 clause, and every artifact and privacy boundary are unchanged.
+
+### Clauses below that this amendment supersedes
+
+The original text is kept verbatim as the historical record. Where the two disagree, this section wins:
+
+| Section below | Original | Amended |
+| --- | --- | --- |
+| 统一运行控制 → reference date | `2026-08-27` | `2026-08-06` (`ds_yesterday` `20260805`, `ds_7d_ago` `20260730`) |
+| Case Manifest → 真实执行案例 | 24 `k11v2_*` cases | the 12 verified `eval_10000251_*` cases listed above |
+| Case Manifest → 行为与失败案例 | 8 cases, two per category | 24 cases, six per category |
+| Case Manifest → iterative slice | `k11v2_057` `065` `073` `080` | re-marked on the 12-case slice when the manifest is generated |
+| Case Manifest → reference SQL re-execution | implied, no artifact existed | the 12 cases' own `expected.sql`, re-executed at batch start and end |
+| 锁定判定规则 → which rule decides | rule 1 (8pp) or rule 2 (50%) | rule 2 is primary; rule 1 is reported but is below metric resolution at n=12 |
+| Stage 1 → smoke composition | 6 cases, 18 Attempts | 6 cases, 18 Attempts, drawn from the amended slice |
+| Stage 2 → batch size | 32 cases, 224 Attempts | 36 cases, 252 Attempts |
+| Stage 3 → 主指标 | case-level `pass^3` | severe unsupported answer rate; `pass^3` becomes the ≤2pp guard rail |
+| 已知证据与缺口 items 1, 2, 7 | about the `g1b` `k11v2` slice | retained as history; the slice they describe is no longer used |
 
 ## Implementation handoff
 
