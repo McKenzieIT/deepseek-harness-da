@@ -28,6 +28,9 @@
 - 因此不是「跑一下生成器」就能收口：需要一次真正的双语补齐（`dsh-translate-docs` 只允许用户显式触发）。本轮已把误跑的英文重生成回滚，配对保持 1016 对一致。
 - 完成条件：英文重生成 + 中文对侧补齐 + `verify-translation-pairing --write` 重录 + `verify-config-catalog` 绿。
 - **副作用（2026-09-17 实测，把本项排在前面的独立理由）**：这条门红着的时候，`DSH_GATE_FAIL_FAST: 1` 会在它之后立刻中止整条 lane，后面的静态门一个都不跑 —— PR #169 的 job `105086673951` 里 `concrete terms` 就是 `SKIPPED (0.00s, aborted by fail-fast: config catalog failed)`。所以只要本项没收口，`static` / `windows observational` 对其后所有门都不提供任何信号；PR #169 恰好改了 `verify-concrete-terms`（删掉两条例外），CI 根本没跑到它，只能靠本机 + 树内扫描自证（阻断词在排除项之外 0 命中，路径 0 命中）。
+- **已收口（2026-09-17，用户显式发起 `dsh-translate-docs`）**：`gen-config-catalog` 重生成新增 42 个包节（900 行，含 admin/audit/ptc 运行时/语义层/eval/客户端 UI 插件）+ 三条尾部清单共 24 条 + 1 条漂移的 source 行。中文对侧按配对契约原地补齐、**未整篇重译**：`ts config-catalog` 围栏含 JSDoc 逐字节一致（163 个围栏 0 漂移），标签沿用该文件既有渲染（`Requires:`→`需要：`、`Depends on:`→`依赖：`、`Source:`→`来源：`、清单关键词→`需要`/`抽象`、尾部链接用全角括号）；`Source` 链接指向 `.ts`，在双语语料之外，保持原路径。验收：`verify-config-catalog` 绿、配对重录且一致、`doc-sync` 43/43、`test:docs` 21/21、`verify-concrete-terms` 干净。提交 `dbb8682541`。
+- **随之而来的预期**：本项转绿后，上一条的 fail-fast 不再掩盖其后的静态门 —— `static` / `windows observational` 会**首次**跑完整条 lane，可能暴露此前从未运行过的失败面。下一轮看到新面属正常，不等于回归。
+- **已识别的具体候选**：`scripts/doc-standard.spec.ts:343`（`maps package README kinds to their documentation standards`）本机单跑 3.65s、预算 5s，余量仅 ~1.35s；本轮在本机轻度并发下**已实测超时一次**（5.32s > 5s，`Test timed out in 5000ms`），单跑复现即绿。它 `globSync` 并读取全部包 README，属**负载敏感**型 —— 与 sdk 握手超时同一失败模式（预算边缘 + 机器被挤）。若 static lane 在 4 vCPU 上把它与其他门挤在一起，它是最可能先红的一条；真红时按同一归属逻辑处理（fork 自有 runner 替换导致的过载 → fork 侧调并发或给该测试一个诚实的预算，**不加 retry、不弱化断言**）。
 
 ### 3. `duplication` — 69 处 da 克隆（当前 0.26%，门槛 0.338%）
 
