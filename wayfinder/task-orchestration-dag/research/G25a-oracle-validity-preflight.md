@@ -88,6 +88,50 @@ Authoring fresh expected values now would mean re-deriving the locked oracle aft
 
 No decision-run budget was spent reaching this conclusion. The ticket's own instruction — "Build and prove Stage 0 before spending the decision-run budget" — is what surfaced it, one layer earlier than expected: the blocker is in the benchmark oracle, upstream of the harness defects the ticket already catalogued.
 
+## Finding 4 — the replacement benchmark verifies on only 12 of its 39 cases
+
+The user chose on 2026-09-17 to replace the real-execution slice with `packages/eval/eval/cases/rbi-10000251-exec`, which is the **only** case set in the repository carrying reference SQL: all 39 of its cases have `expected.sql`, all are `tier: verified`, none are retired, and all 168 `k11-v2` cases plus the `_archived/k11-v1` set have none.
+
+The repo already ships the instrument for checking it — `packages/eval/eval-cli/dev/case-expected-value-audit.mjs`, written for GA-EVAL-EVENTDEF-PREFETCH on 2026-09-06 because a case scored `wrong` even when the agent emitted the reference SQL byte-for-byte. Re-running it today across all 39 cases (`ONLY_DS=all`, anchor `TODAY=20260806`, so `ds_yesterday=20260805` and `ds_7d_ago=20260730`) gives:
+
+```text
+MATCH=15  STALE_EXPECTED=16  SKIPPED=8  (of 39)
+```
+
+That script compares only the first scalar of the first row, so every multi-row expectation fell out as `SKIPPED`. Executing those 8 reference queries and comparing the **full** row set closes the gap:
+
+```text
+row-set tally: {"STALE_ROWS": 8}
+```
+
+All eight are stale, and four carry a second defect — the recorded expectation is a 5-row prefix of a reference query that returns 7, 10, or 11 rows. Two of them (`050`, `054`) are stale in a third way: their expected rows encode `ds` values `20260714`–`20260718`, dates the `{{ds_7d_ago}}` substitution no longer produces at this anchor, so those expectations were captured under a different anchor date entirely.
+
+Three of the 15 nominal scalar matches are degenerate rather than usable:
+
+| Case | Question | Why it cannot grade correctness |
+| --- | --- | --- |
+| `044` | 7月14日新增角色的次日留存率 | Reference SQL is a self-join on `user_id` with both sides constrained, so `COUNT(DISTINCT b.user_id)/COUNT(DISTINCT a.user_id)` is trivially `1.0` whenever any row matches. Expected `1.0` is an artifact of a broken query, not a retention rate. |
+| `056` | 昨天的登录账号UV | Expected `0`, produced by `event = 'game.user.login'` against `ieu_ods.ods_10000251_all_view` returning nothing. Any agent that fails to find data also returns 0 and scores correct. |
+| `130` | 昨天付费抽卡（非免费）的次数 | Expected `0`, same failure mode via `GET_JSON_OBJECT(params,'$.free') = '0'`. |
+
+The stale/usable split tracks `data_source` exactly as the script's 2026-09-06 docstring recorded: the `event` family (18 cases, all reading the raw `ieu_ods` view) has drifted on every non-zero case, while the `dws` summary tables held their scalar values for a month. The drift is not the tables changing definition — it is that the raw event view keeps accumulating, so any absolute count recorded against it decays immediately.
+
+### The usable pool
+
+Twelve cases survive: reference SQL that reproduces exactly today, on a non-degenerate value.
+
+```text
+036 037 038 039 040 041 042 043 046 048 055 060
+```
+
+Excluded: 16 stale scalars (`057` plus the whole `119`–`138` event family), 8 stale multi-row (`045` `049` `050` `051` `052` `053` `054` `059`), 3 degenerate (`044` `056` `130`).
+
+## Finding 5 — 12 cases cannot carry the locked 8pp rule
+
+Retention rule 1 requires an 8 percentage-point absolute gain in case-level `pass^3` with consistent direction across three replicate slots. On 12 cases, 8pp is 0.96 cases — below the resolution of the metric, since `pass^3` moves in whole-case steps of 8.3pp. A 10,000-iteration paired bootstrap resampling 12 cases produces a 95% interval several cases wide, so the interval straddles zero for any plausible effect. Rule 1 would return "不确定" by construction rather than by measurement, which the ticket's own locked language anticipates but does not want manufactured: "结果相近、方向不稳定、环境证据不足或统计区间跨越零时，结论为'不足以扩大 phase-gate'".
+
+Retention rule 2 is the one that remains reachable. It requires a 50% reduction in severe unsupported answers with correctness dropping no more than 2pp — a much larger effect size, and one measured mainly on the behavioral cases (口径歧义, 无可用 grounding, 执行恢复, 持续失败). Those cases need no warehouse oracle at all: they are graded deterministically from Session evidence on whether the agent clarified, declined, recovered, or fabricated. They are also the mechanism by which phase-gate most plausibly earns its cost, since its GENERATION gate fails closed without a loaded definition and its honest-decline path is explicit.
+
 ## What is already proven green
 
 - Host network, credentials, and `maxc` all work; real `SELECT` queries against `ieu_cdm` succeed under a read-only policy.
