@@ -26,7 +26,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   business_context: 抽卡总抽数（game.card.gacha 的 gachaTimes 参数求和）；GET_JSON_OBJECT 提取
   created_at: '2026-08-04'

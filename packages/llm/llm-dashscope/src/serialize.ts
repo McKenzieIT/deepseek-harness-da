@@ -9,6 +9,11 @@
  * @module dsh-llm-dashscope/serialize
  */
 
+/* jscpd:ignore-start -- the structural overlap with llm-deepseek is deliberate: both packages
+   implement the same LlmAdapter seam, while this wire layer is native AGA and disjoint from
+   OpenAI chat-completions. See
+   .agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md. */
+
 import { contentHasImage, LlmError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, Message } from '@deepseek-ai/dsh-llm'
 import type { WireMessage, WireRequest, WireToolCall, WireTool } from './types.ts'
@@ -140,3 +145,4 @@ export function serializeRequest(options: GenerateOptions): WireRequest {
     },
   }
 }
+/* jscpd:ignore-end */

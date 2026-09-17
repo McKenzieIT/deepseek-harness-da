@@ -28,27 +28,32 @@
 - 因此不是「跑一下生成器」就能收口：需要一次真正的双语补齐（`dsh-translate-docs` 只允许用户显式触发）。本轮已把误跑的英文重生成回滚，配对保持 1016 对一致。
 - 完成条件：英文重生成 + 中文对侧补齐 + `verify-translation-pairing --write` 重录 + `verify-config-catalog` 绿。
 
-### 3. `duplication` — 84 处 da 克隆（当前 0.32%，门槛 0.338%）
+### 3. `duplication` — 69 处 da 克隆（当前 0.26%，门槛 0.338%）
 
 - 上游已**取消比例门槛**、改为「有克隆即红」（`.jscpd.json` 去掉 `threshold`、加 `exitCode: 1`、且扫描 spec 文件）；fork 保留比例门槛，本轮把「按设计重复」的正式协议包用 `jscpd:ignore-start/end` 围栏后，比例从 0.49% 降到 0.32%，**门当前是绿的**。
 - 但 84 处克隆仍在，且随 da 代码增长会再次顶破门槛。主族：`ui-present-decomposition` ↔ `ui-present-table` ↔ `ui-suggest-followups` 的 card 组件、`ui-semantic-layer` 自身、`ui-semantic-layer` ↔ `schema-gateway`/`evidence-query` 的类型重复、`code-runtime-data-python` ↔ `ptc-runtime-node`/`ptc-runtime-python` 的运行时片段。
 - 完成条件：把类型重复抽到共享包、card 组件抽公共壳；比例回落后再把门槛调回上游语义（零容忍）或更紧的比例。
+- **2026-09-17：`llm-dashscope` 那 15 对已用围栏解掉**（用户裁定：该包适配阿里内网 AGA 网关，上游 `llm-deepseek` 只讲 OpenAI 兼容 wire，两者刻意独立演进；**否决抽公共基座** —— 那会把内网网关的演进耦合到上游 provider 上）。五个 `src/*.ts` 各加一处 `jscpd:ignore-start/end`，理由指向既有决策 [note](../../../../.agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md)（该 note 本就记着「镜像 llm-deepseek 的结构、wire 层不相交」并已否决 translate shim 方案）。**未上调 `.jscpd.json` 阈值。**
+- 实测：84 → 69 处，0.32% → 0.26%，余量从 0.018pp 拉开到 0.078pp。**没有达到当初预估的 0.1%** —— 那个预估把 280 行重复整个算进分子，实际重复行只从 1334 降到 1069。余量仍然薄，剩下 69 处（card 组件壳、`ui-semantic-layer` 自重复、类型重复）依然是顶破门槛的主要风险。
 
 ## 非目标
 
 - 不修上游内容：上述三项的失败面全在 fork 自有文件内。
 - 不放宽门：不加 retry、不吞错、不把 da 包塞进豁免名单（用户已否决）。
 
-## 观察项：sdk 快照的 initialize 超时（上游 profile 冷启动变慢，CI 硬件下越界）
+## 已修：`snapshots and artifacts` 的 sdk initialize 超时（归属从上游债更正为 fork 自有 CI 配置）
 
 PR #168 三轮 CI 里 `node 24 / snapshots and artifacts` 每轮都命中 `RequestTimeoutError: initialize timed out after 10000ms waiting for dsh profile "sdk"`，且**每轮命中的场景不同**（`subagent-continuable-inheritance` / `bash-tool` / `inline-image-prompt` + `subagent-continuable-inheritance`）—— 典型的预算边缘特征，不是录制内容漂移。
 
 证据与归属：
 - 本机：`snapshots/sdk/sdk.snapshot.ts` 单跑 20/20 绿，`pnpm run test:snapshot` 全量 4/4 绿；单个场景（含启动 + 握手 + 回放 + 断言）耗时 1.3–6.0s，握手本身远低于 10s。
 - 对比：PR #167（基于合并前 master）同一 job 失败在 `test:expected`，**没有**这个握手超时 → 本现象是合并后才出现的。
-- 归属：`sdk` profile、其插件名单、`packages/sdk/client` 的 `DEFAULT_INITIALIZE_TIMEOUT_MS = 10_000`、以及 `snapshots/sdk/sdk.snapshot.ts`（已把 `requestTimeoutMs` 设为 110s、却没设 `initializeTimeoutMs`）**全部属上游**；fork 未向 `sdk` profile 挂任何 da 插件。666 个上游 commit 把该 profile 的冷启动变重，在 CI runner 上超过了上游自己的 10s 握手预算。
+- **归属更正（2026-09-17）**：原判定「上游 profile 冷启动变重 → 上游债」**错了**。上游把这条 lane 排在 `dsh-ubuntu-24-04-16core`（16 核）上，fork 因为拿不到那个 runner label 换成了 `ubuntu-latest`（公开仓库 = **4 vCPU**），**却留着上游按 16 核调的并发值**：`DSH_GATE_CONCURRENCY: 10`、`DSH_OXLINT_THREADS: 8`、`DSH_PUBLINT_CONCURRENCY: 8`、`DSH_WEB_SNAPSHOT_WORKERS: 6`。换 runner 是 fork 自己的改动，所以过载也是 fork 的债。
+- CI 日志证据（job `105057010245`）：超时发生在 `test:snapshot` 的第 177 秒，而同一台机器上 `doc-typecheck:contracts-ready`（164s）与 `built-bin smoke`（169s）**全程并行**，同 job 还并发跑着 `build` / `lint` / `publint` / `node-next` / `test:expected` 共 8 个 gate。整台机器被拖慢 3–5 倍，不是 sdk 特有：`apps/web/tests/minimal-preset.snapshot.ts` 3 个用例 27.1s、`snapshots/acp/acp.snapshot.ts` 15 个用例 20.1s、单个 ACP 握手用例 13.6s —— 本机同类只要 1.3–6.0s。**同一次运行里 ACP 的握手照样过了**，只有恰好排在最挤时刻的 sdk 场景越界，这正是「每轮换一个场景失败」的原因。
+- 修法（fork 侧，不碰上游）：`ci.yml`（该文件已因 owner gate 与上游分叉）把这条 lane 的并发按 4 vCPU 重标 —— gate 10→4、oxlint 8→4、publint 8→4、web snapshot workers 6→2、`DSH_SNAPSHOT_MAX_CONCURRENCY` 的默认支路 8→3；failover 支路（自建 64 核 VM 的 12）不动。**没有改上游的 `initializeTimeoutMs`、没有加 retry、没有弱化断言、没有重录快照。** fork 此前已用同一手法把 `DSH_COVERAGE_MAX_WORKERS` 6→4、`DSH_SNAPSHOT_MAX_CONCURRENCY` 32→8，本次只是把剩下几个漏掉的值补齐。
+- 复检条件：下一次 PR 的 `node 24 / snapshots and artifacts` 不再出现 `initialize timed out`。若仍超时，说明 4 vCPU 连串行的 profile 冷启动都撑不住，那时才回到「上游预算 vs 硬件」的讨论，并按 CB-5 的 Q1（DA 要不要建自己的 CI 腿）一并决定。
 
-处置（按本 effort 准则）：**归为上游债，不在 fork 修** —— 不改上游的 `initializeTimeoutMs`、不加 retry、不降并行度、不重录快照。`node 24 / snapshots and artifacts` 因此在 fork CI 保持红，直到上游要么降低 profile 冷启动成本、要么把握手预算交给 lane 声明（如同它已经对 `requestTimeoutMs` 做的那样）。若要上报上游，证据就是本节。
+被否决的处置：**「归为上游债、让这条 job 一直红」** —— 一条长期红的 job 会训练所有人忽略 CI，且本节证据表明红的原因在 fork 自己的 runner 替换上，上游无债可交。同样被否决的是「什么都不做等下次同步」。
 
 ## 从 PR #42 抢救的两条记录（该 PR 已关，分支已删）
 

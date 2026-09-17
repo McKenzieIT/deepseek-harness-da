@@ -27,7 +27,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   business_context: 现金券(moneyType=2)充值次数，反映代金券消耗规模而非现金流水，不计入营收
   created_at: '2026-08-04'

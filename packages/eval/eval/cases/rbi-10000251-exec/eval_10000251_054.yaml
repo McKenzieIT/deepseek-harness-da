@@ -57,7 +57,7 @@ meta:
   - eval
   needs_repin: true
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: hard
   business_context: 日期+1的计算方式为MaxCompute ODPS语法
   created_at: '2026-08-04'

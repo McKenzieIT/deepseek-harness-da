@@ -27,7 +27,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   business_context: 真实营收只计现金(moneyType=1)，单位分需/100转元；用户2026-07-22确认现金券(moneyType=2)不计入营收，同族游戏10000329同源
   created_at: '2026-08-04'

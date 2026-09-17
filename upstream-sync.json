@@ -34,31 +34,31 @@
     {
       "path": "packages/client/runtime/",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/examples/jsonrpc-demo/",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/examples/agent-spine-demo/",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "knip.json",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/client/connection/tests/fake-api.client.ts",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
@@ -76,13 +76,13 @@
     {
       "path": "packages/client/ui-settings-models/src/client/operations.ts",
       "direction": "drop-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/client/ui-settings-models/src/client/slot-contract.ts",
       "direction": "drop-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {

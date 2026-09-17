@@ -27,7 +27,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   business_context: 付费抽卡次数（game.card.gacha 且 free 参数=0）；GET_JSON_OBJECT 过滤
   created_at: '2026-08-04'

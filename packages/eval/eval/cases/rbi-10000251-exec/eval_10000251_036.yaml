@@ -27,7 +27,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: easy
   business_context: 角色维度DAU，user_type=3，act=1标记活跃
   created_at: '2026-08-04'

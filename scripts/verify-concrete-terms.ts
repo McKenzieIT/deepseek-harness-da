@@ -12,8 +12,6 @@ const excludedPrefixes = [
   '.agents/notes/archived/',
   // Decision tickets and research record the wording of the sources they examined.
   'wayfinder/',
-  // Case data: the term is a field name in the recorded case format.
-  'packages/eval/eval/cases/',
 ] as const
 
 /** One blocked term occurrence in a tracked path or text line. */
@@ -26,8 +24,6 @@ export interface ConcreteTermViolation {
 
 function isExcluded(file: string): boolean {
   return excludedPrefixes.some(prefix => file.startsWith(prefix))
-    // This note names the execution cases' recorded `meta` field by its key.
-    || /^\.agents\/notes\/proposed\/testing\/2026-09-07-execution-grader-seam(?:\.zh)?\.md$/u.test(file)
     // Release snapshots retain the identifiers present in their pinned source.
     || /^docs\/persistence-changes\/releases\/dsh-v\d+\.\d+\.\d+-(?:alpha|rc)\.\d+\.schema\.json$/u.test(file)
     || /^docs\/persistence-changes\/historical-formats\/v(?:0|[1-9]\d*)\.schema\.json$/u.test(file)
