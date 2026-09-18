@@ -207,6 +207,69 @@ export const UNMATCHED_DISPOSITIONS: readonly UnmatchedDisposition[] = [
   },
 ]
 
+/**
+ * A strict-glob file that has no TypeScript program because upstream itself
+ * ships it program-less AND with a type inconsistency the fork must not fix.
+ *
+ * Unlike {@link UNMATCHED_DISPOSITIONS} (files OUTSIDE the strict globs), these
+ * DO match a strict override glob, so the fence would flag them. They are
+ * exempted only while their bytes are byte-identical to the pinned upstream
+ * blob: the fence recomputes `git hash-object` for the working-tree file and
+ * exempts it solely when the id equals {@link blob}. A fork edit changes the
+ * hash and the exemption stops matching, so fork-authored content can never
+ * enter this channel; an upstream change on the next sync also lapses it,
+ * forcing the disposition to be decided again against the new bytes.
+ */
+export interface UpstreamDebtExemption {
+  /** Repository-relative POSIX path of the exempted upstream file. */
+  readonly path: string
+  /** The authoritative upstream git blob SHA-1 this file must match to stay exempt. */
+  readonly blob: string
+  /** Why upstream cannot be given a real program without editing upstream source. */
+  readonly rationale: string
+  /** The condition under which this exemption is re-adjudicated. */
+  readonly recheck: string
+}
+
+/**
+ * Program-less strict-glob files owned by upstream and exempted by blob identity.
+ *
+ * Reproduced 2026-09-18 after syncing dsh-v0.1.6-alpha.2 (`ddefc45fbc`): the
+ * only such file is upstream's new `desktop-updates.e2e.ts`, whose two-argument
+ * `presentDesktopUpdate(state, en)` calls do not match upstream's own
+ * single-argument implementation. Upstream keeps the test out of every program
+ * (its `apps/web/tsconfig.json` excludes it), so upstream never type-checks it
+ * and the mismatch is latent there; only this fork's program-coverage fence
+ * surfaces it. The standing rule forbids editing upstream's test or
+ * implementation to reconcile them.
+ */
+export const STRICT_OVERRIDE_UPSTREAM_DEBT: readonly UpstreamDebtExemption[] = [
+  {
+    path: 'apps/web/tests/desktop-updates.e2e.ts',
+    blob: '1e30848020d3fe7ae5d4ae38d258bc46231900eb',
+    rationale: 'Upstream test calls presentDesktopUpdate(state, en) but upstream\'s implementation takes one argument; giving it a program fails host typecheck on upstream\'s own inconsistency, which the fork must not fix.',
+    recheck: 'Next upstream sync: if upstream reconciles the signature or claims the file in a program, drop this entry.',
+  },
+]
+
+/**
+ * Whether a program-less strict-glob file is an exempt upstream file, proven by
+ * its working-tree bytes still hashing to the pinned upstream blob SHA.
+ * @param path - repository-relative POSIX path from the reproduced unmatched list.
+ * @returns true only when an exemption pins this path and `git hash-object` of
+ *   the working-tree file equals that entry's blob id.
+ */
+export function isExemptUpstreamDebt(path: string): boolean {
+  const exemption = STRICT_OVERRIDE_UPSTREAM_DEBT.find(entry => entry.path === path)
+  if (exemption === undefined) return false
+  const hashed = spawnSync('git', ['hash-object', '--', join(repositoryRoot, path)], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  })
+  if (hashed.status !== 0) return false
+  return hashed.stdout.trim() === exemption.blob
+}
+
 /** Placeholders that survive regex escaping while a glob is tokenized. */
 const DESCENDANTS_TOKEN = '\u0000'
 const SEGMENT_TOKEN = '\u0001'
@@ -292,15 +355,16 @@ function assertNoStrictOverrideUnmatched(invocation: OxlintInvocation): void {
       unmatched.push(relative(repositoryRoot, captured.trim()).replaceAll('\\', '/'))
     }
     const violations = unmatched.filter(path =>
-      matchesStrictOverrideGlob(path))
+      matchesStrictOverrideGlob(path) && !isExemptUpstreamDebt(path))
     if (violations.length === 0) return
     process.stderr.write(
       `run-oxlint: ${violations.length} file(s) match .oxlintrc.json overrides[0].files, so the full type-aware rule`
       + ' set ran over them, but no TypeScript program claims them — tsgolint resolved their types through an'
       + ' option-less inferred program, so the type-aware half of this gate reported green without checking them:\n'
       + violations.map(path => `  ${path}\n`).join('')
-      + '  Give each one a real tsconfig owner; see'
-      + ' wayfinder/data-agent/tickets/phase-upstream-merge/UM-LINT-B-UNMATCHED-PROGRAMS.md.\n',
+      + '  Give each one a real tsconfig owner; for a file whose bytes are upstream verbatim and whose only'
+      + ' obstacle is upstream\'s own type inconsistency, pin its blob in STRICT_OVERRIDE_UPSTREAM_DEBT instead.'
+      + ' See wayfinder/data-agent/tickets/phase-upstream-merge/UM-LINT-B-UNMATCHED-PROGRAMS.md.\n',
     )
     process.exitCode = 1
   } finally {
