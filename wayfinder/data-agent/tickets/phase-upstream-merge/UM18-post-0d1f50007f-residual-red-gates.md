@@ -221,3 +221,50 @@ AssertionError: expected [ …(3) ] to have a length of 2 but got 3
 - **本轮的处理**：曾误修过一次（`ddc27317d6`），发现归属后已整体回滚（`b1aadd426f`）。教训记在逐轮日志 Round 31。
 - **fork 侧真正该做的部分**：只有「因 fork 新增 da 包而必须补的 42 个包节 + 24 条清单项」，即 `dbb8682541` —— 那 42 个锚点在上游对侧中**一个都不存在**，属 fork 自有内容。
 - 若日后有渠道上报上游，本节就是证据；在此之前不作为 fork 的待办。
+
+## 2026-09-18（第六棒）：同步到 `dsh-v0.1.6-alpha.2` 已落，归属基线换成 `ddefc45fbc`
+
+merge commit `ce11b3929e4a`（双 parent，拓扑保留），882 提交 / 2548 文件 / +100218 −23242，**25 个冲突**全部解完。复核报告见 `upstream-sync/da-impact-ddefc45fbc.md`。**归属基线自此为 `ddefc45fbc`，不再是 `0d1f50007f`。**
+
+### 本票三项残余红门的现状
+
+1. **coverage（167 个 da 文件 / 62 个包）** —— 本棒未动，第二批那 16 处与 `query/query` 那 5 处的结论**不需要按新基线重算**：实测那 9 个目标文件（含 `query/query/src/index.ts`）在 `ddefc45fbc` 上**依然不存在**，所以仍是 100% fork 自有。上一棒担心的「换基线导致副线结论作废」并未发生。
+2. **`verify-config-catalog`** —— 绿。重生成后英文 **173 节**（上游 131 + da 42），中文对侧按机械方式重组（不是重译），两侧 173 节 / 170 锚点、0 处结构不一致、**170 个 `ts config-catalog` 围栏逐字节一致**（上一棒记的是 163 个，上游新增 7 个配置包）。配对重录后 **1104 对**全一致（上一棒 1016 对）。
+3. **`duplication`** —— 绿，**69 处 / 0.25%**（门槛 0.338%），与上一棒记录一致；未加围栏、未调阈值。
+
+### 新增一条：上游缺陷 + fork 侧兼容修复（不是「上游不可达」）
+
+这是本票此前没有的一个类别 —— **上游自己碎、但 fork 侧有正当修法**，因此**不按不可达留档**。
+
+上游 `9ddef327a4 feat: resolution mode link to runtime`（提交时间距 tag 只有 1 小时 27 分）把 `apps/cli/src/profile-boot.ts` 非打包分支的默认值从 `?? 'link'` 改成 `?? 'runtime'`。后果：`pnpm run test:snapshot` 从全绿变成 **83 失败 / 77 通过**，全部是同一句
+`dsh: UNKNOWN: Cannot read properties of undefined (reading 'prepare')`。
+
+机制（运行时实测，非推断）：tsx 启动会导出 `TSX_TSCONFIG_PATH`，其 `paths` 把 workspace 导入改写到 `src/`；而 `runtime` 模式按 package `exports` 把裸插件名解析到构建产物 `lib/`。两者同时生效时 `@deepseek-ai/dsh-tools` 被**加载两份**，而 `TOOL_RUNTIME_SCHEDULER` 是模块级 `Symbol()`（不是 `Symbol.for()`），于是 ToolRuntime 实例上带着一个描述为 `Symbol(@deepseek-ai/dsh-tools.scheduler)` 的 own symbol，而 `agent-loop` 侧查出来是 `undefined`，所有工具派发都死在 `.prepare` 上。
+
+**归属：上游，有硬证据。** `profile-boot.ts` 里 `resolutionMode` 那 9 行与上游**逐字节相同、行号一致**（该文件其余部分 fork 分叉 99/175，但不在这里），且全仓没有任何地方显式传 `resolutionMode`。在**纯上游 tag** 上建 worktree（`packages/data` 不存在、build 0 error）复现同一条场景，得到**完全相同**的失败：
+
+```
+git worktree add --detach .worktrees/upstream-tag-alpha2 ddefc45fbc
+pnpm install && pnpm run build:official
+npx vitest run --config vitest.snapshot.config.ts snapshots/session/headless.snapshot.ts -t "agent-instructions"
+→ Tests 1 failed | 121 skipped (122)
+→ stderr: dsh: UNKNOWN: Cannot read properties of undefined (reading 'prepare')
+```
+
+即上游自己的发布在「源码模式 + 已构建 lib」下会弄碎它自己的录制语料 —— 而这恰好就是 CLAUDE.md 强制的 worktree 流程，CI 也一样。
+
+**修法（`240dd0db25`）：让 fallback 后端跟随启动方式。** 两个启动器本来就用同一个信号表示「源码模式」—— `loader-smoke` 的 `src` 模式设 `TSX_TSCONFIG_PATH`，SDK 的 `resolveDshNodeLaunchFromManifests` 只在其 source 分支设它（两个文件都是纯上游、本次合并未改）。上游新的 `runtime` 默认在纯 Node 启动下仍然保留 —— 那种情况下它是对的。
+
+**被否决的两个方案**：①「无条件钉回 `link`」—— 实测会把失败面**反转**：修好 62 条 headless/acp，却弄碎 21 条 sdk（sdk 启动的是构建产物、走纯 Node，本就该用 `runtime`）；②「归为上游不可达、让 83 条一直红」—— 与当初否决 sdk 握手超时「让它一直红」的理由冲突（长期红的 job 会训练所有人忽略 CI）。
+
+验收：`test:snapshot` **4 个文件 / 160 通过 / 2 跳过**，`prepare` 报错 0 次、`failed to import` 0 次。`resolved-profile-boot.spec.ts` 新增的用例做了**变异校验**：把上游那句硬编码 `'runtime'` 放回去，**只有**这条用例变红（1 失败 / 16 通过）。
+
+**后续注意**：这是一层兼容 shim，等上游修好后应当重新评估 —— 将来某个上游版本可能让 `runtime` 对源码启动也成立。
+
+### 一条原有红门的再确认
+
+`packages/boot/app-boot/tests/app-boot.spec.ts` 的 `enumerates every failed entry when a group apply fails with multiple errors (CB-1a S2)` **在合并前 master 上同样失败**（本棒实跑确认），与本票原先「属原有」的记录一致，不是本次合并的回归。
+
+### 上游退役了动态 cordis 工具族（归属：上游内容，整体取上游）
+
+`cordis_define` / `cordis_run` / `cordis_stop` / `cordis_undefine` / `cordis_inspect_self` 五个工具在 merge-base 上就存在（533 行），**全属上游**；fork 在该文件唯一的改动是 16 行 `ctx.effect()` 包裹。上游把文件砍到 83 行、只留 `cordis_inspect_list` 与 `cordis_inspect_query`，并把插件生命周期挪进新包 `packages/boot/plugin-manager`（对外是 `plugin_manager` 工具，已进工具目录）。**da 生产代码 0 处依赖**这五个工具；只有两处 wayfinder 历史叙述提到它们（`research/harness-plugin-model.md:330-331`、`interpretation-client-rendering/tickets/T5-...md:38`），属描述性文字、不会坏，但若那篇研究笔记要反映当前 harness，需要改写成 `plugin_manager` 的故事 —— 本棒未动。
