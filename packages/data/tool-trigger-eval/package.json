@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-trigger-eval",
   "description": "Model-facing trigger_eval tool: triggers a semantic layer eval run, reports results and before/after delta",
-  "version": "0.1.6-alpha.1",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

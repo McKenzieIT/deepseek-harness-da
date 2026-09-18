@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-schema-gateway",
   "description": "Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI consumption",
-  "version": "0.1.6-alpha.1",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-code-runtime-data-python",
   "description": "CPython subprocess CodeRuntime Provider for the data-agent (pandas/numpy, containment-only trust)",
-  "version": "0.1.6-alpha.1",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

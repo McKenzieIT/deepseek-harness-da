@@ -7,8 +7,10 @@ import { fileURLToPath } from 'node:url'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { describe, expect, it } from 'vitest'
 import {
+  isExemptUpstreamDebt,
   matchesStrictOverrideGlob,
   STRICT_OVERRIDE_GLOBS,
+  STRICT_OVERRIDE_UPSTREAM_DEBT,
   UNMATCHED_DISPOSITIONS,
   type UnmatchedDisposition,
 } from './run-oxlint.ts'
@@ -260,6 +262,37 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
     // 6 eval-cli tests were claimed by tsconfig.tests.json (was 55 before that claim).
     expect(counted('waive')).toBe(34)
     expect(counted('keep')).toBe(15)
+  })
+
+  it('exempts an upstream-owned strict-glob file only while its bytes match the pinned blob', async () => {
+    // Every exemption is a strict-glob file (so the fence would otherwise flag
+    // it) whose working-tree bytes currently hash to the pinned upstream blob.
+    for (const entry of STRICT_OVERRIDE_UPSTREAM_DEBT) {
+      expect(matchesStrictOverrideGlob(entry.path), entry.path).toBe(true)
+      expect(isExemptUpstreamDebt(entry.path), entry.path).toBe(true)
+      expect(entry.blob, entry.path).toMatch(/^[0-9a-f]{40}$/)
+      expect(entry.rationale, entry.path).not.toBe('')
+      expect(entry.recheck, entry.path).not.toBe('')
+    }
+
+    // Negative control: a fork-owned strict-glob file with no program is NOT on
+    // the list, so it is never exempt — the channel cannot become a blanket escape.
+    expect(matchesStrictOverrideGlob('apps/web/tests/smoke-real.e2e.ts')).toBe(true)
+    expect(isExemptUpstreamDebt('apps/web/tests/smoke-real.e2e.ts')).toBe(false)
+
+    // Identity: replacing an exempt file's bytes changes its hash, so the
+    // exemption lapses. Restore the upstream bytes from Git afterwards.
+    const [entry] = STRICT_OVERRIDE_UPSTREAM_DEBT
+    if (entry === undefined) throw new Error('expected at least one upstream-debt exemption')
+    const absolute = join(repositoryRoot, entry.path)
+    const original = await readFile(absolute, 'utf8')
+    try {
+      await writeFile(absolute, `// fork edit\n${original}`)
+      expect(isExemptUpstreamDebt(entry.path)).toBe(false)
+    } finally {
+      await writeFile(absolute, original)
+    }
+    expect(isExemptUpstreamDebt(entry.path)).toBe(true)
   })
 
   it('checks preserved TypeGraph syntax without type-aware analysis', () => {

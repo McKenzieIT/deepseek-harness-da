@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-reachability-delta",
   "description": "Model-facing reachability_delta tool: compute how many new asset pairs become newly reachable via joins if a proposed relation is added to the knowledge graph",
-  "version": "0.1.6-alpha.1",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },
