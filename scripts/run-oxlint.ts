@@ -234,7 +234,7 @@ export interface UpstreamDebtExemption {
 /**
  * Program-less strict-glob files owned by upstream and exempted by blob identity.
  *
- * Reproduced 2026-09-18 after syncing dsh-v0.1.6-alpha.2 (`ddefc45fbc`): the
+ * Reproduced 2026-09-18 after syncing the dsh-v0.1.6-alpha.2 release: the
  * only such file is upstream's new `desktop-updates.e2e.ts`, whose two-argument
  * `presentDesktopUpdate(state, en)` calls do not match upstream's own
  * single-argument implementation. Upstream keeps the test out of every program
