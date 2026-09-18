@@ -91,11 +91,16 @@ describe('runProfile with an application-owned profile', () => {
   })
 
   it.each([
-    { selection: 'default', options: {}, mode: 'runtime' },
-    { selection: 'link', options: { resolutionMode: 'link' }, mode: 'link' },
-    { selection: 'dual', options: { resolutionMode: 'dual' }, mode: 'dual' },
-    { selection: 'runtime', options: { resolutionMode: 'runtime' }, mode: 'runtime' },
-  ] as const)('uses shared layers, $selection resolution, and shutdown', async ({ options, mode }) => {
+    { selection: 'default', options: {}, mode: 'runtime', sourceLaunch: false },
+    // A tsx launch exports TSX_TSCONFIG_PATH, so its `paths` map already rewrites workspace
+    // imports to src/. Resolving bare plugins through package `exports` into built lib/ at the
+    // same time loads a package twice, and a module-scoped `Symbol()` key (dsh-tools'
+    // TOOL_RUNTIME_SCHEDULER) then never matches across the two halves.
+    { selection: 'default under a source-mode launch', options: {}, mode: 'link', sourceLaunch: true },
+    { selection: 'link', options: { resolutionMode: 'link' }, mode: 'link', sourceLaunch: false },
+    { selection: 'dual', options: { resolutionMode: 'dual' }, mode: 'dual', sourceLaunch: false },
+    { selection: 'runtime', options: { resolutionMode: 'runtime' }, mode: 'runtime', sourceLaunch: false },
+  ] as const)('uses shared layers, $selection resolution, and shutdown', async ({ options, mode, sourceLaunch }) => {
     const home = mkdtempSync(join(tmpdir(), 'dsh-resolved-profile-'))
     homes.push(home)
     mkdirSync(join(home, 'runtime'))
@@ -109,6 +114,8 @@ describe('runProfile with an application-owned profile', () => {
     writeFileSync(join(localPackageDir, 'index.cjs'), 'module.exports = "profile"\n')
     vi.stubEnv('DSH_HOME', home)
     vi.stubEnv('DSH_TELEMETRY_DISABLED', '1')
+    // Pin the launch-mode signal both launchers use, so an ambient value cannot decide the case.
+    vi.stubEnv('TSX_TSCONFIG_PATH', sourceLaunch ? join(home, 'tsconfig.json') : undefined)
     vi.spyOn(process, 'on').mockReturnValue(process)
     const oldExitCode = process.exitCode
     const ctx = new Context()

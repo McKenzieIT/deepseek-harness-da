@@ -260,7 +260,17 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
   )
 
   const packaged = (process as NodeJS.Process & { pkg?: unknown }).pkg !== undefined
-  const resolutionMode = packaged ? 'runtime' : options.resolutionMode ?? 'runtime'
+  // Fork: the fallback backend must match how this process was launched, or the two
+  // resolutions disagree and a package is loaded twice. Upstream 0.1.6-alpha.2
+  // (9ddef327a4) hardcoded 'runtime', which is right for a plain-Node launch resolving
+  // bare plugins through package `exports` into built lib/, but wrong for a tsx launch
+  // whose tsconfig `paths` map already rewrites workspace imports to src/. Mixing them
+  // gives two module instances of the same package, so a module-scoped `Symbol()` key
+  // (e.g. dsh-tools' TOOL_RUNTIME_SCHEDULER) never matches across the halves.
+  // TSX_TSCONFIG_PATH is exactly the signal both launchers use to mean "source mode".
+  const resolutionMode = packaged
+    ? 'runtime'
+    : options.resolutionMode ?? (process.env['TSX_TSCONFIG_PATH'] === undefined ? 'runtime' : 'link')
   const app: { current?: Context } = {}
   let disposal: Promise<void> | undefined
   const dispose = (): Promise<void> => disposal ??= (async () => {
