@@ -162,6 +162,7 @@ describe('ModelsSettingsStore', () => {
   it('degrades the badge with readable text when the credential domain rejects with a non-Error', async () => {
     // A transport failure rejects with an Error, but a host or a runtime can
     // reject with anything, and the badge still has to say something.
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors
     const { ctx, mirror } = api({ describeCredentials: () => Promise.reject('credentials worker died') })
     const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
 
