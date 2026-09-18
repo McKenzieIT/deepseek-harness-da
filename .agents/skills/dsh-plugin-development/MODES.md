@@ -2,9 +2,9 @@
 
 Each mode below states its trigger, the authoring path, and how it verifies. The [mode table in SKILL.md](SKILL.md#choose-a-creation-mode) owns the lifetime-and-audience decision; this file owns execution. The shared rules that cut across modes live in [CONVENTIONS.md](CONVENTIONS.md).
 
-## 1. Dynamic in-process package
+## 1. Runtime inspection (read-only, in a live session)
 
-For an agent already running inside a live DSH session with the Cordis toolset mounted (`pnpm dsh web --patch ./apps/cli/config/examples/cordis/cordis.yml` composition): define a package with `cordis_define` (host half `code`, optional browser half `client` — plain JavaScript function bodies, no TypeScript or JSX), activate with `cordis_run`, dispose with `cordis_stop`, and read live services and events first through `cordis_inspect`. Packages live in process memory only: no file is created, nothing survives a restart, and `cordis_define` never writes to the repository. Keeping an experiment means reimplementing it below as a repository package or scratch overlay. Contracts: [tool-cordis README](../../../packages/extensions/tool-cordis/README.md).
+For an agent already running inside a live DSH session with the Cordis toolset mounted (the `cordis` agent preset): read live Host and Client services, events, tool schemas, theme tokens, and Slot trees through `cordis_inspect_list` (discover providers) and `cordis_inspect_query` (read one provider's exact methods and types). These tools are read-only and never define, run, or mutate anything. Upstream retired the in-process define/run/stop tools; the host runner still carries that lifecycle for the UI panel and programmatic callers, but no model tool creates dynamic definitions. To keep a capability, author it below as a scratch overlay or repository package and install it with `plugin_manager`. Contracts: [tool-cordis README](../../../packages/extensions/tool-cordis/README.md).
 
 ## 2. Scratch overlay
 

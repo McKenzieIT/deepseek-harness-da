@@ -268,3 +268,27 @@ npx vitest run --config vitest.snapshot.config.ts snapshots/session/headless.sna
 ### 上游退役了动态 cordis 工具族（归属：上游内容，整体取上游）
 
 `cordis_define` / `cordis_run` / `cordis_stop` / `cordis_undefine` / `cordis_inspect_self` 五个工具在 merge-base 上就存在（533 行），**全属上游**；fork 在该文件唯一的改动是 16 行 `ctx.effect()` 包裹。上游把文件砍到 83 行、只留 `cordis_inspect_list` 与 `cordis_inspect_query`，并把插件生命周期挪进新包 `packages/boot/plugin-manager`（对外是 `plugin_manager` 工具，已进工具目录）。**da 生产代码 0 处依赖**这五个工具；只有两处 wayfinder 历史叙述提到它们（`research/harness-plugin-model.md:330-331`、`interpretation-client-rendering/tickets/T5-...md:38`），属描述性文字、不会坏，但若那篇研究笔记要反映当前 harness，需要改写成 `plugin_manager` 的故事 —— 本棒未动。
+
+## 收尾棒（alpha.2 合并后，2026-09-18）
+
+合入 #171 后 master 站在 alpha.2（`ddefc45fbc`），`upstream-status` behind 0 / owed 0 / consistent。本节记录收尾棒对残余项的处置，append-only。
+
+### snapshots and artifacts —— 已转绿（曾是本专项两大红门之一）
+
+两处 fork 自有修法随 #171 合入，`snapshots and artifacts` job 转绿：
+- **web keyless smoke 批次断言 2→3**（`apps/web/tests/smoke-real.e2e.ts`）：fork 在基座 web-app 多挂 4 个 da 客户端 UI 插件（`result-cache`/`ui-present-decomposition`/`ui-present-table`/`ui-suggest-followups`），给投影 combo URL 加 228 字节，`partitionComboRecords`（与上游逐字相同、`MAX_COMBO_URL_BYTES` 未动）据此把 application 相位切两片 → 共 3 批。实测捕获真实 3 批后改断言，刻意偏离上游逐字测试并写明理由。**这推翻了 master `c2d7e2fe`「记为不可达上游门」的旧裁定**（用户本棒明确改判：结束红门优先于最小偏离）。
+- **lint 未认领程序（UM-LINT-B）**：alpha.2 新增的上游测试 `apps/web/tests/desktop-updates.e2e.ts` 匹配严格 glob 但无 program 认领。它是上游自身缺陷——测试双参调用 `presentDesktopUpdate(state, en)`，而上游实现单参（两文件均与 `ddefc45fbc` 逐字相同，上游从不类型检查该测试）。给它 program 会撞上游类型 bug，禁止改上游。改法：给 `run-oxlint.ts` 新增 `STRICT_OVERRIDE_UPSTREAM_DEBT` 上游债豁免通道，用 `git hash-object` 比对 pin 的上游 blob SHA（`1e30848020…`）才豁免——fork 改一字节即失效、上游下次改动也失效强制复检，机械保证只容上游逐字内容。补正/负/身份三测试。（prompt 原写的「加 UNMATCHED_DISPOSITIONS」在这套 gate 里不可行：fence 不查该表，且 spec 钉死表内样例必须不匹配严格 glob。）
+
+### §2.5.3 两处过时叙述 —— 研究笔记与 skill 已改，票据历史陈述不动
+
+本棒精确核查（Search subagent + 直接读码）确认：`cordis_define`/`cordis_run`/`cordis_stop` 作为 **agent 工具**已退役，`tool-cordis` 只注册 `cordis_inspect_list`/`cordis_inspect_query` 只读工具；`cordis-host-runner` 的 define/run/stop 逻辑仍在，但仅经 `@Remote` 供 UI 面板与程序化调用，**无任何 agent 工具调用它**（该包 README 自述 "no model tool creates dynamic definitions"）。替代路径是 `plugin_manager` 安装持久 bundle，非 in-process 动态定义。据此改了三处 fork 自有文档反映当前 harness：`dsh-plugin-development/SKILL.md`（description + mode 表 + 锚点）、`MODES.md#1`（重写为「Runtime inspection（只读）」）、`research/harness-plugin-model.md:330-331`。`T5-…:38` 的 `cordis_stop` 是历史事件陈述（当时确实这么停的原型），按归档记录原则**不动**。验收：`verify-skill-invocation-metadata`、`verify-doc-refs`、`verify-translation-pairing` 均 exit 0。
+
+### 仍开的三张票（本棒未落地，记归宿）
+
+- **改名 `code-runtime-*` → `ptc-runtime-*`（§2.5.1）**：前置 = #167、#114 落地。二者本棒仍 OPEN（#171 合并后 GitHub 短暂报 mergeable UNKNOWN，随后重算）。**前置不满足则不动**；#167/#114 一落地即开单独「纯改名」PR（不夹带行为改动）。已核实无已发布包身份、无外部消费者，成本仅在仓库内。
+- **resolutionMode 兼容 shim（§2.5.2）**：`240dd0db25` 在 master，是上游 `resolutionMode` 默认 link→runtime 缺陷的 fork 侧一表达式修法（已在本票上方「让 fallback 后端跟随启动方式」记录）。**复检票**：待上游修好后重评估、届时删 shim；下次同步重跑 `test:snapshot` 验证。
+- **da 是否采用上游 `plugin_manager`（§2.5.4）**：架构级决策票。上游退役动态 cordis 工具族后，`plugin_manager`（`packages/boot/plugin-manager`，动作 list/set/install/remove 插件与 bundle）是其对「持久插件管理」的替代——但它管的是已装插件清单，**不是** in-process 动态定义能力。da 的 headless/默认 profile 当前未挂 `plugin_manager`（仅 `cordis` creator preset 挂了）。是否让 da 采用需用户单独决策，本棒不擅自采用。
+
+### coverage —— 本专项唯一剩余结构性红门（交后续 session）
+
+用户本棒裁定：coverage 暂不动，先做 §2.5。coverage 仍是唯一结构性已知红（`node 24 / coverage` + `windows / coverage`），按包分批补测试到逐文件 100%、每包一个 `test(coverage)` PR、**绝不进** `coverage-exempt.ts`。待清包清单见本票 §1 分布（batch 1 已由 #170 清 `agent-presets`/`ui-settings-models`）。
