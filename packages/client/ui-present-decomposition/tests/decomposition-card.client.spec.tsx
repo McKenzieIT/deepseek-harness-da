@@ -425,4 +425,17 @@ describe('DecompositionCard collapsing', () => {
     const { getByRole } = renderCard(makeSettledBlock(VALID_ARGS), makeUseSession(snapshot))
     expect(getByRole('button', { expanded: true })).toBeDefined()
   })
+
+  it('stays expanded when the snapshot carries no chat view at all', () => {
+    // The turn-order/timing data lives on the chat view's compat slice, so a
+    // snapshot taken before ui-chat's view is registered resolves
+    // views.get('chat') to undefined. The card must still render its full body
+    // (treated as the latest turn) instead of blanking or crashing on the
+    // absent view.
+    const snapshot = { views: { get: () => undefined } } as unknown as ConversationSnapshot
+    const { getByRole, getByText } = renderCard(makeSettledBlock(VALID_ARGS), makeUseSession(snapshot))
+    expect(getByRole('button', { expanded: true })).toBeDefined()
+    expect(getByText('SUM(amount)')).toBeDefined()
+    expect(getByText('将计算 · 2 项')).toBeDefined()
+  })
 })
