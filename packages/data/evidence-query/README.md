@@ -13,10 +13,20 @@ Use this package to query semantic-layer coverage, gaps, reachability, eval reco
 
 ## Table of Contents
 
+- [Eval history and asset filtering](#eval-history-and-asset-filtering)
 - [Trust reporting](#trust-reporting)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
+
+-----
+
+<a id="eval-history-and-asset-filtering"></a>
+## Eval history and asset filtering
+
+`evalResultQuery()` returns parsed case records plus `assetFilterStatus`. An omitted `assetId` reports `not_requested`. An asset filter reports `applied` only when every candidate record carries a real case-to-asset mapping; legacy JSONL without that mapping reports `unavailable` and returns the matching global history instead of presenting `caseId` as asset evidence. Direct `EvalResultStore.add()` callers provide explicit asset ids and remain filterable. `evalRunHistory()` requires a limit from 1 through 100 and returns that many newest run summaries without transferring their case records.
+
+Run count, history, and delta read the same `EvalResultStore`. Consumers derive comparable run ids from `metadata.runId`; file count is not evidence that the UI has loaded a run.
 
 -----
 

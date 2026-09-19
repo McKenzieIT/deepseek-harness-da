@@ -108,12 +108,20 @@ describe('EvidenceQueryGateway', () => {
     expect(result.total).toBe(1)
   })
 
+  it('evalRunHistory delegates to ctx.evidenceQuery', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'e1', assetId: 'dws_order_di', caseId: 'c1', status: 'pass', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'run-a' } })
+    const gw = makeGateway(store)
+    const result = gw.evalRunHistory({ limit: 10 })
+    expect(result.runs.map(run => run.runId)).toEqual(['run-a'])
+  })
+
   it('beforeAfterDelta delegates to ctx.evidenceQuery', () => {
     const store = new EvalResultStore()
     store.add({ id: 'e1', assetId: 'a1', caseId: 'c1', status: 'fail', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'run-a' } })
     store.add({ id: 'e2', assetId: 'a1', caseId: 'c1', status: 'pass', timestamp: '2026-08-24T01:00:00Z', metadata: { runId: 'run-b' } })
     const gw = makeGateway(store)
-    const delta = gw.beforeAfterDelta('run-a', 'run-b')
+    const delta = gw.beforeAfterDelta('run-a', 'run-b', { assetId: 'a1' })
     expect(delta.runIdA).toBe('run-a')
     expect(delta.runIdB).toBe('run-b')
     expect(delta.summary.improved).toBe(1)

@@ -87,6 +87,40 @@ export interface EvalResultRecord {
 export interface EvalResultQueryResult {
   readonly results: readonly EvalResultRecord[]
   readonly total: number
+  readonly assetFilterStatus: 'not_requested' | 'applied' | 'unavailable'
+}
+
+/** Filters for the bounded eval run-history view. */
+export interface EvalRunHistoryFilters {
+  readonly assetId?: string
+  readonly domain?: string
+  readonly scopeId?: string
+  readonly limit: number
+}
+
+/** Aggregate counts for one eval run. */
+export interface EvalRunSummary {
+  readonly runId: string
+  readonly timestamp: string
+  readonly pass: number
+  readonly fail: number
+  readonly error: number
+  readonly pending: number
+  readonly total: number
+}
+
+/** Bounded newest-first eval run history. */
+export interface EvalRunHistoryResult {
+  readonly runs: readonly EvalRunSummary[]
+  readonly total: number
+  readonly assetFilterStatus: 'not_requested' | 'applied' | 'unavailable'
+}
+
+/** Filters preserved when comparing two eval runs. */
+export interface EvalDeltaFilters {
+  readonly assetId?: string
+  readonly domain?: string
+  readonly scopeId?: string
 }
 
 /** AssetHealthReport */

@@ -13,10 +13,20 @@ kind: "package-reference"
 
 ## 目录
 
+- [评测历史与资产筛选](#eval-history-and-asset-filtering)
 - [可信度报告](#trust-reporting)
 - [模型体验](#model-experience)
 - [已知限制与延后工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
+
+-----
+
+<a id="eval-history-and-asset-filtering"></a>
+## 评测历史与资产筛选
+
+`evalResultQuery()` 返回解析后的 case 记录及 `assetFilterStatus`。省略 `assetId` 时报告 `not_requested`。只有每条候选记录都具有真实的 case 到资产映射时，资产筛选才报告 `applied`；缺少该映射的旧 JSONL 报告 `unavailable` 并返回相符的全局历史，而不是把 `caseId` 当作资产证据。直接调用 `EvalResultStore.add()` 时提供的是明确资产 id，因此仍可筛选。`evalRunHistory()` 要求 1 到 100 的数量上限，并返回该上限内的最新运行摘要，不传输各运行的 case 记录。
+
+运行计数、有界运行摘要、原始结果查询和 delta 读取同一个 `EvalResultStore`。`evalRunHistory()` 按 `metadata.runId` 聚合，按时间倒序返回不超过必填上限的行，并且不传输 case 记录。文件数量不能证明 UI 已加载某次运行。按资产筛选的 delta 使用与 history 查询相同的可靠资产 identity；若该映射变为不可用，请求会失败。
 
 -----
 

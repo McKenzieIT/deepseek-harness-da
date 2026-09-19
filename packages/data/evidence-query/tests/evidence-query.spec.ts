@@ -321,6 +321,63 @@ describe('EvidenceQueryService.evalResultQuery', () => {
     expect(result.total).toBe(1)
     expect(result.results[0]!.id).toBe('e1')
   })
+
+
+})
+
+describe('EvidenceQueryService.evalRunHistory', () => {
+  it('returns bounded summaries while retaining every case in each run aggregate', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'old-1', assetId: 'a1', caseId: 'c1', status: 'pass', timestamp: '2026-08-22T00:00:00Z', metadata: { runId: 'run-old' } })
+    store.add({ id: 'middle-1', assetId: 'a1', caseId: 'c1', status: 'pass', timestamp: '2026-08-23T00:00:00Z', metadata: { runId: 'run-middle' } })
+    store.add({ id: 'new-1', assetId: 'a1', caseId: 'c1', status: 'pass', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'run-new' } })
+    store.add({ id: 'new-2', assetId: 'a2', caseId: 'c2', status: 'fail', timestamp: '2026-08-24T00:01:00Z', metadata: { runId: 'run-new' } })
+    const svc = makeService(store)
+
+    const result = svc.evalRunHistory({ limit: 2 })
+
+    expect(result.total).toBe(3)
+    expect(result.runs).toEqual([
+      { runId: 'run-new', timestamp: '2026-08-24T00:01:00Z', pass: 1, fail: 1, error: 0, pending: 0, total: 2 },
+      { runId: 'run-middle', timestamp: '2026-08-23T00:00:00Z', pass: 1, fail: 0, error: 0, pending: 0, total: 1 },
+    ])
+  })
+
+  it('accepts the exact server-owned run-history maximum', () => {
+    const svc = makeService(new EvalResultStore())
+
+    expect(svc.evalRunHistory({ limit: 100 })).toEqual({
+      runs: [],
+      total: 0,
+      assetFilterStatus: 'not_requested',
+    })
+  })
+
+  it.each([0, 0.5])('rejects non-positive or fractional run-history limit %s', (limit) => {
+    const svc = makeService(new EvalResultStore())
+
+    expect(() => svc.evalRunHistory({ limit })).toThrow('positive integer')
+  })
+
+  it('rejects a run-history limit above the server-owned maximum', () => {
+    const svc = makeService(new EvalResultStore())
+
+    expect(() => svc.evalRunHistory({ limit: 101 })).toThrow('at most 100')
+  })
+
+  it('selects the newest summaries after applying a reliable asset filter', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'orders-old', assetId: 'orders', caseId: 'orders-case', status: 'fail', timestamp: '2026-08-22T00:00:00Z', metadata: { runId: 'orders-old-run' } })
+    store.add({ id: 'orders-new', assetId: 'orders', caseId: 'orders-case', status: 'pass', timestamp: '2026-08-23T00:00:00Z', metadata: { runId: 'orders-new-run' } })
+    store.add({ id: 'payments-newest', assetId: 'payments', caseId: 'payments-case', status: 'pass', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'payments-run' } })
+    const svc = makeService(store)
+
+    const result = svc.evalRunHistory({ assetId: 'orders', limit: 1 })
+
+    expect(result.assetFilterStatus).toBe('applied')
+    expect(result.runs.map(run => run.runId)).toEqual(['orders-new-run'])
+    expect(result.total).toBe(2)
+  })
 })
 
 // ── assetHealth ─────────────────────────────────────────────────────────
@@ -402,6 +459,34 @@ describe('EvidenceQueryService.beforeAfterDelta', () => {
     store.add({ id: 'r2', assetId: 'a1', caseId: 'c1', status: 'pass', timestamp: '2026-08-25T00:00:00Z', metadata: { runId: 'runB' } })
     const svc = makeService(store)
     const report = svc.beforeAfterDelta('runA', 'runB')
+    expect(report.summary).toEqual({ improved: 1, regressed: 0, unchanged: 0 })
+  })
+
+  it('limits delta cases to the requested asset', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'orders-a', assetId: 'orders', caseId: 'orders-case', status: 'fail', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'runA' } })
+    store.add({ id: 'orders-b', assetId: 'orders', caseId: 'orders-case', status: 'pass', timestamp: '2026-08-25T00:00:00Z', metadata: { runId: 'runB' } })
+    store.add({ id: 'payments-a', assetId: 'payments', caseId: 'payments-case', status: 'pass', timestamp: '2026-08-24T00:00:00Z', metadata: { runId: 'runA' } })
+    store.add({ id: 'payments-b', assetId: 'payments', caseId: 'payments-case', status: 'fail', timestamp: '2026-08-25T00:00:00Z', metadata: { runId: 'runB' } })
+    const svc = makeService(store)
+
+    const report = svc.beforeAfterDelta('runA', 'runB', { assetId: 'orders' })
+
+    expect(report.flipped).toEqual([{ caseId: 'orders-case', before: 'fail', after: 'pass' }])
+    expect(report.summary).toEqual({ improved: 1, regressed: 0, unchanged: 0 })
+  })
+
+  it('limits delta cases to the requested scope and domain', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'a-before', assetId: 'orders', caseId: 'shared', status: 'fail', timestamp: '2026-08-24T00:00:00Z', scopeId: 'scope-a', metadata: { runId: 'runA', domain: 'sales' } })
+    store.add({ id: 'a-after', assetId: 'orders', caseId: 'shared', status: 'pass', timestamp: '2026-08-25T00:00:00Z', scopeId: 'scope-a', metadata: { runId: 'runB', domain: 'sales' } })
+    store.add({ id: 'b-before', assetId: 'orders', caseId: 'shared', status: 'pass', timestamp: '2026-08-24T00:00:00Z', scopeId: 'scope-b', metadata: { runId: 'runA', domain: 'finance' } })
+    store.add({ id: 'b-after', assetId: 'orders', caseId: 'shared', status: 'fail', timestamp: '2026-08-25T00:00:00Z', scopeId: 'scope-b', metadata: { runId: 'runB', domain: 'finance' } })
+    const svc = makeService(store)
+
+    const report = svc.beforeAfterDelta('runA', 'runB', { scopeId: 'scope-a', domain: 'sales' })
+
+    expect(report.flipped).toEqual([{ caseId: 'shared', before: 'fail', after: 'pass' }])
     expect(report.summary).toEqual({ improved: 1, regressed: 0, unchanged: 0 })
   })
 

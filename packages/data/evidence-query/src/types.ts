@@ -82,7 +82,7 @@ export interface EvalResultFilters {
   readonly status?: 'pass' | 'fail' | 'error' | 'pending'
   /** Filter by domain. */
   readonly domain?: string
-  /** Maximum number of results to return. */
+  /** Maximum number of case records to return after every other filter. */
   readonly limit?: number
   /** GA-GT1 Phase 3b (D5.2): filter by scope id. Additive — undefined returns
    * records from all scopes (including legacy records with no scopeId). */
@@ -115,10 +115,52 @@ export interface EvalResultRecord {
   readonly scopeId?: string
 }
 
+/** Whether an asset filter was omitted, applied to reliable mappings, or unavailable. */
+export type EvalAssetFilterStatus = 'not_requested' | 'applied' | 'unavailable'
+
 /** Result of evalResultQuery(filters). */
 export interface EvalResultQueryResult {
   readonly results: readonly EvalResultRecord[]
   readonly total: number
+  /** Reports whether `assetId` filtering used a complete case-to-asset mapping source for the candidate records. */
+  readonly assetFilterStatus: EvalAssetFilterStatus
+}
+
+/** Filters for a bounded run-history summary query. */
+export interface EvalRunHistoryFilters {
+  /** Filter by asset id when a complete case-to-asset mapping is available. */
+  readonly assetId?: string
+  /** Filter by domain. */
+  readonly domain?: string
+  /** Filter by scope id. */
+  readonly scopeId?: string
+  /** Number of complete run summaries to return, from 1 through 100. */
+  readonly limit: number
+}
+
+/** Aggregate counts for one eval run. */
+export interface EvalRunSummary {
+  readonly runId: string
+  readonly timestamp: string
+  readonly pass: number
+  readonly fail: number
+  readonly error: number
+  readonly pending: number
+  readonly total: number
+}
+
+/** Bounded newest-first eval run history. */
+export interface EvalRunHistoryResult {
+  readonly runs: readonly EvalRunSummary[]
+  readonly total: number
+  readonly assetFilterStatus: EvalAssetFilterStatus
+}
+
+/** Filters preserved when comparing two eval runs. */
+export interface EvalDeltaFilters {
+  readonly assetId?: string
+  readonly domain?: string
+  readonly scopeId?: string
 }
 
 // ── EvalDelta ───────────────────────────────────────────────────────────

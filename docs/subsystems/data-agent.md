@@ -172,20 +172,32 @@ gapAnalysis(assetId: string, scopeId?: string): GapAnalysisResult
 reachabilityDelta(newRelation: ProposedRelation, scopeId?: string): ReachabilityDeltaResult
 
 /**
- * Eval result query: query persisted eval run results.
- * @param filters - the asset/status/domain/limit filters to apply.
- * @returns the matching eval result records plus the total count before limiting.
+ * Query persisted eval results. An asset filter is applied only when the store
+ * has a complete case-to-asset mapping source for the candidate records; otherwise the result remains global
+ * and reports that asset filtering is unavailable.
+ * @param filters - The asset, status, domain, scope, and record-limit filters to request.
+ * @returns Matching records, total count before limiting, and asset-filter status.
  */
 evalResultQuery(filters: EvalResultFilters): EvalResultQueryResult
+
+/**
+ * Return bounded newest-first run summaries for dashboard and sidebar history.
+ * @param filters - Asset, domain, scope, and required run-count bound.
+ * @returns Aggregate run rows, matching run count, and asset-filter status.
+ * @throws When limit is not a positive integer or exceeds the server maximum.
+ */
+evalRunHistory(filters: EvalRunHistoryFilters): EvalRunHistoryResult
 
 /**
  * Before/after delta: compare two runs and return which cases flipped.
  * "Improved" = moved from fail/error → pass; "regressed" = moved from pass → fail/error.
  * @param runIdA - the baseline (before) run id.
  * @param runIdB - the comparison (after) run id.
+ * @param filters - optional asset, domain, and scope filters preserved from the history query.
+ * @throws When an asset is requested without a complete case-to-asset mapping.
  * @returns the run ids, the flipped cases, and improved/regressed/unchanged counts.
  */
-beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport
+beforeAfterDelta(runIdA: string, runIdB: string, filters: EvalDeltaFilters = {}): EvalDeltaReport
 
 /**
  * Asset health: reports normalized confirmation status, eval coverage,

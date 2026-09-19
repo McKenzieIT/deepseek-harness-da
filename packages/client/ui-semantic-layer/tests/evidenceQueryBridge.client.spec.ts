@@ -26,7 +26,8 @@ function makeRemoteStub() {
     reachabilityDelta: vi.fn().mockResolvedValue(ok({
       proposedRelation: { sourceId: 's', targetId: 't', type: 'joins' as const }, newlyReachable: [],
     })),
-    evalResultQuery: vi.fn().mockResolvedValue(ok({ results: [], total: 0 })),
+    evalResultQuery: vi.fn().mockResolvedValue(ok({ results: [], total: 0, assetFilterStatus: 'not_requested' })),
+    evalRunHistory: vi.fn().mockResolvedValue(ok({ runs: [], total: 0, assetFilterStatus: 'not_requested' })),
     assetHealth: vi.fn().mockResolvedValue(ok(null)),
     beforeAfterDelta: vi.fn().mockResolvedValue(ok({
       runIdA: 'r1', runIdB: 'r2', flipped: [],
@@ -71,6 +72,15 @@ describe('buildEvidenceQueryClient', () => {
     expect(remote.evalResultQuery).toHaveBeenCalledWith(filters)
   })
 
+  it('wraps bounded eval run history filters', async () => {
+    const remote = makeRemoteStub()
+    const client = buildEvidenceQueryClient(remote)
+    const filters = { assetId: 'x', limit: 10 }
+    const result = await client.evalRunHistory(filters)
+    expect(result.total).toBe(0)
+    expect(remote.evalRunHistory).toHaveBeenCalledWith(filters)
+  })
+
   it('wraps assetHealth — returns null for nonexistent', async () => {
     const remote = makeRemoteStub()
     const client = buildEvidenceQueryClient(remote)
@@ -78,12 +88,12 @@ describe('buildEvidenceQueryClient', () => {
     expect(result).toBeNull()
   })
 
-  it('wraps beforeAfterDelta with two runIds', async () => {
+  it('wraps beforeAfterDelta with run ids and an optional asset id', async () => {
     const remote = makeRemoteStub()
     const client = buildEvidenceQueryClient(remote)
-    const result = await client.beforeAfterDelta('r1', 'r2')
+    const result = await client.beforeAfterDelta('r1', 'r2', { assetId: 'orders' })
     expect(result.summary.unchanged).toBe(5)
-    expect(remote.beforeAfterDelta).toHaveBeenCalledWith('r1', 'r2')
+    expect(remote.beforeAfterDelta).toHaveBeenCalledWith('r1', 'r2', { assetId: 'orders' })
   })
 
   it('wraps getEvalRunCount', async () => {
