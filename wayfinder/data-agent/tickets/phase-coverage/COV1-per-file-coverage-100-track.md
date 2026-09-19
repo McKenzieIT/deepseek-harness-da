@@ -151,3 +151,36 @@ sed -E 's#^packages/([^/]+/[^/]+)/.*#\1#' /tmp/cur.loc | sort | uniq -c | sort -
 ## 并发注意
 
 `client/ui-semantic-layer`（459）、`data/evidence-query`（37）、`data/patrol-mode`（58）在 2026-09-19/20 期间有**另一个 session 在改其生产 `src/`**。取这几个包前先 `git status` 辨明归属，**绝不 `git add .` / `git add -A`**。
+
+---
+
+## 追加：batch 2（2026-09-20，同一 PR #175）
+
+**B 档八包 / 564 处**，目标是各包的 Cordis 契约外壳（`execute` / `presentCall` / `presentResult` / `output.render` / `presentationMeta`），**不重测已被现有 spec 覆盖的纯逻辑** —— 每个 agent 只拿到自己那份逐条目标清单，并被明令「清单外的不要碰」。
+
+| 包 | 位置 | 缺的是什么 |
+| --- | --- | --- |
+| `tool-trigger-eval` | 110 | `projectMeta` / `execute` / 两个 presenter（`formatTriggerEval` 已覆盖） |
+| `tool-edit-definition` | 106 | `execute` / presenter（`computeEdit` 已覆盖） |
+| `tool-discover-relations` | 102 | `sanitizeError` / presenter（`execute` 已覆盖） |
+| `tool-search-schema` | 73 | `formatSearchSchema` / `execute` / presenter |
+| `tool-load-event-definition` | 69 | 仅 `formatEventView` |
+| `tool-discover-alt-labels` | 44 | `presentCall` / `sanitizeError` + 若干未达臂 |
+| `tool-reachability-delta` | 33 | `presentCall` / `presentResult` |
+| `tool-update-table-config` | 27 | `presentCall` / `presentResult` |
+
+本机合并验收（12 包一起跑）：**13 spec / 398 测试全绿**、`Uncovered locations` 0 行、阈值 ERROR 0 条、12 个 `index.ts` 全 100/100/100/100 且非 `0/0/0/0`。oxlint 八包各 0/0；`tsc -b tsconfig.host.json` exit 0。预期 CI：6197 → **5633**（待裁决）。
+
+**现有用例一律未改** —— batch 2 是纯 append（外加加宽的 import 行）。
+
+### 本批新增的两条经验
+
+1. **首次动用 `/* v8 ignore */`，共 4 处，且是在「先证明不可达」之后。** `tool-edit-definition` 有 2 处、`tool-discover-relations` 有 2 处。两处证明都由主进程**独立从源码重导**，不采信 subagent 断言：
+   - `tool-edit-definition`：`execute` 在 `merged === undefined` 时早返回，而 `computeEdit` **每个带顶层 `merged` 的 return 都成对带字面量 `kind` ∈ {'table','event','concept'}**，带 `'metric'`/`'unknown'` 的 return 都不带 `merged`。故 `else if (kind === 'concept')` 的隐式 else 与 catch 里 `kind ?? 'unknown'` 的 nullish 臂均不可达。
+   - `tool-discover-relations`：`dimension_refs ?? []` 与 `ref.derivation ?? ''` 读的是 `TableDefinitionSchema` 已解析的数据，而该 schema 对两个字段都声明了 zod `.default()`（`semantic-layer/src/types.ts:288` / `:193`）—— 实跑 `safeParse` 省略 `dimension_refs` 的表，确认回来是 `[]`。故两个回退不可达。
+   - **语法细节**：concept 那处必须用 `/* v8 ignore start */` … `/* v8 ignore stop */` 区间，**不能用 `else` 提示** —— TypeScript transform 会把写在 `else` 与 `if` 之间的注释丢掉。
+2. **驳回了一种「用 mock 强行走到不可达臂」的做法。** `tool-discover-relations` 的初版用 `vi.doMock` 把 `TableDefinitionSchema` 换成直通替身，以此触达上面那两个 `??`。已删除并改为 `v8 ignore`。**理由**：伪造依赖的校验契约去进入一个生产上不可能进入的分支，等于让测试断言一个不存在的行为，还会让后来的读者以为那两个字段可能缺失。本仓对不可达防御臂的答案是 `v8 ignore` + 写明理由，**而不是**想办法强行走到 —— 这与「不弱断言」是同一条纪律的两面。
+
+### 本批暴露的一处 brief 缺陷（我自己的）
+
+派给 `tool-discover-alt-labels` 的 brief 写「`presentResult` 与 `execute` 都不在清单里（＝已覆盖），不要重测」，**这是错的**：清单里确实有 7 处落在这两个函数内部（`171:7`、`172:9`、`190:7`、`190:27`、`192:53`、`192:58`、`196:60`），只不过「uncovered **function**」那类条目里没有它们。agent 正确地以逐条清单为准、而非以我的 brief 为准。**教训：给 agent 划范围时，只能拿逐条 `file:line:col` 清单当权威，不能拿「未覆盖函数名」这个摘要去反推「整个函数已覆盖」。** 函数入口被覆盖 ≠ 函数内部所有臂都被覆盖。

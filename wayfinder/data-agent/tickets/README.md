@@ -59,7 +59,7 @@ English | [中文](README.zh.md)
 ## phase-coverage（逐文件 100% 覆盖率门 —— 长期执行轨道）
 > 2026-09-20 从 [UM18](phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md) 毕业：上游合并部分已无残余（behind 0 / owed 0 / consistent），唯一残余项 coverage 是数千处位置、数百 PR 的长期工程，量级上不属于一个同步专项，故剥离独立成轨、UM18 同步关票。**注意 `UM18` 是复用过的编号** —— map 里 2026-09-15 那条「UM18 → 归位为 B-DA7」指的是另一张更早的票，不是本轨道的起点账本。
 
-- [COV1 逐文件 100% 覆盖率门：da 自有包的长期收口轨道](phase-coverage/COV1-per-file-coverage-100-track.md) — task, **open**（排序口径＝`data/tool-*` 家族 16 包 / 1353 处 / 占 20.3%，两个指标同时动且一套契约 harness 复用 16 次；三档分治：A 从零建套件 / B 只补契约外壳不重测已覆盖逻辑 / C 逐位置。batch 1 = PR [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175) 已 CI 实测 6674 → **6197**、46 → 42 包、零回归；家族剩余 12 包 / 886 处。票内含 8 条测量陷阱清单，动手前必读）
+- [COV1 逐文件 100% 覆盖率门：da 自有包的长期收口轨道](phase-coverage/COV1-per-file-coverage-100-track.md) — task, **open**（排序口径＝`data/tool-*` 家族 16 包 / 1353 处 / 占 20.3%，两个指标同时动且一套契约 harness 复用 16 次；三档分治：A 从零建套件 / B 只补契约外壳不重测已覆盖逻辑 / C 逐位置。batch 1（A 档 4 包 / 467 处）已 CI 实测 6674 → **6197**、46 → 42 包、零回归；batch 2（B 档 8 包 / 564 处）本机已验（398 测试 / 12 包全 100%），两批同在 PR [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)；**家族剩余 4 包 / 322 处**。票内含 8 条测量陷阱清单，动手前必读）
 
 ## phase-misc（cross-phase / 低优先）
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **resolved**（2026-08-20；实验设计 11 决策定稿——2×2 变体×2 模型配置 staged、execution-match 三分判分+决策规则；设计(不跑)→毕业 G1b 执行票）
@@ -79,15 +79,15 @@ English | [中文](README.zh.md)
 - [plugin_manager 采用设计](phase-misc/plugin-manager-adoption.md) — grilling, **open**（2026-09-20 从 [UM18](phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md) §2.5.4 毕业；历经三棒未决后用户拍板「方向＝采用、另起专票设计、不夹带进 coverage 轨道」。待定五项：启用范围（哪些 profile / 是否进 UNIVERSAL 白名单）· `danger-full-access` 的收敛方式 · 清单变更审计是否走 `data/audit` Tier-2 · bundle patch 接入点 · 回退路径。**HITL，agent 不得自答** —— 挂上即让模型能跨 session 持久扩张自身能力面）
 
 ## phase-misc — simplification candidates (S-series, OPEN, pending new-session 2nd verification)
-> 来源：dsh-data-agent 全量审计（WF1-WF5 + dsh-find-simplifications skill）的 strong 候选。每张票 `status=open`、`blocked-by: 新 session 二次验证`——不在审计 originating session 直接执行；新 session 重新核证调用点/证据后再 claim 执行。
+> 来源：dsh-data-agent 全量审计（WF1-WF5 + dsh-find-simplifications skill）的 strong 候选。流程＝不在审计 originating session 直接执行，由新 session 重新核证调用点/证据后再 claim。**S1–S7 全部已于 2026-08-28 resolved（本索引 2026-09-20 订正 —— 此前 S2–S7 一直被记成 `open`，只有 S1 回写过）。** 核证提醒：S3/S4/S5 的目标名在 `git grep` 下仍有命中，但那些是 JSDoc 提及或同名无关物，逐票 Resolution 已写明真正删掉的是什么 —— **别用一次粗 grep 推翻已完成的工作**。
 
 - [S1 Decouple MaxCompute config from bundle](phase-misc/S1-decouple-maxcompute-from-bundle.md) — task, **resolved 2026-08-28**（Config `args`→`sidecarPath`+`maxcConfigPath`；spawn 构造；patch 去机器路径；部署覆盖）
-- [S2 Delete tool-scope-routing probe](phase-misc/S2-delete-tool-scope-routing-probe.md) — task, **open**（E-DA4 陈旧探针，非真包；删清 12 条 constraints）
-- [S3 Delete FakeReranker+fakeRecall](phase-misc/S3-delete-fakereranker-fakeRecall.md) — task, **open**（D2d 实测有害、无生产消费者；InfinityReranker 覆盖）
-- [S4 Delete RequestDefaults seam](phase-misc/S4-delete-requestdefaults-seam.md) — task, **open**（空 speculative 接口，从不被读）
-- [S5 Delete EmbedderService.dim getter](phase-misc/S5-delete-embedderservice-dim-getter.md) — task, **open**（死公开面；私有 _dim 留）
-- [S6 Delete getLastTwoRuns+lastTwoRuns](phase-misc/S6-delete-evalrunner-getlasttworuns.md) — task, **open**（test-only 冗余；trigger_eval 用内联 pair）
-- [S7 Refactor data-python log metering](phase-misc/S7-refactor-data-python-log-metering.md) — task, **open**（复用 protocol.ts 的 jsonStringBytesUpTo，删手搓分配式 meter）
+- [S2 Delete tool-scope-routing probe](phase-misc/S2-delete-tool-scope-routing-probe.md) — task, **resolved 2026-08-28**（探针包已删 —— 它只有 `dev/`、无 `src/`。**注意勿混淆**：现在的 `packages/data/tool-scope-routing` 是 [P-DA4](phase-misc/P-DA4-scope-routing-tools.md) 的**真实实现**（6 个 src 文件 + tsconfig + README），不是本票删掉的那个探针）
+- [S3 Delete FakeReranker+fakeRecall](phase-misc/S3-delete-fakereranker-fakeRecall.md) — task, **resolved 2026-08-28**（`fakeRecall` 函数 + `FakeReranker` 类 + `Reranker` 类型导入 + 对应测试已删；`embedder/src/index.ts:8` 与 `tool-retrieve/src/index.ts:31,224` 残留的只是 JSDoc 提及，无 import/消费者 —— grep 到这两处不等于没删）
+- [S4 Delete RequestDefaults seam](phase-misc/S4-delete-requestdefaults-seam.md) — task, **resolved 2026-08-28**（空 interface + field + param + re-export + 赋值全删；per-pkg tsc clean，75/75 绿）
+- [S5 Delete EmbedderService.dim getter](phase-misc/S5-delete-embedderservice-dim-getter.md) — task, **resolved 2026-08-28**（`EmbedderService` 的 `abstract get dim()` 与 FakeHash/Infinity 两处实现已删，私有 `_dim` 按计划保留；13/13 绿）
+- [S6 Delete getLastTwoRuns+lastTwoRuns](phase-misc/S6-delete-evalrunner-getlasttworuns.md) — task, **resolved 2026-08-28**（`getLastTwoRuns`/`lastTwoRuns` 已删，`trigger_eval` 改用内联 pair）
+- [S7 Refactor data-python log metering](phase-misc/S7-refactor-data-python-log-metering.md) — task, **resolved 2026-08-28**（改用 `protocol.ts` 的 `jsonStringBytesUpTo`，手搓分配式 meter 已删）
 
 > 保留（暂时没人用/计划后续/在用，不开删除票）：patrol-mode（W11 在建）、SQL-critic 工具路径（phase-gate re-tighten 计划）、scopes/changed 事件（文档化扩展点）、management-session 事件（W11 为 UI 预留）、QueryEngine.attach（有生产调用者：eval-runner-service + nl2sql-engine）。
 
