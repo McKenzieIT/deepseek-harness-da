@@ -41,6 +41,8 @@ export function tokenize(text: string): string[] {
     }
   }
   for (const ch of text) {
+    /* v8 ignore next -- the string iterator never yields an empty string, so codePointAt(0)
+       always returns a number; the `?? 0` answers its optional type. */
     const cc = ch.codePointAt(0) ?? 0
     const isCjk = cc >= 0x4e00 && cc <= 0x9fff
     const isAlnum = /[a-z0-9]/i.test(ch)
