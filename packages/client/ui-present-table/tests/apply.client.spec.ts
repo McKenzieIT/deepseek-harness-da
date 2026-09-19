@@ -3,6 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-present-table/client'
 import type { TableCardInjected } from '@deepseek-ai/dsh-client-ui-present-table/client'
+import { apply as hostApply } from '../src/index.ts'
 
 interface StoredEntry {
   options: { key?: string }
@@ -105,5 +106,23 @@ describe('ui-present-table apply', () => {
     expect(get).toHaveBeenCalledWith('qr_1')
     face.invalidateResult('qr_1')
     expect(invalidate).toHaveBeenCalledWith('qr_1')
+  })
+})
+
+describe('ui-present-table Host entry', () => {
+  it('loads onto a Host tree as an inert plugin that contributes no service', async () => {
+    // The table card, its present.table dictionaries, and the result-store
+    // inject face are all contributed by the ./client half. The root
+    // (Host/Node) entry exists purely so the package composes into a Host tree:
+    // loading it must leave that tree without the client half's services, and
+    // tearing it down must not fail.
+    const ctx = new Context()
+    const fiber = ctx.plugin({ apply: hostApply })
+    await fiber.await()
+    expect(ctx.get('slots')).toBeUndefined()
+    expect(ctx.get('sessions')).toBeUndefined()
+    expect(ctx.get('locale')).toBeUndefined()
+    await fiber.dispose()
+    expect(ctx.get('slots')).toBeUndefined()
   })
 })
