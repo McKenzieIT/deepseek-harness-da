@@ -2,6 +2,8 @@
 
 export type SemanticLayerKey =
   | 'title'
+  | 'dashboard.title'
+  | 'dashboard.goToWorkspace'
   | 'loading'
   | 'error'
   | 'presenter.running'
@@ -115,6 +117,8 @@ export type SemanticLayerTranslate = (key: SemanticLayerKey, params?: Record<str
 /** zh */
 export const zh: Record<SemanticLayerKey, string> = {
   'title': '语义层',
+  'dashboard.title': '证据看板',
+  'dashboard.goToWorkspace': '返回工作区',
   'loading': '加载中…',
   'error': '错误',
   'presenter.running': '运行中',
@@ -226,6 +230,8 @@ export const zh: Record<SemanticLayerKey, string> = {
 /** en */
 export const en: Record<SemanticLayerKey, string> = {
   'title': 'Semantic Layer',
+  'dashboard.title': 'Evidence Dashboard',
+  'dashboard.goToWorkspace': 'Back to workspace',
   'loading': 'Loading…',
   'error': 'Error',
   'presenter.running': 'running',
