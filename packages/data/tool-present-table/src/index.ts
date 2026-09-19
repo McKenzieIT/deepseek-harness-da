@@ -99,8 +99,8 @@ function formatTable(value: PresentTableResult): string {
   if (!value.presented) {
     return 'No table to present.'
   }
-  const parts: string[] = [`Table: ${value.title} (result: ${value.result_id}`]
-  let header = parts[0] ?? ''
+  const parts: string[] = []
+  let header = `Table: ${value.title} (result: ${value.result_id}`
   if (value.columns && value.columns.length > 0) {
     header += `, ${value.columns.length} columns`
   }
@@ -111,7 +111,7 @@ function formatTable(value: PresentTableResult): string {
     header += `, chart: ${value.chart.type}`
   }
   header += ')'
-  parts[0] = header
+  parts.push(header)
   if (value.kpi_columns && value.kpi_columns.length > 0) {
     parts.push('KPIs:')
     for (const kpi of value.kpi_columns) {
