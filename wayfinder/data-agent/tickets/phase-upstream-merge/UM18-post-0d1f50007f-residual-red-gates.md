@@ -292,3 +292,102 @@ npx vitest run --config vitest.snapshot.config.ts snapshots/session/headless.sna
 ### coverage —— 本专项唯一剩余结构性红门（交后续 session）
 
 用户本棒裁定：coverage 暂不动，先做 §2.5。coverage 仍是唯一结构性已知红（`node 24 / coverage` + `windows / coverage`），按包分批补测试到逐文件 100%、每包一个 `test(coverage)` PR、**绝不进** `coverage-exempt.ts`。待清包清单见本票 §1 分布（batch 1 已由 #170 清 `agent-presets`/`ui-settings-models`）。
+
+## 终局棒（2026-09-19）：§1 量级更正（本节最重要）、bubblewrap 归属、batch-2/3 落地
+
+本节 append-only。所有数字在落笔时由 CI 的 `Uncovered locations` 清单机械重导，不沿用上游各棒的交接表。
+
+### 一、§1 的按包数字是「文件数」，不是「位置数」——此前各棒据此排序全是错的
+
+**这是本节最重要的一条，先读它再读其余。**
+
+§1 顶部写「167 个 da 文件未达逐文件 100%」，随后那串 `client/ui-semantic-layer 21、client/ui-context-layer 15、data/nl2sql-engine 14…` 是**文件数**。后续交接文档（含本棒 session prompt §2.1）把它们读成了**位置数**，于是得出「从最小包起：`tool-scope-routing` 4 / `retrieval-experiment` 4 / `llm-dashscope` 5 / `eval` 5 滚动推进」。
+
+**照此排序会一头撞进最重的一批。** CI 实测（`windows node 24 / coverage`，#172 那次，逐条列出并计数，行数与报告头 6746 精确相符）：
+
+| 包 | §1 记（文件数） | 实测位置数 |
+| --- | --- | --- |
+| `data/tool-scope-routing` | 4 | **139** |
+| `llm/llm-dashscope` | 5 | **143** |
+| `eval/eval` | 5 | **91** |
+| `eval/retrieval-experiment` | 4 | **89** |
+| `client/ui-semantic-layer` | 21 | **459** |
+| `client/ui-context-layer` | 15 | **648** |
+| `data/nl2sql-engine` | 14 | **214** |
+| `eval/eval-cli` | 8 | **1499** |
+
+**真实剩余（#172 合入后）：6746 处位置 / 159 文件 / 56 包。** 不是两位数，也不是 167 处。
+
+重量高度集中：`eval/eval-cli` 一个包 1499 处 = 22%；前 5 个包（`eval-cli` 1499、`ui-context-layer` 648、`ui-semantic-layer` 459、`data/semantic-layer` 426、`data/admin` 306）合计 3338 = **49.5%**。
+
+**真正的 smallest-first 顺序**（batch-3 已按此清掉前十）：`query/query` 3、`ui-present-decomposition` 4、`tool-evaluate-sql-quality` 4、`ui-present-table` 5、`embedder/embedder` 6、`preset-autojoin` 9、`scope-registry` 9、`tool-critique-sql` 10、`credentials-keychain` 11、`goal-eval-context` 11 —— 前十合计仅 72 处。
+
+**推论：coverage 不是一棒或几棒的量级。** 实绩参照：#170 清 11 处、#172 清 7 处、#173 清 72 处。按每 PR 数十处算，6746 处是数百个 PR 的长期工程，**不应再作为 upstream-merge 专项的收口条件**。上游合并本身已无残余（见下），建议把 coverage 另列一条长期轨道。
+
+一条尚未验证的观察（留给后续）：`data/tool-*` 一族位置数高得整齐（`tool-get-coverage` 126、`tool-revert-edit` 143、`tool-search-data-sources` 141…），形态上像「整包基本没有测试」而非零散缺口。若属实，这些包更适合「一包一套测试」而非逐位置补，单位成本会低很多。
+
+### 二、`prepare-ci-bubblewrap.sh` 的 404 —— 上游债，不修，但它让 Linux coverage 门变成 0 信号
+
+2026-09-19 新出现。`scripts/prepare-ci-bubblewrap.sh` 把下载地址写死成 Ubuntu pool 里的具体版本 `bubblewrap_0.9.0-1ubuntu0.1_amd64.deb`；pool 只保留当前版本，该文件已被轮换掉，实测返回 **HTTP 404**（pool 现存 0.11.x / 0.12.0）。脚本 `set -euo pipefail` + `curl --fail` → 该步非零退出。
+
+- **归属：上游。** `git diff upstream/master master -- scripts/prepare-ci-bubblewrap.sh` 输出为空（逐字相同），pin 是上游的，触发原因是 Ubuntu 归档轮换，**上游自己同样坏**。按最高准则（上游内容不修、上游问题不管）**不修、不加回退、不换 URL**。
+- **发生窗口**：master 最近一次 `CI master`（`f5cf5e9b13`，2026-09-18T17:38）该步仍绿；#172（2026-09-19T01:25）已 404。
+- **影响面**：`ci.yml` 里调它的三个 job —— `node-24-coverage`、`node-24-consumers`（显示名 snapshots and artifacts）、`node-compat`（node 22.19 / 24.9 / 26）。#172 上 5 条红 + `all checks passed` 汇总红**全部**由此而来，与补测试无关。`static`、benchmarks、windows build/native/observational、python 各腿均绿。
+- **为什么要特别记一笔**：`node 24 / coverage` 是在 step 11「Install dependencies and prepare bubblewrap」失败、step 12「Run exhaustive coverage」**skipped** —— 它**根本没测量 coverage**。所以「补测试让这条 lane 转绿」目前物理上不可达，且这条 lane 现在对 coverage 不提供任何信号。
+- **替代测量路径（本棒采用）**：`windows node 24 / coverage` 不调 bubblewrap，跑满 27m30s 并输出完整逐文件报告。**coverage 的验收数字自此从 Windows 腿读。**
+- **复检条件**：上游 bump 这个 pin（或改用 apt/其他源）后该步自愈；届时 Linux 腿恢复，可回到两腿对照。
+
+### 三、batch-2 实际是 4 包 / 7 处，不是 6 包 / 16 处（#172 已合）
+
+#172 合入，merge commit `e2298de2b7b2`。原标题写「16 locations, 4 packages」内部不自洽：16 是 §1 记的**六包**整个 batch-2，而该 PR 只含其中四包、共 **7** 处。合并前已改正标题与正文。
+
+验收按 UM18 既有两条标准，且**不用总数相减，而是逐条 diff 两侧位置清单**（基线 = #171 @ `41f879a268`，post-alpha.2 / pre-batch-2）：
+
+| 账目 | 数量 |
+| --- | --- |
+| 基线总数（`41f879a268`） | 6753 |
+| batch-2 真实修掉 | **−7** |
+| `code-runtime-data-python/src/index.ts:119:43`（Linux 侧那一臂） | −1 |
+| 同上 `:119:55`（Windows 侧那一臂） | +1 |
+| **= 观测到的总数** | **6746** ✓ |
+
+**零残余、零回归。** 标准②同样满足：那 4 个包在未覆盖清单里 0 命中。batch-2 剩余两包（`ui-present-decomposition` 实测 **4**、§1 记 3；`ui-present-table` 5）共 9 处，已由 batch-3 清掉；7 + 9 = 16 与 §1 对上。
+
+### 四、新类别：平台互补分支 —— 单条 lane 永远不可能 100%
+
+上表那对 ±1 不是回归。`packages/code-runtime/code-runtime-data-python/src/index.ts:119` 是
+
+```ts
+return process.platform === 'win32' ? 'process' : 'process-rlimit'
+```
+
+Linux 跑时 `'process'`（col 43）那臂不可达、Windows 跑时 `'process-rlimit'`（col 55）那臂不可达 —— **两条腿互相补足，但任何单条 lane 都到不了该行 100%**。这既不是 fork 内容债（包是 fork 自有：merge-base `ddefc45fbc` 上不存在），也不是「上游门在 fork 不可达」，是**第三类**。
+
+助长它的是一条弱断言：`tests/runtime.spec.ts:31` 的 `expect(runtime.isolation).toMatch(/^process/)` 对两臂都成立，所以从不迫使任何一臂被覆盖。
+
+处置：用对 `process.platform` 做注入/复原的测试在一次运行里覆盖两臂并**按平台断言确切值**（实测 `process.platform` 描述符 `configurable: true`，可 `Object.defineProperty` 改写后复原），而不是加豁免。注意 `vitest.config.ts` 已有 `windowsOnlyCoverageExclusions` 这种平台条件排除机制，但那是给「只在 win32 执行的整文件」用的；本例两臂都可达，**不该用排除**。
+
+### 五、batch-3：10 包 / 72 处（#173，OPEN）
+
+分支 `coverage/da-batch3-2026-09-19`，每包一个 `test(coverage)` 提交，共 10 个提交。10 个包全部 fork 自有（merge-base 上不存在）。
+
+本机独立验收（一次合并 scoped run 覆盖全部 10 包，而非逐包跑 —— 降低窄 scope 的假缺口风险）：exit 0、15 个 spec / 344 通过 / 1 跳过、`Uncovered locations` 输出 **0 行**、阈值 `ERROR` **0 条**、各包 src 均 100/100/100/100。那 1 条跳过是**既有**的 live macOS keychain e2e（`darwin && DSH_KEYCHAIN_LIVE` 门控，本 PR 未动）。pre-push 三门绿（no production src on master、typecheck、upstream-sync record consistency）。
+
+预期 CI 效果：6746 → **6674**（−72）。
+
+### 六、两条方法论教训（比本棒任何数字都更值得带走）
+
+1. **scoped 覆盖率对「从未被 import 的文件」报 `0/0/0/0`，而逐文件门会把这种文件直接跳过 —— 这是一条会产生「假绿」的路径。** 本棒实例：`ui-present-decomposition/src/index.ts` 与 `ui-present-table/src/index.ts` 都只是 `export function apply(): void {}`，CI 明确列出 `src/index.ts:1:17 uncovered function apply`，但空函数体**没有任何可插桩语句**，scoped run 里这两个文件报 `0/0/0/0`、reporter 静默、阈值不报错 —— 也就是说**本机 reporter 静默并不能证明这两处已清**。这类位置只能由 CI 全量清单裁决。UM18 原先只记了 scoped「报未覆盖可能是假缺口」这一个方向，**反方向（scoped 静默 ≠ 已覆盖）此前没记**。
+2. **`/* v8 ignore */` 是本仓已认可的机制，不是豁免的变体。** `.agents/notes/implemented/process/2026-06-11-quality-gates.md:20` 明文：「unreachable defensive guards carry `/* v8 ignore */` with stated reasons **instead of deletion**」，master 上 **284 个文件**在用。约束是**仅限不可达臂**且须写明理由 —— `2026-09-04-client-present-table-fetchresult-wiring.md:54` 记过一次 review 正确否决了把 ignore 加在**可达**臂上的做法。所以「绝不进 `coverage-exempt.ts`」这条禁令**不**延伸到 `v8 ignore`；但每一处都必须按控制流核实不可达，不能凭断言。
+
+### 七、三张票的归宿（本棒复核）
+
+- **改名 `code-runtime-*` → `ptc-runtime-*`（§2.5.1）**：**仍阻塞。** #167、#114 在本棒仍未合（2026-09-19 复核：均 OPEN；#172 合并前读到 `CONFLICTING`/`DIRTY`，合并后 GitHub 重算中报 `UNKNOWN`）。前置不满足，本棒未动。
+- **resolutionMode 兼容 shim（§2.5.2）**：复检票在册，本棒未动。待上游修好后重评估、届时删 shim；下次同步重跑 `test:snapshot` 验证。
+- **da 是否采用上游 `plugin_manager`（§2.5.4）**：仍待用户决策，本棒未擅自采用。
+
+### 八、upstream-merge 专项可否关闭
+
+**上游合并本身已无残余**：master 站 alpha.2（`ddefc45fbc`），`upstream-status` behind 0 / owed 0 / consistent；`snapshots and artifacts` 已于收尾棒转绿；`verify-config-catalog`、`duplication` 均绿。
+
+**唯一挂在本专项名下的未完项是 coverage，而第一节已证明它是数百 PR 的长期工程，量级上不属于一个同步专项。** 因此建议：**把 coverage 从本专项剥离为独立长期轨道后，upstream-merge 专项即可关闭**；本票的 coverage 部分（§1 + 本节第一、三、五节）作为那条轨道的起点账本。此建议待用户确认后再改本票 `Status`。
