@@ -206,10 +206,10 @@ test('R14 retrieve omits `description` when the hit payload has none, includes i
   expect(hits).toHaveLength(2)
   // truthy branch (95:55): description projected onto the model-facing candidate
   expect(hits[0]).toEqual({ id: 'with-desc', score: 1.0, description: 'has desc', mode: 'bm25-only' })
-  expect('description' in hits[0]).toBe(true)
+  expect('description' in (hits[0] ?? {})).toBe(true)
   // falsy branch (95:89): description key ABSENT — the `: {}` spread adds nothing
   expect(hits[1]).toEqual({ id: 'no-desc', score: 0.5, mode: 'bm25-only' })
-  expect('description' in hits[1]).toBe(false)
+  expect('description' in (hits[1] ?? {})).toBe(false)
 })
 
 test('R15 projectHit (via ctx.retrieval) omits `description` when the hit payload has none, includes it when present (line 111 both ternary branches)', async () => {
@@ -228,10 +228,10 @@ test('R15 projectHit (via ctx.retrieval) omits `description` when the hit payloa
   expect(out.candidates).toHaveLength(2)
   // truthy branch (111:40): description projected
   expect(out.candidates[0]).toEqual({ id: 'with-desc', score: 0.9, description: 'has desc', mode: 'hybrid' })
-  expect('description' in out.candidates[0]).toBe(true)
+  expect('description' in (out.candidates[0] ?? {})).toBe(true)
   // falsy branch (111:55): description key ABSENT
   expect(out.candidates[1]).toEqual({ id: 'no-desc', score: 0.4, mode: 'hybrid' })
-  expect('description' in out.candidates[1]).toBe(false)
+  expect('description' in (out.candidates[1] ?? {})).toBe(false)
 })
 
 test('R16 render omits the ` - <desc>` suffix when a candidate has no description, includes it when present (line 282 both ternary branches)', () => {
