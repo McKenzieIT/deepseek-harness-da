@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open
+**Status**: closed (2026-09-20) —— 上游合并部分已无残余；唯一残余项 coverage 已按用户确认剥离为**独立长期轨道**（起点账本＝本票 §1 + 终局棒 §一/§三/§五 + 文末「coverage 独立轨道【第一棒】」节）。这是**专项边界**判定，不是 map 级 out-of-scope
 **Assignee**: unclaimed
 **Blocked by**: —（UM14/0d1f50007f 合并已 land 于 PR #168）
 **Blocks**: fork CI 全绿
@@ -391,3 +391,90 @@ Linux 跑时 `'process'`（col 43）那臂不可达、Windows 跑时 `'process-r
 **上游合并本身已无残余**：master 站 alpha.2（`ddefc45fbc`），`upstream-status` behind 0 / owed 0 / consistent；`snapshots and artifacts` 已于收尾棒转绿；`verify-config-catalog`、`duplication` 均绿。
 
 **唯一挂在本专项名下的未完项是 coverage，而第一节已证明它是数百 PR 的长期工程，量级上不属于一个同步专项。** 因此建议：**把 coverage 从本专项剥离为独立长期轨道后，upstream-merge 专项即可关闭**；本票的 coverage 部分（§1 + 本节第一、三、五节）作为那条轨道的起点账本。此建议待用户确认后再改本票 `Status`。
+
+## coverage 独立轨道【第一棒】（2026-09-20）
+
+> 终局棒 §八 的建议已由用户确认采纳：**coverage 从 upstream-merge 专项剥离为独立长期轨道，本票 `Status` 同步改为 closed**。coverage 的起点账本仍是本票 §1 + 终局棒 §一/§三/§五 + 本节。本节只做定性与排序，不含补测试产出。
+
+### 一、终局棒 §一 末尾那条「整包基本没有测试」的观察：按原表述不成立，但它底下的赌注成立
+
+终局棒 §一 留了一条未验证观察 —— `data/tool-*` 一族「形态上像整包基本没有测试」，若属实则「一包一套测试」单位成本远低于逐位置补。本棒按只读方式定性完毕。
+
+**先机械重导基线。** `windows node 24 / coverage` job `105871998518`（#173 头 `4fb4353e58f1`）的逐条清单 = **6674 处 / 146 文件 / 46 包**，与终局棒 §五 的预期 6674 精确相符。
+
+顺带订正一条会浪费后人时间的事实：**#174 那次 coverage job（`105874541449` @ `3889fbffaa`）13 分钟即失败、没有产出任何清单**（按 §六 的 recipe 抓位置行，0 命中；日志仅 514 KB，对比 #173 那次 2.7 MB）。这正是终局棒只能用「6674 − #174 的 1 处」算术推出 6673 的原因。后续若有人想复读 #174 的清单，会拿到空文件 —— **不要以为是自己 grep 写错了**。另已核实 `3889fbffaa` 的父提交是 `8ba7f2c919`（早于 #173 合并），所以那次 run 本就不含 #173 的 72 处。
+
+**结论：八个候选包里只有两个真的「整包没有测试」**（`tool-get-coverage`、`tool-list-domains` 连 `tests/` 目录都没有）。其余六个都有真实 spec 且 `import '../src/index.ts'`。**但缺口不是零散的** —— 按清单里的未覆盖函数名归类，它呈三档分布：
+
+| 档 | 病灶 | 包与位置数 | 小计 |
+| --- | --- | --- | --- |
+| **A** | 该模块实际完全未被测到 | `tool-get-coverage` 126、`tool-list-domains` 102、`tool-revert-edit` 143、`tool-scope-routing` 的 `list-scopes.ts` 61 + `switch-scope.ts` 36 + `aliases.ts` 15 | **483** |
+| **B** | 纯逻辑已测、**工具契约外壳未测** | `tool-trigger-eval` 110、`tool-edit-definition` 106、`tool-discover-relations` 102 | **318** |
+| **C** | 真正的零散残余（#173 那种逐位置补） | `tool-search-data-sources` 141、`tool-scope-routing/scope-hint.ts` 27 | **168** |
+
+483 + 318 + 168 = **969**，与 session prompt §2.1 的八包总数对上。
+
+**赌注成立，但复用对象是「契约外壳」而不是「整包骨架」。** 判据是清单里的未覆盖**函数名**，不是形态猜测：`execute` 在 **11** 个包未覆盖、`presentCall` **10** 个、`presentResult` **9** 个。B 档三个包的业务逻辑（`tool-trigger-eval` 的 `formatTriggerEval`、`tool-edit-definition` 的 `computeEdit`、`tool-discover-relations` 的 `execute`）都**已被现有 spec 覆盖**，缺的恰好是 Cordis 工具接线那一层。而家族形态高度统一：**16 个 `data/tool-*` 包里 15 个是单文件 `src/index.ts`**（例外只有 `tool-scope-routing` 6 文件、`tool-search-data-sources` 2 文件）。
+
+所以一套 harness 摊到的不是「8 包 / 969 处」，而是**整个家族 16 包 / 1353 处 = 占 6674 的 20.3%**：
+
+| 包 | 位置 | spec 数 | src 文件 | 档 |
+| --- | --- | --- | --- | --- |
+| `data/tool-revert-edit` | 143 | 1（假测试，见§二） | 1 | A |
+| `data/tool-search-data-sources` | 141 | 4 | 2 | C |
+| `data/tool-scope-routing` | 139 | 1 | 6 | A 112 + C 27 |
+| `data/tool-get-coverage` | 126 | **0** | 1 | A |
+| `data/tool-trigger-eval` | 110 | 1 | 1 | B |
+| `data/tool-edit-definition` | 106 | 2 | 1 | B |
+| `data/tool-list-domains` | 102 | **0** | 1 | A |
+| `data/tool-discover-relations` | 102 | 1 | 1 | B |
+| `data/tool-get-definition` | 96 | **0** | 1 | A |
+| `data/tool-search-schema` | 73 | 1 | 1 | B |
+| `data/tool-load-event-definition` | 69 | 1 | 1 | B |
+| `data/tool-discover-alt-labels` | 44 | 1 | 1 | B |
+| `data/tool-reachability-delta` | 33 | 1 | 1 | B |
+| `data/tool-update-table-config` | 27 | 1 | 1 | B |
+| `data/tool-resolve-term` | 22 | 1 | 1 | C |
+| `data/tool-load-table-definition` | 20 | 1 | 1 | C |
+| **合计** | **1353** | | | |
+
+家族里共 **3 个包零 spec**（`tool-get-coverage` 126、`tool-list-domains` 102、`tool-get-definition` 96 = 324 处）。
+
+**选定补法：按三档分治，共用一套 agent-tool 契约 harness。**
+
+- **A 档** —— 从零建套件：先跑通 `apply()` 注册 → `execute` → `presentCall`/`presentResult` 的契约骨架，再铺行为用例。
+- **B 档** —— 只补契约外壳，**不重测已覆盖的纯逻辑**（重测既浪费也会掩盖真实缺口）。
+- **C 档** —— 沿用 #173 的逐位置补，不强行套 harness。
+
+**理由：** A + B 两档合计 801 处 = 家族 1353 的 59%，且全部落在同一组函数签名（`execute` / `presentCall` / `presentResult`）上，harness 写一次复用 16 次；C 档 168 处形态各异，套 harness 的复用收益为负。这条比「一包一套测试」更准 —— 因为对 B 档包而言「整包」大部分已经测过了，从零建套件反而是浪费。
+
+### 二、`tool-revert-edit` 的 spec 是假测试 —— 存量弱断言，已在 master 上
+
+这是本棒的意外发现，也是「有 spec 文件 ≠ 有覆盖」的实证。`packages/data/tool-revert-edit/tests/tool-revert-edit.spec.ts`：
+
+1. **文件大部分测的是另一个包。** 它 `import { openAuditDatabase, SQLiteAuditStore } from '../../audit/src/store.ts'`，六个 `it` 里有五个在测 `data/audit` 的快照 record/get/list。
+2. **唯一声称测本包的那个 `it` 是同义反复。** `:60` 处 `const { apply: _apply } = await import('../src/index.ts')` —— 导入后**从不调用**；紧接着 `:63` 在测试里**重写一遍校验正则**，再断言自己写的那个表达式：
+
+   ```ts
+   const isInvalid = !trimmed || /[/\\\x00]|\.\./.test(trimmed) || trimmed === '.' || trimmed.length > 200
+   expect(isInvalid).toBe(true)     // 断言测试自己写的表达式，与被测源码无关
+   ```
+
+   源码里的 `validateAssetName` 一行都没执行。文件里的注释「We test the validation indirectly through the tool's logic」把这件事写明了。
+
+这解释了为什么它 `src/index.ts` 里 **7 个函数全部未覆盖**（`validateAssetName`、`formatRevertEdit`、`execute`、`presentCall`、`presentResult` + 2 个匿名），却挂着一个以它命名的 spec。属 §1「不弱断言」的存量违规，A 档补测试时**连带替换掉这个用例**（不是往上加，是把同义反复删掉换成真的调用 `validateAssetName`）。
+
+**扫描范围与结论**：两个特征（`: _xxx }` 形式的丢弃式导入、`expect(<局部变量>).toBe(true/false)` 形式的同义反复）在全部 `packages/*/*/tests/*` 下各扫一遍，**命中仅此一处**（另一条 `agent-instructions.spec.ts:170` 的 `_content` 是正常的参数命名）。仓库没有系统性假测试问题。但要记住这只是两个特征的扫描，**不构成「不存在其他假测试」的证明**。
+
+### 三、三条测量更正（前两条会让人拿到假零）
+
+1. **终局棒 §六 第 2 条与 §1.2 开的 pathspec 药方本身是坏的。** 交接文档写「必须写 `packages/*/*/src`（两层）」，但实测 `packages/*/*/src` 在 `git grep` 与 `git ls-tree` 下**都返回 0** —— 正是它自己警告的那种静默零。原因是带通配符时 git 用 wildmatch 匹配**完整文件路径**，`packages/a/b/src` 作为目录前缀匹配不上 `packages/a/b/src/index.ts`。**能用的形式必须带尾段**：`packages/*/*/src/*` 或 `packages/*/*/src/**`（无通配符的字面量 `packages` 则按目录前缀正常工作）。本棒两次扫描踩了这个坑、拿到假零。**推论仍然是 §1.2 那条纪律，只是药方要换**：拿「零命中」当证据前，先用一个已知必然命中的样本验证 pathspec —— 本棒的对照样本是 `packages/data/tool-revert-edit/src/index.ts`（`git ls-tree` 确认存在）。
+2. **`/* v8 ignore */` 的精确规模**：`packages/*/*/src/*` 下 **283 文件 / 903 处**（终局棒 §六 记的是「284 个文件」，未记处数）。另有 3 个文件在 src 之外用到该串（`packages/client/AGENTS.md` 文档 1 处、`ui-agent-preset` 的 2 个 test spec），全仓 314 文件。机制结论不变、且规模比原记录更大。
+3. **终局棒 §一「`eval-cli` 1499 处比尾部 30 个包加起来还多」是错的。** 实测尾部 30 个包（按位置数排序第 17–46 名）合计 **1692** > 1499；要 **29** 个包（第 18–46 名）才追平 `eval-cli` 一个。结论方向（eval-cli 是最重的单包、占 22.5%）不变，但「比尾部 30 个加起来还多」这句不能再用来论证排序。
+
+### 四、四张决策票的归宿（2026-09-20 用户已拍板）
+
+1. **coverage 产出指标口径（session prompt §3.1）—— 定为「`data/tool-*` 家族」。** 不走「清包数（尾部优先）」也不走「清位置数 → `eval-cli`」，而是打整个 16 包家族：位置数 1353 = **20.3%**、包数 16/46 = **35%**，两个指标同时动，且靠一套复用 16 次的 harness 实现。取舍依据：`eval-cli` 单包 1499（22.5%）位置产出略高但是 CLI 形态、定制活、harness 无法复用且只清 1 个包；尾部优先包数好看但最小 14 个包合计仅约 250 处（约 3.7%），是本棒「清 14 包却只占位置总量 1.2%」的重演。
+2. **upstream-merge 专项关闭（§3.2）—— 采纳终局棒 §八 建议。** 上游合并本身已无残余（behind 0 / owed 0 / consistent；`snapshots and artifacts`、`verify-config-catalog`、`duplication` 均绿），唯一挂在专项名下的 coverage 已剥离为独立轨道。**本票 `Status` 由 `open` 改为 `closed (2026-09-20)`**，仅改抬头第 5 行那一个字段，正文与本节之前的全部内容逐字节未变。
+3. **da 是否采用上游 `plugin_manager`（§3.3）—— 方向定为「采用」，但另起专票设计，本棒不动手。** 专票需设计：启用范围（哪些 profile）、`danger-full-access` 的收敛方式、插件清单变更的审计、与 da bundle patch 的接入点。需带上已核实的语义：`plugin_manager`（`packages/boot/plugin-manager`，动作 list/set/install/remove 插件与 bundle）管的是**已装插件清单**、跨重启持久、影响该 profile 后续所有 session，**不是** in-process 动态定义；挂上即让模型能跨 session 持久扩张自身能力面。**本棒未做任何接入改动。**
+4. **改名 `code-runtime-*` → `ptc-runtime-*`（§2.5.1）—— 仍阻塞。** 2026-09-20 复核 #167、#114 **均仍 OPEN**（`mergeable=UNKNOWN`）。前置不满足，本棒未动。
