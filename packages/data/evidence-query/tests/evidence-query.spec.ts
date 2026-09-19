@@ -115,6 +115,36 @@ function makeService(evalStore?: EvalResultStore): EvidenceQueryService {
   return new EvidenceQueryService(ctx, evalStore)
 }
 
+const confirmationStatusFixtures = [
+  { raw: 'draft', normalized: 'draft' },
+  { raw: 'confirmed', normalized: 'confirmed' },
+  { raw: 'analyst_confirmed', normalized: 'confirmed' },
+  { raw: 'business_confirmed', normalized: 'confirmed' },
+  { raw: 'unreviewed', normalized: 'draft' },
+  { raw: 'rejected', normalized: 'rejected' },
+  { raw: 'future_status', normalized: 'unknown' },
+] as const
+
+function makeConfirmationStatusService(): EvidenceQueryService {
+  const dir = mkdtempSync(join(tmpdir(), 'eq-confirmation-status-'))
+  dirs.push(dir)
+  writeFileSync(join(dir, 'config.yaml'), 'project:\n  name: test\n  scope_id: test\n')
+  mkdirSync(join(dir, 'tables'), { recursive: true })
+  mkdirSync(join(dir, 'events', 'fixtures'), { recursive: true })
+  mkdirSync(join(dir, 'metrics'), { recursive: true })
+
+  for (const fixture of confirmationStatusFixtures) {
+    writeFileSync(join(dir, 'events', 'fixtures', `${fixture.raw}.yaml`), yaml.dump({
+      name: `fixture.${fixture.raw}`,
+      confirmation: { status: fixture.raw, confirmed_by: '', confirmed_at: '' },
+    }))
+  }
+
+  const ctx = new Context()
+  new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  return new EvidenceQueryService(ctx)
+}
+
 // ── coverageQuery ───────────────────────────────────────────────────────
 
 describe('EvidenceQueryService.coverageQuery', () => {
@@ -128,10 +158,14 @@ describe('EvidenceQueryService.coverageQuery', () => {
     expect(stats.domain_counts['付费经济']).toBe(3)
     expect(stats.domain_counts['基础数据']).toBe(2)
     // Confirmation breakdown: 1 confirmed (dws_order_di), 1 rejected (dim_item),
-    // 2 draft (dim_server + game.pay.order)
-    expect(stats.confirmation.confirmed).toBe(1)
-    expect(stats.confirmation.rejected).toBe(1)
-    expect(stats.confirmation.draft).toBe(2)
+    // 2 draft (dim_server + game.pay.order), no unknown statuses.
+    expect(stats.confirmation).toEqual({ draft: 2, confirmed: 1, rejected: 1, unknown: 0 })
+  })
+
+  it('normalizes confirmation status vocabulary without hiding unknown values', () => {
+    const stats = makeConfirmationStatusService().coverageQuery()
+
+    expect(stats.confirmation).toEqual({ draft: 2, confirmed: 3, rejected: 1, unknown: 1 })
   })
 })
 
@@ -292,6 +326,18 @@ describe('EvidenceQueryService.evalResultQuery', () => {
 // ── assetHealth ─────────────────────────────────────────────────────────
 
 describe('EvidenceQueryService.assetHealth', () => {
+  it.each(confirmationStatusFixtures)(
+    'normalizes $raw confirmation status as $normalized',
+    ({ raw, normalized }) => {
+      const health = makeConfirmationStatusService().assetHealth(`fixture.${raw}`)
+
+      expect(health).toMatchObject({
+        confirmationStatus: normalized,
+        lastModified: null,
+      })
+    },
+  )
+
   it('returns health report for a table asset', () => {
     const store = new EvalResultStore()
     store.add({ id: 'e1', assetId: 'dws_order_di', caseId: 'c1', status: 'pass', timestamp: '2026-08-24T00:00:00Z' })
@@ -304,7 +350,7 @@ describe('EvidenceQueryService.assetHealth', () => {
     expect(health!.hasEvalCoverage).toBe(true)
     // dws_order_di joins dim_server (bidirectional) + derived_from metric (bidirectional)
     expect(health!.relationCount).toBeGreaterThan(0)
-    expect(health!.lastModified).toBe('')
+    expect(health!.lastModified).toBeNull()
   })
 
   it('returns health report for an event asset', () => {

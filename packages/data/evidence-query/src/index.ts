@@ -43,11 +43,29 @@ import type {
   EvalCaseFlip,
   EvalDeltaReport,
   AssetHealthReport,
+  NormalizedConfirmationStatus,
 } from './types.ts'
 
 export type * from './types.ts'
 
 const STATUS_RANK: Record<EvalResultRecord['status'], number> = { pass: 3, fail: 1, error: 0, pending: 0 }
+
+/** Normalize persisted confirmation vocabulary for every evidence-query trust report. */
+function normalizeConfirmationStatus(status: string): NormalizedConfirmationStatus {
+  switch (status) {
+    case 'draft':
+    case 'unreviewed':
+      return 'draft'
+    case 'confirmed':
+    case 'analyst_confirmed':
+    case 'business_confirmed':
+      return 'confirmed'
+    case 'rejected':
+      return 'rejected'
+    default:
+      return 'unknown'
+  }
+}
 
 /**
  * GA-GT1 Phase 3b (D5.2): structural interface for the optional scope-registry
@@ -398,7 +416,7 @@ export class EvidenceQueryService extends Service {
 
   /**
    * Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats()
-   * but enriches with confirmation.status breakdown across all assets.
+   * and reports one normalized confirmation breakdown across all assets.
    * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns aggregated table/event/metric counts plus per-domain and confirmation-status tallies.
    */
@@ -409,10 +427,11 @@ export class EvidenceQueryService extends Service {
     const metrics = loadMetricDefinitions(root)
 
     const domainCounts: Record<string, number> = {}
-    const confirmation: { draft: number; confirmed: number; rejected: number } = {
+    const confirmation: Record<NormalizedConfirmationStatus, number> = {
       draft: 0,
       confirmed: 0,
       rejected: 0,
+      unknown: 0,
     }
 
     let tableCount = 0
@@ -450,11 +469,9 @@ export class EvidenceQueryService extends Service {
 
   private tallyConfirmation(
     status: string,
-    acc: { draft: number; confirmed: number; rejected: number },
+    acc: Record<NormalizedConfirmationStatus, number>,
   ): void {
-    if (status === 'confirmed') acc.confirmed++
-    else if (status === 'rejected') acc.rejected++
-    else acc.draft++
+    acc[normalizeConfirmationStatus(status)]++
   }
 
   /**
@@ -680,8 +697,8 @@ export class EvidenceQueryService extends Service {
   }
 
   /**
-   * Asset health: aggregate report for a single asset — confirmation status,
-   * has_eval_coverage, relation_count, last_modified.
+   * Asset health: reports normalized confirmation status, eval coverage,
+   * relation count, and a nullable owner-provided modification time.
    * @param assetId - the table, event, or metric asset to report on.
    * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns the aggregate health report, or null when no table/event/metric matches assetId.
@@ -698,10 +715,10 @@ export class EvidenceQueryService extends Service {
         const relations = graph.getRelated(assetId)
         return {
           assetId,
-          confirmationStatus: r.data.confirmation.status,
+          confirmationStatus: normalizeConfirmationStatus(r.data.confirmation.status),
           hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
-          lastModified: '',
+          lastModified: null,
         }
       }
     }
@@ -715,10 +732,10 @@ export class EvidenceQueryService extends Service {
         const relations = graph.getRelated(assetId)
         return {
           assetId,
-          confirmationStatus: r.data.confirmation.status,
+          confirmationStatus: normalizeConfirmationStatus(r.data.confirmation.status),
           hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
-          lastModified: '',
+          lastModified: null,
         }
       }
     }
@@ -733,7 +750,7 @@ export class EvidenceQueryService extends Service {
           confirmationStatus: 'n/a',
           hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
-          lastModified: '',
+          lastModified: null,
         }
       }
     }

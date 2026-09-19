@@ -69,7 +69,7 @@ function mockEvidenceClient(): {
 } {
   const coverage = {
     table_count: 0, event_count: 0, metric_count: 0, domain_counts: {},
-    confirmation: { draft: 0, confirmed: 0, rejected: 0 },
+    confirmation: { draft: 0, confirmed: 0, rejected: 0, unknown: 0 },
   }
   const gapAnalysis = vi.fn(async (_assetId: string) => ({ sourceAssetId: _assetId, gaps: [] }))
   const evalResultQuery = vi.fn(async () => ({ results: [], total: 0 }))

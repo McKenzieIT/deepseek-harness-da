@@ -13,13 +13,14 @@ export type AssetKind = 'table' | 'event' | 'metric'
  */
 export type TableKind = string
 /** ConfirmationStatus */
-export type ConfirmationStatus = 'draft' | 'confirmed'
+export type ConfirmationStatus = 'draft' | 'confirmed' | 'rejected' | 'unknown'
 
 /** ConfirmationBreakdown */
 export interface ConfirmationBreakdown {
   readonly draft: number
   readonly confirmed: number
   readonly rejected: number
+  readonly unknown: number
 }
 
 /** EnrichedCoverageStats */
@@ -91,10 +92,10 @@ export interface EvalResultQueryResult {
 /** AssetHealthReport */
 export interface AssetHealthReport {
   readonly assetId: string
-  readonly confirmationStatus: string
+  readonly confirmationStatus: ConfirmationStatus | 'n/a'
   readonly hasEvalCoverage: boolean
   readonly relationCount: number
-  readonly lastModified: string
+  readonly lastModified: string | null
 }
 
 /** Eval case flip between two runs (from beforeAfterDelta). */

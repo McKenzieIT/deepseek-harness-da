@@ -5,7 +5,11 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { buildEvidenceQueryClient } from '../src/client/evidenceQueryBridge.ts'
-import type { EnrichedCoverageStats, GapAnalysisResult, EvalDeltaReport } from '../src/client/types.ts'
+import type { AssetHealthReport, EnrichedCoverageStats, GapAnalysisResult, EvalDeltaReport } from '../src/client/types.ts'
+
+// @ts-expect-error Asset health accepts only normalized confirmation states plus n/a.
+const invalidConfirmationStatus: AssetHealthReport['confirmationStatus'] = 'unexpected'
+void invalidConfirmationStatus
 
 function ok<T>(value: T) { return { ok: true, value } }
 function fail(error: string) { return { ok: false, error } }
@@ -14,7 +18,7 @@ function makeRemoteStub() {
   const coverage: EnrichedCoverageStats = {
     table_count: 10, event_count: 5, metric_count: 3,
     domain_counts: { '付费经济': 5 },
-    confirmation: { draft: 3, confirmed: 10, rejected: 2 },
+    confirmation: { draft: 3, confirmed: 10, rejected: 2, unknown: 0 },
   }
   return {
     coverageQuery: vi.fn().mockResolvedValue(ok(coverage)),

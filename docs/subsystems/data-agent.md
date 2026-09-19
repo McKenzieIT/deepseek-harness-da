@@ -121,7 +121,7 @@ getEvalStore(): EvalResultStore
 
 /**
  * Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats()
- * but enriches with confirmation.status breakdown across all assets.
+ * and reports one normalized confirmation breakdown across all assets.
  * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
  * @returns aggregated table/event/metric counts plus per-domain and confirmation-status tallies.
  */
@@ -188,8 +188,8 @@ evalResultQuery(filters: EvalResultFilters): EvalResultQueryResult
 beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport
 
 /**
- * Asset health: aggregate report for a single asset — confirmation status,
- * has_eval_coverage, relation_count, last_modified.
+ * Asset health: reports normalized confirmation status, eval coverage,
+ * relation count, and a nullable owner-provided modification time.
  * @param assetId - the table, event, or metric asset to report on.
  * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
  * @returns the aggregate health report, or null when no table/event/metric matches assetId.

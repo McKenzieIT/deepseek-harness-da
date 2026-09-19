@@ -43,7 +43,7 @@ describe('CoveragePanel', () => {
       event_count: 445,
       metric_count: 3916,
       domain_counts: { trade: 100, finance: 50 },
-      confirmation: { draft: 700, confirmed: 66, rejected: 0 },
+      confirmation: { draft: 700, confirmed: 66, rejected: 0, unknown: 0 },
     }
     const { container } = render(<CoveragePanel coverage={coverage} loading={false} t={t} />)
     expect(container.textContent).toContain('321')
