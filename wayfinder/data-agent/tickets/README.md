@@ -56,6 +56,11 @@ English | [中文](README.zh.md)
 - [P11e eval case set v2 基于真实场景](phase-4/P11e-eval-case-set-v2-realistic.md) — task, **resolved**（2026-08-26；80 case 自然语言 NL2SQL 评测，30 张核心表，9 种 intent；pass rate 67.5%；暴露粒度混淆/BM25 gap/多表关联 → P14/P15）
 - [G2 eval TS vs Python](phase-4/G2-eval-ts-vs-python.md) — grilling, **resolved**（2026-08-20；TS `packages/eval/` 重实现编排 + 判分 (ii) DELIVERY/EXECUTION 不进 sqlglot + python/ 包不修订 Q10；解锁 P11）
 
+## phase-coverage（逐文件 100% 覆盖率门 —— 长期执行轨道）
+> 2026-09-20 从 [UM18](phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md) 毕业：上游合并部分已无残余（behind 0 / owed 0 / consistent），唯一残余项 coverage 是数千处位置、数百 PR 的长期工程，量级上不属于一个同步专项，故剥离独立成轨、UM18 同步关票。**注意 `UM18` 是复用过的编号** —— map 里 2026-09-15 那条「UM18 → 归位为 B-DA7」指的是另一张更早的票，不是本轨道的起点账本。
+
+- [COV1 逐文件 100% 覆盖率门：da 自有包的长期收口轨道](phase-coverage/COV1-per-file-coverage-100-track.md) — task, **open**（排序口径＝`data/tool-*` 家族 16 包 / 1353 处 / 占 20.3%，两个指标同时动且一套契约 harness 复用 16 次；三档分治：A 从零建套件 / B 只补契约外壳不重测已覆盖逻辑 / C 逐位置。batch 1 = PR [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175) 已 CI 实测 6674 → **6197**、46 → 42 包、零回归；家族剩余 12 包 / 886 处。票内含 8 条测量陷阱清单，动手前必读）
+
 ## phase-misc（cross-phase / 低优先）
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **resolved**（2026-08-20；实验设计 11 决策定稿——2×2 变体×2 模型配置 staged、execution-match 三分判分+决策规则；设计(不跑)→毕业 G1b 执行票）
 - [G1b 实验执行](phase-misc/G1b-experiment-execution.md) — prototype, **in-progress**（所有 blocker resolved：P4c✅/P11c✅/G1c✅/present_*✅。已跑：infra bug fix + BM25 recall 0%→86.7% + P15a query expansion。当前瓶颈：LLM SQL 生成质量（execution_match=0%，bottleneck 从 retrieval 移至 model）
@@ -71,6 +76,7 @@ English | [中文](README.zh.md)
 - [P14 Ontology-aware 表选择（粒度感知 + 关系图扩展）](phase-misc/P14-ontology-aware-table-selection.md) — grilling, **resolved** 2026-08-26（D1-D5 全锁定：(a) engine pipeline step + soft prefer + payload 补全 + regression gate 67.5%）
 - [P14b Post-Retrieval Ontology Enrichment 实现](phase-misc/P14b-ontology-enrichment-implementation.md) — prototype, **resolved**（2026-08-26；granularity.ts detectTrendIntent + rerankByGranularity + ontology expandCandidates lookupDoc + prompt Rule 9；28/28 + 56/56 green）
 - [P15 Query Rewriting（查询侧语义扩展）](phase-misc/P15-query-rewriting.md) — grilling, **resolved**（2026-08-26；方案 B validated：LLM query expansion via qwen-flash 6/6 hit@5。P15a 实现 commit `e0ef1b0711` ship）
+- [plugin_manager 采用设计](phase-misc/plugin-manager-adoption.md) — grilling, **open**（2026-09-20 从 [UM18](phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md) §2.5.4 毕业；历经三棒未决后用户拍板「方向＝采用、另起专票设计、不夹带进 coverage 轨道」。待定五项：启用范围（哪些 profile / 是否进 UNIVERSAL 白名单）· `danger-full-access` 的收敛方式 · 清单变更审计是否走 `data/audit` Tier-2 · bundle patch 接入点 · 回退路径。**HITL，agent 不得自答** —— 挂上即让模型能跨 session 持久扩张自身能力面）
 
 ## phase-misc — simplification candidates (S-series, OPEN, pending new-session 2nd verification)
 > 来源：dsh-data-agent 全量审计（WF1-WF5 + dsh-find-simplifications skill）的 strong 候选。每张票 `status=open`、`blocked-by: 新 session 二次验证`——不在审计 originating session 直接执行；新 session 重新核证调用点/证据后再 claim 执行。
@@ -86,4 +92,4 @@ English | [中文](README.zh.md)
 > 保留（暂时没人用/计划后续/在用，不开删除票）：patrol-mode（W11 在建）、SQL-critic 工具路径（phase-gate re-tighten 计划）、scopes/changed 事件（文档化扩展点）、management-session 事件（W11 为 UI 预留）、QueryEngine.attach（有生产调用者：eval-runner-service + nl2sql-engine）。
 
 ## 当前可立即取（unblocked frontier）
-P9b · G1b（in-progress，瓶颈=LLM SQL quality）（P11c/D2c/P14b/P15/P14/G1c 已 resolved 2026-08-21~26）
+P9b · G1b（in-progress，瓶颈=LLM SQL quality）· **COV1**（coverage 轨道；batch 1 已 CI 实测，家族剩余 12 包 / 886 处，AFK 可直接续批）· **plugin_manager 采用设计**（HITL，需用户在场拍 `danger-full-access` 边界）（P11c/D2c/P14b/P15/P14/G1c 已 resolved 2026-08-21~26）
