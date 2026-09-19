@@ -1,10 +1,14 @@
 ---
 type: grilling
-status: open
+status: migrated
 blocked_by: []
 ---
 
 # CL-24: 模型伪回复被当 SQL（CL-23 衍生 / CL-19 同族）
+
+## Answer
+
+Migrated to [Evaluation T15: Product Evaluation Controller 与 external CLI](../../evaluation/tickets/T15-evaluation-controller-cli.md). The target evaluation path must preserve raw emission, parsed action, execution, and observation as distinct evidence stages; missing or invalid parsing becomes unverifiable evidence rather than a heuristic SQL success. Do not add legacy prose-detection patches under this ticket.
 
 **Branch**: `fix/cl24-pseudo-reply-as-sql`  <!-- 待建 worktree -->
 

@@ -1,6 +1,6 @@
 # CB-1a — 冷启动稳定化落地 Session Prompt
 
-> 本文件是下一 session 的完整 prompt。直接粘贴即可开工。规格见 [CB-1a](wayfinder/semantic-layer/tickets/CB1a-cold-boot-stabilization.md)。
+> 本文件是下一 session 的完整 prompt。直接粘贴即可开工。规格见 [CB-1a](../../tickets/CB1a-cold-boot-stabilization.md)。
 
 ## 1. 环境/分支契约（session 启动第一步，必填）
 
@@ -30,12 +30,12 @@ node scripts/install-lefthook.mjs   # 重新生成 worktree-local hooks
 
 ### 背景
 
-2026-09-04 grilling 解决了 [CB-1](wayfinder/semantic-layer/tickets/CB1-cold-boot-blockers.md)（cold-boot blockers）+ [CB-3](wayfinder/semantic-layer/tickets/CB3-per-row-fault-isolation.md)（per-row 失败隔离评估）的 4 个决策，落账在 [CB-1a](wayfinder/semantic-layer/tickets/CB1a-cold-boot-stabilization.md)。本 session 落地其中两块**已决策、未实现**的工作：
+2026-09-04 grilling 解决了 [CB-1](../../tickets/CB1-cold-boot-blockers.md)（cold-boot blockers）+ [CB-3](../../tickets/CB3-per-row-fault-isolation.md)（per-row 失败隔离评估）的 4 个决策，落账在 [CB-1a](../../tickets/CB1a-cold-boot-stabilization.md)。本 session 落地其中两块**已决策、未实现**的工作：
 
 - **Q2 = α**：`enrichment-llm-wiring` 插件 apply 期 `throw` → `ctx.logger.warn` + 早返回（非致命，boot warn 为 surface）。substrate 不动。
 - **Q3 = S2**：include 组失败时，把「app 照常打开、整组静默消失」改成 boot 显式报错（指名 group/entry/根因）。不改 vendor 事务语义。
 
-[CB-2](wayfinder/semantic-layer/tickets/CB2-enrichment-llm-as-settings-item.md)（enrichment 设置项）已推迟，**不在本 session**。S1（per-row 隔离）推迟，**不在本 session**。
+[CB-2](../../tickets/CB2-enrichment-llm-as-settings-item.md)（enrichment 设置项）已推迟，**不在本 session**。S1（per-row 隔离）推迟，**不在本 session**。
 
 ### Phase 0：前置确认（读码，不 grilling）
 
@@ -85,7 +85,7 @@ blocking → 修复后再进下一块。
 ### 约束
 
 - 不改 substrate 的 best-effort（8 处 `try/catch` 保持吞错降级）。
-- 不改 vendor 事务 all-or-nothing（S1 per-row 推迟，见 [CB-3](wayfinder/semantic-layer/tickets/CB3-per-row-fault-isolation.md)）。
+- 不改 vendor 事务 all-or-nothing（S1 per-row 推迟，见 [CB-3](../../tickets/CB3-per-row-fault-isolation.md)）。
 - 不做 CB-2 设置项（推迟；配置口暂为 env vars + α 的 warn）。
 - 不统一三处重复 resolver（`eval-cli/src/main.ts`、`tool-search-data-sources/src/expand-query.ts`、本插件）——随 CB-2 再议。
 - `pnpm run typecheck` 绿；新代码有测试；`npx tsc --noEmit` 无新增错误。
@@ -117,5 +117,5 @@ blocking → 修复后再进下一块。
 
 - [ ] `pnpm run typecheck` 绿
 - [ ] 相关 surface 测试绿（行为改 `test:coverage` / snapshot；模型改 snapshot；文档改 `doc-sync`）
-- [ ] `gh pr create`（依赖链用 `gh stack link`），通过 [dsh-pre-push-checks](.agents/skills/dsh-pre-push-checks/SKILL.md)
+- [ ] `gh pr create`（依赖链用 `gh stack link`），通过 [dsh-pre-push-checks](../../../../.agents/skills/dsh-pre-push-checks/SKILL.md)
 - [ ] **下一并行批不得在本批 PR 未 merge / 未 abandon 前启动。**

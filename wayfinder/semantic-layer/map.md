@@ -1,374 +1,130 @@
 # wayfinder:map — dsh-data-agent 语义层
 
-> 本地 markdown tracker。子 ticket 在 `tickets/`，研究笔记在 `research/`。本 map 是**索引**，非存储。
+> 本地 Markdown tracker。子 ticket 在 `tickets/`，研究材料在 `research/`。本 map 是索引，不保存 open-ticket 状态或实施记录。
 
 ## Destination
 
-将 dsh-data-agent 的语义层从「代码存在但不可用」变为「端到端真正可用」：
+将 dsh-data-agent 的语义层推进为端到端可用、可管理且可审计的生产能力：自然语言请求使用按 scope 隔离的语义定义和关系检索生成并执行查询；Web UI 管理定义、关系和质量证据；生产 Agent 与 evaluation 观察同一份 Context Projection 和 evidence identity；Ontology 关系、trust 和版本演化具备明确 owner 与验收路径。
 
-1. **核心链路跑通**：用户自然语言提问 → 语义层提供足够上下文（检索 + 定义加载）→ NL2SQL 生成正确 SQL → 执行 → 返回结果。以全链路可用为验收标准。
-2. **架构正确**：语义层是可扩展的数据源注册表（不锁死表+事件），与查询引擎解耦（provider 可插拔），per-scope namespace 隔离，定义存储在运行时可配置路径。
-3. **Web UI 可管理**：通过 dsh 插件化机制提供管理界面（浏览/搜索、编辑、scope 管理、质量监控）。
-4. **Ontology 决策落地**：完成知识图谱/ontology 调研，决定其在 data-agent 中的角色和实现方式，若决策为引入则实现之（限于 Phase 1-3；Phase 4 可视化+自动发现明确 out of scope）。
-5. **管理 agent 证据闭环**（③-gated，v1 后展开）：管理 agent 可通过 eval 证据自校准朝 goal 推进（autonomous goal loop），实现语义层质量的自主持续改善。v1 阶段仅建证据基建+人驱管理面；③ 自驱循环在 v1 ①② 栈完成后作为本 map 的后续阶段展开。
-
-**架构定位（2026.08 R9 前沿审计后追加）**：dsh-data-agent 的语义层 = 一个 **context layer** 的早期实现（对齐 Forrester/Gartner 2026 定义）。v1 聚焦核心链路+管理面+③自驱；v2+ 方向为完整 context layer 对齐（见下方"Context Layer 演进方向"章节）。
-
-前提：项目处于开发期、无用户、无兼容负担。任何不满足要求的现有代码可推翻重来。
-
-### 验收假设（外部依赖）
-
-Destination 第 1 条「全链路可用」的验收依赖以下外部系统在现有能力下能配合新语义层工作：
-
-| 外部系统 | 假设 | 若不满足 |
-|----------|------|----------|
-| NL2SQL 引擎（`nl2sql-engine`） | 能消费 `registry.toPromptContext()` 产出的格式化文本作为上下文 | 本 map 修改格式化适配层（不改引擎核心逻辑） |
-| Query engine（`ctx.query.execute`） | 能执行 NL2SQL 生成的 SQL 并返回结果 | 超出本 map 范围；需协调 data-agent map |
-| dsh 插件化机制（Cordis + Client UI Slot） | 已就绪且支持新增管理 UI 插件 | R3/R6 已验证可行；若 upstream 变更需同步适配 |
-| Eval 核心（`packages/eval/eval`） | 现有接口可被 W3 runner 调用而不改核心 | 2 wiring caveats（W3 已追踪）；若需改核心则与 data-agent map 协调 |
+当前实现是可用的语义目录和检索关系图，不是完整的 Ontology 执行层。Context Layer 是本项目采用的架构综合，不是 Forrester、Gartner 或其他单一来源的正式统一定义。
 
 ## Notes
 
-- **域**：dsh-data-agent 语义层端到端可用 + Web UI 管理 + Ontology 知识图谱能力 + ③ 管理 agent 证据闭环。
-- **③ 定义**：③ = 自驱循环阶段门禁。标记为 ③-gated 的 ticket/能力 在 v1 ①② 栈（W1-W5-full）完成后才展开。③ 的核心 = 管理 agent 用 eval 证据自校准朝 goal 推进的 autonomous loop。
-- **每会话应查 skills**：`dsh-plugin-development`、`grilling` + `domain-modeling`、`research`、`prototype`。
-- **术语约定**（消除漂移）：
-  - **SchemaProvider**：代码中的接口名（PascalCase）。文中用「schema provider」指代概念时统一小写带空格。
-  - **scope**：纯逻辑划分单元（用户自定义）。代码中 scope 内部通过文件系统目录实现隔离，但 scope ≠ namespace——scope 是业务概念，namespace 是隔离机制。
-  - **定义（definition）**：本 map 中特指语义层中的数据源定义（`TableDefinition` / `EventDefinition` / `MetricDefinition`）。「定义版本管理」管理的是这些定义的变更历史，非 ontology 层概念。
-- **多 run 基线强制要求**（CL-22 追加）：
-  - **每次 eval 基线建立或趋势对比必须跑 ≥3 次取中位数**，无例外。单次 run 的 delta 不可用于决策（LLM 非确定性 flip rate ~27%，同代码极差 ±2.4pp overall / ±7.5pp per-category）。
-  - 报告格式：3 run 的 per-category 中位数 + 极差。若只跑 1 次（如单 case 调试），必须注明"单 run，不可作基线"。
-  - Run IDs 全部记入 experiment-audit-log（可追溯）。
-  - 未来可升级为 pass_k=3 + majority-vote（需改 `multi_turn.ts` pass 判定逻辑，当前语义为 all-must-pass 不适用）。
-  - **分层协议（2026-09-04 修订「无例外」）**：原规则字面要求「每次趋势对比 ≥3 轮，无例外」，但一轮 168-case 约 5.4h（conc=3；conc=1 约 16h），三轮约 16h —— **按字面执行则迭代开发在经济上不可能**（CL-20/21/23 每票都改 engine，每次验证付 16h）。故分层：
-    - **决策点用中位数**：批次的 before/after、GO/NO-GO、目标达成判定、口径变更 → 必须 ≥3 轮取中位数 + 极差。
-    - **迭代中用 n=1**：单票开发过程中的导航性 run → 允许单轮，但**必须标注「单 run，不可作决策依据」**，且不得写入 README 的基线表或 Quality Targets 达成判断。
-    - **基线摊到批次而非单票**：中位数基线是**一批票共享的 before**（例：CL-20/21/23 共用一个批前中位数），不是每票各建一次。这是让 16h 成本可接受的关键。
-    - **中位数的三轮必须同代码**：跨代码的轮次不可混入同一中位数（`compare.ts` 的协议守卫只拦 `pass_k`/`verdict_semantics` 不一致，**拦不住代码差异** —— 靠 run id 命名 + audit-log 记录 commit 保证）。
-    - 三轮之间机器须空闲（README:82：conc=4 在负载下触发 AGA empty-response burst，曾丢 63/168 case）；实践上作隔夜批处理，占用的是墙钟时间而非工作时间。
-- **实验记录强制要求**（CL-15 追加）：
-  - **每次 eval run 必须记录到 `wayfinder/semantic-layer/research/experiment-audit-log.md`**，无例外。
-  - 使用标准模板（见 `packages/eval/eval-cli/README.md` "Recording Results" 章节）：Setup（基线 run_id + cases + model + 变更内容）→ Data（verbatim 数据，含 `compare.ts` 输出）→ Verdict（编号分析）→ Ticket Pointer。
-  - **趋势对比**：每次 eval 必须用 `compare.ts` 与上一次基线 run 对比，记录 category-level delta 和 case-level flips。
-  - **不允许"跑了 eval 但没记录"**——实验结果是不可重现的（LLM 非确定性），未记录等于未发生。
-  - 即使是单 case 调试（`--case`），若结果影响决策，也应记录简要条目。
-- **`dsh web` 不自动 build client lib**（2026-09-04 踩）：`dsh web`（`bin.ts web`）**只读已构建的 `lib/`**，不跑 tsdown。任何 client 包缺 `lib/index.js` + `lib/client.js` → 启动 `ERR_MODULE_NOT_FOUND` → 整个 include 组失败 → 按钮消失（CB-1 同形状）。**正确工作流**：开发用 `pnpm run dev:web`（`scripts/dev-web.ts` watch-build 所有 client lib + vite dist），一次性用 `pnpm run build` / `npm run build:lib:client`。**何时踩**：新加 client 包到 bundle 后（如 W14b 挂 `ui-context-layer`）、或 lib 被 git clean / 并发 build 清掉后。`scripts/dev-web.ts` 注释 + `docs/api-gateway.md:144-148` 有说明但分散。不开票：是工作流非 bug，记此防再踩。
-- **常设原则**：
-  - **不做过渡方案**：LLM 编码场景下，直接做目标架构，不分短/中/长期妥协。
-  - **语义层不绑定特定查询引擎**：SchemaProvider 可插拔（`registerSchemaProvider` + `engineType` 路由）。
-  - **scope = 纯逻辑划分**：用户自定义划分方式，文件系统目录作隔离实现。
-  - **语义层默认空白**：由用户/管理员填充。
-  - **数据源类型可扩展**：不锁死「表 + 事件」；新增 kind = 实现一个 `DataSourceKindPlugin`。
-  - **无兼容负担（对外）**：对外部消费者（preset、bundle config、用户 YAML）无需保持向后兼容。对内部已验证代码（G1 已决定保留的基础设施），重构扩展而非无意义重写。
-- **现有基础设施**（重构扩展，非推翻——G1 决策）：
-  - `packages/data/semantic-layer/` — types.ts 保留，io.ts/index.ts 重构扩展
-  - `packages/data/tool-load-{table,event}-definition/` — 通过 `registry.toPromptContext()` 格式化（格式契约 = 纯文本，NL2SQL 引擎直接消费）
-  - `packages/data/tool-search-data-sources/` — 通过 `registry.toCorpusItem()` 聚合 corpus（格式契约 = `CorpusItem {id, description, metrics, payload}`）
-  - bundle 已挂载 semantic-layer 但 semanticRoot 为空（P1 的 `dsh-scope-registry` 解决配置指向）
+- **域**：语义定义、scope、检索关系、生产 Context Projection、管理 UI、evidence 和 eval 驱动演化。
+- **每会话应查 skills**：`dsh-plugin-development`、`grilling`、`domain-modeling`、`research`、`prototype`。
+- **scope** 是用户定义的业务划分；namespace 或目录是隔离机制，二者不等同。
+- **定义** 指 table、event、metric、concept 等语义记录；event/table/metric 与 concept 的实现和生产覆盖不同，不得用一种 kind 的完成度代表全部 kind。
+- **状态所有权**：每个 child ticket 的 frontmatter 或 Status 字段是其唯一状态来源；本 map 不镜像 open、blocked、frontier 或 assignee。
+- **Evaluation 所有权**：Benchmark、EvaluationStore、ArtifactStore、Context identity、ground truth、holdout 和 cutover 由 `wayfinder/evaluation/` 管理；本 effort 只保留语义层消费者和跨 effort 指针。
 
 ## Decisions so far
 
-- 验收标准 = 全链路跑通（检索 → SQL → 执行 → 结果）
-- 数据来源 = RBI 一次性手动导入 + 可插拔 schema provider 自动发现
-- 配置 = per-scope 可配置路径，运行时目录
-- scope = 纯 namespace
-- Web UI 核心场景 = 浏览/搜索 + 编辑 + scope 管理 + 质量监控
-- [R1 数据模型调研](research/r1-data-model-design.md) — 方案 B 推荐，per-kind plugin 保留类型安全 + 检索层已类型无关
-- [R2 Ontology 调研](research/r2-ontology-comprehensive.md) — ontology = 语义层 + relations 声明 + in-memory 图；不引入独立系统
-- [R3 Harness 插件化调研](research/r3-harness-plugin-system.md) — Cordis plugin 模型 + Client UI Slot 系统，新增插件有清晰 pattern
-- [R4 Schema Provider 插件化调研](research/r4-schema-provider-plugin.md) — 对齐 LLM pattern：registerSchemaProvider + engineType 路由 + disposer
-- [R5 Web UI 调研](research/r5-web-ui-semantic-layer.md) — 三栏布局 + Domain 导航 + 多视图切换 + 详情抽屉
-- [G1 数据模型决策](tickets/G1-data-model-decision.md) — 方案 B（类型化可插拔 + 统一检索层）；`DataSourceKindPlugin<T>` 接口（toCorpusItem / toPromptContext / toCriticContext / relations）；现有 P6b 重构非推翻
-- [G2 Ontology 角色决策](tickets/G2-ontology-role-decision.md) — 语义层关系扩展（非独立系统）；Level 2/2.5 双路径（路由由实验决定）；relations 三类型（joins/derived_from/related_to）；Metric = kind plugin（图节点）；计算规则 = SQL + metadata 混合；Phase 1-3 在本 map
-- [P1 Per-scope 配置](tickets/P1-per-scope-config.md) — 双层 config：Cordis 静态指向 registry 文件路径（`registryPath`），`scopes.yaml` 运行时可变。新包 `dsh-scope-registry`（`ctx.scopes`）+ SemanticLayerService 动态解析 active scope
-- [P2 关系声明 + In-Memory 图](tickets/P2-ontology-relations-graph.md) — DataSourceRegistry + 3 内置 kind plugins (event/table/metric) + RelationGraph (BFS join-path / getRelated / getDerived) + loadDefinitions 泛型加载器 + loadRetrievalCorpusFromRegistry + buildCriticFields 聚合。88 tests 全绿。
-- [G3 AI-Native Enrichment 设计](tickets/G3-ai-native-enrichment-design.md) — 两轮发现（确定性 PK 匹配 + LLM 综合推断）；直接写入 + **eval-based confidence gate**（低/中/高风险分级：高风险变更若 eval pass_rate drop >5pp 则 auto-revert）；Service 方法 + Agent Tool；语义层变更后自动触发（核心能力）；DWS 优先 → events 第二轮；metrics 机械提取 + 后续 LLM 补充
-- [T1 K11 迁移 + Enrichment](tickets/T1-seed-k11-definitions.md) — 321 tables + 453 events 已迁移；126 DWS 表 dimension_refs 已填充；3916 metrics 已提取；discoverRelations Service + on-write hook + tool-discover-relations 均已实现。⚠️ runtime-wiring 缺口：kind plugins 未注册进 registry、无 live RelationGraph、检索语料仅 events — P3/P4 前置补全见 Phase 2 prompt 的 Phase 1.5
-- [T1 种子 K11 定义](tickets/T1-seed-k11-definitions.md) — 完整 RBI 迁移：321 表（162 DWS+159 DIM）+ 445 事件 + field_samples；schema 兼容全绿
-- [DWS→DIM 发现前置报告](research/dws-dim-discovery-report.md) — Phase 1 用 subagent 充当 llmCall 跑 162 DWS：126 表得 225 refs（34 DIM）；enrichment.ts/hook/tool/metrics 全落地；生产化见 F1
-- [P3 Ontology NL2SQL 集成](tickets/P3-ontology-nl2sql-integration.md) — 三机制落地：C1 join constraint 注入 prompt、C2 undeclared_join critic 警告、C3 graph-expanded recall（+1-hop DIM）；K11 对比实验 with-graph 100% vs without 20%（+80pp，structural scoring，scripted LLM caveat）
-- [P4 指标计算引擎](tickets/P4-ontology-metric-engine.md) — eval 验收（5 cases Level 2 metric-context vs normal）；execute_metric + Level 2.5 确定性路径已删除（M1b: SUM-on-_df 快照指标确定性错误）；metric 统一走 Level 2 buildMetricContext 注入；14 tool tests + 55 phase-gate tests + 139 semantic-layer tests 全绿
-- [F1 DWS→DIM 发现正式化](tickets/F1-dws-dim-discovery-formalization.md) — enrichment-llm-wiring Cordis 插件接入 ctx.llm→ctx.schema；alternative FK 精化（多替代外键→独立 joins 边）；events deterministic external_refs 已填充（92/445）；188 tests 全绿
-- [R6 Web UI 实现方案调研](research/r6-web-ui-implementation.md) — UI 插件 pattern 直接套用；需新增 `SchemaGateway`（TypertRemoteService）投影 ctx.schema（当前无 Remote 接口）；Bm25Linker 复用经 Remote 暴露；React Flow 推荐（无现成依赖，血缘图划出 v1）；R5 全部可行无架构阻塞；增量交付 v1-a 浏览→v1-b 编辑→v2 质量监控
-- [W1 SchemaGateway](tickets/W1-schema-gateway.md) — `@deepseek-ai/dsh-schema-gateway` 新包已实现；9 Remote 方法（list{Tables,Events,Metrics} + get{Table,Event,Metric}Definition + search + listDomains + getCoverageStats）；cached Bm25Linker + D2f invalidation；11 tests 全绿
-- [G4 Web UI 范围与交互决策](tickets/G4-web-ui-scope-and-interaction.md) — Web UI=独立完整管理界面（非 CLI 补充）；语义层管理=一个 agent=**goal ⊕ eval/evidence 层**（eval 填 goal 留的完成证据缺口，桥接管理 agent(goal)/数据 agent(pipeline)）；v1=**B 布局**（资产为首+证据侧栏）+ domain-first nav + **tiered evidence**（per-mutation 结构性+per-batch 全量 eval）+ 直接写+Tier-2 audit；③ 自驱循环 deferred（同 map，W6，③-gated）；复用 `packages/eval/eval` 核心**不重构**，建 P11c runner/delta/case-port(C)/live-wiring；eval 跑全量；v1=①证据基建+②人驱管理面；毕业 W1-W6 实现票；**增量交付修订**：W5 拆为 W5-lite（仅←W1，资产能力完整交付）/ W5-full（←W1+W4，证据能力渐进亮起）；blocking 边：W1、W2 无前置（并行根）；W3←W2；W4←W1；**W5-lite←W1（可独立 ship）**；W5-full←W4；W6←W3+W4+W5-full+goal
-- [W5b UI 规范对齐 — SUPERSEDED](tickets/W5b-ui-convention-alignment.md) — "modal vs inline panel"是错误的范式；语义层管理界面 = 管理 agent 对话面（非 CRUD 浏览器/modal）。前提推翻，由 G5 取代。
-- [G5 管理 agent 交互范式设计](tickets/G5-management-agent-interaction.md) — 范式=管理 agent 对话面；v1/终态 UI 无区别；trigger=sidebar footer→resume/create session；tools=9 个（search_schema/get_definition/list_domains/discover_relations/execute_metric/edit_definition/get_coverage/trigger_eval/goal）；detail panel=被动模式；SemanticLayerShell 重写、View/EvidenceSidebar/GoalDock 废弃、AssetDetail/CoveragePanel 复用。毕业实现票 W7-W10。**W5-lite "用户可用"阻塞更新**：原阻塞者 W5b 已 superseded → 新阻塞者为 W8（trigger）+ W9（presenters）
-- [W7 管理 agent preset](tickets/W7-management-agent-preset.md) — `semantic-layer-management` preset 已创建（agent.cordis.yml）：挂载 4 个管理 tool（search_schema/get_definition/list_domains/get_coverage）+ persona prompt
-- [W8 Sidebar trigger 重写](tickets/W8-sidebar-trigger-rewrite.md) — SemanticLayerShell 重写为 session trigger：点击 sidebar footer action 创建/恢复管理 agent 对话；CSS module + alias token 暗色模式；locale dict 清理
-- [W9 核心 tool presenters](tickets/W9-core-tool-presenters.md) — search_schema/get_definition/get_coverage 三个 tool 实现 render intent（presentCall + presentResult + presentationMeta）+ 对话中结构化卡片渲染（keyed toolview 注册）；generic card 类型
-- [W10 discover_relations presenter](tickets/W10-discover-relations-presenter.md) — discover_relations tool 实现 before/after diff 渲染：execute 中捕获 before 快照 → enrichment → after 快照 → presentationMeta 投射 added relations；对话中 diff 卡（+标记 + relation type badge）
-- **W5-lite "用户可用" 达成**：W1 ✅ + W8 ✅ + W9 ✅ → 语义层管理 agent 已用户可用（trigger + preset + tool presenters 全链路 ship）；W5-full 仍等 W4（evidence-query-backend）
-- [W5-full 证据能力渐进亮起](tickets/W5-ui-semantic-layer-v1.md) — trigger_eval tool（`@deepseek-ai/dsh-tool-trigger-eval` + EvalRunnerService seam）+ Evidence Panel 组件库（EvidenceSidebar/CoveragePanel/EvalTrajectory/EvalDeltaView/GapPanel）+ TriggerEvalRow presenter + useEvidenceQuery hook（含 beforeAfterDelta）+ preset 活化；19 tests 全绿
-- [W2 Case-set port](tickets/W2-case-set-port.md) — 161 K11 cases port 为 da EvalCase YAML，schema 全绿；分层标注（L1-L4 × 7 intent × linear/iterative）+ 覆盖矩阵（161/162 DWS，28/159 DIM 仅结构性证据）完成
-- **W3 Pre-work caveat 验证** — caveat-a 触发（四阶段 agent 产生 4+ assistant/message per interval → ProtocolError）；修复=方案 A（adapter 取最后一条，不改 eval core）；caveat-b 不触发（query_data arg=`sql` 已在 SQL_KEYS）
-- [W3 Eval evidence engine](tickets/W3-eval-evidence-engine.md) — batch runner（`runBatch` + infra-retry）+ JSONL 持久化 + `computeDelta` before/after flip + health-gate 前置检查 + adapter 放宽（count≥1，last query_data tool/call）；240 eval tests 全绿；live e2e with-key deferred
-- [W4 Evidence-query backend](tickets/W4-evidence-query-backend.md) — `FileBackedEvalResultStore`（读 W3 JSONL）+ `beforeAfterDelta(runIdA, runIdB)` 真实持久化接入 + `EvalCaseFlip`/`EvalDeltaReport` 类型；33 evidence-query tests 全绿；W5-full 解除阻塞
-- [W6 ③ 自驱循环 + B→A 演进](tickets/W6-autonomous-goal-loop-and-btoa-evolution.md) — Layered 双层（model 自判主路径 + policy plugin backstop K=3/N=3）；Context plugin 注入 `<eval_evidence>` block；GoalDock = sidebar 内联卡片（与 dock GoalBar 共存）；B→A = feature flag + auto-flip（3+ eval runs）；毕业 W6a-W6e 实现票
-- [W6a goal-eval-policy plugin](tickets/W6a-goal-eval-policy-plugin.md) — `@deepseek-ai/dsh-goal-eval-policy`：session/event 计轮 → 每 K=3 轮触发 eval → delta improved===0 计无改进 → N=3 后 force-block；typed AgentHandle/GoalServiceSeam seams；10 tests
-- [W6b goal-eval-context plugin](tickets/W6b-goal-eval-context-plugin.md) — `@deepseek-ai/dsh-goal-eval-context`：system prompt section 'eval-evidence'（order 50）；goal/changed 跟踪活跃状态；`<eval_evidence>` XML block 含 pass_rate + delta + direction hint；hintEscalationThreshold 可配；20 tests
-- [W6c GoalDock in EvidenceSidebar](tickets/W6c-goal-dock-evidence-sidebar.md) — GoalDock 组件：objective + phase badge + round counter + SVG sparkline；只读，与 dock GoalBar 共存；host composition 提供数据；8 tests
-- [W6d B→A layout evolution](tickets/W6d-btoa-layout-evolution.md) — DashboardView（证据 hero）+ computeEffectiveMode auto-flip（evalRunCount>=3 → A）+ SemanticLayerShell 路由；B 布局字节级保留；host 传入 evalRunCount；13 tests
-- [W6e Management agent persona ③](tickets/W6e-management-agent-persona-evolution.md) — persona 增加 eval evidence 解读 + 自驱行为规范 + tool 指南；`@deepseek-ai/dsh-tool-edit-definition`（patch + audit + unreviewed + smart-merge columns/dimension_refs/domains）；preset 中激活；27 tests
-- [W11 Evidence-query client RPC bridge](tickets/W11-evidence-query-client-rpc-bridge.md) — EvidenceQueryService 转 TypertRemoteService（8 @Remote 方法）；typert generate 正式产物；client assembly 注册；buildEvidenceQueryClient 桥接适配器 + useEvidenceMetrics hook；wiring.tsx 三处 TODO 替换为真实数据；98 tests 全绿
-- [W12 删除过时 semantic-layer-goal 包](tickets/W12-remove-semantic-layer-goal-package.md) — 全部职责已被 dsh-goal-round-driver / dsh-goal-eval-policy / dsh-goal-eval-context / dsh-eval-runner / semantic-layer-management preset 覆盖；零消费者；14 文件删除，tsc clean
-- [W13 ③ 自驱循环端到端集成验证](tickets/W13-autonomous-loop-e2e-integration.md) — building blocks 全部就绪（goal-round-driver + eval-runner-service + goal-eval-policy + goal-eval-context + management preset）；端到端闭环验证通过- **W14 Web UI 运行时修复**（2026-08-28）— commit `c198421627` 引入的 `'layout'` 硬依赖 + Cordis Proxy inject guard 阻止了管理 UI sidebar 按钮注册；5 个级联问题修复：query-maxcompute graceful degrade / scope.get() 绕过 Proxy / 6 个 preset 包缺 lib/index.js / tool-revert-edit minimum keyword / preset-autojoin 竞争。修复后：sidebar 按钮可见 + session 正确选中 semantic-layer-management preset。package.json 合规修复（peer deps / dsh.client.inject / README）同批。
-- [T2 确认管理面板 web 端可见](tickets/T2-verify-management-panel-web-visibility.md) — Headless Playwright 自动化验证全部通过：sidebar 按钮渲染 + 点击进入 session + GoalDock/EvidenceSidebar 可见 + 零 console error。前置条件=web profile 含 data-agent bundle。
-- [R7 Terminology ontology 角色](research/r7-terminology-ontology-role.md) — **修订（前沿对齐）**：2026 context layer 共识= terminology IS ontology 一等组件；推荐方案 D（definition schema 加 `aliases` 节点属性 + RelationGraph 反向索引）；不新增 relation type（属性非边）；渐进三阶段实现
-- [R9 Context Layer 前沿审计](research/r9-context-layer-frontier-audit.md) — 现有决策与 2026 Forrester/Gartner/OpenMetadata/Atlan/Jedify 共识对照；大部分对齐（P3/G3/G4/G5/W6）；R7 已修订；G2 relation scope 偏窄（记为 fog）；缺 context layer 整体演进认知
-- [CL-1 Terminology aliases 迁移](tickets/CL1-terminology-aliases-migration.md) — SKOS 对齐双字段（`pref_label` + `alt_labels: string[]`）；全 definition type 加；`toCorpusItem(def)` 移除 terminology 参数（原子迁移）；检索策略 = Strategy B（always-fused graph-anchored hybrid）；`lookup_terminology` → `resolve_term`（agent 消歧工具）；enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）。**Phase 3 落地**：两轮发现（确定性提取括号/引号/domains + LLM 语义补充）；`@deepseek-ai/dsh-tool-discover-alt-labels` 新包；management preset 注册；on-write hook 扩展；code review fixes（score cap/CJK bigram/maxRelations）
-- [CL-2 Domain/Concept 图节点设计](tickets/CL2-concept-kind-plugin.md) — 引入 ConceptKindPlugin：concept = 显式一等实体（YAML in `concepts/`）；边从 asset.domains 派生（不含 related_assets）；引用验证（domain 值必须匹配 concept YAML）；concept 在 BM25 corpus 中（子图投射锚点）；graph-expand 新增 related_to 展开；零新 tool（泛化现有 tool 为 registry-driven）；node id = `concept:` 前缀；alt_labels 进统一 aliasIndex
-- [CL-2a ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md) — commit `f4fd17fee3`：ConceptDefinitionSchema + ConceptKindPlugin + loadConcepts + graph builder concept→asset related_to 边派生 + 严格引用验证 + expandCandidates related_to 展开（仅 concept: 前缀）+ 4 tool 泛化（get/edit/list_domains/get_coverage）+ K11 种子 10 concepts + 17 新 tests；306 tests 全绿
-- [CL-3 检索策略实验设计](tickets/CL3-retrieval-strategy-experiment.md) — 6 项决策：D1 检索级指标为主（precision@K/recall@K vs covered_assets）；D2 Strategy C 为目标 + subagent 并行 enrichment（方案 γ）；D3 覆盖率梯度实验（Level 0–3）取代静态 A/B/C 对比；D4 硬切换 vs 连续混合作为实验变量；D5 alias 质量分层评估（标注统计筛查 + lift 精确验证）；D6 补充 alias-dependent case（LLM 模拟业务角色 + 人工筛选）。关键推论：A/B/C 是同一 blending 函数 f(coverage)→weight 的特例。毕业 CL-4、CL-5
-- [CL-4 补充 alias-dependent eval case](tickets/CL4-supplement-alias-eval-cases.md) — 40 case 已生成（k11v2_alias_001–040）：17 unique alias terms（9 纯 alias-dependent + 8 表级），覆盖 4 目标表 × 3 业务域；全部验证通过
-- [CL-5 检索策略覆盖率梯度实验](tickets/CL5-retrieval-gradient-experiment.md)（[实验报告](research/cl5-retrieval-gradient-experiment-report.md)）— 原型级验证：C（continuous-blend）在所有 level 都 ≥ B，delta 随覆盖率单调递增（L0:+0.4pp → L3:+6.7pp）；B 有 recall 天花板（不引入新候选）；hard-switch 因 CJK bigram 稀释无效；tokenizer 混合 CJK/ASCII bug 需修复；alias 覆盖率是最大杠杆（+15pp）。⚠️ 非生产管线实验，绝对值不可直引用。行动项：修复 tokenizer → 生产管线实现 continuous-blend → 加速 enrichment → 用 eval pass_rate 正式验证
+### Foundations and ontology
 
-- [CL-22 eval 非确定性深查](tickets/CL22-eval-nondeterminism-deepcheck.md) — 3 同代码 run 中位数 73.2%（±2.4pp，26.8% case flip rate）；-3pp 是噪声（70.8% 为异常值）；dup 清理无需回滚（0/9 lost alias 使用 回归/回流，alias_016 随机翻转）；Alias -15pp 归因 LLM 非确定性；建议后续 ≥3 run 取中位数
-- [CL-6 Tokenizer 修复 + Continuous-blend 实现](tickets/CL6-tokenizer-fix-and-continuous-blend.md) — extractQueryTerms CJK/ASCII 混合 bigram 修复 + applyContinuousBlend（含 median-floor）+ Config.blendingMode 分派 + 6 新测试 + 24 表 L3 alias enrichment
-- [CL-7 生产管线检索级实验](tickets/CL7-production-retrieval-experiment.md)（[实验报告](research/cl7-production-pipeline-experiment-report.md)）— 发现 alias-resolved 候选自 CL-1 起在生产中失效（score=2.0 vs BM25=30-40，被 topK cap 丢弃）；median-floor 修复后 B=C=0.804(L3)（B 和 C 均已修复）；blending 公式无影响，enrichment 是唯一杠杆（+17.5pp）；默认切换为 `continuous-blend`
-- [CL-8 端到端 Eval + Go/No-Go](tickets/CL8-e2e-eval-go-nogo.md) — **GO**：`cl8-full-fixed` pass_rate=96.3%（strategy-b+median-floor）；交叉验证 `cl8-continuous-blend` pass_rate=**100.0%**（80/80，continuous-blend 默认）；3 前次 wrong cases 通过（LLM 非确定性，非 blendingMode 差异）
-- [CL-9 批量 DWS enrichment](tickets/CL9-batch-enrichment-dws-coverage.md) — 135 DWS 表批量 enrichment（pref_label + alt_labels）→ 覆盖率 85.2%（138/162 DWS with alt_labels，162/162 with pref_label）；初轮 -12pp regression → 两轮修正（generic blocklist + 原 27 表 deconfliction）→ 检索级 A/B +0.6pp / 0 regression；**e2e eval: 原始 80 case 100%（=CL-8），alias 40 case 100%，总计 154/168 (91.7%)**
-- [R8 Evidence-query push 订阅](tickets/R8-evidence-query-push-subscription.md) — native push（`ctx.remote.$on` + `connection/reset` 恢复）；注入点=方案 C 改良 bridge（`EvidenceQueryClient.subscribeInvalidation` 回调，apply scope 驱动）；无 debounce；`(): void` 无 payload。毕业实现票 W15
-- [W15 Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md) — `evidence/eval-run-completed` 加入 `API_REMOTE_FORWARDED_EVENTS` + Cordis Events 声明；`EvidenceQueryClient.subscribeInvalidation?(cb): disposer`；apply scope `invalidationListeners` Set + `scope.remote.$on` + `scope.on('connection/reset')` 驱动；`useEvidenceMetrics` useEffect 订阅→refresh()；94 tests 全绿
-- [G7 Context Projection 统一 — 关闭为 out of scope（v2+）](tickets/G7-context-projection-unification.md) — `toPromptContext` 和 `toCriticContext` 生产零消费者，系统已通过 agent tool call 实现按需投射；当前无 token 压力（CL-8 100%，CL-9 91.7%）；Jedify benchmark 验证 + token/attention/cache 优化作为独立 research（R10）调研；若 R10 结论指向需要统一投射接口则重新开票
-- [R10 Token/Attention/Cache 优化前沿调研](research/r10-token-attention-cache-optimization.md) — 系统 token 效率行业顶尖（~1,720-2,665 tokens/call，Jedify 25K 的 7-15 倍效率）；Jedify benchmark 为营销自测但方向性论证被独立研究支持；2026 前沿（Context Rot/Context Engineering/Agentic Context Management）验证本系统 on-demand tool call 架构；G7 维持 out of scope；最大优化杠杆 = prompt caching（~70% 成本节省，零风险）
-- [CL-10 Voice Eval Case 扩展](tickets/CL10-voice-eval-case-expansion.md)（[实验报告](research/cl10-voice-eval-experiment-report.md)）— glob 修复 + 48 voice cases（34 EXEC + 14 DELIVERY）+ 双模式基线：no-sql-judge 91.7%（154/168）、sql-judge **66.1%**（111/168）。关键发现：sql-judge 暴露真实语义质量（original 70%）、voice 暴露数据源缺口 + 多表 join 缺失、DELIVERY judge 需校准、enrichment 仍是最大杠杆。**sql-judge 模式确认为后续标准基线**
-- [CL-11 DELIVERY eval judge 校准](tickets/CL11-delivery-judge-calibration.md) — judge prompt 改进（语义对齐而非文本匹配）+ **reply 管道修复**（agent 非 SQL 输出完整传递给 judge 而非截断的 "Declined: ..."）。DELIVERY: 1/14 → 11/14（78.6%）
-- [CL-12 SQL semantic judge 基线回归修复](tickets/CL12-sql-judge-baseline-regression.md) — 根因分析：26/32 failure = "no_sql"（agent 拒绝而非生成 SQL）；5 不可回答 case 迁移为 DELIVERY（019/049/075/078/079）+ 5 表 alt_labels enrichment。Original: 70.0% → 75.0%
-- [CL-13 Compound query join 完整性](tickets/CL13-compound-query-join-completeness.md) — voice_030 通过 CL-14 enrichment 翻转为 pass；voice_029/032 仍为 wrong（多表 join 能力限制，非检索问题）
-- [CL-14 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md) — 4 表 alt_labels 扩充（pvp_card_statistics_di/gacha_result_statis_di/pve_progress_df/com_pay_order_df）+ voice_017/020 迁移为 DELIVERY；voice_003/008/030 翻转为 pass（3/5 验收通过）。**四票联合 eval：66.1% → 73.8%（+7.7pp，net +13 cases）**
-- [CL-15 sql-judge 标准基线确立](tickets/CL15-sql-judge-as-standard-baseline.md) — sql-judge 确认为默认模式（`--no-sql-judge` opt-out）；README 文档化（基线 73.8%、目标 75%/80%/90%）；`compare.ts` 趋势对比工具（分类别 breakdown + case-level flips）；4 个主观 EXEC case 迁移为 DELIVERY（074/080/voice_034/voice_039）；44 wrong cases 分析：24 agent refusal（数据缺口/多表 join）+ 8 DELIVERY judge（pipeline 问题）+ 8 garbled tool calls + 4 SQL semantic failure
-- [CL-18 ds 噪声关联修复](tickets/CL18-ds-noise-join-fix.md) — `discoverRelationsDeterministic` 未排除分区列，18 个 ds-in-PK 的 DIM 表被错误匹配。**Phase 1 数据清理 ✅**：`gacha_result_statis_di` 清除 18 条噪声 refs（23→5）+ 7 条 alt_labels 污染 + description 注入段落。**Phase 2 算法加固 ✅**：substrate `discoverRelationsDeterministic`/`discoverEventRelationsDeterministic`/`discoverRelationsFor`/`discoverEventRelationsFor` 新增 `excludeColumns` 参数；调用层 `buildExcludeColumns`（`role:partition` 数据驱动，无 role 回退 `[ds,pt,dt]`）接入 `discoverRelations()` + on-write hook；6 新测试 38/38 scoped 绿
-- [CL-19 eval LLM tool-call 发射根因](tickets/CL19-eval-toolcall-emission-rootcause.md) — 根因=TOOL_CATALOG prompt 节（主因：prompt 含 7 tool 描述+agentic SOP，eval 为单轮 completion 不支持 tool 执行，开放问题触发模型发射 tool-call）+ qwen3.7-max 模型倾向（协因：格式跨 run 不确定——`call:default_api:`/`<tool>`/`{"name":}`/`call:func{}`/`{"tool_calls":}`）；EXP2 无关（CN/EN prompt 均含 catalog）；`buildEvalPrompt`（无 tool catalog）已存在但未接入。修复推荐=(a) engine 检测 tool-call→clean decline + (b) reply 层 LLM 合成结构化拒绝（唯一可翻转 DELIVERY 的层）+ 扩展 `looksLikeToolCall`（补 `call:` 前缀 + `{"tool_calls":` 格式）；影响仅 2 DELIVERY case，翻转后 83.3-88.9%
-- [G6 定义版本管理](tickets/G6-definition-version-management.md) — **不引入 git，走 eval-driven 版本治理**；5 项决策：D1 不引入 git（现有快照+审计足够）、D2 γ 变更集锚定检查点 eval（eval run 携带 changeset）、D3 版本号不随查询传播（fog）、D4 edit_definition 写入时计算 structured delta（before/after 差异持久化）、D5 细粒度 auto-revert（独立开票）。行业调研（Databricks Genie Layer 5 / Cube versioned model / Hex eval-before-ship / Fowler traceability）确认 2026 前沿 = eval-centric 非 git-centric。毕业 V1-V3 实现票
-- [V1 审计 structured delta](tickets/V1-audit-structured-delta.md) — `edit_definition` 写入时计算 before/after `StructuredDelta`（columns 按 name / dimension_refs 按 dim_table / domains·alt_labels 集合语义 / 顶层直比；strip `confirmation` 噪声）持久化到 audit `extra`（Option A，无 schema 迁移）；`listDeltasSince` 查询；20 新测试 + 240 semantic-layer 兼容性全绿
-- [CL-16 Reply 管道二次修复](tickets/CL16-reply-pipeline-delivery-fix.md) — **部分关闭**：pipeline 已尽（CL-11+looksLikeToolCall），DELIVERY 66.7%→77.8%（+11.1pp，run `32dd9532` vs `10320fe2`）；85% 未达，剩余 Type-1 tool-call 发射→CL-19 + Type-2 agent 行为→CL-20
-- [CL-17 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md) — **部分关闭**：enrichment 已尽（labels 已在），overall 70.8%<78%；剩余=trim/概念formula/迁移真不可答→DELIVERY→CL-21（非 enrichment）；dup 清理已做（BM25 效应待 CL-22 查）
-- [CL-20 DELIVERY「超出能力」门禁](tickets/CL20-delivery-agent-behavior-type2.md) — **决策已定（D1-D5），门禁已交付、走 PR**（标签沿革：「关闭-部分」→ 2026-09-06 晚因 ⑦ 的误伤证据改回「待修」→ 2026-09-06 夜 ⑦ 被直接测量推翻，恢复交付）。① **票体前提被证据推翻**：模型**已在拒绝**（9 个散文 attempt 中 **7 个过 judge**），§5 诚实拒绝已工作；`075`（票体头号案例）已 3/3 通过；DELIVERY 分母是 **25 非 18**、当前 **16/25=64.0%**（pass^k，本 session 从 `rebaseline-passk-168-clean.json` 机械重导；README:43 的「18」只是 voice 子集）。主导失败是 **pass^k 把「3 次拒对 2 次」判负**（4/9：`voice_033/036/041`+`080`），**是协议切换造成的，非 agent 变差**。② **候选 2（critic 加规则）架构上不成立**：`critiqueSql(sql, ctx)` 看不到问题（`CriticCtx` 无 question 字段），且 `passed:false` 语义是**重试**，照字面实施会烧 3 次 LLM 后把拒绝理由丢进 judge 打 0 分的通用 decline。③ **实现 = `engine.ts` 前置 LLM 门禁，但只判「交付物类型」**（report/forecast/recommendation vs 数据值），复用 CL-23 grounded 合成器（`declineKind` union 从单成员扩为 `\|'open_ended_question'`）。④ **「判模糊性」两次被证伪**——`076` 不平衡→SQL vs `079` 平衡性→REFUSE 同词根反例，调 prompt 只平移边界（激进版误伤 `076` 真回归／保守版放过 `079`+`voice_048`），**非方差问题故 temperature=0／多数投票无用**。⑤ **关键词规则方案按普适性否决**（用户提出）：`TREND_PATTERN` 同构实现 `GA-GRILL2` D3 实测 recall 85% 天花板、专门开 `GA-I18N-R1` 转向 LLM intent 分类；词表随业务域线性增长且强制双语。**BM25 分数阈值亦否决**（CL-7：分数跨查询不可比）。⑥ 实测（n=1 导航，不可作决策依据）：探测 12 case 通过 10/12、全量 `cl20-full-n1` 的 Voice DELIVERY 17/18=94.4%（vs CL-22 同协议 k=1 中位 77.8%）；128+339 测试全绿。⑦ ~~门禁有已知未修缺陷：`052` 被 3/5 误伤~~ **该结论已于 2026-09-06 夜被直接测量推翻**：前两轮判据都是「空 SQL + 低延迟 ⇒ 门禁触发」的**推断**（trace 未落产物），而 CL-23 的 tool-call decline 与 AGA empty-response 产出同样的 `generated_sql: null`。新增 `bin/probe-triage.ts` 读**引擎自己的 trace** 后实测：`052` 放行 **5/5**，连同 `073/076/077` + 四种改写的「N天每天的X」形态共 **40/40 放行**、6 个建议/报告类 **30/30 拦截**。**反证（决定性）**：rebase 后 `052` 自行翻正（NULL→SQL），而门禁与 `contextPrefetched` 完全解耦 → 若曾由门禁造成，rebase 不可能修好它。另更正：`voice_041` **不在**拦截集内（0/5）。**按票体要求实施的 prompt 重写实测为净负**（`077`→触发 5/5、`076`→2/5，两者都期望 SQL），已回退为字节一致。⑧ **≥80% 三轮中位数未达成且判定为引擎侧不可达** → 毕业 [CL-25](tickets/CL25-open-ended-case-set-consistency.md) ⑨ **post-rebase 全量 `cl20-postrebase-n1`（k=1，n=1 导航用）**：overall 75.6%、DELIVERY 全 25 = **64.0%**。vs **无门禁**基线 `10320fe2`（同 k=1）overall **+1.8pp**、DELIVERY 全 25 **52.0%→64.0%（+12pp）** → **门禁零回归且有可观增益**；但 vs pre-rebase `cl20-full-n1` 的 80.0% **回吐 16pp**，且该 delta **只能归因于 rebase**（本分支相对 pre-rebase 的运行时 diff 仅一个字符串改名）。机制：`contextPrefetched` 把 tool-call 打到 0%，而 tool-call 正是 CL-23 grounded 合成的**入口条件** → 通道失效。→ 毕业 [CL-28](tickets/CL28-contextprefetched-decline-synthesis-entrypoint.md)。**误伤经穷举 48 个非 SQL 输出 + 直接测量 = 0**
+- [R1 — 语义层数据模型设计调研](tickets/R1-data-model-design.md): 采用类型化 kind plugin 与统一检索投影，避免把所有数据源压成单一 schema。
+- [R2 — Ontology / 知识图谱全面调研](tickets/R2-ontology-comprehensive.md): Ontology 作为语义层关系能力演进，不引入独立外部系统。
+- [R3 — Deepseek Harness 插件化设计调研](tickets/R3-harness-plugin-system.md): 语义层服务、工具和 UI 通过 Cordis plugin 与 Client UI Slot 扩展。
+- [R4 — Schema Provider 插件化设计调研](tickets/R4-schema-provider-plugin.md): provider 注册与路由是设计方向；当前代码仍是单 setter 且没有生产 provider，不能把研究方案写成已实现事实。
+- [R5 — Web UI 语义层管理界面调研](tickets/R5-web-ui-research.md): 管理面采用导航、搜索、详情和编辑的渐进式布局。
+- [G1 — 语义层数据模型最终决策](tickets/G1-data-model-decision.md): 保留 per-kind 类型安全，并由 `DataSourceKindPlugin` 提供检索和提示投影。
+- [G2 — Ontology 在 data-agent 中的角色决策](tickets/G2-ontology-role-decision.md): 关系图扩展语义层；joins、derived_from 和 related_to 不等于完整可审计 lineage。
+- [P1 — Per-scope 配置机制实现](tickets/P1-per-scope-config.md): Cordis 配置定位 registry，运行时 scope registry 选择业务 scope；目录 namespace 仅承担隔离。
+- [P2 — Ontology Phase 1: 关系声明 + In-Memory 图](tickets/P2-ontology-relations-graph.md): event、table、metric kind 和内存图支持检索与 join-path traversal；图邻接不保留完整语义方向或 provenance。
+- [G3 — AI-Native Enrichment 工作流设计](tickets/G3-ai-native-enrichment-design.md): enrichment 结合确定性发现、可选 LLM 推断和 eval evidence，但自动保留或回滚仍依赖可信归因。
+- [T1 — 手动导入 RBI K11 语义层定义 + AI-Native Enrichment](tickets/T1-seed-k11-definitions.md): K11 table、event、metric 数据和 DWS→DIM 关系已迁入；本 map 只保留这一条 T1 记录。
+- [P3 — Ontology Phase 2: NL2SQL 集成](tickets/P3-ontology-nl2sql-integration.md): 关系图进入候选扩展、join prompt 和 warning 级 critic；它尚未成为 fail-closed 执行约束。
+- [P4 — Ontology Phase 3: 指标计算引擎](tickets/P4-ontology-metric-engine.md): 虚拟 metric 可进入检索和 eval context；已删除 `execute_metric`/Level 2.5 路径，生产 formula grounding 仍不完整。
+- [F1 — DWS→DIM 关系发现功能模块正式化](tickets/F1-dws-dim-discovery-formalization.md): 关系发现、可选 LLM wiring、hook 和 tool 已落地，置信度与审批门控仍由后续 evidence owner 决定。
+- [R7 — Terminology 挂载点：是否作为知识图谱 ontology 存储和消费](tickets/R7-terminology-ontology-role.md): terminology 作为 aliases 进入定义与检索，不建立第二套 ontology store。
+- [CL-1 — Terminology 统一到 Definition Schema（R7 方案 D 实现）](tickets/CL1-terminology-aliases-migration.md): 术语映射迁入 definition schema，并保留明确迁移路径。
+- [CL-2 — Domain/Concept 作为图节点（ConceptKindPlugin）](tickets/CL2-concept-kind-plugin.md): concept 成为独立 kind；已有 asset domains 保留，不能把 concept 覆盖写成 table/event 的天然属性。
+- [CL-2a — ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md): concept 的存储、检索和关系投影已实现，但生产 graph expansion 仍需与统一 Context Projection 对齐。
+- [G7 — Context Projection 统一接口设计（CL-3）](tickets/G7-context-projection-unification.md): definition-level `toPromptContext`/`toCriticContext` 统一保持 out of scope；该决定不取代 [Evaluation T13 的 request-level production Context Projection](../evaluation/tickets/T13-context-projection-service.md)。
+- [R10 — Token/Attention/Cache 优化前沿调研](tickets/R10-token-attention-cache-optimization.md): prompt caching 降级为 provider-specific 待测假设；必须先观测 cache tokens、延迟和费用，不能继续称为零风险或固定节省约 70%。
+- [R12: 语义层设计时效性、遗留项与 Ontology 结合审计](tickets/R12-semantic-layer-freshness-audit.md): 核心方向仍有效，但生产/evaluation 投影、lineage、trust、memory 和自演化闭环的完成度曾被高估；完整证据见 [审计报告](research/r12-semantic-layer-freshness-audit.md)。
 
+### Management UI and lifecycle
 
+- [R6 — Web UI 实现方案技术调研](tickets/R6-web-ui-implementation-feasibility.md): 采用 SchemaGateway 和插件化 UI，血缘可视化不作为 v1 完成条件。
+- [W1 — SchemaGateway（ctx.schema Remote 投影）](tickets/W1-schema-gateway.md): 语义定义的只读 Remote 查询和检索投影已实现。
+- [G4 — Web UI 功能范围与交互设计决策](tickets/G4-web-ui-scope-and-interaction.md): 管理面覆盖浏览、编辑、scope 和质量证据，自动演化保持 gated。
+- [G5 — 管理 agent 交互范式设计](tickets/G5-management-agent-interaction.md): 管理 agent 使用独立会话和显式引用，不把编辑权限隐含在普通聊天中。
+- [W5 — ui-semantic-layer v1 UI（B 布局）](tickets/W5-ui-semantic-layer-v1.md): v1 管理 UI 交付浏览、搜索、详情和编辑基础路径。
+- [W5b — ui-semantic-layer UI 规范对齐](tickets/W5b-ui-convention-alignment.md): 原独立规范对齐票被后续布局演进取代。
+- [T2 — 确认管理面板在 Web UI 中实际可见](tickets/T2-verify-management-panel-web-visibility.md): 真实 Web profile 验证了管理面入口和挂载路径。
+- [W7 — 管理 agent preset](tickets/W7-management-agent-preset.md): 管理 agent 使用独立 preset 和工具集合。
+- [W8 — Sidebar trigger 重写](tickets/W8-sidebar-trigger-rewrite.md): sidebar 触发逻辑改为明确的产品状态，而非隐式组件副作用。
+- [W9 — 核心 tool presenters](tickets/W9-core-tool-presenters.md): 核心语义工具具备 Host/Web 展示投影。
+- [W10 — discover_relations presenter](tickets/W10-discover-relations-presenter.md): 关系发现结果可在管理 UI 中展示。
+- [W11 — Evidence-query client RPC bridge](tickets/W11-evidence-query-client-rpc-bridge.md): UI hooks 使用 evidence client 接口，但后续真实 remote 装配由 W16 补齐。
+- [R8 — Evidence-query push 订阅机制调研](tickets/R8-evidence-query-push-subscription.md): 采用轻量 invalidation 事件后主动 refresh，而非持续推送完整查询结果。
+- [W15 — Evidence-query push 订阅实现](tickets/W15-evidence-push-subscription.md): eval completion invalidation 与客户端 refresh 已接线。
+- [W16: evidence-query 客户端 remote 缺口 —— 证据 UI 在生产中是死的](tickets/W16-evidence-query-client-remote-gap.md): evidence-query remote 导出、API 装配和 UI 解析路径已补齐，真实数据可到达客户端。
+- [W6 — ③ 自驱循环 + B→A 演进](tickets/W6-autonomous-goal-loop-and-btoa-evolution.md): goal、evidence 和布局演进被拆成独立插件；自动演化仍受 evidence 可信度限制。
+- [W6a — goal-eval-policy plugin（no-progress backstop）](tickets/W6a-goal-eval-policy-plugin.md): no-progress policy 只消费明确 eval evidence，不拥有 evaluator。
+- [W6b — goal-eval-context plugin（eval delta → round context）](tickets/W6b-goal-eval-context-plugin.md): eval delta 可进入后续 round context，输入必须可由 session 记录重建。
+- [W6c — GoalDock in EvidenceSidebar](tickets/W6c-goal-dock-evidence-sidebar.md): GoalDock 与 evidence sidebar 组合而非替换会话 dock。
+- [W6d — B→A 布局演进（路由 + 自动翻转）](tickets/W6d-btoa-layout-evolution.md): 布局路由和证据阈值驱动的切换已实现。
+- [W6e — Management agent persona ③ 演进](tickets/W6e-management-agent-persona-evolution.md): persona 描述管理职责，不声明尚未接线的编辑或评测能力。
+- [W12 — 删除过时 `semantic-layer-goal` 包](tickets/W12-remove-semantic-layer-goal-package.md): 目标机制归回通用 goal 能力，语义层不保留重复包。
+- [W13 — ③ 自驱循环端到端集成验证](tickets/W13-autonomous-loop-e2e-integration.md): 已验证静态 wiring 和受控测试路径；真实 LLM happy path、管理 session 客户端桥接和 patrol 实际写入不在该结论内。
 
-- [CB-1a 冷启动稳定化落地](tickets/CB1a-cold-boot-stabilization.md) ✅ — α（enrichment apply throw→warn+skip wire, 非致命, substrate/vendor 不动）+ S2（boot catch 枚举 AggregateError per-entry id/name/cause; spec 的 mountRootInclude 自检 drop 为冗余, inventory 失败行推迟 Option A）落地 PR #11 `6a2551cb82`; 4× review 无 blocker, 117 测试绿, typecheck 绿, index.ts 100% 覆盖; textLlm.text 预存缺口(α 未触, master 亦有) 留 CI; 已 admin-merge(PR #11 `a905858f5d`);CLAUDE.md mode 修复(PR #17 `2e487635ce`)解 ubuntu-latest checkout ENAMETOOLONG 红;larger-runner 3 job 跑 ubuntu-latest(#21);Sandbox da 测试全绿(cordis #19+catalog #29);#31 YAML fix+#33 NODE_OPTIONS=4G+#35 ci-workflow+eval-cli credential+#36 pip install pandas/numpy——我引入的 CI red 全修+Python 修;pwsh 3 deferred to CB-1b(terminal-bash pwsh-in-PTY bug);client-bundle(#30)+doc-sync drift(其它 session)
+### Evaluation, retrieval, and evidence
 
-### 2026-09-03/04 运行时审计（「语义层按钮消失」根因 + 三处客户端断链 + pass^k 重打分）
+- [W2 — Case-set port (C)（RBI 161 → da EvalCase）](tickets/W2-case-set-port.md): legacy cases 被移入 data-agent eval 输入；其长期格式与 provenance 由 Evaluation effort 接管。
+- [W3 — Eval evidence engine + live wiring](tickets/W3-eval-evidence-engine.md): eval run 与 evidence 生产路径已接入语义层消费者。
+- [W4 — Evidence-query backend（表现无关查询层）](tickets/W4-evidence-query-backend.md): evidence-query 提供 coverage、runs、delta 和 gap 查询，不决定 UI 选择策略。
+- [G6 — 定义版本管理：开源项目是否应自带 git 版本控制](tickets/G6-definition-version-management.md): 定义版本使用审计记录和结构化 delta，不把工作区 git 作为运行时版本库。
+- [V1 — 审计 structured delta](tickets/V1-audit-structured-delta.md): 定义变更以字段语义计算并写入 audit evidence。
+- [CL-3 — 检索策略实验设计（A/B/C 对比 + alias 质量验证）](tickets/CL3-retrieval-strategy-experiment.md): 检索比较使用相同 corpus、query 和 top-k，并保留 alias protected slice。
+- [CL-4 — 补充 alias-dependent eval case](tickets/CL4-supplement-alias-eval-cases.md): protected slice 覆盖必须依赖 aliases 才能召回的查询。
+- [CL-5 — 检索策略覆盖率梯度实验实施](tickets/CL5-retrieval-gradient-experiment.md): 图扩展能带来候选增益；continuous blend 的默认最优性不再视为永久结论。
+- [CL-6 — Tokenizer 修复 + Continuous-blend 生产实现](tickets/CL6-tokenizer-fix-and-continuous-blend.md): tokenizer 与当前 continuous blend 已实现，后续替代必须通过同条件复验。
+- [CL-7 — 生产管线检索级实验](tickets/CL7-production-retrieval-experiment.md): 检索级收益与端到端结果分开报告。
+- [CL-8 — 端到端 Eval 验证 + Go/No-Go 决策](tickets/CL8-e2e-eval-go-nogo.md): graph-assisted retrieval 保留，但实验结论不代表生产与 evaluation 已共享投影。
+- [CL-9: Batch DWS alt_labels enrichment to 80%+ coverage](tickets/CL9-batch-enrichment-dws-coverage.md): DWS labels 扩充提高覆盖，同时暴露过度 enrichment 会稀释检索。
+- [CL-10: Voice Eval Case 扩展 + Glob 修复 + 双模式 Eval 基线](tickets/CL10-voice-eval-case-expansion.md): voice cases 和 SQL judge 暴露真实语义、join、数据源与交付缺口。
+- [CL-11: DELIVERY eval judge 校准](tickets/CL11-delivery-judge-calibration.md): DELIVERY judge 按语义对齐评分，reply 管道必须提供完整用户回复。
+- [CL-12: SQL semantic judge 基线回归修复](tickets/CL12-sql-judge-baseline-regression.md): 不可回答案例与 SQL 质量案例分开处理。
+- [CL-13: Voice compound query 多表 join 完整性](tickets/CL13-compound-query-join-completeness.md): compound queries 需要完整多表关系和 join evidence。
+- [CL-14: 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md): 数据源缺失与语义标签缺失分开归因。
+- [CL-15: sql-judge 模式确立为标准 eval 基线](tickets/CL15-sql-judge-as-standard-baseline.md): SQL semantic judge 成为 legacy 基线的一部分，但旧百分比不延续到新 Evaluation stack。
+- [CL-16: Reply 管道二次修复 + DELIVERY 通过率提升](tickets/CL16-reply-pipeline-delivery-fix.md): evaluator 消费完整 reply，不再用内部 decline 诊断串代替用户回复。
+- [CL-17: 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md): 第二轮 enrichment 完成后，剩余问题拆给 retrieval、formula 和 benchmark owners。
+- [CL-18 — ds 噪声关联修复 + 确定性匹配算法加固](tickets/CL18-ds-noise-join-fix.md): partition columns 从关系发现中排除，降低 ds/pt/dt 噪声边。
+- [CL-19: eval LLM 发射 tool-call 文本根因 + 修复定位（CL-16 Type-1 剩余）](tickets/CL19-eval-toolcall-emission-rootcause.md): tool-call 文本与 SQL、用户回复必须作为不同输出类型处理。
+- [CL-20: DELIVERY Type-2 agent 行为（开放问题错误生成 SQL）](tickets/CL20-delivery-agent-behavior-type2.md): deliverable-kind 门禁只处理其已验证类别，不充当全部 open-ended case policy。
+- [CL-22: eval 非确定性深查（-3pp / Alias -15pp / dup BM25 效应）](tickets/CL22-eval-nondeterminism-deepcheck.md): 决策比较使用 `pass_k=3` 的 attempt 语义与至少三轮 run 中位数；协议不同的结果不可静默比较。
 
-- **「按钮消失」真因 = `--profile web` 冷启动失败,非按钮代码** → [CB-1](tickets/CB1-cold-boot-blockers.md)。按钮注册链路全绿(slot 注册/boot manifest/5 个 inject/served bundle md5 匹配/mode B),但冷启动有**两个独立 blocker**,任一触发即令 `data-agent` include 组**整组不挂载**,连带 `ui-semantic-layer` 消失(base 树已挂载 → app 照常打开,只是 data-agent 的一切都没了)。用户 3080 上的进程是 8/31 15:56 启动的**幸存者**,早于两 blocker 落地,故它至今仍渲染按钮(headless DOM 实证)——一旦重启即消失。① `duplicate loader entry id: result-cache`(web-app:300 客户端对象缓存 vs data-agent 服务端 seam,随 T9 `9ab8189b0b` 落地)→ **已修**(改名 `result-cache-memory`,commit `60740d5197`);② `enrichment-llm-wiring: no provider/model configured`(CL-8 移除静默默认改 fail-loud,但 `ENRICHMENT_LLM_*` 全仓无处提供)→ **决策=graceful degrade(α:apply 期 throw→ctx.logger.warn+跳过 wire,非致命;substrate 不动;boot warn 为 surface)**,落地见 [CB-1a](tickets/CB1a-cold-boot-stabilization.md);设置项路线(CB-2)推迟(插件未接 ctx.settings,pull-based,需改代码非只加 UI)。
-- **失败隔离决策(2026-09-04)**:「先自检止血,per-row 后评」。自检**已落地**——`scripts/bundle-loader-ids.spec.ts` 跨 bundle 断言"同一 id 不得声明两个不同 plugin",**双向验证**(修复后 pass;改回 `result-cache` 则 fail 并报出两处精确位置)。per-row 容错评估 → [CB-3](tickets/CB3-per-row-fault-isolation.md),其中关键提问=三次事故的真正症状是**失败静默**而非失败粒度,故先答"可观测性"可能就不必改 vendor。
-- **✅ [W16 evidence-query 客户端 remote 缺口](tickets/W16-evidence-query-client-remote-gap.md) — RESOLVED via [PR #14](https://github.com/McKenzieIT/deepseek-harness-da/pull/14) (2026-09-05).** 客户端 remote 接通(evidence-query `./typert`+`./remote` exports + api-remotes 装配 `evidenceQueryRemote` + DashboardView CSS module + 真实路径测试;typert 生成器全局在根 `tsdown.config.ts` workspace-mode,emission 由 package.json `exports` gate `hasTypertExport`;selectedAssetId+`$on` disposer 已由 `e823800368` 修)。⚠️ runtime zod(生成的 `typert.remote-client` import zod;schema-gateway 被 CB-4 删 + evidence-query 从未声明)待 CB-4;完整 UI 浏览已验证(2026-09-05,停掉 3080 幸存者后):证据面板渲染真实数据 + auto-flip 触发(evalRunCount=3)+ DashboardView 有样式(CSS module,不溢出)。2 follow-up(非 W16):EvalTrajectory runs-list data-store(W4 域)+ dashboard.title i18n key 缺失。**原 finding(2026-09-03):** 服务端 gateway 齐全(8 个 `@Remote`,namespace `evidenceQuery`,bundle 已挂),**客户端那一半从未接**:`evidence-query/package.json` 无 `./remote` 导出(schema-gateway 有),`api/remotes/src/client/index.ts:11` 也没 import → `remote.evidenceQuery` 恒 undefined → `evidenceClient === null` → GoalDock/EvidenceSidebar/CoveragePanel/EvalTrajectory/EvalDeltaView/GapPanel/DashboardView/W15 push **全部零数据**,B→A auto-flip **永远**触发不了(`SemanticLayerShell.tsx:66` 要求 `evidenceClient` 非 null)。**⚠️ 本 map 的 W11「三处 TODO 替换为真实数据」与 W15「已闭」与代码事实矛盾**——测试全绿是因为直接注入 fake client,不走真实解析路径。顺带:`DashboardView` **零 CSS**(`sl-dashboard*` 不在任何 `.css`);`index.ts` `$on` disposer 未捕获(reload 泄漏)。(`selectedAssetId` 缺口已由并发 commit `e823800368` 修复。)
-- **[W17 管理 session 客户端桥接](tickets/W17-management-session-client-bridge.md)** — 知识图谱对话闭环断在**一个点**:`ContextLayerOverlay.tsx:65-66` 只传 `data` + 硬编码 `messages={[]}`,`ContextLayerViewProps` 的 6 个 prop 里 4 个交互 prop 全没传(`onSendMessage` 无法发消息 / `eventSource` **narration gate 无事件源→动画永不触发** / `isStreaming` / `onInsertReference`)。根因=`ManagementSessionService` 是服务端 Service 无客户端桥接(W10 的 `messages=[]` TODO 从 08-27 挂到现在)。**与 W16 同形,是第三例"服务端有、客户端没接"**。⚠️ **W13 的修复目前不可观测**——动画唯一驱动源是 narration gate,`eventSource=null` 使其恒空。
-- **知识图谱管理面首次可达(W14b,commit `60740d5197`)** — `ui-context-layer` 此前是**孤儿包**(W10/W11 已交付却从未挂载:无 bundle 行、不在 boot manifest 46 条、plugin 路由 **404**;`e2e-test-checklist.md:100` 早有记录)。现挂载 + `dsh.client.inject` 补 `ui-layout`(它注册的 `shell.overlay` 由 ui-layout 声明) + 置于 `ui-semantic-layer` **之前** + 后者对 `contextLayer` 改**惰性**解析(原先 apply 时读一次,晚挂载即永久 undefined)。实测 boot manifest 46→**48**、两插件路由 200、`shell.overlay` seat 进入 DOM。W12(`evt.target.id`)+ W13(12 处 `update*Data` 全部配对 `graph.draw()`)同批。
-- **eval pass^k 迁移 —— 离线重打分完成,blast radius 远小于预期**（[重打分报告](research/passk-rescore-2026-09-03.md)）:
-  - **更正**:① pass^k **已提交**(`runner.ts:378 passKVerdict`),非"未提交";② pass^k 基线**已存在**——`rebaseline-passk-168-merged` = **52.4%**,随 commit `cfbb710b50 "pass^k 168-case definitive baseline (52.4%)"` 落地,但它是**单个拼接 run**,违反 CL-22 的 ≥3 run 硬要求 → **目前无合法基线**(同日冲突 run:`f4bc4a06`=0% 坏 run、`rebaseline-passk-168`=33.9%);③ **每次 attempt 判定已持久化**(`cases[].pass_k_results[]`)→ pass^k 可**离线重算,零 LLM 零成本**(`.tmp/rescore-passk.py`)。
-  - **结论 A:k=1 的 run 完全不受影响** —— pass^k 与 best-of-k 在单 attempt 下数学恒等,26 个 k=1 run 的 delta 全为 **+0.0pp**。故 **CL-5/7/8/9/10/11/12/13/14/15/16/17/22、P3、P4 的数字按记录成立,无需重跑**(73.2% 中位数本身即三个 k=1 run 的中位数)。残余风险 **已核查并排除**:同批的 `executionMatch` 不可验证→false 规则,在 k=1 基线上**零影响** —— 4 个基线 run 中"无 sql_judge 且 execution_match=true"的 case 各 21-25 个,经与 case YAML 逐一比对**全部是 DELIVERY case**(`019/049/075/078/079` 正是 CL-12 迁移的 5 个,余为 voice DELIVERY 组),它们由 DELIVERY judge 经 `delivery_match` 判分,本就不需要 SQL judge,**genuinely-flip 数为 0**。故 CL-15 的 73.8% 与 CL-22 的 73.2% 中位数**完整有效、可复现**。
-  - **结论 B:k=3 的 run 全线崩塌** —— exp4-arm-a 88.1%→**56.5%**、exp2-arm-a 72.0%→26.8%、g1b-variant-D 63.9%→16.7%、variant-B 83.3%→47.2%。(GA-MODEL1 记的 47.6% 更严,因它同时应用了不可验证→false。)
-  - **结论 C:一个决策翻转 —— GA-EXP4 / Kind 1(prompt 英文化)**。英文 vs 中文:best-of-k **−3.0pp**(88.1/85.1)→ pass^k **+1.2pp**(56.5/57.7),**符号翻转**;+1.2pp 在噪声内 → 诚实结论是**中英文无显著差异**,而非"英文更差故保留中文"。原决策事实基础不成立,Kind 1 门禁需重议。 定性结论(EXP2 的英文灾难性退化是 qwen-plus 能力问题、在 qwen3.7-max 上消失)**仍成立**且被 pass^k 加强(26.8%→3.0%);故英文化的取舍回到**可维护性**(GA-GRILL2 原动机)而非性能。
-  - **结论 D:方向性决策均存活** —— GA-MODEL1(qwen3.7-max:+16.1%→**+29.7pp**)、G1c ship variant(B 仍最优)。
-  - **更正²(2026-09-04 晚,已作废前一条更正):阈值**确实**已重设,且切换已经发生。** 前一条"目标值不需要重设"是错的——① k=1 **不是标准而是偏离**:CLI 默认 `--pass-k 3`、`DEFAULT_PASS_K = 3`、**SPEC §6.5 / D9 Q2 明确规定 pass^k k=3**;`run-eval.sh` 的 `--pass-k 1` 是为"对齐旧基线"加的循环论证,**已移除**。② 当前基线已是 `rebaseline-passk-168-clean` = **61.9%** pass^k(commit `56c74aebae`),README 已声明 "pass^k is LIVE" 并**已把目标重设为 Overall 60/70/85、Original 65/75/88**(pending PM sign-off),旧 75/80/90 标 superseded。③ 我的"pass^k 方差更大"反对理由**方向搞反了**:实测 k=1 极差 **4.2pp** vs pass^k bootstrap 90% 区间 **5.4pp**,量级相当;pass^k 把 p≈0.5 的 case 推向稳定失败反而更一致。**真正的数字:每 case 通过次数分布 20/20/33/95 → 31.5% 的 case 不确定,k=1 在定义上看不到。** 四票已各自追加更正段,验收以 README 的 pass^k 目标为准。
-  - **k=1 偏离泄漏到三处,已修**:① `run-eval.sh --pass-k 1`(**活陷阱**——README 基线已是 pass^k 61.9%,而跑这个脚本得 ~74% 且静默不可比)→ 已移除;② `compare.ts` **无 pass_k 守卫**(CL-15 定它为标准趋势工具,拿 k=1 基线比 k=3 新 run 会静默报出纯协议差异的 +12pp "改善")→ 已加 `checkProtocolMatch`:已知协议不一致则 exit 2(可 `--allow-protocol-mismatch` 绕过),任一为 unknown 则警告,并在 header 打印协议;③ `RunResult.config` 只在 5/174 run 里有值(169 个历史 run 为 null,无法判断其 k)→ 守卫按"unknown"档处理而非假设默认。**③ 自驱循环无此问题**:`eval-runner-service` 用 `passK: 3`(bundle:201),与 README 口径一致,管理 agent 经 `<eval_evidence>` 看到的是同一把尺。
-  - **中位数基线延后（2026-09-04 决定）** —— 尝试过一次并**主动中止**，原因是**并发开发使基线不可复现**，这条教训必须留档：
-    - 起了 `scripts/run-median-baseline.sh` 跑 2 轮补足 CL-22 的三轮，run 1 跑到 96/168 时中止。
-    - **中止原因不是守卫误报**：期间 10+ 个并发 commit 真的改了 eval 核心路径（`nl2sql-engine/src/prompt.ts` 85 行、`critic.ts` 46 行、`metric-engine.ts`、`engine.ts`、`query-maxcompute/src/normalize.ts`+`conventions.ts`）。run 1 与任何 run 2 之间隔着真实行为变更，合并成中位数等于平均两个不同系统。
-    - **更深的问题：我守错了对象。** driver 守 `git rev-parse HEAD`，但 **tsx 执行的是工作树**。实测 `critic.ts` mtime 10:50、`prompt.ts` 11:00 —— 都在 run 1 启动（11:01:12）**之前**被改且当时**未提交**；`query-maxcompute/lib/index.js` 更是在 **11:54 跑到一半被重建**。所以 run 1 执行的代码**对应不上任何 commit**，而 driver 记录的 `HEAD: 5ddbc0f8e6` 是**假溯源**。不可复现的数字不能当基线 → run 1 作废（产物留在 `.tmp/median-baseline/`，**勿当基线引用**）。
-    - **正解 = 隔离 worktree**（正是项目 2026-09-04 11:35 落地的 per-session 策略，CLAUDE.md:60-67）：worktree 里的文件并发 session 碰不到，既合规又让基线可复现。driver 已按此加固（拒绝在有 eval 相关未提交改动的主树里跑 + 记录内容哈希而非 HEAD）。
-    - **延后到并行 PR 收口后再建**：并发 session 仍在活跃改 nl2sql-engine，worktree 能隔离文件但基线的意义是"代表当前系统"，主线一变保鲜期就到。且当前 HEAD 含**未经 eval 验证**的 prompt/critic 变更，在其上建基线会把未验证改动烘进基线。
-    - **在此之前**：按分层协议用 n=1 导航（标注"单 run，不可作决策依据"），基线仍以 `rebaseline-passk-168-clean` 61.9% 为**唯一**参考点且注明 n=1。
-  - **CL-22 与 pass_k=3 的张力已定性**:`pass_k=3` 管**单 run 内**抖动(惩罚),`≥3 run 中位数` 管 **run 间**抖动(抹平),二者正交、可叠加,不冲突。CL-22 当初说 all-must-pass"不适用"是因为它设想用 majority-vote 替代中位数——那才是冲突的方案。
+### Runtime and ownership cleanup
+
+- [CB-1: 冷启动 blocker —— 单行失败炸掉整个 data-agent include 组](tickets/CB1-cold-boot-blockers.md): duplicate id 和 enrichment 配置问题均已有 owner 与落地结果，母票关闭。
+- [CB-1a: 冷启动稳定化落地（enrichment graceful degrade + include 失败自检）](tickets/CB1a-cold-boot-stabilization.md): 缺 enrichment model 时退化为 deterministic-only，并显式报告 include failure。
+- [CB-1b: pwsh 在 PTY 下不 evaluate 表达式（GitHub macOS runner）](tickets/CB1b-pwsh-pty-evaluation-bug.md): 问题归入上游/平台测试 owner，不再阻塞语义层。
+- [CB-2: enrichment LLM 配置改为 dsh-data-agent 设置项](tickets/CB2-enrichment-llm-as-settings-item.md): 产品设置面 deferred；boot 已由 CB-1a 解耦，需求成立时新开票。
+- [CB-3: include 组的 per-row 失败隔离（评估，非立即实施）](tickets/CB3-per-row-fault-isolation.md): 保留事务式整组加载，以启动自检和 inventory 可见性止损；当前不实施 per-row 隔离，出现新的同形状事故后再开票。
+- [CB-4: zod dep 移除导致 dsh-api-remotes client bundle 启动失败（master 回归）](tickets/CB4-zod-externals-drift.md): 客户端 runtime dependency 与 bundler module table 已恢复一致。
+- [CB-5: DA 的 CI 寄生在上游 workflow 上（darwin 腿安装步骤膨胀的结构根因）](tickets/CB5-da-ci-upstream-boundary.md): CI 与 upstream workflow ownership 已迁到 Repo Infra T29。
+- [CL-21: sql-judge 78% 推进——trim/概念formula/迁移（非 enrichment）](tickets/CL21-non-enrichment-levers-trim-formula-migration.md): 混合票退役；retrieval corpus、concept formula 和 benchmark migration 分属独立 owner。
+- [CL-23: tool-call 检测 + 结构化拒绝合成（CL-19 修复落地）](tickets/CL23-toolcall-detection-and-structured-decline.md): tool-call detection 与结构化 decline signal 已完成，剩余 synthesis 和 evidence acceptance 已移交。
+- [CL-24: 模型伪回复被当 SQL（CL-23 衍生 / CL-19 同族）](tickets/CL24-pseudo-reply-as-sql.md): response parsing 与 evidence acceptance 迁到 Evaluation T15，不在 legacy engine 增加 prose heuristic。
+- [CL-25: open_ended case set 期望行为不自洽（CL-20 毕业）](tickets/CL25-open-ended-case-set-consistency.md): ground-truth、refusal reason 和 case migration 迁到 Evaluation G1b/T14。
+- [CL-28: `contextPrefetched` 掐掉了 grounded 拒绝合成的入口 → DELIVERY 回吐 16pp](tickets/CL28-contextprefetched-decline-synthesis-entrypoint.md): 旧入口修补被统一 decline evidence/synthesis 决策取代。
+- [CL-27: CL-20 门禁对每个查询无条件多调一次 LLM —— 代价是否可接受](tickets/CL27-triage-unconditional-call-cost.md): canonical controller 的 cutover 与 performance owner 接管该问题。
+- [CL-29: eval 产物被 gitignore → 基线会蒸发，趋势对比与 ≥3 轮协议失去物质基础](tickets/CL29-eval-artifact-persistence.md): EvaluationStore、ArtifactStore 和 retention policy 接管运行证据持久化。
+- [R11: eval 切换 buildEvalPrompt 实验](tickets/R11-eval-prompt-switch-experiment.md): 私有 eval prompt 分叉被 production Context Projection 与 attribution 路线取代。
+- [A21: 语义层地图与 session prompt 清理](tickets/A21-map-prompt-hygiene.md): 旧 prompt 已归档，状态漂移已关闭或迁移，map 恢复为索引。
 
 ## Not yet specified
 
-- **SchemaProvider 路由冲突解决**：R4 确定了 `registerSchemaProvider` + `engineType` 路由的整体方案，但多 provider 注册时的优先级排序规则和冲突解决（同 engineType 多 provider 谁优先？）待实现时具体化。Session prompt: `prompts/remaining-1-schema-provider-conflict.md`。**保留为雾**（2026-08-28 确认——当前只有一个 provider，等引入第二个时再决策）。
-- **Context Layer 对齐演进**（R9 审计，详见下方独立章节）
-- **prompt caching**（R10 认定的 P0:~70% 成本节省、零风险,是系统当前最大优化杠杆）—— R10 已给结论但**未开实施票**。
-- **`executionMatch` 不可验证→false 对 k=1 run 的影响**（pass^k 重打分读存量值,测不出这条规则的变化;GA-MODEL1 提到 exp4 的 504 attempt 中 75 个无 judge。需单独核查它是否也动摇了 CL 系列的 k=1 结论）。
-- **pass^k 下的方差量级未知**（best-of-k 时代测得 flip rate 26.8% / 极差 ±2.4pp;pass^k 全中才算过,对噪声更敏感,极差可能显著更大。若大到无法用中位数判定阈值,则 CL-20/21/23/R11 的验收方式本身需重设计,而非只改数字）。
-
-## Context Layer 演进方向（v2+）
-
-> 参考文档：`research/context-layer-2026-frontier.md`（完整前沿综述）、`research/r9-context-layer-frontier-audit.md`（决策审计）
-
-### 前沿定位
-
-2026 Forrester/Gartner 定义：**Context Layer = Semantic Layer + Knowledge Graph + Business Glossary + Policies + Trust Signals + Organizational Memory**，统一为 graph-based ontology，服务 agentic AI。
-
-dsh-data-agent 的语义层**本质上已经是一个 context layer 的早期实现**——只是缺少自觉的定位和几个组件的统一。
-
-### 当前覆盖 vs 缺口
-
-| Context Layer 组件 | 当前状态 | 缺口 |
-|---|---|---|
-| Metadata Catalog | ✅ definitions + SchemaGateway | — |
-| Ontology (typed relations) | ✅ RelationGraph (3 types) + ConceptKindPlugin (CL-2) | — |
-| Business Glossary | ✅ SKOS pref_label/alt_labels (CL-1) + aliasIndex 反向索引 | — |
-| Metrics Layer | ✅ MetricKindPlugin + execute_metric | — |
-| Trust Signals | ⚠️ eval pass_rate 仅覆盖质量 | 缺认证/新鲜度/使用频率 |
-| Lineage | ✅ derived_from (表级) | 缺列级 |
-| Policies | ✅ dsh-admin (访问控制) | 缺使用建议/敏感标记 |
-| Organizational Memory | ⚠️ goal (session 内) | 缺跨 session 累积知识 |
-| Context Projection | ⚠️ 三接口分离（G7 已关闭：生产零消费，按需 tool call 已实现投射） | R10 确认不需要统一接口；P0=prompt caching |
-
-### 解决路径（分阶段）
-
-#### Phase CL-1：Terminology 统一（R7 方案 D — SKOS 对齐）✅ 已完成
-
-**解决**：glossary 独立于 ontology 的偏差
-
-**决策（2026-08-28 grilling 锁定）**：
-- D1：SKOS 对齐双字段 `pref_label?: string` + `alt_labels?: string[]`（snake_case 适配）
-- D2：全 definition type 加（event + table + metric）；列级排除
-- D3：`toCorpusItem(def)` 直接移除 terminology 参数，原子迁移
-- D4：检索 = Strategy B（always-fused hybrid）；tool = `resolve_term`（替代 `lookup_terminology`）
-- D5：enrichment = G3 同构（on-write hook + `discover_alt_labels` tool + eval 验证）
-
-实现三阶段：Phase 1 schema + 接口 + 数据迁移（原子）→ Phase 2 图反向索引 + resolve_term tool + hybrid 检索 → Phase 3 AI enrichment hook + tool
-
-**成本**：低-中（Phase 1 仅加字段+迁移，Phase 2 图索引+tool，Phase 3 enrichment）
-**收益**：SKOS 标准对齐 + Jedify 模式（图编码术语→子图投射）+ 消除 toCorpusItem 参数不一致
-
-#### Phase CL-2：Domain/Concept 作为图节点 ✅ 已完成
-
-**解决**：G2 relation type 范围偏窄（仅结构性关系，无语义概念映射）
-
-**决策（2026-08-29 grilling 锁定）**：
-- D1：Concept = 显式一等实体（`concepts/` 目录，YAML 文件，声明 name/description/pref_label/alt_labels）
-- D2：`domains: string[]` 保留在 asset 上 + 加载时引用验证（domain 必须匹配 concept YAML）
-- D3：Concept 在 BM25 corpus 中 + graph-expand 新增 `related_to` 展开（Jedify 子图投射锚点）
-- D4：零新 tool，泛化现有 tool 为 registry-driven（get_definition/edit_definition/list_domains/get_coverage）
-- D5：Node id = `concept:` 前缀；alt_labels 进统一 aliasIndex
-
-```
-概念模型：
-  [concept:用户活跃] --related_to--> [event:role.online]
-  [concept:用户活跃] --related_to--> [table:dws_active_user_di]
-  [concept:付费经济] --related_to--> [table:dws_pay_order_di]
-```
-
-**成本**：中（新 kind plugin + 引用验证 + tool 泛化 + graph-expand 扩展）
-**依赖**：CL-1 已完成（验证了图扩展模式）
-
-#### 检索策略验证（CL-3 ✅ 实验设计，CL-4 ✅ case 补充，CL-5 ✅ 梯度实验完成）
-
-**解决**：CL-1 D4a 选择 Strategy B 作为初始实现，但三策略优劣需数据验证
-
-**决策（2026-08-29 grilling 锁定）**：
-- Strategy C（子图投射 + BM25 fallback）为目标方向
-- data agent 通过 subagent 并行 enrichment 补全图谱缺口（方案 γ），形成自进化闭环
-- 覆盖率梯度实验（Level 0–3）取代静态 A/B/C 对比
-- A/B/C 是同一 blending 函数 f(coverage)→weight 的特例
-- 硬切换 vs 连续混合作为实验变量
-- 补充 alias-dependent eval case（LLM 模拟业务角色 + 人工筛选）
-
-**实施票**：[CL-4](tickets/CL4-supplement-alias-eval-cases.md)（✅ 40 alias-dependent case）→ [CL-5](tickets/CL5-retrieval-gradient-experiment.md)（✅ 梯度实验完成：C 策略确认最优，行动项=切换 continuous-blend + 修复 tokenizer + 加速 enrichment）
-
-#### Phase CL-3：Context Projection 统一 → 票 [G7](tickets/G7-context-projection-unification.md) ❌ 关闭为 out of scope（v2+）
-
-**G7 grilling 结论（2026-08-30）**：当前不需要引入统一 `project(def, opts)` 接口。
-
-**代码事实**：`toPromptContext` 和 `toCriticContext` 生产路径零消费者。NL2SQL 引擎通过 agent tool call 按需加载 definition JSON（`load_event_definition` / `load_table_dimensions`），已是按需投射模式。Eval pass rate 优秀（CL-8: 100%, CL-9: 91.7%），无 token 压力。
-
-**后续**：token/attention/cache 优化作为独立方向，由 [R10](tickets/R10-token-attention-cache-optimization.md) 调研。若 R10 结论指向需要统一投射接口，届时重新开票。
-
-#### Phase CL-4：Trust Signals 丰富（远期）
-
-**解决**：trust signals 仅有 eval pass_rate
-
-可扩展的信任维度：
-- **认证状态**：definition 是否经过人工审核（`certified: boolean`）
-- **数据新鲜度**：上次 schema 同步时间（依赖 live ODPS provider，已标记 out of scope）
-- **使用频率**：被查询的次数（可从 audit log 统计）
-- **质量分**：eval pass_rate（✅ 已有）
-
-**前置**：CL-1 和 CL-2 作为基础设施；trust signals 作为 definition schema 的可选字段逐步加入。
-
-#### Phase CL-5：Organizational Memory（远期）
-
-**解决**：跨 session 的管理 agent 累积知识
-
-OpenMetadata 2.0 的核心新增 = organizational memory。当前 dsh-data-agent 的 goal 机制是 session-scoped。
-
-可能方向：
-- 管理 agent 的跨 session 知识（"上次发现 dws_pay_order_di 的 user_id 可以 join dim_user"→ 下次自动利用）
-- eval 历史趋势作为决策依据（W4 evidence-query 已有基础）
-- 关系发现的累积确信度（多次 enrichment 验证同一关系 → 提升 confidence）
-
-**前置**：③ 自驱循环（W6/W13）完成验证后作为自然延伸。
-- ~~**Terminology 挂载点**~~ — **毕业为 [R7](tickets/R7-terminology-ontology-role.md)**（2026-08-28）：research 调研 terminology 是否应作为知识图谱 ontology 的一部分存储和消费。
-- ~~**定义版本管理**~~ — **毕业为 [G6](tickets/G6-definition-version-management.md)**（2026-08-28）：grilling 讨论开源项目是否自带 git 版本管理。
-- ~~**Shell auto-flip 接入真实 evalRunCount**~~ — **已通过 W11 evidence-query RPC bridge 解决**：`evidenceClient` 传入 SemanticLayerShell，`useEvidenceMetrics` 读取真实 evalRunCount。验证 session prompt: `prompts/remaining-3-shell-autoflip-verification.md`
-- ~~**Evidence-query push 订阅**~~ — **毕业为 [R8](tickets/R8-evidence-query-push-subscription.md)**（2026-08-28）：research+grilling，blocked by [T2](tickets/T2-verify-management-panel-web-visibility.md)（确认管理面板 web 端实际可见）。
-- **定义版本号随查询结果传播**（G6 D3）：Cube 模式——查询结果附带所用定义版本信息，供事后追溯。当前 agent tool call chain 已是隐式追溯链，无痛点。出现"追不到哪个版本定义导致答案错误"的场景时引入。
-- **eval affected scope 选择**（G6 γ v2 优化）：根据 changeset 中的 asset_name 筛选 eval case 子集（类似 dbt slim CI 的 `state:modified+`），减少 eval 成本。需要 case→asset 映射（case YAML 标注 target_assets 或运行时推断）。V2 changeset 就绪后作为成本优化展开。
-- **Data agent subagent 并行 enrichment 机制**（CL-3 D2 方向确认）：data agent 在查询过程中通过 subagent 并行补全图谱缺口（方案 γ），形成使用→发现缺口→subagent 补全→图谱增长的自进化闭环。具体设计待 CL-5 实验结果验证 C 策略可行后再展开。
-- ~~**DELIVERY eval judge 校准**~~ — **毕业为 [CL-11](tickets/CL11-delivery-judge-calibration.md)**
-- ~~**SQL semantic judge 基线回归修复**~~ — **毕业为 [CL-12](tickets/CL12-sql-judge-baseline-regression.md)**
-- ~~**Voice compound query 多表 join 完整性**~~ — **毕业为 [CL-13](tickets/CL13-compound-query-join-completeness.md)**
-- ~~**数据源缺口盘点与 enrichment**~~ — **毕业为 [CL-14](tickets/CL14-data-source-gap-catalog.md)**
-- ~~**sql-judge 模式作为标准 eval 基线**~~ — **毕业为 [CL-15](tickets/CL15-sql-judge-as-standard-baseline.md)** ✅ 已关闭
-
-## Open tickets
-
-### v1 收尾
-- ~~[G6: 定义版本管理](tickets/G6-definition-version-management.md)~~ ✅ — 不引入 git，走 eval-driven 版本治理；γ changeset + structured delta + 细粒度 auto-revert；毕业 V1-V3
-- ~~[W15: Evidence push 订阅实现](tickets/W15-evidence-push-subscription.md)~~ ✅ — `evidence/eval-run-completed` → allowlist + `EvidenceQueryClient.subscribeInvalidation` + `connection/reset` 恢复 + `useEvidenceMetrics` 自动 refresh；94 tests 全绿
-
-### CL-5 行动项落地（formal experiment）
-*全部完成。*
-
-### CL-10 后续优化（sql-judge 质量提升）
-- ~~[CL-11: DELIVERY eval judge 校准](tickets/CL11-delivery-judge-calibration.md)~~ ✅ — judge prompt + reply 管道修复；DELIVERY 1/14→11/14
-- ~~[CL-12: SQL semantic judge 基线回归修复](tickets/CL12-sql-judge-baseline-regression.md)~~ ✅ — 5 case 迁移 DELIVERY + 5 表 enrichment；original 70%→75%
-- ~~[CL-13: Voice compound query 多表 join 完整性](tickets/CL13-compound-query-join-completeness.md)~~ ✅ — voice_030 pass（CL-14 enrichment）；029/032 仍 wrong（agent join 能力限制）
-- ~~[CL-14: 数据源缺口盘点与 enrichment](tickets/CL14-data-source-gap-catalog.md)~~ ✅ — 4 表 enrichment + 2 case 迁移；voice_003/008/030 pass
-- ~~[CL-15: sql-judge 模式确立为标准基线](tickets/CL15-sql-judge-as-standard-baseline.md)~~ ✅ — sql-judge 确认默认；README + compare.ts 趋势工具；4 case DELIVERY 迁移；44 wrong cases 分析完成
-
-### sql-judge 质量推进至 80%+
-- ~~[CL-16: Reply 管道二次修复](tickets/CL16-reply-pipeline-delivery-fix.md)~~ ✅ — **关闭-部分**：pipeline 已尽，DELIVERY 66.7%→77.8%（+11.1pp，run `32dd9532`）；85% deferred（Type-1→CL-19，Type-2→CL-20）
-- ~~[CL-17: 数据源缺口 enrichment 第二轮](tickets/CL17-data-source-enrichment-round2.md)~~ ✅ — **关闭-部分**：enrichment 已尽，overall 70.8%<78%；deferred→CL-21（trim/概念formula/迁移）；dup 清理已做
-- ~~[CL-19: eval LLM tool-call 发射根因](tickets/CL19-eval-toolcall-emission-rootcause.md)~~ ✅ — 根因=TOOL_CATALOG prompt（主）+ qwen3.7-max 模型倾向（协）；EXP2 无关；`buildEvalPrompt` 已存在但未接入；修复=(a) engine 检测 tool-call→clean decline + (b) reply 层 LLM 合成结构化拒绝 + 扩展 `looksLikeToolCall`（补 `call:` 前缀 + `{"tool_calls":` 格式）；影响 2 DELIVERY case（voice_017/042），翻转后 DELIVERY 可达 83.3-88.9%
-- ~~[CL-20: DELIVERY Type-2 agent 行为](tickets/CL20-delivery-agent-behavior-type2.md)~~ ✅ — **关闭**（2026-09-06 夜收尾）：决策 D1-D5 已定；「门禁有已知未修缺陷」的阻塞理由**被直接测量推翻**（`052` 放行 5/5、全量 run 误伤经穷举 = 0，详见票体「门禁直接测量」节）；rebase 完成（+78 commits）、tsc + 132/339 测试绿、post-rebase 全量 `cl20-postrebase-n1` 已记入 audit-log。PR: [#37](https://github.com/McKenzieIT/deepseek-harness-da/pull/37)（3 个 code commit；CI 红项经 5 路并行审计确认全为 master 既有欠债，与本 PR diff 无关）。DELIVERY 回吐 16pp 归因 rebase → 毕业 [CL-28](tickets/CL28-contextprefetched-decline-synthesis-entrypoint.md)
-- [CL-23: tool-call 检测 + 结构化拒绝合成](tickets/CL23-toolcall-detection-and-structured-decline.md) — **三层已落地** commit `ccdd150a97`（PR #1）；voice_017 1/3→3/3、voice_042 不属其范围→衍生 CL-24。**票体明确「部分达成、不闭票」**（`:135`/`:203`）：遗留 = 017 的 ≥3 run 中位数确认（待基线可用）（**frontier — 无阻塞**）
-- [CL-24: 模型伪回复被当 SQL](tickets/CL24-pseudo-reply-as-sql.md) — CL-23 衍生：模型产自然语言伪回复（`无法直接回答…`/`【诚实拒绝】…`），`extractSqlCandidate` 未识别→`ok=true` 放行；检测点/判据/合成路径待决（**frontier — 无阻塞**）
-- [CL-25: open_ended case set 期望行为不自洽](tickets/CL25-open-ended-case-set-consistency.md) — CL-20 毕业：同词根期望相反（`076` 不平衡→SQL vs `079` 平衡性→REFUSE；`073` 怎么样→SQL vs 5 个怎么样→REFUSE）；`open_ended` 混合 ≥5 种拒绝理由，其中 A 类（字段缺失）原理上无法由问题文本判断；需定判据 + 重分类 + 重设 DELIVERY 目标（**frontier — 无阻塞**）
-- [CL-26: eval-runner-service 缺 decline 合成分支](tickets/CL26-eval-runner-service-decline-synthesis-gap.md) — CL-20 毕业：reply 管道有两份实现，`eval-runner-service`（③ 自驱循环的唯一 runner，bundle:196）**零 `declineKind` 处理**，decline 时产 judge 打 0 分的 `Declined: ...`（`:290`）→ **CL-11/CL-23/CL-20 的 reply 侧成果对管理 agent 全不可见**，其 DELIVERY 读数因管道缺陷而非质量偏低，`goal-eval-policy` 的 `delta.improved` 据此判「无改进」即失真。**与 W16/W17 同族（第四例「两份实现只接一份」）**；map Notes「③ …同一把尺」那句只核了 pass_k、前提不成立。~~附带：`declineKind` 命名待改为 `beyond_single_query`~~ ✅ **已随 CL-20 收尾落地**（PR #37，3 处调用点，master 上残留 0）；**本票主体仍 open**（**frontier — 无阻塞**）
-- [CL-27: triage 无条件多调一次 LLM 的代价](tickets/CL27-triage-unconditional-call-cost.md) — CL-20 毕业：门禁对**所有**查询前置执行，96% 的查询（含 143 EXEC）为 4%（实测 7/168 被拦）付一次额外 LLM 往返；与 R10「token 效率为强项、P0 是 prompt caching」方向相反；AGA 延迟 ~6-17s/次故是产品级体感问题。**n=1 测不出延迟**（-41.8s~+30.3s，中位 +2.9s，埋在噪声里）。另：pass^k 下同一 case 的 triage 被重复调 3 次（纯浪费，每轮 336 次）（**frontier — 无阻塞**）
-- [CL-28: `contextPrefetched` 掐掉 grounded 拒绝合成的入口](tickets/CL28-contextprefetched-decline-synthesis-entrypoint.md) — CL-20 收尾毕业：CL-23 合成器的两个入口之一 `'tool_call_emitted'` 依赖模型真的发射 tool-call，而 master 的 `contextPrefetched` 把发射率打到 **0%** → 通道事实上死掉。实测同协议两次全量（运行时 diff 仅一处改名）DELIVERY 全 25 **80.0%→64.0%**、voice 18 **94.4%→72.2%**；已逐 case 排除 CL-20 门禁为原因（触发 0-1/3）。需决策入口判据（扩到「生成重试耗尽」／改看「无可执行 SQL」／条件化 `contextPrefetched`／接受并解释散文拒绝为何变少）。**第一步应把 trace/`declineKind` 落进产物**，否则只能继续推断。与 CL-26 同族（第五例），可能应合并为一张「拒绝通道触发判据」票（**frontier — 无阻塞**）
-- [CL-29: eval 产物被 gitignore → 基线会蒸发](tickets/CL29-eval-artifact-persistence.md) — CL-20 收尾毕业：`eval-results/*.json` 在 `.gitignore:61`，产物只存在于产出它的那台机器的那个 worktree。**实测后果**：README:17 标为 **CURRENT** 的基线 `rebaseline-passk-168-clean`（8 处引用 + `:95` 的"精确复现"指令）**在磁盘上零命中**（8 个 worktree + 全仓 `find`）→ CL-20 收尾被要求的 `compare.ts` 对比**无法执行**，只能改用两个仍存在的同协议 k=1 run。与三条纪律冲突：CLAUDE.md「必须记录」、CL-22「≥3 轮同代码中位数」、「每次必须与基线 compare」。候选：全量入库／只留 `rebaseline-*` 白名单／瘦身（但丢 `generated_sql` 会毁掉形态分析，那正是判定「门禁误伤=0」的手段）／外部存储／接受蒸发并改纪律（**frontier — 无阻塞**）
-- [CL-21: 78% 推进——trim/概念formula/迁移](tickets/CL21-non-enrichment-levers-trim-formula-migration.md) — CL-17 剩余：trim over-enriched 表/大R·回归 formula/迁移真不可答→DELIVERY；目标 overall 78%+（**frontier — 无阻塞**）
-- ~~[CL-22: eval 非确定性深查](tickets/CL22-eval-nondeterminism-deepcheck.md)~~ ✅ — 3 同代码 run 中位数 73.2%（±2.4pp）；70.8% 是异常值（噪声）；dup 清理无需回滚（0/9 lost 使用 回归/回流）；Alias -15pp = LLM 非确定性（26.8% case flip rate）；建议 ≥3 run 取中位数
-- [R11: eval 切换 buildEvalPrompt 实验](tickets/R11-eval-prompt-switch-experiment.md) — CL-19 option (c2)：eval promptBuilder 切换为无 tool-catalog 的 `buildEvalPrompt`，168 case full run 对比；权衡：消除 tool-call 发射 vs 改变评测标的（**frontier — 无阻塞，CL-19 衍生**）
-
-### 运行时/接线可用性（2026-09-03/04 审计毕业）
-- [CB-1: 冷启动 blocker](tickets/CB1-cold-boot-blockers.md) — blocker① 已修(result-cache 改名);blocker② 决策=graceful degrade α(非致命,落地 [CB-1a](tickets/CB1a-cold-boot-stabilization.md));CB-2 设置项推迟;失败隔离评估 [CB-3](tickets/CB3-per-row-fault-isolation.md) 已决→ S2 显式自检先做、per-row 推迟(落地 [CB-1a](tickets/CB1a-cold-boot-stabilization.md))
-- [CB-2: enrichment LLM 配置改为设置项](tickets/CB2-enrichment-llm-as-settings-item.md) — settings key 形状 / 设置 UI 落点 / 未配置语义 / 三处重复 resolver（**frontier — 无阻塞;冷启动仍需 env 直到本票落地**）
-- [CB-3: include 组 per-row 失败隔离（评估）]
-- ~~[CB-4: zod dep 移除致 dsh-api-remotes client bundle 启动失败](tickets/CB4-zod-externals-drift.md)~~ ✅ — [PR #30](https://github.com/McKenzieIT/deepseek-harness-da/pull/30) (2026-09-06). **根因更正**：浏览器 shell module table 只由 `platform.ts` 静态常量（`PLATFORM_MODULES` = react/react-dom/cordis/ui-slots/ui-primitives）填充，**不读任何包 dependencies**；api-remotes bundle 内联 typert 生成 wire schema（引用 `zod.z`），rolldown ESM→CJS interop emit `require("zod")`，shell 无 "zod" → "missed the module table" → 整组失败→按钮消失。票里记的"schema-gateway 加 zod dep、boot 200"是**服务端** boot（与 zod 无关），浏览器端从未被该 dep 修复（bundle 字节级一致）。**真修复**：zod 做成共享 platform module（`platform.ts` PLATFORM_MODULES 加 zod + `seed.ts` getStaticModules 预置 + `packages/client/web` devDep），bundler 经 clientExternals 把 zod 当 external（neverBundle），plugin bundle 的 require("zod") 解析到 shell 共享 zod（zod 有 runtime identity，共享而非每 bundle 内联才对）。实测：api-remotes bundle 232→94KB（zod external），dsh web 浏览器端 api-remotes 插件加载 + 证据 UI 真实数据（Coverage 23 assets/gaps/eval runs）+ B→A auto-flip + DashboardView 有样式；typecheck/knip/verify-client-packages 绿。Q1-Q4 + brief drift 见 ticket Resolution。独立于 CB-3（根因 module-table seeding 非 failure 粒度；CB-3 仍 open，关键提问=失败静默而非粒度）。
-- ~~[CB-1b: pwsh 在 PTY 下不 evaluate 表达式](tickets/CB1b-pwsh-pty-evaluation-bug.md)~~ ✅ 关闭为**上游问题、不在 DA 范围**(2026-09-07)。归属核实:3 个失败测试(`terminal-bash/local.spec.ts` pwsh ×2 + `tool-pwsh-persistent/loader-composition.spec.ts`)与触发它们的 `idleSilenceMs: 300` **全部是上游 dsh 代码**(`upstream/master` 第 288/320 行原样如此)。**根因与原票定性相反**:pwsh 求值正常,是 harness 在 300ms 静默后停止监听 —— `MacProcessInspector.isStdinWaiting()` 在 `process-inspector.ts:342` 硬编码 `return false`(Linux 走 `/proc/<pid>/task/<tid>/syscall`,macOS 无 `/proc`),故 exactProbe→`stdin_read` 在 darwin **结构性不可达**;又因 `handoffGrace = promptSeen ? handoffGraceMs : 0`(`session.ts:459`),pwsh 尚未吐字时 grace=0 → 平直 300ms 后 settle 成 `inferred_idle`。证据:run `34037360903` 报 `Expected "stdin_read" / Received "inferred_idle"`,test 2 的 viewport 只有 echo 且**连随后的 `dsh> ` 都没有**,3 个失败共用同一套 300ms,同 runner 上 bash 用同样知识通过。旁证:上游同文件其它测试已用 `idleSilenceMs: 5_000`/`10_000`,且调大在通过路径上不花时间(路径 1 在 prompt 到达后约一个 pollInterval 即 settle)。**未验证残留**:pwsh 的 OSC `133;D` marker 在 darwin 上能否被检测到 —— 本 fork 无法验证(sandbox.yml 仅 `push: [master]` 无 `workflow_dispatch`;`ci.yml` 的 `serial-macos` 是 `if: false`;`landlock-run.yml` 的 darwin job 不跑单测;本机无 pwsh)。已排除廉价方案:macOS `ps -o wchan=` 返回 `-`(实测),补 darwin `isStdinWaiting` 需原生 `libproc`。
-- [CB-5: DA 的 CI 寄生在上游 workflow 上](tickets/CB5-da-ci-upstream-boundary.md) — **原则(用户裁定 2026-09-07)**:"DA 的 CI 只检查额外增加的非上游内容,不应影响上游"。事实:16 个 workflow **15 个属上游**,DA 自有仅 `no-production-src-on-master.yml` → DA 无自己的腿,每加一个 DA 包都被 `pnpm run test` 拖进上游每条腿(含 macOS seatbelt)。上游 `Unit tests (darwin parity)` 由 `7b8c3a9b40`(2026-07-09,上游作者 kingwl)引入,设计时仓库只有 dsh 包;DA 在 8-20/8-26 加入 `semantic-layer`/`eval-cli`/`code-runtime-data-python`,带来 build:lib:host / 凭据 / pandas 三类上游从不需要的依赖 → 9-06 一天 7 个 `sandbox.yml` commit 结账。Sandbox 全窗口 0 success(9-04→9-06,45 failure/8 cancelled);9-05(任何安装步骤之前)已是 7 failed/993 passed。日志里"大量报错"多为负向测试故意的 stderr 噪音(`entry boom` 等)非失败。**② 已落地**:eval-cli 建隔离 home(顺带修真 bug——`main.ts:245-249` 凭据前置**只看文件不看 `process.env`**,原测试断言的是宿主碰巧状态;`HOME=<空目录>` 本地复现 CI 的 `expected 1 to be +0`,修后同条件 5/5 绿)、pandas 按依赖可用性 gate(在 `env: {}` 下探测以与运行时解析同一解释器;双向实测 23 全跑 / 21+2 skipped)、删掉 sandbox.yml 的 DASHSCOPE + pip 两步。**关键实测**:#36 的 pip 步骤**本来就装错解释器**——运行时 `env: {}` spawn 解析到 `/Applications/Xcode.app/.../python3`,而 pip 装到 PATH 的 `/opt/homebrew/.../python3.13`,故**即使加 `--break-system-packages` 也修不了**,PEP 668 只是先撞上的一层(README Known Limitations 早有记载)。**待决策**:Q1 DA 要不要建自己的 CI 腿 / Q2 `build:lib:host`+4G 归属(它也修上游 `typert/generator`,故未动) / Q3 PR #35 改上游 `ci-workflow.spec.ts` 算不算越界 / Q4 CB-4 的 zod 打破上游 `client-bundle-purity.spec.ts:115`(`neverBundle('zod')` 期望 false,实测 `expected true to be false`)归属（**frontier — 无阻塞**）
-- ~~[W16: evidence-query 客户端 remote 缺口](tickets/W16-evidence-query-client-remote-gap.md)~~ ✅ — [PR #14](https://github.com/McKenzieIT/deepseek-harness-da/pull/14) (2026-09-05). 补 `./remote` 导出 + `api/remotes` 装配 + 真实解析路径测试;**同批须补 DashboardView CSS**(`.tmp/eval-results` 已有 3 个 runId,阈值也是 3 → RPC 一通 auto-flip 立刻触发一个零样式视图)(2026-09-05 浏览器实测:证据面板真实数据 + auto-flip + DashboardView 有样式;2 follow-up:EvalTrajectory data-store + dashboard.title i18n)
-- [W17: 管理 session 客户端桥接](tickets/W17-management-session-client-bridge.md) — 图谱对话闭环唯一断点;**W13 动画需它才可观测**;开为 grilling 因为管理 session 就是普通 session、客户端已有消息流,若成立则 = 接线而非新建 RPC,且 W9/W10 的 presenter 卡片可直接复用（**frontier — 无阻塞**）
-- [W18: evidence-query runs-list/delta data-store 对齐](tickets/W18-evidence-runs-list-data-store.md) — W16 浏览器测试发现:evalRunCount=3(auto-flip)但 runs-list(evalResultQuery)空;trace FileBackedEvalResultStore 的 runs-list/delta store + 对齐 count（**frontier — 无阻塞,W4 域**）
-- [W19: DashboardView i18n keys 缺失](tickets/W19-dashboard-i18n-keys.md) — W16 浏览器测试发现:dashboard.title/goToWorkspace 未翻译(W6d 作者漏加 locale dict key);locales.ts 加两 key（**frontier — 无阻塞,快速修**）
-- ~~[W20: api-remotes built-lib e2e stub 不模拟 shell module table](tickets/W20-api-remotes-e2e-stub-module-table.md)~~ ✅ — [PR #44](https://github.com/McKenzieIT/deepseek-harness-da/pull/44) (2026-09-07). stub 改为复用 `getStaticModules()`（built `packages/client/web/lib/index.js` 导出）作 require table——单一真源,`platform.ts`/`seed.ts` 改了 stub 自动跟;require callback 对 `PLATFORM_MODULES`(incl. zod)返回对应模块、其他 throw。built client/web lib 是 browser artifact(CSS Modules 副作用),plain Node 无 CSS loader → test-only `module.register` load hook 把 `.css` import stub 成空(仅消费 getStaticModules);`packages/client/web/lib/index.js` 加入 `requiredArtifacts`(未 build 时 e2e skip,保 latent-skip 契约)。实测:`build:lib` 后 e2e 1 passed (946ms),big it() 不再 throw `unexpected Client external zod`、跨 `/api` HTTP 走通;typecheck/knip/verify-client-packages 绿。不动 bundler/shell(CB-4 PR #30 已落地);CB-4 红线"不碰 W16 code"不适用(本票 scope 即修 e2e stub)。与 `platform-zod.client.spec.ts`(静态断言)互补=行为回归。
-
-### Enrichment 算法质量
-~~[CL-18: ds 噪声关联修复 + 确定性匹配加固](tickets/CL18-ds-noise-join-fix.md)~~ ✅ — Phase 2 算法加固已落地：substrate `excludeColumns` 参数 + 调用层 `buildExcludeColumns`（`role:partition` 驱动，无 role 回退 `[ds,pt,dt]`）接入 `discoverRelations()` + on-write hook；6 新测试 38/38 scoped 绿
-
-### Eval-driven 版本治理（G6 毕业）
-~~[V1: 审计 structured delta](tickets/V1-audit-structured-delta.md)~~ ✅ — `StructuredDelta` 计算（columns 按 name / dimension_refs 按 dim_table / domains·alt_labels 集合语义 / 顶层直比；strip `confirmation` 噪声）+ 持久化到 audit `extra`（Option A，无 schema 迁移）+ `listDeltasSince` 查询；20 新测试 + 240 semantic-layer 兼容性全绿
-- [V2: eval run changeset 标注](tickets/V2-eval-run-changeset-annotation.md) — eval run 记录携带 since-last-run changeset 元数据（**frontier — 无阻塞（V1 已闭）**）
-- [V3: 细粒度 auto-revert](tickets/V3-fine-grained-auto-revert.md) — 基于 changeset + affected scope 的定向回滚；③-gated（**blocked by V2**）
-
-### Context Layer 对齐（CL 系列）
-- ~~[G7: Context Projection 统一](tickets/G7-context-projection-unification.md)~~ — 关闭为 out of scope（v2+）：生产零消费、无 token 压力、按需投射已存在
-- ~~[R10: Token/Attention/Cache 优化前沿调研](tickets/R10-token-attention-cache-optimization.md)~~ ✅ — 系统 ~1,720-2,665 tokens/call（Jedify 25K 的 7-15 倍效率）；G7 维持 out of scope；P0=prompt caching ~70% 成本节省
+- 第二个生产 schema provider 出现后，多 provider 的优先级和同 engine 冲突策略需要重新形成精确问题；首个 provider 不预设计该机制。
+- Organizational Memory 需要独立 capability owner，至少覆盖跨 session provenance、事实替代和冲突；session goal 不承担该语义。
+- Query-time subagent enrichment 的权限、预算、写回和 evidence 规则尚不足以形成单一 ticket。
+- Prompt caching 仅保留 provider-specific 测量方向；在 provider、消息块接口和 cache telemetry 明确前不创建实现票。
 
 ## Out of scope
 
-- dsh↔RBI 持续同步功能
-- NL2SQL 引擎本身改进
-- Query engine 内部实现
-- Intranet / access isolation
-- Ontology Phase 4（关系图谱可视化 + 基于命名约定的关系自动发现）— 不在本 map 目标架构之内
-- 数据新鲜度监控（依赖 live-ODPS provider，P6b Q3 deferred；G4 Q6 确认出 v1）
-- always-on 自主守护/巡检（goal 非后台守护进程；"打开会话不开工"是有意安全设计；需 scheduler 超出 goal 设计；G4 ③ 边界确认）
-- Context Projection 统一 `project()` 接口（[G7](tickets/G7-context-projection-unification.md) 关闭：`toPromptContext`/`toCriticContext` 生产零消费者，系统已通过 tool call 实现按需投射；[R10](research/r10-token-attention-cache-optimization.md) 确认不需要统一接口——系统 ~1.7K tokens/call，25 倍安全余量）
+- 独立 ontology server、完整 SKOS/OWL 兼容和通用组织知识库。
+- 恢复已删除的 `execute_metric` 或 Level 2.5 确定性 metric 执行路径。
+- 在 semantic-layer 内扩展 legacy eval JSONL、复制 evaluator、定义 Benchmark lifecycle 或保留旧 runner；这些职责属于 Evaluation effort。
+- 在本 map 内修复仓库级 CI、文档 catalog 或测试隔离问题；它们迁到 Repo Infra 或对应 owner。

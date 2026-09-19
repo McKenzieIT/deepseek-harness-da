@@ -1,10 +1,14 @@
 ---
 type: task
-status: open
+status: superseded
 blocked_by: []
 ---
 
 # CL-21: sql-judge 78% 推进——trim/概念formula/迁移（非 enrichment）
+
+## Answer
+
+Retired as a mixed ticket. Retrieval corpus scoping and label trimming move to [CL-31](CL31-retrieval-corpus-scope-and-trimming.md), production concept-formula grounding moves to [CL-32](CL32-concept-formula-production-grounding.md), and legacy benchmark migration belongs to [Evaluation T14](../../evaluation/tickets/T14-data-analysis-extension-pack-migration.md). The former combined acceptance threshold must not be used to close any of those owners.
 
 ## Question
 

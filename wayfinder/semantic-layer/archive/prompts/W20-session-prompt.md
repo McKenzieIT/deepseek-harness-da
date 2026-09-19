@@ -1,6 +1,6 @@
 # W20 — api-remotes e2e stub 模拟 shell module table Session Prompt
 
-> 本文件是下一 session 的完整 prompt。直接粘贴即可开工。规格见 [W20](wayfinder/semantic-layer/tickets/W20-api-remotes-e2e-stub-module-table.md)。
+> 本文件是下一 session 的完整 prompt。直接粘贴即可开工。规格见 [W20](../../tickets/W20-api-remotes-e2e-stub-module-table.md)。
 
 ## 0. 前提（本 session 前已落地）
 
