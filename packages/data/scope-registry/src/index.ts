@@ -172,8 +172,11 @@ export class ScopeRegistryService extends Service {
    */
   active(): ScopeDefinition | undefined {
     const { scopes, activeId } = this.load()
-    if (activeId === undefined) return undefined
-    const def = scopes.get(activeId)
+    // load() reports an activeId only when `scopes` already holds that key (it
+    // gates on `scopes.has(parsed.active)`), so a separate "id set but
+    // definition missing" arm can never run. Folding the lookup into the same
+    // guard keeps the defensive undefined answer without that dead branch.
+    const def = activeId === undefined ? undefined : scopes.get(activeId)
     return def === undefined ? undefined : this.withTenant(def)
   }
 

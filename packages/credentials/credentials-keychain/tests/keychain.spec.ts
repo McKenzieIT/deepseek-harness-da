@@ -3,8 +3,8 @@ import { Context } from '@deepseek-ai/cordis'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import { credentialRef, scopeId, userId } from '@deepseek-ai/dsh-credentials'
-import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
+import { credentialKey, credentialRef, scopeId, userId } from '@deepseek-ai/dsh-credentials'
+import type { CredentialRecord, CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { KeychainCredentialProvider, resolveSpec, securityCli } from '../src/index.ts'
 import type { KeychainFallback, SecurityResult, SecurityRunner } from '../src/index.ts'
 
@@ -100,6 +100,20 @@ function makeFallback(seed: Map<string, string>): KeychainFallback {
     async describe(ref: CredentialRef) {
       return seed.has(ref) ? { configured: true, source: 'fallback', writable: true } : { configured: false, writable: true }
     },
+  }
+}
+
+/**
+ * A read-only fallback plus the optional writable global half (G3c decision A:
+ * the host's file shim over `.credentials.yaml`), so a global set/unset has
+ * somewhere to land. `unset` returns whether a value was actually removed —
+ * the fact the provider gates the global event on.
+ */
+function makeWritableFallback(seed: Map<string, string>): KeychainFallback {
+  return {
+    ...makeFallback(seed),
+    async set(ref: CredentialRef, value: string) { seed.set(ref, value) },
+    async unset(ref: CredentialRef) { return seed.delete(ref) },
   }
 }
 
@@ -415,6 +429,96 @@ describe('per-user CRUD with G3 staged fallback', () => {
     // via `-w`); delete-generic-password's not-found handling already covers
     // absence + TOCTOU, so the find preflight is redundant + leaks the secret.
     expect(fake.findCalls).toBe(0)
+  })
+})
+
+describe('global writes delegate to the writable fallback (G3c decision A)', () => {
+  it('lands a global set in the fallback layer, not in a per-user keychain slot, and fires a global event', async () => {
+    const seed = new Map<string, string>()
+    const fake = new FakeKeychain()
+    const ctx = await boot({ path: '/tmp/dsh-probe.keychain', unlockPassword: 'pw', runner: fake.run, fallback: makeWritableFallback(seed) })
+    const seen = events(ctx)
+
+    await ctx.credentials.set(REF, 'sk-global')
+
+    // The value lands in the writable global layer (the host's .credentials.yaml shim)…
+    expect(seed.get(REF)).toBe('sk-global')
+    expect(await ctx.credentials.resolve(REF)).toEqual({ value: 'sk-global', source: 'fallback' })
+    // …and no per-user slot was written: alice reads the same global value through
+    // the staged fallback, and her own slot still wins once she has one.
+    expect(await ctx.credentials.resolve(REF, { userId: userId('alice') })).toEqual({ value: 'sk-global', source: 'fallback' })
+    await ctx.credentials.set(REF, 'sk-alice', { userId: userId('alice') })
+    expect(await ctx.credentials.resolve(REF, { userId: userId('alice') })).toEqual({ value: 'sk-alice', source: 'keychain' })
+    expect(seed.get(REF)).toBe('sk-global')
+
+    // The global write's event carries no address, so remote clients reload the
+    // global surfaces; the per-user write that followed carries alice's.
+    expect(seen).toEqual([{ ref: REF }, { ref: REF, address: 'alice' }])
+    // Writability now reflects reality: a global set would succeed.
+    expect(await ctx.credentials.describe(REF)).toEqual({ configured: true, source: 'fallback', writable: true })
+  })
+
+  it('notifies a global unset only when the fallback actually removed a value', async () => {
+    const seed = new Map<string, string>([[REF, 'sk-global']])
+    const fake = new FakeKeychain()
+    // A global unset must never reach the keychain: a keychain delete would fault here.
+    fake.deleteOutcome = { ok: false, stderr: 'delete must not be reached by a global unset', exitCode: 1 }
+    const ctx = await boot({ path: '/tmp/dsh-probe.keychain', unlockPassword: 'pw', runner: fake.run, fallback: makeWritableFallback(seed) })
+    const seen = events(ctx)
+
+    await ctx.credentials.unset(REF)
+    expect(seed.has(REF)).toBe(false)
+    expect(await ctx.credentials.resolve(REF)).toBeUndefined()
+    expect(seen).toEqual([{ ref: REF }])
+
+    // Unsetting the now-absent global slot removes nothing → silent no-op, no second event.
+    await expect(ctx.credentials.unset(REF)).resolves.toBeUndefined()
+    expect(seen).toEqual([{ ref: REF }])
+  })
+
+  it('keeps a global set rejected and a global unset silent when the fallback is read-only', async () => {
+    const seed = new Map<string, string>([[REF, 'sk-global']])
+    const fake = new FakeKeychain()
+    // makeFallback has no set/unset: the global layer is read-only here.
+    const ctx = await boot({ path: '/tmp/dsh-probe.keychain', unlockPassword: 'pw', runner: fake.run, fallback: makeFallback(seed) })
+    const seen = events(ctx)
+
+    await expect(ctx.credentials.set(REF, 'sk-new')).rejects.toThrow(/provide a writable fallback for global sets/)
+    await expect(ctx.credentials.unset(REF)).resolves.toBeUndefined()
+    // Neither write touched the read-only layer, and neither emitted.
+    expect(seed.get(REF)).toBe('sk-global')
+    expect(seen).toEqual([])
+  })
+})
+
+describe('record management is unsupported (the keychain is a ref-only PAT store)', () => {
+  const KEY = credentialKey('qoder', 'oauth')
+
+  it('reports every record slot absent and unwritable, and enumerates none', async () => {
+    const fake = new FakeKeychain()
+    const ctx = await boot({ path: '/tmp/dsh-probe.keychain', unlockPassword: 'pw', runner: fake.run })
+    expect(await ctx.credentials.readRecord(KEY)).toBeUndefined()
+    // writable: false is what routes a configuration surface's record writes to
+    // the document-backed provider instead of here.
+    expect(await ctx.credentials.describeRecord(KEY)).toEqual({ configured: false, writable: false })
+    expect(await ctx.credentials.listRecords()).toEqual([])
+  })
+
+  it('refuses a record modification before running the mutator, so no rotation can look landed', async () => {
+    const fake = new FakeKeychain()
+    const ctx = await boot({ path: '/tmp/dsh-probe.keychain', unlockPassword: 'pw', runner: fake.run })
+    let mutateCalls = 0
+    const mutate = async (): Promise<CredentialRecord> => {
+      mutateCalls++
+      return { kind: 'grant', payload: { refreshToken: 'rt-1' } }
+    }
+    await expect(ctx.credentials.modifyRecord(KEY, mutate)).rejects.toThrow(/record modification is not supported/)
+    // The read-modify-write never began: a caller cannot believe its rotation committed.
+    expect(mutateCalls).toBe(0)
+    // The record half stays empty and a delete of an absent record is a no-op.
+    expect(await ctx.credentials.readRecord(KEY)).toBeUndefined()
+    await expect(ctx.credentials.deleteRecord(KEY)).resolves.toBeUndefined()
+    expect(await ctx.credentials.listRecords()).toEqual([])
   })
 })
 

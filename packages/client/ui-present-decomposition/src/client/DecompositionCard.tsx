@@ -28,6 +28,10 @@ function isLatestTurn(block: ToolCallBlock, snapshot: ConversationSnapshot): boo
  *  from the render pipeline does not surface as a blank fallback line.
  *  Re-homed from the decommissioned dsh-client-runtime cards helper. */
 function blockText(block: ToolCallBlock): string {
+  /* v8 ignore next 1 -- unreachable: blockText is module-private and both call
+     sites (FallbackContent, ErrorState) only render below DecompositionCard's
+     own `if (!('kind' in block)) return <RunningState />` guard, so their
+     `ToolCallBlock & { kind: 'tool-result' }` prop always carries `kind`. */
   if (!('kind' in block)) return ''
   return (block.content as readonly { text?: string }[]).map(c => c.text ?? '').join('\n').trim()
 }

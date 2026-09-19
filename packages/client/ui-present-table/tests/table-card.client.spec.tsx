@@ -313,6 +313,22 @@ describe('TableCard states', () => {
     expect(container.querySelector('pre')!.textContent).toBe('text fallback')
   })
 
+  it('renders expired banner when the snapshot carries no chat view at all', () => {
+    // The query_data scan reads the chat view's legacy node list, so a snapshot
+    // taken before ui-chat's view is registered resolves views.get('chat') to
+    // undefined. The card must degrade to the expired text fallback (no rows to
+    // bind) rather than crash while reaching for that view's nodes.
+    const useConversation = <T,>(selector: (s: ConversationSnapshot) => T): T =>
+      selector({ views: { get: () => undefined } } as unknown as ConversationSnapshot)
+    const block = makeSettledBlock(VALID_ARGS, 'text fallback')
+    const { getByText, container, queryByRole } = render(
+      <TableCard block={block} useConversation={useConversation} t={t} />,
+    )
+    expect(getByText(zh.expired)).toBeDefined()
+    expect(container.querySelector('pre')!.textContent).toBe('text fallback')
+    expect(queryByRole('table')).toBeNull()
+  })
+
   it('renders mismatch banner when result_ids never match', () => {
     const block = makeSettledBlock(
       JSON.stringify({ result_id: 'qr_other', title: '别的结果' }), 'text fallback', 10,
@@ -1187,6 +1203,14 @@ const ENTRY_TRUNCATED = {
   metadata: { truncated: true, row_count: 60 },
 }
 
+/** An entry whose cells are structured values (a JSON object column and an
+ *  array column) — engines return those for JSON/STRUCT/ARRAY columns. */
+const ENTRY_STRUCTURED_CELLS = {
+  columns: ['payload', 'tags'],
+  rows: [[{ region: 'CN', ok: true }, ['a', 'b']]],
+  metadata: { row_count: 1 },
+}
+
 describe('TableCard fetchResult wiring', () => {
   it('renders full rows from fetchResult when it resolves (primary over TSV scan)', async () => {
     const fetchResult = vi.fn().mockResolvedValue(ENTRY_FULL)
@@ -1342,6 +1366,19 @@ describe('TableCard fetchResult wiring', () => {
     // become empty strings (no crash, no "null" text).
     expect(await findByText('z')).toBeDefined()
     expect(await findByText('42')).toBeDefined()
+  })
+
+  it('serializes structured result-store cells as JSON text', async () => {
+    const fetchResult = vi.fn().mockResolvedValue(ENTRY_STRUCTURED_CELLS)
+    const block = makeSettledBlock(JSON.stringify({ result_id: 'qr_test01', title: '结构化单元' }))
+    const { findByText, queryByText } = render(
+      <TableCard block={block} useConversation={makeUseSession([{ seq: 5, text: REAL_TSV }])} fetchResult={fetchResult} t={t} />,
+    )
+    // A JSON/STRUCT/ARRAY cell keeps its content readable in the table instead
+    // of stringifying to "[object Object]".
+    expect(await findByText('{"region":"CN","ok":true}')).toBeDefined()
+    expect(await findByText('["a","b"]')).toBeDefined()
+    expect(queryByText('[object Object]')).toBeNull()
   })
 
   it('honors entry metadata.truncated + row_count (shown / total)', async () => {

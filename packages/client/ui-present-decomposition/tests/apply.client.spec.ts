@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-present-decomposition/client'
+import { apply as hostApply } from '../src/index.ts'
 
 interface StoredEntry {
   options: { key?: string }
@@ -70,5 +71,22 @@ describe('ui-present-decomposition apply', () => {
     expect(slots.entries('tool.call.toolview').find(e => e.options.key === 'present_decomposition')).toBeDefined()
     await fiber.dispose()
     expect(slots.entries('tool.call.toolview').find(e => e.options.key === 'present_decomposition')).toBeUndefined()
+  })
+})
+
+describe('ui-present-decomposition Host entry', () => {
+  it('loads onto a Host tree as an inert plugin that contributes no service', async () => {
+    // The query-understanding card is browser-only: the toolview slot entry and
+    // the present.decomposition dictionaries are contributed by the ./client
+    // half. The root (Host/Node) entry exists purely so the package composes
+    // into a Host tree — loading it must leave that tree without the client
+    // half's services, and tearing it down must not fail.
+    const ctx = new Context()
+    const fiber = ctx.plugin({ apply: hostApply })
+    await fiber.await()
+    expect(ctx.get('slots')).toBeUndefined()
+    expect(ctx.get('locale')).toBeUndefined()
+    await fiber.dispose()
+    expect(ctx.get('slots')).toBeUndefined()
   })
 })
