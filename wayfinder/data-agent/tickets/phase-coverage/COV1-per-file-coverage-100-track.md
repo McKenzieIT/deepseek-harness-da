@@ -184,3 +184,68 @@ sed -E 's#^packages/([^/]+/[^/]+)/.*#\1#' /tmp/cur.loc | sort | uniq -c | sort -
 ### 本批暴露的一处 brief 缺陷（我自己的）
 
 派给 `tool-discover-alt-labels` 的 brief 写「`presentResult` 与 `execute` 都不在清单里（＝已覆盖），不要重测」，**这是错的**：清单里确实有 7 处落在这两个函数内部（`171:7`、`172:9`、`190:7`、`190:27`、`192:53`、`192:58`、`196:60`），只不过「uncovered **function**」那类条目里没有它们。agent 正确地以逐条清单为准、而非以我的 brief 为准。**教训：给 agent 划范围时，只能拿逐条 `file:line:col` 清单当权威，不能拿「未覆盖函数名」这个摘要去反推「整个函数已覆盖」。** 函数入口被覆盖 ≠ 函数内部所有臂都被覆盖。
+
+---
+
+## 追加：batch 3（2026-09-20，C 档四包 / 322 处，家族收尾）
+
+C 档是零散残余 —— 这些包的函数入口都已被覆盖，剩下的是分支边缘。**没有重建骨架、没有重测已覆盖主路径**，纯逐位置补。唯一例外是 `tool-scope-routing`：它的 `list-scopes.ts` / `switch-scope.ts` / `aliases.ts` 三个文件**零覆盖**（A 档），各建了一个新 spec；`scope-hint.ts` 的 27 处是 C 档，追加到现有 spec。
+
+| 包 | 位置 | 性质 |
+| --- | --- | --- |
+| `tool-scope-routing` | 139 | A 档 112（3 个零覆盖文件各建 spec）+ C 档 27（scope-hint 追加） |
+| `tool-search-data-sources` | 141 | C 档（家族里测得最好的，S1–S21 已覆盖主路径，补 residue） |
+| `tool-resolve-term` | 22 | C 档（所有函数入口已覆盖，纯分支边缘） |
+| `tool-load-table-definition` | 20 | C 档（同上） |
+
+本机合并验收（16 包一起跑）：**13 spec / 398 测试全绿**、全 100/100/100/100、`Uncovered locations` 0 行、阈值 ERROR 0 条。oxlint 四包各 0/0；`tsc -b tsconfig.host.json` exit 0。预期 CI：5633 → **5311**（待裁决）。
+
+### 本批首次出现「agent 中途因 API 配额耗尽而死」
+
+派出的 4 个 agent 里，**两个最大的（scope-routing 139、search-data-sources 141）在写完测试、复原 src 后、于后续 API 调用时因 402 配额耗尽而死**。但它们的工作产物已落盘：
+- scope-routing 的 JSON 回执（9186 字节）完整写出了 —— 3 处 `v8 ignore` 每处带控制流证明 + 变异控制 + 负控，还诚实 flag 了 3 处"已执行但不可观测"的位置 + 1 个超范围 spec（plugin.spec.ts）。
+- search-data-sources 的 JSON **没写出来**（死在写回执之前）—— 7 处 `v8 ignore` 没有任何 agent 证明。
+
+主进程因此**逐条独立从源码核实了全部 10 处 `v8 ignore` 的不可达性**，不采信死前 agent 的断言：
+
+- **5 处铁证**（search-data-sources 的 medianBm25 / medianBm25Norm 的 `?? fallback` ×2，ids/path 的 `undefined` 守卫 ×3）：前提是 `SearchHit.score` 为 required `number`（已验 :80）+ `Math.floor(len/2) < len` 对 `len>=1` 成立 + `findJoinPath` 返回 `string[]|null`（已验 :240，null/len<2 已过滤）。运行时不可达。
+- **2 处防御守卫**（search-data-sources 的 re-throw :720、join_constraints spread :777）：re-throw 依赖 expandQuery 的 catch（expand-query.ts:124）**无条件吞所有非 wiring 错误 return question**（已验源码），唯一传播的是 try 之前的 `resolveEnrichmentLlmConfig` wiring 错误，已被上面 arm 处理；join_constraints spread 依赖 SemanticLayerService 同时实现 `getRelationGraph`（semantic-layer/src/index.ts:435）和 `loadRetrievalCorpus`（:91），故"graph 在但 corpus 缺"不可能共存。合理不可达（依赖 Cordis `ctx.get` 不抛 + 唯一 schema provider 的事实，非铁证，但理由清晰且是防御守卫）。
+- **3 处**（scope-routing 的 isCjk `?? 0`、buildScopeAwarenessSection 的 length 臂、buildAliasHint 的 `: id` 回退）：回执有详细证明，前提（`for..of` 不 yield undefined、sole caller 的 `<=1` 守卫、同源 `scopes.list`）可从源码推。
+
+### 主进程的变异抽查
+
+因 agent 已死、变异校验是自报，主进程做了端到端变异抽查：改 `tool-scope-routing/src/list-scopes.ts` 的 `extractName`（`? name : id` → `? id : id`），**2 个用例变红**，证明新测试断言真实行为而非形状。复原后 `git diff` 干净。
+
+### 一条本批暴露的方法论
+
+C 档最容易遇到「不可达防御臂」。**正确处置是 `v8 ignore` + 写明理由，不是用 mock 伪造依赖的契约去强行走到。** 本批 10 处 ignore 全部按此处置。但有一处 agent（search-data-sources）在死前**没有写回执证明**，主进程靠独立核实补上了这一步 —— 这是额度耗尽时的必要补救，正常情况应让 agent 自己在回执里给出证明。
+
+### 家族收尾账
+
+| 批 | 包 | 位置 | CI 实测 |
+| --- | --- | --- | --- |
+| batch 1（A） | 4 | 467 | 6674 → **6197** ✓ |
+| batch 2（B） | 8 | 564 | 6197 → 5633（待裁决） |
+| batch 3（C） | 4 | 322 | 5633 → 5311（待裁决） |
+| **合计** | **16** | **1353** | **20.3% of 6674** |
+
+家族 16/16 全清。`v8 ignore` 共 **14 处**（batch 2 的 4 + batch 3 的 10），每处不可达性均从源码核实。**家族清完后，coverage 轨道需重新拍板口径**（见下）。
+
+## 家族清完后的口径决策（待用户，下一棒）
+
+1353 处清完，剩余约 **5311 处 / 30 包**。分布：
+
+| 包 | 位置 | 占比 |
+| --- | --- | --- |
+| `eval/eval-cli` | 1499 | 22.5%（之前核实：并不比尾部 30 包加起来多，1692 > 1499） |
+| `client/ui-context-layer` | 648 | 9.7% |
+| `client/ui-semantic-layer` | 459 | 6.9%（**另一 session 在改**） |
+| `data/semantic-layer` | 417 | 6.2% |
+| `data/admin` | 306 | 4.6% |
+
+三条路：
+1. **啃 `eval-cli` 1499**：单包最大，但 CLI 形态、无 harness 复用。
+2. **清包数（尾部优先）**：最小 14 包约 250 处，包数掉得快、位置几乎不动。
+3. **第二家族**：找另一组形态同构的包（如 `eval/eval-*` 一族 4 包 1837 处？或 `data/semantic-layer` + `admin` + `nl2sql-engine` 一组）。
+
+这条不定，下一棒没有排序依据。

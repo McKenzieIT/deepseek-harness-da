@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write wayfinder/data-agent/tickets/README.md
-README.md: 7cadc203b3ab41de4628fa0fbb109ab565d6cbb8
-README.zh.md: 125bc4457e10ae5f4e94098a92727039c93ccc88
+README.md: e0b6cb8a305b944c2e06aca50df35d584da6a34a
+README.zh.md: 5305a4503a34b540e3cd66186892b8997b657228

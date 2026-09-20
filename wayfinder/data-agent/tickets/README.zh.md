@@ -59,7 +59,7 @@
 ## phase-coverage（逐文件 100% 覆盖率门 —— 长期执行轨道）
 > 2026-09-20 从 [UM18](phase-upstream-merge/UM18-post-0d1f50007f-residual-red-gates.md) 毕业：上游合并部分已无残余（behind 0 / owed 0 / consistent），唯一残余项 coverage 是数千处位置、数百 PR 的长期工程，量级上不属于一个同步专项，故剥离独立成轨、UM18 同步关票。**注意 `UM18` 是复用过的编号** —— map 里 2026-09-15 那条「UM18 → 归位为 B-DA7」指的是另一张更早的票，不是本轨道的起点账本。
 
-- [COV1 逐文件 100% 覆盖率门：da 自有包的长期收口轨道](phase-coverage/COV1-per-file-coverage-100-track.md) — task, **open**（排序口径＝`data/tool-*` 家族 16 包 / 1353 处 / 占 20.3%，两个指标同时动且一套契约 harness 复用 16 次；三档分治：A 从零建套件 / B 只补契约外壳不重测已覆盖逻辑 / C 逐位置。batch 1（A 档 4 包 / 467 处）已 CI 实测 6674 → **6197**、46 → 42 包、零回归；batch 2（B 档 8 包 / 564 处）本机已验（398 测试 / 12 包全 100%），两批同在 PR [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)；**家族剩余 4 包 / 322 处**。票内含 8 条测量陷阱清单，动手前必读）
+- [COV1 逐文件 100% 覆盖率门：da 自有包的长期收口轨道](phase-coverage/COV1-per-file-coverage-100-track.md) — task, **open**（排序口径＝`data/tool-*` 家族 16 包 / 1353 处 / 占 20.3%，两个指标同时动且一套契约 harness 复用 16 次；三档分治：A 从零建套件 / B 只补契约外壳不重测已覆盖逻辑 / C 逐位置。家族 16/16 包已全部提交至 PR [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)：batch 1（A 档 4 包 / 467 处）已 CI 实测 6674 → **6197**；batch 2（B 档 8 包 / 564 处）+ batch 3（C 档 4 包 / 322 处）本机已验（16 包合并 13 spec / 398 测试 / 全 100% / 0 uncovered），CI 待裁决。**家族 1353/1353 全清**（含 10 处 `v8 ignore`，不可达性逐条从源码核实）。家族清完后，下一棒需重新拍板口径：啃 `eval-cli`（1499）还是转向清包数。票内含 8 条测量陷阱清单，动手前必读）
 
 ## phase-misc（cross-phase / 低优先）
 - [G1 Pipeline vs goal/todo](phase-misc/G1-pipeline-vs-goal-todo.md) — grilling, **resolved**（2026-08-20；实验设计 11 决策定稿——2×2 变体×2 模型配置 staged、execution-match 三分判分+决策规则；设计(不跑)→毕业 G1b 执行票）
