@@ -171,3 +171,115 @@ test('resolve_term (5c) without scopeId → getRelationGraph receives undefined 
   expect(getRelationGraphCalls.length).toBe(1)
   expect(getRelationGraphCalls[0]).toBe(undefined)
 })
+
+// --- Coverage: output.render text projection + execute relation-shape arms ---
+
+/** One rendered Native content block. */
+interface RenderedBlock { readonly type: string; readonly text: string }
+
+/** Canonical output value handed to `output.render`, per the tool's output schema. */
+interface RenderValue {
+  term: string
+  matched: boolean
+  nodes: {
+    id: string
+    aliases: string[]
+    relations: { targetId: string; type: string; on?: string; description?: string }[]
+  }[]
+}
+
+/** The `output.render` face of the same def `registerTool` returns. */
+interface RenderableToolDef {
+  readonly output: {
+    readonly render: (args: { term: string }, value: RenderValue) => RenderedBlock[]
+  }
+}
+
+/** A graph edge carrying `description`; the fixture threads unknown edge fields through as-is. */
+interface GraphEdgeWithDescription { targetId: string; type: string; on?: string; description?: string }
+
+function registerRenderableTool(): RenderableToolDef {
+  return registerTool(undefined) as unknown as RenderableToolDef
+}
+
+test('resolve_term render — unmatched value renders only the not-found line', () => {
+  const tool = registerRenderableTool()
+  const blocks = tool.output.render({ term: '不存在的术语' }, { term: '不存在的术语', matched: false, nodes: [] })
+  expect(blocks).toEqual([{ type: 'text', text: '未找到匹配 "不存在的术语" 的数据资产。' }])
+})
+
+test('resolve_term render — matched node renders id, alias list and relation list', () => {
+  const tool = registerRenderableTool()
+  const blocks = tool.output.render({ term: 'DAU' }, {
+    term: 'DAU',
+    matched: true,
+    nodes: [{
+      id: 'dws_active_user_di',
+      aliases: ['DAU', '日活'],
+      relations: [
+        { targetId: 'dim_user', type: 'joins', on: 'role_id = role_id' },
+        { targetId: 'ads_dau_1d', type: 'derives' },
+      ],
+    }],
+  })
+  expect(blocks).toEqual([{
+    type: 'text',
+    text: [
+      '"DAU" 解析到 1 个数据资产：',
+      '  • dws_active_user_di',
+      '    别名: DAU, 日活',
+      '    关联: joins→dim_user, derives→ads_dau_1d',
+    ].join('\n'),
+  }])
+})
+
+test('resolve_term render — matched node with no aliases and no relations renders only its id', () => {
+  const tool = registerRenderableTool()
+  const blocks = tool.output.render({ term: '孤立表' }, {
+    term: '孤立表',
+    matched: true,
+    nodes: [{ id: 'ods_orphan_df', aliases: [], relations: [] }],
+  })
+  expect(blocks).toEqual([{
+    type: 'text',
+    text: ['"孤立表" 解析到 1 个数据资产：', '  • ods_orphan_df'].join('\n'),
+  }])
+})
+
+test('resolve_term render — every matched node is listed in order under the node count', () => {
+  const tool = registerRenderableTool()
+  const blocks = tool.output.render({ term: '付费用户' }, {
+    term: '付费用户',
+    matched: true,
+    nodes: [
+      { id: 'dws_pay_user_di', aliases: ['付费用户'], relations: [] },
+      { id: 'role.paid', aliases: [], relations: [{ targetId: 'dim_user', type: 'joins' }] },
+    ],
+  })
+  expect(blocks).toEqual([{
+    type: 'text',
+    text: [
+      '"付费用户" 解析到 2 个数据资产：',
+      '  • dws_pay_user_di',
+      '    别名: 付费用户',
+      '  • role.paid',
+      '    关联: joins→dim_user',
+    ].join('\n'),
+  }])
+})
+
+test('resolve_term — relation without `on` but with `description` omits on and keeps description', async () => {
+  const relations: GraphEdgeWithDescription[] = [
+    { targetId: 'dim_item', type: 'annotates', description: '按商品维度关联' },
+  ]
+  const graph = createMockGraph([{ nodeId: 'dws_pay_order_di', aliases: ['GMV'], relations }])
+  const tool = registerTool({ getRelationGraph: () => graph })
+  const result = await tool.execute({ term: 'GMV' }, { signal: new AbortController().signal })
+  expect(result.matched).toBe(true)
+  expect(result.nodes).toHaveLength(1)
+  const edge = result.nodes[0]!.relations[0]! as GraphEdgeWithDescription
+  expect(Object.keys(edge)).toEqual(['targetId', 'type', 'description'])
+  expect(edge.targetId).toBe('dim_item')
+  expect(edge.type).toBe('annotates')
+  expect(edge.description).toBe('按商品维度关联')
+})
