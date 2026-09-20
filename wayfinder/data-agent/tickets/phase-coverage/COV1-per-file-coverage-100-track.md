@@ -249,3 +249,17 @@ C 档最容易遇到「不可达防御臂」。**正确处置是 `v8 ignore` + �
 3. **第二家族**：找另一组形态同构的包（如 `eval/eval-*` 一族 4 包 1837 处？或 `data/semantic-layer` + `admin` + `nl2sql-engine` 一组）。
 
 这条不定，下一棒没有排序依据。
+
+---
+
+## 归属核实（2026-09-20，回答"da 该不该管这 6000+ 处"）
+
+**问：这 6674 处是给上游 dsh 补测试，还是给 da 自己的东西补？**
+
+**答：全是 da 自有。** 对 46 个有未覆盖位置的包逐个判：在 merge-base `0d1f50007f`（UM18 §1.1 指定的归属基线）下 `git ls-tree` —— **46 个包在该基线时一个都不存在**，全部是 fork 在合并之后新建的生产包。零处落在上游 dsh 产品代码上。准则"绝不修改上游产品代码"未被违反，也无需为上游补任何测试。
+
+这与建设历史一致：[P1](../phase-0/P1-data-agent-scaffold.md)–[P13b](../phase-3/P13b-nl2sql-engine-prod-hardening.md) 系列 prototype 票反复写「真 packages/data/xxx 落地」「生产 packages/eval/xxx」「生产 packages/query/xxx」—— da 在 fork 里**从零新建了一整套数据代理能力**（语义层、NL2SQL 引擎、查询引擎、检索/向量化、审计、admin、credentials、eval、十几个 model-facing tool 包、client UI 层、code-runtime 等），规模上与上游 dsh 这个 harness 本体相当甚至更重。
+
+**为什么会有这么大的测试债？** 建设模式是 prototype-driven：每张 P 票先验可行性（prototype + 几个场景绿）再落生产包，**重功能验证、轻逐文件覆盖**。少数包从一开始就带 100% 覆盖（如 [P11b](../phase-4/P11b-eval-harness-hardening.md) 「201 tests + coverage 100%」），但大多数包是「prototype 落地 + 后续补覆盖」的模式，后续补覆盖这步一直没系统做 —— 直到覆盖率门把它们全暴露出来。
+
+**所以"数百 PR 的长期工程"这个规模判断成立且诚实**：它是 da 自有代码的测试债，不是上游债，也不是规模误判。6674 处对应的是 da 在 fork 里建的那一整套产品，补完它们 = 给 da 自己的产品补齐测试。这个量级反映的是 da 建设速度远快于补测速度 —— 是 fork 的选择，不是上游的负担。
