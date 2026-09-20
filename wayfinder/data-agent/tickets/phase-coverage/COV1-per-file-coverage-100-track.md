@@ -67,6 +67,7 @@ harness 模板从 `packages/data/tool-search-data-sources/tests/search-data-sour
 | （前史）batch-3 | [#173](https://github.com/McKenzieIT/deepseek-harness-da/pull/173) | 10 包 / 72 处 | 6746 → 6674 | |
 | （前史）平台互补 | [#174](https://github.com/McKenzieIT/deepseek-harness-da/pull/174) | 1 处 | 6674 → 6673 | 见下「第三类位置」 |
 | tool-family batch 1 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175) | 4 包 / 467 处 | 6674 → **6197**（−477，零回归） | A 档；含替换一处假测试 |
+| tool-family batch 2+3 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)（同 PR，已合并 `778ce34934`） | 12 包 / 886 处 | 6197 → **5310**（消失 886 unique、新增 0，零回归；含 `nl2sql-engine` +1 附带） | B 档 8 + C 档 4；家族 16/16 全清 |
 
 ## 家族剩余（batch 1 之后）
 
@@ -169,7 +170,7 @@ sed -E 's#^packages/([^/]+/[^/]+)/.*#\1#' /tmp/cur.loc | sort | uniq -c | sort -
 | `tool-reachability-delta` | 33 | `presentCall` / `presentResult` |
 | `tool-update-table-config` | 27 | `presentCall` / `presentResult` |
 
-本机合并验收（12 包一起跑）：**13 spec / 398 测试全绿**、`Uncovered locations` 0 行、阈值 ERROR 0 条、12 个 `index.ts` 全 100/100/100/100 且非 `0/0/0/0`。oxlint 八包各 0/0；`tsc -b tsconfig.host.json` exit 0。预期 CI：6197 → **5633**（待裁决）。
+本机合并验收（12 包一起跑）：**13 spec / 398 测试全绿**、`Uncovered locations` 0 行、阈值 ERROR 0 条、12 个 `index.ts` 全 100/100/100/100 且非 `0/0/0/0`。oxlint 八包各 0/0；`tsc -b tsconfig.host.json` exit 0。预期 CI（batch 2 单独）6197 → 5633；因与 batch 3 同 PR head，CI 只测组合值（见下「家族收尾账」，Round 49 已裁决）。
 
 **现有用例一律未改** —— batch 2 是纯 append（外加加宽的 import 行）。
 
@@ -198,7 +199,7 @@ C 档是零散残余 —— 这些包的函数入口都已被覆盖，剩下的�
 | `tool-resolve-term` | 22 | C 档（所有函数入口已覆盖，纯分支边缘） |
 | `tool-load-table-definition` | 20 | C 档（同上） |
 
-本机合并验收（16 包一起跑）：**13 spec / 398 测试全绿**、全 100/100/100/100、`Uncovered locations` 0 行、阈值 ERROR 0 条。oxlint 四包各 0/0；`tsc -b tsconfig.host.json` exit 0。预期 CI：5633 → **5311**（待裁决）。
+本机合并验收（16 包一起跑）：**13 spec / 398 测试全绿**、全 100/100/100/100、`Uncovered locations` 0 行、阈值 ERROR 0 条。oxlint 四包各 0/0；`tsc -b tsconfig.host.json` exit 0。预期 CI（batch 3 单独）5633 → 5311；组合 CI 实测见下「家族收尾账」（Round 49 已裁决）。
 
 ### 本批首次出现「agent 中途因 API 配额耗尽而死」
 
@@ -225,13 +226,12 @@ C 档最容易遇到「不可达防御臂」。**正确处置是 `v8 ignore` + �
 | 批 | 包 | 位置 | CI 实测 |
 | --- | --- | --- | --- |
 | batch 1（A） | 4 | 467 | 6674 → **6197** ✓ |
-| batch 2（B） | 8 | 564 | 6197 → 5633（待裁决） |
-| batch 3（C） | 4 | 322 | 5633 → 5311（待裁决） |
+| batch 2+3（B+C） | 12 | 886 | 6197 → **5310** ✓（Round 49 逐条 diff：消失 886、新增 0；家族 16 包全 0 命中；+1 `nl2sql-engine` 附带，故 5311→5310） |
 | **合计** | **16** | **1353** | **20.3% of 6674** |
 
-家族 16/16 全清。`v8 ignore` 共 **14 处**（batch 2 的 4 + batch 3 的 10），每处不可达性均从源码核实。**家族清完后，coverage 轨道需重新拍板口径**（见下）。
+家族 16/16 全清且 **CI 已裁决**（batch 2+3 同 PR head，CI 只测组合值 6197→5310，Round 49 逐条 diff 零回归）。**PR #175 已合并**（2026-09-20，master → `778ce34934`，merge commit）。`v8 ignore` 共 **14 处**（batch 2 的 4 + batch 3 的 10），每处不可达性均从源码核实。**家族清完后 coverage 轨道口径已重新拍板**（见下）。
 
-## 家族清完后的口径决策（待用户，下一棒）
+## 家族清完后的口径决策（用户 2026-09-20 拍板：A —— 啃 eval-cli）
 
 1353 处清完，剩余约 **5311 处 / 30 包**。分布：
 
@@ -248,7 +248,15 @@ C 档最容易遇到「不可达防御臂」。**正确处置是 `v8 ignore` + �
 2. **清包数（尾部优先）**：最小 14 包约 250 处，包数掉得快、位置几乎不动。
 3. **第二家族**：找另一组形态同构的包（如 `eval/eval-*` 一族 4 包 1837 处？或 `data/semantic-layer` + `admin` + `nl2sql-engine` 一组）。
 
-这条不定，下一棒没有排序依据。
+**用户 2026-09-20（Round 49）拍板：走 A（啃 `eval/eval-cli`）。**
+
+- **C（第二家族）已机械核实否决**：剩余 30 包里没有与 `data/tool-*` 同规模的同构家族。大债全在大的多文件包（eval-cli 8 文件、`client/ui-context-layer` 15、`client/ui-semantic-layer` 21、`data/semantic-layer` 12、`data/nl2sql-engine` 14）。真正同形状的只有两小组：`query/*`（3 包 268 处，且 query-maxcompute 多文件）、`embedder/*`（2 包 72 处）——复用红利远不及家族，不足以撑一条 C 轨。
+- **B（清包数）否决**：位置几乎不动（本票测量陷阱 §1：包数是误导性指标，曾致 40× 误判）。
+- **A 选定理由**：eval-cli 1498 处 = 剩余 5310 的 28%，是门真正在乎的「位置」上唯一有分量的单目标。代价：CLI 形态、8 文件、无 harness 复用，须当独立多-session 子轨（像家族一样分批推进）。
+
+### eval-cli 子轨种子（下一棒起点）
+
+eval-cli 1498 处散在 **8 个 src 文件**（非单文件，与家族不同）。下一棒开工：① 先确认 API 额度（Round 48 两个 agent 死于 402）；② 用上文「重建逐包目标清单」命令抓 master 最新 PR 的 Windows job，按文件切分 1498 处；③ 因是 CLI（参数解析 / 子命令 / 输出格式化），逐文件建套件、无共享 harness 复用。
 
 ---
 
