@@ -1,6 +1,6 @@
 # plugin_manager 采用设计 —— da 要不要让模型能跨 session 持久改插件清单
 
-**Type**: grilling（HITL —— 权限边界是人的判断题，agent 不得自答） · **Status**: open · **Phase**: misc
+**Type**: grilling（HITL —— 权限边界是人的判断题，agent 不得自答） · **Status**: resolved（设计 2026-09-20 拍板，实现待排） · **Phase**: misc
 **Assignee**: unclaimed
 **Blocked by**: nothing
 **Serves**: 在不让模型获得「跨 session 持久自我扩张」这一未受约束能力的前提下，定出 da 采用上游 `plugin_manager` 的形态
@@ -38,6 +38,27 @@ da 的 bundle patch 从未启用它（只有 `cordis` creator preset 挂了）�
    - 判据参照 [B-DA7](B-DA7-phase-gate-infrastructure-failure-terminal-state.md) 的教训：**只写 `ctx.logger` 的决策在 transcript 里不可见，会误导诊断**。插件清单变更比那个更该留痕 —— 它跨 session 生效，事后回溯时如果查不到「谁在哪一轮装了什么」，就没法判断一个异常行为是代码问题还是模型自己改了清单。
 4. **与 da bundle patch 的接入点**：具体在哪个文件、哪一行挂？挂了之后 `verify-cordis-config` / boot manifest 的既有计数会变，要不要同步基线？
 5. **回退路径**：装错/装了恶意插件之后怎么回到干净态？`remove` 够不够，还是需要一个「重置为 bundle 声明的清单」的动作？
+
+## 决策记录（2026-09-20，用户逐项拍板）
+
+**核过源码的机制底牌（驱动以下决策）**：plugin_manager 的 6 个动作（含只读 `list_plugins`/`list_bundles`）**全部**要 `danger-full-access`——`packages/boot/plugin-manager/src/tools.ts:33-40` 的 `execute` 在 action switch 前无条件调 `approveEscalation({ requestedMode: 'danger-full-access' })`，无读/写分叉。`danger-full-access` 是 **profile 级**沙箱总开关（`packages/sandbox/sandbox-policy`，三态之一），无按工具/按 identity 粒度。**但**工具支持逐次审批：低 mode 下每次调用经 `approval` 服务弹审批，**批准只对这次生效、不改 session 权限模式**（工具描述原文 “Approval does not change the session permission mode” + README）；`never`/无审批通道（headless）→ 拒绝执行。这条把 #1 与 #2 绑定：交互式能靠逐次审批收敛，headless 无通道只能整 profile full-access。
+
+1. **启用范围 = 仅 Web/交互式 profile**（headless/默认不挂）。
+   - 否决「含 headless/默认」：headless 无审批通道，挂它必须整 profile full-access，风险不可接受。
+   - 否决「交互式 + admin 门禁」：现阶段不加 identity wrapper（`tools.restrict` 是按 scope 非按 identity，admin-only 需 da 侧加 `role==='admin'` 检查，成本 > 当前收益）；范围已由「仅交互式」收窄。
+   - 否决「暂不挂」：逐次审批已提供收敛路径，无需等待。
+2. **danger-full-access 收敛 = 靠逐次审批（不整 profile 放宽）**。profile 保持正常 mode，每次调用经 approval，session 不永久提权。
+   - 否决「整 profile 开 full-access」：全程 full-access 最危险，仅 headless 被迫如此，而 #1 已排除 headless。
+   - 否决「不挂直到更细粒度」：逐次审批即交互式的收敛，无需再等。
+   - 注：此项为用户风险判断，agent 未自决。
+3. **清单变更审计 = da 侧监听器 → recordTier2Write**。听 `plugin-manager/changed` 事件，把「谁/哪轮/装或禁了什么」写 Tier-2 审计（`packages/data/audit` 已有 `recordTier2Write`，不改上游）。
+   - 否决「只靠 approval 日志」：approval 只记「批准了升级」不记具体包，事后无法回溯。
+   - 否决「不加审计」：清单跨 session 生效，B-DA7 教训要求留痕。
+4. **接入点（随 #1 定）**：在 Web/交互式 profile 的 patch 加 `- id: tool-plugin-manager` / `disabled: false`；实现时钉准确切文件，并**同步 `verify-cordis-config` / boot manifest 基线计数**。现状：全仓仅 `packages/preset/agent-presets/presets/cordis/agent.cordis.yml` 挂了它。
+5. **回退路径 = remove 够用**。
+   - 否决「reset-to-bundle 流程」与「git 还原」：暂以 remove 为准。**已知 caveat（README）**：remove 有失败残留、且无法禁用自身管理组件；若日后 remove 清不干净，再升级到 reset-to-bundle。
+
+**设计已决，剩下是实现**（挂载 + 审计监听器 + 依 remove 回退），走分支 + PR。本票 grilling 部分到此 resolved。
 
 ## 硬约束
 
