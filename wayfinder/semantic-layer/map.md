@@ -53,6 +53,7 @@
 - [W5b — ui-semantic-layer UI 规范对齐](tickets/W5b-ui-convention-alignment.md): 原独立规范对齐票被后续布局演进取代。
 - [T2 — 确认管理面板在 Web UI 中实际可见](tickets/T2-verify-management-panel-web-visibility.md): 真实 Web profile 验证了管理面入口和挂载路径。
 - [W7 — 管理 agent preset](tickets/W7-management-agent-preset.md): 管理 agent 使用独立 preset 和工具集合。
+- [W25: semantic-layer management preset persona config compatibility](tickets/W25-semantic-management-preset-persona-config.md): management preset 迁到当前 persona `prefix` schema，并通过真实 Web composition、工具调用和模型回合验证。
 - [W8 — Sidebar trigger 重写](tickets/W8-sidebar-trigger-rewrite.md): sidebar 触发逻辑改为明确的产品状态，而非隐式组件副作用。
 - [W9 — 核心 tool presenters](tickets/W9-core-tool-presenters.md): 核心语义工具具备 Host/Web 展示投影。
 - [W10 — discover_relations presenter](tickets/W10-discover-relations-presenter.md): 关系发现结果可在管理 UI 中展示。
