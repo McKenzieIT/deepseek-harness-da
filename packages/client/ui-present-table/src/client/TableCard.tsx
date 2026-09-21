@@ -13,6 +13,10 @@ import css from './TableCard.module.css'
  *  carries no fork-only type reference (the other three presenters replicate
  *  this local-helper move). */
 function blockText(block: ToolCallBlock): string {
+  /* v8 ignore next 1 -- unreachable: blockText is module-private and all four
+     call sites (FallbackContent, ExpiredCard, ErrorCard, MismatchCard) only
+     render below TableCard's own `if (!('kind' in block)) return
+     <RunningState />` guard, so the block always carries `kind` by then. */
   if (!('kind' in block)) return ''
   return (block.content as readonly { text?: string }[]).map(c => c.text ?? '').join('\n').trim()
 }

@@ -158,7 +158,10 @@ export function apply(ctx: Context, _config: Config = {}): void {
       if (exec.signal.aborted) {
         throw new Error('evaluate_sql_quality aborted before scoring')
       }
-      const sql = (args as { sql?: string }).sql ?? ''
+      // `sql` is a `required: true` string parameter, so defineTool's wrapper
+      // has already rejected any call that omits it (ToolArgsError) — reading
+      // it directly, as the sibling tools do, keeps no unreachable fallback.
+      const sql = args.sql
       const provider = ctx.get('criticCtx') as CriticCtxProvider | undefined
       const agentId = exec.agent !== undefined ? String(exec.agent.id) : undefined
       const criticCtx = provider !== undefined && agentId !== undefined

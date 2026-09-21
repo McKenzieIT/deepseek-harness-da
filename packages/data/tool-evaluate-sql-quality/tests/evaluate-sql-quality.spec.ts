@@ -155,3 +155,41 @@ test('Q10 render formats score', () => {
 test('Q11 formatQuality one-line', () => {
   expect(formatQuality({ score: 60 })).toBe('score: 60')
 })
+
+test('Q12 execute refuses to score when the turn is already aborted', async () => {
+  const def = registerTool()
+  const controller = new AbortController()
+  controller.abort()
+  await expect(def.execute(
+    { sql: "SELECT a FROM dws_pay WHERE ds='20260101'" },
+    { signal: controller.signal },
+  )).rejects.toThrow('evaluate_sql_quality aborted before scoring')
+})
+
+test('Q13 provider with no state for this agent falls back to the empty ctx (fail-closed)', async () => {
+  // The phase-gate is mounted (provider present) but has harvested nothing for
+  // this agent yet -> forAgent returns undefined -> EMPTY_CRITIC_CTX, whose
+  // empty candidateTables make every FROM-table an error. Same SQL + a
+  // provider that DOES know dws_pay scores 100 (Q9); here it must score 70.
+  let seenId: string | undefined
+  const provider: CriticCtxProvider = {
+    forAgent: (id: string) => {
+      seenId = id
+      return undefined
+    },
+  }
+  const def = registerTool(provider)
+  const out = await def.execute(
+    { sql: "SELECT a FROM dws_pay WHERE ds='20260101'" },
+    { signal: new AbortController().signal, agent: { id: 'agent-7' } },
+  )
+  expect(seenId).toBe('agent-7')
+  expect(out.score).toBe(70) // 100 - 30*1 (table_not_in_candidates)
+})
+
+test('Q14 execute rejects a call with no sql argument (schema-required, never scored as empty)', async () => {
+  const def = registerTool()
+  const call = def.execute as unknown as (a: unknown, e: unknown) => Promise<EvaluateSqlQualityResult>
+  await expect(call({}, { signal: new AbortController().signal }))
+    .rejects.toThrow(/missing required property "sql"/)
+})

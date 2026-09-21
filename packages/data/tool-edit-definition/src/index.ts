@@ -411,7 +411,13 @@ export function apply(ctx: Context, _config: Config = {}): void {
               message: `write failed: ${res.error}`,
             }
           }
+          /* v8 ignore start -- computeEdit returns merged only paired with kind 'table' | 'event' |
+             'concept', and the merged === undefined early return above drops the merged-less
+             'metric' / 'unknown' returns, so reaching this arm forces kind === 'concept' and its
+             implicit else is unreachable. A line range rather than an else hint because the TS
+             transform drops comments written between `else` and `if`. */
         } else if (kind === 'concept') {
+          /* v8 ignore stop */
           const { dumpYaml, invalidateCaches } = await import('@deepseek-ai/dsh-semantic-layer')
           const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
           const path = await import('node:path')
@@ -429,6 +435,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
         return {
           applied: false,
           asset_name: result.asset_name,
+          /* v8 ignore next -- computeEdit pairs merged with kind 'table' | 'event' | 'concept' and
+             the merged === undefined early return precedes this catch, so kind is always defined. */
           kind: kind ?? 'unknown',
           patched_fields: [],
           message: `write error: ${(e as Error).message}`,

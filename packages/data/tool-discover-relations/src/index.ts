@@ -124,12 +124,18 @@ function captureRelationSnapshot(schema: SemanticLayerService, tables?: readonly
     if (!r.success) continue
     const name = r.data.table_name
     if (tables !== undefined && tables.length > 0 && !tables.includes(name)) continue
+    /* v8 ignore next -- TableDefinitionSchema declares dimension_refs as
+       z.array(DimensionRefSchema).default([]) (semantic-layer/src/types.ts:288), so a successful
+       safeParse always materializes the array and this nullish fallback is unreachable. */
     const refs = (r.data as unknown as { dimension_refs?: RawDimRef[] }).dimension_refs ?? []
     snapshot.push({
       table: name,
       refs: refs.map(ref => ({
         dim_table: ref.dim_table,
         join_keys: ref.join_keys.map(k => ({ dws_column: k.dws_column, dim_column: k.dim_column })),
+        /* v8 ignore next -- DimensionRefSchema declares derivation as z.string().default('')
+           (semantic-layer/src/types.ts:193), so every ref parsed by TableDefinitionSchema carries
+           the string and this nullish fallback is unreachable. */
         derivation: ref.derivation ?? '',
       })),
     })

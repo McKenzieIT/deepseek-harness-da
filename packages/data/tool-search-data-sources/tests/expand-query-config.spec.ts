@@ -95,6 +95,39 @@ describe('CL8 — expandQuery provider/model resolution', () => {
     const out = await expandQuery(ctx, 'ARPPU是多少')
     expect(out).toBe('ARPPU是多少')
   })
+
+  /** A ctx whose ctx.get('llm') streams the given chunks (or throws). */
+  function ctxStreaming(stream: (options: unknown) => AsyncIterable<unknown>): Context {
+    return { get: (key: string) => (key === 'llm' ? { stream } : undefined) } as unknown as Context
+  }
+
+  test('non-empty text stream → the assembled expansion (reasoning dropped, newlines collapsed)', async () => {
+    process.env.ENRICHMENT_LLM_PROVIDER = 'envprov'
+    process.env.ENRICHMENT_LLM_MODEL = 'envmodel'
+    // Two text deltas on index 0 accumulate into one text block; the reasoning
+    // block on index 1 must be filtered out of the BM25 query, and the newline
+    // inside the text must collapse to a space (BM25 takes a single line).
+    const stream = async function* (): AsyncIterable<unknown> {
+      yield { type: 'text-delta', index: 0, text: 'ARPPU 人均付费\n' }
+      yield { type: 'text-delta', index: 0, text: 'pay_amt acc_summary' }
+      yield { type: 'reasoning-delta', index: 1, text: '先想一下这个指标' }
+    }
+    const out = await expandQuery(ctxStreaming(stream), 'ARPPU是多少')
+    expect(out).toBe('ARPPU 人均付费 pay_amt acc_summary')
+  })
+
+  test('LLM stream error mid-stream → degrades to the original question', async () => {
+    process.env.ENRICHMENT_LLM_PROVIDER = 'envprov'
+    process.env.ENRICHMENT_LLM_MODEL = 'envmodel'
+    // The partial delta is discarded: a broken expansion round-trip must not
+    // leak a truncated query into BM25 — the original question is used instead.
+    const stream = async function* (): AsyncIterable<unknown> {
+      yield { type: 'text-delta', index: 0, text: '钻石 产出量' }
+      throw new Error('llm transport reset')
+    }
+    const out = await expandQuery(ctxStreaming(stream), '钻石的总产出量')
+    expect(out).toBe('钻石的总产出量')
+  })
 })
 
 describe('CL8 — index.ts execute degrades on missing provider/model', () => {
@@ -149,5 +182,68 @@ describe('CL8 — index.ts execute degrades on missing provider/model', () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+})
+
+describe('P15a — config.queryExpansion gates the LLM rewrite', () => {
+  const savedProvider = process.env.ENRICHMENT_LLM_PROVIDER
+  const savedModel = process.env.ENRICHMENT_LLM_MODEL
+
+  afterEach(() => {
+    delete process.env.ENRICHMENT_LLM_PROVIDER
+    delete process.env.ENRICHMENT_LLM_MODEL
+    if (savedProvider !== undefined) process.env.ENRICHMENT_LLM_PROVIDER = savedProvider
+    if (savedModel !== undefined) process.env.ENRICHMENT_LLM_MODEL = savedModel
+  })
+
+  /** The subset of the registered tool definition these tests exercise. */
+  interface ToolDef {
+    readonly execute: (
+      args: { readonly query: string; readonly top_k?: number },
+      exec: { readonly signal: AbortSignal },
+    ) => Promise<{ readonly candidates: SearchHit[] }>
+  }
+
+  /**
+   * Register the tool over a ctx whose `llm` rewrites every question to
+   * `dws_expanded_target` and whose `schema` corpus contains only that id — so
+   * the returned candidate list alone reveals whether expansion ran, without
+   * spying on the LLM.
+   */
+  function registerWithExpandingLlm(config: Parameters<typeof apply>[1]): ToolDef {
+    const stream = async function* (): AsyncIterable<unknown> {
+      yield { type: 'text-delta', index: 0, text: 'dws_expanded_target' }
+    }
+    const mockSchema = {
+      loadRetrievalCorpus: () => [
+        { id: 'dws_expanded_target', description: 'reachable only via the rewritten query', metrics: {} },
+      ],
+    }
+    let def: ToolDef | undefined
+    const ctx = {
+      tools: { register: (d: ToolDef) => { def = d } },
+      get: (key: string) => (key === 'llm' ? { stream } : key === 'schema' ? mockSchema : undefined),
+    } as unknown as Context
+    apply(ctx, config)
+    if (def === undefined) throw new Error('apply did not register a tool')
+    return def
+  }
+
+  test('default queryExpansion → BM25 searches the LLM-expanded query', async () => {
+    process.env.ENRICHMENT_LLM_PROVIDER = 'envprov'
+    process.env.ENRICHMENT_LLM_MODEL = 'envmodel'
+    const def = registerWithExpandingLlm({})
+    // 'zzz' matches nothing in the corpus; the rewritten 'dws_expanded_target' does.
+    const out = await def.execute({ query: 'zzz' }, { signal: new AbortController().signal })
+    expect(out.candidates.map(c => c.id)).toEqual(['dws_expanded_target'])
+  })
+
+  test('queryExpansion=false → BM25 searches the original query (LLM never consulted)', async () => {
+    process.env.ENRICHMENT_LLM_PROVIDER = 'envprov'
+    process.env.ENRICHMENT_LLM_MODEL = 'envmodel'
+    const def = registerWithExpandingLlm({ queryExpansion: false })
+    // Expansion is skipped, so BM25 still sees 'zzz' -> no candidate at all.
+    const out = await def.execute({ query: 'zzz' }, { signal: new AbortController().signal })
+    expect(out.candidates).toEqual([])
   })
 })

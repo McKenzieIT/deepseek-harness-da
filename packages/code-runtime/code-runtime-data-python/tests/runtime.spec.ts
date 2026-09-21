@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { DataPythonCodeRuntime } from '../src/index.ts'
 import type { Config } from '../src/index.ts'
@@ -24,11 +24,88 @@ function tools(functions: Record<string, (args: unknown) => Promise<unknown>>): 
   }]
 }
 
+// The real host platform, captured before any test can patch it.
+const hostPlatform = process.platform
+// The full original descriptor ({ writable: false, enumerable: true,
+// configurable: true }); restoring it verbatim puts every attribute back, not
+// just the value.
+const hostPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform')!
+
+/**
+ * The exact containment label the runtime must advertise for a platform. This
+ * restates the contract independently of src/index.ts on purpose: the two
+ * literals below are cross-pinned by
+ * 'reports the exact isolation label for each platform', which hard-codes them
+ * per arm, so this mapping cannot silently drift into agreeing with a broken
+ * implementation.
+ * @param platform - a `process.platform` value.
+ * @returns the only isolation string that is correct on that platform.
+ */
+function expectedIsolationFor(platform: string): string {
+  // Windows has no setrlimit, so the label may not claim rlimit containment.
+  return platform === 'win32' ? 'process' : 'process-rlimit'
+}
+
+/** Put the real `process.platform` descriptor back, attributes included. */
+function restoreHostPlatform(): void {
+  Object.defineProperty(process, 'platform', hostPlatformDescriptor)
+}
+
+/**
+ * Read `runtime.isolation` as if the host were `platform`.
+ *
+ * The patch window is strictly synchronous — nothing is awaited while
+ * `process.platform` is a lie — so no sibling test or pending subprocess
+ * callback can observe the fake value, and try/finally restores it even if the
+ * getter throws.
+ * @param runtime - a mounted runtime (no CPython process is involved).
+ * @param platform - the platform to impersonate for one property read.
+ * @returns the label the getter produces under that platform.
+ */
+function isolationUnderPlatform(runtime: DataPythonCodeRuntime, platform: string): string {
+  Object.defineProperty(process, 'platform', { ...hostPlatformDescriptor, value: platform })
+  try {
+    return runtime.isolation
+  } finally {
+    restoreHostPlatform()
+  }
+}
+
 describe('DataPythonCodeRuntime — seam registration', () => {
+  // Belt and braces over isolationUnderPlatform's own try/finally: an
+  // assertion that throws mid-test still cannot leak a fake platform into the
+  // CPython suites below, whose POSIX guards would otherwise silently skip.
+  afterEach(restoreHostPlatform)
+
   it('registers with language=python', async () => {
     const { runtime } = await setup()
     expect(runtime.language).toBe('python')
-    expect(runtime.isolation).toMatch(/^process/)
+    // Exact, not /^process/: the old regex accepted both arms (and any
+    // 'process*' typo), which is why only the host's own arm was ever covered.
+    // Deriving the expectation from the host keeps this green on every lane.
+    expect(runtime.isolation).toBe(expectedIsolationFor(hostPlatform))
+  })
+
+  it('reports the exact isolation label for each platform', async () => {
+    // Both arms of the platform ternary must execute in ONE run on ANY host:
+    // a Linux lane never reaches the win32 arm and a Windows lane never
+    // reaches the rlimit arm, so neither lane can pin that line by itself.
+    // A deliberately non-existent interpreter proves the label is pure
+    // metadata — mounting the plugin and reading `isolation` never spawns
+    // CPython, so this test needs no python3/pandas on the host.
+    const { runtime } = await setup({ pythonPath: '/nonexistent/python-never-spawned' })
+
+    expect(isolationUnderPlatform(runtime, 'win32')).toBe('process')
+    // Every POSIX host gets the bootstrap's RLIMIT_CPU/RLIMIT_AS.
+    expect(isolationUnderPlatform(runtime, 'linux')).toBe('process-rlimit')
+    expect(isolationUnderPlatform(runtime, 'darwin')).toBe('process-rlimit')
+    expect(isolationUnderPlatform(runtime, 'freebsd')).toBe('process-rlimit')
+
+    // No residue: the host platform is back, and the assertion the
+    // registration test above makes still holds in this same process.
+    expect(process.platform).toBe(hostPlatform)
+    expect(Object.getOwnPropertyDescriptor(process, 'platform')).toEqual(hostPlatformDescriptor)
+    expect(runtime.isolation).toBe(expectedIsolationFor(process.platform))
   })
 })
 

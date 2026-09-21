@@ -9,7 +9,10 @@
  * Run: `pnpm vitest run packages/data/tool-load-event-definition`
  * (the root `pnpm test` globs all `*.spec.ts` files).
  */
-import { test, expect } from 'vitest'
+import { afterAll, test, expect } from 'vitest'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { EventDefinitionSchema, type EventDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
 import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
@@ -19,6 +22,9 @@ import {
   loadEventDefinitionResult,
   projectEvent,
   formatEventDefinition,
+  extractEventView,
+  formatEventView,
+  type EventViewInfo,
   type LoadEventResult,
 } from '../src/index.ts'
 
@@ -43,13 +49,18 @@ const FIXTURE_EVENT: EventDefinition = EventDefinitionSchema.parse({
   ],
 })
 
-/** A stub SemanticLayerService that serves one fixture event by name. */
+/**
+ * A stub SemanticLayerService that serves one fixture event by name.
+ * `semanticRoot` defaults to '' (no config.yaml to read — the event_view
+ * enrichment is skipped); pass a real dir to exercise the G-DA4 enrichment.
+ */
 function stubSchema(
   known: Record<string, EventDefinition>,
+  semanticRoot = '',
 ): { loadEventDefinition: (n: string) => EventDefinition | null; semanticRoot: string } {
   return {
     loadEventDefinition: (n: string) => known[n] ?? null,
-    semanticRoot: '',
+    semanticRoot,
   }
 }
 
@@ -263,4 +274,222 @@ test('S19 loadEventDefinitionResult - >200-char error is capped with ... (single
   expect(r.message).toBeDefined()
   expect(r.message!.length).toBeLessThanOrEqual(220)
   expect(r.message).not.toContain('\n')
+})
+
+// ── G-DA4 event_view surface + the remaining projection/format branches ────
+// extractEventView reads the layer's config.yaml off disk (loadConfig ->
+// readFileSync), so these fixtures materialize a real temp semantic root
+// (same pattern as semantic-layer/tests/per-scope-read.spec.ts). YAML is
+// written as text rather than dumped with js-yaml: the package declares no
+// js-yaml dependency, and the raw text is also what the substrate really parses.
+
+const tmpRoots: string[] = []
+afterAll(() => {
+  for (const root of tmpRoots) rmSync(root, { recursive: true, force: true })
+})
+
+/**
+ * Materialize a temp semantic-layer root holding `configText` as its config.yaml.
+ * @param configText - the raw config.yaml body; omit it for a root with NO config.yaml.
+ * @returns the temp root path (removed in afterAll).
+ */
+function semanticRootWith(configText?: string): string {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-load-event-def-'))
+  tmpRoots.push(root)
+  if (configText !== undefined) writeFileSync(join(root, 'config.yaml'), configText, 'utf-8')
+  return root
+}
+
+/**
+ * A config.yaml carrying the k11 example's `event_view` shape (categorized
+ * `base_columns` groups), plus entries the flattener must skip: a group that is
+ * not a list, a column without a `name`, a column whose `name` is not a string,
+ * and a bare scalar list entry.
+ */
+const CONFIG_WITH_EVENT_VIEW = `project:
+  name: game_10000251
+event_view:
+  workspace: ieu_ods
+  view_name: ods_10000251_all_view
+  full_name: ieu_ods.ods_10000251_all_view
+  params_extract_template: "GET_JSON_OBJECT(params, '$.{field_name}')"
+  base_columns:
+    identity:
+      - name: role_id
+        type: string
+        description: 角色ID
+      - name: server_id
+        type: string
+    event_meta:
+      - name: event
+        type: string
+      - type: string
+      - name: 42
+      - bare_scalar_entry
+    note: not-a-column-list
+`
+
+/** The projection `CONFIG_WITH_EVENT_VIEW` must yield (junk entries dropped). */
+const EXPECTED_EVENT_VIEW: EventViewInfo = {
+  full_name: 'ieu_ods.ods_10000251_all_view',
+  params_extract_template: "GET_JSON_OBJECT(params, '$.{field_name}')",
+  base_columns: ['role_id', 'server_id', 'event'],
+}
+
+/** A config.yaml head with a usable event_view but no base_columns section. */
+const EVENT_VIEW_HEAD = `event_view:
+  full_name: ieu_ods.ods_all_view
+  params_extract_template: "GET_JSON_OBJECT(params, '$.{f}')"
+`
+/** The projection `EVENT_VIEW_HEAD` must yield (no base columns known). */
+const EXPECTED_HEAD_VIEW: EventViewInfo = {
+  full_name: 'ieu_ods.ods_all_view',
+  params_extract_template: "GET_JSON_OBJECT(params, '$.{f}')",
+  base_columns: [],
+}
+
+test('S20 formatEventView renders from_table + params_extract + base_columns', () => {
+  expect(formatEventView(EXPECTED_EVENT_VIEW)).toBe([
+    'event_view:',
+    '  from_table: ieu_ods.ods_10000251_all_view',
+    "  params_extract: GET_JSON_OBJECT(params, '$.{field_name}')",
+    '  base_columns: role_id, server_id, event',
+  ].join('\n'))
+})
+
+test('S21 formatEventView omits the base_columns line when no base columns are known', () => {
+  expect(formatEventView(EXPECTED_HEAD_VIEW)).toBe([
+    'event_view:',
+    '  from_table: ieu_ods.ods_all_view',
+    "  params_extract: GET_JSON_OBJECT(params, '$.{f}')",
+  ].join('\n'))
+})
+
+test('S22 formatEventDefinition appends the event_view block and emits nothing for absent event fields', () => {
+  // An empty projection (no name, no params_fields/metrics/disambiguation/refs)
+  // renders as the event_view block alone — no `event:` line, no empty sections.
+  expect(formatEventDefinition({}, EXPECTED_EVENT_VIEW)).toBe([
+    'event_view:',
+    '  from_table: ieu_ods.ods_10000251_all_view',
+    "  params_extract: GET_JSON_OBJECT(params, '$.{field_name}')",
+    '  base_columns: role_id, server_id, event',
+  ].join('\n'))
+})
+
+test('S23 formatEventDefinition renders a metric with no expression/description as a bare name', () => {
+  const def = EventDefinitionSchema.parse({ name: 'e', metrics: { bare_metric: {} } })
+  expect(formatEventDefinition(projectEvent(def))).toBe([
+    'event: e',
+    'metrics:',
+    '  - bare_metric',
+  ].join('\n'))
+})
+
+test('S24 formatEventDefinition renders a disambiguation rule with no trigger/distinction as a bare event', () => {
+  const def = EventDefinitionSchema.parse({ name: 'e', disambiguation: [{ event: 'role_online' }] })
+  expect(formatEventDefinition(projectEvent(def))).toBe([
+    'event: e',
+    'disambiguation:',
+    '  - role_online',
+  ].join('\n'))
+})
+
+test('S25 formatEventDefinition renders an external_ref derivation after the join keys', () => {
+  const def = EventDefinitionSchema.parse({
+    name: 'e',
+    external_refs: [{
+      dim_table: 'dim_server',
+      join_keys: [{ dws_column: 'server_id', dim_column: 'id' }, { dws_column: 'zone', dim_column: 'zone_id' }],
+      derivation: 'server_id joins dim_server.id',
+    }],
+  })
+  expect(formatEventDefinition(projectEvent(def))).toBe([
+    'event: e',
+    'external_refs:',
+    '  - dim_server [server_id=id, zone=zone_id] // server_id joins dim_server.id',
+  ].join('\n'))
+})
+
+test('S26 projectEvent drops empty metric expressions + empty disambiguation parts, keeps a derivation', () => {
+  const def = EventDefinitionSchema.parse({
+    name: 'e',
+    metrics: { bare_metric: { expression: '', description: '总量' } },
+    disambiguation: [{ event: 'role_online', trigger: '', distinction: '' }],
+    external_refs: [{
+      dim_table: 'dim_server',
+      join_keys: [{ dws_column: 'server_id', dim_column: 'id' }],
+      derivation: 'server_id joins dim_server.id',
+    }],
+  })
+  const proj = projectEvent(def)
+  // empty-string expression/trigger/distinction are omitted keys, not '' values
+  expect(proj.metrics).toStrictEqual([{ name: 'bare_metric', description: '总量' }])
+  expect(proj.disambiguation).toStrictEqual([{ event: 'role_online' }])
+  expect(proj.external_refs).toStrictEqual([{
+    dim_table: 'dim_server',
+    join_keys: [{ dws_column: 'server_id', dim_column: 'id' }],
+    derivation: 'server_id joins dim_server.id',
+  }])
+})
+
+test('S27 loadEventDefinitionResult sanitizes a non-Error throw through String(e)', () => {
+  const throwing = {
+    loadEventDefinition: () => { throw 'event loader exploded (not an Error instance)' },
+  } as unknown as Parameters<typeof loadEventDefinitionResult>[0]
+  const r = loadEventDefinitionResult(throwing, 'pay_event')
+  expect(r.found).toBe(false)
+  expect(r.message).toBe('substrate error: event loader exploded (not an Error instance)')
+})
+
+test('S28 extractEventView projects full_name + params template + flattened base columns', () => {
+  expect(extractEventView(semanticRootWith(CONFIG_WITH_EVENT_VIEW))).toStrictEqual(EXPECTED_EVENT_VIEW)
+})
+
+test('S29 extractEventView returns undefined when config.yaml has no usable event_view section', () => {
+  expect(extractEventView(semanticRootWith('project:\n  name: game_10000251\n'))).toBeUndefined() // key absent
+  expect(extractEventView(semanticRootWith('event_view:\n'))).toBeUndefined() // present but null
+  expect(extractEventView(semanticRootWith('event_view: ods_10000251_all_view\n'))).toBeUndefined() // scalar, not a map
+})
+
+test('S30 extractEventView returns undefined when full_name or params_extract_template is missing or not a string', () => {
+  expect(extractEventView(semanticRootWith(
+    'event_view:\n  params_extract_template: "GET_JSON_OBJECT(params, \'$.{f}\')"\n',
+  ))).toBeUndefined() // no full_name
+  expect(extractEventView(semanticRootWith(
+    'event_view:\n  full_name: 123\n  params_extract_template: "GET_JSON_OBJECT(params, \'$.{f}\')"\n',
+  ))).toBeUndefined() // full_name not a string
+  expect(extractEventView(semanticRootWith('event_view:\n  full_name: ieu_ods.ods_all_view\n'))).toBeUndefined() // no template
+  expect(extractEventView(semanticRootWith(
+    'event_view:\n  full_name: ieu_ods.ods_all_view\n  params_extract_template:\n    nested: true\n',
+  ))).toBeUndefined() // template not a string
+})
+
+test('S31 extractEventView yields empty base_columns when the section is absent or not a map', () => {
+  expect(extractEventView(semanticRootWith(EVENT_VIEW_HEAD))).toStrictEqual(EXPECTED_HEAD_VIEW) // absent
+  expect(extractEventView(semanticRootWith(`${EVENT_VIEW_HEAD}  base_columns:\n`))).toStrictEqual(EXPECTED_HEAD_VIEW) // null
+  expect(extractEventView(semanticRootWith(`${EVENT_VIEW_HEAD}  base_columns: role_id,server_id\n`)))
+    .toStrictEqual(EXPECTED_HEAD_VIEW) // scalar, not a map
+})
+
+test('S32 extractEventView swallows a missing or malformed config.yaml', () => {
+  expect(extractEventView(semanticRootWith())).toBeUndefined() // no config.yaml -> ENOENT from readFileSync
+  expect(extractEventView(semanticRootWith('event_view: [unclosed\n'))).toBeUndefined() // YAML parse error
+})
+
+test('S33 loadEventDefinitionResult attaches the event_view read from the semantic root', () => {
+  const r = loadEventDefinitionResult(
+    stubSchema({ pay_event: FIXTURE_EVENT }, semanticRootWith(CONFIG_WITH_EVENT_VIEW)) as unknown as SemanticLayerService,
+    'pay_event',
+  )
+  expect(r.found).toBe(true)
+  expect(r.event).toEqual(projectEvent(FIXTURE_EVENT))
+  expect(r.event_view).toStrictEqual(EXPECTED_EVENT_VIEW)
+})
+
+test('S34 execute rejects when the abort signal is already aborted (no substrate touch)', async () => {
+  const controller = new AbortController()
+  controller.abort()
+  const def = registerTool(stubSchema({ pay_event: FIXTURE_EVENT }))
+  await expect(def.execute({ event_name: 'pay_event' }, { signal: controller.signal }))
+    .rejects.toThrow(/^load_event_definition aborted before loading$/)
 })

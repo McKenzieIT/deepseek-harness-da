@@ -478,3 +478,169 @@ test('S19 render - failure formats as "Error: <error>"', () => {
   expect(out[0]?.type).toBe('text')
   expect(out[0]?.text).toContain('admin only')
 })
+
+// ── the present layer (d3-5 rule 7): presentationMeta + presentCall/Result ──
+//
+// S1–S19 above cover the write core and the execute/render face. The cases
+// below cover the remaining contract shell the UI reads: the value→meta
+// projection, the up-front call card, the three presentResult arms
+// (isError → no card / meta missing or !ok → failure card / meta.ok → success
+// card), and the two `??` fallbacks in formatResult that a fully-populated
+// result never reaches.
+
+/** The generic call card `presentCall` returns (structural mirror of GenericCallView). */
+interface CallView {
+  readonly card: string
+  readonly title: string
+  readonly kind: string
+}
+
+/** The generic result card `presentResult` returns (structural mirror of GenericResultView). */
+interface ResultView {
+  readonly card: string
+  readonly title: string
+}
+
+/**
+ * The present layer of the registered tool definition — additive to `ToolDef`
+ * above, which models only the execute/render face S1–S19 exercise.
+ */
+interface PresentToolDef extends ToolDef {
+  readonly output: ToolDef['output'] & {
+    readonly presentationMeta: (args: unknown, value: UpdateTableConfigResult) => unknown
+  }
+  readonly presentCall: (args: { readonly table_name: string; readonly project: string }) => CallView
+  readonly presentResult: (
+    args: { readonly table_name: string; readonly project: string },
+    result: { readonly isError?: boolean; readonly meta?: UpdateTableConfigResult },
+  ) => ResultView | undefined
+}
+
+/** Capture the registered tool with its present layer typed (reuses registerTool). */
+function registerPresentTool(): PresentToolDef {
+  return registerTool() as PresentToolDef
+}
+
+test('S20 render - ok result without table_name renders an empty name slot', () => {
+  const def = registerTool()
+  expect(def.output.render({}, { ok: true, qualified_name: 'ieu_cdm.dws_pay_order_di' })).toEqual([{
+    type: 'text',
+    text: 'Updated  project → ieu_cdm.dws_pay_order_di (retry qualifies with this override)',
+  }])
+})
+
+test('S21 render - failure without an error string renders "unknown error"', () => {
+  const def = registerTool()
+  expect(def.output.render({}, { ok: false })).toEqual([{ type: 'text', text: 'Error: unknown error' }])
+})
+
+test('S22 presentationMeta - projects the result value into result.meta unchanged', () => {
+  const def = registerPresentTool()
+  const ok: UpdateTableConfigResult = {
+    ok: true,
+    table_name: 'dws_pay_order_di',
+    qualified_name: 'ieu_cdm.dws_pay_order_di',
+  }
+  expect(def.output.presentationMeta({}, ok)).toBe(ok)
+  expect(def.output.presentationMeta({}, ok)).toEqual({
+    ok: true,
+    table_name: 'dws_pay_order_di',
+    qualified_name: 'ieu_cdm.dws_pay_order_di',
+  })
+  const failed: UpdateTableConfigResult = { ok: false, error: 'table not found: nope_table' }
+  expect(def.output.presentationMeta({}, failed)).toBe(failed)
+  expect(def.output.presentationMeta({}, failed)).toEqual({ ok: false, error: 'table not found: nope_table' })
+})
+
+test('S23 execute - already-aborted signal throws before touching the substrate', async () => {
+  const layer = makeLayer()
+  try {
+    writeTable(layer, 'dws_pay_order_di', FIXTURE_TABLE)
+    const audit = stubAudit()
+    const def = registerTool({
+      schema: { semanticRoot: layer, scopeId: 'scope1' },
+      audit,
+      identity: stubIdentity('admin'),
+    })
+    const controller = new AbortController()
+    controller.abort()
+    await expect(def.execute(
+      { table_name: 'dws_pay_order_di', project: 'ieu_cdm' },
+      { signal: controller.signal },
+    )).rejects.toThrow(/^update_table_config aborted before writing$/)
+    // aborted before the substrate write: no Tier-2 record, no override on disk
+    expect(audit.calls).toHaveLength(0)
+    expect((readTable(layer, 'dws_pay_order_di') as { project?: string }).project).toBeUndefined()
+  } finally {
+    rmSync(layer, { recursive: true, force: true })
+  }
+})
+
+test('S24 presentCall - generic edit card titled "<table_name> → <project>"', () => {
+  const def = registerPresentTool()
+  expect(def.presentCall({ table_name: 'dws_pay_order_di', project: 'ieu_cdm' })).toEqual({
+    card: 'generic',
+    title: 'Update table config: dws_pay_order_di → ieu_cdm',
+    kind: 'edit',
+  })
+})
+
+test('S25 presentResult - an isError result yields no card', () => {
+  const def = registerPresentTool()
+  expect(def.presentResult(
+    { table_name: 'dws_pay_order_di', project: 'ieu_cdm' },
+    { isError: true, meta: { ok: true, table_name: 'dws_pay_order_di', qualified_name: 'ieu_cdm.dws_pay_order_di' } },
+  )).toBeUndefined()
+})
+
+test('S26 presentResult - meta absent → failure card titled "unknown error"', () => {
+  const def = registerPresentTool()
+  expect(def.presentResult({ table_name: 'dws_pay_order_di', project: 'ieu_cdm' }, {})).toEqual({
+    card: 'generic',
+    title: 'Update failed: dws_pay_order_di (unknown error)',
+  })
+})
+
+test('S27 presentResult - meta.ok false → failure card carries the substrate error', () => {
+  const def = registerPresentTool()
+  expect(def.presentResult(
+    { table_name: 'dws_pay_order_di', project: 'ieu_cdm' },
+    { isError: false, meta: { ok: false, error: 'table not found: nope_table' } },
+  )).toEqual({
+    card: 'generic',
+    title: 'Update failed: dws_pay_order_di (table not found: nope_table)',
+  })
+})
+
+test('S28 presentResult - meta.ok true → success card prefers meta.table_name over args', () => {
+  const def = registerPresentTool()
+  expect(def.presentResult(
+    { table_name: 'stale_args_table', project: 'ieu_cdm' },
+    { meta: { ok: true, table_name: 'dws_pay_order_di', qualified_name: 'ieu_cdm.dws_pay_order_di' } },
+  )).toEqual({
+    card: 'generic',
+    title: 'Updated dws_pay_order_di → ieu_cdm.dws_pay_order_di',
+  })
+})
+
+test('S29 presentResult - meta.ok true without table_name falls back to the args name', () => {
+  const def = registerPresentTool()
+  expect(def.presentResult(
+    { table_name: 'dim_charm_info', project: 'ieu_dim' },
+    { meta: { ok: true, qualified_name: 'ieu_dim.dim_charm_info' } },
+  )).toEqual({
+    card: 'generic',
+    title: 'Updated dim_charm_info → ieu_dim.dim_charm_info',
+  })
+})
+
+test('S30 presentResult - meta.ok true without qualified_name renders an empty target slot', () => {
+  const def = registerPresentTool()
+  expect(def.presentResult(
+    { table_name: 'stale_args_table', project: 'ieu_cdm' },
+    { meta: { ok: true, table_name: 'dws_pay_order_di' } },
+  )).toEqual({
+    card: 'generic',
+    title: 'Updated dws_pay_order_di → ',
+  })
+})
