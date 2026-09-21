@@ -101,9 +101,25 @@ export interface UnmatchedDisposition {
 
 /**
  * Every program-less file that is NOT in the strict type-aware override, and why
- * it stays that way. Reproduced 2026-09-14: 55 unmatched files
- * total — 34 waived, 15 kept default-only. The 6 eval-cli tests that previously
- * leaked here are now claimed by `packages/eval/eval-cli/tsconfig.tests.json`.
+ * it stays that way.
+ *
+ * Reproduced 2026-09-21 with `OXC_LOG=debug oxlint .` — the same mechanism
+ * {@link assertNoStrictOverrideUnmatched} uses: 65 unmatched files, of which 1
+ * is in the strict override (exempt via STRICT_OVERRIDE_UPSTREAM_DEBT, so 0
+ * violations) and 64 are outside it. The eight `waive` globs account for
+ * exactly 35 of those 64 — 34 before `dev/p15-probe.ts` joined the eval-cli
+ * `{bin,dev}` bucket when the self-executing P15 probe left `src/`.
+ *
+ * The `keep` side is knowingly understated and is NOT corrected here: it
+ * declares 15 but really covers 28 (the `apps/desktop` d.mts glob matches 18,
+ * not 7; `snapshots` matches 7, not 5), and two files match no disposition at
+ * all — `packages/tsdown.worker.ts` and
+ * `packages/util/lazy-require/tests/fixtures/value.cjs`. Nothing catches this:
+ * `oxlint-contract.spec.ts` only sums the declared counts against a hardcoded
+ * total and never compares them to the filesystem, so the tally rots while the
+ * gate stays green. The count corrections are mechanical, but the two
+ * unclassified files need a real adjudication (which bucket, and why), so both
+ * belong to a dedicated change rather than being invented in a file move.
  *
  * `waive` means the file is intentionally outside the repository tsconfig graph:
  * a prototype, a research one-off, a benchmark, a throwaway probe. Adding a
@@ -117,7 +133,7 @@ export const UNMATCHED_DISPOSITIONS: readonly UnmatchedDisposition[] = [
   {
     glob: 'packages/eval/eval-cli/{bin,dev}/**',
     disposition: 'waive',
-    count: 3,
+    count: 4,
     sample: 'packages/eval/eval-cli/bin/compare.ts',
     rationale: 'Throwaway dev and triage probe harnesses. A tsconfig here would couple the eval machine build to throwaway probes.',
   },

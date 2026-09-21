@@ -258,9 +258,15 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
       expect(disposition.count, disposition.glob).toBeGreaterThan(0)
       expect(disposition.rationale, disposition.glob).not.toBe('')
     }
-    // 34 waived + 15 default-only = the 49 files still unmatched after the
-    // 6 eval-cli tests were claimed by tsconfig.tests.json (was 55 before that claim).
-    expect(counted('waive')).toBe(34)
+    // These are the DECLARED totals, not a filesystem reading — this assertion
+    // only proves the table sums to what the docstring claims. A 2026-09-21
+    // reproduction (`OXC_LOG=debug oxlint .`) found the waive side exact at 35
+    // and the keep side understated at 28-plus-2-unclassified; see the
+    // UNMATCHED_DISPOSITIONS docstring. Keeping the stale keep total here is
+    // deliberate: correcting it requires adjudicating those two files.
+    // 35 waived: 34 plus dev/p15-probe.ts, which joined the eval-cli
+    // {bin,dev} bucket when the self-executing P15 probe left src/.
+    expect(counted('waive')).toBe(35)
     expect(counted('keep')).toBe(15)
   })
 
