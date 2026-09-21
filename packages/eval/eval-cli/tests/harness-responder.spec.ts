@@ -42,8 +42,8 @@
  * Run: npx vitest run packages/eval/eval-cli/tests/harness-responder.spec.ts
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { dirname, join, resolve } from 'node:path'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve, sep } from 'node:path'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
 import {
@@ -59,6 +59,9 @@ import type {} from '@deepseek-ai/dsh-semantic-layer'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { HarnessAgentResponder, type HarnessBootOptions, type Variant } from '../src/harness-responder.ts'
+
+/** Toggle for the `node:url` seam below; hoisted so `vi.mock` can close over it. */
+const urlState = vi.hoisted(() => ({ shallowModulePath: false }))
 
 // Repo root (tests/ → eval-cli/ → eval/ → packages/ → repo root).
 const ROOT = join(__dirname, '..', '..', '..', '..')
@@ -735,19 +738,40 @@ describe('HarnessAgentResponder — optional MaxCompute query engine', () => {
  * Report the harness module as if it had been installed at a shallow path
  * outside any checkout — the published-package layout, where the
  * module-relative walk reaches the filesystem root without ever seeing a
- * `packages/` + `apps/` pair. Only the module's own URL is redirected; every
- * filesystem probe still answers for real.
+ * `packages/` + `apps/` pair. Only this module's own path is redirected; every
+ * other `fileURLToPath` call and every filesystem probe still answers for real.
+ *
+ * The seam is `node:url`'s `fileURLToPath`, not a `globalThis.URL` subclass:
+ * `resolveRepoRoot` was changed to `fileURLToPath` (URL.pathname yields
+ * '/C:/…' on Windows, which silently killed the module-relative walk there),
+ * and `fileURLToPath` resolves through Node's internal URL parser, so
+ * stubbing the global URL no longer reaches it. A global-URL stub would leave
+ * the two tests below passing for the wrong reason — the module walk would
+ * simply succeed and return the real root, which is what they assert.
  */
-function stubShallowInstallPath(): void {
-  const RealUrl = globalThis.URL
-  vi.stubGlobal('URL', class ShallowUrl extends RealUrl {
-    override get pathname(): string {
-      const real = super.pathname
-      return real.endsWith('/src/harness-responder.ts')
-        ? '/dsh-install/lib/harness-responder.js'
+vi.mock('node:url', async () => {
+  const actual = await vi.importActual<typeof import('node:url')>('node:url')
+  const moduleTail = join('src', 'harness-responder.ts')
+  return {
+    ...actual,
+    default: actual,
+    fileURLToPath: (input: string | URL): string => {
+      const real = actual.fileURLToPath(input)
+      // Rooted on the current volume so the walk terminates the same way on
+      // Windows (C:\dsh-install\…) as on POSIX (/dsh-install/…).
+      return urlState.shallowModulePath && real.endsWith(moduleTail)
+        ? resolve(sep, 'dsh-install', 'lib', 'harness-responder.js')
         : real
-    }
-  })
+    },
+  }
+})
+
+function stubShallowInstallPath(): void {
+  urlState.shallowModulePath = true
+}
+
+function unstubShallowInstallPath(): void {
+  urlState.shallowModulePath = false
 }
 
 describe('HarnessAgentResponder — repo root resolution', () => {
@@ -760,11 +784,24 @@ describe('HarnessAgentResponder — repo root resolution', () => {
   it('falls back to the working directory when no ancestor of the module is a checkout', () => {
     const responder = makeResponder()
     const internals = responder as unknown as { resolveRepoRoot(): string }
+    // The cwd walk must land on a SECOND, synthetic checkout — not the real
+    // one the module lives in. Asserting the real root here would pass
+    // whether or not the module-relative walk was actually skipped, because
+    // both walks would answer with the same directory.
+    const elsewhere = mkdtempSync(join(tmpdir(), 'dsh-eval-checkout-'))
+    mkdirSync(join(elsewhere, 'packages'))
+    mkdirSync(join(elsewhere, 'apps'))
+    const original = process.cwd()
     stubShallowInstallPath()
+    process.chdir(elsewhere)
     try {
-      expect(internals.resolveRepoRoot()).toBe(resolve(ROOT))
+      const cwdCheckout = resolve('.')
+      expect(cwdCheckout).not.toBe(resolve(ROOT))
+      expect(internals.resolveRepoRoot()).toBe(cwdCheckout)
     } finally {
-      vi.unstubAllGlobals()
+      process.chdir(original)
+      unstubShallowInstallPath()
+      rmSync(elsewhere, { recursive: true, force: true })
     }
   })
 
@@ -781,7 +818,7 @@ describe('HarnessAgentResponder — repo root resolution', () => {
       expect(dirname(resolve('.'))).not.toBe(resolve(ROOT))
     } finally {
       process.chdir(original)
-      vi.unstubAllGlobals()
+      unstubShallowInstallPath()
       rmSync(away, { recursive: true, force: true })
     }
   })
