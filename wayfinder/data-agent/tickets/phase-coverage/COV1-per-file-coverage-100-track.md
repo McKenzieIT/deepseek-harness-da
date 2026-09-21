@@ -75,6 +75,7 @@ harness 模板从 `packages/data/tool-search-data-sources/tests/search-data-sour
 | tool-family batch 2+3 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)（同 PR，已合并 `778ce34934`） | 12 包 / 886 处 | 6197 → **5310**（消失 886 unique、新增 0，零回归；含 `nl2sql-engine` +1 附带） | B 档 8 + C 档 4；家族 16/16 全清 |
 | eval-cli batch 1 | [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176) | 1 包 / 5 文件 / 639 处 | 5310 → **4577**（raw；unique 5307 → 4575。消失 733 = 639 目标 + 93 附带 + 1 列号互换；真新增 **0**） | 口径 A 首批；含一处 Windows 真 bug 修复（见下）。已合并 `fecd5b7fe1` |
 | p15-probe 移位 | [#178](https://github.com/McKenzieIT/deepseek-harness-da/pull/178) | 1 文件 / 133 处 | 4577 → **4444**（raw；unique 4575 → 4442。消失 133 全是 `src/p15-probe.ts`；新增 **0**） | **移位非覆盖**：`src/p15-probe.ts` → `dev/`（既有申报归属）。已合并 `dbe703f153` |
+| eval-cli batch 2（部分） | [#179](https://github.com/McKenzieIT/deepseek-harness-da/pull/179) | 1 包 / 2 文件 / **559 处**（context.ts 472 + main.ts 87） | 4444 → **裁决 pending**（`windows node 24 / coverage` job `106424161031` 排队中；本机 559 全绿，预期 −559 → ~3885） | 口径 A 第二批；`context.ts` 除 `boot()` 外全清。`boot()`70 + `main()`97 = 167 顺延（见下 Round 51 节）。**未合。** |
 
 ## 家族剩余（batch 1 之后）
 
@@ -367,3 +368,48 @@ CI 清单自己就是铁证：结构完全对称的 cwd 兜底 `:382` **全覆�
 **为什么会有这么大的测试债？** 建设模式是 prototype-driven：每张 P 票先验可行性（prototype + 几个场景绿）再落生产包，**重功能验证、轻逐文件覆盖**。少数包从一开始就带 100% 覆盖（如 [P11b](../phase-4/P11b-eval-harness-hardening.md) 「201 tests + coverage 100%」），但大多数包是「prototype 落地 + 后续补覆盖」的模式，后续补覆盖这步一直没系统做 —— 直到覆盖率门把它们全暴露出来。
 
 **所以"数百 PR 的长期工程"这个规模判断成立且诚实**：它是 da 自有代码的测试债，不是上游债，也不是规模误判。6674 处对应的是 da 在 fork 里建的那一整套产品，补完它们 = 给 da 自己的产品补齐测试。这个量级反映的是 da 建设速度远快于补测速度 —— 是 fork 的选择，不是上游的负担。
+
+---
+
+## 追加：eval-cli batch 2（2026-09-22，Round 51，PR [#179](https://github.com/McKenzieIT/deepseek-harness-da/pull/179)）
+
+**726 处目标里落了 559**（`context.ts` 472 + `main.ts` 87），5 个 in-process spec，主进程独做（本轮 subagent 不可用，见下）。`context.ts` **除 `boot()` 外全清**；剩 `boot()` 70（context.ts）+ `main()` 97（main.ts）= 167 顺延。**PR 未合，CI 逐条裁决未做**（唯一可信腿 `windows node 24 / coverage` 仍排队）。
+
+### 提交与本机证据（每个 spec 各自 scoped run + 变异 + tsc host + oxlint，主进程独立复核）
+
+| 提交 | spec | 符号 | 处 | 变异 |
+| --- | --- | --- | --- | --- |
+| `0928e553` | —（导出） | context.ts/main.ts 加 `export`+JSDoc 到 16 个 module-private 符号 | — | 零行为改动；既有 99 测试不变 |
+| `0d183efc` | context-pure | looksLikeSql/toEngineOutcome/renderEventSchemaContext/projectEventDefForPrompt | 78 | 4 |
+| `4725b414` | context-adapters | CtxLlmAdapter/CtxOdpsAdapter/CtxQueryExecutor/LlmJudgeExecutor | 130 | 5 |
+| `949c7a35` | context-responder-detect | expandQuery/completeDetection/loadEventContext | 97 | 6 |
+| `6bee1f3f` | context-responder-respond | Nl2sqlAgentResponder.respond + buildSchemaContext | 167 | 6 |
+| `1441d315` | main-cli | findRepoRoot/str/parseCliArgs/formatToday/printUsage/globCasePaths | 87 | 6 |
+
+合并跑 **203 测试 / 15 文件全绿**；每个 spec 分派位置逐条 diff **0 遗漏**（位移感知：导出提交给 context.ts +58 行、main.ts +42 行，基线按 difflib 映射前推后 542/542 + 184/184 零错位）；每条被覆盖行为均变异验证（改 src 见红、复原、shasum 净）；`tsc -b tsconfig.host.json` exit 0；oxlint 90 规则 0/0。
+
+### `main()` 形态（§2.2 待定项，本轮拍板）
+
+用户拍板 **全真跑，不 mock**：in-process 调 `main()`，复刻 `main.spec.ts` 的 fake-key 环境（临时 `$DSH_HOME`+假凭据、真 schemaDir、1 case），engine 与 harness 两条 responder 分支都真挂。**关键缝**：DashScope 适配器接受**裸 JSON 快照**（`adapter.ts`：body 以 `{` 开头即单 payload，不必 SSE），故一个返回 `{output:{choices:[{message:{content:"0.8"}}]}}` 的本地 http server 就能离线喂 `ctx.llm`。`main-entry.spec.ts` 已写到 81/97（存 gitignored `.tmp/r51/main-entry.spec.ts.wip`），剩 16 处是 harness 分支的 SQL-judge 回调——只有 phase-gate agent 真产出可判 SQL（execution case + `generated_sql` 非空，见 `eval-runner/src/runner.ts:249-288` 的门）才触发，属不确定的 agent 会话路径，**按 dsh-ci-test-reliability 未确认 CI 稳定前不入库**，故 G 未提交。
+
+### `boot()`（E 档，70）顺延，补法已查清（未写）
+
+`boot({withQuery:false})` 离线可跑（凭据惰性解析，只有 SemanticLayerService 读 schemaDir）；sqlJudge 回调可 `collaborators.sqlJudge.judgeSql(...)` **直接调**（不经 agent）+ 上述 mock 覆盖抽取臂；`--with-query` 用 `dev/standin-sidecar.mjs`（harness-responder.spec 已证 CI 可跑）。EXP2_ARM/noSqlJudge 分支离线覆盖。
+
+### 本轮新增陷阱（按代价）
+
+1. **单引号 `git commit -m` 里的撇号静默截断消息**：`package's` 处消息被腰斩且触发 shell 语法错误跑了杂散命令。本仓 git 消息一律走 `-F <file>`。
+2. **`FinishReason` 是对象 `{kind:'stop'}` 不是字符串**（`llm/src/types.ts:143`）。stub stream 的 `finish` chunk 写 `reason:'stop'` 过不了 host typecheck（TS2322）；`eval-runner-service.spec` 里的 `reason:'stop' as const` 其实也会红，只是不在该 build 的 typecheck 腿上。用 `reason:{kind:'stop'}`。
+3. **`verify-export-jsdoc` 的 `implements` 继承豁免无条件生效**（`:99` 遍历 heritageClauses 不筛 `clause.token`，且从不看接口成员的 JSDoc）→ 5 个适配器类的接口方法零 JSDoc；但 **`@internal` 放描述前会清空描述**（`jsdoc.ts:68` 首个 `@` 标签后全丢）→ 描述必须在标签之前。`declaration:true` 强制导出被导出签名引用的类型（`ProviderQueryOutcome`/`EventContext`/`CliArgs`，否则 TS4060）。
+4. **fake ctx 的服务缝**：`(ctx as {provide}).provide('llm'|'query'|'schema', stub)` 就能驱动适配器/responder（`eval-runner-service.spec` 同型，其适配器同样读 `ctx.llm.stream`）。测试只**构造**适配器、不自己读 `ctx.llm`，故无需 `declare module` 增强 import。
+5. **respond() 窄 mock 引擎**：`vi.mock('@deepseek-ai/dsh-nl2sql-engine', {...actual, Nl2sqlEngine: Fake})` 保留 Bm25Linker/StandInOdps/looksLikeToolCall/buildPrompt 真实，用 Fake 决定 ok/decline/pending 走向——**这是隔离不是伪造契约**（每个臂生产可达）；mock 不调的 config 闭包（retrieval/lookupDoc/partitionResolver/promptBuilder）从捕获的 config 上直接 invoke 补覆盖。
+
+### 编排复盘
+
+- **subagent 本轮不可用**：canary agent 报 `400 access disabled for a suspected violation of Usage Policy`（非 402 配额），未重试以免动账号级标记 → **全程主进程独做**。
+- **本机 runner 反复断连**（约数分钟一次），每次靠探针恢复；所有长跑都 background + 轮询。
+- **`git -m` 撇号事故**后改全程 `-F`。
+
+### 顺延（下一棒起点）
+
+`boot()` 70 + `main()` 97 = **167**。补法与缝都已查清（见上）。开工先：① `gh pr checks 179` 看 windows coverage 是否已裁决，做逐条 diff 回填本节数字；② 若 #179 已合，从新 master 抽基线；③ E 直接写（可行），G 复用 `.tmp/r51/main-entry.spec.ts.wip` 并解决 harness judge 回调的 16 处（execution case + 让 agent 产 SQL，或评估其 CI 稳定性）。
