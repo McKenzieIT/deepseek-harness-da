@@ -1,10 +1,14 @@
 ---
 type: grilling
-status: open
+status: migrated
 blocked_by: []
 ---
 
 # CL-27: CL-20 门禁对每个查询无条件多调一次 LLM —— 代价是否可接受
+
+## Answer
+
+Migrated to [Evaluation T15: Product Evaluation Controller 与 external CLI](../../evaluation/tickets/T15-evaluation-controller-cli.md) and its [final cutover owner T12](../../evaluation/tickets/T12-eval-package-consolidation.md). Measure parsing, preflight, and model-call cost on the canonical product evaluation path; do not optimize the legacy runner in isolation.
 
 **Branch**: `chore/cl27-triage-call-cost`  <!-- 待建；CLAUDE.md:64 要求每票声明分支 -->
 

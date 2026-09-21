@@ -1,7 +1,7 @@
 # CL-20 收尾 session prompt —— 修门禁误伤 → rebase → 重跑全量 → 开 PR
 
-> 从 [`wayfinder/_templates/session-prompt.md`](../../_templates/session-prompt.md) 实例化。
-> 上游票：[CL-20](../tickets/CL20-delivery-agent-behavior-type2.md)（决策已定 D1-D5，实现有已知缺陷）。
+> 从 [`wayfinder/_templates/session-prompt.md`](../../../_templates/session-prompt.md) 实例化。
+> 上游票：[CL-20](../../tickets/CL20-delivery-agent-behavior-type2.md)（决策已定 D1-D5，实现有已知缺陷）。
 
 ## 1. 环境/分支契约（session 启动第一步）
 
@@ -39,7 +39,7 @@ CL-20 的 5 项决策全部锁定并记录在票里，**决策部分不再变动
 | D2 | 检测层 = `engine.ts` 前置门禁（`while` 循环之前，零 LLM 浪费、不碰 `prompt.ts`） |
 | D3 | 检测逻辑 = LLM 分类器，**只判交付物类型**（report/forecast/recommendation vs 数据值）。**关键词规则已按普适性否决**——`TREND_PATTERN` 同构实现在 `GA-GRILL2` D3 实测 recall 85% 天花板，为突破它专门开了 `GA-I18N-R1` 转向 LLM intent 分类；词表随业务域线性增长且强制中英双语。**BM25 分数阈值亦否决**（CL-7：分数跨查询不可比）。 |
 | D4 | 合成通道 = 复用 CL-23 grounded 三段式（`context.ts:397` 条件扩展） |
-| D5 | 验收 = 三轮中位数 DELIVERY ≥80%，但**已判定引擎侧不可达** → 毕业 [CL-25](../tickets/CL25-open-ended-case-set-consistency.md) |
+| D5 | 验收 = 三轮中位数 DELIVERY ≥80%，但**已判定引擎侧不可达** → 毕业 [CL-25](../../tickets/CL25-open-ended-case-set-consistency.md) |
 
 已落地代码（分支上，未合并）：
 - `packages/data/nl2sql-engine/src/engine.ts` —— `declineKind` union 扩展 + `triageQuestion` 前置门禁
@@ -81,7 +81,7 @@ rebase 后 4 个纯文档 commit 会因已在 master 而自动 drop，只剩 2-3
 
 **顺带做**（`declineKind` 命名）：门禁收窄为交付物类型判定后，`'open_ended_question'`
 已名不符实，改为 `'beyond_single_query'`。调用点 3 处：`engine.ts` 的 union 定义 + 门禁返回、
-`context.ts:397`、`tests/open-ended-triage.spec.ts`。（此项挂在 [CL-26](../tickets/CL26-eval-runner-service-decline-synthesis-gap.md) 附带项，在此一并做掉。）
+`context.ts:397`、`tests/open-ended-triage.spec.ts`。（此项挂在 [CL-26](../../tickets/CL26-eval-runner-service-decline-synthesis-gap.md) 附带项，在此一并做掉。）
 
 ### 步骤 3：重跑测试
 
@@ -120,7 +120,7 @@ gh pr create --base master --head fix/cl20-delivery-agent-behavior
 ```
 
 PR 描述引用已在 master 的 ticket + audit-log（不要在 PR 里复述细节）。合并前过
-[dsh-pre-push-checks](../../../.agents/skills/dsh-pre-push-checks/SKILL.md)。
+[dsh-pre-push-checks](../../../../.agents/skills/dsh-pre-push-checks/SKILL.md)。
 
 ## 4. 硬约束（前序 session 踩过的坑，务必看）
 
@@ -167,6 +167,6 @@ cd ../deepseek-harness-da && git worktree remove ../dsh-docs-push --force
 
 | 票 | 一句话 |
 |---|---|
-| [CL-25](../tickets/CL25-open-ended-case-set-consistency.md) | open_ended case set 期望行为不自洽（`076` vs `079` 同词根反例）+ 混合 ≥5 种拒绝理由；需定判据、重分类、重设 DELIVERY 目标 |
-| [CL-26](../tickets/CL26-eval-runner-service-decline-synthesis-gap.md) | `eval-runner-service` 零 `declineKind` 处理 → ③ 自驱循环的 DELIVERY 证据被管道缺陷压低；W16/W17 同族第四例 |
-| [CL-27](../tickets/CL27-triage-unconditional-call-cost.md) | 门禁对 96% 查询多调一次 LLM；且 pass^k 下同 case 重复调 3 次（每轮 336 次浪费） |
+| [CL-25](../../tickets/CL25-open-ended-case-set-consistency.md) | open_ended case set 期望行为不自洽（`076` vs `079` 同词根反例）+ 混合 ≥5 种拒绝理由；需定判据、重分类、重设 DELIVERY 目标 |
+| [CL-26](../../tickets/CL26-eval-runner-service-decline-synthesis-gap.md) | `eval-runner-service` 零 `declineKind` 处理 → ③ 自驱循环的 DELIVERY 证据被管道缺陷压低；W16/W17 同族第四例 |
+| [CL-27](../../tickets/CL27-triage-unconditional-call-cost.md) | 门禁对 96% 查询多调一次 LLM；且 pass^k 下同 case 重复调 3 次（每轮 336 次浪费） |

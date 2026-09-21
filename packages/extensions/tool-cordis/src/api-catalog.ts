@@ -989,7 +989,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'coverageQuery(scopeId?: string): EnrichedCoverageStats',
-        description: 'Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats() but enriches with confirmation.status breakdown across all assets.',
+        description: 'Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats() and reports one normalized confirmation breakdown across all assets.',
         parameters: [{ name: 'scopeId', description: 'GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'aggregated table/event/metric counts plus per-domain and confirmation-status tallies.',
       },
@@ -1007,19 +1007,27 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'evalResultQuery(filters: EvalResultFilters): EvalResultQueryResult',
-        description: 'Eval result query: query persisted eval run results.',
-        parameters: [{ name: 'filters', description: 'the asset/status/domain/limit filters to apply.' }],
-        returns: 'the matching eval result records plus the total count before limiting.',
+        description: 'Query persisted eval results. An asset filter is applied only when the store has a complete case-to-asset mapping source for the candidate records; otherwise the result remains global and reports that asset filtering is unavailable.',
+        parameters: [{ name: 'filters', description: 'The asset, status, domain, scope, and record-limit filters to request.' }],
+        returns: 'Matching records, total count before limiting, and asset-filter status.',
       },
       {
-        signature: 'beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport',
+        signature: 'evalRunHistory(filters: EvalRunHistoryFilters): EvalRunHistoryResult',
+        description: 'Return bounded newest-first run summaries for dashboard and sidebar history.',
+        parameters: [{ name: 'filters', description: 'Asset, domain, scope, and required run-count bound.' }],
+        returns: 'Aggregate run rows, matching run count, and asset-filter status.',
+        throws: ['When limit is not a positive integer or exceeds the server maximum.'],
+      },
+      {
+        signature: 'beforeAfterDelta(runIdA: string, runIdB: string, filters: EvalDeltaFilters = {}): EvalDeltaReport',
         description: 'Before/after delta: compare two runs and return which cases flipped. "Improved" = moved from fail/error → pass; "regressed" = moved from pass → fail/error.',
-        parameters: [{ name: 'runIdA', description: 'the baseline (before) run id.' }, { name: 'runIdB', description: 'the comparison (after) run id.' }],
+        parameters: [{ name: 'runIdA', description: 'the baseline (before) run id.' }, { name: 'runIdB', description: 'the comparison (after) run id.' }, { name: 'filters', description: 'optional asset, domain, and scope filters preserved from the history query.' }],
         returns: 'the run ids, the flipped cases, and improved/regressed/unchanged counts.',
+        throws: ['When an asset is requested without a complete case-to-asset mapping.'],
       },
       {
         signature: 'assetHealth(assetId: string, scopeId?: string): AssetHealthReport | null',
-        description: 'Asset health: aggregate report for a single asset — confirmation status, has_eval_coverage, relation_count, last_modified.',
+        description: 'Asset health: reports normalized confirmation status, eval coverage, relation count, and a nullable owner-provided modification time.',
         parameters: [{ name: 'assetId', description: 'the table, event, or metric asset to report on.' }, { name: 'scopeId', description: 'GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).' }],
         returns: 'the aggregate health report, or null when no table/event/metric matches assetId.',
       },
@@ -5347,7 +5355,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EvalResultStore',
-    declaration: 'export class EvalResultStore {\n    add(record: EvalResultRecord): void;\n    query(filters: EvalResultFilters): EvalResultQueryResult;\n    hasResultsFor(assetId: string, scopeId?: string): boolean;\n    getByRunId(runId: string): EvalResultRecord[];\n    getRunIds(): string[];\n    loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void;\n    clear(): void;\n}',
+    declaration: 'export class EvalResultStore {\n    add(record: EvalResultRecord): void;\n    query(filters: EvalResultFilters): EvalResultQueryResult;\n    runHistory(filters: EvalRunHistoryFilters): EvalRunHistoryResult;\n    hasResultsFor(assetId: string, scopeId?: string): boolean;\n    getByRunId(runId: string): EvalResultRecord[];\n    getRunIds(): string[];\n    loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void;\n    clear(): void;\n}',
   },
   {
     name: 'EventCorpusItem',

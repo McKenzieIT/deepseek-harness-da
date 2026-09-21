@@ -1,10 +1,14 @@
 ---
 type: grilling
-status: open
+status: migrated
 blocked_by: []
 ---
 
 # CB-5: DA 的 CI 寄生在上游 workflow 上（darwin 腿安装步骤膨胀的结构根因）
+
+## Answer
+
+Migrated to [Repo Infra T29: DA CI 与 upstream workflow ownership](../../repo-infra/tickets/T29-da-ci-upstream-boundary.md). CI ownership, fork-only workflow behavior, and upstream-sync policy are repository infrastructure decisions rather than semantic-layer decisions; this ticket is no longer active in this effort.
 
 **Branch**: 无 —— 本票的 ② 已落地；承载它的 `fix/cb1b-pwsh-pty-evaluation`（PR #42）已于 2026-09-17 连同分支一并关闭删除，本票内容在此之前搬到 master，其余问题仍 open。
 

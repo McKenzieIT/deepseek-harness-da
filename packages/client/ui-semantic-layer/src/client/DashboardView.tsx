@@ -5,11 +5,12 @@
  * EvalDeltaView, GapPanel) to hero position. Provides a drill-down link
  * back to the workspace ("B") layout.
  *
- * Reuses existing evidence components — does not duplicate logic.
+ * Loads global eval history on mount, compares the latest two returned runs,
+ * and reuses the existing evidence components for presentation.
  */
-import { type FC } from 'react'
+import { useEffect, type FC } from 'react'
 import { CoveragePanel } from './CoveragePanel.tsx'
-import { EvalTrajectory } from './EvalTrajectory.tsx'
+import { EVAL_TRAJECTORY_RUN_LIMIT, EvalTrajectory } from './EvalTrajectory.tsx'
 import { EvalDeltaView } from './EvalDeltaView.tsx'
 import { GapPanel } from './GapPanel.tsx'
 import { useEvidenceQuery, type EvidenceQueryClient } from './hooks/useEvidenceQuery.ts'
@@ -26,7 +27,9 @@ export const DashboardView: FC<DashboardViewProps> = ({
   t,
   onNavigateToWorkspace,
 }) => {
-  const { state } = useEvidenceQuery(evidenceClient ?? null)
+  const { state, fetchEvalHistory } = useEvidenceQuery(evidenceClient ?? null)
+
+  useEffect(() => { void fetchEvalHistory({ limit: EVAL_TRAJECTORY_RUN_LIMIT }) }, [fetchEvalHistory])
 
   return (
     <div className={css.dashboard}>
@@ -40,12 +43,14 @@ export const DashboardView: FC<DashboardViewProps> = ({
       </div>
 
       <div className={css.hero}>
-        <EvalTrajectory evalResults={state.evalResults} loading={state.loading} t={t} />
+        <EvalTrajectory evalHistory={state.evalHistory} loading={state.loading} t={t} />
       </div>
 
       <div className={css.kpiRow}>
         <CoveragePanel coverage={state.coverage} loading={state.loading} t={t} />
       </div>
+
+      {state.error && <p className={css.error}>{t('error')}: {state.error}</p>}
 
       <div className={css.detail}>
         <EvalDeltaView evalDelta={state.evalDelta} loading={state.loading} t={t} />

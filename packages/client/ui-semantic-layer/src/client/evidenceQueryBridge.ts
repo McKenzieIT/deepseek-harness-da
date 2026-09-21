@@ -12,10 +12,13 @@ import type {
   GapAnalysisResult,
   EvalResultQueryResult,
   EvalResultFilters,
+  EvalRunHistoryFilters,
+  EvalRunHistoryResult,
   AssetHealthReport,
   ProposedRelation,
   ReachabilityDeltaResult,
   EvalDeltaReport,
+  EvalDeltaFilters,
 } from './types.ts'
 import { unwrapRemoteResult } from './remoteResult.ts'
 import type { RemoteResult } from './remoteResult.ts'
@@ -25,8 +28,9 @@ interface EvidenceQueryRemoteNamespace {
   gapAnalysis(assetId: string): Promise<RemoteResult<GapAnalysisResult>>
   reachabilityDelta(newRelation: ProposedRelation): Promise<RemoteResult<ReachabilityDeltaResult>>
   evalResultQuery(filters: EvalResultFilters): Promise<RemoteResult<EvalResultQueryResult>>
+  evalRunHistory(filters: EvalRunHistoryFilters): Promise<RemoteResult<EvalRunHistoryResult>>
   assetHealth(assetId: string): Promise<RemoteResult<AssetHealthReport | null>>
-  beforeAfterDelta(runIdA: string, runIdB: string): Promise<RemoteResult<EvalDeltaReport>>
+  beforeAfterDelta(runIdA: string, runIdB: string, filters?: EvalDeltaFilters): Promise<RemoteResult<EvalDeltaReport>>
   getEvalRunCount(): Promise<RemoteResult<number>>
   getRecentPassRates(n?: number): Promise<RemoteResult<number[]>>
 }
@@ -51,11 +55,17 @@ export function buildEvidenceQueryClient(remote: EvidenceQueryRemoteNamespace): 
     async evalResultQuery(filters: EvalResultFilters) {
       return unwrapRemoteResult(await remote.evalResultQuery(filters), 'evidence-query')
     },
+    async evalRunHistory(filters: EvalRunHistoryFilters) {
+      return unwrapRemoteResult(await remote.evalRunHistory(filters), 'evidence-query')
+    },
     async assetHealth(assetId: string) {
       return unwrapRemoteResult(await remote.assetHealth(assetId), 'evidence-query')
     },
-    async beforeAfterDelta(runIdA: string, runIdB: string) {
-      return unwrapRemoteResult(await remote.beforeAfterDelta(runIdA, runIdB), 'evidence-query')
+    async beforeAfterDelta(runIdA: string, runIdB: string, filters?: EvalDeltaFilters) {
+      const result = filters === undefined
+        ? await remote.beforeAfterDelta(runIdA, runIdB)
+        : await remote.beforeAfterDelta(runIdA, runIdB, filters)
+      return unwrapRemoteResult(result, 'evidence-query')
     },
     async getEvalRunCount() {
       return unwrapRemoteResult(await remote.getEvalRunCount(), 'evidence-query')

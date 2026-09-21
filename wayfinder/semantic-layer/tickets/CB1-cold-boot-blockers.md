@@ -1,10 +1,14 @@
 ---
 type: grilling
-status: open
+status: resolved
 blocked_by: []
 ---
 
 # CB-1: 冷启动 blocker —— 单行失败炸掉整个 data-agent include 组
+
+## Answer
+
+Resolved. The duplicate loader id was removed, and [CB-1a](CB1a-cold-boot-stabilization.md) made missing enrichment model configuration non-fatal while exposing include failures through startup diagnostics and plugin inventory. The include group retains transactional all-or-nothing loading; [CB-3](CB3-per-row-fault-isolation.md) records why per-row isolation is deferred.
 
 **Branch**: `fix/cb1-cold-boot-blockers`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
 

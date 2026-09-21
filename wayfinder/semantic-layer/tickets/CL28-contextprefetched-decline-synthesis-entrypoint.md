@@ -1,11 +1,15 @@
 ---
 type: grilling
-status: open
+status: superseded
 assignee: null
 blocked_by: []
 ---
 
 # CL-28: `contextPrefetched` 掐掉了 grounded 拒绝合成的入口 → DELIVERY 回吐 16pp
+
+## Answer
+
+Superseded by [CL-26: decline evidence 与用户可见 synthesis 统一决策](CL26-eval-runner-service-decline-synthesis-gap.md). The old `contextPrefetched` patch path is not an independent owner and must not be implemented before the Evaluation cutover removes the duplicate legacy runner paths.
 
 **Branch**: 未认领（认领时按 CLAUDE.md:64 声明 `<type>/cl28-<slug>`）
 

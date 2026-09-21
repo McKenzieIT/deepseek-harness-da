@@ -1,26 +1,16 @@
 /**
- * EvidenceSidebar — full evidence panel for the semantic layer (W5-full).
- *
- * Feature-flag gated:
- *   enabled=false → W5-lite placeholder
- *   enabled=true  → full evidence views (coverage, gap, eval, delta)
- *
- * Consumes the EvidenceQueryClient and renders coverage stats, asset health,
- * eval trajectory, gap analysis, and before/after eval delta.
- *
- * W6d auto-flip: `layoutMode` (default 'B') + `evalRunCount` (default 0) drive
- * the internal layout via `computeEffectiveMode`. The B (compact) layout leads
- * with CoveragePanel; once enough eval runs accumulate the A (dashboard)
- * layout promotes EvalTrajectory to a hero block (DashboardView's core fused
- * into the sidebar, with no separate route). With the eval-run count still a
- * placeholder (0), auto resolves to B.
+ * EvidenceSidebar renders the compact or evidence-first semantic-layer panel.
+ * It always loads eval history: globally without a selected asset, or with an
+ * asset filter request when selected. Evidence-query applies that filter only
+ * when persisted cases have a reliable case-to-asset mapping source; otherwise the
+ * returned history stays global and carries an unavailable status for the UI.
  */
 import { useEffect, type FC } from 'react'
 import { useEvidenceQuery, type EvidenceQueryClient } from './hooks/useEvidenceQuery.ts'
 import { computeEffectiveMode, type LayoutMode } from './hooks/useLayoutMode.ts'
 import { CoveragePanel } from './CoveragePanel.tsx'
 import { GapPanel } from './GapPanel.tsx'
-import { EvalTrajectory } from './EvalTrajectory.tsx'
+import { EVAL_TRAJECTORY_RUN_LIMIT, EvalTrajectory } from './EvalTrajectory.tsx'
 import { EvalDeltaView } from './EvalDeltaView.tsx'
 import { OnDemandEvalTrigger } from './OnDemandEvalTrigger.tsx'
 import { GoalDock, type GoalDockGoalData } from './GoalDock.tsx'
@@ -100,15 +90,16 @@ const EvidenceSidebarContent: FC<ContentProps> = ({
   const {
     state,
     fetchGapAnalysis,
-    fetchEvalResults,
+    fetchEvalHistory,
     triggerEval,
   } = useEvidenceQuery(evidenceClient)
 
   useEffect(() => {
-    if (!selectedAssetId) return
-    void fetchGapAnalysis(selectedAssetId)
-    void fetchEvalResults({ assetId: selectedAssetId, limit: 50 })
-  }, [selectedAssetId, fetchGapAnalysis, fetchEvalResults])
+    if (selectedAssetId) void fetchGapAnalysis(selectedAssetId)
+    void fetchEvalHistory(selectedAssetId
+      ? { assetId: selectedAssetId, limit: EVAL_TRAJECTORY_RUN_LIMIT }
+      : { limit: EVAL_TRAJECTORY_RUN_LIMIT })
+  }, [selectedAssetId, fetchGapAnalysis, fetchEvalHistory])
 
   return (
     <div className="sl-evidence-sidebar__content">
@@ -118,7 +109,7 @@ const EvidenceSidebarContent: FC<ContentProps> = ({
         // as a KPI row — DashboardView's core fused into the sidebar, no separate route.
         <>
           <div className="sl-evidence-sidebar__hero">
-            <EvalTrajectory evalResults={state.evalResults} loading={state.loading} t={t} />
+            <EvalTrajectory evalHistory={state.evalHistory} loading={state.loading} t={t} />
           </div>
           <div className="sl-evidence-sidebar__kpi-row">
             <CoveragePanel coverage={state.coverage} loading={state.loading} t={t} />
@@ -133,7 +124,7 @@ const EvidenceSidebarContent: FC<ContentProps> = ({
           <CoveragePanel coverage={state.coverage} loading={state.loading} t={t} />
           <OnDemandEvalTrigger assetId={selectedAssetId} onTrigger={triggerEval} t={t} />
           <GapPanel gapAnalysis={state.gapAnalysis} loading={state.loading} t={t} />
-          <EvalTrajectory evalResults={state.evalResults} loading={state.loading} t={t} />
+          <EvalTrajectory evalHistory={state.evalHistory} loading={state.loading} t={t} />
           <EvalDeltaView evalDelta={state.evalDelta} loading={state.loading} t={t} />
         </>
       )}

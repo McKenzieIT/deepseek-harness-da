@@ -99,9 +99,9 @@ export function apply(ctx: Context, config: Config = {}): void {
   // instance while sessions stay isolated.
   const selectionStore = createSelectionStore()
 
-  ctx.inject(['sessions', 'uiWorkspace', 'remote'], (scope: Context) => {
+  ctx.inject(['sessions', 'uiWorkspace', 'remote', 'remote.schemaGateway', 'remote.evidenceQuery'], (scope: Context) => {
     const sessions = scope.sessions
-    const layout = scope.get('layout') as { openDetails(): void } | undefined
+    const layout = scope.get('layout') as { openRightbar(track: boolean, fullscreen: boolean): void } | undefined
     let staged: string | undefined
     // Upstream 0.1.6-alpha.2 removed `SessionListState.current`: navigation moved to
     // view owners and ui-workspace's selection store is private, so no root-mounted
@@ -170,14 +170,14 @@ export function apply(ctx: Context, config: Config = {}): void {
       for (const id of state.ids) {
         if (state.byId[id]?.projectionValues?.agentPreset === PRESET_ID) {
           scope.uiWorkspace.openSession(id)
-          layout?.openDetails()
+          layout?.openRightbar(true, false)
           return
         }
       }
       staged = PRESET_ID
       knownIds = new Set(state.ids.map(String))
       scope.uiWorkspace.startSession()
-      layout?.openDetails()
+      layout?.openRightbar(true, false)
     }
 
     const layoutMode: LayoutMode = config.layoutMode ?? 'auto'

@@ -1,22 +1,27 @@
 /**
- * Hook consuming the EvidenceQueryClient. Fetches coverage on mount;
- * exposes lazy methods for gap analysis, eval results, delta, and health.
+ * Hook consuming the EvidenceQueryClient. Fetches coverage on mount and exposes
+ * query methods for evidence panels. `fetchEvalHistory` loads bounded run summaries and
+ * derives the latest comparable pair from those returned runs, so the
+ * dashboard and sidebar use the same run-selection rule. Only the latest
+ * history request may publish run summaries, delta, or errors after a selection change.
  *
  * `loading` is derived from an in-flight `pendingCount` counter (not a single
- * boolean) so concurrent fetches (coverage on mount + gap/eval on asset
- * selection) do not prematurely flip loading to false while one is still
- * pending.
+ * boolean) so concurrent fetches do not prematurely clear loading while one
+ * request is still pending.
  */
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type {
   EnrichedCoverageStats,
   GapAnalysisResult,
   EvalResultQueryResult,
   EvalResultFilters,
+  EvalRunHistoryFilters,
+  EvalRunHistoryResult,
   AssetHealthReport,
   ProposedRelation,
   ReachabilityDeltaResult,
   EvalDeltaReport,
+  EvalDeltaFilters,
 } from '../types.ts'
 
 /** Injected evidence-query client face (passed from plugin apply). */
@@ -25,8 +30,9 @@ export interface EvidenceQueryClient {
   gapAnalysis(assetId: string): Promise<GapAnalysisResult>
   reachabilityDelta(relation: ProposedRelation): Promise<ReachabilityDeltaResult>
   evalResultQuery(filters: EvalResultFilters): Promise<EvalResultQueryResult>
+  evalRunHistory(filters: EvalRunHistoryFilters): Promise<EvalRunHistoryResult>
   assetHealth(assetId: string): Promise<AssetHealthReport | null>
-  beforeAfterDelta(runIdA: string, runIdB: string): Promise<EvalDeltaReport>
+  beforeAfterDelta(runIdA: string, runIdB: string, filters?: EvalDeltaFilters): Promise<EvalDeltaReport>
   triggerEvalRun?(assetId?: string): Promise<string>
   getEvalRunCount?(): Promise<number>
   getRecentPassRates?(n?: number): Promise<number[]>
@@ -38,6 +44,7 @@ export interface EvidenceQueryState {
   coverage: EnrichedCoverageStats | null
   gapAnalysis: GapAnalysisResult | null
   evalResults: EvalResultQueryResult | null
+  evalHistory: EvalRunHistoryResult | null
   assetHealth: AssetHealthReport | null
   reachabilityDelta: ReachabilityDeltaResult | null
   evalDelta: EvalDeltaReport | null
@@ -51,6 +58,7 @@ const INITIAL_STATE: EvidenceQueryState = {
   coverage: null,
   gapAnalysis: null,
   evalResults: null,
+  evalHistory: null,
   assetHealth: null,
   reachabilityDelta: null,
   evalDelta: null,
@@ -78,21 +86,23 @@ function failFetch(s: EvidenceQueryState, err: unknown): EvidenceQueryState {
 }
 
 /**
- *  useEvidenceQuery
- * @param client - client
- * @returns the result
+ * Read evidence-query state for one mounted consumer.
+ * @param client - Evidence-query RPC client, or null when the capability is unavailable.
+ * @returns State plus explicit fetch operations for each evidence view.
  */
 export function useEvidenceQuery(client: EvidenceQueryClient | null): {
   state: EvidenceQueryState
   fetchCoverage: () => Promise<void>
   fetchGapAnalysis: (assetId: string) => Promise<void>
   fetchEvalResults: (filters: EvalResultFilters) => Promise<void>
+  fetchEvalHistory: (filters: EvalRunHistoryFilters) => Promise<void>
   fetchAssetHealth: (assetId: string) => Promise<void>
   fetchReachabilityDelta: (relation: ProposedRelation) => Promise<void>
   fetchEvalDelta: (runIdA: string, runIdB: string) => Promise<void>
   triggerEval: (assetId?: string) => Promise<string | null>
 } {
   const [state, setState] = useState<EvidenceQueryState>(INITIAL_STATE)
+  const historyRequest = useRef(0)
 
   const fetchCoverage = useCallback(async () => {
     if (!client) return
@@ -124,6 +134,39 @@ export function useEvidenceQuery(client: EvidenceQueryClient | null): {
       setState(s => finishFetch(s, { evalResults }))
     } catch (err) {
       setState(s => failFetch(s, err))
+    }
+  }, [client])
+
+  const fetchEvalHistory = useCallback(async (filters: EvalRunHistoryFilters) => {
+    if (!client) return
+    const request = ++historyRequest.current
+    const isCurrent = () => request === historyRequest.current
+    setState(beginFetch)
+    try {
+      const evalHistory = await client.evalRunHistory(filters)
+      if (!isCurrent()) {
+        setState(s => finishFetch(s, {}))
+        return
+      }
+      const latest = evalHistory.runs[0]
+      const previous = evalHistory.runs[1]
+      if (latest === undefined || previous === undefined) {
+        setState(s => finishFetch(s, { evalHistory, evalDelta: null }))
+        return
+      }
+
+      setState(s => ({ ...s, evalHistory, evalDelta: null }))
+      const deltaFilters: EvalDeltaFilters = {
+        ...(evalHistory.assetFilterStatus === 'applied' && filters.assetId !== undefined
+          ? { assetId: filters.assetId }
+          : {}),
+        ...(filters.domain === undefined ? {} : { domain: filters.domain }),
+        ...(filters.scopeId === undefined ? {} : { scopeId: filters.scopeId }),
+      }
+      const evalDelta = await client.beforeAfterDelta(previous.runId, latest.runId, deltaFilters)
+      setState(s => isCurrent() ? finishFetch(s, { evalDelta }) : finishFetch(s, {}))
+    } catch (err) {
+      setState(s => isCurrent() ? failFetch(s, err) : finishFetch(s, {}))
     }
   }, [client])
 
@@ -162,8 +205,6 @@ export function useEvidenceQuery(client: EvidenceQueryClient | null): {
 
   const triggerEval = useCallback(async (assetId?: string): Promise<string | null> => {
     if (!client?.triggerEvalRun) return null
-    // Route through beginFetch/finishFetch/failFetch like every other fetch so
-    // the shared loading indicator reflects an in-progress on-demand trigger.
     setState(beginFetch)
     try {
       const runId = await client.triggerEvalRun(assetId)
@@ -175,7 +216,6 @@ export function useEvidenceQuery(client: EvidenceQueryClient | null): {
     }
   }, [client])
 
-  // Fetch coverage on mount
   useEffect(() => { void fetchCoverage() }, [fetchCoverage])
 
   return {
@@ -183,6 +223,7 @@ export function useEvidenceQuery(client: EvidenceQueryClient | null): {
     fetchCoverage,
     fetchGapAnalysis,
     fetchEvalResults,
+    fetchEvalHistory,
     fetchAssetHealth,
     fetchReachabilityDelta,
     fetchEvalDelta,

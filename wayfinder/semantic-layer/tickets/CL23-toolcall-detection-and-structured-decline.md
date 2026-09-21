@@ -1,10 +1,14 @@
 ---
 type: task
-status: open
+status: resolved
 blocked_by: []
 ---
 
 # CL-23: tool-call 检测 + 结构化拒绝合成（CL-19 修复落地）
+
+## Answer
+
+Resolved for its owned scope. Tool-call text detection and the structured decline signal are present on the current branch; remaining user-facing synthesis is owned by [CL-26](CL26-eval-runner-service-decline-synthesis-gap.md), while response parsing and evidence acceptance moved to [Evaluation T15](../../evaluation/tickets/T15-evaluation-controller-cli.md).
 
 **Branch**: 无 —— `fix/cl23-toolcall-structured-decline` 已于 2026-09-17 删除（残余为零，见文末「分支处置」）。
 

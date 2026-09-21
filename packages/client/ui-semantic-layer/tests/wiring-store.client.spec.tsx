@@ -61,22 +61,23 @@ function bindUseStore(instance: InstanceFace): SelectionStoreProps['useStore'] {
   return useStore
 }
 
-/** A mock EvidenceQueryClient with `gapAnalysis`/`evalResultQuery` as spies. */
+/** A mock EvidenceQueryClient with `gapAnalysis`/`evalRunHistory` as spies. */
 function mockEvidenceClient(): {
   client: EvidenceQueryClient
   gapAnalysis: ReturnType<typeof vi.fn>
-  evalResultQuery: ReturnType<typeof vi.fn>
+  evalRunHistory: ReturnType<typeof vi.fn>
 } {
   const coverage = {
     table_count: 0, event_count: 0, metric_count: 0, domain_counts: {},
-    confirmation: { draft: 0, confirmed: 0, rejected: 0 },
+    confirmation: { draft: 0, confirmed: 0, rejected: 0, unknown: 0 },
   }
   const gapAnalysis = vi.fn(async (_assetId: string) => ({ sourceAssetId: _assetId, gaps: [] }))
-  const evalResultQuery = vi.fn(async () => ({ results: [], total: 0 }))
+  const evalRunHistory = vi.fn(async () => ({ runs: [], total: 0, assetFilterStatus: 'not_requested' as const }))
   const client: EvidenceQueryClient = {
     coverageQuery: async () => coverage,
     gapAnalysis,
-    evalResultQuery,
+    evalResultQuery: vi.fn(),
+    evalRunHistory,
     assetHealth: async () => null,
     reachabilityDelta: async () => ({
       proposedRelation: { sourceId: '', targetId: '', type: 'joins' },
@@ -91,7 +92,7 @@ function mockEvidenceClient(): {
     getRecentPassRates: async () => [],
     subscribeInvalidation: () => () => {},
   } as unknown as EvidenceQueryClient
-  return { client, gapAnalysis, evalResultQuery }
+  return { client, gapAnalysis, evalRunHistory }
 }
 
 /** A mock SchemaGatewayClient with pluggable domain/table rosters. */
@@ -158,7 +159,7 @@ function schemaAdapterProps(
 describe('GA-WIRING: session-scoped selection store', () => {
   it('shares selection across the two sibling adapters: actions.select drives ' +
     'EvidenceSidebar fetches with the asset id (acceptance #3)', async () => {
-    const { client: evidenceClient, gapAnalysis, evalResultQuery } = mockEvidenceClient()
+    const { client: evidenceClient, gapAnalysis, evalRunHistory } = mockEvidenceClient()
     // One handle, one per-session instance — exactly what the framework
     // produces for two `details.aux` entries on the same handle in one session.
     const store = createSelectionStore()
@@ -180,8 +181,9 @@ describe('GA-WIRING: session-scoped selection store', () => {
       )
     })
 
-    // Before selection: the asset-scoped effect early-returns (no asset) → no fetch.
+    // Before selection: gap analysis stays idle, while eval history loads globally.
     expect(gapAnalysis).not.toHaveBeenCalled()
+    expect(evalRunHistory).toHaveBeenCalledWith({ limit: 10 })
 
     // SchemaExplorer's selected-asset signal — the actions it shares with the
     // evidence adapter — selects a table by its logical name.
@@ -189,10 +191,10 @@ describe('GA-WIRING: session-scoped selection store', () => {
       actions.select({ name: 'orders', kind: 'table' })
     })
 
-    // EvidenceSidebar's asset-scoped useEffect fires with selectedAssetId='orders':
-    // fetchGapAnalysis('orders') + fetchEvalResults({ assetId: 'orders', limit: 50 }).
+    // EvidenceSidebar's asset-scoped effect asks the service for an asset filter;
+    // the service applies it only when a reliable case-to-asset mapping source exists.
     expect(gapAnalysis).toHaveBeenCalledWith('orders')
-    expect(evalResultQuery).toHaveBeenCalledWith(expect.objectContaining({ assetId: 'orders', limit: 50 }))
+    expect(evalRunHistory).toHaveBeenCalledWith({ assetId: 'orders', limit: 10 })
 
     view.unmount()
   })
@@ -221,7 +223,7 @@ describe('GA-WIRING: session-scoped selection store', () => {
   })
 
   it('isolates selection per session: one handle, two per-session instances (acceptance #4)', async () => {
-    const { client: ev2, gapAnalysis: gap2, evalResultQuery: eval2 } = mockEvidenceClient()
+    const { client: ev2, gapAnalysis: gap2, evalRunHistory: eval2 } = mockEvidenceClient()
     // ONE handle (as index.ts constructs in apply), TWO per-session instances
     // (resolveStore indexes by handle × sessionId). Constructive guarantee:
     // a write on s1 never reaches s2's snapshot.
@@ -243,7 +245,8 @@ describe('GA-WIRING: session-scoped selection store', () => {
     expect(gap2).not.toHaveBeenCalled()
     await act(async () => { inst1.actions.select({ name: 'payments', kind: 'table' }) })
     expect(gap2).not.toHaveBeenCalled()
-    expect(eval2).not.toHaveBeenCalled()
+    expect(eval2).toHaveBeenCalledTimes(1)
+    expect(eval2).toHaveBeenCalledWith({ limit: 10 })
     view.unmount()
   })
 

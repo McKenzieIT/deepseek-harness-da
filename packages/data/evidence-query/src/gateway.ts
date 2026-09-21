@@ -6,10 +6,13 @@ import type {
   GapAnalysisResult,
   EvalResultFilters,
   EvalResultQueryResult,
+  EvalRunHistoryFilters,
+  EvalRunHistoryResult,
   AssetHealthReport,
   ProposedRelation,
   ReachabilityDeltaResult,
   EvalDeltaReport,
+  EvalDeltaFilters,
 } from './types.ts'
 
 /** EvidenceQueryGateway */
@@ -60,6 +63,17 @@ export class EvidenceQueryGateway extends TypertRemoteService {
   }
 
   /**
+   * EvidenceQueryGateway.evalRunHistory
+   * @param filters - bounded run-history filters
+   * @returns newest matching run summaries
+   * @throws When limit is not a positive integer or exceeds the server maximum.
+   */
+  @Remote('evalRunHistory')
+  evalRunHistory(filters: EvalRunHistoryFilters): EvalRunHistoryResult {
+    return this.ctx.evidenceQuery.evalRunHistory(filters)
+  }
+
+  /**
    *  EvidenceQueryGateway.assetHealth
    * @param assetId - assetId
    * @returns the result
@@ -73,11 +87,13 @@ export class EvidenceQueryGateway extends TypertRemoteService {
    *  EvidenceQueryGateway.beforeAfterDelta
    * @param runIdA - runIdA
    * @param runIdB - runIdB
+   * @param filters - optional asset, domain, and scope filters
    * @returns the result
+   * @throws When an asset filter lacks a complete case-to-asset mapping.
    */
   @Remote('beforeAfterDelta')
-  beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport {
-    return this.ctx.evidenceQuery.beforeAfterDelta(runIdA, runIdB)
+  beforeAfterDelta(runIdA: string, runIdB: string, filters?: EvalDeltaFilters): EvalDeltaReport {
+    return this.ctx.evidenceQuery.beforeAfterDelta(runIdA, runIdB, filters)
   }
 
   /**

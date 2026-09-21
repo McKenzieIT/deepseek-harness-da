@@ -21,8 +21,15 @@ import type { Context } from '@deepseek-ai/cordis'
 /** A minimal Context mock: ctx.effect/plugin are no-ops; ctx.inject
  *  invokes its callback immediately with a stub scope whose slots.inject
  *  captures every registered slot config (so we can read `inject: injected`). */
-function mockCtx(): { ctx: Context; captured: Array<Record<string, unknown>> } {
+function mockCtx(): {
+  ctx: Context
+  captured: Array<Record<string, unknown>>
+  layout: { openRightbar: ReturnType<typeof vi.fn> }
+  startSession: ReturnType<typeof vi.fn>
+} {
   const captured: Array<Record<string, unknown>> = []
+  const layout = { openRightbar: vi.fn() }
+  const startSession = vi.fn()
   const scope = {
     sessions: {
       list: {
@@ -30,8 +37,9 @@ function mockCtx(): { ctx: Context; captured: Array<Record<string, unknown>> } {
         getSnapshot: vi.fn(() => ({ ids: [], byId: {}, current: undefined })),
       },
     },
-    workspaces: { startSession: vi.fn() },
-    get: vi.fn(() => undefined),
+    workspaces: { startSession },
+    uiWorkspace: { startSession, openSession: vi.fn() },
+    get: vi.fn((key: string) => key === 'layout' ? layout : undefined),
     remote: {
       $on: vi.fn(),
       agentPresets: {
@@ -55,7 +63,7 @@ function mockCtx(): { ctx: Context; captured: Array<Record<string, unknown>> } {
     plugin: vi.fn(),
     inject: vi.fn((_deps: string[], cb: (s: typeof scope) => unknown) => cb(scope)),
   } as unknown as Context
-  return { ctx, captured }
+  return { ctx, captured, layout, startSession }
 }
 
 /** Narrow `captured[0]` (possibly undefined under noUncheckedIndexedAccess) to
@@ -86,4 +94,23 @@ describe('CL18 — apply() threads host config into injected()', () => {
     expect(props.layoutMode).toBe('auto')
     expect(props.autoFlipThreshold).toBe(3)
   })
+
+  it('waits for typed evidence remotes before constructing client props', () => {
+    const { ctx } = mockCtx()
+    apply(ctx, {})
+    expect(ctx.inject).toHaveBeenCalledWith(
+      ['sessions', 'uiWorkspace', 'remote', 'remote.schemaGateway', 'remote.evidenceQuery'],
+      expect.any(Function),
+    )
+  })
+
+  it('opens the current right sidebar API after starting a management session', () => {
+    const { ctx, captured, layout, startSession } = mockCtx()
+    apply(ctx, {})
+    const props = sidebarSlot(captured).inject as () => Record<string, unknown>
+    expect(() => (props().openOrCreateSession as () => void)()).not.toThrow()
+    expect(startSession).toHaveBeenCalledOnce()
+    expect(layout.openRightbar).toHaveBeenCalledWith(true, false)
+  })
+
 })

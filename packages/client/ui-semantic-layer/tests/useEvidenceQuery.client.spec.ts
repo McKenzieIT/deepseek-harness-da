@@ -12,14 +12,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useEvidenceQuery } from '../src/client/hooks/useEvidenceQuery.ts'
 import type { EvidenceQueryClient } from '../src/client/hooks/useEvidenceQuery.ts'
-import type { EnrichedCoverageStats } from '../src/client/types.ts'
+import type { EnrichedCoverageStats, EvalRunHistoryResult } from '../src/client/types.ts'
 
 const COVERAGE: EnrichedCoverageStats = {
   table_count: 0,
   event_count: 0,
   metric_count: 0,
   domain_counts: {},
-  confirmation: { draft: 0, confirmed: 0, rejected: 0 },
+  confirmation: { draft: 0, confirmed: 0, rejected: 0, unknown: 0 },
 }
 
 /** A client whose only exercised methods are coverageQuery (mount) + triggerEvalRun. */
@@ -29,6 +29,7 @@ function makeClient(triggerEvalRun: (assetId?: string) => Promise<string>): Evid
     gapAnalysis: vi.fn(),
     reachabilityDelta: vi.fn(),
     evalResultQuery: vi.fn(),
+    evalRunHistory: vi.fn(),
     assetHealth: vi.fn(),
     beforeAfterDelta: vi.fn(),
     triggerEvalRun,
@@ -99,6 +100,7 @@ describe('useEvidenceQuery — triggerEval loading contract', () => {
       gapAnalysis: vi.fn(),
       reachabilityDelta: vi.fn(),
       evalResultQuery: vi.fn(),
+      evalRunHistory: vi.fn(),
       assetHealth: vi.fn(),
       beforeAfterDelta: vi.fn(),
       // triggerEvalRun intentionally absent
@@ -112,5 +114,122 @@ describe('useEvidenceQuery — triggerEval loading contract', () => {
     expect(result.current.state.loading).toBe(false)
     expect(result.current.state.pendingCount).toBe(0)
     expect(result.current.state.error).toBe(null)
+  })
+})
+
+
+describe('useEvidenceQuery — asset-filtered delta', () => {
+  it('requests delta for the asset only when the history filter was applied', async () => {
+    const client = makeClient(vi.fn())
+    client.evalRunHistory = vi.fn(async () => ({
+      runs: [
+        { runId: 'run-b', timestamp: '2026-09-18T00:00:00Z', pass: 1, fail: 0, error: 0, pending: 0, total: 1 },
+        { runId: 'run-a', timestamp: '2026-09-17T00:00:00Z', pass: 0, fail: 1, error: 0, pending: 0, total: 1 },
+      ],
+      total: 2,
+      assetFilterStatus: 'applied',
+    } as EvalRunHistoryResult))
+    client.beforeAfterDelta = vi.fn(async () => ({
+      runIdA: 'run-a', runIdB: 'run-b', flipped: [],
+      summary: { improved: 0, regressed: 0, unchanged: 1 },
+    }))
+    const { result } = renderHook(() => useEvidenceQuery(client))
+    await vi.waitFor(() => { expect(result.current.state.loading).toBe(false) })
+
+    await act(async () => { await result.current.fetchEvalHistory({ assetId: 'orders', limit: 10 }) })
+
+    expect(client.beforeAfterDelta).toHaveBeenCalledWith('run-a', 'run-b', { assetId: 'orders' })
+  })
+})
+
+describe('useEvidenceQuery — current history request ownership', () => {
+  it('ignores a stale history response after a newer asset request completes', async () => {
+    let resolveGlobal: (value: EvalRunHistoryResult) => void = () => {}
+    let resolveAsset: (value: EvalRunHistoryResult) => void = () => {}
+    const client = makeClient(vi.fn())
+    client.evalRunHistory = vi.fn(filters => new Promise<EvalRunHistoryResult>((resolve) => {
+      if (filters.assetId === 'orders') resolveAsset = resolve
+      else resolveGlobal = resolve
+    }))
+    const { result } = renderHook(() => useEvidenceQuery(client))
+    await vi.waitFor(() => { expect(result.current.state.loading).toBe(false) })
+
+    let globalPromise!: Promise<void>
+    let assetPromise!: Promise<void>
+    act(() => { globalPromise = result.current.fetchEvalHistory({ limit: 10 }) })
+    act(() => { assetPromise = result.current.fetchEvalHistory({ assetId: 'orders', limit: 10 }) })
+
+    await act(async () => {
+      resolveAsset({
+        runs: [{ runId: 'asset-run', timestamp: '2026-09-18T00:00:00Z', pass: 1, fail: 0, error: 0, pending: 0, total: 1 }],
+        total: 1,
+        assetFilterStatus: 'applied',
+      })
+      await assetPromise
+    })
+    expect(result.current.state.evalHistory?.runs[0]?.runId).toBe('asset-run')
+
+    await act(async () => {
+      resolveGlobal({
+        runs: [{ runId: 'global-run', timestamp: '2026-09-17T00:00:00Z', pass: 1, fail: 0, error: 0, pending: 0, total: 1 }],
+        total: 1,
+        assetFilterStatus: 'not_requested',
+      })
+      await globalPromise
+    })
+    expect(result.current.state.evalHistory?.runs[0]?.runId).toBe('asset-run')
+    expect(result.current.state.pendingCount).toBe(0)
+  })
+
+  it('ignores a stale delta after a newer history request completes', async () => {
+    let resolveGlobalQuery: (value: EvalRunHistoryResult) => void = () => {}
+    let resolveAssetQuery: (value: EvalRunHistoryResult) => void = () => {}
+    let resolveGlobalDelta: (value: Awaited<ReturnType<EvidenceQueryClient['beforeAfterDelta']>>) => void = () => {}
+    const client = makeClient(vi.fn())
+    client.evalRunHistory = vi.fn(filters => new Promise<EvalRunHistoryResult>((resolve) => {
+      if (filters.assetId === 'orders') resolveAssetQuery = resolve
+      else resolveGlobalQuery = resolve
+    }))
+    client.beforeAfterDelta = vi.fn(() => new Promise<Awaited<ReturnType<EvidenceQueryClient['beforeAfterDelta']>>>((resolve) => { resolveGlobalDelta = resolve }))
+    const { result } = renderHook(() => useEvidenceQuery(client))
+    await vi.waitFor(() => { expect(result.current.state.loading).toBe(false) })
+
+    let globalPromise!: Promise<void>
+    act(() => { globalPromise = result.current.fetchEvalHistory({ limit: 10 }) })
+    await act(async () => {
+      resolveGlobalQuery({
+        runs: [
+          { runId: 'global-run-2', timestamp: '2026-09-17T00:00:00Z', pass: 1, fail: 0, error: 0, pending: 0, total: 1 },
+          { runId: 'global-run-1', timestamp: '2026-09-16T00:00:00Z', pass: 0, fail: 1, error: 0, pending: 0, total: 1 },
+        ],
+        total: 2,
+        assetFilterStatus: 'not_requested',
+      })
+      await vi.waitFor(() => { expect(client.beforeAfterDelta).toHaveBeenCalledWith('global-run-1', 'global-run-2', {}) })
+    })
+
+    let assetPromise!: Promise<void>
+    act(() => { assetPromise = result.current.fetchEvalHistory({ assetId: 'orders', limit: 10 }) })
+    await act(async () => {
+      resolveAssetQuery({
+        runs: [{ runId: 'asset-run', timestamp: '2026-09-18T00:00:00Z', pass: 1, fail: 0, error: 0, pending: 0, total: 1 }],
+        total: 1,
+        assetFilterStatus: 'applied',
+      })
+      await assetPromise
+    })
+
+    await act(async () => {
+      resolveGlobalDelta({
+        runIdA: 'global-run-1',
+        runIdB: 'global-run-2',
+        flipped: [{ caseId: 'case-1', before: 'fail', after: 'pass' }],
+        summary: { improved: 1, regressed: 0, unchanged: 0 },
+      })
+      await globalPromise
+    })
+    expect(result.current.state.evalHistory?.runs[0]?.runId).toBe('asset-run')
+    expect(result.current.state.evalDelta).toBeNull()
+    expect(result.current.state.pendingCount).toBe(0)
   })
 })

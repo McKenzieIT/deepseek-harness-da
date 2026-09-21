@@ -1,6 +1,6 @@
 # W16 session prompt — evidence-query 客户端 remote 接通
 
-> 实例化自 [`wayfinder/_templates/session-prompt.md`](../_templates/session-prompt.md)。分支契约 + 收尾自检见模板。本文件只填任务正文。
+> 实例化自 [`wayfinder/_templates/session-prompt.md`](../../../_templates/session-prompt.md)。分支契约 + 收尾自检见模板。本文件只填任务正文。
 
 ## 1. 环境/分支契约(session 启动第一步)
 
@@ -11,7 +11,7 @@ node scripts/install-lefthook.mjs
 ```
 
 - worktree:`../dsh-W16`
-- 分支:`fix/w16-evidence-query-client-remote`(票 [`W16`](../tickets/W16-evidence-query-client-remote-gap.md) 已声明此分支)
+- 分支:`fix/w16-evidence-query-client-remote`(票 [`W16`](../../tickets/W16-evidence-query-client-remote-gap.md) 已声明此分支)
 - 基线:`master @ 7cbf35ad48`(2026-09-04)
 - **禁止直推 master。** 所有提交落本分支 → `gh pr create`。
 
@@ -75,7 +75,7 @@ node scripts/install-lefthook.mjs
 - [ ] `pnpm run verify-client-packages` 仍过(加 remote 导出后)
 - [ ] **浏览器实测**(不只组件测试):管理 session 里 GoalDock / EvidenceSidebar 显示真实 eval 数据(`.tmp/eval-results` 有 3 run 可读)
 - [ ] DashboardView CSS 补齐,auto-flip 触发时不再是无样式溢出
-- [ ] `gh pr create --base master --head fix/w16-evidence-query-client-remote`,过 [dsh-pre-push-checks](../../.agents/skills/dsh-pre-push-checks/SKILL.md)
+- [ ] `gh pr create --base master --head fix/w16-evidence-query-client-remote`,过 [dsh-pre-push-checks](../../../../.agents/skills/dsh-pre-push-checks/SKILL.md)
 - [ ] PR 正文标注:CL-22 n=1 验证(不可作决策基线)+ DashboardView CSS 同批理由
 - [ ] **下一并行批不得在本 PR 未 merge / 未 abandon 前启动。**
 
