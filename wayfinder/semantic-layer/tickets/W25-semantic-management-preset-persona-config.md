@@ -1,7 +1,7 @@
 ---
 type: task
-status: open
-assignee: null
+status: in_progress
+assignee: codex
 blocked_by: []
 ---
 
