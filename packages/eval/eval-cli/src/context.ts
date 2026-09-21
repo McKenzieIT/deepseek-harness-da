@@ -10,6 +10,7 @@
  */
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
@@ -762,7 +763,9 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     // creds are pushed; ctx.credentials (LocalCredentialProvider) still satisfies
     // MaxComputeQueryEngine's static inject=['credentials'] (unused in sidecar-self).
 
-    const sidecarPath = opts.sidecarPath ?? new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url).pathname
+    // fileURLToPath, not URL.pathname: the latter yields '/C:/…' on Windows,
+    // which is not a usable sidecar path. Same defect as harness-responder.ts.
+    const sidecarPath = opts.sidecarPath ?? fileURLToPath(new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url))
     // eval-cli-exp-9: do NOT default to a .bak (stale backup) — align with
     // harness-responder.ts which uses ~/.maxc/config.yaml. Same concept, one
     // default; both overridable via MAXC_CONFIG.

@@ -22,7 +22,7 @@ import { randomUUID } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
@@ -369,7 +369,10 @@ export class HarnessAgentResponder implements AgentResponder {
   }
 
   private resolveRepoRoot(): string {
-    let dir = dirname(new URL(import.meta.url).pathname)
+    // fileURLToPath, not URL.pathname: on Windows the latter yields
+    // '/C:/…', whose join() is an invalid path, so every existsSync below
+    // answered false and this walk silently degraded to the cwd fallback.
+    let dir = dirname(fileURLToPath(import.meta.url))
     for (let i = 0; i < 10; i++) {
       if (existsSync(join(dir, 'packages')) && existsSync(join(dir, 'apps'))) return dir
       const parent = dirname(dir)
@@ -480,7 +483,12 @@ export class HarnessAgentResponder implements AgentResponder {
     try {
       return await Promise.race([promise, timeoutPromise])
     } finally {
+      /* v8 ignore start -- the implicit else is unreachable: the Promise
+         constructor runs its executor synchronously before `new Promise`
+         returns, and `setTimeout` always yields a Timeout, so `timer` is
+         already assigned by the time this finally block runs. */
       if (timer !== undefined) clearTimeout(timer)
+      /* v8 ignore stop */
     }
   }
 }

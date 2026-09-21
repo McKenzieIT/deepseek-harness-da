@@ -185,7 +185,7 @@ function rate(stats: CategoryStats): string {
 }
 
 function pad(s: string, w: number): string {
-  return s.length >= w ? s : s + ' '.repeat(w - s.length)
+  return s.padEnd(w)
 }
 
 function rpad(s: string, w: number): string {
