@@ -18,12 +18,16 @@
 
 wayfinder 默认「出决策不出交付物」。本票是显式例外：排序口径与补法已由用户拍板（见下），剩下的是纯执行 —— 按批补测试、走 PR、按两条标准验收。**它之所以需要一张票而不是散在 session prompt 里**，是因为它跨数十个 session，而每个 session 都需要同一套起点数字、同一套验收标准、同一套测量陷阱清单。把这些留在交接 prompt 里，已经导致过一次量级误判 40 倍（见下「测量陷阱」§1）。
 
-## 当前状态（2026-09-20）
+## 当前状态（2026-09-21）
 
 | | 值 |
 | --- | --- |
 | master（`78f53287d1`）上的剩余 | **6673 处 / 46 包** |
 | PR [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175) 合入后 | **6197 处 / 42 包**（已由 CI 实测，非推算） |
+| #175 全部合入后（master `3f6ad7a308`） | **5310 处 / 30 包**（raw 5310 / unique 5307；3 条重复行见下） |
+| PR [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176)（eval-cli batch 1）待合 | **4577 处**（CI 实测，非推算；unique 4575） |
+
+**计数口径注意：CI 清单有重复行，raw ≠ unique。** master `3f6ad7a308` 的 Windows 清单抓出 **5310 行**但只有 **5307 条 unique**：`ui-context-layer/src/client/graph-animations.ts:384:20`、同文件 `:81:12`、`eval-cli/src/compare.ts:79:10` 各出现两次。eval-cli 因此 raw 1499 / unique **1498**。Round 49 的家族收尾账用的是 unique 口径，逐条 diff 也必须先 `sort -u` 再 `comm`，否则重复行会同时算进「消失」和「新增」。
 
 **唯一可信的测量腿是 `windows node 24 / coverage`。** Linux 的 `node 24 / coverage` 目前是 **0 信号**而不是「覆盖率红」：`scripts/prepare-ci-bubblewrap.sh`（与上游逐字相同）把下载地址写死到 Ubuntu pool 的 `bubblewrap_0.9.0-1ubuntu0.1_amd64.deb`，pool 只保留当前版本、该文件已被轮换掉 → HTTP 404 → 该 job 在「Install dependencies and prepare bubblewrap」失败、「Run exhaustive coverage」**skipped**。**它根本没测量 coverage，补多少测试都不会让它转绿。** 归属上游（上游自己同样坏），不修。同批被打死的还有 `node-24-consumers`（显示名 `snapshots and artifacts`）与 `node-compat`（node 22.19 / 24.9 / 26）。复检条件：上游 bump 这个 pin 后自愈，届时可恢复两腿对照。
 
@@ -68,6 +72,7 @@ harness 模板从 `packages/data/tool-search-data-sources/tests/search-data-sour
 | （前史）平台互补 | [#174](https://github.com/McKenzieIT/deepseek-harness-da/pull/174) | 1 处 | 6674 → 6673 | 见下「第三类位置」 |
 | tool-family batch 1 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175) | 4 包 / 467 处 | 6674 → **6197**（−477，零回归） | A 档；含替换一处假测试 |
 | tool-family batch 2+3 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)（同 PR，已合并 `778ce34934`） | 12 包 / 886 处 | 6197 → **5310**（消失 886 unique、新增 0，零回归；含 `nl2sql-engine` +1 附带） | B 档 8 + C 档 4；家族 16/16 全清 |
+| eval-cli batch 1 | [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176) | 1 包 / 5 文件 / 639 处 | 5310 → **4577**（raw；unique 5307 → 4575。消失 733 = 639 目标 + 93 附带 + 1 列号互换；真新增 **0**） | 口径 A 首批；含一处 Windows 真 bug 修复（见下） |
 
 ## 家族剩余（batch 1 之后）
 
@@ -99,6 +104,9 @@ harness 模板从 `packages/data/tool-search-data-sources/tests/search-data-sour
 6. **`gh run view --job <id> --log` 在本机 gh 2.73 静默返回 0 字节。** 可靠取法：`gh api repos/McKenzieIT/deepseek-harness-da/actions/jobs/<id>/logs`。找 job id：`gh api repos/.../commits/<sha>/check-runs?per_page=100`。
 7. **失败的 coverage job 会产出一个看起来正常但没有清单的日志。** #174 那次（job `105874541449`）13 分钟即失败，日志 514 KB（正常约 2.7 MB），抓位置行 **0 命中**。拿到空清单时先看 job 时长与字节数，不要以为是自己 grep 写错了。
 8. **coverage 只在 PR 上跑，master 的 `CI master` 没有这个 job。** 想要 master 的数字，要读最近一个 PR 的 job，并注意它的 base 是否落后。
+9. **代码注释里写的「这做不到」不是证据，是待验证断言 —— 而且它会把工作面直接砍掉。** eval-cli 的 `scope-id.spec.ts:20-23` 与 `harness-responder.spec.ts:8-14` 都言之凿凿地说：本包没有 `src/invariant.ts` companion，所以 in-process `ctx.plugin()` 的测试**做不了**，于是 `bootContext()` 只在子进程测（而子进程 coverage 归不到本进程）。读一眼 `scripts/test-invariants.ts:118` 就知道 companion 缺席时返回 `[]`、**缺席不是错误**；全仓约 20 个包这么干。一个 7ms 的 probe spec 就能证伪。**代价是 761 处（`harness-responder` 219 + `context` 542，占 eval-cli 的 51%）被长期判成「结构上做不到」。** 纪律：拿「做不到」当规划前提之前，先花五分钟写个 probe 证伪它；注释的作者当时可能只是没试过。同理，**自己新写的注释也别乱下「不可能」的断言**——本批就有一条 agent 新写的注释把不可达路径描述错了，已就地改正。
+10. **本机 100% ≠ CI 100%，而差额可能小到只有 2 行 —— 这正是「不许用总数相减」的理由。** Round 50 本机 `harness-responder.ts` 报 `100|100|100|100`，Windows CI 上却还剩 2 处（`374:7`、`374:79`）。总数相减得 731、预期 639，差 92 —— 而那 92 其实是附带覆盖（好事），真正的问题藏在另一个方向，两者互相抵消后**总数看上去只差一点点**，极易被判成噪音。逐条 diff 直接指到具体两行，根因是 `new URL(...).pathname` 在 Windows 上产出 `/C:/…`（详见 batch 1 节）。**推论：跨平台分歧只有 CI 能发现，而发现它的唯一手段是逐条 diff。**
+11. **改了被测代码所依赖的 seam，必须重跑变异验证。** Round 50 把 `URL.pathname` 换成 `fileURLToPath` 后，原先靠子类化 `globalThis.URL` 的测试替身**静默失效**——而其中一个用例断言的值恰好等于「替身失效后的真实返回值」，于是**继续绿、理由全错**。只有把 seam 关掉看是否变红，才能区分「真覆盖」和「恰好相等」。同理，**加行会位移未覆盖清单的行号**，逐条 diff 前要先把基线按映射前推，否则纯位移会显示成等量的「消失 + 新增」。
 
 ## 硬约束（这些是禁令，不是偏好）
 
@@ -257,6 +265,80 @@ C 档最容易遇到「不可达防御臂」。**正确处置是 `v8 ignore` + �
 ### eval-cli 子轨种子（下一棒起点）
 
 eval-cli 1498 处散在 **8 个 src 文件**（非单文件，与家族不同）。下一棒开工：① 先确认 API 额度（Round 48 两个 agent 死于 402）；② 用上文「重建逐包目标清单」命令抓 master 最新 PR 的 Windows job，按文件切分 1498 处；③ 因是 CLI（参数解析 / 子命令 / 输出格式化），逐文件建套件、无共享 harness 复用。
+
+### 追加：eval-cli batch 1（2026-09-21，Round 50，PR [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176)）
+
+**639 处 / 5 文件**，四个 agent 各领 disjoint 文件。本机逐条 diff（基线 = job `106005017563`）：**消失 639、批内残留 0、新增 0、附带 0** —— 逐文件数与分配数完全吻合。99 tests / 10 files 全绿；五个文件各 `100|100|100|100` 且非 `0|0|0|0`；阈值 ERROR 全部只指向 `context.ts`/`main.ts`/`p15-probe.ts`（下一批）；oxlint 全 90 规则 0/0；`tsc -b tsconfig.host.json` exit 0。
+
+| 文件 | 处 | 形态 |
+| --- | --- | --- |
+| `compare.ts` | 265 | 私有 helper 全部经 `compareRuns` 驱动，temp dir 喂 fixture |
+| `harness-responder.ts` | 219 | **in-process 真 boot**（16 插件 / 次，约 0.4s），真 AgentLoop 会话 |
+| `event-detect.ts` | 109 | 纯函数 + `DetectEventDeps` 注入缝，零 mock |
+| `exp2-prompts-en.ts` | 40 | 纯 prompt builder |
+| `report.ts` | 6 | 纯格式化 |
+
+#### 本批推翻了一条一直在压制工作面的错误断言
+
+`scope-id.spec.ts:20-23` 与 `harness-responder.spec.ts:8-14` 都写着：**eval-cli 没有 `src/invariant.ts` companion，所以任何 in-process `ctx.plugin()` 的测试都做不了** —— 并以此为由把 `bootContext()` 只放在子进程里测（子进程 coverage 归不到本进程）。
+
+**该断言是错的。** `scripts/test-invariants.ts:118` 的 `testInvariantCompanionPaths` 在 companion 缺席时返回 `[]`，缺席**不是错误**；全仓约 20 个包在测试里挂插件而没有 companion。主进程写了一个 probe spec 在 eval-cli/tests 下 `new Context()` + `await ctx.plugin(...)`，**7ms 通过**。
+
+代价是实打实的：这条错误断言把 `harness-responder.ts` 的 219 处和 `context.ts` 的 542 处（合计 761，占 eval-cli 的 51%）判成了"结构上做不到"。本批据此改走 in-process 真 boot，219 处全清。**两处 header 已就地更正，避免再被继承。**
+
+#### 三处生产源码改动（每处的不可达性都由主进程独立从源码重导，不采信 agent 断言）
+
+| 位置 | 处置 | 依据 |
+| --- | --- | --- |
+| `compare.ts` `pad()` | 改 `s.padEnd(w)`，**删死分支而非标注** | 两个调用点均 `w=18`，最宽输入是 `CATEGORY_ORDER` 的 `'Voice DELIVERY'`(14)；`Category` 类型只含那 5 个字面量。`padEnd` 逐字等价且零分支。`rpad` 不动 —— 它 `w=16` 的调用点吃动态 label，两臂都真能走到，已被测 |
+| `report.ts:38` | `/* v8 ignore next */` | `buildIntentBreakdown` 在唯一的 `intentMap.set` 前无条件 `entry.total++`，故每个 `IntentRow` 的 `total >= 1`。**保留**：这是除零守卫，按 quality-gates「不可达防御臂标注而非删除」 |
+| `harness-responder.ts:483` | `/* v8 ignore start\|stop */` | `raceTimeout` 的 `if (timer !== undefined)` 隐式 else。Promise executor 同步执行、在 `new Promise` 返回前就赋了 `timer`；唯一调用点传函数字面量 + 数值 `CASE_TIMEOUT_MS`，`setTimeout` 既不会抛也不会返回 undefined |
+
+**一条区分**：`pad` 那处不是「防御守卫」，而是手搓 `padEnd` 的常规分支 —— 用标准库替掉手搓实现是**消除**死代码，与「不可达防御臂标注而非删除」不冲突。两类要分开判，不要一律 ignore。
+
+#### 主进程独立复核抓到的、agent 回执没报的问题
+
+- **`tsc -b tsconfig.host.json` 5 个 TS2339**（`Property 'schema'/'agents'/'loader' does not exist on type 'Context'`）。agent 2 的回执列了 vitest/oxlint 但**没跑 host typecheck**。根因：harness 用动态 import 挂插件，spec 自己的 program 里没有那些包的 `declare module` 增强。修法用本仓既有 idiom（13+ 处先例）：`import type {} from '<pkg>'`。
+- 修掉 TS2339 后**暴露出第 6 个被掩盖的真错**：`ctx.agents` 一旦被正确定型，`sessionId: string` 就对不上 branded 的 `SessionId` 了。这是「类型错误会掩盖类型错误」的典型 —— 修完一轮要重跑，不能只看条数变少。
+- agent 2 写的一条注释把 `String(err)` 臂的生产路径描述成「Cordis plugin 可能 reject 任意值」，而它自己的调查证明 Cordis 会把非 Error **重新包装**成 Error。已就地改成真实路径（动态 `import()` 自身以非 Error 拒绝）。**新写的错注释和继承的错注释一样有害**，本棒刚花了力气推翻一条，不能同时又种一条。
+
+#### CI 裁决抓到一处本机测不出来的 Windows 真 bug（本批最重要的技术发现）
+
+**第一轮 CI（job `106193224865` → 报告头 4579）下来，本机 100% 的 `harness-responder.ts` 在 Windows 上还剩 2 处**：`374:7 branch(if, path 1/2)` 与 `374:79 statement`。按总数相减（5310 − 4579 = 731）会得到一个对不上的数、极易当噪音放过；**只有逐条 diff 才能定位到具体两行**。
+
+根因不是平台互补分支（第三类位置），是**真 bug**：`resolveRepoRoot()` 用 `dirname(new URL(import.meta.url).pathname)` 取起点，Windows 上 `.pathname` 产出 `/C:/a/repo/.../src`（盘符前多一个斜杠、`C:` 降级成普通路径段），`join(dir,'packages')` 变成 `\C:\a\...\packages` 这种非法路径，`existsSync` **恒 false** → 模块相对向上走在 Windows 上**从来没成功过**，一直静默退化到 cwd 兜底。
+
+CI 清单自己就是铁证：结构完全对称的 cwd 兜底 `:382` **全覆盖**，包括与那两条一一对应的 `382:7 path 1/2` 和 `382:79`。
+
+处置：改用 `fileURLToPath`。这是本仓压倒性惯例——**425 处 `fileURLToPath` vs 仅 4 处 `new URL(...).pathname`，而那 4 处里有 2 处正是 eval-cli 这两个文件**（`context.ts:765` 同源缺陷，COV1 此前已独立标注为 Windows-hostile，本批一并修；它在 `withQuery` 块内、整块尚未覆盖，故属纯正确性修复，coverage 上看不出来）。
+
+#### 改完源码顺带炸出的测试假绿（比 CI 那两行更值得记）
+
+原测试靠**子类化 `globalThis.URL` 改写 `pathname`** 来伪造浅安装路径。换成 `fileURLToPath` 后，它走 Node 内部 URL 解析、**根本不看全局 `URL`**，替身直接失效。
+
+**危险的是它不会响**：两个兜底用例里有一个断言的是「返回真实仓根」，而替身失效后模块相对走法**直接成功、返回的正是真实仓根** —— 用例继续绿，理由却完全错了。是变异验证（把 seam 关掉看是否变红）把它揪出来的：**测试 3 变红、测试 2 不变红**，说明测试 2 空转。
+
+修法：① seam 换成 `vi.mock('node:url')` 只重定向本模块自己的路径、其余全部委托真实现（与 `harness-responder-degraded.spec.ts` 的 `node:module` 同型）；② 测试 2 改成 `chdir` 进**第二个合成 checkout**（temp dir 里造 `packages/`+`apps/`），断言落在它上面而非真实仓根——这样两条走法答案不同，断言才有鉴别力。再次变异验证：**两个用例都变红**。
+
+**可复用纪律：改了被测代码用的那个 seam，必须重跑变异验证。** 断言值恰好与「seam 失效后的真实值」相同时，测试会安静地退化成同义反复。
+
+#### 行号位移必须预先算清，否则会被误报成回归
+
+给 `context.ts` 加了 3 行（1 import + 2 注释），它 542 处未覆盖位置的行号整体位移（老行 13 起 +1、老行 765 起 +3）。**naive diff 会显示 542 消失 + 542 新增，看着像大回归。** 做法是把基线清单按映射前推再 diff：前推后与实测**逐条完全一致，只剩 1 条**——被我改的那一行 `768` 上 `??` 的 binary-expr 从 col 45 重报到 col 30（`?? new URL(…)` → `?? fileURLToPath(new URL(…))`）。故 context.ts 是 **542 → 542 零覆盖变化**。
+
+最终账：`5307 − 733 + 1 = 4575`（unique），消失 733 = **639 批次目标 + 93 附带 + 1 列号互换**，**真新增 0**。五个批次文件在 CI 清单全部 **0 命中**，验收标准②满足。
+
+#### 编排复盘
+
+- **4 agent 并发、各领 disjoint 文件、明令零 git 写** —— 沿用有效。两个撞上不可达臂的 agent **都正确拒绝改源码**（brief 未授权）并附证明上交，证明本身经复核**都成立**。这比让 agent 自行决定改源码好。
+- **brief 内部有一处自相矛盾**：shared §3 规定不可达臂用 `v8 ignore`，而 per-agent brief 写「不要改 src」。agent 2 判定 §3 优先并如实披露；agent 1、agent 4 判定不改并上报。**三者都合理，但这是 brief 的缺陷**：下一批要把「谁有权改 src、改什么」写成单一来源。
+- 中途本机 runner 断连约 10 分钟，4 个 agent 全部存活并自行恢复（agent 2 还清掉了自己的临时 probe 文件）。
+
+#### 剩余 859（下一批）
+
+`context.ts` 542 + `main.ts` 184 + `p15-probe.ts` 133。`context.ts` 补法已拍板：**给 17 个 module-private 符号加 `@internal` 导出**（本仓先例：`packages/core/tools/src/index.ts` 多处、`packages/subagent/subagent/src/internal.ts`）。`p15-probe.ts` 已拍板**移到 `dev/` 归位**，但**单独 PR**，理由见下。
+
+**`p15-probe.ts` 移位不是覆盖收益，记账要分开。** 它 `:154` 顶层 `main().catch(...)` 自执行、打真 DashScope 网络，且 `loadCorpus()` 的 `join(process.cwd(), '../../../examples/...')` 在 vitest 下（cwd=仓根）本就指错地方；全仓无任何代码 import 它；`.agents/notes/rejected/simplification/2026-09-03-fold-eval-cli-repo-root-resolvers.md` 称它为「frozen P15a evidence」。`dev/` 是它的**既有申报归属**——`scripts/run-oxlint.ts:118` 的 `packages/eval/eval-cli/{bin,dev}/**` 一条写明「Throwaway dev and triage probe harnesses」。但该 glob 带 `count: 3`，而这个计数是**纯声明式**的：`scripts/oxlint-contract.spec.ts:263` 只把各条 `count` 求和跟一个硬编码总数比，**不与文件系统核对**，所以填错也能绿。移位必须同步 `run-oxlint.ts:119` 的 count、`:103` 的总账 docstring、`oxlint-contract.spec.ts:263` 的 34→35，且**须用 `OXC_LOG=debug` 复现 unmatched 清单来确认新计数，不能推算**。这类共享 lint 基建改动混进覆盖批会污染逐条裁决，故拆单独 PR。
 
 ---
 
