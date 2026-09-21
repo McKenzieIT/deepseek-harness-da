@@ -124,6 +124,6 @@ AFTER:  6/6 hit@5 (全部修复)
 - C（同义词字典）：维护成本高，LLM expansion 已覆盖
 - 修 tokenizer：全局回归风险（IDF 稀释、D2h regress）
 
-**证据**：`prototypes/p15-query-rewriting/probe.ts`（原始原型）+ `packages/eval/eval-cli/src/p15-probe.ts`（validated probe，4682 corpus items，simulated expansion 6/6 hit@5）。
+**证据**：`prototypes/p15-query-rewriting/probe.ts`（原始原型）+ `packages/eval/eval-cli/dev/p15-probe.ts`（validated probe，4682 corpus items，simulated expansion 6/6 hit@5）。
 
 **毕业**：→ [P15a](P15a-query-expansion-impl.md)（task 票：实现 query expansion 集成）

@@ -2,8 +2,13 @@
  * P15 Query Rewriting prototype — approach B (LLM query expansion).
  * Two modes: --before-only (no LLM, just show BM25 baseline) or full (with expansion).
  *
- * Run: cd packages/eval/eval-cli && npx tsx src/p15-probe.ts [--before-only]
- *   or: DASHSCOPE_API_KEY=xxx npx tsx src/p15-probe.ts
+ * Frozen P15a evidence, kept runnable. Lives in dev/ with the other probes
+ * rather than src/: it self-executes on import (see the main() call at the
+ * foot of this file) and reaches DashScope, so it is not importable product
+ * code and is deliberately outside the per-file coverage gate.
+ *
+ * Run: cd packages/eval/eval-cli && npx tsx dev/p15-probe.ts [--before-only]
+ *   or: DASHSCOPE_API_KEY=xxx npx tsx dev/p15-probe.ts
  */
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
