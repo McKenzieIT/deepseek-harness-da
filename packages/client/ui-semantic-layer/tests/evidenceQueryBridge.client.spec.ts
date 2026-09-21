@@ -96,6 +96,14 @@ describe('buildEvidenceQueryClient', () => {
     expect(remote.beforeAfterDelta).toHaveBeenCalledWith('r1', 'r2', { assetId: 'orders' })
   })
 
+  it('omits the optional filter when comparing complete runs', async () => {
+    const remote = makeRemoteStub()
+    const client = buildEvidenceQueryClient(remote)
+    const result = await client.beforeAfterDelta('r1', 'r2')
+    expect(result.summary.unchanged).toBe(5)
+    expect(remote.beforeAfterDelta).toHaveBeenCalledWith('r1', 'r2')
+  })
+
   it('wraps getEvalRunCount', async () => {
     const remote = makeRemoteStub()
     const client = buildEvidenceQueryClient(remote)
