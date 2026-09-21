@@ -35,6 +35,10 @@ export function formatReport(result: RunResult, cases: readonly EvalCase[]): str
     lines.push('  ' + pad('intent', 20) + pad('total', 7) + pad('correct', 9) + pad('wrong', 7) + pad('rate', 8))
     lines.push('  ' + '─'.repeat(51))
     for (const row of intentBreakdown) {
+      /* v8 ignore next -- unreachable: buildIntentBreakdown runs `entry.total++` unconditionally
+         before its only `intentMap.set`, so every IntentRow it returns carries total >= 1 and the
+         dash arm never evaluates. Kept as the divide-by-zero guard rather than deleted, per the
+         quality-gates rule that unreachable defensive guards are annotated, not removed. */
       const rate = row.total > 0 ? (row.correct / row.total * 100).toFixed(1) + '%' : '—'
       lines.push('  ' + pad(row.intent, 20) + pad(String(row.total), 7) + pad(String(row.correct), 9) + pad(String(row.wrong), 7) + pad(rate, 8))
     }

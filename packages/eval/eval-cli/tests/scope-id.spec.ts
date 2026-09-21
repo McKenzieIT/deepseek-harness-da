@@ -14,12 +14,16 @@
  *      relying on the CLI's `--scope-id` default ('k11') → boot({scopeId}) →
  *      schema mount + collaborator construction. That test does NOT explicitly
  *      pass `--scope-id` and asserts only status===0 + stdout strings; it does
- *      NOT assert scopeId→adapter propagation. The in-process boot() path
- *      cannot be tested here because the test-invariants setup
- *      (scripts/test-invariants.ts) requires a `src/invariant.ts` companion
- *      for any package whose tests call ctx.plugin() in-process, and eval-cli
- *      has none (its existing tests all run via subprocess or test pure
- *      functions). Propagation is therefore not runtime-asserted within
+ *      NOT assert scopeId→adapter propagation. The in-process boot() path is
+ *      simply not covered yet — it is scheduled for the context.ts coverage
+ *      batch.
+ *      NOTE: an earlier revision of this header claimed in-process
+ *      ctx.plugin() was impossible here because eval-cli ships no
+ *      `src/invariant.ts` test-invariants companion. That is wrong —
+ *      scripts/test-invariants.ts:118 returns no companions when a package
+ *      has none, which is not an error. harness-responder.spec.ts now boots
+ *      real in-process contexts (16 plugins, ~0.4s each) from this very
+ *      package. Propagation is therefore not runtime-asserted within
  *      eval-cli's own tests; it is structurally guaranteed by the constructor
  *      params (CtxOdpsAdapter/CtxQueryExecutor/Nl2sqlAgentResponder all take
  *      scopeId as a required constructor arg, typechecked) and runtime-asserted
@@ -40,7 +44,7 @@ describe('Phase 5d (D3ii) — eval-cli boot explicit scopeId', () => {
     //
     // The positive case (boot WITH scopeId → schema mount + collaborators)
     // is covered by main.spec.ts's CLI integration test, which runs boot()
-    // in a subprocess (sidestepping the test-invariants companion requirement).
+    // in a subprocess; the in-process equivalent lands with context.ts.
     await expect(boot({
       schemaDir: 'examples/k11-semantic-layer',
       provider: 'aga',

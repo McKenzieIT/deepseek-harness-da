@@ -480,7 +480,12 @@ export class HarnessAgentResponder implements AgentResponder {
     try {
       return await Promise.race([promise, timeoutPromise])
     } finally {
+      /* v8 ignore start -- the implicit else is unreachable: the Promise
+         constructor runs its executor synchronously before `new Promise`
+         returns, and `setTimeout` always yields a Timeout, so `timer` is
+         already assigned by the time this finally block runs. */
       if (timer !== undefined) clearTimeout(timer)
+      /* v8 ignore stop */
     }
   }
 }
