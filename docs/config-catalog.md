@@ -770,7 +770,7 @@ export interface EvidenceQueryConfig {
 }
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:66`](../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:89`](../packages/data/evidence-query/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-agent-team"></a>
 

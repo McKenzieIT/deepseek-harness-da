@@ -105,16 +105,16 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/**
- * In-memory eval result store. Supports both direct `add()` (for tests and
- * programmatic use) and `loadFromDirectory()` (reads W3 JSONL persistence
- * files). The `FileBackedEvalResultStore` subclass auto-loads on construction.
- */
 interface StoredEvalResultRecord {
   readonly record: EvalResultRecord
   readonly hasReliableAssetId: boolean
 }
 
+/**
+ * In-memory eval result store. Supports both direct `add()` (for tests and
+ * programmatic use) and `loadFromDirectory()` (reads W3 JSONL persistence
+ * files). The `FileBackedEvalResultStore` subclass auto-loads on construction.
+ */
 export class EvalResultStore {
   private records: StoredEvalResultRecord[] = []
 
