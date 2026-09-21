@@ -25,7 +25,8 @@ wayfinder 默认「出决策不出交付物」。本票是显式例外：排序�
 | master（`78f53287d1`）上的剩余 | **6673 处 / 46 包** |
 | PR [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175) 合入后 | **6197 处 / 42 包**（已由 CI 实测，非推算） |
 | #175 全部合入后（master `3f6ad7a308`） | **5310 处 / 30 包**（raw 5310 / unique 5307；3 条重复行见下） |
-| PR [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176)（eval-cli batch 1）待合 | **4577 处**（CI 实测，非推算；unique 4575） |
+| PR [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176)（eval-cli batch 1，已合并 `fecd5b7fe1`） | **4577 处**（CI 实测，非推算；unique 4575） |
+| PR [#178](https://github.com/McKenzieIT/deepseek-harness-da/pull/178)（p15-probe 移 `dev/`，已合并 `dbe703f153`） | **4444 处**（移位收益，非覆盖；unique 4442。消失 133 全是 `src/p15-probe.ts`，新增 0） |
 
 **计数口径注意：CI 清单有重复行，raw ≠ unique。** master `3f6ad7a308` 的 Windows 清单抓出 **5310 行**但只有 **5307 条 unique**：`ui-context-layer/src/client/graph-animations.ts:384:20`、同文件 `:81:12`、`eval-cli/src/compare.ts:79:10` 各出现两次。eval-cli 因此 raw 1499 / unique **1498**。Round 49 的家族收尾账用的是 unique 口径，逐条 diff 也必须先 `sort -u` 再 `comm`，否则重复行会同时算进「消失」和「新增」。
 
@@ -72,7 +73,8 @@ harness 模板从 `packages/data/tool-search-data-sources/tests/search-data-sour
 | （前史）平台互补 | [#174](https://github.com/McKenzieIT/deepseek-harness-da/pull/174) | 1 处 | 6674 → 6673 | 见下「第三类位置」 |
 | tool-family batch 1 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175) | 4 包 / 467 处 | 6674 → **6197**（−477，零回归） | A 档；含替换一处假测试 |
 | tool-family batch 2+3 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)（同 PR，已合并 `778ce34934`） | 12 包 / 886 处 | 6197 → **5310**（消失 886 unique、新增 0，零回归；含 `nl2sql-engine` +1 附带） | B 档 8 + C 档 4；家族 16/16 全清 |
-| eval-cli batch 1 | [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176) | 1 包 / 5 文件 / 639 处 | 5310 → **4577**（raw；unique 5307 → 4575。消失 733 = 639 目标 + 93 附带 + 1 列号互换；真新增 **0**） | 口径 A 首批；含一处 Windows 真 bug 修复（见下） |
+| eval-cli batch 1 | [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176) | 1 包 / 5 文件 / 639 处 | 5310 → **4577**（raw；unique 5307 → 4575。消失 733 = 639 目标 + 93 附带 + 1 列号互换；真新增 **0**） | 口径 A 首批；含一处 Windows 真 bug 修复（见下）。已合并 `fecd5b7fe1` |
+| p15-probe 移位 | [#178](https://github.com/McKenzieIT/deepseek-harness-da/pull/178) | 1 文件 / 133 处 | 4577 → **4444**（raw；unique 4575 → 4442。消失 133 全是 `src/p15-probe.ts`；新增 **0**） | **移位非覆盖**：`src/p15-probe.ts` → `dev/`（既有申报归属）。已合并 `dbe703f153` |
 
 ## 家族剩余（batch 1 之后）
 
@@ -328,17 +330,29 @@ CI 清单自己就是铁证：结构完全对称的 cwd 兜底 `:382` **全覆�
 
 最终账：`5307 − 733 + 1 = 4575`（unique），消失 733 = **639 批次目标 + 93 附带 + 1 列号互换**，**真新增 0**。五个批次文件在 CI 清单全部 **0 命中**，验收标准②满足。
 
+#### p15-probe 移位已落地（PR [#178](https://github.com/McKenzieIT/deepseek-harness-da/pull/178)，单独 PR，已合并 `dbe703f153`）
+
+`src/p15-probe.ts` → `dev/p15-probe.ts`（git 识别为 94% rename）。`{bin,dev}` disposition 的 `count` 3 → 4、`counted('waive')` 34 → 35，**两数都用 `OXC_LOG=debug oxlint .` 在移动前后各跑一次实测得到**，不推算。CI 裁决（job `106221379805`）：报告头 **4444**，逐条 diff **消失 133（全是 `src/p15-probe.ts`）、新增 0**，账 `4577 − 133 + 0 = 4444` 闭合；`p15-probe` 在清单命中 133 → **0**，彻底移出分母。
+
+#### 复现顺带暴露：lint tally 早已漂移，且门发现不了（单开票，不在本棒修）
+
+复现 `{bin,dev}` 计数时**顺带**发现 `UNMATCHED_DISPOSITIONS` 这张表已经漂了，与 p15-probe 移位**无关**：实测 **65** 个 unmatched（1 个落 strict override 内、已豁免、违规 0；64 个在外面）。8 条 `waive` glob **精确**（34/35），但 `keep` 侧声明 15、实测覆盖 28——`apps/desktop` 的 d.mts glob 实测 18（声明 7）、`snapshots` 实测 7（声明 5）；另有 **2 个文件从未被任何 disposition 覆盖**（`packages/tsdown.worker.ts`、`packages/util/lazy-require/tests/fixtures/value.cjs`）。
+
+**为什么一直没人发现**：`scripts/oxlint-contract.spec.ts:263` 只把各条 `count` **求和**跟硬编码总数比，**从不与文件系统核对**——所以这张表可以一直烂下去而门一直是绿的。这是 COV1 陷阱 §2（scoped 覆盖率「静默」≠「已覆盖」）在 lint 契约上的同构：**声明式计数 + 不核对真相 = 假绿。**
+
+本棒**不偷偷修**：两处 keep 计数修正是机械的，但那 2 个未分类文件需要的是一次真实裁定（归哪个桶、为什么），不该由「移一个文件」的 PR 替 lint 契约的维护者发明理由。已在 `run-oxlint.ts` docstring 与 spec 注释里**如实记录**漂移现状与未裁定文件，留待单开票处理。
+
 #### 编排复盘
 
 - **4 agent 并发、各领 disjoint 文件、明令零 git 写** —— 沿用有效。两个撞上不可达臂的 agent **都正确拒绝改源码**（brief 未授权）并附证明上交，证明本身经复核**都成立**。这比让 agent 自行决定改源码好。
 - **brief 内部有一处自相矛盾**：shared §3 规定不可达臂用 `v8 ignore`，而 per-agent brief 写「不要改 src」。agent 2 判定 §3 优先并如实披露；agent 1、agent 4 判定不改并上报。**三者都合理，但这是 brief 的缺陷**：下一批要把「谁有权改 src、改什么」写成单一来源。
 - 中途本机 runner 断连约 10 分钟，4 个 agent 全部存活并自行恢复（agent 2 还清掉了自己的临时 probe 文件）。
 
-#### 剩余 859（下一批）
+#### 剩余 726（下一批）
 
-`context.ts` 542 + `main.ts` 184 + `p15-probe.ts` 133。`context.ts` 补法已拍板：**给 17 个 module-private 符号加 `@internal` 导出**（本仓先例：`packages/core/tools/src/index.ts` 多处、`packages/subagent/subagent/src/internal.ts`）。`p15-probe.ts` 已拍板**移到 `dev/` 归位**，但**单独 PR**，理由见下。
+`context.ts` 542 + `main.ts` 184 = **726**（`p15-probe.ts` 133 已由 #178 移出分母）。`context.ts` 补法已拍板：**给 17 个 module-private 符号加 `@internal` 导出**（本仓先例：`packages/core/tools/src/index.ts` 多处、`packages/subagent/subagent/src/internal.ts`）。`main.ts` 的 in-process 化形态待定（见下）。
 
-**`p15-probe.ts` 移位不是覆盖收益，记账要分开。** 它 `:154` 顶层 `main().catch(...)` 自执行、打真 DashScope 网络，且 `loadCorpus()` 的 `join(process.cwd(), '../../../examples/...')` 在 vitest 下（cwd=仓根）本就指错地方；全仓无任何代码 import 它；`.agents/notes/rejected/simplification/2026-09-03-fold-eval-cli-repo-root-resolvers.md` 称它为「frozen P15a evidence」。`dev/` 是它的**既有申报归属**——`scripts/run-oxlint.ts:118` 的 `packages/eval/eval-cli/{bin,dev}/**` 一条写明「Throwaway dev and triage probe harnesses」。但该 glob 带 `count: 3`，而这个计数是**纯声明式**的：`scripts/oxlint-contract.spec.ts:263` 只把各条 `count` 求和跟一个硬编码总数比，**不与文件系统核对**，所以填错也能绿。移位必须同步 `run-oxlint.ts:119` 的 count、`:103` 的总账 docstring、`oxlint-contract.spec.ts:263` 的 34→35，且**须用 `OXC_LOG=debug` 复现 unmatched 清单来确认新计数，不能推算**。这类共享 lint 基建改动混进覆盖批会污染逐条裁决，故拆单独 PR。
+`p15-probe.ts` 已落地：见上「p15-probe 移位已落地」节（PR #178，已合并）。
 
 ---
 
