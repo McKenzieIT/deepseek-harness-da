@@ -35,6 +35,10 @@ None.
 
 The graph RPC types (`SemanticGraphNode`/`SemanticGraphEdge`/`SemanticGraphData`/`SemanticGraphQuery`) are owned by `@deepseek-ai/dsh-schema-gateway`; this package imports them (type-only) rather than re-declaring them. Node/relation `kind` is an OPEN `string`. `graph-presentation.ts` is the client presentation registry keyed by node kind: known kinds resolve to a localized label + palette color; an unknown kind falls back to the raw kind string as an accessible label plus a neutral color, so a kind registered on the Host renders without a client change, is never dropped, and never crashes. The graph core (`ContextLayerGraph`/`graph-styles`) reads only the node `kind` key through this registry — no table/metric/concept business fields.
 
+**Prototype-pollution guard.** The label/color lookups use `Object.hasOwn` (not a plain `??` fallback), so a prototype member name (`toString`, `constructor`, `__proto__`) never surfaces as a truthy inherited function — `nodeKindColor('toString')` returns `GENERIC_NODE_COLOR`, `nodeKindPresentation('constructor')` surfaces the raw kind string, never `undefined`.
+
+**Internal vs public exports.** `nodeKindColor` and `KIND_COLORS` are internal to `graph-styles.ts` (not re-exported from the package's public surface); `GENERIC_NODE_COLOR` is the public fallback constant. The `graphDataBridge` imports `RemoteResult` + the generated `schemaGateway` namespace type from the owner (`@deepseek-ai/dsh-typert-protocol` + `@deepseek-ai/dsh-schema-gateway/remote`), replacing the former hand-written `RemoteResult`/namespace types and the `as never` client cast.
+
 
 ## Model Experience
 

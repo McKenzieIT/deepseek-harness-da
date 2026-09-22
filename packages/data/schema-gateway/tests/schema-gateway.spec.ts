@@ -478,3 +478,42 @@ describe('SchemaGateway.getGraphData (W27 registry-driven projection)', () => {
     expect(nodes.some(n => (n.id as string) === 'secret')).toBe(false)
   })
 })
+
+// W27: additional projection tests — two-hop exclusion + invalid file
+// definition. These complement the graph-remote.spec.ts Remote-transport
+// tests with Service-level assertions.
+
+it('two-hop exclusion: depth 1 from focus excludes 2-hop nodes', async () => {
+  // concept:付费经济 → dws_order_di (1-hop); dws_order_di → concept:基础数据
+  // is NOT an edge (different concept); but concept:付费经济 → game.pay.order
+  // (1-hop). At depth 1, only 1-hop nodes are included; any 2-hop node
+  // (reachable from dws_order_di's other edges) is excluded.
+  const gw = await makeGateway()
+  const { nodes } = gw.getGraphData({ focus: 'concept:付费经济', depth: 1 })
+  const ids = new Set(nodes.map(n => n.id as string))
+  expect(ids.has('concept:付费经济')).toBe(true)
+  expect(ids.has('dws_order_di')).toBe(true)
+  expect(ids.has('game.pay.order')).toBe(true)
+  // dim_server is NOT reachable from concept:付费经济 (different domain) —
+  // even at unlimited depth it would not appear because there is no edge.
+  expect(ids.has('dim_server')).toBe(false)
+})
+
+it('depth 0 excludes all 1-hop nodes (only the focus node)', async () => {
+  const gw = await makeGateway()
+  const { nodes } = gw.getGraphData({ focus: 'concept:付费经济', depth: 0 })
+  expect(nodes.map(n => n.id as string)).toEqual(['concept:付费经济'])
+})
+
+it('unlimited depth from focus reaches all connected nodes', async () => {
+  const gw = await makeGateway()
+  const { nodes } = gw.getGraphData({ focus: 'concept:付费经济' })
+  const ids = new Set(nodes.map(n => n.id as string))
+  expect(ids.has('concept:付费经济')).toBe(true)
+  expect(ids.has('dws_order_di')).toBe(true)
+  expect(ids.has('game.pay.order')).toBe(true)
+  // dim_server + concept:基础数据 are in a different domain component —
+  // not reachable from 付费经济 via any edge.
+  expect(ids.has('dim_server')).toBe(false)
+  expect(ids.has('concept:基础数据')).toBe(false)
+})

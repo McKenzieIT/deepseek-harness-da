@@ -35,6 +35,12 @@ None.
 
 `query` fields: `domain` (filter to one domain/group), `focus` (BFS root — an empty subgraph is returned when it names no projected node), `depth` (bounded BFS from focus; `0` = focus only), and `includeMetrics` (default false; drops `metric`-kind nodes). Unknown kinds are never dropped — the client presentation registry renders a generic accessible form.
 
+**Derived metric.** `metric`-kind nodes are virtual — not a registered kind. They come from the derived-metric contributor (`projectMetricGraphNodes`) which extracts `metrics:` blocks from host tables/events. `includeMetrics: false` (the default) drops them so the graph shows only curated assets; `true` adds them with a `derived_from` edge to their source table/event.
+
+**Null opt-out.** A kind's `toGraphNode(def)` returning `null` declares that definition is not a graph node — no node and no edges from it. This is how a kind can be registered for corpus/retrieval indexing without entering the visual graph.
+
+**Input + lifecycle.** The `SemanticGraphQuery` input is a plain serializable object (`domain?`, `focus?`, `depth?`, `includeMetrics?`) — no fiber or context handle crosses the wire. The relation-graph cache is invalidated on kind add/remove (the registry's `onChange` listener), so a disposed kind's nodes/edges do not linger and a re-registered kind flows through without a restart. The node projection (`projectGraphNodes`) is not cached — it iterates the live registry, so a newly registered kind's nodes appear on the next call.
+
 
 ## Model Experience
 

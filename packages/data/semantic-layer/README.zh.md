@@ -19,6 +19,7 @@ TODO: translate: Semantic-layer substrate for the data agent: zod-mirrored RBI p
 - [结构](#structure)
 - [`ctx.schema` seam](#ctxschema-seam)
 - [P13b swap](#p13b-swap)
+- [图投影与 registry 生命周期 (W27)](#graph-projection-and-registry-lifecycle-w27)
 - [验证](#verification)
 - [开发备注](#dev-note)
 - [Model Experience](#model-experience)
@@ -65,6 +66,14 @@ declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayer
 ## P13b swap
 
 P13b 的本地 `CriticGuardData`（params_fields/partitions 来自精简 YAML reader）additive swap 到 `ctx.schema.load_*`。`CriticCtx{candidateTables, eventParams, partitionCols}` 契约不变；P13b engine 逻辑不变。`makeCriticCtx({ candidateTables, eventParams: EventDefinition.params_fields, partitionCols: TableDefinition.partitions.map(p => p.name) })`。
+
+## 图投影与 registry 生命周期 (W27)
+
+语义图投影由 **registry 驱动**：`projectGraphNodes()` 迭代每个已注册 kind 的 `toGraphNode(def)`——无手写三组平行循环——因此构建后注册的 kind 无需修改网关即可进入图。`buildGraph(root)` 以同样方式收集关系（迭代 registry），加上规范目标解析步骤，将裸关系目标（`first`）映射为带前缀的节点 id（`chart:first`），使带前缀 id 节点之间的边能流过有界遍历。派生 `metric` 贡献者与 concept→asset domain 派生是 registry 循环之后的横切步骤。
+
+**Disposer 与缓存失效。** `registry.register(plugin)` 返回幂等 disposer，仅撤销本次贡献。registry 在增删时均触发 `onChange` 监听；`SemanticLayerService` 在构造函数中注册一个监听来失效 `graphCache` + `graphCacheByScope`，因此已销毁 kind 的节点/边不会残留，重新注册的 kind 无需重启即可流过。使用 `ctx.effect(() => registry.register(plugin))` 安装贡献，使其生命周期跟踪所属 fiber。
+
+**输入契约。** `RelationDef.type` 是开放 `string`（`joins` | `derived_from` | `related_to` 或 kind 声明的类型）；`GraphNodeProjection` 携带纯 `string` id + 开放 `kind`。Schema Gateway 在远程边界 brand `id`。`io.ts` 的 `loadDomains` 拒绝 YAML 数组（使用 `isPlainObject`，非 `typeof === 'object'`），使列表形状的 `domains.yaml` 降级为 `{}`。
 
 <a id="verification"></a>
 ## 验证

@@ -37,6 +37,10 @@ TODO: translate: Context layer graph — G6 v5 interactive relation graph with s
 
 图 RPC 类型（`SemanticGraphNode`/`SemanticGraphEdge`/`SemanticGraphData`/`SemanticGraphQuery`）由 `@deepseek-ai/dsh-schema-gateway` 拥有；本包以 type-only 方式导入，不再重复声明。节点/关系 `kind` 是开放的 `string`。`graph-presentation.ts` 是按节点 kind 键控的客户端 presentation registry：已知 kind 解析为本地化 label 加调色板颜色；未知 kind 回退为以原始 kind 字符串作为可访问 label 加中性颜色，因此 Host 侧注册的 kind 无需修改客户端即可渲染，不丢弃、不崩溃。图核心（`ContextLayerGraph`/`graph-styles`）仅通过该 registry 读取节点 `kind` 键，不读取 table/metric/concept 业务字段。
 
+**原型污染防护。** label/color 查找使用 `Object.hasOwn`（非裸 `??` 回退），因此原型成员名（`toString`、`constructor`、`__proto__`）不会以 truthy 继承函数的形式出现——`nodeKindColor('toString')` 返回 `GENERIC_NODE_COLOR`，`nodeKindPresentation('constructor')` 返回原始 kind 字符串，永不返回 `undefined`。
+
+**内部与公开导出。** `nodeKindColor` 与 `KIND_COLORS` 是 `graph-styles.ts` 的内部导出（不从包的公开面再导出）；`GENERIC_NODE_COLOR` 是公开的回退常量。`graphDataBridge` 从 owner（`@deepseek-ai/dsh-typert-protocol` + `@deepseek-ai/dsh-schema-gateway/remote`）导入 `RemoteResult` 与生成的 `schemaGateway` namespace 类型，替换了此前手写的 `RemoteResult`/namespace 类型与客户端的 `as never` 转型。
+
 
 <a id="model-experience"></a>
 ## 模型体验

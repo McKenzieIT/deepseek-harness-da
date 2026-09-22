@@ -19,6 +19,7 @@ Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefi
 - [Structure](#structure)
 - [`ctx.schema` seam](#ctxschema-seam)
 - [P13b swap](#p13b-swap)
+- [Graph projection and registry lifecycle (W27)](#graph-projection-and-registry-lifecycle-w27)
 - [Verification](#verification)
 - [Dev Note](#dev-note)
 - [Model Experience](#model-experience)
@@ -61,6 +62,14 @@ declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayer
 ## P13b swap
 
 P13b's local `CriticGuardData` (params_fields/partitions from a thin YAML reader) swaps additively to `ctx.schema.load_*`. `CriticCtx{candidateTables, eventParams, partitionCols}` contract unchanged; P13b engine logic unchanged. `makeCriticCtx({ candidateTables, eventParams: EventDefinition.params_fields, partitionCols: TableDefinition.partitions.map(p => p.name) })`.
+
+## Graph projection and registry lifecycle (W27)
+
+The semantic-graph projection is **registry-driven**: `projectGraphNodes()` iterates every registered kind's `toGraphNode(def)` — no hand-written per-kind loops — so a kind registered after build reaches the graph without a gateway change. `buildGraph(root)` collects relations the same way (iterating the registry), plus a canonical target-resolution pass that maps a bare relation target (`first`) to a prefixed node id (`chart:first`) so edges between prefixed-id nodes flow through the bounded traversal. The derived-`metric` contributor and the concept→asset domain derivation are cross-cutting passes layered after the registry loop.
+
+**Disposer + cache invalidation.** `registry.register(plugin)` returns an idempotent disposer that removes only this contribution. The registry fires `onChange` listeners on both add and remove; the `SemanticLayerService` wires one in its constructor to invalidate `graphCache` + `graphCacheByScope`, so a disposed kind's nodes/edges do not linger and a re-registered kind flows through without a restart. Install contributions with `ctx.effect(() => registry.register(plugin))` so the lifetime tracks the owning fiber.
+
+**Input contract.** `RelationDef.type` is an open `string` (`joins` | `derived_from` | `related_to` or a kind-declared type); `GraphNodeProjection` carries a plain `string` id + open `kind`. The Schema Gateway brands `id` at the Remote boundary. `io.ts` `loadDomains` rejects YAML arrays (uses `isPlainObject`, not `typeof === 'object'`) so a list-shaped `domains.yaml` degrades to `{}`.
 
 ## Verification
 
