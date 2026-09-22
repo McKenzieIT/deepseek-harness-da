@@ -75,7 +75,7 @@ harness 模板从 `packages/data/tool-search-data-sources/tests/search-data-sour
 | tool-family batch 2+3 | [#175](https://github.com/McKenzieIT/deepseek-harness-da/pull/175)（同 PR，已合并 `778ce34934`） | 12 包 / 886 处 | 6197 → **5310**（消失 886 unique、新增 0，零回归；含 `nl2sql-engine` +1 附带） | B 档 8 + C 档 4；家族 16/16 全清 |
 | eval-cli batch 1 | [#176](https://github.com/McKenzieIT/deepseek-harness-da/pull/176) | 1 包 / 5 文件 / 639 处 | 5310 → **4577**（raw；unique 5307 → 4575。消失 733 = 639 目标 + 93 附带 + 1 列号互换；真新增 **0**） | 口径 A 首批；含一处 Windows 真 bug 修复（见下）。已合并 `fecd5b7fe1` |
 | p15-probe 移位 | [#178](https://github.com/McKenzieIT/deepseek-harness-da/pull/178) | 1 文件 / 133 处 | 4577 → **4444**（raw；unique 4575 → 4442。消失 133 全是 `src/p15-probe.ts`；新增 **0**） | **移位非覆盖**：`src/p15-probe.ts` → `dev/`（既有申报归属）。已合并 `dbe703f153` |
-| eval-cli batch 2（部分） | [#179](https://github.com/McKenzieIT/deepseek-harness-da/pull/179) | 1 包 / 2 文件 / **559 处**（context.ts 472 + main.ts 87） | 4444 → **裁决 pending**（`windows node 24 / coverage` job `106424161031` 排队中；本机 559 全绿，预期 −559 → ~3885） | 口径 A 第二批；`context.ts` 除 `boot()` 外全清。`boot()`70 + `main()`97 = 167 顺延（见下 Round 51 节）。**未合。** |
+| eval-cli batch 2（部分） | [#179](https://github.com/McKenzieIT/deepseek-harness-da/pull/179) | 1 包 / 2 文件 / **559 处**（context.ts 472 + main.ts 87） | 4444 → **3887**（raw；unique 4442 → 3885。CI job `106424161031` 已裁决：eval-cli 726→167 消失 559、真新增 0；非 eval-cli 112 新/110 消失 = stale-baseline 假象，见 Round 51 节） | 口径 A 第二批；`context.ts` 除 `boot()` 外全清。`boot()`70 + `main()`97 = 167 顺延（见下 Round 51 节）。**未合。** |
 
 ## 家族剩余（batch 1 之后）
 
@@ -373,7 +373,7 @@ CI 清单自己就是铁证：结构完全对称的 cwd 兜底 `:382` **全覆�
 
 ## 追加：eval-cli batch 2（2026-09-22，Round 51，PR [#179](https://github.com/McKenzieIT/deepseek-harness-da/pull/179)）
 
-**726 处目标里落了 559**（`context.ts` 472 + `main.ts` 87），5 个 in-process spec，主进程独做（本轮 subagent 不可用，见下）。`context.ts` **除 `boot()` 外全清**；剩 `boot()` 70（context.ts）+ `main()` 97（main.ts）= 167 顺延。**PR 未合，CI 逐条裁决未做**（唯一可信腿 `windows node 24 / coverage` 仍排队）。
+**726 处目标里落了 559**（`context.ts` 472 + `main.ts` 87），5 个 in-process spec，主进程独做（本轮 subagent 不可用，见下）。`context.ts` **除 `boot()` 外全清**；剩 `boot()` 70（context.ts）+ `main()` 97（main.ts）= 167 顺延。**PR 未合；CI 已逐条裁决（`windows node 24 / coverage` job `106424161031`，Round 52 复核）**：eval-cli 726→167（消失 559、真新增 0，剩 167 全落在 `boot()` 70 + `main()` 97 两函数内），总 raw 4444→3887 / unique 4442→3885。非 eval-cli 另有 112 新 / 110 消失，逐包核实全在 `client/ui-semantic-layer`（70/69）+ `data/evidence-query`（42/37）+ `nl2sql-engine`/`semantic-layer`（消失 3+1），系基线 job 跑在 stale base `29a04869c3`（本 PR base 为 `c17af107e0`）造成的行号漂移假象，非回归——本 PR diff 仅碰 eval-cli 2 src + 5 spec，且这两包生产 src 在两 base 间有大改（evidence-query/src/index.ts +211 等）。
 
 ### 提交与本机证据（每个 spec 各自 scoped run + 变异 + tsc host + oxlint，主进程独立复核）
 
