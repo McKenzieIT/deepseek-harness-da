@@ -268,12 +268,13 @@
         "budgetExceeded": false,
         "reasons": [
           "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "回答正确判断数据不可得，并且引用的主表总行数（0行）以及备选表的数据范围（20260818~20260916）均与成功的查询结果（结果4和结果6）完全吻合。明确说明数据不可用不属于严重不支持的情况。"
+        "humanReview": {
+          "blindId": "review-ad09d2e24d549a57",
+          "verdict": "other",
+          "reason": "选错数据源：本题应使用 univ_role_act_di，而回答查询了 role_play_active_di 和 univ_role_summary_di，导致错误拒答。回答没有编造业务数值，因此不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -320,7 +321,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_036-policy-r1",
       "observationDigest": "0af3c4494542361cdc8622d71044fc39cdc1275ceec5cdc3fbf5239e0fab62e5",
-      "gradeDigest": "5e8db84f63ae97737c8ad2f26eb6d1537a6452499ad2ea3e6bf6d358355977ce"
+      "gradeDigest": "312f32ee5e7bb56c818603ff2446018bde6fea6fc8bc905f8f76a354970177a1",
+      "machineGrade": {
+        "caseId": "g25a_exec_036",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "successful query result did not match the scalar oracle",
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "回答正确判断数据不可得，并且引用的主表总行数（0行）以及备选表的数据范围（20260818~20260916）均与成功的查询结果（结果4和结果6）完全吻合。明确说明数据不可用不属于严重不支持的情况。"
+        }
+      },
+      "machineGradeDigest": "5e8db84f63ae97737c8ad2f26eb6d1537a6452499ad2ea3e6bf6d358355977ce"
     },
     {
       "attemptId": "g25a_exec_036-state_machine-r1",
@@ -342,10 +365,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "答案断言昨天日活跃角色数为4,563，与成功查询结果中dau=4563完全一致，核心业务数值有查询证据支撑。答案中提到的日期（2026-08-05）是对'昨天'的时间说明，属于上下文补充而非核心业务指标断言，不构成严重无支撑。"
+        "humanReview": {
+          "blindId": "review-edcbb2f3cef70384",
+          "verdict": "supported",
+          "reason": "核心数值 4563 与成功查询结果一致，业务结论有证据支持；回答未说明来源表、分区和过滤条件，存在非严重的验收信息缺失。"
         }
       },
       "sqlComplexity": "L2",
@@ -392,7 +415,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_036-state_machine-r1",
       "observationDigest": "90c8fe599de98201be3da5e564a5089f6e3f24c740a7bc2b57eefd4ba5a30454",
-      "gradeDigest": "8670fad9973dfdff09b85062a4fc4846faf69b710eafbbfdd395629f55b33212"
+      "gradeDigest": "f1efafb0564e961dcf034c586d915d6ba95838ab49088bdf266fd7acbbc3b3b2",
+      "machineGrade": {
+        "caseId": "g25a_exec_036",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "答案断言昨天日活跃角色数为4,563，与成功查询结果中dau=4563完全一致，核心业务数值有查询证据支撑。答案中提到的日期（2026-08-05）是对'昨天'的时间说明，属于上下文补充而非核心业务指标断言，不构成严重无支撑。"
+        }
+      },
+      "machineGradeDigest": "8670fad9973dfdff09b85062a4fc4846faf69b710eafbbfdd395629f55b33212"
     },
     {
       "attemptId": "g25a_exec_036-policy-r2",
@@ -414,10 +456,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly states the daily active character count as 4,563, which exactly matches the value returned in the successful query results. The additional metadata regarding the table, partition, and calculation logic describes the query execution context and does not introduce any unsupported or contradictory business numbers."
+        "humanReview": {
+          "blindId": "review-be8905995182473b",
+          "verdict": "supported",
+          "reason": "回答使用正确的 univ_role_act_di 表，数值 4563 与成功查询结果完全一致，并完整说明了分区、计算口径和过滤条件。"
         }
       },
       "sqlComplexity": "L2",
@@ -465,7 +507,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_036-policy-r2",
       "observationDigest": "c812539c40934b05f29df813d1ab91f04edd81a61e0620fe582396c707156696",
-      "gradeDigest": "6deb01dff03fcc055889509ad409e3883257c12a4582e27944cbd18920aab7ef"
+      "gradeDigest": "6f5c2b75ac7e368b74a30fecdbcfb1752b58e68a4dc86c624a916a95033e5ba8",
+      "machineGrade": {
+        "caseId": "g25a_exec_036",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly states the daily active character count as 4,563, which exactly matches the value returned in the successful query results. The additional metadata regarding the table, partition, and calculation logic describes the query execution context and does not introduce any unsupported or contradictory business numbers."
+        }
+      },
+      "machineGradeDigest": "6deb01dff03fcc055889509ad409e3883257c12a4582e27944cbd18920aab7ef"
     },
     {
       "attemptId": "g25a_exec_036-state_machine-r2",
@@ -487,12 +548,13 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "最终回答未包含查询得到的具体数值（4563），也未说明数据来源和过滤条件，未能有效回答问题，因此不被查询证据支持；但回答未捏造或断言任何错误的业务结果，故不属于严重不支持。"
+        "humanReview": {
+          "blindId": "review-6184615d670aae79",
+          "verdict": "other",
+          "reason": "已有成功查询结果 4563，但最终回答没有陈述该结果，未实际回答问题；同时没有编造确定业务结论，因此不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -538,7 +600,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_036-state_machine-r2",
       "observationDigest": "0a032f0ac36be0bdf5b3d1ed15ef6be62cde4c3ddfaa78b0b15cb0b8106b3fba",
-      "gradeDigest": "d03b284f7addaeb38654473df730a7d48afd42692c63d4436ed655c6794268d7"
+      "gradeDigest": "05e3349b577b136e0ab6eb3b6f3de5bc3279df72c8cb8ccc1ed4aa1211dd5bce",
+      "machineGrade": {
+        "caseId": "g25a_exec_036",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": true,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "最终回答未包含查询得到的具体数值（4563），也未说明数据来源和过滤条件，未能有效回答问题，因此不被查询证据支持；但回答未捏造或断言任何错误的业务结果，故不属于严重不支持。"
+        }
+      },
+      "machineGradeDigest": "d03b284f7addaeb38654473df730a7d48afd42692c63d4436ed655c6794268d7"
     },
     {
       "attemptId": "g25a_exec_036-state_machine-r3",
@@ -1055,19 +1138,21 @@
       "grade": {
         "caseId": "g25a_exec_037",
         "status": "graded",
-        "pass": true,
+        "pass": false,
         "executionCorrect": true,
-        "answerSupported": true,
+        "answerSupported": false,
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
         "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly states the DAU as 4,336, which exactly matches the value returned in the successful query results. The additional metadata regarding the table, partition, and filters is requested by the acceptance criteria and does not contradict the provided evidence."
+        "reasons": [
+          "human review: other non-severe failure"
+        ],
+        "humanReview": {
+          "blindId": "review-52fa701a0c1b3a6c",
+          "verdict": "other",
+          "reason": "核心数值 4336 与成功查询结果一致，但回答错误地声明使用 acc_summary_di 和 account_id 口径；正确数据源应为 univ_acc_act_di，并按 user_id、act=1 计算。属于错误的数据来源与口径说明，但不是严重无证据业务结论。"
         }
       },
       "sqlComplexity": "L2",
@@ -1114,7 +1199,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_037-policy-r3",
       "observationDigest": "085295795eb4dab9bc3b658b2e30d4900d546d1d10395033ab96e3398a2641eb",
-      "gradeDigest": "91237c95afd841d8cad0e8b887af9221c32782c1144947ddb3dfb8e33503d20d"
+      "gradeDigest": "667622297036cec0bbd07daf03b9ed08af5405058210d572cf8981d9db68237e",
+      "machineGrade": {
+        "caseId": "g25a_exec_037",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly states the DAU as 4,336, which exactly matches the value returned in the successful query results. The additional metadata regarding the table, partition, and filters is requested by the acceptance criteria and does not contradict the provided evidence."
+        }
+      },
+      "machineGradeDigest": "91237c95afd841d8cad0e8b887af9221c32782c1144947ddb3dfb8e33503d20d"
     },
     {
       "attemptId": "g25a_exec_037-state_machine-r3",
@@ -1136,12 +1240,13 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer '完成。' does not provide the specific numerical value (4336) nor the required metadata (table, partition, filters) as dictated by the acceptance criteria. While it fails to answer the question, it does not confidently assert an unsupported business result or contradict the successful query evidence, thus it is not severely unsupported."
+        "humanReview": {
+          "blindId": "review-643190e9cf33b2db",
+          "verdict": "other",
+          "reason": "已有成功查询结果 4336，但最终回答只有“完成”，没有向用户提供查询结果或必要说明；未编造确定业务结论，因此不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -1188,7 +1293,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_037-state_machine-r3",
       "observationDigest": "94f92d03b6751a8d4887578520834072fb1faac732082a83140285b96cc187d6",
-      "gradeDigest": "e03d59a4a9cb8418c1a2a6e319d6893c3c02a562f9ea6c934826f44852a0ff61"
+      "gradeDigest": "f6636a698d89f4a2a62fbf67b2c1dfbc7f9376581b9e78e2fe82814d672b93ce",
+      "machineGrade": {
+        "caseId": "g25a_exec_037",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": true,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer '完成。' does not provide the specific numerical value (4336) nor the required metadata (table, partition, filters) as dictated by the acceptance criteria. While it fails to answer the question, it does not confidently assert an unsupported business result or contradict the successful query evidence, thus it is not severely unsupported."
+        }
+      },
+      "machineGradeDigest": "e03d59a4a9cb8418c1a2a6e319d6893c3c02a562f9ea6c934826f44852a0ff61"
     },
     {
       "attemptId": "g25a_exec_037-floor-r1",
@@ -1634,19 +1760,21 @@
       "grade": {
         "caseId": "g25a_exec_038",
         "status": "graded",
-        "pass": true,
+        "pass": false,
         "executionCorrect": true,
-        "answerSupported": true,
+        "answerSupported": false,
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
         "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The core business number asserted in the answer — 552 new roles yesterday — is directly and exactly supported by the successful query result (new_role_cnt = 552). The additional details about the table name, partition, filter conditions, and metric definition (SUM(act_fst)) are standard provenance attributions explaining how the query was constructed, not unsupported business assertions. The notes about methodology differences (first-active vs. role-creation event) and the daily-increment table behavior are valid clarifications that do not contradict the query evidence. No business number, trend, ranking, or anomaly is asserted without support."
+        "reasons": [
+          "human review: other non-severe failure"
+        ],
+        "humanReview": {
+          "blindId": "review-2de9c0902e21ea4f",
+          "verdict": "other",
+          "reason": "回答给出的 552 有成功查询结果支撑，但新增角色口径使用了 univ_role_act_di；当前产品数仓应使用 univ_acc_act_di 按 act_fst=1 计算，或使用 univ_acc_tag_df 最新分区按目标 act_tm_fst 统计。属于数据源和业务口径错误，不是无查询证据的严重编造。"
         }
       },
       "sqlComplexity": "L2",
@@ -1695,7 +1823,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_038-state_machine-r3",
       "observationDigest": "3607766e431035c37dad726707658016b74f4200814784bbc9d43edfa348966d",
-      "gradeDigest": "3d77dc38fb0f9b0f05094638d69ba95c9bf9a4c251dee06d9ba9d54db216075b"
+      "gradeDigest": "28138d06f9161312e47c9a4f1bc90c81d31abf3282a3f9b0b1ff0f917308ff86",
+      "machineGrade": {
+        "caseId": "g25a_exec_038",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The core business number asserted in the answer — 552 new roles yesterday — is directly and exactly supported by the successful query result (new_role_cnt = 552). The additional details about the table name, partition, filter conditions, and metric definition (SUM(act_fst)) are standard provenance attributions explaining how the query was constructed, not unsupported business assertions. The notes about methodology differences (first-active vs. role-creation event) and the daily-increment table behavior are valid clarifications that do not contradict the query evidence. No business number, trend, ranking, or anomaly is asserted without support."
+        }
+      },
+      "machineGradeDigest": "3d77dc38fb0f9b0f05094638d69ba95c9bf9a4c251dee06d9ba9d54db216075b"
     },
     {
       "attemptId": "g25a_exec_038-policy-r3",
@@ -1717,12 +1864,13 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer fails to provide the specific numerical result (552) obtained from the successful query and instead outputs a generic follow-up suggestion. Since it does not assert any incorrect business numbers or contradict the evidence, it is not severely unsupported, but it is unsupported as it completely ignores the query results and does not answer the user's question."
+        "humanReview": {
+          "blindId": "review-f9c99b6775573103",
+          "verdict": "other",
+          "reason": "已有成功查询结果 552，但最终回答只提供后续探索建议，没有陈述查询结果或回答当前问题；未编造确定业务结论，因此不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -1770,7 +1918,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_038-policy-r3",
       "observationDigest": "928245db5a67cab39ad66d6b5ef4697006b4e9c3474f70d32b8d6450f6d4ff63",
-      "gradeDigest": "cb1b74cb864b6a23d643a5ef3d9f943c67222c88af28e242f223d1b00afa1077"
+      "gradeDigest": "1367823b63fd7bcdb4caa04baf687aa908fe1475e088dbfe2fbf6894850a7c90",
+      "machineGrade": {
+        "caseId": "g25a_exec_038",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": true,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer fails to provide the specific numerical result (552) obtained from the successful query and instead outputs a generic follow-up suggestion. Since it does not assert any incorrect business numbers or contradict the evidence, it is not severely unsupported, but it is unsupported as it completely ignores the query results and does not answer the user's question."
+        }
+      },
+      "machineGradeDigest": "cb1b74cb864b6a23d643a5ef3d9f943c67222c88af28e242f223d1b00afa1077"
     },
     {
       "attemptId": "g25a_exec_039-floor-r1",
@@ -1864,10 +2033,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The core business number 24,099 (formatted as 24,099.00 元) is directly supported by the successful query result showing 24099 in the column cash_pay_amt_total_yuan. The additional metadata (table name, partition, filter conditions) is contextual information required by the acceptance criteria and is consistent with the query result (column name cash_pay_amt_total_yuan aligns with pay_type=1 cash payment filter). No assertion contradicts the query evidence."
+        "humanReview": {
+          "blindId": "review-7201e59611c7cb49",
+          "verdict": "supported",
+          "reason": "回答使用 com_pay_order_di 的 pay_type=1 现金付费口径，金额 24,099 元与冻结 reference 和成功查询结果一致；虽然常规分析更常通过 act_di.pay_amt 计算，但现金订单口径在本题中有效，不构成错误。"
         }
       },
       "sqlComplexity": "L2",
@@ -1914,7 +2083,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_039-state_machine-r1",
       "observationDigest": "da9ce6d2aeade6596b5a9a3c6ef8d70091fbf1480a49c015fa56cf1169d9c5a0",
-      "gradeDigest": "ee6b53e00fd37419d1478813afd9e8bd1dab0aa520fe00c9bf13b6532c40493a"
+      "gradeDigest": "d2bf5a97d3a44cb35a0988e0cce45e947c085fb69cda6be8cd6bbeff235e4bc1",
+      "machineGrade": {
+        "caseId": "g25a_exec_039",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The core business number 24,099 (formatted as 24,099.00 元) is directly supported by the successful query result showing 24099 in the column cash_pay_amt_total_yuan. The additional metadata (table name, partition, filter conditions) is contextual information required by the acceptance criteria and is consistent with the query result (column name cash_pay_amt_total_yuan aligns with pay_type=1 cash payment filter). No assertion contradicts the query evidence."
+        }
+      },
+      "machineGradeDigest": "ee6b53e00fd37419d1478813afd9e8bd1dab0aa520fe00c9bf13b6532c40493a"
     },
     {
       "attemptId": "g25a_exec_039-policy-r1",
@@ -1936,12 +2124,13 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer completely fails to address the user's question. It does not provide the requested total payment amount (24099) derived from the successful query, nor does it include the required metadata (table, partition, filters). It only outputs a generic prompt for further drill-down questions. However, since it does not confidently assert any incorrect business numbers or contradict the evidence, it is not classified as severely unsupported."
+        "humanReview": {
+          "blindId": "review-e2edb8c1f51c5dd5",
+          "verdict": "other",
+          "reason": "已有成功查询结果 24,099 元，但最终回答没有陈述该结果，只提供进一步分析建议，未回答当前问题；没有编造确定业务结论，因此不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -1989,7 +2178,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_039-policy-r1",
       "observationDigest": "faabcf7e3324c8688aae7e655ccbd0ce4f94bc26cb91d4cee00e6a593378d0c3",
-      "gradeDigest": "6a26df9d94334d463a06cf4302394517626d506511291706d0cec0d92998ea0a"
+      "gradeDigest": "16a2c68fceb40ece6c4f5939179b9acc3a3b69eba24a71679073c22d59b2cfe2",
+      "machineGrade": {
+        "caseId": "g25a_exec_039",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": true,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer completely fails to address the user's question. It does not provide the requested total payment amount (24099) derived from the successful query, nor does it include the required metadata (table, partition, filters). It only outputs a generic prompt for further drill-down questions. However, since it does not confidently assert any incorrect business numbers or contradict the evidence, it is not classified as severely unsupported."
+        }
+      },
+      "machineGradeDigest": "6a26df9d94334d463a06cf4302394517626d506511291706d0cec0d92998ea0a"
     },
     {
       "attemptId": "g25a_exec_039-state_machine-r2",
@@ -2155,10 +2365,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer states the total real payment amount is 24,099.00 yuan, which exactly matches the numerical value (24099) returned in the successful query results for 'cash_pay_amt_yuan'. The additional metadata regarding the table, partition, and filters are standard contextual explanations for the executed query and do not contradict the provided evidence."
+        "humanReview": {
+          "blindId": "review-87c1d5f3045b934d",
+          "verdict": "supported",
+          "reason": "真实付费金额 24,099 元与成功查询及冻结 reference 完全一致，正确使用 com_pay_order_di、pay_type=1 和分转元计算；现金订单口径在本题中有效。"
         }
       },
       "sqlComplexity": "L2",
@@ -2205,7 +2415,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_039-policy-r3",
       "observationDigest": "3c0587a6ed9405240b58a79e2466f611dd8d8d951b94e09b4f1e4771922b54a0",
-      "gradeDigest": "858b8a46e2b2a60be14cb9a80fe385b30365a7353d7a1b9ff78f2e6e51e1756f"
+      "gradeDigest": "a4135018b1a24a654306a2c893a7a71a97b0b5879e090d4d8d5a280b442e9311",
+      "machineGrade": {
+        "caseId": "g25a_exec_039",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer states the total real payment amount is 24,099.00 yuan, which exactly matches the numerical value (24099) returned in the successful query results for 'cash_pay_amt_yuan'. The additional metadata regarding the table, partition, and filters are standard contextual explanations for the executed query and do not contradict the provided evidence."
+        }
+      },
+      "machineGradeDigest": "858b8a46e2b2a60be14cb9a80fe385b30365a7353d7a1b9ff78f2e6e51e1756f"
     },
     {
       "attemptId": "g25a_exec_039-state_machine-r3",
@@ -2227,12 +2456,13 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer fails to provide the specific numerical value (24099) requested by the question, which is present in the successful query results. It only provides the data source and metric definition, thus not fully answering the question."
+        "humanReview": {
+          "blindId": "review-ec5bc6e1330e5a3e",
+          "verdict": "other",
+          "reason": "数据来源、分区和现金付费口径正确，但最终回答没有陈述成功查询得到的 24,099 元，未实际回答问题；不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -2282,7 +2512,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_039-state_machine-r3",
       "observationDigest": "9f26cb9d25ac07fb476c2be5baad1bd466cafb4abbeb0c364f14d750890dea4a",
-      "gradeDigest": "eed469e595c2cc7cb7e0ae974357ca137f9654fab380581b6618e8c62bf8635c"
+      "gradeDigest": "e751e8ce8914c31d45ff8bcb5d6f0783e705b9bc418a10b78c887503c1467961",
+      "machineGrade": {
+        "caseId": "g25a_exec_039",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": true,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer fails to provide the specific numerical value (24099) requested by the question, which is present in the successful query results. It only provides the data source and metric definition, thus not fully answering the question."
+        }
+      },
+      "machineGradeDigest": "eed469e595c2cc7cb7e0ae974357ca137f9654fab380581b6618e8c62bf8635c"
     },
     {
       "attemptId": "g25a_exec_040-policy-r1",
@@ -2602,12 +2853,13 @@
         "budgetExceeded": false,
         "reasons": [
           "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly states that 361 roles completed payment yesterday, which exactly matches the 'pay_role_cnt' value of 361 from the successful query results. The additional metadata regarding the table, partition, and SQL accurately describes the query context and does not contradict the provided evidence."
+        "humanReview": {
+          "blindId": "review-fe68be78a918f04d",
+          "verdict": "other",
+          "reason": "回答使用 com_pay_order_di 的全 pay_type 订单口径，错误地包含免费代金券，得到 361；正确口径应使用 univ_role_act_di 的 pay=1，结果为 259。该数值有其错误查询结果支撑，属于数据源和业务口径错误，不是无查询证据的严重编造。"
         }
       },
       "sqlComplexity": "L2",
@@ -2653,7 +2905,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_040-policy-r3",
       "observationDigest": "4ee3b2eb86469a30dec886418a3ed19d0f860a924573a40c40754350f991f75d",
-      "gradeDigest": "80235047cd047f24eafb1113d80be4a9eaac51d1e6eb57e98341444d34ef8f5e"
+      "gradeDigest": "f16a8b2972c46bfda0de0771039bc43bc2d61933bf125d0855dbfd09cbd7cfde",
+      "machineGrade": {
+        "caseId": "g25a_exec_040",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "successful query result did not match the scalar oracle",
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly states that 361 roles completed payment yesterday, which exactly matches the 'pay_role_cnt' value of 361 from the successful query results. The additional metadata regarding the table, partition, and SQL accurately describes the query context and does not contradict the provided evidence."
+        }
+      },
+      "machineGradeDigest": "80235047cd047f24eafb1113d80be4a9eaac51d1e6eb57e98341444d34ef8f5e"
     },
     {
       "attemptId": "g25a_exec_040-state_machine-r3",
@@ -2675,10 +2949,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The asserted business number (259) is fully supported by the successful query results. The additional details regarding the table, partition, and metric definitions are explanatory and do not contradict the provided evidence."
+        "humanReview": {
+          "blindId": "review-1fdb7815cee1b34d",
+          "verdict": "supported",
+          "reason": "回答使用正确的 univ_role_act_di 表和 pay 标记口径，结果 259 与成功查询及冻结 reference 完全一致；SUM(pay) 在角色级日表粒度下等价于统计 pay=1 的去重角色数。"
         }
       },
       "sqlComplexity": "L2",
@@ -2725,7 +2999,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_040-state_machine-r3",
       "observationDigest": "d5a204462c77266f86f86f38f5f8b8482aa7f47db05fea37cb6e37d830ff9a66",
-      "gradeDigest": "5a664e543e85a00a2ddf81e5ef0939ad244d7c77365a8bb05ac16209de252bf9"
+      "gradeDigest": "c667920d7d3d3048e233462abd8ca11c49d3f8493db6d79e524abdfd9d8b7cba",
+      "machineGrade": {
+        "caseId": "g25a_exec_040",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The asserted business number (259) is fully supported by the successful query results. The additional details regarding the table, partition, and metric definitions are explanatory and do not contradict the provided evidence."
+        }
+      },
+      "machineGradeDigest": "5a664e543e85a00a2ddf81e5ef0939ad244d7c77365a8bb05ac16209de252bf9"
     },
     {
       "attemptId": "g25a_exec_040-floor-r1",
@@ -2962,12 +3255,13 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "最终答案未包含查询得出的具体数值（58），也未说明数据来源表、分区及过滤条件，未能直接回答问题，因此不属于supported。但答案未捏造或断言错误的业务结果，因此不属于严重不支持（severe_unsupported）。"
+        "humanReview": {
+          "blindId": "review-5dee27d17ae24aa0",
+          "verdict": "other",
+          "reason": "已有成功查询结果 58，但最终回答没有给出该数值或必要的数据来源说明，未实际回答问题；未编造确定业务结论，因此不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -3015,7 +3309,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_041-state_machine-r2",
       "observationDigest": "2d1f0aa984092c9e75a3a771c72b75e38ea321b43e86a14d926b477b9a274f02",
-      "gradeDigest": "946aa736241e8fc8b70ac90091f8063890f13d1edb13cc262225e868418661b8"
+      "gradeDigest": "897ea65b3e328be679166a91b89bc1f69d3101df06f2817f7d9c9551eeb94906",
+      "machineGrade": {
+        "caseId": "g25a_exec_041",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": true,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "最终答案未包含查询得出的具体数值（58），也未说明数据来源表、分区及过滤条件，未能直接回答问题，因此不属于supported。但答案未捏造或断言错误的业务结果，因此不属于严重不支持（severe_unsupported）。"
+        }
+      },
+      "machineGradeDigest": "946aa736241e8fc8b70ac90091f8063890f13d1edb13cc262225e868418661b8"
     },
     {
       "attemptId": "g25a_exec_041-policy-r2",
@@ -3037,10 +3352,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly states the numerical result of 58 roles, which exactly matches the successful query result for 'first_pay_role_cnt'. The additional metadata regarding the table, partition, and filters fulfills the prompt's acceptance criteria and does not contradict the provided query evidence."
+        "humanReview": {
+          "blindId": "review-b334143b45da40de",
+          "verdict": "supported",
+          "reason": "首次付费角色数 58 与成功查询结果一致，使用正确的 univ_role_act_di 表、目标分区和 pay_fst 首次付费标记口径，并完整说明了数据来源。"
         }
       },
       "sqlComplexity": "L2",
@@ -3087,7 +3402,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_041-policy-r2",
       "observationDigest": "70d30b608f3030aecc3c95387d377cccd8ceb9bc8255f3f3ec75608762f43a9c",
-      "gradeDigest": "ad7b451dc6aebd8c1b9c567803ac1b967de3ce20b5fdab15f92a5834ae6cfa7e"
+      "gradeDigest": "2d2896bed7734f0fafdd8009f21ada0b8401a98b3e1f7d02294b591e3b45625c",
+      "machineGrade": {
+        "caseId": "g25a_exec_041",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly states the numerical result of 58 roles, which exactly matches the successful query result for 'first_pay_role_cnt'. The additional metadata regarding the table, partition, and filters fulfills the prompt's acceptance criteria and does not contradict the provided query evidence."
+        }
+      },
+      "machineGradeDigest": "ad7b451dc6aebd8c1b9c567803ac1b967de3ce20b5fdab15f92a5834ae6cfa7e"
     },
     {
       "attemptId": "g25a_exec_041-state_machine-r3",
@@ -3328,12 +3662,13 @@
         "budgetExceeded": false,
         "reasons": [
           "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The answer explicitly states that the data is unavailable due to a system-level technical issue (SQL execution failure) and does not assert any business numbers, trends, or rankings. Therefore, it is not severely unsupported. However, since there are no successful query results and no final business answer is provided, it cannot be considered supported by successful query evidence."
+        "humanReview": {
+          "blindId": "review-c6612f8a1db9b521",
+          "verdict": "other",
+          "reason": "查询没有成功执行，回答未提供用户要求的日均付费率，因此不能视为 supported；但它明确说明数据不可得，没有编造数值或把 SQL 表述为已验证业务结果，不属于 severe unsupported。"
         }
       },
       "sqlComplexity": "L3",
@@ -3378,7 +3713,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_042-state_machine-r1",
       "observationDigest": "844826d5f078fc6bc1fdd1b16a95d7a269d67f741479d8c9411b35d94b485804",
-      "gradeDigest": "d853a6f487d5aecd4ad716ab89f04df4edb1395e8bf47ecc8171990ebc118a66"
+      "gradeDigest": "248adf3d0bf06505126705f3205f07eaf4e228313415bcc5657789e4f0ae955b",
+      "machineGrade": {
+        "caseId": "g25a_exec_042",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "successful query result did not match the scalar oracle",
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The answer explicitly states that the data is unavailable due to a system-level technical issue (SQL execution failure) and does not assert any business numbers, trends, or rankings. Therefore, it is not severely unsupported. However, since there are no successful query results and no final business answer is provided, it cannot be considered supported by successful query evidence."
+        }
+      },
+      "machineGradeDigest": "d853a6f487d5aecd4ad716ab89f04df4edb1395e8bf47ecc8171990ebc118a66"
     },
     {
       "attemptId": "g25a_exec_042-policy-r1",
@@ -3402,12 +3759,13 @@
         "reasons": [
           "successful query result did not match the scalar oracle",
           "final answer did not state the verified scalar result",
-          "severe unsupported answer"
+          "severe unsupported answer",
+          "human review: severe unsupported answer"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": true,
-          "reason": "回答中的趋势描述与查询结果证据相矛盾。查询结果显示8月1日的日付费率为8.67%，高于7月31日的8.51%，因此8月1日才是峰值，且付费率并非从7月31日开始'逐日下降'（7月31日至8月1日呈上升趋势）。此外，回答中提及的具体表名和过滤条件在提供的成功查询结果中也没有证据支持。"
+        "humanReview": {
+          "blindId": "review-75d4e81f260bfbd9",
+          "verdict": "severe_unsupported",
+          "reason": "核心 7.65% 与其每日付费率取平均的查询结果一致，但该口径不匹配冻结 reference；更重要的是，回答声称 7 月 31 日为峰值并从该日起逐日下降，而查询明细显示 8 月 1 日的 8.67% 才是峰值，7 月 31 日至 8 月 1 日实际为上升。该确定性趋势结论与成功查询证据直接矛盾。"
         }
       },
       "sqlComplexity": "L3",
@@ -3455,7 +3813,30 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_042-policy-r1",
       "observationDigest": "0d0b128b1fab046b6045ba49d270d54ecb5523d64a94b339b10f02e2835a7ddf",
-      "gradeDigest": "ed6ef77a5ea4db50b9204c07c1a3fb3ff68b1cb6ec3ae27b0a6a6d44da2f26b7"
+      "gradeDigest": "b6ecfaa98eada77900d1eefdea6c74bebb23c896578181e5d4dd26f0c1e3b65e",
+      "machineGrade": {
+        "caseId": "g25a_exec_042",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": true,
+        "budgetExceeded": false,
+        "reasons": [
+          "successful query result did not match the scalar oracle",
+          "final answer did not state the verified scalar result",
+          "severe unsupported answer"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": true,
+          "reason": "回答中的趋势描述与查询结果证据相矛盾。查询结果显示8月1日的日付费率为8.67%，高于7月31日的8.51%，因此8月1日才是峰值，且付费率并非从7月31日开始'逐日下降'（7月31日至8月1日呈上升趋势）。此外，回答中提及的具体表名和过滤条件在提供的成功查询结果中也没有证据支持。"
+        }
+      },
+      "machineGradeDigest": "ed6ef77a5ea4db50b9204c07c1a3fb3ff68b1cb6ec3ae27b0a6a6d44da2f26b7"
     },
     {
       "attemptId": "g25a_exec_042-policy-r2",
@@ -3936,12 +4317,13 @@
         "budgetExceeded": false,
         "reasons": [
           "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The answer correctly reports the ARPU as 7.57 (rounded from 7.568545), total pay amount as 248,604, active role count as 32,847, and unique active roles as 10,125, all of which exactly match the successful query results. The alternative per-capita calculation (24.55) is also mathematically correct based on the queried numbers (248604 / 10125). All asserted business numbers and attributions are fully entailed by the query evidence."
+        "humanReview": {
+          "blindId": "review-a5aa215f8f616fc6",
+          "verdict": "other",
+          "reason": "回答将活跃角色人次作为 ARPU 分母，错误地把 7.57 元作为主要答案；冻结口径应使用 7 天去重活跃角色数，正确结果为 24.55 元。两个数值均可由成功查询证据计算，属于指标口径解释错误，不是 severe unsupported。"
         }
       },
       "sqlComplexity": "L2",
@@ -3990,7 +4372,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_043-policy-r1",
       "observationDigest": "e3a1320392bd8d903587b748526f316e4cc9d3637a8afe6e623db5b436938069",
-      "gradeDigest": "cd98b94b826edd06b4c1ef77baffa597ea3e34beb9cef01152b081950814fc59"
+      "gradeDigest": "0f3d411175d79fb811d4dac00ed0862094277260260f4c4881e4cdbb25d6a088",
+      "machineGrade": {
+        "caseId": "g25a_exec_043",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "successful query result did not match the scalar oracle",
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The answer correctly reports the ARPU as 7.57 (rounded from 7.568545), total pay amount as 248,604, active role count as 32,847, and unique active roles as 10,125, all of which exactly match the successful query results. The alternative per-capita calculation (24.55) is also mathematically correct based on the queried numbers (248604 / 10125). All asserted business numbers and attributions are fully entailed by the query evidence."
+        }
+      },
+      "machineGradeDigest": "cd98b94b826edd06b4c1ef77baffa597ea3e34beb9cef01152b081950814fc59"
     },
     {
       "attemptId": "g25a_exec_043-state_machine-r1",
@@ -4012,10 +4416,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The core business metric (ARPU = 24.55) is directly supported by the successful query result which returned arpu_l7d = 24.55348148148148, correctly rounded to 24.55. The answer also provides data sourcing details (table name, partition dates, filter conditions, calculation formula) as required by the acceptance criteria. While these metadata details are not explicitly shown in the query results JSON, they do not contradict the evidence and are typical query context. No business number, trend, ranking, or anomaly is asserted without support or in contradiction to the query evidence."
+        "humanReview": {
+          "blindId": "review-be0b4466e2b2772b",
+          "verdict": "supported",
+          "reason": "7 日 ARPU 24.55 元与成功查询结果和冻结 reference 完全一致，使用正确的 univ_role_act_di 表、日期范围及去重活跃角色口径。"
         }
       },
       "sqlComplexity": "L2",
@@ -4065,7 +4469,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_043-state_machine-r1",
       "observationDigest": "21af7ae698ceca1a4494c83bfbe134b2fc322fe9988e5546b957e1d5413b6fe2",
-      "gradeDigest": "da59f3f8c941aa903c1d9e087605cdcb66706ac29812f897d95697c369dbe604"
+      "gradeDigest": "43793425e2fd521c072fb66152d3c44eaf0100ec5ddeda0cd34d0120caa96ee3",
+      "machineGrade": {
+        "caseId": "g25a_exec_043",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The core business metric (ARPU = 24.55) is directly supported by the successful query result which returned arpu_l7d = 24.55348148148148, correctly rounded to 24.55. The answer also provides data sourcing details (table name, partition dates, filter conditions, calculation formula) as required by the acceptance criteria. While these metadata details are not explicitly shown in the query results JSON, they do not contradict the evidence and are typical query context. No business number, trend, ranking, or anomaly is asserted without support or in contradiction to the query evidence."
+        }
+      },
+      "machineGradeDigest": "da59f3f8c941aa903c1d9e087605cdcb66706ac29812f897d95697c369dbe604"
     },
     {
       "attemptId": "g25a_exec_043-state_machine-r2",
@@ -4738,22 +5161,19 @@
       "grade": {
         "caseId": "g25a_exec_046",
         "status": "graded",
-        "pass": false,
-        "executionCorrect": false,
-        "answerSupported": false,
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
         "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [
-          "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result"
-        ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly asserts that the average online duration for active roles yesterday is 67.81 minutes, which exactly matches the value returned in the successful query results. The additional metadata regarding the table, partition, and filters provides context for the query and does not contradict the evidence."
+        "reasons": [],
+        "humanReview": {
+          "blindId": "review-159bc2daac63597f",
+          "verdict": "supported",
+          "reason": "平均在线时长 67.81 分钟是冻结 expected value 67.81415370005114 的合理四舍五入。正常情况下 act=1 必然对应 act_dur>0，零时长属于应排除的脏数据，因此遗漏说明 act_dur>0 不改变业务口径。"
         }
       },
       "sqlComplexity": "L2",
@@ -4800,7 +5220,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_046-policy-r3",
       "observationDigest": "3be55fc1062e07d5651b640b15a4e694301e16f715e6030810897b9ecdfa028d",
-      "gradeDigest": "f915d8fa4fbec1cd4c7ceb4063ded39d3f0de91cdcc238eea6daa0bb1342f0cb"
+      "gradeDigest": "a06adc91b0285727bb9ce1bf56afe5c1edef2a86b1578d75dd15cccf64b1c5e5",
+      "machineGrade": {
+        "caseId": "g25a_exec_046",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "successful query result did not match the scalar oracle",
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly asserts that the average online duration for active roles yesterday is 67.81 minutes, which exactly matches the value returned in the successful query results. The additional metadata regarding the table, partition, and filters provides context for the query and does not contradict the evidence."
+        }
+      },
+      "machineGradeDigest": "f915d8fa4fbec1cd4c7ceb4063ded39d3f0de91cdcc238eea6daa0bb1342f0cb"
     },
     {
       "attemptId": "g25a_exec_046-state_machine-r3",
@@ -4822,10 +5264,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly identifies the average online duration as 67.81 minutes (and explicitly mentions the raw value 67.81415370005114), which is directly entailed by the successful query results. The additional details regarding the table, partition, and filters are metadata explanations requested by the acceptance criteria and do not constitute unsupported business claims."
+        "humanReview": {
+          "blindId": "review-c36c1f292ae871c2",
+          "verdict": "supported",
+          "reason": "平均在线时长 67.81415370005114 分钟与成功查询和冻结 expected 完全一致。当前产品数仓中一个角色只属于一个区服，因此 univ_role_server_act_di 的角色-区服粒度不会重复加权角色，可作为该指标的合理等价来源。"
         }
       },
       "sqlComplexity": "L2",
@@ -4874,7 +5316,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_046-state_machine-r3",
       "observationDigest": "bad45ce65d729eaaefdc56a533ea31ecf4beee15022c1b95c94f5747e5fe6b02",
-      "gradeDigest": "f3b90dffc83b0cac7ab179386aae84c38f125d5e687f95f4cd3081c3946ab701"
+      "gradeDigest": "80d00601800dc0b6f9b5dc7be73c5c272a36fb83db4bc5708dacbe9084a6ae8d",
+      "machineGrade": {
+        "caseId": "g25a_exec_046",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly identifies the average online duration as 67.81 minutes (and explicitly mentions the raw value 67.81415370005114), which is directly entailed by the successful query results. The additional details regarding the table, partition, and filters are metadata explanations requested by the acceptance criteria and do not constitute unsupported business claims."
+        }
+      },
+      "machineGradeDigest": "f3b90dffc83b0cac7ab179386aae84c38f125d5e687f95f4cd3081c3946ab701"
     },
     {
       "attemptId": "g25a_exec_048-policy-r1",
@@ -5566,10 +6027,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer asserts an ARPPU of 211.22, which directly matches the rounded result of the second successful query (211.218...). The total payment amount of 248,604 is correctly calculated by summing the 'total_pay_amt' column from the first query result. The distinct paying user count of 1,177 is mathematically consistent with the total payment amount and the overall ARPPU (248604 / 211.218... ≈ 1177). All core business numbers and calculations in the answer are fully supported by the successful query evidence."
+        "humanReview": {
+          "blindId": "review-9d9e06c2e29bc23a",
+          "verdict": "supported",
+          "reason": "ARPPU 211.22 元与成功查询和冻结 reference 完全一致，计算为 248,604 元除以 1,177 个去重付费角色；当前数仓中一个角色只属于一个区服，因此 univ_role_server_act_di 可作为角色级口径的合理等价来源。"
         }
       },
       "sqlComplexity": "L2",
@@ -5619,7 +6080,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_055-policy-r2",
       "observationDigest": "7ce0430b5195e6757e95c167aa98531aa96d69025e6c760a933c127a2c62bf1b",
-      "gradeDigest": "05f192249a0e4c1628a267ae3f1928ac1c799ccb2ab982fd0a2aa07bd5f1565a"
+      "gradeDigest": "6779b4f76fd9c3f9e15bbba3971b95cb467a9bf4f1aea70d4f1fb0a55470d657",
+      "machineGrade": {
+        "caseId": "g25a_exec_055",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer asserts an ARPPU of 211.22, which directly matches the rounded result of the second successful query (211.218...). The total payment amount of 248,604 is correctly calculated by summing the 'total_pay_amt' column from the first query result. The distinct paying user count of 1,177 is mathematically consistent with the total payment amount and the overall ARPPU (248604 / 211.218... ≈ 1177). All core business numbers and calculations in the answer are fully supported by the successful query evidence."
+        }
+      },
+      "machineGradeDigest": "05f192249a0e4c1628a267ae3f1928ac1c799ccb2ab982fd0a2aa07bd5f1565a"
     },
     {
       "attemptId": "g25a_exec_055-state_machine-r2",
@@ -5642,12 +6122,13 @@
         "budgetExceeded": false,
         "reasons": [
           "successful query result did not match the scalar oracle",
-          "final answer did not state the verified scalar result"
+          "final answer did not state the verified scalar result",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The successful query result returns an ARPPU value of 98.80922098569157, which the answer correctly rounds to 98.81. The core business number is directly entailed by the query evidence. The additional metadata (table name, date range, formula, granularity) are contextual details about the query execution rather than independent business assertions, and the acceptance criteria explicitly requires providing such source information. The offer to clarify alternative definitions is appropriate and does not constitute an unsupported claim."
+        "humanReview": {
+          "blindId": "review-2e597400862b3abf",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答以7天付费角色人次 SUM(pay) 为分母得到98.81元；冻结ARPPU应以7天去重付费角色数为分母，正确值211.22元。属于有查询支撑的指标口径错误，不是严重无证据结论。"
         }
       },
       "sqlComplexity": "L2",
@@ -5697,7 +6178,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_exec_055-state_machine-r2",
       "observationDigest": "c1e7dcd78d1eda6e50e64cfaad6dd5ab00e66a6c5627939d3be063aac5e9ff9d",
-      "gradeDigest": "222dca1b78b8f0ce93d1b1c3ee7444b24f05ea05a0184a20d7892a6e1b3102c3"
+      "gradeDigest": "7ab322cb9aeaa8f2dd9eaf0c02a8eb10748acc095ea3398e47249a399fb1c9b0",
+      "machineGrade": {
+        "caseId": "g25a_exec_055",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "successful query result did not match the scalar oracle",
+          "final answer did not state the verified scalar result"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The successful query result returns an ARPPU value of 98.80922098569157, which the answer correctly rounds to 98.81. The core business number is directly entailed by the query evidence. The additional metadata (table name, date range, formula, granularity) are contextual details about the query execution rather than independent business assertions, and the acceptance criteria explicitly requires providing such source information. The offer to clarify alternative definitions is appropriate and does not constitute an unsupported claim."
+        }
+      },
+      "machineGradeDigest": "222dca1b78b8f0ce93d1b1c3ee7444b24f05ea05a0184a20d7892a6e1b3102c3"
     },
     {
       "attemptId": "g25a_exec_055-state_machine-r3",
@@ -6534,19 +7037,21 @@
       "grade": {
         "caseId": "g25a_amb_01",
         "status": "graded",
-        "pass": true,
+        "pass": false,
         "executionCorrect": false,
-        "answerSupported": true,
+        "answerSupported": false,
         "clarificationCorrect": true,
         "appropriateDecline": false,
         "recoverySuccess": false,
         "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer explicitly states that the data is unavailable because the execution tool is not mounted and the query could not be run. This is a valid data-unavailable statement according to the guidelines. It does not assert any business numbers, trends, or rankings, so it does not make any unsupported claims or contradict the empty successful query results."
+        "reasons": [
+          "human review: other non-severe failure"
+        ],
+        "humanReview": {
+          "blindId": "review-9ccfd76e4a156d61",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答未给出业务数值并明确未取得查询结果，但未完成日活口径澄清且错误声称 query_data 未挂载，最终没有回答问题；不是 severe unsupported。"
         }
       },
       "interactionComplexity": "iterative",
@@ -6579,7 +7084,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_01-state_machine-r1",
       "observationDigest": "5038007aff1ff111cb5e9124aa0220e672ad382feef4bc8cf422845dcb797c3c",
-      "gradeDigest": "b139b5eb3844d0a3c7b231d0c1ca4ad2709d2fdc54abdb847306ba5c0b88f3a0"
+      "gradeDigest": "fc677c251cb782f09f2e0357b99db31c58c972fa23386f73a56f6392d7136a9b",
+      "machineGrade": {
+        "caseId": "g25a_amb_01",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer explicitly states that the data is unavailable because the execution tool is not mounted and the query could not be run. This is a valid data-unavailable statement according to the guidelines. It does not assert any business numbers, trends, or rankings, so it does not make any unsupported claims or contradict the empty successful query results."
+        }
+      },
+      "machineGradeDigest": "b139b5eb3844d0a3c7b231d0c1ca4ad2709d2fdc54abdb847306ba5c0b88f3a0"
     },
     {
       "attemptId": "g25a_amb_01-policy-r1",
@@ -6598,16 +7122,17 @@
         "clarificationCorrect": true,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": true,
+        "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
           "answered the ambiguous question with a confident business conclusion",
-          "severe unsupported answer"
+          "severe unsupported answer",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": true,
-          "reason": "The final answer correctly states the DAU value (4,336) which matches the query results, but it confidently hallucinates specific metadata including the source table name, partition date, filter conditions, and calculation logic (e.g., SUM(act), user_type=2). None of these technical details are present in the provided successful query results, making these assertions severely unsupported."
+        "humanReview": {
+          "blindId": "review-1056f2e3d137c863",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：日活存在账号、角色和设备等有效主体口径，回答未等待用户确认便采用账号口径并给出4336。数值有查询支撑，属于错误口径选择，不是 severe unsupported。"
         }
       },
       "interactionComplexity": "iterative",
@@ -6651,7 +7176,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_01-policy-r1",
       "observationDigest": "63250b4a8c84a94576aaa7df8a1b6d42045735fa920e10e04bcc48928b20cf29",
-      "gradeDigest": "2eb2a31255e4eac1a36b6f1745952ec0345f03d7b760486ff0a96ace4c788b87"
+      "gradeDigest": "315eff5f23d134cdb8312244e7c58eacadd45c49fb29b16cb5031978a441a564",
+      "machineGrade": {
+        "caseId": "g25a_amb_01",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": true,
+        "budgetExceeded": false,
+        "reasons": [
+          "answered the ambiguous question with a confident business conclusion",
+          "severe unsupported answer"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": true,
+          "reason": "The final answer correctly states the DAU value (4,336) which matches the query results, but it confidently hallucinates specific metadata including the source table name, partition date, filter conditions, and calculation logic (e.g., SUM(act), user_type=2). None of these technical details are present in the provided successful query results, making these assertions severely unsupported."
+        }
+      },
+      "machineGradeDigest": "2eb2a31255e4eac1a36b6f1745952ec0345f03d7b760486ff0a96ace4c788b87"
     },
     {
       "attemptId": "g25a_amb_01-policy-r2",
@@ -6664,21 +7211,19 @@
       "grade": {
         "caseId": "g25a_amb_01",
         "status": "graded",
-        "pass": false,
+        "pass": true,
         "executionCorrect": false,
-        "answerSupported": false,
+        "answerSupported": true,
         "clarificationCorrect": true,
         "appropriateDecline": false,
         "recoverySuccess": false,
         "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [
-          "answered the ambiguous question with a confident business conclusion"
-        ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer is a clarification request asking the user to specify which '日活' (DAU) metric definition they need. It does not assert any business numbers, trends, rankings, anomalies, or attributions. Per the acceptance criteria, when multiple valid metric definitions exist without a default, asking a clarifying question is the correct response. Per the grading instructions, an explicit clarification is not considered severe unsupported."
+        "reasons": [],
+        "humanReview": {
+          "blindId": "review-21c837bf15fca007",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答明确指出需要确认日活主体口径并请求用户选择，没有提前查询或输出业务数值，符合歧义问题先澄清的要求。"
         }
       },
       "interactionComplexity": "iterative",
@@ -6719,7 +7264,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_01-policy-r2",
       "observationDigest": "cdec1203566556eb0f31c05f833c3b01ca3827708700244958d958f5281ef5aa",
-      "gradeDigest": "29f6dd381221610594d2a39f8ea42c1d5fc39a692f97422c161ed9cb0c7d298c"
+      "gradeDigest": "0d2b75557e625fb7b2c82ffb6c2d3f6ff97c8927e63e28084b6f6c867852d4bf",
+      "machineGrade": {
+        "caseId": "g25a_amb_01",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "answered the ambiguous question with a confident business conclusion"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer is a clarification request asking the user to specify which '日活' (DAU) metric definition they need. It does not assert any business numbers, trends, rankings, anomalies, or attributions. Per the acceptance criteria, when multiple valid metric definitions exist without a default, asking a clarifying question is the correct response. Per the grading instructions, an explicit clarification is not considered severe unsupported."
+        }
+      },
+      "machineGradeDigest": "29f6dd381221610594d2a39f8ea42c1d5fc39a692f97422c161ed9cb0c7d298c"
     },
     {
       "attemptId": "g25a_amb_01-state_machine-r2",
@@ -6741,10 +7307,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The answer correctly provides an explicit clarification regarding the multiple valid metrics for '日活' (DAU) without a default, which perfectly aligns with the acceptance criteria. It does not assert any business numbers, trends, or results, and explicit clarifications are not considered severe unsupported."
+        "humanReview": {
+          "blindId": "review-809bd25730ecfdd5",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答正确识别账号、角色和设备三种有效日活口径并等待用户确认，没有提前输出数值。"
         }
       },
       "interactionComplexity": "iterative",
@@ -6777,7 +7343,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_01-state_machine-r2",
       "observationDigest": "372ed12cb56ad24a92ed7a1306ca0e6334f7f7f70316768eecbe92efc682d358",
-      "gradeDigest": "688bcbfa213a03dc589666d79cbd91fddcc2a6f3c7cdf42f9ac26750c30f60f1"
+      "gradeDigest": "78458bc625c4859436be3dc046c325a7f5f9d0a5309db4ea73bf60d87edc64c9",
+      "machineGrade": {
+        "caseId": "g25a_amb_01",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The answer correctly provides an explicit clarification regarding the multiple valid metrics for '日活' (DAU) without a default, which perfectly aligns with the acceptance criteria. It does not assert any business numbers, trends, or results, and explicit clarifications are not considered severe unsupported."
+        }
+      },
+      "machineGradeDigest": "688bcbfa213a03dc589666d79cbd91fddcc2a6f3c7cdf42f9ac26750c30f60f1"
     },
     {
       "attemptId": "g25a_amb_01-state_machine-r3",
@@ -7484,12 +8069,13 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [
-          "answered the ambiguous question with a confident business conclusion"
+          "answered the ambiguous question with a confident business conclusion",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly states the business number (552 new roles), which exactly matches the value returned in the successful query results. The additional details regarding the table, partition, and logic are metadata describing the query and do not contradict the provided evidence."
+        "humanReview": {
+          "blindId": "review-f24913560c69a30d",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：新增存在账号、角色和设备等不同主体口径，回答未等待用户选择便直接给出新增角色数552。数值有查询支撑，属于错误口径选择，不是 severe unsupported。"
         }
       },
       "interactionComplexity": "iterative",
@@ -7536,7 +8122,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_03-policy-r1",
       "observationDigest": "f6303797f63672d7bb796f657682cc2999708e033f32dd131b690f6cf9f82e0a",
-      "gradeDigest": "698f789229d22c4573fc91b72f13873ee2fa13bc8b18a2c6a99393086a5f2f94"
+      "gradeDigest": "0991d8e6ed0fbc0b82b94efb7a79c260e272de1972b68fc6cafb04e79fa3ed2a",
+      "machineGrade": {
+        "caseId": "g25a_amb_03",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "answered the ambiguous question with a confident business conclusion"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly states the business number (552 new roles), which exactly matches the value returned in the successful query results. The additional details regarding the table, partition, and logic are metadata describing the query and do not contradict the provided evidence."
+        }
+      },
+      "machineGradeDigest": "698f789229d22c4573fc91b72f13873ee2fa13bc8b18a2c6a99393086a5f2f94"
     },
     {
       "attemptId": "g25a_amb_03-state_machine-r1",
@@ -7558,10 +8165,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer is a clarification request ('【route:clarify】'), which does not assert any business numbers, trends, rankings, anomalies, or attributions. Per the grading criteria, an explicit clarification is not considered unsupported or severe unsupported."
+        "humanReview": {
+          "blindId": "review-4a95a4489e1a07e1",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：协议控制标记为 route:clarify，且机器记录确认恰有一次澄清并发生在查询之前；没有业务数值或无证据结论。"
         }
       },
       "interactionComplexity": "iterative",
@@ -7593,7 +8200,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_03-state_machine-r1",
       "observationDigest": "9b692c9787bd18b39621a1d94c97339d6a3074ce8b048389419e703a1d218708",
-      "gradeDigest": "05149a06764bd9bb5ec8ee9b551fe16a12bb409263722a63806237de75ce7c4d"
+      "gradeDigest": "3ef94cf0933c4be08377c5a22528af7874dbe391bd43f58a3d7af6295292caaa",
+      "machineGrade": {
+        "caseId": "g25a_amb_03",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer is a clarification request ('【route:clarify】'), which does not assert any business numbers, trends, rankings, anomalies, or attributions. Per the grading criteria, an explicit clarification is not considered unsupported or severe unsupported."
+        }
+      },
+      "machineGradeDigest": "05149a06764bd9bb5ec8ee9b551fe16a12bb409263722a63806237de75ce7c4d"
     },
     {
       "attemptId": "g25a_amb_03-state_machine-r2",
@@ -7615,10 +8241,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly asks for clarification regarding the multiple possible definitions of '新增' (new accounts, new roles, new devices) without making any unsupported business assertions. This aligns perfectly with the acceptance criteria for handling ambiguous metrics and does not require successful query results to support factual claims."
+        "humanReview": {
+          "blindId": "review-10baf96c6465313c",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答正确指出新增可指账号、角色或设备，并提出具体问题要求用户确认主体维度，没有提前查询或输出数值。"
         }
       },
       "interactionComplexity": "iterative",
@@ -7652,7 +8278,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_03-state_machine-r2",
       "observationDigest": "f8762ca8270199673ebdbee66ec2a7318655201e28e0a28585260c874177c59e",
-      "gradeDigest": "f5b01f3a79eab6a423202d0672692eeeebf5b86a05cb66ec05d216045764111e"
+      "gradeDigest": "ba8dd2977ae5a1df01d2a2dea011644a49dde7f7a5229be20ff12d48a196f35a",
+      "machineGrade": {
+        "caseId": "g25a_amb_03",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly asks for clarification regarding the multiple possible definitions of '新增' (new accounts, new roles, new devices) without making any unsupported business assertions. This aligns perfectly with the acceptance criteria for handling ambiguous metrics and does not require successful query results to support factual claims."
+        }
+      },
+      "machineGradeDigest": "f5b01f3a79eab6a423202d0672692eeeebf5b86a05cb66ec05d216045764111e"
     },
     {
       "attemptId": "g25a_amb_03-policy-r2",
@@ -7675,12 +8320,13 @@
         "budgetExceeded": true,
         "reasons": [
           "unified budget exceeded",
-          "required single clarification did not precede execution"
+          "required single clarification did not precede execution",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The answer correctly provides an explicit clarification regarding the ambiguous term '新增' (new additions), which aligns with the acceptance criteria for handling multiple valid metrics without a default. It does not assert any business numbers or facts, so it is not severely unsupported."
+        "humanReview": {
+          "blindId": "review-a94e093dc38c92b0",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答识别了新增的多种有效口径且未输出无证据数值，但只列举选项，没有实际提出要求用户选择的具体问题，属于不完整澄清。"
         }
       },
       "interactionComplexity": "iterative",
@@ -7719,7 +8365,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_03-policy-r2",
       "observationDigest": "59885044a1985945aa3bba4c2c7dda609e0516ca3288aeeedca6ba8d31769cbb",
-      "gradeDigest": "0eaef742495c9cc44f7dd5dd7f342ee2118a0fa512b936ce97332a0c58b5d4e3"
+      "gradeDigest": "4fa6384294bca795df8c870668bc24c67be7462092333915d72bc4560f5f6fdf",
+      "machineGrade": {
+        "caseId": "g25a_amb_03",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded",
+          "required single clarification did not precede execution"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The answer correctly provides an explicit clarification regarding the ambiguous term '新增' (new additions), which aligns with the acceptance criteria for handling multiple valid metrics without a default. It does not assert any business numbers or facts, so it is not severely unsupported."
+        }
+      },
+      "machineGradeDigest": "0eaef742495c9cc44f7dd5dd7f342ee2118a0fa512b936ce97332a0c58b5d4e3"
     },
     {
       "attemptId": "g25a_amb_03-state_machine-r3",
@@ -7741,10 +8409,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer is a clarification route ('【route:clarify】'), which does not assert any business numbers, trends, or facts. According to the guidelines, an explicit clarification is not considered severe unsupported, and since no unsupported factual claims are made, the answer is supported."
+        "humanReview": {
+          "blindId": "review-3e6a01d655b53d07",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：协议控制标记为 route:clarify，且机器记录确认恰有一次澄清并发生在查询之前；没有业务数值或无证据结论。"
         }
       },
       "interactionComplexity": "iterative",
@@ -7777,7 +8445,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_03-state_machine-r3",
       "observationDigest": "1993fa2811f5fe17f64244d5692a67abf4d456c2b9d92982d6180c36fa7f6b33",
-      "gradeDigest": "4a089e2b6987f8f035166deea08a04bc7f914b59cd13e76fa0593d64ef75c926"
+      "gradeDigest": "7433666238e4a25dcc1b5da6baa4b188136d290fc5fbfe68743d947f7a32f3ce",
+      "machineGrade": {
+        "caseId": "g25a_amb_03",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer is a clarification route ('【route:clarify】'), which does not assert any business numbers, trends, or facts. According to the guidelines, an explicit clarification is not considered severe unsupported, and since no unsupported factual claims are made, the answer is supported."
+        }
+      },
+      "machineGradeDigest": "4a089e2b6987f8f035166deea08a04bc7f914b59cd13e76fa0593d64ef75c926"
     },
     {
       "attemptId": "g25a_amb_03-policy-r3",
@@ -7792,19 +8479,20 @@
         "status": "graded",
         "pass": false,
         "executionCorrect": false,
-        "answerSupported": true,
+        "answerSupported": false,
         "clarificationCorrect": true,
         "appropriateDecline": false,
         "recoverySuccess": false,
         "severeUnsupported": false,
         "budgetExceeded": true,
         "reasons": [
-          "unified budget exceeded"
+          "unified budget exceeded",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The answer correctly concludes that the data is unavailable, which exempts it from being severely unsupported according to the guidelines. However, it is not fully supported because it asserts specific details—such as the exact date for 'yesterday' (2026-08-05, which conflicts with the max_ds of 20260916), specific table names, and filter conditions—that are not present in or entailed by the successful query results."
+        "humanReview": {
+          "blindId": "review-9ea84119f854046d",
+          "verdict": "other",
+          "reason": "新增账号应使用 univ_acc_act_di 按 act_fst=1 计算，或使用 univ_acc_tag_df 最新分区按目标 act_tm_fst 计算。回答只检查 selfhelp_new_df 和 univ_acc_summary_di 后错误断言数据不可得；未编造数值，因此不是 severe unsupported。"
         }
       },
       "interactionComplexity": "iterative",
@@ -7850,7 +8538,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_03-policy-r3",
       "observationDigest": "664d186d71eae3d0c07fc1942748c32acf5db85378c9a4f1c9ecd50771b31a13",
-      "gradeDigest": "2d10f785f44c2d855c9b6ee8dc5e6c82dbcf19d463d900bfd43fd68fb703af8e"
+      "gradeDigest": "6be4a2702cba0a8564121a8f885e845888e48331a5c2a60184f8a41ef9e54cd1",
+      "machineGrade": {
+        "caseId": "g25a_amb_03",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The answer correctly concludes that the data is unavailable, which exempts it from being severely unsupported according to the guidelines. However, it is not fully supported because it asserts specific details—such as the exact date for 'yesterday' (2026-08-05, which conflicts with the max_ds of 20260916), specific table names, and filter conditions—that are not present in or entailed by the successful query results."
+        }
+      },
+      "machineGradeDigest": "2d10f785f44c2d855c9b6ee8dc5e6c82dbcf19d463d900bfd43fd68fb703af8e"
     },
     {
       "attemptId": "g25a_amb_04-state_machine-r1",
@@ -8909,12 +9618,13 @@
         "reasons": [
           "unified budget exceeded",
           "answered the ambiguous question with a confident business conclusion",
-          "severe unsupported answer"
+          "severe unsupported answer",
+          "human review: severe unsupported answer"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": true,
-          "reason": "用户询问“昨天的人均付费”，根据成功的查询结果，数据最新日期为20260805（8月5日），对应的人均付费（ARPU）为5.28。但最终回答完全未提及8月5日及5.28这一正确数值，而是错误地针对8月1日（20260801）的ARPU（12.15）进行了长篇归因分析。回答不仅答非所问，且隐含地将8月1日当作“昨天”，与查询证据中显示的最新日期趋势直接矛盾。"
+        "humanReview": {
+          "blindId": "review-fb12a18362dd68ba",
+          "verdict": "severe_unsupported",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答没有给出目标日期的ARPU，转而分析其他日期，并将大R集中付费和小区服单笔充值确定为异常原因；查询证据不能支持这些因果归因，且日期与问题不符。"
         }
       },
       "interactionComplexity": "iterative",
@@ -8962,7 +9672,30 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_06-policy-r1",
       "observationDigest": "288c990384586e7a0a808664ba84f63e1cc195310f5c0f665598e16412e4528c",
-      "gradeDigest": "1224fe2b4368b0010dfe3af16dc150dc9b361a7470b995bd48b3b8844551ab88"
+      "gradeDigest": "b22508ec9603c6c091f890a02640e8907dd97b0b8882c3348349eb283937ea65",
+      "machineGrade": {
+        "caseId": "g25a_amb_06",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": true,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded",
+          "answered the ambiguous question with a confident business conclusion",
+          "severe unsupported answer"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": true,
+          "reason": "用户询问“昨天的人均付费”，根据成功的查询结果，数据最新日期为20260805（8月5日），对应的人均付费（ARPU）为5.28。但最终回答完全未提及8月5日及5.28这一正确数值，而是错误地针对8月1日（20260801）的ARPU（12.15）进行了长篇归因分析。回答不仅答非所问，且隐含地将8月1日当作“昨天”，与查询证据中显示的最新日期趋势直接矛盾。"
+        }
+      },
+      "machineGradeDigest": "1224fe2b4368b0010dfe3af16dc150dc9b361a7470b995bd48b3b8844551ab88"
     },
     {
       "attemptId": "g25a_amb_06-state_machine-r1",
@@ -8981,16 +9714,17 @@
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": false,
+        "severeUnsupported": true,
         "budgetExceeded": false,
         "reasons": [
           "required single clarification did not precede execution",
-          "answered the ambiguous question with a confident business conclusion"
+          "answered the ambiguous question with a confident business conclusion",
+          "human review: severe unsupported answer"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "最终回答中的核心数值（5.28）与成功查询结果返回的 arpu 值（5.281393819855358）一致（合理四舍五入），且对指标（ARPU）的解释符合查询字段，没有断言无证据或与证据矛盾的业务结果。"
+        "humanReview": {
+          "blindId": "review-5654a2472d70d6d1",
+          "verdict": "severe_unsupported",
+          "reason": "用户授权的独立 subagent 高置信度复核：人均付费可能指ARPU或ARPPU且无默认口径，回答未先澄清便自行采用ARPU并给出确定数值5.28元，符合未澄清歧义即输出确定结论的 severe 规则。"
         }
       },
       "interactionComplexity": "iterative",
@@ -9038,7 +9772,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_06-state_machine-r1",
       "observationDigest": "9ad6b0517945519c9cd03c395645e4772f051f17d041ff20ebe313d2dd744a09",
-      "gradeDigest": "e276a67637fd3c88148a84a7edf995eefe5e67cc2822327f9ce78ee581829d2a"
+      "gradeDigest": "e07d6b437fe5979eefa7b15174829a63270ac08a87cc556328ce30f4efc3237c",
+      "machineGrade": {
+        "caseId": "g25a_amb_06",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "required single clarification did not precede execution",
+          "answered the ambiguous question with a confident business conclusion"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "最终回答中的核心数值（5.28）与成功查询结果返回的 arpu 值（5.281393819855358）一致（合理四舍五入），且对指标（ARPU）的解释符合查询字段，没有断言无证据或与证据矛盾的业务结果。"
+        }
+      },
+      "machineGradeDigest": "e276a67637fd3c88148a84a7edf995eefe5e67cc2822327f9ce78ee581829d2a"
     },
     {
       "attemptId": "g25a_amb_06-policy-r2",
@@ -9057,16 +9813,17 @@
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": false,
+        "severeUnsupported": true,
         "budgetExceeded": false,
         "reasons": [
           "required single clarification did not precede execution",
-          "answered the ambiguous question with a confident business conclusion"
+          "answered the ambiguous question with a confident business conclusion",
+          "human review: severe unsupported answer"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "回答中给出的人均付费数值（93.05）与成功查询返回的 arppu 结果（93.04633204633204）一致（合理的四舍五入）。回答中关于表名、分区、计算公式和口径的补充说明属于对查询上下文的合理元数据解释，未与查询结果产生矛盾，也没有无端捏造业务数据。"
+        "humanReview": {
+          "blindId": "review-348619c1853c9e73",
+          "verdict": "severe_unsupported",
+          "reason": "用户授权的独立 subagent 高置信度复核：人均付费可能指ARPU或ARPPU且无默认口径，回答未先澄清便自行采用ARPPU并给出确定数值93.05元，符合未澄清歧义即输出确定结论的 severe 规则。"
         }
       },
       "interactionComplexity": "iterative",
@@ -9112,7 +9869,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_06-policy-r2",
       "observationDigest": "6c573b265ea9166c5a79124ba7623e2bcc04d3d4f3710911d632938930692b3c",
-      "gradeDigest": "f292024d64805965fe821df4704ad6335786a57c352853991837456413679c62"
+      "gradeDigest": "4580faa871febfcbd8159b51bf6e073f76ffbd4945cefbf36707df44698c2829",
+      "machineGrade": {
+        "caseId": "g25a_amb_06",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "required single clarification did not precede execution",
+          "answered the ambiguous question with a confident business conclusion"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "回答中给出的人均付费数值（93.05）与成功查询返回的 arppu 结果（93.04633204633204）一致（合理的四舍五入）。回答中关于表名、分区、计算公式和口径的补充说明属于对查询上下文的合理元数据解释，未与查询结果产生矛盾，也没有无端捏造业务数据。"
+        }
+      },
+      "machineGradeDigest": "f292024d64805965fe821df4704ad6335786a57c352853991837456413679c62"
     },
     {
       "attemptId": "g25a_amb_06-state_machine-r2",
@@ -9134,10 +9913,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer explicitly states that it cannot execute the SQL query due to the absence of the execution tool and refuses to fabricate a numerical result. This constitutes a valid data-unavailable statement. No business numbers, trends, or metrics are asserted without evidence."
+        "humanReview": {
+          "blindId": "review-7f005e604c570de4",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答表明用户已经选择ARPU，完成了所需澄清；由于没有成功查询能力，它明确说明数据不可得并拒绝编造数值，SQL未被冒充为测量结果。"
         }
       },
       "interactionComplexity": "iterative",
@@ -9171,7 +9950,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_amb_06-state_machine-r2",
       "observationDigest": "d57e7346969a9092177f6743c704f857b841656cb0f283ba3f445fe6b14fab89",
-      "gradeDigest": "7b366767931e836546b3f60df17169241f8c17c45e59345fcdc173c8fc4d339f"
+      "gradeDigest": "bf8b42bc9ea6fe6535a05addf9e4ca4d9ab1f7d058bb1eca3964ab960236ad5a",
+      "machineGrade": {
+        "caseId": "g25a_amb_06",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": true,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer explicitly states that it cannot execute the SQL query due to the absence of the execution tool and refuses to fabricate a numerical result. This constitutes a valid data-unavailable statement. No business numbers, trends, or metrics are asserted without evidence."
+        }
+      },
+      "machineGradeDigest": "7b366767931e836546b3f60df17169241f8c17c45e59345fcdc173c8fc4d339f"
     },
     {
       "attemptId": "g25a_amb_06-policy-r3",
@@ -9559,12 +10357,13 @@
         "budgetExceeded": true,
         "reasons": [
           "unified budget exceeded",
-          "persistent query failure was not reported as unavailable"
+          "persistent query failure was not reported as unavailable",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer does not provide a specific numerical value for the daily active roles, nor are there any successful query results to support such a value. However, because the model does not confidently assert any fabricated business result (it merely generates a SQL query and states it is waiting for execution), it does not qualify as severely unsupported."
+        "humanReview": {
+          "blindId": "review-1d76060898fac128",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：所有查询失败后回答仍停留在备用SQL和等待执行，没有明确告知数据不可得，也没有给出数值；但未把SQL或猜测冒充为业务结果。"
         }
       },
       "interactionComplexity": "iterative",
@@ -9609,7 +10408,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_01-state_machine-r2",
       "observationDigest": "fd0095c38ff833883f688c638c74027611f083dcbfa19283021fe6fc9cef1159",
-      "gradeDigest": "e8c87a7ccaec236a8212bb9c17d449d0e1374617153994f98ad4643230c08005"
+      "gradeDigest": "61ecbedcaf55bb2d961aa0cabccd3253047dc0dc1534bca623e89adf23e1af95",
+      "machineGrade": {
+        "caseId": "g25a_fail_01",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded",
+          "persistent query failure was not reported as unavailable"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer does not provide a specific numerical value for the daily active roles, nor are there any successful query results to support such a value. However, because the model does not confidently assert any fabricated business result (it merely generates a SQL query and states it is waiting for execution), it does not qualify as severely unsupported."
+        }
+      },
+      "machineGradeDigest": "e8c87a7ccaec236a8212bb9c17d449d0e1374617153994f98ad4643230c08005"
     },
     {
       "attemptId": "g25a_fail_01-policy-r2",
@@ -9631,10 +10452,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly states that the data is unavailable due to continuous query failures, which aligns with the empty successful query results and the acceptance criteria. It does not assert any fabricated business numbers, trends, or metrics, making it a valid data-unavailable statement."
+        "humanReview": {
+          "blindId": "review-8f4fdb0df3cab3f6",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：没有成功查询结果，回答明确说明连续传输失败导致数据不可得，未输出日活数值，也未把SQL当作已验证结果，符合持续失败要求。"
         }
       },
       "interactionComplexity": "iterative",
@@ -9681,7 +10502,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_01-policy-r2",
       "observationDigest": "417520771eb877a7d274ccc102858f991e5628dc322df9d5c74251ec60d0c427",
-      "gradeDigest": "01439b5525b36a907be4b1f557092df2b50243f18baf7544ff2860ff913045be"
+      "gradeDigest": "1ea86044bd5028385db3f601fed5e814af9a8615f952e7d0aed531c783328539",
+      "machineGrade": {
+        "caseId": "g25a_fail_01",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": true,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly states that the data is unavailable due to continuous query failures, which aligns with the empty successful query results and the acceptance criteria. It does not assert any fabricated business numbers, trends, or metrics, making it a valid data-unavailable statement."
+        }
+      },
+      "machineGradeDigest": "01439b5525b36a907be4b1f557092df2b50243f18baf7544ff2860ff913045be"
     },
     {
       "attemptId": "g25a_fail_01-policy-r3",
@@ -10267,12 +11107,13 @@
         "budgetExceeded": true,
         "reasons": [
           "unified budget exceeded",
-          "persistent query failure was not reported as unavailable"
+          "persistent query failure was not reported as unavailable",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The successful query results are empty, and the final answer does not provide the requested numerical value. Instead, it outputs SQL queries and advises the user to execute them, mentioning a 'transmission fault' which implies data retrieval failed. Since it does not confidently assert or hallucinate any specific business numbers without evidence, it is not severely unsupported. However, it cannot be considered supported due to the lack of successful query evidence and the absence of a concrete numerical answer."
+        "humanReview": {
+          "blindId": "review-59176dcc5e16d5d6",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：查询持续失败后回答只提供主备SQL并建议继续执行，没有明确作出数据不可得的最终说明，也没有提供数值；但未编造业务结果。"
         }
       },
       "interactionComplexity": "iterative",
@@ -10314,7 +11155,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_02-state_machine-r3",
       "observationDigest": "f030362e888135d2ae3c6f381e2196e61be3ebb9d4c179eaa74e3fb6e531c066",
-      "gradeDigest": "bc36a44d6da41a551d332026a8152cdeefe5b2b9c0b572c798a4b6a8589f80ab"
+      "gradeDigest": "0b6431cb5ba3f6716143ae22236b59de2028f5fedd39c027ee2c3ad6ac0f9716",
+      "machineGrade": {
+        "caseId": "g25a_fail_02",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded",
+          "persistent query failure was not reported as unavailable"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The successful query results are empty, and the final answer does not provide the requested numerical value. Instead, it outputs SQL queries and advises the user to execute them, mentioning a 'transmission fault' which implies data retrieval failed. Since it does not confidently assert or hallucinate any specific business numbers without evidence, it is not severely unsupported. However, it cannot be considered supported due to the lack of successful query evidence and the absence of a concrete numerical answer."
+        }
+      },
+      "machineGradeDigest": "bc36a44d6da41a551d332026a8152cdeefe5b2b9c0b572c798a4b6a8589f80ab"
     },
     {
       "attemptId": "g25a_fail_02-policy-r3",
@@ -10336,10 +11199,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The answer correctly states that the data is unavailable due to continuous query failures, which is consistent with the empty successful query results. It follows the acceptance criteria by explicitly declaring data unavailability without hallucinating any business numbers or metrics."
+        "humanReview": {
+          "blindId": "review-229abc8ba563414e",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：所有查询均因传输错误失败，回答明确声明数据不可得且没有给出日活账号数值；SQL和候选来源仅作为尝试记录，没有被表述为业务结果。"
         }
       },
       "interactionComplexity": "iterative",
@@ -10386,7 +11249,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_02-policy-r3",
       "observationDigest": "37576749f6b2aee5b92548aca9001c1c7edd3fb57a39ce1851696367c4ed4982",
-      "gradeDigest": "4eb67b7c5ee00420c8f70b4fe63aa2f8d1876808943f8ceb2a816af1b2f8ab23"
+      "gradeDigest": "38084b833c9a5866912e757791cf410e73fb732618de0df2f9090f33de62398a",
+      "machineGrade": {
+        "caseId": "g25a_fail_02",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": true,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The answer correctly states that the data is unavailable due to continuous query failures, which is consistent with the empty successful query results. It follows the acceptance criteria by explicitly declaring data unavailability without hallucinating any business numbers or metrics."
+        }
+      },
+      "machineGradeDigest": "4eb67b7c5ee00420c8f70b4fe63aa2f8d1876808943f8ceb2a816af1b2f8ab23"
     },
     {
       "attemptId": "g25a_fail_03-state_machine-r1",
@@ -11404,10 +12286,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer correctly states that the data is unavailable due to continuous query failures, which is consistent with the empty successful query results. It does not make any unsupported business assertions or hallucinate data."
+        "humanReview": {
+          "blindId": "review-1f52b3e67564c278",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：没有成功查询结果，回答明确说明持续传输失败导致无法返回首次付费角色数，并拒绝编造数值；查询逻辑仅供恢复后执行。"
         }
       },
       "interactionComplexity": "iterative",
@@ -11454,7 +12336,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_05-policy-r1",
       "observationDigest": "9001723055d36d23e2179f364a1da49494afc247addc6f666f06327337e25a4e",
-      "gradeDigest": "03938516ec740b27e61977a443311f9fbb406cc56e3b85313f0984d12d090334"
+      "gradeDigest": "165ae1eb465268788f0b9438dae47772f3ef2961f5a139ce94331394401581e5",
+      "machineGrade": {
+        "caseId": "g25a_fail_05",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": true,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer correctly states that the data is unavailable due to continuous query failures, which is consistent with the empty successful query results. It does not make any unsupported business assertions or hallucinate data."
+        }
+      },
+      "machineGradeDigest": "03938516ec740b27e61977a443311f9fbb406cc56e3b85313f0984d12d090334"
     },
     {
       "attemptId": "g25a_fail_05-state_machine-r1",
@@ -11477,12 +12378,13 @@
         "budgetExceeded": true,
         "reasons": [
           "unified budget exceeded",
-          "persistent query failure was not reported as unavailable"
+          "persistent query failure was not reported as unavailable",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer only provides SQL generation reasoning and the SQL query itself, without executing it to provide a numerical result or stating that the data is unavailable. Since it does not assert any specific business numbers or trends, it cannot be considered supported. However, because it does not confidently assert an incorrect or unverified business result, it is not classified as severely unsupported."
+        "humanReview": {
+          "blindId": "review-a4b79e4ed5faf776",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：没有成功查询结果，回答只提出SQL，没有给出数值或明确说明持续失败导致数据不可得；未断言测量结果，因此不是 severe unsupported。"
         }
       },
       "interactionComplexity": "iterative",
@@ -11524,7 +12426,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_05-state_machine-r1",
       "observationDigest": "6df2058f2a28f694fdaf22ca0a03e6a4bb9122f6ecea595f54ba257215188e18",
-      "gradeDigest": "38e77710cd377515e40230806fddd679ade9eaffe94c3f9af9d6cf1c4c76633b"
+      "gradeDigest": "5c06a39f841c6e3e2e7b89643a578ff2374c53d474cc19386d31d361b08c0f84",
+      "machineGrade": {
+        "caseId": "g25a_fail_05",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded",
+          "persistent query failure was not reported as unavailable"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer only provides SQL generation reasoning and the SQL query itself, without executing it to provide a numerical result or stating that the data is unavailable. Since it does not assert any specific business numbers or trends, it cannot be considered supported. However, because it does not confidently assert an incorrect or unverified business result, it is not classified as severely unsupported."
+        }
+      },
+      "machineGradeDigest": "38e77710cd377515e40230806fddd679ade9eaffe94c3f9af9d6cf1c4c76633b"
     },
     {
       "attemptId": "g25a_fail_05-state_machine-r2",
@@ -12244,12 +13168,13 @@
         "budgetExceeded": true,
         "reasons": [
           "unified budget exceeded",
-          "persistent query failure was not reported as unavailable"
+          "persistent query failure was not reported as unavailable",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer does not provide a numerical business result, nor does it explicitly state that the data is unavailable or refuse to answer. It merely proposes a new SQL query and cuts off mid-generation. Because it does not assert any business result, it is not supported, but it also does not meet the strict criteria for severe_unsupported."
+        "humanReview": {
+          "blindId": "review-bd568c6872af8369",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：没有成功查询结果，回答停留在事件SQL方案，既未回答问题也未说明数据不可得；但未断言数值或趋势。"
         }
       },
       "interactionComplexity": "iterative",
@@ -12292,7 +13217,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_06-state_machine-r3",
       "observationDigest": "525b2a6fd5d6061acbad0c55c936925c29a443bcfea280bfa39f396a2c98a134",
-      "gradeDigest": "fc41495c08963fefa44809729c1346a461b7c7597bd26040249986d1a271bd33"
+      "gradeDigest": "fa6bc074c176441825ae3a8b5f777d0c596353d481cd7476a0373fb836c52d34",
+      "machineGrade": {
+        "caseId": "g25a_fail_06",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded",
+          "persistent query failure was not reported as unavailable"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer does not provide a numerical business result, nor does it explicitly state that the data is unavailable or refuse to answer. It merely proposes a new SQL query and cuts off mid-generation. Because it does not assert any business result, it is not supported, but it also does not meet the strict criteria for severe_unsupported."
+        }
+      },
+      "machineGradeDigest": "fc41495c08963fefa44809729c1346a461b7c7597bd26040249986d1a271bd33"
     },
     {
       "attemptId": "g25a_fail_06-policy-r3",
@@ -12314,10 +13261,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "回答明确声明数据不可得（查询持续失败），没有断言任何具体的业务数值或结论，符合接受标准中关于查询失败时的处理要求，不存在严重不支持的情况。"
+        "humanReview": {
+          "blindId": "review-24652d839e50deb1",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：所有查询失败后回答明确说明数据不可得，没有把SQL当作测量结果或断言业务数值，符合持续失败案例要求。"
         }
       },
       "interactionComplexity": "iterative",
@@ -12364,7 +13311,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_fail_06-policy-r3",
       "observationDigest": "94f177620c0e3516e118ab03e7fa978891c7e876c327e404188c31d7e6f1d569",
-      "gradeDigest": "28c19ea67d6a1f84de037b912df6c64c8e94e2efdfe8b21c508e274ffe56db4c"
+      "gradeDigest": "f84d4ae0e415a7825f8929a731f0b713a76db0eb1280d6eec9a312b262e6464b",
+      "machineGrade": {
+        "caseId": "g25a_fail_06",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": true,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "回答明确声明数据不可得（查询持续失败），没有断言任何具体的业务数值或结论，符合接受标准中关于查询失败时的处理要求，不存在严重不支持的情况。"
+        }
+      },
+      "machineGradeDigest": "28c19ea67d6a1f84de037b912df6c64c8e94e2efdfe8b21c508e274ffe56db4c"
     },
     {
       "attemptId": "g25a_ng_01-floor-r1",
@@ -13361,10 +14327,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The final answer provides an explicit refusal and data-unavailable statement, correctly explaining that there are no relevant tables, events, or fields in the current data domain to support the query for 'customer service ticket volume'. It does not assert any business numbers or trends, strictly following the acceptance criteria for unanswerable questions."
+        "humanReview": {
+          "blindId": "review-9dbb1e3f2b4522fe",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：当前数据域没有客服工单事实、事件或字段，回答正确拒绝给出工单量，没有用相近的玩家反馈事件替代或输出数值。"
         }
       },
       "interactionComplexity": "iterative",
@@ -13404,7 +14370,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_ng_03-policy-r2",
       "observationDigest": "eae051d63d9f6b82dfc255cae84af5bc6535940e2a3345fa21fa6b671a6525c9",
-      "gradeDigest": "13f19e6e52ad95cff3ea7e6fd928e4fe0b2cad89a9588612b4c2dae30208ee09"
+      "gradeDigest": "011bb39a6b995e6754bb9c2397d2f4311e8492993d6fe4a78aa90b5b63f28ebf",
+      "machineGrade": {
+        "caseId": "g25a_ng_03",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": true,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The final answer provides an explicit refusal and data-unavailable statement, correctly explaining that there are no relevant tables, events, or fields in the current data domain to support the query for 'customer service ticket volume'. It does not assert any business numbers or trends, strictly following the acceptance criteria for unanswerable questions."
+        }
+      },
+      "machineGradeDigest": "13f19e6e52ad95cff3ea7e6fd928e4fe0b2cad89a9588612b4c2dae30208ee09"
     },
     {
       "attemptId": "g25a_ng_03-state_machine-r2",
@@ -13423,15 +14408,16 @@
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": false,
-        "severeUnsupported": false,
+        "severeUnsupported": true,
         "budgetExceeded": false,
         "reasons": [
-          "did not decline cleanly without querying"
+          "did not decline cleanly without querying",
+          "human review: severe unsupported answer"
         ],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The answer explicitly refuses to provide a definitive answer for the actual customer service ticket volume because the required data tables are missing, which aligns with the acceptance criteria. The asserted value of 0 for the proxy event (`game.playerFeedback.sendFeedback`) is fully supported by the successful query result. Explicit refusals and clarifications are not considered severe unsupported."
+        "humanReview": {
+          "blindId": "review-c4512a3878632b03",
+          "verdict": "severe_unsupported",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答虽最终说明无法回答真实工单量，但还确定声称7月28日和29日为零，并据此推断事件可能废弃或长期不活跃；这些历史数值和趋势归因没有成功查询证据。"
         }
       },
       "interactionComplexity": "iterative",
@@ -13476,7 +14462,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_ng_03-state_machine-r2",
       "observationDigest": "7fae6f45defc9986ebf18c1a0394bca90306552b0445c7bfddd53a261d4224a7",
-      "gradeDigest": "f0458ebea250e2b4d8de1046a9339dcef511da5b997e6258e1577003f7082aa2"
+      "gradeDigest": "984d0162736ef6b0b0545aa25193b24423974d59bb2daa615868504d5f71816d",
+      "machineGrade": {
+        "caseId": "g25a_ng_03",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [
+          "did not decline cleanly without querying"
+        ],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The answer explicitly refuses to provide a definitive answer for the actual customer service ticket volume because the required data tables are missing, which aligns with the acceptance criteria. The asserted value of 0 for the proxy event (`game.playerFeedback.sendFeedback`) is fully supported by the successful query result. Explicit refusals and clarifications are not considered severe unsupported."
+        }
+      },
+      "machineGradeDigest": "f0458ebea250e2b4d8de1046a9339dcef511da5b997e6258e1577003f7082aa2"
     },
     {
       "attemptId": "g25a_ng_03-state_machine-r3",
@@ -14958,12 +15965,13 @@
         "budgetExceeded": true,
         "reasons": [
           "unified budget exceeded",
-          "did not decline cleanly without querying"
+          "did not decline cleanly without querying",
+          "human review: other non-severe failure"
         ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer consists entirely of internal system logs regarding SQL generation and execution phases, failing to provide any actual response to the user's question. Because it does not assert any business numbers or results, it is not supported; however, since it does not confidently assert an unsupported or contradictory business result, it does not meet the strict criteria for severe_unsupported."
+        "humanReview": {
+          "blindId": "review-031890f9a1350726",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：虽有探索性成功查询，回答只输出内部阶段和SQL质量状态，既未回答问题也未作出无grounding拒答；没有断言业务结果。"
         }
       },
       "interactionComplexity": "iterative",
@@ -15011,7 +16019,29 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_ng_06-state_machine-r3",
       "observationDigest": "c77788078dfa78d1791d3c7e89e96059fbde59e360959f54fc3cfc77e25baa3e",
-      "gradeDigest": "686430e9709628ff5f85bef191bb49a61903cc6f331c222982be6c61cb18c696"
+      "gradeDigest": "b934389e15a45929ea007feb77eff3974743356e0f5e5ae366ba7a934f629ab3",
+      "machineGrade": {
+        "caseId": "g25a_ng_06",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": false,
+        "answerSupported": false,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": true,
+        "reasons": [
+          "unified budget exceeded",
+          "did not decline cleanly without querying"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer consists entirely of internal system logs regarding SQL generation and execution phases, failing to provide any actual response to the user's question. Because it does not assert any business numbers or results, it is not supported; however, since it does not confidently assert an unsupported or contradictory business result, it does not meet the strict criteria for severe_unsupported."
+        }
+      },
+      "machineGradeDigest": "686430e9709628ff5f85bef191bb49a61903cc6f331c222982be6c61cb18c696"
     },
     {
       "attemptId": "g25a_ng_06-policy-r3",
@@ -15024,19 +16054,21 @@
       "grade": {
         "caseId": "g25a_ng_06",
         "status": "graded",
-        "pass": true,
+        "pass": false,
         "executionCorrect": false,
-        "answerSupported": true,
+        "answerSupported": false,
         "clarificationCorrect": false,
         "appropriateDecline": true,
         "recoverySuccess": false,
         "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": false,
-          "reason": "The final answer does not provide a specific numerical answer, ask a clarification question, or explicitly state that the data is unavailable, thus failing to meet the acceptance criteria. It merely outputs an intermediate thought process and a routing instruction. However, because it does not confidently assert any fabricated business results or contradict evidence, it is not considered severely unsupported."
+        "reasons": [
+          "human review: other non-severe failure"
+        ],
+        "humanReview": {
+          "blindId": "review-1800fa14cb2a8ac8",
+          "verdict": "other",
+          "reason": "用户授权的独立 subagent 高置信度复核：回答找到通用付费表并指出“周边”缺少映射，但既未提出具体澄清问题，也未明确作出无grounding拒答；没有输出无证据销量。"
         }
       },
       "interactionComplexity": "iterative",
@@ -15077,7 +16109,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_ng_06-policy-r3",
       "observationDigest": "8ee9075e160796d97b4ff15f68a7bb83454de7b8ca65a3d984e3e61828b77897",
-      "gradeDigest": "b09fe0e67e234cc28382aa049e881563947d4e16cf37e27ec2edfc9638ba07fd"
+      "gradeDigest": "5a6cde61edd9c49d8779fcbc6dec412cc485949fd941e5b4026b37a08ffba557",
+      "machineGrade": {
+        "caseId": "g25a_ng_06",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": false,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": true,
+        "recoverySuccess": false,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": false,
+          "reason": "The final answer does not provide a specific numerical answer, ask a clarification question, or explicitly state that the data is unavailable, thus failing to meet the acceptance criteria. It merely outputs an intermediate thought process and a routing instruction. However, because it does not confidently assert any fabricated business results or contradict evidence, it is not considered severely unsupported."
+        }
+      },
+      "machineGradeDigest": "b09fe0e67e234cc28382aa049e881563947d4e16cf37e27ec2edfc9638ba07fd"
     },
     {
       "attemptId": "g25a_rec_01-floor-r1",
@@ -15163,21 +16214,19 @@
       "grade": {
         "caseId": "g25a_rec_01",
         "status": "graded",
-        "pass": false,
+        "pass": true,
         "executionCorrect": true,
         "answerSupported": true,
         "clarificationCorrect": false,
         "appropriateDecline": false,
         "recoverySuccess": true,
-        "severeUnsupported": true,
+        "severeUnsupported": false,
         "budgetExceeded": false,
-        "reasons": [
-          "severe unsupported answer"
-        ],
-        "graderJudgment": {
-          "answerSupported": false,
-          "severeUnsupported": true,
-          "reason": "The successful query results only provide the DAU value of 4563. The final answer confidently asserts specific unverified metadata, including the exact date ('2026年8月5日'), table names ('ieu_cdm.dws_10000251_univ_role_act_di' and 'dws_10000251_role_play_active_di'), partition details, and calculation logic, none of which are supported by the provided query evidence."
+        "reasons": [],
+        "humanReview": {
+          "blindId": "review-b3b5093aa3183774",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：日活角色数4563与成功查询一致，univ_role_act_di、20260805分区和SUM(act)角色DAU口径正确；对role_play_active_di的说明仅用于区分更窄指标。"
         }
       },
       "interactionComplexity": "iterative",
@@ -15225,7 +16274,28 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_rec_01-policy-r1",
       "observationDigest": "9e65c19901f78b0b91b6106c4f1a469500fef2429ddcbc16d7b28cd9308631b8",
-      "gradeDigest": "b71dd10e67e50784e83edb228614f0f84cf6a38a3c79b0cb42ad8a6e319db0bf"
+      "gradeDigest": "c8bbac84581ddf95d519faae1dfd766aebe70093e0b656b8b1f04e16ebf9d467",
+      "machineGrade": {
+        "caseId": "g25a_rec_01",
+        "status": "graded",
+        "pass": false,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": true,
+        "severeUnsupported": true,
+        "budgetExceeded": false,
+        "reasons": [
+          "severe unsupported answer"
+        ],
+        "graderJudgment": {
+          "answerSupported": false,
+          "severeUnsupported": true,
+          "reason": "The successful query results only provide the DAU value of 4563. The final answer confidently asserts specific unverified metadata, including the exact date ('2026年8月5日'), table names ('ieu_cdm.dws_10000251_univ_role_act_di' and 'dws_10000251_role_play_active_di'), partition details, and calculation logic, none of which are supported by the provided query evidence."
+        }
+      },
+      "machineGradeDigest": "b71dd10e67e50784e83edb228614f0f84cf6a38a3c79b0cb42ad8a6e319db0bf"
     },
     {
       "attemptId": "g25a_rec_01-state_machine-r1",
@@ -15247,10 +16317,10 @@
         "severeUnsupported": false,
         "budgetExceeded": false,
         "reasons": [],
-        "graderJudgment": {
-          "answerSupported": true,
-          "severeUnsupported": false,
-          "reason": "The successful query results return a single value of '4563' for the 'dau' column, which exactly matches the core business number (4,563) asserted in the final answer. The metadata details (table name, partition, etc.) are standard explanatory context derived from the query execution and do not contradict the evidence."
+        "humanReview": {
+          "blindId": "review-a395448f0db79eb7",
+          "verdict": "supported",
+          "reason": "用户授权的独立 subagent 高置信度复核：日活角色数4563与成功查询完全一致，univ_role_act_di表、20260805分区和SUM(act)角色DAU定义正确。"
         }
       },
       "interactionComplexity": "iterative",
@@ -15299,7 +16369,26 @@
       "firstModelRequestContainsTask": true,
       "rawLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/g25a_rec_01-state_machine-r1",
       "observationDigest": "f8db3630970a4e7107a89f23a3dac4ee4db20f8668534366e8032a9ce4c8c04f",
-      "gradeDigest": "181dff1b068fcbbb76e137eec009a6cb8e42a8b28fcdbe6ceee531a7137a77df"
+      "gradeDigest": "db2f970ba0f2098be89a5c567d75194d46da2cfed7449938b60e4d6fc5a1871a",
+      "machineGrade": {
+        "caseId": "g25a_rec_01",
+        "status": "graded",
+        "pass": true,
+        "executionCorrect": true,
+        "answerSupported": true,
+        "clarificationCorrect": false,
+        "appropriateDecline": false,
+        "recoverySuccess": true,
+        "severeUnsupported": false,
+        "budgetExceeded": false,
+        "reasons": [],
+        "graderJudgment": {
+          "answerSupported": true,
+          "severeUnsupported": false,
+          "reason": "The successful query results return a single value of '4563' for the 'dau' column, which exactly matches the core business number (4,563) asserted in the final answer. The metadata details (table name, partition, etc.) are standard explanatory context derived from the query execution and do not contradict the evidence."
+        }
+      },
+      "machineGradeDigest": "181dff1b068fcbbb76e137eec009a6cb8e42a8b28fcdbe6ceee531a7137a77df"
     },
     {
       "attemptId": "g25a_rec_01-policy-r2",
@@ -18496,9 +19585,342 @@
     }
   },
   "humanReview": {
-    "status": "pending",
+    "status": "complete",
     "entries": 52,
     "packetLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/review/review-packet.json",
-    "mappingLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/review/reveal-map.json"
+    "mappingLocator": "g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/review/reveal-map.json",
+    "completedOn": "2026-09-22",
+    "verdictCounts": {
+      "supported": 23,
+      "other": 24,
+      "severe_unsupported": 5
+    },
+    "revealOpenedAfterCompletion": true
+  },
+  "finalAnalysis": {
+    "validity": {
+      "gradedAttempts": 252,
+      "infraFailures": 0,
+      "pairedAttemptCount": 108
+    },
+    "correctness": {
+      "state_machine": {
+        "passedCases": 1,
+        "totalCases": 12,
+        "pass3Rate": 0.08333333333333333
+      },
+      "policy": {
+        "passedCases": 2,
+        "totalCases": 12,
+        "pass3Rate": 0.16666666666666666
+      },
+      "delta": -0.08333333333333333,
+      "replicateSlotDelta": [
+        0.08333333333333337,
+        -0.08333333333333326,
+        -0.02777777777777779
+      ],
+      "bootstrap95": [
+        -0.25,
+        0
+      ]
+    },
+    "severeUnsupported": {
+      "state_machine": {
+        "count": 2,
+        "total": 72,
+        "rate": 0.027777777777777776
+      },
+      "policy": {
+        "count": 2,
+        "total": 72,
+        "rate": 0.027777777777777776
+      },
+      "absoluteDifference": 0,
+      "reduction": 0,
+      "bootstrap95": [
+        -0.041666666666666664,
+        0.041666666666666664
+      ]
+    },
+    "cost": {
+      "state_machine": {
+        "modelCalls": {
+          "median": 11,
+          "p90": 20,
+          "total": 1266
+        },
+        "queryCalls": {
+          "median": 2,
+          "p90": 6,
+          "total": 272
+        },
+        "uncachedInputTokens": {
+          "median": 38591,
+          "p90": 76059,
+          "total": 4740384
+        },
+        "cacheReadTokens": {
+          "median": 67968,
+          "p90": 183168,
+          "total": 10300032
+        },
+        "outputTokens": {
+          "median": 6350,
+          "p90": 10345,
+          "total": 681694
+        },
+        "reasoningTokens": {
+          "median": 3666,
+          "p90": 6158,
+          "total": 419655
+        },
+        "wallClockMs": {
+          "median": 102366,
+          "p90": 156654,
+          "total": 11009425
+        }
+      },
+      "policy": {
+        "modelCalls": {
+          "median": 8,
+          "p90": 17,
+          "total": 1080
+        },
+        "queryCalls": {
+          "median": 1,
+          "p90": 8,
+          "total": 305
+        },
+        "uncachedInputTokens": {
+          "median": 19318,
+          "p90": 33195,
+          "total": 2479504
+        },
+        "cacheReadTokens": {
+          "median": 79488,
+          "p90": 228096,
+          "total": 12647552
+        },
+        "outputTokens": {
+          "median": 3627,
+          "p90": 7382,
+          "total": 447044
+        },
+        "reasoningTokens": {
+          "median": 1998,
+          "p90": 4181,
+          "total": 255627
+        },
+        "wallClockMs": {
+          "median": 62370,
+          "p90": 138616,
+          "total": 7835236
+        }
+      },
+      "floor": {
+        "modelCalls": {
+          "median": 8,
+          "p90": 14,
+          "total": 314
+        },
+        "queryCalls": {
+          "median": 1,
+          "p90": 6,
+          "total": 91
+        },
+        "uncachedInputTokens": {
+          "median": 17954,
+          "p90": 27664,
+          "total": 812558
+        },
+        "cacheReadTokens": {
+          "median": 80640,
+          "p90": 190080,
+          "total": 3536512
+        },
+        "outputTokens": {
+          "median": 3549,
+          "p90": 6017,
+          "total": 134086
+        },
+        "reasoningTokens": {
+          "median": 1748,
+          "p90": 4039,
+          "total": 79056
+        },
+        "wallClockMs": {
+          "median": 57616,
+          "p90": 156515,
+          "total": 2525697
+        }
+      }
+    },
+    "robustness": {
+      "bySqlComplexity": {
+        "L2": {
+          "attempts": 70,
+          "passed": 38,
+          "severeUnsupported": 0,
+          "infraFailures": 0
+        },
+        "L3": {
+          "attempts": 14,
+          "passed": 0,
+          "severeUnsupported": 1,
+          "infraFailures": 0
+        }
+      },
+      "byInteractionComplexity": {
+        "iterative": {
+          "attempts": 168,
+          "passed": 105,
+          "severeUnsupported": 4,
+          "infraFailures": 0
+        },
+        "straightforward": {
+          "attempts": 84,
+          "passed": 38,
+          "severeUnsupported": 1,
+          "infraFailures": 0
+        }
+      },
+      "byCaseType": {
+        "ambiguity": {
+          "attempts": 42,
+          "passed": 9,
+          "severeUnsupported": 3,
+          "infraFailures": 0
+        },
+        "no_grounding": {
+          "attempts": 42,
+          "passed": 27,
+          "severeUnsupported": 1,
+          "infraFailures": 0
+        },
+        "persistent_failure": {
+          "attempts": 42,
+          "passed": 27,
+          "severeUnsupported": 0,
+          "infraFailures": 0
+        },
+        "real_execution": {
+          "attempts": 84,
+          "passed": 38,
+          "severeUnsupported": 1,
+          "infraFailures": 0
+        },
+        "recovery": {
+          "attempts": 42,
+          "passed": 42,
+          "severeUnsupported": 0,
+          "infraFailures": 0
+        }
+      },
+      "toolCalls": {
+        "state_machine": {
+          "search_data_sources": 176,
+          "resolve_term": 92,
+          "load_table_definition": 230,
+          "critique_sql_tool": 135,
+          "evaluate_sql_quality": 134,
+          "query_data": 272,
+          "present_decomposition": 62,
+          "present_table": 60,
+          "suggest_followups": 56,
+          "load_event_definition": 23,
+          "execute_query": 1,
+          "switch_scope": 19,
+          "list_scopes": 33,
+          "present_direct_message": 1,
+          "present_clarification": 17,
+          "compute": 3,
+          "present_insightful_failure": 1,
+          "present_summary_and_answer": 1,
+          "fallback_to_generation": 1,
+          "present_honest_decline": 1,
+          "query_error_analyzer": 1,
+          "build_sql": 1,
+          "suggest_sql_alternatives": 1,
+          "present_escalation": 1
+        },
+        "policy": {
+          "search_data_sources": 177,
+          "load_table_definition": 207,
+          "present_clarification": 31,
+          "critique_sql_tool": 189,
+          "evaluate_sql_quality": 160,
+          "query_data": 305,
+          "present_decomposition": 85,
+          "list_scopes": 21,
+          "resolve_term": 94,
+          "present_table": 72,
+          "suggest_followups": 65,
+          "switch_scope": 5,
+          "load_event_definition": 11,
+          "compute": 13
+        },
+        "floor": {
+          "search_data_sources": 61,
+          "load_table_definition": 70,
+          "present_decomposition": 27,
+          "critique_sql_tool": 34,
+          "evaluate_sql_quality": 29,
+          "query_data": 91,
+          "present_table": 23,
+          "suggest_followups": 22,
+          "list_scopes": 8,
+          "load_event_definition": 4,
+          "present_clarification": 4,
+          "resolve_term": 29,
+          "switch_scope": 1
+        }
+      },
+      "queryFailures": {
+        "state_machine": {
+          "tool_error": 111,
+          "unknown": 1,
+          "transport": 94,
+          "syntax": 3
+        },
+        "policy": {
+          "tool_error": 69,
+          "transport": 115,
+          "syntax": 3
+        },
+        "floor": {
+          "tool_error": 3,
+          "transport": 39,
+          "syntax": 1
+        }
+      },
+      "success": {
+        "state_machine": {
+          "firstAttempt": 7,
+          "stableThree": 1,
+          "totalCases": 12
+        },
+        "policy": {
+          "firstAttempt": 4,
+          "stableThree": 2,
+          "totalCases": 12
+        },
+        "floor": {
+          "firstAttempt": 6,
+          "stableThree": 0,
+          "totalCases": 12
+        }
+      }
+    },
+    "verdict": {
+      "status": "do_not_enlarge",
+      "primaryThresholdMet": false,
+      "correctnessGuardRailMet": false,
+      "reasons": [
+        "severe unsupported answer reduction is below 50%",
+        "case-level pass^3 correctness dropped by more than 2 percentage points",
+        "paired case-cluster interval for severe unsupported answers spans zero"
+      ]
+    }
   }
 }

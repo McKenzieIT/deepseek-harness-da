@@ -1,15 +1,15 @@
 # G25a — Phase-gate incremental-value experiment
 
 **Type**: task
-**Status**: claimed
+**Status**: resolved 2026-09-22
 **Assignee**: Codex implementation session, claimed 2026-09-17
-**Current standing**: Stage 1 passed on the final pre-freeze code. Stage 2 run `g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514` froze identity `c1523bae0a10b9a4eb638c9a945b1596b45255242298f9afcaf0709ecf4931ce` at commit `d765318864`, completed all 252 Attempts, preserved matching start/end reference digests, and reported zero admission or infrastructure failures. Automated grading and Stage 4 raw-count slices are sealed in `results/decision-summary.json`. Fifty-two blinded review entries remain pending; no arm-to-entry mapping may be opened before a human records every verdict and reason. G25a remains claimed, and no final G25 recommendation has been issued.
+**Current standing**: The blinded review is complete and the final analysis is sealed in [`results/decision-summary.json`](../experiments/g25a-phase-gate/results/decision-summary.json). The locked result is `do_not_enlarge`: the full state machine produced no severe-unsupported reduction, reduced case-level `pass^3` correctness by 8.33 percentage points relative to policy, and exceeded the 30% cost threshold on several measures. The [final report](../experiments/g25a-phase-gate/report.md) recommends that G25 prefer split policy/validator behavior and retain only an opaque v1 compatibility executor if needed. G25 remains open for that architecture decision.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
 
-## Continuation entry point
+## Resolution
 
-Complete the blinded review in `eval-results/g25a/raw/g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514/review/review-verdicts.json` using `review-packet.md`; do not open `reveal-map.json` until all 52 verdicts and reasons are recorded. Then apply the human verdicts, reveal arm identities, recompute the final analysis, generate `report.md`, and resolve this ticket only if the final evidence still satisfies every completion condition. Do not change code, prompts, cases, thresholds, or scoring rules for this run identity.
+The [final report](../experiments/g25a-phase-gate/report.md) and [de-identified decision summary](../experiments/g25a-phase-gate/results/decision-summary.json) are the resolution artifacts. Raw Sessions, query rows, grader transcripts, review packets, and the reveal map remain in the ignored Evidence Cut.
 
 ## Amended locked protocol (2026-09-17)
 
@@ -427,3 +427,11 @@ After the decision controller and Stage 4 raw-count analysis were implemented, t
 Run `g25a-decision-2026-09-17-4924d1fe-d1ba-416a-995f-47cfd7ba3514` froze identity `c1523bae0a10b9a4eb638c9a945b1596b45255242298f9afcaf0709ecf4931ce` at commit `d765318864` before the first decision Attempt and completed the locked 252-Attempt schedule. All 12 reference SQL results matched expected values before and after the batch with unchanged digests; all 252 Attempts were graded; no infrastructure or admission failure occurred; and the state-machine/policy pairing set is complete. The ignored Evidence Cut contains every configuration, Session, environment receipt, observation, grader response, and Grade Record. The committable `results/decision-summary.json` contains no full query rows or final answers.
 
 The deterministic selection produced 52 blinded human-review entries covering every severe-answer candidate and every decision-arm disagreement. `review-packet.md` and the empty `review-verdicts.json` are ready under the run's ignored `review/` directory; `reveal-map.json` remains separate. Stage 3 cannot finish, the final report cannot be written, and the ticket cannot resolve until a human records all verdicts and reasons before opening the reveal map.
+
+### 2026-09-22 — Blinded review complete and ticket resolved
+
+All 52 human verdicts and reasons were recorded before the reveal map was opened: 23 `supported`, 24 `other`, and 5 `severe_unsupported`. The final summary preserves the original machine grade for each reviewed Attempt, attaches the human judgment, and recomputes the aggregate without committing raw answers or query rows. Attempt `g25a_exec_038-state_machine-r3`, blinded as `review-2de9c0902e21ea4f`, is `other`: its 552 value had successful query evidence, but current warehouse semantics require `univ_acc_act_di` with `act_fst=1`, or the latest `univ_acc_tag_df` partition filtered to the target `act_tm_fst`, rather than `univ_role_act_di`.
+
+The final paired result is 1/12 case-level `pass^3` for the state-machine arm versus 2/12 for policy, a -8.33pp difference with replicate-slot differences of +8.33pp, -8.33pp, and -2.78pp and a paired interval of [-25pp, 0pp]. Severe unsupported behavioral answers are 2/72 in each arm, a 0% reduction with a paired interval of [-4.17pp, +4.17pp]. The state-machine arm therefore misses the 50% severe-answer threshold, violates the 2pp correctness guard rail, does not satisfy the non-decisive 8pp correctness rule, and has several median and total costs above the locked 30% threshold without measured benefit.
+
+G25a resolves as `do_not_enlarge`. G25 remains open and should prefer split policy/validator behavior over new persisted phase state, phase UI, or a public inner-policy API. An opaque compatibility executor may remain for v1 if required; the experiment does not recommend an unmeasured hybrid.

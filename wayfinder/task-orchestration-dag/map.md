@@ -84,6 +84,7 @@ Implementation found the originally locked case set ungradeable before Stage 0 c
 
 ## Decisions so far
 
+- [G25a phase-gate incremental-value experiment](experiments/g25a-phase-gate/report.md): the locked run did not justify enlarging the full phase-gate; G25 remains open for the split policy/validator decision.
 - [R1 Agent Teams maturity audit](research/R1-agent-team-maturity-audit.md): Agent Teams supplied strong task-DAG prior art; its published experimental API is an optional adapter candidate, not the Plan DAG's permanent public contract.
 - [R2 G6 dagre layout feasibility](research/R2-g6-dagre-layout-feasibility.md): G6 5.1.1 can render expected graph sizes; renderer-specific APIs still require an adapter.
 - [R3 Subagent and workflow event surface](research/R3-subagent-workflow-event-surface.md): task-to-executor causality remains a gap, while current upstream subagent catalogs and workflow records own more lifecycle facts than the original research observed.
