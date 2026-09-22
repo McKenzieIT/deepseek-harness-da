@@ -67,14 +67,14 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
                                                         └──▶ [✓] G13 ExecutionAttempt and correlation protocol
                                                                └──▶ [✓] G19 Cordis outer-loop driver
                                                                       ├──▶ [✓] G14 Durable storage and Host boundary ──▶ [✓] G15 Current client placement ──▶ [✓] R5 Renderer adapter stability ─┬──▶ [✓] G4 Animation and edge design ──▶ G8 Global progress wavefront
-                                                                      │                                                                └──▶ G11 DAG view simplification
+                                                                      │                                                                └──▶ [✓] G11 DAG view simplification
                                                                       ├──▶ [✓] G7 writeScopes conflict semantics
                                                                       └──▶ [✓] G25a Phase-gate incremental-value experiment ──▶ [✓] G25 Data-agent inner orchestration
                                                                                                                             ├──▶ G16 Model tools and cross-preset composition (also requires G7)
                                                                                                                             └──▶ G17 Executor adapters (also requires G7)
 ```
 
-**Frontier:** [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md), [G8 Global progress wavefront](tickets/G8-z-enhancement-global-progress-wavefront.md), [G16 Model tools and cross-preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), and [G17 Executor adapters](tickets/G17-native-source-adapters.md) are open and unblocked. G18 and G20 wait on the remaining G16 and G17 decisions.
+**Frontier:** [G8 Global progress wavefront](tickets/G8-z-enhancement-global-progress-wavefront.md), [G16 Model tools and cross-preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), and [G17 Executor adapters](tickets/G17-native-source-adapters.md) are open and unblocked. G18 and G20 wait on the remaining G16 and G17 decisions.
 
 **Current checkpoint:** [G25 Data-agent inner orchestration after Task DAG](tickets/G25-phase-gate-integration.md) is resolved from the [G25a evidence](experiments/g25a-phase-gate/report.md). Task DAG owns outer orchestration; the target data-agent executor uses the ordinary Agent loop with split policy and validators; the complete phase-gate is limited to an optional opaque v1 compatibility adapter. G16 now owns cross-preset tool composition, G17 owns target and compatibility executor adapters, and G20 owns compatibility exit criteria and first-release evaluation.
 
@@ -103,6 +103,8 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 - [R5 G6 renderer adapter stability](research/R5-g6-renderer-adapter-stability.md): one private G6 adapter accepts complete renderer-neutral scenes, separates topology renders from style draws, owns cancellable direct animations, and guards hidden, reduced-motion, remount, and upgrade lifecycles.
 - [G4 Animation and edge design](tickets/G4-animation-and-edge-design.md): a Task-only graph separates lifecycle, assurance, and attention; dependency edges show prerequisite satisfaction; local replan differences preserve context; and bounded one-shot motion explains committed changes without continuous flow.
 - [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md): explicit read-only, scoped, and unbounded intents drive durable all-or-nothing admission; adapters normalize versioned hierarchical resources and report target or native enforcement without claiming control over external writers.
+
+- [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md#answer): default full graph plus manual single-Task dependency focus preserves complete upstream/downstream scope, real boundary relations, current out-of-focus attention, whole-Run progress, and stable selection; [extended filtering](tickets/G36-extended-focus-and-filtering.md) and [structural summaries](tickets/G38-structural-aggregation-and-terminal-summaries.md) remain evidence-triggered follow-ups.
 
 ## Not yet specified
 
