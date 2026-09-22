@@ -303,6 +303,7 @@
       "@deepseek-ai/dsh-semantic-layer/src/*": ["./packages/data/semantic-layer/src/*"],
       "@deepseek-ai/dsh-result-cache/src/*": ["./packages/data/result-cache/src/*"],
       "@deepseek-ai/dsh-evidence-query/src/gateway.ts": ["./packages/data/evidence-query/src/gateway.ts"],
+      "@deepseek-ai/dsh-management-context/src/*": ["./packages/data/management-context/src/*"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],
       "@deepseek-ai/dsh-acp-app": ["./packages/bundle/acp-app/src"],
