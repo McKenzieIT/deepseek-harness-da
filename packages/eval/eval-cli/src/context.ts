@@ -18,7 +18,7 @@ import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs, type EventDefinitionLite } from '@deepseek-ai/dsh-nl2sql-engine'
-import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition/src/index.ts'
+import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition'
 import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
 import { detectEventName, type CorpusItemLike } from './event-detect.ts'
 
@@ -40,7 +40,6 @@ import type {
   SqlSemanticJudge,
 } from '@deepseek-ai/dsh-eval-runner'
 import { LlmSqlSemanticJudge, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
-
 
 /**
  * Resolve the MaxCompute synchronous wait window used by both query execution paths.
@@ -93,12 +92,24 @@ export interface BootResult {
 
 // ── ctx.llm → engine Llm (forked from eval-runner-service) ──────────────
 
-function looksLikeSql(text: string): boolean {
+/**
+ * Whether a model reply reads as raw SQL rather than prose, which decides
+ * whether the text or the reasoning block carries the statement.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @param text - the candidate reply text.
+ * @returns true when the reply's first keyword is a SQL verb.
+ */
+export function looksLikeSql(text: string): boolean {
   const upper = text.trim().toUpperCase()
   return /^\s*(SELECT|WITH|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/.test(upper)
 }
 
-class CtxLlmAdapter implements Llm {
+/**
+ * Adapts `ctx.llm` to the engine's {@link Llm} port, preferring SQL found in
+ * a thinking model's reasoning when the text block is conversational.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ */
+export class CtxLlmAdapter implements Llm {
   constructor(
     private readonly ctx: Context,
     private readonly provider: string,
@@ -121,11 +132,22 @@ class CtxLlmAdapter implements Llm {
     return { sql: text }
   }
 
+  /**
+   * Complete a prompt and return only the resolved text.
+   * @param prompt - the prompt to send.
+   * @returns the completion text.
+   */
   async completeText(prompt: string): Promise<string> {
     const { text } = await this.completeWithReasoning(prompt)
     return text
   }
 
+  /**
+   * Complete a prompt, resolving SQL out of the reasoning block when the
+   * text block is conversational or empty.
+   * @param prompt - the prompt to send.
+   * @returns the resolved text plus the raw reasoning, when the model emitted any.
+   */
   async completeWithReasoning(prompt: string): Promise<{ text: string; reasoning: string | null }> {
     const assembler = new BlockAssembler()
     const options = {
@@ -181,7 +203,7 @@ class CtxLlmAdapter implements Llm {
 /** The dsh-query provider's runtime outcome shape (state names + field casing
  *  differ from the engine's EngineQueryOutcome). Typed loose because the
  *  ctx.query service is fetched here as an untyped `unknown`. */
-interface ProviderQueryOutcome {
+export interface ProviderQueryOutcome {
   readonly state?: string
   readonly rows?: unknown
   readonly instanceId?: string
@@ -196,8 +218,12 @@ interface ProviderQueryOutcome {
  *  `as unknown as EngineQueryOutcome` cast is a runtime no-op, so a real
  *  provider returning state:'completed' passed through unchanged and never
  *  matched the engine's 'done'/'running' checks — every completed query fell
- *  to the failed/decline path. Ported from eval-runner-service's adapter. */
-function toEngineOutcome(out: ProviderQueryOutcome): EngineQueryOutcome {
+ *  to the failed/decline path. Ported from eval-runner-service's adapter.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @param out - the dsh-query provider outcome.
+ * @returns the engine-facing outcome with its state remapped.
+ */
+export function toEngineOutcome(out: ProviderQueryOutcome): EngineQueryOutcome {
   const sql = out.sql ?? ''
   switch (out.state) {
     case 'completed':
@@ -224,7 +250,12 @@ function toEngineOutcome(out: ProviderQueryOutcome): EngineQueryOutcome {
   }
 }
 
-class CtxOdpsAdapter implements OdpsExecutor {
+/**
+ * Adapts `ctx.query` to the engine's {@link OdpsExecutor} port, declining
+ * with `permission_denied` when no query provider is mounted.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ */
+export class CtxOdpsAdapter implements OdpsExecutor {
   private readonly executor: CtxQueryExecutor
 
   constructor(
@@ -250,24 +281,27 @@ class CtxOdpsAdapter implements OdpsExecutor {
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
     if (this.queryWaitSeconds === undefined) return toEngineOutcome((await q.attach(instanceId)) as ProviderQueryOutcome)
     const queryWaitSeconds = this.queryWaitSeconds
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const timeout = new Promise<EngineQueryOutcome>((resolveTimeout) => {
-      timer = setTimeout(() => {
-        resolveTimeout({ state: 'failed', failureKind: 'timeout', error: `query attach timed out after configured ${queryWaitSeconds}s wait window`, sql: '' })
-      }, queryWaitSeconds * 1000)
-      timer.unref()
-    })
+    const timeout = Promise.withResolvers<EngineQueryOutcome>()
+    const timer = setTimeout(() => {
+      timeout.resolve({ state: 'failed', failureKind: 'timeout', error: `query attach timed out after configured ${queryWaitSeconds}s wait window`, sql: '' })
+    }, queryWaitSeconds * 1000)
+    timer.unref()
     try {
-      return await Promise.race([q.attach(instanceId).then(out => toEngineOutcome(out as ProviderQueryOutcome)), timeout])
+      return await Promise.race([q.attach(instanceId).then(out => toEngineOutcome(out as ProviderQueryOutcome)), timeout.promise])
     } finally {
-      if (timer !== undefined) clearTimeout(timer)
+      clearTimeout(timer)
     }
   }
 }
 
 // ── ctx.llm → eval-runner JudgeExecutor ─────────────────────────────────
 
-class LlmJudgeExecutor implements JudgeExecutor {
+/**
+ * Scores an answer against the expected answer by asking the run's own LLM
+ * for a single number in [0, 1], degrading to 0 when the call fails.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ */
+export class LlmJudgeExecutor implements JudgeExecutor {
   constructor(private readonly llm: CtxLlmAdapter) {}
 
   async judge(expected: unknown, actual: string, question: string): Promise<JudgeResult> {
@@ -314,7 +348,15 @@ const EXPANSION_SYSTEM_PROMPT =
   + '用户：大R用户有多少\n'
   + '输出：大R 大R玩家 大R付费账号 高付费 重度付费 big_r pay_order 付费订单 累计付费 高消费'
 
-async function expandQuery(ctx: Context, question: string): Promise<string> {
+/**
+ * P15a: rewrite a question into a BM25-friendly expanded query. Enrichment,
+ * not a gate — every failure path falls back to the original question.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @param ctx - the context whose `llm` service performs the expansion.
+ * @param question - the original user question.
+ * @returns the expanded query, or the question unchanged when expansion is unavailable or fails.
+ */
+export async function expandQuery(ctx: Context, question: string): Promise<string> {
   const llm = ctx.get('llm') as { stream?(options: unknown): AsyncIterable<unknown> } | undefined
   if (llm === undefined || typeof llm.stream !== 'function') return question
   const exp2Arm = process.env.EXP2_ARM?.toUpperCase()
@@ -372,13 +414,13 @@ const DETECTION_PROVIDER = 'aga'
 const DETECTION_MODEL = 'qwen3.7-max'
 
 /** The event grounding handed to `engine.run`: the definition slice the prompt + critic read, plus the scope's event view. */
-interface EventContext {
+export interface EventContext {
   readonly eventDef: EventDefinitionLite
   readonly eventView: EventViewInfo | undefined
 }
 
 /** The `SemanticLayerService` surface this module needs (probed via `ctx.get('schema')`, so typed structurally). */
-interface SchemaSeam {
+export interface SchemaSeam {
   loadRetrievalCorpusAll?(): unknown[]
   getRelationGraph?(scopeId?: string): RelationGraphLike
   loadEventDefinition?(name: string): unknown
@@ -400,10 +442,11 @@ interface SchemaSeam {
  * of false-reject as the critic's `table_not_in_candidates`, which `engine.ts`
  * fixes via `makeCriticCtx` — the judge needs the identical courtesy, or the
  * instrument penalises exactly the grounding this ticket adds.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
  * @param eventCtx - the pre-fetched event grounding.
  * @returns a schema-context block naming the event view, event filter, and params fields.
  */
-function renderEventSchemaContext(eventCtx: EventContext): string {
+export function renderEventSchemaContext(eventCtx: EventContext): string {
   const def = eventCtx.eventDef as { name?: unknown; event_filter?: unknown; params_fields?: unknown }
   const lines: string[] = ['', '事件数据源（已 pre-fetch，属于本次可用 schema）：']
   if (eventCtx.eventView !== undefined) {
@@ -430,10 +473,11 @@ function renderEventSchemaContext(eventCtx: EventContext): string {
  * for the model-facing tool boundary) would degrade the guard to the indices
  * `0,1,2…`. Workflow-state fields (`confirmation`/`coverage`) and retrieval-only
  * fields (`alt_labels`/`domains`) are dropped — they are prompt noise here.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
  * @param def - the raw event definition from `ctx.schema.loadEventDefinition`.
  * @returns the prompt/critic-facing event definition slice.
  */
-function projectEventDefForPrompt(def: Record<string, unknown>): EventDefinitionLite {
+export function projectEventDefForPrompt(def: Record<string, unknown>): EventDefinitionLite {
   const params = def['params_fields']
   const metrics = def['metrics']
   return {
@@ -447,7 +491,13 @@ function projectEventDefForPrompt(def: Record<string, unknown>): EventDefinition
 
 // ── Nl2sqlEngine-backed AgentResponder ───────────────────────────────────
 
-class Nl2sqlAgentResponder implements AgentResponder {
+/**
+ * The `--responder engine` agent: pre-fetches BM25 candidates, relation
+ * graph and event grounding, runs {@link Nl2sqlEngine}, then turns the
+ * engine outcome into a reply the eval judges can score.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ */
+export class Nl2sqlAgentResponder implements AgentResponder {
   private readonly llm: CtxLlmAdapter
   private readonly odps: OdpsExecutor
   private readonly queryExpansionEnabled: boolean
@@ -808,7 +858,7 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     const toolCallTimeoutMs = (maxcWaitSeconds + 60) * 1000
     const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath, toolCallTimeoutMs })
     executorIdentity = sidecarPath
-    queryWaitSeconds = Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60
+    queryWaitSeconds = maxcWaitSeconds
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }

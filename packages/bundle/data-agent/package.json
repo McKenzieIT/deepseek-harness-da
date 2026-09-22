@@ -46,6 +46,7 @@
     "@deepseek-ai/dsh-admin": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@deepseek-ai/dsh-persona": "workspace:^",
     "@deepseek-ai/dsh-phase-gate": "workspace:^",
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",
     "@deepseek-ai/dsh-query-maxcompute": "workspace:^",
@@ -63,6 +64,7 @@
     "@deepseek-ai/dsh-tool-evaluate-sql-quality": "workspace:^",
     "@deepseek-ai/dsh-tool-get-coverage": "workspace:^",
     "@deepseek-ai/dsh-tool-get-definition": "workspace:^",
+    "@deepseek-ai/dsh-tool-goal": "workspace:^",
     "@deepseek-ai/dsh-tool-list-domains": "workspace:^",
     "@deepseek-ai/dsh-tool-load-event-definition": "workspace:^",
     "@deepseek-ai/dsh-tool-load-table-definition": "workspace:^",
@@ -76,6 +78,7 @@
     "@deepseek-ai/dsh-tool-search-data-sources": "workspace:^",
     "@deepseek-ai/dsh-tool-search-schema": "workspace:^",
     "@deepseek-ai/dsh-tool-suggest-followups": "workspace:^",
+    "@deepseek-ai/dsh-tool-todo": "workspace:^",
     "@deepseek-ai/dsh-tool-trigger-eval": "workspace:^",
     "@deepseek-ai/dsh-tool-update-table-config": "workspace:^"
   },
