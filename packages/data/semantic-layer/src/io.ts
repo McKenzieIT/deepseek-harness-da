@@ -164,8 +164,13 @@ export function loadDomains(semanticLayer: string): Record<string, unknown> {
   if (!existsSync(p)) return {}
   try {
     const d = readYaml(p)
-    return typeof d === 'object' && d !== null ? (d as Record<string, unknown>) : {}
+    // Array/object contract: a YAML array parses as an object (`typeof === 'object'`)
+    // but is NOT a valid domains map. Reject arrays explicitly so a malformed
+    // domains.yaml (a list, not a map) degrades to `{}` rather than silently
+    // casting index keys to strings.
+    return isPlainObject(d) ? d : {}
   } catch {
+    // malformed/missing domains.yaml — degrade to {} so callers get a stable map
     return {}
   }
 }
