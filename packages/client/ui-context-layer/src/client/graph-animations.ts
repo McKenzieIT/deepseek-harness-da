@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Graph } from '@antv/g6'
 import type { GraphUpdate } from './narration-gate.ts'
-import { evalBorderColor, KIND_COLORS, type NodeKind } from './graph-styles.ts'
+import { evalBorderColor, nodeKindColor } from './graph-styles.ts'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -462,7 +462,7 @@ export function useOverlayMode(graph: Graph | null): OverlayModeState {
 
     const updates = nodeData.map((node) => {
       const data = (node as { data?: Record<string, unknown> }).data ?? {}
-      const kind = (data.kind ?? 'dws') as NodeKind
+      const kind = (data.kind ?? 'dws') as string
       const evalPassRate = data.evalPassRate as number | undefined
 
       switch (mode) {
@@ -471,7 +471,7 @@ export function useOverlayMode(graph: Graph | null): OverlayModeState {
           return {
             id: node.id,
             style: {
-              fill: KIND_COLORS[kind],
+              fill: nodeKindColor(kind),
               stroke: evalBorderColor(evalPassRate),
               lineWidth: evalPassRate !== undefined ? 3 : 1,
             },

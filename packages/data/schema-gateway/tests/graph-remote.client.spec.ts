@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
+// @ts-expect-error — hybrid test: api-gateway host source not in the client tsconfig file list
 import { TypertGatewayService } from '@deepseek-ai/dsh-api-gateway'
 import * as clientGateway from '@deepseek-ai/dsh-api-gateway/client'
 import * as hostConnection from '@deepseek-ai/dsh-client-connection'
@@ -36,7 +37,7 @@ async function load(ctx: Context, modules: Map<string, unknown>, config: Record<
       if (!modules.has(name)) throw new Error(`Unexpected Loader module: ${name}`)
       return modules.get(name)
     },
-  } as NonNullable<typeof ctx.loader.internal>
+  } as unknown as NonNullable<typeof ctx.loader.internal>
   for (const name of modules.keys()) await ctx.loader.create({ name, config: config[name] })
   await ctx.loader.await()
   expect([...ctx.loader.entries()].filter(entry => !entry.disabled && !entry.fiber)).toEqual([])
@@ -75,7 +76,7 @@ describe('registered graph through generated Remote', () => {
       ['connection', hostConnection], ['typert', TypertRegistry],
       ['schema', SemanticLayerService], ['schemaGateway', SchemaGateway],
       ['gateway', TypertGatewayService],
-      ['generated-host', { inject: ['typert'], apply(ctx: Context) { ctx.effect(() => ctx.typert.register(TYPERT)) } }],
+      ['generated-host', { inject: ['typert'], apply(ctx: Context) { ctx.effect(() => ctx.typert.register(TYPERT as never)) } }],
       ['chart-contributor', contributor],
     ]), { schema: { semanticRoot: root } })
     contribution = [...host.loader.entries()].find(entry => entry.options.name === 'chart-contributor')!

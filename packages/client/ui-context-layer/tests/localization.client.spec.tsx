@@ -25,6 +25,11 @@ const copy: Record<ContextLayerKey, string> = {
   'overlay.coverage': '覆盖率叠加层',
   'overlay.heatmap': '热力图叠加层',
   'search.placeholder': '搜索节点',
+  'kind.dws': '汇总表',
+  'kind.dim': '维表',
+  'kind.event': '事件',
+  'kind.metric': '指标',
+  'kind.concept': '概念',
 }
 
 const t = (key: ContextLayerKey): string => copy[key]
@@ -50,7 +55,7 @@ describe('ui-context-layer localized copy', () => {
   it('renders translated node-detail labels', () => {
     const { getByText, getByLabelText } = render(
       <NodeDetailPanel
-        node={{ id: 'asset', kind: 'dws', label: 'Asset', domains: ['sales'], evalPassRate: 0.9 }}
+        node={{ id: 'asset' as never, kind: 'dws', label: 'Asset', domains: ['sales'], evalPassRate: 0.9 }}
         onClose={() => {}}
         onInsertReference={() => {}}
         t={t}
