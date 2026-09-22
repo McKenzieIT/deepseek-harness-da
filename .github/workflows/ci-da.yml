@@ -1,0 +1,62 @@
+name: CI (DA-scoped)
+
+# Fork-owned required check. Runs typecheck (whole graph — DA packages depend on
+# upstream types) + tests ONLY on DA-owned packages (those absent from
+# upstream/master, per scripts/da-owned-packages.ts). This makes the fork's
+# merge verdict reflect fork-owned quality and immune to upstream infra debt
+# (bubblewrap 404, missing secrets, 16-core budgets, upstream self-breaking
+# tests). Intended as the SINGLE required status check once the owner points
+# branch protection at `da-checks (fork-owned only)`; the inherited upstream
+# matrix (ci.yml) then stays informational.
+# See wayfinder/repo-infra/tickets/T29-da-ci-upstream-boundary.md (resolves Q1).
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-da-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI runs must never report to the production telemetry endpoint.
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  da-checks:
+    name: da-checks (fork-owned only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # attribution needs the upstream/master tree
+      - name: Configure upstream remote
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/deepseek-ai/deepseek-harness.git
+          git fetch --depth=1 upstream master
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+      - name: Build (official profile — fresh checkout needs it, see T1/T13)
+        run: pnpm run build:official
+      - name: Typecheck (whole graph — DA depends on upstream types)
+        run: pnpm run typecheck
+      - name: Test DA-owned packages only
+        run: |
+          set -euo pipefail
+          mapfile -t DIRS < <(pnpm exec tsx scripts/da-owned-packages.ts)
+          echo "DA-owned package dirs: ${#DIRS[@]}"
+          printf '  %s\n' "${DIRS[@]}"
+          if [ "${#DIRS[@]}" -eq 0 ]; then
+            echo "::error::no DA-owned packages discovered — attribution probe failed"
+            exit 1
+          fi
+          pnpm run build:native-system
+          pnpm exec vitest run "${DIRS[@]}"
