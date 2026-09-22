@@ -4,7 +4,7 @@
 **Status**: claimed
 **Assignee**: QoderWork session mucgkb90iwnukhr7
 **Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅, [G7 writeScopes conflict semantics](G7-writescopes-conflict-detection.md) ✅, [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md) ✅
-**Blocks**: [G9 Optional Agent Teams adapter](G9-team-task-upstream-integration.md), [G10 Subagent execution adapter](G10-subagent-tree-upstream-integration.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
+**Blocks**: [G9 Optional Agent Teams adapter](G9-team-task-upstream-integration.md), [G10 Subagent execution adapter](G10-subagent-tree-upstream-integration.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md), [G37 Manual execution adapter](G37-manual-execution-adapter.md)
 
 ## Question
 
@@ -39,9 +39,12 @@ This ticket remains claimed; the full design and shared understanding are not ye
 ```mermaid
 flowchart TD
     Q1[Confirmed: explicit execution target] --> Q2[Confirmed: Task pins target revision]
-    Q1 --> R[Open: registration, visibility, and adapter compatibility]
-    Q2 --> D[Open: dispatch and executor coverage]
+    Q1 --> Q3[Confirmed: visibility filters without identity overrides]
+    Q3 --> R[Open: registration mechanism and adapter compatibility]
+    Q2 --> D[Open: automatic executor coverage and dispatch]
     R --> D
+    Q4[Confirmed: defer generic manual execution] --> D
+    Q4 --> F[Follow-up: Manual execution adapter]
     D --> C[Open: native capacity, cancellation, and disposal]
     D --> O[Open: outputs, evidence, and missing results]
     C --> V[Open: recovery coverage and cumulative ROI review]
@@ -49,9 +52,43 @@ flowchart TD
     V --> H[Pending: shared-understanding confirmation]
 ```
 
+The manual-execution deferral is scoped in [Manual execution adapter](G37-manual-execution-adapter.md). Automatic executor coverage remains open; the deferral does not select which automatic adapters ship.
+
+## Evidence checkpoint
+
+These findings constrain the remaining decisions; they are not a completed adapter design or a first-release support declaration.
+
+### Cordis registration
+
+The existing [adapter registration](../../../packages/llm/llm/src/index.ts), [scope storage](../../../packages/core/scope/src/store.ts), [scoped tool tests](../../../packages/core/tools/tests/scoped.spec.ts), and [provider/consumer composition tests](../../../packages/extensions/cordis-host-runner/tests/composition.spec.ts) establish reusable registration and lifetime mechanisms. Scope-layer merging permits nearest-scope shadowing, so using it unchanged would not establish Q3's unique target identities. Missing injected services leave a consumer pending; injection alone does not establish the required missing-target diagnostic. Registration cleanup does not establish cancellation, native quiescence, or Attempt settlement for in-flight work.
+
+The session's focused existing-mechanism run passed seven files and 184 tests:
+
+```sh
+pnpm exec vitest run --configLoader runner --no-cache \
+  packages/extensions/tool-cordis/tests/cordis-lifecycle.spec.ts \
+  packages/extensions/cordis-host-runner/tests/composition.spec.ts \
+  packages/core/tools/tests/scoped.spec.ts \
+  packages/core/scope/tests/store.spec.ts \
+  packages/core/scope/tests/scope.spec.ts \
+  packages/session/session-projection/tests/registry.spec.ts \
+  packages/llm/llm/tests/service.spec.ts
+```
+
+This run does not verify a G17 registry, target revision compatibility, dispatch, cancellation, or recovery implementation. Those combined behaviors still require evidence before this ticket resolves.
+
+### Direct tool execution and native transcript
+
+Source inspection confirms that the public [tool execution API](../../../packages/core/tools/src/index.ts) accepts execution without an Agent and performs policy and guard processing. It does not supply the Agent loop's native Session transcript merely by returning a result or emitting `tools/result`.
+
+The [Session invariant](../../../packages/core/session/src/invariant.ts) requires native `tool/call` and newly appended `tool/result` events to belong to an open turn and step. A normal result requires a matching call in that step; the invariant handles synthetic not-started results separately and rechecks existing history when seeding its state. Public `Session.append` is therefore not evidence that an out-of-turn native transcript is legal. The [Agent loop's call/result writers](../../../packages/core/agent-loop/src/tool-calls.ts) are private helpers and are not an allowed adapter dependency.
+
+The targeted source search did not establish an existing public path for durable, replayable native tool records without an Agent turn. This is a transcript-integration gap, not proof that Host-neutral non-model execution is impossible. Whether a direct-tool root target ships, what durable record it produces, and how its result appears in DSH remain unresolved. Any selected approach must preserve [Task DAG and DSH record ownership](G14-task-graph-projection-boundary.md) without fabricating Agent turns or modifying upstream code.
+
 ## Comments
 
 - Q1：用户确认首版采用显式执行目标。规划者从部署提供的目录选择具名目标，Task 不保存 DSH 实现类名或 phase 状态；运行前检查目标的能力、权限和版本，并在准入时固定本次 Attempt 的具体适配器。缺失或不满足条件时明确阻塞，不自动替换执行器。
 - Q1 scope：能力需求匹配与自动选路归入 [Advanced routing, parallelism, and optimization](G24-advanced-routing-and-parallelism.md)。触发条件为多个可替换执行器或跨部署计划复用产生可测的手工映射成本；该后续决定能力描述、候选消歧和选择理由，不改变已准入 Attempt 的固定执行语义。
 - Q2：用户确认 Task 在计划提交时锁定执行目标的行为定义修订，启动前验证该修订仍可用且满足要求；目标修订不可用则阻塞，并按已有 Plan 变更权限显式更新 Task，不自动采用现行修订。不要求保留历史插件或建设自动迁移系统；未改变目标行为定义的兼容性修复不必生成新的目标修订。目标修订与 npm 包版本、凭证轮换分离。
 - Q3：用户确认同一执行目录内的目标标识不得隐式覆盖。作用域只过滤可见性；局部插件不能用同一个稳定标识替换另一目标，重复注册明确失败。显示名称不作为身份；目标可见性不授予执行权限，仍须通过 Task DAG 准入与命令权限检查。
+- Q4：用户确认首版延期通用人工执行器，聚焦自动执行目标；已有审批、澄清和外部副作用不确定时的人工核对仍保留。人员领取工作、到平台外操作、提交结果及确认取消归入 [Manual execution adapter](G37-manual-execution-adapter.md)，仅在真实流程反复依赖平台外人工操作时启动后续决策，不因接口可扩展而提前实现。
