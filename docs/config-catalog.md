@@ -737,24 +737,36 @@ Source: [`packages/embedder/embedder-http/src/index.ts:155`](../packages/embedde
 Requires: `llm`
 
 ```ts config-catalog
-/** Config */
+/** Loader input for one eval-runner-service deployment. */
 export interface Config {
-  /** Directory holding the eval case YAMLs (default: the K11 case set). */
-  readonly caseDir?: string
+  /** Directory holding the eval case YAMLs. */
+  readonly caseDir: string
   /** Directory where JSONL run results are persisted (evidence-query reads it). */
   readonly resultsDir?: string
-  /** pass_k attempts per case (default 3). */
-  readonly passK?: number
-  /** LLM provider for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
-  readonly provider?: string
-  /** LLM model name for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
-  readonly model?: string
-  /** Reference date YYYYMMDD for time-param extraction (eval reproducibility). */
-  readonly today?: string
+  /** pass_k attempts per case. */
+  readonly passK: number
+  /** Maximum cases evaluated concurrently. */
+  readonly concurrency: number
+  /** Maximum infrastructure retries for one SQL execution within an attempt. */
+  readonly maxInfraRetries: number
+  /** LLM provider for SQL generation + judging + answering. */
+  readonly provider: string
+  /** LLM model name for SQL generation + judging + answering. */
+  readonly model: string
+  /** Reference date YYYYMMDD for time-param extraction. */
+  readonly today: string
+  /** Stable identity of the mounted query executor, required whenever ctx.query is available. */
+  readonly executorIdentity?: string
+  /** Maximum seconds allowed for one `ctx.query.execute` call. */
+  readonly queryWaitSeconds?: number
+  /** How result cells are addressed during execution grading. */
+  readonly columnSemantics: 'by-name' | 'positional'
+  /** Maximum rows retained in each persisted execution artifact. */
+  readonly maxStoredRows: number
 }
 ```
 
-Source: [`packages/eval/eval-runner-service/src/index.ts:64`](../packages/eval/eval-runner-service/src/index.ts)
+Source: [`packages/eval/eval-runner-service/src/index.ts:68`](../packages/eval/eval-runner-service/src/index.ts)
 
 <a id="deepseek-aidsh-evidence-query"></a>
 
@@ -770,7 +782,7 @@ export interface EvidenceQueryConfig {
 }
 ```
 
-Source: [`packages/data/evidence-query/src/index.ts:89`](../packages/data/evidence-query/src/index.ts)
+Source: [`packages/data/evidence-query/src/index.ts:92`](../packages/data/evidence-query/src/index.ts)
 
 <a id="deepseek-aidsh-experimental-agent-team"></a>
 

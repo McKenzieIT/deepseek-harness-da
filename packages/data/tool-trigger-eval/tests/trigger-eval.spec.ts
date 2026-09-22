@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { apply, formatTriggerEval, projectMeta, type TriggerEvalResult, type EvalRunnerService } from '../src/index.ts'
 import type { RunResult, RunSummary, CaseVerdict, DeltaReport } from '@deepseek-ai/dsh-eval-runner'
+import { readFileSync } from 'node:fs'
 
 /** The subset of the registered `trigger_eval` definition these tests exercise. */
 interface TriggerEvalToolDef {
@@ -59,6 +60,7 @@ const SUMMARY: RunSummary = {
   declined: 1,
   unjudged: 0,
   infra_failure: 0,
+  case_defect: 0,
   pass_rate: 0.8,
 }
 
@@ -70,7 +72,7 @@ const PREVIOUS_RUN: RunResult = {
   run_id: 'run-a',
   timestamp: '2026-09-01T00:00:00Z',
   cases: [],
-  summary: { total: 10, correct: 5, wrong: 5, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 0.5 },
+  summary: { total: 10, correct: 5, wrong: 5, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 0.5 },
 }
 
 /** The delta `computeDelta` reports for PREVIOUS_RUN → RUN. */
@@ -110,7 +112,6 @@ function evalValue(overrides: Partial<TriggerEvalResult>): TriggerEvalResult {
     summary: null,
     delta: null,
     caseCount: 0,
-    message: undefined,
     previousRunId: null,
     ...overrides,
   }
@@ -173,19 +174,44 @@ describe('trigger_eval tool', () => {
           declined: 5,
           unjudged: 3,
           infra_failure: 3,
+          case_defect: 0,
           pass_rate: 0.8075,
         },
         delta: null,
         caseCount: 161,
-        message: undefined,
         previousRunId: null,
       }
 
       const text = formatTriggerEval(result)
       expect(text).toContain('Eval run completed: run-123')
-      expect(text).toContain('130/161 correct')
+      expect(text).toContain('130/155 attributable correct')
       expect(text).toContain('80.8% pass rate')
       expect(text).toContain('Wrong: 20')
+      expect(text).toContain('Unjudged: 3')
+    })
+
+    it('matches the keyless expected output for unmeasured and defective cases', () => {
+      const result: TriggerEvalResult = {
+        ok: true,
+        mode: 'full_run',
+        runId: 'run-quality',
+        summary: {
+          total: 12,
+          correct: 7,
+          wrong: 1,
+          declined: 1,
+          unjudged: 1,
+          infra_failure: 1,
+          case_defect: 1,
+          pass_rate: 7 / 9,
+        },
+        delta: null,
+        caseCount: 12,
+        previousRunId: null,
+      }
+      const expected = readFileSync(new URL('./expected/summary-with-unmeasured.expected.txt', import.meta.url), 'utf8').trimEnd()
+
+      expect(formatTriggerEval(result)).toBe(expected)
     })
 
     it('formats a run with delta', () => {
@@ -200,6 +226,7 @@ describe('trigger_eval tool', () => {
           declined: 5,
           unjudged: 3,
           infra_failure: 3,
+          case_defect: 2,
           pass_rate: 0.8385,
         },
         delta: {
@@ -212,7 +239,6 @@ describe('trigger_eval tool', () => {
           summary: { improved: 7, regressed: 2, unchanged: 152 },
         },
         caseCount: 161,
-        message: undefined,
         previousRunId: 'run-123',
       }
 
@@ -223,6 +249,11 @@ describe('trigger_eval tool', () => {
       expect(text).toContain('Regressed: 2')
       expect(text).toContain('⬆ case-1: wrong → correct')
       expect(text).toContain('⬇ case-2: correct → wrong')
+      expect(text).toContain('Unjudged: 3')
+      expect(text).toContain('Case defects: 2')
+      expect(projectMeta(result)).toMatchObject({
+        summary: { unjudged: 3, case_defect: 2 },
+      })
     })
 
     it('formats not_configured mode', () => {
@@ -275,6 +306,7 @@ describe('trigger_eval tool', () => {
           declined: 0,
           unjudged: 0,
           infra_failure: 0,
+          case_defect: 0,
           pass_rate: 0.9,
         },
         delta: {
@@ -284,7 +316,6 @@ describe('trigger_eval tool', () => {
           summary: { improved: 15, regressed: 0, unchanged: 85 },
         },
         caseCount: 100,
-        message: undefined,
         previousRunId: 'run-prev',
       }
 
@@ -304,14 +335,14 @@ describe('trigger_eval tool', () => {
       const text = formatTriggerEval(evalValue({
         mode: 'full_run',
         runId: 'run-b',
-        summary: { total: 10, correct: 10, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 1 },
+        summary: { total: 10, correct: 10, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 1 },
       }))
-      expect(text).toBe('Eval run completed: run-b\nResults: 10/10 correct (100.0% pass rate)')
+      expect(text).toBe('Eval run completed: run-b\nResults: 10/10 attributable correct (100.0% pass rate; 0 excluded; 10 total)')
     })
 
     it('reports the stored summary in report_last mode', () => {
       const text = formatTriggerEval(evalValue({ mode: 'report_last', runId: 'old-run', summary: SUMMARY, message: '2 past run(s)' }))
-      expect(text).toBe('Last eval run: old-run\nResults: 8/10 correct (80.0% pass rate)\n2 past run(s)')
+      expect(text).toBe('Last eval run: old-run\nResults: 8/10 attributable correct (80.0% pass rate; 0 excluded; 10 total)\n  Wrong: 1\n  Declined: 1\n2 past run(s)')
     })
 
     it('omits the guidance line when a report_last value carries no message', () => {
@@ -331,7 +362,7 @@ describe('trigger_eval tool', () => {
     it('labels the delta with run_a_id and omits the flip list when nothing flipped', () => {
       const text = formatTriggerEval(evalValue({ mode: 'full_run', runId: 'run-b', summary: SUMMARY, delta: DELTA_UNCHANGED }))
       expect(text).toBe(
-        'Eval run completed: run-b\nResults: 8/10 correct (80.0% pass rate)\n  Wrong: 1\n  Declined: 1\n'
+        'Eval run completed: run-b\nResults: 8/10 attributable correct (80.0% pass rate; 0 excluded; 10 total)\n  Wrong: 1\n  Declined: 1\n'
         + '\nDelta vs previous (run-a):\n  Improved: 0 | Regressed: 0 | Unchanged: 10',
       )
       expect(text).not.toContain('Flips:')
@@ -345,7 +376,7 @@ describe('trigger_eval tool', () => {
           run_id: 'test-run',
           timestamp: '2026-08-25T00:00:00Z',
           cases: [],
-          summary: { total: 0, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 0 },
+          summary: { total: 0, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 0 },
         } satisfies RunResult),
         getLastRun: vi.fn().mockReturnValue(null),
         computeDelta: vi.fn().mockReturnValue({
@@ -382,7 +413,7 @@ describe('trigger_eval tool', () => {
         caseCount: 2,
         message: 'heads up',
         previousRunId: 'run-a',
-        summary: { total: 10, correct: 8, wrong: 1, declined: 1, unjudged: 0, infra_failure: 0, pass_rate: 0.8 },
+        summary: { total: 10, correct: 8, wrong: 1, declined: 1, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 0.8 },
         delta: {
           run_a_id: 'run-a',
           run_b_id: 'run-b',
@@ -427,7 +458,7 @@ describe('trigger_eval tool', () => {
 
       expect(content).toEqual([{
         type: 'text',
-        text: 'Eval run completed: run-b\nResults: 8/10 correct (80.0% pass rate)\n  Wrong: 1\n  Declined: 1',
+        text: 'Eval run completed: run-b\nResults: 8/10 attributable correct (80.0% pass rate; 0 excluded; 10 total)\n  Wrong: 1\n  Declined: 1',
       }])
     })
 
@@ -617,7 +648,7 @@ describe('trigger_eval tool', () => {
 
       const view = registerTool().presentResult({}, { content: [], isError: false, meta })
 
-      expect(view).toEqual({ card: 'generic', title: '80% pass rate · 8/10 correct' })
+      expect(view).toEqual({ card: 'generic', title: '80% pass rate · 8/10 attributable · 0 excluded · 10 total' })
     })
 
     it('appends the improved and regressed counts when the delta moved cases', () => {
@@ -625,7 +656,7 @@ describe('trigger_eval tool', () => {
 
       const view = registerTool().presentResult({}, { content: [], isError: false, meta })
 
-      expect(view).toEqual({ card: 'generic', title: '80% pass rate · 8/10 correct · 3⬆ 1⬇' })
+      expect(view).toEqual({ card: 'generic', title: '80% pass rate · 8/10 attributable · 0 excluded · 10 total · 3⬆ 1⬇' })
     })
 
     it('omits the delta suffix when nothing improved and nothing regressed', () => {
@@ -633,7 +664,7 @@ describe('trigger_eval tool', () => {
 
       const view = registerTool().presentResult({}, { content: [], isError: false, meta })
 
-      expect(view).toEqual({ card: 'generic', title: '80% pass rate · 8/10 correct' })
+      expect(view).toEqual({ card: 'generic', title: '80% pass rate · 8/10 attributable · 0 excluded · 10 total' })
     })
   })
 })

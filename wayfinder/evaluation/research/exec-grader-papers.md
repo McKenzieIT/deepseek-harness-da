@@ -260,7 +260,7 @@ provenance 的 case set**，本认读未覆盖：
 | `rbi-10000251-exec` | 39 | **39** | **37** |
 
 `rbi-10000251-exec` 的 case 采用 rbi `schema_version: 3`，带 `expected.sql`、
-`meta.anchor_ds`、`meta.tier: verified`、`meta.provenance: migrated`。所以
+`meta.anchor_ds`、`meta.tier: verified`、`meta.source: migrated`。所以
 §3.3 所列的「最小 provenance 契约」有一部分**已经在仓库里实现**，后续设计应
 以它为起点而非从零设计。
 

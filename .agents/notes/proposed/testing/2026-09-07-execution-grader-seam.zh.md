@@ -4,6 +4,8 @@ Status: proposed
 
 [English](2026-09-07-execution-grader-seam.md) | 中文
 
+下述执行语义已落地，并于 2026-09-12 通过独立审查加固。旧运行时的最终删除仍归 T12，因此在完成该切换前，本 note 保持 `proposed`。提供方截断行为由 T16 跟踪。见[已实现](#as-implemented-2026-09-09)。
+
 ## 问题
 
 `packages/eval/` 存在两套并行的执行评分栈，而能够区分 evaluation 最需要区分的情形的那套实现却是死代码。
@@ -71,3 +73,19 @@ Status: proposed
 ## 风险
 
 行为：“代价”中的两项变化都会改变已记录的通过率；12.8% 的真实执行 baseline 又来自同一批 39 个 case，而这些 case 的 event expectation 已知过时，因此比较基准本身已受污染，必须重新推导，不能直接信任。范围：package 归属与 case-schema ownership 被有意排除；若在实现中隐式决定，会抢先替 Benchmark/Harness/Environment 拆分做决定。顺序：让参考 SQL 可访问是前置条件，不是后续工作——loader 当前会将其丢弃。
+
+<a id="as-implemented-2026-09-09"></a>
+
+## 已实现（2026-09-09）
+
+属性 1–5 与 7–10 已落地。`normalizeOutcome`、`gradeExecution` 和 `ExecutionPort` 位于 `packages/eval/eval/src/execution_grade.ts`；唯一的 `ctx.query` adapter 是 `packages/eval/eval-runner/src/ctx_query_executor.ts`；`compare.ts` 增加了严格的持久化输入校验、兼容性检查、`checkRenderable` 与 `describeExecutionMode`。Loader 前置先以 `eval_case.ts` 的来源字段保留和 `reference_sql.ts` 落地。Runner 现将严格结构解析与评分内容 preflight 分开，在调用 candidate Agent 前解析并检查参考 SQL，保留 preflight evidence，重试类型化基础设施 outcome，且绝不把缺失 replay evidence 转成模型失败。
+
+以下三项结论值得记录，因为提案原本为每一项保留了选择空间：
+
+- **Column semantics 成为 policy value，而非固定决策。** Runner 的位置式 `col<i>` key 与 `mapQueryOutcome` 的名称式 key 现在是必填并落盘的 `columnSemantics` 字段的两个值。两者都不是仓库默认值；run 会声明所用值，因此 mutation baseline 之后可以改选，无需修改代码。
+- **Truncation 已测量，但尚未验证。** `providerTruncated` 比较提供方的 `rowCount` 与其返回 row 数量，绝不使用写死的 `truncated`。两者是否真的会分歧仍未经验证：39-case 对账没有任何 case 返回足够多的 row 触发该情况。这是明确记录的缺口，不是已验证属性。
+- **`done` 是完成状态 allowlist 的显式成员。** 两个 host adapter 对 `state === 'done'` 是否代表成功存在分歧。若静默收敛到更窄的列表，这些结果会在没有错误可解释的情况下变成 `environment-blocked`，因此 allowlist 已明确声明并测试。
+
+未落地内容及原因：第二个 `runBatch`、第二个 health gate 与 `eval-cli` 对 `dsh-query-maxcompute` 的直接依赖保持不动，并归 T12。它们是与评分变化正交的纯删除，而本次改动已经改变三项已记录行为：judge 不再写 execution、`pending` 变成 `environment-blocked`、`pass_rate` 改变分母。若同时落结构移动，就无法归因数字为何变化，这正是分阶段推进的原因。
+
+与变更前 baseline 同日、同 case 的真实执行结果：MATCH 计数复现（event 2、DWS 13），全部 21 个 DWS case 逐 case 一致。两个 event case 变成 `environment-blocked`——`query pending` 超过 300 秒等待窗口——旧路径则把它们记成过时 expected value。Column-semantics 翻面列表为空，这一结果可解释但不能令人放心：对账只读取首行首格，两种寻址都保留 cell 顺序，因此只有按名称寻址的 match mode 可能翻面，而当前 corpus 对这类 mode 的使用量为零。真实提供方的截断验证仍归 T16。

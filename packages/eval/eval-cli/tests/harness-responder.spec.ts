@@ -658,7 +658,7 @@ describe('HarnessAgentResponder — optional MaxCompute query engine', () => {
   it('mounts the query engine from an explicit sidecar path and MAXC_CONFIG', async () => {
     vi.stubEnv('MAXC_CONFIG', join(ROOT, 'packages/query/query-maxcompute/dev/fake-credentials.ts'))
     try {
-      const responder = makeResponder({ withQuery: true, sidecarPath: STANDIN_SIDECAR })
+      const responder = makeResponder({ withQuery: true, queryWaitSeconds: 60, sidecarPath: STANDIN_SIDECAR })
       const ctx = await (responder as unknown as { bootContext(): Promise<Context> }).bootContext()
       bootedContexts.push(ctx)
       expect(ctx.query).toBeInstanceOf(Object)
@@ -670,7 +670,7 @@ describe('HarnessAgentResponder — optional MaxCompute query engine', () => {
   it('falls back to the in-repo standin sidecar and the HOME maxc config', async () => {
     vi.stubEnv('MAXC_CONFIG', undefined)
     try {
-      const responder = makeResponder({ withQuery: true })
+      const responder = makeResponder({ withQuery: true, queryWaitSeconds: 60 })
       const ctx = await (responder as unknown as { bootContext(): Promise<Context> }).bootContext()
       bootedContexts.push(ctx)
       expect(ctx.query).toBeInstanceOf(Object)
@@ -685,6 +685,7 @@ describe('HarnessAgentResponder — optional MaxCompute query engine', () => {
     try {
       const responder = makeResponder({
         withQuery: true,
+        queryWaitSeconds: 60,
         sidecarPath: join(tmpdir(), 'dsh-eval-missing-sidecar.mjs'),
       })
       const ctx = await (responder as unknown as { bootContext(): Promise<Context> }).bootContext()
@@ -720,7 +721,7 @@ describe('HarnessAgentResponder — optional MaxCompute query engine', () => {
       warnings.push(String(message))
     })
     try {
-      const responder = makeResponder({ withQuery: true, sidecarPath: STANDIN_SIDECAR })
+      const responder = makeResponder({ withQuery: true, queryWaitSeconds: 60, sidecarPath: STANDIN_SIDECAR })
       const ctx = await (responder as unknown as { bootContext(): Promise<Context> }).bootContext()
       bootedContexts.push(ctx)
       expect(warnings).toEqual([

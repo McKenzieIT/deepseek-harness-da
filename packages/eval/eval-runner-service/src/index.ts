@@ -21,6 +21,7 @@
  */
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
@@ -29,19 +30,22 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { runBatch, compareDelta } from '@deepseek-ai/dsh-eval-runner'
+import { runBatch, compareDelta, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
+import { COMPARATOR_POLICY_VERSION } from '@deepseek-ai/dsh-eval'
 import type {
   AgentResponder,
   AgentRespondOpts,
   AgentResponse,
   QueryExecutor,
-  QueryResult,
   JudgeExecutor,
   JudgeResult,
   RunResult,
   RunConfig,
   DeltaReport,
   RunnerVerdict,
+  AttemptResult,
+  CaseVerdict,
+  CaseSource,
 } from '@deepseek-ai/dsh-eval-runner'
 import { Nl2sqlEngine, Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
 import type {
@@ -60,21 +64,54 @@ import { join, resolve } from 'node:path'
 export const name = 'eval-runner-service'
 export const inject = ['llm']
 
-/** Config */
+/** Loader input for one eval-runner-service deployment. */
 export interface Config {
-  /** Directory holding the eval case YAMLs (default: the K11 case set). */
-  readonly caseDir?: string
+  /** Directory holding the eval case YAMLs. */
+  readonly caseDir: string
   /** Directory where JSONL run results are persisted (evidence-query reads it). */
   readonly resultsDir?: string
-  /** pass_k attempts per case (default 3). */
-  readonly passK?: number
-  /** LLM provider for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
-  readonly provider?: string
-  /** LLM model name for SQL generation + judging + answering (mirrors llm-wiring-plugin). */
-  readonly model?: string
-  /** Reference date YYYYMMDD for time-param extraction (eval reproducibility). */
-  readonly today?: string
+  /** pass_k attempts per case. */
+  readonly passK: number
+  /** Maximum cases evaluated concurrently. */
+  readonly concurrency: number
+  /** Maximum infrastructure retries for one SQL execution within an attempt. */
+  readonly maxInfraRetries: number
+  /** LLM provider for SQL generation + judging + answering. */
+  readonly provider: string
+  /** LLM model name for SQL generation + judging + answering. */
+  readonly model: string
+  /** Reference date YYYYMMDD for time-param extraction. */
+  readonly today: string
+  /** Stable identity of the mounted query executor, required whenever ctx.query is available. */
+  readonly executorIdentity?: string
+  /** Maximum seconds allowed for one `ctx.query.execute` call. */
+  readonly queryWaitSeconds?: number
+  /** How result cells are addressed during execution grading. */
+  readonly columnSemantics: 'by-name' | 'positional'
+  /** Maximum rows retained in each persisted execution artifact. */
+  readonly maxStoredRows: number
 }
+
+/** Config after the schema has applied the package's operational defaults. */
+interface ResolvedConfig extends Config {
+  readonly resultsDir: string
+}
+
+/** Runtime schema applied by Cordis and by direct service construction in tests. */
+export const Config = z.object({
+  caseDir: z.string().min(1).required(),
+  resultsDir: z.string().min(1).default('.tmp/eval-results'),
+  passK: z.natural().min(1).required(),
+  concurrency: z.natural().min(1).required(),
+  maxInfraRetries: z.natural().required(),
+  provider: z.string().pattern(/\S/).required(),
+  model: z.string().pattern(/\S/).required(),
+  today: z.string().pattern(/^\d{8}$/).required(),
+  executorIdentity: z.string().pattern(/\S/),
+  queryWaitSeconds: z.natural().min(1),
+  columnSemantics: z.union(['by-name', 'positional'] as const).required(),
+  maxStoredRows: z.natural().min(1).required(),
+}) as unknown as z<Config, ResolvedConfig>
 
 // ── ctx.llm → engine Llm ────────────────────────────────────────────────────
 
@@ -126,7 +163,15 @@ class CtxLlmAdapter implements Llm {
 
 /** Bridges the engine's `OdpsExecutor` (used in the NL2SQL self-correction loop) to `ctx.query`. */
 class CtxOdpsAdapter implements OdpsExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
+  private readonly executor: CtxQueryExecutor
+
+  constructor(
+    private readonly ctx: Context,
+    scopeId: ScopeId,
+    private readonly queryWaitSeconds: number | undefined,
+  ) {
+    this.executor = new CtxQueryExecutor(ctx, scopeId, queryWaitSeconds)
+  }
 
   private engine(): QueryEngine | undefined {
     return this.ctx.get('query')
@@ -135,15 +180,28 @@ class CtxOdpsAdapter implements OdpsExecutor {
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql }
-    const out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)
-    return this.toEngineOutcome(out)
+    return this.toEngineOutcome(await this.executor.execute(sql, opts?.signal) as QueryOutcome)
   }
 
   async attach(instanceId: string): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
-    const out = await q.attach(instanceId)
-    return this.toEngineOutcome(out)
+    if (this.queryWaitSeconds === undefined) return this.toEngineOutcome(await q.attach(instanceId))
+    const queryWaitSeconds = this.queryWaitSeconds
+    const timeoutReason = new Error(`query attach timed out after configured ${queryWaitSeconds}s wait window`)
+    timeoutReason.name = 'TimeoutError'
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<EngineQueryOutcome>((resolveTimeout) => {
+      timer = setTimeout(() => {
+        resolveTimeout({ state: 'failed', failureKind: 'timeout', error: timeoutReason.message, sql: '' })
+      }, queryWaitSeconds * 1000)
+      timer.unref()
+    })
+    try {
+      return await Promise.race([q.attach(instanceId).then(out => this.toEngineOutcome(out)), timeout])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
   }
 
   /** Map a dsh-query QueryOutcome ('completed'|'pending'|'failed', rows
@@ -177,40 +235,6 @@ class CtxOdpsAdapter implements OdpsExecutor {
           sql: out.sql,
         }
     }
-  }
-}
-
-/** Bridges the eval-runner's result-match `QueryExecutor` to `ctx.query` (maps QueryOutcome → QueryResult). */
-class CtxQueryExecutor implements QueryExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: ScopeId) {}
-
-  async execute(sql: string): Promise<QueryResult> {
-    const q = this.ctx.get('query')
-    if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
-    let out: QueryOutcome
-    try {
-      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' })
-    } catch (err) {
-      return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
-    }
-    return this.mapOutcome(out)
-  }
-
-  private mapOutcome(out: QueryOutcome): QueryResult {
-    if (out.state === 'completed') {
-      const cols = out.columns ?? []
-      const rows = (out.rows ?? []).map((row): Record<string, unknown> => {
-        if (Array.isArray(row)) {
-          return Object.fromEntries(row.map((cell, i) => [cols[i] ?? `col_${i}`, cell]))
-        }
-        return row
-      })
-      return { success: true, rows, row_count: out.rowCount ?? rows.length, error: null }
-    }
-    if (out.state === 'pending') {
-      return { success: false, rows: [], row_count: 0, error: 'query still running' }
-    }
-    return { success: false, rows: [], row_count: 0, error: out.error ?? 'query failed' }
   }
 }
 
@@ -263,13 +287,14 @@ class Nl2sqlAgentResponder implements AgentResponder {
     private readonly today: string,
     provider: string,
     model: string,
+    private readonly queryWaitSeconds?: number,
   ) {
     this.llm = new CtxLlmAdapter(ctx, provider, model)
   }
 
   async respond(question: string, opts?: AgentRespondOpts): Promise<AgentResponse> {
     const scopeId = opts?.scope_id ?? this.scopeId
-    const odps = new CtxOdpsAdapter(this.ctx, scopeId)
+    const odps = new CtxOdpsAdapter(this.ctx, scopeId, this.queryWaitSeconds)
     const schema = this.ctx.get('schema') as
       | { loadRetrievalCorpusAll?(): unknown[]; getRelationGraph?(scopeId?: string): RelationGraphLike }
       | undefined
@@ -316,47 +341,70 @@ class Nl2sqlAgentResponder implements AgentResponder {
 
 // ── JSONL persistence bridge (RunResult → evidence-query record format) ─────
 
-/** One persisted JSONL line — the shape `FileBackedEvalResultStore` parses. */
+/** Preserve every runner verdict without collapsing environment and corpus failures. */
+function verdictToOutcome(verdict: RunnerVerdict): RunnerVerdict {
+  return verdict
+}
+
+/** One version-2 JSONL line consumed by `FileBackedEvalResultStore`. */
 interface PersistedCaseRecord {
+  readonly recordVersion: 2
   readonly runId: string
   readonly timestamp: string
   readonly caseId: string
-  readonly outcome: string
-  readonly verdict: string
+  readonly outcome: RunnerVerdict
+  readonly verdict: RunnerVerdict
   readonly passed: boolean
   readonly passK: number
   readonly latencyMs: number
   readonly attemptsCount: number
   readonly errorsCount: number
+  readonly runConfig: RunConfig
+  readonly attempts: readonly AttemptResult[]
+  readonly preflight: NonNullable<CaseVerdict['preflight']>
+  readonly caseSource: CaseSource
 }
 
-/** Map a runner verdict to an eval-core outcome string (infra_failure → unjudged). */
-function verdictToOutcome(v: RunnerVerdict): string {
-  if (v === 'infra_failure') return 'unjudged'
-  return v
-}
-
-/**
- * Persist a RunResult as JSONL in the format evidence-query's
- * `FileBackedEvalResultStore` reads. This IS the W3→W4 format bridge (the
- * eval-runner RunResult and the evidence-query record differ in shape).
- */
-function persistRunResultJsonl(result: RunResult, dir: string, passK: number): string {
+/** Persist a run through the versioned service → evidence-query JSONL bridge. */
+function persistRunResultJsonl(
+  result: RunResult,
+  dir: string,
+  passK: number,
+): string {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   const safeTimestamp = result.timestamp.replace(/[:.]/g, '-')
   const path = join(dir, `${safeTimestamp}_${result.run_id}.jsonl`)
-  const lines = result.cases.map((c): PersistedCaseRecord => ({
-    runId: result.run_id,
-    timestamp: result.timestamp,
-    caseId: c.case_id,
-    outcome: verdictToOutcome(c.verdict),
-    verdict: c.verdict,
-    passed: c.verdict === 'correct',
-    passK,
-    latencyMs: c.latency_ms,
-    attemptsCount: c.pass_k_results.length,
-    errorsCount: c.pass_k_results.filter(a => a.infra_error !== undefined || a.error !== undefined).length,
-  }))
+  const runConfig = result.config
+  if (runConfig === undefined) {
+    throw new Error(`eval-runner-service persistence: run ${result.run_id} has no resolved config`)
+  }
+  const lines = result.cases.map((c): PersistedCaseRecord => {
+    const preflight = c.preflight
+    const caseSource = c.caseSource
+    if (preflight === undefined) {
+      throw new Error(`eval-runner-service persistence: case ${c.case_id} has no preflight evidence`)
+    }
+    if (caseSource === undefined) {
+      throw new Error(`eval-runner-service persistence: case ${c.case_id} has no case source evidence`)
+    }
+    return {
+      recordVersion: 2,
+      runId: result.run_id,
+      timestamp: result.timestamp,
+      caseId: c.case_id,
+      outcome: verdictToOutcome(c.verdict),
+      verdict: c.verdict,
+      passed: c.verdict === 'correct',
+      passK,
+      latencyMs: c.latency_ms,
+      attemptsCount: c.pass_k_results.length,
+      errorsCount: c.pass_k_results.filter(a => a.infra_error !== undefined || a.error !== undefined).length,
+      runConfig,
+      attempts: c.pass_k_results,
+      preflight,
+      caseSource,
+    }
+  })
   writeFileSync(path, lines.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf8')
   return path
 }
@@ -373,28 +421,39 @@ export class EvalRunnerService extends Service {
   private readonly caseDir: string
   private readonly resultsDir: string
   private readonly passK: number
+  private readonly concurrency: number
+  private readonly maxInfraRetries: number
   private readonly provider: string
   private readonly model: string
   private readonly today: string
+  private readonly executorIdentity: string | undefined
+  private readonly queryWaitSeconds: number | undefined
+  private readonly columnSemantics: Config['columnSemantics']
+  private readonly maxStoredRows: number
   private lastRun: RunResult | null = null
 
-  constructor(ctx: Context, config: Config = {}) {
+  constructor(ctx: Context, config: Config) {
     super(ctx, 'evalRunner')
-    this.caseDir = config.caseDir ?? 'packages/eval/eval/cases/k11-v2'
-    this.resultsDir = config.resultsDir ?? '.tmp/eval-results'
-    this.passK = config.passK ?? 3
-    // R8 (PB-COMPLY): no silent vendor default — '' is a non-runnable sentinel;
-    // runBatch fails loud if provider/model were not explicitly configured.
-    this.provider = config.provider ?? ''
-    this.model = config.model ?? ''
-    this.today = config.today ?? '20260825'
+    const resolved = Config(config)
+    this.caseDir = resolved.caseDir
+    this.resultsDir = resolved.resultsDir
+    this.passK = resolved.passK
+    this.concurrency = resolved.concurrency
+    this.maxInfraRetries = resolved.maxInfraRetries
+    this.provider = resolved.provider
+    this.model = resolved.model
+    this.today = resolved.today
+    this.executorIdentity = resolved.executorIdentity?.trim()
+    this.queryWaitSeconds = resolved.queryWaitSeconds
+    this.columnSemantics = resolved.columnSemantics
+    this.maxStoredRows = resolved.maxStoredRows
   }
 
   /** Case file paths (sorted) under the configured case dir. */
   private casePaths(): string[] {
     if (!existsSync(this.caseDir)) return []
     return readdirSync(this.caseDir)
-      .filter(f => /^k11_\d+\.yaml$/.test(f))
+      .filter(f => /^[a-z0-9]+(?:_[a-z0-9]+)*_\d+\.(?:yaml|yml|json)$/i.test(f))
       .sort()
       .map(f => resolve(this.caseDir, f))
   }
@@ -422,8 +481,8 @@ export class EvalRunnerService extends Service {
     // ignore scopeId, but the wiring is in place for a future per-scope engine
     // mapping without a service rebuild).
     const conventions = (this.ctx.get('nl2sql') as { getConventions?(scopeId?: string): EngineConventions } | undefined)?.getConventions?.(scopeId) ?? null
-    const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model)
-    const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId) : null
+    const agent = new Nl2sqlAgentResponder(this.ctx, conventions, scopeId, this.today, this.provider, this.model, this.queryWaitSeconds)
+    const executor = this.ctx.get('query') !== undefined ? new CtxQueryExecutor(this.ctx, scopeId, this.queryWaitSeconds) : null
     const judge = new LlmJudgeExecutor(new CtxLlmAdapter(this.ctx, this.provider, this.model))
     return { agent, executor, judge }
   }
@@ -451,6 +510,19 @@ export class EvalRunnerService extends Service {
       throw new Error('eval-runner-service runBatch: provider and model are required (R8: configure the eval LLM gateway in cordis.yml; no silent vendor default)')
     }
     const scopeId = options.scopeId
+    const withQuery = this.ctx.get('query') !== undefined
+    let executorConfig: Pick<RunConfig, 'executor_identity' | 'query_wait_seconds'> | Record<string, never> = {}
+    if (withQuery) {
+      const executorIdentity = this.executorIdentity
+      if (executorIdentity === undefined) {
+        throw new Error('eval-runner-service runBatch: executorIdentity is required when ctx.query is mounted')
+      }
+      const queryWaitSeconds = this.queryWaitSeconds
+      if (queryWaitSeconds === undefined) {
+        throw new Error('eval-runner-service runBatch: queryWaitSeconds is required when ctx.query is mounted')
+      }
+      executorConfig = { executor_identity: executorIdentity, query_wait_seconds: queryWaitSeconds }
+    }
     const { agent, executor, judge } = this.buildCollaborators(scopeId)
     // GA-EVAL-REBASELINE item 4: stamp the run's protocol/semantics/concurrency/
     // model onto the artifact so a contaminated/mis-attributed run is detectable
@@ -462,18 +534,25 @@ export class EvalRunnerService extends Service {
       provider: this.provider,
       model: this.model,
       pass_k: this.passK,
-      concurrency: 1,
+      max_infra_retries: this.maxInfraRetries,
+      concurrency: this.concurrency,
       sql_judge: false,
       verdict_semantics: 'pass^k',
       responder: 'engine',
       scope_id: scopeId,
       today: this.today,
       query_expansion: false,
-      with_query: this.ctx.get('query') !== undefined,
+      with_query: withQuery,
+      ...executorConfig,
+      comparator_policy_version: COMPARATOR_POLICY_VERSION,
+      column_semantics: this.columnSemantics,
+      max_stored_rows: this.maxStoredRows,
       skip_health_gate: skipHealthGate,
     }
     const result = await runBatch(paths, { agent, executor, judge }, {
       pass_k: this.passK,
+      max_infra_retries: this.maxInfraRetries,
+      concurrency: this.concurrency,
       skip_health_gate: skipHealthGate,
       ...(options.runId !== undefined ? { run_id: options.runId } : {}),
       config: runConfig,
@@ -505,6 +584,6 @@ export class EvalRunnerService extends Service {
 }
 
 /** Plugin apply: mount the Service onto ctx.evalRunner. */
-export function apply(ctx: Context, config: Config = {}): void {
+export function apply(ctx: Context, config: Config): void {
   new EvalRunnerService(ctx, config)
 }

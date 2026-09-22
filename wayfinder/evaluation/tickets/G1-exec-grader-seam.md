@@ -110,9 +110,9 @@
 
 ### D5 — G1 管机器，G1b 管语料
 
-**G1 拥有**：D1 的结局枚举（含 `not-measured`）、D3 的两个纯函数与 `ExecutionArtifact`（含 raw/normalized digest 与行数上限）、policy 的**机制与版本号**、D2 的去分叉、D4 的模式落盘与拒渲染，以及**loader 不得静默吐掉未知 `expected.*` 字段**——写了就要么用、要么报错，不得假装没看见（AGENTS.md 的 fail-loud；与 provenance 内容无关，因而属本票）。
+**G1 拥有**：D1 的结局枚举（含 `not-measured`）、D3 的两个纯函数与 `ExecutionArtifact`（含 raw/normalized digest 与行数上限）、policy 的**机制与版本号**、D2 的去分叉、D4 的模式落盘与拒渲染，以及**loader 不得静默吐掉未知 `expected.*` 字段**——写了就要么用、要么报错，不得假装没看见（AGENTS.md 的 fail-loud；与 source evidence 内容无关，因而属本票）。
 
-**G1b 拥有**：provenance schema 的具体字段、谁有权写 expected、snapshot 身份与过期语义、以及 case 迁移（86 个 `row_count_range` 是否改为值断言）。**comparator 默认值归 R23**。
+**G1b 拥有**：source-evidence schema 的具体字段、谁有权写 expected、snapshot 身份与过期语义、以及 case 迁移（86 个 `row_count_range` 是否改为值断言）。**comparator 默认值归 R23**。
 
 **得失**：T1 上线后真执行判分只覆盖 **57 个 `scalar_exact` case**（它们至少断言一个真实值）；86 个行数 case 待语料修好再纳入。换来的是 T1 立刻可开工，且日后数字异动可归因到引擎而非语料。
 
@@ -144,7 +144,7 @@
 2. **execution 是主裁决**；LLM judge 单独报告，永不覆盖 execution mismatch（R1 §6）。
 3. **gold/reference SQL 的执行失败 = benchmark 基础设施失败**，不是模型失败，不得给候选模型记 0 分（R1 §6）。
 4. **端口保持一个函数**：`(sql) => Promise<ExecutionResult>`。host 交出 capability 而非 verdict；evaluation 不直接依赖 `MaxComputeQueryEngine`，不经模型可见的 `query_data` rendering 层评分。
-5. **provenance 由 grader 装配，不由 executor 提供**（两层切法）。`ExecutionResult` 只承载 executor 真观测到的事实：rows、columns、rowCount、截断信号、实际执行的 SQL、provider `failureKind`、耗时。snapshot id、comparator policy id+version、raw/normalized digest 由 grader 从 run config + case 装配为独立 evidence 记录。理由：snapshot 与 policy 是 case+环境绑定的属性，不是一次 SQL 执行的属性；塞进端口会强迫每个 host 在每次 execute 时提供它们，把「小而稳定」的端口弄宽。
+5. **source evidence 由 grader 装配，不由 executor 提供**（两层切法）。`ExecutionResult` 只承载 executor 真观测到的事实：rows、columns、rowCount、截断信号、实际执行的 SQL、provider `failureKind`、耗时。snapshot id、comparator policy id+version、raw/normalized digest 由 grader 从 run config + case 装配为独立 evidence 记录。理由：snapshot 与 policy 是 case+环境绑定的属性，不是一次 SQL 执行的属性；塞进端口会强迫每个 host 在每次 execute 时提供它们，把「小而稳定」的端口弄宽。
 6. **截断与耗时由 evaluation 自己观测导出**，不透传 provider 声明。provider 的 `truncated` 恒 `false`、`executionMeta.durationMs` 恒 `0`（`packages/query/query-maxcompute/dev/maxc-sidecar.mjs:101`、`:103`；pending 分支 `elapsedMs: 0` 在 `:112`），而 `maxc query run --wait <N>` 不传 `--max-rows`（`:141`）。携带不可核声明的字段比携带自己的观测值更糟——反循环原则的同一条。耗时由 adapter 在调用两端量 wall-clock。**截断信号 `rowCount !== rows.length` 是待验假设，写作 T1 验收项而非前提**：`rowCount` 取自 maxc 自报的 `row_count`（`:100`），T1 须用已知超大结果集实测两者是否分叉；分叉则成立，不分叉则 eval 无截断信号，回落「透传 + 开 provider 缺陷票」。
 
 ### 移交 R10 → G10 的 3 条（架构相关，本票不裁）
@@ -161,7 +161,7 @@
 
 ③ **infra 失败当前被计为模型失败。** `withInfraRetry` 只捕获抛出的错误（`packages/eval/eval-runner/src/infra_retry.ts:80-84`），而 `CtxQueryExecutor.execute` 把一切 catch 成 `{success:false}`（`packages/eval/eval-cli/src/context.ts:236-238`），于是 `packages/eval/eval-runner/src/runner.ts:252-255` 把后端故障变成 `executionMatch = false` → verdict `wrong`。**executor 的 infra-retry 路径是死代码**，`classifyInfraFailure` 还在对错误字符串做匹配（`infra_retry.ts:29-58`），尽管 provider 已返回类型化 `failureKind`。
 
-④ **provenance schema 已在仓里，而 loader 把它扔了（本票最重要的发现）。** `rbi-10000251-exec` 的 **39/39** case 带 `expected.sql` + `meta.anchor_ds` + `meta.tier: verified` + `meta.provenance: migrated`（rbi `schema_version: 3`）；`k11-v2` 的 **0/168** 带。实跑 `loadCase` 证明 `expected.sql`、`meta`、`schema_version` **被 zod object strip 静默丢弃**，`expected` 只剩 `result_value`/`match_mode`/`answer`/`delivery_match`。所以 R1「0 个 case 有 reference SQL」**只对 k11-v2 成立**；G1b 打算设计的 provenance schema **已经存在**，问题是 eval 路径读不到。这也是 [GA-EVAL-CASESET-EVENT-ANCHOR](../../data-agent/tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)「event 16/18 期望值与自己的 `expected.sql` 不符」长期未被发现的机制，并使 12.8% 真执行基线**本身已被污染**（该基线正测在这 39 个 case 上）。
+④ **source-evidence schema 已在仓里，而 loader 把它扔了（本票最重要的发现）。** `rbi-10000251-exec` 的 **39/39** case 带 `expected.sql` + `meta.anchor_ds` + `meta.tier: verified` + `meta.source: migrated`（rbi `schema_version: 3`）；`k11-v2` 的 **0/168** 带。实跑 `loadCase` 证明 `expected.sql`、`meta`、`schema_version` **被 zod object strip 静默丢弃**，`expected` 只剩 `result_value`/`match_mode`/`answer`/`delivery_match`。所以 R1「0 个 case 有 reference SQL」**只对 k11-v2 成立**；G1b 打算设计的 source-evidence schema **已经存在**，问题是 eval 路径读不到。这也是 [GA-EVAL-CASESET-EVENT-ANCHOR](../../data-agent/tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)「event 16/18 期望值与自己的 `expected.sql` 不符」长期未被发现的机制，并使 12.8% 真执行基线**本身已被污染**（该基线正测在这 39 个 case 上）。
 
 ### T1 验收面
 
@@ -184,14 +184,14 @@
 
 ### 与 GA-EVAL-CASESET-EVENT-ANCHOR 的关系（R1 要求 G1 裁定）
 
-两票在归一化规则与 provenance 上重叠。**本票不 supersede 它**——分工是：G1 定 execution grader 的 seam 与三事实分离（**架构无关**，对任何 case set 都成立）；CASESET-EVENT-ANCHOR 定 **event case 这一类** 的评分口径（锚点不冻结时怎么办，5 个候选立场）。两者正交，可并行推进。
+两票在归一化规则与 source evidence 上重叠。**本票不 supersede 它**——分工是：G1 定 execution grader 的 seam 与三事实分离（**架构无关**，对任何 case set 都成立）；CASESET-EVENT-ANCHOR 定 **event case 这一类** 的评分口径（锚点不冻结时怎么办，5 个候选立场）。两者正交，可并行推进。
 
 唯一的耦合点是上面第二条：G1 采纳 pending→`patience` 后，event case 移出计分分母，这会改变 CASESET-EVENT-ANCHOR 那 5 个立场的代价对比。**因此 CASESET-EVENT-ANCHOR 应在 T1 落地前定口径**，否则 T1 的 re-baseline 无法解释。
 
 ### 产出
 
 - 新票 [T11 — case loader 静默丢弃 reference SQL 与 snapshot 锚点](T11-loader-source-strip.md)（发现 ④，阻塞 execution grading 与 G1b）。
-- Agent Note [Execution grader seam: one executor port, grader-assembled provenance](../../../.agents/notes/proposed/testing/2026-09-07-execution-grader-seam.md)。
+- Agent Note [Execution grader seam: one executor port, grader-assembled source evidence](../../../.agents/notes/proposed/testing/2026-09-07-execution-grader-seam.md)。
 - map 变更：`additive-only` 立场改为允许重构；登记 GA-EVAL-CASESET-EVENT-ANCHOR；修正 `rbi-10000251-exec` 未被追踪的过期声明；R10 提到 T1 之前。
 
 ---
@@ -209,7 +209,7 @@ v1 锁定第 4 条：单函数 `(sql) => Promise<ExecutionResult>`，host 用 `m
 ### v1 反过来修正 v3 的两处
 
 1. **provider 的声明不可当证据**（v1 锁定第 6 条）：maxc sidecar 把 `truncated` 恒写 `false`、`executionMeta.durationMs` 恒 `0`、pending 的 `elapsedMs` 恒 `0`，且不传 `--max-rows`。所以 **D3 的 `ExecutionArtifact` 不得原样保留这些字段**：耗时由 adapter 在调用两端量 wall-clock；截断信号 `rowCount !== rows.length` 是**待验假设**，写作 T1 验收项，不成立则回落“透传 + 开 provider 缺陷票”。
-2. **provenance 由 grader 装配、不由 executor 提供**（v1 锁定第 5 条）：snapshot id、policy id+version、raw/normalized digest 是 case+环境绑定的属性，不是一次 SQL 执行的属性；塞进端口会把端口弄宽。与 D3 兼容，**以 v1 表述为准**。
+2. **source evidence 由 grader 装配、不由 executor 提供**（v1 锁定第 5 条）：snapshot id、policy id+version、raw/normalized digest 是 case+环境绑定的属性，不是一次 SQL 执行的属性；塞进端口会把端口弄宽。与 D3 兼容，**以 v1 表述为准**。
 
 ### v3 补 v1 的四处
 

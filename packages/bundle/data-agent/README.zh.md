@@ -19,6 +19,8 @@ data-agent bundle 是叠加在 `dsh-base` 上的 additive 层。它选择 DashSc
 
 未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-data-agent` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
 
+评测运行使用外部 `dsh-eval` host。默认产品 profile 不挂载 `eval-runner-service`，因为已发布包不包含 benchmark case，普通 data-agent session 也不应让评测基础设施常驻。
+
 <a id="dev-note"></a>
 ## 开发备注
 

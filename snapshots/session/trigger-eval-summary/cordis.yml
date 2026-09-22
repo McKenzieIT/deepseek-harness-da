@@ -1,0 +1,7 @@
+# Product-shaped composition: the real trigger_eval tool consumes a deterministic
+# runner while the headless Agent provides the real model/tool/session path.
+- insert:
+    - id: trigger-eval-summary-fixture
+      name: '../../../packages/data/tool-trigger-eval/tests/fixtures/snapshot-runner.ts'
+    - id: tool-trigger-eval
+      name: '@deepseek-ai/dsh-tool-trigger-eval'

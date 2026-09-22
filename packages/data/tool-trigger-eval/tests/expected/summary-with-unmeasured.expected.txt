@@ -1,0 +1,7 @@
+Eval run completed: run-quality
+Results: 7/9 attributable correct (77.8% pass rate; 3 excluded; 12 total)
+  Wrong: 1
+  Declined: 1
+  Unjudged: 1
+  Infra failures: 1
+  Case defects: 1

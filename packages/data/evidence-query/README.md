@@ -28,6 +28,8 @@ Use this package to query semantic-layer coverage, gaps, reachability, eval reco
 
 Run count, history, and delta read the same `EvalResultStore`. Consumers derive comparable run ids from `metadata.runId`; file count is not evidence that the UI has loaded a run.
 
+`FileBackedEvalResultStore` reads legacy unversioned JSONL and version-2 records. It validates every durable line before accepting a refreshed snapshot: unsupported versions, unknown verdicts, malformed run configuration, or invalid execution artifacts fail the refresh and leave the previous visible records unchanged. Version-2 records retain the runner verdict, complete run configuration, case preflight evidence, attempt execution evidence, and case source fields. All six runner verdicts map explicitly; `unjudged`, `infra_failure`, and `case_defect` appear as errors rather than pending work.
+
 -----
 
 <a id="trust-reporting"></a>

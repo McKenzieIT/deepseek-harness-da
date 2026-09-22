@@ -18,7 +18,7 @@ Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (M
 - [API](#api)
 - [Determinism](#determinism)
 - [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
-- [Batch Runner + Persistence (W3 — P11c)](#batch-runner--persistence-w3--p11c)
+- [Legacy core runner pending T12](#legacy-core-runner-pending-t12)
 - [Host wiring — complete integration pattern](#host-wiring--complete-integration-pattern)
 - [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
 - [Dev Note](#dev-note)
@@ -40,9 +40,12 @@ A **pure library**: it registers nothing on a Cordis context and takes its colla
 - **`buildAgentResponder(harness)` / `extractReply(runResult)` / `validateRunResult(runResult)`** — the `DeepSeekHarness` → `Responder` adapter (H1 mitigation: asserts ≥1 `assistant/message` per run interval; multi-message intervals from four-stage agents are valid).
 - **`classifyExecutionFailure(error)` / `mapQueryOutcome(outcome)`** — environmental failure classification (mirror rbi `l1.classify_execution_failure`) + the `QueryOutcome` → `ExecutionResult` mapping (pending → `patience` refuse).
 - **`judgeWithProvider(provider, prompt, opts?)` / `classifyError(err)`** — the DELIVERY LLM-judge with retry/backoff (SPEC §5.5) + `AuthenticationAbort`.
-- **`checkResultMatch(expected, actualRows, matchMode)`** — the 5 EXECUTION match modes (1:1 rbi mirror).
+- **`checkResultMatch(expected, actualRows, matchMode, actualRowCount?)`** — the 5 EXECUTION match modes; row-count assertions use the provider count rather than retained preview length.
+- **`preflightEvalCaseContent(case_)`** — classifies malformed grading content as a per-case defect after strict structural parsing, without aborting the batch.
+- **`ExecutionPort` / `executeAndNormalize(...)` / `gradeExecution(...)`** — the active execution-grading primitives. Online grading uses the complete live result even when persisted rows are capped; insufficient persisted evidence returns an explicit unmeasured or environment-blocked outcome rather than a model failure.
 - **`turnMatchesExpectation(actual, expected)`** (derailment, rbi `≥0.35`) / **`deliveryFuzzyMatch(actual, expected, opts?)`** (DELIVERY; short expected → token-containment — hardens the `gameX` vs `gameA` false-positive).
-- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema (zod) + YAML/JSON loader.
+- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema (zod) plus YAML/JSON loader. Structural positions reject unrecognized keys; `meta` and `dimensions` retain undeclared per-case source fields.
+- **`resolveReferenceSql(case_)`** — binds a case's `expected.sql` template placeholders (`{{ds_yesterday}}`, `{{ds_7d_ago}}`) to its own `meta.anchor_ds`; it refuses unknown placeholders, missing anchors, and malformed anchors rather than emitting SQL that runs with the wrong date.
 
 ## Determinism
 
@@ -53,12 +56,12 @@ A **pure library**: it registers nothing on a Cordis context and takes its colla
 The host wires the real collaborators and injects them:
 
 - **Agent** — `new DeepSeekHarness({ launch: { command, args, env: { DSH_SNAPSHOT_FILE: '…', …scrubbedParentEnv() } }, … })`; `responder = buildAgentResponder({ run: (msg, sid) => harness.run(msg, { sessionId: sid }) })`. The runtime `cordis.yml` loads `dsh-llm-replay`. `harness.close()` / `await using` reaps the child; `onTimeout` does close+respawn.
-- **Execution** — `executeSql = async (sql) => mapQueryOutcome(await ctx.query.execute({ sql, scopeId }))` (the host may `attach`+poll to resolve `pending` first; `mapQueryOutcome` is robust to an unresolved pending → `patience` refuse).
+- **Execution** — the active `dsh-eval-runner` host injects one `ExecutionPort`; its shared `CtxQueryExecutor` calls `ctx.query`, applies the configured wall-clock deadline, and preserves raw outcomes for `executeAndNormalize`. The older `CaseSqlExecutor` / `mapQueryOutcome` path remains only in the legacy runtime pending T12 removal.
 - **Judge** — `provider = async (prompt) => { const { stream } = await ctx.llm.stream({ provider: 'dashscope', model, messages: [judgeSystemPrompt, …] }); …parse JSON → { score, rationale } }` (the host owns the judge prompt + JSON parsing + `llm-dashscope` route; `judgeWithProvider` adds the retry/backoff + `classifyError` + `AuthenticationAbort`).
 
-## Batch Runner + Persistence (W3 — P11c)
+## Legacy core runner pending T12
 
-The evidence engine (shipped with W3) adds batch execution, persistence, and delta analysis on top of the core:
+This package still contains the pre-W3 batch runner and persistence API listed below. The production path uses `@deepseek-ai/dsh-eval-runner`; T12 owns deletion of this duplicate runtime after the staged migration completes.
 
 - **`runBatch(cases, { runId, responder, executeSql?, provider?, passK?, maxInfraRetries?, onCaseComplete? })`** — drives the full case set sequentially. Each case runs `passK` times. Infra failures (all attempts errored, non-timeout) are retried up to `maxInfraRetries` (default 2) — these do NOT count toward pass_k (they are infrastructure faults, not model performance).
 - **`classifyCaseOutcome(result)`** — maps a `MultiTurnCaseResult` to one of `correct` | `declined` | `wrong` | `unjudged` (aligns with `EvalResultRecord` in evidence-query).
@@ -118,5 +121,6 @@ No direct effect; the agent runtime and the injected judge LLM own any model-vis
 ## Known Limitations and Deferred Work
 
 - **Dropped SQL-hygiene assertions** — rbi L1's sqlglot-bound `field_coverage`/`limit_reasonable`/`partition_compliant` are dropped (G2 trade-off): an agent whose result set is right but SQL is "dirty" (SELECT *, missing LIMIT, missing partition predicate) PASSES da (ii).
+- **Duplicate legacy runtime** — the old batch runner, health gate, and host adapter remain until T12 removes them; production execution grading uses `@deepseek-ai/dsh-eval-runner`.
 - **Judge variance** — the judge is not bit-reproducible (decision 1); a separate judge snapshot for fully deterministic regression is deferred.
 - **Live e2e deferred** — the library is unit-tested with stub collaborators; a live e2e (real runtime + real `dsh-llm-replay` snapshot + real `ctx.query.execute` + real `llm-dashscope` judge) is deferred (with-key, self-skip).
