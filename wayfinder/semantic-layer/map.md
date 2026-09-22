@@ -6,7 +6,7 @@
 
 将 dsh-data-agent 的语义层推进为端到端可用、可管理且可审计的生产能力：自然语言请求使用按 scope 隔离的语义定义和关系检索生成并执行查询；Web UI 管理定义、关系和质量证据；生产 Agent 与 evaluation 观察同一份 Context Projection 和 evidence identity；Ontology 关系、trust 和版本演化具备明确 owner 与验收路径。
 
-当前实现是可用的语义目录和检索关系图，不是完整的 Ontology 执行层。Context Layer 是本项目采用的架构综合，不是 Forrester、Gartner 或其他单一来源的正式统一定义。
+当前实现是可用的语义目录和检索关系图，不是完整的 Ontology 执行层。Semantic Graph 是 Semantic Layer 的可视化，不再把 Context Layer 作为独立产品领域名称。
 
 ## Notes
 
@@ -61,6 +61,7 @@
 - [R8 — Evidence-query push 订阅机制调研](tickets/R8-evidence-query-push-subscription.md): 采用轻量 invalidation 事件后主动 refresh，而非持续推送完整查询结果。
 - [W15 — Evidence-query push 订阅实现](tickets/W15-evidence-push-subscription.md): eval completion invalidation 与客户端 refresh 已接线。
 - [W16: evidence-query 客户端 remote 缺口 —— 证据 UI 在生产中是死的](tickets/W16-evidence-query-client-remote-gap.md): evidence-query remote 导出、API 装配和 UI 解析路径已补齐，真实数据可到达客户端。
+- [W17: 管理 session 客户端桥接 —— 知识图谱闭环断在一个点上](tickets/W17-management-session-client-bridge.md): Management Context 按 Workspace 与 Data Scope 持久隔离，管理页复用标准 Session/Conversation，并以合并后的可扩展 Semantic Graph 完成引用与叙述后动画闭环。
 - [W6 — ③ 自驱循环 + B→A 演进](tickets/W6-autonomous-goal-loop-and-btoa-evolution.md): goal、evidence 和布局演进被拆成独立插件；自动演化仍受 evidence 可信度限制。
 - [W6a — goal-eval-policy plugin（no-progress backstop）](tickets/W6a-goal-eval-policy-plugin.md): no-progress policy 只消费明确 eval evidence，不拥有 evaluator。
 - [W6b — goal-eval-context plugin（eval delta → round context）](tickets/W6b-goal-eval-context-plugin.md): eval delta 可进入后续 round context，输入必须可由 session 记录重建。
