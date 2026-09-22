@@ -628,6 +628,20 @@ getDanglingDomainRefs(): string[]
 loadRetrievalCorpusAll(): CorpusItem[]
 
 /**
+ * Registry-driven semantic-graph node projection (W27): every registered
+ * kind's `toGraphNode` applied to each of its loaded definitions, plus the
+ * single derived-metric contributor. Each kind contributes a node or
+ * explicitly declines (`null`); `metric` is virtual (not a registered kind),
+ * so its nodes come from {@link projectMetricGraphNodes}. Reads the ACTIVE
+ * scope root — the Schema Gateway threads a per-request `scopeId` only to the
+ * relation-graph edge source, matching the pre-W27 node-load behavior.
+ * Iterating the registry (not hand-written per-kind loops) is what lets a
+ * kind registered later reach the graph without editing the projection.
+ * @returns one projection per graph node (registered-kind assets + derived metrics).
+ */
+projectGraphNodes(): GraphNodeProjection[]
+
+/**
  * Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).
  * @param provider - the provider to delegate discover/describe/sample to, or undefined to clear.
  */

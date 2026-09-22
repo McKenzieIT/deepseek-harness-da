@@ -1996,6 +1996,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the full corpus (events + tables + metrics) ready for Bm25Linker.',
       },
       {
+        signature: 'projectGraphNodes(): GraphNodeProjection[]',
+        description: 'Registry-driven semantic-graph node projection (W27): every registered kind\'s `toGraphNode` applied to each of its loaded definitions, plus the single derived-metric contributor. Each kind contributes a node or explicitly declines (`null`); `metric` is virtual (not a registered kind), so its nodes come from projectMetricGraphNodes. Reads the ACTIVE scope root — the Schema Gateway threads a per-request `scopeId` only to the relation-graph edge source, matching the pre-W27 node-load behavior. Iterating the registry (not hand-written per-kind loops) is what lets a kind registered later reach the graph without editing the projection.',
+        parameters: [],
+        returns: 'one projection per graph node (registered-kind assets + derived metrics).',
+      },
+      {
         signature: 'setSchemaProvider(provider: SchemaProvider | undefined): void',
         description: 'Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).',
         parameters: [{ name: 'provider', description: 'the provider to delegate discover/describe/sample to, or undefined to clear.' }],
@@ -5191,7 +5197,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DataSourceKindPlugin',
-    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toExecutableRule?(def: T): string | null;\n}',
+    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toGraphNode(def: T): GraphNodeProjection | null;\n    toExecutableRule?(def: T): string | null;\n}',
   },
   {
     name: 'DataSourceRegistry',
@@ -5508,6 +5514,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'GrantRecord',
     declaration: 'export interface GrantRecord {\n    readonly kind: \'grant\';\n    readonly payload: unknown;\n}',
+  },
+  {
+    name: 'GraphNodeProjection',
+    declaration: 'export interface GraphNodeProjection {\n    readonly id: string;\n    readonly kind: string;\n    readonly label: string;\n    readonly domains: readonly string[];\n}',
   },
   {
     name: 'HostConnectionFetch',
