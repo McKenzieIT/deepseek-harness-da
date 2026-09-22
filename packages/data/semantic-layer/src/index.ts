@@ -511,22 +511,21 @@ export class SemanticLayerService extends Service {
       const isEvent = plugin.kind === 'event'
       for (const def of this.loadKindDefinitions(plugin, root)) {
         const node = plugin.toGraphNode(def)
-        const sourceId = node?.id
-        if (sourceId !== undefined) {
-          entries.push({ sourceId, relations: plugin.relations(def) })
+        if (node) {
+          entries.push({ sourceId: node.id, relations: plugin.relations(def) })
           // CL-2: collect asset domains for the concept→asset derivation.
           // Concept nodes carry their own name as a domain (for domain
           // filtering); including them here would create concept→concept
           // self-loops. Only asset kinds (table/event/…) contribute.
           if (plugin.kind !== 'concept' && node.domains.length > 0) {
-            assetDomains.push({ sourceId, domains: [...node.domains] })
+            assetDomains.push({ sourceId: node.id, domains: [...node.domains] })
           }
           // CL-2: concept node ids are `concept:<name>` — track the bare name
           // for domain-ref validation + concept→asset edge derivation.
-          if (plugin.kind === 'concept') conceptNames.add(stripConceptPrefix(sourceId))
+          if (plugin.kind === 'concept') conceptNames.add(stripConceptPrefix(node.id))
         }
         // Alias index (structural: pref_label / alt_labels on any kind).
-        const alias = graphAliasData(def, sourceId)
+        const alias = graphAliasData(def, node?.id)
         if (alias) aliasData.push(alias)
         // Metric extraction (virtual derived nodes — table/event only).
         if (isTable) {

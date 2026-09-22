@@ -39,6 +39,7 @@
 - [CL-1 — Terminology 统一到 Definition Schema（R7 方案 D 实现）](tickets/CL1-terminology-aliases-migration.md): 术语映射迁入 definition schema，并保留明确迁移路径。
 - [CL-2 — Domain/Concept 作为图节点（ConceptKindPlugin）](tickets/CL2-concept-kind-plugin.md): concept 成为独立 kind；已有 asset domains 保留，不能把 concept 覆盖写成 table/event 的天然属性。
 - [CL-2a — ConceptKindPlugin 实现](tickets/CL2a-concept-kind-plugin-implementation.md): concept 的存储、检索和关系投影已实现，但生产 graph expansion 仍需与统一 Context Projection 对齐。
+- [W27 — 可扩展 Semantic Graph 投影与 concept 支持](tickets/W27-extensible-semantic-graph-projection.md): 开放 `RelationDef.type`、registry 驱动 `buildGraph` + canonical target mapping、disposer + 缓存失效、prototype-pollution fix、graphDataBridge 迁移至 owner Remote 类型；真实 Remote 证据通过 `graph-remote.spec.ts`（generated codec over Fetch carrier）。
 - [G7 — Context Projection 统一接口设计（CL-3）](tickets/G7-context-projection-unification.md): definition-level `toPromptContext`/`toCriticContext` 统一保持 out of scope；该决定不取代 [Evaluation T13 的 request-level production Context Projection](../evaluation/tickets/T13-context-projection-service.md)。
 - [R10 — Token/Attention/Cache 优化前沿调研](tickets/R10-token-attention-cache-optimization.md): prompt caching 降级为 provider-specific 待测假设；必须先观测 cache tokens、延迟和费用，不能继续称为零风险或固定节省约 70%。
 - [R12: 语义层设计时效性、遗留项与 Ontology 结合审计](tickets/R12-semantic-layer-freshness-audit.md): 核心方向仍有效，但生产/evaluation 投影、lineage、trust、memory 和自演化闭环的完成度曾被高估；完整证据见 [审计报告](research/r12-semantic-layer-freshness-audit.md)。
