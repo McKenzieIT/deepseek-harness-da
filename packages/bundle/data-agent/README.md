@@ -22,7 +22,7 @@ No runtime invariant companion is published because `@deepseek-ai/dsh-data-agent
 <a id="dev-note"></a>
 ## Dev Note
 
-The bundle carries no runtime code: the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, while `presets/` owns the two data-agent preset directories published with the package. The patch resolves that directory from the installed bundle manifest, so preset discovery does not depend on the process working directory. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.
+The bundle carries no runtime code: the `dsh.bundle.patch` field in `package.json` points the profile composer at `cordis.patch.yml`, while `presets/` owns the two data-agent preset directories published with the package. The package manifest directly declares every bare plugin referenced by those presets, so a preset host can resolve rows from the installed bundle directory. The patch resolves that directory from the installed bundle manifest, so preset discovery does not depend on the process working directory. See `wayfinder/data-agent/map.md` for the overall data-agent phase decisions, and `wayfinder/data-agent/tickets/` for the per-plugin implementation history.
 
 -----
 

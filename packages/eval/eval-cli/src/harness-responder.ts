@@ -199,10 +199,16 @@ export class HarnessAgentResponder implements AgentResponder {
   private bootPromise: Promise<Context> | null = null
   private readonly opts: HarnessBootOptions
   private readonly presetPath: string
+  /** Base for resolving bare plugin rows in the selected preset composition. */
+  private readonly pluginBaseUrl: string
 
   constructor(opts: HarnessBootOptions) {
     this.opts = opts
+    const usesInstalledPreset = opts.presetDir === undefined
     const presetDir = opts.presetDir ?? this.resolvePresetDir()
+    this.pluginBaseUrl = pathToFileURL(
+      usesInstalledPreset ? resolve(presetDir, '..', '..') : this.resolveRepoRoot(),
+    ).href + '/'
     const variantFile = VARIANT_FILES[opts.variant]
     this.presetPath = join(presetDir, variantFile)
     if (!existsSync(this.presetPath)) {
@@ -266,10 +272,10 @@ export class HarnessAgentResponder implements AgentResponder {
     // ── 1. Loader (needed for preset mounting via Include/EntryTree) ────────
     const { default: Loader } = await import('@deepseek-ai/cordis-plugin-loader')
     const { default: Group } = await import('@deepseek-ai/cordis-plugin-group')
-    // Set baseUrl to repo root so package specifiers resolve correctly
-    const repoRoot = this.resolveRepoRoot()
+    // Shipped preset rows resolve from their owning bundle's dependency graph;
+    // caller-supplied presets keep resolving bare rows from the host checkout.
     const dshHome = resolveDshHome()
-    ctx.baseUrl = pathToFileURL(repoRoot).href + '/'
+    ctx.baseUrl = this.pluginBaseUrl
     await ctx.plugin(Loader)
     ctx.loader.builtins.group = Group
 

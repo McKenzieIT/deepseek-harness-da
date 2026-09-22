@@ -144,9 +144,19 @@ if (coveragePartitionRaw !== undefined && coveragePartitionRaw !== '' && coverag
 }
 const coveragePartitionMode = coveragePartitionRaw === '1'
 
-// These suites exercise process-global state, process APIs, or timing-sensitive process I/O
-// that worker threads cannot isolate reliably under aggregate gate contention.
-// Keep the narrow exception in forks while the rest of the inventory avoids per-file processes.
+// These eval-cli suites mutate process globals, boot full Cordis trees, or spawn child
+// processes. Keep only this shared-resource family serial so its subprocess budgets do
+// not contend with sibling files while the rest of the eval-cli inventory stays parallel.
+const evalCliProcessBoundTests = [
+  'packages/eval/eval-cli/tests/main.spec.ts',
+  'packages/eval/eval-cli/tests/main-entry.spec.ts',
+  'packages/eval/eval-cli/tests/context-boot.spec.ts',
+  'packages/eval/eval-cli/tests/context-boot-no-start.spec.ts',
+  'packages/eval/eval-cli/tests/harness-responder.spec.ts',
+]
+
+// These suites exercise process-global state, process APIs, or timing-sensitive
+// process I/O that worker threads cannot isolate under aggregate contention.
 const processBoundTests = [
   'packages/session/session-persistence-jsonl/tests/jsonl.spec.ts',
   'packages/subagent/subagent-acp/tests/subagent-acp.spec.ts',
@@ -182,8 +192,22 @@ export default defineConfig({
           exclude: [
             ...platformUnsupportedTests,
             ...processBoundTests,
+            ...evalCliProcessBoundTests,
             ...coverageExemptExcludes,
           ],
+        },
+      },
+      {
+        plugins: [pathsPlugin(), standardDecoratorPlugin()],
+        test: {
+          name: 'eval-cli-process-bound',
+          execArgv: vitestExecArgv,
+          pool: 'forks',
+          setupFiles: ['./scripts/test-proxy-environment.ts', './scripts/test-invariants.ts'],
+          include: evalCliProcessBoundTests,
+          exclude: platformUnsupportedTests,
+          fileParallelism: false,
+          maxWorkers: 1,
         },
       },
       {
