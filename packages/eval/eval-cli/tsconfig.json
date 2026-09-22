@@ -14,6 +14,7 @@
     { "path": "../../llm/llm-dashscope" },
     { "path": "../../data/nl2sql-engine" },
     { "path": "../../data/semantic-layer" },
+    { "path": "../../data/tool-load-event-definition" },
     { "path": "../../data/result-cache-memory" },
     { "path": "../../util/home-paths" },
     { "path": "../../credentials/credentials" },

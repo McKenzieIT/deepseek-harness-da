@@ -18,7 +18,7 @@ import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs, type EventDefinitionLite } from '@deepseek-ai/dsh-nl2sql-engine'
-import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition/src/index.ts'
+import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition'
 import { buildPromptEN, EXPANSION_SYSTEM_PROMPT_EN, buildJudgePromptEN } from './exp2-prompts-en.ts'
 import { detectEventName, type CorpusItemLike } from './event-detect.ts'
 
