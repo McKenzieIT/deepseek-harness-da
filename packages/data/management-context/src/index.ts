@@ -237,12 +237,15 @@ export class ManagementContextService extends Service {
    * Create one ordinary Session pinned to `semantic-layer-management`, then
    * append the durable `data-scope/bound` event recording the managed scope.
    *
-   * The binding event is flushed to durable storage before this method returns:
-   * `ctx.sessions.flush(session)` dispatches the `session/flush` durability
-   * checkpoint, so every persistence listener (the JSONL writer, the
-   * projection-cache write-back) has settled. A caller that reads the Session
-   * list immediately after — or reopens the process — sees the binding without
-   * opening full history. A flush failure propagates as a creation failure.
+   * The binding is made durable before this method returns. When the
+   * `sessionProjectionCache` service is available (the production path), its
+   * `write(session)` method takes the projection checkpoint cut, flushes the
+   * session log to durable storage (`ctx.sessions.flush`), and then writes the
+   * cache rows — so a cold read or a reopened process sees the `dataScope`
+   * projection without opening full history. When the cache service is absent
+   * (the unit-test harness), the method falls back to a bare log flush so the
+   * event still reaches persistence listeners. A flush or write failure
+   * propagates as a creation failure.
    */
   private async createSession(request: ManagementContextRequest): Promise<SessionId> {
     const created = await this.ctx.sessionController.create({
@@ -258,7 +261,12 @@ export class ManagementContextService extends Service {
       dataScopeId: request.dataScopeId,
       workspaceId: request.workspaceId,
     })
-    await this.ctx.sessions.flush(session)
+    const projectionCache = this.ctx.get('sessionProjectionCache')
+    if (projectionCache !== undefined) {
+      await projectionCache.write(session)
+    } else {
+      await this.ctx.sessions.flush(session)
+    }
     return created.sessionId
   }
 }
