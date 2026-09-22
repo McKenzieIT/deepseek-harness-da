@@ -9,6 +9,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-schema-gateway/remote'
+import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
 import { ContextLayerService, type IContextLayer } from './service.ts'
 import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
 import { buildGraphDataClient } from './graphDataBridge.ts'
@@ -40,8 +42,7 @@ export {
   edgeStyle,
   comboStyle,
   evalBorderColor,
-  nodeKindColor,
-  KIND_COLORS,
+  GENERIC_NODE_COLOR,
   DOMAIN_PALETTE,
   DOMAIN_BORDER_PALETTE,
 } from './graph-styles.ts'
@@ -139,9 +140,10 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.reflect.provide('contextLayer', service), 'ui-context-layer: service')
 
   ctx.inject(['remote'], (scope: Context) => {
-    const remoteNs = (scope as unknown as { remote?: { schemaGateway?: unknown } }).remote
-    const graphClient = remoteNs?.schemaGateway
-      ? buildGraphDataClient(remoteNs.schemaGateway as never)
+    const remote = (scope as unknown as { remote?: TypertRemoteNamespaceMap }).remote
+    const schemaGateway = remote?.schemaGateway as Pick<TypertRemoteNamespaceMap['schemaGateway'], 'getGraphData'> | undefined
+    const graphClient = schemaGateway
+      ? buildGraphDataClient(schemaGateway)
       : null
 
     const disposeOverlay = scope.slots.register({

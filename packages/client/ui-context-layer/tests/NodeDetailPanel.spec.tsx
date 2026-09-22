@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import { NodeDetailPanel } from '../src/client/NodeDetailPanel.tsx'
-import type { GraphNode } from '../src/client/types.ts'
+import type { SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway'
 import { en, type ContextLayerKey } from '../src/client/locales.ts'
 
 const t = (key: ContextLayerKey): string => en[key]

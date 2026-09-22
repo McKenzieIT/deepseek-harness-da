@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { buildGraphDataClient } from '../src/client/graphDataBridge.ts'
-import type { GraphData } from '../src/client/types.ts'
+import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway'
 
 describe('buildGraphDataClient', () => {
   const mockData = {
@@ -13,7 +13,7 @@ describe('buildGraphDataClient', () => {
     const client = buildGraphDataClient(remote)
     const result = await client.fetchGraphData({ focus: 'a', depth: 2 })
     expect(result).toEqual(mockData)
-    expect(remote.getGraphData).toHaveBeenCalledWith({ focus: 'a', depth: 2 })
+    expect(remote.getGraphData).toHaveBeenCalledWith({ focus: 'a', depth: 2 }, undefined)
   })
 
   it('throws on RPC failure', async () => {
@@ -26,6 +26,6 @@ describe('buildGraphDataClient', () => {
     const remote = { getGraphData: vi.fn().mockResolvedValue({ ok: true, value: mockData }) }
     const client = buildGraphDataClient(remote)
     await client.fetchGraphData()
-    expect(remote.getGraphData).toHaveBeenCalledWith(undefined)
+    expect(remote.getGraphData).toHaveBeenCalledWith(undefined, undefined)
   })
 })
