@@ -229,6 +229,10 @@
       name: '@deepseek-ai/dsh-result-cache-memory'
     - id: result-cache-gateway  # RPC gateway for result-cache (TypertRemoteService) — result.get → ctx.get('resultCache'); re-homed from apiproxy's results domain
       name: '@deepseek-ai/dsh-result-cache/src/remote.ts'
+    - id: management-context    # W26: ctx.managementContext — resolves a Management Context (Workspace × Data Scope) to a persistent Management Session pinned to the semantic-layer-management preset, recording a durable data-scope/bound binding.
+      name: '@deepseek-ai/dsh-management-context'
+    - id: management-context-gateway  # W26: fork-owned RPC gateway for management-context (TypertRemoteService) — managementContext/resolveOrCreate + createNew; adds no data-agent behavior to api-remotes or the Session Controller.
+      name: '@deepseek-ai/dsh-management-context/src/remote.ts'
 
 # ── PTC runtime: disable base's Node backend, insert data-python ───────────
 # The base bundle mounts `ptc-runtime` (the Node backend); the data agent needs

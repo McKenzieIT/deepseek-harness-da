@@ -253,6 +253,7 @@
     { "path": "./packages/data/phase-gate" },
     { "path": "./packages/data/nl2sql-engine" },
     { "path": "./packages/data/admin" },
+    { "path": "./packages/data/management-context" },
     { "path": "./packages/data/management-session" },
     { "path": "./packages/data/result-cache" },
     { "path": "./packages/data/result-cache-memory" },
