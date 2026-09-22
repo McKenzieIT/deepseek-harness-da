@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../typert/protocol" },
+    { "path": "../../core/session" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../workspace/workspace" },
+    { "path": "../scope-registry" },
+    { "path": "../../preset/agent-presets" },
+    { "path": "../../api/session-controller/tsconfig.host.json" }
+  ]
+}

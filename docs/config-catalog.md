@@ -4737,6 +4737,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-identity` ([`packages/identity/identity/src/index.ts`](../packages/identity/identity/src/index.ts))
 - `@deepseek-ai/dsh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
 - `@deepseek-ai/dsh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
+- `@deepseek-ai/dsh-management-context` — requires `sessionController` · `sessions` · `sessionProjections` · `workspaceRegistry` · `scopes` · `agentPresets` ([`packages/data/management-context/src/index.ts`](../packages/data/management-context/src/index.ts))
 - `@deepseek-ai/dsh-management-session` — requires `sessions` ([`packages/data/management-session/src/index.ts`](../packages/data/management-session/src/index.ts))
 - `@deepseek-ai/dsh-mcp-resources` — requires `tools` ([`packages/mcp/mcp-resources/src/index.ts`](../packages/mcp/mcp-resources/src/index.ts))
 - `@deepseek-ai/dsh-patrol-mode` — requires `managementSession` · `audit` ([`packages/data/patrol-mode/src/index.ts`](../packages/data/patrol-mode/src/index.ts))

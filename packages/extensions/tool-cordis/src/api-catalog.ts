@@ -1505,6 +1505,46 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'managementContext',
+    summary: 'The `ctx.managementContext` service.',
+    description: 'The `ctx.managementContext` service. Owns per-context single-flight, fail-loud validation, session creation pinned to `semantic-layer-management`, and the durable data-scope binding.',
+    methods: [
+      {
+        signature: 'resolveOrCreate(request: ManagementContextRequest): Promise<ManagementContextResolution>',
+        description: 'Resolve the Management Context to its Management Session, creating one only when none exists yet. Single-flighted per `(workspaceId, dataScopeId)`: concurrent default calls for the same context share one resolution and return the same `sessionId`.',
+        parameters: [{ name: 'request', description: 'the Workspace and Data Scope identifying the context.' }],
+        returns: 'the resolved session id and whether this call created it.',
+        throws: ['when the Workspace or Data Scope is unknown, the `semantic-layer-management` preset is unavailable, or session creation fails.'],
+      },
+      {
+        signature: 'async createNew(request: ManagementContextRequest): Promise<ManagementContextResolution>',
+        description: 'Always create another Management Session for the context, independent of any existing session. A subsequent default resolveOrCreate then selects the newest matching session by `updatedAt`.',
+        parameters: [{ name: 'request', description: 'the Workspace and Data Scope identifying the context.' }],
+        returns: 'the new session id, with `created: true`.',
+        throws: ['when the Workspace or Data Scope is unknown, the `semantic-layer-management` preset is unavailable, or session creation fails.'],
+      },
+    ],
+  },
+  {
+    key: 'managementContextGateway',
+    summary: 'Host Remote gateway over `ctx.managementContext`.',
+    description: 'Host Remote gateway over `ctx.managementContext`. Register as a Host plugin to expose the `managementContext/resolveOrCreate` and `managementContext/createNew` endpoints; the Typert Gateway routes incoming calls through the live `@Remote` markers or the generated strict descriptors.',
+    methods: [
+      {
+        signature: '@Remote(\'resolveOrCreate\') resolveOrCreate(request: ManagementContextRequest): Promise<ManagementContextResolution>',
+        description: 'Remote face of ManagementContextService.resolveOrCreate.',
+        parameters: [{ name: 'request', description: 'the Workspace and Data Scope identifying the context.' }],
+        returns: 'the resolved session id and whether this call created it.',
+      },
+      {
+        signature: '@Remote(\'createNew\') createNew(request: ManagementContextRequest): Promise<ManagementContextResolution>',
+        description: 'Remote face of ManagementContextService.createNew.',
+        parameters: [{ name: 'request', description: 'the Workspace and Data Scope identifying the context.' }],
+        returns: 'the new session id, with `created: true`.',
+      },
+    ],
+  },
+  {
     key: 'managementSession',
     summary: 'Management Session Service: creates dedicated agent sessions scoped to the `semantic-layer-management` preset for the full-screen graph management UI.',
     description: 'Management Session Service: creates dedicated agent sessions scoped to the `semantic-layer-management` preset for the full-screen graph management UI.\n\n- `create()` — opens a new management session\n- `destroy(sessionId)` — tears down a management session\n- `getActive()` — returns the currently active management session (if any)\n\nTool gating is handled by the preset: the management session is composed from the `semantic-layer-management` agent preset which only exposes the management-relevant tools.',
@@ -5190,6 +5230,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CriticFields {\n    readonly eventParams?: Readonly<Record<string, unknown>>;\n    readonly partitionCols?: readonly string[];\n}',
   },
   {
+    name: 'DataScopeId',
+    declaration: 'export type DataScopeId = Branded<\'DataScopeId\'>;',
+  },
+  {
     name: 'DataSourceKindPlugin',
     declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toExecutableRule?(def: T): string | null;\n}',
   },
@@ -5788,6 +5832,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'LspRange',
     declaration: 'export interface LspRange {\n    readonly start: LspPosition;\n    readonly end: LspPosition;\n}',
+  },
+  {
+    name: 'ManagementContextRequest',
+    declaration: 'export interface ManagementContextRequest {\n    readonly workspaceId: WorkspaceId;\n    readonly dataScopeId: DataScopeId;\n}',
+  },
+  {
+    name: 'ManagementContextResolution',
+    declaration: 'export interface ManagementContextResolution {\n    readonly sessionId: SessionId;\n    readonly created: boolean;\n}',
   },
   {
     name: 'ManagementError',
