@@ -346,17 +346,17 @@ map 记作「pointwise vs pairwise 23.32% 不一致」。**四处需要收紧**�
 ### 7.1 论文已经替 G8 裁掉的（不必再 grill）
 
 1. **「五维 flat mean + 0.6」不是可辩护的读出。** 但**理由不是论文**——GSR 从未测 unweighted mean、也从未测阈值化聚合（§6.1）。理由是本仓 §2.6 的实测：1495 条向量里 `overall_semantics == 1` 却被判 FAIL 的有 **0 条**，`== 0` 却被判 PASS 的有 **128 条（8.56%）**，且 `P(四机械维全 1 | overall=1) = 0.9984`。四个机械维度在决策上只充当推翻票。**G8 可以把这条当既成事实接受。**
-2. **判官必须拿到参考答案。** `2608.17938` 的 Arm 2 是唯一直接测过「无参考」代价的实验：ICC `0.888 → 0.628`、分数通胀 `+0.074`、只能靠答案核对的题判别力掉到 `30–36%`（§4.1）。而本仓 39 个 case 的 `expected.sql` 正被 loader 丢弃 ⇒ **这与 T11 是同一块工作，不是新方向。**
+2. **判官必须拿到参考答案。** `2608.17938` 的 Arm 2 是唯一直接测过「无参考」代价的实验：ICC `0.888 → 0.628`、分数通胀 `+0.074`、只能靠答案核对的题判别力掉到 `30–36%`（§4.1）。[T11](../tickets/T11-loader-source-strip.md) 已让本仓 39 个 case 的 `expected.sql` 可达；参考可信度仍归 G1b/R8c。
 3. **二值量表是错的方向。** 两条互相独立的证据同向：`2602.02219` Table 4 的「coarser binary rubric therefore tends to increase bias」（L451-452），与 TrustJudge 的 5→100 分持续降低 CR（L524）。
 4. **pairwise 不是免费替代。** 换成 pairwise 会引入 transitivity 与 tie 两类**新**不一致（TrustJudge Def. 2.2），而 GSR 的 pairwise「最高」优势（+0.77 / +0.28）落在 1σ（0.30 / 0.51）内。方向 8 名字里的 pairwise，**在一手证据上是本方向最弱的一条支线**。
 
 ### 7.2 G8 真正要裁的（论文管不了，须本仓自定）
 
 1. **读出形状**：`overall_semantics` 单闸门（四维降级为诊断信息、不进读出）还是 GSR 式 typed graph（gate / reduce / readout）？§2.6 显示「四维不进读出」在当前数据上是**零损失**变更（0/1495 反例）——但判官一旦拿到参考答案，四维行为会变，所以顺序很重要。
-2. **参考答案的形态**：`expected.sql` 文本、执行结果集，还是两者？与 G1b 的 provenance 决议耦合。
+2. **参考答案的形态**：`expected.sql` 文本、执行结果集，还是两者？与 G1b 的 source-evidence 决议耦合。
 3. **量表**：换 0-4（RADAR/SARA 兼容）还是保留二值 + gating？换量表会让 1495 条历史向量不可比——**但那批已因 D4/D6 全体失效，所以现在是免费的换锚时机**。
 4. **准则顺序与调用结构**：维持五维一次调用，还是逐准则单独调用（RADAR 与 SARA-isolation 的做法）？后者 ×5 成本，且改变被测对象本身。
-5. **证据落盘** — 建议**不由 G8 裁**：判官的 `schema_context`、prompt 变体、量表版本是否入 artifact（§2.7 现为 0/80）。这与 G1 D3 的 artifact 决议同类，应并入 **T1 的 artifact schema**，否则 judge 侧会重演一次「模式不可恢复」。
+5. **证据落盘** — **不由 G8 裁**：判官的 `schema_context`、prompt 变体、量表版本是否入 artifact（§2.7 现为 0/80）。T1 已关闭且只实现 execution evidence；G8 实施前须独立建 judge-evidence 票，否则 judge 侧会重演一次「模式不可恢复」。
 
 ### 7.3 R20 的可执行规格（本票主要交付）
 

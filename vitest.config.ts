@@ -153,6 +153,7 @@ const evalCliProcessBoundTests = [
   'packages/eval/eval-cli/tests/context-boot.spec.ts',
   'packages/eval/eval-cli/tests/context-boot-no-start.spec.ts',
   'packages/eval/eval-cli/tests/harness-responder.spec.ts',
+  'packages/eval/eval-cli/tests/reanchored-score.spec.ts',
 ]
 
 // These suites exercise process-global state, process APIs, or timing-sensitive
@@ -208,6 +209,8 @@ export default defineConfig({
           exclude: platformUnsupportedTests,
           fileParallelism: false,
           maxWorkers: 1,
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
         },
       },
       {

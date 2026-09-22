@@ -34,14 +34,25 @@ import type {
   AgentResponder,
   AgentRespondOpts,
   AgentResponse,
-  QueryExecutor,
-  QueryResult,
   JudgeExecutor,
   JudgeResult,
   Collaborators,
   SqlSemanticJudge,
 } from '@deepseek-ai/dsh-eval-runner'
-import { LlmSqlSemanticJudge } from '@deepseek-ai/dsh-eval-runner'
+import { LlmSqlSemanticJudge, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
+
+/**
+ * Resolve the MaxCompute synchronous wait window used by both query execution paths.
+ * @param value - Configured timeout in seconds; defaults to `MAXC_WAIT_SECONDS` or 60.
+ * @returns A positive integer timeout in seconds.
+ */
+export function resolveQueryWaitSeconds(value = process.env.MAXC_WAIT_SECONDS): number {
+  const seconds = Number(value ?? 60)
+  if (!Number.isInteger(seconds) || seconds <= 0) {
+    throw new Error(`eval-cli: MAXC_WAIT_SECONDS must be a positive integer (got ${JSON.stringify(value)})`)
+  }
+  return seconds
+}
 
 /** BootOptions */
 export interface BootOptions {
@@ -67,6 +78,16 @@ export interface BootOptions {
 export interface BootResult {
   readonly ctx: Context
   readonly collaborators: Collaborators
+  /**
+   * Which executor was mounted — the resolved sidecar path, or absent when no
+   * query provider was. The run config records it because `--with-query` alone
+   * cannot distinguish a real warehouse from the throwaway stand-in sidecar
+   * that is the default, which left historical "real execution" baselines
+   * unattributable after the fact.
+   */
+  readonly executorIdentity?: string
+  /** Seconds the warehouse was given to answer synchronously, when a query provider was mounted. */
+  readonly queryWaitSeconds?: number
 }
 
 // ── ctx.llm → engine Llm (forked from eval-runner-service) ──────────────
@@ -235,7 +256,15 @@ export function toEngineOutcome(out: ProviderQueryOutcome): EngineQueryOutcome {
  * @internal Exported for eval-cli's own tests; not part of the package API.
  */
 export class CtxOdpsAdapter implements OdpsExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: string) {}
+  private readonly executor: CtxQueryExecutor
+
+  constructor(
+    private readonly ctx: Context,
+    scopeId: string,
+    private readonly queryWaitSeconds?: number,
+  ) {
+    this.executor = new CtxQueryExecutor(ctx, scopeId, queryWaitSeconds)
+  }
 
   private engine(): { execute(req: unknown, signal?: AbortSignal): Promise<unknown>; attach(id: unknown): Promise<unknown> } | undefined {
     return this.ctx.get('query')
@@ -244,42 +273,24 @@ export class CtxOdpsAdapter implements OdpsExecutor {
   async execute(sql: string, opts?: { signal?: AbortSignal }): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql }
-    const out = (await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }, opts?.signal)) as ProviderQueryOutcome
-    return toEngineOutcome(out)
+    return toEngineOutcome(await this.executor.execute(sql, opts?.signal))
   }
 
   async attach(instanceId: string): Promise<EngineQueryOutcome> {
     const q = this.engine()
     if (q === undefined) return { state: 'failed', failureKind: 'permission_denied', error: 'no query provider mounted', sql: '' }
-    const out = (await q.attach(instanceId)) as ProviderQueryOutcome
-    return toEngineOutcome(out)
-  }
-}
-
-// ── ctx.query → eval-runner QueryExecutor (forked from eval-runner-service) ──
-
-/**
- * Adapts `ctx.query` to the eval runner's {@link QueryExecutor} port,
- * turning both an absent provider and a thrown execute into a failed result.
- * @internal Exported for eval-cli's own tests; not part of the package API.
- */
-export class CtxQueryExecutor implements QueryExecutor {
-  constructor(private readonly ctx: Context, private readonly scopeId: string) {}
-
-  async execute(sql: string): Promise<QueryResult> {
-    const q = this.ctx.get('query') as { execute(req: unknown): Promise<unknown> } | undefined
-    if (q === undefined) return { success: false, rows: [], row_count: 0, error: 'no query provider mounted' }
-    let out: Record<string, unknown>
+    if (this.queryWaitSeconds === undefined) return toEngineOutcome((await q.attach(instanceId)) as ProviderQueryOutcome)
+    const queryWaitSeconds = this.queryWaitSeconds
+    const timeout = Promise.withResolvers<EngineQueryOutcome>()
+    const timer = setTimeout(() => {
+      timeout.resolve({ state: 'failed', failureKind: 'timeout', error: `query attach timed out after configured ${queryWaitSeconds}s wait window`, sql: '' })
+    }, queryWaitSeconds * 1000)
+    timer.unref()
     try {
-      out = await q.execute({ sql, scopeId: this.scopeId, mode: 'fast' }) as Record<string, unknown>
-    } catch (err) {
-      return { success: false, rows: [], row_count: 0, error: err instanceof Error ? err.message : String(err) }
+      return await Promise.race([q.attach(instanceId).then(out => toEngineOutcome(out as ProviderQueryOutcome)), timeout.promise])
+    } finally {
+      clearTimeout(timer)
     }
-    if (out.state === 'done' || out.state === 'completed') {
-      const rows = (out.rows ?? []) as Record<string, unknown>[]
-      return { success: true, rows, row_count: rows.length, error: null }
-    }
-    return { success: false, rows: [], row_count: 0, error: (out.error as string | undefined) ?? 'query failed' }
   }
 }
 
@@ -509,9 +520,10 @@ export class Nl2sqlAgentResponder implements AgentResponder {
     withQuery: boolean,
     private readonly scopeId: string,
     queryExpansion: boolean = true,
+    queryWaitSeconds?: number,
   ) {
     this.llm = new CtxLlmAdapter(ctx, provider, model)
-    this.odps = withQuery ? new CtxOdpsAdapter(ctx, this.scopeId) : new StandInOdps()
+    this.odps = withQuery ? new CtxOdpsAdapter(ctx, this.scopeId, queryWaitSeconds) : new StandInOdps()
     this.queryExpansionEnabled = queryExpansion
   }
 
@@ -780,6 +792,10 @@ export class Nl2sqlAgentResponder implements AgentResponder {
  * @returns the result
  */
 export async function boot(opts: BootOptions): Promise<BootResult> {
+  /** Set when a query provider is mounted, so the run can record which executor ran the SQL. */
+  let executorIdentity: string | undefined
+  /** Set alongside it: the wait window that decides result vs `environment-blocked`. */
+  let queryWaitSeconds: number | undefined
   // D3ii: no default pointer — explicit scopeId is required. Fail-loud here
   // rather than silently falling back to a hardcoded scope. The BootOptions
   // field is optional on the type so existing callers fail at boot (not at
@@ -838,9 +854,11 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     // practice: `COUNT(DISTINCT role_id)` over ieu_ods.ods_10000251_all_view
     // measured 68s, against a few seconds for the pre-aggregated DWS tables the
     // earlier baselines hit — so (a)'s own SQL was being scored infra_failure.
-    const maxcWaitSeconds = Number(process.env.MAXC_WAIT_SECONDS ?? 60)
-    const toolCallTimeoutMs = ((Number.isFinite(maxcWaitSeconds) ? maxcWaitSeconds : 60) + 60) * 1000
+    const maxcWaitSeconds = resolveQueryWaitSeconds()
+    const toolCallTimeoutMs = (maxcWaitSeconds + 60) * 1000
     const fiber = ctx.plugin(MaxComputeQueryEngine, { sidecarPath, credMode: 'sidecar-self', maxcConfigPath, toolCallTimeoutMs })
+    executorIdentity = sidecarPath
+    queryWaitSeconds = maxcWaitSeconds
     await fiber
     // Wait for the sidecar to be ready
     const qe = ctx.query as { start?(): Promise<void> }
@@ -861,9 +879,10 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     opts.withQuery,
     opts.scopeId,
     opts.queryExpansion !== false,
+    queryWaitSeconds,
   )
   const judge = new LlmJudgeExecutor(llmAdapter)
-  const executor = opts.withQuery ? new CtxQueryExecutor(ctx, opts.scopeId) : null
+  const executor = opts.withQuery ? new CtxQueryExecutor(ctx, opts.scopeId, queryWaitSeconds) : null
 
   // 6. SQL Semantic Judge (enabled by default when no executor)
   let sqlJudge: SqlSemanticJudge | null = null
@@ -897,5 +916,10 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     }, judgePromptOverride)
   }
 
-  return { ctx, collaborators: { agent, judge, executor, sqlJudge } }
+  return {
+    ctx,
+    collaborators: { agent, judge, executor, sqlJudge },
+    ...(executorIdentity === undefined ? {} : { executorIdentity }),
+    ...(queryWaitSeconds === undefined ? {} : { queryWaitSeconds }),
+  }
 }

@@ -32,7 +32,7 @@ Model-facing `trigger_eval` tool for the DeepSeek Harness data agent. Triggers a
 - When only a results directory has past runs — reports the last run id (degraded mode, no new run).
 - When neither is available — returns a `not_configured` status describing what the host must wire.
 
-The tool result is rendered to the model as text (`formatTriggerEval`) and its meta is projected (`projectMeta`) for persistence/presentation.
+The tool result is rendered to the model as text (`formatTriggerEval`) and its meta is projected (`projectMeta`) for persistence/presentation. The summary reports `wrong`, `declined`, `unjudged`, infrastructure failures, and case defects separately; its pass rate uses only attributable verdicts.
 
 ## Verification
 

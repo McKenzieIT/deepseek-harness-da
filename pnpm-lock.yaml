@@ -1956,9 +1956,6 @@ importers:
       '@deepseek-ai/dsh-code-runtime-data-python':
         specifier: workspace:^
         version: link:../../code-runtime/code-runtime-data-python
-      '@deepseek-ai/dsh-eval-runner-service':
-        specifier: workspace:^
-        version: link:../../eval/eval-runner-service
       '@deepseek-ai/dsh-evidence-query':
         specifier: workspace:^
         version: link:../../data/evidence-query
@@ -7643,6 +7640,10 @@ importers:
         version: 22.20.0
 
   packages/eval/eval-runner-service:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^

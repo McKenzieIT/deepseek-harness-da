@@ -212,8 +212,9 @@ describe('parseCliArgs', () => {
       '--cases', 'c', '--schema', 's', '--output', 'o', '--pass-k', '5',
       '--case', 'k11v2_059', '--skip-health-gate', '--provider', 'aga',
       '--model', 'qwen3.7-max', '--today', '20260101', '--run-id', 'run-x',
-      '--concurrency', '4', '--with-query', '--sidecar', '/tmp/side.mjs',
-      '--no-sql-judge', '--no-query-expansion', '--scope-id', 'k99',
+      '--concurrency', '4', '--column-semantics', 'positional', '--max-stored-rows', '17',
+      '--with-query', '--sidecar', '/tmp/side.mjs', '--no-sql-judge',
+      '--no-query-expansion', '--scope-id', 'k99',
     ])
     expect(exit).toBeNull()
     const a = result!
@@ -229,6 +230,8 @@ describe('parseCliArgs', () => {
       today: '20260101',
       runId: 'run-x',
       concurrency: 4,
+      columnSemantics: 'positional',
+      maxStoredRows: 17,
       withQuery: true,
       sidecarPath: '/tmp/side.mjs',
       noSqlJudge: true,
@@ -273,6 +276,12 @@ describe('parseCliArgs', () => {
     expect(exit).toBeNull()
     expect(result!.responder).toBe('harness')
     expect(result!.variant).toBe('B')
+  })
+
+  it('rejects an unknown --column-semantics policy', () => {
+    const { err, exit } = runCli(['--cases', 'c', '--column-semantics', 'unknown'])
+    expect(exit).toBe(1)
+    expect(err.join('\n')).toContain("Error: --column-semantics must be 'by-name' or 'positional', got 'unknown'")
   })
 })
 

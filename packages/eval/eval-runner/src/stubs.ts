@@ -6,7 +6,8 @@
  * @module @deepseek-ai/dsh-eval-runner/stubs
  */
 
-import type { AgentResponder, AgentResponse, AgentRespondOpts, QueryExecutor, QueryResult, JudgeExecutor, JudgeResult } from './types.ts'
+import type { QueryOutcomeView } from '@deepseek-ai/dsh-eval'
+import type { AgentResponder, AgentResponse, AgentRespondOpts, QueryExecutor, JudgeExecutor, JudgeResult } from './types.ts'
 
 /**
  * A stub agent responder that echoes the question back as the reply.
@@ -46,34 +47,34 @@ export class StubAgentResponder implements AgentResponder {
 }
 
 /**
- * A stub query executor that returns a configurable result.
+ * A stub query executor that returns a configurable outcome.
  * Useful for testing without a real warehouse.
  */
 export class StubQueryExecutor implements QueryExecutor {
-  private readonly _results: Map<string, QueryResult> = new Map()
-  private _defaultResult: QueryResult = { success: true, rows: [{ result: 1 }], row_count: 1, error: null }
+  private readonly _results: Map<string, QueryOutcomeView> = new Map()
+  private _defaultResult: QueryOutcomeView = { state: 'completed', columns: ['result'], rows: [[1]], rowCount: 1 }
   /** StubQueryExecutor.calls */
   readonly calls: string[] = []
 
   /**
-   *  Set a canned result for a specific SQL (exact match).
+   *  Set a canned outcome for a specific SQL (exact match).
    * @param sql - sql
    * @param result - result
    */
-  setResult(sql: string, result: QueryResult): void {
+  setResult(sql: string, result: QueryOutcomeView): void {
     this._results.set(sql, result)
   }
 
   /**
-   *  Set the default result for unmatched SQL.
+   *  Set the default outcome for unmatched SQL.
    * @param result - result
    */
-  setDefaultResult(result: QueryResult): void {
+  setDefaultResult(result: QueryOutcomeView): void {
     this._defaultResult = result
   }
 
-  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<QueryResult>
-  async execute(sql: string): Promise<QueryResult> {
+  // oxlint-disable-next-line typescript/require-await -- async for interface conformance, returns Promise<QueryOutcomeView>
+  async execute(sql: string): Promise<QueryOutcomeView> {
     this.calls.push(sql)
     return this._results.get(sql) ?? this._defaultResult
   }

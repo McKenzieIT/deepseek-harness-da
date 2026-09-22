@@ -1,5 +1,5 @@
 /**
- * Case loader: parse a YAML/JSON case file + zod-validate it at the file
+ * Case loader: parse a YAML/JSON case file + structurally validate it at the file
  * boundary (P11b decision 6). YAML is rbi's format (human-authorable, with
  * comments); JSON is zero-dep; the loader detects by extension. The loader
  * takes explicit paths — glob resolution is the host's concern (keeps this
@@ -16,7 +16,7 @@ import { EvalCaseSchema, type EvalCase } from './eval_case.ts'
 /**
  * Load + validate one case from a YAML (`.yaml`/`.yml`) or JSON file.
  * @param path - the case file path.
- * @returns the validated {@link EvalCase}.
+ * @returns the structurally validated {@link EvalCase}; grading content is checked by the runner.
  */
 export function loadCase(path: string): EvalCase {
   const text = readFileSync(path, 'utf8')
@@ -28,7 +28,7 @@ export function loadCase(path: string): EvalCase {
  * Load + validate several cases. Duplicate `case_id`s across files fail loud
  * (a case id is the run's identity).
  * @param paths - the case file paths.
- * @returns the validated cases, in input order.
+ * @returns the structurally validated cases, in input order.
  */
 export function loadCases(paths: readonly string[]): EvalCase[] {
   const cases = paths.map(loadCase)

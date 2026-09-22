@@ -32,10 +32,12 @@ import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 
+import { CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
 import type {
   AgentResponder,
   AgentRespondOpts,
   AgentResponse,
+  QueryExecutor,
 } from '@deepseek-ai/dsh-eval-runner'
 
 // ─── Variant Mapping ───────────────────────────────────────────────────────────
@@ -170,6 +172,8 @@ export interface HarnessBootOptions {
   readonly sidecarPath?: string
   /** Reference date (YYYYMMDD). */
   readonly today?: string
+  /** Maximum seconds allowed for one query call when real execution is enabled. */
+  readonly queryWaitSeconds?: number
   /**
    * Explicit scopeId for SemanticLayerService (D3ii: no default pointer).
    * bootContext() throws when this is undefined rather than silently falling
@@ -203,6 +207,9 @@ export class HarnessAgentResponder implements AgentResponder {
   private readonly pluginBaseUrl: string
 
   constructor(opts: HarnessBootOptions) {
+    if (opts.withQuery && opts.queryWaitSeconds === undefined) {
+      throw new Error('HarnessAgentResponder: queryWaitSeconds is required when withQuery is true')
+    }
     this.opts = opts
     const usesInstalledPreset = opts.presetDir === undefined
     const presetDir = opts.presetDir ?? this.resolvePresetDir()
@@ -231,6 +238,36 @@ export class HarnessAgentResponder implements AgentResponder {
       )
     }
     return join(dirname(manifest), 'presets', 'data-agent')
+  }
+
+  /** Identity of the query provider used by both the agent and grader. */
+  get executorIdentity(): string | undefined {
+    if (!this.opts.withQuery) return undefined
+    return this.opts.sidecarPath ?? join(this.resolveRepoRoot(), 'packages/query/query-maxcompute/dev/standin-sidecar.mjs')
+  }
+
+  /** Query deadline used by both the agent's tool path and the grader executor. */
+  get queryWaitSeconds(): number | undefined {
+    return this.opts.withQuery ? this.opts.queryWaitSeconds : undefined
+  }
+
+  /**
+   * Build the grading executor over the same lazily booted production context.
+   * @returns The shared-context executor, or null when query execution is disabled.
+   */
+  createQueryExecutor(): QueryExecutor | null {
+    if (!this.opts.withQuery) return null
+    const scopeId = this.opts.scopeId
+    const queryWaitSeconds = this.opts.queryWaitSeconds
+    if (scopeId === undefined || queryWaitSeconds === undefined) {
+      throw new Error('HarnessAgentResponder: scopeId and queryWaitSeconds are required when withQuery is true')
+    }
+    return {
+      execute: async (sql, signal) => {
+        const ctx = await this.ensureContext()
+        return new CtxQueryExecutor(ctx, scopeId, queryWaitSeconds).execute(sql, signal)
+      },
+    }
   }
 
   /** Boot the Cordis context (lazy, singleton). */
@@ -350,6 +387,10 @@ export class HarnessAgentResponder implements AgentResponder {
 
     // ── 17. Query engine (optional) ──────────────────────────────────────────
     if (this.opts.withQuery) {
+      const queryWaitSeconds = this.opts.queryWaitSeconds
+      if (queryWaitSeconds === undefined) {
+        throw new Error('HarnessAgentResponder: queryWaitSeconds is required when withQuery is true')
+      }
       try {
         const { MaxComputeQueryEngine } = await import('@deepseek-ai/dsh-query-maxcompute')
         const defaultSidecar = join(
@@ -362,7 +403,7 @@ export class HarnessAgentResponder implements AgentResponder {
           maxcConfigPath: process.env.MAXC_CONFIG
             ?? resolve(process.env.HOME ?? '~', '.maxc/config.yaml'),
           defaultProject: 'ieu_cdm',
-          toolCallTimeoutMs: 300_000,
+          toolCallTimeoutMs: queryWaitSeconds * 1000,
         })
         console.log('  [HarnessAgentResponder] Query engine mounted')
       } catch (err) {

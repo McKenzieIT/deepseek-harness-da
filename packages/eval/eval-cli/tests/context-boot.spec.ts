@@ -9,7 +9,7 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { boot, type BootResult } from '../src/context.ts'
+import { boot, resolveQueryWaitSeconds, type BootResult } from '../src/context.ts'
 
 const ROOT = realpathSync(join(__dirname, '..', '..', '..', '..'))
 const SCHEMA = join(ROOT, 'examples/k11-semantic-layer')
@@ -157,27 +157,37 @@ describe('boot — offline collaborators', () => {
 })
 
 describe('boot — optional query engine', () => {
-  it('uses the default sidecar, config path, and finite fallback wait', async () => {
+  it('uses the default sidecar, config path, and wait window', async () => {
     vi.stubEnv('MAXC_CONFIG', undefined)
     vi.stubEnv('MAXC_WAIT_SECONDS', undefined)
-    const { collaborators } = await bootTracked({ withQuery: true, noSqlJudge: true })
+    const result = await bootTracked({ withQuery: true, noSqlJudge: true })
 
-    expect(collaborators.executor).not.toBeNull()
-    await expect(collaborators.executor!.execute('SELECT 1')).resolves.toMatchObject({
-      success: true,
-      row_count: 1,
+    expect(result.collaborators.executor).not.toBeNull()
+    expect(result.executorIdentity).toBe(STANDIN_SIDECAR)
+    expect(result.queryWaitSeconds).toBe(60)
+    await expect(result.collaborators.executor!.execute('SELECT 1')).resolves.toMatchObject({
+      state: 'completed',
+      rowCount: 1,
     })
   }, 60_000)
 
-  it('uses explicit query settings and recovers from a non-finite wait', async () => {
+  it('uses explicit query settings and records the configured wait', async () => {
     vi.stubEnv('MAXC_CONFIG', join(tmpdir(), 'eval-maxc-config.yaml'))
-    vi.stubEnv('MAXC_WAIT_SECONDS', 'not-a-number')
-    const { collaborators } = await bootTracked({
+    vi.stubEnv('MAXC_WAIT_SECONDS', '12')
+    const result = await bootTracked({
       withQuery: true,
       sidecarPath: STANDIN_SIDECAR,
       noSqlJudge: true,
     })
 
-    expect(collaborators.executor).not.toBeNull()
+    expect(result.collaborators.executor).not.toBeNull()
+    expect(result.executorIdentity).toBe(STANDIN_SIDECAR)
+    expect(result.queryWaitSeconds).toBe(12)
   }, 60_000)
+
+  it('rejects a non-positive or non-integer query wait', () => {
+    expect(() => resolveQueryWaitSeconds('not-a-number')).toThrow(
+      'eval-cli: MAXC_WAIT_SECONDS must be a positive integer',
+    )
+  })
 })

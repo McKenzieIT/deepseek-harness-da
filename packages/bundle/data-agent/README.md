@@ -19,6 +19,8 @@ The data-agent bundle is an additive layer over `dsh-base`. It selects DashScope
 
 No runtime invariant companion is published because `@deepseek-ai/dsh-data-agent` owns no independently observable relationship that can diverge from its runtime state.
 
+Evaluation runs use the external `dsh-eval` host. The default product profile does not mount `eval-runner-service`, because published packages do not include benchmark cases and ordinary data-agent sessions must not keep evaluation infrastructure resident.
+
 <a id="dev-note"></a>
 ## Dev Note
 

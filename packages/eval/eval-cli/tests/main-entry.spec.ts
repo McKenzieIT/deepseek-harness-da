@@ -31,6 +31,10 @@ interface WireRequest {
   readonly parameters?: { readonly tools?: readonly unknown[] }
 }
 interface StoredRun {
+  readonly config?: {
+    readonly executor_identity?: string
+    readonly query_wait_seconds?: number
+  }
   readonly cases: Array<{
     readonly pass_k_results: Array<{
       readonly generated_sql?: string | null
@@ -284,6 +288,31 @@ describe('main — harness responder', () => {
     expect(attempt).toMatchObject({
       generated_sql: 'SELECT 1',
       sql_judge: { score: expectedScore },
+    })
+  }, 120_000)
+
+  it('records the harness executor identity and wait window under --with-query', async () => {
+    routeMode = 'judge-text'
+    const output = outDir()
+    const sidecar = join(tmpdir(), 'dsh-eval-main-entry-missing-sidecar.mjs')
+    const { exit } = await runMain([
+      ...BASE_ARGS,
+      '--output', output,
+      '--responder', 'harness',
+      '--variant', 'D',
+      '--with-query',
+      '--sidecar', sidecar,
+    ], dshHome())
+
+    expect(exit).toBeNull()
+    const result = readStoredRun(output)
+    expect(result.config).toMatchObject({
+      executor_identity: sidecar,
+      query_wait_seconds: 60,
+    })
+    expect(result.cases[0]?.pass_k_results[0]).toMatchObject({
+      generated_sql: 'SELECT 1',
+      sql_judge: { score: 1 },
     })
   }, 120_000)
 })

@@ -2,7 +2,7 @@
 
 **Type**: research（experiment，AFK）  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [T12 — Final Evaluation package graph 与 legacy cutover](T12-eval-package-consolidation.md)、[G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)、[GA-EVAL-CASESET-EVENT-ANCHOR](../../data-agent/tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)
+**Blocked by**: [T12 — Final Evaluation package graph 与 legacy cutover](T12-eval-package-consolidation.md)、[T16 — Execution artifact 截断信号实测](T16-execution-artifact-truncation-validation.md)、[G1b — Ground-truth lifecycle](G1b-ground-truth-lifecycle.md)、[GA-EVAL-CASESET-EVENT-ANCHOR](../../data-agent/tickets/phase-misc/GA-EVAL-CASESET-EVENT-ANCHOR-stale-expected-values.md)
 **Blocks**: [R21 — 跨 slice 与跨时间 Goodhart audit](R21-goodhart-audit.md)、[R26 — Context counterfactual matrix](R26-context-counterfactual-matrix.md)、[R27 — Context perturbation and leakage audit](R27-context-perturbation-leakage-audit.md)
 **Mode**: ML-eval experiment（按 [playbook](../playbook.md) 走 SPEC→rubric→另一环境）
 **Branch**: `research/R25-evaluation-rebaseline`

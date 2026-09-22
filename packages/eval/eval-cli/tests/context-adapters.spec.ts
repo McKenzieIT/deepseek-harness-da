@@ -1,5 +1,5 @@
 /**
- * The four adapter classes in `src/context.ts` that bridge a Cordis `ctx` to the
+ * The three adapter classes in `src/context.ts` that bridge a Cordis `ctx` to the
  * engine / eval-runner ports. Each is driven against a real `Context` with the
  * one service it reads stubbed via `ctx.provide(...)` — the same seam
  * eval-runner-service.spec.ts uses to drive the real engine (its adapter reads
@@ -10,12 +10,9 @@
  *    Every branch of `completeWithReasoning` is pinned — SQL in text, a ```sql
  *    fence inside reasoning, bare SQL in reasoning, conversational text with
  *    unrelated reasoning, text with no reasoning, and the empty-response warn.
- *  - `CtxOdpsAdapter` / `CtxQueryExecutor` both decline with a named failure when
- *    no query provider is mounted, and otherwise thread `{scopeId, mode:'fast'}`
- *    through to the provider; the outcome remap is `toEngineOutcome`'s job (tested
- *    in context-pure), so here we pin the no-provider guard, the scopeId
- *    threading, and — for CtxQueryExecutor — the done/completed success shapes and
- *    the thrown-error catch (Error and non-Error alike).
+ *  - `CtxOdpsAdapter` declines with a named failure when no query provider is
+ *    mounted and delegates execution to eval-runner's shared `CtxQueryExecutor`;
+ *    the shared adapter is covered by its owning package.
  *  - `LlmJudgeExecutor` parses a single number out of the judge LLM's reply,
  *    clamps it to [0,1], treats an unparseable reply as 0, and reports a thrown
  *    LLM as {score:0, error}.
@@ -28,7 +25,6 @@ import type { StreamChunk } from '@deepseek-ai/dsh-llm'
 import {
   CtxLlmAdapter,
   CtxOdpsAdapter,
-  CtxQueryExecutor,
   LlmJudgeExecutor,
 } from '../src/context.ts'
 
@@ -187,52 +183,37 @@ describe('CtxOdpsAdapter', () => {
     expect(await new CtxOdpsAdapter(ctx, 'k11').attach('inst-77'))
       .toEqual({ state: 'running', instance_id: 'inst-77', stage: 'Running', sql: 'SELECT 2' })
   })
-})
 
-describe('CtxQueryExecutor', () => {
-  it('returns a failure result when no query provider is mounted', async () => {
-    expect(await new CtxQueryExecutor(new Context(), 'k11').execute('SELECT 1'))
-      .toEqual({ success: false, rows: [], row_count: 0, error: 'no query provider mounted' })
+  it('clears a configured attach deadline when the provider settles first', async () => {
+    const ctx = queryCtx({
+      execute: async () => ({ state: 'completed' }),
+      attach: async () => ({ state: 'completed', rows: [{ total: 1 }], sql: 'SELECT 1' }),
+    })
+    expect(await new CtxOdpsAdapter(ctx, 'k11', 1).attach('inst-fast'))
+      .toEqual({ state: 'done', rows: [{ total: 1 }], sql: 'SELECT 1' })
   })
 
-  it('threads scopeId and returns rows on a done outcome', async () => {
-    const seen: unknown[] = []
-    const ctx = queryCtx({ execute: async (req: unknown) => { seen.push(req); return { state: 'done', rows: [{ a: 1 }, { a: 2 }] } } })
-    const out = await new CtxQueryExecutor(ctx, 'scope-y').execute('SELECT a FROM t')
-    expect(seen).toEqual([{ sql: 'SELECT a FROM t', scopeId: 'scope-y', mode: 'fast' }])
-    expect(out).toEqual({ success: true, rows: [{ a: 1 }, { a: 2 }], row_count: 2, error: null })
-  })
-
-  it('treats a completed outcome as success too, defaulting absent rows to empty', async () => {
-    const ctx = queryCtx({ execute: async () => ({ state: 'completed' }) })
-    expect(await new CtxQueryExecutor(ctx, 'k11').execute('SELECT 1'))
-      .toEqual({ success: true, rows: [], row_count: 0, error: null })
-  })
-
-  it('reports the provider error string on a non-success outcome', async () => {
-    const ctx = queryCtx({ execute: async () => ({ state: 'failed', error: 'ODPS-1: boom' }) })
-    expect(await new CtxQueryExecutor(ctx, 'k11').execute('SELECT 1'))
-      .toEqual({ success: false, rows: [], row_count: 0, error: 'ODPS-1: boom' })
-  })
-
-  it('falls back to a generic message when a non-success outcome carries no error', async () => {
-    const ctx = queryCtx({ execute: async () => ({ state: 'failed' }) })
-    expect(await new CtxQueryExecutor(ctx, 'k11').execute('SELECT 1'))
-      .toEqual({ success: false, rows: [], row_count: 0, error: 'query failed' })
-  })
-
-  it('catches a thrown Error and reports its message', async () => {
-    const ctx = queryCtx({ execute: async () => { throw new Error('connection reset') } })
-    expect(await new CtxQueryExecutor(ctx, 'k11').execute('SELECT 1'))
-      .toEqual({ success: false, rows: [], row_count: 0, error: 'connection reset' })
-  })
-
-  it('catches a thrown non-Error and stringifies it', async () => {
-    const ctx = queryCtx({ execute: async () => { throw 'raw failure' } })
-    expect(await new CtxQueryExecutor(ctx, 'k11').execute('SELECT 1'))
-      .toEqual({ success: false, rows: [], row_count: 0, error: 'raw failure' })
+  it('returns a timeout outcome when attach outlives the configured wait', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const ctx = queryCtx({
+        execute: async () => ({ state: 'completed' }),
+        attach: () => new Promise(() => { /* stays pending past the deadline */ }),
+      })
+      const pending = new CtxOdpsAdapter(ctx, 'k11', 1).attach('inst-slow')
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(pending).resolves.toEqual({
+        state: 'failed',
+        failureKind: 'timeout',
+        error: 'query attach timed out after configured 1s wait window',
+        sql: '',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
+
 
 describe('LlmJudgeExecutor', () => {
   const judge = (ctx: Context) => new LlmJudgeExecutor(adapter(ctx))
