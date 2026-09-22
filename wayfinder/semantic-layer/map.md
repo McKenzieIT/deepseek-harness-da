@@ -62,6 +62,7 @@
 - [W15 — Evidence-query push 订阅实现](tickets/W15-evidence-push-subscription.md): eval completion invalidation 与客户端 refresh 已接线。
 - [W16: evidence-query 客户端 remote 缺口 —— 证据 UI 在生产中是死的](tickets/W16-evidence-query-client-remote-gap.md): evidence-query remote 导出、API 装配和 UI 解析路径已补齐，真实数据可到达客户端。
 - [W17: 管理 session 客户端桥接 —— 知识图谱闭环断在一个点上](tickets/W17-management-session-client-bridge.md): Management Context 按 Workspace 与 Data Scope 持久隔离，管理页复用标准 Session/Conversation，并以合并后的可扩展 Semantic Graph 完成引用与叙述后动画闭环。
+- [W26: Management Context 解析与持久 Data Scope 绑定](tickets/W26-management-context-resolution.md): fork-owned `ctx.managementContext` 按 `(Workspace, Data Scope)` single-flight 解析为持久 Management Session，绑定通过 `sessionProjectionCache.write` flush 后返回，冷缓存恢复区分 unknown 与 confirmed no-match，跨进程 `dataScopeId` 使用 branded 类型。
 - [W6 — ③ 自驱循环 + B→A 演进](tickets/W6-autonomous-goal-loop-and-btoa-evolution.md): goal、evidence 和布局演进被拆成独立插件；自动演化仍受 evidence 可信度限制。
 - [W6a — goal-eval-policy plugin（no-progress backstop）](tickets/W6a-goal-eval-policy-plugin.md): no-progress policy 只消费明确 eval evidence，不拥有 evaluator。
 - [W6b — goal-eval-context plugin（eval delta → round context）](tickets/W6b-goal-eval-context-plugin.md): eval delta 可进入后续 round context，输入必须可由 session 记录重建。
@@ -123,6 +124,7 @@
 - Organizational Memory 需要独立 capability owner，至少覆盖跨 session provenance、事实替代和冲突；session goal 不承担该语义。
 - Query-time subagent enrichment 的权限、预算、写回和 evidence 规则尚不足以形成单一 ticket。
 - Prompt caching 仅保留 provider-specific 测量方向；在 provider、消息块接口和 cache telemetry 明确前不创建实现票。
+- Management Context 的 durable 绑定尚未约束工具执行入口；跨 scope 写入与 scope 删除后的工具拒绝需要独立 fork-owned 执行入口 owner，且须与 W22 patrol 写入职责协调。
 
 ## Out of scope
 
