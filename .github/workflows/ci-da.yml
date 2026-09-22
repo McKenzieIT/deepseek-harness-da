@@ -42,6 +42,16 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      # DA-owned code-runtime-data-python tests spawn a Python interpreter that
+      # imports numpy/pandas; provision them (same versions/step as ci.yml) and
+      # point the runtime at this interpreter via DSH_TEST_PYTHON_PATH. This is
+      # DA-owned CI dependency provisioning — exactly what T29 asks lanes to own.
+      - uses: actions/setup-python@v6.3.0
+        id: data-python
+        with:
+          python-version: '3.10'
+      - name: Install data Python runtime dependencies
+        run: python -m pip install --disable-pip-version-check numpy==2.2.6 pandas==2.3.3
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
       - name: Build (official profile — fresh checkout needs it, see T1/T13)
@@ -49,6 +59,8 @@ jobs:
       - name: Typecheck (whole graph — DA depends on upstream types)
         run: pnpm run typecheck
       - name: Test DA-owned packages only
+        env:
+          DSH_TEST_PYTHON_PATH: ${{ steps.data-python.outputs.python-path }}
         run: |
           set -euo pipefail
           mapfile -t DIRS < <(pnpm exec tsx scripts/da-owned-packages.ts)
