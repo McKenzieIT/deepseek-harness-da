@@ -98,12 +98,43 @@ The [System Prompt service](../../../packages/core/system-prompt/src/index.ts) r
 
 A proposal committed by one tool call cannot revise the tools already sent with that model request. The [tool-call loop](../../../packages/core/agent-loop/src/tool-calls.ts) also processes the remaining calls in the response after a `concludesTurn` result. In the Tools registry, guards run after pre-execute, but `tools/execute` may still await before the body starts; body dispatch re-resolves the definition and cancellation state, not every business guard. The design must therefore cover authorization changes during that interval instead of treating a single guard check as sufficient.
 
+### Native planning has entrances outside model tools
+
+The [command registry](../../../packages/interaction/commands/src/index.ts) supports exact-Agent command shadowing, but direct service calls do not pass through model-tool guards. [Goal](../../../packages/goal/goal/src/index.ts) exposes mutation Remotes, and [Plan Mode](../../../packages/plan/plan-mode/src/index.ts) exposes `set` as a public service method. Tool hiding and `/goal` or `/plan` command shadowing alone therefore do not establish service-level exclusivity. The generic Remote gateway has not been fully audited in this checkpoint; no universal Remote-interception mechanism is assumed.
+
+The [Goal round driver](../../../packages/goal/goal-round-driver/src/index.ts) has no public per-Plan suspend-and-drain operation. Its ordered disposal is not a Session-level ownership handoff. The [Agent lifecycle provider](../../../packages/core/agent-loop/src/index.ts) cancels and waits for idle during normal Agent disposal, whereas [Agent disposal notifications](../../../packages/core/agent/src/index.ts) do not await listeners. Bundle teardown needs its own ordered cleanup and cannot use a notification alone as proof that native work or Task DAG storage has drained.
+
+### Focused evidence
+
+On 2026-09-22, the following existing core test selection passed 58 tests; 62 PTC tests were excluded by the name filter. It exercises scoped registration, restriction, guards, and PTC presentation. It does not test a Task DAG Bundle, native-planner handoff, phase-gate compatibility, or role recovery.
+
+```sh
+pnpm exec vitest run packages/core/tools/tests/scoped.spec.ts packages/core/tools/tests/ptc.spec.ts -t 'restrict\(\)|scoped tool registration|scoped execution dispatch|mode-aware wire contribution|denies a model-direct native-tool call under PTC mode'
+```
+
+## Discussion checkpoint
+
+The activation trigger and business-result default are confirmed. Tool composition, role transitions, native-planner exclusion, lifecycle handling, and overall shared understanding remain open. This ticket stays claimed; downstream tickets are not unblocked by the source findings or focused core tests.
+
+```mermaid
+flowchart TD
+    Q1[Confirmed: model proposal may trigger activation] --> Q2[Confirmed: business-result delivery defaults to managed execution]
+    Q1 --> C1[Open: compatible tool and prompt composition]
+    Q2 --> C2[Open: role transitions and mixed-input handling]
+    C1 --> C3[Open: native-planner exclusion and lifecycle]
+    C2 --> C3
+    C3 --> V[Pending: composition acceptance evidence]
+    V --> H[Pending: shared-understanding confirmation]
+```
+
 ## Remaining decisions
 
 - Define cross-preset tool-catalog composition so Task DAG orchestration tools remain available independently of preset-owned execution filtering, without re-adding ordinary tools a preset intentionally denied. Include native and PTC presentation and the actual callable definitions.
-- Define prompt guidance and the exact transition between ordinary, orchestrator, Attempt-bound, and terminal contexts without making a preset or model choose infrastructure fields.
-- Define the Bundle and plugin rows, registration lifetimes, compatibility probes, and removal behavior; G18 owns final package names and public-package grouping.
+- Define prompt guidance and the exact transition between ordinary, orchestrator, Attempt-bound, and terminal contexts without making a preset or model choose infrastructure fields. Cover same-response activation, mixed input, and rejection/redelivery.
+- Define native planning coexistence across tools, prompt guidance, human commands, direct service calls, and Remotes. Distinguish installed-but-inactive behavior from the confirmed active-Plan rule.
+- Define the Bundle and plugin rows, registration lifetimes, compatibility probes, and removal behavior, including in-flight work; G18 owns final package names and public-package grouping.
 
 ## Comments
 
 - 2026-09-22：本会话 Q1 用户选择“模型提案触发”。普通对话可由模型主动提出计划，Host 按既定规则验证与批准后接管，不再要求用户单独开启任务模式；高风险或未知操作仍按已有规则等待人工审批。本轮只确定触发权，不将所有普通请求默认任务化，也不预先确定角色切换时机。
+- 2026-09-22：本会话 Q2 用户选择“业务结果交付默认纳管”。单条 SQL 问数也默认通过 Task 执行与验证；解释指标、查阅已有口径保持普通对话。此确认不等于禁止所有非 Plan 工具调用，也不决定安装后未激活时的原生规划行为。
