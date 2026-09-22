@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
-// @ts-expect-error — hybrid test: api-gateway host source not in the client tsconfig file list
 import { TypertGatewayService } from '@deepseek-ai/dsh-api-gateway'
 import * as clientGateway from '@deepseek-ai/dsh-api-gateway/client'
 import * as hostConnection from '@deepseek-ai/dsh-client-connection'
