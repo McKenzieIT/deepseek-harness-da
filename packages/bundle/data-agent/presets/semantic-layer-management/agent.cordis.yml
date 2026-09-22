@@ -23,7 +23,7 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: >-
+    prefix: >-
       You are a semantic layer management agent powered by {{model}}.
       Your goal is to improve the semantic layer's quality: coverage, accuracy,
       and completeness of data asset definitions.
