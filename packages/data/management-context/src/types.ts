@@ -8,7 +8,29 @@
  */
 
 import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { Branded } from '@deepseek-ai/dsh-brand'
+import { brandString } from '@deepseek-ai/dsh-brand'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace'
+
+/**
+ * The cross-process identity of a Data Scope, branded so a bare `string` (or a
+ * `SessionId`, `WorkspaceId`, etc.) cannot be passed where a Data Scope id is
+ * expected. The brand erases at runtime — the value is a plain string over the
+ * wire and in persisted events — so it is safe to {@link DataScopeId} an
+ * upstream registry id before crossing a process boundary. The upstream
+ * `ScopeRegistryService` keeps bare `string` ids internally; this brand is the
+ * fork-owned owner for the cross-process contract this package introduces.
+ */
+export type DataScopeId = Branded<'DataScopeId'>
+
+/**
+ * Brand a string as a {@link DataScopeId} without changing the value.
+ * @param id - the upstream scope-registry id (a bare string).
+ * @returns the same string with the `DataScopeId` brand.
+ */
+export function DataScopeId(id: string): DataScopeId {
+  return brandString<DataScopeId>(id)
+}
 
 /**
  * The identity of a Management Context: which Workspace and which Data Scope
@@ -20,7 +42,7 @@ export interface ManagementContextRequest {
   /** The Workspace the Management Session attaches to (must exist in the registry). */
   readonly workspaceId: WorkspaceId
   /** The Data Scope the Management Session manages (must exist in the scope registry). */
-  readonly dataScopeId: string
+  readonly dataScopeId: DataScopeId
 }
 
 /**
@@ -39,4 +61,4 @@ export interface ManagementContextResolution {
  * or `null` before any `data-scope/bound` event. Plain JSON so the projection
  * cache can persist and surface it to the Session list without opening history.
  */
-export type DataScopeBindingState = { readonly dataScopeId: string } | null
+export type DataScopeBindingState = { readonly dataScopeId: DataScopeId } | null

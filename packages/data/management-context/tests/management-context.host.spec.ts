@@ -34,6 +34,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 import { createSessionTestController } from '../../../api/session-controller/tests/test-remote.ts'
 import ManagementContextService, { MANAGEMENT_PRESET_ID } from '../src/index.ts'
+import { DataScopeId } from '../src/types.ts'
 
 const DATA_AGENT_PRESETS_ROOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -160,8 +161,8 @@ describe('managementContext.resolveOrCreate', () => {
     await registerScope(ctx, 'scope-a')
 
     const [first, second] = await Promise.all([
-      ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' }),
-      ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' }),
+      ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') }),
+      ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') }),
     ])
 
     expect(first.sessionId).toBe(second.sessionId)
@@ -173,8 +174,8 @@ describe('managementContext.resolveOrCreate', () => {
     const workspaceId = await makeWorkspace(ctx)
     await registerScope(ctx, 'scope-a')
 
-    const created = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
-    const reused = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const created = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
+    const reused = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
 
     expect(created.created).toBe(true)
     expect(reused.created).toBe(false)
@@ -187,7 +188,7 @@ describe('managementContext.resolveOrCreate', () => {
     const workspaceId = await makeWorkspace(ctx)
     await registerScope(ctx, 'scope-a')
 
-    const { sessionId } = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const { sessionId } = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     const { items } = await ctx.sessionController.list({}, new AbortController().signal)
     const summary = items.find(item => item.sessionId === sessionId)
 
@@ -205,15 +206,15 @@ describe('managementContext.createNew', () => {
 
     let clock = 1_000
     vi.spyOn(Date, 'now').mockImplementation(() => clock)
-    const older = await ctx.managementContext.createNew({ workspaceId, dataScopeId: 'scope-a' })
+    const older = await ctx.managementContext.createNew({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     clock = 5_000
-    const newer = await ctx.managementContext.createNew({ workspaceId, dataScopeId: 'scope-a' })
+    const newer = await ctx.managementContext.createNew({ workspaceId, dataScopeId: DataScopeId('scope-a') })
 
     expect(newer.sessionId).not.toBe(older.sessionId)
     expect(newer.created).toBe(true)
     expect(managementSessionCount(ctx)).toBe(2)
 
-    const resolved = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const resolved = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     expect(resolved.created).toBe(false)
     expect(resolved.sessionId).toBe(newer.sessionId)
   })
@@ -226,11 +227,11 @@ describe('managementContext isolation', () => {
     await registerScope(ctx, 'scope-a')
     await registerScope(ctx, 'scope-b')
 
-    const a = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
-    const b = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-b' })
+    const a = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
+    const b = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-b') })
 
     expect(a.sessionId).not.toBe(b.sessionId)
-    const reAgain = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const reAgain = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     expect(reAgain.sessionId).toBe(a.sessionId)
   })
 
@@ -240,13 +241,13 @@ describe('managementContext isolation', () => {
     const workspaceB = await makeWorkspace(ctx)
     await registerScope(ctx, 'scope-a')
 
-    const a = await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceA, dataScopeId: 'scope-a' })
-    const b = await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceB, dataScopeId: 'scope-a' })
+    const a = await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceA, dataScopeId: DataScopeId('scope-a') })
+    const b = await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceB, dataScopeId: DataScopeId('scope-a') })
 
     expect(a.sessionId).not.toBe(b.sessionId)
-    expect((await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceA, dataScopeId: 'scope-a' })).sessionId)
+    expect((await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceA, dataScopeId: DataScopeId('scope-a') })).sessionId)
       .toBe(a.sessionId)
-    expect((await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceB, dataScopeId: 'scope-a' })).sessionId)
+    expect((await ctx.managementContext.resolveOrCreate({ workspaceId: workspaceB, dataScopeId: DataScopeId('scope-a') })).sessionId)
       .toBe(b.sessionId)
   })
 
@@ -256,8 +257,8 @@ describe('managementContext isolation', () => {
     await registerScope(ctx, 'scope-a')
     await registerScope(ctx, 'scope-b')
 
-    const b = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-b' })
-    const a = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const b = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-b') })
+    const a = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
 
     expect(a.sessionId).not.toBe(b.sessionId)
     expect(managementSessionCount(ctx)).toBe(2)
@@ -271,7 +272,7 @@ describe('managementContext isolation', () => {
     // A management-preset session created directly, with no data-scope/bound event.
     const unbound = await ctx.sessionController.create({ workspaceId, agentPreset: MANAGEMENT_PRESET_ID })
 
-    const resolved = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const resolved = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     expect(resolved.sessionId).not.toBe(unbound.sessionId)
     expect(resolved.created).toBe(true)
   })
@@ -283,7 +284,7 @@ describe('managementContext isolation', () => {
 
     const plain = await ctx.sessionController.create({ workspaceId, agentPreset: 'standard' })
 
-    const resolved = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const resolved = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     expect(resolved.sessionId).not.toBe(plain.sessionId)
     expect(resolved.created).toBe(true)
   })
@@ -295,14 +296,14 @@ describe('managementContext failure modes', () => {
     await registerScope(ctx, 'scope-a')
     await expect(ctx.managementContext.resolveOrCreate({
       workspaceId: WorkspaceId('nope'),
-      dataScopeId: 'scope-a',
+      dataScopeId: DataScopeId('scope-a'),
     })).rejects.toThrow(/workspace "nope" not found/)
   })
 
   it('fails loud for an unknown data scope with no active-scope fallback', async () => {
     const { ctx } = await harness()
     const workspaceId = await makeWorkspace(ctx)
-    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'ghost' }))
+    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('ghost') }))
       .rejects.toThrow(/data scope "ghost" not found/)
   })
 
@@ -310,7 +311,7 @@ describe('managementContext failure modes', () => {
     const { ctx } = await harness({ presets: ['standard'] })
     const workspaceId = await makeWorkspace(ctx)
     await registerScope(ctx, 'scope-a')
-    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' }))
+    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') }))
       .rejects.toThrow(/not found/)
   })
 
@@ -319,10 +320,10 @@ describe('managementContext failure modes', () => {
     const workspaceId = await makeWorkspace(ctx)
     await registerScope(ctx, 'scope-a')
 
-    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' }))
+    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') }))
       .rejects.toThrow()
     // The slot cleared, so a retry runs afresh (and fails the same way).
-    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' }))
+    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') }))
       .rejects.toThrow()
   })
 })
@@ -333,10 +334,10 @@ describe('managementContext scope deletion', () => {
     const workspaceId = await makeWorkspace(ctx)
     await registerScope(ctx, 'scope-a')
 
-    const { sessionId } = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const { sessionId } = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     await ctx.scopes.remove('scope-a')
 
-    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' }))
+    await expect(ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') }))
       .rejects.toThrow(/data scope "scope-a" not found/)
 
     // The prior binding is still readable from the session list.
@@ -351,7 +352,7 @@ describe('managementContext disposal', () => {
     const { ctx } = await harness()
     const workspaceId = await makeWorkspace(ctx)
     await registerScope(ctx, 'scope-a')
-    const { sessionId } = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: 'scope-a' })
+    const { sessionId } = await ctx.managementContext.resolveOrCreate({ workspaceId, dataScopeId: DataScopeId('scope-a') })
     const session = ctx.sessions.get(sessionId) as Session
 
     expect(ctx.sessionProjections.snapshot(session).values.dataScope).toBeDefined()

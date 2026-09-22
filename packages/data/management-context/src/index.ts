@@ -36,9 +36,9 @@ import type {} from '@deepseek-ai/dsh-scope-registry'
 import type {} from '@deepseek-ai/dsh-agent-presets'
 import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller'
 import { dataScopeProjectionDefinition } from './projection.ts'
-import type { ManagementContextRequest, ManagementContextResolution } from './types.ts'
+import type { DataScopeId, ManagementContextRequest, ManagementContextResolution } from './types.ts'
 
-export type { DataScopeBindingState, ManagementContextRequest, ManagementContextResolution } from './types.ts'
+export type { DataScopeBindingState, DataScopeId, ManagementContextRequest, ManagementContextResolution } from './types.ts'
 export { dataScopeProjectionDefinition } from './projection.ts'
 export { ManagementContextGateway } from './remote.ts'
 export type { ManagementContextRemote } from './remote.ts'
@@ -58,6 +58,22 @@ const KEY_SEPARATOR = '\u0000'
 
 /** The cold Session-list rows default recovery filters over. */
 type SessionListItems = readonly SessionSummary[]
+
+/**
+ * Outcome of a cold-list recovery scan for an existing Management Session.
+ * - `found` — a member session whose cold projection confirms the management
+ *   preset and the target Data Scope; reuse it.
+ * - `no-match` — every member session's cold projection is readable and none
+ *   is a management session bound to the target scope; safe to create.
+ * - `unknown` — at least one member session's cold projection is missing or
+ *   stale (the Session-list hint is explicitly partial). The scan cannot rule
+ *   it out as the target session, so the caller MUST NOT silently create a
+ *   duplicate; it fails loud until the projection cache is warmed.
+ */
+type FindExistingResult =
+  | { readonly kind: 'found'; readonly sessionId: SessionId }
+  | { readonly kind: 'no-match' }
+  | { readonly kind: 'unknown'; readonly sessionId: SessionId }
 
 /**
  * The `ctx.managementContext` service. Owns per-context single-flight, fail-loud
@@ -130,8 +146,16 @@ export class ManagementContextService extends Service {
 
   private async runResolveOrCreate(request: ManagementContextRequest): Promise<ManagementContextResolution> {
     const workspace = await this.validate(request)
-    const existing = this.findExisting(workspace, request.dataScopeId, await this.listSummaries())
-    if (existing !== undefined) return { sessionId: existing, created: false }
+    const result = this.findExisting(workspace, request.dataScopeId, await this.listSummaries())
+    if (result.kind === 'found') return { sessionId: result.sessionId, created: false }
+    if (result.kind === 'unknown') {
+      throw new Error(
+        `management-context: cannot resolve context (${request.workspaceId}, ${request.dataScopeId}) — `
+          + 'the projection cache for member session "'
+          + result.sessionId
+          + '" is missing or stale; warm the cache before retrying to avoid a silent duplicate creation',
+      )
+    }
     const sessionId = await this.createSession(request)
     return { sessionId, created: true }
   }
@@ -162,35 +186,63 @@ export class ManagementContextService extends Service {
   }
 
   /**
-   * Select the newest matching Management Session from the Workspace's durable
-   * session membership: preset `semantic-layer-management` and `dataScope`
+   * Scan the Workspace's durable session membership for the newest matching
+   * Management Session: preset `semantic-layer-management` and `dataScope`
    * bound to `dataScopeId`, highest `updatedAt`. Reads projection values cold
    * from the supplied Session list — never opening full history.
+   *
+   * The Session-list cold hint is explicitly partial: a member session may
+   * carry no projection block at all, or a block whose `agentPreset` or
+   * `dataScope` cell is missing. Such a session is **unknown**, not a
+   * confirmed no-match — the scan returns `unknown` for it instead of
+   * silently skipping it, so the caller never creates a duplicate when an
+   * existing session might already be the target.
    */
   private findExisting(
     workspace: Workspace,
-    dataScopeId: string,
+    dataScopeId: DataScopeId,
     items: SessionListItems,
-  ): SessionId | undefined {
+  ): FindExistingResult {
     const memberIds = new Set<SessionId>(workspace.sessionIds)
-    if (memberIds.size === 0) return undefined
+    if (memberIds.size === 0) return { kind: 'no-match' }
     let best: { sessionId: SessionId; updatedAt: number } | undefined
     for (const item of items) {
       if (!memberIds.has(item.sessionId)) continue
       const values = item.projections?.values
-      if (values?.agentPreset !== MANAGEMENT_PRESET_ID) continue
+      // No projection block at all — the cold cache is missing/stale for this
+      // member. Cannot rule it out; fail loud rather than risk a duplicate.
+      if (values === undefined) return { kind: 'unknown', sessionId: item.sessionId }
+      const preset = values.agentPreset
+      // Preset cell missing — cannot classify this member. Unknown.
+      if (preset === undefined) return { kind: 'unknown', sessionId: item.sessionId }
+      // Confirmed non-management — a genuine no-match for this context.
+      if (preset !== MANAGEMENT_PRESET_ID) continue
       const binding = values.dataScope
+      // Management preset but the dataScope cell is missing — cannot tell
+      // which scope this session manages. Unknown.
+      if (binding === undefined) return { kind: 'unknown', sessionId: item.sessionId }
+      // Confirmed management but bound to a different scope — no-match.
       if (binding == null || binding.dataScopeId !== dataScopeId) continue
+      // Confirmed match — track the newest by updatedAt.
       if (best === undefined || item.updatedAt > best.updatedAt) {
         best = { sessionId: item.sessionId, updatedAt: item.updatedAt }
       }
     }
-    return best?.sessionId
+    return best === undefined
+      ? { kind: 'no-match' }
+      : { kind: 'found', sessionId: best.sessionId }
   }
 
   /**
    * Create one ordinary Session pinned to `semantic-layer-management`, then
    * append the durable `data-scope/bound` event recording the managed scope.
+   *
+   * The binding event is flushed to durable storage before this method returns:
+   * `ctx.sessions.flush(session)` dispatches the `session/flush` durability
+   * checkpoint, so every persistence listener (the JSONL writer, the
+   * projection-cache write-back) has settled. A caller that reads the Session
+   * list immediately after — or reopens the process — sees the binding without
+   * opening full history. A flush failure propagates as a creation failure.
    */
   private async createSession(request: ManagementContextRequest): Promise<SessionId> {
     const created = await this.ctx.sessionController.create({
@@ -206,6 +258,7 @@ export class ManagementContextService extends Service {
       dataScopeId: request.dataScopeId,
       workspaceId: request.workspaceId,
     })
+    await this.ctx.sessions.flush(session)
     return created.sessionId
   }
 }

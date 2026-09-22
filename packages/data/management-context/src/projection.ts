@@ -15,7 +15,7 @@
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import { z } from 'zod'
-import type { DataScopeBindingState } from './types.ts'
+import type { DataScopeBindingState, DataScopeId } from './types.ts'
 
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
@@ -28,7 +28,7 @@ declare module '@deepseek-ai/dsh-session/types' {
      * different scope. When the scope is later deleted from the registry the
      * event stays readable, but new management operations for that scope fail.
      */
-    'data-scope/bound': { dataScopeId: string; workspaceId: WorkspaceId }
+    'data-scope/bound': { dataScopeId: DataScopeId; workspaceId: WorkspaceId }
   }
 }
 
@@ -57,7 +57,7 @@ const dataScopeSchema = z.union([
 export const dataScopeProjectionDefinition = {
   key: 'dataScope',
   stateSchema: dataScopeSchema,
-  init: () => null,
+  init: (_header, _inheritedEventCount) => null,
   apply: (state, event) => (
     state === null && event.type === 'data-scope/bound'
       ? { dataScopeId: event.data.dataScopeId }

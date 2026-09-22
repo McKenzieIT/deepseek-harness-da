@@ -12,6 +12,7 @@ import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { describe, expect, it } from 'vitest'
 import { ManagementContextGateway } from '../src/remote.ts'
 import { dataScopeProjectionDefinition } from '../src/projection.ts'
+import { DataScopeId } from '../src/types.ts'
 import type { ManagementContextRequest, ManagementContextResolution } from '../src/types.ts'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 
@@ -23,7 +24,7 @@ function gatewayOver(
   return new ManagementContextGateway(ctx)
 }
 
-const request: ManagementContextRequest = { workspaceId: WorkspaceId('ws-1'), dataScopeId: 'scope-a' }
+const request: ManagementContextRequest = { workspaceId: WorkspaceId('ws-1'), dataScopeId: DataScopeId('scope-a') }
 
 describe('ManagementContextGateway', () => {
   it('registers the resolveOrCreate and createNew Remote methods', () => {
