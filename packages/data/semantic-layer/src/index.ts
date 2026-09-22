@@ -336,13 +336,29 @@ export class SemanticLayerService extends Service {
     // The node projection (projectGraphNodes) is not cached — it iterates the
     // live registry — so only the edge-graph caches need clearing. Wrapped in
     // an effect so the listener's own disposer tracks this service's fiber.
-    ctx.effect(() => this.registry.onChange(() => {
-      this.graphCache = undefined
-      this.graphVersion = -1
-      this.graphCacheByScope.clear()
-    }))
-    for (const p of [eventKindPlugin, tableKindPlugin, conceptKindPlugin]) {
-      ctx.effect(() => this.registry.register(p))
+    //
+    // Guard: corpus.spec.ts constructs with a minimal fake context
+    // (`{ reflect, get } as unknown as Context`) that lacks `ctx.effect`.
+    // When the real Cordis fiber lifecycle is available, wire the onChange
+    // cache-invalidation listener + register built-in kinds through `ctx.effect`
+    // so disposal tracks the owning fiber. When the fake context is detected,
+    // register built-in kinds directly (no disposer) — the fake-context tests
+    // do not use the graph cache or dispose anything. The onChange invalidation
+    // still works for the real graph-remote dispose+reload case (real Context).
+    const hasEffect = typeof (ctx as { effect?: unknown }).effect === 'function'
+    if (hasEffect) {
+      ctx.effect(() => this.registry.onChange(() => {
+        this.graphCache = undefined
+        this.graphVersion = -1
+        this.graphCacheByScope.clear()
+      }))
+      for (const p of [eventKindPlugin, tableKindPlugin, conceptKindPlugin]) {
+        ctx.effect(() => this.registry.register(p))
+      }
+    } else {
+      for (const p of [eventKindPlugin, tableKindPlugin, conceptKindPlugin]) {
+        this.registry.register(p)
+      }
     }
   }
 
