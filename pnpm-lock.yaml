@@ -3169,6 +3169,9 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-schema-gateway':
+        specifier: workspace:^
+        version: link:../../data/schema-gateway
       '@testing-library/react':
         specifier: ^16.0.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -6654,7 +6657,7 @@ importers:
         version: link:../../core/session
       vitest:
         specifier: ^3.2.1
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/data/nl2sql-engine:
     dependencies:
@@ -6697,7 +6700,7 @@ importers:
         version: link:../management-session
       vitest:
         specifier: ^3.2.1
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/data/phase-gate:
     dependencies:
@@ -6784,6 +6787,9 @@ importers:
 
   packages/data/schema-gateway:
     dependencies:
+      '@deepseek-ai/dsh-brand':
+        specifier: workspace:^
+        version: link:../../util/brand
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -6965,7 +6971,7 @@ importers:
         version: link:../../core/tools
       vitest:
         specifier: ^3.2.1
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/data/tool-evaluate-sql-quality:
     dependencies:
@@ -7149,7 +7155,7 @@ importers:
         version: link:../../core/tools
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/data/tool-resolve-term:
     dependencies:
@@ -7215,7 +7221,7 @@ importers:
         version: link:../../core/tools
       vitest:
         specifier: ^3.2.1
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/data/tool-scope-routing:
     dependencies:
@@ -9037,7 +9043,7 @@ importers:
         version: link:../../core/system-prompt
       vitest:
         specifier: ^3.2.1
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/goal/goal-eval-policy:
     dependencies:
@@ -9065,7 +9071,7 @@ importers:
         version: link:../../core/session
       vitest:
         specifier: ^3.2.1
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/goal/goal-round-driver:
     devDependencies:
@@ -29482,7 +29488,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-node@3.2.4(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0):
+  vite-node@3.2.4(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3(supports-color@9.4.0)
@@ -29642,7 +29648,7 @@ snapshots:
       - typescript
       - universal-cookie
 
-  vitest@3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0):
+  vitest@3.2.7(@types/debug@4.1.13)(@types/node@26.1.2)(happy-dom@20.11.6)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
@@ -29665,7 +29671,7 @@ snapshots:
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
       vite: 6.4.3(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
-      vite-node: 3.2.4(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite-node: 3.2.4(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0)(supports-color@9.4.0)(tsx@4.22.4)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/debug': 4.1.13

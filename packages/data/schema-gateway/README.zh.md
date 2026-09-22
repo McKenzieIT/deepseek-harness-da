@@ -16,6 +16,7 @@ TODO: translate: Read-only Remote projection of ctx.schema (SemanticLayerService
 ## 目录
 
 - [开发备注](#dev-note)
+- [语义图投影](#semantic-graph-projection)
 - [模型体验](#model-experience)
 - [已知限制与延后工作](#known-limitations-and-deferred-work)
 
@@ -28,6 +29,13 @@ TODO: translate: Read-only Remote projection of ctx.schema (SemanticLayerService
 ## 开发备注
 
 无。
+
+<a id="semantic-graph-projection"></a>
+## 语义图投影
+
+`getGraphData(query?, scopeId?)` 返回 `SemanticGraphData`（`SemanticGraphNode[]` 与 `SemanticGraphEdge[]`）。节点与关系 `kind` 是开放的 `string`，不是封闭 union，因此本包构建之后注册的 Semantic-Layer kind（`concept` 或任何未来/测试 kind）无需修改网关即可到达客户端。节点来自 `ctx.schema.projectGraphNodes()`——每个已注册 kind 的 `toGraphNode` 贡献加上唯一的派生 `metric` 贡献者——因此没有手写的三组平行循环；边来自 RelationGraph。节点 id 在此远程边界被 brand 为 `SemanticGraphNodeId`。
+
+`query` 字段：`domain`（按单一 domain/group 过滤）、`focus`（BFS 根——当其指向的节点不在投影中时返回空子图）、`depth`（从 focus 起的有界 BFS；`0` 表示仅 focus）、`includeMetrics`（默认 false；丢弃 `metric` kind 节点）。未知 kind 不会被丢弃——客户端 presentation registry 以通用可访问形式渲染。
 
 
 <a id="model-experience"></a>

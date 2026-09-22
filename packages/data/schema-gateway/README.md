@@ -16,6 +16,7 @@ Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI c
 ## Table of Contents
 
 - [Dev Note](#dev-note)
+- [Semantic graph projection](#semantic-graph-projection)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
@@ -27,6 +28,12 @@ No runtime invariant companion is published because `@deepseek-ai/dsh-schema-gat
 ## Dev Note
 
 None.
+
+## Semantic graph projection
+
+`getGraphData(query?, scopeId?)` returns a `SemanticGraphData` (`SemanticGraphNode[]` + `SemanticGraphEdge[]`). Node and relation `kind` are OPEN `string` values, not a closed union, so a Semantic-Layer kind registered after this package built (`concept`, or any future/test kind) reaches the client without a gateway change. Nodes come from `ctx.schema.projectGraphNodes()` — one contribution per registered kind's `toGraphNode` plus the single derived-`metric` contributor — so there are no hand-written per-kind loops; edges come from the RelationGraph. Node ids are branded `SemanticGraphNodeId` at this Remote boundary.
+
+`query` fields: `domain` (filter to one domain/group), `focus` (BFS root — an empty subgraph is returned when it names no projected node), `depth` (bounded BFS from focus; `0` = focus only), and `includeMetrics` (default false; drops `metric`-kind nodes). Unknown kinds are never dropped — the client presentation registry renders a generic accessible form.
 
 
 ## Model Experience
