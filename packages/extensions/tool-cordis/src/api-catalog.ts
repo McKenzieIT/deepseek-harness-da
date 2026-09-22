@@ -5201,7 +5201,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DataSourceRegistry',
-    declaration: 'export class DataSourceRegistry {\n    register(plugin: DataSourceKindPlugin): void;\n    getKind(kind: string): DataSourceKindPlugin | undefined;\n    allKinds(): string[];\n    allPlugins(): DataSourceKindPlugin[];\n}',
+    declaration: 'export class DataSourceRegistry {\n    onChange(listener: () => void): () => void;\n    register(plugin: DataSourceKindPlugin): () => void;\n    getKind(kind: string): DataSourceKindPlugin | undefined;\n    allKinds(): string[];\n    allPlugins(): DataSourceKindPlugin[];\n}',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',
@@ -6257,15 +6257,15 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RelationDef',
-    declaration: 'export interface RelationDef {\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly target: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
+    declaration: 'export interface RelationDef {\n    readonly type: string;\n    readonly target: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
   },
   {
     name: 'RelationEdge',
-    declaration: 'export interface RelationEdge {\n    readonly targetId: string;\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly on?: string;\n    readonly description?: string;\n}',
+    declaration: 'export interface RelationEdge {\n    readonly targetId: string;\n    readonly type: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
   },
   {
     name: 'RelationGraph',
-    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[], aliasData?: readonly NodeAliasData[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: \'joins\' | \'derived_from\' | \'related_to\'): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n    resolveAlias(term: string): string[];\n    getAliases(nodeId: string): string[];\n}',
+    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[], aliasData?: readonly NodeAliasData[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: string): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n    resolveAlias(term: string): string[];\n    getAliases(nodeId: string): string[];\n}',
   },
   {
     name: 'Reload',
