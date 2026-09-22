@@ -331,7 +331,19 @@ export class SemanticLayerService extends Service {
   constructor(ctx: Context, config: SemanticLayerConfig) {
     super(ctx, 'schema')
     this.resolved = resolveSemanticLayerConfig(config)
-    for (const p of [eventKindPlugin, tableKindPlugin, conceptKindPlugin]) this.registry.register(p)
+    // W27: invalidate the relation-graph cache when a kind is added or removed
+    // (fiber dispose/reload) so a disposed kind's nodes/edges do not linger.
+    // The node projection (projectGraphNodes) is not cached — it iterates the
+    // live registry — so only the edge-graph caches need clearing. Wrapped in
+    // an effect so the listener's own disposer tracks this service's fiber.
+    ctx.effect(() => this.registry.onChange(() => {
+      this.graphCache = undefined
+      this.graphVersion = -1
+      this.graphCacheByScope.clear()
+    }))
+    for (const p of [eventKindPlugin, tableKindPlugin, conceptKindPlugin]) {
+      ctx.effect(() => this.registry.register(p))
+    }
   }
 
   /**
@@ -485,51 +497,54 @@ export class SemanticLayerService extends Service {
     const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
     const aliasData: NodeAliasData[] = []
     const assetDomains: { sourceId: string; domains: string[] }[] = []
-    // M1: each host table/event parsed ONCE — registered-kind relations +
-    // derived metric relations pushed in the same iteration (loadTables/
-    // loadEvents are uncached readdirSync+readYaml+safeParse, so the prior
-    // double scan was redundant work).
-    for (const t of loadTables(root)) {
-      const r = TableDefinitionSchema.safeParse(t.raw)
-      if (!r.success) continue
-      entries.push({ sourceId: r.data.table_name, relations: tableKindPlugin.relations(r.data) })
-      if (r.data.pref_label || r.data.alt_labels.length > 0) {
-        aliasData.push({ nodeId: r.data.table_name, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
-      }
-      if (r.data.domains.length > 0) assetDomains.push({ sourceId: r.data.table_name, domains: r.data.domains })
-      for (const m of extractMetricsFromTable(r.data)) {
-        entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
-        if (m.pref_label || m.alt_labels.length > 0) {
-          aliasData.push({ nodeId: m.name, prefLabel: m.pref_label, altLabels: m.alt_labels })
-        }
-      }
-    }
-    for (const e of loadEvents(root)) {
-      const r = EventDefinitionSchema.safeParse(e.raw)
-      if (!r.success) continue
-      entries.push({ sourceId: r.data.name, relations: eventKindPlugin.relations(r.data) })
-      if (r.data.pref_label || r.data.alt_labels.length > 0) {
-        aliasData.push({ nodeId: r.data.name, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
-      }
-      if (r.data.domains.length > 0) assetDomains.push({ sourceId: r.data.name, domains: r.data.domains })
-      for (const m of extractMetricsFromEvent(r.data)) {
-        entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
-        if (m.pref_label || m.alt_labels.length > 0) {
-          aliasData.push({ nodeId: m.name, prefLabel: m.pref_label, altLabels: m.alt_labels })
-        }
-      }
-    }
-    // CL-2: load concepts as graph nodes + derive related_to edges from asset.domains
     const conceptNames = new Set<string>()
-    for (const c of loadConcepts(root)) {
-      const r = ConceptDefinitionSchema.safeParse(c.raw)
-      if (!r.success) continue
-      conceptNames.add(r.data.name)
-      entries.push({ sourceId: `concept:${r.data.name}`, relations: [] })
-      if (r.data.pref_label || r.data.alt_labels.length > 0) {
-        aliasData.push({ nodeId: `concept:${r.data.name}`, prefLabel: r.data.pref_label, altLabels: r.data.alt_labels })
+
+    // W27: registry-driven relation + alias + domain collection — no
+    // hand-written per-kind loops. Each registered kind's definitions are
+    // loaded from `root` (scope-aware), and its `plugin.relations()` +
+    // `plugin.toGraphNode()` contribute edges + source ids. A kind
+    // registered after build reaches the graph without a gateway change.
+    // Metric nodes (virtual, not a registered kind) + concept→asset domain
+    // derivation are cross-cutting passes layered after the registry loop.
+    for (const plugin of this.registry.allPlugins()) {
+      const isTable = plugin.kind === 'table'
+      const isEvent = plugin.kind === 'event'
+      for (const def of this.loadKindDefinitions(plugin, root)) {
+        const node = plugin.toGraphNode(def)
+        const sourceId = node?.id
+        if (sourceId !== undefined) {
+          entries.push({ sourceId, relations: plugin.relations(def) })
+          // CL-2: collect asset domains for the concept→asset derivation.
+          // Concept nodes carry their own name as a domain (for domain
+          // filtering); including them here would create concept→concept
+          // self-loops. Only asset kinds (table/event/…) contribute.
+          if (plugin.kind !== 'concept' && node.domains.length > 0) {
+            assetDomains.push({ sourceId, domains: [...node.domains] })
+          }
+          // CL-2: concept node ids are `concept:<name>` — track the bare name
+          // for domain-ref validation + concept→asset edge derivation.
+          if (plugin.kind === 'concept') conceptNames.add(stripConceptPrefix(sourceId))
+        }
+        // Alias index (structural: pref_label / alt_labels on any kind).
+        const alias = graphAliasData(def, sourceId)
+        if (alias) aliasData.push(alias)
+        // Metric extraction (virtual derived nodes — table/event only).
+        if (isTable) {
+          for (const m of extractMetricsFromTable(def as TableDefinition)) {
+            entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
+            const mAlias = graphAliasData(m, m.name)
+            if (mAlias) aliasData.push(mAlias)
+          }
+        } else if (isEvent) {
+          for (const m of extractMetricsFromEvent(def as EventDefinition)) {
+            entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
+            const mAlias = graphAliasData(m, m.name)
+            if (mAlias) aliasData.push(mAlias)
+          }
+        }
       }
     }
+
     // CL-2 D2: validate asset.domains reference existing concepts. A dangling
     // ref (no matching concept) is SKIPPED + warned rather than aborting the
     // whole graph build, so valid assets still get their edges. Collected refs
@@ -545,10 +560,8 @@ export class SemanticLayerService extends Service {
           }
         }
       }
-    }
-    // Derive concept→asset related_to edges from asset.domains (second pass).
-    // Dangling domains are skipped (warned above) — only valid concepts get edges.
-    if (conceptNames.size > 0) {
+      // Derive concept→asset related_to edges from asset.domains (second pass).
+      // Dangling domains are skipped (warned above) — only valid concepts get edges.
       for (const { sourceId, domains } of assetDomains) {
         for (const d of domains) {
           if (!conceptNames.has(d)) continue
@@ -556,7 +569,32 @@ export class SemanticLayerService extends Service {
         }
       }
     }
-    g.build(entries, aliasData)
+    // W27: canonical target resolution. A kind's `relations()` may reference a
+    // target by its bare name (e.g. `first`) while the node projection minted
+    // a prefixed id (`chart:first`). Map bare names → canonical node ids so
+    // the edge `chart:second → first` becomes `chart:second → chart:first` and
+    // flows through getGraphData + bounded traversal. Exact id matches always
+    // win (registered first); a bare name only maps to a prefixed id when no
+    // node carries that bare name directly.
+    const targetMap = new Map<string, string>()
+    for (const { sourceId } of entries) {
+      if (!targetMap.has(sourceId)) targetMap.set(sourceId, sourceId)
+      const colon = sourceId.indexOf(':')
+      if (colon >= 0) {
+        const bare = sourceId.slice(colon + 1)
+        if (bare && !targetMap.has(bare)) targetMap.set(bare, sourceId)
+      }
+    }
+    const resolvedEntries = entries.length === 0
+      ? entries
+      : entries.map(e => ({
+        sourceId: e.sourceId,
+        relations: e.relations.map((r) => {
+          const resolved = targetMap.get(r.target)
+          return resolved !== undefined && resolved !== r.target ? { ...r, target: resolved } : r
+        }),
+      }))
+    g.build(resolvedEntries, aliasData)
     return g
   }
 
@@ -607,11 +645,13 @@ export class SemanticLayerService extends Service {
     return out
   }
 
-  /** Dispatch a storage-dir name to its loader + schema-parse projection. */
-  private loadByStorageDir(dir: string): readonly unknown[] {
+  /** Dispatch a storage-dir name to its loader + schema-parse projection. The
+   * optional `root` (W27) lets `buildGraph` load a per-scope root; the default
+   * is the active scope root (`this.semanticRoot`), preserving `loadRetrievalCorpusAll`. */
+  private loadByStorageDir(dir: string, root: string = this.semanticRoot): readonly unknown[] {
     if (dir === 'events') {
       const out: unknown[] = []
-      for (const e of loadEvents(this.semanticRoot)) {
+      for (const e of loadEvents(root)) {
         const r = EventDefinitionSchema.safeParse(e.raw)
         if (r.success) out.push(r.data)
       }
@@ -619,7 +659,7 @@ export class SemanticLayerService extends Service {
     }
     if (dir === 'tables') {
       const out: unknown[] = []
-      for (const t of loadTables(this.semanticRoot)) {
+      for (const t of loadTables(root)) {
         const r = TableDefinitionSchema.safeParse(t.raw)
         if (r.success) out.push(r.data)
       }
@@ -627,7 +667,7 @@ export class SemanticLayerService extends Service {
     }
     if (dir === 'concepts') {
       const out: unknown[] = []
-      for (const c of loadConcepts(this.semanticRoot)) {
+      for (const c of loadConcepts(root)) {
         const r = ConceptDefinitionSchema.safeParse(c.raw)
         if (r.success) out.push(r.data)
       }
@@ -664,18 +704,20 @@ export class SemanticLayerService extends Service {
   }
 
   /**
-   * Load one kind's definitions from the active scope root. Bespoke storage
-   * layouts (`events` domain subdirs, `tables`, `concepts`) route through
+   * Load one kind's definitions from a scope root. Bespoke storage layouts
+   * (`events` domain subdirs, `tables`, `concepts`) route through
    * {@link loadByStorageDir}; any other registered kind's dir is read
-   * generically (`loadRawDir` + the plugin's own `schema.safeParse`), so a kind
-   * registered after build loads without a hardcoded loader.
+   * generically (`loadRawDir` + the plugin's own `schema.safeParse`), so a
+   * kind registered after build loads without a hardcoded loader. The `root`
+   * (W27) defaults to the active scope root for `projectGraphNodes`; the
+   * relation-graph build passes a per-scope root.
    */
-  private loadKindDefinitions(plugin: import('./registry.ts').DataSourceKindPlugin): readonly unknown[] {
+  private loadKindDefinitions(plugin: import('./registry.ts').DataSourceKindPlugin, root: string = this.semanticRoot): readonly unknown[] {
     if (plugin.storageDir === 'events' || plugin.storageDir === 'tables' || plugin.storageDir === 'concepts') {
-      return this.loadByStorageDir(plugin.storageDir)
+      return this.loadByStorageDir(plugin.storageDir, root)
     }
     const out: unknown[] = []
-    for (const raw of loadRawDir(this.semanticRoot, plugin.storageDir)) {
+    for (const raw of loadRawDir(root, plugin.storageDir)) {
       const r = plugin.schema.safeParse(raw)
       if (r.success && r.data !== undefined) out.push(r.data)
     }
@@ -1211,6 +1253,37 @@ export interface TextLlm {
  */
 export function wireEnrichmentLlm(schema: { setLlmCall(fn?: (prompt: string) => Promise<string>): void }, llm: TextLlm): void {
   schema.setLlmCall(prompt => llm.text(prompt))
+}
+
+/**
+ * Strip the `concept:` prefix from a concept node id to recover the bare
+ * concept name (used by `buildGraph` for domain-ref validation + edge
+ * derivation). A non-prefixed id passes through unchanged.
+ * @param id - the concept node id (`concept:<name>` or a bare name).
+ * @returns the bare concept name.
+ */
+function stripConceptPrefix(id: string): string {
+  return id.startsWith('concept:') ? id.slice('concept:'.length) : id
+}
+
+/**
+ * Extract alias data (pref_label + alt_labels) structurally from any
+ * definition object, so the relation graph's alias index works for a kind
+ * registered after build without a per-kind field read. Returns `null` when
+ * the def carries no aliases.
+ * @param def - a parsed definition object (any kind — table, event, concept, metric, or a new kind).
+ * @param nodeId - the node id this def's aliases should be indexed under.
+ * @returns the alias data, or `null` when the def has no pref_label / alt_labels.
+ */
+function graphAliasData(def: unknown, nodeId: string | undefined): NodeAliasData | null {
+  if (nodeId === undefined) return null
+  if (typeof def !== 'object' || def === null) return null
+  const d = def as Record<string, unknown>
+  const prefLabel = typeof d.pref_label === 'string' ? d.pref_label : undefined
+  const altRaw = d.alt_labels
+  const altLabels = Array.isArray(altRaw) ? altRaw.filter((s): s is string => typeof s === 'string') : undefined
+  if (!prefLabel && (!altLabels || altLabels.length === 0)) return null
+  return { nodeId, prefLabel, altLabels }
 }
 
 export default SemanticLayerService

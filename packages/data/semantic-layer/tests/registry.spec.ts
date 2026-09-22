@@ -43,6 +43,36 @@ test('registry — duplicate kind throws', () => {
   expect(() =>{  reg.register(eventKindPlugin) }).toThrow('already registered')
 })
 
+test('disposing a kind contribution removes only that registration and permits reload', async () => {
+  const { Context } = await import('@deepseek-ai/cordis')
+  const ctx = new Context()
+  const reg = new DataSourceRegistry()
+  let disposeContribution: () => void = () => {}
+  const contributor = (scope: InstanceType<typeof Context>) => {
+    scope.effect(() => {
+      disposeContribution = reg.register(eventKindPlugin)
+      return disposeContribution
+    })
+  }
+  try {
+    const fiber = ctx.plugin(contributor)
+    await fiber
+    expect(reg.getKind('event')).toBe(eventKindPlugin)
+    const oldDisposer = disposeContribution
+    await fiber.dispose()
+    expect(reg.allKinds()).toEqual([])
+    const reloaded = ctx.plugin(contributor)
+    await reloaded
+    oldDisposer()
+    oldDisposer()
+    expect(reg.getKind('event')).toBe(eventKindPlugin)
+    await reloaded.dispose()
+    expect(reg.allPlugins()).toEqual([])
+  } finally {
+    await ctx.fiber.dispose()
+  }
+})
+
 // ── eventKindPlugin — G1 aligned ────────────────────────────────────────
 
 test('eventKindPlugin — schema field is EventDefinitionSchema', () => {

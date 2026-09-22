@@ -31,12 +31,15 @@ export interface NodeKindPresentation {
 /**
  * Resolve the presentation for an open node kind. Known kinds get a localized
  * label and palette color; an unknown kind falls back to the raw kind string as
- * an accessible label plus the generic color — never dropped, never a crash.
+ * an accessible label plus the generic color — never dropped, never a crash
+ * (W27: own-property lookup — a plain `KIND_LABEL_KEYS[kind]` would return the
+ * truthy `Object.prototype.constructor` for `kind='constructor'`, surfacing an
+ * undefined label through `t(key)`).
  * @param kind - the open node kind string.
  * @param t - the context-layer translator.
  * @returns the label + color for this kind.
  */
 export function nodeKindPresentation(kind: string, t: ContextLayerTranslate): NodeKindPresentation {
-  const key = KIND_LABEL_KEYS[kind]
+  const key: ContextLayerKey | undefined = Object.hasOwn(KIND_LABEL_KEYS, kind) ? KIND_LABEL_KEYS[kind] : undefined
   return { label: key ? t(key) : kind, color: nodeKindColor(kind) }
 }

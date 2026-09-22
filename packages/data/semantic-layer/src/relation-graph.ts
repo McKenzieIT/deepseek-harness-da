@@ -11,7 +11,8 @@ import type { RelationDef } from './registry.ts'
 /** An edge in the relation graph (stored in adjacency list per node). */
 export interface RelationEdge {
   readonly targetId: string
-  readonly type: 'joins' | 'derived_from' | 'related_to'
+  /** Open relation kind (W27: `joins` | `derived_from` | `related_to` or a kind-declared type). */
+  readonly type: string
   readonly on?: string
   readonly description?: string
 }
@@ -125,10 +126,10 @@ export class RelationGraph {
   /**
    * Get directly related node ids (optionally filtered by relation type).
    * @param sourceId - sourceId
-   * @param type - type
+   * @param type - open relation kind to filter by (e.g. `joins`); omit for all.
    * @returns the result
    */
-  getRelated(sourceId: string, type?: 'joins' | 'derived_from' | 'related_to'): RelationEdge[] {
+  getRelated(sourceId: string, type?: string): RelationEdge[] {
     const edges = this.adj.get(sourceId)
     if (!edges) return []
     if (type === undefined) return [...edges]

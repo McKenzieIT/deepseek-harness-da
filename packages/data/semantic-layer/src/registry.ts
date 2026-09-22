@@ -27,12 +27,18 @@ export interface CriticFields {
 }
 
 /**
- * A relation declared by a data source (G1 §D2 + G2: three base types).
+ * A relation declared by a data source (G1 §D2 + G2: three base types, OPEN).
  * Returned by plugin.relations(def); source is the definition that declared it.
+ *
+ * `type` is an open `string` (W27): the three base kinds (`joins`,
+ * `derived_from`, `related_to`) cover the built-in kinds, but a kind
+ * registered later may declare its own relation kind (e.g. `visualizes`)
+ * without editing this union. The RelationGraph + Schema Gateway carry the
+ * open `type` through to the client without a per-type switch.
  */
 export interface RelationDef {
-  /** Relation type (G2: three base types). */
-  readonly type: 'joins' | 'derived_from' | 'related_to'
+  /** Open relation kind — `joins` | `derived_from` | `related_to` or a kind-declared type. */
+  readonly type: string
   /** Target data-source id. */
   readonly target: string
   /** Join condition expression (e.g. "charm_id = charm_id"). */
@@ -129,16 +135,49 @@ export interface DataSourceKindPlugin<T = unknown> {
  */
 export class DataSourceRegistry {
   private readonly plugins = new Map<string, DataSourceKindPlugin>()
+  private readonly changeListeners = new Set<() => void>()
 
   /**
-   *  Register a kind plugin. Throws if the kind is already registered.
-   * @param plugin - plugin
+   * Register a listener invoked when a kind is added or removed. The
+   * SemanticLayerService wires this to invalidate its relation-graph cache so
+   * a disposed kind's nodes/edges do not linger (W27: disposer + cache
+   * invalidation). Returns a disposer for this listener.
+   * @param listener - a no-arg callback fired after a kind is added or removed.
+   * @returns a disposer that removes this listener.
    */
-  register(plugin: DataSourceKindPlugin): void {
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener)
+    return () => {
+      this.changeListeners.delete(listener)
+    }
+  }
+
+  /**
+   * Register a kind plugin. Throws if the kind is already registered.
+   * Install with `ctx.effect(() => registry.register(plugin))` so the
+   * contribution's lifetime tracks the owning fiber.
+   * @param plugin - the kind contribution.
+   * @returns an idempotent disposer that removes only this registration and
+   *  fires change listeners so cached projections (e.g. the relation graph)
+   *  rebuild without the disposed kind.
+   */
+  register(plugin: DataSourceKindPlugin): () => void {
     if (this.plugins.has(plugin.kind)) {
       throw new Error(`DataSourceRegistry: kind "${plugin.kind}" is already registered`)
     }
     this.plugins.set(plugin.kind, plugin)
+    let active = true
+    const fire = () => { for (const fn of this.changeListeners) fn() }
+    // Fire on add: a re-registered kind must invalidate the cached graph so its
+    // nodes/edges flow through without a restart (W27 dispose + reload).
+    fire()
+    return () => {
+      if (!active) return
+      active = false
+      this.plugins.delete(plugin.kind)
+      // Fire on remove: a disposed kind must not linger in the cached graph.
+      fire()
+    }
   }
 
   /**

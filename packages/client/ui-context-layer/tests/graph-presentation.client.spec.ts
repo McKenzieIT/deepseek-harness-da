@@ -25,4 +25,29 @@ describe('graph presentation registry (W27)', () => {
     expect(nodeKindColor('dws')).toBe(KIND_COLORS.dws)
     expect(nodeKindColor('totally_new_kind')).toBe(GENERIC_NODE_COLOR)
   })
+
+  // W27: prototype-pollution guard. `KIND_COLORS` is a plain object, so a
+  // property lookup for a prototype member name (`toString`, `constructor`,
+  // `__proto__`) returns the inherited function/object (truthy) and bypasses
+  // the `?? GENERIC_NODE_COLOR` fallback — `nodeKindColor('toString')` would
+  // return `Object.prototype.toString` (a function), crashing a renderer that
+  // expects a CSS color string. The lookup must only consider OWN properties.
+  it('nodeKindColor never returns a prototype member for constructor / toString / __proto__', () => {
+    expect(nodeKindColor('toString')).toBe(GENERIC_NODE_COLOR)
+    expect(nodeKindColor('constructor')).toBe(GENERIC_NODE_COLOR)
+    expect(nodeKindColor('__proto__')).toBe(GENERIC_NODE_COLOR)
+    // Sanity: the returned value is always a string (CSS color), never a function.
+    for (const kind of ['toString', 'constructor', '__proto__', 'valueOf', 'hasOwnProperty']) {
+      expect(typeof nodeKindColor(kind)).toBe('string')
+    }
+  })
+
+  it('nodeKindPresentation never surfaces an undefined label for prototype member kinds', () => {
+    for (const kind of ['toString', 'constructor', '__proto__', 'valueOf', 'hasOwnProperty']) {
+      const p = nodeKindPresentation(kind, t)
+      // The raw kind string is the accessible fallback label — never undefined.
+      expect(p.label).toBe(kind)
+      expect(p.color).toBe(GENERIC_NODE_COLOR)
+    }
+  })
 })

@@ -29,12 +29,15 @@ export const KIND_COLORS: Record<string, string> = {
  * Fill color for an open node kind. Known kinds map to their palette color;
  * any unknown kind falls back to {@link GENERIC_NODE_COLOR} so a kind
  * registered on the Host renders without a client change and never yields an
- * undefined fill.
+ * undefined fill (W27: own-property lookup — a plain `??` would return the
+ * truthy `Object.prototype.toString` for `nodeKindColor('toString')`).
  * @param kind - the open node kind string.
  * @returns a CSS color string.
  */
 export function nodeKindColor(kind: string): string {
-  return KIND_COLORS[kind] ?? GENERIC_NODE_COLOR
+  if (!Object.hasOwn(KIND_COLORS, kind)) return GENERIC_NODE_COLOR
+  const color = KIND_COLORS[kind]
+  return color ?? GENERIC_NODE_COLOR
 }
 
 /** Domain combo background tints (10 slots, cycled by domain index). */
