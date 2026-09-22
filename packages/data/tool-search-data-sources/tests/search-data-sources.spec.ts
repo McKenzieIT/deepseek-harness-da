@@ -21,13 +21,15 @@ interface ToolDef {
     readonly schema: unknown
     readonly render: (
       args: unknown,
-      value: { readonly candidates: SearchHit[] },
+      // `join_constraints` is optional on both faces: the tool emits the key
+      // only when the relation graph connects at least one candidate pair.
+      value: { readonly candidates: SearchHit[]; readonly join_constraints?: readonly string[] },
     ) => readonly { readonly type: 'text'; readonly text: string }[]
   }
   readonly execute: (
     args: { readonly query: string; readonly top_k?: number },
     exec: { readonly signal: AbortSignal; readonly scopeId?: string },
-  ) => Promise<{ readonly candidates: SearchHit[] }>
+  ) => Promise<{ readonly candidates: SearchHit[]; readonly join_constraints?: readonly string[] }>
 }
 
 /** Capture the tool definition the plugin registers, without a Cordis context. */
@@ -491,4 +493,341 @@ test('S21 (5c) execute without scopeId → getRelationGraph receives undefined (
   expect(out.candidates.length).toBeGreaterThan(0)
   expect(getRelationGraphCalls.length).toBeGreaterThan(0)
   expect(getRelationGraphCalls.every(s => s === undefined)).toBe(true)
+})
+
+// ── C-tier residual coverage: the branch edges S1–S21 leave open ─────────────
+// S22–S37 target the `apply`-registered tool's remaining arms: the `event`
+// data-source kind, the strategy-b alias-fusion blender (S1–S21 only exercise
+// continuous-blend), the graph-expansion topK cap, join-constraint extraction,
+// the abort guard, and the render labels. Every case drives the SAME registered
+// tool definition S8–S21 drive; only the mounted services differ.
+
+/** A fixed retrieval hit, so blended/boosted scores stay exactly assertable. */
+interface RetrievalHitStub {
+  readonly id: string
+  readonly score: number
+  readonly payload: unknown
+  readonly mode: string
+}
+
+/** A relation-graph edge as `getRelated`/`getDerived` return them. */
+interface GraphEdgeStub {
+  readonly targetId: string
+  readonly type: string
+}
+
+/** The `RelationGraphSource` surface `probeRelationGraph` hands to the blenders. */
+interface GraphStub {
+  findJoinPath: (sourceId: string, targetId: string) => string[] | null
+  getJoinCondition: (sourceId: string, targetId: string) => string | null
+  getRelated: (sourceId: string, type?: string) => readonly GraphEdgeStub[]
+  getDerived: (sourceId: string) => readonly GraphEdgeStub[]
+  resolveAlias?: (term: string) => string[]
+}
+
+/**
+ * Register the tool over a ctx whose `ctx.get(key)` is a plain lookup table —
+ * the same stub shape S8–S21 build inline, factored out because the residual
+ * branch cases need many different service combinations. A key absent from the
+ * table returns `undefined`, modelling "that provider is not mounted".
+ */
+function registerToolWith(services: Record<string, unknown>, config: Parameters<typeof apply>[1] = {}): ToolDef {
+  let def: ToolDef | undefined
+  const ctx = {
+    tools: { register: (d: ToolDef) => { def = d } },
+    get: (key: string) => services[key],
+  } as unknown as Context
+  apply(ctx, config)
+  if (def === undefined) throw new Error('apply did not register a tool')
+  return def
+}
+
+/** A `ctx.get('retrieval')` stub returning fixed hits (exact, unlike BM25 scores). */
+function retrievalOf(hits: readonly RetrievalHitStub[]): { retrieve: () => Promise<readonly RetrievalHitStub[]> } {
+  return { retrieve: async () => hits }
+}
+
+/**
+ * A `ctx.get('schema')` stub whose relation graph is inert except for the probes
+ * the case overrides (same mock shape as S17–S21, minus the corpus the retrieval
+ * path never reads).
+ */
+function schemaWithGraph(graph: Partial<GraphStub>): {
+  loadRetrievalCorpus: () => readonly never[]
+  getRelationGraph: () => GraphStub
+} {
+  const full: GraphStub = {
+    findJoinPath: () => null,
+    getJoinCondition: () => null,
+    getRelated: () => [],
+    getDerived: () => [],
+    ...graph,
+  }
+  return { loadRetrievalCorpus: () => [], getRelationGraph: () => full }
+}
+
+test('S22 an event payload is typed "event", carries no description, and is left unqualified', async () => {
+  // typeOf falls through kind=metric/dws/dim to the event probe: the nested
+  // payload declares params_fields, so the candidate is an event — and
+  // qualifyCandidates must NOT hand a non-table id to ctx.query.qualifyTable.
+  const qualifyCalls: string[] = []
+  const def = registerToolWith({
+    retrieval: retrievalOf([
+      { id: 'recharge', score: 5, payload: { payload: { params_fields: ['roleId'] } }, mode: 'hybrid' },
+    ]),
+    query: { qualifyTable: (tableName: string) => { qualifyCalls.push(tableName); return `qualified.${tableName}` } },
+  })
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([{ id: 'recharge', score: 5, mode: 'hybrid', type: 'event' }])
+  expect(qualifyCalls).toEqual([])
+})
+
+test('S23 strategy-b with a pre-CL-1 graph (no resolveAlias) returns the BM25 candidates untouched', async () => {
+  // blendingMode='strategy-b' selects applyAliasFusion instead of
+  // applyContinuousBlend; a graph without the CL-1 alias index falls back.
+  const def = registerToolWith({
+    retrieval: retrievalOf([{ id: 't1', score: 5, payload: { kind: 'dws', description: '充值订单汇总表' }, mode: 'hybrid' }]),
+    schema: schemaWithGraph({}),
+  }, { blendingMode: 'strategy-b' })
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([
+    { id: 't1', score: 5, description: '充值订单汇总表', mode: 'hybrid', type: 'table' },
+  ])
+})
+
+test('S24 strategy-b with a query yielding no alias terms never probes the alias index', async () => {
+  const resolveCalls: string[] = []
+  const def = registerToolWith({
+    retrieval: retrievalOf([{ id: 't1', score: 5, payload: { kind: 'dws' }, mode: 'hybrid' }]),
+    schema: schemaWithGraph({ resolveAlias: (term) => { resolveCalls.push(term); return ['t1'] } }),
+  }, { blendingMode: 'strategy-b' })
+  // 'x y' splits into two single-char tokens, both dropped by the length>=2 filter.
+  const out = await def.execute({ query: 'x y' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([{ id: 't1', score: 5, mode: 'hybrid', type: 'table' }])
+  expect(resolveCalls).toEqual([])
+})
+
+test('S25 strategy-b probes every extracted term and returns candidates untouched when none resolve', async () => {
+  const resolveCalls: string[] = []
+  const def = registerToolWith({
+    retrieval: retrievalOf([{ id: 't1', score: 5, payload: { kind: 'dws' }, mode: 'hybrid' }]),
+    schema: schemaWithGraph({ resolveAlias: (term) => { resolveCalls.push(term); return [] } }),
+  }, { blendingMode: 'strategy-b' })
+  const out = await def.execute({ query: '充值订单' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([{ id: 't1', score: 5, mode: 'hybrid', type: 'table' }])
+  // whole CJK token + its overlapping bigrams were all probed, none resolved
+  expect(resolveCalls).toEqual(['充值订单', '充值', '值订', '订单'])
+})
+
+test('S26 strategy-b boosts alias-matched BM25 hits, appends alias-only ids, and re-sorts by score', async () => {
+  const def = registerToolWith({
+    retrieval: retrievalOf([
+      { id: 't1', score: 10, payload: { kind: 'dws' }, mode: 'hybrid' },
+      { id: 't2', score: 4, payload: { kind: 'dws' }, mode: 'hybrid' },
+    ]),
+    schema: schemaWithGraph({
+      // 付费 and 充值 both resolve to t1 (hit count 2, capped at 2); 留存
+      // resolves to t9, which BM25 never returned.
+      resolveAlias: (term) => {
+        if (term === '付费' || term === '充值') return ['t1']
+        if (term === '留存') return ['t9']
+        return []
+      },
+    }),
+  }, { blendingMode: 'strategy-b' })
+  const out = await def.execute({ query: '付费充值留存' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([
+    // 10 × ALIAS_BOOST(2) × capped(2)
+    { id: 't1', score: 40, mode: 'alias-boosted', type: 'table' },
+    // no alias match → the BM25 hit passes through unchanged
+    { id: 't2', score: 4, mode: 'hybrid', type: 'table' },
+    // alias-only id, floored at the BM25 median (candidates[1].score = 4)
+    { id: 't9', score: 4, mode: 'alias-resolved' },
+  ])
+})
+
+test('S27 strategy-b with no BM25 hits floors alias-only candidates at the configured aliasBoost', async () => {
+  const def = registerToolWith({
+    retrieval: retrievalOf([]),
+    schema: schemaWithGraph({ resolveAlias: term => (term === '留存' ? ['t9'] : []) }),
+  }, { blendingMode: 'strategy-b', aliasBoost: 3 })
+  const out = await def.execute({ query: '留存' }, { signal: new AbortController().signal })
+  // Empty BM25 result → the median falls back to aliasBoost, so the single
+  // alias hit scores max(3 × 1, 3) = 3. Config.aliasBoost (3), not the
+  // ALIAS_BOOST default (2), is what reached applyAliasFusion.
+  expect(out.candidates).toEqual([{ id: 't9', score: 3, mode: 'alias-resolved' }])
+})
+
+test('S28 continuous-blend with a query yielding no alias terms never probes the alias index', async () => {
+  const resolveCalls: string[] = []
+  const def = registerToolWith({
+    retrieval: retrievalOf([{ id: 't1', score: 8, payload: { kind: 'dws' }, mode: 'hybrid' }]),
+    schema: schemaWithGraph({ resolveAlias: (term) => { resolveCalls.push(term); return ['t1'] } }),
+  })
+  const out = await def.execute({ query: 'x y' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([{ id: 't1', score: 8, mode: 'hybrid', type: 'table' }])
+  expect(resolveCalls).toEqual([])
+})
+
+test('S29 continuous-blend keeps a BM25 hit the alias graph does not know at its own mode', async () => {
+  const def = registerToolWith({
+    retrieval: retrievalOf([
+      { id: 't1', score: 8, payload: { kind: 'dws' }, mode: 'hybrid' },
+      { id: 't2', score: 4, payload: { kind: 'dws' }, mode: 'hybrid' },
+    ]),
+    schema: schemaWithGraph({ resolveAlias: term => (term === '付费' ? ['t1'] : []) }),
+  })
+  // '付费留存' extracts 4 terms; only 付费 resolves → coverage 1/4, so the
+  // blend weights BM25 at 0.75 and the graph at 0.25.
+  const out = await def.execute({ query: '付费留存' }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([
+    { id: 't1', score: 1, mode: 'blended', type: 'table' }, // 0.75×(8/8) + 0.25×(1/1)
+    { id: 't2', score: 0.375, mode: 'hybrid', type: 'table' }, // 0.75×(4/8) + 0.25×(0/1)
+  ])
+})
+
+test('S30 graph expansion appends joins + derived neighbours at half score, skipping already-seen ids', async () => {
+  const def = registerToolWith({
+    retrieval: retrievalOf([
+      { id: 'A', score: 8, payload: { kind: 'dws' }, mode: 'hybrid' },
+      { id: 'B', score: 4, payload: { kind: 'dws' }, mode: 'hybrid' },
+    ]),
+    schema: schemaWithGraph({
+      // B is already a BM25 hit (skipped); C enters via joins and then repeats
+      // as a derived edge (skipped the second time); D enters via derived_from.
+      getRelated: sourceId => (sourceId === 'A'
+        ? [{ targetId: 'B', type: 'joins' }, { targetId: 'C', type: 'joins' }]
+        : []),
+      getDerived: sourceId => (sourceId === 'A'
+        ? [{ targetId: 'C', type: 'derived_from' }, { targetId: 'D', type: 'derived_from' }]
+        : []),
+    }),
+  })
+  const out = await def.execute({ query: '充值', top_k: 10 }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([
+    { id: 'A', score: 8, mode: 'hybrid', type: 'table' },
+    { id: 'B', score: 4, mode: 'hybrid', type: 'table' },
+    { id: 'C', score: 4, mode: 'graph-expand' }, // 8 × 0.5
+    { id: 'D', score: 4, mode: 'graph-expand' },
+  ])
+})
+
+test('S31 the topK cap stops graph expansion inside both the joins and the derived edge list', async () => {
+  const def = registerToolWith({
+    retrieval: retrievalOf([{ id: 'A', score: 8, payload: { kind: 'dws' }, mode: 'hybrid' }]),
+    schema: schemaWithGraph({
+      getRelated: sourceId => (sourceId === 'A'
+        ? [{ targetId: 'C', type: 'joins' }, { targetId: 'D', type: 'joins' }, { targetId: 'E', type: 'joins' }]
+        : []),
+      getDerived: sourceId => (sourceId === 'A' ? [{ targetId: 'F', type: 'derived_from' }] : []),
+    }),
+  })
+  const out = await def.execute({ query: '充值', top_k: 3 }, { signal: new AbortController().signal })
+  // C and D fill the cap; E (a later joins edge) and F (derived_from) are cut off.
+  expect(out.candidates).toEqual([
+    { id: 'A', score: 8, mode: 'hybrid', type: 'table' },
+    { id: 'C', score: 4, mode: 'graph-expand' },
+    { id: 'D', score: 4, mode: 'graph-expand' },
+  ])
+})
+
+test('S32 graph expansion stops before the first neighbour when BM25 already filled topK', async () => {
+  const def = registerToolWith({
+    retrieval: retrievalOf([{ id: 'A', score: 8, payload: { kind: 'dws' }, mode: 'hybrid' }]),
+    schema: schemaWithGraph({ getRelated: () => [{ targetId: 'C', type: 'joins' }] }),
+  })
+  const out = await def.execute({ query: '充值', top_k: 1 }, { signal: new AbortController().signal })
+  // top_k=1 is already met by the BM25 hit, so C is never even considered.
+  expect(out.candidates).toEqual([{ id: 'A', score: 8, mode: 'hybrid', type: 'table' }])
+})
+
+test('S33 a multi-hop join path becomes one chained constraint; an unconditioned path yields none', async () => {
+  const def = registerToolWith({
+    retrieval: retrievalOf([
+      { id: 'A', score: 8, payload: { kind: 'dws' }, mode: 'hybrid' },
+      { id: 'B', score: 4, payload: { kind: 'dws' }, mode: 'hybrid' },
+      { id: 'C', score: 2, payload: { kind: 'dws' }, mode: 'hybrid' },
+    ]),
+    schema: schemaWithGraph({
+      findJoinPath: (sourceId, targetId) => {
+        if (sourceId === 'A' && targetId === 'B') return ['A', 'M', 'B'] // 2 hops through M
+        if (sourceId === 'A' && targetId === 'C') return ['A', 'C'] // connected, but unconditioned
+        return null // B–C: unconnected
+      },
+      getJoinCondition: (sourceId, targetId) => {
+        if (sourceId === 'A' && targetId === 'M') return 'A.mid = M.mid'
+        if (sourceId === 'M' && targetId === 'B') return 'M.bid = B.bid'
+        return null
+      },
+    }),
+  })
+  const out = await def.execute({ query: '充值', top_k: 10 }, { signal: new AbortController().signal })
+  expect(out.candidates).toEqual([
+    { id: 'A', score: 8, mode: 'hybrid', type: 'table' },
+    { id: 'B', score: 4, mode: 'hybrid', type: 'table' },
+    { id: 'C', score: 2, mode: 'hybrid', type: 'table' },
+  ])
+  // A–B contributes both hops joined by the chain separator; A–C contributes
+  // nothing (no join condition on its single hop); B–C has no path at all.
+  expect(out.join_constraints).toEqual(['A JOIN M ON A.mid = M.mid ⟶ M JOIN B ON M.bid = B.bid'])
+})
+
+test('S34 the ctx.schema corpus path also returns join constraints for connected candidates', async () => {
+  const mockSchema = {
+    loadRetrievalCorpus: () => [
+      { id: 'dws_a', description: '充值订单', metrics: {} },
+      { id: 'dws_b', description: '充值退款', metrics: {} },
+    ],
+    getRelationGraph: () => ({
+      findJoinPath: (sourceId: string, targetId: string) =>
+        (sourceId === 'dws_a' && targetId === 'dws_b') || (sourceId === 'dws_b' && targetId === 'dws_a')
+          ? ['dws_a', 'dws_b']
+          : null,
+      getJoinCondition: (sourceId: string, targetId: string) =>
+        sourceId === 'dws_a' && targetId === 'dws_b' ? 'dws_a.uid = dws_b.uid' : null,
+      getRelated: () => [],
+      getDerived: () => [],
+    }),
+  }
+  const def = registerToolWith({ schema: mockSchema })
+  const out = await def.execute({ query: '充值' }, { signal: new AbortController().signal })
+  expect([...out.candidates.map(c => c.id)].sort()).toEqual(['dws_a', 'dws_b'])
+  expect(out.join_constraints).toEqual(['dws_a JOIN dws_b ON dws_a.uid = dws_b.uid'])
+})
+
+test('S35 execute rejects when the caller aborted before linking', async () => {
+  const def = registerToolWith({})
+  const controller = new AbortController()
+  controller.abort()
+  await expect(def.execute({ query: '充值' }, { signal: controller.signal }))
+    .rejects.toThrow('search_data_sources aborted before linking')
+})
+
+test('S36 render labels the data-source type, marks graph-expanded hits, and lists join constraints', () => {
+  const def = registerTool()
+  const out = def.output.render({}, {
+    candidates: [
+      { id: 'dws_pay_order_di', score: 2.5, mode: 'graph-expand', type: 'table' },
+      { id: 'dws_pay_order_di__arppu', score: 1, mode: 'blended', type: 'metric', description: '人均付费金额' },
+    ],
+    join_constraints: ['a JOIN b ON a.uid = b.uid', 'b JOIN c ON b.cid = c.cid'],
+  })
+  expect(out).toEqual([{
+    type: 'text',
+    text: '1. dws_pay_order_di (score 2.500) [table] [graph-expand]\n'
+      + '2. dws_pay_order_di__arppu (score 1.000) [metric] - 人均付费金额\n'
+      + '\n'
+      + 'Join constraints:\n'
+      + '  • a JOIN b ON a.uid = b.uid\n'
+      + '  • b JOIN c ON b.cid = c.cid',
+  }])
+})
+
+test('S37 extractQueryTerms drops sub-tokens below the 2-char floor and bigram threshold', () => {
+  // No CJK run at all, and every ASCII sub-token is one char → only the raw token.
+  expect(extractQueryTerms('1a-2b')).toEqual(['1a-2b'])
+  // A one-char CJK run inside a mixed token is not kept as a segment either.
+  expect(extractQueryTerms('x中y')).toEqual(['x中y'])
+  // A two-char CJK run is kept whole, but is too short for overlapping bigrams.
+  expect(extractQueryTerms('x中文y')).toEqual(['x中文y', '中文'])
 })

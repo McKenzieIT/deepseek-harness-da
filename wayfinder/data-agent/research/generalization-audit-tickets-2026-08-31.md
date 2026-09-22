@@ -79,7 +79,7 @@
 | CL4 | nl2sql-engine/src/bm25-linking.ts:72; tool-search-data-sources/src/index.ts:303 | tokenizer 丢日文 hiragana/katakana | CJK regex 加 `぀-ゟ゠-ヿ` |
 | CL5 | semantic-layer/src/enrichment.ts:118 | mergeRefs 用中文前缀 '确定性' 判定派生源 | 加结构化 `source` 字段('deterministic'/'llm'/'curated') |
 | CL6 | phase-gate/src/index.ts:70 | scopeId 默认 'game-1' + 游戏 docstring | 默认改中性 'default' 或必填 |
-| CL7 | apps/cli/config/agent-presets/data-agent/b-free-react-planning.cordis.yml:24 | B preset 默认 'per-game' persona | 改 domain-neutral 模板 + `{{domain}}` 变量 |
+| CL7 | packages/bundle/data-agent/presets/data-agent/b-free-react-planning.cordis.yml:24 | B preset 默认 'per-game' persona | 改 domain-neutral 模板 + `{{domain}}` 变量 |
 | CL8 | llm-wiring-plugin.ts:36; expand-query.ts:27; eval-cli/main.ts:65 | LLM provider/model 默认 Qwen/DashScope 无 fail-loud | 集中到一个部署 config；默认空+fail-loud |
 | CL9 | nl2sql-engine/src/conventions.ts:33 | renderConventionsPrompt 中文段头 | 段头抽 locale bundle |
 | CL10 | tool-suggest-followups/src/index.ts:63 | '≤8 中文字符' 约束 | 改 locale-neutral '≤~20 chars/≤4 words' |

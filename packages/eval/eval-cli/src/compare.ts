@@ -163,8 +163,8 @@ export function describeRunProtocol(run: RunResult): string | null {
  * exactly the trap that `scripts/run-eval.sh --pass-k 1` left behind while the
  * recorded baseline moved to pass^k.
  *
- * Known-and-different is an error (definitely wrong). Unknown is a warning
- * (merely unverifiable) so historical baselines stay diffable.
+ * A missing or incomplete run configuration is refused because its grading
+ * policy cannot be established from the artifact.
  */
 function checkProtocolMatch(runA: RunResult, runB: RunResult): void {
   for (const run of [runA, runB]) {
@@ -374,7 +374,7 @@ function rate(stats: CategoryStats): string {
 }
 
 function pad(s: string, w: number): string {
-  return s.length >= w ? s : s + ' '.repeat(w - s.length)
+  return s.padEnd(w)
 }
 
 function rpad(s: string, w: number): string {

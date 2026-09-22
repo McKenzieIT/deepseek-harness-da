@@ -1,17 +1,41 @@
+---
+description: "TODO: translate: Model-facing reachability_delta tool: compute how many new asset pairs become newly reachable via joins if a proposed relation is added to the knowledge graph"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-reachability-delta`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing reachability_delta tool: compute how many new asset pairs become newly reachable via joins if a proposed relation is added to the knowledge graph
+
+## 目录
+
+- [状态：已注册 + 可调用；ctx.evidenceQuery 可选](#status-registered--callable-ctxevidencequery-optional)
+- [注册形态](#registration-shape)
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与后续工作](#known-limitations-and-deferred-work)
+
 
 面向模型的 `reachability_delta` 工具：**计算若向知识图谱中加入一条拟新增关系，经由 join 将有多少新的资产对变为新可达**。agent（智能体）在提交编辑前调用它以评估新增关系的影响。
 
 它是 [`ctx.evidenceQuery`](../evidence-query) `reachabilityDelta` substrate（随 `@deepseek-ai/dsh-evidence-query` 服务一同提供）的面向模型的包装层。它镜像了 [`@deepseek-ai/dsh-tool-load-table-definition`](../tool-load-table-definition) 与 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)，以契合 [`@deepseek-ai/dsh-tools`](../../core/tools) 的注册形态（`defineTool` + `ctx.tools.register`）。
 
+<a id="status-registered--callable-ctxevidencequery-optional"></a>
 ## 状态：已注册 + 可调用；ctx.evidenceQuery 可选
 
 该工具由 data-agent preset 注册，并探测 `ctx.get('evidenceQuery')`：当 [`@deepseek-ai/dsh-evidence-query`](../evidence-query) 服务已挂载时，它针对实时关系图计算 delta；当未挂载提供方（不含该服务的 profile 或单元测试）时，它返回如实的 `ok: false`「evidenceQuery service not mounted」结果——可调用但未接线，而非损坏的挂载（与其他 `ctx.get` 探测型工具在各自服务挂载前所处的同一 thin-default 状态一致）。
 
 `source_id`/`target_id`/`type`/`on` 参数为模型输入（不可信）。`execute` 在计算前检查 `exec.signal.aborted`。
 
+<a id="registration-shape"></a>
 ## 注册形态
 
 镜像 [`@deepseek-ai/dsh-tool-load-table-definition`](../tool-load-table-definition) 与 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)：
@@ -40,10 +64,12 @@ export function apply(ctx: Context, _config: Config = {}): void {
 
 注册基于 effect：dispose（资源释放）plugin fiber 会注销该工具；schema 自动流入系统提示词装配。`execute` 返回一个规范化 JSON 值（`{ ok, proposedRelation, newlyReachableCount, newlyReachable, message? }`）；`output.render` 将其转为面向模型的文本。
 
+<a id="config"></a>
 ## 配置
 
 无可配置项。关系图由 [`ctx.evidenceQuery`](../evidence-query) 服务挂载拥有，而非本工具。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -52,6 +78,15 @@ pnpm vitest run packages/data/tool-reachability-delta
 pnpm verify-cordis-config
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-reachability-delta` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -60,6 +95,7 @@ pnpm verify-cordis-config
 
 该包的贡献对可复用请求前缀是仅追加的，不会使既有缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与后续工作
 
 - **ctx.evidenceQuery 可选（挂载前可调用但未接线）**——该工具探测 `ctx.get('evidenceQuery')`，当 [`@deepseek-ai/dsh-evidence-query`](../evidence-query) 服务未挂载（不含该服务的 profile 或单元测试）时，返回如实的 `ok: false`「evidenceQuery service not mounted」结果。为 bundle 接线 `evidence-query` 服务行是 bundle 层关注点；无论是否接线，本工具的约定不变。

@@ -23,11 +23,13 @@ import { Bar, Bubble, Doughnut, Line, PolarArea, Radar, Scatter } from 'react-ch
 import type { Chart } from 'chart.js'
 import type { ChartConfig, ChartType } from './TableCard.tsx'
 import { parseNumericCell } from './numeric.ts'
+import type { TableTranslate } from './locales.ts'
 
 /** Series palette — literal canvas colors passed to Chart.js dataset props
  *  (not CSS; the token rule applies to TableCard.module.css). Mirrors the R4
  *  prototype palette. */
 const SERIES_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+const DEFAULT_AXES = { x: 'x', y: 'y' } as const
 
 /** Series color at palette index `i` (cycling). The `??` fallback means array
  *  access never yields `undefined`, avoiding the forbidden non-null assertion. */
@@ -42,7 +44,7 @@ function rgba(hex: string, alpha: number): string {
   const r = Number.parseInt(hex.slice(1, 3), 16)
   const g = Number.parseInt(hex.slice(3, 5), 16)
   const b = Number.parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  return ['rgba(', r, ', ', g, ', ', b, ', ', alpha, ')'].join('')
 }
 
 /** Read one theme CSS variable, falling back when the token is absent. */
@@ -187,6 +189,8 @@ export interface ChartViewProps {
   rows: string[][]
   /** Show value-pills on the chart (valueLabelsPlugin). */
   showLabels?: boolean
+  /** Localized chart fallback labels. */
+  t: TableTranslate
 }
 
 interface BuiltChart {
@@ -198,13 +202,13 @@ interface BuiltChart {
  *  filled line; `hbar` is a bar with `indexAxis: 'y'`; scatter/bubble use a
  *  linear x-axis with titled scales; doughnut uses `ArcElement` + cutout;
  *  radar/polarArea use `RadialLinearScale`. */
-function buildChart(chart: ChartConfig, headers: string[], rows: string[][], showLabels: boolean): BuiltChart {
+function buildChart(chart: ChartConfig, headers: string[], rows: string[][], showLabels: boolean, t: TableTranslate): BuiltChart {
   const text = readCssColor('--dsw-alias-label-secondary', '#667085')
   const grid = readCssColor('--dsw-alias-border-l2', 'rgba(102, 112, 133, 0.25)')
   const valueLabels: ValueLabelsOpts = { display: showLabels }
   const legend = { display: chart.y_columns.length > 1, labels: { color: text } }
   const tooltip = {
-    backgroundColor: 'rgba(29, 41, 57, 0.92)',
+    backgroundColor: rgba('#1d2939', 0.92),
     titleColor: '#fff',
     bodyColor: '#fff',
     borderColor: grid,
@@ -227,7 +231,7 @@ function buildChart(chart: ChartConfig, headers: string[], rows: string[][], sho
       const datasets = chart.y_columns.map((yc, i) => {
         const hex = seriesColor(i)
         return {
-          label: headers[yc] ?? `Series ${i + 1}`,
+          label: headers[yc] ?? t('chartSeriesIndexed', { index: i + 1 }),
           data: rows.map(r => numericCell(r, yc)),
           borderColor: rgba(hex, 0.8),
           backgroundColor: fill ? rgba(hex, 0.15) : rgba(hex, 0),
@@ -251,7 +255,7 @@ function buildChart(chart: ChartConfig, headers: string[], rows: string[][], sho
       const datasets = chart.y_columns.map((yc, i) => {
         const hex = seriesColor(i)
         return {
-          label: headers[yc] ?? `Series ${i + 1}`,
+          label: headers[yc] ?? t('chartSeriesIndexed', { index: i + 1 }),
           data: rows.map(r => numericCell(r, yc)),
           backgroundColor: rgba(hex, 0.8),
         }
@@ -269,8 +273,8 @@ function buildChart(chart: ChartConfig, headers: string[], rows: string[][], sho
     }
     case 'scatter':
     case 'bubble': {
-      const xLabel = headers[chart.x_column] ?? 'x'
-      const yLabel = headers[yCol] ?? 'y'
+      const xLabel = headers[chart.x_column] ?? DEFAULT_AXES.x
+      const yLabel = headers[yCol] ?? DEFAULT_AXES.y
       const hex = seriesColor(0)
       const points = rows.map((r) => {
         const x = numericCell(r, chart.x_column)
@@ -301,7 +305,7 @@ function buildChart(chart: ChartConfig, headers: string[], rows: string[][], sho
     }
     case 'doughnut': {
       const datasets = [{
-        label: headers[yCol] ?? 'Series 1',
+        label: headers[yCol] ?? t('chartSeriesIndexed', { index: 1 }),
         data: rows.map(r => numericCell(r, yCol)),
         backgroundColor: labels.map((_, i) => rgba(seriesColor(i), 0.8)),
         borderColor: '#fff',
@@ -321,7 +325,7 @@ function buildChart(chart: ChartConfig, headers: string[], rows: string[][], sho
     case 'polarArea': {
       const hex = seriesColor(4)
       const datasets = [{
-        label: headers[yCol] ?? 'Series 1',
+        label: headers[yCol] ?? t('chartSeriesIndexed', { index: 1 }),
         data: rows.map(r => numericCell(r, yCol)),
         backgroundColor: chart.type === 'radar'
           ? rgba(hex, 0.15)
@@ -350,10 +354,10 @@ function buildChart(chart: ChartConfig, headers: string[], rows: string[][], sho
   }
 }
 
-export default function ChartView({ chart, headers, rows, showLabels = false }: ChartViewProps) {
+export default function ChartView({ chart, headers, rows, showLabels = false, t }: ChartViewProps) {
   const built = useMemo(
-    () => buildChart(chart, headers, rows, showLabels),
-    [chart, headers, rows, showLabels],
+    () => buildChart(chart, headers, rows, showLabels, t),
+    [chart, headers, rows, showLabels, t],
   )
   // chart.js + react-chartjs-2 expect fully-typed ChartData/ChartOptions whose
   // shape varies per chart type; buildChart returns a per-type union, so assert

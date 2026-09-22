@@ -1,6 +1,25 @@
+---
+description: "Context plugin: inject eval evidence into goal round context for model self-adjustment"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-goal-eval-context
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Context plugin: inject eval evidence into goal round context for model self-adjustment
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Context plugin for the DeepSeek Harness data agent: injects evaluation evidence into the goal round context so the model can self-adjust direction before a no-progress block fires.
 
@@ -22,6 +41,13 @@ The section text is produced by a pure render function (`renderEvalEvidence`) fr
 goal-eval-context:
   hintEscalationThreshold: 2 # default; the hint escalates one step before the goal policy blocks at N=3
 ```
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-goal-eval-context` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

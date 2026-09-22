@@ -1,12 +1,38 @@
+---
+description: "Toolview card for the suggest_followups INTERPRETATION tool: two-line follow-up list with the full query visible"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-suggest-followups
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Toolview card for the suggest_followups INTERPRETATION tool: two-line follow-up list with the full query visible
+
+## Table of Contents
+
+- [Style notes](#style-notes)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Toolview card for the `suggest_followups` INTERPRETATION tool. Renders follow-up question suggestions as a two-line list: the short label on the primary line, the full query `value` visible underneath. Clicking a row submits the value as a new message to the conversation.
 
 ## Style notes
 
 The chip styles this package shipped with referenced six `--dsw-bg-*` / `--dsw-text-*` / `--dsw-border-*` custom properties that do not exist in the theme, so backgrounds and borders silently resolved to nothing. The list restyle consumes `--dsw-alias-*` tokens only.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-suggest-followups` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

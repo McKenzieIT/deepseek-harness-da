@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-present-table",
   "description": "Model-facing present_table tool: present a table result with optional KPI aggregations and chart config for the INTERPRETATION phase",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

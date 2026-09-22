@@ -1,10 +1,31 @@
+---
+description: "TODO: translate: [data-agent] DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-llm-dashscope
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: [data-agent] DashScope (AGA AI Gateway) native-protocol chat-completions adapter for the DeepSeek Harness LLM seam
+
+## 目录
+
+- [Overview](#overview)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 DashScope（AGA AI Gateway）原生协议 chat-completions 适配器，用于 DeepSeek Harness LLM 接缝（`ctx.llm`）。实现 DashScope 原生线路协议（非 OpenAI 兼容），经阿里内部 AGA 网关通信。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 一个 Cordis Service 适配器，将 harness `ctx.llm` 契约转换为 DashScope 原生 SSE 流：
 
@@ -14,6 +35,7 @@ DashScope（AGA AI Gateway）原生协议 chat-completions 适配器，用于 De
 - 目录：qwen-flash、qwen-plus、qwen3.7-max、qwen3.6-plus
 - 推理：无逐请求思考开关；推理通过模型选择（qwen3.6-plus 等）
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -22,6 +44,15 @@ pnpm vitest run packages/llm/llm-dashscope         # 64 unit specs
 DSH_KEYCHAIN_LIVE=1 DASHSCOPE_API_KEY=... pnpm vitest run packages/llm/llm-dashscope/tests/adapter.e2e.ts  # key-gated live e2e
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-llm-dashscope` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 无，因为适配器仅将已组装的 harness 对话重新编码为/自 DashScope 原生线路协议，不添加任何模型绑定文本、schema 或消息。
@@ -30,6 +61,7 @@ DSH_KEYCHAIN_LIVE=1 DASHSCOPE_API_KEY=... pnpm vitest run packages/llm/llm-dashs
 
 Pass-through；适配器经原生线路原样转发已组装的请求前缀，故 agent loop 选择的 provider 和路由拥有缓存复用和路由边界。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **R3 — 多轮 passback** — tool-call 轮 passback 已确认工作（e2e green）；但完整多轮 plain-turn thinking passback 缺少专用单测（低风险，规则照搬 deepseek 适配器）。

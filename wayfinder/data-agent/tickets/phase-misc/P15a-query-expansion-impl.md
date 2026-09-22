@@ -96,7 +96,7 @@ Config 开关（默认开启）：
 
 ## 证据
 
-- P15 原型：`packages/eval/eval-cli/src/p15-probe.ts`（simulated expansion 2/6→6/6 hit@5）
+- P15 原型：`packages/eval/eval-cli/dev/p15-probe.ts`（simulated expansion 2/6→6/6 hit@5）
 - P15 resolution：`wayfinder/data-agent/tickets/phase-misc/P15-query-rewriting.md`
 
 ## Resolution (2026-08-26)

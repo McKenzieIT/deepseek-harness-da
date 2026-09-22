@@ -12,14 +12,17 @@ import type { ResultEntry } from '../src/client/types.ts'
 
 const ENTRY: ResultEntry = { columns: ['a'], rows: [['x']] }
 
-/** Build a TestRemote whose only scripted namespace is `result.get`. */
+/** Script `result.get` onto the runtime's shared Remote double. */
 function makeRemote(
-  ctx: SlotTestRuntime['ctx'],
+  runtime: SlotTestRuntime,
   getImpl: (rid: string) => Promise<RemoteResult<ResultEntry>>,
 ): { remote: TestRemote; get: ReturnType<typeof vi.fn> } {
   const get = vi.fn(async (resultId: string) => getImpl(resultId))
-  const remote = new TestRemote(ctx, { result: { get } })
-  return { remote, get }
+  // SlotTestRuntime owns one shared Remote double, so constructing a second one
+  // would re-provide `remote` at the root and throw. Script the namespace onto
+  // the runtime's own double instead.
+  runtime.remote.provideNamespaces({ result: { get } })
+  return { remote: runtime.remote, get }
 }
 
 /** A session stub with the surface the runtime's add() requires. */
@@ -40,9 +43,12 @@ async function bench(getImpl: (rid: string) => Promise<RemoteResult<ResultEntry>
   root: ResultService
 }> {
   const runtime = await SlotTestRuntime.create()
-  const { get } = makeRemote(runtime.ctx, getImpl)
+  const { get } = makeRemote(runtime, getImpl)
   await runtime.ctx.plugin({ inject, apply }).await()
-  await runtime.sessions.add({ id: 's1', session: sessionStub() })
+  const s1 = await runtime.sessions.add({ id: 's1', session: sessionStub() })
+  // `scope()` now borrows an already-retained generation, so each fixture Session
+  // needs an explicit reference; retainFor releases it when the runtime ctx stops.
+  await runtime.sessions.retainFor(runtime.ctx, s1).ready
   const scoped = runtime.sessions.scope('s1')!.get('results') as ResultService
   const root = runtime.ctx.get('results') as ResultService
   return { runtime, get, scoped, root }
@@ -76,10 +82,13 @@ describe('result-cache apply', () => {
 
   it('merges config bounds over the defaults (apply(ctx, config))', async () => {
     const runtime = await SlotTestRuntime.create()
-    const { get } = makeRemote(runtime.ctx, async () => ({ ok: true as const, value: ENTRY }))
+    const { get } = makeRemote(runtime, async () => ({ ok: true as const, value: ENTRY }))
     // maxEntrySize: 1 -> ENTRY (~36 bytes) is oversized -> never cached -> refetch each read
     await runtime.ctx.plugin({ inject, apply: (ctx) => { apply(ctx, { maxEntrySize: 1 }) } }).await()
-    await runtime.sessions.add({ id: 's1', session: sessionStub() })
+    const s1 = await runtime.sessions.add({ id: 's1', session: sessionStub() })
+    // `scope()` now borrows an already-retained generation, so each fixture Session
+    // needs an explicit reference; retainFor releases it when the runtime ctx stops.
+    await runtime.sessions.retainFor(runtime.ctx, s1).ready
     const scoped = runtime.sessions.scope('s1')!.get('results') as ResultService
     await scoped.get('qr_1')
     await scoped.get('qr_1') // oversized -> never cached -> refetch

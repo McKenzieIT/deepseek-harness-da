@@ -30,6 +30,7 @@ export const zh = {
   'chartPolarArea': '极坐标',
   'chartLabels': '显示数值',
   'chartData': '仅数据',
+  'chartSeriesIndexed': '系列 {index}',
   'degradeScatter': '散点图需至少 2 个数值列,已降级为柱状图',
   'degradeDoughnut': '环形图需不超过 8 个类别,已降级为柱状图',
   'degradeLineDate': '折线/面积图需 x 轴为日期,已降级为柱状图',
@@ -41,6 +42,9 @@ export const zh = {
 
 /** The present.table namespace key union. */
 export type TableKey = keyof typeof zh
+
+/** Translator passed to table-card and chart presentation helpers. */
+export type TableTranslate = (key: TableKey, params?: Record<string, unknown>) => string
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
@@ -67,6 +71,7 @@ export const en = {
   'chartPolarArea': 'Polar',
   'chartLabels': 'Show values',
   'chartData': 'Data only',
+  'chartSeriesIndexed': 'Series {index}',
   'degradeScatter': 'Scatter needs ≥2 numeric columns; degraded to bar',
   'degradeDoughnut': 'Doughnut needs ≤8 classes; degraded to bar',
   'degradeLineDate': 'Line/area needs a date x-axis; degraded to bar',

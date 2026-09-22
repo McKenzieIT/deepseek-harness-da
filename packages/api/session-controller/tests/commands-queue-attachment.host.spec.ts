@@ -1,3 +1,4 @@
+import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent, Inbox, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
@@ -82,7 +83,7 @@ async function commandHarness(
     followup: vi.fn(),
     cancel,
   } as unknown as Agent
-  ctx.agents.register(agent)
+  await ctx.agents.register(agent)
   ctx.provide('workspaceRegistry', { get: () => undefined, list: () => [] } as never)
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'fixture', model: 'fixture-model' }),
@@ -93,7 +94,9 @@ async function commandHarness(
     assembled: undefined,
   }
   const agents = {
-    resolveAgent: () => Promise.resolve({ agent }),
+    resolveAgent: (id: SessionId) => Promise.resolve(id === agent.id
+      ? { agent }
+      : { error: new RemoteError('session/not-found', 'missing', { sessionId: id }) }),
     selectionFor: () => selection,
     serializeImageAdmission: <Value>(_agent: Agent, operation: () => Promise<Value>) => operation(),
     composeAgent: () => Promise.resolve({ setup: () => {} }),
@@ -113,6 +116,23 @@ async function expectFailure(operation: Promise<unknown>, code: string): Promise
 }
 
 describe('Session queue commands', () => {
+  it('preserves the cold Agent resolver rejection', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    const error = new RemoteError('session/agent-busy', 'owned by a child', { reason: 'subagent-owned' })
+    const controller = new SessionCommandController(ctx, {
+      resolveAgent: () => Promise.resolve({ error }),
+    } as unknown as ApiSessionAgentController, '/workspace')
+    try {
+      await expect(controller.updateQueue({
+        sessionId: SessionId('cold-child'), itemId: MessageId('pending'), action: { kind: 'remove' },
+      })).rejects.toBe(error)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('edits, removes, steers, and rejects stale queue occurrences', async () => {
     const { ctx, controller, agent, inbox, steer, cancel } = await commandHarness()
     const queued = createUserMessage({ content: [{ type: 'text', text: 'queued' }], source: { kind: 'user' } })
@@ -133,6 +153,14 @@ describe('Session queue commands', () => {
         }],
       },
     })), 'session/attachment-invalid')
+    for (const content of [[], [{ type: 'text' as const, text: ' \t\n' }]]) {
+      await expectFailure(Promise.resolve().then(() => controller.updateQueue({
+        sessionId: agent.id,
+        itemId: queued.id,
+        action: { kind: 'edit', content },
+      })), 'gateway/bad-request')
+    }
+    expect(inbox.nextTurn[0]?.content).toEqual([{ type: 'text', text: 'queued' }])
     await expectFailure(Promise.resolve().then(() => controller.updateQueue({
       sessionId: SessionId('missing'), itemId: queued.id, action: { kind: 'remove' },
     })), 'session/queue-item-not-found')
@@ -147,7 +175,7 @@ describe('Session queue commands', () => {
     await expectFailure(Promise.resolve().then(() => controller.updateQueue({
       sessionId: agent.id, itemId: queued.id, action: { kind: 'steer' },
     })), 'session/steer-unavailable')
-    expect(controller.updateQueue({
+    expect(await controller.updateQueue({
       sessionId: agent.id,
       itemId: queued.id,
       action: { kind: 'edit', content: [{ type: 'text', text: 'edited' }] },
@@ -156,14 +184,14 @@ describe('Session queue commands', () => {
     // An edit rewrites content in place, so the occurrence a client addressed
     // by id stays addressable.
     expect(inbox.nextTurn[0]?.id).toBe(queued.id)
-    expect(controller.updateQueue({
+    expect(await controller.updateQueue({
       sessionId: agent.id, itemId: nextStep.id, action: { kind: 'remove' },
     })).toEqual({ accepted: true })
 
     Object.assign(agent, { status: 'running' })
     const steered = inbox.nextTurn[0]
     if (steered === undefined) throw new Error('missing edited queue item')
-    expect(controller.updateQueue({
+    expect(await controller.updateQueue({
       sessionId: agent.id, itemId: steered.id, action: { kind: 'steer' },
     })).toEqual({ accepted: true })
     expect(steer).toHaveBeenCalledWith(steered)
@@ -176,7 +204,7 @@ describe('Session queue commands', () => {
       source: { kind: 'user', rpcId: 'file-rpc' as never },
     })
     inbox.append('next-turn', queuedFile)
-    expect(controller.updateQueue({
+    expect(await controller.updateQueue({
       sessionId: agent.id, itemId: queuedFile.id, action: { kind: 'steer' },
     })).toEqual({ accepted: true })
     expect(steer).toHaveBeenLastCalledWith(queuedFile)
@@ -206,7 +234,7 @@ describe('Session queue commands', () => {
       inbox.append('next-turn', queued)
       inbox.append('next-step', context)
 
-      expect(controller.updateQueue({
+      expect(await controller.updateQueue({
         sessionId: agent.id,
         itemId: context.id,
         action: { kind: 'edit', content: [{ type: 'text', text: 'edited context' }] },
@@ -218,10 +246,10 @@ describe('Session queue commands', () => {
       })
       expect(editedContext?.id).toBe(context.id)
       if (editedContext === undefined) throw new Error('missing edited context')
-      expect(controller.updateQueue({
+      expect(await controller.updateQueue({
         sessionId: agent.id, itemId: editedContext.id, action: { kind: 'remove' },
       })).toEqual({ accepted: true })
-      expect(controller.updateQueue({
+      expect(await controller.updateQueue({
         sessionId: agent.id, itemId: queued.id, action: { kind: 'steer' },
       })).toEqual({ accepted: true })
       expect(steer).toHaveBeenCalledWith(queued)
@@ -243,7 +271,7 @@ describe('Session queue commands', () => {
     // command must accept whichever boundary `Agent.steer()` selects.
     steer.mockImplementation((message: UserMessage) => { inbox.append('next-turn', message) })
 
-    expect(controller.updateQueue({
+    expect(await controller.updateQueue({
       sessionId: agent.id, itemId: first.id, action: { kind: 'steer' },
     })).toEqual({ accepted: true })
     expect(steer).toHaveBeenCalledWith(first)
@@ -317,21 +345,24 @@ describe('Session attachment authorization', () => {
     const message = imageRef('message')
     const inserted = imageRef('inserted')
     const streamed = imageRef('streamed')
-    const events = [
+    const events: SessionEvent[] = [
       { ...event('fixture/direct', SessionSeq(0), {
         content: [null, [], { type: 'tool-result', content: [{ type: 'text', text: 'none' }] }, {
           type: 'tool-result', content: [{ type: 'image', attachment: nested }],
         }],
       }), ignorable: true as const },
-      { ...event('assistant/message', SessionSeq(1), {
-        turn: 1,
-        step: 1,
-        stream: [],
-        message: createAssistantMessage({
-          content: [{ type: 'image', attachment: message }],
-          source: { provider: 'fixture', model: 'fixture' },
-        }),
-      }), surfaceOp: 'append' as const },
+      {
+        type: 'assistant/message', seq: SessionSeq(1), time: 2, surfaceOp: 'append',
+        data: {
+          turn: 1,
+          step: 1,
+          stream: [],
+          message: createAssistantMessage({
+            content: [{ type: 'image', attachment: message }],
+            source: { provider: 'fixture', model: 'fixture' },
+          }),
+        },
+      },
       event('agent/inbox/spliced', SessionSeq(2), {
         target: 'next-turn',
         start: 0,

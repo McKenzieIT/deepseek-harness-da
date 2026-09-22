@@ -1,12 +1,38 @@
+---
+description: "MaxCompute query-engine provider (ctx.query): da-self-held raw MCP SDK Client over a stdio sidecar (A1-split; control tools non-model-facing)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-query-maxcompute
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+MaxCompute query-engine provider (ctx.query): da-self-held raw MCP SDK Client over a stdio sidecar (A1-split; control tools non-model-facing)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 MaxCompute query-engine provider (`ctx.query`): da-self-held raw MCP SDK Client over a stdio sidecar with P1 wiring (A1-split; control tools non-model-facing).
 
 ## Overview
 
 Implements `MaxComputeQueryEngine extends QueryEngine` — a Provider that self-holds a raw `@modelcontextprotocol/sdk` `Client` + `StdioClientTransport` connected to a stdio sidecar subprocess. All sidecar tools (`execute`, `attach`, `cancel`, `get_progress`, `estimate_cost`, `set_credentials`, `invalidate_scope`) are called programmatically via raw name; none enter `ctx.tools` (non-model-callable). Features lazy re-spawn on crash (with crash-loop bounded retry), per-call credential push via `set_credentials` (idempotent drop), and outbound cancel via `AbortSignal`.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-query-maxcompute` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

@@ -1,13 +1,32 @@
+---
+description: "CPython subprocess PtcRuntime Provider for the data-agent (pandas/numpy, containment-only trust)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-code-runtime-data-python
 
 English | [中文](README.zh.md)
 
-CPython-subprocess implementation of the [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.md) seam for the data-agent. `DataPythonCodeRuntime` runs each program in ONE fresh `python3` subprocess with pandas/numpy available, talks the existing fd-3 JSON-lines wire protocol owned by [`@deepseek-ai/dsh-code-runtime-python`](../../experimental/code-runtime-python/README.md), and returns `{ value, logs, error? }`. **Containment, not a security boundary**: the trust posture is binding-only I/O plus resource limits — the same posture as the [`worker-thread`](../code-runtime-worker-thread/README.md) backend, traded from a Node isolate to a fresh CPython process so model code is Python instead of TypeScript.
+## Summary
+
+`dsh-code-runtime-data-python` runs each data-agent Python program in a fresh CPython subprocess with pandas and numpy available. It uses the released fd-3 protocol package for host-side frame typing, lossless JSON encoding, byte metering, and hostile-frame validation. Binding-only I/O and process resource limits provide containment rather than a security boundary; each run returns its value, bounded logs, and an optional classified failure.
+
+## Table of Contents
+
+- [Config](#config)
+- [Design](#design)
+- [Failure kinds](#failure-kinds)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+CPython-subprocess implementation of the [`@deepseek-ai/dsh-ptc-runtime`](../../ptc-runtime/ptc-runtime/README.md) seam for the data-agent. `DataPythonCodeRuntime` runs each program in ONE fresh `python3` subprocess with pandas/numpy available, talks the fd-3 JSON-lines wire protocol owned by [`@deepseek-ai/dsh-code-runtime-python-protocol`](../code-runtime-python-protocol/README.md), and returns `{ value, logs, error? }`. **Containment, not a security boundary**: the trust posture is binding-only I/O plus process resource limits, so model code is Python in a fresh CPython process rather than TypeScript in a Node process.
 
 ## Config
 
 ```yaml
-- id: code-runtime
+- id: code-runtime-data-python
   name: '@deepseek-ai/dsh-code-runtime-data-python'
   config:
     cpuSeconds: 30                # RLIMIT_CPU seconds applied to the bootstrap before model code runs
@@ -35,6 +54,13 @@ Every field is validated and defaulted; `cpuSeconds`, `addressSpaceBytes`, and `
 ## Failure kinds
 
 A `CodeRunResult.error.kind` is one of: `worker-exit` (spawn error or the process exited before a `done`), `timeout` (wall-clock ceiling), `abort` (caller signal or runtime disposal), `output-limit` (completion value over `maxValueBytes`), `exception` (program or binding-error traceback, or a bootstrap crash), `invalid-output` (completion is not lossless JSON).
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-code-runtime-data-python` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

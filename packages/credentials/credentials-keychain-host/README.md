@@ -1,6 +1,28 @@
+---
+description: "[data-agent] Mount face that registers KeychainCredentialProvider as ctx.credentials, composing a plain writable file/env fallback (G3c global-writes gap, decision A)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-credentials-keychain-host
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+[data-agent] Mount face that registers KeychainCredentialProvider as ctx.credentials, composing a plain writable file/env fallback (G3c global-writes gap, decision A)
+
+## Table of Contents
+
+- [Why](#why)
+- [G3c global-writes gap (decision A)](#g3c-global-writes-gap-decision-a)
+- [Bundle wiring (G3c)](#bundle-wiring-g3c)
+- [unlockPassword source](#unlockpassword-source)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 [data-agent] Mount face that registers `KeychainCredentialProvider` as `ctx.credentials`, composing a plain writable file/env fallback (G3c global-writes gap, decision A).
 
@@ -35,6 +57,13 @@ The data-agent bundle disables base `credentials` (credentials-local) and mounts
 - `none`: omits the password (pre-created + already-unlocked keychain).
 
 Runtime-exfil ACL (P12c: native Security-framework binding + harness code-signing) was evaluated as **over-spec and dropped (2026-08-21)** — it breaks dsh's out-of-the-box constraint (tsx/node scripts have no binary to sign) and the runtime-exfil threat is already covered by at-rest + locked-keychain + auto-lock + P10 tool-gating (business-user agents forbid `bash`; the admin residual unlock-window is trusted-operator self-risk). This host therefore lands the final state under out-of-the-box: at-rest + locked-keychain + per-user CRUD + branding + writable global fallback.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-credentials-keychain-host` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-schema-gateway",
   "description": "Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI consumption",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },
@@ -43,7 +43,9 @@
     "lib/typert.remote-client.d.ts"
   ],
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",

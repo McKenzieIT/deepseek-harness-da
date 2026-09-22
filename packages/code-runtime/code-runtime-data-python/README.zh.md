@@ -1,13 +1,33 @@
+---
+description: "面向 data-agent 的 CPython 子进程 PtcRuntime 提供方，提供 pandas/numpy 与仅遏制级信任。"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-code-runtime-data-python
 
 [English](README.md) | 中文
 
-面向 data-agent 的 CPython 子进程版 [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.zh.md) 接缝实现。`DataPythonCodeRuntime` 在一个全新的 `python3` 子进程中运行每个程序，提供 pandas/numpy，使用由 [`@deepseek-ai/dsh-code-runtime-python`](../../experimental/code-runtime-python/README.zh.md) 拥有的现有 fd-3 JSON-lines 线协议，并返回 `{ value, logs, error? }`。**遏制，而非安全边界**：信任姿态是 binding-only I/O 加资源限制——与 [`worker-thread`](../code-runtime-worker-thread/README.zh.md) 后端相同，只是把 Node 隔离体换成一个全新的 CPython 进程，让模型代码用 Python 而非 TypeScript 编写。
+## 概述
 
+`dsh-code-runtime-data-python` 在全新 CPython 子进程中运行每个 data-agent Python 程序，并提供 pandas 与 numpy。它使用正式 fd-3 协议包完成宿主侧帧类型、无损 JSON 编码、字节计量与敌意帧校验。Binding-only I/O 与进程资源限制提供遏制而非安全边界；每次运行返回其值、有界日志与可选的分类失败。
+
+## 目录
+
+- [Config](#config)
+- [设计](#design)
+- [失败类型](#failure-kinds)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+面向 data-agent 的 CPython 子进程版 [`@deepseek-ai/dsh-ptc-runtime`](../../ptc-runtime/ptc-runtime/README.zh.md) 接缝实现。`DataPythonCodeRuntime` 在一个全新的 `python3` 子进程中运行每个程序，提供 pandas/numpy，使用由 [`@deepseek-ai/dsh-code-runtime-python-protocol`](../code-runtime-python-protocol/README.zh.md) 拥有的 fd-3 JSON-lines wire 协议，并返回 `{ value, logs, error? }`。**遏制，而非安全边界**：信任姿态是 binding-only I/O 加进程资源限制，因此模型代码是运行在全新 CPython 进程中的 Python，而不是运行在 Node 进程中的 TypeScript。
+
+<a id="config"></a>
 ## Config
 
 ```yaml
-- id: code-runtime
+- id: code-runtime-data-python
   name: '@deepseek-ai/dsh-code-runtime-data-python'
   config:
     cpuSeconds: 30                # RLIMIT_CPU seconds applied to the bootstrap before model code runs
@@ -20,6 +40,7 @@
 
 每个字段都经过校验并带默认值；`cpuSeconds`、`addressSpaceBytes` 与 `maxWallMs` 为正有限数，`maxWallMs` 还额外不超过 `MAX_TIMER_DELAY_MS`（Node 的 `setTimeout` 钳位值），`maxLogBytes` 与 `maxValueBytes` 为不小于四字节的安全整数，`pythonPath` 为字符串，此外没有其他可调项。
 
+<a id="design"></a>
 ## 设计
 
 - **每次运行一个全新 CPython 进程，无池化** —— 程序的世界随其子进程一同消亡：无可记录的跨运行状态，状态串扰不可表示，运行可仅凭会话日志重建。
@@ -32,10 +53,20 @@
 - **程序命名空间中提供 pandas 与 numpy** —— bootstrap 在可用时将 `pandas`（以 `pd`/`pandas`）与 `numpy`（以 `np`/`numpy`）导入程序全局，并安装一个 `print` 垫片，将每条记录急切地流入日志账本（使被超时或杀死的程序仍能显示其打印内容）。
 - **销毁至静默** —— teardown 置 disposed，将每个活跃运行结算为 `abort`，并在解析前等待子进程真正死亡（`close`/`error`），使运行 Promise 不在基底可能仍在死亡期间结算。
 
+<a id="failure-kinds"></a>
 ## 失败类型
 
 `CodeRunResult.error.kind` 取值为：`worker-exit`（spawn 错误或进程在 `done` 前退出）、`timeout`（挂钟上限）、`abort`（调用方信号或运行时销毁）、`output-limit`（完成值超过 `maxValueBytes`）、`exception`（程序或绑定错误回溯，或 bootstrap 崩溃）、`invalid-output`（完成值非无损 JSON）。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-code-runtime-data-python` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 间接，经由 @deepseek-ai/dsh-nl2sql-engine 的 LLM 适配器。
@@ -44,6 +75,7 @@
 
 本包的贡献对可复用请求前缀是仅追加的，不会使既有缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **`RLIMIT_AS` 仅限 Linux，macOS 忽略 `addressSpaceBytes`** —— `setrlimit(RLIMIT_AS, …)` 在 macOS 上为空操作，故地址空间上限仅在 Linux 上强制；在 macOS 上，失控程序由 `RLIMIT_CPU` 与挂钟时钟而非地址空间约束。

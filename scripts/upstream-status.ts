@@ -9,17 +9,27 @@
  * Refuses to print a behind-count derived from a stale or absent
  * `upstream/master` ref. An unfetched ref would under-report (the
  * false-green failure mode this report exists to prevent — at UM15
- * writing time `upstream/master` pointed at `5dda764ed3` while the true
- * remote HEAD was `2377c272a8`). Behind-count is printed only when the
+ * writing time the local `upstream/master` ref lagged the true remote
+ * HEAD by several commits). Behind-count is printed only when the
  * tracking ref is `fresh` (local `upstream/master` === remote HEAD).
  *
- * `RefState`:
+ * `RefState`, evaluated after the probe so a fetch that advances the ref
+ * counts as fresh rather than as its own staleness:
  * - `fresh` — local tracking ref and remote HEAD both present and equal.
- * - `stale` — both present but differing.
+ * - `stale` — both present but differing, which after a successful fetch
+ *   means the fetch could not move the ref; in `--no-fetch` mode it is the
+ *   ordinary "local ref was never refreshed" case.
  * - `unknown` — either absent, or the fetch / `ls-remote` probe failed.
  *
  * `--no-fetch` skips the network fetch and consults `git ls-remote`
  * instead, so a stale local ref is never trusted as the remote truth.
+ * `--root <path>` reports on another checkout, which is how the fixture
+ * suites exercise the stale, unknown, and malformed-record branches
+ * without touching the real remotes.
+ *
+ * Scheduling this report cannot alert on anything: it exits 0 by
+ * contract. `scripts/upstream-monitor.ts` is the gate that turns the same
+ * findings into a non-zero job result.
  *
  * @module scripts/upstream-status
  */
@@ -30,16 +40,17 @@ import {
   UPSTREAM_SYNC_RECORD,
   REPOSITORY_ROOT,
   daysSinceSync,
+  owedWaivers,
   pendingWaivers,
   readUpstreamSyncRecord,
   type UpstreamSyncRecord,
 } from './upstream-sync-record.ts'
 
 /** Freshness of the `upstream/master` tracking ref. */
-type RefState = 'fresh' | 'stale' | 'unknown'
+export type RefState = 'fresh' | 'stale' | 'unknown'
 
 /** Outcome of probing the upstream tracking ref against the remote. */
-interface RefProbe {
+export interface RefProbe {
   readonly state: RefState
   /** Local `upstream/master` sha, empty string when the ref is absent. */
   readonly localSha: string
@@ -144,7 +155,7 @@ function remoteSha(root: string, noFetch: boolean): { sha: string; note: string 
  * Determine the `RefState` of `upstream/master` by comparing the local
  * tracking ref against the remote HEAD. Never throws.
  */
-function probeRef(root: string, noFetch: boolean): RefProbe {
+export function probeRef(root: string, noFetch: boolean): RefProbe {
   if (!remoteExists(root, UPSTREAM_REMOTE)) {
     return {
       state: 'unknown',
@@ -153,8 +164,12 @@ function probeRef(root: string, noFetch: boolean): RefProbe {
       note: `no '${UPSTREAM_REMOTE}' git remote configured`,
     }
   }
-  const local = localTrackingSha(root)
+  // Probe the remote FIRST: in fetch mode that fetch is what makes the local
+  // tracking ref true, so reading the ref beforehand would compare a pre-fetch
+  // sha against a post-fetch one and call every advanced upstream 'stale' —
+  // withholding the behind-count exactly when the fork just fell behind.
   const remote = remoteSha(root, noFetch)
+  const local = localTrackingSha(root)
   if (local === '' || remote.sha === '') {
     const note = local === '' && remote.sha === ''
       ? 'local tracking ref and remote HEAD both absent'
@@ -177,7 +192,7 @@ function probeRef(root: string, noFetch: boolean): RefProbe {
 }
 
 /** Commits reachable from `head` but not from `base`, or `undefined` on failure. */
-function commitsBehind(root: string, base: string, head: string): number | undefined {
+export function commitsBehind(root: string, base: string, head: string): number | undefined {
   const result = git(root, ['rev-list', '--count', `${base}..${head}`])
   if (!result.ok) return undefined
   const parsed = Number.parseInt(result.stdout.trim(), 10)
@@ -206,6 +221,15 @@ function safePendingCount(record: UpstreamSyncRecord): number {
     return pendingWaivers(record).length
   } catch {
     return 0
+  }
+}
+
+/** Drop waivers (owed remediation), or `[]` when the record is malformed. */
+function safeOwedWaivers(record: UpstreamSyncRecord): { path: string; direction: string; ticket: string }[] {
+  try {
+    return owedWaivers(record).map(w => ({ path: w.path, direction: w.direction, ticket: w.ticket }))
+  } catch {
+    return []
   }
 }
 
@@ -346,6 +370,13 @@ function reportUpstreamStatus(root: string, noFetch: boolean): string[] {
   const pending = safePendingCount(record)
   lines.push(`upstream-status: pending waivers: ${pending}`)
 
+  // Owed remediation (drop waivers).
+  const owed = safeOwedWaivers(record)
+  lines.push(`upstream-status: owed remediation (drop waivers): ${owed.length}`)
+  for (const waiver of owed) {
+    lines.push(`upstream-status:   ${waiver.path} (${waiver.direction}) — ${waiver.ticket}`)
+  }
+
   // Impact report file (staleness summary without the meta line).
   const impactPath = writeImpactReport(root, shortSha(currentSha), remoteShort, todayIsoDate(), lines.join('\n'))
   lines.push(`upstream-status: impact report written to ${impactPath}`)
@@ -355,7 +386,9 @@ function reportUpstreamStatus(root: string, noFetch: boolean): string[] {
 
 if (process.argv[1] && import.meta.filename === resolve(process.argv[1])) {
   const noFetch = process.argv.includes('--no-fetch')
-  const lines = reportUpstreamStatus(REPOSITORY_ROOT, noFetch)
+  const rootFlag = process.argv.indexOf('--root')
+  const root = rootFlag === -1 ? REPOSITORY_ROOT : resolve(process.argv[rootFlag + 1] ?? REPOSITORY_ROOT)
+  const lines = reportUpstreamStatus(root, noFetch)
   for (const line of lines) {
     process.stdout.write(`${line}\n`)
   }

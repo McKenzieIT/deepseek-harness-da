@@ -165,7 +165,7 @@ const PreflightSchema = z.strictObject({
   }
 })
 
-const CaseProvenanceSchema = z.strictObject({
+const CaseSourceSchema = z.strictObject({
   sourcePath: z.string().min(1),
   schemaVersion: z.number().nullable(),
   scopeId: z.string().nullable(),
@@ -208,7 +208,7 @@ const Version2RecordSchema = z.strictObject({
   runConfig: RunConfigSchema,
   attempts: z.array(AttemptSchema),
   preflight: PreflightSchema,
-  caseProvenance: CaseProvenanceSchema,
+  caseSource: CaseSourceSchema,
 })
 
 /** A validated version-2 or legacy unversioned persistence line. */
@@ -227,7 +227,7 @@ export interface PersistedCaseRecord {
   readonly runConfig?: z.infer<typeof RunConfigSchema>
   readonly attempts?: readonly z.infer<typeof AttemptSchema>[]
   readonly preflight?: z.infer<typeof PreflightSchema>
-  readonly caseProvenance?: z.infer<typeof CaseProvenanceSchema>
+  readonly caseSource?: z.infer<typeof CaseSourceSchema>
 }
 
 /**

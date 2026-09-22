@@ -32,7 +32,7 @@ import type {
   SqlJudgeVerdict,
   CasePreflightEvidence,
   ReferenceSqlPreflightEvidence,
-  CaseProvenance,
+  CaseSource,
   AgentResponse,
 } from './types.ts'
 import { runHealthGate } from './health_gate.ts'
@@ -245,19 +245,19 @@ async function runSingleCase(
   policy: ComparatorPolicy,
 ): Promise<CaseVerdict> {
   const started = Date.now()
-  const caseProvenance = buildCaseProvenance(evalCase, sourcePath)
+  const caseSource = buildCaseSource(evalCase, sourcePath)
   const content = preflightEvalCaseContent(evalCase)
   if (content.status === 'case-defect') {
-    return preflightFailure(evalCase.case_id, started, 'case_defect', caseProvenance, { content })
+    return preflightFailure(evalCase.case_id, started, 'case_defect', caseSource, { content })
   }
 
   const referenceSql = await preflightReferenceSql(evalCase, collaborators, policy)
   const preflight: CasePreflightEvidence = { content, reference_sql: referenceSql }
   if (referenceSql.status === 'case-defect') {
-    return preflightFailure(evalCase.case_id, started, 'case_defect', caseProvenance, preflight)
+    return preflightFailure(evalCase.case_id, started, 'case_defect', caseSource, preflight)
   }
   if (referenceSql.status === 'environment-blocked') {
-    return preflightFailure(evalCase.case_id, started, 'infra_failure', caseProvenance, preflight)
+    return preflightFailure(evalCase.case_id, started, 'infra_failure', caseSource, preflight)
   }
 
   const attempts: AttemptResult[] = []
@@ -275,7 +275,7 @@ async function runSingleCase(
     pass_k_results: attempts,
     verdict,
     latency_ms: latencyMs,
-    caseProvenance,
+    caseSource,
     preflight,
   }
 }
@@ -285,7 +285,7 @@ function preflightFailure(
   caseId: string,
   started: number,
   verdict: 'case_defect' | 'infra_failure',
-  caseProvenance: CaseProvenance,
+  caseSource: CaseSource,
   preflight: CasePreflightEvidence,
 ): CaseVerdict {
   return {
@@ -293,14 +293,14 @@ function preflightFailure(
     pass_k_results: [],
     verdict,
     latency_ms: Date.now() - started,
-    caseProvenance,
+    caseSource,
     preflight,
   }
 }
 
 
 /** Assemble the case-owned evidence once, next to the runner that loaded it. */
-function buildCaseProvenance(evalCase: EvalCase, sourcePath: string): CaseProvenance {
+function buildCaseSource(evalCase: EvalCase, sourcePath: string): CaseSource {
   return {
     sourcePath,
     schemaVersion: evalCase.schema_version ?? null,

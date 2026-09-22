@@ -1,11 +1,35 @@
+---
+description: "TODO: translate: Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening."
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-semantic-layer`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening.
+
+## 目录
+
+- [P6b grilling（5 个决策，全选 A）](#p6b-grilling-5-decisions-all--a)
+- [结构](#structure)
+- [`ctx.schema` seam](#ctxschema-seam)
+- [P13b swap](#p13b-swap)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 data agent 的 semantic-layer **substrate**：zod 镜像的 RBI pydantic `EventDefinition` / `TableDefinition` + reader/writer + `BasicIndex` + write-tiers + `ctx.schema` seam。P6b 生产硬化（移植一次性 `prototypes/p6-semantic-layer/`）。
 
 Semantic layer 是 data agent 的 **一等公民** — NL→SQL 的成功依赖它（MDL / metric layer / Text2DSL）。substrate 保持与 RBI 531 条精选 tables/events/terminology 的交叉兼容（zod 镜像 pydantic `extra=allow` / `model_validator` / `canonicalize_type` / round-trip）。
 
+<a id="p6b-grilling-5-decisions-all--a"></a>
 ## P6b grilling（5 个决策，全选 A）
 
 - **Q1 包形态**：`packages/data/semantic-layer/` 单包（`@deepseek-ai/dsh-semantic-layer`），group=data（与 `audit` / `phase-gate` / `nl2sql-engine` 一致）。`load_*` model-facing tools 延期为独立 tool 包（镜像 `tool-search-data-sources`；preset 已命名为 `dsh-tool-load-table-definition` / `dsh-tool-load-event-definition`）。独立分析 grounded 此决策：data capability packages 为单包 Services；tools 始终与其 Service 包分离；独立 `semantic/` group 对单包属过度抽象。
@@ -14,6 +38,7 @@ Semantic layer 是 data agent 的 **一等公民** — NL→SQL 的成功依赖�
 - **Q4 Tier-2 audit**：经 `ctx.audit.recordTier2Write`（P8b 真实 sqlite audit）路由，不用原型的 flat JSON log — 统一审计轨迹，内网安全优先。substrate `Tier2Recorder` 接口由 `ctx.audit` 满足；audit 未挂载时 Tier-2 写操作 fail-loud（D5 "不可关"）。
 - **grounded**：`zod`（镜像 pydantic；`schemastery` 无 `.passthrough`）+ `js-yaml` substrate 依赖；复用 `@deepseek-ai/dsh-atomic-write`（`writeFileAtomic`：temp+wx+rename，mode 打戳）做原子写入。
 
+<a id="structure"></a>
 ## 结构
 
 | 文件 | 职责 |
@@ -24,6 +49,7 @@ Semantic layer 是 data agent 的 **一等公民** — NL→SQL 的成功依赖�
 | `src/pending.ts` | Tier-1 pending 队列（suggest -> pending -> approve；approve 侧由 P9 门控）。Tier-2 是 `ctx.audit`（不在此处）。 |
 | `src/index.ts` | `ctx.schema` Service Definition（`SemanticLayerService`）+ `SchemaProvider` 接口 + `StandInSchemaProvider` + substrate re-exports。 |
 
+<a id="ctxschema-seam"></a>
 ## `ctx.schema` seam
 
 ```ts
@@ -35,10 +61,12 @@ declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayer
 - `discover(scopeId, kind?)` / `describe(table)` / `sample(table, n?)` — live-engine（延期；`setSchemaProvider` 挂载真实 provider）。
 - `syncWrite(metas, opts)` / `updateTableMeta(name, updates, opts)` — Tier-2 持久化写入经 `ctx.audit.recordTier2Write`。
 
+<a id="p13b-swap"></a>
 ## P13b swap
 
 P13b 的本地 `CriticGuardData`（params_fields/partitions 来自精简 YAML reader）additive swap 到 `ctx.schema.load_*`。`CriticCtx{candidateTables, eventParams, partitionCols}` 契约不变；P13b engine 逻辑不变。`makeCriticCtx({ candidateTables, eventParams: EventDefinition.params_fields, partitionCols: TableDefinition.partitions.map(p => p.name) })`。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -49,6 +77,15 @@ pnpm verify-cordis-config                            # bundle/preset mount resol
 
 Bundle 连线（`packages/bundle/data-agent/cordis.patch.yml` 中的 `semantic-layer` 行）在 live-engine provider + `load_*` tool 包就绪后作为后续工作添加。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-semantic-layer` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 ### Discovered table descriptions
@@ -96,6 +133,7 @@ partitions:
 
 Substrate definitions 在磁盘上稳定，故其渲染上下文作为可缓存前缀在相同定义的 critique 间重复。`syncWrite` 或 `updateTableMeta` Tier-2 写入更改定义时仅使该定义的缓存上下文失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **Live-engine provider** — `discover` / `describe` / `sample` 在真实 query provider（query-maxcompute sidecar 或独立 `schema-maxcompute`）挂载前抛 "no provider"。延期至后续票。

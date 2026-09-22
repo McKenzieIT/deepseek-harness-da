@@ -32,7 +32,7 @@
 
 `git diff upstream/master..HEAD`：413 文件 / +38300/-42；**非 wayfinder 代码** 255 文件 / +19649/**−42**（几乎纯增）。
 - **纯新增包**（additive）：`embedder`/`retrieval`/`eval`/`identity`/`llm-dashscope`/`query/{query,query-maxcompute}`/`subagent-qoder`/`credentials-{keychain,keychain-host}`/`data/{audit,nl2sql-engine,phase-gate,semantic-layer,tool-search-data-sources}`。
-- **改动现存 dsh 文件**（极小、additive、有 ticket 背书）：`subagent/{subagent,tool-subagent}/src`（seam 暴露 `settleRunResult`/`subprocessRunHandle`/`SubagentResult.costs`，P3+P8b）；`tsconfig.{base,host}.json`、`pnpm-workspace.yaml`（构建接线）；`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`（additive preset +96）；`ui-settings-models/ProviderEditor.tsx`(+14/-4)；`credentials/credentials/{src,tests}`（`CredentialAddress` branding）；若干 manifest/doc。
+- **改动现存 dsh 文件**（极小、additive、有 ticket 背书）：`subagent/{subagent,tool-subagent}/src`（seam 暴露 `settleRunResult`/`subprocessRunHandle`/`SubagentResult.costs`，P3+P8b）；`tsconfig.{base,host}.json`、`pnpm-workspace.yaml`（构建接线）；`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`（additive preset +96）；`ui-settings-models/ProviderEditor.tsx`(+14/-4)；`credentials/credentials/{src,tests}`（`CredentialAddress` branding）；若干 manifest/doc。
 - **未触碰**：`apps/cli/src/`（CLI 源码）、`vendor/`、`packages/{core,boot,context,api,host,typert}`、`packages/client`（除 ProviderEditor）、`packages/extensions`（除未提交 slot-catalog）。
 - **结论**：da 未分叉/改 dsh 核心运行时/CLI/host；上游同步路径保住。42 处删除集中在 `credentials`/`subagent`/`tsconfig.base`（重构，非行为移除）。唯一留意：未提交 `slot-catalog.ts`(加 `Turn`)+`gen-cordis-catalog.ts`(加 `CredentialAddress`) 可能要让 `verify-cordis-catalog` 过。
 

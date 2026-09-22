@@ -75,8 +75,10 @@ import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
 export * from './types.ts'
 // W11 C1: MVCC query snapshot — consistent point-in-time view during query execution.
 export { DefinitionSnapshot, captureSnapshot, clearSnapshotCache, getSnapshotCacheSize, SNAPSHOT_CACHE_MAX } from './snapshot.ts'
+export { RelationGraph, type NodeAliasData } from './relation-graph.ts'
 export {
   dumpYaml,
+  invalidateCaches,
   resolveSemanticLayer,
   loadConfig,
   loadDomains,

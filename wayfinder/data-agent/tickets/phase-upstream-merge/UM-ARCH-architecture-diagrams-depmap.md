@@ -28,3 +28,19 @@
 **[2026-09-10] 补记（UM10 线 A）** — Phase-2（`eb9e4cf05c`）删除 `packages/client/runtime` 后，本票产出的 `docs/architecture-graph.md` **变 stale**（仍把 `client-runtime` 列为包，且列为 `client-result-cache`/`client-ui-context-layer`/`client-ui-present-decomposition` 的依赖）。UM10 已重跑 `gen-architecture-graph` 修复（commit `ecaa56c848`，删除的 -64 行全是 `pkg_client_runtime` 的 mermaid 节点与边）。
 
 **教训（喂给 UM15）**：架构图是**删包操作的下游产物**，任何包增删都必须触发 regen；`verify-architecture-graph` 不在 `check:ci:static` 组内，所以 static sweep 抓不到它 stale——UM15 的 durable 方法应把它纳入删包 checklist。
+
+### [2026-09-12] dsh-arch 吸收性分析（workflow）+ 定向 rescue 建议
+
+`chore/um-arch-impl-2026-09-08`（ahead 6）的**代码 fully absorbed** via 已删的 `chore/um-arch-regen-2026-09-09`（tip `038d8b51ce`，is-ancestor origin/master YES）：
+- `scripts/gen-architecture-graph.ts` 字节同 `038d8b51ce`（master 又演进 +32）。
+- pnpm scripts `gen-architecture-graph`/`verify-architecture-graph` 在 master `package.json:163/167`。
+- architecture-graph gate 在 master `run-gates.ts:739`（restructured gatesForMode；分支的 3-aggregate wiring superseded）。
+- `docs/architecture-graph.md` 由 arch-regen 重生（更新更准）。
+`git cherry` 6 个全 `+`（arch-regen rebase 重写，非 patch-id 等价，但内容吸收）。
+
+**3 处真·残留（不在任何主线），定向 cherry-pick 后删分支**：
+1. `research/um-arch-design-2026-09-08.md`：2 行 Session B 纠正注——SEAM_MANIFEST **4 bundles 非 7**、**9 assembly remotes 非 3**（result-cache 无 `./remote` export）、9 @Remote emitters；且"lefthook pre-commit hook（像 gen-module-graph）"是**假前提**（module-graph **无** lefthook regen hook，update-on-change 是 CI-gate-only）。**master 的 design doc 仍带未纠正的假前提（line 63/65）**——须修。
+2. `scripts/translation-pairing.manifest.json`：分支把 `docs/architecture-graph.md` 加 excluded（single-locale，design §1.4）；master 漏了，无 glob 兜住——须加。
+3. 本票的 Session B Resolution + Cross-check（纠正 + 刻意决策 + deferred §2/§3/UM-flow 项）被 master 的 regen 叙事替换——可选附 Cross-check 到 regen ticket 供决策溯源。
+
+→ **别 reland 代码**（已在 origin/master）。做 ~3 行定向 rescue（design doc 纠正 + manifest 排除项 + 可选 ticket 附 Cross-check）→ 删 `dsh-arch` 分支。

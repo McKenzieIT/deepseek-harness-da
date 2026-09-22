@@ -28,7 +28,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   business_context: '"付费"默认指现金充值(moneyType=1)，不含仅使用现金券充值的角色；用户2026-07-22确认此口径。2026-08-08(T15/D18)：sql+value 已修正为过滤 money>0 后的口径,原值3681系零金额打点噪声污染,详见 tests/golden/cases/10000251/golden_137.yaml 的 business_validity.rationale。'
   created_at: '2026-08-04'

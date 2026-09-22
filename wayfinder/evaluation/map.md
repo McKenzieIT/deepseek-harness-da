@@ -182,8 +182,6 @@
 
 **[T11](tickets/T11-loader-provenance-strip.md) 与 [T1](tickets/T1-exec-grader-impl.md) 已按同批顺序完成**：T11 先验收 loader/provenance，再落 T1 execution grading。
 
-
-
 **HITL grilling**:[G10](tickets/G10-harness-bhe-split.md) 已 resolved；[G13](tickets/G13-context-evaluation-protocol.md) 等 [T1](tickets/T1-exec-grader-impl.md)+[T13](tickets/T13-context-projection-service.md)，[G14](tickets/G14-adaptive-context-holdout-policy.md) 等 G13+[G5](tickets/G5-dynamic-case-pipeline.md)，[G15](tickets/G15-dynamic-evaluation-lifecycle.md) 等 G5。其他独立 grilling 仍按各方向 frontier 领取。
 
 **AFK 级联**:~~[T11](tickets/T11-loader-provenance-strip.md) → [T1](tickets/T1-exec-grader-impl.md)~~（已完成）→ **[T13](tickets/T13-context-projection-service.md)（下一步）** → [T9](tickets/T9-evaluation-foundations.md) → [T14](tickets/T14-data-analysis-extension-pack-migration.md) → [T15](tickets/T15-evaluation-controller-cli.md) → [T12](tickets/T12-eval-package-consolidation.md) → [R25](tickets/R25-evaluation-rebaseline.md)；[R23](tickets/R23-comparator-policy-mutation-baseline.md) 可与 T13 并行。G13→R26，G13+G14→R27，G15+R25+T5/T5b→R21。

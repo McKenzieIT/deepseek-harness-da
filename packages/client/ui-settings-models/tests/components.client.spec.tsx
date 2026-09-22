@@ -307,10 +307,65 @@ async function mountDeepSeekCard(overrides: Parameters<typeof scriptedFace>[0] =
 }
 
 describe('ModelsSection', () => {
+  it('hides both add actions when their settings namespaces are absent', async () => {
+    const scripted = scriptedFace()
+    scripted.face.settings.describe.mockResolvedValue(remoteOk({ writable: true, hasDocument: false, namespaces: [] }))
+    await mountFace(scripted)
+    expect(screen.queryByRole('button', { name: en.add })).toBeNull()
+    expect(screen.queryByRole('button', { name: en.customAdd })).toBeNull()
+  })
+
+  it('offers only providers whose settings namespace can open an editor', async () => {
+    const scripted = scriptedFace()
+    scripted.face.settings.describe.mockResolvedValue(remoteOk({
+      writable: true, hasDocument: false,
+      namespaces: wireNamespaces().filter(view => view.ns !== 'llm-pi-ai'),
+    }))
+    await mountFace(scripted)
+    expect(screen.queryByRole('button', { name: en.customAdd })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: en.add }))
+    expect(screen.queryByRole('option', { name: 'anthropic' })).toBeNull()
+    expect(screen.getByRole('option', { name: 'plain' })).toBeTruthy()
+  })
+
+  it('shows a catalog diagnostic while keeping the provider editable', async () => {
+    const scripted = scriptedFace()
+    const failure = 'llm-pi-ai: provider "openai" model "111" needs an api'
+    scripted.face.llm.listConfigurableProviders.mockResolvedValue(remoteOk([
+      { provider: 'openai', displayName: 'openai', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'], error: failure },
+    ]))
+    await mountFace(scripted)
+    expect(screen.getByRole('alert').textContent).toBe(failure)
+    fireEvent.click(screen.getByRole('button', { name: openaiCopy(en.editProvider) }))
+    expect(await screen.findByLabelText(en.keyInput)).toBeTruthy()
+    expect(screen.getByRole('button', { name: en.add })).toBeTruthy()
+    expect(screen.getByRole('button', { name: en.customAdd })).toBeTruthy()
+  })
+
   it('renders nothing before the slot injects its dependencies', () => {
     const uninjected = {} as ModelsSectionProps
     render(<ModelsSection {...uninjected} />)
     expect(document.body.textContent).toBe('')
+  })
+
+  it('shows a configuration diagnostic inside the first-run setup card', async () => {
+    const scripted = scriptedFace()
+    const failure = 'The provider configuration needs repair'
+    scripted.face.llm.listProviders.mockResolvedValue(remoteOk([
+      { id: 'deepseek-official', name: 'DeepSeek' },
+    ]))
+    scripted.face.llm.listConfigurableProviders.mockResolvedValue(remoteOk([
+      { provider: 'deepseek-official', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: [], error: failure },
+    ]))
+    scripted.face.credentials.describe.mockResolvedValue(remoteOk({
+      DEEPSEEK_API_KEY: { configured: false, writable: true },
+    }))
+    await mountFace(scripted)
+
+    const card = screen.getByRole('listitem')
+    expect(within(card).getByRole('alert').textContent).toBe(failure)
+    expect(within(card).getByLabelText(en.keyInput)).toBeTruthy()
+    expect(within(card).queryByRole('button', { name: deepSeekCopy(en.editProvider) })).toBeNull()
   })
 
   it('dispatches the provider-card seat per rendered row, keyed by the owning namespace', async () => {
@@ -576,6 +631,90 @@ describe('ModelsSection', () => {
     ])
   })
 
+  it('curates the dashscope family and pins its base-URL placeholder to the AGA gateway', async () => {
+    // dashscope edits the same rows as deepseek; what distinguishes it is the
+    // endpoint an operator is told an un-overridden route talks to.
+    const namespace: SettingsNamespaceView = {
+      ...wireNamespaces()[0]!,
+      ns: 'llm-dashscope',
+      value: { apiKeyEnv: 'DASHSCOPE_API_KEY', models: DEFAULT_DEEPSEEK_MODELS },
+      user: {},
+    }
+    const { face } = scriptedFace()
+    const { ProviderEditor } = await import('../src/client/ProviderEditor.tsx')
+
+    render(<ProviderEditor
+      provider="dashscope"
+      displayName="DashScope"
+      namespace={namespace}
+      schema={settingsSchema}
+      settingsPath={[]}
+      operations={operationsWith(face)}
+      t={t}
+      readOnly={false}
+      onClose={vi.fn()}
+    />)
+
+    // An unrecognised namespace gets the settings.yaml hint and a disabled
+    // submit instead of curated fields; dashscope must not land there.
+    expect(screen.queryByText(`${en.advancedHint} (llm-dashscope)`)).toBeNull()
+    expect(screen.getByText<HTMLButtonElement>(en.apply).disabled).toBe(false)
+    fireEvent.click(screen.getByText(en.customized))
+    expect(screen.getByLabelText<HTMLInputElement>(en.baseUrl).placeholder)
+      .toBe('https://pre-aga-ai-gateway.alibaba-inc.com/api/v1/services/aigc/text-generation/generation')
+  })
+
+  it('keeps the card editable when the credential probe rejects', async () => {
+    const { face, set } = scriptedFace()
+    // A rejection rather than a refusal. The probe only supplies a placeholder
+    // hint, so it may neither block editing nor reach the browser as an
+    // unhandled rejection.
+    face.credentials.describe = vi.fn(() => Promise.reject(new Error('credentials domain unreachable')))
+    const namespace = wireNamespaces().find(view => view.ns === 'llm-pi-ai')!
+    const { ProviderEditor } = await import('../src/client/ProviderEditor.tsx')
+
+    render(<ProviderEditor
+      provider="openai"
+      displayName="openai"
+      namespace={namespace}
+      schema={settingsSchema}
+      settingsPath={['providers', 'openai']}
+      operations={operationsWith(face)}
+      t={t}
+      readOnly={false}
+      onClose={vi.fn()}
+    />)
+
+    await waitFor(() => { expect(face.credentials.describe).toHaveBeenCalled() })
+    // A successful probe of this reference reports it configured and adds the
+    // replace hint; a failed probe leaves the hint out rather than guessing.
+    expect(screen.queryByText(en.keyStored)).toBeNull()
+    const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
+    expect(key.disabled).toBe(false)
+
+    // And the write still lands: the probe failure is contained to the hint.
+    fireEvent.change(key, { target: { value: 'sk-after-probe-failure' } })
+    fireEvent.click(screen.getByText(en.apply))
+    await waitFor(() => { expect(set).toHaveBeenCalledWith('OPENAI_API_KEY', 'sk-after-probe-failure') })
+  })
+
+  it('reports an apply whose write rejected instead of answering', async () => {
+    // A refusal answers `{ ok: false }`; a disconnect rejects. Without the
+    // catch the card would stay on `applying` with nothing shown.
+    await mountDeepSeekCard({
+      mutate: vi.fn(() => Promise.reject(new Error('the host connection dropped'))),
+    })
+    fireEvent.click(screen.getByText(en.customized))
+    fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://dropped' } })
+    fireEvent.click(screen.getByText(en.apply))
+
+    await screen.findByText('the host connection dropped')
+    // Busy cleared by the finally, and the card stayed open rather than
+    // reporting the rejected write as a success.
+    expect(screen.queryByText(en.applying)).toBeNull()
+    expect(screen.getByText(en.apply)).toBeTruthy()
+  })
+
   it('materializes inherited models and adds an arbitrary DeepSeek id', async () => {
     const { mutate } = await mountDeepSeekCard({
       mutate: vi.fn(() => Promise.resolve(remoteOk(wireNamespaces()[0]))),
@@ -593,6 +732,7 @@ describe('ModelsSection', () => {
     fireEvent.change(names[2] as HTMLInputElement, { target: { value: 'Private Preview' } })
     // Only row 3 is open, so its capacity is addressed by its own label.
     fireEvent.change(screen.getByLabelText(`${en.contextWindow} 3`), { target: { value: '131072' } })
+    fireEvent.click(within(screen.getByRole('group', { name: `${en.modelInputTypes} 3` })).getByRole('checkbox', { name: en.modelInputImage }))
     fireEvent.click(screen.getByText(en.apply))
 
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
@@ -603,11 +743,56 @@ describe('ModelsSection', () => {
         path: ['models'],
         value: [
           ...DEFAULT_DEEPSEEK_MODELS,
-          { id: 'private-preview', name: 'Private Preview', contextWindow: 131_072 },
+          { id: 'private-preview', name: 'Private Preview', contextWindow: 131_072, inputModalities: ['text', 'image'] },
         ],
       }],
       0,
     ])
+  })
+
+  it('edits the shared DeepSeek card while preserving the YAML protocol selection', async () => {
+    const namespace: SettingsNamespaceView = {
+      ...wireNamespaces()[0]!,
+      ns: 'llm-deepseek',
+      value: { protocol: 'messages', apiKeyEnv: 'DEEPSEEK_API_KEY', models: DEFAULT_DEEPSEEK_MODELS },
+      user: {},
+    }
+    const { face, mutate, set } = scriptedFace({
+      mutate: vi.fn(() => Promise.resolve(remoteOk(namespace))),
+    })
+    const { ProviderEditor } = await import('../src/client/ProviderEditor.tsx')
+    render(<ProviderEditor
+      provider="deepseek-official"
+      displayName="DeepSeek"
+      namespace={namespace}
+      schema={settingsSchema}
+      settingsPath={[]}
+      operations={operationsWith(face)}
+      t={t}
+      readOnly={false}
+      onClose={vi.fn()}
+    />)
+    fireEvent.click(screen.getByText(en.customized))
+    expect(screen.getByLabelText<HTMLInputElement>(en.baseUrl).placeholder)
+      .toBe('https://api.deepseek.com/anthropic')
+    expect(screen.queryByLabelText(en.customApi)).toBeNull()
+    expect(screen.getByText(en.deepSeekEndpointHint)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText(en.keyInput), { target: { value: 'sk-messages-test' } })
+    fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://messages.example/anthropic' } })
+    fireEvent.change(screen.getByLabelText(`${en.modelName} 1`), { target: { value: 'Messages Flash' } })
+    fireEvent.click(screen.getByText(en.apply))
+    await waitFor(() => { expect(set).toHaveBeenCalledWith('DEEPSEEK_API_KEY', 'sk-messages-test') })
+    expect(mutate.mock.calls).toEqual([[
+      'llm-deepseek',
+      [
+        { op: 'set', path: ['baseURL'], value: 'https://messages.example/anthropic' },
+        { op: 'set', path: ['models'], value: [
+          { ...DEFAULT_DEEPSEEK_MODELS[0], name: 'Messages Flash' },
+          DEFAULT_DEEPSEEK_MODELS[1],
+        ] },
+      ],
+      0,
+    ]])
   })
 
   it('rejects duplicate DeepSeek model ids before writing', async () => {

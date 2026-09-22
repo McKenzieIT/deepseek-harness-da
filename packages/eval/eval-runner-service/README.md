@@ -1,6 +1,28 @@
+---
+description: "Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run."
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval-runner-service
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Cordis Service wiring the EvalRunnerService seam: drives the real NL2SQL engine + ctx.query + ctx.llm collaborators against the case set, persists JSONL for evidence-query, and tracks last/last-two runs for delta. Activates the ③ autonomous goal loop (W6a no-progress backstop) + trigger_eval full_run.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key design decisions](#key-design-decisions)
+- [Configuration](#configuration)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Cordis Service wiring the `ctx.evalRunner` seam: drives the real NL2SQL engine + `ctx.query` + `ctx.llm` collaborators against the eval case set, persists JSONL in the format `FileBackedEvalResultStore` reads, and tracks last / last-two runs for delta. Activates the autonomous goal loop's no-progress backstop (`dsh-goal-eval-policy`) and `trigger_eval` full_run (`dsh-tool-trigger-eval`).
 
@@ -11,7 +33,7 @@ A function plugin (`apply(ctx, config)`) that mounts the `EvalRunnerService` (a 
 - discovers numbered YAML/JSON case files such as `k11v2_001.yaml` under the configured `caseDir`,
 - builds collaborators from the live ctx seams (`ctx.llm`, `ctx.query`, `ctx.nl2sql`, `ctx.schema`),
 - runs `runBatch` (pass_k attempts per case) through the real `Nl2sqlEngine`,
-- persists one versioned JSONL file per batch with the runner-owned run configuration, attempt evidence, preflight result, and case provenance for evidence-query and offline rescoring,
+- persists one versioned JSONL file per batch with the runner-owned run configuration, attempt evidence, preflight result, and case source fields for evidence-query and offline rescoring,
 - emits `evidence/eval-run-completed`, and
 - tracks `lastRun` / `lastTwoRuns` for delta (`computeDelta`) and `trigger_eval` report_last.
 
@@ -24,7 +46,7 @@ A function plugin (`apply(ctx, config)`) that mounts the `EvalRunnerService` (a 
 
 ## Configuration
 
-`Config` is a Cordis runtime schema. `provider`, `model`, `today`, `columnSemantics`, and `maxStoredRows` are explicit run policy; `caseDir` and `passK` are explicit run policy, while `resultsDir` retains its documented operational default. When `ctx.query` is mounted, `executorIdentity` and `queryWaitSeconds` are also required. `CtxQueryExecutor` enforces `queryWaitSeconds` as the wall-clock deadline for `ctx.query.execute`, forwards the resulting abort signal to the provider, and returns a typed timeout outcome even if a provider ignores cancellation. Missing or invalid values fail before the batch starts, so persisted artifacts describe the policy that actually ran.
+`Config` is a Cordis runtime schema. `caseDir`, `passK`, `concurrency`, `maxInfraRetries`, `provider`, `model`, `today`, `columnSemantics`, and `maxStoredRows` are explicit run policy, while `resultsDir` retains its documented operational default. When `ctx.query` is mounted, `executorIdentity` and `queryWaitSeconds` are also required. `CtxQueryExecutor` enforces `queryWaitSeconds` as the wall-clock deadline for `ctx.query.execute`, forwards the resulting abort signal to the provider, and returns a typed timeout outcome even if a provider ignores cancellation. Missing or invalid values fail before the batch starts, so persisted artifacts describe the policy that actually ran.
 
 ## Verification
 
@@ -32,6 +54,13 @@ A function plugin (`apply(ctx, config)`) that mounts the `EvalRunnerService` (a 
 tsc -b packages/eval/eval-runner-service/tsconfig.json   # typecheck
 pnpm vitest run packages/eval/eval-runner-service          # mechanics + runBatch integration
 ```
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-eval-runner-service` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

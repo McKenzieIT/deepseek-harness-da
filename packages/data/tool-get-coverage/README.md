@@ -1,8 +1,33 @@
+---
+description: "Model-facing get_coverage tool: semantic layer coverage statistics (total assets by kind, domain breakdown, confirmation status)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-tool-get-coverage
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Model-facing get_coverage tool: semantic layer coverage statistics (total assets by kind, domain breakdown, confirmation status)
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Model-facing get_coverage tool: semantic layer coverage statistics (total assets by kind, domain breakdown, confirmation status)
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-get-coverage` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

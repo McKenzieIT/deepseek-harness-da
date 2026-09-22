@@ -4,9 +4,9 @@
 # re-mount it) and mounts the data capability plugins this profile ships
 # (P4-P11). The placeholder-only era is over: the packages below have
 # shipped, so their insert rows are LIVE. Only opt-in / deployment-choice
-# rows (embedder, retrieval, subagent-qoder) stay commented — uncomment
-# + mount a provider to activate those seams; a bare specifier to a
-# not-yet-shipped package still breaks pnpm install and verify-cordis-config.
+# rows (embedder, retrieval) stay commented — uncomment + mount a provider
+# to activate those seams; a bare specifier to a not-yet-shipped package
+# still breaks pnpm install and verify-cordis-config.
 #
 # A patch targets a row by id and replaces its whole `config`; `disabled` is
 # an entry flag, so `- id: <row> disabled: true` deactivates a base row
@@ -27,12 +27,10 @@
 # The data agent answers data questions (NL->SQL); it does not edit code or
 # iterate build scripts, so the coding-agent tools stay off. `tool-pwsh` is
 # already gated off on POSIX by base's own platform guard, so this layer does
-# not restate it. `tool-bash` and `code-runtime` are execution backends the
-# data agent itself uses (map Q9); they stay enabled here and are gated from
+# not restate it; no base-backed composition mounts a code-editing tool row, so
+# there is none to disable. `tool-bash` and `ptc-runtime` are execution backends
+# the data agent itself uses (map Q9); they stay enabled here and are gated from
 # business users at the P10 intranet tool-gate, not in this bundle.
-
-- id: tool-str-replace-editor
-  disabled: true
 
 - id: tool-ralph
   disabled: true
@@ -70,18 +68,20 @@
 # See scripts/setup-da-profile.sh for the reproducible setup.
 
 # ── identity seam (G3b → P9b: real per-user identity via dsh-admin) ──────────
-# P9b's dsh-admin provides the real IdentityService (overrides the stub's
-# `current()` → reads login session). The stub is disabled here; admin
-# provides identity itself when it mounts.
-- id: identity
-  disabled: true
+# No base-backed composition mounts an identity row, so this layer adds none:
+# P9b's dsh-admin provides the real IdentityService (its `current()` reads the
+# login session) when it mounts.
 
 # ── agent presets: config override (select data-agent as default preset).
-# web-app and base may already mount agent-presets; this override only sets
-# the default without re-inserting the row (avoids duplicate id on composition).
+# web-app and base may already mount agent-presets; this override sets the
+# default and resolves the bundle-owned preset assets from the installed package,
+# independent of the process working directory, without re-inserting the row.
 - id: agent-presets
   config:
     default: data-agent
+    roots:
+      - path: !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(ctx.baseUrl).resolve('@deepseek-ai/dsh-data-agent/package.json')), 'presets')
+        trust: system
 
 # ── preset-autojoin (§4.2 da wrapper): hooks agent/created → joins the
 # default preset (data-agent) to ANY published agent, so the headless
@@ -214,14 +214,12 @@
     - id: admin              # per-user login + identity + PAT self-service + authz gate
       name: '@deepseek-ai/dsh-admin'
 #     # ── LLM (phase-1) — MOVED to deployment layer ─────────────────────────
-#     # llm-dashscope and subagent-qoder are deployment choices, not product
-#     # capabilities. Mount them via `dsh plugin --profile <name> add <pkg>`.
+#     # llm-dashscope is a deployment choice, not a product capability.
+#     # Mount it via `dsh plugin --profile <name> add <pkg>`.
 #     # See scripts/setup-da-profile.sh.
-#     - id: subagent-qoder     # Qoder as a harness subagent (query() delegation; PAT auth via credentials seam)
-#       name: '@deepseek-ai/dsh-subagent-qoder' # name TBD - P3
 
 # ── transform execution (TODO, P7 four-phase + report/Excel) ───────────────
-# code-runtime runs pandas transforms (incl. Excel/report generation via
+# The PTC runtime runs pandas transforms (incl. Excel/report generation via
 # pandas) and is mounted here as the data-python variant.
 #
     - id: result-cache-memory   # ctx.resultCache seam — in-memory session-scoped Provider; tools/post-execute hook captures query_data results with qr_ prefix; compute tool stores derived results with cr_ prefix. Id is NOT `result-cache`: base's web-app bundle already mounts the
@@ -232,12 +230,12 @@
     - id: result-cache-gateway  # RPC gateway for result-cache (TypertRemoteService) — result.get → ctx.get('resultCache'); re-homed from apiproxy's results domain
       name: '@deepseek-ai/dsh-result-cache/src/remote.ts'
 
-# ── code-runtime: disable headless's worker-thread, insert data-python ──────
-# The headless bundle mounts code-runtime (worker-thread); the data agent needs
+# ── PTC runtime: disable base's Node backend, insert data-python ───────────
+# The base bundle mounts `ptc-runtime` (the Node backend); the data agent needs
 # the data-python variant for pandas transforms. Disable + insert (different ids
 # aren't needed — disabled: true suppresses the original, the insert below adds
 # the replacement under the same conceptual role).
-- id: code-runtime
+- id: ptc-runtime
   disabled: true
 
 - insert:

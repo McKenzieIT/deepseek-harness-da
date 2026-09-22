@@ -1,9 +1,9 @@
 # UM-MERGE-INTEGRITY — 2026-09-07 merge 双向有损：既丢了 upstream 文件，又复活了 upstream 已删的包
 
-**Type**: research · **Status**: open · **Phase**: upstream-merge
+**Type**: research · **Status**: resolved (2026-09-13 Path-2 umbrella adjudication; see [Resolution](#2026-09-13-resolution--path-2-umbrella-flip--byte-verify-audit) below) · **Phase**: upstream-merge
 **Assignee**: unclaimed
 **Blocked by**: —（可立即认领）
-**Blocks**: [UM11](UM11-pr-merge-post-cleanup.md)（**硬阻塞**：不能在一次双向有损的 merge 上开 PR 并声称「非回归」）、[UM12](UM12-post-merge-ga-fork-ci-resweep.md)（5 门红的根因在本票）
+**Blocks**: ~~[UM11](UM11-pr-merge-post-cleanup.md)（原写硬阻塞——2026-09-12 via PR #119 empirically 反驳：M1 整包回退已由 PR #117 re-port，剩余 2 条 waiver-drop 是清理型 chore，PR #119 已 merged 证不阻 push）~~、[UM12](UM12-post-merge-ga-fork-ci-resweep.md)（5 门红的根因在本票；方向 B 已落地，config-catalog/README-model-experience/application-entrypoints/subsystem-pages 4 门已翻绿）
 **Graduated from**: [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 2026-09-10 Phase C 并行分诊（S3 subagent 发现，主 session 独立复核）
 
 ## Question
@@ -202,3 +202,84 @@ B1 = 141eb6fef8  = merge-base(65bf3cddc9, d347e70390)   (2026-08-19, upstream rc
 
 **→ 本票状态：Scope 1/2/3 完成，Scope 4 完成方向 B 的主体（2 组落地、2 组有意 defer、1 组 keep），Scope 5 已喂给 UM15 并升级为三道门。**
 **仍 open 的原因**：整包回退（`ui-settings-models`）是本票发现但不属本票的工作，需新票；`tsconfig paths` 的生成器/通配冲突需决策。**对 UM11 的硬阻塞可以解除到「已知且已量化」的程度，但 PR 描述必须写明整包回退这条**，否则仍是在一次有损 merge 上声称非回归。
+
+
+## Session progress — 2026-09-11（线D 收 knip/fake-api zombies §方向B）
+
+- **knip.json + `packages/client/connection/tests/fake-api.client.ts` zombies 清掉**（线D，commit `c2623c84eb` on resync `upstream/resync-2026-09-08`）：二者皆 upstream 删过（knip `907c6334c1`、fake-api `e14d354e83`）→ M1 复活 → 一直未 drop（本 ticket §方向B line 134/135 "drop（未落）"）。本 session 落地：
+  - `knip.json`：resync 上 0 消费者——knip gate/script/devDep 已被上游 merge 删（`git grep knip` on resync 仅命中 `rescope-fork.ts:263-264` + `rescope-fork.spec.ts:132-137`，皆随 线D 删）。无 package.json/lefthook/CI 伴随编辑。
+  - `connection/tests/fake-api.client.ts`：resync 上 **0 importer**（`grep -rEn 'fake-api\.client' packages/` on resync 仅命中 `api/session-controller/tests/*.client.spec.ts` 7 个，皆 import `./fake-api.client.ts`——live 文件未动）。⚠ master 上该文件非 0-importer（`connection.client.spec.ts:13` 仍 import）——再一次证 apply on resync 非 master。
+  - `rescope-fork.ts` 删 `knip-ignore-dependencies-pattern` transform（targets 已删 knip.json，`expect:4` 会 runtime fail）+ `rescope-fork.spec.ts` 删对应 `it()` block lockstep。
+- **三道完整性门仍持**（M1 复活 100/丢 2/回退 27 ui-settings 整包；M2 全 0；waivers 录 `upstream-sync.json`）——线D 不触 integrity gates（只删 zombie config + fixture + 加 allowlist，非 merge 内容）。
+- UM-MERGE-INTEGRITY 近 done（knip/fake-api cleanup 本 session 线D 收；剩未来 resync→origin PR 落地 + waivers 维护）。
+
+### [2026-09-12] 收口前新增两条待办（来自 UM-ADAPT session 的实测副产品）
+
+1. **`packages/data/result-cache` 的 `"./client"` 是死导出** —— `package.json` 声明 `"./client": "./src/client/index.ts"`，但**无 `dsh.client` 声明、无 `tsdown.config.ts`**，且唯一引用是它自己的模块文档 `src/client/index.ts:10`。因为没有 `dsh.client`，它落在上游门 `scripts/verify-client-packages.ts:12` 的 glob **之外**，所以门抓不到它。归本票的 knip/dead-export 清理（与 seam 4 正交——[UM-ADAPT](UM-ADAPT-per-shift-adaptive-analysis.md) 已判 seam 4 本身 already-aligned）。
+2. **`packages/client/ui-settings-models/` 的 `revert-fork` waiver 已 stale，应 drop** —— push 时 `verify-upstream-sync-record` 报：`1 waiver(s) still pending a keep-or-drop decision: packages/client/ui-settings-models/ (revert-fork) — UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS`。该 waiver 记的是 M1 把整包回退到 merge-base 这件事，而 **re-port 已随 PR #117 merged 进 `origin/master` `c174c9a784`**（[UM-UI-SETTINGS-MODELS-RE-PORT](UM-UI-SETTINGS-MODELS-RE-PORT.md) resolved）→ 回退已被撤销，waiver 无对象。**drop 它**（连同核 `upstream-sync.json` 里是否还有其他同类 stale waiver）。这是本票「三道完整性门」台账的直接后续。
+
+### [2026-09-13] Cluster B partial resolution — item 1 done; item 2 premise falsified, deferred
+
+**Item 1 (result-cache dead `./client` export drop) — APPLIED cleanly.**
+
+Dropped `"./client": "./src/client/index.ts"` from `packages/data/result-cache/package.json`. Grep-verified no external consumers (`grep -rEn '"./client"|result-cache/src/client|result-cache/client'` matches only the file's own module JSDoc at `src/client/index.ts:10`). Verifications passed: `verify-upstream-sync-record` clean, `verify-client-packages` 57/57 satisfy rules, result-cache local tsc 0 errors, `build:official` unaffected. `src/client/index.ts` file preserved (minimal-change; no `dsh.client` declaration means the source file itself is orphan-tolerant).
+
+**Item 2 (ui-settings-models revert-fork waiver drop) — FALSIFIED PREMISE, reverted, deferred.**
+
+The 2026-09-12 note's premise ("waiver 无对象") was empirically falsified. Dropping the `packages/client/ui-settings-models/` (revert-fork) waiver row from `upstream-sync.json` caused `verify-upstream-sync-record` to surface **many previously-suppressed per-file findings** of the form `history[0]: revert-fork finding at packages/client/ui-settings-models/tests/<name>.client.spec.tsx has no waiver — merge did not apply upstream content for this path` — 10+ child test files each producing a distinct violation. The parent-directory waiver was serving as an **umbrella** covering divergent child paths (test files whose upstream versions M1 did not adopt when ui-settings-models re-port landed).
+
+Reverted the `upstream-sync.json` edit to baseline. Baseline state: `verify-upstream-sync-record` exit 0 with informational notes `[note] 1 waiver(s) still pending a keep-or-drop decision: packages/client/ui-settings-models/ (revert-fork) — UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS`. This does **not** cause the gate to fail; it is a persistent informational marker.
+
+**Sibling waivers grep (Scope §B.3):** `grep -En 'revert-fork|regression|M1' upstream-sync.json` returned exactly 1 hit (the one we tried to drop). No other stale `revert-fork` waivers exist.
+
+**Deferred followup** — either (i) drop the parent waiver AND enumerate the child-path per-file waivers (each with explicit keep/drop decision per divergent test file), or (ii) leave the parent waiver in place until PR #117's ui-settings-models re-port is verified byte-consistent with upstream tests (requires reading M1's conflict resolution for each test file). Both paths need per-file scope decisions; this ticket's parent-waiver drop shortcut is unavailable.
+
+**Ticket status:** partial resolution. Item 1 landed. Item 2 spawned back to ticket-scope work (needs upstream vs re-port test-file byte comparison + per-file keep/drop). Not closing UM-MERGE-INTEGRITY — the deeper items (Phase C 2026-09-14 integrity findings + ui-settings-models 整包回退 re-port aftercare) remain, and this cluster's contribution is bounded.
+
+---
+
+### [2026-09-13] Resolution — Path-2 umbrella flip + byte-verify audit
+
+**Applied (commit `2d4da9b468`, PR #125 merged `8ace277bce`):** Path-2 — kept the single parent umbrella waiver `packages/client/ui-settings-models/` (direction=revert-fork) in `upstream-sync.json` and flipped its `decision` from `pending` → `keep`, with the byte-verify audit recorded below (the waiver schema is fixed `{path, direction, decision, ticket}` — no note field, so the audit lives in this commit message).
+
+**This supersedes the prior (Cluster A/B/C) "partial resolution" note above.** Item 1 (result-cache dead `./client` export) landed in the prior session; item 2 (ui-settings-models umbrella adjudication) is RESOLVED here via Path-2. PR #117's re-port IS the fork's deliberate, adjudicated final shape → `keep` is the honest decision label.
+
+**Why Path-2, not Path-1 (research `merge-integrity.json`, high-confidence):**
+- **Path-1 rejected**: dropping the parent umbrella + per-file waivers requires **27 waiver rows, not 9** — the Gate-3 revert-fork set on the historical M1 merge tree (`window.merge=6b7610d45a`, NOT HEAD) is the whole-package 27 files (9 tests + 18 non-test src/README/config). All 27 currently prefix-match the umbrella. Dropping the parent without all 27 replacements makes the gate FAIL (the 2026-09-13 attempt hit exactly this). Of the 27: 14 still DIVERGED at HEAD (decision=keep) + 13 CONVERGED (decision=drop, divergence cured by PR #117 re-port).
+- **Path-2 chosen**: `decision` is inert for Gate-3 pass/fail (`adjudicate()` suppresses on ANY prefix match regardless of decision) — the gate already passes at exit 0 with the parent present; flipping to `keep` only removes the persistent informational "[note] 1 waiver(s) still pending" marker. Materially cheaper (1 field + 1 note vs 27 rows) and equally correct.
+
+**§2.4.bis scope (research finding):** §2.4.bis (three-gate adjudicate() in `scripts/upstream-sync-record.ts`) is ALREADY IMPLEMENTED and owned by UM15 §5 — this ticket only owns the waiver ledger, so no §2.4.bis spec/code change was in scope. The mechanics (prefix-match umbrella waivers, decision-inert pass/fail) already support Path-2 with zero code change.
+
+**Byte-verify audit (HEAD `8310c46514` vs upstream `c389f96bf3a9`, 9 Gate-3 test files subset of the 27-file whole-package M1 set):**
+- **KEEP (5 diverged, intentional fork re-port work):** apply.client.spec.ts (+68/-46), onboarding-dialog.client.spec.tsx (+52/-40), provider-form.client.spec.tsx (+1/-1), welcome-notice.client.spec.tsx (+22/-12), welcome-store.client.spec.ts (+12/-15).
+- **DROP (4 converged, divergence cured by re-port):** components.client.spec.tsx (F==U blob 6d100d8), readiness.client.spec.ts (3bea0c0), store.client.spec.ts (7757cf3), styles.client.spec.ts (16a698d).
+- **NOT in Gate-3 set:** invariant.client.spec.ts (fork+upstream both deleted, covered by existing keep-fork waivers), models-section.client.spec.ts (fork-only new file), settings-schema.client.ts (F==B==U untouched).
+- **Whole-package M1 breakdown: 13 converged / 14 diverged of 27.**
+
+**Refs:** BASE = `c389f96bf3a9`, FORK = `8310c46514`, M1 merge tree = `6b7610d45a`. Research `wayfinder/data-agent/research/next-session-2026-09-14/merge-integrity.json`.
+
+**Acceptance verification:**
+- `pnpm run verify-upstream-sync-record` → **consistent with Git** (the "[note] 1 waiver(s) still pending" marker is GONE; the c291e7961a51 tracking-ref staleness note is expected/UM15-§3 territory).
+- Apply blob-walk budget ACTUAL ~4-20K tokens (well under the 80-100K session-plan risk fear; the fear conflated the ~30-file whole-package re-port merge with the cheaper integrity blob walk).
+
+**Ticket status:** resolved. The waiver ledger is adjudicated (item 1 prior session + item 2 this session). Future integrity findings on future sync windows are the durable §2.4.bis gate's ongoing job (not a ticket-scope open item).
+
+## 2026-09-17 — 7 条 drop waiver 转为 `settled` 终态
+
+`WaiverDecision` 原本只有 `pending` / `keep` / `drop`，没有「已履行」态：`drop` 一旦记下，`owedWaivers()` 就永远把它算成欠账，`upstream-status` 因此长期报 `owed remediation (drop waivers): 7`，而这 7 条的补救早已落地。这不是记录写错，是词汇缺一个终态。
+
+`scripts/upstream-sync-record.ts` 新增 `settled`：语义为「`drop` 的补救已落地」。**它必须留在记录里而不是删掉** —— 产生该 finding 的那个 sync window 是永久的，条目一删，历史 window 的 finding 就无人解释，门会把它报成「无 waiver 覆盖的 finding」而变红。`owedWaivers()` 仍只筛 `drop`，所以 settled 自动退出欠账统计；零命中对 settled 与对 drop 一样只记 note、不判失败。
+
+转态前逐条复核（不采信记录，直接查两侧的树）：
+
+| waiver | direction | 复核结果 |
+| --- | --- | --- |
+| `packages/client/runtime/` | keep-fork | fork 与 upstream **都不存在** → 「fork 留着上游已删内容」的分歧已消失 |
+| `packages/examples/jsonrpc-demo/` | keep-fork | 同上 |
+| `packages/examples/agent-spine-demo/` | keep-fork | 同上 |
+| `knip.json` | keep-fork | 同上 |
+| `packages/client/connection/tests/fake-api.client.ts` | keep-fork | 同上 |
+| `packages/client/ui-settings-models/src/client/operations.ts` | drop-fork | blob 与 `upstream/master` **逐字相同** → fork 已取上游内容 |
+| `packages/client/ui-settings-models/src/client/slot-contract.ts` | drop-fork | blob 与 `upstream/master` **逐字相同** → 同上 |
+
+验收：`verify-upstream-sync-record` 仍报 consistent with Git（settled 条目继续解释历史 window 的 finding）；`upstream-status` 的 owed 从 7 变 0；`scripts/upstream-monitor.spec.ts` 加两条用例 —— 一条钉住「词汇外的 decision 值被拒」（`decision: 'resolved'` → `must be one of pending, keep, drop, settled`），一条钉住「settled 不欠账但仍在记录里」。该 spec 19/19 绿。

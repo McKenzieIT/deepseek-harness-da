@@ -1,11 +1,36 @@
+---
+description: "TODO: translate: Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context
+
+## 目录
+
+- [API](#api)
+- [确定性](#determinism)
+- [Host 连线（本库不拥有的 seams）](#host-wiring-the-seams-this-library-does-not-own)
+- [等待 T12 删除的旧核心 runner](#legacy-core-runner-pending-t12)
+- [Host wiring — complete integration pattern](#host-wiring--complete-integration-pattern)
+- [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Data-agent eval harness：da-fresh TypeScript 镜像 `reverse-bi` 的 `rbi-eval` 编排 **设计**（非其 Python 代码）— `MultiTurnSession`（固定脚本多轮状态机）+ pass_k（`run_multi_turn_case`，必须每次尝试通过）+ da (ii) 评分（**DELIVERY** 最终答案比对 + **EXECUTION** 结果集比对经 5 种 `match_mode`，无 sqlglot）基于 **注入的** 协作者。
 
 **纯库**：不在 Cordis context 上注册任何内容，其协作者 — `Responder`（封装 `DeepSeekHarness.run()`）、`CaseSqlExecutor`（封装 `ctx.query.execute`）、`JudgeProvider`（封装 `llm-dashscope`/`ctx.llm`）— **注入**（D9：evaluator 从不构造被测 agent；host 拥有运行时生命周期，包括 wall-clock timeout 时的 close/respawn）。零 seam peerDependencies：库既不导入 `dsh-sdk-client`、`dsh-query`、`dsh-llm`，也不导入 `cordis`；它定义最小结构化"视图"接口（`RunResultView`、`QueryOutcomeView`），真实运行时形状满足这些接口。
 
+<a id="api"></a>
 ## API
 
 - **`runMultiTurnCase(case_, { runId, responder, passK?, executeSql?, provider?, deliveryOpts?, timeoutMs?, onTimeout? })`** — 驱动一个 case `pass_k` 次 + 应用 pass_k（verdict 是第一个未通过尝试的，非最后一个 — anti-flakiness）。
@@ -16,28 +41,31 @@ Data-agent eval harness：da-fresh TypeScript 镜像 `reverse-bi` 的 `rbi-eval`
 - **`buildAgentResponder(harness)` / `extractReply(runResult)` / `validateRunResult(runResult)`** — `DeepSeekHarness` → `Responder` 适配器（H1 缓解：断言每个 run interval 恰好一条 `assistant/message`）。
 - **`classifyExecutionFailure(error)` / `mapQueryOutcome(outcome)`** — 环境故障分类（镜像 rbi `l1.classify_execution_failure`）+ `QueryOutcome` → `ExecutionResult` 映射（pending → `patience` refuse）。
 - **`judgeWithProvider(provider, prompt, opts?)` / `classifyError(err)`** — DELIVERY LLM-judge 含 retry/backoff（SPEC §5.5）+ `AuthenticationAbort`。
-- **`checkResultMatch(expected, actualRows, matchMode, actualRowCount?)`** — 5 种 EXECUTION 匹配模式；行数断言使用 Provider 返回的计数，而不是持久化预览的长度。
-- **`preflightEvalCaseContent(case)`** — 在严格结构解析后把评分内容错误归为逐 case 缺陷，而不是中止整个 batch。
-- **`ExecutionPort` / `executeAndNormalize(...)` / `gradeExecution(...)`** — 当前执行评分原语。在线评分即使持久化行受限也使用完整 live result；持久化证据不足时显式返回未测或环境阻塞，不记为模型错误。
+- **`checkResultMatch(expected, actualRows, matchMode, actualRowCount?)`** — 5 种 EXECUTION 匹配模式；row-count 断言使用提供方计数，而不是保留的 preview 长度。
+- **`preflightEvalCaseContent(case_)`** — 在严格结构解析后，把非法评分内容归类为逐 case 缺陷，而不中止整个 batch。
+- **`ExecutionPort` / `executeAndNormalize(...)` / `gradeExecution(...)`** — 活跃执行评分原语。即使持久化 row 受上限约束，在线评分仍使用完整 live result；持久化 evidence 不足时返回显式 unmeasured 或 environment-blocked outcome，而不是模型失败。
 - **`turnMatchesExpectation(actual, expected)`**（derailment，rbi `≥0.35`）/ **`deliveryFuzzyMatch(actual, expected, opts?)`**（DELIVERY；短 expected → token-containment — 强化 `gameX` vs `gameA` 误报）。
-- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema（zod）+ YAML/JSON loader。结构位置拒绝未声明的键；`meta` 与 `dimensions` 保留 case 自带的未声明 provenance。
-- **`resolveReferenceSql(case)`** — 把 case 的 `expected.sql` 模板占位符（`{{ds_yesterday}}`、`{{ds_7d_ago}}`）绑定到它自己的 `meta.anchor_ds`；遇未知占位符、缺锚点或锚点格式错时拒绝，而不是产出一段能跑但答错的 SQL。
+- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema（zod）与 YAML/JSON loader。结构位置拒绝未知 key；`meta` 与 `dimensions` 保留未声明的逐 case 来源字段。
+- **`resolveReferenceSql(case_)`** — 将 case 的 `expected.sql` 模板占位符（`{{ds_yesterday}}`、`{{ds_7d_ago}}`）绑定到其自身 `meta.anchor_ds`；未知占位符、缺失 anchor 或非法 anchor 会被拒绝，而不是生成使用错误日期但可执行的 SQL。
 
+<a id="determinism"></a>
 ## 确定性
 
 `@deepseek-ai/dsh-llm-replay`（运行时 `cordis.yml` 插件，`DSH_SNAPSHOT_FILE` env）冻结 **agent** LLM — 被测系统 — 使 agent 的响应比特可复现。**judge** 是独立的 eval 侧 LLM 调用（`JudgeProvider`，连线到 `llm-dashscope`/`ctx.llm`），不受 agent replay 覆盖。按 P11b 决策 1，judge **接受方差**（temp 0 + `JUDGE_MAX_RETRIES=2` + exponential backoff）；完全比特可复现的 judge（独立 judge snapshot）延期。`pass_k=3` 是 anti-flakiness 机制；回归模式（agent 被 replay）下 judge 方差可能混淆 judge/agent 的不稳定性 — 已记录的已知权衡。
 
+<a id="host-wiring-the-seams-this-library-does-not-own"></a>
 ## Host 连线（本库不拥有的 seams）
 
 Host 连线真实协作者并注入：
 
 - **Agent** — `new DeepSeekHarness({ launch: { command, args, env: { DSH_SNAPSHOT_FILE: '…', …scrubbedParentEnv() } }, … })`；`responder = buildAgentResponder({ run: (msg, sid) => harness.run(msg, { sessionId: sid }) })`。运行时 `cordis.yml` 加载 `dsh-llm-replay`。`harness.close()` / `await using` 回收子进程；`onTimeout` 执行 close+respawn。
-- **Execution** — 当前 `dsh-eval-runner` host 注入唯一 `ExecutionPort`；共享 `CtxQueryExecutor` 调用 `ctx.query`、施加配置的墙钟截止时间，并为 `executeAndNormalize` 保留原始 outcome。旧 `CaseSqlExecutor` / `mapQueryOutcome` 路径只留在等待 T12 删除的 legacy runtime 中。
+- **Execution** — 活跃的 `dsh-eval-runner` host 注入一个 `ExecutionPort`；共享 `CtxQueryExecutor` 调用 `ctx.query`，施加配置的 wall-clock deadline，并为 `executeAndNormalize` 保留原始 outcome。旧 `CaseSqlExecutor` / `mapQueryOutcome` 路径仅留在 legacy runtime 中，等待 T12 删除。
 - **Judge** — `provider = async (prompt) => { const { stream } = await ctx.llm.stream({ provider: 'dashscope', model, messages: [judgeSystemPrompt, …] }); …parse JSON → { score, rationale } }`（host 拥有 judge prompt + JSON parsing + `llm-dashscope` route；`judgeWithProvider` 添加 retry/backoff + `classifyError` + `AuthenticationAbort`）。
 
-## 等待 T12 删除的 legacy core runner
+<a id="legacy-core-runner-pending-t12"></a>
+## 等待 T12 删除的旧核心 runner
 
-本包仍保留下面列出的 W3 之前 batch runner 与 persistence API。生产路径使用 `@deepseek-ai/dsh-eval-runner`；分阶段迁移完成后的重复 runtime 删除由 T12 负责。
+本包仍包含下列 pre-W3 batch runner 与 persistence API。生产路径使用 `@deepseek-ai/dsh-eval-runner`；分阶段迁移完成后，由 T12 删除这套重复运行时。
 
 - **`runBatch(cases, { runId, responder, executeSql?, provider?, passK?, maxInfraRetries?, onCaseComplete? })`** — 顺序驱动全量 case 集。每个 case 跑 `passK` 次。基础设施故障(所有尝试 errored、非超时)重试至 `maxInfraRetries`(默认 2)——这些不计入 pass_k(属基础设施故障,非模型表现)。
 - **`classifyCaseOutcome(result)`** — 将 `MultiTurnCaseResult` 映射为 `correct` | `declined` | `wrong` | `unjudged` 之一(与 evidence-query 中的 `EvalResultRecord` 对齐)。
@@ -47,6 +75,7 @@ Host 连线真实协作者并注入：
 - **`passAtK(records)`** — 全部 k 次尝试都通过的 case 占比。
 - **`runHealthCheck({ responder?, executeSql?, timeoutMs? })`** — 预运行闸门,在消耗 eval 预算前对连通性或凭证问题快速失败(G1 Q9)。健康检查失败则中止运行且不产生结果。
 
+<a id="host-wiring--complete-integration-pattern"></a>
 ## Host wiring — complete integration pattern
 
 ```typescript
@@ -77,6 +106,18 @@ const delta = computeDelta(prev, curr)
 console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regressed`)
 ```
 
+<a id="host-wiring-the-seams-this-library-does-not-own"></a>
+## Host wiring (the seams this library does not own)
+
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-eval` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 无 — 这是测试 harness 库；它既不组装也不发送 provider 请求。模型在 spawned runtime（agent）或 eval 侧 judge LLM 中运行，两者都由 host 连线拥有。
@@ -85,8 +126,10 @@ console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regr
 
 无直接影响；agent 运行时和注入的 judge LLM 拥有所有模型可见请求。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **已移除 SQL-hygiene 断言** — rbi L1 的 sqlglot 绑定 `field_coverage`/`limit_reasonable`/`partition_compliant` 已移除（G2 权衡）：结果集正确但 SQL "不整洁"（SELECT *、缺 LIMIT、缺分区谓词）的 agent 通过 da (ii)。
+- **重复旧运行时** — 旧 batch runner、health gate 与 host adapter 保留到 T12 删除；生产执行评分使用 `@deepseek-ai/dsh-eval-runner`。
 - **Judge 方差** — judge 不比特可复现（决策 1）；完全确定性回归的独立 judge snapshot 延期。
 - **Live e2e 延期** — 本库用 stub 协作者做单元测试；live e2e（真实 runtime + 真实 `dsh-llm-replay` snapshot + 真实 `ctx.query.execute` + 真实 `llm-dashscope` judge）延期（with-key，self-skip）。

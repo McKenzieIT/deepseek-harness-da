@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-suggest-followups",
   "description": "Model-facing suggest_followups tool: suggest follow-up questions the user might ask next, for the INTERPRETATION phase",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

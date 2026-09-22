@@ -1,6 +1,27 @@
+---
+description: "TODO: translate: Model-facing evaluate_sql_quality tool: 0-100 SQL quality score over the folded-regex critic findings + basic heuristics for the data agent's GENERATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-evaluate-sql-quality`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing evaluate_sql_quality tool: 0-100 SQL quality score over the folded-regex critic findings + basic heuristics for the data agent's GENERATION phase
+
+## 目录
+
+- [状态：已注册 + 可调用](#status-registered--callable)
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延后工作](#known-limitations-and-deferred-work)
+
 
 面向模型的 `evaluate_sql_quality`：**基于 folded-regex critic 的发现 + 基础启发式规则给出 0-100 的 SQL 质量分数**，用于 data agent 的 `GENERATION` 阶段。agent 在调用 `critique_sql_tool` 的同时调用本工具为一条 SQL 候选打分。phase-gate 的 `captureToolData` 从返回的 `score` 中捕获 `last_quality`；GENERATION gate（P-DA2，在 `critic_tools_registered` 时再次收紧）要求 `last_quality >= 60`（`PipelineConfig.quality_score_floor`）才能进入 EXECUTION。
 
@@ -8,16 +29,19 @@
 
 它在注册形态和 `criticCtx` 注入设计（结构性的 `CriticCtxProvider` 接口 + `ctx.get('criticCtx')` 软探测）上与 [`@deepseek-ai/dsh-tool-critique-sql`](../tool-critique-sql) 保持一致。
 
+<a id="status-registered--callable"></a>
 ## 状态：已注册 + 可调用
 
 该工具由 data-agent preset 注册（`tool-evaluate-sql-quality` 行，已取消注释），并在 phase-gate 的 `GENERATION` 白名单中具名。它探测 `ctx.get('criticCtx')`，即 phase-gate 注册的同一个 `CriticCtxService`。
 
 Phase 1：分数来自 folded-regex critic 的发现（`critiqueSql`）：每条 error 扣 30 分，每条 warning 扣 5 分，截断到 [0, 100]。一条干净的 SQL 得 100 分；1 条 error 得 70 分（高于 60 分下限）；2 条 error 得 35 分（低于下限）。完整的 rbi 100 分规则推导表是后续 Phase 2 的改进。
 
+<a id="config"></a>
 ## 配置
 
 无需配置项。critic 守卫上下文由 phase-gate 的 per-agent 状态（`criticCtx` service）所有，而非本工具。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -26,6 +50,15 @@ pnpm vitest run packages/data/tool-evaluate-sql-quality
 pnpm verify-cordis-config
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-evaluate-sql-quality` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM adapter 间接体现。
@@ -34,6 +67,7 @@ pnpm verify-cordis-config
 
 本包的贡献以仅追加方式写入可复用请求前缀，不会使既有缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
 - **Phase 1 分数仅来自 folded-regex 的发现**：分数来自 folded-regex critic（`critiqueSql`）+ 基础启发式规则（必须存在 SELECT）。完整的 rbi 100 分规则推导表是后续 Phase 2 的改进；Phase 1 先解除 gate 分数下限的阻塞。

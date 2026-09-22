@@ -5,9 +5,9 @@
  * semantic-layer substrate before it writes SQL.
  *
  * P6b deferred follow-up (load_* 接入): this is the model-facing wrapper over
- * `ctx.schema.loadTableDefinition` (the substrate shipped in P6b, commit
- * 88524504f8). It mirrors `tool-search-data-sources` (the first model-facing
- * tool, P13b commit 0e1a0fdf25) for the `defineTool` + `ctx.tools.register`
+ * `ctx.schema.loadTableDefinition` (the substrate shipped in P6b).
+ * It mirrors `tool-search-data-sources` (the first model-facing
+ * tool, P13b) for the `defineTool` + `ctx.tools.register`
  * registration shape, including the projection to a model-facing shape (the
  * substrate `TableDefinition` carries a zod `.loose()` `[x: string]: unknown`
  * index + workflow-state fields that cannot cross the DSL-typed output boundary
@@ -34,8 +34,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { TableDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { TableDefinition } from '@deepseek-ai/dsh-semantic-layer'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 
 export const name = 'tool-load-table-definition'
 export const inject = ['tools']

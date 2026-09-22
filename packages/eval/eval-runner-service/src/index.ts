@@ -45,7 +45,7 @@ import type {
   RunnerVerdict,
   AttemptResult,
   CaseVerdict,
-  CaseProvenance,
+  CaseSource,
 } from '@deepseek-ai/dsh-eval-runner'
 import { Nl2sqlEngine, Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
 import type {
@@ -362,7 +362,7 @@ interface PersistedCaseRecord {
   readonly runConfig: RunConfig
   readonly attempts: readonly AttemptResult[]
   readonly preflight: NonNullable<CaseVerdict['preflight']>
-  readonly caseProvenance: CaseProvenance
+  readonly caseSource: CaseSource
 }
 
 /** Persist a run through the versioned service → evidence-query JSONL bridge. */
@@ -380,12 +380,12 @@ function persistRunResultJsonl(
   }
   const lines = result.cases.map((c): PersistedCaseRecord => {
     const preflight = c.preflight
-    const caseProvenance = c.caseProvenance
+    const caseSource = c.caseSource
     if (preflight === undefined) {
       throw new Error(`eval-runner-service persistence: case ${c.case_id} has no preflight evidence`)
     }
-    if (caseProvenance === undefined) {
-      throw new Error(`eval-runner-service persistence: case ${c.case_id} has no case provenance`)
+    if (caseSource === undefined) {
+      throw new Error(`eval-runner-service persistence: case ${c.case_id} has no case source evidence`)
     }
     return {
       recordVersion: 2,
@@ -402,7 +402,7 @@ function persistRunResultJsonl(
       runConfig,
       attempts: c.pass_k_results,
       preflight,
-      caseProvenance,
+      caseSource,
     }
   })
   writeFileSync(path, lines.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf8')

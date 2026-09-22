@@ -2,6 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved
+**Current standing**: independent opt-in composition remains plausible; the host-level restriction mechanism is superseded by [G16 Model tools and preset composition](G16-todo-coexistence-and-preset-composition.md).
 **Blocked by**: [G1 DAG data model decision](G1-dag-data-model-decision.md) ✅
 **Blocks**: —
 
@@ -57,11 +58,11 @@ DAG 工具在所有 preset 中均可用。**任务编排是通用 Agent 能力�
 
 ### Q3: Phase-gate 集成归入 data-agent map
 
-**3a — UNIVERSAL 白名单**：`todo` → `dag_task_create`/`dag_task_update`/`dag_task_get`/`dag_task_list`。归入 data-agent map [PG1 Phase-gate session events 改造](../../../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)。
+**3a — UNIVERSAL 白名单**：`todo` → `dag_task_create`/`dag_task_update`/`dag_task_get`/`dag_task_list`。归入 data-agent map [PG1 Phase-gate session events 改造](../../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)。
 
 **3b — Phase 节点渲染**：Phase-gate 当前零 session events（Python rbi 移植遗留，非刻意架构选择）。无 session events → 无法作为 DAG 数据源。已在 data-agent map 开票：
-- 调研：[research/phase-gate-session-events.md](../../../data-agent/research/phase-gate-session-events.md)
-- Grilling：[PG1 Phase-gate session events 改造](../../../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)
+- 调研：[research/phase-gate-session-events.md](../../data-agent/research/phase-gate-session-events.md)
+- Grilling：[PG1 Phase-gate session events 改造](../../data-agent/tickets/phase-misc/PG1-phase-gate-session-events.md)
 
 **本 map 中任何 phase 节点渲染工作依赖 PG1 resolved。**
 

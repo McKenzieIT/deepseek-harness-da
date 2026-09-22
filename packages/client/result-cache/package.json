@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-result-cache",
   "description": "Browser-side hot cache for INTERPRETATION query/compute results: a session-scoped, byte-bounded LRU over the result.get RPC, wired as the ctx.results service",
-  "version": "0.1.0-rc.8",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },
@@ -38,20 +38,18 @@
     "watch": "tsdown --watch"
   },
   "license": "MIT",
-  "dependencies": {
-    "lru-cache": "^10.4.0"
-  },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-api-remotes": "workspace:^",
-    "@deepseek-ai/dsh-client-connection": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",
     "@deepseek-ai/dsh-client-connection": "workspace:^",
     "@deepseek-ai/dsh-client-test-runtime": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^"
+    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/dsh-api-session-controller": "workspace:^",
+    "lru-cache": "^10.4.0"
   },
   "files": [
     "lib/index.js",

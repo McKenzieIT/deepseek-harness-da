@@ -1,10 +1,32 @@
+---
+description: "TODO: translate: Policy plugin: no-progress backstop for goal-eval loop — triggers eval every K rounds, blocks goal after N consecutive no-improvement evals"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-goal-eval-policy
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Policy plugin: no-progress backstop for goal-eval loop — triggers eval every K rounds, blocks goal after N consecutive no-improvement evals
+
+## 目录
+
+- [Overview](#overview)
+- [配置](#configuration)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
+
+
 为自主 goal loop 提供无进展兜底。它是一个函数插件（`apply(ctx, config)`），统计已准入的 goal round，每 `goalEvalIntervalRounds` 个 round（默认 3）触发一次 eval 运行，并在 `noProgressThreshold` 次连续 eval 运行显示零改进（0 个用例翻转为正确）后，以 `'no-progress'` 代码强制 block 该 goal。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 该插件挂载两个 Cordis 事件监听器（均由挂载 fiber 自动 dispose（资源释放））：
 
@@ -18,6 +40,7 @@
 
 两次读取都能处理 `undefined` 并安全降级（不 block、不 eval）。
 
+<a id="configuration"></a>
 ## 配置
 
 可调项是经 schemastery 校验的 `Config` 字段，可在 `cordis.yml` 中修改：
@@ -27,6 +50,7 @@
 | `goalEvalIntervalRounds` | `3` | 每 K 个已准入的 round 运行一批 eval。 |
 | `noProgressThreshold` | `3` | 在 N 次连续无改进的 eval 后 block 该 goal。 |
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -34,6 +58,15 @@ tsc -b packages/goal/goal-eval-policy/tsconfig.json   # typecheck
 pnpm vitest run packages/goal/goal-eval-policy          # unit + integration
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-goal-eval-policy` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接经由 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -42,6 +75,7 @@ pnpm vitest run packages/goal/goal-eval-policy          # unit + integration
 
 eval 运行中的 LLM 调用在独立的调用路径上执行，不会扩展或使 agent loop（智能体循环）的可复用请求前缀失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延期工作
 
 - **`roundsSinceLastEval` 重置时机** — 计数器在 `runEvalCheck` 顶部、`evalRunner.runBatch()` 运行之前被重置为 `0`；因此长期失败的 `runBatch`（catch 路径）不会向无进展阈值累加，可能无限期推迟兜底。这是有意在失败时推迟；已标记为未来改为仅成功路径重置。

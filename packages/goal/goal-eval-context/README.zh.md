@@ -1,10 +1,30 @@
+---
+description: "TODO: translate: Context plugin: inject eval evidence into goal round context for model self-adjustment"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-goal-eval-context
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Context plugin: inject eval evidence into goal round context for model self-adjustment
+
+## 目录
+
+- [Overview](#overview)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与待办工作](#known-limitations-and-deferred-work)
+
+
 DeepSeek Harness data agent（数据智能体）的上下文插件：将评估证据注入 goal round 上下文，使模型能在无进展阻断触发前自行调整方向。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 一个函数插件（`apply(ctx, config)`）会注册：
 
@@ -23,6 +43,15 @@ goal-eval-context:
   hintEscalationThreshold: 2 # default; the hint escalates one step before the goal policy blocks at N=3
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-goal-eval-context` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接，经 @deepseek-ai/dsh-nl2sql-engine 的 LLM 适配器。
@@ -31,6 +60,7 @@ goal-eval-context:
 
 评估运行的 LLM 调用在独立调用路径上执行，不会扩展或失效 agent loop（智能体循环）的可复用请求前缀。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与待办工作
 
 - **WARN-13 — 全局与 per-goal 无进展计数器（有意分歧）** — `computeConsecutiveNoImprovement` 遍历全局历史运行序列（评估存储中的每一对运行），而 `@deepseek-ai/dsh-goal-eval-policy` 只跟踪自身的 per-goal、per-trigger 计数器。两者按设计可以不同：上下文呈现层向模型展示完整的历史视图以便其自行调整，而策略执行的是控制 round 推进的 per-goal 计数器。保持两套计数器分离，可避免上下文意外遮蔽策略状态。该分歧在代码中有记录，且为有意为之：未重新审视策略边界前不要将二者统一。

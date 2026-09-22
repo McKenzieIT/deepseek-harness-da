@@ -10,10 +10,12 @@
  */
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { Nl2sqlEngine, Bm25Linker, StandInOdps, looksLikeToolCall, buildPrompt, type BuildPromptArgs, type EventDefinitionLite } from '@deepseek-ai/dsh-nl2sql-engine'
 import { extractEventView, type EventViewInfo } from '@deepseek-ai/dsh-tool-load-event-definition/src/index.ts'
@@ -40,7 +42,11 @@ import type {
 import { LlmSqlSemanticJudge, CtxQueryExecutor } from '@deepseek-ai/dsh-eval-runner'
 
 
-/** Resolve the MaxCompute synchronous wait window used by both query execution paths. */
+/**
+ * Resolve the MaxCompute synchronous wait window used by both query execution paths.
+ * @param value - Configured timeout in seconds; defaults to `MAXC_WAIT_SECONDS` or 60.
+ * @returns A positive integer timeout in seconds.
+ */
 export function resolveQueryWaitSeconds(value = process.env.MAXC_WAIT_SECONDS): number {
   const seconds = Number(value ?? 60)
   if (!Number.isInteger(seconds) || seconds <= 0) {
@@ -748,15 +754,16 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     throw new Error('eval-cli boot: explicit scopeId required (D3ii: no default pointer)')
   }
   const ctx = new Context()
+  const dshHome = resolveDshHome()
 
   // 1. Mount LlmRuntime → provides ctx.llm
   await ctx.plugin(LlmRuntime)
 
-  // 1b. Credential seam: LocalCredentialProvider reads ~/.dsh/.credentials.yaml so
+  // 1b. Credential seam: LocalCredentialProvider reads $DSH_HOME/.credentials.yaml so
   // llm-dashscope resolves DASHSCOPE_API_KEY via ctx.credentials (not process.env).
   await ctx.plugin(LocalCredentialProvider, {
-    path: join(homedir(), '.dsh', '.credentials.yaml'),
-    dshHome: join(homedir(), '.dsh'),
+    path: join(dshHome, '.credentials.yaml'),
+    dshHome,
   })
 
   // 2. Mount llm-dashscope → registers the 'aga' provider route on ctx.llm
@@ -780,7 +787,9 @@ export async function boot(opts: BootOptions): Promise<BootResult> {
     // creds are pushed; ctx.credentials (LocalCredentialProvider) still satisfies
     // MaxComputeQueryEngine's static inject=['credentials'] (unused in sidecar-self).
 
-    const sidecarPath = opts.sidecarPath ?? new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url).pathname
+    // fileURLToPath, not URL.pathname: the latter yields '/C:/…' on Windows,
+    // which is not a usable sidecar path. Same defect as harness-responder.ts.
+    const sidecarPath = opts.sidecarPath ?? fileURLToPath(new URL('../../../query/query-maxcompute/dev/standin-sidecar.mjs', import.meta.url))
     // eval-cli-exp-9: do NOT default to a .bak (stale backup) — align with
     // harness-responder.ts which uses ~/.maxc/config.yaml. Same concept, one
     // default; both overridable via MAXC_CONFIG.

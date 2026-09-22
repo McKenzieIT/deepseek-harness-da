@@ -12,13 +12,13 @@ Status: proposed
 
 ## 提案
 
-让 `@deepseek-ai/dsh-query` 继续作为 SQL 提交与 backend lifecycle 的唯一 capability。Evaluation 通过注入 adapter 消费 `ctx.query.execute`，并独立执行它要评分的 SQL。Query capability 拥有 scope routing、凭据、provider request 与 error、pending query attach、取消和进度；evaluation 拥有从 `QueryOutcome` 到 evaluation evidence 的转换、snapshot 与 ground-truth provenance、result normalization、comparator policy、评分和持久化 verdict。
+让 `@deepseek-ai/dsh-query` 继续作为 SQL 提交与 backend lifecycle 的唯一 capability。Evaluation 通过注入 adapter 消费 `ctx.query.execute`，并独立执行它要评分的 SQL。Query capability 拥有 scope routing、凭据、provider request 与 error、pending query attach、取消和进度；evaluation 拥有从 `QueryOutcome` 到 evaluation evidence 的转换、snapshot 与 ground-truth source records、result normalization、comparator policy、评分和持久化 verdict。
 
 Evaluation 依赖 query Service Definition，而非 `MaxComputeQueryEngine` 或其他 provider class。评分路径消费结构化 execution outcome，不经过模型可见的 `query_data` rendering layer 或 transcript preview。只有当 G1 找到具体缺失的 operation 或 invariant 时，provider-specific capability gap 才形成独立的 query/data-agent ticket；evaluation 不提前臆造并行 provider API。
 
 ### 延后决策
 
-G1 决定窄 adapter interface、`QueryOutcome` mapping，以及 execution verdict、judge diagnosis 与 infrastructure failure 的分离方式。G1b 决定 reference authoring 与 review、snapshot identity、artifact provenance、benchmark versioning，以及 legacy 和 delivery-only cases 的处理。R23 在任何默认值成为权威前测量 comparator profile 与例外。本提案只约束职责归属。
+G1 决定窄 adapter interface、`QueryOutcome` mapping，以及 execution verdict、judge diagnosis 与 infrastructure failure 的分离方式。G1b 决定 reference authoring 与 review、snapshot identity、artifact source records、benchmark versioning，以及 legacy 和 delivery-only cases 的处理。R23 在任何默认值成为权威前测量 comparator profile 与例外。本提案只约束职责归属。
 
 既有的 [eval adapter 合并提案](../../rejected/simplification/2026-09-03-promote-eval-cli-adapters-to-eval-runner.md)处理重复的 adapter implementation。本提案既不取代该 simplification，也不在 G1 解决 interface 与 ownership 前决定 adapter 的 package 归属。
 
@@ -30,13 +30,13 @@ G1 决定窄 adapter interface、`QueryOutcome` mapping，以及 execution verdi
 
 **对 `query_data` 输出或 transcript preview 评分。** 这可以复用模型可见 consumer 而无需另一层 adapter，但 rendered output 可能被截断、重排格式或为 presentation 选择。Transcript 记录的是 agent 所见内容，而不是待评分 SQL 的独立重放权威。
 
-**把 normalization 与 comparison 移入 query capability。** 这会集中 result handling，但 comparator policy、accepted artifacts、snapshot provenance 和 verdict evidence 都是 evaluation semantics。把它们移入 query 会让生产执行依赖 benchmark policy。
+**把 normalization 与 comparison 移入 query capability。** 这会集中 result handling，但 comparator policy、accepted artifacts、snapshot source records 和 verdict evidence 都是 evaluation semantics。把它们移入 query 会让生产执行依赖 benchmark policy。
 
 ## 验收标准
 
 - G1 与 T1 使用 `ctx.query.execute` 上的 injected adapter；evaluation packages 不实现 provider submission、credentials、scope routing、pending-query attachment、cancellation 或 progress。
 - Execution-grader 路径不直接依赖 `MaxComputeQueryEngine`，也不对 `query_data` rendering 或 transcript preview 评分。
-- 持久化 evaluation evidence 区分 normalized execution result、execution 或 infrastructure failure、comparator policy、ground-truth provenance 与 judge diagnosis，并足以支持重放。
+- 持久化 evaluation evidence 区分 normalized execution result、execution 或 infrastructure failure、comparator policy、ground-truth source records 与 judge diagnosis，并足以支持重放。
 - 任何必要的 query-capability extension 都作为独立 data-agent/query ticket 规划，并一起考虑其 Service Definition、provider 与 consumer 影响。
 - G1、G1b 与 R23 继续拥有上述延后决策；本 note 不解决它们。
 

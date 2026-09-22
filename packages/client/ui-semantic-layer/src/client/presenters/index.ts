@@ -12,17 +12,19 @@ import { GetCoverageRow } from './GetCoverageRow.tsx'
 import { DiscoverRelationsRow } from './DiscoverRelationsRow.tsx'
 import { TriggerEvalRow } from './TriggerEvalRow.tsx'
 
-/** semanticLayerPresenters */
+const NS = 'semanticLayer'
+
+/** Register localized semantic-layer tool presenters. */
 export const semanticLayerPresenters = {
   name: 'semantic-layer-presenters',
-  inject: ['slots'],
+  inject: ['slots', 'locale'],
   apply(ctx: Context): void {
     ctx.slots.inject('tool.call.toolview', function* () {
-      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'search_schema' }, SearchSchemaRow)
-      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'get_definition' }, GetDefinitionRow)
-      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'get_coverage' }, GetCoverageRow)
-      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'discover_relations' }, DiscoverRelationsRow)
-      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'trigger_eval' }, TriggerEvalRow)
+      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'search_schema', locale: NS }, SearchSchemaRow)
+      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'get_definition', locale: NS }, GetDefinitionRow)
+      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'get_coverage', locale: NS }, GetCoverageRow)
+      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'discover_relations', locale: NS }, DiscoverRelationsRow)
+      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'trigger_eval', locale: NS }, TriggerEvalRow)
     })
   },
 }

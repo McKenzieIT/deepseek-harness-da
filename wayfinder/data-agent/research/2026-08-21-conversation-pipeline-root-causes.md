@@ -22,7 +22,7 @@
 - preset = 一个目录，含 `agent.cordis.yml`，**可选**旁置 `preset.yml` 承载展示元数据（`name`/`description`/`order`）。
 - `apps/cli/config/agent-presets/standard/preset.yml`：`name: 标准模式` / `description: 功能完整的编码 Agent…` / `order: 1`。
 - `apps/cli/config/agent-presets/code/preset.yml`：`name: PTC 模式` / `description: …Code Mode SDK…` / `order: 2`。 ← **用户说的「PTC 模式」= `code` preset**。
-- `apps/cli/config/agent-presets/data-agent/` 目录**只有** `agent.cordis.yml` + 3 个 G1 实验变体（`b-free-react-planning`/`c-hybrid`/`d-bare-react`），**无 `preset.yml`**。
+- `packages/bundle/data-agent/presets/data-agent/` 目录**只有** `agent.cordis.yml` + 3 个 G1 实验变体（`b-free-react-planning`/`c-hybrid`/`d-bare-react`），**无 `preset.yml`**。
 
 ### 根因（直接证据）
 `apps/cli/config/agent-presets/cordis/skills/editing-cordis-compositions/SKILL.md:26`：
@@ -32,7 +32,7 @@
 → data-agent preset 缺 `preset.yml`，故在模式选择器里**只显示裸目录名 `data-agent`、无 name/description**。standard/code 有 `preset.yml` 所以有「标准模式/PTC 模式」描述。
 
 ### 修复形态（task，非决策）
-新增 `apps/cli/config/agent-presets/data-agent/preset.yml`，填 `name`（如「数据模式」）/ `description`（NL→SQL 取数 agent，四阶段…）/ `order`（如 3）。落地 ticket：`../tickets/phase-misc/DA1-preset-yml-display-metadata.md`。
+新增 `packages/bundle/data-agent/presets/data-agent/preset.yml`，填 `name`（如「数据模式」）/ `description`（NL→SQL 取数 agent，四阶段…）/ `order`（如 3）。落地 ticket：`../tickets/phase-misc/DA1-preset-yml-display-metadata.md`。
 
 ---
 
@@ -105,7 +105,7 @@ if (s.last_quality < quality_score_floor) …
 return GateResult.pass()
 ```
 - `s.last_critique` / `s.last_quality` 由 `captureToolData`（`tools/post-execute`）从 `critique_sql_tool` / `evaluate_sql_quality` 的返回值填充。
-- **但 `critique_sql_tool` / `evaluate_sql_quality` 工具包未 ship** —— `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` 中这两行（+ `present_*`）**注释**（"name TBD - P13b"）。
+- **但 `critique_sql_tool` / `evaluate_sql_quality` 工具包未 ship** —— `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` 中这两行（+ `present_*`）**注释**（"name TBD - P13b"）。
 - → `s.last_critique === null` 恒成立 → `generationGate` **恒 fail** → 重试 5 次 → `fallback` 回 UNDERSTANDING → 兜圈，最终 `honest_decline`（或模型干脆不产 SQL，`extractSqlCandidate` 返回 null，闸门更早 fail）。
 
 → **GENERATION 阶段永远无法合法 pass**（critic 缺席）。这是「管道跑不动」的闸门层根因。

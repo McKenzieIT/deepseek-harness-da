@@ -2,14 +2,17 @@ import { useState, useMemo } from 'react'
 import type { Graph } from '@antv/g6'
 import type { GraphData } from './types.ts'
 import { focusWithZoom } from './graph-animations.ts'
+import type { ContextLayerTranslate } from './locales.ts'
 
 export interface SearchBarProps {
   data: GraphData | null
   graph: Graph | null
   onNodeSelect?: (nodeId: string) => void
+  /** Localized search-field copy. */
+  t: ContextLayerTranslate
 }
 
-export function SearchBar({ data, graph, onNodeSelect }: SearchBarProps) {
+export function SearchBar({ data, graph, onNodeSelect, t }: SearchBarProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
 
@@ -46,7 +49,7 @@ export function SearchBar({ data, graph, onNodeSelect }: SearchBarProps) {
       <input
         type="text"
         value={query}
-        placeholder="Search nodes..."
+        placeholder={t('search.placeholder')}
         onChange={(e) => {
           setQuery(e.target.value)
           setIsOpen(true)

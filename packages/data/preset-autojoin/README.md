@@ -1,6 +1,29 @@
+---
+description: "[data-agent] da wrapper (§4.2) that joins the configured default agent preset to every published agent on agent/created, closing the headless-doesn't-join-default-preset gap without modifying dsh src"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-preset-autojoin
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+[data-agent] da wrapper (§4.2) that joins the configured default agent preset to every published agent on agent/created, closing the headless-doesn't-join-default-preset gap without modifying dsh src
+
+## Table of Contents
+
+- [Why](#why)
+- [How](#how)
+- [Mount](#mount)
+- [Layout](#layout)
+- [Constraints](#constraints)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 [data-agent] da wrapper (§4.2) that joins the configured default agent preset to every published agent on `agent/created`, closing the headless-doesn't-join-default-preset gap without modifying dsh src.
 
@@ -46,6 +69,13 @@ pnpm dsh --profile headless --patch packages/bundle/data-agent/cordis.patch.yml 
 - §4.5: da-owned location `packages/data/preset-autojoin/`.
 
 > Note: the `agent/created` dispatch is synchronous and treats a listener's > returned promise as fire-and-forget (rejection reported, not awaited). For a > one-shot headless run whose only `followup` lands before the async > `presets.mount` settles, the join may arrive too late for the first prompt — > see the experiment report; the upstream fix (headless `setup` joins the > default) is the fallback.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-preset-autojoin` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

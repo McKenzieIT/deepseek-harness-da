@@ -18,7 +18,7 @@ export type {
   CasePreflightEvidence,
   AttemptResult,
   CaseVerdict,
-  CaseProvenance,
+  CaseSource,
   RunResult,
   RunSummary,
   RunConfig,

@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { ConversationSnapshot, ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import type { TableKey } from './locales.ts'
+import type { TableKey, TableTranslate } from './locales.ts'
 import { parseNumericCell } from './numeric.ts'
 import css from './TableCard.module.css'
 
@@ -13,6 +13,10 @@ import css from './TableCard.module.css'
  *  carries no fork-only type reference (the other three presenters replicate
  *  this local-helper move). */
 function blockText(block: ToolCallBlock): string {
+  /* v8 ignore next 1 -- unreachable: blockText is module-private and all four
+     call sites (FallbackContent, ExpiredCard, ErrorCard, MismatchCard) only
+     render below TableCard's own `if (!('kind' in block)) return
+     <RunningState />` guard, so the block always carries `kind` by then. */
   if (!('kind' in block)) return ''
   return (block.content as readonly { text?: string }[]).map(c => c.text ?? '').join('\n').trim()
 }
@@ -80,7 +84,7 @@ export interface TableCardProps {
   fetchResult?: TableCardInjected['fetchResult']
   /** Drops a stale entry so a fresh `query_data` re-fetches (R5 fresh-vs-folded). */
   invalidateResult?: TableCardInjected['invalidateResult']
-  t: (key: TableKey) => string
+  t: TableTranslate
 }
 
 const MAX_DISPLAY_ROWS = 10000
@@ -681,6 +685,7 @@ function ChartSection({ chart, headers, rows, colKinds, t }: ChartSectionProps) 
               headers={headers}
               rows={rows}
               showLabels={showLabels}
+              t={t}
             />
           </Suspense>
         </div>

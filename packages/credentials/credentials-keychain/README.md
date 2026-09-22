@@ -1,6 +1,27 @@
+---
+description: "[data-agent] macOS Keychain credentials provider (per-user PAT, at-rest + locked-keychain hardening) for the DeepSeek Harness"
+kind: "package-reference"
+---
+
 # dsh-credentials-keychain
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+[data-agent] macOS Keychain credentials provider (per-user PAT, at-rest + locked-keychain hardening) for the DeepSeek Harness
+
+## Table of Contents
+
+- [Config](#config)
+- [The keychain items](#the-keychain-items)
+- [Security boundary](#security-boundary)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 [data-agent] macOS Keychain [credentials](../credentials/README.md) provider: per-user PATs in an independent (non-login) keychain, addressed by `account=userId`, with an injectable global/shared fallback for the G3 staged fallback (a per-user miss falls through to the early global T1 PAT).
 
@@ -41,6 +62,13 @@ Two bars, only the first met here:
 Per-item Touch-ID ACL (reads restricted to the harness binary, excluding `bash`/`terminal`) was evaluated as **over-spec and is not a requirement** — ticket P12c is **dropped (2026-08-21)**. The Apple-Developer path (a native Security-framework binding + Developer-ID signing + notarization) breaks dsh's out-of-the-box constraint (the harness runs as `tsx`/`node` scripts with no binary to sign); per-item Touch-ID is an enhancement, not an intranet-security-first hard edge; and the runtime-exfil threat is already covered by this package's at-rest + locked-keychain + auto-lock plus P10 tool-gating (business-user agents forbid `bash` → cannot reach `security`; the admin residual unlock-window is trusted-operator self-risk; per-item biometry is also infeasible in the multi-user single-host topology). The locked keychain is therefore an at-rest and when-locked enhancement, and **the final state under out-of-the-box**, not a placeholder for P12c: it narrows the runtime-exfil window to the unlocked period, it does not close it. See [`research/p12b-keychain-acl-feasibility.md`](../../../wayfinder/data-agent/research/p12b-keychain-acl-feasibility.md) §0 (conclusion correction).
 
 The `unlockPassword` is itself a new secret-to-protect: interactive entry at startup is secure; a password stored where `bash` can read it (an env var, a file) weakens the lock to convenience, because the same-spawner indistinguishability means anything the harness can unlock, `bash` can unlock too.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-credentials-keychain` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

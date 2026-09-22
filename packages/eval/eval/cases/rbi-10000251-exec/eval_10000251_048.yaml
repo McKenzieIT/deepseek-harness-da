@@ -32,7 +32,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: hard
   created_at: '2026-08-04'
   retired: false

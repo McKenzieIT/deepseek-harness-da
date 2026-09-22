@@ -373,7 +373,7 @@ rbi `pipeline.py` 内部做了以下控制流决策，harness agent-loop **无�
 
 ### §4.1 preset overlay（`agent.cordis.yml`）
 
-在 `apps/cli/config/agent-presets/data-agent/agent.cordis.yml`（或用户 home `${DSH_HOME}/.agent-presets/data-agent/`）挂以下行（cite `harness-agent-loop.md` §1.2 `standard/agent.cordis.yml` 行结构 + §4.2A「一个 preset 组装四阶段全部能力」）：
+在 `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`（或用户 home `${DSH_HOME}/.agent-presets/data-agent/`）挂以下行（cite `harness-agent-loop.md` §1.2 `standard/agent.cordis.yml` 行结构 + §4.2A「一个 preset 组装四阶段全部能力」）：
 
 ```yaml
 # ── persona（跨 phase 共享的角色定义，静态 section 行）──────────

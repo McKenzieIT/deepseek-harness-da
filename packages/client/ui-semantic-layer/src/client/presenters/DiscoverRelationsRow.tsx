@@ -1,5 +1,6 @@
 import { IconDataOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ToolCallBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SemanticLayerTranslate } from '../locales.ts'
 import css from './presenters.module.css'
 
 interface AddedRelation {
@@ -22,25 +23,26 @@ function relationTypeClass(derivation: string) {
   return css.relationRelated ?? ''
 }
 
-function relationTypeLabel(derivation: string): string {
-  if (derivation === '' || derivation.includes('pk')) return 'joins'
-  if (derivation.includes('derived')) return 'derived_from'
-  if (derivation.includes('related') || derivation === 'semantic') return 'related_to'
-  return derivation || 'joins'
+function relationTypeLabel(derivation: string, t: SemanticLayerTranslate): string {
+  if (derivation === '' || derivation.includes('pk')) return t('presenter.relations.kindJoins')
+  if (derivation.includes('derived')) return t('presenter.relations.kindDerived')
+  if (derivation.includes('related') || derivation === 'semantic') return t('presenter.relations.kindRelated')
+  return derivation || t('presenter.relations.kindJoins')
 }
 
 export interface DiscoverRelationsRowProps {
   block: ToolCallBlock
   inspect?: (() => void) | undefined
+  t: SemanticLayerTranslate
 }
 
-export function DiscoverRelationsRow({ block, inspect }: DiscoverRelationsRowProps) {
+export function DiscoverRelationsRow({ block, inspect, t }: DiscoverRelationsRowProps) {
   if (!('kind' in block)) {
     return (
       <div className={css.row} onClick={inspect}>
         <IconDataOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Discovering relations...</span>
-        <span className={css.running}>running</span>
+        <span className={css.title}>{t('presenter.relations.loading')}</span>
+        <span className={css.running}>{t('presenter.running')}</span>
       </div>
     )
   }
@@ -50,8 +52,8 @@ export function DiscoverRelationsRow({ block, inspect }: DiscoverRelationsRowPro
     return (
       <div className={css.row} onClick={inspect}>
         <IconDataOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Discover Relations</span>
-        <span className={css.summary}>failed</span>
+        <span className={css.title}>{t('presenter.relations.title')}</span>
+        <span className={css.summary}>{t('presenter.failed')}</span>
       </div>
     )
   }
@@ -63,11 +65,11 @@ export function DiscoverRelationsRow({ block, inspect }: DiscoverRelationsRowPro
     <div>
       <div className={css.row} onClick={inspect}>
         <IconDataOutline16 size={14} className={css.icon} />
-        <span className={css.title}>Discover Relations</span>
+        <span className={css.title}>{t('presenter.relations.title')}</span>
         <span className={css.summary}>
           {added.length > 0
-            ? `+${added.length} relation${added.length !== 1 ? 's' : ''}`
-            : `${meta.enriched ?? 0} enriched`}
+            ? t('presenter.relations.summaryAdded', { count: added.length })
+            : t('presenter.relations.summaryEnriched', { count: meta.enriched ?? 0 })}
         </span>
       </div>
       {added.length > 0 && (
@@ -79,13 +81,13 @@ export function DiscoverRelationsRow({ block, inspect }: DiscoverRelationsRowPro
               <span>→</span>
               <span>{rel.dim_table}</span>
               <span className={`${css.relationBadge} ${relationTypeClass(rel.derivation)}`}>
-                {relationTypeLabel(rel.derivation)}
+                {relationTypeLabel(rel.derivation, t)}
               </span>
             </div>
           ))}
           {added.length > 8 && (
             <div className={css.diffItem}>
-              <span className={css.hitDomain}>+{added.length - 8} more</span>
+              <span className={css.hitDomain}>{t('presenter.more', { count: added.length - 8 })}</span>
             </div>
           )}
         </div>
@@ -93,7 +95,7 @@ export function DiscoverRelationsRow({ block, inspect }: DiscoverRelationsRowPro
       {added.length === 0 && meta.enriched !== undefined && meta.enriched > 0 && (
         <div className={css.diffSection}>
           <div className={css.diffItem}>
-            <span>{meta.enriched} table{meta.enriched !== 1 ? 's' : ''} checked, no new relations found</span>
+            <span>{t('presenter.relations.checkedNoNew', { count: meta.enriched })}</span>
           </div>
         </div>
       )}

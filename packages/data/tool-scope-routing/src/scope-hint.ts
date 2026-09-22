@@ -17,12 +17,14 @@ interface ScopeRegistryLike {
 }
 
 function buildScopeAwarenessSection(scopes: readonly ScopeSummary[]): string {
+  /* v8 ignore start -- unreachable: the sole caller returns '' when `summaries.length <= 1`, so `scopes.length` is >= 2 here. */
   if (scopes.length === 0) return ''
   if (scopes.length === 1) {
     const s = scopes[0]
     if (!s) return ''
     return `## Active Data Scope\n\nYou are querying: **${s.name}** (id: \`${s.id}\`). ${s.description}`
   }
+  /* v8 ignore stop */
 
   const active = scopes.find(s => s.is_active)
   const activeLine = active
@@ -46,6 +48,7 @@ function buildAliasHint(
 ): string {
   const scopeNames = matchedScopeIds.map((id) => {
     const s = scopes.find(sc => sc.id === id)
+    /* v8 ignore next -- unreachable: every matched id came from the same `scopes.list(tenant)` these summaries were built from. */
     return s ? `${s.name} (${id})` : id
   })
 

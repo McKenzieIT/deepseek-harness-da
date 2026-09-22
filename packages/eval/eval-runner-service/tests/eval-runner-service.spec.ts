@@ -145,7 +145,7 @@ describe('EvalRunnerService — mechanics', () => {
 })
 
 describe('EvalRunnerService — runBatch integration (stubbed seams, real engine)', () => {
-  it('runs a provenance-bearing case through service persistence and the file-backed store', async () => {
+  it('runs a case with source metadata through service persistence and the file-backed store', async () => {
     const resultsDir = mkdtempSync(join(tmpdir(), 'ers-results-'))
     const ctx = new Context()
     const capturedScopeIds: string[] = []
@@ -153,7 +153,7 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
     ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('llm', makeStubLlm())
     ;(ctx as unknown as { provide: (k: string, v: unknown) => void }).provide('query', makeStubQuery(capturedScopeIds))
 
-    // A tiny provenance-bearing case keeps this integration focused on the
+    // A tiny case with source metadata keeps this integration focused on the
     // service → JSONL → FileBackedEvalResultStore path.
     const tmpCases = mkdtempSync(join(tmpdir(), 'ers-cases-'))
     try {
@@ -175,7 +175,7 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
         'meta:',
         '  anchor_ds: "20260912"',
         '  tier: verified',
-        '  provenance: human-reference',
+        '  source: human-reference',
         '',
       ].join('\n'))
       const svc = new EvalRunnerService(ctx, serviceConfig({ caseDir: tmpCases, resultsDir, passK: 1, executorIdentity: 'query-provider:test', queryWaitSeconds: 60, columnSemantics: 'positional', maxStoredRows: 17 }))
@@ -214,11 +214,11 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
           execution_outcome: 'pass',
           execution_artifact: { kind: 'completed' },
         }],
-        caseProvenance: {
+        caseSource: {
           schemaVersion: 3,
           scopeId: 'scope-a',
           expected: { match_mode: 'scalar_exact' },
-          meta: { anchor_ds: '20260912', tier: 'verified', provenance: 'human-reference' },
+          meta: { anchor_ds: '20260912', tier: 'verified', source: 'human-reference' },
           referenceSql: {
             kind: 'resolved',
             sql: "SELECT 1 WHERE ds = '20260911'",
@@ -233,7 +233,7 @@ describe('EvalRunnerService — runBatch integration (stubbed seams, real engine
         runConfig: { executor_identity: 'query-provider:test' },
         attempts: [{ execution_artifact: { kind: 'completed' } }],
         preflight: { content: { status: 'passed' }, reference_sql: { status: 'passed' } },
-        caseProvenance: { meta: { provenance: 'human-reference' } },
+        caseSource: { meta: { source: 'human-reference' } },
       })
       expect(JSON.stringify(stored.metadata)).toContain('normalizedDigest')
 

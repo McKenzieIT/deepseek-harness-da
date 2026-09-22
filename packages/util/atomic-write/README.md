@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-atomic-write` replaces a file's contents in one atomic step: readers of the target always observe either the complete old content or the complete new content, never a partial write. It also serializes read-modify-write cycles across processes with a writer lock, so concurrent writers of one file cannot resurrect each other's state. The caller states the permission bits for every replacement and the fresh inode carries them through the swap, so replacing a wider-permission file narrows it without a chmod race. It is a zero-dependency library shared by file-backed stores such as the user-settings document and the credentials store; a `cordis.yml` cannot load it, and crash durability is the caller's policy because there is no `fsync`.
+Use `dsh-atomic-write` to replace a file without exposing partial content or following a symlinked temporary path. Its writer lock serializes read-modify-write cycles across processes so concurrent writers cannot overwrite one another with stale state. Each replacement uses caller-selected permission bits on a fresh inode, which safely narrows an existing file's permissions. This zero-dependency library accepts strings; it does not provide a `cordis.yml` plugin or crash durability because it does not call `fsync`.
 
 ## Table of Contents
 
@@ -38,6 +38,20 @@ await writeFileAtomic('/home/u/.dsh/settings.yaml', text, { mode: 0o600 })
 
 Parent directories are created as needed, and readers observe either the old or the new complete content. On Windows, transient replacement interference reported as `EACCES`, `EBUSY`, or `EPERM` is retried for a bounded interval; any remaining failure removes the temporary file and leaves the target untouched.
 
+### Committing a temp file a store wrote itself
+
+A store whose own protocol renders and fsyncs the temp sibling — the JSON storage backend fsyncs both the file and its parent directory for crash durability, which `writeFileAtomic` deliberately does not — commits it through `renameAtomicTemp` instead, so the bounded Windows replacement retry stays one implementation:
+
+```ts
+import { renameAtomicTemp } from '@deepseek-ai/dsh-atomic-write'
+
+declare const temp: string
+declare const target: string
+await renameAtomicTemp(temp, target)
+```
+
+The caller owns creating and, after a rejection, removing `temp`. Nothing touches the target before the rename succeeds.
+
 ### Coordinating writers
 
 For a read-render-commit cycle that a bare atomic commit cannot make safe on its own, hold the writer lock around the operation:
@@ -58,6 +72,8 @@ Only writers contend — readers never take the lock — and a contender backs o
 
 ### Failures to plan for
 
+Windows retries one `EPERM` when the lock cannot be observed, because its holder can release between exclusive creation and the existence check. A repeated unconfirmed `EPERM` is rethrown without running the operation.
+
 The lock's parent directory must already exist, so `withFileLock` rejects an invalid parent hierarchy before running the operation. A process that exits while holding the lock leaves the lock sibling behind; later writers time out, and an operator removes it only after verifying that no writer still owns it.
 
 -----
@@ -74,7 +90,7 @@ The package is built on one separation: the atomic commit owns the swap, and the
 
 | File | Role |
 |---|---|
-| [`src/index.ts`](src/index.ts) | `writeFileAtomic` and `withFileLock`, the package's whole surface |
+| [`src/index.ts`](src/index.ts) | `writeFileAtomic`, `withFileLock`, and `renameAtomicTemp`, the package's whole surface |
 | — | No runtime invariant companion is published; this pure filesystem primitive owns no event stream or mutable runtime data; its replacement contract is enforced by unit tests. |
 
 ### Write path

@@ -6,7 +6,7 @@
  *
  * Mounted as a preset row in the data-agent bundle config:
  * ```yaml
- * # apps/cli/config/agent-presets/data-agent/agent.cordis.yml
+ * # packages/bundle/data-agent/presets/data-agent/agent.cordis.yml
  * - name: '@deepseek-ai/dsh-tool-scope-routing'
  *   config: {}
  * ```

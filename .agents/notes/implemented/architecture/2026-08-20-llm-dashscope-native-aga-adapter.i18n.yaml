@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-20-llm-dashscope-native-aga-adapter.md
 2026-08-20-llm-dashscope-native-aga-adapter.md: 4b7a7a67e9a98707be3d5c4c92105b00d02cb7e2
-2026-08-20-llm-dashscope-native-aga-adapter.zh.md: b59d4f58248f3d5efe2d5c26a0b5e2d32323aac5
+2026-08-20-llm-dashscope-native-aga-adapter.zh.md: 9eb6f10c2d0efb6d58fd2516572e5a3b65a8e939

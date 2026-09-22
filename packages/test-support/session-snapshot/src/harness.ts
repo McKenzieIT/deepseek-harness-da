@@ -21,6 +21,7 @@ import { existsSync, realpathSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, delimiter } from 'node:path'
+import { vi } from 'vitest'
 import {
   PROTOCOL_VERSION,
   type ContentBlock as AcpContentBlock,
@@ -66,7 +67,8 @@ const WAIT_POLL_INTERVAL_MS = 10
  * `waitForInboxMessage` waits for inserted inbox text containing a scenario marker.
  * `waitForSubagentTurnEnd` waits until one background child has persisted a
  * closed model-work turn after its own descriptor; child progress has no ACP
- * update to wait on.
+ * update to wait on. Failures identify the child, turn, and deadline even if
+ * the first log read is still pending; the underlying failure is retained as cause.
  * `waitForTitleAfterTurnEnd` additionally waits for a later durable title.
  * `waitForEventAfterTurnEnd` waits until a complete record of the given event
  * type follows the latest closed turn — for scenarios whose asserted state
@@ -209,7 +211,7 @@ export interface RunOptions {
 }
 
 /**
- * Derive one stable, fixed-length spill root owned by this scenario.
+ * Derive the stable, fixed-length logical spill prefix; never allocate files here.
  * Windows uses a two-character-shorter root because drive resolution adds its drive prefix.
  * @param fixtureFile - The scenario fixture whose parent directory provides the stable identity.
  * @param platform - the host platform, injectable for unit coverage.
@@ -238,17 +240,14 @@ export async function runScenario(input: InputScript, opts: RunOptions): Promise
   const cwd = await mkdtemp(join(opts.workspaceParent ?? tmpdir(), 'acp-snap-cwd-'))
   const cwdAliases = [...new Set([realpathSync(cwd), realpathSync.native(cwd)])]
   const sessionsRoot = await mkdtemp(join(tmpdir(), 'acp-snap-sessions-'))
-  // Fixed path length: spill-policy budgets the preview against the REAL path
-  // before stdout normalization, so tmpdir() length differences churn expected outputs.
-  // Scenario ownership also matters: replay runs concurrently, and one teardown
-  // must never delete another scenario's in-flight full-output recovery file.
-  const spillRoot = snapshotSpillRoot(opts.fixtureFile)
+  let spillRoot: string | undefined
   // Everything past the temp-dir creation is followed by failure-safe cleanup,
   // so a failure in workspace seeding, spawn, or any step never leaks resources.
   let launched: LaunchedAcpTestAgent | undefined
   let sessionId: string | undefined
   let sessionLogs: HarvestedLog[] = []
   const outcome = await (async (): Promise<RunResult> => {
+    spillRoot = await mkdtemp(join(tmpdir(), 'acp-snap-spill-'))
     // Seed the workspace if the scenario ships one (a file the agent reads/edits).
     // Copied into the generated cwd so the agent's bash tools see it; the expected outputs
     // normalize the cwd, so the seeded paths stay stable across runs.
@@ -271,6 +270,7 @@ export async function runScenario(input: InputScript, opts: RunOptions): Promise
       DSH_SNAPSHOT_FILE: opts.fixtureFile,
       DSH_SNAPSHOT_SESSIONS_ROOT: sessionsRoot,
       DSH_SNAPSHOT_SPILL_ROOT: spillRoot,
+      DSH_SNAPSHOT_SPILL_LOCATOR_ROOT: snapshotSpillRoot(opts.fixtureFile),
       DSH_HOME: join(cwd, '.dsh'),
       DSH_AGENTS_HOME: join(cwd, '.agents'),
       ...opts.overrideFile !== undefined ? { DSH_SNAPSHOT_OVERRIDE: opts.overrideFile } : {},
@@ -382,7 +382,8 @@ export async function runScenario(input: InputScript, opts: RunOptions): Promise
   await cleanup(() => launched?.close('SIGKILL') ?? Promise.resolve())
   await cleanup(() => rm(cwd, { recursive: true, force: true }))
   await cleanup(() => rm(sessionsRoot, { recursive: true, force: true }))
-  await cleanup(() => rm(spillRoot, { recursive: true, force: true }))
+  const allocatedSpillRoot = spillRoot
+  if (allocatedSpillRoot !== undefined) await cleanup(() => rm(allocatedSpillRoot, { recursive: true, force: true }))
 
   const cleanupFailures = cleanupResults
     .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
@@ -547,34 +548,6 @@ async function runStep(
   }
 }
 
-/**
- * Deterministic condition poll: invoke `check` every `interval`; resolve when it
- * returns without throwing, or rethrow the check's own error once `timeout`
- * elapses.
- *
- * Unlike vi.waitFor, this always awaits a check to completion before testing
- * the deadline, so a single slow check (a session-log harvest stretched by
- * concurrent load) can never replace the check's domain-specific error with
- * vi.waitFor's generic "Timed out in waitFor!" — the negative-path tests assert
- * that domain message, and a 20ms ceiling must stay robust under load. The first
- * check runs immediately (no leading sleep), matching vi.waitFor's cadence.
- */
-async function waitForCondition<T>(
-  check: () => T | Promise<T>,
-  { interval, timeout }: { interval: number; timeout: number },
-): Promise<void> {
-  const deadline = Date.now() + timeout
-  for (;;) {
-    try {
-      await check()
-      return
-    } catch (error) {
-      if (Date.now() >= deadline) throw error
-    }
-    await new Promise(resolve => setTimeout(resolve, interval))
-  }
-}
-
 /** Wait until persistence exposes an open turn for the selected session. */
 async function waitForPersistedTurnStart(
   root: string,
@@ -583,14 +556,14 @@ async function waitForPersistedTurnStart(
   minimumTurn?: number,
 ): Promise<void> {
   let invalidRecord: { error: unknown } | undefined
-  await waitForCondition(async () => {
+  await vi.waitFor(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     let openTurn: number | undefined
     try {
       openTurn = log === undefined ? undefined : latestOpenTurn(log.content)
     } catch (error) {
       // A malformed persisted record is a scenario bug, not a not-yet state:
-      // waitForCondition retries every callback throw, so capture the validation
+      // vi.waitFor retries every callback throw, so capture the validation
       // failure, resolve the wait, and rethrow immediately below.
       invalidRecord = { error }
       return
@@ -614,7 +587,7 @@ async function waitForPersistedTurnEnd(
   sessionId: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await waitForCondition(async () => {
+  await vi.waitFor(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     if (log === undefined || !latestTurnIsClosed(log.content)) {
       throw new Error(`snapshot-harness: session "${sessionId}" did not persist turn/end within ${timeoutMs}ms`)
@@ -636,16 +609,20 @@ async function waitForPersistedChildTurnEnd(
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
   minimumTurn = 1,
 ): Promise<void> {
-  await waitForCondition(async () => {
-    const log = (await harvestSessionLogs(root))[child]
-    if (log === undefined || !latestTurnIsClosed(log.content)
-      || !hasRequestHeaderAfterDescriptor(log.content)
-      || !hasClosedTurn(log.content, minimumTurn)) {
-      throw new Error(
-        `snapshot-harness: subagent child #${child} did not persist closed turn ${minimumTurn} within ${timeoutMs}ms`,
-      )
-    }
-  }, { interval: WAIT_POLL_INTERVAL_MS, timeout: timeoutMs })
+  const message = `snapshot-harness: subagent child #${child} did not persist closed turn ${minimumTurn} within ${timeoutMs}ms`
+  try {
+    await vi.waitFor(async () => {
+      const log = (await harvestSessionLogs(root))[child]
+      if (log === undefined || !latestTurnIsClosed(log.content)
+        || !hasRequestHeaderAfterDescriptor(log.content)
+        || !hasClosedTurn(log.content, minimumTurn)) {
+        throw new Error(message)
+      }
+    }, { interval: WAIT_POLL_INTERVAL_MS, timeout: timeoutMs })
+  } catch (cause) {
+    // The deadline can precede the first harvest, before the callback names the missing turn.
+    throw new Error(message, { cause })
+  }
 }
 
 /** Whether a raw session log contains the requested closed turn. */
@@ -663,7 +640,7 @@ async function waitForPersistedGoalPhase(
   phase: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await waitForCondition(async () => {
+  await vi.waitFor(async () => {
     const content = (await harvestSessionLogs(root)).find(log => log.id === sessionId)?.content
     const matched = content?.split('\n').filter(Boolean).some((line) => {
       const event = JSON.parse(line) as { type?: unknown; data?: { goal?: { phase?: unknown } } }
@@ -682,7 +659,7 @@ async function waitForPersistedInboxMessage(
   text: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await waitForCondition(async () => {
+  await vi.waitFor(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     const matched = log?.content.split('\n').some((line) => {
       if (line.length === 0) return false
@@ -717,7 +694,7 @@ async function waitForPersistedTitleAfterTurnEnd(
   sessionId: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await waitForCondition(async () => {
+  await vi.waitFor(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     if (log === undefined || !latestTitleFollowsTurnEnd(log.content)) {
       throw new Error(`snapshot-harness: session "${sessionId}" did not persist session/title after turn/end within ${timeoutMs}ms`)
@@ -732,7 +709,7 @@ async function waitForPersistedEventAfterTurnEnd(
   type: string,
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
-  await waitForCondition(async () => {
+  await vi.waitFor(async () => {
     const log = (await harvestSessionLogs(root)).find(candidate => candidate.id === sessionId)
     if (log === undefined || !latestEventFollowsTurnEnd(log.content, type)) {
       throw new Error(`snapshot-harness: session "${sessionId}" did not persist ${type} after turn/end within ${timeoutMs}ms`)
@@ -747,7 +724,7 @@ async function waitForWorkspaceFile(
   timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
 ): Promise<void> {
   const target = join(cwd, path)
-  await waitForCondition(() => {
+  await vi.waitFor(() => {
     if (!existsSync(target)) {
       throw new Error(`snapshot-harness: workspace file "${path}" did not appear within ${timeoutMs}ms`)
     }

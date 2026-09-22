@@ -164,7 +164,7 @@ Definition packages 必须拥有完整 interface、failure/lifecycle semantics�
 
 ### D25 — 采用 foundation-first 官方 stack，最终 cutover 不留兼容路径
 
-实施顺序固定为 `[T11](T11-loader-provenance-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md)`。每一层分别验证 loader/ground truth、execution semantics、production Context、shared foundations、data-analysis migration、真实 Product Evaluation、最终 package cutover 与新 baseline；不得用 package move、Context 变化或 case migration 混淆前一层的验收。
+实施顺序固定为 `[T11](T11-loader-source-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md)`。每一层分别验证 loader/ground truth、execution semantics、production Context、shared foundations、data-analysis migration、真实 Product Evaluation、最终 package cutover 与新 baseline；不得用 package move、Context 变化或 case migration 混淆前一层的验收。
 
 分阶段只服务 review、归因和 rollback，不形成发布后的兼容承诺。最终 cutover 必须删除 old runners、service、adapter forks、caseDir/glob、旧 exports、default bundle eval controls 与 legacy runtime formats；不留 compatibility shim。T9 改为 foundation 实现票，T12 重定为 final package graph/external consumer migration/legacy deletion；Context attribution 与 dynamic lifecycle 从 fog 毕业为独立 G/R tickets。
 
@@ -253,7 +253,7 @@ G10 不要求先实现 heldout/fresh、运行新 baseline、完成 T1/T11 或执
 
 G10 establishes a Data-domain Evaluation Core for data engineering、data analysis and data science. Product Evaluation drives a frozen production DSH composition through the normal Agent/Session/tool/Provider path; component evaluation remains separately identified. Benchmark content is a sealed content artifact resolved by a Cordis repository, while executable graders、Environment lifecycle、Context Projection、stores and the Controller remain independently replaceable capabilities.
 
-The architecture is recorded in [Data-domain evaluation core over production DSH compositions](../../../.agents/notes/proposed/architecture/2026-09-11-data-domain-evaluation-core.md). Implementation follows [T11](T11-loader-provenance-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md). Context、dynamic lifecycle and failure taxonomy details have independent owners and do not remain implicit G10 scope.
+The architecture is recorded in [Data-domain evaluation core over production DSH compositions](../../../.agents/notes/proposed/architecture/2026-09-11-data-domain-evaluation-core.md). Implementation follows [T11](T11-loader-source-strip.md) → [T1](T1-exec-grader-impl.md) → [T13](T13-context-projection-service.md) → [T9](T9-evaluation-foundations.md) → [T14](T14-data-analysis-extension-pack-migration.md) → [T15](T15-evaluation-controller-cli.md) → [T12](T12-eval-package-consolidation.md) → [R25](R25-evaluation-rebaseline.md). Context、dynamic lifecycle and failure taxonomy details have independent owners and do not remain implicit G10 scope.
 
 ## 验收
 

@@ -6,6 +6,14 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { describe, expect, it } from 'vitest'
+import {
+  isExemptUpstreamDebt,
+  matchesStrictOverrideGlob,
+  STRICT_OVERRIDE_GLOBS,
+  STRICT_OVERRIDE_UPSTREAM_DEBT,
+  UNMATCHED_DISPOSITIONS,
+  type UnmatchedDisposition,
+} from './run-oxlint.ts'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const oxlintCli = fileURLToPath(new URL('../node_modules/oxlint/bin/oxlint', import.meta.url))
@@ -165,7 +173,7 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
       throw new Error('.oxlintrc.json must contain an overrides array')
     }
     expect(parsed.ignorePatterns).toEqual(expect.arrayContaining([
-      'packages/typert/generator/tests/fixtures/type-model/**',
+      'packages/typert/generator/tests/fixtures/**',
     ]))
     const stylisticOverride = parsed.overrides.find((value: unknown) =>
       isRecord(value) && isRecord(value.rules) && '@stylistic/max-len' in value.rules)
@@ -194,6 +202,103 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
     expect(typeGraphOverride).toMatchObject({
       rules: { '@stylistic/quotes': 'off' },
     })
+  })
+
+  it('pins the program-coverage fence to the strict type-aware override', async () => {
+    const oxlintPath = join(repositoryRoot, '.oxlintrc.json')
+    const result = parseConfigFileTextToJson(oxlintPath, await readFile(oxlintPath, 'utf8'))
+    if (result.error !== undefined) {
+      throw new Error(flattenDiagnosticMessageText(result.error.messageText, '\n'))
+    }
+    const parsed = result.config as unknown
+    if (!isRecord(parsed) || !isUnknownArray(parsed.overrides)) {
+      throw new Error('.oxlintrc.json must contain an overrides array')
+    }
+    const strictOverride = parsed.overrides[0]
+    if (!isRecord(strictOverride) || !isRecord(strictOverride.rules)) {
+      throw new Error('.oxlintrc.json overrides[0] must be the strict type-aware override')
+    }
+    // The index is load-bearing: run-oxlint.ts copies exactly this entry's globs,
+    // so an override inserted ahead of it has to fail here rather than shrink the
+    // UM-LINT-B fence to a list of globs nothing uses.
+    expect(strictOverride.rules).toHaveProperty('typescript/no-floating-promises')
+    expect(strictOverride.files).toEqual([...STRICT_OVERRIDE_GLOBS])
+  })
+
+  it('resolves the strict override globs against the repository root only', () => {
+    expect(matchesStrictOverrideGlob('packages/eval/eval-cli/tests/main.spec.ts')).toBe(true)
+    expect(matchesStrictOverrideGlob('packages/fs/fs-observation-policy/src/nested/deep.tsx')).toBe(true)
+    expect(matchesStrictOverrideGlob('apps/cli/tests/profiles/headless/tests/probe.ts')).toBe(true)
+    expect(matchesStrictOverrideGlob('scripts/run-oxlint.ts')).toBe(true)
+    expect(matchesStrictOverrideGlob('website/docs.ts')).toBe(true)
+    // A nested scripts/ directory is a different tree, matching the Oxlint CLI:
+    // a `var` probe reports no-var under the repository's scripts/, and reports
+    // nothing under packages/eval/retrieval-experiment/scripts/.
+    expect(matchesStrictOverrideGlob('packages/eval/retrieval-experiment/scripts/run-baseline.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('packages/eval/eval-cli/bin/compare.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('packages/util/deque/benchmarks/drain.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('snapshots/acp/acp.snapshot.ts')).toBe(false)
+    expect(matchesStrictOverrideGlob('vitest.shared.ts')).toBe(false)
+    // Extensions the override never claims, whatever directory they sit in.
+    expect(matchesStrictOverrideGlob('scripts/coverage-uncovered-locations.cjs')).toBe(false)
+    expect(matchesStrictOverrideGlob('apps/desktop/scripts/desktop-build-paths.d.mts')).toBe(false)
+  })
+
+  it('adjudicates every program-less file the strict override does not claim', () => {
+    function counted(kind: UnmatchedDisposition['disposition']): number {
+      return UNMATCHED_DISPOSITIONS
+        .filter(disposition => disposition.disposition === kind)
+        .reduce((total, disposition) => total + disposition.count, 0)
+    }
+
+    for (const disposition of UNMATCHED_DISPOSITIONS) {
+      // The whole basis of waiving these: the strict rules were never applied to
+      // them, so an option-less inferred program under-checks nothing.
+      expect(matchesStrictOverrideGlob(disposition.sample), disposition.glob).toBe(false)
+      expect(disposition.count, disposition.glob).toBeGreaterThan(0)
+      expect(disposition.rationale, disposition.glob).not.toBe('')
+    }
+    // These are the DECLARED totals, not a filesystem reading — this assertion
+    // only proves the table sums to what the docstring claims. A 2026-09-21
+    // reproduction (`OXC_LOG=debug oxlint .`) found the waive side exact at 35
+    // and the keep side understated at 28-plus-2-unclassified; see the
+    // UNMATCHED_DISPOSITIONS docstring. Keeping the stale keep total here is
+    // deliberate: correcting it requires adjudicating those two files.
+    // 35 waived: 34 plus dev/p15-probe.ts, which joined the eval-cli
+    // {bin,dev} bucket when the self-executing P15 probe left src/.
+    expect(counted('waive')).toBe(35)
+    expect(counted('keep')).toBe(15)
+  })
+
+  it('exempts an upstream-owned strict-glob file only while its bytes match the pinned blob', async () => {
+    // Every exemption is a strict-glob file (so the fence would otherwise flag
+    // it) whose working-tree bytes currently hash to the pinned upstream blob.
+    for (const entry of STRICT_OVERRIDE_UPSTREAM_DEBT) {
+      expect(matchesStrictOverrideGlob(entry.path), entry.path).toBe(true)
+      expect(isExemptUpstreamDebt(entry.path), entry.path).toBe(true)
+      expect(entry.blob, entry.path).toMatch(/^[0-9a-f]{40}$/)
+      expect(entry.rationale, entry.path).not.toBe('')
+      expect(entry.recheck, entry.path).not.toBe('')
+    }
+
+    // Negative control: a fork-owned strict-glob file with no program is NOT on
+    // the list, so it is never exempt — the channel cannot become a blanket escape.
+    expect(matchesStrictOverrideGlob('apps/web/tests/smoke-real.e2e.ts')).toBe(true)
+    expect(isExemptUpstreamDebt('apps/web/tests/smoke-real.e2e.ts')).toBe(false)
+
+    // Identity: replacing an exempt file's bytes changes its hash, so the
+    // exemption lapses. Restore the upstream bytes from Git afterwards.
+    const [entry] = STRICT_OVERRIDE_UPSTREAM_DEBT
+    if (entry === undefined) throw new Error('expected at least one upstream-debt exemption')
+    const absolute = join(repositoryRoot, entry.path)
+    const original = await readFile(absolute, 'utf8')
+    try {
+      await writeFile(absolute, `// fork edit\n${original}`)
+      expect(isExemptUpstreamDebt(entry.path)).toBe(false)
+    } finally {
+      await writeFile(absolute, original)
+    }
+    expect(isExemptUpstreamDebt(entry.path)).toBe(true)
   })
 
   it('checks preserved TypeGraph syntax without type-aware analysis', () => {
@@ -249,6 +354,99 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
     } finally {
       await Promise.all([
         rm(path, { force: true }),
+        rm(configPath, { force: true }),
+      ])
+    }
+  }, 90_000)
+
+  it('allows Session history reads only in tests or with existing-call waivers', async () => {
+    const suffix = randomUUID()
+    const configPath = await writeContractConfig(suffix)
+    const exampleRoot = `examples/oxlint-contract-${suffix}`
+    const examplePath = `${exampleRoot}/tests/reads.ts`
+    const testPaths = [
+      `packages/core/session/tests/oxlint-contract-${suffix}.ts`,
+      `apps/cli/tests/oxlint-contract-${suffix}.ts`,
+      examplePath,
+      `scripts/oxlint-contract-${suffix}.spec.ts`,
+    ]
+    const productionPaths = [
+      `packages/core/session/src/oxlint-contract-${suffix}.ts`,
+      `scripts/oxlint-contract-${suffix}.ts`,
+    ]
+    const paths = [...testPaths, ...productionPaths]
+    const reads = `import { Session, SessionSeq } from '@deepseek-ai/dsh-session'
+
+export function reads(session: Session): void {
+  session.snapshotEvents()
+  session.eventAt(SessionSeq(0))
+  session.ownEvents()
+}
+`
+    const existing = `import { Session, SessionSeq } from '@deepseek-ai/dsh-session'
+
+export function reads(session: Session): void {
+  // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
+  session.snapshotEvents()
+  // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
+  session.eventAt(SessionSeq(0))
+  // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
+  session.ownEvents()
+}
+`
+    const unrelated = `
+/** @deprecated Use the replacement API. */
+function oldApi(): void {}
+
+export function unrelatedRead(): void {
+  oldApi()
+}
+`
+
+    try {
+      await mkdir(join(repositoryRoot, exampleRoot, 'tests'), { recursive: true })
+      await writeFile(join(repositoryRoot, exampleRoot, 'tsconfig.json'), JSON.stringify({
+        extends: '../../tsconfig.base.json',
+        include: ['tests/**/*.ts'],
+      }))
+      await Promise.all([
+        ...testPaths.map(path => writeFile(join(repositoryRoot, path), reads)),
+        ...productionPaths.map(path => writeFile(join(repositoryRoot, path), existing)),
+      ])
+      const args = ['--config', relative(repositoryRoot, configPath), '--format', 'unix', ...paths]
+      const allowed = runRepositoryOxlint(args)
+      expect(allowed.error).toBeUndefined()
+      expect(allowed.signal).toBeNull()
+      expect(allowed.status, normalizedOutput(allowed)).toBe(0)
+
+      await Promise.all([
+        ...testPaths.map(path => writeFile(join(repositoryRoot, path), reads + unrelated)),
+        ...productionPaths.map(path => writeFile(join(repositoryRoot, path), reads)),
+      ])
+      const rejected = runRepositoryOxlint(args)
+      const output = normalizedOutput(rejected)
+      expect(rejected.error).toBeUndefined()
+      expect(rejected.signal).toBeNull()
+      expect(rejected.status, output).toBe(1)
+      const diagnostics = output.split('\n').filter(line => /:\d+:\d+: `\w+` is deprecated\./.test(line))
+      for (const path of testPaths) {
+        const reported = diagnostics.filter(line => line.startsWith(`${path}:`))
+        expect(reported, output).toHaveLength(1)
+        expect(reported[0]).toContain('`oldApi` is deprecated')
+      }
+      for (const path of productionPaths) {
+        expect(diagnostics.filter(line => line.startsWith(`${path}:`)), output).toHaveLength(3)
+      }
+      for (const method of ['snapshotEvents', 'eventAt', 'ownEvents', 'oldApi']) {
+        expect(output).toContain(`\`${method}\` is deprecated`)
+      }
+      expect(output).toContain(
+        'See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).',
+      )
+    } finally {
+      await Promise.all([
+        ...paths.filter(path => path !== examplePath).map(path => rm(join(repositoryRoot, path), { force: true })),
+        rm(join(repositoryRoot, exampleRoot), { recursive: true, force: true }),
         rm(configPath, { force: true }),
       ])
     }

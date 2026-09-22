@@ -1,6 +1,6 @@
 ---
 name: dsh-plugin-development
-description: Builds DeepSeek Harness (DSH) plugins across every creation mode — dynamic in-process packages, scratch --patch overlays, repository packages, example and installable bundles, agent presets, and hook or MCP bridges. Use when asked to create, extend, modify, or debug a DSH or Cordis plugin, register a tool, service, event, UI contribution, or LLM adapter, or when deciding where new plugin code belongs.
+description: Builds DeepSeek Harness (DSH) plugins across every creation mode — runtime inspection, scratch --patch overlays, repository packages, example and installable bundles, agent presets, and hook or MCP bridges. Use when asked to create, extend, modify, or debug a DSH or Cordis plugin, register a tool, service, event, UI contribution, or LLM adapter, or when deciding where new plugin code belongs.
 ---
 
 # DSH Plugin Development
@@ -21,7 +21,7 @@ Read these in order before writing plugin code:
 
 | Mode | Fits when | Lifetime |
 |---|---|---|
-| [Dynamic in-process package](MODES.md#1-dynamic-in-process-package) | experimenting inside a live DSH session with the Cordis toolset | process memory |
+| [Runtime inspection](MODES.md#1-runtime-inspection-read-only-in-a-live-session) | inspecting live Host and Client APIs inside a running DSH session | read-only |
 | [Scratch overlay](MODES.md#2-scratch-overlay) | prototyping one plugin in the Web UI without touching the repo | local files |
 | [Repository package](MODES.md#3-repository-package) | a permanent capability other packages or consumers depend on | shipped with the repo |
 | [Example bundle](MODES.md#4-example-bundle) | a runnable demo over shipped packages | `examples/` leaf |

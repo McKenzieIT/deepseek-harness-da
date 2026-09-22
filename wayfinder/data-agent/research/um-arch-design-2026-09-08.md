@@ -2,6 +2,8 @@
 
 > Generated 2026-09-08. Replaces v1 手画 diagrams in `UM-flow-2026-09-08.md`.
 > All facts from actual `package.json` peerDeps + `src/*.ts` import grep + `cordis.patch.yml` + `api-remotes/src/client/index.ts`. READ-ONLY design pass.
+>
+> **Update 2026-09-08 (Session B impl)**：implemented in `scripts/gen-architecture-graph.ts` (see `wayfinder/data-agent/tickets/phase-upstream-merge/UM-ARCH-architecture-diagrams-depmap.md` Resolution + Cross-check). Code-vs-design corrections — SEAM_MANIFEST has **4** bundles (not 7 — `sdk-app/sdk-minimal/acp-app` don't exist), **9** assembly remotes in `api-remotes/src/client/index.ts` (not 3 — `result-cache` has no `./remote` export), **9** @Remote emitters; `packages/api` has only `gateway`+`remotes` (session/settings/workspace "controllers" are `dsh-{session,settings,workspace}` elsewhere). §1.4's "lefthook pre-commit hook (like gen-module-graph)" was a **false premise** — `module-graph` has no lefthook regen hook (`lefthook.yml` pre-commit = translation-pairing/archived-notes/lint/third-party-notices/whitespace/vendor-guard only); update-on-change is CI-gate-only (architecture-graph mirrors). The §2 data-agent 4-phase flow diagram + §3 data-agent→upstream depmap + UM-flow v1 replacement are deferred to UM14 (UM-flow self-states "UM14 后权威").
 
 ## 1. gen-architecture-graph.ts design
 

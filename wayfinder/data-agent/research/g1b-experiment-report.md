@@ -186,7 +186,7 @@ The experiment compares **orchestration variants**:
 - **C** = hybrid (phase-gate + goal/todo in U+I phases)
 - **D** = bare ReAct (model decides freely, no structure)
 
-These variants operate via the **full harness agent loop** with different presets (`apps/cli/config/agent-presets/data-agent/{agent,b-free-react-planning,c-hybrid,d-bare-react}.cordis.yml`). The model gets tools (search, load, query, present) and the orchestration layer governs which are available and when.
+These variants operate via the **full harness agent loop** with different presets (`packages/bundle/data-agent/presets/data-agent/{agent,b-free-react-planning,c-hybrid,d-bare-react}.cordis.yml`). The model gets tools (search, load, query, present) and the orchestration layer governs which are available and when.
 
 ### Mapping between engine and variants
 - `Nl2sqlEngine` ≈ **variant D baseline** (bare pipeline, deterministic flow, engine's built-in self-correction approximates D + critic)

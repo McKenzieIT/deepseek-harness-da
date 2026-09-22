@@ -1,12 +1,38 @@
+---
+description: "Abstract retrieval seam (ctx.retrieval): hybrid BM25+vector+RRF retrieval contract for the data agent's schema-linking / context fetch (P5b)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-retrieval
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Abstract retrieval seam (ctx.retrieval): hybrid BM25+vector+RRF retrieval contract for the data agent's schema-linking / context fetch (P5b)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Abstract retrieval seam (`ctx.retrieval`): hybrid BM25 + vector + RRF retrieval contract for the data agent's schema-linking and context fetch (P5b).
 
 ## Overview
 
 Defines the retrieval Service Definition: `ctx.retrieval.retrieve(query, {topK, mode}) → readonly RetrievalHit[]` with `RetrievalHit{id, score, payload, mode}`. This is the seam half — it declares the contract that providers (e.g. `retrieval-inproc`) implement. The `search_data_sources` tool performs a soft fallback: `ctx.get('retrieval')` probe — if registered, awaits the real hybrid provider; if absent, falls back to the synchronous `Bm25Linker` (P13b status quo). The seam ships async (`Promise<readonly RetrievalHit[]>`) to support HTTP-based embedders.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-retrieval` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

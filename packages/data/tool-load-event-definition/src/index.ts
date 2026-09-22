@@ -6,8 +6,8 @@
  * SQL over an event ODS table.
  *
  * P6b deferred follow-up (load_* 接入): this is the model-facing wrapper over
- * `ctx.schema.loadEventDefinition` (the substrate shipped in P6b, commit
- * 88524504f8). It mirrors `tool-search-data-sources` (P13b commit 0e1a0fdf25)
+ * `ctx.schema.loadEventDefinition` (the substrate shipped in P6b).
+ * It mirrors `tool-search-data-sources` (P13b)
  * and `tool-load-table-definition` for the `defineTool` + `ctx.tools.register`
  * registration shape, including the projection to a model-facing shape (the
  * substrate `EventDefinition` carries a zod `.loose()` `[x: string]: unknown`
@@ -35,9 +35,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { EventDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
-import { loadConfig } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
+import type { EventDefinition } from '@deepseek-ai/dsh-semantic-layer'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+import { loadConfig } from '@deepseek-ai/dsh-semantic-layer'
 
 export const name = 'tool-load-event-definition'
 export const inject = ['tools']

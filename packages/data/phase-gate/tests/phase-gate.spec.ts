@@ -27,7 +27,7 @@ function makeAgent(id: string): { agent: Agent; injected: UserMessage[]; cancell
     id,
     inject: (m: UserMessage) => { injected.push(m) },
     cancel: (c: AgentCancelCause) => { cancelled.push(c) },
-    session: { id, events: [] },
+    session: { id, snapshotEvents: () => [] },
   } as unknown as Agent
   return { agent, injected, cancelled }
 }
@@ -479,14 +479,14 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     expect(names).toContain('sql-conventions')
   })
 
-  it('B1: onTurnStopping captures phase_output from agent.session.events latest assistant/message (no manual set)', async () => {
+  it('B1: onTurnStopping captures phase_output from the latest assistant/message snapshot (no manual set)', async () => {
     const sql = '```sql\nSELECT a FROM dws_pay WHERE ds=20260101\n```'
     const injected: UserMessage[] = []
     const agent = {
       id: 's1',
       inject: (m: UserMessage) => { injected.push(m) },
       cancel: () => {},
-      session: { id: 's1', events: [{ type: 'assistant/message', seq: 1, time: 0, data: { turn: 1, step: 1, message: { role: 'assistant', content: [{ type: 'text', text: sql }] } } }] },
+      session: { id: 's1', snapshotEvents: () => [{ type: 'assistant/message', seq: 1, time: 0, data: { turn: 1, step: 1, message: { role: 'assistant', content: [{ type: 'text', text: sql }] } } }] },
     } as unknown as Agent
     const g = gate()
     const s = g.state('s1')
@@ -495,7 +495,7 @@ describe('PhaseGate control flow (7 hooks, side-effect based)', () => {
     s.partition_cols.add('ds')
     s.definition_loaded = true // GROUNDING GATE (c): grounding established so extractSqlCandidate runs (last_sql is the observable)
     // B1: do NOT manually set s.phase_output — onTurnStopping must capture it
-    // from agent.session.events. last_sql is the stable observable: the critic
+    // from the Session snapshot. last_sql is the stable observable: the critic
     // sets it only if phase_output was captured (phase_output itself is reset on
     // retry/advance, so asserting it directly is fragile).
     await g.onTurnStopping({ agent, turn: 1, signal: new AbortController().signal })

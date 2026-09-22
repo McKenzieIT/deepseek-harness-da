@@ -1,7 +1,7 @@
 # data-agent model-facing 工具包 shipping 聚合（query_data / load_* / present_*）
 
 > 聚合 ticket：串起 data-agent 四阶段 pipeline 的 model-facing 工具包 shipping，使全链路 NL→SQL→query→delivery 可跑。每工具指向其 resolving ticket；本票跟踪整体 + 依赖解锁序。
-> 背景：2026-08-21 验证 sweep（`data-agent-conversation-readiness.md`）—— preset `apps/cli/config/agent-presets/data-agent/agent.cordis.yml` 挂了 `phase-gate` + `tool-search-data-sources`（已 ship），但 `query_data`/`load_*`/`critique_sql`/`evaluate_sql_quality`/`present_*` 是注释占位（"name TBD — uncomment when the package ships"）→ 全链路跑不通。
+> 背景：2026-08-21 验证 sweep（`data-agent-conversation-readiness.md`）—— preset `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` 挂了 `phase-gate` + `tool-search-data-sources`（已 ship），但 `query_data`/`load_*`/`critique_sql`/`evaluate_sql_quality`/`present_*` 是注释占位（"name TBD — uncomment when the package ships"）→ 全链路跑不通。
 
 ## Question / 目标
 

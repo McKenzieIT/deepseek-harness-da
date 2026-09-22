@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi, type MockInstance } from 'vitest'
 import {
   cliGateOptions,
+  collectDescendants,
   defaultConcurrency,
   formatGateResultReason,
   gatesForMode,
@@ -143,16 +144,83 @@ describe('gate graph validation', () => {
     await expect(runGates(subject, subject.length, execute)).resolves.toHaveLength(subject.length)
   })
 
+  it('builds the native addon before benchmarks through the ci-bench script chain', () => {
+    const subject = withPnpmEntrypoint(() => gatesForMode('ci-bench'))
+    const { scripts } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      scripts: Record<string, string>
+    }
+
+    expect(scripts['check:ci:bench']).toBe('tsx scripts/run-gates.ts ci-bench')
+    expect(subject).toHaveLength(1)
+    expect(subject[0]).toMatchObject({
+      id: 'bench',
+      displayCommand: 'pnpm run test:bench',
+      args: ['/private/pnpm.cjs', 'run', 'test:bench'],
+    })
+    expect(scripts['test:bench']).toBe('npm run build:bench && npm run build:web && npm run test:bench:built')
+    expect(scripts['build:bench']).toBe(
+      'npm run build:native-system && npm run build:lib && tsdown --config benchmarks/tsdown.config.ts',
+    )
+    expect(scripts['build:native-system']).toBe('tsx native/system/scripts/build.ts --host-addon-only')
+    expect(scripts['test:bench:built']).toBe('vitest run --config vitest.bench.config.ts')
+  })
+
+  it('checks all maintained repository references locally and in CI', () => {
+    const { scripts } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      scripts: Record<string, string>
+    }
+    for (const mode of ['doc-sync', 'doc-quick', 'ci-static'] as const) {
+      const gates = withPnpmEntrypoint(() => gatesForMode(mode))
+      expect(gates).toContainEqual(expect.objectContaining({
+        id: 'repository-references',
+        displayCommand: 'pnpm run verify-repository-references',
+      }))
+    }
+    expect(scripts['verify-repository-references']).toBe('tsx scripts/verify-repository-references.ts')
+  })
+
   it('keeps the public repository link policy in the documentation gate', () => {
     const ids = withPnpmEntrypoint(() => gatesForMode('doc-sync').map(subject => subject.id))
 
     expect(ids).toContain('public-repository-links')
   })
 
+  it('keeps the concrete terminology policy in the documentation gate', () => {
+    const ids = withPnpmEntrypoint(() => gatesForMode('doc-sync').map(subject => subject.id))
+
+    expect(ids).toContain('concrete-terms')
+  })
+
+  it('checks retrospective releases alongside the current persistence history', () => {
+    for (const mode of ['doc-sync', 'ci-static'] as const) {
+      const ids = withPnpmEntrypoint(() => gatesForMode(mode).map(subject => subject.id))
+      expect(ids).toEqual(expect.arrayContaining(['persistence-changes', 'persistence-releases']))
+    }
+  })
+
+  it('requires complete Session format references locally and in CI', () => {
+    const { scripts } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      scripts: Record<string, string>
+    }
+    for (const mode of ['doc-sync', 'doc-quick', 'ci-static'] as const) {
+      expect(withPnpmEntrypoint(() => gatesForMode(mode))).toContainEqual(expect.objectContaining({
+        id: 'persistence-formats',
+        displayCommand: 'pnpm run verify-persistence-formats',
+      }))
+    }
+    expect(scripts['verify-persistence-formats']).toBe('tsx scripts/persistence-formats.ts')
+  })
+
   it('keeps package-group subsystem ownership in the documentation gate', () => {
     const ids = withPnpmEntrypoint(() => gatesForMode('doc-sync').map(subject => subject.id))
 
     expect(ids).toContain('subsystem-pages')
+  })
+
+  it('keeps the package README Summary limit in the documentation gate', () => {
+    const ids = withPnpmEntrypoint(() => gatesForMode('doc-sync').map(subject => subject.id))
+
+    expect(ids).toContain('package-readme-summaries')
   })
 
   it('derives the quick documentation aggregate from marked doc-sync leaves', () => {
@@ -162,14 +230,21 @@ describe('gate graph validation', () => {
     expect(quick).toEqual(full.filter(gate => gate.quick === true))
   })
 
+  it('checks the recorded npm dependency catalog in both documentation aggregates', () => {
+    for (const mode of ['doc-sync', 'doc-quick'] as const) {
+      expect(withPnpmEntrypoint(() => gatesForMode(mode).find(gate => gate.id === 'dependency-catalog')))
+        .toMatchObject({ args: ['/private/pnpm.cjs', 'run', 'verify-dependency-catalog'] })
+    }
+  })
+
   it('keeps the hygiene aggregate aligned with the package script checks', () => {
     const ids = withPnpmEntrypoint(() => gatesForMode('hygiene').map(subject => subject.id))
 
     expect(ids).toEqual([
-      'rescope-vendor', 'publint', 'constraints', 'package-dependencies', 'application-entrypoints',
+      'rescope-vendor', 'publint', 'constraints', 'default-product-isolation', 'package-dependencies', 'application-entrypoints',
       'dsh-package-licenses', 'package-invariants', 'built-package-invariants', 'node-next-types',
       'optional-dependency-imports', 'client-packages', 'client-ui-i18n', 'no-bare-dispatcher', 'gate-coverage', 'upstream-sync-record', 'cordis-config',
-      'runtime-closure', 'vendored-links',
+      'runtime-closure',
     ])
     expect(defaultConcurrency('hygiene', ids.length, 8)).toEqual({
       workers: 4,
@@ -182,7 +257,7 @@ describe('gate graph validation', () => {
 
     expect(ids.slice(0, 10)).toEqual([
       'doc-typecheck', 'docs-site-build', 'doc-graphs', 'architecture-graph', 'markdown-links',
-      'type-equivalence', 'cordis-catalog', 'cordis-inspect-catalog', 'mermaid', 'scoped-events',
+      'type-equivalence', 'cordis-catalog', 'cordis-inspect-catalog', 'workflow-guest', 'mermaid',
     ])
   })
 
@@ -214,12 +289,32 @@ describe('gate graph validation', () => {
     },
   )
 
+  it.each(['ci-primary', 'ci-static', 'check-all', 'hygiene'] as const)(
+    'executes default-product experimental isolation in %s',
+    (mode) => {
+      const gate = withPnpmEntrypoint(() => gatesForMode(mode)
+        .find(subject => subject.id === 'default-product-isolation'))
+
+      expect(gate?.args).toContain('verify-default-product-isolation')
+      expect(gate?.allowFailure).not.toBe(true)
+    },
+  )
+
   it.each(['ci-primary', 'ci-static', 'check-all'] as const)(
     'keeps the client dependency policy in %s',
     (mode) => {
       const ids = withPnpmEntrypoint(() => gatesForMode(mode).map(subject => subject.id))
 
       expect(ids).toContain('client-packages')
+    },
+  )
+
+  it.each(['ci-primary', 'ci-static', 'check-all'] as const)(
+    'keeps weighted approval policy tests in %s',
+    (mode) => {
+      const ids = withPnpmEntrypoint(() => gatesForMode(mode).map(subject => subject.id))
+
+      expect(ids).toContain('approval-policy')
     },
   )
 
@@ -870,6 +965,30 @@ describe('fail-fast scheduling', () => {
 })
 
 describe('process-table parsing', () => {
+  it('excludes the root when a parent link returns to it', () => {
+    expect(collectDescendants(100, [[200, 100], [100, 200], [300, 200]]))
+      .toEqual([200, 300])
+  })
+
+  it('visits duplicate and cyclic descendant links only once', () => {
+    expect(collectDescendants(100, [
+      [200, 100], [200, 100], [300, 100], [200, 200], [400, 200], [200, 400], [500, 300], [900, 800],
+    ])).toEqual([200, 300, 400, 500])
+  })
+
+  it('returns no descendants for an isolated or self-parented root', () => {
+    expect(collectDescendants(100, [])).toEqual([])
+    expect(collectDescendants(100, [[100, 100]])).toEqual([])
+  })
+
+  it('walks a wide child set without spreading it into call arguments', () => {
+    const children = Array.from({ length: 150_000 }, (_, i): [number, number] => [i + 3, 2])
+    const descendants = collectDescendants(1, [[2, 1], ...children])
+    expect(descendants).toHaveLength(children.length + 1)
+    expect(descendants[0]).toBe(2)
+    expect(descendants.at(-1)).toBe(150_002)
+  })
+
   it('parses `pid ppid` rows from a POSIX ps dump', () => {
     expect(parsePidPpidLines('  123   1\n456 123\n  789 456\n')).toEqual([[123, 1], [456, 123], [789, 456]])
   })
@@ -880,6 +999,50 @@ describe('process-table parsing', () => {
 
   it('drops blank and malformed lines', () => {
     expect(parsePidPpidLines('  123   1\n\ncommand not found\n999 abc\n')).toEqual([[123, 1]])
+  })
+})
+
+describe('process-tree descendant walk', () => {
+  it('collects a whole subtree in breadth-first order', () => {
+    const rows: Array<[number, number]> = [[200, 100], [201, 100], [300, 200], [400, 300], [999, 1]]
+    expect(collectDescendants(100, rows)).toEqual([200, 201, 300, 400])
+  })
+
+  it('returns nothing for a pid with no children', () => {
+    expect(collectDescendants(100, [[200, 7], [201, 7]])).toEqual([])
+  })
+
+  it('terminates on a snapshot whose ppid chain cycles back to the root', () => {
+    // The OS recycles pids, so a dump can name a parent that sits below its own
+    // child. Before the walk tracked what it had queued, this two-row input grew
+    // the queue without end and died with `Maximum call stack size exceeded`.
+    expect(collectDescendants(100, [[200, 100], [100, 200]])).toEqual([200])
+  })
+
+  it('terminates on a cycle that does not include the root', () => {
+    const rows: Array<[number, number]> = [[200, 100], [300, 200], [200, 300]]
+    expect(collectDescendants(100, rows)).toEqual([200, 300])
+  })
+
+  it('terminates on a self-parenting row', () => {
+    expect(collectDescendants(100, [[200, 100], [200, 200]])).toEqual([200])
+  })
+
+  it('walks a fan-out wider than the engine argument limit', () => {
+    // The children were once spread into `push`, which passes one argument per
+    // element; a fan-out this wide exceeded the argument limit and threw.
+    const rows: Array<[number, number]> = [[100, 1]]
+    for (let pid = 200; pid < 200_000; pid += 1) rows.push([pid, 100])
+    expect(collectDescendants(1, rows)).toHaveLength(199_801)
+  })
+
+  it('leaves the caller-visible row order untouched for a repeated walk', () => {
+    // The queue used to alias the map's own child array, so one walk rewrote the
+    // snapshot the next one would read.
+    const rows: Array<[number, number]> = [[200, 100], [300, 200]]
+    expect(collectDescendants(100, rows)).toEqual([200, 300])
+    expect(collectDescendants(100, rows)).toEqual([200, 300])
+    expect(rows).toEqual([[200, 100], [300, 200]])
   })
 })
 

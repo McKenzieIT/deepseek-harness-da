@@ -12,6 +12,9 @@ const builtBin = join(repoRoot, 'apps/cli/lib/bin.js')
 const frontendIndex = join(repoRoot, 'apps/web/dist/index.html')
 const openerHook = new URL('./fixtures/web-browser-open/register.mjs', import.meta.url).href
 const openingMessage = 'dsh web: opening the default browser; pass --no-open to disable'
+// Built Web startup exceeded 30 seconds only while sharing the consumers lane;
+// the lane grants 120 seconds per case, leaving this process a bounded half.
+const WEB_PROCESS_TIMEOUT_MS = 60_000
 const tempRoots: string[] = []
 const builtArtifactsExist = existsSync(builtBin) && existsSync(frontendIndex)
 
@@ -59,7 +62,7 @@ describe.skipIf(!builtArtifactsExist)('dsh web browser-open assembled snapshot',
         SSH_TTY: '',
       },
       input: '',
-      timeout: 30_000,
+      timeout: WEB_PROCESS_TIMEOUT_MS,
       killSignal: 'SIGKILL',
       reject: false,
     })
@@ -119,7 +122,7 @@ describe.skipIf(!builtArtifactsExist)('dsh web browser-open assembled snapshot',
         SSH_TTY: '',
       },
       input: '',
-      timeout: 30_000,
+      timeout: WEB_PROCESS_TIMEOUT_MS,
       killSignal: 'SIGKILL',
       reject: false,
     })
@@ -167,7 +170,7 @@ describe.skipIf(!builtArtifactsExist)('dsh web browser-open assembled snapshot',
         VSCODE_IPC_HOOK_CLI: '/tmp/vscode-ipc',
       },
       input: '',
-      timeout: 30_000,
+      timeout: WEB_PROCESS_TIMEOUT_MS,
       killSignal: 'SIGKILL',
       reject: false,
     })
@@ -212,7 +215,7 @@ describe.skipIf(!builtArtifactsExist)('dsh web browser-open assembled snapshot',
         SSH_TTY: '',
       },
       input: '',
-      timeout: 30_000,
+      timeout: WEB_PROCESS_TIMEOUT_MS,
       killSignal: 'SIGKILL',
       reject: false,
     })

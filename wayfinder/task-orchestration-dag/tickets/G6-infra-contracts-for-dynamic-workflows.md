@@ -2,6 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved
+**Current standing**: explicit stable APIs remain necessary. Task/Attempt ownership, verification, revisions, concurrency, run control, persistence, and loop policy are superseded by [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) and its downstream tickets.
 **Blocked by**: [G1 DAG data model decision](G1-dag-data-model-decision.md) ✅, [G5 dynamic node insertion design](G5-dynamic-node-insertion-design.md)
 **Blocks**: [G7 writeScopes conflict detection](G7-writescopes-conflict-detection.md), [G9 team-task integration](G9-team-task-upstream-integration.md), [G10 subagent tree integration](G10-subagent-tree-upstream-integration.md)
 

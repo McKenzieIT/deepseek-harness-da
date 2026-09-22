@@ -28,7 +28,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: hard
   business_context: 新增角色(game.role.create)与充值角色(game.recharge，含全部moneyType 但排除money<=0的零金额打点噪声)的当日交集，衡量新增即付费/代金券转化。2026-08-08(T15/D18)：sql+value 已修正为过滤 money>0 后的口径,原值376系零金额打点噪声污染,详见 tests/golden/cases/10000251/golden_138.yaml 的 business_validity.rationale。
   created_at: '2026-08-04'

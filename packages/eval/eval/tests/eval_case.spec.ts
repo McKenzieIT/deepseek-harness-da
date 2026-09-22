@@ -70,8 +70,10 @@ describe('EvalCaseSchema (da-fresh zod; file-boundary validation)', () => {
       input: { question: 'q' },
       expected: { result_value: { value: 1 }, match_mode: 'scalar_exactt' },
     })
-    expect(preflightEvalCaseContent(c).status).toBe('case-defect')
-    expect(preflightEvalCaseContent(c).detail).toMatch(/unknown match_mode: scalar_exactt/)
+    const preflight = preflightEvalCaseContent(c)
+    expect(preflight.status).toBe('case-defect')
+    if (preflight.status !== 'case-defect') throw new Error('expected case-defect content preflight')
+    expect(preflight.detail).toMatch(/unknown match_mode: scalar_exactt/)
   })
 
   it.each([
@@ -116,26 +118,26 @@ describe('EvalCaseSchema (da-fresh zod; file-boundary validation)', () => {
   })
 })
 
-describe('EvalCaseSchema provenance (rbi schema_version 3)', () => {
+describe('EvalCaseSchema source metadata (RBI schema_version 3)', () => {
   const rbi = {
     schema_version: 3,
     case_id: 'r',
     input: { question: 'q' },
     expected: { sql: 'SELECT 1', result_value: { value: 1 }, match_mode: 'scalar_exact', behavior: 'direct_answer' },
-    meta: { anchor_ds: '20260806', tier: 'verified', provenance: 'migrated' },
+    meta: { anchor_ds: '20260806', tier: 'verified', source: 'migrated' },
   }
 
-  it('parses an rbi case with reference SQL and snapshot anchor', () => {
+  it('parses an RBI case with reference SQL and snapshot anchor', () => {
     const c = EvalCaseSchema.parse(rbi)
     expect(c.schema_version).toBe(3)
     expect(c.expected.sql).toBe('SELECT 1')
     expect(c.expected.behavior).toBe('direct_answer')
     expect(c.meta?.anchor_ds).toBe('20260806')
     expect(c.meta?.tier).toBe('verified')
-    expect(c.meta?.provenance).toBe('migrated')
+    expect(c.meta?.source).toBe('migrated')
   })
 
-  it('leaves provenance absent for a k11 case that declares none', () => {
+  it('leaves source metadata absent for a k11 case that declares none', () => {
     const c = EvalCaseSchema.parse(base)
     expect(c.schema_version).toBeUndefined()
     expect(c.meta).toBeUndefined()

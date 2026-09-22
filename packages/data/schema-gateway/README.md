@@ -1,8 +1,33 @@
+---
+description: "Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI consumption"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-schema-gateway
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
 Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI consumption
+
+## Table of Contents
+
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
+Read-only Remote projection of ctx.schema (SemanticLayerService) for client UI consumption
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-schema-gateway` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

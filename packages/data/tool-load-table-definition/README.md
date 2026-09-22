@@ -1,10 +1,32 @@
+---
+description: "Model-facing load_table_definition tool: load a validated table definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-load-table-definition`
 
 English | [中文](README.zh.md)
 
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing load_table_definition tool: load a validated table definition from the semantic-layer substrate for the data agent's UNDERSTANDING/GENERATION phase
+
+## Table of Contents
+
+- [Status: registered + callable; ctx.schema wired](#status-registered--callable-ctxschema-wired)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 Model-facing `load_table_definition` tool: **load a validated table definition from the semantic-layer substrate** for the data agent's `UNDERSTANDING`/`GENERATION` phase. The agent calls it to ground SQL in the real schema (columns, partitions, primary key, metrics, dimension references) before writing or critiquing a query.
 
-This is the **P6b deferred follow-up** ("load_* 接入") — the model-facing wrapper over the [`ctx.schema`](../semantic-layer) `loadTableDefinition` substrate (shipped in P6b, commit 88524504f8). It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) (the first model-facing tool, P13b commit 0e1a0fdf25) for the [`@deepseek-ai/dsh-tools`](../../core/tools) registration shape (`defineTool` + `ctx.tools.register`).
+This is the **P6b deferred follow-up** ("load_* 接入") — the model-facing wrapper over the [`ctx.schema`](../semantic-layer) `loadTableDefinition` substrate (shipped in P6b). It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) (the first model-facing tool, P13b) for the [`@deepseek-ai/dsh-tools`](../../core/tools) registration shape (`defineTool` + `ctx.tools.register`).
 
 ## Status: registered + callable; ctx.schema wired
 
@@ -51,7 +73,14 @@ pnpm vitest run packages/data/tool-load-table-definition
 pnpm verify-cordis-config
 ```
 
-The preset row (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-load-table-definition`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING`/`GENERATION` whitelist already names `load_table_definition`, so registering it makes it callable in those phases.
+The preset row (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-load-table-definition`) is uncommented once this package ships; the phase-gate guard's `UNDERSTANDING`/`GENERATION` whitelist already names `load_table_definition`, so registering it makes it callable in those phases.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-load-table-definition` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

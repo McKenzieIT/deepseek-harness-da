@@ -21,10 +21,10 @@
       "path": "../../../vendor/schemastery"
     },
     {
-      "path": "../code-runtime"
+      "path": "../../ptc-runtime/ptc-runtime"
     },
     {
-      "path": "../../experimental/code-runtime-python"
+      "path": "../code-runtime-python-protocol"
     },
     {
       "path": "../../util/timeout"

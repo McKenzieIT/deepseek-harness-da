@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
@@ -318,5 +318,112 @@ describe('ScopeRegistryService', () => {
     expect(env.svc.active()?.tenant).toBe('acme')
     // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
     expect(env.svc.active()?.id).toBe('game-a')
+  })
+
+  // ── registryPath resolution ────────────────────────────────────────────
+
+  test('registryPath beginning with "~/" resolves against the home directory', async () => {
+    const env = setup()
+    tmp = env.tmp
+    const previousHome = process.env.HOME
+    const previousUserProfile = process.env.USERPROFILE
+    // os.homedir() reads $HOME on POSIX and %USERPROFILE% on Windows, so
+    // pointing both at the temp dir keeps the expansion off the real home.
+    process.env.HOME = env.tmp
+    process.env.USERPROFILE = env.tmp
+    try {
+      const svc = new ScopeRegistryService(new Context(), { registryPath: '~/home-scopes.yaml' })
+      await svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
+      expect(existsSync(join(env.tmp, 'home-scopes.yaml'))).toBe(true)
+      expect(svc.list()).toHaveLength(1)
+      expect(svc.get('game-a')?.semanticRoot).toBe('/data/game-a')
+    } finally {
+      if (previousHome === undefined) delete process.env.HOME
+      else process.env.HOME = previousHome
+      if (previousUserProfile === undefined) delete process.env.USERPROFILE
+      else process.env.USERPROFILE = previousUserProfile
+    }
+  })
+
+  // ── remove() on a scope that is not the active one ──────────────────────
+
+  test('remove: dropping a non-active scope keeps the active selection', async () => {
+    const env = setup()
+    tmp = env.tmp
+    await env.svc.register({ id: 'game-a', semanticRoot: '/data/game-a' })
+    await env.svc.register({ id: 'game-b', semanticRoot: '/data/game-b' })
+    const activeEvents: (string | undefined)[] = []
+    let changed = 0
+    env.ctx.on('scopes/active-changed', (id) => { activeEvents.push(id) })
+    env.ctx.on('scopes/changed', () => { changed++ })
+
+    await env.svc.remove('game-b')
+
+    expect(env.svc.list().map(s => s.id)).toEqual(['game-a'])
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
+    expect(env.svc.activeId()).toBe('game-a')
+    expect(changed).toBe(1)
+    // removing a scope that was not active announces no active-scope change
+    expect(activeEvents).toEqual([])
+  })
+
+  // ── malformed registry files (read guards) ──────────────────────────────
+
+  test('load: a registry file that is not a YAML mapping reads as an empty registry', () => {
+    const env = setup()
+    tmp = env.tmp
+    // An empty document parses to undefined; neither shape may throw.
+    writeFileSync(env.path, '')
+    expect(env.svc.list()).toEqual([])
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
+    expect(env.svc.activeId()).toBeUndefined()
+
+    writeFileSync(env.path, 'not-a-mapping\n')
+    expect(env.svc.list()).toEqual([])
+    expect(env.svc.get('not-a-mapping')).toBeUndefined()
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
+    expect(env.svc.active()).toBeUndefined()
+  })
+
+  test('load: a registry file with no scopes map reads as empty with nothing active', () => {
+    const env = setup()
+    tmp = env.tmp
+    writeFileSync(env.path, 'active: game-a\n')
+    expect(env.svc.list()).toEqual([])
+    // an active id naming a scope the file never defines activates nothing
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
+    expect(env.svc.activeId()).toBeUndefined()
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
+    expect(env.svc.active()).toBeUndefined()
+    expect(env.svc.forTenant('default')).toBeUndefined()
+  })
+
+  test('load: scope entries without a string semanticRoot are skipped', () => {
+    const env = setup()
+    tmp = env.tmp
+    writeFileSync(env.path, [
+      'active: no-root',
+      'scopes:',
+      '  null-entry:',
+      '  no-root:',
+      '    tenant: acme',
+      '  wrong-type:',
+      '    semanticRoot: 42',
+      '  good:',
+      '    semanticRoot: /data/good',
+      '    tenant: acme',
+      '',
+    ].join('\n'))
+
+    expect(env.svc.list().map(s => s.id)).toEqual(['good'])
+    expect(env.svc.get('null-entry')).toBeUndefined()
+    expect(env.svc.get('no-root')).toBeUndefined()
+    expect(env.svc.get('wrong-type')).toBeUndefined()
+    // a skipped entry does not count toward its tenant's ownership: "acme"
+    // owns exactly one loadable scope, so the 1:1 lookup stays unambiguous
+    expect(env.svc.forTenant('acme')).toEqual({ id: 'good', semanticRoot: '/data/good', tenant: 'acme' })
+    // the file's active id names a skipped entry, so no scope is active
+    // oxlint-disable-next-line typescript/no-deprecated -- tests verify deprecated compat API
+    expect(env.svc.activeId()).toBeUndefined()
   })
 })

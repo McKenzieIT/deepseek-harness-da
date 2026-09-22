@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { afterEach, describe, expect, it, onTestFailed } from 'vitest'
+import { afterEach, describe, expect, it, onTestFailed, vi } from 'vitest'
 import { deriveReplayScript, parseSessionLog, type ReplayEntry } from '@deepseek-ai/dsh-llm-replay'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import {
@@ -19,7 +19,7 @@ import {
 import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/queue-actions', import.meta.url))
-const FIXTURE = fileURLToPath(new URL('../../../snapshots/web/live-interactions/session.v2.jsonl', import.meta.url))
+const FIXTURE = fileURLToPath(new URL('../../../snapshots/web/live-interactions/session.v3.jsonl', import.meta.url))
 const COLLAPSED_EXPECTED = join(SNAPSHOT_DIR, 'collapsed.expected.md')
 const EDITING_EXPECTED = join(SNAPSHOT_DIR, 'editing.expected.md')
 const LAYOUT_EXPECTED = join(SNAPSHOT_DIR, 'layout.expected.md')
@@ -27,6 +27,7 @@ const PRESERVED_EXPECTED = join(SNAPSHOT_DIR, 'preserved.expected.md')
 const PRESERVED_EXPANDED_EXPECTED = join(SNAPSHOT_DIR, 'preserved-expanded.expected.md')
 const UI_EXPECTED = join(SNAPSHOT_DIR, 'ui.expected.md')
 const SENDING_EXPECTED = join(SNAPSHOT_DIR, 'sending.expected.md')
+const WRITER_HELD_EXPECTED = join(SNAPSHOT_DIR, 'writer-held.expected.md')
 const FAILED_EXPECTED = join(SNAPSHOT_DIR, 'failed.expected.md')
 const MODE = webSnapshotMode()
 
@@ -65,6 +66,16 @@ describe('web e2e: queue row actions', () => {
     if (failures.length > 1) throw new AggregateError(failures, 'queue-actions teardown failed')
   })
 
+  /** Wait for the exact queue mutation response before observing its unlocked actions. */
+  async function settleQueueAction(action: () => Promise<void>, remainingText: string): Promise<void> {
+    const response = page.waitForResponse('**/api/session/updateQueue')
+    await action()
+    expect((await response).ok()).toBe(true)
+    const row = page.locator('[data-queue-dock] li', { hasText: remainingText })
+    await expect.poll(() => row.getByRole('button', { name: 'Edit queued message' }).isEnabled()).toBe(true)
+    await expect.poll(() => row.getByRole('button', { name: 'Remove queued message' }).isEnabled()).toBe(true)
+  }
+
   it.skipIf(MODE === 'record')('edits and removes exact occurrences and preserves Queue across stop', async () => {
     overrideDir = await mkdtemp(join(tmpdir(), 'dsh-web-queue-actions-'))
     const readyFile = join(overrideDir, '.hang-ready')
@@ -96,6 +107,7 @@ describe('web e2e: queue row actions', () => {
     await input.press('Enter')
     await expect.poll(() => existsSync(readyFile), { timeout: 15_000 }).toBe(true)
 
+    const admitted = page.waitForResponse('**/api/session/prompt')
     const received = Promise.withResolvers<undefined>()
     const release = Promise.withResolvers<undefined>()
     await page.route('**/api/session/prompt', async (route) => {
@@ -125,6 +137,7 @@ describe('web e2e: queue row actions', () => {
     } finally {
       release.resolve(undefined)
     }
+    expect((await admitted).ok()).toBe(true)
     await expect.poll(() => page.getByRole('button', { name: 'Remove queued message' }).isEnabled()).toBe(true)
     expect(await page.locator('[data-queue-dock] [data-submission-echo]').count()).toBe(0)
     expect(await page.locator('[data-queue-dock]').getByRole('status').count()).toBe(0)
@@ -147,37 +160,49 @@ describe('web e2e: queue row actions', () => {
     ).toBe(2)
 
     await page.setViewportSize({ width: 640, height: 1000 })
-    const queueBox = await page.locator('[data-queue-dock]').boundingBox()
-    const composerBox = await page.locator('[data-composer-card]').boundingBox()
-    expect(queueBox).not.toBeNull()
-    expect(composerBox).not.toBeNull()
-    expect(queueBox!.x).toBeGreaterThanOrEqual(composerBox!.x)
-    expect(queueBox!.x + queueBox!.width)
-      .toBeLessThanOrEqual(composerBox!.x + composerBox!.width)
-    const queueLeftInset = queueBox!.x - composerBox!.x
-    const queueRightInset = composerBox!.x + composerBox!.width - queueBox!.x - queueBox!.width
-    const composerMetrics = await page.locator('[data-composer-card]').evaluate((element) => {
-      const style = getComputedStyle(element)
-      return {
-        dockInset: Number.parseFloat(style.getPropertyValue('--dsh-composer-dock-inset')),
-      }
-    })
-    expect(queueLeftInset).toBeCloseTo(composerMetrics.dockInset, 1)
-    expect(queueRightInset).toBeCloseTo(composerMetrics.dockInset, 1)
+    await page.locator('[data-sidebar-collapsed="true"]').waitFor()
+    // The responsive sidebar and composer settle independently; sample both
+    // rectangles in one browser task so the comparison uses one layout.
+    await vi.waitFor(async () => {
+      const metrics = await page.evaluate(() => {
+        const queue = document.querySelector('[data-queue-dock]')
+        const composer = document.querySelector('[data-composer-card]')
+        if (queue === null || composer === null) return undefined
+        const queueBox = queue.getBoundingClientRect()
+        const composerBox = composer.getBoundingClientRect()
+        return {
+          leftInset: queueBox.left - composerBox.left,
+          rightInset: composerBox.right - queueBox.right,
+          dockInset: Number.parseFloat(getComputedStyle(composer).getPropertyValue('--dsh-composer-dock-inset')),
+        }
+      })
+      expect(metrics).toBeDefined()
+      expect(metrics!.leftInset).toBeGreaterThanOrEqual(0)
+      expect(metrics!.rightInset).toBeGreaterThanOrEqual(0)
+      expect(metrics!.leftInset).toBeCloseTo(metrics!.dockInset, 1)
+      expect(metrics!.rightInset).toBeCloseTo(metrics!.dockInset, 1)
+    }, { timeout: 10_000 })
     await page.setViewportSize({ width: 1680, height: 1000 })
 
     const editRow = page.locator('[data-queue-dock] li', { hasText: EDIT })
     await editRow.getByRole('button', { name: 'Edit queued message' }).click()
     const editor = page.getByRole('textbox', { name: 'Edit queued message' })
     await editor.fill(EDITED)
+    await page.getByRole('button', { name: 'Save queued message' }).hover()
+    await page.getByRole('tooltip', { name: 'Save queued message', exact: true }).waitFor()
     const editingSnapshot = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(EDITING_EXPECTED, editingSnapshot, MODE)
-    await page.getByRole('button', { name: 'Save queued message' }).click()
+    await settleQueueAction(() => page.getByRole('button', { name: 'Save queued message' }).click(), EDITED)
     await page.getByText(EDITED, { exact: true }).waitFor()
 
     const removeRow = page.locator('[data-queue-dock] li', { hasText: REMOVE })
-    await removeRow.getByRole('button', { name: 'Remove queued message' }).click()
+    await settleQueueAction(() => removeRow.getByRole('button', { name: 'Remove queued message' }).click(), EDITED)
     await expect.poll(() => page.getByText(REMOVE, { exact: true }).count()).toBe(0)
+    // The queue stream can remove the row before the mutation reply clears busy.
+    const remainingEdit = page.getByRole('button', { name: 'Edit queued message', exact: true })
+    await expect.poll(() => remainingEdit.isEnabled(), { timeout: 10_000 }).toBe(true)
+    await remainingEdit.hover()
+    await page.getByRole('tooltip', { name: 'Edit queued message', exact: true }).waitFor()
 
     const snapshot = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(UI_EXPECTED, snapshot, MODE)
@@ -208,6 +233,29 @@ describe('web e2e: queue row actions', () => {
     ].join('\n')
     await compareOrRefreshGolden(FAILED_EXPECTED, failed, MODE)
 
+    await page.route('**/api/session/prompt', async (route) => {
+      const envelope = route.request().postDataJSON() as { rpcId: string }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        json: {
+          type: 'server-response', rpcId: envelope.rpcId,
+          result: {
+            ok: false,
+            error: { code: 'session/writer-held', message: 'writer held', details: { sessionId: 'held-session' } },
+          },
+        },
+      })
+    }, { times: 1 })
+    await input.press('Enter')
+    const writerHeld = page.getByRole('alert').filter({ hasText: 'This session is already in use' })
+    await writerHeld.waitFor()
+    await expect.poll(() => input.textContent()).toBe(FAILED)
+    await compareOrRefreshGolden(WRITER_HELD_EXPECTED, [
+      await writerHeld.ariaSnapshot(),
+      await captureStableAria(page, '[data-composer-card]', scaffold.workspaceCwd),
+    ].join('\n'), MODE)
+
     await input.fill(TAIL)
     await input.press('Enter')
     await expect.poll(
@@ -215,13 +263,18 @@ describe('web e2e: queue row actions', () => {
       { timeout: 10_000 },
     ).toBe(2)
 
-    await page.getByRole('button', { name: 'Stop generating' }).click()
+    const stopButton = page.getByRole('button', { name: 'Stop generating' })
+    await stopButton.hover()
+    await page.getByRole('tooltip', { name: 'Stop generating', exact: true }).waitFor()
+    await stopButton.click()
     await firstSettled
     await expect.poll(() => page.getByRole('button', { name: 'Stop generating' }).count())
       .toBe(0)
     await expect.poll(() => page.getByRole('button', { name: 'Remove queued message' }).count())
       .toBe(2)
 
+    // The disabled Send button must dismiss the active Stop tooltip without mouseleave.
+    await expect.poll(() => page.getByRole('tooltip').count()).toBe(0)
     const preservedSnapshot = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(PRESERVED_EXPECTED, preservedSnapshot, MODE)
     const expanded = await captureExpandedTurnProcessAria(
@@ -344,7 +397,7 @@ describe('web e2e: queue row actions', () => {
       [
         'collapsed.expected.md', 'editing.expected.md', 'layout.expected.md',
         'preserved.expected.md', 'preserved-expanded.expected.md', 'ui.expected.md',
-        'sending.expected.md', 'failed.expected.md',
+        'sending.expected.md', 'failed.expected.md', 'writer-held.expected.md',
       ],
     )
   })

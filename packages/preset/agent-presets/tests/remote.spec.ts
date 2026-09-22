@@ -117,6 +117,7 @@ describe('the roster a client reads', () => {
     const roster = await ctx.agentPresets.remoteExportList()
 
     expect(roster.authorable).toBe(true)
+    expect(roster.modeSelectionEnabled).toBe(true)
     expect(roster.presets).toEqual([
       { id: 'minimal', trust: 'system', isDefault: true },
       { id: 'standard', trust: 'system', isDefault: false },
@@ -152,7 +153,7 @@ describe('the roster a client reads', () => {
 
     // Composing no presets is a valid deployment: every session then shares
     // the host composition, and nothing can be written either.
-    expect(roster).toEqual({ presets: [], authorable: false })
+    expect(roster).toEqual({ presets: [], authorable: false, modeSelectionEnabled: true })
   })
 })
 
@@ -392,6 +393,33 @@ describe('switching one session\'s composition', () => {
     // One winner, and the log agrees with it: the last committed switch.
     expect(recordedPreset(agent)).toEqual({ agentPreset: 'standard' })
     expect(ctx.agentPresets.composedPreset(agent.ctx)).toBe('standard')
+  })
+
+  it('publishes one session\'s in-flight switch guard, and drops it once settled', async () => {
+    const ctx = await harness()
+    const agent = await agentOn(ctx, 'sel-pending', 'standard')
+
+    // Nothing queued yet. The autojoin instrumentation reads this to decide
+    // whether a switch is in flight, so an idle session must answer with
+    // nothing rather than a resolved-looking placeholder.
+    expect(ctx.agentPresets.pendingSwitch(agent.id)).toBeUndefined()
+
+    const turn = ctx.agentPresets.select(agent, 'minimal')
+    const guard = ctx.agentPresets.pendingSwitch(agent.id)
+
+    expect(guard).toBeInstanceOf(Promise)
+    // The entry is the failure-swallowing guard, not the turn: an observer of
+    // a refused switch must not inherit its rejection.
+    expect(guard).not.toBe(turn)
+    // Keyed by session: a reader that ignored its argument would report this
+    // switch for every other session as well.
+    expect(ctx.agentPresets.pendingSwitch(`${agent.id}-other`)).toBeUndefined()
+
+    await turn
+
+    // `select`'s finally clause removes the entry, so a completed switch never
+    // leaves a session looking permanently busy.
+    expect(ctx.agentPresets.pendingSwitch(agent.id)).toBeUndefined()
   })
 
   it('refuses once the conversation has started', async () => {

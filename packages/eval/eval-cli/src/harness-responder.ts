@@ -21,12 +21,13 @@
 import { randomUUID } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
-import { homedir } from 'node:os'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
@@ -220,22 +221,17 @@ export class HarnessAgentResponder implements AgentResponder {
   }
 
   private resolvePresetDir(): string {
-    // Resolve relative to this file → repo root → apps/cli/config/agent-presets/data-agent
-    let dir = dirname(new URL(import.meta.url).pathname)
-    for (let i = 0; i < 10; i++) {
-      const candidate = join(dir, 'apps/cli/config/agent-presets/data-agent')
-      if (existsSync(candidate)) return candidate
-      const parent = dirname(dir)
-      if (parent === dir) break
-      dir = parent
+    let manifest: string
+    try {
+      manifest = createRequire(import.meta.url).resolve('@deepseek-ai/dsh-data-agent/package.json')
+    } catch (cause) {
+      throw new Error(
+        'HarnessAgentResponder: cannot resolve the installed @deepseek-ai/dsh-data-agent preset bundle. '
+        + 'Install the bundle or pass presetDir explicitly.',
+        { cause },
+      )
     }
-    // Try CWD
-    const cwdCandidate = resolve('apps/cli/config/agent-presets/data-agent')
-    if (existsSync(cwdCandidate)) return cwdCandidate
-    throw new Error(
-      'HarnessAgentResponder: cannot resolve preset directory. '
-      + 'Pass presetDir explicitly or run from the repo root.',
-    )
+    return join(dirname(manifest), 'presets', 'data-agent')
   }
 
   /** Identity of the query provider used by both the agent and grader. */
@@ -249,7 +245,10 @@ export class HarnessAgentResponder implements AgentResponder {
     return this.opts.withQuery ? this.opts.queryWaitSeconds : undefined
   }
 
-  /** Build the grading executor over the same lazily booted production context. */
+  /**
+   * Build the grading executor over the same lazily booted production context.
+   * @returns The shared-context executor, or null when query execution is disabled.
+   */
   createQueryExecutor(): QueryExecutor | null {
     if (!this.opts.withQuery) return null
     const scopeId = this.opts.scopeId
@@ -306,6 +305,7 @@ export class HarnessAgentResponder implements AgentResponder {
     const { default: Group } = await import('@deepseek-ai/cordis-plugin-group')
     // Set baseUrl to repo root so package specifiers resolve correctly
     const repoRoot = this.resolveRepoRoot()
+    const dshHome = resolveDshHome()
     ctx.baseUrl = pathToFileURL(repoRoot).href + '/'
     await ctx.plugin(Loader)
     ctx.loader.builtins.group = Group
@@ -313,11 +313,11 @@ export class HarnessAgentResponder implements AgentResponder {
     // ── 2. LlmRuntime → ctx.llm ────────────────────────────────────────────
     await ctx.plugin(LlmRuntime)
 
-    // ── 2b. Credential seam: LocalCredentialProvider reads ~/.dsh/.credentials.yaml
+    // ── 2b. Credential seam: LocalCredentialProvider reads $DSH_HOME/.credentials.yaml
     // so llm-dashscope resolves DASHSCOPE_API_KEY via ctx.credentials (not process.env).
     await ctx.plugin(LocalCredentialProvider, {
-      path: join(homedir(), '.dsh', '.credentials.yaml'),
-      dshHome: join(homedir(), '.dsh'),
+      path: join(dshHome, '.credentials.yaml'),
+      dshHome,
     })
 
     // ── 3. llm-dashscope → registers 'aga' provider on ctx.llm ─────────────
@@ -367,9 +367,9 @@ export class HarnessAgentResponder implements AgentResponder {
     const resultCacheMemory = await import('@deepseek-ai/dsh-result-cache-memory')
     await ctx.plugin(resultCacheMemory)
 
-    // ── 14. CodeRuntimeWorkerThread → ctx.codeRuntime (tool-compute needs it)
-    const { default: WorkerThreadCodeRuntime } = await import('@deepseek-ai/dsh-code-runtime-worker-thread')
-    await ctx.plugin(WorkerThreadCodeRuntime)
+    // ── 14. NodePtcRuntime → ctx.ptcRuntime (tool-compute needs it)
+    const { default: NodePtcRuntime } = await import('@deepseek-ai/dsh-ptc-runtime-node')
+    await ctx.plugin(NodePtcRuntime)
 
     // ── 15. SessionProjectionRegistry → ctx.sessionProjections (goal/todo need it)
     const { default: SessionProjectionRegistry } = await import('@deepseek-ai/dsh-session-projection')
@@ -410,7 +410,10 @@ export class HarnessAgentResponder implements AgentResponder {
   }
 
   private resolveRepoRoot(): string {
-    let dir = dirname(new URL(import.meta.url).pathname)
+    // fileURLToPath, not URL.pathname: on Windows the latter yields
+    // '/C:/…', whose join() is an invalid path, so every existsSync below
+    // answered false and this walk silently degraded to the cwd fallback.
+    let dir = dirname(fileURLToPath(import.meta.url))
     for (let i = 0; i < 10; i++) {
       if (existsSync(join(dir, 'packages')) && existsSync(join(dir, 'apps'))) return dir
       const parent = dirname(dir)
@@ -478,6 +481,7 @@ export class HarnessAgentResponder implements AgentResponder {
       )
 
       // Extract results from session events
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing full-history eval read; asynchronous storage migration is deferred.
       const events = handle.agent.session.snapshotEvents()
       const finalText = extractFinalText(events)
       const generatedSql = extractSqlFromEvents(events)
@@ -497,6 +501,7 @@ export class HarnessAgentResponder implements AgentResponder {
     } catch (err) {
       console.error(`[HarnessAgentResponder] case error: ${err instanceof Error ? err.message : String(err)}`)
       // On timeout or error, still try to extract what we can
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing full-history eval read; asynchronous storage migration is deferred.
       const events = handle.agent.session.snapshotEvents()
       const generatedSql = extractSqlFromEvents(events)
       return {
@@ -519,7 +524,12 @@ export class HarnessAgentResponder implements AgentResponder {
     try {
       return await Promise.race([promise, timeoutPromise])
     } finally {
+      /* v8 ignore start -- the implicit else is unreachable: the Promise
+         constructor runs its executor synchronously before `new Promise`
+         returns, and `setTimeout` always yields a Timeout, so `timer` is
+         already assigned by the time this finally block runs. */
       if (timer !== undefined) clearTimeout(timer)
+      /* v8 ignore stop */
     }
   }
 }

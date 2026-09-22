@@ -3,6 +3,7 @@ import type { AliasMatchResult } from './types.ts'
 const WORD_BOUNDARY = /[^a-zA-Z0-9_]/
 
 function isCjk(char: string): boolean {
+  /* v8 ignore next -- unreachable: the only caller iterates `for..of` over a string, so codePointAt(0) is never undefined. */
   const code = char.codePointAt(0) ?? 0
   return (code >= 0x4E00 && code <= 0x9FFF)
     || (code >= 0x3400 && code <= 0x4DBF)

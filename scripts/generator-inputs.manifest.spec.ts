@@ -61,6 +61,9 @@ describe('generator-inputs.manifest.json', () => {
     for (const [name, entry] of Object.entries(manifest)) {
       for (const output of entry.outputs) {
         if (/^<.*>$/.test(output)) continue
+        // Artifact-plane outputs are absent in the clean source checkout used
+        // by coverage; their owning build and artifact gates verify them.
+        if (output.split('/').includes('lib')) continue
         if (output.includes('*')) {
           const matches = globSync(output, { cwd: root })
           expect(

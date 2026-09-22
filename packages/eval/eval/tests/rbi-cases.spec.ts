@@ -34,10 +34,10 @@ describe('rbi-10000251-exec eval cases', () => {
     }
   })
 
-  it('carries the tier and provenance that make these the reference template', () => {
+  it('carries the tier and source that make these the reference template', () => {
     for (const c of loadCases(casePaths)) {
       expect(c.meta?.tier, c.case_id).toBe('verified')
-      expect(c.meta?.provenance, c.case_id).toBe('migrated')
+      expect(c.meta?.source, c.case_id).toBe('migrated')
     }
   })
 

@@ -1,6 +1,26 @@
+---
+description: "Toolview card for the present_table INTERPRETATION tool: data table with KPI cards, virtual scrolling, and optional chart visualization"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-present-table
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Toolview card for the present_table INTERPRETATION tool: data table with KPI cards, virtual scrolling, and optional chart visualization
+
+## Table of Contents
+
+- [Rendering](#rendering)
+- [Tests](#tests)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Toolview card for the `present_table` INTERPRETATION tool. Renders query results as a rich data table with KPI summary cards, sorting, virtual scrolling, SQL transparency, and optional Chart.js visualizations.
 
@@ -26,6 +46,13 @@ Localization: the card registers the `present.table` locale namespace (zh/en) wi
 ## Tests
 
 141 tests across 4 spec files; fixtures use the real `renderCompleted` output format (result_id line, elision markers, row-count trailer) so the parser contract cannot drift from `dsh-query-tool` silently, and the fetchResult wiring specs cover the result-store primary path, the TSV cache-miss fallback, fresh-vs-folded invalidation, and retry = refetch. The R4 chart specs cover all 9 native types, the `valueLabelsPlugin` draw branches, the validator's degrade-to-bar rules, and the toolbar toggles.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-present-table` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

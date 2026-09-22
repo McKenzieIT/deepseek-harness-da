@@ -15,10 +15,10 @@
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { createHash } from 'node:crypto'
-import { EmbedderService, type EmbedResult } from '@deepseek-ai/dsh-embedder/src/index.ts'
-import { tokenize } from '@deepseek-ai/dsh-embedder/src/tokenize.ts'
+import { EmbedderService, type EmbedResult } from '@deepseek-ai/dsh-embedder'
+import { tokenize } from '@deepseek-ai/dsh-embedder'
 
-export { tokenize } from '@deepseek-ai/dsh-embedder/src/tokenize.ts'
+export { tokenize } from '@deepseek-ai/dsh-embedder'
 
 /** Configuration for the FakeHash embedder provider. */
 export interface FakeHashConfig {

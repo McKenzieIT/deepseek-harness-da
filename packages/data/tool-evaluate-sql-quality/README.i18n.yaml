@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/tool-evaluate-sql-quality/README.md
-README.md: d088161ac19d15bb939167d636d8b924ef5459fa
-README.zh.md: 52531e940df44cee34326c41e0d101875af89a13
+README.md: 59a1e8ef42a9b17e2c6aae3b997747ac6b90acea
+README.zh.md: e8c0b235d15279be0cccbf68c392a81a1f6c5974

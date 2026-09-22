@@ -1,8 +1,11 @@
 import { spawnSync } from 'node:child_process'
-import { resolve } from 'node:path'
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const oxlintCli = fileURLToPath(new URL('../node_modules/oxlint/bin/oxlint', import.meta.url))
+const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const MAX_CAPTURED_OUTPUT_BYTES = 64 * 1024 * 1024
 const FIX_FLAGS = new Set(['--fix', '--fix-dangerously', '--fix-suggestions'])
 
@@ -48,6 +51,343 @@ export function resolveOxlintInvocation(args: readonly string[], env: NodeJS.Pro
   }
 }
 
+/**
+ * The strict type-aware override globs, copied from `.oxlintrc.json` `overrides[0].files`.
+ *
+ * Every file these claim is linted with the full type-aware rule set, so every
+ * one of them must also be claimed by a real `tsconfig`. A file no program
+ * claims is still linted, but tsgolint resolves its types through
+ * `CreateInferredProjectProgram` — an option-less program with no `paths`, no
+ * `types`, and no `strict` — so the type-aware half of the gate reports green
+ * while checking next to nothing (UM-LINT-B).
+ *
+ * `scripts/oxlint-contract.spec.ts` pins this list to the configuration file, so
+ * widening `overrides[0].files` without widening this constant fails at test
+ * time instead of quietly shrinking the fence below.
+ */
+export const STRICT_OVERRIDE_GLOBS = [
+  'packages/*/*/src/**/*.{ts,tsx}',
+  'packages/*/*/tests/**/*.{ts,tsx}',
+  'apps/*/src/**/*.{ts,tsx}',
+  'apps/*/tests/**/*.{ts,tsx}',
+  'examples/**/*.{ts,tsx}',
+  'scripts/**/*.{ts,tsx}',
+  'website/**/*.{ts,tsx}',
+] as const
+
+/**
+ * How one glob of program-less files was adjudicated (UM-LINT-B buckets ii, iii).
+ *
+ * `glob` is prose for a human reader. `sample` is the machine-checked half: one
+ * real path from the reproduced unmatched list, asserted by
+ * `scripts/oxlint-contract.spec.ts` to fall outside {@link STRICT_OVERRIDE_GLOBS}.
+ * That assertion is what keeps the disposition honest — these files are not
+ * under-checked relative to intent, because the strict rules never claimed them.
+ * A refactor that moves one of them under a strict override glob fails the spec
+ * and forces the disposition to be decided again.
+ */
+export interface UnmatchedDisposition {
+  /** Repository-relative glob covering the adjudicated files. */
+  readonly glob: string
+  /** `waive` — deliberately outside the tsconfig graph. `keep` — support tooling that stays default-linted. */
+  readonly disposition: 'waive' | 'keep'
+  /** How many files the glob covered in the reproduced unmatched list. */
+  readonly count: number
+  /** One real path from that list, checked against the strict override globs. */
+  readonly sample: string
+  /** Why the files stay out of a TypeScript program. */
+  readonly rationale: string
+}
+
+/**
+ * Every program-less file that is NOT in the strict type-aware override, and why
+ * it stays that way.
+ *
+ * Reproduced 2026-09-21 with `OXC_LOG=debug oxlint .` — the same mechanism
+ * {@link assertNoStrictOverrideUnmatched} uses: 65 unmatched files, of which 1
+ * is in the strict override (exempt via STRICT_OVERRIDE_UPSTREAM_DEBT, so 0
+ * violations) and 64 are outside it. The eight `waive` globs account for
+ * exactly 35 of those 64 — 34 before `dev/p15-probe.ts` joined the eval-cli
+ * `{bin,dev}` bucket when the self-executing P15 probe left `src/`.
+ *
+ * The `keep` side is knowingly understated and is NOT corrected here: it
+ * declares 15 but really covers 28 (the `apps/desktop` d.mts glob matches 18,
+ * not 7; `snapshots` matches 7, not 5), and two files match no disposition at
+ * all — `packages/tsdown.worker.ts` and
+ * `packages/util/lazy-require/tests/fixtures/value.cjs`. Nothing catches this:
+ * `oxlint-contract.spec.ts` only sums the declared counts against a hardcoded
+ * total and never compares them to the filesystem, so the tally rots while the
+ * gate stays green. The count corrections are mechanical, but the two
+ * unclassified files need a real adjudication (which bucket, and why), so both
+ * belong to a dedicated change rather than being invented in a file move.
+ *
+ * `waive` means the file is intentionally outside the repository tsconfig graph:
+ * a prototype, a research one-off, a benchmark, a throwaway probe. Adding a
+ * tsconfig would open a "prototypes are compiled" precedent for no bug-finding
+ * return. `keep` means support or build tooling that is deliberately left on the
+ * default rules only; `.d.mts` and `.cjs` files there are outside the override's
+ * TypeScript extensions regardless. Neither bucket is a FIX: the leak surface is
+ * the default rule set with the correctness category already `off`.
+ */
+export const UNMATCHED_DISPOSITIONS: readonly UnmatchedDisposition[] = [
+  {
+    glob: 'packages/eval/eval-cli/{bin,dev}/**',
+    disposition: 'waive',
+    count: 4,
+    sample: 'packages/eval/eval-cli/bin/compare.ts',
+    rationale: 'Throwaway dev and triage probe harnesses. A tsconfig here would couple the eval machine build to throwaway probes.',
+  },
+  {
+    glob: 'packages/eval/retrieval-experiment/scripts/**',
+    disposition: 'waive',
+    count: 9,
+    sample: 'packages/eval/retrieval-experiment/scripts/run-baseline.ts',
+    rationale: 'Retrieval research one-offs (baseline, gradient, A/B, label enrichment). Experiment scaffolds, deliberately out of the graph.',
+  },
+  {
+    glob: 'packages/query/query-maxcompute/dev/**',
+    disposition: 'waive',
+    count: 3,
+    sample: 'packages/query/query-maxcompute/dev/fake-credentials.ts',
+    rationale: 'Dev-only fake credentials and scenarios plus one .d.mts argument declaration; none of it ships.',
+  },
+  {
+    glob: 'packages/query/query-tool/dev/**',
+    disposition: 'waive',
+    count: 1,
+    sample: 'packages/query/query-tool/dev/query-tool-smoke.ts',
+    rationale: 'Hand-run smoke script.',
+  },
+  {
+    glob: 'packages/util/deque/benchmarks/**',
+    disposition: 'waive',
+    count: 1,
+    sample: 'packages/util/deque/benchmarks/drain.ts',
+    rationale: 'Benchmark harness; benchmarks are intentionally out of the graph.',
+  },
+  {
+    glob: 'prototypes/d2c-retrieve-baseline/**',
+    disposition: 'waive',
+    count: 2,
+    sample: 'prototypes/d2c-retrieve-baseline/d2f_live_activation_probe.ts',
+    rationale: 'Throwaway retrieval-baseline probes under the top-level prototypes tree.',
+  },
+  {
+    glob: 'wayfinder/data-agent/prototypes/**',
+    disposition: 'waive',
+    count: 12,
+    sample: 'wayfinder/data-agent/prototypes/p-da4-scope-routing/src/index.ts',
+    rationale: 'Scope-routing, phase-gate, and keychain prototypes. Tracker scaffolds that were never meant to compile.',
+  },
+  {
+    glob: 'wayfinder/data-agent/research/**',
+    disposition: 'waive',
+    count: 3,
+    sample: 'wayfinder/data-agent/research/exp1-phase1/run-judge-calibration.ts',
+    rationale: 'Judge-calibration and prompt-variant experiment scripts.',
+  },
+  {
+    glob: 'apps/desktop/**/*.d.mts',
+    disposition: 'keep',
+    count: 7,
+    sample: 'apps/desktop/scripts/desktop-build-paths.d.mts',
+    rationale: 'Desktop build, release, and signing declarations. Pulling build-config declarations into a strict program buys no real bugs.',
+  },
+  {
+    glob: 'snapshots/**',
+    disposition: 'keep',
+    count: 5,
+    sample: 'snapshots/acp/acp.snapshot.ts',
+    rationale: 'Serialized snapshot and snapshot-support sources under the top-level snapshots tree, not authored product code.',
+  },
+  {
+    glob: 'vitest.shared.ts',
+    disposition: 'keep',
+    count: 1,
+    sample: 'vitest.shared.ts',
+    rationale: 'Repository-root shared Vitest harness; a top-level file that no program glob reaches.',
+  },
+  {
+    glob: 'scripts/coverage-uncovered-locations.cjs',
+    disposition: 'keep',
+    count: 1,
+    sample: 'scripts/coverage-uncovered-locations.cjs',
+    rationale: 'Coverage tooling. CommonJS, so outside the override TypeScript extensions even though it sits under scripts.',
+  },
+  {
+    glob: 'eval-results/p11d-calibration/**',
+    disposition: 'keep',
+    count: 1,
+    sample: 'eval-results/p11d-calibration/analyze.ts',
+    rationale: 'Calibration analysis script beside its results; support tooling rather than product source.',
+  },
+]
+
+/**
+ * A strict-glob file that has no TypeScript program because upstream itself
+ * ships it program-less AND with a type inconsistency the fork must not fix.
+ *
+ * Unlike {@link UNMATCHED_DISPOSITIONS} (files OUTSIDE the strict globs), these
+ * DO match a strict override glob, so the fence would flag them. They are
+ * exempted only while their bytes are byte-identical to the pinned upstream
+ * blob: the fence recomputes `git hash-object` for the working-tree file and
+ * exempts it solely when the id equals {@link blob}. A fork edit changes the
+ * hash and the exemption stops matching, so fork-authored content can never
+ * enter this channel; an upstream change on the next sync also lapses it,
+ * forcing the disposition to be decided again against the new bytes.
+ */
+export interface UpstreamDebtExemption {
+  /** Repository-relative POSIX path of the exempted upstream file. */
+  readonly path: string
+  /** The authoritative upstream git blob SHA-1 this file must match to stay exempt. */
+  readonly blob: string
+  /** Why upstream cannot be given a real program without editing upstream source. */
+  readonly rationale: string
+  /** The condition under which this exemption is re-adjudicated. */
+  readonly recheck: string
+}
+
+/**
+ * Program-less strict-glob files owned by upstream and exempted by blob identity.
+ *
+ * Reproduced 2026-09-18 after syncing the dsh-v0.1.6-alpha.2 release: the
+ * only such file is upstream's new `desktop-updates.e2e.ts`, whose two-argument
+ * `presentDesktopUpdate(state, en)` calls do not match upstream's own
+ * single-argument implementation. Upstream keeps the test out of every program
+ * (its `apps/web/tsconfig.json` excludes it), so upstream never type-checks it
+ * and the mismatch is latent there; only this fork's program-coverage fence
+ * surfaces it. The standing rule forbids editing upstream's test or
+ * implementation to reconcile them.
+ */
+export const STRICT_OVERRIDE_UPSTREAM_DEBT: readonly UpstreamDebtExemption[] = [
+  {
+    path: 'apps/web/tests/desktop-updates.e2e.ts',
+    blob: '1e30848020d3fe7ae5d4ae38d258bc46231900eb',
+    rationale: 'Upstream test calls presentDesktopUpdate(state, en) but upstream\'s implementation takes one argument; giving it a program fails host typecheck on upstream\'s own inconsistency, which the fork must not fix.',
+    recheck: 'Next upstream sync: if upstream reconciles the signature or claims the file in a program, drop this entry.',
+  },
+]
+
+/**
+ * Whether a program-less strict-glob file is an exempt upstream file, proven by
+ * its working-tree bytes still hashing to the pinned upstream blob SHA.
+ * @param path - repository-relative POSIX path from the reproduced unmatched list.
+ * @returns true only when an exemption pins this path and `git hash-object` of
+ *   the working-tree file equals that entry's blob id.
+ */
+export function isExemptUpstreamDebt(path: string): boolean {
+  const exemption = STRICT_OVERRIDE_UPSTREAM_DEBT.find(entry => entry.path === path)
+  if (exemption === undefined) return false
+  const hashed = spawnSync('git', ['hash-object', '--', join(repositoryRoot, path)], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  })
+  if (hashed.status !== 0) return false
+  return hashed.stdout.trim() === exemption.blob
+}
+
+/** Placeholders that survive regex escaping while a glob is tokenized. */
+const DESCENDANTS_TOKEN = '\u0000'
+const SEGMENT_TOKEN = '\u0001'
+const EXTENSION_TOKEN = '\u0002'
+
+/**
+ * Compile one {@link STRICT_OVERRIDE_GLOBS} entry into an anchored RegExp.
+ *
+ * Oxlint resolves override globs against the configuration file's own directory,
+ * verified by probe: a file under `packages/eval/retrieval-experiment/scripts`
+ * does NOT pick up the `scripts` override, while the same file under the
+ * repository's own `scripts` does. Anchoring both ends reproduces that. Only a
+ * single `*`, a descendant wildcard, and the `{ts,tsx}` list occur across the
+ * seven globs, so this stays a few lines rather than a dependency — neither
+ * `minimatch` nor `picomatch` is directly resolvable in this pnpm-strict
+ * workspace. Anything richer throws instead of silently under-matching.
+ * @param glob - one strict type-aware override glob.
+ * @returns a RegExp over repository-relative POSIX paths.
+ */
+function strictOverrideGlobToRegex(glob: string): RegExp {
+  const tokenized = glob
+    .replaceAll('{ts,tsx}', EXTENSION_TOKEN)
+    .replaceAll('**/', DESCENDANTS_TOKEN)
+    .replaceAll('*', SEGMENT_TOKEN)
+  if (/[^A-Za-z0-9._/\-\u0000-\u0002]/.test(tokenized)) {
+    throw new Error(
+      `run-oxlint: .oxlintrc.json overrides[0].files entry ${JSON.stringify(glob)} uses glob syntax the UM-LINT-B`
+      + ' program-coverage fence cannot compile; it understands one path segment, a descendant wildcard, and the'
+      + ' {ts,tsx} extension list. Add minimatch as a direct devDependency and move this matcher onto it.',
+    )
+  }
+  const pattern = tokenized
+    .replaceAll('.', '\\.')
+    .replaceAll(DESCENDANTS_TOKEN, '(?:[^/]+/)*')
+    .replaceAll(SEGMENT_TOKEN, '[^/]+')
+    .replaceAll(EXTENSION_TOKEN, '(?:ts|tsx)')
+  return new RegExp(`^${pattern}$`)
+}
+
+const STRICT_OVERRIDE_REGEXES = STRICT_OVERRIDE_GLOBS.map(strictOverrideGlobToRegex)
+
+/**
+ * Whether the strict type-aware override claims a path.
+ * @param path - repository-relative POSIX path.
+ * @returns true when at least one {@link STRICT_OVERRIDE_GLOBS} entry matches.
+ */
+export function matchesStrictOverrideGlob(path: string): boolean {
+  return STRICT_OVERRIDE_REGEXES.some(pattern => pattern.test(path))
+}
+
+/** The debug line tsgolint prints for a file no TypeScript program claims. */
+const UNMATCHED_FILE_LINE = /Unmatched file:\s*(.+)/
+
+/**
+ * Fail the run when the strict type-aware override claims a file but no
+ * TypeScript program does.
+ *
+ * Costs one extra `OXC_LOG=debug` pass. Its stderr goes to a temporary file
+ * rather than a captured pipe because the debug stream for this repository's
+ * ~344 programs runs to a couple of megabytes. The pass's own exit status is
+ * irrelevant: program assignment happens before any rule runs, so the log is
+ * worth parsing either way.
+ * @param invocation - the arguments and environment the lint pass just used.
+ */
+function assertNoStrictOverrideUnmatched(invocation: OxlintInvocation): void {
+  const directory = mkdtempSync(join(tmpdir(), 'oxlint-program-coverage-'))
+  try {
+    const logPath = join(directory, 'debug.log')
+    const logFd = openSync(logPath, 'w')
+    try {
+      const result = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
+        env: { ...invocation.env, OXC_LOG: 'debug' },
+        stdio: ['ignore', 'ignore', logFd],
+      })
+      if (result.error !== undefined) throw result.error
+    } finally {
+      closeSync(logFd)
+    }
+    const unmatched: string[] = []
+    for (const line of readFileSync(logPath, 'utf8').split('\n')) {
+      const captured = UNMATCHED_FILE_LINE.exec(line)?.[1]
+      if (captured === undefined) continue
+      unmatched.push(relative(repositoryRoot, captured.trim()).replaceAll('\\', '/'))
+    }
+    const violations = unmatched.filter(path =>
+      matchesStrictOverrideGlob(path) && !isExemptUpstreamDebt(path))
+    if (violations.length === 0) return
+    process.stderr.write(
+      `run-oxlint: ${violations.length} file(s) match .oxlintrc.json overrides[0].files, so the full type-aware rule`
+      + ' set ran over them, but no TypeScript program claims them — tsgolint resolved their types through an'
+      + ' option-less inferred program, so the type-aware half of this gate reported green without checking them:\n'
+      + violations.map(path => `  ${path}\n`).join('')
+      + '  Give each one a real tsconfig owner; for a file whose bytes are upstream verbatim and whose only'
+      + ' obstacle is upstream\'s own type inconsistency, pin its blob in STRICT_OVERRIDE_UPSTREAM_DEBT instead.'
+      + ' See wayfinder/data-agent/tickets/phase-upstream-merge/UM-LINT-B-UNMATCHED-PROGRAMS.md.\n',
+    )
+    process.exitCode = 1
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
+
 function completeFrom(result: { readonly signal: NodeJS.Signals | null; readonly status: number | null }): void {
   if (result.signal !== null) {
     process.kill(process.pid, result.signal)
@@ -65,6 +405,13 @@ function main(): void {
     })
     if (result.error !== undefined) throw result.error
     completeFrom(result)
+    // A green lint is precisely when a silently under-checked file hides, so the
+    // fence runs there and may still turn the run red. CI only: the extra debug
+    // pass roughly doubles the wall clock, and a local run's fast feedback is
+    // worth more than a fence CI re-checks minutes later.
+    if (invocation.env.CI === 'true' && result.signal === null && result.status === 0) {
+      assertNoStrictOverrideUnmatched(invocation)
+    }
     return
   }
 

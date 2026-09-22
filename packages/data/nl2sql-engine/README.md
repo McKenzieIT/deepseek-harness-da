@@ -1,6 +1,28 @@
+---
+description: "NL→SQL engine for the data agent: BM25 schema-linking + SQL-gen prompt (RBI v2-baseline staged SOP) + regex/JSON-path critic (sql_syntax_gate) + execution-feedback self-correction. Consumes ctx.query (agent-driven); local retrieval/substrate interfaces (P5/P6 production swap deferred via P13b grilling Q1)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-nl2sql-engine
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+NL→SQL engine for the data agent: BM25 schema-linking + SQL-gen prompt (RBI v2-baseline staged SOP) + regex/JSON-path critic (sql_syntax_gate) + execution-feedback self-correction. Consumes ctx.query (agent-driven); local retrieval/substrate interfaces (P5/P6 production swap deferred via P13b grilling Q1)
+
+## Table of Contents
+
+- [What ships (P13b grilling — 5 decisions)](#what-ships-p13b-grilling--5-decisions)
+- [Seams consumed](#seams-consumed)
+- [Run](#run)
+- [Code-review-low fixes (baked in)](#code-review-low-fixes-baked-in)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 > P13b — the NL→SQL engine for the data agent (production graduation of the throwaway `wayfinder/data-agent/prototypes/p13-nl2sql-engine/`). Resolves wayfinder ticket `phase-3/P13b-nl2sql-engine-prod-hardening.md`.
 
@@ -32,6 +54,13 @@ The 9 scenarios (S1–S9) validate BM25 linking + prompt + critic gate + JSON-pa
 ## Code-review-low fixes (baked in)
 
 #1 `hasPartitionFilter` greedy cross-statement/clause → scoped to the WHERE clause of each `;`-split statement. #2 `hasSelectStar` missed `t.*` + `SELECT a, *` → parses the select list. #3 `running` → continues via `attach` (check_query) up to 3×. #4 `FailureKind` normalized lower_snake. #5 `NearDupGate.hash` removes ALL whitespace. #6 `Bm25Linker` uses the hit's payload directly (no redundant re-find). #7 c07's dead `__never__` ODPS entry removed (`odps` optional).
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-nl2sql-engine` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

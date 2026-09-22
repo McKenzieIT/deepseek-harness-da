@@ -41,7 +41,7 @@ meta:
   - eval
   needs_repin: true
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   created_at: '2026-08-04'
   retired: false

@@ -1,10 +1,14 @@
 ---
 type: grilling
-status: open
+status: migrated
 blocked_by: []
 ---
 
 # CL-25: open_ended case set 期望行为不自洽（CL-20 毕业）
+
+## Answer
+
+Migrated to [Evaluation G1b: Ground-truth lifecycle](../../evaluation/tickets/G1b-ground-truth-lifecycle.md) and [Evaluation T14: Data-analysis extension 与 canonical Pack migration](../../evaluation/tickets/T14-data-analysis-extension-pack-migration.md). Expected refusal reasons, case provenance, and migration validity belong to the canonical Benchmark lifecycle; this semantic-layer ticket must not edit the legacy case set independently.
 
 **Branch**: `fix/cl25-open-ended-case-consistency`  <!-- 待建；CLAUDE.md:64 要求每票声明分支 -->
 

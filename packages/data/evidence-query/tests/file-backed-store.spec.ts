@@ -98,12 +98,12 @@ function versionedRecord(overrides: Record<string, unknown> = {}): Record<string
       content: { status: 'passed' },
       reference_sql: { status: 'absent', detail: 'case declares no reference SQL' },
     },
-    caseProvenance: {
+    caseSource: {
       sourcePath: '/cases/c0.yaml',
       schemaVersion: 3,
       scopeId: 'scope-a',
       expected: { result_value: { value: 1 }, match_mode: 'scalar_exact' },
-      meta: { tier: 'verified', provenance: 'human-reference' },
+      meta: { tier: 'verified', source: 'human-reference' },
       referenceSql: { kind: 'absent' },
     },
     ...overrides,
@@ -139,8 +139,8 @@ describe('EvalResultStore.loadFromDirectory', () => {
         execution_outcome: verdict === 'case_defect' ? 'case-defect' : 'not-measured',
         execution_detail: verdict,
       }],
-      caseProvenance: {
-        ...(versionedRecord().caseProvenance as Record<string, unknown>),
+      caseSource: {
+        ...(versionedRecord().caseSource as Record<string, unknown>),
         sourcePath: `/cases/c${index}.yaml`,
       },
     })))
@@ -155,7 +155,7 @@ describe('EvalResultStore.loadFromDirectory', () => {
       runConfig: { executor_identity: 'query-provider:test' },
       attempts: [{ execution_outcome: 'case-defect', execution_artifact: { normalizedDigest: 'normalized-digest' } }],
       preflight: { content: { status: 'passed' }, reference_sql: { status: 'absent' } },
-      caseProvenance: { schemaVersion: 3, meta: { provenance: 'human-reference' } },
+      caseSource: { schemaVersion: 3, meta: { source: 'human-reference' } },
     })
   })
 
@@ -168,8 +168,8 @@ describe('EvalResultStore.loadFromDirectory', () => {
       attempts: [],
       attemptsCount: 0,
       preflight: { content: { status: 'case-defect', detail: 'unknown match_mode: typo' } },
-      caseProvenance: {
-        ...(versionedRecord().caseProvenance as Record<string, unknown>),
+      caseSource: {
+        ...(versionedRecord().caseSource as Record<string, unknown>),
         expected: { result_value: { value: 1 }, match_mode: 'typo' },
       },
     })
@@ -179,7 +179,7 @@ describe('EvalResultStore.loadFromDirectory', () => {
     expect(loaded?.status).toBe('error')
     expect(loaded?.metadata).toMatchObject({
       verdict: 'case_defect',
-      caseProvenance: { expected: { match_mode: 'typo' } },
+      caseSource: { expected: { match_mode: 'typo' } },
     })
   })
 
@@ -331,6 +331,17 @@ describe('EvidenceQueryService.beforeAfterDelta', () => {
     expect(delta.flipped).toHaveLength(0)
     expect(delta.summary.unchanged).toBe(0)
   })
+
+  it('rejects an asset delta when persisted records lack a reliable mapping', () => {
+    const resultsDir = makeTmpDir()
+    writeJsonl(resultsDir, '2026-08-24T10-00-00-000Z_run-a.jsonl', runARecords)
+    writeJsonl(resultsDir, '2026-08-25T10-00-00-000Z_run-b.jsonl', runBRecords)
+    const store = new FileBackedEvalResultStore(resultsDir)
+    const svc = makeServiceWithStore(store)
+
+    expect(() => svc.beforeAfterDelta('run-a', 'run-b', { assetId: 'c1' }))
+      .toThrow('asset filter unavailable')
+  })
 })
 
 describe('FileBackedEvalResultStore', () => {
@@ -379,5 +390,66 @@ describe('FileBackedEvalResultStore', () => {
     const dir = makeTmpDir()
     const store = new FileBackedEvalResultStore(dir)
     expect(store.query({}).total).toBe(0)
+  })
+})
+
+describe('EvalResultStore asset filter mapping source', () => {
+  it('applies asset filtering to records added with an explicit asset id', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'r1', assetId: 'orders', caseId: 'case-1', status: 'pass', timestamp: '2026-09-18T00:00:00Z' })
+    store.add({ id: 'r2', assetId: 'payments', caseId: 'case-2', status: 'fail', timestamp: '2026-09-18T00:01:00Z' })
+
+    const result = store.query({ assetId: 'orders' })
+
+    expect(result.assetFilterStatus).toBe('applied')
+    expect(result.results.map(record => record.assetId)).toEqual(['orders'])
+  })
+
+  it('reports an applied asset filter even when later filters produce no records', () => {
+    const store = new EvalResultStore()
+    store.add({ id: 'r1', assetId: 'orders', caseId: 'case-1', status: 'pass', timestamp: '2026-09-18T00:00:00Z' })
+
+    const result = store.query({ assetId: 'orders', status: 'fail' })
+
+    expect(result.assetFilterStatus).toBe('applied')
+    expect(result.results).toEqual([])
+  })
+
+  it('does not treat persisted case ids as reliable asset ids', () => {
+    const dir = makeTmpDir()
+    writeJsonl(dir, '2026-09-18T00-00-00-000Z_run-a.jsonl', runARecords)
+
+    const store = new FileBackedEvalResultStore(dir)
+    const result = store.query({ assetId: 'c1' })
+
+    expect(result.assetFilterStatus).toBe('unavailable')
+    expect(result.results).toHaveLength(runARecords.length)
+    expect(store.hasResultsFor('c1')).toBe(false)
+  })
+
+  it('keeps history global when only part of the store has reliable asset ids', () => {
+    const dir = makeTmpDir()
+    writeJsonl(dir, '2026-09-18T00-00-00-000Z_run-a.jsonl', runARecords)
+    const store = new EvalResultStore()
+    store.add({ id: 'explicit', assetId: 'orders', caseId: 'explicit-case', status: 'pass', timestamp: '2026-09-18T00:00:00Z' })
+    store.loadFromDirectory(dir)
+
+    const result = store.query({ assetId: 'orders' })
+
+    expect(result.assetFilterStatus).toBe('unavailable')
+    expect(result.results).toHaveLength(runARecords.length + 1)
+  })
+
+  it('filters persisted results when a case-to-asset resolver is available', () => {
+    const dir = makeTmpDir()
+    writeJsonl(dir, '2026-09-18T00-00-00-000Z_run-a.jsonl', runARecords)
+
+    const store = new FileBackedEvalResultStore(dir, caseId => caseId === 'c1' ? 'orders' : 'other')
+    const result = store.query({ assetId: 'orders' })
+
+    expect(result.assetFilterStatus).toBe('applied')
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0]?.caseId).toBe('c1')
+    expect(store.hasResultsFor('orders')).toBe(true)
   })
 })

@@ -1,15 +1,37 @@
+---
+description: "TODO: translate: Model-facing suggest_followups tool: suggest follow-up questions the user might ask next, for the INTERPRETATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-suggest-followups`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing suggest_followups tool: suggest follow-up questions the user might ask next, for the INTERPRETATION phase
+
+## 目录
+
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
+
 
 面向模型的 `suggest_followups`：为取数 agent（智能体）的 `INTERPRETATION` 阶段**建议用户接下来可能提出的问题**。agent 在展示结果后调用它，提供可执行的后续步骤：下钻、对比、时间位移，以及用户可点击以继续对话的相关查询。
 
 这是一个**纯展示工具**（仅 `inject=['tools']`）：它记录建议并返回给 UI 以显示为可点击的 chip。它没有服务依赖，也不探测 `ctx.schema` / `ctx.audit` / `ctx.identity`。阶段门禁的 `captureToolData` 通过 `tools/post-execute` 检测该调用。
 
+<a id="config"></a>
 ## 配置
 
 无可调参数。纯展示。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -18,6 +40,15 @@ pnpm vitest run packages/data/tool-suggest-followups
 pnpm verify-cordis-config
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-suggest-followups` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接地，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -26,6 +57,7 @@ pnpm verify-cordis-config
 
 该包的贡献以仅追加方式写入可复用的请求前缀，不会使已有的缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延期工作
 
 - 仅记录意图；点击查询交互由 UI 层负责。

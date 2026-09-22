@@ -1,0 +1,41 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "tests",
+    "outDir": "lib/tests/types",
+    "tsBuildInfoFile": "lib/tests/tsconfig.tests.tsbuildinfo",
+    "emitDeclarationOnly": true,
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": [
+    "tests"
+  ],
+  "references": [
+    { "path": "./tsconfig.json" },
+    { "path": "../eval" },
+    { "path": "../eval-runner" },
+    { "path": "../../llm/llm" },
+    { "path": "../../llm/llm-dashscope" },
+    { "path": "../../data/nl2sql-engine" },
+    { "path": "../../data/semantic-layer" },
+    { "path": "../../data/result-cache-memory" },
+    { "path": "../../util/home-paths" },
+    { "path": "../../credentials/credentials" },
+    { "path": "../../credentials/credentials-local" },
+    { "path": "../../query/query-maxcompute" },
+    { "path": "../../query/query" },
+    { "path": "../../subprocess/subprocess" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/agent-default-model" },
+    { "path": "../../core/agent-loop" },
+    { "path": "../../core/session" },
+    { "path": "../../core/system-prompt" },
+    { "path": "../../core/tools" },
+    { "path": "../../preset/agent-presets" },
+    { "path": "../../ptc-runtime/ptc-runtime-node" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../goal/goal" },
+    { "path": "../../../vendor/loader" },
+    { "path": "../../../vendor/group" }
+  ]
+}

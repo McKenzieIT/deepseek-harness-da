@@ -13,7 +13,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
-import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
+import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine'
 
 export const name = 'tool-search-schema'
 export const inject = ['tools']

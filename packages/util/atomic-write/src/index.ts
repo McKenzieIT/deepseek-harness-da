@@ -7,6 +7,8 @@
  * writers of one file through a `wx`-created `<file>.lock` sibling, so a
  * read-modify-write cycle can never resurrect a state another writer just
  * replaced; readers stay lock-free because the rename commit is atomic.
+ * `renameAtomicTemp` is the replacement step both use, published for
+ * file-backed stores that own their own temp write and fsync policy.
  * @module @deepseek-ai/dsh-atomic-write
  */
 
@@ -25,8 +27,23 @@ function isTransientWindowsRenameError(error: unknown): boolean {
   return WINDOWS_TRANSIENT_RENAME_ERRORS.has((error as NodeJS.ErrnoException | null)?.code ?? '')
 }
 
-/** Replace the target after bounded retries for transient Windows interference. */
-async function renameAtomicTemp(temp: string, filename: string): Promise<void> {
+/**
+ * Commit a complete temp sibling over `filename`, absorbing transient Windows
+ * interference. Windows can reject a replacement with `EACCES`, `EBUSY`, or
+ * `EPERM` while another system component holds the target; on win32 those three
+ * codes retry up to eight times with delays growing from 20 ms to 200 ms (at
+ * most ~1.1 s total) while the same fully written temp file stays the rename
+ * source. Every other code, and every failure off win32, rejects on the first
+ * attempt. Nothing here touches `filename` before the rename succeeds, so a
+ * reader observes either the old or the new complete content, and the caller
+ * still owns removing `temp` after a rejection. This is the replacement step
+ * every file-backed store shares; a store that also needs crash durability
+ * fsyncs around this call instead of using {@link writeFileAtomic}.
+ * @param temp - complete replacement file in the target's directory.
+ * @param filename - final path the replacement takes over.
+ * @returns resolution once the replacement is committed.
+ */
+export async function renameAtomicTemp(temp: string, filename: string): Promise<void> {
   let delay = WINDOWS_RENAME_RETRY_INITIAL_MS
   for (let retries = 0;; retries += 1) {
     try {
@@ -144,8 +161,9 @@ export interface FileLockOptions {
  * rename-based commit of {@link writeFileAtomic}, readers stay lock-free and
  * only writers contend. `EEXIST` is contention directly; an `EPERM` is
  * contention only when a fresh `lstat` confirms the lock path exists, covering
- * Windows exclusive-create behavior without hiding an unrelated permission
- * failure. Contention backs off exponentially and fails with a timed-out error
+ * Windows exclusive-create behavior. Windows retries one unconfirmed EPERM
+ * because the holder can release before the probe; a repeated unconfirmed
+ * permission error is rethrown. Contention backs off exponentially and times out
  * after the deadline. The contender never removes an existing lock because
  * file age cannot prove that its owner stopped; orphan recovery is an operator
  * action. The parent directory must exist.
@@ -162,12 +180,19 @@ export async function withFileLock<T>(
   const lockPath = `${filename}.lock`
   const deadline = Date.now() + (options?.waitMs ?? DEFAULT_LOCK_WAIT_MS)
   let delay = LOCK_RETRY_INITIAL_MS
+  let retriedUnconfirmedPermissionError = false
   for (;;) {
     try {
       await writeFile(lockPath, `${process.pid}\n`, { mode: 0o600, flag: 'wx' })
       break
     } catch (error) {
-      if (!await isLockContention(error, lockPath)) throw error
+      if (!await isLockContention(error, lockPath)) {
+        // Windows can release the competing lock between exclusive create and lstat.
+        if (process.platform !== 'win32'
+          || (error as NodeJS.ErrnoException | null)?.code !== 'EPERM'
+          || retriedUnconfirmedPermissionError) throw error
+        retriedUnconfirmedPermissionError = true
+      }
     }
     if (Date.now() >= deadline) {
       throw new Error(`atomic-write: timed out waiting for the writer lock at ${lockPath}`)

@@ -4,7 +4,7 @@ import { loadCase, loadCases } from '../src/case_loader.ts'
 const fixtures = import.meta.dirname
 const s1Yaml = `${fixtures}/fixtures/s1.yaml`
 const s3Json = `${fixtures}/fixtures/s3-scalar.json`
-const rbiYaml = `${fixtures}/fixtures/rbi-provenance.yaml`
+const rbiYaml = `${fixtures}/fixtures/rbi-source.yaml`
 
 describe('case_loader', () => {
   it('loads + validates a YAML case', () => {
@@ -33,17 +33,17 @@ describe('case_loader', () => {
     expect(() => loadCase(`${fixtures}/fixtures/no-such-file.yaml`)).toThrow()
   })
 
-  it('preserves the rbi provenance fields a grader needs to replay a case', () => {
+  it('preserves the RBI source fields a grader needs to replay a case', () => {
     const c = loadCase(rbiYaml)
     expect(c.schema_version).toBe(3)
     expect(c.expected.sql).toContain('{{ds_yesterday}}')
     expect(c.expected.behavior).toBe('direct_answer')
     expect(c.meta?.anchor_ds).toBe('20260806')
     expect(c.meta?.tier).toBe('verified')
-    expect(c.meta?.provenance).toBe('migrated')
+    expect(c.meta?.source).toBe('migrated')
   })
 
-  it('keeps undeclared meta keys, so new provenance needs no schema change', () => {
+  it('keeps undeclared meta keys, so new source metadata needs no schema change', () => {
     const c = loadCase(rbiYaml)
     expect(c.meta?.roles).toEqual(['eval'])
     expect(c.meta?.retired).toBe(false)

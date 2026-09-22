@@ -1,8 +1,26 @@
+---
+description: "Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout."
+kind: "package-reference"
+---
+
 # dsh-eval-cli
 
 English | [中文](README.zh.md)
 
-Standalone eval CLI for the dsh-data-agent NL2SQL pipeline. Drives eval cases against the real engine, persists results as JSON, and reports to stdout.
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Standalone eval CLI runner: drives NL2SQL eval cases against the real engine via a mini Cordis context, persists results, and reports to stdout.
+
+## Table of Contents
+
+- [Standard Eval Mode: SQL Semantic Judge](#standard-eval-mode-sql-semantic-judge)
+- [Usage](#usage)
+- [Recording Results](#recording-results)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
 ## Standard Eval Mode: SQL Semantic Judge
 
@@ -68,7 +86,7 @@ Full analysis, including per-intent/per-complexity breakdowns and the latency tr
 >
 > The 25 DELIVERY cases carry no `sql_judge` verdict **by design** — they have `result_value: null` and `match_mode: null`, so `runner.ts:242` skips the execution block entirely and `executionMatch` keeps its initializer `true` (`runner.ts:241`); those cases are scored solely by `delivery_match`. (An earlier revision of this note claimed those 75 attempts were "counted as passed" by a lax verdict rule — that was wrong, and the `executionMatch = false` hardening for unverifiable executions affects **zero** attempts in these runs, since sql-judge is enabled by default.)
 >
-> **Why `--with-query` is not a drop-in on k11-v2.** The `expected.result_value`s were never derived from executing SQL — no case carries an `expected.sql`, and P11e explicitly *preserved* the expected values inherited from the pre-P11e case set while rewriting only the question wording, so their provenance is unrecoverable. 34 of the 57 `scalar_exact` targets are hand-picked round numbers (`1500000`, `2800`, `120000`, `5200`, `35000`, `0.15`), and `k11v2_001`'s 1.5M is ~4 orders of magnitude off the covered table's actual SUM (13.6B). Under a real executor those 57 cases fail regardless of SQL correctness. The 86 `row_count_range` cases are structural assertions (`[1,3]`, `[5,7]`, `[25,30]`) and would largely survive. Note the side effect for paired A/B experiments: uniformly-failing cases contribute **zero discordant pairs**, so enabling the executor here trades statistical power for verification rigour. See `wayfinder/data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md`.
+> **Why `--with-query` is not a drop-in on k11-v2.** The `expected.result_value`s were never derived from executing SQL — no case carries an `expected.sql`, and P11e explicitly *preserved* the expected values inherited from the pre-P11e case set while rewriting only the question wording, so the source of those values is unrecoverable. 34 of the 57 `scalar_exact` targets are hand-picked round numbers (`1500000`, `2800`, `120000`, `5200`, `35000`, `0.15`), and `k11v2_001`'s 1.5M is ~4 orders of magnitude off the covered table's actual SUM (13.6B). Under a real executor those 57 cases fail regardless of SQL correctness. The 86 `row_count_range` cases are structural assertions (`[1,3]`, `[5,7]`, `[25,30]`) and would largely survive. Note the side effect for paired A/B experiments: uniformly-failing cases contribute **zero discordant pairs**, so enabling the executor here trades statistical power for verification rigour. See `wayfinder/data-agent/tickets/phase-misc/GA-EVAL-EXPAND-case-set-power.md`.
 
 ### Quality Targets
 
@@ -143,7 +161,7 @@ Run `--help` for the full flag list (`--sidecar`, `--scope-id`, `--no-query-expa
 
 | Variable | Required | Description |
 |---|---|---|
-| `DASHSCOPE_API_KEY` | yes | Must live in `~/.dsh/.credentials.yaml` (file mode 0600), **not** `process.env` — `llm-dashscope` resolves it per-request via `ctx.credentials` (intranet-security-first). The CLI pre-flights the file and exits if the key is absent. |
+| `DASHSCOPE_API_KEY` | yes | Must live in `$DSH_HOME/.credentials.yaml` (default `~/.dsh/.credentials.yaml`, file mode 0600), **not** `process.env` — `llm-dashscope` resolves it per-request via `ctx.credentials` (intranet-security-first). The CLI pre-flights the file and exits if the key is absent. |
 | `EVAL_LLM_PROVIDER` | yes | Responder + SQL judge provider. No silent vendor fallback — fail-loud when unset. Overridden by `--provider`. |
 | `EVAL_LLM_MODEL` | yes | Responder + SQL judge model. No silent vendor fallback — fail-loud when unset. Overridden by `--model`. |
 | `MAXC_CONFIG` | with `--with-query` | Path to the maxc config yaml (e.g. `~/.maxc/config_ieu_cdm.yaml` — K11 lives in the `ieu_cdm` project). **Required**: the default `~/.maxc/config.yaml` is overseas (hdyl_data_sg_dev). Also pass `--sidecar packages/query/query-maxcompute/dev/maxc-sidecar-k11.mjs` (the default `standin-sidecar.mjs` is a mock; `maxc-sidecar-k11.mjs` -> real `maxc` CLI). Requires the `maxc` CLI on PATH. |
@@ -178,6 +196,13 @@ After each eval run, record the results in `wayfinder/data-agent/research/experi
 
 Resolves: [<ticket>](link)
 ```
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-eval-cli` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

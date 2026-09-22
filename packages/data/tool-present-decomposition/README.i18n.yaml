@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/data/tool-present-decomposition/README.md
-README.md: f2f6398c215ae35ef48a7a75abadba0942fc6ab2
-README.zh.md: 82c33adfc528d557df7a9aba3e40836459d21c30
+README.md: d858968bbe8f6165d40aecc0c887219c745b26cf
+README.zh.md: f2e5e09fd449e80cfae905b78100469c749a5a75

@@ -5,7 +5,7 @@
  * brands its cross-boundary slot keys without a runtime dependency beyond the
  * primitive; see that package's README for the nominal-typing policy.
  *
- * The values are opaque to this seam — their format and provenance belong to
+ * The values are opaque to this seam — their format and origin belong to
  * the identity and access-isolation layers (the web-login `Tenant` for
  * `userId`, the per-game `scope_id` for `scopeId`) — so the factories perform a
  * plain cast with no validation. (They share the lowercase naming of the seam's

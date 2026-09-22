@@ -32,6 +32,7 @@ import {
 } from '@deepseek-ai/dsh-storage-domain'
 import SessionProjectionCache from '../src/index.ts'
 import { projectionCacheDomainSpec } from '../src/spec.ts'
+import { watchDurableWrites } from './durable-write.ts'
 
 // Declarations must match the shipped title unit's exactly (the repo-wide
 // compile face sees both).
@@ -123,11 +124,15 @@ async function placeDoc(root: string, id: string, name: string): Promise<Fixture
  * format stamps, lineage, and the freshly folded title.
  */
 async function assertRewrite(ctx: Context, root: string, id: SessionId): Promise<void> {
+  // The rewrite is a fail-soft checkpoint write: a thrown one only reaches
+  // ctx.logger.warn, so race that report against the read-back below —
+  // otherwise a failed replace reads as the unchanged archived document.
+  const readBack = watchDurableWrites(ctx)
   const session = ctx.sessions.create(id)
   session.append('fixtures-test/set-title', { title: '重写标题' })
   session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
   const path = join(root, projectionCacheDomainSpec.name, 'sessions', `${id}.json`)
-  await vi.waitFor(async () => {
+  await readBack(vi.waitFor(async () => {
     const doc = JSON.parse(await readFile(path, 'utf8')) as FixtureDoc
     expect(doc.version).toBe(projectionCacheDomainSpec.version)
     expect(doc.record.identity).toMatchObject({
@@ -136,7 +141,7 @@ async function assertRewrite(ctx: Context, root: string, id: SessionId): Promise
       inheritedEventCount: 0,
     })
     expect(doc.record.rows['title']?.val).toBe('重写标题')
-  }, { timeout: 5_000 })
+  }, { timeout: 5_000 }))
 }
 
 afterEach(async () => {

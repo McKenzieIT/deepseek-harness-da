@@ -204,10 +204,28 @@ function remapBlockPaths(output: string, blocks: Block[]): string {
 
 const markdownGlobs = ['README.md', '.agents/notes/**/*.md', 'docs/**/*.md', 'packages/*/*.md', 'packages/*/*/*.md']
 
+/**
+ * Superpowers plan documents are design sketches, not documentation of the
+ * workspace API this gate protects: their `ts` fences are deliberate fragments
+ * — bare method bodies, field lists, prompt templates interpolating
+ * `${joinSection}` — which cannot compile as modules and were never meant to.
+ * Compiling them produced 363 diagnostics across one plan and made this gate
+ * permanently red, which masked two real fences that also fail (see
+ * `wayfinder/repo-infra/tickets/T15-doc-typecheck-plan-sketches.md`).
+ * `verify-translation-pairing` already excludes the same directory
+ * (`scripts/translation-pairing.manifest.json`).
+ */
+const PLAN_SKETCH_PREFIX = 'docs/superpowers/plans/'
+
+/** Whether `file` is a plan sketch whose fences are fragments by design. */
+function isPlanSketchPath(file: string): boolean {
+  return file.replaceAll('\\', '/').startsWith(PLAN_SKETCH_PREFIX)
+}
+
 const files: string[] = []
 for (const pattern of markdownGlobs) {
   for (const match of globSync(pattern, { cwd: root })) {
-    if (!isArchivedAgentNotePath(match)) files.push(resolve(root, match))
+    if (!isArchivedAgentNotePath(match) && !isPlanSketchPath(match)) files.push(resolve(root, match))
   }
 }
 files.sort()

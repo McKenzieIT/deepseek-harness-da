@@ -31,6 +31,11 @@
       "coveredBy": "verify-cordis-inspect-catalog gate"
     },
     {
+      "script": "gen-dependency-catalog",
+      "reason": "generator (write operation, not a gate); its --check variant verify-dependency-catalog is enrolled in docSyncLeafGates",
+      "coveredBy": "verify-dependency-catalog gate (docSyncLeafGates)"
+    },
+    {
       "script": "gen-doc-graphs",
       "reason": "generator (write operation, not a gate); its --check variant verify-doc-graphs is enrolled",
       "coveredBy": "verify-doc-graphs gate"
@@ -76,6 +81,16 @@
       "coveredBy": "verify-tsconfig-paths gate"
     },
     {
+      "script": "gen-workflow-guest",
+      "reason": "generator (write operation, not a gate); its --check variant verify-workflow-guest is enrolled in docSyncLeafGates",
+      "coveredBy": "verify-workflow-guest gate (docSyncLeafGates)"
+    },
+    {
+      "script": "gen-package-readme-skeleton",
+      "reason": "generator (write operation, not a gate); its --check variant verify-package-readme-skeleton is enrolled",
+      "coveredBy": "verify-package-readme-skeleton gate"
+    },
+    {
       "script": "verify-cordis-api",
       "reason": "blind spot (UM12): cordis-api string absent from run-gates.ts despite documented invariant (.agents/notes/archived/process/2026-07-21-doc-sync-through-gate-scheduler.md:16 asserts docSyncLeafGates includes verify-cordis-api); enrollment pending separate fix",
       "coveredBy": "none (regressed documented invariant)"
@@ -99,6 +114,24 @@
       "script": "verify-third-party-notices",
       "reason": "blind spot (UM12 §6.2: No — not in any aggregate, workflow, or hook); enrollment pending Decision 6(a) follow-up",
       "coveredBy": "none (uncovered)"
+    }
+  ],
+  "knownRed": [
+    {
+      "script": "verify-client-ui-i18n",
+      "state": "known-red",
+      "rationale": "data-agent client UI targets enterprise intranet Chinese users; i18n extraction is future product-internationalization debt, zero current user value",
+      "ticket": "UM-C-GATES-UPSTREAM-NEW",
+      "reopenTrigger": "product internationalization",
+      "reviewBy": "2027-03-14"
+    },
+    {
+      "script": "doc-standard-tests",
+      "state": "known-red",
+      "rationale": "65-package README skeleton gap tracked by UM-FORK-README-SKELETON-RETROFIT",
+      "ticket": "UM-FORK-README-SKELETON-RETROFIT",
+      "reopenTrigger": "UM-FORK-README-SKELETON-RETROFIT resolved",
+      "reviewBy": "2027-03-14"
     }
   ]
 }

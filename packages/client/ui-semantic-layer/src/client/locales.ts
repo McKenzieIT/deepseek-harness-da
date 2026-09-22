@@ -2,21 +2,47 @@
 
 export type SemanticLayerKey =
   | 'title'
+  | 'dashboard.title'
+  | 'dashboard.goToWorkspace'
   | 'loading'
   | 'error'
+  | 'presenter.running'
+  | 'presenter.failed'
+  | 'presenter.unavailable'
+  | 'presenter.more'
   | 'presenter.search.title'
+  | 'presenter.search.loading'
+  | 'presenter.search.hits'
   | 'presenter.search.noResults'
   | 'presenter.search.hit'
   | 'presenter.definition.title'
+  | 'presenter.definition.loading'
+  | 'presenter.definition.asset'
+  | 'presenter.definition.domainsLabel'
+  | 'presenter.definition.columnsLabel'
+  | 'presenter.definition.metricsLabel'
+  | 'presenter.definition.relationsLabel'
   | 'presenter.definition.notFound'
   | 'presenter.definition.fields'
   | 'presenter.definition.relations'
   | 'presenter.coverage.title'
+  | 'presenter.coverage.loading'
+  | 'presenter.coverage.assets'
+  | 'presenter.coverage.tables'
+  | 'presenter.coverage.events'
+  | 'presenter.coverage.metrics'
   | 'presenter.coverage.total'
   | 'presenter.coverage.confirmed'
   | 'presenter.coverage.draft'
   | 'presenter.coverage.domains'
   | 'presenter.relations.title'
+  | 'presenter.relations.loading'
+  | 'presenter.relations.summaryAdded'
+  | 'presenter.relations.summaryEnriched'
+  | 'presenter.relations.checkedNoNew'
+  | 'presenter.relations.kindJoins'
+  | 'presenter.relations.kindDerived'
+  | 'presenter.relations.kindRelated'
   | 'presenter.relations.added'
   | 'presenter.relations.noChange'
   | 'evidence.placeholder'
@@ -30,6 +56,7 @@ export type SemanticLayerKey =
   | 'evidence.coverage.draft'
   | 'evidence.eval.title'
   | 'evidence.eval.noResults'
+  | 'evidence.eval.assetFilterUnavailable'
   | 'evidence.eval.pass'
   | 'evidence.eval.fail'
   | 'evidence.eval.error'
@@ -42,6 +69,10 @@ export type SemanticLayerKey =
   | 'evidence.eval.notConfigured'
   | 'evidence.eval.failed'
   | 'evidence.eval.reportMode'
+  | 'evidence.eval.passCount'
+  | 'evidence.eval.failCount'
+  | 'evidence.eval.infraFailureCount'
+  | 'evidence.eval.versus'
   | 'evidence.evalDelta.title'
   | 'evidence.evalDelta.empty'
   | 'evidence.evalDelta.comparing'
@@ -56,6 +87,7 @@ export type SemanticLayerKey =
   | 'evidence.gap.more'
   | 'schema.domains'
   | 'schema.search.placeholder'
+  | 'schema.search.noResults'
   | 'schema.tab.tables'
   | 'schema.tab.events'
   | 'schema.tab.metrics'
@@ -80,24 +112,53 @@ export type SemanticLayerKey =
   | 'schema.detail.hostEvent'
   | 'schema.detail.viewInGraph'
 
+/** Translator passed through semantic-layer components and tool presenters. */
+export type SemanticLayerTranslate = (key: SemanticLayerKey, params?: Record<string, unknown>) => string
+
 /** zh */
 export const zh: Record<SemanticLayerKey, string> = {
   'title': '语义层',
+  'dashboard.title': '证据看板',
+  'dashboard.goToWorkspace': '返回工作区',
   'loading': '加载中…',
   'error': '错误',
-  'presenter.search.title': '搜索结果',
+  'presenter.running': '运行中',
+  'presenter.failed': '失败',
+  'presenter.unavailable': '不可用',
+  'presenter.more': '另有 {count} 项',
+  'presenter.search.title': '搜索语义层',
+  'presenter.search.loading': '正在搜索语义层…',
+  'presenter.search.hits': '{count} 个资产',
   'presenter.search.noResults': '无匹配资产',
   'presenter.search.hit': '个资产',
   'presenter.definition.title': '资产定义',
+  'presenter.definition.loading': '正在加载资产定义…',
+  'presenter.definition.asset': '资产',
+  'presenter.definition.domainsLabel': '业务域',
+  'presenter.definition.columnsLabel': '字段',
+  'presenter.definition.metricsLabel': '指标',
+  'presenter.definition.relationsLabel': '关系',
   'presenter.definition.notFound': '未找到资产',
   'presenter.definition.fields': '字段',
   'presenter.definition.relations': '关系',
   'presenter.coverage.title': '覆盖统计',
+  'presenter.coverage.loading': '正在加载覆盖统计…',
+  'presenter.coverage.assets': '{count} 个资产',
+  'presenter.coverage.tables': '表',
+  'presenter.coverage.events': '事件',
+  'presenter.coverage.metrics': '指标',
   'presenter.coverage.total': '总计',
   'presenter.coverage.confirmed': '已确认',
   'presenter.coverage.draft': '草稿',
   'presenter.coverage.domains': '域',
   'presenter.relations.title': '关系发现',
+  'presenter.relations.loading': '正在发现关系…',
+  'presenter.relations.summaryAdded': '+{count} 条关系',
+  'presenter.relations.summaryEnriched': '{count} 个资产已丰富',
+  'presenter.relations.checkedNoNew': '已检查 {count} 个表，未发现新关系',
+  'presenter.relations.kindJoins': '关联',
+  'presenter.relations.kindDerived': '派生自',
+  'presenter.relations.kindRelated': '相关',
   'presenter.relations.added': '新增关系',
   'presenter.relations.noChange': '无变化',
   'evidence.placeholder': '证据面板将在全部基建就绪后启用',
@@ -111,6 +172,7 @@ export const zh: Record<SemanticLayerKey, string> = {
   'evidence.coverage.draft': '草稿',
   'evidence.eval.title': 'Eval 结果',
   'evidence.eval.noResults': '暂无 eval 运行记录',
+  'evidence.eval.assetFilterUnavailable': '缺少可靠的 case 到资产映射；当前显示全部运行。',
   'evidence.eval.pass': '通过',
   'evidence.eval.fail': '失败',
   'evidence.eval.error': '错误',
@@ -123,6 +185,10 @@ export const zh: Record<SemanticLayerKey, string> = {
   'evidence.eval.notConfigured': 'Eval 未配置',
   'evidence.eval.failed': 'Eval 失败',
   'evidence.eval.reportMode': '仅报告模式',
+  'evidence.eval.passCount': '{correct}/{total} 通过',
+  'evidence.eval.failCount': ' · {count} 失败',
+  'evidence.eval.infraFailureCount': ' · {count} 个基础设施失败',
+  'evidence.eval.versus': '对比 {run}：',
   'evidence.evalDelta.title': 'Eval 对比',
   'evidence.evalDelta.empty': '暂无对比数据（需至少两次运行）',
   'evidence.evalDelta.comparing': '对比',
@@ -137,6 +203,7 @@ export const zh: Record<SemanticLayerKey, string> = {
   'evidence.gap.more': '条更多',
   'schema.domains': '所有域',
   'schema.search.placeholder': '搜索资产…',
+  'schema.search.noResults': '无搜索结果',
   'schema.tab.tables': '表',
   'schema.tab.events': '事件',
   'schema.tab.metrics': '指标',
@@ -165,21 +232,47 @@ export const zh: Record<SemanticLayerKey, string> = {
 /** en */
 export const en: Record<SemanticLayerKey, string> = {
   'title': 'Semantic Layer',
+  'dashboard.title': 'Evidence Dashboard',
+  'dashboard.goToWorkspace': 'Back to workspace',
   'loading': 'Loading…',
   'error': 'Error',
-  'presenter.search.title': 'Search Results',
+  'presenter.running': 'running',
+  'presenter.failed': 'failed',
+  'presenter.unavailable': 'unavailable',
+  'presenter.more': '{count} more',
+  'presenter.search.title': 'Search Schema',
+  'presenter.search.loading': 'Searching schema…',
+  'presenter.search.hits': '{count} assets',
   'presenter.search.noResults': 'No matching assets',
   'presenter.search.hit': 'assets',
   'presenter.definition.title': 'Asset Definition',
+  'presenter.definition.loading': 'Loading definition…',
+  'presenter.definition.asset': 'Asset',
+  'presenter.definition.domainsLabel': 'domains',
+  'presenter.definition.columnsLabel': 'columns',
+  'presenter.definition.metricsLabel': 'metrics',
+  'presenter.definition.relationsLabel': 'relations',
   'presenter.definition.notFound': 'Asset not found',
   'presenter.definition.fields': 'Fields',
   'presenter.definition.relations': 'Relations',
-  'presenter.coverage.title': 'Coverage Stats',
+  'presenter.coverage.title': 'Coverage Statistics',
+  'presenter.coverage.loading': 'Loading coverage…',
+  'presenter.coverage.assets': '{count} assets',
+  'presenter.coverage.tables': 'Tables',
+  'presenter.coverage.events': 'Events',
+  'presenter.coverage.metrics': 'Metrics',
   'presenter.coverage.total': 'Total',
   'presenter.coverage.confirmed': 'Confirmed',
   'presenter.coverage.draft': 'Draft',
   'presenter.coverage.domains': 'Domains',
-  'presenter.relations.title': 'Relations Discovery',
+  'presenter.relations.title': 'Discover Relations',
+  'presenter.relations.loading': 'Discovering relations…',
+  'presenter.relations.summaryAdded': '+{count} relations',
+  'presenter.relations.summaryEnriched': '{count} enriched',
+  'presenter.relations.checkedNoNew': '{count} tables checked, no new relations found',
+  'presenter.relations.kindJoins': 'joins',
+  'presenter.relations.kindDerived': 'derived_from',
+  'presenter.relations.kindRelated': 'related_to',
   'presenter.relations.added': 'added relations',
   'presenter.relations.noChange': 'No change',
   'evidence.placeholder': 'Evidence panel will activate when infrastructure is ready',
@@ -193,6 +286,7 @@ export const en: Record<SemanticLayerKey, string> = {
   'evidence.coverage.draft': 'draft',
   'evidence.eval.title': 'Eval Results',
   'evidence.eval.noResults': 'No eval runs recorded',
+  'evidence.eval.assetFilterUnavailable': 'Asset-specific history is unavailable; showing all runs.',
   'evidence.eval.pass': 'pass',
   'evidence.eval.fail': 'fail',
   'evidence.eval.error': 'error',
@@ -205,6 +299,10 @@ export const en: Record<SemanticLayerKey, string> = {
   'evidence.eval.notConfigured': 'Eval not configured',
   'evidence.eval.failed': 'Eval failed',
   'evidence.eval.reportMode': 'Report mode only',
+  'evidence.eval.passCount': '{correct}/{total} passed',
+  'evidence.eval.failCount': ' · {count} failed',
+  'evidence.eval.infraFailureCount': ' · {count} infrastructure failures',
+  'evidence.eval.versus': 'vs {run}:',
   'evidence.evalDelta.title': 'Eval Delta',
   'evidence.evalDelta.empty': 'No delta available (needs at least two runs)',
   'evidence.evalDelta.comparing': 'Comparing',
@@ -219,6 +317,7 @@ export const en: Record<SemanticLayerKey, string> = {
   'evidence.gap.more': 'more',
   'schema.domains': 'All Domains',
   'schema.search.placeholder': 'Search assets…',
+  'schema.search.noResults': 'No results',
   'schema.tab.tables': 'Tables',
   'schema.tab.events': 'Events',
   'schema.tab.metrics': 'Metrics',

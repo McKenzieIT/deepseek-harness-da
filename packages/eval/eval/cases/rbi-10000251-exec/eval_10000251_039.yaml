@@ -27,7 +27,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: easy
   business_context: pay_type=1为真实付费，pay_amt单位为分需除以100
   created_at: '2026-08-04'

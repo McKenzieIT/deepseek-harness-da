@@ -6,11 +6,11 @@ Status: proposed
 
 ## Problem
 
-[dsh-data-agent PR 工作流](../../../../docs/da-pr-workflow.md)要求任何新包、新 seam、新功能或 bug fix 都走 `feat/<ticket-id>-<slug>` 或 `fix/<ticket-id>-<slug>` 分支加 PR,只允许纯 Wayfinder 文档和实验 probe 脚本直推 `main`。[栈上 PR 评审的响应](../../../../docs/cookbook/responding-to-pr-review-on-a-stack.md)进一步要求每个 PR 分支用独立 worktree:"parallel fixes never share a checkout."
+[dsh-data-agent PR 工作流](../../../../docs/da-pr-workflow.zh.md)要求任何新包、新 seam、新功能或 bug fix 都走 `feat/<ticket-id>-<slug>` 或 `fix/<ticket-id>-<slug>` 分支加 PR,只允许纯 Wayfinder 文档和实验 probe 脚本直推 `main`。[栈上 PR 评审的响应](../../../../docs/cookbook/responding-to-pr-review-on-a-stack.zh.md)进一步要求每个 PR 分支用独立 worktree:"parallel fixes never share a checkout."
 
 自 2026-09-03 起,并行 session 工作两条都没遵循。`git worktree list` 显示只有一个 `master` checkout;`git for-each-ref` 显示 2026-08-26 之后没有任何 `feat/*` 或 `fix/*` 分支;`git log --since=2026-09-01` 把几十个触及 `packages/*/src` 的 `feat()` / `fix()` 提交直接落在 `master` 上。`master` 工作区同时挂着五条交错的工作流(ui-present-table、十二个未入库的 simplification 提案、新 eval 用例、新 Wayfinder ticket、一个 probe 脚本),reflog 记录了对该共享 tip 的 `commit (amend)` 与 `reset`,`master` 领先 `origin/master` 一个提交,还有一个遗留 stash。
 
-三个缺口共同导致。第一,`wayfinder/*/prompts/` 下启动并行工作的 session 派发 prompt 以 "commit" 结尾,从不点名分支或 worktree,成文的分支模型根本到不了要执行它的 session。第二,harness 不会补这个缺口:[Durable Agent Teams](../../implemented/feature/2026-08-05-agent-teams.md)声明"Worktree isolation is not a harness runtime behavior",并拒绝了自动创建隔离 worktree,把分支与 worktree 的设置留给 prompt 或 deployment。第三,没有门禁拒绝落在 `master` 上的 `feat` 或 `fix` 提交,规则只是倡导。prompt 里的"并行"含义也变了:并行分支变成了同一分支上的并行 subagent,靠文件不重叠避碰,而不是靠隔离。
+三个缺口共同导致。第一,`wayfinder/*/prompts/` 下启动并行工作的 session 派发 prompt 以 "commit" 结尾,从不点名分支或 worktree,成文的分支模型根本到不了要执行它的 session。第二,harness 不会补这个缺口:[Durable Agent Teams](../../implemented/feature/2026-08-05-agent-teams.zh.md)声明"Worktree isolation is not a harness runtime behavior",并拒绝了自动创建隔离 worktree,把分支与 worktree 的设置留给 prompt 或 deployment。第三,没有门禁拒绝落在 `master` 上的 `feat` 或 `fix` 提交,规则只是倡导。prompt 里的"并行"含义也变了:并行分支变成了同一分支上的并行 subagent,靠文件不重叠避碰,而不是靠隔离。
 
 ## Proposal
 
@@ -32,11 +32,11 @@ node scripts/install-lefthook.mjs   # regenerate worktree-local hooks
 - 不得向 `master` 提交。所有工作留在本分支。
 - 收尾:`gh pr create`(依赖链用 `gh stack link`),通过 [dsh-pre-push-checks](../../../skills/dsh-pre-push-checks/SKILL.md) 后才合并。
 
-规范模板见 [`wayfinder/_templates/session-prompt.md`](../../../../wayfinder/_templates/session-prompt.md)。[dsh-data-agent PR 工作流](../../../../docs/da-pr-workflow.md)把该模板指定为每个 session prompt 必须实例化的契约。
+规范模板见 [`wayfinder/_templates/session-prompt.md`](../../../../wayfinder/_templates/session-prompt.md)。[dsh-data-agent PR 工作流](../../../../docs/da-pr-workflow.zh.md)把该模板指定为每个 session prompt 必须实例化的契约。
 
 ### 每个并行 ticket 一个 worktree 一个分支
 
-拥有一个 ticket 的并行 session 或 subagent 在自己的 worktree、自己的 `feat/` 或 `fix/` 分支上工作。[栈上 PR 评审的响应](../../../../docs/cookbook/responding-to-pr-review-on-a-stack.md)已经要求这一点,[Landing an official GitHub PR stack](../../../skills/dsh-merging-stacked-prs/SKILL.md)要求栈用专用 worktree。依赖链走原生 `gh stack`,不手搓逐 PR 合并。session 内的并行 subagent 要么各自用 Agent 工具的 worktree 隔离加子分支,要么序列化提交;文件不重叠不能替代隔离。
+拥有一个 ticket 的并行 session 或 subagent 在自己的 worktree、自己的 `feat/` 或 `fix/` 分支上工作。[栈上 PR 评审的响应](../../../../docs/cookbook/responding-to-pr-review-on-a-stack.zh.md)已经要求这一点,[Landing an official GitHub PR stack](../../../skills/dsh-merging-stacked-prs/SKILL.md)要求栈用专用 worktree。依赖链走原生 `gh stack`,不手搓逐 PR 合并。session 内的并行 subagent 要么各自用 Agent 工具的 worktree 隔离加子分支,要么序列化提交;文件不重叠不能替代隔离。
 
 ### 直推 main 白名单
 
@@ -44,13 +44,13 @@ node scripts/install-lefthook.mjs   # regenerate worktree-local hooks
 
 ### Lead 作为集成边界
 
-聚合并行工作的 Lead session 在 push 前检查最终 diff 并跑相关检查,符合 [Agent Teams 共享 checkout 边界](../../implemented/feature/2026-08-05-agent-teams.md):"The final diff and tests remain the Lead's integration boundary." 上一批的 PR 合并或显式放弃之前,不开下一并行批,工作不会在一条 tip 上交错堆积。
+聚合并行工作的 Lead session 在 push 前检查最终 diff 并跑相关检查,符合 [Agent Teams 共享 checkout 边界](../../implemented/feature/2026-08-05-agent-teams.zh.md):"The final diff and tests remain the Lead's integration boundary." 上一批的 PR 合并或显式放弃之前,不开下一并行批,工作不会在一条 tip 上交错堆积。
 
 ## Alternatives considered
 
 ### 为什么不在 harness 里自动建 worktree?
 
-[Agent Teams 笔记](../../implemented/feature/2026-08-05-agent-teams.md)已经拒绝过:worktree 创建、分支命名、merge 策略、ignored file、构建产物、cleanup 都是 deployment 选择,自动隔离会改变既有 subagent 和 sandbox 暴露的 same-world 契约。为修一个 prompt 层的疏漏去重开一个已落地的架构边界,不如在 prompt 层修。
+[Agent Teams 笔记](../../implemented/feature/2026-08-05-agent-teams.zh.md)已经拒绝过:worktree 创建、分支命名、merge 策略、ignored file、构建产物、cleanup 都是 deployment 选择,自动隔离会改变既有 subagent 和 sandbox 暴露的 same-world 契约。为修一个 prompt 层的疏漏去重开一个已落地的架构边界,不如在 prompt 层修。
 
 ### 为什么不靠文件不重叠做并行 subagent?
 

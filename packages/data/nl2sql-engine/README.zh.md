@@ -1,11 +1,34 @@
+---
+description: "TODO: translate: NL→SQL engine for the data agent: BM25 schema-linking + SQL-gen prompt (RBI v2-baseline staged SOP) + regex/JSON-path critic (sql_syntax_gate) + execution-feedback self-correction. Consumes ctx.query (agent-driven); local retrieval/substrate interfaces (P5/P6 production swap deferred via P13b grilling Q1)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-nl2sql-engine
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: NL→SQL engine for the data agent: BM25 schema-linking + SQL-gen prompt (RBI v2-baseline staged SOP) + regex/JSON-path critic (sql_syntax_gate) + execution-feedback self-correction. Consumes ctx.query (agent-driven); local retrieval/substrate interfaces (P5/P6 production swap deferred via P13b grilling Q1)
+
+## 目录
+
+- [交付内容（P13b grilling — 5 个决策）](#what-ships-p13b-grilling--5-decisions)
+- [消费的 Seams](#seams-consumed)
+- [运行](#run)
+- [Code-review-low 修复（已内置）](#code-review-low-fixes-baked-in)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 > P13b — data agent 的 NL→SQL 引擎（`wayfinder/data-agent/prototypes/p13-nl2sql-engine/` 一次性原型的生产毕业版）。解决 wayfinder ticket `phase-3/P13b-nl2sql-engine-prod-hardening.md`。
 
 基于 data-agent NL→SQL 流水线的 additive Cordis `Service`（`ctx.nl2sql`）：**BM25 schema-linking** + **SQL 生成 prompt**（RBI `v2-baseline.md` staged SOP）+ **regex/JSON-path critic**（`sql_syntax_gate`，替代 sqlglot AST——TS 无等价实现）+ **执行反馈自纠错** + **eval-gate-minimal**。P6 semantic-layer substrate 上的极端-(B) 路径（研究 `p6-nl2sql-feasibility.md`：完整 (C) 路径单周期不可行——RBI 自身 L1 约 9%）。
 
+<a id="what-ships-p13b-grilling--5-decisions"></a>
 ## 交付内容（P13b grilling — 5 个决策）
 
 - **Q1 P5/P6 gap** → 本地 `RetrievalLinker` / `CriticGuardData` 接口 + 精简进程内默认实现（`Bm25Linker`、YAML substrate reader）。不声明 `ctx.retrieval`/`ctx.schema` seams（P5/P6 拥有它们）。毕业 **P5b/P6b** 生产 tickets；P13b 在它们发布时做 additive-swap。
@@ -14,12 +37,14 @@
 - **Q4 critic 暴露** → 仅 gate（`sql_syntax_gate`）；`search_data_sources` 是唯一 model-facing tool；`evaluate_sql_quality` 已移除。
 - **Q5 scope** → 范围内：engine + critic(仅 gate) + conventions + bundle + `search_data_sources` + eval-gate-minimal + code-review-low 修复。延期：F3（vector swap——seam 不变，仅 BM25）/ F4（session 级近重复 → 尚未定义的 query-trio；engine 内部 thin 保留）/ F5（保持 regex + JSON-path + execution-feedback；fail-open + 记录残余风险；非 sqlglot）/ F6（real runner → P11）。
 
+<a id="seams-consumed"></a>
 ## 消费的 Seams
 
 - `ctx.query`（P4b `@deepseek-ai/dsh-query`）— 执行（3-state `QueryOutcome`），生产中经 agent loop；eval runner 使用包内 `StandInOdps`。
 - `@deepseek-ai/dsh-query-maxcompute` — maxcompute `loadConventions` 加载器 + `conventions.yaml` 为 eval-only conventions 路径（P4 per-engine conventions seam，F1）；生产 `Nl2sqlEngineService` 经 `ctx.query.getConventions()` 获取约定（engine-injected、engine-neutral——见上方 `ctx.query` seam）。
 - `@deepseek-ai/cordis` + `@deepseek-ai/schemastery` — `Service`、`Context`、`z`（Service shell + `ctx.nl2sql` seam）。
 
+<a id="run"></a>
 ## 运行
 
 ```
@@ -29,10 +54,20 @@ pnpm typecheck                              # tsc -b (host)
 
 9 个场景（S1–S9）验证 BM25 linking + prompt + critic gate + JSON-path + feedback self-correction + near-dup gate + eval-gate L1 pass-rate + honest decline + `sql_syntax_gate` slot。确定性测试（dsh-llm-replay stand-in + stand-in engine）；无需外部 LLM/engine 密钥。
 
+<a id="code-review-low-fixes-baked-in"></a>
 ## Code-review-low 修复（已内置）
 
 #1 `hasPartitionFilter` 贪婪跨语句/子句 → 限定到每个 `;` 分割语句的 WHERE 子句。#2 `hasSelectStar` 遗漏 `t.*` + `SELECT a, *` → 解析 select list。#3 `running` → 经 `attach`（check_query）最多重试 3 次。#4 `FailureKind` 归一化为 lower_snake。#5 `NearDupGate.hash` 移除所有空白。#6 `Bm25Linker` 直接使用命中项 payload（不做冗余 re-find）。#7 c07 的死 `__never__` ODPS 条目已移除（`odps` 为 optional）。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-nl2sql-engine` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 ### NL→SQL generation prompt
@@ -63,6 +98,7 @@ pnpm typecheck                              # tsc -b (host)
 
 约定 section 对一个引擎实例跨查询恒定，故位于稳定前缀中，在会话中跨查询重复 prompt 前缀时可缓存。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **F3 — 向量 swap** — 仅 BM25 检索；seam 不变但真实向量 provider（经 P5b 的 `ctx.retrieval`）尚未连线。schema-linking 准确度在此之前受限于 BM25 召回率。

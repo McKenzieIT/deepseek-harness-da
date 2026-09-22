@@ -54,24 +54,26 @@ describe('runBatch', () => {
       pass_k_results: [],
       preflight: { content: { status: 'case-defect' } },
     })
-    expect(result.cases[0]!.preflight?.content.detail).toMatch(detail)
+    const content = result.cases[0]!.preflight?.content
+    if (content?.status !== 'case-defect') throw new Error('expected case-defect content preflight')
+    expect(content.detail).toMatch(detail)
     expect(agent.calls).toHaveLength(0)
   })
 
-  it('records source and grading provenance in the returned and persisted run', async () => {
+  it('records case source and grading inputs in the returned and persisted run', async () => {
     const agent = new StubAgentResponder()
     const collaborators = buildCollaborators(agent, null, null)
-    const path = writeCase('provenance', {
+    const path = writeCase('source', {
       result_value: { value: 1 },
       match_mode: 'scalar_exact',
       sql: 'SELECT {{ds_yesterday}} AS value',
       behavior: 'returns one scalar',
-    }, { anchor_ds: '20260912', provenance: 'human-reference' })
+    }, { anchor_ds: '20260912', source: 'human-reference' })
     const outputPath = join(mkdtempSync(join(tmpdir(), 'eval-runner-output-')), 'run.json')
 
     const result = await runBatch([path], collaborators, makeTestRunOptions(collaborators, { output_path: outputPath }))
 
-    expect(result.cases[0]!.caseProvenance).toEqual({
+    expect(result.cases[0]!.caseSource).toEqual({
       sourcePath: path,
       schemaVersion: null,
       scopeId: null,
@@ -81,7 +83,7 @@ describe('runBatch', () => {
         sql: 'SELECT {{ds_yesterday}} AS value',
         behavior: 'returns one scalar',
       },
-      meta: { anchor_ds: '20260912', provenance: 'human-reference' },
+      meta: { anchor_ds: '20260912', source: 'human-reference' },
       referenceSql: {
         kind: 'resolved',
         sql: 'SELECT 20260911 AS value',
@@ -89,7 +91,7 @@ describe('runBatch', () => {
         substitutions: { ds_yesterday: '20260911' },
       },
     })
-    expect(readRunResult(outputPath).cases[0]!.caseProvenance).toEqual(result.cases[0]!.caseProvenance)
+    expect(readRunResult(outputPath).cases[0]!.caseSource).toEqual(result.cases[0]!.caseSource)
   })
 
   it('keeps running valid cases when another case has defective grading content', async () => {

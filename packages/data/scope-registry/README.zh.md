@@ -1,15 +1,40 @@
+---
+description: "TODO: translate: Per-scope namespace registry for the data agent: runtime-mutable scope definitions (id → semanticRoot + metadata) with active-scope switching, persisted to a YAML file on disk."
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-scope-registry`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Per-scope namespace registry for the data agent: runtime-mutable scope definitions (id → semanticRoot + metadata) with active-scope switching, persisted to a YAML file on disk.
+
+## 目录
+
+- [状态：已注册 + 可调用；在 bundle 挂载时配置](#status-registered--callable-configured-at-bundle-mount)
+- [设计](#design)
+- [配置](#config)
+- [Cordis seam](#cordis-seam)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延后事项](#known-limitations-and-deferred-work)
+
 
 按 scope 的命名空间注册表（`ctx.scopes`）：数据 agent 的 scope 定义运行时可变存储。每个 scope 将一个 id 映射到文件系统 `semanticRoot` 路径及可选元数据（当前提供方、项目名、引擎类型等）。注册表持久化到磁盘上的 YAML 文件；Cordis 静态配置告诉服务该文件位于何处（`registryPath`），而文件本身是运行时可变状态，可由 CLI（命令行界面）、API、Web UI 读写。
 
 这是 [`@deepseek-ai/dsh-semantic-layer`](../semantic-layer) 服务消费的 scope seam：active scope id 决定语义层扫描哪个 `semanticRoot` 来查找 `config.yaml`/`events/`/`tables/`，因此切换 scope 即重新确立模型推理所依赖的语料。
 
+<a id="status-registered--callable-configured-at-bundle-mount"></a>
 ## 状态：已注册 + 可调用；在 bundle 挂载时配置
 
 该服务由 data-agent bundle patch（`packages/bundle/data-agent/cordis.patch.yml`、`scope-registry`）注册，并在全局 Cordis 上下文上挂载 `ctx.scopes`。当 `registryPath` 为空（默认静态配置）时，该服务为 inert：返回空的 scope 列表，`active()` / `activeId()` 返回 `undefined`，且任何写 API 调用都会抛出 "registryPath not configured"，而非静默 no-op。真实的 profile 会配置 `registryPath` 指向某个 `scopes.yaml` 文件；YAML 缺失或为空时按“无 scope”处理（不会崩溃）。
 
+<a id="design"></a>
 ## 设计
 
 - **Cordis 配置 = WHERE** 注册表位于何处（静态，在 bundle 挂载时设定）。
@@ -18,9 +43,10 @@
 - **active scope 是进程级单例**；切换时发出事件，使消费方（SemanticLayerService、审计、查询引擎）能够响应。
 - **所有变更都是原子的**（通过 `withFileLock` + `writeFileAtomic` 实现跨进程安全）；每次调用都从磁盘重新加载（文件很小，无需缓存）。
 
+<a id="config"></a>
 ## 配置
 
-```ts ignore-check
+```ts
 export interface ScopeRegistryConfig {
   /** Path to the scopes.yaml registry file. Empty = service is inert (no scopes). */
   readonly registryPath: string
@@ -29,6 +55,7 @@ export interface ScopeRegistryConfig {
 
 `registryPath` 是经过校验的 Cordis `z.string()` 配置字段（默认 `''`）。以 `~/` 为前缀的路径会相对于 `os.homedir()` 展开。不存在硬编码的可调参数：每个旋钮都是经过校验的 Config 字段。
 
+<a id="cordis-seam"></a>
 ## Cordis seam
 
 该服务声明 `ctx.scopes` 属性与两个带类型的事件：
@@ -49,6 +76,7 @@ declare module '@deepseek-ai/cordis' {
 
 `scopes/changed` 在已注册 scope 集合发生变更（register / remove）之后触发；纯粹的 active-scope 切换（`setActive` / `clearActive`）不会触发它。`scopes/active-changed` 在 active id 变更之后触发，途径包括 `setActive`、`clearActive`、`register()` 将首个 scope 设为 active、或 `remove()` 使原先 active 的 scope 不再 active。事件仅在 `mutate()` 写入提交之后才触发（状态在其提交点发布）。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -57,6 +85,15 @@ pnpm vitest run packages/data/scope-registry
 pnpm verify-cordis-config
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-scope-registry` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接地，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -65,6 +102,7 @@ pnpm verify-cordis-config
 
 该包的贡献对可复用的请求前缀是仅追加的，不会使先前的缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后事项
 
 - **默认 inert（`registryPath` 为空）**：在默认空 `registryPath` 下，服务不加载任何文件，`list()` 返回 `[]`，`active()` / `activeId()` 返回 `undefined`；写 API 调用抛出 "registryPath not configured"。真实的 `scopes.yaml` 路径在 profile / 运行时层面（bundle patch）配置，而非作为默认值发布。

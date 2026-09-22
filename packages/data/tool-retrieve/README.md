@@ -1,6 +1,29 @@
+---
+description: "Model-facing retrieve tool: on-demand retrieval escape-hatch over the data-source corpus for the data agent (BM25-only soft-fallback; additive, dormant until mounted)"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-retrieve`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing retrieve tool: on-demand retrieval escape-hatch over the data-source corpus for the data agent (BM25-only soft-fallback; additive, dormant until mounted)
+
+## Table of Contents
+
+- [Status: shipped but DORMANT (opt-in, dormant-until-mount)](#status-shipped-but-dormant-opt-in-dormant-until-mount)
+- [Soft-fallback chain (mirrors `search_data_sources`)](#soft-fallback-chain-mirrors-search_data_sources)
+- [Registration shape](#registration-shape)
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `retrieve` tool: **the on-demand retrieval escape-hatch** for the data agent. The pipeline prefetches data-source candidates in the `UNDERSTANDING` phase (`search_data_sources`); `retrieve` is the additive escape-hatch the agent calls when it detects the prefetch missed (an ambiguous question, or a business synonym the prefetch did not bridge). It returns ranked candidate data sources with `id`, `score`, and `description`.
 
@@ -8,7 +31,7 @@ This is the **D2c-impl** ship — the escape-hatch the D2c "keep (b)" decision c
 
 ## Status: shipped but DORMANT (opt-in, dormant-until-mount)
 
-The tool **package** is shipped (registers `retrieve` via `defineTool` + `ctx.tools.register` when mounted), but the preset row that mounts it (`apps/cli/config/agent-presets/data-agent/agent.cordis.yml`, `tool-retrieve`) is **commented** — so default boot does NOT mount it, the `retrieve` tool is not registered, and the agent runs **pipeline-only** (the current state, no regression). This mirrors the D2e dormant-until-mount + P5b opt-in-seam pattern.
+The tool **package** is shipped (registers `retrieve` via `defineTool` + `ctx.tools.register` when mounted), but the preset row that mounts it (`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`, `tool-retrieve`) is **commented** — so default boot does NOT mount it, the `retrieve` tool is not registered, and the agent runs **pipeline-only** (the current state, no regression). This mirrors the D2e dormant-until-mount + P5b opt-in-seam pattern.
 
 Activation (a separate, later gate — P7b / a follow-up) is three coordinated steps:
 1. **Uncomment** the `tool-retrieve` preset row.
@@ -80,6 +103,13 @@ pnpm vitest run packages/data/tool-retrieve
 ```
 
 12 specs (R1–R12) cover BM25 linking, the `top_k` cap, the empty thin-default, registration, the `ctx.retrieval` soft-fallback (R8), the `ctx.schema` enriched soft-fallback (R9), the abort guard (R10), the config `topK` default (R11), and the D2h 5→20 default raise (R12) — mirroring `tool-search-data-sources`'s S1–S9 + three retrieve-specific tests.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-retrieve` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

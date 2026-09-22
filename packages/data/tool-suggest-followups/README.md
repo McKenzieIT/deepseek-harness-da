@@ -1,6 +1,26 @@
+---
+description: "Model-facing suggest_followups tool: suggest follow-up questions the user might ask next, for the INTERPRETATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-suggest-followups`
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Model-facing suggest_followups tool: suggest follow-up questions the user might ask next, for the INTERPRETATION phase
+
+## Table of Contents
+
+- [Config](#config)
+- [Verification](#verification)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Model-facing `suggest_followups`: **suggest follow-up questions the user might ask next** for the data agent's `INTERPRETATION` phase. The agent calls it after presenting results to offer actionable next steps — drill-downs, comparisons, time shifts, or related queries the user can click to continue the conversation.
 
@@ -17,6 +37,13 @@ tsc -b packages/data/tool-suggest-followups/tsconfig.json
 pnpm vitest run packages/data/tool-suggest-followups
 pnpm verify-cordis-config
 ```
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-tool-suggest-followups` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

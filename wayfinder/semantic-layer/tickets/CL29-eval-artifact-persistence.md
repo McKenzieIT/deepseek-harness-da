@@ -1,11 +1,15 @@
 ---
 type: grilling
-status: open
+status: migrated
 assignee: null
 blocked_by: []
 ---
 
 # CL-29: eval 产物被 gitignore → 基线会蒸发，趋势对比与 ≥3 轮协议失去物质基础
+
+## Answer
+
+Migrated to [Evaluation T9: Evaluation protocol、stores 与 repository foundations](../../evaluation/tickets/T9-evaluation-foundations.md). EvaluationStore and ArtifactStore own sealed run evidence, retention metadata, artifact identity, and replayability; the semantic-layer effort will not add another persistence convention to the legacy JSON output directory.
 
 **Branch**: 未认领（认领时按 CLAUDE.md 声明 `<type>/cl29-<slug>`）
 

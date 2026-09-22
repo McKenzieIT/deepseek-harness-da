@@ -1,6 +1,26 @@
+---
+description: "Semantic layer management: sidebar trigger that opens or creates the management agent session"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-client-ui-semantic-layer
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Semantic layer management: sidebar trigger that opens or creates the management agent session
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Services consumed](#services-consumed)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 The semantic layer management UI plugin (browser half). Registers:
 
@@ -17,7 +37,7 @@ The plugin has no host-side behavior (`src/index.ts` is an empty apply). All log
 - **SemanticLayerShell**: the sidebar button and B→A layout router. In "B" mode (default, evalRunCount < 3), renders a trigger button. In "A" mode (auto-flip after ≥3 eval runs), renders DashboardView.
 - **wiring.tsx**: session-scoped slot adapters that gate on `agentPreset === 'semantic-layer-management'`. Non-management sessions render nothing.
 - **presenters/**: keyed `tool.call.toolview` renderers for each management tool.
-- **hooks/**: `useEvidenceQuery`, `useEvidenceMetrics`, `useSchemaGateway`, `useLayoutMode`.
+- **hooks/**: `useEvidenceQuery`, `useEvidenceMetrics`, `useSchemaGateway`, `useLayoutMode`. `useEvidenceQuery.fetchEvalHistory()` loads the newest ten complete runs globally or for an asset, compares the latest two returned runs by record timestamp, and prevents an older selection request from replacing newer history or delta state.
 
 ## Services consumed
 
@@ -28,9 +48,16 @@ The plugin has no host-side behavior (`src/index.ts` is an empty apply). All log
 | `connection` | dsh-client-connection | API calls (`agentPresets.select`) |
 | `remote.schemaGateway` | dsh-schema-gateway (Typert) | Schema browser data |
 | `remote.evidenceQuery` | dsh-evidence-query (Typert) | Eval results, coverage, delta |
-| `layout` | dsh-client-ui-layout | `openDetails()` (optional) |
+| `layout` | dsh-client-ui-layout | `openRightbar(true, false)` (optional) |
 | `slots` | dsh-client-ui-slots | Slot registration |
 | `locale` | dsh-client-locale | i18n dictionaries |
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-semantic-layer` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 
@@ -42,7 +69,8 @@ The package does not extend or invalidate the agent loop's reusable request pref
 
 ## Known Limitations and Deferred Work
 
-- **Evidence push subscription** — current v1 fetches on mount + manual refresh; real-time push via Typert event forwarding (`$on`) is deferred.
+- **Evidence push subscription** — run history loads on mount and selection change; real-time run-list refresh via Typert event forwarding remains deferred.
+- **Asset-scoped eval history requires a case mapping** — when persisted eval cases lack a reliable case-to-asset mapping, the UI labels the filter unavailable and shows global history rather than an empty asset result. Evaluation T13 owns the durable evidence identity.
 - **Shell auto-flip requires live connection** — `evalRunCount` for B→A auto-flip comes from the evidence-query RPC bridge; without a live host connection, the shell stays in B mode (trigger button).
 - **CSS Modules incomplete** — Evidence panel components (EvidenceSidebar, CoveragePanel, EvalTrajectory, EvalDeltaView, GapPanel) use BEM class names, not CSS Modules. Migration deferred.
 - **SchemaExplorer graph navigation** — `onNavigateToGraph` depends on the optional `contextLayer` service; absent that service, the "view in graph" action is unavailable.

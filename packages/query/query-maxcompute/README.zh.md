@@ -1,13 +1,42 @@
+---
+description: "TODO: translate: MaxCompute query-engine provider (ctx.query): da-self-held raw MCP SDK Client over a stdio sidecar (A1-split; control tools non-model-facing)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-query-maxcompute
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: MaxCompute query-engine provider (ctx.query): da-self-held raw MCP SDK Client over a stdio sidecar (A1-split; control tools non-model-facing)
+
+## 目录
+
+- [Overview](#overview)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 MaxCompute 查询引擎提供方（`ctx.query`）：da 自持 raw MCP SDK Client 经 stdio sidecar 的 P1 接线（A1-split；控制工具非模型可调用）。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 实现 `MaxComputeQueryEngine extends QueryEngine`——一个自持 `@modelcontextprotocol/sdk` 原始 `Client` + `StdioClientTransport` 连接到 stdio sidecar 子进程的 Provider。所有 sidecar 工具（`execute`、`attach`、`cancel`、`get_progress`、`estimate_cost`、`set_credentials`、`invalidate_scope`）均通过 raw name 程序化调用，无一进入 `ctx.tools`（非模型可调用）。特性包括崩溃时懒重启（crash-loop 有界重试）、per-call 凭证推送经 `set_credentials`（幂等 drop）、出站取消经 `AbortSignal`。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-query-maxcompute` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 间接，通过 nl2sql engine 的 `query_data` 和 `check_query` 工具，将执行后的 SQL 结果送入模型 prompt；该 provider 自身不注册任何 tool、prompt 或 schema。
@@ -16,6 +45,7 @@ MaxCompute 查询引擎提供方（`ctx.query`）：da 自持 raw MCP SDK Client
 
 无直接失效；消费方 engine 拥有查询结果带来的任何请求前缀变更。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **真实 pyodps ODPS sidecar** — 当前 sidecar 为 Node.js stand-in（`dev/standin-sidecar.mjs`），行为为 fake ODPS；真实 Python pyodps sidecar 经 stdio MCP 延后。

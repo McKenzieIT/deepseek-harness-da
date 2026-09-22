@@ -17,7 +17,7 @@ import {
   TableDefinitionSchema,
   EventDefinitionSchema,
 } from '@deepseek-ai/dsh-semantic-layer'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 
 export const name = 'tool-get-coverage'
 export const inject = ['tools']

@@ -1,6 +1,6 @@
 # UM-CORDIS-REGEN — regen cordis catalog + api on synced base（typert surface fix + regen）
 
-**Type**: task · **Phase**: upstream-merge · **Status**: resolved-partial（子任务 1+2 done 2026-09-09；子任务 3 deferred）· **Assignee**: unclaimed
+**Type**: task · **Phase**: upstream-merge · **Status**: resolved（子任务 1+2 done 2026-09-09；**子任务 3 经 2026-09-11 四重验证已满足**，见文末复核）· **Assignee**: unclaimed
 **Blocked by (api half)**: UM14（synced base 8112743d69——`api-catalog.ts` regen 需对 synced latest 跑）
 **Blocked by (client half)**: [R-DA-CLIENT-RUNTIME-DECOMMISSION Phase-1](../phase-misc/R-DA-CLIENT-RUNTIME-DECOMMISSION.md#phase-1--afk-safe-unblockcan-放入下一-session-并行批)（删掉 zombie 里 `'root'` 冗余声明后 `gen-client-catalog` 才能跑）
 **Blocks**: UM10（typecheck 全绿依赖 regen'd catalog）· 60× TS2339 `ClientRemote namespace-missing` 的一部分（catalog 出后 `TypertRemoteNamespaceMap` 填充）
@@ -50,3 +50,20 @@
 **[2026-09-10 补记（UM10 线 A）]** prompt 曾判「Phase-2 未触发新 regen 需求」——**这个判断是错的**。Phase-2 删包后 `gen-client-catalog` 产物 `slot-catalog.ts:1220` 残留死引用 `packages/client/runtime/src/client/slots.ts`，导致 `verify-client-catalog` + `verify-package-paths` 双红。UM10 已 regen 修复（`ecaa56c848`）。另 `gen-module-graph` / `gen-tool-catalog` 也 stale（但那是 449-commit re-sync 造成，非 Phase-2）。
 
 **残留**：`check:ci:static` 仍有 4 门 catalog 类红（`cordis catalog` / `Cordis inspect catalog` / `config catalog` / `doc graphs`），归 [UM12](UM12-post-merge-ga-fork-ci-resweep.md) 逐门处置；其中 `config catalog` 的 `ctx.results.get` 缺 `@param` 已核为 pre-existing JSDoc 遗漏（非 Phase-2 引入）。
+
+### [2026-09-11 复核] 子任务 3 **已经满足**——本票可关，无需再跑
+
+子任务 3（跑 `gen-client-catalog`、把重生成的 `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts` 落库、`--check` 无 drift）当初 deferred 的原因是 `gen-client-catalog` 在僵尸包 `client/runtime/src/client/slots.ts:41` 上撞重复 `'root'` slot 且 `RootOwnerProps` 未导出。这两个前提都已消失。在 resync `5fe9b32e44` 四重验证：
+
+1. `packages/client/runtime` **已不存在**（R-DA Phase-1 resolved 2026-09-09，5 个 `[R-DA-P1]` commit；Phase-2 删掉僵尸）。
+2. `RootOwnerProps` 已导出于 `packages/client/ui-renderer/src/client/registry.ts:48`，并在 `index.ts:15` re-export → 「RootOwnerProps homing」阻塞解除。
+3. `slot-catalog.ts` 已带 `RootOwnerProps`（`:1468`），且**零** `client/runtime` 引用（09-10 备注里 `:1220` 那处死引用已不在）。
+4. `verify-client-catalog` → `slot-catalog.ts is up to date`，exit 0，工作树干净。
+
+实际是 UM10 的 `ecaa56c848` + R-DA Phase-2 顺带把它做掉了。
+
+**同时更正票里的「残留」行**：原写「`check:ci:static` 仍有 4 门 catalog 类红」→ 现在只剩 **1** 门。四门逐个实跑：`verify-cordis-catalog` 绿（99 up to date）、`verify-cordis-inspect-catalog` 绿、`verify-doc-graphs` 绿（6 up to date）、`verify-cordis-api` 绿。唯一仍红的是 **`verify-config-catalog`**（`docs/config-catalog.md` stale，实测 regen 只差 1 行；但它有 `.zh.md` + `.i18n.yaml` 配对，须连带 zh 侧并 `--write` 重记）——那是 A 类 pre-existing，不归本票。
+
+其余已死的行：`Blocked by（client half）: R-DA Phase-1` → 2026-09-09 resolved；`Blocks: UM10 · 60× TS2339` → UM10 resolved，且 `5fe9b32e44` 上 `tsc -b` 两面 EXIT 0。
+
+**剩余 = 纯记账**：`dsh-cordis` worktree / `task/um-cordis-regen-2026-09-09` 分支可删（实测该分支 **已并入 `origin/master`**，ancestry 检查通过，属安全删除集）。归 [UM11](UM11-pr-merge-post-cleanup.md) Scope 4-6。

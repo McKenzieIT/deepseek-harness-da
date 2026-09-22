@@ -1,6 +1,30 @@
+---
+description: "Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-eval
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Data-agent eval harness: da-fresh mirror of reverse-bi rbi-eval orchestration (MultiTurnSession + pass_k + DELIVERY/EXECUTION scoring) over injected responder/executor/judge — a pure library, registers nothing on a Cordis context
+
+## Table of Contents
+
+- [API](#api)
+- [Determinism](#determinism)
+- [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
+- [Legacy core runner pending T12](#legacy-core-runner-pending-t12)
+- [Host wiring — complete integration pattern](#host-wiring--complete-integration-pattern)
+- [Host wiring (the seams this library does not own)](#host-wiring-the-seams-this-library-does-not-own)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 The data-agent eval harness: a da-fresh TypeScript mirror of `reverse-bi`'s `rbi-eval` orchestration **design** (not its Python code) — `MultiTurnSession` (fixed-script multi-turn state machine) + pass_k (`run_multi_turn_case`, must pass every attempt) + da (ii) scoring (**DELIVERY** final-answer comparison + **EXECUTION** result-set comparison via the 5 `match_mode`, no sqlglot) over **injected** collaborators.
 
@@ -17,11 +41,11 @@ A **pure library**: it registers nothing on a Cordis context and takes its colla
 - **`classifyExecutionFailure(error)` / `mapQueryOutcome(outcome)`** — environmental failure classification (mirror rbi `l1.classify_execution_failure`) + the `QueryOutcome` → `ExecutionResult` mapping (pending → `patience` refuse).
 - **`judgeWithProvider(provider, prompt, opts?)` / `classifyError(err)`** — the DELIVERY LLM-judge with retry/backoff (SPEC §5.5) + `AuthenticationAbort`.
 - **`checkResultMatch(expected, actualRows, matchMode, actualRowCount?)`** — the 5 EXECUTION match modes; row-count assertions use the provider count rather than retained preview length.
-- **`preflightEvalCaseContent(case)`** — classify malformed grading content as a per-case defect after strict structural parsing, without aborting the batch.
+- **`preflightEvalCaseContent(case_)`** — classifies malformed grading content as a per-case defect after strict structural parsing, without aborting the batch.
 - **`ExecutionPort` / `executeAndNormalize(...)` / `gradeExecution(...)`** — the active execution-grading primitives. Online grading uses the complete live result even when persisted rows are capped; insufficient persisted evidence returns an explicit unmeasured or environment-blocked outcome rather than a model failure.
 - **`turnMatchesExpectation(actual, expected)`** (derailment, rbi `≥0.35`) / **`deliveryFuzzyMatch(actual, expected, opts?)`** (DELIVERY; short expected → token-containment — hardens the `gameX` vs `gameA` false-positive).
-- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema (zod) + YAML/JSON loader. Structural positions reject unrecognized keys; `meta` and `dimensions` keep undeclared per-case provenance.
-- **`resolveReferenceSql(case)`** — bind a case's `expected.sql` template placeholders (`{{ds_yesterday}}`, `{{ds_7d_ago}}`) to its own `meta.anchor_ds`; refuses an unknown placeholder, a missing anchor, or a malformed anchor rather than emitting SQL that runs and answers wrongly.
+- **`EvalCaseSchema` / `loadCase(path)` / `loadCases(paths)`** — da-fresh case schema (zod) plus YAML/JSON loader. Structural positions reject unrecognized keys; `meta` and `dimensions` retain undeclared per-case source fields.
+- **`resolveReferenceSql(case_)`** — binds a case's `expected.sql` template placeholders (`{{ds_yesterday}}`, `{{ds_7d_ago}}`) to its own `meta.anchor_ds`; it refuses unknown placeholders, missing anchors, and malformed anchors rather than emitting SQL that runs with the wrong date.
 
 ## Determinism
 
@@ -77,6 +101,15 @@ const delta = computeDelta(prev, curr)
 console.log(`${delta.summary.improved} improved, ${delta.summary.regressed} regressed`)
 ```
 
+## Host wiring (the seams this library does not own)
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-eval` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
+
 ## Model Experience
 
 None, as the package is a test harness that injects its responder, executor, and judge collaborators and neither assembles nor sends a model request, prompt, tool, or result.
@@ -88,5 +121,6 @@ No direct effect; the agent runtime and the injected judge LLM own any model-vis
 ## Known Limitations and Deferred Work
 
 - **Dropped SQL-hygiene assertions** — rbi L1's sqlglot-bound `field_coverage`/`limit_reasonable`/`partition_compliant` are dropped (G2 trade-off): an agent whose result set is right but SQL is "dirty" (SELECT *, missing LIMIT, missing partition predicate) PASSES da (ii).
+- **Duplicate legacy runtime** — the old batch runner, health gate, and host adapter remain until T12 removes them; production execution grading uses `@deepseek-ai/dsh-eval-runner`.
 - **Judge variance** — the judge is not bit-reproducible (decision 1); a separate judge snapshot for fully deterministic regression is deferred.
 - **Live e2e deferred** — the library is unit-tested with stub collaborators; a live e2e (real runtime + real `dsh-llm-replay` snapshot + real `ctx.query.execute` + real `llm-dashscope` judge) is deferred (with-key, self-skip).

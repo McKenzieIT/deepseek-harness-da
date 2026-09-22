@@ -29,8 +29,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { Bm25Linker, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
-import { type RetrievalService as _RetrievalService } from '@deepseek-ai/dsh-retrieval/src/index.ts'
+import { Bm25Linker, type RetrievalLinker, type RetrievalHit, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine'
+import { type RetrievalService as _RetrievalService } from '@deepseek-ai/dsh-retrieval'
 import { expandQuery } from './expand-query.ts'
 
 export const name = 'tool-search-data-sources'
@@ -284,6 +284,10 @@ function applyAliasFusion(
   // applyGraphExpansionAndJoins. Without this, alias-resolved score
   // (ALIAS_BOOST=2.0) is 15-20× below BM25 scores (30-40) in the 4692-item
   // production corpus, and graph expansion drops them at the topK slice.
+  /* v8 ignore next 3 -- the `?? aliasBoost` fallback inside the consequent is
+   * unreachable: this arm runs only when `candidates.length > 0`, and
+   * `Math.floor(len / 2) < len` for every `len >= 1`, so the dense `SearchHit[]`
+   * always yields an element whose required `score: number` is non-nullish. */
   const medianBm25 = candidates.length > 0
     ? candidates[Math.floor(candidates.length / 2)]?.score ?? aliasBoost
     : aliasBoost
@@ -398,6 +402,10 @@ function applyContinuousBlend(
   // candidates to be dropped by the topK slice — effectively disabling alias
   // resolution in the 4692-item production corpus.
   const midIdx = Math.floor(candidates.length / 2)
+  /* v8 ignore next 3 -- the `?? maxBm25` fallback inside the consequent is
+   * unreachable for the same reason as `medianBm25` above: this arm runs only
+   * when `candidates.length > 0`, and `midIdx = Math.floor(len / 2) < len`, so
+   * `candidates[midIdx].score` is always a number. */
   const medianBm25Norm = candidates.length > 0
     ? (1 - coverage) * ((candidates[midIdx]?.score ?? maxBm25) / maxBm25)
     : 0.5
@@ -572,9 +580,14 @@ function applyGraphExpansionAndJoins(
   const ids = finalCandidates.map(c => c.id)
   for (let i = 0; i < ids.length; i++) {
     const a = ids[i]
+    /* v8 ignore next -- unreachable: `ids` is the dense `string[]` produced by
+     * `finalCandidates.map(c => c.id)` and `i < ids.length`, so `a` is always a
+     * string; the guard only answers `noUncheckedIndexedAccess` typing. */
     if (a === undefined) continue
     for (let j = i + 1; j < ids.length; j++) {
       const b = ids[j]
+      /* v8 ignore next -- unreachable for the same reason as `a` above:
+       * `j < ids.length` indexes the same dense `string[]`. */
       if (b === undefined) continue
       const path = graph.findJoinPath(a, b)
       if (path === null || path.length < 2) continue
@@ -582,6 +595,9 @@ function applyGraphExpansionAndJoins(
       for (let k = 0; k < path.length - 1; k++) {
         const src = path[k]
         const dst = path[k + 1]
+        /* v8 ignore next -- unreachable: `path` is the dense `string[]` returned
+         * by `graph.findJoinPath` and `k < path.length - 1`, so both `src` and
+         * `dst` are strings; the guard only answers `noUncheckedIndexedAccess`. */
         if (src === undefined || dst === undefined) continue
         const on = graph.getJoinCondition(src, dst)
         if (on) segs.push(`${src} JOIN ${dst} ON ${on}`)
@@ -704,9 +720,17 @@ export function apply(ctx: Context, config: Config = {}): void {
           if (e instanceof Error && e.message.includes('enrichment-llm-wiring')) {
             console.warn('enrichment-llm-wiring: no provider/model configured; skipping query expansion')
             query = args.query
+            /* v8 ignore start -- unreachable re-throw: `expandQuery` wraps its
+             * whole LLM round-trip (stream iteration, block assembly, text
+             * processing) in a catch that degrades to the original question, so
+             * the ONLY error it propagates is the `enrichment-llm-wiring` config
+             * error handled by the arm above (`ctx.get` does not throw). Kept as
+             * a defensive guard so a future expansion failure mode is surfaced
+             * rather than silently swallowed. */
           } else {
             throw e
           }
+          /* v8 ignore stop */
         }
       }
       // P5b soft-fallback swap: when the `ctx.retrieval` seam is registered
@@ -753,6 +777,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       }
       const candidates = blend(graph, searchDataSources(linker, query, topK), args.query)
       const { candidates: expanded, join_constraints } = applyGraphExpansionAndJoins(ctx, candidates, topK, exec.scopeId)
+      /* v8 ignore next -- `join_constraints` is always empty on this Q1
+       * thin-default arm, so the spread only ever takes the `{}` path: a
+       * non-empty list needs a relation graph, which `probeRelationGraph` obtains
+       * solely from `ctx.get('schema').getRelationGraph`, yet this arm is reached
+       * only when that SAME schema object has no `loadRetrievalCorpus` function.
+       * The only provider registered under 'schema' (`SemanticLayerService`)
+       * implements both, so graph-present + corpus-absent cannot co-occur. */
       return { candidates: qualifyCandidates(ctx, expanded), ...(join_constraints.length > 0 ? { join_constraints } : {}) }
     },
   }))

@@ -2,7 +2,7 @@
 
 **Type**: task
 **Phase**: upstream-merge
-**Status**: open
+**Status**: **resolved** (2026-09-13 Cluster D hybrid apply landed via UM-C-GATES; 5 gates 收口——2 FIX + 2 KNOWN-RED + 1 moot; CI real red-set 归属明确)
 **Assignee**: unclaimed
 **Blocked by**: ~~UM11~~ → **UM10（已 resolved 2026-09-10）**。原写 `UM11` 与 UM11 的 `Blocked by: UM10 + UM12` 互锁成环；以 `UM-flow-2026-09-08.md` 的 `UM10 → UM12 → UM11` 为准 → **本票现 unblocked，是 Phase C 当前 frontier**
 **Blocks**: —
@@ -293,3 +293,96 @@ comm -23 baseline after  →  doc graphs / Cordis inspect catalog / config catal
 ### [2026-09-17 follow-up] UM15 Decision #1 cron 半——绿基线后加 `schedule:` workflow
 
 UM15 Decision #1（staleness detector 跑哪 = (c) local 先 + cron 后）的 **cron 半挂在本票**：local 半已落（lefthook pre-push 挂 `verify-upstream-sync-record` 门，[UM15 §5b](UM15-durable-upstream-sync-method.md) commit `0301586bed`，2026-09-17）。cron 半 = 当本票达绿基线（11 门红 resolved 或全 known-red 落定、`check:ci:static` 稳定绿）后，加一个 `schedule:` GitHub workflow 定期跑 `pnpm run upstream-status`（写 impact report + 告 staleness），实现周期性 upstream 漂移检测。**先决条件 = 本票绿基线**——勿在 36/11 时加 `schedule:`（会持续告 known-red 噪声）。本 follow-up 防拖。
+
+
+## Session progress — 2026-09-11（subagent 扫票：线D 落 resync + 4 stale 前提证伪）
+
+- **线D DONE**：commit `c2623c84eb` on resync `upstream/resync-2026-09-08`（`7a20c4cb0a`→`c2623c84eb`，unpushed）。`git rm knip.json` + `connection/tests/fake-api.client.ts` + `rescope-fork.ts`/`.spec` knip block drop + `verify-application-entrypoints.ts` +1 MANIFEST_BIN/+9 EXECUTABLE_SOURCE → **C5 application-entrypoints gate 10→0**。Gates（resync）：`verify-application-entrypoints` ✓(10→0)、`typecheck` ✓（`tsc -b tsconfig.client.json`+build exit 0）、`rescope-fork.spec` ✓(13 tests)、`constraints` pre-existing-red **0-new**（scope=package.json version-sync，与 线D script/test/config 编辑无重叠——92 条失败全版本不匹配+1 peerDep，无一条提及 线D 5 文件）。lefthook pre-commit 绿。
+- **⚠ UM12 无 literal L6 patch（stale）**：ticket 只 summary（"application entrypoints (10)" line 291 / "12 条 allowlist" line 143 stale pre-zombie-deletion）；prompt "UM12 有精确 patch" 未验证。S-D **独立 derive** 10 entries（replicate gate logic on resync：shebang-scan + package.json-bin-scan 减 16 allowlisted 减 lib/dist/coverage/node_modules）→ 1 MANIFEST_BIN + 9 EXECUTABLE_SOURCE = 10，**精确 reconcile** UM12 count。
+- **⚠ tree = resync 非 master**：master `fc917a55d4` pre-merge（ahead 3/behind 2773）**无** `verify-application-entrypoints.ts`/`api/session-controller/tests/fake-api.client.ts`/clean `package.json`（knip script 66/devDep 170/hygiene 134 仍在）。post-merge 内容在 resync `7a20c4cb0a`（prior UM cleanups `5ee128214d`/`63659a22d4`/`03e865a148`/`d0f152ba32` 皆落此）。**拓扑**：items 1-3（线D/UM-LINT/translation code）= resync 树（无 eval session，安全写）；items 4-5（p2-*/master-sync）+ docs = master 树（eval 活跃 index.lock alert）。
+- **11 门红状态**（36/11，零新增——线D 清 entrypoints 10→0）：剩 A4（runtime-closure/constraints/export-jsdoc/translation-pairing）+ B2 known-red（type-equiv→UM-QODER-RETIRE / package-invariants→UM-INVARIANT-CLEANUP）+ C5（i18n 98/deps 74/subsystem-pages 5/doc-standard；entrypoints 已清）。
+- **deferred**（见各专属票）：UM-LINT re-triage on resync（92 errors，见 UM-LINT-TYPEAWARE-CORDIS）；translation-zh apply（Cordis region-splice 用户锁定，见 UM-GEN-DOC-TRANSLATION-OBLIGATION）；p2-* del + master-sync MERGE（gated on eval session，见 UM11）。
+- handoff：`wayfinder/data-agent/prompts/next-session-2026-09-11-post-subagent-sweep.md`（commit `e1a1d6049a` on master）。
+
+### [2026-09-11 实测重基线] `check:ci:static` = **37 passed / 11 failed**；红集**构成变了**
+
+在 resync `5fe9b32e44` 完整跑 `pnpm run check:ci:static`（221.86s，48 门）。**票里的「36/11」需重基线**，且红集成员与票记不同：
+
+| 门 | 规模（实测） | 类 | 归属 |
+|---|---|---|---|
+| runtime closure | 1 条链（`dsh-python-runtime-closure → dsh-phase-gate → dsh-scope-registry`） | A | GA-FORK-CI-green / parallel-dev-cleanup |
+| constraints | **71**（67 条 `version must match root version 0.1.3-alpha.2` + 3 条 `files must be` + 1 条 dep） | A | 同上 |
+| export jsdoc | **3** | A | 同上 |
+| translation pairing | **29** 子项 | A | parallel-dev-cleanup/R1 |
+| package invariants | **74**（67 companion + 7 peerDep） | B known-red | [UM-INVARIANT-COMPANION-CLEANUP](UM-INVARIANT-COMPANION-CLEANUP.md) |
+| type equivalence | **3** DRIFT | B known-red | [UM-QODER-SUBAGENT-RETIRE](UM-QODER-SUBAGENT-RETIRE.md) |
+| client UI i18n | **98** | C | **无主票** |
+| package dependencies | **75**（票记 74，已 +1） | C | **无主票** |
+| subsystem pages | **5** | C | → [UM6](UM6-docs-subsystems-keep-data-agent.md)（全是 fork data-agent 包组） |
+| documentation standard tests | **2/12** 测试挂（`packageReadmeStructureErrors`） | C | **无主票** |
+| **config catalog** | `docs/config-catalog.md` stale（实测 regen 仅差 **1 行**；但有 `.zh.md` + `.i18n.yaml` 配对，须连带 zh 并 `--write` 重记） | **新入账** | **无主票** |
+
+**两处相对票记的变化**：
+1. **`application entrypoints` 已转绿**（线D `c2623c84eb` 把 10 条清零）—— 票里 C 类列的「application entrypoints (10)」应移出红集。
+2. **`config catalog` 是红的，而票的 11 条里没有它** —— 净额仍是 11，但成员换了一个。
+
+**已转绿并复验过的门**（不只是声称）：`application-entrypoints`、`markdown-links`(1730)、`doc-graphs`(6)、`architecture-graph`、`cordis-catalog`(99)、`cordis-inspect-catalog`、`doc-refs`(3089)、`agent-note-format`、`tsconfig-paths`。
+
+**⚠ 并发读数陷阱（记录以免重犯）**：本次复核期间有 subagent 报 `config-catalog` 为绿——那是因为它的采样窗口正好落在主 session 为估算而临时 `gen-config-catalog` 又还原的那几十秒内。**在同一棵树上并行跑门时，任何单点读数都可能是别人半路状态的快照**；权威读数取完整 `check:ci:static` 的那一次。
+
+**其它已过期条目**：
+- 「`lint:contracts-ready` 93 / 1980 / 92 errors」与「UM-LINT re-triage on resync（92 errors）deferred」→ **`5fe9b32e44` 上该门 0 errors / 0 warnings**（见 [UM-LINT-A-OXLINT-RESOLUTION](UM-LINT-A-OXLINT-RESOLUTION.md)）。
+- `export jsdoc` 的归因不对：3 条实为 `createFixtureConnectionRpc`（`packages/client/connection/src/client/fixture.ts:3959`，无 JSDoc）+ `parseNumericCell` ×2（`packages/client/ui-present-table/src/client/numeric.ts:8`，缺 `@param raw`/`@returns`）；**`fadeIn` 不在其中**（它在 `graph-animations.ts:62`，票记 `:58`，且已通过）。
+- 「Round 3 cherry-pick(`a99d206835`) 未做」→ **已 moot**（那两处已不存在，且 `fix/lint-noop-assertion-unused-disable` 分支 ahead=0）。
+- 「knip 门底层债是否仍存在未测」→ **已 moot**（`knip.json` 已删，root 与 `eval-cli` 清单里无 knip 引用）。
+- `translation pairing` 里由 gen-doc-graphs 引起的 2 条（`docs/capability-seams.md`/`docs/event-producer-consumer.md`）**已消**（`4d4f725748` 补了 zh + i18n.yaml）；但**冒出同类的新一条**：`docs/architecture-graph.md` 完全没有 `.zh.md`（`gen-architecture-graph` 只发英文）—— 这是 [UM-GEN-DOC-TRANSLATION-OBLIGATION](UM-GEN-DOC-TRANSLATION-OBLIGATION.md) 已为 `gen-doc-graphs` 解决过的同一个 bug，换了一个 generator 又出现。
+
+**C 类无主是真实缺口**：票里写「另开票（D3/D4）」，但 **D3/D4 从未创建**。已补：[UM-C-GATES-UPSTREAM-NEW](UM-C-GATES-UPSTREAM-NEW.md)。
+
+**估算**：伞票本体 **1-2 session**（重基线到 11 的新构成、读 PR #115 的 CI checks、把 M1/M2 归因项明确 kill 或跑 `6b7610d45a` 矩阵、基线裁决落定后接 cron workflow）。**若要求「真绿」则 5-7**，但那部分质量在各专属票里，**别在本票重复计**。
+
+### [2026-09-12] 最后一个大 open 项「CI 上真实 red set 无人见过」——**已可关**
+
+PR #117（merged `c174c9a784`）跑了两轮 CI，真实 red set 现已观测到，与本地 `check:ci:static` 的关系也清楚了：
+
+- **CI 上只有 2 个红**：`Dependency layout`（Release (dsh) workflow → `verify-package-dependencies`）+ `Pack npm tarballs`（Release (dsh) → `release:verify` 版本分裂）。其余全绿或 skip：Landlock Matrix / darwin degradation-proof / linux-arm64 / linux-x64 / Release (vendor) 的 Pack npm tarballs 全 SUCCESS；cloudflare pages preview 与 Issue lifecycle/policy 为 SKIPPED。
+- **CI red set ⊊ 本地 red set**：本地全量 `check:ci:static` = **37 passed / 11 failed**，CI 只暴露其中 2 个。原因是 `ci-static` 这个 gate 集**并未全部接到 GitHub workflow 上**——A 类 4（runtime-closure/constraints/export-jsdoc/translation-pairing）、type-equivalence、client-ui-i18n、config-catalog、subsystem-pages、doc-standard、tsconfig-paths 在 CI 上**没有对应 job**。**这本身是一条发现**：本票的「门账」若只看 CI 会系统性低估 9 个红；反之 CI 绿不等于门绿。是否要把这些 gate 接上 CI（以及接哪些）是本票或 [UM15](UM15-durable-upstream-sync-method.md) §2 gate-coverage meta-gate 的后续裁决点。
+- **两红均已确证非本次 landing 引入**：PR 改 34 文件、**零 `"version"` 行改动**（证 `Pack npm tarballs` 无关）、依赖净 **−1** 行（删 `dsh-client-connection`+`dsh-client-ui-renderer`，加 `dsh-util-values`，方向与 `Dependency layout` 一致）；且 PR #116 带同一对红 MERGED 有先例。
+- **cron follow-up 仍 open**（本票 2026-09-15 加的那条）：staleness 的 local 先 / lefthook pre-push 已落（UM15 §5b），**cron 后**这一半仍未做。
+
+### [2026-09-12] PR #119 第 4 次一致确证 CI real red-set
+
+PR #119（wayfinder tracker 2026-09-12 + evaluation reconcile merge，87 commit）再一次跑同一对红：`Dependency layout` + `Pack npm tarballs`。合并前经 GitHub check-runs API 对 `origin/master` 顶点 `4cc985d567` 复核，**同一 2 门 empirically `failure`**——本分支零新增。
+
+**PR 观测系列（4 次一致）**：#115（首 merged 后 CI）/ #116（首 CI post-merge）/ #117（`c174c9a784` 两轮 CI）/ #119（`9ffb7b3eed` 合并前 CI）。**CI 真实 red set 稳定 = {`Dependency layout`, `Pack npm tarballs`}**（4 数据点，无漂移）。
+
+**本项即上文「最后一个大 open 项 已可关」的第 4 次确证** → 建议随 [UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 决策一起收口（A 类 4 + C 类 4 是否接 CI = [UM15](UM15-durable-upstream-sync-method.md) §2 gate-coverage meta-gate 的裁决点）；单独收口不划算，因为决策路径一致。
+
+**附注**：origin/master 顶点还带 3 个 `python runtime / node24-*` 红，那是 push 事件的检查、不在 PR 上跑（在 `4cc985d567` 上 pre-existing）。这是「CI 有多少 job」的正交问题——归 UM15 §2 gate-coverage meta-gate 处理，与本项收口无关。
+
+### [2026-09-13] UM-C-GATES grilling closed — UM12 收口 shape confirmed hybrid
+
+[UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 的 4 门（+ `verify-config-catalog` 新入账）3-judge panel + slice-first-decide 完成，决策 doc 落其 Resolution 节。UM12 收口 shape 为 **hybrid**：
+
+- **FIX + wire CI** (2): `verify-config-catalog` (1-line regen + pair record) · `docs/architecture-graph.md` zh emission (reuse `gen-doc-graphs` region-splice pattern)
+- **WAIVE (架构 pattern)** (2): `documentation standard tests` (fork 特化包 README kinds) · `verify-package-dependencies` (fork-plugin peer+dev pattern，87% 同类)
+- **KNOWN-RED permanent** (1): `verify-client-ui-i18n` (data-agent client UI 内网中文用户，无 i18n 用户)
+
+**CI real red-set** = {`Dependency layout`, `Pack npm tarballs`} 第 4 次一致 (PR #115/#116/#117/#119) — 归 UM-C-GATES 的 `verify-package-dependencies` **WAIVE 决策后**这两条 CI 红转为**架构 pattern 豁免的 CI 表现形式**（CI 上的 Release workflow 仍会跑 `verify-package-dependencies`，红是因架构分歧，属预期），不属新增回归。
+
+**PR-blocker 影响**：本票的「最后一个大 open 项 CI 上真实 red set 无人见过」= 已可关（PR #119 第 4 次一致确证）+ UM-C-GATES 的 `verify-package-dependencies` WAIVE 决策一并把它转到 "expected pattern-based CI red" 状态。
+
+**收口条件**：用户接受 UM-C-GATES synthesis 后，本票 → resolved（附本节 + UM15 §2 meta-gate manifest 已接住 3 判定）。
+
+**Status suggestion**: `open` → **`open (awaiting UM-C-GATES sign-off, then resolved)`**。若用户批 hybrid：UM12 与 UM-C-GATES 同时 resolved。
+
+### [2026-09-13 apply] Cluster D hybrid landed → 本票 resolved
+
+[UM-C-GATES](UM-C-GATES-UPSTREAM-NEW.md) 的 Cluster D 5-gate hybrid apply 完成（详见其 Resolution 2026-09-13 apply 节）。UM12「CI real red-set 无人见过」项：
+- **Gate 4 `verify-package-dependencies` (65 violations) 已 FIX**（用户订正决策：fork 短期不发布，peer 收敛到 upstream）→ CI 的 `Dependency layout` 门本次 apply 后应转绿
+- **Gate 5 `verify-client-ui-i18n` (83) KNOWN-RED permanent**（用户拍板：短期不国际化）
+- **Gate 3 `documentation standard tests` KNOWN-RED permanent**（scope 订正后 65 fork 包 retrofit 归 [UM-FORK-README-SKELETON-RETROFIT](UM-FORK-README-SKELETON-RETROFIT.md) 单票）
+- **Gate 1 `verify-config-catalog` FIX**（1-line regen）
+- **Gate 2 architecture-graph zh 缺口** 订正为 **moot**（已 in excluded manifest）
+
+**UM12 status**: open → **resolved**（Cluster D hybrid apply 收口；剩下 KNOWN-RED 挂账已 documented，permanent 或有专属 follow-up 票）。

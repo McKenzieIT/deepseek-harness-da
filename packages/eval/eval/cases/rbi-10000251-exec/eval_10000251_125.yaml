@@ -26,7 +26,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: easy
   business_context: 货币变动涉及角色数（game.coin.change）；去重 role_id
   created_at: '2026-08-04'

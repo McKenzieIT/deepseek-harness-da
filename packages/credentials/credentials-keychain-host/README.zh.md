@@ -1,17 +1,42 @@
+---
+description: "TODO: translate: [data-agent] Mount face that registers KeychainCredentialProvider as ctx.credentials, composing a plain writable file/env fallback (G3c global-writes gap, decision A)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-credentials-keychain-host
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: [data-agent] Mount face that registers KeychainCredentialProvider as ctx.credentials, composing a plain writable file/env fallback (G3c global-writes gap, decision A)
+
+## 目录
+
+- [为什么需要](#why)
+- [G3c global-writes gap（decision A）](#g3c-global-writes-gap-decision-a)
+- [Bundle 接线（G3c）](#bundle-wiring-g3c)
+- [unlockPassword 来源](#unlockpassword-source)
+- [开发备注](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+
 将 `KeychainCredentialProvider` 注册为 `ctx.credentials` 的挂载面，组合一个纯可写文件/env fallback（G3c global-writes gap，decision A）。
 
+<a id="why"></a>
 ## 为什么需要
 
 `KeychainCredentialProvider`（P12b）无 Schemastery `Config`——其 `runner` 和 `fallback` 可注入——因此不能直接 yml 挂载。本 host 是 yml 可挂载面：一个 function plugin，接受标量配置 + 可注入 `runner`，解析解锁密码，在 credentials-local 文件/env 层之上构建一个纯 `KeychainFallback` shim，并程序化 `ctx.plugin` keychain（后者自动注册为 `ctx.credentials`）。
 
+<a id="g3c-global-writes-gap-decision-a"></a>
 ## G3c global-writes gap（decision A）
 
 P12b 的 `KeychainFallback` 是只读 `{resolve, describe}`。将 keychain 挂载为 `ctx.credentials`（替换 credentials-local）暴露了一个缺口：**全局凭证写入**（无 `{ userId }`——如 Models 页面存储 `DEEPSEEK_API_KEY`）需要可写层，但 `keychain set(no userId)` 会抛异常。本 host 的 shim **可写**——复用 credentials-local 的 `parseCredentialsDocument` + `renderDocument`（保留注释）+ `writeFileAtomic` + `withFileLock`——且 `keychain set(no userId)` 委托给 `fallback.set`。（`vendor/cordis/src/reflect.ts` `provide` 在同一 scope 对同名 provider 抛异常，因此 option C "保留 base local + keychain composite" 不可行——已为 G3c 验证。）
 
+<a id="bundle-wiring-g3c"></a>
 ## Bundle 接线（G3c）
 
 data-agent bundle 禁用 base `credentials`（credentials-local）并挂载本 host 为 `credentials`，使 keychain 成为唯一 `ctx.credentials` provider；shim 是纯对象（非 Service），不会双重注册。
@@ -28,6 +53,7 @@ data-agent bundle 禁用 base `credentials`（credentials-local）并挂载本 h
         perUserFallbackRefs: []             # stable: per-user PAT required (early: omit = all fall back)
 ```
 
+<a id="unlockpassword-source"></a>
 ## unlockPassword 来源
 
 - `interactive`（默认）：启动时 stdin 提示（仅 tty，best-effort——安全选项；存储密码可被 bash 读取——参见 P12b 发现）。非 tty（launchd 服务）返回 `undefined` → keychain 须预创建且已解锁。
@@ -36,6 +62,15 @@ data-agent bundle 禁用 base `credentials`（credentials-local）并挂载本 h
 
 runtime-exfil ACL（P12c：原生 Security-framework 绑定 + harness 代码签名）经评估为 **over-spec 并 dropped（2026-08-21）**——破坏 dsh 开箱即用（tsx/node 脚本无 binary 可签），且 runtime-exfil 威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖（业务用户 agent 禁 bash；admin 拮余解锁期窗口=可信操作者自风险）。故本 host 落地的是开箱即用下的最终态：静态加密 + locked-keychain + 按用户 CRUD + branding + 可写全局 fallback。
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-credentials-keychain-host` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## Model Experience
 
 间接，通过消费方 LLM adapter：provider 解析的凭证值对其 provider 请求授权，从不直接进入模型上下文。
@@ -44,6 +79,7 @@ runtime-exfil ACL（P12c：原生 Security-framework 绑定 + harness 代码签�
 
 无影响；解析的凭证值对模型不可见，从不进入请求前缀。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
 - **运行时 exfil ACL** — 限制 keychain 读取仅限 harness 二进制文件（排除 bash/terminal）的 per-item ACL 需要原生 Security-framework 绑定 + Developer-ID 代码签名。经评估为 over-spec 并 dropped（P12c，2026-08-21）：破坏开箱即用、非硬边、威胁已由 at-rest + locked-keychain + auto-lock + P10 工具门禁覆盖。security-CLI 无法区分 spawner 和直接调用者（事实局限，保留）。

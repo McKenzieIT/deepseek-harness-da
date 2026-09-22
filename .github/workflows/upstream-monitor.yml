@@ -1,0 +1,90 @@
+name: Upstream monitor
+
+# Scheduled staleness alarm for the tracked upstream sync.
+#
+# `pnpm run upstream-status` is a report and exits 0 by contract, so
+# scheduling it alone could never alert: every run would be green whether the
+# fork is current, months behind, or unable to reach the remote at all. This
+# workflow runs the report for its human-readable artifact and then runs
+# `pnpm run upstream-monitor`, the gate that exits non-zero when the fork
+# drifts past the thresholds recorded in upstream-sync.json, when that record
+# is invalid or names a commit this history never absorbed, or when the
+# upstream remote cannot be probed.
+#
+# The failed run IS the notification (GitHub emails the scheduled-run failure
+# to the repository owner). No Issue is filed: automatic Issue creation needs
+# write permissions plus deduplication, update, and closure behavior, none of
+# which this workflow designs.
+#
+# Schedule: 21:17 UTC daily, which is 05:17 Asia/Shanghai. Daily rather than
+# weekly because the record's own thresholds are 14 days and 150 commits: a
+# weekly probe can report a breach up to 7 days after it happens, which is
+# half the day-threshold spent on latency. One run costs about a minute.
+#
+# GitHub disables scheduled workflows after 60 days without repository
+# activity; a manual `workflow_dispatch` run re-enables them.
+on:
+  schedule:
+    - cron: '17 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per ref and event, and never cancel: a manual dispatch must not
+  # kill the scheduled probe that owns the alarm, and a scheduled probe must
+  # not kill a human's investigation run.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+env:
+  # CI runs must never report to the production telemetry endpoint baked
+  # into apps/cli/cordis.yml (AppCLIEntry disables the row when set).
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  upstream-monitor:
+    name: upstream-monitor
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history: the gate proves the recorded upstream commit is an
+          # ancestor of HEAD and counts commits from it, neither of which a
+          # shallow clone can answer — it would report `indeterminate`.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure the upstream remote
+        # actions/checkout wires only origin; every probe reads remote `upstream`.
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/deepseek-ai/deepseek-harness.git
+          git remote -v
+
+      - name: Report upstream staleness (report only, never fails)
+        run: pnpm run upstream-status
+
+      - name: Gate on upstream staleness (fails the run)
+        run: pnpm run upstream-monitor -- --report upstream-sync/upstream-monitor.txt
+
+      - name: Retain the staleness report
+        # `always()`: the failing run is exactly the one whose report matters.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: upstream-monitor-${{ github.run_id }}
+          path: upstream-sync/
+          if-no-files-found: error
+          retention-days: 90

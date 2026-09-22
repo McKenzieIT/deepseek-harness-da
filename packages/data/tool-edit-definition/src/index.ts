@@ -13,7 +13,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { computeStructuredDelta, type Audit } from '@deepseek-ai/dsh-audit'
 
 export const name = 'tool-edit-definition'
@@ -355,7 +355,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // failure must not break the business write.
       if (before !== undefined) {
         try {
-          const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
+          const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer')
           const beforeYaml = dumpYaml(before)
           audit.store.recordSnapshot(result.asset_name, kind as 'table' | 'event', beforeYaml)
         } catch { /* fail-silent */ }
@@ -411,16 +411,21 @@ export function apply(ctx: Context, _config: Config = {}): void {
               message: `write failed: ${res.error}`,
             }
           }
+          /* v8 ignore start -- computeEdit returns merged only paired with kind 'table' | 'event' |
+             'concept', and the merged === undefined early return above drops the merged-less
+             'metric' / 'unknown' returns, so reaching this arm forces kind === 'concept' and its
+             implicit else is unreachable. A line range rather than an else hint because the TS
+             transform drops comments written between `else` and `if`. */
         } else if (kind === 'concept') {
-          const { dumpYaml, invalidateCaches } = await import('@deepseek-ai/dsh-semantic-layer/src/io.ts')
+          /* v8 ignore stop */
+          const { dumpYaml, invalidateCaches } = await import('@deepseek-ai/dsh-semantic-layer')
           const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
-          // oxlint-disable-next-line typescript/unbound-method -- static module function, no this-binding
-          const { join } = await import('node:path')
+          const path = await import('node:path')
           const { mkdirSync } = await import('node:fs')
-          const conceptsDir = join(schema.semanticRoot, 'concepts')
+          const conceptsDir = path.join(schema.semanticRoot, 'concepts')
           mkdirSync(conceptsDir, { recursive: true })
           const yamlContent = dumpYaml(merged)
-          await writeFileAtomic(join(conceptsDir, `${result.asset_name}.yaml`), yamlContent, { mode: 0o644 })
+          await writeFileAtomic(path.join(conceptsDir, `${result.asset_name}.yaml`), yamlContent, { mode: 0o644 })
           // data-tools-discovery-3: bump the corpus-version signal so Bm25Linker
           // caches + the alias graph rebuild (mirrors writeTable/writeEventYaml
           // at io.ts:415/455 — a concept edit changes alt_labels/description).
@@ -430,6 +435,8 @@ export function apply(ctx: Context, _config: Config = {}): void {
         return {
           applied: false,
           asset_name: result.asset_name,
+          /* v8 ignore next -- computeEdit pairs merged with kind 'table' | 'event' | 'concept' and
+             the merged === undefined early return precedes this catch, so kind is always defined. */
           kind: kind ?? 'unknown',
           patched_fields: [],
           message: `write error: ${(e as Error).message}`,

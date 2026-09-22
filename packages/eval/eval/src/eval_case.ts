@@ -16,7 +16,7 @@
  * keys rather than dropping them, so a misspelled field fails the load instead
  * of silently scoring against a default (T11; AGENTS.md fail-loud). Open-ended
  * per-case metadata belongs in `meta` and `dimensions`, which keep undeclared
- * keys — adding provenance there needs no schema change.
+ * keys, so adding source metadata needs no schema change.
  *
  * @module @deepseek-ai/dsh-eval/eval_case
  */
@@ -50,10 +50,10 @@ const CaseInputSchema = z.strictObject({
 
 /**
  * Case expected: EXECUTION (`result_value`+`match_mode`, required together by preflight)
- * and/or DELIVERY (`answer` + optional `delivery_match` hint), plus the rbi
- * provenance a grader needs to replay the case — `sql` is the human-written
+ * and/or DELIVERY (`answer` + optional `delivery_match` hint), plus the RBI
+ * source fields a grader needs to replay the case — `sql` is the human-written
  * reference SQL (a template; resolve it through `reference_sql.ts`) and
- * `behavior` is rbi's expected answer shape.
+ * `behavior` is RBI's expected answer form.
  */
 const CaseExpectedSchema = z.strictObject({
   result_value: z.record(z.string(), z.unknown()).nullable().default(null),
@@ -68,16 +68,16 @@ const CaseExpectedSchema = z.strictObject({
 const CaseDimensionsSchema = z.record(z.string(), z.unknown()).default({})
 
 /**
- * rbi case provenance. The three declared fields are the ones graders read:
+ * RBI case source metadata. The three declared fields are the ones graders read:
  * `anchor_ds` is the `ds` a reference-SQL template resolves against (whether it
- * is a *valid* frozen snapshot is a separate question — event partitions are
- * known not to freeze), `tier` records review state, `provenance` records where
+ * is a valid frozen snapshot is a separate question — event partitions are
+ * known not to freeze), `tier` records review state, and `source` records where
  * the expected value came from. Undeclared keys are kept, not dropped.
  */
 const CaseMetaSchema = z.looseObject({
   anchor_ds: z.string().optional(),
   tier: z.string().optional(),
-  provenance: z.string().optional(),
+  source: z.string().optional(),
 })
 
 /**
@@ -105,7 +105,7 @@ export type EvalCase = z.infer<typeof EvalCaseSchema>
 /** The expected portion of an {@link EvalCase}. */
 export type CaseExpected = EvalCase['expected']
 
-/** The provenance portion of an {@link EvalCase} (rbi cases only). */
+/** The source metadata portion of an {@link EvalCase} (RBI cases only). */
 export type CaseMeta = NonNullable<EvalCase['meta']>
 
 /** The DELIVERY match modes. */

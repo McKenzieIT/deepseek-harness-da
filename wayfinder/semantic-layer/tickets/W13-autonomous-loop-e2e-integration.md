@@ -17,7 +17,7 @@ W6/W6a/W6b/W6e/W7 各 ticket 已 Closed——building blocks 全部就绪。但�
 | `eval-runner-service`（ctx.evalRunner） | data-agent bundle `eval-runner-service` row | ✅ |
 | `goal-eval-policy`（no-progress backstop） | data-agent bundle `goal-eval-policy` row（K=3, N=3） | ✅ |
 | `goal-eval-context`（eval evidence 注入） | data-agent bundle `goal-eval-context` row | ✅ |
-| `semantic-layer-management` preset | `apps/cli/config/agent-presets/semantic-layer-management/` | ✅ |
+| `semantic-layer-management` preset | `packages/bundle/data-agent/presets/semantic-layer-management/` | ✅ |
 | 管理工具集 | preset 内 7 tool rows | ✅ |
 
 ## 验证结果
@@ -64,5 +64,5 @@ Test file: `packages/goal/goal-round-driver/tests/autonomous-loop-e2e.spec.ts`
 - `packages/goal/goal-round-driver/src/index.ts`（续跑驱动实现）
 - `packages/goal/goal-eval-policy/src/index.ts`（no-progress 实现）
 - `packages/goal/goal-eval-context/src/index.ts`（eval evidence 注入实现）
-- `apps/cli/config/agent-presets/semantic-layer-management/agent.cordis.yml`（预设配置）
+- `packages/bundle/data-agent/presets/semantic-layer-management/agent.cordis.yml`（预设配置）
 - `packages/bundle/data-agent/cordis.patch.yml`（bundle 组装）

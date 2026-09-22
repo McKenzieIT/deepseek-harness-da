@@ -1,13 +1,16 @@
 import type { FC } from 'react'
 import type { Json } from './schemaGatewayBridge.ts'
 import type { AssetKind } from './hooks/useSchemaGateway.ts'
+import type { SemanticLayerTranslate } from './locales.ts'
+
+const JOIN_OPERATOR = 'ON'
 
 export interface AssetDetailProps {
   definition: Json | null
   kind: AssetKind
   name: string
   loading: boolean
-  t: (key: string, params?: Record<string, unknown>) => string
+  t: SemanticLayerTranslate
   onNavigateToGraph?: ((assetId: string) => void) | undefined
 }
 
@@ -48,7 +51,7 @@ export const AssetDetail: FC<AssetDetailProps> = ({ definition, kind, name, load
   )
 }
 
-const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }> = ({ def, t }) => {
+const TableDetail: FC<{ def: Record<string, Json>; t: SemanticLayerTranslate }> = ({ def, t }) => {
   const columns = asArray(def.columns)
   const metrics = asRecord(def.metrics)
   const dimensionRefs = asArray(def.dimension_refs)
@@ -115,7 +118,7 @@ const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
                   <strong>{asString(r.dim_table)}</strong>
                   {joinKeys.length > 0 && (
                     <span className="sl-asset-detail__join-keys">
-                      {' '}ON {joinKeys.map((k) => {
+                      {' '}{JOIN_OPERATOR} {joinKeys.map((k) => {
                         const kk = asRecord(k)
                         return `${asString(kk.source)}=${asString(kk.target)}`
                       }).join(', ')}
@@ -140,7 +143,7 @@ const TableDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
   )
 }
 
-const EventDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }> = ({ def, t }) => {
+const EventDetail: FC<{ def: Record<string, Json>; t: SemanticLayerTranslate }> = ({ def, t }) => {
   const paramsFields = asRecord(def.params_fields)
   const metrics = asRecord(def.metrics)
   const externalRefs = asArray(def.external_refs)
@@ -205,7 +208,7 @@ const EventDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }>
   )
 }
 
-const MetricDetail: FC<{ def: Record<string, Json>; t: (key: string) => string }> = ({ def, t }) => {
+const MetricDetail: FC<{ def: Record<string, Json>; t: SemanticLayerTranslate }> = ({ def, t }) => {
   const computation = def.computation as Record<string, Json> | undefined
   const caliberVariants = asArray(def.caliber_variants)
   const hostTable = def.host_table ? asString(def.host_table) : null

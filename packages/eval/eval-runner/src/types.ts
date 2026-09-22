@@ -104,10 +104,8 @@ export interface AttemptResult {
 
 // ─── Case Verdict ──────────────────────────────────────────────────────────────
 
-/**
- * The verdict for one eval case within a batch run.
- */
-export interface CaseProvenance {
+/** Case inputs preserved with a verdict for audit and offline rescoring. */
+export interface CaseSource {
   /** Exact case file consumed by the runner. */
   readonly sourcePath: string
   /** Case schema version, or null for legacy cases. */
@@ -116,12 +114,13 @@ export interface CaseProvenance {
   readonly scopeId: string | null
   /** Grading inputs required for offline rescoring. */
   readonly expected: Pick<EvalCase['expected'], 'result_value' | 'match_mode' | 'sql' | 'behavior'>
-  /** Case-authored provenance metadata, preserved without interpretation. */
+  /** Case-authored source metadata, preserved without interpretation. */
   readonly meta: EvalCase['meta'] | null
   /** Resolved reference SQL and substitutions, or the typed reason it could not resolve. */
   readonly referenceSql: ReferenceSqlResolution
 }
 
+/** The verdict for one eval case within a batch run. */
 export interface CaseVerdict {
   /** The case's unique identifier. */
   readonly case_id: string
@@ -132,7 +131,7 @@ export interface CaseVerdict {
   /** Latency in milliseconds for the entire case (all pass_k attempts). */
   readonly latency_ms: number
   /** Case/source evidence required to audit and rescore this verdict without reloading the corpus. */
-  readonly caseProvenance?: CaseProvenance
+  readonly caseSource?: CaseSource
   /** Checks completed before any candidate-agent call. */
   readonly preflight?: CasePreflightEvidence
   /** The raw MultiTurnCaseResult from the eval core (for detailed inspection). */

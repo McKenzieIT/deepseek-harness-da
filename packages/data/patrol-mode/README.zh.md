@@ -1,10 +1,33 @@
+---
+description: "TODO: translate: Autonomous patrol loop for the semantic layer management agent — iteratively finds weakest assets, diagnoses, proposes fixes with user confirmation, and triggers eval (W11 D7+S3)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-patrol-mode
 
 [English](README.md) | 中文
 
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Autonomous patrol loop for the semantic layer management agent — iteratively finds weakest assets, diagnoses, proposes fixes with user confirmation, and triggers eval (W11 D7+S3)
+
+## 目录
+
+- [Overview](#overview)
+- [配置](#configuration)
+- [事件](#events)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延后工作](#known-limitations-and-deferred-work)
+
+
 DeepSeek Harness data agent 语义层的自主巡检循环。迭代地找出最薄弱的 asset（通过 `evidenceQuery` 的健康度/缺口分析），逐个诊断，提出修复，请求用户显式确认，并在每轮确认编辑后触发一次 eval 批次。
 
-## 概述
+<a id="overview"></a>
+## Overview
 
 一个函数插件（`apply(ctx)`），在 `ctx.patrol` 上挂载 `PatrolService`。该服务持有一个长运行的巡检循环，以管理 session 为作用域，并在轮次之间处理「顺便」中断。
 
@@ -20,6 +43,7 @@ DeepSeek Harness data agent 语义层的自主巡检循环。迭代地找出最�
 4. 发出 `patrol/round-complete`（驱动 C2 批次渲染）。
 5. 等待下一轮或继续。
 
+<a id="configuration"></a>
 ## 配置
 
 `PatrolConfig` 传入 `start(opts)`：
@@ -30,6 +54,7 @@ DeepSeek Harness data agent 语义层的自主巡检循环。迭代地找出最�
 
 > 安全约定：每次编辑都需要用户显式确认。不得静默执行。
 
+<a id="events"></a>
 ## 事件
 
 所有事件都是并行广播（`@mode parallel`）：
@@ -44,6 +69,7 @@ DeepSeek Harness data agent 语义层的自主巡检循环。迭代地找出最�
 - `patrol/btw-received(message)`：巡检中途收到一条「顺便」用户消息。
 - `patrol/paused(reason)`：巡检暂停（无薄弱 asset、达到最大编辑数或确认超时）。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -52,6 +78,15 @@ pnpm vitest run packages/data/patrol-mode        # specs
 pnpm verify-package-invariants                   # invariant companion resolves
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-patrol-mode` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接地，通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -60,6 +95,7 @@ pnpm verify-package-invariants                   # invariant companion resolves
 
 本包的贡献对可复用的请求前缀是仅追加的，不会使既有缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
 - **`executeEdit` 是未实现的 no-op 桩（W11 TODO）。** `PatrolService.executeEdit` 当前仅审计已确认编辑（`patrol/edit-executed`）并返回 `true`，**并未将**编辑应用到管理 session 的 edit API。按当前交付，已确认编辑被静默地不予执行；轮次计数器仍会自增 `editsExecuted`，轮后 eval 仍会针对从未被修改的 asset 触发。在使本包的改进循环可用之前，需要将 `executeEdit` 接到管理 session 的 edit API（或让这个桩诚实地声明其不做应用）。不要依赖 patrol-mode 真正修改 asset。

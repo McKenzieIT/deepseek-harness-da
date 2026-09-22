@@ -4,7 +4,17 @@ import type { RpcResponse } from '@deepseek-ai/dsh-api-remotes/client'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { settingsSchema } from './settings-schema.client.ts'
-import { ModelsSettingsStore } from '../src/client/store.ts'
+import { joinProviderDirectory, ModelsSettingsStore } from '../src/client/store.ts'
+
+it.each([false, true])('retains configuration diagnostics when the route is active: %s', (active) => {
+  expect(joinProviderDirectory(active ? [{ id: 'openai', name: 'openai' }] : [], [{
+    provider: 'openai', displayName: 'openai', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'],
+    error: 'catalog unavailable',
+  }])).toEqual([{
+    provider: 'openai', displayName: 'openai', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'],
+    active, error: 'catalog unavailable',
+  }])
+})
 
 let nextRpc = 0
 function ok<T>(value: T): RpcResponse<T> {
@@ -146,6 +156,26 @@ describe('ModelsSettingsStore', () => {
     const state = store.store.getSnapshot()
     expect(state.status).toBe('ready')
     expect(state.credentialError).toBe('no provider')
+    expect(state.rows.every(row => row.credential === undefined)).toBe(true)
+  })
+
+  it('degrades the badge with readable text when the credential domain rejects with a non-Error', async () => {
+    // A transport failure rejects with an Error, but a host or a runtime can
+    // reject with anything, and the badge still has to say something.
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors
+    const { ctx, mirror } = api({ describeCredentials: () => Promise.reject('credentials worker died') })
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
+
+    await store.load()
+
+    const state = store.store.getSnapshot()
+    // A rejected credential read is an enrichment failure, not a load
+    // failure: the page still reaches ready, and the page error stays clear.
+    expect(state.status).toBe('ready')
+    expect(state.error).toBeNull()
+    // Stringified rather than swallowed: reading `.message` off a
+    // non-Error would put "undefined" in front of the user.
+    expect(state.credentialError).toBe('credentials worker died')
     expect(state.rows.every(row => row.credential === undefined)).toBe(true)
   })
 

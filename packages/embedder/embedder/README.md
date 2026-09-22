@@ -1,12 +1,38 @@
+---
+description: "Abstract embedder seam (ctx.embedder) + Reranker peer protocol + InferenceError: embedding inference for the data agent's retrieval/vectorization (P5b)"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-embedder
 
 English | [中文](README.zh.md)
+
+## Summary
+
+TODO: fill in Summary — placeholder seeded from package.json description.
+
+Abstract embedder seam (ctx.embedder) + Reranker peer protocol + InferenceError: embedding inference for the data agent's retrieval/vectorization (P5b)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Dev Note](#dev-note)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
 
 Abstract embedder seam (`ctx.embedder`) + Reranker peer protocol + InferenceError vocabulary for the data agent's retrieval/vectorization pipeline (P5b).
 
 ## Overview
 
 Defines the `EmbedderService extends Service` contract: `dim`, `modelId`, `embed(texts) → float[][]` async. Also declares the Reranker peer protocol (`modelId`, `rerank` async — injected post-RRF, not a top-level seam) and the `InferenceError` taxonomy (unavailable / timeout / not_ready / dim_mismatch) that triggers BM25-only degradation in retrieval providers.
+
+No runtime invariant companion is published because `@deepseek-ai/dsh-embedder` owns no independently observable relationship that can diverge from its runtime state.
+
+## Dev Note
+
+None.
+
 
 ## Model Experience
 

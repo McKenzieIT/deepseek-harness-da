@@ -5,18 +5,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bindSnapshotSelector, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import { Context } from '@deepseek-ai/cordis'
 import { SettingsSchemaService } from '@deepseek-ai/dsh-client-ui-settings/src/client/schema.ts'
-import type { RemoteErrorCode, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { SettingsScopeController } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-scope.ts'
 
 // Every fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
-const useResource = (() => ({
-  status: 'none' as const, value: undefined, failure: undefined, reload: () => {},
-})) as GlobalStandardProps['useResource']
-// Attention hook stub: the welcome notice never reads it, so the fixture
-// returns an empty attention snapshot to the selector.
-const useSessionPendingInteraction = ((selector: (state: Map<string, unknown>) => unknown) =>
-  selector(new Map<string, unknown>())) as never
+const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
+const usePanelInfo: GlobalStandardProps['usePanelInfo'] = selector => selector({ activePanelId: null })
 
 /** Stateless schema service for scope construction in this jsdom fixture. */
 const schemaService = new SettingsSchemaService(new Context())
@@ -30,9 +24,6 @@ import {
   WELCOME_NOTICE_VERSION,
 } from '../src/onboarding-copy.ts'
 
-// Upstream moved the notice copy out of onboarding-copy.ts (which now keeps only
-// the durable namespace / ack-field / version) and inlined it into locales.ts;
-// rebuild the per-locale copy view the assertions read from those locale keys.
 const WELCOME_NOTICE_COPY = {
   en: { title: en.welcomeTitle, body: en.welcomeBody, continueLabel: en.welcomeContinue },
   zh: { title: zh.welcomeTitle, body: zh.welcomeBody, continueLabel: zh.welcomeContinue },
@@ -43,7 +34,8 @@ afterEach(() => {
   document.getElementById('root')?.remove()
 })
 
-function response<T>(value: T): RemoteResult<T> {
+/** The settings namespace answers over the Remote carrier, which has no envelope. */
+function remoteAnswer<T>(value: T) {
   return { ok: true as const, value }
 }
 
@@ -60,10 +52,14 @@ function welcomeView(value: unknown, revision = 0) {
   }
 }
 
+type AttentionSnapshot = Parameters<Parameters<WelcomeNoticeProps['useSessionStatus']>[0]>[0]
+const noAttention: AttentionSnapshot = new Map()
+const useSessionStatus: WelcomeNoticeProps['useSessionStatus'] = selector => selector(noAttention)
+
 function mount(
   version?: string,
   mutateImpl: () => Promise<unknown> = () =>
-    Promise.resolve(response(welcomeView({ [WELCOME_NOTICE_ACK_FIELD]: WELCOME_NOTICE_VERSION }, 1))),
+    Promise.resolve(remoteAnswer(welcomeView({ [WELCOME_NOTICE_ACK_FIELD]: WELCOME_NOTICE_VERSION }, 1))),
 ) {
   const appRoot = document.createElement('div')
   appRoot.id = 'root'
@@ -71,7 +67,7 @@ function mount(
   const mutate = vi.fn(mutateImpl)
   const api = {
     settings: {
-      describe: () => Promise.resolve(response({
+      describe: () => Promise.resolve(remoteAnswer({
         writable: true,
         hasDocument: false,
         namespaces: [welcomeView(version === undefined ? {} : { [WELCOME_NOTICE_ACK_FIELD]: version })],
@@ -97,8 +93,8 @@ function mount(
     complete,
     openSection: vi.fn(),
     useSessions: unusedHook,
-    useSessionPendingInteraction,
-    useResource,
+    useSessionStatus,
+    usePanelInfo, useSessionRetainInfo: () => undefined, useResource,
     useWorkspaces: unusedHook,
     controller,
     useWelcome: bindSnapshotSelector(controller.store),
@@ -111,12 +107,7 @@ describe('WelcomeNotice', () => {
   it('uses the exact owner copy in both GUI locales', () => {
     expect(WELCOME_NOTICE_COPY.en).toEqual({
       title: 'Internal Testing Notice',
-      body: 'DeepSeek Harness 0.1 remains in testing for Harness developers. ' +
-        'Many areas need further improvement, and we welcome feedback from the developer community. ' +
-        "DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\n" +
-        'We look forward to exploring the limits of intelligence with developers around the world, ' +
-        'building on open-source, open, reusable, and composable infrastructure. ' +
-        'We welcome Harness developers everywhere to join the DSH plugin ecosystem.',
+      body: "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.",
       continueLabel: 'Continue',
     })
     expect(en.welcomeBody).toBe(WELCOME_NOTICE_COPY.en.body)
@@ -169,8 +160,8 @@ describe('WelcomeNotice', () => {
     fireEvent.click(action)
     expect(action.disabled).toBe(true)
     resolveWrite({
-      ok: false as const,
-      error: new RemoteError('settings-rejected' as RemoteErrorCode, 'read only', { ns: WELCOME_NOTICE_SETTINGS_NAMESPACE }) as never,
+      ok: false,
+      error: new RemoteError('settings/rejected', 'read only', { ns: WELCOME_NOTICE_SETTINGS_NAMESPACE }),
     })
     expect((await screen.findByRole('alert')).textContent).toBe(zh.welcomeError)
     expect(h.complete).not.toHaveBeenCalled()

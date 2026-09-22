@@ -1,10 +1,14 @@
 ---
 type: grilling
-status: open
+status: deferred
 blocked_by: []
 ---
 
 # CB-2: enrichment LLM 配置改为 dsh-data-agent 设置项
+
+## Answer
+
+Deferred. Enrichment model settings are product configurability work, not a cold-boot requirement; [CB-1a](CB1a-cold-boot-stabilization.md) already provides deterministic-only operation with an explicit warning when no enrichment model is configured. Reopen as a new ticket only when the product requires users to configure enrichment through the settings UI.
 
 **Branch**: `feat/cb2-enrichment-llm-settings`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
 

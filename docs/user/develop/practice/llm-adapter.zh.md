@@ -117,7 +117,14 @@ async function* exampleChunks(): AsyncIterable<StreamChunk> {
 
 ## 注册适配器
 
-```ts ignore-check
+```ts
+interface LlmRegistry {
+  registerAdapter(providers: readonly string[], adapter: unknown): void
+}
+
+declare const ctx: { llm: LlmRegistry }
+declare const adapter: unknown
+
 ctx.llm.registerAdapter(['my-provider'], adapter)
 ```
 

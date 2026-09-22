@@ -1,15 +1,37 @@
+---
+description: "TODO: translate: Model-facing present_table tool: present a table result with optional KPI aggregations and chart config for the INTERPRETATION phase"
+kind: "package-reference"
+---
+
 # `@deepseek-ai/dsh-tool-present-table`
 
 [English](README.md) | 中文
+
+## 概述
+
+TODO: 填写概述——占位内容来自 package.json 的 description 字段。
+
+TODO: translate: Model-facing present_table tool: present a table result with optional KPI aggregations and chart config for the INTERPRETATION phase
+
+## 目录
+
+- [配置](#config)
+- [验证](#verification)
+- [开发备注](#dev-note)
+- [模型体验](#model-experience)
+- [已知限制与延后工作](#known-limitations-and-deferred-work)
+
 
 面向模型的 `present_table`：为 data agent 的 `INTERPRETATION` 阶段**呈现带展示元数据的查询结果表**（标题、列、排序、KPI 聚合、图表配置）。agent（智能体）调用它来指示 UI 如何渲染已执行的查询结果，包括展示哪些列、如何排序、在表上方显示哪些汇总 KPI 卡片，以及是否包含图表可视化。
 
 这是一个**纯展示工具**（仅 `inject=['tools']`）：它记录表的展示意图并返回给 UI 渲染。它没有服务依赖，也不会探测 `ctx.schema` / `ctx.audit` / `ctx.identity`。阶段门禁的 `captureToolData` 通过 `tools/post-execute` 检测该调用。
 
+<a id="config"></a>
 ## 配置
 
 无需配置。纯展示。
 
+<a id="verification"></a>
 ## 验证
 
 ```sh
@@ -18,6 +40,15 @@ pnpm vitest run packages/data/tool-present-table
 pnpm verify-cordis-config
 ```
 
+未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-tool-present-table` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
+
+<a id="dev-note"></a>
+## 开发备注
+
+无。
+
+
+<a id="model-experience"></a>
 ## 模型体验
 
 间接通过 @deepseek-ai/dsh-nl2sql-engine 的 LLM（大语言模型）适配器。
@@ -26,6 +57,7 @@ pnpm verify-cordis-config
 
 该包的 contributions 仅追加到可复用的请求前缀，不会使既有缓存条目失效。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
 - 仅记录意图。UI 层负责实际渲染；本工具仅声明意图。
