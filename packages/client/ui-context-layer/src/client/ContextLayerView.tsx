@@ -9,7 +9,7 @@ import { DomainFilterToolbar } from './DomainFilterToolbar.tsx'
 import { SearchBar } from './SearchBar.tsx'
 import { OverlayToggle } from './OverlayToggle.tsx'
 import { useOverlayMode, useGraphAnimations } from './graph-animations.ts'
-import type { GraphData, GraphNode } from './types.ts'
+import type { SemanticGraphData as GraphData, SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway'
 import type { SessionEventSource, GraphUpdate } from './narration-gate.ts'
 import type { ContextLayerTranslate } from './locales.ts'
 

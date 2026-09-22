@@ -3,10 +3,10 @@ import { buildGraphDataClient } from '../src/client/graphDataBridge.ts'
 import type { GraphData } from '../src/client/types.ts'
 
 describe('buildGraphDataClient', () => {
-  const mockData: GraphData = {
+  const mockData = {
     nodes: [{ id: 'a', kind: 'dws', label: 'A', domains: ['core'] }],
     edges: [{ source: 'a', target: 'b', type: 'joins' }],
-  }
+  } as unknown as GraphData
 
   it('returns graph data on successful RPC', async () => {
     const remote = { getGraphData: vi.fn().mockResolvedValue({ ok: true, value: mockData }) }

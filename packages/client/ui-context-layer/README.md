@@ -16,6 +16,7 @@ Context layer graph — G6 v5 interactive relation graph with semantic zoom and 
 ## Table of Contents
 
 - [Dev Note](#dev-note)
+- [Open-kind presentation](#open-kind-presentation)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 
@@ -29,6 +30,10 @@ No runtime invariant companion is published because `@deepseek-ai/dsh-client-ui-
 ## Dev Note
 
 None.
+
+## Open-kind presentation
+
+The graph RPC types (`SemanticGraphNode`/`SemanticGraphEdge`/`SemanticGraphData`/`SemanticGraphQuery`) are owned by `@deepseek-ai/dsh-schema-gateway`; this package imports them (type-only) rather than re-declaring them. Node/relation `kind` is an OPEN `string`. `graph-presentation.ts` is the client presentation registry keyed by node kind: known kinds resolve to a localized label + palette color; an unknown kind falls back to the raw kind string as an accessible label plus a neutral color, so a kind registered on the Host renders without a client change, is never dropped, and never crashes. The graph core (`ContextLayerGraph`/`graph-styles`) reads only the node `kind` key through this registry — no table/metric/concept business fields.
 
 
 ## Model Experience

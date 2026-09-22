@@ -27,7 +27,7 @@ import {
   edgeStyle,
   comboStyle,
 } from './graph-styles.ts'
-import type { GraphData, GraphNode, GraphEdge } from './types.ts'
+import type { SemanticGraphData as GraphData, SemanticGraphNode as GraphNode, SemanticGraphEdge as GraphEdge } from '@deepseek-ai/dsh-schema-gateway'
 
 export interface ContextLayerGraphProps {
   /** Graph data (nodes + edges) from getGraphData RPC. */

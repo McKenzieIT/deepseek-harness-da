@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { Graph } from '@antv/g6'
-import type { GraphData } from './types.ts'
+import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway'
 import { focusWithZoom } from './graph-animations.ts'
 import type { ContextLayerTranslate } from './locales.ts'
 

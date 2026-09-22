@@ -6,19 +6,35 @@
  *  - dim  = green (#52c41a)
  *  - event = orange (#fa8c16)
  *  - metric = purple (#722ed1)
+ *  - concept = magenta (#eb2f96)
+ *  - unknown kind = neutral gray (generic fallback — open kinds never crash)
  *
  * Eval pass-rate overlay: border color transitions from red (0%) through
  * yellow (50%) to green (100%). Undefined eval = neutral gray border.
  */
 
-export type NodeKind = 'dws' | 'dim' | 'event' | 'metric'
+/** Neutral fill for an unknown node kind (generic fallback). */
+export const GENERIC_NODE_COLOR = '#8c8c8c'
 
-/** Base fill colors per node kind. */
-export const KIND_COLORS: Record<NodeKind, string> = {
+/** Base fill colors for the known node kinds; open kinds fall back via {@link nodeKindColor}. */
+export const KIND_COLORS: Record<string, string> = {
   dws: '#1890ff',
   dim: '#52c41a',
   event: '#fa8c16',
   metric: '#722ed1',
+  concept: '#eb2f96',
+}
+
+/**
+ * Fill color for an open node kind. Known kinds map to their palette color;
+ * any unknown kind falls back to {@link GENERIC_NODE_COLOR} so a kind
+ * registered on the Host renders without a client change and never yields an
+ * undefined fill.
+ * @param kind - the open node kind string.
+ * @returns a CSS color string.
+ */
+export function nodeKindColor(kind: string): string {
+  return KIND_COLORS[kind] ?? GENERIC_NODE_COLOR
 }
 
 /** Domain combo background tints (10 slots, cycled by domain index). */
@@ -55,15 +71,15 @@ export function evalBorderColor(passRate: number | undefined): string {
 }
 
 /**
- * Produce the G6 v5 node style spec for a given kind and eval pass rate.
+ * Produce the G6 v5 node style spec for an open node kind and eval pass rate.
  * Used at both initial render and when LOD level changes.
- * @param kind - kind
+ * @param kind - the open node kind string.
  * @param evalPassRate - evalPassRate
  * @returns the result
  */
-export function nodeStyle(kind: NodeKind, evalPassRate?: number): Record<string, unknown> {
+export function nodeStyle(kind: string, evalPassRate?: number): Record<string, unknown> {
   return {
-    fill: KIND_COLORS[kind],
+    fill: nodeKindColor(kind),
     stroke: evalBorderColor(evalPassRate),
     lineWidth: evalPassRate !== undefined ? 3 : 1,
     size: 32,

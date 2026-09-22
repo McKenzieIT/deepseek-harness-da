@@ -1,4 +1,9 @@
-import type { GraphData, GraphDataOpts } from './types.ts'
+/**
+ * Client fetch seam for the semantic-graph RPC. Imports the graph types from
+ * their owner (`@deepseek-ai/dsh-schema-gateway`) — the client no longer
+ * re-declares them — and unwraps the host's `RemoteResult<SemanticGraphData>`.
+ */
+import type { SemanticGraphData as GraphData, SemanticGraphQuery as GraphDataOpts } from '@deepseek-ai/dsh-schema-gateway'
 
 /** GraphDataClient */
 export interface GraphDataClient {

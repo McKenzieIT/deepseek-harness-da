@@ -16,6 +16,7 @@ TODO: translate: Context layer graph — G6 v5 interactive relation graph with s
 ## 目录
 
 - [开发备注](#dev-note)
+- [开放 kind 展示](#open-kind-presentation)
 - [模型体验](#model-experience)
 - [已知限制与延后工作](#known-limitations-and-deferred-work)
 
@@ -30,6 +31,11 @@ TODO: translate: Context layer graph — G6 v5 interactive relation graph with s
 ## 开发备注
 
 无。
+
+<a id="open-kind-presentation"></a>
+## 开放 kind 展示
+
+图 RPC 类型（`SemanticGraphNode`/`SemanticGraphEdge`/`SemanticGraphData`/`SemanticGraphQuery`）由 `@deepseek-ai/dsh-schema-gateway` 拥有；本包以 type-only 方式导入，不再重复声明。节点/关系 `kind` 是开放的 `string`。`graph-presentation.ts` 是按节点 kind 键控的客户端 presentation registry：已知 kind 解析为本地化 label 加调色板颜色；未知 kind 回退为以原始 kind 字符串作为可访问 label 加中性颜色，因此 Host 侧注册的 kind 无需修改客户端即可渲染，不丢弃、不崩溃。图核心（`ContextLayerGraph`/`graph-styles`）仅通过该 registry 读取节点 `kind` 键，不读取 table/metric/concept 业务字段。
 
 
 <a id="model-experience"></a>

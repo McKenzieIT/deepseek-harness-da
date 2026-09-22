@@ -15,10 +15,10 @@ vi.mock('../src/client/ContextLayerView.tsx', () => ({
   ),
 }))
 
-const MOCK_DATA: GraphData = {
+const MOCK_DATA = {
   nodes: [{ id: 'n1', kind: 'dws', label: 'Node1', domains: ['core'] }],
   edges: [{ source: 'n1', target: 'n2', type: 'joins' }],
-}
+} as unknown as GraphData
 
 function mockGraphClient(data: GraphData = MOCK_DATA): GraphDataClient {
   return { fetchGraphData: vi.fn().mockResolvedValue(data) }

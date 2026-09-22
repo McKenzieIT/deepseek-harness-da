@@ -34,10 +34,12 @@ vi.mock('@antv/g6', () => ({
   }),
 }))
 
-const DATA: GraphData = {
+// Node ids are branded SemanticGraphNodeId at the RPC boundary; test fixtures
+// build plain strings and cast to the graph type.
+const DATA = {
   nodes: [{ id: 'n1', kind: 'dws', label: 'Node1', domains: ['core'] }],
   edges: [],
-}
+} as unknown as GraphData
 
 describe('ContextLayerGraph — render().then unmount race (ucl-9)', () => {
   beforeAll(() => {

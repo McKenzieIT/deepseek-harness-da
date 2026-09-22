@@ -20,11 +20,11 @@ export {
 } from './ContextLayerGraph.tsx'
 
 export type {
-  GraphData,
-  GraphNode,
-  GraphEdge,
-  GraphDataOpts,
-} from './types.ts'
+  SemanticGraphData as GraphData,
+  SemanticGraphNode as GraphNode,
+  SemanticGraphEdge as GraphEdge,
+  SemanticGraphQuery as GraphDataOpts,
+} from '@deepseek-ai/dsh-schema-gateway'
 
 export {
   getZoomLevel,
@@ -40,10 +40,10 @@ export {
   edgeStyle,
   comboStyle,
   evalBorderColor,
+  nodeKindColor,
   KIND_COLORS,
   DOMAIN_PALETTE,
   DOMAIN_BORDER_PALETTE,
-  type NodeKind,
 } from './graph-styles.ts'
 
 export {

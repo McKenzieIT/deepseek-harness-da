@@ -7,13 +7,13 @@ import { en, type ContextLayerKey } from '../src/client/locales.ts'
 
 const t = (key: ContextLayerKey): string => en[key]
 
-const node: GraphNode = {
+const node = {
   id: 'n1',
   kind: 'dws',
   label: 'Node1',
   // local order: beta first (local idx 0), alpha second (local idx 1)
   domains: ['beta', 'alpha'],
-}
+} as unknown as GraphNode
 
 // global sorted domain set: alpha=0, beta=1, gamma=2
 const allDomains = ['alpha', 'beta', 'gamma']
@@ -47,5 +47,23 @@ describe('NodeDetailPanel — domain chip color (ucl-7)', () => {
     expect(globalBetaBg).toBe(localAlphaBg)
     expect(globalAlphaBg).toBe(localBetaBg)
     global.unmount()
+  })
+})
+
+describe('NodeDetailPanel — open kind presentation (W27)', () => {
+  it('renders the localized label for a known kind', () => {
+    const known = { id: 't1', kind: 'dws', label: 'Orders', domains: [] } as unknown as GraphNode
+    const { getByText } = render(<NodeDetailPanel t={t} node={known} onClose={() => {}} />)
+    // The kind badge shows the localized name, not the raw kind key.
+    expect(getByText(en['kind.dws'])).not.toBeNull()
+  })
+
+  it('falls back to the raw kind string for an unknown kind (never dropped, never crashes)', () => {
+    const unknown = { id: 'x1', kind: 'sankey_chart', label: 'Weekly Flow', domains: ['付费经济'] } as unknown as GraphNode
+    const { getByText } = render(<NodeDetailPanel t={t} node={unknown} onClose={() => {}} />)
+    // Accessible label = the raw kind string; the panel still renders label + domains.
+    expect(getByText('sankey_chart')).not.toBeNull()
+    expect(getByText('Weekly Flow')).not.toBeNull()
+    expect(getByText('付费经济')).not.toBeNull()
   })
 })

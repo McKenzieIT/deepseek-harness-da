@@ -1,6 +1,7 @@
 import type { FC } from 'react'
-import type { GraphNode } from './types.ts'
-import { KIND_COLORS, DOMAIN_PALETTE, DOMAIN_BORDER_PALETTE, evalBorderColor } from './graph-styles.ts'
+import type { SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway'
+import { DOMAIN_PALETTE, DOMAIN_BORDER_PALETTE, evalBorderColor } from './graph-styles.ts'
+import { nodeKindPresentation } from './graph-presentation.ts'
 import type { ContextLayerTranslate } from './locales.ts'
 
 const CLOSE_GLYPH = '×'
@@ -27,7 +28,10 @@ export interface NodeDetailPanelProps {
 export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onInsertReference, allDomains, t }) => {
   if (!node) return null
 
-  const kindColor = KIND_COLORS[node.kind]
+  // Presentation registry: known kinds get a localized label + palette color,
+  // unknown kinds fall back to the raw kind string + a neutral color (never
+  // dropped, never a crash).
+  const { label: kindLabel, color: kindColor } = nodeKindPresentation(node.kind, t)
 
   return (
     <div
@@ -57,7 +61,7 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
               color: '#fff',
             }}
           >
-            {node.kind}
+            {kindLabel}
           </span>
         </div>
         <button

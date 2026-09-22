@@ -1,48 +1,16 @@
 /**
- * Shared types for the context layer graph component.
- * These mirror the server-side getGraphData response shape
- * (SchemaGateway.getGraphData).
+ * Compatibility re-export of the semantic-graph RPC types (W27).
+ *
+ * The graph node/edge/query/data types are OWNED by
+ * `@deepseek-ai/dsh-schema-gateway` (the Remote boundary that brands node ids).
+ * This client package no longer re-declares them; it re-exports the owner's
+ * types under the historical local names. New code imports the
+ * `SemanticGraph*` names from `@deepseek-ai/dsh-schema-gateway` directly — this
+ * shim exists only until the physical file is removed.
  */
-
-export interface GraphDataOpts {
-  /** Filter to nodes in a specific domain. */
-  domain?: string
-  /** Center the graph on a specific node id. */
-  focus?: string
-  /** BFS depth from focus node (default: unlimited). */
-  depth?: number
-  /** Include metric nodes in the graph. */
-  includeMetrics?: boolean
-}
-
-/** GraphNode */
-export interface GraphNode {
-  /** Unique identifier (table_name, event name, or metric name). */
-  id: string
-  /** Kind of data source. */
-  kind: 'dws' | 'dim' | 'event' | 'metric'
-  /** Display label. */
-  label: string
-  /** Domain(s) the node belongs to. */
-  domains: string[]
-  /** Eval pass rate (0–1), undefined if no eval data. */
-  evalPassRate?: number
-}
-
-/** GraphEdge */
-export interface GraphEdge {
-  /** Source node id. */
-  source: string
-  /** Target node id. */
-  target: string
-  /** Relation type (joins | derived_from | related_to). */
-  type: string
-  /** Join condition expression (for 'joins' type). */
-  on?: string
-}
-
-/** GraphData */
-export interface GraphData {
-  nodes: GraphNode[]
-  edges: GraphEdge[]
-}
+export type {
+  SemanticGraphData as GraphData,
+  SemanticGraphNode as GraphNode,
+  SemanticGraphEdge as GraphEdge,
+  SemanticGraphQuery as GraphDataOpts,
+} from '@deepseek-ai/dsh-schema-gateway'
