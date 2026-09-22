@@ -70,15 +70,17 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
                                                                       │                                                                └──▶ [✓] G11 DAG view simplification
                                                                       ├──▶ [✓] G7 writeScopes conflict semantics
                                                                       └──▶ [✓] G25a Phase-gate incremental-value experiment ──▶ [✓] G25 Data-agent inner orchestration
-                                                                                                                            ├──▶ G16 Model tools and cross-preset composition (also requires G7)
-                                                                                                                            └──▶ G17 Executor adapters (also requires G7)
+                                                                                                                            ├──▶ [claimed] G16 Model tools and cross-preset composition (also requires G7)
+                                                                                                                            └──▶ [claimed] G17 Executor adapters (also requires G7)
 ```
 
-**Frontier:** [G8 Global progress wavefront](tickets/G8-z-enhancement-global-progress-wavefront.md), [G16 Model tools and cross-preset composition](tickets/G16-todo-coexistence-and-preset-composition.md), and [G17 Executor adapters](tickets/G17-native-source-adapters.md) are open and unblocked. G18 and G20 wait on the remaining G16 and G17 decisions.
+**Frontier:** [G8 Global progress wavefront](tickets/G8-z-enhancement-global-progress-wavefront.md) is open, unblocked, and unclaimed. It concerns a later-version effect rather than the first-release critical path.
 
-**Current checkpoint:** [G25 Data-agent inner orchestration after Task DAG](tickets/G25-phase-gate-integration.md) is resolved from the [G25a evidence](experiments/g25a-phase-gate/report.md). Task DAG owns outer orchestration; the target data-agent executor uses the ordinary Agent loop with split policy and validators; the complete phase-gate is limited to an optional opaque v1 compatibility adapter. G16 now owns cross-preset tool composition, G17 owns target and compatibility executor adapters, and G20 owns compatibility exit criteria and first-release evaluation.
+**Claimed checkpoints:** [G16 Model tools and cross-preset composition](tickets/G16-todo-coexistence-and-preset-composition.md#discussion-checkpoint) and [G17 Executor adapters](tickets/G17-native-source-adapters.md#discussion-checkpoint) retain their existing assignees and confirmed discussion points. Neither ticket is resolved or available for a second concurrent claim; resume its owning session or explicitly hand it off. Their source inspections and existing-mechanism tests do not unblock downstream decisions.
 
-**Next session rule:** resolve one frontier ticket per session unless the user explicitly requests an exception.
+**Current checkpoint:** [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md#answer) is resolved. [G18 Community package and bundle topology](tickets/G18-community-package-and-bundle-topology.md) still waits for both claimed decisions; [G20 First-release scope, compatibility, and evaluation](tickets/G20-v1-scope-and-evaluation.md) additionally waits for package topology. [Git checkpoint reconciliation and planning handoff](tickets/T1-git-checkpoint-reconciliation.md) records recovery references, Git coordination, and the suggested continuation order; it is not an architecture resolution.
+
+**Next session rule:** resolve one decision ticket per session unless the user explicitly requests an exception. Prioritize resuming the claimed first-release decisions over opening optional presentation follow-ups; preserve each ticket's human-confirmation requirement.
 
 ## Decisions so far
 
@@ -105,6 +107,7 @@ The Task DAG journal owns Plan and execution-control state. DSH records the exac
 - [G7 writeScopes conflict semantics](tickets/G7-writescopes-conflict-detection.md): explicit read-only, scoped, and unbounded intents drive durable all-or-nothing admission; adapters normalize versioned hierarchical resources and report target or native enforcement without claiming control over external writers.
 
 - [G11 DAG view simplification strategies](tickets/G11-dag-view-simplification-strategies.md#answer): default full graph plus manual single-Task dependency focus preserves complete upstream/downstream scope, real boundary relations, current out-of-focus attention, whole-Run progress, and stable selection; [extended filtering](tickets/G36-extended-focus-and-filtering.md) and [structural summaries](tickets/G38-structural-aggregation-and-terminal-summaries.md) remain evidence-triggered follow-ups.
+- [Git checkpoint reconciliation and planning handoff](tickets/T1-git-checkpoint-reconciliation.md#answer): remote observations and recovery references are reconciled; unrelated test edits are preserved separately, and unfinished decisions retain their claims and downstream blockers.
 
 ## Not yet specified
 
