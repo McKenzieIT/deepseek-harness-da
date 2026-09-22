@@ -41,6 +41,23 @@ export interface RelationDef {
   readonly description?: string
 }
 
+/**
+ * A data source projected as one graph node (W27). Plain `string` id + open
+ * `kind` — the Semantic Layer has no notion of cross-process branding; the
+ * Schema Gateway brands `id` when it assembles the Remote `SemanticGraphNode`
+ * at the wire boundary. Returned by `DataSourceKindPlugin.toGraphNode`.
+ */
+export interface GraphNodeProjection {
+  /** Node identity (table_name, event name, `metric` name, or `concept:<name>`). */
+  readonly id: string
+  /** Open node kind (a client presentation key, never a closed union). */
+  readonly kind: string
+  /** Display label. */
+  readonly label: string
+  /** Domain(s)/group(s) the node belongs to. */
+  readonly domains: readonly string[]
+}
+
 // ── DataSourceKindPlugin<T> (G1 §D2) ───────────────────────────────────
 
 /** Minimal schema interface (structurally matches zod schemas without hard dep). */
@@ -87,6 +104,16 @@ export interface DataSourceKindPlugin<T = unknown> {
    * Return empty array when no relations exist.
    */
   relations(def: T): RelationDef[]
+
+  /**
+   * Project a definition to one semantic-graph node (W27), or `null` to declare
+   * this definition is not a graph node. Each kind decides its own node id,
+   * open `kind` string, label, and domains; the Schema Gateway iterates every
+   * registered kind's `toGraphNode` to build the graph (no hand-written
+   * per-kind loops), so a kind registered later reaches the graph without
+   * editing the gateway.
+   */
+  toGraphNode(def: T): GraphNodeProjection | null
 
   /**
    * Return an executable rule/SQL template (G2, MetricPlugin only — removed in M1b; retained as optional interface for backward-compat).

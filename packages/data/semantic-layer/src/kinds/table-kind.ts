@@ -6,7 +6,7 @@
  * @module @deepseek-ai/dsh-semantic-layer/src/kinds/table-kind
  */
 import { TableDefinitionSchema, type TableDefinition } from '../types.ts'
-import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem } from '../registry.ts'
+import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem, GraphNodeProjection } from '../registry.ts'
 /** tableKindPlugin */
 export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
   kind: 'table',
@@ -66,6 +66,12 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
     return {
       partitionCols: def.partitions.map(p => p.name),
     }
+  },
+
+  toGraphNode(def): GraphNodeProjection {
+    // A table's graph kind is its storage kind (`dws`/`dim`/…), carried open so
+    // a new table kind needs no gateway change.
+    return { id: def.table_name, kind: def.kind, label: def.table_name, domains: [...def.domains] }
   },
 
   relations(def): RelationDef[] {

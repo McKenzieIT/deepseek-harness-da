@@ -61,13 +61,13 @@ import {
   enrichAllTablesAltLabels as enrichAllTablesAltLabelsFromLayer,
   type LlmCall,
 } from './enrichment.ts'
-import { DataSourceRegistry, type CorpusItem } from './registry.ts'
+import { DataSourceRegistry, type CorpusItem, type GraphNodeProjection } from './registry.ts'
 import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
 import { conceptKindPlugin } from './kinds/concept-kind.ts'
 import { RelationGraph, type NodeAliasData } from './relation-graph.ts'
-import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, splitMetricName, extractMetricsFromTable, extractMetricsFromEvent } from './metrics.ts'
-import { loadEvents, loadTables, loadConcepts, loadConceptDefinition as loadConceptDefinitionFromLayer } from './io.ts'
+import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, splitMetricName, extractMetricsFromTable, extractMetricsFromEvent, projectMetricGraphNodes } from './metrics.ts'
+import { loadEvents, loadTables, loadConcepts, loadRawDir, loadConceptDefinition as loadConceptDefinitionFromLayer } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema, ConceptDefinitionSchema } from './types.ts'
 import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
 
@@ -88,6 +88,7 @@ export {
   loadTableDefinition,
   loadConcepts,
   loadConceptDefinition,
+  loadRawDir,
   loadRetrievalCorpus,
   writeTable,
   writeEventYaml,
@@ -151,7 +152,18 @@ export {
   splitMetricName,
   inferAggregation,
   loadMetricDefinitions,
+  projectMetricGraphNodes,
 } from './metrics.ts'
+// W27: data-source kind registry contract (kinds, relations, graph projection).
+export {
+  DataSourceRegistry,
+  type DataSourceKindPlugin,
+  type SchemaLike,
+  type CorpusItem,
+  type CriticFields,
+  type RelationDef,
+  type GraphNodeProjection,
+} from './registry.ts'
 
 // ── SchemaProvider: live-engine schema source (P6b Q3 deferred) ───────────
 // The real provider (query-maxcompute sidecar adding list/describe/sample
@@ -625,6 +637,49 @@ export class SemanticLayerService extends Service {
     // from host table/event `metrics:` blocks (see loadRetrievalCorpusAll +
     // getRelationGraph derivation passes). Unknown dirs yield an empty list.
     return []
+  }
+
+  /**
+   * Registry-driven semantic-graph node projection (W27): every registered
+   * kind's `toGraphNode` applied to each of its loaded definitions, plus the
+   * single derived-metric contributor. Each kind contributes a node or
+   * explicitly declines (`null`); `metric` is virtual (not a registered kind),
+   * so its nodes come from {@link projectMetricGraphNodes}. Reads the ACTIVE
+   * scope root — the Schema Gateway threads a per-request `scopeId` only to the
+   * relation-graph edge source, matching the pre-W27 node-load behavior.
+   * Iterating the registry (not hand-written per-kind loops) is what lets a
+   * kind registered later reach the graph without editing the projection.
+   * @returns one projection per graph node (registered-kind assets + derived metrics).
+   */
+  projectGraphNodes(): GraphNodeProjection[] {
+    const out: GraphNodeProjection[] = []
+    for (const plugin of this.registry.allPlugins()) {
+      for (const def of this.loadKindDefinitions(plugin)) {
+        const node = plugin.toGraphNode(def)
+        if (node) out.push(node)
+      }
+    }
+    out.push(...projectMetricGraphNodes(this.semanticRoot))
+    return out
+  }
+
+  /**
+   * Load one kind's definitions from the active scope root. Bespoke storage
+   * layouts (`events` domain subdirs, `tables`, `concepts`) route through
+   * {@link loadByStorageDir}; any other registered kind's dir is read
+   * generically (`loadRawDir` + the plugin's own `schema.safeParse`), so a kind
+   * registered after build loads without a hardcoded loader.
+   */
+  private loadKindDefinitions(plugin: import('./registry.ts').DataSourceKindPlugin): readonly unknown[] {
+    if (plugin.storageDir === 'events' || plugin.storageDir === 'tables' || plugin.storageDir === 'concepts') {
+      return this.loadByStorageDir(plugin.storageDir)
+    }
+    const out: unknown[] = []
+    for (const raw of loadRawDir(this.semanticRoot, plugin.storageDir)) {
+      const r = plugin.schema.safeParse(raw)
+      if (r.success && r.data !== undefined) out.push(r.data)
+    }
+    return out
   }
 
   /**

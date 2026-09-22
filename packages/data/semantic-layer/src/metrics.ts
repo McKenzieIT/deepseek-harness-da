@@ -18,6 +18,7 @@ import {
   type MetricDef,
   type MetricDefinition,
 } from './types.ts'
+import type { GraphNodeProjection } from './registry.ts'
 import { loadTables, loadEvents } from './io.ts'
 
 // ── helpers (best-effort, deterministic) ───────────────────────────────
@@ -221,4 +222,23 @@ export function extractMetricsFromTables(semanticLayer: string): MetricDefinitio
  */
 export function loadMetricDefinitions(semanticLayer: string): MetricDefinition[] {
   return extractMetricsFromTables(semanticLayer)
+}
+
+/**
+ * The single derived-metric graph-node contributor (W27). `metric` is not a
+ * registered kind (metrics are virtual, derived from host table/event
+ * `metrics:` blocks), so a registry-driven graph projection cannot reach them
+ * through a kind plugin. This one explicit contributor maps every derived
+ * MetricDefinition to a `metric` graph node — no hand-written per-source loop
+ * in the gateway.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @returns one `metric`-kind graph node per derived metric (empty when none).
+ */
+export function projectMetricGraphNodes(semanticLayer: string): GraphNodeProjection[] {
+  return loadMetricDefinitions(semanticLayer).map(m => ({
+    id: m.name,
+    kind: 'metric',
+    label: m.name,
+    domains: [...m.domains],
+  }))
 }

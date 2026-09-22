@@ -95,6 +95,17 @@ test('conceptKindPlugin — relations returns empty array', () => {
   expect(conceptKindPlugin.relations(def)).toEqual([])
 })
 
+test('conceptKindPlugin — toGraphNode projects a concept:-prefixed node (W27)', () => {
+  const def = ConceptDefinitionSchema.parse({ name: '付费经济', pref_label: '付费' })
+  const node = conceptKindPlugin.toGraphNode(def)
+  expect(node).toEqual({ id: 'concept:付费经济', kind: 'concept', label: '付费', domains: ['付费经济'] })
+})
+
+test('conceptKindPlugin — toGraphNode label falls back to name without pref_label', () => {
+  const def = ConceptDefinitionSchema.parse({ name: '战斗关卡' })
+  expect(conceptKindPlugin.toGraphNode(def)?.label).toBe('战斗关卡')
+})
+
 // ── loadConcepts / loadConceptDefinition ────────────────────────────────
 
 function setupTmpLayer(): string {
