@@ -42,7 +42,7 @@ flowchart TD
 
 | Decision | User value | Implementation / maintenance | Runtime / token cost | Audit disposition |
 |---|---|---|---|---|
-| Task DAG driver is the sole cross-turn owner in Plan profiles | Removes duplicate authority over continuation, budgets, Holds, and inbox | Low–medium; one driver and profile override | No extra model calls | **Keep** |
+| Task DAG driver is the sole cross-turn owner while the capability is active | Removes duplicate authority over continuation, budgets, Holds, and inbox | Low–medium; one driver and Bundle override | No extra model calls | **Keep** |
 | Concurrent independent Tasks | Direct latency benefit for income, ads, FX, and quality queries | Medium: capacity ledger and adapters | Uses only work already requested | **Keep** |
 | Same-Task Attempt Groups | Speculation/voting/hedging benefit is unproven and duplicates model/query cost | High lifecycle, verifier, cancellation, recovery, UI | Potentially multiplies cost | **Deferred to G24** |
 | Stable priority/ready-age ordering | Predictable capacity allocation without a scheduler model call | Low | Zero model cost | **Keep** |
@@ -64,7 +64,7 @@ flowchart TD
 | Queue/Steer/Cancel human routing | DSH already implements these semantics | Low adaptation cost | No additional model calls | **Reuse, keep** |
 | Explicit BTW | Valuable for side questions while long data work runs | Medium if built as a new side-session subsystem | One model call only when user asks | **Keep only by reusing one-shot fork with empty tool scope** |
 | Online shadow intent classifier | Produces future auto-routing data but calls another model and adds version/eval plumbing | Medium–high | Extra call for busy-session input | **Remove from V1; log explicit choices and evaluate offline in G32** |
-| Durable phase runtime/events/UI | Valuable eventually, but current phase-gate is one inner policy and full integration is a separate effort | High | Additional events/context, no direct V1 DAG proof | **Use minimal opaque phase adapter; full integration deferred to G25** |
+| Data-agent inner orchestration | Existing phase-gate is deployable, but its value after Task DAG has not been measured against simpler execution | High if made durable or public | Additional state/context; no direct V1 DAG proof | **Use an opaque compatibility adapter only if selected; retention/decomposition/retirement belongs to G25** |
 | Semantic progress judge / global Progress Vector | Possible future optimization, weak current evidence | High | Extra model calls and calibration | **Deferred to G24/G31** |
 
 ## Required reductions before implementation planning
@@ -107,9 +107,9 @@ Hard limits cover Attempts, active Attempts, query submissions, model requests, 
 
 The first release exposes current Tasks, Attempts, Holds, budgets, verification, and current Stop Record. Full stop/replan/Attempt history navigation remains in [History, trace, and plan inspection](../tickets/G28-history-trace-and-plan-inspection.md); the Session log still retains the underlying facts.
 
-### 7. Keep phase integration opaque
+### 7. Keep existing data-agent inner orchestration opaque
 
-For the first release, a phase-gated current-Agent executor settles one Task Attempt with final outputs/evidence. The Task graph does not render phase nodes or own phase counters. Durable phase events, resume, UI, clarification mapping, and phase-specific completion semantics remain in [Data-agent phase-gate integration](../tickets/G25-phase-gate-integration.md).
+For the first release, the selected data-agent executor settles one Task Attempt with final outputs/evidence. If the existing phase-gated runtime is selected for compatibility, it remains opaque: the Task graph does not render phase nodes or own phase counters. This audit does not establish that phase-gate should remain. Retention, decomposition, retirement, durable phase records, resume, UI, clarification mapping, and phase-specific completion semantics belong to [Data-agent inner orchestration after Task DAG](../tickets/G25-phase-gate-integration.md).
 
 ## First-release package/interface implication
 
@@ -142,7 +142,7 @@ It explicitly rejects new first-release public seams for recovery, Attempt polic
 ## Deferred owners
 
 - Attempt Groups, durability-barrier batching, critical-path/model routing, semantic progress, learned stopping, and advanced fairness: [G24](../tickets/G24-advanced-routing-and-parallelism.md)
-- Full phase runtime integration: [G25](../tickets/G25-phase-gate-integration.md)
+- Data-agent inner orchestration retention, decomposition, or retirement: [G25](../tickets/G25-phase-gate-integration.md)
 - Goal/Plan lifecycle integration: [G26](../tickets/G26-goal-plan-dag-relationship.md)
 - Execution ledger extraction: [G27](../tickets/G27-execution-ledger-extraction.md)
 - Historical inspection UI: [G28](../tickets/G28-history-trace-and-plan-inspection.md)

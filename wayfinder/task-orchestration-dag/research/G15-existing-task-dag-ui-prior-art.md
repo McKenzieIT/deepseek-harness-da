@@ -182,7 +182,7 @@ A Task DAG-owned `shell.overlay` window is not justified. It would duplicate the
 
 ### Known risks and owners
 
-- [G16 Model tools and preset composition](../tickets/G16-todo-coexistence-and-preset-composition.md) decides whether the one-line Task DAG summary coexists with or replaces Todo in Task-DAG presets. Placement remains valid either way.
+- [G16 Model tools and cross-preset composition](../tickets/G16-todo-coexistence-and-preset-composition.md) decides native planning-tool coexistence for Sessions using the preset-orthogonal Task DAG capability. Placement remains valid for every business preset.
 - [R5 G6 renderer adapter stability](../tickets/R5-g6-renderer-adapter-stability.md) owns graph lifecycle, visibility suspension, resizing, reduced motion, and renderer upgrades.
 - [G11 DAG view simplification strategies](../tickets/G11-dag-view-simplification-strategies.md) owns large current graphs and omitted-count explanations.
 - [G4 Animation and edge design](../tickets/G4-animation-and-edge-design.md) owns renderer-neutral state vocabulary and motion.

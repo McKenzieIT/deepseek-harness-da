@@ -3,7 +3,7 @@
 **Type**: task
 **Status**: resolved 2026-09-22
 **Assignee**: Codex implementation session, claimed 2026-09-17
-**Current standing**: The blinded review is complete and the final analysis is sealed in [`results/decision-summary.json`](../experiments/g25a-phase-gate/results/decision-summary.json). The locked result is `do_not_enlarge`: the full state machine produced no severe-unsupported reduction, reduced case-level `pass^3` correctness by 8.33 percentage points relative to policy, and exceeded the 30% cost threshold on several measures. The [final report](../experiments/g25a-phase-gate/report.md) recommends that G25 prefer split policy/validator behavior and retain only an opaque v1 compatibility executor if needed. G25 remains open for that architecture decision.
+**Current standing**: The blinded review is complete and the final analysis is sealed in [`results/decision-summary.json`](../experiments/g25a-phase-gate/results/decision-summary.json). The locked result is `do_not_enlarge`: the full state machine produced no severe-unsupported reduction, reduced case-level `pass^3` correctness by 8.33 percentage points relative to policy, and exceeded the 30% cost threshold on several measures. [G25](G25-phase-gate-integration.md) has applied the result: Task DAG owns outer orchestration, ordinary Agent execution with split policy and validators is the target path, and phase-gate is limited to an optional opaque v1 compatibility executor.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅
 **Blocks**: [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md)
 
@@ -75,11 +75,11 @@ The original text is kept verbatim as the historical record. Where the two disag
 | Stage 3 → 主指标 | case-level `pass^3` | severe unsupported answer rate; `pass^3` becomes the ≤2pp guard rail |
 | 已知证据与缺口 items 1, 2, 7 | about the `g1b` `k11v2` slice | retained as history; the slice they describe is no longer used |
 
-## Implementation handoff
+## Historical implementation handoff
 
-This ticket is design-complete and ready for an implementation session. Work in `/Users/mckenzie/workspace/deepseek-harness-da/.worktrees/task-orchestration-dag-baseline` on branch `codex/task-orchestration-dag-baseline-2026-09-15`. Claim the ticket before editing by changing `Status` to `claimed` and recording the assignee and date; do not reopen the locked arms, case count, thresholds, metrics, or artifact boundaries unless implementation proves the protocol impossible.
+This section records the constraints that governed the completed implementation run; the ticket is no longer active. It was design-complete and ready for an implementation session. Work in `/Users/mckenzie/workspace/deepseek-harness-da/.worktrees/task-orchestration-dag-baseline` on branch `codex/task-orchestration-dag-baseline-2026-09-15`. Claim the ticket before editing by changing `Status` to `claimed` and recording the assignee and date; do not reopen the locked arms, case count, thresholds, metrics, or artifact boundaries unless implementation proves the protocol impossible.
 
-Read this ticket first, then the map's Destination and Notes, `packages/eval/CONTEXT.md`, `docs/architecture.md`, and the repository skills required by the touched files. The worktree already contains intentional uncommitted Wayfinder edits from the parent effort; inspect them and do not discard, reset, or overwrite them. The implementation session may complete this task ticket but must leave G25 unresolved for the following decision session.
+Read this ticket first, then the map's Destination and Notes, `packages/eval/CONTEXT.md`, `docs/architecture.md`, and the repository skills required by the touched files. The worktree already contains intentional uncommitted Wayfinder edits from the parent effort; inspect them and do not discard, reset, or overwrite them. The implementation session was required to leave G25 unresolved for a separate decision session; G25 resolved on 2026-09-22 after applying the final report.
 
 Do not launch the decision batch through the current eval CLI unchanged. Its Harness path does not make `today` model-visible, does not persist the Agent's real `query_data` outcome into the outer score, and can therefore award a SQL-judge pass to a query for the wrong dates. Build and prove Stage 0 before spending the decision-run budget.
 
@@ -434,4 +434,4 @@ All 52 human verdicts and reasons were recorded before the reveal map was opened
 
 The final paired result is 1/12 case-level `pass^3` for the state-machine arm versus 2/12 for policy, a -8.33pp difference with replicate-slot differences of +8.33pp, -8.33pp, and -2.78pp and a paired interval of [-25pp, 0pp]. Severe unsupported behavioral answers are 2/72 in each arm, a 0% reduction with a paired interval of [-4.17pp, +4.17pp]. The state-machine arm therefore misses the 50% severe-answer threshold, violates the 2pp correctness guard rail, does not satisfy the non-decisive 8pp correctness rule, and has several median and total costs above the locked 30% threshold without measured benefit.
 
-G25a resolves as `do_not_enlarge`. G25 remains open and should prefer split policy/validator behavior over new persisted phase state, phase UI, or a public inner-policy API. An opaque compatibility executor may remain for v1 if required; the experiment does not recommend an unmeasured hybrid.
+G25a resolves as `do_not_enlarge`. G25 subsequently selected split policy/validator behavior over new persisted phase state, phase UI, or a public inner-policy API. An opaque compatibility executor may remain for v1 if required; the experiment does not recommend an unmeasured hybrid.

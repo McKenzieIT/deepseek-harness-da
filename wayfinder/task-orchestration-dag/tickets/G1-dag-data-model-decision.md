@@ -2,9 +2,9 @@
 
 **Type**: grilling
 **Status**: resolved
-**Current standing**: [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) supersedes the terminal-state plugin, `dag/*` Session-event persistence, client replay, Todo replacement, and heuristic correlation. Stable Task identities and explicit relation vocabulary remain inputs to the DSH-independent Task DAG core, whose SQLite journal, projection, and outbox are authoritative.
+**Current standing**: [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) supersedes the terminal-state plugin, `dag/*` Session-event persistence, client replay, and heuristic correlation. [G16 Model tools and cross-preset composition](G16-todo-coexistence-and-preset-composition.md) supersedes the original `dag_task_*` and Todo-replacement mechanism. Stable Task identities and explicit relation vocabulary remain inputs to the DSH-independent Task DAG core, whose SQLite journal, projection, and outbox are authoritative.
 **Blocked by**: [R1 agent-team maturity audit](R1-agent-team-maturity-audit.md), [R3 subagent/workflow event surface](R3-subagent-workflow-event-surface.md)
-**Blocks**: [G2 DAG panel placement and interaction](G2-dag-panel-placement-and-interaction.md), [G3 preset universality strategy](G3-preset-universality-strategy.md), [G5 dynamic node insertion design](G5-dynamic-node-insertion-design.md)
+**Blocks**: [G2 DAG panel placement and interaction](G2-dag-panel-placement-and-interaction.md), [G3 Preset-orthogonal Task DAG distribution](G3-preset-universality-strategy.md), [G5 dynamic node insertion design](G5-dynamic-node-insertion-design.md)
 
 ## Question
 

@@ -2,7 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved
-**Current standing**: explicit stable APIs remain necessary, but the authoritative contracts are DSH-independent commands, complete-value journal records, projections, transactional outbox deliveries, and Host Bindings. [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) supersedes `dag/*` Session events, per-Session SSOT, `ctx.dagModel` as the core API, and DSH-native lifecycle types in the domain.
+**Current standing**: explicit stable interfaces remain necessary, but the authoritative contracts are DSH-independent commands, complete-value journal records, projections, transactional outbox deliveries, and Host Bindings. [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) supersedes `dag/*` Session events, per-Session SSOT, `ctx.dagModel` as the core interface, and DSH-native lifecycle types in the domain. [G16 Model tools and cross-preset composition](G16-todo-coexistence-and-preset-composition.md) supersedes the historical `dag_task_*` CRUD tool contract below.
 **Blocked by**: [G1 DAG data model decision](G1-dag-data-model-decision.md) ✅, [G5 dynamic node insertion design](G5-dynamic-node-insertion-design.md)
 **Blocks**: [G7 writeScopes conflict detection](G7-writescopes-conflict-detection.md), [G9 team-task integration](G9-team-task-upstream-integration.md), [G10 subagent tree integration](G10-subagent-tree-upstream-integration.md)
 

@@ -2,7 +2,8 @@
 
 **Type**: prototype
 **Phase**: misc
-**Status**: Partially resolved (2026-08-28) — Config C 模型对比完成：qwen3.7-max 25% pass (9/36)，qwen3.5-flash/qwen3.6-plus 0%（全 decline）。结论：NL2SQL 引擎只有 qwen3.7-max 可用（硬门槛）。Full variant comparison (A/B/C/D) requires HarnessAgentResponder. See `../../research/g1b-experiment-report.md`.
+**Status**: Partially resolved (2026-08-28) — Config C 模型对比完成，HarnessAgentResponder 已实现且 A/B/C/D 跑批已产生本机忽略文件；没有提交满足当前评测协议的 Evidence Cut 或 ship-default verdict。现有证据只确定 qwen3.7-max 是可用模型，没有回答 phase-gate 的去留。
+**Current standing**: 原机器的 `eval-results/g1b/g1b-variant-{A,B,D}.json` 仍可用于历史诊断，按当前 `pass^3` 规则重算分别为 38.9%、47.2% 和 16.7%。这些结果同时改变工具目录和 Goal/Todo，外层记录不含 Agent 内部真实查询 outcome，因此不能隔离 phase 状态机的价值。[G25a Phase-gate incremental-value experiment](../../../task-orchestration-dag/tickets/G25a-phase-gate-incremental-value-experiment.md) 以相同工具和 Task 工作集重新评测完整状态机与独立校验策略。
 **Assignee**: (unclaimed)
 
 **Question**: 跑 G1 设计的 staged 实验（2×2 变体 × 2 模型配置）+ 应用决策规则 + 出报告，答「ship 默认编排 + per-model 路由」。

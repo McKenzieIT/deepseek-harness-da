@@ -2,6 +2,7 @@
 
 **来源**: task-orchestration-dag G3 grilling（preset 通用性策略 → data-agent 集成）
 **日期**: 2026-09-01
+**Current standing**: 本文是 phase-gate 现状盘点，不再构成 Task DAG 的前置设计。Task DAG 使用独立 journal，phase 不是 Task；只有 G25 先证明 phase-gate 保留且 durable phase state 有用户价值后，本文的事件候选才进入设计。
 
 ## 发现
 
@@ -72,9 +73,9 @@ Phase-gate 被迫使用纯侧效应模式（修改 `PhaseGateState` + `agent.inj
 
 全部应标记 `ignorable: true`，与 tool-dag-task 的 DAG events 保持同一模式。
 
-### 与 tool-todo 白名单的关联
+### Historical tool-whitelist hypothesis
 
-Phase-gate UNIVERSAL 工具白名单（`domain.ts` `UNIVERSAL_TOOLS`）当前包含 `'todo'`。DAG 插件替换 tool-todo 后，白名单需同步更新为 `dag_task_*` 系列工具名。此变更属于 phase-gate 自身的演进，不属于 DAG 插件的职责。
+The original research assumed phase-gate would remain and would replace Todo names with `dag_task_*` in its universal whitelist. The current Task DAG model supersedes that assumption: Task DAG tools are cross-preset orchestration capabilities, and a data-agent inner policy cannot own or hide them. G16 must define generic tool-policy composition; G25 first decides whether phase-gate remains at all.
 
 ### 与 data-agent 未来演进的关系
 
@@ -84,4 +85,4 @@ Phase-gate UNIVERSAL 工具白名单（`domain.ts` `UNIVERSAL_TOOLS`）当前包
 - 人工审核点（在 GENERATION 后暂停等待确认）
 - 多代理协调（一个 agent 做 UNDERSTANDING，另一个做 GENERATION）
 
-以上所有演进的**前置基础设施**都是 session events — 没有持久化的阶段状态，就没有可协调的状态。
+If G25 retains a durable phase state machine, these evolutions require durable phase facts before they require any particular event schema. PG1 must choose the owning store and minimum facts from current product needs; DSH Session events are one candidate rather than a predetermined prerequisite.

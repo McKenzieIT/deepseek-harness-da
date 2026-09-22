@@ -4,7 +4,7 @@
 **Status**: resolved 2026-09-16
 **Assignee**: Codex · 2026-09-16
 **Blocked by**: [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
-**Blocks**: [G16 Model tools and preset composition](G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](G17-native-source-adapters.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
+**Blocks**: [G16 Model tools and cross-preset composition](G16-todo-coexistence-and-preset-composition.md), [G17 Executor adapters](G17-native-source-adapters.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
 
 ## Question
 
@@ -206,7 +206,7 @@ The implementation plan and tests must make the following cases directly executa
 ### Follow-ups
 
 - [G17 Executor adapters](G17-native-source-adapters.md) owns concrete scope normalization, target extraction, protection capability reporting, and provider-specific enforcement.
-- [G16 Model tools and preset composition](G16-todo-coexistence-and-preset-composition.md) owns protected-tool classification and fail-loud handling for unclassified tools inside a Plan-DAG Attempt.
+- [G16 Model tools and cross-preset composition](G16-todo-coexistence-and-preset-composition.md) owns protected-tool classification and fail-loud handling for unclassified tools inside a Plan-DAG Attempt.
 - [G22 Cross-session and multi-agent scheduling](G22-cross-session-multi-agent-scheduling.md) owns preservation of the same reservation semantics across concurrent Runs, Sessions, workers, or stores.
 - [G23 Automatic recovery and external-effect reconciliation](G23-recovery-and-external-effect-reconciliation.md) owns automatic provider lookup, webhook reconciliation, idempotent replay, compensation, and cross-process recovery for quarantined effects.
 - [G24 Advanced routing, parallelism, and optimization](G24-advanced-routing-and-parallelism.md) owns runtime scope expansion, shared/read locks, predicate-level scopes, preemption, batching, contention metrics, and finer scheduling only after measured benefit.
