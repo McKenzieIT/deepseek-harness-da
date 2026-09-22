@@ -864,6 +864,21 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns the management session used by patrol and scope-routing tools to act on the managed tenant session.',
   },
   {
+    key: 'managementContext',
+    pkg: 'management-context',
+    title: 'Management Context resolution service',
+    mode: 'core',
+    consumers: ['semantic-layer-management'],
+    note: 'Resolves a Management Context (Workspace × Data Scope) to a persistent Management Session pinned to the semantic-layer-management preset, with per-context single-flight, durable data-scope binding, and cold-cache recovery that distinguishes unknown from confirmed no-match.',
+  },
+  {
+    key: 'managementContextGateway',
+    pkg: 'management-context',
+    title: 'Host Remote gateway for management-context',
+    mode: 'core',
+    note: 'Fork-owned TypertRemoteService exposing managementContext/resolveOrCreate and managementContext/createNew over RPC; forwards to ctx.managementContext without adding behavior to api-remotes or the Session Controller.',
+  },
+  {
     key: 'patrol',
     pkg: 'patrol-mode',
     title: 'Patrol mode service',

@@ -75,16 +75,16 @@ describe('dataScope projection fold', () => {
   })
 
   it('binds on the first data-scope/bound event', () => {
-    expect(apply(null, boundEvent)).toEqual({ dataScopeId: 'scope-a' })
+    expect(apply(null, boundEvent)).toEqual({ dataScopeId: DataScopeId('scope-a') })
   })
 
   it('ignores unrelated events', () => {
-    const state = { dataScopeId: 'scope-a' }
+    const state = { dataScopeId: DataScopeId('scope-a') }
     expect(apply(state, otherEvent)).toBe(state)
   })
 
   it('is immutable once bound', () => {
-    const state = { dataScopeId: 'scope-a' }
+    const state = { dataScopeId: DataScopeId('scope-a') }
     const rebind = { type: 'data-scope/bound', data: { dataScopeId: 'scope-b' } } as unknown as SessionEvent
     expect(apply(state, rebind)).toBe(state)
   })

@@ -292,6 +292,10 @@ flowchart LR
   pkg_management_session["management-session"]
   svc_managementSession["ctx.managementSession<br/>Management session service"]
   pkg_patrol_mode["patrol-mode"]
+  pkg_management_context["management-context"]
+  svc_managementContext["ctx.managementContext<br/>Management Context resolution service"]
+  pkg_semantic_layer_management["semantic-layer-management"]
+  svc_managementContextGateway["ctx.managementContextGateway<br/>Host Remote gateway for management-context"]
   svc_patrol["ctx.patrol<br/>Patrol mode service"]
   pkg_agent --> svc_agents
   pkg_agent_default_model --> svc_agentDefaultModel
@@ -363,6 +367,8 @@ flowchart LR
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
+  pkg_management_context --> svc_managementContext
+  pkg_management_context --> svc_managementContextGateway
   pkg_management_session --> svc_managementSession
   pkg_mcp_client --> svc_mcpResources
   pkg_mcp_resources --> svc_mcpResources
@@ -501,6 +507,7 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_managementContext --> pkg_semantic_layer_management
   svc_managementSession --> pkg_patrol_mode
   svc_managementSession --> pkg_tool_scope_routing
   svc_mcpResources --> pkg_mcp_resources
@@ -706,6 +713,8 @@ flowchart LR
 | `ctx.criticCtx` | `core` | [`phase-gate`](../packages/data/phase-gate) | - | [`tool-critique-sql`](../packages/data/tool-critique-sql), [`tool-evaluate-sql-quality`](../packages/data/tool-evaluate-sql-quality) | - | The phase-gate exposes candidate-table/event-param/partition-col guard context as an isolated realm service so critique tools probe the same agent phase without leaking to root. |
 | `ctx.evidenceQuery` | `core` | [`evidence-query`](../packages/data/evidence-query) | - | [`tool-reachability-delta`](../packages/data/tool-reachability-delta) | - | Owns the ctx.evidenceQuery seam: loads and refreshes per-scope eval-result records and answers reachability/coverage queries against them. |
 | `ctx.managementSession` | `core` | [`management-session`](../packages/data/management-session) | - | [`patrol-mode`](../packages/data/patrol-mode), [`tool-scope-routing`](../packages/data/tool-scope-routing) | - | Owns the management session used by patrol and scope-routing tools to act on the managed tenant session. |
+| `ctx.managementContext` | `core` | [`management-context`](../packages/data/management-context) | - | `semantic-layer-management` | - | Resolves a Management Context (Workspace × Data Scope) to a persistent Management Session pinned to the semantic-layer-management preset, with per-context single-flight, durable data-scope binding, and cold-cache recovery that distinguishes unknown from confirmed no-match. |
+| `ctx.managementContextGateway` | `core` | [`management-context`](../packages/data/management-context) | - | - | - | Fork-owned TypertRemoteService exposing managementContext/resolveOrCreate and managementContext/createNew over RPC; forwards to ctx.managementContext without adding behavior to api-remotes or the Session Controller. |
 | `ctx.patrol` | `core` | [`patrol-mode`](../packages/data/patrol-mode) | - | [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | - | Owns the patrol state machine and drives trigger-eval runs on a schedule; the trigger-eval tool consumes the live patrol context. |
 
 Maintenance mode: hybrid: services are discovered from Cordis declarations; interface/implementation/consumer roles are classified in `scripts/gen-doc-graphs.ts` with a completeness guard.

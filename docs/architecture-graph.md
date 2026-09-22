@@ -167,6 +167,7 @@ flowchart TB
       pkg_admin["admin"]
       pkg_audit["audit"]
       pkg_evidence_query["evidence-query"]
+      pkg_management_context["management-context"]
       pkg_management_session["management-session"]
       pkg_nl2sql_engine["nl2sql-engine"]
       pkg_patrol_mode["patrol-mode"]
@@ -1538,6 +1539,13 @@ flowchart TB
   pkg_subagent_fork_in_process --> pkg_subagent_in_process_driver
   pkg_subagent_spawn_in_process --> pkg_subagent
   pkg_subagent_spawn_in_process --> pkg_subagent_in_process_driver
+  pkg_management_context --> pkg_agent_presets
+  pkg_management_context --> pkg_api_session_controller
+  pkg_management_context --> pkg_scope_registry
+  pkg_management_context --> pkg_session
+  pkg_management_context --> pkg_session_projection
+  pkg_management_context --> pkg_typert_protocol
+  pkg_management_context --> pkg_workspace
   pkg_client_test_runtime --> pkg_api_gateway
   pkg_client_test_runtime --> pkg_api_session_controller
   pkg_client_test_runtime --> pkg_api_workspace_controller
@@ -1576,6 +1584,7 @@ flowchart TB
   pkg_subagent_dsh_sdk --> pkg_subprocess
   pkg_code_runtime_data_python -.->|undeclared| pkg_util_values
   pkg_tool_search_data_sources -.->|undeclared| pkg_llm
+  pkg_management_context -.->|undeclared| pkg_brand
   pkg_llm_dashscope -.->|undeclared| pkg_util_values
   pkg_agent_presets ==> pkg_api_remotes
   pkg_api_session_controller ==> pkg_api_remotes
@@ -1624,6 +1633,7 @@ flowchart TB
   class pkg_headless seam
   class pkg_host_plugin_inventory seam
   class pkg_llm seam
+  class pkg_management_context seam
   class pkg_message_feedback seam
   class pkg_office_to_pdf seam
   class pkg_permission_presets seam
@@ -1993,9 +2003,10 @@ flowchart TB
 | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | `experimental` | Host | [`agent`](../packages/core/agent), [`experimental-agent-team`](../packages/experimental/agent-team), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) | [`agent`](../packages/core/agent) *, [`experimental-agent-team`](../packages/experimental/agent-team), [`experimental-agent-team`](../packages/experimental/agent-team) *, [`tools`](../packages/core/tools), [`tools`](../packages/core/tools) * | — | — |
 | [`subagent-fork-in-process`](../packages/subagent/subagent-fork-in-process) | `subagent` | Host | [`agent`](../packages/core/agent), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) | [`agent`](../packages/core/agent) *, [`session`](../packages/core/session) *, [`subagent`](../packages/subagent/subagent) *, [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) | — | — |
 | [`subagent-spawn-in-process`](../packages/subagent/subagent-spawn-in-process) | `subagent` | Host | [`subagent`](../packages/subagent/subagent), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) | [`subagent`](../packages/subagent/subagent) *, [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) | — | — |
+| [`management-context`](../packages/data/management-context) | `data` | Host | [`agent-presets`](../packages/preset/agent-presets), [`api-session-controller`](../packages/api/session-controller), [`scope-registry`](../packages/data/scope-registry), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`typert-protocol`](../packages/typert/protocol), [`workspace`](../packages/workspace/workspace) | [`agent-presets`](../packages/preset/agent-presets) *, [`api-session-controller`](../packages/api/session-controller) *, [`brand`](../packages/util/brand) *, [`brand`](../packages/util/brand), [`scope-registry`](../packages/data/scope-registry) *, [`session`](../packages/core/session) *, [`session-projection`](../packages/session/session-projection) *, [`typert-protocol`](../packages/typert/protocol), [`workspace`](../packages/workspace/workspace) * | seam-2 | ⚠ 1 |
 | [`client-test-runtime`](../packages/test-support/client-runtime) | `test-support` | Client | [`api-gateway`](../packages/api/gateway), [`api-session-controller`](../packages/api/session-controller), [`api-workspace-controller`](../packages/api/workspace-controller), [`attachment`](../packages/attachment/attachment), [`client-connection`](../packages/client/connection), [`client-hmr`](../packages/client/hmr), [`client-modules`](../packages/client/modules), [`client-store`](../packages/client/store), [`client-ui-chat`](../packages/client/ui-chat), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-session`](../packages/client/ui-session), [`client-ui-settings`](../packages/client/ui-settings), [`client-ui-slots`](../packages/client/ui-slots), [`client-web`](../packages/client/web), [`remote-mock`](../packages/test-support/remote-mock), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent), [`typert-protocol`](../packages/typert/protocol) | — | — | — |
 | [`sdk-client`](../packages/sdk/client) | `sdk` | Host | [`llm`](../packages/llm/llm), [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session) | [`llm`](../packages/llm/llm) *, [`sdk-protocol`](../packages/sdk/protocol) *, [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session) * | — | — |
 | [`sdk-jsonrpc-server`](../packages/sdk/server) | `sdk` | Host | [`agent`](../packages/core/agent), [`attachment`](../packages/attachment/attachment), [`llm`](../packages/llm/llm), [`llm-deepseek`](../packages/llm/llm-deepseek), [`scope`](../packages/core/scope), [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent) | [`agent`](../packages/core/agent) *, [`attachment`](../packages/attachment/attachment), [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm), [`llm-deepseek`](../packages/llm/llm-deepseek), [`scope`](../packages/core/scope), [`sdk-protocol`](../packages/sdk/protocol) *, [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session) *, [`subagent`](../packages/subagent/subagent) * | — | — |
 | [`subagent-dsh-sdk`](../packages/subagent/subagent-dsh-sdk) | `subagent` | Host | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`sdk-client`](../packages/sdk/client), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent), [`subprocess`](../packages/subprocess/subprocess) | [`agent`](../packages/core/agent) *, [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm) *, [`sdk-client`](../packages/sdk/client), [`session`](../packages/core/session) *, [`subagent`](../packages/subagent/subagent) *, [`subagent`](../packages/subagent/subagent), [`subprocess`](../packages/subprocess/subprocess) | — | — |
 
-<!-- seam manifest: seam-1, seam-2, seam-3, seam-4, seam-5, seam-6. Bundles: acp-app, base, data-agent, headless, sdk-app, sdk-minimal, web-app. @Remote emitters: agent-presets, api-session-controller, api-settings-controller, api-terminal-controller, api-workspace-controller, api-workspace-files, client-file-upload, command-feedback, commands, cordis-host-runner, evidence-query, experimental-agent-team, goal, host-plugin-inventory, llm, message-feedback, office-to-pdf, permission-presets, plugin-manager, result-cache, schema-gateway, session-reference, subagent, tool-cordis. Assembly remotes (api-remotes/src/client): agent-presets, api-session-controller, api-settings-controller, api-terminal-controller, api-workspace-controller, api-workspace-files, client-file-upload, command-feedback, commands, cordis-host-runner, evidence-query, goal, host-plugin-inventory, llm, message-feedback, office-to-pdf, permission-presets, plugin-manager, result-cache, schema-gateway, session-reference, subagent. -->
+<!-- seam manifest: seam-1, seam-2, seam-3, seam-4, seam-5, seam-6. Bundles: acp-app, base, data-agent, headless, sdk-app, sdk-minimal, web-app. @Remote emitters: agent-presets, api-session-controller, api-settings-controller, api-terminal-controller, api-workspace-controller, api-workspace-files, client-file-upload, command-feedback, commands, cordis-host-runner, evidence-query, experimental-agent-team, goal, host-plugin-inventory, llm, management-context, message-feedback, office-to-pdf, permission-presets, plugin-manager, result-cache, schema-gateway, session-reference, subagent, tool-cordis. Assembly remotes (api-remotes/src/client): agent-presets, api-session-controller, api-settings-controller, api-terminal-controller, api-workspace-controller, api-workspace-files, client-file-upload, command-feedback, commands, cordis-host-runner, evidence-query, goal, host-plugin-inventory, llm, message-feedback, office-to-pdf, permission-presets, plugin-manager, result-cache, schema-gateway, session-reference, subagent. -->
