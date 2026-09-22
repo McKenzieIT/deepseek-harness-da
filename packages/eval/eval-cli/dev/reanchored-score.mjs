@@ -5,7 +5,7 @@
  *
  * Needed because 16/18 event cases' recorded values no longer match their own
  * reference SQL — the raw event ODS view's historical partition is not a frozen
- * anchor, while the DWS tables are (see `case-expected-value-audit.mjs` and
+ * anchor, while the DWS tables are (see `case-expected-value-audit.ts` and
  * GA-EVAL-CASESET-EVENT-ANCHOR). As shipped, an agent that computes the exactly
  * correct number still scores `wrong`, so the as-shipped pass_rate cannot say
  * whether event-case SQL got better. The re-anchored number can.
@@ -36,7 +36,7 @@ for (const m of auditLog.matchAll(/^\[(\d+)\] live=(\S+) expected=(\S+)/gm)) {
 
 const EVENT = new Set(['056', '057', '119', '120', '121', '122', '123', '124', '125', '126', '127', '128', '129', '130', '135', '136', '137', '138'])
 
-/** Pull the first scalar out of an eval query_result (shape: [[v]] or [{k:v}]). */
+/** Pull the first scalar from execution-artifact rows (or a legacy query_result). */
 function firstScalar(qr) {
   if (!Array.isArray(qr) || qr.length === 0) return null
   const row = qr[0]
@@ -65,7 +65,7 @@ for (const c of artifact.cases) {
     const anchor = live.get(id)
     if (anchor === undefined) { detail = 'no live anchor'; }
     else {
-      const got = c.pass_k_results.map(r => firstScalar(r.query_result))
+      const got = c.pass_k_results.map(r => firstScalar(r.execution_artifact?.rows ?? r.query_result))
       const all = got.length > 0 && got.every(v => near(v, anchor.live))
       reanchoredPass = all
       detail = `live=${anchor.live} recorded=${anchor.recorded} got=[${got.map(v => JSON.stringify(v)).join(',')}]`

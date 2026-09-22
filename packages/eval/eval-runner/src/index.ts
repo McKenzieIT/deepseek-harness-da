@@ -2,17 +2,23 @@
  * `@deepseek-ai/dsh-eval-runner` — the eval evidence engine.
  *
  * Public API: batch runner, persistence, delta comparison, health gate,
- * infra retry, collaborator interfaces, and stubs.
+ * infra retry, collaborator interfaces, the `ctx.query` executor adapter, and
+ * stubs.
  *
  * @module @deepseek-ai/dsh-eval-runner
  */
+
+export { CtxQueryExecutor } from './ctx_query_executor.ts'
 
 // Core types
 export type {
   RunnerVerdict,
   SqlJudgeVerdict,
+  ReferenceSqlPreflightEvidence,
+  CasePreflightEvidence,
   AttemptResult,
   CaseVerdict,
+  CaseSource,
   RunResult,
   RunSummary,
   RunConfig,
@@ -23,7 +29,6 @@ export type {
   AgentRespondOpts,
   AgentResponse,
   QueryExecutor,
-  QueryResult,
   JudgeExecutor,
   JudgeResult,
   HealthCheckResult,

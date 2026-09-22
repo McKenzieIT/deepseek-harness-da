@@ -28,6 +28,8 @@ kind: "package-reference"
 
 运行计数、有界运行摘要、原始结果查询和 delta 读取同一个 `EvalResultStore`。`evalRunHistory()` 按 `metadata.runId` 聚合，按时间倒序返回不超过必填上限的行，并且不传输 case 记录。文件数量不能证明 UI 已加载某次运行。按资产筛选的 delta 使用与 history 查询相同的可靠资产 identity；若该映射变为不可用，请求会失败。
 
+`FileBackedEvalResultStore` 读取旧版无版本 JSONL 与 version-2 记录。刷新可见 snapshot 前，它会校验每一条持久化记录；不支持的版本、未知 verdict、非法 run configuration 或无效 execution artifact 都会使刷新失败，并保留此前可见的记录。Version-2 记录保留 runner verdict、完整 run configuration、case preflight evidence、attempt execution evidence 与 case 来源字段。六种 runner verdict 均显式映射；`unjudged`、`infra_failure` 与 `case_defect` 表示为错误，而不是待处理状态。
+
 -----
 
 <a id="trust-reporting"></a>

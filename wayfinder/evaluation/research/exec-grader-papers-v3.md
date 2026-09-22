@@ -94,7 +94,7 @@ Spider 1.0 的自有指标是 Component Matching 与 Exact Matching，并以“�
 
 ### 4.2 loader 静默丢弃唯一存在的人写 ground truth
 
-`rbi-10000251-exec` 的 39 个 case 是全仓**唯一**带人写参考 SQL 的资产，且带溯源字段（`meta.provenance`、`meta.anchor_ds`、`meta.tier: verified`、`meta.created_at`、顶层 `schema_version: 3`、`expected.behavior`）。
+`rbi-10000251-exec` 的 39 个 case 是全仓**唯一**带人写参考 SQL 的资产，且带溯源字段（`meta.source`、`meta.anchor_ds`、`meta.tier: verified`、`meta.created_at`、顶层 `schema_version: 3`、`expected.behavior`）。
 
 运行时探针（zod 4.4.3，真实 `loadCase()`，对 `eval_10000251_036.yaml`）：
 

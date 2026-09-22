@@ -64,45 +64,68 @@ export function classifyInfraFailure(error: unknown): InfraFailureKind | null {
  * @param fn - the function to execute.
  * @param maxRetries - maximum retry count (default: 2).
  * @param sleep - sleep function (injectable for tests).
+ * @param classifyResult - identifies returned infrastructure failures that need the same retry policy as thrown failures.
  * @returns the function result and retry records.
  */
 export async function withInfraRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = DEFAULT_MAX_INFRA_RETRIES,
   sleep: (ms: number) => Promise<void> = defaultSleep,
+  classifyResult: (result: T) => { kind: InfraFailureKind; error: string } | null = () => null,
 ): Promise<{ result: T; retries: InfraRetryRecord[] }> {
   const retries: InfraRetryRecord[] = []
 
   for (let attempt = 0; ; attempt++) {
     try {
       const result = await fn()
-      return { result, retries }
+      const failure = classifyResult(result)
+      if (failure === null) return { result, retries }
+
+      recordRetry(retries, attempt, failure.kind, failure.error)
+      if (attempt >= maxRetries) throw exhaustedInfraError(attempt, failure.error, retries)
+      await sleep(backoffFor(attempt))
     } catch (err) {
+      if (isInfraError(err)) throw err
       const kind = classifyInfraFailure(err)
 
       // Not an infra failure — propagate immediately
       if (kind === null) throw err
 
-      retries.push({
-        attempt: attempt + 1,
-        kind,
-        error: err instanceof Error ? err.message : String(err),
-        timestamp: new Date().toISOString(),
-      })
+      const message = err instanceof Error ? err.message : String(err)
+      recordRetry(retries, attempt, kind, message)
 
       // Budget exhausted
-      if (attempt >= maxRetries) {
-        const infraErr = new Error(`infra failure after ${attempt + 1} attempts: ${err instanceof Error ? err.message : String(err)}`)
-        ;(infraErr as InfraError).infraRetries = retries
-        ;(infraErr as InfraError).isInfraFailure = true
-        throw infraErr
-      }
+      if (attempt >= maxRetries) throw exhaustedInfraError(attempt, message, retries)
 
       // Backoff and retry
-      const backoffMs = INFRA_BACKOFF_MS[attempt] ?? INFRA_BACKOFF_MS[INFRA_BACKOFF_MS.length - 1] ?? 0
-      await sleep(backoffMs)
+      await sleep(backoffFor(attempt))
     }
   }
+}
+
+function recordRetry(
+  retries: InfraRetryRecord[],
+  attempt: number,
+  kind: InfraFailureKind,
+  error: string,
+): void {
+  retries.push({
+    attempt: attempt + 1,
+    kind,
+    error,
+    timestamp: new Date().toISOString(),
+  })
+}
+
+function exhaustedInfraError(attempt: number, message: string, retries: InfraRetryRecord[]): InfraError {
+  const error = new Error(`infra failure after ${attempt + 1} attempts: ${message}`) as InfraError
+  error.infraRetries = retries
+  error.isInfraFailure = true
+  return error
+}
+
+function backoffFor(attempt: number): number {
+  return INFRA_BACKOFF_MS[attempt] ?? INFRA_BACKOFF_MS[INFRA_BACKOFF_MS.length - 1] ?? 0
 }
 
 /** An error augmented with infra retry metadata. */

@@ -8,11 +8,9 @@
  *
  * Three behaviors the report depends on and that are asserted through it:
  *
- *   - The protocol guard. Two runs whose recorded protocols are known AND
- *     different is an error (`process.exit(2)`, overridable with
- *     `--allow-protocol-mismatch`), because a k=1 vs k=3 pass^k gap is ~12pp of
- *     protocol rather than quality. A run that records nothing only warns, so
- *     the ~169 baselines written before 2026-09-04 stay diffable.
+ *   - The policy guard. Missing or incomplete run policy is unrenderable. Two
+ *     complete runs with different policies exit with status 2 unless the caller
+ *     explicitly passes `--allow-protocol-mismatch`.
  *   - The Voice EXEC / Voice DELIVERY split, which is read out of the case YAML
  *     found relative to the *current working directory*. A case counts as
  *     DELIVERY only when it declares `delivery_match` and no `match_mode`.
@@ -33,8 +31,24 @@ interface FixtureCase {
 }
 
 interface FixtureConfig {
+  provider?: string
+  model?: string
   pass_k?: number
+  concurrency?: number
+  max_infra_retries?: number
+  sql_judge?: boolean
   verdict_semantics?: string
+  responder?: string
+  scope_id?: string
+  today?: string
+  query_expansion?: boolean
+  with_query?: boolean
+  executor_identity?: string
+  query_wait_seconds?: number
+  comparator_policy_version?: number
+  column_semantics?: string
+  max_stored_rows?: number
+  skip_health_gate?: boolean
 }
 
 interface Rendered {
@@ -43,8 +57,31 @@ interface Rendered {
   exitCodes: number[]
 }
 
-/** The protocol most fixtures share, so protocol noise stays out of table tests. */
-const PROTOCOL_K3: FixtureConfig = { pass_k: 3, verdict_semantics: 'pass^k' }
+const EXIT_SENTINEL = Symbol('process.exit')
+
+/** The protocol most fixtures share, so policy noise stays out of table tests. */
+const PROTOCOL_K3: FixtureConfig = {
+  provider: 'test-provider',
+  model: 'test-model',
+  pass_k: 3,
+  concurrency: 1,
+  max_infra_retries: 2,
+  sql_judge: false,
+  verdict_semantics: 'pass^k',
+  responder: 'engine',
+  scope_id: 'test-scope',
+  today: '20260912',
+  query_expansion: false,
+  with_query: true,
+  executor_identity: 'dev/maxc-sidecar.mjs',
+  query_wait_seconds: 300,
+  comparator_policy_version: 1,
+  column_semantics: 'by-name',
+  max_stored_rows: 200,
+  skip_health_gate: false,
+}
+const PROTOCOL_K3_DESCRIPTION = 'provider=test-provider model=test-model pass_k=3 concurrency=1 max_infra_retries=2 sql_judge=false verdict=pass^k responder=engine scope=test-scope today=20260912 query_expansion=false skip_health_gate=false'
+const PROTOCOL_K1_DESCRIPTION = 'provider=test-provider model=test-model pass_k=1 concurrency=1 max_infra_retries=2 sql_judge=false verdict=flat responder=engine scope=test-scope today=20260912 query_expansion=false skip_health_gate=false'
 
 /** Column layout: 2-space indent, 18-wide left-aligned label, 16/16/10 right-aligned. */
 const TABLE_HEADER = '  Category' + ' '.repeat(25) + 'A' + ' '.repeat(15) + 'B' + ' '.repeat(5) + 'Delta'
@@ -99,11 +136,16 @@ function render(cwd: string, runIdA: string, runIdB: string): Rendered {
   const exitCodes: number[] = []
   const log = vi.spyOn(console, 'log').mockImplementation((line?: string) => { out.push(line ?? '') })
   const error = vi.spyOn(console, 'error').mockImplementation((line?: string) => { err.push(line ?? '') })
-  const exit = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => { exitCodes.push(code ?? 0) }) as typeof process.exit)
+  const exit = vi.spyOn(process, 'exit').mockImplementation(((code?: number): never => {
+    exitCodes.push(code ?? 0)
+    throw EXIT_SENTINEL
+  }) as typeof process.exit)
   const previousCwd = process.cwd()
   process.chdir(cwd)
   try {
     compareRuns(runIdA, runIdB, runsDir)
+  } catch (error) {
+    if (error !== EXIT_SENTINEL) throw error
   } finally {
     process.chdir(previousCwd)
     log.mockRestore()
@@ -184,10 +226,12 @@ beforeAll(() => {
   writeRun('run-proto-nokey', '2026-09-09T00:00:00Z', probe, 1)
   writeRun('run-proto-null', '2026-09-10T00:00:00Z', probe, 1, null)
   writeRun('run-proto-empty', '2026-09-11T00:00:00Z', probe, 1, {})
-  writeRun('run-proto-k1flat', '2026-09-12T00:00:00Z', probe, 1, { pass_k: 1, verdict_semantics: 'flat' })
+  writeRun('run-proto-k1flat', '2026-09-12T00:00:00Z', probe, 1, {
+    ...PROTOCOL_K3,
+    pass_k: 1,
+    verdict_semantics: 'flat',
+  })
   writeRun('run-proto-k3', '2026-09-13T00:00:00Z', probe, 1, PROTOCOL_K3)
-  writeRun('run-proto-konly', '2026-09-14T00:00:00Z', probe, 1, { pass_k: 1 })
-  writeRun('run-proto-semonly', '2026-09-15T00:00:00Z', probe, 1, { verdict_semantics: 'pass^k' })
 })
 
 afterAll(() => {
@@ -206,20 +250,20 @@ describe('compareRuns report', () => {
       '\n  Eval Run Comparison',
       '  A (baseline): run-split-a  (2026-09-01T00:00:00Z)',
       '  B (new):      run-split-b  (2026-09-02T00:00:00Z)',
-      '  Protocol:     A=pass_k=3 pass^k  B=pass_k=3 pass^k',
+      `  Protocol:     A=${PROTOCOL_K3_DESCRIPTION}  B=${PROTOCOL_K3_DESCRIPTION}`,
       '',
       '  Overall: 75.0% → 50.0%  (-25.0pp)',
       '',
       TABLE_HEADER,
       TABLE_RULE,
       // 1 of 2 Original correct in A, 2 of 2 in B.
-      '  Original' + ' '.repeat(15) + '50.0% (1/2)' + ' '.repeat(4) + '100.0% (2/2)' + ' '.repeat(3) + '+50.0pp',
+      '  Original' + ' '.repeat(10) + '50.0% (1/2; 0 excl)100.0% (2/2; 0 excl)' + ' '.repeat(3) + '+50.0pp',
       // Alias exists only in A, so B shows the em-dash "no cases" rate, not 0%.
-      '  Alias' + ' '.repeat(17) + '100.0% (1/1)' + ' '.repeat(9) + '— (0/0)' + ' '.repeat(2) + '-100.0pp',
+      '  Alias' + ' '.repeat(13) + '100.0% (1/1; 0 excl) — (0/0; 0 excl)' + ' '.repeat(2) + '-100.0pp',
       // k11v2_voice_exec_1 declares delivery_match AND match_mode → EXEC.
-      '  Voice EXEC' + ' '.repeat(12) + '100.0% (1/1)' + ' '.repeat(6) + '0.0% (0/1)' + ' '.repeat(2) + '-100.0pp',
+      '  Voice EXEC' + ' '.repeat(8) + '100.0% (1/1; 0 excl)0.0% (0/1; 0 excl)' + ' '.repeat(2) + '-100.0pp',
       // k11v2_voice_deliv_1 declares delivery_match only → DELIVERY, and exists only in B.
-      '  Voice DELIVERY' + ' '.repeat(13) + '— (0/0)' + ' '.repeat(6) + '0.0% (0/1)' + ' '.repeat(4) + '+0.0pp',
+      '  Voice DELIVERY' + ' '.repeat(5) + '— (0/0; 0 excl)0.0% (0/1; 0 excl)' + ' '.repeat(4) + '+0.0pp',
       '',
       '  Gained (1):',
       '    + orig_gain  [Original]',
@@ -247,17 +291,16 @@ describe('compareRuns report', () => {
       '\n  Eval Run Comparison',
       '  A (baseline): run-flat-a  (2026-09-03T00:00:00Z)',
       '  B (new):      run-flat-b  (2026-09-04T00:00:00Z)',
-      '  Protocol:     A=pass_k=3 pass^k  B=pass_k=3 pass^k',
+      `  Protocol:     A=${PROTOCOL_K3_DESCRIPTION}  B=${PROTOCOL_K3_DESCRIPTION}`,
       '',
       '  Overall: 99.0% → 99.0%  (+0.0pp)',
       '',
       TABLE_HEADER,
       TABLE_RULE,
-      // "100.0% (100/100)" is exactly the 16-wide column: emitted unpadded.
-      '  Original' + ' '.repeat(10) + '100.0% (100/100)' + '100.0% (100/100)' + ' '.repeat(4) + '+0.0pp',
+      '  Original' + ' '.repeat(10) + '100.0% (100/100; 0 excl)100.0% (100/100; 0 excl)' + ' '.repeat(4) + '+0.0pp',
       // No cases dir above bareRoot, so the two k11v2_voice_* cases stay pooled
       // under one "Voice" row instead of being guessed into EXEC/DELIVERY.
-      '  Voice' + ' '.repeat(18) + '50.0% (1/2)' + ' '.repeat(5) + '50.0% (1/2)' + ' '.repeat(4) + '+0.0pp',
+      '  Voice' + ' '.repeat(13) + '50.0% (1/2; 0 excl)50.0% (1/2; 0 excl)' + ' '.repeat(4) + '+0.0pp',
       '',
       '  Net: +0 / -0 = +0 flips',
       '',
@@ -273,13 +316,13 @@ describe('compareRuns report', () => {
       '\n  Eval Run Comparison',
       '  A (baseline): run-drop-a  (2026-09-05T00:00:00Z)',
       '  B (new):      run-drop-b  (2026-09-06T00:00:00Z)',
-      '  Protocol:     A=pass_k=3 pass^k  B=pass_k=3 pass^k',
+      `  Protocol:     A=${PROTOCOL_K3_DESCRIPTION}  B=${PROTOCOL_K3_DESCRIPTION}`,
       '',
       '  Overall: 100.0% → 0.0%  (-100.0pp)',
       '',
       TABLE_HEADER,
       TABLE_RULE,
-      '  Original' + ' '.repeat(14) + '100.0% (2/2)' + ' '.repeat(6) + '0.0% (0/2)' + ' '.repeat(2) + '-100.0pp',
+      '  Original' + ' '.repeat(10) + '100.0% (2/2; 0 excl)0.0% (0/2; 0 excl)' + ' '.repeat(2) + '-100.0pp',
       '',
       '  Lost (2):',
       '    - c_one  [Original]',
@@ -291,8 +334,10 @@ describe('compareRuns report', () => {
   })
 
   it('caps the new-case list at ten rows with a remainder line and the removed list at ten rows', () => {
-    const { out } = render(bareRoot, 'run-cap-a', 'run-cap-b')
+    const { out, err, exitCodes } = render(bareRoot, 'run-cap-a', 'run-cap-b')
 
+    expect(err).toEqual([])
+    expect(exitCodes).toEqual([])
     const newStart = out.indexOf('  New cases in B (13):')
     expect(out.slice(newStart, newStart + 12)).toEqual([
       '  New cases in B (13):',
@@ -331,66 +376,48 @@ describe('compareRuns report', () => {
 })
 
 describe('compareRuns protocol guard', () => {
-  it('warns without failing when neither run recorded a protocol', () => {
-    const { out, err, exitCodes } = render(bareRoot, 'run-proto-nokey', 'run-proto-null')
+  it.each([
+    ['run-proto-nokey', 'has no config; grading mode and policy cannot be confirmed'],
+    ['run-proto-null', 'has no config; grading mode and policy cannot be confirmed'],
+    ['run-proto-empty', 'records a config but omits provider, model, pass_k, concurrency, max_infra_retries, sql_judge, verdict_semantics, responder, scope_id, today, query_expansion, with_query, comparator_policy_version, column_semantics, max_stored_rows, skip_health_gate; its numbers cannot be interpreted'],
+  ])('refuses unrenderable artifact %s', (runId, reason) => {
+    const { out, err, exitCodes } = render(bareRoot, runId, 'run-proto-k3')
 
-    expect(err).toEqual([])
-    expect(exitCodes).toEqual([])
-    expect(out).toContain('\n  ⚠ protocol unverified: neither run records its run config (pre-2026-09-04).')
-    expect(out).toContain('      A: unknown    B: unknown')
-    expect(out).toContain('    If one is k=1 and the other k=3 pass^k, the delta below is')
-    expect(out).toContain('    ~12pp of protocol artifact. Check what the run recorded.')
-    expect(out).toContain('  Protocol:     A=unknown  B=unknown')
+    expect(err).toEqual([
+      `\n  ✗ UNRENDERABLE — run ${runId} ${reason}`,
+      '    Re-run it on a build that records its grading policy.\n',
+    ])
+    expect(exitCodes).toEqual([2])
+    expect(out).toEqual([])
   })
 
-  it('names A as the side missing its config when only the baseline predates run configs', () => {
-    const { out, err, exitCodes } = render(bareRoot, 'run-proto-nokey', 'run-proto-k1flat')
-
-    expect(err).toEqual([])
-    expect(exitCodes).toEqual([])
-    expect(out).toContain('\n  ⚠ protocol unverified: A does not record its run config (pre-2026-09-04).')
-    expect(out).toContain('      A: unknown    B: pass_k=1 flat')
-    expect(out).toContain('  Protocol:     A=unknown  B=pass_k=1 flat')
-  })
-
-  it('names B as the side missing its config when its config object records neither field', () => {
-    const { out, err, exitCodes } = render(bareRoot, 'run-proto-k3', 'run-proto-empty')
-
-    expect(err).toEqual([])
-    expect(exitCodes).toEqual([])
-    expect(out).toContain('\n  ⚠ protocol unverified: B does not record its run config (pre-2026-09-04).')
-    expect(out).toContain('      A: pass_k=3 pass^k    B: unknown')
-    expect(out).toContain('  Protocol:     A=pass_k=3 pass^k  B=unknown')
-  })
-
-  it('exits 2 on two known-and-different protocols, printing each side and a missing field as "?"', () => {
-    const { out, err, exitCodes } = render(bareRoot, 'run-proto-konly', 'run-proto-semonly')
+  it('exits 2 when two complete run policies differ', () => {
+    const { out, err, exitCodes } = render(bareRoot, 'run-proto-k1flat', 'run-proto-k3')
 
     expect(err).toEqual([
       '\n  ✗ PROTOCOL MISMATCH — these runs are not comparable',
-      '      A (run-proto-konly): pass_k=1 ?',
-      '      B (run-proto-semonly): pass_k=? pass^k',
-      '    A k=1 vs k=3 pass^k gap is ~12pp of protocol, not quality.',
+      `      A (run-proto-k1flat): ${PROTOCOL_K1_DESCRIPTION}`,
+      `      B (run-proto-k3): ${PROTOCOL_K3_DESCRIPTION}`,
+      '    Provider, model, concurrency, judge, scope, date, and feature',
+      '    settings can change the result independently of code quality.',
       '    Re-run one side under the other\'s protocol, or pass',
       '    --allow-protocol-mismatch if you know what you are doing.\n',
     ])
     expect(exitCodes).toEqual([2])
-    // A mismatch is an error, never the "unverified" warning.
-    expect(out).not.toContain('      A: pass_k=1 ?    B: pass_k=? pass^k')
-    expect(out).toContain('  Protocol:     A=pass_k=1 ?  B=pass_k=? pass^k')
+    expect(out).toEqual([])
   })
 
   it('still prints the mismatch but does not exit when --allow-protocol-mismatch is on argv', () => {
     process.argv.push('--allow-protocol-mismatch')
     let rendered: Rendered
     try {
-      rendered = render(bareRoot, 'run-proto-konly', 'run-proto-semonly')
+      rendered = render(bareRoot, 'run-proto-k1flat', 'run-proto-k3')
     } finally {
       process.argv.pop()
     }
 
     expect(rendered.err).toContain('\n  ✗ PROTOCOL MISMATCH — these runs are not comparable')
-    expect(rendered.err).toContain('      B (run-proto-semonly): pass_k=? pass^k')
+    expect(rendered.err).toContain(`      B (run-proto-k3): ${PROTOCOL_K3_DESCRIPTION}`)
     expect(rendered.exitCodes).toEqual([])
     expect(rendered.out).toContain('  Net: +0 / -0 = +0 flips')
   })

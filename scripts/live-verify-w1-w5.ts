@@ -16,7 +16,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import SchemaGateway from '@deepseek-ai/dsh-schema-gateway'
 import { EvidenceQueryService, FileBackedEvalResultStore } from '@deepseek-ai/dsh-evidence-query'
-import { loadCases } from '@deepseek-ai/dsh-eval'
+import { COMPARATOR_POLICY_VERSION, loadCases } from '@deepseek-ai/dsh-eval'
 import { runBatch, compareDelta, buildCollaborators, StubAgentResponder, StubQueryExecutor, StubJudgeExecutor } from '../packages/eval/eval-runner/src/index.ts'
 import { EvalRunnerService } from '../packages/eval/eval-runner-service/src/index.ts'
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
@@ -98,8 +98,30 @@ async function main(): Promise<void> {
   const collaborators = buildCollaborators(agent, executor, judge)
   const runA = await runBatch(casePaths.slice(0, 3), collaborators, {
     pass_k: 1,
+    concurrency: 1,
+    max_infra_retries: 2,
     skip_health_gate: true,
     run_id: 'run-A',
+    config: {
+      provider: 'stub-provider',
+      model: 'stub-model',
+      pass_k: 1,
+      concurrency: 1,
+      max_infra_retries: 2,
+      sql_judge: true,
+      verdict_semantics: 'pass^k',
+      responder: 'engine',
+      scope_id: 'k11',
+      today: '20260912',
+      query_expansion: false,
+      with_query: true,
+      executor_identity: 'stub-query-executor',
+      query_wait_seconds: 300,
+      comparator_policy_version: COMPARATOR_POLICY_VERSION,
+      column_semantics: 'by-name',
+      max_stored_rows: 200,
+      skip_health_gate: true,
+    },
   })
   check('runBatch produces verdicts', runA.cases.length === 3, `${runA.cases.length} verdicts; summary=${JSON.stringify(runA.summary)}`)
 
@@ -190,7 +212,18 @@ async function main(): Promise<void> {
   // → trigger_eval full_run is REACHABLE (was: not_configured — the seam was
   // declared but unmounted). Running a real eval needs the bundle's ctx.llm +
   // ctx.query (ODPS) creds; construction + case discovery need neither.
-  const evalSvc = new EvalRunnerService(ctx, { caseDir: CASE_DIR, resultsDir: '.tmp/eval-results' })
+  const evalSvc = new EvalRunnerService(ctx, {
+    caseDir: CASE_DIR,
+    resultsDir: '.tmp/eval-results',
+    passK: 1,
+    concurrency: 1,
+    maxInfraRetries: 2,
+    provider: 'stub-provider',
+    model: 'stub-model',
+    today: '20260912',
+    columnSemantics: 'by-name',
+    maxStoredRows: 200,
+  })
   check('trigger_eval full_run REACHABLE (W6a-gap closed)', typeof evalSvc.getCaseCount === 'function', `EvalRunnerService constructed → ctx.evalRunner seam wired; getCaseCount=${evalSvc.getCaseCount()}`)
   check('trigger_eval report_last DATA READY', eq.getEvalStore().getRunIds().length >= 1, `${eq.getEvalStore().getRunIds().length} past run(s) → report_last path satisfiable`)
 

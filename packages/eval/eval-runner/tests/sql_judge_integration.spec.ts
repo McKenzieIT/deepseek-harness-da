@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { runBatch } from '../src/runner.ts'
+import { makeTestRunOptions } from './test_config.ts'
 import { buildCollaborators } from '../src/collaborators.ts'
 import { StubAgentResponder, StubQueryExecutor, StubJudgeExecutor } from '../src/stubs.ts'
 import type { SqlSemanticJudge, SqlJudgeInput, SqlJudgeResult } from '../src/sql_semantic_judge.ts'
@@ -40,10 +41,10 @@ describe('sql_judge verdict persistence', () => {
 
     const collaborators = buildCollaborators(agent, null, null, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeDefined()
@@ -64,16 +65,16 @@ describe('sql_judge verdict persistence', () => {
     const judge = new StubJudgeExecutor()
 
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
 
     // No sqlJudge provided, and executor exists — old behavior would skip judge entirely
     const collaborators = buildCollaborators(agent, executor, judge, null)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeUndefined()
@@ -99,18 +100,19 @@ describe('sql_judge verdict persistence', () => {
 
     const collaborators = buildCollaborators(agent, null, null, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeDefined()
     expect(attempt.sql_judge!.dimensions.table_selection).toBe(0)
     expect(attempt.sql_judge!.dimensions.aggregation_logic).toBe(0)
     expect(attempt.sql_judge!.dimensions.overall_semantics).toBe(0)
-    // Score below threshold → execution_match should be false
-    expect(attempt.execution_match).toBe(false)
+    // The judge reports; it never writes the execution dimension. With no
+    // executor mounted, execution was not measured at all.
+    expect(attempt.execution_outcome).toBe('not-measured')
   })
 })
 
@@ -122,7 +124,7 @@ describe('dual-score policy (executor + sql_judge)', () => {
     const sqlJudge = new StubSqlSemanticJudge()
 
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     sqlJudge.setResult({
       score: 1.0,
@@ -138,21 +140,21 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     // Both scores present
-    expect(attempt.execution_match).toBe(true)
+    expect(attempt.execution_outcome).toBe('pass')
     expect(attempt.sql_judge).toBeDefined()
     expect(attempt.sql_judge!.score).toBe(1.0)
     // sql_judge was actually called
     expect(sqlJudge.calls).toHaveLength(1)
   })
 
-  it('execution_match and sql_judge are independent — executor fails, judge passes', async () => {
+  it('the execution outcome and sql_judge are independent — executor fails, judge passes', async () => {
     const agent = new StubAgentResponder()
     const executor = new StubQueryExecutor()
     const judge = new StubJudgeExecutor()
@@ -160,7 +162,7 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     agent.setDefaultReply({ reply: '999', generated_sql: 'SELECT 999 AS total' })
     // Executor returns non-matching result
-    executor.setResult('SELECT 999 AS total', { success: true, rows: [{ total: 999 }], row_count: 1, error: null })
+    executor.setResult('SELECT 999 AS total', { state: 'completed', columns: ['total'], rows: [[999]], rowCount: 1 })
     judge.setScore(1.0)
     // But sql_judge says it's semantically correct
     sqlJudge.setResult({
@@ -177,27 +179,27 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     // Execution doesn't match (value mismatch)
-    expect(attempt.execution_match).toBe(false)
+    expect(attempt.execution_outcome).toBe('fail')
     // But sql_judge independently scored it
     expect(attempt.sql_judge).toBeDefined()
     expect(attempt.sql_judge!.score).toBe(0.8)
   })
 
-  it('execution_match and sql_judge are independent — executor passes, judge fails', async () => {
+  it('the execution outcome and sql_judge are independent — executor passes, judge fails', async () => {
     const agent = new StubAgentResponder()
     const executor = new StubQueryExecutor()
     const judge = new StubJudgeExecutor()
     const sqlJudge = new StubSqlSemanticJudge()
 
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     // sql_judge thinks it's wrong
     sqlJudge.setResult({
@@ -214,15 +216,15 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     // Execution passes (result matches)
-    expect(attempt.execution_match).toBe(true)
-    // sql_judge independently scored low — recorded but doesn't override execution_match
+    expect(attempt.execution_outcome).toBe('pass')
+    // sql_judge independently scored low — recorded, never folded into execution
     expect(attempt.sql_judge).toBeDefined()
     expect(attempt.sql_judge!.score).toBe(0.2)
   })
@@ -239,17 +241,17 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
     const attempt = result.cases[0]!.pass_k_results[0]!
     expect(attempt.sql_judge).toBeUndefined()
     expect(sqlJudge.calls).toHaveLength(0)
   })
 
-  it('verdict uses execution_match for pass/fail (sql_judge does not override)', async () => {
+  it('verdict uses the execution outcome for pass/fail (sql_judge does not override)', async () => {
     const agent = new StubAgentResponder()
     const executor = new StubQueryExecutor()
     const judge = new StubJudgeExecutor()
@@ -257,7 +259,7 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
     // Execution matches
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     // Judge fails — but should NOT change the verdict
     sqlJudge.setResult({
@@ -274,12 +276,12 @@ describe('dual-score policy (executor + sql_judge)', () => {
 
     const collaborators = buildCollaborators(agent, executor, judge, sqlJudge)
 
-    const result = await runBatch([caseA], collaborators, {
+    const result = await runBatch([caseA], collaborators, makeTestRunOptions(collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    }))
 
-    // Verdict is determined by execution_match, not sql_judge
+    // Verdict is determined by the execution outcome, not sql_judge
     expect(result.cases[0]!.verdict).toBe('correct')
   })
 })

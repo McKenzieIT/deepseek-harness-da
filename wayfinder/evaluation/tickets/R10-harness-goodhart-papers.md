@@ -32,7 +32,7 @@ packages/eval/eval/cases/k11-v2/            ← 168 个 case
 packages/eval/eval/cases/rbi-10000251-exec/ ← 39 个 case
 ```
 
-case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@deepseek-ai/dsh-eval`（一个 deps 只有 `js-yaml`+`zod` 的纯库）。这也是 loader 能静默丢弃 provenance 而无人察觉的结构原因（→ [T11](T11-loader-source-strip.md)）。
+case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@deepseek-ai/dsh-eval`（一个 deps 只有 `js-yaml`+`zod` 的纯库）。这也是 loader 曾能静默丢弃 source fields 而无人察觉的结构原因（已由 [T11](T11-loader-source-strip.md) 修复）。
 
 **② 当前四层结构（实测 deps 与规模）**
 
@@ -55,7 +55,7 @@ case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@de
 
 `runner.ts`（core 178 行死 / runner 423 行活）、`persistence.ts`（196 死 / 68 活）、health gate（`health-gate.ts` 116 死 / `health_gate.ts` 102 活）——连文件名规范都分叉。根因是 P11b（08-20）与 W3（08-25）撞车，无设计理由。
 
-**⑤ 两套 case schema 并存** —— `k11-v2` 0/168 带 `expected.sql`；`rbi-10000251-exec` 39/39 带 `expected.sql` + `meta.anchor_ds` + `meta.tier` + `meta.provenance`（rbi `schema_version: 3`），且其 reference SQL 是**模板**（37/39 含 `{{ds_yesterday}}` 等）。
+**⑤ 两套 case schema 并存** —— `k11-v2` 0/168 带 `expected.sql`；`rbi-10000251-exec` 39/39 带 `expected.sql` + `meta.anchor_ds` + `meta.tier` + `meta.source`（rbi `schema_version: 3`），且其 reference SQL 是**模板**（37/39 含 `{{ds_yesterday}}` 等）。
 
 **⑥ Goodhart 的现成靶子** —— 当前基线 61.9% pass^k 测在 `k11-v2`；12.8% 真执行测在 `rbi-10000251-exec`，而后者的 event case 期望值 16/18 已失效。**没有 heldout，也没有 fresh slice。**
 
@@ -80,7 +80,7 @@ case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@de
 
 对 G10 的三个问题，来源支持的最小答案是：benchmark pack 拥有作者态 case schema 与 policy 选择；共享库可以实现通用 comparator 与 canonical runtime protocol；`k11-v2` 与 `rbi-10000251-exec` 可保留不同 source schema，但必须无损、显式、版本化地编译到同一 canonical case envelope，不能靠宽松 loader 假装合流。具体包名、导出、迁移方式和 comparator 默认值仍由 G10/R23 决定。
 
-Goodhart 审计需同时维护公开 train、受控 heldout、冻结后采集的 fresh slice，并记录跨 slice delta、bootstrap 95% CI、raw/style-controlled judge 分数、provenance 与训练/蒸馏谱系、重叠与变换探针、canary/dye sentinel、盲评解封和人工抽查。Arena-Hard 论文写 95% CI，但本次固定提交的官方代码取 5%/95% 分位数（中央 90%），复现时必须显式声明区间定义。
+Goodhart 审计需同时维护公开 train、受控 heldout、冻结后采集的 fresh slice，并记录跨 slice delta、bootstrap 95% CI、raw/style-controlled judge 分数、source identity 与训练/蒸馏谱系、重叠与变换探针、canary/dye sentinel、盲评解封和人工抽查。Arena-Hard 论文写 95% CI，但本次固定提交的官方代码取 5%/95% 分位数（中央 90%），复现时必须显式声明区间定义。
 
 认读同时纠正 map 原有表述：LED 研究的是标准 `pass@n`（n 次中至少一次成功），不是本仓 strict `pass^k`（k 次全部成功）；它支持审计探索能力退化，但不能直接作为本仓 `pass^k` 的实证依据。
 

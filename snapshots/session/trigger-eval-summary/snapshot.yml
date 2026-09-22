@@ -1,0 +1,10 @@
+version: 1
+scenario: trigger-eval-summary
+profile: headless
+composition: trigger-eval-summary
+recording: authored
+header:
+  class: trigger-eval-summary
+  pin: true
+replay:
+  override: true

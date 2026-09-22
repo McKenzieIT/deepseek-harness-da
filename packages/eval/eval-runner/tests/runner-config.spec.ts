@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { runBatch } from '../src/runner.ts'
 import { writeRunResult, readRunResult } from '../src/persistence.ts'
 import { buildCollaborators } from '../src/collaborators.ts'
+import { COMPARATOR_POLICY_VERSION } from '@deepseek-ai/dsh-eval'
 import { StubAgentResponder, StubQueryExecutor, StubJudgeExecutor } from '../src/stubs.ts'
 import type { RunConfig, RunResult } from '../src/types.ts'
 import { tmpdir } from 'node:os'
@@ -34,14 +35,20 @@ const SAMPLE_CONFIG: RunConfig = {
   provider: 'aga',
   model: 'qwen3.7-max',
   pass_k: 3,
+  max_infra_retries: 2,
   concurrency: 4,
-  sql_judge: true,
+  sql_judge: false,
   verdict_semantics: 'pass^k',
   responder: 'engine',
   scope_id: 'k11',
   today: '20260903',
   query_expansion: true,
   with_query: true,
+  executor_identity: 'packages/query/query-maxcompute/dev/maxc-sidecar.mjs',
+  query_wait_seconds: 300,
+  comparator_policy_version: COMPARATOR_POLICY_VERSION,
+  column_semantics: 'by-name',
+  max_stored_rows: 200,
   skip_health_gate: false,
 }
 
@@ -49,12 +56,13 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
   it('records the supplied config on the run result', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 
     const result = await runBatch([caseA], collaborators, {
       pass_k: SAMPLE_CONFIG.pass_k,
+      max_infra_retries: 2,
       concurrency: SAMPLE_CONFIG.concurrency,
       skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
       config: SAMPLE_CONFIG,
@@ -69,13 +77,14 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
   it('the config records every protocol+semantics field needed to detect mis-attribution', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 
     const result = await runBatch([caseA], collaborators, {
-      pass_k: 1,
-      skip_health_gate: true,
+      pass_k: SAMPLE_CONFIG.pass_k,
+      concurrency: SAMPLE_CONFIG.concurrency,
+      skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
       config: SAMPLE_CONFIG,
     })
 
@@ -86,12 +95,12 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
     //  - sql_judge/responder/scope_id/today: protocol inputs that change outcomes
     //  - pass_k/concurrency: runtime semantics
     //  - query_expansion/with_query/skip_health_gate: feature flags that affect results
-    const cfg = result.config!
+    const cfg = result.config
     expect(cfg.provider).toBe('aga')
     expect(cfg.model).toBe('qwen3.7-max')
     expect(cfg.pass_k).toBe(3)
     expect(cfg.concurrency).toBe(4)
-    expect(cfg.sql_judge).toBe(true)
+    expect(cfg.sql_judge).toBe(false)
     expect(cfg.verdict_semantics).toBe('pass^k')
     expect(cfg.responder).toBe('engine')
     expect(cfg.scope_id).toBe('k11')
@@ -104,13 +113,14 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
   it('writeRunResult persists config to the JSON artifact (detectable post-hoc)', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 
     const result = await runBatch([caseA], collaborators, {
-      pass_k: 1,
-      skip_health_gate: true,
+      pass_k: SAMPLE_CONFIG.pass_k,
+      concurrency: SAMPLE_CONFIG.concurrency,
+      skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
       config: SAMPLE_CONFIG,
     })
 
@@ -133,25 +143,69 @@ describe('RunResult.config (GA-EVAL-REBASELINE item 4)', () => {
     expect(loaded.config).toEqual(SAMPLE_CONFIG)
   })
 
-  it('omits config gracefully when none is supplied (additive — does not break legacy callers)', async () => {
+  it('rejects a new run when no self-describing config is supplied', async () => {
     const { agent, executor, judge } = makeStubs()
     agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
-    executor.setResult('SELECT 1000 AS total', { success: true, rows: [{ total: 1000 }], row_count: 1, error: null })
+    executor.setResult('SELECT 1000 AS total', { state: 'completed', columns: ['total'], rows: [[1000]], rowCount: 1 })
     judge.setScore(1.0)
     const collaborators = buildCollaborators(agent, executor, judge)
 
-    // No config option supplied — legacy call shape
-    const result = await runBatch([caseA], collaborators, {
+    await expect(runBatch([caseA], collaborators, {
       pass_k: 1,
       skip_health_gate: true,
-    })
+    } as never)).rejects.toThrow(/config.*required/i)
+  })
 
-    // config is optional; absence is not a crash, just a non-self-describing artifact
-    expect(result.config).toBeUndefined()
-    // Existing fields are untouched (additive change, no regressions)
-    expect(result.run_id).toBeDefined()
-    expect(result.timestamp).toBeDefined()
-    expect(result.cases).toHaveLength(1)
-    expect(result.summary.total).toBe(1)
+  it('rejects a comparator policy version that differs from the resolved implementation', async () => {
+    const { agent, executor, judge } = makeStubs()
+    agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
+    const collaborators = buildCollaborators(agent, executor, judge)
+
+    await expect(runBatch([caseA], collaborators, {
+      pass_k: SAMPLE_CONFIG.pass_k,
+      concurrency: SAMPLE_CONFIG.concurrency,
+      skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
+      config: { ...SAMPLE_CONFIG, comparator_policy_version: COMPARATOR_POLICY_VERSION + 1 },
+    })).rejects.toThrow(/comparator_policy_version/i)
+  })
+
+  it('rejects runtime options that disagree with the persisted config', async () => {
+    const { agent, executor, judge } = makeStubs()
+    agent.setDefaultReply({ reply: '1000', generated_sql: 'SELECT 1000 AS total' })
+    const collaborators = buildCollaborators(agent, executor, judge)
+
+    await expect(runBatch([caseA], collaborators, {
+      pass_k: 1,
+      concurrency: SAMPLE_CONFIG.concurrency,
+      skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
+      config: SAMPLE_CONFIG,
+    })).rejects.toThrow(/pass_k/i)
+  })
+
+  it.each(['executor_identity', 'query_wait_seconds'] as const)(
+    'rejects a real-execution run that omits %s',
+    async (field) => {
+      const { agent, executor, judge } = makeStubs()
+      const collaborators = buildCollaborators(agent, executor, judge)
+
+      await expect(runBatch([caseA], collaborators, {
+        pass_k: SAMPLE_CONFIG.pass_k,
+        concurrency: SAMPLE_CONFIG.concurrency,
+        skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
+        config: { ...SAMPLE_CONFIG, [field]: undefined },
+      })).rejects.toThrow(new RegExp(field))
+    },
+  )
+
+  it('rejects a sql_judge flag that does not match the mounted collaborator', async () => {
+    const { agent, executor, judge } = makeStubs()
+    const collaborators = buildCollaborators(agent, executor, judge)
+
+    await expect(runBatch([caseA], collaborators, {
+      pass_k: SAMPLE_CONFIG.pass_k,
+      concurrency: SAMPLE_CONFIG.concurrency,
+      skip_health_gate: SAMPLE_CONFIG.skip_health_gate,
+      config: { ...SAMPLE_CONFIG, sql_judge: true },
+    })).rejects.toThrow(/sql_judge/i)
   })
 })

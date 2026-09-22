@@ -35,21 +35,123 @@ interface RunResult {
   }
   /**
    * Run protocol, persisted since 2026-09-04. Absent on the ~169 runs recorded
-   * before that, which is why `describeProtocol` reports "unknown" rather than
+   * before that, which is why `describeRunProtocol` reports "unknown" rather than
    * assuming a default.
    */
   config?: {
+    provider?: string
+    model?: string
     pass_k?: number
+    concurrency?: number
+    max_infra_retries?: number
+    sql_judge?: boolean
     verdict_semantics?: string
+    responder?: string
+    scope_id?: string
+    today?: string
+    query_expansion?: boolean
+    with_query?: boolean
+    executor_identity?: string
+    query_wait_seconds?: number
+    comparator_policy_version?: number
+    column_semantics?: string
+    max_stored_rows?: number
+    skip_health_gate?: boolean
   } | null
 }
 
-/** Human-readable protocol tag, or null when the run predates `config`. */
-function describeProtocol(run: RunResult): string | null {
-  const k = run.config?.pass_k
-  const semantics = run.config?.verdict_semantics
-  if (k === undefined && semantics === undefined) return null
-  return `pass_k=${k ?? '?'} ${semantics ?? '?'}`
+/** Whether a run may be rendered, and whether its numbers may be cited as a baseline. */
+export interface Renderability {
+  readonly ok: boolean
+  /** Why the run was refused, when it was. */
+  readonly reason?: string
+}
+
+/**
+ * Decide whether a run states enough about itself to be compared.
+ *
+ * A run that records a config but omits how it graded, or claims real execution
+ * without naming the executor, is refused: those fields decide what its numbers
+ * mean, and the build that produced it knows them. `with_query` alone is not
+ * enough, because the default sidecar is a throwaway stand-in — the historical
+ * 5.1% "real execution" baseline cannot be confirmed to have touched a
+ * warehouse at all.
+ *
+ * A run with no config is refused because its grading mode and policy cannot
+ * be established from the artifact.
+ * @param run - the run to check.
+ * @returns whether it may be rendered, and why not when it may not.
+ */
+export function checkRenderable(run: RunResult): Renderability {
+  const config = run.config
+  if (config === undefined || config === null) {
+    return { ok: false, reason: `run ${run.run_id} has no config; grading mode and policy cannot be confirmed` }
+  }
+
+  const required = [
+    'provider',
+    'model',
+    'pass_k',
+    'concurrency',
+    'max_infra_retries',
+    'sql_judge',
+    'verdict_semantics',
+    'responder',
+    'scope_id',
+    'today',
+    'query_expansion',
+    'with_query',
+    'comparator_policy_version',
+    'column_semantics',
+    'max_stored_rows',
+    'skip_health_gate',
+  ] as const
+  const missing: string[] = required.filter(key => config[key] === undefined)
+  if (config.with_query === true && config.executor_identity === undefined) missing.push('executor_identity')
+  if (config.with_query === true && config.query_wait_seconds === undefined) missing.push('query_wait_seconds')
+  if (missing.length > 0) {
+    return { ok: false, reason: `run ${run.run_id} records a config but omits ${missing.join(', ')}; its numbers cannot be interpreted` }
+  }
+  return { ok: true }
+}
+
+/**
+ * Human-readable execution mode: what executed the SQL and how results were
+ * compared. Two runs that differ here are not comparable — judge-only versus
+ * real execution measured 61.5% against 5.1% on the same cases and model.
+ * @param run - the run to describe.
+ * @returns the mode tag, or `null` when the run records no config.
+ */
+export function describeExecutionMode(run: RunResult): string | null {
+  const config = run.config
+  if (config === undefined || config === null) return null
+  const executor = config.with_query === true ? config.executor_identity ?? 'unnamed-executor' : 'no-executor'
+  const wait = config.with_query === true ? `${config.query_wait_seconds ?? '?'}s` : 'n/a'
+  return `exec=${executor} wait=${wait} policy=v${config.comparator_policy_version ?? '?'}/${config.column_semantics ?? '?'} rows=${config.max_stored_rows ?? '?'}`
+}
+
+/**
+ * Render every non-execution input that can change or qualify a run.
+ * @param run - the run whose protocol is described.
+ * @returns the protocol tag, or `null` for a legacy run without config.
+ */
+export function describeRunProtocol(run: RunResult): string | null {
+  const config = run.config
+  if (config === undefined || config === null) return null
+  return [
+    `provider=${config.provider ?? '?'}`,
+    `model=${config.model ?? '?'}`,
+    `pass_k=${config.pass_k ?? '?'}`,
+    `concurrency=${config.concurrency ?? '?'}`,
+    `max_infra_retries=${config.max_infra_retries ?? '?'}`,
+    `sql_judge=${config.sql_judge ?? '?'}`,
+    `verdict=${config.verdict_semantics ?? '?'}`,
+    `responder=${config.responder ?? '?'}`,
+    `scope=${config.scope_id ?? '?'}`,
+    `today=${config.today ?? '?'}`,
+    `query_expansion=${config.query_expansion ?? '?'}`,
+    `skip_health_gate=${config.skip_health_gate ?? '?'}`,
+  ].join(' ')
 }
 
 /**
@@ -61,29 +163,42 @@ function describeProtocol(run: RunResult): string | null {
  * exactly the trap that `scripts/run-eval.sh --pass-k 1` left behind while the
  * recorded baseline moved to pass^k.
  *
- * Known-and-different is an error (definitely wrong). Unknown is a warning
- * (merely unverifiable) so historical baselines stay diffable.
+ * A missing or incomplete run configuration is refused because its grading
+ * policy cannot be established from the artifact.
  */
 function checkProtocolMatch(runA: RunResult, runB: RunResult): void {
-  const a = describeProtocol(runA)
-  const b = describeProtocol(runB)
+  for (const run of [runA, runB]) {
+    const renderable = checkRenderable(run)
+    if (!renderable.ok) {
+      console.error(`\n  ✗ UNRENDERABLE — ${renderable.reason}`)
+      console.error('    Re-run it on a build that records its grading policy.\n')
+      process.exit(2)
+    }
+  }
+
+  const modeA = describeExecutionMode(runA)
+  const modeB = describeExecutionMode(runB)
+  if (modeA !== null && modeB !== null && modeA !== modeB) {
+    console.error('\n  ✗ EXECUTION MODE MISMATCH — these runs are not comparable')
+    console.error(`      A (${runA.run_id}): ${modeA}`)
+    console.error(`      B (${runB.run_id}): ${modeB}`)
+    console.error('    Executor identity, wait windows, row retention, and comparator')
+    console.error('    semantics can all change the observed result.\n')
+    if (!process.argv.includes('--allow-protocol-mismatch')) process.exit(2)
+  }
+
+  const a = describeRunProtocol(runA)
+  const b = describeRunProtocol(runB)
 
   if (a !== null && b !== null && a !== b) {
     console.error('\n  ✗ PROTOCOL MISMATCH — these runs are not comparable')
     console.error(`      A (${runA.run_id}): ${a}`)
     console.error(`      B (${runB.run_id}): ${b}`)
-    console.error('    A k=1 vs k=3 pass^k gap is ~12pp of protocol, not quality.')
+    console.error('    Provider, model, concurrency, judge, scope, date, and feature')
+    console.error('    settings can change the result independently of code quality.')
     console.error('    Re-run one side under the other\'s protocol, or pass')
     console.error('    --allow-protocol-mismatch if you know what you are doing.\n')
     if (!process.argv.includes('--allow-protocol-mismatch')) process.exit(2)
-  } else if (a === null || b === null) {
-    const which = a === null && b === null
-      ? 'neither run records'
-      : `${a === null ? 'A' : 'B'} does not record`
-    console.log(`\n  ⚠ protocol unverified: ${which} its run config (pre-2026-09-04).`)
-    console.log(`      A: ${a ?? 'unknown'}    B: ${b ?? 'unknown'}`)
-    console.log('    If one is k=1 and the other k=3 pass^k, the delta below is')
-    console.log('    ~12pp of protocol artifact. Check what the run recorded.')
   }
 }
 
@@ -131,7 +246,76 @@ export function resolveRunFile(prefix: string, dir: string): string {
 
 function loadRun(path: string): RunResult {
   const data: unknown = JSON.parse(readFileSync(path, 'utf8'))
-  return data as RunResult
+  return parseRunResult(data, path)
+}
+
+/**
+ * Validate a parsed durable run artifact before comparison code consumes it.
+ * @param data - the untrusted value returned by JSON parsing.
+ * @param source - the file or input name used in diagnostics.
+ * @returns the validated run.
+ */
+export function parseRunResult(data: unknown, source: string = 'run artifact'): RunResult {
+  assertRunResult(data, source)
+  return data
+}
+
+function assertRunResult(data: unknown, source: string): asserts data is RunResult {
+  const run = requireRecord(data, source)
+  requireString(run.run_id, `${source}.run_id`)
+  requireString(run.timestamp, `${source}.timestamp`)
+  if (!Array.isArray(run.cases)) throw new Error(`${source}.cases must be an array`)
+  for (let i = 0; i < run.cases.length; i++) validateCase(run.cases[i], `${source}.cases[${i}]`)
+
+  const summary = requireRecord(run.summary, `${source}.summary`)
+  for (const key of ['total', 'correct', 'wrong', 'pass_rate'] as const) {
+    requireNumber(summary[key], `${source}.summary.${key}`)
+  }
+
+  if (run.config !== undefined && run.config !== null) validateConfig(run.config, `${source}.config`)
+}
+
+function validateCase(data: unknown, path: string): void {
+  const item = requireRecord(data, path)
+  requireString(item.case_id, `${path}.case_id`)
+  requireString(item.verdict, `${path}.verdict`)
+  if (!Array.isArray(item.pass_k_results)) throw new Error(`${path}.pass_k_results must be an array`)
+  for (let i = 0; i < item.pass_k_results.length; i++) {
+    const attempt = requireRecord(item.pass_k_results[i], `${path}.pass_k_results[${i}]`)
+    if (attempt.generated_sql !== undefined && attempt.generated_sql !== null) {
+      requireString(attempt.generated_sql, `${path}.pass_k_results[${i}].generated_sql`)
+    }
+    if (attempt.sql_judge !== undefined && attempt.sql_judge !== null) {
+      const judge = requireRecord(attempt.sql_judge, `${path}.pass_k_results[${i}].sql_judge`)
+      requireNumber(judge.score, `${path}.pass_k_results[${i}].sql_judge.score`)
+    }
+  }
+}
+
+function validateConfig(data: unknown, path: string): void {
+  const config = requireRecord(data, path)
+  for (const key of ['provider', 'model', 'verdict_semantics', 'responder', 'scope_id', 'today', 'executor_identity', 'column_semantics'] as const) {
+    if (config[key] !== undefined) requireString(config[key], `${path}.${key}`)
+  }
+  for (const key of ['pass_k', 'concurrency', 'max_infra_retries', 'query_wait_seconds', 'comparator_policy_version', 'max_stored_rows'] as const) {
+    if (config[key] !== undefined) requireNumber(config[key], `${path}.${key}`)
+  }
+  for (const key of ['sql_judge', 'query_expansion', 'with_query', 'skip_health_gate'] as const) {
+    if (config[key] !== undefined && typeof config[key] !== 'boolean') throw new Error(`${path}.${key} must be a boolean`)
+  }
+}
+
+function requireRecord(value: unknown, path: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error(`${path} must be an object`)
+  return value as Record<string, unknown>
+}
+
+function requireString(value: unknown, path: string): asserts value is string {
+  if (typeof value !== 'string') throw new Error(`${path} must be a string`)
+}
+
+function requireNumber(value: unknown, path: string): asserts value is number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`${path} must be a finite number`)
 }
 
 function loadDeliveryCaseIds(casesDir: string): Set<string> {
@@ -161,6 +345,8 @@ interface CategoryStats {
   total: number
   correct: number
   wrong: number
+  declined: number
+  excluded: number
 }
 
 function buildCategoryBreakdown(
@@ -170,18 +356,21 @@ function buildCategoryBreakdown(
   const map = new Map<Category, CategoryStats>()
   for (const c of cases) {
     const cat = classifyCase(c.case_id, deliveryIds)
-    const stats = map.get(cat) ?? { total: 0, correct: 0, wrong: 0 }
+    const stats = map.get(cat) ?? { total: 0, correct: 0, wrong: 0, declined: 0, excluded: 0 }
     stats.total++
     if (c.verdict === 'correct') stats.correct++
     if (c.verdict === 'wrong') stats.wrong++
+    if (c.verdict === 'declined') stats.declined++
+    if (c.verdict === 'unjudged' || c.verdict === 'infra_failure' || c.verdict === 'case_defect') stats.excluded++
     map.set(cat, stats)
   }
   return map
 }
 
 function rate(stats: CategoryStats): string {
-  if (stats.total === 0) return '—'
-  return (stats.correct / stats.total * 100).toFixed(1) + '%'
+  const attributable = stats.correct + stats.wrong + stats.declined
+  if (attributable === 0) return '—'
+  return (stats.correct / attributable * 100).toFixed(1) + '%'
 }
 
 function pad(s: string, w: number): string {
@@ -226,7 +415,7 @@ export function compareRuns(runIdA: string, runIdB: string, dir: string): void {
   console.log('\n  Eval Run Comparison')
   console.log(`  A (baseline): ${runA.run_id}  (${runA.timestamp})`)
   console.log(`  B (new):      ${runB.run_id}  (${runB.timestamp})`)
-  console.log(`  Protocol:     A=${describeProtocol(runA) ?? 'unknown'}  B=${describeProtocol(runB) ?? 'unknown'}`)
+  console.log(`  Protocol:     A=${describeRunProtocol(runA) ?? 'unknown'}  B=${describeRunProtocol(runB) ?? 'unknown'}`)
   console.log()
 
   // Overall
@@ -242,16 +431,18 @@ export function compareRuns(runIdA: string, runIdB: string, dir: string): void {
   console.log('  ' + pad('Category', 18) + rpad('A', 16) + rpad('B', 16) + rpad('Delta', 10))
   console.log('  ' + '─'.repeat(60))
   for (const cat of allCats) {
-    const a = breakdownA.get(cat) ?? { total: 0, correct: 0, wrong: 0 }
-    const b = breakdownB.get(cat) ?? { total: 0, correct: 0, wrong: 0 }
+    const a = breakdownA.get(cat) ?? { total: 0, correct: 0, wrong: 0, declined: 0, excluded: 0 }
+    const b = breakdownB.get(cat) ?? { total: 0, correct: 0, wrong: 0, declined: 0, excluded: 0 }
     const rA = rate(a)
     const rB = rate(b)
-    const pctA = a.total > 0 ? a.correct / a.total * 100 : 0
-    const pctB = b.total > 0 ? b.correct / b.total * 100 : 0
+    const attributableA = a.correct + a.wrong + a.declined
+    const attributableB = b.correct + b.wrong + b.declined
+    const pctA = attributableA > 0 ? a.correct / attributableA * 100 : 0
+    const pctB = attributableB > 0 ? b.correct / attributableB * 100 : 0
     const d = (pctB - pctA).toFixed(1)
     const ds = Number(d) >= 0 ? '+' : ''
-    const label = `${rA} (${a.correct}/${a.total})`
-    const labelB = `${rB} (${b.correct}/${b.total})`
+    const label = `${rA} (${a.correct}/${attributableA}; ${a.excluded} excl)`
+    const labelB = `${rB} (${b.correct}/${attributableB}; ${b.excluded} excl)`
     console.log('  ' + pad(cat, 18) + rpad(label, 16) + rpad(labelB, 16) + rpad(`${ds}${d}pp`, 10))
   }
   console.log()

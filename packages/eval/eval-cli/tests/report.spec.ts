@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { formatReport } from '../src/report.ts'
-import type { RunResult } from '@deepseek-ai/dsh-eval-runner'
+import type { RunResult, RunnerVerdict } from '@deepseek-ai/dsh-eval-runner'
 import type { EvalCase } from '@deepseek-ai/dsh-eval'
 
 function makeCase(id: string, question: string, intent: string): EvalCase {
@@ -12,7 +12,7 @@ function makeCase(id: string, question: string, intent: string): EvalCase {
   }
 }
 
-function makeResult(cases: Array<{ id: string; verdict: 'correct' | 'wrong' | 'declined' | 'infra_failure' }>): RunResult {
+function makeResult(cases: Array<{ id: string; verdict: RunnerVerdict }>): RunResult {
   return {
     run_id: 'test-run-001',
     timestamp: '2026-08-25T12:00:00.000Z',
@@ -27,8 +27,9 @@ function makeResult(cases: Array<{ id: string; verdict: 'correct' | 'wrong' | 'd
       correct: cases.filter(c => c.verdict === 'correct').length,
       wrong: cases.filter(c => c.verdict === 'wrong').length,
       declined: cases.filter(c => c.verdict === 'declined').length,
-      unjudged: 0,
+      unjudged: cases.filter(c => c.verdict === 'unjudged').length,
       infra_failure: cases.filter(c => c.verdict === 'infra_failure').length,
+      case_defect: cases.filter(c => c.verdict === 'case_defect').length,
       pass_rate: cases.filter(c => c.verdict === 'correct').length / cases.length,
     },
   }
@@ -51,7 +52,7 @@ describe('formatReport', () => {
     const report = formatReport(result, cases)
     expect(report).toContain('total: 4')
     expect(report).toContain('pass_rate: 50.0%')
-    expect(report).toContain('correct: 2')
+    expect(report).toContain('correct: 2/4')
     expect(report).toContain('wrong: 1')
     expect(report).toContain('declined: 1')
   })
@@ -88,12 +89,30 @@ describe('formatReport', () => {
     expect(report).toContain('short question')
   })
 
+  it('surfaces unjudged and case-defect cases in the summary and issue list', () => {
+    const result = makeResult([
+      { id: 'c1', verdict: 'unjudged' },
+      { id: 'c2', verdict: 'case_defect' },
+    ])
+    const report = formatReport(result, [
+      makeCase('c1', 'judge unavailable', 'metric_lookup'),
+      makeCase('c2', 'broken reference', 'metric_lookup'),
+    ])
+
+    expect(report).toContain('unjudged: 1')
+    expect(report).toContain('case_defect: 1')
+    expect(report).toContain('correct: 0/0')
+    expect(report).toContain('excluded: 2')
+    expect(report).toContain('c1  [unjudged]')
+    expect(report).toContain('c2  [case_defect]')
+  })
+
   it('handles empty results gracefully', () => {
     const result: RunResult = {
       run_id: 'empty',
       timestamp: '2026-08-25T00:00:00Z',
       cases: [],
-      summary: { total: 0, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, pass_rate: 0 },
+      summary: { total: 0, correct: 0, wrong: 0, declined: 0, unjudged: 0, infra_failure: 0, case_defect: 0, pass_rate: 0 },
     }
     const report = formatReport(result, [])
     expect(report).toContain('total: 0')
@@ -115,7 +134,7 @@ describe('formatReport', () => {
 
     // Unresolvable case_id → the intent bucket is 'unknown', not the intent of
     // some other case, and the row still counts the verdict.
-    expect(report).toMatch(/\n {2}unknown {13}1 {6}0 {8}1 {6}0\.0% {4}\n/)
+    expect(report).toMatch(/\n {2}unknown {13}1 {6}1 {6}0 {8}1 {6}0\.0% {4}\n/)
     expect(report).not.toContain('trend')
     // Unresolvable question → the literal '?' placeholder, not an empty quote.
     expect(report).toContain('    ghost  [wrong]  "?"')
@@ -140,6 +159,6 @@ describe('formatReport', () => {
 
     // 32 chars vs a 20-wide column: the name is emitted whole with no padding,
     // so the total column abuts it directly rather than starting at column 22.
-    expect(report).toMatch(/\n {2}extremely_long_query_intent_name1 {6}1 {8}0 {6}100\.0% {2}\n/)
+    expect(report).toMatch(/\n {2}extremely_long_query_intent_name1 {6}1 {6}1 {8}0 {6}100\.0% {2}\n/)
   })
 })
