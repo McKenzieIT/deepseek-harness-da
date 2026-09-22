@@ -1,8 +1,8 @@
 # T16 — Execution artifact 截断信号实测
 
-**Type**: task（validation，AFK）  ·  **Status**: open
+**Type**: task（validation，AFK）  ·  **Status**: open · ready
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [T1 — Execution grader implementation](T1-exec-grader-impl.md)
+**Blocked by**: 无（[T1 — Execution grader implementation](T1-exec-grader-impl.md) 已 resolved）
 **Blocks**: [R25 — Evaluation re-baseline](R25-evaluation-rebaseline.md)
 **Mode**: AFK（需要真实 query Provider 与可控的大结果集）
 **Branch**: `task/T16-execution-artifact-truncation-validation`

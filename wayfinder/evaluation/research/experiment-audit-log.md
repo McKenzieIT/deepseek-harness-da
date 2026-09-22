@@ -36,7 +36,7 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 
 ---
 
-## 2026-09-09: T11 — loader 保全 provenance 后的 39-case 对账复现
+## 2026-09-09: T11 — loader 保全 `meta.source` 后的 39-case 对账复现
 
 ### Setup
 
@@ -44,7 +44,7 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 - **Cases**: 39 `rbi-10000251-exec`(event 18 / dws 21),全部经 `loadCase` 加载。
 - **Model**: 无。本对账不经模型、不经 agent;只跑 case 自带的人写 reference SQL。
 - **执行器身份**: 真 `maxc` CLI(`~/Library/Python/3.13/bin/maxc`),`MAXC_CONFIG=~/.maxc/config_ieu_cdm.yaml`,`MAXC_WAIT_SECONDS=300`,`CONC=3`。**非** stand-in sidecar。
-- **变更**: `EvalCaseSchema` 保留 rbi provenance 且结构位置改 `strictObject`;新增 `resolveReferenceSql` 按 case 自己的 `meta.anchor_ds` 解析模板;对账脚本改走 `loadCase` + 该解析器,删掉自带 `yaml.load`、硬编码 `TODAY='20260806'`、跨 worktree 默认路径、写死的 maxc 路径与 config。
+- **变更**: `EvalCaseSchema` 保留 rbi source 且结构位置改 `strictObject`;新增 `resolveReferenceSql` 按 case 自己的 `meta.anchor_ds` 解析模板;对账脚本改走 `loadCase` + 该解析器,删掉自带 `yaml.load`、硬编码 `TODAY='20260806'`、跨 worktree 默认路径、写死的 maxc 路径与 config。
 - **本次要验的**: 改造后语义**不得漂移**——同一批 case、同一锚点、同一数据源,计数须与 2026-09-06 逐位相同。
 
 ### Data (verbatim)
@@ -64,7 +64,7 @@ data_source=dws   : MATCH=13 STALE_EXPECTED=0   SKIPPED=8  (of 21)
 
 ### Verdict
 
-1. **改造无语义漂移。** 计数与逐 case 值都复现,说明 loader 改 strict + 保留 provenance + 按 case 解析模板,在真数据上与旧的硬编码脚本等价。旧脚本的 `TODAY='20260806'` 恰好等于全部 37 个 case 的 `anchor_ds`,所以等价是**可解释的**而非巧合;一旦有 case 换锚点,新实现才会与旧实现分叉,而那正是本票要修的缺陷。
+1. **改造无语义漂移。** 计数与逐 case 值都复现,说明 loader 改 strict + 保留 source + 按 case 解析模板,在真数据上与旧的硬编码脚本等价。旧脚本的 `TODAY='20260806'` 恰好等于全部 37 个 case 的 `anchor_ds`,所以等价是**可解释的**而非巧合;一旦有 case 换锚点,新实现才会与旧实现分叉,而那正是本票要修的缺陷。
 2. **`057`/`138` 的 `live=null` 不是「陈旧」而是「无行返回」**,但与 2026-09-06 一样被计入 16 个 STALE(判定逻辑逐字保留,`Number(null)=0 ≠ expected`)。复现优先于改判——重新定义这两个 case 的口径属 GA-EVAL-CASESET-EVENT-ANCHOR,不在 T11。
 3. **T11 闸门通过**,T1 可以开工。
 
@@ -76,7 +76,7 @@ data_source=dws   : MATCH=13 STALE_EXPECTED=0   SKIPPED=8  (of 21)
 
 ### Ticket Pointer
 
-Resolves: [T11 — case loader 静默丢弃 reference SQL 与 snapshot 锚点](../tickets/T11-loader-provenance-strip.md)
+Resolves: [T11 — case loader 静默丢弃 reference SQL 与 snapshot 锚点](../tickets/T11-loader-source-strip.md)
 Unblocks: [T1 — Execution grader 实现](../tickets/T1-exec-grader-impl.md)、[G1b](../tickets/G1b-ground-truth-lifecycle.md)
 
 ---

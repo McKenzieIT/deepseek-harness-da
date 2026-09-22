@@ -2,7 +2,8 @@
 
 **Type**: task（impl，AFK）  ·  **Status**: open
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [T1 — Execution grader implementation](T1-exec-grader-impl.md)、[T15 — Product Evaluation Controller 与 external CLI](T15-evaluation-controller-cli.md)
+**Blocked by**: [T15 — Product Evaluation Controller 与 external CLI](T15-evaluation-controller-cli.md)
+**Completed prerequisite**: [T1 — Execution grader implementation](T1-exec-grader-impl.md)（resolved 2026-09-12）
 **Blocks**: [R25 — New Evaluation stack baseline re-anchor](R25-evaluation-rebaseline.md)
 **Mode**: AFK（后端方向，本地直接做；按 [playbook](../playbook.md) §1.1）
 **Branch**: `task/T12-evaluation-package-cutover`
@@ -24,6 +25,10 @@
 
 Final names may differ only when the same ownership and dependency directions remain mechanically enforced.
 
+## Handoff from T1
+
+T1 已收敛 `ExecutionPort`、结果比较器、失败分类和 audit 执行路径，但刻意保留了两份 `runBatch`、两份 health gate，以及 `eval-cli` 对具体 query Provider 的直接挂载。T12 必须在新 Controller 路径由 T15 验证后删除这三组 legacy 实现，不得保留兼容转发。
+
 ## Required consumer migration
 
 - `packages/data/tool-trigger-eval`、`packages/goal/goal-eval-policy`、`packages/goal/goal-eval-context`、`packages/data/patrol-mode`。
@@ -39,7 +44,7 @@ Final names may differ only when the same ownership and dependency directions re
 - Normal data-agent product tests prove prompts、tools、phase behavior、Provider calls and session output are unchanged when Evaluation is absent.
 - Built package artifacts contain the intended runtime code and public assets only; private grading material is unreachable from the Harness graph.
 - An executed static gate rejects a deliberate Harness import/re-export/deep-import of hidden tests、reference、solution、oracle artifacts or private scorer internals.
-- Final package artifacts preserve Benchmark/Adapter/Harness provenance and content digests; old import paths are deleted rather than retained as compatibility shims.
+- Final package artifacts preserve Benchmark/Adapter/Harness source identities and content digests; old import paths are deleted rather than retained as compatibility shims.
 - Source/artifact-plane checks、focused package tests、required snapshots、typecheck/build/hygiene and documentation gates pass.
 - The final tree contains no old package exports, compatibility re-exports, obsolete config rows or undocumented temporary migration path.
 

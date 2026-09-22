@@ -2,9 +2,9 @@
 
 **Type**: task  ·  **Status**: **resolved 2026-09-12（核心实现与独立 review 收口；最终 package cutover 转 T12，provider 截断实测转 T16）**
 **Part of**: [dsh-data-agent evaluation map](../map.md)
-**Blocked by**: [G1](G1-exec-grader-seam.md)（resolved 2026-09-08，v1 六条 + v3 D1–D6 已合并）、[T11](T11-loader-source-strip.md)（同批前置，须先全部验收）
-**软前置**（未解也可开工，见 §前置）: [G1b](G1b-ground-truth-lifecycle.md)、[G10](G10-harness-bhe-split.md)、GA-EVAL-CASESET-EVENT-ANCHOR
-**Blocks**: [R23](R23-comparator-policy-mutation-baseline.md) → GA-EVAL-EXPAND → {R12 / R17 / G9}
+**Completed prerequisites**: [G1](G1-exec-grader-seam.md)（resolved 2026-09-08，v1 六条 + v3 D1–D6 已合并）、[T11](T11-loader-source-strip.md)（resolved 2026-09-09）
+**Independent follow-ups**: [G1b](G1b-ground-truth-lifecycle.md)、GA-EVAL-CASESET-EVENT-ANCHOR
+**Blocks**: [T13](T13-context-projection-service.md)、[T16](T16-execution-artifact-truncation-validation.md)、[R23](R23-comparator-policy-mutation-baseline.md) → GA-EVAL-EXPAND → {R12 / R17 / G9}
 **Mode**: AFK（后端方向，**本地直接做**，不走另环境/rubric；与 T11 同批，T11 先验收再起 T1；见 [playbook](../playbook.md) §1.1）
 **Branch**: `feat/T1-exec-grader-impl`
 
@@ -20,7 +20,7 @@
 2. **execution 是主裁决** —— LLM judge 单独报告，永不覆盖 execution mismatch。
 3. **gold/reference SQL 执行失败 = benchmark 基础设施失败** —— 不给候选模型记 0 分。
 4. **端口交 capability 不交 verdict** —— `{ execute(sql, signal?), attach?(instanceId) }`，返回 provider 的**原始 `QueryOutcome`**；归一在 evaluation 内做（合并裁定：v1 原让 host 先调 `mapQueryOutcome` 再交出，而"让 host 归一"正是两份 adapter 分叉的成因）。`attach?` 保留，使"遇非终态 `pending` 判 environment-blocked"是策略选择而非写死的结构。不直接依赖 `MaxComputeQueryEngine`，不经 `query_data` rendering 层评分。
-5. **provenance 由 grader 装配** —— executor 只交它真观测到的（rows / columns / rowCount / 截断信号 / 实际执行的 SQL / provider `failureKind` / 耗时）；snapshot 相关字段、comparator policy id+version、raw/normalized digest 由 grader 从 run config + case 组装成独立 evidence 记录。
+5. **source evidence 由 grader 装配** —— executor 只交它真观测到的（rows / columns / rowCount / 截断信号 / 实际执行的 SQL / provider `failureKind` / 耗时）；snapshot 相关字段、comparator policy id+version、raw/normalized digest 由 grader 从 run config + case 组装成独立 evidence 记录。
 6. **截断与耗时自己观测** —— 不透传 provider 的 `truncated`（恒 `false`）与 `durationMs`（恒 `0`，`packages/query/query-maxcompute/dev/maxc-sidecar.mjs:101`、`:103`）；耗时由 adapter 在调用两端量 wall-clock。
 
 ### v3 新增的五条
@@ -59,7 +59,7 @@ evaluation **没有**自建 SQL 执行引擎，执行能力一律来自 dsh-data
 - 落盘中五种结局可分辨；**`environment-blocked` 与 `case-defect` 不进 `wrong` 分母**。
 - 未知 `match_mode` 归 `case-defect`（现 `packages/eval/eval/src/match_modes.ts:62` 返回 `{status:'fail'}`，即拼错模式名被记成模型答错）。
 - 比较失败原因不再压成 boolean —— 现 `runner.ts:368-369` 丢掉核心比较器返回的 `AssertionResult.detail`。
-- **一次评分可重放**：记录实际执行的 SQL、case 自带的 provenance（原样记录，不解释）、policy version、raw/normalized digest。现 `runner.ts:257` 把证据截到 5 行；对 86 个 `row_count_range` case 而言判定依据是 `rows.length`，存 5 行**无法重算该判定**。
+- **一次评分可重放**：记录实际执行的 SQL、case 自带的 source（原样记录，不解释）、policy version、raw/normalized digest。现 `runner.ts:257` 把证据截到 5 行；对 86 个 `row_count_range` case 而言判定依据是 `rows.length`，存 5 行**无法重算该判定**。
 - **离线重打分可用**：换 comparator policy 不回数仓即可重打分，且同一 artifact + 同一 policy version 重打分结果稳定。这是 R23 的前置。
 - **截断信号实测，不是假设** —— 用已知超大结果集实测 `rowCount`（取自 maxc 自报的 `row_count`，`maxc-sidecar.mjs:100`）是否与 `rows.length` 分叉。分叉则成立；不分叉则 eval 无截断信号，回落「透传 + 开 provider 缺陷票」。
 - **audit 脚本的第三条执行路径收口** —— `packages/eval/eval-cli/dev/case-expected-value-audit.mjs:55` 现在直接 `spawn maxc`；改走同一 executor 端口（T11 已明确把这项移交 T1）。
@@ -89,7 +89,7 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 - **一个已知超大结果集**：截断信号实测的物料，须事先备好能触发截断的查询或表；备不出来就按"回落透传 + 开 provider 缺陷票"走，并在票里写明原因。
 - **eval run 的命令面**：`--with-query`（真执行，缺它按第 8 条只会得到 `not-measured`）、case 目录指向 `rbi-10000251-exec`、`pass_k=3`、必要时 `--sidecar`。
 - **软前置的边界**：
-  - [G1b](G1b-ground-truth-lifecycle.md) 未解可开工 —— T1 只把 case 自带的 provenance **原样记录**，不判断 `anchor_ds` 是否有效锚点、不回填 expected。一旦要解释 provenance 或派生 expected，就越界。
+  - [G1b](G1b-ground-truth-lifecycle.md) 未解可开工 —— T1 只把 case 自带的 source **原样记录**，不判断 `anchor_ds` 是否有效锚点、不回填 expected。一旦要解释 source 或派生 expected，就越界。
   - [G10](G10-harness-bhe-split.md) 未解可开工 —— 包边界不动（见上）。
   - GA-EVAL-CASESET-EVENT-ANCHOR 未解可开工 —— 但它 blocks 任何用 real-exec `execution_match` 衡量 event case 正确性的**解读**：本批的 39-case 重跑以"复现 MATCH/STALE 计数"为验收，任何 pass 率解读须标注"event 口径未定"。
 
@@ -98,7 +98,7 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 - case migration 与 expected 值重新派生（[G1b](G1b-ground-truth-lifecycle.md)）。
 - 目标 Evaluation foundations 与包边界重切（[G10](G10-harness-bhe-split.md) → [T9](T9-evaluation-foundations.md)；本批不动包边界，最终 cutover 见 [T12](T12-eval-package-consolidation.md)）。
 - comparator 默认值与容差（[R23](R23-comparator-policy-mutation-baseline.md) 提供 mutation 证据后再定）。
-- loader 保住 provenance 与模板解析（[T11](T11-loader-source-strip.md)，同批但独立验收）。
+- loader 保住 source 与模板解析（[T11](T11-loader-source-strip.md)，同批但独立验收）。
 - judge 侧的任何改动（方向 2/3/8）—— 本票只切断 judge 对 execution 维度的写入，不动 judge 自身。
 
 ---
@@ -115,7 +115,7 @@ T1 上线后真执行判分覆盖 **57 个 `scalar_exact` case**（它们至少�
 | 2 | execution 主裁决，judge 不覆盖 | ✅ | 删除 `runner.ts` 的 judge 顶替；SQL-only 模式记 `not-measured` |
 | 3 | reference SQL 执行失败 = 基础设施失败 | ✅ | batch 在候选 Agent 前解析并执行 reference SQL；环境类失败归 `infra_failure`，SQL/语料缺陷归 `case_defect` |
 | 4 | 单一端口 `{ execute, attach? }` 返回原始 `QueryOutcome` | ✅ | `ExecutionPort`（`dsh-eval`）+ 单份 `CtxQueryExecutor`（`dsh-eval-runner`） |
-| 5 | provenance 由 grader 装配 | ✅ | `ExecutionArtifact` 只存 executor 真观测到的；policy/锚点由 run config + case 组装 |
+| 5 | source evidence 由 grader 装配 | ✅ | `ExecutionArtifact` 只存 executor 真观测到的；policy/锚点由 run config + case 组装 |
 | 6 | 截断与耗时自己观测 | ⚠ **部分** | 耗时已在调用两端量 wall-clock；`providerTruncated` 按 `rowCount !== rows.length` 测算。**但“两者会不会分叉”仍未实测**——本批 39 case 均为少量行，无一命中；超大结果集物料未备。转出为待办项（见下） |
 | 7 | 结局五成员闭合联合 | ✅ | `EXECUTION_OUTCOMES`，评分内容与 reference-SQL preflight 产出逐 case `case_defect`/`infra_failure`，消费端逐成员处理 |
 | 8 | `not-measured` 是显式成员 | ✅ | 初值即 `not-measured`，不再继承 `true`；DELIVERY-only case 归此 |
@@ -167,6 +167,12 @@ data_source=dws   : MATCH=13 STALE_EXPECTED=0   SKIPPED=8  (of 21)
 
 ### 2026-09-12 独立 review 收口
 
-在重放到 G10 后，Standards 与 Spec 两个独立 review 找到并修复了会改变结论的缺口：`pass^k` 现在把未测/环境失败移出模型分母；returned infra outcome 进入有限重试；新 run 的 resolved config 与 compare 兼容性字段一致；JSONL 保留并验证 attempt、preflight、execution artifact 与 case provenance；评分内容缺陷不会再让整批崩溃；reference SQL 在候选 Agent 前解析并在有 executor 时执行；存储 cap 不再改变在线评分，证据不足的离线重评分也不再被记成模型失败。`trigger_eval` 的模型可见 summary 由真实 headless composition snapshot 固定。
+在重放到 G10 后，Standards 与 Spec 两个独立 review 找到并修复了会改变结论的缺口：`pass^k` 现在把未测/环境失败移出模型分母；returned infra outcome 进入有限重试；新 run 的 resolved config 与 compare 兼容性字段一致；JSONL 保留并验证 attempt、preflight、execution artifact 与 case source；评分内容缺陷不会再让整批崩溃；reference SQL 在候选 Agent 前解析并在有 executor 时执行；存储 cap 不再改变在线评分，证据不足的离线重评分也不再被记成模型失败。`trigger_eval` 的模型可见 summary 由真实 headless composition snapshot 固定。
 
 T1 的剩余事项不再是未指派尾巴：最终 legacy runtime/package 删除由 [T12](T12-eval-package-consolidation.md) 承接，真实 provider 截断行为由 [T16](T16-execution-artifact-truncation-validation.md) 承接。T13 只依赖已经完成的 production-neutral execution grading semantics，不依赖这两项后续验证。
+
+### 2026-09-22 PR #114 主分支同步收口
+
+与当前 `origin/master` 的合并验证保留了 T1 的严格运行策略：持久化字段统一为 `CaseSource` / `caseSource` 与 `meta.source`，version-2 JSONL 继续严格要求 resolved run config、attempt、preflight 和 case source evidence，旧的未版本化记录仍只走兼容读取路径。当前 Session writer 直接写 v3，因此 snapshot 新增 `session.v3.jsonl` 并保留既有 v2 generation。
+
+聚焦 package tests、trigger-eval v3 snapshot、host TypeScript 编译、Markdown links、生成目录 freshness、export JSDoc、术语检查和全部翻译配对均通过。仓库聚合 `typecheck` / `doc-sync` 仍分别受当前主分支已有的 root tsdown entry 缺失与 tool catalog 清单缺项阻塞；这两个上游问题未通过修改 T1 代码规避。

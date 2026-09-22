@@ -84,7 +84,7 @@
 ### 3. 三条路线的一手结论
 
 - **(a) pairwise —— 本方向最弱的支线。** 换 pairwise 引入 transitivity 与 tie 两类**新**不一致（TrustJudge Def. 2.2）；GSR 的 pairwise「数值最高」优势（+0.77/+0.28）落在 1σ（0.30/0.51）内。
-- **(b) rubric-anchored + gating —— 强，但强的那一半是「参考答案」不是「gating」。** `2608.17938` 的两个 ablation：去掉准则与等级但留官方答案 ⇒ ICC 0.880→0.888（几乎无变化，原文称 criteria are redundant）；**连官方答案也去掉 ⇒ ICC 落到 0.628、分数通胀 +0.074、只能靠答案核对的题判别力掉到 30–36%**。而本仓 SQL judge 恰好没有参考答案，且语料里 39 个 case 的 `expected.sql` 正被 loader 丢弃 ⇒ **这与 T11 是同一块工作。** GSR 的 gating 侧：gate **不是早退**（所有 criterion 判断先出、operator 后跑），省不了 token；且它**从未与 unweighted mean 比过、从未测阈值化聚合**。
+- **(b) rubric-anchored + gating —— 强，但强的那一半是「参考答案」不是「gating」。** `2608.17938` 的两个 ablation：去掉准则与等级但留官方答案 ⇒ ICC 0.880→0.888（几乎无变化，原文称 criteria are redundant）；**连官方答案也去掉 ⇒ ICC 落到 0.628、分数通胀 +0.074、只能靠答案核对的题判别力掉到 30–36%**。[T11](T11-loader-source-strip.md) 已让语料里 39 个 case 的 `expected.sql` 可达，但参考可信度仍归 G1b/R8c。GSR 的 gating 侧：gate **不是早退**（所有 criterion 判断先出、operator 后跑），省不了 token；且它**从未与 unweighted mean 比过、从未测阈值化聚合**。
 - **(c) 降维 —— 结论已由 §2 给出，且 RADAR 给不出它。** 见下。
 
 ### 4. RADAR 不能跑既有数据（map 对 R20 的描述有三处不成立）
@@ -108,13 +108,13 @@ RADAR 是**干预式**方法：每个量都是 `d=+` 与 `d=−` 两个 probe �
 
 - **方向 2（blind-solve）的题面须改**：`2608.17938` 说得更强 —— 不需要 blind-solve，**只要有官方答案**。所以有 `expected.sql` 的 case 走 reference-anchored（便宜、已被直接测过），没有的才走 blind-solve（贵、未验证）。
 - **R14 的前置须改**：唯一能做逐维-vs-执行配对分析的文件只有 `eventdef-realexec.json`（n=95 / 35 case），其真值受 event anchor 污染（16/18 期望值失效）⇒ R14 应改为「T11 之后、在重建的 EXECUTION 语料上做」。
-- **judge 侧 artifact 落盘不归 G8**：80 份结果文件 **0 份**记录 `schema_context`，与 G1 D3 同类，建议并入 **T1 的 artifact schema**。
+- **judge 侧 artifact 落盘不归 G8**：80 份结果文件 **0 份**记录 `schema_context`。[T1](T1-exec-grader-impl.md) 已关闭且只实现 execution evidence；G8 实施前须独立建 judge-evidence 票。
 
 ### 7. 本票没有回答的
 
 - 上述任何一个探针的实际数字（归 R20）。
 - 「读出改成什么形状」的决策（归 [G8](G8-judge-readout-scale.md)）。
-- 参考答案的具体形态（`expected.sql` 文本 / 执行结果集 / 两者）—— 与 G1b 的 provenance 决议耦合，归 G1b。
+- 参考答案的具体形态（`expected.sql` 文本 / 执行结果集 / 两者）—— 与 G1b 的 source-evidence 决议耦合，归 G1b。
 
 ---
 
