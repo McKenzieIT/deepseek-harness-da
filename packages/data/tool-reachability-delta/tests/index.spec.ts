@@ -184,3 +184,241 @@ describe('tool-reachability-delta', () => {
     })
   })
 })
+
+/**
+ * Presentation/wiring face of the registered definition. `defineTool` wraps the
+ * tool-owned presenters behind a soft argument validation, so every call below
+ * passes schema-valid arguments — invalid ones short-circuit to `undefined`
+ * inside the wrapper and would never reach the tool's own code.
+ */
+interface ToolContract {
+  name: string
+  output: {
+    render: (args: unknown, value: unknown) => { type: string; text: string }[]
+    presentationMeta: (args: unknown, value: unknown) => Record<string, unknown>
+  }
+  execute: (args: Record<string, unknown>, exec: { signal: { aborted: boolean } }) => Promise<Record<string, unknown>>
+  presentCall: (args: unknown) => unknown
+  presentResult: (args: unknown, result: { isError?: boolean; meta?: unknown }) => unknown
+}
+
+function registerContract(opts: { hasEvidenceQuery?: boolean } = {}): ToolContract {
+  const { ctx, registered } = createMockCtx(opts)
+  apply(ctx as never)
+  return registered[0]! as unknown as ToolContract
+}
+
+/** Schema-valid call arguments; `on` is the only optional parameter. */
+const CALL_ARGS = { source_id: 'asset_orders', target_id: 'asset_customers', type: 'joins' }
+
+describe('tool-reachability-delta contract shell', () => {
+  describe('output.render', () => {
+    // `newlyReachableCount` (5) deliberately differs from `newlyReachable.length`
+    // (2) so the summary line pins the counter field rather than the array size.
+    it('renders the relation header, join condition, counter and pair list', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      const blocks = tool.output.render(CALL_ARGS, {
+        ok: true,
+        proposedRelation: {
+          sourceId: 'asset_orders',
+          targetId: 'asset_customers',
+          type: 'joins',
+          on: 'orders.customer_id = customers.id',
+        },
+        newlyReachableCount: 5,
+        newlyReachable: [
+          { from: 'asset_orders', to: 'asset_addresses' },
+          { from: 'asset_line_items', to: 'asset_customers' },
+        ],
+      })
+
+      expect(blocks).toStrictEqual([{
+        type: 'text',
+        text: [
+          'Proposed relation: asset_orders —[joins]→ asset_customers',
+          '  Join condition: orders.customer_id = customers.id',
+          '',
+          'Newly reachable pairs: 5',
+          '  asset_orders ↔ asset_addresses',
+          '  asset_line_items ↔ asset_customers',
+        ].join('\n'),
+      }])
+    })
+
+    it('renders the no-new-pairs notice when nothing becomes reachable', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      const blocks = tool.output.render(CALL_ARGS, {
+        ok: true,
+        proposedRelation: { sourceId: 'asset_a', targetId: 'asset_b', type: 'related_to' },
+        newlyReachableCount: 0,
+        newlyReachable: [],
+      })
+
+      expect(blocks).toStrictEqual([{
+        type: 'text',
+        text: [
+          'Proposed relation: asset_a —[related_to]→ asset_b',
+          '',
+          'Newly reachable pairs: 0',
+          '  (no new pairs — all paths already exist)',
+        ].join('\n'),
+      }])
+    })
+
+    it('renders the default failure text when a failed value carries no message', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      const blocks = tool.output.render(CALL_ARGS, {
+        ok: false,
+        proposedRelation: { sourceId: 'asset_a', targetId: 'asset_b', type: 'joins' },
+        newlyReachableCount: 0,
+        newlyReachable: [],
+      })
+
+      expect(blocks).toStrictEqual([{ type: 'text', text: 'reachability_delta failed' }])
+    })
+  })
+
+  describe('output.presentationMeta', () => {
+    // Same asymmetry as above: counter 5 vs two pairs, and each pair's from/to
+    // differ, so a swapped field mapping cannot pass.
+    it('projects a successful value with its join condition into the meta record', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      const meta = tool.output.presentationMeta(CALL_ARGS, {
+        ok: true,
+        proposedRelation: {
+          sourceId: 'asset_orders',
+          targetId: 'asset_customers',
+          type: 'joins',
+          on: 'orders.customer_id = customers.id',
+        },
+        newlyReachableCount: 5,
+        newlyReachable: [
+          { from: 'asset_orders', to: 'asset_addresses' },
+          { from: 'asset_line_items', to: 'asset_customers' },
+        ],
+      })
+
+      expect(meta).toStrictEqual({
+        ok: true,
+        newlyReachableCount: 5,
+        proposedRelation: {
+          sourceId: 'asset_orders',
+          targetId: 'asset_customers',
+          type: 'joins',
+          on: 'orders.customer_id = customers.id',
+        },
+        newlyReachable: [
+          { from: 'asset_orders', to: 'asset_addresses' },
+          { from: 'asset_line_items', to: 'asset_customers' },
+        ],
+      })
+    })
+
+    it('carries the failure message and omits an absent join condition', () => {
+      const tool = registerContract({ hasEvidenceQuery: false })
+
+      const meta = tool.output.presentationMeta(CALL_ARGS, {
+        ok: false,
+        proposedRelation: { sourceId: 'asset_x', targetId: 'asset_y', type: 'derived_from' },
+        newlyReachableCount: 0,
+        newlyReachable: [],
+        message: 'evidenceQuery service not mounted',
+      })
+
+      expect(meta).toStrictEqual({
+        ok: false,
+        newlyReachableCount: 0,
+        message: 'evidenceQuery service not mounted',
+        proposedRelation: { sourceId: 'asset_x', targetId: 'asset_y', type: 'derived_from' },
+        newlyReachable: [],
+      })
+    })
+  })
+
+  describe('execute guard paths', () => {
+    it('rejects with the abort message when the signal is already aborted', async () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      await expect(tool.execute(CALL_ARGS, { signal: { aborted: true } }))
+        .rejects.toThrowError(new Error('reachability_delta aborted'))
+    })
+
+    it('echoes the join condition in the not-mounted result when one was supplied', async () => {
+      const tool = registerContract({ hasEvidenceQuery: false })
+
+      const result = await tool.execute(
+        { source_id: 'asset_x', target_id: 'asset_y', type: 'joins', on: 'x.id = y.x_id' },
+        { signal: { aborted: false } },
+      )
+
+      expect(result).toStrictEqual({
+        ok: false,
+        proposedRelation: { sourceId: 'asset_x', targetId: 'asset_y', type: 'joins', on: 'x.id = y.x_id' },
+        newlyReachableCount: 0,
+        newlyReachable: [],
+        message: 'evidenceQuery service not mounted',
+      })
+    })
+  })
+
+  describe('presentCall', () => {
+    it('presents a generic search card while the call is pending', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      expect(tool.presentCall(CALL_ARGS)).toStrictEqual({
+        card: 'generic',
+        title: 'Reachability Delta',
+        kind: 'search',
+      })
+    })
+  })
+
+  describe('presentResult', () => {
+    it('presents nothing for an errored result', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      expect(tool.presentResult(CALL_ARGS, { isError: true, meta: { ok: true, newlyReachableCount: 7 } }))
+        .toBeUndefined()
+    })
+
+    it('presents an unavailable card when the result carries no meta', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      expect(tool.presentResult(CALL_ARGS, {})).toStrictEqual({
+        card: 'generic',
+        title: 'Reachability result unavailable',
+      })
+    })
+
+    it('presents the not-mounted card when meta reports failure', () => {
+      const tool = registerContract({ hasEvidenceQuery: false })
+
+      expect(tool.presentResult(CALL_ARGS, { meta: { ok: false, newlyReachableCount: 0 } })).toStrictEqual({
+        card: 'generic',
+        title: 'evidenceQuery service not mounted',
+      })
+    })
+
+    it('titles the exact pair count, pluralised, when several pairs become reachable', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      expect(tool.presentResult(CALL_ARGS, { meta: { ok: true, newlyReachableCount: 7 } })).toStrictEqual({
+        card: 'generic',
+        title: '7 newly reachable pairs',
+      })
+    })
+
+    it('titles a single newly reachable pair in the singular', () => {
+      const tool = registerContract({ hasEvidenceQuery: true })
+
+      expect(tool.presentResult(CALL_ARGS, { meta: { ok: true, newlyReachableCount: 1 } })).toStrictEqual({
+        card: 'generic',
+        title: '1 newly reachable pair',
+      })
+    })
+  })
+})

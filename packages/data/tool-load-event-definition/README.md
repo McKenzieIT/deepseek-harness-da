@@ -26,7 +26,7 @@ Model-facing load_event_definition tool: load a validated event (埋点) definit
 
 Model-facing `load_event_definition` tool: **load a validated event (埋点) definition from the semantic-layer substrate** for the data agent's `UNDERSTANDING`/`GENERATION` phase. The agent calls it to ground SQL in the real event schema (params_fields, metrics, disambiguation, external dimension references) before writing or critiquing a query over an event ODS table.
 
-This is the **P6b deferred follow-up** ("load_* 接入") — the model-facing wrapper over the [`ctx.schema`](../semantic-layer) `loadEventDefinition` substrate (shipped in P6b, commit 88524504f8). It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) (P13b commit 0e1a0fdf25) and [`@deepseek-ai/dsh-tool-load-table-definition`](../tool-load-table-definition) for the [`@deepseek-ai/dsh-tools`](../../core/tools) registration shape (`defineTool` + `ctx.tools.register`).
+This is the **P6b deferred follow-up** ("load_* 接入") — the model-facing wrapper over the [`ctx.schema`](../semantic-layer) `loadEventDefinition` substrate (shipped in P6b). It mirrors [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources) (P13b) and [`@deepseek-ai/dsh-tool-load-table-definition`](../tool-load-table-definition) for the [`@deepseek-ai/dsh-tools`](../../core/tools) registration shape (`defineTool` + `ctx.tools.register`).
 
 ## Status: registered + callable; ctx.schema wired
 

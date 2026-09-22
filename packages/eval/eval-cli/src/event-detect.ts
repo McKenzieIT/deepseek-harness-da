@@ -7,7 +7,7 @@
  * (`ieu_ods.ods_10000251_all_view`) or the params-extraction template, and failed
  * three ways — placeholder `FROM <数据视图>`, null-SQL decline, or a DWS
  * summary-table fallback that returns a wrong value the semantic judge accepts.
- * G-DA4 (resolved 2026-08-25, commit `0548fe4f8a`) already surfaces that
+ * G-DA4 (resolved 2026-08-25) already surfaces that
  * grounding on the HARNESS path via the `load_event_definition` tool. This module
  * supplies the half the eval path was missing: deciding WHICH event (if any) a
  * question is about, so the responder can load it.

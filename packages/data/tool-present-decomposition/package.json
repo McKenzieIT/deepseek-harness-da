@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-present-decomposition",
   "description": "Model-facing present_decomposition tool: present a structured query decomposition (summary, metrics, dimensions, time range) for the INTERPRETATION phase",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

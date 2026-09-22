@@ -32,7 +32,7 @@ packages/eval/eval/cases/k11-v2/            ← 168 个 case
 packages/eval/eval/cases/rbi-10000251-exec/ ← 39 个 case
 ```
 
-case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@deepseek-ai/dsh-eval`（一个 deps 只有 `js-yaml`+`zod` 的纯库）。这也是 loader 能静默丢弃 provenance 而无人察觉的结构原因（→ [T11](T11-loader-provenance-strip.md)）。
+case 数据与 case schema（`packages/eval/eval/src/eval_case.ts`）同处 `@deepseek-ai/dsh-eval`（一个 deps 只有 `js-yaml`+`zod` 的纯库）。这也是 loader 能静默丢弃 provenance 而无人察觉的结构原因（→ [T11](T11-loader-source-strip.md)）。
 
 **② 当前四层结构（实测 deps 与规模）**
 

@@ -22,10 +22,10 @@ Benchmark 内容和 runtime code 的生命周期不同。Case、split、policy �
 
 | 角色 | 拥有 | 不拥有 |
 |---|---|---|
-| Benchmark Pack | Case manifest、public task material、private-material reference、policy、requirement、split、provenance、aggregation | Agent execution、Provider selection、runtime default |
+| Benchmark Pack | Case manifest、public task material、private-material reference、policy、requirement、split、source record、aggregation | Agent execution、Provider selection、runtime default |
 | Harness | 已解析的生产 profile、preset、model interface、Agent interaction、tools、approval、hooks、guards、workflow | Correctness policy、private grading material |
 | Evaluation Environment | Requirement preflight、attempt lease、Provider state observation、finality、separation、cleanup、assurance | Query/filesystem/workflow operation、DataScope、correctness |
-| Context Projection | 生产 context selection、ranking、budgeting、serialization、provenance、projection evidence | Benchmark oracle、grading、Environment execution |
+| Context Projection | 生产 context selection、ranking、budgeting、serialization、source record、projection evidence | Benchmark oracle、grading、Environment execution |
 | Grading Runtime | Sealed-cut validation、private-material authorization、mechanism invocation、immutable Grade Record | Agent execution、Context retrieval、business Provider |
 | Evaluation Controller | Run resolution、Attempt orchestration、sealing、grading invocation、cancellation、publication eligibility | Benchmark content、domain action、storage implementation |
 
@@ -37,7 +37,7 @@ Canonical case 是浅层 `CaseManifest`，显式引用 public material、private
 
 Benchmark Pack 是 sealed、content-addressed 的数据 bundle，本身不必是 Cordis plugin。`BenchmarkRepository` capability 解析显式 locator、验证完整 closure、将其 seal 到 Artifact Store，并返回精确 digest。可执行的 grading mechanism、importer、generator、validator 与 Environment fixture 是可选 companion plugin。公开 npm package 可以携带 public Pack assets 作为分发适配器，但 package version 不会替代 Pack content identity。Private grading material 只能由 grader 侧 service graph 访问。
 
-Context Projection 是普通产品 capability。生产 Agent 与 Product Evaluation 使用同一条 typed request-to-projection 路径。Projection 记录 candidates、selected facts and relations、scores、provenance、budget、serialization identity 与 model-visible digest。No-context、schema-only、relation、production 与 oracle 配置都是显式 variant；oracle 或 hidden-derived Context 永不进入 production headline。
+Context Projection 是普通产品 capability。生产 Agent 与 Product Evaluation 使用同一条 typed request-to-projection 路径。Projection 记录 candidates、selected facts and relations、scores、source records、budget、serialization identity 与 model-visible digest。No-context、schema-only、relation、production 与 oracle 配置都是显式 variant；oracle 或 hidden-derived Context 永不进入 production headline。
 
 ### Evidence、Measurement 与 Identity
 
@@ -59,7 +59,7 @@ Product Evaluation 加载生产 profile、bundle、preset、DataScope、Context 
 
 首版角色分别对应 Protocol、Controller、Grading Runtime、Environment Definition、BenchmarkRepository Definition/local Provider、EvaluationStore Definition/local Provider、ArtifactStore Definition/local Provider、data-analysis extension 与 CLI Host。生产 Context Projection 位于 data-agent capability 区域。只有真实 capability role 才创建 package；Definition package 必须拥有完整语义，Provider package 必须隐藏实质实现复杂度，不能只 re-export types。
 
-迁移按已审查的 stack 进行：[T11](../../../../wayfinder/evaluation/tickets/T11-loader-provenance-strip.md) → [T1](../../../../wayfinder/evaluation/tickets/T1-exec-grader-impl.md) → [T13](../../../../wayfinder/evaluation/tickets/T13-context-projection-service.md) → [T9](../../../../wayfinder/evaluation/tickets/T9-evaluation-foundations.md) → [T14](../../../../wayfinder/evaluation/tickets/T14-data-analysis-extension-pack-migration.md) → [T15](../../../../wayfinder/evaluation/tickets/T15-evaluation-controller-cli.md) → [T12](../../../../wayfinder/evaluation/tickets/T12-eval-package-consolidation.md) → [R25](../../../../wayfinder/evaluation/tickets/R25-evaluation-rebaseline.md)。分阶段只服务 review 与归因，不形成兼容承诺。最终 cutover 删除旧 package、export、bundle row、glob、default 和 format，不保留 shim。
+迁移按已审查的 stack 进行：[T11](../../../../wayfinder/evaluation/tickets/T11-loader-source-strip.md) → [T1](../../../../wayfinder/evaluation/tickets/T1-exec-grader-impl.md) → [T13](../../../../wayfinder/evaluation/tickets/T13-context-projection-service.md) → [T9](../../../../wayfinder/evaluation/tickets/T9-evaluation-foundations.md) → [T14](../../../../wayfinder/evaluation/tickets/T14-data-analysis-extension-pack-migration.md) → [T15](../../../../wayfinder/evaluation/tickets/T15-evaluation-controller-cli.md) → [T12](../../../../wayfinder/evaluation/tickets/T12-eval-package-consolidation.md) → [R25](../../../../wayfinder/evaluation/tickets/R25-evaluation-rebaseline.md)。分阶段只服务 review 与归因，不形成兼容承诺。最终 cutover 删除旧 package、export、bundle row、glob、default 和 format，不保留 shim。
 
 ### 与 active 决策及 Agent Note 的关系
 

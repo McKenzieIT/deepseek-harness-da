@@ -1,15 +1,15 @@
 ---
-description: "Package map for the code-execution capability family: what program execution does for you, and which package owns each part."
+description: "Package map for the data-agent code-execution packages: what Python program execution does for you, and which package owns each part."
 kind: "package-group"
 ---
 
-# code-runtime/ — code-execution capability family
+# code-runtime/ — data-agent Python execution family
 
 English | [中文](README.zh.md)
 
 ## Summary
 
-The `code-runtime/` group lets a model write one program that calls host-provided functions as ordinary async calls, then returns only the program's printed output and return value. Choose the TypeScript backend for execution in an isolated Node worker, the released data Python backend for pandas/numpy workloads, or the private experimental Python backend for source-checkout testing. Both Python providers share one released fd-3 protocol library, and every run starts without state from earlier programs.
+The `code-runtime/` group runs data-agent Python programs: a model writes one pandas/numpy program that calls host-provided functions as ordinary async calls, and the run returns only what that program printed and returned. Mount the data Python backend to register `ctx.ptcRuntime`, and depend on the released protocol package when a CPython provider needs the fd-3 frame types directly. Every run starts without state from earlier programs.
 
 ## Table of Contents
 
@@ -22,24 +22,22 @@ The `code-runtime/` group lets a model write one program that calls host-provide
 <a id="packages"></a>
 ## Packages
 
-These five packages provide the code-runtime definition, shared protocol, and execution backends; each README describes what its part does.
+These two packages provide the data-agent execution backend and the protocol library it speaks; each README describes what its part does.
 
 | Package | Role | ctx key |
 |---|---|---|
-| [`code-runtime/`](code-runtime/README.md) | Defines what a code runtime does: run one program against host-provided bindings and report what it printed and returned | `ctx.codeRuntime` |
+| [`code-runtime-data-python/`](code-runtime-data-python/README.md) | Executes data-agent Python programs with pandas/numpy in a fresh CPython subprocess | registers `ctx.ptcRuntime` |
 | [`code-runtime-python-protocol/`](code-runtime-python-protocol/README.md) | Owns the released fd-3 frame types, lossless JSON codec, byte meters, and hostile-frame validators shared by CPython providers | — |
-| [`code-runtime-worker-thread/`](code-runtime-worker-thread/README.md) | Executes TypeScript programs, each in a fresh Node worker thread | registers `ctx.codeRuntime` |
-| [`code-runtime-data-python/`](code-runtime-data-python/README.md) | Executes data-agent Python programs with pandas/numpy in a fresh CPython subprocess | registers `ctx.codeRuntime` |
-| [`experimental/code-runtime-python/`](../experimental/code-runtime-python/README.md) | Private source-checkout CPython backend with stricter interpreter probing, process-group teardown, and protocol compatibility re-exports | registers `ctx.codeRuntime` |
 
 -----
 
 <a id="related-documentation"></a>
 ## Related documentation
 
-Start with the subsystem reference for the service contract, then the PTC mode design that consumes this capability and the capability-seam model it follows.
+Start with the subsystem reference for the service contract, then the group that defines it, the PTC mode design that consumes this capability, and the capability-seam model it follows.
 
-- [Code runtime subsystem reference](../../docs/subsystems/code-runtime.md) — request/result vocabulary, bindings, and the `ctx.codeRuntime` Cordis surface.
+- [PTC runtime subsystem reference](../../docs/subsystems/ptc-runtime.md) — request/result vocabulary, bindings, and the `ctx.ptcRuntime` Cordis surface.
+- [`ptc-runtime/` group](../ptc-runtime/README.md) — the Service Definition this family implements, beside the TypeScript backend.
 - [PTC mode Agent Note](../../.agents/notes/implemented/feature/2026-06-15-ptc.md) — how the tool registry presents `run_code` to the model.
 - [Capability seams](../../docs/capability-seams.md) — the Service Definition / Service Provider / Consumer split this family follows.
 

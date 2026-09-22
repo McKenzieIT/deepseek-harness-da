@@ -224,3 +224,17 @@ Worktree/branch decisions applied per 2026-09-12 note + cluster-C briefing:
 ```
 
 **Ticket status:** master-sync项 done (2026-09-12 via PR #119); rda-admin-lazy safe-delete done (2026-09-13); p2-* keeps documented; chore/um-arch-impl branch-absent + rescue items partially applied elsewhere or low-priority deferred. **Status → resolved** — no more actionable UM11 items in this cluster's scope; remaining p2-* keep entries + evaluation worktrees are pointer-only.
+
+## 分支清理执行（2026-09-17，PR #168 合入后）
+
+Scope §5 的三条弃分支里 `fix/legacy-empty-callid` 本轮真删了，另两条（`fix/legacy-empty-callid-pr`、`docs/cleanup-map-update`）在远端已不存在。文末那份 worktree 清单里标 `keep` 的两个 `dsh-p2-*` 也已删除 —— 它们的目标都已由合并树达成。
+
+**先修一个把审计带偏的事实**：本 clone 的 `remote.origin.fetch` 只有 `+refs/heads/master:refs/remotes/origin/master`，所以 `refs/remotes/origin/*` 是历次显式 fetch 留下的陈旧快照，`git fetch --prune` 与 `git remote prune` 都不会碰它。用 `git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*'` 对齐后新增 15 个 head、prune 掉 4 个：**已合入的是 72 条而非审计报的 75 条，且有 10 个未合入 head 此前完全不可见**。今后任何分支盘点都必须先带这条 refspec 显式对齐，否则数字不可信。
+
+结果：远端 head 86 → 14。删除清单与每个 head 的 SHA 见 `.tmp/branch-deletion-manifest-2026-09-17.md`（gitignored）。
+
+- **删 72 条已完全合入 `origin/master` 的分支**：逐条 `git branch -r --merged origin/master` 判定，且交叉核对 `gh pr list --state open` 确认无一条挂着 open PR（open 的只有 #167 与 #114，两者都未合入、都保留）。
+- **删 4 条陈旧未合入分支**：`upstream-merge-assets`（净内容为零）、`fix/cl23-toolcall-structured-decline`（残余为零，见 [CL-23](../../../semantic-layer/tickets/CL23-toolcall-detection-and-structured-decline.md) 文末）、`fix/legacy-empty-callid`（在持久化边界放宽上游校验，且三个改动文件全属上游）、`fix/cb1b-pwsh-pty-evaluation`（PR #42 已关，三份票先搬到 master，见 [UM18](UM18-post-0d1f50007f-residual-red-gates.md)）。
+- **删 `fix/da-compliance-audit`（用户 2026-09-17 拍定）**：12 个提交里 11 个 subject 在 master 上逐字存在，第 12 个（revert）的意图也已成立，唯一残余正是 master 后来主动删掉的 3916 个 metric YAML 与 terminology.yaml，外加误入库的 scope-registry 构建产物 —— 恢复其中任何一项都会推翻两次后来的主动决定。head `bdc9eeefab` 记在删除清单里可还原。
+- **~~新暴露的 10 条未合入 repo-infra 分支~~ → 已读判并处置（2026-09-17）**：原记载「均无 PR、未合入」**是错的**。9 条 `fix/repo-infra-*-t11` 各有**已合并**的 PR（#147–#155，squash 合并），内容已逐项回查确认在 master：`ci.yml` 的 data-Python provisioning、`code-runtime-data-python/tests/runtime.spec.ts` 的解释器选择、以及 #152 删掉的 `must not be gated for invariants they never claimed` 一句在 master 已不存在。`git cherry` 之所以对其中 4 条报「独有提交」，是 squash 合并换了 patch-id、加上分支尖端落后 master ~690 提交 —— patch-id 在这种情形下不可用。**9 条已删**（SHA 与对应 PR 见删除清单第二批节）。
+- **`repo-infra-ui-token-assets` 保留**：无 PR、与 master 无 merge base，只含一个 243KB 的 `ui-token-demo.gif`，但该图被**已合并的 PR #147 正文引用** —— 删分支会让那条永久记录里的图失效。这正是 Round 24 删 `upstream-merge-assets` 的反面（后者 PR 正文自述录屏属历史材料、且净内容为零）。**先查引用再判删**是两者的分水岭。

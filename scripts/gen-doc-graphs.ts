@@ -9,8 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import ts from 'typescript'
 import { projectCordisCatalog } from '@deepseek-ai/dsh-typert-generator'
-import { CORDIS_CATALOG_POLICY, localizePageRegion, maybeRecordPair, spliceRegion } from './gen-cordis-catalog.ts'
-import { partitionGeneratedRegions } from './translation-pairing.ts'
+import { CORDIS_CATALOG_POLICY } from './gen-cordis-catalog.ts'
 import type { EventEntry, ServiceEntry } from '@deepseek-ai/dsh-typert-generator'
 import {
   collectPackageGraph,
@@ -64,6 +63,7 @@ type EventReceiverKind = 'context' | 'agent-dispatch' | 'events-service'
 const GROUP_ORDER = [
   'util',
   'attachment',
+  'document',
   'llm',
   'core',
   'typert',
@@ -73,7 +73,7 @@ const GROUP_ORDER = [
   'bash',
   'pty',
   'sandbox',
-  'e2b',
+  'ssh',
   'fs',
   'skill',
   'compact',
@@ -99,6 +99,70 @@ const GROUP_ORDER = [
 ]
 
 const SERVICE_ROLES: ServiceRole[] = [
+  {
+    key: 'hmr',
+    pkg: 'hmr',
+    title: 'Serialized module and configuration reloads',
+    mode: 'core',
+    consumers: ['app-boot'],
+    note: 'Owns module and exact configuration watchers; application mutations share its queue and automatic reloads await the application file lock.',
+  },
+  {
+    key: 'pluginManager',
+    pkg: 'plugin-manager',
+    title: 'Current-profile plugin and bundle management',
+    mode: 'core',
+    consumers: ['plugin-manager', 'ui-settings-plugin-inventory'],
+    note: 'Shares profile package operations with the CLI and reports persisted and running state to Web and agent callers.',
+  },
+  {
+    key: 'profileContext',
+    pkg: 'app-boot',
+    title: 'Launcher-owned profile data',
+    mode: 'core',
+    consumers: ['plugin-manager'],
+    note: 'The dsh launcher supplies data-only profile locations and composition inputs; reload scheduling belongs to dsh-hmr.',
+  },
+  {
+    key: 'connection',
+    pkg: 'client-connection',
+    title: 'Authenticated browser transport',
+    mode: 'core',
+    consumers: ['api-gateway', 'host-frontend-static'],
+    note: 'Owns browser authentication and shared HTTP request dispatch; API adapters register endpoints and streams.',
+  },
+  {
+    key: 'mcpResources',
+    pkg: 'mcp-resources',
+    title: 'Scoped MCP resource access',
+    mode: 'seam',
+    implementations: ['mcp-client'],
+    consumers: ['mcp-resources'],
+    note: 'Connection-owned providers serve shared resource tools in the calling agent scope.',
+  },
+  {
+    key: 'browserUse',
+    pkg: 'browser-use',
+    title: 'Browser-use provider registration',
+    mode: 'seam',
+    implementations: ['experimental-browser-use-playwright-mcp', 'experimental-browser-use-chrome-devtools-mcp', 'experimental-browser-use-stagehand-native'],
+    consumers: ['experimental-browser-use-playwright-mcp', 'experimental-browser-use-chrome-devtools-mcp', 'experimental-browser-use-stagehand-native'],
+    note: 'One provider-owned name per service instance. Providers own their tools and browser resources per live Session; the shared service has no browser operation API.',
+  },
+  {
+    key: 'computerUse',
+    pkg: 'computer-use',
+    title: 'Computer-use provider registration',
+    mode: 'seam',
+    implementations: ['experimental-computer-use-cua-driver-mcp', 'experimental-computer-use-cua-driver-native'],
+    consumers: ['experimental-computer-use-cua-driver-mcp', 'experimental-computer-use-cua-driver-native'],
+    note: 'One provider-owned name per service instance. Each provider also owns its model tools; the service has no common action API, runtime selection, or Session workflow lock.',
+  },
+  {
+    key: 'officeToPdf', pkg: 'office-to-pdf', title: 'Office to PDF conversion',
+    mode: 'core', consumers: ['client-ui-sidebar-documentpreview'],
+    note: 'Authorized Office bytes are converted on the Host using the declared native target engine, or Node WASM when no native target is declared.',
+  },
   {
     key: 'attachments',
     pkg: 'attachment',
@@ -199,6 +263,20 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Host workspace file Remote service',
     mode: 'core',
     note: 'Serves stat, paged text, byte windows, directory listings, and the change feed for files inside a Session\'s workspace root, confined by lstat, containment, and a stat re-check.',
+  },
+  {
+    key: 'workspaceChanges',
+    pkg: 'workspace-changes',
+    title: 'Host per-turn changed-file summaries',
+    mode: 'core',
+    note: 'Serves the summary each workspace/changes event announced and each listed file\'s turn-start and turn-end comparison, by Session and event sequence, until that Session is disposed; the log carries only the turn.',
+  },
+  {
+    key: 'terminalController',
+    pkg: 'api-terminal-controller',
+    title: 'Session interactive terminal Remote controller',
+    mode: 'core',
+    note: 'Owns user terminal processes, default shell resolution and bounded screen recovery through the subprocess provider and typed Remote transport.',
   },
   {
     key: 'workspaceController',
@@ -470,7 +548,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'skill',
     title: 'Skill provider registry',
     mode: 'seam',
-    implementations: ['skill-badge', 'skill-filesystem'],
+    implementations: ['skill-badge', 'skill-filesystem', 'skill-office'],
     consumers: ['tool-skill'],
     note: 'Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies.',
   },
@@ -506,19 +584,19 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Folds revisioned objective state from the session log and keeps live continuation activation process-local.',
   },
   {
-    key: 'e2b',
-    pkg: 'e2b',
-    title: 'E2B sandbox lifecycle owner',
+    key: 'ssh',
+    pkg: 'ssh',
+    title: 'POSIX SSH connection owner',
     mode: 'core',
-    consumers: ['fs-e2b', 'subprocess-e2b'],
-    note: 'Owns one shared E2B SDK handle, remote working directory, and final sandbox disposition so both fundamental E2B providers inhabit the same Linux runtime.',
+    consumers: ['fs-ssh', 'subprocess-ssh', 'sandbox-ssh'],
+    note: 'Owns one authenticated OpenSSH connection, installed helper identity, independent program streams and disconnect cleanup for the paired remote providers.',
   },
   {
     key: 'subprocess',
     pkg: 'subprocess',
     title: 'Subprocess seam',
     mode: 'seam',
-    implementations: ['subprocess-local', 'subprocess-e2b'],
+    implementations: ['subprocess-local', 'subprocess-ssh'],
     consumers: ['bash-local', 'bash-sandbox', 'terminal-bash', 'lsp-stdio', 'subagent-acp', 'subagent-codex', 'subagent-claude-code'],
     note: 'The bash executors, the PTY shell backend, the LSP host, and the out-of-process ACP, Codex, and Claude Code subagent backends spawn through ctx.subprocess; the service owns process coordinates, tree/session lifetime, stdio dispositions, terminal mechanics, and kill escalation.',
   },
@@ -553,7 +631,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'sandbox',
     title: 'Process-sandbox seam',
     mode: 'seam',
-    implementations: ['sandbox-local'],
+    implementations: ['sandbox-local', 'sandbox-ssh'],
     consumers: ['bash-sandbox', 'terminal-bash'],
     note: 'Consumers hand over the exact argv they are about to spawn; same-world backends wrap it under a per-call policy and report enforcement.',
   },
@@ -584,20 +662,20 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'User-facing preset table (`workspace-write`/`danger-full-access`) bundling the sandbox-mode and approval-policy knobs; a switch writes one `permission/preset` event through to both knob events.',
   },
   {
-    key: 'codeRuntime',
-    pkg: 'code-runtime',
-    title: 'Code-execution seam',
+    key: 'ptcRuntime',
+    pkg: 'ptc-runtime',
+    title: 'PTC execution seam',
     mode: 'seam',
-    implementations: ['code-runtime-worker-thread', 'experimental-code-runtime-python'],
-    consumers: ['tools'],
-    note: 'Runs one model-written program against host-provided async bindings; backends differ by substrate and language (the tool registry consumes it for PTC mode).',
+    implementations: ['ptc-runtime-node', 'experimental-ptc-runtime-python'],
+    consumers: ['tools', 'workflow-ptc'],
+    note: 'Runs programs against host-provided async bindings; tools owns PTC presentation and workflow-ptc owns workflow orchestration.',
   },
   {
     key: 'fs',
     pkg: 'fs',
     title: 'Filesystem provider seam',
     mode: 'seam',
-    implementations: ['fs-local', 'fs-sandbox', 'fs-e2b'],
+    implementations: ['fs-local', 'fs-sandbox', 'fs-ssh'],
     consumers: ['tool-fs'],
     companions: ['fs-observation-policy'],
     note: 'tool-fs executes read/write/edit through ctx.fs; fs-sandbox fences mutations by the shared sandbox mode; fs-observation-policy contributes observed-state checks through the fs/* event gate.',
@@ -692,7 +770,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'workflow',
     title: 'Workflow script engine',
     mode: 'seam',
-    implementations: ['workflow-worker-thread'],
+    implementations: ['workflow-ptc'],
     consumers: ['tool-workflow', 'tool-ralph'],
     note: 'One engine per context, as in bash, with no named-provider registry; the general workflow and fixed Ralph consumers start runs whose agent() calls fan out through ctx.subagents.',
   },
@@ -870,8 +948,6 @@ function renderCapabilitySeams(pkgs: Pkg[], services: readonly ServiceEntry[]): 
   lines.push(
     'A service can be a core spine service, a swappable capability seam, or a bundle/composition point. The graph shows the package that owns the service declaration, known implementation packages, and packages that consume the service directly.',
     '',
-    generatedBegin('capability-seams'),
-    '',
     '```mermaid',
     'flowchart LR',
   )
@@ -899,7 +975,7 @@ function renderCapabilitySeams(pkgs: Pkg[], services: readonly ServiceEntry[]): 
   for (const role of SERVICE_ROLES) {
     lines.push(`| \`ctx.${role.key}\` | \`${role.mode}\` | ${pkgLink(pkgsByShort.get(role.pkg), role.pkg)} | ${pkgList(role.implementations, pkgsByShort)} | ${pkgList(role.consumers, pkgsByShort)} | ${pkgList(role.companions, pkgsByShort)} | ${tableCell(role.note)} |`)
   }
-  lines.push('', generatedEnd('capability-seams'), '', ...maintenanceFooter(maintenance))
+  lines.push('', ...maintenanceFooter(maintenance))
   return lines.join('\n')
 }
 
@@ -1382,8 +1458,6 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
   lines.push(
     'This matrix shows which packages dispatch each harness-owned event and which packages listen to it. Events are many-to-many, so the dense relation data is presented as a table rather than one large graph. Receiver and event-name types also cover contained dispatch sites that deliberately bypass `ctx.emit`, such as subagent lifecycle containment.',
     '',
-    generatedBegin('event-producer-consumer'),
-    '',
     '| Event | Mode | Declared in | Dispatchers | Listeners |',
     '| --- | --- | --- | --- | --- |',
   )
@@ -1419,7 +1493,7 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
       lines.push(`| \`${event}\` | ${relationPackages(relation.dispatchers, pkgsByShort)} | ${listenerPackages(relation.listeners, pkgsByShort)} |`)
     }
   }
-  lines.push('', generatedEnd('event-producer-consumer'), '', ...maintenanceFooter(maintenance))
+  lines.push('', ...maintenanceFooter(maintenance))
   return lines.join('\n')
 }
 
@@ -1428,8 +1502,6 @@ function renderLifecycle(): string {
   return [
     ...generatedHeader('Agent Turn And Step Lifecycle'),
     'This sequence is the visual companion to [architecture.md](architecture.md#turn-flow). It keeps durable replay facts on `session/event` and live control/status on `agent/*`.',
-    '',
-    generatedBegin('agent-lifecycle'),
     '',
     '```mermaid',
     'sequenceDiagram',
@@ -1506,8 +1578,6 @@ function renderLifecycle(): string {
     `  Driver-->>SDK: ${mermaidCode('agent/status')} idle`,
     '```',
     '',
-    generatedEnd('agent-lifecycle'),
-    '',
     'The `assistant/message` event records every successful provider call, including content-less and `max-tokens` finishes, and embeds the exact compact timed stream. Empty content stays out of derived history. A failed, retried, cancelled, or stream-error attempt that reaches settlement without a surface message records its stream as `assistant/attempt`. Live `agent/assistant-stream` chunk frames are transient; replay reads either durable settlement, and a hard process loss before settlement leaves no durable attempt stream.',
     '',
     '`dsh-compaction-basic` uses `agent/pre-step` for pressure before request derivation and `agent/request-error` only for canonical context overflow. Once either trigger qualifies, optional tool-result pruning runs before summary selection. Recovery runs within the open step and retries only when pruning or summarization advances the surface replacement generation; otherwise the original request error remains authoritative. Each retry prepares its call and reconciles the retained rendered assembly before request derivation, without repeating assembly, pre-step, or user admission.',
@@ -1525,8 +1595,6 @@ function renderToolPipeline(): string {
   return [
     ...generatedHeader('Tool Execution Pipeline'),
     'This graph shows where policy, hooks, sandboxing, filesystem guards, result rewriting, final-outcome observation, and UI rendering run without changing the loop. The `tools/pre-execute` waterfall runs first, monotonic guards run next, and the `tools/execute` and `tools/post-execute` waterfalls follow; the three waterfalls may transform a call. Definition-owned `finalizeContent` and `tools/result` run afterward.',
-    '',
-    generatedBegin('tool-execution-pipeline'),
     '',
     '```mermaid',
     'flowchart TD',
@@ -1580,9 +1648,8 @@ function renderToolPipeline(): string {
     '  allResults --> context',
     '```',
     '',
-    generatedEnd('tool-execution-pipeline'),
+    'Filesystem read-before-edit checks stay below `tool-fs` on `fs/*` events. Generic pre/post waterfalls host hooks and approval policy; `ctx.approval` resolves asks before monotonic guards, and owner policy that must not be reordered remains a registered guard. Around-dispatch concerns such as timeouts wrap `tools/execute`. The registry losslessly snapshots the candidate result and normalizes a snapshot failure before the visible definition\'s snapshotted `finalizeContent` callback enforces its synchronous content-only invariant. `tools/result` then observes the immutable, lossless-JSON outcome. This lets hooks span tool families without coupling the tools to one policy service. PTC mode sends both the reserved `run_code` transport and its serialized sub-calls through the pipeline; sub-calls carry the parent token, log `tool/ptc-dispatch`, return denials as binding rejections, and omit `additionalContexts` to preserve call/result adjacency.',
     '',
-    'Filesystem read-before-edit checks stay below `tool-fs` on `fs/*` events. Generic pre/post waterfalls host hooks and approval policy; `ctx.approval` resolves asks before monotonic guards, and owner policy that must not be reordered remains a registered guard. Around-dispatch concerns such as timeouts wrap `tools/execute`. The registry losslessly snapshots the candidate result and normalizes a snapshot failure before the visible definition\'s snapshotted `finalizeContent` callback enforces its synchronous content-only invariant. `tools/result` then observes the immutable, lossless-JSON outcome. This lets hooks span tool families without coupling the tools to one policy service. PTC mode sends both the reserved `run_code` transport and its serialized sub-calls through the pipeline; sub-calls carry the parent token, log `tool/ptc-dispatch`, return denials as binding rejections, and omit `additionalContexts` to preserve call/result adjacency.',    '',
     ...maintenanceFooter(maintenance),
   ].join('\n')
 }
@@ -1631,37 +1698,14 @@ function renderIndex(docs: GraphDoc[]): string {
     '',
     'The process decision behind this index is recorded in [the documentation graph Agent Note](../.agents/notes/archived/process/2026-07-03-documentation-graph-atlas.md).',
     '',
-    generatedBegin('graph-atlas'),
-    '',
     '| Graph | Mode |',
     '| --- | --- |',
     ...rows,
-    '',
-    generatedEnd('graph-atlas'),
     '',
     'Regenerate with `pnpm run gen-doc-graphs`; verify freshness with `pnpm run verify-doc-graphs`.',
     '',
     ...maintenanceFooter(maintenance),
   ].join('\n')
-}
-
-/** Paired graph docs: the rendered region is also spliced into the reviewed `.zh.md`. */
-const PAIRED_DOCS: ReadonlySet<string> = new Set([
-  'docs/capability-seams.md',
-  'docs/event-producer-consumer.md',
-  'docs/agent-lifecycle.md',
-  'docs/tool-execution-pipeline.md',
-  'docs/graph-atlas.md',
-])
-
-/** This generator's opening region marker for one paired doc's slug. */
-function generatedBegin(slug: string): string {
-  return `<!-- BEGIN GENERATED ${slug} (gen-doc-graphs.ts) — do not edit between markers -->`
-}
-
-/** This generator's closing region marker for one paired doc's slug. */
-function generatedEnd(slug: string): string {
-  return `<!-- END GENERATED ${slug} -->`
 }
 
 function main(): void {
@@ -1681,40 +1725,11 @@ function main(): void {
     process.exit(1)
   }
 
-  // Pair records are region-aware, so capture both sides BEFORE writing: that is
-  // what lets `maybeRecordPair` prove the write left the reviewed prose untouched.
-  const zhOf = (rel: string): string => rel.replace(/\.md$/, '.zh.md')
-  const before = new Map<string, Buffer>()
-  for (const doc of docs) {
-    for (const rel of PAIRED_DOCS.has(doc.rel) ? [doc.rel, zhOf(doc.rel)] : [doc.rel]) {
-      const abs = resolve(root, rel)
-      if (existsSync(abs)) before.set(rel, readFileSync(abs))
-    }
-  }
-
-  let splicedCount = 0
-  let recorded = 0
   for (const doc of docs) {
     mkdirSync(dirname(resolve(root, doc.rel)), { recursive: true })
     writeFileSync(resolve(root, doc.rel), doc.content)
-    if (!PAIRED_DOCS.has(doc.rel)) continue
-    const zhRel = zhOf(doc.rel)
-    const zhAbs = resolve(root, zhRel)
-    // Both pair sides must exist before a region can be injected; the pairing
-    // gate owns pair completeness, this generator names the miss.
-    if (!existsSync(zhAbs)) throw new Error(`gen-doc-graphs: ${doc.rel} is paired but ${zhRel} does not exist.`)
-    const slug = (doc.rel.split('/').at(-1) ?? doc.rel).replace(/\.md$/, '')
-    const region = partitionGeneratedRegions(doc.content).regions[0]
-    if (!region) throw new Error(`gen-doc-graphs: ${doc.rel} is paired but rendered no generated region; its render function must fence the structured block.`)
-    const zhBefore = readFileSync(zhAbs, 'utf8')
-    const zhNext = spliceRegion(zhBefore, localizePageRegion(region, zhRel), generatedBegin(slug), generatedEnd(slug))
-    if (zhNext !== zhBefore) {
-      writeFileSync(zhAbs, zhNext)
-      splicedCount++
-    }
-    if (maybeRecordPair(doc.rel, before)) recorded++
   }
-  console.log(`gen-doc-graphs: wrote ${docs.length} graph doc(s), spliced ${splicedCount} translated region(s), refreshed ${recorded} pair record(s).`)
+  console.log(`gen-doc-graphs: wrote ${docs.length} graph doc(s).`)
 }
 
 if (process.argv[1] && import.meta.filename === resolve(process.argv[1])) {

@@ -40,14 +40,37 @@ import type {
   EvalResultFilters,
   EvalResultQueryResult,
   EvalResultRecord,
+  EvalRunHistoryFilters,
+  EvalRunHistoryResult,
+  EvalRunSummary,
   EvalCaseFlip,
   EvalDeltaReport,
+  EvalDeltaFilters,
   AssetHealthReport,
+  NormalizedConfirmationStatus,
 } from './types.ts'
 
 export type * from './types.ts'
 
 const STATUS_RANK: Record<EvalResultRecord['status'], number> = { pass: 3, fail: 1, error: 0, pending: 0 }
+const MAX_EVAL_RUN_HISTORY_LIMIT = 100
+
+/** Normalize persisted confirmation vocabulary for every evidence-query trust report. */
+function normalizeConfirmationStatus(status: string): NormalizedConfirmationStatus {
+  switch (status) {
+    case 'draft':
+    case 'unreviewed':
+      return 'draft'
+    case 'confirmed':
+    case 'analyst_confirmed':
+    case 'business_confirmed':
+      return 'confirmed'
+    case 'rejected':
+      return 'rejected'
+    default:
+      return 'unknown'
+  }
+}
 
 /**
  * GA-GT1 Phase 3b (D5.2): structural interface for the optional scope-registry
@@ -82,53 +105,117 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+interface StoredEvalResultRecord {
+  readonly record: EvalResultRecord
+  readonly hasReliableAssetId: boolean
+}
+
 /**
  * In-memory eval result store. Supports both direct `add()` (for tests and
  * programmatic use) and `loadFromDirectory()` (reads W3 JSONL persistence
  * files). The `FileBackedEvalResultStore` subclass auto-loads on construction.
  */
 export class EvalResultStore {
-  private records: EvalResultRecord[] = []
+  private records: StoredEvalResultRecord[] = []
 
   /**
    *  Add a record to the store.
    * @param record - record
    */
   add(record: EvalResultRecord): void {
-    this.records.push(record)
+    this.records.push({ record, hasReliableAssetId: true })
   }
 
   /**
-   *  Query records matching the given filters.
-   * @param filters - filters
-   * @returns the result
+   * Query records matching the given filters. Asset filtering is applied only
+   * when every candidate record has a reliable case-to-asset mapping source; otherwise
+   * the global candidates are returned with `assetFilterStatus: 'unavailable'`.
+   * @param filters - Filters to apply, including an optional complete-run history bound.
+   * @returns Matching records and whether the requested asset filter was applied.
    */
   query(filters: EvalResultFilters): EvalResultQueryResult {
-    let results = [...this.records]
+    let records = [...this.records]
 
-    if (filters.assetId !== undefined) {
-      results = results.filter(r => r.assetId === filters.assetId)
-    }
-    if (filters.status !== undefined) {
-      results = results.filter(r => r.status === filters.status)
-    }
-    if (filters.domain !== undefined) {
-      results = results.filter(r => r.metadata?.domain === filters.domain)
-    }
     // GA-GT1 Phase 3b (D5.2): scopeId filter — additive on top of the
     // existing asset/status/domain/limit filters. When scopeId is undefined,
     // no filtering is applied (all scopes returned, including legacy records
     // with no scopeId — backward-compatible).
     if (filters.scopeId !== undefined) {
-      results = results.filter(r => r.scopeId === filters.scopeId)
+      records = records.filter(({ record }) => record.scopeId === filters.scopeId)
     }
 
-    const total = results.length
+    let assetFilterStatus: EvalResultQueryResult['assetFilterStatus'] = 'not_requested'
+    if (filters.assetId !== undefined) {
+      if (records.length > 0 && records.every(({ hasReliableAssetId }) => hasReliableAssetId)) {
+        records = records.filter(({ record, hasReliableAssetId }) => (
+          hasReliableAssetId && record.assetId === filters.assetId
+        ))
+        assetFilterStatus = 'applied'
+      } else {
+        assetFilterStatus = 'unavailable'
+      }
+    }
+    if (filters.status !== undefined) {
+      records = records.filter(({ record }) => record.status === filters.status)
+    }
+    if (filters.domain !== undefined) {
+      records = records.filter(({ record }) => record.metadata?.domain === filters.domain)
+    }
+
+    const total = records.length
     if (filters.limit !== undefined && filters.limit > 0) {
-      results = results.slice(0, filters.limit)
+      records = records.slice(0, filters.limit)
     }
 
-    return { results, total }
+    return { results: records.map(({ record }) => record), total, assetFilterStatus }
+  }
+
+  /**
+   * Return bounded newest-first run summaries without emitting every case record.
+   * @param filters - Asset, domain, scope, and required run-count bound.
+   * @returns Aggregate run rows, the matching run count, and asset-filter status.
+   * @throws When limit is not a positive integer or exceeds the server maximum.
+   */
+  runHistory(filters: EvalRunHistoryFilters): EvalRunHistoryResult {
+    if (!Number.isInteger(filters.limit) || filters.limit <= 0) {
+      throw new Error('eval run history limit must be a positive integer')
+    }
+    if (filters.limit > MAX_EVAL_RUN_HISTORY_LIMIT) {
+      throw new Error(`eval run history limit must be at most ${MAX_EVAL_RUN_HISTORY_LIMIT}`)
+    }
+    const query = this.query({
+      ...(filters.assetId === undefined ? {} : { assetId: filters.assetId }),
+      ...(filters.domain === undefined ? {} : { domain: filters.domain }),
+      ...(filters.scopeId === undefined ? {} : { scopeId: filters.scopeId }),
+    })
+    const byRun = new Map<string, EvalRunSummary>()
+    for (const record of query.results) {
+      const runId = record.metadata?.runId
+      if (typeof runId !== 'string') continue
+      const previous = byRun.get(runId) ?? {
+        runId,
+        timestamp: record.timestamp,
+        pass: 0,
+        fail: 0,
+        error: 0,
+        pending: 0,
+        total: 0,
+      }
+      byRun.set(runId, {
+        ...previous,
+        timestamp: record.timestamp > previous.timestamp ? record.timestamp : previous.timestamp,
+        [record.status]: previous[record.status] + 1,
+        total: previous.total + 1,
+      })
+    }
+    const runs = [...byRun.values()].sort((a, b) => (
+      b.timestamp.localeCompare(a.timestamp) || b.runId.localeCompare(a.runId)
+    ))
+    return {
+      runs: runs.slice(0, filters.limit),
+      total: runs.length,
+      assetFilterStatus: query.assetFilterStatus,
+    }
   }
 
   /**
@@ -141,7 +228,11 @@ export class EvalResultStore {
     // data-infra-3: filter by scopeId when provided — the store loads ALL scope
     // subdirs, so an unscoped hasResultsFor lets scope A's coverage mask scope
     // B's gaps (gapAnalysis/assetHealth pass their resolved scopeId here).
-    return this.records.some(r => r.assetId === assetId && (scopeId === undefined || r.scopeId === scopeId))
+    return this.records.some(({ record, hasReliableAssetId }) => (
+      hasReliableAssetId
+      && record.assetId === assetId
+      && (scopeId === undefined || record.scopeId === scopeId)
+    ))
   }
 
   /**
@@ -150,7 +241,9 @@ export class EvalResultStore {
    * @returns the result
    */
   getByRunId(runId: string): EvalResultRecord[] {
-    return this.records.filter(r => r.metadata?.runId === runId)
+    return this.records
+      .filter(({ record }) => record.metadata?.runId === runId)
+      .map(({ record }) => record)
   }
 
   /**
@@ -159,8 +252,8 @@ export class EvalResultStore {
    */
   getRunIds(): string[] {
     const ids = new Set<string>()
-    for (const r of this.records) {
-      const runId = r.metadata?.runId
+    for (const { record } of this.records) {
+      const runId = record.metadata?.runId
       if (typeof runId === 'string') ids.add(runId)
     }
     return [...ids]
@@ -169,7 +262,8 @@ export class EvalResultStore {
   /**
    * Load records from a directory of W3 JSONL persistence files.
    * Each line is a `PersistedCaseRecord`; mapped to `EvalResultRecord` via
-   * the provided `caseAssetResolver` (defaults to caseId as assetId).
+   * the provided `caseAssetResolver`. Without one, the returned record retains
+   * `caseId` as a display fallback but asset-scoped filtering is reported unavailable.
    *
    * GA-GT1 Phase 3b (D5.2): reads BOTH layouts — backward-compatible:
    *  - Flat: `<dir>/*.jsonl` (legacy; records get scopeId=undefined).
@@ -195,7 +289,10 @@ export class EvalResultStore {
         // empty until the next successful refresh). Log + skip the bad line.
         try {
           const raw = JSON.parse(line) as PersistedCaseRecordRaw
-          this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver))
+          this.records.push({
+            record: mapPersistedToEvalRecord(raw, caseAssetResolver),
+            hasReliableAssetId: caseAssetResolver !== undefined,
+          })
         } catch (e) {
           console.warn(`evidence-query: skipping malformed record line in ${path}: ${(e as Error).message}`)
         }
@@ -218,7 +315,10 @@ export class EvalResultStore {
           // empty until the next successful refresh). Log + skip the bad line.
           try {
             const raw = JSON.parse(line) as PersistedCaseRecordRaw
-            this.records.push(mapPersistedToEvalRecord(raw, caseAssetResolver, scopeId))
+            this.records.push({
+              record: mapPersistedToEvalRecord(raw, caseAssetResolver, scopeId),
+              hasReliableAssetId: caseAssetResolver !== undefined,
+            })
           } catch (e) {
             console.warn(`evidence-query: skipping malformed record line in ${path} (scope ${scopeId}): ${(e as Error).message}`)
           }
@@ -240,12 +340,12 @@ export class EvalResultStore {
  */
 export class FileBackedEvalResultStore extends EvalResultStore {
   private readonly dir: string
-  private readonly resolver: (caseId: string) => string
+  private readonly resolver: ((caseId: string) => string) | undefined
 
   constructor(dir: string, caseAssetResolver?: (caseId: string) => string) {
     super()
     this.dir = dir
-    this.resolver = caseAssetResolver ?? (id => id)
+    this.resolver = caseAssetResolver
     this.refresh()
   }
 
@@ -398,7 +498,7 @@ export class EvidenceQueryService extends Service {
 
   /**
    * Coverage query: delegates to the same logic as SchemaGateway.getCoverageStats()
-   * but enriches with confirmation.status breakdown across all assets.
+   * and reports one normalized confirmation breakdown across all assets.
    * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns aggregated table/event/metric counts plus per-domain and confirmation-status tallies.
    */
@@ -409,10 +509,11 @@ export class EvidenceQueryService extends Service {
     const metrics = loadMetricDefinitions(root)
 
     const domainCounts: Record<string, number> = {}
-    const confirmation: { draft: number; confirmed: number; rejected: number } = {
+    const confirmation: Record<NormalizedConfirmationStatus, number> = {
       draft: 0,
       confirmed: 0,
       rejected: 0,
+      unknown: 0,
     }
 
     let tableCount = 0
@@ -450,11 +551,9 @@ export class EvidenceQueryService extends Service {
 
   private tallyConfirmation(
     status: string,
-    acc: { draft: number; confirmed: number; rejected: number },
+    acc: Record<NormalizedConfirmationStatus, number>,
   ): void {
-    if (status === 'confirmed') acc.confirmed++
-    else if (status === 'rejected') acc.rejected++
-    else acc.draft++
+    acc[normalizeConfirmationStatus(status)]++
   }
 
   /**
@@ -627,12 +726,24 @@ export class EvidenceQueryService extends Service {
   }
 
   /**
-   * Eval result query: query persisted eval run results.
-   * @param filters - the asset/status/domain/limit filters to apply.
-   * @returns the matching eval result records plus the total count before limiting.
+   * Query persisted eval results. An asset filter is applied only when the store
+   * has a complete case-to-asset mapping source for the candidate records; otherwise the result remains global
+   * and reports that asset filtering is unavailable.
+   * @param filters - The asset, status, domain, scope, and record-limit filters to request.
+   * @returns Matching records, total count before limiting, and asset-filter status.
    */
   evalResultQuery(filters: EvalResultFilters): EvalResultQueryResult {
     return this.evalStore.query(filters)
+  }
+
+  /**
+   * Return bounded newest-first run summaries for dashboard and sidebar history.
+   * @param filters - Asset, domain, scope, and required run-count bound.
+   * @returns Aggregate run rows, matching run count, and asset-filter status.
+   * @throws When limit is not a positive integer or exceeds the server maximum.
+   */
+  evalRunHistory(filters: EvalRunHistoryFilters): EvalRunHistoryResult {
+    return this.evalStore.runHistory(filters)
   }
 
   /**
@@ -640,11 +751,17 @@ export class EvidenceQueryService extends Service {
    * "Improved" = moved from fail/error → pass; "regressed" = moved from pass → fail/error.
    * @param runIdA - the baseline (before) run id.
    * @param runIdB - the comparison (after) run id.
+   * @param filters - optional asset, domain, and scope filters preserved from the history query.
+   * @throws When an asset is requested without a complete case-to-asset mapping.
    * @returns the run ids, the flipped cases, and improved/regressed/unchanged counts.
    */
-  beforeAfterDelta(runIdA: string, runIdB: string): EvalDeltaReport {
-    const recordsA = this.evalStore.getByRunId(runIdA)
-    const recordsB = this.evalStore.getByRunId(runIdB)
+  beforeAfterDelta(runIdA: string, runIdB: string, filters: EvalDeltaFilters = {}): EvalDeltaReport {
+    const query = this.evalStore.query(filters)
+    if (filters.assetId !== undefined && query.assetFilterStatus !== 'applied') {
+      throw new Error(`eval delta asset filter unavailable for ${filters.assetId}`)
+    }
+    const recordsA = query.results.filter(record => record.metadata?.runId === runIdA)
+    const recordsB = query.results.filter(record => record.metadata?.runId === runIdB)
     const mapA = new Map(recordsA.map(r => [r.caseId, r]))
     const mapB = new Map(recordsB.map(r => [r.caseId, r]))
 
@@ -680,8 +797,8 @@ export class EvidenceQueryService extends Service {
   }
 
   /**
-   * Asset health: aggregate report for a single asset — confirmation status,
-   * has_eval_coverage, relation_count, last_modified.
+   * Asset health: reports normalized confirmation status, eval coverage,
+   * relation count, and a nullable owner-provided modification time.
    * @param assetId - the table, event, or metric asset to report on.
    * @param scopeId - GA-GT1 Phase 3b (D5.2): optional scope id; omit to use the active scope (backward-compatible).
    * @returns the aggregate health report, or null when no table/event/metric matches assetId.
@@ -698,10 +815,10 @@ export class EvidenceQueryService extends Service {
         const relations = graph.getRelated(assetId)
         return {
           assetId,
-          confirmationStatus: r.data.confirmation.status,
+          confirmationStatus: normalizeConfirmationStatus(r.data.confirmation.status),
           hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
-          lastModified: '',
+          lastModified: null,
         }
       }
     }
@@ -715,10 +832,10 @@ export class EvidenceQueryService extends Service {
         const relations = graph.getRelated(assetId)
         return {
           assetId,
-          confirmationStatus: r.data.confirmation.status,
+          confirmationStatus: normalizeConfirmationStatus(r.data.confirmation.status),
           hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
-          lastModified: '',
+          lastModified: null,
         }
       }
     }
@@ -733,7 +850,7 @@ export class EvidenceQueryService extends Service {
           confirmationStatus: 'n/a',
           hasEvalCoverage: this.evalStore.hasResultsFor(assetId, scopeId),
           relationCount: relations.length,
-          lastModified: '',
+          lastModified: null,
         }
       }
     }

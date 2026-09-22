@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-scope-routing",
   "description": "Scope-routing tools for the data agent: list_scopes, switch_scope + alias-based system-prompt hints for automatic scope detection",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

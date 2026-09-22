@@ -22,10 +22,10 @@ Build a data-domain Evaluation Core for data engineering, data analysis, and dat
 
 | Role | Owns | Does not own |
 |---|---|---|
-| Benchmark Pack | Case manifests, public task material, private-material references, policies, requirements, splits, provenance, aggregation | Agent execution, Provider selection, runtime defaults |
+| Benchmark Pack | Case manifests, public task material, private-material references, policies, requirements, splits, source records, aggregation | Agent execution, Provider selection, runtime defaults |
 | Harness | The resolved production profile, preset, model interface, Agent interaction, tools, approvals, hooks, guards, workflow | Correctness policy, private grading material |
 | Evaluation Environment | Requirement preflight, attempt lease, Provider-state observation, finality, separation, cleanup, assurance | Query/filesystem/workflow operations, DataScope, correctness |
-| Context Projection | Production context selection, ranking, budgeting, serialization, provenance, projection evidence | Benchmark oracle, grading, Environment execution |
+| Context Projection | Production context selection, ranking, budgeting, serialization, source records, projection evidence | Benchmark oracle, grading, Environment execution |
 | Grading Runtime | Sealed-cut validation, private-material authorization, mechanism invocation, immutable Grade Records | Agent execution, Context retrieval, business Providers |
 | Evaluation Controller | Run resolution, Attempt orchestration, sealing, grading invocation, cancellation, publication eligibility | Benchmark content, domain actions, storage implementations |
 
@@ -37,7 +37,7 @@ A canonical case is a shallow `CaseManifest` that explicitly references public m
 
 A Benchmark Pack is a sealed, content-addressed data bundle, not intrinsically a Cordis plugin. A `BenchmarkRepository` capability resolves an explicit locator, validates the complete closure, seals it into an Artifact Store, and returns an exact digest. Executable grading mechanisms, importers, generators, validators, and Environment fixtures are optional companion plugins. Public npm packages may carry public Pack assets as a distribution adapter, but package version never replaces Pack content identity. Private grading material is reachable only from the grader-side service graph.
 
-Context projection is a normal product capability. The production Agent and Product Evaluation use the same typed request-to-projection path. The projection records candidates, selected facts and relations, scores, provenance, budget, serialization identity, and model-visible digest. No-context, schema-only, relation, production, and oracle configurations are explicit variants; oracle or hidden-derived Context never enters a production headline.
+Context projection is a normal product capability. The production Agent and Product Evaluation use the same typed request-to-projection path. The projection records candidates, selected facts and relations, scores, source records, budget, serialization identity, and model-visible digest. No-context, schema-only, relation, production, and oracle configurations are explicit variants; oracle or hidden-derived Context never enters a production headline.
 
 ### Evidence, measurement, and identity
 
@@ -59,7 +59,7 @@ Product Evaluation loads the production profile, bundle, preset, DataScope, Cont
 
 The first-release roles are separate packages for Protocol, Controller, Grading Runtime, Environment Definition, BenchmarkRepository Definition/local Provider, EvaluationStore Definition/local Provider, ArtifactStore Definition/local Provider, data-analysis extension, and CLI Host. Production Context Projection lives with data-agent capabilities. Packages are created only for real capability roles; a Definition package must own complete semantics, and a Provider package must hide substantial implementation complexity rather than merely re-export types.
 
-Migration follows the reviewed stack: [T11](../../../../wayfinder/evaluation/tickets/T11-loader-provenance-strip.md) → [T1](../../../../wayfinder/evaluation/tickets/T1-exec-grader-impl.md) → [T13](../../../../wayfinder/evaluation/tickets/T13-context-projection-service.md) → [T9](../../../../wayfinder/evaluation/tickets/T9-evaluation-foundations.md) → [T14](../../../../wayfinder/evaluation/tickets/T14-data-analysis-extension-pack-migration.md) → [T15](../../../../wayfinder/evaluation/tickets/T15-evaluation-controller-cli.md) → [T12](../../../../wayfinder/evaluation/tickets/T12-eval-package-consolidation.md) → [R25](../../../../wayfinder/evaluation/tickets/R25-evaluation-rebaseline.md). Staging exists for review and attribution, not compatibility. Final cutover deletes old packages, exports, bundle rows, globs, defaults, and formats without shims.
+Migration follows the reviewed stack: [T11](../../../../wayfinder/evaluation/tickets/T11-loader-source-strip.md) → [T1](../../../../wayfinder/evaluation/tickets/T1-exec-grader-impl.md) → [T13](../../../../wayfinder/evaluation/tickets/T13-context-projection-service.md) → [T9](../../../../wayfinder/evaluation/tickets/T9-evaluation-foundations.md) → [T14](../../../../wayfinder/evaluation/tickets/T14-data-analysis-extension-pack-migration.md) → [T15](../../../../wayfinder/evaluation/tickets/T15-evaluation-controller-cli.md) → [T12](../../../../wayfinder/evaluation/tickets/T12-eval-package-consolidation.md) → [R25](../../../../wayfinder/evaluation/tickets/R25-evaluation-rebaseline.md). Staging exists for review and attribution, not compatibility. Final cutover deletes old packages, exports, bundle rows, globs, defaults, and formats without shims.
 
 ### Relationship to active decisions and Agent Notes
 

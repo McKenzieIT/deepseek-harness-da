@@ -2,6 +2,8 @@
 
 export type SemanticLayerKey =
   | 'title'
+  | 'dashboard.title'
+  | 'dashboard.goToWorkspace'
   | 'loading'
   | 'error'
   | 'presenter.running'
@@ -54,6 +56,7 @@ export type SemanticLayerKey =
   | 'evidence.coverage.draft'
   | 'evidence.eval.title'
   | 'evidence.eval.noResults'
+  | 'evidence.eval.assetFilterUnavailable'
   | 'evidence.eval.pass'
   | 'evidence.eval.fail'
   | 'evidence.eval.error'
@@ -115,6 +118,8 @@ export type SemanticLayerTranslate = (key: SemanticLayerKey, params?: Record<str
 /** zh */
 export const zh: Record<SemanticLayerKey, string> = {
   'title': '语义层',
+  'dashboard.title': '证据看板',
+  'dashboard.goToWorkspace': '返回工作区',
   'loading': '加载中…',
   'error': '错误',
   'presenter.running': '运行中',
@@ -167,6 +172,7 @@ export const zh: Record<SemanticLayerKey, string> = {
   'evidence.coverage.draft': '草稿',
   'evidence.eval.title': 'Eval 结果',
   'evidence.eval.noResults': '暂无 eval 运行记录',
+  'evidence.eval.assetFilterUnavailable': '缺少可靠的 case 到资产映射；当前显示全部运行。',
   'evidence.eval.pass': '通过',
   'evidence.eval.fail': '失败',
   'evidence.eval.error': '错误',
@@ -226,6 +232,8 @@ export const zh: Record<SemanticLayerKey, string> = {
 /** en */
 export const en: Record<SemanticLayerKey, string> = {
   'title': 'Semantic Layer',
+  'dashboard.title': 'Evidence Dashboard',
+  'dashboard.goToWorkspace': 'Back to workspace',
   'loading': 'Loading…',
   'error': 'Error',
   'presenter.running': 'running',
@@ -278,6 +286,7 @@ export const en: Record<SemanticLayerKey, string> = {
   'evidence.coverage.draft': 'draft',
   'evidence.eval.title': 'Eval Results',
   'evidence.eval.noResults': 'No eval runs recorded',
+  'evidence.eval.assetFilterUnavailable': 'Asset-specific history is unavailable; showing all runs.',
   'evidence.eval.pass': 'pass',
   'evidence.eval.fail': 'fail',
   'evidence.eval.error': 'error',

@@ -35,8 +35,8 @@ const { default: Audit } = await import('@deepseek-ai/dsh-audit')
 await ctx.plugin(Audit, { path: join(tmpdir(), `g25a-preset-smoke-${process.pid}-${randomUUID()}.db`) })
 const resultCacheMemory = await import('@deepseek-ai/dsh-result-cache-memory')
 await ctx.plugin(resultCacheMemory)
-const { default: WorkerThreadCodeRuntime } = await import('@deepseek-ai/dsh-code-runtime-worker-thread')
-await ctx.plugin(WorkerThreadCodeRuntime)
+const { default: DataPythonCodeRuntime } = await import('@deepseek-ai/dsh-code-runtime-data-python')
+await ctx.plugin(DataPythonCodeRuntime)
 const scope = createScope(ctx, { g25aPresetSmoke: arm })
 try {
   await mountPreset(scope.ctx, {

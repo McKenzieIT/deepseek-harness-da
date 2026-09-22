@@ -2,9 +2,9 @@
 
 Each mode below states its trigger, the authoring path, and how it verifies. The [mode table in SKILL.md](SKILL.md#choose-a-creation-mode) owns the lifetime-and-audience decision; this file owns execution. The shared rules that cut across modes live in [CONVENTIONS.md](CONVENTIONS.md).
 
-## 1. Dynamic in-process package
+## 1. Runtime inspection (read-only, in a live session)
 
-For an agent already running inside a live DSH session with the Cordis toolset mounted (`pnpm dsh web --patch ./apps/cli/config/examples/cordis/cordis.yml` composition): define a package with `cordis_define` (host half `code`, optional browser half `client` — plain JavaScript function bodies, no TypeScript or JSX), activate with `cordis_run`, dispose with `cordis_stop`, and read live services and events first through `cordis_inspect`. Packages live in process memory only: no file is created, nothing survives a restart, and `cordis_define` never writes to the repository. Keeping an experiment means reimplementing it below as a repository package or scratch overlay. Contracts: [tool-cordis README](../../../packages/extensions/tool-cordis/README.md).
+For an agent already running inside a live DSH session with the Cordis toolset mounted (the `cordis` agent preset): read live Host and Client services, events, tool schemas, theme tokens, and Slot trees through `cordis_inspect_list` (discover providers) and `cordis_inspect_query` (read one provider's exact methods and types). These tools are read-only and never define, run, or mutate anything. Upstream retired the in-process define/run/stop tools; the host runner still carries that lifecycle for the UI panel and programmatic callers, but no model tool creates dynamic definitions. To keep a capability, author it below as a scratch overlay or repository package and install it with `plugin_manager`. Contracts: [tool-cordis README](../../../packages/extensions/tool-cordis/README.md).
 
 ## 2. Scratch overlay
 
@@ -30,7 +30,7 @@ Loading: repository plugins mount through compositions — a bundle patch row, a
 
 ## 4. Example bundle
 
-A runnable demo composition wiring shipped packages. Upstream retired the top-level `examples/` workspace member (`4125514a08`); runnable compositions now live in two places, each with its own governance: user-facing opt-in overlays under [`apps/cli/config/examples/`](../../../apps/cli/config/examples/) (each with a published guide under `docs/user/`), and cross-package profile integration tests under [`apps/cli/tests/profiles/`](../../../apps/cli/tests/profiles/AGENTS.md). The fork's top-level `examples/` holds semantic-layer fixtures (the data-agent's `k11-`/`x63-` corpora), not compositions. Reusable logic belongs in `packages/`; a composition leaf holds only `cordis.yml` wiring, demo artifacts, and e2e/snapshot scenarios.
+A runnable demo composition wiring shipped packages. Upstream retired the top-level `examples/` workspace member; runnable compositions now live in two places, each with its own governance: user-facing opt-in overlays under [`apps/cli/config/examples/`](../../../apps/cli/config/examples/) (each with a published guide under `docs/user/`), and cross-package profile integration tests under [`apps/cli/tests/profiles/`](../../../apps/cli/tests/profiles/AGENTS.md). The fork's top-level `examples/` holds semantic-layer fixtures (the data-agent's `k11-`/`x63-` corpora), not compositions. Reusable logic belongs in `packages/`; a composition leaf holds only `cordis.yml` wiring, demo artifacts, and e2e/snapshot scenarios.
 
 ## 5. Installable bundle
 

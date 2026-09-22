@@ -1,10 +1,14 @@
 ---
 type: grilling
-status: open
+status: resolved
 blocked_by: []
 ---
 
 # CB-3: include 组的 per-row 失败隔离（评估，非立即实施）
+
+## Answer
+
+Resolved. The repository keeps the loader's transactional all-or-nothing group semantics and uses the implemented startup self-check plus plugin-inventory failure reporting to make load failures visible. Reconsider per-row isolation only after another same-form incident demonstrates that explicit diagnostics are insufficient.
 
 **Branch**: `chore/cb3-per-row-fault-isolation`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
 

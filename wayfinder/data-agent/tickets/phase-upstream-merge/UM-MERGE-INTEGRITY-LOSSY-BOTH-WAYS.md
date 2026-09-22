@@ -263,3 +263,23 @@ Reverted the `upstream-sync.json` edit to baseline. Baseline state: `verify-upst
 - Apply blob-walk budget ACTUAL ~4-20K tokens (well under the 80-100K session-plan risk fear; the fear conflated the ~30-file whole-package re-port merge with the cheaper integrity blob walk).
 
 **Ticket status:** resolved. The waiver ledger is adjudicated (item 1 prior session + item 2 this session). Future integrity findings on future sync windows are the durable §2.4.bis gate's ongoing job (not a ticket-scope open item).
+
+## 2026-09-17 — 7 条 drop waiver 转为 `settled` 终态
+
+`WaiverDecision` 原本只有 `pending` / `keep` / `drop`，没有「已履行」态：`drop` 一旦记下，`owedWaivers()` 就永远把它算成欠账，`upstream-status` 因此长期报 `owed remediation (drop waivers): 7`，而这 7 条的补救早已落地。这不是记录写错，是词汇缺一个终态。
+
+`scripts/upstream-sync-record.ts` 新增 `settled`：语义为「`drop` 的补救已落地」。**它必须留在记录里而不是删掉** —— 产生该 finding 的那个 sync window 是永久的，条目一删，历史 window 的 finding 就无人解释，门会把它报成「无 waiver 覆盖的 finding」而变红。`owedWaivers()` 仍只筛 `drop`，所以 settled 自动退出欠账统计；零命中对 settled 与对 drop 一样只记 note、不判失败。
+
+转态前逐条复核（不采信记录，直接查两侧的树）：
+
+| waiver | direction | 复核结果 |
+| --- | --- | --- |
+| `packages/client/runtime/` | keep-fork | fork 与 upstream **都不存在** → 「fork 留着上游已删内容」的分歧已消失 |
+| `packages/examples/jsonrpc-demo/` | keep-fork | 同上 |
+| `packages/examples/agent-spine-demo/` | keep-fork | 同上 |
+| `knip.json` | keep-fork | 同上 |
+| `packages/client/connection/tests/fake-api.client.ts` | keep-fork | 同上 |
+| `packages/client/ui-settings-models/src/client/operations.ts` | drop-fork | blob 与 `upstream/master` **逐字相同** → fork 已取上游内容 |
+| `packages/client/ui-settings-models/src/client/slot-contract.ts` | drop-fork | blob 与 `upstream/master` **逐字相同** → 同上 |
+
+验收：`verify-upstream-sync-record` 仍报 consistent with Git（settled 条目继续解释历史 window 的 finding）；`upstream-status` 的 owed 从 7 变 0；`scripts/upstream-monitor.spec.ts` 加两条用例 —— 一条钉住「词汇外的 decision 值被拒」（`decision: 'resolved'` → `must be one of pending, keep, drop, settled`），一条钉住「settled 不欠账但仍在记录里」。该 spec 19/19 绿。

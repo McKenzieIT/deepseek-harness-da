@@ -1049,7 +1049,7 @@ interface WorkspaceModules {
   readonly IdentityService: typeof import('@deepseek-ai/dsh-identity')['default']
   readonly Audit: typeof import('@deepseek-ai/dsh-audit')['default']
   readonly resultCacheMemory: typeof import('@deepseek-ai/dsh-result-cache-memory')
-  readonly WorkerThreadCodeRuntime: typeof import('@deepseek-ai/dsh-code-runtime-worker-thread')['default']
+  readonly DataPythonCodeRuntime: typeof import('@deepseek-ai/dsh-code-runtime-data-python')['default']
   readonly llmRetry: typeof import('@deepseek-ai/dsh-llm-retry')
   readonly MaxComputeQueryEngine: typeof import('@deepseek-ai/dsh-query-maxcompute')['MaxComputeQueryEngine']
   readonly mountPreset: typeof import('@deepseek-ai/dsh-agent-presets')['mountPreset']
@@ -1076,7 +1076,7 @@ async function loadWorkspaceModules(): Promise<WorkspaceModules> {
     identity,
     audit,
     resultCacheMemory,
-    codeRuntime,
+    dataPythonRuntime,
     llmRetry,
     queryMaxCompute,
     agentPresets,
@@ -1100,7 +1100,7 @@ async function loadWorkspaceModules(): Promise<WorkspaceModules> {
     import('@deepseek-ai/dsh-identity'),
     import('@deepseek-ai/dsh-audit'),
     import('@deepseek-ai/dsh-result-cache-memory'),
-    import('@deepseek-ai/dsh-code-runtime-worker-thread'),
+    import('@deepseek-ai/dsh-code-runtime-data-python'),
     import('@deepseek-ai/dsh-llm-retry'),
     import('@deepseek-ai/dsh-query-maxcompute'),
     import('@deepseek-ai/dsh-agent-presets'),
@@ -1129,7 +1129,7 @@ async function loadWorkspaceModules(): Promise<WorkspaceModules> {
     IdentityService: identity.default,
     Audit: audit.default,
     resultCacheMemory,
-    WorkerThreadCodeRuntime: codeRuntime.default,
+    DataPythonCodeRuntime: dataPythonRuntime.default,
     llmRetry,
     MaxComputeQueryEngine: queryMaxCompute.MaxComputeQueryEngine,
     mountPreset: agentPresets.mountPreset,
@@ -1385,7 +1385,7 @@ export async function createRealAttemptRuntime(
     await ctx.plugin(modules.IdentityService)
     await ctx.plugin(modules.Audit, { path: resolve(attemptDirectory, 'audit.db') })
     await ctx.plugin(modules.resultCacheMemory)
-    await ctx.plugin(modules.WorkerThreadCodeRuntime)
+    await ctx.plugin(modules.DataPythonCodeRuntime)
     await ctx.plugin(modules.llmRetry)
     const sidecarPath = await writeSidecarLaunchers(attemptDirectory, environment, planned, repoRoot)
     await ctx.plugin(modules.MaxComputeQueryEngine, {

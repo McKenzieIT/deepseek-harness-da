@@ -38,7 +38,7 @@ TODO: translate: Semantic layer management: sidebar trigger that opens or create
 - **SemanticLayerShell**：侧边栏按钮与 B→A 布局路由器。在 "B" 模式（默认，evalRunCount < 3）下渲染触发按钮；在 "A" 模式（≥3 次 eval 运行后自动翻转）下渲染 DashboardView。
 - **wiring.tsx**：会话级 slot 适配器，以 `agentPreset === 'semantic-layer-management'` 为门控条件。非管理会话不渲染任何内容。
 - **presenters/**：每个管理 tool 的 keyed `tool.call.toolview` 渲染器。
-- **hooks/**：`useEvidenceQuery`、`useEvidenceMetrics`、`useSchemaGateway`、`useLayoutMode`。
+- **hooks/**：`useEvidenceQuery`、`useEvidenceMetrics`、`useSchemaGateway`、`useLayoutMode`。`useEvidenceQuery.fetchEvalHistory()` 加载全局或按资产请求的最新十次完整运行，按记录时间比较返回结果中最新的两次运行，并阻止较早的选择请求覆盖较新的 history 或 delta 状态。
 
 <a id="services-consumed"></a>
 ## 消费的服务
@@ -50,7 +50,7 @@ TODO: translate: Semantic layer management: sidebar trigger that opens or create
 | `connection` | dsh-client-connection | API 调用（`agentPresets.select`） |
 | `remote.schemaGateway` | dsh-schema-gateway（Typert） | schema 浏览器数据 |
 | `remote.evidenceQuery` | dsh-evidence-query（Typert） | eval 结果、覆盖率、delta |
-| `layout` | dsh-client-ui-layout | `openDetails()`（可选） |
+| `layout` | dsh-client-ui-layout | `openRightbar(true, false)`（可选） |
 | `slots` | dsh-client-ui-slots | slot 注册 |
 | `locale` | dsh-client-locale | i18n 词典 |
 
@@ -74,7 +74,8 @@ TODO: translate: Semantic layer management: sidebar trigger that opens or create
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
-- **Evidence 推送订阅**：当前 v1 在挂载时抓取 + 手动刷新；通过 Typert 事件转发（`$on`）的实时推送已延后。
+- **Evidence 推送订阅**：运行历史会在挂载和选择变化时加载；通过 Typert 事件转发实时刷新运行列表仍已延后。
+- **按资产筛选评测历史需要 case 映射**：若持久化 eval case 缺少可靠的 case 到资产映射，UI 会标明筛选不可用并显示全局历史，而不是显示空的资产结果。Evaluation T13 负责持久 evidence identity。
 - **Shell 自动翻转需要活动连接**：B→A 自动翻转的 `evalRunCount` 来自 evidence-query RPC 桥；没有活动的宿主连接时，shell 停留在 B 模式（触发按钮）。
 - **CSS Modules 不完整**：Evidence 面板组件（EvidenceSidebar、CoveragePanel、EvalTrajectory、EvalDeltaView、GapPanel）使用 BEM 类名，而非 CSS Modules。迁移已延后。
 - **SchemaExplorer 图导航**：`onNavigateToGraph` 依赖可选的 `contextLayer` 服务；缺少该服务时，"在图中查看"操作不可用。

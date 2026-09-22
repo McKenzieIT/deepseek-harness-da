@@ -6,6 +6,12 @@
  * @module @deepseek-ai/dsh-code-runtime-python-protocol
  */
 
+/* jscpd:ignore-start */
+// The wire vocabulary below is duplicated on purpose: the private experimental
+// CPython provider ships its own copy so release packaging never depends on it,
+// while this package stays the released owner. See
+// .agents/notes/implemented/architecture/2026-09-14-code-runtime-python-protocol-ownership.md.
+
 /**
  * The framed-JSON channel's file descriptor from the child's perspective. The
  * host pins it positionally when it spawns the child (`stdio` index 3, i.e.
@@ -716,3 +722,4 @@ export function validateChildFrame(raw: unknown): ChildToHost | undefined {
       return undefined
   }
 }
+/* jscpd:ignore-end */

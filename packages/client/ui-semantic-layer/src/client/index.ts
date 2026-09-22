@@ -99,16 +99,21 @@ export function apply(ctx: Context, config: Config = {}): void {
   // instance while sessions stay isolated.
   const selectionStore = createSelectionStore()
 
-  ctx.inject(['sessions', 'uiWorkspace', 'remote'], (scope: Context) => {
+  ctx.inject(['sessions', 'uiWorkspace', 'remote', 'remote.schemaGateway', 'remote.evidenceQuery'], (scope: Context) => {
     const sessions = scope.sessions
-    const layout = scope.get('layout') as { openDetails(): void } | undefined
+    const layout = scope.get('layout') as { openRightbar(track: boolean, fullscreen: boolean): void } | undefined
     let staged: string | undefined
+    // Upstream 0.1.6-alpha.2 removed `SessionListState.current`: navigation moved to
+    // view owners and ui-workspace's selection store is private, so no root-mounted
+    // plugin can read the current selection. The session `startSession()` creates is
+    // therefore identified as the id that appears after staging.
+    let knownIds = new Set<string>()
 
     const stopListSub = sessions.list.subscribe(() => {
       if (!staged) return
       const state = sessions.list.getSnapshot()
-      const current = state.current
-      if (!current) return
+      const current = state.ids.find(id => !knownIds.has(String(id)))
+      if (current === undefined) return
       const summary = state.byId[current]
       if (summary === undefined) return
       if (summary.projectionValues?.agentPreset === staged) { staged = undefined; return }
@@ -164,14 +169,15 @@ export function apply(ctx: Context, config: Config = {}): void {
       const state = sessions.list.getSnapshot()
       for (const id of state.ids) {
         if (state.byId[id]?.projectionValues?.agentPreset === PRESET_ID) {
-          sessions.open(id)
-          layout?.openDetails()
+          scope.uiWorkspace.openSession(id)
+          layout?.openRightbar(true, false)
           return
         }
       }
       staged = PRESET_ID
+      knownIds = new Set(state.ids.map(String))
       scope.uiWorkspace.startSession()
-      layout?.openDetails()
+      layout?.openRightbar(true, false)
     }
 
     const layoutMode: LayoutMode = config.layoutMode ?? 'auto'

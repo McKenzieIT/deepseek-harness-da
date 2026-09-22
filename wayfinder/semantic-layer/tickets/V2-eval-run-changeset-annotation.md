@@ -4,35 +4,23 @@
 **Phase**: post-G6
 **Status**: open
 **Assignee**: unclaimed
-**Blocked by**: [V1](V1-audit-structured-delta.md)
-**Related**: G6（D2 γ 决策）、W3（eval evidence engine）、W6a（goal-eval-policy）
+**Blocked by**: [Evaluation T13 — Production Context Projection capability](../../evaluation/tickets/T13-context-projection-service.md)、[Evaluation T9 — Evaluation protocol、stores 与 repository foundations](../../evaluation/tickets/T9-evaluation-foundations.md)
+**Related**: G6（structured delta）、V1（audit delta）、[Evaluation G13](../../evaluation/tickets/G13-context-evaluation-protocol.md)
 
 ## Question
 
-eval run 记录携带 since-last-run changeset 元数据，建立变更→eval 的因果链。
+如何把语义定义 changeset、production Context identity 和受影响 evidence 关联到新 EvaluationStore 中的 Run/Attempt，而不继续扩展 legacy eval JSONL？
 
-### 需求
+## Required scope
 
-1. eval run 触发时（W3 `runBatch` 或 W6a 周期触发），查询审计记录获取 since-last-run 的所有定义变更
-2. 将 changeset 作为元数据写入 eval run 的 JSONL 记录：
-   ```ts
-   interface EvalRunChangeset {
-     since_run_id: string | null          // 上次 eval run id（首次为 null）
-     changes: Array<{
-       asset_name: string
-       kind: string
-       snapshot_version: number
-       delta: StructuredDelta              // 来自 V1
-       timestamp: string
-     }>
-   }
-   ```
-3. `computeDelta`（W4 beforeAfterDelta）结果与 changeset 可关联查看——"这些变更导致了这些 case 翻转"
-4. evidence-query 层暴露 changeset 查询能力（通过 EvalResultStore）
+- 使用 V1 structured delta 记录定义变更，并关联稳定的 asset、scope、actor、version 和 timestamp。
+- 使用 Evaluation T13 产出的 Context identity 与 projection evidence，记录一次 Attempt 实际观察到的定义和关系。
+- 使用 Evaluation T9 的 EvaluationStore/ArtifactStore 保存 changeset 引用、sealed evidence 和 before/after comparison inputs。
+- 区分“发生在两次 run 之间的变更”和“该 attempt 实际消费的变更”；不得仅凭时间窗口声明因果。
+- evidence-query 或后继 UI 只读取 canonical store，不从文件数量或 legacy result directory 推断 changeset。
 
-### 验收标准
+## Acceptance
 
-- eval run JSONL 记录中包含 changeset 元数据
-- changeset 准确反映 since-last-run 的所有定义变更
-- evidence-query 可查询某次 run 的 changeset
-- 现有 eval tests + 新增 changeset tests 全绿
+- Canonical Run/Attempt 可查询关联的 changeset、Context identity 和 projection evidence。
+- 缺失 identity、未 sealed evidence 或无法关联的变更明确为 unavailable/unverifiable。
+- 不新增 legacy JSONL 字段作为目标格式，也不复制 EvaluationStore 的 retention 规则。

@@ -1,12 +1,16 @@
 ---
 type: task
-status: open
+status: resolved
 blocked_by: []
 ---
 
 # CL-23: tool-call 检测 + 结构化拒绝合成（CL-19 修复落地）
 
-**Branch**: `fix/cl23-toolcall-structured-decline`  <!-- CLAUDE.md:64 要求每票声明分支；未声明不算认领 -->
+## Answer
+
+Resolved for its owned scope. Tool-call text detection and the structured decline signal are present on the current branch; remaining user-facing synthesis is owned by [CL-26](CL26-eval-runner-service-decline-synthesis-gap.md), while response parsing and evidence acceptance moved to [Evaluation T15](../../evaluation/tickets/T15-evaluation-controller-cli.md).
+
+**Branch**: 无 —— `fix/cl23-toolcall-structured-decline` 已于 2026-09-17 删除（残余为零，见文末「分支处置」）。
 
 ## Question
 
@@ -211,3 +215,11 @@ grounding 对 042 无效，但根因不在 CL-23：模型在 6 个 attempt 里�
 
 - 017 的 ≥3 run 中位数确认（待基线可用后补，或在 PR review 时跑）
 - CL-24（伪回复被当 SQL）独立推进
+
+## 分支处置（2026-09-17）
+
+`fix/cl23-toolcall-structured-decline` 已删除，且**残余为零** —— 分支上那三处内容都已在 master 上，master 版本还更全：
+
+- `looksLikeToolCall` 已是 `packages/data/nl2sql-engine/src/critic.ts:94` 的导出，覆盖 CL-19 未记录的 `{"tool_calls":` 与换行后接 JSON 的 `call` 两种发射格式；`packages/eval/eval-cli/src/context.ts:19` 直接 import，本地副本已不存在。
+- `declineKind: 'tool_call_emitted'` 在 `packages/data/nl2sql-engine/src/engine.ts:335`，与 `'beyond_single_query'` 一起由 `tests/open-ended-triage.spec.ts` 钉住。
+- grounded 拒绝合成不在本票收口，由仍 open 的 [CL-26](CL26-eval-runner-service-decline-synthesis-gap.md) 与 [CL-28](CL28-contextprefetched-decline-synthesis-entrypoint.md) 承接。

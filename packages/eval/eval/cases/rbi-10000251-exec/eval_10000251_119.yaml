@@ -26,7 +26,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: easy
   business_context: 新增角色数（创角事件 game.role.create 独立角色）；事件级，主体=role
   created_at: '2026-08-04'

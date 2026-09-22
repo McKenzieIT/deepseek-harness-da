@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-retrieval",
   "description": "Abstract retrieval seam (ctx.retrieval): hybrid BM25+vector+RRF retrieval contract for the data agent's schema-linking / context fetch (P5b)",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

@@ -26,7 +26,7 @@ English | [中文](README.zh.md)
 
 Depend on this package when a Node host speaks the DSH CPython fd-3 protocol. Import `BootMessage`, `ChildToHost`, and `ReplyMessage` for frame typing; use `encodeJsonPlain` for lossless JSON output, `validateChildFrame` before reading untrusted child frames, `hasUnsafeIntegerToken` before `JSON.parse`, and `checkDoneValue` after parsing a completion value. `PROTOCOL_FD`, `WIRE_FRAME_FIELDS`, `jsonStringBytesUpTo`, `hasNonLosslessNumber`, and `logTruncationMarker` support provider wiring, mirror checks, and exact byte accounting.
 
-The package does not read streams or spawn processes. A provider must cap each raw fd-3 frame before parsing, discard malformed frames according to `validateChildFrame`, and apply its own lifecycle and resource policy. The Python side remains provider-owned because bootstrap behavior, packaging, and process constraints differ between providers; the experimental provider's real-Python mirror test checks its `py/protocol.py` declarations against this package.
+The package does not read streams or spawn processes. A provider must cap each raw fd-3 frame before parsing, discard malformed frames according to `validateChildFrame`, and apply its own lifecycle and resource policy. The Python side remains provider-owned because bootstrap behavior, packaging, and process constraints differ between providers.
 
 -----
 
@@ -54,8 +54,7 @@ The module uses iterative traversals for deep or wide JSON values, reconstructs 
 ## Further Exploration
 
 - [Data Python provider](../code-runtime-data-python/README.md) — released consumer for data-agent Python execution.
-- [Experimental Python provider](../../experimental/code-runtime-python/README.md) — private source-checkout consumer that preserves compatibility re-exports.
-- [fd-3 protocol Agent Note](../../../.agents/notes/implemented/architecture/2026-07-31-code-runtime-python-fd3-protocol.md) — wire semantics and hostile-input rationale.
+- [fd-3 protocol Agent Note](../../../.agents/notes/implemented/architecture/2026-07-31-ptc-runtime-python-fd3-protocol.md) — wire semantics and hostile-input rationale.
 - [Protocol ownership Agent Note](../../../.agents/notes/implemented/architecture/2026-09-14-code-runtime-python-protocol-ownership.md) — package ownership and compatibility decision.
 
 -----

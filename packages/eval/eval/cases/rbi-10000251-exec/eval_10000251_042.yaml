@@ -28,7 +28,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   business_context: 付费率=付费角色数/活跃角色数
   created_at: '2026-08-04'

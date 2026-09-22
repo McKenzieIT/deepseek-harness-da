@@ -277,3 +277,119 @@ describe('GA-GT1 Phase 3d — early-return behavior unchanged (D5.4)', () => {
     expect(sectionText(assembly, 'scope-alias-hint')).toBe('')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Remaining branch edges of src/scope-hint.ts (appended — the blocks above
+// are untouched): the assembly-context shapes resolveSessionTenant rejects,
+// the three alias-hint suppression guards, the already-active single match,
+// the multi-scope hint, and the buildSummaries per-field fallbacks.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** The exact multi-scope awareness section text, for whole-string assertions. */
+function awarenessText(count: number, activeLine: string): string {
+  return [
+    '## Data Scopes',
+    '',
+    `${count} data scopes are registered. ${activeLine}`,
+    'Use `list_scopes` to see all available scopes, or `switch_scope` to change the active scope.',
+    'When the user\'s intent does not clearly indicate a specific scope, confirm which scope they want before proceeding.',
+  ].join('\n')
+}
+
+/**
+ * Two same-tenant scopes that contribute no alias candidate:
+ *   bare-one: no `name` and no `aliases` key at all, but a `description`
+ *   bare-two: a `name` and an EMPTY `aliases` array
+ * active = bare-one (first registered).
+ */
+function setupScopesWithoutAliases(): { ctx: Context } {
+  const ctx = new Context()
+  mountSystemPrompt(ctx)
+  const scopes = new FakeScopeRegistry(ctx)
+  scopes.register({ id: 'bare-one', tenant: 'tenant-a', metadata: { description: 'The first bare scope' } })
+  scopes.register({ id: 'bare-two', tenant: 'tenant-a', metadata: { name: 'Bare Two', aliases: [] } })
+  installScopeHint(ctx)
+  return { ctx }
+}
+
+describe('scope-hint — assembly contexts that resolve to no tenant (D5.4)', () => {
+  it('a non-object assembly context lists every scope and suppresses the alias hint', async () => {
+    const { ctx } = setupMultiTenant()
+    // resolveSessionTenant rejects anything that is not an object → undefined
+    // → list(undefined) → all three scopes. The alias-hint section applies the
+    // same rejection to the message lookup and contributes nothing.
+    const assembly = await ctx.systemPrompt.assemble('not-a-context' as unknown as AssembleContext)
+    expect(sectionText(assembly, 'scope-awareness'))
+      .toBe(awarenessText(3, 'Currently active: **Scope One** (`scope1`).'))
+    expect(sectionText(assembly, 'scope-alias-hint')).toBe('')
+  })
+
+  it('an agent without a session lists every scope and suppresses the alias hint', async () => {
+    const { ctx } = setupMultiTenant()
+    const assembly = await ctx.systemPrompt.assemble({ agent: {} } as unknown as AssembleContext)
+    expect(sectionText(assembly, 'scope-awareness'))
+      .toBe(awarenessText(3, 'Currently active: **Scope One** (`scope1`).'))
+    expect(sectionText(assembly, 'scope-alias-hint')).toBe('')
+  })
+})
+
+describe('scope-hint — scope-alias-hint suppression guards', () => {
+  it('suppresses the hint when the session has no user message to match', async () => {
+    const { ctx } = setupMultiTenant()
+    // The aliases are present in an ASSISTANT message; only the last user
+    // message is matched, and there is none.
+    const hint = sectionText(
+      await ctx.systemPrompt.assemble(sessionContext({
+        tenant: 'tenant-a',
+        messages: [{ role: 'assistant', content: 'alpha and beta are both available' }],
+      })),
+      'scope-alias-hint',
+    )
+    expect(hint).toBe('')
+  })
+
+  it('suppresses the hint when no scope carries an alias, and falls back per metadata field', async () => {
+    const { ctx } = setupScopesWithoutAliases()
+    const assembly = await ctx.systemPrompt.assemble(sessionContext({
+      tenant: 'tenant-a',
+      messages: [{ role: 'user', content: 'bare-one please' }],
+    }))
+    // Neither scope contributes a usable alias → no candidate set → no hint.
+    expect(sectionText(assembly, 'scope-alias-hint')).toBe('')
+    // bare-one has no `name`, so the awareness line falls back to its id.
+    expect(sectionText(assembly, 'scope-awareness'))
+      .toBe(awarenessText(2, 'Currently active: **bare-one** (`bare-one`).'))
+  })
+
+  it('suppresses the hint when the only matched scope is already active', async () => {
+    const { ctx } = setupMultiTenant()
+    // "alpha" is the active scope1's alias → nothing to suggest switching to.
+    const hint = sectionText(
+      await ctx.systemPrompt.assemble(sessionContext({
+        tenant: 'tenant-a',
+        messages: [{ role: 'user', content: 'show me alpha revenue' }],
+      })),
+      'scope-alias-hint',
+    )
+    expect(hint).toBe('')
+  })
+})
+
+describe('scope-hint — multi-scope routing hint', () => {
+  it('asks the user to choose when the message matches two same-tenant scopes', async () => {
+    const { ctx } = setupMultiTenant()
+    const hint = sectionText(
+      await ctx.systemPrompt.assemble(sessionContext({
+        tenant: 'tenant-a',
+        messages: [{ role: 'user', content: 'compare alpha and beta' }],
+      })),
+      'scope-alias-hint',
+    )
+    expect(hint).toBe([
+      '## ⚡ Scope Routing Hint',
+      '',
+      'The user\'s message mentions multiple scopes: Scope One (scope1), Scope Two (scope2).',
+      'Ask the user which scope they want to query first, then use `switch_scope` to switch to it.',
+    ].join('\n'))
+  })
+})

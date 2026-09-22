@@ -10,7 +10,7 @@
  */
 import { test, expect } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
+import { Bm25Linker, type RetrievalLinker } from '@deepseek-ai/dsh-nl2sql-engine/src/bm25-linking.ts'
 import { FIXTURE_DATA_SOURCES } from '@deepseek-ai/dsh-nl2sql-engine/src/eval/cases.ts'
 import { apply, retrieve, type RetrieveHit } from '../src/index.ts'
 
@@ -186,4 +186,68 @@ test('R13 (5b) execute passes exec.scopeId → getEnrichedLinker uses that scope
   // exec.scopeId = 'tenant-b' → corpusB (per-scope isolation)
   const outB = await def.execute({ query: '购买' }, { signal: new AbortController().signal, scopeId: 'tenant-b' })
   expect(outB.candidates.some(h => h.id === 'evt.b')).toBe(true)
+})
+
+test('R14 retrieve omits `description` when the hit payload has none, includes it when present (line 95 both ternary branches)', () => {
+  // A mock RetrievalLinker returning two hits: one whose payload carries a
+  // description, one whose payload omits it. Both ternary branches at line 95
+  // fire — truthy -> { description: ... } spread; falsy -> {} spread (the key
+  // is ABSENT, not merely undefined). `toEqual` cannot distinguish absent from
+  // `undefined`, so the `in` check is the load-bearing assertion: removing the
+  // `: {}` branch (e.g. `!== undefined` → `!== 'sentinel-never'`) would leak
+  // `description: undefined` into the projected shape and flip it.
+  const mockLinker: RetrievalLinker = {
+    retrieve: () => [
+      { id: 'with-desc', score: 1.0, payload: { id: 'with-desc', description: 'has desc' }, mode: 'bm25-only' },
+      { id: 'no-desc', score: 0.5, payload: { id: 'no-desc' }, mode: 'bm25-only' },
+    ],
+  }
+  const hits = retrieve(mockLinker, 'q', 5)
+  expect(hits).toHaveLength(2)
+  // truthy branch (95:55): description projected onto the model-facing candidate
+  expect(hits[0]).toEqual({ id: 'with-desc', score: 1.0, description: 'has desc', mode: 'bm25-only' })
+  expect('description' in (hits[0] ?? {})).toBe(true)
+  // falsy branch (95:89): description key ABSENT — the `: {}` spread adds nothing
+  expect(hits[1]).toEqual({ id: 'no-desc', score: 0.5, mode: 'bm25-only' })
+  expect('description' in (hits[1] ?? {})).toBe(false)
+})
+
+test('R15 projectHit (via ctx.retrieval) omits `description` when the hit payload has none, includes it when present (line 111 both ternary branches)', async () => {
+  // The ctx.retrieval soft-fallback routes hits through projectHit (line 111).
+  // Two hits — one with a description, one without — fire both ternary branches.
+  // Removing the `: {}` branch would leak `description: undefined` into the
+  // projected candidate shape (caught by the `in` check, not `toEqual`).
+  const mockRetrieval = {
+    retrieve: async () => [
+      { id: 'with-desc', score: 0.9, payload: { id: 'with-desc', description: 'has desc' }, mode: 'hybrid' },
+      { id: 'no-desc', score: 0.4, payload: { id: 'no-desc' }, mode: 'hybrid' },
+    ],
+  }
+  const def = registerTool(() => mockRetrieval)
+  const out = await def.execute({ query: 'q' }, { signal: new AbortController().signal })
+  expect(out.candidates).toHaveLength(2)
+  // truthy branch (111:40): description projected
+  expect(out.candidates[0]).toEqual({ id: 'with-desc', score: 0.9, description: 'has desc', mode: 'hybrid' })
+  expect('description' in (out.candidates[0] ?? {})).toBe(true)
+  // falsy branch (111:55): description key ABSENT
+  expect(out.candidates[1]).toEqual({ id: 'no-desc', score: 0.4, mode: 'hybrid' })
+  expect('description' in (out.candidates[1] ?? {})).toBe(false)
+})
+
+test('R16 render omits the ` - <desc>` suffix when a candidate has no description, includes it when present (line 282 both ternary branches)', () => {
+  const def = registerTool()
+  const hits: RetrieveHit[] = [
+    { id: 'with-desc', score: 1.5, description: 'has desc', mode: 'bm25-only' },
+    { id: 'no-desc', score: 0.7, mode: 'bm25-only' },
+  ]
+  const out = def.output.render({}, { candidates: hits })
+  // truthy branch (282:55): ` - ${c.description}` suffix appended
+  expect(out[0]?.text).toContain('1. with-desc (score 1.500) - has desc')
+  // falsy branch (282:72): `: ''` — no suffix appended. Removing the guard
+  // (e.g. `!== undefined` → `!== 'sentinel-never'`) would render ` - undefined`
+  // on the no-desc line; the exact-line assertion catches it.
+  const lines = out[0]?.text.split('\n')
+  expect(lines).toHaveLength(2)
+  expect(lines?.[0]).toBe('1. with-desc (score 1.500) - has desc')
+  expect(lines?.[1]).toBe('2. no-desc (score 0.700)')
 })

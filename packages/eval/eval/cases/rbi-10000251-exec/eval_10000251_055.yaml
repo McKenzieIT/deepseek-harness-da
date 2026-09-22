@@ -27,7 +27,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: medium
   business_context: ARPPU=总收入/付费用户数
   created_at: '2026-08-04'

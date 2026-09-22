@@ -22,7 +22,7 @@ import { randomUUID } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
@@ -330,9 +330,9 @@ export class HarnessAgentResponder implements AgentResponder {
     const resultCacheMemory = await import('@deepseek-ai/dsh-result-cache-memory')
     await ctx.plugin(resultCacheMemory)
 
-    // ── 14. CodeRuntimeWorkerThread → ctx.codeRuntime (tool-compute needs it)
-    const { default: WorkerThreadCodeRuntime } = await import('@deepseek-ai/dsh-code-runtime-worker-thread')
-    await ctx.plugin(WorkerThreadCodeRuntime)
+    // ── 14. NodePtcRuntime → ctx.ptcRuntime (tool-compute needs it)
+    const { default: NodePtcRuntime } = await import('@deepseek-ai/dsh-ptc-runtime-node')
+    await ctx.plugin(NodePtcRuntime)
 
     // ── 15. SessionProjectionRegistry → ctx.sessionProjections (goal/todo need it)
     const { default: SessionProjectionRegistry } = await import('@deepseek-ai/dsh-session-projection')
@@ -369,7 +369,10 @@ export class HarnessAgentResponder implements AgentResponder {
   }
 
   private resolveRepoRoot(): string {
-    let dir = dirname(new URL(import.meta.url).pathname)
+    // fileURLToPath, not URL.pathname: on Windows the latter yields
+    // '/C:/…', whose join() is an invalid path, so every existsSync below
+    // answered false and this walk silently degraded to the cwd fallback.
+    let dir = dirname(fileURLToPath(import.meta.url))
     for (let i = 0; i < 10; i++) {
       if (existsSync(join(dir, 'packages')) && existsSync(join(dir, 'apps'))) return dir
       const parent = dirname(dir)
@@ -480,7 +483,12 @@ export class HarnessAgentResponder implements AgentResponder {
     try {
       return await Promise.race([promise, timeoutPromise])
     } finally {
+      /* v8 ignore start -- the implicit else is unreachable: the Promise
+         constructor runs its executor synchronously before `new Promise`
+         returns, and `setTimeout` always yields a Timeout, so `timer` is
+         already assigned by the time this finally block runs. */
       if (timer !== undefined) clearTimeout(timer)
+      /* v8 ignore stop */
     }
   }
 }

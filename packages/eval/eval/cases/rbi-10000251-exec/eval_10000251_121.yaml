@@ -26,7 +26,7 @@ meta:
   roles:
   - eval
   tier: verified
-  provenance: migrated
+  source: migrated
   difficulty: easy
   business_context: 抽卡事件触发次数（game.card.gacha）；事件级计数
   created_at: '2026-08-04'

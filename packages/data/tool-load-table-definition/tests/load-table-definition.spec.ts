@@ -272,3 +272,181 @@ test('S19 loadTableDefinitionResult - >200-char error is capped with ... (single
   expect(r.message!.length).toBeLessThanOrEqual(220)
   expect(r.message).not.toContain('\n')
 })
+
+// ── C-tier residue (2026-09-20): the in-function branch edges S1–S19 leave open.
+// Purpose-built fixtures below; every assertion pins the exact projection or the
+// exact rendered text block (no substring-only checks).
+
+/** Metrics whose expression/description fall back to the schema default (''), plus a non-empty derivation. */
+const PARTIAL_META_TABLE: TableDefinition = TableDefinitionSchema.parse({
+  table_name: 'dws_partial_meta',
+  metrics: {
+    bare_metric: {},
+    full_metric: { expression: 'sum(x)', description: 'total x' },
+  },
+  dimension_refs: [
+    { dim_table: 'dim_a', join_keys: [{ dws_column: 'a_id', dim_column: 'id' }], derivation: 'left join on a_id' },
+  ],
+})
+
+/** A table carrying a per-table `project` override (the second qualifyTable argument). */
+const PROJECT_TABLE: TableDefinition = TableDefinitionSchema.parse({
+  table_name: 'dws_qualified',
+  project: 'hdyl_data_sg',
+  columns: [{ name: 'dt', type: 'string' }],
+})
+
+/** A DIM-kind table (kind:'dim' is refined to require primary_key + label_columns). */
+const DIM_TABLE: TableDefinition = TableDefinitionSchema.parse({
+  table_name: 'dim_charm_info',
+  kind: 'dim',
+  primary_key: ['charm_id'],
+  label_columns: ['charm_name'],
+  columns: [{ name: 'charm_id', type: 'string' }, { name: 'charm_name', type: 'string' }],
+})
+
+test('S20 projectTable drops an empty metric expression/description and keeps a non-empty derivation', () => {
+  const proj = projectTable(PARTIAL_META_TABLE)
+  // bare_metric omits both keys (schema default ''), full_metric carries both.
+  expect(proj.metrics).toStrictEqual([
+    { name: 'bare_metric' },
+    { name: 'full_metric', expression: 'sum(x)', description: 'total x' },
+  ])
+  // FIXTURE_TABLE covers derivation:'' (dropped); this covers the carried case.
+  expect(proj.dimension_refs).toStrictEqual([
+    { dim_table: 'dim_a', join_keys: [{ dws_column: 'a_id', dim_column: 'id' }], derivation: 'left join on a_id' },
+  ])
+})
+
+test('S21 formatTableDefinition renders a metric with no expression/description as the bare name and suffixes a derivation', () => {
+  expect(formatTableDefinition(projectTable(PARTIAL_META_TABLE))).toBe([
+    'table: dws_partial_meta',
+    'engine: maxcompute',
+    'metrics:',
+    '  - bare_metric',
+    '  - full_metric = sum(x) // total x',
+    'dimension_refs:',
+    '  - dim_a [a_id=id] // left join on a_id',
+  ].join('\n'))
+})
+
+test('S22 formatTableDefinition renders an empty-type partition without a trailing space', () => {
+  const def = TableDefinitionSchema.parse({
+    table_name: 'dws_partitioned',
+    partitions: [{ name: 'dt', type: '' }, { name: 'hh', type: 'string' }],
+  })
+  expect(formatTableDefinition(projectTable(def))).toBe([
+    'table: dws_partitioned',
+    'engine: maxcompute',
+    'partitions:',
+    '  - dt',
+    '  - hh string',
+  ].join('\n'))
+})
+
+test('S23 loadTableDefinitionResult adds qualified_name from qualifyTable, forwarding the table project override', () => {
+  const calls: { name: string; override: string | undefined }[] = []
+  const r = loadTableDefinitionResult(
+    stubSchema({ dws_qualified: PROJECT_TABLE }) as unknown as SemanticLayerService,
+    'dws_qualified',
+    (name, override) => {
+      calls.push({ name, override })
+      return `${override ?? 'ieu_cdm'}.${name}`
+    },
+  )
+  expect(calls).toStrictEqual([{ name: 'dws_qualified', override: 'hdyl_data_sg' }])
+  expect(r.found).toBe(true)
+  expect(r.table).toStrictEqual({ ...projectTable(PROJECT_TABLE), qualified_name: 'hdyl_data_sg.dws_qualified' })
+})
+
+test('S24 loadTableDefinitionResult omits qualified_name when qualifyTable returns the bare name unchanged', () => {
+  // A query provider with no default project and no override returns the name
+  // verbatim (graceful degradation) — there is nothing to add to the projection.
+  const r = loadTableDefinitionResult(
+    stubSchema({ dws_qualified: PROJECT_TABLE }) as unknown as SemanticLayerService,
+    'dws_qualified',
+    name => name,
+  )
+  expect(r.found).toBe(true)
+  expect(r.table).toStrictEqual(projectTable(PROJECT_TABLE))
+  expect(r.table).not.toHaveProperty('qualified_name')
+})
+
+test('S25 formatTableDefinition headers the qualified_name in place of the bare table_name', () => {
+  const r = loadTableDefinitionResult(
+    stubSchema({ dws_qualified: PROJECT_TABLE }) as unknown as SemanticLayerService,
+    'dws_qualified',
+    (name, override) => `${override ?? 'ieu_cdm'}.${name}`,
+  )
+  expect(formatTableDefinition(r.table!)).toBe([
+    'table: hdyl_data_sg.dws_qualified',
+    'engine: maxcompute',
+    'columns:',
+    '  - dt string',
+  ].join('\n'))
+})
+
+test('S26 formatTableDefinition appends " (dim)" after the qualified_name for a DIM table', () => {
+  const r = loadTableDefinitionResult(
+    stubSchema({ dim_charm_info: DIM_TABLE }) as unknown as SemanticLayerService,
+    'dim_charm_info',
+    name => `ieu_cdm.${name}`,
+  )
+  expect(formatTableDefinition(r.table!)).toBe([
+    'table: ieu_cdm.dim_charm_info (dim)',
+    'engine: maxcompute',
+    'primary_key: charm_id',
+    'label_columns: charm_name',
+    'columns:',
+    '  - charm_id string',
+    '  - charm_name string',
+  ].join('\n'))
+})
+
+test('S27 formatTableDefinition appends " (dim)" after the bare table_name when unqualified', () => {
+  expect(formatTableDefinition(projectTable(DIM_TABLE))).toBe([
+    'table: dim_charm_info (dim)',
+    'engine: maxcompute',
+    'primary_key: charm_id',
+    'label_columns: charm_name',
+    'columns:',
+    '  - charm_id string',
+    '  - charm_name string',
+  ].join('\n'))
+})
+
+test('S28 formatTableDefinition emits nothing for a projection with no name, engine or columns', () => {
+  // The output schema declares every `table` property optional (only `found` is
+  // required), so the render value may legitimately carry a table with neither
+  // qualified_name nor table_name — the formatter emits an empty block, no
+  // `table: undefined` header.
+  expect(formatTableDefinition({})).toBe('')
+  const def = registerTool()
+  expect(def.output.render({}, { found: true, table: {} })[0]?.text).toBe('')
+})
+
+test('S29 loadTableDefinitionResult sanitizes a non-Error throw through String(e)', () => {
+  // A substrate that rejects with a non-Error (no `.message`) must still yield a
+  // bounded single-line message, not "[object Object]"-style noise or a crash.
+  const throwing = {
+    loadTableDefinition: () => { throw 'EACCES semantic root unreadable' },
+  } as unknown as Parameters<typeof loadTableDefinitionResult>[0]
+  const r = loadTableDefinitionResult(throwing, 'whatever')
+  expect(r.found).toBe(false)
+  expect(r.message).toBe('substrate error: EACCES semantic root unreadable')
+})
+
+test('S30 execute rejects with the abort message before touching the substrate', async () => {
+  let loads = 0
+  const def = registerTool({
+    loadTableDefinition: (n: string) => {
+      loads += 1
+      return n === 'dws_pay_order_di' ? FIXTURE_TABLE : null
+    },
+  })
+  const controller = new AbortController()
+  controller.abort()
+  await expect(def.execute({ table_name: 'dws_pay_order_di' }, { signal: controller.signal }))
+    .rejects.toThrow(new Error('load_table_definition aborted before loading'))
+  expect(loads).toBe(0)
+})

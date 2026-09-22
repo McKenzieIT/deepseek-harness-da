@@ -327,8 +327,11 @@ From `docs/architecture.md#events` and `docs/cookbook/extension-cookbook.md#the-
 - **Settings cards** — `docs/cookbook/adding-a-settings-card.md`.
 - **LLM adapters** — `LlmAdapter` subclass via `registerAdapter`
   (`docs/cookbook/adding-an-llm-adapter.md`).
-- **Dynamic in-process packages** — `cordis_define` / `cordis_run` /
-  `cordis_stop` / `cordis_inspect` (`MODES.md#1-dynamic-in-process-package`).
+- **Runtime inspection** (live session) — `cordis_inspect_list` /
+  `cordis_inspect_query`, read-only (`MODES.md#1-runtime-inspection-read-only-in-a-live-session`).
+  Upstream retired the in-process `cordis_define` / `cordis_run` / `cordis_stop`
+  tools; a live capability is now authored as a scratch overlay or repository
+  package and installed with `plugin_manager`.
 - **Scratch overlay** — `scratch-plugin/{src, cordis.yml}`, loaded via
   `dsh web --patch` (`MODES.md#2-scratch-overlay`).
 

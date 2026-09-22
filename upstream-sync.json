@@ -1,9 +1,10 @@
 {
   "current": {
-    "upstreamSha": "c291e7961a515f6d7af9304e7fd1d257929aef26",
-    "upstreamCommittedAt": "2026-09-10T22:17:09+08:00",
-    "mergeCommit": "1f731901a76109fefa168fc9bbd785dbfdefc889",
-    "syncedAt": "2026-09-14T15:18:16+08:00"
+    "upstreamSha": "ddefc45fbc7f8e46dd73185e68295696d1297887",
+    "upstreamCommittedAt": "2026-09-17T21:19:19+08:00",
+    "mergeCommit": "ce11b3929e4a570d5ac71ea539c77268d4d0efdb",
+    "syncedAt": "2026-09-18T01:40:41+08:00",
+    "upstreamTag": "dsh-v0.1.6-alpha.2"
   },
   "history": [
     {
@@ -18,6 +19,18 @@
       "upstreamCommittedAt": "2026-09-08T00:46:19+08:00",
       "mergeCommit": "8112743d6934fecbcf679e6ec438041da4a48a4e",
       "syncedAt": "2026-09-08T21:16:45+08:00"
+    },
+    {
+      "upstreamSha": "c291e7961a515f6d7af9304e7fd1d257929aef26",
+      "upstreamCommittedAt": "2026-09-10T22:17:09+08:00",
+      "mergeCommit": "1f731901a76109fefa168fc9bbd785dbfdefc889",
+      "syncedAt": "2026-09-14T15:18:16+08:00"
+    },
+    {
+      "upstreamSha": "0d1f50007f9bca3f52b06e1c3074fa14d5fb0720",
+      "upstreamCommittedAt": "2026-09-15T11:16:06+08:00",
+      "mergeCommit": "01730b9ff8f14ae7aa82b8882499230437869c05",
+      "syncedAt": "2026-09-17T00:06:17+08:00"
     }
   ],
   "thresholds": {
@@ -28,31 +41,31 @@
     {
       "path": "packages/client/runtime/",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/examples/jsonrpc-demo/",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/examples/agent-spine-demo/",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "knip.json",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/client/connection/tests/fake-api.client.ts",
       "direction": "keep-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
@@ -70,18 +83,36 @@
     {
       "path": "packages/client/ui-settings-models/src/client/operations.ts",
       "direction": "drop-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/client/ui-settings-models/src/client/slot-contract.ts",
       "direction": "drop-fork",
-      "decision": "drop",
+      "decision": "settled",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     },
     {
       "path": "packages/client/ui-settings-models/",
       "direction": "revert-fork",
+      "decision": "keep",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/code-runtime/README.md",
+      "direction": "keep-fork",
+      "decision": "keep",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/code-runtime/README.zh.md",
+      "direction": "keep-fork",
+      "decision": "keep",
+      "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
+    },
+    {
+      "path": "packages/code-runtime/README.i18n.yaml",
+      "direction": "keep-fork",
       "decision": "keep",
       "ticket": "UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS"
     }

@@ -1,4 +1,4 @@
-# Agent Note: 执行评分 seam——单一执行器端口、评分器组装 provenance
+# Agent Note: 执行评分 seam——单一执行器端口、评分器组装 evidence
 
 Status: proposed
 
@@ -15,7 +15,7 @@ Status: proposed
 以下三个后果直接影响 evaluation 报出的每个数字：
 
 - **基础设施故障被计为模型失败。** `withInfraRetry` 只捕获抛出的错误（`eval-runner/src/infra_retry.ts:80-84`），但 `CtxQueryExecutor.execute` 会把一切错误捕获为 `{success:false}`（`eval-cli/src/context.ts:236-238`），因此 `eval-runner/src/runner.ts:252-255` 会把不可用的 backend 转成 `executionMatch = false` → verdict `wrong`。执行器的 infra-retry 路径永远不可达，而 `classifyInfraFailure` 仍通过字符串匹配错误文本（`infra_retry.ts:29-58`），尽管提供方已经返回类型化的 `failureKind`。
-- **Provenance 在文件边界被丢弃。** `packages/eval/eval/cases/rbi-10000251-exec/` 中全部 39 个 case 都带有 `expected.sql`、`meta.anchor_ds`、`meta.tier` 和 `meta.provenance`；`EvalCaseSchema` 没有声明这些字段，zod 会剥离未知 key（`eval/src/eval_case.ts:39-44`、`:54-58`），因此对这类文件调用 `loadCase` 只会得到 `expected` key `result_value,match_mode,answer,delivery_match`，且没有 `meta`。可重放评分所需的参考 SQL 与 snapshot anchor 已经存在于磁盘，却无法从 evaluation 路径访问。
+- **记录的 case 来源字段在文件边界被丢弃。** `packages/eval/eval/cases/rbi-10000251-exec/` 中全部 39 个 case 都带有 `expected.sql`、`meta.anchor_ds`、`meta.tier` 和 `meta.source`；`EvalCaseSchema` 没有声明这些字段，zod 会剥离未知 key（`eval/src/eval_case.ts:39-44`、`:54-58`），因此对这类文件调用 `loadCase` 只会得到 `expected` key `result_value,match_mode,answer,delivery_match`，且没有 `meta`。可重放评分所需的参考 SQL 与 snapshot anchor 已经存在于磁盘，却无法从 evaluation 路径访问。
 - **评分细节被丢弃。** 核心 comparator 返回一个 `AssertionResult`，其中包含 `detail` 字符串；runner 的私有 wrapper 将其压缩为布尔值（`eval-runner/src/runner.ts:368-369`），evidence row 还会被截断为五行（`:257`），因此失败评分无法解释，也无法重放。
 
 这次分裂是偶然形成的，并非设计结果。P11b 构建了该 seam，并把 CLI/persistence 延后到 P11c（`wayfinder/data-agent/tickets/phase-4/P11b-eval-harness-hardening.md:41`、`:50`）；五天后，W3 构建了未消费该 seam 的第二个 batch runner，P11c 随后接到了 W3 的实现。没有任何 ticket 或 note 说明两者共存的理由；重复实现体现为 `runner.ts`（178 行死代码与 423 行活跃代码）、`persistence.ts`（196 行与 68 行）以及 `health-gate.ts` 与 `health_gate.ts`（116 行与 102 行），连文件命名约定也出现了分歧。
@@ -41,7 +41,7 @@ Status: proposed
 8. `not-measured` 是显式成员，不是缺失值。Judge score 绝不填补 execution dimension；只带 delivery expectation 的 case 记录 `not-measured`，而不是继承默认 `true`。
 9. 每次 run 都记录 execution mode 与 comparator policy version。缺少任一项的结果都拒绝在 comparison output 中渲染，遵循的原则与缺少 `n_d` 和 p-value 时拒绝渲染 comparison 相同。
 10. Grading 拆成 `normalizeOutcome(outcome)` 与 `gradeExecution(artifact, expected, policy)` 两个纯函数，中间的 artifact 作为持久化记录。这一拆分直接影响正确性：comparator-policy mutation baseline 必须离线用数十种 policy 对已存 artifact 重新评分，这要求 raw digest 与 normalized digest，而只有把 normalization 单独持久化才能保留两者。Artifact persistence 接收配置的 row cap，并保存完整 raw result 与 normalized result 的 digest，从而避免为了可重放性存储无限增长的 blob。
-11. Execution corpus 重建而不是修补。按已发布标准衡量——gold 是人工编写的参考 SQL，且 gold 与 candidate 一同执行——现有 143 个 execution case 并非 benchmark case：没有一个包含参考 SQL，其 expected value 的 provenance 无法恢复，其中 86 个只断言 row count。模型不得编写或裁定 gold。Scope 与 sequencing 归 ground-truth lifecycle 决策所有，不在此处决定。
+11. Execution corpus 重建而不是修补。按已发布标准衡量——gold 是人工编写的参考 SQL，且 gold 与 candidate 一同执行——现有 143 个 execution case 并非 benchmark case：没有一个包含参考 SQL，其 expected value 的来源无法恢复，其中 86 个只断言 row count。模型不得编写或裁定 gold。Scope 与 sequencing 归 ground-truth lifecycle 决策所有，不在此处决定。
 
 **为何必须记录 mode。** `eval-results/` 中只有四次 batch run 记录了数仓是否连接。其中相同模型、相同 `pass_k` 对相同 39 个 case 的结果，在仅 judge 模式下为 61.5%，在真实执行下为 5.1%。其余 35 次 batch run——包括每次 168-case run——完全没有 config block，因此从未有 full-corpus run 能证明实际执行过 SQL。再考虑下文所述受污染的 39-case baseline，两项历史 baseline 都不可用，T1 必须重新建立 baseline，而不是拿它们比较。
 

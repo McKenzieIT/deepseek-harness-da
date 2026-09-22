@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-query-maxcompute",
   "description": "MaxCompute query-engine provider (ctx.query): da-self-held raw MCP SDK Client over a stdio sidecar (A1-split; control tools non-model-facing)",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

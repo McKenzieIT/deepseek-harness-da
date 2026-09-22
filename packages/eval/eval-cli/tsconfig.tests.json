@@ -32,7 +32,7 @@
     { "path": "../../core/system-prompt" },
     { "path": "../../core/tools" },
     { "path": "../../preset/agent-presets" },
-    { "path": "../../code-runtime/code-runtime-worker-thread" },
+    { "path": "../../ptc-runtime/ptc-runtime-node" },
     { "path": "../../session/session-projection" },
     { "path": "../../goal/goal" },
     { "path": "../../../vendor/loader" },

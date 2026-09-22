@@ -407,7 +407,7 @@ describe('PatrolService', () => {
       const { service, ctx, mockEvidenceQuery } = createPatrolService()
 
       // No failing eval results
-      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0 })
+      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0, assetFilterStatus: 'not_requested' as const })
 
       service.start()
       await vi.advanceTimersByTimeAsync(10)
@@ -439,7 +439,7 @@ describe('PatrolService', () => {
     // evalResultQuery upstream (the store's domain filter does the rest).
     it('(di-13) threads config.scope as a domain filter to evalResultQuery', async () => {
       const { service, mockEvidenceQuery } = createPatrolService()
-      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0 })
+      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0, assetFilterStatus: 'not_requested' as const })
       service.start({ scope: 'payment', confirmTimeoutMs: 5000 })
       await vi.advanceTimersByTimeAsync(10)
       expect(mockEvidenceQuery.evalResultQuery).toHaveBeenCalledWith(
@@ -450,7 +450,7 @@ describe('PatrolService', () => {
 
     it('(di-13) omits the domain filter when no scope is configured (preserves unscoped behavior)', async () => {
       const { service, mockEvidenceQuery } = createPatrolService()
-      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0 })
+      mockEvidenceQuery.evalResultQuery.mockReturnValue({ results: [], total: 0, assetFilterStatus: 'not_requested' as const })
       service.start({ confirmTimeoutMs: 5000 })
       await vi.advanceTimersByTimeAsync(10)
       expect(mockEvidenceQuery.evalResultQuery).toHaveBeenCalledWith({ status: 'fail', limit: 20 })

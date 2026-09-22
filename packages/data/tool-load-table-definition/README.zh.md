@@ -26,7 +26,7 @@ TODO: translate: Model-facing load_table_definition tool: load a validated table
 
 面向模型的 `load_table_definition` 工具：从语义层 substrate **加载已校验的表定义**，用于 data agent 的 `UNDERSTANDING`/`GENERATION` 阶段。agent 在写 SQL 或评审查询前调用它，以真实 schema（列、分区、主键、指标、维度引用）作为 SQL 落地依据。
 
-这是 **P6b deferred follow-up**（"load_* 接入"）—— [`ctx.schema`](../semantic-layer) `loadTableDefinition` substrate（P6b ship，commit 88524504f8）的面向模型封装。它镜像 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)（首个 model-facing tool，P13b commit 0e1a0fdf25）的 [`@deepseek-ai/dsh-tools`](../../core/tools) 注册形态（`defineTool` + `ctx.tools.register`）。
+这是 **P6b deferred follow-up**（"load_* 接入"）—— [`ctx.schema`](../semantic-layer) `loadTableDefinition` substrate（P6b ship）的面向模型封装。它镜像 [`@deepseek-ai/dsh-tool-search-data-sources`](../tool-search-data-sources)（首个 model-facing tool，P13b）的 [`@deepseek-ai/dsh-tools`](../../core/tools) 注册形态（`defineTool` + `ctx.tools.register`）。
 
 <a id="status-registered--callable-ctxschema-wired"></a>
 ## 状态：已注册 + 可调；ctx.schema 已接通

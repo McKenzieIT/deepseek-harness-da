@@ -7,7 +7,7 @@ import { EvalTrajectory } from '../src/client/EvalTrajectory.tsx'
 import { EvalDeltaView } from '../src/client/EvalDeltaView.tsx'
 import { GapPanel } from '../src/client/GapPanel.tsx'
 import { OnDemandEvalTrigger } from '../src/client/OnDemandEvalTrigger.tsx'
-import type { EnrichedCoverageStats, EvalResultQueryResult, EvalDeltaReport, GapAnalysisResult } from '../src/client/types.ts'
+import type { EnrichedCoverageStats, EvalRunHistoryResult, EvalDeltaReport, GapAnalysisResult } from '../src/client/types.ts'
 
 const t = (key: string) => key
 
@@ -43,7 +43,7 @@ describe('CoveragePanel', () => {
       event_count: 445,
       metric_count: 3916,
       domain_counts: { trade: 100, finance: 50 },
-      confirmation: { draft: 700, confirmed: 66, rejected: 0 },
+      confirmation: { draft: 700, confirmed: 66, rejected: 0, unknown: 0 },
     }
     const { container } = render(<CoveragePanel coverage={coverage} loading={false} t={t} />)
     expect(container.textContent).toContain('321')
@@ -55,24 +55,66 @@ describe('CoveragePanel', () => {
 
 describe('EvalTrajectory', () => {
   it('renders empty when no results', () => {
-    const { container } = render(<EvalTrajectory evalResults={null} loading={false} t={t} />)
+    const { container } = render(<EvalTrajectory evalHistory={null} loading={false} t={t} />)
     expect(container.textContent).toContain('evidence.eval.noResults')
   })
 
   it('renders results with pass rate', () => {
-    const evalResults: EvalResultQueryResult = {
-      results: [
-        { id: '1', assetId: 'table_a', caseId: 'c1', status: 'pass', timestamp: '2026-08-01T00:00:00Z' },
-        { id: '2', assetId: 'table_b', caseId: 'c2', status: 'fail', timestamp: '2026-08-01T00:01:00Z' },
-        { id: '3', assetId: 'table_c', caseId: 'c3', status: 'pass', timestamp: '2026-08-01T00:02:00Z' },
+    const evalHistory: EvalRunHistoryResult = {
+      runs: [
+        { runId: 'run-a', timestamp: '2026-08-01T00:02:00Z', pass: 2, fail: 1, error: 0, pending: 0, total: 3 },
       ],
-      total: 3,
+      total: 1,
+      assetFilterStatus: 'not_requested',
     }
-    const { container } = render(<EvalTrajectory evalResults={evalResults} loading={false} t={t} />)
+    const { container } = render(<EvalTrajectory evalHistory={evalHistory} loading={false} t={t} />)
     expect(container.textContent).toContain('67%')
     expect(container.textContent).toContain('2 evidence.eval.pass')
     expect(container.textContent).toContain('1 evidence.eval.fail')
   })
+
+  it('labels global fallback when asset filtering is unavailable', () => {
+    const evalHistory: EvalRunHistoryResult = {
+      runs: [
+        { runId: 'run-a', timestamp: '2026-08-01T00:00:00Z', pass: 1, fail: 0, error: 0, pending: 0, total: 1 },
+      ],
+      total: 1,
+      assetFilterStatus: 'unavailable',
+    }
+    const { container } = render(<EvalTrajectory evalHistory={evalHistory} loading={false} t={t} />)
+    expect(container.textContent).toContain('evidence.eval.assetFilterUnavailable')
+    expect(container.textContent).toContain('run-a')
+  })
+
+  it('labels unavailable asset filtering when the global fallback is empty', () => {
+    const evalHistory: EvalRunHistoryResult = {
+      runs: [],
+      total: 0,
+      assetFilterStatus: 'unavailable',
+    }
+    const { container } = render(<EvalTrajectory evalHistory={evalHistory} loading={false} t={t} />)
+    expect(container.textContent).toContain('evidence.eval.assetFilterUnavailable')
+    expect(container.textContent).toContain('evidence.eval.noResults')
+  })
+
+  it('reports matching runs omitted by the history limit', () => {
+    const evalHistory: EvalRunHistoryResult = {
+      runs: Array.from({ length: 10 }, (_, index) => ({
+        runId: `run-${index}`,
+        timestamp: `2026-08-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+        pass: 1,
+        fail: 0,
+        error: 0,
+        pending: 0,
+        total: 1,
+      })),
+      total: 12,
+      assetFilterStatus: 'not_requested',
+    }
+    const { container } = render(<EvalTrajectory evalHistory={evalHistory} loading={false} t={t} />)
+    expect(container.textContent).toContain('+2 evidence.eval.more')
+  })
+
 })
 
 describe('EvalDeltaView', () => {

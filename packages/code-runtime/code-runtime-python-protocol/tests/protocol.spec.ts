@@ -34,6 +34,21 @@ describe('validateChildFrame', () => {
     expect(validateChildFrame({ type: 'log', text: 'x', truncated: false })).toEqual({ type: 'log', text: 'x' })
   })
 
+  it('carries a log frame open flag only for the literal true', () => {
+    // The child's settlement flush pushes `open: true` on an UNTERMINATED line
+    // so the host holds it and appends the next log frame to the same entry —
+    // `print('a', end='', flush=True); print('b')` reads back as one `'ab'`
+    // entry rather than two with a fake newline between them.
+    expect(validateChildFrame({ type: 'log', text: 'x', open: true }))
+      .toEqual({ type: 'log', text: 'x', open: true })
+    // Any other truthy or non-boolean value is a forgery and is dropped from
+    // the rebuild — only the literal `true` holds the entry open, otherwise
+    // a forged `open` would splice unrelated frames together.
+    expect(validateChildFrame({ type: 'log', text: 'x', open: 1 })).toEqual({ type: 'log', text: 'x' })
+    expect(validateChildFrame({ type: 'log', text: 'x', open: 'yes' })).toEqual({ type: 'log', text: 'x' })
+    expect(validateChildFrame({ type: 'log', text: 'x', open: false })).toEqual({ type: 'log', text: 'x' })
+  })
+
   it('rebuilds call frames with a numeric id, string global, and string name', () => {
     expect(validateChildFrame({ type: 'call', id: 1, global: 'tools', name: 'echo', args: { x: 1 } }))
       .toEqual({ type: 'call', id: 1, global: 'tools', name: 'echo', args: { x: 1 } })

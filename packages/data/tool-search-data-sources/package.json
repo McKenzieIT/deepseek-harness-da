@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-search-data-sources",
   "description": "Model-facing search_data_sources tool: BM25 schema-linking over the semantic layer for the data agent's UNDERSTANDING phase",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
   },

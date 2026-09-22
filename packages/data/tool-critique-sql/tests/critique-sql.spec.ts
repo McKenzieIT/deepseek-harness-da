@@ -18,7 +18,7 @@ import {
   type CritiqueSqlResult,
   type CriticCtxProvider,
 } from '../src/index.ts'
-import type { CriticResult } from '@deepseek-ai/dsh-nl2sql-engine'
+import type { CriticResult, RelationGraphLike } from '@deepseek-ai/dsh-nl2sql-engine'
 
 /** The subset of the registered tool definition the tests exercise. */
 interface ToolDef {
@@ -37,8 +37,18 @@ interface ToolDef {
   ) => Promise<CritiqueSqlResult>
 }
 
-/** Capture the tool definition the plugin registers, with an optional criticCtx probe. */
-function registerTool(provider?: CriticCtxProvider): ToolDef {
+/** The `ctx.get('schema')` shape the tool probes for the relation graph. */
+interface SchemaServiceLike {
+  getRelationGraph?(): RelationGraphLike
+}
+
+/**
+ * Capture the tool definition the plugin registers. `provider` answers
+ * `ctx.get('criticCtx')` and `schema` answers `ctx.get('schema')`; both are
+ * absent (undefined) by default, mirroring an unmounted phase-gate /
+ * semantic layer.
+ */
+function registerTool(provider?: CriticCtxProvider, schema?: SchemaServiceLike): ToolDef {
   let def: ToolDef | undefined
   const ctx = {
     tools: {
@@ -46,13 +56,30 @@ function registerTool(provider?: CriticCtxProvider): ToolDef {
         def = d
       },
     },
-    get: () => provider,
+    get: (key: string) => (key === 'schema' ? schema : provider),
   } as unknown as Context
   apply(ctx, {})
   if (def === undefined) {
     throw new Error('apply did not register a tool')
   }
   return def
+}
+
+/**
+ * A relation graph that declares exactly the given `joins` adjacency and no
+ * multi-hop join paths, so `buildDeclaredJoinPairs` yields precisely the
+ * listed pairs.
+ */
+function makeGraph(joins: Readonly<Record<string, readonly string[]>>): RelationGraphLike {
+  return {
+    findJoinPath: () => null,
+    getJoinCondition: () => null,
+    getRelated: (sourceId: string, type?: string) =>
+      type === 'joins'
+        ? (joins[sourceId] ?? []).map(targetId => ({ targetId, type: 'joins' }))
+        : [],
+    getDerived: () => [],
+  }
 }
 
 /** A critic context with the given candidate tables + partition cols. */
@@ -203,4 +230,130 @@ test('C12 formatCritique clean SQL → "findings: none"', () => {
   }
   const text = formatCritique(value)
   expect(text).toContain('findings: none')
+})
+
+test('C13 formatCritique for a no-SQL critique prints the confidence alone', () => {
+  // No SELECT was found: there is no critiqued SQL to echo and no checks ran,
+  // so neither the `sql:` line nor any findings line may be emitted — the
+  // "findings: none (passed all checks)" reassurance would be a lie here.
+  const text = formatCritique({ confidence: 0, findings: [] })
+  expect(text).toBe('confidence: 0.00')
+})
+
+test('C14 render of a no-SQL critique is the confidence line alone', () => {
+  const def = registerTool()
+  const out = def.output.render({}, { confidence: 0, findings: [] })
+  expect(out[0]?.text).toBe('confidence: 0.00')
+})
+
+test('C15 execute refuses to critique when the turn is already aborted', async () => {
+  const def = registerTool()
+  const controller = new AbortController()
+  controller.abort()
+  await expect(def.execute(
+    { sql: "SELECT a FROM dws_pay WHERE ds='20260101'" },
+    { signal: controller.signal },
+  )).rejects.toThrow('critique_sql_tool aborted before critique')
+})
+
+test('C16 provider with no state for this agent falls back to the empty ctx (fail-closed)', async () => {
+  // Phase-gate mounted (provider present) but nothing harvested for this agent
+  // -> forAgent returns undefined -> EMPTY_CRITIC_CTX -> every FROM-table is
+  // flagged. The same SQL with a provider that knows dws_pay passes (C9).
+  let seenId: string | undefined
+  const provider: CriticCtxProvider = {
+    forAgent: (id: string) => {
+      seenId = id
+      return undefined
+    },
+  }
+  const def = registerTool(provider)
+  const out = await def.execute(
+    { sql: "SELECT a FROM dws_pay WHERE ds='20260101'" },
+    { signal: new AbortController().signal, agent: { id: 'agent-7' } },
+  )
+  expect(seenId).toBe('agent-7')
+  expect(out.findings.map(f => f.rule)).toEqual(['table_not_in_candidates'])
+  expect(out.confidence).toBe(0.5) // below the 0.6 gate floor
+})
+
+test('C17 execute rejects a call with no sql argument (schema-required, never critiqued as empty)', async () => {
+  const def = registerTool()
+  const call = def.execute as unknown as (a: unknown, e: unknown) => Promise<CritiqueSqlResult>
+  await expect(call({}, { signal: new AbortController().signal }))
+    .rejects.toThrow(/missing required property "sql"/)
+})
+
+// ── relation-graph declared-JOIN guard (ctx.get('schema') → getRelationGraph) ──
+
+/** Candidate tables shared by the declared-JOIN cases. */
+const JOIN_CANDIDATES = ['dws_pay', 'dim_server', 'dim_user']
+
+test('C18 a JOIN the relation graph declares raises no finding', async () => {
+  const provider: CriticCtxProvider = {
+    forAgent: () => makeCriticCtx(JOIN_CANDIDATES, ['ds']),
+  }
+  const def = registerTool(provider, {
+    getRelationGraph: () => makeGraph({ dws_pay: ['dim_server'] }),
+  })
+  const out = await def.execute(
+    { sql: "SELECT a FROM dws_pay JOIN dim_server ON 1=1 WHERE ds='1'" },
+    { signal: new AbortController().signal, agent: { id: 'agent-1' } },
+  )
+  expect(out.findings).toEqual([])
+  expect(out.confidence).toBe(1)
+})
+
+test('C19 a JOIN absent from the relation graph → undeclared_join warning', async () => {
+  // Identical candidates + graph as C18; only the JOIN target differs
+  // (dim_user is a candidate table but the graph declares no dws_pay⟷dim_user
+  // edge), so the pair must be reported as a possible hallucination.
+  const provider: CriticCtxProvider = {
+    forAgent: () => makeCriticCtx(JOIN_CANDIDATES, ['ds']),
+  }
+  const def = registerTool(provider, {
+    getRelationGraph: () => makeGraph({ dws_pay: ['dim_server'] }),
+  })
+  const out = await def.execute(
+    { sql: "SELECT a FROM dws_pay JOIN dim_user ON 1=1 WHERE ds='1'" },
+    { signal: new AbortController().signal, agent: { id: 'agent-1' } },
+  )
+  expect(out.findings.map(f => f.rule)).toEqual(['undeclared_join'])
+  expect(out.findings[0]?.severity).toBe('warning')
+  expect(out.findings[0]?.message).toContain('dim_user')
+  expect(out.confidence).toBe(0.85) // warning only -> still above the 0.6 floor
+})
+
+test('C20 a schema service without getRelationGraph leaves the declared-JOIN rule off', async () => {
+  // Same SQL + candidates as C19, but the semantic layer exposes no graph ->
+  // no declaredJoinPairs -> the undeclared-JOIN rule must stay silent rather
+  // than warn on every JOIN.
+  const provider: CriticCtxProvider = {
+    forAgent: () => makeCriticCtx(JOIN_CANDIDATES, ['ds']),
+  }
+  const def = registerTool(provider, {})
+  const out = await def.execute(
+    { sql: "SELECT a FROM dws_pay JOIN dim_user ON 1=1 WHERE ds='1'" },
+    { signal: new AbortController().signal, agent: { id: 'agent-1' } },
+  )
+  expect(out.findings).toEqual([])
+  expect(out.confidence).toBe(1)
+})
+
+test('C21 a relation graph with no criticCtx candidates skips the declared-JOIN build', async () => {
+  // Graph present but the phase-gate harvested nothing (no provider) -> empty
+  // candidateTables -> buildDeclaredJoinPairs is not called; the SQL is judged
+  // by the table-grounding rule alone (2 tables ∉ candidates).
+  const def = registerTool(undefined, {
+    getRelationGraph: () => makeGraph({ dws_pay: ['dim_server'] }),
+  })
+  const out = await def.execute(
+    { sql: "SELECT a FROM dws_pay JOIN dim_user ON 1=1 WHERE ds='1'" },
+    { signal: new AbortController().signal, agent: { id: 'agent-1' } },
+  )
+  expect(out.findings.map(f => f.rule)).toEqual([
+    'table_not_in_candidates',
+    'table_not_in_candidates',
+  ])
+  expect(out.confidence).toBe(0)
 })

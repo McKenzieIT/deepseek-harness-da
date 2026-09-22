@@ -1,10 +1,14 @@
 ---
 type: research
-status: open
+status: superseded
 blocked_by: []
 ---
 
 # R11: eval 切换 buildEvalPrompt 实验
+
+## Answer
+
+Superseded by [Evaluation T13: Production Context Projection capability](../../evaluation/tickets/T13-context-projection-service.md) and [Evaluation G13: Context evaluation protocol 与 attribution](../../evaluation/tickets/G13-context-evaluation-protocol.md). A private `buildEvalPrompt` switch would preserve the production/evaluation split; the replacement route observes the production projection and attributes its evidence instead.
 
 ## Question
 

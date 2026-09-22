@@ -99,4 +99,47 @@ describe('formatReport', () => {
     expect(report).toContain('total: 0')
     expect(report).not.toContain('Top Failures')
   })
+
+  /**
+   * The remaining cases pin the three places where the formatter has to cope
+   * with input the happy path never produces: a verdict whose case is missing
+   * from the case list (the runner and the case file are loaded independently,
+   * so they can disagree), more failures than the Top-Failures window holds,
+   * and an intent name wider than its column.
+   */
+
+  it('falls back to "?" and "unknown" when a verdict has no matching case', () => {
+    const result = makeResult([{ id: 'ghost', verdict: 'wrong' }])
+    // Deliberately no case carries case_id 'ghost'.
+    const report = formatReport(result, [makeCase('other', 'unrelated', 'trend')])
+
+    // Unresolvable case_id → the intent bucket is 'unknown', not the intent of
+    // some other case, and the row still counts the verdict.
+    expect(report).toMatch(/\n {2}unknown {13}1 {6}0 {8}1 {6}0\.0% {4}\n/)
+    expect(report).not.toContain('trend')
+    // Unresolvable question → the literal '?' placeholder, not an empty quote.
+    expect(report).toContain('    ghost  [wrong]  "?"')
+  })
+
+  it('keeps only the first five failures and counts the rest', () => {
+    const ids = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
+    const result = makeResult(ids.map(id => ({ id, verdict: 'wrong' as const })))
+    const report = formatReport(result, ids.map(id => makeCase(id, `question ${id}`, 'trend')))
+
+    expect(report).toContain('    f1  [wrong]  "question f1"')
+    expect(report).toContain('    f5  [wrong]  "question f5"')
+    expect(report).not.toContain('f6  [wrong]')
+    expect(report).not.toContain('f7  [wrong]')
+    // 7 failures - the 5 listed = 2 elided.
+    expect(report).toContain('    ... and 2 more')
+  })
+
+  it('does not truncate an intent name that is wider than its column', () => {
+    const result = makeResult([{ id: 'c1', verdict: 'correct' }])
+    const report = formatReport(result, [makeCase('c1', 'q1', 'extremely_long_query_intent_name')])
+
+    // 32 chars vs a 20-wide column: the name is emitted whole with no padding,
+    // so the total column abuts it directly rather than starting at column 22.
+    expect(report).toMatch(/\n {2}extremely_long_query_intent_name1 {6}1 {8}0 {6}100\.0% {2}\n/)
+  })
 })

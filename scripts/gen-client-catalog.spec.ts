@@ -134,6 +134,14 @@ describe('client slot projection', () => {
       .toContain('built in')
   })
 
+  it('names the Factory definition that declares an ordinary child seat', () => {
+    const factory = registration({ key: 'demo.factory', children: ['demo.seat'], factory: true })
+    const [entry] = resolveSlotEntries([declaration()], [factory], OWNER_TYPES, kits)
+    expect(entry?.declaredBy)
+      .toContain("factory 'demo.factory' (client-demo)")
+    expect(entry?.occupants).toEqual([])
+  })
+
   it('reports an open keyed domain and the keys already taken', () => {
     const [entry] = resolveSlotEntries(
       [declaration({ kind: 'keyed' })],
@@ -204,7 +212,7 @@ describe('the per-slot report budget', () => {
 // --testTimeout: a describe value overrides that flag rather than yielding to it,
 // so a smaller one here lowers what the lane already grants. The 30s literal this
 // replaces was never a considered ceiling — it arrived in an unrelated sweep
-// (`a7d4cd8e1b`) as a raise from Vitest's 5s default, back when the lane granted
+// as a raise from Vitest's 5s default, back when the lane granted
 // 15s, and it straddled the measured cost on both platforms: 13.1-19.2s on Linux
 // and 24.3-37.4s on Windows across PRs #155-#159.
 describe('the real workspace surface', { timeout: 90_000 }, () => {
@@ -222,5 +230,7 @@ describe('the real workspace surface', { timeout: 90_000 }, () => {
     const root = entries.find(entry => entry.key === 'root')
     expect(root?.replaceRisk).toBe('shadows-shipped-ui')
     expect(root?.occupants.join(' ')).toContain('AppFrame')
+    expect(entries.find(entry => entry.key === 'conversation.session')?.declaredBy)
+      .toContain("factory 'conversation.content' (client-ui-conversation)")
   })
 })
