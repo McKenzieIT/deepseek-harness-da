@@ -15,3 +15,7 @@ _Avoid_: scheduler, Task instance
 **Execution target revision（执行目标修订）**:
 An immutable version of an execution target's declared behavior, inputs, and outputs. It is distinct from a package release or credential rotation.
 _Avoid_: package version, live configuration
+
+**Planner selection（规划器选择）**:
+The user's choice of which planning system handles subsequent work. It is distinct from transferring control, approving a plan, or resuming execution.
+_Avoid_: execution permission, plan approval, planning control handoff

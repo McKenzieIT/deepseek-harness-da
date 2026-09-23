@@ -21,6 +21,10 @@ It additionally owns any replacement of the first-release stable ready ordering 
 
 It also owns admission-throughput optimizations that batch multiple independent durable intents behind fewer Session flushes. The first-release protocol requires only that each model request, native execution, or external effect begins after a successful flush covers its own intent; batching must preserve that failure and replay behavior and requires measured persistence overhead before implementation.
 
+### Activation-window preparation reuse
+
+[Model tools and cross-preset composition](G16-todo-coexistence-and-preset-composition.md#confirmed-activation-response-boundary) defers not-yet-started ordinary read-only preparation from an old model response until a request assembled for the receiving role. Revisit whether to revalidate and execute those calls only when measured activation traces show material user-visible latency or repeated preparation cost. This decision depends on the settled role-transition and authorization protocol and first-release evaluation. It must distinguish preparation from Task-causal execution, recheck permission and relevance at actual dispatch, preserve model-visible and durable not-executed outcomes, and never transfer new Attempt authority to an old response. It does not permit automatic replay, retrospective evidence admission, or bypassing preset restrictions.
+
 ## Inputs from the G13 resolution
 
 [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) keeps the ordinary path deliberately singular: one Agent turn and one primary Binding per Attempt, one causal owner per native execution, and a new Attempt for every semantic retry. First-release admission preserves but rejects `AttemptGroupId`. This ticket owns any measured optimization that relaxes those rules through Attempt Groups, multi-Attempt batch execution, shared-execution deduplication, winner or quorum policy, loser cancellation, or cost-aware routing; each requires an evidence trigger and a deterministic single-Attempt fallback.
